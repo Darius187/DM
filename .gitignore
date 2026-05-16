@@ -13,7 +13,8 @@
 !/storage/cache/.gitkeep
 !/storage/uploads/.gitkeep
 
-# Local config
+# Local config — echte DB-Zugangsdaten gehören NICHT ins Repo
+/app/config/config.php
 /app/config/config.local.php
 .env
 .env.local

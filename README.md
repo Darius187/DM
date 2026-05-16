@@ -3,38 +3,83 @@
 Professionelle B2B-Webseite für Industrie-Plattformwagen.
 Stack: PHP 8 (PDO, OOP), MySQL, Tailwind CSS, vanilla JS — gebaut für **Alfahosting Shared Hosting**.
 
-## Status — Session 1 (abgeschlossen)
+## Status
 
+### Session 1 (abgeschlossen)
 - ✅ Repo-Struktur, Security-Härtung (.htaccess, CSP, HSTS)
 - ✅ DB-Schema (`products`, `images`, `inquiries`, `users`, `login_attempts`, `settings`)
 - ✅ PHP-Core (Bootstrap, Database, Auth, Csrf, Helpers, Product-Model)
 - ✅ Tailwind-Build (lokal, kein CDN) + Inter-Fonts (lokal, DSGVO)
 - ✅ Frontend: Startseite, Produktübersicht (mit Filter), Produkt-Detail (Galerie)
-- ✅ Plattformwagen-Zug-Animation (Web Animations API, 75 px, 4 Wagen, Endlos-Loop)
-- ✅ Cookie-Banner (DSGVO Opt-in)
-- ✅ Rechtstexte als Platzhalter: Impressum, Datenschutz, AGB
-- ✅ Formulare (Anfrage, Kontakt) als UI — Versand kommt in Session 2
-- ✅ SEO: sitemap.xml, robots.txt, Open Graph, Schema.org
-- ✅ Barrierefrei: WCAG 2.1 AA — Skip-Link, ARIA, Tastatur, Kontraste, reduced-motion
-- ✅ Bilder: 9 Produktbilder verarbeitet (WebP+JPG, 400/800/1600 px + Thumbnail)
-- ✅ 4 Wagen-Bilder aus Original-HTML extrahiert
+- ✅ Plattformwagen-Zug-Animation
+- ✅ Cookie-Banner, Rechtstexte als Platzhalter, SEO, WCAG 2.1 AA
+- ✅ 9 Produktbilder + 4 Wagen-Bilder verarbeitet
 
-## Session 2 — TODO (geplant)
+### Session 2 (abgeschlossen)
+- ✅ Admin-Panel `/admin/` — Login mit Rate-Limit, Dashboard, Logout
+- ✅ Produkt-CRUD (Anlegen, Bearbeiten, Aktiv/Featured-Schalter, Sortierung)
+- ✅ Bild-Upload im Admin mit Auto-WebP/Resize (400/800/1600 px + Thumbnail via GD)
+- ✅ Bild-Löschen (Datei- und DB-Cleanup)
+- ✅ Inquiry-Model + Anfragenverwaltung (Filter, Status-Wechsel, Löschen)
+- ✅ Formular-Versand (eigener SMTP-Client via `localhost:25`, Fallback PHP `mail()`)
+  - Hauptmail an `info@db-bas.de`
+  - Eingangsbestätigung an Anfragenden (mit Items-Liste)
+  - Reply-To auf Anfragenden-Adresse gesetzt
+- ✅ CLI-Tool `tools/create_admin.php` zum Anlegen/Resetten von Admin-Usern
+- ✅ Admin-Bereich zusätzlich gehärtet (`noindex`-Header, `Cache-Control: no-store`)
 
-- [ ] Admin-Panel `/admin/`: Login, Dashboard, Produkt-CRUD, Bild-Upload, Anfragen einsehen
-- [ ] Formular-Versand (PHPMailer SMTP via Alfahosting + DB-Speicherung)
-- [ ] Bild-Upload mit Auto-WebP/Resize im Admin
-- [ ] Settings-Verwaltung im Admin
+### Session 3 (optional / geplant)
+- [ ] Bild-Reihenfolge per Drag&Drop im Admin
+- [ ] Settings-Verwaltung im Admin (statt manuell in DB)
+- [ ] Anwendungsbilder pro Produkt mit Kategorien (Logistik / Krankenhaus / etc.)
+- [ ] Mehrsprachigkeit (DE/EN)
+- [ ] Echtes Logo + Hero-Bilder mit Anwendungsszenarien
 
 ## Setup auf Alfahosting
 
-1. **Datenbank anlegen** in Alfahosting-Adminoberfläche (MySQL)
-2. `app/config/database.sql` und `app/config/seed.sql` importieren (phpMyAdmin)
-3. `app/config/config.sample.php` → `app/config/config.php` kopieren und DB-Zugang eintragen
-4. Per **SFTP** alles außer `build/` und `.git/` hochladen
-5. Sicherstellen, dass `app/`, `storage/`, `build/` per `.htaccess` (mit `Require all denied`) gesperrt sind ✅
+### Datenbank-Daten (cxycs6ph)
+```
+DB_NAME: cxycs6ph_unisilent
+DB_USER: cxycs6ph_unisilent
+DB_HOST: localhost
+Server : cxycs6ph.web5.alfahosting-server.de
+```
+
+### Schritte
+
+1. **Datenbank anlegen** in der Alfahosting-Adminoberfläche (MySQL 8.0)
+2. **Schema + Seed importieren** via phpMyAdmin:
+   - `app/config/database.sql`  → erstellt Tabellen
+   - `app/config/seed.sql`      → füllt 7 Produkte und Standard-Settings
+3. **Config anlegen** (NICHT im Git):
+   ```bash
+   cp app/config/config.sample.php app/config/config.php
+   # Datei editieren: 'pass' eintragen, ggf. 'pepper' auf neuen Zufallswert
+   ```
+4. **Per SFTP hochladen** — folgende Ordner/Dateien:
+   - `public/` → DocumentRoot
+   - `app/`    → eine Ebene über DocumentRoot (geschützt durch `.htaccess`)
+   - `storage/` → schreibbar für PHP, geschützt
+   - `tools/`   → geschützt, nur per Shell ausführbar
+   - `.htaccess` (Root) für `/` → `/public/`-Rewrite
+   - **NICHT** hochladen: `build/`, `node_modules/`, `.git/`
+5. **Admin-User anlegen** (per SSH falls verfügbar, sonst lokal):
+   ```bash
+   php tools/create_admin.php admin info@db-bas.de "Mein-Sicheres-Passwort-min-12-Zeichen"
+   ```
+   Falls SSH fehlt: Hash lokal generieren und direkt in `users`-Tabelle einfügen:
+   ```bash
+   php -r 'echo password_hash("MeinPasswort", PASSWORD_DEFAULT) . PHP_EOL;'
+   ```
 6. **301-Redirect** `uni-silent.de → unisilent.de` ist in `public/.htaccess` aktiviert
-7. **HTTPS** wird via Let's Encrypt erzwungen (Header in `.htaccess`)
+7. **HTTPS** wird via Let's Encrypt erzwungen
+8. **E-Mail** läuft über `localhost:25` (Alfahosting-MTA) — keine externe SMTP-Konfiguration nötig
+
+### Login zum Admin-Panel
+
+```
+https://unisilent.de/admin/
+```
 
 ## Lokale Entwicklung
 

@@ -1,0 +1,7 @@
+# Admin-Bereich: zusätzliche Härtung
+# Achtung: noindex/nofollow ist bereits im HTML, hier zusätzlich als Header
+<IfModule mod_headers.c>
+    Header always set X-Robots-Tag "noindex, nofollow, noarchive"
+    Header always set Cache-Control "private, no-store, no-cache, must-revalidate"
+    Header always set Pragma "no-cache"
+</IfModule>

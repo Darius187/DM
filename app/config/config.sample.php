@@ -8,12 +8,12 @@
  */
 
 return [
-    // Datenbank
+    // Datenbank (Alfahosting Shared Hosting)
     'db' => [
-        'host'     => 'localhost',
-        'name'     => 'usr_web_db',          // Alfahosting-Datenbankname
-        'user'     => 'usr_web_user',
-        'pass'     => 'CHANGE_ME',
+        'host'     => 'localhost',                 // Alfahosting: localhost
+        'name'     => 'cxycs6ph_unisilent',
+        'user'     => 'cxycs6ph_unisilent',
+        'pass'     => 'CHANGE_ME',                 // <-- Hier das echte DB-Passwort eintragen
         'charset'  => 'utf8mb4',
     ],
 
