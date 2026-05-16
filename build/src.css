@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Eigene Fonts (lokal gehostet, kein externer Aufruf — DSGVO)
+   ============================================================ */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/assets/fonts/inter-regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/assets/fonts/inter-medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/assets/fonts/inter-semibold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/assets/fonts/inter-bold.woff2') format('woff2');
+}
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body {
+    @apply font-sans text-slate-800 bg-white antialiased;
+  }
+  h1, h2, h3, h4 { @apply font-semibold tracking-tight text-brand-900; }
+  h1 { @apply text-3xl md:text-5xl leading-tight; }
+  h2 { @apply text-2xl md:text-4xl leading-tight; }
+  h3 { @apply text-xl  md:text-2xl; }
+  :focus-visible { @apply outline-2 outline-offset-2 outline-accent-500; }
+  a { @apply underline-offset-2; }
+}
+
+@layer components {
+  .btn          { @apply inline-flex items-center justify-center gap-2 rounded-lg px-5 py-3 font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2; }
+  .btn-primary  { @apply btn bg-accent-500 text-white hover:bg-accent-600 focus-visible:outline-accent-500 no-underline; }
+  .btn-secondary{ @apply btn bg-brand-700 text-white hover:bg-brand-800 focus-visible:outline-brand-700 no-underline; }
+  .btn-ghost    { @apply btn bg-white text-brand-700 ring-1 ring-brand-200 hover:bg-brand-50 no-underline; }
+  .container-x  { @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8; }
+  .card         { @apply rounded-xl bg-white ring-1 ring-slate-200 shadow-sm; }
+  .badge        { @apply inline-flex items-center rounded-md bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-200; }
+  .skip-link    { @apply sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-brand-900 focus:text-white focus:px-4 focus:py-2; }
+}
+
+/* ============================================================
+   Plattformwagen-Zug
+   ============================================================ */
+.train-outer {
+  overflow: hidden;
+  width: 100%;
+  background: var(--train-bg, transparent);
+  padding: 6px 0;
+  box-sizing: border-box;
+}
+.train-track {
+  display: flex;
+  align-items: flex-end;
+  width: max-content;
+  will-change: transform;
+}
+.train-track img {
+  height: 75px;
+  width: auto;
+  flex-shrink: 0;
+  margin-right: 8px;
+  display: block;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .train-track { animation: none !important; }
+  html { scroll-behavior: auto; }
+}

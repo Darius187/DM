@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /assets/fonts/
+Disallow: /404.php
+
+Sitemap: https://unisilent.de/sitemap.xml

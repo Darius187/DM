@@ -6,14 +6,27 @@ This file provides guidance for AI assistants (Claude and others) working in thi
 
 ## Repository Status
 
-This repository is currently in its **initial state** — no source files or commits exist yet.
-Update this document as the project evolves.
+**Session 1 abgeschlossen** — siehe `README.md` für Detail-Status. Session 2 (Admin-Panel + Formular-Versand) steht aus.
 
 ---
 
 ## Project Overview
 
-> **TODO**: Add a short description of what this project does, its purpose, and its primary users.
+B2B-Webseite für **uni-silent / db-bas** (Inhaber: Darius Matuszak, Villingen-Schwenningen).
+Produkte: Industrie-Plattformwagen (geräuscharm, 150–300 kg Tragkraft).
+Zielgruppe: Logistik, Krankenhäuser, Lebensmittel, Pharma, Produktion.
+
+**Hosting**: Alfahosting Shared Hosting, PHP 8, MySQL, SFTP-Deployment.
+**Domain**: unisilent.de (uni-silent.de → 301-Redirect).
+
+**Stack**:
+- PHP 8.0+ (OOP, PDO Prepared Statements only)
+- MySQL / utf8mb4
+- Tailwind CSS 3 (lokal gebaut, kein CDN)
+- Vanilla JS (kein Framework)
+- Inter-Font (lokal gehostet, DSGVO)
+
+**KEIN Node.js auf Server** — Tailwind wird lokal in `build/` gebaut und das fertige CSS (`public/assets/css/tailwind.min.css`) committed.
 
 ---
 

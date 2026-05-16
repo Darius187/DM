@@ -1,0 +1,65 @@
+[
+  {
+    "slug": "PLA300-DX",
+    "role": "main",
+    "sort": 1,
+    "base": "main-01",
+    "alt": "Plattformwagen PLA300-DX, blau, aufgestellt"
+  },
+  {
+    "slug": "PLA300-DX",
+    "role": "gallery",
+    "sort": 2,
+    "base": "gallery-02",
+    "alt": "Plattformwagen PLA300-DX, zusammengeklappt"
+  },
+  {
+    "slug": "PLA300-DX-SF",
+    "role": "main",
+    "sort": 1,
+    "base": "main-01",
+    "alt": "Plattformwagen PLA300-DX-SF, schwarz mit hohem Griff"
+  },
+  {
+    "slug": "PLA300-T2",
+    "role": "main",
+    "sort": 1,
+    "base": "main-01",
+    "alt": "Plattformwagen PLA300-T2, Doppeldecker, blau"
+  },
+  {
+    "slug": "ST300-DX",
+    "role": "main",
+    "sort": 1,
+    "base": "main-01",
+    "alt": "Plattformwagen ST300-DX, Edelstahl rostfrei"
+  },
+  {
+    "slug": "ST300-DX",
+    "role": "gallery",
+    "sort": 2,
+    "base": "gallery-02",
+    "alt": "Plattformwagen ST300-DX, Detailansicht"
+  },
+  {
+    "slug": "TB150-DX",
+    "role": "main",
+    "sort": 1,
+    "base": "main-01",
+    "alt": "Plattformwagen TB150-DX, Stahl klein mit Rand"
+  },
+  {
+    "slug": "TB150-DX",
+    "role": "gallery",
+    "sort": 2,
+    "base": "gallery-02",
+    "alt": "Plattformwagen TB150-DX, Detailansicht"
+  },
+  {
+    "slug": "TB300-DX",
+    "role": "main",
+    "sort": 1,
+    "base": "main-01",
+    "alt": "Plattformwagen TB300-DX, Stahl mit Rand (Abbildung ähnlich)"
+  }
+]

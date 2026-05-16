@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+  <rect x="0" y="6" width="48" height="48" rx="10" fill="#1e3a5f"/>
+  <text x="24" y="40" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="28" fill="#fff">u</text>
+  <text x="60" y="34" font-family="Inter, sans-serif" font-weight="600" font-size="20" fill="#1e3a5f">uni-silent</text>
+  <text x="60" y="50" font-family="Inter, sans-serif" font-weight="400" font-size="10" fill="#64748b" letter-spacing="2">AUF LEISEN ROLLEN</text>
+</svg>

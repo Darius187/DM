@@ -1,0 +1,83 @@
+# uni-silent.de — public/.htaccess
+# Apache 2.4, Alfahosting shared hosting
+
+Options -Indexes -MultiViews
+DirectoryIndex index.php index.html
+
+# ---- HTTPS + canonical host (uni-silent.de -> unisilent.de) ----
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Force HTTPS
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+    # uni-silent.de -> unisilent.de (301)
+    RewriteCond %{HTTP_HOST} ^(www\.)?uni-silent\.de$ [NC]
+    RewriteRule ^ https://unisilent.de%{REQUEST_URI} [R=301,L]
+
+    # Strip www.
+    RewriteCond %{HTTP_HOST} ^www\.unisilent\.de$ [NC]
+    RewriteRule ^ https://unisilent.de%{REQUEST_URI} [R=301,L]
+
+    # Dynamische sitemap.xml
+    RewriteRule ^sitemap\.xml$ sitemap.xml.php [L]
+
+    # Pretty URLs: /produkt/PLA300-DX -> /produkt.php?slug=PLA300-DX
+    RewriteRule ^produkt/([A-Za-z0-9_-]+)/?$ produkt.php?slug=$1 [QSA,L]
+    RewriteRule ^produkte/?$ produkte.php [L]
+    RewriteRule ^anfrage/?$ anfrage.php [L]
+    RewriteRule ^kontakt/?$ kontakt.php [L]
+    RewriteRule ^impressum/?$ impressum.php [L]
+    RewriteRule ^datenschutz/?$ datenschutz.php [L]
+    RewriteRule ^agb/?$ agb.php [L]
+</IfModule>
+
+# ---- Security Headers ----
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS
+    # CSP: kein inline-script, lokale fonts/css/img, kein externes Tracking ohne Consent
+    Header always set Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'self'; base-uri 'self'; object-src 'none'"
+    Header unset X-Powered-By
+    Header always unset Server
+</IfModule>
+
+# ---- Cache Control: lange Cache-Zeiten für statische Assets ----
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png  "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType text/css   "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+
+# ---- Kompression ----
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript text/plain text/xml application/xml application/json image/svg+xml
+</IfModule>
+
+# ---- Sensitive Files schützen ----
+<FilesMatch "(\.env|composer\.(json|lock)|package(-lock)?\.json|README\.md|CLAUDE\.md|\.git.*|.*\.sql|.*\.log)$">
+    Require all denied
+</FilesMatch>
+
+# ---- PHP-Härtung (falls Hoster zulässt) ----
+<IfModule mod_php.c>
+    php_flag expose_php Off
+    php_flag display_errors Off
+    php_flag session.cookie_httponly On
+    php_flag session.cookie_secure On
+    php_value session.cookie_samesite "Lax"
+</IfModule>
+
+# Fehlerseiten
+ErrorDocument 404 /404.php
+ErrorDocument 403 /403.php
