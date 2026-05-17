@@ -41,9 +41,20 @@ Stack: PHP 8 (PDO, OOP), MySQL, Tailwind CSS, vanilla JS — gebaut für **Alfah
 ```
 DB_NAME: cxycs6ph_unisilent
 DB_USER: cxycs6ph_unisilent
-DB_HOST: localhost
+DB_HOST: 127.0.0.1     # NICHT 'localhost' (sonst sucht PDO einen Unix-Socket)
+DB_PORT: 3307          # WICHTIG: Alfahosting läuft auf 3307, nicht dem Default 3306
 Server : cxycs6ph.web5.alfahosting-server.de
 ```
+
+### Healthcheck
+Nach dem Upload kannst du via SSH (oder lokal mit den gleichen Config-Werten)
+verifizieren, dass alles steht:
+
+```bash
+php tools/healthcheck.php
+```
+Das Tool prüft PHP-Extensions, Pfade, Schreibrechte, DB-Verbindung (mit Port),
+Tabellen, Mail-Transport und alle statischen Assets — alles in einem Durchlauf.
 
 ### Schritte
 

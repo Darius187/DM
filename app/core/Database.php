@@ -20,10 +20,18 @@ final class Database
     {
         if (self::$pdo === null) {
             $cfg = self::$config;
-            $dsn = sprintf(
-                'mysql:host=%s;dbname=%s;charset=%s',
-                $cfg['host'], $cfg['name'], $cfg['charset'] ?? 'utf8mb4'
-            );
+            // Port nur in DSN, wenn explizit gesetzt — sonst nutzt PDO Default (3306)
+            // bzw. bei host=localhost den lokalen Socket.
+            $dsn = 'mysql:host=' . $cfg['host'];
+            if (!empty($cfg['port'])) {
+                $dsn .= ';port=' . (int)$cfg['port'];
+            }
+            if (!empty($cfg['socket'])) {
+                $dsn .= ';unix_socket=' . $cfg['socket'];
+            }
+            $dsn .= ';dbname=' . $cfg['name'];
+            $dsn .= ';charset=' . ($cfg['charset'] ?? 'utf8mb4');
+
             self::$pdo = new PDO($dsn, $cfg['user'], $cfg['pass'], [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,

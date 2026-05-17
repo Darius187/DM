@@ -30,21 +30,38 @@ if (($config['site']['env'] ?? 'production') === 'development') {
     error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED);
     ini_set('display_errors', '0');
     ini_set('log_errors', '1');
-    ini_set('error_log', $config['paths']['logs'] . '/php.log');
+
+    // Log-Ordner anlegen falls nicht da; nur dann eigene error_log setzen
+    // (sonst fallen Fehler ins ENV-Default des Hosters — auch OK)
+    $logDir = $config['paths']['logs'] ?? null;
+    if ($logDir && !is_dir($logDir)) {
+        @mkdir($logDir, 0775, true);
+    }
+    if ($logDir && is_dir($logDir) && is_writable($logDir)) {
+        ini_set('error_log', $logDir . '/php.log');
+    }
 }
 
-// Session sicher konfigurieren
-session_name($config['security']['session_name']);
-session_set_cookie_params([
-    'lifetime' => $config['security']['session_lifetime'],
-    'path'     => '/',
-    'domain'   => '',
-    'secure'   => true,
-    'httponly' => true,
-    'samesite' => 'Lax',
-]);
-if (session_status() === PHP_SESSION_NONE) {
-    @session_start();
+// Session sicher konfigurieren — Secure-Cookie nur wenn wir auch wirklich auf HTTPS sind
+// (sonst funktioniert lokales HTTP-Testing nicht; in Prod ist HTTPS immer erzwungen).
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
+        || (($_SERVER['SERVER_PORT'] ?? '') == 443);
+
+// Im CLI keine Sessions starten — irrelevant und führt zu Warnings nach echo.
+if (PHP_SAPI !== 'cli') {
+    session_name($config['security']['session_name']);
+    session_set_cookie_params([
+        'lifetime' => $config['security']['session_lifetime'],
+        'path'     => '/',
+        'domain'   => '',
+        'secure'   => $isHttps,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    if (session_status() === PHP_SESSION_NONE) {
+        @session_start();
+    }
 }
 
 // Autoloader (PSR-4-light für app/core, app/models)

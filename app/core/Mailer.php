@@ -24,9 +24,10 @@ final class Mailer
      */
     public function send(string $to, string $subject, string $bodyText, ?string $bodyHtml = null, array $opts = []): bool
     {
-        $fromAddr = $opts['from_addr'] ?? $this->cfg['from_addr'] ?? 'no-reply@localhost';
-        $fromName = $opts['from_name'] ?? $this->cfg['from_name'] ?? '';
-        $replyTo  = $opts['reply_to']  ?? null;
+        $fromAddr  = $opts['from_addr'] ?? $this->cfg['from_addr'] ?? 'no-reply@localhost';
+        $fromName  = $opts['from_name'] ?? $this->cfg['from_name'] ?? '';
+        $replyTo   = $opts['reply_to']  ?? null;
+        $transport = strtolower((string)($this->cfg['transport'] ?? 'auto'));
 
         $boundary = 'b_' . bin2hex(random_bytes(8));
         $msgId    = '<' . bin2hex(random_bytes(8)) . '@' . ($_SERVER['SERVER_NAME'] ?? 'unisilent.de') . '>';
@@ -60,16 +61,22 @@ final class Mailer
 
         $encSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
 
-        // SMTP versuchen
-        try {
-            if ($this->smtpSend($fromAddr, $to, $encSubject, $headers, $body)) {
-                return true;
+        // SMTP nur wenn explizit gewählt ('smtp' oder 'auto'). Default: 'mail'.
+        if ($transport === 'smtp' || $transport === 'auto') {
+            try {
+                if ($this->smtpSend($fromAddr, $to, $encSubject, $headers, $body)) {
+                    return true;
+                }
+            } catch (Throwable $e) {
+                $this->log('SMTP failed: ' . $e->getMessage());
+                if ($transport === 'smtp') {
+                    // Explizit SMTP gewählt → nicht heimlich auf mail() fallen
+                    return false;
+                }
             }
-        } catch (Throwable $e) {
-            $this->log('SMTP failed: ' . $e->getMessage());
         }
 
-        // Fallback: PHP mail()
+        // PHP mail() — nutzt auf Alfahosting /usr/sbin/sendmail.
         $headerStr = implode("\r\n", $headers);
         return @mail($to, $encSubject, $body, $headerStr, '-f' . $fromAddr);
     }
