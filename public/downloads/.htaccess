@@ -1,0 +1,13 @@
+# /downloads/ — öffentlich downloadbar (z.B. Bedienungsanleitung-PDF),
+# aber kein Verzeichnis-Listing.
+Options -Indexes
+
+<IfModule mod_headers.c>
+    # Lange Cache-Zeit für Downloads
+    Header set Cache-Control "public, max-age=2592000"
+</IfModule>
+
+# Nur PDF/ZIP zulassen — keine ausführbaren Files
+<FilesMatch "\.(php|phtml|phps|cgi|pl|py|sh|exe)$">
+    Require all denied
+</FilesMatch>

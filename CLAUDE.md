@@ -13,6 +13,26 @@ Sammelstelle für Änderungswünsche, die in einer späteren Session in einem Ru
   - Eventuell weitere Stellen prüfen (Hero, Marketing-Texte) bevor entfernt wird.
 - [ ] Weitere Änderungen folgen — vor Umsetzung **alle gesammelten Punkte zusammen** mit dem User durchgehen.
 
+### Auftrag-Pakete vom User (Mai 2026)
+User hat 5 detaillierte MD-Dateien geliefert mit Aufträgen:
+- `01-rechtstexte-final.md` — komplette finale Rechtstexte (6 Seiten: Impressum, Datenschutz, AGB, Widerruf, Produktsicherheit, Barrierefreiheit). USt-IdNr. DE 297660440 ist drin. 1:1 übernehmen.
+- `02-produkte-gpsr-bestand.md` — GPSR-Box + Mindestabnahme-Hinweis auf jeder Produktseite. ⚠️ **Zwei offene Fragen**: PLA300-T2 (2+1 doppelt erfasst?) und TB300P-DX (aufnehmen?).
+- `03-design-und-content.md` — Reihenfolge: (1) Made-in-VS überall raus, (2) Cookie-Banner "Statistik"-Option ausblenden, (3) Farbschema (Orange weg → Stahlgrau #64748b), (4) Blau/Weiß-Konflikt bei Produktfotos lösen, (5) Datenschutz-Pflicht-Checkbox im Anfrage-Formular, (6) Footer-Links: Produktsicherheit + Widerruf ergänzen, (7) Markenbezeichnung vereinheitlichen.
+- `04-bedienungsanleitung.md` — PDF unter `public/downloads/unisilent-bedienungsanleitung.pdf` ✅ **bereits abgelegt** (Rev. 03/2026-05-17, 7 S., 552 KB).
+- `00-uebersicht.md` — Reihenfolge: 03 → 01 → 02 → 04.
+
+### Brand-Stripes vom User (Mai 2026)
+Zusätzlicher Wunsch: Zwei dünne Streifen direkt unter dem Header — **gelb `#f6e303` über rot `#a70000`** (je 3 px). Sehr dezent als Markenakzent. Funktionsakzent bleibt Stahlgrau (siehe 03-MD). User noch unsicher → vor Umsetzung bestätigen lassen.
+
+### Offene Klärungen vor Umsetzung
+1. PLA300-T2: doppelt erfasst oder zwei Varianten?
+2. TB300P-DX: aufnehmen, weglassen, oder als „auf Anfrage" verlinken?
+3. „Mindestabnahme 50 Stück" hart oder weicher („üblich ab 50 Stk., kleinere Mengen aus Lager auf Anfrage")?
+4. AGB-Geltungsbereich: nur B2B oder auch B2C (Widerrufsrecht etc.)?
+5. Brand-Stripes gelb/rot — wirklich, oder doch weglassen?
+6. eBay-Bilder für PLA300-DX-SF / ST300-DX / PLA300-DX → User soll lokale Kopien hochladen (Hotlinken nicht OK).
+7. Admin-User auf Server — wie anlegen? (SSH/phpMyAdmin/Browser-Skript)
+
 ---
 
 ## Repository Status
