@@ -92,7 +92,7 @@
     <div class="card p-5">
       <h2 class="text-base font-semibold text-brand-900">Metadaten</h2>
       <dl class="mt-3 text-xs space-y-1 text-slate-600">
-        <div><dt class="inline text-slate-500">User-Agent:</dt><dd class="inline break-all"><?= e($inquiry['user_agent'] ?? '–') ?></dd></div>
+        <div><dt class="inline text-slate-500">User-Agent:</dt><dd class="inline break-all"><?= e($inquiry['user_agent'] ?? '-') ?></dd></div>
         <div><dt class="inline text-slate-500">IP-Hash:</dt><dd class="inline font-mono break-all"><?= e(substr((string)($inquiry['ip_hash'] ?? ''), 0, 16)) ?>…</dd></div>
         <div><dt class="inline text-slate-500">Geändert:</dt><dd class="inline"><?= e(date('d.m.Y H:i', strtotime((string)$inquiry['updated_at']))) ?></dd></div>
       </dl>

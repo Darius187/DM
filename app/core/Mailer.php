@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Mailer — minimaler SMTP-Client für lokalen MTA.
+ * Mailer - minimaler SMTP-Client für lokalen MTA.
  *
  * Auf Alfahosting Shared Hosting läuft Postfix/Exim auf localhost:25 ohne Auth.
  * Bei Bedarf kann SMTP_AUTH (PLAIN/LOGIN) und STARTTLS aktiviert werden über Config.
@@ -76,7 +76,7 @@ final class Mailer
             }
         }
 
-        // PHP mail() — nutzt auf Alfahosting /usr/sbin/sendmail.
+        // PHP mail() - nutzt auf Alfahosting /usr/sbin/sendmail.
         $headerStr = implode("\r\n", $headers);
         return @mail($to, $encSubject, $body, $headerStr, '-f' . $fromAddr);
     }

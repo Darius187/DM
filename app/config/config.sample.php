@@ -1,6 +1,6 @@
 <?php
 /**
- * uni-silent.de — Konfiguration
+ * uni-silent.de - Konfiguration
  *
  * Auf Alfahosting NACH dem Upload zu config.php umbenennen
  * und Datenbank-Zugangsdaten eintragen.
@@ -11,7 +11,7 @@ return [
     // Datenbank (Alfahosting Shared Hosting)
     'db' => [
         'host'     => '127.0.0.1',                 // Alfahosting: 127.0.0.1 (TCP). 'localhost' würde Unix-Socket suchen.
-        'port'     => 3307,                        // Alfahosting MySQL: 3307 — NICHT der Default 3306!
+        'port'     => 3307,                        // Alfahosting MySQL: 3307 - NICHT der Default 3306!
         'name'     => 'cxycs6ph_unisilent',
         'user'     => 'cxycs6ph_unisilent',
         'pass'     => 'CHANGE_ME',                 // <-- Hier das echte DB-Passwort eintragen
@@ -31,7 +31,7 @@ return [
     //
     // Auf Alfahosting Shared Hosting: 'transport' => 'mail' nutzt PHP mail()
     // → /usr/sbin/sendmail (zuverlässig, kein Connect-Timeout).
-    // 'auto' versucht erst SMTP, dann mail() — nur sinnvoll wenn SMTP-Daten
+    // 'auto' versucht erst SMTP, dann mail() - nur sinnvoll wenn SMTP-Daten
     // korrekt sind. 'smtp' erzwingt SMTP (für externen Mailserver mit Auth).
     'mail' => [
         'transport'   => 'mail',             // 'mail' | 'smtp' | 'auto'

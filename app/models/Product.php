@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Product — Datenzugriff für Produkte + zugehörige Bilder.
+ * Product - Datenzugriff für Produkte + zugehörige Bilder.
  * Hat keine eigenständige Klasse pro Datensatz (keep it simple); arbeitet mit Arrays.
  */
 final class Product

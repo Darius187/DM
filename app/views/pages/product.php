@@ -93,12 +93,41 @@ if (!$main && !empty($images)) $main = $images[0];
           </dl>
         </div>
 
-        <div class="mt-8 flex flex-col sm:flex-row gap-3">
+        <!-- Verfügbarkeit / Mindestabnahme -->
+        <div class="mt-8 rounded-md bg-slate-50 ring-1 ring-slate-200 p-4 text-sm">
+          <p class="font-semibold text-brand-900">Verfügbarkeit</p>
+          <p class="mt-1 text-slate-700">Auf Anfrage. Container-Ware, kleinere Mengen aus Lagerbestand nach Verfügbarkeit.</p>
+        </div>
+
+        <div class="mt-6 flex flex-col sm:flex-row gap-3">
           <a href="/anfrage?slug=<?= ea($product['slug']) ?>" class="btn-primary flex-1">Stückzahl anfragen</a>
           <a href="/kontakt" class="btn-ghost flex-1">Frage stellen</a>
         </div>
 
+        <?php if (!empty($product['ebay_url'])): ?>
+        <a href="<?= ea($product['ebay_url']) ?>" target="_blank" rel="noopener nofollow"
+           class="mt-3 inline-flex items-center justify-center gap-2 w-full rounded-lg px-5 py-3 font-medium bg-white text-brand-700 ring-1 ring-brand-200 hover:bg-brand-50 no-underline">
+          <span>Einzelstück bei eBay kaufen</span>
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7-7 7M3 12h17"/></svg>
+        </a>
+        <?php endif; ?>
+
         <p class="mt-6 text-xs text-slate-500">B2B-Preis auf Anfrage. Versand aus Villingen-Schwenningen, kurze Lieferzeiten in der EU.</p>
+
+        <!-- Bedienungsanleitung / Produktsicherheit (GPSR Art. 19) -->
+        <div class="mt-8 border-t border-slate-200 pt-6">
+          <h2 class="text-base font-semibold text-brand-900">Bedienungsanleitung &amp; Produktsicherheit</h2>
+          <p class="mt-2 text-sm text-slate-700">
+            <a href="/downloads/unisilent-bedienungsanleitung.pdf" target="_blank" rel="noopener"
+               class="text-brand-700 hover:text-accent-600 underline">
+              Bedienungsanleitung uni-silent Plattformwagen (PDF)
+            </a>
+          </p>
+          <p class="mt-1 text-xs text-slate-500">
+            Hersteller- und Sicherheitsangaben nach GPSR (Art. 9, 19): Darius Matuszak (db-bas / uni-silent),
+            Neckarpark 51, 78056 Villingen-Schwenningen, info@db-bas.de
+          </p>
+        </div>
       </div>
 
     </div>

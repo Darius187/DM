@@ -32,7 +32,7 @@
             <td class="px-4 py-2 font-medium text-brand-900"><?= e($p['name']) ?></td>
             <td class="px-4 py-2"><?= e($p['material'] ?? '') ?></td>
             <td class="px-4 py-2 text-right"><?= !empty($p['capacity_kg']) ? (int)$p['capacity_kg'] . ' kg' : '-' ?></td>
-            <td class="px-4 py-2 text-center"><?= $p['is_active'] ? '✓' : '–' ?></td>
+            <td class="px-4 py-2 text-center"><?= $p['is_active'] ? '✓' : '-' ?></td>
             <td class="px-4 py-2 text-center"><?= $p['is_featured'] ? '★' : '' ?></td>
             <td class="px-4 py-2 text-right whitespace-nowrap">
               <a href="/admin/produkt-edit.php?id=<?= (int)$p['id'] ?>" class="text-brand-700 hover:text-accent-600">Bearbeiten</a>

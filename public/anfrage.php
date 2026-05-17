@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Honeypot
     if (!empty($_POST['website'])) {
-        // Bots silent ignorieren — simulieren Erfolg
+        // Bots silent ignorieren - simulieren Erfolg
         $success = true;
     } else {
         $company = trim((string)($_POST['company'] ?? ''));
@@ -129,7 +129,7 @@ try {
     $products = [];
 }
 
-$pageTitle = 'Stückzahl-Anfrage — B2B-Konditionen anfordern';
+$pageTitle = 'Stückzahl-Anfrage - B2B-Konditionen anfordern';
 $pageDescription = 'Senden Sie uns Ihre B2B-Anfrage mit gewünschter Stückzahl. Wir kalkulieren passende Konditionen und melden uns zeitnah zurück.';
 
 render('pages/anfrage', compact('products', 'preselect', 'pageTitle', 'pageDescription', 'errors', 'success'));

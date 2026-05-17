@@ -7,7 +7,7 @@
       <span class="badge bg-accent-500/15 text-accent-100 ring-accent-500/30">Premiumqualität · Made for Industrie</span>
       <h1 class="mt-4 text-white">Plattformwagen,<br>die <span class="text-accent-500">leise arbeiten.</span></h1>
       <p class="mt-6 text-lg md:text-xl text-brand-100 max-w-xl leading-relaxed">
-        Robust für 150–300 kg Tragkraft. Geräuscharm dank Doppelkugellager-Rädern.
+        Robust für 150-300 kg Tragkraft. Geräuscharm dank Doppelkugellager-Rädern.
         Korrosionsfrei in PP, Stahl oder Edelstahl. Für Logistik, Produktion,
         Krankenhäuser und Reinraum-Anwendungen.
       </p>
@@ -40,14 +40,14 @@
           <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 11-14 0M12 4v3m0 14v-3m8-8h-3M7 12H4"/></svg>
         </div>
         <h3 class="mt-4">Geräuscharm</h3>
-        <p class="mt-2 text-slate-600">Naturkautschuk-Räder mit Doppelkugellager — ideal für Bibliotheken, Kliniken und Nachtschichten.</p>
+        <p class="mt-2 text-slate-600">Naturkautschuk-Räder mit Doppelkugellager - ideal für Bibliotheken, Kliniken und Nachtschichten.</p>
       </div>
       <div class="text-center md:text-left">
         <div class="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-brand-50 text-brand-700" aria-hidden="true">
           <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
         </div>
         <h3 class="mt-4">Robust &amp; korrosionsfrei</h3>
-        <p class="mt-2 text-slate-600">PP-Kunststoff, pulverbeschichteter Stahl oder rostfreier Edelstahl V2A — passt zu jeder Umgebung.</p>
+        <p class="mt-2 text-slate-600">PP-Kunststoff, pulverbeschichteter Stahl oder rostfreier Edelstahl V2A - passt zu jeder Umgebung.</p>
       </div>
       <div class="text-center md:text-left">
         <div class="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-brand-50 text-brand-700" aria-hidden="true">
@@ -67,7 +67,7 @@
       <div>
         <span class="badge">Unser Programm</span>
         <h2 class="mt-2">Plattformwagen für jeden Einsatz</h2>
-        <p class="mt-3 text-slate-600 max-w-2xl">Von der kompakten 150-kg-Variante bis zum doppelstöckigen Kommissionierwagen — alle Modelle teilen unsere geräuscharmen Räder.</p>
+        <p class="mt-3 text-slate-600 max-w-2xl">Von der kompakten 150-kg-Variante bis zum doppelstöckigen Kommissionierwagen - alle Modelle teilen unsere geräuscharmen Räder.</p>
       </div>
       <a href="/produkte" class="btn-ghost">Alle Produkte ansehen →</a>
     </div>
@@ -108,7 +108,7 @@
     <div class="text-center max-w-3xl mx-auto">
       <span class="badge">Branchen</span>
       <h2 class="mt-2">Bewährt in anspruchsvollen Umgebungen</h2>
-      <p class="mt-3 text-slate-600">Vom Krankenhausgang bis zur Reinraum-Produktion — unsere Plattformwagen passen sich Ihrem Einsatz an.</p>
+      <p class="mt-3 text-slate-600">Vom Krankenhausgang bis zur Reinraum-Produktion - unsere Plattformwagen passen sich Ihrem Einsatz an.</p>
     </div>
     <div class="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
       <?php
@@ -135,7 +135,7 @@
 <section class="py-16 md:py-20 bg-brand-900 text-white">
   <div class="container-x text-center max-w-3xl mx-auto">
     <h2 class="text-white">Stückzahl benötigt?</h2>
-    <p class="mt-3 text-brand-100">Senden Sie uns Ihre Anfrage — wir kalkulieren passende B2B-Konditionen und melden uns zeitnah zurück.</p>
+    <p class="mt-3 text-brand-100">Senden Sie uns Ihre Anfrage - wir kalkulieren passende B2B-Konditionen und melden uns zeitnah zurück.</p>
     <div class="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
       <a href="/anfrage"  class="btn-primary">Anfrage starten</a>
       <a href="/kontakt"  class="btn-ghost bg-white/10 text-white ring-white/30 hover:bg-white/20">Kontakt aufnehmen</a>

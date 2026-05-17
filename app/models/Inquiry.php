@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Inquiry — Anfragen (B2B-Stückzahlanfrage + Kontakt).
+ * Inquiry - Anfragen (B2B-Stückzahlanfrage + Kontakt).
  */
 final class Inquiry
 {

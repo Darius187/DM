@@ -1,7 +1,7 @@
 <section class="py-12 md:py-16">
   <div class="container-x max-w-3xl">
     <h1>Allgemeine Geschäftsbedingungen (AGB)</h1>
-    <p class="mt-2 text-slate-600">Stand: <?= date('d.m.Y') ?> — Geschäftskunden (B2B)</p>
+    <p class="mt-2 text-slate-600">Stand: <?= date('d.m.Y') ?> - Geschäftskunden (B2B)</p>
 
     <div class="mt-10 prose prose-slate max-w-none">
       <div class="rounded-lg bg-amber-50 ring-1 ring-amber-200 p-4 not-prose text-amber-900 text-sm">

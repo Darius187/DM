@@ -1,4 +1,4 @@
-/* uni-silent.de — Plattformwagen-Zug Endlos-Loop.
+/* uni-silent.de - Plattformwagen-Zug Endlos-Loop.
  * Web Animations API, pixelgenau gemessen nach window.load.
  * Respektiert prefers-reduced-motion (CSS), restartet bei resize.
  */

@@ -28,7 +28,7 @@
 
       <h2>6. Empfänger / Auftragsverarbeiter</h2>
       <ul>
-        <li>Hosting: <em>[Alfahosting GmbH, Halle — Auftragsverarbeitungsvertrag liegt vor]</em></li>
+        <li>Hosting: <em>[Alfahosting GmbH, Halle - Auftragsverarbeitungsvertrag liegt vor]</em></li>
         <li>E-Mail-Versand: Postfach bei demselben Hoster</li>
       </ul>
       <p>Keine Datenübermittlung in Drittstaaten.</p>
@@ -48,7 +48,7 @@
       <h2>8. SSL/TLS-Verschlüsselung</h2>
       <p>Diese Seite nutzt aus Sicherheitsgründen eine SSL/TLS-Verschlüsselung. Eine verschlüsselte Verbindung erkennen Sie an „https://" und dem Schloss-Symbol in Ihrer Browserzeile.</p>
 
-      <p class="text-slate-500 mt-10"><em>Stand: <?= date('d.m.Y') ?> — diese Datenschutzerklärung wird aktuell gehalten und kann jederzeit angepasst werden.</em></p>
+      <p class="text-slate-500 mt-10"><em>Stand: <?= date('d.m.Y') ?> - diese Datenschutzerklärung wird aktuell gehalten und kann jederzeit angepasst werden.</em></p>
 
     </div>
   </div>

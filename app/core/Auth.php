@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Auth — Session-basiertes Login + Rate-Limiting für Admin-Panel.
+ * Auth - Session-basiertes Login + Rate-Limiting für Admin-Panel.
  */
 final class Auth
 {

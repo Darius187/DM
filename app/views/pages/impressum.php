@@ -22,10 +22,10 @@
       </p>
 
       <h2>Umsatzsteuer-Identifikationsnummer</h2>
-      <p class="text-slate-500"><em>[USt-IdNr. nach § 27a UStG bitte ergänzen — vom Inhaber bereitzustellen]</em></p>
+      <p class="text-slate-500"><em>[USt-IdNr. nach § 27a UStG bitte ergänzen - vom Inhaber bereitzustellen]</em></p>
 
       <h2>Berufsbezeichnung &amp; berufsrechtliche Regelungen</h2>
-      <p class="text-slate-500"><em>[Falls reglementierte Berufsbezeichnung relevant — sonst entfernen]</em></p>
+      <p class="text-slate-500"><em>[Falls reglementierte Berufsbezeichnung relevant - sonst entfernen]</em></p>
 
       <h2>Redaktionell verantwortlich (§ 18 Abs. 2 MStV)</h2>
       <p>Darius Matuszak (Anschrift wie oben)</p>

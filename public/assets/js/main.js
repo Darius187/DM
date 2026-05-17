@@ -1,4 +1,4 @@
-/* uni-silent.de — main.js (vanilla, no framework) */
+/* uni-silent.de - main.js (vanilla, no framework) */
 (function () {
   'use strict';
 

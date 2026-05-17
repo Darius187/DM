@@ -9,8 +9,8 @@
 $site = $GLOBALS['config']['site'];
 $title = isset($pageTitle) && $pageTitle !== ''
     ? $pageTitle . ' | uni-silent'
-    : 'uni-silent — Plattformwagen für die Industrie';
-$desc = $pageDescription ?? 'Premium-Plattformwagen für die Industrie: geräuscharm, robust, langlebig. PP-Kunststoff, Edelstahl, Stahl. 150–300 kg Tragkraft. Aus Villingen-Schwenningen.';
+    : 'uni-silent - Plattformwagen für die Industrie';
+$desc = $pageDescription ?? 'Premium-Plattformwagen für die Industrie: geräuscharm, robust, langlebig. PP-Kunststoff, Edelstahl, Stahl. 150-300 kg Tragkraft. Versand aus Villingen-Schwenningen.';
 $canonical = current_url();
 $ogImg = $ogImage ?? '/images/products/PLA300-DX/main-01-800.jpg';
 ?>
@@ -77,6 +77,7 @@ $ogImg = $ogImage ?? '/images/products/PLA300-DX/main-01-800.jpg';
 <a href="#main" class="skip-link">Zum Hauptinhalt springen</a>
 
 <?php require APP_PATH . '/views/components/header.php'; ?>
+<?php require APP_PATH . '/views/components/brand_stripes.php'; ?>
 
 <?php if (empty($hideTrain)): ?>
   <?php require APP_PATH . '/views/components/train.php'; ?>

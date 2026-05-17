@@ -9,15 +9,16 @@
       <dl class="mt-8 space-y-5 text-slate-800">
         <div>
           <dt class="text-sm font-medium text-slate-500">Anschrift</dt>
-          <dd class="mt-1">db-bas / uni-silent<br>Neckarpark 51<br>78056 Villingen-Schwenningen</dd>
+          <dd class="mt-1">
+            <strong>Darius Matuszak</strong><br>
+            db-bas / uni-silent<br>
+            Neckarpark 51<br>
+            78056 Villingen-Schwenningen
+          </dd>
         </div>
         <div>
           <dt class="text-sm font-medium text-slate-500">Telefon</dt>
           <dd class="mt-1"><a href="tel:+4977203041933" class="text-brand-700 hover:text-accent-600 no-underline">+49 (0)7720 3041933</a></dd>
-        </div>
-        <div>
-          <dt class="text-sm font-medium text-slate-500">Mobil</dt>
-          <dd class="mt-1"><a href="tel:+491733131701" class="text-brand-700 hover:text-accent-600 no-underline">+49 (0)173 3131701</a></dd>
         </div>
         <div>
           <dt class="text-sm font-medium text-slate-500">E-Mail</dt>
@@ -28,7 +29,7 @@
 
     <?php if (!empty($success)): ?>
       <div role="status" class="card p-6 md:p-8 bg-green-50 ring-green-300 text-green-900">
-        <h2 class="text-lg font-semibold">Vielen Dank — Ihre Nachricht ist angekommen.</h2>
+        <h2 class="text-lg font-semibold">Vielen Dank - Ihre Nachricht ist angekommen.</h2>
         <p class="mt-2">Wir melden uns zeitnah persönlich zurück.</p>
         <a href="/" class="btn-primary mt-5 inline-flex">Zur Startseite</a>
       </div>

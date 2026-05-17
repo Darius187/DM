@@ -6,11 +6,12 @@
         <span class="text-xl font-semibold text-white">uni-silent</span>
       </div>
       <p class="mt-4 text-sm leading-relaxed text-brand-200 max-w-md">
-        Plattformwagen für die Industrie in Premiumqualität — geräuscharm, robust und langlebig.
-        Aus Villingen-Schwenningen, geliefert europaweit.
+        Plattformwagen für die Industrie in Premiumqualität - geräuscharm, robust und langlebig.
+        Versand aus Villingen-Schwenningen, geliefert europaweit.
       </p>
       <address class="mt-6 not-italic text-sm text-brand-200 leading-relaxed">
-        <strong class="block text-white">db-bas / uni-silent</strong>
+        <strong class="block text-white">Darius Matuszak</strong>
+        <span class="block text-brand-200">db-bas / uni-silent</span>
         Neckarpark 51<br>
         78056 Villingen-Schwenningen, Deutschland<br>
         <span class="block mt-3">
@@ -25,7 +26,6 @@
       <ul class="mt-4 space-y-2 text-sm">
         <li><a href="/produkt/PLA300-DX"    class="hover:text-white no-underline">PLA300-DX</a></li>
         <li><a href="/produkt/PLA300-DX-SF" class="hover:text-white no-underline">PLA300-DX-SF</a></li>
-        <li><a href="/produkt/PLA300-T2"    class="hover:text-white no-underline">PLA300-T2 Doppeldecker</a></li>
         <li><a href="/produkt/ST300-DX"     class="hover:text-white no-underline">ST300-DX Edelstahl</a></li>
         <li><a href="/produkt/TB300-DX"     class="hover:text-white no-underline">TB300-DX Stahl</a></li>
         <li><a href="/produkt/TB150-DX"     class="hover:text-white no-underline">TB150-DX kompakt</a></li>
@@ -47,8 +47,8 @@
 
   <div class="border-t border-brand-800">
     <div class="container-x py-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-brand-300">
-      <p>&copy; <?= date('Y') ?> uni-silent / db-bas. Alle Rechte vorbehalten.</p>
-      <p>Made in Villingen-Schwenningen · Deutschland</p>
+      <p>&copy; <?= date('Y') ?> Darius Matuszak (db-bas / uni-silent). Alle Rechte vorbehalten.</p>
+      <p>Versand aus Villingen-Schwenningen · Deutschland</p>
     </div>
   </div>
 </footer>

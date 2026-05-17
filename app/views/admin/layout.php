@@ -1,6 +1,6 @@
 <?php
 /** @var string $content; @var ?string $pageTitle; @var ?array $user */
-$pageTitle = ($pageTitle ?? 'Admin') . ' — uni-silent Admin';
+$pageTitle = ($pageTitle ?? 'Admin') . ' - uni-silent Admin';
 $user = $user ?? Auth::user();
 ?>
 <!DOCTYPE html>

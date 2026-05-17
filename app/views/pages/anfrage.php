@@ -3,11 +3,11 @@
   <div class="container-x max-w-4xl">
     <span class="badge">B2B-Anfrage</span>
     <h1 class="mt-2">Stückzahl anfragen</h1>
-    <p class="mt-3 text-slate-700 max-w-2xl">Geben Sie Modell und gewünschte Stückzahl an — wir melden uns innerhalb von 24 Stunden (werktags) mit einem Angebot.</p>
+    <p class="mt-3 text-slate-700 max-w-2xl">Geben Sie Modell und gewünschte Stückzahl an - wir melden uns innerhalb von 24 Stunden (werktags) mit einem Angebot.</p>
 
     <?php if (!empty($success)): ?>
       <div role="status" class="mt-8 card p-6 md:p-8 bg-green-50 ring-green-300 text-green-900">
-        <h2 class="text-lg font-semibold">Vielen Dank — Ihre Anfrage wurde übermittelt.</h2>
+        <h2 class="text-lg font-semibold">Vielen Dank - Ihre Anfrage wurde übermittelt.</h2>
         <p class="mt-2">Wir haben Ihnen eine Eingangsbestätigung an Ihre E-Mail-Adresse geschickt und melden uns zeitnah persönlich zurück.</p>
         <div class="mt-5 flex gap-3">
           <a href="/produkte" class="btn-ghost">Weitere Produkte ansehen</a>

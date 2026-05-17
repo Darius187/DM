@@ -1,6 +1,6 @@
-/* uni-silent.de — Cookie-Banner (DSGVO Opt-in).
+/* uni-silent.de - Cookie-Banner (DSGVO Opt-in).
  * Speichert Consent als JSON in localStorage. Sendet keine Daten an Server.
- * Aktuell keine externen Tracker — Banner ist Privacy-by-default.
+ * Aktuell keine externen Tracker - Banner ist Privacy-by-default.
  */
 (function () {
   'use strict';

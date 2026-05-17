@@ -1,6 +1,6 @@
 <?php
 /**
- * Healthcheck — Self-Test der gesamten Installation.
+ * Healthcheck - Self-Test der gesamten Installation.
  *
  * CLI: php tools/healthcheck.php
  *
@@ -12,7 +12,7 @@
  *   - Mail-Transport
  *   - Image-Verzeichnisse
  *
- * Nichts wird verändert — reines Lese-Tool. Sicher in Prod ausführbar.
+ * Nichts wird verändert - reines Lese-Tool. Sicher in Prod ausführbar.
  */
 declare(strict_types=1);
 
@@ -31,7 +31,7 @@ function pass(string $msg) { global $ok;                  echo "  $ok $msg\n"; }
 function warn(string $msg) { global $warn;                echo "  $warn $msg\n"; }
 
 echo "═══════════════════════════════════════════════════\n";
-echo " uni-silent.de — Healthcheck\n";
+echo " uni-silent.de - Healthcheck\n";
 echo "═══════════════════════════════════════════════════\n\n";
 
 echo "1. PHP\n";
@@ -47,7 +47,7 @@ foreach (['pdo_mysql', 'mbstring', 'gd', 'fileinfo', 'json'] as $ext) {
     else                        fail("Extension fehlt: $ext");
 }
 if (function_exists('imagewebp')) pass("GD hat WebP-Support");
-else                              warn("GD ohne WebP — Uploads landen nur als JPG.");
+else                              warn("GD ohne WebP - Uploads landen nur als JPG.");
 
 echo "\n2. Pfade\n";
 require __DIR__ . '/../app/core/bootstrap.php';
@@ -62,13 +62,13 @@ foreach (['storage/logs', 'storage/cache', 'storage/uploads'] as $rel) {
     $p = APP_BASE . '/' . $rel;
     if (!is_dir($p)) { @mkdir($p, 0775, true); }
     if (is_dir($p) && is_writable($p)) pass("Schreibbar: $rel");
-    else                                fail("NICHT schreibbar: $rel — Logs/Uploads werden fehlschlagen.");
+    else                                fail("NICHT schreibbar: $rel - Logs/Uploads werden fehlschlagen.");
 }
 
 echo "\n3. Konfiguration\n";
 $cfgFile = APP_PATH . '/config/config.php';
 if (is_file($cfgFile)) pass("config.php gefunden");
-else                   fail("config.php fehlt — Beispiel kopieren: cp app/config/config.sample.php app/config/config.php");
+else                   fail("config.php fehlt - Beispiel kopieren: cp app/config/config.sample.php app/config/config.php");
 
 $cfg = $GLOBALS['config'];
 echo "  Site-URL: " . ($cfg['site']['url'] ?? '(unset)') . "\n";
@@ -78,7 +78,7 @@ echo "\n4. Datenbank\n";
 echo "  DSN-Bausteine: host=" . $cfg['db']['host'] . " port=" . ($cfg['db']['port'] ?? '(default 3306)')
    . " name=" . $cfg['db']['name'] . " user=" . $cfg['db']['user'] . "\n";
 if (($cfg['db']['pass'] ?? '') === 'CHANGE_ME') {
-    fail("DB-Passwort ist noch 'CHANGE_ME' — bitte in config.php eintragen.");
+    fail("DB-Passwort ist noch 'CHANGE_ME' - bitte in config.php eintragen.");
 }
 try {
     $pdo = Database::pdo();
@@ -96,15 +96,15 @@ if ($exitCode === 0) {
         $expected = ['products', 'images', 'inquiries', 'users', 'login_attempts', 'settings'];
         foreach ($expected as $tbl) {
             if (in_array($tbl, $names, true)) pass("Tabelle: $tbl");
-            else                              fail("Tabelle fehlt: $tbl — database.sql in phpMyAdmin importieren.");
+            else                              fail("Tabelle fehlt: $tbl - database.sql in phpMyAdmin importieren.");
         }
         $pc = (int) Database::value('SELECT COUNT(*) FROM products');
         if ($pc > 0) pass("$pc Produkte in DB");
-        else         warn("Keine Produkte — seed.sql noch nicht importiert?");
+        else         warn("Keine Produkte - seed.sql noch nicht importiert?");
 
         $uc = (int) Database::value('SELECT COUNT(*) FROM users WHERE is_active=1');
         if ($uc > 0) pass("$uc aktiver Admin-User");
-        else         warn("Kein Admin-User — anlegen: php tools/create_admin.php <user> <email> <pw>");
+        else         warn("Kein Admin-User - anlegen: php tools/create_admin.php <user> <email> <pw>");
     } catch (Throwable $e) {
         fail("DB-Abfrage fehlgeschlagen: " . $e->getMessage());
     }
@@ -127,7 +127,7 @@ if ($transport === 'mail') {
     if ($host && $port) {
         $sock = @fsockopen($host, $port, $errno, $errstr, 3);
         if ($sock) { pass("SMTP-Port erreichbar: $host:$port"); fclose($sock); }
-        else        warn("SMTP-Port NICHT erreichbar: $host:$port ($errstr) — Fallback auf mail() wird greifen.");
+        else        warn("SMTP-Port NICHT erreichbar: $host:$port ($errstr) - Fallback auf mail() wird greifen.");
     } else {
         warn("smtp_host / smtp_port nicht gesetzt, aber transport=$transport.");
     }
@@ -149,13 +149,13 @@ foreach ([
 ] as $rel) {
     $p = PUBLIC_PATH . '/' . $rel;
     if (is_file($p)) pass("$rel (" . number_format(filesize($p)) . " B)");
-    else             fail("$rel — fehlt unter " . PUBLIC_PATH);
+    else             fail("$rel - fehlt unter " . PUBLIC_PATH);
 }
 
 echo "\n═══════════════════════════════════════════════════\n";
 echo $exitCode === 0
     ? " \033[32mAlles OK.\033[0m Du kannst die Seite aufrufen.\n"
-    : " \033[31mProbleme gefunden.\033[0m Siehe ✗ oben — diese zuerst beheben.\n";
+    : " \033[31mProbleme gefunden.\033[0m Siehe ✗ oben - diese zuerst beheben.\n";
 echo "═══════════════════════════════════════════════════\n";
 
 exit($exitCode);

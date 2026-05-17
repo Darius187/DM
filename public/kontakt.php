@@ -64,5 +64,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $pageTitle = 'Kontakt';
-$pageDescription = 'Kontaktieren Sie uns telefonisch oder per E-Mail — wir helfen gerne bei der Auswahl des passenden Plattformwagens.';
+$pageDescription = 'Kontaktieren Sie uns telefonisch oder per E-Mail - wir helfen gerne bei der Auswahl des passenden Plattformwagens.';
 render('pages/kontakt', compact('pageTitle', 'pageDescription', 'errors', 'success'));

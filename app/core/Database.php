@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Database — schlanker PDO-Wrapper.
+ * Database - schlanker PDO-Wrapper.
  * Alle Queries laufen ausschließlich über Prepared Statements (kein User-Input
  * jemals in SQL-Strings konkateniert).
  */
@@ -20,7 +20,7 @@ final class Database
     {
         if (self::$pdo === null) {
             $cfg = self::$config;
-            // Port nur in DSN, wenn explizit gesetzt — sonst nutzt PDO Default (3306)
+            // Port nur in DSN, wenn explizit gesetzt - sonst nutzt PDO Default (3306)
             // bzw. bei host=localhost den lokalen Socket.
             $dsn = 'mysql:host=' . $cfg['host'];
             if (!empty($cfg['port'])) {

@@ -38,7 +38,7 @@
               <span class="text-slate-700"><?= e($i['name']) ?></span>
             </td>
             <td class="px-4 py-2"><a href="mailto:<?= ea($i['email']) ?>" class="text-brand-700 hover:text-accent-600 no-underline"><?= e($i['email']) ?></a></td>
-            <td class="px-4 py-2 text-right"><?= $total ? (int)$total : '–' ?></td>
+            <td class="px-4 py-2 text-right"><?= $total ? (int)$total : '-' ?></td>
             <td class="px-4 py-2">
               <span class="inline-block rounded-full px-2 py-0.5 text-xs <?= match ($i['status']) {
                 'new'       => 'bg-accent-50 text-accent-700 ring-1 ring-accent-200',

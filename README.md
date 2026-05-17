@@ -1,7 +1,7 @@
 # unisilent.de
 
 Professionelle B2B-Webseite für Industrie-Plattformwagen.
-Stack: PHP 8 (PDO, OOP), MySQL, Tailwind CSS, vanilla JS — gebaut für **Alfahosting Shared Hosting**.
+Stack: PHP 8 (PDO, OOP), MySQL, Tailwind CSS, vanilla JS - gebaut für **Alfahosting Shared Hosting**.
 
 ## Status
 
@@ -16,7 +16,7 @@ Stack: PHP 8 (PDO, OOP), MySQL, Tailwind CSS, vanilla JS — gebaut für **Alfah
 - ✅ 9 Produktbilder + 4 Wagen-Bilder verarbeitet
 
 ### Session 2 (abgeschlossen)
-- ✅ Admin-Panel `/admin/` — Login mit Rate-Limit, Dashboard, Logout
+- ✅ Admin-Panel `/admin/` - Login mit Rate-Limit, Dashboard, Logout
 - ✅ Produkt-CRUD (Anlegen, Bearbeiten, Aktiv/Featured-Schalter, Sortierung)
 - ✅ Bild-Upload im Admin mit Auto-WebP/Resize (400/800/1600 px + Thumbnail via GD)
 - ✅ Bild-Löschen (Datei- und DB-Cleanup)
@@ -54,7 +54,7 @@ verifizieren, dass alles steht:
 php tools/healthcheck.php
 ```
 Das Tool prüft PHP-Extensions, Pfade, Schreibrechte, DB-Verbindung (mit Port),
-Tabellen, Mail-Transport und alle statischen Assets — alles in einem Durchlauf.
+Tabellen, Mail-Transport und alle statischen Assets - alles in einem Durchlauf.
 
 ### Schritte
 
@@ -67,7 +67,7 @@ Tabellen, Mail-Transport und alle statischen Assets — alles in einem Durchlauf
    cp app/config/config.sample.php app/config/config.php
    # Datei editieren: 'pass' eintragen, ggf. 'pepper' auf neuen Zufallswert
    ```
-4. **Per SFTP hochladen** — folgende Ordner/Dateien:
+4. **Per SFTP hochladen** - folgende Ordner/Dateien:
    - `public/` → DocumentRoot
    - `app/`    → eine Ebene über DocumentRoot (geschützt durch `.htaccess`)
    - `storage/` → schreibbar für PHP, geschützt
@@ -84,7 +84,7 @@ Tabellen, Mail-Transport und alle statischen Assets — alles in einem Durchlauf
    ```
 6. **301-Redirect** `uni-silent.de → unisilent.de` ist in `public/.htaccess` aktiviert
 7. **HTTPS** wird via Let's Encrypt erzwungen
-8. **E-Mail** läuft über `localhost:25` (Alfahosting-MTA) — keine externe SMTP-Konfiguration nötig
+8. **E-Mail** läuft über `localhost:25` (Alfahosting-MTA) - keine externe SMTP-Konfiguration nötig
 
 ### Login zum Admin-Panel
 

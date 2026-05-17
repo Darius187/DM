@@ -29,7 +29,7 @@ if (!$product) {
     exit;
 }
 
-$pageTitle       = $product['meta_title'] ?: ($product['name'] . ' — ' . ($product['subtitle'] ?? ''));
+$pageTitle       = $product['meta_title'] ?: ($product['name'] . ' - ' . ($product['subtitle'] ?? ''));
 $pageDescription = $product['meta_description'] ?: $product['short_desc'];
 
 $structuredData = [

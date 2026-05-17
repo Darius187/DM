@@ -4,47 +4,70 @@ This file provides guidance for AI assistants (Claude and others) working in thi
 
 ---
 
-## Pending Changes (Backlog — NICHT ohne Freigabe umsetzen)
+## Style-Regeln (User-Vorgabe, immer einhalten)
 
-Sammelstelle für Änderungswünsche, die in einer späteren Session in einem Rutsch umgesetzt werden:
+- **NIEMALS** em-dash (—) oder en-dash (–) verwenden. Nur **Hyphen-Minus** (-).
+  Gilt für sichtbare Texte, Code-Kommentare, Commit-Messages, Doku.
+- **KEINE** Gewährleistungs-/Garantie-Aussagen auf der Webseite (nur in AGB § 6).
+  Verboten z.B.: "12-monatige Gewährleistung", "X Jahre Garantie".
+- "Made in Villingen-Schwenningen" verboten (Ware aus China-Import).
+  Erlaubt: "Versand aus Villingen-Schwenningen".
+- Anschrift überall mit "Darius Matuszak" beginnen (Einzelunternehmer).
+- Mobil-Nummer +49 173 3131701 NICHT mehr im Kontakt-Bereich anzeigen
+  (nur Festnetz +49 7720 3041933 und info@db-bas.de).
 
-- [ ] **"Made in Villingen-Schwenningen" entfernen.** Produkte werden in China gefertigt, nicht in DE. Aktuelle Vorkommen:
-  - `app/views/components/footer.php` — Footer-Untertext: `<p>Made in Villingen-Schwenningen · Deutschland</p>`
-  - Eventuell weitere Stellen prüfen (Hero, Marketing-Texte) bevor entfernt wird.
-- [ ] Weitere Änderungen folgen — vor Umsetzung **alle gesammelten Punkte zusammen** mit dem User durchgehen.
+---
+
+## Pending Changes (Backlog - NICHT ohne Freigabe umsetzen)
+
+Sammelstelle für Änderungswünsche, die in einer späteren Session umgesetzt werden:
+
+- [ ] **Komplette Rechtstexte ersetzen** aus `01-rechtstexte-final.md` (6 Seiten:
+  Impressum, Datenschutz, AGB, NEU Widerruf, NEU Produktsicherheit, NEU Barrierefreiheit).
+  USt-IdNr. DE 297660440 ist drin. 1:1 übernehmen.
+- [ ] **Footer-Links** ergänzen: /widerruf, /produktsicherheit, /barrierefreiheit.
+- [ ] **Farb-Reform global**: Orange → Stahlgrau #64748b als Funktionsakzent
+  (Tailwind config + alle Stellen). Brand-Stripes (gelb/rot) bleiben.
+- [ ] **Blau/Weiß-Konflikt** im Hero/Produkt-Karten lösen (siehe 03-MD).
+- [ ] **GPSR-Box auf Produkt-Übersichts-Seite** (Liste) ergänzen, nicht nur Detail.
+- [ ] **TB300P-DX** als Produkt anlegen "auf Anfrage" (Beschreibung/Foto fehlt noch).
+- [ ] **Pflicht-Datenschutz-Checkbox** im Anfrage-Formular separat zur Einwilligung
+  (laut 03-MD: "Ich habe die Datenschutzerklärung zur Kenntnis genommen").
+- [ ] **Anwendungsbilder** (z.B. Pakete auf Wagen) per Kategorie pro Produkt.
+- [ ] **Admin-User auf Server anlegen** - User entscheidet noch welche Methode.
 
 ### Auftrag-Pakete vom User (Mai 2026)
 User hat 5 detaillierte MD-Dateien geliefert mit Aufträgen:
-- `01-rechtstexte-final.md` — komplette finale Rechtstexte (6 Seiten: Impressum, Datenschutz, AGB, Widerruf, Produktsicherheit, Barrierefreiheit). USt-IdNr. DE 297660440 ist drin. 1:1 übernehmen.
-- `02-produkte-gpsr-bestand.md` — GPSR-Box + Mindestabnahme-Hinweis auf jeder Produktseite. ⚠️ **Zwei offene Fragen**: PLA300-T2 (2+1 doppelt erfasst?) und TB300P-DX (aufnehmen?).
-- `03-design-und-content.md` — Reihenfolge: (1) Made-in-VS überall raus, (2) Cookie-Banner "Statistik"-Option ausblenden, (3) Farbschema (Orange weg → Stahlgrau #64748b), (4) Blau/Weiß-Konflikt bei Produktfotos lösen, (5) Datenschutz-Pflicht-Checkbox im Anfrage-Formular, (6) Footer-Links: Produktsicherheit + Widerruf ergänzen, (7) Markenbezeichnung vereinheitlichen.
-- `04-bedienungsanleitung.md` — PDF unter `public/downloads/unisilent-bedienungsanleitung.pdf` ✅ **bereits abgelegt** (Rev. 03/2026-05-17, 7 S., 552 KB).
-- `00-uebersicht.md` — Reihenfolge: 03 → 01 → 02 → 04.
+- `01-rechtstexte-final.md` - komplette finale Rechtstexte (6 Seiten: Impressum, Datenschutz, AGB, Widerruf, Produktsicherheit, Barrierefreiheit). USt-IdNr. DE 297660440 ist drin. 1:1 übernehmen.
+- `02-produkte-gpsr-bestand.md` - GPSR-Box + Mindestabnahme-Hinweis auf jeder Produktseite. ⚠️ **Zwei offene Fragen**: PLA300-T2 (2+1 doppelt erfasst?) und TB300P-DX (aufnehmen?).
+- `03-design-und-content.md` - Reihenfolge: (1) Made-in-VS überall raus, (2) Cookie-Banner "Statistik"-Option ausblenden, (3) Farbschema (Orange weg → Stahlgrau #64748b), (4) Blau/Weiß-Konflikt bei Produktfotos lösen, (5) Datenschutz-Pflicht-Checkbox im Anfrage-Formular, (6) Footer-Links: Produktsicherheit + Widerruf ergänzen, (7) Markenbezeichnung vereinheitlichen.
+- `04-bedienungsanleitung.md` - PDF unter `public/downloads/unisilent-bedienungsanleitung.pdf` ✅ **bereits abgelegt** (Rev. 03/2026-05-17, 7 S., 552 KB).
+- `00-uebersicht.md` - Reihenfolge: 03 → 01 → 02 → 04.
 
 ### Brand-Stripes vom User (Mai 2026)
-Zusätzlicher Wunsch: Zwei dünne Streifen direkt unter dem Header — **gelb `#f6e303` über rot `#a70000`** (je 3 px). Sehr dezent als Markenakzent. Funktionsakzent bleibt Stahlgrau (siehe 03-MD). User noch unsicher → vor Umsetzung bestätigen lassen.
+Zusätzlicher Wunsch: Zwei dünne Streifen direkt unter dem Header - **gelb `#f6e303` über rot `#a70000`** (je 3 px). Sehr dezent als Markenakzent. Funktionsakzent bleibt Stahlgrau (siehe 03-MD). User noch unsicher → vor Umsetzung bestätigen lassen.
 
-### Offene Klärungen vor Umsetzung
-1. PLA300-T2: doppelt erfasst oder zwei Varianten?
-2. TB300P-DX: aufnehmen, weglassen, oder als „auf Anfrage" verlinken?
-3. „Mindestabnahme 50 Stück" hart oder weicher („üblich ab 50 Stk., kleinere Mengen aus Lager auf Anfrage")?
-4. AGB-Geltungsbereich: nur B2B oder auch B2C (Widerrufsrecht etc.)?
-5. Brand-Stripes gelb/rot — wirklich, oder doch weglassen?
-6. eBay-Bilder für PLA300-DX-SF / ST300-DX / PLA300-DX → User soll lokale Kopien hochladen (Hotlinken nicht OK).
-7. Admin-User auf Server — wie anlegen? (SSH/phpMyAdmin/Browser-Skript)
+### Klärungs-Status (Stand 2026-05-17)
+1. PLA300-T2: DEAKTIVIERT (is_active=0), bleibt aus Frontend + Footer raus. Datensatz bleibt für späteres Reaktivieren. ✅
+2. TB300P-DX: "auf Anfrage" - noch nicht im Seed, kommt im nächsten Rutsch.
+3. Mindestabnahme: weicher Text "Auf Anfrage. Container-Ware, kleinere Mengen aus Lagerbestand nach Verfügbarkeit." ✅
+4. AGB: B2B UND B2C (kein reines B2B). ✅
+5. Brand-Stripes: EINGEBAUT (gelb #f6e303 über rot #a70000, je 3 px). ✅
+6. eBay-Links: sind Kauf-Links für Einzelstücke, KEINE Bild-Quellen. Als externe Buttons eingebaut. ✅
+7. Admin-User auf Server: User entscheidet, siehe Backlog. Optionen: SSH / phpMyAdmin (Hash extern) / Browser-Setup-Skript mit Einmal-Token.
 
 ---
 
 ## Repository Status
 
-**Session 1 abgeschlossen** — siehe `README.md` für Detail-Status. Session 2 (Admin-Panel + Formular-Versand) steht aus.
+**Session 1 abgeschlossen** - siehe `README.md` für Detail-Status. Session 2 (Admin-Panel + Formular-Versand) steht aus.
 
 ---
 
 ## Project Overview
 
 B2B-Webseite für **uni-silent / db-bas** (Inhaber: Darius Matuszak, Villingen-Schwenningen).
-Produkte: Industrie-Plattformwagen (geräuscharm, 150–300 kg Tragkraft).
+Produkte: Industrie-Plattformwagen (geräuscharm, 150-300 kg Tragkraft).
 Zielgruppe: Logistik, Krankenhäuser, Lebensmittel, Pharma, Produktion.
 
 **Hosting**: Alfahosting Shared Hosting, PHP 8, MySQL, SFTP-Deployment.
@@ -57,7 +80,7 @@ Zielgruppe: Logistik, Krankenhäuser, Lebensmittel, Pharma, Produktion.
 - Vanilla JS (kein Framework)
 - Inter-Font (lokal gehostet, DSGVO)
 
-**KEIN Node.js auf Server** — Tailwind wird lokal in `build/` gebaut und das fertige CSS (`public/assets/css/tailwind.min.css`) committed.
+**KEIN Node.js auf Server** - Tailwind wird lokal in `build/` gebaut und das fertige CSS (`public/assets/css/tailwind.min.css`) committed.
 
 ---
 
@@ -156,7 +179,7 @@ Examples:
 ### Guidelines
 
 - Write tests for new behaviour before (or alongside) implementing it.
-- Tests should be deterministic — no random sleeps, no external network calls.
+- Tests should be deterministic - no random sleeps, no external network calls.
 - Name tests to describe observable behaviour: `should return 404 when user not found`.
 
 ---
@@ -171,11 +194,11 @@ Examples:
 
 When working in this repository, AI assistants should:
 
-1. **Read before editing** — always read a file before modifying it.
-2. **Stay minimal** — only change what the task requires; avoid unsolicited refactors.
-3. **Update this file** — keep CLAUDE.md current whenever project structure or conventions change.
-4. **Branch discipline** — develop on the designated feature branch; never push to `main`/`master` without explicit permission.
-5. **Verify before destructive actions** — confirm with the user before deleting files, force-pushing, or modifying CI pipelines.
-6. **No invented URLs** — do not fabricate links; only use URLs found in the codebase or provided by the user.
-7. **Commit incrementally** — make small, focused commits with descriptive messages rather than one large dump.
-8. **Do not add unnecessary comments** — only comment where logic is non-obvious.
+1. **Read before editing** - always read a file before modifying it.
+2. **Stay minimal** - only change what the task requires; avoid unsolicited refactors.
+3. **Update this file** - keep CLAUDE.md current whenever project structure or conventions change.
+4. **Branch discipline** - develop on the designated feature branch; never push to `main`/`master` without explicit permission.
+5. **Verify before destructive actions** - confirm with the user before deleting files, force-pushing, or modifying CI pipelines.
+6. **No invented URLs** - do not fabricate links; only use URLs found in the codebase or provided by the user.
+7. **Commit incrementally** - make small, focused commits with descriptive messages rather than one large dump.
+8. **Do not add unnecessary comments** - only comment where logic is non-obvious.

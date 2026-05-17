@@ -1,4 +1,4 @@
--- uni-silent.de — MySQL Schema
+-- uni-silent.de - MySQL Schema
 -- charset utf8mb4, collation utf8mb4_unicode_ci, engine InnoDB
 
 SET NAMES utf8mb4;
@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS `products` (
   `category`        VARCHAR(64)  DEFAULT 'plattformwagen',  -- plattformwagen / zubehoer
   `is_active`       TINYINT(1)   NOT NULL DEFAULT 1,
   `is_featured`     TINYINT(1)   NOT NULL DEFAULT 0,
+  `ebay_url`        VARCHAR(500) DEFAULT NULL,           -- externer Verkaufslink (z.B. eBay-Inserat)
   `sort_order`      INT          NOT NULL DEFAULT 0,
   `meta_title`      VARCHAR(255) DEFAULT NULL,
   `meta_description` VARCHAR(500) DEFAULT NULL,

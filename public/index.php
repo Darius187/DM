@@ -15,7 +15,7 @@ try {
     $featured = [];
 }
 
-$pageTitle       = 'Plattformwagen für die Industrie — geräuscharm & robust';
-$pageDescription = 'Premium-Plattformwagen aus PP-Kunststoff, Edelstahl und Stahl. 150–300 kg Tragkraft, geräuscharme 5″-Räder, klappbar. Aus Villingen-Schwenningen, B2B-Lieferant für Industrie, Logistik und Gesundheitswesen.';
+$pageTitle       = 'Plattformwagen für die Industrie - geräuscharm & robust';
+$pageDescription = 'Premium-Plattformwagen aus PP-Kunststoff, Edelstahl und Stahl. 150-300 kg Tragkraft, geräuscharme 5″-Räder, klappbar. Versand aus Villingen-Schwenningen, B2B-Lieferant für Industrie, Logistik und Gesundheitswesen.';
 
 render('pages/home', compact('featured', 'pageTitle', 'pageDescription'));

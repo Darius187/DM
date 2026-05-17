@@ -5,8 +5,8 @@
     <nav class="text-sm text-brand-200 mb-4" aria-label="Brotkrumen">
       <ol class="flex gap-2"><li><a href="/" class="no-underline hover:text-white">Start</a></li><li aria-hidden="true">/</li><li aria-current="page">Produkte</li></ol>
     </nav>
-    <h1 class="text-white">Plattformwagen — alle Modelle</h1>
-    <p class="mt-3 text-brand-100 max-w-2xl">Filtern Sie nach Material oder vergleichen Sie alle 7 Modelle auf einen Blick. Alle Wagen mit geräuscharmen Rädern und mindestens 12-monatiger Gewährleistung.</p>
+    <h1 class="text-white">Plattformwagen - alle Modelle</h1>
+    <p class="mt-3 text-brand-100 max-w-2xl">Filtern Sie nach Material oder vergleichen Sie alle Modelle auf einen Blick.</p>
   </div>
 </section>
 

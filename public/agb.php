@@ -6,6 +6,6 @@ while ($_b && !is_file($_b . '/app/core/bootstrap.php')) {
     $_b = $_p;
 }
 require $_b . '/app/core/bootstrap.php';
-$pageTitle = 'AGB — Allgemeine Geschäftsbedingungen';
+$pageTitle = 'AGB - Allgemeine Geschäftsbedingungen';
 $pageDescription = 'Allgemeine Geschäftsbedingungen für Geschäftskunden (B2B) von uni-silent.';
 render('pages/agb', compact('pageTitle', 'pageDescription'));

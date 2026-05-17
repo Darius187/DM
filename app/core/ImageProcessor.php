@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * ImageProcessor — Upload-Validierung, Resize, WebP+JPG-Generierung, Thumbnail.
+ * ImageProcessor - Upload-Validierung, Resize, WebP+JPG-Generierung, Thumbnail.
  * Nutzt GD (auf Alfahosting Standard verfügbar).
  *
  * Output-Pattern (gleich wie in Session 1):

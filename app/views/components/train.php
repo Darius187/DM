@@ -9,7 +9,7 @@
  *   $trainAriaLabel = 'Animierter Plattformwagen-Zug';
  */
 $trainBg = $trainBg ?? 'transparent';
-$trainAria = $trainAriaLabel ?? 'Plattformwagen ziehen als Zug von rechts nach links — dekorative Animation';
+$trainAria = $trainAriaLabel ?? 'Plattformwagen ziehen als Zug von rechts nach links - dekorative Animation';
 
 $wagons = [
     ['file' => 'wagen_gelb.png',    'alt' => 'Gelber Plattformwagen'],

@@ -1,6 +1,6 @@
 <?php
 /**
- * Bootstrap — zentraler Einstieg.
+ * Bootstrap - zentraler Einstieg.
  * Wird von jeder Seite (public/*.php und public/admin/*.php) als erstes inkludiert.
  */
 declare(strict_types=1);
@@ -41,7 +41,7 @@ if (($config['site']['env'] ?? 'production') === 'development') {
     ini_set('log_errors', '1');
 
     // Log-Ordner anlegen falls nicht da; nur dann eigene error_log setzen
-    // (sonst fallen Fehler ins ENV-Default des Hosters — auch OK)
+    // (sonst fallen Fehler ins ENV-Default des Hosters - auch OK)
     $logDir = $config['paths']['logs'] ?? null;
     if ($logDir && !is_dir($logDir)) {
         @mkdir($logDir, 0775, true);
@@ -51,13 +51,13 @@ if (($config['site']['env'] ?? 'production') === 'development') {
     }
 }
 
-// Session sicher konfigurieren — Secure-Cookie nur wenn wir auch wirklich auf HTTPS sind
+// Session sicher konfigurieren - Secure-Cookie nur wenn wir auch wirklich auf HTTPS sind
 // (sonst funktioniert lokales HTTP-Testing nicht; in Prod ist HTTPS immer erzwungen).
 $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
         || (($_SERVER['SERVER_PORT'] ?? '') == 443);
 
-// Im CLI keine Sessions starten — irrelevant und führt zu Warnings nach echo.
+// Im CLI keine Sessions starten - irrelevant und führt zu Warnings nach echo.
 if (PHP_SAPI !== 'cli') {
     session_name($config['security']['session_name']);
     session_set_cookie_params([
