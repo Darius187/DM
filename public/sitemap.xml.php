@@ -2,7 +2,13 @@
 /**
  * Dynamische Sitemap. Mit Rewrite-Regel als /sitemap.xml gemappt.
  */
-require __DIR__ . '/../app/core/bootstrap.php';
+$_b = __DIR__;
+while ($_b && !is_file($_b . '/app/core/bootstrap.php')) {
+    $_p = dirname($_b);
+    if ($_p === $_b) { http_response_code(500); exit('bootstrap.php not found'); }
+    $_b = $_p;
+}
+require $_b . '/app/core/bootstrap.php';
 header('Content-Type: application/xml; charset=UTF-8');
 
 $base = rtrim($GLOBALS['config']['site']['url'], '/');

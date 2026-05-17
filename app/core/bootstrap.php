@@ -7,7 +7,16 @@ declare(strict_types=1);
 
 define('APP_BASE', dirname(__DIR__, 2));
 define('APP_PATH', APP_BASE . '/app');
-define('PUBLIC_PATH', APP_BASE . '/public');
+
+// PUBLIC_PATH ist Layout-abhängig:
+//   - Repo/Dev-Layout:  APP_BASE/public/  (index.php liegt in public/)
+//   - Flat (Alfahosting): APP_BASE selbst (index.php liegt direkt im Domain-Ordner,
+//                          neben app/ und storage/)
+$_pubPath = APP_BASE . '/public';
+if (!is_dir($_pubPath)) {
+    $_pubPath = APP_BASE;
+}
+define('PUBLIC_PATH', $_pubPath);
 
 // Config laden
 $configFile = APP_PATH . '/config/config.php';

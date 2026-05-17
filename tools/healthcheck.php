@@ -134,21 +134,22 @@ if ($transport === 'mail') {
 }
 
 echo "\n6. Statische Assets\n";
+echo "  PUBLIC_PATH = " . PUBLIC_PATH . "\n";
 foreach ([
-    'public/assets/css/tailwind.min.css',
-    'public/assets/js/main.js',
-    'public/assets/js/train.js',
-    'public/assets/js/cookie.js',
-    'public/images/wagen/wagen_gelb.png',
-    'public/images/wagen/wagen_blau.png',
-    'public/images/wagen/wagen_schwarz.png',
-    'public/images/wagen/wagen_stahl.png',
-    'public/.htaccess',
-    'public/admin/.htaccess',
+    'assets/css/tailwind.min.css',
+    'assets/js/main.js',
+    'assets/js/train.js',
+    'assets/js/cookie.js',
+    'images/wagen/wagen_gelb.png',
+    'images/wagen/wagen_blau.png',
+    'images/wagen/wagen_schwarz.png',
+    'images/wagen/wagen_stahl.png',
+    '.htaccess',
+    'admin/.htaccess',
 ] as $rel) {
-    $p = APP_BASE . '/' . $rel;
+    $p = PUBLIC_PATH . '/' . $rel;
     if (is_file($p)) pass("$rel (" . number_format(filesize($p)) . " B)");
-    else             fail("$rel — fehlt!");
+    else             fail("$rel — fehlt unter " . PUBLIC_PATH);
 }
 
 echo "\n═══════════════════════════════════════════════════\n";
