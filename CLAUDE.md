@@ -36,6 +36,15 @@ Sammelstelle für Änderungswünsche, die in einer späteren Session umgesetzt w
 - [ ] **Anwendungsbilder** (z.B. Pakete auf Wagen) per Kategorie pro Produkt.
 - [ ] **Admin-User auf Server anlegen** - User entscheidet noch welche Methode.
 
+### Offene Optik-Themen (Stand 2026-05-18, User vertagt)
+- [ ] **CTA-Button-Farbe** klären: aktuell Stahlgrau #64748b (laut 03-MD).
+  User hat einmal angemerkt "statt gelb wieder orange" - moeglich ist
+  also dass er die Brand-Gelb-Variante #f6e303 als CTA-Akzent bevorzugt.
+  Vor Aenderung ruecksprache; aktuell laut MD-Vorgabe.
+- [ ] **Wagen-Loop auf Vollbild >2560 px**: trotz Verdopplung auf 16 Wagen
+  kann es bei Ultrawide (>=3440 px) noch Luecken geben. Loesung dann
+  dynamisch in JS: Viewport messen, so viele Wagen rendern wie noetig.
+
 ### Auftrag-Pakete vom User (Mai 2026)
 User hat 5 detaillierte MD-Dateien geliefert mit Aufträgen:
 - `01-rechtstexte-final.md` - komplette finale Rechtstexte (6 Seiten: Impressum, Datenschutz, AGB, Widerruf, Produktsicherheit, Barrierefreiheit). USt-IdNr. DE 297660440 ist drin. 1:1 übernehmen.
