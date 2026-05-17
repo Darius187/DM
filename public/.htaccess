@@ -32,6 +32,9 @@ DirectoryIndex index.php index.html
     RewriteRule ^impressum/?$ impressum.php [L]
     RewriteRule ^datenschutz/?$ datenschutz.php [L]
     RewriteRule ^agb/?$ agb.php [L]
+    RewriteRule ^widerruf/?$ widerruf.php [L]
+    RewriteRule ^produktsicherheit/?$ produktsicherheit.php [L]
+    RewriteRule ^barrierefreiheit/?$ barrierefreiheit.php [L]
 </IfModule>
 
 # ---- Security Headers ----

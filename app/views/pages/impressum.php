@@ -1,53 +1,62 @@
 <section class="py-12 md:py-16">
   <div class="container-x max-w-3xl">
     <h1>Impressum</h1>
-    <p class="mt-2 text-slate-600">Angaben gemäß § 5 DDG (ehemals TMG)</p>
+    <p class="mt-2 text-slate-600">Angaben gemäß § 5 Digitale-Dienste-Gesetz (DDG) und § 55 Medienstaatsvertrag (MStV)</p>
 
     <div class="mt-10 prose prose-slate max-w-none">
 
-      <h2>Anbieter</h2>
       <p>
-        <strong>db-bas / uni-silent</strong><br>
-        Inhaber: Darius Matuszak<br>
+        <strong>Darius Matuszak</strong><br>
+        Geschäftsbezeichnung: db-bas / uni-silent<br>
         Neckarpark 51<br>
         78056 Villingen-Schwenningen<br>
         Deutschland
       </p>
 
-      <h2>Kontakt</h2>
       <p>
-        Telefon: +49 (0)7720 3041933<br>
-        Mobil: +49 (0)173 3131701<br>
-        E-Mail: info@db-bas.de
+        <strong>Telefon:</strong> +49 (0)7720 / 30 41 933<br>
+        <strong>E-Mail:</strong> info@db-bas.de
       </p>
 
-      <h2>Umsatzsteuer-Identifikationsnummer</h2>
-      <p class="text-slate-500"><em>[USt-IdNr. nach § 27a UStG bitte ergänzen - vom Inhaber bereitzustellen]</em></p>
+      <h2>Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG</h2>
+      <p>DE 297660440</p>
 
-      <h2>Berufsbezeichnung &amp; berufsrechtliche Regelungen</h2>
-      <p class="text-slate-500"><em>[Falls reglementierte Berufsbezeichnung relevant - sonst entfernen]</em></p>
+      <h2>Handelsregistereintrag</h2>
+      <p>Nicht eingetragen - nicht eintragungspflichtiges Einzelunternehmen.</p>
+      <blockquote>
+        Als Einzelunternehmer ohne Handelsregistereintrag hafte ich persönlich und unbeschränkt.
+        Die Bezeichnungen "db-bas" und "uni-silent" sind meine Geschäftsbezeichnungen und kein
+        eigenständiger Rechtsträger.
+      </blockquote>
 
-      <h2>Redaktionell verantwortlich (§ 18 Abs. 2 MStV)</h2>
-      <p>Darius Matuszak (Anschrift wie oben)</p>
+      <h2>Verantwortlicher für den Inhalt gemäß § 55 Abs. 2 MStV</h2>
+      <p>Darius Matuszak, Anschrift wie oben.</p>
 
-      <h2>EU-Streitschlichtung</h2>
+      <h2>Alternative Streitbeilegung</h2>
+      <p>Die EU-Plattform zur Online-Streitbeilegung (OS-Plattform) wurde zum 20. Juli 2025 eingestellt.</p>
       <p>
-        Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:
-        <a href="https://ec.europa.eu/consumers/odr/" target="_blank" rel="noopener noreferrer">https://ec.europa.eu/consumers/odr/</a><br>
-        Unsere E-Mail-Adresse finden Sie oben.
+        Ich bin nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer
+        Verbraucherschlichtungsstelle teilzunehmen (§ 36 VSBG). Bei Streitigkeiten steht der
+        ordentliche Rechtsweg offen.
       </p>
 
-      <h2>Verbraucherstreitbeilegung / Universalschlichtungsstelle</h2>
-      <p>Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</p>
-
-      <h2>Haftung für Inhalte</h2>
-      <p>Als Diensteanbieter sind wir gemäß § 7 Abs. 1 DDG für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis 10 DDG sind wir als Diensteanbieter jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde Informationen zu überwachen.</p>
-
-      <h2>Haftung für Links</h2>
-      <p>Unser Angebot enthält Links zu externen Webseiten Dritter, auf deren Inhalte wir keinen Einfluss haben. Für die Inhalte der verlinkten Seiten ist stets der jeweilige Anbieter verantwortlich.</p>
-
-      <h2>Urheberrecht</h2>
-      <p>Die durch die Seitenbetreiber erstellten Inhalte und Werke unterliegen dem deutschen Urheberrecht. Vervielfältigung, Bearbeitung, Verbreitung und jede Art der Verwertung außerhalb der Grenzen des Urheberrechts bedürfen der schriftlichen Zustimmung des jeweiligen Autors bzw. Erstellers.</p>
+      <h2>Haftungsausschluss</h2>
+      <p>
+        <strong>Haftung für Inhalte:</strong> Als Diensteanbieter bin ich gemäß § 7 Abs. 1 DDG für
+        eigene Inhalte nach den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis 10 DDG bin ich
+        nicht verpflichtet, übermittelte oder gespeicherte fremde Informationen zu überwachen.
+        Bei Bekanntwerden von Rechtsverletzungen entferne ich entsprechende Inhalte umgehend.
+      </p>
+      <p>
+        <strong>Haftung für Links:</strong> Für Inhalte verlinkter Seiten ist stets der jeweilige
+        Anbieter verantwortlich. Bei Bekanntwerden von Rechtsverletzungen entferne ich entsprechende
+        Links umgehend.
+      </p>
+      <p>
+        <strong>Urheberrecht:</strong> Die von mir erstellten Inhalte dieser Website unterliegen
+        dem deutschen Urheberrecht. Vervielfältigung oder Verwendung außerhalb der Grenzen des
+        Urheberrechts bedarf meiner schriftlichen Zustimmung.
+      </p>
 
     </div>
   </div>

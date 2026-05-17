@@ -30,4 +30,7 @@ try {
   <url><loc><?= ea($base) ?>/impressum</loc><priority>0.3</priority></url>
   <url><loc><?= ea($base) ?>/datenschutz</loc><priority>0.3</priority></url>
   <url><loc><?= ea($base) ?>/agb</loc><priority>0.3</priority></url>
+  <url><loc><?= ea($base) ?>/widerruf</loc><priority>0.3</priority></url>
+  <url><loc><?= ea($base) ?>/produktsicherheit</loc><priority>0.3</priority></url>
+  <url><loc><?= ea($base) ?>/barrierefreiheit</loc><priority>0.3</priority></url>
 </urlset>

@@ -36,11 +36,14 @@
     <div>
       <h2 class="text-white font-semibold text-sm uppercase tracking-wider">Service</h2>
       <ul class="mt-4 space-y-2 text-sm">
-        <li><a href="/anfrage"     class="hover:text-white no-underline">Stückzahl-Anfrage</a></li>
-        <li><a href="/kontakt"     class="hover:text-white no-underline">Kontakt</a></li>
-        <li><a href="/impressum"   class="hover:text-white no-underline">Impressum</a></li>
-        <li><a href="/datenschutz" class="hover:text-white no-underline">Datenschutz</a></li>
-        <li><a href="/agb"         class="hover:text-white no-underline">AGB</a></li>
+        <li><a href="/anfrage"           class="hover:text-white no-underline">Stückzahl-Anfrage</a></li>
+        <li><a href="/kontakt"           class="hover:text-white no-underline">Kontakt</a></li>
+        <li><a href="/impressum"         class="hover:text-white no-underline">Impressum</a></li>
+        <li><a href="/datenschutz"       class="hover:text-white no-underline">Datenschutz</a></li>
+        <li><a href="/agb"               class="hover:text-white no-underline">AGB</a></li>
+        <li><a href="/widerruf"          class="hover:text-white no-underline">Widerruf</a></li>
+        <li><a href="/produktsicherheit" class="hover:text-white no-underline">Produktsicherheit</a></li>
+        <li><a href="/barrierefreiheit"  class="hover:text-white no-underline">Barrierefreiheit</a></li>
       </ul>
     </div>
   </div>
