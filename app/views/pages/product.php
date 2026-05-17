@@ -107,7 +107,7 @@ if (!$main && !empty($images)) $main = $images[0];
         <?php if (!empty($product['ebay_url'])): ?>
         <a href="<?= ea($product['ebay_url']) ?>" target="_blank" rel="noopener nofollow"
            class="mt-3 inline-flex items-center justify-center gap-2 w-full rounded-lg px-5 py-3 font-medium bg-white text-brand-700 ring-1 ring-brand-200 hover:bg-brand-50 no-underline">
-          <span>Einzelstück bei eBay kaufen</span>
+          <span>Bei eBay kaufen</span>
           <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7-7 7M3 12h17"/></svg>
         </a>
         <?php endif; ?>

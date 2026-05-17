@@ -83,9 +83,15 @@
 
       <label class="flex items-start gap-2 text-sm">
         <input type="checkbox" name="consent" required class="mt-1 h-4 w-4 rounded border-slate-300 text-brand-700">
-        <span>Ich willige ein, dass meine Angaben zur Bearbeitung meiner Anfrage gespeichert und verwendet werden. Details siehe <a href="/datenschutz" class="text-brand-700 underline">Datenschutzerklärung</a>. *</span>
+        <span>Ich willige ein, dass meine Angaben zur Bearbeitung meiner Anfrage gespeichert und verwendet werden. *</span>
       </label>
       <?php if (!empty($errors['consent'])): ?><p class="text-xs text-red-700 -mt-3"><?= e($errors['consent']) ?></p><?php endif; ?>
+
+      <label class="flex items-start gap-2 text-sm">
+        <input type="checkbox" name="privacy_ack" required class="mt-1 h-4 w-4 rounded border-slate-300 text-brand-700">
+        <span>Ich habe die <a href="/datenschutz" class="text-brand-700 underline">Datenschutzerklärung</a> zur Kenntnis genommen. *</span>
+      </label>
+      <?php if (!empty($errors['privacy_ack'])): ?><p class="text-xs text-red-700 -mt-3"><?= e($errors['privacy_ack']) ?></p><?php endif; ?>
 
       <input type="text" name="website" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true">
 

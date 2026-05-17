@@ -10,6 +10,17 @@
   </div>
 </section>
 
+<!-- GPSR-Hinweis: zentrale Hersteller-Info, Detail-Angaben auf jeder Produktseite -->
+<section class="bg-slate-50 border-b border-slate-200">
+  <div class="container-x py-4 text-xs text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1">
+    <span class="font-medium text-brand-900">Produktsicherheit (GPSR):</span>
+    <span>Darius Matuszak (db-bas / uni-silent), Neckarpark 51, 78056 Villingen-Schwenningen · info@db-bas.de</span>
+    <a href="/produktsicherheit" class="text-brand-700 hover:text-accent-600 underline">Details</a>
+    <span aria-hidden="true">·</span>
+    <a href="/downloads/unisilent-bedienungsanleitung.pdf" target="_blank" rel="noopener" class="text-brand-700 hover:text-accent-600 underline">Bedienungsanleitung (PDF)</a>
+  </div>
+</section>
+
 <section class="py-10 md:py-14">
   <div class="container-x">
 

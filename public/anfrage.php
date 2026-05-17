@@ -24,14 +24,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email   = trim((string)($_POST['email']   ?? ''));
         $phone   = trim((string)($_POST['phone']   ?? ''));
         $message = trim((string)($_POST['message'] ?? ''));
-        $consent = !empty($_POST['consent']);
+        $consent     = !empty($_POST['consent']);
+        $privacyAck  = !empty($_POST['privacy_ack']);
         $qty     = $_POST['qty'] ?? [];
 
-        if (!v_required($company))           $errors['company'] = 'Firma ist Pflicht.';
-        if (!v_required($name))              $errors['name']    = 'Ansprechpartner ist Pflicht.';
-        if (!v_email($email))                $errors['email']   = 'Gültige E-Mail erforderlich.';
-        if (!v_max($message, 2000))          $errors['message'] = 'Nachricht zu lang (max. 2000 Zeichen).';
-        if (!$consent)                       $errors['consent'] = 'Bitte Einwilligung bestätigen.';
+        if (!v_required($company))           $errors['company']     = 'Firma ist Pflicht.';
+        if (!v_required($name))              $errors['name']        = 'Ansprechpartner ist Pflicht.';
+        if (!v_email($email))                $errors['email']       = 'Gültige E-Mail erforderlich.';
+        if (!v_max($message, 2000))          $errors['message']     = 'Nachricht zu lang (max. 2000 Zeichen).';
+        if (!$consent)                       $errors['consent']     = 'Bitte Einwilligung bestätigen.';
+        if (!$privacyAck)                    $errors['privacy_ack'] = 'Bitte Kenntnisnahme der Datenschutzerklärung bestätigen.';
 
         // Items aufbauen
         $items = [];
