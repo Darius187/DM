@@ -4,6 +4,17 @@ This file provides guidance for AI assistants (Claude and others) working in thi
 
 ---
 
+## Pending Changes (Backlog — NICHT ohne Freigabe umsetzen)
+
+Sammelstelle für Änderungswünsche, die in einer späteren Session in einem Rutsch umgesetzt werden:
+
+- [ ] **"Made in Villingen-Schwenningen" entfernen.** Produkte werden in China gefertigt, nicht in DE. Aktuelle Vorkommen:
+  - `app/views/components/footer.php` — Footer-Untertext: `<p>Made in Villingen-Schwenningen · Deutschland</p>`
+  - Eventuell weitere Stellen prüfen (Hero, Marketing-Texte) bevor entfernt wird.
+- [ ] Weitere Änderungen folgen — vor Umsetzung **alle gesammelten Punkte zusammen** mit dem User durchgehen.
+
+---
+
 ## Repository Status
 
 **Session 1 abgeschlossen** — siehe `README.md` für Detail-Status. Session 2 (Admin-Panel + Formular-Versand) steht aus.
