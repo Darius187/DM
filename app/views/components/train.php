@@ -17,8 +17,12 @@ $wagons = [
     ['file' => 'wagen_blau.png',    'alt' => 'Blauer Plattformwagen'],
     ['file' => 'wagen_stahl.png',   'alt' => 'Edelstahl-Plattformwagen'],
 ];
-// Sequenz verdoppeln für nahtlosen Loop
-$loop = array_merge($wagons, $wagons);
+// Sequenz 4x wiederholen = 16 Bilder pro Loop.
+// Track-Gesamtbreite ~2600 px deckt 27"-Desktop (2560 px) ohne Luecke ab,
+// auf kleineren Screens scrollen die Wiederholungen unsichtbar mit.
+// Die JS-Loop-Logik in train.js misst die erste Haelfte (8 Bilder) und
+// springt nach genau dieser Distanz zurueck - dadurch nahtlos.
+$loop = array_merge($wagons, $wagons, $wagons, $wagons);
 ?>
 <div class="train-outer" style="<?= $trainBg !== 'transparent' ? '--train-bg:' . ea($trainBg) . ';' : '' ?>"
      role="img" aria-label="<?= ea($trainAria) ?>">
