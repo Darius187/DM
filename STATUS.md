@@ -6,17 +6,27 @@ Aktueller Stand des Johnny-5-Companion-Projekts. Wird bei jedem signifikanten Fo
 
 ---
 
-## Aktuelle Phase: **Phase 0 — Konzept & Setup**
+## Aktuelle Phase: **Phase 1 — Skelett, Safety, Simulation** `[~]`
 
-**Start:** Mai 2026
-**Geplante Dauer:** 1–2 Wochen
+**Phase 0:** abgeschlossen für alles was ohne PC geht
+**Phase 1 Start:** Mai 2026
+**Geplante Dauer:** 3–4 Wochen
 **Beschäftigung:** 5–10 h/Woche (Hobby)
 
 ### Letztes Update
 
-2026-05-20 — Initial-Setup des Repos durch Claude Code:
-Doku-Fundament gelegt (CLAUDE.md, PROJECT_CONTEXT v4, CLAUDE_CODE_GUIDELINES, STATUS, TODO, LESSONS_LEARNED).
-Noch kein Code, noch keine eingerichtete Infrastruktur.
+2026-05-20 — Phase-1-Code-Skelett durch Claude Code, parallel zur PC-Einrichtung:
+- Projekt-Skelett: `pyproject.toml` (Python 3.11+, Pydantic v2, structlog, pytest, ruff, mypy)
+- `src/johnny5/topics.py` mit allen MQTT-Topics + QoS-Mapping
+- Pydantic-Modelle für alle MQTT-Payloads (PAD, Perception, Memory, Action, Safety, Interpretation)
+- Pydantic-Settings pro Service (`JOHNNY5_<SERVICE>_*`-Env-Vars) + `.env.example`
+- Mathematik-Library: Clipping, EWMA, 1D-Kalman, Cosine-Similarity, S-Curve-Trajektorie — alle mit Hypothesis-Property-Tests
+- Safety-Layer-Stub: `WatchdogHeartbeat`, `WatchdogMonitor`, `SafetyValidator`, `CircuitBreaker` — alle mit Unit-Tests
+- `ActuatorInterface` (Protocol) + `DummyActuator`
+- MQTT-Publisher/Subscriber mit Reconnect (aiomqtt-2.x-API, mit TBD-Markern wo die API verifizierbar ist)
+- Mock-Perception-Emitter (`python -m johnny5.perception.mock`)
+
+Noch kein Code wurde ausgeführt — wartet auf Darius' Setup von Python + Mosquitto + pgvector.
 
 ---
 
@@ -36,9 +46,9 @@ Noch kein Code, noch keine eingerichtete Infrastruktur.
 - [ ] Claude Code lokal auf Hauptrechner einrichten *(durch Darius, manuell)*
 - [x] Architektur-Diagramm als Mermaid in `docs/architecture.mmd`
 
-### Phase 1 — Skelett, Safety, Simulation `[ ]` GEPLANT
+### Phase 1 — Skelett, Safety, Simulation `[~]` IN ARBEIT
 
-3–4 Wochen. Erste Aufgaben in `TODO.md`. Wichtig: **Safety-Layer-Stub als allererstes**, bevor irgendein Aktor-Code entsteht.
+3–4 Wochen. Code-Skelett ist da, ausstehend: Code auf eingerichteter Umgebung verifizieren, PyBullet-Simulation, Esprimo-Profiling. Siehe `TODO.md`.
 
 ### Phase 2 — Reale Wahrnehmung `[ ]`
 
@@ -75,10 +85,10 @@ Mehrere Monate, offen. Mechanik, Servos (Dynamixel bevorzugt), Mikrocontroller, 
 
 ---
 
-## Nächste konkrete Schritte (nach Phase 0)
+## Nächste konkrete Schritte
 
 Siehe `TODO.md` für die ausführliche Liste. Top 3:
 
-1. Phase-0 abschließen: Architektur-Diagramm als Mermaid, dann Übergang zu Phase 1.
-2. `src/johnny5/topics.py` mit MQTT-Topic-Konstanten und QoS-Levels.
-3. `src/johnny5/models/` mit Pydantic-Modellen für alle MQTT-Payloads (PADVector, PerceptionFaceEvent, …).
+1. **Du:** Python 3.11+ einrichten, `pip install -e .[dev,mqtt]`, dann `pytest -q` um zu prüfen ob die Tests durchlaufen.
+2. **Du:** Mosquitto-LXC + PostgreSQL-LXC auf Esprimo. Dann `python -m johnny5.perception.mock --mqtt` zum Smoke-Test.
+3. Sobald Tests grün: aiomqtt-API in `src/johnny5/mqtt/client.py` verifizieren (TBD-Marker) und ggf. korrigieren.

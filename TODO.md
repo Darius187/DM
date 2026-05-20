@@ -40,58 +40,58 @@ Konkrete, abarbeitbare Aufgaben. Priorisiert nach aktueller Phase.
 
 ### 1.1 Projekt-Skelett
 
-- [ ] 🤖 `pyproject.toml` (Python 3.11+, Pydantic v2, structlog, pytest, hypothesis, mypy, ruff)
-- [ ] 🤖 Ordner-Struktur: `src/johnny5/{models,perception,interpretation,memory,behavior,action,safety,dashboard}` + `tests/` + `configs/`
-- [ ] 🤖 `src/johnny5/__init__.py` mit Version-String
-- [ ] 🤖 `src/johnny5/logging_config.py` mit `configure_logging(service_name)` (siehe Guidelines §3)
+- [x] 🤖 `pyproject.toml` (Python 3.11+, Pydantic v2, structlog, pytest, hypothesis, mypy, ruff)
+- [x] 🤖 Ordner-Struktur: `src/johnny5/{models,perception,interpretation,memory,behavior,action,safety,dashboard,mqtt,math,settings}` + `tests/` + `configs/`
+- [x] 🤖 `src/johnny5/__init__.py` mit Version-String
+- [x] 🤖 `src/johnny5/logging_config.py` mit `configure_logging(service_name)`
 
 ### 1.2 Datentypen & Topics
 
-- [ ] 🤖 `src/johnny5/models/pad.py` — `PADVector` mit Pydantic-Validation (Field-Constraints `[-1,1]`)
-- [ ] 🤖 `src/johnny5/models/perception.py` — `PerceptionFaceEvent`, `PerceptionAudioEvent`
-- [ ] 🤖 `src/johnny5/models/interpretation.py` — `EngagementEvent`, `TurnTakingEvent`
-- [ ] 🤖 `src/johnny5/models/memory.py` — `MemoryEntry`, `Reflection`
-- [ ] 🤖 `src/johnny5/models/action.py` — `MotionCommand`, `SpeechRequest`, `BackchannelRequest`
-- [ ] 🤖 `src/johnny5/models/safety.py` — `SafetyVerdict`, `HeartbeatMessage`
-- [ ] 🤖 `src/johnny5/topics.py` — Topic-Konstanten + QoS-Mapping (siehe Guidelines §4)
+- [x] 🤖 `src/johnny5/models/pad.py` — `PADVector` mit Pydantic-Validation
+- [x] 🤖 `src/johnny5/models/perception.py` — `PerceptionFaceEvent`, `PerceptionAudioEvent`, `VADEvent`, `WakeWordEvent`
+- [x] 🤖 `src/johnny5/models/interpretation.py` — `SmoothedPADEvent`, `EngagementEvent`, `TurnTakingEvent`
+- [x] 🤖 `src/johnny5/models/memory.py` — `MemoryEntry`, `Reflection`
+- [x] 🤖 `src/johnny5/models/action.py` — `MotionCommand`, `MotionStatus`, `SpeechRequest`, `BackchannelRequest`
+- [x] 🤖 `src/johnny5/models/safety.py` — `HeartbeatMessage`, `SafetyVerdict`, `EmergencyStop`
+- [x] 🤖 `src/johnny5/topics.py` — Topic-Konstanten + QoS-Mapping + `format_topic`/`qos_for`
 
 ### 1.3 Settings
 
-- [ ] 🤖 `src/johnny5/settings/` — Pydantic-Settings pro Service (PerceptionSettings, BehaviorSettings, MemorySettings, SafetySettings)
-- [ ] 🤖 `.env.example` mit Default-Werten
+- [x] 🤖 `src/johnny5/settings/` — `MQTTSettings`, `SafetySettings`, `PerceptionSettings`, `BehaviorSettings`, `MemorySettings`
+- [x] 🤖 `.env.example` mit Default-Werten
 
 ### 1.4 Safety-Layer-Stub (HIGHEST PRIORITY)
 
-- [ ] 🤖 `src/johnny5/safety/heartbeat.py` — `WatchdogHeartbeat` + `WatchdogMonitor` (siehe Guidelines §9)
-- [ ] 🤖 `src/johnny5/safety/validator.py` — `SafetyLayer.validate_motion()` mit Geofencing/Velocity-Stub
-- [ ] 🤖 `src/johnny5/safety/circuit_breaker.py` — `CircuitBreaker` (3 States)
-- [ ] 🤖 `tests/safety/` — Unit-Tests für alle drei Komponenten
-- [ ] 🤝 Safety-Service-Entry-Point `python -m johnny5.safety.service`
+- [x] 🤖 `src/johnny5/safety/heartbeat.py` — `WatchdogHeartbeat` + `WatchdogMonitor`
+- [x] 🤖 `src/johnny5/safety/validator.py` — `SafetyValidator.validate_motion()` mit Phase-1-Hartlimits
+- [x] 🤖 `src/johnny5/safety/circuit_breaker.py` — `CircuitBreaker` (3 States)
+- [x] 🤖 `tests/safety/` — Unit-Tests für alle drei Komponenten (asyncio + parametrisierte Matrix)
+- [ ] 🤝 Safety-Service-Entry-Point `python -m johnny5.safety.service` *(braucht laufenden Mosquitto)*
 
 ### 1.5 Aktor-Abstraktion
 
-- [ ] 🤖 `src/johnny5/action/interface.py` — `ActuatorInterface` (Protocol/ABC)
-- [ ] 🤖 `src/johnny5/action/dummy.py` — `DummyActuator` (Console-Logs)
-- [ ] 🤖 `src/johnny5/action/virtual.py` — Stub für `VirtualActuator` (3D später)
+- [x] 🤖 `src/johnny5/action/interface.py` — `ActuatorInterface` (Protocol mit `@runtime_checkable`)
+- [x] 🤖 `src/johnny5/action/dummy.py` — `DummyActuator` mit asyncio-Lock, interrupt + passive_mode
+- [ ] 🤖 `src/johnny5/action/virtual.py` — Stub für `VirtualActuator` *(kommt mit PyBullet, Phase 1.9)*
 
 ### 1.6 Mathematik-Bibliothek
 
-- [ ] 🤖 `src/johnny5/math/clipping.py` — `clip_pad()` + Tests
-- [ ] 🤖 `src/johnny5/math/ewma.py` — `ewma_update()` + Hypothesis-Tests
-- [ ] 🤖 `src/johnny5/math/kalman.py` — `KalmanState`, `kalman_update()` + Tests
-- [ ] 🤖 `src/johnny5/math/cosine.py` — `cosine_similarity()` + Edge-Case-Tests (Null-Vektoren)
-- [ ] 🤖 `src/johnny5/math/trajectories.py` — `s_curve_position()` + Property-Test (Jerk-Bound)
+- [x] 🤖 `src/johnny5/math/clipping.py` — `clip`, `clip_pad`, `clip_unit` + Hypothesis-Tests
+- [x] 🤖 `src/johnny5/math/ewma.py` — `ewma_update` + Hypothesis-Property-Tests
+- [x] 🤖 `src/johnny5/math/kalman.py` — `KalmanState`, `kalman_update` + Konvergenz- und Convex-Hull-Tests
+- [x] 🤖 `src/johnny5/math/cosine.py` — `cosine_similarity` + numpy-Tests (Null-Vektor → 0.0, kein NaN)
+- [x] 🤖 `src/johnny5/math/trajectories.py` — `s_curve_position` + `s_curve_velocity` + Jerk-Bound-Property-Test
 
 ### 1.7 MQTT-Infrastruktur
 
-- [ ] 🤖 `src/johnny5/mqtt/client.py` — `mqtt_publisher_with_reconnect()` (siehe Guidelines §4)
-- [ ] 🤖 `src/johnny5/mqtt/subscriber.py` — Subscriber mit Reconnect + Pydantic-Validation
-- [ ] 🤖 Mock-MQTT-Fixtures für Tests
+- [x] 🤖 `src/johnny5/mqtt/client.py` — `publisher_loop` + `subscriber_loop` mit Reconnect
+- [ ] 🤝 aiomqtt-API auf der laufenden Umgebung verifizieren (TBD-Marker im Code)
+- [ ] 🤖 Mock-MQTT-Fixtures für Integrationstests *(kommt sobald docker-compose mit Mosquitto läuft)*
 
 ### 1.8 Mock-Perception
 
-- [ ] 🤖 `src/johnny5/perception/mock.py` — Skript, das simulierte Beobachtungen sendet
-- [ ] 🤖 CLI: `python -m johnny5.perception.mock --rate 30`
+- [x] 🤖 `src/johnny5/perception/mock.py` — Skript, das simulierte Beobachtungen sendet
+- [x] 🤖 CLI: `python -m johnny5.perception.mock --rate 30 --person darius [--mqtt]`
 
 ### 1.9 Simulation
 
@@ -122,6 +122,18 @@ Sammelplatz für später. Wird in die jeweilige Phase verschoben sobald sie dran
 - LMA-Mapping empirisch kalibrieren
 
 ---
+
+## Verifikation auf der eingerichteten Umgebung
+
+Sobald Darius Python + Mosquitto + pgvector laufen hat:
+
+- [ ] 👤 `pip install -e .[dev,mqtt]` im Repo-Root
+- [ ] 👤 `pytest -q` — sollten alle Tests grün sein (Math + Modelle + Safety + Action + Settings + Topics + Mock-Perception)
+- [ ] 👤 `mypy src/johnny5` — sollte ohne Fehler durchlaufen
+- [ ] 👤 `ruff check .` — sollte ohne Fehler durchlaufen
+- [ ] 👤 `python -m johnny5.perception.mock --duration 5` — stdout-Smoke-Test
+- [ ] 👤 `python -m johnny5.perception.mock --mqtt --duration 5` — MQTT-Smoke-Test (Mosquitto muss laufen)
+- [ ] 🤖 Falls aiomqtt-API anders ist als angenommen: Fix gemäß den TBD-Markern in `src/johnny5/mqtt/client.py`
 
 ## Offene Fragen
 
