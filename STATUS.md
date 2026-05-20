@@ -34,7 +34,7 @@ Noch kein Code, noch keine eingerichtete Infrastruktur.
 - [ ] PostgreSQL + pgvector im LXC einrichten *(durch Darius, manuell)*
 - [ ] Mosquitto-LXC einrichten *(durch Darius, manuell)*
 - [ ] Claude Code lokal auf Hauptrechner einrichten *(durch Darius, manuell)*
-- [ ] Architektur-Diagramm als Mermaid finalisieren (in `docs/architecture.mmd`)
+- [x] Architektur-Diagramm als Mermaid in `docs/architecture.mmd`
 
 ### Phase 1 — Skelett, Safety, Simulation `[ ]` GEPLANT
 

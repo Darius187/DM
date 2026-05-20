@@ -22,7 +22,7 @@ Konkrete, abarbeitbare Aufgaben. Priorisiert nach aktueller Phase.
 
 ### Architektur-Visualisierung
 
-- [ ] 🤖 Mermaid-Diagramm `docs/architecture.mmd` aus dem ASCII-Diagramm in `PROJECT_CONTEXT.md` §4 generieren
+- [x] 🤖 Mermaid-Diagramm `docs/architecture.mmd` aus dem ASCII-Diagramm in `PROJECT_CONTEXT.md` §4 generiert
 
 ### Infrastruktur-Setup (manuell, Darius)
 
