@@ -1,0 +1,130 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.env
+.env.local
+.env.*.local
+
+# Testing & coverage
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb
+
+# Logs
+*.log
+logs/
+
+# ML models / data (never commit large binaries or sensitive data)
+*.pt
+*.pth
+*.onnx
+*.h5
+*.pkl
+*.npy
+*.npz
+models/
+checkpoints/
+data/raw/
+data/interim/
+data/processed/
+data/external/
+fixtures/audio/
+fixtures/video/
+
+# Audio / video recordings (Klasse A — niemals committen)
+*.wav
+*.mp3
+*.mp4
+*.mov
+*.avi
+*.webm
+recordings/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+pgdata/
+
+# Secrets / credentials
+secrets/
+credentials/
+*.pem
+*.key
+*.p12
+.anthropic
+.huggingface
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Generated docs
+site/
+_build/
+docs/_build/
+
+# Profiling
+*.prof
+*.svg
+profile.*
+
+# Local notes (optional, often not committed)
+NOTES.local.md
+SCRATCH.md
