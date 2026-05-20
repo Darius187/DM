@@ -1,0 +1,147 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "johnny5"
+version = "0.1.0"
+description = "Johnny 5 Companion — humanoider Companion-Roboter"
+readme = "CLAUDE.md"
+requires-python = ">=3.11"
+authors = [{ name = "Darius Matuszak" }]
+license = { text = "Proprietary" }
+keywords = ["robotics", "hri", "companion", "affective-computing"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "pydantic>=2.5,<3",
+    "pydantic-settings>=2.1,<3",
+    "structlog>=24.1",
+    "numpy>=1.26,<3",
+]
+
+[project.optional-dependencies]
+mqtt = [
+    "aiomqtt>=2.0,<3",
+    "paho-mqtt>=2.0,<3",
+]
+db = [
+    "psycopg[binary]>=3.1",
+    "pgvector>=0.2",
+    "sqlalchemy>=2.0",
+]
+perception = [
+    "mediapipe>=0.10",
+    "opencv-python>=4.9",
+    "face-recognition>=1.3",
+    "silero-vad>=5.0",
+    "openwakeword>=0.6",
+    "pyannote.audio>=3.1",
+    "faster-whisper>=1.0",
+    "librosa>=0.10",
+]
+ml = [
+    "torch>=2.2",
+    "transformers>=4.40",
+    "sentence-transformers>=2.7",
+]
+llm = [
+    "anthropic>=0.25",
+    "ollama>=0.2",
+]
+behavior = [
+    "py-trees>=2.2",
+]
+dashboard = [
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+    "streamlit>=1.32",
+]
+sim = [
+    "pybullet>=3.2.5",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "hypothesis>=6.100",
+    "mypy>=1.9",
+    "ruff>=0.4",
+    "types-paho-mqtt",
+]
+
+[project.urls]
+Repository = "https://github.com/Darius187/DM"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/johnny5"]
+
+# --------------------------------------------------------------------------
+# Tooling
+# --------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+]
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning:google.*",
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "mediapipe.*",
+    "cv2.*",
+    "face_recognition.*",
+    "pyannote.*",
+    "faster_whisper.*",
+    "librosa.*",
+    "pybullet.*",
+    "py_trees.*",
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",   # pycodestyle / pyflakes
+    "I",             # isort
+    "B",             # bugbear
+    "UP",            # pyupgrade
+    "SIM",           # simplify
+    "RUF",           # ruff-specific
+    "ASYNC",         # async best practices
+    "G",             # logging-format (no f-strings in log calls)
+    "T20",           # no print statements
+]
+ignore = [
+    "E501",  # line length, handled by formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]  # asserts ok in tests

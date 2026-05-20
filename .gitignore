@@ -77,14 +77,14 @@ logs/
 *.pkl
 *.npy
 *.npz
-models/
-checkpoints/
-data/raw/
-data/interim/
-data/processed/
-data/external/
-fixtures/audio/
-fixtures/video/
+/models/
+/checkpoints/
+/data/raw/
+/data/interim/
+/data/processed/
+/data/external/
+/fixtures/audio/
+/fixtures/video/
 
 # Audio / video recordings (Klasse A — niemals committen)
 *.wav
