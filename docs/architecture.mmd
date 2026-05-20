@@ -1,0 +1,86 @@
+%% Johnny 5 Companion — High-Level-Architektur
+%% Abgeleitet aus PROJECT_CONTEXT.md §4 (v4)
+%% Render z.B. via https://mermaid.live oder VSCode-Mermaid-Plugin
+
+flowchart TB
+    subgraph DEV["Entwicklungsrechner (i9-14900K + RTX 4070 Ti)<br/>bei Bedarf an"]
+        CC[Claude Code]
+        FW[Faster-Whisper STT<br/>GPU-beschleunigt]
+        OL[Ollama lokale LLM<br/>Llama 3.1, Qwen]
+        VL[Vision-LLM<br/>LLaVA, Qwen-VL]
+        SIM[Simulation<br/>PyBullet/MuJoCo/Unreal]
+    end
+
+    subgraph PERC["Perception-Layer (auf Kamera-/Mikro-Hardware)"]
+        MP[MediaPipe Face Mesh<br/>+ Pose, 30 FPS]
+        FR[Lokale Feature-Extraktion<br/>Kopfpose, Gaze, PAD]
+        VAD[Silero VAD]
+        WW[openWakeWord]
+        SPK[pyannote + ECAPA-TDNN<br/>Speaker-ID]
+        REDUCE[Feature-Reduktion<br/>~20 Vektoren]
+        MP --> FR --> REDUCE
+        VAD --> REDUCE
+        WW --> REDUCE
+        SPK --> REDUCE
+    end
+
+    subgraph ESP["Esprimo Q958 — Proxmox-Host (24/7, ~25-35W)"]
+        direction TB
+        MQTT[(Mosquitto<br/>MQTT-Broker)]
+        PG[(PostgreSQL<br/>+ pgvector)]
+        MEM[Memory-Service<br/>REST + Reflection-Loop]
+        BE[Behavior-Engine<br/>py_trees]
+        SAFE[Safety-Watchdog<br/>eigene Privilegien]
+        DASH[Dashboard<br/>Flask/Streamlit]
+        TTS[TTS-Service<br/>Piper lokal]
+        IC[Interrupt &<br/>Backchanneling-Coordinator]
+        LLMO[LLM-Orchestrator<br/>Tool-Use-Gateway]
+        SAN[Sanitization-Gateway<br/>Klasse-A-Filter]
+    end
+
+    subgraph ACT["Action-Layer (Phase 1: virtuell, Phase 7: real)"]
+        DUMMY[DummyActuator<br/>Console-Logs]
+        VIRT[VirtualActuator<br/>3D-Viz Simulation]
+        SERVO[ServoActuator<br/>Jetson + ESP32 + Dynamixel<br/>später]
+    end
+
+    %% Datenflüsse
+    REDUCE -- "MQTT QoS 0<br/>reduzierte Features" --> MQTT
+
+    MQTT --> BE
+    MQTT --> MEM
+    MQTT --> IC
+    MQTT --> SAFE
+
+    BE <--> LLMO
+    LLMO -- "STT-Transkripte<br/>(Klasse B)" --> SAN
+    SAN -- "sanitisiert" --> OL
+    SAN -- "sanitisiert" --> CL[Claude API<br/>Cloud]
+
+    MEM <--> PG
+    BE <--> MEM
+
+    BE -- "MotionCommand" --> SAFE
+    SAFE -- "verdict: allow/modify/block" --> ACT
+    SAFE -.->|Heartbeat 100ms| BE
+
+    TTS --> ACT
+    IC -- "Backchannel" --> ACT
+
+    DASH --> MQTT
+    DASH --> PG
+
+    FW -- "STT-Stream" --> MQTT
+
+    %% Styling
+    classDef dev fill:#e1f5ff,stroke:#0288d1
+    classDef perc fill:#fff3e0,stroke:#f57c00
+    classDef esp fill:#f3e5f5,stroke:#7b1fa2
+    classDef act fill:#e8f5e9,stroke:#388e3c
+    classDef safety fill:#ffebee,stroke:#c62828,stroke-width:3px
+
+    class CC,FW,OL,VL,SIM dev
+    class MP,FR,VAD,WW,SPK,REDUCE perc
+    class MQTT,PG,MEM,BE,DASH,TTS,IC,LLMO,SAN esp
+    class DUMMY,VIRT,SERVO act
+    class SAFE safety
