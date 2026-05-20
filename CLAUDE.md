@@ -1,137 +1,214 @@
 # CLAUDE.md
 
-This file provides guidance for AI assistants (Claude and others) working in this repository.
+Leitfaden für KI-Assistenten (Claude Code / Claude Cowork) in diesem Repository.
+
+> **Bei jeder neuen Session ZUERST lesen:**
+> 1. `docs/PROJECT_CONTEXT.md` — Projekt-Vision, Architektur, Module, Phasen
+> 2. `docs/CLAUDE_CODE_GUIDELINES.md` — Code-Patterns, konkrete Formeln, Anti-Patterns
+> 3. `STATUS.md` — aktuelle Phase und Fortschritt
+> 4. `TODO.md` — offene Aufgaben
 
 ---
 
-## Repository Status
+## Projekt-Überblick
 
-This repository is currently in its **initial state** — no source files or commits exist yet.
-Update this document as the project evolves.
+**Codename:** Johnny 5 Companion
+
+**Ziel:** Humanoider Companion-Roboter, der natürliche menschliche Interaktionsmuster zeigt (Begrüßung, Stimmungserkennung, proaktive Nachfragen, expressive Bewegung). Lebt im Wohnzimmer als Familienmitglied.
+
+**Philosophie:** LEAP-71-Prinzip — etablierte Bausteine intelligent verbinden statt neu erfinden. **Software-First**, Hardware später.
+
+**Status:** Konzeptphase / Phase 0 — Setup, noch kein Produktiv-Code.
+
+**Eigentümer:** Darius Matuszak. Hobby-Projekt, 5–10 h/Woche, Gesamtdauer Simulation ~6–7 Monate.
+
+Vollständiger Kontext: siehe `docs/PROJECT_CONTEXT.md` (v4).
 
 ---
 
-## Project Overview
+## Repository-Struktur
 
-> **TODO**: Add a short description of what this project does, its purpose, and its primary users.
-
----
-
-## Repository Structure
-
-> **TODO**: Document the directory layout once source files are added. Example template:
+Aktueller Stand (wächst mit den Phasen):
 
 ```
 /
-├── src/           # Application source code
-├── tests/         # Test suites
-├── docs/          # Documentation
-└── CLAUDE.md      # This file
+├── CLAUDE.md                       # Diese Datei
+├── STATUS.md                       # Aktuelle Phase + Fortschritt
+├── TODO.md                         # Offene Aufgaben (Phase 0/1)
+├── LESSONS_LEARNED.md              # Sackgassen, Entscheidungs-Begründungen
+├── docs/
+│   ├── PROJECT_CONTEXT.md          # Übergabe-Kontext (v4)
+│   └── CLAUDE_CODE_GUIDELINES.md   # Code-Patterns, Formeln, Anti-Patterns
+└── .gitignore
+```
+
+Geplant (Phase 1+):
+
+```
+├── src/johnny5/                    # Python-Package
+│   ├── models/                     # Pydantic-Modelle (MQTT-Payloads)
+│   ├── topics.py                   # MQTT-Topic-Konstanten
+│   ├── perception/
+│   ├── interpretation/
+│   ├── memory/
+│   ├── behavior/
+│   ├── action/
+│   ├── safety/
+│   └── dashboard/
+├── tests/
+├── configs/                        # YAML-Configs (FACS→PAD, Behavior-Rules, LMA-Mapping)
+└── pyproject.toml
 ```
 
 ---
 
-## Development Environment
+## Hardware-Setup (Referenz)
 
-### Prerequisites
+- **Entwicklungsrechner (i9-14900K + RTX 4070 Ti):** Claude Code, Whisper, lokale LLM, Simulation
+- **Backend-Server Esprimo Q958 (i5-9500T, 16 GB, 24/7):** Proxmox-Host für MQTT, PostgreSQL+pgvector, Behavior-Engine, Safety-Watchdog, TTS
+- **Johnny 5 Hardware:** noch nicht gebaut, wird in Simulation entwickelt
 
-> **TODO**: List required tools, runtimes, and versions (e.g., Node.js 20+, Python 3.11+, Docker).
-
-### Setup
-
-```bash
-# Clone the repository
-git clone <repo-url>
-cd DM
-
-# TODO: Add install / bootstrap steps
-```
+> **Wichtig:** Aktuell ist KEIN PC eingerichtet. KI-Assistenten schreiben Code, führen aber nichts aus (kein `pip install`, kein `pytest`, kein Docker). Darius richtet die Umgebung später selbst ein.
 
 ---
 
-## Git Workflow
+## Entwicklungs-Stack
 
-### Branch Naming
+### Sprache & Versionen
 
-| Purpose | Pattern | Example |
+- **Python 3.11+** (für `asyncio.TaskGroup`, `match`, etc.)
+- Type Hints überall, `mypy --strict`-tauglich
+
+### Kern-Bibliotheken
+
+| Zweck | Bibliothek |
+|---|---|
+| Validation/Modelle | `pydantic` v2, `pydantic-settings` |
+| Logging | `structlog` (strukturiertes JSON) |
+| Tests | `pytest`, `hypothesis`, `pytest-asyncio` |
+| MQTT | `aiomqtt` (async), `paho-mqtt` (sync-Fallback) |
+| DB | `psycopg`, `pgvector`, `sqlalchemy` |
+| Behavior Tree | `py_trees` |
+| Perception | `mediapipe`, `opencv-python`, `face_recognition`, `silero-vad`, `openwakeword`, `pyannote.audio`, `faster-whisper` |
+| ML | `transformers`, `sentence-transformers`, `torch` |
+| LLM | `anthropic`, `ollama` |
+| Web | `fastapi` oder `streamlit` (Dashboard) |
+| Simulation | `pybullet` (Start), evtl. später MuJoCo / Unreal |
+
+### Infrastruktur
+
+- **Proxmox-LXCs** auf dem Esprimo (1 Container pro Service)
+- **Mosquitto** als MQTT-Broker
+- **PostgreSQL + pgvector** als einzige DB (Memory-Stream, Embeddings, Volltext)
+
+---
+
+## Git-Workflow
+
+### Branches
+
+| Zweck | Pattern | Beispiel |
 |---|---|---|
-| Features | `feature/<short-description>` | `feature/user-auth` |
-| Bug fixes | `fix/<short-description>` | `fix/login-crash` |
-| AI/automated work | `claude/<task-id>` | `claude/claude-md-mmcmhxg8rrjfqvg8-cUuiT` |
-| Releases | `release/<version>` | `release/1.2.0` |
+| KI-Setup-Tasks | `claude/<task-id>` | `claude/setup-new-project-d8MkH` |
+| Features | `feature/<kurzbeschreibung>` | `feature/perception-pad` |
+| Bugfixes | `fix/<kurzbeschreibung>` | `fix/mqtt-reconnect` |
+| Releases | `release/<version>` | `release/0.1.0` |
 
-### Commit Messages
+**Niemals direkt nach `main` pushen.**
 
-Follow [Conventional Commits](https://www.conventionalcommits.org/):
+### Commit-Messages (Conventional Commits)
 
 ```
-<type>(<scope>): <short summary>
+<type>(<scope>): <kurze Zusammenfassung>
 
-[optional body]
+[optionaler Body]
 ```
 
-**Types**: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`
+Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`
 
-Examples:
-- `feat(auth): add JWT refresh token support`
-- `fix(api): handle null user response gracefully`
-- `docs: update setup instructions in CLAUDE.md`
+Beispiele:
+- `feat(perception): add MediaPipe face mesh wrapper`
+- `fix(mqtt): handle broker reconnect after timeout`
+- `docs: update Phase-1 checklist in TODO.md`
+- `test(memory): add Hypothesis tests for retrieval score`
 
 ### Pull Requests
 
-- Keep PRs focused on a single concern.
-- Include a clear description of *what* changed and *why*.
-- Reference related issues: `Closes #42`.
-- Ensure CI passes before requesting review.
+Werden nur erstellt wenn Darius explizit darum bittet. Einzelne Concerns, klare Beschreibung, CI grün.
 
 ---
 
-## Coding Conventions
+## Coding-Konventionen (Kurzfassung)
 
-> **TODO**: Fill in language/framework-specific conventions once the tech stack is decided.
+Vollständige Patterns in `docs/CLAUDE_CODE_GUIDELINES.md`.
 
-### General Principles
+### Maxime
 
-- **Clarity over cleverness**: Write code that is easy to read and understand.
-- **Minimal surface area**: Only add what is necessary for the current task.
-- **No premature abstraction**: Duplicate code twice before extracting a helper.
-- **Fail loudly**: Prefer explicit errors over silent fallbacks.
+**Korrektheit > Lesbarkeit > Performance > Cleverness**
 
-### Security
+### Stil
 
-- Never commit secrets, credentials, or API keys. Use environment variables.
-- Validate all external input at system boundaries (user input, API responses).
-- Follow OWASP Top 10 guidelines when building web-facing code.
+- Python 3.11+, alles Type-annotiert
+- Pydantic v2 für Validation an Modul-Grenzen (MQTT-Payloads, Configs)
+- `structlog` statt `print`/`logging` (strukturierte JSON-Logs, keine f-strings in Log-Calls)
+- `async/await` für I/O; `asyncio.to_thread` für CPU-gebundene Inferenz
+- UTC für alle Timestamps, niemals naive `datetime`
+- Keine Magic Numbers — Konstante oder Config
+- Docstrings im Google-Style
+
+### Sicherheit
+
+- Keine Secrets im Repo (`.env`, Pydantic-Settings)
+- Externe Eingaben an Modul-Grenzen validieren (Pydantic)
+- Klasse-A-Daten (Roh-Audio, Roh-Video, Kinderstimme) NIEMALS an Cloud-LLM
+
+### Anti-Patterns (siehe Guidelines §14)
+
+- Keine fest verdrahteten Magic-Numbers
+- Keine direkten LLM-Calls in Inner-Loops
+- Keine Synchron-Calls auf Hardware (immer async)
+- Keine ungetesteten Mathematik-Implementierungen (FACS, Kalman, Bayes, PAD-Mapping, Jerk-Limiting, LMA-Mapping)
+- Keine Vendor-Locks (LLM-Provider austauschbar)
+- Keine rohen Landmark-Streams über MQTT (Reduktion auf ~20 Features)
+- Keine Aktor-Befehle ohne Safety-Layer-Validation
+- Keine Cloud-Calls mit Klasse-A-Daten
 
 ---
 
-## Testing
+## Tests
 
-> **TODO**: Document testing framework and conventions once chosen.
-
-### Guidelines
-
-- Write tests for new behaviour before (or alongside) implementing it.
-- Tests should be deterministic — no random sleeps, no external network calls.
-- Name tests to describe observable behaviour: `should return 404 when user not found`.
+- **Framework:** `pytest` + `hypothesis` (Property-Based-Tests)
+- **Pflicht** für: alle Mathematik-Funktionen (PAD-Clipping, EWMA, Kalman, Cosine-Similarity, Jerk-Limit, S-Curve, PAD→LMA-Mapping, Retrieval-Score)
+- **Deterministisch:** keine `time.sleep()`, keine echten Netzwerk-Calls in Unit-Tests
+- **Naming:** `should_<verhalten>_when_<bedingung>`
 
 ---
 
 ## CI / CD
 
-> **TODO**: Document the CI pipeline once configured (GitHub Actions, etc.).
+> Wird in Phase 1 aufgesetzt. Geplant: GitHub Actions mit `pytest`, `mypy --strict`, `ruff`.
 
 ---
 
-## AI Assistant Instructions
+## Anweisungen für KI-Assistenten
 
-When working in this repository, AI assistants should:
+1. **Vor jeder Session:** `docs/PROJECT_CONTEXT.md` + `docs/CLAUDE_CODE_GUIDELINES.md` + `STATUS.md` lesen.
+2. **Vor dem Bearbeiten:** Datei lesen.
+3. **Minimal bleiben:** Nur das umsetzen, was die Aufgabe verlangt. Keine ungebetenen Refactorings.
+4. **Branch-Disziplin:** auf dem zugewiesenen Branch arbeiten, nie direkt nach `main` pushen.
+5. **Bei zerstörerischen Aktionen** (Datei-Löschen, Force-Push, CI-Änderung) erst bei Darius rückfragen.
+6. **Keine erfundenen URLs / APIs.** Bei Unsicherheit zur Funktions-Signatur: Pseudocode mit Markierung `# TBD: API verifizieren`.
+7. **Bei fehlenden Infos nachfragen**, nicht erfinden.
+8. **Inkrementell committen:** kleine, fokussierte Commits mit aussagekräftigen Messages.
+9. **Keine unnötigen Kommentare** — nur wenn das _Warum_ nicht offensichtlich ist.
+10. **Bei Sackgassen / offenen Fragen:** in `LESSONS_LEARNED.md` festhalten.
 
-1. **Read before editing** — always read a file before modifying it.
-2. **Stay minimal** — only change what the task requires; avoid unsolicited refactors.
-3. **Update this file** — keep CLAUDE.md current whenever project structure or conventions change.
-4. **Branch discipline** — develop on the designated feature branch; never push to `main`/`master` without explicit permission.
-5. **Verify before destructive actions** — confirm with the user before deleting files, force-pushing, or modifying CI pipelines.
-6. **No invented URLs** — do not fabricate links; only use URLs found in the codebase or provided by the user.
-7. **Commit incrementally** — make small, focused commits with descriptive messages rather than one large dump.
-8. **Do not add unnecessary comments** — only comment where logic is non-obvious.
+---
+
+## Kontakt-Punkte bei Unsicherheit
+
+- **Code-Pattern unklar?** → `docs/CLAUDE_CODE_GUIDELINES.md`
+- **Architektur-Frage?** → `docs/PROJECT_CONTEXT.md`
+- **Was ist als nächstes dran?** → `TODO.md`
+- **Frühere Entscheidung?** → `LESSONS_LEARNED.md`
+- **Nichts davon hilft?** → Pseudocode + `# TBD`-Kommentar + Eintrag in `LESSONS_LEARNED.md`, dann Darius fragen.
