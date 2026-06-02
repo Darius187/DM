@@ -1,0 +1,92 @@
+@import 'chessground/assets/chessground.base.css';
+@import 'chessground/assets/chessground.brown.css';
+@import 'chessground/assets/chessground.cburnett.css';
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: #1e1e1e;
+  color: #eee;
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  grid-template-rows: auto 1fr;
+  gap: 16px;
+}
+
+header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 0;
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
+}
+
+button,
+select {
+  background: #333;
+  color: #eee;
+  border: 1px solid #555;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #444;
+}
+
+.board-wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+#board {
+  width: min(70vh, 600px);
+  aspect-ratio: 1 / 1;
+}
+
+.info {
+  background: #2a2a2a;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 0.9rem;
+}
+
+#status {
+  font-weight: 600;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #444;
+}
+
+#moves {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  margin: 0;
+  padding-left: 24px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+#moves li {
+  padding: 2px 0;
+}
