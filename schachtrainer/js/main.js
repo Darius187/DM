@@ -2,6 +2,7 @@ import { Chess } from 'chess.js';
 import { createBoard, toDests, colorToLong } from './board.js';
 import { Engine } from './engine.js';
 import { scoreToCp, cpToWinProb, formatScore, toPerspective, isBlunder } from './eval.js';
+import { sanZuDeutsch, speak, cancelSpeech } from './speech.js';
 
 const chess = new Chess();
 let userSide = 'white';
@@ -26,12 +27,32 @@ const btnUndo = document.getElementById('btn-undo');
 const selSide = document.getElementById('sel-side');
 const selStrength = document.getElementById('sel-strength');
 const chkHint = document.getElementById('chk-hint');
+const chkSpeak = document.getElementById('chk-speak');
 
 const engine = new Engine(); // plays the opponent's moves at the chosen strength
 const analyzer = new Engine(); // full strength, for eval bar / hint / blunder
 
 function turnColorLong() {
   return colorToLong(chess.turn());
+}
+
+// SAN for a from/to move in the current position, without mutating the game.
+function sanForMove({ from, to, promotion }) {
+  const v = chess
+    .moves({ verbose: true })
+    .find((m) => m.from === from && m.to === to && (!promotion || m.promotion === promotion));
+  return v ? v.san : null;
+}
+
+// Play a move object on the board and announce it. Returns its SAN or null.
+function playMove({ from, to, promotion }) {
+  try {
+    const move = chess.move({ from, to, promotion: promotion ?? 'q' });
+    if (move && chkSpeak.checked) speak(sanZuDeutsch(move.san));
+    return move ? move.san : null;
+  } catch {
+    return null;
+  }
 }
 
 function canUserMove() {
@@ -122,6 +143,11 @@ async function showHintAndEval() {
   updateEvalBar(res);
   bestCpUserBefore = toPerspective(scoreToCp(res), userSide);
   drawHint(res);
+
+  if (chkSpeak.checked && chkHint.checked && res.from) {
+    const san = sanForMove(res);
+    if (san) speak(`Vorschlag: ${sanZuDeutsch(san)}`);
+  }
 }
 
 function applyStrength() {
@@ -161,13 +187,7 @@ async function afterUserMove() {
   if (engineEnabled && !chess.isGameOver()) {
     engineStatusEl.textContent = 'Engine denkt…';
     const reply = await engine.bestMove(chess.fen(), strengthOpts());
-    if (reply) {
-      try {
-        chess.move({ from: reply.from, to: reply.to, promotion: reply.promotion ?? 'q' });
-      } catch {
-        /* ignore an unexpected illegal reply */
-      }
-    }
+    if (reply) playMove(reply);
     engineStatusEl.textContent = 'Engine bereit';
     updateStatus();
     renderMoves();
@@ -206,6 +226,7 @@ function resetEvalUi() {
 }
 
 function newGame() {
+  cancelSpeech();
   chess.reset();
   userSide = selSide.value;
   busy = false;
@@ -231,13 +252,7 @@ async function afterEngineOpens() {
   busy = true;
   syncBoard();
   const reply = await engine.bestMove(chess.fen(), strengthOpts());
-  if (reply) {
-    try {
-      chess.move({ from: reply.from, to: reply.to, promotion: reply.promotion ?? 'q' });
-    } catch {
-      /* ignore */
-    }
-  }
+  if (reply) playMove(reply);
   busy = false;
   updateStatus();
   renderMoves();
@@ -247,6 +262,7 @@ async function afterEngineOpens() {
 
 function undo() {
   if (busy) return;
+  cancelSpeech();
   chess.undo();
   if (engineEnabled && turnColorLong() !== userSide) {
     chess.undo();
