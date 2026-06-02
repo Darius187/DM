@@ -63,7 +63,7 @@ export class Engine {
   // Computes the best move for the given FEN. Resolves with
   // { from, to, promotion, score } where score is centipawns from White's view
   // (or { mate: n } when forced mate is seen).
-  bestMove(fen, { movetime = 800 } = {}) {
+  bestMove(fen, { movetime = 800, depth } = {}) {
     return new Promise((resolve) => {
       let lastScore = null;
       let lastMate = null;
@@ -98,8 +98,13 @@ export class Engine {
       };
       this.listeners.add(onLine);
       this.send(`position fen ${fen}`);
-      this.send(`go movetime ${movetime}`);
+      this.send(depth ? `go depth ${depth}` : `go movetime ${movetime}`);
     });
+  }
+
+  // Full-strength analysis of a position: best move + score (White's view).
+  analyse(fen, { depth = 12 } = {}) {
+    return this.bestMove(fen, { depth });
   }
 
   destroy() {

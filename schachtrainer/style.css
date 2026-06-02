@@ -58,11 +58,46 @@ button:hover {
 .board-wrapper {
   display: flex;
   justify-content: center;
+  align-items: stretch;
+  gap: 10px;
 }
 
 #board {
   width: min(70vh, 600px);
   aspect-ratio: 1 / 1;
+}
+
+.evalbar {
+  position: relative;
+  width: 26px;
+  align-self: stretch;
+  background: #2b2b2b;
+  border: 1px solid #555;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.evalfill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 50%;
+  background: #f0f0f0;
+  transition: height 0.25s ease;
+}
+
+.evaltext {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
+  text-align: center;
+  font-size: 0.7rem;
+  font-family: ui-monospace, monospace;
+  color: #fff;
+  text-shadow: 0 0 2px #000, 0 0 3px #000;
+  z-index: 1;
 }
 
 .info {
@@ -85,11 +120,29 @@ button:hover {
   border-bottom: 1px solid #444;
 }
 
-.strength {
+.strength,
+.hint-toggle {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-size: 0.85rem;
+}
+
+.blunder {
+  background: #5a1f1f;
+  border: 1px solid #a33;
+  color: #ffd7d7;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: #bcd;
+  margin-bottom: 10px;
+  min-height: 1.2em;
 }
 
 #moves {

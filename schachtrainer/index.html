@@ -29,16 +29,26 @@
               <option value="skill:20">Maximal</option>
             </select>
           </label>
+          <label class="hint-toggle">
+            <input type="checkbox" id="chk-hint" checked />
+            Tipp anzeigen
+          </label>
         </div>
       </header>
 
       <section class="board-wrapper">
+        <div id="evalbar" class="evalbar" title="Bewertung">
+          <div id="evalfill" class="evalfill"></div>
+          <span id="evaltext" class="evaltext">±0.0</span>
+        </div>
         <div id="board"></div>
       </section>
 
       <aside class="info">
         <div id="status">Am Zug: Weiß</div>
         <div id="engine-status" class="engine-status">Engine wird geladen…</div>
+        <div id="blunder" class="blunder" hidden></div>
+        <div id="hint" class="hint"></div>
         <div>
           <h2>Zugverlauf</h2>
           <ol id="moves"></ol>
