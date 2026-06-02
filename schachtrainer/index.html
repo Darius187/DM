@@ -17,6 +17,18 @@
             <option value="white" selected>Ich spiele Weiß</option>
             <option value="black">Ich spiele Schwarz</option>
           </select>
+          <label class="strength">
+            Stärke:
+            <select id="sel-strength">
+              <option value="skill:0" selected>Anfänger</option>
+              <option value="skill:3">Leicht</option>
+              <option value="skill:6">Mittel</option>
+              <option value="skill:10">Fortgeschritten</option>
+              <option value="elo:1600">Klub (1600)</option>
+              <option value="elo:2000">Stark (2000)</option>
+              <option value="skill:20">Maximal</option>
+            </select>
+          </label>
         </div>
       </header>
 
@@ -26,6 +38,7 @@
 
       <aside class="info">
         <div id="status">Am Zug: Weiß</div>
+        <div id="engine-status" class="engine-status">Engine wird geladen…</div>
         <div>
           <h2>Zugverlauf</h2>
           <ol id="moves"></ol>

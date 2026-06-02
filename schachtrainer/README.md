@@ -6,8 +6,13 @@ Lokales, kostenloses Schach-Trainingsprogramm im Browser. Siehe `../SCHACHTRAINE
 
 **Phase 1** abgeschlossen: Brett anzeigen (chessground), Züge per Maus, Regeln über chess.js, illegale Züge werden abgelehnt.
 
+**Phase 2** abgeschlossen: Stockfish 18 (lite-single, WASM) als Gegner im Web Worker. Die Engine antwortet auf jeden Zug, die Stärke ist über das Dropdown "Stärke" einstellbar.
+
+Hinweis zur Stärke: Stockfishs `UCI_Elo` hat eine Untergrenze von 1320, was für absolute Anfänger zu stark ist. Schwache Stufen laufen daher über `Skill Level` (0–20). Höhere Stufen ("Klub", "Stark") nutzen `UCI_Elo`.
+
+Die Engine-Dateien werden beim `npm install`, `npm run dev` und `npm run build` automatisch aus `node_modules/stockfish` nach `public/engine/` kopiert (Skript `scripts/copy-engine.js`) und sind daher nicht im Git eingecheckt.
+
 Nächste Phasen siehe Spezifikation:
-2. Stockfish als Gegner (UCI, Stärke einstellbar)
 3. Bewertung und Bester-Zug-Pfeil, Blunder-Warnung
 4. Sprachausgabe (SAN nach Deutsch)
 5. Ollama-Anbindung für deutsche Erklärungen

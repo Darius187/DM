@@ -74,9 +74,22 @@ button:hover {
 
 #status {
   font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.engine-status {
+  font-size: 0.8rem;
+  color: #9ab;
   margin-bottom: 12px;
   padding-bottom: 8px;
   border-bottom: 1px solid #444;
+}
+
+.strength {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
 }
 
 #moves {

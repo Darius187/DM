@@ -3,3 +3,6 @@ dist
 .vite
 *.log
 .DS_Store
+
+# Stockfish engine is copied from node_modules at install/dev/build time
+public/engine/
