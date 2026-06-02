@@ -5,6 +5,10 @@ const chess = new Chess();
 let userSide = 'white';
 let ground;
 
+// Phase 1 has no engine yet, so both sides are played by hand (pass-and-play).
+// Phase 2 flips this to true to restrict movement to the user's own colour.
+const engineEnabled = false;
+
 const boardEl = document.getElementById('board');
 const statusEl = document.getElementById('status');
 const movesEl = document.getElementById('moves');
@@ -18,13 +22,14 @@ function turnColorLong() {
 
 function syncBoard() {
   const turn = turnColorLong();
+  const canMove = !chess.isGameOver() && (!engineEnabled || turn === userSide);
   ground.set({
     fen: chess.fen(),
     turnColor: turn,
     check: chess.inCheck() ? turn : false,
     movable: {
-      color: turn === userSide ? turn : undefined,
-      dests: turn === userSide ? toDests(chess) : new Map(),
+      color: canMove ? turn : undefined,
+      dests: canMove ? toDests(chess) : new Map(),
     },
   });
 }
@@ -58,8 +63,11 @@ function renderMoves() {
 }
 
 function handleUserMove(orig, dest) {
-  const move = chess.move({ from: orig, to: dest, promotion: 'q' });
-  if (!move) {
+  // chess.js throws on an illegal move; chessground restricts to legal dests,
+  // but guard anyway in case board and game state ever desync.
+  try {
+    chess.move({ from: orig, to: dest, promotion: 'q' });
+  } catch {
     syncBoard();
     return;
   }
