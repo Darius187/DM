@@ -1,0 +1,66 @@
+name: Build portable .exe and publish Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v0.1.0)'
+        required: true
+        default: 'v0.1.0'
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows portable .exe
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: schachtrainer
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: schachtrainer/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build portable .exe
+        run: npm run pack:win
+
+      - name: List build output
+        shell: bash
+        run: ls -lh release/
+
+      - name: Determine tag
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Schachtrainer ${{ steps.tag.outputs.tag }}
+          body: |
+            Portable Schachtrainer für Windows — keine Installation nötig. Doppelklick auf die `.exe` startet die App.
+
+            Enthält Brett (chessground), Regeln (chess.js), Stockfish 18 (WASM), Sprachausgabe, Eröffnungstrainer (London + Italienisch) und PGN-Import/Export. Deutsche Trainer-Erklärungen funktionieren, wenn Ollama parallel auf `localhost:11434` läuft.
+          target_commitish: ${{ github.sha }}
+          files: schachtrainer/release/Schachtrainer-*-portable.exe
+          fail_on_unmatched_files: true
