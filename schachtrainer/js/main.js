@@ -3,6 +3,7 @@ import { createBoard, toDests, colorToLong } from './board.js';
 import { Engine } from './engine.js';
 import { scoreToCp, cpToWinProb, formatScore, toPerspective, isBlunder } from './eval.js';
 import { sanZuDeutsch, speak, cancelSpeech } from './speech.js';
+import { OPENINGS, normalizeSan } from './openings.js';
 
 const chess = new Chess();
 let userSide = 'white';
@@ -13,6 +14,7 @@ let busy = false; // engine thinking / analysing -> board locked
 let bestCpUserBefore = null; // best eval (user perspective) at the start of the user's turn
 let lastHintMove = null; // {from,to} suggested move for the current side to move
 let hintToken = 0;
+let opening = null; // { line, index } when the opening trainer is active
 
 const boardEl = document.getElementById('board');
 const statusEl = document.getElementById('status');
@@ -28,6 +30,7 @@ const selSide = document.getElementById('sel-side');
 const selStrength = document.getElementById('sel-strength');
 const chkHint = document.getElementById('chk-hint');
 const chkSpeak = document.getElementById('chk-speak');
+const selOpening = document.getElementById('sel-opening');
 
 const engine = new Engine(); // plays the opponent's moves at the chosen strength
 const analyzer = new Engine(); // full strength, for eval bar / hint / blunder
@@ -201,12 +204,19 @@ async function afterUserMove() {
 function handleUserMove(orig, dest) {
   // chess.js throws on an illegal move; chessground restricts to legal dests,
   // but guard anyway in case board and game state ever desync.
+  let move;
   try {
-    chess.move({ from: orig, to: dest, promotion: 'q' });
+    move = chess.move({ from: orig, to: dest, promotion: 'q' });
   } catch {
     syncBoard();
     return;
   }
+
+  if (opening) {
+    onOpeningUserMove(move);
+    return;
+  }
+
   clearHint();
   blunderEl.hidden = true;
   syncBoard();
@@ -218,6 +228,82 @@ function handleUserMove(orig, dest) {
   }
 }
 
+// ---- Opening trainer -------------------------------------------------------
+
+// Draw the blue arrow for the current target move.
+function drawTargetArrow() {
+  const step = opening.line[opening.index];
+  const v = chess
+    .moves({ verbose: true })
+    .find((m) => normalizeSan(m.san) === normalizeSan(step.white));
+  if (v) ground.setShapes([{ orig: v.from, dest: v.to, brush: 'blue' }]);
+}
+
+// Show the next target White move: arrow, text and spoken announcement.
+function showOpeningTarget() {
+  const step = opening.line[opening.index];
+  drawTargetArrow();
+  hintEl.textContent = `Nächster Zug: ${step.white} — ${step.tip}`;
+  if (chkSpeak.checked) speak(`Nächster Zug: ${sanZuDeutsch(step.white)}`);
+}
+
+function startOpening(key) {
+  const data = OPENINGS[key];
+  if (!data) return;
+  cancelSpeech();
+  opening = { line: data.line, index: 0 };
+  selSide.value = 'white';
+  userSide = 'white';
+  busy = false;
+  chess.reset();
+  ground.set({ orientation: 'white' });
+  resetEvalUi();
+  renderMoves();
+  updateStatus();
+  syncBoard();
+  engineStatusEl.textContent = `Eröffnung: ${data.name}`;
+  showOpeningTarget();
+}
+
+function onOpeningUserMove(move) {
+  const step = opening.line[opening.index];
+  if (normalizeSan(move.san) !== normalizeSan(step.white)) {
+    // Wrong move: take it back and explain the plan move (keep this message,
+    // so redraw only the arrow rather than the full target text).
+    chess.undo();
+    syncBoard();
+    drawTargetArrow();
+    hintEl.textContent = `Plan-Zug: ${step.white}. ${step.tip}`;
+    if (chkSpeak.checked) speak(`Besser: ${sanZuDeutsch(step.white)}`);
+    return;
+  }
+
+  // Correct: announce it, play the canned Black reply, advance.
+  if (chkSpeak.checked) speak(sanZuDeutsch(move.san));
+  if (step.black) {
+    try {
+      const reply = chess.move(step.black);
+      if (reply && chkSpeak.checked) speak(sanZuDeutsch(reply.san));
+    } catch {
+      /* canned reply should always be legal */
+    }
+  }
+  opening.index += 1;
+  updateStatus();
+  renderMoves();
+
+  if (opening.index >= opening.line.length) {
+    ground.setShapes([]);
+    hintEl.textContent = 'Eröffnung abgeschlossen! Gut gespielt.';
+    if (chkSpeak.checked) speak('Eröffnung abgeschlossen. Gut gespielt.');
+    opening = null;
+    syncBoard();
+    return;
+  }
+  syncBoard();
+  showOpeningTarget();
+}
+
 function resetEvalUi() {
   blunderEl.hidden = true;
   bestCpUserBefore = null;
@@ -226,6 +312,12 @@ function resetEvalUi() {
 }
 
 function newGame() {
+  // In opening-trainer mode, "Neue Partie" restarts the chosen line.
+  if (selOpening.value !== 'free') {
+    startOpening(selOpening.value);
+    return;
+  }
+  opening = null;
   cancelSpeech();
   chess.reset();
   userSide = selSide.value;
@@ -262,6 +354,12 @@ async function afterEngineOpens() {
 
 function undo() {
   if (busy) return;
+  if (opening) {
+    // Restart the current step rather than unwinding the drill.
+    cancelSpeech();
+    showOpeningTarget();
+    return;
+  }
   cancelSpeech();
   chess.undo();
   if (engineEnabled && turnColorLong() !== userSide) {
@@ -284,6 +382,7 @@ btnUndo.addEventListener('click', undo);
 selSide.addEventListener('change', newGame);
 selStrength.addEventListener('change', applyStrength);
 chkHint.addEventListener('change', () => drawHint(lastHintMove));
+selOpening.addEventListener('change', newGame);
 
 syncBoard();
 updateStatus();

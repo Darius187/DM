@@ -7,6 +7,9 @@ export class Engine {
   constructor() {
     this.worker = null;
     this.listeners = new Set();
+    // Serialises searches: a worker must finish one "go" before the next
+    // "position/go", otherwise Stockfish traps ("unreachable").
+    this.queue = Promise.resolve();
   }
 
   // Resolves once the engine has answered "uciok" and "readyok".
@@ -63,7 +66,14 @@ export class Engine {
   // Computes the best move for the given FEN. Resolves with
   // { from, to, promotion, score } where score is centipawns from White's view
   // (or { mate: n } when forced mate is seen).
-  bestMove(fen, { movetime = 800, depth } = {}) {
+  bestMove(fen, opts = {}) {
+    const run = () => this._search(fen, opts);
+    const result = this.queue.then(run, run);
+    this.queue = result.catch(() => {});
+    return result;
+  }
+
+  _search(fen, { movetime = 800, depth } = {}) {
     return new Promise((resolve) => {
       let lastScore = null;
       let lastMate = null;
