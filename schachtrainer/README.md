@@ -42,6 +42,36 @@ OLLAMA_ORIGINS="http://localhost:5173" ollama serve
 
 Das Modell lässt sich im Textfeld neben der „Trainer"-Checkbox ändern.
 
+## Als portable .exe / AppImage bauen
+
+Die App lässt sich als Electron-Desktop-Anwendung paketieren — eine einzelne portable Datei ohne Installation.
+
+### Windows (portable .exe)
+
+Auf einem Windows-Rechner mit Node.js (≥ 18):
+
+```bash
+git clone <repo>
+cd schachtrainer
+npm install
+npm run pack:win
+```
+
+Ergebnis: `release/Schachtrainer-0.1.0-portable.exe` (etwa 200 MB). Doppelklick startet die App — keine Installation, kein Admin-Recht nötig. Lässt sich z. B. auf einen USB-Stick legen.
+
+### Linux (AppImage)
+
+```bash
+npm install
+npm run pack:linux
+```
+
+Ergebnis: `release/Schachtrainer-0.1.0.AppImage` (etwa 270 MB). `chmod +x` und ausführen.
+
+### Cross-Build aus Linux
+
+Der Windows-Build aus Linux braucht `wine` + `wine32:i386` (für rcedit). Auf einer normalen Windows-Maschine ist das nicht nötig.
+
 ## Bedienung
 
 - Figur per Maus ziehen → Zug wird ausgeführt, wenn legal

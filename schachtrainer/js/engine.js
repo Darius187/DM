@@ -1,7 +1,9 @@
 // Wrapper around the Stockfish Web Worker. Speaks UCI and exposes a small
 // async API. Single-threaded build, so no SharedArrayBuffer / COOP-COEP needed.
 
-const ENGINE_URL = '/engine/stockfish-18-lite-single.js';
+// Relative URL so it resolves both under the dev server and under file://
+// when the page is loaded by Electron.
+const ENGINE_URL = 'engine/stockfish-18-lite-single.js';
 
 export class Engine {
   constructor() {
