@@ -45,6 +45,11 @@
               <option value="italienisch">Italienisch</option>
             </select>
           </label>
+          <label class="hint-toggle">
+            <input type="checkbox" id="chk-coach" />
+            Trainer
+          </label>
+          <input id="coach-model" class="coach-model" type="text" value="llama3.1:8b" title="Ollama-Modell" />
         </div>
       </header>
 
@@ -61,6 +66,7 @@
         <div id="engine-status" class="engine-status">Engine wird geladen…</div>
         <div id="blunder" class="blunder" hidden></div>
         <div id="hint" class="hint"></div>
+        <div id="coach" class="coach" hidden></div>
         <div>
           <h2>Zugverlauf</h2>
           <ol id="moves"></ol>

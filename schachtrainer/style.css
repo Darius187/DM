@@ -145,6 +145,27 @@ button:hover {
   min-height: 1.2em;
 }
 
+.coach {
+  background: #23303a;
+  border: 1px solid #3a5566;
+  color: #d6e6f0;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+  line-height: 1.35;
+}
+
+.coach-model {
+  width: 110px;
+  background: #333;
+  color: #eee;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 5px 6px;
+  font-size: 0.8rem;
+}
+
 #moves {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   margin: 0;

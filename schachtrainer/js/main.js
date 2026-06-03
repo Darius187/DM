@@ -4,6 +4,7 @@ import { Engine } from './engine.js';
 import { scoreToCp, cpToWinProb, formatScore, toPerspective, isBlunder } from './eval.js';
 import { sanZuDeutsch, speak, cancelSpeech } from './speech.js';
 import { OPENINGS, normalizeSan } from './openings.js';
+import { explain, setCoachModel } from './coach.js';
 
 const chess = new Chess();
 let userSide = 'white';
@@ -13,7 +14,9 @@ let analysisEnabled = false; // analyzer ready
 let busy = false; // engine thinking / analysing -> board locked
 let bestCpUserBefore = null; // best eval (user perspective) at the start of the user's turn
 let lastHintMove = null; // {from,to} suggested move for the current side to move
+let lastBestSan = null; // SAN of the suggested move at the start of the user's turn
 let hintToken = 0;
+let coachContext = null; // { fen, bestMove } captured before the user's move
 let opening = null; // { line, index } when the opening trainer is active
 let review = null; // { sans, index } when viewing a loaded PGN
 
@@ -38,6 +41,9 @@ const btnPrev = document.getElementById('btn-prev');
 const btnNext = document.getElementById('btn-next');
 const pgnText = document.getElementById('pgn-text');
 const pgnStatus = document.getElementById('pgn-status');
+const chkCoach = document.getElementById('chk-coach');
+const coachModelEl = document.getElementById('coach-model');
+const coachEl = document.getElementById('coach');
 
 const engine = new Engine(); // plays the opponent's moves at the chosen strength
 const analyzer = new Engine(); // full strength, for eval bar / hint / blunder
@@ -156,11 +162,11 @@ async function showHintAndEval() {
   if (token !== hintToken || chess.fen() !== fen) return; // stale
   updateEvalBar(res);
   bestCpUserBefore = toPerspective(scoreToCp(res), userSide);
+  lastBestSan = res.from ? sanForMove(res) : null;
   drawHint(res);
 
-  if (chkSpeak.checked && chkHint.checked && res.from) {
-    const san = sanForMove(res);
-    if (san) speak(`Vorschlag: ${sanZuDeutsch(san)}`);
+  if (chkSpeak.checked && chkHint.checked && lastBestSan) {
+    speak(`Vorschlag: ${sanZuDeutsch(lastBestSan)}`);
   }
 }
 
@@ -210,11 +216,30 @@ async function afterUserMove() {
   busy = false;
   syncBoard();
   await showHintAndEval();
+  requestCoachExplanation();
+}
+
+// Ask the local Ollama model to explain the just-played move. Best-effort:
+// any failure (Ollama not running, model missing) shows a hint, not an error.
+async function requestCoachExplanation() {
+  if (!chkCoach.checked || !coachContext) return;
+  const ctx = coachContext;
+  coachEl.hidden = false;
+  coachEl.textContent = 'Trainer denkt…';
+  setCoachModel(coachModelEl.value.trim());
+  try {
+    const text = await explain(ctx);
+    coachEl.textContent = text || 'Keine Erklärung erhalten.';
+  } catch {
+    coachEl.textContent =
+      'Trainer-Erklärung nicht verfügbar. Läuft Ollama auf localhost:11434 (mit passendem Modell)?';
+  }
 }
 
 function handleUserMove(orig, dest) {
   // chess.js throws on an illegal move; chessground restricts to legal dests,
   // but guard anyway in case board and game state ever desync.
+  const fenBefore = chess.fen();
   let move;
   try {
     move = chess.move({ from: orig, to: dest, promotion: 'q' });
@@ -227,6 +252,10 @@ function handleUserMove(orig, dest) {
     onOpeningUserMove(move);
     return;
   }
+
+  // Remember what the user faced so the coach can compare best vs played move.
+  coachContext =
+    lastBestSan && move ? { fen: fenBefore, userMove: move.san, bestMove: lastBestSan } : null;
 
   clearHint();
   blunderEl.hidden = true;
@@ -406,6 +435,10 @@ function reviewStep(delta) {
 function resetEvalUi() {
   blunderEl.hidden = true;
   bestCpUserBefore = null;
+  lastBestSan = null;
+  coachContext = null;
+  coachEl.hidden = true;
+  coachEl.textContent = '';
   clearHint();
   updateEvalBar({ score: 0 });
 }
