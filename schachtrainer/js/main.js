@@ -15,6 +15,7 @@ let bestCpUserBefore = null; // best eval (user perspective) at the start of the
 let lastHintMove = null; // {from,to} suggested move for the current side to move
 let hintToken = 0;
 let opening = null; // { line, index } when the opening trainer is active
+let review = null; // { sans, index } when viewing a loaded PGN
 
 const boardEl = document.getElementById('board');
 const statusEl = document.getElementById('status');
@@ -31,6 +32,12 @@ const selStrength = document.getElementById('sel-strength');
 const chkHint = document.getElementById('chk-hint');
 const chkSpeak = document.getElementById('chk-speak');
 const selOpening = document.getElementById('sel-opening');
+const btnSave = document.getElementById('btn-save');
+const btnLoad = document.getElementById('btn-load');
+const btnPrev = document.getElementById('btn-prev');
+const btnNext = document.getElementById('btn-next');
+const pgnText = document.getElementById('pgn-text');
+const pgnStatus = document.getElementById('pgn-status');
 
 const engine = new Engine(); // plays the opponent's moves at the chosen strength
 const analyzer = new Engine(); // full strength, for eval bar / hint / blunder
@@ -59,7 +66,7 @@ function playMove({ from, to, promotion }) {
 }
 
 function canUserMove() {
-  if (chess.isGameOver() || busy) return false;
+  if (review || chess.isGameOver() || busy) return false;
   if (!engineEnabled) return true;
   return turnColorLong() === userSide;
 }
@@ -93,17 +100,21 @@ function updateStatus() {
   statusEl.textContent = text;
 }
 
-function renderMoves() {
-  const history = chess.history();
+function renderMovesList(history, highlightPly = -1) {
   movesEl.innerHTML = '';
   for (let i = 0; i < history.length; i += 2) {
     const li = document.createElement('li');
     const white = history[i] ?? '';
     const black = history[i + 1] ?? '';
     li.textContent = `${white}${black ? '  ' + black : ''}`;
+    if (highlightPly === i || highlightPly === i + 1) li.classList.add('current');
     movesEl.appendChild(li);
   }
   movesEl.scrollTop = movesEl.scrollHeight;
+}
+
+function renderMoves() {
+  renderMovesList(chess.history());
 }
 
 function updateEvalBar(scoreObj) {
@@ -251,6 +262,7 @@ function startOpening(key) {
   const data = OPENINGS[key];
   if (!data) return;
   cancelSpeech();
+  review = null;
   opening = { line: data.line, index: 0 };
   selSide.value = 'white';
   userSide = 'white';
@@ -304,6 +316,93 @@ function onOpeningUserMove(move) {
   showOpeningTarget();
 }
 
+// ---- PGN save / load / review ---------------------------------------------
+
+// Build the SAN list of the game currently being shown (live game or review).
+function currentSans() {
+  return review ? review.sans.slice() : chess.history();
+}
+
+function savePgn() {
+  const c = new Chess();
+  for (const san of currentSans()) {
+    try {
+      c.move(san);
+    } catch {
+      break;
+    }
+  }
+  if (typeof c.setHeader === 'function') {
+    c.setHeader('Event', 'Schachtrainer');
+    c.setHeader('Date', new Date().toISOString().slice(0, 10).replace(/-/g, '.'));
+  }
+  const pgn = c.pgn();
+  pgnText.value = pgn;
+  pgnStatus.textContent = 'PGN gespeichert (Textfeld + Download).';
+  try {
+    const blob = new Blob([pgn], { type: 'application/x-chess-pgn' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'partie.pgn';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch {
+    /* download is best-effort; the textarea always holds the PGN */
+  }
+}
+
+function renderReviewPosition() {
+  const c = new Chess();
+  for (let i = 0; i < review.index; i++) c.move(review.sans[i]);
+  const turn = c.turn() === 'w' ? 'white' : 'black';
+  ground.set({
+    fen: c.fen(),
+    turnColor: turn,
+    check: c.inCheck() ? turn : false,
+    movable: { color: undefined, dests: new Map() },
+  });
+  ground.setShapes([]);
+  statusEl.textContent = `Ansicht: Zug ${review.index} / ${review.sans.length}`;
+  renderMovesList(review.sans, review.index - 1);
+}
+
+function loadPgn() {
+  const text = pgnText.value.trim();
+  if (!text) {
+    pgnStatus.textContent = 'Bitte zuerst ein PGN einfügen.';
+    return;
+  }
+  const c = new Chess();
+  try {
+    c.loadPgn(text);
+  } catch {
+    pgnStatus.textContent = 'Ungültiges PGN.';
+    return;
+  }
+  const sans = c.history();
+  if (!sans.length) {
+    pgnStatus.textContent = 'PGN enthält keine Züge.';
+    return;
+  }
+  cancelSpeech();
+  opening = null;
+  busy = false;
+  review = { sans, index: sans.length };
+  resetEvalUi();
+  engineStatusEl.textContent = 'Ansichtsmodus (PGN)';
+  pgnStatus.textContent = `Geladen: ${sans.length} Halbzüge. Mit ◀ ▶ durchblättern.`;
+  renderReviewPosition();
+}
+
+function reviewStep(delta) {
+  if (!review) return;
+  const next = review.index + delta;
+  if (next < 0 || next > review.sans.length) return;
+  review.index = next;
+  renderReviewPosition();
+}
+
 function resetEvalUi() {
   blunderEl.hidden = true;
   bestCpUserBefore = null;
@@ -318,6 +417,7 @@ function newGame() {
     return;
   }
   opening = null;
+  review = null;
   cancelSpeech();
   chess.reset();
   userSide = selSide.value;
@@ -383,6 +483,10 @@ selSide.addEventListener('change', newGame);
 selStrength.addEventListener('change', applyStrength);
 chkHint.addEventListener('change', () => drawHint(lastHintMove));
 selOpening.addEventListener('change', newGame);
+btnSave.addEventListener('click', savePgn);
+btnLoad.addEventListener('click', loadPgn);
+btnPrev.addEventListener('click', () => reviewStep(-1));
+btnNext.addEventListener('click', () => reviewStep(1));
 
 syncBoard();
 updateStatus();
