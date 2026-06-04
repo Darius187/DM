@@ -245,19 +245,25 @@ async function afterUserMove() {
 }
 
 // Ask the local Ollama model to explain the just-played move. Best-effort:
-// any failure (Ollama not running, model missing) shows a hint, not an error.
+// any failure keeps the offline rule-based explanation visible, so the user
+// always has *something* useful in the coach panel.
 async function requestCoachExplanation() {
   if (!chkCoach.checked || !coachContext) return;
   const ctx = coachContext;
-  coachEl.hidden = false;
-  coachEl.textContent = 'Trainer denkt…';
+  // Remember the offline explanation so we can restore it if Ollama fails.
+  const offlineText = coachEl.textContent;
   setCoachModel(coachModelEl.value.trim());
   try {
     const text = await explain(ctx);
-    coachEl.textContent = text || 'Keine Erklärung erhalten.';
+    if (text && text.trim()) {
+      coachEl.textContent = text.trim();
+    }
   } catch {
-    coachEl.textContent =
-      'Trainer-Erklärung nicht verfügbar. Läuft Ollama auf localhost:11434 (mit passendem Modell)?';
+    // Restore the offline explanation and append a one-line hint about Ollama
+    // (so the user knows *why* they're not getting the deeper trainer text).
+    coachEl.textContent = offlineText
+      ? `${offlineText}  (Trainer offline — Ollama läuft nicht.)`
+      : 'Trainer offline — startet Ollama auf localhost:11434 mit einem Modell?';
   }
 }
 

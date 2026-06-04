@@ -71,14 +71,30 @@ button:hover {
   display: flex;
   justify-content: center;
   align-items: stretch;
-  gap: 10px;
+  /* Leave room around the board for chessground's rank/file labels and the
+     eval bar without clipping. */
+  gap: 12px;
+  padding: 8px 14px 22px 14px;
 }
 
 #board {
-  /* Scale the board with both available width and height so it always fits.
-     The 36px subtracted on the width side leaves room for the eval bar + gap. */
-  width: min(70vh, 600px, calc(100% - 36px));
+  /* Board sizing depends only on its container's width so the layout does not
+     shift when the viewport height changes (e.g. browser scrollbar appears). */
+  width: min(600px, calc(100% - 40px));
   aspect-ratio: 1 / 1;
+}
+
+/* Make chessground's rank/file labels actually readable (default is 9px,
+   0.8 opacity). Outline gives contrast on both light and dark squares. */
+.cg-wrap coords {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  opacity: 1 !important;
+  color: #2a1d0c;
+  text-shadow:
+    0 0 2px #f5e3c4,
+    0 0 2px #f5e3c4,
+    0 0 2px #f5e3c4;
 }
 
 .evalbar {

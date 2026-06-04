@@ -17,6 +17,7 @@ export function createBoard(element, { onMove, orientation = 'white' } = {}) {
     highlight: { lastMove: true, check: true },
     animation: { enabled: true, duration: 200 },
     drawable: { enabled: true, visible: true },
+    coordinates: true,
   });
 }
 
