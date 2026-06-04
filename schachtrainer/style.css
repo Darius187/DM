@@ -7,35 +7,39 @@
 }
 
 html {
-  /* Always reserve the vertical scrollbar. Otherwise it appears/disappears as
-     the move list and coach panel grow, which changes the available width and
-     makes the board (and whole layout) jump on every move. */
-  overflow-y: scroll;
-  scrollbar-gutter: stable;
+  /* Lock the page to the viewport so growth in the side panel never causes a
+     page-level scrollbar to appear/grow and reflow the board. The side panel
+     gets its own internal scroll below. */
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
   margin: 0;
+  height: 100%;
+  overflow: hidden;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   background: #1e1e1e;
   color: #eee;
 }
 
 .app {
+  /* Fixed-height layout: rows are sized inside the viewport instead of pushing
+     it taller, so the board never moves when the coach text grows. */
+  height: 100vh;
   max-width: 1100px;
   margin: 0 auto;
   padding: 16px;
   display: grid;
-  /* minmax(0,...) lets the board column shrink below the board's intrinsic
-     width on narrow windows, so it never overflows. */
-  grid-template-columns: minmax(0, 1fr) 280px;
-  grid-template-rows: auto 1fr;
+  /* Widen the side panel so Ollama answers have more breathing room without
+     long word wraps forcing weird shapes. */
+  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 16px;
 }
 
 @media (max-width: 880px) {
-  /* On narrow windows stack the side panel below the board instead of
-     squeezing both into the same row. */
+  /* On narrow windows fall back to a single column. */
   .app {
     grid-template-columns: 1fr;
   }
@@ -146,6 +150,10 @@ button:hover {
   border-radius: 6px;
   padding: 12px;
   font-size: 0.9rem;
+  /* Self-contained scroll: any amount of trainer text or move list fits here
+     without making the page taller (and the board can't shift as a result). */
+  min-height: 0;
+  overflow-y: auto;
 }
 
 #status {
@@ -195,6 +203,11 @@ button:hover {
   font-size: 0.85rem;
   margin-bottom: 10px;
   line-height: 1.35;
+  /* Cap very long Ollama answers and scroll inside the panel — also stops a
+     huge response from dominating the entire side column. */
+  max-height: 260px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
 }
 
 .coach-model {
@@ -212,8 +225,6 @@ button:hover {
   margin: 0;
   padding-left: 4px;
   list-style: none;
-  max-height: 60vh;
-  overflow-y: auto;
 }
 
 #moves li {
