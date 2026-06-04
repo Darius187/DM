@@ -131,9 +131,10 @@ function renderMovesList(history, highlightPly = -1) {
   movesEl.innerHTML = '';
   for (let i = 0; i < history.length; i += 2) {
     const li = document.createElement('li');
+    const moveNo = i / 2 + 1;
     const white = history[i] ?? '';
     const black = history[i + 1] ?? '';
-    li.textContent = `${white}${black ? '  ' + black : ''}`;
+    li.textContent = `${moveNo}. ${white}${black ? '  ' + black : ''}`;
     if (highlightPly === i || highlightPly === i + 1) li.classList.add('current');
     movesEl.appendChild(li);
   }
@@ -262,8 +263,8 @@ async function requestCoachExplanation() {
     // Restore the offline explanation and append a one-line hint about Ollama
     // (so the user knows *why* they're not getting the deeper trainer text).
     coachEl.textContent = offlineText
-      ? `${offlineText}  (Trainer offline — Ollama läuft nicht.)`
-      : 'Trainer offline — startet Ollama auf localhost:11434 mit einem Modell?';
+      ? `${offlineText}  (Ollama nicht erreichbar – läuft es auf localhost:11434 und ist das Modell geladen?)`
+      : 'Ollama nicht erreichbar – läuft es auf localhost:11434 und ist das Modell geladen?';
   }
 }
 

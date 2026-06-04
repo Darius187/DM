@@ -28,7 +28,14 @@ export function explainMoveOffline(verbose, plyNumber = 0) {
 
   if (verbose.captured) {
     const taken = PIECE_NAMES[verbose.captured.toLowerCase()] || 'Figur';
-    reasons.push(`schlägt ${taken === 'Bauer' ? 'einen Bauern' : 'die ' + (taken === 'Dame' ? 'Dame' : taken)}`);
+    const ART = {
+      Bauer: 'einen Bauern',
+      Springer: 'den Springer',
+      Läufer: 'den Läufer',
+      Turm: 'den Turm',
+      Dame: 'die Dame',
+    };
+    reasons.push(`schlägt ${ART[taken] || 'eine Figur'}`);
   }
   if (san.includes('+')) reasons.push('gibt Schach und zwingt den Gegner zur Reaktion');
 
@@ -65,25 +72,37 @@ export function setCoachModel(name) {
   if (name) model = name;
 }
 
-// Build the German trainer prompt (kept small per the spec).
+// Build the German trainer prompt.
 export function buildPrompt({ fen, userMove, bestMove }) {
   const cmp = userMove
-    ? ` und was an meinem Zug ${userMove} schlechter war`
+    ? ` Erwähne kurz, was an meinem Zug ${userMove} schlechter war.`
     : '';
   return (
-    `Du bist ein Schachtrainer. Erkläre auf Deutsch in zwei bis drei kurzen ` +
-    `Sätzen, warum der Zug ${bestMove} in dieser Stellung gut ist${cmp}. ` +
-    `Stellung (FEN): ${fen}. Keine langen Ausführungen.`
+    `Du bist ein geduldiger Schachtrainer. Antworte auf Deutsch in drei bis vier kurzen Sätzen. ` +
+    `Erkläre: 1) warum der Zug ${bestMove} in dieser Stellung gut ist (welche Idee dahinter steckt), ` +
+    `2) was der Gegner als Antwort versuchen könnte, ` +
+    `3) worauf ich danach achten muss.${cmp} ` +
+    `Stellung (FEN): ${fen}. Keine langen Variantenlisten, einfache Sprache.`
   );
 }
 
-// Ask the local model for an explanation. Throws if Ollama is unreachable so
-// the caller can show a fallback message.
+// Ask the local model for an explanation. In the packaged Electron app the page
+// is loaded via file://, and Ollama rejects that origin via CORS. So when the
+// IPC bridge is available we let the main process do the request (no CORS there).
+// In the browser / vite dev (http://localhost) we fall back to a direct fetch.
 export async function explain(ctx, { signal } = {}) {
+  const prompt = buildPrompt(ctx);
+
+  if (typeof window !== 'undefined' && window.coachAPI && window.coachAPI.explain) {
+    const r = await window.coachAPI.explain({ model, prompt });
+    if (!r || !r.ok) throw new Error(r ? r.error || 'Ollama-Fehler' : 'Ollama-Fehler');
+    return (r.text || '').trim();
+  }
+
   const res = await fetch(OLLAMA_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, prompt: buildPrompt(ctx), stream: false }),
+    body: JSON.stringify({ model, prompt, stream: false }),
     signal,
   });
   if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
