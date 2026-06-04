@@ -69,8 +69,15 @@ if (typeof speechSynthesis !== 'undefined') {
 }
 
 // Speak the given German text. No-op if speech synthesis is unavailable.
+// Cancels any pending or in-flight utterance first so the latest announcement
+// replaces older ones — without this, slow voices queue up and ramble on.
 export function speak(text) {
   if (!text || typeof speechSynthesis === 'undefined') return;
+  try {
+    speechSynthesis.cancel();
+  } catch {
+    /* ignore */
+  }
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'de-DE';
   const voice = pickGermanVoice();

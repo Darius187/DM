@@ -18,9 +18,19 @@ body {
   margin: 0 auto;
   padding: 16px;
   display: grid;
-  grid-template-columns: 1fr 280px;
+  /* minmax(0,...) lets the board column shrink below the board's intrinsic
+     width on narrow windows, so it never overflows. */
+  grid-template-columns: minmax(0, 1fr) 280px;
   grid-template-rows: auto 1fr;
   gap: 16px;
+}
+
+@media (max-width: 880px) {
+  /* On narrow windows stack the side panel below the board instead of
+     squeezing both into the same row. */
+  .app {
+    grid-template-columns: 1fr;
+  }
 }
 
 header {
@@ -39,6 +49,8 @@ h1 {
 .controls {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 button,
@@ -63,7 +75,9 @@ button:hover {
 }
 
 #board {
-  width: min(70vh, 600px);
+  /* Scale the board with both available width and height so it always fits.
+     The 36px subtracted on the width side leaves room for the eval bar + gap. */
+  width: min(70vh, 600px, calc(100% - 36px));
   aspect-ratio: 1 / 1;
 }
 

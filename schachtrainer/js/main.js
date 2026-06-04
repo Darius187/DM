@@ -4,7 +4,7 @@ import { Engine } from './engine.js';
 import { scoreToCp, cpToWinProb, formatScore, toPerspective, isBlunder } from './eval.js';
 import { sanZuDeutsch, speak, cancelSpeech } from './speech.js';
 import { OPENINGS, normalizeSan } from './openings.js';
-import { explain, setCoachModel } from './coach.js';
+import { explain, setCoachModel, explainMoveOffline } from './coach.js';
 
 const chess = new Chess();
 let userSide = 'white';
@@ -52,23 +52,44 @@ function turnColorLong() {
   return colorToLong(chess.turn());
 }
 
-// SAN for a from/to move in the current position, without mutating the game.
-function sanForMove({ from, to, promotion }) {
-  const v = chess
-    .moves({ verbose: true })
-    .find((m) => m.from === from && m.to === to && (!promotion || m.promotion === promotion));
-  return v ? v.san : null;
+// Verbose move object for a from/to move in the current position, without
+// mutating the game. Returns null if there is no such legal move.
+function verboseForMove({ from, to, promotion }) {
+  return (
+    chess
+      .moves({ verbose: true })
+      .find((m) => m.from === from && m.to === to && (!promotion || m.promotion === promotion)) ||
+    null
+  );
+}
+
+function sanForMove(move) {
+  return verboseForMove(move)?.san || null;
+}
+
+// Show a German explanation of the move that was just played (engine or user).
+// Always uses the offline rule-based explainer so the user always gets a
+// reason; the Ollama explanation later replaces it with deeper text.
+function showOfflineExplanation(verbose, who) {
+  if (!verbose) return;
+  const reason = explainMoveOffline(verbose, chess.history().length);
+  if (!reason) return;
+  coachEl.hidden = false;
+  coachEl.textContent = `${who}: ${verbose.san} — ${reason}`;
 }
 
 // Play a move object on the board and announce it. Returns its SAN or null.
-function playMove({ from, to, promotion }) {
+function playMove({ from, to, promotion }, { who } = {}) {
+  const verbose = verboseForMove({ from, to, promotion });
+  if (!verbose) return null;
   try {
-    const move = chess.move({ from, to, promotion: promotion ?? 'q' });
-    if (move && chkSpeak.checked) speak(sanZuDeutsch(move.san));
-    return move ? move.san : null;
+    chess.move({ from: verbose.from, to: verbose.to, promotion: verbose.promotion });
   } catch {
     return null;
   }
+  if (chkSpeak.checked) speak(sanZuDeutsch(verbose.san));
+  if (who) showOfflineExplanation(verbose, who);
+  return verbose.san;
 }
 
 function canUserMove() {
@@ -135,11 +156,12 @@ function updateEvalBar(scoreObj) {
   evalTextEl.textContent = formatScore(scoreObj);
 }
 
-function drawHint(move) {
+function drawHint(move, reason) {
   lastHintMove = move ? { from: move.from, to: move.to } : null;
   if (chkHint.checked && move && move.from && move.to) {
     ground.setShapes([{ orig: move.from, dest: move.to, brush: 'green' }]);
-    hintEl.textContent = `Tipp: ${move.from}–${move.to}`;
+    const tail = reason ? ` — ${reason}` : '';
+    hintEl.textContent = `Tipp: ${move.from}–${move.to}${tail}`;
   } else {
     ground.setShapes([]);
     hintEl.textContent = '';
@@ -162,9 +184,12 @@ async function showHintAndEval() {
   if (token !== hintToken || chess.fen() !== fen) return; // stale
   updateEvalBar(res);
   bestCpUserBefore = toPerspective(scoreToCp(res), userSide);
-  lastBestSan = res.from ? sanForMove(res) : null;
-  drawHint(res);
+  const verbose = res.from ? verboseForMove(res) : null;
+  lastBestSan = verbose ? verbose.san : null;
+  const reason = verbose ? explainMoveOffline(verbose, chess.history().length) : '';
+  drawHint(res, reason);
 
+  // Speak just the move; the reason stays in the text so audio stays short.
   if (chkSpeak.checked && chkHint.checked && lastBestSan) {
     speak(`Vorschlag: ${sanZuDeutsch(lastBestSan)}`);
   }
@@ -207,7 +232,7 @@ async function afterUserMove() {
   if (engineEnabled && !chess.isGameOver()) {
     engineStatusEl.textContent = 'Engine denkt…';
     const reply = await engine.bestMove(chess.fen(), strengthOpts());
-    if (reply) playMove(reply);
+    if (reply) playMove(reply, { who: 'Engine' });
     engineStatusEl.textContent = 'Engine bereit';
     updateStatus();
     renderMoves();
