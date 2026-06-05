@@ -46,6 +46,30 @@ ipcMain.handle('coach:explain', (_event, { model, prompt } = {}) =>
   }),
 );
 
+// List installed Ollama models (for the suggestion menu in the renderer).
+ipcMain.handle('coach:models', () =>
+  new Promise((resolve) => {
+    const req = http.request(
+      { host: '127.0.0.1', port: 11434, path: '/api/tags', method: 'GET', timeout: 5000 },
+      (res) => {
+        let data = '';
+        res.on('data', (chunk) => (data += chunk));
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            resolve({ ok: true, models: (json.models || []).map((m) => m.name).filter(Boolean) });
+          } catch {
+            resolve({ ok: false, models: [] });
+          }
+        });
+      },
+    );
+    req.on('timeout', () => req.destroy());
+    req.on('error', () => resolve({ ok: false, models: [] }));
+    req.end();
+  }),
+);
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1100,

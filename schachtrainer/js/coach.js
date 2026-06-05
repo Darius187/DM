@@ -66,10 +66,31 @@ export function explainMoveOffline(verbose, plyNumber = 0) {
 // ---- Optional Ollama model ------------------------------------------------
 
 const OLLAMA_URL = 'http://localhost:11434/api/generate';
-let model = 'llama3.1:8b';
+const OLLAMA_TAGS_URL = 'http://localhost:11434/api/tags';
+export const DEFAULT_MODEL = 'llama3.1:8b';
+let model = DEFAULT_MODEL;
 
 export function setCoachModel(name) {
-  if (name) model = name;
+  // Empty / whitespace falls back to the default so a cleared field never
+  // silently breaks Ollama.
+  model = (name && name.trim()) || DEFAULT_MODEL;
+}
+
+// List the models actually installed in Ollama (for the suggestion menu).
+// Returns [] on any failure - the field stays a free text input regardless.
+export async function listModels() {
+  try {
+    if (typeof window !== 'undefined' && window.coachAPI && window.coachAPI.models) {
+      const r = await window.coachAPI.models();
+      return r && r.ok && Array.isArray(r.models) ? r.models : [];
+    }
+    const res = await fetch(OLLAMA_TAGS_URL);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.models || []).map((m) => m.name).filter(Boolean);
+  } catch {
+    return [];
+  }
 }
 
 // Build the German trainer prompt.

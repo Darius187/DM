@@ -4,7 +4,7 @@ import { Engine } from './engine.js';
 import { scoreToCp, cpToWinProb, formatScore, toPerspective, isBlunder } from './eval.js';
 import { sanZuDeutsch, speak, cancelSpeech } from './speech.js';
 import { OPENINGS, normalizeSan } from './openings.js';
-import { explain, setCoachModel, explainMoveOffline } from './coach.js';
+import { explain, setCoachModel, explainMoveOffline, listModels, DEFAULT_MODEL } from './coach.js';
 
 const chess = new Chess();
 let userSide = 'white';
@@ -283,7 +283,7 @@ function handleUserMove(orig, dest) {
   }
 
   if (opening) {
-    onOpeningUserMove(move);
+    onOpeningUserMove(move, fenBefore);
     return;
   }
 
@@ -340,7 +340,7 @@ function startOpening(key) {
   showOpeningTarget();
 }
 
-function onOpeningUserMove(move) {
+function onOpeningUserMove(move, fenBefore) {
   const step = opening.line[opening.index];
   if (normalizeSan(move.san) !== normalizeSan(step.white)) {
     // Wrong move: take it back and explain the plan move (keep this message,
@@ -363,6 +363,12 @@ function onOpeningUserMove(move) {
       /* canned reply should always be legal */
     }
   }
+
+  // Let the coach explain the opening move too (offline always, Ollama if on).
+  coachContext = { fen: fenBefore, userMove: null, bestMove: move.san };
+  showOfflineExplanation(move, 'Eröffnung');
+  requestCoachExplanation();
+
   opening.index += 1;
   updateStatus();
   renderMoves();
@@ -559,6 +565,22 @@ btnSave.addEventListener('click', savePgn);
 btnLoad.addEventListener('click', loadPgn);
 btnPrev.addEventListener('click', () => reviewStep(-1));
 btnNext.addEventListener('click', () => reviewStep(1));
+
+// If the model field is cleared, fall back to the default so Ollama keeps
+// working instead of silently failing.
+coachModelEl.addEventListener('change', () => {
+  if (!coachModelEl.value.trim()) coachModelEl.value = DEFAULT_MODEL;
+  setCoachModel(coachModelEl.value);
+});
+
+// Fill the suggestion list with the models actually installed in Ollama.
+async function populateModelList() {
+  const datalist = document.getElementById('ollama-models');
+  if (!datalist) return;
+  const names = await listModels();
+  datalist.innerHTML = names.map((n) => `<option value="${n}"></option>`).join('');
+}
+populateModelList();
 
 // Copy the trainer text to the clipboard so the user can paste it into Claude
 // (or anywhere else). Fall back to a manual selection if the Clipboard API is

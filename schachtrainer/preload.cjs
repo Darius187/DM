@@ -5,4 +5,5 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('coachAPI', {
   explain: (payload) => ipcRenderer.invoke('coach:explain', payload),
+  models: () => ipcRenderer.invoke('coach:models'),
 });
