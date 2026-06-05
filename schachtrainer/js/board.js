@@ -20,21 +20,16 @@ export function createBoard(element, { onMove, orientation = 'white' } = {}) {
     coordinates: true,
   });
 
-  // Chessground positions pieces in absolute pixels relative to the board
-  // size at init. When the container resizes (window resize, panel layout
-  // change), the piece offsets drift away from the square grid until the
-  // next set(). Watch the element and force a redraw on every resize.
+  // Whenever the board element changes size (window resize, layout reflow,
+  // side panel growing), force chessground to re-measure and redraw
+  // everything. Without this, pieces keep their old pixel positions while
+  // the squares scale with the container. rAF-debounced so a burst of resize
+  // events (drag-resize, devtools opening) only triggers one redraw per frame.
   if (typeof ResizeObserver !== 'undefined') {
-    let lastW = element.clientWidth;
-    let lastH = element.clientHeight;
+    let raf = 0;
     const ro = new ResizeObserver(() => {
-      const w = element.clientWidth;
-      const h = element.clientHeight;
-      if (w !== lastW || h !== lastH) {
-        lastW = w;
-        lastH = h;
-        ground.redrawAll();
-      }
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => ground.redrawAll());
     });
     ro.observe(element);
   }

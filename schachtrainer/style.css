@@ -35,6 +35,11 @@ body {
      long word wraps forcing weird shapes. */
   grid-template-columns: minmax(0, 1fr) 320px;
   grid-template-rows: auto minmax(0, 1fr);
+  /* Critical: without this, grid cells stretch to the tallest sibling (the
+     side panel), which forces a height on the board and overrides its
+     aspect-ratio — the board then deforms and chessground bakes the wrong
+     ratio into its internal pixel grid (pieces drift off the squares). */
+  align-items: start;
   gap: 16px;
 }
 
@@ -82,7 +87,10 @@ button:hover {
 .board-wrapper {
   display: flex;
   justify-content: center;
-  align-items: stretch;
+  /* flex-start, NOT stretch: stretching would force a height on #board and
+     override its aspect-ratio (the board deforms). The eval column opts back
+     into stretching so it matches the board's height. */
+  align-items: flex-start;
   /* Leave room around the board for chessground's rank/file labels and the
      eval bar without clipping. */
   gap: 12px;
@@ -91,9 +99,15 @@ button:hover {
 
 #board {
   /* Board sizing depends only on its container's width so the layout does not
-     shift when the viewport height changes (e.g. browser scrollbar appears). */
+     shift when the viewport height changes (e.g. browser scrollbar appears).
+     Height comes from aspect-ratio alone - nothing may force it. */
   width: min(600px, calc(100% - 40px));
   aspect-ratio: 1 / 1;
+  flex: none;
+}
+
+.eval-col {
+  align-self: stretch;
 }
 
 /* Make chessground's rank/file labels actually readable (default is 9px,

@@ -62,9 +62,22 @@ function createWindow() {
 
   win.loadFile(path.join(__dirname, 'dist', 'index.html'));
 
-  // Open external links (e.g. an Ollama doc link added later) in the user's
-  // default browser instead of inside the app window.
+  // The "Wissen" page opens as its own window (so it can sit beside the board).
+  // Everything else (e.g. external doc links) opens in the default browser.
   win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.endsWith('wissen.html')) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 600,
+          height: 860,
+          backgroundColor: '#1c1c1c',
+          title: 'Schach-Wissen',
+          autoHideMenuBar: true,
+          webPreferences: { contextIsolation: true, nodeIntegration: false },
+        },
+      };
+    }
     shell.openExternal(url);
     return { action: 'deny' };
   });

@@ -546,6 +546,11 @@ ground = createBoard(boardEl, {
 
 btnNew.addEventListener('click', newGame);
 btnUndo.addEventListener('click', undo);
+document.getElementById('btn-wissen').addEventListener('click', () => {
+  // Opens the knowledge page in its own window so it can sit beside the board.
+  // Works in the browser (new window/tab) and in Electron (handled in the main process).
+  window.open('wissen.html', 'schach-wissen', 'width=600,height=860');
+});
 selSide.addEventListener('change', newGame);
 selStrength.addEventListener('change', applyStrength);
 chkHint.addEventListener('change', () => drawHint(lastHintMove));

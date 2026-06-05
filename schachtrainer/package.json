@@ -2,7 +2,7 @@
   "name": "schachtrainer",
   "productName": "Schachtrainer",
   "private": true,
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Lokales Schach-Trainingsprogramm mit Stockfish und deutscher Sprachausgabe.",
   "type": "module",
   "main": "electron-main.cjs",
@@ -38,6 +38,7 @@
       "electron-main.cjs",
       "preload.cjs",
       "dist/index.html",
+      "dist/wissen.html",
       "dist/assets/**",
       "dist/engine/**"
     ],

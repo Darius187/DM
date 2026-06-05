@@ -1,0 +1,1040 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Schach-Wissen</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: #1c1c1c;
+    color: #e8e8e8;
+    line-height: 1.6;
+  }
+  .wrap { display: flex; min-height: 100vh; }
+  nav {
+    position: sticky; top: 0; align-self: flex-start;
+    width: 220px; height: 100vh; overflow-y: auto;
+    background: #161616; border-right: 1px solid #303030;
+    padding: 16px 12px; flex: none;
+  }
+  nav h1 { font-size: 1rem; margin: 0 0 12px; color: #fff; }
+  nav a { display: block; color: #bdbdbd; text-decoration: none; font-size: 0.86rem; padding: 4px 6px; border-radius: 5px; }
+  nav a:hover { background: #262626; color: #fff; }
+  main { flex: 1; max-width: 760px; padding: 24px 28px 80px; }
+  h2 { color: #fff; border-bottom: 1px solid #333; padding-bottom: 6px; margin-top: 38px; scroll-margin-top: 12px; }
+  h3 { color: #f0d9a7; margin-top: 26px; }
+  p, li { font-size: 0.98rem; }
+  strong { color: #fff; }
+  .lead { color: #cfcfcf; font-size: 1.05rem; }
+  .pro {
+    background: #20271d; border-left: 4px solid #6fae4f;
+    padding: 10px 14px; border-radius: 6px; margin: 14px 0;
+    font-size: 0.93rem;
+  }
+  .pro b { color: #9fd27a; }
+  .piece-block { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; margin: 8px 0 4px; }
+  .diagram { flex: none; width: 200px; }
+  .diagram + .ptext { flex: 1; min-width: 230px; }
+  .bd { width: 100%; height: auto; display: block; }
+  .pc { font-size: 26px; text-anchor: middle; fill: #14110b; stroke: #f4ecd8; stroke-width: 0.7px; paint-order: stroke; }
+  .lab { font-size: 10px; fill: #888; }
+  .legend { font-size: 0.8rem; color: #9a9a9a; margin: 4px 0 0; }
+  .dot { color: #4cc46b; } .ring { color: #df6a6a; } .arr { color: #eb942f; }
+  table { border-collapse: collapse; margin: 10px 0; font-size: 0.92rem; }
+  td, th { border: 1px solid #383838; padding: 5px 10px; text-align: left; }
+  th { background: #242424; color: #fff; }
+  .glyphbig { font-size: 1.3em; }
+  @media (max-width: 720px) {
+    .wrap { flex-direction: column; }
+    nav { position: static; width: 100%; height: auto; border-right: none; border-bottom: 1px solid #303030; }
+    nav a { display: inline-block; }
+  }
+
+  blockquote { background: #20271d; border-left: 4px solid #6fae4f; padding: 8px 14px; border-radius: 6px; margin: 14px 0; font-size: 0.93rem; color: #dcdcdc; }
+  blockquote p { margin: 0; }
+  .badge { display: inline-block; width: 14px; font-size: 0.72rem; font-weight: bold; }
+  .bG { color: #7ec97e; } .bA { color: #e8c15a; } .bV { color: #e08a8a; }
+  .navlegend { font-size: 0.72rem; color: #8d8d8d; margin: 10px 0 0; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+  <h1>Schach-Wissen</h1>
+  <a href="#k0"><span class="badge bG">G</span>0. Wie du dieses Heft benutzt</a>
+  <a href="#k1"><span class="badge bG">G</span>1. Worum es im Schach wirklich
+geht</a>
+  <a href="#k2"><span class="badge bG">G</span>2. Das Brett,
+Koordinaten und die Sprache der Felder</a>
+  <a href="#k3"><span class="badge bG">G</span>3. Die Figuren</a>
+  <a href="#k4"><span class="badge bG">G</span>4. Regeln,
+Sonderregeln und typische Stolperfallen</a>
+  <a href="#k5"><span class="badge bG">G</span>5. Notation</a>
+  <a href="#k6"><span class="badge bG">G</span>6. Weiß, Schwarz, Tempo und
+Initiative</a>
+  <a href="#k7"><span class="badge bG">G</span>7. Die drei Phasen der Partie</a>
+  <a href="#k8"><span class="badge bG">G</span>8. Der Patzer-Check</a>
+  <a href="#k9"><span class="badge bA">A</span>9. Kandidatenzüge und
+Variantenrechnung</a>
+  <a href="#k10"><span class="badge bA">A</span>10. Taktik</a>
+  <a href="#k11"><span class="badge bA">A</span>11. Stellungsbewertung</a>
+  <a href="#k12"><span class="badge bA">A</span>12. Strategie</a>
+  <a href="#k13"><span class="badge bV">V</span>13. Bauernstrukturen</a>
+  <a href="#k14"><span class="badge bV">V</span>14. Raum, Felder und
+Farbenkomplexe</a>
+  <a href="#k15"><span class="badge bV">V</span>15. Königsangriff</a>
+  <a href="#k16"><span class="badge bV">V</span>16. Verteidigung</a>
+  <a href="#k17"><span class="badge bA">A</span>17. Eröffnung</a>
+  <a href="#k18"><span class="badge bA">A</span>18. Repertoire</a>
+  <a href="#k19"><span class="badge bA">A</span>19. Typische
+Eröffnungsfallen und wie man nicht hineinfällt</a>
+  <a href="#k20"><span class="badge bV">V</span>20. Mittelspiel-Pläne nach
+Bauernstruktur</a>
+  <a href="#k21"><span class="badge bV">V</span>21. Figuren
+gegen Figuren</a>
+  <a href="#k22"><span class="badge bA">A</span>22. Endspiel-Grundlagen</a>
+  <a href="#k23"><span class="badge bV">V</span>23. Wichtige theoretische
+Endspiele</a>
+  <a href="#k24"><span class="badge bV">V</span>24. Datenbanken,
+Engines und Tablebases richtig nutzen</a>
+  <a href="#k25"><span class="badge bA">A</span>25. Weltklasse</a>
+  <a href="#k26"><span class="badge bA">A</span>26. Psychologie,
+Zeitmanagement und praktische Stärke</a>
+  <a href="#k27"><span class="badge bA">A</span>27. Trainingsplan</a>
+  <a href="#k28"><span class="badge bA">A</span>28. Checklisten für die Partie</a>
+  <a href="#k29"><span class="badge bA">A</span>29. Glossar der wichtigsten
+Begriffe</a>
+  <a href="#k30"><span class="badge bA">A</span>30. Quellen- und
+Datenbank-Hinweise</a>
+  <p class="navlegend"><span class="badge bG">G</span>Grundlagen &nbsp;<span class="badge bA">A</span>Aufbau &nbsp;<span class="badge bV">V</span>Vertiefung</p>
+</nav>
+<main>
+<h2 id="k0">0. Wie du dieses Heft benutzt</h2>
+<p>Dieses Kompendium erweitert den ursprünglichen Text zu einem
+möglichst vollständigen, aber immer noch anfängerfreundlichen
+Schachheft. Es verbindet vier Blickwinkel: offizielle Regeln,
+menschliches Schachverständnis, typische Muster aus Millionen von
+Partien und moderne Engine-/Tablebase-Erkenntnisse. Es ist kein Ersatz
+für Spielpraxis, aber es soll wie eine Landkarte sein: Du siehst, wo du
+stehst, wohin du gehen kannst und warum ein Zug gut oder schlecht
+ist.</p>
+<blockquote>
+<p>Wichtig: Kein einzelnes Heft kann wirklich alles enthalten, was in
+sämtlichen Partiedatenbanken, Eröffnungsbüchern, Endspielwerken und
+Engine-Analysen steckt. „Maximales Wissen“ heißt hier: die wichtigsten
+Bausteine so ordnen, dass ein absoluter Anfänger sie verstehen kann und
+ein Fortgeschrittener trotzdem noch Nutzen daraus zieht.</p>
+</blockquote>
+<blockquote>
+<p>Bild im Kopf: Schach ist wie ein Königreich mit Straßen, Burgen,
+Spähern und Versorgungslinien. Die Figuren sind nicht nur Holzstücke.
+Sie sind Arbeiter mit Aufgaben. Ein guter Spieler fragt nicht nur: „Was
+kann ich schlagen?“, sondern: „Welche Figur arbeitet, welche schläft,
+welcher Weg ist offen, welcher König friert im Wind?“</p>
+</blockquote>
+<p>Lies es nicht wie ein Schulbuch von vorne bis hinten in einem Rutsch.
+Besser ist: Spiele eine Partie, öffne danach ein Kapitel und frage dich:
+Habe ich diese Idee gesehen? Wenn du nur Regeln brauchst, lies Kapitel 1
+bis 5. Wenn du stärker werden willst, lies besonders Patzer-Check,
+Taktik, Stellungsbewertung, Endspiel und Training.</p>
+<p>Für absolute Anfänger gilt: Du musst nicht alles sofort behalten.
+Beim ersten Lesen reichen die Merksätze. Beim zweiten Lesen erkennst du
+Muster. Beim dritten Lesen merkst du, dass Schach nicht aus 1000
+Geheimnissen besteht, sondern aus wenigen Prinzipien, die immer wieder
+anders aussehen.</p>
+
+<h2 id="k1">1. Worum es im Schach wirklich
+geht</h2>
+<p>Das Ziel im Schach ist Schachmatt: Der gegnerische König wird
+angegriffen und hat keine Rettung mehr. Du gewinnst nicht, weil du mehr
+Figuren geschlagen hast. Material hilft, aber es ist nur ein Werkzeug.
+Ein Spieler kann eine Dame mehr haben und trotzdem mattgesetzt werden,
+wenn sein König nackt im Sturm steht.</p>
+<p>Fachwort: Königssicherheit. Das bedeutet: Wie gut ist der König
+geschützt? Hat er Bauern vor sich? Gibt es offene Linien zu ihm? Können
+gegnerische Figuren in seine Nähe springen?</p>
+<blockquote>
+<p>Bild im Kopf: Der König ist kein Soldat, sondern die Stadt, die du
+verteidigst. Du darfst draußen Schlachten gewinnen, aber wenn die
+Stadttore offen stehen, ist alles verloren.</p>
+</blockquote>
+<p>Die Grundspannung jeder Partie lautet: Du willst selbst Drohungen
+aufbauen, ohne die Drohungen des Gegners zu vergessen. Anfänger sehen
+oft nur den eigenen Plan. Starke Spieler sehen zwei Filme gleichzeitig:
+ihren eigenen Film und den Film des Gegners.</p>
+
+<h2 id="k2">2. Das Brett,
+Koordinaten und die Sprache der Felder</h2>
+<p>Das Brett hat 64 Felder: 8 Linien von a bis h und 8 Reihen von 1 bis
+8. Aus Sicht von Weiß liegt a1 links unten, h1 rechts unten. Rechts
+unten muss immer ein helles Feld liegen. Merksatz: Weißes Feld
+rechts.</p>
+<p>Jedes Feld hat eine Adresse. e4 bedeutet: Linie e, Reihe 4. Diese
+Sprache ist wichtig, weil Schachwissen sonst verschwimmt. „Der Springer
+geht nach vorne“ ist ungenau. „Der Springer geht nach f3“ ist klar.</p>
+<p>Fachwörter:<br />
+Linie: Eine senkrechte Spalte, zum Beispiel die e-Linie.<br />
+Reihe: Eine waagerechte Reihe, zum Beispiel die 4. Reihe.<br />
+Diagonale: Schräge Feldstraße, auf der Läufer und Dame fahren.<br />
+Zentrum: Die vier Felder d4, e4, d5, e5. Sie sind wie der Marktplatz
+einer Stadt. Wer den Marktplatz kontrolliert, erreicht überallhin
+schneller.<br />
+Erweitertes Zentrum: c3 bis f6, also der größere Bereich um die
+Mitte.</p>
+<blockquote>
+<p>Für Anfänger: Wenn du nicht weißt, was gut ist, frage dich zuerst:
+Hilft mein Zug, das Zentrum zu kontrollieren oder meine Figuren zum
+Zentrum zu bringen?</p>
+</blockquote>
+
+<h3>Die Grundaufstellung</h3>
+<p>So stellst du das Brett auf: In der zweiten Reihe (bei Schwarz der siebten) stehen die acht Bauern wie eine Mauer. Dahinter, auf der Grundreihe: in den Ecken die Türme, daneben die Springer, dann die Läufer, und in der Mitte Dame und König.</p>
+<blockquote><p>Eselsbrücken: <strong>Die Dame steht auf ihrer eigenen Farbe</strong> - weiße Dame auf hellem Feld (d1), schwarze Dame auf dunklem (d8). Und: <strong>D wie Dame</strong> - die Dame beginnt immer auf der d-Linie.</p></blockquote>
+<h2 id="k3">3. Die Figuren: Bewegung, Aufgabe und Wert</h2>
+<p>Jede Figur hat eine Bewegungsregel und eine typische Aufgabe. Anfänger lernen zuerst, wohin eine Figur ziehen darf. Stärkere Spieler lernen, wo eine Figur glücklich ist. In den Diagrammen steht die Figur auf einem Feld, die <span class="dot">grünen Punkte</span> zeigen, wohin sie ziehen kann. Eine Figur schlägt eine fremde, indem sie auf deren Feld zieht - eigene Figuren blockieren den Weg.</p>
+
+<h3>Der Bauer <span class="glyphbig">&#9817;</span></h3>
+<div class="piece-block">
+  <div class="diagram" data-piece="P:d2" data-dots="d3,d4" data-rings="c3,e3"></div>
+  <div class="ptext">
+    <p>Der Fußsoldat - langsam, aber endgültig. Er zieht <strong>nur gerade vorwärts</strong>, immer ein Feld; aus seiner Startreihe darf er beim ersten Mal auch zwei Felder springen. Geschlagen wird anders: <strong>der Bauer schlägt schräg</strong>, ein Feld diagonal nach vorne (rote Ringe). Zurück kann er nie. Bauernzüge sind wie Fußspuren im nassen Beton: einmal gesetzt, bleiben sie. Seine Sonderrechte - Umwandlung und en passant - stehen in Kapitel 4.</p>
+  </div>
+</div>
+<p class="legend"><span class="dot">Punkt</span> = Zugfeld, <span class="ring">Ring</span> = so schlägt er.</p>
+
+<h3>Der Springer <span class="glyphbig">&#9816;</span></h3>
+<div class="piece-block">
+  <div class="diagram" data-piece="N:d4" data-dots="b3,b5,c2,c6,e2,e6,f3,f5"></div>
+  <div class="ptext">
+    <p>Der Springer zieht im <strong>L</strong>: zwei Felder in eine Richtung, dann eins zur Seite. Er ist die einzige Figur, die <strong>über andere hinwegspringt</strong> - wie ein Pferd, das über Hindernisse setzt. Er liebt geschlossene Stellungen und Vorposten: ein starkes Feld im gegnerischen Gebiet, von dem ihn kein feindlicher Bauer mehr vertreiben kann. Anfänger übersehen Springer am häufigsten, gerade weil er so eigenwillig zieht.</p>
+  </div>
+</div>
+
+<blockquote><p>Eselsbrücke: <strong>"Ein Springer am Rand bringt Kummer und Schand."</strong> In der Brettmitte erreicht er acht Felder, am Rand nur vier, in der Ecke zwei - darum gehören Springer Richtung Zentrum.</p></blockquote>
+<h3>Der Läufer <span class="glyphbig">&#9815;</span></h3>
+<div class="piece-block">
+  <div class="diagram" data-piece="B:d4" data-dots="a1,b2,c3,e5,f6,g7,h8,a7,b6,c5,e3,f2,g1"></div>
+  <div class="ptext">
+    <p>Der Läufer gleitet <strong>diagonal</strong>, so weit der Weg frei ist, und liebt offene Diagonalen. Das Besondere: er bleibt sein ganzes Leben auf einer Farbe. Zwei Läufer zusammen heißen <strong>Läuferpaar</strong> - in offenen Stellungen oft ein dauerhafter Vorteil, weil sie gemeinsam beide Farben abdecken.</p>
+  </div>
+</div>
+
+<h3>Der Turm <span class="glyphbig">&#9814;</span></h3>
+<div class="piece-block">
+  <div class="diagram" data-piece="R:d4" data-dots="d1,d2,d3,d5,d6,d7,d8,a4,b4,c4,e4,f4,g4,h4"></div>
+  <div class="ptext">
+    <p>Der Turm fährt <strong>gerade</strong> über Linien und Reihen, beliebig weit. Anfangs ist er eingesperrt, stark wird er, wenn Linien sich öffnen. Merksatz: Türme gehören auf offene Linien und im Endspiel hinter Freibauern.</p>
+  </div>
+</div>
+
+<h3>Die Dame <span class="glyphbig">&#9813;</span></h3>
+<div class="piece-block">
+  <div class="diagram" data-piece="Q:d4" data-dots="d1,d2,d3,d5,d6,d7,d8,a4,b4,c4,e4,f4,g4,h4,a1,b2,c3,e5,f6,g7,h8,a7,b6,c5,e3,f2,g1"></div>
+  <div class="ptext">
+    <p>Die Dame ist die mächtigste Figur, weil sie Turm und Läufer <strong>kombiniert</strong>: gerade und diagonal, beliebig weit. Genau deshalb darf man sie nicht leichtsinnig früh herumjagen lassen - jeder Fluchtzug einer gejagten Dame kostet ein Tempo.</p>
+  </div>
+</div>
+
+<h3>Der König <span class="glyphbig">&#9812;</span></h3>
+<div class="piece-block">
+  <div class="diagram" data-piece="K:d4" data-dots="c3,c4,c5,d3,d5,e3,e4,e5"></div>
+  <div class="ptext">
+    <p>Der König zieht <strong>ein Feld</strong> in jede Richtung und darf nie auf einem angegriffenen Feld stehen. In der Eröffnung ist er ein schutzbedürftiger Herrscher, im Endspiel wird er zum Kämpfer: ein aktiver König im Endspiel ist oft stärker als ein passiver Mehrbauer.</p>
+  </div>
+</div>
+
+<h3>Was die Figuren wert sind</h3>
+<p>Faustwerte in Bauern-Einheiten - keine Gesetze, sondern Orientierung. Ein aktiver Springer auf e5 kann wertvoller sein als ein eingesperrter Turm auf a8:</p>
+<table>
+  <tr><th>Figur</th><th>Wert</th><th>Typische Stärke</th></tr>
+  <tr><td>Bauer</td><td>1</td><td>Struktur, Freibauer, Umwandlung</td></tr>
+  <tr><td>Springer</td><td>3</td><td>Vorposten, geschlossene Stellungen, Gabeln</td></tr>
+  <tr><td>Läufer</td><td>3</td><td>Diagonalen, offene Stellungen, Läuferpaar</td></tr>
+  <tr><td>Turm</td><td>5</td><td>Offene Linien, 7. Reihe, Endspiel</td></tr>
+  <tr><td>Dame</td><td>9</td><td>Angriff, Flexibilität, Doppelangriffe</td></tr>
+  <tr><td>König</td><td>unbezahlbar</td><td>Sicherheit in der Eröffnung, Aktivität im Endspiel</td></tr>
+</table>
+
+<h2 id="k4">4. Regeln,
+Sonderregeln und typische Stolperfallen</h2>
+<p>Schach: Der König wird angegriffen. Du musst sofort reagieren. Du
+kannst den Angreifer schlagen, den König wegziehen oder eine Figur
+dazwischenstellen. Gegen ein Springerschach kann man nicht
+dazwischenstellen, weil der Springer springt.</p>
+<p>Doppelschach: Zwei Figuren geben gleichzeitig Schach. Dann muss der
+König ziehen. Man kann nicht beide Angriffe gleichzeitig blockieren.</p>
+<p>Schachmatt: Der König steht im Schach und hat keine legale Rettung.
+Die Partie endet sofort.</p>
+<p>Patt: Der Spieler am Zug steht nicht im Schach, hat aber keinen
+legalen Zug. Das ist Remis. Bild im Kopf: Der König ist nicht gefangen
+genommen, aber er ist in einer Sackgasse ohne erlaubten Schritt. Weil er
+nicht im Schach steht, ist es kein Matt.</p>
+<p>Rochade: König und Turm ziehen gemeinsam. Der König geht zwei Felder
+zur Seite, der Turm springt direkt daneben. Bedingungen: König und
+beteiligter Turm haben noch nie gezogen, die Felder dazwischen sind
+frei, der König steht nicht im Schach, geht nicht durch ein
+angegriffenes Feld und landet nicht auf einem angegriffenen Feld. Der
+Turm selbst darf über ein angegriffenes Feld ziehen; entscheidend ist
+der Weg des Königs.</p>
+<div class="piece-block"><div class="diagram" data-piece="K:e1" data-piece2="R:h1" data-arrows="e1>g1,h1>f1"></div><div class="ptext"><p class="legend">Kurze Rochade: der König geht zwei Felder zur Seite (Pfeil), der Turm springt direkt daneben.</p></div></div>
+<blockquote><p>Eselsbrücke: <strong>kurz = Königsflügel, lang = Damenflügel.</strong> Notiert wird die kurze Rochade 0-0, die lange 0-0-0 - die Anzahl der Nullen entspricht den Feldern, die der Turm zieht (zwei bzw. drei).</p></blockquote>
+<p>En passant: Wenn ein Bauer aus seiner Startreihe zwei Felder zieht
+und direkt neben einem gegnerischen Bauern landet, darf dieser ihn
+sofort im nächsten Zug so schlagen, als wäre er nur ein Feld gegangen.
+Wartest du einen Zug, ist das Recht vorbei.</p>
+<blockquote><p>Eselsbrücke: en passant gilt <strong>nur sofort oder nie</strong>.</p></blockquote>
+<p>Umwandlung: Erreicht ein Bauer die letzte Reihe, muss er sich in
+Dame, Turm, Läufer oder Springer verwandeln. Meist nimmt man eine Dame,
+aber manchmal ist ein Springer besser, etwa wenn nur ein Springerschach
+mattsetzt. Man darf mehrere Damen haben.</p>
+<p>Remisregeln: Remis gibt es unter anderem durch Patt, Einigung,
+dreifache Stellungswiederholung, 50-Züge-Regel und tote Stellung, in der
+kein Matt mehr möglich ist. In offiziellen Regeln gibt es außerdem
+automatische Grenzen wie die fünffache Stellungswiederholung
+beziehungsweise 75 Züge ohne Bauernzug oder Schlagfall. Für Anfänger
+reicht zuerst: Wiederholungen und lange Endspiele können Remis
+werden.</p>
+<p>Berührt geführt: Im Turnierschach gilt grundsätzlich: Wenn du
+absichtlich eine eigene Figur berührst, musst du sie ziehen, sofern ein
+legaler Zug möglich ist. Berührst du eine gegnerische Figur, musst du
+sie schlagen, sofern legal. Auf dem Küchentisch kann man lockerer
+spielen, im Verein solltest du diese Regel kennen.</p>
+
+<h2 id="k5">5. Notation: Partien lesen
+wie Landkarten</h2>
+<p>Die algebraische Notation ist die Kurzschrift des Schachs. Sie sieht
+zuerst fremd aus, ist aber sehr logisch.</p>
+<p>Figurenkürzel im Deutschen: K = König, D = Dame, T = Turm, L =
+Läufer, S = Springer. Bauern bekommen meist keinen Buchstaben. e4
+bedeutet: Ein Bauer zieht nach e4. Sf3 bedeutet: Ein Springer zieht nach
+f3. Dxd5 bedeutet: Die Dame schlägt auf d5. + bedeutet Schach, # oder
+matt bedeutet Schachmatt. 0-0 ist kurze Rochade, 0-0-0 ist lange
+Rochade.</p>
+<p>Warum ist Notation wichtig? Weil du damit Meisterpartien lesen,
+eigene Partien analysieren und Varianten aufschreiben kannst. Ohne
+Notation ist Schachwissen wie eine Wegbeschreibung ohne
+Straßennamen.</p>
+<p>Mini-Beispiel: 1.e4 e5 2.Sf3 Sc6 3.Lc4. Weiß besetzt das Zentrum,
+Schwarz antwortet symmetrisch, Weiß entwickelt Springer und Läufer.
+Schon drei Züge zeigen Eröffnungsprinzipien.</p>
+
+<h2 id="k6">6. Weiß, Schwarz, Tempo und
+Initiative</h2>
+<p>Weiß zieht zuerst. Dieser erste Zug ist ein kleiner, aber echter
+Vorsprung. Auf hohem Niveau erzielt Weiß statistisch etwas mehr Punkte
+als Schwarz. Der Grund ist nicht Magie, sondern Tempo.</p>
+<p>Fachwort: Tempo. Ein Tempo ist ein Zug an Zeit. Wenn du eine Figur
+entwickelst und gleichzeitig die Dame des Gegners angreifst, gewinnst du
+oft ein Tempo, weil der Gegner reagieren muss.</p>
+<p>Fachwort: Initiative. Initiative bedeutet: Du stellst Drohungen, der
+Gegner muss antworten. Wer Initiative hat, fährt das Auto. Wer nur
+verteidigt, sitzt auf dem Beifahrersitz und hofft, dass die Kurve nicht
+zu eng wird.</p>
+<p>Weiß versucht meist, Raum und Initiative zu bekommen. Schwarz
+versucht zuerst, auszugleichen: Entwicklung, Königssicherheit,
+Zentrumskontrolle. Danach kann Schwarz selbst auf Gewinn spielen.</p>
+<blockquote>
+<p>Für Anfänger: Spiele mit Weiß aktiv, aber nicht gierig. Spiele mit
+Schwarz solide, aber nicht ängstlich. Schwarz muss nicht sofort
+gewinnen; Schwarz muss zuerst überleben, dann zurückschlagen.</p>
+</blockquote>
+
+<h3>So verhältst du dich mit Weiß und mit Schwarz</h3>
+<p><strong>Mit Weiß:</strong> Du hast den Vorsprung - nutze ihn. Nimm dir mit dem ersten Zug das Zentrum, entwickle möglichst mit Drohung (jeder Zug, der entwickelt <em>und</em> droht, gewinnt Zeit), rochiere, und halte die Initiative: dein Vorteil verfällt mit jedem passiven Zug. Vermeide frühe Abtäusche ohne Gegenwert - Vereinfachung hilft dem, der ausgleichen will, also Schwarz.</p>
+<p><strong>Mit Schwarz:</strong> Erst Ausgleich, dann Ehrgeiz. Beantworte präzise die Drohungen, entwickle dich vollständig, rochiere - und warte auf den Moment, in dem Weiß zu viel will. Viele Schwarz-Siege entstehen genau so: Weiß überschätzt seinen kleinen Vorteil und überzieht. Dein Nachteil ist ein Tempo weniger; dein Vorteil ist, dass Weiß liefern muss - und dass du als Zweiter immer siehst, was der erste Zug wollte.</p>
+<blockquote><p>Merksatz: <strong>Mit Weiß drücken, mit Schwarz erst ausgleichen, dann zuschlagen.</strong></p></blockquote>
+<h2 id="k7">7. Die drei Phasen der Partie</h2>
+<p>Eröffnung: Die Armeen gehen auf ihre Plätze. Ziel: Zentrum
+kontrollieren, Figuren entwickeln, König sichern, Türme verbinden.</p>
+<p>Mittelspiel: Die Schlacht beginnt. Ziel: Pläne finden, Figuren
+verbessern, Schwächen angreifen, Taktik nutzen, Königssicherheit
+beachten.</p>
+<p>Endspiel: Das Brett wird leerer. Ziel: König aktivieren, Bauern
+umwandeln, technische Gewinn- oder Remisstellungen kennen.</p>
+<blockquote>
+<p>Wichtig: Die Phasen sind keine harten Mauern. Manchmal entsteht schon
+in der Eröffnung ein Mattangriff. Manchmal ist nach 15 Zügen fast ein
+Endspiel da. Frage immer: Was braucht diese konkrete Stellung?</p>
+</blockquote>
+
+<h2 id="k8">8. Der Patzer-Check:
+die wichtigste Gewohnheit</h2>
+<p>Der größte Unterschied zwischen Anfänger und starkem Spieler ist oft
+nicht Genie, sondern Fehlervermeidung. Ein Patzer ist ein grober Fehler,
+der Material oder Matt einstellt.</p>
+<p>Vor jedem Zug prüfst du kurz:<br />
+1.Schachs: Kann ich Schach geben? Gibt der Gegner mir danach
+Schach?<br />
+2.Schlagzüge: Was kann ich schlagen? Was kann der Gegner schlagen?<br />
+3.Drohungen: Was drohe ich? Was droht er?<br />
+4.Ungedeckte Figuren: Steht nach meinem Zug etwas lose herum?<br />
+5.König: Wird mein König schwächer?</p>
+<blockquote>
+<p>Merksatz: Erst Sicherheitsgurt, dann Gas. Der Patzer-Check ist der
+Sicherheitsgurt.</p>
+</blockquote>
+<p>Für Anfänger ist dieser Check wichtiger als Eröffnungstheorie. Wer
+keine Dame einstellt, gewinnt schon sehr viele Hobby-Partien.</p>
+
+<h2 id="k9">9. Kandidatenzüge und
+Variantenrechnung</h2>
+<p>Starke Spieler ziehen nicht den ersten hübschen Zug. Sie sammeln
+Kandidatenzüge: mögliche gute Züge. Dann rechnen sie Varianten.</p>
+<p>Eine einfache Methode:<br />
+1.Was sind alle Schachs?<br />
+2.Was sind alle Schlagzüge?<br />
+3.Was sind alle starken Drohungen?<br />
+4.Welcher ruhige Zug verbessert meine schlechteste Figur?</p>
+<p>Beim Rechnen gilt: Nicht nur deinen Wunschzug sehen. Immer die beste
+Antwort des Gegners suchen. Bild im Kopf: Du spielst gegen einen
+Wachhund, nicht gegen einen schlafenden Teppich. Wenn dein Plan nur
+funktioniert, weil der Gegner nichts merkt, ist es kein Plan, sondern
+Hoffnungsschach.</p>
+<p>Fachwort: Variante. Eine Variante ist eine Zugfolge im Kopf, zum
+Beispiel: 1.Sxf7 Kxf7 2.Dh5+.</p>
+<p>Fachwort: Rechenbaum. Jeder Zug öffnet neue Äste. Anfänger rechnen
+oft zu breit und zu kurz. Besser: wenige plausible Kandidaten, aber die
+wichtigsten Antworten genau.</p>
+
+<blockquote><p>Was ein Meister seinem Schüler einbläut: <strong>"Setz dich auf deine Hände"</strong> (Tarrasch) - der erste Impuls-Zug ist oft der Patzer; erst denken, dann anfassen. Und: <strong>"Wenn du einen guten Zug siehst, suche einen besseren"</strong> (Lasker zugeschrieben) - der gute Zug läuft nicht weg, der bessere gewinnt die Partie.</p></blockquote>
+<blockquote><p>Noch ein Meister-Spruch fürs Rechnen: <strong>"Lange Variante, falsche Variante"</strong> (Bent Larsen). Je länger die Zugfolge, die du im Kopf rechnest, desto wahrscheinlicher steckt ein Fehler darin. Verlass dich auf kurze, erzwungene Folgen - Schachs und Schlagzüge - und prüfe lange "Gewinnvarianten" doppelt misstrauisch.</p></blockquote>
+<h2 id="k10">10. Taktik: die
+Muster, die Material und Matt gewinnen</h2>
+<p>Taktik ist konkrete Gewalt auf dem Brett. Strategie sagt: „Ich will
+den König angreifen.“ Taktik sagt: „Jetzt funktioniert Lxh7+ genau wegen
+dieser Verteidigungslücke.“</p>
+<p>Die wichtigsten Motive:<br />
+Gabel: Eine Figur greift zwei Ziele gleichzeitig an. Springer sind
+Gabelmeister.<br />
+Fesselung: Eine Figur kann nicht gut ziehen, weil dahinter etwas
+Wertvolleres steht, oft der König.<br />
+Spieß: Vorne steht die wertvolle Figur, sie muss weg, dahinter fällt
+etwas.<br />
+Abzugsangriff: Eine Figur zieht weg und öffnet die Linie einer anderen
+Figur.<br />
+Abzugsschach: Abzugsangriff mit Schach. Besonders stark, weil der Gegner
+erst das Schach lösen muss.<br />
+Doppelangriff: Ein Zug stellt zwei Drohungen zugleich auf.<br />
+Überlastung: Eine Figur muss zu viele Dinge gleichzeitig
+verteidigen.<br />
+Ablenkung: Eine Verteidigungsfigur wird weggelockt.<br />
+Hinlenkung: Eine Figur wird auf ein schlechtes Feld gezwungen.<br />
+Beseitigung des Verteidigers: Du schlägst die Figur, die etwas Wichtiges
+schützt.<br />
+Zwischenzug: Statt automatisch zurückzuschlagen, spielst du erst einen
+stärkeren Zug, oft mit Schach oder Drohung.<br />
+Räumung: Ein Feld oder eine Linie wird freigemacht.<br />
+Grundreihenmatt: Der König wird auf der letzten Reihe mattgesetzt, weil
+eigene Bauern die Fluchtfelder blockieren.<br />
+Mattnetz: Der König wird nicht sofort mattgesetzt, sondern in ein Netz
+aus kontrollierten Feldern getrieben.</p>
+<p>Wie man Taktik trainiert: Nicht nur die Lösung klicken. Nach jedem
+Puzzle frage: Welches Motiv war es? Welche Figur war überlastet? Warum
+hatte der König kein Fluchtfeld? So wird aus Raten echtes Sehen.</p>
+
+<blockquote><p>Merksatz: <strong>"Lose Figuren gehen verloren."</strong> Fast jede Taktik beginnt bei einer ungedeckten Figur. Wenn du eine lose Figur siehst - egal ob deine oder seine - suche nach Gabel, Doppelangriff oder Zwischenzug.</p></blockquote>
+<blockquote><p>Alter Lehrsatz: <strong>"Patzer sieht Schach, Patzer gibt Schach."</strong> Ein Schachgebot ist kein Wert an sich - es muss etwas bringen (Material, Mattnetz, Tempo). Sonst hilft es dem gegnerischen König oft nur auf ein besseres Feld.</p></blockquote>
+<h2 id="k11">11. Stellungsbewertung:
+wissen, was wichtig ist</h2>
+<p>Wenn keine direkte Taktik da ist, brauchst du Bewertung. Bewertung
+bedeutet: Du schaust auf die Stellung wie ein Arzt auf einen Patienten.
+Wo ist Kraft? Wo ist Schwäche?</p>
+<p>Die sieben wichtigsten Fragen:<br />
+1.Material: Wer hat mehr oder wertvollere Figuren?<br />
+2.Königssicherheit: Wessen König ist gefährdeter?<br />
+3.Figurenaktivität: Welche Figuren arbeiten, welche stehen passiv?<br />
+4.Bauernstruktur: Gibt es Schwächen, Freibauern, Doppelbauern, isolierte
+Bauern?<br />
+5.Raum: Wer hat mehr Platz zum Manövrieren?<br />
+6.Initiative: Wer stellt die Drohungen?<br />
+7.Endspielperspektive: Wer profitiert, wenn Figuren getauscht
+werden?</p>
+<p>Ein guter Zug verbessert meistens mindestens einen Punkt, ohne einen
+anderen stark zu verschlechtern.</p>
+<blockquote>
+<p>Bild im Kopf: Stellungsbewertung ist wie ein Wetterbericht. Es sagt
+nicht exakt jeden Tropfen voraus, aber du weißt, ob ein Sturm kommt oder
+ob du ruhig marschieren kannst.</p>
+</blockquote>
+
+<h2 id="k12">12. Strategie: Pläne statt
+Einzelzüge</h2>
+<p>Strategie ist die Kunst, eine Stellung langsam besser zu machen. Wenn
+Taktik der Schlag mit dem Hammer ist, ist Strategie das Bauen der
+Werkbank.</p>
+<p>Grundprinzipien:<br />
+Verbessere deine schlechteste Figur. Wenn du keinen Plan hast, suche die
+Figur, die am wenigsten tut.<br />
+Aktivität zählt. Eine aktive Figur bedroht, kontrolliert, verteidigt und
+zwingt den Gegner zur Vorsicht.<br />
+Tausche mit Sinn. Wenn du Material mehr hast, sind Figurentausche oft
+gut. Wenn du angreifst, willst du oft Figuren behalten. Wenn deine Figur
+schlecht ist und die gegnerische gut, ist Abtausch logisch.<br />
+Kontrolliere offene Linien. Türme brauchen Straßen. Eine offene Linie
+ist eine Straße ohne Bauern.<br />
+Besetze Vorposten. Ein Springer auf einem sicheren Vorposten kann eine
+ganze Stellung lähmen.<br />
+Schaffe zweite Schwächen. Eine Schwäche kann verteidigt werden. Zwei
+Schwächen überfordern den Gegner.</p>
+<p>Fachwort: Prophylaxe. Prophylaxe bedeutet Vorbeugung. Du fragst: Was
+will mein Gegner? Dann nimmst du ihm diese Idee weg, bevor sie
+gefährlich wird.</p>
+
+<blockquote><p>Zwei klassische Merksätze: <strong>"Gegen einen Flügelangriff hilft ein Gegenstoß im Zentrum"</strong> - wer am Rand angreift, vernachlässigt die Mitte. Und: <strong>"Die Drohung ist stärker als ihre Ausführung"</strong> - eine stehende Drohung bindet den Gegner oft mehr, als sie auszuführen; löse sie erst ein, wenn es wirklich etwas bringt.</p></blockquote>
+<h2 id="k13">13. Bauernstrukturen:
+das Skelett der Stellung</h2>
+<p>Bauern sind das Skelett der Stellung. Figuren sind Muskeln. Ein guter
+Muskel hilft wenig, wenn das Skelett krumm steht.</p>
+<p>Wichtige Bauernbegriffe:<br />
+Doppelbauer: Zwei eigene Bauern auf derselben Linie. Oft schwach,
+manchmal aber nützlich, weil sie Linien öffnen oder Felder
+kontrollieren.<br />
+Isolierter Bauer: Ein Bauer ohne Nachbarbauern auf angrenzenden Linien.
+Er kann aktiv Raum geben, ist aber im Endspiel oft schwach.<br />
+Rückständiger Bauer: Ein Bauer, der hinter seinen Nachbarn zurückbleibt
+und schwer vorankommt.<br />
+Freibauer: Ein Bauer, den kein gegnerischer Bauer auf seinem Weg zur
+Umwandlung stoppen kann.<br />
+Gedeckter Freibauer: Ein Freibauer, der von einem eigenen Bauern
+geschützt wird. Sehr gefährlich.<br />
+Bauernmehrheit: Mehr Bauern auf einem Flügel als der Gegner. Daraus kann
+man einen Freibauern schaffen.<br />
+Bauernkette: Bauern schützen sich diagonal. Greife meist die Basis der
+Kette an, nicht den Kopf.<br />
+Hängende Bauern: Zwei nebeneinander stehende Bauern ohne Bauernnachbarn.
+Sie können stark vorrücken, aber auch schwach werden.</p>
+<blockquote>
+<p>Bild im Kopf: Bauern sind Türen und Mauern. Jeder Bauernzug öffnet
+eine Tür und schließt eine andere. Darum überlegen starke Spieler bei
+Bauernzügen besonders genau.</p>
+</blockquote>
+
+<blockquote><p>Eselsbrücke: <strong>"Im Zweifel zur Mitte schlagen."</strong> Wer mit dem Bauern Richtung Zentrum schlägt, gewinnt Einfluss auf den Marktplatz - wer zum Rand schlägt, gibt ihn her. Keine absolute Regel, aber die richtige Voreinstellung.</p></blockquote>
+<h2 id="k14">14. Raum, Felder und
+Farbenkomplexe</h2>
+<p>Raum bedeutet: Wie viel Bewegungsfreiheit haben deine Figuren? Mehr
+Raum ist wie ein größeres Zimmer. Du kannst besser tanzen, der Gegner
+stößt an Möbel.</p>
+<p>Aber Raum ist nur gut, wenn er stabil ist. Zu viele Bauern weit vorne
+können auch schwach werden, wenn sie nicht verteidigt sind.</p>
+<p>Fachwort: Schwaches Feld. Ein Feld, das nicht mehr von eigenen Bauern
+kontrolliert werden kann und vom Gegner besetzt werden kann.</p>
+<p>Fachwort: Farbenkomplex. Wenn viele schwache Felder einer Farbe
+entstehen, spricht man von einem schwachen hellen oder dunklen
+Felderkomplex. Beispiel: Wenn du die Bauern vor deinem König auf dunkle
+Felder ziehst, können die hellen Felder Löcher bekommen.</p>
+<p>Läufer und Farben: Hast du einen dunkelfeldrigen Läufer, kann er
+dunkle Felder verteidigen und angreifen. Fehlt er, können dunkle Felder
+empfindlich werden.</p>
+<blockquote>
+<p>Für Anfänger: Ziehe nicht alle Bauern vor deinem König nach vorne.
+Das sieht aktiv aus, kann aber Löcher machen, durch die gegnerische
+Figuren wie Wasser eindringen.</p>
+</blockquote>
+
+<h2 id="k15">15. Königsangriff:
+wie man Matt nicht nur zufällig findet</h2>
+<p>Ein Königsangriff braucht Zutaten. Ohne Zutaten ist er nur Lärm.</p>
+<p>Zutaten eines Angriffs:<br />
+Mehr Angreifer als Verteidiger am König.<br />
+Offene Linien oder Diagonalen zum König.<br />
+Schwache Fluchtfelder.<br />
+Eine Figur, die wichtige Verteidiger beseitigt.<br />
+Tempo: Der Gegner darf nicht genug Zeit haben, sich zu ordnen.</p>
+<p>Typische Angriffsideen:<br />
+Opfer auf h7/h2: Läuferopfer gegen den rochierten König, wenn Springer
+und Dame nachkommen.<br />
+Turm auf der offenen h- oder g-Linie: Oft nach Bauernsturm.<br />
+Dame und Springer: Diese beiden arbeiten besonders gefährlich zusammen,
+weil der Springer Felder kontrolliert, die die Dame ausnutzt.<br />
+Läufer auf langer Diagonale: Ein fianchettierter Läufer auf g2 oder b2
+kann wie ein Laser bis zum gegnerischen Turm oder König wirken.</p>
+<blockquote>
+<p>Warnung: Greife nicht mit zwei Figuren gegen fünf Verteidiger an. Das
+ist, als würdest du mit zwei Leitern eine Burg stürmen, deren Mauern
+voller Bogenschützen stehen.</p>
+</blockquote>
+
+<h2 id="k16">16. Verteidigung:
+nicht schön, aber spielentscheidend</h2>
+<p>Viele Spieler trainieren Angriff, aber verlieren, weil sie schlecht
+verteidigen. Gute Verteidigung ist aktive Problemlösung, nicht panisches
+Weglaufen.</p>
+<p>Verteidigungswerkzeuge:<br />
+König wegziehen: Manchmal ist ein einfacher Königszug die beste
+Lösung.<br />
+Figuren zurückholen: Eine Figur, die angreift, darf auch
+verteidigen.<br />
+Abtausch: Tausche die gefährlichste Angriffsfigur.<br />
+Gegenspiel: Drohe selbst etwas. Der beste Regenschirm ist manchmal ein
+eigener Sturm.<br />
+Fluchtfeld schaffen: Ein Luftloch für den König verhindert
+Grundreihenmatt.<br />
+Material zurückgeben: Wenn du eine Figur mehr hast, aber matt wirst, gib
+Material zurück, um den Angriff zu stoppen.</p>
+<p>Fachwort: Zähigkeit. Eine zähe Stellung ist schwer zu gewinnen, auch
+wenn sie schlechter ist. Starke Spieler machen es dem Gegner maximal
+unbequem.</p>
+<blockquote>
+<p>Merksatz: Verteidigung ist nicht „Ich hoffe, dass es hält“, sondern
+„Ich finde die Ressource, die den Angriff entgiftet“.</p>
+</blockquote>
+
+<h2 id="k17">17. Eröffnung:
+Prinzipien vor Auswendiglernen</h2>
+<p>Die Eröffnung ist nicht dafür da, den Gegner mit 25 gespeicherten
+Zügen zu erschlagen. Sie ist dafür da, eine gesunde spielbare Stellung
+zu bekommen.</p>
+<p>Grundregeln:<br />
+Kämpfe um das Zentrum.<br />
+Entwickle Figuren, besonders Springer und Läufer.<br />
+Rochiere früh.<br />
+Ziehe nicht dauernd dieselbe Figur.<br />
+Bringe die Dame nicht zu früh heraus.<br />
+Verbinde die Türme, indem die Figuren zwischen ihnen entwickelt
+sind.<br />
+Mache keine unnötigen Bauernzüge am Rand.</p>
+<p>Fachwort: Entwicklungsvorsprung. Wenn du mehr Figuren aktiv im Spiel
+hast als der Gegner, hast du Entwicklungsvorsprung. Dann lohnt sich oft
+schnelles Öffnen der Stellung.</p>
+<p>Fachwort: Gambit. Ein Gambit ist ein Bauernopfer in der Eröffnung,
+meist für Entwicklung, Zentrum oder Angriff. Nicht jedes Bauernopfer ist
+gut. Ein gutes Gambit gibt Zeit und Aktivität. Ein schlechtes Gambit
+gibt einfach einen Bauern weg.</p>
+<blockquote>
+<p>Für Anfänger: Lerne zuerst typische Pläne, nicht nur Zugfolgen. Eine
+Eröffnung ist wie ein Weg durch den Wald. Du musst nicht jeden Stein
+kennen, aber du solltest wissen, wohin der Weg führt.</p>
+</blockquote>
+
+<h2 id="k18">18. Repertoire:
+deine persönliche Eröffnungslandkarte</h2>
+<p>Ein Repertoire ist deine Sammlung von Eröffnungen, die du regelmäßig
+spielst und verstehst. Es soll dich nicht einsperren, sondern
+Orientierung geben.</p>
+<p>Du brauchst:<br />
+Mit Weiß: einen Hauptzug oder Hauptaufbau, zum Beispiel 1.e4, 1.d4, 1.c4
+oder 1.Sf3.<br />
+Mit Schwarz gegen 1.e4: eine klare Antwort, zum Beispiel 1…e5,
+Sizilianisch, Caro-Kann, Französisch oder Skandinavisch.<br />
+Mit Schwarz gegen 1.d4: eine klare Antwort, zum Beispiel Damengambit
+abgelehnt, Slawisch, Königsindisch, Nimzoindisch oder einfache
+Entwicklungsaufbauten.</p>
+<p>Anfängerfreundliche Repertoire-Ideen:<br />
+Weiß mit 1.e4: Italienisch. Du lernst Zentrum, Entwicklung, Rochade,
+Königsangriff.<br />
+Weiß mit 1.d4: London-System oder Damengambit. Du lernst stabile
+Strukturen und Figurenpläne.<br />
+Schwarz gegen 1.e4: Caro-Kann oder 1…e5. Caro-Kann ist solide, 1…e5 ist
+klassisch und lehrreich.<br />
+Schwarz gegen 1.d4: Damengambit abgelehnt oder Slawisch. Beide lehren
+Zentrum und gesunde Entwicklung.</p>
+<p>Fortgeschrittene Auswahl:<br />
+Sizilianisch: asymmetrisch, kämpferisch, theorieintensiv.<br />
+Französisch: stabile Bauernketten, oft Kampf um d4 und e5.<br />
+Königsindisch: Schwarz lässt Weiß Raum und greift später an.<br />
+Nimzoindisch: strategisch sehr reich, Druck auf Bauernstruktur und
+Zentrum.</p>
+<blockquote>
+<p>Merksatz: Spiele keine Eröffnung nur, weil sie objektiv gut ist.
+Spiele Stellungen, deren Pläne du magst. Ein mittelgutes Repertoire, das
+du verstehst, ist besser als Weltmeistertheorie, die du nur
+nachbetest.</p>
+</blockquote>
+
+<h2 id="k19">19. Typische
+Eröffnungsfallen und wie man nicht hineinfällt</h2>
+<p>Fallen sind verführerisch, weil sie schnelle Siege bringen. Aber wer
+nur Fallen spielt, lernt oft schlechtes Schach. Besser ist: Fallen
+verstehen, damit du sie vermeidest und die dahinterliegenden Motive
+erkennst.</p>
+<p>Schäfermatt: Dame und Läufer greifen f7/f2 an. Verteidigung: ruhig
+entwickeln, Dame angreifen, nicht schwache Züge machen. Merksatz: f7 und
+f2 sind am Anfang empfindlich, weil nur der König sie deckt.</p>
+<p>Fried-Liver-Angriff: Weiß opfert oft auf f7, wenn Schwarz ungenau
+spielt. Lernwert: König in der Mitte, Entwicklung und das Feld f7.</p>
+<p>Legal-Matt: Ein scheinbar gefesselter Springer zieht weg, weil ein
+stärkeres Mattmotiv entsteht. Lernwert: Nicht jede Fesselung ist
+wirklich sicher.</p>
+<p>Eröffnungsregel: Wenn der Gegner früh mit der Dame kommt, jage sie
+mit Entwicklungszügen. Greife die Dame an, während du Figuren
+entwickelst. So gewinnst du Tempi.</p>
+
+<h3>Fallen selbst stellen - aber richtig</h3>
+<p>Den Gegner austricksen ist eine echte Kunst, und sie hat eine eiserne Regel: <strong>eine gute Falle kostet nichts</strong>. Schwache Spieler stellen Fallen, die ihre eigene Stellung verschlechtern, und hoffen, dass der Gegner hineintappt - das ist Hoffnungsschach. Starke Spieler verstecken die Falle in einem Zug, der ohnehin gut ist: tappt der Gegner hinein, gewinnst du sofort; tut er es nicht, stehst du trotzdem besser. Der beste Köder ist der "natürliche Fehler": ein Zug, der genau die naheliegende, gesund aussehende Antwort des Gegners zum Verlustzug macht.</p>
+<p>Und wenn du selbst verloren stehst, beginnt die Kunst des <strong>Schwindelns</strong> - im Schach ein Fachbegriff, keine Beleidigung. Mach die Stellung so chaotisch wie möglich, gib dem Gegner viele schwere Entscheidungen, und ziele auf die drei klassischen Rettungsanker: <strong>Dauerschach, Patt und Festung</strong>. Ein Gegner mit großem Vorteil wird nachlässig - genau dann sind Patt-Tricks am gefährlichsten. Verloren ist eine Partie erst, wenn sie vorbei ist.</p>
+<blockquote><p>Merksatz: <strong>"Eine gute Falle kostet nichts."</strong> Und fürs Schwindeln: je größer dein Rückstand, desto größer darf das Chaos sein.</p></blockquote>
+<blockquote><p>Eselsbrücke: <strong>"Finger weg vom Giftbauern."</strong> Die Bauern auf b2 und b7 heißen nicht umsonst so: wer sie in der Eröffnung mit der Dame raubt, bezahlt mit Tempi - und nicht selten mit der eingesperrten Dame selbst.</p></blockquote>
+<h2 id="k20">20. Mittelspiel-Pläne nach
+Bauernstruktur</h2>
+<p>Viele Mittelspielpläne ergeben sich aus der Bauernstruktur. Wer nur
+Figuren sieht, sieht die halbe Stellung.</p>
+<p>Isolierter Damenbauer: Die Seite mit dem isolierten Bauern hat oft
+Raum und Aktivität, sollte Figuren aktiv halten und Angriff suchen. Die
+Gegenseite will tauschen und den Bauern belagern.</p>
+<p>Hängende Bauern: Sie können nach vorne rollen und Raum gewinnen. Wenn
+sie blockiert werden, werden sie Angriffsziele.</p>
+<p>Carlsbad-Struktur: Typisch im Damengambit. Ein bekannter Plan ist der
+Minoritätsangriff: Die Seite mit weniger Bauern am Damenflügel schiebt
+Bauern vor, um Schwächen zu erzeugen.</p>
+<p>Französische Bauernkette: Weiß hat oft Raum am Königsflügel, Schwarz
+greift die Basis der Kette mit c5 und f6 an. Lernwert: Bauernketten
+haben Kopf und Basis.</p>
+<p>Sizilianische Strukturen: Asymmetrische Bauern geben beiden Seiten
+unterschiedliche Pläne. Oft greift Weiß am Königsflügel an, Schwarz
+bekommt Gegenspiel auf der c-Linie.</p>
+<p>Königsindische Struktur: Weiß hat oft Raum im Zentrum und am
+Damenflügel, Schwarz sucht Angriff am Königsflügel. Bild im Kopf: Zwei
+Armeen stürmen auf verschiedenen Seiten des Berges.</p>
+
+<h2 id="k21">21. Figuren
+gegen Figuren: Ungleichgewichte verstehen</h2>
+<p>Nicht jedes Material ist gleich. Turm gegen zwei Leichtfiguren, Dame
+gegen zwei Türme oder Läuferpaar gegen Springer sind typische
+Ungleichgewichte.</p>
+<p>Läufer gegen Springer: Läufer lieben offene Stellungen und Bauern auf
+beiden Flügeln. Springer lieben geschlossene Stellungen, Vorposten und
+blockierte Bauern.</p>
+<p>Läuferpaar: Zwei Läufer kontrollieren beide Farben und können in
+offenen Stellungen sehr stark sein. Aber wenn die Stellung geschlossen
+bleibt, kann ein Springer besser sein.</p>
+<p>Turm gegen Leichtfigur: Ein Turm braucht offene Linien. Ohne offene
+Linien kann er schlechter sein als erwartet.</p>
+<p>Dame gegen zwei Türme: Zwei Türme sind oft sehr stark, wenn sie
+koordiniert sind und offene Linien haben. Die Dame ist stark bei
+Angriffen auf lose Figuren und Könige.</p>
+<p>Qualität: Turm gegen Läufer oder Springer nennt man Qualität. Wer
+einen Turm für eine Leichtfigur gewinnt, gewinnt die Qualität. Manchmal
+opfert man die Qualität für Angriff, Felder oder einen starken
+Freibauern.</p>
+<blockquote>
+<p>Merksatz: Frage nicht nur „Was ist mehr wert?“, sondern „Welche Seite
+kann ihre Figuren besser benutzen?“</p>
+</blockquote>
+
+<h2 id="k22">22. Endspiel-Grundlagen:
+hier werden Punkte gemacht</h2>
+<p>Im Endspiel zählt Genauigkeit. Viele Spieler erreichen
+Gewinnstellungen und wissen dann nicht, wie man sie gewinnt.</p>
+<p>Grundregeln:<br />
+Aktiviere den König. Im Endspiel ist er eine Figur.<br />
+Schaffe Freibauern.<br />
+Türme gehören hinter Freibauern.<br />
+Greife gegnerische Bauern von hinten oder von der Seite an.<br />
+Tausche nicht automatisch Bauern, wenn du gewinnen willst. Zu wenige
+Bauern können Remis bedeuten.<br />
+Wenn du verteidigst, suche Aktivität statt passivem Warten.</p>
+<p>Fachwort: Opposition. Zwei Könige stehen sich mit einem Feld Abstand
+gegenüber. Wer am Zug ist, muss weichen. Das ist in Bauernendspielen
+zentral.</p>
+<p>Fachwort: Schlüsselfelder. Das sind Felder, die dein König erreichen
+muss, damit ein Bauer sicher umwandelt.</p>
+<p>Quadratregel: Ob ein König einen Freibauern einholt, prüfst du mit
+einem gedachten Quadrat vom Bauern bis zur Umwandlungsreihe. Ist der
+König im Quadrat oder kann hineinziehen, holt er den Bauern ein. Ist er
+draußen, läuft der Bauer durch.</p>
+<p>Fachwort: Zugzwang. Jeder mögliche Zug verschlechtert die Stellung.
+Bild im Kopf: Du stehst auf morschen Brettern; egal wohin du trittst, es
+bricht.</p>
+
+<blockquote><p>Merksatz fürs Bauernendspiel: <strong>Der König gehört vor seine Bauern, nicht dahinter.</strong> Ein König, der vor dem eigenen Freibauern steht, erobert die Schlüsselfelder - einer, der hinterherläuft, kommt oft zu spät.</p></blockquote>
+<h2 id="k23">23. Wichtige theoretische
+Endspiele</h2>
+<p>König und Dame gegen König: Gewinn. Treibe den König an den Rand,
+aber vermeide Patt. Die Dame baut einen Käfig, der König hilft beim
+Zumachen.</p>
+<p>König und Turm gegen König: Gewinn. Der Turm schneidet Reihen oder
+Linien ab, der König treibt den gegnerischen König zurück.</p>
+<p>Zwei Läufer gegen König: Gewinn, aber Technik nötig. Die Läufer
+schneiden Diagonalen, der König hilft.</p>
+<p>Läufer und Springer gegen König: Theoretisch Gewinn, aber schwer. Für
+Anfänger nicht zuerst lernen; wichtiger sind Bauern- und
+Turmendspiele.</p>
+<p>König und Bauer gegen König: Entscheidend sind Opposition,
+Schlüsselfelder und Randbauern.</p>
+<p>Randbauer und falscher Läufer: Wenn der Läufer das Umwandlungsfeld
+des Randbauern nicht kontrolliert und der gegnerische König die Ecke
+erreicht, ist es oft Remis.</p>
+<p>Turmendspiele: Die häufigsten praktischen Endspiele. Zwei
+Grundstellungen sind besonders wichtig:<br />
+Lucena-Stellung: Gewinnmethode für Turm und Bauer gegen Turm, wenn der
+König vor dem Bauern steht und der Bauer weit vorgerückt ist. Bild: Man
+baut eine Brücke gegen Schachs.<br />
+Philidor-Stellung: Remismethode. Der verteidigende Turm hält die dritte
+oder sechste Reihe, bis der Bauer vorgeht, dann gibt er Schachs von
+hinten.</p>
+<p>Dame gegen Bauer auf der vorletzten Reihe: Oft Gewinn, aber Rand- und
+Läuferbauern können Remistricks haben, weil Pattideen entstehen.</p>
+
+<blockquote><p>Eselsbrücke: <strong>"Randbauer ist Remisbauer."</strong> Der a- und h-Bauer ist der schwerste zum Verwerten: mit dem falschen Läufer oder dem gegnerischen König in der Ecke wird aus dem Mehrbauern oft nur ein halber Punkt.</p></blockquote>
+<h2 id="k24">24. Datenbanken,
+Engines und Tablebases richtig nutzen</h2>
+<p>Moderne Schachspieler haben Werkzeuge, von denen frühere Weltmeister
+nur träumen konnten. Aber Werkzeuge sind nur gut, wenn man sie richtig
+benutzt.</p>
+<p>Partiedatenbank: Eine Sammlung gespielter Partien. Sie zeigt, was
+Menschen gespielt haben und welche Pläne typisch sind. Sie beweist nicht
+automatisch, welcher Zug objektiv der beste ist.</p>
+<p>Opening Explorer: Ein Eröffnungsbaum. Du gibst Züge ein und siehst,
+welche Antworten häufig gespielt wurden und mit welchem Ergebnis. Das
+hilft beim Repertoire, aber Vorsicht: Ein Zug kann gute Statistik haben,
+weil stärkere Spieler ihn spielten, nicht weil er in deiner Stellung
+leicht zu verstehen ist.</p>
+<p>Engine: Ein Programm wie Stockfish sucht Varianten und bewertet
+Stellungen. Die Bewertung wird oft in Bauern oder
+Gewinnwahrscheinlichkeit gedacht. +1 heißt nicht automatisch „gewonnen“,
+sondern ungefähr: Weiß steht spürbar besser. Moderne Engines nutzen
+neuronale Bewertung, aber sie rechnen auch sehr tief.</p>
+<p>Tablebase: Eine perfekte Endspieldatenbank. Für Stellungen mit
+wenigen Figuren kennt sie das objektive Ergebnis: Gewinn, Remis oder
+Verlust bei bestem Spiel. Das ist stärker als eine normale
+Enginebewertung, weil es nicht schätzt, sondern weiß.</p>
+<p>Wie Anfänger Engines nutzen sollten:<br />
+1.Analysiere deine Partie zuerst selbst.<br />
+2.Markiere den Moment, wo du unsicher warst.<br />
+3.Dann erst Engine einschalten.<br />
+4.Frage nicht nur „Was war der beste Zug?“, sondern „Warum war mein Zug
+schlecht?“<br />
+5.Suche menschliche Regeln hinter der Engine-Idee: Königssicherheit,
+ungedeckte Figur, schwaches Feld, taktisches Motiv.</p>
+<blockquote>
+<p>Warnung: Engine-Abhängigkeit macht passiv. Du willst nicht Stockfish
+nachbeten, sondern Schach verstehen.</p>
+</blockquote>
+
+<h2 id="k25">25. Weltklasse: Was man von den Besten lernen kann</h2>
+<p>Weltklassespieler unterscheiden sich nicht durch einen einzigen Zaubertrick, sondern durch das Fehlen von Schwächen plus einzelne Fähigkeiten, die sie zur Perfektion getrieben haben. Hier sind sechs Spieler - und für jeden die eine Fähigkeit, die ihn ausmacht, samt der Lehre für dich.</p>
+
+<h3>Magnus Carlsen - Zähigkeit als System</h3>
+<p>Seine berühmte "Nicht-Aufgeben-Mentalität" ist keine Willensfloskel, sondern vier konkrete Fertigkeiten. <strong>Objektivität ohne Ego:</strong> In schlechteren Stellungen sucht er nicht den rettenden Geniestreich, sondern nüchtern den zähesten Verteidigungszug - viele verlieren schlechtere Stellungen nicht, weil sie verloren wären, sondern weil sie aus Frust forcieren. <strong>Probleme stellen:</strong> Er wählt oft nicht den objektiv allerbesten, sondern den für den Gegner unbequemsten Zug - den, bei dem der andere am meisten rechnen muss und am ehesten patzt. <strong>Spannung halten:</strong> Er vereinfacht nicht, solange er drücken kann, denn jeder Abtausch nimmt dem Gegner Gelegenheiten zu irren. <strong>Endspieltechnik:</strong> Er verwandelt winzige Vorteile über 50, 60, 70 Züge in ganze Punkte, weil er die theoretischen Endspiele exakt kennt und nie die Konzentration verliert.</p>
+
+<h3>Garri Kasparow - Dynamik und Vorbereitung als Waffe</h3>
+<p>Kasparows tiefste Einsicht: <strong>dynamische Vorteile sind verderblich</strong>. Initiative, Entwicklungsvorsprung und Angriffsschwung verfallen, wenn man sie nicht sofort umsetzt - er verstand wie kein Zweiter, wann eine Stellung geöffnet werden <em>muss</em>, bevor der Vorteil verdampft, und opferte dafür kompromisslos Material. Zweitens verlegte er den Kampf vor die Partie: monatelange Heimanalyse, Neuerungen, die der Gegner am Brett zum ersten Mal sah und unter laufender Uhr lösen musste. Lehre: Vorteile haben ein Verfallsdatum, und Vorbereitung ist nichts anderes als im Voraus angesparte Bedenkzeit.</p>
+
+<h3>Anatoli Karpow - Gewinnen durch Verhindern</h3>
+<p>Karpow suchte nicht den Schlag, er nahm dem Gegner Zug um Zug jede aktive Idee - die Boa Constrictor des Schachs. Seine Partien wirken ereignislos, bis man bemerkt, dass der Gegner längst keine sinnvollen Züge mehr hat: jede Figur etwas schlechter gestellt, jeder Befreiungsversuch im Keim erstickt. Das ist <strong>Prophylaxe in Reinform</strong>. Lehre: Die Verhinderung des gegnerischen Plans ist ein vollwertiger eigener Plan. Bevor du angreifst, frage, was der Gegner will - und nimm es ihm weg.</p>
+
+<h3>Bobby Fischer - Kampfgeist und Präzision im "Einfachen"</h3>
+<p>Fischer spielte mit beiden Farben kompromisslos auf Gewinn, in einer Zeit, in der kurze Großmeister-Remisen Alltag waren - und er gewann "ausgeglichene", vereinfachte Stellungen durch reine Genauigkeit, berühmt etwa seine Behandlung der Endspiele mit Läufer gegen Springer. Dahinter stand besessene Einzelarbeit: er kannte die Partien seiner Gegner besser als sie selbst. Lehre: Es gibt keine langweiligen Stellungen, nur ungenutzte Ressourcen - und Professionalität schlägt Talent ohne Arbeit.</p>
+
+<h3>José Raúl Capablanca - Technik als Kunst der Einfachheit</h3>
+<p>Zeitgenossen nannten ihn die Schachmaschine, weil Gewinnen bei ihm wie der einzig natürliche Lauf der Dinge aussah. Sein Werkzeug war die <strong>kleine Kombination</strong>: zwei-, dreizügige Taktik nicht für Spektakel, sondern um ein positionelles Ziel zu erzwingen - einen Tausch, ein Feld, ein besseres Endspiel. Er vereinfachte genau dann, wenn seine kleinen Vorteile im Endspiel wuchsen. Lehre: Wer Endspiele versteht, weiß schon im Mittelspiel, welche Abtausche gut sind - Technik ist rückwärts gedachtes Schach.</p>
+
+<h3>Michail Tal - Komplikation als Waffe</h3>
+<p>Tals Opfer waren nicht immer objektiv korrekt - Engines widerlegen heute manche - aber darum ging es nie. Sie zwangen den Gegner in Stellungen, in denen ein einziger ungenauer Zug verlor, und in diesem Chaos rechnete Tal schneller und besser als jeder andere. Er beschrieb das sinngemäß so: man müsse den Gegner in einen dunklen Wald führen, in dem zwei plus zwei fünf ergibt und der Pfad hinaus nur für einen breit genug ist. Lehre: Gegen Menschen zählt nicht nur die objektive Wahrheit, sondern wer die entstehenden Probleme am Brett besser löst - aber das funktioniert nur mit echter Rechenstärke dahinter, sonst ist es Hoffnungsschach.</p>
+
+<h3>Haben die Besten Geheimnisse?</h3>
+<p>Ja und nein, auf drei Ebenen. <strong>Erstens:</strong> Die konkrete Eröffnungsvorbereitung ist tatsächlich geheim. Neuerungen werden wie Betriebsgeheimnisse gehütet, Sekundanten-Teams arbeiten verschwiegen, und starke Ideen werden jahrelang für den richtigen Gegner aufgespart. <strong>Zweitens:</strong> Die Prinzipien sind nicht geheim. Jede gespielte Partie ist öffentlich und wird weltweit mit Engines seziert - konzeptionell kann sich niemand verstecken. <strong>Drittens, und am wichtigsten:</strong> Das eigentliche "Geheimnis" ist gar kein Wissen, sondern Können - zehntausende verinnerlichte Muster, Rechengenauigkeit, Nerven. Vieles davon können die Besten selbst nicht vollständig in Worte fassen; Intuition ist stilles Wissen. Du kannst alles lesen, was Carlsen sagt, und spielst trotzdem nicht wie er, so wie man vom Lesen über Klavierspielen kein Klavier lernt. Deshalb endet dieses Heft mit einem Trainingsplan: das Mitteilbare steht hier - der Rest entsteht nur durch Spielen, Rechnen und Analysieren.</p>
+
+<h3>Und wie gewinnt man wirklich?</h3>
+<p>Die ehrliche Antwort, die alles verbindet: Auf <strong>jedem</strong> Level gewinnt man fast nie durch einen genialen Geistesblitz, sondern weil der Gegner einen Fehler macht und man ihn bestraft. Die Weltklasse gewinnt im Kern genauso - sie macht nur selbst praktisch keine Fehler und maximiert zugleich die Gelegenheiten des Gegners, welche zu machen. Für dich heißt das: weniger Fehler machen (Patzer-Check, Objektivität) und Vorteile sauber verwerten (Taktik, Endspieltechnik, Spannung halten). Das ist dieselbe Leiter, auf der die Besten ganz oben stehen - die unteren Sprossen reichen schon, um fast jeden Hobbygegner zu schlagen.</p>
+
+<h2 id="k26">26. Psychologie,
+Zeitmanagement und praktische Stärke</h2>
+<p>Schach wird nicht nur auf dem Brett gespielt, sondern auch im Kopf.
+Viele Fehler entstehen durch Angst, Übermut, Müdigkeit oder Zeitnot.</p>
+<p>Psychologische Regeln:<br />
+Spiele die Stellung, nicht den Gegnernamen.<br />
+Wenn du besser stehst, werde nicht gierig. Verhindere Gegenspiel.<br />
+Wenn du schlechter stehst, suche aktive Ressourcen. Viele schlechtere
+Stellungen sind nicht verloren.<br />
+Nach einem Fehler: Nicht den zweiten Fehler machen. Atme, prüfe
+Drohungen, verteidige zäh.</p>
+<p>Zeitmanagement:<br />
+In kritischen Stellungen darfst du Zeit investieren.<br />
+In bekannten Eröffnungsstellungen spiele zügig, aber nicht
+automatisch.<br />
+Wenn du wenig Zeit hast, wähle einfache Züge, die keine Taktik
+zulassen.<br />
+Spiele nicht jede Partie als Blitz. Langsame Partien bauen echtes
+Schachdenken.</p>
+<p>Fachwort: Praktische Chance. Ein Zug muss nicht objektiv perfekt
+sein, wenn er dem Gegner schwer lösbare Probleme stellt, besonders in
+Zeitnot. Aber nutze das nicht als Ausrede für schlechte Züge.</p>
+
+<blockquote><p>Alter Turnierspruch: <strong>"Der vorletzte Fehler gewinnt."</strong> Heißt: Auch nach deinem Fehler ist nichts entschieden - wer nach einem Patzer ruhig bleibt und zäh weiterspielt, bekommt fast immer noch eine Chance, weil auch der Gegner Fehler macht.</p></blockquote>
+<h2 id="k27">27. Trainingsplan:
+vom Anfänger zum starken Hobbyspieler</h2>
+<p>Täglich 15 Minuten:<br />
+5 Minuten einfache Taktikmotive.<br />
+5 Minuten Patzer-Check an eigenen Stellungen.<br />
+5 Minuten Endspiel oder Mattmuster.</p>
+<p>Dreimal pro Woche:<br />
+Eine längere Partie spielen, mindestens 10+5 oder besser 15+10.<br />
+Danach ohne Engine kurz notieren: Wo war ich unsicher? Wo habe ich
+Material verloren? Was war der Plan?<br />
+Dann Engine oder Analysebrett prüfen.</p>
+<p>Wöchentlich:<br />
+Eine Modellpartie zu deiner Eröffnung anschauen.<br />
+Ein Endspielthema wiederholen.<br />
+Ein eigenes Verlustspiel gründlich analysieren.</p>
+<p>30-Tage-Ziel:<br />
+Keine einzügigen Damen- oder Figurenpatzer mehr.<br />
+Schäfermatt, Grundreihenmatt, Gabel, Fesselung, Spieß erkennen.<br />
+Mit Dame und Turm mattsetzen können.</p>
+<p>90-Tage-Ziel:<br />
+Ein kleines Repertoire haben.<br />
+Einfache Bauernendspiele verstehen.<br />
+Eigene Partien sinnvoll analysieren.<br />
+Taktikmotive nicht nur lösen, sondern benennen.</p>
+<p>Jahresziel:<br />
+Stabile Denkgewohnheiten, solides Endspiel, weniger Zeitnot, bessere
+Eröffnungspläne und ein eigener Stil.</p>
+
+<h2 id="k28">28. Checklisten für die Partie</h2>
+<p>Vor der Partie:<br />
+Kenne meine Eröffnungspläne?<br />
+Bin ich bereit, langsam zu denken?<br />
+Will ich lernen, nicht nur gewinnen?</p>
+<p>Während der Eröffnung:<br />
+Zentrum?<br />
+Entwicklung?<br />
+König sicher?<br />
+Dame nicht zu früh?<br />
+Keine unnötigen Randbauernzüge?</p>
+<p>Vor jedem Zug:<br />
+Was droht der Gegner?<br />
+Gibt es Schachs, Schlagzüge, Drohungen?<br />
+Ist nach meinem Zug etwas ungedeckt?<br />
+Kann mein König angegriffen werden?</p>
+<p>Im Mittelspiel:<br />
+Welche Figur ist schlecht?<br />
+Wo sind Schwächen?<br />
+Soll ich tauschen oder Spannung halten?<br />
+Habe ich einen Plan für beide Flügel?</p>
+<p>Im Endspiel:<br />
+Ist mein König aktiv?<br />
+Gibt es Freibauern?<br />
+Soll ich Bauern tauschen oder behalten?<br />
+Steht mein Turm hinter dem Freibauern?<br />
+Gibt es Pattgefahr?</p>
+
+<h2 id="k29">29. Glossar der wichtigsten
+Begriffe</h2>
+<p>Abtausch: Beide Seiten schlagen ungefähr gleichwertige Figuren.<br />
+Aktivität: Wie viel eine Figur tut: angreifen, verteidigen, Felder
+kontrollieren.<br />
+Bauernstruktur: Die Form der Bauern auf dem Brett.<br />
+Blunder/Patzer: Grober Fehler.<br />
+Doppelangriff: Eine Figur oder ein Zug greift zwei Ziele an.<br />
+Doppelbauer: Zwei Bauern derselben Farbe auf derselben Linie.<br />
+En passant: Spezialschlag eines Bauern nach gegnerischem
+Doppelschritt.<br />
+Entwicklung: Figuren aus der Grundreihe ins Spiel bringen.<br />
+Fesselung: Figur kann nicht gut weg, weil dahinter etwas Wertvolleres
+steht.<br />
+Fianchetto: Läuferentwicklung nach g2, b2, g7 oder b7.<br />
+Freibauer: Bauer ohne gegnerische Bauern, die ihn aufhalten
+können.<br />
+Gambit: Bauernopfer in der Eröffnung für Zeit, Raum oder Angriff.<br />
+Gabel: Ein Angriff auf zwei Ziele zugleich.<br />
+Initiative: Das Recht, Drohungen zu stellen.<br />
+Isolierter Bauer: Bauer ohne Nachbarbauern.<br />
+Kompensation: Ausgleich für Materialverlust, etwa Angriff oder
+Aktivität.<br />
+Läuferpaar: Beide Läufer einer Seite.<br />
+Luftloch: Fluchtfeld für den König, meist durch h3/h6 oder g3/g6.<br />
+Opposition: Könige stehen sich gegenüber und einer muss weichen.<br />
+Prophylaxe: Vorbeugung gegen gegnerische Pläne.<br />
+Qualität: Materialunterschied zwischen Turm und Leichtfigur.<br />
+Remis: Unentschieden.<br />
+Rochade: Sonderzug mit König und Turm.<br />
+Schachmatt: König im Schach ohne Rettung.<br />
+Schlüsselfeld: Wichtiges Feld in Bauernendspielen.<br />
+Tempo: Ein Zug an Zeit.<br />
+Tablebase: Perfekte Endspieldatenbank.<br />
+Überlastung: Eine Figur verteidigt zu viele Dinge.<br />
+Vorposten: Starkes Feld, das von keinem gegnerischen Bauern vertrieben
+werden kann.<br />
+Zugzwang: Jeder Zug verschlechtert die Stellung.<br />
+Zwischenzug: Unerwarteter starker Zug vor dem naheliegenden
+Zurückschlagen.</p>
+
+<h2 id="k30">30. Quellen- und
+Datenbank-Hinweise</h2>
+<p>Dieses Heft verdichtet etablierte Schachprinzipien aus Regelwerk,
+Trainingspraxis, Meisterpartien, großen Partiedatenbanken,
+Engine-Analyse und Endspiel-Tablebases. Für konkrete Regeln ist das
+FIDE-Regelwerk maßgeblich. Für Eröffnungs- und Praxisstatistiken sind
+Partiedatenbanken wie Lichess Open Database, Lichess Opening Explorer
+und kommerzielle Datenbanken wie ChessBase Mega Database nützlich. Für
+perfekte Endspielwahrheit bis zu wenigen Figuren dienen
+Syzygy-Tablebases. Für moderne Stellungsbewertung werden häufig Engines
+wie Stockfish verwendet.</p>
+<blockquote>
+<p>Wichtig: Datenbanken zeigen, was gespielt wurde; Engines zeigen, was
+rechnerisch stark ist; Tablebases zeigen in kleinen Endspielen die
+Wahrheit; menschliches Schachverständnis erklärt, was du in einer echten
+Partie finden kannst.</p>
+</blockquote>
+
+</main>
+</div>
+
+<script>
+(function () {
+  var FILES = ['a','b','c','d','e','f','g','h'];
+  var GL = { K:'\u265A', Q:'\u265B', R:'\u265C', B:'\u265D', N:'\u265E', P:'\u265F' };
+  var S = 36, OFF = 18, BW = 8 * S;
+
+  function px(sq) {
+    var c = FILES.indexOf(sq[0]);
+    var r = parseInt(sq[1], 10);
+    return { x: OFF + c * S + S / 2, y: (8 - r) * S + S / 2 };
+  }
+  function glyph(spec) {
+    var parts = spec.split(':');
+    var p = px(parts[1]);
+    return '<text x="' + p.x + '" y="' + (p.y + 11) + '" class="pc">' + GL[parts[0]] + '</text>';
+  }
+  function list(v) { return (v || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean); }
+
+  function render(el) {
+    var s = '<svg viewBox="0 0 ' + (OFF + BW) + ' ' + (BW + OFF) + '" class="bd" xmlns="http://www.w3.org/2000/svg">';
+    s += '<defs><marker id="ah" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#eb942f"/></marker></defs>';
+    for (var row = 0; row < 8; row++) {
+      for (var c = 0; c < 8; c++) {
+        var light = (row + c) % 2 === 0;
+        s += '<rect x="' + (OFF + c * S) + '" y="' + (row * S) + '" width="' + S + '" height="' + S + '" fill="' + (light ? '#ead9b6' : '#b58863') + '"/>';
+      }
+    }
+    for (var i = 0; i < 8; i++) {
+      s += '<text x="' + (OFF - 9) + '" y="' + (i * S + S / 2 + 4) + '" class="lab" text-anchor="middle">' + (8 - i) + '</text>';
+      s += '<text x="' + (OFF + i * S + S / 2) + '" y="' + (BW + 13) + '" class="lab" text-anchor="middle">' + FILES[i] + '</text>';
+    }
+    list(el.dataset.dots).forEach(function (q) {
+      var p = px(q);
+      s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="6" fill="#2e9e4f" opacity="0.9"/>';
+    });
+    list(el.dataset.rings).forEach(function (q) {
+      var p = px(q);
+      s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="14" fill="none" stroke="#d24b4b" stroke-width="3" opacity="0.9"/>';
+    });
+    list(el.dataset.arrows).forEach(function (a) {
+      var ab = a.split('>');
+      var A = px(ab[0]), B = px(ab[1]);
+      s += '<line x1="' + A.x + '" y1="' + A.y + '" x2="' + B.x + '" y2="' + B.y + '" stroke="#eb942f" stroke-width="4" marker-end="url(#ah)" opacity="0.95"/>';
+    });
+    if (el.dataset.piece2) s += glyph(el.dataset.piece2);
+    if (el.dataset.piece) s += glyph(el.dataset.piece);
+    s += '</svg>';
+    el.innerHTML = s;
+  }
+
+  document.querySelectorAll('.diagram').forEach(render);
+
+  document.querySelectorAll('nav a').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      var id = a.getAttribute('href').slice(1);
+      var t = document.getElementById(id);
+      if (t) { e.preventDefault(); t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    });
+  });
+})();
+</script>
+</body>
+</html>
