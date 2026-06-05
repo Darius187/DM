@@ -304,21 +304,39 @@ function handleUserMove(orig, dest) {
 
 // ---- Opening trainer -------------------------------------------------------
 
-// Draw the blue arrow for the current target move.
+// The side the user plays in the current drill ('white' | 'black').
+function openingUserSide() {
+  return opening.side || 'white';
+}
+
+// Draw the blue arrow for the move the user should play now.
 function drawTargetArrow() {
   const step = opening.line[opening.index];
+  const target = step[openingUserSide()];
   const v = chess
     .moves({ verbose: true })
-    .find((m) => normalizeSan(m.san) === normalizeSan(step.white));
+    .find((m) => normalizeSan(m.san) === normalizeSan(target));
   if (v) ground.setShapes([{ orig: v.from, dest: v.to, brush: 'blue' }]);
 }
 
-// Show the next target White move: arrow, text and spoken announcement.
+// Show the move the user should play: arrow, text and spoken announcement.
 function showOpeningTarget() {
   const step = opening.line[opening.index];
+  const target = step[openingUserSide()];
   drawTargetArrow();
-  hintEl.textContent = `Nächster Zug: ${step.white} — ${step.tip}`;
-  if (chkSpeak.checked) speak(`Nächster Zug: ${sanZuDeutsch(step.white)}`);
+  hintEl.textContent = `Nächster Zug: ${target} — ${step.tip}`;
+  if (chkSpeak.checked) speak(`Nächster Zug: ${sanZuDeutsch(target)}`);
+}
+
+// Play one canned move (the side the user is NOT playing) and announce it.
+function playOpeningAutoMove(san) {
+  if (!san) return;
+  try {
+    const reply = chess.move(san);
+    if (reply && chkSpeak.checked) speak(sanZuDeutsch(reply.san));
+  } catch {
+    /* canned move should always be legal */
+  }
 }
 
 function startOpening(key) {
@@ -326,13 +344,17 @@ function startOpening(key) {
   if (!data) return;
   cancelSpeech();
   review = null;
-  opening = { line: data.line, index: 0 };
-  selSide.value = 'white';
-  userSide = 'white';
+  const side = data.side || 'white';
+  opening = { line: data.line, index: 0, side };
+  selSide.value = side;
+  userSide = side;
   busy = false;
   chess.reset();
-  ground.set({ orientation: 'white' });
+  ground.set({ orientation: side });
   resetEvalUi();
+  // In a Black repertoire White moves first, so play the opening move for the
+  // user automatically before asking for the Black reply.
+  if (side === 'black') playOpeningAutoMove(data.line[0].white);
   renderMoves();
   updateStatus();
   syncBoard();
@@ -341,35 +363,41 @@ function startOpening(key) {
 }
 
 function onOpeningUserMove(move, fenBefore) {
+  const side = openingUserSide();
   const step = opening.line[opening.index];
-  if (normalizeSan(move.san) !== normalizeSan(step.white)) {
-    // Wrong move: take it back and explain the plan move (keep this message,
-    // so redraw only the arrow rather than the full target text).
+  const target = step[side];
+
+  if (normalizeSan(move.san) !== normalizeSan(target)) {
+    // Wrong move: take it back and point at the plan move again.
     chess.undo();
     syncBoard();
     drawTargetArrow();
-    hintEl.textContent = `Plan-Zug: ${step.white}. ${step.tip}`;
-    if (chkSpeak.checked) speak(`Besser: ${sanZuDeutsch(step.white)}`);
+    hintEl.textContent = `Plan-Zug: ${target}. ${step.tip}`;
+    if (chkSpeak.checked) speak(`Besser: ${sanZuDeutsch(target)}`);
     return;
   }
 
-  // Correct: announce it, play the canned Black reply, advance.
+  // Correct move: announce it.
   if (chkSpeak.checked) speak(sanZuDeutsch(move.san));
-  if (step.black) {
-    try {
-      const reply = chess.move(step.black);
-      if (reply && chkSpeak.checked) speak(sanZuDeutsch(reply.san));
-    } catch {
-      /* canned reply should always be legal */
-    }
-  }
 
-  // Let the coach explain the opening move too (offline always, Ollama if on).
+  // Let the coach explain the move (offline always, Ollama if enabled).
   coachContext = { fen: fenBefore, userMove: null, bestMove: move.san };
   showOfflineExplanation(move, 'Eröffnung');
   requestCoachExplanation();
 
-  opening.index += 1;
+  if (side === 'white') {
+    // The user played White; play the canned Black reply, then advance.
+    playOpeningAutoMove(step.black);
+    opening.index += 1;
+  } else {
+    // The user played Black; advance, then play the next White move so the
+    // position is ready for the next reply.
+    opening.index += 1;
+    if (opening.index < opening.line.length) {
+      playOpeningAutoMove(opening.line[opening.index].white);
+    }
+  }
+
   updateStatus();
   renderMoves();
 

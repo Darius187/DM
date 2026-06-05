@@ -29,6 +29,39 @@ export const OPENINGS = {
       { white: 'O-O', black: 'O-O', tip: 'Bring den König in Sicherheit.' },
     ],
   },
+  carokann: {
+    name: 'Caro-Kann (Schwarz)',
+    side: 'black',
+    line: [
+      { white: 'e4', black: 'c6', tip: 'Der Caro-Kann: c6 bereitet d5 vor - solide und stabil.' },
+      { white: 'd4', black: 'd5', tip: 'Fordere mit d5 das Zentrum heraus.' },
+      { white: 'Nc3', black: 'dxe4', tip: 'Schlage zum Zentrum: dxe4 räumt auf und gewinnt Zeit.' },
+      { white: 'Nxe4', black: 'Bf5', tip: 'Entwickle den Läufer nach draußen, bevor e6 ihn einsperrt.' },
+      { white: 'Ng3', black: 'Bg6', tip: 'Weiche dem Angriff aus und behalte den guten Läufer.' },
+    ],
+  },
+  damengambit: {
+    name: 'Abgelehntes Damengambit (Schwarz)',
+    side: 'black',
+    line: [
+      { white: 'd4', black: 'd5', tip: 'Halte mit d5 das Zentrum.' },
+      { white: 'c4', black: 'e6', tip: 'e6 stützt d5 und öffnet dem Läufer f8 den Weg - solide statt gierig.' },
+      { white: 'Nc3', black: 'Nf6', tip: 'Entwickle den Springer und kämpfe um e4.' },
+      { white: 'Bg5', black: 'Be7', tip: 'Be7 löst die Fesselung sanft auf.' },
+      { white: 'e3', black: 'O-O', tip: 'Rochiere - König in Sicherheit, der Aufbau steht.' },
+    ],
+  },
+  skandinavisch: {
+    name: 'Skandinavisch (Schwarz)',
+    side: 'black',
+    line: [
+      { white: 'e4', black: 'd5', tip: 'Skandinavisch: d5 fordert sofort den e-Bauern heraus.' },
+      { white: 'exd5', black: 'Qxd5', tip: 'Nimm mit der Dame zurück - rechne aber mit einem Tempoangriff.' },
+      { white: 'Nc3', black: 'Qa5', tip: 'Bring die Dame auf a5 in Sicherheit, abseits der Angriffe.' },
+      { white: 'd4', black: 'Nf6', tip: 'Entwickle den Springer und kontrolliere e4 und d5.' },
+      { white: 'Nf3', black: 'c6', tip: 'c6 gibt der Dame ein Fluchtfeld und stützt das Zentrum.' },
+    ],
+  },
 };
 
 // Compare two SAN strings ignoring check/mate markers.
