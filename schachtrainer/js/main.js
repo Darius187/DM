@@ -44,6 +44,8 @@ const pgnStatus = document.getElementById('pgn-status');
 const chkCoach = document.getElementById('chk-coach');
 const coachModelEl = document.getElementById('coach-model');
 const coachEl = document.getElementById('coach');
+const coachWrapEl = document.getElementById('coach-wrap');
+const btnCopyCoach = document.getElementById('btn-copy-coach');
 
 const engine = new Engine(); // plays the opponent's moves at the chosen strength
 const analyzer = new Engine(); // full strength, for eval bar / hint / blunder
@@ -74,7 +76,7 @@ function showOfflineExplanation(verbose, who) {
   if (!verbose) return;
   const reason = explainMoveOffline(verbose, chess.history().length);
   if (!reason) return;
-  coachEl.hidden = false;
+  coachWrapEl.hidden = false;
   coachEl.textContent = `${who}: ${verbose.san} — ${reason}`;
 }
 
@@ -469,7 +471,7 @@ function resetEvalUi() {
   bestCpUserBefore = null;
   lastBestSan = null;
   coachContext = null;
-  coachEl.hidden = true;
+  coachWrapEl.hidden = true;
   coachEl.textContent = '';
   clearHint();
   updateEvalBar({ score: 0 });
@@ -552,6 +554,29 @@ btnSave.addEventListener('click', savePgn);
 btnLoad.addEventListener('click', loadPgn);
 btnPrev.addEventListener('click', () => reviewStep(-1));
 btnNext.addEventListener('click', () => reviewStep(1));
+
+// Copy the trainer text to the clipboard so the user can paste it into Claude
+// (or anywhere else). Fall back to a manual selection if the Clipboard API is
+// blocked by the browser/OS for some reason.
+btnCopyCoach.addEventListener('click', async () => {
+  const text = coachEl.textContent || '';
+  const original = btnCopyCoach.textContent;
+  const flash = (msg) => {
+    btnCopyCoach.textContent = msg;
+    setTimeout(() => (btnCopyCoach.textContent = original), 1200);
+  };
+  try {
+    await navigator.clipboard.writeText(text);
+    flash('Kopiert');
+  } catch {
+    const range = document.createRange();
+    range.selectNodeContents(coachEl);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    flash('Markiert');
+  }
+});
 
 syncBoard();
 updateStatus();

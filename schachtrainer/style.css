@@ -194,20 +194,47 @@ button:hover {
   min-height: 1.2em;
 }
 
+.coach-wrap {
+  position: relative;
+  margin-bottom: 10px;
+}
+
 .coach {
   background: #23303a;
   border: 1px solid #3a5566;
   color: #d6e6f0;
-  padding: 8px;
+  padding: 8px 8px 8px 8px;
   border-radius: 4px;
   font-size: 0.85rem;
-  margin-bottom: 10px;
   line-height: 1.35;
   /* Cap very long Ollama answers and scroll inside the panel — also stops a
      huge response from dominating the entire side column. */
   max-height: 260px;
   overflow-y: auto;
   overflow-wrap: anywhere;
+  /* Make the text user-selectable (so the system Copy shortcut also works). */
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #3a5566;
+  color: #eaf2f7;
+  border: 1px solid #5a7a8a;
+  border-radius: 3px;
+  padding: 2px 7px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.copy-btn:hover {
+  opacity: 1;
+  background: #4a6677;
 }
 
 .coach-model {
