@@ -4,10 +4,22 @@ import { Engine } from './engine.js';
 import { scoreToCp, cpToWinProb, formatScore, toPerspective, isBlunder } from './eval.js';
 import { sanZuDeutsch, speak, cancelSpeech } from './speech.js';
 import { OPENINGS, normalizeSan } from './openings.js';
-import { explain, setCoachModel, explainMoveOffline, listModels, DEFAULT_MODEL } from './coach.js';
+import {
+  explain,
+  setCoachModel,
+  setCoachHost,
+  explainMoveOffline,
+  listModels,
+  DEFAULT_MODEL,
+  DEFAULT_HOST,
+} from './coach.js';
 
 const chess = new Chess();
 let userSide = 'white';
+let twoPlayer = false; // two humans on one device, no engine opponent
+let boardOrientation = 'white'; // which side is shown at the bottom
+let blunderSide = 'white'; // side whose move the next blunder check judges
+let lastScoreObj = null; // last eval shown, so a board flip can re-render it
 let ground;
 let engineEnabled = false; // opponent ready
 let analysisEnabled = false; // analyzer ready
@@ -30,6 +42,7 @@ const evalFillEl = document.getElementById('evalfill');
 const evalTextEl = document.getElementById('evaltext');
 const btnNew = document.getElementById('btn-new');
 const btnUndo = document.getElementById('btn-undo');
+const btnFlip = document.getElementById('btn-flip');
 const selSide = document.getElementById('sel-side');
 const selStrength = document.getElementById('sel-strength');
 const chkHint = document.getElementById('chk-hint');
@@ -43,6 +56,11 @@ const pgnText = document.getElementById('pgn-text');
 const pgnStatus = document.getElementById('pgn-status');
 const chkCoach = document.getElementById('chk-coach');
 const coachModelEl = document.getElementById('coach-model');
+const coachHostEl = document.getElementById('coach-host');
+const selConn = document.getElementById('sel-conn');
+const connNameEl = document.getElementById('conn-name');
+const btnConnSave = document.getElementById('btn-conn-save');
+const btnConnDel = document.getElementById('btn-conn-del');
 const coachEl = document.getElementById('coach');
 const coachWrapEl = document.getElementById('coach-wrap');
 const btnCopyCoach = document.getElementById('btn-copy-coach');
@@ -96,6 +114,7 @@ function playMove({ from, to, promotion }, { who } = {}) {
 
 function canUserMove() {
   if (review || chess.isGameOver() || busy) return false;
+  if (twoPlayer) return true;
   if (!engineEnabled) return true;
   return turnColorLong() === userSide;
 }
@@ -148,11 +167,12 @@ function renderMoves() {
 }
 
 function updateEvalBar(scoreObj) {
+  lastScoreObj = scoreObj;
   const cpWhite = scoreToCp(scoreObj);
   const whiteProb = cpToWinProb(cpWhite);
   // The bar follows board orientation: the side shown at the bottom fills from
   // the bottom up, coloured for that side.
-  const bottomWhite = userSide === 'white';
+  const bottomWhite = boardOrientation === 'white';
   const bottomProb = bottomWhite ? whiteProb : 1 - whiteProb;
   evalFillEl.style.height = `${(bottomProb * 100).toFixed(1)}%`;
   evalFillEl.style.background = bottomWhite ? '#f0f0f0' : '#111';
@@ -186,7 +206,9 @@ async function showHintAndEval() {
   const res = await analyzer.analyse(fen);
   if (token !== hintToken || chess.fen() !== fen) return; // stale
   updateEvalBar(res);
-  bestCpUserBefore = toPerspective(scoreToCp(res), userSide);
+  const refSide = twoPlayer ? turnColorLong() : userSide;
+  bestCpUserBefore = toPerspective(scoreToCp(res), refSide);
+  blunderSide = refSide;
   const verbose = res.from ? verboseForMove(res) : null;
   lastBestSan = verbose ? verbose.san : null;
   const reason = verbose ? explainMoveOffline(verbose, chess.history().length) : '';
@@ -209,7 +231,7 @@ function applyStrength() {
 
 function checkBlunder(afterScore) {
   if (bestCpUserBefore === null) return;
-  const afterCpUser = toPerspective(scoreToCp(afterScore), userSide);
+  const afterCpUser = toPerspective(scoreToCp(afterScore), blunderSide);
   if (isBlunder(bestCpUserBefore, afterCpUser)) {
     const drop = ((bestCpUserBefore - afterCpUser) / 100).toFixed(1);
     blunderEl.textContent = `⚠ Patzer! Dein Zug verliert etwa ${drop} Bauern.`;
@@ -232,7 +254,7 @@ async function afterUserMove() {
     checkBlunder(after);
   }
 
-  if (engineEnabled && !chess.isGameOver()) {
+  if (engineEnabled && !twoPlayer && !chess.isGameOver()) {
     engineStatusEl.textContent = 'Engine denkt…';
     const reply = await engine.bestMove(chess.fen(), strengthOpts());
     if (reply) playMove(reply, { who: 'Engine' });
@@ -256,6 +278,7 @@ async function requestCoachExplanation() {
   // Remember the offline explanation so we can restore it if Ollama fails.
   const offlineText = coachEl.textContent;
   setCoachModel(coachModelEl.value.trim());
+  setCoachHost(coachHostEl.value.trim());
   try {
     const text = await explain(ctx);
     if (text && text.trim()) {
@@ -346,8 +369,10 @@ function startOpening(key) {
   review = null;
   const side = data.side || 'white';
   opening = { line: data.line, index: 0, side };
+  twoPlayer = false;
   selSide.value = side;
   userSide = side;
+  boardOrientation = side;
   busy = false;
   chess.reset();
   ground.set({ orientation: side });
@@ -521,9 +546,11 @@ function newGame() {
   review = null;
   cancelSpeech();
   chess.reset();
-  userSide = selSide.value;
+  twoPlayer = selSide.value === 'twoplayer';
+  userSide = twoPlayer ? 'white' : selSide.value;
+  boardOrientation = userSide;
   busy = false;
-  ground.set({ orientation: userSide });
+  ground.set({ orientation: boardOrientation });
   engine.newGame();
   analyzer.newGame();
   applyStrength();
@@ -533,7 +560,7 @@ function newGame() {
   renderMoves();
 
   // If the user plays Black, the engine (White) opens.
-  if (engineEnabled && userSide === 'black') {
+  if (engineEnabled && !twoPlayer && userSide === 'black') {
     afterEngineOpens();
   } else {
     showHintAndEval();
@@ -563,7 +590,7 @@ function undo() {
   }
   cancelSpeech();
   chess.undo();
-  if (engineEnabled && turnColorLong() !== userSide) {
+  if (engineEnabled && !twoPlayer && turnColorLong() !== userSide) {
     chess.undo();
   }
   resetEvalUi();
@@ -594,6 +621,13 @@ btnLoad.addEventListener('click', loadPgn);
 btnPrev.addEventListener('click', () => reviewStep(-1));
 btnNext.addEventListener('click', () => reviewStep(1));
 
+// Flip the board (handy when two people share one screen).
+btnFlip.addEventListener('click', () => {
+  boardOrientation = boardOrientation === 'white' ? 'black' : 'white';
+  ground.set({ orientation: boardOrientation });
+  if (lastScoreObj) updateEvalBar(lastScoreObj);
+});
+
 // If the model field is cleared, fall back to the default so Ollama keeps
 // working instead of silently failing.
 coachModelEl.addEventListener('change', () => {
@@ -605,10 +639,103 @@ coachModelEl.addEventListener('change', () => {
 async function populateModelList() {
   const datalist = document.getElementById('ollama-models');
   if (!datalist) return;
+  setCoachHost(coachHostEl.value);
   const names = await listModels();
   datalist.innerHTML = names.map((n) => `<option value="${n}"></option>`).join('');
 }
+
+// Changing the Ollama address re-reads the installed models from that host.
+coachHostEl.addEventListener('change', () => {
+  if (!coachHostEl.value.trim()) coachHostEl.value = DEFAULT_HOST;
+  setCoachHost(coachHostEl.value);
+  populateModelList();
+});
+
 populateModelList();
+
+// ---- Saved Ollama connections (name -> host + model) ----------------------
+// Persisted so the workstation IP, the Surface and any other network are one
+// click away and can't be lost by overwriting the fields.
+let connections = [];
+
+async function loadConnections() {
+  try {
+    if (window.configAPI) {
+      const d = await window.configAPI.get();
+      if (d && Array.isArray(d.connections)) return d.connections;
+    }
+  } catch {
+    /* fall through to localStorage */
+  }
+  try {
+    const raw = localStorage.getItem('connections');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function persistConnections() {
+  try {
+    if (window.configAPI) {
+      await window.configAPI.set({ connections });
+      return;
+    }
+  } catch {
+    /* fall through to localStorage */
+  }
+  try {
+    localStorage.setItem('connections', JSON.stringify(connections));
+  } catch {
+    /* ignore: persistence is best-effort */
+  }
+}
+
+function renderConnList(selectedName = '') {
+  selConn.innerHTML =
+    '<option value="">– gespeicherte Verbindung –</option>' +
+    connections.map((c) => `<option value="${c.name}">${c.name}</option>`).join('');
+  selConn.value = selectedName;
+}
+
+selConn.addEventListener('change', () => {
+  const c = connections.find((x) => x.name === selConn.value);
+  if (!c) return;
+  coachHostEl.value = c.host;
+  coachModelEl.value = c.model;
+  connNameEl.value = c.name;
+  setCoachHost(c.host);
+  setCoachModel(c.model);
+  populateModelList();
+});
+
+btnConnSave.addEventListener('click', async () => {
+  const host = coachHostEl.value.trim() || DEFAULT_HOST;
+  const model = coachModelEl.value.trim() || DEFAULT_MODEL;
+  const name = connNameEl.value.trim() || host;
+  const existing = connections.find((c) => c.name === name);
+  if (existing) {
+    existing.host = host;
+    existing.model = model;
+  } else {
+    connections.push({ name, host, model });
+  }
+  await persistConnections();
+  renderConnList(name);
+});
+
+btnConnDel.addEventListener('click', async () => {
+  const name = selConn.value;
+  if (!name) return;
+  connections = connections.filter((c) => c.name !== name);
+  await persistConnections();
+  renderConnList('');
+});
+
+loadConnections().then((list) => {
+  connections = Array.isArray(list) ? list : [];
+  renderConnList('');
+});
 
 // Copy the trainer text to the clipboard so the user can paste it into Claude
 // (or anywhere else). Fall back to a manual selection if the Clipboard API is

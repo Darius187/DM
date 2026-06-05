@@ -4,16 +4,29 @@
 const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
 const path = require('node:path');
 const http = require('node:http');
+const fs = require('node:fs');
+
+// Parse an "host:port" string (optionally with scheme) into request options.
+// Lets the renderer point Ollama at another machine on the network.
+function parseHost(host) {
+  const s = String(host || '')
+    .trim()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/+$/, '');
+  const [h, p] = s.split(':');
+  return { hostname: h || '127.0.0.1', port: parseInt(p, 10) || 11434 };
+}
 
 // Renderer -> main bridge for Ollama. Doing the HTTP call here (Node) avoids the
 // CORS block that hits a file:// renderer talking to localhost:11434.
-ipcMain.handle('coach:explain', (_event, { model, prompt } = {}) =>
+ipcMain.handle('coach:explain', (_event, { model, prompt, host } = {}) =>
   new Promise((resolve) => {
+    const { hostname, port } = parseHost(host);
     const body = JSON.stringify({ model, prompt, stream: false });
     const req = http.request(
       {
-        host: '127.0.0.1',
-        port: 11434,
+        host: hostname,
+        port,
         path: '/api/generate',
         method: 'POST',
         headers: {
@@ -47,10 +60,11 @@ ipcMain.handle('coach:explain', (_event, { model, prompt } = {}) =>
 );
 
 // List installed Ollama models (for the suggestion menu in the renderer).
-ipcMain.handle('coach:models', () =>
+ipcMain.handle('coach:models', (_event, { host } = {}) =>
   new Promise((resolve) => {
+    const { hostname, port } = parseHost(host);
     const req = http.request(
-      { host: '127.0.0.1', port: 11434, path: '/api/tags', method: 'GET', timeout: 5000 },
+      { host: hostname, port, path: '/api/tags', method: 'GET', timeout: 5000 },
       (res) => {
         let data = '';
         res.on('data', (chunk) => (data += chunk));
@@ -69,6 +83,27 @@ ipcMain.handle('coach:models', () =>
     req.end();
   }),
 );
+
+// Persist small bits of config (saved Ollama connections) to a JSON file in the
+// per-user app data directory, so they survive restarts and reinstalls-in-place.
+function configPath() {
+  return path.join(app.getPath('userData'), 'config.json');
+}
+ipcMain.handle('config:get', () => {
+  try {
+    return JSON.parse(fs.readFileSync(configPath(), 'utf8'));
+  } catch {
+    return null;
+  }
+});
+ipcMain.handle('config:set', (_event, data) => {
+  try {
+    fs.writeFileSync(configPath(), JSON.stringify(data));
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
 
 function createWindow() {
   const win = new BrowserWindow({

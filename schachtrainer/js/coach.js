@@ -65,10 +65,10 @@ export function explainMoveOffline(verbose, plyNumber = 0) {
 
 // ---- Optional Ollama model ------------------------------------------------
 
-const OLLAMA_URL = 'http://localhost:11434/api/generate';
-const OLLAMA_TAGS_URL = 'http://localhost:11434/api/tags';
 export const DEFAULT_MODEL = 'llama3.1:8b';
+export const DEFAULT_HOST = 'localhost:11434';
 let model = DEFAULT_MODEL;
+let host = DEFAULT_HOST;
 
 export function setCoachModel(name) {
   // Empty / whitespace falls back to the default so a cleared field never
@@ -76,15 +76,29 @@ export function setCoachModel(name) {
   model = (name && name.trim()) || DEFAULT_MODEL;
 }
 
+// Set the Ollama address (e.g. "192.168.1.50:11434" to reach Ollama on
+// another machine on the network). Scheme and trailing slashes are stripped.
+export function setCoachHost(h) {
+  const cleaned = (h && h.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '')) || '';
+  host = cleaned || DEFAULT_HOST;
+}
+
+function generateUrl() {
+  return `http://${host}/api/generate`;
+}
+function tagsUrl() {
+  return `http://${host}/api/tags`;
+}
+
 // List the models actually installed in Ollama (for the suggestion menu).
 // Returns [] on any failure - the field stays a free text input regardless.
 export async function listModels() {
   try {
     if (typeof window !== 'undefined' && window.coachAPI && window.coachAPI.models) {
-      const r = await window.coachAPI.models();
+      const r = await window.coachAPI.models({ host });
       return r && r.ok && Array.isArray(r.models) ? r.models : [];
     }
-    const res = await fetch(OLLAMA_TAGS_URL);
+    const res = await fetch(tagsUrl());
     if (!res.ok) return [];
     const data = await res.json();
     return (data.models || []).map((m) => m.name).filter(Boolean);
@@ -115,12 +129,12 @@ export async function explain(ctx, { signal } = {}) {
   const prompt = buildPrompt(ctx);
 
   if (typeof window !== 'undefined' && window.coachAPI && window.coachAPI.explain) {
-    const r = await window.coachAPI.explain({ model, prompt });
+    const r = await window.coachAPI.explain({ model, prompt, host });
     if (!r || !r.ok) throw new Error(r ? r.error || 'Ollama-Fehler' : 'Ollama-Fehler');
     return (r.text || '').trim();
   }
 
-  const res = await fetch(OLLAMA_URL, {
+  const res = await fetch(generateUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, prompt, stream: false }),

@@ -13,10 +13,12 @@
         <div class="controls">
           <button id="btn-new">Neue Partie</button>
           <button id="btn-undo">Zug zurück</button>
+          <button id="btn-flip" title="Brett drehen">Brett drehen</button>
           <button id="btn-wissen" title="Schach-Wissen in eigenem Fenster öffnen">Wissen</button>
           <select id="sel-side">
             <option value="white" selected>Ich spiele Weiß</option>
             <option value="black">Ich spiele Schwarz</option>
+            <option value="twoplayer">2 Spieler (ein Gerät)</option>
           </select>
           <label class="strength">
             Stärke:
@@ -55,6 +57,13 @@
           </label>
           <input id="coach-model" class="coach-model" type="text" value="llama3.1:8b" list="ollama-models" placeholder="llama3.1:8b" title="Ollama-Modell (leer = Standard)" />
           <datalist id="ollama-models"></datalist>
+          <input id="coach-host" class="coach-model" type="text" value="localhost:11434" placeholder="localhost:11434" title="Ollama-Adresse, z.B. 192.168.1.50:11434 für einen anderen Rechner im Netzwerk" />
+          <select id="sel-conn" title="Gespeicherte Verbindungen">
+            <option value="">– gespeicherte Verbindung –</option>
+          </select>
+          <input id="conn-name" class="coach-model" type="text" placeholder="Name" title="Name für diese Verbindung, z.B. Zuhause" />
+          <button id="btn-conn-save" title="Aktuelle Adresse und Modell unter diesem Namen speichern">Speichern</button>
+          <button id="btn-conn-del" title="Gewählte Verbindung löschen">Löschen</button>
         </div>
       </header>
 
