@@ -432,6 +432,12 @@ function onOpeningUserMove(move, fenBefore) {
     if (chkSpeak.checked) speak('Eröffnung abgeschlossen. Gut gespielt.');
     opening = null;
     syncBoard();
+    // Nahtlos weiterspielen: ist jetzt der Gegner am Zug (typisch nach einer
+    // Schwarz-Eroeffnung), die Engine antworten lassen. Sonst waere die
+    // Stellung blockiert - der Nutzer ist nicht am Zug und die Engine ruht.
+    if (engineEnabled && !twoPlayer && !chess.isGameOver() && turnColorLong() !== userSide) {
+      afterUserMove();
+    }
     return;
   }
   syncBoard();
