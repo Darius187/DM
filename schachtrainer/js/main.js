@@ -216,7 +216,7 @@ async function showHintAndEval() {
 
   // Speak just the move; the reason stays in the text so audio stays short.
   if (chkSpeak.checked && chkHint.checked && lastBestSan) {
-    speak(`Vorschlag: ${sanZuDeutsch(lastBestSan)}`);
+    speak(sanZuDeutsch(lastBestSan));
   }
 }
 

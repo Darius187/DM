@@ -65,6 +65,17 @@
           <button id="btn-conn-save" title="Aktuelle Adresse und Modell unter diesem Namen speichern">Speichern</button>
           <button id="btn-conn-del" title="Gewählte Verbindung löschen">Löschen</button>
         </div>
+        <details class="net-help">
+          <summary>Ollama über das Netzwerk verbinden (Tablet/Surface → Hauptrechner)</summary>
+          <ol>
+            <li>Auf dem <strong>Hauptrechner</strong> (wo Ollama läuft) die IP herausfinden: Eingabeaufforderung öffnen, <code>ipconfig</code> eingeben, bei "IPv4-Adresse" steht z.B. <code>192.168.1.50</code>.</li>
+            <li>Ollama dort fürs Netzwerk freigeben: Umgebungsvariable <code>OLLAMA_HOST=0.0.0.0</code> setzen und Ollama neu starten. Ohne das lauscht Ollama nur auf dem Rechner selbst.</li>
+            <li>In der Windows-Firewall des Hauptrechners den Port <code>11434</code> zulassen.</li>
+            <li>Hier auf dem Tablet/Surface ins Adressfeld die IP mit Port eintragen, z.B. <code>192.168.1.50:11434</code> - nicht "localhost".</li>
+            <li>Klappt es, erscheinen die Modelle des Hauptrechners als Vorschläge. Dann mit "Speichern" als Verbindung sichern, damit du es nicht wieder eintippen musst.</li>
+          </ol>
+          <p>"localhost" heißt "dieser Rechner hier" - richtig, wenn Ollama auf demselben Gerät läuft, aber falsch fürs Tablet, das auf den Hauptrechner zugreifen soll.</p>
+        </details>
       </header>
 
       <section class="board-wrapper">
