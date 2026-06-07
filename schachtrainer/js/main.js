@@ -2,7 +2,7 @@ import { Chess } from 'chess.js';
 import { createBoard, toDests, colorToLong } from './board.js';
 import { Engine } from './engine.js';
 import { scoreToCp, cpToWinProb, formatScore, toPerspective, isBlunder } from './eval.js';
-import { sanZuDeutsch, speak, cancelSpeech } from './speech.js';
+import { sanZuDeutsch, speak, cancelSpeech, listGermanVoices, setVoice } from './speech.js';
 import { OPENINGS, normalizeSan } from './openings.js';
 import {
   explain,
@@ -47,6 +47,7 @@ const selSide = document.getElementById('sel-side');
 const selStrength = document.getElementById('sel-strength');
 const chkHint = document.getElementById('chk-hint');
 const chkSpeak = document.getElementById('chk-speak');
+const selVoice = document.getElementById('sel-voice');
 const selOpening = document.getElementById('sel-opening');
 const btnSave = document.getElementById('btn-save');
 const btnLoad = document.getElementById('btn-load');
@@ -741,6 +742,70 @@ btnConnDel.addEventListener('click', async () => {
 loadConnections().then((list) => {
   connections = Array.isArray(list) ? list : [];
   renderConnList('');
+});
+
+// ---- Voice selection -------------------------------------------------------
+// Available voices differ per device (and the user may install better ones),
+// so let them pick one and remember it. Empty value = automatic best pick.
+let voicePref = '';
+
+async function loadVoicePref() {
+  try {
+    if (window.configAPI) {
+      const d = await window.configAPI.get();
+      if (d && typeof d.voice === 'string') return d.voice;
+    }
+  } catch {
+    /* fall through to localStorage */
+  }
+  try {
+    return localStorage.getItem('voice') || '';
+  } catch {
+    return '';
+  }
+}
+
+async function persistVoicePref(uri) {
+  try {
+    if (window.configAPI) {
+      await window.configAPI.set({ voice: uri });
+      return;
+    }
+  } catch {
+    /* fall through to localStorage */
+  }
+  try {
+    localStorage.setItem('voice', uri);
+  } catch {
+    /* best-effort */
+  }
+}
+
+function renderVoiceList() {
+  const voices = listGermanVoices();
+  selVoice.innerHTML =
+    '<option value="">Automatisch</option>' +
+    voices.map((v) => `<option value="${v.voiceURI}">${v.name}</option>`).join('');
+  // Keep the stored choice selected if it is (still) available on this device.
+  selVoice.value = voices.some((v) => v.voiceURI === voicePref) ? voicePref : '';
+}
+
+selVoice.addEventListener('change', () => {
+  voicePref = selVoice.value;
+  setVoice(voicePref);
+  persistVoicePref(voicePref);
+  if (chkSpeak.checked) speak('Stimme ausgewählt.');
+});
+
+// Voices load asynchronously in Chromium; refill the list when they arrive.
+if (typeof speechSynthesis !== 'undefined') {
+  speechSynthesis.addEventListener('voiceschanged', renderVoiceList);
+}
+
+loadVoicePref().then((uri) => {
+  voicePref = uri || '';
+  setVoice(voicePref);
+  renderVoiceList();
 });
 
 // Copy the trainer text to the clipboard so the user can paste it into Claude

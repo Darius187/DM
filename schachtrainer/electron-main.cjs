@@ -98,7 +98,16 @@ ipcMain.handle('config:get', () => {
 });
 ipcMain.handle('config:set', (_event, data) => {
   try {
-    fs.writeFileSync(configPath(), JSON.stringify(data));
+    // Merge into the existing config so independent settings (saved
+    // connections, chosen voice, ...) do not overwrite one another.
+    let current = {};
+    try {
+      const parsed = JSON.parse(fs.readFileSync(configPath(), 'utf8'));
+      if (parsed && typeof parsed === 'object') current = parsed;
+    } catch {
+      /* no config yet */
+    }
+    fs.writeFileSync(configPath(), JSON.stringify({ ...current, ...data }));
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err.message };

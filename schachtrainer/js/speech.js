@@ -47,25 +47,58 @@ export function sanZuDeutsch(san) {
   return `${piece} ${verb} ${target}${promo}${suffix}`.trim();
 }
 
-let cachedVoice = null;
+let cachedVoice = null; // auto-picked best German voice
+let preferredVoiceURI = null; // user-chosen voice (voiceURI), if set
+
+// All German voices available on this device, best-sounding first.
+export function listGermanVoices() {
+  if (typeof speechSynthesis === 'undefined') return [];
+  return speechSynthesis
+    .getVoices()
+    .filter((v) => v.lang && v.lang.toLowerCase().startsWith('de'))
+    .sort((a, b) => voiceScore(b) - voiceScore(a));
+}
+
+// Rank voices so the more natural-sounding ones win. Modern, less robotic
+// voices are usually marked "HD", "Natural", "Neural" or "Online" in the name.
+function voiceScore(v) {
+  const n = `${v.name} ${v.voiceURI}`.toLowerCase();
+  let s = 0;
+  if (/\bhd\b|natural|neural|online/.test(n)) s += 100;
+  if (v.lang && v.lang.toLowerCase() === 'de-de') s += 10;
+  if (!v.localService) s += 1; // cloud voices tend to sound smoother
+  return s;
+}
 
 function pickGermanVoice() {
   if (typeof speechSynthesis === 'undefined') return null;
   if (cachedVoice) return cachedVoice;
-  const voices = speechSynthesis.getVoices();
-  cachedVoice =
-    voices.find((v) => v.lang === 'de-DE') ||
-    voices.find((v) => v.lang && v.lang.startsWith('de')) ||
-    null;
+  const german = listGermanVoices();
+  if (preferredVoiceURI) {
+    const chosen = german.find((v) => v.voiceURI === preferredVoiceURI);
+    if (chosen) {
+      cachedVoice = chosen;
+      return cachedVoice;
+    }
+  }
+  cachedVoice = german[0] || null; // already sorted best-first
   return cachedVoice;
 }
 
-// Refresh the cached voice when the browser loads its voice list.
+// Pin a specific voice by voiceURI (from the UI dropdown). Empty or unknown
+// falls back to the automatic best-German-voice pick.
+export function setVoice(voiceURI) {
+  preferredVoiceURI = voiceURI || null;
+  cachedVoice = null;
+}
+
+// Refresh the cached voice when the browser loads its voice list. Use
+// addEventListener (not onvoiceschanged) so the UI can also listen.
 if (typeof speechSynthesis !== 'undefined') {
-  speechSynthesis.onvoiceschanged = () => {
+  speechSynthesis.addEventListener('voiceschanged', () => {
     cachedVoice = null;
     pickGermanVoice();
-  };
+  });
 }
 
 // Speak the given German text. No-op if speech synthesis is unavailable.
