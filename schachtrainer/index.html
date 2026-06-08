@@ -15,7 +15,6 @@
           <button id="btn-undo">Zug zurück</button>
           <button id="btn-flip" title="Brett drehen">Brett drehen</button>
           <button id="btn-wissen" title="Schach-Wissen in eigenem Fenster öffnen">Wissen</button>
-          <button id="btn-wissen-panel" title="Wissen rechts neben dem Brett ein-/ausblenden">Wissen-Panel</button>
           <label class="hint-toggle" title="Gibt dem Trainer (Ollama) das Schach-Wissen als Grundlage mit">
             <input type="checkbox" id="chk-knowledge" />
             Wissen nutzen
@@ -75,6 +74,7 @@
           <input id="coach-model" class="coach-model" type="text" value="llama3.1:8b" list="ollama-models" placeholder="llama3.1:8b" title="Ollama-Modell (leer = Standard)" />
           <datalist id="ollama-models"></datalist>
           <button id="btn-refresh-models" type="button" title="Modell-Liste neu von Ollama abrufen (z. B. nach `ollama pull gemma:4b`)">↻</button>
+          <span id="model-count" class="voice-count" title="So viele Modelle meldet Ollama gerade."></span>
           <input id="coach-host" class="coach-model" type="text" value="localhost:11434" placeholder="localhost:11434" title="Ollama-Adresse, z.B. 192.168.1.50:11434 für einen anderen Rechner im Netzwerk" />
           <select id="sel-conn" title="Gespeicherte Verbindungen">
             <option value="">– gespeicherte Verbindung –</option>
@@ -185,10 +185,6 @@ Get-ChildItem $src | ForEach-Object {
           <textarea id="pgn-text" rows="6" placeholder="PGN hier einfügen und auf Laden klicken…"></textarea>
           <div id="pgn-status" class="pgn-status"></div>
         </div>
-      </aside>
-
-      <aside id="wissen-panel" class="wissen-panel" hidden>
-        <iframe id="wissen-frame" title="Schach-Wissen"></iframe>
       </aside>
     </main>
 

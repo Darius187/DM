@@ -1,6 +1,8 @@
 // Always-on German explanations from simple chess heuristics, plus optional
 // deeper explanations from a local Ollama model.
 
+import { sanZuDeutsch } from './speech.js';
+
 const PIECE_NAMES = { p: 'Bauer', n: 'Springer', b: 'Läufer', r: 'Turm', q: 'Dame', k: 'König' };
 const CENTER = new Set(['d4', 'e4', 'd5', 'e5']);
 const EXTENDED_CENTER = new Set(['c4', 'd4', 'e4', 'f4', 'c5', 'd5', 'e5', 'f5']);
@@ -103,6 +105,36 @@ function tagsUrl() {
   return `http://${host}/api/tags`;
 }
 
+// SAN tokens like dxe6, Qxd5, Nf3, O-O, exd5+, Qd5#, "...c6", "1...c6" etc.
+// We append a German plain-text translation in parentheses on first mention so
+// the answer is readable without chess notation knowledge.
+const SAN_REGEX = /(?<![\w./-])(?:\.{2,3}\s*)?([KQRBN]?(?:[a-h]|[1-8])?x?[a-h][1-8](?:=?[QRBNqrbn])?[+#]?|O-O-O|O-O|0-0-0|0-0)(?![\w./-])/g;
+
+function isLikelySan(token) {
+  const t = token.replace(/^\.+\s*/, '');
+  // single-character moves that look like English ('a', 'I', 'x') would match —
+  // require either a piece letter, an 'x' (capture), a '-' (castle), or a
+  // two-char square notation.
+  if (/^O-O(-O)?$|^0-0(-0)?$/.test(t)) return true;
+  return /^[KQRBN]/.test(t) || /x/.test(t) || /^[a-h][1-8]/.test(t);
+}
+
+// Annotate every distinct SAN move in the text with a German translation in
+// parentheses (first occurrence only). Pure text: no DOM.
+export function annotateNotation(text) {
+  if (!text) return text;
+  const seen = new Set();
+  return text.replace(SAN_REGEX, (match) => {
+    const san = match.replace(/^\.+\s*/, '').trim();
+    if (!isLikelySan(san)) return match;
+    if (seen.has(san)) return match;
+    seen.add(san);
+    const de = sanZuDeutsch(san);
+    if (!de || de === san) return match;
+    return `${match} (${de})`;
+  });
+}
+
 // List the models actually installed in Ollama (for the suggestion menu).
 // Returns [] on any failure - the field stays a free text input regardless.
 export async function listModels() {
@@ -155,7 +187,7 @@ export async function askCoach(ctx, { signal } = {}) {
   if (typeof window !== 'undefined' && window.coachAPI && window.coachAPI.explain) {
     const r = await window.coachAPI.explain({ model, prompt, host });
     if (!r || !r.ok) throw new Error(r ? r.error || 'Ollama-Fehler' : 'Ollama-Fehler');
-    return (r.text || '').trim();
+    return annotateNotation((r.text || '').trim());
   }
 
   const res = await fetch(generateUrl(), {
@@ -166,7 +198,7 @@ export async function askCoach(ctx, { signal } = {}) {
   });
   if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
   const data = await res.json();
-  return (data.response || '').trim();
+  return annotateNotation((data.response || '').trim());
 }
 
 // Ask the local model for an explanation. In the packaged Electron app the page
@@ -179,7 +211,7 @@ export async function explain(ctx, { signal } = {}) {
   if (typeof window !== 'undefined' && window.coachAPI && window.coachAPI.explain) {
     const r = await window.coachAPI.explain({ model, prompt, host });
     if (!r || !r.ok) throw new Error(r ? r.error || 'Ollama-Fehler' : 'Ollama-Fehler');
-    return (r.text || '').trim();
+    return annotateNotation((r.text || '').trim());
   }
 
   const res = await fetch(generateUrl(), {
@@ -190,5 +222,5 @@ export async function explain(ctx, { signal } = {}) {
   });
   if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
   const data = await res.json();
-  return (data.response || '').trim();
+  return annotateNotation((data.response || '').trim());
 }

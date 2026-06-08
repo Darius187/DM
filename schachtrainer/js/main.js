@@ -64,9 +64,6 @@ const pgnText = document.getElementById('pgn-text');
 const pgnStatus = document.getElementById('pgn-status');
 const chkCoach = document.getElementById('chk-coach');
 const chkKnowledge = document.getElementById('chk-knowledge');
-const btnWissenPanel = document.getElementById('btn-wissen-panel');
-const wissenPanelEl = document.getElementById('wissen-panel');
-const wissenFrameEl = document.getElementById('wissen-frame');
 const coachModelEl = document.getElementById('coach-model');
 const coachHostEl = document.getElementById('coach-host');
 const selConn = document.getElementById('sel-conn');
@@ -725,20 +722,6 @@ document.getElementById('btn-wissen').addEventListener('click', () => {
   window.open('wissen.html', 'schach-wissen', 'width=600,height=860');
 });
 
-// Toggle the in-app knowledge side panel (third column). The iframe src is set
-// lazily on first open so the handbook isn't loaded unless the user wants it.
-if (btnWissenPanel) {
-  btnWissenPanel.addEventListener('click', () => {
-    const show = wissenPanelEl.hidden;
-    if (show && !wissenFrameEl.getAttribute('src')) {
-      wissenFrameEl.setAttribute('src', 'wissen.html');
-    }
-    wissenPanelEl.hidden = !show;
-    // The board resizes when the grid gains/loses a column; chessground redraws
-    // via its ResizeObserver.
-  });
-}
-
 // Feed the Schach-Wissen digest to the local model so its answers are grounded
 // in the handbook. Off by default (it makes prompts longer and slower).
 if (chkKnowledge) {
@@ -776,6 +759,16 @@ async function populateModelList() {
   setCoachHost(coachHostEl.value);
   const names = await listModels();
   datalist.innerHTML = names.map((n) => `<option value="${n}"></option>`).join('');
+  // Show a small status next to the refresh button so the user can tell at a
+  // glance whether Ollama is reachable and how many models it offers. The
+  // datalist itself has no visible "open" state, which has confused users.
+  const countEl = document.getElementById('model-count');
+  if (countEl) {
+    countEl.textContent = names.length === 0
+      ? 'keine Modelle – Ollama erreichbar?'
+      : `${names.length} verfügbar: ${names.slice(0, 4).join(', ')}${names.length > 4 ? '…' : ''}`;
+    countEl.classList.toggle('warn', names.length === 0);
+  }
 }
 
 // Changing the Ollama address re-reads the installed models from that host.
