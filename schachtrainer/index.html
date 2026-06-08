@@ -47,6 +47,11 @@
             </select>
           </label>
           <span id="voice-count" class="voice-count" title="So viele Stimmen meldet Windows der App."></span>
+          <label class="strength rate-control" title="Sprech-Geschwindigkeit für alle Ansagen">
+            Tempo:
+            <input id="rate-slider" type="range" min="0.7" max="1.8" step="0.05" value="1" />
+            <span id="rate-value" class="rate-value">1,00×</span>
+          </label>
           <label class="strength">
             Eröffnung:
             <select id="sel-opening">
@@ -147,6 +152,8 @@ Get-ChildItem $src | ForEach-Object {
           <div class="coach-chat-row">
             <input id="coach-chat-input" type="text" placeholder="Frage zur Stellung, z.B. Was ist mein bester Plan?" />
             <button id="btn-coach-ask">Fragen</button>
+            <button id="btn-chat-speak" title="Letzte Trainer-Antwort vorlesen">Vorlesen</button>
+            <button id="btn-chat-stop" class="coach-btn-stop" title="Vorlesen abbrechen" hidden>Stopp</button>
           </div>
         </div>
         <div>

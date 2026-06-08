@@ -2,7 +2,7 @@ import { Chess } from 'chess.js';
 import { createBoard, toDests, colorToLong } from './board.js';
 import { Engine } from './engine.js';
 import { scoreToCp, cpToWinProb, formatScore, toPerspective, isBlunder } from './eval.js';
-import { sanZuDeutsch, speak, cancelSpeech, listGermanVoices, setVoice } from './speech.js';
+import { sanZuDeutsch, speak, cancelSpeech, listGermanVoices, setVoice, setRate } from './speech.js';
 import { OPENINGS, normalizeSan } from './openings.js';
 import {
   explain,
@@ -49,6 +49,10 @@ const selStrength = document.getElementById('sel-strength');
 const chkHint = document.getElementById('chk-hint');
 const chkSpeak = document.getElementById('chk-speak');
 const selVoice = document.getElementById('sel-voice');
+const rateSliderEl = document.getElementById('rate-slider');
+const rateValueEl = document.getElementById('rate-value');
+const btnChatSpeak = document.getElementById('btn-chat-speak');
+const btnChatStop = document.getElementById('btn-chat-stop');
 const selOpening = document.getElementById('sel-opening');
 const btnSave = document.getElementById('btn-save');
 const btnLoad = document.getElementById('btn-load');
@@ -344,6 +348,40 @@ async function askCoachQuestion() {
   coachAsking = false;
   btnCoachAsk.disabled = false;
 }
+
+// Read the most recent trainer answer aloud. If none exists yet, read whatever
+// last appeared in the chat log (a user question or the fallback message) so
+// the button is never just a dead end.
+function lastChatAnswerText() {
+  const answers = coachChatLogEl.querySelectorAll('.a');
+  return answers.length ? answers[answers.length - 1].textContent.trim() : '';
+}
+
+function looksEnglishText(text) {
+  const hits = (text.match(/\b(the|and|with|that|this|which|because|would|could)\b/gi) || [])
+    .length;
+  return hits >= 3;
+}
+
+btnChatSpeak.addEventListener('click', () => {
+  const text = lastChatAnswerText();
+  if (!text || /^Trainer denkt…?$/.test(text)) return;
+  btnChatSpeak.hidden = true;
+  btnChatStop.hidden = false;
+  speak(text, {
+    lang: looksEnglishText(text) ? 'en-US' : 'de-DE',
+    onend: () => {
+      btnChatStop.hidden = true;
+      btnChatSpeak.hidden = false;
+    },
+  });
+});
+
+btnChatStop.addEventListener('click', () => {
+  cancelSpeech();
+  btnChatStop.hidden = true;
+  btnChatSpeak.hidden = false;
+});
 
 btnCoachAsk.addEventListener('click', askCoachQuestion);
 coachChatInputEl.addEventListener('keydown', (e) => {
@@ -877,6 +915,67 @@ loadVoicePref().then((uri) => {
   voicePref = uri || '';
   setVoice(voicePref);
   renderVoiceList();
+});
+
+// ---- Speech rate (applies to every announcement) ---------------------------
+// Persisted alongside the voice via the same configAPI / localStorage path.
+let speechRate = 1.0;
+
+function updateRateLabel() {
+  if (rateValueEl) {
+    rateValueEl.textContent = `${speechRate.toFixed(2).replace('.', ',')}×`;
+  }
+}
+
+async function loadRatePref() {
+  try {
+    if (window.configAPI) {
+      const d = await window.configAPI.get();
+      const r = Number(d && d.rate);
+      if (Number.isFinite(r) && r > 0) return r;
+    }
+  } catch {
+    /* fall through */
+  }
+  try {
+    const raw = Number(localStorage.getItem('rate'));
+    if (Number.isFinite(raw) && raw > 0) return raw;
+  } catch {
+    /* ignore */
+  }
+  return 1.0;
+}
+
+async function persistRatePref(r) {
+  try {
+    if (window.configAPI) {
+      await window.configAPI.set({ rate: r });
+      return;
+    }
+  } catch {
+    /* fall through */
+  }
+  try {
+    localStorage.setItem('rate', String(r));
+  } catch {
+    /* best-effort */
+  }
+}
+
+if (rateSliderEl) {
+  rateSliderEl.addEventListener('input', () => {
+    speechRate = Number(rateSliderEl.value) || 1.0;
+    setRate(speechRate);
+    updateRateLabel();
+  });
+  rateSliderEl.addEventListener('change', () => persistRatePref(speechRate));
+}
+
+loadRatePref().then((r) => {
+  speechRate = r;
+  if (rateSliderEl) rateSliderEl.value = String(r);
+  setRate(speechRate);
+  updateRateLabel();
 });
 
 // One-click copy for the PowerShell snippet that exposes Windows-11 (Natural)

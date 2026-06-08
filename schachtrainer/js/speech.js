@@ -49,6 +49,18 @@ export function sanZuDeutsch(san) {
 
 let cachedVoice = null; // auto-picked best German voice
 let preferredVoiceURI = null; // user-chosen voice (voiceURI), if set
+let defaultRate = 1.0; // playback speed for all announcements
+
+// Set the default playback speed (0.5 = slow, 2 = very fast). speak() also
+// accepts a per-call rate that overrides this.
+export function setRate(rate) {
+  const r = Number(rate);
+  if (Number.isFinite(r) && r > 0) defaultRate = Math.max(0.5, Math.min(2.5, r));
+}
+
+export function getRate() {
+  return defaultRate;
+}
 
 // All German and English voices available on this device, best-sounding first.
 // Both languages are useful: German for the move announcements, English for
@@ -121,6 +133,10 @@ export function speak(text, opts = {}) {
   const lang = opts.lang || 'de-DE';
   const u = new SpeechSynthesisUtterance(text);
   u.lang = lang;
+  // Per-call rate wins over the stored default, both are clamped to a sane
+  // band so the voice cannot be tuned into uselessness.
+  const r = Number(opts.rate ?? defaultRate);
+  u.rate = Number.isFinite(r) ? Math.max(0.5, Math.min(2.5, r)) : 1;
   const voice = pickVoiceFor(lang);
   if (voice) u.voice = voice;
   if (typeof opts.onend === 'function') u.onend = opts.onend;

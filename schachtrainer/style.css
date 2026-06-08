@@ -340,6 +340,18 @@ button:hover {
   color: #e8c15a;
 }
 
+.rate-control input[type='range'] {
+  width: 110px;
+  vertical-align: middle;
+}
+.rate-value {
+  font-size: 0.75rem;
+  color: #9ab;
+  font-family: ui-monospace, monospace;
+  min-width: 44px;
+  display: inline-block;
+}
+
 /* Collapsible network-connection help under the controls. */
 .net-help {
   margin: 6px 0 0;
