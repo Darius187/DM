@@ -97,7 +97,25 @@
             <li><strong>Klassisch (SAPI 5)</strong> — z.B. „Microsoft Hedda Desktop", „Microsoft Stefan". Werden zuverlässig in dieser App angezeigt.</li>
             <li><strong>Neu „(Natural)" / „Modern"</strong> — z.B. „Microsoft Conrad (Natural)", „Microsoft Katja (Natural)". Sind in <em>Windows-Einstellungen → Barrierefreiheit → Sprachausgabe</em> über <strong>Sprachausgabestimmen hinzufügen</strong> installierbar (sehr natürlich klingend). <strong>Aber:</strong> diese Modern-Stimmen reicht Windows in der Regel nur an die Sprachausgabe und Erzähler-Apps weiter, nicht an die Web-Speech-Schnittstelle, die diese App nutzt — sie erscheinen daher meist nicht im Dropdown. Das ist eine Windows-/Chromium-Limitierung, kein Fehler der App.</li>
           </ul>
-          <p>Tipp: für englische Antworten reicht die klassische <em>Microsoft Hazel Desktop</em> oder <em>Microsoft David Desktop</em>. Wer dauerhaft (Natural) im Browser will, müsste auf eine externe Lösung wie <a href="https://github.com/rany2/edge-tts" target="_blank" rel="noopener">edge-tts</a> ausweichen — das geht aber über diese App hinaus.</p>
+          <p>Tipp: für englische Antworten reicht die klassische <em>Microsoft Hazel Desktop</em> oder <em>Microsoft David Desktop</em>.</p>
+
+          <p><strong>Trick für die (Natural)-Stimmen:</strong> Die Modern-Stimmen liegen in einem Registry-Pfad (<code>Speech_OneCore</code>), aus dem Chromium nicht liest. Wenn du sie in den klassischen <code>Speech</code>-Pfad kopierst, sieht diese App sie. Das ist kein offizieller Microsoft-Weg, klappt aber bei vielen Windows-11-Systemen.</p>
+          <ol>
+            <li><strong>Vorher Wiederherstellungspunkt setzen.</strong> Start → „Wiederherstellungspunkt erstellen" → Erstellen.</li>
+            <li>Start → <em>PowerShell</em> oder <em>Terminal</em> mit der rechten Maustaste → <strong>Als Administrator ausführen</strong>.</li>
+            <li>Snippet mit dem Knopf unten kopieren, in PowerShell einfügen und mit Enter ausführen.</li>
+            <li>Schachtrainer schließen und wieder öffnen. Die (Natural)-Stimmen müssten jetzt im Dropdown stehen.</li>
+          </ol>
+          <pre id="voice-fix-snippet" class="snippet">$src = 'HKLM:\SOFTWARE\Microsoft\Speech_OneCore\Voices\Tokens'
+$dst = 'HKLM:\SOFTWARE\Microsoft\Speech\Voices\Tokens'
+Get-ChildItem $src | ForEach-Object {
+  Copy-Item -Path $_.PSPath -Destination "$dst\$($_.PSChildName)" -Recurse -Force
+  Write-Host "kopiert:" $_.PSChildName
+}</pre>
+          <button id="btn-copy-voice-fix" class="coach-btn" type="button" title="PowerShell-Befehl in die Zwischenablage kopieren">Snippet kopieren</button>
+
+          <p><strong>Ehrliche Risiken:</strong> Das Snippet schreibt in <code>HKLM</code> (Registry, alle Nutzer) — daher Admin-Rechte. Auf manchen Windows-Versionen reicht der Hack nicht (Microsoft prüft inzwischen mehr als nur den Tokens-Pfad), dann bleibt das Dropdown unverändert; rückgängig machen geht dann über den Wiederherstellungspunkt. Andere Apps können nach dem Eintrag mehr Stimmen sehen, das ist gewollt.</p>
+          <p>Klappt der Trick auf deinem System nicht, sind die klassischen Desktop-Stimmen die zuverlässige Option, oder eine externe TTS-Lösung wie <a href="https://github.com/rany2/edge-tts" target="_blank" rel="noopener">edge-tts</a> außerhalb der App.</p>
         </details>
       </header>
 

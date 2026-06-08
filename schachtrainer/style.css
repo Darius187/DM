@@ -363,6 +363,28 @@ button:hover {
   padding: 0 4px;
   border-radius: 3px;
 }
+.net-help .snippet {
+  background: #111;
+  color: #cfe;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  white-space: pre;
+  overflow-x: auto;
+  margin: 8px 0 4px;
+  border: 1px solid #2a3a3a;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.net-help ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+.net-help ul li {
+  margin: 3px 0;
+}
 
 /* Coach chat: free-form questions to the local Ollama model. */
 .coach-chat {

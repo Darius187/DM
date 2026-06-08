@@ -879,6 +879,33 @@ loadVoicePref().then((uri) => {
   renderVoiceList();
 });
 
+// One-click copy for the PowerShell snippet that exposes Windows-11 (Natural)
+// voices to the Web Speech API by mirroring the Speech_OneCore registry tokens
+// into the classic Speech path. See the help block above for caveats.
+const btnCopyVoiceFix = document.getElementById('btn-copy-voice-fix');
+if (btnCopyVoiceFix) {
+  btnCopyVoiceFix.addEventListener('click', async () => {
+    const pre = document.getElementById('voice-fix-snippet');
+    const text = (pre && pre.textContent) || '';
+    const original = btnCopyVoiceFix.textContent;
+    const flash = (msg) => {
+      btnCopyVoiceFix.textContent = msg;
+      setTimeout(() => (btnCopyVoiceFix.textContent = original), 1500);
+    };
+    try {
+      await navigator.clipboard.writeText(text);
+      flash('Kopiert');
+    } catch {
+      const range = document.createRange();
+      range.selectNodeContents(pre);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      flash('Markiert');
+    }
+  });
+}
+
 // Read the trainer text aloud with the currently selected voice. Detection is
 // crude on purpose: if the answer has plenty of typical English filler words
 // it is read with an English voice, otherwise the German preferred voice is
