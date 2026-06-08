@@ -849,6 +849,16 @@ function renderVoiceList() {
     voices.map((v) => `<option value="${v.voiceURI}">${v.name}</option>`).join('');
   // Keep the stored choice selected if it is (still) available on this device.
   selVoice.value = voices.some((v) => v.voiceURI === voicePref) ? voicePref : '';
+
+  // Tiny counter next to the dropdown so the user can tell at a glance whether
+  // Windows actually handed any voices over. < 2 voices warns yellow and the
+  // user is nudged to the "Stimme fehlt?" help block below the controls.
+  const voiceCountEl = document.getElementById('voice-count');
+  if (voiceCountEl) {
+    const n = voices.length;
+    voiceCountEl.textContent = n === 0 ? 'keine erkannt – Hilfe ↓' : `${n} erkannt`;
+    voiceCountEl.classList.toggle('warn', n < 2);
+  }
 }
 
 selVoice.addEventListener('change', () => {

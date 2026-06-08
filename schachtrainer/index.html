@@ -42,10 +42,11 @@
           </label>
           <label class="strength">
             Stimme:
-            <select id="sel-voice" title="Sprachausgabe-Stimme (geräteabhängig)">
+            <select id="sel-voice" title="Sprachausgabe-Stimme. Nur Stimmen, die Windows der App über die Web-Speech-Schnittstelle anbietet, erscheinen hier. (Natural)-Stimmen sind nicht immer dabei – siehe Stimme-fehlt-Hilfe unter den Bedienelementen.">
               <option value="">Automatisch</option>
             </select>
           </label>
+          <span id="voice-count" class="voice-count" title="So viele Stimmen meldet Windows der App."></span>
           <label class="strength">
             Eröffnung:
             <select id="sel-opening">
@@ -81,6 +82,22 @@
             <li>Klappt es, erscheinen die Modelle des Hauptrechners als Vorschläge. Dann mit "Speichern" als Verbindung sichern, damit du es nicht wieder eintippen musst.</li>
           </ol>
           <p>"localhost" heißt "dieser Rechner hier" - richtig, wenn Ollama auf demselben Gerät läuft, aber falsch fürs Tablet, das auf den Hauptrechner zugreifen soll.</p>
+        </details>
+        <details class="net-help">
+          <summary>Stimme fehlt? Englische oder (Natural)-Stimme installieren</summary>
+          <p>Die App listet nur Stimmen, die Windows der Web-Speech-Schnittstelle anbietet. Englische Stimmen sind nach einer frischen Windows-Installation oft nicht dabei. So holst du sie nach:</p>
+          <ol>
+            <li>Windows-Einstellungen → <strong>Zeit und Sprache</strong> → <strong>Sprache und Region</strong>.</li>
+            <li>Unter <strong>Bevorzugte Sprachen</strong> bei der Sprache (z.B. <em>Englisch (Vereinigtes Königreich)</em>) auf die drei Punkte → <strong>Sprachoptionen</strong>.</li>
+            <li>Bei <strong>Sprache</strong> auf <strong>Stimmen hinzufügen</strong> und die gewünschte Stimme installieren, z.B. <code>Microsoft Ryan</code>, <code>Microsoft Sonia</code>.</li>
+            <li>App neu starten — die Stimme erscheint im Dropdown.</li>
+          </ol>
+          <p><strong>Wichtig zu den (Natural)-Stimmen aus Windows 11:</strong> Microsoft hat zwei Sorten:</p>
+          <ul>
+            <li><strong>Klassisch (SAPI 5)</strong> — z.B. „Microsoft Hedda Desktop", „Microsoft Stefan". Werden zuverlässig in dieser App angezeigt.</li>
+            <li><strong>Neu „(Natural)" / „Modern"</strong> — z.B. „Microsoft Conrad (Natural)", „Microsoft Katja (Natural)". Sind in <em>Windows-Einstellungen → Barrierefreiheit → Sprachausgabe</em> über <strong>Sprachausgabestimmen hinzufügen</strong> installierbar (sehr natürlich klingend). <strong>Aber:</strong> diese Modern-Stimmen reicht Windows in der Regel nur an die Sprachausgabe und Erzähler-Apps weiter, nicht an die Web-Speech-Schnittstelle, die diese App nutzt — sie erscheinen daher meist nicht im Dropdown. Das ist eine Windows-/Chromium-Limitierung, kein Fehler der App.</li>
+          </ul>
+          <p>Tipp: für englische Antworten reicht die klassische <em>Microsoft Hazel Desktop</em> oder <em>Microsoft David Desktop</em>. Wer dauerhaft (Natural) im Browser will, müsste auf eine externe Lösung wie <a href="https://github.com/rany2/edge-tts" target="_blank" rel="noopener">edge-tts</a> ausweichen — das geht aber über diese App hinaus.</p>
         </details>
       </header>
 

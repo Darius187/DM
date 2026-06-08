@@ -328,6 +328,18 @@ button:hover {
   margin-top: 4px;
 }
 
+/* Tiny voice-count next to the voice dropdown so the user can immediately see
+   how many voices Windows handed over to the app, and gets a nudge to the
+   help text below if the list looks short. */
+.voice-count {
+  font-size: 0.75rem;
+  color: #9ab;
+  margin-left: -4px;
+}
+.voice-count.warn {
+  color: #e8c15a;
+}
+
 /* Collapsible network-connection help under the controls. */
 .net-help {
   margin: 6px 0 0;
