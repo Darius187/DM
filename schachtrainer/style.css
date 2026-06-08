@@ -352,7 +352,9 @@ button:hover {
   display: inline-block;
 }
 
-/* Collapsible network-connection help under the controls. */
+/* Collapsible help blocks. Closed: a small inline summary in the header.
+   Open: a scrollable overlay centred on top of the app so they no longer get
+   clipped by the fixed-viewport layout. */
 .net-help {
   margin: 6px 0 0;
   font-size: 0.85rem;
@@ -362,6 +364,41 @@ button:hover {
 .net-help summary {
   cursor: pointer;
   color: #9ecbff;
+}
+.net-help[open] {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(820px, calc(100vw - 40px));
+  max-height: calc(100vh - 40px);
+  background: #1e1e1e;
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 18px 24px 24px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65);
+  opacity: 1;
+}
+.net-help[open] summary {
+  position: sticky;
+  top: -18px;
+  margin: -18px -24px 12px;
+  padding: 14px 24px;
+  background: #1e1e1e;
+  border-bottom: 1px solid #333;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+/* Backdrop while any help overlay is open. Modern :has() (Chromium 124+ /
+   Electron 31+) lets us do this without JS. */
+body:has(details.net-help[open])::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 99;
 }
 .net-help ol {
   margin: 6px 0 0;

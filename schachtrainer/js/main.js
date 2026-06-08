@@ -818,7 +818,10 @@ selConn.addEventListener('change', () => {
 btnConnSave.addEventListener('click', async () => {
   const host = coachHostEl.value.trim() || DEFAULT_HOST;
   const model = coachModelEl.value.trim() || DEFAULT_MODEL;
-  const name = connNameEl.value.trim() || host;
+  // Fall back to "host (model)" so two connections with the same host but
+  // different models (e.g. llama3.1:8b vs gemma:4b) don't silently overwrite
+  // each other.
+  const name = connNameEl.value.trim() || `${host} (${model})`;
   const existing = connections.find((c) => c.name === name);
   if (existing) {
     existing.host = host;
@@ -981,6 +984,43 @@ loadRatePref().then((r) => {
 // One-click copy for the PowerShell snippet that exposes Windows-11 (Natural)
 // voices to the Web Speech API by mirroring the Speech_OneCore registry tokens
 // into the classic Speech path. See the help block above for caveats.
+// Help overlays: close with Esc, close when the user clicks outside any
+// open <details class="net-help"> (i.e. on the backdrop).
+function closeHelpOverlays() {
+  document.querySelectorAll('details.net-help[open]').forEach((d) => {
+    d.open = false;
+  });
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeHelpOverlays();
+});
+document.addEventListener('click', (e) => {
+  // any open help blocks?
+  const open = document.querySelector('details.net-help[open]');
+  if (!open) return;
+  // ignore clicks inside the help itself or on its summary in the header
+  if (e.target.closest('details.net-help')) return;
+  closeHelpOverlays();
+});
+
+// Manual refresh for the Ollama model list — for the case where the user
+// just `ollama pull`ed a new model (e.g. gemma:4b) and the suggestion list
+// is still showing the old set from app start.
+const btnRefreshModels = document.getElementById('btn-refresh-models');
+if (btnRefreshModels) {
+  btnRefreshModels.addEventListener('click', async () => {
+    const original = btnRefreshModels.textContent;
+    btnRefreshModels.disabled = true;
+    btnRefreshModels.textContent = '…';
+    await populateModelList();
+    btnRefreshModels.textContent = '✓';
+    setTimeout(() => {
+      btnRefreshModels.textContent = original;
+      btnRefreshModels.disabled = false;
+    }, 900);
+  });
+}
+
 const btnCopyVoiceFix = document.getElementById('btn-copy-voice-fix');
 if (btnCopyVoiceFix) {
   btnCopyVoiceFix.addEventListener('click', async () => {
