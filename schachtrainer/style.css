@@ -359,6 +359,12 @@ button:hover {
 /* Tiny voice-count next to the voice dropdown so the user can immediately see
    how many voices Windows handed over to the app, and gets a nudge to the
    help text below if the list looks short. */
+.voice-note {
+  font-size: 0.7rem;
+  color: #889;
+  line-height: 1.15;
+  max-width: 230px;
+}
 .voice-count {
   font-size: 0.75rem;
   color: #9ab;

@@ -1073,6 +1073,51 @@ if (btnCopyVoiceFix) {
   });
 }
 
+// Try-out button for the online (edge-tts) neural voice. Step 1a: this only
+// proves the connection works through the user's firewall and that the MP3
+// plays back; it is not yet wired into the actual announcements. Uses the
+// current speech rate so the test matches what later announcements would sound
+// like. A single shared Audio element so a second press cancels the first.
+let testOnlineAudio = null;
+const btnTestOnlineVoice = document.getElementById('btn-test-online-voice');
+if (btnTestOnlineVoice) {
+  btnTestOnlineVoice.addEventListener('click', async () => {
+    const status = document.getElementById('online-voice-status');
+    const setStatus = (msg) => {
+      if (status) status.textContent = msg;
+    };
+    if (!window.ttsAPI) {
+      setStatus('Nur in der App verfügbar (nicht im Browser).');
+      return;
+    }
+    btnTestOnlineVoice.disabled = true;
+    setStatus('Verbinde mit Microsoft …');
+    try {
+      const res = await window.ttsAPI.speak({
+        text: 'Springer auf f3. Ein ruhiger Entwicklungszug, der das Zentrum kontrolliert.',
+        voice: 'de-DE-KatjaNeural',
+        rate: speechRate,
+      });
+      if (!res || !res.ok) {
+        setStatus(`Fehlgeschlagen: ${(res && res.error) || 'unbekannt'}`);
+        return;
+      }
+      if (testOnlineAudio) {
+        testOnlineAudio.pause();
+      }
+      testOnlineAudio = new Audio(`data:audio/mp3;base64,${res.audio}`);
+      testOnlineAudio.onerror = () => setStatus('Audio konnte nicht abgespielt werden.');
+      testOnlineAudio.onplay = () => setStatus('Spielt …');
+      testOnlineAudio.onended = () => setStatus('Fertig.');
+      await testOnlineAudio.play();
+    } catch (err) {
+      setStatus(`Fehler: ${(err && err.message) || err}`);
+    } finally {
+      btnTestOnlineVoice.disabled = false;
+    }
+  });
+}
+
 // Read the trainer text aloud with the currently selected voice. Detection is
 // crude on purpose: if the answer has plenty of typical English filler words
 // it is read with an English voice, otherwise the German preferred voice is

@@ -12,3 +12,9 @@ contextBridge.exposeInMainWorld('configAPI', {
   get: () => ipcRenderer.invoke('config:get'),
   set: (data) => ipcRenderer.invoke('config:set', data),
 });
+
+// Online neural voices (edge-tts). speak() returns { ok, audio } where audio is
+// a base64 MP3 the renderer plays via an <audio> element.
+contextBridge.exposeInMainWorld('ttsAPI', {
+  speak: (payload) => ipcRenderer.invoke('tts:speak', payload),
+});

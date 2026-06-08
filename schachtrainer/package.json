@@ -2,7 +2,7 @@
   "name": "schachtrainer",
   "productName": "Schachtrainer",
   "private": true,
-  "version": "0.1.19",
+  "version": "0.1.20",
   "description": "Lokales Schach-Trainingsprogramm mit Stockfish und deutscher Sprachausgabe.",
   "type": "module",
   "main": "electron-main.cjs",
@@ -21,6 +21,7 @@
   "dependencies": {
     "chess.js": "^1.0.0-beta.8",
     "chessground": "^9.1.1",
+    "node-edge-tts": "^1.2.10",
     "stockfish": "^18.0.7"
   },
   "devDependencies": {
@@ -43,7 +44,29 @@
       "dist/engine/**"
     ],
     "asarUnpack": [
-      "dist/engine/**"
+      "dist/engine/**",
+      "node_modules/node-edge-tts/**",
+      "node_modules/ws/**",
+      "node_modules/https-proxy-agent/**",
+      "node_modules/agent-base/**",
+      "node_modules/debug/**",
+      "node_modules/ms/**",
+      "node_modules/yargs/**",
+      "node_modules/yargs-parser/**",
+      "node_modules/cliui/**",
+      "node_modules/escalade/**",
+      "node_modules/get-caller-file/**",
+      "node_modules/require-directory/**",
+      "node_modules/string-width/**",
+      "node_modules/strip-ansi/**",
+      "node_modules/ansi-regex/**",
+      "node_modules/wrap-ansi/**",
+      "node_modules/ansi-styles/**",
+      "node_modules/color-convert/**",
+      "node_modules/color-name/**",
+      "node_modules/emoji-regex/**",
+      "node_modules/is-fullwidth-code-point/**",
+      "node_modules/y18n/**"
     ],
     "win": {
       "target": "portable",

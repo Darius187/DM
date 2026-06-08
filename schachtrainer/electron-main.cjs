@@ -5,6 +5,7 @@ const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
 const path = require('node:path');
 const http = require('node:http');
 const fs = require('node:fs');
+const os = require('node:os');
 
 // Parse an "host:port" string (optionally with scheme) into request options.
 // Lets the renderer point Ollama at another machine on the network.
@@ -111,6 +112,45 @@ ipcMain.handle('config:set', (_event, data) => {
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err.message };
+  }
+});
+
+// Online text-to-speech via Microsoft Edge's neural voices (edge-tts). Runs in
+// the main process because it needs Node (WebSocket to Microsoft's server) and
+// to keep the inofficial endpoint details out of the renderer. The renderer
+// gets the finished MP3 back as base64 and plays it with an <audio> element.
+// rate comes in as a number (1.0 = normal); edge-tts wants a percent string.
+function rateToPercent(rate) {
+  const r = Number(rate);
+  const pct = Math.round(((Number.isFinite(r) && r > 0 ? r : 1) - 1) * 100);
+  return `${pct >= 0 ? '+' : ''}${pct}%`;
+}
+ipcMain.handle('tts:speak', async (_event, { text, voice, rate } = {}) => {
+  if (!text) return { ok: false, error: 'Kein Text übergeben.' };
+  const v = voice || 'de-DE-KatjaNeural';
+  const tmp = path.join(
+    os.tmpdir(),
+    `st-tts-${Date.now()}-${Math.random().toString(36).slice(2)}.mp3`,
+  );
+  try {
+    const { EdgeTTS } = require('node-edge-tts');
+    const tts = new EdgeTTS({
+      voice: v,
+      lang: v.slice(0, 5),
+      rate: rateToPercent(rate),
+      timeout: 15000,
+    });
+    await tts.ttsPromise(text, tmp);
+    const audio = fs.readFileSync(tmp).toString('base64');
+    return { ok: true, audio };
+  } catch (err) {
+    return { ok: false, error: (err && (err.message || String(err))) || 'TTS fehlgeschlagen' };
+  } finally {
+    try {
+      fs.unlinkSync(tmp);
+    } catch {
+      /* temp file may not exist on early failure */
+    }
   }
 });
 
