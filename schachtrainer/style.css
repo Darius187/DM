@@ -232,23 +232,44 @@ button:hover {
   cursor: text;
 }
 
-.copy-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
+/* Coach-Panel toolbar: own row above the text so the buttons never sit on
+   top of the answer (was the old position:absolute "copy" overlay). Touch
+   targets at the 32-44px range and 8px gap per design-system guidelines. */
+.coach-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.coach-btn {
   background: #3a5566;
   color: #eaf2f7;
   border: 1px solid #5a7a8a;
-  border-radius: 3px;
-  padding: 2px 7px;
-  font-size: 0.7rem;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  min-height: 32px;
   cursor: pointer;
-  opacity: 0.85;
+  transition: background-color 120ms ease;
 }
 
-.copy-btn:hover {
-  opacity: 1;
+.coach-btn:hover {
   background: #4a6677;
+}
+
+.coach-btn:focus-visible {
+  outline: 2px solid #9ecbff;
+  outline-offset: 2px;
+}
+
+.coach-btn-stop {
+  background: #6a3a3a;
+  border-color: #8a5a5a;
+}
+
+.coach-btn-stop:hover {
+  background: #7a4a4a;
 }
 
 .coach-model {

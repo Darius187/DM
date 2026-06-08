@@ -65,6 +65,8 @@ const btnConnDel = document.getElementById('btn-conn-del');
 const coachEl = document.getElementById('coach');
 const coachWrapEl = document.getElementById('coach-wrap');
 const btnCopyCoach = document.getElementById('btn-copy-coach');
+const btnSpeakCoach = document.getElementById('btn-speak-coach');
+const btnStopCoach = document.getElementById('btn-stop-coach');
 
 const engine = new Engine(); // plays the opponent's moves at the chosen strength
 const analyzer = new Engine(); // full strength, for eval bar / hint / blunder
@@ -806,6 +808,39 @@ loadVoicePref().then((uri) => {
   voicePref = uri || '';
   setVoice(voicePref);
   renderVoiceList();
+});
+
+// Read the trainer text aloud with the currently selected voice. Detection is
+// crude on purpose: if the answer has plenty of typical English filler words
+// it is read with an English voice, otherwise the German preferred voice is
+// used. The "Stopp" button cancels an in-flight utterance.
+function looksEnglish(text) {
+  // count short English-only function words to avoid false positives from
+  // single English brand names in an otherwise German text.
+  const hits = (text.match(/\b(the|and|with|that|this|which|because|would|could)\b/gi) || [])
+    .length;
+  return hits >= 3;
+}
+
+btnSpeakCoach.addEventListener('click', () => {
+  const text = (coachEl.textContent || '').trim();
+  if (!text) return;
+  const lang = looksEnglish(text) ? 'en-US' : 'de-DE';
+  btnSpeakCoach.hidden = true;
+  btnStopCoach.hidden = false;
+  speak(text, {
+    lang,
+    onend: () => {
+      btnStopCoach.hidden = true;
+      btnSpeakCoach.hidden = false;
+    },
+  });
+});
+
+btnStopCoach.addEventListener('click', () => {
+  cancelSpeech();
+  btnStopCoach.hidden = true;
+  btnSpeakCoach.hidden = false;
 });
 
 // Copy the trainer text to the clipboard so the user can paste it into Claude
