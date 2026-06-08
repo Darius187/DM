@@ -121,6 +121,39 @@ export function buildPrompt({ fen, userMove, bestMove }) {
   );
 }
 
+// Build a prompt for a free-form user question about the current position.
+export function buildChatPrompt({ question, fen, moves }) {
+  const movesLine = moves ? ` Bisheriger Partieverlauf: ${moves}.` : '';
+  return (
+    `Du bist ein geduldiger Schachtrainer. Antworte auf Deutsch in wenigen kurzen, ` +
+    `einfachen Sätzen, ohne lange Variantenlisten. Beziehe dich konkret auf die ` +
+    `aktuelle Stellung.${movesLine} Stellung (FEN): ${fen}. ` +
+    `Frage des Schülers: ${question}`
+  );
+}
+
+// Send a free-form question to the model. Uses the same IPC/fetch path as
+// explain() (Ollama /api/generate).
+export async function askCoach(ctx, { signal } = {}) {
+  const prompt = buildChatPrompt(ctx);
+
+  if (typeof window !== 'undefined' && window.coachAPI && window.coachAPI.explain) {
+    const r = await window.coachAPI.explain({ model, prompt, host });
+    if (!r || !r.ok) throw new Error(r ? r.error || 'Ollama-Fehler' : 'Ollama-Fehler');
+    return (r.text || '').trim();
+  }
+
+  const res = await fetch(generateUrl(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, prompt, stream: false }),
+    signal,
+  });
+  if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
+  const data = await res.json();
+  return (data.response || '').trim();
+}
+
 // Ask the local model for an explanation. In the packaged Electron app the page
 // is loaded via file://, and Ollama rejects that origin via CORS. So when the
 // IPC bridge is available we let the main process do the request (no CORS there).

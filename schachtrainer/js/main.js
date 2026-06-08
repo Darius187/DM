@@ -6,6 +6,7 @@ import { sanZuDeutsch, speak, cancelSpeech, listGermanVoices, setVoice } from '.
 import { OPENINGS, normalizeSan } from './openings.js';
 import {
   explain,
+  askCoach,
   setCoachModel,
   setCoachHost,
   explainMoveOffline,
@@ -64,6 +65,10 @@ const btnConnSave = document.getElementById('btn-conn-save');
 const btnConnDel = document.getElementById('btn-conn-del');
 const coachEl = document.getElementById('coach');
 const coachWrapEl = document.getElementById('coach-wrap');
+const coachChatEl = document.getElementById('coach-chat');
+const coachChatLogEl = document.getElementById('coach-chat-log');
+const coachChatInputEl = document.getElementById('coach-chat-input');
+const btnCoachAsk = document.getElementById('btn-coach-ask');
 const btnCopyCoach = document.getElementById('btn-copy-coach');
 const btnSpeakCoach = document.getElementById('btn-speak-coach');
 const btnStopCoach = document.getElementById('btn-stop-coach');
@@ -295,6 +300,60 @@ async function requestCoachExplanation() {
       : 'Ollama nicht erreichbar – läuft es auf localhost:11434 und ist das Modell geladen?';
   }
 }
+
+// ---- Coach chat ------------------------------------------------------------
+// Free-form questions to the local model about the current position. Reuses the
+// Ollama path of the move explanations. Each question is self-contained (current
+// FEN + move list as context); no multi-turn memory yet.
+let coachAsking = false;
+
+function setCoachChatVisible(on) {
+  coachChatEl.hidden = !on;
+}
+
+async function askCoachQuestion() {
+  const question = coachChatInputEl.value.trim();
+  if (!question || coachAsking) return;
+  coachAsking = true;
+  coachChatInputEl.value = '';
+  btnCoachAsk.disabled = true;
+
+  const qLine = document.createElement('div');
+  qLine.className = 'q';
+  qLine.textContent = `Du: ${question}`;
+  const aLine = document.createElement('div');
+  aLine.className = 'a';
+  aLine.textContent = 'Trainer denkt…';
+  coachChatLogEl.append(qLine, aLine);
+  coachChatLogEl.scrollTop = coachChatLogEl.scrollHeight;
+
+  setCoachModel(coachModelEl.value.trim());
+  setCoachHost(coachHostEl.value.trim());
+
+  try {
+    const answer = await askCoach({
+      question,
+      fen: chess.fen(),
+      moves: chess.history().join(' '),
+    });
+    aLine.textContent = answer || '(keine Antwort vom Modell)';
+  } catch {
+    aLine.textContent = 'Ollama nicht erreichbar - läuft es und ist das Modell geladen?';
+  }
+  coachChatLogEl.scrollTop = coachChatLogEl.scrollHeight;
+  coachAsking = false;
+  btnCoachAsk.disabled = false;
+}
+
+btnCoachAsk.addEventListener('click', askCoachQuestion);
+coachChatInputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    askCoachQuestion();
+  }
+});
+chkCoach.addEventListener('change', () => setCoachChatVisible(chkCoach.checked));
+setCoachChatVisible(chkCoach.checked);
 
 function handleUserMove(orig, dest) {
   // chess.js throws on an illegal move; chessground restricts to legal dests,

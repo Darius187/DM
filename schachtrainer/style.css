@@ -351,3 +351,43 @@ button:hover {
   padding: 0 4px;
   border-radius: 3px;
 }
+
+/* Coach chat: free-form questions to the local Ollama model. */
+.coach-chat {
+  margin-bottom: 10px;
+}
+.coach-chat-log {
+  font-size: 0.85rem;
+  line-height: 1.35;
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.coach-chat-log .q {
+  color: #9fd0ea;
+  margin-top: 6px;
+}
+.coach-chat-log .a {
+  background: #23303a;
+  border: 1px solid #3a5566;
+  color: #d6e6f0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  margin: 2px 0 4px;
+}
+.coach-chat-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+#coach-chat-input {
+  flex: 1;
+  background: #333;
+  color: #eee;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 0.85rem;
+}
