@@ -9,11 +9,13 @@ import {
   askCoach,
   setCoachModel,
   setCoachHost,
+  setKnowledge,
   explainMoveOffline,
   listModels,
   DEFAULT_MODEL,
   DEFAULT_HOST,
 } from './coach.js';
+import { KNOWLEDGE_DIGEST } from './knowledge.js';
 
 const chess = new Chess();
 let userSide = 'white';
@@ -61,6 +63,10 @@ const btnNext = document.getElementById('btn-next');
 const pgnText = document.getElementById('pgn-text');
 const pgnStatus = document.getElementById('pgn-status');
 const chkCoach = document.getElementById('chk-coach');
+const chkKnowledge = document.getElementById('chk-knowledge');
+const btnWissenPanel = document.getElementById('btn-wissen-panel');
+const wissenPanelEl = document.getElementById('wissen-panel');
+const wissenFrameEl = document.getElementById('wissen-frame');
 const coachModelEl = document.getElementById('coach-model');
 const coachHostEl = document.getElementById('coach-host');
 const selConn = document.getElementById('sel-conn');
@@ -718,6 +724,28 @@ document.getElementById('btn-wissen').addEventListener('click', () => {
   // Works in the browser (new window/tab) and in Electron (handled in the main process).
   window.open('wissen.html', 'schach-wissen', 'width=600,height=860');
 });
+
+// Toggle the in-app knowledge side panel (third column). The iframe src is set
+// lazily on first open so the handbook isn't loaded unless the user wants it.
+if (btnWissenPanel) {
+  btnWissenPanel.addEventListener('click', () => {
+    const show = wissenPanelEl.hidden;
+    if (show && !wissenFrameEl.getAttribute('src')) {
+      wissenFrameEl.setAttribute('src', 'wissen.html');
+    }
+    wissenPanelEl.hidden = !show;
+    // The board resizes when the grid gains/loses a column; chessground redraws
+    // via its ResizeObserver.
+  });
+}
+
+// Feed the Schach-Wissen digest to the local model so its answers are grounded
+// in the handbook. Off by default (it makes prompts longer and slower).
+if (chkKnowledge) {
+  const applyKnowledge = () => setKnowledge(chkKnowledge.checked ? KNOWLEDGE_DIGEST : '');
+  chkKnowledge.addEventListener('change', applyKnowledge);
+  applyKnowledge();
+}
 selSide.addEventListener('change', newGame);
 selStrength.addEventListener('change', applyStrength);
 chkHint.addEventListener('change', () => drawHint(lastHintMove));

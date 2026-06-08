@@ -69,6 +69,19 @@ export const DEFAULT_MODEL = 'llama3.1:8b';
 export const DEFAULT_HOST = 'localhost:11434';
 let model = DEFAULT_MODEL;
 let host = DEFAULT_HOST;
+let knowledge = ''; // optional Schach-Wissen digest to ground answers
+
+// Turn the knowledge grounding on/off. Pass the digest text to enable, '' to
+// disable. When set, it is prepended to the explain/chat prompts.
+export function setKnowledge(text) {
+  knowledge = (text && String(text).trim()) || '';
+}
+
+function knowledgePreamble() {
+  return knowledge
+    ? `Stütze dich auf dieses Schachwissen (nur als Grundlage, nicht wiederholen):\n${knowledge}\n\n`
+    : '';
+}
 
 export function setCoachModel(name) {
   // Empty / whitespace falls back to the default so a cleared field never
@@ -113,6 +126,7 @@ export function buildPrompt({ fen, userMove, bestMove }) {
     ? ` Erwähne kurz, was an meinem Zug ${userMove} schlechter war.`
     : '';
   return (
+    knowledgePreamble() +
     `Du bist ein geduldiger Schachtrainer. Antworte auf Deutsch in drei bis vier kurzen Sätzen. ` +
     `Erkläre: 1) warum der Zug ${bestMove} in dieser Stellung gut ist (welche Idee dahinter steckt), ` +
     `2) was der Gegner als Antwort versuchen könnte, ` +
@@ -125,6 +139,7 @@ export function buildPrompt({ fen, userMove, bestMove }) {
 export function buildChatPrompt({ question, fen, moves }) {
   const movesLine = moves ? ` Bisheriger Partieverlauf: ${moves}.` : '';
   return (
+    knowledgePreamble() +
     `Du bist ein geduldiger Schachtrainer. Antworte auf Deutsch in wenigen kurzen, ` +
     `einfachen Sätzen, ohne lange Variantenlisten. Beziehe dich konkret auf die ` +
     `aktuelle Stellung.${movesLine} Stellung (FEN): ${fen}. ` +

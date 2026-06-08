@@ -15,6 +15,11 @@
           <button id="btn-undo">Zug zurück</button>
           <button id="btn-flip" title="Brett drehen">Brett drehen</button>
           <button id="btn-wissen" title="Schach-Wissen in eigenem Fenster öffnen">Wissen</button>
+          <button id="btn-wissen-panel" title="Wissen rechts neben dem Brett ein-/ausblenden">Wissen-Panel</button>
+          <label class="hint-toggle" title="Gibt dem Trainer (Ollama) das Schach-Wissen als Grundlage mit">
+            <input type="checkbox" id="chk-knowledge" />
+            Wissen nutzen
+          </label>
           <select id="sel-side">
             <option value="white" selected>Ich spiele Weiß</option>
             <option value="black">Ich spiele Schwarz</option>
@@ -173,6 +178,10 @@ Get-ChildItem $src | ForEach-Object {
           <textarea id="pgn-text" rows="6" placeholder="PGN hier einfügen und auf Laden klicken…"></textarea>
           <div id="pgn-status" class="pgn-status"></div>
         </div>
+      </aside>
+
+      <aside id="wissen-panel" class="wissen-panel" hidden>
+        <iframe id="wissen-frame" title="Schach-Wissen"></iframe>
       </aside>
     </main>
 
