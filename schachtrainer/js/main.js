@@ -1091,11 +1091,21 @@ if (btnTestOnlineVoice) {
       return;
     }
     btnTestOnlineVoice.disabled = true;
-    setStatus('Verbinde mit Microsoft …');
+    // Pick the currently selected Edge voice from the main dropdown so the
+    // user can compare Katja/Conrad/Sonia/Ryan with one click each. Falls back
+    // to the German Katja if no Edge voice is selected.
+    const pick = (selVoice && selVoice.value || '').startsWith('edge:')
+      ? selVoice.value.slice(5)
+      : 'de-DE-KatjaNeural';
+    const isGerman = /^de-/.test(pick);
+    const sample = isGerman
+      ? 'Springer auf f3. Ein ruhiger Entwicklungszug, der das Zentrum kontrolliert.'
+      : 'Knight to f3. A calm developing move that controls the center.';
+    setStatus(`Verbinde mit Microsoft … (${pick})`);
     try {
       const res = await window.ttsAPI.speak({
-        text: 'Springer auf f3. Ein ruhiger Entwicklungszug, der das Zentrum kontrolliert.',
-        voice: 'de-DE-KatjaNeural',
+        text: sample,
+        voice: pick,
         rate: speechRate,
       });
       if (!res || !res.ok) {

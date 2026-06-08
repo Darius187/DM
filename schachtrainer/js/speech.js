@@ -50,6 +50,22 @@ export function sanZuDeutsch(san) {
 let cachedVoice = null; // auto-picked best German voice
 let preferredVoiceURI = null; // user-chosen voice (voiceURI), if set
 let defaultRate = 1.0; // playback speed for all announcements
+let currentEdgeAudio = null; // in-flight <audio> from edge-tts, so we can cancel
+
+// Edge online neural voices. They appear in the dropdown as virtual entries
+// with voiceURI 'edge:<name>'. When picked, speak() routes the call through
+// window.ttsAPI.speak() (main process: edge-tts -> MP3 -> base64) and plays
+// the result via an Audio element. Only the four the user asked for.
+const EDGE_VOICES = [
+  { voiceURI: 'edge:de-DE-KatjaNeural',  name: 'Online · Katja (Deutsch, weiblich)',     lang: 'de-DE', edgeName: 'de-DE-KatjaNeural',  isEdge: true },
+  { voiceURI: 'edge:de-DE-ConradNeural', name: 'Online · Conrad (Deutsch, männlich)',    lang: 'de-DE', edgeName: 'de-DE-ConradNeural', isEdge: true },
+  { voiceURI: 'edge:en-GB-SoniaNeural',  name: 'Online · Sonia (Englisch UK, weiblich)', lang: 'en-GB', edgeName: 'en-GB-SoniaNeural',  isEdge: true },
+  { voiceURI: 'edge:en-GB-RyanNeural',   name: 'Online · Ryan (Englisch UK, männlich)',  lang: 'en-GB', edgeName: 'en-GB-RyanNeural',   isEdge: true },
+];
+
+function edgeVoicesAvailable() {
+  return typeof window !== 'undefined' && !!window.ttsAPI && !!window.ttsAPI.speak;
+}
 
 // Set the default playback speed (0.5 = slow, 2 = very fast). speak() also
 // accepts a per-call rate that overrides this.
@@ -62,21 +78,26 @@ export function getRate() {
   return defaultRate;
 }
 
-// All German and English voices available on this device, best-sounding first.
-// Both languages are useful: German for the move announcements, English for
-// reading Ollama answers in English models (Ryan Natural, Sonia Natural, …).
+// All voices available to the app, best-sounding first. Includes both German
+// and English Windows voices (de* / en*) and the four Edge online neural voices
+// (Katja, Conrad, Sonia, Ryan) when the ttsAPI bridge is present.
 export function listGermanVoices() {
-  if (typeof speechSynthesis === 'undefined') return [];
-  return speechSynthesis
-    .getVoices()
-    .filter((v) => v.lang && /^(de|en)/i.test(v.lang))
-    .sort((a, b) => voiceScore(b) - voiceScore(a));
+  const windowsVoices =
+    typeof speechSynthesis === 'undefined'
+      ? []
+      : speechSynthesis.getVoices().filter((v) => v.lang && /^(de|en)/i.test(v.lang));
+  const all = edgeVoicesAvailable()
+    ? [...EDGE_VOICES, ...windowsVoices]
+    : windowsVoices.slice();
+  return all.sort((a, b) => voiceScore(b) - voiceScore(a));
 }
 
-// Rank voices so the more natural-sounding ones win. Modern, less robotic
-// voices are usually marked "HD", "Natural", "Neural" or "Online" in the name.
-// German is preferred over English so the announcement defaults stay German.
+// Rank voices so the more natural-sounding ones win. The Edge online voices
+// outrank everything (they are actually neural and routinely sound the best),
+// then HD/Natural Windows voices, with German ranked above English so the
+// default announcement language stays German.
 function voiceScore(v) {
+  if (v && v.isEdge) return 1000 + (/^de/i.test(v.lang) ? 50 : 0);
   const n = `${v.name} ${v.voiceURI}`.toLowerCase();
   let s = 0;
   if (/\bhd\b|natural|neural|online/.test(n)) s += 100;
@@ -124,21 +145,63 @@ if (typeof speechSynthesis !== 'undefined') {
 // and ramble on. opts.lang ('de-DE' default) picks the matching voice family
 // when no user voice is pinned; opts.onend fires when the utterance finishes.
 export function speak(text, opts = {}) {
-  if (!text || typeof speechSynthesis === 'undefined') return;
+  if (!text) return;
+  // Stop both speech tracks so a new utterance always replaces any earlier one.
   try {
-    speechSynthesis.cancel();
+    if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
   } catch {
     /* ignore */
   }
+  if (currentEdgeAudio) {
+    try {
+      currentEdgeAudio.pause();
+    } catch {
+      /* ignore */
+    }
+    currentEdgeAudio = null;
+  }
+
   const lang = opts.lang || 'de-DE';
+  const r = Number(opts.rate ?? defaultRate);
+  const rate = Number.isFinite(r) ? Math.max(0.5, Math.min(2.5, r)) : 1;
+
+  // Route through edge-tts when the preferred voice is one of the online ones
+  // (or when the caller explicitly asked via opts.voiceURI). Falls back to the
+  // Web Speech path if the IPC bridge is missing.
+  const wantedURI = opts.voiceURI || preferredVoiceURI;
+  const edge = wantedURI && wantedURI.startsWith('edge:') && edgeVoicesAvailable()
+    ? EDGE_VOICES.find((e) => e.voiceURI === wantedURI)
+    : null;
+  if (edge) {
+    window.ttsAPI
+      .speak({ text, voice: edge.edgeName, rate })
+      .then((res) => {
+        if (!res || !res.ok) {
+          if (typeof opts.onend === 'function') opts.onend();
+          return;
+        }
+        const audio = new Audio(`data:audio/mp3;base64,${res.audio}`);
+        currentEdgeAudio = audio;
+        const finish = () => {
+          if (currentEdgeAudio === audio) currentEdgeAudio = null;
+          if (typeof opts.onend === 'function') opts.onend();
+        };
+        audio.onended = finish;
+        audio.onerror = finish;
+        audio.play().catch(finish);
+      })
+      .catch(() => {
+        if (typeof opts.onend === 'function') opts.onend();
+      });
+    return;
+  }
+
+  if (typeof speechSynthesis === 'undefined') return;
   const u = new SpeechSynthesisUtterance(text);
   u.lang = lang;
-  // Per-call rate wins over the stored default, both are clamped to a sane
-  // band so the voice cannot be tuned into uselessness.
-  const r = Number(opts.rate ?? defaultRate);
-  u.rate = Number.isFinite(r) ? Math.max(0.5, Math.min(2.5, r)) : 1;
+  u.rate = rate;
   const voice = pickVoiceFor(lang);
-  if (voice) u.voice = voice;
+  if (voice && !voice.isEdge) u.voice = voice;
   if (typeof opts.onend === 'function') u.onend = opts.onend;
   speechSynthesis.speak(u);
 }
@@ -159,4 +222,12 @@ function pickVoiceFor(lang) {
 
 export function cancelSpeech() {
   if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
+  if (currentEdgeAudio) {
+    try {
+      currentEdgeAudio.pause();
+    } catch {
+      /* ignore */
+    }
+    currentEdgeAudio = null;
+  }
 }
