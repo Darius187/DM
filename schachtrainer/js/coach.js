@@ -119,20 +119,51 @@ function isLikelySan(token) {
   return /^[KQRBN]/.test(t) || /x/.test(t) || /^[a-h][1-8]/.test(t);
 }
 
-// Annotate every distinct SAN move in the text with a German translation in
-// parentheses (first occurrence only). Pure text: no DOM.
-export function annotateNotation(text) {
+// Annotate every distinct SAN move in the text with a German translation.
+// mode='append' (default, on-screen): "dxe6 (Bauer schlägt auf e6)", first
+// occurrence only. mode='replace' (TTS): every SAN is replaced by the plain
+// German equivalent so speech doesn't pronounce "Q-b-3-Hash".
+export function annotateNotation(text, mode = 'append') {
   if (!text) return text;
   const seen = new Set();
   return text.replace(SAN_REGEX, (match) => {
     const san = match.replace(/^\.+\s*/, '').trim();
     if (!isLikelySan(san)) return match;
-    if (seen.has(san)) return match;
-    seen.add(san);
     const de = sanZuDeutsch(san);
     if (!de || de === san) return match;
+    if (mode === 'replace') return de;
+    if (seen.has(san)) return match;
+    seen.add(san);
     return `${match} (${de})`;
   });
+}
+
+// Prepare any trainer text for speech: drop "Engine:" / "Eröffnung:" prefix,
+// collapse already-annotated "<san> (Deutsche Übersetzung)" pairs back to just
+// the German part, then translate any remaining bare SAN tokens. Avoids
+// "Q-b-3-Hash" and the double-pronunciation of '… (Bauer schlägt …)'.
+export function speechifyForReading(text) {
+  if (!text) return text;
+  let t = String(text).trim();
+  // Drop the leading label so the reader doesn't say "Engine" first.
+  t = t.replace(/^(Engine|Eröffnung):\s*/i, '');
+  // Park already-annotated "<SAN> (German)" pairs as placeholders so the next
+  // pass can't re-trigger on letters/digits inside the German rendering
+  // (otherwise "Bauer schlägt auf e6" would translate the trailing "e6" again).
+  const parked = [];
+  t = t.replace(
+    /([KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?|O-O-O|O-O)\s+\(([^)]+)\)/g,
+    (_, _san, de) => {
+      parked.push(de);
+      // Underscores are \w; SAN regex lookbehind ignores them.
+      return `__P_${parked.length - 1}__`;
+    },
+  );
+  // Replace any remaining bare SAN tokens with their German form.
+  t = annotateNotation(t, 'replace');
+  // Re-insert the parked translations.
+  t = t.replace(/__P_(\d+)__/g, (_, i) => parked[Number(i)] || '');
+  return t;
 }
 
 // List the models actually installed in Ollama (for the suggestion menu).

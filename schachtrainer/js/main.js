@@ -11,6 +11,7 @@ import {
   setCoachHost,
   setKnowledge,
   explainMoveOffline,
+  speechifyForReading,
   listModels,
   DEFAULT_MODEL,
   DEFAULT_HOST,
@@ -367,8 +368,9 @@ function looksEnglishText(text) {
 }
 
 btnChatSpeak.addEventListener('click', () => {
-  const text = lastChatAnswerText();
-  if (!text || /^Trainer denkt…?$/.test(text)) return;
+  const raw = lastChatAnswerText();
+  if (!raw || /^Trainer denkt…?$/.test(raw)) return;
+  const text = speechifyForReading(raw);
   btnChatSpeak.hidden = true;
   btnChatStop.hidden = false;
   speak(text, {
@@ -1134,8 +1136,11 @@ function looksEnglish(text) {
 }
 
 btnSpeakCoach.addEventListener('click', () => {
-  const text = (coachEl.textContent || '').trim();
-  if (!text) return;
+  const raw = (coachEl.textContent || '').trim();
+  if (!raw) return;
+  // Strip "Engine:" / "Eröffnung:" prefix and replace raw SAN with German so
+  // the reader doesn't say "Engine" or pronounce "Q-b-3-Hash".
+  const text = speechifyForReading(raw);
   const lang = looksEnglish(text) ? 'en-US' : 'de-DE';
   btnSpeakCoach.hidden = true;
   btnStopCoach.hidden = false;

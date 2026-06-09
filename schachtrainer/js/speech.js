@@ -51,6 +51,7 @@ let cachedVoice = null; // auto-picked best German voice
 let preferredVoiceURI = null; // user-chosen voice (voiceURI), if set
 let defaultRate = 1.0; // playback speed for all announcements
 let currentEdgeAudio = null; // in-flight <audio> from edge-tts, so we can cancel
+let edgeSeq = 0; // monotonic id: the latest speak() wins, older ones are dropped
 
 // Edge online neural voices. They appear in the dropdown as virtual entries
 // with voiceURI 'edge:<name>'. When picked, speak() routes the call through
@@ -173,9 +174,19 @@ export function speak(text, opts = {}) {
     ? EDGE_VOICES.find((e) => e.voiceURI === wantedURI)
     : null;
   if (edge) {
+    // Token so a later speak() invalidates this in-flight request: when its
+    // response finally arrives, edgeSeq has moved on and we drop the audio
+    // instead of playing it on top of the newer one. This is what caused the
+    // "doppelt vorlesen" with online voices.
+    const mine = ++edgeSeq;
     window.ttsAPI
       .speak({ text, voice: edge.edgeName, rate })
       .then((res) => {
+        if (mine !== edgeSeq) {
+          // a newer speak() has happened — discard this one silently
+          if (typeof opts.onend === 'function') opts.onend();
+          return;
+        }
         if (!res || !res.ok) {
           if (typeof opts.onend === 'function') opts.onend();
           return;
@@ -221,6 +232,9 @@ function pickVoiceFor(lang) {
 }
 
 export function cancelSpeech() {
+  // Bump the edge-tts token too so a still-pending HTTP response gets dropped
+  // instead of playing after the user pressed Stopp.
+  edgeSeq++;
   if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
   if (currentEdgeAudio) {
     try {
