@@ -56,6 +56,7 @@ const rateSliderEl = document.getElementById('rate-slider');
 const rateValueEl = document.getElementById('rate-value');
 const btnChatSpeak = document.getElementById('btn-chat-speak');
 const btnChatStop = document.getElementById('btn-chat-stop');
+const chkAutoRead = document.getElementById('chk-auto-read');
 const selOpening = document.getElementById('sel-opening');
 const btnSave = document.getElementById('btn-save');
 const btnLoad = document.getElementById('btn-load');
@@ -112,6 +113,12 @@ function showOfflineExplanation(verbose, who) {
   if (!reason) return;
   coachWrapEl.hidden = false;
   coachEl.textContent = `${who}: ${verbose.san} — ${reason}`;
+  // Auto-read this after the move announcement; if Ollama replies a moment
+  // later it overrides this text and re-triggers maybeAutoRead, which clears
+  // the older timer so we don't read twice.
+  if (typeof maybeAutoRead === 'function') {
+    maybeAutoRead(coachEl.textContent, { delay: 900 });
+  }
 }
 
 // Play a move object on the board and announce it. Returns its SAN or null.
@@ -229,11 +236,10 @@ async function showHintAndEval() {
   lastBestSan = verbose ? verbose.san : null;
   const reason = verbose ? explainMoveOffline(verbose, chess.history().length) : '';
   drawHint(res, reason);
-
-  // Speak just the move; the reason stays in the text so audio stays short.
-  if (chkSpeak.checked && chkHint.checked && lastBestSan) {
-    speak(sanZuDeutsch(lastBestSan));
-  }
+  // The hint is shown visually (arrow + text). We used to also speak it, but
+  // right after an engine move ('Bauer auf d5') the immediately-following
+  // 'Springer auf f3' suggestion sounded like a doubled announcement. The arrow
+  // stays as the visual cue; speech is reserved for actual played moves.
 }
 
 function applyStrength() {
@@ -299,6 +305,9 @@ async function requestCoachExplanation() {
     const text = await explain(ctx);
     if (text && text.trim()) {
       coachEl.textContent = text.trim();
+      // After an engine move the move was just announced ('Bauer auf d5');
+      // wait briefly so the auto-read of the explanation comes *after* it.
+      maybeAutoRead(text.trim(), { delay: 900 });
     }
   } catch {
     // Restore the offline explanation and append a one-line hint about Ollama
@@ -345,6 +354,9 @@ async function askCoachQuestion() {
       moves: chess.history().join(' '),
     });
     aLine.textContent = answer || '(keine Antwort vom Modell)';
+    // Auto-read this chat answer if the user enabled it. No delay needed here
+    // because the user wasn't moving — they just asked a question.
+    if (answer) maybeAutoRead(answer, { delay: 0 });
   } catch {
     aLine.textContent = 'Ollama nicht erreichbar - läuft es und ist das Modell geladen?';
   }
@@ -367,6 +379,80 @@ function looksEnglishText(text) {
   return hits >= 3;
 }
 
+// ---- Auto-Vorlesen --------------------------------------------------------
+// When the user enables 'Auto-Vorlesen' next to the chat, new trainer answers
+// (both the in-panel Engine explanation and chat replies) are read aloud
+// automatically. After an engine move the read is delayed so the move
+// announcement ('Bauer auf d5') comes first; the explanation follows.
+let autoReadTimer = null;
+
+function maybeAutoRead(text, { delay = 0 } = {}) {
+  if (!chkAutoRead || !chkAutoRead.checked) return;
+  if (!text) return;
+  if (autoReadTimer) {
+    clearTimeout(autoReadTimer);
+    autoReadTimer = null;
+  }
+  const speakNow = () => {
+    autoReadTimer = null;
+    const cleaned = speechifyForReading(text);
+    if (!cleaned) return;
+    btnChatSpeak.hidden = true;
+    btnChatStop.hidden = false;
+    speak(cleaned, {
+      lang: looksEnglishText(cleaned) ? 'en-US' : 'de-DE',
+      onend: () => {
+        btnChatStop.hidden = true;
+        btnChatSpeak.hidden = false;
+      },
+    });
+  };
+  if (delay > 0) {
+    autoReadTimer = setTimeout(speakNow, delay);
+  } else {
+    speakNow();
+  }
+}
+
+async function loadAutoReadPref() {
+  try {
+    if (window.configAPI) {
+      const d = await window.configAPI.get();
+      return !!(d && d.autoRead);
+    }
+  } catch {
+    /* fall through */
+  }
+  try {
+    return localStorage.getItem('autoRead') === '1';
+  } catch {
+    return false;
+  }
+}
+
+async function persistAutoReadPref(on) {
+  try {
+    if (window.configAPI) {
+      await window.configAPI.set({ autoRead: !!on });
+      return;
+    }
+  } catch {
+    /* fall through */
+  }
+  try {
+    localStorage.setItem('autoRead', on ? '1' : '0');
+  } catch {
+    /* best-effort */
+  }
+}
+
+if (chkAutoRead) {
+  chkAutoRead.addEventListener('change', () => persistAutoReadPref(chkAutoRead.checked));
+  loadAutoReadPref().then((on) => {
+    chkAutoRead.checked = on;
+  });
+}
+
 btnChatSpeak.addEventListener('click', () => {
   const raw = lastChatAnswerText();
   if (!raw || /^Trainer denkt…?$/.test(raw)) return;
@@ -383,6 +469,10 @@ btnChatSpeak.addEventListener('click', () => {
 });
 
 btnChatStop.addEventListener('click', () => {
+  if (autoReadTimer) {
+    clearTimeout(autoReadTimer);
+    autoReadTimer = null;
+  }
   cancelSpeech();
   btnChatStop.hidden = true;
   btnChatSpeak.hidden = false;

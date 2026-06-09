@@ -168,6 +168,10 @@ Get-ChildItem $src | ForEach-Object {
             <button id="btn-chat-speak" title="Letzte Trainer-Antwort vorlesen">Vorlesen</button>
             <button id="btn-chat-stop" class="coach-btn-stop" title="Vorlesen abbrechen" hidden>Stopp</button>
           </div>
+          <label class="hint-toggle" title="Liest neue Trainer-Antworten und Engine-Erklärungen automatisch vor (nach der Move-Ansage)">
+            <input type="checkbox" id="chk-auto-read" />
+            Auto-Vorlesen
+          </label>
         </div>
         <div>
           <h2>Zugverlauf</h2>
