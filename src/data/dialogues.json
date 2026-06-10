@@ -28,8 +28,23 @@
       "lines": {
         "greeting": "Du willst hinab? Unter dieser Kirche liegt etwas Älteres als der Glaube, der sie trägt.",
         "giveKey": "Nimm den Schlüssel. Und nimm meinen Rat: Was immer dort unten verspricht, dich vom Tod zu befreien — frage nach dem Preis.",
+        "hasKey": "Der Schlüssel liegt schwer in deiner Tasche, nicht wahr? Schwerer wird nur, was du damit aufschließt.",
         "farewell": "Gott schütze dich. Irgendeiner."
       }
     }
+  },
+  "choices": {
+    "heinrich": [
+      { "label": "Zeig mir deine Waren.", "action": "merchant" },
+      { "label": "Bis später, Heinrich.", "action": "close" }
+    ],
+    "magdalena": [
+      { "label": "Was hast du im Angebot?", "action": "herbs" },
+      { "label": "Bleib gesund, Magdalena.", "action": "close" }
+    ],
+    "johannes": [
+      { "label": "Gebt mir den Schlüssel zur Krypta.", "action": "giveKey" },
+      { "label": "Ich bin noch nicht bereit.", "action": "close" }
+    ]
   }
 }

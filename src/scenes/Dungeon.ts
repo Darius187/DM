@@ -19,8 +19,13 @@ import {
 } from '../systems/dungeonGen';
 import { rollElite } from '../systems/enemyAI';
 import { unlockAudio } from '../systems/sound';
+import { saveGame } from '../systems/save';
 import themesData from '../data/themes.json';
 import enemiesData from '../data/enemies.json';
+import narrationData from '../data/narration.json';
+
+/** Tagebuchseiten eines früheren Reisenden, verteilt über die Ebenen. */
+const DIARY_PAGES_BY_DEPTH: Record<number, number[]> = { 1: [1, 2], 2: [3, 4], 3: [5] };
 
 export interface DungeonSceneData {
   depth?: number;
@@ -49,10 +54,14 @@ export class Dungeon extends Phaser.Scene {
   private torchG!: Phaser.GameObjects.Graphics;
   private minimapG!: Phaser.GameObjects.Graphics;
   private hudG!: Phaser.GameObjects.Graphics;
+  private hudText!: Phaser.GameObjects.Text;
   private explored!: Uint8Array;
   private stairsCooldown = 0;
   private transitioning = false;
   private camTarget = { x: 0, y: 0 };
+  private leftStartTile = false;
+  private diaryPages: { x: number; y: number; page: number }[] = [];
+  private diaryG!: Phaser.GameObjects.Graphics;
 
   private keys!: Record<'W' | 'A' | 'S' | 'D' | 'J' | 'K' | 'SPACE', Phaser.Input.Keyboard.Key>;
   private prevLeftDown = false;
@@ -136,10 +145,30 @@ export class Dungeon extends Phaser.Scene {
         flickerAmount: 1,
       });
     }
+    // Tagebuchseiten: in Bibliothek/zufälligen Räumen, nur wenn noch nicht gefunden
+    this.leftStartTile = false;
+    this.diaryPages = [];
+    this.diaryG = this.add.graphics().setDepth(DEPTHS.entities - 1);
+    const pageNumbers = (DIARY_PAGES_BY_DEPTH[this.depth] ?? []).filter((n) => !gameState.flags[`diary_${n}`]);
+    const pageRooms = lvl.rooms.filter((r) => r.kind === 'library' || r.kind === 'normal');
+    pageNumbers.forEach((page, i) => {
+      const room = pageRooms[(i * 2 + 1) % Math.max(1, pageRooms.length)];
+      if (!room) return;
+      this.diaryPages.push({
+        x: (room.x + room.w / 2) * TILE_SIZE + 12,
+        y: (room.y + room.h / 2) * TILE_SIZE + 12,
+        page,
+      });
+    });
+
     this.torchG = this.add.graphics().setDepth(DEPTHS.entities + 3);
     this.lighting = new LightingLayer(this, GAME_WIDTH, GAME_HEIGHT);
     this.minimapG = this.add.graphics().setDepth(DEPTHS.ui).setScrollFactor(0);
     this.hudG = this.add.graphics().setDepth(DEPTHS.ui).setScrollFactor(0);
+    this.hudText = this.add
+      .text(244, GAME_HEIGHT - 54, '', { fontFamily: 'Georgia, serif', fontSize: '13px', color: '#c9a227' })
+      .setScrollFactor(0)
+      .setDepth(DEPTHS.ui);
 
     this.add
       .text(12, GAME_HEIGHT - 24, `${theme.name} — Ebene ${this.depth}`, {
@@ -171,6 +200,16 @@ export class Dungeon extends Phaser.Scene {
       }
     });
     this.input.on('pointerdown', () => unlockAudio());
+
+    // Erzähler-Beat: erster Abstieg (genau einmal)
+    if (this.depth === 1 && !gameState.flags['narration_firstDescent']) {
+      gameState.flags['narration_firstDescent'] = true;
+      saveGame();
+      this.time.delayedCall(500, () => {
+        this.scene.pause();
+        this.scene.launch('NarrationUI', { caller: 'Dungeon', text: narrationData.beats.firstDescent });
+      });
+    }
 
     this.events.on('shutdown', () => {
       this.player.destroy();
@@ -377,12 +416,54 @@ export class Dungeon extends Phaser.Scene {
     this.patches.forEach((p) => p.update(dt, this.player));
     this.patches = this.patches.filter((p) => (p.alive ? true : (p.destroy(), false)));
 
+    this.updateDiaryPages();
     this.markExplored();
     this.renderTorches();
     this.renderLighting();
     this.renderMinimap();
     this.renderHud();
     this.checkStairs();
+    this.checkDeath();
+  }
+
+  /** Pergamentseiten: schwebend gerendert; Aufheben zeigt den Eintrag als Einblendung. */
+  private updateDiaryPages(): void {
+    const g = this.diaryG;
+    g.clear();
+    const t = this.time.now;
+    for (const p of this.diaryPages) {
+      const oy = Math.sin(t / 400 + p.page) * 2;
+      g.fillStyle(0xd8cfb8, 1);
+      g.fillRect(p.x - 6, p.y + oy - 8, 12, 16);
+      g.lineStyle(1, 0x8a8170, 1);
+      for (let i = 0; i < 3; i++) g.lineBetween(p.x - 4, p.y + oy - 4 + i * 4, p.x + 4, p.y + oy - 4 + i * 4);
+      if (Phaser.Math.Distance.Between(this.player.x, this.player.y, p.x, p.y) < 24) {
+        gameState.flags[`diary_${p.page}`] = true;
+        saveGame();
+        this.diaryPages = this.diaryPages.filter((d) => d !== p);
+        const entry = narrationData.diaryPages.find((d) => d.id === p.page);
+        this.scene.pause();
+        this.scene.launch('NarrationUI', {
+          caller: 'Dungeon',
+          title: `Tagebuch eines Reisenden — Seite ${p.page}`,
+          text: entry?.text ?? '',
+        });
+        return;
+      }
+    }
+  }
+
+  /** Tod: zurück ins Dorf, geheilt, aber ein Teil des Goldes bleibt in der Dunkelheit. */
+  private checkDeath(): void {
+    if (this.player.hp > 0 || this.transitioning) return;
+    this.transitioning = true;
+    gameState.gold = Math.floor(gameState.gold * 0.7);
+    gameState.hp = gameState.maxHp;
+    saveGame();
+    this.cameras.main.fadeOut(900, 60, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start('Village');
+    });
   }
 
   private markExplored(): void {
@@ -476,23 +557,47 @@ export class Dungeon extends Phaser.Scene {
     g.fillRect(12, GAME_HEIGHT - 52, w * Math.max(0, this.player.hp / this.player.maxHp), 14);
     g.lineStyle(1, PALETTE.parchment, 0.5);
     g.strokeRect(12, GAME_HEIGHT - 52, w, 14);
+    this.hudText.setText(`Gold ${gameState.gold} · Heiltränke ${gameState.healPotions} [Q]`);
   }
 
-  /** Treppe betreten -> nächste Ebene (Ebene 3 führt vorerst zurück zur DebugArena, Boss folgt in Phase 6). */
+  /** Treppen: abwärts zur nächsten Ebene (Ebene 3 -> Bossraum folgt in Phase 6), aufwärts zurück. */
   private checkStairs(): void {
     if (this.stairsCooldown > 0) return;
+    const st = this.level.start;
+    const distUp = Math.hypot(
+      this.player.x - (st.x * TILE_SIZE + TILE_SIZE / 2),
+      this.player.y - (st.y * TILE_SIZE + TILE_SIZE / 2),
+    );
+    if (distUp > TILE_SIZE) this.leftStartTile = true;
+    if (this.leftStartTile && distUp <= TILE_SIZE * 0.6) {
+      this.goTo(() => {
+        gameState.hp = this.player.hp;
+        saveGame();
+        if (this.depth <= 1) this.scene.start('Village');
+        else this.scene.restart({ depth: this.depth - 1, seed: this.seed - 7919 });
+      });
+      return;
+    }
+
     const sd = this.level.stairsDown;
     const dx = this.player.x - (sd.x * TILE_SIZE + TILE_SIZE / 2);
     const dy = this.player.y - (sd.y * TILE_SIZE + TILE_SIZE / 2);
     if (Math.hypot(dx, dy) > TILE_SIZE * 0.6) return;
-    this.transitioning = true;
-    this.cameras.main.fadeOut(400, 0, 0, 0);
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+    this.goTo(() => {
+      gameState.hp = this.player.hp;
+      saveGame();
       if (this.depth >= 3) {
-        this.scene.start('DebugArena');
+        // Bossraum folgt in Phase 6 — bis dahin zurück ins Dorf
+        this.scene.start('Village');
       } else {
         this.scene.restart({ depth: this.depth + 1, seed: this.seed + 7919 });
       }
     });
+  }
+
+  private goTo(next: () => void): void {
+    this.transitioning = true;
+    this.cameras.main.fadeOut(400, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, next);
   }
 }

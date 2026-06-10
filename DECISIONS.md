@@ -51,6 +51,14 @@ damit messbar ein; auf GPU-Hardware voraussichtlich unkritisch, aber vor Phase 7
 20 Lichtquellen auf realer Hardware prüfen. Optimierungsoption: statische Körper in generierte
 Texturen backen, nur dynamische Overlays (Telegraph, Flash, HP) live zeichnen.
 
+## 2026-06-10 — Phaser-Delta-Smoothing deaktiviert
+
+Bei anhaltend niedrigen FPS (Software-Rendering, schwache Hardware) unterschätzt Phasers
+Delta-Glättung (`smoothStep`) das reale Frame-Delta massiv (gemessen: 16,7 ms gemeldet bei
+~220 ms realem Frame) — das Spiel lief in Zeitlupe (Faktor ~0,075) und Timer verzögerten sich
+entsprechend. `smoothStep: false` liefert reale Deltas; Spike-Schutz übernehmen die Szenen
+selbst mit `Math.min(delta, 50)`. Bei stabilen 60 FPS ändert sich nichts.
+
 ## 2026-06-10 — Block-Kegel
 
 „Frontschaden" ist im Prompt nicht als Winkel definiert. Festgelegt: ±70° um die Blickrichtung

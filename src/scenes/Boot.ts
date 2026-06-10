@@ -22,8 +22,8 @@ export class Boot extends Phaser.Scene {
     sub.setOrigin(0.5);
     this.cameras.main.setBackgroundColor(PALETTE.night);
 
-    this.time.delayedCall(600, () => {
-      this.scene.start('DebugArena');
+    this.time.delayedCall(900, () => {
+      this.scene.start('Village');
       this.scene.launch('UIOverlay');
     });
   }

@@ -9,13 +9,15 @@ export interface InventoryUIData {
   caller: string;
   /** Händler-Modus: kaufen/verkaufen statt anlegen. */
   merchant?: boolean;
+  /** Magdalenas Sortiment: Ringe und Tränke statt Waffen. */
+  herbs?: boolean;
   merchantSeed?: number;
 }
 
 interface Row {
   rect: Phaser.Geom.Rectangle;
-  item: ItemInstance;
-  action: 'equip' | 'sell' | 'buy';
+  item: ItemInstance | null;
+  action: 'equip' | 'sell' | 'buy' | 'buyHeal' | 'buyMana';
   price?: number;
 }
 
@@ -26,6 +28,7 @@ interface Row {
 export class InventoryUI extends Phaser.Scene {
   private caller = 'DebugArena';
   private merchant = false;
+  private herbs = false;
   private stock: ItemInstance[] = [];
   private rows: Row[] = [];
   private g!: Phaser.GameObjects.Graphics;
@@ -39,9 +42,12 @@ export class InventoryUI extends Phaser.Scene {
   init(data: InventoryUIData): void {
     this.caller = data.caller;
     this.merchant = data.merchant ?? false;
+    this.herbs = data.herbs ?? false;
     if (this.merchant) {
       const rng = mulberry32(data.merchantSeed ?? 1);
-      this.stock = Array.from({ length: 6 }, () => generateItem(rng, { depth: 2 }));
+      this.stock = this.herbs
+        ? Array.from({ length: 4 }, () => generateItem(rng, { slot: 'ring', depth: 2 }))
+        : Array.from({ length: 6 }, () => generateItem(rng, { depth: 2 }));
     }
   }
 
@@ -57,7 +63,7 @@ export class InventoryUI extends Phaser.Scene {
 
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
       const hit = this.rows.find((r) => r.rect.contains(pointer.x, pointer.y));
-      const uid = hit ? hit.item.uid : -1;
+      const uid = hit?.item ? hit.item.uid : -1;
       if (uid !== this.hoverUid) {
         this.hoverUid = uid;
         this.renderPanel();
@@ -67,10 +73,17 @@ export class InventoryUI extends Phaser.Scene {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       for (const row of this.rows) {
         if (!row.rect.contains(pointer.x, pointer.y)) continue;
-        if (row.action === 'equip') gameState.equip(row.item);
-        else if (row.action === 'sell') gameState.sell(row.item);
-        else if (row.action === 'buy' && row.price !== undefined) {
-          if (gameState.buy(row.item, row.price)) this.stock = this.stock.filter((s) => s.uid !== row.item.uid);
+        if (row.action === 'equip' && row.item) gameState.equip(row.item);
+        else if (row.action === 'sell' && row.item) gameState.sell(row.item);
+        else if (row.action === 'buy' && row.item && row.price !== undefined) {
+          const item = row.item;
+          if (gameState.buy(item, row.price)) this.stock = this.stock.filter((s) => s.uid !== item.uid);
+        } else if (row.action === 'buyHeal' && row.price !== undefined && gameState.gold >= row.price) {
+          gameState.gold -= row.price;
+          gameState.healPotions++;
+        } else if (row.action === 'buyMana' && row.price !== undefined && gameState.gold >= row.price) {
+          gameState.gold -= row.price;
+          gameState.manaPotions++;
         }
         this.renderPanel();
         return;
@@ -151,6 +164,10 @@ export class InventoryUI extends Phaser.Scene {
     if (this.merchant) {
       this.addText(listX, ly - 8, '— Angebot —', '#8a8170', 13);
       ly += 14;
+      if (this.herbs) {
+        ly = this.addPotionRow(g, listX, ly, 'Heiltrank (+40 Leben)', 'buyHeal', 25);
+        ly = this.addPotionRow(g, listX, ly, 'Manatrank (+30 Mana)', 'buyMana', 25);
+      }
       for (const item of this.stock) {
         ly = this.addRow(g, listX, ly, item, 'buy', item.value);
       }
@@ -168,6 +185,15 @@ export class InventoryUI extends Phaser.Scene {
       }
       if (gameState.items.length === 0) this.addText(listX, ly, 'Leer. Die Krypta wartet.', '#5a5346', 13);
     }
+  }
+
+  private addPotionRow(g: Phaser.GameObjects.Graphics, x: number, y: number, label: string, action: 'buyHeal' | 'buyMana', price: number): number {
+    const rect = new Phaser.Geom.Rectangle(x - 6, y - 3, 520, 28);
+    g.fillStyle(0x221c14, 0.9);
+    g.fillRect(rect.x, rect.y, rect.width, rect.height);
+    this.rows.push({ rect, item: null, action, price });
+    this.addText(x, y, `${label}  [${price} G]`, '#9ad99a', 14);
+    return y + 32;
   }
 
   private addRow(g: Phaser.GameObjects.Graphics, x: number, y: number, item: ItemInstance, action: Row['action'], price?: number): number {
