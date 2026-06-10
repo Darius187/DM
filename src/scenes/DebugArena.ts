@@ -2,11 +2,29 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, PALETTE, DEPTHS } from '../config';
 import { Player, type PlayerInput } from '../entities/Player';
 import { Dummy } from '../entities/Dummy';
+import { Enemy, CursedPatch, type EnemyContext } from '../entities/Enemy';
+import { Projectile } from '../entities/Projectile';
 import { Fx } from '../systems/effects';
+import { DecalLayer } from '../systems/decals';
 import { unlockAudio } from '../systems/sound';
+import { rollElite } from '../systems/enemyAI';
 import { ATTACK_STAGES, COMBAT, attackPhase, type ComboStage } from '../systems/combat';
+import enemiesData from '../data/enemies.json';
 
 const ARENA = { x: 60, y: 60, w: GAME_WIDTH - 120, h: GAME_HEIGHT - 120 };
+/** Gemischte Testwelle (Phase-2-Abnahme: 10 Gegner). */
+const WAVE = [
+  'pestopfer',
+  'pestopfer',
+  'pestopfer',
+  'skelett',
+  'skelett',
+  'skelett',
+  'skelett_schuetze',
+  'skelett_schuetze',
+  'grabschatten',
+  'grabschatten',
+];
 
 /**
  * DebugArena (F1): flacher Raum zum Tunen des Kampfgefühls.
@@ -15,6 +33,10 @@ const ARENA = { x: 60, y: 60, w: GAME_WIDTH - 120, h: GAME_HEIGHT - 120 };
 export class DebugArena extends Phaser.Scene {
   private player!: Player;
   private dummies: Dummy[] = [];
+  private enemies: Enemy[] = [];
+  private projectiles: Projectile[] = [];
+  private patches: CursedPatch[] = [];
+  private decals!: DecalLayer;
   private fx!: Fx;
   private debugG!: Phaser.GameObjects.Graphics;
   private hudG!: Phaser.GameObjects.Graphics;
@@ -30,8 +52,12 @@ export class DebugArena extends Phaser.Scene {
 
   create(): void {
     this.dummies = [];
+    this.enemies = [];
+    this.projectiles = [];
+    this.patches = [];
     this.fx = new Fx(this);
     this.drawFloor();
+    this.decals = new DecalLayer(this, GAME_WIDTH, GAME_HEIGHT);
 
     this.player = new Player(this, this.fx, GAME_WIDTH / 2, GAME_HEIGHT / 2);
     this.dummies.push(
@@ -50,7 +76,7 @@ export class DebugArena extends Phaser.Scene {
       .text(
         ARENA.x,
         28,
-        'DEBUG-ARENA   WASD bewegen · Maus zielen · LMB/J Kombo · RMB/K Block/Parade · Leertaste ausweichen   |   T: Angriff · G: Auto-Angriff · H: Overlay · R: heilen · F1: Reset',
+        'DEBUG-ARENA   WASD · Maus · LMB/J Kombo · RMB/K Block · Space Dodge   |   T: Angriff · G: Auto · H: Overlay · R: heilen · F1: Reset · F2: Gegnerwelle · F3: leeren',
         { fontFamily: 'monospace', fontSize: '12px', color: '#8a8170' },
       )
       .setDepth(DEPTHS.ui);
@@ -58,12 +84,37 @@ export class DebugArena extends Phaser.Scene {
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,J,K,SPACE,T,G,H,R') as typeof this.keys;
     kb.on('keydown-F1', () => this.scene.restart());
+    kb.on('keydown-F2', () => this.spawnWave());
+    kb.on('keydown-F3', () => this.clearEnemies());
 
     this.input.on('pointerdown', () => unlockAudio());
     this.events.on('shutdown', () => {
       this.player.destroy();
       this.dummies.forEach((d) => d.destroy());
+      this.clearEnemies();
+      this.decals.destroy();
     });
+  }
+
+  /** Spawnt die 10er-Testwelle am Arenarand, mit Elite-Würfen (10 %). */
+  private spawnWave(): void {
+    const affixIds = Object.keys(enemiesData.eliteAffixes);
+    WAVE.forEach((typeId, i) => {
+      const a = (i / WAVE.length) * Math.PI * 2;
+      const x = GAME_WIDTH / 2 + Math.cos(a) * (ARENA.w / 2 - 50);
+      const y = GAME_HEIGHT / 2 + Math.sin(a) * (ARENA.h / 2 - 50);
+      const elite = rollElite(Math.random, enemiesData.eliteChance, affixIds);
+      this.enemies.push(new Enemy(this, this.fx, this.decals, typeId, x, y, elite));
+    });
+  }
+
+  private clearEnemies(): void {
+    this.enemies.forEach((e) => e.destroy());
+    this.projectiles.forEach((p) => p.destroy());
+    this.patches.forEach((p) => p.destroy());
+    this.enemies = [];
+    this.projectiles = [];
+    this.patches = [];
   }
 
   private drawFloor(): void {
@@ -120,13 +171,40 @@ export class DebugArena extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.keys.R)) this.player.hp = this.player.maxHp;
 
     const input = this.collectInput();
-    this.player.update(dt, input, this.dummies);
+    this.player.update(dt, input, [...this.dummies, ...this.enemies]);
     this.dummies.forEach((d) => d.update(dt, this.player));
 
-    // Arena-Begrenzung und Entflechtung Spieler/Dummy
+    const ctx: EnemyContext = {
+      player: this.player,
+      enemies: this.enemies,
+      spawnProjectile: (x, y, angle, speed, damage) =>
+        this.projectiles.push(new Projectile(this, x, y, angle, speed, damage)),
+      spawnPatch: (x, y, dps, durationMs) => this.patches.push(new CursedPatch(this, x, y, dps, durationMs)),
+      isBlocked: () => false,
+      tileSize: 32,
+    };
+    this.enemies.forEach((e) => e.update(dt, ctx));
+    // Gefallene austragen (Verflucht-Fläche legen, Objekte freigeben)
+    for (const e of this.enemies) {
+      if (!e.alive) {
+        e.onDeathEffects(ctx);
+        e.destroy();
+      }
+    }
+    this.enemies = this.enemies.filter((e) => e.alive);
+    this.projectiles.forEach((p) => p.update(dt, this.player, ARENA));
+    this.projectiles = this.projectiles.filter((p) => (p.alive ? true : (p.destroy(), false)));
+    this.patches.forEach((p) => p.update(dt, this.player));
+    this.patches = this.patches.filter((p) => (p.alive ? true : (p.destroy(), false)));
+
+    // Arena-Begrenzung und Entflechtung Spieler/Gegner
     this.player.x = Phaser.Math.Clamp(this.player.x, ARENA.x + this.player.radius, ARENA.x + ARENA.w - this.player.radius);
     this.player.y = Phaser.Math.Clamp(this.player.y, ARENA.y + this.player.radius, ARENA.y + ARENA.h - this.player.radius);
-    for (const d of this.dummies) {
+    for (const e of this.enemies) {
+      e.x = Phaser.Math.Clamp(e.x, ARENA.x + e.radius, ARENA.x + ARENA.w - e.radius);
+      e.y = Phaser.Math.Clamp(e.y, ARENA.y + e.radius, ARENA.y + ARENA.h - e.radius);
+    }
+    for (const d of [...this.dummies, ...this.enemies]) {
       const dx = this.player.x - d.x;
       const dy = this.player.y - d.y;
       const dist = Math.hypot(dx, dy);
@@ -217,6 +295,17 @@ export class DebugArena extends Phaser.Scene {
       g.fillRect(p.x - bw / 2, p.y - p.radius - 18, bw, 5);
       g.fillStyle(inWindow ? PALETTE.gold : 0x666666, 1);
       g.fillRect(p.x - bw / 2, p.y - p.radius - 18, bw * (1 - frac), 5);
+    }
+
+    // Hitboxen + Telegraph-Fortschritt der Gegner
+    for (const e of this.enemies) {
+      g.lineStyle(1, 0xd23232, 0.8);
+      g.strokeCircle(e.x, e.y, e.radius);
+      const t = e.telegraphProgress;
+      if (t >= 0) {
+        g.fillStyle(0xd23232, 0.9);
+        g.fillRect(e.x - 15, e.y + e.radius + 6, 30 * t, 3);
+      }
     }
 
     // Telegraph-Fortschritt der Dummys

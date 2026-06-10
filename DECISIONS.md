@@ -38,6 +38,19 @@ Die Cancel-Regel (ab 60 % der Animation) gilt laut Prompt für Ausweichen/Block.
 nächsten Kombo-Schlag übernehmen wir dieselbe Schwelle (zusätzlich: erst in der Recovery-Phase),
 damit Kombos snappy bleiben, ohne die aktiven Frames zu verkürzen.
 
+## 2026-06-10 — Nahkämpfer umkreisen im Cooldown (Phase-2-Selbstkritik)
+
+Nahkämpfer, die in Reichweite stehen, aber auf ihren Angriffs-Cooldown warten, standen regungslos.
+Jetzt umkreisen sie den Spieler langsam (perpendikulares Strafing mit Richtungswechsel), was den
+Kampf lebendig hält und Positionierung belohnt.
+
+## 2026-06-10 — Performance-Beobachtung (offen, Phase 7)
+
+Alle Entities zeichnen ihre Graphics jeden Frame neu (clear + redraw). Headless/SwiftShader bricht
+damit messbar ein; auf GPU-Hardware voraussichtlich unkritisch, aber vor Phase 7 mit 30 Gegnern +
+20 Lichtquellen auf realer Hardware prüfen. Optimierungsoption: statische Körper in generierte
+Texturen backen, nur dynamische Overlays (Telegraph, Flash, HP) live zeichnen.
+
 ## 2026-06-10 — Block-Kegel
 
 „Frontschaden" ist im Prompt nicht als Winkel definiert. Festgelegt: ±70° um die Blickrichtung

@@ -303,6 +303,34 @@ export class Player {
   }
 
   /**
+   * Pfeile/Projektile: werden frontal vom Block VOLLSTÄNDIG abgewehrt
+   * (keine Parade-Mechanik nötig), sonst voller Schaden.
+   */
+  receiveProjectile(params: { damage: number; sourceX: number; sourceY: number }): 'dodged' | 'deflected' | 'hit' {
+    if (this.invulnerable) return 'dodged';
+    const toSource = Math.atan2(params.sourceY - this.y, params.sourceX - this.x);
+    const offset = angleDiff(toSource, this.facing);
+    if (this.blocking && Math.abs(offset) <= COMBAT.BLOCK_ARC_RAD) {
+      this.fx.burst(this.x + Math.cos(toSource) * this.radius, this.y + Math.sin(toSource) * this.radius, {
+        color: 0xb0b0b0,
+        count: 5,
+        speed: 140,
+        size: 2,
+        angle: toSource,
+        spread: Math.PI / 2,
+      });
+      sfxBlock();
+      return 'deflected';
+    }
+    this.hp = Math.max(0, this.hp - params.damage);
+    this.hurtFlash = 120;
+    this.fx.damageNumber(this.x, this.y, String(params.damage), 'taken');
+    this.fx.shake('small');
+    sfxHurt();
+    return 'hit';
+  }
+
+  /**
    * Ein Gegner trifft den Spieler. Reihenfolge: Ausweich-Unverwundbarkeit →
    * perfekte Parade → Block-Mitigation → voller Schaden.
    */
