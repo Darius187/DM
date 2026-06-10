@@ -1,50 +1,43 @@
 {
   "_meta": {
-    "source": "PLATZHALTER — ravensmoor.html lag dem Repository nicht bei. Dialoge müssen bei Nachlieferung WÖRTLICH aus der Referenz übernommen werden.",
-    "version": 0
+    "source": "Dialoge WÖRTLICH aus ravensmoor.html (verbindliche Referenz) übernommen.",
+    "version": 1
   },
   "npcs": {
     "heinrich": {
       "name": "Heinrich Kramer",
       "role": "Wirt und Händler, Taverne \"Zum Schwarzen Raben\"",
-      "lines": {
-        "greeting": "Noch ein Fremder, der sein Glück in der Krypta sucht? Setz dich ans Feuer, solange du noch warm wirst.",
-        "shop": "Sieh dich um. Gutes Eisen ist rar geworden, seit der Krieg alles frisst.",
-        "farewell": "Komm lebend wieder. Tote Kundschaft zahlt schlecht."
-      }
+      "intro": [
+        "Willkommen im Schwarzen Raben, Fremder. Verschlagenes Bier, aber das Einzige weit und breit. Seit die Schweden das Kirchensilber gestohlen haben, ruhen die Toten nicht mehr - das sage ich jedem, der es hören will.",
+        "Meine Anna... sie suchte damals, als die Pest kam, Schutz in der Krypta. Was sie dort fand, war keine Rettung. Fragt nicht weiter."
+      ],
+      "shopPrompt": "Braucht ihr etwas für den Weg nach unten?",
+      "shopTitle": "ZUM SCHWARZEN RABEN"
     },
     "magdalena": {
       "name": "Magdalena",
       "role": "Kräuterfrau",
-      "lines": {
-        "greeting": "Die Kräuter wachsen schlecht, seit das Flüstern unter der Kirche begann. Aber für dich habe ich noch etwas.",
-        "shop": "Tränke, Ringe, Elixiere. Bezahl in Gold, nicht in Versprechen.",
-        "farewell": "Trink den Trank, BEVOR du stirbst. Die Reihenfolge ist wichtig."
-      }
+      "intro": [
+        "Die Sterne stehen schlecht, Fremder. Unter der Krypta liegt mehr als nur der Ritter - eine alte Kultstätte, älter als das Kreuz. Der Krieg hat den Boden bereitet, und nun erwacht es."
+      ],
+      "gift": "Nehmt dies. Gegen die Schatten.",
+      "giftLog": "2 Heiltränke erhalten",
+      "later": "Hütet euch vor dem \"Geschenk\" des Ritters. Was ewig lebt, hat aufgehört, Mensch zu sein.",
+      "shopPrompt": "Meine Kräuter sind nicht umsonst, aber ehrlich.",
+      "shopTitle": "MAGDALENAS HÜTTE"
     },
     "johannes": {
       "name": "Pater Johannes",
       "role": "Priester, hütet den Kryptaschlüssel",
-      "lines": {
-        "greeting": "Du willst hinab? Unter dieser Kirche liegt etwas Älteres als der Glaube, der sie trägt.",
-        "giveKey": "Nimm den Schlüssel. Und nimm meinen Rat: Was immer dort unten verspricht, dich vom Tod zu befreien — frage nach dem Preis.",
-        "hasKey": "Der Schlüssel liegt schwer in deiner Tasche, nicht wahr? Schwerer wird nur, was du damit aufschließt.",
-        "farewell": "Gott schütze dich. Irgendeiner."
-      }
+      "noKey": [
+        "Ihr seid es also, den man geschickt hat... Hört ihr sie nicht? Die Stimmen aus der Krypta. Seit die Soldaten die Kirche geplündert haben, schweigen sie nicht mehr.",
+        "Tief unter dem Gewölbe liegt ein Kreuzritter begraben. Er kehrte einst mit einem Relikt aus dem Heiligen Land zurück - einem \"Geschenk\", sagte er. Es verwandelte Menschen in etwas Anderes. Man begrub ihn bei lebendigem Leib.",
+        "Nehmt den Schlüssel zur Krypta. Und betet, dass Gott euch dort unten noch hört."
+      ],
+      "keyLog": "Kryptaschlüssel erhalten",
+      "hasKey": "Die Kirchentür ist offen für euch. Steigt hinab, wenn ihr den Mut habt - aber wisst: Was dort unten \"lebt\", war einmal Mensch.",
+      "bossDead": "Die Stimmen... sie sind verstummt. Was immer ihr dort unten getan habt - möge es der Herr richten, nicht ich."
     }
   },
-  "choices": {
-    "heinrich": [
-      { "label": "Zeig mir deine Waren.", "action": "merchant" },
-      { "label": "Bis später, Heinrich.", "action": "close" }
-    ],
-    "magdalena": [
-      { "label": "Was hast du im Angebot?", "action": "herbs" },
-      { "label": "Bleib gesund, Magdalena.", "action": "close" }
-    ],
-    "johannes": [
-      { "label": "Gebt mir den Schlüssel zur Krypta.", "action": "giveKey" },
-      { "label": "Ich bin noch nicht bereit.", "action": "close" }
-    ]
-  }
+  "lockedDoor": "Die Kirchentür ist verschlossen. Pater Johannes hat den Schlüssel."
 }

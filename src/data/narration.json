@@ -1,18 +1,38 @@
 {
   "_meta": {
-    "source": "PLATZHALTER — ravensmoor.html lag dem Repository nicht bei. Erzähltexte müssen bei Nachlieferung WÖRTLICH aus der Referenz übernommen werden.",
-    "version": 0
+    "source": "Erzähltexte, Relikt-Dialog und Enden WÖRTLICH aus ravensmoor.html (verbindliche Referenz). Die 5 Tagebuchseiten sind eine NEUE Ergänzung laut Master-Prompt und stammen nicht aus der Referenz.",
+    "version": 1
   },
   "title": "Aus meinen Aufzeichnungen",
   "beats": {
-    "gameStart": "Im Herbst des Jahres 1635 erreichte ich Ravensmoor. Der Krieg hatte das Land leergefressen, und ich suchte, was alle Verzweifelten suchen: einen Ausweg, den es nicht geben durfte.",
-    "firstDescent": "Als sich die Tür zur Krypta hinter mir schloss, verstand ich, dass die Dunkelheit hier unten älter war als jede Kirche. Sie atmete.",
-    "bossRoom": "Am Ende der letzten Treppe wartete er. Der Tempelritter, von dem die Folianten flüsterten — vierhundert Jahre tot und doch aufrechter als jeder Lebende, dem ich je begegnet war."
+    "gameStart": [
+      "I didn't know what to expect, als ich den Auftrag annahm, nach Ravensmoor zu reisen. Die Geschichten, die man sich über dieses abgelegene Dorf erzählte, hielt ich für Ammenmärchen - Schauergeschichten für lange Winterabende.",
+      "Doch als ich ankam, umhüllten dichter Nebel und eine seltsame Dunkelheit das Dorf. Die wenigen Häuser duckten sich wie ängstliche Tiere um die alte Steinkirche, deren verwitterter Turm sich drohend gegen den bleiernen Himmel reckte. Die Bewohner sprachen nur im Flüsterton."
+    ],
+    "firstDescent": [
+      "Als ich die modrigen Stufen hinabstieg, kroch die Kälte durch meine Kleidung. Der Fackelschein warf tanzende Schatten an die feuchten Wände - und irgendwo unter mir bewegte sich etwas.",
+      "Was ich in den Gewölben fand, spottete jeder Beschreibung: leichenblasse Gestalten, deren Haut wie vergilbtes Pergament wirkte. Ihre Bewegungen waren zu schnell, zu abgehackt für menschliche Wesen."
+    ],
+    "bossRoom": [
+      "»Erlöse mich von meiner ewigen Qual - und ich werde...« Die Stimme kam aus der tiefsten Ecke des Grabes, ein Flüstern wie raschelndes Laub.",
+      "Ich wusste nicht, was zu tun war. Aber ich wusste: Dieser Wahnsinn musste enden - und wenn das Opfer ich selbst sein sollte."
+    ]
+  },
+  "relic": {
+    "title": "Das Relikt des Kreuzritters",
+    "text": "In der zerschmetterten Rüstung des Ritters liegt ein Fragment - warm, obwohl alles hier kalt ist. Die Inschrift auf dem Grab nennt es ein \"Geschenk des ewigen Lebens\". Du spürst, wie es nach dir greift.",
+    "question": "Was tust du?",
+    "acceptLabel": "Das Geschenk annehmen",
+    "destroyLabel": "Das Relikt zerstören",
+    "acceptBonusLog": "Das Geschenk pulsiert in dir. +30 maximales Leben."
   },
   "endings": {
-    "accept": "Ich nahm das Relikt. Die Unsterblichkeit kam über mich wie kaltes Wasser — und mit ihr die Gewissheit, dass ich nun jeden begraben würde, den ich je lieben sollte. Der Preis war nicht der Tod. Der Preis war das Bleiben.",
-    "destroy": "Ich zerschlug das Relikt auf den Steinen des Altars. Das Flüstern verstummte, und zum ersten Mal seit Jahren fühlte sich mein eigenes Herz wie ein Versprechen an, nicht wie eine Frist. Ich stieg hinauf, dem Morgen entgegen, sterblich und frei."
+    "acceptTitle": "DER PREIS DER UNSTERBLICHKEIT",
+    "accept": "Das Geschenk ist nun Teil von dir. Du spürst die neue Kraft - und die neue Last. Die Dorfbewohner nennen dich ihren Retter, doch in ihren Augen liest du Furcht. Und manchmal, in der dunkelsten Stunde vor der Dämmerung, hörst du sein Lachen in deinem Kopf. Du weißt: Ein Teil von ihm lebt in dir weiter.",
+    "destroyTitle": "ERLÖSUNG",
+    "destroy": "Das Fragment zerspringt unter deinem Stiefel, und ein Seufzen geht durch das Gewölbe - wie hundert Stimmen, die endlich schweigen dürfen. Ravensmoor ist frei. Die Narben des Krieges bleiben, doch die Toten ruhen wieder. Heinrich schenkt dir das erste ehrliche Bier des Jahres aus."
   },
+  "bossSummon": "Erhebt euch! Dient mir erneut!",
   "diaryPages": [
     { "id": 1, "text": "Tag 3. Die Fackeln brennen hier unten ruhiger als oben. Als hielte etwas den Atem an." },
     { "id": 2, "text": "Tag 7. Meine Wunde von gestern ist über Nacht verheilt. Ich sollte dankbar sein. Ich bin es nicht." },

@@ -66,7 +66,10 @@ const WEAPONS = itemsData.weapons as BaseWeapon[];
 const ARMORS = itemsData.armors as BaseArmor[];
 const RINGS = itemsData.rings as BaseRing[];
 const AFFIXES = itemsData.affixes as AffixDef[];
-const RARITIES = itemsData.rarities as Record<Rarity, { name: string; color: string; affixCount: number; weight: number }>;
+const RARITIES = itemsData.rarities as Record<Rarity, { name: string; color: string; affixCount: number }>;
+const PREFIXES = itemsData.prefixes as string[];
+const SUFFIXES = itemsData.suffixes as string[];
+const RARITY_ROLL = itemsData.rarityRoll as { rareBase: number; rarePerDepth: number; magicBelow: number };
 
 let nextUid = 1;
 
@@ -75,15 +78,20 @@ export function setNextUid(uid: number): void {
   nextUid = uid;
 }
 
-export function rollRarity(rng: () => number): Rarity {
-  const entries = Object.entries(RARITIES) as [Rarity, { weight: number }][];
-  const total = entries.reduce((s, [, r]) => s + r.weight, 0);
-  let roll = rng() * total;
-  for (const [id, r] of entries) {
-    roll -= r.weight;
-    if (roll < 0) return id;
-  }
+/** Raritätswurf nach Referenz: selten bei r < 0,12 + 0,02·Tiefe, magisch bei r < 0,45. */
+export function rollRarity(rng: () => number, depth = 1): Rarity {
+  const r = rng();
+  if (r < RARITY_ROLL.rareBase + RARITY_ROLL.rarePerDepth * depth) return 'rare';
+  if (r < RARITY_ROLL.magicBelow) return 'magic';
   return 'common';
+}
+
+/** Namensbildung nach Referenz: magisch = Präfix, selten = Präfix + Suffix. */
+function buildName(rng: () => number, base: string, rarity: Rarity, isRing: boolean): string {
+  let name = base;
+  if (rarity !== 'common' || isRing) name = `${PREFIXES[Math.floor(rng() * PREFIXES.length)]} ${name}`;
+  if (rarity === 'rare') name = `${name} ${SUFFIXES[Math.floor(rng() * SUFFIXES.length)]}`;
+  return name;
 }
 
 function rollAffixes(rng: () => number, slot: Slot, count: number): AffixRoll[] {
@@ -121,9 +129,10 @@ function pickBase<T extends { tier: number }>(rng: () => number, pool: T[], dept
 export function generateItem(rng: () => number, opts: { slot?: Slot; depth?: number } = {}): ItemInstance {
   const slot: Slot = opts.slot ?? (['weapon', 'armor', 'ring'] as Slot[])[Math.floor(rng() * 3)]!;
   const depth = opts.depth ?? 1;
-  const rarity = rollRarity(rng);
-  const affixes = rollAffixes(rng, slot, RARITIES[rarity].affixCount);
-  const suffix = affixes.length > 0 ? ` ${affixes[0]!.name}` : '';
+  const rarity = rollRarity(rng, depth);
+  // Ringe sind in der Referenz immer mindestens magisch (1 Bonus)
+  const effRarity: Rarity = slot === 'ring' && rarity === 'common' ? 'magic' : rarity;
+  const affixes = rollAffixes(rng, slot, RARITIES[effRarity].affixCount);
 
   if (slot === 'weapon') {
     const base = pickBase(rng, WEAPONS, depth);
@@ -131,14 +140,14 @@ export function generateItem(rng: () => number, opts: { slot?: Slot; depth?: num
       uid: nextUid++,
       baseId: base.id,
       slot,
-      name: `${base.name}${suffix}`,
-      rarity,
+      name: buildName(rng, base.name, effRarity, false),
+      rarity: effRarity,
       tier: base.tier,
-      value: Math.round(base.value * (rarity === 'rare' ? 3 : rarity === 'magic' ? 1.6 : 1)),
+      value: gearValue(base.value, effRarity, affixes.length, false),
       minDmg: base.minDmg,
       maxDmg: base.maxDmg,
       // Seltene Waffen glänzen golden — sichtbar anderer Schwung
-      swingStyle: rarity === 'rare' ? 'rare' : base.swingStyle,
+      swingStyle: effRarity === 'rare' ? 'rare' : base.swingStyle,
       affixes,
     };
   }
@@ -148,10 +157,10 @@ export function generateItem(rng: () => number, opts: { slot?: Slot; depth?: num
       uid: nextUid++,
       baseId: base.id,
       slot,
-      name: `${base.name}${suffix}`,
-      rarity,
+      name: buildName(rng, base.name, effRarity, false),
+      rarity: effRarity,
       tier: base.tier,
-      value: Math.round(base.value * (rarity === 'rare' ? 3 : rarity === 'magic' ? 1.6 : 1)),
+      value: gearValue(base.value, effRarity, affixes.length, false),
       armor: base.armor,
       affixes,
     };
@@ -161,12 +170,18 @@ export function generateItem(rng: () => number, opts: { slot?: Slot; depth?: num
     uid: nextUid++,
     baseId: base.id,
     slot,
-    name: `${base.name}${suffix}`,
-    rarity,
+    name: buildName(rng, base.name, effRarity, true),
+    rarity: effRarity,
     tier: base.tier,
-    value: Math.round(base.value * (rarity === 'rare' ? 3 : rarity === 'magic' ? 1.6 : 1)),
+    value: gearValue(0, effRarity, affixes.length, true),
     affixes,
   };
+}
+
+/** Preisformel nach Referenz: val*9 + Boni*35 + Rarität*25 (+45 für Ringe). */
+function gearValue(baseValue: number, rarity: Rarity, boniCount: number, isRing: boolean): number {
+  const rarityNum = rarity === 'rare' ? 2 : rarity === 'magic' ? 1 : 0;
+  return baseValue + boniCount * 35 + rarityNum * 25 + (isRing ? 45 : 0);
 }
 
 /** Die einzigartige Templerklinge (Boss-Belohnung). */
@@ -196,7 +211,8 @@ export interface AggregatedStats {
   maxManaBonus: number;
   lightRadiusBonus: number;
   attackSpeedPct: number;
-  lifestealPct: number;
+  /** Flacher Lebensraub pro Treffer (Referenz: +1 bis +3). */
+  lifesteal: number;
 }
 
 /** Fasst Ausrüstung zu Spielerwerten zusammen. Ohne Waffe: Fäuste (2-4). */
@@ -213,7 +229,7 @@ export function aggregateStats(equipped: { weapon?: ItemInstance; armor?: ItemIn
     maxManaBonus: 0,
     lightRadiusBonus: 0,
     attackSpeedPct: 0,
-    lifestealPct: 0,
+    lifesteal: 0,
   };
   for (const item of items) {
     for (const a of item.affixes) {
@@ -239,8 +255,8 @@ export function aggregateStats(equipped: { weapon?: ItemInstance; armor?: ItemIn
         case 'attackSpeedPct':
           stats.attackSpeedPct += a.value;
           break;
-        case 'lifestealPct':
-          stats.lifestealPct += a.value;
+        case 'lifesteal':
+          stats.lifesteal += a.value;
           break;
       }
     }

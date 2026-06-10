@@ -309,7 +309,7 @@ export class Village extends Phaser.Scene {
     }
     if (Phaser.Math.Distance.Between(this.player.x, this.player.y, CRYPT_ENTRANCE.x, CRYPT_ENTRANCE.y) < 50) {
       if (!gameState.flags['cryptKey']) {
-        return { prompt: 'Die Krypta ist verschlossen. Pater Johannes hütet den Schlüssel.', run: () => undefined };
+        return { prompt: dialoguesData.lockedDoor, run: () => undefined };
       }
       return {
         prompt: '[E] In die Krypta hinabsteigen',

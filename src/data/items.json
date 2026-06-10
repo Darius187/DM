@@ -1,49 +1,72 @@
 {
   "_meta": {
-    "source": "PLATZHALTER — ravensmoor.html lag dem Repository nicht bei. Tabellen nach Beschreibung im Master-Prompt rekonstruiert; bei Nachlieferung der Referenz 1:1 ersetzen.",
-    "version": 0
+    "source": "Wörtlich aus ravensmoor.html (verbindliche Referenz) übernommen: Tabellen, Namen, Boni-Bereiche, Skills, Preise. Schadensspannen = Basiswert ±15% (Referenz würfelt 0,85-1,15 beim Treffer).",
+    "version": 1
   },
   "weapons": [
-    { "id": "rostiges_schwert", "name": "Rostiges Schwert", "minDmg": 3, "maxDmg": 6, "tier": 0, "swingStyle": "rusty", "value": 10 },
-    { "id": "kurzschwert", "name": "Kurzschwert", "minDmg": 5, "maxDmg": 9, "tier": 1, "swingStyle": "plain", "value": 35 },
-    { "id": "streitaxt", "name": "Streitaxt", "minDmg": 7, "maxDmg": 14, "tier": 2, "swingStyle": "heavy", "value": 70 },
-    { "id": "langschwert", "name": "Langschwert", "minDmg": 10, "maxDmg": 17, "tier": 3, "swingStyle": "fine", "value": 120 },
-    { "id": "ritterklinge", "name": "Ritterklinge", "minDmg": 14, "maxDmg": 22, "tier": 4, "swingStyle": "fine", "value": 220 },
-    { "id": "templerklinge", "name": "Templerklinge", "minDmg": 20, "maxDmg": 30, "tier": 5, "swingStyle": "holy", "value": 600, "unique": true }
+    { "id": "rostige_klinge", "name": "Rostige Klinge", "minDmg": 4, "maxDmg": 6, "tier": 0, "swingStyle": "rusty", "value": 45 },
+    { "id": "kurzschwert", "name": "Kurzschwert", "minDmg": 7, "maxDmg": 9, "tier": 1, "swingStyle": "rusty", "value": 72 },
+    { "id": "streitkolben", "name": "Streitkolben", "minDmg": 9, "maxDmg": 13, "tier": 2, "swingStyle": "plain", "value": 99 },
+    { "id": "langschwert", "name": "Langschwert", "minDmg": 12, "maxDmg": 16, "tier": 3, "swingStyle": "fine", "value": 126 },
+    { "id": "reiterdegen", "name": "Reiterdegen", "minDmg": 14, "maxDmg": 20, "tier": 4, "swingStyle": "fine", "value": 153 },
+    { "id": "kriegshammer", "name": "Kriegshammer", "minDmg": 18, "maxDmg": 24, "tier": 5, "swingStyle": "fine", "value": 189 },
+    { "id": "templerklinge", "name": "Templerklinge", "minDmg": 20, "maxDmg": 30, "tier": 6, "swingStyle": "holy", "value": 600, "unique": true }
   ],
   "armors": [
-    { "id": "lumpen", "name": "Lumpen", "armor": 0, "tier": 0, "value": 5 },
-    { "id": "lederwams", "name": "Lederwams", "armor": 3, "tier": 1, "value": 40 },
-    { "id": "kettenhemd", "name": "Kettenhemd", "armor": 6, "tier": 2, "value": 110 },
-    { "id": "plattenpanzer", "name": "Plattenpanzer", "armor": 10, "tier": 3, "value": 260 }
+    { "id": "lumpen", "name": "Lumpen", "armor": 1, "tier": 0, "value": 9 },
+    { "id": "lederwams", "name": "Lederwams", "armor": 3, "tier": 1, "value": 27 },
+    { "id": "gambeson", "name": "Gambeson", "armor": 5, "tier": 2, "value": 45 },
+    { "id": "kettenhemd", "name": "Kettenhemd", "armor": 8, "tier": 3, "value": 72 },
+    { "id": "kuerass", "name": "Kürass", "armor": 11, "tier": 4, "value": 99 }
   ],
   "rings": [
-    { "id": "kupferring", "name": "Kupferring", "tier": 0, "value": 25 },
-    { "id": "silberring", "name": "Silberring", "tier": 1, "value": 60 },
-    { "id": "goldring", "name": "Goldring", "tier": 2, "value": 140 }
+    { "id": "knochenring", "name": "Knochenring", "tier": 0, "value": 45 },
+    { "id": "siegelring", "name": "Siegelring", "tier": 1, "value": 45 },
+    { "id": "silberring", "name": "Silberring", "tier": 2, "value": 45 },
+    { "id": "eisenring", "name": "Eisenring", "tier": 3, "value": 45 }
   ],
+  "prefixes": ["Grimmiger", "Geweihter", "Blutiger", "Eiserner", "Uralter"],
+  "suffixes": ["der Pest", "des Raben", "der Asche", "des Kreuzes", "der Nacht", "des Salzes"],
   "rarities": {
-    "common": { "name": "Gewöhnlich", "color": "#d8cfb8", "affixCount": 0, "weight": 70 },
-    "magic": { "name": "Magisch", "color": "#5b8dd9", "affixCount": 1, "weight": 25 },
-    "rare": { "name": "Selten", "color": "#c9a227", "affixCount": 2, "weight": 5 }
+    "common": { "name": "Gewöhnlich", "color": "#d8cfb8", "affixCount": 0 },
+    "magic": { "name": "Magisch", "color": "#5b8dd9", "affixCount": 1 },
+    "rare": { "name": "Selten", "color": "#c9a227", "affixCount": 2 }
+  },
+  "rarityRoll": {
+    "_comment": "Referenz: selten bei r < 0.12 + 0.02*Tiefe, magisch bei r < 0.45, sonst gewöhnlich",
+    "rareBase": 0.12,
+    "rarePerDepth": 0.02,
+    "magicBelow": 0.45
   },
   "affixes": [
-    { "id": "dmg_flat", "name": "der Schärfe", "stat": "damage", "min": 1, "max": 5, "slots": ["weapon"] },
-    { "id": "dmg_pct", "name": "des Schlächters", "stat": "damagePct", "min": 5, "max": 20, "slots": ["weapon"] },
-    { "id": "attack_speed", "name": "der Hast", "stat": "attackSpeedPct", "min": 5, "max": 15, "slots": ["weapon", "ring"] },
-    { "id": "armor_flat", "name": "des Schutzes", "stat": "armor", "min": 1, "max": 4, "slots": ["armor", "ring"] },
-    { "id": "hp_flat", "name": "des Bären", "stat": "maxHp", "min": 5, "max": 25, "slots": ["armor", "ring"] },
-    { "id": "mana_flat", "name": "der Weisheit", "stat": "maxMana", "min": 5, "max": 20, "slots": ["ring"] },
-    { "id": "light_radius", "name": "des Lichts", "stat": "lightRadius", "min": 20, "max": 60, "slots": ["ring"] },
-    { "id": "lifesteal", "name": "des Blutegels", "stat": "lifestealPct", "min": 2, "max": 6, "slots": ["weapon", "ring"] }
+    { "id": "dmg", "name": "Schaden", "stat": "damage", "min": 2, "max": 5, "slots": ["weapon", "armor", "ring"] },
+    { "id": "armor", "name": "Rüstung", "stat": "armor", "min": 1, "max": 4, "slots": ["weapon", "armor", "ring"] },
+    { "id": "hp", "name": "Leben", "stat": "maxHp", "min": 8, "max": 25, "slots": ["weapon", "armor", "ring"] },
+    { "id": "mana", "name": "Mana", "stat": "maxMana", "min": 6, "max": 18, "slots": ["weapon", "armor", "ring"] },
+    { "id": "leech", "name": "Lebensraub", "stat": "lifesteal", "min": 1, "max": 3, "slots": ["weapon", "armor", "ring"] },
+    { "id": "licht", "name": "Lichtradius", "stat": "lightRadius", "min": 25, "max": 50, "slots": ["ring"] }
   ],
   "potions": [
-    { "id": "heiltrank", "name": "Heiltrank", "heal": 40, "value": 25 },
-    { "id": "manatrank", "name": "Manatrank", "mana": 30, "value": 25 }
+    { "id": "heiltrank", "name": "Heiltrank", "healPct": 0.45, "priceHeinrich": 30, "priceMagdalena": 24 },
+    { "id": "manatrank", "name": "Manatrank", "manaPct": 0.6, "priceHeinrich": 40, "priceMagdalena": 32 },
+    { "id": "elixier", "name": "Elixier der Kräuterfrau", "maxHpBonus": 10, "price": 150, "limit": 3 }
   ],
   "spells": [
-    { "id": "feuerball", "name": "Feuerball", "manaCost": 12, "damage": 25, "unlockLevel": 2, "key": "1" },
-    { "id": "heiliges_licht", "name": "Heiliges Licht", "manaCost": 20, "damage": 18, "aoeRadius": 120, "unlockLevel": 4, "key": "2" },
-    { "id": "heilung", "name": "Heilung", "manaCost": 15, "heal": 35, "unlockLevel": 3, "key": "3" }
-  ]
+    { "id": "feuerball", "name": "Feuerball", "ico": "✦", "manaCost": 12, "unlockLevel": 2, "cooldownMs": 550, "damage": 16, "speed": 320, "key": "1" },
+    { "id": "heiliges_licht", "name": "Heiliges Licht", "ico": "☩", "manaCost": 22, "unlockLevel": 3, "cooldownMs": 4500, "damage": 18, "aoeRadius": 130, "key": "2" },
+    { "id": "heilung", "name": "Heilung", "ico": "❧", "manaCost": 26, "unlockLevel": 5, "cooldownMs": 7000, "healPct": 0.4, "key": "3" }
+  ],
+  "leveling": {
+    "_comment": "Referenz: hp = 90 + 14*(Stufe-1) + Elixiere*10; mana = 40 + 8*(Stufe-1); xpNext = 45*Stufe^1.45; Stufenaufstieg heilt 50% und füllt Mana",
+    "baseHp": 90,
+    "hpPerLevel": 14,
+    "elixirHp": 10,
+    "baseMana": 40,
+    "manaPerLevel": 8,
+    "xpBase": 45,
+    "xpExponent": 1.45
+  },
+  "altarEffects": {
+    "_comment": "Referenz useAltar(): <0.25 Segen +30% Schaden 45s, <0.45 volle Heilung, <0.60 Gold 30-80, <0.80 XP 25+15*Tiefe, sonst 3 Untote erwachen"
+  }
 }

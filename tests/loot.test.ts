@@ -3,16 +3,29 @@ import { mulberry32 } from '../src/systems/dungeonGen';
 import { rollRarity, generateItem, aggregateStats, templerklinge, rollItemDrop } from '../src/systems/loot';
 
 describe('rollRarity', () => {
-  it('Verteilung entspricht den Gewichten (70/25/5) bei 10000 Würfen', () => {
+  it('Verteilung folgt der Referenzformel (selten: 0,12+0,02·Tiefe, magisch bis 0,45)', () => {
     const rng = mulberry32(99);
     const counts = { common: 0, magic: 0, rare: 0 };
-    for (let i = 0; i < 10000; i++) counts[rollRarity(rng)]++;
-    expect(counts.common / 10000).toBeGreaterThan(0.66);
-    expect(counts.common / 10000).toBeLessThan(0.74);
-    expect(counts.magic / 10000).toBeGreaterThan(0.21);
-    expect(counts.magic / 10000).toBeLessThan(0.29);
-    expect(counts.rare / 10000).toBeGreaterThan(0.03);
-    expect(counts.rare / 10000).toBeLessThan(0.07);
+    for (let i = 0; i < 10000; i++) counts[rollRarity(rng, 1)]++;
+    // Tiefe 1: selten 14 %, magisch 31 %, gewöhnlich 55 %
+    expect(counts.rare / 10000).toBeGreaterThan(0.11);
+    expect(counts.rare / 10000).toBeLessThan(0.17);
+    expect(counts.magic / 10000).toBeGreaterThan(0.28);
+    expect(counts.magic / 10000).toBeLessThan(0.34);
+    expect(counts.common / 10000).toBeGreaterThan(0.52);
+    expect(counts.common / 10000).toBeLessThan(0.58);
+  });
+
+  it('tiefere Ebenen würfeln häufiger selten', () => {
+    const a = mulberry32(7);
+    const b = mulberry32(7);
+    let rare1 = 0;
+    let rare3 = 0;
+    for (let i = 0; i < 10000; i++) {
+      if (rollRarity(a, 1) === 'rare') rare1++;
+      if (rollRarity(b, 3) === 'rare') rare3++;
+    }
+    expect(rare3).toBeGreaterThan(rare1);
   });
 });
 

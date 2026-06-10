@@ -219,6 +219,9 @@ export class BossRoom extends Phaser.Scene {
       this.minions.forEach((m) => m.update(dt, ctx));
       this.projectiles.forEach((p) => p.update(dt, this.player, ARENA));
     }
+    for (const m of this.minions) {
+      if (!m.alive) this.grantXp(m.xp, m.x, m.y);
+    }
     this.minions = this.minions.filter((m) => (m.alive ? true : (m.destroy(), false)));
     this.projectiles = this.projectiles.filter((p) => (p.alive ? true : (p.destroy(), false)));
     this.pickups.forEach((p) => p.update(dt, this.player));
@@ -241,6 +244,7 @@ export class BossRoom extends Phaser.Scene {
   }
 
   private summonMinions(count: number): void {
+    this.fx.damageNumber(this.boss?.x ?? GAME_WIDTH / 2, (this.boss?.y ?? 200) - 50, narrationData.bossSummon, 'taken');
     for (let i = 0; i < count; i++) {
       const a = (i / count) * Math.PI * 2;
       this.minions.push(
@@ -257,8 +261,20 @@ export class BossRoom extends Phaser.Scene {
     }
   }
 
+  private grantXp(xp: number, x: number, y: number): void {
+    const levels = gameState.gainXp(xp);
+    if (levels > 0) {
+      this.player.hp = gameState.hp;
+      this.fx.damageNumber(this.player.x, this.player.y - 20, `Stufe ${gameState.level} erreicht!`, 'golden');
+      this.fx.burst(this.player.x, this.player.y, { color: 0xc9a227, count: 22, speed: 150, size: 3 });
+    } else {
+      this.fx.damageNumber(x, y - 10, `+${xp} XP`, 'dealt');
+    }
+  }
+
   private onBossDefeated(): void {
     gameState.flags['bossDefeated'] = true;
+    this.grantXp(300, this.boss!.x, this.boss!.y);
     this.relicAvailable = true;
     // Die Templerklinge fällt — sichtbar anders, heiliger Goldschein
     this.pickups.push(Pickup.ofItem(this, this.fx, this.boss!.x, this.boss!.y + 40, templerklinge()));
@@ -323,11 +339,11 @@ export class BossRoom extends Phaser.Scene {
     this.choiceOpen = true;
     const g = this.add.graphics().setDepth(DEPTHS.ui + 2);
     g.fillStyle(0x0e0b07, 0.96);
-    g.fillRect(GAME_WIDTH / 2 - 380, 200, 760, 280);
+    g.fillRect(GAME_WIDTH / 2 - 380, 180, 760, 320);
     g.lineStyle(2, PALETTE.gold, 0.7);
-    g.strokeRect(GAME_WIDTH / 2 - 380, 200, 760, 280);
+    g.strokeRect(GAME_WIDTH / 2 - 380, 180, 760, 320);
     const title = this.add
-      .text(GAME_WIDTH / 2, 236, 'Das Relikt flüstert. Es verspricht, was kein Grab je hielt.', {
+      .text(GAME_WIDTH / 2, 208, `${narrationData.relic.text}\n\n${narrationData.relic.question}`, {
         fontFamily: 'Georgia, serif',
         fontSize: '19px',
         fontStyle: 'italic',
@@ -350,8 +366,8 @@ export class BossRoom extends Phaser.Scene {
       this.choiceTexts.push(t);
       return t;
     };
-    option(330, '1. Das Relikt annehmen — nie wieder sterben.', () => this.finishGame('accept'));
-    option(390, '2. Das Relikt zerschlagen — sterblich und frei.', () => this.finishGame('destroy'));
+    option(396, `1. ${narrationData.relic.acceptLabel}`, () => this.finishGame('accept'));
+    option(440, `2. ${narrationData.relic.destroyLabel}`, () => this.finishGame('destroy'));
     this.input.keyboard!.once('keydown-ONE', () => this.finishGame('accept'));
     this.input.keyboard!.once('keydown-TWO', () => this.finishGame('destroy'));
     this.choiceTexts.push(g as unknown as Phaser.GameObjects.Text);
@@ -362,12 +378,17 @@ export class BossRoom extends Phaser.Scene {
     this.transitioning = true;
     this.relicAvailable = false;
     gameState.flags[which === 'accept' ? 'ending_accept' : 'ending_destroy'] = true;
+    // Referenz: das Geschenk annehmen gibt dauerhaft +30 maximales Leben (3 Elixiere)
+    if (which === 'accept') {
+      gameState.elixirs += 3;
+      gameState.hp = gameState.maxHp;
+    }
     saveGame();
     this.choiceTexts.forEach((t) => t.destroy());
     this.scene.pause();
     this.scene.launch('NarrationUI', {
       caller: 'BossRoom',
-      title: which === 'accept' ? 'Der Preis der Unsterblichkeit' : 'Erlösung',
+      title: which === 'accept' ? narrationData.endings.acceptTitle : narrationData.endings.destroyTitle,
       text: narrationData.endings[which],
     });
     // Weiterspielen nach dem Ende: zurück ins Dorf

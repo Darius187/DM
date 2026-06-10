@@ -4,16 +4,18 @@ import narrationData from '../data/narration.json';
 
 export interface NarrationUIData {
   caller: string;
-  text: string;
+  /** Eine Seite oder mehrere Seiten (werden mit E durchgeblättert). */
+  text: string | string[];
   title?: string;
 }
 
 /** Erzähler-Einblendung „Aus meinen Aufzeichnungen" — pausiert das Spiel, E/Klick schließt. */
 export class NarrationUI extends Phaser.Scene {
   private caller = 'Village';
-  private text = '';
+  private pages: string[] = [];
   private title = narrationData.title;
   private openedAt = 0;
+  private body!: Phaser.GameObjects.Text;
 
   constructor() {
     super('NarrationUI');
@@ -21,7 +23,7 @@ export class NarrationUI extends Phaser.Scene {
 
   init(data: NarrationUIData): void {
     this.caller = data.caller;
-    this.text = data.text;
+    this.pages = Array.isArray(data.text) ? [...data.text] : [data.text];
     this.title = data.title ?? narrationData.title;
   }
 
@@ -43,7 +45,7 @@ export class NarrationUI extends Phaser.Scene {
       })
       .setDepth(DEPTHS.ui + 1);
     const body = this.add
-      .text(84, GAME_HEIGHT - panelH + 12, this.text, {
+      .text(84, GAME_HEIGHT - panelH + 12, this.pages[0] ?? '', {
         fontFamily: 'Georgia, serif',
         fontSize: '17px',
         color: '#d8cfb8',
@@ -53,6 +55,7 @@ export class NarrationUI extends Phaser.Scene {
       .setDepth(DEPTHS.ui + 1)
       .setAlpha(0);
     this.tweens.add({ targets: body, alpha: 1, duration: 600 });
+    this.body = body;
     this.add
       .text(GAME_WIDTH - 84, GAME_HEIGHT - 62, '[E] weiter', {
         fontFamily: 'monospace',
@@ -65,6 +68,15 @@ export class NarrationUI extends Phaser.Scene {
     const close = () => {
       // Mindestanzeige, damit ein gepufferter Klick den Text nicht sofort wegdrückt
       if (this.time.now - this.openedAt < 350) return;
+      if (this.pages.length > 1) {
+        // Nächste Seite statt schließen
+        this.pages.shift();
+        this.openedAt = this.time.now;
+        this.body.setText(this.pages[0] ?? '');
+        this.body.setAlpha(0);
+        this.tweens.add({ targets: this.body, alpha: 1, duration: 400 });
+        return;
+      }
       this.scene.resume(this.caller);
       this.scene.stop();
     };

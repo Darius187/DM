@@ -104,6 +104,8 @@ export class Player {
 
   /** Flaschen-Trinken: 0,6 s; Treffer bricht ab, OHNE die Flasche zu verbrauchen. */
   drinkElapsed = 0;
+  /** Altar-Segen: +30 % Schaden, solange > 0 (ms). */
+  damageBuffRemaining = 0;
   private heartbeatAt = -Infinity;
 
   /** Riposte-Fenster (Realzeit-Ende) nach perfekter Parade. */
@@ -179,6 +181,7 @@ export class Player {
     }
 
     this.stamina.update(dtMs, now, this.blocking);
+    this.damageBuffRemaining = Math.max(0, this.damageBuffRemaining - dtMs);
     // Herzschlag unter 25 % Leben
     if (this.hp > 0 && this.hp < this.maxHp * 0.25 && now - this.heartbeatAt > 900) {
       this.heartbeatAt = now;
@@ -349,12 +352,12 @@ export class Player {
       });
       if (!hit) continue;
       this.hitTargets.add(t);
-      const base = Phaser.Math.Between(this.stats.minDmg, this.stats.maxDmg);
+      const buffMult = this.damageBuffRemaining > 0 ? 1.3 : 1;
+      const base = Math.round(Phaser.Math.Between(this.stats.minDmg, this.stats.maxDmg) * buffMult);
       const damage = computeHitDamage({ base, comboStage: stage, riposte: this.attackIsRiposte });
-      // Vampirische Affixe auf eigener Ausrüstung heilen pro Treffer
-      if (this.stats.lifestealPct > 0) {
-        const heal = Math.round((damage * this.stats.lifestealPct) / 100);
-        if (heal > 0) this.hp = Math.min(this.maxHp, this.hp + heal);
+      // Lebensraub-Boni heilen flach pro Treffer (Referenz: +1 bis +3)
+      if (this.stats.lifesteal > 0) {
+        this.hp = Math.min(this.maxHp, this.hp + this.stats.lifesteal);
       }
       const ang = Math.atan2(t.y - this.y, t.x - this.x);
       const heavyHit = stage === 2 || stage === HEAVY_ATTACK;

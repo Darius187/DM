@@ -92,6 +92,7 @@ export class Enemy implements CombatTarget {
   readonly maxHp: number;
   readonly typeId: string;
   readonly eliteAffix: string | null;
+  readonly depth: number = 1;
 
   private spec: EnemyTypeSpec;
   private speed: number;
@@ -129,6 +130,8 @@ export class Enemy implements CombatTarget {
     eliteAffix: string | null = null,
     /** Lauerer: kauert wie eine Leiche / lauert in der Nische, bis der Spieler naht. */
     dormant = false,
+    /** Ebene (Referenz-Skalierung von HP und XP). */
+    depth = 1,
   ) {
     const spec = TYPES[typeId];
     if (!spec) throw new Error(`Unbekannter Gegnertyp: ${typeId}`);
@@ -142,8 +145,9 @@ export class Enemy implements CombatTarget {
 
     const elite = eliteAffix !== null;
     const affix = elite ? ELITE_AFFIXES[eliteAffix] : undefined;
+    this.depth = depth;
     this.radius = spec.size * (elite ? ELITE_STATS.sizeMult : 1);
-    this.maxHp = Math.round(spec.hp * (elite ? ELITE_STATS.hpMult : 1));
+    this.maxHp = Math.round((spec.hp + (spec.hpPerDepth ?? 0) * depth) * (elite ? ELITE_STATS.hpMult : 1));
     this.hp = this.maxHp;
     this.speed = spec.speed * (affix?.speedMult ?? 1);
     this.damage = Math.round(spec.damage * (elite ? ELITE_STATS.damageMult : 1));
@@ -173,7 +177,8 @@ export class Enemy implements CombatTarget {
   }
 
   get xp(): number {
-    return Math.round(this.spec.xp * (this.eliteAffix ? ELITE_STATS.xpMult : 1));
+    const base = this.spec.xp + (this.spec.xpPerDepth ?? 0) * this.depth;
+    return Math.round(base * (this.eliteAffix ? ELITE_STATS.xpMult : 1));
   }
 
   /** Zählt für das Angreifer-Limit (max. 2 gleichzeitig). */

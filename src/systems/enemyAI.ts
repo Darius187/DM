@@ -10,6 +10,9 @@ export type EnemyBehavior = 'melee' | 'ranged';
 export interface EnemyTypeSpec {
   name: string;
   hp: number;
+  /** Referenz-Skalierung: hp + hpPerDepth * Tiefe. */
+  hpPerDepth?: number;
+  xpPerDepth?: number;
   speed: number;
   damage: number;
   attackRange: number;

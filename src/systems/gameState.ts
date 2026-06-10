@@ -38,7 +38,14 @@ export class GameState {
   items: ItemInstance[] = [];
   equipped: EquippedSlots = {};
   /** Aktuelle HP überleben Szenenwechsel (Dorf <-> Krypta). */
-  hp = 100;
+  hp = 90;
+  /** Stufen/XP nach Referenz: xpNext = 45 * Stufe^1,45. */
+  level = 1;
+  xp = 0;
+  /** Aktuelles Mana; regeneriert nicht von allein (Tränke, Schreine, Stufenaufstieg). */
+  mana = 40;
+  /** Elixiere der Kräuterfrau: je +10 maximales Leben, dauerhaft. */
+  elixirs = 0;
   flags: Record<string, boolean> = {};
   /** Respawn-Punkt: zuletzt berasteter Kerzenschrein (oder null = Dorf). */
   lastShrine: ShrinePoint | null = null;
@@ -48,8 +55,34 @@ export class GameState {
     return aggregateStats(this.equipped);
   }
 
+  /** Referenz: 90 + 14·(Stufe-1) + Elixiere·10 + Ausrüstungs-Boni. */
   get maxHp(): number {
-    return 100 + this.stats.maxHpBonus;
+    return 90 + 14 * (this.level - 1) + this.elixirs * 10 + this.stats.maxHpBonus;
+  }
+
+  get maxMana(): number {
+    return 40 + 8 * (this.level - 1) + this.stats.maxManaBonus;
+  }
+
+  get xpNext(): number {
+    return Math.round(45 * Math.pow(this.level, 1.45));
+  }
+
+  /**
+   * Erfahrung nach Referenz; Stufenaufstieg heilt 50 % und füllt das Mana.
+   * Liefert die Anzahl der Aufstiege (für Effekte/Logs der Szene).
+   */
+  gainXp(n: number): number {
+    this.xp += n;
+    let levels = 0;
+    while (this.xp >= this.xpNext) {
+      this.xp -= this.xpNext;
+      this.level++;
+      levels++;
+      this.hp = Math.min(this.maxHp, this.hp + Math.round(this.maxHp * 0.5));
+      this.mana = this.maxMana;
+    }
+    return levels;
   }
 
   /** Legt ein Item an; das vorher angelegte wandert zurück ins Inventar. */
@@ -91,16 +124,35 @@ export class GameState {
     return true;
   }
 
-  /** Verbraucht eine Flasche (am Ende des Trinkens). Liefert die Heilmenge. */
+  /** Verbraucht eine Flasche (am Ende des Trinkens). Referenz: heilt 45 % des Maximums. */
   useFlask(): number {
     if (this.flasks <= 0) return 0;
     this.flasks--;
-    return 45;
+    return Math.round(this.maxHp * 0.45);
+  }
+
+  /** Manatrank: stellt 60 % Mana wieder her (Referenz). */
+  useManaPotion(): number {
+    if (this.manaPotions <= 0 || this.mana >= this.maxMana) return 0;
+    this.manaPotions--;
+    const gain = Math.round(this.maxMana * 0.6);
+    this.mana = Math.min(this.maxMana, this.mana + gain);
+    return gain;
+  }
+
+  /** Elixier der Kräuterfrau: +10 maximales Leben, dauerhaft (Limit 3 im Shop). */
+  buyElixir(price: number): boolean {
+    if (this.gold < price) return false;
+    this.gold -= price;
+    this.elixirs++;
+    this.hp = Math.min(this.maxHp, this.hp + 10);
+    return true;
   }
 
   /** Rasten am Kerzenschrein: Leben, Mana und Flaschen voll; Räume bleiben geräumt. */
   restAtShrine(shrine: ShrinePoint): void {
     this.hp = this.maxHp;
+    this.mana = this.maxMana;
     this.flasks = this.maxFlasks;
     this.lastShrine = shrine;
   }

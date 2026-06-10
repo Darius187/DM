@@ -70,19 +70,21 @@ Delta-Glättung (`smoothStep`) das reale Frame-Delta massiv (gemessen: 16,7 ms g
 entsprechend. `smoothStep: false` liefert reale Deltas; Spike-Schutz übernehmen die Szenen
 selbst mit `Math.min(delta, 50)`. Bei stabilen 60 FPS ändert sich nichts.
 
-## 2026-06-10 — Offen bis `ravensmoor.html` vorliegt
+## 2026-06-10 — `ravensmoor.html` nachgeliefert: Inhalte wörtlich übernommen
 
-Bewusst zurückgestellt, weil ihre Werte/Regeln laut Master-Prompt verbindlich aus der
-(fehlenden) Referenz kommen:
+Mit dem 3D-Starter-Paket kam die Referenz. Übernommen: alle Dialoge (mehrseitig, wörtlich),
+Erzähler-Beats (je 2 Seiten), Relikt-Dialog und beide Enden samt Titeln, Item-Tabellen
+(Waffen/Rüstungen/Ringe, Präfix/Suffix-Namensschema, Boni-Bereiche, Preisformel val·9+Boni·35+
+Rarität·25), Raritätsformel (selten 0,12+0,02·Tiefe), XP/Stufen (90+14·Stufe, xpNext 45·Stufe^1,45,
+Aufstieg heilt 50 %), Elixiere, Altar-Effekttabelle, HP/XP-Tiefenskalierung der Gegner,
+Theme-Namen/Dekordichten, Magdalenas Geschenk (+2 Tränke), Annehmen-Ende (+30 maxLeben).
+Konfliktregel angewandt: Telegraphen/Schadenswerte bleiben v3 (Spielgefühl schlägt Referenz);
+Boss behält v3-Werte (1100 HP, 4 Angriffe inkl. Sturm). Lebensraub jetzt flach (Referenz).
 
-1. **Zauber (1/2/3: Feuerball, Heiliges Licht, Heilung)** — „Manakosten und Freischaltstufen
-   aus ravensmoor.html". Erfordert zudem XP-/Stufensystem (3), das die Referenz definiert.
-   Platzhalterwerte liegen in `items.json#spells` bereit.
-2. **Opferaltäre mit Zufallseffekten** — Effekttabelle stammt aus der Referenz; Altar-Räume
-   werden bereits generiert und gerendert, sind aber noch ohne Interaktion.
-3. **XP/Stufen** — Gegner geben `xp`-Werte (für Gold-Drops genutzt), ein Spieler-Levelsystem
-   inkl. Freischaltungen folgt mit der Referenz.
-4. **Alle Texte/Dialoge/Items in `data/*.json`** — Platzhalter, wörtliche Übernahme steht aus.
+**Noch offen:** Zauber-AUSFÜHRUNG (Feuerball/Heiliges Licht/Heilung) — Daten und Stufen-
+Freischaltung liegen bereit (`items.json#spells`, gameState.mana/level), die Wirkungen (0,4 s
+Wirkzeit, Spieler-Projektil, AoE) sind noch nicht implementiert. Zweiter Skript-Moment
+(Sarg-Deckel) und 2-3 Angriffsmuster pro Gegnertyp ebenfalls offen.
 
 ## 2026-06-10 — Block-Kegel
 

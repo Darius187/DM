@@ -14,10 +14,17 @@ interface Choice {
   action: string;
 }
 
-/** Dialog-Overlay: NPC-Zeile + wählbare Antworten (Klick oder 1-9). */
+/**
+ * Dialog-Overlay: mehrseitige NPC-Texte (wörtlich aus der Referenz) mit
+ * „Weiter" und Abschluss-Optionen. Klick oder Zifferntasten.
+ */
 export class DialogUI extends Phaser.Scene {
   private caller = 'Village';
   private npcId: DialogUIData['npcId'] = 'heinrich';
+  private pages: string[] = [];
+  private finalChoices: Choice[] = [];
+  /** Aktion, die beim Weiterblättern der letzten Seite ausgelöst wird (z. B. Schlüssel). */
+  private onLastPage: (() => void) | null = null;
   private texts: Phaser.GameObjects.Text[] = [];
   private g!: Phaser.GameObjects.Graphics;
 
@@ -32,13 +39,67 @@ export class DialogUI extends Phaser.Scene {
 
   create(): void {
     this.g = this.add.graphics().setDepth(DEPTHS.ui);
-    const npc = dialoguesData.npcs[this.npcId];
-    let line = npc.lines.greeting;
-    if (this.npcId === 'johannes' && gameState.flags['cryptKey']) {
-      line = (npc.lines as Record<string, string>)['hasKey'] ?? npc.lines.greeting;
-    }
-    this.renderDialog(line, (dialoguesData.choices as Record<string, Choice[]>)[this.npcId] ?? []);
+    this.buildConversation();
+    this.renderPage();
     this.input.keyboard!.on('keydown-ESC', () => this.close());
+  }
+
+  /** Stellt die Seitenfolge gemäß Referenz-Dialogen und Spielstand zusammen. */
+  private buildConversation(): void {
+    const npcs = dialoguesData.npcs;
+    this.pages = [];
+    this.finalChoices = [];
+    this.onLastPage = null;
+
+    if (this.npcId === 'johannes') {
+      const d = npcs.johannes;
+      if (!gameState.flags['cryptKey']) {
+        this.pages = [...d.noKey];
+        this.onLastPage = () => {
+          gameState.flags['cryptKey'] = true;
+          saveGame();
+        };
+        this.finalChoices = [{ label: 'Lebt wohl', action: 'close' }];
+      } else if (gameState.flags['bossDefeated']) {
+        this.pages = [d.bossDead];
+        this.finalChoices = [{ label: 'Lebt wohl', action: 'close' }];
+      } else {
+        this.pages = [d.hasKey];
+        this.finalChoices = [{ label: 'Lebt wohl', action: 'close' }];
+      }
+      return;
+    }
+
+    if (this.npcId === 'heinrich') {
+      const d = npcs.heinrich;
+      if (!gameState.flags['heinrich1']) {
+        gameState.flags['heinrich1'] = true;
+        saveGame();
+        this.pages = [...d.intro];
+      }
+      this.pages.push(d.shopPrompt);
+      this.finalChoices = [
+        { label: 'Handel', action: 'merchant' },
+        { label: 'Lebt wohl', action: 'close' },
+      ];
+      return;
+    }
+
+    const d = npcs.magdalena;
+    if (!gameState.flags['magda1']) {
+      gameState.flags['magda1'] = true;
+      this.pages = [...d.intro, d.gift];
+      // Referenz: „Nehmt dies. Gegen die Schatten." -> 2 Heiltränke
+      gameState.flasks = Math.min(gameState.maxFlasks, gameState.flasks + 2);
+      saveGame();
+    } else {
+      this.pages = [d.later];
+    }
+    this.pages.push(d.shopPrompt);
+    this.finalChoices = [
+      { label: 'Handel', action: 'herbs' },
+      { label: 'Lebt wohl', action: 'close' },
+    ];
   }
 
   private close(): void {
@@ -46,14 +107,18 @@ export class DialogUI extends Phaser.Scene {
     this.scene.stop();
   }
 
-  private renderDialog(line: string, choices: Choice[]): void {
+  private renderPage(): void {
     const npc = dialoguesData.npcs[this.npcId];
+    const isLast = this.pages.length <= 1;
+    const line = this.pages[0] ?? '';
+    const choices: Choice[] = isLast ? this.finalChoices : [{ label: 'Weiter', action: 'next' }];
+
     this.texts.forEach((t) => t.destroy());
     this.texts = [];
     const g = this.g;
     g.clear();
 
-    const panelH = 180 + choices.length * 30;
+    const panelH = 170 + choices.length * 30;
     const py = GAME_HEIGHT - panelH - 40;
     g.fillStyle(0x0e0b07, 0.95);
     g.fillRect(60, py, GAME_WIDTH - 120, panelH);
@@ -61,7 +126,7 @@ export class DialogUI extends Phaser.Scene {
     g.strokeRect(60, py, GAME_WIDTH - 120, panelH);
 
     this.addText(84, py + 14, npc.name, '#c9a227', 19);
-    this.addText(84, py + 40, line, '#d8cfb8', 16, GAME_WIDTH - 168);
+    this.addText(84, py + 42, line, '#d8cfb8', 16, GAME_WIDTH - 168);
 
     choices.forEach((choice, i) => {
       const cy = py + panelH - (choices.length - i) * 32 - 14;
@@ -76,12 +141,24 @@ export class DialogUI extends Phaser.Scene {
 
   private handle(action: string): void {
     switch (action) {
+      case 'next': {
+        // Beim Verlassen der vorletzten Seite z. B. den Schlüssel übergeben
+        if (this.pages.length === 2 && this.onLastPage) {
+          this.onLastPage();
+          this.onLastPage = null;
+        }
+        this.pages.shift();
+        this.renderPage();
+        break;
+      }
       case 'merchant': {
+        if (this.onLastPage) this.onLastPage();
         this.scene.stop();
         this.scene.launch('InventoryUI', { caller: this.caller, merchant: true, merchantSeed: dailySeed(1) });
         break;
       }
       case 'herbs': {
+        if (this.onLastPage) this.onLastPage();
         this.scene.stop();
         this.scene.launch('InventoryUI', {
           caller: this.caller,
@@ -91,19 +168,14 @@ export class DialogUI extends Phaser.Scene {
         });
         break;
       }
-      case 'giveKey': {
-        if (!gameState.flags['cryptKey']) {
-          gameState.flags['cryptKey'] = true;
-          saveGame();
+      default: {
+        // Letzte Seite geschlossen: ausstehende Seitenaktion (Schlüssel) noch ausführen
+        if (this.onLastPage) {
+          this.onLastPage();
+          this.onLastPage = null;
         }
-        const npc = dialoguesData.npcs['johannes'];
-        this.renderDialog((npc.lines as Record<string, string>)['giveKey'] ?? '', [
-          { label: 'Ich werde daran denken.', action: 'close' },
-        ]);
-        break;
-      }
-      default:
         this.close();
+      }
     }
   }
 
@@ -122,7 +194,7 @@ export class DialogUI extends Phaser.Scene {
   }
 }
 
-/** Händler-Sortiment wechselt pro Spielsitzung, bleibt aber innerhalb stabil. */
+/** Händler-Sortiment wechselt etwa alle 10 Minuten, bleibt innerhalb stabil. */
 function dailySeed(salt: number): number {
   return (Math.floor(Date.now() / 600000) * 31 + salt) % 2147483647;
 }

@@ -72,6 +72,8 @@ export class Dungeon extends Phaser.Scene {
   private spawnAtShrine = false;
   /** Sparsamer Skript-Moment: eine Fackel verlischt beim Vorbeigehen (max. 1x pro Ebene). */
   private torchScareUsed = false;
+  /** Opferaltäre mit Zufallseffekten (Referenz useAltar). */
+  private altars: { x: number; y: number; used: boolean }[] = [];
 
   private keys!: Record<'W' | 'A' | 'S' | 'D' | 'E' | 'J' | 'K' | 'Q' | 'SHIFT' | 'SPACE', Phaser.Input.Keyboard.Key>;
   private prevLeftDown = false;
@@ -162,6 +164,7 @@ export class Dungeon extends Phaser.Scene {
           s.y * TILE_SIZE + TILE_SIZE / 2,
           elite,
           dormant,
+          this.depth,
         ),
       );
     }
@@ -191,6 +194,18 @@ export class Dungeon extends Phaser.Scene {
         page,
       });
     });
+
+    // Opferaltäre: im Altar-Raum (Effekttabelle aus der Referenz)
+    this.altars = [];
+    for (const room of lvl.rooms) {
+      if (room.kind === 'altar') {
+        this.altars.push({
+          x: (room.x + room.w / 2) * TILE_SIZE,
+          y: (room.y + room.h / 2) * TILE_SIZE,
+          used: false,
+        });
+      }
+    }
 
     this.shrineG = this.add.graphics().setDepth(DEPTHS.entities - 2);
     this.torchG = this.add.graphics().setDepth(DEPTHS.entities + 3);
@@ -449,6 +464,7 @@ export class Dungeon extends Phaser.Scene {
       if (!e.alive) {
         e.onDeathEffects(ctx);
         dropLoot(this, this.fx, e.x, e.y, e.xp, e.isElite, this.depth, this.pickups);
+        this.grantXp(e.xp, e.x, e.y);
         e.destroy();
       }
     }
@@ -465,6 +481,7 @@ export class Dungeon extends Phaser.Scene {
 
     this.updateDiaryPages();
     this.updateShrine();
+    this.updateAltars();
     this.updateTorchScare();
     this.markExplored();
     this.renderTorches();
@@ -473,6 +490,75 @@ export class Dungeon extends Phaser.Scene {
     this.renderHud();
     this.checkStairs();
     this.checkDeath();
+  }
+
+  private grantXp(xp: number, x: number, y: number): void {
+    const levels = gameState.gainXp(xp);
+    if (levels > 0) {
+      this.player.hp = gameState.hp;
+      this.fx.damageNumber(this.player.x, this.player.y - 20, `Stufe ${gameState.level} erreicht!`, 'golden');
+      this.fx.burst(this.player.x, this.player.y, { color: 0xc9a227, count: 22, speed: 150, size: 3 });
+    } else {
+      this.fx.damageNumber(x, y - 10, `+${xp} XP`, 'dealt');
+    }
+  }
+
+  /**
+   * Opferaltar (Referenz useAltar): <0,25 Segen +30% Schaden 45s, <0,45 volle
+   * Heilung, <0,60 Gold 30-80, <0,80 Erfahrung, sonst erwachen die Toten.
+   */
+  private useAltar(al: { x: number; y: number; used: boolean }): void {
+    al.used = true;
+    this.fx.burst(al.x, al.y, { color: 0xc9a227, count: 18, speed: 160, size: 3 });
+    const r = Math.random();
+    if (r < 0.25) {
+      this.player.damageBuffRemaining = 45000;
+      this.fx.damageNumber(al.x, al.y - 16, 'Segen der Stärke: +30% Schaden für 45 Sekunden', 'golden');
+    } else if (r < 0.45) {
+      this.player.hp = gameState.maxHp;
+      gameState.mana = gameState.maxMana;
+      this.fx.damageNumber(al.x, al.y - 16, 'Der Altar heilt deine Wunden', 'golden');
+    } else if (r < 0.6) {
+      const g = 30 + Math.floor(Math.random() * 51);
+      gameState.gold += g;
+      this.fx.damageNumber(al.x, al.y - 16, `Vergessene Opfergaben: +${g} Gold`, 'golden');
+    } else if (r < 0.8) {
+      this.fx.damageNumber(al.x, al.y - 16, 'Visionen vergangener Zeiten: Erfahrung erhalten', 'golden');
+      this.grantXp(25 + 15 * this.depth, al.x, al.y);
+    } else {
+      this.fx.damageNumber(al.x, al.y - 16, 'Die Toten erwachen!', 'taken');
+      for (let i = 0; i < 3; i++) {
+        const a = Math.random() * Math.PI * 2;
+        this.enemies.push(
+          new Enemy(
+            this,
+            this.fx,
+            this.decals,
+            Math.random() < 0.5 ? 'skelett' : 'pestopfer',
+            al.x + Math.cos(a) * 64,
+            al.y + Math.sin(a) * 64,
+            null,
+            false,
+            this.depth,
+          ),
+        );
+      }
+    }
+  }
+
+  /** Opferaltäre: Schein solange unbenutzt; [E] betet (Referenz-Hinweistext). */
+  private updateAltars(): void {
+    for (const al of this.altars) {
+      if (al.used) continue;
+      const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 250);
+      this.shrineG.fillStyle(0x6a3fa0, 0.18 + 0.12 * pulse);
+      this.shrineG.fillCircle(al.x, al.y - 4, 18 + pulse * 4);
+      if (Phaser.Math.Distance.Between(this.player.x, this.player.y, al.x, al.y) < 50) {
+        this.promptText.setText('Opferaltar - E zum Beten');
+        if (Phaser.Input.Keyboard.JustDown(this.keys.E)) this.useAltar(al);
+        return;
+      }
+    }
   }
 
   /** Kerzenschrein: Rasten füllt Leben/Flaschen, setzt den Respawn-Punkt. Kein Gegner-Respawn. */

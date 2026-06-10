@@ -18,6 +18,10 @@ interface SaveData {
   items: ItemInstance[];
   equipped: { weapon?: ItemInstance; armor?: ItemInstance; ring?: ItemInstance };
   hp: number;
+  level?: number;
+  xp?: number;
+  mana?: number;
+  elixirs?: number;
   flags: Record<string, boolean>;
   lastShrine?: ShrinePoint | null;
   options?: GameOptions;
@@ -33,6 +37,10 @@ export function saveGame(): void {
       items: gameState.items,
       equipped: gameState.equipped,
       hp: gameState.hp,
+      level: gameState.level,
+      xp: gameState.xp,
+      mana: gameState.mana,
+      elixirs: gameState.elixirs,
       flags: gameState.flags,
       lastShrine: gameState.lastShrine,
       options: gameState.options,
@@ -55,7 +63,11 @@ export function loadGame(): boolean {
     gameState.manaPotions = data.manaPotions ?? 1;
     gameState.items = data.items ?? [];
     gameState.equipped = data.equipped ?? {};
-    gameState.hp = data.hp ?? 100;
+    gameState.hp = data.hp ?? 90;
+    gameState.level = data.level ?? 1;
+    gameState.xp = data.xp ?? 0;
+    gameState.mana = data.mana ?? 40;
+    gameState.elixirs = data.elixirs ?? 0;
     gameState.flags = data.flags ?? {};
     gameState.lastShrine = data.lastShrine ?? null;
     gameState.options = { damageNumbers: true, shakeStrength: 1, peekRange: 1, ...(data.options ?? {}) };

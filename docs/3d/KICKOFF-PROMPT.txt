@@ -1,0 +1,16 @@
+Lies zuerst vollständig: RAVENSMOOR-3D-PROMPTS.md, dann RAVENSMOOR-3D-SOULS-LOOK.md,
+dann RAVENSMOOR-KAMPF-V3-FEELGOOD.md. Es gilt: Die Souls-Look-Datei ersetzt die
+Art-Direction (realistisch-düster, Mixamo statt KayKit), die Kampf-v3-Datei ersetzt
+Prompt 2 und Designsäule 1. In reference-2d/ liegt die fertige, getestete Kampflogik
+(Ausdauer, Parade-Fenster, Flaschen, Schreine) - portiere diese Logik, erfinde sie
+nicht neu. Inhaltliche Quelle für Items, Dialoge, Erzähltexte und Boss: ravensmoor.html.
+
+HARTE REGEL VOR ALLEM ANDEREN: Prüfe in Phase 0, ob assets/raw einen animierten
+Charakter (FBX/GLB mit Animationen) und Texturen/HDRIs enthält. Wenn NICHT: stoppe
+sofort und melde exakt, welche Dateien fehlen - beginne unter keinen Umständen mit
+Platzhalter-Kapseln als Spielfigur. Platzhalter sind nur für Kollisions-Debug
+erlaubt, niemals als abgenommenes Ergebnis.
+
+Beginne mit Phase 0, danach Phase 0.5 (Showcase-Szene) aus der Souls-Look-Datei.
+Keine Phase abschließen, bevor ihre Abnahmekriterien inkl. Screenshot-Bewertung
+erfüllt sind.

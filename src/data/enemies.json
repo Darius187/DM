@@ -1,12 +1,12 @@
 {
   "_meta": {
-    "source": "PLATZHALTER, balanciert nach Kampf-und-Pacing-v3 (Telegraphen 450-700ms, moderater Schaden). Bei Nachlieferung von ravensmoor.html Texte/Typen abgleichen.",
-    "version": 0
+    "source": "HP/XP-Skalierung aus ravensmoor.html (hp Basis + proTiefe); Telegraphen und Schadenswerte folgen der Kampf-v3-Spezifikation (Spielgefühl schlägt Referenz).",
+    "version": 1
   },
   "types": {
     "pestopfer": {
       "name": "Pestopfer",
-      "hp": 60,
+      "hp": 34,
       "speed": 55,
       "damage": 14,
       "attackRange": 40,
@@ -17,26 +17,30 @@
       "minLevel": 1,
       "color": "#6b7a4f",
       "size": 18,
-      "behavior": "melee"
+      "behavior": "melee",
+      "hpPerDepth": 12,
+      "xpPerDepth": 4
     },
     "skelett": {
       "name": "Skelett",
-      "hp": 30,
+      "hp": 18,
       "speed": 110,
       "damage": 10,
       "attackRange": 38,
       "attackCooldownMs": 1100,
       "telegraphMs": 480,
       "aggroRange": 320,
-      "xp": 10,
+      "xp": 9,
       "minLevel": 1,
       "color": "#cfc8b0",
       "size": 15,
-      "behavior": "melee"
+      "behavior": "melee",
+      "hpPerDepth": 7,
+      "xpPerDepth": 3
     },
     "skelett_schuetze": {
       "name": "Skelett-Schütze",
-      "hp": 24,
+      "hp": 14,
       "speed": 85,
       "damage": 12,
       "attackRange": 280,
@@ -49,22 +53,26 @@
       "minLevel": 1,
       "color": "#b8b09a",
       "size": 15,
-      "behavior": "ranged"
+      "behavior": "ranged",
+      "hpPerDepth": 6,
+      "xpPerDepth": 4
     },
     "grabschatten": {
       "name": "Grabschatten",
-      "hp": 45,
+      "hp": 26,
       "speed": 160,
       "damage": 16,
       "attackRange": 36,
       "attackCooldownMs": 900,
       "telegraphMs": 450,
       "aggroRange": 400,
-      "xp": 24,
+      "xp": 18,
       "minLevel": 3,
       "color": "#3a2f4a",
       "size": 17,
-      "behavior": "melee"
+      "behavior": "melee",
+      "hpPerDepth": 9,
+      "xpPerDepth": 5
     }
   },
   "eliteChance": 0.1,
@@ -113,7 +121,8 @@
       "chargeDamage": 28,
       "chargeSpeed": 520,
       "meleeParryable": true,
-      "meleeStunsOnParry": false
+      "meleeStunsOnParry": false,
+      "xp": 300
     }
   }
 }

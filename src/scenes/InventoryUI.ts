@@ -155,7 +155,7 @@ export class InventoryUI extends Phaser.Scene {
       `Schaden ${s.minDmg}-${s.maxDmg} · Rüstung ${s.armor} · HP ${Math.round(gameState.hp)}/${gameState.maxHp}` +
         (s.lightRadiusBonus ? ` · +${s.lightRadiusBonus} Licht` : '') +
         (s.attackSpeedPct ? ` · +${s.attackSpeedPct}% Tempo` : '') +
-        (s.lifestealPct ? ` · ${s.lifestealPct}% Lebensraub` : ''),
+        (s.lifesteal ? ` · +${s.lifesteal} Lebensraub` : ''),
       '#d8cfb8',
       12,
     );
@@ -242,8 +242,8 @@ function statLabel(stat: string): string {
       return 'Mana';
     case 'lightRadius':
       return 'Lichtradius';
-    case 'lifestealPct':
-      return '% Lebensraub';
+    case 'lifesteal':
+      return 'Lebensraub';
     default:
       return stat;
   }

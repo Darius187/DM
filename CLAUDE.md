@@ -10,9 +10,9 @@ Anleitung für KI-Assistenten in diesem Repository.
 Dorf im Dreißigjährigen Krieg (1635), darunter eine Krypta mit drei Ebenen und einem untoten
 Tempelritter als Endboss. Ich-Erzähler in der Vergangenheitsform.
 
-Vollständige Spezifikation: Master-Prompt (vom Nutzer bereitgestellt). Verbindliche Inhalts-
-referenz ist `ravensmoor.html` — **liegt aktuell NICHT im Repository**, siehe `DECISIONS.md`.
-Bis zur Nachlieferung sind `src/data/*.json` markierte Platzhalter.
+Verbindliche Inhaltsreferenz ist `ravensmoor.html` (im Repo-Wurzelverzeichnis, auch direkt im
+Browser spielbar): Texte/Dialoge/Items wörtlich übernommen in `src/data/*.json`. Die 3D-Prompt-
+Suite liegt unter `docs/3d/` (Umsetzung am PC mit Assets, siehe dortigen Kickoff).
 
 ## Designsäulen (bei Konflikt gewinnt die höhere)
 

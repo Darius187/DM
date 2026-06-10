@@ -1,27 +1,37 @@
 {
   "_meta": {
-    "source": "PLATZHALTER — ravensmoor.html lag dem Repository nicht bei. Farben und Dekordichten bei Nachlieferung aus `themes` der Referenz übernehmen.",
-    "version": 0
+    "source": "Namen und Dekordichten aus ravensmoor.html CRYPT_THEMES; Hex-Farben sind 2D-Annäherungen der Referenz-Paletten.",
+    "version": 1
   },
   "levels": [
     {
       "id": "gruft",
-      "name": "Die Gruft",
+      "name": "Krypta - Gruft",
       "floor": "#2a241c",
       "wall": "#4a3f30",
       "accent": "#6b5a40",
       "fogColor": "#0d0b08",
-      "decor": { "bones": 0.04, "blood": 0.02, "rubble": 0.08, "coffins": 0.06 },
+      "decor": {
+        "bones": 0.03,
+        "blood": 0.015,
+        "rubble": 0.05,
+        "coffins": 0.04
+      },
       "torchDensity": 0.5
     },
     {
       "id": "beinhaus",
-      "name": "Das Beinhaus",
+      "name": "Krypta - Beinhaus",
       "floor": "#262019",
       "wall": "#3d3328",
       "accent": "#cfc8b0",
       "fogColor": "#0a0908",
-      "decor": { "bones": 0.18, "blood": 0.05, "rubble": 0.05, "skullPiles": 0.1 },
+      "decor": {
+        "bones": 0.11,
+        "blood": 0.03,
+        "rubble": 0.04,
+        "skullPiles": 0.06
+      },
       "torchDensity": 0.4
     },
     {
@@ -31,7 +41,12 @@
       "wall": "#322838",
       "accent": "#6a3fa0",
       "fogColor": "#080610",
-      "decor": { "bones": 0.06, "blood": 0.12, "runes": 0.1, "candles": 0.08 },
+      "decor": {
+        "bones": 0.045,
+        "blood": 0.095,
+        "runes": 0.08,
+        "candles": 0.06
+      },
       "torchDensity": 0.3
     }
   ]
