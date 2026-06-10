@@ -9,6 +9,7 @@ import { UIOverlay } from './scenes/UIOverlay';
 import { InventoryUI } from './scenes/InventoryUI';
 import { DialogUI } from './scenes/DialogUI';
 import { NarrationUI } from './scenes/NarrationUI';
+import { OptionsUI } from './scenes/OptionsUI';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -31,7 +32,7 @@ const game = new Phaser.Game({
     arcade: { debug: false },
   },
   disableContextMenu: true,
-  scene: [Boot, Village, Dungeon, DebugArena, BossRoom, UIOverlay, InventoryUI, DialogUI, NarrationUI],
+  scene: [Boot, Village, Dungeon, DebugArena, BossRoom, UIOverlay, InventoryUI, DialogUI, NarrationUI, OptionsUI],
 });
 
 // Debug-Zugriff für automatisierte Tests (Playwright) und Konsolen-Diagnose

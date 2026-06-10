@@ -83,6 +83,10 @@ export class Village extends Phaser.Scene {
       this.scene.pause();
       this.scene.launch('InventoryUI', { caller: 'Village' });
     });
+    kb.on('keydown-O', () => {
+      this.scene.pause();
+      this.scene.launch('OptionsUI', { caller: 'Village' });
+    });
     this.input.on('pointerdown', () => unlockAudio());
 
     this.events.on('shutdown', () => {

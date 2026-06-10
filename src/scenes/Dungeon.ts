@@ -229,6 +229,10 @@ export class Dungeon extends Phaser.Scene {
       this.scene.pause();
       this.scene.launch('InventoryUI', { caller: 'Dungeon' });
     });
+    kb.on('keydown-O', () => {
+      this.scene.pause();
+      this.scene.launch('OptionsUI', { caller: 'Dungeon' });
+    });
     this.input.on('pointerdown', () => unlockAudio());
 
     // Erzähler-Beat: erster Abstieg (genau einmal)

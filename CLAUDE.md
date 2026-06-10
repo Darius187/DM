@@ -16,7 +16,12 @@ Bis zur Nachlieferung sind `src/data/*.json` markierte Platzhalter.
 
 ## Designsäulen (bei Konflikt gewinnt die höhere)
 
-1. **Das Schnetzeln muss Spaß machen** — Nahkampfgefühl schlägt alles.
+1. **Bewusst, aber Feel-Good (v3)** — Die Spannung kommt aus der Dunkelheit, nicht aus der
+   Härte. Der Kampf hat Gewicht und Absicht (jeder Schlag eine bewusste Entscheidung, Gegner
+   werden gelesen), aber er fließt und verzeiht (reaktionsschnell, großzügige Fenster, geringe
+   Strafen) — Referenz: Elden Rings Flüssigkeit, nicht Dark Souls' Strenge. Erkundung langsam
+   und angespannt; im Kampf fühlt sich der Spieler fähig. „Ich bin in Gefahr" ja, „ich packe
+   das nicht" niemals. Tempo: Diablo 1 / Dungeon Siege 1.
 2. **Die Geschichte wird erzählt, nicht abgehandelt** — Atmosphäre trägt die Stimmung.
 3. **Loot motiviert** — bessere Waffen sehen sichtbar anders aus und schlagen anders zu.
 
@@ -53,9 +58,10 @@ testbar bleibt.
 
 ## Steuerung
 
-WASD bewegen · Maus zielen · Linksklick/J Kombo · Rechtsklick/K halten = Block/Parade ·
-Leertaste ausweichen · 1/2/3 Zauber · E interagieren · I Inventar · Q/F Tränke · P Pause ·
-F1 DebugArena.
+WASD bewegen · Maus zielen (+Späh-Kamera) · Linksklick/J Kombo · Shift+Klick schwerer Hieb ·
+Rechtsklick/K halten = Block/Parade (300 ms Fenster) · Leertaste Rolle (Ausdauer) ·
+E interagieren/rasten · I Inventar · Q Heilflasche · O Optionen · F1 DebugArena.
+Ausdauer ist Rhythmusgeber, keine Strafe. Max. 2 Gegner greifen gleichzeitig an.
 
 ## Arbeitsweise
 

@@ -2,6 +2,17 @@
 
 Dokumentiert eigenständige Entscheidungen im Sinne der Designsäulen (Master-Prompt Abschnitt 7).
 
+## 2026-06-10 — Kampf-und-Pacing v3 in der 2D-Codebasis umgesetzt
+
+Die v3-Spezifikation („Bewusst, aber Feel-Good") richtet sich an eine 3D-Prompt-Suite
+(`RAVENSMOOR-3D-PROMPTS.md`, Mixamo-Clips, echtes 3D-Audio), die nicht vorliegt. Entscheidung:
+alle engine-unabhängigen v3-Mechaniken in der bestehenden Phaser-Version umsetzen — Ausdauer,
+Fenster (250/300/300 ms), schwerer Hieb, Gegner-Vertrag (max. 2 Angreifer, Erholungsfenster,
+Lauerer), Flaschen+Schreine, milder Tod (15 %), Späh-Kamera, Hören-vor-Sehen (Stereo-Pan),
+Herzschlag, Optionen. 3D-spezifisch bleibt offen: Mixamo-Animationen, echtes 3D-Positionsaudio,
+Kamera in 3D-Einheiten, „Showcase-Checkliste"-Schwarzwerte. Zauber-Wirkzeit (0,4 s) wartet
+weiter auf das Zauber-System (referenzabhängig).
+
 ## 2026-06-10 — Referenzdatei `ravensmoor.html` fehlt
 
 **Befund:** Der Master-Prompt nennt `ravensmoor.html` als verbindliche Quelle für alle Inhalte

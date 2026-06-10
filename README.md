@@ -28,14 +28,21 @@ npm run build      # Produktions-Build nach dist/
 |---|---|
 | **WASD** | Bewegen |
 | **Maus** | Zielen |
-| **Linksklick / J** | Angriff — 3er-Kombo, der dritte Hieb ist ein Finisher |
-| **Rechtsklick / K halten** | Blocken (−70 % Frontschaden, wehrt Pfeile ab) |
-| **Block kurz vor dem Treffer** | **Perfekte Parade**: kein Schaden, Gegner betäubt, goldene Riposte (+50 %) |
-| **Leertaste** | Ausweichschritt (kurze Unverwundbarkeit) |
-| **E** | Interagieren (NPCs, Krypta, Relikt, weiter) |
+| **Linksklick / J** | Angriff — 3er-Kette (Hieb, Rückhand, Finisher +40 %) |
+| **Shift + Linksklick** | Schwerer Überkopfhieb (×2,2, durchbricht Deckung, volles Commitment) |
+| **Rechtsklick / K halten** | Blocken (−75 % Frontschaden, wehrt Pfeile ab) |
+| **Block <300 ms vor dem Treffer** | **Perfekte Parade**: Gegner 1 s geöffnet, Riposte kritisch (+100 %) |
+| **Leertaste** | Ausweichrolle (300 ms i-Frames, nur Ausdauer-geregelt) |
+| **E** | Interagieren (NPCs, Schreine, Relikt, weiter) |
 | **I** | Inventar / Händler |
-| **Q** | Heiltrank |
+| **Q** | Heilflasche (0,6 s; Treffer bricht ab, ohne die Flasche zu verschwenden) |
+| **O** | Optionen (Schadenszahlen, Wackeln, Späh-Kamera) |
 | **F1** | Debug-Arena |
+
+Ausdauer (120) ist Rhythmusgeber, keine Strafe: Wer mit Bedacht kämpft, bemerkt sie kaum.
+Kerzenschreine am Treppenraum füllen Leben/Flaschen und setzen den Respawn-Punkt; Tod kostet
+nur 15 % Gold. Pestopfer kauern wie Leichen, Grabschatten lauern in Nischen — man hört sie,
+bevor man sie sieht.
 
 ### Debug-Arena (F1)
 

@@ -100,6 +100,10 @@ export class DebugArena extends Phaser.Scene {
       this.scene.pause();
       this.scene.launch('InventoryUI', { caller: 'DebugArena' });
     });
+    kb.on('keydown-O', () => {
+      this.scene.pause();
+      this.scene.launch('OptionsUI', { caller: 'DebugArena' });
+    });
     // Loot-Testtasten: F6 zufälliges Item ins Inventar, F7 Händler
     kb.on('keydown-F6', () => gameState.addItem(generateItem(Math.random, { depth: 3 })));
     kb.on('keydown-F7', () => {
