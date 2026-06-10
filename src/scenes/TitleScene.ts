@@ -35,8 +35,10 @@ export class TitleScene extends Phaser.Scene {
       wordWrap: { width: Math.min(640, w - 60) }, align: 'center',
     }).setOrigin(0.5, 0);
 
+    // Dev-Werkzeug: ?start=crypt2 springt direkt in ein Gebiet (nur Dev-Build)
+    const devStart = import.meta.env.DEV ? new URLSearchParams(location.search).get('start') ?? undefined : undefined;
     const buttons: Array<[string, () => void, boolean]> = [
-      ['NEUES SPIEL', () => this.scene.start('World', { neu: true }), true],
+      ['NEUES SPIEL', () => this.scene.start('World', { neu: true, startArea: devStart }), true],
       ['LADEN', () => this.scene.start('World', { ladeSlot: AUTOSAVE_SLOT }), hasSave(storage, AUTOSAVE_SLOT)],
       ['EINSTELLUNGEN', () => this.scene.start('Settings', { zurueck: 'Title' }), true],
       ['DEBUG-ARENA', () => this.scene.start('DebugArena'), true],

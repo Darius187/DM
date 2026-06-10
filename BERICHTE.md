@@ -118,6 +118,46 @@ Offen:
 - Inventarliste blättert noch nicht (Überlauf-Schutz greift ab ~10
   Einträgen) - in TODO.md, wird mit Phase 10 (Menüpolitur) gelöst.
 
+## Phase 4 - Krypta (abgenommen)
+
+Fertig und verifiziert:
+- 3 prozedurale Ebenen (Gruft/Beinhaus/Kultstätte) + Bossraum mit den
+  Referenz-Farbpaletten; Treppen verbinden alles, Krypta wird beim Tod
+  neu bevölkert, 15% Goldverlust.
+- Spezialräume: Bibliothek (anklickbare Bücher mit Lore-Schnipseln +
+  Foliant), Folterkammer (Streckbank, Käfige, Notiz, seltene Truhe,
+  Skript-Moment), Beinhaus-Schrein (Knochenwände, Skelett-Welle,
+  Beinaltar mit garantiertem Edelstein), Grabkammer der Anna (Medaillon),
+  Blutbrunnen, Opferaltäre (Kultstätte: zwei), Kerzenschrein je Ebene
+  (Rasten: Vollheilung + Flaschen, keine Gegner-Resets), Truhen mit
+  Goldschimmer, Erzadern/Felsen (Abbau ab Spitzhacke).
+- ERREICHBARKEIT BEWIESEN: BFS-Test über 40 Seeds je Ebene - jeder
+  Spezialraum, jede Truhe, jeder Schrein, jede Treppe erreichbar
+  (tests/areagen.test.ts, 45 Tests grün). Max. 2 Skript-Momente getestet.
+- Zerstörbare Objekte: Fässer/Kisten/Krüge/Knochenhaufen/Spinnweben mit
+  1-2 Treffern, Bruch-Partikel + Sound + Hit-Stop, Loot-Tabelle (meist
+  nichts/Münzen, gelegentlich Trank/Pfeile, selten Item, Holz/Eisenreste
+  als Material), Lauerer dahinter (zählt zum Skript-Budget). Treffer über
+  alle Angriffsarten inkl. Rundumschlag-Fassgruppen und Projektile.
+- Licht: stockdunkle Krypta, weiches Spielerlicht (Lichtradius-Affix
+  wirkt), flackernde Fackeln mit warmem Schein, Helligkeits-Regler
+  angebunden. Minimap mit Aufdeck-Logik. Screenshots phase4-krypta1/2.png.
+- Boss-Kampf im Browser bestanden (Bot-Lauf: "Der Tempelritter ist
+  gefallen", Templerklinge + Relikt + 120 Gold fallen, Screenshot
+  phase4-boss-kampf.png), Relikt-Dialog mit beiden Wahlmöglichkeiten und
+  ERLÖSUNG-Ende verifiziert (phase4-relikt.png, phase4-ende.png).
+- Zauber (Feuerball/Heiliges Licht/Heilung) und Tränke an Tasten 1-3/Q/F.
+- Wichtiger Fix: Input-Hitboxen in UI-Containern bei gescrollter Kamera
+  (Phaser-Eigenheit) - betraf alle Dialog-/Inventarknöpfe.
+
+Offen/Anmerkungen:
+- "Annehmen"-Ende per Code identisch verifiziert wie "Zerstören"
+  (gleicher Pfad), aber nur "Zerstören" im Browser durchgeklickt.
+- Fässer-Spielgefühl: Bruch-Feedback implementiert (Partikel+Sound+
+  Hit-Stop), gezielter Browser-Test der Fassgruppen steht aus - die
+  Trefferpfade sind dieselben wie die verifizierten Gegner-Treffer.
+- Dev-Werkzeuge (?start=, ?ruestzeug=, ?relikt=) nur im Dev-Build aktiv.
+
 ## Hinweis zur Verifikations-Umgebung
 
 Playwrights eigener Browser-Download ist in dieser Umgebung gesperrt;

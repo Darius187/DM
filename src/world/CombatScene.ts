@@ -12,7 +12,7 @@ import {
   stepCombat, resolveIncoming, damageAfterArmor, blockedDamage, type CombatState, type AttackEvent,
 } from '../logic/combat';
 import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TIMESCALE, WEAPON_MOVESETS } from '../data/kampf';
-import { ALTAR } from '../data/balancing';
+import { ALTAR, SPELLS, SPELL_FX, SCHOOLS } from '../data/balancing';
 import { newPlayerState, recalc, weaponGem, type PlayerState } from '../logic/playerState';
 import { addSchoolUse } from '../logic/progression';
 import { applyXp } from '../logic/progression';
@@ -56,6 +56,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
   enemies: Enemy[] = [];
   projectiles: Projectile[] = [];
   telegraphs: Telegraph[] = [];
+  // Zerstörbare Objekte u. ä.: alles, was von Angriffen getroffen werden kann
+  hittables: Array<{ x: number; y: number; r: number; onHit: (fromAngle: number) => void }> = [];
 
   hitstopT = 0;
   shakeAmt = 0;
@@ -121,6 +123,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
       if (k === b.inv) this.panels.toggleInventory();
       if (k === b.charakter) this.panels.toggleCharacter();
       if (k === b.interact) this.tryInteract();
+      if (k === b.pot) this.drinkPot();
+      if (k === b.mpot) this.drinkMpot();
+      if (k === b.s1) this.castSpell(0);
+      if (k === b.s2) this.castSpell(1);
+      if (k === b.s3) this.castSpell(2);
       this.onGameKey(k);
     });
     kb.on('keyup', (ev: KeyboardEvent) => {
@@ -425,6 +432,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
         hit = true;
       }
     }
+    // Rundumschlag räumt ganze Fassgruppen (Masterprompt 7.3)
+    for (const hb of [...this.hittables]) {
+      if (Math.hypot(hb.x - this.px, hb.y - this.py) < radius + hb.r) {
+        hb.onHit(Math.atan2(hb.y - this.py, hb.x - this.px));
+      }
+    }
     if (hit) {
       this.applyHitstop(HITSTOP_MS.finisher);
       this.shake(4);
@@ -440,6 +453,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
   private hitEnemiesInArc(ang: number, range: number, arc: number, dmgMult: number, knockback: number, breaksPosture: boolean): boolean {
     let hitAny = false;
     const gem = weaponGem(this.p);
+    // Zerstörbare Objekte: jede Angriffsart trifft sie
+    for (const hb of [...this.hittables]) {
+      const d = Math.hypot(hb.x - this.px, hb.y - this.py);
+      if (d >= range + hb.r) continue;
+      let da = Math.atan2(hb.y - this.py, hb.x - this.px) - ang;
+      da = Math.atan2(Math.sin(da), Math.cos(da));
+      if (Math.abs(da) < arc) hb.onHit(ang);
+    }
     for (const e of [...this.enemies]) {
       const d = Math.hypot(e.x - this.px, e.y - this.py);
       if (d >= range + e.r) continue;
@@ -556,6 +577,84 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
     return e;
   }
 
+  // --- Tränke und Zauber ------------------------------------------------
+
+  drinkPot(): void {
+    if (this.p.pot <= 0) {
+      this.logMsg(MELDUNGEN.keineTraenke, 'bad');
+      return;
+    }
+    if (this.p.hp >= this.p.stats.maxhp) return;
+    this.p.pot--;
+    this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + Math.round(this.p.stats.maxhp * 0.45));
+    this.logMsg(MELDUNGEN.heiltrank, '');
+    this.sfx.play('trank');
+  }
+
+  drinkMpot(): void {
+    if (this.p.mpot <= 0) {
+      this.logMsg(MELDUNGEN.keineManatraenke, 'bad');
+      return;
+    }
+    if (this.p.mana >= this.p.stats.maxmana) return;
+    this.p.mpot--;
+    this.p.mana = Math.min(this.p.stats.maxmana, this.p.mana + Math.round(this.p.stats.maxmana * 0.6));
+    this.logMsg(MELDUNGEN.manatrank, 'magic');
+    this.sfx.play('trank');
+  }
+
+  // Zauber wirken (Referenz castSkill); kostenlos = Zauberrolle
+  castSpell(i: number, kostenlos = false): void {
+    const sk = SPELLS[i];
+    if (!sk) return;
+    if (!kostenlos && this.p.level < sk.unlock) {
+      this.logMsg(`${sk.name} - ab Stufe ${sk.unlock}`, 'bad');
+      return;
+    }
+    if (this.p.spellCds[i] > 0) return;
+    // Zauberei-Schule senkt Manakosten (3% je Stufe)
+    const kosten = kostenlos ? 0 : Math.round(sk.mana * (1 - this.p.schools.zauberei.level * SCHOOLS.zaubereiKostenPerLevel));
+    if (this.p.mana < kosten) {
+      this.logMsg(MELDUNGEN.nichtGenugMana, 'bad');
+      this.sfx.play('fehler');
+      return;
+    }
+    this.p.mana -= kosten;
+    this.p.spellCds[i] = sk.cd;
+    const zLevel = this.p.schools.zauberei.level;
+    if (sk.id === 'feuerball') {
+      const fx = SPELL_FX.feuerball;
+      const a = this.aimAngle();
+      this.pdir = a;
+      const dmg = Math.round((fx.dmgBase + fx.dmgPerLevel * this.p.level + zLevel * 2) * (this.p.buffT > 0 ? ALTAR.buffDmgMult : 1));
+      this.projectiles.push({
+        x: this.px + Math.cos(a) * 16, y: this.py + Math.sin(a) * 16,
+        vx: Math.cos(a) * fx.speed, vy: Math.sin(a) * fx.speed,
+        r: 6, dmg, from: 'player', col: '#e8842a', fire: true,
+      });
+      this.sfx.play('feuerball');
+    } else if (sk.id === 'heiligesLicht') {
+      const fx = SPELL_FX.heiligesLicht;
+      const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level + zLevel * 2;
+      this.fx.burst(this.px, this.py, 0xf0dc92, 34, 220);
+      this.shake(4);
+      this.sfx.play('heiliges_licht');
+      for (const e of [...this.enemies]) {
+        if (Math.hypot(e.x - this.px, e.y - this.py) < fx.radius + e.r) {
+          this.damageEnemy(e, Math.round(dmg * (0.9 + Math.random() * 0.3)));
+        }
+      }
+      this.telegraphs.push({ x: this.px, y: this.py, r: fx.radius, t: 0.22, maxT: 0.22, dmg: 0, holy: true });
+    } else if (sk.id === 'heilung') {
+      const heal = SPELL_FX.heilung.healPct + zLevel * 0.02;
+      this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + Math.round(this.p.stats.maxhp * heal));
+      this.fx.burst(this.px, this.py, 0x8ae08a, 16, 100);
+      this.logMsg('Heilung gewirkt', 'magic');
+      this.sfx.play('heilung');
+    }
+    this.gainSchoolUse('zauberei');
+  }
+
   // --- Schaden am Spieler -----------------------------------------------
 
   hurtPlayer(dmg: number, alreadyReduced = false): void {
@@ -591,6 +690,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
     }
     if (this.playerDead) {
       this.fx.update(dt);
+      return dt;
+    }
+    // Offene Fenster/Dialoge pausieren die Welt (Referenz-Verhalten)
+    if (this.uiBlocked()) {
+      this.hintText.setVisible(false);
+      this.fx.update(dt);
+      this.renderEntities();
       return dt;
     }
 
@@ -753,6 +859,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
         continue;
       }
       if (pr.from === 'player') {
+        for (const hb of [...this.hittables]) {
+          if (Math.hypot(pr.x - hb.x, pr.y - hb.y) < pr.r + hb.r) {
+            hb.onHit(Math.atan2(pr.vy, pr.vx));
+            if (!pr.pierce) pr.dead = true;
+            break;
+          }
+        }
+        if (pr.dead) continue;
         for (const e of [...this.enemies]) {
           if (Math.hypot(pr.x - e.x, pr.y - e.y) < pr.r + e.r) {
             if (pr.hitIds?.has(e.id)) continue;

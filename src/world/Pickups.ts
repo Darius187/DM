@@ -137,9 +137,15 @@ export class PickupSystem {
     }
   }
 
-  destroy(): void {
-    this.gfx.destroy();
+  // Alle Pickups entfernen (Gebietswechsel), System bleibt nutzbar
+  clear(): void {
     for (const p of this.pickups) p.sprite?.destroy();
     this.pickups = [];
+    this.gfx.clear();
+  }
+
+  destroy(): void {
+    this.clear();
+    this.gfx.destroy();
   }
 }

@@ -1,0 +1,40 @@
+// Tile-Definitionen der Welt. IDs an die Referenz angelehnt, erweitert um
+// Schreine, Erzadern, Felsen, Folterkammer-Einrichtung, Acker, Wasser, Zaun.
+
+export const T = {
+  HWALL: 0, GRASS: 1, PATH: 2, TREE: 3, CWALL: 5, CDOOR: 6, FLOOR: 7, STAIR: 8, WALL: 9,
+  STAIRUP: 12, GRAVE: 13, BURNT: 14, WELL: 15,
+  ALTAR: 16, SHELF: 17, BONES: 18, BLOOD: 19, RUNE: 21,
+  SHRINE: 22, ORE: 23, ROCK: 24, RACK: 25, CAGE: 26,
+  WATER: 27, FIELD: 28, FENCE: 29,
+} as const;
+export type TileId = (typeof T)[keyof typeof T];
+
+export const SOLID = new Set<number>([
+  T.HWALL, T.TREE, T.CWALL, T.WALL, T.GRAVE, T.WELL, T.ALTAR, T.SHELF,
+  T.SHRINE, T.ORE, T.ROCK, T.RACK, T.CAGE, T.WATER, T.FENCE,
+]);
+
+// Tile-ID -> Name für den SpriteProvider (Hot-Swap-fähig).
+// HWALL/CWALL/WALL brauchen Kontext (Fassade vs. Dach), siehe tileNameAt.
+const NAME: Record<number, string> = {
+  [T.GRASS]: 'gras', [T.PATH]: 'weg', [T.TREE]: 'baum', [T.CDOOR]: 'kirchentuer',
+  [T.FLOOR]: 'krypta_boden', [T.STAIR]: 'treppe_ab', [T.STAIRUP]: 'treppe_auf',
+  [T.GRAVE]: 'grabstein', [T.BURNT]: 'brandstelle', [T.WELL]: 'brunnen',
+  [T.ALTAR]: 'altar', [T.SHELF]: 'regal', [T.BONES]: 'knochen', [T.BLOOD]: 'blut',
+  [T.RUNE]: 'rune', [T.SHRINE]: 'kerzenschrein', [T.ORE]: 'erzader', [T.ROCK]: 'fels',
+  [T.RACK]: 'streckbank', [T.CAGE]: 'kaefig',
+  [T.WATER]: 'wasser', [T.FIELD]: 'acker', [T.FENCE]: 'zaun',
+};
+
+// Liefert den Tile-Namen unter Berücksichtigung von Fassade/Dach:
+// Wände, unter denen begehbarer Boden liegt, zeigen die Fassade.
+export function tileNameAt(map: number[][], tx: number, ty: number): string {
+  const v = map[ty][tx];
+  const below = ty + 1 < map.length ? map[ty + 1][tx] : v;
+  const front = !SOLID.has(below);
+  if (v === T.HWALL) return front ? 'fachwerk_fassade' : 'fachwerk_dach';
+  if (v === T.CWALL) return front ? 'kirche_fassade' : 'kirche_dach';
+  if (v === T.WALL) return front ? 'krypta_wand_front' : 'krypta_wand';
+  return NAME[v] ?? 'gras';
+}

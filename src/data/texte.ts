@@ -117,3 +117,14 @@ export const MELDUNGEN = {
 // Erzähler-Interludium beim Waldrand (Masterprompt 7.1: "aus der Referenz" -
 // die Ankunfts-Passage wird dort am Waldrand gezeigt)
 export const WALDRAND_TEXT = ERZAEHLER.ankunft;
+
+// Kurze Lore-Schnipsel für anklickbare Bücher in der Bibliothek
+// (Masterprompt 7.3 - NEU verfasst, Stil an den Notizen ausgerichtet)
+export const BUECHER: ReadonlyArray<string> = [
+  '»Vermächtnisse der Gefallenen, Band III« - die Seiten sind vom Wasser gewellt. Ein Eintrag: "Dem Müller zwei Säcke Korn schuldig. Gott vergebe mir, mehr hinterlasse ich nicht."',
+  '»Über die Heilkraft der Salze« - jemand hat an den Rand geschrieben: "Nichts davon hat geholfen. Nichts."',
+  'Ein Kirchenregister. Die Sterbeeinträge des Jahres 1631 füllen elf Seiten. Die letzte Zeile lautet nur: "Der Rest wurde nicht mehr gezählt."',
+  'Eine lateinische Abhandlung über das Heilige Land. Zwischen den Seiten liegt eine gepresste Blume, die hier nirgends wächst.',
+  '»Predigten wider die Furcht« - das Buch ist fast neu. Es wurde offenbar nie zu Ende gelesen.',
+  'Ein dünnes Heft ohne Titel. Auf jeder Seite steht derselbe Satz, hunderte Male: "Die Toten ruhen. Die Toten ruhen. Die Toten ruhen."',
+];

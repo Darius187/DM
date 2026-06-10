@@ -11,6 +11,7 @@ import { MELDUNGEN } from '../data/texte';
 import { SCHOOLS } from '../data/balancing';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import type { SoundProvider } from '../gfx/SoundProvider';
+import { fixUiScroll } from './dialog';
 
 const PANEL_BG = 0x171108;
 const LINE = 0x4a3a26;
@@ -111,6 +112,7 @@ export class UIPanels {
       rowY += this.buildItemRow(c, it, rowY, w);
     }
     void listTop;
+    fixUiScroll(c);
   }
 
   private buildItemRow(c: Phaser.GameObjects.Container, it: Item, y: number, w: number): number {
@@ -212,6 +214,7 @@ export class UIPanels {
     for (const t of texts) c.add(t);
     const px = Math.min(ptr.x - bgW - 12, this.scene.scale.width - bgW - 10);
     c.setPosition(Math.max(8, px), Math.min(ptr.y, this.scene.scale.height - ty - 16));
+    fixUiScroll(c);
     this.tooltip = c;
   }
 
@@ -297,6 +300,7 @@ export class UIPanels {
       c.add(this.scene.add.rectangle(15, schY + 20, 298 * frac, 5, 0x8c7ad0).setOrigin(0));
       schY += 36;
     }
+    fixUiScroll(c);
   }
 
   private shorten(s: string, max: number): string {

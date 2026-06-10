@@ -106,7 +106,7 @@ export const ELIXIR_HP = 10;           // Elixier: +10 max. Leben dauerhaft
 
 // Boss-Beute (Referenz onBossDead)
 export const TEMPLERKLINGE = {
-  kind: 'weapon', name: 'Templerklinge des Ostens', rarity: 2 as Rarity, val: 24,
+  kind: 'weapon' as const, name: 'Templerklinge des Ostens', rarity: 2 as Rarity, val: 24,
   weaponClass: 'schwert' as WeaponClass,
   boni: [
     { k: 'dmg' as const, v: 4, t: '+# Schaden' },
