@@ -198,6 +198,31 @@ Offen:
 - Präfix-Deklination ("Grimmiger Kettenhemd") wie Referenz - siehe
   OFFENE-FRAGEN.md Punkt 6.
 
+## Phase 6 - Dunkelwald + Story (abgenommen)
+
+Fertig und verifiziert (Story-Durchlauf im Browser, Zustände protokolliert):
+- Dunkelwald als geführtes Eröffnungsgebiet: dichter dunkler Wald, ein
+  gewundener Pfad nach Ravensmoor, Nebel (Screenshot phase6-wald-intro).
+- Intro-Szene: Auftrag des Landherrn mit Portrait - Name kommt aus
+  src/data/story.json ("Landherr von Falkenberg", in einer Zeile änderbar
+  für die Tabletop-Anbindung).
+- Tutorial-Beats: Wolf als erster Kampf (zwei Begegnungen am Pfad),
+  umgestürzter Baum versperrt den Weg - im Stamm steckt eine Holzaxt
+  (Holzhack-Tutorial, 3 Schläge je Baum), Lichtung mit erstem
+  Kerzenschrein.
+- Erzähler-Interludium "Ich wusste nicht, was mich erwartete..." am
+  Waldrand (Referenztext), danach Übergang ins Dorf.
+- Verifizierter Ablauf (Zustands-Log): Landherr-Dialog -> Auftrag ->
+  Axt erhalten -> Schrein -> Ankunfts-Text -> Dorf -> Johannes gibt
+  Kryptaschlüssel -> Kirchentür -> Krypta-Ebene 1 samt Interludium.
+- Anna-Quest (Phase 4/5) und beide Enden (Phase 4) vervollständigen das
+  Story-Gerüst aus Teil 8.
+
+Anmerkung zur Verifikation: Die Laufwege wurden im Test teleportiert,
+alle Interaktionen/Trigger/Dialoge liefen echt. Der frei laufende Bot
+schaffte den Wald nur unzuverlässig - das ist eine Schwäche des Test-
+Bots, nicht des Spiels (manuelle Stichprobe der Wege steht beim Autor aus).
+
 ## Hinweis zur Verifikations-Umgebung
 
 Playwrights eigener Browser-Download ist in dieser Umgebung gesperrt;

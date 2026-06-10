@@ -550,3 +550,70 @@ export function buildVillage(rng: Rng, aufbauStufe = 0): AreaData {
 
   return a;
 }
+
+// --- Der Dunkelwald: geführtes Eröffnungsgebiet (Masterprompt 7.1) ---
+// Ein Pfad von West nach Ost führt nach Ravensmoor. Der Wald lehrt die
+// Steuerung diegetisch: Wolf-Kampf, Holzhack-Tutorial, erster Kerzenschrein.
+
+export function buildForest(rng: Rng): AreaData {
+  const w = 70, h = 26;
+  const map = blank(w, h, T.TREE);
+  const a: AreaData = {
+    id: 'wald', name: 'Der Dunkelwald', dark: false, depth: 0,
+    w, h, map, spawn: { x: 4 * TILE, y: 13 * TILE },
+    torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
+    breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
+    ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
+    npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
+  };
+
+  // Gewundener Pfad nach Osten
+  let py = 13;
+  for (let x = 2; x < w - 1; x++) {
+    carve(map, x, py - 1, x, py + 1, T.GRASS);
+    map[py][x] = T.PATH;
+    if (x % 5 === 0) py += ri(rng, -1, 1);
+    py = Math.max(4, Math.min(h - 5, py));
+  }
+  // Startplatz und Lichtung in der Mitte
+  carve(map, 2, 10, 8, 16, T.GRASS);
+  carve(map, 3, 12, 7, 14, T.PATH);
+  const cx = 38;
+  carve(map, cx - 4, 6, cx + 4, 14, T.GRASS);
+  map[8][cx] = T.SHRINE;
+  a.shrines.push({ x: cx * TILE + 16, y: 8 * TILE + 16 });
+  a.labels.push({ x: cx * TILE, y: 5.2 * TILE, t: 'Lichtung' });
+
+  // Landherr wartet am Westrand (Intro-Szene)
+  a.npcs.push({ id: 'landherr', name: 'Der Landherr', x: 5 * TILE, y: 11.5 * TILE });
+
+  // Wolf-Begegnung als erster Kampf (vor der Lichtung)
+  a.enemySpawns.push({ type: 'wolf', x: 24 * TILE, y: 12 * TILE, elite: false });
+  a.enemySpawns.push({ type: 'wolf', x: 52 * TILE, y: 13 * TILE, elite: false });
+
+  // Umgestürzter Baum versperrt den Pfad (Holzhack-Tutorial)
+  const bx = 30;
+  for (let y = 0; y < h; y++) {
+    if (map[y][bx] !== T.TREE) {
+      map[y][bx] = T.TREE;
+      a.baeume.push({ x: bx * TILE + 16, y: y * TILE + 16 });
+    }
+  }
+  a.labels.push({ x: bx * TILE, y: (py - 4) * TILE, t: 'Umgestürzter Baum' });
+
+  // Kräuter am Wegrand
+  for (let i = 0; i < 3; i++) {
+    const x = ri(rng, 10, 60);
+    for (let y = 2; y < h - 2; y++) {
+      if (map[y][x] === T.GRASS) {
+        a.kraeuter.push({ x: x * TILE + 16, y: y * TILE + 16 });
+        break;
+      }
+    }
+  }
+
+  // Ostrand: Übergang nach Ravensmoor
+  carve(map, w - 2, py - 1, w - 1, py + 1, T.PATH);
+  a.downPos = { x: (w - 1) * TILE + 16, y: py * TILE + 16 };
+  return a;
+}

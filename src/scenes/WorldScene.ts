@@ -4,7 +4,9 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir } from '../world/Enemy';
-import { buildCrypt, buildBoss, buildVillage, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { buildCrypt, buildBoss, buildVillage, buildForest, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { LANDHERR } from '../data/dialoge';
+import storyJson from '../data/story.json';
 import { ShopUI } from '../ui/shop';
 import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, type DlgPage } from '../data/dialoge';
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS } from '../data/shops';
@@ -124,12 +126,17 @@ export class WorldScene extends CombatScene {
       this.p.hp = this.p.stats.maxhp;
       this.p.mana = this.p.stats.maxmana;
     }
-    this.goArea(params.startArea ?? 'village');
+    // Spielstart im Dunkelwald (Masterprompt 7.1)
+    this.goArea(params.startArea ?? 'wald');
     // Dev-Werkzeug: ?relikt=1 legt das Relikt neben den Spieler (nur Dev-Build)
     if (import.meta.env.DEV && new URLSearchParams(location.search).get('relikt')) {
       this.pickups.add({ kind: 'relic', x: this.px + 30, y: this.py, bob: 0 });
     }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.sfx.stopLoops());
+    // Dev-Werkzeug: Szene für automatisierte Browser-Tests erreichbar machen
+    if (import.meta.env.DEV) {
+      (window as unknown as { __welt?: WorldScene }).__welt = this;
+    }
   }
 
   // --- Arealverwaltung -----------------------------------------------------
@@ -141,6 +148,7 @@ export class WorldScene extends CombatScene {
     let a: AreaData;
     if (id === 'boss') a = buildBoss(rng, this.bossDead);
     else if (id === 'village') a = buildVillage(rng, this.aufbauStufe);
+    else if (id === 'wald') a = buildForest(rng);
     else a = buildCrypt(parseInt(id.replace('crypt', ''), 10), rng);
     this.areas.set(id, a);
     return a;
@@ -175,6 +183,29 @@ export class WorldScene extends CombatScene {
     if (id === 'boss' && !this.flags.nBoss) {
       this.flags.nBoss = true;
       this.dialog.show(ERZAEHLER.name, [...ERZAEHLER.boss]);
+    }
+    // Intro: Auftrag des Landherrn (Masterprompt 7.1/Teil 8)
+    if (id === 'wald' && !this.flags.intro) {
+      this.flags.intro = true;
+      this.talkLandherr();
+    }
+  }
+
+  private talkLandherr(): void {
+    if (!this.flags.auftragErhalten) {
+      this.dialog.show(storyJson.landherr.name, [
+        LANDHERR.auftrag[0].text,
+        LANDHERR.auftrag[1].text,
+        {
+          text: LANDHERR.auftrag[2].text,
+          onShow: () => {
+            this.flags.auftragErhalten = true;
+            this.logMsg('Auftrag: Seht in Ravensmoor nach dem Rechten', 'gold');
+          },
+        },
+      ], 'landherr');
+    } else {
+      this.dialog.show(storyJson.landherr.name, ['Worauf wartet ihr noch? Der Pfad nach Osten führt geradewegs nach Ravensmoor.'], 'landherr');
     }
   }
 
@@ -496,6 +527,15 @@ export class WorldScene extends CombatScene {
   }
 
   private chopTree(b: { x: number; y: number }, key: string): void {
+    // Tutorial im Dunkelwald: im umgestürzten Stamm steckt eine alte Holzaxt
+    if (!this.p.tools.axt && this.area.id === 'wald') {
+      this.p.tools.axt = true;
+      this.dialog.show('Umgestürzter Baum', [
+        'Der Sturm hat den alten Stamm quer über den Pfad geworfen. Jemand hat es schon versucht: Im Holz steckt eine vergessene Holzaxt - sie gehört nun dir. (E hackt - drei Schläge fällen einen Baum.)',
+      ]);
+      this.logMsg('Holzaxt erhalten', 'gold');
+      return;
+    }
     if (!this.p.tools.axt) {
       this.sfx.play('fehler');
       return;
@@ -538,6 +578,7 @@ export class WorldScene extends CombatScene {
         this.talkSimple('Bäuerin Grete', 'bauer2', BAUER2, () => this.shop.openShop('bauer2', 'BAUERNHOF', SHOP_BAUER2, { ankauf: false }));
         break;
       case 'haendler': this.talkHaendler(); break;
+      case 'landherr': this.talkLandherr(); break;
     }
   }
 
@@ -823,6 +864,19 @@ export class WorldScene extends CombatScene {
       if (id === 'crypt1') this.goArea('crypt2');
       else if (id === 'crypt2') this.goArea('crypt3');
       else if (id === 'crypt3') this.goArea('boss');
+    } else if (this.area.id === 'wald' && this.px > (this.area.w - 2.5) * TILE) {
+      // Waldrand: Erzähler-Text der Ankunft (Referenz), dann Ravensmoor
+      if (!this.flags.nAnkunft) {
+        this.flags.nAnkunft = true;
+        this.dialog.show(ERZAEHLER.name, [...ERZAEHLER.ankunft]);
+        this.dialog.onClose = () => {
+          this.dialog.onClose = null;
+          this.goArea('village', { x: 3 * TILE, y: 30.5 * TILE });
+          this.logMsg(MELDUNGEN.start, '');
+        };
+      } else {
+        this.goArea('village', { x: 3 * TILE, y: 30.5 * TILE });
+      }
     } else if (tid === T.STAIRUP) {
       const id = this.area.id;
       if (id === 'crypt1') {
