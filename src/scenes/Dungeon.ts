@@ -587,8 +587,7 @@ export class Dungeon extends Phaser.Scene {
       gameState.hp = this.player.hp;
       saveGame();
       if (this.depth >= 3) {
-        // Bossraum folgt in Phase 6 — bis dahin zurück ins Dorf
-        this.scene.start('Village');
+        this.scene.start('BossRoom');
       } else {
         this.scene.restart({ depth: this.depth + 1, seed: this.seed + 7919 });
       }
