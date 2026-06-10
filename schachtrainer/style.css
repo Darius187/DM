@@ -2,114 +2,374 @@
 @import 'chessground/assets/chessground.brown.css';
 @import 'chessground/assets/chessground.cburnett.css';
 
+/* -------------------------------------------------------------------------- */
+/* Design tokens                                                              */
+/* -------------------------------------------------------------------------- */
+:root {
+  --bg-1: #0f1620;
+  --bg-2: #16202c;
+  --surface-1: #1c2733;
+  --surface-2: #23303d;
+  --surface-3: #2c3b4a;
+  --border: #324252;
+  --border-strong: #44586c;
+  --text-1: #eaf2f7;
+  --text-2: #b8c6d3;
+  --text-3: #7d8c9a;
+  --accent: #5dcd9a;
+  --accent-strong: #34b685;
+  --accent-text: #07221b;
+  --info: #6db0ff;
+  --warn: #e8c15a;
+  --danger: #f08585;
+  --danger-bg: #6a2929;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.25);
+  --shadow-2: 0 12px 36px rgba(0, 0, 0, 0.55);
+}
+
 * {
   box-sizing: border-box;
 }
 
+/* `display:inline-flex/flex` on .btn / .field / .chip-toggle / .coach-chat-controls
+   etc. would otherwise override the user-agent `[hidden] { display: none }`
+   rule and leak hidden controls back into the layout. */
+[hidden] {
+  display: none !important;
+}
+
 html {
-  /* The whole page may scroll vertically. The board itself is fixed-size and
-     placed with align-items: start in the grid below, so it cannot deform
-     when the side panel grows; the page simply scrolls. */
   overflow-y: auto;
 }
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  background: #1e1e1e;
-  color: #eee;
+  font-family:
+    'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+  background-attachment: fixed;
+  color: var(--text-1);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .app {
-  /* Grid sizes itself to its content; the viewport scrolls if it grows past
-     the window height. */
   min-height: 100vh;
-  max-width: 1100px;
+  max-width: 1180px;
   margin: 0 auto;
   padding: 16px;
   display: grid;
-  /* Widen the side panel so Ollama answers have more breathing room without
-     long word wraps forcing weird shapes. */
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   grid-template-rows: auto minmax(0, 1fr);
-  /* Critical: without this, grid cells stretch to the tallest sibling (the
-     side panel), which forces a height on the board and overrides its
-     aspect-ratio — the board then deforms and chessground bakes the wrong
-     ratio into its internal pixel grid (pieces drift off the squares). */
+  /* Critical: do not stretch — the board must keep its aspect-ratio. */
   align-items: start;
   gap: 16px;
 }
 
-@media (max-width: 880px) {
-  /* On narrow windows fall back to a single column. */
+@media (max-width: 920px) {
   .app {
     grid-template-columns: 1fr;
   }
 }
 
-
-header {
+/* -------------------------------------------------------------------------- */
+/* Topbar                                                                     */
+/* -------------------------------------------------------------------------- */
+.topbar {
   grid-column: 1 / -1;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  box-shadow: var(--shadow-1);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.brand {
   display: flex;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--accent);
 }
-
-h1 {
-  font-size: 1.4rem;
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(93, 205, 154, 0.12);
+  border: 1px solid rgba(93, 205, 154, 0.35);
+  border-radius: 8px;
+}
+.brand h1 {
   margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--text-1);
 }
 
-.controls {
+.topbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+}
+.topbar-group {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
   align-items: center;
+  flex-wrap: wrap;
+}
+.topbar-group + .topbar-group {
+  position: relative;
+  padding-left: 14px;
+}
+.topbar-group + .topbar-group::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: var(--border);
+}
+.settings-btn {
+  margin-left: auto;
 }
 
-button,
+/* -------------------------------------------------------------------------- */
+/* Buttons (BEM-ish primary/ghost/danger + sm size + icon-btn)                */
+/* -------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--surface-2);
+  color: var(--text-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 7px 14px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.2;
+  min-height: 34px;
+  cursor: pointer;
+  transition:
+    background-color 130ms ease,
+    border-color 130ms ease,
+    color 130ms ease,
+    transform 60ms ease;
+  font-family: inherit;
+}
+.btn:hover {
+  background: var(--surface-3);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent-strong);
+}
+.btn-primary:hover {
+  background: var(--accent-strong);
+}
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-2);
+}
+.btn-ghost:hover {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+.btn-danger {
+  background: var(--danger-bg);
+  color: #ffd7d7;
+  border-color: #8a3a3a;
+}
+.btn-danger:hover {
+  background: #7a3434;
+}
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  min-height: 28px;
+}
+.icon-btn {
+  padding: 6px;
+  min-width: 34px;
+}
+.icon-btn.btn-sm {
+  padding: 4px;
+  min-width: 28px;
+}
+.icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Form fields (selects + inputs)                                             */
+/* -------------------------------------------------------------------------- */
+.field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+}
+.field-label {
+  color: var(--text-3);
+  font-weight: 500;
+}
+select,
+input[type='text'] {
+  background: var(--surface-2);
+  color: var(--text-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  min-height: 32px;
+}
+select:hover,
+input[type='text']:hover {
+  border-color: #5a7a8e;
+}
+select:focus-visible,
+input[type='text']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
 select {
-  background: #333;
-  color: #eee;
-  border: 1px solid #555;
-  padding: 6px 12px;
-  border-radius: 4px;
+  cursor: pointer;
+  padding-right: 24px;
+  background-image: linear-gradient(
+      45deg,
+      transparent 50%,
+      var(--text-2) 50%
+    ),
+    linear-gradient(135deg, var(--text-2) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 9px) 50%;
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
+  appearance: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Chip toggles (Tipp / Ansage / Trainer)                                     */
+/* -------------------------------------------------------------------------- */
+.chip-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 12px 5px 9px;
+  font-size: 0.82rem;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 130ms ease, border-color 130ms ease, color 130ms ease;
+}
+.chip-toggle:hover {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+.chip-toggle input[type='checkbox'] {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 3px;
+  background: var(--bg-2);
+  position: relative;
   cursor: pointer;
 }
-
-button:hover {
-  background: #444;
+.chip-toggle input[type='checkbox']:checked {
+  background: var(--accent);
+  border-color: var(--accent-strong);
+}
+.chip-toggle input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--accent-text);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.chip-toggle:has(input:checked) {
+  background: rgba(93, 205, 154, 0.12);
+  border-color: rgba(93, 205, 154, 0.45);
+  color: var(--text-1);
+}
+.chip-toggle-block {
+  display: flex;
+  width: 100%;
+  border-radius: var(--radius);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Board + eval bar                                                           */
+/* -------------------------------------------------------------------------- */
 .board-wrapper {
   display: flex;
   justify-content: center;
-  /* flex-start, NOT stretch: stretching would force a height on #board and
-     override its aspect-ratio (the board deforms). The eval column opts back
-     into stretching so it matches the board's height. */
   align-items: flex-start;
-  /* Leave room around the board for chessground's rank/file labels and the
-     eval bar without clipping. */
-  gap: 12px;
-  padding: 8px 14px 22px 14px;
+  gap: 14px;
+  padding: 6px 16px 22px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
 }
 
 #board {
-  /* Board sizing depends only on its container's width so the layout does not
-     shift when the viewport height changes (e.g. browser scrollbar appears).
-     Height comes from aspect-ratio alone - nothing may force it. */
-  width: min(600px, calc(100% - 40px));
+  width: min(620px, calc(100% - 60px));
   aspect-ratio: 1 / 1;
   flex: none;
 }
 
-.eval-col {
-  align-self: stretch;
-}
-
-/* Make chessground's rank/file labels actually readable (default is 9px,
-   0.8 opacity). Outline gives contrast on both light and dark squares. */
+/* Chessground labels: readable on both light and dark squares. */
 .cg-wrap coords {
   font-size: 13px !important;
   font-weight: 700 !important;
@@ -122,22 +382,22 @@ button:hover {
 }
 
 .eval-col {
+  align-self: stretch;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  padding-top: 8px;
 }
-
 .evalbar {
   position: relative;
-  width: 26px;
+  width: 22px;
   flex: 1;
-  background: #2b2b2b;
-  border: 1px solid #555;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
   border-radius: 4px;
   overflow: hidden;
 }
-
 .evalfill {
   position: absolute;
   left: 0;
@@ -147,314 +407,127 @@ button:hover {
   background: #f0f0f0;
   transition: height 0.25s ease;
 }
-
 .evaltext {
   font-size: 0.78rem;
   font-family: ui-monospace, monospace;
-  color: #eee;
+  color: var(--text-2);
   min-width: 44px;
   text-align: center;
   white-space: nowrap;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Info side panel                                                            */
+/* -------------------------------------------------------------------------- */
 .info {
-  background: #2a2a2a;
-  border-radius: 6px;
-  padding: 12px;
-  font-size: 0.9rem;
-  /* No more internal scroll: the whole page can scroll now, so the side panel
-     grows freely and the user always reaches PGN/Zugverlauf by scrolling
-     the window. */
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 14px 16px;
+  font-size: 0.88rem;
+  box-shadow: var(--shadow-1);
 }
-
+.info h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 6px;
+  color: var(--text-1);
+  letter-spacing: 0.2px;
+}
 #status {
   font-weight: 600;
   margin-bottom: 6px;
 }
-
 .engine-status {
-  font-size: 0.8rem;
-  color: #9ab;
+  font-size: 0.78rem;
+  color: var(--text-3);
   margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #444;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
 }
-
-.strength,
-.hint-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.85rem;
-}
-
 .blunder {
-  background: #5a1f1f;
-  border: 1px solid #a33;
+  background: var(--danger-bg);
+  border: 1px solid #8a3a3a;
   color: #ffd7d7;
-  padding: 8px;
-  border-radius: 4px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
   font-size: 0.85rem;
   margin-bottom: 10px;
 }
-
 .hint {
-  font-size: 0.85rem;
-  color: #bcd;
+  font-size: 0.83rem;
+  color: var(--text-2);
   margin-bottom: 10px;
   min-height: 1.2em;
 }
-
-.coach-wrap {
-  position: relative;
-  margin-bottom: 10px;
+.moves-section {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
 }
-
-.coach {
-  background: #23303a;
-  border: 1px solid #3a5566;
-  color: #d6e6f0;
-  padding: 8px 8px 8px 8px;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  line-height: 1.35;
-  /* Cap very long Ollama answers and scroll inside the panel — also stops a
-     huge response from dominating the entire side column. */
-  max-height: 260px;
-  overflow-y: auto;
-  overflow-wrap: anywhere;
-  /* Make the text user-selectable (so the system Copy shortcut also works). */
-  user-select: text;
-  -webkit-user-select: text;
-  cursor: text;
-}
-
-/* Coach-Panel toolbar: own row above the text so the buttons never sit on
-   top of the answer (was the old position:absolute "copy" overlay). Touch
-   targets at the 32-44px range and 8px gap per design-system guidelines. */
-.coach-toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.coach-btn {
-  background: #3a5566;
-  color: #eaf2f7;
-  border: 1px solid #5a7a8a;
-  border-radius: 4px;
-  padding: 6px 12px;
-  font-size: 0.78rem;
-  line-height: 1.2;
-  min-height: 32px;
-  cursor: pointer;
-  transition: background-color 120ms ease;
-}
-
-.coach-btn:hover {
-  background: #4a6677;
-}
-
-.coach-btn:focus-visible {
-  outline: 2px solid #9ecbff;
-  outline-offset: 2px;
-}
-
-.coach-btn-stop {
-  background: #6a3a3a;
-  border-color: #8a5a5a;
-}
-
-.coach-btn-stop:hover {
-  background: #7a4a4a;
-}
-
-.coach-model {
-  width: 110px;
-  background: #333;
-  color: #eee;
-  border: 1px solid #555;
-  border-radius: 4px;
-  padding: 5px 6px;
-  font-size: 0.8rem;
-}
-
 #moves {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   margin: 0;
   padding-left: 4px;
   list-style: none;
+  font-size: 0.85rem;
+  color: var(--text-2);
 }
-
 #moves li {
-  padding: 2px 0;
-}
-
-#moves li.current {
-  background: #3b4a5a;
+  padding: 2px 6px;
   border-radius: 3px;
+}
+#moves li.current {
+  background: var(--surface-3);
+  color: var(--text-1);
 }
 
 .pgn {
   margin-top: 14px;
-  border-top: 1px solid #444;
+  border-top: 1px solid var(--border);
   padding-top: 10px;
 }
-
 .pgn-buttons {
   display: flex;
   gap: 6px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
 }
-
 #pgn-text {
   width: 100%;
-  background: #1e1e1e;
-  color: #ddd;
-  border: 1px solid #555;
-  border-radius: 4px;
+  background: var(--bg-2);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   font-family: ui-monospace, monospace;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   resize: vertical;
+  padding: 8px;
 }
-
 .pgn-status {
-  font-size: 0.8rem;
-  color: #9ab;
+  font-size: 0.78rem;
+  color: var(--text-3);
   min-height: 1.1em;
   margin-top: 4px;
 }
 
-/* Tiny voice-count next to the voice dropdown so the user can immediately see
-   how many voices Windows handed over to the app, and gets a nudge to the
-   help text below if the list looks short. */
-.voice-note {
-  font-size: 0.7rem;
-  color: #889;
-  line-height: 1.15;
-  max-width: 230px;
-}
-.voice-count {
-  font-size: 0.75rem;
-  color: #9ab;
-  margin-left: -4px;
-}
-.voice-count.warn {
-  color: #e8c15a;
-}
-
-.rate-control input[type='range'] {
-  width: 110px;
-  vertical-align: middle;
-}
-.rate-value {
-  font-size: 0.75rem;
-  color: #9ab;
-  font-family: ui-monospace, monospace;
-  min-width: 44px;
-  display: inline-block;
-}
-
-/* Collapsible help blocks. Closed: a small inline summary in the header.
-   Open: a scrollable overlay centred on top of the app so they no longer get
-   clipped by the fixed-viewport layout. */
-.net-help {
-  margin: 6px 0 0;
-  font-size: 0.85rem;
-  opacity: 0.9;
-  max-width: 760px;
-}
-.net-help summary {
-  cursor: pointer;
-  color: #9ecbff;
-}
-.net-help[open] {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(820px, calc(100vw - 40px));
-  max-height: calc(100vh - 40px);
-  background: #1e1e1e;
-  border: 1px solid #555;
-  border-radius: 8px;
-  padding: 18px 24px 24px;
-  overflow-y: auto;
-  z-index: 100;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65);
-  opacity: 1;
-}
-.net-help[open] summary {
-  position: sticky;
-  top: -18px;
-  margin: -18px -24px 12px;
-  padding: 14px 24px;
-  background: #1e1e1e;
-  border-bottom: 1px solid #333;
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-/* Backdrop while any help overlay is open. Modern :has() (Chromium 124+ /
-   Electron 31+) lets us do this without JS. */
-body:has(details.net-help[open])::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  z-index: 99;
-}
-.net-help ol {
-  margin: 6px 0 0;
-  padding-left: 20px;
-}
-.net-help li {
-  margin: 3px 0;
-}
-.net-help code {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 0 4px;
-  border-radius: 3px;
-}
-.net-help .snippet {
-  background: #111;
-  color: #cfe;
-  padding: 10px 12px;
-  border-radius: 4px;
-  font-family: ui-monospace, monospace;
-  font-size: 0.8rem;
-  line-height: 1.45;
-  white-space: pre;
-  overflow-x: auto;
-  margin: 8px 0 4px;
-  border: 1px solid #2a3a3a;
-  user-select: text;
-  -webkit-user-select: text;
-}
-.net-help ul {
-  margin: 6px 0 0;
-  padding-left: 20px;
-}
-.net-help ul li {
-  margin: 3px 0;
-}
-
-/* Trainer-Verlauf: chronological log of engine commentary, deeper Ollama
-   explanations and the free-form question/answer chat. Every entry has its
-   own ▶ play button so the user picks what gets read aloud. */
+/* -------------------------------------------------------------------------- */
+/* Trainer-Verlauf (chat transcript)                                          */
+/* -------------------------------------------------------------------------- */
 .coach-chat {
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
 .chat-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 .chat-header h2 {
   margin: 0;
   font-size: 0.95rem;
-  color: #cfe;
+  color: var(--text-1);
 }
 .chat-header-actions {
   display: flex;
@@ -462,89 +535,96 @@ body:has(details.net-help[open])::before {
 }
 .coach-chat-log {
   font-size: 0.85rem;
-  line-height: 1.35;
+  line-height: 1.4;
   max-height: 320px;
   overflow-y: auto;
   overflow-wrap: anywhere;
-  user-select: text;
-  -webkit-user-select: text;
   padding-right: 4px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
 }
 .coach-chat-log:empty::before {
   content: 'Noch keine Einträge. Spiele einen Zug oder stelle dem Trainer eine Frage.';
-  color: #6f8898;
+  color: var(--text-3);
   font-style: italic;
   display: block;
-  padding: 6px 8px;
+  padding: 10px;
 }
 .chat-line {
   display: grid;
   grid-template-columns: auto 1fr auto;
   column-gap: 8px;
   align-items: start;
-  padding: 6px 8px;
-  border-radius: 4px;
+  padding: 7px 10px;
+  border-radius: var(--radius);
   margin: 3px 0;
-  background: #23303a;
-  border: 1px solid #3a5566;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
 }
 .chat-line .who {
   font-weight: 600;
-  color: #9fd0ea;
+  color: var(--info);
   white-space: nowrap;
+  font-size: 0.8rem;
 }
 .chat-line .body {
-  color: #d6e6f0;
+  color: var(--text-1);
   user-select: text;
   -webkit-user-select: text;
   cursor: text;
 }
 .chat-line-user {
-  background: #1f2a32;
-  border-color: #2f4452;
+  background: var(--surface-2);
+  border-color: var(--border-strong);
 }
 .chat-line-user .who {
-  color: #ffd58a;
+  color: var(--warn);
 }
 .chat-line-engine .who {
-  color: #b6e4a8;
+  color: var(--accent);
 }
 .chat-line-opening .who {
-  color: #f0d28a;
+  color: var(--warn);
 }
 .chat-line-error {
-  background: #3a2323;
-  border-color: #6a3a3a;
+  background: rgba(106, 41, 41, 0.5);
+  border-color: #8a3a3a;
 }
 .chat-line-error .who {
-  color: #f0a8a8;
+  color: var(--danger);
 }
 .chat-play {
-  background: #3a5566;
-  color: #eaf2f7;
-  border: 1px solid #5a7a8a;
-  border-radius: 4px;
-  padding: 2px 8px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 2px 9px;
   font-size: 0.78rem;
-  line-height: 1.1;
   min-height: 24px;
   cursor: pointer;
   align-self: start;
-  transition: background-color 120ms ease;
+  transition: background-color 130ms ease, color 130ms ease;
 }
 .chat-play:hover {
-  background: #4a6677;
+  background: var(--surface-3);
+  color: var(--text-1);
 }
 .chat-play:focus-visible {
-  outline: 2px solid #9ecbff;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 .chat-play.is-playing {
-  background: #6a3a3a;
-  border-color: #8a5a5a;
+  background: var(--danger-bg);
+  color: #ffd7d7;
+  border-color: #8a3a3a;
 }
 .coach-chat-controls {
-  margin-top: 6px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .coach-chat-row {
   display: flex;
@@ -552,10 +632,219 @@ body:has(details.net-help[open])::before {
 }
 #coach-chat-input {
   flex: 1;
-  background: #333;
-  color: #eee;
-  border: 1px solid #555;
-  border-radius: 4px;
-  padding: 6px 8px;
-  font-size: 0.85rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Settings drawer (slides in from the right)                                 */
+/* -------------------------------------------------------------------------- */
+.drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  justify-content: flex-end;
+}
+.drawer[hidden] {
+  display: none;
+}
+.drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 12, 18, 0.65);
+  backdrop-filter: blur(2px);
+  animation: drawer-fade 160ms ease-out;
+}
+.drawer-panel {
+  position: relative;
+  width: min(420px, calc(100vw - 24px));
+  height: 100%;
+  background: var(--surface-1);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-2);
+  animation: drawer-slide 220ms ease-out;
+}
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.drawer-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--text-1);
+}
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.setting-group {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 14px 16px;
+}
+.setting-group > h3 {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.setting-group > h3 .icon {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+.setting-group .field {
+  margin-bottom: 10px;
+}
+.setting-group .field:last-of-type {
+  margin-bottom: 0;
+}
+.field-stacked {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  font-size: 0.82rem;
+}
+.field-stacked .field-label {
+  font-size: 0.78rem;
+  color: var(--text-3);
+}
+.field-with-action {
+  display: flex;
+  gap: 6px;
+}
+.field-with-action input {
+  flex: 1;
+}
+.conn-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.conn-row input {
+  flex: 1;
+  min-width: 0;
+}
+.rate-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rate-row input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+.rate-value {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  font-family: ui-monospace, monospace;
+  min-width: 44px;
+  text-align: right;
+}
+.voice-note {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  line-height: 1.3;
+  display: inline-block;
+  margin-left: 6px;
+}
+.voice-count {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  margin-top: 4px;
+}
+.voice-count.warn {
+  color: var(--warn);
+}
+
+@keyframes drawer-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes drawer-slide {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Collapsible help blocks inside the settings drawer                         */
+/* -------------------------------------------------------------------------- */
+.net-help {
+  margin-top: 14px;
+  font-size: 0.82rem;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.net-help summary {
+  cursor: pointer;
+  color: var(--info);
+  font-weight: 500;
+  list-style: none;
+}
+.net-help summary::-webkit-details-marker { display: none; }
+.net-help summary::before {
+  content: '▸ ';
+  display: inline-block;
+  transition: transform 130ms ease;
+}
+.net-help[open] summary::before {
+  content: '▾ ';
+}
+.net-help[open] {
+  background: var(--surface-1);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-top: 12px;
+  border-top: none;
+}
+.net-help ol,
+.net-help ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+.net-help li {
+  margin: 3px 0;
+}
+.net-help code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0 4px;
+  border-radius: 3px;
+  font-family: ui-monospace, monospace;
+}
+.net-help .snippet {
+  background: #07101a;
+  color: #cfe;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-family: ui-monospace, monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  white-space: pre;
+  overflow-x: auto;
+  margin: 8px 0 6px;
+  border: 1px solid var(--border);
+  user-select: text;
+  -webkit-user-select: text;
+}
+.net-help p {
+  margin: 6px 0;
+}
+.net-help hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 10px 0;
 }

@@ -1141,23 +1141,30 @@ loadRatePref().then((r) => {
 // One-click copy for the PowerShell snippet that exposes Windows-11 (Natural)
 // voices to the Web Speech API by mirroring the Speech_OneCore registry tokens
 // into the classic Speech path. See the help block above for caveats.
-// Help overlays: close with Esc, close when the user clicks outside any
-// open <details class="net-help"> (i.e. on the backdrop).
-function closeHelpOverlays() {
+// Settings drawer: opened by the gear button, closed by the X, backdrop click,
+// or Escape. The drawer just toggles a hidden flag — animation is CSS-driven.
+const settingsDrawer = document.getElementById('settings-drawer');
+const btnSettings = document.getElementById('btn-settings');
+const btnSettingsClose = document.getElementById('btn-settings-close');
+const settingsBackdrop = document.getElementById('settings-backdrop');
+
+function openSettings() {
+  if (settingsDrawer) settingsDrawer.hidden = false;
+}
+function closeSettings() {
+  if (settingsDrawer) settingsDrawer.hidden = true;
+  // Collapse any open help blocks so the next opening is consistent.
   document.querySelectorAll('details.net-help[open]').forEach((d) => {
     d.open = false;
   });
 }
+if (btnSettings) btnSettings.addEventListener('click', openSettings);
+if (btnSettingsClose) btnSettingsClose.addEventListener('click', closeSettings);
+if (settingsBackdrop) settingsBackdrop.addEventListener('click', closeSettings);
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeHelpOverlays();
-});
-document.addEventListener('click', (e) => {
-  // any open help blocks?
-  const open = document.querySelector('details.net-help[open]');
-  if (!open) return;
-  // ignore clicks inside the help itself or on its summary in the header
-  if (e.target.closest('details.net-help')) return;
-  closeHelpOverlays();
+  if (e.key === 'Escape' && settingsDrawer && !settingsDrawer.hidden) {
+    closeSettings();
+  }
 });
 
 // Manual refresh for the Ollama model list — for the case where the user

@@ -8,133 +8,112 @@
   </head>
   <body>
     <main class="app">
-      <header>
-        <h1>Schachtrainer</h1>
-        <div class="controls">
-          <button id="btn-new">Neue Partie</button>
-          <button id="btn-undo">Zug zurück</button>
-          <button id="btn-flip" title="Brett drehen">Brett drehen</button>
-          <button id="btn-wissen" title="Schach-Wissen in eigenem Fenster öffnen">Wissen</button>
-          <label class="hint-toggle" title="Gibt dem Trainer (Ollama) das Schach-Wissen als Grundlage mit">
-            <input type="checkbox" id="chk-knowledge" />
-            Wissen nutzen
-          </label>
-          <select id="sel-side">
-            <option value="white" selected>Ich spiele Weiß</option>
-            <option value="black">Ich spiele Schwarz</option>
-            <option value="twoplayer">2 Spieler (ein Gerät)</option>
-          </select>
-          <label class="strength">
-            Stärke:
-            <select id="sel-strength">
-              <option value="skill:0" selected>Anfänger</option>
-              <option value="skill:3">Leicht</option>
-              <option value="skill:6">Mittel</option>
-              <option value="skill:10">Fortgeschritten</option>
-              <option value="elo:1600">Klub (1600)</option>
-              <option value="elo:2000">Stark (2000)</option>
-              <option value="skill:20">Maximal</option>
-            </select>
-          </label>
-          <label class="hint-toggle">
-            <input type="checkbox" id="chk-hint" checked />
-            Tipp anzeigen
-          </label>
-          <label class="hint-toggle">
-            <input type="checkbox" id="chk-speak" checked />
-            Ansage
-          </label>
-          <label class="strength">
-            Stimme:
-            <select id="sel-voice" title="Sprachausgabe-Stimme. Nur Stimmen, die Windows der App über die Web-Speech-Schnittstelle anbietet, erscheinen hier. (Natural)-Stimmen sind nicht immer dabei – siehe Stimme-fehlt-Hilfe unter den Bedienelementen.">
-              <option value="">Automatisch</option>
-            </select>
-          </label>
-          <span id="voice-count" class="voice-count" title="So viele Stimmen meldet Windows der App."></span>
-          <label class="strength rate-control" title="Sprech-Geschwindigkeit für alle Ansagen">
-            Tempo:
-            <input id="rate-slider" type="range" min="0.7" max="1.8" step="0.05" value="1" />
-            <span id="rate-value" class="rate-value">1,00×</span>
-          </label>
-          <label class="strength">
-            Eröffnung:
-            <select id="sel-opening">
-              <option value="free" selected>Frei spielen</option>
-              <option value="london">Londoner System</option>
-              <option value="italienisch">Italienisch</option>
-              <option value="carokann">Caro-Kann (Schwarz)</option>
-              <option value="damengambit">Damengambit abgelehnt (Schwarz)</option>
-              <option value="skandinavisch">Skandinavisch (Schwarz)</option>
-            </select>
-          </label>
-          <label class="hint-toggle">
-            <input type="checkbox" id="chk-coach" />
-            Trainer
-          </label>
-          <input id="coach-model" class="coach-model" type="text" value="llama3.1:8b" list="ollama-models" placeholder="llama3.1:8b" title="Ollama-Modell (leer = Standard)" />
-          <datalist id="ollama-models"></datalist>
-          <button id="btn-refresh-models" type="button" title="Modell-Liste neu von Ollama abrufen (z. B. nach `ollama pull gemma:4b`)">↻</button>
-          <span id="model-count" class="voice-count" title="So viele Modelle meldet Ollama gerade."></span>
-          <input id="coach-host" class="coach-model" type="text" value="localhost:11434" placeholder="localhost:11434" title="Ollama-Adresse, z.B. 192.168.1.50:11434 für einen anderen Rechner im Netzwerk" />
-          <select id="sel-conn" title="Gespeicherte Verbindungen">
-            <option value="">– gespeicherte Verbindung –</option>
-          </select>
-          <input id="conn-name" class="coach-model" type="text" placeholder="Name" title="Name für diese Verbindung, z.B. Zuhause" />
-          <button id="btn-conn-save" title="Aktuelle Adresse und Modell unter diesem Namen speichern">Speichern</button>
-          <button id="btn-conn-del" title="Gewählte Verbindung löschen">Löschen</button>
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <!-- Knight glyph; SVG so it scales cleanly with the title. -->
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M19 22H5v-2h14v2zm-2-4H7c0-3 2-5 2-7 0-1.5-1-2-1-2s.5-1.5 2-2.5C9.5 4.5 9 3 9 3l1 .5 1-1.5 1 1.5 1-.5s-.5 1.5-1 3.5C12.5 7 14 7.5 14 9c0 .5-.5 1-1 1.5-.5.5-.5 1 0 1.5l.5.5c.5.5 1 1 1.5 2.5.5 1.5 2 3 2 3z"
+              />
+            </svg>
+          </span>
+          <h1>Schachtrainer</h1>
         </div>
-        <details class="net-help">
-          <summary>Ollama über das Netzwerk verbinden (Tablet/Surface → Hauptrechner)</summary>
-          <ol>
-            <li>Auf dem <strong>Hauptrechner</strong> (wo Ollama läuft) die IP herausfinden: Eingabeaufforderung öffnen, <code>ipconfig</code> eingeben, bei "IPv4-Adresse" steht z.B. <code>192.168.1.50</code>.</li>
-            <li>Ollama dort fürs Netzwerk freigeben: Umgebungsvariable <code>OLLAMA_HOST=0.0.0.0</code> setzen und Ollama neu starten. Ohne das lauscht Ollama nur auf dem Rechner selbst.</li>
-            <li>In der Windows-Firewall des Hauptrechners den Port <code>11434</code> zulassen.</li>
-            <li>Hier auf dem Tablet/Surface ins Adressfeld die IP mit Port eintragen, z.B. <code>192.168.1.50:11434</code> - nicht "localhost".</li>
-            <li>Klappt es, erscheinen die Modelle des Hauptrechners als Vorschläge. Dann mit "Speichern" als Verbindung sichern, damit du es nicht wieder eintippen musst.</li>
-          </ol>
-          <p>"localhost" heißt "dieser Rechner hier" - richtig, wenn Ollama auf demselben Gerät läuft, aber falsch fürs Tablet, das auf den Hauptrechner zugreifen soll.</p>
-        </details>
-        <details class="net-help">
-          <summary>Stimme fehlt? Englische oder (Natural)-Stimme installieren</summary>
-          <p><strong>Schnellste Alternative ohne Installation – Online-Stimme (edge-tts):</strong> nutzt die natürlich klingenden Neural-Stimmen aus Microsoft Edge über das Internet. Nichts wird installiert, kein Registry-Eingriff. Hier nur zum Ausprobieren – Verbindung und Klang testen:</p>
-          <p>
-            <button id="btn-test-online-voice" class="coach-btn" type="button" title="Spricht einen Beispielsatz über die Online-Stimme de-DE-KatjaNeural">Online-Stimme testen</button>
-            <span id="online-voice-status" class="voice-note"></span>
-          </p>
-          <p class="voice-note">Hinweis: Braucht eine Internetverbindung; der vorgelesene Text geht dabei an Microsofts Server. Läuft das durch, baue ich die Online-Stimme als umschaltbare Option für alle Ansagen ein.</p>
-          <hr />
-          <p>Die App listet sonst nur Stimmen, die Windows der Web-Speech-Schnittstelle anbietet. Englische Stimmen sind nach einer frischen Windows-Installation oft nicht dabei. So holst du sie nach:</p>
-          <ol>
-            <li>Windows-Einstellungen → <strong>Zeit und Sprache</strong> → <strong>Sprache und Region</strong>.</li>
-            <li>Unter <strong>Bevorzugte Sprachen</strong> bei der Sprache (z.B. <em>Englisch (Vereinigtes Königreich)</em>) auf die drei Punkte → <strong>Sprachoptionen</strong>.</li>
-            <li>Bei <strong>Sprache</strong> auf <strong>Stimmen hinzufügen</strong> und die gewünschte Stimme installieren, z.B. <code>Microsoft Ryan</code>, <code>Microsoft Sonia</code>.</li>
-            <li>App neu starten — die Stimme erscheint im Dropdown.</li>
-          </ol>
-          <p><strong>Wichtig zu den (Natural)-Stimmen aus Windows 11:</strong> Microsoft hat zwei Sorten:</p>
-          <ul>
-            <li><strong>Klassisch (SAPI 5)</strong> — z.B. „Microsoft Hedda Desktop", „Microsoft Stefan". Werden zuverlässig in dieser App angezeigt.</li>
-            <li><strong>Neu „(Natural)" / „Modern"</strong> — z.B. „Microsoft Conrad (Natural)", „Microsoft Katja (Natural)". Sind in <em>Windows-Einstellungen → Barrierefreiheit → Sprachausgabe</em> über <strong>Sprachausgabestimmen hinzufügen</strong> installierbar (sehr natürlich klingend). <strong>Aber:</strong> diese Modern-Stimmen reicht Windows in der Regel nur an die Sprachausgabe und Erzähler-Apps weiter, nicht an die Web-Speech-Schnittstelle, die diese App nutzt — sie erscheinen daher meist nicht im Dropdown. Das ist eine Windows-/Chromium-Limitierung, kein Fehler der App.</li>
-          </ul>
-          <p>Tipp: für englische Antworten reicht die klassische <em>Microsoft Hazel Desktop</em> oder <em>Microsoft David Desktop</em>.</p>
 
-          <p><strong>Trick für die (Natural)-Stimmen:</strong> Die Modern-Stimmen liegen in einem Registry-Pfad (<code>Speech_OneCore</code>), aus dem Chromium nicht liest. Wenn du sie in den klassischen <code>Speech</code>-Pfad kopierst, sieht diese App sie. Das ist kein offizieller Microsoft-Weg, klappt aber bei vielen Windows-11-Systemen.</p>
-          <ol>
-            <li><strong>Vorher Wiederherstellungspunkt setzen.</strong> Start → „Wiederherstellungspunkt erstellen" → Erstellen.</li>
-            <li>Start → <em>PowerShell</em> oder <em>Terminal</em> mit der rechten Maustaste → <strong>Als Administrator ausführen</strong>.</li>
-            <li>Snippet mit dem Knopf unten kopieren, in PowerShell einfügen und mit Enter ausführen.</li>
-            <li>Schachtrainer schließen und wieder öffnen. Die (Natural)-Stimmen müssten jetzt im Dropdown stehen.</li>
-          </ol>
-          <pre id="voice-fix-snippet" class="snippet">$src = 'HKLM:\SOFTWARE\Microsoft\Speech_OneCore\Voices\Tokens'
-$dst = 'HKLM:\SOFTWARE\Microsoft\Speech\Voices\Tokens'
-Get-ChildItem $src | ForEach-Object {
-  Copy-Item -Path $_.PSPath -Destination "$dst\$($_.PSChildName)" -Recurse -Force
-  Write-Host "kopiert:" $_.PSChildName
-}</pre>
-          <button id="btn-copy-voice-fix" class="coach-btn" type="button" title="PowerShell-Befehl in die Zwischenablage kopieren">Snippet kopieren</button>
+        <div class="topbar-row">
+          <div class="topbar-group">
+            <button id="btn-new" class="btn btn-primary" type="button" title="Neue Partie">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M5 3l14 9-14 9V3z"
+                  fill="currentColor"
+                />
+              </svg>
+              <span>Neue Partie</span>
+            </button>
+            <button id="btn-undo" class="btn btn-ghost icon-btn" type="button" title="Zug zurück">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 14 4 9l5-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span class="sr-only">Zug zurück</span>
+            </button>
+            <button id="btn-flip" class="btn btn-ghost icon-btn" type="button" title="Brett drehen">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m17 3-5 5-5-5h10Z" fill="currentColor"/>
+                <path d="m17 21-5-5-5 5h10Z" fill="currentColor"/>
+                <path d="M4 12H2 M10 12H8 M16 12h-2 M22 12h-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <span class="sr-only">Brett drehen</span>
+            </button>
+          </div>
 
-          <p><strong>Ehrliche Risiken:</strong> Das Snippet schreibt in <code>HKLM</code> (Registry, alle Nutzer) — daher Admin-Rechte. Auf manchen Windows-Versionen reicht der Hack nicht (Microsoft prüft inzwischen mehr als nur den Tokens-Pfad), dann bleibt das Dropdown unverändert; rückgängig machen geht dann über den Wiederherstellungspunkt. Andere Apps können nach dem Eintrag mehr Stimmen sehen, das ist gewollt.</p>
-          <p>Klappt der Trick auf deinem System nicht, sind die klassischen Desktop-Stimmen die zuverlässige Option, oder eine externe TTS-Lösung wie <a href="https://github.com/rany2/edge-tts" target="_blank" rel="noopener">edge-tts</a> außerhalb der App.</p>
-        </details>
+          <div class="topbar-group topbar-fields">
+            <label class="field">
+              <span class="field-label">Du spielst</span>
+              <select id="sel-side">
+                <option value="white" selected>Weiß</option>
+                <option value="black">Schwarz</option>
+                <option value="twoplayer">2 Spieler</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">Stärke</span>
+              <select id="sel-strength">
+                <option value="skill:0" selected>Anfänger</option>
+                <option value="skill:3">Leicht</option>
+                <option value="skill:6">Mittel</option>
+                <option value="skill:10">Fortgeschritten</option>
+                <option value="elo:1600">Klub (1600)</option>
+                <option value="elo:2000">Stark (2000)</option>
+                <option value="skill:20">Maximal</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">Eröffnung</span>
+              <select id="sel-opening">
+                <option value="free" selected>Frei spielen</option>
+                <option value="london">Londoner System</option>
+                <option value="italienisch">Italienisch</option>
+                <option value="carokann">Caro-Kann (Schwarz)</option>
+                <option value="damengambit">Damengambit abgelehnt (Schwarz)</option>
+                <option value="skandinavisch">Skandinavisch (Schwarz)</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="topbar-group topbar-toggles">
+            <label class="chip-toggle" title="Pfeil mit dem besten Zug am Brett zeigen">
+              <input type="checkbox" id="chk-hint" checked />
+              <span>Tipp</span>
+            </label>
+            <label class="chip-toggle" title="Züge auf Deutsch ansagen">
+              <input type="checkbox" id="chk-speak" checked />
+              <span>Ansage</span>
+            </label>
+            <label class="chip-toggle" title="Trainer-Erklärungen vom lokalen Ollama-Modell">
+              <input type="checkbox" id="chk-coach" />
+              <span>Trainer</span>
+            </label>
+          </div>
+
+          <button id="btn-settings" class="btn btn-ghost icon-btn settings-btn" type="button" title="Einstellungen">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <span class="sr-only">Einstellungen öffnen</span>
+          </button>
+        </div>
       </header>
 
       <section class="board-wrapper">
@@ -152,27 +131,39 @@ Get-ChildItem $src | ForEach-Object {
         <div id="engine-status" class="engine-status">Engine wird geladen…</div>
         <div id="blunder" class="blunder" hidden></div>
         <div id="hint" class="hint"></div>
+
         <div id="coach-chat" class="coach-chat">
           <div class="chat-header">
             <h2>Trainer-Verlauf</h2>
             <div class="chat-header-actions">
-              <button id="btn-chat-stop" class="coach-btn-stop" title="Vorlesen abbrechen" hidden>⏹ Stopp</button>
-              <button id="btn-chat-clear" class="coach-btn" title="Verlauf leeren">Leeren</button>
+              <button id="btn-chat-stop" class="btn btn-danger btn-sm" title="Vorlesen abbrechen" hidden>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>
+                </svg>
+                <span>Stopp</span>
+              </button>
+              <button id="btn-chat-clear" class="btn btn-ghost btn-sm" title="Verlauf leeren">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Leeren</span>
+              </button>
             </div>
           </div>
           <div id="coach-chat-log" class="coach-chat-log" aria-live="polite"></div>
           <div id="coach-chat-controls" class="coach-chat-controls" hidden>
             <div class="coach-chat-row">
               <input id="coach-chat-input" type="text" placeholder="Frage zur Stellung, z.B. Was ist mein bester Plan?" />
-              <button id="btn-coach-ask">Fragen</button>
+              <button id="btn-coach-ask" class="btn btn-primary btn-sm">Fragen</button>
             </div>
-            <label class="hint-toggle" title="Liest neue Trainer-Antworten (auf deine Fragen) automatisch vor. Engine-Erklärungen liest du per ▶ vor.">
+            <label class="chip-toggle chip-toggle-block" title="Liest neue Trainer-Antworten auf deine Fragen automatisch vor. Engine-Erklärungen liest du per ▶ vor.">
               <input type="checkbox" id="chk-auto-read" />
-              Auto-Vorlesen neuer Antworten
+              <span>Auto-Vorlesen neuer Antworten</span>
             </label>
           </div>
         </div>
-        <div>
+
+        <div class="moves-section">
           <h2>Zugverlauf</h2>
           <ol id="moves"></ol>
         </div>
@@ -180,16 +171,162 @@ Get-ChildItem $src | ForEach-Object {
         <div class="pgn">
           <h2>PGN</h2>
           <div class="pgn-buttons">
-            <button id="btn-save">Speichern</button>
-            <button id="btn-load">Laden</button>
-            <button id="btn-prev" title="Zurück">◀</button>
-            <button id="btn-next" title="Vor">▶</button>
+            <button id="btn-save" class="btn btn-ghost btn-sm">Speichern</button>
+            <button id="btn-load" class="btn btn-ghost btn-sm">Laden</button>
+            <button id="btn-prev" class="btn btn-ghost btn-sm icon-btn" title="Zurück">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button id="btn-next" class="btn btn-ghost btn-sm icon-btn" title="Vor">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
           </div>
           <textarea id="pgn-text" rows="6" placeholder="PGN hier einfügen und auf Laden klicken…"></textarea>
           <div id="pgn-status" class="pgn-status"></div>
         </div>
       </aside>
     </main>
+
+    <!-- Settings drawer: opened by the gear button. All advanced controls live
+         here so the topbar stays focused on actually playing. -->
+    <div id="settings-drawer" class="drawer" hidden>
+      <div class="drawer-backdrop" id="settings-backdrop"></div>
+      <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <header class="drawer-header">
+          <h2 id="settings-title">Einstellungen</h2>
+          <button id="btn-settings-close" class="btn btn-ghost icon-btn" type="button" title="Schließen">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 6 6 18 M6 6l12 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="sr-only">Schließen</span>
+          </button>
+        </header>
+        <div class="drawer-body">
+
+          <section class="setting-group">
+            <h3>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M11 5L6 9H2v6h4l5 4V5z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07 M19.07 4.93a10 10 0 0 1 0 14.14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+              </svg>
+              Stimme &amp; Klang
+            </h3>
+            <label class="field field-stacked">
+              <span class="field-label">Stimme</span>
+              <select id="sel-voice" title="Sprachausgabe-Stimme. Nur Stimmen, die Windows der App über die Web-Speech-Schnittstelle anbietet, erscheinen hier.">
+                <option value="">Automatisch</option>
+              </select>
+              <span id="voice-count" class="voice-count" title="So viele Stimmen meldet Windows der App."></span>
+            </label>
+            <label class="field field-stacked">
+              <span class="field-label">Tempo</span>
+              <div class="rate-row">
+                <input id="rate-slider" type="range" min="0.7" max="1.8" step="0.05" value="1" />
+                <span id="rate-value" class="rate-value">1,00×</span>
+              </div>
+            </label>
+
+            <details class="net-help">
+              <summary>Stimme fehlt? Englische oder (Natural)-Stimme installieren</summary>
+              <p><strong>Schnellste Alternative ohne Installation – Online-Stimme (edge-tts):</strong> nutzt die natürlich klingenden Neural-Stimmen aus Microsoft Edge über das Internet. Nichts wird installiert, kein Registry-Eingriff. Hier nur zum Ausprobieren – Verbindung und Klang testen:</p>
+              <p>
+                <button id="btn-test-online-voice" class="btn btn-ghost btn-sm" type="button" title="Spricht einen Beispielsatz über die Online-Stimme de-DE-KatjaNeural">Online-Stimme testen</button>
+                <span id="online-voice-status" class="voice-note"></span>
+              </p>
+              <p class="voice-note">Hinweis: Braucht eine Internetverbindung; der vorgelesene Text geht dabei an Microsofts Server.</p>
+              <hr />
+              <p>Die App listet sonst nur Stimmen, die Windows der Web-Speech-Schnittstelle anbietet. Englische Stimmen sind nach einer frischen Windows-Installation oft nicht dabei. So holst du sie nach:</p>
+              <ol>
+                <li>Windows-Einstellungen → <strong>Zeit und Sprache</strong> → <strong>Sprache und Region</strong>.</li>
+                <li>Unter <strong>Bevorzugte Sprachen</strong> bei der Sprache (z.B. <em>Englisch (Vereinigtes Königreich)</em>) auf die drei Punkte → <strong>Sprachoptionen</strong>.</li>
+                <li>Bei <strong>Sprache</strong> auf <strong>Stimmen hinzufügen</strong> und die gewünschte Stimme installieren, z.B. <code>Microsoft Ryan</code>, <code>Microsoft Sonia</code>.</li>
+                <li>App neu starten — die Stimme erscheint im Dropdown.</li>
+              </ol>
+              <p><strong>Wichtig zu den (Natural)-Stimmen aus Windows 11:</strong> Microsoft hat zwei Sorten:</p>
+              <ul>
+                <li><strong>Klassisch (SAPI 5)</strong> — z.B. „Microsoft Hedda Desktop", „Microsoft Stefan". Werden zuverlässig in dieser App angezeigt.</li>
+                <li><strong>Neu „(Natural)" / „Modern"</strong> — z.B. „Microsoft Conrad (Natural)", „Microsoft Katja (Natural)". Sind in <em>Windows-Einstellungen → Barrierefreiheit → Sprachausgabe</em> über <strong>Sprachausgabestimmen hinzufügen</strong> installierbar (sehr natürlich klingend). <strong>Aber:</strong> diese Modern-Stimmen reicht Windows in der Regel nur an die Sprachausgabe und Erzähler-Apps weiter, nicht an die Web-Speech-Schnittstelle, die diese App nutzt.</li>
+              </ul>
+              <p><strong>Trick für die (Natural)-Stimmen:</strong> Die Modern-Stimmen liegen in einem Registry-Pfad (<code>Speech_OneCore</code>), aus dem Chromium nicht liest. Wenn du sie in den klassischen <code>Speech</code>-Pfad kopierst, sieht diese App sie.</p>
+              <ol>
+                <li><strong>Vorher Wiederherstellungspunkt setzen.</strong> Start → „Wiederherstellungspunkt erstellen" → Erstellen.</li>
+                <li>Start → <em>PowerShell</em> oder <em>Terminal</em> mit der rechten Maustaste → <strong>Als Administrator ausführen</strong>.</li>
+                <li>Snippet mit dem Knopf unten kopieren, in PowerShell einfügen und mit Enter ausführen.</li>
+                <li>Schachtrainer schließen und wieder öffnen.</li>
+              </ol>
+              <pre id="voice-fix-snippet" class="snippet">$src = 'HKLM:\SOFTWARE\Microsoft\Speech_OneCore\Voices\Tokens'
+$dst = 'HKLM:\SOFTWARE\Microsoft\Speech\Voices\Tokens'
+Get-ChildItem $src | ForEach-Object {
+  Copy-Item -Path $_.PSPath -Destination "$dst\$($_.PSChildName)" -Recurse -Force
+  Write-Host "kopiert:" $_.PSChildName
+}</pre>
+              <button id="btn-copy-voice-fix" class="btn btn-ghost btn-sm" type="button" title="PowerShell-Befehl in die Zwischenablage kopieren">Snippet kopieren</button>
+            </details>
+          </section>
+
+          <section class="setting-group">
+            <h3>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Trainer (Ollama)
+            </h3>
+            <label class="field field-stacked">
+              <span class="field-label">Modell</span>
+              <div class="field-with-action">
+                <input id="coach-model" type="text" value="llama3.1:8b" list="ollama-models" placeholder="llama3.1:8b" title="Ollama-Modell (leer = Standard)" />
+                <button id="btn-refresh-models" class="btn btn-ghost btn-sm icon-btn" type="button" title="Modell-Liste neu abrufen">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8 M21 3v5h-5 M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16 M3 21v-5h5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+              <datalist id="ollama-models"></datalist>
+              <span id="model-count" class="voice-count" title="So viele Modelle meldet Ollama gerade."></span>
+            </label>
+
+            <label class="field field-stacked">
+              <span class="field-label">Adresse</span>
+              <input id="coach-host" type="text" value="localhost:11434" placeholder="localhost:11434" title="Ollama-Adresse, z.B. 192.168.1.50:11434 für einen anderen Rechner im Netzwerk" />
+            </label>
+
+            <label class="field field-stacked">
+              <span class="field-label">Gespeicherte Verbindungen</span>
+              <select id="sel-conn" title="Gespeicherte Verbindungen">
+                <option value="">– gespeicherte Verbindung –</option>
+              </select>
+              <div class="conn-row">
+                <input id="conn-name" type="text" placeholder="Name" title="Name für diese Verbindung, z.B. Zuhause" />
+                <button id="btn-conn-save" class="btn btn-ghost btn-sm" type="button" title="Aktuelle Adresse und Modell unter diesem Namen speichern">Speichern</button>
+                <button id="btn-conn-del" class="btn btn-ghost btn-sm" type="button" title="Gewählte Verbindung löschen">Löschen</button>
+              </div>
+            </label>
+
+            <label class="chip-toggle chip-toggle-block" title="Gibt dem Trainer (Ollama) das Schach-Wissen als Grundlage mit">
+              <input type="checkbox" id="chk-knowledge" />
+              <span>Wissen-Handbuch als Grundlage nutzen</span>
+            </label>
+            <button id="btn-wissen" class="btn btn-ghost btn-sm" type="button" title="Schach-Wissen-Handbuch in eigenem Fenster öffnen">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20 M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Wissen-Handbuch öffnen</span>
+            </button>
+
+            <details class="net-help">
+              <summary>Ollama über das Netzwerk verbinden (Tablet/Surface → Hauptrechner)</summary>
+              <ol>
+                <li>Auf dem <strong>Hauptrechner</strong> (wo Ollama läuft) die IP herausfinden: Eingabeaufforderung öffnen, <code>ipconfig</code> eingeben, bei "IPv4-Adresse" steht z.B. <code>192.168.1.50</code>.</li>
+                <li>Ollama dort fürs Netzwerk freigeben: Umgebungsvariable <code>OLLAMA_HOST=0.0.0.0</code> setzen und Ollama neu starten. Ohne das lauscht Ollama nur auf dem Rechner selbst.</li>
+                <li>In der Windows-Firewall des Hauptrechners den Port <code>11434</code> zulassen.</li>
+                <li>Hier auf dem Tablet/Surface ins Adressfeld die IP mit Port eintragen, z.B. <code>192.168.1.50:11434</code> - nicht "localhost".</li>
+                <li>Klappt es, erscheinen die Modelle des Hauptrechners als Vorschläge. Dann mit "Speichern" als Verbindung sichern.</li>
+              </ol>
+              <p>"localhost" heißt "dieser Rechner hier" - richtig, wenn Ollama auf demselben Gerät läuft, aber falsch fürs Tablet, das auf den Hauptrechner zugreifen soll.</p>
+            </details>
+          </section>
+        </div>
+      </aside>
+    </div>
 
     <script type="module" src="/js/main.js"></script>
   </body>
