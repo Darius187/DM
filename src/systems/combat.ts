@@ -40,6 +40,74 @@ export const COMBAT = {
 
 export type ComboStage = 0 | 1 | 2;
 
+export interface AttackStage {
+  /** Aufladen vor den aktiven Frames. */
+  windupMs: number;
+  /** Aktive Frames, in denen der Schwung trifft. */
+  activeMs: number;
+  /** Ausklang; ab CANCEL_THRESHOLD der Gesamtdauer abbrechbar. */
+  recoveryMs: number;
+  /** Öffnungswinkel des Schwungbogens (rad). */
+  arcRad: number;
+  /** Reichweite des Schwungs ab Spielermitte. */
+  range: number;
+  /** Rückstoß-Impuls auf den Getroffenen. */
+  knockback: number;
+}
+
+/** Timing der 3er-Kombo: Hieb rechts, Hieb links, Finisher (breiter, starker Knockback). */
+export const ATTACK_STAGES: readonly AttackStage[] = [
+  { windupMs: 90, activeMs: 90, recoveryMs: 200, arcRad: (100 * Math.PI) / 180, range: 72, knockback: 150 },
+  { windupMs: 90, activeMs: 90, recoveryMs: 200, arcRad: (100 * Math.PI) / 180, range: 72, knockback: 150 },
+  { windupMs: 140, activeMs: 110, recoveryMs: 280, arcRad: (145 * Math.PI) / 180, range: 82, knockback: 380 },
+];
+
+export function attackTotalMs(stage: ComboStage): number {
+  const s = ATTACK_STAGES[stage];
+  if (!s) return 0;
+  return s.windupMs + s.activeMs + s.recoveryMs;
+}
+
+export type AttackPhase = 'windup' | 'active' | 'recovery' | 'done';
+
+/** In welcher Phase befindet sich ein Angriff nach `elapsedMs`? */
+export function attackPhase(stage: ComboStage, elapsedMs: number): AttackPhase {
+  const s = ATTACK_STAGES[stage];
+  if (!s) return 'done';
+  if (elapsedMs < s.windupMs) return 'windup';
+  if (elapsedMs < s.windupMs + s.activeMs) return 'active';
+  if (elapsedMs < s.windupMs + s.activeMs + s.recoveryMs) return 'recovery';
+  return 'done';
+}
+
+/** Kleinster vorzeichenbehafteter Winkelabstand a-b in (-π, π]. */
+export function angleDiff(a: number, b: number): number {
+  let d = (a - b) % (Math.PI * 2);
+  if (d > Math.PI) d -= Math.PI * 2;
+  if (d <= -Math.PI) d += Math.PI * 2;
+  return d;
+}
+
+/** Liegt ein Ziel im Schwung-Sektor (Distanz + Winkel)? */
+export function inAttackSector(params: {
+  attackerX: number;
+  attackerY: number;
+  attackAngle: number;
+  stage: ComboStage;
+  targetX: number;
+  targetY: number;
+  targetRadius: number;
+}): boolean {
+  const s = ATTACK_STAGES[params.stage];
+  if (!s) return false;
+  const dx = params.targetX - params.attackerX;
+  const dy = params.targetY - params.attackerY;
+  const dist = Math.hypot(dx, dy);
+  if (dist - params.targetRadius > s.range) return false;
+  const ang = Math.atan2(dy, dx);
+  return Math.abs(angleDiff(ang, params.attackAngle)) <= s.arcRad / 2 + Math.atan2(params.targetRadius, Math.max(dist, 1));
+}
+
 export interface DamageInput {
   /** Grundschaden der Waffe (bereits gewürfelt, ohne Multiplikatoren). */
   base: number;

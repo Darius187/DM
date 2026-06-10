@@ -24,6 +24,20 @@ Das Prompt sagt „Block beginnt <250 ms vor dem Treffer". Umsetzung: strikt kle
 (`delta < 250`), bei exakt 250 ms gilt der normale Block. Negative Deltas (Block nach dem
 Treffer begonnen) zählen nie als Parade.
 
+## 2026-06-10 — Angriff unterbricht Block (Phase-1-Selbstkritik)
+
+Nach einer perfekten Parade hält der Spieler meist noch die Blocktaste. Würde der Angriffsklick
+dann ignoriert, ginge die Riposte (das Belohnungsmoment der Parade) regelmäßig verloren —
+Verstoß gegen „keine verschluckten Eingaben". Festgelegt: Angriff hat Priorität über gehaltenen
+Block; der Block endet mit Angriffsbeginn und muss danach neu aufgebaut werden (neues
+Parade-Fenster).
+
+## 2026-06-10 — Kombo-Folgeschlag chaint ab 60 % in der Recovery
+
+Die Cancel-Regel (ab 60 % der Animation) gilt laut Prompt für Ausweichen/Block. Für den
+nächsten Kombo-Schlag übernehmen wir dieselbe Schwelle (zusätzlich: erst in der Recovery-Phase),
+damit Kombos snappy bleiben, ohne die aktiven Frames zu verkürzen.
+
 ## 2026-06-10 — Block-Kegel
 
 „Frontschaden" ist im Prompt nicht als Winkel definiert. Festgelegt: ±70° um die Blickrichtung
