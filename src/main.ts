@@ -6,6 +6,7 @@ import { Village } from './scenes/Village';
 import { Dungeon } from './scenes/Dungeon';
 import { BossRoom } from './scenes/BossRoom';
 import { UIOverlay } from './scenes/UIOverlay';
+import { InventoryUI } from './scenes/InventoryUI';
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -22,5 +23,5 @@ new Phaser.Game({
     arcade: { debug: false },
   },
   disableContextMenu: true,
-  scene: [Boot, DebugArena, Village, Dungeon, BossRoom, UIOverlay],
+  scene: [Boot, DebugArena, Village, Dungeon, BossRoom, UIOverlay, InventoryUI],
 });

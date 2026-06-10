@@ -17,6 +17,8 @@ import {
 } from '../systems/combat';
 import { Fx } from '../systems/effects';
 import { sfxBlock, sfxDodge, sfxHit, sfxHurt, sfxParry, sfxSwing } from '../systems/sound';
+import { aggregateStats, type AggregatedStats } from '../systems/loot';
+import { gameState } from '../systems/gameState';
 import { DEPTHS, PALETTE } from '../config';
 
 /** Alles, was der Spieler treffen kann (Dummys, Gegner, Boss). */
@@ -90,7 +92,8 @@ export class Player {
   /** Riposte-Fenster (Realzeit-Ende) nach perfekter Parade. */
   riposteUntil = -Infinity;
 
-  weapon = { minDmg: 8, maxDmg: 12, swingStyle: 'rusty' };
+  /** Ausrüstungswerte; pro Frame aus dem GameState aktualisiert. */
+  private stats: AggregatedStats = aggregateStats({});
 
   private buffer = new InputBuffer();
   /**
@@ -141,6 +144,8 @@ export class Player {
   update(dtMs: number, input: PlayerInput, targets: readonly CombatTarget[]): void {
     this.nowClock += dtMs;
     const now = this.nowClock;
+    this.stats = gameState.stats;
+    this.maxHp = gameState.maxHp;
     if (input.attackPressed) this.buffer.push('attack', now);
     if (input.dodgePressed) this.buffer.push('dodge', now);
 
@@ -225,7 +230,8 @@ export class Player {
 
   private updateAttack(dtMs: number, now: number, input: PlayerInput, targets: readonly CombatTarget[]): void {
     const stage = this.comboStage as ComboStage;
-    this.attackElapsed += dtMs;
+    // Angriffstempo-Affixe beschleunigen die Animation
+    this.attackElapsed += dtMs * (1 + this.stats.attackSpeedPct / 100);
     const total = attackTotalMs(stage);
     const phase = attackPhase(stage, this.attackElapsed);
 
@@ -276,8 +282,13 @@ export class Player {
       });
       if (!hit) continue;
       this.hitTargets.add(t);
-      const base = Phaser.Math.Between(this.weapon.minDmg, this.weapon.maxDmg);
+      const base = Phaser.Math.Between(this.stats.minDmg, this.stats.maxDmg);
       const damage = computeHitDamage({ base, comboStage: stage, riposte: this.attackIsRiposte });
+      // Vampirische Affixe auf eigener Ausrüstung heilen pro Treffer
+      if (this.stats.lifestealPct > 0) {
+        const heal = Math.round((damage * this.stats.lifestealPct) / 100);
+        if (heal > 0) this.hp = Math.min(this.maxHp, this.hp + heal);
+      }
       const ang = Math.atan2(t.y - this.y, t.x - this.x);
       t.takeHit({
         damage,
@@ -322,9 +333,10 @@ export class Player {
       sfxBlock();
       return 'deflected';
     }
-    this.hp = Math.max(0, this.hp - params.damage);
+    const dmg = Math.max(1, params.damage - this.stats.armor);
+    this.hp = Math.max(0, this.hp - dmg);
     this.hurtFlash = 120;
-    this.fx.damageNumber(this.x, this.y, String(params.damage), 'taken');
+    this.fx.damageNumber(this.x, this.y, String(dmg), 'taken');
     this.fx.shake('small');
     sfxHurt();
     return 'hit';
@@ -366,7 +378,9 @@ export class Player {
       return 'parried';
     }
 
-    const result = mitigateDamage({ raw: params.damage, blocking: this.blocking, attackAngleOffset: offset });
+    // Rüstung reduziert flach, bevor der Block mindert
+    const afterArmor = Math.max(1, params.damage - this.stats.armor);
+    const result = mitigateDamage({ raw: afterArmor, blocking: this.blocking, attackAngleOffset: offset });
     this.hp = Math.max(0, this.hp - result.damage);
     if (result.kind === 'blocked') {
       this.fx.damageNumber(this.x, this.y, String(result.damage), 'taken');
@@ -442,7 +456,7 @@ export class Player {
     const phase = attackPhase(stage, this.attackElapsed);
     if (phase === 'recovery' || phase === 'done') return;
 
-    const style = this.attackIsRiposte ? SWING_STYLES['rare'] : SWING_STYLES[this.weapon.swingStyle];
+    const style = this.attackIsRiposte ? SWING_STYLES['rare'] : (SWING_STYLES[this.stats.swingStyle] ?? SWING_STYLES['rusty']);
     if (!style) return;
     const color = this.attackIsRiposte ? PALETTE.gold : style.color;
     const half = spec.arcRad / 2;

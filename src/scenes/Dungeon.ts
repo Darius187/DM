@@ -3,6 +3,8 @@ import { GAME_WIDTH, GAME_HEIGHT, DEPTHS, PALETTE } from '../config';
 import { Player, type PlayerInput } from '../entities/Player';
 import { Enemy, CursedPatch, type EnemyContext } from '../entities/Enemy';
 import { Projectile } from '../entities/Projectile';
+import { Pickup, dropLoot } from '../entities/Pickup';
+import { gameState } from '../systems/gameState';
 import { Fx } from '../systems/effects';
 import { DecalLayer } from '../systems/decals';
 import { LightingLayer, type LightSource } from '../systems/lighting';
@@ -39,6 +41,7 @@ export class Dungeon extends Phaser.Scene {
   private enemies: Enemy[] = [];
   private projectiles: Projectile[] = [];
   private patches: CursedPatch[] = [];
+  private pickups: Pickup[] = [];
   private fx!: Fx;
   private decals!: DecalLayer;
   private lighting!: LightingLayer;
@@ -67,6 +70,7 @@ export class Dungeon extends Phaser.Scene {
     this.enemies = [];
     this.projectiles = [];
     this.patches = [];
+    this.pickups = [];
     this.torchLights = [];
     this.transitioning = false;
     this.stairsCooldown = 1200;
@@ -99,13 +103,14 @@ export class Dungeon extends Phaser.Scene {
     this.fx = new Fx(this);
     this.decals = new DecalLayer(this, lvl.width * TILE_SIZE, lvl.height * TILE_SIZE);
 
-    // Spieler + Kamera
+    // Spieler + Kamera; HP überleben Szenenwechsel via GameState
     this.player = new Player(
       this,
       this.fx,
       lvl.start.x * TILE_SIZE + TILE_SIZE / 2,
       lvl.start.y * TILE_SIZE + TILE_SIZE / 2,
     );
+    this.player.hp = Math.min(gameState.hp, gameState.maxHp);
     this.cameras.main.setBounds(0, 0, lvl.width * TILE_SIZE, lvl.height * TILE_SIZE);
     this.camTarget.x = this.player.x;
     this.camTarget.y = this.player.y;
@@ -154,6 +159,17 @@ export class Dungeon extends Phaser.Scene {
     kb.on('keydown-F5', () => {
       if (this.depth < 3) this.scene.restart({ depth: this.depth + 1, seed: this.seed + 7919 });
     });
+    kb.on('keydown-I', () => {
+      this.scene.pause();
+      this.scene.launch('InventoryUI', { caller: 'Dungeon' });
+    });
+    kb.on('keydown-Q', () => {
+      const heal = gameState.drinkHealPotion();
+      if (heal > 0) {
+        this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
+        this.fx.damageNumber(this.player.x, this.player.y, `+${heal}`, 'golden');
+      }
+    });
     this.input.on('pointerdown', () => unlockAudio());
 
     this.events.on('shutdown', () => {
@@ -161,6 +177,7 @@ export class Dungeon extends Phaser.Scene {
       this.enemies.forEach((e) => e.destroy());
       this.projectiles.forEach((p) => p.destroy());
       this.patches.forEach((p) => p.destroy());
+      this.pickups.forEach((p) => p.destroy());
       this.decals.destroy();
       this.lighting.destroy();
     });
@@ -345,10 +362,14 @@ export class Dungeon extends Phaser.Scene {
     for (const e of this.enemies) {
       if (!e.alive) {
         e.onDeathEffects(ctx);
+        dropLoot(this, this.fx, e.x, e.y, e.xp, e.isElite, this.depth, this.pickups);
         e.destroy();
       }
     }
     this.enemies = this.enemies.filter((e) => e.alive);
+    this.pickups.forEach((p) => p.update(dt, this.player));
+    this.pickups = this.pickups.filter((p) => (p.alive ? true : (p.destroy(), false)));
+    gameState.hp = this.player.hp;
 
     const bounds = { x: 0, y: 0, w: this.level.width * TILE_SIZE, h: this.level.height * TILE_SIZE };
     this.projectiles.forEach((p) => p.update(dt, this.player, bounds, this.isSolid, TILE_SIZE));
@@ -405,7 +426,8 @@ export class Dungeon extends Phaser.Scene {
       {
         x: this.player.x,
         y: this.player.y,
-        radius: PLAYER_LIGHT_RADIUS,
+        // Ring-Affix „des Lichts" vergrößert sichtbar den Lichtkegel
+        radius: PLAYER_LIGHT_RADIUS + gameState.stats.lightRadiusBonus,
         flickerPhase: 0,
         flickerAmount: 0.3,
       },

@@ -152,6 +152,14 @@ export class Enemy implements CombatTarget {
     return this.alive;
   }
 
+  get isElite(): boolean {
+    return this.eliteAffix !== null;
+  }
+
+  get xp(): number {
+    return Math.round(this.spec.xp * (this.eliteAffix ? ELITE_STATS.xpMult : 1));
+  }
+
   get telegraphProgress(): number {
     return this.state === 'telegraph' ? Math.min(1, this.stateElapsed / this.spec.telegraphMs) : -1;
   }

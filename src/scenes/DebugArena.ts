@@ -4,6 +4,9 @@ import { Player, type PlayerInput } from '../entities/Player';
 import { Dummy } from '../entities/Dummy';
 import { Enemy, CursedPatch, type EnemyContext } from '../entities/Enemy';
 import { Projectile } from '../entities/Projectile';
+import { Pickup, dropLoot } from '../entities/Pickup';
+import { gameState } from '../systems/gameState';
+import { generateItem } from '../systems/loot';
 import { Fx } from '../systems/effects';
 import { DecalLayer } from '../systems/decals';
 import { unlockAudio } from '../systems/sound';
@@ -36,6 +39,7 @@ export class DebugArena extends Phaser.Scene {
   private enemies: Enemy[] = [];
   private projectiles: Projectile[] = [];
   private patches: CursedPatch[] = [];
+  private pickups: Pickup[] = [];
   private decals!: DecalLayer;
   private fx!: Fx;
   private debugG!: Phaser.GameObjects.Graphics;
@@ -55,6 +59,7 @@ export class DebugArena extends Phaser.Scene {
     this.enemies = [];
     this.projectiles = [];
     this.patches = [];
+    this.pickups = [];
     this.fx = new Fx(this);
     this.drawFloor();
     this.decals = new DecalLayer(this, GAME_WIDTH, GAME_HEIGHT);
@@ -87,6 +92,23 @@ export class DebugArena extends Phaser.Scene {
     kb.on('keydown-F2', () => this.spawnWave());
     kb.on('keydown-F3', () => this.clearEnemies());
     kb.on('keydown-F4', () => this.scene.start('Dungeon', { depth: 1 }));
+    kb.on('keydown-I', () => {
+      this.scene.pause();
+      this.scene.launch('InventoryUI', { caller: 'DebugArena' });
+    });
+    kb.on('keydown-Q', () => {
+      const heal = gameState.drinkHealPotion();
+      if (heal > 0) {
+        this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
+        this.fx.damageNumber(this.player.x, this.player.y, `+${heal}`, 'golden');
+      }
+    });
+    // Loot-Testtasten: F6 zufälliges Item ins Inventar, F7 Händler
+    kb.on('keydown-F6', () => gameState.addItem(generateItem(Math.random, { depth: 3 })));
+    kb.on('keydown-F7', () => {
+      this.scene.pause();
+      this.scene.launch('InventoryUI', { caller: 'DebugArena', merchant: true, merchantSeed: Date.now() % 100000 });
+    });
 
     this.input.on('pointerdown', () => unlockAudio());
     this.events.on('shutdown', () => {
@@ -113,9 +135,11 @@ export class DebugArena extends Phaser.Scene {
     this.enemies.forEach((e) => e.destroy());
     this.projectiles.forEach((p) => p.destroy());
     this.patches.forEach((p) => p.destroy());
+    this.pickups.forEach((p) => p.destroy());
     this.enemies = [];
     this.projectiles = [];
     this.patches = [];
+    this.pickups = [];
   }
 
   private drawFloor(): void {
@@ -185,14 +209,17 @@ export class DebugArena extends Phaser.Scene {
       tileSize: 32,
     };
     this.enemies.forEach((e) => e.update(dt, ctx));
-    // Gefallene austragen (Verflucht-Fläche legen, Objekte freigeben)
+    // Gefallene austragen (Verflucht-Fläche legen, Loot droppen, Objekte freigeben)
     for (const e of this.enemies) {
       if (!e.alive) {
         e.onDeathEffects(ctx);
+        dropLoot(this, this.fx, e.x, e.y, e.xp, e.isElite, 2, this.pickups);
         e.destroy();
       }
     }
     this.enemies = this.enemies.filter((e) => e.alive);
+    this.pickups.forEach((p) => p.update(dt, this.player));
+    this.pickups = this.pickups.filter((p) => (p.alive ? true : (p.destroy(), false)));
     this.projectiles.forEach((p) => p.update(dt, this.player, ARENA));
     this.projectiles = this.projectiles.filter((p) => (p.alive ? true : (p.destroy(), false)));
     this.patches.forEach((p) => p.update(dt, this.player));
