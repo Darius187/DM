@@ -10,3 +10,5 @@
    Erholzeit danach. Zwischenlösung 0,7 s (kampf.ts). Fühlt sich das richtig an?
 4. Fertigkeits-Schulen: Wie schnell sollen die Stufen kommen? Zwischenlösung:
    Stufe 3 nach 80 Benutzungen, Stufe 9 nach 500 (balancing.ts, eine Kurve).
+5. Die Soundliste in Teil 9 enthält keinen Wolf-Laut - der Wolf nutzt vorerst
+   den Hund-Klang. Soll ein eigener "wolf_knurren"-Sound in die Liste?

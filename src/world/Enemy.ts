@@ -19,8 +19,50 @@ export interface EnemyHost {
   addTelegraph(x: number, y: number, r: number, t: number, dmg: number): void;
   summonAdds(e: Enemy, n: number): void;
   logMsg(text: string, cls?: string): void;
-  playSound(name: string): void;
+  playSound(name: string, volMult?: number): void;
+  burstFx(x: number, y: number, col: number, n: number, spd: number): void;
 }
+
+// Angriffsmuster je Gegnertyp (Masterprompt 4.3: 2-3 Muster, Telegraph 0,35-0,85 s)
+interface AttackPattern {
+  id: 'hieb' | 'doppelhieb' | 'giftwolke' | 'blinkschlag' | 'sprung';
+  windup: number;
+  weight: number;
+}
+const PATTERNS: Partial<Record<EnemyTypeId, AttackPattern[]>> = {
+  pest: [
+    { id: 'hieb', windup: 0.45, weight: 3 },
+    { id: 'giftwolke', windup: 0.85, weight: 1 },
+  ],
+  skelett: [
+    { id: 'hieb', windup: 0.36, weight: 3 },
+    { id: 'doppelhieb', windup: 0.5, weight: 1 },
+  ],
+  schuetze: [
+    { id: 'hieb', windup: 0.35, weight: 1 },
+  ],
+  schatten: [
+    { id: 'hieb', windup: 0.35, weight: 3 },
+    { id: 'blinkschlag', windup: 0.55, weight: 1 },
+  ],
+  wolf: [
+    { id: 'hieb', windup: 0.35, weight: 2 },
+    { id: 'sprung', windup: 0.6, weight: 1 },
+  ],
+  ratte: [
+    { id: 'hieb', windup: 0.35, weight: 1 },
+  ],
+};
+
+// Positions-Audio je Typ (Hören vor Sehen, Masterprompt 4.3)
+const AMBIENT_SOUND: Partial<Record<EnemyTypeId, string>> = {
+  pest: 'pest_stoehnen',
+  skelett: 'skelett_klappern',
+  schuetze: 'skelett_klappern',
+  schatten: 'schatten_fluestern',
+  templer: 'templer_stimme',
+  wolf: 'hund',
+};
 
 let nextId = 1;
 
@@ -56,6 +98,12 @@ export class Enemy {
   stepT = 0;
   markedT = 0; // Markierter Tod (Bogen Stufe 9)
   banishedT = 0; // Bannkreis schwächt Untote
+  private pattern: AttackPattern['id'] = 'hieb';
+  private secondHitT = 0;   // Doppelhieb: zweiter Schlag
+  private lungeT = 0;       // Sprungangriff: Restflugzeit
+  private lungeVx = 0;
+  private lungeVy = 0;
+  private ambientT = Math.random() * 3 + 1;
 
   // Boss-Zustand
   private slamCd: number = BOSS.slamCd;
@@ -142,14 +190,32 @@ export class Enemy {
       this.stun -= dt;
       return;
     }
-    if (this.windup > 0) {
-      this.windup -= dt;
-      if (this.windup <= 0 && d < this.r + host.playerR() + 18) {
-        host.enemyMeleeHit(this, Math.round(this.dmg * (0.8 + Math.random() * 0.35)));
+    // Doppelhieb: zweiter Schlag kurz nach dem ersten
+    if (this.secondHitT > 0) {
+      this.secondHitT -= dt;
+      if (this.secondHitT <= 0 && d < this.r + host.playerR() + 20) {
+        host.enemyMeleeHit(this, Math.round(this.dmg * 0.7));
+      }
+    }
+    // Sprungangriff: fliegt auf den Spieler zu, Kontakt verletzt
+    if (this.lungeT > 0) {
+      this.lungeT -= dt;
+      this.moveBody(host, this.lungeVx * dt, this.lungeVy * dt);
+      if (d < this.r + host.playerR() + 4) {
+        this.lungeT = 0;
+        host.enemyMeleeHit(this, Math.round(this.dmg * 1.2));
       }
       return;
     }
-    if (d > this.aggro) return;
+    if (this.windup > 0) {
+      this.windup -= dt;
+      if (this.windup <= 0) this.executePattern(host, d);
+      return;
+    }
+    if (d > this.aggro) {
+      this.ambientSound(host, d, dt);
+      return;
+    }
 
     const slowF = this.slowT > 0 ? ENEMY_AI.slowFactorEis : 1;
     if (this.ranged && d < ENEMY_AI.rangedMaxShoot && d > ENEMY_AI.rangedMinShoot && this.hasLineOfSight(host)) {
@@ -164,13 +230,89 @@ export class Enemy {
         this.advanceStep(dt);
       }
     } else if (d > this.r + host.playerR() + 2) {
+      // Wolf darf den Sprung auch aus kurzer Distanz ansetzen
+      if (this.type === 'wolf' && d < 120 && d > 50 && this.atkCd === 0 && Math.random() < 0.4) {
+        this.startPattern(host, 'sprung');
+        return;
+      }
       this.moveBody(host, Math.cos(ang) * this.speed * slowF * dt, Math.sin(ang) * this.speed * slowF * dt);
       this.advanceStep(dt);
     } else if (this.atkCd === 0) {
-      this.atkCd = ENEMY_AI.meleeAtkCd;
-      this.windup = ENEMY_AI.meleeWindup;
-      host.playSound('telegraph');
+      this.choosePattern(host);
     }
+  }
+
+  private choosePattern(host: EnemyHost): void {
+    const list = PATTERNS[this.type] ?? [{ id: 'hieb' as const, windup: ENEMY_AI.meleeWindup, weight: 1 }];
+    let total = 0;
+    for (const p of list) total += p.weight;
+    let roll = Math.random() * total;
+    let chosen = list[0];
+    for (const p of list) {
+      roll -= p.weight;
+      if (roll <= 0) { chosen = p; break; }
+    }
+    this.startPattern(host, chosen.id, chosen.windup);
+  }
+
+  private startPattern(host: EnemyHost, id: AttackPattern['id'], windup?: number): void {
+    const def = (PATTERNS[this.type] ?? []).find((p) => p.id === id);
+    this.pattern = id;
+    this.windup = windup ?? def?.windup ?? ENEMY_AI.meleeWindup;
+    this.atkCd = ENEMY_AI.meleeAtkCd + (id === 'hieb' ? 0 : 0.6);
+    host.playSound('telegraph', 0.7);
+  }
+
+  private executePattern(host: EnemyHost, d: number): void {
+    const px = host.playerX(), py = host.playerY();
+    const ang = Math.atan2(py - this.y, px - this.x);
+    switch (this.pattern) {
+      case 'hieb':
+        if (d < this.r + host.playerR() + 18) host.enemyMeleeHit(this, Math.round(this.dmg * (0.8 + Math.random() * 0.35)));
+        break;
+      case 'doppelhieb':
+        if (d < this.r + host.playerR() + 20) host.enemyMeleeHit(this, Math.round(this.dmg * 0.7));
+        this.secondHitT = 0.25;
+        break;
+      case 'giftwolke':
+        // Pestopfer entlädt eine fauligen Schwaden um sich selbst
+        host.addTelegraph(this.x, this.y, 56, 0.5, Math.round(this.dmg * 1.1));
+        host.burstFx(this.x, this.y, 0x6a8a3a, 12, 90);
+        host.playSound('pest_stoehnen');
+        break;
+      case 'blinkschlag': {
+        // Grabschatten erscheint hinter dem Spieler und schlägt sofort wieder aus
+        host.burstFx(this.x, this.y, 0xb06ae8, 12, 140);
+        const behind = Math.atan2(this.y - py, this.x - px) + Math.PI;
+        const nx = px + Math.cos(behind) * 34;
+        const ny = py + Math.sin(behind) * 34;
+        if (!host.isSolidAt(nx, ny)) {
+          this.x = nx;
+          this.y = ny;
+        }
+        host.burstFx(this.x, this.y, 0xb06ae8, 12, 140);
+        host.playSound('schatten_fluestern');
+        this.pattern = 'hieb';
+        this.windup = 0.25;
+        break;
+      }
+      case 'sprung':
+        this.lungeT = 0.35;
+        this.lungeVx = Math.cos(ang) * 330;
+        this.lungeVy = Math.sin(ang) * 330;
+        host.playSound('hund');
+        break;
+    }
+  }
+
+  // Hören vor Sehen: ab ~1,5-facher Aggro-Reichweite leise hörbar
+  private ambientSound(host: EnemyHost, d: number, dt: number): void {
+    if (d > this.aggro * 1.5) return;
+    this.ambientT -= dt;
+    if (this.ambientT > 0) return;
+    this.ambientT = 2.5 + Math.random() * 3;
+    const snd = AMBIENT_SOUND[this.type];
+    if (snd) host.playSound(snd, Math.max(0.15, 1 - d / (this.aggro * 1.5)) * 0.6);
   }
 
   private bossAI(host: EnemyHost, dt: number, d: number): void {

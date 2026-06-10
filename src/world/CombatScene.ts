@@ -69,7 +69,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
   playerY(): number { return this.py; }
   playerR(): number { return PLAYER.radius; }
   logMsg(_text: string, _cls?: string): void { /* überschreibbar (HUD) */ }
-  playSound(name: string): void { this.sfx.play(name); }
+  playSound(name: string, volMult = 1): void { this.sfx.play(name, volMult); }
+  burstFx(x: number, y: number, col: number, n: number, spd: number): void { this.fx.burst(x, y, col, n, spd); }
 
   protected setupCombat(startX: number, startY: number): void {
     this.provider = new SpriteProvider(this);
@@ -107,11 +108,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
     this.input.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
       if (this.playerDead || this.uiBlocked()) return;
       if (ptr.rightButtonDown()) this.tryBlockStart();
+      else if (this.weaponClass() === 'bogen') this.startBowDraw();
       else this.mouseDown = true;
     });
     this.input.on('pointerup', (ptr: Phaser.Input.Pointer) => {
       this.mouseDown = false;
       if (ptr.button === 2) this.tryBlockEnd();
+      else if (this.bowDrawT >= 0) this.releaseBow();
     });
     this.game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
@@ -170,6 +173,40 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
 
   protected weaponClass(): WeaponClass {
     return this.p.weapon?.weaponClass ?? 'schwert';
+  }
+
+  // --- Bogen: halten = spannen, loslassen = Schuss (Pfeile als Ressource) ---
+  protected bowDrawT = -1; // -1 = nicht am Spannen
+
+  protected startBowDraw(): void {
+    if (this.combat.action !== 'idle') return;
+    if (this.p.arrows <= 0) {
+      this.logMsg(MELDUNGEN.keinePfeile, 'bad');
+      this.sfx.play('fehler');
+      return;
+    }
+    this.bowDrawT = 0;
+    this.sfx.play('bogen_spannen');
+  }
+
+  protected releaseBow(): void {
+    if (this.bowDrawT < 0) return;
+    const ms = WEAPON_MOVESETS.bogen;
+    const drawn = Math.min(1, this.bowDrawT / ms.drawTimeMaxS);
+    this.bowDrawT = -1;
+    if (this.p.arrows <= 0) return;
+    this.p.arrows--;
+    const ang = this.aimAngle();
+    this.pdir = ang;
+    const dmgMult = 1 + drawn * (ms.dmgMultFull - 1);
+    const schulBonus = 1 + this.p.schools.bogen.level * 0.025;
+    const dmg = Math.round(this.rollDamage(dmgMult) * schulBonus);
+    this.projectiles.push({
+      x: this.px + Math.cos(ang) * 14, y: this.py + Math.sin(ang) * 14,
+      vx: Math.cos(ang) * ms.projSpeed, vy: Math.sin(ang) * ms.projSpeed,
+      r: 4, dmg, from: 'player', col: '#d8d0b8', arrow: true,
+    });
+    this.sfx.play('pfeil_schuss');
   }
 
   protected executeAttack(ev: AttackEvent): void {
@@ -482,9 +519,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
       }
     } else if ((dx || dy) && this.combat.action !== 'heavyWindup') {
       const l = Math.hypot(dx, dy);
-      const spd = PLAYER.speed * (this.combat.blocking ? PLAYER.blockSpeedMult : 1);
+      const drawing = this.bowDrawT >= 0;
+      const spd = PLAYER.speed * (this.combat.blocking ? PLAYER.blockSpeedMult : 1) * (drawing ? 0.55 : 1);
       this.movePlayer((dx / l) * spd * dt, (dy / l) * spd * dt);
-      if (!this.combat.blocking) this.pdir = Math.atan2(dy, dx);
+      if (!this.combat.blocking && !drawing) this.pdir = Math.atan2(dy, dx);
       this.pstepT += dt;
       if (this.pstepT > 0.13) {
         this.pstepT = 0;
@@ -492,6 +530,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
       }
     }
     if (this.combat.blocking) this.pdir = this.aimAngle();
+    if (this.bowDrawT >= 0) {
+      this.bowDrawT += dt;
+      this.pdir = this.aimAngle();
+    }
 
     // Spieler-Status
     this.playerHitFlash = Math.max(0, this.playerHitFlash - dt);
@@ -705,10 +747,37 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
       g.lineStyle(3, 0xe0b53a, 0.4 + prog * 0.5);
       g.strokeCircle(this.px, this.py, PLAYER.radius + 8 + (1 - prog) * 10);
     }
+    // Bogen: Spann-Anzeige
+    if (this.bowDrawT >= 0) {
+      const drawn = Math.min(1, this.bowDrawT / WEAPON_MOVESETS.bogen.drawTimeMaxS);
+      g.lineStyle(2, drawn >= 1 ? 0xe0b53a : 0xd8d0b8, 0.8);
+      g.beginPath();
+      g.arc(this.px, this.py, PLAYER.radius + 9, this.pdir - 0.5 * drawn, this.pdir + 0.5 * drawn);
+      g.strokePath();
+    }
+    // Projektile
+    for (const pr of this.projectiles) {
+      if (pr.arrow) {
+        const a = Math.atan2(pr.vy, pr.vx);
+        g.lineStyle(2, 0xd8d0b8, 1);
+        g.lineBetween(pr.x - Math.cos(a) * 7, pr.y - Math.sin(a) * 7, pr.x + Math.cos(a) * 7, pr.y + Math.sin(a) * 7);
+      } else {
+        if (pr.fire) {
+          g.fillStyle(0xe8842a, 0.35);
+          g.fillCircle(pr.x, pr.y, pr.r + 5);
+        }
+        g.fillStyle(cssCol(pr.col), 1);
+        g.fillCircle(pr.x, pr.y, pr.r);
+      }
+    }
 
     // Kamera-Wackeln
     const cam = this.cameras.main;
     const shk = getSettings().shake ? this.shakeAmt : 0;
     cam.setFollowOffset(shk ? (Math.random() * 2 - 1) * shk : 0, shk ? (Math.random() * 2 - 1) * shk : 0);
   }
+}
+
+function cssCol(c: string): number {
+  return c.startsWith('#') ? parseInt(c.slice(1), 16) : 0xffffff;
 }

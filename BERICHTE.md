@@ -68,6 +68,31 @@ Offen:
 - Touch-Steuerung kommt in Phase 10.
 - Bogen-Moveset (Spannen/Pfeile) kommt in Phase 2.
 
+## Phase 2 - Waffenklassen + Gegnerkatalog (abgenommen)
+
+Fertig und verifiziert (Browser-Durchlauf mit allen Typen, Screenshots
+phase2-bogen-spannen/-schuss/-boss/-alle.png, keine Laufzeitfehler):
+- Alle 5 Waffenklassen-Movesets: Schwerter (3er-Kombo), Äxte (Finisher =
+  360°-Rundumschlag), Hellebarde (Geradeaus-Stoß, höchste Reichweite,
+  schmaler Kegel, Rückstoß), Wuchtwaffen (Überkopfschlag, Flächenschaden,
+  bester Haltungsschaden, Mini-Shake), Bogen (halten = spannen mit
+  Spann-Anzeige, mehr Schaden bei vollem Zug, Pfeile als Ressource).
+- Jede Klasse mit eigenem Klang (WebAudio-Fallback) und eigenem Schwung-Visual.
+- Gegner-Angriffsmuster (Telegraphen 0,35-0,85 s): Pestopfer Hieb +
+  Giftwolke (Flächen-Telegraph), Skelett Hieb + Doppelhieb, Grabschatten
+  Hieb + Blinkschlag (erscheint hinter dem Spieler), Wolf Biss +
+  Sprungangriff, Schütze Schuss + Nahkampf + Kiting, Tempelritter
+  Hieb/Slam/Fächer + Beschwörung 66%/33% + Phase 2 ab 50%.
+- Elite-Gegner: goldener Ring, größer, Schnell/Vampirisch, in der Arena
+  per Taste 9 zuschaltbar.
+- "Hören vor Sehen": Gegner ab 1,5-facher Aggro-Reichweite leise hörbar
+  (Lautstärke nach Distanz). Implementiert, aber per Screenshot nicht
+  prüfbar - im Live-Spiel gegenhören.
+
+Offen:
+- Wolf nutzt den Hunde-Klang als Fallback (kein Wolf-Sound in der
+  Spezifikations-Soundliste) - in OFFENE-FRAGEN.md vermerkt.
+
 ## Hinweis zur Verifikations-Umgebung
 
 Playwrights eigener Browser-Download ist in dieser Umgebung gesperrt;
