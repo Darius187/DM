@@ -80,7 +80,7 @@ export class InventoryUI extends Phaser.Scene {
           if (gameState.buy(item, row.price)) this.stock = this.stock.filter((s) => s.uid !== item.uid);
         } else if (row.action === 'buyHeal' && row.price !== undefined && gameState.gold >= row.price) {
           gameState.gold -= row.price;
-          gameState.healPotions++;
+          gameState.flasks = Math.min(gameState.maxFlasks, gameState.flasks + 1);
         } else if (row.action === 'buyMana' && row.price !== undefined && gameState.gold >= row.price) {
           gameState.gold -= row.price;
           gameState.manaPotions++;
@@ -119,7 +119,7 @@ export class InventoryUI extends Phaser.Scene {
     this.addText(
       panel.x + panel.width - 280,
       panel.y + 18,
-      `Gold: ${gameState.gold}   Heiltränke: ${gameState.healPotions}`,
+      `Gold: ${gameState.gold}   Flaschen: ${gameState.flasks}/${gameState.maxFlasks}`,
       '#d8cfb8',
       14,
     );

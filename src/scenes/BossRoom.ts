@@ -11,7 +11,7 @@ import { LightingLayer, type LightSource } from '../systems/lighting';
 import { gameState } from '../systems/gameState';
 import { saveGame } from '../systems/save';
 import { templerklinge } from '../systems/loot';
-import { sfxPotion, unlockAudio } from '../systems/sound';
+import { unlockAudio } from '../systems/sound';
 import narrationData from '../data/narration.json';
 
 const ARENA = { x: 96, y: 96, w: GAME_WIDTH - 192, h: GAME_HEIGHT - 192 };
@@ -37,7 +37,7 @@ export class BossRoom extends Phaser.Scene {
   private choiceTexts: Phaser.GameObjects.Text[] = [];
   private transitioning = false;
 
-  private keys!: Record<'W' | 'A' | 'S' | 'D' | 'E' | 'SPACE' | 'K' | 'J' | 'Q', Phaser.Input.Keyboard.Key>;
+  private keys!: Record<'W' | 'A' | 'S' | 'D' | 'E' | 'SPACE' | 'K' | 'J' | 'Q' | 'SHIFT', Phaser.Input.Keyboard.Key>;
   private prevLeftDown = false;
 
   constructor() {
@@ -76,15 +76,7 @@ export class BossRoom extends Phaser.Scene {
       .setDepth(DEPTHS.ui);
 
     const kb = this.input.keyboard!;
-    this.keys = kb.addKeys('W,A,S,D,E,SPACE,K,J,Q') as typeof this.keys;
-    kb.on('keydown-Q', () => {
-      const heal = gameState.drinkHealPotion();
-      if (heal > 0) {
-        this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
-        this.fx.damageNumber(this.player.x, this.player.y, `+${heal}`, 'golden');
-        sfxPotion();
-      }
-    });
+    this.keys = kb.addKeys('W,A,S,D,E,SPACE,K,J,Q,SHIFT') as typeof this.keys;
     kb.on('keydown-I', () => {
       this.scene.pause();
       this.scene.launch('InventoryUI', { caller: 'BossRoom' });
@@ -169,15 +161,18 @@ export class BossRoom extends Phaser.Scene {
     const pointer = this.input.activePointer;
     const aimAngle = Math.atan2(pointer.worldY - this.player.y, pointer.worldX - this.player.x);
     const leftDown = pointer.leftButtonDown();
-    const attackPressed = (leftDown && !this.prevLeftDown) || Phaser.Input.Keyboard.JustDown(k.J);
+    const attackEdge = (leftDown && !this.prevLeftDown) || Phaser.Input.Keyboard.JustDown(k.J);
     this.prevLeftDown = leftDown;
+    const heavy = k.SHIFT.isDown;
     return {
       moveX,
       moveY,
       aimAngle,
       blockHeld: k.K.isDown || pointer.rightButtonDown(),
-      attackPressed,
+      attackPressed: attackEdge && !heavy,
+      heavyPressed: attackEdge && heavy,
       dodgePressed: Phaser.Input.Keyboard.JustDown(k.SPACE),
+      drinkPressed: Phaser.Input.Keyboard.JustDown(k.Q),
     };
   }
 

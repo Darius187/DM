@@ -13,15 +13,36 @@ export interface EquippedSlots {
   ring?: ItemInstance;
 }
 
+export interface ShrinePoint {
+  /** 'boss' = Schrein vor der Nebelwand; sonst Ebene + Seed der Krypta. */
+  kind: 'dungeon' | 'boss';
+  depth?: number;
+  seed?: number;
+}
+
+export interface GameOptions {
+  /** Schadenszahlen an per Default (Diablo-Erbe), abschaltbar. */
+  damageNumbers: boolean;
+  /** Screenshake-Stärke 0..1. */
+  shakeStrength: number;
+  /** Späh-Kamera-Reichweite 0..1. */
+  peekRange: number;
+}
+
 export class GameState {
   gold = 25;
-  healPotions = 2;
+  /** Heilflaschen: Schreine füllen auf; Magdalena verkauft Upgrades (+1 max). */
+  flasks = 3;
+  maxFlasks = 3;
   manaPotions = 1;
   items: ItemInstance[] = [];
   equipped: EquippedSlots = {};
   /** Aktuelle HP überleben Szenenwechsel (Dorf <-> Krypta). */
   hp = 100;
   flags: Record<string, boolean> = {};
+  /** Respawn-Punkt: zuletzt berasteter Kerzenschrein (oder null = Dorf). */
+  lastShrine: ShrinePoint | null = null;
+  options: GameOptions = { damageNumbers: true, shakeStrength: 1, peekRange: 1 };
 
   get stats(): AggregatedStats {
     return aggregateStats(this.equipped);
@@ -70,12 +91,27 @@ export class GameState {
     return true;
   }
 
-  drinkHealPotion(): number {
-    if (this.healPotions <= 0 || this.hp >= this.maxHp) return 0;
-    this.healPotions--;
-    const heal = 40;
-    this.hp = Math.min(this.maxHp, this.hp + heal);
-    return heal;
+  /** Verbraucht eine Flasche (am Ende des Trinkens). Liefert die Heilmenge. */
+  useFlask(): number {
+    if (this.flasks <= 0) return 0;
+    this.flasks--;
+    return 45;
+  }
+
+  /** Rasten am Kerzenschrein: Leben, Mana und Flaschen voll; Räume bleiben geräumt. */
+  restAtShrine(shrine: ShrinePoint): void {
+    this.hp = this.maxHp;
+    this.flasks = this.maxFlasks;
+    this.lastShrine = shrine;
+  }
+
+  /** Flaschen-Upgrade bei Magdalena (+1 max, Langzeitziel). */
+  buyFlaskUpgrade(price: number): boolean {
+    if (this.gold < price || this.maxFlasks >= 6) return false;
+    this.gold -= price;
+    this.maxFlasks++;
+    this.flasks = Math.min(this.maxFlasks, this.flasks + 1);
+    return true;
   }
 }
 

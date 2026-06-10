@@ -9,9 +9,9 @@ import { gameState } from '../systems/gameState';
 import { generateItem } from '../systems/loot';
 import { Fx } from '../systems/effects';
 import { DecalLayer } from '../systems/decals';
-import { sfxPotion, unlockAudio } from '../systems/sound';
+import { unlockAudio } from '../systems/sound';
 import { rollElite } from '../systems/enemyAI';
-import { ATTACK_STAGES, COMBAT, attackPhase, type ComboStage } from '../systems/combat';
+import { ATTACK_STAGES, COMBAT, attackPhase } from '../systems/combat';
 import enemiesData from '../data/enemies.json';
 
 const ARENA = { x: 60, y: 60, w: GAME_WIDTH - 120, h: GAME_HEIGHT - 120 };
@@ -47,7 +47,10 @@ export class DebugArena extends Phaser.Scene {
   private stateText!: Phaser.GameObjects.Text;
   private showDebug = true;
 
-  private keys!: Record<'W' | 'A' | 'S' | 'D' | 'J' | 'K' | 'SPACE' | 'T' | 'G' | 'H' | 'R', Phaser.Input.Keyboard.Key>;
+  private keys!: Record<
+    'W' | 'A' | 'S' | 'D' | 'J' | 'K' | 'Q' | 'SHIFT' | 'SPACE' | 'T' | 'G' | 'H' | 'R',
+    Phaser.Input.Keyboard.Key
+  >;
   private prevLeftDown = false;
 
   constructor() {
@@ -81,13 +84,13 @@ export class DebugArena extends Phaser.Scene {
       .text(
         ARENA.x,
         28,
-        'DEBUG-ARENA   WASD · Maus · LMB/J Kombo · RMB/K Block · Space Dodge   |   T: Angriff · G: Auto · H: Overlay · R: heilen · F1: Reset · F2: Gegnerwelle · F3: leeren',
+        'DEBUG-ARENA   WASD · Maus · LMB Kombo · Shift+LMB schwer · RMB Block · Space Rolle · Q Flasche   |   T: Angriff · G: Auto · H: Overlay · R: heilen · F1: Reset · F2: Gegnerwelle · F3: leeren',
         { fontFamily: 'monospace', fontSize: '12px', color: '#8a8170' },
       )
       .setDepth(DEPTHS.ui);
 
     const kb = this.input.keyboard!;
-    this.keys = kb.addKeys('W,A,S,D,J,K,SPACE,T,G,H,R') as typeof this.keys;
+    this.keys = kb.addKeys('W,A,S,D,J,K,Q,SHIFT,SPACE,T,G,H,R') as typeof this.keys;
     kb.on('keydown-F1', () => this.scene.restart());
     kb.on('keydown-F2', () => this.spawnWave());
     kb.on('keydown-F3', () => this.clearEnemies());
@@ -96,14 +99,6 @@ export class DebugArena extends Phaser.Scene {
     kb.on('keydown-I', () => {
       this.scene.pause();
       this.scene.launch('InventoryUI', { caller: 'DebugArena' });
-    });
-    kb.on('keydown-Q', () => {
-      const heal = gameState.drinkHealPotion();
-      if (heal > 0) {
-        this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
-        this.fx.damageNumber(this.player.x, this.player.y, `+${heal}`, 'golden');
-        sfxPotion();
-      }
     });
     // Loot-Testtasten: F6 zufälliges Item ins Inventar, F7 Händler
     kb.on('keydown-F6', () => gameState.addItem(generateItem(Math.random, { depth: 3 })));
@@ -175,16 +170,19 @@ export class DebugArena extends Phaser.Scene {
     const aimAngle = Math.atan2(pointer.worldY - this.player.y, pointer.worldX - this.player.x);
 
     const leftDown = pointer.leftButtonDown();
-    const attackPressed = (leftDown && !this.prevLeftDown) || Phaser.Input.Keyboard.JustDown(k.J);
+    const attackEdge = (leftDown && !this.prevLeftDown) || Phaser.Input.Keyboard.JustDown(k.J);
     this.prevLeftDown = leftDown;
+    const heavy = k.SHIFT.isDown;
 
     return {
       moveX,
       moveY,
       aimAngle,
       blockHeld: pointer.rightButtonDown() || k.K.isDown,
-      attackPressed,
+      attackPressed: attackEdge && !heavy,
+      heavyPressed: attackEdge && heavy,
       dodgePressed: Phaser.Input.Keyboard.JustDown(k.SPACE),
+      drinkPressed: Phaser.Input.Keyboard.JustDown(k.Q),
     };
   }
 
@@ -264,13 +262,15 @@ export class DebugArena extends Phaser.Scene {
     g.lineStyle(1, PALETTE.parchment, 0.5);
     g.strokeRect(ARENA.x, GAME_HEIGHT - 34, w, 14);
 
-    // Ausweich-Cooldown
-    const cd = this.player.dodgeCooldownRemaining(now);
-    const cdFrac = 1 - cd / COMBAT.DODGE_COOLDOWN_MS;
+    // Ausdauer: pulst kurz, wenn eine Aktion mangels Ausdauer abgewiesen wurde
+    const denied = now - this.player.staminaDeniedAt < 500;
+    const pulse = denied ? 0.5 + 0.5 * Math.sin(now / 50) : 1;
     g.fillStyle(0x000000, 0.6);
-    g.fillRect(ARENA.x + w + 12, GAME_HEIGHT - 34, 80, 14);
-    g.fillStyle(cdFrac >= 1 ? 0x6fae4f : 0x7d8da0, 1);
-    g.fillRect(ARENA.x + w + 12, GAME_HEIGHT - 34, 80 * Phaser.Math.Clamp(cdFrac, 0, 1), 14);
+    g.fillRect(ARENA.x + w + 12, GAME_HEIGHT - 34, 140, 14);
+    g.fillStyle(denied ? 0xd2a232 : 0x6fae4f, pulse);
+    g.fillRect(ARENA.x + w + 12, GAME_HEIGHT - 34, 140 * this.player.stamina.fraction, 14);
+    g.lineStyle(1, PALETTE.parchment, 0.4);
+    g.strokeRect(ARENA.x + w + 12, GAME_HEIGHT - 34, 140, 14);
   }
 
   private renderDebug(now: number): void {
@@ -278,16 +278,18 @@ export class DebugArena extends Phaser.Scene {
     g.clear();
 
     const p = this.player;
-    const stage = p.comboStage >= 0 ? (p.comboStage as ComboStage) : null;
-    const phase = p.attacking && stage !== null ? attackPhase(stage, p.attackElapsed) : '-';
+    const stage = p.attacking ? p.currentAttack : null;
+    const phase = stage !== null ? attackPhase(stage, p.attackElapsed) : '-';
     const blockAge = p.blockAge(now);
     const riposteLeft = Math.max(0, p.riposteUntil - now);
+    const attackLabel = stage === 3 ? 'SCHWER' : `${p.comboStage + 1}/3`;
 
     this.stateText.setText(
-      `Zustand: ${p.state}${p.blocking ? '+block' : ''}  Kombo: ${p.comboStage + 1}/3  Phase: ${phase}` +
+      `Zustand: ${p.state}${p.blocking ? '+block' : ''}  Angriff: ${attackLabel}  Phase: ${phase}` +
+        `  |  Ausdauer: ${Math.round(p.stamina.value)}/120` +
         `  |  Parade-Fenster: ${blockAge >= 0 ? `${Math.min(blockAge, 999).toFixed(0)}ms/${COMBAT.PARRY_WINDOW_MS}ms` : '—'}` +
         `  |  Riposte: ${riposteLeft > 0 ? `${(riposteLeft / 1000).toFixed(1)}s` : '—'}` +
-        `  |  Auto-Angriff: ${this.dummies[0]?.autoAttack ? 'AN' : 'aus'}`,
+        `  |  Auto: ${this.dummies[0]?.autoAttack ? 'AN' : 'aus'}`,
     );
 
     if (!this.showDebug) return;

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { COMBAT } from './combat';
+import { gameState } from './gameState';
 import { DEPTHS } from '../config';
 
 /**
@@ -42,9 +43,25 @@ export class Fx {
     this.hitstopUntil = Math.max(this.hitstopUntil, this.scene.time.now + durationMs);
   }
 
-  /** Screenshake-Stärken: small < medium < strong, alle unter 6 px. */
+  /** Mini-Zoom bei der Riposte: kurzer Kamera-Punch nach innen. */
+  zoomPunch(): void {
+    const cam = this.scene.cameras.main;
+    const base = cam.zoom;
+    this.scene.tweens.add({
+      targets: cam,
+      zoom: base * 1.06,
+      duration: 90,
+      yoyo: true,
+      ease: 'Quad.easeOut',
+      onComplete: () => cam.setZoom(base),
+    });
+  }
+
+  /** Screenshake-Stärken: small < medium < strong, alle unter 6 px. Skaliert per Option. */
   shake(strength: 'small' | 'medium' | 'strong'): void {
-    const intensity = strength === 'small' ? 0.0018 : strength === 'medium' ? 0.0032 : 0.0046;
+    const scale = gameState.options.shakeStrength;
+    if (scale <= 0) return;
+    const intensity = (strength === 'small' ? 0.0018 : strength === 'medium' ? 0.0032 : 0.0046) * scale;
     const duration = strength === 'small' ? 90 : strength === 'medium' ? 140 : 220;
     this.scene.cameras.main.shake(duration, intensity);
   }
@@ -54,6 +71,7 @@ export class Fx {
    * normaler ausgeteilter Schaden pergamentfarben.
    */
   damageNumber(x: number, y: number, value: string, kind: 'dealt' | 'taken' | 'golden' = 'dealt'): void {
+    if (!gameState.options.damageNumbers) return;
     const color = kind === 'golden' ? '#c9a227' : kind === 'taken' ? '#e04040' : '#d8cfb8';
     const size = kind === 'golden' ? 22 : 17;
     const t = this.scene.add.text(x + Phaser.Math.Between(-8, 8), y - 18, value, {

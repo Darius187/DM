@@ -2,11 +2,14 @@ import Phaser from 'phaser';
 import {
   ATTACK_STAGES,
   COMBAT,
+  HEAVY_ATTACK,
+  STAMINA,
+  StaminaPool,
+  type AttackId,
   type ComboStage,
   InputBuffer,
   angleDiff,
   attackPhase,
-  attackTotalMs,
   canCancelAttack,
   computeHitDamage,
   inAttackSector,
@@ -16,7 +19,7 @@ import {
   nextComboStage,
 } from '../systems/combat';
 import { Fx } from '../systems/effects';
-import { sfxBlock, sfxDodge, sfxHit, sfxHurt, sfxParry, sfxSwing } from '../systems/sound';
+import { sfxBlock, sfxDodge, sfxHeartbeat, sfxHit, sfxHurt, sfxParry, sfxPotion, sfxSwing } from '../systems/sound';
 import { aggregateStats, type AggregatedStats } from '../systems/loot';
 import { gameState } from '../systems/gameState';
 import { DEPTHS, PALETTE } from '../config';
@@ -38,7 +41,11 @@ export interface PlayerInput {
   aimAngle: number;
   blockHeld: boolean;
   attackPressed: boolean;
+  /** Shift+Klick: schwerer Überkopfhieb. */
+  heavyPressed: boolean;
   dodgePressed: boolean;
+  /** Q: Heilflasche trinken (0,6 s, langsames Weitergehen möglich). */
+  drinkPressed: boolean;
 }
 
 export type AttackOutcome = 'dodged' | 'parried' | 'blocked' | 'hit';
@@ -70,12 +77,19 @@ export class Player {
   hp = 100;
   maxHp = 100;
 
-  state: 'normal' | 'attack' | 'dodge' = 'normal';
+  state: 'normal' | 'attack' | 'dodge' | 'drink' = 'normal';
   blocking = false;
   /** Realzeit-Stempel des Blockbeginns (für das Parade-Fenster). */
   blockStartedAt = -Infinity;
 
+  /** Ausdauer: Rhythmusgeber, keine Strafe. */
+  readonly stamina = new StaminaPool();
+  /** Zeitstempel der letzten abgewiesenen Aktion (HUD lässt die Leiste pulsen). */
+  staminaDeniedAt = -Infinity;
+
   comboStage: ComboStage | -1 = -1;
+  /** Der gerade ausgeführte Angriff (0-2 leichte Kette, 3 = schwerer Hieb). */
+  currentAttack: AttackId = 0;
   /** Realzeit des letzten Angriffsbeginns (Kombo-Verfall). */
   private lastAttackAt = -Infinity;
   /** Skaliert akkumulierte Zeit innerhalb des laufenden Angriffs (Hit-Stop pausiert sie mit). */
@@ -87,7 +101,10 @@ export class Player {
 
   private dodgeElapsed = 0;
   private dodgeAngle = 0;
-  private dodgeReadyAt = -Infinity;
+
+  /** Flaschen-Trinken: 0,6 s; Treffer bricht ab, OHNE die Flasche zu verbrauchen. */
+  drinkElapsed = 0;
+  private heartbeatAt = -Infinity;
 
   /** Riposte-Fenster (Realzeit-Ende) nach perfekter Parade. */
   riposteUntil = -Infinity;
@@ -132,10 +149,6 @@ export class Player {
     return this.blocking ? now - this.blockStartedAt : -1;
   }
 
-  dodgeCooldownRemaining(now: number): number {
-    return Math.max(0, this.dodgeReadyAt - now);
-  }
-
   /** Aktueller Stand der Kampf-Uhr (für Debug-Overlays). */
   get clock(): number {
     return this.nowClock;
@@ -147,6 +160,7 @@ export class Player {
     this.stats = gameState.stats;
     this.maxHp = gameState.maxHp;
     if (input.attackPressed) this.buffer.push('attack', now);
+    if (input.heavyPressed) this.buffer.push('heavy', now);
     if (input.dodgePressed) this.buffer.push('dodge', now);
 
     switch (this.state) {
@@ -156,11 +170,20 @@ export class Player {
       case 'attack':
         this.updateAttack(dtMs, now, input, targets);
         break;
+      case 'drink':
+        this.updateDrink(dtMs, input);
+        break;
       case 'normal':
         this.updateNormal(dtMs, now, input);
         break;
     }
 
+    this.stamina.update(dtMs, now, this.blocking);
+    // Herzschlag unter 25 % Leben
+    if (this.hp > 0 && this.hp < this.maxHp * 0.25 && now - this.heartbeatAt > 900) {
+      this.heartbeatAt = now;
+      sfxHeartbeat();
+    }
     this.hurtFlash = Math.max(0, this.hurtFlash - dtMs);
     this.render(now);
   }
@@ -182,25 +205,55 @@ export class Player {
     this.y += input.moveY * speed * (dtMs / 1000);
     if (!this.blocking) this.facing = input.aimAngle;
 
+    if (input.drinkPressed && gameState.flasks > 0 && this.hp < this.maxHp) {
+      this.state = 'drink';
+      this.drinkElapsed = 0;
+      this.blocking = false;
+      return;
+    }
+
     const buffered = this.buffer.peek(now);
-    if (buffered === 'dodge' && now >= this.dodgeReadyAt) {
-      this.buffer.consume(now);
-      this.startDodge(input);
-    } else if (buffered === 'attack') {
+    if (buffered === 'dodge') {
+      this.tryStartDodge(now, input);
+    } else if (buffered === 'attack' || buffered === 'heavy') {
       // Angriff unterbricht den Block — sonst würde die Riposte nach einer
       // Parade verschluckt, solange der Spieler Rechtsklick noch hält.
-      this.buffer.consume(now);
-      this.startAttack(now, input);
+      this.tryStartAttack(now, input, buffered === 'heavy');
     }
   }
 
-  private startDodge(input: PlayerInput): void {
+  /** Trinken: 0,6 s, langsames Weitergehen; Abschluss heilt und verbraucht die Flasche. */
+  private updateDrink(dtMs: number, input: PlayerInput): void {
+    this.drinkElapsed += dtMs;
+    this.x += input.moveX * MOVE_SPEED * 0.4 * (dtMs / 1000);
+    this.y += input.moveY * MOVE_SPEED * 0.4 * (dtMs / 1000);
+    if (this.drinkElapsed >= 600) {
+      this.state = 'normal';
+      const heal = gameState.useFlask();
+      if (heal > 0) {
+        this.hp = Math.min(this.maxHp, this.hp + heal);
+        this.fx.damageNumber(this.x, this.y, `+${heal}`, 'golden');
+        sfxPotion();
+      }
+    }
+  }
+
+  /**
+   * Konsumiert die gepufferte Rolle, wenn die Ausdauer reicht. Kein Cooldown —
+   * die Rolle ist nur über Ausdauer geregelt und soll sich fantastisch anfühlen.
+   */
+  private tryStartDodge(now: number, input: PlayerInput): void {
+    if (!this.stamina.trySpend(STAMINA.COST_ROLL, now)) {
+      this.staminaDeniedAt = now;
+      this.buffer.consume(now);
+      return;
+    }
+    this.buffer.consume(now);
     this.state = 'dodge';
     this.blocking = false;
     this.dodgeElapsed = 0;
     this.dodgeAngle =
       input.moveX !== 0 || input.moveY !== 0 ? Math.atan2(input.moveY, input.moveX) : this.facing;
-    this.dodgeReadyAt = this.nowClock + COMBAT.DODGE_COOLDOWN_MS;
     sfxDodge();
     this.fx.burst(this.x, this.y, { color: 0x7a6f5a, count: 6, speed: 60, size: 3, lifeMs: 380 });
   }
@@ -214,9 +267,23 @@ export class Player {
     if (this.dodgeElapsed >= COMBAT.DODGE_DURATION_MS) this.state = 'normal';
   }
 
-  private startAttack(now: number, input: PlayerInput): void {
-    const stage = nextComboStage(this.comboStage, now - this.lastAttackAt);
-    this.comboStage = stage;
+  /** Konsumiert den gepufferten Angriff, wenn die Ausdauer reicht. */
+  private tryStartAttack(now: number, input: PlayerInput, heavy: boolean): void {
+    const cost = heavy ? STAMINA.COST_HEAVY : STAMINA.COST_LIGHT;
+    if (!this.stamina.trySpend(cost, now)) {
+      this.staminaDeniedAt = now;
+      this.buffer.consume(now);
+      return;
+    }
+    this.buffer.consume(now);
+    if (heavy) {
+      this.currentAttack = HEAVY_ATTACK;
+      this.comboStage = -1;
+    } else {
+      const stage = nextComboStage(this.comboStage, now - this.lastAttackAt);
+      this.comboStage = stage;
+      this.currentAttack = stage;
+    }
     this.lastAttackAt = now;
     this.state = 'attack';
     this.blocking = false;
@@ -229,10 +296,9 @@ export class Player {
   }
 
   private updateAttack(dtMs: number, now: number, input: PlayerInput, targets: readonly CombatTarget[]): void {
-    const stage = this.comboStage as ComboStage;
+    const stage = this.currentAttack;
     // Angriffstempo-Affixe beschleunigen die Animation
     this.attackElapsed += dtMs * (1 + this.stats.attackSpeedPct / 100);
-    const total = attackTotalMs(stage);
     const phase = attackPhase(stage, this.attackElapsed);
 
     if (!this.attackDidSwingSfx && phase === 'active') {
@@ -240,33 +306,34 @@ export class Player {
       sfxSwing(stage);
     }
 
-    // Leichte Vorwärtsbewegung bleibt möglich, damit der Kampf fließt.
-    this.x += input.moveX * MOVE_SPEED * ATTACK_MOVE_FACTOR * (dtMs / 1000);
-    this.y += input.moveY * MOVE_SPEED * ATTACK_MOVE_FACTOR * (dtMs / 1000);
+    // Leichte Vorwärtsbewegung bleibt möglich, damit der Kampf fließt;
+    // der schwere Hieb pflanzt die Füße (volles Commitment).
+    const moveFactor = stage === HEAVY_ATTACK ? 0.1 : ATTACK_MOVE_FACTOR;
+    this.x += input.moveX * MOVE_SPEED * moveFactor * (dtMs / 1000);
+    this.y += input.moveY * MOVE_SPEED * moveFactor * (dtMs / 1000);
 
     if (phase === 'active') this.applyHits(stage, targets);
 
-    // Cancel-Regeln: Ausweichen/Block ab 60 % der Animation; Kombo-Folgeschlag ebenso.
-    const cancelable = canCancelAttack(this.attackElapsed, total);
+    // Cancel-Regeln: Anlauf/Treffer haben Commitment, die Erholung ist ab 50 %
+    // in Rolle/Block abbrechbar; der Folgeschlag kettet im selben Fenster an.
+    const cancelable = canCancelAttack(stage, this.attackElapsed);
     const buffered = this.buffer.peek(now);
-    if (cancelable && buffered === 'dodge' && now >= this.dodgeReadyAt) {
-      this.buffer.consume(now);
-      this.startDodge(input);
-      return;
+    if (cancelable && buffered === 'dodge') {
+      this.tryStartDodge(now, input);
+      if (this.state !== 'attack') return;
     }
     if (cancelable && input.blockHeld) {
       this.state = 'normal';
       return;
     }
-    if (cancelable && buffered === 'attack' && phase === 'recovery') {
-      this.buffer.consume(now);
-      this.startAttack(now, input);
+    if (cancelable && (buffered === 'attack' || buffered === 'heavy') && phase === 'recovery') {
+      this.tryStartAttack(now, input, buffered === 'heavy');
       return;
     }
     if (phase === 'done') this.state = 'normal';
   }
 
-  private applyHits(stage: ComboStage, targets: readonly CombatTarget[]): void {
+  private applyHits(stage: AttackId, targets: readonly CombatTarget[]): void {
     const spec = ATTACK_STAGES[stage];
     if (!spec) return;
     for (const t of targets) {
@@ -290,26 +357,31 @@ export class Player {
         if (heal > 0) this.hp = Math.min(this.maxHp, this.hp + heal);
       }
       const ang = Math.atan2(t.y - this.y, t.x - this.x);
+      const heavyHit = stage === 2 || stage === HEAVY_ATTACK;
       t.takeHit({
         damage,
         knockbackX: Math.cos(ang) * spec.knockback,
         knockbackY: Math.sin(ang) * spec.knockback,
-        finisher: stage === 2,
+        finisher: heavyHit,
         riposte: this.attackIsRiposte,
       });
-      // Dreischichtiges Treffer-Feedback: visuell + auditiv + Hit-Stop.
-      const finisher = stage === 2;
-      this.fx.hitStop(finisher ? COMBAT.HITSTOP_FINISHER_MS : COMBAT.HITSTOP_NORMAL_MS);
-      this.fx.shake(finisher ? 'medium' : 'small');
+      // Dreischichtiges Treffer-Feedback: visuell + auditiv + Hit-Stop (50/80/100).
+      if (this.attackIsRiposte) {
+        this.fx.hitStop(COMBAT.HITSTOP_PARRY_MS);
+        this.fx.zoomPunch();
+      } else {
+        this.fx.hitStop(heavyHit ? COMBAT.HITSTOP_FINISHER_MS : COMBAT.HITSTOP_NORMAL_MS);
+      }
+      this.fx.shake(heavyHit ? 'medium' : 'small');
       this.fx.damageNumber(t.x, t.y, String(damage), this.attackIsRiposte ? 'golden' : 'dealt');
       this.fx.burst(t.x, t.y, {
         color: this.attackIsRiposte ? PALETTE.gold : PALETTE.blood,
-        count: finisher ? 12 : 7,
-        speed: finisher ? 200 : 130,
+        count: heavyHit ? 12 : 7,
+        speed: heavyHit ? 200 : 130,
         angle: ang,
         spread: Math.PI * 0.8,
       });
-      sfxHit(stage, this.attackIsRiposte);
+      sfxHit(Math.min(stage, 2), this.attackIsRiposte);
     }
   }
 
@@ -333,6 +405,7 @@ export class Player {
       sfxBlock();
       return 'deflected';
     }
+    if (this.state === 'drink') this.state = 'normal';
     const dmg = Math.max(1, params.damage - this.stats.armor);
     this.hp = Math.max(0, this.hp - dmg);
     this.hurtFlash = 120;
@@ -379,11 +452,16 @@ export class Player {
       return 'parried';
     }
 
+    // Treffer bricht das Trinken ab, OHNE die Flasche zu verschwenden
+    if (this.state === 'drink') this.state = 'normal';
+
     // Rüstung reduziert flach, bevor der Block mindert
     const afterArmor = Math.max(1, params.damage - this.stats.armor);
     const result = mitigateDamage({ raw: afterArmor, blocking: this.blocking, attackAngleOffset: offset });
     this.hp = Math.max(0, this.hp - result.damage);
     if (result.kind === 'blocked') {
+      // Geblockte Treffer zehren an der Ausdauer (10-20), mehr Strafe gibt es nicht
+      this.stamina.drainBlocked(afterArmor, now);
       this.fx.damageNumber(this.x, this.y, String(result.damage), 'taken');
       this.fx.burst(this.x + Math.cos(toSource) * this.radius, this.y + Math.sin(toSource) * this.radius, {
         color: 0x8a8a8a,
@@ -443,6 +521,17 @@ export class Player {
       g.fillCircle(this.x - Math.cos(this.dodgeAngle) * 14, this.y - Math.sin(this.dodgeAngle) * 14, this.radius * 0.8);
     }
 
+    // Trinken: kleine Flasche + Fortschrittsbogen
+    if (this.state === 'drink') {
+      const t = Math.min(1, this.drinkElapsed / 600);
+      g.fillStyle(0x9ad99a, 1);
+      g.fillRect(this.x + 8, this.y - this.radius - 10, 5, 8);
+      g.lineStyle(2, 0x9ad99a, 0.9);
+      g.beginPath();
+      g.arc(this.x, this.y, this.radius + 8, -Math.PI / 2, -Math.PI / 2 + t * Math.PI * 2);
+      g.strokePath();
+    }
+
     this.renderSwing();
   }
 
@@ -452,7 +541,7 @@ export class Player {
     g.clear();
     if (this.state !== 'attack') return;
 
-    const stage = this.comboStage as ComboStage;
+    const stage = this.currentAttack;
     const spec = ATTACK_STAGES[stage];
     if (!spec) return;
     const phase = attackPhase(stage, this.attackElapsed);
@@ -462,12 +551,21 @@ export class Player {
     if (!style) return;
     const color = this.attackIsRiposte ? PALETTE.gold : style.color;
     const half = spec.arcRad / 2;
-    // Hieb rechts (Stufe 0), Hieb links (Stufe 1), Finisher fegt voll durch (Stufe 2).
+    // Hieb rechts (Stufe 0), Rückhand (Stufe 1), Finisher und schwerer Hieb fegen voll durch.
     const dir = stage === 1 ? -1 : 1;
 
     if (phase === 'windup') {
-      // Ausholen: kurzer Strich entgegen der Schwungrichtung
       const t = this.attackElapsed / spec.windupMs;
+      if (stage === HEAVY_ATTACK) {
+        // Überkopfhieb: Klinge hebt sich sichtbar lange — das eigene Telegraph-Versprechen
+        const lift = this.radius + 6 + t * 26;
+        g.lineStyle(style.width + 2, color, 0.5 + 0.4 * t);
+        g.lineBetween(this.x, this.y - this.radius, this.x, this.y - lift - 14);
+        g.fillStyle(color, 0.3 + 0.4 * t);
+        g.fillCircle(this.x, this.y - lift - 14, 3 + t * 3);
+        return;
+      }
+      // Ausholen: kurzer Strich entgegen der Schwungrichtung
       const a = this.attackAngle - dir * half * (0.6 + 0.4 * t);
       g.lineStyle(style.width, color, 0.35);
       g.beginPath();

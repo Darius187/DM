@@ -119,6 +119,12 @@ export function sfxPotion(): void {
   tone({ freq: 220, endFreq: 320, type: 'sine', durMs: 140, gain: 0.07, delayMs: 110 });
 }
 
+/** Dumpfer Herzschlag (unter 25 % Leben). */
+export function sfxHeartbeat(): void {
+  tone({ freq: 55, endFreq: 40, type: 'sine', durMs: 120, gain: 0.16 });
+  tone({ freq: 50, endFreq: 38, type: 'sine', durMs: 100, gain: 0.1, delayMs: 180 });
+}
+
 /** Gegner stirbt. */
 export function sfxDeath(): void {
   tone({ freq: 200, endFreq: 40, type: 'triangle', durMs: 320, gain: 0.16 });

@@ -18,7 +18,7 @@ import {
   type DungeonLevel,
 } from '../systems/dungeonGen';
 import { rollElite } from '../systems/enemyAI';
-import { sfxPotion, unlockAudio } from '../systems/sound';
+import { unlockAudio } from '../systems/sound';
 import { saveGame } from '../systems/save';
 import themesData from '../data/themes.json';
 import enemiesData from '../data/enemies.json';
@@ -63,7 +63,7 @@ export class Dungeon extends Phaser.Scene {
   private diaryPages: { x: number; y: number; page: number }[] = [];
   private diaryG!: Phaser.GameObjects.Graphics;
 
-  private keys!: Record<'W' | 'A' | 'S' | 'D' | 'J' | 'K' | 'SPACE', Phaser.Input.Keyboard.Key>;
+  private keys!: Record<'W' | 'A' | 'S' | 'D' | 'E' | 'J' | 'K' | 'Q' | 'SHIFT' | 'SPACE', Phaser.Input.Keyboard.Key>;
   private prevLeftDown = false;
 
   constructor() {
@@ -180,7 +180,7 @@ export class Dungeon extends Phaser.Scene {
       .setDepth(DEPTHS.ui);
 
     const kb = this.input.keyboard!;
-    this.keys = kb.addKeys('W,A,S,D,J,K,SPACE') as typeof this.keys;
+    this.keys = kb.addKeys('W,A,S,D,E,J,K,Q,SHIFT,SPACE') as typeof this.keys;
     kb.on('keydown-F1', () => {
       this.scene.start('DebugArena');
     });
@@ -191,14 +191,6 @@ export class Dungeon extends Phaser.Scene {
     kb.on('keydown-I', () => {
       this.scene.pause();
       this.scene.launch('InventoryUI', { caller: 'Dungeon' });
-    });
-    kb.on('keydown-Q', () => {
-      const heal = gameState.drinkHealPotion();
-      if (heal > 0) {
-        this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
-        this.fx.damageNumber(this.player.x, this.player.y, `+${heal}`, 'golden');
-        sfxPotion();
-      }
     });
     this.input.on('pointerdown', () => unlockAudio());
 
@@ -354,15 +346,18 @@ export class Dungeon extends Phaser.Scene {
     const pointer = this.input.activePointer;
     const aimAngle = Math.atan2(pointer.worldY - this.player.y, pointer.worldX - this.player.x);
     const leftDown = pointer.leftButtonDown();
-    const attackPressed = (leftDown && !this.prevLeftDown) || Phaser.Input.Keyboard.JustDown(k.J);
+    const attackEdge = (leftDown && !this.prevLeftDown) || Phaser.Input.Keyboard.JustDown(k.J);
     this.prevLeftDown = leftDown;
+    const heavy = k.SHIFT.isDown;
     return {
       moveX,
       moveY,
       aimAngle,
-      blockHeld: pointer.rightButtonDown() || k.K.isDown,
-      attackPressed,
+      blockHeld: k.K.isDown || pointer.rightButtonDown(),
+      attackPressed: attackEdge && !heavy,
+      heavyPressed: attackEdge && heavy,
       dodgePressed: Phaser.Input.Keyboard.JustDown(k.SPACE),
+      drinkPressed: Phaser.Input.Keyboard.JustDown(k.Q),
     };
   }
 
@@ -570,7 +565,7 @@ export class Dungeon extends Phaser.Scene {
     g.fillRect(12, GAME_HEIGHT - 52, w * Math.max(0, this.player.hp / this.player.maxHp), 14);
     g.lineStyle(1, PALETTE.parchment, 0.5);
     g.strokeRect(12, GAME_HEIGHT - 52, w, 14);
-    this.hudText.setText(`Gold ${gameState.gold} · Heiltränke ${gameState.healPotions} [Q]`);
+    this.hudText.setText(`Gold ${gameState.gold} · Flaschen ${gameState.flasks}/${gameState.maxFlasks} [Q]`);
   }
 
   /** Treppen: abwärts zur nächsten Ebene (Ebene 3 -> Bossraum folgt in Phase 6), aufwärts zurück. */
