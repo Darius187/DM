@@ -93,14 +93,18 @@ export class Player {
   weapon = { minDmg: 8, maxDmg: 12, swingStyle: 'rusty' };
 
   private buffer = new InputBuffer();
-  private scene: Phaser.Scene;
+  /**
+   * Kampf-Uhr: läuft auf demselben skalierten Delta wie Gegner-Telegraphen.
+   * Dadurch bleibt das Parade-Fenster auch bei Hit-Stop und Frame-Einbrüchen
+   * konsistent zur Angriffs-Geschwindigkeit der Gegner.
+   */
+  private nowClock = 0;
   private fx: Fx;
   private g: Phaser.GameObjects.Graphics;
   private swingG: Phaser.GameObjects.Graphics;
   private hurtFlash = 0;
 
   constructor(scene: Phaser.Scene, fx: Fx, x: number, y: number) {
-    this.scene = scene;
     this.fx = fx;
     this.x = x;
     this.y = y;
@@ -129,7 +133,14 @@ export class Player {
     return Math.max(0, this.dodgeReadyAt - now);
   }
 
-  update(dtMs: number, now: number, input: PlayerInput, targets: readonly CombatTarget[]): void {
+  /** Aktueller Stand der Kampf-Uhr (für Debug-Overlays). */
+  get clock(): number {
+    return this.nowClock;
+  }
+
+  update(dtMs: number, input: PlayerInput, targets: readonly CombatTarget[]): void {
+    this.nowClock += dtMs;
+    const now = this.nowClock;
     if (input.attackPressed) this.buffer.push('attack', now);
     if (input.dodgePressed) this.buffer.push('dodge', now);
 
@@ -184,7 +195,7 @@ export class Player {
     this.dodgeElapsed = 0;
     this.dodgeAngle =
       input.moveX !== 0 || input.moveY !== 0 ? Math.atan2(input.moveY, input.moveX) : this.facing;
-    this.dodgeReadyAt = this.scene.time.now + COMBAT.DODGE_COOLDOWN_MS;
+    this.dodgeReadyAt = this.nowClock + COMBAT.DODGE_COOLDOWN_MS;
     sfxDodge();
     this.fx.burst(this.x, this.y, { color: 0x7a6f5a, count: 6, speed: 60, size: 3, lifeMs: 380 });
   }
@@ -296,7 +307,7 @@ export class Player {
    * perfekte Parade → Block-Mitigation → voller Schaden.
    */
   receiveAttack(params: { damage: number; sourceX: number; sourceY: number; attacker?: CombatTarget }): AttackOutcome {
-    const now = this.scene.time.now;
+    const now = this.nowClock;
     if (this.invulnerable) return 'dodged';
 
     const toSource = Math.atan2(params.sourceY - this.y, params.sourceX - this.x);

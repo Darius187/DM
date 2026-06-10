@@ -111,7 +111,6 @@ export class DebugArena extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    const now = this.time.now;
     // Hit-Stop: Zeitskalierung 0,15 statt Vollstopp
     const dt = Math.min(delta, 50) * this.fx.timeScale;
 
@@ -121,7 +120,7 @@ export class DebugArena extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.keys.R)) this.player.hp = this.player.maxHp;
 
     const input = this.collectInput();
-    this.player.update(dt, now, input, this.dummies);
+    this.player.update(dt, input, this.dummies);
     this.dummies.forEach((d) => d.update(dt, this.player));
 
     // Arena-Begrenzung und Entflechtung Spieler/Dummy
@@ -141,8 +140,8 @@ export class DebugArena extends Phaser.Scene {
     // Arena-Komfort: langsame Selbstheilung zum Dauertesten
     this.player.hp = Math.min(this.player.maxHp, this.player.hp + 4 * (dt / 1000));
 
-    this.renderHud(now);
-    this.renderDebug(now);
+    this.renderHud(this.player.clock);
+    this.renderDebug(this.player.clock);
   }
 
   private renderHud(now: number): void {
