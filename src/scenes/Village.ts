@@ -43,7 +43,7 @@ export class Village extends Phaser.Scene {
   private smokeParticles: { x: number; y: number; age: number; seed: number }[] = [];
   private smokeG!: Phaser.GameObjects.Graphics;
 
-  private keys!: Record<'W' | 'A' | 'S' | 'D' | 'E' | 'SPACE' | 'K' | 'J' | 'Q' | 'SHIFT', Phaser.Input.Keyboard.Key>;
+  private keys!: Record<'W' | 'A' | 'S' | 'D' | 'E' | 'SPACE' | 'K' | 'J' | 'Q' | 'SHIFT' | 'ONE' | 'TWO' | 'THREE', Phaser.Input.Keyboard.Key>;
   private prevLeftDown = false;
 
   constructor() {
@@ -77,7 +77,7 @@ export class Village extends Phaser.Scene {
       .setDepth(DEPTHS.ui);
 
     const kb = this.input.keyboard!;
-    this.keys = kb.addKeys('W,A,S,D,E,SPACE,K,J,Q,SHIFT') as typeof this.keys;
+    this.keys = kb.addKeys('W,A,S,D,E,SPACE,K,J,Q,SHIFT,ONE,TWO,THREE') as typeof this.keys;
     kb.on('keydown-F1', () => this.scene.start('DebugArena'));
     kb.on('keydown-I', () => {
       this.scene.pause();
@@ -247,6 +247,13 @@ export class Village extends Phaser.Scene {
       heavyPressed: attackEdge && heavy,
       dodgePressed: Phaser.Input.Keyboard.JustDown(k.SPACE),
       drinkPressed: Phaser.Input.Keyboard.JustDown(k.Q),
+      spellPressed: Phaser.Input.Keyboard.JustDown(k.ONE)
+        ? 0
+        : Phaser.Input.Keyboard.JustDown(k.TWO)
+          ? 1
+          : Phaser.Input.Keyboard.JustDown(k.THREE)
+            ? 2
+            : null,
     };
   }
 
@@ -363,6 +370,6 @@ export class Village extends Phaser.Scene {
     g.fillRect(12, GAME_HEIGHT - 34, w * Math.max(0, this.player.hp / this.player.maxHp), 14);
     g.lineStyle(1, PALETTE.parchment, 0.5);
     g.strokeRect(12, GAME_HEIGHT - 34, w, 14);
-    this.hudText.setText(`Gold ${gameState.gold} · Flaschen ${gameState.flasks}/${gameState.maxFlasks} [Q] · Inventar [I]`);
+    this.hudText.setText(`Stufe ${gameState.level} · Gold ${gameState.gold} · Flaschen ${gameState.flasks}/${gameState.maxFlasks} [Q] · Inventar [I]`);
   }
 }

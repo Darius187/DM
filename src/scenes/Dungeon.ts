@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, DEPTHS, PALETTE } from '../config';
 import { Player, type PlayerInput } from '../entities/Player';
 import { Enemy, CursedPatch, type EnemyContext } from '../entities/Enemy';
-import { Projectile } from '../entities/Projectile';
+import { PlayerBolt, Projectile } from '../entities/Projectile';
 import { Pickup, dropLoot } from '../entities/Pickup';
 import { gameState } from '../systems/gameState';
 import { Fx } from '../systems/effects';
@@ -18,7 +18,7 @@ import {
   type DungeonLevel,
 } from '../systems/dungeonGen';
 import { rollElite } from '../systems/enemyAI';
-import { sfxIdle, unlockAudio } from '../systems/sound';
+import { sfxCoffinScrape, sfxIdle, unlockAudio } from '../systems/sound';
 import { saveGame } from '../systems/save';
 import themesData from '../data/themes.json';
 import enemiesData from '../data/enemies.json';
@@ -48,6 +48,7 @@ export class Dungeon extends Phaser.Scene {
   private player!: Player;
   private enemies: Enemy[] = [];
   private projectiles: Projectile[] = [];
+  private bolts: PlayerBolt[] = [];
   private patches: CursedPatch[] = [];
   private pickups: Pickup[] = [];
   private fx!: Fx;
@@ -70,12 +71,14 @@ export class Dungeon extends Phaser.Scene {
   private shrineG!: Phaser.GameObjects.Graphics;
   private promptText!: Phaser.GameObjects.Text;
   private spawnAtShrine = false;
-  /** Sparsamer Skript-Moment: eine Fackel verlischt beim Vorbeigehen (max. 1x pro Ebene). */
+  /** Sparsame Skript-Momente (je max. 1x pro Ebene): Fackel verlischt, Sargdeckel verrutscht. */
   private torchScareUsed = false;
+  private coffinScareUsed = false;
+  private coffinScareAt = 0;
   /** Opferaltäre mit Zufallseffekten (Referenz useAltar). */
   private altars: { x: number; y: number; used: boolean }[] = [];
 
-  private keys!: Record<'W' | 'A' | 'S' | 'D' | 'E' | 'J' | 'K' | 'Q' | 'SHIFT' | 'SPACE', Phaser.Input.Keyboard.Key>;
+  private keys!: Record<'W' | 'A' | 'S' | 'D' | 'E' | 'J' | 'K' | 'Q' | 'SHIFT' | 'ONE' | 'TWO' | 'THREE' | 'SPACE', Phaser.Input.Keyboard.Key>;
   private prevLeftDown = false;
 
   constructor() {
@@ -91,6 +94,7 @@ export class Dungeon extends Phaser.Scene {
   create(): void {
     this.enemies = [];
     this.projectiles = [];
+    this.bolts = [];
     this.patches = [];
     this.pickups = [];
     this.torchLights = [];
@@ -121,6 +125,9 @@ export class Dungeon extends Phaser.Scene {
     this.level = lvl;
     this.explored = new Uint8Array(lvl.width * lvl.height);
     this.torchScareUsed = false;
+    this.coffinScareUsed = false;
+    // Sargdeckel-Moment irgendwann zwischen 25 und 55 Sekunden Spielzeit
+    this.coffinScareAt = 25000 + Math.random() * 30000;
 
     // Kerzenschrein: im Treppenraum, zwei Kacheln neben der Treppe (auf Boden)
     const sd0 = lvl.stairsDown;
@@ -142,6 +149,7 @@ export class Dungeon extends Phaser.Scene {
       spawn.y,
     );
     this.player.hp = Math.min(gameState.hp, gameState.maxHp);
+    this.player.spawnBolt = (x, y, a, sp, dmg) => this.bolts.push(new PlayerBolt(this, this.fx, x, y, a, sp, dmg));
     this.cameras.main.setBounds(0, 0, lvl.width * TILE_SIZE, lvl.height * TILE_SIZE);
     this.camTarget.x = this.player.x;
     this.camTarget.y = this.player.y;
@@ -232,7 +240,7 @@ export class Dungeon extends Phaser.Scene {
       .setDepth(DEPTHS.ui);
 
     const kb = this.input.keyboard!;
-    this.keys = kb.addKeys('W,A,S,D,E,J,K,Q,SHIFT,SPACE') as typeof this.keys;
+    this.keys = kb.addKeys('W,A,S,D,E,J,K,Q,SHIFT,SPACE,ONE,TWO,THREE') as typeof this.keys;
     kb.on('keydown-F1', () => {
       this.scene.start('DebugArena');
     });
@@ -264,6 +272,7 @@ export class Dungeon extends Phaser.Scene {
       this.player.destroy();
       this.enemies.forEach((e) => e.destroy());
       this.projectiles.forEach((p) => p.destroy());
+      this.bolts.forEach((b) => b.destroy());
       this.patches.forEach((p) => p.destroy());
       this.pickups.forEach((p) => p.destroy());
       this.decals.destroy();
@@ -414,6 +423,13 @@ export class Dungeon extends Phaser.Scene {
       heavyPressed: attackEdge && heavy,
       dodgePressed: Phaser.Input.Keyboard.JustDown(k.SPACE),
       drinkPressed: Phaser.Input.Keyboard.JustDown(k.Q),
+      spellPressed: Phaser.Input.Keyboard.JustDown(k.ONE)
+        ? 0
+        : Phaser.Input.Keyboard.JustDown(k.TWO)
+          ? 1
+          : Phaser.Input.Keyboard.JustDown(k.THREE)
+            ? 2
+            : null,
     };
   }
 
@@ -476,10 +492,13 @@ export class Dungeon extends Phaser.Scene {
     const bounds = { x: 0, y: 0, w: this.level.width * TILE_SIZE, h: this.level.height * TILE_SIZE };
     this.projectiles.forEach((p) => p.update(dt, this.player, bounds, this.isSolid, TILE_SIZE));
     this.projectiles = this.projectiles.filter((p) => (p.alive ? true : (p.destroy(), false)));
+    this.bolts.forEach((b) => b.update(dt, this.enemies, this.isSolid, TILE_SIZE));
+    this.bolts = this.bolts.filter((b) => (b.alive ? true : (b.destroy(), false)));
     this.patches.forEach((p) => p.update(dt, this.player));
     this.patches = this.patches.filter((p) => (p.alive ? true : (p.destroy(), false)));
 
     this.updateDiaryPages();
+    this.updateCoffinScare();
     this.updateShrine();
     this.updateAltars();
     this.updateTorchScare();
@@ -590,6 +609,24 @@ export class Dungeon extends Phaser.Scene {
       this.fx.damageNumber(x, y - 16, 'Gerastet', 'golden');
       this.fx.burst(x, y - 10, { color: 0xe8a33d, count: 10, speed: 70, size: 2, lifeMs: 600 });
     }
+  }
+
+  /**
+   * Skript-Moment (max. 1x pro Ebene): hinter dem Spieler verrutscht hörbar ein
+   * Sargdeckel — reines Erschrecken, NIE mit Schaden verbunden.
+   */
+  private updateCoffinScare(): void {
+    if (this.coffinScareUsed) return;
+    if (this.player.clock < this.coffinScareAt) return;
+    this.coffinScareUsed = true;
+    // „Hinter dem Spieler": entgegen der Blickrichtung, gerichtet hörbar
+    const behind = this.player.facing + Math.PI;
+    const pan = Math.max(-1, Math.min(1, Math.cos(behind)));
+    sfxCoffinScrape(pan);
+    // Dezenter Staubhauch hinter dem Spieler, knapp außerhalb des Lichtkreises
+    const sx = this.player.x + Math.cos(behind) * 150;
+    const sy = this.player.y + Math.sin(behind) * 150;
+    this.fx.burst(sx, sy, { color: 0x8a8270, count: 6, speed: 30, size: 2, lifeMs: 900 });
   }
 
   /** Skript-Moment (max. 1x pro Ebene): eine Fackel verlischt beim Vorbeigehen. */
@@ -763,7 +800,12 @@ export class Dungeon extends Phaser.Scene {
     g.fillRect(12, GAME_HEIGHT - 52, w * Math.max(0, this.player.hp / this.player.maxHp), 14);
     g.lineStyle(1, PALETTE.parchment, 0.5);
     g.strokeRect(12, GAME_HEIGHT - 52, w, 14);
-    this.hudText.setText(`Gold ${gameState.gold} · Flaschen ${gameState.flasks}/${gameState.maxFlasks} [Q]`);
+    // Mana (blau)
+    g.fillStyle(0x000000, 0.6);
+    g.fillRect(12, GAME_HEIGHT - 52 + 16, w * 0.6, 8);
+    g.fillStyle(0x4a78c8, 1);
+    g.fillRect(12, GAME_HEIGHT - 52 + 16, w * 0.6 * Math.max(0, gameState.mana / gameState.maxMana), 8);
+    this.hudText.setText(`Stufe ${gameState.level} (${gameState.xp}/${gameState.xpNext} XP) · Gold ${gameState.gold} · Flaschen ${gameState.flasks}/${gameState.maxFlasks} [Q] · Zauber [1-3]`);
   }
 
   /** Treppen: abwärts zur nächsten Ebene (Ebene 3 -> Bossraum folgt in Phase 6), aufwärts zurück. */

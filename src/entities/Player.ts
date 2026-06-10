@@ -19,8 +19,38 @@ import {
   nextComboStage,
 } from '../systems/combat';
 import { Fx } from '../systems/effects';
-import { sfxBlock, sfxDodge, sfxHeartbeat, sfxHit, sfxHurt, sfxParry, sfxPotion, sfxSwing } from '../systems/sound';
+import {
+  sfxBlock,
+  sfxCast,
+  sfxDodge,
+  sfxFireball,
+  sfxHeal,
+  sfxHeartbeat,
+  sfxHit,
+  sfxHolyLight,
+  sfxHurt,
+  sfxParry,
+  sfxPotion,
+  sfxSwing,
+} from '../systems/sound';
 import { aggregateStats, type AggregatedStats } from '../systems/loot';
+import itemsData from '../data/items.json';
+
+interface SpellSpec {
+  id: string;
+  name: string;
+  manaCost: number;
+  unlockLevel: number;
+  cooldownMs: number;
+  damage?: number;
+  aoeRadius?: number;
+  healPct?: number;
+  speed?: number;
+}
+
+const SPELLS = itemsData.spells as SpellSpec[];
+/** v3: kurze Wirkzeit, nicht unterbrechbar (feel good). */
+const CAST_MS = 400;
 import { gameState } from '../systems/gameState';
 import { DEPTHS, PALETTE } from '../config';
 
@@ -46,6 +76,8 @@ export interface PlayerInput {
   dodgePressed: boolean;
   /** Q: Heilflasche trinken (0,6 s, langsames Weitergehen möglich). */
   drinkPressed: boolean;
+  /** 1/2/3: Zauber wirken (Index 0-2), sonst null. */
+  spellPressed: number | null;
 }
 
 export type AttackOutcome = 'dodged' | 'parried' | 'blocked' | 'hit';
@@ -77,7 +109,7 @@ export class Player {
   hp = 100;
   maxHp = 100;
 
-  state: 'normal' | 'attack' | 'dodge' | 'drink' = 'normal';
+  state: 'normal' | 'attack' | 'dodge' | 'drink' | 'cast' = 'normal';
   blocking = false;
   /** Realzeit-Stempel des Blockbeginns (für das Parade-Fenster). */
   blockStartedAt = -Infinity;
@@ -104,8 +136,16 @@ export class Player {
 
   /** Flaschen-Trinken: 0,6 s; Treffer bricht ab, OHNE die Flasche zu verbrauchen. */
   drinkElapsed = 0;
-  /** Altar-Segen: +30 % Schaden, solange > 0 (ms). */
+  /** Altar-Segen: +30 % Schaden (auch auf Feuerball/Heiliges Licht), solange > 0 (ms). */
   damageBuffRemaining = 0;
+
+  /** Zauber-Wirkzeit (0,4 s, nicht unterbrechbar). */
+  castElapsed = 0;
+  private castIndex = 0;
+  private castAngle = 0;
+  private spellCooldownUntil = [0, 0, 0];
+  /** Von der Szene gesetzt: erzeugt den Feuerball (Szene verwaltet die Projektile). */
+  spawnBolt: ((x: number, y: number, angle: number, speed: number, damage: number) => void) | null = null;
   private heartbeatAt = -Infinity;
 
   /** Riposte-Fenster (Realzeit-Ende) nach perfekter Parade. */
@@ -175,6 +215,9 @@ export class Player {
       case 'drink':
         this.updateDrink(dtMs, input);
         break;
+      case 'cast':
+        this.updateCast(dtMs, targets);
+        break;
       case 'normal':
         this.updateNormal(dtMs, now, input);
         break;
@@ -215,6 +258,8 @@ export class Player {
       return;
     }
 
+    if (input.spellPressed !== null && this.tryStartCast(input.spellPressed, input.aimAngle, now)) return;
+
     const buffered = this.buffer.peek(now);
     if (buffered === 'dodge') {
       this.tryStartDodge(now, input);
@@ -223,6 +268,88 @@ export class Player {
       // Parade verschluckt, solange der Spieler Rechtsklick noch hält.
       this.tryStartAttack(now, input, buffered === 'heavy');
     }
+  }
+
+  /**
+   * Zauber wirken: Freischaltstufe, Mana und Abklingzeit prüfen; Mana wird beim
+   * Beginn abgezogen. Die Wirkzeit (0,4 s) ist nicht unterbrechbar.
+   */
+  private tryStartCast(index: number, aimAngle: number, now: number): boolean {
+    const spell = SPELLS[index];
+    if (!spell) return false;
+    if (gameState.level < spell.unlockLevel) {
+      this.fx.damageNumber(this.x, this.y - 18, `${spell.name} ab Stufe ${spell.unlockLevel}`, 'taken');
+      return false;
+    }
+    if (now < (this.spellCooldownUntil[index] ?? 0)) return false;
+    if (gameState.mana < spell.manaCost) {
+      this.fx.damageNumber(this.x, this.y - 18, 'Zu wenig Mana', 'taken');
+      return false;
+    }
+    gameState.mana -= spell.manaCost;
+    this.spellCooldownUntil[index] = now + spell.cooldownMs;
+    this.state = 'cast';
+    this.blocking = false;
+    this.castElapsed = 0;
+    this.castIndex = index;
+    this.castAngle = aimAngle;
+    sfxCast();
+    return true;
+  }
+
+  private updateCast(dtMs: number, targets: readonly CombatTarget[]): void {
+    this.castElapsed += dtMs;
+    if (this.castElapsed < CAST_MS) return;
+    this.state = 'normal';
+    const spell = SPELLS[this.castIndex];
+    if (!spell) return;
+    const buff = this.damageBuffRemaining > 0 ? 1.3 : 1;
+
+    if (spell.id === 'feuerball') {
+      sfxFireball();
+      const damage = Math.round((spell.damage ?? 16) * buff);
+      this.spawnBolt?.(
+        this.x + Math.cos(this.castAngle) * (this.radius + 8),
+        this.y + Math.sin(this.castAngle) * (this.radius + 8),
+        this.castAngle,
+        spell.speed ?? 320,
+        damage,
+      );
+      return;
+    }
+    if (spell.id === 'heiliges_licht') {
+      sfxHolyLight();
+      const radius = spell.aoeRadius ?? 130;
+      const damage = Math.round((spell.damage ?? 18) * buff);
+      this.fx.burst(this.x, this.y, { color: 0xf6e3a0, count: 22, speed: 240, size: 3, lifeMs: 420 });
+      this.fx.shake('small');
+      for (const t of targets) {
+        if (!t.targetable) continue;
+        if (Math.hypot(t.x - this.x, t.y - this.y) <= radius + t.radius) {
+          const ang = Math.atan2(t.y - this.y, t.x - this.x);
+          t.takeHit({
+            damage,
+            knockbackX: Math.cos(ang) * 160,
+            knockbackY: Math.sin(ang) * 160,
+            finisher: false,
+            riposte: false,
+          });
+          this.fx.damageNumber(t.x, t.y, String(damage), 'dealt');
+        }
+      }
+      return;
+    }
+    // Heilung
+    sfxHeal();
+    const heal = Math.round(this.maxHp * (spell.healPct ?? 0.4));
+    this.hp = Math.min(this.maxHp, this.hp + heal);
+    this.fx.damageNumber(this.x, this.y, `+${heal}`, 'golden');
+    this.fx.burst(this.x, this.y, { color: 0x9ad99a, count: 12, speed: 90, size: 2, lifeMs: 500 });
+  }
+
+  /** Verbleibende Abklingzeit eines Zaubers (für das HUD). */
+  spellCooldownRemaining(index: number, now: number): number {
+    return Math.max(0, (this.spellCooldownUntil[index] ?? 0) - now);
   }
 
   /** Trinken: 0,6 s, langsames Weitergehen; Abschluss heilt und verbraucht die Flasche. */
@@ -423,7 +550,14 @@ export class Player {
    * Ein Gegner trifft den Spieler. Reihenfolge: Ausweich-Unverwundbarkeit →
    * perfekte Parade → Block-Mitigation → voller Schaden.
    */
-  receiveAttack(params: { damage: number; sourceX: number; sourceY: number; attacker?: CombatTarget }): AttackOutcome {
+  receiveAttack(params: {
+    damage: number;
+    sourceX: number;
+    sourceY: number;
+    attacker?: CombatTarget;
+    /** Elite-Übergriff (gelbes Aufblitzen): weder parierbar noch blockbar, nur ausweichbar. */
+    unblockable?: boolean;
+  }): AttackOutcome {
     const now = this.nowClock;
     if (this.invulnerable) return 'dodged';
 
@@ -431,6 +565,7 @@ export class Player {
     const offset = angleDiff(toSource, this.facing);
 
     if (
+      !params.unblockable &&
       isPerfectParry({
         blocking: this.blocking,
         blockStartedAt: this.blockStartedAt,
@@ -458,9 +593,13 @@ export class Player {
     // Treffer bricht das Trinken ab, OHNE die Flasche zu verschwenden
     if (this.state === 'drink') this.state = 'normal';
 
-    // Rüstung reduziert flach, bevor der Block mindert
+    // Rüstung reduziert flach, bevor der Block mindert; Unblockbares ignoriert den Block
     const afterArmor = Math.max(1, params.damage - this.stats.armor);
-    const result = mitigateDamage({ raw: afterArmor, blocking: this.blocking, attackAngleOffset: offset });
+    const result = mitigateDamage({
+      raw: afterArmor,
+      blocking: this.blocking && !params.unblockable,
+      attackAngleOffset: offset,
+    });
     this.hp = Math.max(0, this.hp - result.damage);
     if (result.kind === 'blocked') {
       // Geblockte Treffer zehren an der Ausdauer (10-20), mehr Strafe gibt es nicht
@@ -522,6 +661,17 @@ export class Player {
     if (this.state === 'dodge') {
       g.fillStyle(PALETTE.parchment, 0.25);
       g.fillCircle(this.x - Math.cos(this.dodgeAngle) * 14, this.y - Math.sin(this.dodgeAngle) * 14, this.radius * 0.8);
+    }
+
+    // Zauber-Wirkzeit: blauer Fortschrittsring
+    if (this.state === 'cast') {
+      const t = Math.min(1, this.castElapsed / 400);
+      g.lineStyle(3, 0x7ab8e8, 0.9);
+      g.beginPath();
+      g.arc(this.x, this.y, this.radius + 9, -Math.PI / 2, -Math.PI / 2 + t * Math.PI * 2);
+      g.strokePath();
+      g.fillStyle(0x7ab8e8, 0.15 + 0.1 * Math.sin(this.castElapsed / 40));
+      g.fillCircle(this.x, this.y, this.radius + 4);
     }
 
     // Trinken: kleine Flasche + Fortschrittsbogen

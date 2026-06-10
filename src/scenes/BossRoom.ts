@@ -3,7 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT, DEPTHS, PALETTE } from '../config';
 import { Player, type PlayerInput } from '../entities/Player';
 import { Boss } from '../entities/Boss';
 import { Enemy, type EnemyContext } from '../entities/Enemy';
-import { Projectile } from '../entities/Projectile';
+import { PlayerBolt, Projectile } from '../entities/Projectile';
 import { Pickup } from '../entities/Pickup';
 import { Fx } from '../systems/effects';
 import { DecalLayer } from '../systems/decals';
@@ -25,6 +25,7 @@ export class BossRoom extends Phaser.Scene {
   private boss: Boss | null = null;
   private minions: Enemy[] = [];
   private projectiles: Projectile[] = [];
+  private bolts: PlayerBolt[] = [];
   private pickups: Pickup[] = [];
   private fx!: Fx;
   private decals!: DecalLayer;
@@ -39,7 +40,7 @@ export class BossRoom extends Phaser.Scene {
   private choiceTexts: Phaser.GameObjects.Text[] = [];
   private transitioning = false;
 
-  private keys!: Record<'W' | 'A' | 'S' | 'D' | 'E' | 'SPACE' | 'K' | 'J' | 'Q' | 'SHIFT', Phaser.Input.Keyboard.Key>;
+  private keys!: Record<'W' | 'A' | 'S' | 'D' | 'E' | 'SPACE' | 'K' | 'J' | 'Q' | 'SHIFT' | 'ONE' | 'TWO' | 'THREE', Phaser.Input.Keyboard.Key>;
   private prevLeftDown = false;
 
   constructor() {
@@ -49,6 +50,7 @@ export class BossRoom extends Phaser.Scene {
   create(): void {
     this.minions = [];
     this.projectiles = [];
+    this.bolts = [];
     this.pickups = [];
     this.torchLights = [];
     this.relicAvailable = false;
@@ -62,6 +64,7 @@ export class BossRoom extends Phaser.Scene {
 
     this.player = new Player(this, this.fx, GAME_WIDTH / 2, GAME_HEIGHT - 140);
     this.player.hp = Math.min(gameState.hp, gameState.maxHp);
+    this.player.spawnBolt = (x, y, a, sp, dmg) => this.bolts.push(new PlayerBolt(this, this.fx, x, y, a, sp, dmg));
 
     const alreadyDefeated = gameState.flags['bossDefeated'] === true;
     if (!alreadyDefeated) {
@@ -78,7 +81,7 @@ export class BossRoom extends Phaser.Scene {
       .setDepth(DEPTHS.ui);
 
     const kb = this.input.keyboard!;
-    this.keys = kb.addKeys('W,A,S,D,E,SPACE,K,J,Q,SHIFT') as typeof this.keys;
+    this.keys = kb.addKeys('W,A,S,D,E,SPACE,K,J,Q,SHIFT,ONE,TWO,THREE') as typeof this.keys;
     kb.on('keydown-I', () => {
       this.scene.pause();
       this.scene.launch('InventoryUI', { caller: 'BossRoom' });
@@ -92,6 +95,7 @@ export class BossRoom extends Phaser.Scene {
       this.boss?.destroy();
       this.minions.forEach((m) => m.destroy());
       this.projectiles.forEach((p) => p.destroy());
+      this.bolts.forEach((b) => b.destroy());
       this.pickups.forEach((p) => p.destroy());
       this.decals.destroy();
       this.lighting.destroy();
@@ -175,6 +179,13 @@ export class BossRoom extends Phaser.Scene {
       heavyPressed: attackEdge && heavy,
       dodgePressed: Phaser.Input.Keyboard.JustDown(k.SPACE),
       drinkPressed: Phaser.Input.Keyboard.JustDown(k.Q),
+      spellPressed: Phaser.Input.Keyboard.JustDown(k.ONE)
+        ? 0
+        : Phaser.Input.Keyboard.JustDown(k.TWO)
+          ? 1
+          : Phaser.Input.Keyboard.JustDown(k.THREE)
+            ? 2
+            : null,
     };
   }
 
@@ -224,6 +235,8 @@ export class BossRoom extends Phaser.Scene {
     }
     this.minions = this.minions.filter((m) => (m.alive ? true : (m.destroy(), false)));
     this.projectiles = this.projectiles.filter((p) => (p.alive ? true : (p.destroy(), false)));
+    this.bolts.forEach((b) => b.update(dt, [...(this.boss && this.boss.targetable ? [this.boss] : []), ...this.minions]));
+    this.bolts = this.bolts.filter((b) => (b.alive ? true : (b.destroy(), false)));
     this.pickups.forEach((p) => p.update(dt, this.player));
     this.pickups = this.pickups.filter((p) => (p.alive ? true : (p.destroy(), false)));
 
@@ -440,6 +453,11 @@ export class BossRoom extends Phaser.Scene {
     g.fillRect(12, GAME_HEIGHT - 34, w * Math.max(0, this.player.hp / this.player.maxHp), 14);
     g.lineStyle(1, PALETTE.parchment, 0.5);
     g.strokeRect(12, GAME_HEIGHT - 34, w, 14);
+    // Mana (blau)
+    g.fillStyle(0x000000, 0.6);
+    g.fillRect(12, GAME_HEIGHT - 34 + 16, w * 0.6, 8);
+    g.fillStyle(0x4a78c8, 1);
+    g.fillRect(12, GAME_HEIGHT - 34 + 16, w * 0.6 * Math.max(0, gameState.mana / gameState.maxMana), 8);
 
     // Boss-HP oben
     if (this.boss && this.boss.alive) {

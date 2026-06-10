@@ -3,7 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT, PALETTE, DEPTHS } from '../config';
 import { Player, type PlayerInput } from '../entities/Player';
 import { Dummy } from '../entities/Dummy';
 import { Enemy, CursedPatch, type EnemyContext } from '../entities/Enemy';
-import { Projectile } from '../entities/Projectile';
+import { PlayerBolt, Projectile } from '../entities/Projectile';
 import { Pickup, dropLoot } from '../entities/Pickup';
 import { gameState } from '../systems/gameState';
 import { generateItem } from '../systems/loot';
@@ -38,6 +38,7 @@ export class DebugArena extends Phaser.Scene {
   private dummies: Dummy[] = [];
   private enemies: Enemy[] = [];
   private projectiles: Projectile[] = [];
+  private bolts: PlayerBolt[] = [];
   private patches: CursedPatch[] = [];
   private pickups: Pickup[] = [];
   private decals!: DecalLayer;
@@ -48,7 +49,7 @@ export class DebugArena extends Phaser.Scene {
   private showDebug = true;
 
   private keys!: Record<
-    'W' | 'A' | 'S' | 'D' | 'J' | 'K' | 'Q' | 'SHIFT' | 'SPACE' | 'T' | 'G' | 'H' | 'R',
+    'W' | 'A' | 'S' | 'D' | 'J' | 'K' | 'Q' | 'SHIFT' | 'ONE' | 'TWO' | 'THREE' | 'SPACE' | 'T' | 'G' | 'H' | 'R',
     Phaser.Input.Keyboard.Key
   >;
   private prevLeftDown = false;
@@ -61,6 +62,7 @@ export class DebugArena extends Phaser.Scene {
     this.dummies = [];
     this.enemies = [];
     this.projectiles = [];
+    this.bolts = [];
     this.patches = [];
     this.pickups = [];
     this.fx = new Fx(this);
@@ -68,6 +70,7 @@ export class DebugArena extends Phaser.Scene {
     this.decals = new DecalLayer(this, GAME_WIDTH, GAME_HEIGHT);
 
     this.player = new Player(this, this.fx, GAME_WIDTH / 2, GAME_HEIGHT / 2);
+    this.player.spawnBolt = (x, y, a, sp, dmg) => this.bolts.push(new PlayerBolt(this, this.fx, x, y, a, sp, dmg));
     this.dummies.push(
       new Dummy(this, this.fx, GAME_WIDTH / 2 - 180, GAME_HEIGHT / 2 - 80),
       new Dummy(this, this.fx, GAME_WIDTH / 2 + 180, GAME_HEIGHT / 2 - 80),
@@ -90,7 +93,7 @@ export class DebugArena extends Phaser.Scene {
       .setDepth(DEPTHS.ui);
 
     const kb = this.input.keyboard!;
-    this.keys = kb.addKeys('W,A,S,D,J,K,Q,SHIFT,SPACE,T,G,H,R') as typeof this.keys;
+    this.keys = kb.addKeys('W,A,S,D,J,K,Q,SHIFT,SPACE,T,G,H,R,ONE,TWO,THREE') as typeof this.keys;
     kb.on('keydown-F1', () => this.scene.restart());
     kb.on('keydown-F2', () => this.spawnWave());
     kb.on('keydown-F3', () => this.clearEnemies());
@@ -137,6 +140,8 @@ export class DebugArena extends Phaser.Scene {
     this.projectiles.forEach((p) => p.destroy());
     this.patches.forEach((p) => p.destroy());
     this.pickups.forEach((p) => p.destroy());
+    this.bolts.forEach((b) => b.destroy());
+    this.bolts = [];
     this.enemies = [];
     this.projectiles = [];
     this.patches = [];
@@ -187,6 +192,13 @@ export class DebugArena extends Phaser.Scene {
       heavyPressed: attackEdge && heavy,
       dodgePressed: Phaser.Input.Keyboard.JustDown(k.SPACE),
       drinkPressed: Phaser.Input.Keyboard.JustDown(k.Q),
+      spellPressed: Phaser.Input.Keyboard.JustDown(k.ONE)
+        ? 0
+        : Phaser.Input.Keyboard.JustDown(k.TWO)
+          ? 1
+          : Phaser.Input.Keyboard.JustDown(k.THREE)
+            ? 2
+            : null,
     };
   }
 
@@ -226,6 +238,8 @@ export class DebugArena extends Phaser.Scene {
     this.pickups = this.pickups.filter((p) => (p.alive ? true : (p.destroy(), false)));
     this.projectiles.forEach((p) => p.update(dt, this.player, ARENA));
     this.projectiles = this.projectiles.filter((p) => (p.alive ? true : (p.destroy(), false)));
+    this.bolts.forEach((b) => b.update(dt, [...this.dummies, ...this.enemies]));
+    this.bolts = this.bolts.filter((b) => (b.alive ? true : (b.destroy(), false)));
     this.patches.forEach((p) => p.update(dt, this.player));
     this.patches = this.patches.filter((p) => (p.alive ? true : (p.destroy(), false)));
 
@@ -265,6 +279,11 @@ export class DebugArena extends Phaser.Scene {
     g.fillRect(ARENA.x, GAME_HEIGHT - 34, w * (this.player.hp / this.player.maxHp), 14);
     g.lineStyle(1, PALETTE.parchment, 0.5);
     g.strokeRect(ARENA.x, GAME_HEIGHT - 34, w, 14);
+    // Mana (blau)
+    g.fillStyle(0x000000, 0.6);
+    g.fillRect(ARENA.x, GAME_HEIGHT - 18, w * 0.6, 8);
+    g.fillStyle(0x4a78c8, 1);
+    g.fillRect(ARENA.x, GAME_HEIGHT - 18, w * 0.6 * Math.max(0, gameState.mana / gameState.maxMana), 8);
 
     // Ausdauer: pulst kurz, wenn eine Aktion mangels Ausdauer abgewiesen wurde
     const denied = now - this.player.staminaDeniedAt < 500;

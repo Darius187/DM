@@ -81,10 +81,12 @@ Theme-Namen/Dekordichten, Magdalenas Geschenk (+2 Tränke), Annehmen-Ende (+30 m
 Konfliktregel angewandt: Telegraphen/Schadenswerte bleiben v3 (Spielgefühl schlägt Referenz);
 Boss behält v3-Werte (1100 HP, 4 Angriffe inkl. Sturm). Lebensraub jetzt flach (Referenz).
 
-**Noch offen:** Zauber-AUSFÜHRUNG (Feuerball/Heiliges Licht/Heilung) — Daten und Stufen-
-Freischaltung liegen bereit (`items.json#spells`, gameState.mana/level), die Wirkungen (0,4 s
-Wirkzeit, Spieler-Projektil, AoE) sind noch nicht implementiert. Zweiter Skript-Moment
-(Sarg-Deckel) und 2-3 Angriffsmuster pro Gegnertyp ebenfalls offen.
+**Nachtrag (Abschluss als Portierungsquelle):** Zauber-Ausführung (Feuerball-Projektil mit
+kleiner AoE, Heiliges Licht als AoE um den Spieler, Heilung 40 % — Wirkzeit 0,4 s nicht
+unterbrechbar, Altar-Segen wirkt auf die Schadenszauber), 2 Angriffsmuster pro Gegnertyp
+(Übergriff/Doppelhieb/Stoß/Blink mit unterscheidbaren Telegraphen, Elite-Übergriff unblockbar
+mit gelbem Aufblitzen) und der Sargdeckel-Skriptmoment sind umgesetzt. Übersicht für den
+3D-Port: `PORTIERUNG.md`.
 
 ## 2026-06-10 — Block-Kegel
 

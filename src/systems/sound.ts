@@ -173,6 +173,43 @@ export function sfxPotion(): void {
   tone({ freq: 220, endFreq: 320, type: 'sine', durMs: 140, gain: 0.07, delayMs: 110 });
 }
 
+/** Wirkzeit-Summen (0,4 s Kanal). */
+export function sfxCast(): void {
+  tone({ freq: 320, endFreq: 520, type: 'sine', durMs: 380, gain: 0.05 });
+}
+
+/** Feuerball: Zischen + dumpfer Abschuss. */
+export function sfxFireball(): void {
+  noise({ durMs: 280, gain: 0.12, filterFreq: 1400 });
+  tone({ freq: 180, endFreq: 90, type: 'sawtooth', durMs: 200, gain: 0.09 });
+}
+
+/** Feuerball-Einschlag. */
+export function sfxFireballHit(): void {
+  noise({ durMs: 220, gain: 0.16, filterFreq: 700 });
+  tone({ freq: 120, endFreq: 50, type: 'triangle', durMs: 180, gain: 0.12 });
+}
+
+/** Heiliges Licht: heller Akkord. */
+export function sfxHolyLight(): void {
+  tone({ freq: 660, type: 'sine', durMs: 400, gain: 0.07 });
+  tone({ freq: 990, type: 'sine', durMs: 360, gain: 0.05, delayMs: 60 });
+  tone({ freq: 1320, type: 'sine', durMs: 320, gain: 0.04, delayMs: 120 });
+}
+
+/** Heilung: warmes Aufsteigen. */
+export function sfxHeal(): void {
+  tone({ freq: 440, endFreq: 660, type: 'sine', durMs: 300, gain: 0.07 });
+  tone({ freq: 550, endFreq: 880, type: 'sine', durMs: 280, gain: 0.05, delayMs: 120 });
+}
+
+/** Skript-Moment: ein Sargdeckel verrutscht hörbar — Stein auf Stein, dann dumpfes Kippen. */
+export function sfxCoffinScrape(pan: number): void {
+  noise({ durMs: 650, gain: 0.13, filterFreq: 320, pan });
+  noise({ durMs: 200, gain: 0.1, filterFreq: 240, delayMs: 700, pan });
+  tone({ freq: 70, endFreq: 45, type: 'sine', durMs: 220, gain: 0.12, delayMs: 720, pan });
+}
+
 /** Dumpfer Herzschlag (unter 25 % Leben). */
 export function sfxHeartbeat(): void {
   tone({ freq: 55, endFreq: 40, type: 'sine', durMs: 120, gain: 0.16 });

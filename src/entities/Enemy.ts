@@ -82,6 +82,21 @@ const REST_DURATION_MS = 2500;
 const RISE_MS = 800;
 const WAKE_RANGE = 150;
 
+/**
+ * Angriffsmuster v3: jeder Typ hat 2 lesbare Angriffe mit unterscheidbaren
+ * Telegraphen (450-700 ms). Der Übergriff des Pestopfers ist nur bei
+ * ELITES unblockbar (gelbes Aufblitzen) — v3-Regel.
+ */
+type MoveId = 'standard' | 'uebergriff' | 'doppelhieb' | 'stoss' | 'blink';
+const SPECIAL_MOVES: Record<string, { id: MoveId; telegraphMs: number; chance: number }> = {
+  pestopfer: { id: 'uebergriff', telegraphMs: 700, chance: 0.35 },
+  skelett: { id: 'doppelhieb', telegraphMs: 450, chance: 0.4 },
+  skelett_schuetze: { id: 'stoss', telegraphMs: 450, chance: 1 }, // nur im Nahbereich gewählt
+  grabschatten: { id: 'blink', telegraphMs: 500, chance: 0.35 },
+};
+/** Zweiter, kurzer Telegraph nach dem Blink-Teleport — fair lesbar. */
+const BLINK_RESTRIKE_MS = 350;
+
 /** Regulärer Gegner: Pestopfer, Skelett, Skelett-Schütze, Grabschatten — plus Elite-Varianten. */
 export class Enemy implements CombatTarget {
   x: number;
@@ -108,6 +123,11 @@ export class Enemy implements CombatTarget {
   private flashRemaining = 0;
   private strikeAngle = 0;
   private strikeResolved = false;
+  /** Aktuelles Angriffsmuster (gewählt beim Telegraph-Start). */
+  private move: MoveId = 'standard';
+  private telegraphDuration = 0;
+  private blinkDone = false;
+  private secondStrikeDone = false;
   private vx = 0;
   private vy = 0;
   private wobblePhase = Math.random() * Math.PI * 2;
@@ -187,7 +207,20 @@ export class Enemy implements CombatTarget {
   }
 
   get telegraphProgress(): number {
-    return this.state === 'telegraph' ? Math.min(1, this.stateElapsed / this.spec.telegraphMs) : -1;
+    return this.state === 'telegraph'
+      ? Math.min(1, this.stateElapsed / Math.max(1, this.telegraphDuration))
+      : -1;
+  }
+
+  /** Wählt das Angriffsmuster: Schützen stoßen nur im Nahbereich, sonst Schuss. */
+  private chooseMove(distToPlayer: number): MoveId {
+    const special = SPECIAL_MOVES[this.typeId];
+    if (!special) return 'standard';
+    if (special.id === 'stoss') {
+      return distToPlayer < 70 ? 'stoss' : 'standard';
+    }
+    if (special.id === 'uebergriff' && distToPlayer > this.spec.attackRange + 26) return 'standard';
+    return Math.random() < special.chance ? special.id : 'standard';
   }
 
   takeHit(opts: { damage: number; knockbackX: number; knockbackY: number; finisher: boolean; riposte: boolean }): void {
@@ -245,6 +278,57 @@ export class Enemy implements CombatTarget {
     if (this.eliteAffix === 'verflucht') {
       const affix = ELITE_AFFIXES['verflucht'];
       ctx.spawnPatch(this.x, this.y, affix?.groundDamage ?? 6, affix?.groundDurationMs ?? 4000);
+    }
+  }
+
+  /** Löst einen einzelnen Schlag/Schuss gemäß aktuellem Muster auf. */
+  private resolveStrike(ctx: EnemyContext, distToPlayer: number): void {
+    const player = ctx.player;
+    if (this.spec.behavior === 'ranged' && this.move !== 'stoss') {
+      ctx.spawnProjectile(
+        this.x,
+        this.y,
+        Math.atan2(player.y - this.y, player.x - this.x),
+        this.spec.projectileSpeed ?? 300,
+        this.damage,
+      );
+      return;
+    }
+
+    // Muster-Parameter: Übergriff trifft weiter und härter, Stoß/Doppelhieb schwächer
+    let range = this.spec.attackRange;
+    let dmg = this.damage;
+    let unblockable = false;
+    if (this.move === 'uebergriff') {
+      range = this.spec.attackRange + 26;
+      dmg = Math.round(this.damage * 1.3);
+      unblockable = this.isElite; // v3: unblockbarer Grab nur bei Elite (gelbes Aufblitzen)
+    } else if (this.move === 'doppelhieb') {
+      dmg = Math.round(this.damage * 0.7);
+    } else if (this.move === 'stoss') {
+      dmg = Math.round(this.damage * 0.6);
+    }
+
+    if (distToPlayer <= range + player.radius && !player.invulnerable) {
+      const outcome = player.receiveAttack({
+        damage: dmg,
+        sourceX: this.x,
+        sourceY: this.y,
+        attacker: this,
+        unblockable,
+      });
+      if (outcome === 'hit' && this.eliteAffix === 'vampirisch') {
+        const affix = ELITE_AFFIXES['vampirisch'];
+        const heal = Math.round(dmg * (affix?.lifestealPct ?? 0.5));
+        this.hp = Math.min(this.maxHp, this.hp + heal);
+        this.fx.damageNumber(this.x, this.y, `+${heal}`, 'golden');
+      }
+    }
+    // Stoß: der Schütze springt nach dem Schlag zurück auf Distanz
+    if (this.move === 'stoss') {
+      const away = Math.atan2(this.y - player.y, this.x - player.x);
+      this.vx += Math.cos(away) * 280;
+      this.vy += Math.sin(away) * 280;
     }
   }
 
@@ -336,14 +420,40 @@ export class Enemy implements CombatTarget {
             this.state = 'telegraph';
             this.stateElapsed = 0;
             this.strikeAngle = Math.atan2(player.y - this.y, player.x - this.x);
-            sfxTelegraph();
+            this.move = this.chooseMove(distToPlayer);
+            this.telegraphDuration =
+              this.move === 'standard' ? this.spec.telegraphMs : (SPECIAL_MOVES[this.typeId]?.telegraphMs ?? this.spec.telegraphMs);
+            this.blinkDone = false;
+            this.secondStrikeDone = false;
+            if (this.move === 'blink') {
+              // Flüster-Vorwarnung: man hört den Schatten, bevor er springt
+              sfxIdle('grabschatten', Math.max(-1, Math.min(1, (this.x - player.x) / 400)), 1);
+            } else {
+              sfxTelegraph();
+            }
           }
         }
         break;
       }
       case 'telegraph': {
         this.stateElapsed += dtMs;
-        if (this.stateElapsed >= this.spec.telegraphMs) {
+        if (this.stateElapsed >= this.telegraphDuration) {
+          if (this.move === 'blink' && !this.blinkDone) {
+            // Teleport neben/hinter den Spieler, dann zweiter kurzer Telegraph (fair)
+            this.blinkDone = true;
+            this.fx.burst(this.x, this.y, { color: 0x6a5a8a, count: 10, speed: 120, size: 2, lifeMs: 300 });
+            const a = player.facing + Math.PI + (Math.random() - 0.5) * 1.2;
+            this.x = player.x + Math.cos(a) * 80;
+            this.y = player.y + Math.sin(a) * 80;
+            this.vx = 0;
+            this.vy = 0;
+            this.strikeAngle = Math.atan2(player.y - this.y, player.x - this.x);
+            this.fx.burst(this.x, this.y, { color: 0x8a7ab8, count: 10, speed: 140, size: 2, lifeMs: 300 });
+            this.stateElapsed = 0;
+            this.telegraphDuration = BLINK_RESTRIKE_MS;
+            sfxTelegraph();
+            break;
+          }
           this.state = 'strike';
           this.stateElapsed = 0;
           this.strikeResolved = false;
@@ -354,30 +464,21 @@ export class Enemy implements CombatTarget {
         this.stateElapsed += dtMs;
         if (!this.strikeResolved && this.stateElapsed >= 36) {
           this.strikeResolved = true;
-          if (this.spec.behavior === 'ranged') {
-            ctx.spawnProjectile(
-              this.x,
-              this.y,
-              Math.atan2(player.y - this.y, player.x - this.x),
-              this.spec.projectileSpeed ?? 300,
-              this.damage,
-            );
-          } else if (distToPlayer <= this.spec.attackRange + player.radius && !player.invulnerable) {
-            const outcome = player.receiveAttack({
-              damage: this.damage,
-              sourceX: this.x,
-              sourceY: this.y,
-              attacker: this,
-            });
-            if (outcome === 'hit' && this.eliteAffix === 'vampirisch') {
-              const affix = ELITE_AFFIXES['vampirisch'];
-              const heal = Math.round(this.damage * (affix?.lifestealPct ?? 0.5));
-              this.hp = Math.min(this.maxHp, this.hp + heal);
-              this.fx.damageNumber(this.x, this.y, `+${heal}`, 'golden');
-            }
-          }
+          this.resolveStrike(ctx, distToPlayer);
         }
-        if (this.stateElapsed >= 90 && this.state === 'strike') {
+        // Doppelhieb: zweiter, schneller Schlag nach 280 ms
+        if (
+          this.move === 'doppelhieb' &&
+          !this.secondStrikeDone &&
+          this.stateElapsed >= 280 &&
+          this.state === 'strike'
+        ) {
+          this.secondStrikeDone = true;
+          this.strikeAngle = Math.atan2(player.y - this.y, player.x - this.x);
+          this.resolveStrike(ctx, Phaser.Math.Distance.Between(this.x, this.y, player.x, player.y));
+        }
+        const strikeDuration = this.move === 'doppelhieb' ? 380 : 90;
+        if (this.stateElapsed >= strikeDuration && this.state === 'strike') {
           this.state = 'chase';
           this.attacksSinceRest++;
           if (this.attacksSinceRest >= this.restAfter) {
@@ -447,14 +548,40 @@ export class Enemy implements CombatTarget {
     g.fillStyle(0x000000, 0.35);
     g.fillEllipse(this.x, this.y + this.radius * 0.8, this.radius * 2, this.radius * 0.85);
 
-    // Telegraph: pulsierender roter Ring + Lehnen zum Spieler
+    // Telegraph: Muster-spezifisch lesbar (Form/Farbe unterscheidbar)
     let leanX = 0;
     let leanY = 0;
     if (this.state === 'telegraph') {
       const t = this.telegraphProgress;
       const pulse = 0.5 + 0.5 * Math.sin(t * Math.PI * 6);
-      g.lineStyle(3 + t * 2, 0xd23232, 0.35 + 0.55 * pulse);
-      g.strokeCircle(this.x, this.y, this.radius + 8 + (1 - t) * 10);
+      if (this.move === 'uebergriff') {
+        // Langsamer Übergriff: großer Ring; bei Elite GELB = unblockbar (v3)
+        const color = this.isElite ? 0xe8c83d : 0xd23232;
+        g.lineStyle(4 + t * 3, color, 0.3 + 0.6 * pulse);
+        g.strokeCircle(this.x, this.y, this.radius + 18 + (1 - t) * 14);
+      } else if (this.move === 'doppelhieb') {
+        // Doppelhieb: zwei konzentrische Ringe
+        g.lineStyle(2 + t * 2, 0xd23232, 0.35 + 0.55 * pulse);
+        g.strokeCircle(this.x, this.y, this.radius + 6 + (1 - t) * 8);
+        g.strokeCircle(this.x, this.y, this.radius + 13 + (1 - t) * 8);
+      } else if (this.move === 'blink') {
+        // Blink: violetter Ring, der Schemen verblasst vor dem Sprung
+        g.lineStyle(3, 0x8a7ab8, 0.3 + 0.6 * pulse);
+        g.strokeCircle(this.x, this.y, this.radius + 8 + (this.blinkDone ? 0 : (1 - t) * 12));
+      } else if (this.move === 'stoss') {
+        // Stoß: kleiner Ring + Stoßrichtung
+        g.lineStyle(3, 0xd23232, 0.35 + 0.55 * pulse);
+        g.strokeCircle(this.x, this.y, this.radius + 6);
+        g.lineBetween(
+          this.x,
+          this.y,
+          this.x + Math.cos(this.strikeAngle) * (this.radius + 18 * t),
+          this.y + Math.sin(this.strikeAngle) * (this.radius + 18 * t),
+        );
+      } else {
+        g.lineStyle(3 + t * 2, 0xd23232, 0.35 + 0.55 * pulse);
+        g.strokeCircle(this.x, this.y, this.radius + 8 + (1 - t) * 10);
+      }
       leanX = -Math.cos(this.strikeAngle) * 5 * t;
       leanY = -Math.sin(this.strikeAngle) * 5 * t;
     }
