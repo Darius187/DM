@@ -17,7 +17,11 @@ const browser = await pwChromium.launch({
   executablePath: execPath,
   args: sparticuz.args,
 });
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+// TOUCH=1 emuliert ein Touch-Gerät (für die Prüfung der Touch-Steuerung)
+const page = await browser.newPage({
+  viewport: { width: 1280, height: 720 },
+  hasTouch: process.env.TOUCH === '1',
+});
 const logs = [];
 page.on('console', (msg) => logs.push(`[${msg.type()}] ${msg.text()}`));
 page.on('pageerror', (err) => logs.push(`[pageerror] ${err.message}`));

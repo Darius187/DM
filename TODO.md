@@ -1,9 +1,11 @@
 # TODO - Notizen für später (keine Nebenbei-Refactorings)
 
-- SettingsScene scrollt nicht: Bei kleinen Fenstern läuft die Tastenliste
-  unten aus dem Bild. In Phase 10 (Menü-Politur) beheben.
-- BootScene erzeugt beim Start viele 404-Logs für fehlende Hot-Swap-Dateien -
-  erwartetes Verhalten, aber prüfen, ob sich Phasers Konsolenwarnungen
-  bündeln lassen.
-- Inventarliste: Blättern/Scrollen fehlt, bei vielen Items wird abgeschnitten
-  (Überlaufschutz aktiv). In Phase 10 mit Maus-Rad/Touch-Wisch nachrüsten.
+- BootScene erzeugt beim Start einige HEAD-Anfragen für fehlende
+  Hot-Swap-Dateien - erwartetes Verhalten, im Netzwerk-Tab sichtbar,
+  Konsole bleibt sauber.
+- Inventarliste: Blättern/Scrollen fehlt, bei sehr vielen Items wird
+  abgeschnitten (Überlaufschutz aktiv). Mit Maus-Rad/Touch-Wisch nachrüsten.
+- Fähigkeits-Abklingzeiten (R/T/4-6) sind nicht im HUD sichtbar.
+- Einrichtungs-Sets (Stufe 3) haben noch keine sichtbare Deko am Haus.
+- Erledigt 2026-06-10: Einstellungen liefen bei kleinen Fenstern aus dem
+  Bild - jetzt zweispaltig.

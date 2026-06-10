@@ -22,7 +22,10 @@ export interface SaveData {
     weaponIdx: number; armorIdx: number; ringIdx: number;
     schools: Record<'nahkampf' | 'zauberei' | 'bogen', SchoolState>;
     materials: Record<string, number>;
+    tools?: { axt: boolean; spitzhacke: boolean };
+    warmBuff?: boolean;
   };
+  lager?: Item[];
   welt: {
     areaId: string;
     flags: Record<string, boolean>;
@@ -33,6 +36,8 @@ export interface SaveData {
     tageszeit: number;
     feld: Array<{ saatId: string | null; tageGewachsen: number; gegossen: boolean }>;
     haendlerSeed: number;
+    aufbauBestellt?: boolean;
+    einrichtung?: number;
   };
 }
 

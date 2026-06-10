@@ -3,7 +3,7 @@
 
 import Phaser from 'phaser';
 import { TITEL } from '../data/texte';
-import { hasSave, AUTOSAVE_SLOT } from '../logic/save';
+import { hasSave, readSave, AUTOSAVE_SLOT } from '../logic/save';
 import { storage } from '../logic/gameStorage';
 
 export class TitleScene extends Phaser.Scene {
@@ -37,9 +37,10 @@ export class TitleScene extends Phaser.Scene {
 
     // Dev-Werkzeug: ?start=crypt2 springt direkt in ein Gebiet (nur Dev-Build)
     const devStart = import.meta.env.DEV ? new URLSearchParams(location.search).get('start') ?? undefined : undefined;
+    const anySave = [0, 1, 2, 3].some((s) => hasSave(storage, s));
     const buttons: Array<[string, () => void, boolean]> = [
       ['NEUES SPIEL', () => this.scene.start('World', { neu: true, startArea: devStart }), true],
-      ['LADEN', () => this.scene.start('World', { ladeSlot: AUTOSAVE_SLOT }), hasSave(storage, AUTOSAVE_SLOT)],
+      ['LADEN', () => this.showLoadMenu(), anySave],
       ['EINSTELLUNGEN', () => this.scene.start('Settings', { zurueck: 'Title' }), true],
       ['DEBUG-ARENA', () => this.scene.start('DebugArena'), true],
     ];
@@ -48,6 +49,44 @@ export class TitleScene extends Phaser.Scene {
       this.makeButton(w / 2, y, label, fn, enabled);
       y += 56;
     }
+  }
+
+  // Slot-Auswahl: Autosave + 3 manuelle Plätze mit Zeitstempel
+  private showLoadMenu(): void {
+    const w = this.scale.width, h = this.scale.height;
+    const c = this.add.container(0, 0).setDepth(50);
+    const bg = this.add.rectangle(0, 0, w, h, 0x000000, 0.82).setOrigin(0);
+    bg.setInteractive();
+    c.add(bg);
+    c.add(this.add.text(w / 2, h * 0.22, 'SPIELSTAND LADEN', {
+      fontFamily: 'serif', fontSize: '28px', color: '#d8cfb8', letterSpacing: 4,
+    }).setOrigin(0.5));
+    let y = h * 0.34;
+    for (const slot of [AUTOSAVE_SLOT, 1, 2, 3]) {
+      const data = readSave(storage, slot);
+      const name = slot === AUTOSAVE_SLOT ? 'AUTOSAVE' : `PLATZ ${slot}`;
+      const info = data
+        ? `${name} - Stufe ${data.player.level}, Tag ${data.welt.tag}, ${new Date(data.zeit).toLocaleString('de-DE')}`
+        : `${name} - leer`;
+      const b = this.add.text(w / 2, y, info, {
+        fontFamily: 'serif', fontSize: '16px', color: data ? '#d8cfb8' : '#5a5246', letterSpacing: 1,
+        backgroundColor: '#1c1410', padding: { x: 18, y: 8 },
+      }).setOrigin(0.5);
+      if (data) {
+        b.setInteractive({ useHandCursor: true });
+        b.on('pointerover', () => b.setColor('#c9a227'));
+        b.on('pointerout', () => b.setColor('#d8cfb8'));
+        b.on('pointerdown', () => this.scene.start('World', { ladeSlot: slot }));
+      }
+      c.add(b);
+      y += 52;
+    }
+    const back = this.add.text(w / 2, y + 16, 'ZURÜCK', {
+      fontFamily: 'serif', fontSize: '15px', color: '#d8cfb8', letterSpacing: 2,
+      backgroundColor: '#1c1410', padding: { x: 18, y: 7 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    back.on('pointerdown', () => c.destroy());
+    c.add(back);
   }
 
   private makeButton(x: number, y: number, label: string, fn: () => void, enabled: boolean): void {

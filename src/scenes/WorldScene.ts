@@ -27,6 +27,8 @@ import { rollGear, rollGem } from '../logic/loot';
 import { recalc } from '../logic/playerState';
 import { getSettings } from '../logic/settings';
 import { seededRng, pick, ri } from '../logic/rng';
+import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type SaveData } from '../logic/save';
+import { storage } from '../logic/gameStorage';
 import type { Item } from '../data/types';
 import type { Pickup } from '../world/Pickups';
 import { ANNA_GRAB } from '../data/dialoge';
@@ -136,8 +138,20 @@ export class WorldScene extends CombatScene {
       this.p.hp = this.p.stats.maxhp;
       this.p.mana = this.p.stats.maxmana;
     }
-    // Spielstart im Dunkelwald (Masterprompt 7.1)
-    this.goArea(params.startArea ?? 'wald');
+    // Laden aus Slot oder Spielstart im Dunkelwald (Masterprompt 7.1)
+    if (params.ladeSlot !== undefined) {
+      const data = readSave(storage, params.ladeSlot);
+      if (data) {
+        this.applySave(data);
+        // wie die Referenz: Erwachen in Ravensmoor (Krypta neu bevölkert)
+        this.goArea(this.flags.nAnkunft ? 'village' : 'wald');
+        this.logMsg(MELDUNGEN.geladen, 'gold');
+      } else {
+        this.goArea('wald');
+      }
+    } else {
+      this.goArea(params.startArea ?? 'wald');
+    }
     // Dev-Werkzeug: ?relikt=1 legt das Relikt neben den Spieler (nur Dev-Build)
     if (import.meta.env.DEV && new URLSearchParams(location.search).get('relikt')) {
       this.pickups.add({ kind: 'relic', x: this.px + 30, y: this.py, bob: 0 });
@@ -201,6 +215,8 @@ export class WorldScene extends CombatScene {
       this.flags.intro = true;
       this.talkLandherr();
     }
+    // Autosave bei Gebietswechsel (Referenz-Verhalten)
+    this.autosave();
   }
 
   private talkLandherr(): void {
@@ -342,7 +358,7 @@ export class WorldScene extends CombatScene {
   }
 
   protected override uiBlocked(): boolean {
-    return super.uiBlocked() || this.dialog?.open || this.shop?.open || this.stash?.open || !!this.deathOverlay;
+    return super.uiBlocked() || this.dialog?.open || this.shop?.open || this.stash?.open || !!this.deathOverlay || !!this.pauseMenu;
   }
 
   // --- Zerstörbare Objekte ---------------------------------------------------
@@ -1193,6 +1209,135 @@ export class WorldScene extends CombatScene {
     this.deathOverlay = c; // blockiert Eingaben wie ein Overlay
   }
 
+  // --- Speichern und Laden (3 Slots + Autosave, Masterprompt Phase 10) ----------
+
+  collectSave(): SaveData {
+    const p = this.p;
+    return {
+      v: SAVE_VERSION,
+      zeit: Date.now(),
+      player: {
+        level: p.level, xp: p.xp, xpNext: p.xpNext, gold: p.gold,
+        pot: p.pot, mpot: p.mpot, elixirs: p.elixirs, hasKey: p.hasKey,
+        hp: p.hp, mana: p.mana,
+        flaskMax: p.flaskMax, flaskPowerUp: p.flaskPowerUp,
+        arrows: p.arrows,
+        inv: p.inv,
+        ...equipIndices(p.inv, p.weapon, p.armorIt, p.ring),
+        schools: p.schools,
+        materials: p.materials,
+        tools: p.tools,
+        warmBuff: p.warmBuff,
+      },
+      lager: this.lager,
+      welt: {
+        areaId: this.area?.id ?? 'village',
+        flags: this.flags,
+        bossDead: this.bossDead,
+        relicChoice: this.relicChoice,
+        aufbauStufe: this.aufbauStufe,
+        tag: this.tag,
+        tageszeit: this.tageszeit,
+        feld: this.feld,
+        haendlerSeed: this.areaSeed,
+        aufbauBestellt: this.aufbauBestellt,
+        einrichtung: this.einrichtung,
+      },
+    };
+  }
+
+  saveToSlot(slot: number): boolean {
+    const ok = writeSave(storage, slot, this.collectSave());
+    if (ok && slot !== AUTOSAVE_SLOT) this.logMsg(`Spielstand ${slot} gespeichert`, 'gold');
+    return ok;
+  }
+
+  private autosave(): void {
+    if (!this.flags.intro) return; // erst ab Spielbeginn sinnvoll
+    writeSave(storage, AUTOSAVE_SLOT, this.collectSave());
+  }
+
+  // Spielstand anwenden; wie die Referenz erwacht man im Dorf (Krypta-
+  // Ebenen werden ohnehin neu bevölkert), vor der Ankunft im Wald.
+  private applySave(data: SaveData): void {
+    const p = this.p;
+    const s = data.player;
+    p.level = s.level; p.xp = s.xp; p.xpNext = s.xpNext; p.gold = s.gold;
+    p.pot = s.pot; p.mpot = s.mpot; p.elixirs = s.elixirs; p.hasKey = s.hasKey;
+    p.flaskMax = s.flaskMax; p.flaskPowerUp = s.flaskPowerUp; p.flaskCount = s.flaskMax;
+    p.arrows = s.arrows;
+    p.inv = s.inv ?? [];
+    p.weapon = s.weaponIdx >= 0 ? p.inv[s.weaponIdx] ?? null : null;
+    p.armorIt = s.armorIdx >= 0 ? p.inv[s.armorIdx] ?? null : null;
+    p.ring = s.ringIdx >= 0 ? p.inv[s.ringIdx] ?? null : null;
+    p.schools = s.schools;
+    p.materials = { holz: 0, stein: 0, eisen: 0, kraeuter: 0, kohle: 0, ...s.materials };
+    p.tools = s.tools ?? { axt: false, spitzhacke: false };
+    p.warmBuff = s.warmBuff ?? false;
+    this.lager = data.lager ?? [];
+    this.flags = data.welt.flags ?? {};
+    this.bossDead = data.welt.bossDead;
+    this.relicChoice = data.welt.relicChoice;
+    this.aufbauStufe = data.welt.aufbauStufe ?? 0;
+    this.aufbauBestellt = data.welt.aufbauBestellt ?? false;
+    this.einrichtung = data.welt.einrichtung ?? 0;
+    this.tag = data.welt.tag ?? 1;
+    this.tageszeit = data.welt.tageszeit ?? 0.3;
+    this.feld = data.welt.feld ?? this.feld;
+    this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
+    recalc(p);
+    p.hp = Math.min(p.stats.maxhp, s.hp || p.stats.maxhp);
+    p.mana = Math.min(p.stats.maxmana, s.mana || p.stats.maxmana);
+  }
+
+  // --- Pausemenü ------------------------------------------------------------------
+
+  private pauseMenu: Phaser.GameObjects.Container | null = null;
+
+  private togglePause(): void {
+    if (this.pauseMenu) {
+      this.pauseMenu.destroy();
+      this.pauseMenu = null;
+      return;
+    }
+    const w = this.scale.width, h = this.scale.height;
+    const c = this.add.container(0, 0).setScrollFactor(0).setDepth(1100);
+    const bg = this.add.rectangle(0, 0, w, h, 0x000000, 0.78).setOrigin(0);
+    bg.setInteractive();
+    c.add(bg);
+    c.add(this.add.text(w / 2, h * 0.18, 'PAUSE', {
+      fontFamily: 'serif', fontSize: '40px', color: '#d8cfb8', letterSpacing: 6,
+    }).setOrigin(0.5));
+    const mkBtn = (y: number, label: string, fn: () => void) => {
+      const b = this.add.text(w / 2, y, label, {
+        fontFamily: 'serif', fontSize: '17px', color: '#d8cfb8', letterSpacing: 2,
+        backgroundColor: '#1c1410', padding: { x: 22, y: 8 },
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      b.on('pointerover', () => b.setColor('#c9a227'));
+      b.on('pointerout', () => b.setColor('#d8cfb8'));
+      b.on('pointerdown', fn);
+      c.add(b);
+    };
+    mkBtn(h * 0.34, 'WEITER', () => this.togglePause());
+    for (let slot = 1; slot <= 3; slot++) {
+      mkBtn(h * 0.34 + slot * 52, `SPEICHERN - PLATZ ${slot}`, () => {
+        this.saveToSlot(slot);
+        this.togglePause();
+      });
+    }
+    mkBtn(h * 0.34 + 4 * 52, 'EINSTELLUNGEN', () => {
+      this.togglePause();
+      this.scene.pause();
+      this.scene.launch('Settings', { zurueck: 'World', resume: true });
+    });
+    mkBtn(h * 0.34 + 5 * 52, 'HAUPTMENÜ', () => {
+      this.autosave();
+      this.scene.start('Title');
+    });
+    fixUiScroll(c);
+    this.pauseMenu = c;
+  }
+
   // --- Tod ---------------------------------------------------------------------
 
   protected onPlayerDeath(): void {
@@ -1617,6 +1762,6 @@ export class WorldScene extends CombatScene {
   }
 
   protected override onGameKey(k: string): void {
-    if (k === 'escape') this.scene.start('Title');
+    if (k === 'escape' || k === getSettings().kb.pause) this.togglePause();
   }
 }

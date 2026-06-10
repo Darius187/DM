@@ -4,10 +4,12 @@
 import Phaser from 'phaser';
 import { getSettings, saveSettings, resetSettings, keyLabel, type Settings } from '../logic/settings';
 
-interface SettingsParams { zurueck?: string }
+interface SettingsParams { zurueck?: string; resume?: boolean }
 
 export class SettingsScene extends Phaser.Scene {
   private zurueck = 'Title';
+  private resume = false;
+  private colX = 0;
   private pendingBind: keyof Settings['kb'] | null = null;
   private bindLabels = new Map<keyof Settings['kb'], Phaser.GameObjects.Text>();
 
@@ -17,6 +19,8 @@ export class SettingsScene extends Phaser.Scene {
 
   create(params: SettingsParams): void {
     this.zurueck = params.zurueck ?? 'Title';
+    this.resume = params.resume ?? false;
+    this.cameras.main.setBackgroundColor('#0a0806');
     this.pendingBind = null;
     this.bindLabels.clear();
     const w = this.scale.width;
@@ -26,9 +30,11 @@ export class SettingsScene extends Phaser.Scene {
       fontFamily: 'serif', fontSize: '34px', color: '#d8cfb8', letterSpacing: 5,
     }).setOrigin(0.5);
 
+    // Zwei Spalten, damit nichts aus dem Bild läuft (TODO.md erledigt)
+    this.colX = w / 2 - 520;
     let y = 92;
     const sect = (t: string) => {
-      this.add.text(w / 2 - 250, y, t, { fontFamily: 'serif', fontSize: '14px', color: '#c9a227', letterSpacing: 2 });
+      this.add.text(this.colX, y, t, { fontFamily: 'serif', fontSize: '14px', color: '#c9a227', letterSpacing: 2 });
       y += 26;
     };
     sect('AUDIO');
@@ -39,17 +45,23 @@ export class SettingsScene extends Phaser.Scene {
     y = this.toggle(y, 'Bildschirmwackeln bei Treffern', () => s.shake, (v) => { s.shake = v; });
     y = this.toggle(y, 'Schadenszahlen', () => s.dmgNums, (v) => { s.dmgNums = v; });
     y = this.toggle(y, 'Blut & Überreste', () => s.blood, (v) => { s.blood = v; });
+    sect('HANDY');
+    y = this.toggle(y, 'Linkshänder-Modus (Joystick rechts)', () => s.lefty, (v) => { s.lefty = v; });
+    const leftEnd = y;
+
+    // Rechte Spalte: Tastenbelegung
+    this.colX = w / 2 + 40;
+    y = 92;
     sect('TASTATURBELEGUNG (PC)');
     const rows: Array<[keyof Settings['kb'], string]> = [
       ['roll', 'Ausweichrolle'], ['heavy', 'Schwerer Hieb'], ['interact', 'Reden / Aufheben'],
       ['inv', 'Inventar'], ['charakter', 'Charakterfenster'], ['pot', 'Heiltrank'], ['mpot', 'Manatrank'],
       ['s1', 'Zauber 1'], ['s2', 'Zauber 2'], ['s3', 'Zauber 3'],
-      ['faehigkeit1', 'Fähigkeit 1'], ['faehigkeit2', 'Fähigkeit 2'], ['faehigkeit3', 'Fähigkeit 3'],
+      ['faehigkeit1', 'Waffen-Fähigkeit 1 (R)'], ['faehigkeit2', 'Waffen-Fähigkeit 2 (T)'],
       ['pause', 'Pause'],
     ];
     for (const [id, label] of rows) y = this.keyRow(y, id, label);
-    sect('HANDY');
-    y = this.toggle(y, 'Linkshänder-Modus (Joystick rechts)', () => s.lefty, (v) => { s.lefty = v; });
+    y = Math.max(y, leftEnd);
 
     this.makeButton(w / 2 - 90, y + 24, 'STANDARD', () => {
       resetSettings();
@@ -57,7 +69,12 @@ export class SettingsScene extends Phaser.Scene {
     });
     this.makeButton(w / 2 + 90, y + 24, 'ZURÜCK', () => {
       saveSettings();
-      this.scene.start(this.zurueck);
+      if (this.resume) {
+        this.scene.stop();
+        this.scene.resume(this.zurueck);
+      } else {
+        this.scene.start(this.zurueck);
+      }
     });
 
     this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {
@@ -79,14 +96,14 @@ export class SettingsScene extends Phaser.Scene {
   }
 
   private slider(y: number, label: string, get: () => number, set: (v: number) => void, min = 0, max = 100): number {
-    const w = this.scale.width;
-    this.add.text(w / 2 - 250, y, label, { fontFamily: 'serif', fontSize: '15px', color: '#d8cfb8' });
-    const bar = this.add.rectangle(w / 2 + 110, y + 8, 180, 6, 0x3a2f24).setInteractive({ useHandCursor: true });
+    const x0 = this.colX;
+    this.add.text(x0, y, label, { fontFamily: 'serif', fontSize: '15px', color: '#d8cfb8' });
+    const bar = this.add.rectangle(x0 + 330, y + 8, 180, 6, 0x3a2f24).setInteractive({ useHandCursor: true });
     const fillW = () => 180 * ((get() - min) / (max - min));
-    const fill = this.add.rectangle(w / 2 + 110 - 90, y + 8, fillW(), 6, 0xc9a227).setOrigin(0, 0.5);
-    const val = this.add.text(w / 2 + 215, y, `${get()}%`, { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' });
+    const fill = this.add.rectangle(x0 + 330 - 90, y + 8, fillW(), 6, 0xc9a227).setOrigin(0, 0.5);
+    const val = this.add.text(x0 + 435, y, `${get()}%`, { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' });
     bar.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      const rel = Phaser.Math.Clamp((p.x - (w / 2 + 110 - 90)) / 180, 0, 1);
+      const rel = Phaser.Math.Clamp((p.x - (x0 + 330 - 90)) / 180, 0, 1);
       set(Math.round((min + rel * (max - min)) / 5) * 5);
       fill.width = fillW();
       val.setText(`${get()}%`);
@@ -96,9 +113,9 @@ export class SettingsScene extends Phaser.Scene {
   }
 
   private toggle(y: number, label: string, get: () => boolean, set: (v: boolean) => void): number {
-    const w = this.scale.width;
-    this.add.text(w / 2 - 250, y, label, { fontFamily: 'serif', fontSize: '15px', color: '#d8cfb8' });
-    const btn = this.add.text(w / 2 + 160, y, get() ? 'AN' : 'AUS', {
+    const x0 = this.colX;
+    this.add.text(x0, y, label, { fontFamily: 'serif', fontSize: '15px', color: '#d8cfb8' });
+    const btn = this.add.text(x0 + 380, y, get() ? 'AN' : 'AUS', {
       fontFamily: 'serif', fontSize: '14px', color: get() ? '#c9a227' : '#d8cfb8',
       backgroundColor: '#1c1410', padding: { x: 14, y: 4 },
     }).setInteractive({ useHandCursor: true });
@@ -111,9 +128,9 @@ export class SettingsScene extends Phaser.Scene {
   }
 
   private keyRow(y: number, id: keyof Settings['kb'], label: string): number {
-    const w = this.scale.width;
-    this.add.text(w / 2 - 250, y, label, { fontFamily: 'serif', fontSize: '15px', color: '#d8cfb8' });
-    const btn = this.add.text(w / 2 + 140, y, keyLabel(getSettings().kb[id]), {
+    const x0 = this.colX;
+    this.add.text(x0, y, label, { fontFamily: 'serif', fontSize: '15px', color: '#d8cfb8' });
+    const btn = this.add.text(x0 + 360, y, keyLabel(getSettings().kb[id]), {
       fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8',
       backgroundColor: '#1c1410', padding: { x: 12, y: 4 },
     }).setInteractive({ useHandCursor: true });

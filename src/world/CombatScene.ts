@@ -23,6 +23,7 @@ import { ELITE } from '../data/enemies';
 import type { EnemyTypeId, WeaponClass } from '../data/types';
 import { ABILITY_FX, ABILITIES, LORE_XP } from '../data/balancing';
 import { PickupSystem, AUTO_PICKUP, type Pickup } from './Pickups';
+import { TouchControls, isTouchDevice, type TouchHost } from '../ui/touch';
 import { UIPanels } from '../ui/panels';
 import { rollGear, rollGem } from '../logic/loot';
 import { KILL_DROPS } from '../data/items';
@@ -36,7 +37,7 @@ export interface Projectile {
 
 export interface Telegraph { x: number; y: number; r: number; t: number; maxT: number; dmg: number; holy?: boolean; done?: boolean }
 
-export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
+export abstract class CombatScene extends Phaser.Scene implements EnemyHost, TouchHost {
   declare provider: SpriteProvider;
   declare sfx: SoundProvider;
   declare fx: EffectSystem;
@@ -67,6 +68,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
   protected overlay!: Phaser.GameObjects.Graphics;
   protected keysDown: Record<string, boolean> = {};
   protected mouseDown = false;
+  protected touch: TouchControls | null = null;
   protected heavyQueued = false;
   protected rollLight = 0; // Staub bei Rollen
 
@@ -104,7 +106,30 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
       fontFamily: 'serif', fontSize: '16px', color: '#e8dcb8', backgroundColor: '#0a0704c0', padding: { x: 12, y: 3 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(800).setVisible(false);
     this.setupInput();
+    if (isTouchDevice()) {
+      this.touch = new TouchControls(this, this);
+      this.touch.drawLabels();
+    }
   }
+
+  // --- TouchHost: Tasten der Touch-Steuerung ---------------------------------
+  touchLight(): void {
+    if (this.playerDead || this.uiBlocked()) return;
+    if (this.weaponClass() === 'bogen') this.startBowDraw();
+    else this.tryLight();
+  }
+  touchLightUp(): void {
+    if (this.bowDrawT >= 0) this.releaseBow();
+  }
+  touchHeavy(): void { if (!this.playerDead && !this.uiBlocked()) this.tryHeavy(); }
+  touchRoll(): void { if (!this.playerDead && !this.uiBlocked()) this.tryRoll(); }
+  touchBlock(down: boolean): void {
+    if (down && !this.playerDead && !this.uiBlocked()) this.tryBlockStart();
+    else if (!down) this.tryBlockEnd();
+  }
+  touchPotion(): void { if (!this.playerDead && !this.uiBlocked()) this.drinkPot(); }
+  touchInteract(): void { if (!this.playerDead && !this.uiBlocked()) this.tryInteract(); }
+  touchInventory(): void { if (!this.playerDead) this.panels.toggleInventory(); }
 
   private setupInput(): void {
     const kb = this.input.keyboard;
@@ -142,12 +167,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
       this.keysDown[ev.key.toLowerCase()] = false;
     });
     this.input.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
+      if (this.touch) return; // Touch-Steuerung übernimmt alle Zeiger
       if (this.playerDead || this.uiBlocked()) return;
       if (ptr.rightButtonDown()) this.tryBlockStart();
       else if (this.weaponClass() === 'bogen') this.startBowDraw();
       else this.mouseDown = true;
     });
     this.input.on('pointerup', (ptr: Phaser.Input.Pointer) => {
+      if (this.touch) return;
       this.mouseDown = false;
       if (ptr.button === 2) this.tryBlockEnd();
       else if (this.bowDrawT >= 0) this.releaseBow();
@@ -262,6 +289,17 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
   // --- Eingabe-Aktionen -------------------------------------------------
 
   protected aimAngle(): number {
+    // Touch: Auto-Aim auf den nächsten Gegner (Referenz-Verhalten)
+    if (this.touch) {
+      let best: Enemy | null = null;
+      let bd = 160;
+      for (const e of this.enemies) {
+        const d = Math.hypot(e.x - this.px, e.y - this.py);
+        if (d < bd) { bd = d; best = e; }
+      }
+      if (best) return Math.atan2(best.y - this.py, best.x - this.px);
+      return this.pdir;
+    }
     const ptr = this.input.activePointer;
     const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
     return Math.atan2(wp.y - this.py, wp.x - this.px);
@@ -932,14 +970,19 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
     // Kampfzustand fortschreiben; gepufferte Angriffe feuern hier
     const step = stepCombat(this.combat, dt);
     if (step.attack) this.executeAttack(step.attack);
-    if (this.mouseDown && !this.uiBlocked()) this.tryLight();
+    const attackHeld = this.mouseDown || (this.touch?.attackHeld && this.weaponClass() !== 'bogen');
+    if (attackHeld && !this.uiBlocked()) this.tryLight();
 
-    // Bewegung
+    // Bewegung (Tastatur + Touch-Joystick)
     let dx = 0, dy = 0;
     if (this.keysDown['w'] || this.keysDown['arrowup']) dy -= 1;
     if (this.keysDown['s'] || this.keysDown['arrowdown']) dy += 1;
     if (this.keysDown['a'] || this.keysDown['arrowleft']) dx -= 1;
     if (this.keysDown['d'] || this.keysDown['arrowright']) dx += 1;
+    if (this.touch) {
+      dx += this.touch.joyX;
+      dy += this.touch.joyY;
+    }
     if (this.combat.action === 'roll') {
       this.movePlayer(this.rollVx * dt, this.rollVy * dt);
       this.rollLight -= dt;
@@ -1024,6 +1067,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
     this.fx.update(dt);
     this.shakeAmt = Math.max(0, this.shakeAmt - dt * 18);
     this.renderEntities();
+    if (this.touch) {
+      this.touch.setInteractVisible(this.hintText.visible);
+      this.touch.render();
+      this.touch.updateLabels();
+    }
     return dt;
   }
 

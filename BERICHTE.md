@@ -304,6 +304,32 @@ Offen:
 - Sprites bleiben bewusst Fallback-Qualität - das eigentliche
   Grafik-Upgrade ist Phase 11 (optional) bzw. die Bilder des Autors.
 
+## Phase 10 - Menüs, Speichern, Touch (abgenommen)
+
+Fertig und verifiziert:
+- Hauptmenü mit Titelbild (Hot-Swap, sonst Kirche-im-Nebel-Vektorszene),
+  NEUES SPIEL / LADEN / EINSTELLUNGEN seit Phase 0; LADEN öffnet jetzt
+  eine Slot-Auswahl (Autosave + Platz 1-3) mit Stufe/Tag/Zeitstempel
+  (Screenshot phase10-laden.png).
+- Speichern: 3 manuelle Slots über das Pausemenü (ESC/P), Autosave bei
+  jedem Gebietswechsel und beim Schlafen. SPIELSTAND-ROUNDTRIP IM BROWSER
+  VERIFIZIERT: Gold/Stufe/Schlüssel/Material/verbesserte Hellebarde im
+  Inventar/Aufbaustufe/Tag/bepflanztes Beet - alles exakt zurückgelesen
+  nach komplettem Seiten-Neuladen. Dazu 4 Vitest-Roundtrip-Tests.
+- Pausemenü: WEITER / SPEICHERN 1-3 / EINSTELLUNGEN (pausiert die Welt,
+  kehrt zurück) / HAUPTMENÜ (mit Autosave).
+- Einstellungen komplett aus der Referenz + Erweiterungen: getrennte
+  Lautstärken, Helligkeit, Wackeln, Schadenszahlen, Blut, freie
+  Tastenbelegung (mit Konflikt-Tausch), Linkshänder-Modus; jetzt
+  zweispaltig, nichts läuft mehr aus dem Bild (phase10-einstellungen.png).
+- Touch-Steuerung: virtueller Joystick (linke Bildhälfte, Linkshänder-
+  Modus spiegelt), Angriff mit Auto-Aim auf den nächsten Gegner, schwerer
+  Hieb, Block (halten), Rolle, Trank, Inventar, kontextuelle E-Taste nur
+  bei Interaktionszielen. MIT EMULIERTEM TOUCH-GERÄT VERIFIZIERT:
+  Joystick bewegte den Spieler 211px, Angriffsknopf löste die Kombo aus
+  (phase10-touch.png). Implementiert, aber NICHT auf echtem Gerät
+  getestet - bitte einmal am Handy prüfen.
+
 ## Hinweis zur Verifikations-Umgebung
 
 Playwrights eigener Browser-Download ist in dieser Umgebung gesperrt;
