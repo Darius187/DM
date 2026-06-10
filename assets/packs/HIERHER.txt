@@ -1,0 +1,1 @@
+ZIPs hierher entpacken: assets/packs/<paketname>/ - dann: node scripts/packs-inventar.mjs

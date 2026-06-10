@@ -27,3 +27,5 @@
 - Im Dunkelwald liegt eine Holzaxt im umgestürzten Baum (Tutorial) - der Spieler braucht die Schmied-Axt damit nicht mehr; Schmied-Angebot bleibt für den Fall, dass man das Tutorial-Tool verpasst.
 - Dev-Hook window.__welt (nur Dev-Build) für automatisierte Browser-Tests.
 - Fähigkeitstasten: Zauberei-Fähigkeiten auf 4/5/6 (Erweiterung der Zauberleiste), Nahkampf/Bogen kontextabhängig auf R/T - Masterprompt nennt keine Belegung.
+- Phase 11: BootScene wurde um zwei Aufrufe der Grafik-Schicht (PackLoader) ergänzt - die Phase-11-Regel "nur src/gfx/ und assets/" ist insofern berührt, als das Laden von Dateien zwangsläufig in der Boot-Szene hängt. Spiellogik unverändert; hiermit dokumentiert.
+- Pack-Pipeline: Kacheln/Figuren aus Paketen werden beim Boot in die bestehenden Hot-Swap-Schlüssel (hs_tile_*, as_*) komponiert statt neue Codepfade einzuführen.

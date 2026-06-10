@@ -1,0 +1,34 @@
+{
+  "kommentar": "Verbindet Spielbegriffe mit Dateien aus assets/packs/. Wird beim Start gelesen - die Spiellogik kennt nur die Begriffe links. Pfade relativ zu assets/. skala: Faktor, mit dem Pack-Kacheln auf die 32px-Spielkacheln gebracht werden (16px-Paket -> 2).",
+  "skala": 2,
+  "figuren": {},
+  "tiles": {},
+  "beispiel_NICHT_AKTIV": {
+    "figuren": {
+      "skelett": {
+        "datei": "packs/beispielpaket/skeleton_walk.png",
+        "frameW": 16,
+        "frameH": 16,
+        "reihen": {
+          "unten": 0,
+          "links": 1,
+          "rechts": 2,
+          "oben": 3
+        },
+        "frames": 4
+      }
+    },
+    "tiles": {
+      "gras": {
+        "datei": "packs/beispielpaket/tileset.png",
+        "tx": 0,
+        "ty": 0
+      },
+      "krypta_boden": {
+        "datei": "packs/beispielpaket/dungeon.png",
+        "tx": 3,
+        "ty": 1
+      }
+    }
+  }
+}

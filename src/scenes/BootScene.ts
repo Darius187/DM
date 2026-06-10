@@ -6,6 +6,7 @@
 
 import Phaser from 'phaser';
 import { PORTRAITS, ITEM_IMAGES, SOUNDS, SPRITE_NAMES, TILE_NAMES, TITLE_IMAGE, assetStatus, logAssetStatus } from '../gfx/assetManifest';
+import { queuePackSheets, composePackTextures } from '../gfx/PackLoader';
 import gfxConfig from '../data/gfx.json';
 
 interface Candidate { key: string; url: string; art: 'image' | 'audio' | 'atlas'; atlasJson?: string; optional?: boolean }
@@ -74,13 +75,21 @@ export class BootScene extends Phaser.Scene {
       else if (f.art === 'atlas' && f.atlasJson) this.load.atlas(f.key, f.url, f.atlasJson);
       else this.load.image(f.key, f.url);
     }
+    // Pack-Sheets aus gfx-mapping.json (Phase 11, Grafik-Schicht)
+    const packKeys = queuePackSheets(this.load);
 
     this.load.once(Phaser.Loader.Events.COMPLETE, () => this.finish());
-    if (loadedKeys.size === 0) this.finish();
+    if (loadedKeys.size === 0 && packKeys.length === 0) this.finish();
     else this.load.start();
   }
 
   private finish(): void {
+    // Gemappte Pack-Grafiken in die Hot-Swap-Rangfolge einsetzen
+    const packs = composePackTextures(this);
+    if (packs.figuren.length || packs.tiles.length) {
+      // eslint-disable-next-line no-console
+      console.log(`[Packs] ${packs.figuren.length} Figuren, ${packs.tiles.length} Tiles aus assets/packs/ übernommen.`);
+    }
     assetStatus.length = 0;
     const track = (key: string, pfad: string) => {
       assetStatus.push({ key, pfad, gefunden: this.textures.exists(key) || this.cache.audio.exists(key) });

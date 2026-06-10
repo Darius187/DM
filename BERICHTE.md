@@ -330,6 +330,38 @@ Fertig und verifiziert:
   (phase10-touch.png). Implementiert, aber NICHT auf echtem Gerät
   getestet - bitte einmal am Handy prüfen.
 
+## Phase 11 - Grafik-Upgrade mit echten Assets (VORBEREITET, wartet auf Pakete)
+
+HARTER STOPP-GRUND beim eigentlichen Upgrade: assets/packs/ ist leer -
+Schritt 2 der Anleitung ("ZIPs entpacken nach assets/packs/") ist noch
+offen, und itch.io ist aus dieser Arbeitsumgebung gesperrt (403,
+Netzwerk-Richtlinie). Ich kann und darf die Pakete nicht selbst holen
+(Lizenzprüfung liegt laut Anleitung beim Autor). NICHTS wurde als gelöst
+ausgegeben - das Spiel läuft weiter vollständig auf den gekennzeichneten
+Fallbacks.
+
+Was fertig und VERIFIZIERT ist (die komplette Pipeline):
+- scripts/packs-inventar.mjs: scannt assets/packs/, liest PNG-Maße, rät
+  Kachelgrößen, schreibt PACKS-INVENTAR.md mit Zuordnungs-Stand und
+  Lückenbericht (21 Figuren, 32 Tiles offen) samt itch.io-Suchvorschlägen.
+- src/data/gfx-mapping.json: verbindet Spielbegriffe mit Paket-Dateien
+  (Figuren mit Richtungs-Reihen/Frames, Tiles mit Sheet-Koordinaten,
+  Skalierungsfaktor 16px->32px). Beispielblock liegt in der Datei.
+- src/gfx/PackLoader.ts: lädt gemappte Sheets beim Boot, setzt sie
+  pixel-scharf hochskaliert in die bestehende Hot-Swap-Rangfolge ein
+  (Figuren als Atlas mit Gehrichtungen, fehlende Richtungen/Frames werden
+  abgeleitet). Die Spiellogik bleibt unberührt.
+- IM BROWSER BEWIESEN mit einem synthetischen Testpaket: gemapptes
+  Skelett erschien mit Pack-Grafik in der Arena, gemapptes Gras-Tile
+  ersetzte alle Grasflächen im Dorf (Screenshots
+  phase11-pipeline-arena/-dorf.png). Testpaket danach entfernt, Mapping
+  geleert.
+
+Nächster Schritt (dein Part, 15-30 Minuten): Pakete laut Anleitung auf
+itch.io laden (Lizenz prüfen!), nach assets/packs/<name>/ entpacken,
+committen/pushen - dann übernehme ich Inventur, Zuordnung aller 21
+Figuren und 32 Tiles, Konsistenz-Pass und die Screenshot-Tour.
+
 ## Hinweis zur Verifikations-Umgebung
 
 Playwrights eigener Browser-Download ist in dieser Umgebung gesperrt;
