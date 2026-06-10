@@ -52,7 +52,6 @@ export class DebugArenaScene extends CombatScene {
       fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8', backgroundColor: '#000000aa', padding: { x: 8, y: 6 }, align: 'right',
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(700);
 
-    this.input.keyboard?.on('keydown-ESC', () => this.scene.start('Title'));
   }
 
   private drawArena(): void {
@@ -71,8 +70,8 @@ export class DebugArenaScene extends CombatScene {
     return tx <= 0 || ty <= 0 || tx >= ARENA_W - 1 || ty >= ARENA_H - 1;
   }
 
-  protected onEnemyKilled(_e: Enemy): void {
-    this.logMsg('Gegner besiegt - neuer Spawn per Taste 1-7', '');
+  protected onEnemyKilled(e: Enemy): void {
+    this.dropLoot(e); // auch in der Arena, um Beute/Lichtsäulen zu testen
   }
 
   protected onPlayerDeath(): void {
@@ -96,6 +95,7 @@ export class DebugArenaScene extends CombatScene {
   }
 
   protected override onGameKey(k: string): void {
+    if (k === 'escape') this.scene.start('Title');
     if (SPAWN_KEYS[k]) {
       const a = Math.random() * 6.283;
       this.spawnEnemy(SPAWN_KEYS[k], 1, this.px + Math.cos(a) * 180, this.py + Math.sin(a) * 180, this.spawnElite && SPAWN_KEYS[k] !== 'templer');

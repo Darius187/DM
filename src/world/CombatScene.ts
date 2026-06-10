@@ -21,7 +21,12 @@ import { getSettings } from '../logic/settings';
 import { defaultRng, type Rng } from '../logic/rng';
 import { ELITE } from '../data/enemies';
 import type { EnemyTypeId, WeaponClass } from '../data/types';
-import { ABILITY_FX } from '../data/balancing';
+import { ABILITY_FX, LORE_XP } from '../data/balancing';
+import { PickupSystem, AUTO_PICKUP, type Pickup } from './Pickups';
+import { UIPanels } from '../ui/panels';
+import { rollGear, rollGem } from '../logic/loot';
+import { KILL_DROPS } from '../data/items';
+import { NOTIZEN } from '../data/texte';
 
 export interface Projectile {
   x: number; y: number; vx: number; vy: number; r: number; dmg: number;
@@ -54,6 +59,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
 
   hitstopT = 0;
   shakeAmt = 0;
+  pickups!: PickupSystem;
+  panels!: UIPanels;
+  protected hintText!: Phaser.GameObjects.Text;
   protected overlay!: Phaser.GameObjects.Graphics;
   protected keysDown: Record<string, boolean> = {};
   protected mouseDown = false;
@@ -87,6 +95,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
     this.playerSprite = this.add.sprite(startX, startY, '__DEFAULT').setDepth(startY);
     this.provider.applyFigure(this.playerSprite, 'spieler', 0, 0);
     this.overlay = this.add.graphics().setDepth(550);
+    this.pickups = new PickupSystem(this, this.provider);
+    this.panels = new UIPanels(this, this.provider, this.sfx, () => this.p);
+    this.hintText = this.add.text(this.scale.width / 2, this.scale.height * 0.64, '', {
+      fontFamily: 'serif', fontSize: '16px', color: '#e8dcb8', backgroundColor: '#0a0704c0', padding: { x: 12, y: 3 },
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(800).setVisible(false);
     this.setupInput();
   }
 
@@ -96,10 +109,18 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
     kb.on('keydown', (ev: KeyboardEvent) => {
       const k = ev.key.toLowerCase();
       this.keysDown[k] = true;
-      if (this.playerDead || this.uiBlocked()) return;
+      if (this.playerDead) return;
       const b = getSettings().kb;
+      // Offene Fenster: nur Schließen-Tasten durchlassen
+      if (this.uiBlocked()) {
+        if (k === b.inv || k === b.charakter || k === 'escape') this.panels.closeAll();
+        return;
+      }
       if (k === b.roll) { ev.preventDefault(); this.tryRoll(); }
       if (k === b.heavy || k === 'shift') this.tryHeavy();
+      if (k === b.inv) this.panels.toggleInventory();
+      if (k === b.charakter) this.panels.toggleCharacter();
+      if (k === b.interact) this.tryInteract();
       this.onGameKey(k);
     });
     kb.on('keyup', (ev: KeyboardEvent) => {
@@ -121,7 +142,92 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
 
   // Unterklassen: zusätzliche Tasten (Interaktion, Inventar, Zauber)
   protected onGameKey(_k: string): void { /* optional */ }
-  protected uiBlocked(): boolean { return false; }
+  protected uiBlocked(): boolean { return this.panels?.blocked ?? false; }
+
+  // --- Interaktion und Aufheben ---------------------------------------------
+
+  // Unterklassen können weitere Interaktionsziele liefern (NPCs, Truhen ...)
+  protected interactHint(): { text: string; action: () => void } | null {
+    const pk = this.nearestManualPickup();
+    if (!pk) return null;
+    const ik = getSettings().kb.interact.toUpperCase();
+    const name = pk.kind === 'relic' ? 'Das Relikt'
+      : pk.kind === 'note' ? 'Zerknitterte Notiz'
+      : pk.kind === 'medaillon' ? 'Annas Medaillon'
+      : pk.item?.name ?? '';
+    const verb = pk.kind === 'note' ? 'Lesen' : 'Aufheben';
+    return { text: `${name} - ${ik} zum ${verb}`, action: () => this.collectManualPickup(pk) };
+  }
+
+  protected nearestManualPickup(): Pickup | null {
+    for (const pk of this.pickups.pickups) {
+      if (AUTO_PICKUP.has(pk.kind)) continue;
+      if (Math.hypot(pk.x - this.px, pk.y - this.py) < 34) return pk;
+    }
+    return null;
+  }
+
+  protected collectManualPickup(pk: Pickup): void {
+    if (pk.kind === 'note') {
+      this.pickups.remove(pk);
+      this.giveXp(LORE_XP.noteBase + LORE_XP.notePerDepth * this.areaDepth());
+      this.showNote(pk.noteIdx ?? 0);
+      return;
+    }
+    if (pk.kind === 'relic') {
+      this.onRelicPickup(pk);
+      return;
+    }
+    if (pk.kind === 'medaillon') {
+      this.pickups.remove(pk);
+      this.onMedaillonPickup();
+      return;
+    }
+    if (pk.item) {
+      this.p.inv.push(pk.item);
+      const r = pk.item.rarity;
+      this.logMsg(`${pk.item.name} aufgehoben`, r >= 3 ? 'magic' : r === 2 ? 'gold' : r === 1 ? 'magic' : '');
+      this.sfx.play(r >= 3 ? 'item_episch' : 'aufheben');
+      this.pickups.remove(pk);
+    }
+  }
+
+  protected tryInteract(): void {
+    const hint = this.interactHint();
+    hint?.action();
+  }
+
+  protected areaDepth(): number { return 1; }
+  protected showNote(_idx: number): void { void NOTIZEN; }
+  protected onRelicPickup(_pk: Pickup): void { /* Welt überschreibt */ }
+  protected onMedaillonPickup(): void { /* Welt überschreibt */ }
+
+  giveXp(n: number): void {
+    const r = applyXp(this.p.level, this.p.xp, this.p.xpNext, n);
+    this.p.xp = r.xp;
+    this.p.xpNext = r.xpNext;
+    if (r.levelsGained > 0) {
+      this.p.level = r.level;
+      recalc(this.p);
+      this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + Math.round(this.p.stats.maxhp * 0.5));
+      this.p.mana = this.p.stats.maxmana;
+      this.logMsg(MELDUNGEN.stufe(this.p.level), 'gold');
+      this.sfx.play('levelup');
+      this.fx.burst(this.px, this.py, 0xc9a227, 22, 150);
+    }
+  }
+
+  // Beute beim Gegner-Tod (Referenz killEnemy) - Welt und Arena nutzbar
+  protected dropLoot(e: Enemy): void {
+    const depth = this.areaDepth();
+    const g = 2 + Math.floor(Math.random() * 6) + depth * KILL_DROPS.goldPerDepth;
+    this.pickups.add({ kind: 'gold', amt: g, x: e.x + rndOff(8), y: e.y + rndOff(8), bob: Math.random() * 6 });
+    if (Math.random() < KILL_DROPS.potionChance) this.pickups.add({ kind: 'potion', x: e.x + rndOff(12), y: e.y + rndOff(12), bob: Math.random() * 6 });
+    if (Math.random() < KILL_DROPS.mpotionChance) this.pickups.add({ kind: 'mpotion', x: e.x + rndOff(12), y: e.y + rndOff(12), bob: Math.random() * 6 });
+    if (Math.random() < KILL_DROPS.gearChance) this.pickups.add({ kind: 'gear', item: rollGear(this.rng, depth), x: e.x, y: e.y, bob: Math.random() * 6 });
+    if (e.elite) this.pickups.add({ kind: 'gear', item: rollGear(this.rng, depth + 1), x: e.x, y: e.y + 12, bob: Math.random() * 6 });
+    if (Math.random() < KILL_DROPS.gemChance) this.pickups.add({ kind: 'gem', item: rollGem(this.rng, depth), x: e.x + rndOff(10), y: e.y + rndOff(10), bob: Math.random() * 6 });
+  }
 
   // --- Eingabe-Aktionen -------------------------------------------------
 
@@ -385,18 +491,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
     e.sprite = null;
     this.fx.burst(e.x, e.y, parseInt(e.col.slice(1), 16), 16, 170);
     this.sfx.play('tod');
-    const r = applyXp(this.p.level, this.p.xp, this.p.xpNext, e.xp);
-    this.p.xp = r.xp;
-    this.p.xpNext = r.xpNext;
-    if (r.levelsGained > 0) {
-      this.p.level = r.level;
-      recalc(this.p);
-      this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + Math.round(this.p.stats.maxhp * 0.5));
-      this.p.mana = this.p.stats.maxmana;
-      this.logMsg(MELDUNGEN.stufe(this.p.level), 'gold');
-      this.sfx.play('levelup');
-      this.fx.burst(this.px, this.py, 0xc9a227, 22, 150);
-    }
+    this.giveXp(e.xp);
     this.onEnemyKilled(e);
   }
 
@@ -574,11 +669,68 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
 
     this.updateProjectiles(dt);
     this.updateTelegraphs(dt);
+    this.updateAutoPickups();
+    this.pickups.update(dt);
+    // Interaktions-Hinweis
+    const hint = this.uiBlocked() ? null : this.interactHint();
+    this.hintText.setVisible(!!hint);
+    if (hint) this.hintText.setText(hint.text);
     this.fx.update(dt);
     this.shakeAmt = Math.max(0, this.shakeAmt - dt * 18);
     this.renderEntities();
     return dt;
   }
+
+  private updateAutoPickups(): void {
+    for (const pk of [...this.pickups.pickups]) {
+      if (!AUTO_PICKUP.has(pk.kind)) continue;
+      if (Math.hypot(pk.x - this.px, pk.y - this.py) >= PLAYER.radius + 13) continue;
+      switch (pk.kind) {
+        case 'gold':
+          this.p.gold += pk.amt ?? 0;
+          this.logMsg(`+${pk.amt} Gold`, 'gold');
+          this.sfx.play('muenzen');
+          break;
+        case 'potion':
+          this.p.pot++;
+          this.logMsg(MELDUNGEN.heiltrankFund, '');
+          this.sfx.play('trank');
+          break;
+        case 'mpotion':
+          this.p.mpot++;
+          this.logMsg(MELDUNGEN.manatrankFund, 'magic');
+          this.sfx.play('trank');
+          break;
+        case 'gem':
+          if (pk.item) {
+            this.p.inv.push(pk.item);
+            this.logMsg(`${pk.item.name} gefunden`, 'magic');
+            this.sfx.play('aufheben');
+          }
+          break;
+        case 'folio':
+          this.giveXp(LORE_XP.folioBase + LORE_XP.folioPerDepth * this.areaDepth());
+          this.logMsg(MELDUNGEN.foliant, 'magic');
+          this.sfx.play('aufheben');
+          break;
+        case 'arrows':
+          this.p.arrows += pk.amt ?? 0;
+          this.logMsg(`+${pk.amt} Pfeile`, '');
+          this.sfx.play('aufheben');
+          break;
+        case 'material':
+          if (pk.item) {
+            this.logMsg(`${pk.item.name} (+${pk.item.stack ?? 1})`, '');
+            this.sfx.play('aufheben');
+            this.onMaterialPickup(pk);
+          }
+          break;
+      }
+      this.pickups.remove(pk);
+    }
+  }
+
+  protected onMaterialPickup(_pk: Pickup): void { /* Welt verbucht Material */ }
 
   private movePlayer(dx: number, dy: number): void {
     const r = PLAYER.radius;
@@ -780,4 +932,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
 
 function cssCol(c: string): number {
   return c.startsWith('#') ? parseInt(c.slice(1), 16) : 0xffffff;
+}
+
+function rndOff(n: number): number {
+  return Math.random() * n * 2 - n;
 }

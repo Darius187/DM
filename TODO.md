@@ -5,3 +5,5 @@
 - BootScene erzeugt beim Start viele 404-Logs für fehlende Hot-Swap-Dateien -
   erwartetes Verhalten, aber prüfen, ob sich Phasers Konsolenwarnungen
   bündeln lassen.
+- Inventarliste: Blättern/Scrollen fehlt, bei vielen Items wird abgeschnitten
+  (Überlaufschutz aktiv). In Phase 10 mit Maus-Rad/Touch-Wisch nachrüsten.

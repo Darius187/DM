@@ -93,6 +93,31 @@ Offen:
 - Wolf nutzt den Hunde-Klang als Fallback (kein Wolf-Sound in der
   Spezifikations-Soundliste) - in OFFENE-FRAGEN.md vermerkt.
 
+## Phase 3 - Items komplett (abgenommen)
+
+Fertig und verifiziert:
+- Loot-Test-Suite grün (Raritäten-Verteilung je Ebene, Affix-Pools ohne
+  Doppler, Präfix/Suffix-Regeln, Fassungen ab Selten, Edelstein-Formel,
+  Preisformel) - 38 Tests gesamt.
+- Bodenbeute im Spiel: Gegner lassen Gold/Tränke/Ausrüstung/Edelsteine
+  fallen (Referenz-Chancen), Lichtsäulen in Raritätsfarbe über Magisch+,
+  Auto-Aufnahme für Gold/Tränke/Edelsteine, E-Aufnahme mit Hinweistext
+  für Ausrüstung (Screenshot phase3-loot.png: "Kriegsbogen - E zum
+  Aufheben").
+- Inventar (Taste I): Item-Karten mit Raritätsrand/-balken, Icon je Typ
+  (Hot-Swap-fähig), Wertezeile, ANGELEGT-Marke, Klick = anlegen/ablegen/
+  Edelstein fassen, Tooltip mit allen Werten und Vergleich zum angelegten
+  Item (Screenshot phase3-inventar.png).
+- Charakterfenster (Taste C): Portrait (Hot-Swap, sonst Figur im Rahmen,
+  Rüstungsvariante ab Kettenhemd), Ausrüstungs-Slots mit Raritätsrahmen
+  und Sockel-Anzeige, Werteübersicht, Fertigkeits-Balken aller drei
+  Schulen (Screenshot phase3-charakter.png).
+- Behoben: offene Fenster verschluckten die Schließen-Taste.
+
+Offen:
+- Inventarliste blättert noch nicht (Überlauf-Schutz greift ab ~10
+  Einträgen) - in TODO.md, wird mit Phase 10 (Menüpolitur) gelöst.
+
 ## Hinweis zur Verifikations-Umgebung
 
 Playwrights eigener Browser-Download ist in dieser Umgebung gesperrt;
