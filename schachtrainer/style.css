@@ -438,35 +438,117 @@ body:has(details.net-help[open])::before {
   margin: 3px 0;
 }
 
-/* Coach chat: free-form questions to the local Ollama model. */
+/* Trainer-Verlauf: chronological log of engine commentary, deeper Ollama
+   explanations and the free-form question/answer chat. Every entry has its
+   own ▶ play button so the user picks what gets read aloud. */
 .coach-chat {
   margin-bottom: 10px;
+}
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.chat-header h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #cfe;
+}
+.chat-header-actions {
+  display: flex;
+  gap: 6px;
 }
 .coach-chat-log {
   font-size: 0.85rem;
   line-height: 1.35;
-  max-height: 220px;
+  max-height: 320px;
   overflow-y: auto;
   overflow-wrap: anywhere;
   user-select: text;
   -webkit-user-select: text;
+  padding-right: 4px;
 }
-.coach-chat-log .q {
-  color: #9fd0ea;
-  margin-top: 6px;
+.coach-chat-log:empty::before {
+  content: 'Noch keine Einträge. Spiele einen Zug oder stelle dem Trainer eine Frage.';
+  color: #6f8898;
+  font-style: italic;
+  display: block;
+  padding: 6px 8px;
 }
-.coach-chat-log .a {
-  background: #23303a;
-  border: 1px solid #3a5566;
-  color: #d6e6f0;
+.chat-line {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  column-gap: 8px;
+  align-items: start;
   padding: 6px 8px;
   border-radius: 4px;
-  margin: 2px 0 4px;
+  margin: 3px 0;
+  background: #23303a;
+  border: 1px solid #3a5566;
+}
+.chat-line .who {
+  font-weight: 600;
+  color: #9fd0ea;
+  white-space: nowrap;
+}
+.chat-line .body {
+  color: #d6e6f0;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+.chat-line-user {
+  background: #1f2a32;
+  border-color: #2f4452;
+}
+.chat-line-user .who {
+  color: #ffd58a;
+}
+.chat-line-engine .who {
+  color: #b6e4a8;
+}
+.chat-line-opening .who {
+  color: #f0d28a;
+}
+.chat-line-error {
+  background: #3a2323;
+  border-color: #6a3a3a;
+}
+.chat-line-error .who {
+  color: #f0a8a8;
+}
+.chat-play {
+  background: #3a5566;
+  color: #eaf2f7;
+  border: 1px solid #5a7a8a;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.78rem;
+  line-height: 1.1;
+  min-height: 24px;
+  cursor: pointer;
+  align-self: start;
+  transition: background-color 120ms ease;
+}
+.chat-play:hover {
+  background: #4a6677;
+}
+.chat-play:focus-visible {
+  outline: 2px solid #9ecbff;
+  outline-offset: 2px;
+}
+.chat-play.is-playing {
+  background: #6a3a3a;
+  border-color: #8a5a5a;
+}
+.coach-chat-controls {
+  margin-top: 6px;
 }
 .coach-chat-row {
   display: flex;
   gap: 6px;
-  margin-top: 6px;
 }
 #coach-chat-input {
   flex: 1;

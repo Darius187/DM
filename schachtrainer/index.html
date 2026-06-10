@@ -152,26 +152,25 @@ Get-ChildItem $src | ForEach-Object {
         <div id="engine-status" class="engine-status">Engine wird geladen…</div>
         <div id="blunder" class="blunder" hidden></div>
         <div id="hint" class="hint"></div>
-        <div id="coach-wrap" class="coach-wrap" hidden>
-          <div class="coach-toolbar">
-            <button id="btn-speak-coach" class="coach-btn" title="Trainer-Text mit der gewählten Stimme vorlesen">Vorlesen</button>
-            <button id="btn-stop-coach" class="coach-btn coach-btn-stop" title="Vorlesen abbrechen" hidden>Stopp</button>
-            <button id="btn-copy-coach" class="coach-btn" title="Trainer-Text in die Zwischenablage kopieren">Kopieren</button>
+        <div id="coach-chat" class="coach-chat">
+          <div class="chat-header">
+            <h2>Trainer-Verlauf</h2>
+            <div class="chat-header-actions">
+              <button id="btn-chat-stop" class="coach-btn-stop" title="Vorlesen abbrechen" hidden>⏹ Stopp</button>
+              <button id="btn-chat-clear" class="coach-btn" title="Verlauf leeren">Leeren</button>
+            </div>
           </div>
-          <div id="coach" class="coach"></div>
-        </div>
-        <div id="coach-chat" class="coach-chat" hidden>
-          <div id="coach-chat-log" class="coach-chat-log"></div>
-          <div class="coach-chat-row">
-            <input id="coach-chat-input" type="text" placeholder="Frage zur Stellung, z.B. Was ist mein bester Plan?" />
-            <button id="btn-coach-ask">Fragen</button>
-            <button id="btn-chat-speak" title="Letzte Trainer-Antwort vorlesen">Vorlesen</button>
-            <button id="btn-chat-stop" class="coach-btn-stop" title="Vorlesen abbrechen" hidden>Stopp</button>
+          <div id="coach-chat-log" class="coach-chat-log" aria-live="polite"></div>
+          <div id="coach-chat-controls" class="coach-chat-controls" hidden>
+            <div class="coach-chat-row">
+              <input id="coach-chat-input" type="text" placeholder="Frage zur Stellung, z.B. Was ist mein bester Plan?" />
+              <button id="btn-coach-ask">Fragen</button>
+            </div>
+            <label class="hint-toggle" title="Liest neue Trainer-Antworten (auf deine Fragen) automatisch vor. Engine-Erklärungen liest du per ▶ vor.">
+              <input type="checkbox" id="chk-auto-read" />
+              Auto-Vorlesen neuer Antworten
+            </label>
           </div>
-          <label class="hint-toggle" title="Liest neue Trainer-Antworten und Engine-Erklärungen automatisch vor (nach der Move-Ansage)">
-            <input type="checkbox" id="chk-auto-read" />
-            Auto-Vorlesen
-          </label>
         </div>
         <div>
           <h2>Zugverlauf</h2>

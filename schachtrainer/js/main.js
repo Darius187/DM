@@ -54,8 +54,8 @@ const chkSpeak = document.getElementById('chk-speak');
 const selVoice = document.getElementById('sel-voice');
 const rateSliderEl = document.getElementById('rate-slider');
 const rateValueEl = document.getElementById('rate-value');
-const btnChatSpeak = document.getElementById('btn-chat-speak');
 const btnChatStop = document.getElementById('btn-chat-stop');
+const btnChatClear = document.getElementById('btn-chat-clear');
 const chkAutoRead = document.getElementById('chk-auto-read');
 const selOpening = document.getElementById('sel-opening');
 const btnSave = document.getElementById('btn-save');
@@ -72,15 +72,10 @@ const selConn = document.getElementById('sel-conn');
 const connNameEl = document.getElementById('conn-name');
 const btnConnSave = document.getElementById('btn-conn-save');
 const btnConnDel = document.getElementById('btn-conn-del');
-const coachEl = document.getElementById('coach');
-const coachWrapEl = document.getElementById('coach-wrap');
-const coachChatEl = document.getElementById('coach-chat');
 const coachChatLogEl = document.getElementById('coach-chat-log');
 const coachChatInputEl = document.getElementById('coach-chat-input');
+const coachChatControlsEl = document.getElementById('coach-chat-controls');
 const btnCoachAsk = document.getElementById('btn-coach-ask');
-const btnCopyCoach = document.getElementById('btn-copy-coach');
-const btnSpeakCoach = document.getElementById('btn-speak-coach');
-const btnStopCoach = document.getElementById('btn-stop-coach');
 
 const engine = new Engine(); // plays the opponent's moves at the chosen strength
 const analyzer = new Engine(); // full strength, for eval bar / hint / blunder
@@ -105,20 +100,118 @@ function sanForMove(move) {
 }
 
 // Show a German explanation of the move that was just played (engine or user).
-// Always uses the offline rule-based explainer so the user always gets a
-// reason; the Ollama explanation later replaces it with deeper text.
+// Appends a transcript entry; if Ollama replies later, the deeper text is
+// added as its own entry (so the offline reason stays visible in the verlauf).
 function showOfflineExplanation(verbose, who) {
   if (!verbose) return;
   const reason = explainMoveOffline(verbose, chess.history().length);
   if (!reason) return;
-  coachWrapEl.hidden = false;
-  coachEl.textContent = `${who}: ${verbose.san} — ${reason}`;
-  // Auto-read this after the move announcement; if Ollama replies a moment
-  // later it overrides this text and re-triggers maybeAutoRead, which clears
-  // the older timer so we don't read twice.
-  if (typeof maybeAutoRead === 'function') {
-    maybeAutoRead(coachEl.textContent, { delay: 900 });
+  const ply = chess.history().length;
+  const role = who === 'Eröffnung' ? 'opening' : 'engine';
+  addTranscript({
+    role,
+    label: who,
+    body: `${verbose.san} — ${reason}`,
+    key: `offline-${ply}`,
+  });
+}
+
+// ---- Trainer-Verlauf -------------------------------------------------------
+// All commentary — offline engine reasons, deeper Ollama explanations and the
+// free-form Q&A chat — flows into a single chronological log. Each entry gets
+// its own ▶ button so the user picks what to hear; the global ⏹ Stopp button
+// (in the chat header) shows up only while playback is active.
+let activeChatPlayBtn = null;
+
+function setStopButton(visible) {
+  if (!btnChatStop) return;
+  btnChatStop.hidden = !visible;
+}
+
+function playTranscriptEntry(text, sourceBtn) {
+  if (!text) return;
+  const cleaned = speechifyForReading(text);
+  if (!cleaned) return;
+  if (activeChatPlayBtn) {
+    activeChatPlayBtn.classList.remove('is-playing');
+    activeChatPlayBtn.textContent = '▶';
   }
+  activeChatPlayBtn = sourceBtn || null;
+  if (activeChatPlayBtn) {
+    activeChatPlayBtn.classList.add('is-playing');
+    activeChatPlayBtn.textContent = '⏹';
+  }
+  setStopButton(true);
+  speak(cleaned, {
+    lang: looksEnglishText(cleaned) ? 'en-US' : 'de-DE',
+    onend: () => {
+      setStopButton(false);
+      if (activeChatPlayBtn) {
+        activeChatPlayBtn.classList.remove('is-playing');
+        activeChatPlayBtn.textContent = '▶';
+        activeChatPlayBtn = null;
+      }
+    },
+  });
+}
+
+function stopTranscriptPlayback() {
+  cancelSpeech();
+  setStopButton(false);
+  if (activeChatPlayBtn) {
+    activeChatPlayBtn.classList.remove('is-playing');
+    activeChatPlayBtn.textContent = '▶';
+    activeChatPlayBtn = null;
+  }
+}
+
+function clearTranscript() {
+  stopTranscriptPlayback();
+  coachChatLogEl.innerHTML = '';
+}
+
+// Append (or, when `key` matches an existing entry, update) a transcript line.
+// `role` controls the colour styling; `label` is shown in front (e.g. 'Engine');
+// `body` is the actual text; `key` lets us update an existing entry in place
+// (so the Ollama deeper explanation, when it arrives, can replace its 'denkt …'
+// placeholder).
+function addTranscript({ role = 'engine', label = 'Trainer', body = '', key = null }) {
+  if (!body) return null;
+  let entry = key
+    ? coachChatLogEl.querySelector(`[data-key="${CSS.escape(key)}"]`)
+    : null;
+  if (entry) {
+    entry.className = `chat-line chat-line-${role}`;
+    entry.querySelector('.who').textContent = `${label}:`;
+    entry.querySelector('.body').textContent = body;
+    coachChatLogEl.scrollTop = coachChatLogEl.scrollHeight;
+    return entry;
+  }
+  entry = document.createElement('div');
+  entry.className = `chat-line chat-line-${role}`;
+  if (key) entry.dataset.key = key;
+  const whoEl = document.createElement('span');
+  whoEl.className = 'who';
+  whoEl.textContent = `${label}:`;
+  const bodyEl = document.createElement('span');
+  bodyEl.className = 'body';
+  bodyEl.textContent = body;
+  const playBtn = document.createElement('button');
+  playBtn.type = 'button';
+  playBtn.className = 'chat-play';
+  playBtn.title = 'Diesen Eintrag vorlesen';
+  playBtn.textContent = '▶';
+  playBtn.addEventListener('click', () => {
+    if (activeChatPlayBtn === playBtn) {
+      stopTranscriptPlayback();
+      return;
+    }
+    playTranscriptEntry(bodyEl.textContent, playBtn);
+  });
+  entry.append(whoEl, bodyEl, playBtn);
+  coachChatLogEl.appendChild(entry);
+  coachChatLogEl.scrollTop = coachChatLogEl.scrollHeight;
+  return entry;
 }
 
 // Play a move object on the board and announce it. Returns its SAN or null.
@@ -292,29 +385,34 @@ async function afterUserMove() {
 }
 
 // Ask the local Ollama model to explain the just-played move. Best-effort:
-// any failure keeps the offline rule-based explanation visible, so the user
-// always has *something* useful in the coach panel.
+// appended as its own transcript entry so the earlier offline reason stays
+// visible above it. No auto-read here — the user picks via ▶ if they want it.
 async function requestCoachExplanation() {
   if (!chkCoach.checked || !coachContext) return;
   const ctx = coachContext;
-  // Remember the offline explanation so we can restore it if Ollama fails.
-  const offlineText = coachEl.textContent;
+  const ply = chess.history().length;
   setCoachModel(coachModelEl.value.trim());
   setCoachHost(coachHostEl.value.trim());
+  addTranscript({ role: 'trainer', label: 'Trainer', body: 'denkt …', key: `trainer-${ply}` });
   try {
     const text = await explain(ctx);
     if (text && text.trim()) {
-      coachEl.textContent = text.trim();
-      // After an engine move the move was just announced ('Bauer auf d5');
-      // wait briefly so the auto-read of the explanation comes *after* it.
-      maybeAutoRead(text.trim(), { delay: 900 });
+      addTranscript({ role: 'trainer', label: 'Trainer', body: text.trim(), key: `trainer-${ply}` });
+    } else {
+      addTranscript({
+        role: 'trainer',
+        label: 'Trainer',
+        body: '(keine Antwort vom Modell)',
+        key: `trainer-${ply}`,
+      });
     }
   } catch {
-    // Restore the offline explanation and append a one-line hint about Ollama
-    // (so the user knows *why* they're not getting the deeper trainer text).
-    coachEl.textContent = offlineText
-      ? `${offlineText}  (Ollama nicht erreichbar – läuft es auf localhost:11434 und ist das Modell geladen?)`
-      : 'Ollama nicht erreichbar – läuft es auf localhost:11434 und ist das Modell geladen?';
+    addTranscript({
+      role: 'error',
+      label: 'Hinweis',
+      body: 'Ollama nicht erreichbar – läuft es auf localhost:11434 und ist das Modell geladen?',
+      key: `trainer-${ply}`,
+    });
   }
 }
 
@@ -325,7 +423,7 @@ async function requestCoachExplanation() {
 let coachAsking = false;
 
 function setCoachChatVisible(on) {
-  coachChatEl.hidden = !on;
+  if (coachChatControlsEl) coachChatControlsEl.hidden = !on;
 }
 
 async function askCoachQuestion() {
@@ -335,14 +433,9 @@ async function askCoachQuestion() {
   coachChatInputEl.value = '';
   btnCoachAsk.disabled = true;
 
-  const qLine = document.createElement('div');
-  qLine.className = 'q';
-  qLine.textContent = `Du: ${question}`;
-  const aLine = document.createElement('div');
-  aLine.className = 'a';
-  aLine.textContent = 'Trainer denkt…';
-  coachChatLogEl.append(qLine, aLine);
-  coachChatLogEl.scrollTop = coachChatLogEl.scrollHeight;
+  addTranscript({ role: 'user', label: 'Du', body: question });
+  const askKey = `ask-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  addTranscript({ role: 'trainer', label: 'Trainer', body: 'denkt …', key: askKey });
 
   setCoachModel(coachModelEl.value.trim());
   setCoachHost(coachHostEl.value.trim());
@@ -353,24 +446,21 @@ async function askCoachQuestion() {
       fen: chess.fen(),
       moves: chess.history().join(' '),
     });
-    aLine.textContent = answer || '(keine Antwort vom Modell)';
-    // Auto-read this chat answer if the user enabled it. No delay needed here
-    // because the user wasn't moving — they just asked a question.
-    if (answer) maybeAutoRead(answer, { delay: 0 });
+    const finalAnswer = answer || '(keine Antwort vom Modell)';
+    const entry = addTranscript({ role: 'trainer', label: 'Trainer', body: finalAnswer, key: askKey });
+    // Auto-Vorlesen: only chat answers, no delay. The user was sitting and
+    // reading anyway, not playing a move, so there's nothing to wait for.
+    if (answer) maybeAutoRead(finalAnswer, entry?.querySelector('.chat-play'));
   } catch {
-    aLine.textContent = 'Ollama nicht erreichbar - läuft es und ist das Modell geladen?';
+    addTranscript({
+      role: 'error',
+      label: 'Hinweis',
+      body: 'Ollama nicht erreichbar – läuft es und ist das Modell geladen?',
+      key: askKey,
+    });
   }
-  coachChatLogEl.scrollTop = coachChatLogEl.scrollHeight;
   coachAsking = false;
   btnCoachAsk.disabled = false;
-}
-
-// Read the most recent trainer answer aloud. If none exists yet, read whatever
-// last appeared in the chat log (a user question or the fallback message) so
-// the button is never just a dead end.
-function lastChatAnswerText() {
-  const answers = coachChatLogEl.querySelectorAll('.a');
-  return answers.length ? answers[answers.length - 1].textContent.trim() : '';
 }
 
 function looksEnglishText(text) {
@@ -380,38 +470,14 @@ function looksEnglishText(text) {
 }
 
 // ---- Auto-Vorlesen --------------------------------------------------------
-// When the user enables 'Auto-Vorlesen' next to the chat, new trainer answers
-// (both the in-panel Engine explanation and chat replies) are read aloud
-// automatically. After an engine move the read is delayed so the move
-// announcement ('Bauer auf d5') comes first; the explanation follows.
-let autoReadTimer = null;
-
-function maybeAutoRead(text, { delay = 0 } = {}) {
+// Only fires for new free-form chat answers (questions the user actually
+// asked) — never for engine commentary. The user asked us to drop the timed
+// delay because it felt unpredictable; engine entries get their own ▶ button
+// in the transcript instead.
+function maybeAutoRead(text, playBtn) {
   if (!chkAutoRead || !chkAutoRead.checked) return;
   if (!text) return;
-  if (autoReadTimer) {
-    clearTimeout(autoReadTimer);
-    autoReadTimer = null;
-  }
-  const speakNow = () => {
-    autoReadTimer = null;
-    const cleaned = speechifyForReading(text);
-    if (!cleaned) return;
-    btnChatSpeak.hidden = true;
-    btnChatStop.hidden = false;
-    speak(cleaned, {
-      lang: looksEnglishText(cleaned) ? 'en-US' : 'de-DE',
-      onend: () => {
-        btnChatStop.hidden = true;
-        btnChatSpeak.hidden = false;
-      },
-    });
-  };
-  if (delay > 0) {
-    autoReadTimer = setTimeout(speakNow, delay);
-  } else {
-    speakNow();
-  }
+  playTranscriptEntry(text, playBtn);
 }
 
 async function loadAutoReadPref() {
@@ -453,30 +519,9 @@ if (chkAutoRead) {
   });
 }
 
-btnChatSpeak.addEventListener('click', () => {
-  const raw = lastChatAnswerText();
-  if (!raw || /^Trainer denkt…?$/.test(raw)) return;
-  const text = speechifyForReading(raw);
-  btnChatSpeak.hidden = true;
-  btnChatStop.hidden = false;
-  speak(text, {
-    lang: looksEnglishText(text) ? 'en-US' : 'de-DE',
-    onend: () => {
-      btnChatStop.hidden = true;
-      btnChatSpeak.hidden = false;
-    },
-  });
-});
+btnChatStop.addEventListener('click', stopTranscriptPlayback);
 
-btnChatStop.addEventListener('click', () => {
-  if (autoReadTimer) {
-    clearTimeout(autoReadTimer);
-    autoReadTimer = null;
-  }
-  cancelSpeech();
-  btnChatStop.hidden = true;
-  btnChatSpeak.hidden = false;
-});
+if (btnChatClear) btnChatClear.addEventListener('click', clearTranscript);
 
 btnCoachAsk.addEventListener('click', askCoachQuestion);
 coachChatInputEl.addEventListener('keydown', (e) => {
@@ -731,8 +776,7 @@ function resetEvalUi() {
   bestCpUserBefore = null;
   lastBestSan = null;
   coachContext = null;
-  coachWrapEl.hidden = true;
-  coachEl.textContent = '';
+  clearTranscript();
   clearHint();
   updateEvalBar({ score: 0 });
 }
@@ -1212,65 +1256,6 @@ if (btnTestOnlineVoice) {
     }
   });
 }
-
-// Read the trainer text aloud with the currently selected voice. Detection is
-// crude on purpose: if the answer has plenty of typical English filler words
-// it is read with an English voice, otherwise the German preferred voice is
-// used. The "Stopp" button cancels an in-flight utterance.
-function looksEnglish(text) {
-  // count short English-only function words to avoid false positives from
-  // single English brand names in an otherwise German text.
-  const hits = (text.match(/\b(the|and|with|that|this|which|because|would|could)\b/gi) || [])
-    .length;
-  return hits >= 3;
-}
-
-btnSpeakCoach.addEventListener('click', () => {
-  const raw = (coachEl.textContent || '').trim();
-  if (!raw) return;
-  // Strip "Engine:" / "Eröffnung:" prefix and replace raw SAN with German so
-  // the reader doesn't say "Engine" or pronounce "Q-b-3-Hash".
-  const text = speechifyForReading(raw);
-  const lang = looksEnglish(text) ? 'en-US' : 'de-DE';
-  btnSpeakCoach.hidden = true;
-  btnStopCoach.hidden = false;
-  speak(text, {
-    lang,
-    onend: () => {
-      btnStopCoach.hidden = true;
-      btnSpeakCoach.hidden = false;
-    },
-  });
-});
-
-btnStopCoach.addEventListener('click', () => {
-  cancelSpeech();
-  btnStopCoach.hidden = true;
-  btnSpeakCoach.hidden = false;
-});
-
-// Copy the trainer text to the clipboard so the user can paste it into Claude
-// (or anywhere else). Fall back to a manual selection if the Clipboard API is
-// blocked by the browser/OS for some reason.
-btnCopyCoach.addEventListener('click', async () => {
-  const text = coachEl.textContent || '';
-  const original = btnCopyCoach.textContent;
-  const flash = (msg) => {
-    btnCopyCoach.textContent = msg;
-    setTimeout(() => (btnCopyCoach.textContent = original), 1200);
-  };
-  try {
-    await navigator.clipboard.writeText(text);
-    flash('Kopiert');
-  } catch {
-    const range = document.createRange();
-    range.selectNodeContents(coachEl);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-    flash('Markiert');
-  }
-});
 
 syncBoard();
 updateStatus();
