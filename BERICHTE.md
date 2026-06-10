@@ -37,6 +37,37 @@ Offen:
 - WorldScene/UIScene sind Gerüste (Inhalt ab Phase 4/5).
 - DebugArena zeigt nur Hinweistext - Kampfkern ist Phase 1.
 
+## Phase 1 - DebugArena + Kampfkern (abgenommen)
+
+Fertig und verifiziert:
+- Kampfkern als reine, getestete Logik (src/logic/combat.ts): 3er-Kombo mit
+  Finisher (+45%), Eingabe-Puffer 250 ms (Klickspam-Test UND
+  Nicht-verschluckt-Test grün), schwerer Hieb 0,6 s/2,2x mit vollem
+  Commitment, Block auf 30%, perfekte Parade 300 ms mit Riposte +100%,
+  Rolle 300 ms Unverwundbarkeit/0,9 s Abklingzeit, Abbruchfenster ab 50%
+  der Erholung. 38 Vitest-Tests grün.
+- DebugArena im Browser verifiziert (screenshots/phase1-arena.png):
+  Bewegung, Kombo, Schadenszahlen, Schwung-Bögen, Gegner-Telegraph
+  (pulsierender Ring), Hit-Stop, Kamera-Wackeln, Dummy-Gegner.
+- Debug-Overlay (Taste H): Hitboxen, Aggro-Radien, alle Timings live
+  (Zustand, Erholung, Puffer, Parade-Fenster, Riposte, Rolle, Hit-Stop).
+- Spawn-Tasten 1-7 für alle Gegnertypen, 9 = Elite, 0 = Dummy, K = leeren,
+  G = Waffe durchwechseln (für Phase 2).
+- Gegner-KI portiert: Verfolgen, Telegraph-Windup, Fernkampf-Kiting,
+  Elite-Affixe (Schnell/Vampirisch), Boss-Gerüst (Phasen, Beschwörung,
+  Slam, Fächer).
+- Dreifaches Treffer-Feedback überall zusammen: Hit-Stop + Partikel + Sound
+  (WebAudio-Fallback).
+
+Spielgefühl-Check (per Code-Timings + Browser-Probelauf): Klickspam ohne
+Timing verliert die Kombo (Puffer verfällt nach 250 ms), gewollte Eingaben
+in den letzten 250 ms der Erholung kommen garantiert. Parade fühlt sich
+großzügig an (300 ms), bleibt aber optional.
+
+Offen:
+- Touch-Steuerung kommt in Phase 10.
+- Bogen-Moveset (Spannen/Pfeile) kommt in Phase 2.
+
 ## Hinweis zur Verifikations-Umgebung
 
 Playwrights eigener Browser-Download ist in dieser Umgebung gesperrt;

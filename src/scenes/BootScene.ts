@@ -1,62 +1,96 @@
-// Boot: prüft, welche Asset-Dateien vorliegen (Hot-Swap, Masterprompt 3.3),
-// lädt Vorhandenes und protokolliert Gefundenes/Fallbacks in der Konsole.
-// Es darf NIE etwas kaputtgehen, weil eine Datei fehlt.
+// Boot: prüft per HEAD-Anfrage, welche Asset-Dateien wirklich vorliegen
+// (Hot-Swap, Masterprompt 3.3), lädt nur Vorhandenes und protokolliert
+// Gefundenes/Fallbacks. Es darf NIE etwas kaputtgehen, weil eine Datei fehlt.
+// Hinweis: Der Dev-Server beantwortet fehlende Pfade mit text/html (SPA-
+// Fallback), deshalb entscheidet der Content-Type, nicht der Statuscode.
 
 import Phaser from 'phaser';
 import { PORTRAITS, ITEM_IMAGES, SOUNDS, SPRITE_NAMES, TILE_NAMES, TITLE_IMAGE, assetStatus, logAssetStatus } from '../gfx/assetManifest';
 import gfxConfig from '../data/gfx.json';
+
+interface Candidate { key: string; url: string; art: 'image' | 'audio' | 'atlas'; atlasJson?: string; optional?: boolean }
 
 export class BootScene extends Phaser.Scene {
   constructor() {
     super('Boot');
   }
 
-  preload(): void {
-    const failed = new Set<string>();
-    this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
-      failed.add(file.key);
-    });
+  create(): void {
+    void this.probeAndLoad();
+  }
 
-    // Portraits (inkl. Rüstungsvarianten)
+  private candidates(): Candidate[] {
+    const c: Candidate[] = [];
     for (const name of PORTRAITS) {
-      this.load.image(`pt_${name}`, `portraits/${name}.png`);
-      for (let v = 2; v <= 3; v++) this.load.image(`pt_${name}_ruestung${v}`, `portraits/${name}_ruestung${v}.png`);
+      c.push({ key: `pt_${name}`, url: `portraits/${name}.png`, art: 'image' });
+      for (let v = 2; v <= 3; v++) {
+        c.push({ key: `pt_${name}_ruestung${v}`, url: `portraits/${name}_ruestung${v}.png`, art: 'image', optional: true });
+      }
     }
-    // Item-Bilder
-    for (const file of ITEM_IMAGES) this.load.image(`hs_item_${file}`, `items/${file}.png`);
-    // Sounds (.ogg bevorzugt, .wav als Alternative)
-    for (const name of SOUNDS) this.load.audio(`snd_${name}`, [`sounds/${name}.ogg`, `sounds/${name}.wav`]);
-    // Figuren: Atlas oder Einzelbilder
+    for (const file of ITEM_IMAGES) c.push({ key: `hs_item_${file}`, url: `items/${file}.png`, art: 'image' });
+    for (const name of SOUNDS) {
+      c.push({ key: `snd_${name}`, url: `sounds/${name}.ogg`, art: 'audio' });
+      c.push({ key: `snd_${name}`, url: `sounds/${name}.wav`, art: 'audio', optional: true });
+    }
     for (const name of SPRITE_NAMES) {
-      this.load.atlas(`as_${name}`, `sprites/${name}.png`, `sprites/${name}.json`);
+      c.push({ key: `as_${name}`, url: `sprites/${name}.png`, art: 'atlas', atlasJson: `sprites/${name}.json`, optional: true });
       for (const dir of gfxConfig.directions) {
         for (let f = 1; f <= gfxConfig.walkFrames; f++) {
-          this.load.image(`hs_${name}_${dir}_${f}`, `sprites/${name}_${dir}_${f}.png`);
+          c.push({ key: `hs_${name}_${dir}_${f}`, url: `sprites/${name}_${dir}_${f}.png`, art: 'image', optional: true });
         }
       }
     }
-    // Tiles
-    for (const name of TILE_NAMES) this.load.image(`hs_tile_${name}`, `tiles/${name}.png`);
-    // Titelbild
-    this.load.image(`hs_${TITLE_IMAGE}`, `title/ravensmoor-title.jpg`);
-
-    this.load.on(Phaser.Loader.Events.COMPLETE, () => {
-      // Status protokollieren (nur Kerndateien, keine optionalen Varianten)
-      assetStatus.length = 0;
-      const track = (key: string, pfad: string) => {
-        assetStatus.push({ key, pfad, gefunden: this.textures.exists(key) || this.cache.audio.exists(key) });
-      };
-      for (const n of PORTRAITS) track(`pt_${n}`, `assets/portraits/${n}.png`);
-      for (const f of ITEM_IMAGES) track(`hs_item_${f}`, `assets/items/${f}.png`);
-      for (const n of SOUNDS) track(`snd_${n}`, `assets/sounds/${n}.ogg`);
-      for (const n of TILE_NAMES) track(`hs_tile_${n}`, `assets/tiles/${n}.png`);
-      track(`hs_${TITLE_IMAGE}`, 'assets/title/ravensmoor-title.jpg');
-      logAssetStatus();
-      void failed; // Fehlversuche sind erwartetes Hot-Swap-Verhalten
-    });
+    for (const name of TILE_NAMES) c.push({ key: `hs_tile_${name}`, url: `tiles/${name}.png`, art: 'image' });
+    c.push({ key: `hs_${TITLE_IMAGE}`, url: 'title/ravensmoor-title.jpg', art: 'image' });
+    return c;
   }
 
-  create(): void {
+  private async exists(url: string): Promise<boolean> {
+    try {
+      const res = await fetch(url, { method: 'HEAD' });
+      if (!res.ok) return false;
+      const type = res.headers.get('content-type') ?? '';
+      return !type.includes('text/html');
+    } catch {
+      return false;
+    }
+  }
+
+  private async probeAndLoad(): Promise<void> {
+    const all = this.candidates();
+    const found: Candidate[] = [];
+    const chunk = 40;
+    for (let i = 0; i < all.length; i += chunk) {
+      const part = all.slice(i, i + chunk);
+      const results = await Promise.all(part.map((cand) => this.exists(cand.url)));
+      for (let j = 0; j < part.length; j++) if (results[j]) found.push(part[j]);
+    }
+
+    const loadedKeys = new Set<string>();
+    for (const f of found) {
+      if (loadedKeys.has(f.key)) continue; // .ogg gewinnt gegen .wav
+      loadedKeys.add(f.key);
+      if (f.art === 'audio') this.load.audio(f.key, f.url);
+      else if (f.art === 'atlas' && f.atlasJson) this.load.atlas(f.key, f.url, f.atlasJson);
+      else this.load.image(f.key, f.url);
+    }
+
+    this.load.once(Phaser.Loader.Events.COMPLETE, () => this.finish());
+    if (loadedKeys.size === 0) this.finish();
+    else this.load.start();
+  }
+
+  private finish(): void {
+    assetStatus.length = 0;
+    const track = (key: string, pfad: string) => {
+      assetStatus.push({ key, pfad, gefunden: this.textures.exists(key) || this.cache.audio.exists(key) });
+    };
+    for (const n of PORTRAITS) track(`pt_${n}`, `assets/portraits/${n}.png`);
+    for (const f of ITEM_IMAGES) track(`hs_item_${f}`, `assets/items/${f}.png`);
+    for (const n of SOUNDS) track(`snd_${n}`, `assets/sounds/${n}.ogg`);
+    for (const n of TILE_NAMES) track(`hs_tile_${n}`, `assets/tiles/${n}.png`);
+    track(`hs_${TITLE_IMAGE}`, 'assets/title/ravensmoor-title.jpg');
+    logAssetStatus();
     this.scene.start('Title');
   }
 }
