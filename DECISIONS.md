@@ -1,0 +1,26 @@
+# DECISIONS - Protokoll aller Annahmen und Entscheidungen
+
+- Phaser 3 (3.90) statt Phaser 4 gepinnt - der Masterprompt nennt ausdrücklich Phaser 3.
+- Dependencies: phaser (Spec), vite/typescript/vitest (Spec Teil 3.1). Keine weiteren.
+- CLAUDE.md im Repo war eine generische Vorlage; durch den hochgeladenen Arbeitskodex des Autors ersetzt.
+- Referenzdatei nach reference/ravensmoor-v2.html kopiert, Masterprompt in den Projektstamm.
+- Vite publicDir auf assets/ gesetzt: Hot-Swap-Dateien liegen wie spezifiziert in assets/..., URLs intern ohne Präfix - reine Technik, keine Auswirkung für den Autor.
+- Goldverlust beim Tod 15% (Masterprompt 4.4) statt 20% (Referenz) - Konfliktregel: Spielgefühl-Spezifikation schlägt Referenz.
+- Parade-Fenster 300 ms, Riposte +100%, Rolle 300 ms Unverwundbarkeit (Masterprompt Teil 4) statt 250 ms / +50% / 180 ms der Referenz - Konfliktregel.
+- Erholzeit nach schwerem Hieb 0,7 s als eigener Wert in kampf.ts angenommen (Masterprompt nennt nur Ausholzeit 0,6 s) - leicht änderbar.
+- Schwerer Hieb durchbricht Haltung: 0,6 s Taumeln angenommen (Wert in kampf.ts).
+- Pfeile stapeln zu 20 pro Slot - analog Tränken, leicht änderbar in items.ts (ARROW_STACK).
+- Bögen mischen sich mit 18% unter Waffen-Drops (Referenz kennt keine Bögen) - Wert in loot.ts.
+- Zauberrollen-Dropchance 4% je Gegner ergänzt (Masterprompt 6.2 verlangt Rollen als Drops, Referenz kennt keine) - Wert in items.ts.
+- Fertigkeits-Schulen: Benutzungs-Schwellen je Stufe als Kurve in balancing.ts (Masterprompt nennt keine Zahlen) - eine Zeile zum Ändern.
+- Werte der 9 neuen Fähigkeiten (Kettenblitz, Frostnova usw.) in balancing.ts festgelegt - Masterprompt beschreibt nur Wirkprinzip.
+- Lore-Notizen 4+5 (Folterkammer, Beinhaus-Schrein) neu verfasst - Masterprompt 7.3 verlangt sie ausdrücklich als NEU, Stil an Referenz-Notizen angelehnt.
+- Dialoge für neue NPCs (Landherr, Schmied, Müller, Bauern, Händler) und Anna-Quest neu geschrieben - Masterprompt Teil 7/8 verlangt sie, Referenz enthält keine. Ton an Referenz-Dialogen ausgerichtet.
+- Landherr-Name "Landherr von Falkenberg" als Platzhalter in story.json - dort in einer Zeile änderbar (Tabletop-Anbindung).
+- Speicherformat v3 mit Slot-System (0=Autosave, 1-3 manuell) statt Einzelslot der Referenz - Masterprompt Phase 10 verlangt 3 Slots + Autosave.
+- Einstellungen: Lautstärke in Effekte/Atmosphäre aufgeteilt (Masterprompt 5.2), Referenz hatte einen Regler.
+- Eigener Mini-Animator (Texturwechsel pro Frame) statt Phaser-Anims, damit Hot-Swap-Einzelbilder und Fallback-Sheets denselben Codepfad nutzen.
+- Tagesablauf-NPCs: 2-3 Positionen je Tageszeit wie Masterprompt 7.2, als Daten im Dorf-Layout.
+- Lebensmittel-Buffs (Brot/Käse/Wurst usw.): Werte in shops.ts festgelegt (Masterprompt nennt nur das Prinzip Regeneration über Zeit).
+- Schmiede-Upgrade-Kosten (Gold/Eisen/Kohle je Stufe) in shops.ts festgelegt - Masterprompt nennt nur +1 bis +3 Stufen gegen Gold + Material.
+- Aufbau-Stufen-Kosten (Gehöft) in crafting.ts festgelegt - Masterprompt nennt Material + Gold ohne Zahlen.

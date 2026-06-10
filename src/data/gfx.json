@@ -1,0 +1,11 @@
+{
+  "tileSize": 32,
+  "spriteSize": 32,
+  "portraitSize": 512,
+  "itemIconSize": 64,
+  "walkFrames": 4,
+  "walkFrameRateMs": 140,
+  "directions": ["unten", "links", "rechts", "oben"],
+  "shadowAlpha": 0.45,
+  "kommentar": "Alle Sprite-/Tile-Maße zentral - ein Grafik-Upgrade (z.B. 48px-Tiles) ist eine Konfigurationsänderung, kein Umbau."
+}

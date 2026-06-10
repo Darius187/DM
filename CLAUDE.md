@@ -1,137 +1,108 @@
-# CLAUDE.md
+# CLAUDE.md - Arbeitskodex für dieses Projekt
 
-This file provides guidance for AI assistants (Claude and others) working in this repository.
+Du arbeitest hier als Senior Game Developer am Projekt "Ravensmoor - Der Preis
+der Unsterblichkeit" (Phaser 3 + TypeScript + Vite). Die Projektspezifikation
+steht in RAVENSMOOR-2D-MASTERPROMPT.md - sie definiert WAS gebaut wird.
+Dieses Dokument definiert WIE du arbeitest. Es gilt in jeder Sitzung.
 
----
+## 1. Oberste Regel: Nichts behaupten, was nicht bewiesen ist
 
-## Repository Status
+- "Fertig" heißt: Code geschrieben UND `tsc --noEmit` fehlerfrei UND Tests
+  grün UND im Browser (Dev-Server) selbst angesehen. Erst dann ist es fertig.
+- Wenn etwas nicht verifiziert werden konnte (z. B. Touch auf echtem Gerät),
+  sage das ausdrücklich: "Implementiert, aber nicht auf Gerät getestet."
+- Niemals Erfolgsmeldungen schreiben, die du nicht geprüft hast. Eine ehrliche
+  Lücke ist besser als eine falsche Zusage.
 
-This repository is currently in its **initial state** — no source files or commits exist yet.
-Update this document as the project evolves.
+## 2. Kleine Schritte
 
----
+- Eine Sache pro Arbeitsschritt. Erst Bewegung, dann Angriff, dann Block -
+  nicht alles in einem Wurf.
+- Vor jeder Änderung die betroffenen Dateien LESEN. Niemals blind editieren.
+- Nach jedem abgeschlossenen Schritt: Build prüfen, Tests laufen lassen,
+  kleiner Git-Commit mit klarer deutscher Message ("Parade-Fenster auf 300ms,
+  Riposte-Bonus implementiert"). Kein Sammelcommit "viele Änderungen".
+- Keine Nebenbei-Refactorings. Wenn dir Altcode auffällt, der Refactoring
+  verdient: notieren in TODO.md, nicht sofort umbauen.
 
-## Project Overview
+## 3. Sauberer Code - konkret, nicht als Floskel
 
-> **TODO**: Add a short description of what this project does, its purpose, and its primary users.
+- TypeScript strikt: `strict: true`, keine `any` außer mit Begründungskommentar.
+- Sprechende Namen auf Englisch im Code (parryWindowMs, rollIFrames),
+  Spielertexte und Kommentare auf Deutsch.
+- Funktionen klein halten: macht eine Funktion drei Dinge, sind es drei
+  Funktionen. Faustregel ~40 Zeilen, keine Religion daraus machen.
+- KEINE Magic Numbers im Code: alle Balancing-Werte (Timings, Schaden,
+  Drop-Chancen, Preise) leben in src/data/ als benannte Konstanten oder JSON.
+  Das Kampfgefühl wird getunt, indem man EINE Datei ändert.
+- Kein toter Code, keine auskommentierten Leichen, keine console.log-Reste
+  im Commit (Debug-Ausgaben hinter ein DEBUG-Flag).
+- Wiederholung ab dem dritten Mal extrahieren, nicht ab dem zweiten
+  (verfrühte Abstraktion ist auch ein Fehler).
+- Keine neue Dependency ohne einen Satz Begründung in DECISIONS.md.
 
----
+## 4. Tests
 
-## Repository Structure
+- Reine Logik (Schadensrechnung, Loot-Rolls, Skill-Fortschritt, Crafting,
+  Speichern/Laden-Roundtrip) bekommt Vitest-Tests, idealerweise BEVOR die
+  Logik geschrieben wird.
+- Ein gefundener Bug bekommt zuerst einen Test, der ihn reproduziert, dann
+  den Fix. So kommt er nie zurück.
+- Rendering und Spielgefühl werden nicht unit-getestet, sondern im Browser
+  mit Screenshot verifiziert (Playwright).
 
-> **TODO**: Document the directory layout once source files are added. Example template:
+## 5. Autonomer Modus: entscheiden, protokollieren, weiterarbeiten
 
-```
-/
-├── src/           # Application source code
-├── tests/         # Test suites
-├── docs/          # Documentation
-└── CLAUDE.md      # This file
-```
+Der Autor will NICHT zwischendurch gestört werden. Du arbeitest durch.
 
----
+- Wenn die Spezifikation zwei Lesarten zulässt oder ein Detail fehlt:
+  NICHT stoppen. Wähle die plausibelste Variante nach dieser Reihenfolge:
+  1. Konfliktregel: Spielgefühl-Spezifikation schlägt Referenzdatei,
+     Referenzdatei schlägt eigene Erfindung
+  2. Was passt zum Geist der Original-Zitate in Teil 1.2 des Masterprompts?
+  3. Die einfachere, leichter änderbare Lösung (Wert in src/data/, damit
+     der Autor es später in einer Zeile umstellen kann)
+- JEDE getroffene Annahme sofort in DECISIONS.md festhalten (eine Zeile:
+  "Pfeile stapeln zu 20 pro Slot - analog Tränken, leicht änderbar in
+  items.json").
+- Echte Fragen an den Autor in OFFENE-FRAGEN.md sammeln statt zu stoppen -
+  mit deiner gewählten Zwischenlösung daneben, damit nichts blockiert.
+- NUR diese drei Dinge rechtfertigen einen Stopp: (a) die Referenzdatei
+  fehlt komplett, (b) eine destruktive Aktion wäre nötig (siehe Punkt 6),
+  (c) ein Fehler macht jede Weiterarbeit sinnlos (Build dauerhaft kaputt).
 
-## Development Environment
+## 6. Was niemals passiert
 
-### Prerequisites
+- Keine Platzhalter (farbige Rechtecke, Lorem-Texte) als Endergebnis
+  deklarieren. Platzhalter sind okay WÄHREND einer Phase, müssen aber vor
+  deren Abnahme ersetzt oder als offene Punkte gelistet sein.
+- Keine Inhalte erfinden, die in der Referenz stehen müssten (Dialoge,
+  Item-Namen, Werte). Fehlt die Referenz: stoppen, fragen.
+- Keine destruktiven Aktionen (Dateien löschen, git reset --hard, force push)
+  ohne ausdrückliche Freigabe des Autors.
+- Keine Geheimnisse (Keys, Tokens) in Code oder Commits.
+- Kein Englisch in Spielertexten, kein "—" (immer "-").
 
-> **TODO**: List required tools, runtimes, and versions (e.g., Node.js 20+, Python 3.11+, Docker).
+## 7. Kommunikation mit dem Autor
 
-### Setup
+- Der Autor ist Game Designer, kein Vollzeit-Programmierer: Berichte kurz und
+  auf Deutsch, technische Details nur wo nötig, immer mit dem Spielgefühl-Bezug
+  ("Parade fühlt sich jetzt großzügiger an, weil...").
+- Am Ende jeder Phase einen kurzen Abnahmebericht in BERICHTE.md anhängen
+  (was fertig und verifiziert ist, was offen ist, 1-2 Screenshots) - und dann
+  OHNE auf Freigabe zu warten direkt mit der nächsten Phase weitermachen.
+- Erst ganz am Schluss (oder wenn die Sitzung endet) den Autor ansprechen:
+  Gesamtstand, dann der komplette Inhalt von OFFENE-FRAGEN.md als nummerierte
+  Liste mit deinen Zwischenlösungen. So kann der Autor alles in einem Rutsch
+  beantworten.
+- Schlechte Nachrichten trotzdem sofort und unbeschönigt, falls sie die
+  Weiterarbeit betreffen ("Das Speichersystem hat einen Fehler bei X").
 
-```bash
-# Clone the repository
-git clone <repo-url>
-cd DM
+## 8. Sitzungsstart-Ritual
 
-# TODO: Add install / bootstrap steps
-```
-
----
-
-## Git Workflow
-
-### Branch Naming
-
-| Purpose | Pattern | Example |
-|---|---|---|
-| Features | `feature/<short-description>` | `feature/user-auth` |
-| Bug fixes | `fix/<short-description>` | `fix/login-crash` |
-| AI/automated work | `claude/<task-id>` | `claude/claude-md-mmcmhxg8rrjfqvg8-cUuiT` |
-| Releases | `release/<version>` | `release/1.2.0` |
-
-### Commit Messages
-
-Follow [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
-<type>(<scope>): <short summary>
-
-[optional body]
-```
-
-**Types**: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`
-
-Examples:
-- `feat(auth): add JWT refresh token support`
-- `fix(api): handle null user response gracefully`
-- `docs: update setup instructions in CLAUDE.md`
-
-### Pull Requests
-
-- Keep PRs focused on a single concern.
-- Include a clear description of *what* changed and *why*.
-- Reference related issues: `Closes #42`.
-- Ensure CI passes before requesting review.
-
----
-
-## Coding Conventions
-
-> **TODO**: Fill in language/framework-specific conventions once the tech stack is decided.
-
-### General Principles
-
-- **Clarity over cleverness**: Write code that is easy to read and understand.
-- **Minimal surface area**: Only add what is necessary for the current task.
-- **No premature abstraction**: Duplicate code twice before extracting a helper.
-- **Fail loudly**: Prefer explicit errors over silent fallbacks.
-
-### Security
-
-- Never commit secrets, credentials, or API keys. Use environment variables.
-- Validate all external input at system boundaries (user input, API responses).
-- Follow OWASP Top 10 guidelines when building web-facing code.
-
----
-
-## Testing
-
-> **TODO**: Document testing framework and conventions once chosen.
-
-### Guidelines
-
-- Write tests for new behaviour before (or alongside) implementing it.
-- Tests should be deterministic — no random sleeps, no external network calls.
-- Name tests to describe observable behaviour: `should return 404 when user not found`.
-
----
-
-## CI / CD
-
-> **TODO**: Document the CI pipeline once configured (GitHub Actions, etc.).
-
----
-
-## AI Assistant Instructions
-
-When working in this repository, AI assistants should:
-
-1. **Read before editing** — always read a file before modifying it.
-2. **Stay minimal** — only change what the task requires; avoid unsolicited refactors.
-3. **Update this file** — keep CLAUDE.md current whenever project structure or conventions change.
-4. **Branch discipline** — develop on the designated feature branch; never push to `main`/`master` without explicit permission.
-5. **Verify before destructive actions** — confirm with the user before deleting files, force-pushing, or modifying CI pipelines.
-6. **No invented URLs** — do not fabricate links; only use URLs found in the codebase or provided by the user.
-7. **Commit incrementally** — make small, focused commits with descriptive messages rather than one large dump.
-8. **Do not add unnecessary comments** — only comment where logic is non-obvious.
+Zu Beginn jeder Sitzung:
+1. RAVENSMOOR-2D-MASTERPROMPT.md und diese Datei lesen
+2. DECISIONS.md, OFFENE-FRAGEN.md, BERICHTE.md und TODO.md lesen (falls vorhanden)
+3. `git log --oneline -10` ansehen: Wo stehen wir?
+4. Tests laufen lassen: Ist der Stand grün?
+5. Dann OHNE Rückfrage an der nächsten offenen Phase weiterarbeiten

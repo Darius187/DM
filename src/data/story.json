@@ -1,0 +1,12 @@
+{
+  "landherr": {
+    "name": "Landherr von Falkenberg",
+    "anrede": "Euer Gnaden",
+    "portrait": "landherr"
+  },
+  "spielerName": "Der Fremde",
+  "dorfName": "Ravensmoor",
+  "tavernenName": "Zum Schwarzen Raben",
+  "kirchenName": "Kirche St. Marien",
+  "kommentar": "Namen und Anreden hier anpassen - das Spiel liest diese Datei beim Start. Tabletop-Anbindung: Landherr-Namen einfach ersetzen."
+}
