@@ -17,7 +17,7 @@ export interface InventoryUIData {
 interface Row {
   rect: Phaser.Geom.Rectangle;
   item: ItemInstance | null;
-  action: 'equip' | 'sell' | 'buy' | 'buyHeal' | 'buyMana' | 'buyUpgrade';
+  action: 'equip' | 'sell' | 'buy' | 'buyHeal' | 'buyMana' | 'buyUpgrade' | 'buyElixir';
   price?: number;
 }
 
@@ -86,6 +86,8 @@ export class InventoryUI extends Phaser.Scene {
           gameState.manaPotions++;
         } else if (row.action === 'buyUpgrade' && row.price !== undefined) {
           gameState.buyFlaskUpgrade(row.price);
+        } else if (row.action === 'buyElixir' && row.price !== undefined) {
+          gameState.buyElixir(row.price);
         }
         this.renderPanel();
         return;
@@ -121,7 +123,7 @@ export class InventoryUI extends Phaser.Scene {
     this.addText(
       panel.x + panel.width - 280,
       panel.y + 18,
-      `Gold: ${gameState.gold}   Flaschen: ${gameState.flasks}/${gameState.maxFlasks}`,
+      `Gold: ${gameState.gold}   Flaschen: ${gameState.flasks}/${gameState.maxFlasks}   Manatränke: ${gameState.manaPotions}`,
       '#d8cfb8',
       14,
     );
@@ -168,7 +170,17 @@ export class InventoryUI extends Phaser.Scene {
       ly += 14;
       if (this.herbs) {
         ly = this.addPotionRow(g, listX, ly, 'Heilflasche auffüllen (+1)', 'buyHeal', 25);
-        ly = this.addPotionRow(g, listX, ly, 'Manatrank (+30 Mana)', 'buyMana', 25);
+        ly = this.addPotionRow(g, listX, ly, 'Manatrank (stellt 60% Mana wieder her)', 'buyMana', 32);
+        if (gameState.elixirsBought < 3) {
+          ly = this.addPotionRow(
+            g,
+            listX,
+            ly,
+            `Elixier der Kräuterfrau (+10 max. Leben, ${3 - gameState.elixirsBought} übrig)`,
+            'buyElixir',
+            150,
+          );
+        }
         if (gameState.maxFlasks < 6) {
           ly = this.addPotionRow(g, listX, ly, `Flaschengurt-Upgrade (max. ${gameState.maxFlasks + 1} Flaschen)`, 'buyUpgrade', 250);
         }
@@ -192,7 +204,7 @@ export class InventoryUI extends Phaser.Scene {
     }
   }
 
-  private addPotionRow(g: Phaser.GameObjects.Graphics, x: number, y: number, label: string, action: 'buyHeal' | 'buyMana' | 'buyUpgrade', price: number): number {
+  private addPotionRow(g: Phaser.GameObjects.Graphics, x: number, y: number, label: string, action: 'buyHeal' | 'buyMana' | 'buyUpgrade' | 'buyElixir', price: number): number {
     const rect = new Phaser.Geom.Rectangle(x - 6, y - 3, 520, 28);
     g.fillStyle(0x221c14, 0.9);
     g.fillRect(rect.x, rect.y, rect.width, rect.height);

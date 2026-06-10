@@ -18,7 +18,7 @@ import {
   type DungeonLevel,
 } from '../systems/dungeonGen';
 import { rollElite } from '../systems/enemyAI';
-import { sfxCoffinScrape, sfxIdle, unlockAudio } from '../systems/sound';
+import { sfxCoffinScrape, sfxIdle, sfxPotion, unlockAudio } from '../systems/sound';
 import { saveGame } from '../systems/save';
 import themesData from '../data/themes.json';
 import enemiesData from '../data/enemies.json';
@@ -255,6 +255,14 @@ export class Dungeon extends Phaser.Scene {
     kb.on('keydown-O', () => {
       this.scene.pause();
       this.scene.launch('OptionsUI', { caller: 'Dungeon' });
+    });
+    // Manatrank (F): instant, stellt 60 % Mana wieder her (Referenz)
+    kb.on('keydown-F', () => {
+      const gain = gameState.useManaPotion();
+      if (gain > 0) {
+        this.fx.damageNumber(this.player.x, this.player.y, `+${gain} Mana`, 'golden');
+        sfxPotion();
+      }
     });
     this.input.on('pointerdown', () => unlockAudio());
 

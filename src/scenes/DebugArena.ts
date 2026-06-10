@@ -9,7 +9,7 @@ import { gameState } from '../systems/gameState';
 import { generateItem } from '../systems/loot';
 import { Fx } from '../systems/effects';
 import { DecalLayer } from '../systems/decals';
-import { unlockAudio } from '../systems/sound';
+import { sfxPotion, unlockAudio } from '../systems/sound';
 import { rollElite } from '../systems/enemyAI';
 import { ATTACK_STAGES, COMBAT, attackPhase } from '../systems/combat';
 import enemiesData from '../data/enemies.json';
@@ -114,6 +114,14 @@ export class DebugArena extends Phaser.Scene {
       this.scene.launch('InventoryUI', { caller: 'DebugArena', merchant: true, merchantSeed: Date.now() % 100000 });
     });
 
+    // Manatrank (F): instant, stellt 60 % Mana wieder her (Referenz)
+    kb.on('keydown-F', () => {
+      const gain = gameState.useManaPotion();
+      if (gain > 0) {
+        this.fx.damageNumber(this.player.x, this.player.y, `+${gain} Mana`, 'golden');
+        sfxPotion();
+      }
+    });
     this.input.on('pointerdown', () => unlockAudio());
     this.events.on('shutdown', () => {
       this.player.destroy();

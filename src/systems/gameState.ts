@@ -46,6 +46,8 @@ export class GameState {
   mana = 40;
   /** Elixiere der Kräuterfrau: je +10 maximales Leben, dauerhaft. */
   elixirs = 0;
+  /** Im Shop gekaufte Elixiere (Referenz-Limit: 3). */
+  elixirsBought = 0;
   flags: Record<string, boolean> = {};
   /** Respawn-Punkt: zuletzt berasteter Kerzenschrein (oder null = Dorf). */
   lastShrine: ShrinePoint | null = null;
@@ -142,9 +144,10 @@ export class GameState {
 
   /** Elixier der Kräuterfrau: +10 maximales Leben, dauerhaft (Limit 3 im Shop). */
   buyElixir(price: number): boolean {
-    if (this.gold < price) return false;
+    if (this.gold < price || this.elixirsBought >= 3) return false;
     this.gold -= price;
     this.elixirs++;
+    this.elixirsBought++;
     this.hp = Math.min(this.maxHp, this.hp + 10);
     return true;
   }

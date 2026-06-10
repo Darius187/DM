@@ -5,7 +5,7 @@ import { Fx } from '../systems/effects';
 import { LightingLayer, type LightSource } from '../systems/lighting';
 import { gameState } from '../systems/gameState';
 import { saveGame, loadGame } from '../systems/save';
-import { unlockAudio } from '../systems/sound';
+import { sfxPotion, unlockAudio } from '../systems/sound';
 import dialoguesData from '../data/dialogues.json';
 import narrationData from '../data/narration.json';
 
@@ -86,6 +86,14 @@ export class Village extends Phaser.Scene {
     kb.on('keydown-O', () => {
       this.scene.pause();
       this.scene.launch('OptionsUI', { caller: 'Village' });
+    });
+    // Manatrank (F): instant, stellt 60 % Mana wieder her (Referenz)
+    kb.on('keydown-F', () => {
+      const gain = gameState.useManaPotion();
+      if (gain > 0) {
+        this.fx.damageNumber(this.player.x, this.player.y, `+${gain} Mana`, 'golden');
+        sfxPotion();
+      }
     });
     this.input.on('pointerdown', () => unlockAudio());
 

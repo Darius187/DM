@@ -22,6 +22,7 @@ interface SaveData {
   xp?: number;
   mana?: number;
   elixirs?: number;
+  elixirsBought?: number;
   flags: Record<string, boolean>;
   lastShrine?: ShrinePoint | null;
   options?: GameOptions;
@@ -41,6 +42,7 @@ export function saveGame(): void {
       xp: gameState.xp,
       mana: gameState.mana,
       elixirs: gameState.elixirs,
+      elixirsBought: gameState.elixirsBought,
       flags: gameState.flags,
       lastShrine: gameState.lastShrine,
       options: gameState.options,
@@ -68,6 +70,7 @@ export function loadGame(): boolean {
     gameState.xp = data.xp ?? 0;
     gameState.mana = data.mana ?? 40;
     gameState.elixirs = data.elixirs ?? 0;
+    gameState.elixirsBought = data.elixirsBought ?? 0;
     gameState.flags = data.flags ?? {};
     gameState.lastShrine = data.lastShrine ?? null;
     gameState.options = { damageNumbers: true, shakeStrength: 1, peekRange: 1, ...(data.options ?? {}) };

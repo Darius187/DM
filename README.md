@@ -36,6 +36,7 @@ npm run build      # Produktions-Build nach dist/
 | **E** | Interagieren (NPCs, Schreine, Relikt, weiter) |
 | **I** | Inventar / Händler |
 | **Q** | Heilflasche (0,6 s; Treffer bricht ab, ohne die Flasche zu verschwenden) |
+| **F** | Manatrank (sofort, stellt 60 % Mana wieder her) |
 | **1 / 2 / 3** | Feuerball (Stufe 2) · Heiliges Licht (Stufe 3) · Heilung (Stufe 5) — 0,4 s Wirkzeit |
 | **O** | Optionen (Schadenszahlen, Wackeln, Späh-Kamera) |
 | **F1** | Debug-Arena |

@@ -60,7 +60,7 @@ testbar bleibt.
 
 WASD bewegen · Maus zielen (+Späh-Kamera) · Linksklick/J Kombo · Shift+Klick schwerer Hieb ·
 Rechtsklick/K halten = Block/Parade (300 ms Fenster) · Leertaste Rolle (Ausdauer) ·
-E interagieren/rasten · I Inventar · Q Heilflasche · O Optionen · F1 DebugArena.
+E interagieren/rasten · I Inventar · Q Heilflasche · F Manatrank · 1/2/3 Zauber · O Optionen · F1 DebugArena.
 Ausdauer ist Rhythmusgeber, keine Strafe. Max. 2 Gegner greifen gleichzeitig an.
 
 ## Arbeitsweise
