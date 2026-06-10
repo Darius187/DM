@@ -17,7 +17,7 @@ export interface InventoryUIData {
 interface Row {
   rect: Phaser.Geom.Rectangle;
   item: ItemInstance | null;
-  action: 'equip' | 'sell' | 'buy' | 'buyHeal' | 'buyMana';
+  action: 'equip' | 'sell' | 'buy' | 'buyHeal' | 'buyMana' | 'buyUpgrade';
   price?: number;
 }
 
@@ -84,6 +84,8 @@ export class InventoryUI extends Phaser.Scene {
         } else if (row.action === 'buyMana' && row.price !== undefined && gameState.gold >= row.price) {
           gameState.gold -= row.price;
           gameState.manaPotions++;
+        } else if (row.action === 'buyUpgrade' && row.price !== undefined) {
+          gameState.buyFlaskUpgrade(row.price);
         }
         this.renderPanel();
         return;
@@ -165,8 +167,11 @@ export class InventoryUI extends Phaser.Scene {
       this.addText(listX, ly - 8, '— Angebot —', '#8a8170', 13);
       ly += 14;
       if (this.herbs) {
-        ly = this.addPotionRow(g, listX, ly, 'Heiltrank (+40 Leben)', 'buyHeal', 25);
+        ly = this.addPotionRow(g, listX, ly, 'Heilflasche auffüllen (+1)', 'buyHeal', 25);
         ly = this.addPotionRow(g, listX, ly, 'Manatrank (+30 Mana)', 'buyMana', 25);
+        if (gameState.maxFlasks < 6) {
+          ly = this.addPotionRow(g, listX, ly, `Flaschengurt-Upgrade (max. ${gameState.maxFlasks + 1} Flaschen)`, 'buyUpgrade', 250);
+        }
       }
       for (const item of this.stock) {
         ly = this.addRow(g, listX, ly, item, 'buy', item.value);
@@ -187,7 +192,7 @@ export class InventoryUI extends Phaser.Scene {
     }
   }
 
-  private addPotionRow(g: Phaser.GameObjects.Graphics, x: number, y: number, label: string, action: 'buyHeal' | 'buyMana', price: number): number {
+  private addPotionRow(g: Phaser.GameObjects.Graphics, x: number, y: number, label: string, action: 'buyHeal' | 'buyMana' | 'buyUpgrade', price: number): number {
     const rect = new Phaser.Geom.Rectangle(x - 6, y - 3, 520, 28);
     g.fillStyle(0x221c14, 0.9);
     g.fillRect(rect.x, rect.y, rect.width, rect.height);

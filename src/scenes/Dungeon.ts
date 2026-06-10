@@ -18,7 +18,7 @@ import {
   type DungeonLevel,
 } from '../systems/dungeonGen';
 import { rollElite } from '../systems/enemyAI';
-import { unlockAudio } from '../systems/sound';
+import { sfxIdle, unlockAudio } from '../systems/sound';
 import { saveGame } from '../systems/save';
 import themesData from '../data/themes.json';
 import enemiesData from '../data/enemies.json';
@@ -30,9 +30,12 @@ const DIARY_PAGES_BY_DEPTH: Record<number, number[]> = { 1: [1, 2], 2: [3, 4], 3
 export interface DungeonSceneData {
   depth?: number;
   seed?: number;
+  /** Respawn am Kerzenschrein dieser Ebene (nach dem Tod). */
+  atShrine?: boolean;
 }
 
-const PLAYER_LIGHT_RADIUS = 150;
+/** Bewusst knapp: Licht ist Information, ein +Lichtradius-Ring ein fühlbar wertvoller Fund. */
+const PLAYER_LIGHT_RADIUS = 125;
 const TORCH_LIGHT_RADIUS = 110;
 const EXPLORE_RADIUS_TILES = 6;
 
@@ -62,6 +65,13 @@ export class Dungeon extends Phaser.Scene {
   private leftStartTile = false;
   private diaryPages: { x: number; y: number; page: number }[] = [];
   private diaryG!: Phaser.GameObjects.Graphics;
+  /** Kerzenschrein am Treppenraum: Rasten füllt auf, Räume bleiben geräumt. */
+  private shrine = { x: 0, y: 0 };
+  private shrineG!: Phaser.GameObjects.Graphics;
+  private promptText!: Phaser.GameObjects.Text;
+  private spawnAtShrine = false;
+  /** Sparsamer Skript-Moment: eine Fackel verlischt beim Vorbeigehen (max. 1x pro Ebene). */
+  private torchScareUsed = false;
 
   private keys!: Record<'W' | 'A' | 'S' | 'D' | 'E' | 'J' | 'K' | 'Q' | 'SHIFT' | 'SPACE', Phaser.Input.Keyboard.Key>;
   private prevLeftDown = false;
@@ -73,6 +83,7 @@ export class Dungeon extends Phaser.Scene {
   init(data: DungeonSceneData): void {
     this.depth = data.depth ?? 1;
     this.seed = data.seed ?? Math.floor(Math.random() * 2 ** 31);
+    this.spawnAtShrine = data.atShrine ?? false;
   }
 
   create(): void {
@@ -107,17 +118,26 @@ export class Dungeon extends Phaser.Scene {
     }
     this.level = lvl;
     this.explored = new Uint8Array(lvl.width * lvl.height);
+    this.torchScareUsed = false;
+
+    // Kerzenschrein: im Treppenraum, zwei Kacheln neben der Treppe (auf Boden)
+    const sd0 = lvl.stairsDown;
+    const shrineTx = lvl.tiles[sd0.y * lvl.width + (sd0.x - 2)] === 1 ? sd0.x - 2 : sd0.x + 2;
+    this.shrine = { x: shrineTx * TILE_SIZE + TILE_SIZE / 2, y: sd0.y * TILE_SIZE + TILE_SIZE / 2 };
 
     this.drawTiles(theme);
     this.fx = new Fx(this);
     this.decals = new DecalLayer(this, lvl.width * TILE_SIZE, lvl.height * TILE_SIZE);
 
     // Spieler + Kamera; HP überleben Szenenwechsel via GameState
+    const spawn = this.spawnAtShrine
+      ? this.shrine
+      : { x: lvl.start.x * TILE_SIZE + TILE_SIZE / 2, y: lvl.start.y * TILE_SIZE + TILE_SIZE / 2 };
     this.player = new Player(
       this,
       this.fx,
-      lvl.start.x * TILE_SIZE + TILE_SIZE / 2,
-      lvl.start.y * TILE_SIZE + TILE_SIZE / 2,
+      spawn.x,
+      spawn.y,
     );
     this.player.hp = Math.min(gameState.hp, gameState.maxHp);
     this.cameras.main.setBounds(0, 0, lvl.width * TILE_SIZE, lvl.height * TILE_SIZE);
@@ -130,8 +150,19 @@ export class Dungeon extends Phaser.Scene {
     const affixIds = Object.keys(enemiesData.eliteAffixes);
     for (const s of lvl.spawns) {
       const elite = rollElite(rng, enemiesData.eliteChance, affixIds);
+      // Lauerer: Pestopfer kauern wie Leichen, Grabschatten lauern in dunklen Nischen
+      const dormant = s.typeId === 'pestopfer' || s.typeId === 'grabschatten';
       this.enemies.push(
-        new Enemy(this, this.fx, this.decals, s.typeId, s.x * TILE_SIZE + TILE_SIZE / 2, s.y * TILE_SIZE + TILE_SIZE / 2, elite),
+        new Enemy(
+          this,
+          this.fx,
+          this.decals,
+          s.typeId,
+          s.x * TILE_SIZE + TILE_SIZE / 2,
+          s.y * TILE_SIZE + TILE_SIZE / 2,
+          elite,
+          dormant,
+        ),
       );
     }
 
@@ -161,12 +192,18 @@ export class Dungeon extends Phaser.Scene {
       });
     });
 
+    this.shrineG = this.add.graphics().setDepth(DEPTHS.entities - 2);
     this.torchG = this.add.graphics().setDepth(DEPTHS.entities + 3);
     this.lighting = new LightingLayer(this, GAME_WIDTH, GAME_HEIGHT);
     this.minimapG = this.add.graphics().setDepth(DEPTHS.ui).setScrollFactor(0);
     this.hudG = this.add.graphics().setDepth(DEPTHS.ui).setScrollFactor(0);
     this.hudText = this.add
       .text(244, GAME_HEIGHT - 54, '', { fontFamily: 'Georgia, serif', fontSize: '13px', color: '#c9a227' })
+      .setScrollFactor(0)
+      .setDepth(DEPTHS.ui);
+    this.promptText = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 84, '', { fontFamily: 'Georgia, serif', fontSize: '16px', color: '#c9a227' })
+      .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(DEPTHS.ui);
 
@@ -373,8 +410,18 @@ export class Dungeon extends Phaser.Scene {
     const resolved = moveWithCollision(px, py, this.player.x - px, this.player.y - py, this.player.radius, this.isSolid);
     this.player.x = resolved.x;
     this.player.y = resolved.y;
-    this.camTarget.x = this.player.x;
-    this.camTarget.y = this.player.y;
+
+    // Späh-Kamera: Maus weit in eine Richtung schieben -> Kamera lugt voraus.
+    // Dead-Zone, weicher Rückzug über das Kamera-Lerp — niemals nervös.
+    const pointer = this.input.activePointer;
+    const ox = pointer.x - GAME_WIDTH / 2;
+    const oy = pointer.y - GAME_HEIGHT / 2;
+    const dist = Math.hypot(ox, oy);
+    const DEAD = 90;
+    const FULL = 320;
+    const peek = Math.min(1, Math.max(0, (dist - DEAD) / (FULL - DEAD))) * 130 * gameState.options.peekRange;
+    this.camTarget.x = this.player.x + (dist > 0 ? (ox / dist) * peek : 0);
+    this.camTarget.y = this.player.y + (dist > 0 ? (oy / dist) * peek : 0);
 
     // Gegner mit Wand-Kollision
     const ctx: EnemyContext = {
@@ -413,6 +460,8 @@ export class Dungeon extends Phaser.Scene {
     this.patches = this.patches.filter((p) => (p.alive ? true : (p.destroy(), false)));
 
     this.updateDiaryPages();
+    this.updateShrine();
+    this.updateTorchScare();
     this.markExplored();
     this.renderTorches();
     this.renderLighting();
@@ -420,6 +469,54 @@ export class Dungeon extends Phaser.Scene {
     this.renderHud();
     this.checkStairs();
     this.checkDeath();
+  }
+
+  /** Kerzenschrein: Rasten füllt Leben/Flaschen, setzt den Respawn-Punkt. Kein Gegner-Respawn. */
+  private updateShrine(): void {
+    const g = this.shrineG;
+    const t = this.time.now;
+    g.clear();
+    const { x, y } = this.shrine;
+    // Kerzengruppe
+    for (let i = 0; i < 3; i++) {
+      const cx = x - 8 + i * 8;
+      const f = Math.sin(t / 90 + i * 2.1) * 1.2;
+      g.fillStyle(0xd8cfb8, 1);
+      g.fillRect(cx - 1, y - 6 + i * 2, 3, 8 - i * 2);
+      g.fillStyle(0xe8a33d, 0.95);
+      g.fillCircle(cx, y - 8 + i * 2 + f * 0.4, 2.2 + f * 0.4);
+    }
+    g.fillStyle(0x3a3026, 1);
+    g.fillRect(x - 14, y + 4, 28, 6);
+
+    const near = Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y) < 50;
+    const prompt = near ? '[E] Am Kerzenschrein rasten' : '';
+    if (this.promptText.text !== prompt) this.promptText.setText(prompt);
+    if (near && Phaser.Input.Keyboard.JustDown(this.keys.E)) {
+      gameState.hp = this.player.hp;
+      gameState.restAtShrine({ kind: 'dungeon', depth: this.depth, seed: this.seed });
+      this.player.hp = gameState.maxHp;
+      saveGame();
+      this.fx.damageNumber(x, y - 16, 'Gerastet', 'golden');
+      this.fx.burst(x, y - 10, { color: 0xe8a33d, count: 10, speed: 70, size: 2, lifeMs: 600 });
+    }
+  }
+
+  /** Skript-Moment (max. 1x pro Ebene): eine Fackel verlischt beim Vorbeigehen. */
+  private updateTorchScare(): void {
+    if (this.torchScareUsed) return;
+    for (let i = 0; i < this.torchLights.length; i++) {
+      const l = this.torchLights[i]!;
+      const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, l.x, l.y);
+      if (d < 70 && Math.random() < 0.002) {
+        this.torchScareUsed = true;
+        this.torchLights.splice(i, 1);
+        // Verlöschen: kurzes Zischen + Rauchstoß, gerichtet
+        sfxIdle('fackel', Math.max(-1, Math.min(1, (l.x - this.player.x) / 400)), 1);
+        this.fx.burst(l.x, l.y - 6, { color: 0x8a8a96, count: 8, speed: 40, size: 3, lifeMs: 900 });
+        return;
+      }
+    }
   }
 
   /** Pergamentseiten: schwebend gerendert; Aufheben zeigt den Eintrag als Einblendung. */
@@ -449,12 +546,16 @@ export class Dungeon extends Phaser.Scene {
     }
   }
 
-  /** Tod: zurück ins Dorf, geheilt, aber ein Teil des Goldes bleibt in der Dunkelheit. */
+  /**
+   * Tod ist ein Dämpfer, keine Mauer: Respawn am letzten Kerzenschrein (oder im
+   * Dorf), 15 % Goldverlust, Items bleiben, kein Leichenlauf.
+   */
   private checkDeath(): void {
     if (this.player.hp > 0 || this.transitioning) return;
     this.transitioning = true;
-    gameState.gold = Math.floor(gameState.gold * 0.7);
+    gameState.gold = Math.floor(gameState.gold * 0.85);
     gameState.hp = gameState.maxHp;
+    gameState.flasks = gameState.maxFlasks;
     saveGame();
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'Die Dunkelheit nahm mich — doch sie behielt mich nicht.', {
@@ -470,7 +571,14 @@ export class Dungeon extends Phaser.Scene {
       .setDepth(DEPTHS.ui + 10);
     this.cameras.main.fadeOut(1600, 60, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.start('Village');
+      const shrine = gameState.lastShrine;
+      if (shrine?.kind === 'dungeon' && shrine.depth !== undefined && shrine.seed !== undefined) {
+        this.scene.restart({ depth: shrine.depth, seed: shrine.seed, atShrine: true });
+      } else if (shrine?.kind === 'boss') {
+        this.scene.start('BossRoom');
+      } else {
+        this.scene.start('Village');
+      }
     });
   }
 

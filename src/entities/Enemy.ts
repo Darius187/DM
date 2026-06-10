@@ -3,7 +3,7 @@ import type { CombatTarget, Player } from './Player';
 import { Fx } from '../systems/effects';
 import { DecalLayer } from '../systems/decals';
 import { steer, separation, hasLineOfSight, type EnemyTypeSpec, type EliteAffixSpec } from '../systems/enemyAI';
-import { sfxDeath, sfxTelegraph } from '../systems/sound';
+import { sfxDeath, sfxIdle, sfxRise, sfxTelegraph } from '../systems/sound';
 import { DEPTHS, PALETTE } from '../config';
 import enemiesData from '../data/enemies.json';
 
@@ -71,7 +71,16 @@ export interface EnemyContext {
   tileSize: number;
 }
 
-type EnemyState = 'idle' | 'chase' | 'telegraph' | 'strike' | 'stunned';
+type EnemyState = 'dormant' | 'rising' | 'idle' | 'chase' | 'telegraph' | 'strike' | 'stunned';
+
+/** Gegner-Vertrag v3: maximal 2 Gegner greifen gleichzeitig an. */
+const MAX_SIMULTANEOUS_ATTACKERS = 2;
+/** Nach 2-3 Schlägen gönnt sich der Gegner ein Erholungsfenster. */
+const REST_AFTER_ATTACKS_MIN = 2;
+const REST_DURATION_MS = 2500;
+/** Lauerer erheben sich mit 0,8 s Audio-Vorwarnung — fair. */
+const RISE_MS = 800;
+const WAKE_RANGE = 150;
 
 /** Regulärer Gegner: Pestopfer, Skelett, Skelett-Schütze, Grabschatten — plus Elite-Varianten. */
 export class Enemy implements CombatTarget {
@@ -90,6 +99,10 @@ export class Enemy implements CombatTarget {
   private state: EnemyState = 'idle';
   private stateElapsed = 0;
   private cooldown = 0;
+  /** Schläge seit dem letzten Erholungsfenster. */
+  private attacksSinceRest = 0;
+  private restAfter = REST_AFTER_ATTACKS_MIN + Math.floor(Math.random() * 2);
+  private idleSoundTimer = 800 + Math.random() * 2000;
   private stunRemaining = 0;
   private flashRemaining = 0;
   private strikeAngle = 0;
@@ -114,6 +127,8 @@ export class Enemy implements CombatTarget {
     x: number,
     y: number,
     eliteAffix: string | null = null,
+    /** Lauerer: kauert wie eine Leiche / lauert in der Nische, bis der Spieler naht. */
+    dormant = false,
   ) {
     const spec = TYPES[typeId];
     if (!spec) throw new Error(`Unbekannter Gegnertyp: ${typeId}`);
@@ -133,6 +148,7 @@ export class Enemy implements CombatTarget {
     this.speed = spec.speed * (affix?.speedMult ?? 1);
     this.damage = Math.round(spec.damage * (elite ? ELITE_STATS.damageMult : 1));
 
+    if (dormant) this.state = 'dormant';
     this.g = scene.add.graphics().setDepth(DEPTHS.entities);
     if (elite && affix) {
       this.nameTag = scene.add
@@ -160,12 +176,19 @@ export class Enemy implements CombatTarget {
     return Math.round(this.spec.xp * (this.eliteAffix ? ELITE_STATS.xpMult : 1));
   }
 
+  /** Zählt für das Angreifer-Limit (max. 2 gleichzeitig). */
+  get isAttacking(): boolean {
+    return this.state === 'telegraph' || this.state === 'strike';
+  }
+
   get telegraphProgress(): number {
     return this.state === 'telegraph' ? Math.min(1, this.stateElapsed / this.spec.telegraphMs) : -1;
   }
 
   takeHit(opts: { damage: number; knockbackX: number; knockbackY: number; finisher: boolean; riposte: boolean }): void {
     if (!this.alive) return;
+    // Ein Treffer weckt jeden Lauerer
+    if (this.state === 'dormant') this.wake(this.x - opts.knockbackX);
     this.hp -= opts.damage;
     this.flashRemaining = 90;
     this.vx += opts.knockbackX;
@@ -181,6 +204,14 @@ export class Enemy implements CombatTarget {
     this.state = 'stunned';
     this.stunRemaining = ms;
     this.stateElapsed = 0;
+  }
+
+  /** Lauerer erwacht: 0,8 s Vorwarnung mit gerichtetem Geräusch, dann erst kampfbereit. */
+  private wake(playerX: number): void {
+    if (this.state !== 'dormant') return;
+    this.state = 'rising';
+    this.stateElapsed = 0;
+    sfxRise(this.typeId, Math.max(-1, Math.min(1, (this.x - playerX) / 400)));
   }
 
   /** Tod mit Wucht: gerichteter Blutschwall, bleibender Fleck, kurzer Shake. */
@@ -234,7 +265,30 @@ export class Enemy implements CombatTarget {
 
     const distToPlayer = Phaser.Math.Distance.Between(this.x, this.y, player.x, player.y);
 
+    // Hören vor Sehen: gerichtetes Idle-Geräusch ab ~1,5-facher Sichtweite
+    if (this.state !== 'dormant') {
+      this.idleSoundTimer -= dtMs;
+      if (this.idleSoundTimer <= 0) {
+        this.idleSoundTimer = 1800 + Math.random() * 1600;
+        const hearRange = this.spec.aggroRange * 1.5;
+        if (distToPlayer < hearRange) {
+          const pan = Math.max(-1, Math.min(1, (this.x - player.x) / 400));
+          sfxIdle(this.typeId, pan, 1 - distToPlayer / hearRange);
+        }
+      }
+    }
+
     switch (this.state) {
+      case 'dormant': {
+        // Kauert reglos (Pestopfer wie eine Leiche, Grabschatten in der Nische)
+        if (distToPlayer <= WAKE_RANGE) this.wake(player.x);
+        break;
+      }
+      case 'rising': {
+        this.stateElapsed += dtMs;
+        if (this.stateElapsed >= RISE_MS) this.state = 'chase';
+        break;
+      }
       case 'idle': {
         if (distToPlayer <= this.spec.aggroRange) this.state = 'chase';
         break;
@@ -268,10 +322,12 @@ export class Enemy implements CombatTarget {
         this.y += my * this.speed * dt;
 
         if (s.wantsAttack && this.cooldown <= 0) {
+          // Gegner-Vertrag: maximal 2 greifen gleichzeitig an
+          const attackers = ctx.enemies.filter((e) => e.alive && e !== this && e.isAttacking).length;
           const losOk =
             this.spec.behavior === 'melee' ||
             hasLineOfSight(this.x, this.y, player.x, player.y, ctx.tileSize, ctx.isBlocked);
-          if (losOk) {
+          if (losOk && attackers < MAX_SIMULTANEOUS_ATTACKERS) {
             this.state = 'telegraph';
             this.stateElapsed = 0;
             this.strikeAngle = Math.atan2(player.y - this.y, player.x - this.x);
@@ -318,7 +374,15 @@ export class Enemy implements CombatTarget {
         }
         if (this.stateElapsed >= 90 && this.state === 'strike') {
           this.state = 'chase';
-          this.cooldown = this.spec.attackCooldownMs;
+          this.attacksSinceRest++;
+          if (this.attacksSinceRest >= this.restAfter) {
+            // Erholungsfenster nach 2-3 Schlägen: der Spieler bekommt Luft
+            this.attacksSinceRest = 0;
+            this.restAfter = REST_AFTER_ATTACKS_MIN + Math.floor(Math.random() * 2);
+            this.cooldown = REST_DURATION_MS;
+          } else {
+            this.cooldown = this.spec.attackCooldownMs;
+          }
         }
         break;
       }
@@ -348,6 +412,31 @@ export class Enemy implements CombatTarget {
 
     const color = Phaser.Display.Color.HexStringToColor(this.spec.color).color;
     const affix = this.eliteAffix ? ELITE_AFFIXES[this.eliteAffix] : undefined;
+
+    // Lauerer: kauert flach wie eine Leiche (Grabschatten: kaum sichtbarer Schemen)
+    if (this.state === 'dormant') {
+      const shade = this.typeId === 'grabschatten';
+      g.fillStyle(0x000000, 0.3);
+      g.fillEllipse(this.x, this.y + 4, this.radius * 2.2, this.radius * 0.7);
+      g.fillStyle(color, shade ? 0.35 : 0.85);
+      g.fillEllipse(this.x, this.y, this.radius * 2, this.radius * 0.8);
+      g.fillStyle(0x16120d, shade ? 0.3 : 0.8);
+      g.fillCircle(this.x + this.radius * 0.7, this.y - 2, this.radius * 0.4);
+      return;
+    }
+
+    // Erheben: richtet sich über 0,8 s auf
+    if (this.state === 'rising') {
+      const t = Math.min(1, this.stateElapsed / RISE_MS);
+      const wob = Math.sin(this.stateElapsed / 50) * 2 * (1 - t);
+      g.fillStyle(0x000000, 0.35);
+      g.fillEllipse(this.x, this.y + this.radius * 0.8, this.radius * 2, this.radius * 0.85);
+      g.fillStyle(0x16120d, 1);
+      g.fillEllipse(this.x + wob, this.y, this.radius * (2 - t) + 2, this.radius * (0.8 + 1.4 * t) + 2);
+      g.fillStyle(color, 0.5 + 0.5 * t);
+      g.fillEllipse(this.x + wob, this.y, this.radius * (2 - t), this.radius * (0.8 + 1.4 * t));
+      return;
+    }
 
     // Schatten
     g.fillStyle(0x000000, 0.35);

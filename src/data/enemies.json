@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "source": "PLATZHALTER — ravensmoor.html lag dem Repository nicht bei. Werte nach Beschreibung im Master-Prompt geschätzt; bei Nachlieferung der Referenz 1:1 ersetzen.",
+    "source": "PLATZHALTER, balanciert nach Kampf-und-Pacing-v3 (Telegraphen 450-700ms, moderater Schaden). Bei Nachlieferung von ravensmoor.html Texte/Typen abgleichen.",
     "version": 0
   },
   "types": {
@@ -8,10 +8,10 @@
       "name": "Pestopfer",
       "hp": 60,
       "speed": 55,
-      "damage": 12,
+      "damage": 14,
       "attackRange": 40,
       "attackCooldownMs": 1600,
-      "telegraphMs": 500,
+      "telegraphMs": 650,
       "aggroRange": 260,
       "xp": 12,
       "minLevel": 1,
@@ -23,10 +23,10 @@
       "name": "Skelett",
       "hp": 30,
       "speed": 110,
-      "damage": 8,
+      "damage": 10,
       "attackRange": 38,
       "attackCooldownMs": 1100,
-      "telegraphMs": 380,
+      "telegraphMs": 480,
       "aggroRange": 320,
       "xp": 10,
       "minLevel": 1,
@@ -38,11 +38,11 @@
       "name": "Skelett-Schütze",
       "hp": 24,
       "speed": 85,
-      "damage": 10,
+      "damage": 12,
       "attackRange": 280,
       "retreatRange": 140,
       "attackCooldownMs": 1800,
-      "telegraphMs": 450,
+      "telegraphMs": 550,
       "aggroRange": 360,
       "projectileSpeed": 320,
       "xp": 14,
@@ -58,7 +58,7 @@
       "damage": 16,
       "attackRange": 36,
       "attackCooldownMs": 900,
-      "telegraphMs": 350,
+      "telegraphMs": 450,
       "aggroRange": 400,
       "xp": 24,
       "minLevel": 3,
@@ -69,27 +69,48 @@
   },
   "eliteChance": 0.1,
   "eliteAffixes": {
-    "schnell": { "name": "Schnell", "speedMult": 1.5, "color": "#7ec8e3" },
-    "vampirisch": { "name": "Vampirisch", "lifestealPct": 0.5, "color": "#8c1a1a" },
-    "verflucht": { "name": "Verflucht", "groundDamage": 6, "groundDurationMs": 4000, "color": "#6a3fa0" }
+    "schnell": {
+      "name": "Schnell",
+      "speedMult": 1.5,
+      "color": "#7ec8e3"
+    },
+    "vampirisch": {
+      "name": "Vampirisch",
+      "lifestealPct": 0.5,
+      "color": "#8c1a1a"
+    },
+    "verflucht": {
+      "name": "Verflucht",
+      "groundDamage": 6,
+      "groundDurationMs": 4000,
+      "color": "#6a3fa0"
+    }
   },
-  "eliteStats": { "hpMult": 2.2, "damageMult": 1.4, "sizeMult": 1.35, "xpMult": 3 },
+  "eliteStats": {
+    "hpMult": 2.2,
+    "damageMult": 1.4,
+    "sizeMult": 1.35,
+    "xpMult": 3
+  },
   "boss": {
     "tempelritter": {
       "name": "Der Tempelritter",
-      "hp": 900,
+      "hp": 1100,
       "speed": 70,
-      "meleeDamage": 26,
-      "slamDamage": 40,
+      "meleeDamage": 24,
+      "slamDamage": 30,
       "slamTelegraphMs": 900,
       "slamRadius": 110,
-      "summonAtHpPct": [0.66, 0.33],
+      "summonAtHpPct": [
+        0.66,
+        0.33
+      ],
       "summonCount": 3,
       "projectileFanBelowHpPct": 0.5,
       "projectileFanCount": 8,
-      "projectileDamage": 14,
+      "projectileDamage": 12,
       "chargeTelegraphMs": 1200,
-      "chargeDamage": 35,
+      "chargeDamage": 28,
       "chargeSpeed": 520,
       "meleeParryable": true,
       "meleeStunsOnParry": false

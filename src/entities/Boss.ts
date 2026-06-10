@@ -95,6 +95,11 @@ export class Boss implements CombatTarget {
     return this.hpFraction <= 0.5 ? 2 : 1;
   }
 
+  /** Der Kampf läuft (für die Schrein-Sperre im Bossraum). */
+  get fightStarted(): boolean {
+    return this.alive && this.state !== 'intro';
+  }
+
   takeHit(opts: { damage: number; knockbackX: number; knockbackY: number; finisher: boolean; riposte: boolean }): void {
     if (!this.alive) return;
     this.hp -= opts.damage;

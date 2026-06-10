@@ -16,6 +16,8 @@ import narrationData from '../data/narration.json';
 
 const ARENA = { x: 96, y: 96, w: GAME_WIDTH - 192, h: GAME_HEIGHT - 192 };
 const ALTAR = { x: GAME_WIDTH / 2, y: 150 };
+/** Kerzenschrein direkt vor der Nebelwand (am Eingang des Bossraums). */
+const SHRINE = { x: GAME_WIDTH / 2 - 90, y: GAME_HEIGHT - 130 };
 
 /** Bossraum: alte Kultstätte unter der Krypta. Tempelritter, Relikt, beide Enden. */
 export class BossRoom extends Phaser.Scene {
@@ -224,8 +226,9 @@ export class BossRoom extends Phaser.Scene {
 
     gameState.hp = this.player.hp;
     this.checkPlayerDeath();
-    this.renderRelic();
+    this.renderRelic(); // zeichnet (und leert) die geteilte Graphics zuerst
     this.handleRelicInteraction();
+    this.updateShrine(); // setzt ggf. den Schrein-Prompt nach dem Relikt-Handler
     this.lighting.render(
       [
         { x: this.player.x, y: this.player.y, radius: 150 + gameState.stats.lightRadiusBonus, flickerPhase: 0, flickerAmount: 0.3 },
@@ -260,6 +263,34 @@ export class BossRoom extends Phaser.Scene {
     // Die Templerklinge fällt — sichtbar anders, heiliger Goldschein
     this.pickups.push(Pickup.ofItem(this, this.fx, this.boss!.x, this.boss!.y + 40, templerklinge()));
     saveGame();
+  }
+
+  /** Schrein vor der Nebelwand: Rasten nur, solange der Kampf nicht läuft. */
+  private updateShrine(): void {
+    const g = this.relicG; // teilt sich die Graphics mit dem Relikt (wird zuerst gezeichnet)
+    const t = this.time.now;
+    for (let i = 0; i < 3; i++) {
+      const cx = SHRINE.x - 8 + i * 8;
+      const f = Math.sin(t / 90 + i * 2.1) * 1.2;
+      g.fillStyle(0xd8cfb8, 1);
+      g.fillRect(cx - 1, SHRINE.y - 6 + i * 2, 3, 8 - i * 2);
+      g.fillStyle(0xe8a33d, 0.95);
+      g.fillCircle(cx, SHRINE.y - 8 + i * 2 + f * 0.4, 2.2 + f * 0.4);
+    }
+    g.fillStyle(0x3a3026, 1);
+    g.fillRect(SHRINE.x - 14, SHRINE.y + 4, 28, 6);
+
+    const fightRunning = this.boss !== null && this.boss.fightStarted;
+    const near = Phaser.Math.Distance.Between(this.player.x, this.player.y, SHRINE.x, SHRINE.y) < 50;
+    if (near && !fightRunning && !this.choiceOpen) {
+      this.promptText.setText('[E] Am Kerzenschrein rasten');
+      if (Phaser.Input.Keyboard.JustDown(this.keys.E)) {
+        gameState.restAtShrine({ kind: 'boss' });
+        this.player.hp = gameState.maxHp;
+        saveGame();
+        this.fx.damageNumber(SHRINE.x, SHRINE.y - 16, 'Gerastet', 'golden');
+      }
+    }
   }
 
   /** Das Relikt auf dem Altar: pulsierender violetter Schein. */
@@ -351,8 +382,9 @@ export class BossRoom extends Phaser.Scene {
   private checkPlayerDeath(): void {
     if (this.player.hp > 0 || this.transitioning) return;
     this.transitioning = true;
-    gameState.gold = Math.floor(gameState.gold * 0.7);
+    gameState.gold = Math.floor(gameState.gold * 0.85);
     gameState.hp = gameState.maxHp;
+    gameState.flasks = gameState.maxFlasks;
     saveGame();
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'Der Ritter verneigte sich nicht. Ich erwachte im Dorf.', {
@@ -367,7 +399,12 @@ export class BossRoom extends Phaser.Scene {
       .setDepth(DEPTHS.ui + 10);
     this.cameras.main.fadeOut(1600, 60, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.start('Village');
+      // Schrein vor der Nebelwand berastet? Dann Respawn direkt hier.
+      if (gameState.lastShrine?.kind === 'boss') {
+        this.scene.restart();
+      } else {
+        this.scene.start('Village');
+      }
     });
   }
 
