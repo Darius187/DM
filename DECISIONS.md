@@ -26,3 +26,4 @@
 - Aufbau-Stufen-Kosten (Gehöft) in crafting.ts festgelegt - Masterprompt nennt Material + Gold ohne Zahlen.
 - Im Dunkelwald liegt eine Holzaxt im umgestürzten Baum (Tutorial) - der Spieler braucht die Schmied-Axt damit nicht mehr; Schmied-Angebot bleibt für den Fall, dass man das Tutorial-Tool verpasst.
 - Dev-Hook window.__welt (nur Dev-Build) für automatisierte Browser-Tests.
+- Fähigkeitstasten: Zauberei-Fähigkeiten auf 4/5/6 (Erweiterung der Zauberleiste), Nahkampf/Bogen kontextabhängig auf R/T - Masterprompt nennt keine Belegung.

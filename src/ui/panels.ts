@@ -25,6 +25,7 @@ export class UIPanels {
   private charContainer: Phaser.GameObjects.Container | null = null;
   private tooltip: Phaser.GameObjects.Container | null = null;
   onChanged: (() => void) | null = null;
+  onUseScroll: ((scrollSkill: string) => void) | null = null;
 
   constructor(
     private scene: Phaser.Scene,
@@ -164,6 +165,10 @@ export class UIPanels {
     else if (it.kind === 'potion') {
       p.pot++;
       p.inv = p.inv.filter((x) => x !== it);
+    } else if (it.kind === 'scroll' && it.scrollSkill) {
+      // Zauberrolle: wirkt einmal ohne Manakosten (Masterprompt 6.2)
+      p.inv = p.inv.filter((x) => x !== it);
+      this.onUseScroll?.(it.scrollSkill);
     } else if (it.kind === 'food' && it.buff) {
       // Essen: Regeneration über Zeit
       p.foodBuff = { hpRegen: it.buff.hpRegen, restS: it.buff.dauerS };
@@ -196,6 +201,8 @@ export class UIPanels {
       lines.push([itemStatLine(equippedOfKind), '#9a8c6e']);
     }
     if (it.kind === 'gem') lines.push(['Klicken: in Waffe fassen', '#8a7a5a']);
+    else if (it.kind === 'scroll') lines.push(['Klicken: Rolle einsetzen', '#8a7a5a']);
+    else if (it.kind === 'food') lines.push(['Klicken: verzehren', '#8a7a5a']);
     else if (it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'ring') lines.push(['Klicken: an-/ablegen', '#8a7a5a']);
 
     const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(950);

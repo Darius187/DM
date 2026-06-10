@@ -21,7 +21,7 @@ import { getSettings } from '../logic/settings';
 import { defaultRng, type Rng } from '../logic/rng';
 import { ELITE } from '../data/enemies';
 import type { EnemyTypeId, WeaponClass } from '../data/types';
-import { ABILITY_FX, LORE_XP } from '../data/balancing';
+import { ABILITY_FX, ABILITIES, LORE_XP } from '../data/balancing';
 import { PickupSystem, AUTO_PICKUP, type Pickup } from './Pickups';
 import { UIPanels } from '../ui/panels';
 import { rollGear, rollGem } from '../logic/loot';
@@ -99,6 +99,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
     this.overlay = this.add.graphics().setDepth(550);
     this.pickups = new PickupSystem(this, this.provider);
     this.panels = new UIPanels(this, this.provider, this.sfx, () => this.p);
+    this.panels.onUseScroll = (skill) => this.useScroll(skill);
     this.hintText = this.add.text(this.scale.width / 2, this.scale.height * 0.64, '', {
       fontFamily: 'serif', fontSize: '16px', color: '#e8dcb8', backgroundColor: '#0a0704c0', padding: { x: 12, y: 3 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(800).setVisible(false);
@@ -128,6 +129,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
       if (k === b.s1) this.castSpell(0);
       if (k === b.s2) this.castSpell(1);
       if (k === b.s3) this.castSpell(2);
+      // Zauberei-Fähigkeiten reihen sich in die Zauberleiste ein (4-6)
+      if (k === '4') this.useAbility('kettenblitz');
+      if (k === '5') this.useAbility('frostnova');
+      if (k === '6') this.useAbility('bannkreis');
+      // Waffen-Fähigkeiten: R/T wirken je nach Waffe (Nahkampf/Bogen)
+      if (k === b.faehigkeit1) this.useAbility(this.weaponClass() === 'bogen' ? 'mehrfachschuss' : 'rundumschlag');
+      if (k === b.faehigkeit2) this.useAbility(this.weaponClass() === 'bogen' ? 'markierterTod' : 'sturmangriff');
       this.onGameKey(k);
     });
     kb.on('keyup', (ev: KeyboardEvent) => {
@@ -234,6 +242,20 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
     if (Math.random() < KILL_DROPS.gearChance) this.pickups.add({ kind: 'gear', item: rollGear(this.rng, depth), x: e.x, y: e.y, bob: Math.random() * 6 });
     if (e.elite) this.pickups.add({ kind: 'gear', item: rollGear(this.rng, depth + 1), x: e.x, y: e.y + 12, bob: Math.random() * 6 });
     if (Math.random() < KILL_DROPS.gemChance) this.pickups.add({ kind: 'gem', item: rollGem(this.rng, depth), x: e.x + rndOff(10), y: e.y + rndOff(10), bob: Math.random() * 6 });
+    if (Math.random() < KILL_DROPS.scrollChance) {
+      const rollen = [
+        ['Zauberrolle: Heiliges Licht', 'heiligesLicht'],
+        ['Zauberrolle: Heilung', 'heilung'],
+        ['Zauberrolle: Frostnova', 'frostnova'],
+        ['Zauberrolle: Kettenblitz', 'kettenblitz'],
+      ] as const;
+      const [name, skill] = rollen[Math.floor(Math.random() * rollen.length)];
+      this.pickups.add({
+        kind: 'gear',
+        item: { kind: 'scroll', name, rarity: 1, val: 0, boni: [], scrollSkill: skill },
+        x: e.x + rndOff(10), y: e.y + rndOff(10), bob: Math.random() * 6,
+      });
+    }
   }
 
   // --- Eingabe-Aktionen -------------------------------------------------
@@ -318,6 +340,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
       x: this.px + Math.cos(ang) * 14, y: this.py + Math.sin(ang) * 14,
       vx: Math.cos(ang) * ms.projSpeed, vy: Math.sin(ang) * ms.projSpeed,
       r: 4, dmg, from: 'player', col: '#d8d0b8', arrow: true,
+      // Durchschlag (Bogen Stufe 6): Pfeile durchdringen Gegner
+      pierce: this.p.schools.bogen.level >= 6,
     });
     this.sfx.play('pfeil_schuss');
   }
@@ -480,9 +504,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
     return hitAny;
   }
 
-  damageEnemy(e: Enemy, dmg: number, kx = 0, ky = 0, col?: string | null): void {
+  damageEnemy(e: Enemy, dmg: number, kx = 0, ky = 0, col?: string | null, melee = true): void {
     if (e.markedT > 0) dmg = Math.round(dmg * (1 + ABILITY_FX.markierterTod.bonusDmgPct));
     if (e.banishedT > 0) dmg = Math.round(dmg / ABILITY_FX.bannkreis.untoteDmgMult);
+    // Hinrichtung (Nahkampf Stufe 9): Bonus gegen taumelnde Gegner
+    if (melee && e.stun > 0 && this.p.schools.nahkampf.level >= 9) {
+      dmg = Math.round(dmg * ABILITY_FX.hinrichtung.dmgMultVsStunned);
+      this.fx.float(e.x, e.y - e.r - 20, 'HINRICHTUNG', '#f0d878');
+    }
     e.hp -= dmg;
     e.hitFlash = 0.12;
     this.fx.float(e.x + (Math.random() * 12 - 6), e.y - e.r - 8, String(dmg), col ?? '#e8dcc0');
@@ -490,8 +519,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
     this.fx.burst(e.x, e.y, 0xa82020, 6, 120);
     this.sfx.play(e.type === 'skelett' || e.type === 'schuetze' ? 'treffer_knochen' : 'treffer_fleisch');
     if (this.p.stats.leech) this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + this.p.stats.leech);
-    // Nahkampf-Schule steigt mit Treffern
-    this.gainSchoolUse('nahkampf');
+    // Nahkampf-Schule steigt nur mit Nahkampf-Treffern
+    if (melee) this.gainSchoolUse('nahkampf');
     if (e.hp <= 0) this.killEnemy(e);
   }
 
@@ -641,7 +670,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
       this.sfx.play('heiliges_licht');
       for (const e of [...this.enemies]) {
         if (Math.hypot(e.x - this.px, e.y - this.py) < fx.radius + e.r) {
-          this.damageEnemy(e, Math.round(dmg * (0.9 + Math.random() * 0.3)));
+          this.damageEnemy(e, Math.round(dmg * (0.9 + Math.random() * 0.3)), 0, 0, null, false);
         }
       }
       this.telegraphs.push({ x: this.px, y: this.py, r: fx.radius, t: 0.22, maxT: 0.22, dmg: 0, holy: true });
@@ -653,6 +682,205 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
       this.sfx.play('heilung');
     }
     this.gainSchoolUse('zauberei');
+  }
+
+  // --- Fähigkeiten der drei Schulen (Masterprompt Teil 6) -------------------
+
+  protected banishZones: Array<{ x: number; y: number; r: number; t: number }> = [];
+
+  protected abilityReady(id: string): boolean {
+    const def = ABILITIES.find((a) => a.id === id);
+    if (!def) return false;
+    if (this.p.schools[def.school].level < def.unlock) {
+      this.logMsg(`${def.name} - ${def.school === 'nahkampf' ? 'Nahkampf' : def.school === 'zauberei' ? 'Zauberei' : 'Bogenschießen'} Stufe ${def.unlock} nötig`, 'bad');
+      return false;
+    }
+    if ((this.p.abilityCds[id] ?? 0) > 0) return false;
+    return true;
+  }
+
+  useAbility(id: string): void {
+    if (!this.abilityReady(id)) return;
+    switch (id) {
+      case 'rundumschlag': {
+        // Rundumschlag auch für Schwerter (Nahkampf Stufe 3)
+        this.p.abilityCds[id] = ABILITY_FX.rundumschlag.cd;
+        this.spinAttack(ABILITY_FX.rundumschlag.dmgMult);
+        break;
+      }
+      case 'sturmangriff': {
+        const fx = ABILITY_FX.sturmangriff;
+        this.p.abilityCds[id] = fx.cd;
+        const ang = this.aimAngle();
+        this.pdir = ang;
+        const hitIds = new Set<number>();
+        const steps = 14;
+        for (let i = 0; i < steps; i++) {
+          const nx = this.px + Math.cos(ang) * (fx.distance / steps);
+          const ny = this.py + Math.sin(ang) * (fx.distance / steps);
+          if (this.isSolidAt(nx, ny)) break;
+          this.px = nx;
+          this.py = ny;
+          this.fx.burst(this.px, this.py, 0xd8cfb8, 1, 60);
+          for (const e of [...this.enemies]) {
+            if (hitIds.has(e.id)) continue;
+            if (Math.hypot(e.x - this.px, e.y - this.py) < e.r + PLAYER.radius + 8) {
+              hitIds.add(e.id);
+              this.damageEnemy(e, this.rollDamage(fx.dmgMult), Math.cos(ang) * 14, Math.sin(ang) * 14);
+            }
+          }
+        }
+        this.sfx.play('rolle');
+        this.applyHitstop(HITSTOP_MS.finisher);
+        break;
+      }
+      case 'kettenblitz': {
+        const fx = ABILITY_FX.kettenblitz;
+        if (!this.paySpellCost(fx.mana)) return;
+        this.p.abilityCds[id] = fx.cd;
+        const ang = this.aimAngle();
+        // Erstes Ziel: nächster Gegner grob in Zielrichtung
+        let first: Enemy | null = null, bd = 260;
+        for (const e of this.enemies) {
+          const d = Math.hypot(e.x - this.px, e.y - this.py);
+          let da = Math.atan2(e.y - this.py, e.x - this.px) - ang;
+          da = Math.atan2(Math.sin(da), Math.cos(da));
+          if (d < bd && Math.abs(da) < 0.9) { bd = d; first = e; }
+        }
+        if (!first) {
+          this.logMsg('Kein Ziel für den Kettenblitz', 'bad');
+          this.p.abilityCds[id] = 0;
+          this.p.mana += fx.mana;
+          return;
+        }
+        const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level;
+        const points = [{ x: this.px, y: this.py }];
+        const hit = new Set<number>();
+        let cur: Enemy | null = first;
+        for (let j = 0; j <= fx.jumps && cur; j++) {
+          points.push({ x: cur.x, y: cur.y });
+          hit.add(cur.id);
+          this.damageEnemy(cur, Math.round(dmg * (1 - j * 0.2)), 0, 0, '#9ac8f0', false);
+          let next: Enemy | null = null;
+          let nd: number = fx.jumpRange;
+          for (const e of this.enemies) {
+            if (hit.has(e.id)) continue;
+            const d = Math.hypot(e.x - cur.x, e.y - cur.y);
+            if (d < nd) { nd = d; next = e; }
+          }
+          cur = next;
+        }
+        this.fx.lightning(points);
+        this.sfx.play('heiliges_licht', 0.7);
+        this.gainSchoolUse('zauberei');
+        break;
+      }
+      case 'frostnova': {
+        const fx = ABILITY_FX.frostnova;
+        if (!this.paySpellCost(fx.mana)) return;
+        this.p.abilityCds[id] = fx.cd;
+        this.fx.burst(this.px, this.py, 0x5ac8e8, 30, 200);
+        this.telegraphs.push({ x: this.px, y: this.py, r: fx.radius, t: 0.22, maxT: 0.22, dmg: 0, holy: true });
+        const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level;
+        for (const e of [...this.enemies]) {
+          if (Math.hypot(e.x - this.px, e.y - this.py) < fx.radius + e.r) {
+            this.damageEnemy(e, Math.round(dmg), 0, 0, '#aee0f0', false);
+            e.slowT = Math.max(e.slowT, fx.slowS);
+          }
+        }
+        this.sfx.play('bogen_spannen', 0.8);
+        this.gainSchoolUse('zauberei');
+        break;
+      }
+      case 'bannkreis': {
+        const fx = ABILITY_FX.bannkreis;
+        if (!this.paySpellCost(fx.mana)) return;
+        this.p.abilityCds[id] = fx.cd;
+        this.banishZones.push({ x: this.px, y: this.py, r: fx.radius, t: fx.dauerS });
+        this.sfx.play('heiliges_licht');
+        this.gainSchoolUse('zauberei');
+        break;
+      }
+      case 'mehrfachschuss': {
+        const fx = ABILITY_FX.mehrfachschuss;
+        if (this.p.arrows < 1) {
+          this.logMsg(MELDUNGEN.keinePfeile, 'bad');
+          return;
+        }
+        this.p.abilityCds[id] = fx.cd;
+        const ang = this.aimAngle();
+        this.pdir = ang;
+        const ms = WEAPON_MOVESETS.bogen;
+        const n = Math.min(fx.arrows, this.p.arrows);
+        this.p.arrows -= n;
+        const half = (n - 1) / 2;
+        for (let i = -half; i <= half; i++) {
+          const a = ang + i * fx.spread;
+          this.projectiles.push({
+            x: this.px + Math.cos(a) * 14, y: this.py + Math.sin(a) * 14,
+            vx: Math.cos(a) * ms.projSpeed, vy: Math.sin(a) * ms.projSpeed,
+            r: 4, dmg: this.rollDamage(1.2), from: 'player', col: '#d8d0b8', arrow: true,
+            pierce: this.p.schools.bogen.level >= 6,
+          });
+        }
+        this.sfx.play('pfeil_schuss');
+        break;
+      }
+      case 'markierterTod': {
+        const fx = ABILITY_FX.markierterTod;
+        // nächster Gegner am Zeiger wird markiert (+25% Schaden)
+        const ptr = this.input.activePointer;
+        const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
+        let best: Enemy | null = null, bd = 120;
+        for (const e of this.enemies) {
+          const d = Math.hypot(e.x - wp.x, e.y - wp.y);
+          if (d < bd) { bd = d; best = e; }
+        }
+        if (!best) {
+          this.logMsg('Kein Ziel markiert', 'bad');
+          return;
+        }
+        this.p.abilityCds[id] = fx.cd;
+        best.markedT = fx.dauerS;
+        this.fx.burst(best.x, best.y - best.r - 8, 0xe04a3a, 8, 80);
+        this.sfx.play('telegraph');
+        break;
+      }
+    }
+  }
+
+  private paySpellCost(mana: number): boolean {
+    const kosten = Math.round(mana * (1 - this.p.schools.zauberei.level * SCHOOLS.zaubereiKostenPerLevel));
+    if (this.p.mana < kosten) {
+      this.logMsg(MELDUNGEN.nichtGenugMana, 'bad');
+      this.sfx.play('fehler');
+      return false;
+    }
+    this.p.mana -= kosten;
+    return true;
+  }
+
+  // Zauberrolle einsetzen: wirkt einmal ohne Manakosten, auch oberhalb
+  // der eigenen Stufe (Vorgeschmack-Design, Masterprompt 6.2)
+  useScroll(scrollSkill: string): void {
+    const spellIdx = SPELLS.findIndex((s) => s.id === scrollSkill);
+    if (spellIdx >= 0) {
+      const cd = this.p.spellCds[spellIdx];
+      this.p.spellCds[spellIdx] = 0;
+      this.castSpell(spellIdx, true);
+      this.p.spellCds[spellIdx] = Math.max(cd, 0);
+      return;
+    }
+    // Fähigkeits-Zauber per Rolle: Stufen- und Manaprüfung umgehen
+    const schools = this.p.schools;
+    const save = { z: schools.zauberei.level, mana: this.p.mana, cds: { ...this.p.abilityCds } };
+    schools.zauberei.level = 9;
+    this.p.mana = 999;
+    this.p.abilityCds[scrollSkill] = 0;
+    this.useAbility(scrollSkill);
+    schools.zauberei.level = save.z;
+    this.p.mana = Math.min(save.mana, this.p.stats.maxmana);
+    this.p.abilityCds[scrollSkill] = save.cds[scrollSkill] ?? 0;
   }
 
   // --- Schaden am Spieler -----------------------------------------------
@@ -772,6 +1000,16 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
         }
       }
     }
+
+    // Bannkreise: Untote in der Fläche werden geschwächt
+    for (const z of this.banishZones) {
+      z.t -= dt;
+      for (const e of this.enemies) {
+        if (e.type === 'wolf' || e.type === 'ratte') continue;
+        if (Math.hypot(e.x - z.x, e.y - z.y) < z.r + e.r) e.banishedT = Math.max(e.banishedT, 0.3);
+      }
+    }
+    this.banishZones = this.banishZones.filter((z) => z.t > 0);
 
     this.updateProjectiles(dt);
     this.updateTelegraphs(dt);
@@ -895,7 +1133,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
   }
 
   protected onPlayerProjectileHit(pr: Projectile, e: Enemy): void {
-    this.damageEnemy(e, Math.round(pr.dmg * (0.9 + Math.random() * 0.25)));
+    this.damageEnemy(e, Math.round(pr.dmg * (0.9 + Math.random() * 0.25)), 0, 0, null, false);
     if (pr.arrow) {
       this.gainSchoolUse('bogen');
       this.sfx.play('pfeil_einschlag');
@@ -903,7 +1141,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
     if (pr.fire) {
       this.fx.burst(pr.x, pr.y, 0xe8842a, 14, 170);
       for (const o of [...this.enemies]) {
-        if (o !== e && Math.hypot(pr.x - o.x, pr.y - o.y) < 46) this.damageEnemy(o, Math.round(pr.dmg * 0.5));
+        if (o !== e && Math.hypot(pr.x - o.x, pr.y - o.y) < 46) this.damageEnemy(o, Math.round(pr.dmg * 0.5), 0, 0, null, false);
       }
     }
   }
@@ -969,7 +1207,21 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
       g.fillStyle(0xb43c1e, 0.12 + prog * 0.22);
       g.fillCircle(tg.x, tg.y, tg.r * prog);
     }
+    // Bannkreise
+    for (const z of this.banishZones) {
+      g.lineStyle(2, 0xf0dc96, 0.5 + Math.sin(time * 4) * 0.15);
+      g.strokeCircle(z.x, z.y, z.r);
+      g.fillStyle(0xf0dc96, 0.06);
+      g.fillCircle(z.x, z.y, z.r);
+    }
     // Gegner-Zustandsringe und Lebensbalken
+    for (const e of this.enemies) {
+      // Markierter Tod: rotes Mal über dem Gegner
+      if (e.markedT > 0) {
+        g.fillStyle(0xe04a3a, 0.9);
+        g.fillTriangle(e.x - 5, e.y - e.r - 22, e.x + 5, e.y - e.r - 22, e.x, e.y - e.r - 14);
+      }
+    }
     for (const e of this.enemies) {
       if (e.windup > 0) {
         g.lineStyle(2.5, 0xe14632, 0.35 + 0.5 * Math.abs(Math.sin(time * 26)));

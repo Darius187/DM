@@ -8,11 +8,13 @@ import { getSettings } from '../logic/settings';
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; col: number; alphaCol?: string; sz: number }
 interface Swing { x: number; y: number; ang: number; life: number; maxLife: number; col: string; w: number; glow?: string; sweep: number; fin: boolean; radius: number; arc: number }
 interface FloatText { obj: Phaser.GameObjects.Text; life: number }
+interface Lightning { points: Array<{ x: number; y: number }>; life: number }
 
 export class EffectSystem {
   private particles: Particle[] = [];
   private swings: Swing[] = [];
   private floats: FloatText[] = [];
+  private lightnings: Lightning[] = [];
   private gfx: Phaser.GameObjects.Graphics;
 
   constructor(private scene: Phaser.Scene, depth = 500) {
@@ -48,6 +50,11 @@ export class EffectSystem {
       glow: opts.glow, sweep: opts.sweep ?? 1, fin,
       radius: opts.radius ?? 44, arc: opts.arc ?? (fin ? 1.4 : 1.0),
     });
+  }
+
+  // Kettenblitz: gezackte Linie zwischen den Zielen
+  lightning(points: Array<{ x: number; y: number }>): void {
+    this.lightnings.push({ points, life: 0.25 });
   }
 
   float(x: number, y: number, txt: string, col: string): void {
@@ -103,6 +110,24 @@ export class EffectSystem {
       g.fillStyle(pa.col, Phaser.Math.Clamp(pa.life * 3, 0, 1));
       g.fillRect(pa.x - pa.sz / 2, pa.y - pa.sz / 2, pa.sz, pa.sz);
     }
+    for (const li of this.lightnings) {
+      li.life -= dt;
+      const alpha = Phaser.Math.Clamp(li.life * 5, 0, 1);
+      g.lineStyle(2.5, 0x9ac8f0, alpha);
+      for (let i = 0; i < li.points.length - 1; i++) {
+        const a = li.points[i], b = li.points[i + 1];
+        // gezackt: zwei Zwischenpunkte mit Versatz
+        const m1 = { x: a.x + (b.x - a.x) * 0.33 + (Math.random() * 16 - 8), y: a.y + (b.y - a.y) * 0.33 + (Math.random() * 16 - 8) };
+        const m2 = { x: a.x + (b.x - a.x) * 0.66 + (Math.random() * 16 - 8), y: a.y + (b.y - a.y) * 0.66 + (Math.random() * 16 - 8) };
+        g.beginPath();
+        g.moveTo(a.x, a.y);
+        g.lineTo(m1.x, m1.y);
+        g.lineTo(m2.x, m2.y);
+        g.lineTo(b.x, b.y);
+        g.strokePath();
+      }
+    }
+    this.lightnings = this.lightnings.filter((li) => li.life > 0);
   }
 
   destroy(): void {

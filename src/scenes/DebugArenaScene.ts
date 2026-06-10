@@ -14,8 +14,9 @@ import Phaser from 'phaser';
 const ARENA_W = 30;
 const ARENA_H = 20;
 
+// F-Tasten, damit Zauber (1-3) und Fähigkeiten (4-6) frei bleiben
 const SPAWN_KEYS: Record<string, EnemyTypeId> = {
-  '1': 'pest', '2': 'skelett', '3': 'schuetze', '4': 'schatten', '5': 'wolf', '6': 'ratte', '7': 'templer',
+  f1: 'pest', f2: 'skelett', f3: 'schuetze', f4: 'schatten', f5: 'wolf', f6: 'ratte', f7: 'templer',
 };
 
 export class DebugArenaScene extends CombatScene {
@@ -42,16 +43,23 @@ export class DebugArenaScene extends CombatScene {
       fontFamily: 'monospace', fontSize: '12px', color: '#9ad8a0', backgroundColor: '#000000aa', padding: { x: 8, y: 6 },
     }).setScrollFactor(0).setDepth(700);
     this.add.text(12, this.scale.height - 12, [
-      'DEBUG-ARENA  ·  1-7: Gegner spawnen (Pest/Skelett/Schütze/Schatten/Wolf/Ratte/Templer)',
-      '0: Dummy · 9: Elite an/aus · K: Gegner löschen · H: Hitboxen/Timings · G: Waffe wechseln · ESC: Menü',
-      'WASD: Laufen · Linksklick: Angriff (3er-Kombo) · Umschalt: schwerer Hieb · Rechtsklick halten: Block/Parade · Leertaste: Rolle',
+      'DEBUG-ARENA  ·  F1-F7: Gegner spawnen (Pest/Skelett/Schütze/Schatten/Wolf/Ratte/Templer)',
+      'F8: Dummy · F9: Elite an/aus · K: Gegner löschen · H: Hitboxen/Timings · G: Waffe wechseln · L: Schulen Stufe 9 · ESC: Menü',
+      'WASD: Laufen · Klick: Angriff · Umschalt: schwer · Rechtsklick: Block · Leer: Rolle · R/T: Waffen-Fähigkeit · 4/5/6: Kettenblitz/Frostnova/Bannkreis',
     ].join('\n'), {
       fontFamily: 'serif', fontSize: '13px', color: '#c8b890', backgroundColor: '#000000aa', padding: { x: 8, y: 6 },
     }).setOrigin(0, 1).setScrollFactor(0).setDepth(700);
     this.hudText = this.add.text(this.scale.width - 12, 12, '', {
       fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8', backgroundColor: '#000000aa', padding: { x: 8, y: 6 }, align: 'right',
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(700);
-
+    // F-Tasten nicht an den Browser durchreichen
+    this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {
+      if (ev.key.startsWith('F') && ev.key.length <= 3) ev.preventDefault();
+    });
+    // Dev-Hook für automatisierte Tests
+    if (import.meta.env.DEV) {
+      (window as unknown as { __arena?: DebugArenaScene }).__arena = this;
+    }
   }
 
   private drawArena(): void {
@@ -100,8 +108,8 @@ export class DebugArenaScene extends CombatScene {
       const a = Math.random() * 6.283;
       this.spawnEnemy(SPAWN_KEYS[k], 1, this.px + Math.cos(a) * 180, this.py + Math.sin(a) * 180, this.spawnElite && SPAWN_KEYS[k] !== 'templer');
     }
-    if (k === '0') this.spawnDummy();
-    if (k === '9') {
+    if (k === 'f8') this.spawnDummy();
+    if (k === 'f9') {
       this.spawnElite = !this.spawnElite;
       this.logMsg(this.spawnElite ? 'Elite-Spawn AN' : 'Elite-Spawn AUS');
     }
@@ -111,6 +119,14 @@ export class DebugArenaScene extends CombatScene {
     }
     if (k === 'h') this.showDebug = !this.showDebug;
     if (k === 'g') this.cycleWeapon();
+    if (k === 'l') {
+      // Schulen aufleveln, um alle Fähigkeiten zu testen
+      for (const s of ['nahkampf', 'zauberei', 'bogen'] as const) {
+        this.p.schools[s] = { uses: 500, level: 9 };
+      }
+      this.p.mana = this.p.stats.maxmana;
+      this.logMsg('Alle Schulen auf Stufe 9 (Test)');
+    }
   }
 
   // Waffe durchwechseln, um alle Movesets zu testen (Phase 2)

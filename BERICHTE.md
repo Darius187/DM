@@ -250,6 +250,34 @@ Offen:
 - Einrichtungs-Sets sind wählbar, aber noch ohne sichtbare Deko im
   Hausbereich (Innenräume gibt es nicht; Politur-Kandidat Phase 9/11).
 
+## Phase 8 - Fertigkeiten (abgenommen)
+
+Fertig und in der DebugArena demonstriert (Mess-Logs + Screenshots
+phase8-zauberei/-bogen.png):
+- Nahkampf: Rundumschlag (Stufe 3, Taste R, alle Gegner im Umkreis
+  getroffen), Sturmangriff (Stufe 6, Taste T, Ansturm mit Schaden entlang
+  der Bahn), Hinrichtung (Stufe 9, passiv - GEMESSEN: 100 -> 250 Schaden
+  gegen Taumelnde, Faktor exakt 2,5).
+- Zauberei: Kettenblitz (Taste 4, springt auf 2 weitere Gegner, gezackter
+  Blitz-Effekt), Frostnova (Taste 5, Kreis + Verlangsamung - 4 Gegner
+  gleichzeitig verlangsamt), Bannkreis (Taste 6, goldene Fläche 6 s,
+  Untote erleiden dort mehr Schaden; Wolf/Ratte ausgenommen).
+- Bogenschießen: Mehrfachschuss (R mit Bogen - GEMESSEN: 3 Pfeile
+  verbraucht, 3 Projektile im Fächer), Durchschlag (Stufe 6, passiv -
+  Pfeile durchdringen, pierce-Flag verifiziert), Markierter Tod (T mit
+  Bogen - Gegner markiert, +25% Schaden, rotes Mal über dem Kopf).
+- Schulen steigen nur durch passende Benutzung: Nahkampf-Treffer,
+  gewirkte Zauber, Pfeiltreffer (Fehlerquelle behoben: Zauber/Pfeile
+  zählten anfangs als Nahkampf).
+- Zauberrollen: wirken einmal ohne Manakosten, auch oberhalb der eigenen
+  Stufe (GEMESSEN: Stufe-1-Charakter wirkt Heiliges Licht per Rolle, Mana
+  unverändert). Rollen droppen mit 4% und stehen bei Magdalena im Regal.
+- Arena-Spawns auf F1-F9 verlegt (Konflikt mit Zauber-/Fähigkeitstasten).
+
+Offen:
+- Fähigkeits-Abklingzeiten sind nicht im HUD sichtbar (Meldung erscheint
+  nur, wenn die Schule fehlt) - kommt mit der HUD-Politur in Phase 9/10.
+
 ## Hinweis zur Verifikations-Umgebung
 
 Playwrights eigener Browser-Download ist in dieser Umgebung gesperrt;
