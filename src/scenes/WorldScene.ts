@@ -177,6 +177,8 @@ export class WorldScene extends CombatScene {
     this.triggerLock = true;
     this.projectiles = [];
     this.telegraphs = [];
+    this.decals = [];
+    this.banishZones = [];
     this.areaText.setText(a.name.toUpperCase());
     this.sfx.play('gebietswechsel');
     this.sfx.stopLoops();
@@ -238,15 +240,26 @@ export class WorldScene extends CombatScene {
   }
 
   private loadAreaObjects(a: AreaData): void {
-    // Tiles als statische Bilder
+    // Tiles als statische Bilder; stehende Objekte werden für die
+    // Y-Sortierung vom Boden getrennt (Pseudo-3D, Masterprompt 5.1)
+    const STANDING = new Set<number>([T.TREE, T.ROCK, T.GRAVE, T.WELL, T.FENCE, T.ORE, T.ALTAR, T.SHELF, T.SHRINE, T.RACK, T.CAGE]);
     for (let ty = 0; ty < a.h; ty++) {
       for (let tx = 0; tx < a.w; tx++) {
+        const id = a.map[ty][tx];
         const name = tileNameAt(a.map, tx, ty);
         const variant = ((tx * 73856093) ^ (ty * 19349663)) % 7;
+        if (STANDING.has(id)) {
+          const groundName = a.dark ? 'krypta_boden' : 'gras';
+          const ground = this.provider.tileKey(groundName, variant, a.depth, a.theme);
+          this.tileImages.push(this.add.image(tx * TILE + 16, ty * TILE + 16, ground).setDepth(-10));
+          const obj = this.provider.objectKey(name, variant, a.depth, a.theme);
+          this.tileImages.push(this.add.image(tx * TILE + 16, ty * TILE + 16, obj).setDepth(ty * TILE + 26));
+          continue;
+        }
         const key = this.provider.tileKey(name, variant, a.depth, a.theme);
         const img = this.add.image(tx * TILE + 16, ty * TILE + 16, key).setDepth(-10);
-        // Wände mit Fassade sortieren sich vor den Spieler, wenn er dahinter steht
-        if (SOLID.has(a.map[ty][tx]) && (a.map[ty][tx] === T.HWALL || a.map[ty][tx] === T.CWALL)) {
+        // Gebäudefassaden sortieren sich vor den Spieler, wenn er dahinter steht
+        if (id === T.HWALL || id === T.CWALL) {
           img.setDepth(ty * TILE + 16);
         }
         this.tileImages.push(img);
@@ -322,6 +335,10 @@ export class WorldScene extends CombatScene {
 
   protected override areaDepth(): number {
     return this.area?.depth ?? 1;
+  }
+
+  protected override stepSound(): string {
+    return this.area?.dark ? 'schritte_stein' : 'schritte_gras';
   }
 
   protected override uiBlocked(): boolean {
@@ -999,11 +1016,22 @@ export class WorldScene extends CombatScene {
     const name = tileNameAt(this.area.map, tx, ty);
     const variant = ((tx * 73856093) ^ (ty * 19349663)) % 7;
     const key = this.provider.tileKey(name, variant, this.area.depth, this.area.theme);
+    const remove: Phaser.GameObjects.Image[] = [];
+    let groundDone = false;
     for (const img of this.tileImages) {
-      if (Math.abs(img.x - (tx * TILE + 16)) < 1 && Math.abs(img.y - (ty * TILE + 16)) < 1) {
-        img.setTexture(key);
-        break;
+      if (Math.abs(img.x - (tx * TILE + 16)) > 1 || Math.abs(img.y - (ty * TILE + 16)) > 1) continue;
+      const isImage = img instanceof Phaser.GameObjects.Image;
+      if (!groundDone && img.depth === -10) {
+        if (isImage) img.setTexture(key);
+        groundDone = true;
+      } else if (img.depth > 0 && isImage) {
+        // aufgesetztes Objekt (gefällter Baum, abgebaute Ader) entfernen
+        remove.push(img);
       }
+    }
+    for (const img of remove) {
+      img.destroy();
+      this.tileImages = this.tileImages.filter((x) => x !== img);
     }
   }
 
@@ -1095,10 +1123,13 @@ export class WorldScene extends CombatScene {
 
   // --- Gegner-Tod, Boss, Relikt --------------------------------------------------
 
+  private decals: Array<{ x: number; y: number; r: number; bone: boolean; a: number }> = [];
+
   protected onEnemyKilled(e: Enemy): void {
+    // Blut & Überreste (abschaltbar in den Einstellungen)
     if (getSettings().blood) {
-      // Überreste als kleiner Fleck im worldGfx (vergänglich pro Areal-Wechsel)
-      void 0;
+      this.decals.push({ x: e.x, y: e.y, r: 7 + Math.random() * 5, bone: e.type === 'skelett' || e.type === 'schuetze', a: Math.random() * 6.283 });
+      if (this.decals.length > 90) this.decals.shift();
     }
     if (e.boss) {
       this.bossDead = true;
@@ -1373,6 +1404,16 @@ export class WorldScene extends CombatScene {
     const g = this.worldGfx;
     const time = this.time.now / 1000;
     g.clear();
+    // Blutspuren gefallener Gegner
+    for (const dc of this.decals) {
+      g.fillStyle(0x5a0e0e, 0.4);
+      g.fillEllipse(dc.x, dc.y, dc.r * 2, dc.r * 1.2);
+      if (dc.bone) {
+        g.fillStyle(0xcfc4a8, 0.8);
+        g.fillRect(dc.x - 5, dc.y - 1, 7, 2);
+        g.fillRect(dc.x + 1, dc.y + 3, 6, 2);
+      }
+    }
     // Fackeln (Flammen)
     for (const t of this.area.torches) {
       g.fillStyle(0x3a2c1c, 1);

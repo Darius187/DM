@@ -278,6 +278,32 @@ Offen:
 - Fähigkeits-Abklingzeiten sind nicht im HUD sichtbar (Meldung erscheint
   nur, wenn die Schule fehlt) - kommt mit der HUD-Politur in Phase 9/10.
 
+## Phase 9 - Pseudo-3D-Politur (abgenommen)
+
+Fertig und verifiziert (Screenshot phase9-ysort.png; "Vorher" sind die
+Phase-5-Screenshots):
+- Y-Sortierung ALLER Entities und stehenden Objekte: Bäume, Felsen,
+  Grabsteine, Brunnen, Zäune, Regale, Altäre, Schreine, Erzadern,
+  Streckbank, Käfige sind jetzt vom Boden getrennte, transparente
+  Sprites mit eigenem Schlagschatten - der Spieler verschwindet sichtbar
+  hinter Baumkronen (im Screenshot oben rechts), Gebäudefassaden
+  verdecken ihn weiterhin korrekt.
+- Der Brunnen hat ein Dachgestell bekommen (mehr Tiefe), gefällte Bäume/
+  abgebaute Adern räumen ihr Objekt-Sprite korrekt weg.
+- Blut & Überreste: gefallene Gegner hinterlassen Flecken (Skelette
+  Knochen), max. 90 je Areal, über die Einstellungen abschaltbar,
+  beim Gebietswechsel geleert (Referenz-Verhalten).
+- Schritt-Sounds nach Untergrund (Gras im Dorf/Wald, Stein in der
+  Krypta), leise, an den Gehzyklus gekoppelt.
+- Bereits in früheren Phasen poliert und hier nachgeprüft: weiche
+  Schatten unter allen Figuren, Krypta-Licht mit Fackelflackern,
+  Nebelschwaden + Abendtönung im Dorf, Parade-Funken, Element-Schwünge
+  gesockelter Waffen, Rollen-Staub, Lichtsäulen über Drops.
+
+Offen:
+- Sprites bleiben bewusst Fallback-Qualität - das eigentliche
+  Grafik-Upgrade ist Phase 11 (optional) bzw. die Bilder des Autors.
+
 ## Hinweis zur Verifikations-Umgebung
 
 Playwrights eigener Browser-Download ist in dieser Umgebung gesperrt;

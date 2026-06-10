@@ -213,6 +213,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
   }
 
   protected areaDepth(): number { return 1; }
+  protected stepSound(): string { return 'schritte_stein'; }
   protected showNote(_idx: number): void { void NOTIZEN; }
   protected onRelicPickup(_pk: Pickup): void { /* Welt überschreibt */ }
   protected onMedaillonPickup(): void { /* Welt überschreibt */ }
@@ -956,6 +957,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost {
       if (this.pstepT > 0.13) {
         this.pstepT = 0;
         this.pstep = (this.pstep + 1) % 4;
+        if (this.pstep % 2 === 0) this.sfx.play(this.stepSound(), 0.5);
       }
     }
     if (this.combat.blocking) this.pdir = this.aimAngle();

@@ -6,7 +6,7 @@ import Phaser from 'phaser';
 import gfxConfig from '../data/gfx.json';
 import { drawHumanoid, drawQuadruped, drawChicken, FIGURES, SPRITE, TILE, type Dir, type FigureSpec, type QuadSpec } from './fallbackArt';
 import { drawItemIcon, iconKey, ICON_SIZE } from './itemIcons';
-import { drawTileArt, drawBreakable } from './tileArt';
+import { drawTileArt, drawObjectArt, drawBreakable } from './tileArt';
 import type { CryptTheme } from '../data/krypta';
 import type { Item } from '../data/types';
 
@@ -98,6 +98,21 @@ export class SpriteProvider {
       canvas.width = TILE;
       canvas.height = TILE;
       drawTileArt(canvas.getContext('2d')!, name, variant, theme);
+      this.tex.addCanvas(key, canvas);
+    }
+    return key;
+  }
+
+  // Stehendes Objekt (transparent, für Y-Sortierung) - Boden liegt separat
+  objectKey(name: string, variant: number, themeId = 0, theme?: CryptTheme): string {
+    const hot = `hs_tile_${name}`;
+    if (this.tex.exists(hot)) return hot;
+    const key = `obj_${name}_${themeId}_${variant}`;
+    if (!this.tex.exists(key)) {
+      const canvas = document.createElement('canvas');
+      canvas.width = TILE;
+      canvas.height = TILE;
+      drawObjectArt(canvas.getContext('2d')!, name, variant, theme);
       this.tex.addCanvas(key, canvas);
     }
     return key;

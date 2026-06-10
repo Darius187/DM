@@ -229,6 +229,57 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
   }
 }
 
+// Stehende Objekte (Baum, Fels, Grabstein ...) als transparente Sprites für
+// die Y-Sortierung: der Boden liegt separat darunter (Masterprompt 5.1).
+export const STANDING_OBJECTS = new Set([
+  'baum', 'fels', 'grabstein', 'brunnen', 'zaun', 'erzader', 'altar',
+  'regal', 'kerzenschrein', 'streckbank', 'kaefig',
+]);
+
+export function drawObjectArt(ctx: Ctx, name: string, n: number, theme?: CryptTheme): void {
+  ctx.clearRect(0, 0, TILE, TILE);
+  switch (name) {
+    case 'baum':
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(16, 28, 9, 3.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#241a10'; ctx.fillRect(13, 18, 6, 10);
+      ctx.fillStyle = '#1c3018'; ctx.beginPath(); ctx.arc(16, 12, 12, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(40,70,34,0.8)'; ctx.beginPath(); ctx.arc(12, 9, 7, 0, 6.283); ctx.fill();
+      break;
+    case 'fels':
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(16, 26, 11, 3.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#6a665e';
+      ctx.beginPath(); ctx.moveTo(5, 24); ctx.lineTo(8, 10); ctx.lineTo(20, 7); ctx.lineTo(27, 16); ctx.lineTo(23, 25); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(10, 10, 8, 3);
+      break;
+    case 'grabstein':
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(16, 27, 8, 3, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#5a564e'; ctx.fillRect(10, 8, 12, 18);
+      ctx.beginPath(); ctx.arc(16, 8, 6, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(13, 13, 6, 2);
+      break;
+    case 'brunnen':
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(16, 28, 13, 3.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#55504a'; ctx.beginPath(); ctx.arc(16, 16, 13, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#10141c'; ctx.beginPath(); ctx.arc(16, 16, 8, 0, 6.283); ctx.fill();
+      // kleines Dachgestell
+      ctx.strokeStyle = '#3a2c1c'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(6, 16); ctx.lineTo(6, 4); ctx.lineTo(26, 4); ctx.lineTo(26, 16); ctx.stroke();
+      ctx.fillStyle = '#4a2a20'; ctx.fillRect(4, 1, 24, 4);
+      break;
+    case 'zaun':
+      ctx.fillStyle = '#5c4427';
+      ctx.fillRect(4, 8, 4, 18); ctx.fillRect(24, 8, 4, 18);
+      ctx.fillRect(0, 12, TILE, 4); ctx.fillRect(0, 20, TILE, 4);
+      break;
+    default:
+      drawTileArt(ctx, name, n, theme);
+  }
+}
+
 // Zerstörbare Objekte als eigenständige Sprites (über dem Boden)
 export function drawBreakable(ctx: Ctx, kind: string): void {
   ctx.clearRect(0, 0, TILE, TILE);
