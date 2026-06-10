@@ -1,0 +1,38 @@
+{
+  "_meta": {
+    "source": "PLATZHALTER — ravensmoor.html lag dem Repository nicht bei. Farben und Dekordichten bei Nachlieferung aus `themes` der Referenz übernehmen.",
+    "version": 0
+  },
+  "levels": [
+    {
+      "id": "gruft",
+      "name": "Die Gruft",
+      "floor": "#2a241c",
+      "wall": "#4a3f30",
+      "accent": "#6b5a40",
+      "fogColor": "#0d0b08",
+      "decor": { "bones": 0.04, "blood": 0.02, "rubble": 0.08, "coffins": 0.06 },
+      "torchDensity": 0.5
+    },
+    {
+      "id": "beinhaus",
+      "name": "Das Beinhaus",
+      "floor": "#262019",
+      "wall": "#3d3328",
+      "accent": "#cfc8b0",
+      "fogColor": "#0a0908",
+      "decor": { "bones": 0.18, "blood": 0.05, "rubble": 0.05, "skullPiles": 0.1 },
+      "torchDensity": 0.4
+    },
+    {
+      "id": "kultstaette",
+      "name": "Die alte Kultstätte",
+      "floor": "#1d1820",
+      "wall": "#322838",
+      "accent": "#6a3fa0",
+      "fogColor": "#080610",
+      "decor": { "bones": 0.06, "blood": 0.12, "runes": 0.1, "candles": 0.08 },
+      "torchDensity": 0.3
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "_meta": {
+    "source": "PLATZHALTER — ravensmoor.html lag dem Repository nicht bei. Erzähltexte müssen bei Nachlieferung WÖRTLICH aus der Referenz übernommen werden.",
+    "version": 0
+  },
+  "title": "Aus meinen Aufzeichnungen",
+  "beats": {
+    "gameStart": "Im Herbst des Jahres 1635 erreichte ich Ravensmoor. Der Krieg hatte das Land leergefressen, und ich suchte, was alle Verzweifelten suchen: einen Ausweg, den es nicht geben durfte.",
+    "firstDescent": "Als sich die Tür zur Krypta hinter mir schloss, verstand ich, dass die Dunkelheit hier unten älter war als jede Kirche. Sie atmete.",
+    "bossRoom": "Am Ende der letzten Treppe wartete er. Der Tempelritter, von dem die Folianten flüsterten — vierhundert Jahre tot und doch aufrechter als jeder Lebende, dem ich je begegnet war."
+  },
+  "endings": {
+    "accept": "Ich nahm das Relikt. Die Unsterblichkeit kam über mich wie kaltes Wasser — und mit ihr die Gewissheit, dass ich nun jeden begraben würde, den ich je lieben sollte. Der Preis war nicht der Tod. Der Preis war das Bleiben.",
+    "destroy": "Ich zerschlug das Relikt auf den Steinen des Altars. Das Flüstern verstummte, und zum ersten Mal seit Jahren fühlte sich mein eigenes Herz wie ein Versprechen an, nicht wie eine Frist. Ich stieg hinauf, dem Morgen entgegen, sterblich und frei."
+  },
+  "diaryPages": [
+    { "id": 1, "text": "Tag 3. Die Fackeln brennen hier unten ruhiger als oben. Als hielte etwas den Atem an." },
+    { "id": 2, "text": "Tag 7. Meine Wunde von gestern ist über Nacht verheilt. Ich sollte dankbar sein. Ich bin es nicht." },
+    { "id": 3, "text": "Tag 12. Ich habe heute mein Spiegelbild im Altarsilber gesucht und es nicht gefunden. Vielleicht stand ich falsch." },
+    { "id": 4, "text": "Tag 19. Ich friere nicht mehr. Ich hungere nicht mehr. Ich erinnere mich kaum noch an den Klang meines Namens." },
+    { "id": 5, "text": "Letzter Eintrag. Wenn du das liest: Das Relikt hält, was es verspricht. Das ist das Schrecklichste daran." }
+  ]
+}

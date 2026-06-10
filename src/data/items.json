@@ -1,0 +1,49 @@
+{
+  "_meta": {
+    "source": "PLATZHALTER — ravensmoor.html lag dem Repository nicht bei. Tabellen nach Beschreibung im Master-Prompt rekonstruiert; bei Nachlieferung der Referenz 1:1 ersetzen.",
+    "version": 0
+  },
+  "weapons": [
+    { "id": "rostiges_schwert", "name": "Rostiges Schwert", "minDmg": 3, "maxDmg": 6, "tier": 0, "swingStyle": "rusty", "value": 10 },
+    { "id": "kurzschwert", "name": "Kurzschwert", "minDmg": 5, "maxDmg": 9, "tier": 1, "swingStyle": "plain", "value": 35 },
+    { "id": "streitaxt", "name": "Streitaxt", "minDmg": 7, "maxDmg": 14, "tier": 2, "swingStyle": "heavy", "value": 70 },
+    { "id": "langschwert", "name": "Langschwert", "minDmg": 10, "maxDmg": 17, "tier": 3, "swingStyle": "fine", "value": 120 },
+    { "id": "ritterklinge", "name": "Ritterklinge", "minDmg": 14, "maxDmg": 22, "tier": 4, "swingStyle": "fine", "value": 220 },
+    { "id": "templerklinge", "name": "Templerklinge", "minDmg": 20, "maxDmg": 30, "tier": 5, "swingStyle": "holy", "value": 600, "unique": true }
+  ],
+  "armors": [
+    { "id": "lumpen", "name": "Lumpen", "armor": 0, "tier": 0, "value": 5 },
+    { "id": "lederwams", "name": "Lederwams", "armor": 3, "tier": 1, "value": 40 },
+    { "id": "kettenhemd", "name": "Kettenhemd", "armor": 6, "tier": 2, "value": 110 },
+    { "id": "plattenpanzer", "name": "Plattenpanzer", "armor": 10, "tier": 3, "value": 260 }
+  ],
+  "rings": [
+    { "id": "kupferring", "name": "Kupferring", "tier": 0, "value": 25 },
+    { "id": "silberring", "name": "Silberring", "tier": 1, "value": 60 },
+    { "id": "goldring", "name": "Goldring", "tier": 2, "value": 140 }
+  ],
+  "rarities": {
+    "common": { "name": "Gewöhnlich", "color": "#d8cfb8", "affixCount": 0, "weight": 70 },
+    "magic": { "name": "Magisch", "color": "#5b8dd9", "affixCount": 1, "weight": 25 },
+    "rare": { "name": "Selten", "color": "#c9a227", "affixCount": 2, "weight": 5 }
+  },
+  "affixes": [
+    { "id": "dmg_flat", "name": "der Schärfe", "stat": "damage", "min": 1, "max": 5, "slots": ["weapon"] },
+    { "id": "dmg_pct", "name": "des Schlächters", "stat": "damagePct", "min": 5, "max": 20, "slots": ["weapon"] },
+    { "id": "attack_speed", "name": "der Hast", "stat": "attackSpeedPct", "min": 5, "max": 15, "slots": ["weapon", "ring"] },
+    { "id": "armor_flat", "name": "des Schutzes", "stat": "armor", "min": 1, "max": 4, "slots": ["armor", "ring"] },
+    { "id": "hp_flat", "name": "des Bären", "stat": "maxHp", "min": 5, "max": 25, "slots": ["armor", "ring"] },
+    { "id": "mana_flat", "name": "der Weisheit", "stat": "maxMana", "min": 5, "max": 20, "slots": ["ring"] },
+    { "id": "light_radius", "name": "des Lichts", "stat": "lightRadius", "min": 20, "max": 60, "slots": ["ring"] },
+    { "id": "lifesteal", "name": "des Blutegels", "stat": "lifestealPct", "min": 2, "max": 6, "slots": ["weapon", "ring"] }
+  ],
+  "potions": [
+    { "id": "heiltrank", "name": "Heiltrank", "heal": 40, "value": 25 },
+    { "id": "manatrank", "name": "Manatrank", "mana": 30, "value": 25 }
+  ],
+  "spells": [
+    { "id": "feuerball", "name": "Feuerball", "manaCost": 12, "damage": 25, "unlockLevel": 2, "key": "1" },
+    { "id": "heiliges_licht", "name": "Heiliges Licht", "manaCost": 20, "damage": 18, "aoeRadius": 120, "unlockLevel": 4, "key": "2" },
+    { "id": "heilung", "name": "Heilung", "manaCost": 15, "heal": 35, "unlockLevel": 3, "key": "3" }
+  ]
+}

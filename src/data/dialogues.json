@@ -1,0 +1,35 @@
+{
+  "_meta": {
+    "source": "PLATZHALTER — ravensmoor.html lag dem Repository nicht bei. Dialoge müssen bei Nachlieferung WÖRTLICH aus der Referenz übernommen werden.",
+    "version": 0
+  },
+  "npcs": {
+    "heinrich": {
+      "name": "Heinrich Kramer",
+      "role": "Wirt und Händler, Taverne \"Zum Schwarzen Raben\"",
+      "lines": {
+        "greeting": "Noch ein Fremder, der sein Glück in der Krypta sucht? Setz dich ans Feuer, solange du noch warm wirst.",
+        "shop": "Sieh dich um. Gutes Eisen ist rar geworden, seit der Krieg alles frisst.",
+        "farewell": "Komm lebend wieder. Tote Kundschaft zahlt schlecht."
+      }
+    },
+    "magdalena": {
+      "name": "Magdalena",
+      "role": "Kräuterfrau",
+      "lines": {
+        "greeting": "Die Kräuter wachsen schlecht, seit das Flüstern unter der Kirche begann. Aber für dich habe ich noch etwas.",
+        "shop": "Tränke, Ringe, Elixiere. Bezahl in Gold, nicht in Versprechen.",
+        "farewell": "Trink den Trank, BEVOR du stirbst. Die Reihenfolge ist wichtig."
+      }
+    },
+    "johannes": {
+      "name": "Pater Johannes",
+      "role": "Priester, hütet den Kryptaschlüssel",
+      "lines": {
+        "greeting": "Du willst hinab? Unter dieser Kirche liegt etwas Älteres als der Glaube, der sie trägt.",
+        "giveKey": "Nimm den Schlüssel. Und nimm meinen Rat: Was immer dort unten verspricht, dich vom Tod zu befreien — frage nach dem Preis.",
+        "farewell": "Gott schütze dich. Irgendeiner."
+      }
+    }
+  }
+}
