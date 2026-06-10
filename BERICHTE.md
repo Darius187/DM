@@ -223,6 +223,33 @@ alle Interaktionen/Trigger/Dialoge liefen echt. Der frei laufende Bot
 schaffte den Wald nur unzuverlässig - das ist eine Schwäche des Test-
 Bots, nicht des Spiels (manuelle Stichprobe der Wege steht beim Autor aus).
 
+## Phase 7 - Crafting/Aufbau/Farm (abgenommen)
+
+Fertig und verifiziert (Browser-Test mit Zustands-Log, Screenshot
+phase7-hof.png):
+- Ressourcen komplett: Holz (Bäume fällen, 3 Schläge, respawnen nach
+  einer Nacht), Stein (Felsen, Spitzhacke), Eisen (Erzadern Krypta 2+),
+  Kräuter (Waldrand/Magdalenas Ecke), Kohle (beim Schmied - die
+  Spezifikation nennt einen Köhler, definiert ihn aber nicht; siehe
+  OFFENE-FRAGEN).
+- Wiederaufbau in 3 Stufen beim Schmied in Auftrag gebbar, Kosten gegen
+  Gold+Holz+Stein+Eisen, baut sich über eine Spielnacht. VERIFIZIERT:
+  Stufe 0->1->2->3 mit korrektem Materialabzug, Gebäude wird im Dorf
+  sichtbar neu gebaut ("Dein Hof").
+- Stufe 1: Lager-Truhe (Items ein-/auslagern, eigenes Fenster) +
+  Strohlager (Schlafen). Stufe 2: Kamin (Buff "Aufgewärmt": Regeneration
+  im nächsten Kryptagang, verfällt bei Rückkehr ins Dorf) + richtiges
+  Bett. Stufe 3: Feld, Einrichtung wählbar (4 Deko-Sets), Gartenschrein
+  (Schnellreise zur Krypta).
+- Farm-Loop VERIFIZIERT: Säen (Saatgut der Bauern) -> Gießen -> über
+  Nächte wachsen (nur gegossene Beete) -> Ernten (Rüben/Kohl als
+  Lebensmittel-Buff oder Verkaufsware). Setzlinge wachsen sichtbar.
+- Magdalenas Rezepte: Heiltrank aus 2 Kräutern, Manatrank aus 3.
+
+Offen:
+- Einrichtungs-Sets sind wählbar, aber noch ohne sichtbare Deko im
+  Hausbereich (Innenräume gibt es nicht; Politur-Kandidat Phase 9/11).
+
 ## Hinweis zur Verifikations-Umgebung
 
 Playwrights eigener Browser-Download ist in dieser Umgebung gesperrt;

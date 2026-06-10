@@ -8,6 +8,8 @@ import { buildCrypt, buildBoss, buildVillage, buildForest, type AreaData, type B
 import { LANDHERR } from '../data/dialoge';
 import storyJson from '../data/story.json';
 import { ShopUI } from '../ui/shop';
+import { StashUI } from '../ui/stash';
+import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
 import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, type DlgPage } from '../data/dialoge';
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS } from '../data/shops';
 import { GATHER } from '../data/crafting';
@@ -75,6 +77,13 @@ export class WorldScene extends CombatScene {
   private seen = new Map<string, boolean[][]>();
   private dialog!: DialogUI;
   private shop!: ShopUI;
+  private stash!: StashUI;
+  private lager: Item[] = [];
+  aufbauBestellt = false;
+  // 3x3 Beete des Hofs (Stufe 3)
+  feld: Array<{ saatId: string | null; tageGewachsen: number; gegossen: boolean }> =
+    Array.from({ length: 9 }, () => ({ saatId: null, tageGewachsen: 0, gegossen: false }));
+  einrichtung = 0; // gewähltes Deko-Set (0 = keins)
   private npcEnts: NpcEntity[] = [];
   private animalEnts: AnimalEntity[] = [];
   private tag = 1;
@@ -100,6 +109,7 @@ export class WorldScene extends CombatScene {
     this.setupCombat(0, 0);
     this.dialog = new DialogUI(this, this.provider);
     this.shop = new ShopUI(this, this.provider, this.sfx, () => this.p);
+    this.stash = new StashUI(this, this.sfx, () => this.p, () => this.lager);
     this.worldGfx = this.add.graphics().setDepth(450);
     this.minimapGfx = this.add.graphics().setScrollFactor(0).setDepth(820);
     this.hudGfx = this.add.graphics().setScrollFactor(0).setDepth(810);
@@ -315,7 +325,7 @@ export class WorldScene extends CombatScene {
   }
 
   protected override uiBlocked(): boolean {
-    return super.uiBlocked() || this.dialog?.open || this.shop?.open || !!this.deathOverlay;
+    return super.uiBlocked() || this.dialog?.open || this.shop?.open || this.stash?.open || !!this.deathOverlay;
   }
 
   // --- Zerstörbare Objekte ---------------------------------------------------
@@ -383,7 +393,10 @@ export class WorldScene extends CombatScene {
   protected override interactHint(): { text: string; action: () => void } | null {
     const ik = getSettings().kb.interact.toUpperCase();
     const near = (x: number, y: number, dist: number) => Math.hypot(x - this.px, y - this.py) < dist;
-    // NPCs zuerst
+    // Gehöft-Interaktionen (Lager, Bett, Kamin, Feld, Gartenschrein)
+    const gh = this.gehoeftHint();
+    if (gh) return gh;
+    // NPCs
     for (const n of this.npcEnts) {
       if (near(n.curX, n.curY, 56)) {
         return { text: `${n.name} - ${ik} zum Reden`, action: () => this.talkTo(n.id) };
@@ -698,9 +711,155 @@ export class WorldScene extends CombatScene {
     this.dialog.show('Schmied', pages, 'schmied');
   }
 
+  // Wiederaufbau des Gehöfts in 3 Stufen (Masterprompt 7.4)
   protected openAufbau(): void {
-    // Voller Aufbau-Loop in Phase 7
-    this.dialog.show('Schmied', ['Das Gehöft wieder aufbauen? Bringt mir Holz und Stein, dann reden wir. (Der Wiederaufbau folgt in Phase 7.)'], 'schmied');
+    if (this.aufbauBestellt) {
+      this.dialog.show('Schmied', ['Wir sind dran. Schlaft eine Nacht - morgen früh steht mehr als heute.'], 'schmied');
+      return;
+    }
+    if (this.aufbauStufe >= AUFBAU_STUFEN.length) {
+      this.dialog.show('Schmied', ['Da gibt es nichts mehr zu bauen - euer Hof steht. Ein gutes Stück Arbeit, wenn ich das selbst sage.'], 'schmied');
+      return;
+    }
+    const st = AUFBAU_STUFEN[this.aufbauStufe];
+    const m = this.p.materials;
+    const fehlt: string[] = [];
+    if (this.p.gold < st.gold) fehlt.push(`${st.gold - this.p.gold} Gold`);
+    if (m.holz < st.holz) fehlt.push(`${st.holz - m.holz} Holz`);
+    if (m.stein < st.stein) fehlt.push(`${st.stein - m.stein} Stein`);
+    if (m.eisen < st.eisen) fehlt.push(`${st.eisen - m.eisen} Eisen`);
+    const kosten = `${st.gold} Gold, ${st.holz} Holz, ${st.stein} Stein${st.eisen ? `, ${st.eisen} Eisen` : ''}`;
+    if (fehlt.length) {
+      this.dialog.show('Schmied', [
+        `Stufe "${st.name}": ${st.beschreibung}. Das kostet ${kosten}. Euch fehlt noch: ${fehlt.join(', ')}.`,
+      ], 'schmied');
+      return;
+    }
+    this.dialog.show('Schmied', [{
+      text: `Stufe "${st.name}": ${st.beschreibung}. Das kostet ${kosten}. Sollen wir anfangen? Über Nacht steht der Bau.`,
+      choices: [
+        {
+          label: 'In Auftrag geben',
+          fn: () => {
+            this.p.gold -= st.gold;
+            m.holz -= st.holz;
+            m.stein -= st.stein;
+            m.eisen -= st.eisen;
+            this.aufbauBestellt = true;
+            this.logMsg(`Wiederaufbau "${st.name}" in Auftrag gegeben - schlaf eine Nacht.`, 'gold');
+            this.sfx.play('schmiede_hammer');
+          },
+        },
+        { label: 'Noch nicht' },
+      ],
+    }], 'schmied');
+  }
+
+  // --- Gehöft: Lager, Rasten, Kamin, Feld, Gartenschrein ---------------------
+
+  private gehoeftHint(): { text: string; action: () => void } | null {
+    if (this.area.id !== 'village' || this.aufbauStufe < 1) return null;
+    const ik = getSettings().kb.interact.toUpperCase();
+    const near = (x: number, y: number, dist: number) => Math.hypot(x - this.px, y - this.py) < dist;
+    const T32 = TILE;
+    // Tür-Bereich des Gehöfts: (39.5, 22.5)
+    const doorX = 39.5 * T32, doorY = 22.7 * T32;
+    if (near(doorX - 64, doorY, 36)) {
+      // Kamin (ab Stufe 2)
+      if (this.aufbauStufe >= 2) {
+        return { text: `Kamin - ${ik} für ein Feuer (Aufgewärmt)`, action: () => this.lightFire() };
+      }
+    }
+    if (near(doorX, doorY, 34)) {
+      const lbl = this.aufbauStufe >= 2 ? 'Bett' : 'Strohlager';
+      return { text: `${lbl} - ${ik} zum Schlafen`, action: () => this.sleep() };
+    }
+    if (near(doorX + 64, doorY, 36)) {
+      return { text: `Lager-Truhe - ${ik} zum Öffnen`, action: () => this.stash.openStash() };
+    }
+    if (this.aufbauStufe >= 3) {
+      if (near(doorX + 128, doorY, 36)) {
+        return { text: `Einrichtung - ${ik} zum Wählen`, action: () => this.chooseDeko() };
+      }
+      // Gartenschrein: Schnellreise zur Krypta
+      if (near(44.5 * T32, 23 * T32, 40)) {
+        return { text: `Gartenschrein - ${ik}: Schnellreise zur Krypta`, action: () => this.goArea('crypt1') };
+      }
+      // Beete (3x3 ab 36,24)
+      const tx = Math.floor(this.px / T32), ty = Math.floor(this.py / T32);
+      for (const [bx, by] of [[tx, ty], [tx, ty + 1], [tx + 1, ty]] as const) {
+        if (bx >= 36 && bx <= 38 && by >= 24 && by <= 26) {
+          const idx = (by - 24) * 3 + (bx - 36);
+          return this.beetHint(idx, ik);
+        }
+      }
+    }
+    return null;
+  }
+
+  private beetHint(idx: number, ik: string): { text: string; action: () => void } {
+    const beet = this.feld[idx];
+    if (!beet.saatId) {
+      const saatItem = this.p.inv.find((it) => it.kind === 'material' && it.name.startsWith('Saatgut'));
+      if (!saatItem) return { text: 'Beet - Saatgut nötig (Bauern)', action: () => this.sfx.play('fehler') };
+      return {
+        text: `Beet - ${ik} zum Säen (${saatItem.name.replace('Saatgut: ', '')})`,
+        action: () => {
+          const def = SAATGUT.find((s) => saatItem.name.includes(s.ertragName)) ?? SAATGUT[0];
+          beet.saatId = def.id;
+          beet.tageGewachsen = 0;
+          beet.gegossen = false;
+          this.p.inv = this.p.inv.filter((x) => x !== saatItem);
+          this.sfx.play('holz_hacken', 0.5);
+          this.logMsg('Gesät - gießen nicht vergessen.', '');
+        },
+      };
+    }
+    const def = SAATGUT.find((s) => s.id === beet.saatId)!;
+    if (beet.tageGewachsen >= def.tageBisErnte) {
+      return {
+        text: `${def.ertragName} - ${ik} zum Ernten`,
+        action: () => {
+          this.p.inv.push({ kind: 'food', name: def.ertragName, rarity: 0, val: def.ertragWert, boni: [], buff: def.food });
+          beet.saatId = null;
+          beet.tageGewachsen = 0;
+          this.sfx.play('aufheben');
+          this.logMsg(`${def.ertragName} geerntet`, 'gold');
+        },
+      };
+    }
+    if (!beet.gegossen) {
+      return {
+        text: `${def.ertragName} (Tag ${beet.tageGewachsen}/${def.tageBisErnte}) - ${ik} zum Gießen`,
+        action: () => {
+          beet.gegossen = true;
+          this.sfx.play('trank', 0.5);
+        },
+      };
+    }
+    return { text: `${def.ertragName} wächst (Tag ${beet.tageGewachsen}/${def.tageBisErnte}, gegossen)`, action: () => undefined };
+  }
+
+  private lightFire(): void {
+    this.p.warmBuff = true;
+    this.fx.burst(38 * TILE, 22 * TILE, 0xe8842a, 14, 100);
+    this.sfx.play('feuer_knistern');
+    this.logMsg(MELDUNGEN.aufgewaermt, 'gold');
+  }
+
+  private chooseDeko(): void {
+    const sets = ['Schlichte Stube', 'Jagdstube', 'Kräuterkammer', 'Soldatenquartier'];
+    this.dialog.show('Einrichtung', [{
+      text: 'Wie soll das Haus eingerichtet werden?',
+      choices: sets.map((name, i) => ({
+        label: name,
+        fn: () => {
+          this.einrichtung = i + 1;
+          this.logMsg(`Einrichtung gewählt: ${name}`, 'gold');
+          this.sfx.play('klick');
+        },
+      })),
+    }]);
   }
 
   private talkMueller(): void {
@@ -784,7 +943,7 @@ export class WorldScene extends CombatScene {
     this.sleep();
   }
 
-  // Schlafen: heilt voll, Tag springt um eins weiter, Bäume wachsen nach
+  // Schlafen: heilt voll, Tag springt weiter, Bau und Feld schreiten voran
   private sleep(): void {
     this.p.hp = this.p.stats.maxhp;
     this.p.mana = this.p.stats.maxmana;
@@ -794,12 +953,27 @@ export class WorldScene extends CombatScene {
     for (const [key, tagGefaellt] of this.gefaellteBaeume) {
       if (this.tag - tagGefaellt >= GATHER.baumRespawnTage) this.gefaellteBaeume.delete(key);
     }
+    // Wiederaufbau: baut sich über eine Spielnacht (Masterprompt 7.4)
+    let gebaut: string | null = null;
+    if (this.aufbauBestellt) {
+      this.aufbauBestellt = false;
+      gebaut = AUFBAU_STUFEN[this.aufbauStufe].name;
+      this.aufbauStufe++;
+    }
+    // Feld: gegossene Beete wachsen
+    for (const beet of this.feld) {
+      if (beet.saatId && beet.gegossen) {
+        beet.tageGewachsen++;
+        beet.gegossen = false;
+      }
+    }
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.cameras.main.fadeIn(600, 0, 0, 0);
-      this.areas.delete('village'); // Bäume respawnen
+      this.areas.delete('village'); // Bäume respawnen, Bau wird sichtbar
       this.goArea('village', { x: this.px, y: this.py });
       this.logMsg(`Tag ${this.tag} - du erwachst erholt.`, 'gold');
+      if (gebaut) this.logMsg(`Der Bau steht: ${gebaut}!`, 'gold');
     });
   }
 
@@ -1233,6 +1407,25 @@ export class WorldScene extends CombatScene {
         g.fillCircle(x, y, 16);
       }
     }
+    // Beete des Hofs (Stufe 3): Setzlinge je Wachstumsstand
+    if (this.area.id === 'village' && this.aufbauStufe >= 3) {
+      for (let idx = 0; idx < 9; idx++) {
+        const beet = this.feld[idx];
+        if (!beet.saatId) continue;
+        const def = SAATGUT.find((s) => s.id === beet.saatId)!;
+        const bx = (36 + (idx % 3)) * TILE + 16;
+        const by = (24 + Math.floor(idx / 3)) * TILE + 16;
+        if (beet.gegossen) {
+          g.fillStyle(0x241a10, 0.7);
+          g.fillCircle(bx, by + 4, 8);
+        }
+        const prog = Math.min(1, beet.tageGewachsen / def.tageBisErnte);
+        const size = 3 + prog * 7;
+        g.fillStyle(prog >= 1 ? 0x7ab048 : 0x4a7a3a, 1);
+        g.fillCircle(bx, by - size / 2, size / 2 + 2);
+        g.fillRect(bx - 1, by - size, 2, size);
+      }
+    }
     // Blutbrunnen
     for (const wl of this.area.wells) {
       g.fillStyle(0x55504a, 1);
@@ -1366,6 +1559,15 @@ export class WorldScene extends CombatScene {
       this.checkTriggers();
       this.checkBeinhaus();
       if (!this.area.dark) this.updateVillageLife(dt);
+      // Kamin-Buff "Aufgewärmt": Regeneration im Kryptagang
+      if (this.area.dark && this.p.warmBuff) {
+        this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + KAMIN_BUFF.hpRegenPerS * dt);
+        this.flags.warmBuffGenutzt = true;
+      }
+      if (this.area.id === 'village' && this.flags.warmBuffGenutzt) {
+        this.p.warmBuff = false;
+        this.flags.warmBuffGenutzt = false;
+      }
     }
     this.renderWorldOverlay();
     this.renderLight();

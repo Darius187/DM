@@ -104,6 +104,8 @@ export class ShopUI {
       tool: 'Werkzeug zum Sammeln',
       food: o.food ? `+${o.food.hpRegen} Leben je Sekunde für ${o.food.dauerS}s` : '',
       seed: 'Saatgut für das eigene Feld',
+      material: 'Brennstoff für die Schmiede',
+      rezept: o.rezept ? `Braut aus ${o.rezept.kraeuter} Kräutern (du hast ${this.getPlayer().materials.kraeuter})` : '',
     };
     return { name: o.name ?? '?', col: '#d8cfb8', sub: subs[o.kind] ?? '' };
   }
@@ -146,6 +148,24 @@ export class ShopUI {
         break;
       case 'seed':
         p.inv.push({ kind: 'material', name: o.name ?? 'Saatgut', rarity: 0, val: 0, boni: [], stack: 1 });
+        break;
+      case 'material':
+        if (o.materialId) {
+          const mats = p.materials as Record<string, number>;
+          mats[o.materialId] = (mats[o.materialId] ?? 0) + 1;
+        }
+        break;
+      case 'rezept':
+        // Kein Goldpreis - Kräuter sind die Währung
+        if (o.rezept) {
+          if (p.materials.kraeuter < o.rezept.kraeuter) {
+            this.sfx.play('fehler');
+            return;
+          }
+          p.materials.kraeuter -= o.rezept.kraeuter;
+          if (o.rezept.ergebnis === 'potion') p.pot++;
+          else p.mpot++;
+        }
         break;
       case 'gear':
       case 'gem':

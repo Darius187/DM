@@ -16,3 +16,6 @@
    bei neutralen Substantiven zu "Grimmiger Kettenhemd" führt (war in der
    Referenz genauso). Zwischenlösung: 1:1 übernommen. Sollen die Präfixe
    je Genus dekliniert werden (kleine Tabelle in items.ts)?
+7. "Kohle vom Köhler" (Masterprompt 7.2): Es gibt keinen Köhler-NPC in der
+   Gebäudeliste. Zwischenlösung: Der Schmied verkauft Kohle (12 Gold).
+   Soll ein Köhler im Wald dazukommen?
