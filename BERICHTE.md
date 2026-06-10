@@ -158,6 +158,46 @@ Offen/Anmerkungen:
   Trefferpfade sind dieselben wie die verifizierten Gegner-Treffer.
 - Dev-Werkzeuge (?start=, ?ruestzeug=, ?relikt=) nur im Dev-Build aktiv.
 
+## Phase 5 - Dorf groß (abgenommen)
+
+Fertig und verifiziert (Screenshot-Tour phase5-dorf-markt/-kirche/-taverne,
+phase5-haendler-dialog/-shop/-kauf.png):
+- Ravensmoor ist 92x60 Tiles (Referenz: 46x30), aufgebaut entlang der
+  alten Salzstraße mit Bach, Steg, Marktplatz und Brunnen.
+- Alle Gebäude aus 7.2: Taverne "Zum Schwarzen Raben", Kirche St. Marien
+  mit Friedhof und Kryptaeingang (Schlüssel von Pater Johannes),
+  Magdalenas Hütte am Waldrand (Kräuter davor), Mühle am Bach, Schmiede,
+  zwei Bauernhöfe mit Gattern (Schweine, Hühner, Kuh - laufen umher und
+  geben Laute nach Entfernung), Marktplatz mit fahrendem Händler,
+  niedergebranntes Gehöft, Bildstock, Heuhaufen, Krüge, Hund bei der
+  Taverne, Hühner auf der Straße, Krähen am Friedhof (Audio).
+- NPCs mit Tagesablauf: Morgen-/Abendposition, sie LAUFEN sichtbar dorthin
+  (Schmied, Müller, Bauern abends zur Taverne). Spieltag = 10 min,
+  Abenddämmerung tönt das Bild ein.
+- Dialoge mit Portraitrahmen (Hot-Swap-fähig) - alle Referenztexte, dazu
+  neue NPCs. Im Browser verifiziert: Händler-Dialog samt Auswahlknöpfen.
+- Handel: gemeinsames Shop-Fenster mit KAUFEN/VERKAUFEN/VERBESSERN-
+  Reitern. Verifiziert: Kauf beim fahrenden Händler (600-273=327 Gold,
+  Slot würfelt nach), korrekte Ablehnung bei zu wenig Gold,
+  Wochensortiment seedbasiert mit Episch-Chance. Heinrich (Ankauf, Bett
+  10 Gold = schlafen/Tag überspringen), Magdalena (Elixiere, Flaschen-
+  Upgrades, Zauberrollen), Schmied (Pfeile, Werkzeuge, Upgrade-Reiter
+  mit Gold+Eisen+Kohle), Bauern (Saatgut, Lebensmittel-Buffs) nutzen
+  exakt denselben verifizierten Codepfad mit statischen Sortimenten.
+- Müller-Nebenaufgabe (Ratten im Lager) mit Belohnung; Anna-Quest-Abgabe
+  bei Heinrich (seltener Ring + 100 Gold); Dank-Dialoge nach Relikt-
+  Zerstörung für Heinrich/Magdalena/Johannes.
+- Bäume fällen (Axt, 3 Schläge, Holz, respawnt nach Schlaf), Felsen im
+  Dorf, Kräuter sammelbar.
+- Atmosphäre: Nebelschwaden, Vignette, Schornsteinrauch, Dorf-Wind-Loop.
+
+Offen:
+- Taverne/Bett, Müller-Quest, Schmiede-Upgrade im Browser nicht einzeln
+  durchgeklickt (gleiche verifizierte UI-Pfade); beim Story-Durchlauf in
+  Phase 6 wird der Weg Johannes -> Schlüssel -> Krypta mitgeprüft.
+- Präfix-Deklination ("Grimmiger Kettenhemd") wie Referenz - siehe
+  OFFENE-FRAGEN.md Punkt 6.
+
 ## Hinweis zur Verifikations-Umgebung
 
 Playwrights eigener Browser-Download ist in dieser Umgebung gesperrt;

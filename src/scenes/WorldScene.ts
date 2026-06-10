@@ -3,8 +3,14 @@
 
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
-import { Enemy } from '../world/Enemy';
-import { buildCrypt, buildBoss, type AreaData, type BreakableSpawn } from '../world/areagen';
+import { Enemy, angleToDir } from '../world/Enemy';
+import { buildCrypt, buildBoss, buildVillage, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { ShopUI } from '../ui/shop';
+import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, type DlgPage } from '../data/dialoge';
+import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS } from '../data/shops';
+import { GATHER } from '../data/crafting';
+import { TAG } from '../data/welt';
+import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, tileNameAt } from '../world/tiles';
 import { TILE } from '../gfx/fallbackArt';
 import { DialogUI, fixUiScroll } from '../ui/dialog';
@@ -29,6 +35,26 @@ interface BreakableEntity extends BreakableSpawn {
   r: number;
 }
 
+interface NpcEntity extends NpcSpawn {
+  sprite: Phaser.GameObjects.Sprite;
+  label: Phaser.GameObjects.Text;
+  curX: number;
+  curY: number;
+}
+
+interface AnimalEntity extends AnimalSpawn {
+  sprite: Phaser.GameObjects.Sprite;
+  curX: number;
+  curY: number;
+  targetX: number;
+  targetY: number;
+  pauseT: number;
+  soundT: number;
+  step: number;
+  stepT: number;
+  dir: Dir;
+}
+
 export class WorldScene extends CombatScene {
   private areas = new Map<string, AreaData>();
   private area!: AreaData;
@@ -46,6 +72,13 @@ export class WorldScene extends CombatScene {
   private minimapGfx!: Phaser.GameObjects.Graphics;
   private seen = new Map<string, boolean[][]>();
   private dialog!: DialogUI;
+  private shop!: ShopUI;
+  private npcEnts: NpcEntity[] = [];
+  private animalEnts: AnimalEntity[] = [];
+  private tag = 1;
+  private tageszeit = 0.3; // 0..1, Start am Morgen
+  private gefaellteBaeume = new Map<string, number>(); // Position -> Tag des Fällens
+  private baumSchlaege = new Map<string, number>();
   private msgTexts: Phaser.GameObjects.Text[] = [];
   private hudGfx!: Phaser.GameObjects.Graphics;
   private hudText!: Phaser.GameObjects.Text;
@@ -64,6 +97,7 @@ export class WorldScene extends CombatScene {
     this.rng = seededRng(this.areaSeed);
     this.setupCombat(0, 0);
     this.dialog = new DialogUI(this, this.provider);
+    this.shop = new ShopUI(this, this.provider, this.sfx, () => this.p);
     this.worldGfx = this.add.graphics().setDepth(450);
     this.minimapGfx = this.add.graphics().setScrollFactor(0).setDepth(820);
     this.hudGfx = this.add.graphics().setScrollFactor(0).setDepth(810);
@@ -84,12 +118,13 @@ export class WorldScene extends CombatScene {
       this.p.weapon = blade;
       this.p.armorIt = armor;
       this.p.pot = 9;
+      this.p.gold = 600;
       this.p.level = 6;
       recalc(this.p);
       this.p.hp = this.p.stats.maxhp;
       this.p.mana = this.p.stats.maxmana;
     }
-    this.goArea(params.startArea ?? 'crypt1');
+    this.goArea(params.startArea ?? 'village');
     // Dev-Werkzeug: ?relikt=1 legt das Relikt neben den Spieler (nur Dev-Build)
     if (import.meta.env.DEV && new URLSearchParams(location.search).get('relikt')) {
       this.pickups.add({ kind: 'relic', x: this.px + 30, y: this.py, bob: 0 });
@@ -105,10 +140,13 @@ export class WorldScene extends CombatScene {
     const rng = seededRng(this.areaSeed + id.length * 1009 + id.charCodeAt(id.length - 1));
     let a: AreaData;
     if (id === 'boss') a = buildBoss(rng, this.bossDead);
+    else if (id === 'village') a = buildVillage(rng, this.aufbauStufe);
     else a = buildCrypt(parseInt(id.replace('crypt', ''), 10), rng);
     this.areas.set(id, a);
     return a;
   }
+
+  aufbauStufe = 0; // Wiederaufbau des Gehöfts (Phase 7)
 
   goArea(id: string, spawnAt?: { x: number; y: number }): void {
     const a = this.getArea(id);
@@ -125,7 +163,10 @@ export class WorldScene extends CombatScene {
     this.sfx.play('gebietswechsel');
     this.sfx.stopLoops();
     if (a.dark) this.sfx.startLoop('krypta_droehnen');
+    else if (a.id === 'village') this.sfx.startLoop('dorf_wind');
+    else this.sfx.startLoop('wald_nacht');
     this.cameras.main.setBounds(0, 0, a.w * TILE, a.h * TILE);
+    this.cameras.main.setBackgroundColor(a.dark ? '#050403' : '#0c1208');
     // Erzähler-Interludien (Referenz)
     if (id === 'crypt1' && !this.flags.nCrypt) {
       this.flags.nCrypt = true;
@@ -145,6 +186,13 @@ export class WorldScene extends CombatScene {
     this.hittables = [];
     for (const e of this.enemies) e.sprite?.destroy();
     this.enemies = [];
+    for (const n of this.npcEnts) {
+      n.sprite.destroy();
+      n.label.destroy();
+    }
+    this.npcEnts = [];
+    for (const an of this.animalEnts) an.sprite.destroy();
+    this.animalEnts = [];
     this.pickups.clear();
   }
 
@@ -191,6 +239,38 @@ export class WorldScene extends CombatScene {
     if (!this.seen.has(a.id)) {
       this.seen.set(a.id, Array.from({ length: a.h }, () => new Array<boolean>(a.w).fill(false)));
     }
+    // NPCs
+    for (const n of a.npcs) {
+      const sprite = this.add.sprite(n.x, n.y, '__DEFAULT').setDepth(n.y);
+      this.provider.applyFigure(sprite, n.id, 0, 0);
+      const lbl = this.add.text(n.x, n.y - 22, n.name, {
+        fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8e6', stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(600);
+      this.npcEnts.push({ ...n, sprite, label: lbl, curX: n.x, curY: n.y });
+    }
+    // Tiere
+    for (const t of a.animals) {
+      const sprite = this.add.sprite(t.x, t.y, '__DEFAULT').setDepth(t.y);
+      this.provider.applyFigure(sprite, t.type, 0, 0);
+      this.animalEnts.push({
+        ...t, sprite, curX: t.x, curY: t.y, targetX: t.x, targetY: t.y,
+        pauseT: Math.random() * 2, soundT: 2 + Math.random() * 8, step: 0, stepT: 0, dir: 0,
+      });
+    }
+    // Kräuter am Waldrand
+    for (const k of a.kraeuter) {
+      this.pickups.add({
+        kind: 'material', x: k.x, y: k.y, bob: Math.random() * 6,
+        item: { kind: 'material', name: 'Kräuter', rarity: 0, val: 0, boni: [], stack: 1 },
+      });
+    }
+    a.kraeuter = [];
+    // Ortsnamen
+    for (const l of a.labels) {
+      this.tileImages.push(this.add.text(l.x, l.y, l.t, {
+        fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8d9',
+      }).setOrigin(0.5).setDepth(620) as unknown as Phaser.GameObjects.Image);
+    }
   }
 
   isSolidAt(x: number, y: number): boolean {
@@ -204,7 +284,7 @@ export class WorldScene extends CombatScene {
   }
 
   protected override uiBlocked(): boolean {
-    return super.uiBlocked() || this.dialog?.open || !!this.deathOverlay;
+    return super.uiBlocked() || this.dialog?.open || this.shop?.open || !!this.deathOverlay;
   }
 
   // --- Zerstörbare Objekte ---------------------------------------------------
@@ -272,6 +352,23 @@ export class WorldScene extends CombatScene {
   protected override interactHint(): { text: string; action: () => void } | null {
     const ik = getSettings().kb.interact.toUpperCase();
     const near = (x: number, y: number, dist: number) => Math.hypot(x - this.px, y - this.py) < dist;
+    // NPCs zuerst
+    for (const n of this.npcEnts) {
+      if (near(n.curX, n.curY, 56)) {
+        return { text: `${n.name} - ${ik} zum Reden`, action: () => this.talkTo(n.id) };
+      }
+    }
+    // Bäume fällen (mit Axt, 3 Schläge)
+    for (const b of this.area.baeume) {
+      const key = `${this.area.id}_${b.x}_${b.y}`;
+      if (this.gefaellteBaeume.has(key)) continue;
+      if (near(b.x, b.y + 14, 40)) {
+        return {
+          text: this.p.tools.axt ? `Baum - ${ik} zum Holzhacken` : 'Baum - Holzaxt nötig (Schmied)',
+          action: () => this.chopTree(b, key),
+        };
+      }
+    }
     // Kerzenschrein
     for (const s of this.area.shrines) {
       if (near(s.x, s.y, 46)) {
@@ -398,6 +495,273 @@ export class WorldScene extends CombatScene {
     this.dialog.show('Bücherregal', [pick(this.rng, BUECHER)]);
   }
 
+  private chopTree(b: { x: number; y: number }, key: string): void {
+    if (!this.p.tools.axt) {
+      this.sfx.play('fehler');
+      return;
+    }
+    const hits = (this.baumSchlaege.get(key) ?? 0) + 1;
+    this.baumSchlaege.set(key, hits);
+    this.sfx.play('holz_hacken');
+    this.fx.burst(b.x, b.y - 8, 0x6a5430, 6, 90);
+    if (hits < GATHER.baumSchlaege) return;
+    // Baum fällt
+    this.gefaellteBaeume.set(key, this.tag);
+    this.baumSchlaege.delete(key);
+    const tx = Math.floor(b.x / TILE), ty = Math.floor(b.y / TILE);
+    this.area.map[ty][tx] = T.GRASS;
+    this.refreshTile(tx, ty);
+    this.fx.burst(b.x, b.y, 0x1c3018, 16, 140);
+    this.sfx.play('holz_hacken');
+    const amt = ri(this.rng, GATHER.baumHolz.min, GATHER.baumHolz.max);
+    this.pickups.add({
+      kind: 'material', x: b.x, y: b.y + 8, bob: 0,
+      item: { kind: 'material', name: 'Holz', rarity: 0, val: 0, boni: [], stack: amt },
+    });
+  }
+
+  // --- NPC-Gespräche (Texte aus src/data/dialoge.ts) -------------------------
+
+  private talkTo(id: string): void {
+    const npc = this.npcEnts.find((n) => n.id === id);
+    if (!npc) return;
+    switch (id) {
+      case 'johannes': this.talkJohannes(); break;
+      case 'heinrich': this.talkHeinrich(); break;
+      case 'magdalena': this.talkMagdalena(); break;
+      case 'schmied': this.talkSchmied(); break;
+      case 'mueller': this.talkMueller(); break;
+      case 'bauer1':
+        this.talkSimple('Bauer Veit', 'bauer1', BAUER1, () => this.shop.openShop('bauer1', 'BAUERNHOF', SHOP_BAUER1, { ankauf: false }));
+        break;
+      case 'bauer2':
+        this.talkSimple('Bäuerin Grete', 'bauer2', BAUER2, () => this.shop.openShop('bauer2', 'BAUERNHOF', SHOP_BAUER2, { ankauf: false }));
+        break;
+      case 'haendler': this.talkHaendler(); break;
+    }
+  }
+
+  private pagesOf(arr: ReadonlyArray<DlgPage>): Array<string | { text: string; choices?: Array<{ label: string; fn?: () => void }> }> {
+    return arr.map((p) => p.text);
+  }
+
+  private talkJohannes(): void {
+    if (!this.p.hasKey) {
+      this.dialog.show('Pater Johannes', [
+        JOHANNES.ohneSchluessel[0].text,
+        JOHANNES.ohneSchluessel[1].text,
+        {
+          text: JOHANNES.ohneSchluessel[2].text,
+          onShow: () => {
+            this.p.hasKey = true;
+            this.logMsg(MELDUNGEN.schluessel, 'gold');
+            this.sfx.play('aufheben');
+          },
+        },
+      ], 'johannes');
+    } else if (this.relicChoice === 'zerstoeren' && !this.flags.johannesDank) {
+      this.flags.johannesDank = true;
+      this.dialog.show('Pater Johannes', this.pagesOf(JOHANNES.nachZerstoerung), 'johannes');
+    } else if (this.bossDead) {
+      this.dialog.show('Pater Johannes', this.pagesOf(JOHANNES.nachBoss), 'johannes');
+    } else {
+      this.dialog.show('Pater Johannes', this.pagesOf(JOHANNES.mitSchluessel), 'johannes');
+    }
+  }
+
+  private talkHeinrich(): void {
+    const pages: Array<string | { text: string; choices?: Array<{ label: string; fn?: () => void }> }> = [];
+    if (this.flags.medaillonGenommen && !this.flags.annaQuestFertig) {
+      // Anna-Quest: Medaillon übergeben (Masterprompt 7.3)
+      this.flags.annaQuestFertig = true;
+      this.dialog.show('Heinrich Kramer', [
+        HEINRICH.medaillon[0].text,
+        HEINRICH.medaillon[1].text,
+        {
+          text: HEINRICH.medaillon[2].text,
+          onShow: () => {
+            const belohnung = rollGear(this.rng, 3, 'ring');
+            belohnung.rarity = 2;
+            this.p.inv.push(belohnung);
+            this.p.gold += 100;
+            this.logMsg(`${belohnung.name} und 100 Gold erhalten`, 'gold');
+            this.sfx.play('item_episch');
+          },
+        },
+      ], 'heinrich');
+      return;
+    }
+    if (!this.flags.heinrich1) {
+      this.flags.heinrich1 = true;
+      pages.push(HEINRICH.erstesMal[0].text, HEINRICH.erstesMal[1].text);
+    }
+    if (this.relicChoice === 'zerstoeren' && !this.flags.heinrichDank) {
+      this.flags.heinrichDank = true;
+      pages.push(HEINRICH.nachZerstoerung[0].text);
+    }
+    if (this.flags.annaQuestFertig) pages.push(HEINRICH.nachMedaillon[0].text);
+    pages.push({
+      text: HEINRICH.handel.text,
+      choices: [
+        { label: 'Handel', fn: () => this.shop.openShop('heinrich', 'ZUM SCHWARZEN RABEN', SHOP_HEINRICH, { ankauf: true }) },
+        { label: `Bett mieten (${BETT_PREIS} Gold)`, fn: () => this.rentBed() },
+        { label: 'Lebt wohl' },
+      ],
+    });
+    this.dialog.show('Heinrich Kramer', pages, 'heinrich');
+  }
+
+  private talkMagdalena(): void {
+    const pages: Array<string | { text: string; onShow?: () => void; choices?: Array<{ label: string; fn?: () => void }> }> = [];
+    if (!this.flags.magda1) {
+      this.flags.magda1 = true;
+      pages.push(MAGDALENA.erstesMal[0].text);
+      pages.push({
+        text: MAGDALENA.erstesMal[1].text,
+        onShow: () => {
+          this.p.pot += 2;
+          this.logMsg('2 Heiltränke erhalten', 'gold');
+          this.sfx.play('trank');
+        },
+      });
+    } else if (this.relicChoice === 'zerstoeren' && !this.flags.magdaDank) {
+      this.flags.magdaDank = true;
+      pages.push(MAGDALENA.nachZerstoerung[0].text);
+    } else {
+      pages.push(MAGDALENA.wiederholt[0].text);
+    }
+    pages.push({
+      text: MAGDALENA.handel.text,
+      choices: [
+        { label: 'Handel', fn: () => this.shop.openShop('magdalena', 'MAGDALENAS HÜTTE', SHOP_MAGDALENA, { ankauf: false }) },
+        { label: 'Lebt wohl' },
+      ],
+    });
+    this.dialog.show('Magdalena', pages, 'magdalena');
+  }
+
+  private talkSchmied(): void {
+    const pages: Array<string | { text: string; choices?: Array<{ label: string; fn?: () => void }> }> = [];
+    if (!this.flags.schmied1) {
+      this.flags.schmied1 = true;
+      pages.push(SCHMIED.begruessung[0].text);
+    }
+    pages.push({
+      text: SCHMIED.handel.text,
+      choices: [
+        { label: 'Handel', fn: () => this.shop.openShop('schmied', 'SCHMIEDE', SHOP_SCHMIED, { ankauf: true, schmieden: true }) },
+        { label: 'Wiederaufbau', fn: () => this.openAufbau() },
+        { label: 'Lebt wohl' },
+      ],
+    });
+    this.dialog.show('Schmied', pages, 'schmied');
+  }
+
+  protected openAufbau(): void {
+    // Voller Aufbau-Loop in Phase 7
+    this.dialog.show('Schmied', ['Das Gehöft wieder aufbauen? Bringt mir Holz und Stein, dann reden wir. (Der Wiederaufbau folgt in Phase 7.)'], 'schmied');
+  }
+
+  private talkMueller(): void {
+    if (!this.flags.muellerQuest) {
+      this.flags.muellerQuest = true;
+      this.dialog.show('Müller', [
+        MUELLER.begruessung[0].text,
+        {
+          text: MUELLER.rattenQuest[0].text,
+          onShow: () => {
+            // Ratten im Mühlenlager
+            const m = this.npcEnts.find((n) => n.id === 'mueller');
+            if (m) {
+              for (let i = 0; i < 4; i++) {
+                this.spawnEnemy('ratte', 1, m.x + 40 + Math.random() * 60, m.y - 60 - Math.random() * 40);
+              }
+            }
+            this.flags.rattenAktiv = true;
+            this.logMsg('Aufgabe: Die Ratten der Mühle erledigen', 'gold');
+          },
+        },
+      ], 'mueller');
+    } else if (this.flags.rattenAktiv && this.enemies.every((e) => e.type !== 'ratte')) {
+      this.flags.rattenAktiv = false;
+      this.flags.rattenFertig = true;
+      this.dialog.show('Müller', [{
+        text: MUELLER.rattenDank[0].text,
+        onShow: () => {
+          this.p.gold += 60;
+          this.p.inv.push({ kind: 'food', name: 'Brot', rarity: 0, val: 0, boni: [], buff: { hpRegen: 1, dauerS: 40 } });
+          this.logMsg('60 Gold und Brot erhalten', 'gold');
+          this.sfx.play('muenzen');
+        },
+      }], 'mueller');
+    } else if (this.flags.rattenAktiv) {
+      this.dialog.show('Müller', ['Die Biester quieken noch immer im Lager. Hört ihr es nicht?'], 'mueller');
+    } else {
+      this.dialog.show('Müller', ['Das Rad dreht sich wieder ruhig. Gott schütze euch, Fremder.'], 'mueller');
+    }
+  }
+
+  private talkSimple(
+    name: string,
+    portrait: string,
+    def: { begruessung: ReadonlyArray<DlgPage>; handel: { text: string } },
+    openShop: () => void,
+  ): void {
+    const pages: Array<string | { text: string; choices?: Array<{ label: string; fn?: () => void }> }> = [];
+    if (!this.flags[`gruss_${portrait}`]) {
+      this.flags[`gruss_${portrait}`] = true;
+      pages.push(def.begruessung[0].text);
+    }
+    pages.push({
+      text: def.handel.text,
+      choices: [{ label: 'Handel', fn: openShop }, { label: 'Lebt wohl' }],
+    });
+    this.dialog.show(name, pages, portrait);
+  }
+
+  private talkHaendler(): void {
+    const week = Math.floor((this.tag - 1) / TAG.haendlerWechselTage);
+    const pages: Array<string | { text: string; choices?: Array<{ label: string; fn?: () => void }> }> = [];
+    if (!this.flags.haendler1) {
+      this.flags.haendler1 = true;
+      pages.push(HAENDLER.begruessung[0].text);
+    }
+    pages.push({
+      text: HAENDLER.handel.text,
+      choices: [{ label: 'Handel', fn: () => this.shop.openTraveling(week) }, { label: 'Lebt wohl' }],
+    });
+    this.dialog.show('Fahrender Händler', pages, 'haendler');
+  }
+
+  private rentBed(): void {
+    if (this.p.gold < BETT_PREIS) {
+      this.logMsg(MELDUNGEN.nichtGenugGold, 'bad');
+      this.sfx.play('fehler');
+      return;
+    }
+    this.p.gold -= BETT_PREIS;
+    this.sleep();
+  }
+
+  // Schlafen: heilt voll, Tag springt um eins weiter, Bäume wachsen nach
+  private sleep(): void {
+    this.p.hp = this.p.stats.maxhp;
+    this.p.mana = this.p.stats.maxmana;
+    this.p.flaskCount = this.p.flaskMax;
+    this.tag++;
+    this.tageszeit = 0.25;
+    for (const [key, tagGefaellt] of this.gefaellteBaeume) {
+      if (this.tag - tagGefaellt >= GATHER.baumRespawnTage) this.gefaellteBaeume.delete(key);
+    }
+    this.cameras.main.fadeOut(400, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.cameras.main.fadeIn(600, 0, 0, 0);
+      this.areas.delete('village'); // Bäume respawnen
+      this.goArea('village', { x: this.px, y: this.py });
+      this.logMsg(`Tag ${this.tag} - du erwachst erholt.`, 'gold');
+    });
+  }
+
   private mine(o: { x: number; y: number }, what: 'eisen' | 'stein'): void {
     if (!this.p.tools.spitzhacke) {
       this.sfx.play('fehler');
@@ -446,7 +810,15 @@ export class WorldScene extends CombatScene {
       if (tid !== T.STAIR && tid !== T.STAIRUP && tid !== T.CDOOR) this.triggerLock = false;
       return;
     }
-    if (tid === T.STAIR) {
+    if (tid === T.CDOOR) {
+      if (this.p.hasKey) {
+        this.sfx.play('tuer');
+        this.goArea('crypt1');
+      } else {
+        this.logMsg(MELDUNGEN.kircheZu, 'bad');
+        this.triggerLock = true;
+      }
+    } else if (tid === T.STAIR) {
       const id = this.area.id;
       if (id === 'crypt1') this.goArea('crypt2');
       else if (id === 'crypt2') this.goArea('crypt3');
@@ -454,9 +826,9 @@ export class WorldScene extends CombatScene {
     } else if (tid === T.STAIRUP) {
       const id = this.area.id;
       if (id === 'crypt1') {
-        // Dorf folgt in Phase 5 - bis dahin bleibt die Krypta der Spielraum
-        this.logMsg('Der Weg nach Ravensmoor öffnet sich in Phase 5.', '');
-        this.triggerLock = true;
+        const village = this.getArea('village');
+        const door = village.cryptDoor;
+        this.goArea('village', door ? { x: door.x, y: door.y + 40 } : undefined);
       } else if (id === 'crypt2') this.goArea('crypt1', this.getArea('crypt1').downPos);
       else if (id === 'crypt3') this.goArea('crypt2', this.getArea('crypt2').downPos);
       else if (id === 'boss') this.goArea('crypt3', this.getArea('crypt3').downPos);
@@ -602,7 +974,10 @@ export class WorldScene extends CombatScene {
     this.areas.delete('crypt3');
     this.areas.delete('boss');
     this.areaSeed = Math.floor(Math.random() * 1e9);
-    this.goArea('crypt1');
+    // Erwachen in Ravensmoor (Taverne)
+    const village = this.getArea('village');
+    const taverne = village.npcs.find((n) => n.id === 'heinrich');
+    this.goArea('village', taverne ? { x: taverne.x, y: taverne.y + 30 } : undefined);
   }
 
   // --- HUD und Meldungen ----------------------------------------------------------
@@ -685,8 +1060,39 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  private fogGfx: Phaser.GameObjects.Graphics | null = null;
+
+  // Dorf/Wald: treibende Nebelschwaden + bleierner Himmel (Vignette)
+  private renderFog(): void {
+    if (!this.fogGfx) this.fogGfx = this.add.graphics().setScrollFactor(0).setDepth(690);
+    const g = this.fogGfx;
+    g.clear();
+    if (this.area.dark) return;
+    const w = this.scale.width, h = this.scale.height;
+    const time = this.time.now / 1000;
+    for (let i = 0; i < 3; i++) {
+      const fx = ((time * 14 + i * 430) % (w + 400)) - 200;
+      const fy = h * 0.22 + Math.sin(time * 0.3 + i * 2.1) * 60 + i * 110;
+      g.fillStyle(0xb4bec8, 0.045);
+      g.fillEllipse(fx, fy, 360, 220);
+    }
+    // Vignette zum Rand (Annäherung des Referenz-Verlaufs)
+    g.fillStyle(0x0e1216, 0.20);
+    g.fillRect(0, 0, w, h * 0.08);
+    g.fillRect(0, h * 0.92, w, h * 0.08);
+    g.fillRect(0, 0, w * 0.05, h);
+    g.fillRect(w * 0.95, 0, w * 0.05, h);
+    // Abenddämmerung färbt das Licht
+    if (this.tageszeit > TAG.abendAb) {
+      const evening = Math.min(1, (this.tageszeit - TAG.abendAb) / (1 - TAG.abendAb));
+      g.fillStyle(0x1a1428, 0.35 * evening);
+      g.fillRect(0, 0, w, h);
+    }
+  }
+
   private renderLight(): void {
     const cam = this.cameras.main;
+    this.renderFog();
     if (!this.area.dark) {
       this.lightRT.setVisible(false);
       for (const img of this.warmPool) img.setVisible(false);
@@ -822,14 +1228,90 @@ export class WorldScene extends CombatScene {
     g.fillRect(mx + ptx * ms - 1, my + pty * ms - 1, ms + 2, ms + 2);
   }
 
+  // --- Dorfleben: Tiere, Tagesablauf, Atmosphäre ------------------------------------
+
+  private smokeT = 0;
+  private crowT = 6;
+
+  private updateVillageLife(dt: number): void {
+    // Spieltag-Uhr
+    this.tageszeit += dt / TAG.dauerS;
+    if (this.tageszeit >= 1) {
+      this.tageszeit = 0;
+      this.tag++;
+      this.logMsg(`Tag ${this.tag} bricht an.`, '');
+    }
+    const abend = this.tageszeit > TAG.abendAb;
+    // NPCs: 2 Positionen je Tageszeit, sie gehen sichtbar dorthin
+    for (const n of this.npcEnts) {
+      const ziel = abend && n.abend ? n.abend : { x: n.x, y: n.y };
+      const d = Math.hypot(ziel.x - n.curX, ziel.y - n.curY);
+      if (d > 4) {
+        const a = Math.atan2(ziel.y - n.curY, ziel.x - n.curX);
+        n.curX += Math.cos(a) * 50 * dt;
+        n.curY += Math.sin(a) * 50 * dt;
+        this.provider.applyFigure(n.sprite, n.id, angleToDir(a), Math.floor(this.time.now / 140) % 4);
+      } else {
+        this.provider.applyFigure(n.sprite, n.id, 0, 0);
+      }
+      n.sprite.setPosition(n.curX, n.curY).setDepth(n.curY);
+      n.label.setPosition(n.curX, n.curY - 22);
+    }
+    // Tiere laufen in Gattern umher, mit Lauten
+    for (const t of this.animalEnts) {
+      t.pauseT -= dt;
+      t.soundT -= dt;
+      if (t.soundT <= 0) {
+        t.soundT = 6 + Math.random() * 14;
+        const d = Math.hypot(t.curX - this.px, t.curY - this.py);
+        if (d < 420) this.sfx.play(t.type, Math.max(0.1, 1 - d / 420) * 0.7);
+      }
+      if (t.pauseT <= 0) {
+        const pen = t.pen ?? { x0: t.x - 60, y0: t.y - 40, x1: t.x + 60, y1: t.y + 40 };
+        t.targetX = pen.x0 + Math.random() * (pen.x1 - pen.x0);
+        t.targetY = pen.y0 + Math.random() * (pen.y1 - pen.y0);
+        t.pauseT = 2 + Math.random() * 4;
+      }
+      const d = Math.hypot(t.targetX - t.curX, t.targetY - t.curY);
+      if (d > 4) {
+        const a = Math.atan2(t.targetY - t.curY, t.targetX - t.curX);
+        const spd = t.type === 'huhn' ? 28 : t.type === 'hund' ? 60 : 22;
+        t.curX += Math.cos(a) * spd * dt;
+        t.curY += Math.sin(a) * spd * dt;
+        t.dir = Math.cos(a) < 0 ? 1 : 2;
+        t.stepT += dt;
+        if (t.stepT > 0.16) {
+          t.stepT = 0;
+          t.step = (t.step + 1) % 4;
+        }
+      }
+      this.provider.applyFigure(t.sprite, t.type, t.dir, t.step);
+      t.sprite.setPosition(t.curX, t.curY).setDepth(t.curY);
+    }
+    // Schornsteinrauch
+    this.smokeT -= dt;
+    if (this.smokeT <= 0 && this.area.chimneys.length) {
+      this.smokeT = 0.35;
+      for (const ch of this.area.chimneys) this.fx.smoke(ch.x, ch.y);
+    }
+    // Krähen auf dem Friedhof
+    this.crowT -= dt;
+    if (this.crowT <= 0) {
+      this.crowT = 9 + Math.random() * 14;
+      if (this.area.id === 'village') this.sfx.play('kraehen', 0.4);
+    }
+  }
+
   // --- Hauptschleife ---------------------------------------------------------------
 
   update(_time: number, delta: number): void {
     if (!this.area) return;
-    this.updateCombat(delta / 1000);
+    const dt = Math.min(0.05, delta / 1000);
+    this.updateCombat(dt);
     if (!this.playerDead && !this.uiBlocked()) {
       this.checkTriggers();
       this.checkBeinhaus();
+      if (!this.area.dark) this.updateVillageLife(dt);
     }
     this.renderWorldOverlay();
     this.renderLight();

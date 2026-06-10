@@ -12,3 +12,7 @@
    Stufe 3 nach 80 Benutzungen, Stufe 9 nach 500 (balancing.ts, eine Kurve).
 5. Die Soundliste in Teil 9 enthält keinen Wolf-Laut - der Wolf nutzt vorerst
    den Hund-Klang. Soll ein eigener "wolf_knurren"-Sound in die Liste?
+6. Präfix-Deklination: Die Referenz bildet Namen als "Präfix + Basis", was
+   bei neutralen Substantiven zu "Grimmiger Kettenhemd" führt (war in der
+   Referenz genauso). Zwischenlösung: 1:1 übernommen. Sollen die Präfixe
+   je Genus dekliniert werden (kleine Tabelle in items.ts)?

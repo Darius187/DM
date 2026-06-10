@@ -13,6 +13,23 @@ export interface BreakableSpawn { kind: BreakableKind; x: number; y: number; amb
 export interface EnemySpawn { type: EnemyTypeId; x: number; y: number; elite: boolean }
 export interface SpecialMarker { id: string; x: number; y: number; raum: string }
 
+export interface NpcSpawn {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  // Tagesablauf: 2-3 Positionen je Tageszeit (Masterprompt 7.2)
+  abend?: { x: number; y: number };
+}
+
+export interface AnimalSpawn {
+  type: 'huhn' | 'schwein' | 'kuh' | 'hund';
+  x: number;
+  y: number;
+  // Gatter, in dem das Tier umherläuft (Weltkoordinaten)
+  pen?: { x0: number; y0: number; x1: number; y1: number };
+}
+
 export interface AreaData {
   id: string;
   name: string;
@@ -43,6 +60,13 @@ export interface AreaData {
   beinhausRaum?: { x0: number; y0: number; x1: number; y1: number; ausgeloest: boolean; altar: Pos };
   scareBudget: number;
   labels: Array<Pos & { t: string }>;
+  npcs: NpcSpawn[];
+  animals: AnimalSpawn[];
+  kraeuter: Pos[];            // Kräuter am Waldrand (Masterprompt 7.4)
+  baeume: Pos[];              // fällbare Bäume (Holz)
+  chimneys: Pos[];            // Schornsteinrauch
+  cryptDoor?: Pos;            // Kirchentür -> Krypta
+  gehoeft?: { x0: number; y0: number; x1: number; y1: number }; // Wiederaufbau
 }
 
 interface Room { x: number; y: number; w: number; h: number; cx: number; cy: number }
@@ -71,6 +95,7 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
     torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
     breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
     ores: [], rocks: [], special: [], scareBudget: MAX_SCRIPTED_SCARES, labels: [],
+    npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
   };
 
   // Räume + Korridore (Referenz)
@@ -327,6 +352,7 @@ export function buildBoss(rng: Rng, bossDead: boolean): AreaData {
     torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
     breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
     ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
+    npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
   };
   carve(map, 3, 3, 30, 20, T.FLOOR);
   for (const [px, py] of [[8, 7], [8, 15], [24, 7], [24, 15]]) carve(map, px, py, px + 1, py + 1, T.WALL);
@@ -342,5 +368,185 @@ export function buildBoss(rng: Rng, bossDead: boolean): AreaData {
   map[20][16] = T.STAIRUP;
   a.upPos = { x: 16.5 * TILE, y: 20 * TILE + 16 };
   if (!bossDead) a.enemySpawns.push({ type: 'templer', x: 16.5 * TILE, y: 6.5 * TILE, elite: false });
+  return a;
+}
+
+// --- Ravensmoor: ein echtes Dorf des 17. Jahrhunderts (Masterprompt 7.2) ---
+// Referenzdorf war 46x30 - dieses ist 92x60, entlang der alten Salzstraße.
+
+export function buildVillage(rng: Rng, aufbauStufe = 0): AreaData {
+  const w = 92, h = 60;
+  const map = blank(w, h, T.GRASS);
+  const a: AreaData = {
+    id: 'village', name: 'Ravensmoor', dark: false, depth: 0,
+    w, h, map, spawn: { x: 46 * TILE, y: 34 * TILE },
+    torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
+    breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
+    ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
+    npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
+  };
+  const label = (tx: number, ty: number, t: string) => a.labels.push({ x: tx * TILE, y: ty * TILE, t });
+
+  // Baumrand (Dunkelwald umschließt das Dorf) + Streubäume
+  for (let x = 0; x < w; x++) {
+    map[0][x] = T.TREE;
+    if (rng.random() < 0.7) map[1][x] = T.TREE;
+    map[h - 1][x] = T.TREE;
+    if (rng.random() < 0.7) map[h - 2][x] = T.TREE;
+  }
+  for (let y = 0; y < h; y++) {
+    map[y][0] = T.TREE;
+    if (rng.random() < 0.7) map[y][1] = T.TREE;
+    map[y][w - 1] = T.TREE;
+    if (rng.random() < 0.7) map[y][w - 2] = T.TREE;
+  }
+  for (let i = 0; i < 70; i++) {
+    const x = ri(rng, 2, w - 3), y = ri(rng, 2, h - 3);
+    if (map[y][x] === T.GRASS && rng.random() < 0.6) map[y][x] = T.TREE;
+  }
+
+  // Bach im Osten mit Mühle
+  for (let y = 0; y < h; y++) {
+    map[y][80] = T.WATER;
+    map[y][81] = T.WATER;
+  }
+  // Steg über den Bach
+  carve(map, 79, 30, 82, 31, T.PATH);
+
+  // Alte Salzstraße: Ost-West + Abzweig nach Norden zur Kirche
+  carve(map, 2, 30, 89, 31, T.PATH);
+  carve(map, 46, 5, 47, 30, T.PATH);
+  carve(map, 46, 31, 47, 56, T.PATH);
+
+  // Marktplatz mit Brunnen am Kreuzungspunkt
+  carve(map, 40, 26, 53, 35, T.PATH);
+  map[32][45] = T.WELL;
+  label(46.5, 25.2, 'Marktplatz');
+
+  // 1. Taverne "Zum Schwarzen Raben" (Heinrich) - Tür nach Süden zur Straße
+  carve(map, 12, 22, 23, 28, T.HWALL);
+  carve(map, 17, 29, 18, 30, T.PATH);
+  label(17.5, 21.2, 'Zum Schwarzen Raben');
+  a.chimneys.push({ x: 14 * TILE + 6, y: 22 * TILE + 2 });
+  a.npcs.push({ id: 'heinrich', name: 'Heinrich Kramer', x: 17.5 * TILE, y: 29.5 * TILE, abend: { x: 17.5 * TILE, y: 29.5 * TILE } });
+  a.animals.push({ type: 'hund', x: 21 * TILE, y: 30 * TILE, pen: { x0: 12 * TILE, y0: 29 * TILE, x1: 26 * TILE, y1: 33 * TILE } });
+
+  // 2. Kirche St. Marien mit Friedhof (Johannes), Tür = Kryptaeingang
+  carve(map, 56, 8, 70, 16, T.CWALL);
+  map[16][63] = T.CDOOR;
+  carve(map, 63, 17, 64, 26, T.PATH);
+  label(63.5, 7.2, 'Kirche St. Marien');
+  a.cryptDoor = { x: 63 * TILE + 16, y: 16 * TILE + 16 };
+  for (let i = 0; i < 10; i++) {
+    const x = ri(rng, 72, 78), y = ri(rng, 8, 16);
+    if (map[y][x] === T.GRASS) map[y][x] = T.GRAVE;
+  }
+  label(75, 7.2, 'Friedhof');
+  a.npcs.push({ id: 'johannes', name: 'Pater Johannes', x: 63.5 * TILE, y: 19 * TILE, abend: { x: 63.5 * TILE, y: 19 * TILE } });
+
+  // 3. Magdalenas Hütte am Waldrand (Südwesten), Kräuter dort
+  carve(map, 6, 44, 11, 48, T.HWALL);
+  carve(map, 8, 49, 9, 50, T.PATH);
+  carve(map, 9, 50, 46, 51, T.PATH);
+  label(8.5, 43.2, 'Magdalenas Hütte');
+  a.chimneys.push({ x: 7 * TILE + 6, y: 44 * TILE + 2 });
+  for (let i = 0; i < 14; i++) {
+    const x = ri(rng, 2, 16), y = ri(rng, 42, 56);
+    if (map[y][x] === T.GRASS && rng.random() < 0.5) map[y][x] = T.TREE;
+  }
+  for (let i = 0; i < 5; i++) {
+    a.kraeuter.push({ x: ri(rng, 3, 15) * TILE + 16, y: ri(rng, 52, 56) * TILE + 16 });
+  }
+  a.npcs.push({ id: 'magdalena', name: 'Magdalena', x: 10 * TILE, y: 49.5 * TILE, abend: { x: 10 * TILE, y: 49.5 * TILE } });
+
+  // 4. Mühle am Bach (Müller, Ratten-Quest im Lager)
+  carve(map, 74, 34, 79, 39, T.HWALL);
+  carve(map, 76, 40, 77, 41, T.PATH);
+  label(76.5, 33.2, 'Mühle');
+  a.npcs.push({ id: 'mueller', name: 'Müller', x: 76.5 * TILE, y: 41 * TILE, abend: { x: 20 * TILE, y: 31 * TILE } });
+
+  // 5. Schmiede (südlich der Straße)
+  carve(map, 30, 38, 36, 42, T.HWALL);
+  carve(map, 32, 43, 33, 44, T.PATH);
+  carve(map, 32, 36, 33, 38, T.PATH);
+  label(33, 37.2, 'Schmiede');
+  a.torches.push({ x: 34 * TILE, y: 43 * TILE, ph: rnd(rng, 0, 6.28) });
+  a.npcs.push({ id: 'schmied', name: 'Schmied', x: 33 * TILE, y: 44 * TILE, abend: { x: 16 * TILE, y: 31.5 * TILE } });
+
+  // 6a. Bauernhof 1 (Nordwesten): Schweine + Hühner im Gatter, Acker
+  carve(map, 14, 8, 22, 13, T.HWALL);
+  carve(map, 17, 14, 18, 15, T.PATH);
+  carve(map, 17, 15, 18, 30, T.PATH);
+  label(18, 7.2, 'Bauernhof');
+  for (let x = 14; x <= 22; x++) { map[17][x] = T.FENCE; map[21][x] = T.FENCE; }
+  for (let y = 17; y <= 21; y++) { map[y][14] = T.FENCE; map[y][22] = T.FENCE; }
+  map[17][18] = T.GRASS; // Gatter-Öffnung
+  const pen1 = { x0: 15 * TILE, y0: 18 * TILE, x1: 22 * TILE, y1: 21 * TILE };
+  a.animals.push({ type: 'schwein', x: 17 * TILE, y: 19 * TILE, pen: pen1 });
+  a.animals.push({ type: 'schwein', x: 20 * TILE, y: 20 * TILE, pen: pen1 });
+  a.animals.push({ type: 'huhn', x: 18 * TILE, y: 19.5 * TILE, pen: pen1 });
+  carve(map, 25, 8, 30, 13, T.FIELD);
+  a.npcs.push({ id: 'bauer1', name: 'Bauer Veit', x: 27 * TILE, y: 11 * TILE, abend: { x: 19 * TILE, y: 31.5 * TILE } });
+
+  // 6b. Bauernhof 2 (Südosten): Kuh im Gatter, Acker
+  carve(map, 56, 44, 64, 49, T.HWALL);
+  carve(map, 59, 50, 60, 51, T.PATH);
+  carve(map, 47, 50, 59, 51, T.PATH);
+  label(60, 43.2, 'Bauernhof');
+  for (let x = 66; x <= 74; x++) { map[44][x] = T.FENCE; map[49][x] = T.FENCE; }
+  for (let y = 44; y <= 49; y++) { map[y][66] = T.FENCE; map[y][74] = T.FENCE; }
+  map[44][70] = T.GRASS;
+  const pen2 = { x0: 67 * TILE, y0: 45 * TILE, x1: 74 * TILE, y1: 49 * TILE };
+  a.animals.push({ type: 'kuh', x: 70 * TILE, y: 47 * TILE, pen: pen2 });
+  a.animals.push({ type: 'huhn', x: 68 * TILE, y: 46 * TILE, pen: pen2 });
+  carve(map, 56, 53, 63, 56, T.FIELD);
+  a.npcs.push({ id: 'bauer2', name: 'Bäuerin Grete', x: 59 * TILE, y: 54 * TILE, abend: { x: 60 * TILE, y: 50.5 * TILE } });
+
+  // 7. Fahrender Händler am Marktplatz (Karren)
+  a.npcs.push({ id: 'haendler', name: 'Fahrender Händler', x: 50.5 * TILE, y: 28 * TILE });
+
+  // 8. Das niedergebrannte Gehöft (Wiederaufbau-Projekt, Phase 7)
+  if (aufbauStufe === 0) {
+    carve(map, 36, 16, 43, 21, T.BURNT);
+    map[16][36] = T.HWALL; map[16][37] = T.HWALL; map[17][36] = T.HWALL;
+    map[21][43] = T.HWALL; map[20][43] = T.HWALL; map[16][43] = T.HWALL;
+    label(40, 15.2, 'Niedergebranntes Gehöft');
+  } else {
+    // Wiederaufgebaut: Stufe 1 Rohbau, Stufe 2 Wohnhaus, Stufe 3 Hof
+    carve(map, 36, 16, 43, 21, T.HWALL);
+    carve(map, 39, 22, 40, 23, T.PATH);
+    label(40, 15.2, aufbauStufe === 1 ? 'Gehöft (Rohbau)' : aufbauStufe === 2 ? 'Dein Wohnhaus' : 'Dein Hof');
+    if (aufbauStufe >= 2) a.chimneys.push({ x: 38 * TILE + 6, y: 16 * TILE + 2 });
+    if (aufbauStufe >= 3) carve(map, 36, 24, 38, 26, T.FIELD); // 3x3 Beete
+  }
+  a.gehoeft = { x0: 36, y0: 16, x1: 43, y1: 21 };
+  carve(map, 39, 22, 40, 30, T.PATH);
+
+  // 9. Kleinigkeiten: Hühner auf der Straße, Heuhaufen, Bildstock, Krähen
+  a.animals.push({ type: 'huhn', x: 44 * TILE, y: 33 * TILE, pen: { x0: 40 * TILE, y0: 27 * TILE, x1: 53 * TILE, y1: 35 * TILE } });
+  a.animals.push({ type: 'huhn', x: 49 * TILE, y: 30 * TILE, pen: { x0: 40 * TILE, y0: 27 * TILE, x1: 53 * TILE, y1: 35 * TILE } });
+  for (const [hx, hy] of [[27, 33], [54, 38], [24, 12]] as const) {
+    if (map[hy][hx] === T.GRASS) a.breakables.push({ kind: 'heuhaufen', x: hx * TILE + 16, y: hy * TILE + 16, ambush: false });
+  }
+  for (const [kx, ky] of [[10, 32], [52, 33], [70, 29]] as const) {
+    a.breakables.push({ kind: 'krug', x: kx * TILE + 16, y: ky * TILE + 16, ambush: false });
+  }
+  map[31][88] = T.GRAVE; // Bildstock am Ortsrand (Andachtsstein)
+  label(88, 30.2, 'Bildstock');
+
+  // Fällbare Bäume am Dorfrand (Holz, Masterprompt 7.4)
+  for (let i = 0; i < 10; i++) {
+    const x = ri(rng, 3, 12), y = ri(rng, 3, 14);
+    if (map[y][x] === T.TREE) a.baeume.push({ x: x * TILE + 16, y: y * TILE + 16 });
+  }
+
+  // Felsbrocken am Wegrand (Stein)
+  for (const [rx, ry] of [[28, 29], [68, 32], [44, 53]] as const) {
+    if (map[ry][rx] === T.GRASS) {
+      map[ry][rx] = T.ROCK;
+      a.rocks.push({ x: rx * TILE + 16, y: ry * TILE + 16 });
+    }
+  }
+
   return a;
 }
