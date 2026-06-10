@@ -338,6 +338,7 @@ export class Player {
     this.hurtFlash = 120;
     this.fx.damageNumber(this.x, this.y, String(dmg), 'taken');
     this.fx.shake('small');
+    this.fx.hurtVignette();
     sfxHurt();
     return 'hit';
   }
@@ -396,6 +397,7 @@ export class Player {
     this.hurtFlash = 120;
     this.fx.damageNumber(this.x, this.y, String(result.damage), 'taken');
     this.fx.shake('small');
+    this.fx.hurtVignette();
     sfxHurt();
     return 'hit';
   }

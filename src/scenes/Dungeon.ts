@@ -18,7 +18,7 @@ import {
   type DungeonLevel,
 } from '../systems/dungeonGen';
 import { rollElite } from '../systems/enemyAI';
-import { unlockAudio } from '../systems/sound';
+import { sfxPotion, unlockAudio } from '../systems/sound';
 import { saveGame } from '../systems/save';
 import themesData from '../data/themes.json';
 import enemiesData from '../data/enemies.json';
@@ -197,6 +197,7 @@ export class Dungeon extends Phaser.Scene {
       if (heal > 0) {
         this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
         this.fx.damageNumber(this.player.x, this.player.y, `+${heal}`, 'golden');
+        sfxPotion();
       }
     });
     this.input.on('pointerdown', () => unlockAudio());
@@ -460,7 +461,19 @@ export class Dungeon extends Phaser.Scene {
     gameState.gold = Math.floor(gameState.gold * 0.7);
     gameState.hp = gameState.maxHp;
     saveGame();
-    this.cameras.main.fadeOut(900, 60, 0, 0);
+    this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'Die Dunkelheit nahm mich — doch sie behielt mich nicht.', {
+        fontFamily: 'Georgia, serif',
+        fontSize: '22px',
+        fontStyle: 'italic',
+        color: '#d8cfb8',
+        stroke: '#000000',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(DEPTHS.ui + 10);
+    this.cameras.main.fadeOut(1600, 60, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.scene.start('Village');
     });

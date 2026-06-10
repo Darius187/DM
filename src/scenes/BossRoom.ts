@@ -11,7 +11,7 @@ import { LightingLayer, type LightSource } from '../systems/lighting';
 import { gameState } from '../systems/gameState';
 import { saveGame } from '../systems/save';
 import { templerklinge } from '../systems/loot';
-import { unlockAudio } from '../systems/sound';
+import { sfxPotion, unlockAudio } from '../systems/sound';
 import narrationData from '../data/narration.json';
 
 const ARENA = { x: 96, y: 96, w: GAME_WIDTH - 192, h: GAME_HEIGHT - 192 };
@@ -82,6 +82,7 @@ export class BossRoom extends Phaser.Scene {
       if (heal > 0) {
         this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
         this.fx.damageNumber(this.player.x, this.player.y, `+${heal}`, 'golden');
+        sfxPotion();
       }
     });
     kb.on('keydown-I', () => {
@@ -358,7 +359,18 @@ export class BossRoom extends Phaser.Scene {
     gameState.gold = Math.floor(gameState.gold * 0.7);
     gameState.hp = gameState.maxHp;
     saveGame();
-    this.cameras.main.fadeOut(900, 60, 0, 0);
+    this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'Der Ritter verneigte sich nicht. Ich erwachte im Dorf.', {
+        fontFamily: 'Georgia, serif',
+        fontSize: '22px',
+        fontStyle: 'italic',
+        color: '#d8cfb8',
+        stroke: '#000000',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setDepth(DEPTHS.ui + 10);
+    this.cameras.main.fadeOut(1600, 60, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.scene.start('Village');
     });

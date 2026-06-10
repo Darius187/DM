@@ -107,6 +107,18 @@ export function sfxHurt(): void {
   tone({ freq: 180, endFreq: 70, type: 'sawtooth', durMs: 180, gain: 0.14 });
 }
 
+/** Gold/Item aufgesammelt. */
+export function sfxPickup(): void {
+  tone({ freq: 880, endFreq: 1320, type: 'sine', durMs: 90, gain: 0.07 });
+  tone({ freq: 1320, type: 'sine', durMs: 70, gain: 0.05, delayMs: 60 });
+}
+
+/** Trank getrunken. */
+export function sfxPotion(): void {
+  tone({ freq: 300, endFreq: 180, type: 'sine', durMs: 120, gain: 0.08 });
+  tone({ freq: 220, endFreq: 320, type: 'sine', durMs: 140, gain: 0.07, delayMs: 110 });
+}
+
 /** Gegner stirbt. */
 export function sfxDeath(): void {
   tone({ freq: 200, endFreq: 40, type: 'triangle', durMs: 320, gain: 0.16 });

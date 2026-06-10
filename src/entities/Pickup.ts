@@ -3,6 +3,7 @@ import type { Player } from './Player';
 import { Fx } from '../systems/effects';
 import { gameState } from '../systems/gameState';
 import { generateItem, rarityColor, rollGold, rollItemDrop, type ItemInstance } from '../systems/loot';
+import { sfxPickup } from '../systems/sound';
 import { DEPTHS, PALETTE } from '../config';
 
 const PICKUP_RADIUS = 26;
@@ -67,11 +68,13 @@ export class Pickup {
       if (this.kind === 'gold') {
         gameState.gold += this.gold;
         this.fx.damageNumber(this.x, this.y, `+${this.gold} Gold`, 'golden');
+        sfxPickup();
         this.kill();
         return;
       }
       if (this.item && gameState.addItem(this.item)) {
         this.fx.damageNumber(this.x, this.y, this.item.name, 'golden');
+        sfxPickup();
         this.kill();
         return;
       }

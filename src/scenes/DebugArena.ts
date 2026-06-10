@@ -9,7 +9,7 @@ import { gameState } from '../systems/gameState';
 import { generateItem } from '../systems/loot';
 import { Fx } from '../systems/effects';
 import { DecalLayer } from '../systems/decals';
-import { unlockAudio } from '../systems/sound';
+import { sfxPotion, unlockAudio } from '../systems/sound';
 import { rollElite } from '../systems/enemyAI';
 import { ATTACK_STAGES, COMBAT, attackPhase, type ComboStage } from '../systems/combat';
 import enemiesData from '../data/enemies.json';
@@ -102,6 +102,7 @@ export class DebugArena extends Phaser.Scene {
       if (heal > 0) {
         this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
         this.fx.damageNumber(this.player.x, this.player.y, `+${heal}`, 'golden');
+        sfxPotion();
       }
     });
     // Loot-Testtasten: F6 zufälliges Item ins Inventar, F7 Händler

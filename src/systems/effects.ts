@@ -10,9 +10,27 @@ import { DEPTHS } from '../config';
 export class Fx {
   private scene: Phaser.Scene;
   private hitstopUntil = 0;
+  private vignette: Phaser.GameObjects.Graphics | null = null;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
+  }
+
+  /** Rote Treffer-Vignette: Bildschirmränder blitzen auf, wenn der Spieler Schaden nimmt. */
+  hurtVignette(): void {
+    if (!this.vignette) {
+      const cam = this.scene.cameras.main;
+      const g = this.scene.add.graphics().setDepth(DEPTHS.ui + 5).setScrollFactor(0);
+      const t = 70;
+      g.fillStyle(0x8c1a1a, 0.5);
+      g.fillRect(0, 0, cam.width, t);
+      g.fillRect(0, cam.height - t, cam.width, t);
+      g.fillRect(0, t, t, cam.height - 2 * t);
+      g.fillRect(cam.width - t, t, t, cam.height - 2 * t);
+      this.vignette = g;
+    }
+    this.vignette.setAlpha(0.9);
+    this.scene.tweens.add({ targets: this.vignette, alpha: 0, duration: 450, ease: 'Cubic.easeOut' });
   }
 
   /** Aktueller Zeitfaktor für Entity-Updates. */

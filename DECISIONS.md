@@ -59,6 +59,20 @@ Delta-Glättung (`smoothStep`) das reale Frame-Delta massiv (gemessen: 16,7 ms g
 entsprechend. `smoothStep: false` liefert reale Deltas; Spike-Schutz übernehmen die Szenen
 selbst mit `Math.min(delta, 50)`. Bei stabilen 60 FPS ändert sich nichts.
 
+## 2026-06-10 — Offen bis `ravensmoor.html` vorliegt
+
+Bewusst zurückgestellt, weil ihre Werte/Regeln laut Master-Prompt verbindlich aus der
+(fehlenden) Referenz kommen:
+
+1. **Zauber (1/2/3: Feuerball, Heiliges Licht, Heilung)** — „Manakosten und Freischaltstufen
+   aus ravensmoor.html". Erfordert zudem XP-/Stufensystem (3), das die Referenz definiert.
+   Platzhalterwerte liegen in `items.json#spells` bereit.
+2. **Opferaltäre mit Zufallseffekten** — Effekttabelle stammt aus der Referenz; Altar-Räume
+   werden bereits generiert und gerendert, sind aber noch ohne Interaktion.
+3. **XP/Stufen** — Gegner geben `xp`-Werte (für Gold-Drops genutzt), ein Spieler-Levelsystem
+   inkl. Freischaltungen folgt mit der Referenz.
+4. **Alle Texte/Dialoge/Items in `data/*.json`** — Platzhalter, wörtliche Übernahme steht aus.
+
 ## 2026-06-10 — Block-Kegel
 
 „Frontschaden" ist im Prompt nicht als Winkel definiert. Festgelegt: ±70° um die Blickrichtung
