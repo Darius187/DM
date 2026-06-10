@@ -25,7 +25,13 @@ export class Projectile {
     this.g = scene.add.graphics().setDepth(DEPTHS.entities + 2);
   }
 
-  update(dtMs: number, player: Player, bounds: { x: number; y: number; w: number; h: number }): void {
+  update(
+    dtMs: number,
+    player: Player,
+    bounds: { x: number; y: number; w: number; h: number },
+    isSolid?: (tx: number, ty: number) => boolean,
+    tileSize = 32,
+  ): void {
     if (!this.alive) return;
     const dt = dtMs / 1000;
     this.x += this.vx * dt;
@@ -37,7 +43,8 @@ export class Projectile {
       this.x < bounds.x ||
       this.x > bounds.x + bounds.w ||
       this.y < bounds.y ||
-      this.y > bounds.y + bounds.h
+      this.y > bounds.y + bounds.h ||
+      (isSolid && isSolid(Math.floor(this.x / tileSize), Math.floor(this.y / tileSize)))
     ) {
       this.kill();
       return;

@@ -86,6 +86,7 @@ export class DebugArena extends Phaser.Scene {
     kb.on('keydown-F1', () => this.scene.restart());
     kb.on('keydown-F2', () => this.spawnWave());
     kb.on('keydown-F3', () => this.clearEnemies());
+    kb.on('keydown-F4', () => this.scene.start('Dungeon', { depth: 1 }));
 
     this.input.on('pointerdown', () => unlockAudio());
     this.events.on('shutdown', () => {
