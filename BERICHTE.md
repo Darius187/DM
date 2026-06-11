@@ -477,3 +477,35 @@ Alles im Browser durchgespielt und verifiziert (Bossraum-Sequenz komplett):
   bestehen - nur die Gegner kehren zurück. Kein neues Auswürfeln mehr.
 - Titelbild zeigt jetzt "Stand: Feedback-Runde 5".
 Stand: tsc fehlerfrei, 47/47 Tests grün, Boss-Sequenz im Browser geprüft.
+
+## Feedback-Runde 6 - umgesetzt
+Alles mit tsc + 48 Tests grün und im Browser geprüft (Screenshots gemacht):
+- Maustasten KOMPLETT frei belegbar: auch links (M1) und rechts (M2) sind
+  jetzt Slots in der Leiste. Rechtsklick auf einen M-Slot wechselt die
+  Aktion - Feuerball auf rechte Maustaste geht jetzt. Standard bleibt
+  links=Angriff, rechts=Block; beides ist als Aktion wieder zuweisbar.
+- Händler-Ausbau: Heinrich (8 Angebote), Magdalena (+Ring, +Edelstein,
+  +Kettenblitz-Rolle), Schmied (+Waffen/Rüstung Tiefe 3, +Eisen), Bauern
+  (+Honig, +Eintopf). Verkaufen hat jetzt Filter-Reiter wie das Inventar
+  (Alle/Waffen/Rüstung/Ringe/Steine).
+- Elite-Affixe: neu "Feurig" (Treffer hinterlassen Brandflächen - nicht
+  stehenbleiben!) und "Teilend" (zerfällt beim Tod in zwei kleine
+  Abbilder), zusätzlich zu Schnell/Vampirisch. Champions würfeln ihren
+  Affix mit - jeder Miniboss-Kampf liest sich anders.
+- Verfluchte Truhen (30%): violett markiert und angekündigt, bessere
+  Beute, aber 55% Hinterhalt. Geprüft: Markierung, Loot, Schatten kommen.
+- Tägliches Kopfgeld: Anschlagbrett auf dem Marktplatz, jeden Spieltag
+  ein neuer Steckbrief ("Vorsteher auf Ebene X"), Auszahlung sofort beim
+  Kill. Geprüft: 225 Gold + 2 Eisen für Ebene 5 kamen an.
+- Endlose Tiefe: nach dem Boss-Sieg bricht hinter dem Grab ein Abstieg
+  auf - die Krypta geht ab Ebene 6 endlos weiter (Themen wiederholen
+  sich, Gegner skalieren, mehr Elites). Geprüft bis Tiefe 7.
+- Sammelalbum auf Taste B: Monsterkunde (??? bis zum ersten Kill),
+  besiegte Vorsteher, epische Funde, gelesene Notizen - alles im
+  Spielstand.
+- Grafik-Politur ohne Assets: dunkle Umrisse um ALLE Figuren (heben sich
+  endlich vom Boden ab), Armschwung beim Laufen, mehr Schattierung
+  (Gürtel, Schuhe, Wangen, Glanzkanten), Grasbüschel und Sprenkel,
+  Plattenfugen + Risse in der Krypta, Mauerwerk an Wandstirnen,
+  Wasser-Glitzer, vollere Baumkronen mit Lichtballen.
+Stand: 48/48 Tests grün, Version auf dem Titel: Feedback-Runde 6.

@@ -33,3 +33,11 @@
 - Boss-Einzelloot: "Harnisch des Kreuzritters" (+25 Leben, +3 Rüstung) und "Ring des ewigen Wächters" (+3 Lebensraub, +50 Lichtradius) - frei erfunden, da die Referenz keinen Boss-Loot kennt; Werte direkt in WorldScene.onEnemyKilled, leicht änderbar.
 - Stadtportal auf Taste 8 (zusätzlich als belegbare Aktion '⌂' für M3/M4/M5), erst nach Boss-Sieg nutzbar - vorher kommt eine Fehlermeldung. Kein Item, kein Mana: Komfortfunktion, kein Balancing-Hebel.
 - Tod in der Krypta löscht die Ebenen-Layouts NICHT mehr: aufgedeckte Minimap und Treppen bleiben erhalten, nur die Gegner kehren zurück (Spawns leben im Gebiet, nicht im Spielstand).
+- Maustasten M1/M2 (links/rechts) sind jetzt wie M3-M5 frei belegbar; 'Angriff' und 'Block' wurden dafür zu Aktionen (Halten-Logik bleibt erhalten). Standard bleibt links=Angriff, rechts=Block.
+- Verfluchte Truhen: 30% der Krypta-Truhen, violett markiert, Beute eine Ebene besser, 55% Hinterhalt (3 Schatten) - Werte in krypta.ts (CHEST_VERFLUCHT).
+- Kopfgeld: Ebene würfelt sich deterministisch aus Spieltag+Seed; Auszahlung sofort beim Kill (kein Abhol-Schritt), Werte in welt.ts (KOPFGELD).
+- Elite-Affixe Feurig/Teilend ergänzt (Brandfläche unter dem Spieler / zerfällt in 2 Abbilder mit 35% Leben) - Werte in enemies.ts (ELITE).
+- Endlose Tiefe: crypt6+ nutzt die Themen 1-5 zyklisch, depth skaliert weiter, Elite-Chance 18% statt 10%; der Abstieg im Bossraum öffnet sich erst nach dem Sieg.
+- Sammelalbum auf Taste B (fest, nicht umbelegbar - bewusst einfach gehalten), Inhalt wandert mit dem Spielstand (welt.album).
+- Edelstein-Angebot bei Magdalena zum Festpreis 120 Gold (Edelsteine haben keine Preisformel).
+- Grafik-Politur rein programmatisch: Umriss-Silhouetten über Offscreen-Canvas (keine neue Dependency), Tile-Details deterministisch je Variante (kein Flackern).

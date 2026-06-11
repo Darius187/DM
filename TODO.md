@@ -24,3 +24,7 @@
   fällt); Karten-/Platzier-Editor im Entwicklungskasten; weitere Zauber;
   Crafting-Werkbank-Ausbau; Housing-Innenraum; Sammelalbum (Collectables);
   Fenster verschieben; Buch-Pergament-Fenster; Hotbar per Drag & Drop.
+- Feedback-Runde 6, notiert: Riesige prozedurale Außenwelt mit Biomen nach
+  dem Boss-Sieg + Stadtmauern/Verteidigung (Autor-Idee, groß - braucht
+  eigene Phase und ein Konzept: Welt-Chunks, Biome, Monster-Einfälle).
+  Vorschlag Claude: erst als "Einfälle"-Ereignis klein anfangen.
