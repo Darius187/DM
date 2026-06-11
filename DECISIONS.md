@@ -54,3 +54,9 @@
 - Tagesrhythmus: Männer/Berufe tagsüber an der Arbeitsstelle (Dorf-NPCs), Frauen/Alte tagsüber in der Stube, Familie abends/nachts komplett daheim (nurAbends-Schalter im Innenraum). Beim Einfall bleiben nur Kämpfer (Schmied, Heinrich, Müller, Veit, Zimmermann, Schulze) auf der Straße, der Rest "flieht ins Gemeindehaus" (Meldung; sichtbare Flucht-Wege wären ein späterer Ausbau).
 - Gemeindehaus statt "Rathaus": historisch hat ein Dorf dieser Größe kein Rathaus, sondern ein Gemeinde-/Schulzenhaus - größtes Gebäude am Markt, Zufluchtsort.
 - Neue Möbel-Tiles (Bett, Tisch, Stuhl, Kamin, Teppich, Tresen, Holzboden, Haustür) als Y-sortierte Standobjekte; Kamine speisen das warme Fackellicht.
+- Runde 10 Dorfwirtschaft: 9 Zünfte (Bader, Küfer, Weberin, Gerber, Hebamme, Küster, Fischer, Imker, Schäfer) je mit Haus, Innenraum, Tagesablauf, Dialog und Spielnutzen. Werte in shops.ts (SHOP_*, TAGWERKE, BADER_BEHANDLUNG, UNTERRICHT).
+- Tagesablauf jetzt dreiphasig: morgens Arbeitsplatz, mittags (45-55% des Tages) soziale Runde (mittag-Position: Markt, Taverne, Nachbarn), abends heimwärts, nachts in der Stube.
+- Wirtschaftskreislauf sichtbar gemacht: Schäfer verkauft Wolle (8 G), Weberin zahlt fürs Abliefern 50 G für 4 - der Held kann Zwischenhändler sein; Wölfe geben Felle für den Gerber; Küfer kauft Holz. Keine echte Waren-Simulation zwischen NPCs - der Handel der Dörfler untereinander lebt in Dialogen und Wegen (ehrlich dokumentiert).
+- Tagwerke (Arbeit für den Helden) 1x pro Spieltag je Auftrag, Stand wandert in den Spielstand (welt.tagwerke). Unterricht beim Küster: Gold gegen XP (skaliert mit Stufe), ebenfalls 1x täglich.
+- Neue Materialien fell/wolle in MaterialId aufgenommen (alte Spielstände erhalten sie als 0).
+- Gerberei liegt flussabwärts am Südrand des Bachs - historisch korrekt, "weil es stinkt" (steht so im Dialog).

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildCrypt, buildBoss, buildVillage, buildInterior, type AreaData } from '../src/world/areagen';
 import { INNENRAEUME } from '../src/data/innenraeume';
+import { VOLK } from '../src/data/dialoge';
 import { SOLID, T } from '../src/world/tiles';
 import { seededRng } from '../src/logic/rng';
 
@@ -142,6 +143,21 @@ describe('Krypta-Generator: jeder Spezialraum erreichbar', () => {
       // Vor der Tür ist begehbarer Boden
       expect(SOLID.has(dorf.map[d.y + 1][d.x]), `Tür von ${d.haus} ist zugebaut`).toBe(false);
     }
+  });
+
+  it('Runde 10: alle Zünfte stehen im Dorf, sind ansprechbar, Schafe auf der Weide', () => {
+    const dorf = buildVillage(seededRng(5), 0, 0);
+    const ids = dorf.npcs.map((n) => n.id);
+    for (const id of ['bader', 'kuefer', 'weberin', 'gerber', 'hebamme', 'kuester', 'fischer', 'imker', 'schaefer'] as const) {
+      expect(ids, `fehlt im Dorf: ${id}`).toContain(id);
+      expect(VOLK[id], `keine Dialogzeilen: ${id}`).toBeTruthy();
+    }
+    // Jeder Dorf-NPC ist ansprechbar: Sonderfaelle oder VOLK-Zeilen
+    const sonder = new Set(['heinrich', 'magdalena', 'johannes', 'schmied', 'mueller', 'bauer1', 'bauer2', 'haendler', 'landherr']);
+    for (const n of dorf.npcs) {
+      expect(sonder.has(n.id) || !!VOLK[n.id], `stumm: ${n.id}`).toBe(true);
+    }
+    expect(dorf.animals.some((t) => t.type === 'schaf')).toBe(true);
   });
 
   it('max. 2 Skript-Schreckmomente pro Ebene', () => {

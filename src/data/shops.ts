@@ -99,3 +99,56 @@ export const BETT_PREIS = 10;
 
 // Ankauf: faire Preise (Masterprompt 7.5) - Anteil des Kaufpreises
 export const ANKAUF_FAKTOR = 0.4;
+
+// --- Runde 10: die Zünfte des Dorfes (jeder Beruf mit Nutzen) ---
+
+// Fischer Nepomuk: Fang vom Morgen
+export const SHOP_FISCHER: ReadonlyArray<ShopOfferDef> = [
+  { kind: 'food', name: 'Frischer Fisch', price: 8, inf: true, food: { hpRegen: 1.2, dauerS: 40 } },
+  { kind: 'food', name: 'Räucherfisch', price: 14, inf: true, food: { hpRegen: 1.8, dauerS: 45 } },
+];
+
+// Imker Anselm: Honig und Met
+export const SHOP_IMKER: ReadonlyArray<ShopOfferDef> = [
+  { kind: 'food', name: 'Honigwabe', price: 15, inf: true, food: { hpRegen: 2, dauerS: 35 } },
+  { kind: 'food', name: 'Met', price: 24, inf: true, food: { hpRegen: 2.8, dauerS: 50 } },
+];
+
+// Weberin Adelheid: Tuch und Verbände (sie verarbeitet die Wolle des Schäfers)
+export const SHOP_WEBERIN: ReadonlyArray<ShopOfferDef> = [
+  { kind: 'gear', gearKind: 'armor', gearDepth: 1 },
+  { kind: 'gear', gearKind: 'armor', gearDepth: 2 },
+  { kind: 'food', name: 'Leinenverband', price: 18, inf: true, food: { hpRegen: 4, dauerS: 12 } },
+];
+
+// Gerber Lorenz: Leder (er kauft dem Helden Felle ab)
+export const SHOP_GERBER: ReadonlyArray<ShopOfferDef> = [
+  { kind: 'gear', gearKind: 'armor', gearDepth: 2 },
+  { kind: 'gear', gearKind: 'armor', gearDepth: 3 },
+];
+
+// Hebamme Walpurga: die günstigsten Heiltränke im Dorf
+export const SHOP_HEBAMME: ReadonlyArray<ShopOfferDef> = [
+  { kind: 'potion', name: 'Heiltrank', price: 22, inf: true },
+  { kind: 'elixir', name: 'Stärkungssud', price: 140, limit: 1 },
+];
+
+// Schäfer Tobias: Wolle (die Weberin zahlt für abgelieferte Wolle mehr -
+// wer mag, verdient als Zwischenhändler)
+export const SHOP_SCHAEFER: ReadonlyArray<ShopOfferDef> = [
+  { kind: 'material', name: 'Wolle', price: 8, inf: true, materialId: 'wolle' },
+  { kind: 'food', name: 'Schafskäse', price: 13, inf: true, food: { hpRegen: 1.6, dauerS: 40 } },
+];
+
+// Bader Severin: Behandlung gegen Gold (kein Sortiment - eine Dienstleistung)
+export const BADER_BEHANDLUNG = { gold: 25 } as const;
+
+// Arbeit für den Helden (1x pro Tag je Auftrag): Material gegen Gold
+export const TAGWERKE = {
+  kuefer: { material: 'holz', menge: 5, gold: 40, text: '5 Holz für neue Fässer' },
+  gerber: { material: 'fell', menge: 3, gold: 60, text: '3 Felle für die Grube' },
+  weberin: { material: 'wolle', menge: 4, gold: 50, text: '4 Wolle für den Webstuhl' },
+} as const;
+
+// Küster Benedikt: Unterricht (Gold gegen Erfahrung, 1x pro Tag)
+export const UNTERRICHT = { gold: 30, xpBasis: 25, xpProStufe: 10 } as const;

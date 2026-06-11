@@ -1,9 +1,10 @@
 // Crafting, Ressourcen und Wiederaufbau (Masterprompt 7.4).
 
-export type MaterialId = 'holz' | 'stein' | 'eisen' | 'kraeuter' | 'kohle';
+export type MaterialId = 'holz' | 'stein' | 'eisen' | 'kraeuter' | 'kohle' | 'fell' | 'wolle';
 
 export const MATERIAL_NAMES: Readonly<Record<MaterialId, string>> = {
   holz: 'Holz', stein: 'Stein', eisen: 'Eisen', kraeuter: 'Kräuter', kohle: 'Kohle',
+  fell: 'Fell', wolle: 'Wolle',
 };
 
 // Ressourcen-Abbau

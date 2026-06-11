@@ -19,8 +19,10 @@ export interface NpcSpawn {
   name: string;
   x: number;
   y: number;
-  // Tagesablauf: 2-3 Positionen je Tageszeit (Masterprompt 7.2)
+  // Tagesablauf: 2-3 Positionen je Tageszeit (Masterprompt 7.2);
+  // mittag = soziale Runde (Markt, Taverne, Nachbarn) statt Arbeitsplatz
   abend?: { x: number; y: number };
+  mittag?: { x: number; y: number };
   // Figuren-Name fürs Aussehen, falls er von der id abweicht (Dorfvolk)
   figur?: string;
   // Kämpfer bleiben beim Einfall auf der Straße, alle anderen fliehen
@@ -30,7 +32,7 @@ export interface NpcSpawn {
 }
 
 export interface AnimalSpawn {
-  type: 'huhn' | 'schwein' | 'kuh' | 'hund';
+  type: 'huhn' | 'schwein' | 'kuh' | 'hund' | 'schaf';
   x: number;
   y: number;
   // Gatter, in dem das Tier umherläuft (Weltkoordinaten)
@@ -656,9 +658,84 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   for (const [cx, cy] of [[44, 38], [51, 38], [44, 44], [51, 44]] as const) {
     a.chimneys.push({ x: cx * TILE + 6, y: cy * TILE + 2 });
   }
-  // Kinder spielen tagsüber am Marktbrunnen, abends geht es heim
-  a.npcs.push({ id: 'kind1', name: 'Hannes', x: 43.5 * TILE, y: 31 * TILE, abend: { x: 46.5 * TILE, y: 42.5 * TILE } });
-  a.npcs.push({ id: 'kind2', name: 'Lisbeth', x: 47.5 * TILE, y: 33 * TILE, abend: { x: 59.5 * TILE, y: 25.5 * TILE } });
+  // Kinder: vormittags Dorfschule beim Küster, mittags Spiel am Brunnen
+  a.npcs.push({ id: 'kind1', name: 'Hannes', x: 52.5 * TILE, y: 15 * TILE, mittag: { x: 43.5 * TILE, y: 31 * TILE }, abend: { x: 46.5 * TILE, y: 42.5 * TILE } });
+  a.npcs.push({ id: 'kind2', name: 'Lisbeth', x: 53.5 * TILE, y: 15 * TILE, mittag: { x: 47.5 * TILE, y: 33 * TILE }, abend: { x: 59.5 * TILE, y: 25.5 * TILE } });
+
+  // --- Runde 10: die Zünfte - eine Dorfwirtschaft wie um 1635 ---
+
+  // 10a. Badehaus am Bach (Bader Severin: Behandlung gegen Gold)
+  carve(map, 74, 22, 78, 26, T.HWALL);
+  tuer(76, 26, 'badehaus');
+  carve(map, 76, 27, 77, 29, T.PATH);
+  label(76.5, 21.2, 'Badehaus');
+  a.chimneys.push({ x: 75 * TILE + 6, y: 22 * TILE + 2 });
+  a.npcs.push({ id: 'bader', name: 'Bader Severin', x: 76.5 * TILE, y: 28 * TILE, mittag: { x: 45 * TILE, y: 30 * TILE }, abend: { x: 76.5 * TILE, y: 27.5 * TILE } });
+
+  // 10b. Küferei im Westen (Küfer Urban: kauft Holz fürs Fassmachen)
+  carve(map, 4, 34, 8, 37, T.HWALL);
+  tuer(6, 37, 'kueferei');
+  label(6.5, 33.2, 'Küferei');
+  a.npcs.push({ id: 'kuefer', name: 'Küfer Urban', x: 6.5 * TILE, y: 39 * TILE, mittag: { x: 17.5 * TILE, y: 30.5 * TILE }, abend: { x: 6.5 * TILE, y: 38.5 * TILE } });
+  for (const [bx, by] of [[9, 36], [9, 37], [3, 38]] as const) {
+    a.breakables.push({ kind: 'fass', x: bx * TILE + 16, y: by * TILE + 16, ambush: false });
+  }
+
+  // 10c. Weberei (Weberin Adelheid: Tuch aus der Wolle des Schäfers)
+  carve(map, 24, 33, 28, 36, T.HWALL);
+  tuer(26, 36, 'weberei');
+  label(26.5, 32.2, 'Weberei');
+  a.npcs.push({ id: 'weberin', name: 'Weberin Adelheid', x: 26.5 * TILE, y: 38 * TILE, mittag: { x: 45.5 * TILE, y: 33 * TILE }, abend: { x: 26.5 * TILE, y: 37.5 * TILE } });
+
+  // 10d. Gerberei am Bach, flussabwärts am Südrand (es stinkt eben)
+  carve(map, 74, 52, 78, 55, T.HWALL);
+  tuer(76, 55, 'gerberei');
+  label(76.5, 51.2, 'Gerberei');
+  a.npcs.push({ id: 'gerber', name: 'Gerber Lorenz', x: 76.5 * TILE, y: 56.2 * TILE, abend: { x: 76.5 * TILE, y: 56 * TILE } });
+
+  // 10e. Haus der Hebamme in der Wohngasse
+  carve(map, 57, 38, 61, 41, T.HWALL);
+  tuer(59, 41, 'hebamme');
+  carve(map, 59, 42, 60, 42, T.PATH);
+  carve(map, 53, 42, 59, 42, T.PATH);
+  label(59.5, 37.2, 'Hebamme');
+  a.chimneys.push({ x: 58 * TILE + 6, y: 38 * TILE + 2 });
+  a.npcs.push({ id: 'hebamme', name: 'Hebamme Walpurga', x: 59.5 * TILE, y: 43 * TILE, mittag: { x: 49.5 * TILE, y: 44 * TILE }, abend: { x: 59.5 * TILE, y: 42.5 * TILE } });
+
+  // 10f. Dorfschule beim Küster, westlich der Kirche
+  carve(map, 50, 8, 55, 13, T.HWALL);
+  tuer(52, 13, 'schule');
+  carve(map, 52, 14, 53, 17, T.PATH);
+  carve(map, 47, 16, 53, 17, T.PATH);
+  label(52.5, 7.2, 'Dorfschule');
+  a.npcs.push({ id: 'kuester', name: 'Küster Benedikt', x: 52.5 * TILE, y: 15 * TILE, mittag: { x: 63.5 * TILE, y: 18 * TILE }, abend: { x: 52.5 * TILE, y: 14.5 * TILE } });
+
+  // 10g. Fischerhütte am Ostufer (über den Steg)
+  carve(map, 84, 20, 87, 23, T.HWALL);
+  tuer(85, 23, 'fischerhuette');
+  label(85.5, 19.2, 'Fischerhütte');
+  a.npcs.push({ id: 'fischer', name: 'Fischer Nepomuk', x: 83 * TILE, y: 26 * TILE, mittag: { x: 83 * TILE, y: 26 * TILE }, abend: { x: 85.5 * TILE, y: 24.5 * TILE } });
+
+  // 10h. Imkerei am Ostufer, südlich der Brücke
+  carve(map, 84, 36, 87, 39, T.HWALL);
+  tuer(85, 39, 'imkerei');
+  label(85.5, 35.2, 'Imkerei');
+  // Bienenkörbe
+  for (const [bx, by] of [[84, 42], [86, 42], [88, 41]] as const) {
+    a.breakables.push({ kind: 'krug', x: bx * TILE + 16, y: by * TILE + 16, ambush: false });
+  }
+  a.npcs.push({ id: 'imker', name: 'Imker Anselm', x: 85.5 * TILE, y: 41 * TILE, mittag: { x: 51 * TILE, y: 31 * TILE }, abend: { x: 85.5 * TILE, y: 40.5 * TILE } });
+
+  // 10i. Schäfer mit Herde auf der Südwest-Weide
+  for (let x = 24; x <= 34; x++) { map[52][x] = T.FENCE; map[56][x] = T.FENCE; }
+  for (let y = 52; y <= 56; y++) { map[y][24] = T.FENCE; map[y][34] = T.FENCE; }
+  map[52][29] = T.GRASS; // Gatter
+  label(29, 51.2, 'Schafweide');
+  const pen3 = { x0: 25 * TILE, y0: 53 * TILE, x1: 34 * TILE, y1: 56 * TILE };
+  a.animals.push({ type: 'schaf', x: 27 * TILE, y: 54 * TILE, pen: pen3 });
+  a.animals.push({ type: 'schaf', x: 30 * TILE, y: 55 * TILE, pen: pen3 });
+  a.animals.push({ type: 'schaf', x: 32 * TILE, y: 54 * TILE, pen: pen3 });
+  a.npcs.push({ id: 'schaefer', name: 'Schäfer Tobias', x: 29 * TILE, y: 51 * TILE, mittag: { x: 29 * TILE, y: 51 * TILE }, abend: { x: 17.5 * TILE, y: 30.5 * TILE } });
 
   // 8. Das niedergebrannte Gehöft (Wiederaufbau-Projekt, Phase 7)
   if (aufbauStufe === 0) {

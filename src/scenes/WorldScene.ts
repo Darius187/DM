@@ -13,7 +13,8 @@ import { Hud } from '../ui/hud';
 import { StashUI } from '../ui/stash';
 import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
 import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, VOLK, type DlgPage } from '../data/dialoge';
-import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS } from '../data/shops';
+import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
+import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER } from '../data/crafting';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, tageszeitLabel } from '../data/welt';
 import { TUNING } from '../logic/tuning';
@@ -142,6 +143,7 @@ export class WorldScene extends CombatScene {
     this.torOstZu = false;
     this.letzterEinfallTag = 0;
     this.einfallAktiv = false;
+    this.tagwerke = {};
     this.einrichtung = 0;
     this.tag = 1;
     this.tageszeit = 0.3;
@@ -854,6 +856,10 @@ export class WorldScene extends CombatScene {
         break;
       case 'haendler': this.talkHaendler(); break;
       case 'landherr': this.talkLandherr(); break;
+      case 'bader': case 'kuefer': case 'weberin': case 'gerber':
+      case 'hebamme': case 'kuester': case 'fischer': case 'imker': case 'schaefer':
+        this.talkZunft(id, npc.name);
+        break;
       default: {
         // Dorfvolk: Berufe und Familien (Feedback-Runde 9)
         const zeilen = VOLK[id];
@@ -861,6 +867,102 @@ export class WorldScene extends CombatScene {
         break;
       }
     }
+  }
+
+  // --- Die Zünfte (Runde 10): jeder Beruf hat einen Nutzen --------------------
+
+  // Tagwerke: 1x pro Tag Material gegen Gold abliefern (auch der Held
+  // darf im Dorf arbeiten). Schlüssel = Beruf, Wert = Tag der Erledigung.
+  private tagwerke: Record<string, number> = {};
+
+  private talkZunft(id: string, name: string): void {
+    const zeilen = [...(VOLK[id] ?? ['Gott zum Gruße.'])];
+    const choices: Array<{ label: string; fn?: () => void }> = [];
+    const shops: Record<string, [string, ReadonlyArray<ShopOfferDef>, boolean]> = {
+      fischer: ['FISCHERHÜTTE', SHOP_FISCHER, false],
+      imker: ['IMKEREI', SHOP_IMKER, false],
+      weberin: ['WEBEREI', SHOP_WEBERIN, true],
+      gerber: ['GERBEREI', SHOP_GERBER, true],
+      hebamme: ['HEBAMME WALPURGA', SHOP_HEBAMME, false],
+      schaefer: ['SCHAFWEIDE', SHOP_SCHAEFER, false],
+    };
+    const sh = shops[id];
+    if (sh) choices.push({ label: 'Handel', fn: () => this.shop.openShop(id, sh[0], sh[1], { ankauf: sh[2] }) });
+    if (id === 'bader') {
+      choices.push({ label: `Behandlung (${BADER_BEHANDLUNG.gold} Gold): volle Heilung`, fn: () => this.baderBehandlung() });
+    }
+    if (id === 'kuester') {
+      const erledigt = this.tagwerke.kuester === this.tag;
+      choices.push({
+        label: erledigt ? 'Unterricht (morgen wieder)' : `Unterricht (${UNTERRICHT.gold} Gold): Erfahrung`,
+        fn: () => this.unterricht(),
+      });
+    }
+    const tw = (TAGWERKE as Record<string, { material: MaterialId; menge: number; gold: number; text: string }>)[id];
+    if (tw) {
+      const erledigt = this.tagwerke[id] === this.tag;
+      choices.push({
+        label: erledigt ? 'Tagwerk (heute erledigt)' : `Tagwerk: ${tw.text} (${tw.gold} Gold)`,
+        fn: () => this.tagwerk(id, tw),
+      });
+    }
+    choices.push({ label: 'Lebt wohl' });
+    const letzte = zeilen.pop() ?? '...';
+    this.dialog.show(name, [...zeilen, { text: letzte, choices }]);
+  }
+
+  private tagwerk(id: string, tw: { material: MaterialId; menge: number; gold: number; text: string }): void {
+    if (this.tagwerke[id] === this.tag) {
+      this.logMsg('Das Tagwerk ist erledigt - komm morgen wieder.', '');
+      return;
+    }
+    const m = this.p.materials;
+    if (m[tw.material] < tw.menge) {
+      this.logMsg(`Dir fehlen noch ${tw.menge - m[tw.material]}x ${MATERIAL_NAMES[tw.material]}.`, 'bad');
+      this.sfx.play('fehler');
+      return;
+    }
+    m[tw.material] -= tw.menge;
+    this.p.gold += tw.gold;
+    this.tagwerke[id] = this.tag;
+    this.logMsg(`Tagwerk erledigt: ${tw.text} - ${tw.gold} Gold verdient.`, 'gold');
+    this.sfx.play('muenzen');
+  }
+
+  private baderBehandlung(): void {
+    if (this.p.gold < BADER_BEHANDLUNG.gold) {
+      this.logMsg('Dafür reicht dein Gold nicht.', 'bad');
+      this.sfx.play('fehler');
+      return;
+    }
+    if (this.p.hp >= this.p.stats.maxhp && this.p.mana >= this.p.stats.maxmana) {
+      this.logMsg('Der Bader winkt ab: an dir gibt es nichts zu flicken.', '');
+      return;
+    }
+    this.p.gold -= BADER_BEHANDLUNG.gold;
+    this.p.hp = this.p.stats.maxhp;
+    this.p.mana = this.p.stats.maxmana;
+    this.fx.burst(this.px, this.py, 0x9ad8a0, 18, 140);
+    this.sfx.play('trank');
+    this.logMsg('Gewaschen, genäht, geschröpft - du fühlst dich wie neu.', 'gold');
+  }
+
+  private unterricht(): void {
+    if (this.tagwerke.kuester === this.tag) {
+      this.logMsg('Für heute ist die Lektion gelesen - morgen wieder.', '');
+      return;
+    }
+    if (this.p.gold < UNTERRICHT.gold) {
+      this.logMsg('Dafür reicht dein Gold nicht.', 'bad');
+      this.sfx.play('fehler');
+      return;
+    }
+    this.p.gold -= UNTERRICHT.gold;
+    this.tagwerke.kuester = this.tag;
+    const xp = UNTERRICHT.xpBasis + this.p.level * UNTERRICHT.xpProStufe;
+    this.giveXp(xp);
+    this.sfx.play('fertigkeit_neu');
+    this.logMsg(`Der Küster liest mit dir die alten Schriften: +${xp} Erfahrung.`, 'gold');
   }
 
   private pagesOf(arr: ReadonlyArray<DlgPage>): Array<string | { text: string; choices?: Array<{ label: string; fn?: () => void }> }> {
@@ -1593,6 +1695,11 @@ export class WorldScene extends CombatScene {
         this.sfx.play('muenzen');
       }
     }
+    // Wölfe lassen Felle für den Gerber zurück (Runde 10)
+    if (e.type === 'wolf') {
+      this.p.materials.fell++;
+      this.logMsg('+1 Fell', '');
+    }
     this.dropLoot(e);
     // Einfall abgewehrt: Belohnung der Dörfler, sobald der letzte Angreifer fällt
     if (this.einfallAktiv && this.area.id === 'village' && this.enemies.length === 0) {
@@ -1724,6 +1831,7 @@ export class WorldScene extends CombatScene {
         torWestZu: this.torWestZu,
         torOstZu: this.torOstZu,
         letzterEinfallTag: this.letzterEinfallTag,
+        tagwerke: this.tagwerke,
       },
     };
   }
@@ -1753,7 +1861,7 @@ export class WorldScene extends CombatScene {
     p.armorIt = s.armorIdx >= 0 ? p.inv[s.armorIdx] ?? null : null;
     p.ring = s.ringIdx >= 0 ? p.inv[s.ringIdx] ?? null : null;
     p.schools = s.schools;
-    p.materials = { holz: 0, stein: 0, eisen: 0, kraeuter: 0, kohle: 0, ...s.materials };
+    p.materials = { holz: 0, stein: 0, eisen: 0, kraeuter: 0, kohle: 0, fell: 0, wolle: 0, ...s.materials };
     p.tools = s.tools ?? { axt: false, spitzhacke: false };
     p.warmBuff = s.warmBuff ?? false;
     this.lager = data.lager ?? [];
@@ -1774,6 +1882,7 @@ export class WorldScene extends CombatScene {
     this.torWestZu = data.welt.torWestZu ?? false;
     this.torOstZu = data.welt.torOstZu ?? false;
     this.letzterEinfallTag = data.welt.letzterEinfallTag ?? 0;
+    this.tagwerke = data.welt.tagwerke ?? {};
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
     recalc(p);
     p.hp = Math.min(p.stats.maxhp, s.hp || p.stats.maxhp);
@@ -2219,7 +2328,12 @@ export class WorldScene extends CombatScene {
       n.sprite.setVisible(sichtbar);
       n.label.setVisible(sichtbar);
       if (!sichtbar) continue;
-      const ziel = abend && n.abend ? n.abend : { x: n.x, y: n.y };
+      // Tagesablauf: morgens Arbeit, mittags soziale Runde (Markt, Taverne,
+      // Nachbarn), abends heimwärts (Runde 10)
+      const mittagPhase = this.tageszeit >= 0.45 && this.tageszeit <= TAG.abendAb;
+      const ziel = abend && n.abend ? n.abend
+        : mittagPhase && n.mittag ? n.mittag
+        : { x: n.x, y: n.y };
       const d = Math.hypot(ziel.x - n.curX, ziel.y - n.curY);
       if (d > 4) {
         const a = Math.atan2(ziel.y - n.curY, ziel.x - n.curX);

@@ -579,3 +579,31 @@ Alles mit tsc + 50 Tests grün und im Browser durchgespielt:
 - Neuer Test sichert ab: jede Haustür führt in eine echte Stube, Möbel
   stehen nie in Wänden oder vor der Tür.
 Stand: 50/50 Tests grün, Version auf dem Titel: Feedback-Runde 9.
+
+## Feedback-Runde 10 - umgesetzt (Die Dorfwirtschaft: 9 Zünfte)
+Alles mit tsc + 51 Tests grün und im Browser durchgespielt:
+- 9 neue Berufe mit Haus + Innenraum + Tagesablauf + Funktion:
+  Bader Severin (Badehaus am Bach: BEHANDLUNG 25 Gold = volle Heilung),
+  Küfer Urban (kauft Holz: Tagwerk 5 Holz = 40 Gold),
+  Weberin Adelheid (Tuchrüstung + Verbände; Tagwerk 4 Wolle = 50 Gold),
+  Gerber Lorenz (flussabwärts, kauft Felle: 3 Felle = 60 Gold;
+  Wölfe lassen jetzt Felle fallen), Hebamme Walpurga (günstigste
+  Heiltränke), Küster Benedikt (Dorfschule: UNTERRICHT 30 Gold = XP,
+  Kinder sitzen vormittags in der Schule), Fischer Nepomuk (Fisch,
+  Hütte am Ostufer), Imker Anselm (Honig + Met, Bienenkörbe), Schäfer
+  Tobias (Schafweide mit 3 Schafen, verkauft Wolle und Käse).
+- Wirtschaftskreislauf zum Mitspielen: Wolle beim Schäfer für 8 kaufen,
+  bei der Weberin für 50/4 abliefern - der Held verdient als
+  Zwischenhändler, "so bleibt das Geld im Dorf". Geprüft.
+- Der Held darf arbeiten: Tagwerke (je 1x pro Tag), Unterricht,
+  dazu wie bisher Holz hacken, Erz schürfen, Kräuter sammeln, Feld.
+- Soziale Mittagsrunde: zwischen Vormittag und Abend gehen viele
+  Bewohner nicht zur Arbeit, sondern zum Markt, zur Taverne oder zu
+  Nachbarn (Küfer läuft mittags zur Taverne - im Browser beobachtet).
+- Alle ansprechbar: neuer Test stellt sicher, dass KEIN Dorf-NPC stumm
+  ist (Sonderdialog oder VOLK-Zeilen), alle Zünfte im Dorf stehen und
+  Schafe auf der Weide sind.
+- EHRLICH: Der Warenfluss zwischen den NPCs selbst (Mehl->Bäcker usw.)
+  ist erzählt (Dialoge, Wege), nicht simuliert - eine echte
+  Güter-Simulation wäre der nächste Ausbau.
+Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 10.

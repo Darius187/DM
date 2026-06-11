@@ -198,4 +198,40 @@ export const VOLK: Readonly<Record<string, ReadonlyArray<string>>> = {
   witwe: [
     'Käthe. Meinen Mann hat der Krieg geholt, das Haus ist geblieben. Jetzt wohnen Trine und der Lenz bei mir - allein wird einem die Stille zu laut.',
   ],
+  // Runde 10: die Zünfte - jede mit Nutzen für den Helden
+  bader: [
+    'Severin, Bader und Wundarzt. Zähne ziehen, Adern lassen, Wunden nähen - bei mir kommt ihr billiger davon als beim Tod.',
+    'Setzt euch ins warme Wasser, ich flicke euch zusammen. Wer aus der Krypta steigt, braucht beides.',
+  ],
+  kuefer: [
+    'Urban, Küfer. Ohne Fässer kein Bier, kein Met, kein Sauerkraut - das halbe Dorf läuft durch meine Reifen, auch wenn es das nicht weiß.',
+    'Gutes Holz ist knapp. Bringt mir welches, und ich zahle bar - die Wirtin wartet auf neue Fässer.',
+  ],
+  weberin: [
+    'Adelheid, Weberin. Die Wolle kommt vom Tobias, das Linnen vom Feld - und aus beidem mache ich Tuch, das euch im Winter das Leben rettet.',
+    'Wenn ihr Wolle vom Schäfer mitbringt, zahle ich gut. Mein Webstuhl steht nie still.',
+  ],
+  gerber: [
+    'Lorenz. Ja, es stinkt - Lohe und Häute riechen nun mal nicht nach Rosen. Darum sitze ich am Bach, flussabwärts, wo es keinen stört.',
+    'Wolfsfelle nehme ich euch ab, gutes Geld für gutes Fell. Daraus wird Leder, das härter schützt als mancher Harnisch.',
+  ],
+  hebamme: [
+    'Walpurga, Hebamme. Ich hole die Kinder dieses Dorfes auf die Welt und bringe die Fiebernden durch die Nacht. Meine Sude sind die günstigsten weit und breit.',
+  ],
+  kuester: [
+    'Benedikt, Küster von St. Marien. Ich läute die Glocken, führe die Bücher und lehre die Kinder Lesen, Schreiben und den Katechismus.',
+    'Auch ein Schwertarm wird klüger, wenn der Kopf es ist. Setzt euch dazu - eine Lektion kostet wenig und nützt lang.',
+  ],
+  fischer: [
+    'Nepomuk, Fischer. Der Bach gibt jeden Morgen her, was der Herrgott erlaubt - Forellen, Äschen, ab und zu einen Aal.',
+    'Frischer Fang macht müde Knochen munter. Geräuchert hält er bis tief in die Krypta.',
+  ],
+  imker: [
+    'Anselm, Imker. Meine Bienen sammeln, was das Dorf süß macht - Honig für den Bäcker, Wachs für die Kirche, Met für die Taverne.',
+    'Stört mir die Körbe nicht! Aber kostet den Met - der macht warm bis in die Zehen.',
+  ],
+  schaefer: [
+    'Tobias, Schäfer. Die Herde frisst die Weide kurz und gibt Wolle für die Adelheid. Nachts zähle ich sie zweimal - der Wald ist nah.',
+    'Wolle gefällig? Die Weberin zahlt für abgelieferte Wolle übrigens mehr, als ich dafür nehme. So bleibt das Geld im Dorf.',
+  ],
 } as const;

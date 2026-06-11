@@ -46,6 +46,7 @@ export interface SaveData {
     torWestZu?: boolean;
     torOstZu?: boolean;
     letzterEinfallTag?: number;
+    tagwerke?: Record<string, number>;
   };
 }
 
