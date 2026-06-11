@@ -13,3 +13,9 @@
   als eigenes Pergament-Fenster mit mehr Text; Maustasten-Belegung in den
   Einstellungen frei wählbar (aktuell fest: Mitte=Feuerball, Daumen1=Trank,
   Daumen2=Heilung); Zauberrollen-Schnellslot ohne Inventar.
+- Feedback-Runde 3, noch offen (nächste Runde): Endboss mit 3 Phasen +
+  Raumwechsel + Eskalation; mehr Zaubersprüche (Blitzschlag einzeln,
+  Feuerwand ...); Maustasten FREI belegbar (aktuell feste Anzeige M3/M4/M5
+  in der Leiste); Crafting-Ausbau (Rezepte-Werkbank); Housing-Ausbau
+  (Innenraum, Deko sichtbar); Collectables; Fenster verschieben;
+  Buch-Pergament-Fenster; Dev-Tuning-Panel mit Berichtsfunktion.

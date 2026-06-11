@@ -329,9 +329,9 @@ export class WorldScene extends CombatScene {
       if (sp.champion) {
         e.champion = true;
         e.name = sp.champion;
-        e.maxhp = Math.round(e.maxhp * 2.6);
+        e.maxhp = Math.round(e.maxhp * 3.2);
         e.hp = e.maxhp;
-        e.dmg = Math.round(e.dmg * 1.35);
+        e.dmg = Math.round(e.dmg * 1.5);
         e.speed *= 1.15;
         e.r = Math.round(e.r * 1.2);
         e.xp = Math.round(e.xp * 2.2);
@@ -410,6 +410,12 @@ export class WorldScene extends CombatScene {
 
   protected override stepSound(): string {
     return this.area?.dark ? 'schritte_stein' : 'schritte_gras';
+  }
+
+  protected override areaSpeedFactor(): number {
+    // Krypta: bedächtig wie die Monster (ergibt mit Standard-Tempo 90%
+    // rund 105 px/s - Skelette laufen 82-102); Dorf/Wald bleiben flott
+    return this.area?.dark ? 0.65 : 1;
   }
 
   protected override uiBlocked(): boolean {
@@ -494,11 +500,17 @@ export class WorldScene extends CombatScene {
         return { text: `${n.name} - ${ik} zum Reden`, action: () => this.talkTo(n.id) };
       }
     }
-    // Bäume fällen (mit Axt, 3 Schläge)
-    for (const b of this.area.baeume) {
-      const key = `${this.area.id}_${b.x}_${b.y}`;
-      if (this.gefaellteBaeume.has(key)) continue;
-      if (near(b.x, b.y + 14, 40)) {
+    // Bäume fällen: JEDER angrenzende Baum ist hackbar (Feedback-Runde 3)
+    {
+      const tx4 = Math.floor(this.px / TILE), ty4 = Math.floor(this.py / TILE);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
+        const bx = tx4 + dx, by = ty4 + dy;
+        if (this.area.map[by]?.[bx] !== T.TREE) continue;
+        // Waldrand bleibt stehen (sonst hackt man sich aus der Karte)
+        if (bx <= 1 || by <= 1 || bx >= this.area.w - 2 || by >= this.area.h - 2) continue;
+        const b = { x: bx * TILE + 16, y: by * TILE + 16 };
+        const key = `${this.area.id}_${b.x}_${b.y}`;
+        if (this.gefaellteBaeume.has(key)) continue;
         return {
           text: this.p.tools.axt ? `Baum - ${ik} zum Holzhacken` : 'Baum - Holzaxt nötig (Schmied)',
           action: () => this.chopTree(b, key),
@@ -661,7 +673,7 @@ export class WorldScene extends CombatScene {
       this.pickups.add({ kind: 'gold', amt: ri(this.rng, 4, 14), x: this.px + 10, y: this.py + 10, bob: 0 });
       this.logMsg('Zwischen den Seiten: ein paar Münzen', 'gold');
     } else if (r < 0.23) {
-      this.p.inv.push({ kind: 'scroll', name: 'Zauberrolle: Heiliges Licht', rarity: 1, val: 0, boni: [], scrollSkill: 'heiligesLicht' });
+      this.p.inv.push({ kind: 'scroll', name: 'Zauberrolle: Heiliges Licht', rarity: 1, val: 0, boni: [], scrollSkill: 'heiligesLicht', stack: 5 });
       this.logMsg('Eine Zauberrolle lag im Regal!', 'magic');
     }
   }
@@ -1275,6 +1287,14 @@ export class WorldScene extends CombatScene {
         return;
       }
       this.bossDead = true;
+      // Ruhe zum Looten: die Beschworenen zerfallen mit ihrem Herrn
+      for (const add of [...this.enemies]) {
+        if (add !== e) {
+          add.sprite?.destroy();
+          this.fx.burst(add.x, add.y, 0x6a6258, 10, 120);
+        }
+      }
+      this.enemies = this.enemies.filter((x) => x === e);
       this.logMsg(BOSS_TEXTE.gefallen, 'gold');
       const blade: Item = { ...TEMPLERKLINGE, boni: TEMPLERKLINGE.boni.map((b) => ({ ...b })), sock: null };
       this.pickups.add({ kind: 'gear', item: blade, x: e.x - 20, y: e.y, bob: 0 });

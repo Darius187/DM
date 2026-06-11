@@ -150,7 +150,7 @@ export class ShopUI {
         if (o.limit !== undefined) o.limit--;
         break;
       case 'scroll':
-        p.inv.push({ kind: 'scroll', name: o.name ?? 'Zauberrolle', rarity: 1, val: 0, boni: [], scrollSkill: o.scrollSkill });
+        p.inv.push({ kind: 'scroll', name: o.name ?? 'Zauberrolle', rarity: 1, val: 0, boni: [], scrollSkill: o.scrollSkill, stack: 5 });
         break;
       case 'food':
         p.inv.push({ kind: 'food', name: o.name ?? 'Proviant', rarity: 0, val: 0, boni: [], buff: o.food });

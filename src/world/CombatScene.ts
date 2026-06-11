@@ -167,9 +167,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         // erste Schriftrolle im Gepäck einsetzen (Feedback-Runde 2)
         const rolle = this.p.inv.find((it) => it.kind === 'scroll' && it.scrollSkill);
         if (rolle?.scrollSkill) {
-          this.p.inv = this.p.inv.filter((x) => x !== rolle);
+          rolle.stack = (rolle.stack ?? 1) - 1;
+          if (rolle.stack <= 0) this.p.inv = this.p.inv.filter((x) => x !== rolle);
           this.useScroll(rolle.scrollSkill);
-          this.logMsg(`${rolle.name} eingesetzt`, 'magic');
+          this.logMsg(`${rolle.name} eingesetzt (${Math.max(0, rolle.stack ?? 0)}x übrig)`, 'magic');
         } else {
           this.logMsg('Keine Schriftrolle im Gepäck', 'bad');
         }
@@ -270,6 +271,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   protected areaDepth(): number { return 1; }
   protected stepSound(): string { return 'schritte_stein'; }
+  // Gebietsfaktor: Dorf flott, Krypta bedächtig (Feedback-Runde 3)
+  protected areaSpeedFactor(): number { return 1; }
   protected hideWithoutLos(): boolean { return false; }
   protected showNote(_idx: number): void { void NOTIZEN; }
   protected onRelicPickup(_pk: Pickup): void { /* Welt überschreibt */ }
@@ -311,7 +314,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       const [name, skill] = rollen[Math.floor(Math.random() * rollen.length)];
       this.pickups.add({
         kind: 'gear',
-        item: { kind: 'scroll', name, rarity: 1, val: 0, boni: [], scrollSkill: skill },
+        item: { kind: 'scroll', name, rarity: 1, val: 0, boni: [], scrollSkill: skill, stack: 5 },
         x: e.x + rndOff(10), y: e.y + rndOff(10), bob: Math.random() * 6,
       });
     }
@@ -394,6 +397,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const ms = WEAPON_MOVESETS.bogen;
     const drawn = Math.min(1, this.bowDrawT / ms.drawTimeMaxS);
     this.bowDrawT = -1;
+    // Schuss-Erholung: 0,5 s bis zum nächsten Spannen (Feedback-Runde 3)
+    if (this.combat.action === 'idle') {
+      this.combat.action = 'attack';
+      this.combat.recoverTotal = 0.5;
+      this.combat.recoverT = 0.5;
+    }
     const ang = this.aimAngle();
     this.pdir = ang;
     const dmgMult = 1 + drawn * (ms.dmgMultFull - 1);
@@ -1038,7 +1047,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     } else if ((dx || dy) && this.combat.action !== 'heavyWindup') {
       const l = Math.hypot(dx, dy);
       const drawing = this.bowDrawT >= 0;
-      const spd = PLAYER.speed * (getSettings().tempo / 100) * (this.combat.blocking ? PLAYER.blockSpeedMult : 1) * (drawing ? 0.55 : 1);
+      const spd = PLAYER.speed * (getSettings().tempo / 100) * this.areaSpeedFactor() * (this.combat.blocking ? PLAYER.blockSpeedMult : 1) * (drawing ? 0.55 : 1);
       this.movePlayer((dx / l) * spd * dt, (dy / l) * spd * dt);
       if (!this.combat.blocking && !drawing) this.pdir = Math.atan2(dy, dx);
       this.pstepT += dt;

@@ -91,6 +91,15 @@ export class Hud {
       },
     });
     const bogen = () => this.getWeaponClass() === 'bogen';
+    const mausSlot = (key: string, i: number, ico: string, hinweis: string): SlotDef => ({
+      key, ico: () => ico,
+      name: () => SPELLS[i] ? SPELLS[i].name : hinweis,
+      desc: () => hinweis,
+      kosten: () => (SPELLS[i] ? `${SPELLS[i].mana} Mana` : ''),
+      cdFrac: () => (SPELLS[i] && p().spellCds[i] > 0 ? p().spellCds[i] / SPELLS[i].cd : 0),
+      cdSek: () => (SPELLS[i] ? p().spellCds[i] : 0),
+      locked: () => (SPELLS[i] && p().level < SPELLS[i].unlock ? `ab Spieler-Stufe ${SPELLS[i].unlock}` : null),
+    });
     this.slots = [
       spellSlot(0, '✦', 'Feuriges Geschoss mit Flächenschaden'),
       spellSlot(1, '☩', 'Heiliger Schlag um dich herum'),
@@ -100,6 +109,10 @@ export class Hud {
       abilitySlot('6', () => 'bannkreis', () => '◎'),
       abilitySlot('R', () => (bogen() ? 'mehrfachschuss' : 'rundumschlag'), () => (bogen() ? '⫶' : '↻')),
       abilitySlot('T', () => (bogen() ? 'markierterTod' : 'sturmangriff'), () => (bogen() ? '◎' : '⇒')),
+      // Maustasten-Belegung sichtbar (fest: Mitte/Daumen1/Daumen2)
+      mausSlot('M3', 0, '✦', 'Maustaste Mitte: Feuerball'),
+      mausSlot('M4', -1, '🧪', 'Daumentaste 1: Heiltrank'),
+      mausSlot('M5', 2, '❧', 'Daumentaste 2: Heilung'),
     ];
     this.buildSlotObjects();
   }

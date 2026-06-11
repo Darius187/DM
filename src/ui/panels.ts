@@ -300,7 +300,8 @@ export class UIPanels {
       p.pot++;
       p.inv = p.inv.filter((x) => x !== it);
     } else if (it.kind === 'scroll' && it.scrollSkill) {
-      p.inv = p.inv.filter((x) => x !== it);
+      it.stack = (it.stack ?? 1) - 1;
+      if (it.stack <= 0) p.inv = p.inv.filter((x) => x !== it);
       this.onUseScroll?.(it.scrollSkill);
     } else if (it.kind === 'food' && it.buff) {
       p.foodBuff = { hpRegen: it.buff.hpRegen, restS: it.buff.dauerS };

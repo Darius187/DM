@@ -352,6 +352,15 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
     x: (far.cx - 2) * TILE + 16, y: far.cy * TILE + 16,
   });
   a.special.push({ id: 'miniboss', x: far.cx - 2, y: far.cy, raum: `Miniboss: ${champName}` });
+  // Zweiter Miniboss in der Kartenmitte (Feedback-Runde 3)
+  const mitte = rooms[Math.floor(rooms.length / 2)];
+  const ZWEIT: Record<number, [EnemyTypeId, string]> = {
+    1: ['skelett', 'Der Grubenhauer'],
+    2: ['schuetze', 'Pfeilauge Veit'],
+    3: ['pest', 'Die Fäulnismutter'],
+  };
+  const [typ2, name2] = ZWEIT[n] ?? ZWEIT[3];
+  a.enemySpawns.push({ type: typ2, elite: true, champion: name2, x: mitte.cx * TILE + 16, y: mitte.cy * TILE + 16 });
 
   return a;
 }

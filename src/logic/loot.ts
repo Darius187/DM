@@ -98,7 +98,7 @@ export function itemStatLine(it: Item): string {
   if (it.kind === 'mpotion') return 'Stellt 60% Mana wieder her';
   if (it.kind === 'elixir') return '+10 maximales Leben (dauerhaft)';
   if (it.kind === 'arrows') return `${it.stack ?? 0} Pfeile`;
-  if (it.kind === 'scroll') return 'Wirkt den Zauber einmal ohne Manakosten';
+  if (it.kind === 'scroll') return `Wirkt den Zauber ohne Manakosten (${it.stack ?? 1}x übrig)`;
   if (it.kind === 'food' && it.buff) return `+${it.buff.hpRegen} Leben je Sekunde für ${it.buff.dauerS}s`;
   if (it.kind === 'material') return `Material (${it.stack ?? 1})`;
   if (it.kind === 'gem') {
