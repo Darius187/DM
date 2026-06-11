@@ -14,7 +14,7 @@ import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
 import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, type DlgPage } from '../data/dialoge';
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS } from '../data/shops';
 import { GATHER } from '../data/crafting';
-import { TAG, KOPFGELD } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, STADTMAUER } from '../data/welt';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, tileNameAt } from '../world/tiles';
@@ -83,6 +83,11 @@ export class WorldScene extends CombatScene {
   private stash!: StashUI;
   private lager: Item[] = [];
   aufbauBestellt = false;
+  // Stadtmauer + Einfälle (Feedback-Runde 7)
+  stadtmauerStufe = 0;
+  stadtmauerBestellt = false;
+  private letzterEinfallTag = 0;
+  private einfallAktiv = false;
   // 3x3 Beete des Hofs (Stufe 3)
   feld: Array<{ saatId: string | null; tageGewachsen: number; gegossen: boolean }> =
     Array.from({ length: 9 }, () => ({ saatId: null, tageGewachsen: 0, gegossen: false }));
@@ -128,6 +133,10 @@ export class WorldScene extends CombatScene {
     this.lager = [];
     this.aufbauStufe = 0;
     this.aufbauBestellt = false;
+    this.stadtmauerStufe = 0;
+    this.stadtmauerBestellt = false;
+    this.letzterEinfallTag = 0;
+    this.einfallAktiv = false;
     this.einrichtung = 0;
     this.tag = 1;
     this.tageszeit = 0.3;
@@ -198,7 +207,7 @@ export class WorldScene extends CombatScene {
     const rng = seededRng(this.areaSeed + id.length * 1009 + id.charCodeAt(id.length - 1));
     let a: AreaData;
     if (id === 'boss') a = buildBoss(rng, this.bossDead && !this.flags.ngPlus);
-    else if (id === 'village') a = buildVillage(rng, this.aufbauStufe);
+    else if (id === 'village') a = buildVillage(rng, this.aufbauStufe, this.stadtmauerStufe);
     else if (id === 'wald') a = buildForest(rng);
     else a = buildCrypt(parseInt(id.replace('crypt', ''), 10), rng);
     this.areas.set(id, a);
@@ -208,6 +217,9 @@ export class WorldScene extends CombatScene {
   aufbauStufe = 0; // Wiederaufbau des Gehöfts (Phase 7)
 
   goArea(id: string, spawnAt?: { x: number; y: number }): void {
+    // Ein laufender Einfall verpufft beim Gebietswechsel (kein Exploit:
+    // die Belohnung gibt es nur, wenn man bleibt und kämpft)
+    this.einfallAktiv = false;
     const a = this.getArea(id);
     this.area = a;
     this.unloadAreaObjects();
@@ -634,6 +646,30 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // --- Einfälle: Monster-Trupps greifen Ravensmoor an (Feedback-Runde 7) ----
+
+  private startEinfall(): void {
+    this.einfallAktiv = true;
+    this.letzterEinfallTag = this.tag;
+    // Mit Palisade kommen die Trupps nur durch die zwei Tore der Salzstraße,
+    // ohne brechen sie zusätzlich aus dem Waldrand hervor
+    const tore = [{ x: 3.5, y: 30.5 }, { x: 88, y: 30.5 }];
+    const waldrand = [{ x: 20, y: 3.5 }, { x: 70, y: 3.5 }, { x: 20, y: 56 }, { x: 70, y: 56 }, { x: 3.5, y: 15 }, { x: 88, y: 45 }];
+    const punkte = this.stadtmauerStufe >= 1 ? tore : [...tore, ...waldrand];
+    const anzahl = Math.min(EINFALL.anzahlMax, EINFALL.anzahlBasis + Math.floor(this.tag / 7) * EINFALL.anzahlProWoche);
+    const typen = ['skelett', 'pest', 'wolf', 'skelett'] as const;
+    for (let i = 0; i < anzahl; i++) {
+      const p0 = punkte[i % punkte.length];
+      const e = this.spawnEnemy(pick(this.rng, typen), EINFALL.tiefe, p0.x * TILE + (Math.random() - 0.5) * 40, p0.y * TILE + (Math.random() - 0.5) * 40, this.rng.random() < 0.15);
+      e.aggro = 5000; // sie suchen den Verteidiger, egal wie weit
+    }
+    this.logMsg(this.stadtmauerStufe >= 1
+      ? 'EINFALL! Ein Trupp drängt durch die Tore der Salzstraße!'
+      : 'EINFALL! Monster brechen aus dem Dunkelwald über Ravensmoor herein!', 'bad');
+    this.sfx.play('templer_stimme');
+    this.shake(6);
+  }
+
   // --- Kopfgeld am Anschlagbrett (Feedback-Runde 6) --------------------------
 
   private kopfgeld: { tag: number; ebene: number; erledigt: boolean } | null = null;
@@ -891,6 +927,7 @@ export class WorldScene extends CombatScene {
       choices: [
         { label: 'Handel', fn: () => this.shop.openShop('schmied', 'SCHMIEDE', SHOP_SCHMIED, { ankauf: true, schmieden: true }) },
         { label: 'Wiederaufbau', fn: () => this.openAufbau() },
+        { label: 'Stadtmauer', fn: () => this.openStadtmauer() },
         { label: 'Lebt wohl' },
       ],
     });
@@ -933,6 +970,49 @@ export class WorldScene extends CombatScene {
             m.eisen -= st.eisen;
             this.aufbauBestellt = true;
             this.logMsg(`Wiederaufbau "${st.name}" in Auftrag gegeben - schlaf eine Nacht.`, 'gold');
+            this.sfx.play('schmiede_hammer');
+          },
+        },
+        { label: 'Noch nicht' },
+      ],
+    }], 'schmied');
+  }
+
+  // Stadtmauer: Palisade als Bauprojekt (Feedback-Runde 7). Holz gibt es an
+  // den Bäumen rund ums Dorf ODER beim Schmied zu kaufen - kein Zwangs-Grind.
+  private openStadtmauer(): void {
+    if (this.stadtmauerBestellt) {
+      this.dialog.show('Schmied', ['Die Pfähle sind zugeschnitten. Schlaft eine Nacht - morgen steht der Ring.'], 'schmied');
+      return;
+    }
+    if (this.stadtmauerStufe >= STADTMAUER.stufen.length) {
+      this.dialog.show('Schmied', ['Die Palisade steht und hält. Kein gewöhnliches Untier beißt sich da durch.'], 'schmied');
+      return;
+    }
+    const st = STADTMAUER.stufen[this.stadtmauerStufe];
+    const m = this.p.materials;
+    const fehlt: string[] = [];
+    if (this.p.gold < st.gold) fehlt.push(`${st.gold - this.p.gold} Gold`);
+    if (m.holz < st.holz) fehlt.push(`${st.holz - m.holz} Holz`);
+    if (m.stein < st.stein) fehlt.push(`${st.stein - m.stein} Stein`);
+    const kosten = `${st.gold} Gold, ${st.holz} Holz, ${st.stein} Stein`;
+    if (fehlt.length) {
+      this.dialog.show('Schmied', [
+        `"${st.name}": ${st.beschreibung}. Das kostet ${kosten}. Euch fehlt noch: ${fehlt.join(', ')}. Holz schlagt ihr an den Bäumen am Dorfrand - oder kauft es bei mir.`,
+      ], 'schmied');
+      return;
+    }
+    this.dialog.show('Schmied', [{
+      text: `"${st.name}": ${st.beschreibung}. Das kostet ${kosten}. Sollen wir die Pfähle setzen? Über Nacht steht der Ring.`,
+      choices: [
+        {
+          label: 'In Auftrag geben',
+          fn: () => {
+            this.p.gold -= st.gold;
+            m.holz -= st.holz;
+            m.stein -= st.stein;
+            this.stadtmauerBestellt = true;
+            this.logMsg(`Stadtmauer "${st.name}" in Auftrag gegeben - schlaf eine Nacht.`, 'gold');
             this.sfx.play('schmiede_hammer');
           },
         },
@@ -1145,6 +1225,12 @@ export class WorldScene extends CombatScene {
       this.aufbauBestellt = false;
       gebaut = AUFBAU_STUFEN[this.aufbauStufe].name;
       this.aufbauStufe++;
+    }
+    // Stadtmauer: über Nacht stehen die Pfähle
+    if (this.stadtmauerBestellt) {
+      this.stadtmauerBestellt = false;
+      gebaut = STADTMAUER.stufen[this.stadtmauerStufe].name;
+      this.stadtmauerStufe++;
     }
     // Feld: gegossene Beete wachsen
     for (const beet of this.feld) {
@@ -1410,6 +1496,15 @@ export class WorldScene extends CombatScene {
       }
     }
     this.dropLoot(e);
+    // Einfall abgewehrt: Belohnung der Dörfler, sobald der letzte Angreifer fällt
+    if (this.einfallAktiv && this.area.id === 'village' && this.enemies.length === 0) {
+      this.einfallAktiv = false;
+      const gold = EINFALL.belohnungGold + this.tag * EINFALL.belohnungGoldProTag;
+      this.p.gold += gold;
+      this.p.materials.holz += 2;
+      this.logMsg(`Ravensmoor ist verteidigt! Die Dörfler sammeln ${gold} Gold und 2 Holz für dich.`, 'gold');
+      this.sfx.play('muenzen');
+    }
   }
 
   protected override castTownPortal(): void {
@@ -1526,6 +1621,9 @@ export class WorldScene extends CombatScene {
         einrichtung: this.einrichtung,
         kopfgeld: this.kopfgeld ?? undefined,
         album: this.album,
+        stadtmauerStufe: this.stadtmauerStufe,
+        stadtmauerBestellt: this.stadtmauerBestellt,
+        letzterEinfallTag: this.letzterEinfallTag,
       },
     };
   }
@@ -1570,6 +1668,9 @@ export class WorldScene extends CombatScene {
     this.feld = data.welt.feld ?? this.feld;
     this.kopfgeld = data.welt.kopfgeld ?? null;
     this.album = data.welt.album ?? { kills: {}, champions: [], unikate: [], notizen: [] };
+    this.stadtmauerStufe = data.welt.stadtmauerStufe ?? 0;
+    this.stadtmauerBestellt = data.welt.stadtmauerBestellt ?? false;
+    this.letzterEinfallTag = data.welt.letzterEinfallTag ?? 0;
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
     recalc(p);
     p.hp = Math.min(p.stats.maxhp, s.hp || p.stats.maxhp);
@@ -1980,6 +2081,12 @@ export class WorldScene extends CombatScene {
       this.logMsg(`Tag ${this.tag} bricht an.`, '');
     }
     const abend = this.tageszeit > TAG.abendAb;
+    // Einfall: nach dem Boss-Sieg greifen abends Monster-Trupps das Dorf an
+    if (abend && (this.bossDead || this.flags.ngPlusGeschafft) && this.area.id === 'village'
+      && !this.einfallAktiv && !this.playerDead
+      && this.tag - this.letzterEinfallTag > EINFALL.pauseTage) {
+      this.startEinfall();
+    }
     // NPCs: 2 Positionen je Tageszeit, sie gehen sichtbar dorthin
     for (const n of this.npcEnts) {
       const ziel = abend && n.abend ? n.abend : { x: n.x, y: n.y };

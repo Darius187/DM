@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildCrypt, buildBoss, type AreaData } from '../src/world/areagen';
+import { buildCrypt, buildBoss, buildVillage, type AreaData } from '../src/world/areagen';
 import { SOLID, T } from '../src/world/tiles';
 import { seededRng } from '../src/logic/rng';
 
@@ -98,6 +98,20 @@ describe('Krypta-Generator: jeder Spezialraum erreichbar', () => {
     const b = buildBoss(seededRng(1), true);
     expect(b.map[3][16]).toBe(T.STAIR);
     expect(b.downPos).toBeTruthy();
+  });
+
+  it('Stadtmauer: Palisadenring geschlossen, Tore der Salzstraße bleiben offen', () => {
+    const a = buildVillage(seededRng(7), 0, 1);
+    // Ring vorhanden (Stichproben oben/unten/links/rechts)
+    expect(a.map[2][20]).toBe(T.PALISADE);
+    expect(a.map[a.h - 3][20]).toBe(T.PALISADE);
+    expect(a.map[20][2]).toBe(T.PALISADE);
+    // West- und Ost-Tor (Salzstraße) bleiben begehbar
+    expect(a.map[30][2]).toBe(T.PATH);
+    expect(a.map[30][a.w - 3]).toBe(T.PATH);
+    // Ohne Mauer keine Palisade
+    const b = buildVillage(seededRng(7), 0, 0);
+    expect(b.map[2][20]).not.toBe(T.PALISADE);
   });
 
   it('max. 2 Skript-Schreckmomente pro Ebene', () => {

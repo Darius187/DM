@@ -448,7 +448,7 @@ export function buildBoss(rng: Rng, bossDead: boolean): AreaData {
 // --- Ravensmoor: ein echtes Dorf des 17. Jahrhunderts (Masterprompt 7.2) ---
 // Referenzdorf war 46x30 - dieses ist 92x60, entlang der alten Salzstraße.
 
-export function buildVillage(rng: Rng, aufbauStufe = 0): AreaData {
+export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): AreaData {
   const w = 92, h = 60;
   const map = blank(w, h, T.GRASS);
   const a: AreaData = {
@@ -623,6 +623,17 @@ export function buildVillage(rng: Rng, aufbauStufe = 0): AreaData {
       map[ry][rx] = T.ROCK;
       a.rocks.push({ x: rx * TILE + 16, y: ry * TILE + 16 });
     }
+  }
+
+  // Stadtmauer (Feedback-Runde 7): Palisadenring auf dem inneren Rand.
+  // Wege und Wasser bleiben frei - so entstehen die Tore der Salzstraße.
+  if (stadtmauerStufe >= 1) {
+    const ring = (tx: number, ty: number) => {
+      if (map[ty][tx] === T.GRASS || map[ty][tx] === T.TREE) map[ty][tx] = T.PALISADE;
+    };
+    for (let x = 2; x <= w - 3; x++) { ring(x, 2); ring(x, h - 3); }
+    for (let y = 2; y <= h - 3; y++) { ring(2, y); ring(w - 3, y); }
+    label(46.5, 2.8, 'Palisade');
   }
 
   return a;

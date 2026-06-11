@@ -41,3 +41,6 @@
 - Sammelalbum auf Taste B (fest, nicht umbelegbar - bewusst einfach gehalten), Inhalt wandert mit dem Spielstand (welt.album).
 - Edelstein-Angebot bei Magdalena zum Festpreis 120 Gold (Edelsteine haben keine Preisformel).
 - Grafik-Politur rein programmatisch: Umriss-Silhouetten über Offscreen-Canvas (keine neue Dependency), Tile-Details deterministisch je Variante (kein Flackern).
+- Einfälle: erst nach dem Boss-Sieg, abends, frühestens jeden 2. Tag, nur wenn der Spieler im Dorf ist; Gebietswechsel bricht den Einfall ab (keine Belohnung). Trupp-Größe wächst mit den Spieltagen (Werte in welt.ts, EINFALL). Dörfler kämpfen (noch) nicht mit und nehmen keinen Schaden - bewusst klein angefangen.
+- Palisade (Stadtmauer Stufe 1): 120 Gold + 30 Holz + 10 Stein, Bau über Nacht beim Schmied (wie Gehöft-Aufbau). Als solides Tile unzerstörbar für normale Monster; mit Mauer spawnen Einfälle nur an den zwei Salzstraßen-Toren. Boss-Monster, die Mauern beschädigen (alle 7 Tage), als spätere Stufe notiert.
+- Anti-Grind fürs Holz: Bäume geben 2-4 Holz und respawnen nach 1 Tag (bestand schon), zusätzlich verkauft der Schmied Holz für 6 Gold - 30 Holz sind ~10 Bäume oder 180 Gold.

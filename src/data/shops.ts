@@ -57,6 +57,8 @@ export const SHOP_SCHMIED: ReadonlyArray<ShopOfferDef> = [
   // Kohle: kein Köhler-NPC in der Spezifikation - der Schmied führt sie mit
   { kind: 'material', name: 'Kohle', price: 12, inf: true, materialId: 'kohle' },
   { kind: 'material', name: 'Eisen', price: 18, inf: true, materialId: 'eisen' },
+  // Holz für die Stadtmauer auch kaufbar - Bäume fällen bleibt der billige Weg
+  { kind: 'material', name: 'Holz', price: 6, inf: true, materialId: 'holz' },
 ];
 
 export const SHOP_BAUER1: ReadonlyArray<ShopOfferDef> = [

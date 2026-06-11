@@ -509,3 +509,25 @@ Alles mit tsc + 48 Tests grün und im Browser geprüft (Screenshots gemacht):
   Plattenfugen + Risse in der Krypta, Mauerwerk an Wandstirnen,
   Wasser-Glitzer, vollere Baumkronen mit Lichtballen.
 Stand: 48/48 Tests grün, Version auf dem Titel: Feedback-Runde 6.
+
+## Feedback-Runde 7 - umgesetzt (Einfälle + Palisade)
+Alles mit tsc + 49 Tests grün und im Browser durchgespielt:
+- Einfälle: Nach dem Boss-Sieg greifen abends Monster-Trupps Ravensmoor
+  an (Skelette, Pestopfer, Wölfe, Stärke wie Krypta-Ebene 3, Trupp wächst
+  mit den Spieltagen, frühestens jeden 2. Tag). Wer den letzten Angreifer
+  fällt, bekommt Gold + Holz von den Dörflern. Geprüft: Einfall kam,
+  75 Gold + 2 Holz kamen an. Wer das Dorf verlässt, verliert die
+  Belohnung (Einfall verpufft).
+- Palisade: Bauprojekt beim Schmied (Menüpunkt "Stadtmauer"), 120 Gold +
+  30 Holz + 10 Stein, steht über Nacht. Geschlossener Pfahlring um das
+  ganze Dorf, NICHT zerstörbar durch normale Monster. Mit Mauer kommen
+  Einfälle nur noch durch die zwei Tore der Salzstraße (West/Ost) -
+  geprüft: Spawns lagen nur an den Toren. Test sichert ab, dass der Ring
+  geschlossen ist und die Tore offen bleiben.
+- Kein Holz-Grind: Bäume geben 2-4 Holz und wachsen nach einem Tag nach;
+  zusätzlich verkauft der Schmied Holz (6 Gold). 30 Holz = ~10 Bäume
+  oder 180 Gold.
+- Ehrlich offen: Die Dörfler kämpfen noch nicht aktiv mit und können
+  nicht verletzt werden - die Trupps jagen den Spieler. Boss-Monster,
+  die alle 7 Tage die Mauer beschädigen: notiert für die nächste Stufe.
+Stand: 49/49 Tests grün, Version auf dem Titel: Feedback-Runde 7.

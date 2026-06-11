@@ -28,3 +28,7 @@
   dem Boss-Sieg + Stadtmauern/Verteidigung (Autor-Idee, groß - braucht
   eigene Phase und ein Konzept: Welt-Chunks, Biome, Monster-Einfälle).
   Vorschlag Claude: erst als "Einfälle"-Ereignis klein anfangen.
+- Einfälle/Stadtmauer, nächste Ausbaustufen (Autor-Plan): Boss-Monster
+  alle 7 Tage, die die Palisade beschädigen können (Mauer-Reparatur);
+  Dörfler wehren sich/nehmen Schaden; Mauer-Stufe 2 (Stein); danach
+  offene Außenwelt mit 2-3 Biomen.

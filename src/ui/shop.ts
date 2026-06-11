@@ -116,7 +116,7 @@ export class ShopUI {
       tool: 'Werkzeug zum Sammeln',
       food: o.food ? `+${o.food.hpRegen} Leben je Sekunde für ${o.food.dauerS}s` : '',
       seed: 'Saatgut für das eigene Feld',
-      material: 'Brennstoff für die Schmiede',
+      material: o.materialId === 'kohle' ? 'Brennstoff für die Schmiede' : 'Material für Schmiede und Bauprojekte',
       rezept: o.rezept ? `Braut aus ${o.rezept.kraeuter} Kräutern (du hast ${this.getPlayer().materials.kraeuter})` : '',
     };
     return { name: o.name ?? '?', col: '#d8cfb8', sub: subs[o.kind] ?? '' };

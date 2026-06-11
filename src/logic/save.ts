@@ -40,6 +40,9 @@ export interface SaveData {
     einrichtung?: number;
     kopfgeld?: { tag: number; ebene: number; erledigt: boolean };
     album?: { kills: Record<string, number>; champions: string[]; unikate: string[]; notizen: number[] };
+    stadtmauerStufe?: number;
+    stadtmauerBestellt?: boolean;
+    letzterEinfallTag?: number;
   };
 }
 

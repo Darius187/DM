@@ -96,6 +96,27 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       ctx.fillRect(4, 8, 4, 18); ctx.fillRect(24, 8, 4, 18);
       ctx.fillRect(0, 12, TILE, 4); ctx.fillRect(0, 20, TILE, 4);
       break;
+    case 'palisade': {
+      // Stadtmauer Stufe 1: angespitzte Holzpfähle, dicht an dicht
+      grasBase(ctx, n);
+      for (let i = 0; i < 4; i++) {
+        const px2 = 1 + i * 8;
+        ctx.fillStyle = i % 2 === (n % 2) ? '#5c4427' : '#4e3a20';
+        ctx.fillRect(px2, 6, 7, 24);
+        ctx.fillStyle = 'rgba(255,255,255,0.07)';
+        ctx.fillRect(px2, 6, 2, 24);
+        // Spitze
+        ctx.fillStyle = '#3a2c16';
+        ctx.beginPath();
+        ctx.moveTo(px2, 6); ctx.lineTo(px2 + 3.5, 0); ctx.lineTo(px2 + 7, 6);
+        ctx.closePath(); ctx.fill();
+      }
+      // Querbalken
+      ctx.fillStyle = 'rgba(42,30,16,0.85)';
+      ctx.fillRect(0, 14, TILE, 3);
+      ctx.fillRect(0, 24, TILE, 3);
+      break;
+    }
     case 'fachwerk_fassade': {
       ctx.fillStyle = '#8a7a62'; ctx.fillRect(0, 0, TILE, TILE);
       ctx.fillStyle = '#2a1e12';
@@ -276,7 +297,7 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
 // die Y-Sortierung: der Boden liegt separat darunter (Masterprompt 5.1).
 export const STANDING_OBJECTS = new Set([
   'baum', 'fels', 'grabstein', 'brunnen', 'zaun', 'erzader', 'altar',
-  'regal', 'kerzenschrein', 'streckbank', 'kaefig',
+  'regal', 'kerzenschrein', 'streckbank', 'kaefig', 'palisade',
 ]);
 
 export function drawObjectArt(ctx: Ctx, name: string, n: number, theme?: CryptTheme): void {
@@ -324,6 +345,22 @@ export function drawObjectArt(ctx: Ctx, name: string, n: number, theme?: CryptTh
       ctx.fillStyle = '#5c4427';
       ctx.fillRect(4, 8, 4, 18); ctx.fillRect(24, 8, 4, 18);
       ctx.fillRect(0, 12, TILE, 4); ctx.fillRect(0, 20, TILE, 4);
+      break;
+    case 'palisade':
+      for (let i = 0; i < 4; i++) {
+        const px2 = 1 + i * 8;
+        ctx.fillStyle = i % 2 === (n % 2) ? '#5c4427' : '#4e3a20';
+        ctx.fillRect(px2, 6, 7, 24);
+        ctx.fillStyle = 'rgba(255,255,255,0.07)';
+        ctx.fillRect(px2, 6, 2, 24);
+        ctx.fillStyle = '#3a2c16';
+        ctx.beginPath();
+        ctx.moveTo(px2, 6); ctx.lineTo(px2 + 3.5, 0); ctx.lineTo(px2 + 7, 6);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(42,30,16,0.85)';
+      ctx.fillRect(0, 14, TILE, 3);
+      ctx.fillRect(0, 24, TILE, 3);
       break;
     default:
       drawTileArt(ctx, name, n, theme);
