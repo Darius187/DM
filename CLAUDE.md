@@ -54,8 +54,20 @@ npm install
 npm run dev          # Vite dev server on http://localhost:5173
 ```
 
-Useful URL parameters: `?szene=wald|haus|gruft` picks the start area,
-`&mood=0` disables the mood layer (used for the "vorher" screenshots).
+Useful URL parameters (combinable, shown in the UI when active):
+
+| Parameter | Effect |
+|---|---|
+| `szene=wald\|haus\|gruft` | start area |
+| `mood=0` | disable the whole mood layer ("vorher" screenshots) |
+| `glatt=1` | bilinear filtering instead of hard pixels (Voodoo-style softness) |
+| `fog=0` | disable fog of war (skeletons always visible) |
+| `dunkel=0..1` | override darkness-layer alpha of the area |
+| `toenung=0..1` | override tint alpha |
+| `farbe=0e3a32` | override tint color (hex) |
+| `sat=-1..0` / `kontrast=0..1` | override saturation / contrast |
+| `sicht=px` | player light radius (also scales fog-of-war sight range) |
+| `licht=1.5` | multiply all light-source radii |
 
 Screenshots (needs a Chrome/Chromium binary, dev server running):
 

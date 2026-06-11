@@ -91,6 +91,15 @@ abstract class GebietSzene extends Phaser.Scene {
       .setDepth(TIEFE.ui)
       .setResolution(3)
       .setAlpha(0.8);
+    const schalter = this.registry.get('schalterAnzeige');
+    if (schalter) {
+      this.add
+        .text(6, 31, schalter, { ...stil, color: '#6e7a90' })
+        .setScrollFactor(0)
+        .setDepth(TIEFE.ui)
+        .setResolution(3)
+        .setAlpha(0.8);
+    }
     this.hinweisText = this.add
       .text(this.scale.width / 2, this.scale.height - 18, '', stil)
       .setOrigin(0.5)
@@ -329,9 +338,17 @@ export class GruftSzene extends GebietSzene {
       this.stimmung.licht(x, y, STIMMUNG.lichtquellen.kerze);
     }
 
-    // Skelette - reine Deko, sie ruehren sich nicht vom Fleck.
-    this.add.sprite(210, 250, 'skelett-base-idle').play('skelett-base-idle').setDepth(250);
-    this.add.sprite(470, 320, 'skelett-krieger-idle').play('skelett-krieger-idle').setFlipX(true).setDepth(320);
+    // Skelette - reine Deko. Per Fog of War erst in Sichtweite sichtbar.
+    this.stimmung.wesen(
+      this.add.sprite(210, 250, 'skelett-base-idle').play('skelett-base-idle').setDepth(250),
+    );
+    this.stimmung.wesen(
+      this.add
+        .sprite(470, 320, 'skelett-krieger-idle')
+        .play('skelett-krieger-idle')
+        .setFlipX(true)
+        .setDepth(320),
+    );
 
     // Treppe zurueck nach oben.
     this.add.image(70, 96, 'gruft-tiles', 'g-treppe').setOrigin(0.5, 1).setDepth(-3);

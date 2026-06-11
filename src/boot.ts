@@ -64,8 +64,35 @@ export class BootSzene extends Phaser.Scene {
 
     const params = new URLSearchParams(window.location.search);
     if (params.get('mood') === '0') this.registry.set('stimmungAus', true);
+    this.schalterLesen(params);
     const szene = params.get('szene') ?? 'wald';
     this.scene.start(['wald', 'haus', 'gruft'].includes(szene) ? szene : 'wald');
+  }
+
+  /** Test-Schalter aus der URL lesen (siehe CLAUDE.md, Abschnitt URL-Parameter). */
+  private schalterLesen(params: URLSearchParams): void {
+    const zahl = (k: string) => {
+      const wert = params.get(k);
+      if (wert === null) return undefined;
+      const z = Number(wert);
+      return Number.isFinite(z) ? z : undefined;
+    };
+    this.registry.set('schalter', {
+      fog: params.get('fog') !== '0',
+      dunkel: zahl('dunkel'),
+      toenung: zahl('toenung'),
+      farbe: params.has('farbe') ? parseInt(params.get('farbe')!, 16) : undefined,
+      sat: zahl('sat'),
+      kontrast: zahl('kontrast'),
+      sicht: zahl('sicht'),
+      licht: zahl('licht'),
+    });
+    // Aktive Schalter unten im UI anzeigen, damit man beim Testen weiss, was an ist.
+    const anzeige = [...params.entries()]
+      .filter(([k]) => k !== 'szene')
+      .map(([k, v]) => `${k}=${v}`)
+      .join('  ');
+    this.registry.set('schalterAnzeige', anzeige);
   }
 
   /** Benannte Teilbereiche der Tileset-PNGs als Frames registrieren. */

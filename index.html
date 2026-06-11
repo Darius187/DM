@@ -6,7 +6,8 @@
     <title>Ravensmoor - Stimmungstest</title>
     <style>
       html, body { margin: 0; padding: 0; background: #000; height: 100%; }
-      canvas { image-rendering: pixelated; }
+      /* Kein festes image-rendering: Phaser setzt es selbst, abhaengig vom
+         ?glatt=1-Schalter (pixelig vs. bilinear gefiltert). */
     </style>
   </head>
   <body>
