@@ -30,7 +30,7 @@ export class TouchControls {
   private interactVisible = false;
 
   constructor(private scene: Phaser.Scene, private host: TouchHost) {
-    this.gfx = scene.add.graphics().setScrollFactor(0).setDepth(1050);
+    this.gfx = scene.add.graphics().setScrollFactor(0).setDepth(5300);
     scene.input.addPointer(3);
     this.layoutButtons();
     scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.onDown(p));
@@ -133,7 +133,7 @@ export class TouchControls {
     for (const t of this.labels) t.destroy();
     this.labels = this.buttons.map((b) => this.scene.add.text(b.x, b.y, b.label, {
       fontSize: `${b.r * 0.8}px`, color: '#d8cfb8',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(1051));
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(5301));
   }
 
   updateLabels(): void {

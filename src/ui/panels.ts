@@ -89,7 +89,7 @@ export class UIPanels {
     const sw = this.scene.scale.width, sh = this.scene.scale.height;
     const w = Math.min(760, sw - 24);
     const h = Math.min(sh - 36, 560);
-    const c = this.scene.add.container((sw - w) / 2, (sh - h) / 2).setScrollFactor(0).setDepth(900);
+    const c = this.scene.add.container((sw - w) / 2, (sh - h) / 2).setScrollFactor(0).setDepth(5100);
     this.container = c;
     const bg = this.scene.add.rectangle(0, 0, w, h, PANEL_BG, 0.97).setOrigin(0).setStrokeStyle(1, LINE);
     bg.setInteractive();
@@ -138,6 +138,7 @@ export class UIPanels {
         slotBg.setInteractive({ useHandCursor: true });
         slotBg.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
         slotBg.on('pointerout', () => this.hideTooltip());
+        slotBg.on('pointerdown', () => this.clickItem(it)); // Klick legt ab
       } else {
         c.add(this.scene.add.text(170, sy + 12, `${label}: -`, { fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c' }));
       }
@@ -194,24 +195,42 @@ export class UIPanels {
 
   // --- rechte Seite: Inventar mit Blättern -----------------------------------
 
+  private filter: 'alle' | 'weapon' | 'armor' | 'ring' | 'rest' = 'alle';
+
   private buildInventorySide(c: Phaser.GameObjects.Container, x0: number, w: number, h: number): void {
     const p = this.getPlayer();
     c.add(this.scene.add.text(x0, 10, `INVENTAR (${p.inv.length})`, { fontFamily: 'serif', fontSize: '16px', color: GOLD, letterSpacing: 2 }));
     c.add(this.scene.add.text(x0 + w, 14, 'Maus-Rad: blättern', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }).setOrigin(1, 0));
+    // Filter-Reiter (Feedback-Runde 2)
+    const tabs: Array<[typeof this.filter, string]> = [['alle', 'ALLE'], ['weapon', 'WAFFEN'], ['armor', 'RÜSTUNG'], ['ring', 'RINGE'], ['rest', 'SONSTIGES']];
+    let tx2 = x0;
+    for (const [id, lbl] of tabs) {
+      const t = this.scene.add.text(tx2, 34, lbl, {
+        fontFamily: 'serif', fontSize: '11px', letterSpacing: 1,
+        color: this.filter === id ? GOLD : '#8a7a5a',
+        backgroundColor: this.filter === id ? '#221808' : undefined, padding: { x: 6, y: 2 },
+      }).setInteractive({ useHandCursor: true });
+      t.on('pointerdown', () => {
+        this.filter = id;
+        this.scroll = 0;
+        this.build();
+        this.sfx.play('klick');
+      });
+      c.add(t);
+      tx2 += t.width + 8;
+    }
 
-    // Sortiert: Angelegtes zuerst, dann nach Art und Seltenheit
-    const order: Record<string, number> = { weapon: 0, armor: 1, ring: 2, gem: 3, scroll: 4, food: 5, potion: 6, material: 7 };
-    const inv = [...p.inv].sort((a, b) => {
-      const ea = (a === p.weapon || a === p.armorIt || a === p.ring) ? -1 : 0;
-      const eb = (b === p.weapon || b === p.armorIt || b === p.ring) ? -1 : 0;
-      if (ea !== eb) return ea - eb;
-      const oa = order[a.kind] ?? 9, ob = order[b.kind] ?? 9;
-      if (oa !== ob) return oa - ob;
-      return (b.rarity ?? 0) - (a.rarity ?? 0);
-    });
+    // Angelegtes erscheint NUR links im Charakter (Feedback-Runde 2);
+    // Rest nach Filter, beste zuerst (Seltenheit, dann Wert)
+    const inv = p.inv
+      .filter((it) => it !== p.weapon && it !== p.armorIt && it !== p.ring)
+      .filter((it) => this.filter === 'alle' ? true
+        : this.filter === 'rest' ? !['weapon', 'armor', 'ring'].includes(it.kind)
+        : it.kind === this.filter)
+      .sort((a, b) => (b.rarity ?? 0) - (a.rarity ?? 0) || (b.val + (b.upgrade ?? 0) * 2) - (a.val + (a.upgrade ?? 0) * 2));
 
     const rowH = 42;
-    const listTop = 36;
+    const listTop = 58;
     const visible = Math.floor((h - listTop - 14) / rowH);
     const maxScroll = Math.max(0, inv.length - visible);
     this.scroll = Math.min(this.scroll, maxScroll);
@@ -264,7 +283,9 @@ export class UIPanels {
     const p = this.getPlayer();
     if (it.kind === 'gem') {
       const gem = it as GemItem;
-      if (p.weapon?.sock && !p.weapon.sock.gem) {
+      if (p.weapon?.sock) {
+        // Tausch: alter Stein kommt zurück ins Inventar (Feedback-Runde 2)
+        if (p.weapon.sock.gem) p.inv.push(p.weapon.sock.gem);
         p.weapon.sock.gem = gem;
         p.inv = p.inv.filter((x) => x !== it);
         this.sfx.play('edelstein_fassen');
@@ -349,7 +370,7 @@ export class UIPanels {
   }
 
   private renderTooltip(lines: Array<[string, string]>, ptr: Phaser.Input.Pointer): void {
-    const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(950);
+    const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(5200);
     let ty = 8;
     const texts: Phaser.GameObjects.Text[] = [];
     for (const [txt, col] of lines) {

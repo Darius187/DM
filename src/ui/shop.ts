@@ -225,7 +225,7 @@ export class ShopUI {
     const sw = this.scene.scale.width, sh = this.scene.scale.height;
     const w = Math.min(470, sw - 30);
     const h = Math.min(sh - 60, 520);
-    const c = this.scene.add.container((sw - w) / 2, (sh - h) / 2).setScrollFactor(0).setDepth(950);
+    const c = this.scene.add.container((sw - w) / 2, (sh - h) / 2).setScrollFactor(0).setDepth(5150);
     this.container = c;
     const p = this.getPlayer();
 

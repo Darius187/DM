@@ -27,7 +27,7 @@ export class PickupSystem {
   private gfx: Phaser.GameObjects.Graphics;
 
   constructor(private scene: Phaser.Scene, private provider: SpriteProvider) {
-    this.gfx = scene.add.graphics().setDepth(400);
+    this.gfx = scene.add.graphics().setDepth(2400);
     this.ensureLightColumnTexture();
   }
 

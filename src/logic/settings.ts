@@ -13,6 +13,7 @@ export interface Settings {
   volEffekte: number;     // 0-100
   volAtmosphaere: number; // 0-100
   bright: number;         // 70-140
+  tempo: number;          // Spieler-Tempo in % (70-110)
   shake: boolean;
   dmgNums: boolean;
   blood: boolean;
@@ -24,6 +25,7 @@ export const DEF_SETTINGS: Settings = {
   volEffekte: 60,
   volAtmosphaere: 50,
   bright: 100,
+  tempo: 90,
   shake: true,
   dmgNums: true,
   blood: true,

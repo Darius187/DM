@@ -78,7 +78,7 @@ export class DialogUI {
     const textX = hasPortrait ? 96 : 16;
     const textW = w - textX - 16;
 
-    const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(1000);
+    const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(5000);
     this.container = c;
     const nameText = this.scene.add.text(textX, 10, this.speaker, {
       fontFamily: 'serif', fontSize: '14px', color: '#c9a227', letterSpacing: 1,

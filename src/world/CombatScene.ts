@@ -85,6 +85,15 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   burstFx(x: number, y: number, col: number, n: number, spd: number): void { this.fx.burst(x, y, col, n, spd); }
 
   protected setupCombat(startX: number, startY: number): void {
+    // Neustart-Hygiene (Szenen-Instanz wird wiederverwendet)
+    this.keysDown = {};
+    this.mouseDown = false;
+    this.bowDrawT = -1;
+    this.hitstopT = 0;
+    this.shakeAmt = 0;
+    this.hittables = [];
+    this.banishZones = [];
+    this.touch = null;
     this.provider = new SpriteProvider(this);
     this.sfx = new SoundProvider(this);
     this.fx = new EffectSystem(this);
@@ -98,13 +107,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.playerDead = false;
     this.playerSprite = this.add.sprite(startX, startY, '__DEFAULT').setDepth(startY);
     this.provider.applyFigure(this.playerSprite, 'spieler', 0, 0);
-    this.overlay = this.add.graphics().setDepth(550);
+    this.overlay = this.add.graphics().setDepth(2600);
     this.pickups = new PickupSystem(this, this.provider);
     this.panels = new UIPanels(this, this.provider, this.sfx, () => this.p);
     this.panels.onUseScroll = (skill) => this.useScroll(skill);
     this.hintText = this.add.text(this.scale.width / 2, this.scale.height * 0.64, '', {
       fontFamily: 'serif', fontSize: '16px', color: '#e8dcb8', backgroundColor: '#0a0704c0', padding: { x: 12, y: 3 },
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(800).setVisible(false);
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(4700).setVisible(false);
     this.setupInput();
     if (isTouchDevice()) {
       this.touch = new TouchControls(this, this);
@@ -154,6 +163,17 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (k === b.s1) this.castSpell(0);
       if (k === b.s2) this.castSpell(1);
       if (k === b.s3) this.castSpell(2);
+      if (k === '7') {
+        // erste Schriftrolle im Gepäck einsetzen (Feedback-Runde 2)
+        const rolle = this.p.inv.find((it) => it.kind === 'scroll' && it.scrollSkill);
+        if (rolle?.scrollSkill) {
+          this.p.inv = this.p.inv.filter((x) => x !== rolle);
+          this.useScroll(rolle.scrollSkill);
+          this.logMsg(`${rolle.name} eingesetzt`, 'magic');
+        } else {
+          this.logMsg('Keine Schriftrolle im Gepäck', 'bad');
+        }
+      }
       // Zauberei-Fähigkeiten reihen sich in die Zauberleiste ein (4-6)
       if (k === '4') this.useAbility('kettenblitz');
       if (k === '5') this.useAbility('frostnova');
@@ -250,6 +270,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   protected areaDepth(): number { return 1; }
   protected stepSound(): string { return 'schritte_stein'; }
+  protected hideWithoutLos(): boolean { return false; }
   protected showNote(_idx: number): void { void NOTIZEN; }
   protected onRelicPickup(_pk: Pickup): void { /* Welt überschreibt */ }
   protected onPortalPickup(): void { /* Welt überschreibt */ }
@@ -575,6 +596,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
     e.hp -= dmg;
     e.hitFlash = 0.12;
+    e.onHurt();
     this.fx.float(e.x + (Math.random() * 12 - 6), e.y - e.r - 8, String(dmg), col ?? '#e8dcc0');
     if (kx || ky) e.moveBody(this, kx, ky);
     this.fx.burst(e.x, e.y, 0xa82020, 6, 120);
@@ -629,7 +651,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     if (result === 'blocked') {
       this.fx.burst(this.px + Math.cos(aTo) * 12, this.py + Math.sin(aTo) * 12, 0xaab4c0, 8, 150);
       this.sfx.play('block');
-      this.hurtPlayer(blockedDamage(dmg), true);
+      // Der Schild hält bei gewöhnlichen Gegnern ALLES ab (Feedback-Runde 2);
+      // nur Elite, Champions und Bosse drücken 30% durch
+      if (e.elite || e.boss || e.champion) this.hurtPlayer(blockedDamage(dmg), true);
+      else this.fx.float(this.px, this.py - 20, MELDUNGEN.geblockt, '#aab4c0');
       return;
     }
     this.hurtPlayer(dmg);
@@ -1013,7 +1038,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     } else if ((dx || dy) && this.combat.action !== 'heavyWindup') {
       const l = Math.hypot(dx, dy);
       const drawing = this.bowDrawT >= 0;
-      const spd = PLAYER.speed * (this.combat.blocking ? PLAYER.blockSpeedMult : 1) * (drawing ? 0.55 : 1);
+      const spd = PLAYER.speed * (getSettings().tempo / 100) * (this.combat.blocking ? PLAYER.blockSpeedMult : 1) * (drawing ? 0.55 : 1);
       this.movePlayer((dx / l) * spd * dt, (dy / l) * spd * dt);
       if (!this.combat.blocking && !drawing) this.pdir = Math.atan2(dy, dx);
       this.pstepT += dt;
@@ -1253,6 +1278,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
     for (const e of this.enemies) {
       if (!e.sprite) continue;
+      // In der Krypta: ohne Sichtlinie kein Gegner sichtbar (Feedback-Runde 2)
+      const sichtbar = !this.hideWithoutLos() || e.hasLineOfSight(this);
+      e.sprite.setVisible(sichtbar);
+      e.versteckt = !sichtbar;
+      if (!sichtbar) continue;
       const wob = Math.sin(e.wobble) * 1.5;
       e.sprite.setPosition(e.x, e.y + wob).setDepth(e.y);
       this.provider.applyFigure(e.sprite, e.type, e.dir, e.step);
@@ -1286,6 +1316,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
     // Gegner-Zustandsringe und Lebensbalken
     for (const e of this.enemies) {
+      if (e.versteckt) continue;
       // Markierter Tod: rotes Mal über dem Gegner
       if (e.markedT > 0) {
         g.fillStyle(0xe04a3a, 0.9);
@@ -1293,6 +1324,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       }
     }
     for (const e of this.enemies) {
+      if (e.versteckt) continue;
       if (e.windup > 0) {
         g.lineStyle(2.5, 0xe14632, 0.35 + 0.5 * Math.abs(Math.sin(time * 26)));
         g.strokeCircle(e.x, e.y, e.r + 5);

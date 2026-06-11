@@ -64,7 +64,8 @@ export function rollGear(
   let bases: ReadonlyArray<readonly [string, number, Item['weaponClass'], Genus]> | typeof ARMORS = ARMORS;
   if (kind === 'weapon') {
     const r2 = rng.random();
-    bases = includeBows && r2 < 0.15 ? BOWS : includeBows && r2 < 0.27 ? STAVES : WEAPONS;
+    bases = includeBows && r2 < 0.15 ? BOWS : WEAPONS;
+    void STAVES; // Zauberstäbe auf Wunsch des Autors wieder aus den Drops
   }
   const maxIdx = Math.max(1, Math.min(Math.floor(depth * 1.2) + 1, bases.length - 1));
   const base = bases[ri(rng, Math.max(0, maxIdx - 2), maxIdx)];
@@ -109,7 +110,7 @@ export function itemStatLine(it: Item): string {
   const up = it.upgrade ? ` (+${it.upgrade})` : '';
   let s = it.kind === 'weapon' ? `${effectiveVal(it)} Schaden${up}` : `${effectiveVal(it)} Rüstung${up}`;
   for (const b of it.boni) s += ' · ' + b.t.replace('#', String(b.v));
-  if (it.sock) s += it.sock.gem ? ` · ◆ ${it.sock.gem.name}` : ' · ◇ Leere Fassung';
+  if (it.sock) s += it.sock.gem ? ` · ◆ ${it.sock.gem.name} (+${it.sock.gem.power} ${ { feuer: 'Feuer', eis: 'Eis', schatten: 'Schatten' }[it.sock.gem.elem] })` : ' · ◇ Leere Fassung';
   return s;
 }
 

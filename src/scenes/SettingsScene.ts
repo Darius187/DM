@@ -42,6 +42,7 @@ export class SettingsScene extends Phaser.Scene {
     y = this.slider(y, 'Lautstärke Atmosphäre', () => s.volAtmosphaere, (v) => { s.volAtmosphaere = v; });
     sect('GRAFIK & EFFEKTE');
     y = this.slider(y, 'Helligkeit', () => s.bright, (v) => { s.bright = v; }, 70, 140);
+    y = this.slider(y, 'Spieler-Tempo (Kampfgefühl)', () => s.tempo, (v) => { s.tempo = v; }, 70, 110);
     y = this.toggle(y, 'Bildschirmwackeln bei Treffern', () => s.shake, (v) => { s.shake = v; });
     y = this.toggle(y, 'Schadenszahlen', () => s.dmgNums, (v) => { s.dmgNums = v; });
     y = this.toggle(y, 'Blut & Überreste', () => s.blood, (v) => { s.blood = v; });

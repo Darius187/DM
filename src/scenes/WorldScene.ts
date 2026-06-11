@@ -103,26 +103,50 @@ export class WorldScene extends CombatScene {
   }
 
   create(params: WorldParams): void {
+    // Phaser nutzt beim Neustart DIESELBE Instanz wieder - alle Felder, die
+    // zerstörte Objekte halten könnten, müssen hier zurückgesetzt werden
+    // (sonst friert das Spiel nach Pause -> Hauptmenü -> Laden ein).
     this.areas.clear();
     this.flags = {};
     this.bossDead = false;
     this.relicChoice = null;
+    this.pauseMenu = null;
+    this.deathOverlay = null;
+    this.msgTexts = [];
+    this.decals = [];
+    this.warmPool = [];
+    this.fogGfx = null;
+    this.lightScratch = null;
+    this.seen.clear();
+    this.tileImages = [];
+    this.breakableEnts = [];
+    this.npcEnts = [];
+    this.animalEnts = [];
+    this.gefaellteBaeume.clear();
+    this.baumSchlaege.clear();
+    this.lager = [];
+    this.aufbauStufe = 0;
+    this.aufbauBestellt = false;
+    this.einrichtung = 0;
+    this.tag = 1;
+    this.tageszeit = 0.3;
+    this.feld = Array.from({ length: 9 }, () => ({ saatId: null, tageGewachsen: 0, gegossen: false }));
     this.rng = seededRng(this.areaSeed);
     this.setupCombat(0, 0);
     this.dialog = new DialogUI(this, this.provider);
     this.panels.getJournal = () => this.journalLines();
     this.shop = new ShopUI(this, this.provider, this.sfx, () => this.p);
     this.stash = new StashUI(this, this.sfx, () => this.p, () => this.lager);
-    this.worldGfx = this.add.graphics().setDepth(450);
-    this.minimapGfx = this.add.graphics().setScrollFactor(0).setDepth(820);
+    this.worldGfx = this.add.graphics().setDepth(2450);
+    this.minimapGfx = this.add.graphics().setScrollFactor(0).setDepth(4500);
     this.hud = new Hud(this, () => this.p, () => this.weaponClass());
-    this.hudText = this.add.text(0, 0, '', { fontFamily: 'serif', fontSize: '13px', color: '#bfa86f' }).setScrollFactor(0).setDepth(811);
+    this.hudText = this.add.text(0, 0, '', { fontFamily: 'serif', fontSize: '13px', color: '#bfa86f' }).setScrollFactor(0).setDepth(4610);
     this.areaText = this.add.text(this.scale.width / 2, 16, '', {
       fontFamily: 'serif', fontSize: '15px', color: '#bfa86f', letterSpacing: 2,
-    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(811);
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(4610);
     this.ensureLightTextures();
     this.lightRT = this.add.renderTexture(0, 0, this.scale.width, this.scale.height)
-      .setOrigin(0).setScrollFactor(0).setDepth(700);
+      .setOrigin(0).setScrollFactor(0).setDepth(4000);
     this.cameras.main.startFollow(this.playerSprite, true, 0.15, 0.15);
 
     // Dev-Werkzeug: ?ruestzeug=1 gibt Testausrüstung (nur Dev-Build)
@@ -229,6 +253,13 @@ export class WorldScene extends CombatScene {
           onShow: () => {
             this.flags.auftragErhalten = true;
             this.logMsg('Auftrag: Seht in Ravensmoor nach dem Rechten', 'gold');
+            // Der Landherr reitet davon (Feedback-Runde 2)
+            const lh = this.npcEnts.find((n) => n.id === 'landherr');
+            if (lh) {
+              lh.sprite.destroy();
+              lh.label.destroy();
+              this.npcEnts = this.npcEnts.filter((n) => n !== lh);
+            }
           },
         },
       ], 'landherr');
@@ -298,11 +329,13 @@ export class WorldScene extends CombatScene {
       if (sp.champion) {
         e.champion = true;
         e.name = sp.champion;
-        e.maxhp = Math.round(e.maxhp * 1.6);
+        e.maxhp = Math.round(e.maxhp * 2.6);
         e.hp = e.maxhp;
-        e.r = Math.round(e.r * 1.15);
-        e.xp = Math.round(e.xp * 1.6);
-        e.sprite?.setScale(1.45);
+        e.dmg = Math.round(e.dmg * 1.35);
+        e.speed *= 1.15;
+        e.r = Math.round(e.r * 1.2);
+        e.xp = Math.round(e.xp * 2.2);
+        e.sprite?.setScale(1.5);
       }
       // NG+ Endboss: der Schattenfürst statt des erlösten Tempelritters
       if (e.boss && this.flags.ngPlus) {
@@ -369,6 +402,10 @@ export class WorldScene extends CombatScene {
 
   protected override areaDepth(): number {
     return this.area?.depth ?? 1;
+  }
+
+  protected override hideWithoutLos(): boolean {
+    return this.area?.dark ?? false;
   }
 
   protected override stepSound(): string {
@@ -494,8 +531,34 @@ export class WorldScene extends CombatScene {
     }
     // Bücherregal
     for (const b of this.area.books) {
-      if (near(b.x, b.y + 20, 38)) {
+      if (near(b.x, b.y + 16, 52)) {
         return { text: `Bücher - ${ik} zum Stöbern`, action: () => this.readBook() };
+      }
+    }
+    // Käfige aufbrechen (Folterkammer)
+    {
+      const tx3 = Math.floor(this.px / TILE), ty3 = Math.floor(this.py / TILE);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        if (this.area.map[ty3 + dy]?.[tx3 + dx] === T.CAGE) {
+          const cx = tx3 + dx, cy = ty3 + dy;
+          return {
+            text: `Käfig - ${ik} zum Aufbrechen`,
+            action: () => {
+              this.area.map[cy][cx] = T.FLOOR;
+              this.refreshTile(cx, cy);
+              this.fx.burst(cx * TILE + 16, cy * TILE + 16, 0x55504a, 14, 150);
+              this.sfx.play('fass_bruch');
+              const r = Math.random();
+              if (r < 0.35) this.pickups.add({ kind: 'gold', amt: ri(this.rng, 8, 25), x: cx * TILE + 16, y: cy * TILE + 16, bob: 0 });
+              else if (r < 0.55) this.pickups.add({ kind: 'gear', item: rollGear(this.rng, this.area.depth), x: cx * TILE + 16, y: cy * TILE + 16, bob: 0 });
+              else if (r < 0.7) {
+                // etwas war noch am Leben...
+                this.spawnEnemy('pest', this.area.depth, cx * TILE + 16, cy * TILE + 16);
+                this.sfx.play('pest_stoehnen');
+              }
+            },
+          };
+        }
       }
     }
     // Erzader / Fels
@@ -592,6 +655,15 @@ export class WorldScene extends CombatScene {
 
   private readBook(): void {
     this.dialog.show('Bücherregal', [pick(this.rng, BUECHER)]);
+    // Stöbern lohnt sich gelegentlich (Feedback-Runde 2)
+    const r = Math.random();
+    if (r < 0.15) {
+      this.pickups.add({ kind: 'gold', amt: ri(this.rng, 4, 14), x: this.px + 10, y: this.py + 10, bob: 0 });
+      this.logMsg('Zwischen den Seiten: ein paar Münzen', 'gold');
+    } else if (r < 0.23) {
+      this.p.inv.push({ kind: 'scroll', name: 'Zauberrolle: Heiliges Licht', rarity: 1, val: 0, boni: [], scrollSkill: 'heiligesLicht' });
+      this.logMsg('Eine Zauberrolle lag im Regal!', 'magic');
+    }
   }
 
   private chopTree(b: { x: number; y: number }, key: string): void {
@@ -1242,7 +1314,7 @@ export class WorldScene extends CombatScene {
   private endGame(choice: 'annehmen' | 'zerstoeren'): void {
     this.relicChoice = choice;
     const ende = ENDEN[choice];
-    const c = this.add.container(0, 0).setScrollFactor(0).setDepth(1100);
+    const c = this.add.container(0, 0).setScrollFactor(0).setDepth(6000);
     const w = this.scale.width, h = this.scale.height;
     const bg = this.add.rectangle(0, 0, w, h, 0x000000, 0.92).setOrigin(0);
     bg.setInteractive();
@@ -1375,7 +1447,7 @@ export class WorldScene extends CombatScene {
       return;
     }
     const w = this.scale.width, h = this.scale.height;
-    const c = this.add.container(0, 0).setScrollFactor(0).setDepth(1100);
+    const c = this.add.container(0, 0).setScrollFactor(0).setDepth(6000);
     const bg = this.add.rectangle(0, 0, w, h, 0x000000, 0.78).setOrigin(0);
     bg.setInteractive();
     c.add(bg);
@@ -1438,7 +1510,7 @@ export class WorldScene extends CombatScene {
   protected onPlayerDeath(): void {
     const lost = Math.round(this.p.gold * DEATH.goldLossPct);
     this.p.gold -= lost;
-    const c = this.add.container(0, 0).setScrollFactor(0).setDepth(1100);
+    const c = this.add.container(0, 0).setScrollFactor(0).setDepth(6000);
     const w = this.scale.width, h = this.scale.height;
     const bg = this.add.rectangle(0, 0, w, h, 0x000000, 0.9).setOrigin(0);
     bg.setInteractive();
@@ -1486,7 +1558,7 @@ export class WorldScene extends CombatScene {
     const t = this.add.text(this.scale.width / 2, this.scale.height - 150, text, {
       fontFamily: 'serif', fontSize: '15px', color: colors[cls ?? ''] ?? '#cdbf9d',
       stroke: '#000000', strokeThickness: 3,
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(830);
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(4750);
     this.msgTexts.unshift(t);
     for (let i = 0; i < this.msgTexts.length; i++) this.msgTexts[i].setY(this.scale.height - 150 - i * 18);
     while (this.msgTexts.length > 3) this.msgTexts.pop()!.destroy();
@@ -1534,18 +1606,13 @@ export class WorldScene extends CombatScene {
 
   // Dorf/Wald: treibende Nebelschwaden + bleierner Himmel (Vignette)
   private renderFog(): void {
-    if (!this.fogGfx) this.fogGfx = this.add.graphics().setScrollFactor(0).setDepth(690);
+    if (!this.fogGfx) this.fogGfx = this.add.graphics().setScrollFactor(0).setDepth(4100);
     const g = this.fogGfx;
     g.clear();
     if (this.area.dark) return;
     const w = this.scale.width, h = this.scale.height;
     const time = this.time.now / 1000;
-    for (let i = 0; i < 5; i++) {
-      const fx = ((time * (11 + i * 3) + i * 430) % (w + 400)) - 200;
-      const fy = h * 0.18 + Math.sin(time * 0.3 + i * 2.1) * 70 + i * 90;
-      g.fillStyle(0xb4bec8, 0.06);
-      g.fillEllipse(fx, fy, 420, 240);
-    }
+    void time; // Nebelballen entfernt (Feedback-Runde 2: "weiße Wolken" störten)
     // bleierner Himmel: kräftige Vignette + kühler Grundton
     g.fillStyle(0x10141c, 0.16);
     g.fillRect(0, 0, w, h);
@@ -1610,7 +1677,7 @@ export class WorldScene extends CombatScene {
 
   private placeWarm(idx: number, x: number, y: number, radius: number, alpha: number): number {
     while (this.warmPool.length <= idx) {
-      const img = this.add.image(0, 0, 'warmblob').setBlendMode(Phaser.BlendModes.ADD).setDepth(710);
+      const img = this.add.image(0, 0, 'warmblob').setBlendMode(Phaser.BlendModes.ADD).setDepth(4010);
       this.warmPool.push(img);
     }
     const img = this.warmPool[idx];
@@ -1710,7 +1777,14 @@ export class WorldScene extends CombatScene {
     for (let ty = pty - R; ty <= pty + R; ty++) {
       for (let tx = ptx - R; tx <= ptx + R; tx++) {
         if (tx >= 0 && ty >= 0 && tx < this.area.w && ty < this.area.h && (tx - ptx) ** 2 + (ty - pty) ** 2 <= R * R) {
-          seen[ty][tx] = true;
+          // nur aufdecken, was wirklich einsehbar ist (keine Räume hinter Wänden)
+          const steps = 6;
+          let frei = true;
+          for (let i = 1; i < steps; i++) {
+            const t = i / steps;
+            if (this.isSolidAt(this.px + (tx * TILE + 16 - this.px) * t, this.py + (ty * TILE + 16 - this.py) * t)) { frei = false; break; }
+          }
+          if (frei) seen[ty][tx] = true;
         }
       }
     }

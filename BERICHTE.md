@@ -417,3 +417,29 @@ Bewusst offen (siehe TODO.md): verschiebbare Fenster, Buch-Pergament,
 freie Maustasten-Belegung, Rollen-Schnellslot. Die Figurengrafik bleibt
 Fallback-Qualität, bis die itch.io-Pakete in assets/packs/ liegen - genau
 dafür steht die Phase-11-Pipeline bereit.
+
+## Feedback-Runde 2 - umgesetzt
+- BUG: Einfrieren nach Pause->Hauptmenü->Laden behoben (Phaser nutzt die
+  Szenen-Instanz wieder; alle Felder werden jetzt sauber zurückgesetzt).
+  Im Browser verifiziert: nach genau diesem Pfad ist das Spiel beweglich.
+- BUG: UI hinter Gebäuden/Dächern - komplette Tiefen-Bänder eingeführt
+  (Welt < Effekte < Licht < HUD < Fenster). Dialoge, Orbs, Tooltips liegen
+  jetzt immer oben.
+- Weiße Nebelballen entfernt (Tönung+Vignette bleiben).
+- Minimap deckt nur noch Einsehbares auf (Sichtlinien-Prüfung); in der
+  Krypta sind Gegner ohne Sichtlinie unsichtbar (kein Wallhack mehr).
+- Inventar: Angelegtes nur noch links im Charakter (Slot-Klick legt ab),
+  Filter-Reiter (Alle/Waffen/Rüstung/Ringe/Sonstiges), beste Items oben
+  (Seltenheit, dann Wert). Sockel zeigen Bonus ("◆ Schattenperle (+5
+  Schatten)"), Steine sind austauschbar (alter kommt zurück).
+- Schild: blockt gewöhnliche Gegner KOMPLETT, Elite/Champion/Boss drücken
+  30% durch; gedeckter Schlag aus dem Block bestand schon.
+- Spieler-Tempo-Regler in den Einstellungen (70-110%, Standard 90) - dein
+  Sweetspot-Regler.
+- KI: Gegner weichen bei Treffern zurück (flinke Typen 70%), Champions
+  deutlich stärker (x2,6 Leben, +35% Schaden, schneller).
+- Schriftrolle per Taste 7 (erste im Gepäck), Cooldown-SEKUNDEN auf den
+  Leisten-Slots, Käfige aufbrechbar (Beute oder böse Überraschung),
+  Bücherregale mit größerer Reichweite + Fundchance (Münzen/Rolle),
+  Zauberstäbe wieder aus den Drops, Landherr reitet nach dem Auftrag davon.
+- Spielerportrait: Bild als assets/portraits/spieler.png ablegen (Hot-Swap).

@@ -15,6 +15,7 @@ interface SlotDef {
   desc: () => string;
   kosten: () => string;
   cdFrac: () => number;     // 0..1 Restanteil der Abklingzeit
+  cdSek: () => number;      // Restsekunden
   locked: () => string | null; // Grund, falls gesperrt
 }
 
@@ -40,20 +41,20 @@ export class Hud {
     private getWeaponClass: () => WeaponClass,
   ) {
     this.ensureOrbTextures();
-    this.gfx = scene.add.graphics().setScrollFactor(0).setDepth(805);
+    this.gfx = scene.add.graphics().setScrollFactor(0).setDepth(4600);
     const h = scene.scale.height;
-    this.hpImg = scene.add.image(28 + ORB_R, h - 24 - ORB_R, 'orb_rot').setScrollFactor(0).setDepth(806);
-    this.mpImg = scene.add.image(scene.scale.width - 28 - ORB_R, h - 24 - ORB_R, 'orb_blau').setScrollFactor(0).setDepth(806);
+    this.hpImg = scene.add.image(28 + ORB_R, h - 24 - ORB_R, 'orb_rot').setScrollFactor(0).setDepth(4601);
+    this.mpImg = scene.add.image(scene.scale.width - 28 - ORB_R, h - 24 - ORB_R, 'orb_blau').setScrollFactor(0).setDepth(4601);
     const txt = (size: string, col = '#f3e6c8') => scene.add.text(0, 0, '', {
       fontFamily: 'serif', fontSize: size, color: col, stroke: '#000000', strokeThickness: 3,
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(808);
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(4603);
     this.hpText = txt('15px');
     this.mpText = txt('15px');
     this.potText = txt('12px', '#cdbf9d');
     this.mpotText = txt('12px', '#cdbf9d');
     this.infoText = scene.add.text(0, 0, '', {
       fontFamily: 'serif', fontSize: '12px', color: '#bfa86f', letterSpacing: 1,
-    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(808);
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(4603);
 
     // Leistenbelegung: 1-3 Zauber, 4-6 Zauberei-Fähigkeiten, R/T Waffe
     const p = this.getP;
@@ -64,6 +65,7 @@ export class Hud {
       desc: () => desc,
       kosten: () => `${SPELLS[i].mana} Mana`,
       cdFrac: () => (p().spellCds[i] > 0 ? p().spellCds[i] / SPELLS[i].cd : 0),
+      cdSek: () => p().spellCds[i],
       locked: () => (p().level < SPELLS[i].unlock ? `ab Spieler-Stufe ${SPELLS[i].unlock}` : null),
     });
     const abilitySlot = (key: string, id: () => string, ico: () => string): SlotDef => ({
@@ -80,6 +82,7 @@ export class Hud {
         const cd = p().abilityCds[id()] ?? 0;
         return fx && cd > 0 ? cd / fx.cd : 0;
       },
+      cdSek: () => p().abilityCds[id()] ?? 0,
       locked: () => {
         const def = ABILITIES.find((a) => a.id === id());
         if (!def) return null;
@@ -136,7 +139,7 @@ export class Hud {
       const x = this.slotX(i);
       const ico = this.scene.add.text(x, h - 66, '', {
         fontFamily: 'serif', fontSize: '19px', color: '#d8cfb8',
-      }).setOrigin(0.5).setScrollFactor(0).setDepth(807);
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(4602);
       this.slotTexts.push(ico);
       const zone = this.scene.add.zone(x, h - 66, 42, 42).setOrigin(0.5).setScrollFactor(0).setInteractive();
       zone.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showSlotTooltip(s, ptr));
@@ -154,7 +157,7 @@ export class Hud {
     ];
     const lock = s.locked();
     if (lock) lines.push([`Gesperrt - ${lock}`, '#d96b5a']);
-    const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(960);
+    const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(5250);
     let ty = 8;
     const texts: Phaser.GameObjects.Text[] = [];
     for (const [t2, col] of lines) {
@@ -213,7 +216,10 @@ export class Hud {
         g.fillStyle(0x000000, 0.72);
         g.fillRect(x - 21, y - 21 + 42 * (1 - cd), 42, 42 * cd);
       }
-      this.slotTexts[i].setText(`${s.ico()}`).setAlpha(locked ? 0.3 : 1).setPosition(x, y);
+      const cdS = s.cdSek();
+      this.slotTexts[i].setText(cdS > 0.5 ? String(Math.ceil(cdS)) : `${s.ico()}`)
+        .setColor(cdS > 0.5 ? '#e0b53a' : '#d8cfb8')
+        .setAlpha(locked ? 0.3 : 1).setPosition(x, y);
       // Tastenkürzel klein oben links
       g.fillStyle(0x000000, 0);
     }

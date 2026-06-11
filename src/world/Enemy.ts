@@ -111,6 +111,17 @@ export class Enemy {
   private orbitDir = Math.random() < 0.5 ? 1 : -1;
   private retreatT = 0;
   champion = false;
+  versteckt = false;
+
+  // bei Treffern zurückweichen (Feedback-Runde 2)
+  onHurt(): void {
+    if (this.boss) return;
+    const flink = this.type === 'skelett' || this.type === 'wolf' || this.type === 'schatten';
+    if (Math.random() < (flink ? 0.7 : 0.35)) {
+      this.retreatT = 0.3 + Math.random() * 0.2;
+      this.orbitDir = Math.random() < 0.5 ? 1 : -1;
+    }
+  }
 
   // Boss-Zustand
   private slamCd: number = BOSS.slamCd;

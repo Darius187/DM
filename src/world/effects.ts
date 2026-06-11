@@ -17,7 +17,7 @@ export class EffectSystem {
   private lightnings: Lightning[] = [];
   private gfx: Phaser.GameObjects.Graphics;
 
-  constructor(private scene: Phaser.Scene, depth = 500) {
+  constructor(private scene: Phaser.Scene, depth = 2500) {
     this.gfx = scene.add.graphics().setDepth(depth);
   }
 
@@ -61,7 +61,7 @@ export class EffectSystem {
     if (!getSettings().dmgNums && /^[0-9-]/.test(txt)) return;
     const obj = this.scene.add.text(x, y, txt, {
       fontFamily: 'serif', fontSize: '15px', color: col, stroke: '#000000', strokeThickness: 3, fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(600);
+    }).setOrigin(0.5).setDepth(2700);
     this.floats.push({ obj, life: 0.75 });
     if (this.floats.length > 40) {
       this.floats[0].obj.destroy();
