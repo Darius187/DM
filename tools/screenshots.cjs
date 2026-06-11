@@ -4,7 +4,7 @@
 const { chromium } = require('playwright');
 
 const CHROME = process.argv[2] || '/tmp/chrome-linux64/chrome';
-const BASIS = 'http://localhost:5173';
+const BASIS = 'http://localhost:5190';
 const GEBIETE = ['wald', 'haus', 'gruft'];
 
 (async () => {

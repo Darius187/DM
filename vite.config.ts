@@ -6,7 +6,9 @@ export default defineConfig({
   publicDir: 'assets',
   server: {
     host: true,
-    port: 5173,
+    // Fester eigener Port, damit parallel laufende andere Projekte
+    // (ueblicherweise 5173) nicht in die Quere kommen.
+    port: 5190,
     strictPort: true,
   },
 });

@@ -23,7 +23,7 @@ const CHROME = process.argv[2] || '/tmp/chrome-linux64/chrome';
         .join(' | ');
     });
 
-  await page.goto('http://localhost:5173/?szene=haus', { waitUntil: 'networkidle' });
+  await page.goto('http://localhost:5190/?szene=haus', { waitUntil: 'networkidle' });
   await page.waitForTimeout(2000);
   console.log('aktive Szene:', await szene());
 

@@ -51,7 +51,7 @@ over into the real game. Before/after screenshots live in `BILDER/`.
 
 ```bash
 npm install
-npm run dev          # Vite dev server on http://localhost:5173
+npm run dev          # Vite dev server on http://localhost:5190
 ```
 
 Useful URL parameters (combinable, shown in the UI when active):
