@@ -579,9 +579,11 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
 
   // 6a. Bauernhof 1 (Nordwesten): Schweine + Hühner im Gatter, Acker
   carve(map, 14, 8, 22, 13, T.HWALL);
-  carve(map, 17, 14, 18, 15, T.PATH);
-  carve(map, 17, 15, 18, 30, T.PATH);
-  map[28][17] = T.HDOOR; // der Hofpfad läuft an der Taverne vorbei - Tür bleibt Tür
+  carve(map, 17, 14, 18, 18, T.PATH);
+  // Der Hofpfad führt ÖSTLICH an der Taverne vorbei zur Salzstraße
+  // (Runde 12: vorher schnitt er mitten durchs Gebäude)
+  carve(map, 17, 18, 24, 19, T.PATH);
+  carve(map, 24, 19, 24, 30, T.PATH);
   label(18, 7.2, 'Bauernhof');
   for (let x = 14; x <= 22; x++) { map[17][x] = T.FENCE; map[21][x] = T.FENCE; }
   for (let y = 17; y <= 21; y++) { map[y][14] = T.FENCE; map[y][22] = T.FENCE; }
@@ -854,29 +856,62 @@ export function buildForest(rng: Rng): AreaData {
     npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
   };
 
-  // Gewundener Pfad nach Osten
+  // Natürlicher Trampelpfad nach Osten (Runde 12): mäandert in weichen
+  // Bögen, mal schmal, mal breiter, der Grassaum atmet mit
   let py = 13;
+  const pfadY: number[] = [];
+  let breit = false;
   for (let x = 2; x < w - 1; x++) {
-    carve(map, x, py - 1, x, py + 1, T.GRASS);
+    const saum = 1 + Math.round(1 + Math.sin(x * 0.31 + 1.2) + rng.random());
+    carve(map, x, py - saum, x, py + saum, T.GRASS);
     map[py][x] = T.PATH;
-    if (x % 5 === 0) py += ri(rng, -1, 1);
+    if (breit && py + 1 < h - 2) map[py + 1][x] = T.PATH;
+    pfadY[x] = py;
+    // weiche Mäander: alle 2-3 Schritte leicht versetzen, dazu eine
+    // langsame Welle, damit der Pfad in Bögen statt Zacken läuft
+    if (x % 2 === 0) py += ri(rng, -1, 1);
+    py += Math.round(Math.sin(x * 0.17) * 0.6);
     py = Math.max(4, Math.min(h - 5, py));
+    if (rng.random() < 0.08) breit = !breit;
   }
-  // Startplatz und Lichtung in der Mitte
+  // Startplatz und Lichtung mit Schrein
   carve(map, 2, 10, 8, 16, T.GRASS);
   carve(map, 3, 12, 7, 14, T.PATH);
   const cx = 38;
-  carve(map, cx - 4, 6, cx + 4, 14, T.GRASS);
-  map[8][cx] = T.SHRINE;
-  a.shrines.push({ x: cx * TILE + 16, y: 8 * TILE + 16 });
-  a.labels.push({ x: cx * TILE, y: 5.2 * TILE, t: 'Lichtung' });
+  const lyMitte = pfadY[cx] ?? 10;
+  carve(map, cx - 4, Math.max(2, lyMitte - 5), cx + 4, lyMitte + 3, T.GRASS);
+  map[Math.max(3, lyMitte - 3)][cx] = T.SHRINE;
+  a.shrines.push({ x: cx * TILE + 16, y: (Math.max(3, lyMitte - 3)) * TILE + 16 });
+  a.labels.push({ x: cx * TILE, y: (Math.max(3, lyMitte - 3)) * TILE, t: 'Lichtung' });
+
+  // Zwei kleine Nebenlichtungen abseits des Pfads (Kräuter, Felsen)
+  for (const lx of [16, 56]) {
+    const ly = pfadY[lx] ?? 13;
+    const oben = rng.random() < 0.5;
+    const vy = oben ? Math.max(3, ly - 5) : Math.min(h - 4, ly + 5);
+    carve(map, lx - 2, vy - 2, lx + 2, vy + 2, T.GRASS);
+    // schmaler Stich vom Pfad zur Lichtung
+    for (let yy = Math.min(ly, vy); yy <= Math.max(ly, vy); yy++) {
+      if (map[yy]?.[lx] === T.TREE) map[yy][lx] = T.GRASS;
+    }
+    if (map[vy]?.[lx - 1] === T.GRASS) {
+      map[vy][lx - 1] = T.ROCK;
+      a.rocks.push({ x: (lx - 1) * TILE + 16, y: vy * TILE + 16 });
+    }
+    a.kraeuter.push({ x: lx * TILE + 16, y: vy * TILE + 16 });
+  }
+  // Graspolster im Dickicht: der Wald wirkt gewachsen statt gestanzt
+  for (let i = 0; i < 16; i++) {
+    const gx = ri(rng, 3, w - 4), gy = ri(rng, 3, h - 4);
+    if (map[gy][gx] === T.TREE && rng.random() < 0.8) map[gy][gx] = T.GRASS;
+  }
 
   // Landherr wartet am Westrand (Intro-Szene)
   a.npcs.push({ id: 'landherr', name: 'Der Landherr', x: 5 * TILE, y: 11.5 * TILE });
 
-  // Wolf-Begegnung als erster Kampf (vor der Lichtung)
-  a.enemySpawns.push({ type: 'wolf', x: 24 * TILE, y: 12 * TILE, elite: false });
-  a.enemySpawns.push({ type: 'wolf', x: 52 * TILE, y: 13 * TILE, elite: false });
+  // Wolf-Begegnungen lauern AM Pfad (folgen seinem Verlauf)
+  a.enemySpawns.push({ type: 'wolf', x: 24 * TILE, y: (pfadY[24] ?? 12) * TILE, elite: false });
+  a.enemySpawns.push({ type: 'wolf', x: 52 * TILE, y: (pfadY[52] ?? 13) * TILE, elite: false });
 
   // Umgestürzter Baum versperrt den Pfad (Holzhack-Tutorial)
   const bx = 30;

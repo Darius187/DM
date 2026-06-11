@@ -91,9 +91,43 @@ export class SoundProvider {
     // Kein Synth-Loop: Dauer-Piepen wäre schlimmer als Stille
   }
 
+  stopLoop(name: string): void {
+    const snd = this.loops.get(name);
+    if (snd) {
+      snd.stop();
+      this.loops.delete(name);
+    }
+  }
+
   stopLoops(): void {
     for (const snd of this.loops.values()) snd.stop();
     this.loops.clear();
+  }
+
+  // --- Musik-Kanal (Runde 12): genau ein Stück gleichzeitig -------------------
+  private musik: Phaser.Sound.BaseSound | null = null;
+  private musikName = '';
+
+  playMusic(name: string, opts: { loop?: boolean; onComplete?: () => void } = {}): void {
+    if (this.musikName === name && this.musik?.isPlaying) return;
+    this.stopMusic();
+    if (!this.scene.cache.audio.exists(`snd_${name}`)) return;
+    const s = getSettings();
+    this.musik = this.scene.sound.add(`snd_${name}`, { loop: opts.loop ?? false, volume: s.volAtmosphaere / 100 });
+    this.musikName = name;
+    if (opts.onComplete) this.musik.once('complete', opts.onComplete);
+    this.musik.play();
+  }
+
+  stopMusic(): void {
+    this.musik?.stop();
+    this.musik?.destroy();
+    this.musik = null;
+    this.musikName = '';
+  }
+
+  aktuelleMusik(): string {
+    return this.musik?.isPlaying ? this.musikName : '';
   }
 
   private beep(st: SynthStep, vol: number): void {

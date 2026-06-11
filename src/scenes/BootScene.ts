@@ -32,6 +32,7 @@ export class BootScene extends Phaser.Scene {
     for (const name of SOUNDS) {
       c.push({ key: `snd_${name}`, url: `sounds/${name}.ogg`, art: 'audio' });
       c.push({ key: `snd_${name}`, url: `sounds/${name}.wav`, art: 'audio', optional: true });
+      c.push({ key: `snd_${name}`, url: `sounds/${name}.mp3`, art: 'audio', optional: true });
     }
     for (const name of SPRITE_NAMES) {
       c.push({ key: `as_${name}`, url: `sprites/${name}.png`, art: 'atlas', atlasJson: `sprites/${name}.json`, optional: true });

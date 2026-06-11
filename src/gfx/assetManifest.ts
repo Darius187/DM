@@ -34,6 +34,10 @@ export const SOUNDS = [
   'dorf_wind', 'krypta_droehnen', 'wald_nacht',
   // UI
   'klick', 'item_episch', 'levelup', 'fertigkeit_neu',
+  // Musik und große Stimmungs-Sounds (Runde 12, .mp3 vom Autor)
+  'musik_intro', 'musik_einfall', 'musik_boss', 'herzschlag',
+  'krypta_betreten', 'krypta_grusel1', 'krypta_grusel2', 'krypta_grusel3',
+  'krypta_grusel4', 'krypta_grusel5', 'regen',
 ] as const;
 
 // Figuren-Spritesheets: <name>_<richtung>_<frame>.png oder <name>.png + <name>.json

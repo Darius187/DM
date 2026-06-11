@@ -65,6 +65,16 @@ export const TOD = {
   erwachen: 'Ein fahles Licht hebt dich aus der Finsternis - zwischen den Gräbern schlägst du die Augen auf. Du bist nicht allein.',
 } as const;
 
+// Intro-Film (Runde 12): Zeilen erscheinen nacheinander, während der
+// Held durch den Dunkelwald nach Osten läuft - wie ein Vorspann.
+export const INTRO_FILM: ReadonlyArray<string> = [
+  'Anno Domini 1635. Der Krieg frisst dieses Land seit siebzehn Jahren.',
+  'Die Pest nahm, was die Söldner übrig ließen. Ganze Dörfer schweigen für immer.',
+  'Doch aus Ravensmoor flüstern die Boten Ärgeres: Die Toten unter der Kirche... ruhen nicht mehr.',
+  'Der Landherr schickt dich. Sieh nach dem Rechten. Finde die Quelle des Übels.',
+  'Der Dunkelwald kennt den Weg. Folge dem Pfad nach Osten.',
+];
+
 // Boss-Rufe (Referenz)
 export const BOSS_TEXTE = {
   beschwoerung: 'Erhebt euch! Dient mir erneut!',

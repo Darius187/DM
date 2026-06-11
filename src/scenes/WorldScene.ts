@@ -22,7 +22,7 @@ import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, tileNameAt } from '../world/tiles';
 import { TILE } from '../gfx/fallbackArt';
 import { DialogUI, fixUiScroll } from '../ui/dialog';
-import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, RELIKT, ENDEN, TOD } from '../data/texte';
+import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, RELIKT, ENDEN, TOD, INTRO_FILM } from '../data/texte';
 import { ALTAR, BLOOD_WELL, CHEST, RELIC_ACCEPT_ELIXIRS } from '../data/balancing';
 import { BREAKABLES, BREAKABLE_LOOT, BEINHAUS, CHEST_VERFLUCHT } from '../data/krypta';
 import { DEATH, SHRINE } from '../data/kampf';
@@ -123,6 +123,10 @@ export class WorldScene extends CombatScene {
     this.pauseMenu = null;
     this.deathOverlay = null;
     this.msgTexts = [];
+    this.ortsText = null;
+    this.regenGfx = null;
+    this.regenTropfen = [];
+    this.regnet = false;
     this.decals = [];
     this.warmPool = [];
     this.fogGfx = null;
@@ -201,10 +205,108 @@ export class WorldScene extends CombatScene {
     if (import.meta.env.DEV && new URLSearchParams(location.search).get('relikt')) {
       this.pickups.add({ kind: 'relic', x: this.px + 30, y: this.py, bob: 0 });
     }
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.sfx.stopLoops());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.sfx.stopLoops();
+      this.sfx.stopMusic();
+    });
     // Dev-Werkzeug: Szene für automatisierte Browser-Tests erreichbar machen
     if (import.meta.env.DEV) {
       (window as unknown as { __welt?: WorldScene }).__welt = this;
+    }
+  }
+
+  // --- Intro-Film (Runde 12) -------------------------------------------------
+
+  private startIntroFilm(): void {
+    this.sfx.playMusic('musik_intro');
+    const w = this.scale.width, h = this.scale.height;
+    // Titel groß, Ein- und Ausblenden wie im Film
+    const titel = this.add.text(w / 2, h * 0.3, 'RAVENSMOOR', {
+      fontFamily: 'serif', fontSize: '72px', color: '#d8cfb8', letterSpacing: 10,
+      stroke: '#000000', strokeThickness: 8,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(5900).setAlpha(0);
+    const unter = this.add.text(w / 2, h * 0.3 + 58, 'DER PREIS DER UNSTERBLICHKEIT', {
+      fontFamily: 'serif', fontSize: '20px', color: '#c9a227', letterSpacing: 6,
+      stroke: '#000000', strokeThickness: 4,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(5900).setAlpha(0);
+    this.tweens.add({ targets: [titel, unter], alpha: 1, duration: 1800, ease: 'Sine.Out' });
+    this.tweens.add({
+      targets: [titel, unter], alpha: 0, duration: 1600, delay: 5200, ease: 'Sine.In',
+      onComplete: () => { titel.destroy(); unter.destroy(); },
+    });
+    // Geschichte zeilenweise, während man läuft
+    INTRO_FILM.forEach((zeile, i) => {
+      this.time.delayedCall(7500 + i * 8000, () => {
+        const t = this.add.text(w / 2, h - 170, zeile, {
+          fontFamily: 'serif', fontSize: '19px', color: '#e0d4b4', fontStyle: 'italic',
+          stroke: '#000000', strokeThickness: 5, align: 'center',
+          wordWrap: { width: Math.min(720, w - 60) },
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(5900).setAlpha(0);
+        this.tweens.add({ targets: t, alpha: 1, duration: 900 });
+        this.tweens.add({ targets: t, alpha: 0, duration: 900, delay: 6200, onComplete: () => t.destroy() });
+        if (i === INTRO_FILM.length - 1) {
+          this.flags.auftragErhalten = true;
+          this.logMsg('Auftrag: Seht in Ravensmoor nach dem Rechten', 'gold');
+        }
+      });
+    });
+  }
+
+  // --- Wetter und Stimmung (Runde 12) -----------------------------------------
+
+  private ortsText: Phaser.GameObjects.Text | null = null;
+
+  // Zeigt den Namen des nächsten Ortes (Marktplatz, Friedhof ...) als
+  // Einblendung unter dem Gebietsnamen, solange man dort steht
+  private renderOrtsname(): void {
+    if (!this.ortsText) {
+      this.ortsText = this.add.text(this.scale.width / 2, 40, '', {
+        fontFamily: 'serif', fontSize: '13px', color: '#c9a227', letterSpacing: 2, fontStyle: 'italic',
+        stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(4610);
+    }
+    let nah: string | null = null;
+    let bestD = 150;
+    for (const l of this.area.labels) {
+      const d = Math.hypot(l.x - this.px, l.y - this.py);
+      if (d < bestD) { bestD = d; nah = l.t; }
+    }
+    this.ortsText.setText(nah ?? '');
+  }
+
+  private regnet = false;
+  private regenTropfen: Array<{ x: number; y: number; spd: number }> = [];
+  private regenGfx: Phaser.GameObjects.Graphics | null = null;
+  private gruselT = 10;
+
+  private wuerfleWetter(): void {
+    this.regnet = Math.random() < 0.35;
+    if (this.regnet) this.logMsg('Regen zieht über das Land.', '');
+  }
+
+  private renderRegen(dt: number): void {
+    if (!this.regenGfx) {
+      this.regenGfx = this.add.graphics().setScrollFactor(0).setDepth(2680);
+    }
+    const g = this.regenGfx;
+    g.clear();
+    const draussen = !this.area.dark && !this.area.innen;
+    if (!this.regnet || !draussen) return;
+    const w = this.scale.width, h = this.scale.height;
+    if (!this.regenTropfen.length) {
+      for (let i = 0; i < 110; i++) {
+        this.regenTropfen.push({ x: Math.random() * w, y: Math.random() * h, spd: 520 + Math.random() * 240 });
+      }
+    }
+    // leichte Verdunkelung + fallende Streifen
+    g.fillStyle(0x10141c, 0.12);
+    g.fillRect(0, 0, w, h);
+    g.lineStyle(1, 0x9ab4cc, 0.32);
+    for (const t of this.regenTropfen) {
+      t.y += t.spd * dt;
+      t.x -= 60 * dt;
+      if (t.y > h) { t.y = -12; t.x = Math.random() * (w + 80); }
+      g.lineBetween(t.x, t.y, t.x - 2.5, t.y + 11);
     }
   }
 
@@ -251,6 +353,16 @@ export class WorldScene extends CombatScene {
     else if (a.innen) this.sfx.startLoop('feuer_knistern');
     else if (a.id === 'village') this.sfx.startLoop('dorf_wind');
     else this.sfx.startLoop('wald_nacht');
+    // Musik-Regeln (Runde 12): Bossraum hat sein Stück, Katakomben-Grusel
+    // endet beim Aufstieg - die Intro-Musik überlebt Gebietswechsel
+    if (id === 'boss') {
+      this.sfx.playMusic('musik_boss', { loop: true });
+    } else if (this.sfx.aktuelleMusik() === 'musik_boss' || this.sfx.aktuelleMusik().startsWith('krypta_grusel')) {
+      if (!a.dark) this.sfx.stopMusic();
+    }
+    if (id === 'crypt1' && !a.dark) { /* nie - nur für die Lesbarkeit */ }
+    if (id === 'crypt1') this.sfx.play('krypta_betreten');
+    this.gruselT = 6 + Math.random() * 8;
     // Kleine Stuben mittig im Bild statt oben links in der Ecke
     const mapW = a.w * TILE, mapH = a.h * TILE;
     const bx = Math.min(0, -(this.scale.width - mapW) / 2);
@@ -266,10 +378,11 @@ export class WorldScene extends CombatScene {
       this.flags.nBoss = true;
       this.dialog.show(ERZAEHLER.name, [...ERZAEHLER.boss]);
     }
-    // Intro: Auftrag des Landherrn (Masterprompt 7.1/Teil 8)
+    // Intro: filmischer Vorspann mit Musik statt Dialog (Runde 12) -
+    // der Held läuft, die Geschichte blendet zeilenweise ein
     if (id === 'wald' && !this.flags.intro) {
       this.flags.intro = true;
-      this.talkLandherr();
+      this.startIntroFilm();
     }
     // Autosave bei Gebietswechsel (Referenz-Verhalten)
     this.autosave();
@@ -409,7 +522,7 @@ export class WorldScene extends CombatScene {
       this.provider.applyFigure(sprite, n.figur ?? n.id, 0, 0);
       const lbl = this.add.text(n.x, n.y - 22, n.name, {
         fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8e6', stroke: '#000000', strokeThickness: 2,
-      }).setOrigin(0.5).setDepth(600);
+      }).setOrigin(0.5).setDepth(2300);
       this.npcEnts.push({ ...n, sprite, label: lbl, curX: n.x, curY: n.y });
     }
     // Tiere
@@ -434,12 +547,8 @@ export class WorldScene extends CombatScene {
       const [gebiet, sx, sy] = key.split('_');
       if (gebiet === a.id) this.addStumpf(parseInt(sx, 10), parseInt(sy, 10));
     }
-    // Ortsnamen
-    for (const l of a.labels) {
-      this.tileImages.push(this.add.text(l.x, l.y, l.t, {
-        fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8d9',
-      }).setOrigin(0.5).setDepth(620) as unknown as Phaser.GameObjects.Image);
-    }
+    // Ortsnamen erscheinen als Einblendung, wenn man in die Nähe kommt
+    // (Runde 12: nicht mehr halb versteckt in der Welt)
   }
 
   // Baumstumpf an einer gefällten Position (bis der Baum nachwächst)
@@ -728,6 +837,7 @@ export class WorldScene extends CombatScene {
       const e = this.spawnEnemy(pick(this.rng, typen), EINFALL.tiefe, p0.x * TILE + (Math.random() - 0.5) * 40, p0.y * TILE + (Math.random() - 0.5) * 40, this.rng.random() < 0.15);
       e.aggro = 5000; // sie suchen den Verteidiger, egal wie weit
     }
+    this.sfx.playMusic('musik_einfall');
     this.logMsg(this.stadtmauerStufe >= 1
       ? 'EINFALL! Ein Trupp drängt durch die Tore der Salzstraße!'
       : 'EINFALL! Monster brechen aus dem Dunkelwald über Ravensmoor herein!', 'bad');
@@ -1482,6 +1592,7 @@ export class WorldScene extends CombatScene {
     this.p.flaskCount = this.p.flaskMax;
     this.tag++;
     this.tageszeit = 0.25;
+    this.wuerfleWetter();
     for (const [key, tagGefaellt] of this.gefaellteBaeume) {
       if (this.tag - tagGefaellt >= GATHER.baumRespawnTage) this.gefaellteBaeume.delete(key);
     }
@@ -1799,6 +1910,7 @@ export class WorldScene extends CombatScene {
       this.p.materials.holz += 2;
       this.logMsg(`Ravensmoor ist verteidigt! Die Dörfler sammeln ${gold} Gold und 2 Holz für dich.`, 'gold');
       this.sfx.play('muenzen');
+      if (this.sfx.aktuelleMusik() === 'musik_einfall') this.sfx.stopMusic();
     }
   }
 
@@ -2396,6 +2508,7 @@ export class WorldScene extends CombatScene {
       this.tageszeit = 0;
       this.tag++;
       this.logMsg(`Tag ${this.tag} bricht an.`, '');
+      this.wuerfleWetter();
     }
     const abend = this.tageszeit > TAG.abendAb;
     // Einfall: nach dem Boss-Sieg greifen abends Monster-Trupps das Dorf an
@@ -2490,6 +2603,19 @@ export class WorldScene extends CombatScene {
     if (!this.area) return;
     const dt = Math.min(0.05, delta / 1000);
     this.updateCombat(dt);
+    this.renderRegen(dt);
+    this.renderOrtsname();
+    // Herzschlag bei niedrigem Leben (Runde 12)
+    if (!this.playerDead && this.p.hp < this.p.stats.maxhp * 0.3) this.sfx.startLoop('herzschlag');
+    else this.sfx.stopLoop('herzschlag');
+    // Katakomben: zufällige Grusel-Stücke, solange nichts anderes spielt
+    if (this.area.dark && this.area.id !== 'boss' && !this.sfx.aktuelleMusik()) {
+      this.gruselT -= dt;
+      if (this.gruselT <= 0) {
+        this.gruselT = 14 + Math.random() * 18;
+        this.sfx.playMusic(`krypta_grusel${1 + Math.floor(Math.random() * 5)}`);
+      }
+    }
     if (!this.playerDead && !this.uiBlocked()) {
       this.checkTriggers();
       this.checkBeinhaus();
