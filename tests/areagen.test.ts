@@ -84,6 +84,22 @@ describe('Krypta-Generator: jeder Spezialraum erreichbar', () => {
     expect(buildBoss(seededRng(1), true).enemySpawns.length).toBe(0);
   });
 
+  it('Endlose Tiefe: Ebene 8 begehbar, Abstieg im Bossraum nach dem Sieg', () => {
+    for (let seed = 1; seed <= 10; seed++) {
+      const a = buildCrypt(8, seededRng(seed * 31));
+      expect(a.depth).toBe(8);
+      expect(a.name).toContain('Tiefe 8');
+      const sx = Math.floor(a.spawn.x / 32), sy = Math.floor(a.spawn.y / 32);
+      const seen = reachable(a, sx, sy);
+      expect(targetReachable(seen, Math.floor(a.downPos!.x / 32), Math.floor(a.downPos!.y / 32)),
+        `Seed ${seed}: Abstieg unerreichbar`).toBe(true);
+    }
+    // Nach dem Boss-Sieg öffnet sich der Abstieg in die Endlose Tiefe
+    const b = buildBoss(seededRng(1), true);
+    expect(b.map[3][16]).toBe(T.STAIR);
+    expect(b.downPos).toBeTruthy();
+  });
+
   it('max. 2 Skript-Schreckmomente pro Ebene', () => {
     for (let seed = 1; seed <= 30; seed++) {
       const a = buildCrypt(1, seededRng(seed));

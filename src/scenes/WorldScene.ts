@@ -1237,15 +1237,14 @@ export class WorldScene extends CombatScene {
       };
     }
     if (tid === T.STAIR) {
+      const indieTiefe = this.area.id === 'boss' || this.area.depth > 5;
       return {
-        text: `Treppe hinab - ${ik} zum Hinabsteigen`,
+        text: indieTiefe ? `Abstieg in die Endlose Tiefe - ${ik} zum Hinabsteigen` : `Treppe hinab - ${ik} zum Hinabsteigen`,
         action: () => {
           const id = this.area.id;
-          if (id === 'crypt1') this.goArea('crypt2');
-          else if (id === 'crypt2') this.goArea('crypt3');
-          else if (id === 'crypt3') this.goArea('crypt4');
-          else if (id === 'crypt4') this.goArea('crypt5');
-          else if (id === 'crypt5') this.goArea('boss');
+          if (id === 'crypt5') this.goArea('boss');
+          else if (id === 'boss') this.goArea('crypt6');
+          else if (id.startsWith('crypt')) this.goArea(`crypt${parseInt(id.replace('crypt', ''), 10) + 1}`);
         },
       };
     }
@@ -1258,11 +1257,12 @@ export class WorldScene extends CombatScene {
             const village = this.getArea('village');
             const door = village.cryptDoor;
             this.goArea('village', door ? { x: door.x, y: door.y + 40 } : undefined);
-          } else if (id === 'crypt2') this.goArea('crypt1', this.getArea('crypt1').downPos);
-          else if (id === 'crypt3') this.goArea('crypt2', this.getArea('crypt2').downPos);
-          else if (id === 'crypt4') this.goArea('crypt3', this.getArea('crypt3').downPos);
-          else if (id === 'crypt5') this.goArea('crypt4', this.getArea('crypt4').downPos);
-          else if (id === 'boss') this.goArea('crypt5', this.getArea('crypt5').downPos);
+          } else if (id === 'boss') this.goArea('crypt5', this.getArea('crypt5').downPos);
+          else if (id === 'crypt6') this.goArea('boss');
+          else if (id.startsWith('crypt')) {
+            const n = parseInt(id.replace('crypt', ''), 10);
+            this.goArea(`crypt${n - 1}`, this.getArea(`crypt${n - 1}`).downPos);
+          }
         },
       };
     }
@@ -1335,6 +1335,12 @@ export class WorldScene extends CombatScene {
         this.pickups.add({ kind: 'gem', item: rollGem(this.rng, 6), x: e.x + 20, y: e.y, bob: 0 });
         this.pickups.add({ kind: 'gold', amt: BOSS_GOLD * 3, x: e.x, y: e.y + 24, bob: 0 });
         this.pickups.add({ kind: 'portal', x: e.x, y: e.y - 30, bob: 0 });
+        // Auch nach dem NG+-Sieg steht die Endlose Tiefe offen
+        if (this.area.id === 'boss') {
+          this.area.map[3][16] = T.STAIR;
+          this.area.downPos = { x: 16 * TILE + 16, y: 3 * TILE + 16 };
+          this.refreshTile(16, 3);
+        }
         return;
       }
       this.bossDead = true;
@@ -1360,6 +1366,13 @@ export class WorldScene extends CombatScene {
       }, x: e.x + 40, y: e.y + 10, bob: 0 });
       this.pickups.add({ kind: 'relic', x: e.x + 20, y: e.y, bob: 0 });
       this.pickups.add({ kind: 'gold', amt: BOSS_GOLD, x: e.x, y: e.y + 24, bob: 0 });
+      // Der Abstieg in die Endlose Tiefe bricht auf (Feedback-Runde 6)
+      if (this.area.id === 'boss') {
+        this.area.map[3][16] = T.STAIR;
+        this.area.downPos = { x: 16 * TILE + 16, y: 3 * TILE + 16 };
+        this.refreshTile(16, 3);
+        this.logMsg('Hinter dem Grab bricht der Boden auf - die Endlose Tiefe liegt offen.', 'gold');
+      }
       return;
     }
     if (e.champion && this.area.id === 'boss' && !this.bossDead) {

@@ -86,11 +86,14 @@ function carve(map: number[][], x0: number, y0: number, x1: number, y1: number, 
 }
 
 export function buildCrypt(n: number, rng: Rng): AreaData {
-  const th = CRYPT_THEMES[n];
+  // Endlose Tiefe (Feedback-Runde 6): ab Ebene 6 wiederholen sich die Themen,
+  // die Gegner skalieren über die Tiefe aber weiter
+  const themaNr = n <= 5 ? n : ((n - 1) % 5) + 1;
+  const th = CRYPT_THEMES[themaNr];
   const w = CRYPT_GEN.w, h = CRYPT_GEN.h;
   const map = blank(w, h, T.WALL);
   const a: AreaData = {
-    id: `crypt${n}`, name: th.name, dark: true, depth: n, theme: th,
+    id: `crypt${n}`, name: n <= 5 ? th.name : `${th.name} · Tiefe ${n}`, dark: true, depth: n, theme: th,
     w, h, map, spawn: { x: 0, y: 0 },
     torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
     breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
@@ -332,7 +335,8 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
         ey = (r.y + rnd(rng, 0.5, r.h - 0.5)) * TILE;
         tries++;
       } while (tries < 8 && SOLID.has(map[Math.floor(ey / TILE)][Math.floor(ex / TILE)]));
-      a.enemySpawns.push({ type: pick(rng, types), x: ex, y: ey, elite: rng.random() < 0.10 });
+      // In der Endlosen Tiefe sind Elite-Gegner häufiger
+      a.enemySpawns.push({ type: pick(rng, types), x: ex, y: ey, elite: rng.random() < (n > 5 ? 0.18 : 0.10) });
     }
   }
 
@@ -382,7 +386,7 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
     4: ['skelett', 'Der Kerkermeister'],
     5: ['schatten', 'Die Aschengeborene'],
   };
-  const [champTyp, champName] = CHAMPS[n] ?? CHAMPS[3];
+  const [champTyp, champName] = CHAMPS[themaNr] ?? CHAMPS[3];
   a.enemySpawns.push({
     type: champTyp, elite: true, champion: champName,
     x: (far.cx - 2) * TILE + 16, y: far.cy * TILE + 16,
@@ -397,7 +401,7 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
     4: ['pest', 'Der Wärter'],
     5: ['schuetze', 'Glutauge'],
   };
-  const [typ2, name2] = ZWEIT[n] ?? ZWEIT[3];
+  const [typ2, name2] = ZWEIT[themaNr] ?? ZWEIT[3];
   a.enemySpawns.push({ type: typ2, elite: true, champion: name2, x: mitte.cx * TILE + 16, y: mitte.cy * TILE + 16 });
 
   return a;
@@ -427,6 +431,11 @@ export function buildBoss(rng: Rng, bossDead: boolean): AreaData {
   }
   map[20][16] = T.STAIRUP;
   a.upPos = { x: 16.5 * TILE, y: 20 * TILE + 16 };
+  if (bossDead) {
+    // Nach dem Sieg öffnet sich der Abstieg in die Endlose Tiefe
+    map[3][16] = T.STAIR;
+    a.downPos = { x: 16 * TILE + 16, y: 3 * TILE + 16 };
+  }
   if (!bossDead) {
     // Erst die Leibwache - der Ritter erhebt sich, wenn sie fällt
     a.enemySpawns.push({ type: 'skelett', elite: true, champion: 'Bruder Aldric, der Grabwächter', x: 16.5 * TILE, y: 9 * TILE });
