@@ -1525,6 +1525,7 @@ export class WorldScene extends CombatScene {
         aufbauBestellt: this.aufbauBestellt,
         einrichtung: this.einrichtung,
         kopfgeld: this.kopfgeld ?? undefined,
+        album: this.album,
       },
     };
   }
@@ -1568,6 +1569,7 @@ export class WorldScene extends CombatScene {
     this.tageszeit = data.welt.tageszeit ?? 0.3;
     this.feld = data.welt.feld ?? this.feld;
     this.kopfgeld = data.welt.kopfgeld ?? null;
+    this.album = data.welt.album ?? { kills: {}, champions: [], unikate: [], notizen: [] };
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
     recalc(p);
     p.hp = Math.min(p.stats.maxhp, s.hp || p.stats.maxhp);

@@ -277,7 +277,7 @@ export class Hud {
     // Tastenkürzel als Teil der Leiste zeichnen (Texte wären teurer)
     // -> stattdessen im Tooltip und unter der Leiste:
     this.infoText.setPosition(w / 2, h - 42)
-      .setText(`1-6 Zauber/Fähigkeiten · R/T Waffe · ${kb.roll === ' ' ? 'LEER' : kb.roll.toUpperCase()} Rolle · ${extra}`);
+      .setText(`1-6 Zauber/Fähigkeiten · R/T Waffe · ${kb.roll === ' ' ? 'LEER' : kb.roll.toUpperCase()} Rolle · B Album · ${extra}`);
 
     // XP-Leiste
     const xw = Math.min(420, w * 0.42);

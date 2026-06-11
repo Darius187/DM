@@ -106,6 +106,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.projectiles = [];
     this.telegraphs = [];
     this.playerDead = false;
+    this.album = { kills: {}, champions: [], unikate: [], notizen: [] };
+    this.albumPanel = null;
     this.playerSprite = this.add.sprite(startX, startY, '__DEFAULT').setDepth(startY);
     this.provider.applyFigure(this.playerSprite, 'spieler', 0, 0);
     this.overlay = this.add.graphics().setDepth(2600);
@@ -166,6 +168,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (k === b.s3) this.castSpell(2);
       if (k === '7') this.useFirstScroll();
       if (k === '8') this.runAction('stadtportal');
+      if (k === 'b') this.toggleAlbum();
       if (k === 'f10') { ev.preventDefault(); this.toggleDevPanel(); }
       // Zauberei-Fähigkeiten reihen sich in die Zauberleiste ein (4-6)
       if (k === '4') this.useAbility('kettenblitz');
@@ -207,6 +210,51 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       else if (aktion === 'angriff' && this.bowDrawT >= 0) this.releaseBow();
     });
     this.game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  // --- Sammelalbum (Taste B, Feedback-Runde 6) --------------------------------
+  // Jagdstatistik, besiegte Vorsteher, epische Funde, gelesene Notizen
+  album: { kills: Record<string, number>; champions: string[]; unikate: string[]; notizen: number[] } =
+    { kills: {}, champions: [], unikate: [], notizen: [] };
+
+  private albumPanel: Phaser.GameObjects.Container | null = null;
+
+  protected toggleAlbum(): void {
+    if (this.albumPanel) {
+      this.albumPanel.destroy();
+      this.albumPanel = null;
+      return;
+    }
+    const w = Math.min(440, this.scale.width - 30);
+    const c = this.add.container((this.scale.width - w) / 2, 50).setScrollFactor(0).setDepth(5200);
+    const zeilen: Array<[string, string]> = [];
+    zeilen.push(['MONSTERKUNDE', '#c9a227']);
+    for (const [typ, def] of Object.entries(ENEMIES)) {
+      const n = this.album.kills[typ] ?? 0;
+      zeilen.push([n > 0 ? `${def.name}: ${n} erschlagen` : '??? - noch nicht erlegt', n > 0 ? '#d8cfb8' : '#6a5f4c']);
+    }
+    zeilen.push(['', '']);
+    zeilen.push([`VORSTEHER & BOSSE (${this.album.champions.length})`, '#c9a227']);
+    for (const name of this.album.champions.slice(-8)) zeilen.push([name, '#d8cfb8']);
+    if (!this.album.champions.length) zeilen.push(['Noch keiner gefallen.', '#6a5f4c']);
+    zeilen.push(['', '']);
+    zeilen.push([`EPISCHE FUNDE (${this.album.unikate.length})`, '#c9a227']);
+    for (const name of this.album.unikate.slice(-8)) zeilen.push([name, '#b06ae8']);
+    if (!this.album.unikate.length) zeilen.push(['Noch nichts gefunden.', '#6a5f4c']);
+    zeilen.push(['', '']);
+    zeilen.push([`Zerknitterte Notizen gelesen: ${this.album.notizen.length}`, '#9a8c6e']);
+    const h = zeilen.length * 19 + 64;
+    const bg = this.add.rectangle(0, 0, w, h, 0x171108, 0.97).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
+    bg.setInteractive();
+    c.add(bg);
+    c.add(this.add.text(16, 10, 'SAMMELALBUM (B zum Schließen)', { fontFamily: 'serif', fontSize: '15px', color: '#c9a227', letterSpacing: 2 }));
+    let y = 38;
+    for (const [text, col] of zeilen) {
+      if (text) c.add(this.add.text(16, y, text, { fontFamily: 'serif', fontSize: '13px', color: col }));
+      y += 19;
+    }
+    this.albumPanel = c;
+    this.sfx.play('klick');
   }
 
   // --- Entwicklungskasten (F10) ----------------------------------------------
@@ -292,7 +340,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     if (pk.kind === 'note') {
       this.pickups.remove(pk);
       this.giveXp(LORE_XP.noteBase + LORE_XP.notePerDepth * this.areaDepth());
-      this.showNote(pk.noteIdx ?? 0);
+      const idx = pk.noteIdx ?? 0;
+      if (!this.album.notizen.includes(idx)) this.album.notizen.push(idx);
+      this.showNote(idx);
       return;
     }
     if (pk.kind === 'relic') {
@@ -314,6 +364,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       const r = pk.item.rarity;
       this.logMsg(`${pk.item.name} aufgehoben`, r >= 3 ? 'magic' : r === 2 ? 'gold' : r === 1 ? 'magic' : '');
       this.sfx.play(r >= 3 ? 'item_episch' : 'aufheben');
+      // Sammelalbum: epische Funde festhalten
+      if (r >= 3 && !this.album.unikate.includes(pk.item.name)) this.album.unikate.push(pk.item.name);
       this.pickups.remove(pk);
     }
   }
@@ -688,6 +740,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.fx.burst(e.x, e.y, parseInt(e.col.slice(1), 16), 16, 170);
     this.sfx.play('tod');
     this.giveXp(e.xp);
+    // Sammelalbum: Jagdstatistik und besiegte Vorsteher
+    this.album.kills[e.type] = (this.album.kills[e.type] ?? 0) + 1;
+    if ((e.champion || e.boss) && !this.album.champions.includes(e.name)) this.album.champions.push(e.name);
     // Teilend: zerfällt in kleinere Abbilder (geben kaum Erfahrung)
     if (e.affix === 'Teilend' && !e.boss) {
       for (let i = 0; i < ELITE.teilenAnzahl; i++) {
