@@ -21,19 +21,26 @@ export const SHOP_HEINRICH: ReadonlyArray<ShopOfferDef> = [
   { kind: 'potion', name: 'Heiltrank', price: 30, inf: true },
   { kind: 'mpotion', name: 'Manatrank', price: 40, inf: true },
   { kind: 'gear', gearKind: 'weapon', gearDepth: 2 },
+  { kind: 'gear', gearKind: 'weapon', gearDepth: 3 },
   { kind: 'gear', gearKind: 'armor', gearDepth: 2 },
+  { kind: 'gear', gearKind: 'armor', gearDepth: 3 },
+  { kind: 'gear', gearKind: 'ring', gearDepth: 2 },
+  { kind: 'food', name: 'Trockenfleisch', price: 10, inf: true, food: { hpRegen: 1.2, dauerS: 40 } },
 ];
 
 export const SHOP_MAGDALENA: ReadonlyArray<ShopOfferDef> = [
   { kind: 'potion', name: 'Heiltrank', price: 24, inf: true },
   { kind: 'mpotion', name: 'Manatrank', price: 32, inf: true },
   { kind: 'gear', gearKind: 'ring', gearDepth: 2 },
+  { kind: 'gear', gearKind: 'ring', gearDepth: 3 },
+  { kind: 'gem', price: 120 },
   { kind: 'elixir', name: 'Elixier der Kräuterfrau', price: 150, limit: 3 },
   // Flaschen-Upgrades (Masterprompt 6.2)
   { kind: 'flaskUpgrade', name: 'Vierte Heilflasche', price: 220, limit: 1 },
   { kind: 'flaskPower', name: 'Stärkerer Heilsud', price: 180, limit: 1 },
   { kind: 'scroll', name: 'Zauberrolle: Heiliges Licht', price: 60, scrollSkill: 'heiligesLicht', inf: true },
   { kind: 'scroll', name: 'Zauberrolle: Frostnova', price: 85, scrollSkill: 'frostnova', inf: true },
+  { kind: 'scroll', name: 'Zauberrolle: Kettenblitz', price: 95, scrollSkill: 'kettenblitz', inf: true },
   // Tränke-Rezepte: Kräuter gegen Tränke (Masterprompt 7.4)
   { kind: 'rezept', name: 'Heiltrank brauen (2 Kräuter)', price: 0, inf: true, rezept: { kraeuter: 2, ergebnis: 'potion' } },
   { kind: 'rezept', name: 'Manatrank brauen (3 Kräuter)', price: 0, inf: true, rezept: { kraeuter: 3, ergebnis: 'mpotion' } },
@@ -42,11 +49,14 @@ export const SHOP_MAGDALENA: ReadonlyArray<ShopOfferDef> = [
 export const SHOP_SCHMIED: ReadonlyArray<ShopOfferDef> = [
   { kind: 'gear', gearKind: 'weapon', gearDepth: 2 },
   { kind: 'gear', gearKind: 'weapon', gearDepth: 1 },
+  { kind: 'gear', gearKind: 'weapon', gearDepth: 3 },
   { kind: 'gear', gearKind: 'armor', gearDepth: 2 },
+  { kind: 'gear', gearKind: 'armor', gearDepth: 3 },
   { kind: 'tool', name: 'Holzaxt', price: 40, toolId: 'axt', limit: 1 },
   { kind: 'tool', name: 'Spitzhacke', price: 60, toolId: 'spitzhacke', limit: 1 },
   // Kohle: kein Köhler-NPC in der Spezifikation - der Schmied führt sie mit
   { kind: 'material', name: 'Kohle', price: 12, inf: true, materialId: 'kohle' },
+  { kind: 'material', name: 'Eisen', price: 18, inf: true, materialId: 'eisen' },
 ];
 
 export const SHOP_BAUER1: ReadonlyArray<ShopOfferDef> = [
@@ -60,6 +70,8 @@ export const SHOP_BAUER2: ReadonlyArray<ShopOfferDef> = [
   { kind: 'food', name: 'Brot', price: 8, inf: true, food: { hpRegen: 1, dauerS: 40 } },
   { kind: 'food', name: 'Käse', price: 12, inf: true, food: { hpRegen: 1.5, dauerS: 40 } },
   { kind: 'food', name: 'Milch', price: 6, inf: true, food: { hpRegen: 0.8, dauerS: 30 } },
+  { kind: 'food', name: 'Honig', price: 16, inf: true, food: { hpRegen: 2, dauerS: 35 } },
+  { kind: 'food', name: 'Eintopf', price: 22, inf: true, food: { hpRegen: 2.5, dauerS: 50 } },
 ];
 
 // Fahrender Händler: wechselndes Sortiment, Chance auf Episch (Masterprompt 7.2/7.5)

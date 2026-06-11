@@ -21,6 +21,8 @@ export class ShopUI {
   private container: Phaser.GameObjects.Container | null = null;
   private stocks = new Map<string, ShopOffer[]>();
   private mode: 'kaufen' | 'verkaufen' | 'schmieden' = 'kaufen';
+  // Verkaufs-Filter wie im Inventar (Feedback-Runde 6)
+  private sellFilter: 'alle' | 'weapon' | 'armor' | 'ring' | 'gem' = 'alle';
   private shopId = '';
   private title = '';
   private canSell = false;
@@ -83,6 +85,7 @@ export class ShopUI {
 
   private rollOffer(o: ShopOffer): ShopOffer {
     if (o.kind === 'gear' && !o.item) o.item = rollGear(undefined, o.gearDepth ?? 2, o.gearKind);
+    if (o.kind === 'gem' && !o.item) o.item = rollGem(undefined, o.gearDepth ?? 2);
     return o;
   }
 
@@ -183,7 +186,8 @@ export class ShopUI {
           if (o.item.rarity >= 3) this.sfx.play('item_episch');
           // Nachschub wie in der Referenz: gleiche Art neu auswürfeln
           if (o.kind === 'gear') o.item = rollGear(undefined, o.gearDepth ?? 2, o.item.kind as 'weapon' | 'armor' | 'ring');
-          else o.item = undefined;
+          else if (this.shopId.startsWith('haendler_woche')) o.item = undefined; // Fahrender Händler: ausverkauft
+          else o.item = rollGem(undefined, o.gearDepth ?? 2);
         }
         break;
     }
@@ -276,13 +280,35 @@ export class ShopUI {
         y = this.offerRow(c, w, y, o);
       }
     } else if (this.mode === 'verkaufen') {
+      // Filter-Reiter wie im Inventar
+      let fx = 16;
+      const filter: Array<[typeof this.sellFilter, string]> = [
+        ['alle', 'Alle'], ['weapon', 'Waffen'], ['armor', 'Rüstung'], ['ring', 'Ringe'], ['gem', 'Steine'],
+      ];
+      for (const [id, lbl] of filter) {
+        const t = this.scene.add.text(fx, y, lbl, {
+          fontFamily: 'serif', fontSize: '12px', letterSpacing: 1,
+          color: this.sellFilter === id ? '#c9a227' : '#8a7a5a',
+          backgroundColor: this.sellFilter === id ? '#221808' : undefined, padding: { x: 6, y: 2 },
+        }).setInteractive({ useHandCursor: true });
+        t.on('pointerdown', () => {
+          this.sellFilter = id;
+          this.scroll = 0;
+          this.build();
+          this.sfx.play('klick');
+        });
+        c.add(t);
+        fx += t.width + 10;
+      }
+      y += 28;
       const sellable = p.inv.filter((it) => (it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'ring' || it.kind === 'gem')
-        && it !== p.weapon && it !== p.armorIt && it !== p.ring);
+        && it !== p.weapon && it !== p.armorIt && it !== p.ring
+        && (this.sellFilter === 'alle' || it.kind === this.sellFilter));
       if (!sellable.length) {
         c.add(this.scene.add.text(16, y, 'Nichts zu verkaufen.', { fontFamily: 'serif', fontSize: '14px', color: '#8a7a5a', fontStyle: 'italic' }));
       }
       blaettern(sellable.length);
-      for (const it of sellable.slice(this.scroll, this.scroll + visible)) {
+      for (const it of sellable.slice(this.scroll, this.scroll + visible - 1)) {
         y = this.sellRow(c, w, y, it);
       }
     } else {

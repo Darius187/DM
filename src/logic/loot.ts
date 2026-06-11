@@ -30,7 +30,7 @@ export function rollRarity(rng: Rng, depth: number): Rarity {
   return 0;
 }
 
-export function rollGem(rng: Rng, depth: number): GemItem {
+export function rollGem(rng: Rng = defaultRng, depth: number = 2): GemItem {
   const g = pick(rng, GEMS);
   return {
     kind: 'gem', elem: g.elem, name: g.name, col: g.col, rgb: g.rgb,
