@@ -104,10 +104,18 @@ export class Enemy {
   private lungeVx = 0;
   private lungeVy = 0;
   private ambientT = Math.random() * 3 + 1;
+  // Gruppen-KI (Feedback-Runde 1): jeder nähert sich aus eigenem Winkel,
+  // umkreist den Spieler während der eigenen Erholzeit und weicht nach
+  // einem Schlag zurück - so wird man umzingelt statt angerempelt.
+  private flankAng = (Math.random() - 0.5) * 2.2;
+  private orbitDir = Math.random() < 0.5 ? 1 : -1;
+  private retreatT = 0;
+  champion = false;
 
   // Boss-Zustand
   private slamCd: number = BOSS.slamCd;
   private fanCd: number = BOSS.fanCd;
+  private chargeCd = 4;
   private summoned = [false, false];
 
   sprite: Phaser.GameObjects.Sprite | null = null;
@@ -229,13 +237,27 @@ export class Enemy {
         this.moveBody(host, -Math.cos(ang) * this.speed * 0.6 * slowF * dt, -Math.sin(ang) * this.speed * 0.6 * slowF * dt);
         this.advanceStep(dt);
       }
-    } else if (d > this.r + host.playerR() + 2) {
+    } else if (this.retreatT > 0) {
+      // Rückzug nach dem eigenen Schlag (Skelett/Wolf/Schatten weichen aus)
+      this.retreatT -= dt;
+      this.moveBody(host, -Math.cos(ang) * this.speed * 0.85 * slowF * dt, -Math.sin(ang) * this.speed * 0.85 * slowF * dt);
+      this.advanceStep(dt);
+    } else if (d > this.r + host.playerR() + 6) {
       // Wolf darf den Sprung auch aus kurzer Distanz ansetzen
       if (this.type === 'wolf' && d < 120 && d > 50 && this.atkCd === 0 && Math.random() < 0.4) {
         this.startPattern(host, 'sprung');
         return;
       }
-      this.moveBody(host, Math.cos(ang) * this.speed * slowF * dt, Math.sin(ang) * this.speed * slowF * dt);
+      if (this.atkCd > 0 && d < 110) {
+        // Erholzeit: nicht anstehen, sondern den Spieler umkreisen
+        const oa = ang + this.orbitDir * 1.45;
+        this.moveBody(host, Math.cos(oa) * this.speed * 0.55 * slowF * dt, Math.sin(oa) * this.speed * 0.55 * slowF * dt);
+      } else {
+        // Annäherung versetzt aus dem eigenen Flankenwinkel -> Umzingeln
+        const fade = Math.min(1, Math.max(0, (d - 50) / 160));
+        const fa = ang + this.flankAng * fade;
+        this.moveBody(host, Math.cos(fa) * this.speed * slowF * dt, Math.sin(fa) * this.speed * slowF * dt);
+      }
       this.advanceStep(dt);
     } else if (this.atkCd === 0) {
       this.choosePattern(host);
@@ -269,6 +291,10 @@ export class Enemy {
     switch (this.pattern) {
       case 'hieb':
         if (d < this.r + host.playerR() + 18) host.enemyMeleeHit(this, Math.round(this.dmg * (0.8 + Math.random() * 0.35)));
+        if (this.type === 'skelett' || this.type === 'wolf' || this.type === 'schatten') {
+          this.retreatT = 0.35 + Math.random() * 0.25;
+          this.orbitDir = Math.random() < 0.5 ? 1 : -1;
+        }
         break;
       case 'doppelhieb':
         if (d < this.r + host.playerR() + 20) host.enemyMeleeHit(this, Math.round(this.dmg * 0.7));
@@ -320,8 +346,17 @@ export class Enemy {
     this.fanCd = Math.max(0, this.fanCd - dt);
     if (this.windup > 0) {
       this.windup -= dt;
-      if (this.windup <= 0 && d < this.r + host.playerR() + BOSS.meleeRange) {
-        host.enemyMeleeHit(this, Math.round(this.dmg * (0.85 + Math.random() * 0.25)));
+      if (this.windup <= 0) {
+        if (this.pattern === 'sprung') {
+          // Ansturm startet: hohe Geschwindigkeit auf die Spielerposition
+          this.pattern = 'hieb';
+          const a2 = Math.atan2(host.playerY() - this.y, host.playerX() - this.x);
+          this.lungeT = 0.7;
+          this.lungeVx = Math.cos(a2) * 520;
+          this.lungeVy = Math.sin(a2) * 520;
+        } else if (d < this.r + host.playerR() + BOSS.meleeRange) {
+          host.enemyMeleeHit(this, Math.round(this.dmg * (0.85 + Math.random() * 0.25)));
+        }
       }
       return;
     }
@@ -339,6 +374,26 @@ export class Enemy {
     }
     const px = host.playerX(), py = host.playerY();
     const ang = Math.atan2(py - this.y, px - this.x);
+    // Ansturm: kurzes Aufbäumen, dann prescht der Ritter quer durch den Raum
+    this.chargeCd = Math.max(0, this.chargeCd - dt);
+    if (this.lungeT > 0) {
+      this.lungeT -= dt;
+      this.moveBody(host, this.lungeVx * dt, this.lungeVy * dt);
+      if (d < this.r + host.playerR() + 6) {
+        this.lungeT = 0;
+        host.enemyMeleeHit(this, Math.round(this.dmg * 1.4));
+      }
+      return;
+    }
+    if (this.chargeCd === 0 && d > 140 && d < 480) {
+      this.chargeCd = phase2 ? 5 : 7.5;
+      this.windup = 0.7;
+      this.pattern = 'sprung';
+      this.lungeVx = 0;
+      host.logMsg('Der Tempelritter senkt die Klinge zum Ansturm!', 'bad');
+      host.playSound('templer_stimme');
+      return;
+    }
     if (d > this.r + host.playerR() + 8) {
       this.moveBody(host, Math.cos(ang) * spd * dt, Math.sin(ang) * spd * dt);
       this.advanceStep(dt);

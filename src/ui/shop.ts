@@ -27,12 +27,21 @@ export class ShopUI {
   private canForge = false;
   open = false;
 
+  private scroll = 0;
+
   constructor(
     private scene: Phaser.Scene,
     _provider: SpriteProvider,
     private sfx: SoundProvider,
     private getPlayer: () => PlayerState,
-  ) {}
+  ) {
+    // Maus-Rad blättert die Listen (Feedback-Runde 1)
+    scene.input.on('wheel', (_p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
+      if (!this.open) return;
+      this.scroll = Math.max(0, this.scroll + (dy > 0 ? 1 : -1));
+      this.build();
+    });
+  }
 
   openShop(shopId: string, title: string, offers: ReadonlyArray<ShopOfferDef>, opts: { ankauf?: boolean; schmieden?: boolean } = {}): void {
     this.shopId = shopId;
@@ -241,6 +250,7 @@ export class ShopUI {
       }).setInteractive({ useHandCursor: true });
       t.on('pointerdown', () => {
         this.mode = id;
+        this.scroll = 0;
         this.build();
         this.sfx.play('klick');
       });
@@ -249,10 +259,20 @@ export class ShopUI {
     }
 
     let y = 70;
+    const visible = Math.floor((h - 70 - 70) / 42);
+    const blaettern = (anzahl: number) => {
+      const maxScroll = Math.max(0, anzahl - visible);
+      this.scroll = Math.min(this.scroll, maxScroll);
+      if (maxScroll > 0) {
+        c.add(this.scene.add.text(w - 16, 40, `Maus-Rad: blättern (${this.scroll + 1}-${Math.min(anzahl, this.scroll + visible)}/${anzahl})`, {
+          fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a',
+        }).setOrigin(1, 0));
+      }
+    };
     if (this.mode === 'kaufen') {
-      for (const o of this.stocks.get(this.shopId) ?? []) {
-        if (o.limit !== undefined && o.limit <= 0) continue;
-        if (y > h - 70) break;
+      const offers = (this.stocks.get(this.shopId) ?? []).filter((o) => o.limit === undefined || o.limit > 0);
+      blaettern(offers.length);
+      for (const o of offers.slice(this.scroll, this.scroll + visible)) {
         y = this.offerRow(c, w, y, o);
       }
     } else if (this.mode === 'verkaufen') {
@@ -261,14 +281,14 @@ export class ShopUI {
       if (!sellable.length) {
         c.add(this.scene.add.text(16, y, 'Nichts zu verkaufen.', { fontFamily: 'serif', fontSize: '14px', color: '#8a7a5a', fontStyle: 'italic' }));
       }
-      for (const it of sellable) {
-        if (y > h - 70) break;
+      blaettern(sellable.length);
+      for (const it of sellable.slice(this.scroll, this.scroll + visible)) {
         y = this.sellRow(c, w, y, it);
       }
     } else {
       const forgeable = p.inv.filter((it) => it.kind === 'weapon' || it.kind === 'armor');
-      for (const it of forgeable) {
-        if (y > h - 70) break;
+      blaettern(forgeable.length);
+      for (const it of forgeable.slice(this.scroll, this.scroll + visible)) {
         y = this.forgeRow(c, w, y, it);
       }
     }

@@ -2,7 +2,8 @@
 // erweitert um Bögen und Zauberrollen (Masterprompt).
 
 import {
-  WEAPONS, BOWS, ARMORS, RINGS, PREFIX, SUFFIX,
+  WEAPONS, BOWS, STAVES, ARMORS, RINGS, PREFIX_STEMS, SUFFIX,
+  dekliniertesPraefix, type Genus,
   AFFIX_POOL, RING_AFFIX_POOL, GEMS, GEM_POWER,
   RARITY_ROLL, GEAR_KIND_ROLL, SOCKET_CHANCE, PRICE, ARROW_STACK,
 } from '../data/items';
@@ -54,22 +55,26 @@ export function rollGear(
     rarity = Math.max(1, rarity) as Rarity;
     const base = pick(rng, RINGS);
     const boni = rollAffixes(rng, rarity, RING_AFFIX_POOL);
-    let name = `${pick(rng, PREFIX)} ${base}`;
+    let name = `${dekliniertesPraefix(pick(rng, PREFIX_STEMS), 'm')} ${base}`;
     if (rarity >= 2) name = `${name} ${pick(rng, SUFFIX)}`;
     return { kind, name, rarity, val: 0, boni };
   }
 
-  // Bögen mischen sich mit ~18% unter die Waffen-Drops (leicht änderbar)
-  const isBow = kind === 'weapon' && includeBows && rng.random() < 0.18;
-  const bases = kind === 'weapon' ? (isBow ? BOWS : WEAPONS) : ARMORS;
+  // Bögen (~15%) und Zauberstäbe (~12%) mischen sich unter die Waffen-Drops
+  let bases: ReadonlyArray<readonly [string, number, Item['weaponClass'], Genus]> | typeof ARMORS = ARMORS;
+  if (kind === 'weapon') {
+    const r2 = rng.random();
+    bases = includeBows && r2 < 0.15 ? BOWS : includeBows && r2 < 0.27 ? STAVES : WEAPONS;
+  }
   const maxIdx = Math.max(1, Math.min(Math.floor(depth * 1.2) + 1, bases.length - 1));
   const base = bases[ri(rng, Math.max(0, maxIdx - 2), maxIdx)];
+  const genus = (kind === 'weapon' ? base[3] : base[2]) as Genus;
   const boni = rollAffixes(rng, Math.min(3, rarity), AFFIX_POOL);
   let name = base[0];
-  if (rarity >= 1) name = `${pick(rng, PREFIX)} ${name}`;
+  if (rarity >= 1) name = `${dekliniertesPraefix(pick(rng, PREFIX_STEMS), genus)} ${name}`;
   if (rarity >= 2) name = `${name} ${pick(rng, SUFFIX)}`;
   const sock = kind === 'weapon' && (rarity >= 2 || rng.random() < SOCKET_CHANCE) ? { gem: null } : null;
-  const weaponClass = kind === 'weapon' ? (base as readonly [string, number, Item['weaponClass']])[2] : undefined;
+  const weaponClass = kind === 'weapon' ? (base[2] as Item['weaponClass']) : undefined;
   return {
     kind, name, rarity,
     val: base[1] + (rarity >= 2 ? ri(rng, 1, 3) + rarity - 2 : 0),

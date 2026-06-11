@@ -147,7 +147,7 @@ export class SpriteProvider {
 // Schema <typ>_<basisname>.png, kleingeschrieben, Umlaute ausgeschrieben
 export function itemFileName(it: Item): string {
   const base = it.name
-    .replace(/^(Grimmiger|Geweihter|Blutiger|Eiserner|Uralter)\s+/, '')
+    .replace(/^(Grimmig|Geweiht|Blutig|Eisern|Uralt)(er|es|e)\s+/, '')
     .replace(/\s+(der Pest|des Raben|der Asche|des Kreuzes|der Nacht|des Salzes)$/, '')
     .toLowerCase()
     .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')

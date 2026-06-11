@@ -3,35 +3,47 @@
 
 import type { AffixDef, GemDef, Rarity, WeaponClass } from './types';
 
-// [Name, Basisschaden] - Reihenfolge = Aufstiegsreihenfolge wie in der Referenz
-export const WEAPONS: ReadonlyArray<readonly [string, number, WeaponClass]> = [
-  ['Rostige Klinge', 5, 'schwert'],
-  ['Kurzschwert', 8, 'schwert'],
-  ['Streitkolben', 11, 'wucht'],
-  ['Langschwert', 14, 'schwert'],
-  ['Streitaxt', 16, 'axt'],
-  ['Reiterdegen', 18, 'schwert'],
-  ['Hellebarde', 20, 'stange'],
-  ['Kriegshammer', 22, 'wucht'],
+// Genus für die Präfix-Deklination ("Eisernes Langschwert", nicht "Eiserner")
+export type Genus = 'm' | 'f' | 'n' | 'pl';
+
+// [Name, Basisschaden, Klasse, Genus] - Reihenfolge wie in der Referenz
+export const WEAPONS: ReadonlyArray<readonly [string, number, WeaponClass, Genus]> = [
+  ['Rostige Klinge', 5, 'schwert', 'f'],
+  ['Kurzschwert', 8, 'schwert', 'n'],
+  ['Streitkolben', 11, 'wucht', 'm'],
+  ['Langschwert', 14, 'schwert', 'n'],
+  ['Streitaxt', 16, 'axt', 'f'],
+  ['Reiterdegen', 18, 'schwert', 'm'],
+  ['Hellebarde', 20, 'stange', 'f'],
+  ['Kriegshammer', 22, 'wucht', 'm'],
 ];
 
-// Bögen (NEU laut Masterprompt 4.2) - Pfeile als Ressource
-export const BOWS: ReadonlyArray<readonly [string, number, WeaponClass]> = [
-  ['Jagdbogen', 9, 'bogen'],
-  ['Kriegsbogen', 17, 'bogen'],
+// Bögen (Masterprompt 4.2) und Zauberstäbe (Wunsch des Autors, Feedback-Runde 1)
+export const BOWS: ReadonlyArray<readonly [string, number, WeaponClass, Genus]> = [
+  ['Jagdbogen', 9, 'bogen', 'm'],
+  ['Kriegsbogen', 17, 'bogen', 'm'],
+];
+export const STAVES: ReadonlyArray<readonly [string, number, WeaponClass, Genus]> = [
+  ['Knorriger Stab', 7, 'stab', 'm'],
+  ['Kristallstab', 15, 'stab', 'm'],
 ];
 
-export const ARMORS: ReadonlyArray<readonly [string, number]> = [
-  ['Lumpen', 1],
-  ['Lederwams', 3],
-  ['Gambeson', 5],
-  ['Kettenhemd', 8],
-  ['Kürass', 11],
+export const ARMORS: ReadonlyArray<readonly [string, number, Genus]> = [
+  ['Lumpen', 1, 'pl'],
+  ['Lederwams', 3, 'n'],
+  ['Gambeson', 5, 'm'],
+  ['Kettenhemd', 8, 'n'],
+  ['Kürass', 11, 'm'],
 ];
 
 export const RINGS: ReadonlyArray<string> = ['Knochenring', 'Siegelring', 'Silberring', 'Eisenring'];
 
-export const PREFIX: ReadonlyArray<string> = ['Grimmiger', 'Geweihter', 'Blutiger', 'Eiserner', 'Uralter'];
+// Präfix-Stämme; Endung kommt aus dem Genus des Grundworts
+export const PREFIX_STEMS: ReadonlyArray<string> = ['Grimmig', 'Geweiht', 'Blutig', 'Eisern', 'Uralt'];
+const GENUS_ENDUNG: Readonly<Record<Genus, string>> = { m: 'er', f: 'e', n: 'es', pl: 'e' };
+export function dekliniertesPraefix(stamm: string, genus: Genus): string {
+  return stamm + GENUS_ENDUNG[genus];
+}
 export const SUFFIX: ReadonlyArray<string> = ['der Pest', 'des Raben', 'der Asche', 'des Kreuzes', 'der Nacht', 'des Salzes'];
 
 // Affix-Pool wie in der Referenz (BONI)

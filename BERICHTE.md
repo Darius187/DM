@@ -367,3 +367,53 @@ Figuren und 32 Tiles, Konsistenz-Pass und die Screenshot-Tour.
 Playwrights eigener Browser-Download ist in dieser Umgebung gesperrt;
 Screenshots laufen über ein npm-Chromium (@sparticuz/chromium). Touch auf
 echtem Gerät kann hier nicht geprüft werden - wird je Phase vermerkt.
+
+## Feedback-Runde 1 (Spieltest des Autors) - umgesetzt
+
+Bugs/Korrekturen:
+- Sturmangriff (T) klemmt nicht mehr in Wänden (eckgeprüfte Bewegung).
+- Grammatik: Präfixe deklinieren nach Genus ("Eisernes Langschwert",
+  "Geweihtes Kettenhemd", "Grimmige Klinge") - per Test über 400 Würfe
+  abgesichert. Damit ist OFFENE-FRAGEN Punkt 6 entschieden.
+- Treppen/Kryptaeingang nur noch per E (kein versehentliches Drüberlaufen).
+- Speichern zeigt Slot-Belegung im Pausemenü + sichtbare Bestätigung.
+
+UI-Überarbeitung:
+- Charakter + Inventar in EINEM Fenster (I oder C), Inventar sortiert
+  (Angelegtes zuerst), mit Maus-Rad blätterbar, Bildlaufleiste, Typ-Icons
+  und Typ/Wert-Zeile je Eintrag; Tooltip zeigt beim Anlegen die
+  Differenzen farbig (+grün/-rot) über alle Werte. Auch Händler-Listen
+  blättern jetzt; Verkaufen gibt es bei ALLEN Händlern.
+- Neues HUD: Lebens-/Mana-Orbs mit Verlauf (wie HTML-Referenz), Q/F-
+  Trankanzeige, Zauber-/Fähigkeitsleiste 1-6 + R/T mit Symbolen,
+  Abklingzeit-Verdunkelung, Sperr-Anzeige und Hover-Tooltips.
+- Aufgabenliste im Charakterfenster (was als Nächstes zu tun ist, plus
+  Kurzanleitung Holz/Stein/Schmied/Brauen).
+
+Kampf/KI ("alles langweilig"):
+- Gegner umzingeln jetzt: jeder nähert sich aus eigenem Flankenwinkel,
+  umkreist den Spieler in der Erholzeit; Skelette/Wölfe/Schatten weichen
+  nach dem Schlag zurück.
+- Endboss deutlich verschärft: 520 statt 340 Basis-Leben, schneller,
+  dichterer Angriffstakt, größere Beschwörungswellen, 7er-Fächer, NEU:
+  Ansturm quer durch den Raum mit Ansage.
+- Miniboss je Krypta-Ebene: Der Gruftvogt / Knochenwächter Ottokar /
+  Der Kultmeister - groß, benannt, garantiert Edelstein + bessere Beute.
+- Neues Spiel+: nach dem Ende erwacht die Krypta zäher (+3 Ebenenstufen),
+  im Grab wartet DER SCHATTENFÜRST statt des Tempelritters; nach dem Sieg
+  führt ein Portal zurück nach Ravensmoor.
+
+Komfort/Inhalte:
+- Pfeile sind unendlich (Wunsch), Pfeil-Angebote/Drops entfernt.
+- Zauberstäbe als neue Waffenklasse (Knorriger Stab, Kristallstab):
+  manafreies Arkangeschoss, zählt zur Zauberei-Schule, verstärkt Zauber.
+- Maustasten-Schnellbelegung: Mitte = Feuerball, Daumentaste 1 = Heiltrank,
+  Daumentaste 2 = Heilung (freie Belegung folgt, siehe TODO).
+- Schildschlag: Linksklick im Block = gedeckter Schlag (80% Schaden).
+- Atmosphäre: dichtere Nebelschwaden, kühler Grundton + kräftige Vignette,
+  Dunkelwald mit tiefem Grünstich.
+
+Bewusst offen (siehe TODO.md): verschiebbare Fenster, Buch-Pergament,
+freie Maustasten-Belegung, Rollen-Schnellslot. Die Figurengrafik bleibt
+Fallback-Qualität, bis die itch.io-Pakete in assets/packs/ liegen - genau
+dafür steht die Phase-11-Pipeline bereit.

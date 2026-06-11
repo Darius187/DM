@@ -1,14 +1,15 @@
-// Inventar- und Charakterfenster (Masterprompt 5.2): Item-Karten mit
-// Raritätsrand und -glühen, Tooltip mit Vergleich, Portrait, Slots,
-// Fertigkeiten-Fortschritt. Grafik kommt ausschließlich vom SpriteProvider.
+// Charakter + Inventar in EINEM Fenster (Feedback-Runde 1), mit Maus-Rad-
+// Blättern, Typ-Icons, Tooltip mit farbigen Wert-Differenzen zum angelegten
+// Gegenstand und Tagebuch. Grafik kommt ausschließlich vom SpriteProvider.
 
 import Phaser from 'phaser';
 import type { Item, GemItem, Rarity } from '../data/types';
 import { RARITY_COLORS, RARITY_NAMES } from '../data/items';
 import { itemStatLine } from '../logic/loot';
 import { recalc, weaponGem, type PlayerState } from '../logic/playerState';
+import { calcStats, type Stats } from '../logic/progression';
 import { MELDUNGEN } from '../data/texte';
-import { SCHOOLS } from '../data/balancing';
+import { SCHOOLS, ABILITIES } from '../data/balancing';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import type { SoundProvider } from '../gfx/SoundProvider';
 import { fixUiScroll } from './dialog';
@@ -18,133 +19,245 @@ const LINE = 0x4a3a26;
 const GOLD = '#c9a227';
 const BONE = '#d8cfb8';
 
+const TYP_NAMEN: Record<string, string> = {
+  weapon: 'Waffe', armor: 'Rüstung', ring: 'Ring', gem: 'Edelstein',
+  potion: 'Trank', scroll: 'Zauberrolle', food: 'Proviant', material: 'Material', tool: 'Werkzeug',
+};
+const KLASSEN_NAMEN: Record<string, string> = {
+  schwert: 'Schwert', axt: 'Axt', stange: 'Stangenwaffe', wucht: 'Wuchtwaffe', bogen: 'Bogen', stab: 'Zauberstab',
+};
+
 export class UIPanels {
-  private invOpen = false;
-  private charOpen = false;
-  private invContainer: Phaser.GameObjects.Container | null = null;
-  private charContainer: Phaser.GameObjects.Container | null = null;
+  private open_ = false;
+  private container: Phaser.GameObjects.Container | null = null;
   private tooltip: Phaser.GameObjects.Container | null = null;
+  private scroll = 0;
   onChanged: (() => void) | null = null;
   onUseScroll: ((scrollSkill: string) => void) | null = null;
+  getJournal: (() => string[]) | null = null;
 
   constructor(
     private scene: Phaser.Scene,
     private provider: SpriteProvider,
     private sfx: SoundProvider,
     private getPlayer: () => PlayerState,
-  ) {}
-
-  get blocked(): boolean {
-    return this.invOpen || this.charOpen;
+  ) {
+    // Maus-Rad blättert die Inventarliste
+    scene.input.on('wheel', (_p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
+      if (!this.open_) return;
+      this.scroll = Math.max(0, this.scroll + (dy > 0 ? 1 : -1));
+      this.build();
+    });
   }
 
+  get blocked(): boolean {
+    return this.open_;
+  }
+
+  // I und C öffnen dasselbe kombinierte Fenster
   toggleInventory(): void {
-    this.invOpen = !this.invOpen;
-    if (this.invOpen) this.buildInventory();
-    else this.closeInventory();
+    this.open_ = !this.open_;
+    if (this.open_) this.build();
+    else this.close();
     this.sfx.play('klick');
   }
 
   toggleCharacter(): void {
-    this.charOpen = !this.charOpen;
-    if (this.charOpen) this.buildCharacter();
-    else this.closeCharacter();
-    this.sfx.play('klick');
+    this.toggleInventory();
   }
 
   closeAll(): void {
-    if (this.invOpen) this.toggleInventory();
-    if (this.charOpen) this.toggleCharacter();
+    if (this.open_) {
+      this.close();
+      this.sfx.play('klick');
+    }
   }
 
   refresh(): void {
-    if (this.invOpen) this.buildInventory();
-    if (this.charOpen) this.buildCharacter();
+    if (this.open_) this.build();
   }
 
-  private closeInventory(): void {
-    this.invContainer?.destroy();
-    this.invContainer = null;
+  private close(): void {
+    this.container?.destroy();
+    this.container = null;
     this.hideTooltip();
-    this.invOpen = false;
+    this.open_ = false;
   }
 
-  private closeCharacter(): void {
-    this.charContainer?.destroy();
-    this.charContainer = null;
-    this.charOpen = false;
-  }
-
-  // --- Inventar ------------------------------------------------------------
-
-  private buildInventory(): void {
-    this.invContainer?.destroy();
-    const w = 330;
-    const sw = this.scene.scale.width;
-    const sh = this.scene.scale.height;
-    const h = Math.min(sh - 40, 560);
-    const x = sw - w - 14;
-    const y = 20;
-    const c = this.scene.add.container(x, y).setScrollFactor(0).setDepth(900);
-    this.invContainer = c;
-
+  private build(): void {
+    this.container?.destroy();
+    const sw = this.scene.scale.width, sh = this.scene.scale.height;
+    const w = Math.min(760, sw - 24);
+    const h = Math.min(sh - 36, 560);
+    const c = this.scene.add.container((sw - w) / 2, (sh - h) / 2).setScrollFactor(0).setDepth(900);
+    this.container = c;
     const bg = this.scene.add.rectangle(0, 0, w, h, PANEL_BG, 0.97).setOrigin(0).setStrokeStyle(1, LINE);
-    bg.setInteractive(); // fängt Klicks ab, damit darunter nicht angegriffen wird
+    bg.setInteractive();
     c.add(bg);
-    c.add(this.scene.add.text(14, 10, 'INVENTAR', { fontFamily: 'serif', fontSize: '17px', color: GOLD, letterSpacing: 2 }));
-    const p = this.getPlayer();
-    const statLines = [
-      `Schaden: ${p.stats.dmg}   Rüstung: ${p.stats.armor}`,
-      `Leben: ${Math.ceil(p.hp)}/${p.stats.maxhp}   Mana: ${Math.ceil(p.mana)}/${p.stats.maxmana}`,
-    ];
-    if (p.stats.leech) statLines.push(`Lebensraub: ${p.stats.leech} je Treffer`);
-    if (p.stats.licht) statLines.push(`Lichtradius: +${p.stats.licht}`);
-    if (p.arrows) statLines.push(`Pfeile: ${p.arrows}`);
-    if (p.hasKey) statLines.push('Kryptaschlüssel');
-    c.add(this.scene.add.text(14, 36, statLines.join('\n'), { fontFamily: 'serif', fontSize: '14px', color: '#c8b890', lineSpacing: 3 }));
-
-    let rowY = 42 + statLines.length * 19 + 12;
-    const listTop = rowY;
-    if (p.inv.length === 0) {
-      c.add(this.scene.add.text(14, rowY, MELDUNGEN.inventarLeer, { fontFamily: 'serif', fontSize: '14px', color: '#8a7a5a', fontStyle: 'italic' }));
-    }
-    for (const it of p.inv) {
-      if (rowY > h - 50) break; // einfacher Überlauf-Schutz; Blättern siehe TODO
-      rowY += this.buildItemRow(c, it, rowY, w);
-    }
-    void listTop;
+    c.add(this.scene.add.rectangle(w * 0.46, 8, 1, h - 16, LINE).setOrigin(0));
+    this.buildCharacterSide(c, w * 0.46 - 10, h);
+    this.buildInventorySide(c, w * 0.46 + 12, w - (w * 0.46 + 12) - 10, h);
+    const closeBtn = this.scene.add.text(w - 10, 8, '✕', { fontFamily: 'serif', fontSize: '16px', color: BONE })
+      .setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerdown', () => this.closeAll());
+    c.add(closeBtn);
     fixUiScroll(c);
   }
 
-  private buildItemRow(c: Phaser.GameObjects.Container, it: Item, y: number, w: number): number {
+  // --- linke Seite: Charakter ------------------------------------------------
+
+  private buildCharacterSide(c: Phaser.GameObjects.Container, w: number, _h: number): void {
+    const p = this.getPlayer();
+    c.add(this.scene.add.text(14, 10, 'CHARAKTER', { fontFamily: 'serif', fontSize: '16px', color: GOLD, letterSpacing: 2 }));
+
+    const variante = p.armorIt && p.armorIt.val >= 8 ? 'ruestung2' : undefined;
+    const ptKey = this.provider.portraitKey('spieler', variante);
+    c.add(this.scene.add.rectangle(64, 92, 92, 92, 0x0e0a06).setStrokeStyle(2, 0x5a4a32));
+    if (ptKey) {
+      const img = this.scene.add.image(64, 92, ptKey);
+      img.setScale(86 / Math.max(img.width, img.height));
+      c.add(img);
+    } else {
+      const f = this.provider.figureFrame('spieler', 0, 0);
+      c.add(this.scene.add.image(64, 92, f.key, f.frame).setScale(2.6));
+    }
+    c.add(this.scene.add.text(64, 144, `Stufe ${p.level}`, { fontFamily: 'serif', fontSize: '13px', color: BONE }).setOrigin(0.5, 0));
+
+    // Slots rechts neben dem Portrait
+    const slots: Array<[string, Item | null]> = [['Waffe', p.weapon], ['Rüstung', p.armorIt], ['Ring', p.ring]];
+    let sy = 40;
+    for (const [label, it] of slots) {
+      const slotBg = this.scene.add.rectangle(124, sy, 40, 40, 0x100b06).setOrigin(0)
+        .setStrokeStyle(1, it ? Phaser.Display.Color.HexStringToColor(RARITY_COLORS[(it.rarity ?? 0) as Rarity]).color : LINE);
+      c.add(slotBg);
+      if (it) {
+        c.add(this.scene.add.image(144, sy + 20, this.provider.itemIcon(it)).setScale(0.5));
+        const gem = it === p.weapon ? weaponGem(p) : null;
+        c.add(this.scene.add.text(170, sy + 2, it.name, { fontFamily: 'serif', fontSize: '12px', color: RARITY_COLORS[(it.rarity ?? 0) as Rarity], wordWrap: { width: w - 176 } }));
+        if (gem) c.add(this.scene.add.text(170, sy + 27, `◆ ${gem.name}`, { fontFamily: 'serif', fontSize: '10px', color: gem.col }));
+        slotBg.setInteractive({ useHandCursor: true });
+        slotBg.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
+        slotBg.on('pointerout', () => this.hideTooltip());
+      } else {
+        c.add(this.scene.add.text(170, sy + 12, `${label}: -`, { fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c' }));
+      }
+      sy += 46;
+    }
+
+    const m = p.materials;
+    const stats = [
+      `Schaden ${p.stats.dmg}   Rüstung ${p.stats.armor}`,
+      `Leben ${Math.ceil(p.hp)}/${p.stats.maxhp}   Mana ${Math.ceil(p.mana)}/${p.stats.maxmana}`,
+      `Lebensraub ${p.stats.leech}   Lichtradius +${p.stats.licht}`,
+      `Gold ${p.gold}   Flaschen ${p.flaskCount}/${p.flaskMax}`,
+      `Holz ${m.holz} · Stein ${m.stein} · Eisen ${m.eisen} · Kräuter ${m.kraeuter} · Kohle ${m.kohle}`,
+    ];
+    c.add(this.scene.add.text(14, 188, stats.join('\n'), { fontFamily: 'serif', fontSize: '13px', color: '#c8b890', lineSpacing: 5 }));
+
+    // Fertigkeits-Schulen mit Fähigkeiten-Übersicht (Tooltip)
+    let schY = 300;
+    c.add(this.scene.add.text(14, schY - 18, 'FERTIGKEITEN (steigen durch Benutzung)', { fontFamily: 'serif', fontSize: '12px', color: GOLD, letterSpacing: 1 }));
+    const schools: Array<['nahkampf' | 'zauberei' | 'bogen', string]> = [
+      ['nahkampf', 'Nahkampf'], ['zauberei', 'Zauberei'], ['bogen', 'Bogenschießen'],
+    ];
+    for (const [id, label] of schools) {
+      const st = p.schools[id];
+      const nextAt = st.level >= SCHOOLS.maxLevel ? null : SCHOOLS.usesPerLevel[st.level + 1];
+      const prevAt = SCHOOLS.usesPerLevel[st.level] ?? 0;
+      const frac = nextAt === null ? 1 : Phaser.Math.Clamp((st.uses - prevAt) / (nextAt - prevAt), 0, 1);
+      c.add(this.scene.add.text(14, schY, `${label} - Stufe ${st.level}`, { fontFamily: 'serif', fontSize: '12.5px', color: BONE }));
+      c.add(this.scene.add.rectangle(14, schY + 17, w - 28, 6, 0x0e0a06).setOrigin(0).setStrokeStyle(1, LINE));
+      c.add(this.scene.add.rectangle(15, schY + 18, (w - 30) * frac, 4, 0x8c7ad0).setOrigin(0));
+      // Fähigkeiten dieser Schule: freigeschaltet golden, sonst grau
+      let ax = 14;
+      for (const a of ABILITIES.filter((a2) => a2.school === id)) {
+        const frei = st.level >= a.unlock;
+        const t = this.scene.add.text(ax, schY + 27, `${a.name} (${a.unlock})`, {
+          fontFamily: 'serif', fontSize: '10.5px', color: frei ? GOLD : '#6a5f4c',
+        }).setInteractive({ useHandCursor: true });
+        t.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTextTooltip(`${a.name} - ab ${label} Stufe ${a.unlock}`, a.beschreibung, ptr));
+        t.on('pointerout', () => this.hideTooltip());
+        c.add(t);
+        ax += t.width + 10;
+      }
+      schY += 52;
+    }
+    // Aufgaben (Tagebuch) unter den Fertigkeiten
+    const journal = this.getJournal?.() ?? [];
+    if (journal.length) {
+      c.add(this.scene.add.text(14, schY - 4, 'AUFGABEN', { fontFamily: 'serif', fontSize: '12px', color: GOLD, letterSpacing: 1 }));
+      c.add(this.scene.add.text(14, schY + 14, journal.join('\n'), {
+        fontFamily: 'serif', fontSize: '11.5px', color: '#c8b890', lineSpacing: 4, wordWrap: { width: w - 24 },
+      }));
+    }
+  }
+
+  // --- rechte Seite: Inventar mit Blättern -----------------------------------
+
+  private buildInventorySide(c: Phaser.GameObjects.Container, x0: number, w: number, h: number): void {
+    const p = this.getPlayer();
+    c.add(this.scene.add.text(x0, 10, `INVENTAR (${p.inv.length})`, { fontFamily: 'serif', fontSize: '16px', color: GOLD, letterSpacing: 2 }));
+    c.add(this.scene.add.text(x0 + w, 14, 'Maus-Rad: blättern', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }).setOrigin(1, 0));
+
+    // Sortiert: Angelegtes zuerst, dann nach Art und Seltenheit
+    const order: Record<string, number> = { weapon: 0, armor: 1, ring: 2, gem: 3, scroll: 4, food: 5, potion: 6, material: 7 };
+    const inv = [...p.inv].sort((a, b) => {
+      const ea = (a === p.weapon || a === p.armorIt || a === p.ring) ? -1 : 0;
+      const eb = (b === p.weapon || b === p.armorIt || b === p.ring) ? -1 : 0;
+      if (ea !== eb) return ea - eb;
+      const oa = order[a.kind] ?? 9, ob = order[b.kind] ?? 9;
+      if (oa !== ob) return oa - ob;
+      return (b.rarity ?? 0) - (a.rarity ?? 0);
+    });
+
+    const rowH = 42;
+    const listTop = 36;
+    const visible = Math.floor((h - listTop - 14) / rowH);
+    const maxScroll = Math.max(0, inv.length - visible);
+    this.scroll = Math.min(this.scroll, maxScroll);
+    if (inv.length === 0) {
+      c.add(this.scene.add.text(x0, listTop, MELDUNGEN.inventarLeer, { fontFamily: 'serif', fontSize: '13px', color: '#8a7a5a', fontStyle: 'italic' }));
+    }
+    let y = listTop;
+    for (const it of inv.slice(this.scroll, this.scroll + visible)) {
+      this.buildItemRow(c, it, x0, y, w);
+      y += rowH;
+    }
+    // Bildlauf-Anzeige
+    if (maxScroll > 0) {
+      const trackH = visible * rowH;
+      c.add(this.scene.add.rectangle(x0 + w + 4, listTop, 3, trackH, 0x0e0a06).setOrigin(0));
+      const thumbH = Math.max(24, trackH * (visible / inv.length));
+      const thumbY = listTop + (trackH - thumbH) * (this.scroll / maxScroll);
+      c.add(this.scene.add.rectangle(x0 + w + 4, thumbY, 3, thumbH, 0x8a7a5a).setOrigin(0));
+    }
+  }
+
+  private buildItemRow(c: Phaser.GameObjects.Container, it: Item, x0: number, y: number, w: number): void {
     const p = this.getPlayer();
     const equipped = it === p.weapon || it === p.armorIt || it === p.ring;
-    const rowH = 46;
     const rar = (it.rarity ?? 0) as Rarity;
-    const row = this.scene.add.rectangle(8, y, w - 16, rowH - 4, 0xffffff, 0.02).setOrigin(0);
-    row.setStrokeStyle(1, rar >= 1 ? Phaser.Display.Color.HexStringToColor(RARITY_COLORS[rar]).color : 0x2a2218, rar >= 1 ? 0.6 : 1);
+    const rarCol = Phaser.Display.Color.HexStringToColor(RARITY_COLORS[rar]).color;
+    const row = this.scene.add.rectangle(x0, y, w, 38, equipped ? 0xc9a227 : 0xffffff, equipped ? 0.07 : 0.02).setOrigin(0);
+    row.setStrokeStyle(1, rar >= 1 ? rarCol : 0x2a2218, rar >= 1 ? 0.6 : 1);
     row.setInteractive({ useHandCursor: true });
     c.add(row);
-    // Raritätsbalken links
-    if (rar >= 1) {
-      const colNum = Phaser.Display.Color.HexStringToColor(RARITY_COLORS[rar]).color;
-      c.add(this.scene.add.rectangle(8, y, 3, rowH - 4, colNum).setOrigin(0));
-    }
-    const icon = this.scene.add.image(30, y + (rowH - 4) / 2, this.provider.itemIcon(it)).setScale(0.5);
-    c.add(icon);
-    c.add(this.scene.add.text(52, y + 4, it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
-      fontFamily: 'serif', fontSize: '14px', color: RARITY_COLORS[rar],
+    if (rar >= 1) c.add(this.scene.add.rectangle(x0, y, 3, 38, rarCol).setOrigin(0));
+    c.add(this.scene.add.image(x0 + 20, y + 19, this.provider.itemIcon(it)).setScale(0.42));
+    c.add(this.scene.add.text(x0 + 40, y + 3, it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
+      fontFamily: 'serif', fontSize: '13px', color: RARITY_COLORS[rar],
     }));
-    c.add(this.scene.add.text(52, y + 22, this.shorten(itemStatLine(it), 44), {
-      fontFamily: 'serif', fontSize: '11.5px', color: '#9a8c6e',
+    const typ = it.kind === 'weapon' ? KLASSEN_NAMEN[it.weaponClass ?? 'schwert'] : TYP_NAMEN[it.kind] ?? '';
+    const wert = it.kind === 'weapon' ? `${it.val + (it.upgrade ?? 0) * 2} Schaden` : it.kind === 'armor' ? `${it.val + (it.upgrade ?? 0)} Rüstung` : '';
+    c.add(this.scene.add.text(x0 + 40, y + 21, `${typ}${wert ? ' · ' + wert : ''}`, {
+      fontFamily: 'serif', fontSize: '10.5px', color: '#9a8c6e',
     }));
     if (equipped) {
-      c.add(this.scene.add.text(w - 22, y + 5, 'ANGELEGT', { fontFamily: 'serif', fontSize: '10px', color: GOLD }).setOrigin(1, 0));
+      c.add(this.scene.add.text(x0 + w - 6, y + 4, 'ANGELEGT', { fontFamily: 'serif', fontSize: '9px', color: GOLD }).setOrigin(1, 0));
     }
     row.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
     row.on('pointerout', () => this.hideTooltip());
     row.on('pointerdown', () => this.clickItem(it));
-    return rowH;
   }
 
   private clickItem(it: Item): void {
@@ -166,11 +279,9 @@ export class UIPanels {
       p.pot++;
       p.inv = p.inv.filter((x) => x !== it);
     } else if (it.kind === 'scroll' && it.scrollSkill) {
-      // Zauberrolle: wirkt einmal ohne Manakosten (Masterprompt 6.2)
       p.inv = p.inv.filter((x) => x !== it);
       this.onUseScroll?.(it.scrollSkill);
     } else if (it.kind === 'food' && it.buff) {
-      // Essen: Regeneration über Zeit
       p.foodBuff = { hpRegen: it.buff.hpRegen, restS: it.buff.dauerS };
       p.inv = p.inv.filter((x) => x !== it);
       this.sfx.play('trank');
@@ -180,37 +291,70 @@ export class UIPanels {
     recalc(p);
     this.sfx.play('klick');
     this.hideTooltip();
-    this.buildInventory();
+    this.build();
     this.onChanged?.();
+  }
+
+  // --- Tooltips mit Wert-Differenzen ------------------------------------------
+
+  // Werte, als wäre `it` im passenden Slot angelegt
+  private statsWith(it: Item): Stats {
+    const p = this.getPlayer();
+    const w = it.kind === 'weapon' ? it : p.weapon;
+    const a = it.kind === 'armor' ? it : p.armorIt;
+    const r = it.kind === 'ring' ? it : p.ring;
+    return calcStats(p.level, p.elixirs, [w, a, r], p.schools.nahkampf.level);
   }
 
   private showTooltip(it: Item, ptr: Phaser.Input.Pointer): void {
     this.hideTooltip();
     const p = this.getPlayer();
     const rar = (it.rarity ?? 0) as Rarity;
+    const typ = it.kind === 'weapon' ? `Waffe - ${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']}` : TYP_NAMEN[it.kind] ?? '';
     const lines: Array<[string, string]> = [
       [it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), RARITY_COLORS[rar]],
-      [RARITY_NAMES[rar], '#8a7a5a'],
+      [`${RARITY_NAMES[rar]}${typ ? ' · ' + typ : ''}`, '#8a7a5a'],
       [itemStatLine(it), BONE],
     ];
-    // Vergleich mit angelegtem Item gleicher Art
-    const equippedOfKind = it.kind === 'weapon' ? p.weapon : it.kind === 'armor' ? p.armorIt : it.kind === 'ring' ? p.ring : null;
-    if (equippedOfKind && equippedOfKind !== it) {
-      lines.push(['', BONE]);
-      lines.push(['Angelegt: ' + equippedOfKind.name, RARITY_COLORS[(equippedOfKind.rarity ?? 0) as Rarity]]);
-      lines.push([itemStatLine(equippedOfKind), '#9a8c6e']);
+    // Differenzen zum aktuellen Stand, grün/rot (Feedback-Runde 1)
+    if ((it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'ring')
+      && it !== p.weapon && it !== p.armorIt && it !== p.ring) {
+      const neu = this.statsWith(it);
+      const cur = p.stats;
+      const diffs: Array<[string, number]> = [
+        ['Schaden', neu.dmg - cur.dmg], ['Rüstung', neu.armor - cur.armor],
+        ['Leben', neu.maxhp - cur.maxhp], ['Mana', neu.maxmana - cur.maxmana],
+        ['Lebensraub', neu.leech - cur.leech], ['Lichtradius', neu.licht - cur.licht],
+      ];
+      const relevant = diffs.filter(([, d]) => d !== 0);
+      if (relevant.length) {
+        lines.push(['— beim Anlegen —', '#8a7a5a']);
+        for (const [name, d] of relevant) {
+          lines.push([`${d > 0 ? '+' : ''}${d} ${name}`, d > 0 ? '#6ad06a' : '#e05a4a']);
+        }
+      } else {
+        lines.push(['Kein Unterschied zu jetzt', '#8a7a5a']);
+      }
     }
     if (it.kind === 'gem') lines.push(['Klicken: in Waffe fassen', '#8a7a5a']);
     else if (it.kind === 'scroll') lines.push(['Klicken: Rolle einsetzen', '#8a7a5a']);
     else if (it.kind === 'food') lines.push(['Klicken: verzehren', '#8a7a5a']);
     else if (it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'ring') lines.push(['Klicken: an-/ablegen', '#8a7a5a']);
+    this.renderTooltip(lines, ptr);
+  }
 
+  private showTextTooltip(titel: string, text: string, ptr: Phaser.Input.Pointer): void {
+    this.hideTooltip();
+    this.renderTooltip([[titel, GOLD], [text, BONE]], ptr);
+  }
+
+  private renderTooltip(lines: Array<[string, string]>, ptr: Phaser.Input.Pointer): void {
     const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(950);
     let ty = 8;
     const texts: Phaser.GameObjects.Text[] = [];
     for (const [txt, col] of lines) {
       const t = this.scene.add.text(10, ty, txt, {
-        fontFamily: 'serif', fontSize: '13px', color: col, wordWrap: { width: 260 },
+        fontFamily: 'serif', fontSize: '12.5px', color: col, wordWrap: { width: 250 },
       });
       texts.push(t);
       ty += t.height + 2;
@@ -219,9 +363,8 @@ export class UIPanels {
     const bg = this.scene.add.rectangle(0, 0, bgW, ty + 6, 0x0e0a06, 0.97).setOrigin(0).setStrokeStyle(1, LINE);
     c.add(bg);
     for (const t of texts) c.add(t);
-    const px = Math.min(ptr.x - bgW - 12, this.scene.scale.width - bgW - 10);
-    c.setPosition(Math.max(8, px), Math.min(ptr.y, this.scene.scale.height - ty - 16));
-    fixUiScroll(c);
+    const px = ptr.x + 14 + bgW > this.scene.scale.width ? ptr.x - bgW - 12 : ptr.x + 14;
+    c.setPosition(Math.max(6, px), Math.min(ptr.y, this.scene.scale.height - ty - 16));
     this.tooltip = c;
   }
 
@@ -230,92 +373,7 @@ export class UIPanels {
     this.tooltip = null;
   }
 
-  // --- Charakterfenster ------------------------------------------------------
-
-  private buildCharacter(): void {
-    this.charContainer?.destroy();
-    const w = 340;
-    const h = 480;
-    const x = 16;
-    const y = 20;
-    const c = this.scene.add.container(x, y).setScrollFactor(0).setDepth(900);
-    this.charContainer = c;
-    const p = this.getPlayer();
-
-    const bg = this.scene.add.rectangle(0, 0, w, h, PANEL_BG, 0.97).setOrigin(0).setStrokeStyle(1, LINE);
-    bg.setInteractive();
-    c.add(bg);
-    c.add(this.scene.add.text(14, 10, 'CHARAKTER', { fontFamily: 'serif', fontSize: '17px', color: GOLD, letterSpacing: 2 }));
-
-    // Portrait: Hot-Swap-Bild (Rüstungsvariante falls vorhanden) oder Figur im Rahmen
-    const variante = p.armorIt && p.armorIt.val >= 8 ? 'ruestung2' : undefined;
-    const ptKey = this.provider.portraitKey('spieler', variante);
-    const frame = this.scene.add.rectangle(80, 100, 110, 110, 0x0e0a06).setStrokeStyle(2, 0x5a4a32);
-    c.add(frame);
-    if (ptKey) {
-      const img = this.scene.add.image(80, 100, ptKey);
-      img.setScale(104 / Math.max(img.width, img.height));
-      c.add(img);
-    } else {
-      const f = this.provider.figureFrame('spieler', 0, 0);
-      c.add(this.scene.add.image(80, 100, f.key, f.frame).setScale(3));
-    }
-    c.add(this.scene.add.text(80, 162, `Stufe ${p.level}`, { fontFamily: 'serif', fontSize: '14px', color: BONE }).setOrigin(0.5, 0));
-
-    // Ausrüstungs-Slots
-    const slots: Array<[string, Item | null]> = [['Waffe', p.weapon], ['Rüstung', p.armorIt], ['Ring', p.ring]];
-    let sy = 44;
-    for (const [label, it] of slots) {
-      const slotBg = this.scene.add.rectangle(160, sy, 44, 44, 0x100b06).setOrigin(0).setStrokeStyle(1, it ? Phaser.Display.Color.HexStringToColor(RARITY_COLORS[(it.rarity ?? 0) as Rarity]).color : LINE);
-      c.add(slotBg);
-      if (it) {
-        c.add(this.scene.add.image(182, sy + 22, this.provider.itemIcon(it)).setScale(0.55));
-        const gem = it === p.weapon ? weaponGem(p) : null;
-        c.add(this.scene.add.text(212, sy + 4, it.name, { fontFamily: 'serif', fontSize: '12.5px', color: RARITY_COLORS[(it.rarity ?? 0) as Rarity], wordWrap: { width: 118 } }));
-        if (gem) c.add(this.scene.add.text(212, sy + 30, `◆ ${gem.name}`, { fontFamily: 'serif', fontSize: '10.5px', color: gem.col }));
-      } else {
-        c.add(this.scene.add.text(212, sy + 14, `${label}: -`, { fontFamily: 'serif', fontSize: '12.5px', color: '#6a5f4c' }));
-      }
-      sy += 52;
-    }
-
-    // Werteübersicht
-    const statY = 208;
-    const stats = [
-      `Schaden: ${p.stats.dmg}    Rüstung: ${p.stats.armor}`,
-      `Leben: ${Math.ceil(p.hp)}/${p.stats.maxhp}    Mana: ${Math.ceil(p.mana)}/${p.stats.maxmana}`,
-      `Lebensraub: ${p.stats.leech}    Lichtradius: +${p.stats.licht}`,
-      `Gold: ${p.gold}    Pfeile: ${p.arrows}`,
-      `Heilflaschen: ${p.flaskCount}/${p.flaskMax}${p.flaskPowerUp ? ' (verstärkt)' : ''}`,
-    ];
-    c.add(this.scene.add.text(14, statY, stats.join('\n'), { fontFamily: 'serif', fontSize: '14px', color: '#c8b890', lineSpacing: 5 }));
-
-    // Fertigkeiten-Fortschritt (Balken je Schule)
-    let schY = statY + stats.length * 20 + 16;
-    c.add(this.scene.add.text(14, schY - 4, 'FERTIGKEITEN', { fontFamily: 'serif', fontSize: '13px', color: GOLD, letterSpacing: 2 }));
-    schY += 18;
-    const schools: Array<['nahkampf' | 'zauberei' | 'bogen', string]> = [
-      ['nahkampf', 'Nahkampf'], ['zauberei', 'Zauberei'], ['bogen', 'Bogenschießen'],
-    ];
-    for (const [id, label] of schools) {
-      const st = p.schools[id];
-      const nextAt = st.level >= SCHOOLS.maxLevel ? null : SCHOOLS.usesPerLevel[st.level + 1];
-      const prevAt = SCHOOLS.usesPerLevel[st.level] ?? 0;
-      const frac = nextAt === null ? 1 : Phaser.Math.Clamp((st.uses - prevAt) / (nextAt - prevAt), 0, 1);
-      c.add(this.scene.add.text(14, schY, `${label} - Stufe ${st.level}`, { fontFamily: 'serif', fontSize: '13px', color: BONE }));
-      c.add(this.scene.add.rectangle(14, schY + 19, 300, 7, 0x0e0a06).setOrigin(0).setStrokeStyle(1, LINE));
-      c.add(this.scene.add.rectangle(15, schY + 20, 298 * frac, 5, 0x8c7ad0).setOrigin(0));
-      schY += 36;
-    }
-    fixUiScroll(c);
-  }
-
-  private shorten(s: string, max: number): string {
-    return s.length > max ? s.slice(0, max - 1) + '…' : s;
-  }
-
   destroy(): void {
-    this.closeInventory();
-    this.closeCharacter();
+    this.close();
   }
 }

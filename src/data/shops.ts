@@ -43,7 +43,6 @@ export const SHOP_SCHMIED: ReadonlyArray<ShopOfferDef> = [
   { kind: 'gear', gearKind: 'weapon', gearDepth: 2 },
   { kind: 'gear', gearKind: 'weapon', gearDepth: 1 },
   { kind: 'gear', gearKind: 'armor', gearDepth: 2 },
-  { kind: 'arrows', name: 'Bündel Pfeile (20)', price: 18, inf: true },
   { kind: 'tool', name: 'Holzaxt', price: 40, toolId: 'axt', limit: 1 },
   { kind: 'tool', name: 'Spitzhacke', price: 60, toolId: 'spitzhacke', limit: 1 },
   // Kohle: kein Köhler-NPC in der Spezifikation - der Schmied führt sie mit

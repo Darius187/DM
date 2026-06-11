@@ -10,7 +10,7 @@ import { rnd, ri, pick, type Rng } from '../logic/rng';
 export interface Pos { x: number; y: number }
 
 export interface BreakableSpawn { kind: BreakableKind; x: number; y: number; ambush: boolean }
-export interface EnemySpawn { type: EnemyTypeId; x: number; y: number; elite: boolean }
+export interface EnemySpawn { type: EnemyTypeId; x: number; y: number; elite: boolean; champion?: string }
 export interface SpecialMarker { id: string; x: number; y: number; raum: string }
 
 export interface NpcSpawn {
@@ -339,6 +339,19 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
     const r = pick(rng, rooms.slice(1));
     a.gear.push({ x: (r.x + rnd(rng, 1, r.w - 1)) * TILE, y: (r.y + rnd(rng, 1, r.h - 1)) * TILE });
   }
+
+  // Miniboss je Ebene (Feedback-Runde 1): benannter Champion nahe der Treppe
+  const CHAMPS: Record<number, [EnemyTypeId, string]> = {
+    1: ['pest', 'Der Gruftvogt'],
+    2: ['skelett', 'Knochenwächter Ottokar'],
+    3: ['schatten', 'Der Kultmeister'],
+  };
+  const [champTyp, champName] = CHAMPS[n] ?? CHAMPS[3];
+  a.enemySpawns.push({
+    type: champTyp, elite: true, champion: champName,
+    x: (far.cx - 2) * TILE + 16, y: far.cy * TILE + 16,
+  });
+  a.special.push({ id: 'miniboss', x: far.cx - 2, y: far.cy, raum: `Miniboss: ${champName}` });
 
   return a;
 }

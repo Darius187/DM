@@ -5,7 +5,7 @@ import type { Item, GemItem } from '../data/types';
 import { RARITY_RGB } from '../data/items';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 
-export type PickupKind = 'gold' | 'potion' | 'mpotion' | 'gear' | 'gem' | 'folio' | 'note' | 'relic' | 'arrows' | 'material' | 'scroll' | 'medaillon';
+export type PickupKind = 'gold' | 'potion' | 'mpotion' | 'gear' | 'gem' | 'folio' | 'note' | 'relic' | 'arrows' | 'material' | 'scroll' | 'medaillon' | 'portal';
 
 export interface Pickup {
   kind: PickupKind;
@@ -125,6 +125,14 @@ export class PickupSystem {
           g.lineBetween(p.x - 5, sy + 5, p.x + 5, sy - 5);
           g.lineBetween(p.x - 2, sy + 6, p.x + 7, sy - 3);
           break;
+        case 'portal': {
+          // wirbelndes Portal
+          g.lineStyle(3, 0x8aa6e8, 0.8 + Math.sin(p.bob * 2) * 0.2);
+          g.strokeCircle(p.x, sy - 8, 14 + Math.sin(p.bob * 3) * 2);
+          g.lineStyle(2, 0xd8e4f8, 0.6);
+          g.strokeCircle(p.x, sy - 8, 8 + Math.cos(p.bob * 2.4) * 2);
+          break;
+        }
         case 'medaillon':
           g.lineStyle(1.5, 0xc9a227, 1);
           g.strokeCircle(p.x, sy, 5);

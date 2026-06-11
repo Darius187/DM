@@ -66,14 +66,21 @@ export const HITSTOP_TIMESCALE = 0.15; // Referenz: dt*0.15 während Hit-Stop
 // Wird in der DebugArena gegen die Basiswerte geprüft.
 export const ENEMY_HIT_PCT = { min: 0.10, max: 0.16 } as const;
 
-// Waffenklassen-Movesets (Masterprompt 4.2)
+// Waffenklassen-Movesets (Masterprompt 4.2 + Zauberstab aus Feedback-Runde 1)
 export const WEAPON_MOVESETS = {
   schwert: { comboLength: 3, speedMult: 1.0 },
   axt:     { comboLength: 2, sweep360: true, speedMult: 0.9 },   // 3. Eingabe = Rundumschlag
   stange:  { comboLength: 1, thrust: true, range: 96, arc: 0.35, knockback: 14, speedMult: 0.95 },
   wucht:   { comboLength: 1, overhead: true, aoeRadius: 40, postureDmgMult: 2.0, speedMult: 0.7, miniShake: true },
   bogen:   { drawTimeMaxS: 1.2, dmgMultFull: 1.8, projSpeed: 420, speedMult: 1.0 },
+  // Zauberstab: manafreies Arkangeschoss, skaliert mit der Zauberei-Schule,
+  // und verstärkt gewirkte Zauber (halber Stabwert als Bonus)
+  stab:    { projSpeed: 360, dmgMult: 0.75, spellBonusFaktor: 0.5, zaubereiBonusJeStufe: 0.05 },
 } as const;
+
+// Gedeckter Schlag: Angriff aus dem Block heraus (Feedback-Runde 1) -
+// leicht abgeschwächt, da man hinter dem Schild gedeckt bleibt
+export const GUARDED_ATTACK = { dmgMult: 0.8, recoveryMult: 1.25 } as const;
 
 // Tod und Rasten (Masterprompt 4.4 - schlägt Referenz: dort 20% Goldverlust)
 export const DEATH = {

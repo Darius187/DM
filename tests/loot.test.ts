@@ -1,14 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { rollGear, rollGem, rollRarity, gearPrice, itemStatLine, effectiveVal } from '../src/logic/loot';
 import { seededRng } from '../src/logic/rng';
-import { WEAPONS, BOWS, ARMORS, RINGS, PREFIX, SUFFIX } from '../src/data/items';
+import { WEAPONS, BOWS, STAVES, ARMORS, RINGS, PREFIX_STEMS, SUFFIX, dekliniertesPraefix } from '../src/data/items';
 
-const ALL_WEAPON_NAMES = [...WEAPONS, ...BOWS].map((w) => w[0]);
+const ALL_WEAPON_NAMES = [...WEAPONS, ...BOWS, ...STAVES].map((w) => w[0]);
 const ALL_ARMOR_NAMES = ARMORS.map((a) => a[0]);
 
 function stripAffixes(name: string): string {
-  let n = name;
-  for (const p of PREFIX) n = n.replace(`${p} `, '');
+  let n = name.replace(/^(Grimmig|Geweiht|Blutig|Eisern|Uralt)(er|es|e)\s+/, '');
   for (const s of SUFFIX) n = n.replace(` ${s}`, '');
   return n;
 }
@@ -56,7 +55,7 @@ describe('rollGear', () => {
     const rng = seededRng(3);
     for (let i = 0; i < 300; i++) {
       const it = rollGear(rng, 2, 'weapon');
-      if (it.rarity >= 1) expect(PREFIX.some((p) => it.name.startsWith(p + ' '))).toBe(true);
+      if (it.rarity >= 1) expect(/^(Grimmig|Geweiht|Blutig|Eisern|Uralt)(er|es|e)\s/.test(it.name)).toBe(true);
       if (it.rarity >= 2) expect(SUFFIX.some((s) => it.name.endsWith(' ' + s))).toBe(true);
     }
   });
@@ -72,6 +71,26 @@ describe('rollRarity', () => {
     };
     expect(count(4)).toBeGreaterThan(count(1));
   });
+});
+
+describe('Präfix-Deklination (Feedback-Runde 1)', () => {
+  it('dekliniert nach Genus: Eisernes Langschwert, Geweihtes Kettenhemd, Grimmige Klinge', () => {
+    expect(dekliniertesPraefix('Eisern', 'n')).toBe('Eisernes');
+    expect(dekliniertesPraefix('Geweiht', 'n')).toBe('Geweihtes');
+    expect(dekliniertesPraefix('Grimmig', 'f')).toBe('Grimmige');
+    expect(dekliniertesPraefix('Uralt', 'm')).toBe('Uralter');
+    expect(dekliniertesPraefix('Blutig', 'pl')).toBe('Blutige');
+  });
+
+  it('keine falschen Formen wie "Grimmiger Kettenhemd" in 400 Würfen', () => {
+    const rng = seededRng(77);
+    for (let i = 0; i < 400; i++) {
+      const it = rollGear(rng, 3);
+      expect(it.name).not.toMatch(/(er)\s+(Kettenhemd|Langschwert|Kurzschwert|Lederwams)/);
+      expect(it.name).not.toMatch(/(er|es)\s+(Klinge|Streitaxt|Hellebarde|Lumpen)/);
+    }
+  });
+  void PREFIX_STEMS;
 });
 
 describe('rollGem', () => {

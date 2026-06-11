@@ -2,7 +2,7 @@
 // Timings aus src/data/kampf.ts (Masterprompt Teil 4 - schlägt Referenz).
 // Abnahmekriterium: (a) Klickspam wird bestraft, (b) keine Eingabe verschluckt.
 
-import { LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL } from '../data/kampf';
+import { LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, GUARDED_ATTACK } from '../data/kampf';
 
 export type PlayerActionState = 'idle' | 'attack' | 'heavyWindup' | 'heavyRecover' | 'block' | 'roll';
 
@@ -35,6 +35,7 @@ export interface AttackEvent {
   comboIndex: number;     // 0..2 bei leicht
   isFinisher: boolean;
   dmgMult: number;
+  guarded?: boolean;      // gedeckter Schlag aus dem Block heraus
 }
 
 export interface StepResult { attack: AttackEvent | null; rolled: boolean }
@@ -62,6 +63,15 @@ function startHeavy(s: CombatState): void {
 
 // Eingabe: leichter Angriff. Liefert sofort ein AttackEvent oder puffert.
 export function inputLight(s: CombatState): AttackEvent | null {
+  // Gedeckter Schlag: aus dem Block heraus, abgeschwächt, langsamer, keine Kombo
+  if (s.blocking && s.action === 'block') {
+    s.recoverTotal = LIGHT_ATTACK.recoveryS * GUARDED_ATTACK.recoveryMult;
+    s.recoverT = s.recoverTotal;
+    s.action = 'attack';
+    let mult = GUARDED_ATTACK.dmgMult;
+    if (s.riposteT > 0) { mult *= 1 + BLOCK.riposteBonus; s.riposteT = 0; }
+    return { type: 'light', comboIndex: 0, isFinisher: false, dmgMult: mult, guarded: true };
+  }
   if (s.action === 'idle' || (s.action === 'attack' && s.recoverT <= 0)) return startLight(s);
   // Während Erholung/Ausholen: puffern (250 ms), nie verschlucken
   s.bufferT = LIGHT_ATTACK.inputBufferMs / 1000;
@@ -135,7 +145,8 @@ export function stepCombat(s: CombatState, dt: number): StepResult {
     s.recoverT -= dt;
     if (s.recoverT <= 0) {
       s.recoverT = 0;
-      s.action = 'idle';
+      // nach gedecktem Schlag zurück in den Block, sonst frei
+      s.action = s.blocking ? 'block' : 'idle';
     }
   }
 

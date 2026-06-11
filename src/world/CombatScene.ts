@@ -169,8 +169,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.input.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
       if (this.touch) return; // Touch-Steuerung übernimmt alle Zeiger
       if (this.playerDead || this.uiBlocked()) return;
-      if (ptr.rightButtonDown()) this.tryBlockStart();
-      else if (this.weaponClass() === 'bogen') this.startBowDraw();
+      if (ptr.button === 2) this.tryBlockStart();
+      else if (ptr.button === 1) this.castSpell(0);        // Mitteltaste: Feuerball
+      else if (ptr.button === 3) this.drinkPot();          // Daumentaste 1: Heiltrank
+      else if (ptr.button === 4) this.castSpell(2);        // Daumentaste 2: Heilung
+      else if (this.weaponClass() === 'bogen' && !this.combat.blocking) this.startBowDraw();
       else this.mouseDown = true;
     });
     this.input.on('pointerup', (ptr: Phaser.Input.Pointer) => {
@@ -196,6 +199,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const name = pk.kind === 'relic' ? 'Das Relikt'
       : pk.kind === 'note' ? 'Zerknitterte Notiz'
       : pk.kind === 'medaillon' ? 'Annas Medaillon'
+      : pk.kind === 'portal' ? 'Portal nach Ravensmoor'
       : pk.item?.name ?? '';
     const verb = pk.kind === 'note' ? 'Lesen' : 'Aufheben';
     return { text: `${name} - ${ik} zum ${verb}`, action: () => this.collectManualPickup(pk) };
@@ -218,6 +222,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
     if (pk.kind === 'relic') {
       this.onRelicPickup(pk);
+      return;
+    }
+    if (pk.kind === 'portal') {
+      this.pickups.remove(pk);
+      this.onPortalPickup();
       return;
     }
     if (pk.kind === 'medaillon') {
@@ -243,6 +252,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected stepSound(): string { return 'schritte_stein'; }
   protected showNote(_idx: number): void { void NOTIZEN; }
   protected onRelicPickup(_pk: Pickup): void { /* Welt überschreibt */ }
+  protected onPortalPickup(): void { /* Welt überschreibt */ }
   protected onMedaillonPickup(): void { /* Welt überschreibt */ }
 
   giveXp(n: number): void {
@@ -354,11 +364,6 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   protected startBowDraw(): void {
     if (this.combat.action !== 'idle') return;
-    if (this.p.arrows <= 0) {
-      this.logMsg(MELDUNGEN.keinePfeile, 'bad');
-      this.sfx.play('fehler');
-      return;
-    }
     this.bowDrawT = 0;
     this.sfx.play('bogen_spannen');
   }
@@ -368,8 +373,6 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const ms = WEAPON_MOVESETS.bogen;
     const drawn = Math.min(1, this.bowDrawT / ms.drawTimeMaxS);
     this.bowDrawT = -1;
-    if (this.p.arrows <= 0) return;
-    this.p.arrows--;
     const ang = this.aimAngle();
     this.pdir = ang;
     const dmgMult = 1 + drawn * (ms.dmgMultFull - 1);
@@ -389,6 +392,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const cls = this.weaponClass();
     const ang = this.aimAngle();
     this.pdir = ang;
+    if (cls === 'stab') {
+      this.staffBolt(ev, ang);
+      return;
+    }
     if (cls === 'stange' && ev.type === 'light') {
       this.thrustAttack(ev, ang);
       return;
@@ -448,6 +455,21 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.applyHitstop(heavy ? HITSTOP_MS.heavy : fin ? HITSTOP_MS.finisher : HITSTOP_MS.light);
       this.shake(fin || heavy ? 5 : 3);
     }
+  }
+
+  // Zauberstab: manafreies Arkangeschoss, zählt zur Zauberei-Schule
+  protected staffBolt(ev: AttackEvent, ang: number): void {
+    const ms = WEAPON_MOVESETS.stab;
+    const bonus = 1 + this.p.schools.zauberei.level * ms.zaubereiBonusJeStufe;
+    const dmg = Math.round(this.rollDamage(ms.dmgMult * ev.dmgMult) * bonus);
+    this.projectiles.push({
+      x: this.px + Math.cos(ang) * 14, y: this.py + Math.sin(ang) * 14,
+      vx: Math.cos(ang) * ms.projSpeed, vy: Math.sin(ang) * ms.projSpeed,
+      r: 5, dmg, from: 'player', col: '#b06ae8',
+    });
+    this.fx.burst(this.px + Math.cos(ang) * 18, this.py + Math.sin(ang) * 18, 0xb06ae8, 4, 80);
+    this.sfx.play('schatten_fluestern', 0.8);
+    this.gainSchoolUse('zauberei');
   }
 
   protected thrustAttack(ev: AttackEvent, ang: number): void {
@@ -690,11 +712,15 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.p.mana -= kosten;
     this.p.spellCds[i] = sk.cd;
     const zLevel = this.p.schools.zauberei.level;
+    // Zauberstab verstärkt gewirkte Zauber (halber Stabwert)
+    const stabBonus = this.weaponClass() === 'stab' && this.p.weapon
+      ? Math.round((this.p.weapon.val + (this.p.weapon.upgrade ?? 0) * 2) * WEAPON_MOVESETS.stab.spellBonusFaktor)
+      : 0;
     if (sk.id === 'feuerball') {
       const fx = SPELL_FX.feuerball;
       const a = this.aimAngle();
       this.pdir = a;
-      const dmg = Math.round((fx.dmgBase + fx.dmgPerLevel * this.p.level + zLevel * 2) * (this.p.buffT > 0 ? ALTAR.buffDmgMult : 1));
+      const dmg = Math.round((fx.dmgBase + fx.dmgPerLevel * this.p.level + zLevel * 2 + stabBonus) * (this.p.buffT > 0 ? ALTAR.buffDmgMult : 1));
       this.projectiles.push({
         x: this.px + Math.cos(a) * 16, y: this.py + Math.sin(a) * 16,
         vx: Math.cos(a) * fx.speed, vy: Math.sin(a) * fx.speed,
@@ -703,7 +729,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.sfx.play('feuerball');
     } else if (sk.id === 'heiligesLicht') {
       const fx = SPELL_FX.heiligesLicht;
-      const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level + zLevel * 2;
+      const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level + zLevel * 2 + stabBonus;
       this.fx.burst(this.px, this.py, 0xf0dc92, 34, 220);
       this.shake(4);
       this.sfx.play('heiliges_licht');
@@ -755,11 +781,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         const hitIds = new Set<number>();
         const steps = 14;
         for (let i = 0; i < steps; i++) {
-          const nx = this.px + Math.cos(ang) * (fx.distance / steps);
-          const ny = this.py + Math.sin(ang) * (fx.distance / steps);
-          if (this.isSolidAt(nx, ny)) break;
-          this.px = nx;
-          this.py = ny;
+          // Eckgeprüfte Bewegung - sonst bleibt man mit dem Körper in der Wand stecken
+          const vor = { x: this.px, y: this.py };
+          this.movePlayer(Math.cos(ang) * (fx.distance / steps), Math.sin(ang) * (fx.distance / steps));
+          if (Math.abs(this.px - vor.x) < 0.5 && Math.abs(this.py - vor.y) < 0.5) break;
           this.fx.burst(this.px, this.py, 0xd8cfb8, 1, 60);
           for (const e of [...this.enemies]) {
             if (hitIds.has(e.id)) continue;
@@ -842,16 +867,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       }
       case 'mehrfachschuss': {
         const fx = ABILITY_FX.mehrfachschuss;
-        if (this.p.arrows < 1) {
-          this.logMsg(MELDUNGEN.keinePfeile, 'bad');
-          return;
-        }
         this.p.abilityCds[id] = fx.cd;
         const ang = this.aimAngle();
         this.pdir = ang;
         const ms = WEAPON_MOVESETS.bogen;
-        const n = Math.min(fx.arrows, this.p.arrows);
-        this.p.arrows -= n;
+        const n = fx.arrows;
         const half = (n - 1) / 2;
         for (let i = -half; i <= half; i++) {
           const a = ang + i * fx.spread;

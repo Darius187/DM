@@ -9,3 +9,7 @@
 - Einrichtungs-Sets (Stufe 3) haben noch keine sichtbare Deko am Haus.
 - Erledigt 2026-06-10: Einstellungen liefen bei kleinen Fenstern aus dem
   Bild - jetzt zweispaltig.
+- Feedback-Runde 1, noch offen: UI-Fenster verschiebbar machen; Buch-Lesen
+  als eigenes Pergament-Fenster mit mehr Text; Maustasten-Belegung in den
+  Einstellungen frei wählbar (aktuell fest: Mitte=Feuerball, Daumen1=Trank,
+  Daumen2=Heilung); Zauberrollen-Schnellslot ohne Inventar.

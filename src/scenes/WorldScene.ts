@@ -8,6 +8,7 @@ import { buildCrypt, buildBoss, buildVillage, buildForest, type AreaData, type B
 import { LANDHERR } from '../data/dialoge';
 import storyJson from '../data/story.json';
 import { ShopUI } from '../ui/shop';
+import { Hud } from '../ui/hud';
 import { StashUI } from '../ui/stash';
 import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
 import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, type DlgPage } from '../data/dialoge';
@@ -68,7 +69,6 @@ export class WorldScene extends CombatScene {
   private flags: Record<string, boolean> = {};
   private bossDead = false;
   relicChoice: string | null = null; // gelesen ab Phase 6 (Dorf-Dialoge) und beim Speichern
-  private triggerLock = true;
 
   private tileImages: Phaser.GameObjects.Image[] = [];
   private breakableEnts: BreakableEntity[] = [];
@@ -93,7 +93,7 @@ export class WorldScene extends CombatScene {
   private gefaellteBaeume = new Map<string, number>(); // Position -> Tag des Fällens
   private baumSchlaege = new Map<string, number>();
   private msgTexts: Phaser.GameObjects.Text[] = [];
-  private hudGfx!: Phaser.GameObjects.Graphics;
+  private hud!: Hud;
   private hudText!: Phaser.GameObjects.Text;
   private areaText!: Phaser.GameObjects.Text;
   private deathOverlay: Phaser.GameObjects.Container | null = null;
@@ -110,11 +110,12 @@ export class WorldScene extends CombatScene {
     this.rng = seededRng(this.areaSeed);
     this.setupCombat(0, 0);
     this.dialog = new DialogUI(this, this.provider);
+    this.panels.getJournal = () => this.journalLines();
     this.shop = new ShopUI(this, this.provider, this.sfx, () => this.p);
     this.stash = new StashUI(this, this.sfx, () => this.p, () => this.lager);
     this.worldGfx = this.add.graphics().setDepth(450);
     this.minimapGfx = this.add.graphics().setScrollFactor(0).setDepth(820);
-    this.hudGfx = this.add.graphics().setScrollFactor(0).setDepth(810);
+    this.hud = new Hud(this, () => this.p, () => this.weaponClass());
     this.hudText = this.add.text(0, 0, '', { fontFamily: 'serif', fontSize: '13px', color: '#bfa86f' }).setScrollFactor(0).setDepth(811);
     this.areaText = this.add.text(this.scale.width / 2, 16, '', {
       fontFamily: 'serif', fontSize: '15px', color: '#bfa86f', letterSpacing: 2,
@@ -170,7 +171,7 @@ export class WorldScene extends CombatScene {
     if (cached) return cached;
     const rng = seededRng(this.areaSeed + id.length * 1009 + id.charCodeAt(id.length - 1));
     let a: AreaData;
-    if (id === 'boss') a = buildBoss(rng, this.bossDead);
+    if (id === 'boss') a = buildBoss(rng, this.bossDead && !this.flags.ngPlus);
     else if (id === 'village') a = buildVillage(rng, this.aufbauStufe);
     else if (id === 'wald') a = buildForest(rng);
     else a = buildCrypt(parseInt(id.replace('crypt', ''), 10), rng);
@@ -188,7 +189,6 @@ export class WorldScene extends CombatScene {
     const s = spawnAt ?? a.spawn;
     this.px = s.x;
     this.py = s.y;
-    this.triggerLock = true;
     this.projectiles = [];
     this.telegraphs = [];
     this.decals = [];
@@ -291,9 +291,27 @@ export class WorldScene extends CombatScene {
         onHit: (ang) => this.hitBreakable(ent, ang),
       });
     }
-    // Gegner
+    // Gegner (NG+ macht alle zäher; Champions sind die Minibosse der Ebene)
+    const tiefenBonus = this.flags.ngPlus ? 3 : 0;
     for (const sp of a.enemySpawns) {
-      this.spawnEnemy(sp.type, a.depth, sp.x, sp.y, sp.elite);
+      const e = this.spawnEnemy(sp.type, a.depth + tiefenBonus, sp.x, sp.y, sp.elite);
+      if (sp.champion) {
+        e.champion = true;
+        e.name = sp.champion;
+        e.maxhp = Math.round(e.maxhp * 1.6);
+        e.hp = e.maxhp;
+        e.r = Math.round(e.r * 1.15);
+        e.xp = Math.round(e.xp * 1.6);
+        e.sprite?.setScale(1.45);
+      }
+      // NG+ Endboss: der Schattenfürst statt des erlösten Tempelritters
+      if (e.boss && this.flags.ngPlus) {
+        e.name = 'Der Schattenfürst';
+        e.col = '#2a2440';
+        e.maxhp = Math.round(e.maxhp * 1.5);
+        e.hp = e.maxhp;
+        e.dmg = Math.round(e.dmg * 1.25);
+      }
     }
     a.enemySpawns = a.enemySpawns.filter(() => true); // Spawns bleiben für Wiederbevölkerung erhalten
     // Bodenbeute
@@ -400,7 +418,8 @@ export class WorldScene extends CombatScene {
     } else if (r < BREAKABLE_LOOT.potion) {
       this.pickups.add({ kind: Math.random() < 0.7 ? 'potion' : 'mpotion', x: ent.x, y: ent.y, bob });
     } else if (r < BREAKABLE_LOOT.arrows) {
-      this.pickups.add({ kind: 'arrows', amt: ri(this.rng, BREAKABLE_LOOT.arrowsMin, BREAKABLE_LOOT.arrowsMax), x: ent.x, y: ent.y, bob });
+      // Pfeile sind unendlich - hier gibt es stattdessen ein paar Münzen mehr
+      this.pickups.add({ kind: 'gold', amt: ri(this.rng, 3, 8), x: ent.x, y: ent.y, bob });
     } else if (r < BREAKABLE_LOOT.material) {
       const mat = BREAKABLES[ent.kind].material;
       if (mat) {
@@ -426,6 +445,9 @@ export class WorldScene extends CombatScene {
   protected override interactHint(): { text: string; action: () => void } | null {
     const ik = getSettings().kb.interact.toUpperCase();
     const near = (x: number, y: number, dist: number) => Math.hypot(x - this.px, y - this.py) < dist;
+    // Treppen und Kryptaeingang zuerst (liegen unter den Füßen)
+    const st = this.stairHint();
+    if (st) return st;
     // Gehöft-Interaktionen (Lager, Bett, Kamin, Feld, Gartenschrein)
     const gh = this.gehoeftHint();
     if (gh) return gh;
@@ -618,10 +640,10 @@ export class WorldScene extends CombatScene {
       case 'schmied': this.talkSchmied(); break;
       case 'mueller': this.talkMueller(); break;
       case 'bauer1':
-        this.talkSimple('Bauer Veit', 'bauer1', BAUER1, () => this.shop.openShop('bauer1', 'BAUERNHOF', SHOP_BAUER1, { ankauf: false }));
+        this.talkSimple('Bauer Veit', 'bauer1', BAUER1, () => this.shop.openShop('bauer1', 'BAUERNHOF', SHOP_BAUER1, { ankauf: true }));
         break;
       case 'bauer2':
-        this.talkSimple('Bäuerin Grete', 'bauer2', BAUER2, () => this.shop.openShop('bauer2', 'BAUERNHOF', SHOP_BAUER2, { ankauf: false }));
+        this.talkSimple('Bäuerin Grete', 'bauer2', BAUER2, () => this.shop.openShop('bauer2', 'BAUERNHOF', SHOP_BAUER2, { ankauf: true }));
         break;
       case 'haendler': this.talkHaendler(); break;
       case 'landherr': this.talkLandherr(); break;
@@ -720,7 +742,7 @@ export class WorldScene extends CombatScene {
     pages.push({
       text: MAGDALENA.handel.text,
       choices: [
-        { label: 'Handel', fn: () => this.shop.openShop('magdalena', 'MAGDALENAS HÜTTE', SHOP_MAGDALENA, { ankauf: false }) },
+        { label: 'Handel', fn: () => this.shop.openShop('magdalena', 'MAGDALENAS HÜTTE', SHOP_MAGDALENA, { ankauf: true }) },
         { label: 'Lebt wohl' },
       ],
     });
@@ -1063,26 +1085,57 @@ export class WorldScene extends CombatScene {
 
   // --- Trigger (Treppen) -------------------------------------------------------
 
-  private checkTriggers(): void {
+  // Treppen/Kirchentür liegen jetzt auf der Interaktionstaste (Feedback-
+  // Runde 1: "sonst lauf ich da ausversehen immer drüber"); nur der
+  // Waldrand-Übergang bleibt automatisch (bewusstes Hinauslaufen).
+  private stairHint(): { text: string; action: () => void } | null {
+    const ik = getSettings().kb.interact.toUpperCase();
     const tid = this.area.map[Math.floor(this.py / TILE)]?.[Math.floor(this.px / TILE)];
-    if (this.triggerLock) {
-      if (tid !== T.STAIR && tid !== T.STAIRUP && tid !== T.CDOOR) this.triggerLock = false;
-      return;
-    }
     if (tid === T.CDOOR) {
-      if (this.p.hasKey) {
-        this.sfx.play('tuer');
-        this.goArea('crypt1');
-      } else {
-        this.logMsg(MELDUNGEN.kircheZu, 'bad');
-        this.triggerLock = true;
-      }
-    } else if (tid === T.STAIR) {
-      const id = this.area.id;
-      if (id === 'crypt1') this.goArea('crypt2');
-      else if (id === 'crypt2') this.goArea('crypt3');
-      else if (id === 'crypt3') this.goArea('boss');
-    } else if (this.area.id === 'wald' && this.px > (this.area.w - 2.5) * TILE) {
+      return {
+        text: this.p.hasKey ? `Kryptaeingang - ${ik} zum Hinabsteigen` : 'Die Kirchentür ist verschlossen (Pater Johannes)',
+        action: () => {
+          if (!this.p.hasKey) {
+            this.logMsg(MELDUNGEN.kircheZu, 'bad');
+            this.sfx.play('fehler');
+            return;
+          }
+          this.sfx.play('tuer');
+          this.goArea('crypt1');
+        },
+      };
+    }
+    if (tid === T.STAIR) {
+      return {
+        text: `Treppe hinab - ${ik} zum Hinabsteigen`,
+        action: () => {
+          const id = this.area.id;
+          if (id === 'crypt1') this.goArea('crypt2');
+          else if (id === 'crypt2') this.goArea('crypt3');
+          else if (id === 'crypt3') this.goArea('boss');
+        },
+      };
+    }
+    if (tid === T.STAIRUP) {
+      return {
+        text: `Treppe hinauf - ${ik} zum Hinaufsteigen`,
+        action: () => {
+          const id = this.area.id;
+          if (id === 'crypt1') {
+            const village = this.getArea('village');
+            const door = village.cryptDoor;
+            this.goArea('village', door ? { x: door.x, y: door.y + 40 } : undefined);
+          } else if (id === 'crypt2') this.goArea('crypt1', this.getArea('crypt1').downPos);
+          else if (id === 'crypt3') this.goArea('crypt2', this.getArea('crypt2').downPos);
+          else if (id === 'boss') this.goArea('crypt3', this.getArea('crypt3').downPos);
+        },
+      };
+    }
+    return null;
+  }
+
+  private checkTriggers(): void {
+    if (this.area.id === 'wald' && this.px > (this.area.w - 2.5) * TILE) {
       // Waldrand: Erzähler-Text der Ankunft (Referenz), dann Ravensmoor
       if (!this.flags.nAnkunft) {
         this.flags.nAnkunft = true;
@@ -1095,15 +1148,6 @@ export class WorldScene extends CombatScene {
       } else {
         this.goArea('village', { x: 3 * TILE, y: 30.5 * TILE });
       }
-    } else if (tid === T.STAIRUP) {
-      const id = this.area.id;
-      if (id === 'crypt1') {
-        const village = this.getArea('village');
-        const door = village.cryptDoor;
-        this.goArea('village', door ? { x: door.x, y: door.y + 40 } : undefined);
-      } else if (id === 'crypt2') this.goArea('crypt1', this.getArea('crypt1').downPos);
-      else if (id === 'crypt3') this.goArea('crypt2', this.getArea('crypt2').downPos);
-      else if (id === 'boss') this.goArea('crypt3', this.getArea('crypt3').downPos);
     }
   }
 
@@ -1148,6 +1192,16 @@ export class WorldScene extends CombatScene {
       if (this.decals.length > 90) this.decals.shift();
     }
     if (e.boss) {
+      if (this.flags.ngPlus) {
+        // NG+: Der Schattenfürst fällt - ein Portal führt zurück nach Ravensmoor
+        this.flags.ngPlusGeschafft = true;
+        this.logMsg('Der Schattenfürst zerfällt zu Asche.', 'gold');
+        this.pickups.add({ kind: 'gear', item: rollGear(this.rng, 6), x: e.x - 20, y: e.y, bob: 0 });
+        this.pickups.add({ kind: 'gem', item: rollGem(this.rng, 6), x: e.x + 20, y: e.y, bob: 0 });
+        this.pickups.add({ kind: 'gold', amt: BOSS_GOLD * 3, x: e.x, y: e.y + 24, bob: 0 });
+        this.pickups.add({ kind: 'portal', x: e.x, y: e.y - 30, bob: 0 });
+        return;
+      }
       this.bossDead = true;
       this.logMsg(BOSS_TEXTE.gefallen, 'gold');
       const blade: Item = { ...TEMPLERKLINGE, boni: TEMPLERKLINGE.boni.map((b) => ({ ...b })), sock: null };
@@ -1156,7 +1210,19 @@ export class WorldScene extends CombatScene {
       this.pickups.add({ kind: 'gold', amt: BOSS_GOLD, x: e.x, y: e.y + 24, bob: 0 });
       return;
     }
+    if (e.champion) {
+      // Miniboss: garantiert Edelstein + bessere Ausrüstung
+      this.pickups.add({ kind: 'gem', item: rollGem(this.rng, this.area.depth), x: e.x - 12, y: e.y, bob: 0 });
+      this.pickups.add({ kind: 'gear', item: rollGear(this.rng, this.area.depth + 1), x: e.x + 12, y: e.y, bob: 0 });
+      this.logMsg(`${e.name} ist gefallen!`, 'gold');
+    }
     this.dropLoot(e);
+  }
+
+  protected override onPortalPickup(): void {
+    this.sfx.play('heiliges_licht');
+    this.goArea('village');
+    this.logMsg('Das Portal trägt dich zurück nach Ravensmoor.', 'magic');
   }
 
   protected override onRelicPickup(pk: Pickup): void {
@@ -1203,7 +1269,15 @@ export class WorldScene extends CombatScene {
         this.logMsg(MELDUNGEN.reliktPuls, 'magic');
       }
       this.flags.endeErreicht = true;
-      this.goArea('crypt3', this.getArea('crypt3').downPos);
+      // Neues Spiel+ (Feedback-Runde 1): Welt bleibt, Gegner kehren zäher
+      // zurück, im Grab wartet fortan der Schattenfürst
+      this.flags.ngPlus = true;
+      this.areas.delete('crypt1');
+      this.areas.delete('crypt2');
+      this.areas.delete('crypt3');
+      this.areas.delete('boss');
+      this.logMsg('Die Krypta regt sich erneut - stärker als zuvor (Neues Spiel+).', 'magic');
+      this.goArea('village');
     });
     c.add(btn);
     this.deathOverlay = c; // blockiert Eingaben wie ein Overlay
@@ -1320,9 +1394,14 @@ export class WorldScene extends CombatScene {
     };
     mkBtn(h * 0.34, 'WEITER', () => this.togglePause());
     for (let slot = 1; slot <= 3; slot++) {
-      mkBtn(h * 0.34 + slot * 52, `SPEICHERN - PLATZ ${slot}`, () => {
+      const vorhanden = readSave(storage, slot);
+      const info = vorhanden ? ` (belegt: ${new Date(vorhanden.zeit).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })})` : ' (leer)';
+      mkBtn(h * 0.34 + slot * 52, `SPEICHERN - PLATZ ${slot}${info}`, () => {
         this.saveToSlot(slot);
+        // Sichtbare Bestätigung statt stillem Klick (Feedback-Runde 1)
         this.togglePause();
+        this.togglePause();
+        this.logMsg(`✓ Spielstand ${slot} gespeichert`, 'gold');
       });
     }
     mkBtn(h * 0.34 + 4 * 52, 'EINSTELLUNGEN', () => {
@@ -1336,6 +1415,22 @@ export class WorldScene extends CombatScene {
     });
     fixUiScroll(c);
     this.pauseMenu = c;
+  }
+
+  // Aufgabenliste für das Charakterfenster (Feedback-Runde 1)
+  private journalLines(): string[] {
+    const f = this.flags;
+    const out: string[] = [];
+    if (!f.auftragErhalten) out.push('· Sprich mit dem Landherrn im Dunkelwald.');
+    else if (!f.nAnkunft) out.push('· Folge dem Pfad nach Osten nach Ravensmoor.');
+    else if (!this.p.hasKey) out.push('· Pater Johannes an der Kirche hat den Kryptaschlüssel.');
+    else if (!this.bossDead && !f.ngPlus) out.push('· Steig in die Krypta hinab und finde die Quelle des Übels.');
+    if (f.rattenAktiv) out.push('· Erledige die Ratten im Lager der Mühle.');
+    if (f.medaillonGenommen && !f.annaQuestFertig) out.push('· Bring Annas Medaillon zu Heinrich in die Taverne.');
+    if (f.ngPlus && !f.ngPlusGeschafft) out.push('· Neues Spiel+: Im Grab des Kreuzritters wartet der Schattenfürst.');
+    out.push('— Holz: Bäume mit der Axt (3 Schläge) · Stein/Eisen: Spitzhacke');
+    out.push('— Schmied: Waffen verbessern & Wiederaufbau · Magdalena: Tränke brauen');
+    return out;
   }
 
   // --- Tod ---------------------------------------------------------------------
@@ -1401,37 +1496,8 @@ export class WorldScene extends CombatScene {
   }
 
   private renderHud(): void {
-    const g = this.hudGfx;
-    const h = this.scale.height;
-    g.clear();
-    // Lebens-Orb links
-    const r = 36;
-    g.fillStyle(0x120505, 1);
-    g.fillCircle(28 + r, h - 28 - r, r);
-    const hpFrac = Phaser.Math.Clamp(this.p.hp / this.p.stats.maxhp, 0, 1);
-    g.fillStyle(0x8c1a1a, 1);
-    g.slice(28 + r, h - 28 - r, r - 3, Math.PI * (1.5 - hpFrac), Math.PI * (1.5 + hpFrac), false);
-    g.fillPath();
-    g.lineStyle(3, 0x3a2f24, 1);
-    g.strokeCircle(28 + r, h - 28 - r, r);
-    // Mana-Orb rechts
-    const w = this.scale.width;
-    g.fillStyle(0x101c3a, 1);
-    g.fillCircle(w - 28 - r, h - 28 - r, r);
-    const mpFrac = Phaser.Math.Clamp(this.p.mana / this.p.stats.maxmana, 0, 1);
-    g.fillStyle(0x2c4884, 1);
-    g.slice(w - 28 - r, h - 28 - r, r - 3, Math.PI * (1.5 - mpFrac), Math.PI * (1.5 + mpFrac), false);
-    g.fillPath();
-    g.lineStyle(3, 0x3a2f24, 1);
-    g.strokeCircle(w - 28 - r, h - 28 - r, r);
-    // XP-Leiste
-    const xw = Math.min(420, w * 0.46);
-    g.fillStyle(0x0e0a06, 1);
-    g.fillRect(w / 2 - xw / 2, h - 30, xw, 7);
-    g.fillStyle(0x8c7ad0, 1);
-    g.fillRect(w / 2 - xw / 2, h - 30, xw * Phaser.Math.Clamp(this.p.xp / this.p.xpNext, 0, 1), 7);
-    this.hudText.setPosition(w / 2 - xw / 2, h - 56);
-    this.hudText.setText(`STUFE ${this.p.level}   ${this.p.gold} GOLD   Tränke ${this.p.pot}/${this.p.mpot}   Flaschen ${this.p.flaskCount}/${this.p.flaskMax}${this.p.arrows ? `   Pfeile ${this.p.arrows}` : ''}`);
+    this.hud.update(`STUFE ${this.p.level} · ${this.p.gold} GOLD · Tag ${this.tag}`);
+    this.hudText.setPosition(8, 8).setText('');
   }
 
   // --- Licht, Minimap, Welt-Overlay ----------------------------------------------
@@ -1474,18 +1540,25 @@ export class WorldScene extends CombatScene {
     if (this.area.dark) return;
     const w = this.scale.width, h = this.scale.height;
     const time = this.time.now / 1000;
-    for (let i = 0; i < 3; i++) {
-      const fx = ((time * 14 + i * 430) % (w + 400)) - 200;
-      const fy = h * 0.22 + Math.sin(time * 0.3 + i * 2.1) * 60 + i * 110;
-      g.fillStyle(0xb4bec8, 0.045);
-      g.fillEllipse(fx, fy, 360, 220);
+    for (let i = 0; i < 5; i++) {
+      const fx = ((time * (11 + i * 3) + i * 430) % (w + 400)) - 200;
+      const fy = h * 0.18 + Math.sin(time * 0.3 + i * 2.1) * 70 + i * 90;
+      g.fillStyle(0xb4bec8, 0.06);
+      g.fillEllipse(fx, fy, 420, 240);
     }
-    // Vignette zum Rand (Annäherung des Referenz-Verlaufs)
-    g.fillStyle(0x0e1216, 0.20);
-    g.fillRect(0, 0, w, h * 0.08);
-    g.fillRect(0, h * 0.92, w, h * 0.08);
-    g.fillRect(0, 0, w * 0.05, h);
-    g.fillRect(w * 0.95, 0, w * 0.05, h);
+    // bleierner Himmel: kräftige Vignette + kühler Grundton
+    g.fillStyle(0x10141c, 0.16);
+    g.fillRect(0, 0, w, h);
+    g.fillStyle(0x0e1216, 0.30);
+    g.fillRect(0, 0, w, h * 0.1);
+    g.fillRect(0, h * 0.9, w, h * 0.1);
+    g.fillRect(0, 0, w * 0.07, h);
+    g.fillRect(w * 0.93, 0, w * 0.07, h);
+    // Dunkelwald: tiefer Grünstich, der das Dorf wärmer wirken lässt
+    if (this.area.id === 'wald') {
+      g.fillStyle(0x08140a, 0.22);
+      g.fillRect(0, 0, w, h);
+    }
     // Abenddämmerung färbt das Licht
     if (this.tageszeit > TAG.abendAb) {
       const evening = Math.min(1, (this.tageszeit - TAG.abendAb) / (1 - TAG.abendAb));

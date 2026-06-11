@@ -4,7 +4,7 @@
 
 export type Rarity = 0 | 1 | 2 | 3; // Gewöhnlich / Magisch / Selten / Episch
 
-export type WeaponClass = 'schwert' | 'axt' | 'stange' | 'wucht' | 'bogen';
+export type WeaponClass = 'schwert' | 'axt' | 'stange' | 'wucht' | 'bogen' | 'stab';
 
 export type ItemKind =
   | 'weapon' | 'armor' | 'ring' | 'gem'
