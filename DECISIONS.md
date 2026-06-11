@@ -29,3 +29,7 @@
 - Fähigkeitstasten: Zauberei-Fähigkeiten auf 4/5/6 (Erweiterung der Zauberleiste), Nahkampf/Bogen kontextabhängig auf R/T - Masterprompt nennt keine Belegung.
 - Phase 11: BootScene wurde um zwei Aufrufe der Grafik-Schicht (PackLoader) ergänzt - die Phase-11-Regel "nur src/gfx/ und assets/" ist insofern berührt, als das Laden von Dateien zwangsläufig in der Boot-Szene hängt. Spiellogik unverändert; hiermit dokumentiert.
 - Pack-Pipeline: Kacheln/Figuren aus Paketen werden beim Boot in die bestehenden Hot-Swap-Schlüssel (hs_tile_*, as_*) komponiert statt neue Codepfade einzuführen.
+- Leibwache vor dem Boss: "Bruder Aldric, der Grabwächter" (Elite-Skelett-Champion) + 2 elite Grabschatten stehen zuerst im Bossraum; der Tempelritter erscheint erst, wenn der Wächter fällt. Werte/Positionen in areagen.ts (buildBoss) und WorldScene.onEnemyKilled.
+- Boss-Einzelloot: "Harnisch des Kreuzritters" (+25 Leben, +3 Rüstung) und "Ring des ewigen Wächters" (+3 Lebensraub, +50 Lichtradius) - frei erfunden, da die Referenz keinen Boss-Loot kennt; Werte direkt in WorldScene.onEnemyKilled, leicht änderbar.
+- Stadtportal auf Taste 8 (zusätzlich als belegbare Aktion '⌂' für M3/M4/M5), erst nach Boss-Sieg nutzbar - vorher kommt eine Fehlermeldung. Kein Item, kein Mana: Komfortfunktion, kein Balancing-Hebel.
+- Tod in der Krypta löscht die Ebenen-Layouts NICHT mehr: aufgedeckte Minimap und Treppen bleiben erhalten, nur die Gegner kehren zurück (Spawns leben im Gebiet, nicht im Spielstand).

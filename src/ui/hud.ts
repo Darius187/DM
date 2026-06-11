@@ -98,6 +98,7 @@ export class Hud {
       ['s1', '✦', 'Feuerball'], ['s2', '☩', 'Heiliges Licht'], ['s3', '❧', 'Heilung'],
       ['kettenblitz', '⌁', 'Kettenblitz'], ['frostnova', '❄', 'Frostnova'], ['bannkreis', '◎', 'Bannkreis'],
       ['pot', '🧪', 'Heiltrank'], ['mpot', '⚗', 'Manatrank'], ['rolle', '📜', 'Schriftrolle'],
+      ['stadtportal', '⌂', 'Stadtportal (nach Boss-Sieg)'],
     ];
     const mausSlot = (key: string, feld: 'm3' | 'm4' | 'm5', tasteName: string): SlotDef => {
       const akt = () => AKTIONEN.find((a) => a[0] === getSettings().maus[feld]) ?? AKTIONEN[0];

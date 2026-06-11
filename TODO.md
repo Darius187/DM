@@ -19,3 +19,8 @@
   in der Leiste); Crafting-Ausbau (Rezepte-Werkbank); Housing-Ausbau
   (Innenraum, Deko sichtbar); Collectables; Fenster verschieben;
   Buch-Pergament-Fenster; Dev-Tuning-Panel mit Berichtsfunktion.
+- Feedback-Runde 5, noch offen: Boss-Eskalation als echter RAUMWECHSEL
+  (aktuell erscheint der Tempelritter im selben Raum, nachdem die Leibwache
+  fällt); Karten-/Platzier-Editor im Entwicklungskasten; weitere Zauber;
+  Crafting-Werkbank-Ausbau; Housing-Innenraum; Sammelalbum (Collectables);
+  Fenster verschieben; Buch-Pergament-Fenster; Hotbar per Drag & Drop.

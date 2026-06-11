@@ -443,3 +443,37 @@ dafür steht die Phase-11-Pipeline bereit.
   Bücherregale mit größerer Reichweite + Fundchance (Münzen/Rolle),
   Zauberstäbe wieder aus den Drops, Landherr reitet nach dem Auftrag davon.
 - Spielerportrait: Bild als assets/portraits/spieler.png ablegen (Hot-Swap).
+
+## Feedback-Runde 3 - umgesetzt (Nachtrag)
+Bäume überall hackbar (kachelbasiert statt Listen), Bogen mit Spannzeit
+(0,5s Nachladen statt Dauerfeuer), Dungeon-Tempo eigener Faktor (65%),
+Rollen 5x nutzbar, zweiter Miniboss je Ebene, Loot-Ruhe nach dem Bosskampf
+(Beschworene zerfallen), Maus-Slots M3/M4/M5 in der Leiste sichtbar.
+
+## Feedback-Runde 4 - umgesetzt (Nachtrag)
+Krypta-Ebenen 4 (Das Verlies) und 5 (Die Lavahöhle) vor dem Bossraum,
+Nebenräume ab Ebene 2 (Sackgassen mit Truhe/Erz), Boss-Phase 3 ab 25%
+Leben (Beschwörung, Tempo, Sturmangriff), Maus-Slots frei belegbar
+(Rechtsklick auf den Slot wechselt die Aktion), Entwicklungskasten auf F10
+(Balancing-Regler + BERICHT KOPIEREN), Nebel des Krieges im Dunkelwald
+(abschaltbar in den Einstellungen).
+
+## Feedback-Runde 5 - umgesetzt
+Alles im Browser durchgespielt und verifiziert (Bossraum-Sequenz komplett):
+- Leibwache vor dem Boss: "Bruder Aldric, der Grabwächter" + 2 elite
+  Grabschatten machen zuerst Rambazamba. Fällt Aldric, bebt der Raum
+  ("Wer wagt es, meinen Wächter zu fällen?") und der Tempelritter
+  erscheint. Im NG+ ist es der Schattenfürst (zäher, härter).
+  EHRLICHE LÜCKE: Es ist derselbe Raum, kein Raumwechsel - der echte
+  Eskalations-Nebenraum steht in TODO.md.
+- Loot-Ruhe nach dem Ende: Wer nach der Relikt-Wahl WEITERSPIELEN wählt,
+  bleibt im Bossraum und kann in Ruhe einsammeln (kein Zwangs-Teleport).
+- Stadtportal: Taste 8 (oder als Maus-Aktion '⌂' belegbar) öffnet nach dem
+  Boss-Sieg jederzeit den Weg nach Ravensmoor; vorher verweigert es den
+  Dienst mit Meldung. Verifiziert: vor dem Sieg blockiert, danach Dorf.
+- Boss-Einzelloot: Harnisch des Kreuzritters und Ring des ewigen Wächters
+  fallen zusätzlich zur Templerklinge.
+- Tod im Bossraum: Layout und aufgedeckte Minimap aller Ebenen bleiben
+  bestehen - nur die Gegner kehren zurück. Kein neues Auswürfeln mehr.
+- Titelbild zeigt jetzt "Stand: Feedback-Runde 5".
+Stand: tsc fehlerfrei, 47/47 Tests grün, Boss-Sequenz im Browser geprüft.

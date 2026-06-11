@@ -165,6 +165,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (k === b.s2) this.castSpell(1);
       if (k === b.s3) this.castSpell(2);
       if (k === '7') this.useFirstScroll();
+      if (k === '8') this.runAction('stadtportal');
       if (k === 'f10') { ev.preventDefault(); this.toggleDevPanel(); }
       // Zauberei-Fähigkeiten reihen sich in die Zauberleiste ein (4-6)
       if (k === '4') this.useAbility('kettenblitz');
@@ -758,9 +759,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       case 'pot': this.drinkPot(); break;
       case 'mpot': this.drinkMpot(); break;
       case 'rolle': this.useFirstScroll(); break;
+      case 'stadtportal': this.castTownPortal(); break;
       default: break;
     }
   }
+
+  // Stadtportal (Feedback-Runde 5): jederzeit zurück nach Ravensmoor,
+  // sobald der Tempelritter einmal gefallen ist
+  protected castTownPortal(): void { /* Welt überschreibt */ }
 
   useFirstScroll(): void {
     const rolle = this.p.inv.find((it) => it.kind === 'scroll' && it.scrollSkill);

@@ -73,12 +73,14 @@ describe('Krypta-Generator: jeder Spezialraum erreichbar', () => {
     }
   });
 
-  it('Bossraum: Aufgang erreichbar, Tempelritter gesetzt', () => {
+  it('Bossraum: Aufgang erreichbar, Leibwache gesetzt (Boss kommt erst nach ihrem Fall)', () => {
     const a = buildBoss(seededRng(1), false);
     const sx = Math.floor(a.spawn.x / 32), sy = Math.floor(a.spawn.y / 32);
     const seen = reachable(a, sx, sy);
     expect(targetReachable(seen, Math.floor(a.upPos!.x / 32), Math.floor(a.upPos!.y / 32))).toBe(true);
-    expect(a.enemySpawns.some((e) => e.type === 'templer')).toBe(true);
+    // Statt des Tempelritters steht zuerst seine Leibwache im Raum
+    expect(a.enemySpawns.some((e) => e.champion)).toBe(true);
+    expect(a.enemySpawns.some((e) => e.type === 'templer')).toBe(false);
     expect(buildBoss(seededRng(1), true).enemySpawns.length).toBe(0);
   });
 

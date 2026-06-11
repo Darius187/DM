@@ -1302,8 +1302,35 @@ export class WorldScene extends CombatScene {
       this.logMsg(BOSS_TEXTE.gefallen, 'gold');
       const blade: Item = { ...TEMPLERKLINGE, boni: TEMPLERKLINGE.boni.map((b) => ({ ...b })), sock: null };
       this.pickups.add({ kind: 'gear', item: blade, x: e.x - 20, y: e.y, bob: 0 });
+      // Einzigartiger Boss-Loot (Feedback-Runde 5)
+      this.pickups.add({ kind: 'gear', item: {
+        kind: 'armor', name: 'Harnisch des Kreuzritters', rarity: 3, val: 14,
+        boni: [{ k: 'hp', v: 25, t: '+# Leben' }, { k: 'armor', v: 3, t: '+# Rüstung' }],
+      }, x: e.x - 40, y: e.y + 10, bob: 0 });
+      this.pickups.add({ kind: 'gear', item: {
+        kind: 'ring', name: 'Ring des ewigen Wächters', rarity: 3, val: 0,
+        boni: [{ k: 'leech', v: 3, t: '+# Lebensraub' }, { k: 'licht', v: 50, t: '+# Lichtradius' }],
+      }, x: e.x + 40, y: e.y + 10, bob: 0 });
       this.pickups.add({ kind: 'relic', x: e.x + 20, y: e.y, bob: 0 });
       this.pickups.add({ kind: 'gold', amt: BOSS_GOLD, x: e.x, y: e.y + 24, bob: 0 });
+      return;
+    }
+    if (e.champion && this.area.id === 'boss' && !this.bossDead) {
+      // Die Leibwache ist gefallen - jetzt erhebt sich der Tempelritter
+      this.pickups.add({ kind: 'gem', item: rollGem(this.rng, 4), x: e.x, y: e.y, bob: 0 });
+      this.logMsg('»Wer wagt es, meinen Wächter zu fällen?«', 'bad');
+      this.shake(8);
+      this.sfx.play('templer_stimme');
+      const boss = this.spawnEnemy('templer', this.flags.ngPlus ? 9 : 6, 16.5 * TILE, 6.5 * TILE);
+      if (this.flags.ngPlus) {
+        boss.name = 'Der Schattenfürst';
+        boss.col = '#2a2440';
+        boss.maxhp = Math.round(boss.maxhp * 1.5);
+        boss.hp = boss.maxhp;
+        boss.dmg = Math.round(boss.dmg * 1.25);
+      }
+      this.fx.burst(boss.x, boss.y, 0xc03030, 30, 260);
+      this.dropLoot(e);
       return;
     }
     if (e.champion) {
@@ -1313,6 +1340,22 @@ export class WorldScene extends CombatScene {
       this.logMsg(`${e.name} ist gefallen!`, 'gold');
     }
     this.dropLoot(e);
+  }
+
+  protected override castTownPortal(): void {
+    if (!this.bossDead && !this.flags.ngPlusGeschafft) {
+      this.logMsg('Das Stadtportal öffnet sich erst, wenn der Tempelritter gefallen ist.', 'bad');
+      this.sfx.play('fehler');
+      return;
+    }
+    if (this.area.id === 'village') {
+      this.logMsg('Du stehst bereits in Ravensmoor.', '');
+      return;
+    }
+    this.fx.burst(this.px, this.py, 0x8aa6e8, 24, 200);
+    this.sfx.play('heiliges_licht');
+    this.goArea('village');
+    this.logMsg('Das Portal trägt dich nach Ravensmoor.', 'magic');
   }
 
   protected override onPortalPickup(): void {
@@ -1368,9 +1411,11 @@ export class WorldScene extends CombatScene {
       // Neues Spiel+ (Feedback-Runde 1): Welt bleibt, Gegner kehren zäher
       // zurück, im Grab wartet fortan der Schattenfürst
       this.flags.ngPlus = true;
-      for (const id of ['crypt1', 'crypt2', 'crypt3', 'crypt4', 'crypt5', 'boss']) this.areas.delete(id);
+      // Du bleibst im Grab und lootest in Ruhe; die Ebenen erwachen erst,
+      // wenn du sie wieder betrittst (Feedback-Runde 5)
+      for (const id of ['crypt1', 'crypt2', 'crypt3', 'crypt4', 'crypt5']) this.areas.delete(id);
       this.logMsg('Die Krypta regt sich erneut - stärker als zuvor (Neues Spiel+).', 'magic');
-      this.goArea('village');
+      this.logMsg('Taste 8: Stadtportal nach Ravensmoor.', 'gold');
     });
     c.add(btn);
     this.deathOverlay = c; // blockiert Eingaben wie ein Overlay
@@ -1560,9 +1605,8 @@ export class WorldScene extends CombatScene {
     this.p.hp = this.p.stats.maxhp;
     this.p.mana = this.p.stats.maxmana;
     this.playerDead = false;
-    // Krypta-Ebenen neu bevölkern (Referenz-Verhalten)
-    for (const id of ['crypt1', 'crypt2', 'crypt3', 'crypt4', 'crypt5', 'boss']) this.areas.delete(id);
-    this.areaSeed = Math.floor(Math.random() * 1e9);
+    // Gegner kehren beim Betreten ohnehin zurück - Layout, Minimap und
+    // aufgedeckte Treppen BLEIBEN erhalten (Feedback-Runde 5)
     // Erwachen in Ravensmoor (Taverne)
     const village = this.getArea('village');
     const taverne = village.npcs.find((n) => n.id === 'heinrich');

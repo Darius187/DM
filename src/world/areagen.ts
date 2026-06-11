@@ -426,7 +426,12 @@ export function buildBoss(rng: Rng, bossDead: boolean): AreaData {
   }
   map[20][16] = T.STAIRUP;
   a.upPos = { x: 16.5 * TILE, y: 20 * TILE + 16 };
-  if (!bossDead) a.enemySpawns.push({ type: 'templer', x: 16.5 * TILE, y: 6.5 * TILE, elite: false });
+  if (!bossDead) {
+    // Erst die Leibwache - der Ritter erhebt sich, wenn sie fällt
+    a.enemySpawns.push({ type: 'skelett', elite: true, champion: 'Bruder Aldric, der Grabwächter', x: 16.5 * TILE, y: 9 * TILE });
+    a.enemySpawns.push({ type: 'schatten', elite: true, x: 12 * TILE, y: 8 * TILE });
+    a.enemySpawns.push({ type: 'schatten', elite: true, x: 21 * TILE, y: 8 * TILE });
+  }
   return a;
 }
 
