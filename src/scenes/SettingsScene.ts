@@ -46,6 +46,7 @@ export class SettingsScene extends Phaser.Scene {
     y = this.toggle(y, 'Bildschirmwackeln bei Treffern', () => s.shake, (v) => { s.shake = v; });
     y = this.toggle(y, 'Schadenszahlen', () => s.dmgNums, (v) => { s.dmgNums = v; });
     y = this.toggle(y, 'Blut & Überreste', () => s.blood, (v) => { s.blood = v; });
+    y = this.toggle(y, 'Nebel des Krieges im Dunkelwald', () => s.fow, (v) => { s.fow = v; });
     sect('HANDY');
     y = this.toggle(y, 'Linkshänder-Modus (Joystick rechts)', () => s.lefty, (v) => { s.lefty = v; });
     const leftEnd = y;

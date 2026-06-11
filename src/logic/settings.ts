@@ -14,10 +14,13 @@ export interface Settings {
   volAtmosphaere: number; // 0-100
   bright: number;         // 70-140
   tempo: number;          // Spieler-Tempo in % (70-110)
+  fow: boolean;           // Nebel des Krieges im Dunkelwald
   shake: boolean;
   dmgNums: boolean;
   blood: boolean;
   lefty: boolean;
+  // Maustasten-Belegung: Aktions-Kennungen für Mitte/Daumen1/Daumen2
+  maus: { m3: string; m4: string; m5: string };
   kb: KeyBindings;
 }
 
@@ -26,10 +29,12 @@ export const DEF_SETTINGS: Settings = {
   volAtmosphaere: 50,
   bright: 100,
   tempo: 90,
+  fow: true,
   shake: true,
   dmgNums: true,
   blood: true,
   lefty: false,
+  maus: { m3: 's1', m4: 'pot', m5: 's3' },
   kb: {
     roll: ' ', interact: 'e', inv: 'i', charakter: 'c',
     pot: 'q', mpot: 'f', s1: '1', s2: '2', s3: '3',
@@ -50,6 +55,7 @@ export function getSettings(): Settings {
       const saved = JSON.parse(raw) as Partial<Settings>;
       Object.assign(current, saved);
       current.kb = { ...DEF_SETTINGS.kb, ...(saved.kb ?? {}) };
+      current.maus = { ...DEF_SETTINGS.maus, ...(saved.maus ?? {}) };
     }
   } catch { /* localStorage gesperrt - Standardwerte nutzen */ }
   return current;

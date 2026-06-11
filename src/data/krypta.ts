@@ -17,7 +17,10 @@ export const CRYPT_THEMES: Readonly<Record<number, CryptTheme>> = {
   1: { name: 'Krypta - Gruft',        floor: [27, -3, -6], wallTop: '#0f0c08', wallFace: '#262017', bones: 0.030, blood: 0.015, rune: '#7a3aa0', torchMod: 4 },
   2: { name: 'Krypta - Beinhaus',     floor: [31, 3, -2],  wallTop: '#0b0d0a', wallFace: '#222818', bones: 0.110, blood: 0.030, rune: '#7a3aa0', torchMod: 5 },
   3: { name: 'Die alte Kultstätte',   floor: [26, -7, -9], wallTop: '#130808', wallFace: '#321a12', bones: 0.045, blood: 0.095, rune: '#c03030', torchMod: 3 },
-  4: { name: 'Grab des Kreuzritters', floor: [24, -5, -7], wallTop: '#130808', wallFace: '#321a12', bones: 0.040, blood: 0.060, rune: '#c03030', torchMod: 3 },
+  // NEU (Feedback-Runde 4): zwei weitere Ebenen vor dem Grab
+  4: { name: 'Das Verlies',           floor: [22, -2, -4], wallTop: '#0a0a0c', wallFace: '#1e2026', bones: 0.060, blood: 0.040, rune: '#5a7ae0', torchMod: 4 },
+  5: { name: 'Die Lavahöhle',         floor: [34, -14, -18], wallTop: '#160604', wallFace: '#3a140a', bones: 0.020, blood: 0.140, rune: '#e06a2a', torchMod: 2 },
+  6: { name: 'Grab des Kreuzritters', floor: [24, -5, -7], wallTop: '#130808', wallFace: '#321a12', bones: 0.040, blood: 0.060, rune: '#c03030', torchMod: 3 },
 };
 
 // Kartengrößen (Referenz buildCrypt/buildBoss)
@@ -34,6 +37,8 @@ export const SPECIAL_ROOMS: Readonly<Record<number, ReadonlyArray<string>>> = {
   1: ['bibliothek', 'folterkammer', 'schrein'],
   2: ['bibliothek', 'beinhaus', 'annaGrab', 'blutbrunnen', 'schrein'],
   3: ['bibliothek', 'blutbrunnen', 'folterkammer', 'schrein'],
+  4: ['folterkammer', 'blutbrunnen', 'schrein'],
+  5: ['blutbrunnen', 'schrein'],
 };
 
 // Opferaltäre: Kultstätte garantiert zwei, sonst einer (Referenz)

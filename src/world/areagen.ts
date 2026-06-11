@@ -176,7 +176,7 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
   }
 
   // Folterkammer (Ebene 1 und 3): Streckbank, Käfige, aufgebrochener Käfig
-  if (n === 1 || n === 3) {
+  if (n === 1 || n === 3 || n === 4) {
     const r = takeRoom();
     if (r) {
       map[r.cy][r.cx] = T.RACK;
@@ -320,6 +320,7 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
   const types: EnemyTypeId[] = ['pest', 'pest', 'skelett', 'skelett'];
   if (n >= 2) types.push('schuetze', 'schuetze');
   if (n >= 3) types.push('schatten', 'schuetze');
+  if (n >= 4) types.push('schatten', 'schatten', 'skelett');
   for (const r of rooms) {
     if (r === start) continue;
     const cnt = ri(rng, 1, 2) + Math.min(3, Math.ceil(n / 1.5));
@@ -340,11 +341,45 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
     a.gear.push({ x: (r.x + rnd(rng, 1, r.w - 1)) * TILE, y: (r.y + rnd(rng, 1, r.h - 1)) * TILE });
   }
 
+  // Nebenräume: kleine Sackgassen mit Beute (Feedback-Runde 4, ab Ebene 2)
+  if (n >= 2) {
+    let placed = 0;
+    for (let tries = 0; tries < 60 && placed < 2 + Math.min(2, n - 1); tries++) {
+      const rx = ri(rng, 3, w - 7), ry = ri(rng, 3, h - 6);
+      // an bestehenden Boden andocken, sonst überspringen
+      let dock: [number, number] | null = null;
+      for (const [dx, dy] of [[-1, 1], [4, 1], [1, -1], [1, 4]] as const) {
+        if (map[ry + dy]?.[rx + dx] === T.FLOOR) { dock = [rx + dx, ry + dy]; break; }
+      }
+      if (!dock) continue;
+      let frei = true;
+      for (let y = ry; y < ry + 4 && frei; y++) {
+        for (let x = rx; x < rx + 4; x++) {
+          if (map[y]?.[x] !== T.WALL) { frei = false; break; }
+        }
+      }
+      if (!frei) continue;
+      carve(map, rx, ry, rx + 3, ry + 3, T.FLOOR);
+      map[dock[1]][dock[0]] = T.FLOOR;
+      // Verbindungstür zum Andockpunkt freiräumen
+      carve(map, Math.min(rx + 1, dock[0]), Math.min(ry + 1, dock[1]), Math.max(rx + 1, dock[0]), Math.max(ry + 1, dock[1]), T.FLOOR);
+      // Inhalt: Truhe, Beute oder Erzader
+      const roll2 = rng.random();
+      if (roll2 < 0.4) a.chests.push({ x: (rx + 1) * TILE + 16, y: (ry + 1) * TILE + 16, open: false });
+      else if (roll2 < 0.7) a.gear.push({ x: (rx + 1) * TILE + 16, y: (ry + 1) * TILE + 16 });
+      else { map[ry + 1][rx + 1] = T.ORE; a.ores.push({ x: (rx + 1) * TILE + 16, y: (ry + 1) * TILE + 16 }); }
+      a.special.push({ id: 'nebenraum', x: rx + 1, y: ry + 1, raum: 'Nebenraum' });
+      placed++;
+    }
+  }
+
   // Miniboss je Ebene (Feedback-Runde 1): benannter Champion nahe der Treppe
   const CHAMPS: Record<number, [EnemyTypeId, string]> = {
     1: ['pest', 'Der Gruftvogt'],
     2: ['skelett', 'Knochenwächter Ottokar'],
     3: ['schatten', 'Der Kultmeister'],
+    4: ['skelett', 'Der Kerkermeister'],
+    5: ['schatten', 'Die Aschengeborene'],
   };
   const [champTyp, champName] = CHAMPS[n] ?? CHAMPS[3];
   a.enemySpawns.push({
@@ -358,6 +393,8 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
     1: ['skelett', 'Der Grubenhauer'],
     2: ['schuetze', 'Pfeilauge Veit'],
     3: ['pest', 'Die Fäulnismutter'],
+    4: ['pest', 'Der Wärter'],
+    5: ['schuetze', 'Glutauge'],
   };
   const [typ2, name2] = ZWEIT[n] ?? ZWEIT[3];
   a.enemySpawns.push({ type: typ2, elite: true, champion: name2, x: mitte.cx * TILE + 16, y: mitte.cy * TILE + 16 });
@@ -369,7 +406,7 @@ export function buildBoss(rng: Rng, bossDead: boolean): AreaData {
   const w = CRYPT_GEN.bossW, h = CRYPT_GEN.bossH;
   const map = blank(w, h, T.WALL);
   const a: AreaData = {
-    id: 'boss', name: 'Grab des Kreuzritters', dark: true, depth: 4, theme: CRYPT_THEMES[4],
+    id: 'boss', name: 'Grab des Kreuzritters', dark: true, depth: 6, theme: CRYPT_THEMES[6],
     w, h, map, spawn: { x: 16.5 * TILE, y: 19 * TILE },
     torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
     breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],

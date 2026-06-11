@@ -127,6 +127,7 @@ export class Enemy {
   private slamCd: number = BOSS.slamCd;
   private fanCd: number = BOSS.fanCd;
   private chargeCd = 4;
+  private phase3Aktiv = false;
   private summoned = [false, false];
 
   sprite: Phaser.GameObjects.Sprite | null = null;
@@ -372,7 +373,19 @@ export class Enemy {
       return;
     }
     const phase2 = this.hp < this.maxhp * BOSS.phase2HpPct;
-    const spd = phase2 ? this.speed * BOSS.phase2SpeedMult : this.speed;
+    // Phase 3 (Feedback-Runde 4): unter 25% eskaliert der Ritter -
+    // Ansage, Beschwörungswelle, dauerhaft schneller und dichterer Takt
+    const phase3 = this.hp < this.maxhp * 0.25;
+    if (phase3 && !this.phase3Aktiv) {
+      this.phase3Aktiv = true;
+      host.logMsg('»GENUG! Das Grab verschlingt euch alle!«', 'bad');
+      host.burstFx(this.x, this.y, 0xc03030, 30, 240);
+      host.playSound('templer_stimme');
+      host.summonAdds(this, 3);
+      this.atkCd = 0;
+      this.slamCd = 0;
+    }
+    const spd = this.speed * (phase3 ? 1.6 : phase2 ? BOSS.phase2SpeedMult : 1);
     if (!this.summoned[0] && this.hp < this.maxhp * BOSS.summonAt[0]) {
       this.summoned[0] = true;
       host.logMsg(BOSS_TEXTE.beschwoerung, 'bad');
@@ -397,7 +410,7 @@ export class Enemy {
       return;
     }
     if (this.chargeCd === 0 && d > 140 && d < 480) {
-      this.chargeCd = phase2 ? 5 : 7.5;
+      this.chargeCd = phase3 ? 3.2 : phase2 ? 5 : 7.5;
       this.windup = 0.7;
       this.pattern = 'sprung';
       this.lungeVx = 0;
@@ -414,14 +427,14 @@ export class Enemy {
       host.playSound('templer_stimme');
     }
     if (this.slamCd === 0 && d < BOSS.slamRange) {
-      this.slamCd = phase2 ? BOSS.slamCdPhase2 : BOSS.slamCd;
+      this.slamCd = phase3 ? 1.8 : phase2 ? BOSS.slamCdPhase2 : BOSS.slamCd;
       host.addTelegraph(px, py, BOSS.slamRadius, BOSS.slamTelegraphS, Math.round(this.dmg * BOSS.slamDmgMult));
       host.logMsg(BOSS_TEXTE.ausholen, 'bad');
       host.playSound('telegraph');
     }
     if (phase2 && this.fanCd === 0 && d < BOSS.fanRange) {
-      this.fanCd = BOSS.fanCd;
-      const half = (BOSS.fanCount - 1) / 2;
+      this.fanCd = phase3 ? 1.8 : BOSS.fanCd;
+      const half = ((phase3 ? BOSS.fanCount + 2 : BOSS.fanCount) - 1) / 2;
       for (let i = -half; i <= half; i++) {
         const a = ang + i * BOSS.fanSpread;
         host.spawnEnemyProjectile(this.x, this.y, Math.cos(a) * BOSS.fanProjSpeed, Math.sin(a) * BOSS.fanProjSpeed, Math.round(this.dmg * BOSS.fanDmgMult), '#a8e0c0');

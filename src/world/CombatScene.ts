@@ -18,6 +18,7 @@ import { addSchoolUse } from '../logic/progression';
 import { applyXp } from '../logic/progression';
 import { MELDUNGEN } from '../data/texte';
 import { getSettings } from '../logic/settings';
+import { TUNING, TUNING_ROWS } from '../logic/tuning';
 import { defaultRng, type Rng } from '../logic/rng';
 import { ELITE } from '../data/enemies';
 import type { EnemyTypeId, WeaponClass } from '../data/types';
@@ -163,18 +164,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (k === b.s1) this.castSpell(0);
       if (k === b.s2) this.castSpell(1);
       if (k === b.s3) this.castSpell(2);
-      if (k === '7') {
-        // erste Schriftrolle im Gepäck einsetzen (Feedback-Runde 2)
-        const rolle = this.p.inv.find((it) => it.kind === 'scroll' && it.scrollSkill);
-        if (rolle?.scrollSkill) {
-          rolle.stack = (rolle.stack ?? 1) - 1;
-          if (rolle.stack <= 0) this.p.inv = this.p.inv.filter((x) => x !== rolle);
-          this.useScroll(rolle.scrollSkill);
-          this.logMsg(`${rolle.name} eingesetzt (${Math.max(0, rolle.stack ?? 0)}x übrig)`, 'magic');
-        } else {
-          this.logMsg('Keine Schriftrolle im Gepäck', 'bad');
-        }
-      }
+      if (k === '7') this.useFirstScroll();
+      if (k === 'f10') { ev.preventDefault(); this.toggleDevPanel(); }
       // Zauberei-Fähigkeiten reihen sich in die Zauberleiste ein (4-6)
       if (k === '4') this.useAbility('kettenblitz');
       if (k === '5') this.useAbility('frostnova');
@@ -191,9 +182,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (this.touch) return; // Touch-Steuerung übernimmt alle Zeiger
       if (this.playerDead || this.uiBlocked()) return;
       if (ptr.button === 2) this.tryBlockStart();
-      else if (ptr.button === 1) this.castSpell(0);        // Mitteltaste: Feuerball
-      else if (ptr.button === 3) this.drinkPot();          // Daumentaste 1: Heiltrank
-      else if (ptr.button === 4) this.castSpell(2);        // Daumentaste 2: Heilung
+      else if (ptr.button === 1) this.runAction(getSettings().maus.m3);
+      else if (ptr.button === 3) this.runAction(getSettings().maus.m4);
+      else if (ptr.button === 4) this.runAction(getSettings().maus.m5);
       else if (this.weaponClass() === 'bogen' && !this.combat.blocking) this.startBowDraw();
       else this.mouseDown = true;
     });
@@ -204,6 +195,57 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       else if (this.bowDrawT >= 0) this.releaseBow();
     });
     this.game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  // --- Entwicklungskasten (F10) ----------------------------------------------
+  private devPanel: Phaser.GameObjects.Container | null = null;
+
+  protected toggleDevPanel(): void {
+    if (this.devPanel) {
+      this.devPanel.destroy();
+      this.devPanel = null;
+      return;
+    }
+    const c = this.add.container(20, 80).setScrollFactor(0).setDepth(6500);
+    const h = TUNING_ROWS.length * 34 + 96;
+    const bg = this.add.rectangle(0, 0, 340, h, 0x171108, 0.97).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
+    bg.setInteractive();
+    c.add(bg);
+    c.add(this.add.text(12, 8, 'ENTWICKLUNGSKASTEN (F10)', { fontFamily: 'serif', fontSize: '14px', color: '#c9a227', letterSpacing: 1 }));
+    c.add(this.add.text(12, 26, 'Wirkt sofort auf NEU gespawnte Gegner.', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }));
+    let y = 48;
+    for (const [key, label, min, max, step] of TUNING_ROWS) {
+      c.add(this.add.text(12, y, label, { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8' }));
+      const valText = this.add.text(250, y, TUNING[key].toFixed(2), { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' }).setOrigin(0.5, 0);
+      const mk = (x: number, lbl: string, delta: number) => {
+        const b = this.add.text(x, y, lbl, {
+          fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8', backgroundColor: '#221808', padding: { x: 8, y: 1 },
+        }).setInteractive({ useHandCursor: true });
+        b.on('pointerdown', () => {
+          TUNING[key] = Math.round(Math.min(max, Math.max(min, TUNING[key] + delta)) * 100) / 100;
+          valText.setText(TUNING[key].toFixed(2));
+          this.sfx.play('klick');
+        });
+        c.add(b);
+      };
+      mk(210, '-', -step);
+      mk(280, '+', step);
+      c.add(valText);
+      y += 34;
+    }
+    const bericht = this.add.text(12, y + 6, 'BERICHT KOPIEREN', {
+      fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
+      backgroundColor: '#221808', padding: { x: 12, y: 5 },
+    }).setInteractive({ useHandCursor: true });
+    bericht.on('pointerdown', () => {
+      const text = `Tuning-Bericht Ravensmoor: ${JSON.stringify(TUNING)} (Tempo-Regler: ${getSettings().tempo}%)`;
+      navigator.clipboard?.writeText(text).catch(() => undefined);
+      // eslint-disable-next-line no-console
+      console.log(text);
+      this.logMsg('Bericht kopiert - einfach im Chat einfügen.', 'gold');
+    });
+    c.add(bericht);
+    this.devPanel = c;
   }
 
   // Unterklassen: zusätzliche Tasten (Interaktion, Inventar, Zauber)
@@ -560,7 +602,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   }
 
   protected rollDamage(mult: number): number {
-    const base = this.p.stats.dmg * (this.p.buffT > 0 ? ALTAR.buffDmgMult : 1) * mult;
+    const base = this.p.stats.dmg * TUNING.spielerSchaden * (this.p.buffT > 0 ? ALTAR.buffDmgMult : 1) * mult;
     const va = LIGHT_ATTACK.dmgVarianceMin + Math.random() * (LIGHT_ATTACK.dmgVarianceMax - LIGHT_ATTACK.dmgVarianceMin);
     return Math.round(base * va);
   }
@@ -693,12 +735,43 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   spawnEnemy(type: EnemyTypeId, depth: number, x: number, y: number, elite = false): Enemy {
     const e = new Enemy(type, depth, x, y, this.rng);
     if (elite) e.makeElite(this.rng);
+    // Entwicklungskasten-Faktoren
+    e.maxhp = Math.round(e.maxhp * TUNING.gegnerLeben);
+    e.hp = e.maxhp;
+    e.dmg = Math.round(e.dmg * TUNING.gegnerSchaden);
+    e.speed *= TUNING.gegnerTempo;
     e.sprite = this.add.sprite(x, y, '__DEFAULT');
     this.provider.applyFigure(e.sprite, type, 0, 0);
     if (e.boss) e.sprite.setScale(1.5);
     else if (e.elite) e.sprite.setScale(1.25);
     this.enemies.push(e);
     return e;
+  }
+
+  // Belegbare Aktionen für die Maus-Slots (Feedback-Runde 4)
+  runAction(id: string): void {
+    switch (id) {
+      case 's1': this.castSpell(0); break;
+      case 's2': this.castSpell(1); break;
+      case 's3': this.castSpell(2); break;
+      case 'kettenblitz': case 'frostnova': case 'bannkreis': this.useAbility(id); break;
+      case 'pot': this.drinkPot(); break;
+      case 'mpot': this.drinkMpot(); break;
+      case 'rolle': this.useFirstScroll(); break;
+      default: break;
+    }
+  }
+
+  useFirstScroll(): void {
+    const rolle = this.p.inv.find((it) => it.kind === 'scroll' && it.scrollSkill);
+    if (rolle?.scrollSkill) {
+      rolle.stack = (rolle.stack ?? 1) - 1;
+      if (rolle.stack <= 0) this.p.inv = this.p.inv.filter((x) => x !== rolle);
+      this.useScroll(rolle.scrollSkill);
+      this.logMsg(`${rolle.name} eingesetzt (${Math.max(0, rolle.stack ?? 0)}x übrig)`, 'magic');
+    } else {
+      this.logMsg('Keine Schriftrolle im Gepäck', 'bad');
+    }
   }
 
   // --- Tränke und Zauber ------------------------------------------------

@@ -4,12 +4,13 @@
 
 import Phaser from 'phaser';
 import { SPELLS, ABILITIES, ABILITY_FX } from '../data/balancing';
-import { getSettings } from '../logic/settings';
+import { getSettings, saveSettings } from '../logic/settings';
 import type { PlayerState } from '../logic/playerState';
 import type { WeaponClass } from '../data/types';
 
 interface SlotDef {
   key: string;
+  belegung?: 'm3' | 'm4' | 'm5'; // belegbarer Maus-Slot
   ico: () => string;
   name: () => string;
   desc: () => string;
@@ -34,6 +35,7 @@ export class Hud {
   private slotZones: Phaser.GameObjects.Zone[] = [];
   private tooltip: Phaser.GameObjects.Container | null = null;
   private slots: SlotDef[];
+  private aktionen: Array<[string, string, string]> = [];
 
   constructor(
     private scene: Phaser.Scene,
@@ -91,15 +93,33 @@ export class Hud {
       },
     });
     const bogen = () => this.getWeaponClass() === 'bogen';
-    const mausSlot = (key: string, i: number, ico: string, hinweis: string): SlotDef => ({
-      key, ico: () => ico,
-      name: () => SPELLS[i] ? SPELLS[i].name : hinweis,
-      desc: () => hinweis,
-      kosten: () => (SPELLS[i] ? `${SPELLS[i].mana} Mana` : ''),
-      cdFrac: () => (SPELLS[i] && p().spellCds[i] > 0 ? p().spellCds[i] / SPELLS[i].cd : 0),
-      cdSek: () => (SPELLS[i] ? p().spellCds[i] : 0),
-      locked: () => (SPELLS[i] && p().level < SPELLS[i].unlock ? `ab Spieler-Stufe ${SPELLS[i].unlock}` : null),
-    });
+    // Belegbare Maus-Slots: Rechtsklick wechselt die Aktion durch
+    const AKTIONEN: Array<[string, string, string]> = [
+      ['s1', '✦', 'Feuerball'], ['s2', '☩', 'Heiliges Licht'], ['s3', '❧', 'Heilung'],
+      ['kettenblitz', '⌁', 'Kettenblitz'], ['frostnova', '❄', 'Frostnova'], ['bannkreis', '◎', 'Bannkreis'],
+      ['pot', '🧪', 'Heiltrank'], ['mpot', '⚗', 'Manatrank'], ['rolle', '📜', 'Schriftrolle'],
+    ];
+    const mausSlot = (key: string, feld: 'm3' | 'm4' | 'm5', tasteName: string): SlotDef => {
+      const akt = () => AKTIONEN.find((a) => a[0] === getSettings().maus[feld]) ?? AKTIONEN[0];
+      const spellIdx = () => ['s1', 's2', 's3'].indexOf(akt()[0]);
+      return {
+        key,
+        ico: () => akt()[1],
+        name: () => `${akt()[2]} (${tasteName})`,
+        desc: () => 'Rechtsklick auf diesen Slot: Belegung wechseln',
+        kosten: () => (spellIdx() >= 0 ? `${SPELLS[spellIdx()].mana} Mana` : ''),
+        cdFrac: () => {
+          const i = spellIdx();
+          return i >= 0 && p().spellCds[i] > 0 ? p().spellCds[i] / SPELLS[i].cd : 0;
+        },
+        cdSek: () => {
+          const i = spellIdx();
+          return i >= 0 ? p().spellCds[i] : 0;
+        },
+        locked: () => null,
+        belegung: feld,
+      };
+    };
     this.slots = [
       spellSlot(0, '✦', 'Feuriges Geschoss mit Flächenschaden'),
       spellSlot(1, '☩', 'Heiliger Schlag um dich herum'),
@@ -109,11 +129,12 @@ export class Hud {
       abilitySlot('6', () => 'bannkreis', () => '◎'),
       abilitySlot('R', () => (bogen() ? 'mehrfachschuss' : 'rundumschlag'), () => (bogen() ? '⫶' : '↻')),
       abilitySlot('T', () => (bogen() ? 'markierterTod' : 'sturmangriff'), () => (bogen() ? '◎' : '⇒')),
-      // Maustasten-Belegung sichtbar (fest: Mitte/Daumen1/Daumen2)
-      mausSlot('M3', 0, '✦', 'Maustaste Mitte: Feuerball'),
-      mausSlot('M4', -1, '🧪', 'Daumentaste 1: Heiltrank'),
-      mausSlot('M5', 2, '❧', 'Daumentaste 2: Heilung'),
+      // Belegbare Maus-Slots (Rechtsklick wechselt)
+      mausSlot('M3', 'm3', 'Maustaste Mitte'),
+      mausSlot('M4', 'm4', 'Daumentaste 1'),
+      mausSlot('M5', 'm5', 'Daumentaste 2'),
     ];
+    this.aktionen = AKTIONEN;
     this.buildSlotObjects();
   }
 
@@ -157,6 +178,19 @@ export class Hud {
       const zone = this.scene.add.zone(x, h - 66, 42, 42).setOrigin(0.5).setScrollFactor(0).setInteractive();
       zone.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showSlotTooltip(s, ptr));
       zone.on('pointerout', () => this.hideTooltip());
+      if (s.belegung) {
+        zone.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
+          if (!ptr.rightButtonDown()) return;
+          // Belegung zyklisch wechseln und speichern
+          const set = getSettings();
+          const feld = s.belegung as 'm3' | 'm4' | 'm5';
+          const idx = this.aktionen.findIndex((a) => a[0] === set.maus[feld]);
+          set.maus[feld] = this.aktionen[(idx + 1) % this.aktionen.length][0];
+          saveSettings();
+          this.hideTooltip();
+          this.showSlotTooltip(s, ptr);
+        });
+      }
       this.slotZones.push(zone);
     }
   }

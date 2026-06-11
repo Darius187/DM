@@ -15,6 +15,7 @@ import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDL
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS } from '../data/shops';
 import { GATHER } from '../data/crafting';
 import { TAG } from '../data/welt';
+import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, tileNameAt } from '../world/tiles';
 import { TILE } from '../gfx/fallbackArt';
@@ -413,9 +414,8 @@ export class WorldScene extends CombatScene {
   }
 
   protected override areaSpeedFactor(): number {
-    // Krypta: bedächtig wie die Monster (ergibt mit Standard-Tempo 90%
-    // rund 105 px/s - Skelette laufen 82-102); Dorf/Wald bleiben flott
-    return this.area?.dark ? 0.65 : 1;
+    // Krypta: bedächtig wie die Monster; Faktor über F10 verstellbar
+    return this.area?.dark ? TUNING.kryptaTempo : 1;
   }
 
   protected override uiBlocked(): boolean {
@@ -1196,7 +1196,9 @@ export class WorldScene extends CombatScene {
           const id = this.area.id;
           if (id === 'crypt1') this.goArea('crypt2');
           else if (id === 'crypt2') this.goArea('crypt3');
-          else if (id === 'crypt3') this.goArea('boss');
+          else if (id === 'crypt3') this.goArea('crypt4');
+          else if (id === 'crypt4') this.goArea('crypt5');
+          else if (id === 'crypt5') this.goArea('boss');
         },
       };
     }
@@ -1211,7 +1213,9 @@ export class WorldScene extends CombatScene {
             this.goArea('village', door ? { x: door.x, y: door.y + 40 } : undefined);
           } else if (id === 'crypt2') this.goArea('crypt1', this.getArea('crypt1').downPos);
           else if (id === 'crypt3') this.goArea('crypt2', this.getArea('crypt2').downPos);
-          else if (id === 'boss') this.goArea('crypt3', this.getArea('crypt3').downPos);
+          else if (id === 'crypt4') this.goArea('crypt3', this.getArea('crypt3').downPos);
+          else if (id === 'crypt5') this.goArea('crypt4', this.getArea('crypt4').downPos);
+          else if (id === 'boss') this.goArea('crypt5', this.getArea('crypt5').downPos);
         },
       };
     }
@@ -1364,10 +1368,7 @@ export class WorldScene extends CombatScene {
       // Neues Spiel+ (Feedback-Runde 1): Welt bleibt, Gegner kehren zäher
       // zurück, im Grab wartet fortan der Schattenfürst
       this.flags.ngPlus = true;
-      this.areas.delete('crypt1');
-      this.areas.delete('crypt2');
-      this.areas.delete('crypt3');
-      this.areas.delete('boss');
+      for (const id of ['crypt1', 'crypt2', 'crypt3', 'crypt4', 'crypt5', 'boss']) this.areas.delete(id);
       this.logMsg('Die Krypta regt sich erneut - stärker als zuvor (Neues Spiel+).', 'magic');
       this.goArea('village');
     });
@@ -1560,10 +1561,7 @@ export class WorldScene extends CombatScene {
     this.p.mana = this.p.stats.maxmana;
     this.playerDead = false;
     // Krypta-Ebenen neu bevölkern (Referenz-Verhalten)
-    this.areas.delete('crypt1');
-    this.areas.delete('crypt2');
-    this.areas.delete('crypt3');
-    this.areas.delete('boss');
+    for (const id of ['crypt1', 'crypt2', 'crypt3', 'crypt4', 'crypt5', 'boss']) this.areas.delete(id);
     this.areaSeed = Math.floor(Math.random() * 1e9);
     // Erwachen in Ravensmoor (Taverne)
     const village = this.getArea('village');
@@ -1657,7 +1655,9 @@ export class WorldScene extends CombatScene {
   private renderLight(): void {
     const cam = this.cameras.main;
     this.renderFog();
-    if (!this.area.dark) {
+    // Nebel des Krieges im Dunkelwald: Sichtkreis auch über Tage (einstellbar)
+    const fow = !this.area.dark && this.area.id === 'wald' && getSettings().fow;
+    if (!this.area.dark && !fow) {
       this.lightRT.setVisible(false);
       for (const img of this.warmPool) img.setVisible(false);
       return;
@@ -1667,15 +1667,15 @@ export class WorldScene extends CombatScene {
     }
     this.lightRT.setVisible(true);
     this.lightRT.clear();
-    this.lightRT.fill(0x020100, 0.97);
+    this.lightRT.fill(0x020100, fow ? 0.88 : 0.97);
     const time = this.time.now / 1000;
     const flicker = 1 + Math.sin(time * 9) * 0.025 + Math.sin(time * 23) * 0.015;
-    const playerRadius = (235 + this.p.stats.licht) * flicker;
+    const playerRadius = (fow ? 330 : 235 + this.p.stats.licht) * flicker;
     const px = this.px - cam.scrollX, py = this.py - cam.scrollY;
     this.eraseLight(px, py, playerRadius);
     let warmIdx = 0;
-    warmIdx = this.placeWarm(warmIdx, this.px, this.py, 160, 0.5);
-    for (const t of this.area.torches) {
+    if (!fow) warmIdx = this.placeWarm(warmIdx, this.px, this.py, 160, 0.5);
+    for (const t of (fow ? [] : this.area.torches)) {
       const sx = t.x - cam.scrollX, sy = t.y - cam.scrollY;
       if (sx < -160 || sy < -160 || sx > this.scale.width + 160 || sy > this.scale.height + 160) continue;
       this.eraseLight(sx, sy - 4, 95 + Math.sin(time * 7 + t.ph) * 10);
