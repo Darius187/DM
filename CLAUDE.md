@@ -6,26 +6,36 @@ This file provides guidance for AI assistants (Claude and others) working in thi
 
 ## Repository Status
 
-This repository is currently in its **initial state** — no source files or commits exist yet.
-Update this document as the project evolves.
+This repository contains **RAVENSMOOR - STIMMUNGSTEST**, a deliberately tiny
+throwaway project (Phaser 3 + TypeScript + Vite). It is NOT a game: its only
+purpose is to validate a dark tint/light mood layer over the real pixel-art
+assets before the actual RPG is built. Do not extend it beyond that scope.
 
 ---
 
 ## Project Overview
 
-> **TODO**: Add a short description of what this project does, its purpose, and its primary users.
+Three tiny connected areas (Wald, Haus, Gruft) walkable with WASD, joined by
+E-doors. The deliverable is `src/mood.ts`: all tuning values of the mood layer
+(per-area tint, darkness layer with soft light holes, flicker, desaturation/
+contrast, particles) live at the top of that file and will later be carried
+over into the real game. Before/after screenshots live in `BILDER/`.
 
 ---
 
 ## Repository Structure
 
-> **TODO**: Document the directory layout once source files are added. Example template:
-
 ```
 /
-├── src/           # Application source code
-├── tests/         # Test suites
-├── docs/          # Documentation
+├── assets/        # CC0/itch-licensed art, sounds (see assets/ASSETS-LIESMICH.txt)
+├── src/
+│   ├── main.ts    # Phaser game config (640x360, pixelArt, FIT scaling)
+│   ├── boot.ts    # Asset loading, tileset frame cutting, animations
+│   ├── mood.ts    # THE RESULT: all mood-layer values + Stimmung class
+│   ├── spieler.ts # WASD player with directional anims + footstep sounds
+│   └── gebiete.ts # Base area scene + Wald/Haus/Gruft scenes
+├── tools/         # Dev helpers: crop/blob asset inspection, screenshot runner
+├── BILDER/        # Acceptance screenshots (vorher/nachher per area)
 └── CLAUDE.md      # This file
 ```
 
@@ -35,16 +45,23 @@ Update this document as the project evolves.
 
 ### Prerequisites
 
-> **TODO**: List required tools, runtimes, and versions (e.g., Node.js 20+, Python 3.11+, Docker).
+- Node.js 20+
 
 ### Setup
 
 ```bash
-# Clone the repository
-git clone <repo-url>
-cd DM
+npm install
+npm run dev          # Vite dev server on http://localhost:5173
+```
 
-# TODO: Add install / bootstrap steps
+Useful URL parameters: `?szene=wald|haus|gruft` picks the start area,
+`&mood=0` disables the mood layer (used for the "vorher" screenshots).
+
+Screenshots (needs a Chrome/Chromium binary, dev server running):
+
+```bash
+node tools/screenshots.cjs [chrome-pfad]   # writes BILDER/*.png
+node tools/durchlauf.cjs [chrome-pfad]     # functional door/walk check
 ```
 
 ---
