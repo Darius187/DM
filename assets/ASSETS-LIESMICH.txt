@@ -1,0 +1,34 @@
+RAVENSMOOR - STIMMUNGSTEST ASSETS
+Nur die brauchbaren Teile aus den hochgeladenen Paketen, fuer den Look-Test.
+
+player/Animations/   Spielerfigur (Pixel Crawler). Sprite-Sheets mit 4 Richtungen:
+                     Idle_Down/Side/Up, Walk_Base, Run_Base, Slice/Pierce/Crush
+                     (Angriffe, hier nicht noetig), Hit, Death. Jede *-Sheet.png
+                     ist ein horizontaler Animations-Streifen.
+enemies/             Skelett-Crew (Base/Mage/Rogue/Warrior), je Idle/Run/Death.
+                     Im Test nur Deko.
+forest/              TopDownFantasy Forest: Tileset.png (+1xPadding-Variante) und
+                     Decorations.png fuer Waldboden, Baeume, Buesche.
+house/               Innenraum-Bauteile: TX Tileset Grass/Stone Ground/Wall,
+                     TX Props/Struct/Plant (mit Schatten-Varianten), TX Player
+                     (Fallback). Bonfire/ = animiertes Lagerfeuer als Lichtquelle.
+dungeon/             RF Catacombs: mainlevbuild.png (Waende/Boden), decorative.png,
+                     torch_1..4 (animierte Fackel), candleA/B_01..04 (Kerzen),
+                     spike_0..4. Die Gruft-Stimmung.
+icons/               Pixel Art RPG Icon Pack, 115 Icons in Kategorien (Equipment,
+                     Weapon & Tool, Potion, Ore & Gem, Material, Food, Misc,
+                     Monster Part). Fuer spaeteres Inventar - im Test optional.
+effects/             Kenney Light Masks (weiche Lichtkreise zum Aufhellen) und
+                     Particle Pack (Funken, Rauch, Glut).
+sounds/              Kenney RPG Audio + Impact: Schritte, chop (Holz), Tueren,
+                     Buch, ein Treffer.
+ui/                  (leer, Platz fuer spaeter)
+
+LIZENZEN: Alle Pakete sind frei fuer kommerzielle und private Nutzung
+(CC0 bzw. uebliche itch-Asset-Lizenz). Quellen:
+- Pixel Crawler (Spieler, Skelette, Umgebung)
+- RF Catacombs (Gruft)
+- TopDownFantasy Forest (Wald)
+- Pixel Art Top Down Basic (Boden/Haus)
+- Pixel Art Icon Pack RPG (Icons)
+- Kenney: RPG Audio, Impact Sounds, Light Masks, Particle Pack
