@@ -496,8 +496,9 @@ export function buildVillage(rng: Rng, aufbauStufe = 0): AreaData {
   carve(map, 40, 26, 53, 35, T.PATH);
   map[32][45] = T.WELL;
   label(46.5, 25.2, 'Marktplatz');
-  // Anschlagbrett mit dem täglichen Kopfgeld (Feedback-Runde 6)
-  a.special.push({ id: 'brett', x: 51, y: 27, raum: 'Anschlagbrett' });
+  // Anschlagbrett mit dem täglichen Kopfgeld (Feedback-Runde 6) - mit etwas
+  // Abstand zum Fahrenden Händler, damit die Interaktion eindeutig bleibt
+  a.special.push({ id: 'brett', x: 42, y: 33, raum: 'Anschlagbrett' });
 
   // 1. Taverne "Zum Schwarzen Raben" (Heinrich) - Tür nach Süden zur Straße
   carve(map, 12, 22, 23, 28, T.HWALL);

@@ -11,6 +11,17 @@ function grasBase(ctx: Ctx, n: number): void {
   const g = 46 + n * 2;
   ctx.fillStyle = `rgb(${g - 14},${g},${g - 22})`;
   ctx.fillRect(0, 0, TILE, TILE);
+  // Grasbüschel und Sprenkel je Variante (deterministisch, kein Flackern)
+  ctx.fillStyle = `rgba(${g - 4},${g + 14},${g - 12},0.8)`;
+  for (let i = 0; i < 5; i++) {
+    const tx = ((i * 13 + n * 7) % 28) + 2, ty = ((i * 19 + n * 11) % 26) + 3;
+    ctx.fillRect(tx, ty, 1, 3);
+    ctx.fillRect(tx + 2, ty + 1, 1, 2);
+  }
+  ctx.fillStyle = 'rgba(14,26,10,0.5)';
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(((i * 23 + n * 5) % 29) + 1, ((i * 17 + n * 13) % 28) + 2, 2, 1);
+  }
   if (n === 3) { ctx.fillStyle = 'rgba(20,40,16,0.5)'; ctx.fillRect(8, 12, 3, 6); ctx.fillRect(20, 6, 3, 6); }
   if (n === 2) { ctx.fillStyle = '#b8aed0'; ctx.fillRect(9, 9, 2, 2); ctx.fillStyle = '#d0c890'; ctx.fillRect(22, 18, 2, 2); }
   if (n === 6) { ctx.fillStyle = 'rgba(90,86,78,0.6)'; ctx.beginPath(); ctx.arc(18, 20, 3, 0, 6.283); ctx.fill(); }
@@ -23,6 +34,19 @@ function floorBase(ctx: Ctx, n: number, theme?: CryptTheme): void {
   ctx.fillRect(0, 0, TILE, TILE);
   ctx.strokeStyle = 'rgba(0,0,0,0.25)';
   ctx.strokeRect(0.5, 0.5, TILE - 1, TILE - 1);
+  // Plattenfugen + abgenutzte Stellen je Variante
+  ctx.fillStyle = 'rgba(0,0,0,0.14)';
+  if (n % 2 === 0) ctx.fillRect(0, 15 + (n % 3), TILE, 1);
+  else ctx.fillRect(14 + (n % 4), 0, 1, TILE);
+  ctx.fillStyle = 'rgba(255,255,255,0.03)';
+  ctx.fillRect(((n * 11) % 20) + 3, ((n * 7) % 20) + 3, 6, 4);
+  if (n === 4) {
+    // Riss quer über die Platte
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.moveTo(4, 8); ctx.lineTo(13, 14); ctx.lineTo(11, 22); ctx.lineTo(19, 27);
+    ctx.stroke();
+  }
 }
 
 export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptTheme): void {
@@ -34,6 +58,12 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       ctx.fillRect(0, 0, TILE, TILE);
       ctx.fillStyle = 'rgba(0,0,0,0.12)'; if (n < 2) ctx.fillRect(n * 9, 10, 5, 4);
       ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(4 + n * 3, 22, 4, 3);
+      // Kiesel und Karrenspuren
+      ctx.fillStyle = `rgba(${g + 22},${g + 8},${g - 10},0.7)`;
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(((i * 17 + n * 9) % 27) + 2, ((i * 23 + n * 5) % 26) + 3, 2, 2);
+      }
+      if (n % 3 === 0) { ctx.fillStyle = 'rgba(0,0,0,0.08)'; ctx.fillRect(8, 0, 3, TILE); ctx.fillRect(21, 0, 3, TILE); }
       break;
     }
     case 'baum':
@@ -46,6 +76,12 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       ctx.fillStyle = '#16222e'; ctx.fillRect(0, 0, TILE, TILE);
       ctx.fillStyle = 'rgba(120,150,180,0.18)';
       ctx.fillRect(2 + n * 2, 6 + n, 10, 2); ctx.fillRect(14, 20 - n, 12, 2);
+      // Glitzerpunkte und dunkler Grund
+      ctx.fillStyle = 'rgba(180,210,235,0.30)';
+      ctx.fillRect(((n * 13) % 24) + 4, ((n * 7) % 22) + 4, 2, 1);
+      ctx.fillRect(((n * 19) % 22) + 5, ((n * 11) % 24) + 4, 1, 1);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fillRect(((n * 9) % 18) + 6, ((n * 15) % 16) + 10, 8, 3);
       break;
     }
     case 'acker': {
@@ -136,6 +172,13 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       const wt = theme ?? { wallTop: '#0f0c08', wallFace: '#262017' } as CryptTheme;
       ctx.fillStyle = wt.wallTop; ctx.fillRect(0, 0, TILE, TILE);
       ctx.fillStyle = wt.wallFace; ctx.fillRect(0, TILE - 10, TILE, 10);
+      // Mauerwerk in der Stirnseite: Fugen und Lichtkante
+      ctx.fillStyle = 'rgba(0,0,0,0.30)';
+      ctx.fillRect(0, TILE - 6, TILE, 1);
+      ctx.fillRect((n % 2) * 8 + 5, TILE - 10, 1, 4);
+      ctx.fillRect((n % 2) * 8 + 19, TILE - 6, 1, 6);
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      ctx.fillRect(0, TILE - 10, TILE, 1);
       break;
     }
     case 'knochen':
@@ -243,8 +286,15 @@ export function drawObjectArt(ctx: Ctx, name: string, n: number, theme?: CryptTh
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
       ctx.beginPath(); ctx.ellipse(16, 28, 9, 3.5, 0, 0, 6.283); ctx.fill();
       ctx.fillStyle = '#241a10'; ctx.fillRect(13, 18, 6, 10);
-      ctx.fillStyle = '#1c3018'; ctx.beginPath(); ctx.arc(16, 12, 12, 0, 6.283); ctx.fill();
-      ctx.fillStyle = 'rgba(40,70,34,0.8)'; ctx.beginPath(); ctx.arc(12, 9, 7, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#2e2014'; ctx.fillRect(13, 18, 2, 10);
+      // Krone: dunkler Rand, Grundton, zwei Lichtballen, Tiefenflecken
+      ctx.fillStyle = '#10200e'; ctx.beginPath(); ctx.arc(16, 12, 13, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#1c3018'; ctx.beginPath(); ctx.arc(16, 12, 11.5, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(40,70,34,0.85)'; ctx.beginPath(); ctx.arc(12, 9, 7, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(58,94,46,0.6)'; ctx.beginPath(); ctx.arc(10, 7, 3.5, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(8,18,6,0.5)';
+      ctx.beginPath(); ctx.arc(21, 16, 3.5, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.arc(14, 17, 2.5, 0, 6.283); ctx.fill();
       break;
     case 'fels':
       ctx.fillStyle = 'rgba(0,0,0,0.3)';

@@ -28,19 +28,51 @@ function p(ctx: CanvasRenderingContext2D, x: number, y: number, w = 1, h = 1, co
   ctx.fillRect(x * PX, y * PX, w * PX, h * PX);
 }
 
+// Umriss-Helfer (Grafik-Politur): zeichnet die Figur in ein Zwischenbild und
+// legt eine dunkle 1-Pixel-Silhouette in vier Richtungen darunter - dadurch
+// heben sich alle Figuren klar vom Boden ab.
+function withOutline(ctx: CanvasRenderingContext2D, draw: (c: CanvasRenderingContext2D) => void): void {
+  const off = document.createElement('canvas');
+  off.width = 32;
+  off.height = 32;
+  const octx = off.getContext('2d')!;
+  draw(octx);
+  const sil = document.createElement('canvas');
+  sil.width = 32;
+  sil.height = 32;
+  const sctx = sil.getContext('2d')!;
+  sctx.drawImage(off, 0, 0);
+  sctx.globalCompositeOperation = 'source-in';
+  sctx.fillStyle = 'rgba(8,6,4,0.85)';
+  sctx.fillRect(0, 0, 32, 32);
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) ctx.drawImage(sil, dx, dy);
+  ctx.drawImage(off, 0, 0);
+}
+
 // Zeichnet eine humanoide Figur in ein 32x32-Feld (Ursprung links oben).
 export function drawHumanoid(ctx: CanvasRenderingContext2D, f: FigureSpec, dir: Dir, frame: number): void {
+  // Schlagschatten zuerst (ohne Umriss)
+  const s = f.scale ?? 1;
+  ctx.save();
+  if (s !== 1) {
+    ctx.translate(16 * (1 - s), 32 * (1 - s));
+    ctx.scale(s, s);
+  }
+  ctx.fillStyle = `rgba(0,0,0,${gfxConfig.shadowAlpha})`;
+  ctx.beginPath();
+  ctx.ellipse(16, 28, 8, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  withOutline(ctx, (c) => drawHumanoidParts(c, f, dir, frame));
+}
+
+function drawHumanoidParts(ctx: CanvasRenderingContext2D, f: FigureSpec, dir: Dir, frame: number): void {
   ctx.save();
   const s = f.scale ?? 1;
   if (s !== 1) {
     ctx.translate(16 * (1 - s), 32 * (1 - s));
     ctx.scale(s, s);
   }
-  // Schlagschatten
-  ctx.fillStyle = `rgba(0,0,0,${gfxConfig.shadowAlpha})`;
-  ctx.beginPath();
-  ctx.ellipse(16, 28, 8, 3, 0, 0, Math.PI * 2);
-  ctx.fill();
 
   const step = frame % 4; // 0 stehen, 1 links vor, 2 stehen, 3 rechts vor
   const legL = step === 1 ? 1 : 0;
@@ -50,30 +82,40 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, f: FigureSpec, dir: 
   // Beine / Robe
   if (f.robe) {
     p(ctx, 5, 9 + bob, 6, 4, f.tunic);
+    p(ctx, 5, 9 + bob, 1, 4, shade(f.tunic, 12));
     p(ctx, 5, 13, 6, 1, shade(f.tunic, -22));
   } else {
     p(ctx, 6, 10 + bob, 2, 3 + legL, f.legs);
     p(ctx, 8, 10 + bob, 2, 3 + legR, f.legs);
+    // Schuhe dunkler abgesetzt
+    p(ctx, 6, 12 + bob + legL, 2, 1, shade(f.legs, -24));
+    p(ctx, 8, 12 + bob + legR, 2, 1, shade(f.legs, -24));
   }
-  // Körper
+  // Körper: Licht von oben links, Schattenkante rechts, Gürtel
   p(ctx, 5, 6 + bob, 6, 4, f.tunic);
   p(ctx, 5, 6 + bob, 6, 1, shade(f.tunic, 18));
+  p(ctx, 5, 7 + bob, 1, 3, shade(f.tunic, 10));
+  p(ctx, 10, 7 + bob, 1, 3, shade(f.tunic, -16));
+  if (!f.robe) p(ctx, 5, 9 + bob, 6, 1, shade(f.tunic, -30));
   if (f.skeletal) {
     p(ctx, 6, 7 + bob, 4, 1, '#efe6cc');
     p(ctx, 6, 9 + bob, 4, 1, '#efe6cc');
   }
-  // Arme
+  // Arme schwingen gegenläufig zu den Beinen
   const armCol = f.skeletal ? '#d8cfb0' : f.tunic;
-  p(ctx, 4, 7 + bob, 1, 3, armCol);
-  p(ctx, 11, 7 + bob, 1, 3, armCol);
-  // Kopf
+  p(ctx, 4, 7 + bob + legR, 1, 3, shade(armCol, -8));
+  p(ctx, 11, 7 + bob + legL, 1, 3, shade(armCol, -8));
+  // Kopf mit Wangenschatten
   p(ctx, 5, 2 + bob, 6, 4, f.skin);
-  // Haar/Kapuze/Hut
+  p(ctx, 10, 3 + bob, 1, 3, shade(f.skin, -18));
+  // Haar/Kapuze/Hut mit Glanzkante
   if (f.hat) {
     p(ctx, 4, 1 + bob, 8, 2, f.hat);
     p(ctx, 5, 0 + bob, 6, 1, f.hat);
+    p(ctx, 5, 0 + bob, 3, 1, shade(f.hat, 16));
   } else {
     p(ctx, 5, 1 + bob, 6, 2, f.hair);
+    p(ctx, 5, 1 + bob, 3, 1, shade(f.hair, 18));
   }
   // Gesicht je Richtung
   ctx.fillStyle = f.skeletal ? '#1a0808' : '#26180e';
@@ -129,20 +171,25 @@ function drawHeldWeapon(ctx: CanvasRenderingContext2D, w: NonNullable<FigureSpec
 // Vierbeiner (Wolf, Ratte, Schwein, Kuh, Hund)
 export interface QuadSpec { body: string; head: string; size: number; tail?: boolean; ears?: boolean; spots?: string }
 export function drawQuadruped(ctx: CanvasRenderingContext2D, q: QuadSpec, dir: Dir, frame: number): void {
-  const flip = dir === 1;
-  ctx.save();
-  if (flip) { ctx.translate(32, 0); ctx.scale(-1, 1); }
   ctx.fillStyle = `rgba(0,0,0,${gfxConfig.shadowAlpha})`;
   ctx.beginPath();
   ctx.ellipse(16, 27, 9 * q.size, 3, 0, 0, Math.PI * 2);
   ctx.fill();
+  withOutline(ctx, (c) => drawQuadrupedParts(c, q, dir, frame));
+}
+
+function drawQuadrupedParts(ctx: CanvasRenderingContext2D, q: QuadSpec, dir: Dir, frame: number): void {
+  const flip = dir === 1;
+  ctx.save();
+  if (flip) { ctx.translate(32, 0); ctx.scale(-1, 1); }
   const step = frame % 4;
   const legA = step === 1 ? 1 : 0;
   const legB = step === 3 ? 1 : 0;
   const bw = Math.round(8 * q.size), bh = Math.round(4 * q.size);
   const bx = 8 - Math.round((q.size - 1) * 4), by = 9 - bh;
-  // Körper
+  // Körper mit Lichtkante oben
   p(ctx, bx, by, bw, bh, q.body);
+  p(ctx, bx, by, bw, 1, shade(q.body, 14));
   if (q.spots) { p(ctx, bx + 2, by + 1, 2, 2, q.spots); p(ctx, bx + 5, by, 2, 2, q.spots); }
   // Beine
   p(ctx, bx + 1, by + bh, 1, 2 + legA, shade(q.body, -20));
@@ -159,13 +206,17 @@ export function drawQuadruped(ctx: CanvasRenderingContext2D, q: QuadSpec, dir: D
 
 // Huhn
 export function drawChicken(ctx: CanvasRenderingContext2D, dir: Dir, frame: number): void {
-  const flip = dir === 1;
-  ctx.save();
-  if (flip) { ctx.translate(32, 0); ctx.scale(-1, 1); }
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.beginPath();
   ctx.ellipse(16, 26, 5, 2, 0, 0, Math.PI * 2);
   ctx.fill();
+  withOutline(ctx, (c) => drawChickenParts(c, dir, frame));
+}
+
+function drawChickenParts(ctx: CanvasRenderingContext2D, dir: Dir, frame: number): void {
+  const flip = dir === 1;
+  ctx.save();
+  if (flip) { ctx.translate(32, 0); ctx.scale(-1, 1); }
   const peck = frame % 4 === 1 ? 1 : 0;
   p(ctx, 6, 9, 4, 3, '#e8e0d0');
   p(ctx, 9, 7 + peck, 2, 2, '#e8e0d0');
