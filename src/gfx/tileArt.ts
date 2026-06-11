@@ -117,6 +117,24 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       ctx.fillRect(0, 24, TILE, 3);
       break;
     }
+    case 'stadttor': {
+      // Geschlossenes Stadttor: Bohlen quer über dem Weg, Eisenband
+      const g = 72 + n * 2;
+      ctx.fillStyle = `rgb(${g},${g - 10},${g - 26})`;
+      ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = '#4e3a20';
+      ctx.fillRect(0, 2, TILE, 28);
+      ctx.fillStyle = '#3a2c16';
+      for (let i = 0; i < 4; i++) ctx.fillRect(0, 2 + i * 7, TILE, 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fillRect(0, 2, TILE, 2);
+      ctx.fillStyle = '#6a665e';
+      ctx.fillRect(0, 12, TILE, 3);
+      ctx.fillRect(14, 10, 4, 7); // Schlossplatte
+      ctx.fillStyle = '#1a1410';
+      ctx.fillRect(15, 12, 2, 3);
+      break;
+    }
     case 'fachwerk_fassade': {
       ctx.fillStyle = '#8a7a62'; ctx.fillRect(0, 0, TILE, TILE);
       ctx.fillStyle = '#2a1e12';

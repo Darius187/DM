@@ -61,7 +61,8 @@ export const RELIKT = {
 export const TOD = {
   titel: 'DU BIST GEFALLEN',
   text: (gold: number) => `Die Dunkelheit nimmt, was ihr gehört. ${gold} Gold verloren. Deine Habseligkeiten bleiben dir - Ravensmoor wartet.`,
-  knopf: 'IN RAVENSMOOR ERWACHEN',
+  knopf: 'AUF DEM FRIEDHOF ERWACHEN',
+  erwachen: 'Ein fahles Licht hebt dich aus der Finsternis - zwischen den Gräbern schlägst du die Augen auf. Du bist nicht allein.',
 } as const;
 
 // Boss-Rufe (Referenz)

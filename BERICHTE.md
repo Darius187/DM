@@ -531,3 +531,27 @@ Alles mit tsc + 49 Tests grün und im Browser durchgespielt:
   nicht verletzt werden - die Trupps jagen den Spieler. Boss-Monster,
   die alle 7 Tage die Mauer beschädigen: notiert für die nächste Stufe.
 Stand: 49/49 Tests grün, Version auf dem Titel: Feedback-Runde 7.
+
+## Feedback-Runde 8 - umgesetzt (Tore, Uhr, Nachtruhe, Friedhof)
+Alles mit tsc + 49 Tests grün und im Browser durchgespielt:
+- Stadttore schließbar: West- und Osttor einzeln per E öffnen/schließen
+  (massives Bohlentor im Torbogen). Beide zu = der Einfall fällt aus:
+  "Trommeln im Dunkelwald - doch die Tore sind zu. Ravensmoor atmet
+  auf." Nur ein Tor offen = die Welle kommt genau dort. Geprüft: Tore
+  zu -> kein Einfall; Westtor auf -> 5 Angreifer nur am Westtor.
+- Ausgleich dafür: die Palisade braucht jetzt 3 Nächte Bauzeit (der
+  Schmied meldet den Fortschritt, alte Spielstände laufen weiter).
+- Uhr: die HUD-Zeile zeigt jetzt den Sonnen-/Mondstand (☀ Morgen /
+  Mittag / Abend, ☾ Nacht) neben dem Tag. Ein Tag = 10 Minuten
+  Echtzeit, läuft nur über der Erde - in der Krypta steht die Zeit
+  still (steht auch so in der Anzeige).
+- Nachtruhe: Nachts verschwinden die Dorfbewohner in ihre Häuser und
+  sind nicht ansprechbar. Bricht ein Einfall los, stehen alle sofort
+  wieder auf der Straße. Geprüft: nachts unsichtbar, beim Einfall da.
+- Auferstehung auf dem Friedhof: Wer fällt, erwacht zwischen den
+  Gräbern neben der Kirche - fahles Licht, Erwachens-Text ("Du bist
+  nicht allein."). Geprüft: Tod -> Knopf -> Friedhof, volle Werte.
+- EHRLICH OFFEN: Häuser sind noch nicht begehbar (Innenräume sind eine
+  eigene Phase, in TODO.md) - die Bewohner verschwinden nachts "in"
+  ihre Häuser, statt sichtbar hineinzugehen.
+Stand: 49/49 Tests grün, Version auf dem Titel: Feedback-Runde 8.

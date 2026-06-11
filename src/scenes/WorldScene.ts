@@ -14,7 +14,7 @@ import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
 import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, type DlgPage } from '../data/dialoge';
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS } from '../data/shops';
 import { GATHER } from '../data/crafting';
-import { TAG, KOPFGELD, EINFALL, STADTMAUER } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, STADTMAUER, tageszeitLabel } from '../data/welt';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, tileNameAt } from '../world/tiles';
@@ -83,9 +83,11 @@ export class WorldScene extends CombatScene {
   private stash!: StashUI;
   private lager: Item[] = [];
   aufbauBestellt = false;
-  // Stadtmauer + Einfälle (Feedback-Runde 7)
+  // Stadtmauer + Einfälle (Feedback-Runde 7/8)
   stadtmauerStufe = 0;
-  stadtmauerBestellt = false;
+  stadtmauerRestNaechte = 0; // 0 = kein Bau bestellt
+  torWestZu = false;
+  torOstZu = false;
   private letzterEinfallTag = 0;
   private einfallAktiv = false;
   // 3x3 Beete des Hofs (Stufe 3)
@@ -134,7 +136,9 @@ export class WorldScene extends CombatScene {
     this.aufbauStufe = 0;
     this.aufbauBestellt = false;
     this.stadtmauerStufe = 0;
-    this.stadtmauerBestellt = false;
+    this.stadtmauerRestNaechte = 0;
+    this.torWestZu = false;
+    this.torOstZu = false;
     this.letzterEinfallTag = 0;
     this.einfallAktiv = false;
     this.einrichtung = 0;
@@ -207,7 +211,10 @@ export class WorldScene extends CombatScene {
     const rng = seededRng(this.areaSeed + id.length * 1009 + id.charCodeAt(id.length - 1));
     let a: AreaData;
     if (id === 'boss') a = buildBoss(rng, this.bossDead && !this.flags.ngPlus);
-    else if (id === 'village') a = buildVillage(rng, this.aufbauStufe, this.stadtmauerStufe);
+    else if (id === 'village') {
+      a = buildVillage(rng, this.aufbauStufe, this.stadtmauerStufe);
+      this.applyTore(a);
+    }
     else if (id === 'wald') a = buildForest(rng);
     else a = buildCrypt(parseInt(id.replace('crypt', ''), 10), rng);
     this.areas.set(id, a);
@@ -507,9 +514,9 @@ export class WorldScene extends CombatScene {
     // Gehöft-Interaktionen (Lager, Bett, Kamin, Feld, Gartenschrein)
     const gh = this.gehoeftHint();
     if (gh) return gh;
-    // NPCs
+    // NPCs (schlafende sind unsichtbar und nicht ansprechbar)
     for (const n of this.npcEnts) {
-      if (near(n.curX, n.curY, 56)) {
+      if (n.sprite.visible && near(n.curX, n.curY, 56)) {
         return { text: `${n.name} - ${ik} zum Reden`, action: () => this.talkTo(n.id) };
       }
     }
@@ -556,6 +563,18 @@ export class WorldScene extends CombatScene {
       const brett = this.area.special.find((s) => s.id === 'brett');
       if (brett && near((brett.x + 0.5) * TILE, (brett.y + 0.5) * TILE, 48)) {
         return { text: `Anschlagbrett - ${ik} zum Lesen`, action: () => this.readBrett() };
+      }
+      // Stadttore der Palisade: öffnen/schließen
+      if (this.stadtmauerStufe >= 1) {
+        for (const [tx, west] of [[2, true], [this.area.w - 3, false]] as const) {
+          if (near((tx + 0.5) * TILE, 31 * TILE, 56)) {
+            const zu = west ? this.torWestZu : this.torOstZu;
+            return {
+              text: `${west ? 'Westtor' : 'Osttor'} (${zu ? 'geschlossen' : 'offen'}) - ${ik} zum ${zu ? 'Öffnen' : 'Schließen'}`,
+              action: () => this.toggleTor(west),
+            };
+          }
+        }
       }
     }
     // Opferaltar
@@ -649,13 +668,25 @@ export class WorldScene extends CombatScene {
   // --- Einfälle: Monster-Trupps greifen Ravensmoor an (Feedback-Runde 7) ----
 
   private startEinfall(): void {
+    // Mit Palisade kommen die Trupps nur durch OFFENE Tore der Salzstraße;
+    // sind beide zu, ist Ravensmoor sicher (Feedback-Runde 8). Ohne Mauer
+    // brechen sie zusätzlich aus dem Waldrand hervor.
+    const westTor = { x: 3.5, y: 30.5 };
+    const ostTor = { x: 88, y: 30.5 };
+    const waldrand = [{ x: 20, y: 3.5 }, { x: 70, y: 3.5 }, { x: 20, y: 56 }, { x: 70, y: 56 }, { x: 3.5, y: 15 }, { x: 88, y: 45 }];
+    let punkte = [westTor, ostTor, ...waldrand];
+    if (this.stadtmauerStufe >= 1) {
+      punkte = [];
+      if (!this.torWestZu) punkte.push(westTor);
+      if (!this.torOstZu) punkte.push(ostTor);
+      if (!punkte.length) {
+        this.letzterEinfallTag = this.tag;
+        this.logMsg('Trommeln im Dunkelwald - doch die Tore sind zu. Ravensmoor atmet auf.', 'gold');
+        return;
+      }
+    }
     this.einfallAktiv = true;
     this.letzterEinfallTag = this.tag;
-    // Mit Palisade kommen die Trupps nur durch die zwei Tore der Salzstraße,
-    // ohne brechen sie zusätzlich aus dem Waldrand hervor
-    const tore = [{ x: 3.5, y: 30.5 }, { x: 88, y: 30.5 }];
-    const waldrand = [{ x: 20, y: 3.5 }, { x: 70, y: 3.5 }, { x: 20, y: 56 }, { x: 70, y: 56 }, { x: 3.5, y: 15 }, { x: 88, y: 45 }];
-    const punkte = this.stadtmauerStufe >= 1 ? tore : [...tore, ...waldrand];
     const anzahl = Math.min(EINFALL.anzahlMax, EINFALL.anzahlBasis + Math.floor(this.tag / 7) * EINFALL.anzahlProWoche);
     const typen = ['skelett', 'pest', 'wolf', 'skelett'] as const;
     for (let i = 0; i < anzahl; i++) {
@@ -978,11 +1009,39 @@ export class WorldScene extends CombatScene {
     }], 'schmied');
   }
 
+  // Tore der Palisade: setzt die Tor-Tiles je Schließzustand (Feedback-Runde 8)
+  private applyTore(a: AreaData): void {
+    if (this.stadtmauerStufe < 1) return;
+    const set = (tx: number, zu: boolean) => {
+      for (const ty of [30, 31]) a.map[ty][tx] = zu ? T.TOR : T.PATH;
+    };
+    set(2, this.torWestZu);
+    set(a.w - 3, this.torOstZu);
+  }
+
+  private toggleTor(west: boolean): void {
+    const tx = west ? 2 : this.area.w - 3;
+    // Niemanden im Tor einsperren: Spieler darf nicht auf dem Tor-Tile stehen
+    const ptx = Math.floor(this.px / TILE), pty = Math.floor(this.py / TILE);
+    const zu = west ? !this.torWestZu : !this.torOstZu;
+    if (zu && ptx === tx && (pty === 30 || pty === 31)) {
+      this.logMsg('Tritt erst aus dem Torbogen heraus.', 'bad');
+      return;
+    }
+    if (west) this.torWestZu = zu;
+    else this.torOstZu = zu;
+    this.applyTore(this.area);
+    this.refreshTile(tx, 30);
+    this.refreshTile(tx, 31);
+    this.sfx.play('tuer');
+    this.logMsg(zu ? `${west ? 'Westtor' : 'Osttor'} geschlossen.` : `${west ? 'Westtor' : 'Osttor'} geöffnet.`, zu ? 'gold' : '');
+  }
+
   // Stadtmauer: Palisade als Bauprojekt (Feedback-Runde 7). Holz gibt es an
   // den Bäumen rund ums Dorf ODER beim Schmied zu kaufen - kein Zwangs-Grind.
   private openStadtmauer(): void {
-    if (this.stadtmauerBestellt) {
-      this.dialog.show('Schmied', ['Die Pfähle sind zugeschnitten. Schlaft eine Nacht - morgen steht der Ring.'], 'schmied');
+    if (this.stadtmauerRestNaechte > 0) {
+      this.dialog.show('Schmied', [`Wir setzen Pfahl um Pfahl. Noch ${this.stadtmauerRestNaechte} ${this.stadtmauerRestNaechte === 1 ? 'Nacht' : 'Nächte'}, dann steht der Ring.`], 'schmied');
       return;
     }
     if (this.stadtmauerStufe >= STADTMAUER.stufen.length) {
@@ -1003,7 +1062,7 @@ export class WorldScene extends CombatScene {
       return;
     }
     this.dialog.show('Schmied', [{
-      text: `"${st.name}": ${st.beschreibung}. Das kostet ${kosten}. Sollen wir die Pfähle setzen? Über Nacht steht der Ring.`,
+      text: `"${st.name}": ${st.beschreibung}. Das kostet ${kosten} und dauert ${st.naechte} Nächte. Sollen wir anfangen?`,
       choices: [
         {
           label: 'In Auftrag geben',
@@ -1011,8 +1070,8 @@ export class WorldScene extends CombatScene {
             this.p.gold -= st.gold;
             m.holz -= st.holz;
             m.stein -= st.stein;
-            this.stadtmauerBestellt = true;
-            this.logMsg(`Stadtmauer "${st.name}" in Auftrag gegeben - schlaf eine Nacht.`, 'gold');
+            this.stadtmauerRestNaechte = st.naechte;
+            this.logMsg(`Stadtmauer "${st.name}" in Auftrag gegeben - ${st.naechte} Nächte Bauzeit.`, 'gold');
             this.sfx.play('schmiede_hammer');
           },
         },
@@ -1226,11 +1285,15 @@ export class WorldScene extends CombatScene {
       gebaut = AUFBAU_STUFEN[this.aufbauStufe].name;
       this.aufbauStufe++;
     }
-    // Stadtmauer: über Nacht stehen die Pfähle
-    if (this.stadtmauerBestellt) {
-      this.stadtmauerBestellt = false;
-      gebaut = STADTMAUER.stufen[this.stadtmauerStufe].name;
-      this.stadtmauerStufe++;
+    // Stadtmauer: der Bau braucht mehrere Nächte (Feedback-Runde 8)
+    if (this.stadtmauerRestNaechte > 0) {
+      this.stadtmauerRestNaechte--;
+      if (this.stadtmauerRestNaechte === 0) {
+        gebaut = STADTMAUER.stufen[this.stadtmauerStufe].name;
+        this.stadtmauerStufe++;
+      } else {
+        this.logMsg(`Die Palisade wächst - noch ${this.stadtmauerRestNaechte} ${this.stadtmauerRestNaechte === 1 ? 'Nacht' : 'Nächte'}.`, '');
+      }
     }
     // Feld: gegossene Beete wachsen
     for (const beet of this.feld) {
@@ -1622,7 +1685,9 @@ export class WorldScene extends CombatScene {
         kopfgeld: this.kopfgeld ?? undefined,
         album: this.album,
         stadtmauerStufe: this.stadtmauerStufe,
-        stadtmauerBestellt: this.stadtmauerBestellt,
+        stadtmauerRestNaechte: this.stadtmauerRestNaechte,
+        torWestZu: this.torWestZu,
+        torOstZu: this.torOstZu,
         letzterEinfallTag: this.letzterEinfallTag,
       },
     };
@@ -1669,7 +1734,10 @@ export class WorldScene extends CombatScene {
     this.kopfgeld = data.welt.kopfgeld ?? null;
     this.album = data.welt.album ?? { kills: {}, champions: [], unikate: [], notizen: [] };
     this.stadtmauerStufe = data.welt.stadtmauerStufe ?? 0;
-    this.stadtmauerBestellt = data.welt.stadtmauerBestellt ?? false;
+    // Alte Stände kannten nur "bestellt" (eine Nacht Bauzeit)
+    this.stadtmauerRestNaechte = data.welt.stadtmauerRestNaechte ?? (data.welt.stadtmauerBestellt ? 1 : 0);
+    this.torWestZu = data.welt.torWestZu ?? false;
+    this.torOstZu = data.welt.torOstZu ?? false;
     this.letzterEinfallTag = data.welt.letzterEinfallTag ?? 0;
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
     recalc(p);
@@ -1782,10 +1850,20 @@ export class WorldScene extends CombatScene {
     this.playerDead = false;
     // Gegner kehren beim Betreten ohnehin zurück - Layout, Minimap und
     // aufgedeckte Treppen BLEIBEN erhalten (Feedback-Runde 5)
-    // Erwachen in Ravensmoor (Taverne)
+    // Auferstehung auf dem Friedhof neben der Kirche (Feedback-Runde 8):
+    // etwas Gutes wacht über Ravensmoor und schickt dich zurück
     const village = this.getArea('village');
-    const taverne = village.npcs.find((n) => n.id === 'heinrich');
-    this.goArea('village', taverne ? { x: taverne.x, y: taverne.y + 30 } : undefined);
+    let spawn: { x: number; y: number } | undefined;
+    for (const [tx, ty] of [[71, 14], [71, 13], [71, 15], [72, 17], [70, 17], [63, 18]] as const) {
+      if (!SOLID.has(village.map[ty][tx])) {
+        spawn = { x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE };
+        break;
+      }
+    }
+    this.goArea('village', spawn);
+    this.fx.burst(this.px, this.py, 0xf0e8c0, 26, 200);
+    this.sfx.play('heiliges_licht');
+    this.logMsg(TOD.erwachen, 'magic');
   }
 
   // --- HUD und Meldungen ----------------------------------------------------------
@@ -1805,7 +1883,9 @@ export class WorldScene extends CombatScene {
   }
 
   private renderHud(): void {
-    this.hud.update(`STUFE ${this.p.level} · ${this.p.gold} GOLD · Tag ${this.tag}`);
+    // Sonnen-/Mondstand: in der Krypta steht die Zeit still
+    const zeit = this.area.dark ? '⌛ Zeit steht still' : tageszeitLabel(this.tageszeit);
+    this.hud.update(`STUFE ${this.p.level} · ${this.p.gold} GOLD · Tag ${this.tag} · ${zeit}`);
     this.hudText.setPosition(8, 8).setText('');
   }
 
@@ -2087,8 +2167,15 @@ export class WorldScene extends CombatScene {
       && this.tag - this.letzterEinfallTag > EINFALL.pauseTage) {
       this.startEinfall();
     }
-    // NPCs: 2 Positionen je Tageszeit, sie gehen sichtbar dorthin
+    // NPCs: 2 Positionen je Tageszeit, sie gehen sichtbar dorthin.
+    // Nachts schlafen sie in ihren Häusern (unsichtbar) - außer ein
+    // Einfall ruft alle auf die Straße (Feedback-Runde 8)
+    const nacht = this.tageszeit > TAG.nachtAb || this.tageszeit < TAG.morgenAb;
     for (const n of this.npcEnts) {
+      const schlaeft = nacht && !this.einfallAktiv;
+      n.sprite.setVisible(!schlaeft);
+      n.label.setVisible(!schlaeft);
+      if (schlaeft) continue;
       const ziel = abend && n.abend ? n.abend : { x: n.x, y: n.y };
       const d = Math.hypot(ziel.x - n.curX, ziel.y - n.curY);
       if (d > 4) {

@@ -6,13 +6,13 @@ export const T = {
   STAIRUP: 12, GRAVE: 13, BURNT: 14, WELL: 15,
   ALTAR: 16, SHELF: 17, BONES: 18, BLOOD: 19, RUNE: 21,
   SHRINE: 22, ORE: 23, ROCK: 24, RACK: 25, CAGE: 26,
-  WATER: 27, FIELD: 28, FENCE: 29, PALISADE: 30,
+  WATER: 27, FIELD: 28, FENCE: 29, PALISADE: 30, TOR: 31,
 } as const;
 export type TileId = (typeof T)[keyof typeof T];
 
 export const SOLID = new Set<number>([
   T.HWALL, T.TREE, T.CWALL, T.WALL, T.GRAVE, T.WELL, T.ALTAR, T.SHELF,
-  T.SHRINE, T.ORE, T.ROCK, T.RACK, T.CAGE, T.WATER, T.FENCE, T.PALISADE,
+  T.SHRINE, T.ORE, T.ROCK, T.RACK, T.CAGE, T.WATER, T.FENCE, T.PALISADE, T.TOR,
 ]);
 
 // Tile-ID -> Name für den SpriteProvider (Hot-Swap-fähig).
@@ -25,6 +25,7 @@ const NAME: Record<number, string> = {
   [T.RUNE]: 'rune', [T.SHRINE]: 'kerzenschrein', [T.ORE]: 'erzader', [T.ROCK]: 'fels',
   [T.RACK]: 'streckbank', [T.CAGE]: 'kaefig',
   [T.WATER]: 'wasser', [T.FIELD]: 'acker', [T.FENCE]: 'zaun', [T.PALISADE]: 'palisade',
+  [T.TOR]: 'stadttor',
 };
 
 // Liefert den Tile-Namen unter Berücksichtigung von Fassade/Dach:

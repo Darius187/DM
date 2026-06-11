@@ -1,10 +1,21 @@
 // Welt-Rhythmus: Spieltag und Tagesabläufe (Masterprompt 7.2).
 
 export const TAG = {
-  dauerS: 600,          // ein Spieltag = 10 Minuten Echtzeit
+  dauerS: 600,          // ein Spieltag = 10 Minuten Echtzeit (nur über der Erde)
   abendAb: 0.55,        // ab hier gelten die Abend-Positionen der NPCs
+  nachtAb: 0.78,        // ab hier schlafen die Dorfbewohner in ihren Häusern
+  morgenAb: 0.2,        // ab hier sind sie wieder auf den Beinen
   haendlerWechselTage: 7,
 } as const;
+
+// Anzeige der Tageszeit (Sonnen-/Mondstand in der HUD-Zeile)
+export function tageszeitLabel(t: number): string {
+  if (t < TAG.morgenAb) return '☾ Nacht';
+  if (t < 0.45) return '☀ Morgen';
+  if (t < TAG.abendAb) return '☀ Mittag';
+  if (t < TAG.nachtAb) return '☀ Abend';
+  return '☾ Nacht';
+}
 
 // Bett/Rasten
 export const RAST = {
@@ -29,7 +40,7 @@ export const EINFALL = {
 // durch die zwei Tore der Salzstraße.
 export const STADTMAUER = {
   stufen: [
-    { name: 'Palisade', gold: 120, holz: 30, stein: 10, beschreibung: 'Angespitzte Pfähle rund um Ravensmoor - Einfälle kommen nur noch durch die Tore' },
+    { name: 'Palisade', gold: 120, holz: 30, stein: 10, naechte: 3, beschreibung: 'Angespitzte Pfähle rund um Ravensmoor mit zwei verschließbaren Toren - der Bau dauert drei Nächte' },
   ],
 } as const;
 

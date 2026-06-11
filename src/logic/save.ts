@@ -41,7 +41,10 @@ export interface SaveData {
     kopfgeld?: { tag: number; ebene: number; erledigt: boolean };
     album?: { kills: Record<string, number>; champions: string[]; unikate: string[]; notizen: number[] };
     stadtmauerStufe?: number;
-    stadtmauerBestellt?: boolean;
+    stadtmauerBestellt?: boolean; // alt (eine Nacht Bauzeit), abgelöst durch RestNaechte
+    stadtmauerRestNaechte?: number;
+    torWestZu?: boolean;
+    torOstZu?: boolean;
     letzterEinfallTag?: number;
   };
 }

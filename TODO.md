@@ -32,3 +32,6 @@
   alle 7 Tage, die die Palisade beschädigen können (Mauer-Reparatur);
   Dörfler wehren sich/nehmen Schaden; Mauer-Stufe 2 (Stein); danach
   offene Außenwelt mit 2-3 Biomen.
+- Begehbare Häuser (Innenräume für Taverne, Hütten, Kirche) - eigene
+  Phase: Innen-Karten, Tür-Übergänge, NPCs sichtbar am Tisch/im Bett.
+  Aktuell verschwinden die Bewohner nachts "in" ihre Häuser.
