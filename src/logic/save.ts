@@ -38,6 +38,7 @@ export interface SaveData {
     haendlerSeed: number;
     aufbauBestellt?: boolean;
     einrichtung?: number;
+    kopfgeld?: { tag: number; ebene: number; erledigt: boolean };
   };
 }
 

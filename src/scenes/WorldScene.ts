@@ -14,7 +14,7 @@ import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
 import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, type DlgPage } from '../data/dialoge';
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS } from '../data/shops';
 import { GATHER } from '../data/crafting';
-import { TAG } from '../data/welt';
+import { TAG, KOPFGELD } from '../data/welt';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, tileNameAt } from '../world/tiles';
@@ -131,6 +131,7 @@ export class WorldScene extends CombatScene {
     this.einrichtung = 0;
     this.tag = 1;
     this.tageszeit = 0.3;
+    this.kopfgeld = null;
     this.feld = Array.from({ length: 9 }, () => ({ saatId: null, tageGewachsen: 0, gegossen: false }));
     this.rng = seededRng(this.areaSeed);
     this.setupCombat(0, 0);
@@ -538,6 +539,13 @@ export class WorldScene extends CombatScene {
         return { text: `Blutbrunnen - ${ik} zum Trinken`, action: () => this.useWell(wl) };
       }
     }
+    // Anschlagbrett mit dem täglichen Kopfgeld
+    if (this.area.id === 'village') {
+      const brett = this.area.special.find((s) => s.id === 'brett');
+      if (brett && near((brett.x + 0.5) * TILE, (brett.y + 0.5) * TILE, 48)) {
+        return { text: `Anschlagbrett - ${ik} zum Lesen`, action: () => this.readBrett() };
+      }
+    }
     // Opferaltar
     for (const al of this.area.altars) {
       if (!al.used && near(al.x, al.y, 46)) {
@@ -624,6 +632,32 @@ export class WorldScene extends CombatScene {
         this.spawnEnemy('schatten', this.area.depth, ch.x + Math.cos(a) * 60, ch.y + Math.sin(a) * 60);
       }
     }
+  }
+
+  // --- Kopfgeld am Anschlagbrett (Feedback-Runde 6) --------------------------
+
+  private kopfgeld: { tag: number; ebene: number; erledigt: boolean } | null = null;
+
+  // Pro Spieltag ein Steckbrief; die Ebene würfelt sich aus dem Tag
+  private aktuellesKopfgeld(): { tag: number; ebene: number; erledigt: boolean } {
+    if (!this.kopfgeld || this.kopfgeld.tag !== this.tag) {
+      const ebene = 1 + Math.floor(seededRng(this.areaSeed + this.tag * 977).random() * KOPFGELD.maxEbene);
+      this.kopfgeld = { tag: this.tag, ebene, erledigt: false };
+    }
+    return this.kopfgeld;
+  }
+
+  private readBrett(): void {
+    const kg = this.aktuellesKopfgeld();
+    const gold = KOPFGELD.goldBasis + kg.ebene * KOPFGELD.goldProEbene;
+    const zeilen = kg.erledigt
+      ? [`Steckbrief (Tag ${kg.tag}): Der Vorsteher auf Ebene ${kg.ebene} wurde erschlagen. Die Belohnung ist ausgezahlt. Morgen hängt ein neuer Steckbrief aus.`]
+      : [
+        `Steckbrief (Tag ${kg.tag}): Gesucht wird einer der Vorsteher auf Ebene ${kg.ebene} der Krypta - tot, nicht lebendig.`,
+        `Belohnung: ${gold} Gold und ${KOPFGELD.eisen} Eisen, zahlbar sofort. Morgen hängt ein neuer Steckbrief aus.`,
+      ];
+    this.dialog.show('Anschlagbrett', zeilen);
+    this.sfx.play('klick');
   }
 
   private useWell(wl: { x: number; y: number; used: boolean }): void {
@@ -1351,6 +1385,16 @@ export class WorldScene extends CombatScene {
       this.pickups.add({ kind: 'gem', item: rollGem(this.rng, this.area.depth), x: e.x - 12, y: e.y, bob: 0 });
       this.pickups.add({ kind: 'gear', item: rollGear(this.rng, this.area.depth + 1), x: e.x + 12, y: e.y, bob: 0 });
       this.logMsg(`${e.name} ist gefallen!`, 'gold');
+      // Kopfgeld vom Anschlagbrett: passt Ebene und Tag, wird sofort gezahlt
+      const kg = this.aktuellesKopfgeld();
+      if (!kg.erledigt && this.area.id.startsWith('crypt') && this.area.depth === kg.ebene) {
+        kg.erledigt = true;
+        const gold = KOPFGELD.goldBasis + kg.ebene * KOPFGELD.goldProEbene;
+        this.p.gold += gold;
+        this.p.materials.eisen += KOPFGELD.eisen;
+        this.logMsg(`Kopfgeld verdient: ${gold} Gold und ${KOPFGELD.eisen} Eisen.`, 'gold');
+        this.sfx.play('muenzen');
+      }
     }
     this.dropLoot(e);
   }
@@ -1467,6 +1511,7 @@ export class WorldScene extends CombatScene {
         haendlerSeed: this.areaSeed,
         aufbauBestellt: this.aufbauBestellt,
         einrichtung: this.einrichtung,
+        kopfgeld: this.kopfgeld ?? undefined,
       },
     };
   }
@@ -1509,6 +1554,7 @@ export class WorldScene extends CombatScene {
     this.tag = data.welt.tag ?? 1;
     this.tageszeit = data.welt.tageszeit ?? 0.3;
     this.feld = data.welt.feld ?? this.feld;
+    this.kopfgeld = data.welt.kopfgeld ?? null;
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
     recalc(p);
     p.hp = Math.min(p.stats.maxhp, s.hp || p.stats.maxhp);
@@ -1810,6 +1856,24 @@ export class WorldScene extends CombatScene {
         g.fillRect(x - 2, y - 2, 4, 6);
         g.fillStyle(fluch ? 0x8c4ae0 : 0xe0b53a, 0.15 + Math.sin(time * 3 + x) * 0.08);
         g.fillCircle(x, y, 16);
+      }
+    }
+    // Anschlagbrett auf dem Marktplatz (Kopfgeld)
+    if (this.area.id === 'village') {
+      const brett = this.area.special.find((s) => s.id === 'brett');
+      if (brett) {
+        const bx = (brett.x + 0.5) * TILE, by = (brett.y + 0.5) * TILE;
+        g.fillStyle(0x000000, 0.35);
+        g.fillEllipse(bx, by + 12, 34, 9);
+        g.fillStyle(0x3a2814, 1); // Pfosten
+        g.fillRect(bx - 14, by - 16, 4, 28);
+        g.fillRect(bx + 10, by - 16, 4, 28);
+        g.fillStyle(0x5a3f20, 1); // Tafel
+        g.fillRect(bx - 17, by - 26, 34, 18);
+        g.fillStyle(0xd8cfb8, 1); // Steckbrief
+        g.fillRect(bx - 11, by - 23, 10, 12);
+        g.fillStyle(0xc03030, 1); // Siegel
+        g.fillCircle(bx + 7, by - 17, 2.5);
       }
     }
     // Beete des Hofs (Stufe 3): Setzlinge je Wachstumsstand
