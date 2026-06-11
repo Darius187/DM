@@ -179,21 +179,32 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     kb.on('keyup', (ev: KeyboardEvent) => {
       this.keysDown[ev.key.toLowerCase()] = false;
     });
+    // Alle fünf Maustasten sind frei belegbar (Feedback-Runde 6);
+    // 'angriff' und 'block' brauchen Halten-Logik statt runAction.
+    const mausFeld = (button: number): 'm1' | 'm2' | 'm3' | 'm4' | 'm5' | null =>
+      (({ 0: 'm1', 2: 'm2', 1: 'm3', 3: 'm4', 4: 'm5' } as const)[button] ?? null);
     this.input.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
       if (this.touch) return; // Touch-Steuerung übernimmt alle Zeiger
       if (this.playerDead || this.uiBlocked()) return;
-      if (ptr.button === 2) this.tryBlockStart();
-      else if (ptr.button === 1) this.runAction(getSettings().maus.m3);
-      else if (ptr.button === 3) this.runAction(getSettings().maus.m4);
-      else if (ptr.button === 4) this.runAction(getSettings().maus.m5);
-      else if (this.weaponClass() === 'bogen' && !this.combat.blocking) this.startBowDraw();
-      else this.mouseDown = true;
+      const feld = mausFeld(ptr.button);
+      if (!feld) return;
+      const aktion = getSettings().maus[feld];
+      if (aktion === 'angriff') {
+        if (this.weaponClass() === 'bogen' && !this.combat.blocking) this.startBowDraw();
+        else this.mouseDown = true;
+      } else if (aktion === 'block') {
+        this.tryBlockStart();
+      } else {
+        this.runAction(aktion);
+      }
     });
     this.input.on('pointerup', (ptr: Phaser.Input.Pointer) => {
       if (this.touch) return;
       this.mouseDown = false;
-      if (ptr.button === 2) this.tryBlockEnd();
-      else if (this.bowDrawT >= 0) this.releaseBow();
+      const feld = mausFeld(ptr.button);
+      const aktion = feld ? getSettings().maus[feld] : '';
+      if (aktion === 'block') this.tryBlockEnd();
+      else if (aktion === 'angriff' && this.bowDrawT >= 0) this.releaseBow();
     });
     this.game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }

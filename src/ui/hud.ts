@@ -10,7 +10,7 @@ import type { WeaponClass } from '../data/types';
 
 interface SlotDef {
   key: string;
-  belegung?: 'm3' | 'm4' | 'm5'; // belegbarer Maus-Slot
+  belegung?: 'm1' | 'm2' | 'm3' | 'm4' | 'm5'; // belegbarer Maus-Slot
   ico: () => string;
   name: () => string;
   desc: () => string;
@@ -95,12 +95,13 @@ export class Hud {
     const bogen = () => this.getWeaponClass() === 'bogen';
     // Belegbare Maus-Slots: Rechtsklick wechselt die Aktion durch
     const AKTIONEN: Array<[string, string, string]> = [
+      ['angriff', '⚔', 'Angriff (Waffe)'], ['block', '⛨', 'Blocken (gedrückt halten)'],
       ['s1', '✦', 'Feuerball'], ['s2', '☩', 'Heiliges Licht'], ['s3', '❧', 'Heilung'],
       ['kettenblitz', '⌁', 'Kettenblitz'], ['frostnova', '❄', 'Frostnova'], ['bannkreis', '◎', 'Bannkreis'],
       ['pot', '🧪', 'Heiltrank'], ['mpot', '⚗', 'Manatrank'], ['rolle', '📜', 'Schriftrolle'],
       ['stadtportal', '⌂', 'Stadtportal (nach Boss-Sieg)'],
     ];
-    const mausSlot = (key: string, feld: 'm3' | 'm4' | 'm5', tasteName: string): SlotDef => {
+    const mausSlot = (key: string, feld: 'm1' | 'm2' | 'm3' | 'm4' | 'm5', tasteName: string): SlotDef => {
       const akt = () => AKTIONEN.find((a) => a[0] === getSettings().maus[feld]) ?? AKTIONEN[0];
       const spellIdx = () => ['s1', 's2', 's3'].indexOf(akt()[0]);
       return {
@@ -131,6 +132,8 @@ export class Hud {
       abilitySlot('R', () => (bogen() ? 'mehrfachschuss' : 'rundumschlag'), () => (bogen() ? '⫶' : '↻')),
       abilitySlot('T', () => (bogen() ? 'markierterTod' : 'sturmangriff'), () => (bogen() ? '◎' : '⇒')),
       // Belegbare Maus-Slots (Rechtsklick wechselt)
+      mausSlot('M1', 'm1', 'Linke Maustaste'),
+      mausSlot('M2', 'm2', 'Rechte Maustaste'),
       mausSlot('M3', 'm3', 'Maustaste Mitte'),
       mausSlot('M4', 'm4', 'Daumentaste 1'),
       mausSlot('M5', 'm5', 'Daumentaste 2'),
