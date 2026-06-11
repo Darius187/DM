@@ -388,6 +388,26 @@ export function drawObjectArt(ctx: Ctx, name: string, n: number, theme?: CryptTh
       ctx.beginPath(); ctx.moveTo(6, 16); ctx.lineTo(6, 4); ctx.lineTo(26, 4); ctx.lineTo(26, 16); ctx.stroke();
       ctx.fillStyle = '#4a2a20'; ctx.fillRect(4, 1, 24, 4);
       break;
+    case 'wald':
+      // Dichter Wald (Fallback): wie der Baum, nur dunkler und voller
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(16, 28, 10, 3.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#0c180a'; ctx.beginPath(); ctx.arc(16, 13, 14, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#15240f'; ctx.beginPath(); ctx.arc(16, 13, 12.5, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(34,56,28,0.85)'; ctx.beginPath(); ctx.arc(12, 10, 7, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(6,12,4,0.6)';
+      ctx.beginPath(); ctx.arc(21, 17, 4, 0, 6.283); ctx.fill();
+      break;
+    case 'baumstumpf':
+      // Frisch gefällter Stumpf mit Jahresringen
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(16, 22, 8, 3, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#3a2c16'; ctx.fillRect(10, 14, 12, 7);
+      ctx.fillStyle = '#8a6a42'; ctx.beginPath(); ctx.ellipse(16, 14, 6.5, 4, 0, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = '#6a4c28';
+      ctx.beginPath(); ctx.ellipse(16, 14, 4, 2.4, 0, 0, 6.283); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(16, 14, 1.8, 1, 0, 0, 6.283); ctx.stroke();
+      break;
     case 'zaun':
       ctx.fillStyle = '#5c4427';
       ctx.fillRect(4, 8, 4, 18); ctx.fillRect(24, 8, 4, 18);

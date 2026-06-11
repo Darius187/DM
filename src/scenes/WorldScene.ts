@@ -332,7 +332,17 @@ export class WorldScene extends CombatScene {
           const groundName = a.innen ? 'holzboden' : a.dark ? 'krypta_boden' : 'gras';
           const ground = this.provider.tileKey(groundName, variant, a.depth, a.theme);
           this.tileImages.push(this.add.image(tx * TILE + 16, ty * TILE + 16, ground).setDepth(-10));
-          const obj = this.provider.objectKey(name, variant, a.depth, a.theme);
+          // Dichter Wald: Bäume mit vielen Baum-Nachbarn nutzen die
+          // wald-Grafiken (assets/tiles/wald1.png ...), freie Bäume baum*
+          let objName = name;
+          if (id === T.TREE) {
+            let nachbarn = 0;
+            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+              if (a.map[ty + dy]?.[tx + dx] === T.TREE) nachbarn++;
+            }
+            if (nachbarn >= 4) objName = 'wald';
+          }
+          const obj = this.provider.objectKey(objName, variant, a.depth, a.theme);
           this.tileImages.push(this.add.image(tx * TILE + 16, ty * TILE + 16, obj).setDepth(ty * TILE + 26));
           continue;
         }
@@ -419,12 +429,24 @@ export class WorldScene extends CombatScene {
       });
     }
     a.kraeuter = [];
+    // Gefällte Bäume dieses Gebiets: Stümpfe zeigen, bis sie nachwachsen
+    for (const key of this.gefaellteBaeume.keys()) {
+      const [gebiet, sx, sy] = key.split('_');
+      if (gebiet === a.id) this.addStumpf(parseInt(sx, 10), parseInt(sy, 10));
+    }
     // Ortsnamen
     for (const l of a.labels) {
       this.tileImages.push(this.add.text(l.x, l.y, l.t, {
         fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8d9',
       }).setOrigin(0.5).setDepth(620) as unknown as Phaser.GameObjects.Image);
     }
+  }
+
+  // Baumstumpf an einer gefällten Position (bis der Baum nachwächst)
+  private addStumpf(px: number, py: number): void {
+    const variant = ((Math.floor(px / TILE) * 73856093) ^ (Math.floor(py / TILE) * 19349663)) % 7;
+    const img = this.add.image(px, py, this.provider.objectKey('baumstumpf', variant, this.area.depth, this.area.theme)).setDepth(py - 8);
+    this.tileImages.push(img);
   }
 
   isSolidAt(x: number, y: number): boolean {
@@ -830,6 +852,7 @@ export class WorldScene extends CombatScene {
     const tx = Math.floor(b.x / TILE), ty = Math.floor(b.y / TILE);
     this.area.map[ty][tx] = T.GRASS;
     this.refreshTile(tx, ty);
+    this.addStumpf(b.x, b.y);
     this.fx.burst(b.x, b.y, 0x1c3018, 16, 140);
     this.sfx.play('holz_hacken');
     const amt = ri(this.rng, GATHER.baumHolz.min, GATHER.baumHolz.max);

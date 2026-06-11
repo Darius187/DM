@@ -89,9 +89,28 @@ export class SpriteProvider {
 
   // --- Tiles ---------------------------------------------------------------
 
+  // Hot-Swap-Varianten: <name>.png plus <name>1.png ... <name>12.png.
+  // Die Auswahl hängt an der Tile-Position (variant) - dadurch ist die
+  // Mischung stabil, nichts flackert beim Neuladen des Gebiets.
+  private hotVarianten = new Map<string, string[]>();
+
+  private hotTile(name: string, variant: number): string | null {
+    let list = this.hotVarianten.get(name);
+    if (!list) {
+      list = [];
+      if (this.tex.exists(`hs_tile_${name}`)) list.push(`hs_tile_${name}`);
+      for (let n = 1; n <= 12; n++) {
+        if (this.tex.exists(`hs_tile_${name}_v${n}`)) list.push(`hs_tile_${name}_v${n}`);
+      }
+      this.hotVarianten.set(name, list);
+    }
+    if (!list.length) return null;
+    return list[Math.abs(variant) % list.length];
+  }
+
   tileKey(name: string, variant: number, themeId = 0, theme?: CryptTheme): string {
-    const hot = `hs_tile_${name}`;
-    if (this.tex.exists(hot)) return hot;
+    const hot = this.hotTile(name, variant);
+    if (hot) return hot;
     const key = `tile_${name}_${themeId}_${variant}`;
     if (!this.tex.exists(key)) {
       const canvas = document.createElement('canvas');
@@ -105,8 +124,8 @@ export class SpriteProvider {
 
   // Stehendes Objekt (transparent, für Y-Sortierung) - Boden liegt separat
   objectKey(name: string, variant: number, themeId = 0, theme?: CryptTheme): string {
-    const hot = `hs_tile_${name}`;
-    if (this.tex.exists(hot)) return hot;
+    const hot = this.hotTile(name, variant);
+    if (hot) return hot;
     const key = `obj_${name}_${themeId}_${variant}`;
     if (!this.tex.exists(key)) {
       const canvas = document.createElement('canvas');
@@ -119,8 +138,8 @@ export class SpriteProvider {
   }
 
   breakableKey(kind: string): string {
-    const hot = `hs_tile_${kind}`;
-    if (this.tex.exists(hot)) return hot;
+    const hot = this.hotTile(kind, 0);
+    if (hot) return hot;
     const key = `brk_${kind}`;
     if (!this.tex.exists(key)) {
       const canvas = document.createElement('canvas');

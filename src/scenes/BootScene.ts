@@ -5,7 +5,7 @@
 // Fallback), deshalb entscheidet der Content-Type, nicht der Statuscode.
 
 import Phaser from 'phaser';
-import { PORTRAITS, ITEM_IMAGES, SOUNDS, SPRITE_NAMES, TILE_NAMES, TITLE_IMAGE, assetStatus, logAssetStatus } from '../gfx/assetManifest';
+import { PORTRAITS, ITEM_IMAGES, SOUNDS, SPRITE_NAMES, TILE_NAMES, TILE_VARIANTS_MAX, TITLE_IMAGE, assetStatus, logAssetStatus } from '../gfx/assetManifest';
 import { queuePackSheets, composePackTextures } from '../gfx/PackLoader';
 import gfxConfig from '../data/gfx.json';
 
@@ -41,7 +41,13 @@ export class BootScene extends Phaser.Scene {
         }
       }
     }
-    for (const name of TILE_NAMES) c.push({ key: `hs_tile_${name}`, url: `tiles/${name}.png`, art: 'image' });
+    for (const name of TILE_NAMES) {
+      c.push({ key: `hs_tile_${name}`, url: `tiles/${name}.png`, art: 'image' });
+      // Nummerierte Varianten: gras1.png, gras2.png ... werden gemischt
+      for (let n = 1; n <= TILE_VARIANTS_MAX; n++) {
+        c.push({ key: `hs_tile_${name}_v${n}`, url: `tiles/${name}${n}.png`, art: 'image', optional: true });
+      }
+    }
     c.push({ key: `hs_${TITLE_IMAGE}`, url: 'title/ravensmoor-title.jpg', art: 'image' });
     return c;
   }
@@ -97,7 +103,12 @@ export class BootScene extends Phaser.Scene {
     for (const n of PORTRAITS) track(`pt_${n}`, `assets/portraits/${n}.png`);
     for (const f of ITEM_IMAGES) track(`hs_item_${f}`, `assets/items/${f}.png`);
     for (const n of SOUNDS) track(`snd_${n}`, `assets/sounds/${n}.ogg`);
-    for (const n of TILE_NAMES) track(`hs_tile_${n}`, `assets/tiles/${n}.png`);
+    for (const n of TILE_NAMES) {
+      track(`hs_tile_${n}`, `assets/tiles/${n}.png`);
+      for (let v = 1; v <= TILE_VARIANTS_MAX; v++) {
+        if (this.textures.exists(`hs_tile_${n}_v${v}`)) track(`hs_tile_${n}_v${v}`, `assets/tiles/${n}${v}.png`);
+      }
+    }
     track(`hs_${TITLE_IMAGE}`, 'assets/title/ravensmoor-title.jpg');
     logAssetStatus();
     this.scene.start('Title');

@@ -43,15 +43,22 @@ export const SPRITE_NAMES = [
   'bauer1', 'bauer2', 'haendler', 'huhn', 'schwein', 'kuh', 'hund',
 ] as const;
 
-// Tiles für späteres Grafik-Upgrade (assets/tiles/<name>.png)
+// Tiles für das Grafik-Upgrade (assets/tiles/<name>.png).
+// VARIANTEN: zusätzlich werden <name>1.png bis <name>12.png geladen
+// (z. B. gras1.png, gras2.png ...) und im Spiel positionsfest gemischt.
 export const TILE_NAMES = [
-  'gras', 'weg', 'baum', 'wasser', 'acker', 'zaun',
+  'gras', 'weg', 'baum', 'wald', 'baumstumpf', 'wasser', 'acker', 'zaun',
   'fachwerk_fassade', 'fachwerk_dach', 'kirche_fassade', 'kirche_dach',
-  'kirchentuer', 'grabstein', 'brunnen', 'brandstelle',
-  'krypta_boden', 'krypta_wand', 'knochen', 'blut', 'rune',
+  'kirchentuer', 'haustuer', 'grabstein', 'brunnen', 'brandstelle',
+  'krypta_boden', 'krypta_wand', 'krypta_wand_front', 'knochen', 'blut', 'rune',
   'altar', 'regal', 'treppe_ab', 'treppe_auf', 'erzader', 'fels',
   'fass', 'kiste', 'krug', 'heuhaufen', 'streckbank', 'kaefig', 'kerzenschrein',
+  'spinnwebe', 'knochenhaufen', 'palisade', 'stadttor',
+  'holzboden', 'bett', 'tisch', 'stuhl', 'kamin', 'teppich', 'tresen',
 ] as const;
+
+// Wie viele nummerierte Varianten je Tile-Name gesucht werden
+export const TILE_VARIANTS_MAX = 12;
 
 export const TITLE_IMAGE = 'ravensmoor-title';
 
