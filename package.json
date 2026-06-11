@@ -1,0 +1,21 @@
+{
+  "name": "ravensmoor-stimmungstest",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Wegwerf-Projekt: Look-Check fuer die duestere Toenungs- und Licht-Schicht",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "phaser": "^3.87.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0",
+    "pngjs": "^7.0.0",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0"
+  }
+}
