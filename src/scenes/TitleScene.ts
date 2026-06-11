@@ -27,6 +27,10 @@ export class TitleScene extends Phaser.Scene {
       fontFamily: 'serif', fontSize: '64px', color: '#d8cfb8', letterSpacing: 8,
       stroke: '#000000', strokeThickness: 6,
     }).setOrigin(0.5);
+    // Sichtbare Versionsnummer, damit alte Stände sofort auffallen
+    this.add.text(10, h - 10, 'Stand: Feedback-Runde 2 (11.06.2026)', {
+      fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c',
+    }).setOrigin(0, 1);
     this.add.text(w / 2, h * 0.2 + 52, TITEL.unter, {
       fontFamily: 'serif', fontSize: '18px', color: '#c9a227', letterSpacing: 4,
     }).setOrigin(0.5);
