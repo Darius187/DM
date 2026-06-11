@@ -98,6 +98,8 @@ export class Hud {
       ['angriff', '⚔', 'Angriff (Waffe)'], ['block', '⛨', 'Blocken (gedrückt halten)'],
       ['s1', '✦', 'Feuerball'], ['s2', '☩', 'Heiliges Licht'], ['s3', '❧', 'Heilung'],
       ['kettenblitz', '⌁', 'Kettenblitz'], ['frostnova', '❄', 'Frostnova'], ['bannkreis', '◎', 'Bannkreis'],
+      ['feuerregen', '☄', 'Feuerregen (auf den Zielort)'],
+      ['aderlass', '⚱', 'Aderlass (Leben gegen Mana)'], ['lebenstausch', '❤', 'Lebenstausch (Mana gegen Leben)'],
       ['pot', '🧪', 'Heiltrank'], ['mpot', '⚗', 'Manatrank'], ['rolle', '📜', 'Schriftrolle'],
       ['stadtportal', '⌂', 'Stadtportal (nach Boss-Sieg)'],
     ];
@@ -129,6 +131,8 @@ export class Hud {
       abilitySlot('4', () => 'kettenblitz', () => '⌁'),
       abilitySlot('5', () => 'frostnova', () => '❄'),
       abilitySlot('6', () => 'bannkreis', () => '◎'),
+      abilitySlot('9', () => 'feuerregen', () => '☄'),
+      abilitySlot('0', () => 'aderlass', () => '⚱'),
       abilitySlot('R', () => (bogen() ? 'mehrfachschuss' : 'rundumschlag'), () => (bogen() ? '⫶' : '↻')),
       abilitySlot('T', () => (bogen() ? 'markierterTod' : 'sturmangriff'), () => (bogen() ? '◎' : '⇒')),
       // Belegbare Maus-Slots (Rechtsklick wechselt)
@@ -167,19 +171,22 @@ export class Hud {
   private slotX(i: number): number {
     const w = this.scene.scale.width;
     const total = this.slots.length * 46;
-    return w / 2 - total / 2 + i * 46 + 21;
+    return w / 2 - total / 2 + i * 46 + 21 + getSettings().ui.hotbar.x;
+  }
+
+  private slotY(): number {
+    return this.scene.scale.height - 66 + getSettings().ui.hotbar.y;
   }
 
   private buildSlotObjects(): void {
-    const h = this.scene.scale.height;
     for (let i = 0; i < this.slots.length; i++) {
       const s = this.slots[i];
       const x = this.slotX(i);
-      const ico = this.scene.add.text(x, h - 66, '', {
+      const ico = this.scene.add.text(x, this.slotY(), '', {
         fontFamily: 'serif', fontSize: '19px', color: '#d8cfb8',
       }).setOrigin(0.5).setScrollFactor(0).setDepth(4602);
       this.slotTexts.push(ico);
-      const zone = this.scene.add.zone(x, h - 66, 42, 42).setOrigin(0.5).setScrollFactor(0).setInteractive();
+      const zone = this.scene.add.zone(x, this.slotY(), 42, 42).setOrigin(0.5).setScrollFactor(0).setInteractive();
       zone.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showSlotTooltip(s, ptr));
       zone.on('pointerout', () => this.hideTooltip());
       if (s.belegung) {
@@ -256,7 +263,8 @@ export class Hud {
     for (let i = 0; i < this.slots.length; i++) {
       const s = this.slots[i];
       const x = this.slotX(i);
-      const y = h - 66;
+      const y = this.slotY();
+      this.slotZones[i].setPosition(x, y);
       const locked = s.locked() !== null;
       g.fillStyle(0x100b06, 0.92);
       g.fillRect(x - 21, y - 21, 42, 42);
@@ -276,7 +284,7 @@ export class Hud {
     }
     // Tastenkürzel als Teil der Leiste zeichnen (Texte wären teurer)
     // -> stattdessen im Tooltip und unter der Leiste:
-    this.infoText.setPosition(w / 2, h - 42)
+    this.infoText.setPosition(w / 2 + getSettings().ui.hotbar.x, h - 42 + getSettings().ui.hotbar.y)
       .setText(`1-6 Zauber/Fähigkeiten · R/T Waffe · ${kb.roll === ' ' ? 'LEER' : kb.roll.toUpperCase()} Rolle · B Album · ${extra}`);
 
     // XP-Leiste

@@ -144,6 +144,7 @@ export class WorldScene extends CombatScene {
     this.letzterEinfallTag = 0;
     this.einfallAktiv = false;
     this.tagwerke = {};
+    this.dorfkasse = 0;
     this.einrichtung = 0;
     this.tag = 1;
     this.tageszeit = 0.3;
@@ -154,6 +155,7 @@ export class WorldScene extends CombatScene {
     this.dialog = new DialogUI(this, this.provider);
     this.panels.getJournal = () => this.journalLines();
     this.shop = new ShopUI(this, this.provider, this.sfx, () => this.p);
+    this.shop.rabatt = () => this.wohlstand() * 0.05;
     this.stash = new StashUI(this, this.sfx, () => this.p, () => this.lager);
     this.worldGfx = this.add.graphics().setDepth(2450);
     this.minimapGfx = this.add.graphics().setScrollFactor(0).setDepth(4500);
@@ -856,6 +858,7 @@ export class WorldScene extends CombatScene {
         break;
       case 'haendler': this.talkHaendler(); break;
       case 'landherr': this.talkLandherr(); break;
+      case 'schulze': this.talkSchulze(); break;
       case 'bader': case 'kuefer': case 'weberin': case 'gerber':
       case 'hebamme': case 'kuester': case 'fischer': case 'imker': case 'schaefer':
         this.talkZunft(id, npc.name);
@@ -867,6 +870,60 @@ export class WorldScene extends CombatScene {
         break;
       }
     }
+  }
+
+  // --- Spenden und Dorfkasse (Runde 11) ---------------------------------------
+
+  // Gespendetes Gold gesamt; ab 100/250/500 steigt der Wohlstand des Dorfes
+  // und die Händler senken ihre Preise (5% je Stufe)
+  dorfkasse = 0;
+
+  wohlstand(): number {
+    return this.dorfkasse >= 500 ? 3 : this.dorfkasse >= 250 ? 2 : this.dorfkasse >= 100 ? 1 : 0;
+  }
+
+  private spendeDorfkasse(betrag: number): void {
+    if (this.p.gold < betrag) {
+      this.logMsg('Dafür reicht dein Gold nicht.', 'bad');
+      this.sfx.play('fehler');
+      return;
+    }
+    const vorher = this.wohlstand();
+    this.p.gold -= betrag;
+    this.dorfkasse += betrag;
+    this.sfx.play('muenzen');
+    this.logMsg(`${betrag} Gold in die Dorfkasse gespendet (gesamt ${this.dorfkasse}).`, 'gold');
+    if (this.wohlstand() > vorher) {
+      this.logMsg(`Ravensmoor blüht auf - die Händler senken ihre Preise um ${this.wohlstand() * 5}%!`, 'gold');
+      this.sfx.play('fertigkeit_neu');
+    }
+  }
+
+  private spendeKirche(): void {
+    const betrag = 25;
+    if (this.p.gold < betrag) {
+      this.logMsg('Dafür reicht dein Gold nicht.', 'bad');
+      this.sfx.play('fehler');
+      return;
+    }
+    this.p.gold -= betrag;
+    this.p.buffT = Math.max(this.p.buffT, 240);
+    recalc(this.p);
+    this.fx.burst(this.px, this.py, 0xf0e8c0, 20, 160);
+    this.sfx.play('heiliges_licht');
+    this.logMsg('Der Pater spricht einen Segen - du fühlst dich gestärkt.', 'magic');
+  }
+
+  private talkSchulze(): void {
+    const zeilen = [...(VOLK.schulze ?? [])];
+    const letzte = zeilen.pop() ?? '...';
+    this.dialog.show('Schulze Bertram', [...zeilen, {
+      text: `${letzte} Die Dorfkasse hält ${this.dorfkasse} Gold${this.wohlstand() ? ` - der Wohlstand drückt die Preise um ${this.wohlstand() * 5}%` : ''}.`,
+      choices: [
+        { label: 'Für die Dorfkasse spenden (50 Gold)', fn: () => this.spendeDorfkasse(50) },
+        { label: 'Lebt wohl' },
+      ],
+    }]);
   }
 
   // --- Die Zünfte (Runde 10): jeder Beruf hat einen Nutzen --------------------
@@ -989,7 +1046,17 @@ export class WorldScene extends CombatScene {
     } else if (this.bossDead) {
       this.dialog.show('Pater Johannes', this.pagesOf(JOHANNES.nachBoss), 'johannes');
     } else {
-      this.dialog.show('Pater Johannes', this.pagesOf(JOHANNES.mitSchluessel), 'johannes');
+      const pages = this.pagesOf(JOHANNES.mitSchluessel);
+      const letzte = pages.pop();
+      const text = typeof letzte === 'string' ? letzte : letzte?.text ?? '...';
+      pages.push({
+        text,
+        choices: [
+          { label: 'Opfer spenden (25 Gold): Segen', fn: () => this.spendeKirche() },
+          { label: 'Lebt wohl' },
+        ],
+      });
+      this.dialog.show('Pater Johannes', pages, 'johannes');
     }
   }
 
@@ -1832,6 +1899,7 @@ export class WorldScene extends CombatScene {
         torOstZu: this.torOstZu,
         letzterEinfallTag: this.letzterEinfallTag,
         tagwerke: this.tagwerke,
+        dorfkasse: this.dorfkasse,
       },
     };
   }
@@ -1883,6 +1951,7 @@ export class WorldScene extends CombatScene {
     this.torOstZu = data.welt.torOstZu ?? false;
     this.letzterEinfallTag = data.welt.letzterEinfallTag ?? 0;
     this.tagwerke = data.welt.tagwerke ?? {};
+    this.dorfkasse = data.welt.dorfkasse ?? 0;
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
     recalc(p);
     p.hp = Math.min(p.stats.maxhp, s.hp || p.stats.maxhp);
@@ -2014,12 +2083,13 @@ export class WorldScene extends CombatScene {
 
   override logMsg(text: string, cls?: string): void {
     const colors: Record<string, string> = { gold: '#c9a227', bad: '#d96b5a', magic: '#8aa6e8' };
-    const t = this.add.text(this.scale.width / 2, this.scale.height - 150, text, {
+    const off = getSettings().ui.log;
+    const t = this.add.text(this.scale.width / 2 + off.x, this.scale.height - 150 + off.y, text, {
       fontFamily: 'serif', fontSize: '15px', color: colors[cls ?? ''] ?? '#cdbf9d',
       stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(4750);
     this.msgTexts.unshift(t);
-    for (let i = 0; i < this.msgTexts.length; i++) this.msgTexts[i].setY(this.scale.height - 150 - i * 18);
+    for (let i = 0; i < this.msgTexts.length; i++) this.msgTexts[i].setY(this.scale.height - 150 + off.y - i * 18);
     while (this.msgTexts.length > 3) this.msgTexts.pop()!.destroy();
     this.time.delayedCall(3200, () => {
       this.tweens.add({ targets: t, alpha: 0, duration: 900, onComplete: () => t.destroy() });

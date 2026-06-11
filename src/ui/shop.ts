@@ -29,6 +29,9 @@ export class ShopUI {
   private canForge = false;
   open = false;
 
+  // Dorfkassen-Rabatt (Runde 11): Spenden senken die Preise im Dorf
+  rabatt: () => number = () => 0;
+
   private scroll = 0;
 
   constructor(
@@ -96,9 +99,9 @@ export class ShopUI {
   }
 
   private offerPrice(o: ShopOffer): number {
-    if (o.price !== undefined) return o.price;
-    if (o.item) return gearPrice(o.item);
-    return 0;
+    const basis = o.price !== undefined ? o.price : o.item ? gearPrice(o.item) : 0;
+    if (basis === 0) return 0;
+    return Math.max(1, Math.round(basis * (1 - this.rabatt())));
   }
 
   private offerLine(o: ShopOffer): { name: string; col: string; sub: string } {

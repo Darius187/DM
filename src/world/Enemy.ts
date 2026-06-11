@@ -112,6 +112,8 @@ export class Enemy {
   private retreatT = 0;
   champion = false;
   versteckt = false;
+  // Schildträger (Runde 11): blockt Treffer von vorn, weicht nicht zurück
+  schild = false;
 
   // bei Treffern zurückweichen (Feedback-Runde 2)
   onHurt(): void {

@@ -607,3 +607,28 @@ Alles mit tsc + 51 Tests grün und im Browser durchgespielt:
   ist erzählt (Dialoge, Wege), nicht simuliert - eine echte
   Güter-Simulation wäre der nächste Ausbau.
 Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 10.
+
+## Feedback-Runde 11 - umgesetzt (Skills, Schildträger, Spenden, Dev-Werkzeuge)
+Alles mit tsc + 51 Tests grün und im Browser durchgespielt:
+- Feuerregen (Taste 9, Zauberei 8): sechs Feuerschläge regnen auf den
+  Mauszeiger-Zielort - Warnringe, Einschläge, Flächenschaden. Stehende
+  Ziele werden zerlegt, flinke können entkommen. Geprüft (46 -> 5 Leben).
+- Aderlass (Taste 0, Zauberei 2): 15 Leben -> 25 Mana. Lebenstausch
+  (Zauberei 4): 30 Mana -> 20 Leben. Beide auch auf Maustasten belegbar.
+- Schildträger: ein Viertel der Skelette trägt jetzt Schilde und blockt
+  Treffer von vorn (GEBLOCKT, nur 30% Schaden, kein Zurückweichen) -
+  geprüft: 3 von 7 Fronttreffern geblockt. Flankieren lohnt sich.
+- Spenden: Opferstock beim Pater (25 Gold -> Segen), Dorfkasse beim
+  Schulzen (50 Gold je Spende; ab 100/250/500 senken die Händler die
+  Preise um 5/10/15%). Geprüft: Kasse 100 -> Rabatt 5% aktiv.
+- Entwicklungskasten: neuer Knopf UI VERSCHIEBEN - Aktionsleiste,
+  Dialograhmen und Meldungs-Log per Griff ziehen, FIXIEREN speichert
+  die Versätze dauerhaft und schreibt sie in den kopierbaren Bericht.
+  So kannst du Layouts selbst testen und mir die Werte schicken.
+- Texte vorlesen: neuer Schalter in den Einstellungen (Sprachausgabe
+  de-DE über den Browser). Implementiert, aber im Container ohne
+  Lautsprecher nicht angehört - bitte einmal am PC testen.
+- EHRLICH: Häuser verschieben geht (noch) nicht - das Dorf ist von Hand
+  gebaut (Koordinaten im Code). Ein Karten-Editor wäre eine eigene
+  Phase; die Bewohner-Anker würden dann am Haus hängen und mitwandern.
+Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.

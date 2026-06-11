@@ -68,7 +68,9 @@ describe('Fertigkeits-Schulen (Learning by doing)', () => {
 
   it('alle 3 Stufen eine neue Fähigkeit je Schule', () => {
     expect(unlockedAbilities('nahkampf', 9)).toEqual(['rundumschlag', 'sturmangriff', 'hinrichtung']);
-    expect(unlockedAbilities('zauberei', 6)).toEqual(['kettenblitz', 'frostnova']);
+    // Runde 11: Aderlass (Stufe 2) und Lebenstausch (Stufe 4) reihen sich ein
+    expect(unlockedAbilities('zauberei', 6)).toEqual(['kettenblitz', 'frostnova', 'aderlass', 'lebenstausch']);
+    expect(unlockedAbilities('zauberei', 8)).toContain('feuerregen');
     expect(unlockedAbilities('bogen', 2)).toEqual([]);
   });
 });

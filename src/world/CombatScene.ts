@@ -17,7 +17,7 @@ import { newPlayerState, recalc, weaponGem, type PlayerState } from '../logic/pl
 import { addSchoolUse } from '../logic/progression';
 import { applyXp } from '../logic/progression';
 import { MELDUNGEN } from '../data/texte';
-import { getSettings } from '../logic/settings';
+import { getSettings, saveSettings } from '../logic/settings';
 import { TUNING, TUNING_ROWS } from '../logic/tuning';
 import { defaultRng, type Rng } from '../logic/rng';
 import { ELITE, ENEMIES } from '../data/enemies';
@@ -169,6 +169,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (k === '7') this.useFirstScroll();
       if (k === '8') this.runAction('stadtportal');
       if (k === 'b') this.toggleAlbum();
+      if (k === '9') this.useAbility('feuerregen');
+      if (k === '0') this.useAbility('aderlass');
       if (k === 'f10') { ev.preventDefault(); this.toggleDevPanel(); }
       // Zauberei-Fähigkeiten reihen sich in die Zauberleiste ein (4-6)
       if (k === '4') this.useAbility('kettenblitz');
@@ -189,6 +191,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.input.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
       if (this.touch) return; // Touch-Steuerung übernimmt alle Zeiger
       if (this.playerDead || this.uiBlocked()) return;
+      if (this.uiEditMode) return; // UI-Modus: Maus gehört den Griffen
       const feld = mausFeld(ptr.button);
       if (!feld) return;
       const aktion = getSettings().maus[feld];
@@ -259,6 +262,50 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   // --- Entwicklungskasten (F10) ----------------------------------------------
   private devPanel: Phaser.GameObjects.Container | null = null;
+  // UI-Verschiebemodus (Runde 11): Leiste, Dialograhmen und Meldungs-Log
+  // per Maus ziehen; die Versätze landen in den Einstellungen und im Bericht
+  protected uiEditMode = false;
+  private uiHandles: Phaser.GameObjects.Container | null = null;
+
+  private toggleUiEdit(): void {
+    this.uiEditMode = !this.uiEditMode;
+    if (!this.uiEditMode) {
+      this.uiHandles?.destroy();
+      this.uiHandles = null;
+      saveSettings();
+      this.logMsg('UI-Positionen fixiert und gespeichert.', 'gold');
+      return;
+    }
+    const ui = getSettings().ui;
+    const w = this.scale.width, h = this.scale.height;
+    const c = this.add.container(0, 0).setScrollFactor(0).setDepth(6600);
+    this.uiHandles = c;
+    c.add(this.add.text(w / 2, 40, 'UI-MODUS: Griffe ziehen, dann im Kasten FIXIEREN', {
+      fontFamily: 'serif', fontSize: '14px', color: '#c9a227', backgroundColor: '#171108', padding: { x: 10, y: 4 },
+    }).setOrigin(0.5).setScrollFactor(0));
+    // Anker: Standardposition jedes UI-Teils; der Versatz ist die Differenz
+    const teile: Array<[keyof typeof ui, string, number, number]> = [
+      ['hotbar', 'AKTIONSLEISTE', w / 2, h - 66],
+      ['dialog', 'DIALOGRAHMEN', w / 2, h - 220],
+      ['log', 'MELDUNGEN', w / 2, h - 150],
+    ];
+    for (const [key, name, ax, ay] of teile) {
+      const griff = this.add.rectangle(ax + ui[key].x, ay + ui[key].y, 170, 26, 0x221808, 0.95)
+        .setStrokeStyle(1, 0xc9a227).setScrollFactor(0).setInteractive({ useHandCursor: true, draggable: true });
+      const lbl = this.add.text(griff.x, griff.y, `⇕ ${name}`, {
+        fontFamily: 'serif', fontSize: '12px', color: '#c9a227',
+      }).setOrigin(0.5).setScrollFactor(0);
+      griff.on('drag', (_p: Phaser.Input.Pointer, dragX: number, dragY: number) => {
+        griff.setPosition(dragX, dragY);
+        lbl.setPosition(dragX, dragY);
+        ui[key].x = Math.round(dragX - ax);
+        ui[key].y = Math.round(dragY - ay);
+      });
+      griff.on('dragend', () => saveSettings());
+      c.add(griff);
+      c.add(lbl);
+    }
+  }
 
   protected toggleDevPanel(): void {
     if (this.devPanel) {
@@ -293,12 +340,21 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       c.add(valText);
       y += 34;
     }
+    const uiBtn = this.add.text(180, y + 6, this.uiEditMode ? 'UI FIXIEREN' : 'UI VERSCHIEBEN', {
+      fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
+      backgroundColor: '#221808', padding: { x: 12, y: 5 },
+    }).setInteractive({ useHandCursor: true });
+    uiBtn.on('pointerdown', () => {
+      this.toggleUiEdit();
+      uiBtn.setText(this.uiEditMode ? 'UI FIXIEREN' : 'UI VERSCHIEBEN');
+    });
+    c.add(uiBtn);
     const bericht = this.add.text(12, y + 6, 'BERICHT KOPIEREN', {
       fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
       backgroundColor: '#221808', padding: { x: 12, y: 5 },
     }).setInteractive({ useHandCursor: true });
     bericht.on('pointerdown', () => {
-      const text = `Tuning-Bericht Ravensmoor: ${JSON.stringify(TUNING)} (Tempo-Regler: ${getSettings().tempo}%)`;
+      const text = `Tuning-Bericht Ravensmoor: ${JSON.stringify(TUNING)} (Tempo-Regler: ${getSettings().tempo}%) UI-Versatz: ${JSON.stringify(getSettings().ui)}`;
       navigator.clipboard?.writeText(text).catch(() => undefined);
       // eslint-disable-next-line no-console
       console.log(text);
@@ -702,6 +758,25 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   }
 
   damageEnemy(e: Enemy, dmg: number, kx = 0, ky = 0, col?: string | null, melee = true): void {
+    // Schildträger (Runde 11): blocken Treffer von vorn zur Hälfte der Zeit -
+    // dann nur 30% Schaden, kein Rückstoß, kein Zurückweichen
+    if (e.schild && e.hp > 0 && Math.random() < 0.5) {
+      const zumSpieler = Math.atan2(this.py - e.y, this.px - e.x);
+      const blick = [Math.PI / 2, Math.PI, 0, -Math.PI / 2][e.dir];
+      let diff = zumSpieler - blick;
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      if (Math.abs(diff) < 1.1) {
+        const rest = Math.max(1, Math.round(dmg * 0.3));
+        e.hp -= rest;
+        e.hitFlash = 0.06;
+        this.fx.float(e.x, e.y - e.r - 8, 'GEBLOCKT', '#aab4c0');
+        this.fx.burst(e.x + Math.cos(zumSpieler) * e.r, e.y + Math.sin(zumSpieler) * e.r, 0xaab4c0, 6, 120);
+        this.sfx.play('block');
+        if (melee) this.gainSchoolUse('nahkampf');
+        if (e.hp <= 0) this.killEnemy(e);
+        return;
+      }
+    }
     if (e.markedT > 0) dmg = Math.round(dmg * (1 + ABILITY_FX.markierterTod.bonusDmgPct));
     if (e.banishedT > 0) dmg = Math.round(dmg / ABILITY_FX.bannkreis.untoteDmgMult);
     // Hinrichtung (Nahkampf Stufe 9): Bonus gegen taumelnde Gegner
@@ -822,6 +897,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   spawnEnemy(type: EnemyTypeId, depth: number, x: number, y: number, elite = false): Enemy {
     const e = new Enemy(type, depth, x, y, this.rng);
     if (elite) e.makeElite(this.rng);
+    // Manche Skelette tragen Schilde (Runde 11) - sie blocken von vorn
+    if (type === 'skelett' && !e.boss && this.rng.random() < 0.25) {
+      e.schild = true;
+      e.name = `${e.name} · Schildträger`;
+    }
     // Entwicklungskasten-Faktoren
     e.maxhp = Math.round(e.maxhp * TUNING.gegnerLeben);
     e.hp = e.maxhp;
@@ -841,7 +921,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       case 's1': this.castSpell(0); break;
       case 's2': this.castSpell(1); break;
       case 's3': this.castSpell(2); break;
-      case 'kettenblitz': case 'frostnova': case 'bannkreis': this.useAbility(id); break;
+      case 'kettenblitz': case 'frostnova': case 'bannkreis':
+      case 'feuerregen': case 'aderlass': case 'lebenstausch': this.useAbility(id); break;
       case 'pot': this.drinkPot(); break;
       case 'mpot': this.drinkMpot(); break;
       case 'rolle': this.useFirstScroll(); break;
@@ -966,6 +1047,75 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   useAbility(id: string): void {
     if (!this.abilityReady(id)) return;
     switch (id) {
+      case 'aderlass': {
+        // Leben gegen Mana (Runde 11) - nie unter 5 Leben schneiden
+        const fx = ABILITY_FX.aderlass;
+        if (this.p.hp <= fx.leben + 5) {
+          this.logMsg('Zu wenig Leben für den Aderlass.', 'bad');
+          this.sfx.play('fehler');
+          return;
+        }
+        if (this.p.mana >= this.p.stats.maxmana) {
+          this.logMsg('Dein Mana ist bereits voll.', '');
+          return;
+        }
+        this.p.abilityCds[id] = fx.cd;
+        this.p.hp -= fx.leben;
+        this.p.mana = Math.min(this.p.stats.maxmana, this.p.mana + fx.mana);
+        this.fx.burst(this.px, this.py, 0xa83a6a, 14, 150);
+        this.fx.float(this.px, this.py - 24, `-${fx.leben} Leben, +${fx.mana} Mana`, '#8aa6e8');
+        this.sfx.play('trank');
+        this.gainSchoolUse('zauberei');
+        break;
+      }
+      case 'lebenstausch': {
+        const fx = ABILITY_FX.lebenstausch;
+        if (this.p.hp >= this.p.stats.maxhp) {
+          this.logMsg('Dein Leben ist bereits voll.', '');
+          return;
+        }
+        if (!this.paySpellCost(fx.mana)) return;
+        this.p.abilityCds[id] = fx.cd;
+        this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + fx.leben);
+        this.fx.burst(this.px, this.py, 0x9ad8a0, 14, 150);
+        this.fx.float(this.px, this.py - 24, `+${fx.leben} Leben`, '#9ad8a0');
+        this.sfx.play('trank');
+        this.gainSchoolUse('zauberei');
+        break;
+      }
+      case 'feuerregen': {
+        const fx = ABILITY_FX.feuerregen;
+        if (!this.paySpellCost(fx.mana)) return;
+        this.p.abilityCds[id] = fx.cd;
+        // Zielort: Mauszeiger, auf Reichweite begrenzt
+        const ptr = this.input.activePointer;
+        const wx = ptr.worldX, wy = ptr.worldY;
+        const d = Math.hypot(wx - this.px, wy - this.py);
+        const f = d > fx.reichweite ? fx.reichweite / d : 1;
+        const zx = this.px + (wx - this.px) * f;
+        const zy = this.py + (wy - this.py) * f;
+        const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level;
+        for (let i = 0; i < fx.einschlaege; i++) {
+          const ex = zx + (Math.random() - 0.5) * fx.streuung * 2;
+          const ey = zy + (Math.random() - 0.5) * fx.streuung * 2;
+          // Warnring sofort, Einschlag zeitversetzt
+          this.telegraphs.push({ x: ex, y: ey, r: fx.radius, t: (i + 1) * (fx.dauerS / fx.einschlaege), maxT: fx.dauerS, dmg: 0, holy: true });
+          this.time.delayedCall((i + 1) * (fx.dauerS * 1000 / fx.einschlaege), () => {
+            this.fx.burst(ex, ey, 0xd8842a, 18, 200);
+            this.fx.burst(ex, ey, 0xf8d878, 8, 120);
+            this.sfx.play('treffer_fleisch', 0.5);
+            this.shake(2);
+            for (const e of [...this.enemies]) {
+              if (Math.hypot(e.x - ex, e.y - ey) < fx.radius + e.r) {
+                this.damageEnemy(e, Math.round(dmg * (0.85 + Math.random() * 0.3)), 0, 0, '#f0a868', false);
+              }
+            }
+          });
+        }
+        this.sfx.play('heiliges_licht', 0.8);
+        this.gainSchoolUse('zauberei');
+        break;
+      }
       case 'rundumschlag': {
         // Rundumschlag auch für Schwerter (Nahkampf Stufe 3)
         this.p.abilityCds[id] = ABILITY_FX.rundumschlag.cd;

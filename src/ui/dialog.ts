@@ -3,6 +3,26 @@
 
 import Phaser from 'phaser';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
+import { getSettings } from '../logic/settings';
+
+// Sprachausgabe (Runde 11): liest Dialogtexte vor, wenn in den
+// Einstellungen aktiviert. Nutzt die Browser-Sprachausgabe (de-DE).
+function vorlesen(text: string): void {
+  if (!getSettings().vorlesen) return;
+  try {
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'de-DE';
+    u.rate = 1.05;
+    synth.speak(u);
+  } catch { /* keine Sprachausgabe verfügbar - still bleiben */ }
+}
+
+function vorlesenStopp(): void {
+  try { window.speechSynthesis?.cancel(); } catch { /* still bleiben */ }
+}
 
 // Phaser-Eigenheit: scrollFactor des Containers gilt nur fürs Zeichnen,
 // NICHT für die Input-Hitboxen der Kinder. Deshalb bei UI-Containern den
@@ -57,12 +77,14 @@ export class DialogUI {
     const page = this.queue.shift()!;
     this.hasChoices = !!page.choices;
     page.onShow?.();
+    vorlesen(page.text);
     this.build(page);
   }
 
   close(): void {
     this.container?.destroy();
     this.container = null;
+    vorlesenStopp();
     if (this.open) {
       this.open = false;
       this.onClose?.();
@@ -137,7 +159,8 @@ export class DialogUI {
     c.add(nameText);
     c.add(bodyText);
     for (const b of buttons) c.add(b);
-    c.setPosition((sw - w) / 2, sh - h - 120);
+    const off = getSettings().ui.dialog;
+    c.setPosition((sw - w) / 2 + off.x, sh - h - 120 + off.y);
     fixUiScroll(c);
   }
 

@@ -60,3 +60,9 @@
 - Tagwerke (Arbeit für den Helden) 1x pro Spieltag je Auftrag, Stand wandert in den Spielstand (welt.tagwerke). Unterricht beim Küster: Gold gegen XP (skaliert mit Stufe), ebenfalls 1x täglich.
 - Neue Materialien fell/wolle in MaterialId aufgenommen (alte Spielstände erhalten sie als 0).
 - Gerberei liegt flussabwärts am Südrand des Bachs - historisch korrekt, "weil es stinkt" (steht so im Dialog).
+- Runde 11 Fähigkeiten: Aderlass (15 Leben -> 25 Mana, Zauberei 2), Lebenstausch (30 Mana -> 20 Leben, Zauberei 4), Feuerregen (40 Mana, 6 Einschläge auf den Mauszeiger-Zielort, Zauberei 8, Tasten 9/0 + belegbare Aktionen). Feuerregen ist absichtlich ausweichbar - die Einschläge treffen den Ort, nicht den Gegner.
+- Schildträger: 25% der Skelette tragen Schilde, blocken Treffer von vorn zu 50% (dann nur 30% Schaden, kein Rückstoß) - Flankieren wird belohnt.
+- Spenden statt Gold aus dem Nichts: Opferstock beim Pater (25 Gold -> Segen 240s), Dorfkasse beim Schulzen (Schwellen 100/250/500 -> Händler-Rabatt 5% je Stufe); Monster-Gold bleibt als Spielkonvention bestehen (ehrlich vermerkt).
+- UI-Verschiebemodus im Entwicklungskasten: Griffe für Aktionsleiste, Dialograhmen und Meldungs-Log; Versatz wandert in die Einstellungen (ui), wird beim Fixieren gespeichert und steht im kopierbaren Bericht - so kann der Autor Layout-Wünsche exakt durchgeben.
+- Sprachausgabe über die Browser-eigene speechSynthesis (de-DE), Schalter in den Einstellungen, Standard AUS - implementiert, aber mangels Lautsprecher im Container nicht angehört.
+- Häuser-Verschieben im Dev-Modus NICHT umgesetzt: das Dorf-Layout ist bewusst von Hand gebaut (Koordinaten in buildVillage); ein Karten-Editor mit datengetriebenem Layout wäre eine eigene Phase - NPC-Anker hingen dann am Haus-Datensatz und wanderten automatisch mit.

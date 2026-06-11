@@ -47,6 +47,7 @@ export class SettingsScene extends Phaser.Scene {
     y = this.toggle(y, 'Schadenszahlen', () => s.dmgNums, (v) => { s.dmgNums = v; });
     y = this.toggle(y, 'Blut & Überreste', () => s.blood, (v) => { s.blood = v; });
     y = this.toggle(y, 'Nebel des Krieges im Dunkelwald', () => s.fow, (v) => { s.fow = v; });
+    y = this.toggle(y, 'Texte vorlesen (Sprachausgabe)', () => s.vorlesen, (v) => { s.vorlesen = v; });
     sect('HANDY');
     y = this.toggle(y, 'Linkshänder-Modus (Joystick rechts)', () => s.lefty, (v) => { s.lefty = v; });
     const leftEnd = y;
