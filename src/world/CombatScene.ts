@@ -20,7 +20,7 @@ import { MELDUNGEN } from '../data/texte';
 import { getSettings } from '../logic/settings';
 import { TUNING, TUNING_ROWS } from '../logic/tuning';
 import { defaultRng, type Rng } from '../logic/rng';
-import { ELITE } from '../data/enemies';
+import { ELITE, ENEMIES } from '../data/enemies';
 import type { EnemyTypeId, WeaponClass } from '../data/types';
 import { ABILITY_FX, ABILITIES, LORE_XP } from '../data/balancing';
 import { PickupSystem, AUTO_PICKUP, type Pickup } from './Pickups';
@@ -688,6 +688,21 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.fx.burst(e.x, e.y, parseInt(e.col.slice(1), 16), 16, 170);
     this.sfx.play('tod');
     this.giveXp(e.xp);
+    // Teilend: zerfällt in kleinere Abbilder (geben kaum Erfahrung)
+    if (e.affix === 'Teilend' && !e.boss) {
+      for (let i = 0; i < ELITE.teilenAnzahl; i++) {
+        const a = Math.random() * 6.283;
+        const teil = this.spawnEnemy(e.type, e.depth, e.x + Math.cos(a) * 26, e.y + Math.sin(a) * 26);
+        teil.maxhp = Math.max(1, Math.round(e.maxhp * ELITE.teilenHpPct));
+        teil.hp = teil.maxhp;
+        teil.dmg = Math.max(1, Math.round(e.dmg * ELITE.teilenDmgPct));
+        teil.xp = Math.max(1, Math.round(e.xp * ELITE.teilenXpPct));
+        teil.r = Math.max(6, Math.round(e.r * 0.55));
+        teil.col = e.col;
+        teil.name = `Abbild: ${ENEMIES[e.type].name}`;
+      }
+      this.fx.burst(e.x, e.y, 0x7aa83a, 18, 160);
+    }
     this.onEnemyKilled(e);
   }
 
@@ -724,6 +739,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     if (e.affix === 'Vampirisch') {
       e.hp = Math.min(e.maxhp, e.hp + Math.round(dmg * ELITE.vampLeechPct));
       this.fx.burst(e.x, e.y, 0xa83a6a, 6, 90);
+    }
+    if (e.affix === 'Feurig') {
+      // Brandfläche unter dem Spieler - stehenbleiben bestraft
+      this.addTelegraph(this.px, this.py, ELITE.feuerR, ELITE.feuerDauerS, Math.round(dmg * ELITE.feuerDmgMult));
+      this.fx.burst(this.px, this.py, 0xd86a2a, 10, 130);
     }
   }
 

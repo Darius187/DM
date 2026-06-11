@@ -66,7 +66,7 @@ export interface EnemyDef {
   boss?: boolean;
 }
 
-export type EliteAffix = 'Schnell' | 'Vampirisch';
+export type EliteAffix = 'Schnell' | 'Vampirisch' | 'Feurig' | 'Teilend';
 
 export interface DialogChoice { label: string; action?: string }
 export interface DialogPage { text: string; action?: string; choices?: DialogChoice[] }

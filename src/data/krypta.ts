@@ -23,6 +23,15 @@ export const CRYPT_THEMES: Readonly<Record<number, CryptTheme>> = {
   6: { name: 'Grab des Kreuzritters', floor: [24, -5, -7], wallTop: '#130808', wallFace: '#321a12', bones: 0.040, blood: 0.060, rune: '#c03030', torchMod: 3 },
 };
 
+// Verfluchte Truhen (Feedback-Runde 6): sichtbar markiert, bessere Beute,
+// aber gute Chance auf einen Hinterhalt beim Öffnen
+export const CHEST_VERFLUCHT = {
+  chance: 0.3,        // Anteil verfluchter Truhen
+  hinterhalt: 0.55,   // Chance, dass beim Öffnen Schatten erscheinen
+  schattenAnzahl: 3,
+  tiefenBonus: 1,     // Beute zählt wie eine Ebene tiefer
+} as const;
+
 // Kartengrößen (Referenz buildCrypt/buildBoss)
 export const CRYPT_GEN = {
   w: 44, h: 44,

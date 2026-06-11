@@ -2,7 +2,7 @@
 // erweitert um die handgebauten Spezialräume aus Masterprompt 7.3.
 
 import { T, SOLID } from './tiles';
-import { CRYPT_THEMES, CRYPT_GEN, ALTAR_COUNT, CHESTS_PER_LEVEL, BREAKABLES_PER_LEVEL, ORE_VEINS, ROCKS_PER_LEVEL, type CryptTheme, type BreakableKind } from '../data/krypta';
+import { CRYPT_THEMES, CRYPT_GEN, CHEST_VERFLUCHT, ALTAR_COUNT, CHESTS_PER_LEVEL, BREAKABLES_PER_LEVEL, ORE_VEINS, ROCKS_PER_LEVEL, type CryptTheme, type BreakableKind } from '../data/krypta';
 import { MAX_SCRIPTED_SCARES } from '../data/enemies';
 import type { EnemyTypeId } from '../data/types';
 import { rnd, ri, pick, type Rng } from '../logic/rng';
@@ -45,7 +45,7 @@ export interface AreaData {
   torches: Array<Pos & { ph: number }>;
   altars: Array<Pos & { used: boolean }>;
   wells: Array<Pos & { used: boolean }>;
-  chests: Array<Pos & { open: boolean; selten?: boolean }>;
+  chests: Array<Pos & { open: boolean; selten?: boolean; verflucht?: boolean }>;
   shrines: Pos[];
   books: Pos[];
   breakables: BreakableSpawn[];
@@ -248,11 +248,12 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
     a.special.push({ id: 'schrein', x: sx, y: sy, raum: 'Kerzenschrein' });
   }
 
-  // Truhen
+  // Truhen - manche sind verflucht: bessere Beute, aber Hinterhalt-Gefahr
   const chestRooms = rooms.slice(1).filter((r) => r.w >= 4 && r.h >= 4);
   for (let i = 0; i < CHESTS_PER_LEVEL && chestRooms.length; i++) {
     const r = chestRooms.splice(ri(rng, 0, chestRooms.length - 1), 1)[0];
-    a.chests.push({ x: (r.x + rnd(rng, 1, r.w - 1)) * TILE, y: (r.y + rnd(rng, 1, r.h - 1)) * TILE, open: false });
+    const verflucht = rng.random() < CHEST_VERFLUCHT.chance;
+    a.chests.push({ x: (r.x + rnd(rng, 1, r.w - 1)) * TILE, y: (r.y + rnd(rng, 1, r.h - 1)) * TILE, open: false, verflucht });
   }
 
   // Zerknitterte Notiz der Ebene (Referenz: 1-3)

@@ -40,13 +40,22 @@ export const ENEMIES: Readonly<Record<EnemyTypeId, EnemyDef>> = {
 // Elite-Affixe (Referenz makeElite): 10% Chance, garantierter Drop höherer Stufe
 export const ELITE = {
   chance: 0.10,
-  affixes: ['Schnell', 'Vampirisch'] as const,
+  affixes: ['Schnell', 'Vampirisch', 'Feurig', 'Teilend'] as const,
   rMult: 1.25,
   hpMult: 1.8,
   dmgMult: 1.3,
   xpMult: 2.2,
   fastSpeedMult: 1.35,
   vampLeechPct: 0.6, // Vampirisch heilt 60% des verursachten Schadens (Referenz)
+  // Feurig: Treffer hinterlassen eine Brandfläche unter dem Spieler
+  feuerR: 44,
+  feuerDauerS: 0.9,
+  feuerDmgMult: 0.5,
+  // Teilend: zerfällt beim Tod in kleinere Abbilder
+  teilenAnzahl: 2,
+  teilenHpPct: 0.35,
+  teilenDmgPct: 0.6,
+  teilenXpPct: 0.15,
 } as const;
 
 // Gegner-KI-Timings (Referenz update/bossAI)

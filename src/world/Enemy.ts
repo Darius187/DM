@@ -163,6 +163,9 @@ export class Enemy {
     this.dmg = Math.round(this.dmg * ELITE.dmgMult);
     this.xp = Math.round(this.xp * ELITE.xpMult);
     if (this.affix === 'Schnell') this.speed *= ELITE.fastSpeedMult;
+    // Sichtbare Färbung je Affix, damit man die Gefahr lesen kann
+    if (this.affix === 'Feurig') this.col = '#c25a2a';
+    if (this.affix === 'Teilend') this.col = '#7aa83a';
     this.name = `${this.name} · ${this.affix}`;
     return this;
   }

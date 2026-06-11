@@ -22,7 +22,7 @@ import { TILE } from '../gfx/fallbackArt';
 import { DialogUI, fixUiScroll } from '../ui/dialog';
 import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, RELIKT, ENDEN, TOD } from '../data/texte';
 import { ALTAR, BLOOD_WELL, CHEST, RELIC_ACCEPT_ELIXIRS } from '../data/balancing';
-import { BREAKABLES, BREAKABLE_LOOT, BEINHAUS } from '../data/krypta';
+import { BREAKABLES, BREAKABLE_LOOT, BEINHAUS, CHEST_VERFLUCHT } from '../data/krypta';
 import { DEATH, SHRINE } from '../data/kampf';
 import { TEMPLERKLINGE, BOSS_GOLD } from '../data/items';
 import { rollGear, rollGem } from '../logic/loot';
@@ -526,7 +526,10 @@ export class WorldScene extends CombatScene {
     // Truhen
     for (const ch of this.area.chests) {
       if (!ch.open && near(ch.x, ch.y, 42)) {
-        return { text: `Truhe - ${ik} zum Öffnen`, action: () => this.openChest(ch) };
+        const text = ch.verflucht
+          ? `Verfluchte Truhe - ${ik} zum Öffnen (bessere Beute, aber etwas lauert)`
+          : `Truhe - ${ik} zum Öffnen`;
+        return { text, action: () => this.openChest(ch) };
       }
     }
     // Blutbrunnen
@@ -599,18 +602,28 @@ export class WorldScene extends CombatScene {
     this.flags[`schrein_${this.area.id}`] = true;
   }
 
-  private openChest(ch: { x: number; y: number; open: boolean; selten?: boolean }): void {
+  private openChest(ch: { x: number; y: number; open: boolean; selten?: boolean; verflucht?: boolean }): void {
     ch.open = true;
-    this.fx.burst(ch.x, ch.y - 6, 0xe0b53a, 16, 170);
+    this.fx.burst(ch.x, ch.y - 6, ch.verflucht ? 0x8c4ae0 : 0xe0b53a, 16, 170);
     this.sfx.play('truhe');
-    const d = this.area.depth;
+    const d = this.area.depth + (ch.verflucht ? CHEST_VERFLUCHT.tiefenBonus : 0);
     this.pickups.add({ kind: 'gold', amt: ri(this.rng, CHEST.goldMin, CHEST.goldMax) + d * CHEST.goldPerDepth, x: ch.x - 10, y: ch.y + 8, bob: 0 });
-    const bonus = ch.selten ? 1 : (Math.random() < CHEST.betterGearChance ? 1 : 0);
+    const bonus = (ch.selten || ch.verflucht) ? 1 : (Math.random() < CHEST.betterGearChance ? 1 : 0);
     this.pickups.add({ kind: 'gear', item: rollGear(this.rng, d + bonus), x: ch.x, y: ch.y + 18, bob: 0 });
-    if (Math.random() < CHEST.gemChance || ch.selten) {
+    if (Math.random() < CHEST.gemChance || ch.selten || ch.verflucht) {
       this.pickups.add({ kind: 'gem', item: rollGem(this.rng, d), x: ch.x + 14, y: ch.y + 10, bob: 0 });
     }
     this.logMsg(MELDUNGEN.truhe, 'gold');
+    // Der Fluch schlägt zu: Schatten kriechen aus der Truhe
+    if (ch.verflucht && Math.random() < CHEST_VERFLUCHT.hinterhalt) {
+      this.logMsg('Der Fluch der Truhe erwacht!', 'bad');
+      this.sfx.play('schatten_fluestern');
+      this.shake(5);
+      for (let i = 0; i < CHEST_VERFLUCHT.schattenAnzahl; i++) {
+        const a = Math.random() * 6.283;
+        this.spawnEnemy('schatten', this.area.depth, ch.x + Math.cos(a) * 60, ch.y + Math.sin(a) * 60);
+      }
+    }
   }
 
   private useWell(wl: { x: number; y: number; used: boolean }): void {
@@ -1786,14 +1799,16 @@ export class WorldScene extends CombatScene {
         g.fillStyle(0x5a3f20, 1);
         g.fillRect(x - 12, y - 14, 24, 6);
       } else {
-        g.fillStyle(0x5a3f20, 1);
+        // Verfluchte Truhen: dunkleres Holz, violette Beschläge, pulsierender Schein
+        const fluch = ch.verflucht === true;
+        g.fillStyle(fluch ? 0x2e2236 : 0x5a3f20, 1);
         g.fillRect(x - 12, y - 10, 24, 18);
-        g.fillStyle(0x3a2814, 1);
+        g.fillStyle(fluch ? 0x1c1424 : 0x3a2814, 1);
         g.fillRect(x - 12, y - 10, 24, 7);
-        g.fillStyle(0xc9a227, 1);
+        g.fillStyle(fluch ? 0x8c4ae0 : 0xc9a227, 1);
         g.fillRect(x - 12, y - 3, 24, 2);
         g.fillRect(x - 2, y - 2, 4, 6);
-        g.fillStyle(0xe0b53a, 0.15 + Math.sin(time * 3 + x) * 0.08);
+        g.fillStyle(fluch ? 0x8c4ae0 : 0xe0b53a, 0.15 + Math.sin(time * 3 + x) * 0.08);
         g.fillCircle(x, y, 16);
       }
     }
