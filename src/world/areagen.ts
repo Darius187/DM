@@ -6,6 +6,7 @@ import { CRYPT_THEMES, CRYPT_GEN, CHEST_VERFLUCHT, ALTAR_COUNT, CHESTS_PER_LEVEL
 import { MAX_SCRIPTED_SCARES } from '../data/enemies';
 import type { EnemyTypeId } from '../data/types';
 import { rnd, ri, pick, type Rng } from '../logic/rng';
+import type { InnenraumDef, InnenMoebel } from '../data/innenraeume';
 
 export interface Pos { x: number; y: number }
 
@@ -20,6 +21,12 @@ export interface NpcSpawn {
   y: number;
   // Tagesablauf: 2-3 Positionen je Tageszeit (Masterprompt 7.2)
   abend?: { x: number; y: number };
+  // Figuren-Name fürs Aussehen, falls er von der id abweicht (Dorfvolk)
+  figur?: string;
+  // Kämpfer bleiben beim Einfall auf der Straße, alle anderen fliehen
+  kaempfer?: boolean;
+  // Innenräume: tagsüber bei der Arbeit, erst abends/nachts daheim
+  nurAbends?: boolean;
 }
 
 export interface AnimalSpawn {
@@ -67,6 +74,10 @@ export interface AreaData {
   chimneys: Pos[];            // Schornsteinrauch
   cryptDoor?: Pos;            // Kirchentür -> Krypta
   gehoeft?: { x0: number; y0: number; x1: number; y1: number }; // Wiederaufbau
+  // Innenräume (Feedback-Runde 9)
+  doors?: Array<Pos & { haus: string }>; // Haustüren im Dorf (Tile-Koordinaten)
+  innen?: boolean;                       // Innenraum: Holzboden unter Möbeln, warm
+  innenHaus?: string;                    // welches Haus (für den Rückweg)
 }
 
 interface Room { x: number; y: number; w: number; h: number; cx: number; cy: number }
@@ -460,6 +471,12 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
     npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
   };
   const label = (tx: number, ty: number, t: string) => a.labels.push({ x: tx * TILE, y: ty * TILE, t });
+  a.doors = [];
+  // Haustür setzen und fürs Betreten registrieren (Feedback-Runde 9)
+  const tuer = (tx: number, ty: number, haus: string) => {
+    map[ty][tx] = T.HDOOR;
+    a.doors!.push({ x: tx, y: ty, haus });
+  };
 
   // Baumrand (Dunkelwald umschließt das Dorf) + Streubäume
   for (let x = 0; x < w; x++) {
@@ -503,9 +520,10 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   // 1. Taverne "Zum Schwarzen Raben" (Heinrich) - Tür nach Süden zur Straße
   carve(map, 12, 22, 23, 28, T.HWALL);
   carve(map, 17, 29, 18, 30, T.PATH);
+  tuer(17, 28, 'taverne');
   label(17.5, 21.2, 'Zum Schwarzen Raben');
   a.chimneys.push({ x: 14 * TILE + 6, y: 22 * TILE + 2 });
-  a.npcs.push({ id: 'heinrich', name: 'Heinrich Kramer', x: 17.5 * TILE, y: 29.5 * TILE, abend: { x: 17.5 * TILE, y: 29.5 * TILE } });
+  a.npcs.push({ id: 'heinrich', name: 'Heinrich Kramer', x: 17.5 * TILE, y: 29.5 * TILE, abend: { x: 17.5 * TILE, y: 29.5 * TILE }, kaempfer: true });
   a.animals.push({ type: 'hund', x: 21 * TILE, y: 30 * TILE, pen: { x0: 12 * TILE, y0: 29 * TILE, x1: 26 * TILE, y1: 33 * TILE } });
 
   // 2. Kirche St. Marien mit Friedhof (Johannes), Tür = Kryptaeingang
@@ -525,6 +543,7 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   carve(map, 6, 44, 11, 48, T.HWALL);
   carve(map, 8, 49, 9, 50, T.PATH);
   carve(map, 9, 50, 46, 51, T.PATH);
+  tuer(8, 48, 'magdalena');
   label(8.5, 43.2, 'Magdalenas Hütte');
   a.chimneys.push({ x: 7 * TILE + 6, y: 44 * TILE + 2 });
   for (let i = 0; i < 14; i++) {
@@ -539,21 +558,28 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   // 4. Mühle am Bach (Müller, Ratten-Quest im Lager)
   carve(map, 74, 34, 79, 39, T.HWALL);
   carve(map, 76, 40, 77, 41, T.PATH);
+  tuer(76, 39, 'muehle');
   label(76.5, 33.2, 'Mühle');
-  a.npcs.push({ id: 'mueller', name: 'Müller', x: 76.5 * TILE, y: 41 * TILE, abend: { x: 20 * TILE, y: 31 * TILE } });
+  a.npcs.push({ id: 'mueller', name: 'Müller', x: 76.5 * TILE, y: 41 * TILE, abend: { x: 20 * TILE, y: 31 * TILE }, kaempfer: true });
+  // Magd Trine hilft tagsüber an der Mühle, abends geht sie heim in die Gasse
+  a.npcs.push({ id: 'magd', name: 'Magd Trine', x: 78 * TILE, y: 41 * TILE, abend: { x: 46.5 * TILE, y: 48.5 * TILE } });
+  // Wäscherin Ida am Steg über den Bach
+  a.npcs.push({ id: 'waescherin', name: 'Wäscherin Ida', x: 79 * TILE, y: 28.5 * TILE, abend: { x: 53.5 * TILE, y: 48.5 * TILE } });
 
   // 5. Schmiede (südlich der Straße)
   carve(map, 30, 38, 36, 42, T.HWALL);
   carve(map, 32, 43, 33, 44, T.PATH);
   carve(map, 32, 36, 33, 38, T.PATH);
+  tuer(32, 42, 'schmiede');
   label(33, 37.2, 'Schmiede');
   a.torches.push({ x: 34 * TILE, y: 43 * TILE, ph: rnd(rng, 0, 6.28) });
-  a.npcs.push({ id: 'schmied', name: 'Schmied', x: 33 * TILE, y: 44 * TILE, abend: { x: 16 * TILE, y: 31.5 * TILE } });
+  a.npcs.push({ id: 'schmied', name: 'Schmied', x: 33 * TILE, y: 44 * TILE, abend: { x: 16 * TILE, y: 31.5 * TILE }, kaempfer: true });
 
   // 6a. Bauernhof 1 (Nordwesten): Schweine + Hühner im Gatter, Acker
   carve(map, 14, 8, 22, 13, T.HWALL);
   carve(map, 17, 14, 18, 15, T.PATH);
   carve(map, 17, 15, 18, 30, T.PATH);
+  map[28][17] = T.HDOOR; // der Hofpfad läuft an der Taverne vorbei - Tür bleibt Tür
   label(18, 7.2, 'Bauernhof');
   for (let x = 14; x <= 22; x++) { map[17][x] = T.FENCE; map[21][x] = T.FENCE; }
   for (let y = 17; y <= 21; y++) { map[y][14] = T.FENCE; map[y][22] = T.FENCE; }
@@ -563,7 +589,9 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   a.animals.push({ type: 'schwein', x: 20 * TILE, y: 20 * TILE, pen: pen1 });
   a.animals.push({ type: 'huhn', x: 18 * TILE, y: 19.5 * TILE, pen: pen1 });
   carve(map, 25, 8, 30, 13, T.FIELD);
-  a.npcs.push({ id: 'bauer1', name: 'Bauer Veit', x: 27 * TILE, y: 11 * TILE, abend: { x: 19 * TILE, y: 31.5 * TILE } });
+  a.npcs.push({ id: 'bauer1', name: 'Bauer Veit', x: 27 * TILE, y: 11 * TILE, abend: { x: 19 * TILE, y: 31.5 * TILE }, kaempfer: true });
+  // Hirtenjunge Lenz hütet die Tiere des Hofs
+  a.npcs.push({ id: 'hirte', name: 'Hirtenjunge Lenz', x: 19 * TILE, y: 19.5 * TILE, abend: { x: 46.5 * TILE, y: 48.5 * TILE } });
 
   // 6b. Bauernhof 2 (Südosten): Kuh im Gatter, Acker
   carve(map, 56, 44, 64, 49, T.HWALL);
@@ -581,6 +609,56 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
 
   // 7. Fahrender Händler am Marktplatz (Karren)
   a.npcs.push({ id: 'haendler', name: 'Fahrender Händler', x: 50.5 * TILE, y: 28 * TILE });
+
+  // 7b. Gemeindehaus am Marktplatz (Feedback-Runde 9): das größte Haus des
+  // Dorfes - bei Einfällen flieht hierher, wer nicht kämpfen kann
+  carve(map, 48, 20, 55, 25, T.HWALL);
+  tuer(51, 25, 'gemeindehaus');
+  label(51.5, 19.2, 'Gemeindehaus');
+  a.chimneys.push({ x: 49 * TILE + 6, y: 20 * TILE + 2 });
+  a.npcs.push({ id: 'schulze', name: 'Schulze Bertram', x: 51.5 * TILE, y: 27 * TILE, abend: { x: 51.5 * TILE, y: 27 * TILE }, kaempfer: true });
+
+  // 7c. Backhaus östlich des Marktes - Läden liegen am Platz, wie es sich gehört
+  carve(map, 57, 19, 62, 24, T.HWALL);
+  carve(map, 59, 25, 60, 29, T.PATH);
+  tuer(59, 24, 'backhaus');
+  label(59.5, 18.2, 'Backhaus');
+  a.chimneys.push({ x: 58 * TILE + 6, y: 19 * TILE + 2 });
+  a.npcs.push({ id: 'baecker', name: 'Bäcker Matthes', x: 59.5 * TILE, y: 26 * TILE, abend: { x: 59.5 * TILE, y: 25.5 * TILE } });
+
+  // 7d. Zimmerei westlich der Straße - Werkstatt mit Holzlager
+  carve(map, 25, 18, 30, 21, T.HWALL);
+  carve(map, 27, 22, 28, 29, T.PATH);
+  tuer(27, 21, 'zimmerei');
+  label(27.5, 17.2, 'Zimmerei');
+  a.npcs.push({ id: 'zimmermann', name: 'Zimmermann Jakob', x: 27.5 * TILE, y: 23 * TILE, abend: { x: 46.5 * TILE, y: 42.5 * TILE }, kaempfer: true });
+  for (const [bx, by] of [[31, 19], [31, 20]] as const) {
+    a.breakables.push({ kind: 'kiste', x: bx * TILE + 16, y: by * TILE + 16, ambush: false });
+  }
+
+  // 7e. Die Wohngasse südlich des Marktes: vier Häuser, eine schmale Gasse,
+  // Familien mit Tagesablauf (Frauen und Kinder leben hier)
+  carve(map, 49, 36, 50, 49, T.PATH);
+  carve(map, 47, 50, 59, 51, T.PATH);
+  label(49.5, 36.4, 'Wohngasse');
+  carve(map, 44, 38, 48, 41, T.HWALL);
+  tuer(46, 41, 'wohnhausA');
+  carve(map, 46, 42, 50, 42, T.PATH);
+  carve(map, 51, 38, 55, 41, T.HWALL);
+  tuer(53, 41, 'wohnhausB');
+  carve(map, 50, 42, 53, 42, T.PATH);
+  carve(map, 44, 44, 48, 47, T.HWALL);
+  tuer(46, 47, 'wohnhausC');
+  carve(map, 46, 48, 50, 48, T.PATH);
+  carve(map, 51, 44, 55, 47, T.HWALL);
+  tuer(53, 47, 'wohnhausD');
+  carve(map, 50, 48, 53, 48, T.PATH);
+  for (const [cx, cy] of [[44, 38], [51, 38], [44, 44], [51, 44]] as const) {
+    a.chimneys.push({ x: cx * TILE + 6, y: cy * TILE + 2 });
+  }
+  // Kinder spielen tagsüber am Marktbrunnen, abends geht es heim
+  a.npcs.push({ id: 'kind1', name: 'Hannes', x: 43.5 * TILE, y: 31 * TILE, abend: { x: 46.5 * TILE, y: 42.5 * TILE } });
+  a.npcs.push({ id: 'kind2', name: 'Lisbeth', x: 47.5 * TILE, y: 33 * TILE, abend: { x: 59.5 * TILE, y: 25.5 * TILE } });
 
   // 8. Das niedergebrannte Gehöft (Wiederaufbau-Projekt, Phase 7)
   if (aufbauStufe === 0) {
@@ -636,6 +714,50 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
     label(46.5, 2.8, 'Palisade');
   }
 
+  return a;
+}
+
+// --- Innenräume (Feedback-Runde 9): warme Stuben hinter den Haustüren ---
+
+export function buildInterior(def: InnenraumDef): AreaData {
+  const { w, h } = def;
+  const map = blank(w, h, T.HOLZ);
+  const a: AreaData = {
+    id: `innen_${def.haus}`, name: def.name, dark: false, depth: 0,
+    w, h, map, spawn: { x: 0, y: 0 },
+    torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
+    breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
+    ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
+    npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
+    innen: true, innenHaus: def.haus,
+  };
+  // Wände rundum, Tür unten in der Mitte
+  for (let x = 0; x < w; x++) { map[0][x] = T.HWALL; map[h - 1][x] = T.HWALL; }
+  for (let y = 0; y < h; y++) { map[y][0] = T.HWALL; map[y][w - 1] = T.HWALL; }
+  const doorX = Math.floor(w / 2);
+  map[h - 1][doorX] = T.HDOOR;
+  a.doors = [{ x: doorX, y: h - 1, haus: def.haus }];
+  a.spawn = { x: (doorX + 0.5) * TILE, y: (h - 2) * TILE + 16 };
+
+  const TILES: Record<InnenMoebel['tile'], number> = {
+    bett: T.BETT, tisch: T.TISCH, stuhl: T.STUHL, kamin: T.KAMIN,
+    teppich: T.TEPPICH, tresen: T.TRESEN, regal: T.SHELF,
+  };
+  for (const m of def.moebel) {
+    map[m.y][m.x] = TILES[m.tile];
+    // Kamine geben warmes, flackerndes Licht
+    if (m.tile === 'kamin') a.torches.push({ x: m.x * TILE + 16, y: m.y * TILE + 24, ph: Math.random() * 6.28 });
+  }
+  for (const [fx, fy] of def.faesser ?? []) {
+    a.breakables.push({ kind: 'fass', x: fx * TILE + 16, y: fy * TILE + 16, ambush: false });
+  }
+  for (const b of def.bewohner) {
+    a.npcs.push({
+      id: b.id, figur: b.id, name: b.name,
+      x: b.x * TILE + 16, y: b.y * TILE + 16,
+      nurAbends: b.nurAbends,
+    });
+  }
   return a;
 }
 

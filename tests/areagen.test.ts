@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { buildCrypt, buildBoss, buildVillage, type AreaData } from '../src/world/areagen';
+import { buildCrypt, buildBoss, buildVillage, buildInterior, type AreaData } from '../src/world/areagen';
+import { INNENRAEUME } from '../src/data/innenraeume';
 import { SOLID, T } from '../src/world/tiles';
 import { seededRng } from '../src/logic/rng';
 
@@ -112,6 +113,35 @@ describe('Krypta-Generator: jeder Spezialraum erreichbar', () => {
     // Ohne Mauer keine Palisade
     const b = buildVillage(seededRng(7), 0, 0);
     expect(b.map[2][20]).not.toBe(T.PALISADE);
+  });
+
+  it('Innenräume: Tür vorhanden, Möbel im Raum, Dorf-Türen zeigen auf echte Stuben', () => {
+    for (const [haus, def] of Object.entries(INNENRAEUME)) {
+      const a = buildInterior(def);
+      expect(a.innen).toBe(true);
+      expect(a.innenHaus).toBe(haus === def.haus ? haus : def.haus);
+      // Tür in der Südwand, Spawn davor begehbar
+      const doorX = Math.floor(def.w / 2);
+      expect(a.map[def.h - 1][doorX]).toBe(T.HDOOR);
+      expect(SOLID.has(a.map[def.h - 2][doorX])).toBe(false);
+      // Möbel liegen im Raum (nicht in den Wänden) und nicht vor der Tür
+      for (const m of def.moebel) {
+        expect(m.x, `${haus}: ${m.tile} in der Wand`).toBeGreaterThan(0);
+        expect(m.x).toBeLessThan(def.w - 1);
+        expect(m.y).toBeGreaterThan(0);
+        expect(m.y).toBeLessThan(def.h - 1);
+        expect(m.x === doorX && m.y === def.h - 2, `${haus}: ${m.tile} blockiert die Tür`).toBe(false);
+      }
+    }
+    // Jede Dorf-Haustür führt in eine definierte Stube
+    const dorf = buildVillage(seededRng(3), 0, 0);
+    expect(dorf.doors!.length).toBeGreaterThanOrEqual(10);
+    for (const d of dorf.doors!) {
+      expect(INNENRAEUME[d.haus], `Tür ohne Innenraum: ${d.haus}`).toBeTruthy();
+      expect(dorf.map[d.y][d.x]).toBe(T.HDOOR);
+      // Vor der Tür ist begehbarer Boden
+      expect(SOLID.has(dorf.map[d.y + 1][d.x]), `Tür von ${d.haus} ist zugebaut`).toBe(false);
+    }
   });
 
   it('max. 2 Skript-Schreckmomente pro Ebene', () => {

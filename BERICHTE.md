@@ -555,3 +555,27 @@ Alles mit tsc + 49 Tests grün und im Browser durchgespielt:
   eigene Phase, in TODO.md) - die Bewohner verschwinden nachts "in"
   ihre Häuser, statt sichtbar hineinzugehen.
 Stand: 49/49 Tests grün, Version auf dem Titel: Feedback-Runde 8.
+
+## Feedback-Runde 9 - umgesetzt (Begehbare Häuser + lebendiges Dorf)
+Alles mit tsc + 50 Tests grün und im Browser durchgespielt:
+- 11 begehbare Innenräume: Taverne (Schankraum mit Tresen, Tischen,
+  Kamin), Gemeindehaus, Backhaus, Zimmerei, Mühle, Schmiede, Magdalenas
+  Hütte und vier Wohnhäuser in der neuen Wohngasse. Haustür per E
+  betreten, drinnen warmes Holz, Teppiche, Kaminfeuer mit Licht.
+- Neue Gebäude am Markt (wie im Dorf des 17. Jahrhunderts: Läden am
+  Platz): Gemeindehaus (größtes Haus, Zuflucht bei Einfällen), Backhaus,
+  Zimmerei mit Holzlager, dazu die Wohngasse mit vier Familienhäusern.
+- 13 neue Dorfbewohner mit Berufen und Tagesablauf: Schulze Bertram,
+  Bäcker Matthes mit Elsbeth und Lisbeth, Zimmermann Jakob mit Margret
+  und Hannes, Schneider Caspar, Witwe Käthe mit Hirtenjunge Lenz und
+  Magd Trine, Wäscherin Ida, Alte Mutter Hanne, Wirtin Mathilde. Männer
+  tagsüber bei der Arbeit (Mühle, Hof, Werkstatt), abends daheim bei
+  Frau und Kind - geprüft: mittags nur Margret in der Stube, abends
+  sitzt die ganze Familie da. Kinder spielen tagsüber am Marktbrunnen.
+- Jede Figur hat eigene Dialogzeilen (Alltag, Krieg, Aberglaube) und
+  einen eigenen Figuren-Namen - spätere Sprite-Pakete ersetzen sie 1:1.
+- Einfall-Verhalten: Nicht-Kämpfer fliehen ins Gemeindehaus (Meldung),
+  nur die sechs wehrhaften Männer bleiben auf der Straße - geprüft.
+- Neuer Test sichert ab: jede Haustür führt in eine echte Stube, Möbel
+  stehen nie in Wänden oder vor der Tür.
+Stand: 50/50 Tests grün, Version auf dem Titel: Feedback-Runde 9.

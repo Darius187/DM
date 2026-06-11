@@ -152,3 +152,50 @@ export const ANNA_GRAB = {
   text: 'Ein geöffneter Sarg, sorgsamer behauen als alle anderen. Auf dem Deckel eingeritzt: "ANNA - GOTT GEBE IHR DEN FRIEDEN, DEN WIR IHR NICHT GEBEN KONNTEN." Im Staub daneben liegt ein Medaillon an zerrissener Kette.',
   aufheben: 'Das Medaillon an sich nehmen',
 } as const;
+
+// Dorfvolk (Feedback-Runde 9): Berufe und Familien des 17. Jahrhunderts.
+// Zwei, drei Sätze je Figur - Alltag, Krieg und Aberglaube der Zeit.
+export const VOLK: Readonly<Record<string, ReadonlyArray<string>>> = {
+  schulze: [
+    'Schulze Bertram, Vorsteher dieses Dorfes. Der Landherr ist fern, die Zeiten sind böse - also halte ich Ordnung, so gut ein Mann das vermag.',
+    'Wenn die Sturmglocke geht, sammeln sich alle im Gemeindehaus. Wer eine Klinge führen kann, stellt sich an die Tore. So halten wir es seit dem großen Krieg.',
+  ],
+  baecker: [
+    'Frisch aus dem Ofen, wenn der Tag jung ist. Das Korn wird knapp, seit die Wege unsicher sind - aber solange die Mühle mahlt, backe ich.',
+    'Meine Elsbeth führt den Laden, ich stehe am Ofen, und die kleine Lisbeth stiehlt die Krumen. So soll es sein.',
+  ],
+  zimmermann: [
+    'Jakob, Zimmermann. Balken, Dachstühle, Särge - in diesen Tagen leider mehr Särge, als mir lieb ist.',
+    'Die Palisade? Gutes Holz, sauber gesetzt. Wenn der Schmied den Auftrag gibt, stehen meine Leute bereit.',
+  ],
+  schneider: [
+    'Caspar, Schneider. Ich flicke mehr, als ich nähe - neues Tuch hat seit Jahren keiner mehr gesehen. Aber ein gerader Saum hält die Würde zusammen.',
+  ],
+  hirte: [
+    'Ich hüte die Schweine und die Hühner vom Veit. Nachts höre ich manchmal die Wölfe drüben im Dunkelwald - dann zähle ich die Tiere zweimal.',
+  ],
+  magd: [
+    'Trine, ich helfe an der Mühle. Säcke schleppen, Korn schütten - harte Arbeit, aber ehrliche. Die Witwe Käthe hat mich aufgenommen, Gott vergelte es ihr.',
+  ],
+  waescherin: [
+    'Ida. Ich wasche am Bach, solange das Licht reicht. Das Wasser ist eiskalt, aber es ist das einzige in Ravensmoor, das noch sauber ist.',
+  ],
+  wirtin: [
+    'Mathilde, die Wirtin. Setzt euch ans Feuer, der Abend ist rau. Der Heinrich handelt, ich führe die Stube - und über das Raunen unter der Kirche reden wir hier drinnen nicht.',
+  ],
+  kind1: [
+    'Hast du das Schwert mal gezogen? Zeig mal! Mutter sagt, ich darf nicht zum Friedhof - aber du warst DRUNTER, stimmt das?',
+  ],
+  kind2: [
+    'Ich hab eine tote Maus im Brunnen gesehen! Sag es nicht dem Schulzen. Willst du mein Geheimversteck sehen? Es ist hinter dem Backhaus.',
+  ],
+  frau1: [
+    'Gott zum Gruße. Verzeiht die Unordnung - der Tag hat mehr Arbeit als Stunden.',
+  ],
+  frau2: [
+    'Margret, die Frau vom Jakob. Er kommt abends mit Spänen im Haar heim und der Hannes hängt ihm am Bein. Gute Männer, beide.',
+  ],
+  witwe: [
+    'Käthe. Meinen Mann hat der Krieg geholt, das Haus ist geblieben. Jetzt wohnen Trine und der Lenz bei mir - allein wird einem die Stille zu laut.',
+  ],
+} as const;

@@ -304,6 +304,34 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       ctx.beginPath(); ctx.ellipse(16.5, 3, 1.5, 2.5, 0, 0, 6.283); ctx.fill();
       ctx.beginPath(); ctx.ellipse(22.5, 7, 1.5, 2.5, 0, 0, 6.283); ctx.fill();
       break;
+    // --- Innenräume (Feedback-Runde 9): warm und wohnlich ---
+    case 'holzboden': {
+      const g = 74 + (n % 3) * 4;
+      ctx.fillStyle = `rgb(${g},${g - 22},${g - 42})`;
+      ctx.fillRect(0, 0, TILE, TILE);
+      // Dielenbretter mit versetzten Stößen
+      ctx.fillStyle = 'rgba(30,18,8,0.5)';
+      for (let i = 0; i < 4; i++) ctx.fillRect(0, i * 8, TILE, 1);
+      ctx.fillRect(((n * 11) % 24) + 4, 1, 1, 7);
+      ctx.fillRect(((n * 17) % 24) + 4, 17, 1, 7);
+      ctx.fillStyle = 'rgba(255,220,160,0.05)';
+      ctx.fillRect(0, 0, TILE, 8);
+      break;
+    }
+    case 'teppich':
+      drawTileArt(ctx, 'holzboden', n);
+      ctx.fillStyle = '#6a2a28'; ctx.fillRect(2, 2, TILE - 4, TILE - 4);
+      ctx.strokeStyle = '#c9a227'; ctx.strokeRect(4.5, 4.5, TILE - 9, TILE - 9);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(2, TILE - 5, TILE - 4, 3);
+      break;
+    case 'haustuer':
+      ctx.fillStyle = '#8a7a62'; ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = '#2a1e12'; ctx.fillRect(0, 0, TILE, 3); ctx.fillRect(0, 0, 3, TILE); ctx.fillRect(TILE - 3, 0, 3, TILE);
+      ctx.fillStyle = '#4e3a20'; ctx.fillRect(6, 4, TILE - 12, TILE - 4);
+      ctx.fillStyle = '#3a2c16';
+      for (let i = 0; i < 3; i++) ctx.fillRect(8 + i * 6, 4, 2, TILE - 4);
+      ctx.fillStyle = '#c9a227'; ctx.fillRect(TILE - 12, 17, 3, 3);
+      break;
     default:
       // Unbekanntes Tile sichtbar machen statt still zu scheitern
       ctx.fillStyle = '#3a1a3a'; ctx.fillRect(0, 0, TILE, TILE);
@@ -316,6 +344,7 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
 export const STANDING_OBJECTS = new Set([
   'baum', 'fels', 'grabstein', 'brunnen', 'zaun', 'erzader', 'altar',
   'regal', 'kerzenschrein', 'streckbank', 'kaefig', 'palisade',
+  'bett', 'tisch', 'stuhl', 'kamin', 'tresen',
 ]);
 
 export function drawObjectArt(ctx: Ctx, name: string, n: number, theme?: CryptTheme): void {
@@ -379,6 +408,51 @@ export function drawObjectArt(ctx: Ctx, name: string, n: number, theme?: CryptTh
       ctx.fillStyle = 'rgba(42,30,16,0.85)';
       ctx.fillRect(0, 14, TILE, 3);
       ctx.fillRect(0, 24, TILE, 3);
+      break;
+    case 'bett':
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(16, 27, 12, 3.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#4e3a20'; ctx.fillRect(4, 6, 24, 21); // Rahmen
+      ctx.fillStyle = '#7a3030'; ctx.fillRect(6, 12, 20, 13); // Decke
+      ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fillRect(6, 12, 20, 3);
+      ctx.fillStyle = '#e8e0c8'; ctx.fillRect(8, 7, 16, 5); // Kissen
+      ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(8, 10, 16, 2);
+      break;
+    case 'tisch':
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(16, 27, 12, 3.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#3a2c16'; ctx.fillRect(6, 20, 3, 7); ctx.fillRect(23, 20, 3, 7); // Beine
+      ctx.fillStyle = '#6a4c28'; ctx.fillRect(3, 9, 26, 12); // Platte
+      ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(3, 9, 26, 3);
+      ctx.fillStyle = '#e8e0c8'; ctx.beginPath(); ctx.arc(12, 14, 3, 0, 6.283); ctx.fill(); // Teller
+      ctx.fillStyle = '#f8d878'; ctx.beginPath(); ctx.ellipse(21, 12, 1.4, 2.4, 0, 0, 6.283); ctx.fill(); // Kerze
+      break;
+    case 'stuhl':
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath(); ctx.ellipse(16, 26, 7, 2.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#5a4427'; ctx.fillRect(10, 8, 12, 4);  // Lehne
+      ctx.fillRect(10, 14, 12, 7); // Sitz
+      ctx.fillStyle = '#3a2c16'; ctx.fillRect(10, 21, 2, 5); ctx.fillRect(20, 21, 2, 5);
+      break;
+    case 'kamin':
+      ctx.fillStyle = '#55504a'; ctx.fillRect(3, 2, 26, 26); // Steinrahmen
+      ctx.fillStyle = '#3a362e'; ctx.fillRect(3, 2, 26, 5);
+      ctx.fillStyle = '#16100a'; ctx.fillRect(7, 9, 18, 17);  // Feuerraum
+      ctx.fillStyle = '#d8842a'; // Flammen
+      ctx.beginPath(); ctx.moveTo(10, 25); ctx.quadraticCurveTo(13, 14, 16, 25); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(15, 25); ctx.quadraticCurveTo(19, 12, 22, 25); ctx.fill();
+      ctx.fillStyle = '#f8d878';
+      ctx.beginPath(); ctx.moveTo(13, 25); ctx.quadraticCurveTo(16, 18, 19, 25); ctx.fill();
+      ctx.fillStyle = '#2a1e12'; ctx.fillRect(7, 24, 18, 3); // Glutbett
+      break;
+    case 'tresen':
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(16, 27, 13, 3.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#4e3a20'; ctx.fillRect(2, 12, 28, 14); // Korpus
+      ctx.fillStyle = '#6a4c28'; ctx.fillRect(1, 8, 30, 6);   // Platte
+      ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(1, 8, 30, 2);
+      ctx.fillStyle = '#8a6a4a'; ctx.beginPath(); ctx.ellipse(9, 9, 2.4, 3, 0, 0, 6.283); ctx.fill(); // Krug
+      ctx.fillStyle = '#b8bcc4'; ctx.beginPath(); ctx.arc(22, 10, 2, 0, 6.283); ctx.fill(); // Becher
       break;
     default:
       drawTileArt(ctx, name, n, theme);

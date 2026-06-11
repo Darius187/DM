@@ -4,14 +4,15 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir } from '../world/Enemy';
-import { buildCrypt, buildBoss, buildVillage, buildForest, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { buildCrypt, buildBoss, buildVillage, buildForest, buildInterior, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { INNENRAEUME } from '../data/innenraeume';
 import { LANDHERR } from '../data/dialoge';
 import storyJson from '../data/story.json';
 import { ShopUI } from '../ui/shop';
 import { Hud } from '../ui/hud';
 import { StashUI } from '../ui/stash';
 import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
-import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, type DlgPage } from '../data/dialoge';
+import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, VOLK, type DlgPage } from '../data/dialoge';
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS } from '../data/shops';
 import { GATHER } from '../data/crafting';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, tageszeitLabel } from '../data/welt';
@@ -215,6 +216,7 @@ export class WorldScene extends CombatScene {
       a = buildVillage(rng, this.aufbauStufe, this.stadtmauerStufe);
       this.applyTore(a);
     }
+    else if (id.startsWith('innen_')) a = buildInterior(INNENRAEUME[id.replace('innen_', '')]);
     else if (id === 'wald') a = buildForest(rng);
     else a = buildCrypt(parseInt(id.replace('crypt', ''), 10), rng);
     this.areas.set(id, a);
@@ -242,10 +244,15 @@ export class WorldScene extends CombatScene {
     this.sfx.play('gebietswechsel');
     this.sfx.stopLoops();
     if (a.dark) this.sfx.startLoop('krypta_droehnen');
+    else if (a.innen) this.sfx.startLoop('feuer_knistern');
     else if (a.id === 'village') this.sfx.startLoop('dorf_wind');
     else this.sfx.startLoop('wald_nacht');
-    this.cameras.main.setBounds(0, 0, a.w * TILE, a.h * TILE);
-    this.cameras.main.setBackgroundColor(a.dark ? '#050403' : '#0c1208');
+    // Kleine Stuben mittig im Bild statt oben links in der Ecke
+    const mapW = a.w * TILE, mapH = a.h * TILE;
+    const bx = Math.min(0, -(this.scale.width - mapW) / 2);
+    const by = Math.min(0, -(this.scale.height - mapH) / 2);
+    this.cameras.main.setBounds(bx, by, Math.max(mapW, this.scale.width), Math.max(mapH, this.scale.height));
+    this.cameras.main.setBackgroundColor(a.innen ? '#0e0a06' : a.dark ? '#050403' : '#0c1208');
     // Erzähler-Interludien (Referenz)
     if (id === 'crypt1' && !this.flags.nCrypt) {
       this.flags.nCrypt = true;
@@ -310,14 +317,15 @@ export class WorldScene extends CombatScene {
   private loadAreaObjects(a: AreaData): void {
     // Tiles als statische Bilder; stehende Objekte werden für die
     // Y-Sortierung vom Boden getrennt (Pseudo-3D, Masterprompt 5.1)
-    const STANDING = new Set<number>([T.TREE, T.ROCK, T.GRAVE, T.WELL, T.FENCE, T.ORE, T.ALTAR, T.SHELF, T.SHRINE, T.RACK, T.CAGE]);
+    const STANDING = new Set<number>([T.TREE, T.ROCK, T.GRAVE, T.WELL, T.FENCE, T.ORE, T.ALTAR, T.SHELF, T.SHRINE, T.RACK, T.CAGE,
+      T.BETT, T.TISCH, T.STUHL, T.KAMIN, T.TRESEN]);
     for (let ty = 0; ty < a.h; ty++) {
       for (let tx = 0; tx < a.w; tx++) {
         const id = a.map[ty][tx];
         const name = tileNameAt(a.map, tx, ty);
         const variant = ((tx * 73856093) ^ (ty * 19349663)) % 7;
         if (STANDING.has(id)) {
-          const groundName = a.dark ? 'krypta_boden' : 'gras';
+          const groundName = a.innen ? 'holzboden' : a.dark ? 'krypta_boden' : 'gras';
           const ground = this.provider.tileKey(groundName, variant, a.depth, a.theme);
           this.tileImages.push(this.add.image(tx * TILE + 16, ty * TILE + 16, ground).setDepth(-10));
           const obj = this.provider.objectKey(name, variant, a.depth, a.theme);
@@ -384,7 +392,7 @@ export class WorldScene extends CombatScene {
     // NPCs
     for (const n of a.npcs) {
       const sprite = this.add.sprite(n.x, n.y, '__DEFAULT').setDepth(n.y);
-      this.provider.applyFigure(sprite, n.id, 0, 0);
+      this.provider.applyFigure(sprite, n.figur ?? n.id, 0, 0);
       const lbl = this.add.text(n.x, n.y - 22, n.name, {
         fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8e6', stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5).setDepth(600);
@@ -697,6 +705,7 @@ export class WorldScene extends CombatScene {
     this.logMsg(this.stadtmauerStufe >= 1
       ? 'EINFALL! Ein Trupp drängt durch die Tore der Salzstraße!'
       : 'EINFALL! Monster brechen aus dem Dunkelwald über Ravensmoor herein!', 'bad');
+    this.logMsg('Frauen, Kinder und Alte fliehen ins Gemeindehaus!', '');
     this.sfx.play('templer_stimme');
     this.shake(6);
   }
@@ -845,6 +854,12 @@ export class WorldScene extends CombatScene {
         break;
       case 'haendler': this.talkHaendler(); break;
       case 'landherr': this.talkLandherr(); break;
+      default: {
+        // Dorfvolk: Berufe und Familien (Feedback-Runde 9)
+        const zeilen = VOLK[id];
+        if (zeilen) this.dialog.show(npc.name, [...zeilen]);
+        break;
+      }
     }
   }
 
@@ -1385,6 +1400,17 @@ export class WorldScene extends CombatScene {
         },
       };
     }
+    if (tid === T.HDOOR) {
+      if (this.area.innen) {
+        return { text: `Nach draußen - ${ik}`, action: () => this.leaveInterior() };
+      }
+      const ptx = Math.floor(this.px / TILE), pty = Math.floor(this.py / TILE);
+      const door = this.area.doors?.find((d) => d.x === ptx && d.y === pty);
+      if (door) {
+        const name = INNENRAEUME[door.haus]?.name ?? 'Haus';
+        return { text: `${name} - ${ik} zum Eintreten`, action: () => this.goArea(`innen_${door.haus}`) };
+      }
+    }
     if (tid === T.STAIR) {
       const indieTiefe = this.area.id === 'boss' || this.area.depth > 5;
       return {
@@ -1416,6 +1442,15 @@ export class WorldScene extends CombatScene {
       };
     }
     return null;
+  }
+
+  // Aus der Stube zurück vor die Haustür
+  private leaveInterior(): void {
+    const haus = this.area.innenHaus;
+    const village = this.getArea('village');
+    const door = village.doors?.find((d) => d.haus === haus);
+    this.sfx.play('tuer');
+    this.goArea('village', door ? { x: (door.x + 0.5) * TILE, y: (door.y + 1.5) * TILE } : undefined);
   }
 
   private checkTriggers(): void {
@@ -2168,23 +2203,31 @@ export class WorldScene extends CombatScene {
       this.startEinfall();
     }
     // NPCs: 2 Positionen je Tageszeit, sie gehen sichtbar dorthin.
-    // Nachts schlafen sie in ihren Häusern (unsichtbar) - außer ein
-    // Einfall ruft alle auf die Straße (Feedback-Runde 8)
+    // Nachts schlafen sie in ihren Häusern - in den Stuben sieht man dann
+    // die Familien. Beim Einfall fliehen alle Nicht-Kämpfer ins
+    // Gemeindehaus, die Kämpfer bleiben auf der Straße (Feedback-Runde 8/9).
     const nacht = this.tageszeit > TAG.nachtAb || this.tageszeit < TAG.morgenAb;
     for (const n of this.npcEnts) {
-      const schlaeft = nacht && !this.einfallAktiv;
-      n.sprite.setVisible(!schlaeft);
-      n.label.setVisible(!schlaeft);
-      if (schlaeft) continue;
+      let sichtbar: boolean;
+      if (this.area.innen) {
+        sichtbar = n.nurAbends ? (abend || nacht) : true;
+      } else if (this.einfallAktiv) {
+        sichtbar = n.kaempfer === true;
+      } else {
+        sichtbar = !nacht;
+      }
+      n.sprite.setVisible(sichtbar);
+      n.label.setVisible(sichtbar);
+      if (!sichtbar) continue;
       const ziel = abend && n.abend ? n.abend : { x: n.x, y: n.y };
       const d = Math.hypot(ziel.x - n.curX, ziel.y - n.curY);
       if (d > 4) {
         const a = Math.atan2(ziel.y - n.curY, ziel.x - n.curX);
         n.curX += Math.cos(a) * 50 * dt;
         n.curY += Math.sin(a) * 50 * dt;
-        this.provider.applyFigure(n.sprite, n.id, angleToDir(a), Math.floor(this.time.now / 140) % 4);
+        this.provider.applyFigure(n.sprite, n.figur ?? n.id, angleToDir(a), Math.floor(this.time.now / 140) % 4);
       } else {
-        this.provider.applyFigure(n.sprite, n.id, 0, 0);
+        this.provider.applyFigure(n.sprite, n.figur ?? n.id, 0, 0);
       }
       n.sprite.setPosition(n.curX, n.curY).setDepth(n.curY);
       n.label.setPosition(n.curX, n.curY - 22);
