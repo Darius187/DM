@@ -43,15 +43,22 @@ export class SettingsScene extends Phaser.Scene {
     y = this.slider(y, 'Lautstärke Atmosphäre', () => s.volAtmosphaere, (v) => { s.volAtmosphaere = v; });
     y = this.slider(y, 'Lautstärke Musik', () => s.volMusik, (v) => { s.volMusik = v; });
     sect('GRAFIK & EFFEKTE');
-    // Bildgröße (Runde 21): wirkt sofort - das Bild rückt näher ans
-    // Geschehen, wird beim Hochskalieren aber etwas pixeliger. Das Menü
-    // baut sich nach dem Klick passend zur neuen Größe neu auf.
-    y = this.slider(y, 'Bildgröße (näher am Geschehen)', () => s.zoom, (v) => {
-      s.zoom = v;
-      saveSettings();
-      applyZoom(this.game);
-      this.scene.restart({ zurueck: this.zurueck, resume: this.resume });
-    }, 100, 200);
+    // Bildgröße (Runde 23 überarbeitet): NUR im Hauptmenü änderbar - im
+    // laufenden Spiel behalten fertig aufgebaute Szenen sonst ihre alten
+    // Maße ("zerschossenes" Bild). Im Menü baut sich danach alles frisch.
+    if (this.resume) {
+      this.add.text(this.colX, y, `Bildgröße: ${s.zoom}% - änderbar nur im Hauptmenü`, {
+        fontFamily: 'serif', fontSize: '13px', color: '#8a7a5a', fontStyle: 'italic',
+      });
+      y += 30;
+    } else {
+      y = this.slider(y, 'Bildgröße (näher am Geschehen)', () => s.zoom, (v) => {
+        s.zoom = v;
+        saveSettings();
+        applyZoom(this.game);
+        this.scene.restart({ zurueck: this.zurueck, resume: this.resume });
+      }, 100, 200);
+    }
     y = this.slider(y, 'Helligkeit', () => s.bright, (v) => { s.bright = v; }, 70, 140);
     y = this.slider(y, 'Spieler-Tempo (Kampfgefühl)', () => s.tempo, (v) => { s.tempo = v; }, 70, 110);
     y = this.toggle(y, 'Bildschirmwackeln bei Treffern', () => s.shake, (v) => { s.shake = v; });
@@ -84,8 +91,10 @@ export class SettingsScene extends Phaser.Scene {
 
     this.makeButton(w / 2 - 90, y + 24, 'STANDARD', () => {
       resetSettings();
-      applyZoom(this.game);
-      this.scene.restart({ zurueck: this.zurueck });
+      // Im laufenden Spiel NICHT live skalieren (alte Layouts würden
+      // zerschossen stehen bleiben) - das Hauptmenü zieht es später nach
+      if (!this.resume) applyZoom(this.game);
+      this.scene.restart({ zurueck: this.zurueck, resume: this.resume });
     });
     this.makeButton(w / 2 + 90, y + 24, 'ZURÜCK', () => {
       saveSettings();
