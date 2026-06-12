@@ -80,6 +80,8 @@ export interface AreaData {
   gehoeft?: { x0: number; y0: number; x1: number; y1: number }; // Wiederaufbau
   // Innenräume (Feedback-Runde 9)
   doors?: Array<Pos & { haus: string }>; // Haustüren im Dorf (Tile-Koordinaten)
+  // Gebäude-Grundflächen (Runde 18): für Haus-Sprites als Gesamtbild
+  hausPlaetze?: Array<{ x0: number; y0: number; x1: number; y1: number; id: string }>;
   innen?: boolean;                       // Innenraum: Holzboden unter Möbeln, warm
   innenHaus?: string;                    // welches Haus (für den Rückweg)
 }
@@ -460,6 +462,43 @@ export function buildBoss(rng: Rng, bossDead: boolean): AreaData {
   return a;
 }
 
+// Das Kirchenschiff (Runde 18): Vorlevel zwischen Dorf und Krypta -
+// lange Halle mit Bankreihen, am Ende der Altar, dahinter der Geheimgang.
+export function buildKirchenschiff(rng: Rng): AreaData {
+  const w = 13, h = 24;
+  const map = blank(w, h, T.WALL);
+  const a: AreaData = {
+    id: 'kirchenschiff', name: 'Kirche St. Marien - Das Schiff', dark: false, depth: 0,
+    theme: CRYPT_THEMES[4],
+    w, h, map, spawn: { x: 6.5 * TILE, y: 21.5 * TILE },
+    torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
+    breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
+    ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
+    npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
+  };
+  carve(map, 2, 2, w - 3, h - 3, T.FLOOR);
+  // Mittelgang als Läufer, Bankreihen links und rechts
+  for (let y = 5; y <= h - 5; y++) map[y][6] = T.TEPPICH;
+  for (let y = 6; y <= h - 6; y += 2) {
+    for (const x of [3, 4, 8, 9]) map[y][x] = T.STUHL;
+  }
+  // Altar am Kopfende, Kerzen, dahinter der Geheimgang hinab
+  map[3][6] = T.ALTAR;
+  a.altars.push({ x: 6 * TILE + 16, y: 3 * TILE + 16, used: false });
+  map[2][6] = T.STAIR;
+  a.downPos = { x: 6 * TILE + 16, y: 2 * TILE + 16 };
+  a.torches.push({ x: 4 * TILE + 16, y: 3 * TILE + 24, ph: rnd(rng, 0, 6.28) });
+  a.torches.push({ x: 8 * TILE + 16, y: 3 * TILE + 24, ph: rnd(rng, 0, 6.28) });
+  for (let y = 7; y < h - 4; y += 5) {
+    a.torches.push({ x: 2 * TILE + 24, y: y * TILE, ph: rnd(rng, 0, 6.28) });
+    a.torches.push({ x: (w - 3) * TILE + 8, y: y * TILE, ph: rnd(rng, 0, 6.28) });
+  }
+  // Ausgang zurück ins Dorf (Südwand)
+  map[h - 3][6] = T.HDOOR;
+  a.doors = [{ x: 6, y: h - 3, haus: 'kirche' }];
+  return a;
+}
+
 // Das Innere Grab (Runde 16): Bei 25% Leben reißt der Tempelritter den
 // Helden mit hinab - enge Kammer, keine Treppe, bis der Ritter fällt.
 export function buildBossInner(rng: Rng): AreaData {
@@ -817,6 +856,32 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
       a.rocks.push({ x: rx * TILE + 16, y: ry * TILE + 16 });
     }
   }
+
+  // Gebäude-Grundflächen für Haus-Sprites (Runde 18). Die Kirche bleibt
+  // Kacheln (eigener Look), das Gehöft wechselt mit den Ausbaustufen.
+  a.hausPlaetze = [
+    { x0: 12, y0: 22, x1: 23, y1: 28, id: 'taverne' },
+    { x0: 48, y0: 20, x1: 55, y1: 25, id: 'gemeindehaus' },
+    { x0: 57, y0: 19, x1: 62, y1: 24, id: 'backhaus' },
+    { x0: 25, y0: 18, x1: 30, y1: 21, id: 'zimmerei' },
+    { x0: 6, y0: 44, x1: 11, y1: 48, id: 'magdalena' },
+    { x0: 74, y0: 34, x1: 79, y1: 39, id: 'muehle' },
+    { x0: 30, y0: 38, x1: 36, y1: 42, id: 'schmiede' },
+    { x0: 14, y0: 8, x1: 22, y1: 13, id: 'bauernhausA' },
+    { x0: 56, y0: 44, x1: 64, y1: 49, id: 'bauernhausB' },
+    { x0: 44, y0: 38, x1: 48, y1: 41, id: 'wohnhausA' },
+    { x0: 51, y0: 38, x1: 55, y1: 41, id: 'wohnhausB' },
+    { x0: 44, y0: 44, x1: 48, y1: 47, id: 'wohnhausC' },
+    { x0: 51, y0: 44, x1: 55, y1: 47, id: 'wohnhausD' },
+    { x0: 57, y0: 38, x1: 61, y1: 41, id: 'hebamme' },
+    { x0: 74, y0: 22, x1: 78, y1: 26, id: 'badehaus' },
+    { x0: 4, y0: 34, x1: 8, y1: 37, id: 'kueferei' },
+    { x0: 24, y0: 33, x1: 28, y1: 36, id: 'weberei' },
+    { x0: 74, y0: 52, x1: 78, y1: 55, id: 'gerberei' },
+    { x0: 50, y0: 8, x1: 55, y1: 13, id: 'schule' },
+    { x0: 84, y0: 20, x1: 87, y1: 23, id: 'fischerhuette' },
+    { x0: 84, y0: 36, x1: 87, y1: 39, id: 'imkerei' },
+  ];
 
   // Stadtmauer (Feedback-Runde 7): Palisadenring auf dem inneren Rand.
   // Wege und Wasser bleiben frei - so entstehen die Tore der Salzstraße.

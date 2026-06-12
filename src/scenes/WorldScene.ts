@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir } from '../world/Enemy';
-import { buildCrypt, buildBoss, buildBossInner, buildVillage, buildForest, buildInterior, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { buildCrypt, buildBoss, buildBossInner, buildKirchenschiff, buildVillage, buildForest, buildInterior, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { LANDHERR } from '../data/dialoge';
 import storyJson from '../data/story.json';
@@ -131,6 +131,8 @@ export class WorldScene extends CombatScene {
     this.ortsText = null;
     this.hoverText = null;
     this.wasserBilder = [];
+    this.hausBilder = [];
+    this.hausEditAn = false;
     this.regenGfx = null;
     this.regenTropfen = [];
     this.regnet = false;
@@ -224,6 +226,19 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // Dorf-Musik: spielt einmal, dann 2-4 Minuten Stille (Runde 18)
+  private spieleDorfMusik(): void {
+    this.sfx.playMusic('musik_dorf', {
+      onComplete: () => {
+        const pause = (120 + Math.random() * 120) * 1000;
+        this.time.delayedCall(pause, () => {
+          const hier = this.area.id === 'village' || this.area.innen;
+          if (hier && !this.sfx.aktuelleMusik()) this.spieleDorfMusik();
+        });
+      },
+    });
+  }
+
   // --- Intro-Film (Runde 12) -------------------------------------------------
 
   private startIntroFilm(): void {
@@ -279,6 +294,47 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // Haus-Sprites (Runde 18): an/aus + Justier-Offsets im Browser-Speicher
+  hausSpriteAn = true;
+  private hausBilder: Phaser.GameObjects.Image[] = [];
+
+  hausJustierung(): Record<string, { dx: number; dy: number }> {
+    try {
+      return JSON.parse(localStorage.getItem('ravensmoor_hausjustierung') ?? '{}');
+    } catch { return {}; }
+  }
+
+  speichereHausJustierung(id: string, dx: number, dy: number): void {
+    try {
+      const j = this.hausJustierung();
+      j[id] = { dx: Math.round(dx), dy: Math.round(dy) };
+      localStorage.setItem('ravensmoor_hausjustierung', JSON.stringify(j));
+    } catch { /* Speicher gesperrt */ }
+  }
+
+  // F10: Häuser im Dorf per Maus zurechtrücken
+  hausEditAn = false;
+
+  toggleHausEdit(): void {
+    this.hausEditAn = !this.hausEditAn;
+    for (const img of this.hausBilder) {
+      if (this.hausEditAn) {
+        img.setInteractive({ draggable: true, useHandCursor: true });
+        img.setAlpha(0.85);
+        img.on('drag', (_p: Phaser.Input.Pointer, dragX: number, dragY: number) => {
+          img.setPosition(dragX, dragY);
+          const anker = img.getData('anker') as { x: number; y: number };
+          this.speichereHausJustierung(img.getData('hausId') as string, dragX - anker.x, dragY - anker.y);
+        });
+      } else {
+        img.removeInteractive();
+        img.setAlpha(1);
+        img.off('drag');
+      }
+    }
+    this.logMsg(this.hausEditAn ? 'Häuser justieren: Gebäude mit der Maus ziehen, F10-Knopf beendet.' : 'Haus-Positionen gespeichert.', 'gold');
+  }
+
   // Hover-Namen (Runde 17): Was unter dem Mauszeiger liegt, nennt sich
   private hoverText: Phaser.GameObjects.Text | null = null;
 
@@ -293,7 +349,7 @@ export class WorldScene extends CombatScene {
     const wx = ptr.worldX, wy = ptr.worldY;
     let name: string | null = null;
     for (const e of this.enemies) {
-      if (!e.versteckt && Math.hypot(e.x - wx, e.y - wy) < e.r + 10) { name = e.name; break; }
+      if (!e.versteckt && Math.hypot(e.x - wx, e.y - wy) < e.r + 10) { name = `${e.name} (Stufe ${e.depth})`; break; }
     }
     if (!name) {
       for (const n of this.npcEnts) {
@@ -397,6 +453,7 @@ export class WorldScene extends CombatScene {
     let a: AreaData;
     if (id === 'boss') a = buildBoss(rng, this.bossDead && !this.flags.ngPlus);
     else if (id === 'bossinner') a = buildBossInner(rng);
+    else if (id === 'kirchenschiff') a = buildKirchenschiff(rng);
     else if (id === 'village') {
       a = buildVillage(rng, this.aufbauStufe, this.stadtmauerStufe);
       this.applyTore(a);
@@ -461,7 +518,12 @@ export class WorldScene extends CombatScene {
       const wechselbar = !aktuell || aktuell.startsWith('musik_dorf') || aktuell.startsWith('musik_wald') || aktuell.startsWith('musik_krypta');
       if (wechselbar) {
         const loopName = a.dark && id !== 'boss' ? 'musik_krypta' : (id === 'village' || a.innen) ? 'musik_dorf' : id === 'wald' ? 'musik_wald' : '';
-        if (loopName && this.sfx.has(loopName) && aktuell !== loopName) this.sfx.playMusic(loopName, { loop: true });
+        // Dorf: Stück spielt EINMAL, dann einige Minuten Pause (Runde 18)
+        if (loopName === 'musik_dorf' && this.sfx.has('musik_dorf') && aktuell !== 'musik_dorf') {
+          this.spieleDorfMusik();
+        } else if (loopName && loopName !== 'musik_dorf' && this.sfx.has(loopName) && aktuell !== loopName) {
+          this.sfx.playMusic(loopName, { loop: true });
+        }
       }
     }
     // Kleine Stuben mittig im Bild statt oben links in der Ecke
@@ -470,6 +532,11 @@ export class WorldScene extends CombatScene {
     const by = Math.min(0, -(this.scale.height - mapH) / 2);
     this.cameras.main.setBounds(bx, by, Math.max(mapW, this.scale.width), Math.max(mapH, this.scale.height));
     this.cameras.main.setBackgroundColor(a.innen ? '#0e0a06' : a.dark ? '#050403' : '#0c1208');
+    // Kirchenschiff: Stille, Kerzen - und ein übler Hauch (Runde 18)
+    if (id === 'kirchenschiff') {
+      this.logMsg('Der Gestank der Verwesung liegt in der Luft.', 'bad');
+      if (this.sfx.has('musik_kirche')) this.sfx.playMusic('musik_kirche', { loop: true });
+    }
     // Einfall: Angreifer kehren aus dem Zwischenspeicher zurück
     if (id === 'village' && this.einfallAktiv && this.einfallRest.length) {
       for (const r of this.einfallRest) {
@@ -534,6 +601,7 @@ export class WorldScene extends CombatScene {
     for (const img of this.tileImages) img.destroy();
     this.tileImages = [];
     this.wasserBilder = [];
+    this.hausBilder = [];
     for (const b of this.breakableEnts) b.img.destroy();
     this.breakableEnts = [];
     this.hittables = [];
@@ -559,6 +627,14 @@ export class WorldScene extends CombatScene {
         const id = a.map[ty][tx];
         const name = tileNameAt(a.map, tx, ty);
         const variant = ((tx * 73856093) ^ (ty * 19349663)) % 7;
+        // Haus-Sprites (Runde 18): Gebäude mit Gesamtbild zeichnen keine
+        // Wand-Kacheln mehr - nur Gras darunter, Kollision bleibt
+        const imHaus = this.hausSpriteAn && a.hausPlaetze?.find((hp) => tx >= hp.x0 && tx <= hp.x1 && ty >= hp.y0 && ty <= hp.y1);
+        if (imHaus && (id === T.HWALL || id === T.HDOOR)) {
+          const ground = this.provider.tileKey('gras', variant, a.depth, a.theme);
+          this.tileImages.push(this.add.image(tx * TILE + 16, ty * TILE + 16, ground).setDepth(-10));
+          continue;
+        }
         if (STANDING.has(id)) {
           const groundName = a.innen ? 'holzboden' : a.dark ? 'krypta_boden' : 'gras';
           const ground = this.provider.tileKey(groundName, variant, a.depth, a.theme);
@@ -582,7 +658,12 @@ export class WorldScene extends CombatScene {
             if (nachbarn >= 4) objName = 'wald';
           }
           const obj = this.provider.objectKey(objName, variant, a.depth, a.theme);
-          this.tileImages.push(this.add.image(tx * TILE + 16, ty * TILE + 16, obj).setDepth(ty * TILE + 26));
+          const objImg = this.add.image(tx * TILE + 16, ty * TILE + 16, obj).setDepth(ty * TILE + 26);
+          // Bäume ragen 2 Felder hoch (Runde 18: wirkten wie Büsche)
+          if (objName === 'baum' || objName === 'wald') {
+            objImg.setScale(1.85).setOrigin(0.5, 0.7);
+          }
+          this.tileImages.push(objImg);
           continue;
         }
         const key = this.provider.tileKey(name, variant, a.depth, a.theme);
@@ -699,6 +780,24 @@ export class WorldScene extends CombatScene {
         }
       }
       this.tileImages.push(kanten as unknown as Phaser.GameObjects.Image);
+    }
+    // Haus-Sprites als Gesamtbilder über die Grundflächen (Runde 18);
+    // F10 "HÄUSER JUSTIEREN" verschiebt sie, Werte überleben im Browser
+    if (this.hausSpriteAn && a.hausPlaetze) {
+      const just = this.hausJustierung();
+      a.hausPlaetze.forEach((hp, i) => {
+        const key = this.provider.tileKey('haus', i + 1, 0);
+        if (!key.startsWith('hs_tile_haus')) return; // kein Sprite vorhanden
+        const breite = (hp.x1 - hp.x0 + 1) * TILE;
+        const j = just[hp.id] ?? { dx: 0, dy: 0 };
+        const img = this.add.image((hp.x0 + hp.x1 + 1) / 2 * TILE + j.dx, (hp.y1 + 1) * TILE + 6 + j.dy, key)
+          .setOrigin(0.5, 1).setDepth(hp.y1 * TILE + 16);
+        img.setScale((breite * 1.3) / img.width);
+        img.setData('hausId', hp.id);
+        img.setData('anker', { x: (hp.x0 + hp.x1 + 1) / 2 * TILE, y: (hp.y1 + 1) * TILE + 6 });
+        this.hausBilder.push(img);
+        this.tileImages.push(img);
+      });
     }
     // Gefällte Bäume dieses Gebiets: Stümpfe zeigen, bis sie nachwachsen
     for (const key of this.gefaellteBaeume.keys()) {
@@ -2032,11 +2131,22 @@ export class WorldScene extends CombatScene {
             return;
           }
           this.sfx.play('tuer');
-          this.goArea('crypt1');
+          this.goArea('kirchenschiff');
         },
       };
     }
     if (tid === T.HDOOR) {
+      if (this.area.id === 'kirchenschiff') {
+        return {
+          text: `Hinaus auf den Kirchhof - ${ik}`,
+          action: () => {
+            const village = this.getArea('village');
+            const door = village.cryptDoor;
+            this.sfx.play('tuer');
+            this.goArea('village', door ? { x: door.x, y: door.y + 40 } : undefined);
+          },
+        };
+      }
       if (this.area.innen) {
         return { text: `Nach draußen - ${ik}`, action: () => this.leaveInterior() };
       }
@@ -2053,7 +2163,8 @@ export class WorldScene extends CombatScene {
         text: indieTiefe ? `Abstieg in die Endlose Tiefe - ${ik} zum Hinabsteigen` : `Treppe hinab - ${ik} zum Hinabsteigen`,
         action: () => {
           const id = this.area.id;
-          if (id === 'crypt5') this.goArea('boss');
+          if (id === 'kirchenschiff') this.goArea('crypt1');
+          else if (id === 'crypt5') this.goArea('boss');
           else if (id === 'boss' || id === 'bossinner') this.goArea('crypt6');
           else if (id.startsWith('crypt')) this.goArea(`crypt${parseInt(id.replace('crypt', ''), 10) + 1}`);
         },
@@ -2065,9 +2176,9 @@ export class WorldScene extends CombatScene {
         action: () => {
           const id = this.area.id;
           if (id === 'crypt1') {
-            const village = this.getArea('village');
-            const door = village.cryptDoor;
-            this.goArea('village', door ? { x: door.x, y: door.y + 40 } : undefined);
+            // hinauf ins Kirchenschiff (Runde 18: Vorlevel)
+            const schiff = this.getArea('kirchenschiff');
+            this.goArea('kirchenschiff', { x: schiff.downPos!.x, y: schiff.downPos!.y + 40 });
           } else if (id === 'boss') this.goArea('crypt5', this.getArea('crypt5').downPos);
           else if (id === 'bossinner') this.goArea('boss');
           else if (id === 'crypt6') this.goArea('boss');
@@ -2529,7 +2640,7 @@ export class WorldScene extends CombatScene {
     this.p.gold -= lost;
     const c = this.add.container(0, 0).setScrollFactor(0).setDepth(6000);
     const w = this.scale.width, h = this.scale.height;
-    const bg = this.add.rectangle(0, 0, w, h, 0x000000, 0.9).setOrigin(0);
+    const bg = this.add.rectangle(0, 0, w, h, 0x000000, 0.55).setOrigin(0); // Runde 18: Welt bleibt sichtbar
     bg.setInteractive();
     c.add(bg);
     this.sfx.playMusic('musik_tod');

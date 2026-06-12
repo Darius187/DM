@@ -197,6 +197,18 @@ export class ShopUI {
     }
     this.sfx.play('muenzen');
     this.build();
+    this.zeigeKauf();
+  }
+
+  // Kauf-Rückmeldung (Runde 18): goldenes Aufblitzen am Fensterrand
+  private zeigeKauf(): void {
+    if (!this.container) return;
+    const t = this.scene.add.text(220, 12, '✓ GEKAUFT', {
+      fontFamily: 'serif', fontSize: '14px', color: '#e0b53a', letterSpacing: 2,
+      stroke: '#000000', strokeThickness: 3,
+    }).setScrollFactor(0);
+    this.container.add(t);
+    this.scene.tweens.add({ targets: t, alpha: 0, y: t.y - 14, duration: 900, onComplete: () => t.destroy() });
   }
 
   private sell(it: Item): void {

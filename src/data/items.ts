@@ -73,7 +73,7 @@ export const GEM_POWER = { min: 2, max: 4 } as const;
 
 // Raritätsfarben wie in der Referenz (CSS r0-r3)
 export const RARITY_COLORS: Readonly<Record<Rarity, string>> = {
-  0: '#d8cfb8', // Gewöhnlich (weiß)
+  0: '#a8a294', // Gewöhnlich (grau, hebt sich von der Schriftfarbe ab - Runde 18)
   1: '#8aa6e8', // Magisch (blau)
   2: '#e0b53a', // Selten (gold)
   3: '#b048e8', // Episch (lila)

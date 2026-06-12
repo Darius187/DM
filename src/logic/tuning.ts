@@ -9,6 +9,8 @@ export const TUNING = {
   kryptaTempo: 0.65,
   // Runde 16: Krypta-Gegner schleichen (Horror statt Gewusel)
   kryptaGegnerTempo: 0.72,
+  // Runde 18: Feinjustierung je Gegnertyp (F10 - Pfeile wechseln den Typ)
+  typ: {} as Record<string, { tempo: number; schaden: number }>,
 };
 
 export const TUNING_ROWS: Array<[keyof typeof TUNING, string, number, number, number]> = [

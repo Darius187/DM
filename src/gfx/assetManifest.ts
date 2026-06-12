@@ -29,14 +29,14 @@ export const SOUNDS = [
   // Welt
   'schritte_gras', 'schritte_stein', 'tuer', 'truhe', 'muenzen', 'trank',
   'holz_hacken', 'stein_hacken', 'feuer_knistern', 'muehle', 'schmiede_hammer',
-  'huhn', 'schwein', 'kuh', 'hund', 'kraehen',
+  'huhn', 'schwein', 'kuh', 'hund', 'wolf', 'kraehen',
   // Atmosphäre (Loops)
   'dorf_wind', 'krypta_droehnen', 'wald_nacht',
   // UI
   'klick', 'item_episch', 'levelup', 'fertigkeit_neu',
   // Musik und große Stimmungs-Sounds (Runde 12, .mp3 vom Autor)
   'musik_intro', 'musik_einfall', 'musik_boss', 'musik_menue', 'musik_tod',
-  'musik_dorf', 'musik_wald', 'musik_krypta',
+  'musik_dorf', 'musik_wald', 'musik_krypta', 'musik_kirche',
   'herzschlag', 'regen_draussen', 'regen_drinnen',
   'krypta_betreten', 'krypta_grusel1', 'krypta_grusel2', 'krypta_grusel3',
   'krypta_grusel4', 'krypta_grusel5',
@@ -66,6 +66,7 @@ export const TILE_NAMES = [
   'fass', 'kiste', 'krug', 'heuhaufen', 'streckbank', 'kaefig', 'kerzenschrein',
   'spinnwebe', 'knochenhaufen', 'palisade', 'palisade_seite', 'stadttor',
   'holzboden', 'bett', 'tisch', 'stuhl', 'kamin', 'teppich', 'tresen',
+  'haus',
 ] as const;
 
 // Wie viele nummerierte Varianten je Tile-Name gesucht werden

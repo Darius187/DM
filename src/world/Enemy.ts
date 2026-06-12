@@ -61,7 +61,7 @@ const AMBIENT_SOUND: Partial<Record<EnemyTypeId, string>> = {
   schuetze: 'skelett_klappern',
   schatten: 'schatten_fluestern',
   templer: 'templer_stimme',
-  wolf: 'hund',
+  wolf: 'wolf',
 };
 
 let nextId = 1;
@@ -343,7 +343,7 @@ export class Enemy {
         this.lungeT = 0.35;
         this.lungeVx = Math.cos(ang) * 330;
         this.lungeVy = Math.sin(ang) * 330;
-        host.playSound('hund');
+        host.playSound('wolf');
         break;
     }
   }

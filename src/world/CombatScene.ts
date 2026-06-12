@@ -266,6 +266,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   // --- Entwicklungskasten (F10) ----------------------------------------------
   private devPanel: Phaser.GameObjects.Container | null = null;
+  // Gegnertyp-Auswahl im Entwicklungskasten (Runde 18)
+  protected devTypIdx = 0;
+  // Häuser justieren: Welt überschreibt
+  toggleHausEdit(): void { /* Welt überschreibt */ }
+
   // UI-Verschiebemodus (Runde 11): Leiste, Dialograhmen und Meldungs-Log
   // per Maus ziehen; die Versätze landen in den Einstellungen und im Bericht
   protected uiEditMode = false;
@@ -321,23 +326,24 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       return;
     }
     const c = this.add.container(20, 80).setScrollFactor(0).setDepth(6500);
-    const h = TUNING_ROWS.length * 34 + 96;
+    const h = TUNING_ROWS.length * 34 + 96 + 130;
     const bg = this.add.rectangle(0, 0, 340, h, 0x171108, 0.97).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
     bg.setInteractive();
     c.add(bg);
     c.add(this.add.text(12, 8, 'ENTWICKLUNGSKASTEN (F10)', { fontFamily: 'serif', fontSize: '14px', color: '#c9a227', letterSpacing: 1 }));
     c.add(this.add.text(12, 26, 'Wirkt sofort auf NEU gespawnte Gegner.', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }));
     let y = 48;
+    const T2 = TUNING as unknown as Record<string, number>;
     for (const [key, label, min, max, step] of TUNING_ROWS) {
       c.add(this.add.text(12, y, label, { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8' }));
-      const valText = this.add.text(250, y, TUNING[key].toFixed(2), { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' }).setOrigin(0.5, 0);
+      const valText = this.add.text(250, y, T2[key].toFixed(2), { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' }).setOrigin(0.5, 0);
       const mk = (x: number, lbl: string, delta: number) => {
         const b = this.add.text(x, y, lbl, {
           fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8', backgroundColor: '#221808', padding: { x: 8, y: 1 },
         }).setInteractive({ useHandCursor: true });
         b.on('pointerdown', () => {
-          TUNING[key] = Math.round(Math.min(max, Math.max(min, TUNING[key] + delta)) * 100) / 100;
-          valText.setText(TUNING[key].toFixed(2));
+          T2[key] = Math.round(Math.min(max, Math.max(min, T2[key] + delta)) * 100) / 100;
+          valText.setText(T2[key].toFixed(2));
           this.sfx.play('klick');
         });
         c.add(b);
@@ -347,6 +353,63 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       c.add(valText);
       y += 34;
     }
+    // Gegnertyp-Feinjustierung (Runde 18): Typ wählen, Tempo/Schaden drehen
+    c.add(this.add.text(12, y + 2, 'JE GEGNERTYP:', { fontFamily: 'serif', fontSize: '12px', color: '#c9a227', letterSpacing: 1 }));
+    y += 20;
+    const typen = ['pest', 'skelett', 'schuetze', 'schatten', 'wolf', 'ratte', 'templer'];
+    const typText = this.add.text(80, y, typen[this.devTypIdx], { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8' });
+    const mkTyp = (x: number, lbl: string, delta: number) => {
+      const b = this.add.text(x, y, lbl, {
+        fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8', backgroundColor: '#221808', padding: { x: 8, y: 1 },
+      }).setInteractive({ useHandCursor: true });
+      b.on('pointerdown', () => {
+        this.devTypIdx = (this.devTypIdx + delta + typen.length) % typen.length;
+        typText.setText(typen[this.devTypIdx]);
+        zeichneTypWerte();
+        this.sfx.play('klick');
+      });
+      c.add(b);
+    };
+    mkTyp(12, '<', -1);
+    mkTyp(160, '>', 1);
+    c.add(typText);
+    y += 24;
+    const typZeilen: Phaser.GameObjects.Text[] = [];
+    const zeichneTypWerte = () => {
+      const t = TUNING.typ[typen[this.devTypIdx]] ?? { tempo: 1, schaden: 1 };
+      typZeilen[0]?.setText(t.tempo.toFixed(2));
+      typZeilen[1]?.setText(t.schaden.toFixed(2));
+    };
+    (['tempo', 'schaden'] as const).forEach((feld, fi) => {
+      c.add(this.add.text(12, y, feld === 'tempo' ? 'Typ-Tempo x' : 'Typ-Schaden x', { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8' }));
+      const wert = this.add.text(250, y, '1.00', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' }).setOrigin(0.5, 0);
+      typZeilen[fi] = wert;
+      const mkW = (x: number, lbl: string, delta: number) => {
+        const b = this.add.text(x, y, lbl, {
+          fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8', backgroundColor: '#221808', padding: { x: 8, y: 1 },
+        }).setInteractive({ useHandCursor: true });
+        b.on('pointerdown', () => {
+          const typ = typen[this.devTypIdx];
+          if (!TUNING.typ[typ]) TUNING.typ[typ] = { tempo: 1, schaden: 1 };
+          TUNING.typ[typ][feld] = Math.round(Math.min(10, Math.max(0.1, TUNING.typ[typ][feld] + delta)) * 100) / 100;
+          zeichneTypWerte();
+          this.sfx.play('klick');
+        });
+        c.add(b);
+      };
+      mkW(210, '-', -0.1);
+      mkW(280, '+', 0.1);
+      c.add(wert);
+      y += 26;
+    });
+    zeichneTypWerte();
+    y += 4;
+    const hausBtn = this.add.text(12, y + 34, 'HÄUSER JUSTIEREN', {
+      fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
+      backgroundColor: '#221808', padding: { x: 12, y: 5 },
+    }).setInteractive({ useHandCursor: true });
+    hausBtn.on('pointerdown', () => this.toggleHausEdit());
+    c.add(hausBtn);
     const uiBtn = this.add.text(180, y + 6, this.uiEditMode ? 'UI FIXIEREN' : 'UI VERSCHIEBEN', {
       fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
       backgroundColor: '#221808', padding: { x: 12, y: 5 },
@@ -784,12 +847,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   damageEnemy(e: Enemy, dmg: number, kx = 0, ky = 0, col?: string | null, melee = true): void {
     // Schildträger (Runde 11): blocken Treffer von vorn zur Hälfte der Zeit -
     // dann nur 30% Schaden, kein Rückstoß, kein Zurückweichen
-    if (e.schild && e.hp > 0 && Math.random() < 0.5) {
+    if (e.schild && e.hp > 0 && Math.random() < 0.7) {
       const zumSpieler = Math.atan2(this.py - e.y, this.px - e.x);
       const blick = [Math.PI / 2, Math.PI, 0, -Math.PI / 2][e.dir];
       let diff = zumSpieler - blick;
       diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      if (Math.abs(diff) < 1.1) {
+      if (Math.abs(diff) < 1.35) {
         const rest = Math.max(1, Math.round(dmg * 0.3));
         e.hp -= rest;
         e.hitFlash = 0.06;
@@ -926,6 +989,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Krypta-Gegner schleichen statt wuseln (Runde 16: Spannung) -
     // Faktor im Entwicklungskasten justierbar
     if (this.areaDark() && !e.boss) e.speed *= TUNING.kryptaGegnerTempo;
+    // Je-Typ-Feinjustierung (Runde 18, F10)
+    const typTuning = TUNING.typ[type];
+    if (typTuning) {
+      e.speed *= typTuning.tempo;
+      e.dmg = Math.round(e.dmg * typTuning.schaden);
+    }
     // Manche Skelette tragen Schilde (Runde 11) - sie blocken von vorn.
     // Ab Ebene 2 (Runde 17), und das Schild ist im Bild SICHTBAR
     if (type === 'skelett' && !e.boss && depth >= 2 && this.rng.random() < 0.3) {
