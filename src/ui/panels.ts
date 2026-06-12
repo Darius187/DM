@@ -88,7 +88,7 @@ export class UIPanels {
   private build(): void {
     this.container?.destroy();
     const sw = this.scene.scale.width, sh = this.scene.scale.height;
-    const w = Math.min(760, sw - 24);
+    const w = Math.min(880, sw - 24);
     const h = Math.min(sh - 36, 560);
     const off = getSettings().ui.fenster;
     const c = this.scene.add.container((sw - w) / 2 + off.x, (sh - h) / 2 + off.y).setScrollFactor(0).setDepth(5100);
@@ -229,14 +229,17 @@ export class UIPanels {
 
   // --- rechte Seite: Inventar mit Blättern -----------------------------------
 
-  private filter: 'alle' | 'weapon' | 'armor' | 'ring' | 'rest' = 'alle';
+  private filter: 'alle' | 'weapon' | 'armor' | 'schild' | 'ring' | 'gem' | 'scroll' | 'rest' = 'alle';
 
   private buildInventorySide(c: Phaser.GameObjects.Container, x0: number, w: number, h: number): void {
     const p = this.getPlayer();
     c.add(this.scene.add.text(x0, 10, `INVENTAR (${p.inv.length})`, { fontFamily: 'serif', fontSize: '16px', color: GOLD, letterSpacing: 2 }));
     c.add(this.scene.add.text(x0 + w, 14, 'Maus-Rad: blättern', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }).setOrigin(1, 0));
     // Filter-Reiter (Feedback-Runde 2)
-    const tabs: Array<[typeof this.filter, string]> = [['alle', 'ALLE'], ['weapon', 'WAFFEN'], ['armor', 'RÜSTUNG'], ['ring', 'RINGE'], ['rest', 'SONSTIGES']];
+    const tabs: Array<[typeof this.filter, string]> = [
+      ['alle', 'ALLE'], ['weapon', 'WAFFEN'], ['armor', 'RÜSTUNG'], ['schild', 'SCHILDE'],
+      ['ring', 'RINGE'], ['gem', 'STEINE'], ['scroll', 'ROLLEN'], ['rest', 'SONST'],
+    ];
     let tx2 = x0;
     for (const [id, lbl] of tabs) {
       const t = this.scene.add.text(tx2, 34, lbl, {
@@ -259,7 +262,7 @@ export class UIPanels {
     const inv = p.inv
       .filter((it) => it !== p.weapon && it !== p.armorIt && it !== p.ring && it !== p.schildIt)
       .filter((it) => this.filter === 'alle' ? true
-        : this.filter === 'rest' ? !['weapon', 'armor', 'ring'].includes(it.kind)
+        : this.filter === 'rest' ? !['weapon', 'armor', 'schild', 'ring', 'gem', 'scroll'].includes(it.kind)
         : it.kind === this.filter)
       .sort((a, b) => {
         // Edelsteine tragen ihre Güte in power, nicht in val (Runde 28)
@@ -305,10 +308,17 @@ export class UIPanels {
       fontFamily: 'serif', fontSize: '13px', color: RARITY_COLORS[rar],
     }));
     const typ = it.kind === 'weapon' ? KLASSEN_NAMEN[it.weaponClass ?? 'schwert'] : TYP_NAMEN[it.kind] ?? '';
-    const wert = it.kind === 'weapon' ? `${it.val + (it.upgrade ?? 0) * 2} Schaden` : it.kind === 'armor' ? `${it.val + (it.upgrade ?? 0)} Rüstung` : '';
-    c.add(this.scene.add.text(x0 + 40, y + 21, `${typ}${wert ? ' · ' + wert : ''}`, {
+    const wert = it.kind === 'weapon' ? `${it.val + (it.upgrade ?? 0) * 2} Schaden` : (it.kind === 'armor' || it.kind === 'schild') ? `${it.val + (it.upgrade ?? 0)} Rüstung` : '';
+    const grund = this.scene.add.text(x0 + 40, y + 21, `${typ}${wert ? ' · ' + wert : ''}`, {
       fontFamily: 'serif', fontSize: '10.5px', color: '#9a8c6e',
-    }));
+    });
+    c.add(grund);
+    if (it.boni.length) {
+      // Bonus-Werte grün, direkt dahinter (Runde 29)
+      c.add(this.scene.add.text(x0 + 40 + grund.width + 8, y + 21, it.boni.map((b) => b.t.replace('#', String(b.v))).join(' · '), {
+        fontFamily: 'serif', fontSize: '10.5px', color: '#6ad06a',
+      }));
+    }
     if (equipped) {
       c.add(this.scene.add.text(x0 + w - 6, y + 4, 'ANGELEGT', { fontFamily: 'serif', fontSize: '9px', color: GOLD }).setOrigin(1, 0));
     }
@@ -391,8 +401,10 @@ export class UIPanels {
     const lines: Array<[string, string]> = [
       [it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), RARITY_COLORS[rar]],
       [`${RARITY_NAMES[rar]}${typ ? ' · ' + typ : ''}`, '#8a7a5a'],
-      [itemStatLine(it), BONE],
+      [itemStatLine(it, false), BONE],
     ];
+    // Bonus-Werte IMMER grün (Runde 29)
+    for (const b of it.boni) lines.push([`+ ${b.t.replace('#', String(b.v)).replace(/^\+/, '')}`, '#6ad06a']);
     // Differenzen zum aktuellen Stand, grün/rot (Feedback-Runde 1)
     if ((it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'ring' || it.kind === 'schild')
       && it !== p.weapon && it !== p.armorIt && it !== p.ring && it !== p.schildIt) {

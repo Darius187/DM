@@ -20,6 +20,9 @@ export const TUNING = {
   // Runde 27: Schlagtempo der Gegner - höher = kürzeres Ausholen und
   // kürzere Pausen zwischen den Hieben
   gegnerSchlagtempo: 1.0,
+  // Runde 29: skaliert Konter beim Rückzug, Gegenstoß aus der Deckung
+  // und das Sammeln vor dem Sturm (0 = stumpf wie früher)
+  gegnerCleverness: 1.0,
   // Runde 18: Feinjustierung je Gegnertyp (F10 - Pfeile wechseln den Typ)
   typ: {} as Record<string, { tempo: number; schaden: number }>,
   // Runde 21: Dev-Schalter - alle Zauber/Fähigkeiten ohne Stufen-Sperre
@@ -38,4 +41,5 @@ export const TUNING_ROWS: Array<[keyof typeof TUNING, string, number, number, nu
   ['spielerSchwungBreite', 'Held: Schwung-Breite x', 0.5, 2, 0.1],
   ['gegnerReichweite', 'Gegner: Hieb-Reichweite x', 0.5, 3, 0.1],
   ['gegnerSchlagtempo', 'Gegner: Schlagtempo x', 0.3, 3, 0.1],
+  ['gegnerCleverness', 'Gegner: Cleverness x', 0, 2, 0.25],
 ];

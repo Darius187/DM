@@ -29,6 +29,9 @@ export interface Settings {
   vorlesen: boolean;      // Dialogtexte per Sprachausgabe vorlesen
   // UI-Versatz (im Entwicklungskasten verschiebbar, Runde 11)
   ui: { hotbar: { x: number; y: number }; mausleiste: { x: number; y: number }; dialog: { x: number; y: number }; log: { x: number; y: number }; orbHp: { x: number; y: number }; orbMp: { x: number; y: number }; fenster: { x: number; y: number } };
+  // Chronik als Chat-Fenster (Runde 29): frei verschieb- UND skalierbar;
+  // y zählt vom UNTEREN Bildrand (Chat-Verankerung wie bei WoW)
+  chronikBox: { x: number; y: number; w: number; h: number };
   kb: KeyBindings;
 }
 
@@ -48,6 +51,7 @@ export const DEF_SETTINGS: Settings = {
   tasten: { t1: 's1', t2: 's2', t3: 's3', t4: 'kettenblitz', t5: 'frostnova', t6: 'bannkreis', t9: 'feuerregen', t0: 'aderlass', tr: 'waffe1', tt: 'waffe2' },
   vorlesen: false,
   ui: { hotbar: { x: 0, y: 0 }, mausleiste: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 } },
+  chronikBox: { x: 10, y: -420, w: 380, h: 300 },
   kb: {
     roll: ' ', interact: 'e', inv: 'i', charakter: 'c',
     pot: 'q', mpot: 'f', s1: '1', s2: '2', s3: '3',
@@ -70,6 +74,7 @@ export function getSettings(): Settings {
       current.kb = { ...DEF_SETTINGS.kb, ...(saved.kb ?? {}) };
       current.maus = { ...DEF_SETTINGS.maus, ...(saved.maus ?? {}) };
       current.tasten = { ...DEF_SETTINGS.tasten, ...(saved.tasten ?? {}) };
+      current.chronikBox = { ...DEF_SETTINGS.chronikBox, ...(saved.chronikBox ?? {}) };
       current.ui = {
         hotbar: { ...DEF_SETTINGS.ui.hotbar, ...(saved.ui?.hotbar ?? {}) },
         mausleiste: { ...DEF_SETTINGS.ui.mausleiste, ...(saved.ui?.mausleiste ?? {}) },

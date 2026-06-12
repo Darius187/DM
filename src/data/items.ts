@@ -117,7 +117,8 @@ export const KILL_DROPS = {
   potionChance: 0.10,
   mpotionChance: 0.07,
   gearChance: 0.11,
-  gemChance: 0.05,
+  // Runde 29: 0,05 -> 0,02 - die Splitter fluteten das Inventar
+  gemChance: 0.02,
   scrollChance: 0.04, // NEU: Zauberrollen als Drops (Masterprompt 6.2)
 } as const;
 

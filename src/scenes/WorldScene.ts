@@ -29,7 +29,7 @@ import { DEATH, SHRINE } from '../data/kampf';
 import { TEMPLERKLINGE, BOSS_GOLD } from '../data/items';
 import { rollGear, rollGem } from '../logic/loot';
 import { recalc } from '../logic/playerState';
-import { getSettings } from '../logic/settings';
+import { getSettings, saveSettings } from '../logic/settings';
 import { seededRng, pick, ri } from '../logic/rng';
 import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type SaveData } from '../logic/save';
 import { storage } from '../logic/gameStorage';
@@ -1161,7 +1161,7 @@ export class WorldScene extends CombatScene {
     if (id === 'crypt1') this.sfx.play('krypta_betreten');
     // Bossgrab: solange der Ritter lebt, sind die Gittertore versiegelt -
     // auch wenn man mitten im Kampf geflohen ist und wiederkommt
-    if (id === 'boss' && this.bossKampfSteht()) this.resetBossTore(a);
+    if (id === 'boss' && this.bossKampfSteht() && !a.geleert) this.resetBossTore(a);
     if (id === 'crypt3') this.flags.ebene3 = true;
     this.gruselT = 6 + Math.random() * 8;
     // Gebiets-Musik (Runde 17): liegt musik_dorf/wald/krypta als Loop vor,
@@ -3282,9 +3282,10 @@ export class WorldScene extends CombatScene {
       this.flags.ngPlus = true;
       // Du bleibst im Grab und lootest in Ruhe; die Ebenen erwachen erst,
       // wenn du sie wieder betrittst (Feedback-Runde 5)
-      // Auch das Bossgrab erwacht neu: versiegelte Tore, Leibwache, dann
-      // der Schattenfürst (regeneriert sich erst beim nächsten Betreten)
-      for (const id of ['crypt1', 'crypt2', 'crypt3', 'crypt4', 'crypt5', 'boss']) this.areas.delete(id);
+      for (const id of ['crypt1', 'crypt2', 'crypt3', 'crypt4', 'crypt5']) this.areas.delete(id);
+      // Das Bossgrab bleibt nach dem Sieg LEER (Runde 29: "Boss war sofort
+      // wieder da") - erst der eigene Tod weckt es als Neues Spiel+ neu
+      this.getArea('boss').geleert = true;
       this.logMsg('Die Krypta regt sich erneut - stärker als zuvor (Neues Spiel+).', 'magic');
       this.logMsg('Taste 8: Stadtportal nach Ravensmoor.', 'gold');
     };
@@ -3543,6 +3544,8 @@ export class WorldScene extends CombatScene {
     if (letzter && letzter.text === text) return; // keine Doppel-Einträge
     this.chronikEintraege.push({ kat, text, tag: this.tag });
     if (this.chronikEintraege.length > 240) this.chronikEintraege.shift();
+    // Offenes Chat-Fenster zeigt Neues sofort (Runde 29)
+    if (this.chronikFenster && kat === this.chronikTab) this.baueChronik();
   }
 
   protected override toggleChronik(): void {
@@ -3551,45 +3554,103 @@ export class WorldScene extends CombatScene {
       this.chronikFenster = null;
       return;
     }
-    const off = getSettings().ui.fenster;
-    const w = Math.min(460, this.scale.width - 30);
-    const h = Math.min(440, this.scale.height - 80);
-    const c = this.add.container((this.scale.width - w) / 2 + off.x, 40 + off.y).setScrollFactor(0).setDepth(5200);
+    this.baueChronik();
+    this.sfx.play('klick');
+  }
+
+  // Chronik als Chat-Fenster (Runde 29, Wunsch "wie bei WoW"): links unten
+  // verankert, halbtransparent, neueste Einträge unten; Kopfzeile zieht,
+  // die Ecke unten rechts skaliert - beides bleibt gespeichert
+  private baueChronik(): void {
+    this.chronikFenster?.destroy();
+    const box = getSettings().chronikBox;
+    const w = Math.max(260, Math.min(720, box.w));
+    const h = Math.max(160, Math.min(540, box.h));
+    const x = Math.max(0, Math.min(this.scale.width - w, box.x));
+    const y = Math.max(0, Math.min(this.scale.height - h, this.scale.height + box.y));
+    const c = this.add.container(x, y).setScrollFactor(0).setDepth(5200);
     this.chronikFenster = c;
-    const bg = this.add.rectangle(0, 0, w, h, 0x14100a, 0.97).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
+    const bg = this.add.rectangle(0, 0, w, h, 0x14100a, 0.82).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
     bg.setInteractive();
     c.add(bg);
-    c.add(this.add.text(14, 8, 'CHRONIK (H zum Schließen)', { fontFamily: 'serif', fontSize: '15px', color: '#c9a227', letterSpacing: 2 }));
-    let tx = 14;
+    // Kopfzeile: Titel + Tabs + Ziehen
+    const kopf = this.add.rectangle(0, 0, w - 20, 26, 0xffffff, 0.03).setOrigin(0)
+      .setInteractive({ draggable: true, useHandCursor: true });
+    let startZeiger: { x: number; y: number } | null = null;
+    let startPos = { x: 0, y: 0 };
+    kopf.on('dragstart', (pz: Phaser.Input.Pointer) => {
+      startZeiger = { x: pz.x, y: pz.y };
+      startPos = { x: c.x, y: c.y };
+    });
+    kopf.on('drag', (pz: Phaser.Input.Pointer) => {
+      if (!startZeiger) return;
+      c.x = startPos.x + (pz.x - startZeiger.x);
+      c.y = startPos.y + (pz.y - startZeiger.y);
+      box.x = Math.round(c.x);
+      box.y = Math.round(c.y - this.scale.height);
+    });
+    kopf.on('dragend', () => {
+      startZeiger = null;
+      saveSettings();
+    });
+    c.add(kopf);
+    c.add(this.add.text(10, 6, 'CHRONIK', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227', letterSpacing: 2 }));
+    let tx = 90;
     const tabs: Array<[typeof this.chronikTab, string]> = [['ereignis', 'Ereignisse'], ['geschichte', 'Geschichte'], ['beute', 'Beute']];
     for (const [id, lbl] of tabs) {
-      const t = this.add.text(tx, 32, lbl, {
-        fontFamily: 'serif', fontSize: '13px', letterSpacing: 1,
+      const t = this.add.text(tx, 5, lbl, {
+        fontFamily: 'serif', fontSize: '12px', letterSpacing: 1,
         color: this.chronikTab === id ? '#c9a227' : '#8a7a5a',
-        backgroundColor: this.chronikTab === id ? '#221808' : undefined, padding: { x: 8, y: 3 },
+        backgroundColor: this.chronikTab === id ? '#221808' : undefined, padding: { x: 6, y: 2 },
       }).setInteractive({ useHandCursor: true });
       t.on('pointerdown', () => {
         this.chronikTab = id;
-        this.toggleChronik();
-        this.toggleChronik();
+        this.baueChronik();
         this.sfx.play('klick');
       });
       c.add(t);
-      tx += t.width + 12;
+      tx += t.width + 8;
     }
-    const passend = this.chronikEintraege.filter((e2) => e2.kat === this.chronikTab).slice(-18);
-    let y = 62;
-    if (!passend.length) c.add(this.add.text(14, y, 'Noch nichts verzeichnet.', { fontFamily: 'serif', fontSize: '13px', color: '#6a5f4c', fontStyle: 'italic' }));
-    for (const e2 of passend) {
-      const zeile = this.add.text(14, y, `Tag ${e2.tag} · ${e2.text}`, {
-        fontFamily: 'serif', fontSize: '12.5px', color: '#d8cfb8', wordWrap: { width: w - 28 },
+    // Einträge im Chat-Stil: neueste UNTEN, von unten nach oben auffüllen
+    const passend = this.chronikEintraege.filter((e2) => e2.kat === this.chronikTab);
+    if (!passend.length) {
+      c.add(this.add.text(10, h - 26, 'Noch nichts verzeichnet.', { fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c', fontStyle: 'italic' }));
+    }
+    let unten = h - 24;
+    for (let i = passend.length - 1; i >= 0 && unten > 34; i--) {
+      const e2 = passend[i];
+      const zeile = this.add.text(10, 0, `Tag ${e2.tag} · ${e2.text}`, {
+        fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8', wordWrap: { width: w - 26 },
       });
+      unten -= zeile.height + 4;
+      zeile.setY(unten);
+      if (unten <= 34) {
+        zeile.destroy();
+        break;
+      }
       c.add(zeile);
-      y += zeile.height + 5;
-      if (y > h - 24) break;
     }
+    // Größen-Griff unten rechts (Skalieren wie bei WoW)
+    const eck = this.add.text(w - 4, h - 4, '◢', { fontFamily: 'serif', fontSize: '14px', color: '#8a7a5a' })
+      .setOrigin(1).setInteractive({ draggable: true, useHandCursor: true });
+    let eckStart: { x: number; y: number; w: number; h: number } | null = null;
+    eck.on('dragstart', (pz: Phaser.Input.Pointer) => {
+      eckStart = { x: pz.x, y: pz.y, w, h };
+    });
+    eck.on('drag', (pz: Phaser.Input.Pointer) => {
+      if (!eckStart) return;
+      box.w = Math.max(260, Math.min(720, Math.round(eckStart.w + (pz.x - eckStart.x))));
+      box.h = Math.max(160, Math.min(540, Math.round(eckStart.h + (pz.y - eckStart.y))));
+    });
+    eck.on('dragend', () => {
+      eckStart = null;
+      saveSettings();
+      this.baueChronik();
+    });
+    c.add(eck);
+    c.add(this.add.text(w - 22, 6, '✕', { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8' })
+      .setInteractive({ useHandCursor: true }).on('pointerdown', () => this.toggleChronik()));
     fixUiScroll(c);
-    this.sfx.play('klick');
   }
 
   override logMsg(text: string, cls?: string): void {
@@ -3716,6 +3777,9 @@ export class WorldScene extends CombatScene {
     let warmIdx = 0;
     if (!fow && (this.area.dark || nachtFaktor > 0.3)) warmIdx = this.placeWarm(warmIdx, this.px, this.py, 160, 0.5);
     for (const t of (fow ? [] : this.area.torches)) {
+      // Runde 29: ferne Fackeln deckten halbe Karten samt Gegnern auf -
+      // sie leuchten nur noch nahe am eigenen Sichtkreis
+      if (this.area.dark && Math.hypot(t.x - this.px, t.y - this.py) > basisRadius * 1.35) continue;
       const sx = (t.x - cam.worldView.x) * zm, sy = (t.y - cam.worldView.y) * zm;
       if (sx < -160 || sy < -160 || sx > this.scale.width + 160 || sy > this.scale.height + 160) continue;
       this.eraseLight(sx, sy - 4 * zm, (95 + Math.sin(time * 7 + t.ph) * 10) * zm);

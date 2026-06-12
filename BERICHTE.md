@@ -820,3 +820,18 @@ Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.
 - Rundumschlag: halbe Abklingzeit, mehr Schaden. Edelsteine sortieren
   nach Kraft. Handel: "ALLES VERKAUFEN" je Reiter + Schilde-Reiter.
 - 64/64 Tests grün, tsc sauber.
+
+## Feedback-Runde 29 - umgesetzt (Chronik-Chat, Sicht, Boss-Ruhe, Komfort)
+
+- Lebenskugel gerettet: Versätze fangen sich am Bildrand + Reset-Knopf.
+- Bossgrab bleibt nach dem Sieg leer (wie die Ebenen) - kein sofortiger
+  Wiedergänger mehr; der eigene Tod weckt das NG+-Grab.
+- Ferne Fackeln decken keine Räume mehr auf (nur noch nahe am eigenen
+  Sichtkreis).
+- Chronik ist jetzt ein Chat-Fenster links unten: halbtransparent,
+  neueste Einträge unten, frei zieh- und an der Ecke skalierbar
+  (gespeichert). Verifiziert inkl. Skalieren.
+- Inventar: 8 Reiter (u. a. Schilde, Steine, Rollen), breiter, alle
+  Bonus-Werte grün. Splitter-Drop stark gesenkt, Streitkolben-Reichweite
+  eingefangen, NEU: Cleverness-Regler im F10 (war angekündigt, fehlte).
+- 64/64 Tests grün, tsc sauber.

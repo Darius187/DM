@@ -235,7 +235,8 @@ export class Enemy {
       }
       if (this.blockT > 0) {
         // Deckung läuft ab und der Spieler steht dran: Gegenstoß (Runde 27)
-        if (this.blockT <= dt * 2 && d < this.r + host.playerR() + 22 * TUNING.gegnerReichweite && this.windup <= 0) {
+        if (this.blockT <= dt * 2 && d < this.r + host.playerR() + 22 * TUNING.gegnerReichweite && this.windup <= 0
+          && TUNING.gegnerCleverness >= 0.5) {
           this.startPattern(host, 'hieb', 0.2);
         }
         return; // in Deckung: stehen, nicht angreifen
@@ -285,7 +286,8 @@ export class Enemy {
       // wer nachsetzt, kassiert einen schnellen Gegenhieb, und gewichen
       // wird SCHRÄG statt stur rückwärts (seitlich raus, neuer Winkel)
       this.retreatT -= dt;
-      if (d < this.r + host.playerR() + 20 * TUNING.gegnerReichweite && this.windup <= 0) {
+      if (d < this.r + host.playerR() + 20 * TUNING.gegnerReichweite && this.windup <= 0
+        && Math.random() < 0.6 * TUNING.gegnerCleverness) {
         this.retreatT = 0;
         this.atkCd = Math.max(this.atkCd, 0.1);
         this.startPattern(host, 'hieb', 0.18);
@@ -303,7 +305,7 @@ export class Enemy {
       // Sammeln statt einzeln anrennen (Runde 27): Skelette und Pestopfer
       // warten in Sichtweite kurz auf Verbündete - kommt Verstärkung in die
       // Nähe, stürmen alle gemeinsam
-      if ((this.type === 'skelett' || this.type === 'pest') && d < 170 && d > 70) {
+      if (TUNING.gegnerCleverness >= 0.5 && (this.type === 'skelett' || this.type === 'pest') && d < 170 && d > 70) {
         if (this.mutT < 0) this.mutT = 0.9 + Math.random() * 1.3;
         if (this.mutT > 0) {
           if (host.verbuendeteNahe(this, 150) >= 2) this.mutT = 0;

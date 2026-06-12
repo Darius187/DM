@@ -378,7 +378,14 @@ export class Hud {
       g.lineStyle(3, 0x3a2f24, 1);
       g.strokeCircle(x, h - 24 - ORB_R + dy, ORB_R);
     };
-    const oh = getSettings().ui.orbHp, om = getSettings().ui.orbMp;
+    // Versätze einfangen (Runde 29): die Lebenskugel war aus dem Bild
+    // gezogen worden und damit "verschwunden" - nie weiter als an den Rand
+    const fang = (o: { x: number; y: number }, basisX: number) => ({
+      x: Math.max(ORB_R - basisX, Math.min(w - ORB_R - basisX, o.x)),
+      y: Math.max(ORB_R + 24 - (h - 24 - ORB_R), Math.min(0 + 10, o.y)),
+    });
+    const oh = fang(getSettings().ui.orbHp, 28 + ORB_R);
+    const om = fang(getSettings().ui.orbMp, w - 28 - ORB_R);
     orb(this.hpImg, 28 + ORB_R + oh.x, p.hp / p.stats.maxhp, oh.y);
     orb(this.mpImg, w - 28 - ORB_R + om.x, p.mana / p.stats.maxmana, om.y);
     this.hpText.setPosition(28 + ORB_R + oh.x, h - 24 - ORB_R + oh.y).setText(String(Math.max(0, Math.ceil(p.hp))));

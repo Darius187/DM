@@ -304,6 +304,19 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     c.add(this.add.text(w / 2, 40, 'UI-MODUS: Griffe ziehen, dann im Kasten FIXIEREN', {
       fontFamily: 'serif', fontSize: '14px', color: '#c9a227', backgroundColor: '#171108', padding: { x: 10, y: 4 },
     }).setOrigin(0.5).setScrollFactor(0));
+    // Notausgang (Runde 29): verschwundene Teile (z. B. weggezogene
+    // Lebenskugel) mit einem Klick zurückholen
+    const reset = this.add.text(w / 2, 70, 'ALLE POSITIONEN ZURÜCKSETZEN', {
+      fontFamily: 'serif', fontSize: '12px', color: '#d96b5a', backgroundColor: '#171108', padding: { x: 10, y: 4 },
+    }).setOrigin(0.5).setScrollFactor(0).setInteractive({ useHandCursor: true });
+    reset.on('pointerdown', () => {
+      for (const teil of Object.values(ui)) { teil.x = 0; teil.y = 0; }
+      saveSettings();
+      this.toggleUiEdit();
+      this.toggleUiEdit();
+      this.logMsg('Alle UI-Positionen zurückgesetzt.', 'gold');
+    });
+    c.add(reset);
     // Anker: Standardposition jedes UI-Teils; der Versatz ist die Differenz
     const teile: Array<[keyof typeof ui, string, number, number]> = [
       ['hotbar', 'TASTEN-LEISTE', w / 2, h - 66],
@@ -338,8 +351,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.devPanel = null;
       return;
     }
-    const c = this.add.container(20, 80).setScrollFactor(0).setDepth(6500);
-    const h = TUNING_ROWS.length * 34 + 96 + 158;
+    const c = this.add.container(20, 70).setScrollFactor(0).setDepth(6500);
+    const h = TUNING_ROWS.length * 29 + 96 + 158;
+    // Bei kleinen Fenstern schrumpft der ganze Kasten, statt unten
+    // abgeschnitten zu werden (Runde 29: Regler "nicht gefunden")
+    if (70 + h > this.scale.height) c.setScale((this.scale.height - 80) / h);
     const bg = this.add.rectangle(0, 0, 340, h, 0x171108, 0.97).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
     bg.setInteractive();
     c.add(bg);
@@ -364,7 +380,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       mk(210, '-', -step);
       mk(280, '+', step);
       c.add(valText);
-      y += 34;
+      y += 29;
     }
     // Gegnertyp-Feinjustierung (Runde 18): Typ wählen, Tempo/Schaden drehen
     c.add(this.add.text(12, y + 2, 'JE GEGNERTYP:', { fontFamily: 'serif', fontSize: '12px', color: '#c9a227', letterSpacing: 1 }));
@@ -849,13 +865,17 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   protected overheadAttack(ev: AttackEvent, ang: number): void {
     const ms = WEAPON_MOVESETS.wucht;
-    const cx = this.px + Math.cos(ang) * 48;
-    const cy = this.py + Math.sin(ang) * 48;
+    // Runde 29: Streitkolben hatte "irre Reichweite" - kürzerer Überkopf-
+    // Versatz, und beides folgt dem Reichweiten-Regler
+    const versatz = 34 * TUNING.spielerReichweite;
+    const aoe = ms.aoeRadius * TUNING.spielerReichweite;
+    const cx = this.px + Math.cos(ang) * versatz;
+    const cy = this.py + Math.sin(ang) * versatz;
     this.playSwingSound('wucht', true);
     this.fx.burst(cx, cy, 0x8c6a3a, 14, 160);
     let hit = false;
     for (const e of [...this.enemies]) {
-      if (Math.hypot(e.x - cx, e.y - cy) < ms.aoeRadius + e.r) {
+      if (Math.hypot(e.x - cx, e.y - cy) < aoe + e.r) {
         this.damageEnemy(e, this.rollDamage(ev.dmgMult), Math.cos(ang) * 10, Math.sin(ang) * 10);
         e.stun = Math.max(e.stun, HEAVY_ATTACK.postureStunS * 0.5); // bester Haltungsschaden
         hit = true;

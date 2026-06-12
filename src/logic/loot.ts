@@ -96,7 +96,7 @@ export function makeArrows(count: number): Item {
 }
 
 // Anzeigetext eines Items (Referenz itemStatLine, erweitert)
-export function itemStatLine(it: Item): string {
+export function itemStatLine(it: Item, mitBoni = true): string {
   // Gegenstandsstufe sichtbar machen (Runde 15)
   const stufe = it.lvl ? `Stufe ${it.lvl} · ` : '';
   if (it.kind === 'potion') return 'Stellt 45% Leben wieder her';
@@ -115,7 +115,7 @@ export function itemStatLine(it: Item): string {
   const up = it.upgrade ? ` (+${it.upgrade})` : '';
   if (it.kind === 'schild') return `${stufe}${effectiveVal(it)} Rüstung${up} · voller Block (30%/0% Durchschlag)`;
   let s = it.kind === 'weapon' ? `${stufe}${effectiveVal(it)} Schaden${up}` : `${stufe}${effectiveVal(it)} Rüstung${up}`;
-  for (const b of it.boni) s += ' · ' + b.t.replace('#', String(b.v));
+  if (mitBoni) for (const b of it.boni) s += ' · ' + b.t.replace('#', String(b.v));
   if (it.sock) s += it.sock.gem ? ` · ◆ ${it.sock.gem.name} (+${it.sock.gem.power} ${ { feuer: 'Feuer', eis: 'Eis', schatten: 'Schatten' }[it.sock.gem.elem] })` : ' · ◇ Leere Fassung';
   return s;
 }
