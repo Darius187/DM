@@ -682,3 +682,28 @@ Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.
   (alle Sperren aus, zum Testen), ZUM BOSS / IN DIE STADT (Dev-Sprünge,
   verifiziert). 52/52 Tests grün (neuer Test: Tore versiegeln die
   hinteren Kammern, nach dem Sieg alles erreichbar), tsc sauber.
+
+## Feedback-Runde 22 - umgesetzt (Stadt-Baukasten, Reichweiten, drei Fixes)
+
+- Musik-Schicht am Anfang behoben: ein liegengebliebener Ton-Freigabe-
+  Lauscher startete die Menü-Musik beim ersten Klick IM SPIEL erneut.
+  Verifiziert: 0 Menü-Instanzen nach Spielstart.
+- Haus-Skalierung repariert: das Mausrad lauscht jetzt an der Szene und
+  findet das Haus unter dem Zeiger selbst. Verifiziert (Skala gespeichert).
+- Neue F10-Regler: Held Hieb-Reichweite x, Held Schwung-Breite x, Gegner
+  Hieb-Reichweite x. Befund bestätigt: Gegner-Hiebe trugen nur ~18 Pixel.
+- STADT-BAUKASTEN (V1, F10 -> BAUKASTEN, nur in Ravensmoor): Tabs
+  BODEN/OBJEKT/TIERE/HAUS. Boden malen per Ziehen (Gras, Weg, Acker,
+  Wasser, Steinboden, Brandstelle), Objekte setzen (Baum, Zaun, Palisade,
+  Brunnen, Grabstein, Fels, Fackel, beschriftbares Schild), Tiere setzen,
+  RADIERER baut zurück. Haus-Tab: Justieren + eigenes BILD AUF HAUS LADEN
+  (Datei-Dialog). Alles überlebt im Browser-Speicher; STADTPLAN KOPIEREN
+  exportiert das JSON zur festen Übernahme.
+- Browser-verifiziert: 8 Wasser-Kacheln gemalt und nach Neuladen wieder
+  da; Schild mit Hover-Text, Fackel, Huhn gesetzt; Radierer entfernt;
+  Haus-Bild-Upload angewendet (hausupload_gemeindehaus). 57/57 Tests
+  grün (5 neue für den Kachel-Plan), tsc sauber.
+- Grenze (ehrlich): Häuser KOMPLETT versetzen (Kollision, Tür, Bewohner)
+  kann V1 nicht. Plan: Stadt bauen, STADTPLAN KOPIEREN, mir schicken -
+  dann versetze ich Grundflächen, ordne Bewohner zu und stelle die
+  Tagesabläufe auf die neue Stadt um.

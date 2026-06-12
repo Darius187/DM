@@ -33,6 +33,7 @@ import { getSettings } from '../logic/settings';
 import { seededRng, pick, ri } from '../logic/rng';
 import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type SaveData } from '../logic/save';
 import { storage } from '../logic/gameStorage';
+import { ladeStadtplan, speichereStadtplan, loescheStadtplan, wendePlanAn, setzeKachel, radiere, type Stadtplan, type PlanTier } from '../logic/stadtplan';
 import type { Item } from '../data/types';
 import type { Pickup } from '../world/Pickups';
 import { ANNA_GRAB } from '../data/dialoge';
@@ -130,6 +131,10 @@ export class WorldScene extends CombatScene {
     this.bossDead = false;
     this.bossPhase = 0;
     this.bossRueckzug = null;
+    this.stadtplan = ladeStadtplan();
+    this.baukastenPanel = null;
+    this.baukastenTool = null;
+    this.schildEnts = [];
     this.relicChoice = null;
     this.pauseMenu = null;
     this.deathOverlay = null;
@@ -327,8 +332,36 @@ export class WorldScene extends CombatScene {
   // F10: Häuser im Dorf per Maus zurechtrücken
   hausEditAn = false;
 
+  // Mausrad-Skalierung (Runde 22): NICHT mehr am Bild-Objekt, sondern an
+  // der Szene - das Objekt-Mausrad feuerte nur bei exaktem Treffer der
+  // (skalierten) Hitbox und wirkte deshalb "kaputt". Die Szene findet das
+  // Haus unter dem Zeiger selbst.
+  private hausWheel = (p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number): void => {
+    if (!this.hausEditAn) return;
+    const img = this.hausUnterZeiger(p);
+    if (!img) return;
+    const basis = img.getData('basis') as number;
+    const j = this.hausJustierung()[img.getData('hausId') as string] ?? { dx: 0, dy: 0, skala: 1 };
+    const skala = Math.min(2.5, Math.max(0.4, (j.skala ?? 1) + (dy > 0 ? -0.05 : 0.05)));
+    img.setScale(basis * skala);
+    this.speichereHausJustierung(img.getData('hausId') as string, j.dx, j.dy, skala);
+  };
+
+  hausUnterZeiger(p: Phaser.Input.Pointer): Phaser.GameObjects.Image | null {
+    let best: Phaser.GameObjects.Image | null = null;
+    for (const img of this.hausBilder) {
+      if (img.getBounds().contains(p.worldX, p.worldY)) {
+        // Bei Überlappung gewinnt das vordere (höhere Depth)
+        if (!best || img.depth > best.depth) best = img;
+      }
+    }
+    return best;
+  }
+
   toggleHausEdit(): void {
     this.hausEditAn = !this.hausEditAn;
+    if (this.hausEditAn) this.input.on('wheel', this.hausWheel);
+    else this.input.off('wheel', this.hausWheel);
     for (const img of this.hausBilder) {
       if (this.hausEditAn) {
         img.setInteractive({ draggable: true, useHandCursor: true });
@@ -338,22 +371,331 @@ export class WorldScene extends CombatScene {
           const anker = img.getData('anker') as { x: number; y: number };
           this.speichereHausJustierung(img.getData('hausId') as string, dragX - anker.x, dragY - anker.y);
         });
-        // Mausrad ÜBER dem Haus: Größe ändern (Runde 19)
-        img.on('wheel', (_p: Phaser.Input.Pointer, _dx: number, dy: number) => {
-          const basis = img.getData('basis') as number;
-          const j = this.hausJustierung()[img.getData('hausId') as string] ?? { dx: 0, dy: 0, skala: 1 };
-          const skala = Math.min(2.5, Math.max(0.4, (j.skala ?? 1) + (dy > 0 ? -0.05 : 0.05)));
-          img.setScale(basis * skala);
-          this.speichereHausJustierung(img.getData('hausId') as string, j.dx, j.dy, skala);
-        });
       } else {
         img.removeInteractive();
         img.setAlpha(1);
         img.off('drag');
-        img.off('wheel');
       }
     }
     this.logMsg(this.hausEditAn ? 'Häuser justieren: ziehen = verschieben, Mausrad = Größe. F10-Knopf beendet.' : 'Haus-Positionen und -Größen gespeichert.', 'gold');
+  }
+
+  // --- Stadt-Baukasten (Runde 22) ---------------------------------------------
+  // Der Autor baut die Stadt selbst: Boden malen, Objekte/Tiere/Fackeln
+  // setzen, Schilder beschriften, Haus-Bilder hochladen. Alles landet im
+  // Browser-Speicher; STADTPLAN KOPIEREN exportiert das JSON für mich.
+
+  private stadtplan: Stadtplan = { kacheln: [], fackeln: [], tiere: [], schilder: [] };
+  private schildEnts: Array<{ x: number; y: number; objs: Phaser.GameObjects.GameObject[] }> = [];
+  private baukastenPanel: Phaser.GameObjects.Container | null = null;
+  private baukastenTab: 'boden' | 'objekte' | 'tiere' | 'haus' = 'boden';
+  private baukastenTool:
+    | { art: 'kachel'; t: number; name: string }
+    | { art: 'fackel' } | { art: 'schild' } | { art: 'radierer' }
+    | { art: 'tier'; tier: PlanTier['art'] }
+    | { art: 'hausbild' }
+    | null = null;
+
+  private zeichneSchild(x: number, y: number): void {
+    const pfosten = this.add.rectangle(x, y - 5, 4, 16, 0x5a4226).setDepth(y);
+    const brett = this.add.rectangle(x, y - 14, 24, 12, 0x8a6a3e).setDepth(y).setStrokeStyle(1, 0x3a2a16);
+    this.schildEnts.push({ x, y, objs: [pfosten, brett] });
+  }
+
+  protected override toggleBaukasten(): void {
+    if (this.baukastenPanel) {
+      this.closeBaukasten();
+      return;
+    }
+    if (this.area.id !== 'village') {
+      this.logMsg('Der Stadt-Baukasten funktioniert nur in Ravensmoor.', 'bad');
+      return;
+    }
+    this.openBaukasten();
+    this.logMsg('Baukasten offen: Werkzeug wählen, dann in die Welt klicken/ziehen.', 'gold');
+  }
+
+  private closeBaukasten(): void {
+    this.baukastenPanel?.destroy();
+    this.baukastenPanel = null;
+    this.baukastenTool = null;
+    this.input.off('pointerdown', this.baukastenKlick);
+    this.input.off('pointermove', this.baukastenMove);
+    if (this.hausEditAn) this.toggleHausEdit();
+    speichereStadtplan(this.stadtplan);
+    this.logMsg('Baukasten geschlossen - Stadtplan gespeichert.', 'gold');
+  }
+
+  private refreshBaukasten(): void {
+    this.baukastenPanel?.destroy();
+    this.baukastenPanel = null;
+    this.openBaukasten();
+  }
+
+  private openBaukasten(): void {
+    const w = this.scale.width, h = this.scale.height;
+    const bw = 250;
+    // Handler nie doppelt registrieren (Tab-Wechsel baut das Panel neu)
+    this.input.off('pointerdown', this.baukastenKlick);
+    this.input.off('pointermove', this.baukastenMove);
+    this.input.on('pointerdown', this.baukastenKlick);
+    this.input.on('pointermove', this.baukastenMove);
+    const c = this.add.container(w - bw, 0).setScrollFactor(0).setDepth(6400);
+    this.baukastenPanel = c;
+    const bg = this.add.rectangle(0, 0, bw, h, 0x171108, 0.96).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
+    bg.setInteractive();
+    c.add(bg);
+    c.add(this.add.text(12, 8, 'STADT-BAUKASTEN', { fontFamily: 'serif', fontSize: '15px', color: '#c9a227', letterSpacing: 2 }));
+    c.add(this.add.text(12, 28, 'Werkzeug wählen, in der Welt klicken/ziehen.', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }));
+    // Tab-Reihe
+    const tabs: Array<['boden' | 'objekte' | 'tiere' | 'haus', string]> = [
+      ['boden', 'BODEN'], ['objekte', 'OBJEKT'], ['tiere', 'TIERE'], ['haus', 'HAUS'],
+    ];
+    let tx = 12;
+    for (const [id, label] of tabs) {
+      const aktiv = id === this.baukastenTab;
+      const t = this.add.text(tx, 46, label, {
+        fontFamily: 'serif', fontSize: '12px', color: aktiv ? '#c9a227' : '#d8cfb8',
+        backgroundColor: aktiv ? '#2e2210' : '#221808', padding: { x: 7, y: 4 },
+      }).setInteractive({ useHandCursor: true });
+      t.on('pointerdown', () => {
+        this.baukastenTab = id;
+        this.baukastenTool = null;
+        this.refreshBaukasten();
+      });
+      c.add(t);
+      tx += t.width + 6;
+    }
+    let y = 80;
+    const istAktiv = (tool: typeof this.baukastenTool): boolean =>
+      JSON.stringify(tool) === JSON.stringify(this.baukastenTool);
+    const werkzeug = (label: string, tool: typeof this.baukastenTool) => {
+      const an = istAktiv(tool);
+      const b = this.add.text(12, y, `${an ? '▸ ' : ''}${label}`, {
+        fontFamily: 'serif', fontSize: '13px', color: an ? '#c9a227' : '#d8cfb8',
+        backgroundColor: an ? '#2e2210' : '#221808', padding: { x: 10, y: 4 },
+      }).setInteractive({ useHandCursor: true });
+      b.on('pointerdown', () => {
+        this.baukastenTool = tool;
+        if (this.hausEditAn) this.toggleHausEdit();
+        this.refreshBaukasten();
+      });
+      c.add(b);
+      y += 30;
+    };
+    if (this.baukastenTab === 'boden') {
+      const boeden: Array<[string, number]> = [
+        ['Gras', T.GRASS], ['Weg', T.PATH], ['Acker / Weizenfeld', T.FIELD],
+        ['Wasser', T.WATER], ['Steinboden', T.FLOOR], ['Brandstelle', T.BURNT],
+      ];
+      for (const [name, t] of boeden) werkzeug(name, { art: 'kachel', t, name });
+    } else if (this.baukastenTab === 'objekte') {
+      const objekte: Array<[string, number]> = [
+        ['Baum', T.TREE], ['Zaun', T.FENCE], ['Palisade', T.PALISADE],
+        ['Brunnen', T.WELL], ['Grabstein', T.GRAVE], ['Fels', T.ROCK],
+      ];
+      for (const [name, t] of objekte) werkzeug(name, { art: 'kachel', t, name });
+      werkzeug('Fackel', { art: 'fackel' });
+      werkzeug('Schild (beschriftbar)', { art: 'schild' });
+    } else if (this.baukastenTab === 'tiere') {
+      for (const tier of ['huhn', 'schwein', 'kuh', 'schaf', 'hund'] as const) {
+        werkzeug(tier.charAt(0).toUpperCase() + tier.slice(1), { art: 'tier', tier });
+      }
+    } else {
+      const justieren = this.add.text(12, y, this.hausEditAn ? '▸ Häuser justieren: AN' : 'Häuser justieren (ziehen/Rad)', {
+        fontFamily: 'serif', fontSize: '13px', color: this.hausEditAn ? '#c9a227' : '#d8cfb8',
+        backgroundColor: this.hausEditAn ? '#2e2210' : '#221808', padding: { x: 10, y: 4 },
+      }).setInteractive({ useHandCursor: true });
+      justieren.on('pointerdown', () => {
+        this.baukastenTool = null;
+        this.toggleHausEdit();
+        this.refreshBaukasten();
+      });
+      c.add(justieren);
+      y += 30;
+      werkzeug('Bild auf Haus laden (klicken)', { art: 'hausbild' });
+      const reset = this.add.text(12, y, 'Hochgeladene Bilder verwerfen', {
+        fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', backgroundColor: '#221808', padding: { x: 10, y: 4 },
+      }).setInteractive({ useHandCursor: true });
+      reset.on('pointerdown', () => {
+        try { localStorage.removeItem('ravensmoor_hausbilder'); } catch { /* egal */ }
+        this.logMsg('Haus-Bilder verworfen - ab dem nächsten Neuladen wieder Original.', 'gold');
+      });
+      c.add(reset);
+      y += 30;
+      c.add(this.add.text(12, y, 'Passt ein Bild dauerhaft? Dann die Datei\nzusätzlich als assets/tiles/hausN.png ablegen.', {
+        fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a', lineSpacing: 3,
+      }));
+      y += 36;
+    }
+    y += 6;
+    werkzeug('RADIERER (zurückbauen)', { art: 'radierer' });
+    // Fußzeile: Export, Zurücksetzen, Schließen
+    const fuss = (label: string, fy: number, fn: () => void, farbe = '#d8cfb8') => {
+      const b = this.add.text(12, fy, label, {
+        fontFamily: 'serif', fontSize: '12px', color: farbe, letterSpacing: 1,
+        backgroundColor: '#221808', padding: { x: 10, y: 5 },
+      }).setInteractive({ useHandCursor: true });
+      b.on('pointerdown', fn);
+      c.add(b);
+    };
+    fuss('STADTPLAN KOPIEREN', h - 104, () => {
+      const text = `Stadtplan Ravensmoor: ${JSON.stringify(this.stadtplan)}`;
+      navigator.clipboard?.writeText(text).catch(() => undefined);
+      this.logMsg('Stadtplan kopiert - im Chat einfügen, dann baue ich ihn fest ein.', 'gold');
+    });
+    fuss('PLAN VERWERFEN (alles zurück)', h - 70, () => {
+      this.stadtplan = { kacheln: [], fackeln: [], tiere: [], schilder: [] };
+      loescheStadtplan();
+      this.areas.delete('village');
+      this.goArea('village');
+      this.logMsg('Stadtplan verworfen - das Dorf steht wieder im Urzustand.', 'gold');
+      this.refreshBaukasten();
+    }, '#d96b5a');
+    fuss('SCHLIESSEN', h - 36, () => this.closeBaukasten());
+    fixUiScroll(c);
+  }
+
+  // Bauen mit der Maus: Klick setzt, Ziehen malt Kacheln durch
+  private baukastenKlick = (ptr: Phaser.Input.Pointer): void => {
+    if (!this.baukastenPanel || this.area.id !== 'village') return;
+    if (ptr.x > this.scale.width - 250) return; // Klick aufs Panel
+    const tool = this.baukastenTool;
+    if (!tool) return;
+    const tx = Math.floor(ptr.worldX / TILE), ty = Math.floor(ptr.worldY / TILE);
+    const wx = ptr.worldX, wy = ptr.worldY;
+    if (tool.art === 'kachel') {
+      if (setzeKachel(this.stadtplan, this.area.map, tx, ty, tool.t)) {
+        this.refreshTile(tx, ty);
+        speichereStadtplan(this.stadtplan);
+      }
+      return;
+    }
+    if (tool.art === 'radierer') {
+      const weg = radiere(this.stadtplan, this.area.map, tx, ty, wx, wy);
+      if (weg === 'kachel') this.refreshTile(tx, ty);
+      if (weg === 'fackel') this.entferneNaechstes(this.area.torches, wx, wy);
+      if (weg === 'tier') {
+        this.entferneNaechstes(this.area.animals, wx, wy);
+        const ent = this.naechstesIn(this.animalEnts.map((e2) => ({ x: e2.curX, y: e2.curY })), wx, wy);
+        if (ent >= 0) {
+          this.animalEnts[ent].sprite.destroy();
+          this.animalEnts.splice(ent, 1);
+        }
+      }
+      if (weg === 'schild') {
+        this.entferneNaechstes(this.area.schilder ?? [], wx, wy);
+        const si = this.naechstesIn(this.schildEnts, wx, wy);
+        if (si >= 0) {
+          for (const o of this.schildEnts[si].objs) o.destroy();
+          this.schildEnts.splice(si, 1);
+        }
+      }
+      if (weg) speichereStadtplan(this.stadtplan);
+      return;
+    }
+    if (tool.art === 'fackel') {
+      this.stadtplan.fackeln.push({ x: wx, y: wy });
+      this.area.torches.push({ x: wx, y: wy, ph: Math.random() * 6.28 });
+    } else if (tool.art === 'tier') {
+      this.stadtplan.tiere.push({ x: wx, y: wy, art: tool.tier });
+      const spawn = { type: tool.tier, x: wx, y: wy };
+      this.area.animals.push(spawn);
+      this.spawnTier(spawn);
+    } else if (tool.art === 'schild') {
+      const text = window.prompt('Was steht auf dem Schild?', '');
+      if (!text) return;
+      this.stadtplan.schilder.push({ x: wx, y: wy, text });
+      (this.area.schilder ??= []).push({ x: wx, y: wy, text });
+      this.zeichneSchild(wx, wy);
+    } else if (tool.art === 'hausbild') {
+      const img = this.hausUnterZeiger(ptr);
+      if (img) this.ladeHausBildDialog(img);
+      else this.logMsg('Kein Haus unter dem Zeiger - direkt auf ein Haus klicken.', 'bad');
+      return;
+    }
+    speichereStadtplan(this.stadtplan);
+  };
+
+  private baukastenMove = (ptr: Phaser.Input.Pointer): void => {
+    if (!ptr.isDown || !this.baukastenPanel) return;
+    const tool = this.baukastenTool;
+    if (tool?.art === 'kachel' || tool?.art === 'radierer') this.baukastenKlick(ptr);
+  };
+
+  private naechstesIn(liste: Array<{ x: number; y: number }>, px: number, py: number): number {
+    let best = -1, bestD = 30;
+    liste.forEach((o, i) => {
+      const d = Math.hypot(o.x - px, o.y - py);
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    return best;
+  }
+
+  private entferneNaechstes(liste: Array<{ x: number; y: number }>, px: number, py: number): void {
+    const i = this.naechstesIn(liste, px, py);
+    if (i >= 0) liste.splice(i, 1);
+  }
+
+  // --- Haus-Bilder zum Testen hochladen (Baukasten, Runde 22) -----------------
+
+  private hausBilderStore(): Record<string, string> {
+    try {
+      return JSON.parse(localStorage.getItem('ravensmoor_hausbilder') ?? '{}');
+    } catch { return {}; }
+  }
+
+  private setzeHausTextur(img: Phaser.GameObjects.Image, key: string): void {
+    if (!img.active) return;
+    img.setTexture(key);
+    const breite = img.getData('breite') as number;
+    const basis = breite / img.width;
+    img.setData('basis', basis);
+    const j = this.hausJustierung()[img.getData('hausId') as string];
+    img.setScale(basis * (j?.skala ?? 1));
+  }
+
+  // Beim Dorfaufbau: zuvor hochgeladenes Test-Bild wieder anwenden
+  private wendeHausBildAn(img: Phaser.GameObjects.Image): void {
+    const id = img.getData('hausId') as string;
+    const daten = this.hausBilderStore()[id];
+    if (!daten) return;
+    const key = `hausupload_${id}`;
+    if (this.textures.exists(key)) {
+      this.setzeHausTextur(img, key);
+      return;
+    }
+    this.textures.once(`addtexture-${key}`, () => this.setzeHausTextur(img, key));
+    this.textures.addBase64(key, daten);
+  }
+
+  private ladeHausBildDialog(img: Phaser.GameObjects.Image): void {
+    const id = img.getData('hausId') as string;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png,image/jpeg,image/webp';
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const daten = String(reader.result);
+        try {
+          const store = this.hausBilderStore();
+          store[id] = daten;
+          localStorage.setItem('ravensmoor_hausbilder', JSON.stringify(store));
+        } catch {
+          this.logMsg('Browser-Speicher voll - das Bild gilt nur für diese Sitzung.', 'bad');
+        }
+        const key = `hausupload_${id}`;
+        if (this.textures.exists(key)) this.textures.remove(key);
+        this.textures.once(`addtexture-${key}`, () => this.setzeHausTextur(img, key));
+        this.textures.addBase64(key, daten);
+        this.logMsg(`Neues Bild liegt auf ${id}.`, 'gold');
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
   }
 
   // Hover-Namen (Runde 17): Was unter dem Mauszeiger liegt, nennt sich
@@ -375,6 +717,12 @@ export class WorldScene extends CombatScene {
     if (!name) {
       for (const n of this.npcEnts) {
         if (n.sprite.visible && Math.hypot(n.curX - wx, n.curY - wy) < 18) { name = n.name; break; }
+      }
+    }
+    if (!name) {
+      // Beschriftete Schilder (Baukasten): Text beim Daraufzeigen
+      for (const s of this.area.schilder ?? []) {
+        if (Math.hypot(s.x - wx, s.y - wy) < 22) { name = `Schild: »${s.text}«`; break; }
       }
     }
     if (!name) {
@@ -477,6 +825,13 @@ export class WorldScene extends CombatScene {
     else if (id === 'village') {
       a = buildVillage(rng, this.aufbauStufe, this.stadtmauerStufe);
       this.applyTore(a);
+      // Stadt-Baukasten (Runde 22): die im Spiel gebaute Stadt überlebt
+      // im Browser-Speicher und wird über das frische Dorf gelegt
+      const plan = this.stadtplan;
+      wendePlanAn(a.map, plan);
+      for (const f of plan.fackeln) a.torches.push({ x: f.x, y: f.y, ph: Math.random() * 6.28 });
+      for (const t of plan.tiere) a.animals.push({ type: t.art, x: t.x, y: t.y });
+      a.schilder = [...plan.schilder];
     }
     else if (id.startsWith('innen_')) a = buildInterior(INNENRAEUME[id.replace('innen_', '')]);
     else if (id === 'wald') a = buildForest(rng);
@@ -642,6 +997,8 @@ export class WorldScene extends CombatScene {
     this.npcEnts = [];
     for (const an of this.animalEnts) an.sprite.destroy();
     this.animalEnts = [];
+    for (const s of this.schildEnts) for (const o of s.objs) o.destroy();
+    this.schildEnts = [];
     this.pickups.clear();
   }
 
@@ -775,14 +1132,10 @@ export class WorldScene extends CombatScene {
       this.npcEnts.push({ ...n, sprite, label: lbl, curX: n.x, curY: n.y });
     }
     // Tiere
-    for (const t of a.animals) {
-      const sprite = this.add.sprite(t.x, t.y, '__DEFAULT').setDepth(t.y);
-      this.provider.applyFigure(sprite, t.type, 0, 0);
-      this.animalEnts.push({
-        ...t, sprite, curX: t.x, curY: t.y, targetX: t.x, targetY: t.y,
-        pauseT: Math.random() * 2, soundT: 2 + Math.random() * 8, step: 0, stepT: 0, dir: 0,
-      });
-    }
+    for (const t of a.animals) this.spawnTier(t);
+    // Beschriftbare Schilder (Baukasten, Runde 22): Pfosten + Brett,
+    // der Text erscheint beim Daraufzeigen
+    for (const s of a.schilder ?? []) this.zeichneSchild(s.x, s.y);
     // Kräuter am Waldrand
     for (const k of a.kraeuter) {
       this.pickups.add({
@@ -826,9 +1179,12 @@ export class WorldScene extends CombatScene {
         img.setScale(basis * (j.skala ?? 1));
         img.setData('hausId', hp.id);
         img.setData('basis', basis);
+        img.setData('breite', breite);
         img.setData('anker', { x: (hp.x0 + hp.x1 + 1) / 2 * TILE, y: (hp.y1 + 1) * TILE + 6 });
         this.hausBilder.push(img);
         this.tileImages.push(img);
+        // Vom Autor hochgeladenes Test-Bild (Baukasten) wieder anwenden
+        this.wendeHausBildAn(img);
       });
     }
     // Gefällte Bäume dieses Gebiets: Stümpfe zeigen, bis sie nachwachsen
@@ -838,6 +1194,15 @@ export class WorldScene extends CombatScene {
     }
     // Ortsnamen erscheinen als Einblendung, wenn man in die Nähe kommt
     // (Runde 12: nicht mehr halb versteckt in der Welt)
+  }
+
+  private spawnTier(t: AnimalSpawn): void {
+    const sprite = this.add.sprite(t.x, t.y, '__DEFAULT').setDepth(t.y);
+    this.provider.applyFigure(sprite, t.type, 0, 0);
+    this.animalEnts.push({
+      ...t, sprite, curX: t.x, curY: t.y, targetX: t.x, targetY: t.y,
+      pauseT: Math.random() * 2, soundT: 2 + Math.random() * 8, step: 0, stepT: 0, dir: 0,
+    });
   }
 
   // Baumstumpf an einer gefällten Position (bis der Baum nachwächst)
@@ -871,6 +1236,8 @@ export class WorldScene extends CombatScene {
   }
 
   protected override klickAufUi(ptr: Phaser.Input.Pointer): boolean {
+    // Baukasten/Haus-Justierung: die Maus baut, sie kämpft nicht
+    if (this.baukastenPanel || this.hausEditAn) return true;
     return this.hud?.klickBlockiert(ptr) ?? false;
   }
 
