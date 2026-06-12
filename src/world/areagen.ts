@@ -424,30 +424,60 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
   return a;
 }
 
+// Bossgrab (Runde 21): DREI Kammern übereinander. Der Held betritt den
+// Vorhof von Süden; der Ritter weicht im Kampf durch Gittertore nach
+// Norden zurück und schickt Wellen - man muss ihm folgen.
+export const BOSS_TORE: ReadonlyArray<{ y: number; xs: ReadonlyArray<number> }> = [
+  { y: 37, xs: [15, 16, 17] }, // Vorhof -> Halle der Wächter
+  { y: 17, xs: [15, 16, 17] }, // Halle -> Das Innere Grab
+];
+// Kammer-Mitten (Kachelkoordinaten): hier stellt sich der Ritter erneut
+export const BOSS_KAMMERN: ReadonlyArray<{ cx: number; cy: number }> = [
+  { cx: 16.5, cy: 43 },
+  { cx: 16.5, cy: 26 },
+  { cx: 16.5, cy: 9 },
+];
+
 export function buildBoss(rng: Rng, bossDead: boolean): AreaData {
   const w = CRYPT_GEN.bossW, h = CRYPT_GEN.bossH;
   const map = blank(w, h, T.WALL);
   const a: AreaData = {
     id: 'boss', name: 'Grab des Kreuzritters', dark: true, depth: 6, theme: CRYPT_THEMES[6],
-    w, h, map, spawn: { x: 16.5 * TILE, y: 19 * TILE },
+    w, h, map, spawn: { x: 16.5 * TILE, y: 50 * TILE },
     torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
     breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
     ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
     npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
   };
-  carve(map, 3, 3, 30, 20, T.FLOOR);
-  for (const [px, py] of [[8, 7], [8, 15], [24, 7], [24, 15]]) carve(map, px, py, px + 1, py + 1, T.WALL);
-  for (const [rx, ry] of [[14, 5], [16, 4], [18, 5], [19, 7], [18, 9], [16, 10], [14, 9], [13, 7]]) map[ry][rx] = T.RUNE;
-  for (let i = 0; i < 10; i++) {
-    const bx = ri(rng, 5, 28), by = ri(rng, 5, 18);
+  // Kammer 1, der Vorhof (Süden): hier wartet die Leibwache
+  carve(map, 3, 38, 30, 53, T.FLOOR);
+  for (const [px, py] of [[8, 42], [8, 49], [24, 42], [24, 49]]) carve(map, px, py, px + 1, py + 1, T.WALL);
+  // Kammer 2, die Halle der Wächter (Mitte): Säulenreihen
+  carve(map, 3, 18, 30, 36, T.FLOOR);
+  for (const [px, py] of [[8, 22], [8, 31], [24, 22], [24, 31], [16, 26]]) carve(map, px, py, px + 1, py + 1, T.WALL);
+  // Kammer 3, das Innere Grab (Norden): Runenkreis vor dem Grab
+  carve(map, 5, 4, 28, 16, T.FLOOR);
+  for (const [rx, ry] of [[14, 7], [16, 6], [18, 7], [19, 9], [18, 11], [16, 12], [14, 11], [13, 9]]) map[ry][rx] = T.RUNE;
+  // Gittertore zwischen den Kammern: versiegelt, bis der Ritter weicht
+  for (const tor of BOSS_TORE) {
+    for (const tx of tor.xs) map[tor.y][tx] = bossDead ? T.FLOOR : T.CAGE;
+  }
+  // Blut und Knochen über alle Kammern verstreut
+  for (let i = 0; i < 26; i++) {
+    const bx = ri(rng, 5, 28), by = ri(rng, 5, 52);
     if (map[by][bx] === T.FLOOR) map[by][bx] = rng.random() < 0.5 ? T.BLOOD : T.BONES;
   }
-  for (let x = 4; x <= 29; x += 3) a.torches.push({ x: x * TILE + 16, y: 2 * TILE + 24, ph: rnd(rng, 0, 6.28) });
-  for (const [tx, ty] of [[8, 8], [9, 8], [24, 8], [25, 8], [8, 16], [9, 16], [24, 16], [25, 16]]) {
+  // Fackeln: an den Nordwänden der Kammern und neben den Toren
+  for (const ty of [3, 17, 37]) {
+    for (let x = 6; x <= 27; x += 4) {
+      if (map[ty][x] !== T.CAGE) a.torches.push({ x: x * TILE + 16, y: ty * TILE + 24, ph: rnd(rng, 0, 6.28) });
+    }
+  }
+  for (const [tx, ty] of [[8, 43], [9, 43], [24, 43], [25, 43], [8, 23], [9, 23], [24, 23], [25, 23]]) {
     a.torches.push({ x: tx * TILE + 16, y: ty * TILE + 24, ph: rnd(rng, 0, 6.28) });
   }
-  map[20][16] = T.STAIRUP;
-  a.upPos = { x: 16.5 * TILE, y: 20 * TILE + 16 };
+  map[53][16] = T.STAIRUP;
+  a.upPos = { x: 16.5 * TILE, y: 53 * TILE + 16 };
   if (bossDead) {
     // Nach dem Sieg öffnet sich der Abstieg in die Endlose Tiefe
     map[3][16] = T.STAIR;
@@ -455,9 +485,9 @@ export function buildBoss(rng: Rng, bossDead: boolean): AreaData {
   }
   if (!bossDead) {
     // Erst die Leibwache - der Ritter erhebt sich, wenn sie fällt
-    a.enemySpawns.push({ type: 'skelett', elite: true, champion: 'Bruder Aldric, der Grabwächter', x: 16.5 * TILE, y: 9 * TILE });
-    a.enemySpawns.push({ type: 'schatten', elite: true, x: 12 * TILE, y: 8 * TILE });
-    a.enemySpawns.push({ type: 'schatten', elite: true, x: 21 * TILE, y: 8 * TILE });
+    a.enemySpawns.push({ type: 'skelett', elite: true, champion: 'Bruder Aldric, der Grabwächter', x: 16.5 * TILE, y: 44 * TILE });
+    a.enemySpawns.push({ type: 'schatten', elite: true, x: 12 * TILE, y: 43 * TILE });
+    a.enemySpawns.push({ type: 'schatten', elite: true, x: 21 * TILE, y: 43 * TILE });
   }
   return a;
 }
@@ -496,31 +526,6 @@ export function buildKirchenschiff(rng: Rng): AreaData {
   // Ausgang zurück ins Dorf (Südwand)
   map[h - 3][6] = T.HDOOR;
   a.doors = [{ x: 6, y: h - 3, haus: 'kirche' }];
-  return a;
-}
-
-// Das Innere Grab (Runde 16): Bei 25% Leben reißt der Tempelritter den
-// Helden mit hinab - enge Kammer, keine Treppe, bis der Ritter fällt.
-export function buildBossInner(rng: Rng): AreaData {
-  const w = 22, h = 16;
-  const map = blank(w, h, T.WALL);
-  const a: AreaData = {
-    id: 'bossinner', name: 'Das Innere Grab', dark: true, depth: 7, theme: CRYPT_THEMES[6],
-    w, h, map, spawn: { x: 11 * TILE, y: 12.5 * TILE },
-    torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
-    breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
-    ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
-    npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
-  };
-  carve(map, 3, 3, w - 4, h - 4, T.FLOOR);
-  // Runenkreis in der Mitte, Blut an den Rändern
-  for (const [rx, ry] of [[9, 6], [11, 5], [13, 6], [14, 8], [13, 10], [11, 11], [9, 10], [8, 8]]) map[ry][rx] = T.RUNE;
-  for (let i = 0; i < 10; i++) {
-    const bx = ri(rng, 4, w - 5), by = ri(rng, 4, h - 5);
-    if (map[by][bx] === T.FLOOR) map[by][bx] = rng.random() < 0.6 ? T.BLOOD : T.BONES;
-  }
-  for (let x = 4; x <= w - 5; x += 3) a.torches.push({ x: x * TILE + 16, y: 2 * TILE + 24, ph: rnd(rng, 0, 6.28) });
-  a.upPos = { x: 11 * TILE + 16, y: 13 * TILE + 16 }; // Treppe erscheint erst nach dem Sieg
   return a;
 }
 

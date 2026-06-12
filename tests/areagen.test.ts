@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildCrypt, buildBoss, buildVillage, buildInterior, type AreaData } from '../src/world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildVillage, buildInterior, type AreaData } from '../src/world/areagen';
 import { INNENRAEUME } from '../src/data/innenraeume';
 import { VOLK } from '../src/data/dialoge';
 import { SOLID, T } from '../src/world/tiles';
@@ -84,6 +84,24 @@ describe('Krypta-Generator: jeder Spezialraum erreichbar', () => {
     expect(a.enemySpawns.some((e) => e.champion)).toBe(true);
     expect(a.enemySpawns.some((e) => e.type === 'templer')).toBe(false);
     expect(buildBoss(seededRng(1), true).enemySpawns.length).toBe(0);
+  });
+
+  it('Bossgrab (Runde 21): drei Kammern, Gittertore versiegeln die hinteren zwei', () => {
+    const zu = buildBoss(seededRng(1), false);
+    const sx = Math.floor(zu.spawn.x / 32), sy = Math.floor(zu.spawn.y / 32);
+    const gesehenZu = reachable(zu, sx, sy);
+    // Solange der Ritter lebt: Kammer 2 (Halle) und 3 (Inneres Grab) gesperrt
+    expect(BOSS_TORE.every((tor) => tor.xs.every((tx) => zu.map[tor.y][tx] === T.CAGE))).toBe(true);
+    expect(targetReachable(gesehenZu, Math.floor(BOSS_KAMMERN[1].cx), BOSS_KAMMERN[1].cy)).toBe(false);
+    expect(targetReachable(gesehenZu, Math.floor(BOSS_KAMMERN[2].cx), BOSS_KAMMERN[2].cy)).toBe(false);
+    // Spawn und Leibwache liegen in Kammer 1 (Vorhof)
+    expect(targetReachable(gesehenZu, Math.floor(BOSS_KAMMERN[0].cx), BOSS_KAMMERN[0].cy)).toBe(true);
+    for (const e of zu.enemySpawns) expect(gesehenZu[Math.floor(e.y / 32)][Math.floor(e.x / 32)]).toBe(true);
+    // Nach dem Sieg: Tore offen, alle drei Kammern und der Abstieg erreichbar
+    const offen = buildBoss(seededRng(1), true);
+    const gesehenOffen = reachable(offen, sx, sy);
+    for (const k of BOSS_KAMMERN) expect(targetReachable(gesehenOffen, Math.floor(k.cx), k.cy)).toBe(true);
+    expect(targetReachable(gesehenOffen, Math.floor(offen.downPos!.x / 32), Math.floor(offen.downPos!.y / 32))).toBe(true);
   });
 
   it('Endlose Tiefe: Ebene 8 begehbar, Abstieg im Bossraum nach dem Sieg', () => {

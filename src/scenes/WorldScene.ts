@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir } from '../world/Enemy';
-import { buildCrypt, buildBoss, buildBossInner, buildKirchenschiff, buildVillage, buildForest, buildInterior, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildInterior, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { LANDHERR } from '../data/dialoge';
 import storyJson from '../data/story.json';
@@ -24,7 +24,7 @@ import { TILE } from '../gfx/fallbackArt';
 import { DialogUI, fixUiScroll } from '../ui/dialog';
 import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, RELIKT, ENDEN, TOD, INTRO_FILM } from '../data/texte';
 import { ALTAR, BLOOD_WELL, CHEST, RELIC_ACCEPT_ELIXIRS } from '../data/balancing';
-import { BREAKABLES, BREAKABLE_LOOT, BEINHAUS, CHEST_VERFLUCHT } from '../data/krypta';
+import { BREAKABLES, BREAKABLE_LOOT, BEINHAUS, CHEST_VERFLUCHT, BOSS_KAMPF } from '../data/krypta';
 import { DEATH, SHRINE } from '../data/kampf';
 import { TEMPLERKLINGE, BOSS_GOLD } from '../data/items';
 import { rollGear, rollGem } from '../logic/loot';
@@ -72,6 +72,10 @@ export class WorldScene extends CombatScene {
   private areaSeed = Math.floor(Math.random() * 1e9);
   private flags: Record<string, boolean> = {};
   private bossDead = false;
+  // Bosskampf über drei Kammern (Runde 21): Phase 0 = Vorhof, 1 = Halle,
+  // 2 = Inneres Grab; bossRueckzug merkt sich den entwichenen Ritter
+  private bossPhase = 0;
+  private bossRueckzug: { restHp: number; maxhp: number; dmg: number; name: string; col: string } | null = null;
   relicChoice: string | null = null; // gelesen ab Phase 6 (Dorf-Dialoge) und beim Speichern
 
   private tileImages: Phaser.GameObjects.Image[] = [];
@@ -124,6 +128,8 @@ export class WorldScene extends CombatScene {
     this.areas.clear();
     this.flags = {};
     this.bossDead = false;
+    this.bossPhase = 0;
+    this.bossRueckzug = null;
     this.relicChoice = null;
     this.pauseMenu = null;
     this.deathOverlay = null;
@@ -467,7 +473,6 @@ export class WorldScene extends CombatScene {
     const rng = seededRng(this.areaSeed + id.length * 1009 + id.charCodeAt(id.length - 1));
     let a: AreaData;
     if (id === 'boss') a = buildBoss(rng, this.bossDead && !this.flags.ngPlus);
-    else if (id === 'bossinner') a = buildBossInner(rng);
     else if (id === 'kirchenschiff') a = buildKirchenschiff(rng);
     else if (id === 'village') {
       a = buildVillage(rng, this.aufbauStufe, this.stadtmauerStufe);
@@ -524,15 +529,23 @@ export class WorldScene extends CombatScene {
     }
     if (id === 'crypt1' && !a.dark) { /* nie - nur für die Lesbarkeit */ }
     if (id === 'crypt1') this.sfx.play('krypta_betreten');
+    // Bossgrab: solange der Ritter lebt, sind die Gittertore versiegelt -
+    // auch wenn man mitten im Kampf geflohen ist und wiederkommt
+    if (id === 'boss' && this.bossKampfSteht()) this.resetBossTore(a);
     if (id === 'crypt3') this.flags.ebene3 = true;
     this.gruselT = 6 + Math.random() * 8;
     // Gebiets-Musik (Runde 17): liegt musik_dorf/wald/krypta als Loop vor,
     // läuft sie hier - sonst wie bisher (Stille bzw. Grusel-Rotation)
     {
       const aktuell = this.sfx.aktuelleMusik();
-      const wechselbar = !aktuell || aktuell.startsWith('musik_dorf') || aktuell.startsWith('musik_wald') || aktuell.startsWith('musik_krypta');
+      // musik_nacht MUSS wechselbar sein, sonst läuft die Stadt-Nachtmusik
+      // nach dem Laden bis in die Krypta weiter (Fehlerbericht Runde 21)
+      const wechselbar = !aktuell || aktuell.startsWith('musik_dorf') || aktuell.startsWith('musik_nacht') || aktuell.startsWith('musik_wald') || aktuell.startsWith('musik_krypta');
       if (wechselbar) {
-        const loopName = a.dark && id !== 'boss' ? 'musik_krypta' : (id === 'village' || a.innen) ? 'musik_dorf' : id === 'wald' ? 'musik_wald' : '';
+        const nachts = this.tageszeit > TAG.nachtAb || this.tageszeit < TAG.morgenAb;
+        const loopName = a.dark && id !== 'boss' ? 'musik_krypta'
+          : (id === 'village' || a.innen) ? (nachts && this.sfx.has('musik_nacht') ? 'musik_nacht' : 'musik_dorf')
+            : id === 'wald' ? 'musik_wald' : '';
         // Dorf: Stück spielt EINMAL, dann einige Minuten Pause (Runde 18)
         if (loopName === 'musik_dorf' && this.sfx.has('musik_dorf') && aktuell !== 'musik_dorf') {
           this.spieleDorfMusik();
@@ -2184,7 +2197,7 @@ export class WorldScene extends CombatScene {
           const id = this.area.id;
           if (id === 'kirchenschiff') this.goArea('crypt1');
           else if (id === 'crypt5') this.goArea('boss');
-          else if (id === 'boss' || id === 'bossinner') this.goArea('crypt6');
+          else if (id === 'boss') this.goArea('crypt6');
           else if (id.startsWith('crypt')) this.goArea(`crypt${parseInt(id.replace('crypt', ''), 10) + 1}`);
         },
       };
@@ -2199,7 +2212,6 @@ export class WorldScene extends CombatScene {
             const schiff = this.getArea('kirchenschiff');
             this.goArea('kirchenschiff', { x: schiff.downPos!.x, y: schiff.downPos!.y + 40 });
           } else if (id === 'boss') this.goArea('crypt5', this.getArea('crypt5').downPos);
-          else if (id === 'bossinner') this.goArea('boss');
           else if (id === 'crypt6') this.goArea('boss');
           else if (id.startsWith('crypt')) {
             const n = parseInt(id.replace('crypt', ''), 10);
@@ -2338,24 +2350,16 @@ export class WorldScene extends CombatScene {
         this.refreshTile(16, 3);
         this.logMsg('Hinter dem Grab bricht der Boden auf - die Endlose Tiefe liegt offen.', 'gold');
       }
-      // Im Inneren Grab (Runde 16): Aufgang + Abstieg erscheinen nach dem Sieg
-      if (this.area.id === 'bossinner') {
-        this.area.map[13][11] = T.STAIRUP;
-        this.area.map[3][11] = T.STAIR;
-        this.area.downPos = { x: 11 * TILE + 16, y: 3 * TILE + 16 };
-        this.refreshTile(11, 13);
-        this.refreshTile(11, 3);
-        this.logMsg('Die Mauern atmen auf: Aufgang und ein tieferer Abstieg liegen frei.', 'gold');
-      }
       return;
     }
-    if (e.champion && this.area.id === 'boss' && !this.bossDead) {
+    if (e.champion && this.area.id === 'boss' && this.bossKampfSteht()) {
       // Die Leibwache ist gefallen - jetzt erhebt sich der Tempelritter
       this.pickups.add({ kind: 'gem', item: rollGem(this.rng, 4), x: e.x, y: e.y, bob: 0 });
       this.logMsg('»Wer wagt es, meinen Wächter zu fällen?«', 'bad');
       this.shake(8);
       this.sfx.play('templer_stimme');
-      const boss = this.spawnEnemy('templer', this.flags.ngPlus ? 9 : 6, 16.5 * TILE, 6.5 * TILE);
+      // Er erhebt sich im Vorhof, am Nordende der ersten Kammer
+      const boss = this.spawnEnemy('templer', this.flags.ngPlus ? 9 : 6, 16.5 * TILE, 40 * TILE);
       if (this.flags.ngPlus) {
         boss.name = 'Der Schattenfürst';
         boss.col = '#2a2440';
@@ -2456,7 +2460,6 @@ export class WorldScene extends CombatScene {
       fontFamily: 'serif', fontSize: '17px', color: '#d8cfb8', letterSpacing: 3,
       backgroundColor: '#1c1410', padding: { x: 24, y: 10 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    fixUiScroll(c);
     const weiter = () => {
       if (!this.deathOverlay) return; // nur einmal (Klick ODER Taste)
       this.input.keyboard?.off('keydown-E', weiter);
@@ -2475,8 +2478,9 @@ export class WorldScene extends CombatScene {
       this.flags.ngPlus = true;
       // Du bleibst im Grab und lootest in Ruhe; die Ebenen erwachen erst,
       // wenn du sie wieder betrittst (Feedback-Runde 5)
-      for (const id of ['crypt1', 'crypt2', 'crypt3', 'crypt4', 'crypt5', 'bossinner']) this.areas.delete(id);
-      this.flags.bossEskaliert = false;
+      // Auch das Bossgrab erwacht neu: versiegelte Tore, Leibwache, dann
+      // der Schattenfürst (regeneriert sich erst beim nächsten Betreten)
+      for (const id of ['crypt1', 'crypt2', 'crypt3', 'crypt4', 'crypt5', 'boss']) this.areas.delete(id);
       this.logMsg('Die Krypta regt sich erneut - stärker als zuvor (Neues Spiel+).', 'magic');
       this.logMsg('Taste 8: Stadtportal nach Ravensmoor.', 'gold');
     };
@@ -2485,6 +2489,10 @@ export class WorldScene extends CombatScene {
     this.input.keyboard?.once('keydown-E', weiter);
     this.input.keyboard?.once('keydown-ENTER', weiter);
     c.add(btn);
+    // WICHTIG: erst NACH dem Hinzufügen aller Knöpfe - vorher bekam der
+    // WEITERSPIELEN-Knopf keine Hitbox-Korrektur und war im gescrollten
+    // Bossraum nicht anklickbar (Fehlerbericht Runde 21)
+    fixUiScroll(c);
     this.sfx.stopMusic();
     this.deathOverlay = c; // blockiert Eingaben wie ein Overlay
   }
@@ -3183,6 +3191,76 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // --- Bosskampf über drei Kammern (Runde 21) --------------------------------
+
+  // Steht im Grab noch ein Kampf an? Erster Durchlauf: bis der Tempelritter
+  // fällt. NG+: bis auch der Schattenfürst gefallen ist. (Vorher konnte sich
+  // der Schattenfürst nie erheben - die Leibwache-Prüfung sah nur bossDead.)
+  private bossKampfSteht(): boolean {
+    return !this.bossDead || (this.flags.ngPlus === true && this.flags.ngPlusGeschafft !== true);
+  }
+
+  // Beim Betreten des Grabes (Boss lebt): Tore wieder versiegeln, Phase zurück
+  private resetBossTore(a: AreaData): void {
+    this.bossPhase = 0;
+    this.bossRueckzug = null;
+    for (const tor of BOSS_TORE) {
+      for (const tx of tor.xs) a.map[tor.y][tx] = T.CAGE;
+    }
+  }
+
+  private updateBossKampf(): void {
+    // Rückzug: unter der Schwelle entweicht der Ritter durch das Tor
+    const boss = this.enemies.find((e) => e.boss);
+    if (boss && boss.hp > 0 && this.bossPhase < BOSS_KAMPF.rueckzugBei.length
+        && boss.hp < boss.maxhp * BOSS_KAMPF.rueckzugBei[this.bossPhase]) {
+      this.bossRueckzug = { restHp: boss.hp, maxhp: boss.maxhp, dmg: boss.dmg, name: boss.name, col: boss.col };
+      this.bossPhase++;
+      this.enemies = this.enemies.filter((x) => x !== boss);
+      boss.sprite?.destroy();
+      boss.sprite = null;
+      this.fx.burst(boss.x, boss.y, 0x2a2440, 26, 240);
+      // Das Gittertor zur nächsten Kammer birst auf
+      const tor = BOSS_TORE[this.bossPhase - 1];
+      for (const tx of tor.xs) {
+        this.area.map[tor.y][tx] = T.FLOOR;
+        this.refreshTile(tx, tor.y);
+      }
+      this.shake(10);
+      this.sfx.play('templer_stimme');
+      this.logMsg(this.bossPhase === 1
+        ? '»Du kämpfst gut. Doch dies ist MEIN Grab!« - Er weicht nach Norden, das Gitter birst!'
+        : '»GENUG! Im Inneren Grab bezeugt niemand dein Ende!« - Er flieht in die letzte Kammer!', 'bad');
+      // Eine Welle aus der nächsten Kammer stürmt dem Helden entgegen
+      const typen = this.bossPhase === 1
+        ? (['skelett', 'schatten', 'skelett', 'schuetze', 'schatten'] as const)
+        : (['skelett', 'schuetze', 'schatten', 'pest', 'skelett'] as const);
+      for (let i = 0; i < BOSS_KAMPF.welleAnzahl; i++) {
+        const e = this.spawnEnemy(typen[i % typen.length], 6,
+          (tor.xs[i % tor.xs.length] + 0.5) * TILE, (tor.y - 1 - Math.floor(i / 3)) * TILE, i === 0);
+        e.aggro = 5000;
+      }
+      return;
+    }
+    // Der Held folgt durch das offene Tor: der Ritter stellt sich erneut
+    if (this.bossRueckzug && this.py < BOSS_TORE[this.bossPhase - 1].y * TILE) {
+      const r = this.bossRueckzug;
+      this.bossRueckzug = null;
+      const k = BOSS_KAMMERN[this.bossPhase];
+      const b2 = this.spawnEnemy('templer', this.flags.ngPlus ? 9 : 6, k.cx * TILE, k.cy * TILE);
+      b2.name = r.name;
+      b2.col = r.col;
+      b2.maxhp = r.maxhp;
+      b2.hp = Math.max(1, r.restHp);
+      b2.dmg = r.dmg;
+      this.fx.burst(b2.x, b2.y, 0xc03030, 30, 260);
+      this.sfx.play('templer_stimme');
+      this.logMsg(this.bossPhase === 1
+        ? 'Die Halle der Wächter - er erwartet dich bereits.'
+        : 'Das Innere Grab - hier endet einer von euch beiden.', 'bad');
+    }
+  }
+
   // --- Hauptschleife ---------------------------------------------------------------
 
   update(_time: number, delta: number): void {
@@ -3193,32 +3271,10 @@ export class WorldScene extends CombatScene {
     this.renderOrtsname();
     this.renderHover();
     this.animiereWasser(dt);
-    // Boss-Eskalation (Runde 16): unter 25% reißt der Ritter den Helden
-    // mit hinab ins Innere Grab - echter Raumwechsel
-    if (this.area.id === 'boss' && !this.flags.bossEskaliert) {
-      const boss = this.enemies.find((e) => e.boss);
-      if (boss && boss.hp > 0 && boss.hp < boss.maxhp * 0.25) {
-        this.flags.bossEskaliert = true;
-        const istNgPlus = this.flags.ngPlus === true;
-        const restHp = boss.hp;
-        this.shake(12);
-        this.sfx.play('templer_stimme');
-        this.logMsg('»GENUG! Hinab mit dir - wo niemand dein Ende bezeugt!«', 'bad');
-        this.cameras.main.fadeOut(600, 0, 0, 0);
-        this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-          this.cameras.main.fadeIn(700, 0, 0, 0);
-          this.goArea('bossinner');
-          const b2 = this.spawnEnemy('templer', istNgPlus ? 9 : 6, 11 * TILE + 16, 6 * TILE);
-          b2.hp = Math.max(1, restHp);
-          if (istNgPlus) {
-            b2.name = 'Der Schattenfürst';
-            b2.col = '#2a2440';
-          }
-          this.fx.burst(b2.x, b2.y, 0xc03030, 30, 260);
-          this.logMsg('Das Innere Grab - hier endet einer von euch beiden.', 'bad');
-        });
-      }
-    }
+    // Bosskampf über drei Kammern (Runde 21, ersetzt das Hinab-Reißen):
+    // bei 66%/33% Leben weicht der Ritter durch das Gittertor nach Norden,
+    // schickt eine Welle - und stellt sich erst, wenn der Held ihm folgt
+    if (this.area.id === 'boss') this.updateBossKampf();
     // Regen-Klang: draußen rauscht es, in der Stube gedämpft (Runde 12)
     if (this.regnet && !this.area.dark) {
       if (this.area.innen) {

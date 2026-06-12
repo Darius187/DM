@@ -38,7 +38,16 @@ export const CRYPT_GEN = {
   roomsBase: 10, // + Ebene
   roomWMin: 4, roomWMax: 9,
   roomHMin: 4, roomHMax: 8,
-  bossW: 34, bossH: 24,
+  // Bossgrab (Runde 21): drei Kammern übereinander, der Ritter weicht
+  // bei 66%/33% Leben nach Norden zurück - der Held folgt ihm
+  bossW: 34, bossH: 58,
+} as const;
+
+// Bosskampf über drei Kammern (Runde 21): bei diesen Lebensanteilen
+// weicht der Ritter durch das Gittertor zurück und schickt eine Welle
+export const BOSS_KAMPF = {
+  rueckzugBei: [0.66, 0.33],
+  welleAnzahl: 5,
 } as const;
 
 // Spezialräume je Ebene (Masterprompt 7.3): welche Räume wo eingewebt werden
