@@ -136,6 +136,19 @@ export class SpriteProvider {
     this.hotVarianten.delete(name);
   }
 
+  // Mehrere eigene Bilder als komplette Varianten-Familie (Runde 26):
+  // die Familie besteht danach aus GENAU diesen Bildern - so bekommt
+  // auch eigenes Gras/eigener Weg wieder Abwechslung
+  setzeEigeneVarianten(name: string, bilder: HTMLCanvasElement[]): void {
+    const alle = [`hs_tile_${name}`];
+    for (let n = 1; n <= 12; n++) alle.push(`hs_tile_${name}_v${n}`);
+    for (const key of alle) {
+      if (this.tex.exists(key)) this.tex.remove(key);
+    }
+    bilder.forEach((c, i) => this.tex.addCanvas(`hs_tile_${name}_v${i + 1}`, c));
+    this.hotVarianten.delete(name);
+  }
+
   // Wie viele echte Hot-Swap-Varianten gibt es? (0 = nur Fallback)
   tileVarianten(name: string): number {
     this.hotTile(name, 0);

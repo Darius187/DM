@@ -138,6 +138,8 @@ export class WorldScene extends CombatScene {
     this.schildEnts = [];
     this.hausAnimEnts = [];
     this.hausNachtEnts = [];
+    this.hausEditLabels = [];
+    this.hausEditAn = false;
     this.relicChoice = null;
     this.pauseMenu = null;
     this.deathOverlay = null;
@@ -361,16 +363,35 @@ export class WorldScene extends CombatScene {
     return best;
   }
 
+  private hausEditLabels: Phaser.GameObjects.Text[] = [];
+
   toggleHausEdit(): void {
     this.hausEditAn = !this.hausEditAn;
     if (this.hausEditAn) this.input.on('wheel', this.hausWheel);
     else this.input.off('wheel', this.hausWheel);
+    // Im Justiermodus steht über jedem Haus, WAS es ist (Runde 26) -
+    // sonst ersetzt man die Schmiede versehentlich mit einer Bäckerei
+    for (const lbl of this.hausEditLabels) lbl.destroy();
+    this.hausEditLabels = [];
+    if (this.hausEditAn) {
+      for (const img of this.hausBilder) {
+        const id = img.getData('hausId') as string;
+        const name = INNENRAEUME[id]?.name ?? id;
+        const lbl = this.add.text(img.x, img.y - img.displayHeight - 6, `${name}\n(${id})`, {
+          fontFamily: 'serif', fontSize: '12px', color: '#c9a227', align: 'center',
+          backgroundColor: '#171108e0', padding: { x: 6, y: 2 },
+        }).setOrigin(0.5, 1).setDepth(6300);
+        this.hausEditLabels.push(lbl);
+        img.setData('editLabel', lbl);
+      }
+    }
     for (const img of this.hausBilder) {
       if (this.hausEditAn) {
         img.setInteractive({ draggable: true, useHandCursor: true });
         img.setAlpha(0.85);
         img.on('drag', (_p: Phaser.Input.Pointer, dragX: number, dragY: number) => {
           img.setPosition(dragX, dragY);
+          (img.getData('editLabel') as Phaser.GameObjects.Text | undefined)?.setPosition(dragX, dragY - img.displayHeight - 6);
           const anker = img.getData('anker') as { x: number; y: number };
           this.speichereHausJustierung(img.getData('hausId') as string, dragX - anker.x, dragY - anker.y);
         });
@@ -562,10 +583,10 @@ export class WorldScene extends CombatScene {
       });
       c.add(up);
       y += 26;
-      c.add(this.add.text(12, y, 'Ersetzt die Grafik überall (dieser Browser).\nDauerhaft: Datei nach assets/tiles/ legen.', {
+      c.add(this.add.text(12, y, 'Bei "Mischung": MEHRERE Dateien wählen =\ndeine eigenen Varianten. Bei fester Variante:\nein Bild ersetzt genau diese. Dauerhaft:\nDateien nach assets/tiles/ legen.', {
         fontFamily: 'serif', fontSize: '9px', color: '#8a7a5a', lineSpacing: 2,
       }));
-      y += 28;
+      y += 48;
     };
     if (this.baukastenTab === 'boden') {
       const boeden: Array<[string, number, string]> = [
@@ -822,47 +843,81 @@ export class WorldScene extends CombatScene {
     });
   }
 
-  // Eigenes Bild für ein Kachel-Werkzeug (Runde 24, überarbeitet 25):
-  // freistellen (nur Objekte), herunterrechnen, dann GEZIELT ersetzen -
-  // ist eine Variante gewählt, nur diese; bei "Mischung" die ganze Familie
+  // Eigene Bilder für ein Kachel-Werkzeug (Runde 24-26): freistellen (nur
+  // Objekte), herunterrechnen, dann GEZIELT ersetzen. Eine gewählte
+  // Variante nimmt genau EIN Bild; "Mischung" nimmt BELIEBIG VIELE
+  // Dateien auf einmal - sie werden zur neuen Varianten-Familie
   private ladeTileBildDialog(tile: string, freistellen: boolean, anzeigeName: string, variante?: number): void {
-    this.waehleBilddatei((roh) => {
+    this.waehleBilddateien(variante === undefined, (rohe) => {
       // Objekte behalten 64px - sie werden im Spiel hochskaliert (Größen-
       // Regler) und blieben bei 32px unnötig grob
       const ziel = freistellen ? TILE * 2 : TILE;
-      const canvas = verarbeiteUpload(roh, { zielW: ziel, zielH: ziel, freistellen });
-      this.provider.setzeEigenesTile(tile, canvas, variante);
+      const bilder = rohe.map((roh) => verarbeiteUpload(roh, { zielW: ziel, zielH: ziel, freistellen }));
       try {
         const store = JSON.parse(localStorage.getItem('ravensmoor_eigene_tiles') ?? '{}') as Record<string, string>;
-        store[`${tile}#${variante ?? 0}`] = canvas.toDataURL('image/png');
+        if (variante) {
+          this.provider.setzeEigenesTile(tile, bilder[0], variante);
+          store[`${tile}#${variante}`] = bilder[0].toDataURL('image/png');
+        } else {
+          // Mischung: Familie = genau diese Bilder; alte Einträge weichen
+          this.provider.setzeEigeneVarianten(tile, bilder);
+          for (const key of Object.keys(store)) {
+            if (key === tile || key.startsWith(`${tile}#`)) delete store[key];
+          }
+          store[`${tile}#familie`] = JSON.stringify(bilder.map((c) => c.toDataURL('image/png')));
+        }
         localStorage.setItem('ravensmoor_eigene_tiles', JSON.stringify(store));
       } catch {
-        this.logMsg('Browser-Speicher voll - Bild gilt nur für diese Sitzung.', 'bad');
+        this.logMsg('Browser-Speicher voll - Bilder gelten nur für diese Sitzung.', 'bad');
       }
       this.areas.delete(this.area.id);
       this.goArea(this.area.id, { x: this.px, y: this.py });
       this.logMsg(variante
         ? `Eigenes Bild liegt auf "${anzeigeName}" Variante ${variante}.`
-        : `Eigenes Bild für "${anzeigeName}" liegt an - alle Varianten.`, 'gold');
+        : `${bilder.length} Bild(er) sind jetzt die ${anzeigeName}-Varianten.`, 'gold');
     });
   }
 
-  // Datei-Dialog öffnen und das gewählte Bild fertig geladen liefern
+  // Datei-Dialog öffnen und das gewählte Bild fertig geladen liefern.
+  // WICHTIG (Runde 26): das Eingabe-Element MUSS im DOM hängen - lose
+  // Elemente räumt der Browser teils weg oder ignoriert ihren Klick,
+  // dann öffnet sich der Dialog nur sporadisch ("funktioniert nicht
+  // richtig", Fehlerbericht).
   private waehleBilddatei(fn: (img: HTMLImageElement) => void): void {
+    this.waehleBilddateien(false, (imgs) => fn(imgs[0]));
+  }
+
+  private waehleBilddateien(mehrere: boolean, fn: (imgs: HTMLImageElement[]) => void): void {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/png,image/jpeg,image/webp';
-    input.onchange = () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        const img = new Image();
-        img.onload = () => fn(img);
-        img.src = String(reader.result);
-      };
-      reader.readAsDataURL(file);
+    input.multiple = mehrere;
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    const aufraeumen = () => {
+      if (input.parentNode) document.body.removeChild(input);
     };
+    input.onchange = () => {
+      const files = Array.from(input.files ?? []).slice(0, 12);
+      aufraeumen();
+      if (!files.length) return;
+      const bilder: HTMLImageElement[] = [];
+      let offen = files.length;
+      files.forEach((file, i) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            bilder[i] = img; // Reihenfolge der Auswahl beibehalten
+            if (--offen === 0) fn(bilder.filter(Boolean));
+          };
+          img.src = String(reader.result);
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+    // Abbruch ohne Auswahl: Element trotzdem wieder entfernen
+    input.oncancel = aufraeumen;
     input.click();
   }
 
@@ -1055,6 +1110,12 @@ export class WorldScene extends CombatScene {
         this.einfallAktiv = false;
         this.einfallRest = [];
       }
+    }
+    // Leergeräumte Krypta-Ebenen merken (Runde 26, Wunsch): wer beim
+    // Verlassen keinen Gegner übrig lässt, findet die Ebene leer wieder -
+    // erst der eigene Tod weckt die Tiefe neu (Bossgrab ausgenommen)
+    if (this.area && this.area.dark && this.area.id !== 'boss') {
+      this.area.geleert = !this.enemies.some((e) => e.hp > 0);
     }
     const a = this.getArea(id);
     this.area = a;
@@ -1325,7 +1386,10 @@ export class WorldScene extends CombatScene {
     }
     // Gegner (NG+ macht alle zäher; Champions sind die Minibosse der Ebene)
     const tiefenBonus = this.flags.ngPlus ? 3 : 0;
-    for (const sp of a.enemySpawns) {
+    if (a.geleert) {
+      this.logMsg('Totenstill - du hast hier aufgeräumt. Erst dein Tod weckt die Tiefe neu.', '');
+    }
+    for (const sp of a.geleert ? [] : a.enemySpawns) {
       const e = this.spawnEnemy(sp.type, a.depth + tiefenBonus, sp.x, sp.y, sp.elite);
       if (sp.champion) {
         e.champion = true;
@@ -3357,8 +3421,10 @@ export class WorldScene extends CombatScene {
     this.p.hp = this.p.stats.maxhp;
     this.p.mana = this.p.stats.maxmana;
     this.playerDead = false;
-    // Gegner kehren beim Betreten ohnehin zurück - Layout, Minimap und
-    // aufgedeckte Treppen BLEIBEN erhalten (Feedback-Runde 5)
+    // Der Tod weckt die Tiefe: alle leergeräumten Ebenen erwachen neu
+    // (Runde 26 - vorher kehrten Gegner bei JEDEM Betreten zurück)
+    for (const a of this.areas.values()) a.geleert = false;
+    // Layout, Minimap und aufgedeckte Treppen BLEIBEN erhalten (Runde 5)
     // Auferstehung auf dem Friedhof neben der Kirche (Feedback-Runde 8):
     // etwas Gutes wacht über Ravensmoor und schickt dich zurück
     const village = this.getArea('village');

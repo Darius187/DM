@@ -133,9 +133,42 @@ export class BootScene extends Phaser.Scene {
     try {
       roh = JSON.parse(localStorage.getItem('ravensmoor_eigene_tiles') ?? '{}') as Record<string, string>;
     } catch { return; }
-    const jobs = Object.entries(roh).map(([eintrag, dataUrl]) => new Promise<void>((resolve) => {
-      // Schlüsselform "name#variante" (Runde 25); 0 oder fehlend = Familie
+    // Erst Familien anwenden, dann gezielte Einzel-Varianten darüber
+    const eintraege = Object.entries(roh).sort(([a], [b]) =>
+      (parseInt(a.split('#')[1] ?? '0', 10) > 0 ? 1 : 0) - (parseInt(b.split('#')[1] ?? '0', 10) > 0 ? 1 : 0));
+    const jobs = eintraege.map(([eintrag, dataUrl]) => new Promise<void>((resolve) => {
+      // Schlüsselformen: "name#familie" (mehrere Bilder als JSON-Liste),
+      // "name#variante" (eine Variante), "name"/"name#0" (alle ersetzen)
       const [name, vStr] = eintrag.split('#');
+      if (vStr === 'familie') {
+        let urls: string[] = [];
+        try { urls = JSON.parse(dataUrl) as string[]; } catch { resolve(); return; }
+        let offen = urls.length;
+        const bilder: HTMLImageElement[] = [];
+        if (!offen) { resolve(); return; }
+        urls.forEach((url, i) => {
+          const bild = new Image();
+          const fertig = () => {
+            if (--offen === 0) {
+              const alle = [`hs_tile_${name}`];
+              for (let n = 1; n <= 12; n++) alle.push(`hs_tile_${name}_v${n}`);
+              for (const key of alle) if (this.textures.exists(key)) this.textures.remove(key);
+              bilder.forEach((b, k) => {
+                const c = document.createElement('canvas');
+                c.width = b.naturalWidth;
+                c.height = b.naturalHeight;
+                c.getContext('2d')!.drawImage(b, 0, 0);
+                this.textures.addCanvas(`hs_tile_${name}_v${k + 1}`, c);
+              });
+              resolve();
+            }
+          };
+          bild.onload = () => { bilder[i] = bild; fertig(); };
+          bild.onerror = fertig;
+          bild.src = url;
+        });
+        return;
+      }
       const v = parseInt(vStr ?? '0', 10);
       const img = new Image();
       img.onload = () => {

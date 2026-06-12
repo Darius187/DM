@@ -75,6 +75,7 @@ export interface AreaData {
   animals: AnimalSpawn[];
   kraeuter: Pos[];            // Kräuter am Waldrand (Masterprompt 7.4)
   schilder?: Array<Pos & { text: string }>; // beschriftbare Schilder (Baukasten, Runde 22)
+  geleert?: boolean;          // Ebene leergeräumt - bleibt leer bis zum Tod (Runde 26)
   baeume: Pos[];              // fällbare Bäume (Holz)
   chimneys: Pos[];            // Schornsteinrauch
   cryptDoor?: Pos;            // Kirchentür -> Krypta

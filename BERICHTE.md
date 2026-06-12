@@ -767,3 +767,23 @@ Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.
   selbst (die Kuh war auch schon angeschnitten), große Tiere haben vier
   Beine. Pixelgenau geprüft: keine belegten Randspalten mehr.
 - 60/60 Tests grün, tsc sauber.
+
+## Feedback-Runde 26 - umgesetzt (Leisten wie WoW, Dialog-Wurzelbug, Krypta-Regel)
+
+- ALLE 15 Slots frei belegbar: Rechtsklick = Aktionsliste, Ziehen = zwei
+  Slots tauschen; Angriff/Blocken nur auf Maustasten (Halten-Logik).
+  End-to-End verifiziert.
+- Wurzel des Upload-Spuks gefunden: der Datei-Dialog hing nie im DOM -
+  Chrome öffnete ihn nur sporadisch und verlor Auswahlen (daher auch
+  "Haus wird wieder altes Bild"). Behoben + verifiziert: Upload überlebt
+  Justieren jetzt.
+- Klicks auf Chronik-Tabs & Co. lösen keine Hiebe mehr aus (genereller
+  UI-Treffer-Schutz für alle bildschirmfesten Elemente).
+- Geleerte Krypta-Ebenen bleiben leer, bis der Held stirbt (Wunsch);
+  Bossgrab ausgenommen. Verifiziert: 29 Gegner -> leer -> leer.
+- Gegner spawnen nie mehr in Wänden/Altären (Ringsuche), Wolf ist wieder
+  ein ganzer Wolf (pixel-verifiziert), Hieb-Animation zeigt exakt die
+  eingestellte Reichweite, Musik-Regler wirkt sofort auf laufende Musik,
+  Haus-Justiermodus beschriftet jedes Haus (Schmiede bleibt Schmiede),
+  Mehrfach-Upload macht eigene Bilder zu Varianten (Gras/Weg mischen).
+- 60/60 Tests grün, tsc sauber.
