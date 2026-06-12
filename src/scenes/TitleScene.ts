@@ -19,8 +19,12 @@ export class TitleScene extends Phaser.Scene {
     // Instanz an und die alte spielte ins Spiel hinein (Runde 15)
     this.sound.stopByKey('snd_musik_menue');
     // Browser-Autoplay-Sperre (Runde 20): vor der ersten Eingabe darf kein
-    // Ton spielen - dann eben ab der ersten Mausbewegung/Klick
+    // Ton spielen - dann eben ab der ersten Mausbewegung/Klick.
+    // WICHTIG (Runde 22): der UNLOCKED-Lauscher muss beim Verlassen des
+    // Titels wieder abgemeldet werden - sonst feuert er IM SPIEL beim
+    // ersten Klick und legt die Menü-Musik als zweite Schicht darüber.
     const starteMenueMusik = () => {
+      if (!this.scene.isActive()) return;
       if (this.cache.audio.exists('snd_musik_menue') && !this.sound.get('snd_musik_menue')?.isPlaying) {
         this.sound.play('snd_musik_menue', { loop: true, volume: getSettings().volMusik / 100 });
       }
@@ -28,6 +32,7 @@ export class TitleScene extends Phaser.Scene {
     if (this.sound.locked) this.sound.once(Phaser.Sound.Events.UNLOCKED, starteMenueMusik);
     else starteMenueMusik();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.sound.off(Phaser.Sound.Events.UNLOCKED, starteMenueMusik);
       this.sound.stopByKey('snd_musik_menue');
     });
 
@@ -45,7 +50,7 @@ export class TitleScene extends Phaser.Scene {
       stroke: '#000000', strokeThickness: 6,
     }).setOrigin(0.5);
     // Sichtbare Versionsnummer, damit alte Stände sofort auffallen
-    this.add.text(10, h - 10, 'Stand: Feedback-Runde 21 (12.06.2026)', {
+    this.add.text(10, h - 10, 'Stand: Feedback-Runde 22 (12.06.2026)', {
       fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c',
     }).setOrigin(0, 1);
     this.add.text(w / 2, h * 0.2 + 52, TITEL.unter, {
