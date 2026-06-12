@@ -36,7 +36,8 @@ export const SOUNDS = [
   'klick', 'item_episch', 'levelup', 'fertigkeit_neu',
   // Musik und große Stimmungs-Sounds (Runde 12, .mp3 vom Autor)
   'musik_intro', 'musik_einfall', 'musik_boss', 'musik_menue', 'musik_tod',
-  'musik_dorf', 'musik_wald', 'musik_krypta', 'musik_kirche',
+  'musik_dorf', 'musik_wald', 'musik_krypta', 'musik_kirche', 'musik_nacht',
+  'fireball1', 'fireball2', 'tod_gore',
   'herzschlag', 'regen_draussen', 'regen_drinnen',
   'krypta_betreten', 'krypta_grusel1', 'krypta_grusel2', 'krypta_grusel3',
   'krypta_grusel4', 'krypta_grusel5',
