@@ -34,7 +34,7 @@ export interface NpcSpawn {
 }
 
 export interface AnimalSpawn {
-  type: 'huhn' | 'schwein' | 'kuh' | 'hund' | 'schaf';
+  type: 'huhn' | 'schwein' | 'kuh' | 'hund' | 'schaf' | 'pferd';
   x: number;
   y: number;
   // Gatter, in dem das Tier umherläuft (Weltkoordinaten)
@@ -530,8 +530,44 @@ export function buildKirchenschiff(rng: Rng): AreaData {
   return a;
 }
 
-// --- Ravensmoor: ein echtes Dorf des 17. Jahrhunderts (Masterprompt 7.2) ---
-// Referenzdorf war 46x30 - dieses ist 92x60, entlang der alten Salzstraße.
+export type HausPlatz = NonNullable<AreaData['hausPlaetze']>[number];
+
+// Haus samt Grundfläche um GANZE Kacheln versetzen (Baukasten, Runde 24):
+// Wand-/Tür-Kacheln, Tür-Einträge und Hausnamen wandern mit dem Bild mit -
+// vorher blieben unsichtbare Wände am alten Ort zurück (Fehlerbericht).
+export function verschiebeHaus(a: AreaData, hp: HausPlatz, tdx: number, tdy: number): void {
+  if (!tdx && !tdy) return;
+  const bw = hp.x1 - hp.x0 + 1, bh = hp.y1 - hp.y0 + 1;
+  const block: number[][] = [];
+  for (let y = 0; y < bh; y++) {
+    block.push([...a.map[hp.y0 + y].slice(hp.x0, hp.x1 + 1)]);
+    for (let x = 0; x < bw; x++) a.map[hp.y0 + y][hp.x0 + x] = T.GRASS;
+  }
+  for (let y = 0; y < bh; y++) {
+    for (let x = 0; x < bw; x++) {
+      const zy = hp.y0 + y + tdy, zx = hp.x0 + x + tdx;
+      if (a.map[zy]?.[zx] !== undefined) a.map[zy][zx] = block[y][x];
+    }
+  }
+  for (const d of a.doors ?? []) {
+    if (d.haus === hp.id) {
+      d.x += tdx;
+      d.y += tdy;
+    }
+  }
+  for (const l of a.labels) {
+    if (l.x >= hp.x0 * TILE && l.x <= (hp.x1 + 1) * TILE && l.y >= hp.y0 * TILE && l.y <= (hp.y1 + 1) * TILE) {
+      l.x += tdx * TILE;
+      l.y += tdy * TILE;
+    }
+  }
+  hp.x0 += tdx;
+  hp.x1 += tdx;
+  hp.y0 += tdy;
+  hp.y1 += tdy;
+}
+
+// --- Ravensmoor: ein echtes Dorf des 17. Jahrhunderts (Masterprompt 7.2) ---// Referenzdorf war 46x30 - dieses ist 92x60, entlang der alten Salzstraße.
 
 export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): AreaData {
   const w = 92, h = 60;
@@ -689,6 +725,9 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   const pen2 = { x0: 67 * TILE, y0: 45 * TILE, x1: 74 * TILE, y1: 49 * TILE };
   a.animals.push({ type: 'kuh', x: 70 * TILE, y: 47 * TILE, pen: pen2 });
   a.animals.push({ type: 'huhn', x: 68 * TILE, y: 46 * TILE, pen: pen2 });
+  // Pferde (Runde 24, Wunsch des Autors): am Gatter des Bauernhofs
+  a.animals.push({ type: 'pferd', x: 72 * TILE, y: 45 * TILE, pen: pen2 });
+  a.animals.push({ type: 'pferd', x: 68 * TILE, y: 48 * TILE, pen: pen2 });
   carve(map, 56, 53, 63, 56, T.FIELD);
   a.npcs.push({ id: 'bauer2', name: 'Bäuerin Grete', x: 59 * TILE, y: 54 * TILE, abend: { x: 60 * TILE, y: 50.5 * TILE }, arbeit: 'feld' });
 

@@ -47,3 +47,46 @@ Kampf-Effekte (swoosh, slice, armor_cut, block) müssen KURZ sein -
 unter 3 Sekunden. Eine 48s-Compilation als swoosh2 hat bei jedem
 Schwerthieb eine Dauerbeschallung gestartet. Lange Stücke nur für
 musik_* und Atmosphären-Loops verwenden.
+
+## Figuren selbst zeichnen (Spieler, Bewohner, Tiere, Gegner) - Runde 24
+
+Jede Figur besteht aus 16 kleinen PNGs in assets/sprites/:
+  <name>_<richtung>_<frame>.png
+  Richtungen: unten, links, rechts, oben
+  Frames: 1 bis 4 (Geh-Zyklus; Frame 1 = stehen, 2-4 = Schritte.
+  Es dürfen auch weniger sein - fehlende Frames nutzen Frame 1.)
+Beispiele: spieler_unten_1.png, heinrich_links_3.png, pferd_oben_2.png
+
+Worauf achten:
+- Exakt 32x32 Pixel, TRANSPARENTER Hintergrund (kein Karo, kein Weiß)
+- Figur mittig, Füße bei etwa Pixelzeile 28 (das Spiel zeichnet den
+  Schatten darunter selbst)
+- Namen wie im Spiel: spieler, heinrich, magdalena, johannes, schmied,
+  hebamme, ... (Dorfvolk), huhn, schwein, kuh, schaf, hund, pferd
+  (Tiere), pest, skelett, schuetze, schatten, wolf, ratte, templer
+  (Gegner). Volle Liste: src/gfx/assetManifest.ts (SPRITE_NAMES).
+- Erst EINE Figur testen (z. B. spieler), dann in Serie gehen.
+- Der Wechseltakt ist 140 ms je Frame - die 4 Frames also als
+  Stand / Schritt links / Stand / Schritt rechts anlegen.
+
+## Haus-Animationen (Runde 24)
+
+Zu jedem Hausbild hausN.png darf es zusätzlich geben:
+  hausN_anim1.png ... hausN_anim4.png   Bewegungs-Frames (alle 0,4s im
+    Wechsel): Mühlrad, Schmiedefeuer, Bäckerei-Ofen, Kaminflackern ...
+  hausN_nacht.png   Fensterlicht - blendet abends ein, nachts voll,
+    morgens wieder aus.
+WICHTIG: exakt dieselben Bildmaße wie hausN.png, und ALLES transparent
+außer dem Teil, der sich bewegt/leuchtet. Die Overlays liegen dann
+passgenau über dem Haus und machen Skalierung/Verschieben mit.
+
+## Bilder direkt im Spiel testen (Baukasten, F10)
+
+- BODEN/OBJEKT-Tab: Werkzeug wählen -> "EIGENES BILD fürs Werkzeug
+  laden" -> die Grafik gilt sofort überall (nur in diesem Browser).
+  Objekt-Bilder werden automatisch freigestellt (Karo/Weiß weg) und
+  auf Kachelgröße gerechnet.
+- HAUS-Tab: "Bild auf Haus laden" -> Haus anklicken -> Datei wählen.
+  Auch hier wird der Hintergrund automatisch freigestellt.
+- Wenn etwas gefällt: dieselbe Datei zusätzlich in assets/tiles/
+  legen, dann gilt sie dauerhaft und für jeden.

@@ -49,6 +49,15 @@ export class BootScene extends Phaser.Scene {
         c.push({ key: `hs_tile_${name}_v${n}`, url: `tiles/${name}${n}.png`, art: 'image', optional: true });
       }
     }
+    // Haus-Animationen (Runde 24): hausN_anim1..4.png (z. B. Mühlrad,
+    // Schmiedefeuer) und hausN_nacht.png (Fensterlicht, abends eingeblendet).
+    // Gleiche Bildmaße wie hausN.png, transparent bis auf den bewegten Teil.
+    for (let n = 1; n <= TILE_VARIANTS_MAX; n++) {
+      for (let k = 1; k <= 4; k++) {
+        c.push({ key: `hs_haus${n}_anim${k}`, url: `tiles/haus${n}_anim${k}.png`, art: 'image', optional: true });
+      }
+      c.push({ key: `hs_haus${n}_nacht`, url: `tiles/haus${n}_nacht.png`, art: 'image', optional: true });
+    }
     c.push({ key: `hs_${TITLE_IMAGE}`, url: 'title/ravensmoor-title.jpg', art: 'image' });
     return c;
   }
@@ -112,6 +121,37 @@ export class BootScene extends Phaser.Scene {
     }
     track(`hs_${TITLE_IMAGE}`, 'assets/title/ravensmoor-title.jpg');
     logAssetStatus();
-    this.scene.start('Title');
+    // Eigene Baukasten-Bilder (Runde 24) ÜBER die geladenen Texturen legen,
+    // erst dann ins Menü - sonst rendert das Dorf einmal mit alten Tiles
+    void this.wendeEigeneTilesAn().then(() => this.scene.start('Title'));
+  }
+
+  // Vom Autor im Baukasten hochgeladene Tile-Bilder (Browser-Speicher)
+  // ersetzen ihre komplette Varianten-Familie - wie zur Laufzeit
+  private async wendeEigeneTilesAn(): Promise<void> {
+    let roh: Record<string, string> = {};
+    try {
+      roh = JSON.parse(localStorage.getItem('ravensmoor_eigene_tiles') ?? '{}') as Record<string, string>;
+    } catch { return; }
+    const jobs = Object.entries(roh).map(([name, dataUrl]) => new Promise<void>((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const familie = [`hs_tile_${name}`];
+        for (let n = 1; n <= 12; n++) familie.push(`hs_tile_${name}_v${n}`);
+        let getroffen = false;
+        for (const key of familie) {
+          if (this.textures.exists(key)) {
+            this.textures.remove(key);
+            this.textures.addImage(key, img);
+            getroffen = true;
+          }
+        }
+        if (!getroffen) this.textures.addImage(`hs_tile_${name}`, img);
+        resolve();
+      };
+      img.onerror = () => resolve();
+      img.src = dataUrl;
+    }));
+    await Promise.all(jobs);
   }
 }

@@ -727,3 +727,23 @@ Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.
   Fassung des Fenster-Griffs übersteuerte - im eigenen Browser-Test
   gefunden und behoben, bevor es dich erreicht hat.
 - 58/58 Tests grün (neu: Kirchenschiff-Rückkehr), tsc sauber.
+
+## Feedback-Runde 24 - umgesetzt (Baukasten-Ausbau: eigene Bilder überall)
+
+- Unsichtbare Wände behoben: Grundfläche, Tür und Hausname wandern jetzt
+  kachelgenau mit dem verschobenen Haus; beim Beenden des Justier-Modus
+  baut sich das Dorf sofort frisch. Verifiziert: alte Fläche begehbar,
+  Tür sitzt am neuen Ort, Bild deckungsgleich mit der Kollision.
+- Eigene Bilder für Werkzeuge: in BODEN/OBJEKT "EIGENES BILD fürs
+  Werkzeug laden" - mit automatischer Freistellung (Karo/Weiß weg) und
+  Herunterrechnen auf Kachelgröße. Gilt sofort überall, überlebt das
+  Neuladen. Verifiziert mit einem Testbaum auf eingebackenem Schachbrett.
+- Haus-Upload stellt den Hintergrund jetzt ebenfalls automatisch frei.
+- Haus-Animationen vorbereitet und verifiziert: hausN_anim1..4.png
+  (Mühlrad, Feuer; 0,4s-Takt) und hausN_nacht.png (Fensterlicht, blendet
+  abends ein). Spezifikation steht in assets/ANLEITUNG.md.
+- Pferde sind im Spiel (Bauernhof-Gatter + TIERE-Tab im Baukasten).
+- STADTPLAN KOPIEREN exportiert jetzt auch Haus-Positionen/-Größen und
+  die Liste eigener Bilder - die Grundlage, auf der ich Bewohner und
+  Tagesabläufe der neuen Stadt zuordne.
+- 59/59 Tests grün (neu: verschiebeHaus), tsc sauber.

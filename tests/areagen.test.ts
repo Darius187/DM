@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildVillage, buildInterior, buildKirchenschiff, type AreaData } from '../src/world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildVillage, buildInterior, buildKirchenschiff, verschiebeHaus, type AreaData } from '../src/world/areagen';
 import { INNENRAEUME } from '../src/data/innenraeume';
 import { VOLK } from '../src/data/dialoge';
 import { SOLID, T } from '../src/world/tiles';
@@ -84,6 +84,28 @@ describe('Krypta-Generator: jeder Spezialraum erreichbar', () => {
     expect(a.enemySpawns.some((e) => e.champion)).toBe(true);
     expect(a.enemySpawns.some((e) => e.type === 'templer')).toBe(false);
     expect(buildBoss(seededRng(1), true).enemySpawns.length).toBe(0);
+  });
+
+  it('verschiebeHaus: Wände, Tür und Name wandern mit - keine unsichtbaren Wände zurück', () => {
+    const a = buildVillage(seededRng(1));
+    const hp = a.hausPlaetze!.find((p) => p.id === 'taverne')!;
+    const alt = { x0: hp.x0, y0: hp.y0, x1: hp.x1, y1: hp.y1 };
+    const tuerAlt = a.doors!.find((d) => d.haus === 'taverne')!;
+    const tuerPos = { x: tuerAlt.x, y: tuerAlt.y };
+    verschiebeHaus(a, hp, 3, 2);
+    // Alte Fläche: keine Haus-Kacheln mehr (alles Gras)
+    for (let y = alt.y0; y <= alt.y1; y++) {
+      for (let x = alt.x0; x <= alt.x1; x++) {
+        if (x >= alt.x0 + 3 && y >= alt.y0 + 2) continue; // Überlappung mit Ziel
+        expect(a.map[y][x]).toBe(T.GRASS);
+      }
+    }
+    // Neue Fläche: Tür-Kachel sitzt am verschobenen Ort, Eintrag folgt
+    expect(tuerAlt.x).toBe(tuerPos.x + 3);
+    expect(tuerAlt.y).toBe(tuerPos.y + 2);
+    expect(a.map[tuerAlt.y][tuerAlt.x]).toBe(T.HDOOR);
+    expect(hp.x0).toBe(alt.x0 + 3);
+    expect(hp.y1).toBe(alt.y1 + 2);
   });
 
   it('Kirchenschiff: Rückkehr aus der Krypta landet VOR dem Altar, Weg zur Tür frei', () => {

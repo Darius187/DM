@@ -4,7 +4,7 @@
 
 export interface PlanKachel { x: number; y: number; t: number; orig: number }
 export interface PlanFackel { x: number; y: number }
-export interface PlanTier { x: number; y: number; art: 'huhn' | 'schwein' | 'kuh' | 'hund' | 'schaf' }
+export interface PlanTier { x: number; y: number; art: 'huhn' | 'schwein' | 'kuh' | 'hund' | 'schaf' | 'pferd' }
 export interface PlanSchild { x: number; y: number; text: string }
 
 export interface Stadtplan {

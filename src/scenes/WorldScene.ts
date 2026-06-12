@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir } from '../world/Enemy';
-import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildInterior, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildInterior, verschiebeHaus, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { LANDHERR } from '../data/dialoge';
 import storyJson from '../data/story.json';
@@ -34,6 +34,7 @@ import { seededRng, pick, ri } from '../logic/rng';
 import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type SaveData } from '../logic/save';
 import { storage } from '../logic/gameStorage';
 import { ladeStadtplan, speichereStadtplan, loescheStadtplan, wendePlanAn, setzeKachel, radiere, type Stadtplan, type PlanTier } from '../logic/stadtplan';
+import { alsCanvas, stelleFrei, verarbeiteUpload } from '../gfx/bildVerarbeitung';
 import type { Item } from '../data/types';
 import type { Pickup } from '../world/Pickups';
 import { ANNA_GRAB } from '../data/dialoge';
@@ -135,6 +136,8 @@ export class WorldScene extends CombatScene {
     this.baukastenPanel = null;
     this.baukastenTool = null;
     this.schildEnts = [];
+    this.hausAnimEnts = [];
+    this.hausNachtEnts = [];
     this.relicChoice = null;
     this.pauseMenu = null;
     this.deathOverlay = null;
@@ -378,6 +381,13 @@ export class WorldScene extends CombatScene {
       }
     }
     this.logMsg(this.hausEditAn ? 'Häuser justieren: ziehen = verschieben, Mausrad = Größe. F10-Knopf beendet.' : 'Haus-Positionen und -Größen gespeichert.', 'gold');
+    // Beim Beenden zieht das Dorf Kollision, Türen und Hausnamen nach
+    // (Runde 24): frisch aufbauen, Spieler bleibt, wo er steht
+    if (!this.hausEditAn && this.area.id === 'village') {
+      this.areas.delete('village');
+      this.goArea('village', { x: this.px, y: this.py });
+      this.logMsg('Grundflächen und Türen sind den Häusern gefolgt.', 'gold');
+    }
   }
 
   // --- Stadt-Baukasten (Runde 22) ---------------------------------------------
@@ -390,7 +400,7 @@ export class WorldScene extends CombatScene {
   private baukastenPanel: Phaser.GameObjects.Container | null = null;
   private baukastenTab: 'boden' | 'objekte' | 'tiere' | 'haus' = 'boden';
   private baukastenTool:
-    | { art: 'kachel'; t: number; name: string }
+    | { art: 'kachel'; t: number; name: string; tile?: string }
     | { art: 'fackel' } | { art: 'schild' } | { art: 'radierer' }
     | { art: 'tier'; tier: PlanTier['art'] }
     | { art: 'hausbild' }
@@ -483,24 +493,51 @@ export class WorldScene extends CombatScene {
       c.add(b);
       y += 30;
     };
+    // Werkzeuge tragen den Asset-Namen mit - so weiß der Bild-Upload,
+    // welche Grafik-Familie er ersetzen soll (Runde 24)
+    const bildKnopf = () => {
+      const up = this.add.text(12, y, 'EIGENES BILD fürs Werkzeug laden', {
+        fontFamily: 'serif', fontSize: '12px', color: '#8aa6e8', backgroundColor: '#18203a', padding: { x: 10, y: 4 },
+      }).setInteractive({ useHandCursor: true });
+      up.on('pointerdown', () => {
+        const tool = this.baukastenTool;
+        if (!tool || tool.art !== 'kachel' || !tool.tile) {
+          this.logMsg('Erst oben ein Werkzeug wählen, dann das Bild laden.', 'bad');
+          return;
+        }
+        this.ladeTileBildDialog(tool.tile, this.baukastenTab === 'objekte', tool.name);
+      });
+      c.add(up);
+      y += 26;
+      c.add(this.add.text(12, y, 'Ersetzt die Grafik überall (dieser Browser).\nDauerhaft: Datei nach assets/tiles/ legen.', {
+        fontFamily: 'serif', fontSize: '9px', color: '#8a7a5a', lineSpacing: 2,
+      }));
+      y += 28;
+    };
     if (this.baukastenTab === 'boden') {
-      const boeden: Array<[string, number]> = [
-        ['Gras', T.GRASS], ['Weg', T.PATH], ['Acker / Weizenfeld', T.FIELD],
-        ['Wasser', T.WATER], ['Steinboden', T.FLOOR], ['Brandstelle', T.BURNT],
+      const boeden: Array<[string, number, string]> = [
+        ['Gras', T.GRASS, 'gras'], ['Weg', T.PATH, 'weg'], ['Acker / Weizenfeld', T.FIELD, 'acker'],
+        ['Wasser', T.WATER, 'wasser'], ['Steinboden', T.FLOOR, 'krypta_boden'], ['Brandstelle', T.BURNT, 'brandstelle'],
       ];
-      for (const [name, t] of boeden) werkzeug(name, { art: 'kachel', t, name });
+      for (const [name, t, tile] of boeden) werkzeug(name, { art: 'kachel', t, name, tile });
+      bildKnopf();
     } else if (this.baukastenTab === 'objekte') {
-      const objekte: Array<[string, number]> = [
-        ['Baum', T.TREE], ['Zaun', T.FENCE], ['Palisade', T.PALISADE],
-        ['Brunnen', T.WELL], ['Grabstein', T.GRAVE], ['Fels', T.ROCK],
+      const objekte: Array<[string, number, string]> = [
+        ['Baum', T.TREE, 'baum'], ['Zaun', T.FENCE, 'zaun'], ['Palisade', T.PALISADE, 'palisade'],
+        ['Brunnen', T.WELL, 'brunnen'], ['Grabstein', T.GRAVE, 'grabstein'], ['Fels', T.ROCK, 'fels'],
       ];
-      for (const [name, t] of objekte) werkzeug(name, { art: 'kachel', t, name });
+      for (const [name, t, tile] of objekte) werkzeug(name, { art: 'kachel', t, name, tile });
       werkzeug('Fackel', { art: 'fackel' });
       werkzeug('Schild (beschriftbar)', { art: 'schild' });
+      bildKnopf();
     } else if (this.baukastenTab === 'tiere') {
-      for (const tier of ['huhn', 'schwein', 'kuh', 'schaf', 'hund'] as const) {
+      for (const tier of ['huhn', 'schwein', 'kuh', 'schaf', 'hund', 'pferd'] as const) {
         werkzeug(tier.charAt(0).toUpperCase() + tier.slice(1), { art: 'tier', tier });
       }
+      c.add(this.add.text(12, y, 'Eigene Tier-/Figuren-Bilder laufen über\nassets/sprites/ (Schema in ANLEITUNG.md).', {
+        fontFamily: 'serif', fontSize: '9px', color: '#8a7a5a', lineSpacing: 2,
+      }));
+      y += 30;
     } else {
       const justieren = this.add.text(12, y, this.hausEditAn ? '▸ Häuser justieren: AN' : 'Häuser justieren (ziehen/Rad)', {
         fontFamily: 'serif', fontSize: '13px', color: this.hausEditAn ? '#c9a227' : '#d8cfb8',
@@ -540,9 +577,16 @@ export class WorldScene extends CombatScene {
       c.add(b);
     };
     fuss('STADTPLAN KOPIEREN', h - 104, () => {
-      const text = `Stadtplan Ravensmoor: ${JSON.stringify(this.stadtplan)}`;
+      // Auch Haus-Positionen/-Größen und eigene Bilder gehören zum Plan -
+      // daran erkenne ich, wohin Türen und Bewohner sollen (Runde 24)
+      const text = `Stadtplan Ravensmoor: ${JSON.stringify({
+        plan: this.stadtplan,
+        haeuser: this.hausJustierung(),
+        eigeneBilder: Object.keys(JSON.parse(localStorage.getItem('ravensmoor_eigene_tiles') ?? '{}') as Record<string, string>),
+        eigeneHausBilder: Object.keys(this.hausBilderStore()),
+      })}`;
       navigator.clipboard?.writeText(text).catch(() => undefined);
-      this.logMsg('Stadtplan kopiert - im Chat einfügen, dann baue ich ihn fest ein.', 'gold');
+      this.logMsg('Stadtplan kopiert (inkl. Haus-Positionen) - im Chat einfügen, dann baue ich ihn fest ein.', 'gold');
     });
     fuss('PLAN VERWERFEN (alles zurück)', h - 70, () => {
       this.stadtplan = { kacheln: [], fackeln: [], tiere: [], schilder: [] };
@@ -671,6 +715,48 @@ export class WorldScene extends CombatScene {
 
   private ladeHausBildDialog(img: Phaser.GameObjects.Image): void {
     const id = img.getData('hausId') as string;
+    this.waehleBilddatei((roh) => {
+      // Eingebackenen Karo-/Weiß-Hintergrund freistellen (Runde 24 -
+      // vorher klebte das Schachbrett am hochgeladenen Haus)
+      const canvas = alsCanvas(roh);
+      stelleFrei(canvas);
+      const daten = canvas.toDataURL('image/png');
+      try {
+        const store = this.hausBilderStore();
+        store[id] = daten;
+        localStorage.setItem('ravensmoor_hausbilder', JSON.stringify(store));
+      } catch {
+        this.logMsg('Browser-Speicher voll - das Bild gilt nur für diese Sitzung.', 'bad');
+      }
+      const key = `hausupload_${id}`;
+      if (this.textures.exists(key)) this.textures.remove(key);
+      this.textures.once(`addtexture-${key}`, () => this.setzeHausTextur(img, key));
+      this.textures.addBase64(key, daten);
+      this.logMsg(`Neues Bild (freigestellt) liegt auf ${id}.`, 'gold');
+    });
+  }
+
+  // Eigenes Bild für ein Kachel-Werkzeug (Runde 24): freistellen (nur
+  // Objekte), auf Kachelgröße herunterrechnen, Familie ersetzen, neu malen
+  private ladeTileBildDialog(tile: string, freistellen: boolean, anzeigeName: string): void {
+    this.waehleBilddatei((roh) => {
+      const canvas = verarbeiteUpload(roh, { zielW: TILE, zielH: TILE, freistellen });
+      this.provider.setzeEigenesTile(tile, canvas);
+      try {
+        const store = JSON.parse(localStorage.getItem('ravensmoor_eigene_tiles') ?? '{}') as Record<string, string>;
+        store[tile] = canvas.toDataURL('image/png');
+        localStorage.setItem('ravensmoor_eigene_tiles', JSON.stringify(store));
+      } catch {
+        this.logMsg('Browser-Speicher voll - Bild gilt nur für diese Sitzung.', 'bad');
+      }
+      this.areas.delete(this.area.id);
+      this.goArea(this.area.id, { x: this.px, y: this.py });
+      this.logMsg(`Eigenes Bild für "${anzeigeName}" liegt an - überall im Spiel.`, 'gold');
+    });
+  }
+
+  // Datei-Dialog öffnen und das gewählte Bild fertig geladen liefern
+  private waehleBilddatei(fn: (img: HTMLImageElement) => void): void {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/png,image/jpeg,image/webp';
@@ -679,19 +765,9 @@ export class WorldScene extends CombatScene {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = () => {
-        const daten = String(reader.result);
-        try {
-          const store = this.hausBilderStore();
-          store[id] = daten;
-          localStorage.setItem('ravensmoor_hausbilder', JSON.stringify(store));
-        } catch {
-          this.logMsg('Browser-Speicher voll - das Bild gilt nur für diese Sitzung.', 'bad');
-        }
-        const key = `hausupload_${id}`;
-        if (this.textures.exists(key)) this.textures.remove(key);
-        this.textures.once(`addtexture-${key}`, () => this.setzeHausTextur(img, key));
-        this.textures.addBase64(key, daten);
-        this.logMsg(`Neues Bild liegt auf ${id}.`, 'gold');
+        const img = new Image();
+        img.onload = () => fn(img);
+        img.src = String(reader.result);
       };
       reader.readAsDataURL(file);
     };
@@ -832,6 +908,13 @@ export class WorldScene extends CombatScene {
       for (const f of plan.fackeln) a.torches.push({ x: f.x, y: f.y, ph: Math.random() * 6.28 });
       for (const t of plan.tiere) a.animals.push({ type: t.art, x: t.x, y: t.y });
       a.schilder = [...plan.schilder];
+      // Haus-Justierung (Runde 24): Grundfläche, Tür und Hausname wandern
+      // kachelgenau mit dem Bild mit - keine unsichtbaren Wände mehr
+      const just = this.hausJustierung();
+      for (const hp of a.hausPlaetze ?? []) {
+        const j = just[hp.id];
+        if (j) verschiebeHaus(a, hp, Math.round(j.dx / TILE), Math.round(j.dy / TILE));
+      }
     }
     else if (id.startsWith('innen_')) a = buildInterior(INNENRAEUME[id.replace('innen_', '')]);
     else if (id === 'wald') a = buildForest(rng);
@@ -1027,6 +1110,9 @@ export class WorldScene extends CombatScene {
     this.animalEnts = [];
     for (const s of this.schildEnts) for (const o of s.objs) o.destroy();
     this.schildEnts = [];
+    // Bilder hängen in tileImages (oben zerstört) - nur die Listen leeren
+    this.hausAnimEnts = [];
+    this.hausNachtEnts = [];
     this.pickups.clear();
   }
 
@@ -1199,7 +1285,14 @@ export class WorldScene extends CombatScene {
         if (!key.startsWith('hs_tile_haus')) return; // kein Sprite vorhanden
         const breite = (hp.x1 - hp.x0 + 1) * TILE;
         const j = just[hp.id] ?? { dx: 0, dy: 0, skala: 1 };
-        const img = this.add.image((hp.x0 + hp.x1 + 1) / 2 * TILE + j.dx, (hp.y1 + 1) * TILE + 6 + j.dy, key)
+        // Runde 24: die Grundfläche ist bereits um GANZE Kacheln verschoben
+        // (verschiebeHaus) - der Justier-Anker bleibt das ORIGINAL, damit
+        // dx/dy beim Ziehen nicht doppelt zählen
+        const tdx = Math.round(j.dx / TILE) * TILE;
+        const tdy = Math.round(j.dy / TILE) * TILE;
+        const ankerX = (hp.x0 + hp.x1 + 1) / 2 * TILE - tdx;
+        const ankerY = (hp.y1 + 1) * TILE + 6 - tdy;
+        const img = this.add.image(ankerX + j.dx, ankerY + j.dy, key)
           .setOrigin(0.5, 1).setDepth(hp.y1 * TILE + 16);
         // Runde 19: Basisgröße = Grundflächenbreite (war x1,3 - zu riesig),
         // dazu die gespeicherte Skala aus dem Justier-Modus
@@ -1208,11 +1301,13 @@ export class WorldScene extends CombatScene {
         img.setData('hausId', hp.id);
         img.setData('basis', basis);
         img.setData('breite', breite);
-        img.setData('anker', { x: (hp.x0 + hp.x1 + 1) / 2 * TILE, y: (hp.y1 + 1) * TILE + 6 });
+        img.setData('anker', { x: ankerX, y: ankerY });
         this.hausBilder.push(img);
         this.tileImages.push(img);
         // Vom Autor hochgeladenes Test-Bild (Baukasten) wieder anwenden
         this.wendeHausBildAn(img);
+        // Animations-Overlays (Runde 24): Mühlrad/Feuer + Nacht-Fenster
+        this.bauHausOverlays(img, key);
       });
     }
     // Gefällte Bäume dieses Gebiets: Stümpfe zeigen, bis sie nachwachsen
@@ -1222,6 +1317,48 @@ export class WorldScene extends CombatScene {
     }
     // Ortsnamen erscheinen als Einblendung, wenn man in die Nähe kommt
     // (Runde 12: nicht mehr halb versteckt in der Welt)
+  }
+
+  // --- Haus-Animationen (Runde 24) --------------------------------------------
+  // Liegt zu hausN.png eine hausN_anim1..4.png (Mühlrad, Schmiedefeuer,
+  // Kamin) oder hausN_nacht.png (Fensterlicht) in assets/tiles/, legt sie
+  // sich passgenau über das Hausbild. Frames wechseln alle 0,4s; das
+  // Nachtlicht blendet abends ein und morgens wieder aus.
+  private hausAnimEnts: Array<{ img: Phaser.GameObjects.Image; keys: string[]; idx: number; t: number }> = [];
+  private hausNachtEnts: Phaser.GameObjects.Image[] = [];
+
+  private bauHausOverlays(haus: Phaser.GameObjects.Image, key: string): void {
+    const vn = /_v(\d+)$/.exec(key)?.[1];
+    if (!vn) return;
+    const overlay = (texKey: string): Phaser.GameObjects.Image => {
+      const o = this.add.image(haus.x, haus.y, texKey).setOrigin(0.5, 1)
+        .setDepth(haus.depth + 0.5).setScale(haus.scaleX);
+      this.tileImages.push(o);
+      return o;
+    };
+    const animKeys: string[] = [];
+    for (let k = 1; k <= 4; k++) {
+      if (this.textures.exists(`hs_haus${vn}_anim${k}`)) animKeys.push(`hs_haus${vn}_anim${k}`);
+    }
+    if (animKeys.length) this.hausAnimEnts.push({ img: overlay(animKeys[0]), keys: animKeys, idx: 0, t: 0 });
+    if (this.textures.exists(`hs_haus${vn}_nacht`)) this.hausNachtEnts.push(overlay(`hs_haus${vn}_nacht`).setAlpha(0));
+  }
+
+  private animiereHaeuser(dt: number): void {
+    for (const a2 of this.hausAnimEnts) {
+      a2.t += dt;
+      if (a2.t >= 0.4) {
+        a2.t = 0;
+        a2.idx = (a2.idx + 1) % a2.keys.length;
+        a2.img.setTexture(a2.keys[a2.idx]);
+      }
+    }
+    if (this.hausNachtEnts.length) {
+      const nacht = this.tageszeit > TAG.nachtAb || this.tageszeit < TAG.morgenAb;
+      const abend = this.tageszeit > TAG.abendAb || nacht;
+      const ziel = nacht ? 1 : abend ? 0.55 : 0;
+      for (const o of this.hausNachtEnts) o.setAlpha(o.alpha + (ziel - o.alpha) * Math.min(1, dt * 2));
+    }
   }
 
   private spawnTier(t: AnimalSpawn): void {
@@ -3674,6 +3811,7 @@ export class WorldScene extends CombatScene {
     this.renderOrtsname();
     this.renderHover();
     this.animiereWasser(dt);
+    this.animiereHaeuser(dt);
     // Bosskampf über drei Kammern (Runde 21, ersetzt das Hinab-Reißen):
     // bei 66%/33% Leben weicht der Ritter durch das Gittertor nach Norden,
     // schickt eine Welle - und stellt sich erst, wenn der Held ihm folgt

@@ -108,6 +108,24 @@ export class SpriteProvider {
     return list[Math.abs(variant) % list.length];
   }
 
+  // Eigene Tile-Grafik aus dem Baukasten (Runde 24): ersetzt die GANZE
+  // Varianten-Familie, damit das neue Bild überall gilt - existiert noch
+  // gar keine Hot-Swap-Textur, wird der Basis-Schlüssel angelegt
+  setzeEigenesTile(name: string, canvas: HTMLCanvasElement): void {
+    const familie = [`hs_tile_${name}`];
+    for (let n = 1; n <= 12; n++) familie.push(`hs_tile_${name}_v${n}`);
+    let getroffen = false;
+    for (const key of familie) {
+      if (this.tex.exists(key)) {
+        this.tex.remove(key);
+        this.tex.addCanvas(key, canvas);
+        getroffen = true;
+      }
+    }
+    if (!getroffen) this.tex.addCanvas(`hs_tile_${name}`, canvas);
+    this.hotVarianten.delete(name);
+  }
+
   // Wie viele echte Hot-Swap-Varianten gibt es? (0 = nur Fallback)
   tileVarianten(name: string): number {
     this.hotTile(name, 0);

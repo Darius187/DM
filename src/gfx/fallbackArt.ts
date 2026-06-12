@@ -286,4 +286,5 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   schaf:     { quad: { body: '#e8e2d4', head: '#3a3026', size: 0.9, tail: true, ears: true } },
   kuh:       { quad: { body: '#e0d8c8', head: '#d0c8b8', size: 1.3, tail: true, ears: true, spots: '#3a3026' } },
   hund:      { quad: { body: '#7a6244', head: '#6a5438', size: 0.8, tail: true, ears: true } },
+  pferd:     { quad: { body: '#6a4a30', head: '#5a3e28', size: 1.45, tail: true, ears: true } },
 };
