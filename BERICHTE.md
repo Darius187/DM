@@ -787,3 +787,22 @@ Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.
   Haus-Justiermodus beschriftet jedes Haus (Schmiede bleibt Schmiede),
   Mehrfach-Upload macht eigene Bilder zu Varianten (Gras/Weg mischen).
 - 60/60 Tests grün, tsc sauber.
+
+## Feedback-Runde 27 - umgesetzt (Schilde, scharfe Schrift, klügere Gegner)
+
+- Schilde sind im Spiel: droppen als Beute, eigener Platz im Charakter-
+  fenster, geben Rüstung. Blocken: voll nur MIT Schild; ohne = schwächere
+  Waffenparade; Bogen/Stab blocken nicht (und werfen den Schild beim
+  Anlegen ab). Alles getestet (4 neue Tests) und im Browser verifiziert.
+- Schrift-Kopfschmerz behoben: das Bild wird nicht mehr hochgestreckt.
+  Der Regler zoomt nur noch die Welt; Schrift und Leisten rendert eine
+  zweite Kamera in voller Auflösung - gestochen scharf bei jedem Zoom.
+  Wirkt jetzt sofort, auch mitten im Spiel. Verifiziert (130%: Klick
+  trifft kachelgenau, Canvas nativ).
+- Gegner-KI: Hindernisse werden umlaufen statt angerannt; Skelette und
+  Pestopfer sammeln sich erst und stürmen gemeinsam; nach dem eigenen
+  Schlag weichen Gegner schräg und KONTERN, wenn man nachsetzt -
+  Schildträger stoßen zudem aus der ablaufenden Deckung zu.
+- Neuer F10-Regler: Gegner-Schlagtempo. Bogen auf Mittelweg (schneller
+  gespannt, etwas weniger Spitzenschaden).
+- 64/64 Tests grün, tsc sauber.

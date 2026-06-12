@@ -12,6 +12,7 @@ export function drawItemIcon(ctx: CanvasRenderingContext2D, it: Item): void {
   switch (it.kind) {
     case 'weapon': drawWeapon(ctx, it); break;
     case 'armor': drawArmor(ctx); break;
+    case 'schild': drawSchild(ctx); break;
     case 'ring': drawRing(ctx); break;
     case 'gem': drawGem(ctx, it as GemItem); break;
     case 'potion': drawPotion(ctx, '#d8402a'); break;
@@ -25,6 +26,31 @@ export function drawItemIcon(ctx: CanvasRenderingContext2D, it: Item): void {
     case 'tool': drawTool(ctx, it.name); break;
   }
   ctx.restore();
+}
+
+function drawSchild(ctx: CanvasRenderingContext2D): void {
+  ctx.fillStyle = '#6a5430';
+  ctx.beginPath();
+  ctx.arc(0, 0, 22, 0, 6.283);
+  ctx.fill();
+  ctx.fillStyle = '#8a6a3e';
+  ctx.beginPath();
+  ctx.arc(0, 0, 18, 0, 6.283);
+  ctx.fill();
+  ctx.strokeStyle = '#3a2a16';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-18, 0); ctx.lineTo(18, 0);
+  ctx.moveTo(0, -18); ctx.lineTo(0, 18);
+  ctx.stroke();
+  ctx.fillStyle = '#aab4c0';
+  ctx.beginPath();
+  ctx.arc(0, 0, 6, 0, 6.283);
+  ctx.fill();
+  ctx.fillStyle = shade('#aab4c0', 30);
+  ctx.beginPath();
+  ctx.arc(-2, -2, 2.5, 0, 6.283);
+  ctx.fill();
 }
 
 function drawWeapon(ctx: CanvasRenderingContext2D, it: Item): void {

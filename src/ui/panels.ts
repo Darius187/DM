@@ -21,7 +21,7 @@ const GOLD = '#c9a227';
 const BONE = '#d8cfb8';
 
 const TYP_NAMEN: Record<string, string> = {
-  weapon: 'Waffe', armor: 'Rüstung', ring: 'Ring', gem: 'Edelstein',
+  weapon: 'Waffe', armor: 'Rüstung', ring: 'Ring', gem: 'Edelstein', schild: 'Schild',
   potion: 'Trank', scroll: 'Zauberrolle', food: 'Proviant', material: 'Material', tool: 'Werkzeug',
 };
 const KLASSEN_NAMEN: Record<string, string> = {
@@ -158,7 +158,7 @@ export class UIPanels {
     c.add(this.scene.add.text(64, 144, `Stufe ${p.level}`, { fontFamily: 'serif', fontSize: '13px', color: BONE }).setOrigin(0.5, 0));
 
     // Slots rechts neben dem Portrait
-    const slots: Array<[string, Item | null]> = [['Waffe', p.weapon], ['Rüstung', p.armorIt], ['Ring', p.ring]];
+    const slots: Array<[string, Item | null]> = [['Waffe', p.weapon], ['Rüstung', p.armorIt], ['Ring', p.ring], ['Schild', p.schildIt]];
     let sy = 40;
     for (const [label, it] of slots) {
       const slotBg = this.scene.add.rectangle(124, sy, 40, 40, 0x100b06).setOrigin(0)
@@ -257,7 +257,7 @@ export class UIPanels {
     // Angelegtes erscheint NUR links im Charakter (Feedback-Runde 2);
     // Rest nach Filter, beste zuerst (Seltenheit, dann Wert)
     const inv = p.inv
-      .filter((it) => it !== p.weapon && it !== p.armorIt && it !== p.ring)
+      .filter((it) => it !== p.weapon && it !== p.armorIt && it !== p.ring && it !== p.schildIt)
       .filter((it) => this.filter === 'alle' ? true
         : this.filter === 'rest' ? !['weapon', 'armor', 'ring'].includes(it.kind)
         : it.kind === this.filter)
@@ -288,7 +288,7 @@ export class UIPanels {
 
   private buildItemRow(c: Phaser.GameObjects.Container, it: Item, x0: number, y: number, w: number): void {
     const p = this.getPlayer();
-    const equipped = it === p.weapon || it === p.armorIt || it === p.ring;
+    const equipped = it === p.weapon || it === p.armorIt || it === p.ring || it === p.schildIt;
     const rar = (it.rarity ?? 0) as Rarity;
     const rarCol = Phaser.Display.Color.HexStringToColor(RARITY_COLORS[rar]).color;
     const row = this.scene.add.rectangle(x0, y, w, 38, equipped ? 0xc9a227 : 0xffffff, equipped ? 0.07 : 0.02).setOrigin(0);
@@ -327,9 +327,25 @@ export class UIPanels {
         this.sfx.play('fehler');
         return;
       }
-    } else if (it.kind === 'weapon') p.weapon = p.weapon === it ? null : it;
+    } else if (it.kind === 'weapon') {
+      p.weapon = p.weapon === it ? null : it;
+      const wc = p.weapon?.weaponClass;
+      if ((wc === 'bogen' || wc === 'stab') && p.schildIt) {
+        p.schildIt = null;
+        this.sfx.play('klick');
+      }
+    }
     else if (it.kind === 'armor') p.armorIt = p.armorIt === it ? null : it;
     else if (it.kind === 'ring') p.ring = p.ring === it ? null : it;
+    else if (it.kind === 'schild') {
+      // Schild nur zur Nahkampfwaffe - Bogen und Stab brauchen beide Hände
+      const wc = p.weapon?.weaponClass;
+      if (wc === 'bogen' || wc === 'stab') {
+        this.sfx.play('fehler');
+        return;
+      }
+      p.schildIt = p.schildIt === it ? null : it;
+    }
     else if (it.kind === 'potion') {
       p.pot++;
       p.inv = p.inv.filter((x) => x !== it);
@@ -359,7 +375,8 @@ export class UIPanels {
     const w = it.kind === 'weapon' ? it : p.weapon;
     const a = it.kind === 'armor' ? it : p.armorIt;
     const r = it.kind === 'ring' ? it : p.ring;
-    return calcStats(p.level, p.elixirs, [w, a, r], p.schools.nahkampf.level);
+    const sch = it.kind === 'schild' ? it : p.schildIt;
+    return calcStats(p.level, p.elixirs, [w, a, r, sch], p.schools.nahkampf.level);
   }
 
   private showTooltip(it: Item, ptr: Phaser.Input.Pointer): void {
@@ -373,8 +390,8 @@ export class UIPanels {
       [itemStatLine(it), BONE],
     ];
     // Differenzen zum aktuellen Stand, grün/rot (Feedback-Runde 1)
-    if ((it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'ring')
-      && it !== p.weapon && it !== p.armorIt && it !== p.ring) {
+    if ((it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'ring' || it.kind === 'schild')
+      && it !== p.weapon && it !== p.armorIt && it !== p.ring && it !== p.schildIt) {
       const neu = this.statsWith(it);
       const cur = p.stats;
       const diffs: Array<[string, number]> = [
@@ -395,6 +412,7 @@ export class UIPanels {
     if (it.kind === 'gem') lines.push(['Klicken: in Waffe fassen', '#8a7a5a']);
     else if (it.kind === 'scroll') lines.push(['Klicken: Rolle einsetzen', '#8a7a5a']);
     else if (it.kind === 'food') lines.push(['Klicken: verzehren', '#8a7a5a']);
+    else if (it.kind === 'schild') lines.push(['Klicken: an-/ablegen (nicht mit Bogen/Stab)', '#8a7a5a']);
     else if (it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'ring') lines.push(['Klicken: an-/ablegen', '#8a7a5a']);
     this.renderTooltip(lines, ptr);
   }

@@ -139,3 +139,14 @@ jedem "fertig" zusätzlich zu Regel 1:
    erlauben, wo danach alles frisch aufgebaut wird (Hauptmenü).
 6. Diese Liste wächst: jeder Fehler, der den Autor eine Runde gekostet
    hat, bekommt hier eine Zeile.
+
+## 10. Vollständigkeits-Regel (seit Runde 27, "Auto ohne Räder")
+
+Ein Feature ist erst fertig, wenn seine KETTE komplett ist - auch ohne
+dass der Autor jedes Glied bestellt:
+- Mechanik vorhanden? Dann auch: Gegenstand/Quelle (Beute, Händler),
+  Anzeige (Inventar, Tooltip, Leiste), Speichern/Laden, Fallback-Grafik,
+  Klang-Haken. Beispiel-Fehler: Blocken existierte 26 Runden lang ohne
+  ein einziges Schild als Beute.
+- Vor jedem "fertig": einmal die Spielerreise denken - finden, ansehen,
+  anlegen, benutzen, speichern, laden.

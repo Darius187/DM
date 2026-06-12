@@ -6,7 +6,6 @@ import { TITEL } from '../data/texte';
 import { hasSave, readSave, AUTOSAVE_SLOT } from '../logic/save';
 import { storage } from '../logic/gameStorage';
 import { getSettings } from '../logic/settings';
-import { applyZoom } from '../logic/zoom';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -14,9 +13,6 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create(): void {
-    // Bildgröße anwenden (Runde 23): falls sie sich seit dem Start geändert
-    // hat (z. B. STANDARD im Pausenmenü), zieht das Menü hier sauber nach
-    applyZoom(this.game);
     const w = this.scale.width, h = this.scale.height;
     // Menü-Musik (Runde 12): läuft im Hauptmenü, endet beim Spielstart.
     // stopByKey statt get().stop(): jedes create() legte sonst eine NEUE
@@ -54,7 +50,7 @@ export class TitleScene extends Phaser.Scene {
       stroke: '#000000', strokeThickness: 6,
     }).setOrigin(0.5);
     // Sichtbare Versionsnummer, damit alte Stände sofort auffallen
-    this.add.text(10, h - 10, 'Stand: Feedback-Runde 26 (12.06.2026)', {
+    this.add.text(10, h - 10, 'Stand: Feedback-Runde 27 (12.06.2026)', {
       fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c',
     }).setOrigin(0, 1);
     this.add.text(w / 2, h * 0.2 + 52, TITEL.unter, {

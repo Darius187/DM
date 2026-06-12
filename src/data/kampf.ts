@@ -43,7 +43,11 @@ export const HEAVY_ATTACK = {
 
 // Blocken und perfekte Parade
 export const BLOCK = {
-  dmgTakenPct: 0.30,    // reduziert Schaden auf 30%, kein Guard-Break
+  dmgTakenPct: 0.30,    // reduziert Schaden auf 30% - MIT Schild (Runde 27)
+  // Waffenparade ohne Schild (Runde 27): Elite drücken mehr durch,
+  // und auch gewöhnliche Gegner kommen mit einem Rest durch
+  ohneSchildElitePct: 0.55,
+  ohneSchildNormalPct: 0.20,
   arcRad: 1.35,         // Blockwinkel (Referenz)
   parryWindowMs: 300,   // Block in den ersten 300 ms -> perfekte Parade
   parryStunS: 0.9,      // Gegner taumelt 0,9 s
@@ -73,7 +77,9 @@ export const WEAPON_MOVESETS = {
   axt:     { comboLength: 2, sweep360: true, speedMult: 0.9 },   // 3. Eingabe = Rundumschlag
   stange:  { comboLength: 1, thrust: true, range: 96, arc: 0.35, knockback: 14, speedMult: 0.95 },
   wucht:   { comboLength: 1, overhead: true, aoeRadius: 40, postureDmgMult: 2.0, speedMult: 0.7, miniShake: true },
-  bogen:   { drawTimeMaxS: 1.2, dmgMultFull: 1.8, projSpeed: 420, speedMult: 1.0 },
+  // Runde 27: Mittelweg zwischen dem alten (zu flotten) und dem zuletzt
+  // genervten Bogen - schnelleres Spannen, dafür etwas weniger Spitze
+  bogen:   { drawTimeMaxS: 0.95, dmgMultFull: 1.7, projSpeed: 440, speedMult: 1.0 },
   // Zauberstab: manafreies Arkangeschoss, skaliert mit der Zauberei-Schule,
   // und verstärkt gewirkte Zauber (halber Stabwert als Bonus)
   stab:    { projSpeed: 360, dmgMult: 0.75, spellBonusFaktor: 0.5, zaubereiBonusJeStufe: 0.05 },

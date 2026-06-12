@@ -28,6 +28,16 @@ export const STAVES: ReadonlyArray<readonly [string, number, WeaponClass, Genus]
   ['Kristallstab', 15, 'stab', 'm'],
 ];
 
+// Schilde (Runde 27): eigener Ausrüstungsplatz - erst MIT Schild blockt
+// der Held mit voller Wirkung; val = Rüstungsbonus
+export const SCHILDE: ReadonlyArray<readonly [string, number, Genus]> = [
+  ['Holzschild', 1, 'm'],
+  ['Rundschild', 2, 'm'],
+  ['Beschlagener Rundschild', 3, 'm'],
+  ['Eisenschild', 4, 'm'],
+  ['Turmschild', 5, 'm'],
+] as const;
+
 export const ARMORS: ReadonlyArray<readonly [string, number, Genus]> = [
   ['Lumpen', 1, 'pl'],
   ['Lederwams', 3, 'n'],

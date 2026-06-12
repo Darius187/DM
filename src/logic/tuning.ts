@@ -17,6 +17,9 @@ export const TUNING = {
   spielerReichweite: 1.0,
   spielerSchwungBreite: 1.0,
   gegnerReichweite: 1.0,
+  // Runde 27: Schlagtempo der Gegner - höher = kürzeres Ausholen und
+  // kürzere Pausen zwischen den Hieben
+  gegnerSchlagtempo: 1.0,
   // Runde 18: Feinjustierung je Gegnertyp (F10 - Pfeile wechseln den Typ)
   typ: {} as Record<string, { tempo: number; schaden: number }>,
   // Runde 21: Dev-Schalter - alle Zauber/Fähigkeiten ohne Stufen-Sperre
@@ -34,4 +37,5 @@ export const TUNING_ROWS: Array<[keyof typeof TUNING, string, number, number, nu
   ['spielerReichweite', 'Held: Hieb-Reichweite x', 0.5, 2.5, 0.1],
   ['spielerSchwungBreite', 'Held: Schwung-Breite x', 0.5, 2, 0.1],
   ['gegnerReichweite', 'Gegner: Hieb-Reichweite x', 0.5, 3, 0.1],
+  ['gegnerSchlagtempo', 'Gegner: Schlagtempo x', 0.3, 3, 0.1],
 ];

@@ -22,6 +22,8 @@ export interface EnemyHost {
   logMsg(text: string, cls?: string): void;
   playSound(name: string, volMult?: number): void;
   burstFx(x: number, y: number, col: number, n: number, spd: number): void;
+  // Rudel-Verhalten (Runde 27): wie viele Verbündete stehen nahe bei e?
+  verbuendeteNahe(e: Enemy, radius: number): number;
 }
 
 // Angriffsmuster je Gegnertyp (Masterprompt 4.3: 2-3 Muster, Telegraph 0,35-0,85 s)
@@ -117,6 +119,8 @@ export class Enemy {
   schild = false;
   // Schild-Haltung (Runde 20): kurz volle Frontdeckung, dann wieder offen
   blockT = 0;
+  private steuerWinkel = 0;  // gewählte Ausweichdrehung am Hindernis
+  private mutT = -1;         // > 0: sammelt sich noch, stürmt nicht allein
   private blockCd = 2 + Math.random() * 2;
 
   // bei Treffern zurückweichen (Feedback-Runde 2)
@@ -227,7 +231,13 @@ export class Enemy {
         this.blockT = 0.9 + Math.random() * 0.5;
         this.blockCd = 2.5 + Math.random() * 2;
       }
-      if (this.blockT > 0) return; // in Deckung: stehen, nicht angreifen
+      if (this.blockT > 0) {
+        // Deckung läuft ab und der Spieler steht dran: Gegenstoß (Runde 27)
+        if (this.blockT <= dt * 2 && d < this.r + host.playerR() + 22 * TUNING.gegnerReichweite && this.windup <= 0) {
+          this.startPattern(host, 'hieb', 0.2);
+        }
+        return; // in Deckung: stehen, nicht angreifen
+      }
     }
     // Doppelhieb: zweiter Schlag kurz nach dem ersten
     if (this.secondHitT > 0) {
@@ -269,9 +279,18 @@ export class Enemy {
         this.advanceStep(dt);
       }
     } else if (this.retreatT > 0) {
-      // Rückzug nach dem eigenen Schlag (Skelett/Wolf/Schatten weichen aus)
+      // Rückzug nach dem eigenen Schlag - aber nicht folgenlos (Runde 27):
+      // wer nachsetzt, kassiert einen schnellen Gegenhieb, und gewichen
+      // wird SCHRÄG statt stur rückwärts (seitlich raus, neuer Winkel)
       this.retreatT -= dt;
-      this.moveBody(host, -Math.cos(ang) * this.speed * 0.85 * slowF * dt, -Math.sin(ang) * this.speed * 0.85 * slowF * dt);
+      if (d < this.r + host.playerR() + 20 * TUNING.gegnerReichweite && this.windup <= 0) {
+        this.retreatT = 0;
+        this.atkCd = Math.max(this.atkCd, 0.1);
+        this.startPattern(host, 'hieb', 0.18);
+        return;
+      }
+      const rw = ang + Math.PI + this.orbitDir * 0.7;
+      this.moveBody(host, Math.cos(rw) * this.speed * 0.85 * slowF * dt, Math.sin(rw) * this.speed * 0.85 * slowF * dt);
       this.advanceStep(dt);
     } else if (d > this.r + host.playerR() + 6 + 14 * (TUNING.gegnerReichweite - 1)) {
       // Wolf darf den Sprung auch aus kurzer Distanz ansetzen
@@ -279,20 +298,61 @@ export class Enemy {
         this.startPattern(host, 'sprung');
         return;
       }
+      // Sammeln statt einzeln anrennen (Runde 27): Skelette und Pestopfer
+      // warten in Sichtweite kurz auf Verbündete - kommt Verstärkung in die
+      // Nähe, stürmen alle gemeinsam
+      if ((this.type === 'skelett' || this.type === 'pest') && d < 170 && d > 70) {
+        if (this.mutT < 0) this.mutT = 0.9 + Math.random() * 1.3;
+        if (this.mutT > 0) {
+          if (host.verbuendeteNahe(this, 150) >= 2) this.mutT = 0;
+          else {
+            this.mutT -= dt;
+            const oa2 = ang + this.orbitDir * 1.5;
+            this.moveBody(host, Math.cos(oa2) * this.speed * 0.45 * slowF * dt, Math.sin(oa2) * this.speed * 0.45 * slowF * dt);
+            this.advanceStep(dt);
+            return;
+          }
+        }
+      }
       if (this.atkCd > 0 && d < 110) {
         // Erholzeit: nicht anstehen, sondern den Spieler umkreisen
         const oa = ang + this.orbitDir * 1.45;
         this.moveBody(host, Math.cos(oa) * this.speed * 0.55 * slowF * dt, Math.sin(oa) * this.speed * 0.55 * slowF * dt);
       } else {
-        // Annäherung versetzt aus dem eigenen Flankenwinkel -> Umzingeln
+        // Annäherung versetzt aus dem eigenen Flankenwinkel -> Umzingeln;
+        // laufe() umgeht dabei Hindernisse, statt dagegen zu rennen
         const fade = Math.min(1, Math.max(0, (d - 50) / 160));
         const fa = ang + this.flankAng * fade;
-        this.moveBody(host, Math.cos(fa) * this.speed * slowF * dt, Math.sin(fa) * this.speed * slowF * dt);
+        this.laufe(host, fa, this.speed * slowF, dt);
       }
       this.advanceStep(dt);
     } else if (this.atkCd === 0) {
       this.choosePattern(host);
     }
+  }
+
+  // Hindernis-Umgehung (Runde 27): ist der direkte Weg versperrt, dreht
+  // der Gegner schrittweise ab und folgt der Wand, statt dagegenzulaufen.
+  // Die gewählte Drehrichtung bleibt, bis der Weg wieder frei ist.
+  private laufe(host: EnemyHost, ang: number, tempo: number, dt: number): void {
+    const probe = this.r + 14;
+    const frei = (a: number) => !host.isSolidAt(this.x + Math.cos(a) * probe, this.y + Math.sin(a) * probe);
+    let ziel = ang;
+    if (!frei(ang)) {
+      const drehungen = this.steuerWinkel !== 0
+        ? [this.steuerWinkel, -this.steuerWinkel, this.steuerWinkel * 2, -this.steuerWinkel * 2]
+        : (Math.random() < 0.5 ? [0.8, -0.8, 1.6, -1.6] : [-0.8, 0.8, -1.6, 1.6]);
+      for (const dr of drehungen) {
+        if (frei(ang + dr)) {
+          ziel = ang + dr;
+          this.steuerWinkel = dr;
+          break;
+        }
+      }
+    } else {
+      this.steuerWinkel = 0;
+    }
+    this.moveBody(host, Math.cos(ziel) * tempo * dt, Math.sin(ziel) * tempo * dt);
   }
 
   private choosePattern(host: EnemyHost): void {
@@ -311,8 +371,10 @@ export class Enemy {
   private startPattern(host: EnemyHost, id: AttackPattern['id'], windup?: number): void {
     const def = (PATTERNS[this.type] ?? []).find((p) => p.id === id);
     this.pattern = id;
-    this.windup = windup ?? def?.windup ?? ENEMY_AI.meleeWindup;
-    this.atkCd = ENEMY_AI.meleeAtkCd + (id === 'hieb' ? 0 : 0.6);
+    // Schlagtempo-Regler (F10, Runde 27): höher = kürzeres Ausholen,
+    // kürzere Pausen zwischen den Hieben
+    this.windup = (windup ?? def?.windup ?? ENEMY_AI.meleeWindup) / TUNING.gegnerSchlagtempo;
+    this.atkCd = (ENEMY_AI.meleeAtkCd + (id === 'hieb' ? 0 : 0.6)) / TUNING.gegnerSchlagtempo;
     host.playSound('telegraph', 0.7);
   }
 

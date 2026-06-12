@@ -484,6 +484,22 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.devPanel = c;
   }
 
+  // Welt-Position des Zeigers über die HAUPT-Kamera (Runde 27): mit der
+  // zweiten UI-Kamera wäre ptr.worldX die ungezoomte Bildschirm-Position
+  protected weltPunkt(ptr: Phaser.Input.Pointer): { x: number; y: number } {
+    const p = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
+    return { x: p.x, y: p.y };
+  }
+
+  // Rudel-Verhalten (Runde 27): lebende Verbündete im Umkreis zählen
+  verbuendeteNahe(e: Enemy, radius: number): number {
+    let n = 0;
+    for (const x of this.enemies) {
+      if (x !== e && x.hp > 0 && Math.hypot(x.x - e.x, x.y - e.y) < radius) n++;
+    }
+    return n;
+  }
+
   // Unterklassen: zusätzliche Tasten (Interaktion, Inventar, Zauber)
   protected onGameKey(_k: string): void { /* optional */ }
   // Klick liegt auf einer UI-Fläche (Leiste, Menü) - Welt ignoriert ihn
@@ -655,7 +671,19 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   private rollVx = 0;
   private rollVy = 0;
 
+  // Blocken nur mit Nahkampfwaffe (Runde 27): Bogen und Stab haben keine
+  // Klinge zum Abwehren - ausweichen statt blocken
+  private blockHinweisT = 0;
+
   protected tryBlockStart(): void {
+    const wc = this.weaponClass();
+    if (wc === 'bogen' || wc === 'stab') {
+      if (this.time.now > this.blockHinweisT) {
+        this.blockHinweisT = this.time.now + 2000;
+        this.logMsg(wc === 'bogen' ? 'Mit dem Bogen blockst du nicht - weich aus (Rolle)!' : 'Mit dem Zauberstab blockst du nicht - weich aus (Rolle)!', 'bad');
+      }
+      return;
+    }
     if (inputBlockStart(this.combat)) {
       this.pdir = this.aimAngle();
     }
@@ -1035,9 +1063,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     if (result === 'blocked') {
       this.fx.burst(this.px + Math.cos(aTo) * 12, this.py + Math.sin(aTo) * 12, 0xaab4c0, 8, 150);
       this.sfx.play('block');
-      // Der Schild hält bei gewöhnlichen Gegnern ALLES ab (Feedback-Runde 2);
-      // nur Elite, Champions und Bosse drücken 30% durch
-      if (e.elite || e.boss || e.champion) this.hurtPlayer(blockedDamage(dmg), true);
+      // MIT Schild-Gegenstand hält der Block bei gewöhnlichen Gegnern
+      // ALLES ab, Elite drücken 30% durch. OHNE Schild ist es nur eine
+      // Waffenparade: Elite 55%, und auch Normale drücken 20% durch (R27)
+      const mitSchild = !!this.p.schildIt;
+      if (e.elite || e.boss || e.champion) this.hurtPlayer(blockedDamage(dmg, mitSchild), true);
+      else if (!mitSchild) this.hurtPlayer(Math.max(1, Math.round(dmg * BLOCK.ohneSchildNormalPct)), true);
       else this.fx.float(this.px, this.py - 20, MELDUNGEN.geblockt, '#aab4c0');
       return;
     }
@@ -1302,7 +1333,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         this.p.abilityCds[id] = fx.cd;
         // Zielort: Mauszeiger, auf Reichweite begrenzt
         const ptr = this.input.activePointer;
-        const wx = ptr.worldX, wy = ptr.worldY;
+        const { x: wx, y: wy } = this.weltPunkt(ptr);
         const d = Math.hypot(wx - this.px, wy - this.py);
         const f = d > fx.reichweite ? fx.reichweite / d : 1;
         const zx = this.px + (wx - this.px) * f;

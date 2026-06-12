@@ -3,7 +3,6 @@
 
 import Phaser from 'phaser';
 import { getSettings, saveSettings, resetSettings, keyLabel, type Settings } from '../logic/settings';
-import { applyZoom } from '../logic/zoom';
 
 interface SettingsParams { zurueck?: string; resume?: boolean }
 
@@ -51,22 +50,12 @@ export class SettingsScene extends Phaser.Scene {
       this.passeLaufendeAn(true, v);
     });
     sect('GRAFIK & EFFEKTE');
-    // Bildgröße (Runde 23 überarbeitet): NUR im Hauptmenü änderbar - im
-    // laufenden Spiel behalten fertig aufgebaute Szenen sonst ihre alten
-    // Maße ("zerschossenes" Bild). Im Menü baut sich danach alles frisch.
-    if (this.resume) {
-      this.add.text(this.colX, y, `Bildgröße: ${s.zoom}% - änderbar nur im Hauptmenü`, {
-        fontFamily: 'serif', fontSize: '13px', color: '#8a7a5a', fontStyle: 'italic',
-      });
-      y += 30;
-    } else {
-      y = this.slider(y, 'Bildgröße (näher am Geschehen)', () => s.zoom, (v) => {
-        s.zoom = v;
-        saveSettings();
-        applyZoom(this.game);
-        this.scene.restart({ zurueck: this.zurueck, resume: this.resume });
-      }, 100, 200);
-    }
+    // Bildgröße (Runde 27): zoomt NUR die Welt-Kamera der Spielszene -
+    // Schrift und Leisten bleiben scharf, wirkt sofort, ohne Neuaufbau
+    y = this.slider(y, 'Spielwelt-Zoom (näher am Geschehen)', () => s.zoom, (v) => {
+      s.zoom = v;
+      saveSettings();
+    }, 100, 200);
     y = this.slider(y, 'Helligkeit', () => s.bright, (v) => { s.bright = v; }, 70, 140);
     y = this.slider(y, 'Spieler-Tempo (Kampfgefühl)', () => s.tempo, (v) => { s.tempo = v; }, 70, 110);
     y = this.toggle(y, 'Bildschirmwackeln bei Treffern', () => s.shake, (v) => { s.shake = v; });
@@ -99,9 +88,6 @@ export class SettingsScene extends Phaser.Scene {
 
     this.makeButton(w / 2 - 90, y + 24, 'STANDARD', () => {
       resetSettings();
-      // Im laufenden Spiel NICHT live skalieren (alte Layouts würden
-      // zerschossen stehen bleiben) - das Hauptmenü zieht es später nach
-      if (!this.resume) applyZoom(this.game);
       this.scene.restart({ zurueck: this.zurueck, resume: this.resume });
     });
     this.makeButton(w / 2 + 90, y + 24, 'ZURÜCK', () => {

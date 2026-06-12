@@ -22,6 +22,7 @@ export interface PlayerState {
   weapon: Item | null;
   armorIt: Item | null;
   ring: Item | null;
+  schildIt: Item | null;
   flaskMax: number;
   flaskCount: number;
   flaskPowerUp: boolean;
@@ -46,7 +47,7 @@ export function newPlayerState(): PlayerState {
     hp: 1, mana: 1,
     stats: { dmg: 0, armor: 0, maxhp: 1, maxmana: 1, leech: 0, licht: 0 },
     inv: [startWeapon],
-    weapon: startWeapon, armorIt: null, ring: null,
+    weapon: startWeapon, armorIt: null, ring: null, schildIt: null,
     flaskMax: FLASKS.start, flaskCount: FLASKS.start, flaskPowerUp: false,
     arrows: 0,
     schools: { nahkampf: { uses: 0, level: 0 }, zauberei: { uses: 0, level: 0 }, bogen: { uses: 0, level: 0 } },
@@ -63,7 +64,7 @@ export function newPlayerState(): PlayerState {
 }
 
 export function recalc(p: PlayerState): void {
-  p.stats = calcStats(p.level, p.elixirs, [p.weapon, p.armorIt, p.ring], p.schools.nahkampf.level);
+  p.stats = calcStats(p.level, p.elixirs, [p.weapon, p.armorIt, p.ring, p.schildIt], p.schools.nahkampf.level);
   p.hp = Math.min(p.hp, p.stats.maxhp);
   p.mana = Math.min(p.mana, p.stats.maxmana);
 }

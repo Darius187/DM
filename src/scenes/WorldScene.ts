@@ -35,6 +35,7 @@ import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type Sa
 import { storage } from '../logic/gameStorage';
 import { ladeStadtplan, speichereStadtplan, loescheStadtplan, wendePlanAn, setzeKachel, radiere, type Stadtplan, type PlanTier } from '../logic/stadtplan';
 import { alsCanvas, stelleFrei, verarbeiteUpload } from '../gfx/bildVerarbeitung';
+import { zoomFaktor } from '../logic/zoom';
 import type { Item } from '../data/types';
 import type { Pickup } from '../world/Pickups';
 import { ANNA_GRAB } from '../data/dialoge';
@@ -202,6 +203,11 @@ export class WorldScene extends CombatScene {
     this.lightRT = this.add.renderTexture(0, 0, this.scale.width, this.scale.height)
       .setOrigin(0).setScrollFactor(0).setDepth(4000);
     this.cameras.main.startFollow(this.playerSprite, true, 0.15, 0.15);
+    // Bildgröße NEU (Runde 27): die Welt zoomt über die Haupt-Kamera,
+    // die UI rendert eine zweite Kamera in voller Auflösung - Schrift
+    // bleibt gestochen scharf (vorher: gestrecktes Canvas = Pixelmatsch)
+    this.uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height);
+    this.uiCam.setScroll(0, 0);
 
     // Dev-Werkzeug: ?ruestzeug=1 gibt Testausrüstung (nur Dev-Build)
     if (import.meta.env.DEV && new URLSearchParams(location.search).get('ruestzeug')) {
@@ -355,7 +361,7 @@ export class WorldScene extends CombatScene {
   hausUnterZeiger(p: Phaser.Input.Pointer): Phaser.GameObjects.Image | null {
     let best: Phaser.GameObjects.Image | null = null;
     for (const img of this.hausBilder) {
-      if (img.getBounds().contains(p.worldX, p.worldY)) {
+      if (img.getBounds().contains(this.weltPunkt(p).x, this.weltPunkt(p).y)) {
         // Bei Überlappung gewinnt das vordere (höhere Depth)
         if (!best || img.depth > best.depth) best = img;
       }
@@ -689,8 +695,8 @@ export class WorldScene extends CombatScene {
     if (ptr.x > this.scale.width - 250) return; // Klick aufs Panel
     const tool = this.baukastenTool;
     if (!tool) return;
-    const tx = Math.floor(ptr.worldX / TILE), ty = Math.floor(ptr.worldY / TILE);
-    const wx = ptr.worldX, wy = ptr.worldY;
+    const { x: wx, y: wy } = this.weltPunkt(ptr);
+    const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
     if (tool.art === 'kachel') {
       if (setzeKachel(this.stadtplan, this.area.map, tx, ty, tool.t, tool.v)) {
         // Nachbarn mitzeichnen: Weg-Drehung und Wald-Verdichtung hängen
@@ -932,7 +938,7 @@ export class WorldScene extends CombatScene {
       }).setScrollFactor(0).setDepth(4720).setVisible(false);
     }
     const ptr = this.input.activePointer;
-    const wx = ptr.worldX, wy = ptr.worldY;
+    const { x: wx, y: wy } = this.weltPunkt(ptr);
     let name: string | null = null;
     for (const e of this.enemies) {
       if (!e.versteckt && Math.hypot(e.x - wx, e.y - wy) < e.r + 10) { name = `${e.name} (Stufe ${e.depth})`; break; }
@@ -3228,7 +3234,7 @@ export class WorldScene extends CombatScene {
         flaskMax: p.flaskMax, flaskPowerUp: p.flaskPowerUp,
         arrows: p.arrows,
         inv: p.inv,
-        ...equipIndices(p.inv, p.weapon, p.armorIt, p.ring),
+        ...equipIndices(p.inv, p.weapon, p.armorIt, p.ring, p.schildIt),
         schools: p.schools,
         materials: p.materials,
         tools: p.tools,
@@ -3285,6 +3291,7 @@ export class WorldScene extends CombatScene {
     p.weapon = s.weaponIdx >= 0 ? p.inv[s.weaponIdx] ?? null : null;
     p.armorIt = s.armorIdx >= 0 ? p.inv[s.armorIdx] ?? null : null;
     p.ring = s.ringIdx >= 0 ? p.inv[s.ringIdx] ?? null : null;
+    p.schildIt = (s.schildIdx ?? -1) >= 0 ? p.inv[s.schildIdx!] ?? null : null;
     p.schools = s.schools;
     p.materials = { holz: 0, stein: 0, eisen: 0, kraeuter: 0, kohle: 0, fell: 0, wolle: 0, ...s.materials };
     p.tools = s.tools ?? { axt: false, spitzhacke: false };
@@ -3618,14 +3625,17 @@ export class WorldScene extends CombatScene {
     let basisRadius = this.area.dark ? 235 + this.p.stats.licht : 640 - 400 * nachtFaktor + this.p.stats.licht;
     if (fow) basisRadius = Math.min(basisRadius, 330);
     const playerRadius = basisRadius * flicker;
-    const px = this.px - cam.scrollX, py = this.py - cam.scrollY;
-    this.eraseLight(px, py, playerRadius);
+    // Welt -> Schirm MIT Kamera-Zoom (Runde 27): worldView + zoom statt
+    // roher scroll-Differenz, und die Lichtradien wachsen mit
+    const zm = cam.zoom;
+    const px = (this.px - cam.worldView.x) * zm, py = (this.py - cam.worldView.y) * zm;
+    this.eraseLight(px, py, playerRadius * zm);
     let warmIdx = 0;
     if (!fow && (this.area.dark || nachtFaktor > 0.3)) warmIdx = this.placeWarm(warmIdx, this.px, this.py, 160, 0.5);
     for (const t of (fow ? [] : this.area.torches)) {
-      const sx = t.x - cam.scrollX, sy = t.y - cam.scrollY;
+      const sx = (t.x - cam.worldView.x) * zm, sy = (t.y - cam.worldView.y) * zm;
       if (sx < -160 || sy < -160 || sx > this.scale.width + 160 || sy > this.scale.height + 160) continue;
-      this.eraseLight(sx, sy - 4, 95 + Math.sin(time * 7 + t.ph) * 10);
+      this.eraseLight(sx, sy - 4 * zm, (95 + Math.sin(time * 7 + t.ph) * 10) * zm);
       warmIdx = this.placeWarm(warmIdx, t.x, t.y - 4, 70, 0.7);
     }
     for (let i = warmIdx; i < this.warmPool.length; i++) this.warmPool[i].setVisible(false);
@@ -3980,6 +3990,26 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  private uiCam!: Phaser.Cameras.Scene2D.Camera;
+
+  // Jedes Objekt gehört GENAU EINER Kamera (Runde 27): bildschirmfeste
+  // Elemente (scrollFactor 0) der scharfen UI-Kamera, alles andere der
+  // gezoomten Welt-Kamera. Läuft am Ende von update, damit auch frisch
+  // erstellte Objekte vor dem Zeichnen einsortiert sind.
+  private sortiereKameras(): void {
+    const z = zoomFaktor();
+    if (this.cameras.main.zoom !== z) this.cameras.main.setZoom(z);
+    if (this.uiCam.width !== this.scale.width || this.uiCam.height !== this.scale.height) {
+      this.uiCam.setSize(this.scale.width, this.scale.height);
+    }
+    const versteckVorUi = this.cameras.main.id;
+    const versteckVorWelt = this.uiCam.id;
+    for (const obj of this.children.list) {
+      const sf = (obj as unknown as { scrollFactorX?: number }).scrollFactorX;
+      (obj as unknown as { cameraFilter: number }).cameraFilter = sf === 0 ? versteckVorUi : versteckVorWelt;
+    }
+  }
+
   // --- Hauptschleife ---------------------------------------------------------------
 
   update(_time: number, delta: number): void {
@@ -4048,6 +4078,7 @@ export class WorldScene extends CombatScene {
     this.renderLight();
     this.renderMinimap();
     this.renderHud();
+    this.sortiereKameras();
   }
 
   protected override onGameKey(k: string): void {

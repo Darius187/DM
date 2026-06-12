@@ -190,6 +190,6 @@ export function damageAfterArmor(dmg: number, armor: number): number {
   return Math.max(1, Math.round(dmg) - armor);
 }
 
-export function blockedDamage(dmg: number): number {
-  return Math.max(1, Math.round(dmg * BLOCK.dmgTakenPct));
+export function blockedDamage(dmg: number, mitSchild = true): number {
+  return Math.max(1, Math.round(dmg * (mitSchild ? BLOCK.dmgTakenPct : BLOCK.ohneSchildElitePct)));
 }

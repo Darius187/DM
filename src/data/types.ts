@@ -7,7 +7,7 @@ export type Rarity = 0 | 1 | 2 | 3; // Gewöhnlich / Magisch / Selten / Episch
 export type WeaponClass = 'schwert' | 'axt' | 'stange' | 'wucht' | 'bogen' | 'stab';
 
 export type ItemKind =
-  | 'weapon' | 'armor' | 'ring' | 'gem'
+  | 'weapon' | 'armor' | 'ring' | 'gem' | 'schild'
   | 'potion' | 'mpotion' | 'elixir' | 'scroll' | 'arrows' | 'food'
   | 'material' | 'relic' | 'tool';
 

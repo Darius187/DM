@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { rollGear, rollGem, rollRarity, gearPrice, itemStatLine, effectiveVal } from '../src/logic/loot';
 import { seededRng } from '../src/logic/rng';
-import { WEAPONS, BOWS, STAVES, ARMORS, RINGS, PREFIX_STEMS, SUFFIX, dekliniertesPraefix } from '../src/data/items';
+import { WEAPONS, BOWS, STAVES, ARMORS, RINGS, SCHILDE, PREFIX_STEMS, SUFFIX, dekliniertesPraefix } from '../src/data/items';
 
 const ALL_WEAPON_NAMES = [...WEAPONS, ...BOWS, ...STAVES].map((w) => w[0]);
 const ALL_ARMOR_NAMES = ARMORS.map((a) => a[0]);
+const ALL_SCHILD_NAMEN = SCHILDE.map((a) => a[0]);
 
 function stripAffixes(name: string): string {
   let n = name.replace(/^(Grimmig|Geweiht|Blutig|Eisern|Uralt)(er|es|e)\s+/, '');
@@ -20,6 +21,7 @@ describe('rollGear', () => {
       const base = stripAffixes(it.name);
       if (it.kind === 'weapon') expect(ALL_WEAPON_NAMES).toContain(base);
       else if (it.kind === 'armor') expect(ALL_ARMOR_NAMES).toContain(base);
+      else if (it.kind === 'schild') expect(ALL_SCHILD_NAMEN).toContain(base);
       else expect(RINGS).toContain(base);
     }
   });

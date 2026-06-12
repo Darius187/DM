@@ -5,7 +5,7 @@ import {
   WEAPONS, BOWS, STAVES, ARMORS, RINGS, PREFIX_STEMS, SUFFIX,
   dekliniertesPraefix, type Genus,
   AFFIX_POOL, RING_AFFIX_POOL, GEMS, GEM_POWER,
-  RARITY_ROLL, GEAR_KIND_ROLL, SOCKET_CHANCE, PRICE, ARROW_STACK,
+  RARITY_ROLL, GEAR_KIND_ROLL, SOCKET_CHANCE, PRICE, ARROW_STACK, SCHILDE,
 } from '../data/items';
 import type { AffixDef, AffixRoll, GemItem, Item, Rarity } from '../data/types';
 import { type Rng, defaultRng, ri, pick } from './rng';
@@ -41,13 +41,15 @@ export function rollGem(rng: Rng = defaultRng, depth: number = 2): GemItem {
 export function rollGear(
   rng: Rng = defaultRng,
   depth: number,
-  forceKind?: 'weapon' | 'armor' | 'ring',
+  forceKind?: 'weapon' | 'armor' | 'ring' | 'schild',
   includeBows = true,
 ): Item {
   let kind = forceKind;
   if (!kind) {
     const k = rng.random();
     kind = k < GEAR_KIND_ROLL.weapon ? 'weapon' : k < GEAR_KIND_ROLL.armor ? 'armor' : 'ring';
+    // Schilde (Runde 27): ein Drittel der Rüstungs-Würfe wird ein Schild
+    if (kind === 'armor' && rng.random() < 0.33) kind = 'schild';
   }
   let rarity = rollRarity(rng, depth);
 
@@ -61,7 +63,7 @@ export function rollGear(
   }
 
   // Bögen (~15%) und Zauberstäbe (~12%) mischen sich unter die Waffen-Drops
-  let bases: ReadonlyArray<readonly [string, number, Item['weaponClass'], Genus]> | typeof ARMORS = ARMORS;
+  let bases: ReadonlyArray<readonly [string, number, Item['weaponClass'], Genus]> | typeof ARMORS = kind === 'schild' ? SCHILDE : ARMORS;
   if (kind === 'weapon') {
     // Runde 16: Zauberstäbe zurück in den Drops (~12%), Bögen ~15%
     const r2 = rng.random();
@@ -111,6 +113,7 @@ export function itemStatLine(it: Item): string {
   }
   if (it.kind === 'ring') return stufe + it.boni.map((b) => b.t.replace('#', String(b.v))).join(' · ');
   const up = it.upgrade ? ` (+${it.upgrade})` : '';
+  if (it.kind === 'schild') return `${stufe}${effectiveVal(it)} Rüstung${up} · voller Block (30%/0% Durchschlag)`;
   let s = it.kind === 'weapon' ? `${stufe}${effectiveVal(it)} Schaden${up}` : `${stufe}${effectiveVal(it)} Rüstung${up}`;
   for (const b of it.boni) s += ' · ' + b.t.replace('#', String(b.v));
   if (it.sock) s += it.sock.gem ? ` · ◆ ${it.sock.gem.name} (+${it.sock.gem.power} ${ { feuer: 'Feuer', eis: 'Eis', schatten: 'Schatten' }[it.sock.gem.elem] })` : ' · ◇ Leere Fassung';

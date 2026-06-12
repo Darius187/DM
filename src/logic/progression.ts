@@ -20,7 +20,7 @@ export function calcStats(level: number, elixirs: number, equipped: ReadonlyArra
   for (const it of equipped) {
     if (!it) continue;
     if (it.kind === 'weapon') dmg += effectiveVal(it);
-    else if (it.kind === 'armor') armor += effectiveVal(it);
+    else if (it.kind === 'armor' || it.kind === 'schild') armor += effectiveVal(it);
     for (const b of it.boni) {
       if (b.k === 'dmg') dmg += b.v;
       if (b.k === 'armor') armor += b.v;
