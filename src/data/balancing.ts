@@ -23,8 +23,8 @@ export interface SpellDef {
 }
 export const SPELLS: ReadonlyArray<SpellDef> = [
   { id: 'feuerball', name: 'Feuerball', ico: '✦', mana: 12, unlock: 2, cd: 0.55 },
-  { id: 'heiligesLicht', name: 'Heiliges Licht', ico: '☩', mana: 22, unlock: 3, cd: 4.5 },
-  { id: 'heilung', name: 'Heilung', ico: '❧', mana: 26, unlock: 5, cd: 7 },
+  { id: 'heiligesLicht', name: 'Heiliges Licht', ico: '☩', mana: 22, unlock: 3, cd: 3 },
+  { id: 'heilung', name: 'Heilung', ico: '❧', mana: 26, unlock: 5, cd: 5 },
 ];
 
 // Zauberwirkung (Referenz castSkill)
@@ -100,12 +100,12 @@ export const ABILITY_FX = {
   rundumschlag: { dmgMult: 1.2, radius: 70, cd: 5 },
   sturmangriff: { distance: 160, speed: 700, dmgMult: 1.4, cd: 7 },
   hinrichtung: { dmgMultVsStunned: 2.5, cd: 10 },
-  kettenblitz: { mana: 16, dmgBase: 14, dmgPerLevel: 4, jumps: 2, jumpRange: 140, cd: 3 },
-  frostnova: { mana: 20, dmgBase: 10, dmgPerLevel: 3, radius: 110, slowS: 2.5, cd: 6 },
-  bannkreis: { mana: 30, radius: 130, dauerS: 6, untoteDmgMult: 0.7, cd: 12 },
+  kettenblitz: { mana: 16, dmgBase: 18, dmgPerLevel: 5, jumps: 3, jumpRange: 150, cd: 2 },
+  frostnova: { mana: 20, dmgBase: 12, dmgPerLevel: 3, radius: 120, slowS: 4.5, cd: 4 },
+  bannkreis: { mana: 30, radius: 130, dauerS: 6, untoteDmgMult: 0.7, cd: 9 },
   aderlass: { leben: 15, mana: 25, cd: 4 },
   lebenstausch: { mana: 30, leben: 20, cd: 4 },
-  feuerregen: { mana: 40, dmgBase: 16, dmgPerLevel: 4, einschlaege: 6, radius: 50, streuung: 85, dauerS: 1.8, reichweite: 320, cd: 14 },
+  feuerregen: { mana: 40, dmgBase: 16, dmgPerLevel: 4, einschlaege: 6, radius: 50, streuung: 85, dauerS: 1.8, reichweite: 320, cd: 11 },
   mehrfachschuss: { arrows: 3, spread: 0.18, cd: 4 },
   durchschlag: { pierceCount: 99, dmgMult: 1.3, cd: 6 },
   markierterTod: { bonusDmgPct: 0.25, dauerS: 8, cd: 10 },

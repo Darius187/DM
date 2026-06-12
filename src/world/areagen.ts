@@ -854,7 +854,8 @@ export function buildInterior(def: InnenraumDef): AreaData {
 // Steuerung diegetisch: Wolf-Kampf, Holzhack-Tutorial, erster Kerzenschrein.
 
 export function buildForest(rng: Rng): AreaData {
-  const w = 70, h = 26;
+  // Runde 15: längerer Marsch - der Vorspann soll Zeit zum Lesen lassen
+  const w = 104, h = 26;
   const map = blank(w, h, T.TREE);
   const a: AreaData = {
     id: 'wald', name: 'Der Dunkelwald', dark: false, depth: 0,
@@ -886,7 +887,7 @@ export function buildForest(rng: Rng): AreaData {
   // Startplatz und Lichtung mit Schrein
   carve(map, 2, 10, 8, 16, T.GRASS);
   carve(map, 3, 12, 7, 14, T.PATH);
-  const cx = 38;
+  const cx = 52;
   const lyMitte = pfadY[cx] ?? 10;
   carve(map, cx - 4, Math.max(2, lyMitte - 5), cx + 4, lyMitte + 3, T.GRASS);
   map[Math.max(3, lyMitte - 3)][cx] = T.SHRINE;
@@ -894,7 +895,7 @@ export function buildForest(rng: Rng): AreaData {
   a.labels.push({ x: cx * TILE, y: (Math.max(3, lyMitte - 3)) * TILE, t: 'Lichtung' });
 
   // Zwei kleine Nebenlichtungen abseits des Pfads (Kräuter, Felsen)
-  for (const lx of [16, 56]) {
+  for (const lx of [18, 36, 70, 88]) {
     const ly = pfadY[lx] ?? 13;
     const oben = rng.random() < 0.5;
     const vy = oben ? Math.max(3, ly - 5) : Math.min(h - 4, ly + 5);
@@ -919,11 +920,12 @@ export function buildForest(rng: Rng): AreaData {
   // des Amtmanns - niemand wartet unrealistisch zwischen den Bäumen.
 
   // Wolf-Begegnungen lauern AM Pfad (folgen seinem Verlauf)
-  a.enemySpawns.push({ type: 'wolf', x: 24 * TILE, y: (pfadY[24] ?? 12) * TILE, elite: false });
-  a.enemySpawns.push({ type: 'wolf', x: 52 * TILE, y: (pfadY[52] ?? 13) * TILE, elite: false });
+  a.enemySpawns.push({ type: 'wolf', x: 28 * TILE, y: (pfadY[28] ?? 12) * TILE, elite: false });
+  a.enemySpawns.push({ type: 'wolf', x: 62 * TILE, y: (pfadY[62] ?? 13) * TILE, elite: false });
+  a.enemySpawns.push({ type: 'wolf', x: 90 * TILE, y: (pfadY[90] ?? 13) * TILE, elite: false });
 
   // Umgestürzter Baum versperrt den Pfad (Holzhack-Tutorial)
-  const bx = 30;
+  const bx = 44;
   for (let y = 0; y < h; y++) {
     if (map[y][bx] !== T.TREE) {
       map[y][bx] = T.TREE;

@@ -78,6 +78,7 @@ export function rollGear(
   const weaponClass = kind === 'weapon' ? (base[2] as Item['weaponClass']) : undefined;
   return {
     kind, name, rarity,
+    lvl: Math.max(1, Math.round(depth)),
     val: base[1] + (rarity >= 2 ? ri(rng, 1, 3) + rarity - 2 : 0),
     boni, sock, weaponClass,
   };
@@ -94,6 +95,8 @@ export function makeArrows(count: number): Item {
 
 // Anzeigetext eines Items (Referenz itemStatLine, erweitert)
 export function itemStatLine(it: Item): string {
+  // Gegenstandsstufe sichtbar machen (Runde 15)
+  const stufe = it.lvl ? `Stufe ${it.lvl} · ` : '';
   if (it.kind === 'potion') return 'Stellt 45% Leben wieder her';
   if (it.kind === 'mpotion') return 'Stellt 60% Mana wieder her';
   if (it.kind === 'elixir') return '+10 maximales Leben (dauerhaft)';
@@ -106,9 +109,9 @@ export function itemStatLine(it: Item): string {
     const elemText = { feuer: 'Feuerschaden', eis: 'Eisschaden (verlangsamt)', schatten: 'Schattenschaden (heilt dich)' }[g.elem];
     return `+${g.power} ${elemText} · antippen: in Waffe fassen`;
   }
-  if (it.kind === 'ring') return it.boni.map((b) => b.t.replace('#', String(b.v))).join(' · ');
+  if (it.kind === 'ring') return stufe + it.boni.map((b) => b.t.replace('#', String(b.v))).join(' · ');
   const up = it.upgrade ? ` (+${it.upgrade})` : '';
-  let s = it.kind === 'weapon' ? `${effectiveVal(it)} Schaden${up}` : `${effectiveVal(it)} Rüstung${up}`;
+  let s = it.kind === 'weapon' ? `${stufe}${effectiveVal(it)} Schaden${up}` : `${stufe}${effectiveVal(it)} Rüstung${up}`;
   for (const b of it.boni) s += ' · ' + b.t.replace('#', String(b.v));
   if (it.sock) s += it.sock.gem ? ` · ◆ ${it.sock.gem.name} (+${it.sock.gem.power} ${ { feuer: 'Feuer', eis: 'Eis', schatten: 'Schatten' }[it.sock.gem.elem] })` : ' · ◇ Leere Fassung';
   return s;

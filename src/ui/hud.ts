@@ -298,21 +298,22 @@ export class Hud {
     g.clear();
 
     // Orbs: dunkler Grund, Füllung über Beschnitt von unten, Rahmen
-    const orb = (img: Phaser.GameObjects.Image, x: number, frac: number) => {
-      img.setPosition(x, h - 24 - ORB_R);
+    const orb = (img: Phaser.GameObjects.Image, x: number, frac: number, dy = 0) => {
+      img.setPosition(x, h - 24 - ORB_R + dy);
       g.fillStyle(0x120505, 1);
-      g.fillCircle(x, h - 24 - ORB_R, ORB_R);
+      g.fillCircle(x, h - 24 - ORB_R + dy, ORB_R);
       const ch = Math.round(ORB_R * 2 * Phaser.Math.Clamp(frac, 0, 1));
       img.setCrop(0, ORB_R * 2 - ch, ORB_R * 2, ch);
       g.lineStyle(3, 0x3a2f24, 1);
-      g.strokeCircle(x, h - 24 - ORB_R, ORB_R);
+      g.strokeCircle(x, h - 24 - ORB_R + dy, ORB_R);
     };
-    orb(this.hpImg, 28 + ORB_R, p.hp / p.stats.maxhp);
-    orb(this.mpImg, w - 28 - ORB_R, p.mana / p.stats.maxmana);
-    this.hpText.setPosition(28 + ORB_R, h - 24 - ORB_R).setText(String(Math.max(0, Math.ceil(p.hp))));
-    this.mpText.setPosition(w - 28 - ORB_R, h - 24 - ORB_R).setText(String(Math.ceil(p.mana)));
-    this.potText.setPosition(28 + ORB_R, h - 12).setText(`${kb.pot.toUpperCase()} Trank x${p.pot}`);
-    this.mpotText.setPosition(w - 28 - ORB_R, h - 12).setText(`${kb.mpot.toUpperCase()} Trank x${p.mpot}`);
+    const oh = getSettings().ui.orbHp, om = getSettings().ui.orbMp;
+    orb(this.hpImg, 28 + ORB_R + oh.x, p.hp / p.stats.maxhp, oh.y);
+    orb(this.mpImg, w - 28 - ORB_R + om.x, p.mana / p.stats.maxmana, om.y);
+    this.hpText.setPosition(28 + ORB_R + oh.x, h - 24 - ORB_R + oh.y).setText(String(Math.max(0, Math.ceil(p.hp))));
+    this.mpText.setPosition(w - 28 - ORB_R + om.x, h - 24 - ORB_R + om.y).setText(String(Math.ceil(p.mana)));
+    this.potText.setPosition(28 + ORB_R + oh.x, h - 12 + oh.y).setText(`${kb.pot.toUpperCase()} Trank x${p.pot}`);
+    this.mpotText.setPosition(w - 28 - ORB_R + om.x, h - 12 + om.y).setText(`${kb.mpot.toUpperCase()} Trank x${p.mpot}`);
 
     // Zauber-/Fähigkeitsleiste auf eigenem Paneel (Runde 14)
     const px0 = this.slotX(0) - 26, px1 = this.slotX(this.slots.length - 1) + 26;

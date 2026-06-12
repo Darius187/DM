@@ -70,9 +70,11 @@ export const TOD = {
 export const INTRO_FILM: ReadonlyArray<string> = [
   'Anno Domini 1635. Der Krieg frisst dieses Land seit siebzehn Jahren.',
   'Die Pest nahm, was die Söldner übrig ließen. Ganze Dörfer schweigen für immer.',
-  'Doch aus Ravensmoor flüstern die Boten Ärgeres: Die Toten unter der Kirche... ruhen nicht mehr.',
-  'Der Landherr schickt dich. Sieh nach dem Rechten. Finde die Quelle des Übels.',
-  'Der Dunkelwald kennt den Weg. Folge dem Pfad nach Osten.',
+  'Aus meinen Aufzeichnungen: »Heute erreichte mich ein Brief mit dem Siegel des Amtmanns. Im Namen des Landesherrn: Geht nach Ravensmoor. Seht nach dem Rechten.«',
+  '»Die Boten flüstern Ärgeres, als Worte fassen: Die Toten unter der Kirche... ruhen nicht mehr.«',
+  '»Ich habe die Residenz im Morgengrauen verlassen. Hinter mir die Mauern, vor mir nur noch Wald.«',
+  '»Der Dunkelwald kennt den Weg, sagen die Alten. Man müsse nur dem Pfad nach Osten folgen - und nie der Stille trauen.«',
+  '»Was immer in Ravensmoor wartet: Ich schreibe diese Zeilen, damit jemand die Wahrheit kennt, falls ich nicht wiederkehre.«',
 ];
 
 // Boss-Rufe (Referenz)

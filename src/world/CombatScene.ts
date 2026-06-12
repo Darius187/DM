@@ -24,6 +24,7 @@ import { ELITE, ENEMIES } from '../data/enemies';
 import type { EnemyTypeId, WeaponClass } from '../data/types';
 import { ABILITY_FX, ABILITIES, LORE_XP } from '../data/balancing';
 import { PickupSystem, AUTO_PICKUP, type Pickup } from './Pickups';
+import { fixUiScroll } from '../ui/dialog';
 import { TouchControls, isTouchDevice, type TouchHost } from '../ui/touch';
 import { UIPanels } from '../ui/panels';
 import { rollGear, rollGem } from '../logic/loot';
@@ -289,6 +290,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       ['hotbar', 'AKTIONSLEISTE', w / 2, h - 66],
       ['dialog', 'DIALOGRAHMEN', w / 2, h - 220],
       ['log', 'MELDUNGEN', w / 2, h - 150],
+      ['orbHp', 'LEBENS-KUGEL', 70, h - 66],
+      ['orbMp', 'MANA-KUGEL', w - 70, h - 66],
     ];
     for (const [key, name, ax, ay] of teile) {
       const griff = this.add.rectangle(ax + ui[key].x, ay + ui[key].y, 170, 26, 0x221808, 0.95)
@@ -362,6 +365,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.logMsg('Bericht kopiert - einfach im Chat einfügen.', 'gold');
     });
     c.add(bericht);
+    // Phaser-Falle: Kinder-Hitboxen ignorieren den Container-scrollFactor -
+    // ohne diese Zeile war der Kasten bei gescrollter Kamera tot (Runde 15)
+    fixUiScroll(c);
     this.devPanel = c;
   }
 
@@ -565,8 +571,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Schuss-Erholung: 0,5 s bis zum nächsten Spannen (Feedback-Runde 3)
     if (this.combat.action === 'idle') {
       this.combat.action = 'attack';
-      this.combat.recoverTotal = 0.5;
-      this.combat.recoverT = 0.5;
+      this.combat.recoverTotal = 0.32;
+      this.combat.recoverT = 0.32;
     }
     const ang = this.aimAngle();
     this.pdir = ang;

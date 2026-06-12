@@ -84,3 +84,11 @@
 - Freischaltungen: Gehöft-Wiederaufbau erst nach Erreichen von Ebene 3; Stadtmauer erst nach dem ersten Einfall (der Schulze ruft danach zur Palisade auf). Kosten kräftig angehoben (Rohbau 900G, Palisade 750G+80 Holz) - der Autor hatte nach Ebene 1 bereits 1500 Gold.
 - Anschlagbrett/Stadttore haben jetzt Interaktions-Vorrang vor vorbeilaufenden NPCs.
 - Smalltalk-Pool (~55 Sprüche: Männer/Frauen/Kinder + Lage: Regen, Nacht, nach Boss, nach Einfall) - jeder Dorfbewohner ist ansprechbar. Neue Innenräume: Kirchenschiff (Seitenpforte), beide Bauernhäuser. Spieler-Sprites des Autors aktiv (links = gespiegeltes rechts), Kirche-Tiles drin. Häuser-Verschieben im Spiel bleibt offen (Karten-Editor = eigene Phase); Quests fürs Haus-Freischalten notiert.
+- Runde 15, F10-Bug: Dem Entwicklungskasten fehlte fixUiScroll - bei gescrollter Kamera lagen alle Knopf-Hitboxen daneben ("nichts aktiv"). Eine Zeile, behoben; Lehre: JEDES neue UI-Container-Element braucht fixUiScroll.
+- Menü-Musik lief ins Spiel hinein: jedes Title-create() startete eine NEUE Instanz, get().stop() stoppte nur die erste - jetzt stopByKey (alle Instanzen).
+- Weg-Tiles: waagerechte Wegstücke werden um 90 Grad gedreht (die Karrenspuren der Grafik laufen senkrecht) - Kreuzungen/Knicke bleiben ungedreht.
+- Gegenstandsstufe: Item.lvl = Fundtiefe, sichtbar als "Stufe X ·" in jeder Wertezeile (Inventar, Händler, Vergleich).
+- Boss-Endsequenz: im Test vollständig durchspielbar (Wahl -> WEITERSPIELEN -> frei); konnte den gemeldeten Hänger nicht reproduzieren. Absicherungen ergänzt: E/Enter schließen das End-Fenster zusätzlich zum Knopf (einmal-Guard), Boss-Musik stoppt beim Ende.
+- Orbs (Leben/Mana) im UI-Modus verschiebbar (ui.orbHp/orbMp) - z.B. nebeneinander legbar.
+- Rückweg Stadt -> Dunkelwald am Westrand der Salzstraße; Wald von 70 auf 104 Tiles verlängert (längerer Vorspann-Marsch), 4 Nebenlichtungen, 3 Wölfe am Pfad, Intro-Film mit 7 Zeilen im Aufzeichnungs-Ton (»...«).
+- Balance: Bogen-Erholung 0,5 -> 0,32s; Heiliges Licht CD 4,5 -> 3s; Heilung 7 -> 5s; Kettenblitz CD 2s/+Schaden/3 Sprünge; Frostnova CD 4s und Verlangsamung 4,5s; Bannkreis 9s; Feuerregen 11s.

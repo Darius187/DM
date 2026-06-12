@@ -34,6 +34,7 @@ export interface Item {
   name: string;
   rarity: Rarity;
   val: number;
+  lvl?: number;           // Gegenstandsstufe (= Fundtiefe, Runde 15)
   boni: AffixRoll[];
   weaponClass?: WeaponClass;
   sock?: { gem: GemItem | null } | null;

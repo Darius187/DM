@@ -498,6 +498,14 @@ export class WorldScene extends CombatScene {
         }
         // Wasser merken: die Varianten laufen als Animation durch (Runde 13)
         if (id === T.WATER) this.wasserBilder.push({ img, variant });
+        // Wege: die Karrenspuren der Grafik laufen senkrecht - waagerechte
+        // Wegstücke werden gedreht, sonst sieht "nach rechts" aus wie
+        // "nach oben" (Runde 15)
+        if (id === T.PATH && this.provider.tileVarianten('weg') > 0) {
+          const waag = (a.map[ty]?.[tx - 1] === T.PATH || a.map[ty]?.[tx + 1] === T.PATH);
+          const senk = (a.map[ty - 1]?.[tx] === T.PATH || a.map[ty + 1]?.[tx] === T.PATH);
+          if (waag && !senk) img.setAngle(90);
+        }
         this.tileImages.push(img);
       }
     }
@@ -1829,6 +1837,12 @@ export class WorldScene extends CombatScene {
   }
 
   private checkTriggers(): void {
+    // Zurück in den Dunkelwald: Westrand der Salzstraße (Runde 15)
+    if (this.area.id === 'village' && this.px < 1.6 * TILE && this.py > 29 * TILE && this.py < 32.5 * TILE) {
+      const wald = this.getArea('wald');
+      this.goArea('wald', { x: (wald.w - 3) * TILE, y: (wald.downPos?.y ?? 13 * TILE) });
+      return;
+    }
     if (this.area.id === 'wald' && this.px > (this.area.w - 2.5) * TILE) {
       // Waldrand: Erzähler-Text der Ankunft (Referenz), dann Ravensmoor
       if (!this.flags.nAnkunft) {
@@ -2042,7 +2056,10 @@ export class WorldScene extends CombatScene {
       backgroundColor: '#1c1410', padding: { x: 24, y: 10 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     fixUiScroll(c);
-    btn.on('pointerdown', () => {
+    const weiter = () => {
+      if (!this.deathOverlay) return; // nur einmal (Klick ODER Taste)
+      this.input.keyboard?.off('keydown-E', weiter);
+      this.input.keyboard?.off('keydown-ENTER', weiter);
       c.destroy();
       this.deathOverlay = null;
       if (choice === 'annehmen') {
@@ -2060,8 +2077,13 @@ export class WorldScene extends CombatScene {
       for (const id of ['crypt1', 'crypt2', 'crypt3', 'crypt4', 'crypt5']) this.areas.delete(id);
       this.logMsg('Die Krypta regt sich erneut - stärker als zuvor (Neues Spiel+).', 'magic');
       this.logMsg('Taste 8: Stadtportal nach Ravensmoor.', 'gold');
-    });
+    };
+    btn.on('pointerdown', weiter);
+    // Absicherung (Runde 15): E/Enter schließen das Fenster ebenfalls
+    this.input.keyboard?.once('keydown-E', weiter);
+    this.input.keyboard?.once('keydown-ENTER', weiter);
     c.add(btn);
+    this.sfx.stopMusic();
     this.deathOverlay = c; // blockiert Eingaben wie ein Overlay
   }
 
