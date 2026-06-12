@@ -12,6 +12,11 @@ export const TUNING = {
   // Runde 21: Beutemenge - skaliert die Drop-Chancen von Gegnern (Waffen,
   // Rüstung, Tränke, Steine, Rollen); 0 = nur Gold, 1 = wie bisher
   beuteRate: 1.0,
+  // Runde 22: Nahkampf-Reichweiten zum Justieren - Held (Hieb-Weite und
+  // Schwung-Breite) und Gegner (wie weit ihr Schlag trägt)
+  spielerReichweite: 1.0,
+  spielerSchwungBreite: 1.0,
+  gegnerReichweite: 1.0,
   // Runde 18: Feinjustierung je Gegnertyp (F10 - Pfeile wechseln den Typ)
   typ: {} as Record<string, { tempo: number; schaden: number }>,
   // Runde 21: Dev-Schalter - alle Zauber/Fähigkeiten ohne Stufen-Sperre
@@ -26,4 +31,7 @@ export const TUNING_ROWS: Array<[keyof typeof TUNING, string, number, number, nu
   ['kryptaTempo', 'Spieler-Tempo Krypta x', 0.3, 1.2, 0.05],
   ['kryptaGegnerTempo', 'Gegner-Tempo Krypta x', 0.3, 1.2, 0.04],
   ['beuteRate', 'Beute-Menge (Drops) x', 0, 3, 0.1],
+  ['spielerReichweite', 'Held: Hieb-Reichweite x', 0.5, 2.5, 0.1],
+  ['spielerSchwungBreite', 'Held: Schwung-Breite x', 0.5, 2, 0.1],
+  ['gegnerReichweite', 'Gegner: Hieb-Reichweite x', 0.5, 3, 0.1],
 ];

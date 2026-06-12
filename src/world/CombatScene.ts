@@ -278,6 +278,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   toggleHausEdit(): void { /* Welt überschreibt */ }
   // Dev-Sprung zum Boss / in die Stadt (Runde 21): Welt überschreibt
   protected devTeleport(_ziel: 'boss' | 'village'): void { /* Welt überschreibt */ }
+  // Stadt-Baukasten (Runde 22): Welt überschreibt
+  protected toggleBaukasten(): void { /* Welt überschreibt */ }
 
   // UI-Verschiebemodus (Runde 11): Leiste, Dialograhmen und Meldungs-Log
   // per Maus ziehen; die Versätze landen in den Einstellungen und im Bericht
@@ -444,6 +446,15 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }).setInteractive({ useHandCursor: true });
     teleStadt.on('pointerdown', () => this.devTeleport('village'));
     c.add(teleStadt);
+    const baukasten = this.add.text(220, y + 62, 'BAUKASTEN', {
+      fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
+      backgroundColor: '#221808', padding: { x: 12, y: 5 },
+    }).setInteractive({ useHandCursor: true });
+    baukasten.on('pointerdown', () => {
+      this.toggleBaukasten();
+      this.toggleDevPanel(); // Kasten schließen, der Baukasten hat sein eigenes Panel
+    });
+    c.add(baukasten);
     const uiBtn = this.add.text(180, y + 6, this.uiEditMode ? 'UI FIXIEREN' : 'UI VERSCHIEBEN', {
       fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
       backgroundColor: '#221808', padding: { x: 12, y: 5 },
@@ -755,8 +766,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const fin = ev.isFinisher;
     const heavy = ev.type === 'heavy';
     const st = this.swingStyle();
-    const range = heavy ? HEAVY_ATTACK.range : (fin ? LIGHT_ATTACK.rangeFinisher : LIGHT_ATTACK.range);
-    const arc = heavy ? HEAVY_ATTACK.arc : (fin ? LIGHT_ATTACK.arcFinisher : LIGHT_ATTACK.arc);
+    // Reichweite/Schwung-Breite im F10 justierbar (Runde 22)
+    const range = (heavy ? HEAVY_ATTACK.range : (fin ? LIGHT_ATTACK.rangeFinisher : LIGHT_ATTACK.range)) * TUNING.spielerReichweite;
+    const arc = (heavy ? HEAVY_ATTACK.arc : (fin ? LIGHT_ATTACK.arcFinisher : LIGHT_ATTACK.arc)) * TUNING.spielerSchwungBreite;
     const sweep = ev.comboIndex === 1 ? -1 : 1;
     this.fx.addSwing(this.px, this.py, ang, { fin: fin || heavy, col: st.col, w: st.w + (heavy ? 2 : 0), glow: st.glow, sweep, arc });
     if (st.spark || fin) {
@@ -792,9 +804,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected thrustAttack(ev: AttackEvent, ang: number): void {
     const ms = WEAPON_MOVESETS.stange;
     const st = this.swingStyle();
-    this.fx.addSwing(this.px, this.py, ang, { col: st.col, w: st.w, glow: st.glow, arc: ms.arc, radius: ms.range - 20 });
+    const stRange = ms.range * TUNING.spielerReichweite;
+    const stArc = ms.arc * TUNING.spielerSchwungBreite;
+    this.fx.addSwing(this.px, this.py, ang, { col: st.col, w: st.w, glow: st.glow, arc: stArc, radius: stRange - 20 });
     this.playSwingSound('stange', false);
-    const hit = this.hitEnemiesInArc(ang, ms.range, ms.arc, ev.dmgMult, ms.knockback, false);
+    const hit = this.hitEnemiesInArc(ang, stRange, stArc, ev.dmgMult, ms.knockback, false);
     if (hit) {
       this.applyHitstop(HITSTOP_MS.light);
       this.shake(3);

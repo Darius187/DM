@@ -8,6 +8,7 @@ import { BOSS_TEXTE } from '../data/texte';
 import type { Rng } from '../logic/rng';
 import { rnd, pick } from '../logic/rng';
 import type { Dir } from '../gfx/fallbackArt';
+import { TUNING } from '../logic/tuning';
 
 export interface EnemyHost {
   isSolidAt(x: number, y: number): boolean;
@@ -231,7 +232,7 @@ export class Enemy {
     // Doppelhieb: zweiter Schlag kurz nach dem ersten
     if (this.secondHitT > 0) {
       this.secondHitT -= dt;
-      if (this.secondHitT <= 0 && d < this.r + host.playerR() + 20) {
+      if (this.secondHitT <= 0 && d < this.r + host.playerR() + 20 * TUNING.gegnerReichweite) {
         host.enemyMeleeHit(this, Math.round(this.dmg * 0.7));
       }
     }
@@ -272,7 +273,7 @@ export class Enemy {
       this.retreatT -= dt;
       this.moveBody(host, -Math.cos(ang) * this.speed * 0.85 * slowF * dt, -Math.sin(ang) * this.speed * 0.85 * slowF * dt);
       this.advanceStep(dt);
-    } else if (d > this.r + host.playerR() + 6) {
+    } else if (d > this.r + host.playerR() + 6 + 14 * (TUNING.gegnerReichweite - 1)) {
       // Wolf darf den Sprung auch aus kurzer Distanz ansetzen
       if (this.type === 'wolf' && d < 120 && d > 50 && this.atkCd === 0 && Math.random() < 0.4) {
         this.startPattern(host, 'sprung');
@@ -320,14 +321,14 @@ export class Enemy {
     const ang = Math.atan2(py - this.y, px - this.x);
     switch (this.pattern) {
       case 'hieb':
-        if (d < this.r + host.playerR() + 18) host.enemyMeleeHit(this, Math.round(this.dmg * (0.8 + Math.random() * 0.35)));
+        if (d < this.r + host.playerR() + 18 * TUNING.gegnerReichweite) host.enemyMeleeHit(this, Math.round(this.dmg * (0.8 + Math.random() * 0.35)));
         if (this.type === 'skelett' || this.type === 'wolf' || this.type === 'schatten') {
           this.retreatT = 0.35 + Math.random() * 0.25;
           this.orbitDir = Math.random() < 0.5 ? 1 : -1;
         }
         break;
       case 'doppelhieb':
-        if (d < this.r + host.playerR() + 20) host.enemyMeleeHit(this, Math.round(this.dmg * 0.7));
+        if (d < this.r + host.playerR() + 20 * TUNING.gegnerReichweite) host.enemyMeleeHit(this, Math.round(this.dmg * 0.7));
         this.secondHitT = 0.25;
         break;
       case 'giftwolke':
@@ -384,7 +385,7 @@ export class Enemy {
           this.lungeT = 0.7;
           this.lungeVx = Math.cos(a2) * 520;
           this.lungeVy = Math.sin(a2) * 520;
-        } else if (d < this.r + host.playerR() + BOSS.meleeRange) {
+        } else if (d < this.r + host.playerR() + BOSS.meleeRange * TUNING.gegnerReichweite) {
           host.enemyMeleeHit(this, Math.round(this.dmg * (0.85 + Math.random() * 0.25)));
         }
       }
