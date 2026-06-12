@@ -99,3 +99,13 @@
 - Einfall überlebt den Blick ins Gemeindehaus: Angreifer werden beim Betreten gespeichert und beim Heraustreten wiederhergestellt; im Gemeindehaus drängen sich währenddessen sieben Flüchtlinge (Frauen, Kinder, Alte) sichtbar ums Feuer. Dörfler kämpfen ausdrücklich NICHT (Wunsch des Autors).
 - Sichtbares Tagwerk: 10 Bewohner ARBEITEN an ihren Tagespositionen (Zimmermann hackt mit Spänen+Klang, Schmied funkt, Fischer wirft aus, Bauern hacken das Feld, Hirte/Schäfer füttern, Wäscherin platscht, Bäcker raucht, Weberin webt) - Werkel-Animation + Effekt + entfernungsabhängiges Geräusch alle 2,4-4,6s. Geschlossene Warenwirtschaft mit sichtbaren Lagern/Trägern zwischen NPCs: als nächster Ausbau notiert.
 - Dialog-Politur: Pergament-Paneel (abgerundet, Doppelborte, Goldlinie unterm Sprecher), Schrift 17px mit mehr Zeilenluft. Spieler-Laufanimation: Schritte wippen 1px hoch und seitlich (aus dem Standbild erzeugt, bis echte Frames kommen).
+- Runde 17: eigener Regler "Lautstärke Musik" (volMusik) - Musikstücke hingen vorher an "Atmosphäre". Gebiets-Loops vorbereitet: liegen musik_dorf/musik_wald/musik_krypta.mp3 vor, laufen sie als Schleife im jeweiligen Gebiet (Autor liefert echte Loops nach).
+- Bücherregale: einmal stöbern pro Regal, danach "durchsucht" mit Staub-Meldung (Flag je Regalposition).
+- Schildträger ab Krypta-Ebene 2 (30% der Skelette) und ENDLICH SICHTBAR: kleines Rundschild an der dem Spieler zugewandten Seite (Overlay). Sie schlagen und blocken wie der Spieler (bestand schon - war nur unsichtbar).
+- Tuning-Grenzen für den Autor erweitert: Gegner-Leben/-Schaden bis x10, Tempo bis x3.
+- ui.fenster-Versatz: Inventar-/Charakter-/Handelsfenster wandern mit dem neuen FENSTER-Griff im UI-Modus.
+- NPC-Kollision statt Revert: Bewohner laufen nicht mehr DURCH Gebäude (achsenweises Entlangschieben); die Gebäude-Verdeckung von Runde 14 bleibt.
+- Held: Wippen-Animation entfernt (sah schlecht aus), Sprite auf 1,35x skaliert (war winzig neben den Figuren). Echte Lauf-Frames bleiben Wunschliste an den Autor.
+- Hover-Namen: Mauszeiger über Gegner/NPC/Fass/Truhe/Regal/Erzader/Treppe/usw. zeigt den Namen als kleines Schildchen - die Welt fühlt sich interaktiv an.
+- Krypta-Wandkanten: Wände, die an Boden grenzen, bekommen eine helle Kontur (Graphics-Pass beim Gebietsladen) - Räume und Ecken lesen sich jetzt als solche.
+- Haus-Optik: Dächer wirken als Rechtecke ("Schrank") - Plan: GANZE Häuser als EIN transparentes Sprite (z.B. 128x96) vom Autor generieren lassen und über die Grundfläche legen; Vorgaben in der Antwort an den Autor.

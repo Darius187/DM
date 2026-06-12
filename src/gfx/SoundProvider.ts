@@ -133,7 +133,7 @@ export class SoundProvider {
     this.stopMusic();
     if (!this.scene.cache.audio.exists(`snd_${name}`)) return;
     const s = getSettings();
-    this.musik = this.scene.sound.add(`snd_${name}`, { loop: opts.loop ?? false, volume: s.volAtmosphaere / 100 });
+    this.musik = this.scene.sound.add(`snd_${name}`, { loop: opts.loop ?? false, volume: s.volMusik / 100 });
     this.musikName = name;
     if (opts.onComplete) this.musik.once('complete', opts.onComplete);
     this.musik.play();

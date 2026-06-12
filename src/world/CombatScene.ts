@@ -111,6 +111,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.albumPanel = null;
     this.playerSprite = this.add.sprite(startX, startY, '__DEFAULT').setDepth(startY);
     this.provider.applyFigure(this.playerSprite, 'spieler', 0, 0);
+    // Held-Sprite des Autors wirkt sonst winzig neben den Figuren (Runde 17)
+    if (this.textures.exists('hs_spieler_unten_1')) this.playerSprite.setScale(1.35);
     this.overlay = this.add.graphics().setDepth(2600);
     this.pickups = new PickupSystem(this, this.provider);
     this.panels = new UIPanels(this, this.provider, this.sfx, () => this.p);
@@ -292,6 +294,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       ['log', 'MELDUNGEN', w / 2, h - 150],
       ['orbHp', 'LEBENS-KUGEL', 70, h - 66],
       ['orbMp', 'MANA-KUGEL', w - 70, h - 66],
+      ['fenster', 'FENSTER (INVENTAR/HANDEL)', w / 2, h / 2 - 80],
     ];
     for (const [key, name, ax, ay] of teile) {
       const griff = this.add.rectangle(ax + ui[key].x, ay + ui[key].y, 170, 26, 0x221808, 0.95)
@@ -923,8 +926,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Krypta-Gegner schleichen statt wuseln (Runde 16: Spannung) -
     // Faktor im Entwicklungskasten justierbar
     if (this.areaDark() && !e.boss) e.speed *= TUNING.kryptaGegnerTempo;
-    // Manche Skelette tragen Schilde (Runde 11) - sie blocken von vorn
-    if (type === 'skelett' && !e.boss && this.rng.random() < 0.25) {
+    // Manche Skelette tragen Schilde (Runde 11) - sie blocken von vorn.
+    // Ab Ebene 2 (Runde 17), und das Schild ist im Bild SICHTBAR
+    if (type === 'skelett' && !e.boss && depth >= 2 && this.rng.random() < 0.3) {
       e.schild = true;
       e.name = `${e.name} · Schildträger`;
     }
@@ -1666,6 +1670,20 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
     const g = this.overlay;
     g.clear();
+    // Schildträger erkennbar machen (Runde 17): kleines Rundschild an der
+    // dem Spieler zugewandten Seite
+    for (const e of this.enemies) {
+      if (!e.schild || e.versteckt || e.hp <= 0) continue;
+      const seite = [Math.PI / 2, Math.PI, 0, -Math.PI / 2][e.dir];
+      const sx = e.x + Math.cos(seite) * (e.r + 3);
+      const sy = e.y + Math.sin(seite) * (e.r + 3) - 4;
+      g.fillStyle(0x8a8e96, 1);
+      g.fillCircle(sx, sy, 5.5);
+      g.fillStyle(0x55504a, 1);
+      g.fillCircle(sx, sy, 2.2);
+      g.lineStyle(1, 0x2a2622, 1);
+      g.strokeCircle(sx, sy, 5.5);
+    }
     // Telegraphen
     for (const tg of this.telegraphs) {
       const prog = 1 - Math.max(0, tg.t) / tg.maxT;

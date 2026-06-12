@@ -3,6 +3,7 @@
 // Gegenstand und Tagebuch. Grafik kommt ausschließlich vom SpriteProvider.
 
 import Phaser from 'phaser';
+import { getSettings } from '../logic/settings';
 import type { Item, GemItem, Rarity } from '../data/types';
 import { RARITY_COLORS, RARITY_NAMES } from '../data/items';
 import { itemStatLine } from '../logic/loot';
@@ -89,7 +90,8 @@ export class UIPanels {
     const sw = this.scene.scale.width, sh = this.scene.scale.height;
     const w = Math.min(760, sw - 24);
     const h = Math.min(sh - 36, 560);
-    const c = this.scene.add.container((sw - w) / 2, (sh - h) / 2).setScrollFactor(0).setDepth(5100);
+    const off = getSettings().ui.fenster;
+    const c = this.scene.add.container((sw - w) / 2 + off.x, (sh - h) / 2 + off.y).setScrollFactor(0).setDepth(5100);
     this.container = c;
     const bg = this.scene.add.rectangle(0, 0, w, h, PANEL_BG, 0.97).setOrigin(0).setStrokeStyle(1, LINE);
     bg.setInteractive();

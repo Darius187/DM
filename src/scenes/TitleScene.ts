@@ -19,7 +19,7 @@ export class TitleScene extends Phaser.Scene {
     // Instanz an und die alte spielte ins Spiel hinein (Runde 15)
     this.sound.stopByKey('snd_musik_menue');
     if (this.cache.audio.exists('snd_musik_menue')) {
-      this.sound.play('snd_musik_menue', { loop: true, volume: getSettings().volAtmosphaere / 100 });
+      this.sound.play('snd_musik_menue', { loop: true, volume: getSettings().volMusik / 100 });
     }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.sound.stopByKey('snd_musik_menue');
@@ -39,7 +39,7 @@ export class TitleScene extends Phaser.Scene {
       stroke: '#000000', strokeThickness: 6,
     }).setOrigin(0.5);
     // Sichtbare Versionsnummer, damit alte Stände sofort auffallen
-    this.add.text(10, h - 10, 'Stand: Feedback-Runde 16 (12.06.2026)', {
+    this.add.text(10, h - 10, 'Stand: Feedback-Runde 17 (12.06.2026)', {
       fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c',
     }).setOrigin(0, 1);
     this.add.text(w / 2, h * 0.2 + 52, TITEL.unter, {

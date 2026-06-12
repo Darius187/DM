@@ -129,6 +129,7 @@ export class WorldScene extends CombatScene {
     this.deathOverlay = null;
     this.msgTexts = [];
     this.ortsText = null;
+    this.hoverText = null;
     this.wasserBilder = [];
     this.regenGfx = null;
     this.regenTropfen = [];
@@ -278,6 +279,59 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // Hover-Namen (Runde 17): Was unter dem Mauszeiger liegt, nennt sich
+  private hoverText: Phaser.GameObjects.Text | null = null;
+
+  private renderHover(): void {
+    if (!this.hoverText) {
+      this.hoverText = this.add.text(0, 0, '', {
+        fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0',
+        backgroundColor: '#0e0a06e0', padding: { x: 6, y: 2 },
+      }).setScrollFactor(0).setDepth(4720).setVisible(false);
+    }
+    const ptr = this.input.activePointer;
+    const wx = ptr.worldX, wy = ptr.worldY;
+    let name: string | null = null;
+    for (const e of this.enemies) {
+      if (!e.versteckt && Math.hypot(e.x - wx, e.y - wy) < e.r + 10) { name = e.name; break; }
+    }
+    if (!name) {
+      for (const n of this.npcEnts) {
+        if (n.sprite.visible && Math.hypot(n.curX - wx, n.curY - wy) < 18) { name = n.name; break; }
+      }
+    }
+    if (!name) {
+      for (const b of this.breakableEnts) {
+        if (Math.hypot(b.x - wx, b.y - wy) < 17) {
+          name = { fass: 'Fass', kiste: 'Kiste', krug: 'Krug', knochenhaufen: 'Knochenhaufen', spinnwebe: 'Spinnwebe', heuhaufen: 'Heuhaufen' }[b.kind] ?? null;
+          break;
+        }
+      }
+    }
+    if (!name) {
+      for (const ch of this.area.chests) {
+        if (!ch.open && Math.hypot(ch.x - wx, ch.y - wy) < 20) { name = ch.verflucht ? 'Verfluchte Truhe' : 'Truhe'; break; }
+      }
+    }
+    if (!name) {
+      const tid = this.area.map[Math.floor(wy / TILE)]?.[Math.floor(wx / TILE)];
+      const NAMEN: Record<number, string> = {
+        [T.SHELF]: 'Bücherregal', [T.ORE]: 'Erzader', [T.SHRINE]: 'Kerzenschrein',
+        [T.WELL]: this.area.dark ? 'Blutbrunnen' : 'Brunnen', [T.GRAVE]: 'Grabstein',
+        [T.STAIR]: 'Treppe hinab', [T.STAIRUP]: 'Treppe hinauf', [T.ALTAR]: 'Opferaltar',
+        [T.RACK]: 'Streckbank', [T.CAGE]: 'Käfig', [T.TOR]: 'Stadttor', [T.HDOOR]: 'Haustür',
+        [T.CDOOR]: 'Kirchentür (Krypta)', [T.TREE]: 'Baum', [T.PALISADE]: 'Palisade', [T.ROCK]: 'Felsbrocken',
+      };
+      name = tid !== undefined ? NAMEN[tid] ?? null : null;
+    }
+    if (name && !this.uiBlocked()) {
+      this.hoverText.setVisible(true).setText(name)
+        .setPosition(Math.min(ptr.x + 14, this.scale.width - this.hoverText.width - 8), ptr.y + 16);
+    } else {
+      this.hoverText.setVisible(false);
+    }
+  }
+
   private ortsText: Phaser.GameObjects.Text | null = null;
 
   // Zeigt den Namen des nächsten Ortes (Marktplatz, Friedhof ...) als
@@ -400,6 +454,16 @@ export class WorldScene extends CombatScene {
     if (id === 'crypt1') this.sfx.play('krypta_betreten');
     if (id === 'crypt3') this.flags.ebene3 = true;
     this.gruselT = 6 + Math.random() * 8;
+    // Gebiets-Musik (Runde 17): liegt musik_dorf/wald/krypta als Loop vor,
+    // läuft sie hier - sonst wie bisher (Stille bzw. Grusel-Rotation)
+    {
+      const aktuell = this.sfx.aktuelleMusik();
+      const wechselbar = !aktuell || aktuell.startsWith('musik_dorf') || aktuell.startsWith('musik_wald') || aktuell.startsWith('musik_krypta');
+      if (wechselbar) {
+        const loopName = a.dark && id !== 'boss' ? 'musik_krypta' : (id === 'village' || a.innen) ? 'musik_dorf' : id === 'wald' ? 'musik_wald' : '';
+        if (loopName && this.sfx.has(loopName) && aktuell !== loopName) this.sfx.playMusic(loopName, { loop: true });
+      }
+    }
     // Kleine Stuben mittig im Bild statt oben links in der Ecke
     const mapW = a.w * TILE, mapH = a.h * TILE;
     const bx = Math.min(0, -(this.scale.width - mapW) / 2);
@@ -618,6 +682,24 @@ export class WorldScene extends CombatScene {
       });
     }
     a.kraeuter = [];
+    // Wandkanten in der Krypta (Runde 17): Wände, die an Boden grenzen,
+    // bekommen eine sichtbare Kontur - Räume lesen sich als Räume
+    if (a.dark) {
+      const kanten = this.add.graphics().setDepth(-9);
+      const hell = 0x4a4236;
+      kanten.lineStyle(2, hell, 0.5);
+      for (let ty = 0; ty < a.h; ty++) {
+        for (let tx = 0; tx < a.w; tx++) {
+          if (a.map[ty][tx] !== T.WALL) continue;
+          const x0 = tx * TILE, y0 = ty * TILE;
+          if (ty + 1 < a.h && !SOLID.has(a.map[ty + 1][tx])) kanten.lineBetween(x0, y0 + TILE - 1, x0 + TILE, y0 + TILE - 1);
+          if (ty > 0 && !SOLID.has(a.map[ty - 1][tx])) kanten.lineBetween(x0, y0 + 1, x0 + TILE, y0 + 1);
+          if (tx > 0 && !SOLID.has(a.map[ty][tx - 1])) kanten.lineBetween(x0 + 1, y0, x0 + 1, y0 + TILE);
+          if (tx + 1 < a.w && !SOLID.has(a.map[ty][tx + 1])) kanten.lineBetween(x0 + TILE - 1, y0, x0 + TILE - 1, y0 + TILE);
+        }
+      }
+      this.tileImages.push(kanten as unknown as Phaser.GameObjects.Image);
+    }
     // Gefällte Bäume dieses Gebiets: Stümpfe zeigen, bis sie nachwachsen
     for (const key of this.gefaellteBaeume.keys()) {
       const [gebiet, sx, sy] = key.split('_');
@@ -808,10 +890,14 @@ export class WorldScene extends CombatScene {
         return { text: `Opferaltar - ${ik} zum Beten`, action: () => this.useAltar(al) };
       }
     }
-    // Bücherregal
+    // Bücherregal - durchsuchte Regale melden sich leer (Runde 17)
     for (const b of this.area.books) {
       if (near(b.x, b.y + 16, 52)) {
-        return { text: `Bücher - ${ik} zum Stöbern`, action: () => this.readBook() };
+        const key = `regal_${this.area.id}_${Math.round(b.x)}_${Math.round(b.y)}`;
+        if (this.flags[key]) {
+          return { text: 'Bücherregal (durchsucht)', action: () => this.logMsg('Hier steht nichts Brauchbares mehr - nur Staub.', '') };
+        }
+        return { text: `Bücher - ${ik} zum Stöbern`, action: () => { this.flags[key] = true; this.readBook(); } };
       }
     }
     // Käfige aufbrechen (Folterkammer)
@@ -2833,8 +2919,12 @@ export class WorldScene extends CombatScene {
       const d = Math.hypot(ziel.x - n.curX, ziel.y - n.curY);
       if (d > 4) {
         const a = Math.atan2(ziel.y - n.curY, ziel.x - n.curX);
-        n.curX += Math.cos(a) * 50 * dt;
-        n.curY += Math.sin(a) * 50 * dt;
+        // Runde 17: Bewohner laufen NICHT mehr durch Gebäude - sie
+        // schieben sich achsenweise an Wänden entlang
+        const nx = n.curX + Math.cos(a) * 50 * dt;
+        const ny = n.curY + Math.sin(a) * 50 * dt;
+        if (!this.isSolidAt(nx, n.curY)) n.curX = nx;
+        if (!this.isSolidAt(n.curX, ny)) n.curY = ny;
         this.provider.applyFigure(n.sprite, n.figur ?? n.id, angleToDir(a), Math.floor(this.time.now / 140) % 4);
       } else if (n.arbeit && !abend && !mittagPhase) {
         // Sichtbares Tagwerk (Runde 16): werkeln statt rumstehen
@@ -2903,6 +2993,7 @@ export class WorldScene extends CombatScene {
     this.updateCombat(dt);
     this.renderRegen(dt);
     this.renderOrtsname();
+    this.renderHover();
     this.animiereWasser(dt);
     // Boss-Eskalation (Runde 16): unter 25% reißt der Ritter den Helden
     // mit hinab ins Innere Grab - echter Raumwechsel

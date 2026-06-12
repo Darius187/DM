@@ -12,10 +12,10 @@ export const TUNING = {
 };
 
 export const TUNING_ROWS: Array<[keyof typeof TUNING, string, number, number, number]> = [
-  ['spielerSchaden', 'Spieler-Schaden x', 0.2, 3, 0.1],
-  ['gegnerLeben', 'Gegner-Leben x', 0.2, 4, 0.1],
-  ['gegnerSchaden', 'Gegner-Schaden x', 0.2, 4, 0.1],
-  ['gegnerTempo', 'Gegner-Tempo x', 0.4, 2, 0.05],
+  ['spielerSchaden', 'Spieler-Schaden x', 0.1, 3, 0.1],
+  ['gegnerLeben', 'Gegner-Leben x', 0.2, 10, 0.2],
+  ['gegnerSchaden', 'Gegner-Schaden x', 0.2, 10, 0.2],
+  ['gegnerTempo', 'Gegner-Tempo x', 0.4, 3, 0.05],
   ['kryptaTempo', 'Spieler-Tempo Krypta x', 0.3, 1.2, 0.05],
   ['kryptaGegnerTempo', 'Gegner-Tempo Krypta x', 0.3, 1.2, 0.04],
 ];

@@ -40,6 +40,7 @@ export class SettingsScene extends Phaser.Scene {
     sect('AUDIO');
     y = this.slider(y, 'Lautstärke Effekte', () => s.volEffekte, (v) => { s.volEffekte = v; });
     y = this.slider(y, 'Lautstärke Atmosphäre', () => s.volAtmosphaere, (v) => { s.volAtmosphaere = v; });
+    y = this.slider(y, 'Lautstärke Musik', () => s.volMusik, (v) => { s.volMusik = v; });
     sect('GRAFIK & EFFEKTE');
     y = this.slider(y, 'Helligkeit', () => s.bright, (v) => { s.bright = v; }, 70, 140);
     y = this.slider(y, 'Spieler-Tempo (Kampfgefühl)', () => s.tempo, (v) => { s.tempo = v; }, 70, 110);
