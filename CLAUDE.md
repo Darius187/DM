@@ -150,3 +150,10 @@ dass der Autor jedes Glied bestellt:
   ein einziges Schild als Beute.
 - Vor jedem "fertig": einmal die Spielerreise denken - finden, ansehen,
   anlegen, benutzen, speichern, laden.
+
+## 11. UI-Grundregeln (vom Autor festgelegt, Runde 30)
+
+- ALLE Fenster und Kästen müssen verschiebbar sein (Griff in der
+  Kopfzeile, Schirmkoordinaten-Delta) - neue Fenster ohne Griff gelten
+  als unfertig. Größere Fenster zusätzlich skalierbar (Eckgriff oder
+  A+/A-), Position und Größe werden gespeichert.

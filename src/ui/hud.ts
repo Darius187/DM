@@ -23,6 +23,7 @@ interface SlotDef {
   cdFrac: () => number;     // 0..1 Restanteil der Abklingzeit
   cdSek: () => number;      // Restsekunden
   locked: () => string | null; // Grund, falls gesperrt
+  farbe?: () => string;     // Icon-Farbe (Runde 30: farbige Aktionen)
 }
 
 const ORB_R = 42;
@@ -51,7 +52,7 @@ export class Hud {
   private slotZones: Phaser.GameObjects.Zone[] = [];
   private tooltip: Phaser.GameObjects.Container | null = null;
   private slots: SlotDef[];
-  private aktionen: Array<[string, string, string]> = [];
+  private aktionen: Array<[string, string, string, string]> = [];
 
   constructor(
     private scene: Phaser.Scene,
@@ -81,15 +82,15 @@ export class Hud {
     // öffnet die Aktionsliste, Ziehen tauscht zwei Slots
     const p = this.getP;
     const bogen = () => this.getWeaponClass() === 'bogen';
-    const AKTIONEN: Array<[string, string, string]> = [
-      ['angriff', '⚔', 'Angriff (Waffe)'], ['block', '⛨', 'Blocken (gedrückt halten)'],
-      ['s1', '✦', 'Feuerball'], ['s2', '☩', 'Heiliges Licht'], ['s3', '❧', 'Heilung'],
-      ['kettenblitz', '⌁', 'Kettenblitz'], ['frostnova', '❄', 'Frostnova'], ['bannkreis', '◎', 'Bannkreis'],
-      ['feuerregen', '☄', 'Feuerregen (auf den Zielort)'],
-      ['aderlass', '⚱', 'Aderlass (Leben gegen Mana)'], ['lebenstausch', '❤', 'Lebenstausch (Mana gegen Leben)'],
-      ['waffe1', '↻', 'Waffen-Fähigkeit I (je nach Waffe)'], ['waffe2', '⇒', 'Waffen-Fähigkeit II (je nach Waffe)'],
-      ['pot', '🧪', 'Heiltrank'], ['mpot', '⚗', 'Manatrank'], ['rolle', '📜', 'Schriftrolle'],
-      ['stadtportal', '⌂', 'Stadtportal (nach Boss-Sieg)'],
+    const AKTIONEN: Array<[string, string, string, string]> = [
+      ['angriff', '⚔', 'Angriff (Waffe)', '#d8cfb8'], ['block', '⛨', 'Blocken (gedrückt halten)', '#aab4c0'],
+      ['s1', '✦', 'Feuerball', '#f0883a'], ['s2', '☩', 'Heiliges Licht', '#f0e08a'], ['s3', '❧', 'Heilung', '#6ad06a'],
+      ['kettenblitz', '⌁', 'Kettenblitz', '#9ae0f8'], ['frostnova', '❄', 'Frostnova', '#74aef0'], ['bannkreis', '◎', 'Bannkreis', '#d8b84a'],
+      ['feuerregen', '☄', 'Feuerregen (auf den Zielort)', '#e85a3a'],
+      ['aderlass', '⚱', 'Aderlass (Leben gegen Mana)', '#c04848'], ['lebenstausch', '❤', 'Lebenstausch (Mana gegen Leben)', '#e87a9a'],
+      ['waffe1', '↻', 'Waffen-Fähigkeit I (je nach Waffe)', '#d8cfb8'], ['waffe2', '⇒', 'Waffen-Fähigkeit II (je nach Waffe)', '#d8cfb8'],
+      ['pot', '🧪', 'Heiltrank', '#e05a4a'], ['mpot', '⚗', 'Manatrank', '#5a7ae0'], ['rolle', '📜', 'Schriftrolle', '#cdbf9d'],
+      ['stadtportal', '⌂', 'Stadtportal (nach Boss-Sieg)', '#8aa6e8'],
     ];
     // Waffen-Slots zeigen die Fähigkeit der AKTUELLEN Waffe
     const echteId = (id: string): string => (id === 'waffe1' ? (bogen() ? 'mehrfachschuss' : 'rundumschlag')
@@ -104,6 +105,7 @@ export class Hud {
         belegung: quelle,
         aktion: aktId,
         ico: () => (aktId() === 'waffe1' && bogen() ? '⫶' : aktId() === 'waffe2' && bogen() ? '◎' : eintrag()[1]),
+        farbe: () => eintrag()[3],
         name: () => `${eintrag()[2]} (${tasteName})`,
         desc: () => 'Rechtsklick: Belegung wählen · Ziehen auf einen anderen Slot: tauschen',
         kosten: () => {
@@ -313,16 +315,16 @@ export class Hud {
       fontFamily: 'serif', fontSize: '12px', color: '#c9a227', letterSpacing: 1,
     }));
     const aktiv = (getSettings()[feld.store] as Record<string, string>)[feld.feld];
-    liste.forEach(([id, ico, name], i) => {
+    liste.forEach(([id, ico, name, farbe], i) => {
       const zy = my + 26 + i * zeileH;
       const eintrag = this.scene.add.text(mx + 10, zy, `${ico}  ${name}`, {
         fontFamily: 'serif', fontSize: '13px',
-        color: id === aktiv ? '#c9a227' : '#d8cfb8',
+        color: id === aktiv ? '#c9a227' : farbe,
         backgroundColor: id === aktiv ? '#221808' : undefined,
         padding: { x: 6, y: 2 },
       }).setScrollFactor(0).setInteractive({ useHandCursor: true });
       eintrag.on('pointerover', () => eintrag.setColor('#c9a227'));
-      eintrag.on('pointerout', () => eintrag.setColor(id === aktiv ? '#c9a227' : '#d8cfb8'));
+      eintrag.on('pointerout', () => eintrag.setColor(id === aktiv ? '#c9a227' : farbe));
       eintrag.on('pointerdown', () => {
         (getSettings()[feld.store] as Record<string, string>)[feld.feld] = id;
         saveSettings();
@@ -423,7 +425,7 @@ export class Hud {
       }
       const cdS = s.cdSek();
       this.slotTexts[i].setText(cdS > 0.5 ? String(Math.ceil(cdS)) : `${s.ico()}`)
-        .setColor(cdS > 0.5 ? '#e0b53a' : '#d8cfb8')
+        .setColor(cdS > 0.5 ? '#e0b53a' : (s.farbe?.() ?? '#d8cfb8'))
         .setAlpha(locked ? 0.3 : 1).setPosition(x, y);
       // Tastenkürzel klein oben links
       g.fillStyle(0x000000, 0);

@@ -835,3 +835,18 @@ Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.
   Bonus-Werte grün. Splitter-Drop stark gesenkt, Streitkolben-Reichweite
   eingefangen, NEU: Cleverness-Regler im F10 (war angekündigt, fehlte).
 - 64/64 Tests grün, tsc sauber.
+
+## Feedback-Runde 30 - umgesetzt (zwei Abstürze, Clear-Regel, Farben, Dev)
+
+- Absturz beim Malen (Wasser-Animation auf zerstörten Kacheln) und beim
+  erneuten Haus-Bild-Hochladen (entfernte Textur am lebenden Haus)
+  behoben; Datei-Dialog robuster (showPicker). Browser-verifiziert:
+  malen + 2x hochladen ohne Absturz.
+- Geräumte Ebenen bleiben jetzt wirklich leer: unsichtbare, nie
+  ausgelöste Hinterhalte zählten fälschlich als lebende Gegner.
+- Beute-Regler wirkt jetzt überall (auch Fässer und Miniboss-Garantien).
+- Aktions-Icons sind farbig (Feuer orange, Frost blau, Heilung grün ...).
+- F10: TAG/ABEND/NACHT setzen, NEBEL-Probe (hochaufgelöste Schwaden),
+  Kasten verschieb- und skalierbar. Neue Kodex-Regel: alle Fenster
+  müssen verschiebbar sein.
+- 64/64 Tests grün, tsc sauber.

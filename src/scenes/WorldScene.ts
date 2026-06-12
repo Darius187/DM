@@ -145,6 +145,7 @@ export class WorldScene extends CombatScene {
     this.hausEditAn = false;
     this.portalZiel = null;
     this.portalEnts = [];
+    this.nebelSprites = [];
     this.relicChoice = null;
     this.pauseMenu = null;
     this.deathOverlay = null;
@@ -321,6 +322,9 @@ export class WorldScene extends CombatScene {
     if (this.wasserT < 0.5) return;
     this.wasserT = 0;
     this.wasserFrame++;
+    // Zerstörte Kacheln aussortieren (Runde 30: der Baukasten malt Kacheln
+    // neu - setTexture auf den alten Bildern stürzte das Spiel ab)
+    this.wasserBilder = this.wasserBilder.filter((w) => w.img.active);
     for (const w of this.wasserBilder) {
       w.img.setTexture(this.provider.tileKey('wasser', w.variant + this.wasserFrame, this.area.depth, this.area.theme));
     }
@@ -847,7 +851,14 @@ export class WorldScene extends CombatScene {
         this.logMsg('Browser-Speicher voll - das Bild gilt nur für diese Sitzung.', 'bad');
       }
       const key = `hausupload_${id}`;
-      if (this.textures.exists(key)) this.textures.remove(key);
+      if (this.textures.exists(key)) {
+        // Runde 30: NIE eine Textur entfernen, die noch am Haus hängt -
+        // das stürzte beim erneuten Hochladen ab. Erst umhängen.
+        for (const hb of this.hausBilder) {
+          if (hb.active && hb.texture.key === key) hb.setTexture('__DEFAULT');
+        }
+        this.textures.remove(key);
+      }
       this.textures.once(`addtexture-${key}`, () => this.setzeHausTextur(img, key));
       this.textures.addBase64(key, daten);
       this.logMsg(`Neues Bild (freigestellt) liegt auf ${id}.`, 'gold');
@@ -864,6 +875,12 @@ export class WorldScene extends CombatScene {
       // Regler) und blieben bei 32px unnötig grob
       const ziel = freistellen ? TILE * 2 : TILE;
       const bilder = rohe.map((roh) => verarbeiteUpload(roh, { zielW: ziel, zielH: ziel, freistellen }));
+      // Runde 30: kein lebendes Bild darf eine Textur tragen, die gleich
+      // entfernt wird (Absturz-Schutz wie beim Haus-Upload)
+      for (const img2 of this.tileImages) {
+        const i2 = img2 as Phaser.GameObjects.Image;
+        if (i2.active && i2.texture && i2.texture.key.startsWith(`hs_tile_${tile}`)) i2.setTexture('__DEFAULT');
+      }
       try {
         const store = JSON.parse(localStorage.getItem('ravensmoor_eigene_tiles') ?? '{}') as Record<string, string>;
         if (variante) {
@@ -929,7 +946,15 @@ export class WorldScene extends CombatScene {
     };
     // Abbruch ohne Auswahl: Element trotzdem wieder entfernen
     input.oncancel = aufraeumen;
-    input.click();
+    // showPicker() ist aus Canvas-Klickketten zuverlässiger als click()
+    // (Runde 30: der Dialog öffnete nur sporadisch)
+    try {
+      const mitPicker = input as HTMLInputElement & { showPicker?: () => void };
+      if (mitPicker.showPicker) mitPicker.showPicker();
+      else input.click();
+    } catch {
+      input.click();
+    }
   }
 
   // Hover-Namen (Runde 17): Was unter dem Mauszeiger liegt, nennt sich
@@ -1126,7 +1151,9 @@ export class WorldScene extends CombatScene {
     // Verlassen keinen Gegner übrig lässt, findet die Ebene leer wieder -
     // erst der eigene Tod weckt die Tiefe neu (Bossgrab ausgenommen)
     if (this.area && this.area.dark && this.area.id !== 'boss') {
-      this.area.geleert = !this.enemies.some((e) => e.hp > 0);
+      // versteckte (nie ausgelöste) Hinterhalte zählen NICHT (Runde 30:
+      // deshalb galt eine geräumte Ebene oft als "nicht leer")
+      this.area.geleert = !this.enemies.some((e) => e.hp > 0 && !e.versteckt);
     }
     const a = this.getArea(id);
     this.area = a;
@@ -1618,6 +1645,63 @@ export class WorldScene extends CombatScene {
     this.logMsg(ziel === 'boss' ? 'Dev-Sprung: Grab des Kreuzritters.' : 'Dev-Sprung: Ravensmoor.', 'gold');
   }
 
+  // Tageszeit aus dem F10-Kasten setzen (Runde 30)
+  protected override devSetTageszeit(z: number): void {
+    this.tageszeit = z;
+    this.logMsg(`Tageszeit gesetzt: ${tageszeitLabel(z)}`, 'gold');
+  }
+
+  // Nebel-Probe (Runde 30, nur Dev): weiche, hochaufgelöste Schwaden
+  // driften über die Welt - zum Beurteilen, ob es ins Spiel soll
+  private nebelSprites: Phaser.GameObjects.Image[] = [];
+
+  protected override devToggleNebel(): void {
+    if (this.nebelSprites.length) {
+      for (const n of this.nebelSprites) n.destroy();
+      this.nebelSprites = [];
+      this.logMsg('Nebel-Probe aus.', 'gold');
+      return;
+    }
+    if (!this.textures.exists('nebelschwade')) {
+      const cv = document.createElement('canvas');
+      cv.width = 512;
+      cv.height = 512;
+      const ctx = cv.getContext('2d')!;
+      // mehrere weiche, überlappende Wolkenkerne = hochaufgelöste Schwade
+      for (let i = 0; i < 7; i++) {
+        const gx = 90 + Math.random() * 332, gy = 120 + Math.random() * 272;
+        const r = 90 + Math.random() * 130;
+        const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, r);
+        g.addColorStop(0, 'rgba(196,208,220,0.16)');
+        g.addColorStop(0.6, 'rgba(180,194,210,0.08)');
+        g.addColorStop(1, 'rgba(170,184,200,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, 512, 512);
+      }
+      this.textures.addCanvas('nebelschwade', cv);
+    }
+    for (let i = 0; i < 4; i++) {
+      const n = this.add.image(this.px + (Math.random() - 0.5) * 700, this.py + (Math.random() - 0.5) * 500, 'nebelschwade')
+        .setDepth(4300).setAlpha(0.55).setDisplaySize(820, 620);
+      n.setData('vx', 8 + Math.random() * 10);
+      n.setData('vy', (Math.random() - 0.5) * 6);
+      this.nebelSprites.push(n);
+    }
+    this.logMsg('Nebel-Probe an (F10 -> NEBEL schaltet wieder aus).', 'gold');
+  }
+
+  private treibeNebel(dt: number): void {
+    if (!this.nebelSprites.length) return;
+    const cam = this.cameras.main;
+    for (const n of this.nebelSprites) {
+      n.x += (n.getData('vx') as number) * dt;
+      n.y += (n.getData('vy') as number) * dt;
+      // sanft um den Sichtbereich wickeln
+      if (n.x - cam.midPoint.x > 900) n.x = cam.midPoint.x - 880;
+      if (Math.abs(n.y - cam.midPoint.y) > 700) n.y = cam.midPoint.y + (Math.random() - 0.5) * 500;
+    }
+  }
+
   protected override uiBlocked(): boolean {
     return super.uiBlocked() || this.dialog?.open || this.shop?.open || this.stash?.open || !!this.deathOverlay || !!this.pauseMenu;
   }
@@ -1669,8 +1753,11 @@ export class WorldScene extends CombatScene {
         const item: Item = { kind: 'material', name: mat === 'holz' ? 'Holz' : 'Eisenreste', rarity: 0, val: 0, boni: [], stack: 1 };
         this.pickups.add({ kind: 'material', item, x: ent.x, y: ent.y, bob });
       }
-    } else {
+    } else if (Math.random() < Math.min(1, TUNING.beuteRate)) {
+      // Ausrüstung aus Fässern folgt dem Beute-Regler (Runde 30)
       this.pickups.add({ kind: 'gear', item: rollGear(this.rng, this.area.depth), x: ent.x, y: ent.y, bob });
+    } else {
+      this.pickups.add({ kind: 'gold', amt: ri(this.rng, 2, 6), x: ent.x, y: ent.y, bob });
     }
   }
 
@@ -3108,9 +3195,11 @@ export class WorldScene extends CombatScene {
       return;
     }
     if (e.champion) {
-      // Miniboss: garantiert Edelstein + bessere Ausrüstung
-      this.pickups.add({ kind: 'gem', item: rollGem(this.rng, this.area.depth), x: e.x - 12, y: e.y, bob: 0 });
-      this.pickups.add({ kind: 'gear', item: rollGear(this.rng, this.area.depth + 1), x: e.x + 12, y: e.y, bob: 0 });
+      // Miniboss: Edelstein + bessere Ausrüstung - auch das hört auf den
+      // Beute-Regler (Runde 30: "einige droppen immer noch hoch")
+      const rate = Math.min(1, TUNING.beuteRate);
+      if (Math.random() < rate) this.pickups.add({ kind: 'gem', item: rollGem(this.rng, this.area.depth), x: e.x - 12, y: e.y, bob: 0 });
+      if (Math.random() < rate) this.pickups.add({ kind: 'gear', item: rollGear(this.rng, this.area.depth + 1), x: e.x + 12, y: e.y, bob: 0 });
       this.logMsg(`${e.name} ist gefallen!`, 'gold');
       // Kopfgeld vom Anschlagbrett: passt Ebene und Tag, wird sofort gezahlt
       const kg = this.aktuellesKopfgeld();
@@ -4173,6 +4262,7 @@ export class WorldScene extends CombatScene {
     this.renderHover();
     this.animiereWasser(dt);
     this.animiereHaeuser(dt);
+    this.treibeNebel(dt);
     // Bosskampf über drei Kammern (Runde 21, ersetzt das Hinab-Reißen):
     // bei 66%/33% Leben weicht der Ritter durch das Gittertor nach Norden,
     // schickt eine Welle - und stellt sich erst, wenn der Held ihm folgt

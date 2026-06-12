@@ -280,6 +280,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   toggleHausEdit(): void { /* Welt überschreibt */ }
   // Dev-Sprung zum Boss / in die Stadt (Runde 21): Welt überschreibt
   protected devTeleport(_ziel: 'boss' | 'village'): void { /* Welt überschreibt */ }
+  // Tageszeit setzen + Nebel-Test (Runde 30): Welt überschreibt
+  protected devSetTageszeit(_z: number): void { /* Welt überschreibt */ }
+  protected devToggleNebel(): void { /* Welt überschreibt */ }
   // Stadt-Baukasten (Runde 22): Welt überschreibt
   protected toggleBaukasten(): void { /* Welt überschreibt */ }
 
@@ -351,15 +354,50 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.devPanel = null;
       return;
     }
-    const c = this.add.container(20, 70).setScrollFactor(0).setDepth(6500);
-    const h = TUNING_ROWS.length * 29 + 96 + 158;
+    let merk = { x: 20, y: 70, s: 1 };
+    try {
+      merk = { ...merk, ...JSON.parse(localStorage.getItem('ravensmoor_devkasten') ?? '{}') };
+    } catch { /* egal */ }
+    const c = this.add.container(merk.x, merk.y).setScrollFactor(0).setDepth(6500);
+    const h = TUNING_ROWS.length * 29 + 96 + 186;
     // Bei kleinen Fenstern schrumpft der ganze Kasten, statt unten
     // abgeschnitten zu werden (Runde 29: Regler "nicht gefunden")
-    if (70 + h > this.scale.height) c.setScale((this.scale.height - 80) / h);
+    c.setScale(Math.min(merk.s, Math.max(0.6, (this.scale.height - 60) / h)));
+    const merkSpeichern = () => {
+      try {
+        localStorage.setItem('ravensmoor_devkasten', JSON.stringify({ x: Math.round(c.x), y: Math.round(c.y), s: Math.round(c.scaleX * 100) / 100 }));
+      } catch { /* egal */ }
+    };
+    // Alle Fenster sind verschiebbar (Kodex-Regel, Runde 30): Kopf zieht,
+    // A+/A- skalieren
+    const kopfGriff = this.add.rectangle(0, 0, 250, 24, 0xffffff, 0.04).setOrigin(0)
+      .setInteractive({ draggable: true, useHandCursor: true });
+    let startZ: { x: number; y: number } | null = null;
+    let startC = { x: 0, y: 0 };
+    kopfGriff.on('dragstart', (pz: Phaser.Input.Pointer) => { startZ = { x: pz.x, y: pz.y }; startC = { x: c.x, y: c.y }; });
+    kopfGriff.on('drag', (pz: Phaser.Input.Pointer) => {
+      if (!startZ) return;
+      c.x = startC.x + (pz.x - startZ.x);
+      c.y = startC.y + (pz.y - startZ.y);
+    });
+    kopfGriff.on('dragend', () => { startZ = null; merkSpeichern(); });
+    const skalKnopf = (x2: number, lbl: string, d: number) => {
+      const b3 = this.add.text(x2, 4, lbl, {
+        fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', backgroundColor: '#221808', padding: { x: 6, y: 1 },
+      }).setInteractive({ useHandCursor: true });
+      b3.on('pointerdown', () => {
+        c.setScale(Math.min(1.6, Math.max(0.6, c.scaleX + d)));
+        merkSpeichern();
+      });
+      return b3;
+    };
     const bg = this.add.rectangle(0, 0, 340, h, 0x171108, 0.97).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
     bg.setInteractive();
     c.add(bg);
-    c.add(this.add.text(12, 8, 'ENTWICKLUNGSKASTEN (F10)', { fontFamily: 'serif', fontSize: '14px', color: '#c9a227', letterSpacing: 1 }));
+    c.add(kopfGriff);
+    c.add(skalKnopf(255, 'A-', -0.1));
+    c.add(skalKnopf(290, 'A+', 0.1));
+    c.add(this.add.text(12, 8, 'ENTWICKLUNGSKASTEN (F10) ⠿', { fontFamily: 'serif', fontSize: '14px', color: '#c9a227', letterSpacing: 1 }));
     c.add(this.add.text(12, 26, 'Wirkt sofort auf NEU gespawnte Gegner.', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }));
     let y = 48;
     const T2 = TUNING as unknown as Record<string, number>;
@@ -464,6 +502,21 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }).setInteractive({ useHandCursor: true });
     teleStadt.on('pointerdown', () => this.devTeleport('village'));
     c.add(teleStadt);
+    // Tageszeit + Nebel (Runde 30)
+    let dx2 = 12;
+    for (const [lbl, z] of [['TAG', 0.4], ['ABEND', 0.74], ['NACHT', 0.85]] as const) {
+      const b2 = this.add.text(dx2, y + 90, lbl, {
+        fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8', backgroundColor: '#221808', padding: { x: 9, y: 4 },
+      }).setInteractive({ useHandCursor: true });
+      b2.on('pointerdown', () => { this.devSetTageszeit(z); this.sfx.play('klick'); });
+      c.add(b2);
+      dx2 += b2.width + 8;
+    }
+    const nebelBtn = this.add.text(dx2, y + 90, 'NEBEL', {
+      fontFamily: 'serif', fontSize: '12px', color: '#9ab4cc', backgroundColor: '#221808', padding: { x: 9, y: 4 },
+    }).setInteractive({ useHandCursor: true });
+    nebelBtn.on('pointerdown', () => { this.devToggleNebel(); this.sfx.play('klick'); });
+    c.add(nebelBtn);
     const baukasten = this.add.text(220, y + 62, 'BAUKASTEN', {
       fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
       backgroundColor: '#221808', padding: { x: 12, y: 5 },
