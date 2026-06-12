@@ -106,3 +106,36 @@ Zu Beginn jeder Sitzung:
 3. `git log --oneline -10` ansehen: Wo stehen wir?
 4. Tests laufen lassen: Ist der Stand grün?
 5. Dann OHNE Rückfrage an der nächsten offenen Phase weiterarbeiten
+
+## 9. Risiko-Checkliste (seit Runde 23 verbindlich, vom Autor eingefordert)
+
+Bei UI-, Eingabe-, Skalierungs-, Audio- und Szenenwechsel-Arbeiten gilt vor
+jedem "fertig" zusätzlich zu Regel 1:
+
+1. REPRODUZIEREN vor dem Fixen: das gemeldete Symptom zuerst im Browser
+   nachstellen (Playwright-Skript). Erst dann fixen - und dasselbe Skript
+   muss danach grün sein. Kein Fix "auf Verdacht".
+2. RÜCKWEG testen: Feature an -> aus -> wieder an. Zoom hoch UND wieder
+   runter, Fenster auf UND zu, Modus rein UND raus. Die Hälfte der
+   gemeldeten Fehler saß im Rückweg.
+3. ÜBERGÄNGE in BEIDE Richtungen: jede neue Treppe/Tür auch wieder
+   ZURÜCK laufen. Spawnpunkte gegen SOLID-Kacheln prüfen (entklemmeSpieler
+   ist nur das Netz, nicht die Lösung).
+4. Bekannte Phaser-Fallen abhaken:
+   - fixUiScroll als LETZTER Aufruf nach ALLEN c.add() - sonst tote Knöpfe
+     bei gescrollter Kamera (Sieg-Fenster-Fehler, 3 Runden unentdeckt)
+   - Szenen-Neustart nutzt DIESELBE Instanz: jedes neue Feld in create()
+     zurücksetzen
+   - Globale Lauscher (sound, input, window, scale) beim Verlassen von
+     Szene/Modus abmelden (Menü-Musik-Schicht-Fehler)
+   - sound.stopByKey statt get().stop()
+   - Objekt-Ereignisse (wheel, drag) brauchen exakt sitzende Hitboxen -
+     im Zweifel an der SZENE lauschen und das Ziel selbst suchen
+   - Drag von Kindern IN Containern: NIE die lokalen dragX/dragY auf die
+     Container-Position addieren (schaukelt sich auf) - Zeiger-
+     Schirmkoordinaten ab dragstart als Delta nehmen
+5. Größen-/Zoom-/Resize-Änderungen NIE in laufende Szenen hinein anwenden:
+   fertig aufgebaute Layouts passen sich nicht von selbst an. Nur dort
+   erlauben, wo danach alles frisch aufgebaut wird (Hauptmenü).
+6. Diese Liste wächst: jeder Fehler, der den Autor eine Runde gekostet
+   hat, bekommt hier eine Zeile.

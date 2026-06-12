@@ -707,3 +707,23 @@ Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.
   kann V1 nicht. Plan: Stadt bauen, STADTPLAN KOPIEREN, mir schicken -
   dann versetze ich Grundflächen, ordne Bewohner zu und stelle die
   Tagesabläufe auf die neue Stadt um.
+
+## Feedback-Runde 23 - umgesetzt (drei Fixes + verbindliche Prüf-Checkliste)
+
+- Kirchenaltar-Falle: Rückkehr aus der Krypta landet jetzt VOR dem Altar
+  (Test abgesichert); zusätzlich schiebt ein Sicherheitsnetz jeden Spawn
+  aus festen Kacheln auf die nächste freie - die ganze Fehlerklasse
+  "stecke fest" ist damit abgedeckt. Browser-verifiziert.
+- Inventar-/Charakterfenster ist DIREKT greifbar: obere Leiste ziehen,
+  Position bleibt dauerhaft (gilt auch für Handel/Chronik). Hin- und
+  Rückweg im Browser verifiziert.
+- Bildgröße: nur noch im Hauptmenü änderbar (im Spiel Hinweis statt
+  Regler) - das "Zerschossene" kam vom Live-Ändern in fertige Szenen.
+  Hochskalieren jetzt mit harten Pixeln statt matschiger Schrift.
+  Verifiziert: 120% exakt unverzerrt (1,200x1,200), Rückweg sauber.
+- Arbeitskodex erweitert (CLAUDE.md Abschnitt 9): Reproduzieren vor dem
+  Fixen, Rückweg-Tests, Übergänge in beide Richtungen, Phaser-Fallen-
+  Liste. Die Checkliste hat sich sofort bezahlt gemacht: die erste
+  Fassung des Fenster-Griffs übersteuerte - im eigenen Browser-Test
+  gefunden und behoben, bevor es dich erreicht hat.
+- 58/58 Tests grün (neu: Kirchenschiff-Rückkehr), tsc sauber.
