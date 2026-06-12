@@ -632,3 +632,30 @@ Alles mit tsc + 51 Tests grün und im Browser durchgespielt:
   gebaut (Koordinaten im Code). Ein Karten-Editor wäre eine eigene
   Phase; die Bewohner-Anker würden dann am Haus hängen und mitwandern.
 Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.
+
+## Feedback-Runde 20 - umgesetzt (Sounds, Kampfgefühl, Chronik, getrennte Leisten)
+
+- Sounds eingebaut: Pfeil-Swoosh (Bogen + Knochenschützen), Feuerball 1/2
+  im Wechsel, Mitternachts-Stück nachts in der Stadt, Krypta-Schleife
+  (ravenmoorloop_low) statt Grusel-Rotation. Menü-Musik startet jetzt,
+  sobald der Browser Ton erlaubt (Autoplay-Sperre umgangen).
+- Anfang: Wald auf 128 Kacheln verlängert (5 Lichtungen, 3 Wolfsrudel),
+  Intro-Zeilen langsamer und am DIALOGRAHMEN-Griff verschiebbar, die
+  Ankunfts-Erzählung in der Stadt blockiert nicht mehr (einblendende
+  Zeilen statt Dialogfenster).
+- Kampf: Gore-Tod (rot verfärbt, zerdrückt, Teile fliegen; Haken für
+  tod_gore.mp3 gesetzt), Schützen schießen sichtbare Pfeile, Schildträger
+  gehen periodisch in volle Deckung ("GEDECKT!"), flinke Gegner weichen
+  Nahkampfhieben aus. Rote Augen für Pestopfer/Skelette/Schützen/Schatten.
+- Chronik (Taste H): Tabs Ereignisse/Geschichte/Beute, sammelt Meldungen,
+  Dialogseiten und aufgehobene Beute automatisch; folgt dem FENSTER-Griff.
+- Leisten getrennt: Tastenleiste (1-6/9/0/R/T) und Maus-Leiste (M1-M5)
+  mit eigenem Griff im UI-Modus. Belegung per DRAG & DROP von der
+  Tastenleiste auf die Maus-Slots (geprüft: Kettenblitz auf M5 gezogen,
+  Einstellung gespeichert); Rechtsklick-Liste bleibt für Trank/Blocken/
+  Schriftrolle/Stadtportal.
+- Verifiziert im Browser (Playwright): geteilte Leisten + Tooltip,
+  Drag&Drop-Belegung, Chronik, Gore-Tod in der Krypta, Nacht-/Tag-
+  Musikwechsel im Dorf. 51/51 Tests grün, tsc sauber.
+- Offen/ehrlich: tod_gore.mp3 und musik_kirche.mp3 fehlen noch (Dateien
+  vom Autor); Touch nicht auf echtem Gerät getestet.

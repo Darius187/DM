@@ -11,6 +11,7 @@ import type { WeaponClass } from '../data/types';
 interface SlotDef {
   key: string;
   belegung?: 'm1' | 'm2' | 'm3' | 'm4' | 'm5'; // belegbarer Maus-Slot
+  aktion?: () => string;    // Aktions-Kennung zum Ziehen auf die Maus-Leiste
   ico: () => string;
   name: () => string;
   desc: () => string;
@@ -21,6 +22,16 @@ interface SlotDef {
 }
 
 const ORB_R = 42;
+// Getrennte Leisten (Runde 20): Tastatur-Slots 1-6/9/0/R/T und Maus-Slots M1-M5
+const KB_SLOTS = 10;
+const SLOT_W = 46;
+
+// Standard-Anker der Maus-Leiste: rechts neben der Tastenleiste, aber nie
+// aus dem Bild geschoben (Fenstergröße ist frei). Auch der UI-Verschiebe-
+// Griff im Entwicklungskasten nutzt diesen Anker.
+export function mausLeisteAnkerX(w: number): number {
+  return Math.min(w / 2 + (KB_SLOTS * SLOT_W) / 2 + 30, w - 5 * SLOT_W - 36);
+}
 
 export class Hud {
   private gfx: Phaser.GameObjects.Graphics;
@@ -31,6 +42,7 @@ export class Hud {
   private potText: Phaser.GameObjects.Text;
   private mpotText: Phaser.GameObjects.Text;
   private infoText: Phaser.GameObjects.Text;
+  private mausInfo: Phaser.GameObjects.Text;
   private slotTexts: Phaser.GameObjects.Text[] = [];
   private slotZones: Phaser.GameObjects.Zone[] = [];
   private tooltip: Phaser.GameObjects.Container | null = null;
@@ -57,11 +69,15 @@ export class Hud {
     this.infoText = scene.add.text(0, 0, '', {
       fontFamily: 'serif', fontSize: '12px', color: '#bfa86f', letterSpacing: 1,
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(4603);
+    this.mausInfo = scene.add.text(0, 0, '', {
+      fontFamily: 'serif', fontSize: '11px', color: '#bfa86f', letterSpacing: 1,
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(4603);
 
     // Leistenbelegung: 1-3 Zauber, 4-6 Zauberei-Fähigkeiten, R/T Waffe
     const p = this.getP;
     const spellSlot = (i: number, ico: string, desc: string): SlotDef => ({
       key: String(i + 1),
+      aktion: () => `s${i + 1}`,
       ico: () => ico,
       name: () => SPELLS[i].name,
       desc: () => desc,
@@ -70,8 +86,9 @@ export class Hud {
       cdSek: () => p().spellCds[i],
       locked: () => (p().level < SPELLS[i].unlock ? `ab Spieler-Stufe ${SPELLS[i].unlock}` : null),
     });
-    const abilitySlot = (key: string, id: () => string, ico: () => string): SlotDef => ({
+    const abilitySlot = (key: string, id: () => string, ico: () => string, aktionId?: string): SlotDef => ({
       key,
+      aktion: () => aktionId ?? id(),
       ico,
       name: () => ABILITIES.find((a) => a.id === id())?.name ?? '',
       desc: () => ABILITIES.find((a) => a.id === id())?.beschreibung ?? '',
@@ -100,6 +117,7 @@ export class Hud {
       ['kettenblitz', '⌁', 'Kettenblitz'], ['frostnova', '❄', 'Frostnova'], ['bannkreis', '◎', 'Bannkreis'],
       ['feuerregen', '☄', 'Feuerregen (auf den Zielort)'],
       ['aderlass', '⚱', 'Aderlass (Leben gegen Mana)'], ['lebenstausch', '❤', 'Lebenstausch (Mana gegen Leben)'],
+      ['waffe1', '↻', 'Waffen-Fähigkeit I (je nach Waffe)'], ['waffe2', '⇒', 'Waffen-Fähigkeit II (je nach Waffe)'],
       ['pot', '🧪', 'Heiltrank'], ['mpot', '⚗', 'Manatrank'], ['rolle', '📜', 'Schriftrolle'],
       ['stadtportal', '⌂', 'Stadtportal (nach Boss-Sieg)'],
     ];
@@ -110,7 +128,7 @@ export class Hud {
         key,
         ico: () => akt()[1],
         name: () => `${akt()[2]} (${tasteName})`,
-        desc: () => 'Rechtsklick auf diesen Slot: Belegung wechseln',
+        desc: () => 'Belegen: Zauber von der Tastenleiste hierher ziehen - oder Rechtsklick für die Liste',
         kosten: () => (spellIdx() >= 0 ? `${SPELLS[spellIdx()].mana} Mana` : ''),
         cdFrac: () => {
           const i = spellIdx();
@@ -133,8 +151,8 @@ export class Hud {
       abilitySlot('6', () => 'bannkreis', () => '◎'),
       abilitySlot('9', () => 'feuerregen', () => '☄'),
       abilitySlot('0', () => 'aderlass', () => '⚱'),
-      abilitySlot('R', () => (bogen() ? 'mehrfachschuss' : 'rundumschlag'), () => (bogen() ? '⫶' : '↻')),
-      abilitySlot('T', () => (bogen() ? 'markierterTod' : 'sturmangriff'), () => (bogen() ? '◎' : '⇒')),
+      abilitySlot('R', () => (bogen() ? 'mehrfachschuss' : 'rundumschlag'), () => (bogen() ? '⫶' : '↻'), 'waffe1'),
+      abilitySlot('T', () => (bogen() ? 'markierterTod' : 'sturmangriff'), () => (bogen() ? '◎' : '⇒'), 'waffe2'),
       // Belegbare Maus-Slots (Rechtsklick wechselt)
       mausSlot('M1', 'm1', 'Linke Maustaste'),
       mausSlot('M2', 'm2', 'Rechte Maustaste'),
@@ -170,23 +188,31 @@ export class Hud {
 
   private slotX(i: number): number {
     const w = this.scene.scale.width;
-    const total = this.slots.length * 46;
-    return w / 2 - total / 2 + i * 46 + 21 + getSettings().ui.hotbar.x;
+    if (i < KB_SLOTS) {
+      const total = KB_SLOTS * SLOT_W;
+      return w / 2 - total / 2 + i * SLOT_W + 21 + getSettings().ui.hotbar.x;
+    }
+    const j = i - KB_SLOTS;
+    return mausLeisteAnkerX(w) + j * SLOT_W + 21 + getSettings().ui.mausleiste.x;
   }
 
-  private slotY(): number {
-    return this.scene.scale.height - 66 + getSettings().ui.hotbar.y;
+  private slotY(i: number): number {
+    const ui = getSettings().ui;
+    return this.scene.scale.height - 66 + (i < KB_SLOTS ? ui.hotbar.y : ui.mausleiste.y);
   }
 
   private buildSlotObjects(): void {
+    // Erst ab ein paar Pixeln Bewegung gilt ein Klick als Ziehen, damit
+    // Rechtsklick-Menü und Tooltips normal funktionieren
+    this.scene.input.dragDistanceThreshold = 6;
     for (let i = 0; i < this.slots.length; i++) {
       const s = this.slots[i];
       const x = this.slotX(i);
-      const ico = this.scene.add.text(x, this.slotY(), '', {
+      const ico = this.scene.add.text(x, this.slotY(i), '', {
         fontFamily: 'serif', fontSize: '19px', color: '#d8cfb8',
       }).setOrigin(0.5).setScrollFactor(0).setDepth(4602);
       this.slotTexts.push(ico);
-      const zone = this.scene.add.zone(x, this.slotY(), 42, 42).setOrigin(0.5).setScrollFactor(0).setInteractive();
+      const zone = this.scene.add.zone(x, this.slotY(i), 42, 42).setOrigin(0.5).setScrollFactor(0).setInteractive();
       zone.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showSlotTooltip(s, ptr));
       zone.on('pointerout', () => this.hideTooltip());
       if (s.belegung) {
@@ -195,11 +221,60 @@ export class Hud {
         zone.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
           if (!ptr.rightButtonDown()) return;
           this.hideTooltip();
-          this.openBelegungsMenue(s, x);
+          this.openBelegungsMenue(s, this.slotX(i));
         });
       }
+      // Drag & Drop (Runde 20): Zauber von der Tastenleiste auf einen
+      // Maus-Slot ziehen belegt ihn; zwischen Maus-Slots ziehen tauscht.
+      this.scene.input.setDraggable(zone);
+      zone.on('dragstart', (ptr: Phaser.Input.Pointer) => {
+        if (ptr.rightButtonDown()) return;
+        if (!s.aktion && !s.belegung) return;
+        this.hideTooltip();
+        this.dragVon = i;
+        this.dragGhost = this.scene.add.text(ptr.x, ptr.y, s.ico(), {
+          fontFamily: 'serif', fontSize: '24px', color: '#f0dfa0', stroke: '#000000', strokeThickness: 3,
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(6000);
+      });
+      zone.on('drag', (ptr: Phaser.Input.Pointer) => this.dragGhost?.setPosition(ptr.x, ptr.y));
+      zone.on('dragend', (ptr: Phaser.Input.Pointer) => this.endDrag(ptr));
       this.slotZones.push(zone);
     }
+  }
+
+  // --- Drag & Drop auf die Maus-Leiste (Runde 20) ------------------------------
+
+  private dragGhost: Phaser.GameObjects.Text | null = null;
+  private dragVon = -1;
+
+  private endDrag(ptr: Phaser.Input.Pointer): void {
+    const ghost = this.dragGhost;
+    const von = this.dragVon;
+    this.dragGhost = null;
+    this.dragVon = -1;
+    if (!ghost) return;
+    ghost.destroy();
+    if (von < 0) return;
+    // Liegt unter dem Zeiger ein Maus-Slot?
+    let ziel = -1;
+    for (let j = KB_SLOTS; j < this.slots.length; j++) {
+      if (Math.abs(ptr.x - this.slotX(j)) <= 23 && Math.abs(ptr.y - this.slotY(j)) <= 23) { ziel = j; break; }
+    }
+    if (ziel < 0 || ziel === von) return;
+    const maus = getSettings().maus;
+    const zielFeld = this.slots[ziel].belegung!;
+    const quelle = this.slots[von];
+    if (quelle.belegung) {
+      // Maus-Slot auf Maus-Slot: Belegungen tauschen
+      const merk = maus[quelle.belegung];
+      maus[quelle.belegung] = maus[zielFeld];
+      maus[zielFeld] = merk;
+    } else if (quelle.aktion) {
+      maus[zielFeld] = quelle.aktion();
+    } else {
+      return;
+    }
+    saveSettings();
   }
 
   // --- Belegungs-Menü (Runde 14) ---------------------------------------------
@@ -209,11 +284,14 @@ export class Hud {
   // Weltklicks blockieren, solange der Zeiger auf der Leiste liegt oder
   // das Belegungs-Menü offen ist (sonst wirkt der Zauber beim Anklicken)
   klickBlockiert(ptr: Phaser.Input.Pointer): boolean {
-    if (this.menue) return true;
-    const y0 = this.slotY() - 24;
-    const x0 = this.slotX(0) - 24;
-    const x1 = this.slotX(this.slots.length - 1) + 24;
-    return ptr.y >= y0 && ptr.y <= y0 + 48 && ptr.x >= x0 && ptr.x <= x1;
+    if (this.menue || this.dragGhost) return true;
+    const band = (a: number, b: number): boolean => {
+      const y0 = this.slotY(a) - 24;
+      const x0 = this.slotX(a) - 24;
+      const x1 = this.slotX(b) + 24;
+      return ptr.y >= y0 && ptr.y <= y0 + 48 && ptr.x >= x0 && ptr.x <= x1;
+    };
+    return band(0, KB_SLOTS - 1) || band(KB_SLOTS, this.slots.length - 1);
   }
 
   private closeMenue(): void {
@@ -234,7 +312,7 @@ export class Hud {
     const breite = 230, zeileH = 24;
     const hoehe = this.aktionen.length * zeileH + 30;
     const mx = Math.min(Math.max(8, slotX - breite / 2), this.scene.scale.width - breite - 8);
-    const my = this.slotY() - 30 - hoehe;
+    const my = this.slotY(KB_SLOTS) - 30 - hoehe;
     const bg = this.scene.add.rectangle(mx, my, breite, hoehe, 0x171108, 0.98).setOrigin(0).setStrokeStyle(1, 0xc9a227);
     bg.setInteractive();
     c.add(bg);
@@ -315,19 +393,23 @@ export class Hud {
     this.potText.setPosition(28 + ORB_R + oh.x, h - 12 + oh.y).setText(`${kb.pot.toUpperCase()} Trank x${p.pot}`);
     this.mpotText.setPosition(w - 28 - ORB_R + om.x, h - 12 + om.y).setText(`${kb.mpot.toUpperCase()} Trank x${p.mpot}`);
 
-    // Zauber-/Fähigkeitsleiste auf eigenem Paneel (Runde 14)
-    const px0 = this.slotX(0) - 26, px1 = this.slotX(this.slots.length - 1) + 26;
-    const py0 = this.slotY() - 25;
-    g.fillStyle(0x0c0905, 0.92);
-    g.fillRoundedRect(px0, py0, px1 - px0, 50, 8);
-    g.lineStyle(2, 0x3a2f1c, 1);
-    g.strokeRoundedRect(px0, py0, px1 - px0, 50, 8);
-    g.lineStyle(1, 0xc9a227, 0.35);
-    g.strokeRoundedRect(px0 + 2, py0 + 2, px1 - px0 - 4, 46, 7);
+    // Zwei getrennte Paneele (Runde 20): Tastenleiste und Maus-Leiste
+    const panel = (a: number, b: number) => {
+      const px0 = this.slotX(a) - 26, px1 = this.slotX(b) + 26;
+      const py0 = this.slotY(a) - 25;
+      g.fillStyle(0x0c0905, 0.92);
+      g.fillRoundedRect(px0, py0, px1 - px0, 50, 8);
+      g.lineStyle(2, 0x3a2f1c, 1);
+      g.strokeRoundedRect(px0, py0, px1 - px0, 50, 8);
+      g.lineStyle(1, 0xc9a227, 0.35);
+      g.strokeRoundedRect(px0 + 2, py0 + 2, px1 - px0 - 4, 46, 7);
+    };
+    panel(0, KB_SLOTS - 1);
+    panel(KB_SLOTS, this.slots.length - 1);
     for (let i = 0; i < this.slots.length; i++) {
       const s = this.slots[i];
       const x = this.slotX(i);
-      const y = this.slotY();
+      const y = this.slotY(i);
       this.slotZones[i].setPosition(x, y);
       const locked = s.locked() !== null;
       g.fillStyle(0x100b06, 0.92);
@@ -349,7 +431,13 @@ export class Hud {
     // Tastenkürzel als Teil der Leiste zeichnen (Texte wären teurer)
     // -> stattdessen im Tooltip und unter der Leiste:
     this.infoText.setPosition(w / 2 + getSettings().ui.hotbar.x, h - 42 + getSettings().ui.hotbar.y)
-      .setText(`1-6 Zauber/Fähigkeiten · R/T Waffe · ${kb.roll === ' ' ? 'LEER' : kb.roll.toUpperCase()} Rolle · B Album · ${extra}`);
+      .setText(`1-6/9/0 Zauber · R/T Waffe · ${kb.roll === ' ' ? 'LEER' : kb.roll.toUpperCase()} Rolle · B Album · H Chronik · ${extra}`);
+    // Beschriftung ÜBER der Maus-Leiste, damit sie der Infozeile der
+    // Tastenleiste nicht in die Quere kommt
+    this.mausInfo.setPosition(
+      (this.slotX(KB_SLOTS) + this.slotX(this.slots.length - 1)) / 2,
+      h - 105 + getSettings().ui.mausleiste.y,
+    ).setText('MAUSTASTEN · Zauber hierher ziehen');
 
     // XP-Leiste
     const xw = Math.min(420, w * 0.42);
@@ -363,9 +451,12 @@ export class Hud {
     this.gfx.destroy();
     this.hpImg.destroy();
     this.mpImg.destroy();
-    for (const t of [this.hpText, this.mpText, this.potText, this.mpotText, this.infoText]) t.destroy();
+    for (const t of [this.hpText, this.mpText, this.potText, this.mpotText, this.infoText, this.mausInfo]) t.destroy();
     for (const t of this.slotTexts) t.destroy();
     for (const z of this.slotZones) z.destroy();
+    this.dragGhost?.destroy();
+    this.dragGhost = null;
     this.hideTooltip();
+    this.closeMenue();
   }
 }

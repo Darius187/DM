@@ -23,7 +23,8 @@
   (aktuell erscheint der Tempelritter im selben Raum, nachdem die Leibwache
   fällt); Karten-/Platzier-Editor im Entwicklungskasten; weitere Zauber;
   Crafting-Werkbank-Ausbau; Housing-Innenraum; Sammelalbum (Collectables);
-  Fenster verschieben; Buch-Pergament-Fenster; Hotbar per Drag & Drop.
+  Fenster verschieben; Buch-Pergament-Fenster. (Hotbar-Drag&Drop: erledigt
+  in Runde 20.)
 - Feedback-Runde 6, notiert: Riesige prozedurale Außenwelt mit Biomen nach
   dem Boss-Sieg + Stadtmauern/Verteidigung (Autor-Idee, groß - braucht
   eigene Phase und ein Konzept: Welt-Chunks, Biome, Monster-Einfälle).

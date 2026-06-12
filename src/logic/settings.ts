@@ -24,7 +24,7 @@ export interface Settings {
   maus: { m1: string; m2: string; m3: string; m4: string; m5: string };
   vorlesen: boolean;      // Dialogtexte per Sprachausgabe vorlesen
   // UI-Versatz (im Entwicklungskasten verschiebbar, Runde 11)
-  ui: { hotbar: { x: number; y: number }; dialog: { x: number; y: number }; log: { x: number; y: number }; orbHp: { x: number; y: number }; orbMp: { x: number; y: number }; fenster: { x: number; y: number } };
+  ui: { hotbar: { x: number; y: number }; mausleiste: { x: number; y: number }; dialog: { x: number; y: number }; log: { x: number; y: number }; orbHp: { x: number; y: number }; orbMp: { x: number; y: number }; fenster: { x: number; y: number } };
   kb: KeyBindings;
 }
 
@@ -41,7 +41,7 @@ export const DEF_SETTINGS: Settings = {
   lefty: false,
   maus: { m1: 'angriff', m2: 'block', m3: 's1', m4: 'pot', m5: 's3' },
   vorlesen: false,
-  ui: { hotbar: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 } },
+  ui: { hotbar: { x: 0, y: 0 }, mausleiste: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 } },
   kb: {
     roll: ' ', interact: 'e', inv: 'i', charakter: 'c',
     pot: 'q', mpot: 'f', s1: '1', s2: '2', s3: '3',
@@ -65,6 +65,7 @@ export function getSettings(): Settings {
       current.maus = { ...DEF_SETTINGS.maus, ...(saved.maus ?? {}) };
       current.ui = {
         hotbar: { ...DEF_SETTINGS.ui.hotbar, ...(saved.ui?.hotbar ?? {}) },
+        mausleiste: { ...DEF_SETTINGS.ui.mausleiste, ...(saved.ui?.mausleiste ?? {}) },
         dialog: { ...DEF_SETTINGS.ui.dialog, ...(saved.ui?.dialog ?? {}) },
         log: { ...DEF_SETTINGS.ui.log, ...(saved.ui?.log ?? {}) },
         orbHp: { ...DEF_SETTINGS.ui.orbHp, ...(saved.ui?.orbHp ?? {}) },
