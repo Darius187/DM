@@ -298,16 +298,17 @@ export class WorldScene extends CombatScene {
   hausSpriteAn = true;
   private hausBilder: Phaser.GameObjects.Image[] = [];
 
-  hausJustierung(): Record<string, { dx: number; dy: number }> {
+  hausJustierung(): Record<string, { dx: number; dy: number; skala?: number }> {
     try {
       return JSON.parse(localStorage.getItem('ravensmoor_hausjustierung') ?? '{}');
     } catch { return {}; }
   }
 
-  speichereHausJustierung(id: string, dx: number, dy: number): void {
+  speichereHausJustierung(id: string, dx: number, dy: number, skala?: number): void {
     try {
       const j = this.hausJustierung();
-      j[id] = { dx: Math.round(dx), dy: Math.round(dy) };
+      const alt = j[id] ?? { dx: 0, dy: 0, skala: 1 };
+      j[id] = { dx: Math.round(dx), dy: Math.round(dy), skala: Math.round((skala ?? alt.skala ?? 1) * 100) / 100 };
       localStorage.setItem('ravensmoor_hausjustierung', JSON.stringify(j));
     } catch { /* Speicher gesperrt */ }
   }
@@ -326,13 +327,22 @@ export class WorldScene extends CombatScene {
           const anker = img.getData('anker') as { x: number; y: number };
           this.speichereHausJustierung(img.getData('hausId') as string, dragX - anker.x, dragY - anker.y);
         });
+        // Mausrad ÜBER dem Haus: Größe ändern (Runde 19)
+        img.on('wheel', (_p: Phaser.Input.Pointer, _dx: number, dy: number) => {
+          const basis = img.getData('basis') as number;
+          const j = this.hausJustierung()[img.getData('hausId') as string] ?? { dx: 0, dy: 0, skala: 1 };
+          const skala = Math.min(2.5, Math.max(0.4, (j.skala ?? 1) + (dy > 0 ? -0.05 : 0.05)));
+          img.setScale(basis * skala);
+          this.speichereHausJustierung(img.getData('hausId') as string, j.dx, j.dy, skala);
+        });
       } else {
         img.removeInteractive();
         img.setAlpha(1);
         img.off('drag');
+        img.off('wheel');
       }
     }
-    this.logMsg(this.hausEditAn ? 'Häuser justieren: Gebäude mit der Maus ziehen, F10-Knopf beendet.' : 'Haus-Positionen gespeichert.', 'gold');
+    this.logMsg(this.hausEditAn ? 'Häuser justieren: ziehen = verschieben, Mausrad = Größe. F10-Knopf beendet.' : 'Haus-Positionen und -Größen gespeichert.', 'gold');
   }
 
   // Hover-Namen (Runde 17): Was unter dem Mauszeiger liegt, nennt sich
@@ -789,11 +799,15 @@ export class WorldScene extends CombatScene {
         const key = this.provider.tileKey('haus', i + 1, 0);
         if (!key.startsWith('hs_tile_haus')) return; // kein Sprite vorhanden
         const breite = (hp.x1 - hp.x0 + 1) * TILE;
-        const j = just[hp.id] ?? { dx: 0, dy: 0 };
+        const j = just[hp.id] ?? { dx: 0, dy: 0, skala: 1 };
         const img = this.add.image((hp.x0 + hp.x1 + 1) / 2 * TILE + j.dx, (hp.y1 + 1) * TILE + 6 + j.dy, key)
           .setOrigin(0.5, 1).setDepth(hp.y1 * TILE + 16);
-        img.setScale((breite * 1.3) / img.width);
+        // Runde 19: Basisgröße = Grundflächenbreite (war x1,3 - zu riesig),
+        // dazu die gespeicherte Skala aus dem Justier-Modus
+        const basis = breite / img.width;
+        img.setScale(basis * (j.skala ?? 1));
         img.setData('hausId', hp.id);
+        img.setData('basis', basis);
         img.setData('anker', { x: (hp.x0 + hp.x1 + 1) / 2 * TILE, y: (hp.y1 + 1) * TILE + 6 });
         this.hausBilder.push(img);
         this.tileImages.push(img);

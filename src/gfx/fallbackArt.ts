@@ -236,7 +236,9 @@ export function shade(hex: string, amt: number): string {
 
 // Figuren-Vorlagen für alle Sprite-Namen (Fallback-Kasten)
 export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken: true }> = {
-  spieler:   { tunic: '#2a2438', skin: '#bfa888', hair: '#3a2a18', legs: '#241c12', weapon: 'schwert' },
+  // Held (Runde 19): zurück zur Zeichen-Figur, aber markanter - heller
+  // Blaugrau-Mantel, kräftige Haut, etwas größer als das Dorfvolk
+  spieler:   { tunic: '#46588a', skin: '#d0b08c', hair: '#2e2418', legs: '#262030', weapon: 'schwert', scale: 1.15 },
   pest:      { tunic: '#5a7a3a', skin: '#9aa87a', hair: '#46602e', legs: '#3a4a26', weapon: null },
   skelett:   { tunic: '#cfc4a8', skin: '#e0d8c0', hair: '#cfc4a8', legs: '#b8ae90', weapon: 'keule', skeletal: true },
   schuetze:  { tunic: '#b8a888', skin: '#d0c8b0', hair: '#b8a888', legs: '#a09070', weapon: 'bogen', skeletal: true },
