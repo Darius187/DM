@@ -842,6 +842,30 @@ export class WorldScene extends CombatScene {
 
   aufbauStufe = 0; // Wiederaufbau des Gehöfts (Phase 7)
 
+  // Breitensuche zur nächsten begehbaren Kachel rund um den Spieler
+  private entklemmeSpieler(a: AreaData): void {
+    const tx = Math.floor(this.px / TILE), ty = Math.floor(this.py / TILE);
+    const frei = (x: number, y: number): boolean =>
+      a.map[y]?.[x] !== undefined && !SOLID.has(a.map[y][x]);
+    if (frei(tx, ty)) return;
+    const gesehen = new Set<string>([`${tx},${ty}`]);
+    const schlange: Array<[number, number]> = [[tx, ty]];
+    while (schlange.length) {
+      const [x, y] = schlange.shift()!;
+      for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+        const nx = x + dx, ny = y + dy;
+        if (gesehen.has(`${nx},${ny}`) || a.map[ny]?.[nx] === undefined) continue;
+        if (frei(nx, ny)) {
+          this.px = nx * TILE + 16;
+          this.py = ny * TILE + 16;
+          return;
+        }
+        gesehen.add(`${nx},${ny}`);
+        schlange.push([nx, ny]);
+      }
+    }
+  }
+
   goArea(id: string, spawnAt?: { x: number; y: number }): void {
     // Ein laufender Einfall verpufft beim Verlassen des Dorfes (kein
     // Exploit) - der Blick ins Gemeindehaus unterbricht ihn aber NICHT
@@ -864,6 +888,10 @@ export class WorldScene extends CombatScene {
     const s = spawnAt ?? a.spawn;
     this.px = s.x;
     this.py = s.y;
+    // Sicherheitsnetz (Runde 23): Landet ein Spawnpunkt in einer festen
+    // Kachel (z. B. im Kirchenaltar), auf die nächste freie schieben -
+    // sonst steckt der Held unlösbar fest
+    this.entklemmeSpieler(a);
     this.projectiles = [];
     this.telegraphs = [];
     this.decals = [];
@@ -2581,9 +2609,11 @@ export class WorldScene extends CombatScene {
         action: () => {
           const id = this.area.id;
           if (id === 'crypt1') {
-            // hinauf ins Kirchenschiff (Runde 18: Vorlevel)
+            // hinauf ins Kirchenschiff (Runde 18: Vorlevel). Wichtig: VOR
+            // den Altar (Zeile 4), nicht hinein - downPos+40 lag in der
+            // Altar-Zeile und klemmte den Helden ein (Fehlerbericht R23)
             const schiff = this.getArea('kirchenschiff');
-            this.goArea('kirchenschiff', { x: schiff.downPos!.x, y: schiff.downPos!.y + 40 });
+            this.goArea('kirchenschiff', { x: schiff.downPos!.x, y: schiff.downPos!.y + 2.2 * TILE });
           } else if (id === 'boss') this.goArea('crypt5', this.getArea('crypt5').downPos);
           else if (id === 'crypt6') this.goArea('boss');
           else if (id.startsWith('crypt')) {

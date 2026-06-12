@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildVillage, buildInterior, type AreaData } from '../src/world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildVillage, buildInterior, buildKirchenschiff, type AreaData } from '../src/world/areagen';
 import { INNENRAEUME } from '../src/data/innenraeume';
 import { VOLK } from '../src/data/dialoge';
 import { SOLID, T } from '../src/world/tiles';
@@ -86,8 +86,19 @@ describe('Krypta-Generator: jeder Spezialraum erreichbar', () => {
     expect(buildBoss(seededRng(1), true).enemySpawns.length).toBe(0);
   });
 
-  it('Bossgrab (Runde 21): drei Kammern, Gittertore versiegeln die hinteren zwei', () => {
-    const zu = buildBoss(seededRng(1), false);
+  it('Kirchenschiff: Rückkehr aus der Krypta landet VOR dem Altar, Weg zur Tür frei', () => {
+    const a = buildKirchenschiff(seededRng(1));
+    // Rückkehrpunkt: downPos + 2,2 Kacheln nach Süden (siehe WorldScene)
+    const rx = Math.floor(a.downPos!.x / 32);
+    const ry = Math.floor((a.downPos!.y + 2.2 * 32) / 32);
+    expect(SOLID.has(a.map[ry][rx]), 'Rückkehrkachel ist fest').toBe(false);
+    // Von dort muss die Dorftür (HDOOR) erreichbar sein
+    const seen = reachable(a, rx, ry);
+    const tuer = a.doors![0];
+    expect(targetReachable(seen, tuer.x, tuer.y)).toBe(true);
+  });
+
+  it('Bossgrab (Runde 21): drei Kammern, Gittertore versiegeln die hinteren zwei', () => {    const zu = buildBoss(seededRng(1), false);
     const sx = Math.floor(zu.spawn.x / 32), sy = Math.floor(zu.spawn.y / 32);
     const gesehenZu = reachable(zu, sx, sy);
     // Solange der Ritter lebt: Kammer 2 (Halle) und 3 (Inneres Grab) gesperrt
