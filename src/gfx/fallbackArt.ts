@@ -187,14 +187,22 @@ function drawQuadrupedParts(ctx: CanvasRenderingContext2D, q: QuadSpec, dir: Dir
   const legA = step === 1 ? 1 : 0;
   const legB = step === 3 ? 1 : 0;
   const bw = Math.round(8 * q.size), bh = Math.round(4 * q.size);
-  const bx = 8 - Math.round((q.size - 1) * 4), by = 9 - bh;
+  // Zentrieren statt fester Kante: große Tiere (Kuh, Pferd) ragten sonst
+  // rechts aus dem 32er-Sprite - "halbes Pferd" (Fehlerbericht Runde 25)
+  const bx = Math.max(1, Math.floor((16 - (bw + 3)) / 2) + 1);
+  const by = 9 - bh;
   // Körper mit Lichtkante oben
   p(ctx, bx, by, bw, bh, q.body);
   p(ctx, bx, by, bw, 1, shade(q.body, 14));
   if (q.spots) { p(ctx, bx + 2, by + 1, 2, 2, q.spots); p(ctx, bx + 5, by, 2, 2, q.spots); }
-  // Beine
-  p(ctx, bx + 1, by + bh, 1, 2 + legA, shade(q.body, -20));
-  p(ctx, bx + bw - 2, by + bh, 1, 2 + legB, shade(q.body, -20));
+  // Beine - große Tiere haben längere und vier statt zwei
+  const legLen = q.size >= 1.2 ? 3 : 2;
+  p(ctx, bx + 1, by + bh, 1, legLen + legA, shade(q.body, -20));
+  p(ctx, bx + bw - 2, by + bh, 1, legLen + legB, shade(q.body, -20));
+  if (q.size >= 1.2) {
+    p(ctx, bx + 3, by + bh, 1, legLen + legB, shade(q.body, -28));
+    p(ctx, bx + bw - 4, by + bh, 1, legLen + legA, shade(q.body, -28));
+  }
   // Kopf
   const hx = bx + bw - 1, hy = by - 1;
   p(ctx, hx, hy, 3, 3, q.head);
@@ -286,5 +294,6 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   schaf:     { quad: { body: '#e8e2d4', head: '#3a3026', size: 0.9, tail: true, ears: true } },
   kuh:       { quad: { body: '#e0d8c8', head: '#d0c8b8', size: 1.3, tail: true, ears: true, spots: '#3a3026' } },
   hund:      { quad: { body: '#7a6244', head: '#6a5438', size: 0.8, tail: true, ears: true } },
-  pferd:     { quad: { body: '#6a4a30', head: '#5a3e28', size: 1.45, tail: true, ears: true } },
+  // size 1,35: mehr passt samt Umriss-Kontur nicht ins 32er-Raster
+  pferd:     { quad: { body: '#6a4a30', head: '#5a3e28', size: 1.35, tail: true, ears: true } },
 };

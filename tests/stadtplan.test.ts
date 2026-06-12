@@ -43,6 +43,19 @@ describe('Stadt-Baukasten: Kachel-Plan', () => {
     expect(map[2][2]).toBe(T.PATH);
   });
 
+  it('gewählte Variante wird gespeichert und beim Umwählen ersetzt', () => {
+    const plan = leererPlan();
+    const map = karte();
+    expect(setzeKachel(plan, map, 2, 2, T.TREE, 3)).toBe(true);
+    expect(plan.kacheln[0].v).toBe(3);
+    // gleiche Kachel, andere Variante: KEIN zweiter Eintrag
+    expect(setzeKachel(plan, map, 2, 2, T.TREE, 5)).toBe(true);
+    expect(plan.kacheln).toHaveLength(1);
+    expect(plan.kacheln[0].v).toBe(5);
+    // identisch erneut: keine Änderung
+    expect(setzeKachel(plan, map, 2, 2, T.TREE, 5)).toBe(false);
+  });
+
   it('wendePlanAn schreibt alle Kacheln in eine frische Karte', () => {
     const plan = leererPlan();
     const bau = karte();

@@ -400,7 +400,7 @@ export class WorldScene extends CombatScene {
   private baukastenPanel: Phaser.GameObjects.Container | null = null;
   private baukastenTab: 'boden' | 'objekte' | 'tiere' | 'haus' = 'boden';
   private baukastenTool:
-    | { art: 'kachel'; t: number; name: string; tile?: string }
+    | { art: 'kachel'; t: number; name: string; tile?: string; v?: number }
     | { art: 'fackel' } | { art: 'schild' } | { art: 'radierer' }
     | { art: 'tier'; tier: PlanTier['art'] }
     | { art: 'hausbild' }
@@ -493,6 +493,59 @@ export class WorldScene extends CombatScene {
       c.add(b);
       y += 30;
     };
+    // Varianten-Wahl und Größen-Regler fürs aktive Kachel-Werkzeug (R25)
+    const kachelExtras = (mitGroesse: boolean) => {
+      const tool = this.baukastenTool;
+      if (!tool || tool.art !== 'kachel' || !tool.tile) return;
+      const anzahl = this.provider.tileVarianten(tool.tile);
+      if (anzahl > 1) {
+        c.add(this.add.text(12, y + 4, 'Variante:', { fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8' }));
+        const dreh = (x: number, txt: string, delta: number) => {
+          const b = this.add.text(x, y + 2, txt, {
+            fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', backgroundColor: '#221808', padding: { x: 7, y: 2 },
+          }).setInteractive({ useHandCursor: true });
+          b.on('pointerdown', () => {
+            // Zyklus: Mischung -> 1 -> 2 ... -> n -> Mischung
+            const akt = tool.v ?? 0;
+            const neu = (akt + delta + anzahl + 1) % (anzahl + 1);
+            tool.v = neu === 0 ? undefined : neu;
+            this.refreshBaukasten();
+          });
+          c.add(b);
+        };
+        dreh(80, '<', -1);
+        c.add(this.add.text(122, y + 4, tool.v ? `${tool.v}/${anzahl}` : 'Mischung', {
+          fontFamily: 'serif', fontSize: '12px', color: '#c9a227',
+        }).setOrigin(0.5, 0).setX(140));
+        dreh(176, '>', 1);
+        if (tool.v) {
+          c.add(this.add.image(218, y + 12, this.provider.tileKey(tool.tile, tool.v - 1, this.area.depth, this.area.theme)).setDisplaySize(24, 24));
+        }
+        y += 30;
+      }
+      if (mitGroesse) {
+        const wert = this.objektSkala(tool.tile);
+        c.add(this.add.text(12, y + 4, 'Größe x', { fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8' }));
+        c.add(this.add.text(140, y + 4, wert.toFixed(2), { fontFamily: 'serif', fontSize: '12px', color: '#c9a227' }).setOrigin(0.5, 0));
+        const mkG = (x: number, txt: string, delta: number) => {
+          const b = this.add.text(x, y + 2, txt, {
+            fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', backgroundColor: '#221808', padding: { x: 7, y: 2 },
+          }).setInteractive({ useHandCursor: true });
+          b.on('pointerdown', () => {
+            const skalaName = tool.tile === 'wald' ? 'baum' : tool.tile!;
+            this.setzeObjektSkala(skalaName, Math.min(3, Math.max(0.5, this.objektSkala(skalaName) + delta)));
+            this.refreshBaukasten();
+          });
+          c.add(b);
+        };
+        mkG(80, '-', -0.15);
+        mkG(176, '+', 0.15);
+        c.add(this.add.text(12, y + 26, 'wirkt sofort auf ALLE Objekte dieser Art', {
+          fontFamily: 'serif', fontSize: '9px', color: '#8a7a5a',
+        }));
+        y += 44;
+      }
+    };
     // Werkzeuge tragen den Asset-Namen mit - so weiß der Bild-Upload,
     // welche Grafik-Familie er ersetzen soll (Runde 24)
     const bildKnopf = () => {
@@ -505,7 +558,7 @@ export class WorldScene extends CombatScene {
           this.logMsg('Erst oben ein Werkzeug wählen, dann das Bild laden.', 'bad');
           return;
         }
-        this.ladeTileBildDialog(tool.tile, this.baukastenTab === 'objekte', tool.name);
+        this.ladeTileBildDialog(tool.tile, this.baukastenTab === 'objekte', tool.name, tool.v);
       });
       c.add(up);
       y += 26;
@@ -519,16 +572,25 @@ export class WorldScene extends CombatScene {
         ['Gras', T.GRASS, 'gras'], ['Weg', T.PATH, 'weg'], ['Acker / Weizenfeld', T.FIELD, 'acker'],
         ['Wasser', T.WATER, 'wasser'], ['Steinboden', T.FLOOR, 'krypta_boden'], ['Brandstelle', T.BURNT, 'brandstelle'],
       ];
-      for (const [name, t, tile] of boeden) werkzeug(name, { art: 'kachel', t, name, tile });
+      for (const [name, t, tile] of boeden) {
+        const alt = this.baukastenTool;
+        // Varianten-Wahl überlebt das Neuzeichnen des Panels
+        werkzeug(name, { art: 'kachel', t, name, tile, ...(alt?.art === 'kachel' && alt.tile === tile ? { v: alt.v } : {}) });
+      }
+      kachelExtras(false);
       bildKnopf();
     } else if (this.baukastenTab === 'objekte') {
       const objekte: Array<[string, number, string]> = [
         ['Baum', T.TREE, 'baum'], ['Zaun', T.FENCE, 'zaun'], ['Palisade', T.PALISADE, 'palisade'],
         ['Brunnen', T.WELL, 'brunnen'], ['Grabstein', T.GRAVE, 'grabstein'], ['Fels', T.ROCK, 'fels'],
       ];
-      for (const [name, t, tile] of objekte) werkzeug(name, { art: 'kachel', t, name, tile });
+      for (const [name, t, tile] of objekte) {
+        const alt = this.baukastenTool;
+        werkzeug(name, { art: 'kachel', t, name, tile, ...(alt?.art === 'kachel' && alt.tile === tile ? { v: alt.v } : {}) });
+      }
       werkzeug('Fackel', { art: 'fackel' });
       werkzeug('Schild (beschriftbar)', { art: 'schild' });
+      kachelExtras(true);
       bildKnopf();
     } else if (this.baukastenTab === 'tiere') {
       for (const tier of ['huhn', 'schwein', 'kuh', 'schaf', 'hund', 'pferd'] as const) {
@@ -609,15 +671,17 @@ export class WorldScene extends CombatScene {
     const tx = Math.floor(ptr.worldX / TILE), ty = Math.floor(ptr.worldY / TILE);
     const wx = ptr.worldX, wy = ptr.worldY;
     if (tool.art === 'kachel') {
-      if (setzeKachel(this.stadtplan, this.area.map, tx, ty, tool.t)) {
-        this.refreshTile(tx, ty);
+      if (setzeKachel(this.stadtplan, this.area.map, tx, ty, tool.t, tool.v)) {
+        // Nachbarn mitzeichnen: Weg-Drehung und Wald-Verdichtung hängen
+        // von den umliegenden Kacheln ab (Runde 25)
+        this.refreshTileMitNachbarn(tx, ty);
         speichereStadtplan(this.stadtplan);
       }
       return;
     }
     if (tool.art === 'radierer') {
       const weg = radiere(this.stadtplan, this.area.map, tx, ty, wx, wy);
-      if (weg === 'kachel') this.refreshTile(tx, ty);
+      if (weg === 'kachel') this.refreshTileMitNachbarn(tx, ty);
       if (weg === 'fackel') this.entferneNaechstes(this.area.torches, wx, wy);
       if (weg === 'tier') {
         this.entferneNaechstes(this.area.animals, wx, wy);
@@ -666,6 +730,28 @@ export class WorldScene extends CombatScene {
     const tool = this.baukastenTool;
     if (tool?.art === 'kachel' || tool?.art === 'radierer') this.baukastenKlick(ptr);
   };
+
+  private refreshTileMitNachbarn(tx: number, ty: number): void {
+    this.refreshTile(tx, ty);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      if (this.area.map[ty + dy]?.[tx + dx] !== undefined) this.refreshTile(tx + dx, ty + dy);
+    }
+  }
+
+  // Größe je Objekttyp (Baukasten): speichern und LIVE auf alle stehenden
+  // Objekte dieser Art anwenden - kein Dorf-Neuaufbau nötig
+  private setzeObjektSkala(objName: string, skala: number): void {
+    const skalen = this.objektSkalen();
+    skalen[objName] = Math.round(skala * 100) / 100;
+    try {
+      localStorage.setItem('ravensmoor_objektskala', JSON.stringify(skalen));
+    } catch { /* Speicher gesperrt */ }
+    for (const img of this.tileImages) {
+      if (img.getData?.('objTyp') !== objName) continue;
+      (img as Phaser.GameObjects.Image).setDisplaySize(TILE * skala, TILE * skala);
+      (img as Phaser.GameObjects.Image).setOrigin(0.5, skala > 1.15 ? 0.7 : 0.5);
+    }
+  }
 
   private naechstesIn(liste: Array<{ x: number; y: number }>, px: number, py: number): number {
     let best = -1, bestD = 30;
@@ -736,22 +822,28 @@ export class WorldScene extends CombatScene {
     });
   }
 
-  // Eigenes Bild für ein Kachel-Werkzeug (Runde 24): freistellen (nur
-  // Objekte), auf Kachelgröße herunterrechnen, Familie ersetzen, neu malen
-  private ladeTileBildDialog(tile: string, freistellen: boolean, anzeigeName: string): void {
+  // Eigenes Bild für ein Kachel-Werkzeug (Runde 24, überarbeitet 25):
+  // freistellen (nur Objekte), herunterrechnen, dann GEZIELT ersetzen -
+  // ist eine Variante gewählt, nur diese; bei "Mischung" die ganze Familie
+  private ladeTileBildDialog(tile: string, freistellen: boolean, anzeigeName: string, variante?: number): void {
     this.waehleBilddatei((roh) => {
-      const canvas = verarbeiteUpload(roh, { zielW: TILE, zielH: TILE, freistellen });
-      this.provider.setzeEigenesTile(tile, canvas);
+      // Objekte behalten 64px - sie werden im Spiel hochskaliert (Größen-
+      // Regler) und blieben bei 32px unnötig grob
+      const ziel = freistellen ? TILE * 2 : TILE;
+      const canvas = verarbeiteUpload(roh, { zielW: ziel, zielH: ziel, freistellen });
+      this.provider.setzeEigenesTile(tile, canvas, variante);
       try {
         const store = JSON.parse(localStorage.getItem('ravensmoor_eigene_tiles') ?? '{}') as Record<string, string>;
-        store[tile] = canvas.toDataURL('image/png');
+        store[`${tile}#${variante ?? 0}`] = canvas.toDataURL('image/png');
         localStorage.setItem('ravensmoor_eigene_tiles', JSON.stringify(store));
       } catch {
         this.logMsg('Browser-Speicher voll - Bild gilt nur für diese Sitzung.', 'bad');
       }
       this.areas.delete(this.area.id);
       this.goArea(this.area.id, { x: this.px, y: this.py });
-      this.logMsg(`Eigenes Bild für "${anzeigeName}" liegt an - überall im Spiel.`, 'gold');
+      this.logMsg(variante
+        ? `Eigenes Bild liegt auf "${anzeigeName}" Variante ${variante}.`
+        : `Eigenes Bild für "${anzeigeName}" liegt an - alle Varianten.`, 'gold');
     });
   }
 
@@ -1116,76 +1208,109 @@ export class WorldScene extends CombatScene {
     this.pickups.clear();
   }
 
+  // Stehende Objekte trennen sich vom Boden für die Y-Sortierung
+  private static readonly STANDING = new Set<number>([T.TREE, T.ROCK, T.GRAVE, T.WELL, T.FENCE, T.ORE, T.ALTAR, T.SHELF, T.SHRINE, T.RACK, T.CAGE,
+    T.BETT, T.TISCH, T.STUHL, T.KAMIN, T.TRESEN]);
+
+  // Vom Autor eingestellte Objektgrößen (Baukasten, Runde 25)
+  private objektSkalen(): Record<string, number> {
+    try {
+      return JSON.parse(localStorage.getItem('ravensmoor_objektskala') ?? '{}') as Record<string, number>;
+    } catch { return {}; }
+  }
+
+  objektSkala(objName: string): number {
+    const key = objName === 'wald' ? 'baum' : objName;
+    // Bäume ragen 2 Felder hoch (Runde 18: wirkten wie Büsche)
+    return this.objektSkalen()[key] ?? (key === 'baum' ? 1.85 : 1);
+  }
+
+  // Im Baukasten gewählte Varianten je gemalter Kachel (nur Ravensmoor)
+  private planKachelAn(tx: number, ty: number): { v?: number } | undefined {
+    if (this.area.id !== 'village') return undefined;
+    return this.stadtplan.kacheln.find((k) => k.x === tx && k.y === ty);
+  }
+
+  // EINE Kachel komplett zeichnen - genutzt vom Dorfaufbau UND vom
+  // Live-Malen des Baukastens (Runde 25: vorher hatte refreshTile einen
+  // eigenen, halben Pfad - Objekte erschienen klein, ohne Boden darunter
+  // und ohne Y-Sortierung)
+  private zeichneKachel(a: AreaData, tx: number, ty: number): void {
+    const id = a.map[ty][tx];
+    const name = tileNameAt(a.map, tx, ty);
+    // Im Baukasten gewählte Variante schlägt den Positions-Hash
+    const planV = this.planKachelAn(tx, ty)?.v;
+    const variant = planV !== undefined ? planV - 1 : ((tx * 73856093) ^ (ty * 19349663)) % 7;
+    const tag = (img: Phaser.GameObjects.Image): Phaser.GameObjects.Image => {
+      img.setData('kachel', `${tx},${ty}`);
+      this.tileImages.push(img);
+      return img;
+    };
+    // Haus-Sprites (Runde 18): Gebäude mit Gesamtbild zeichnen keine
+    // Wand-Kacheln mehr - nur Gras darunter, Kollision bleibt
+    const imHaus = this.hausSpriteAn && a.hausPlaetze?.find((hp) => tx >= hp.x0 && tx <= hp.x1 && ty >= hp.y0 && ty <= hp.y1);
+    if (imHaus && (id === T.HWALL || id === T.HDOOR)) {
+      tag(this.add.image(tx * TILE + 16, ty * TILE + 16, this.provider.tileKey('gras', variant, a.depth, a.theme)).setDepth(-10));
+      return;
+    }
+    if (WorldScene.STANDING.has(id)) {
+      const groundName = a.innen ? 'holzboden' : a.dark ? 'krypta_boden' : 'gras';
+      tag(this.add.image(tx * TILE + 16, ty * TILE + 16, this.provider.tileKey(groundName, variant, a.depth, a.theme)).setDepth(-10));
+      // Dichter Wald: Bäume mit vielen Baum-Nachbarn nutzen die
+      // wald-Grafiken (assets/tiles/wald1.png ...), freie Bäume baum*
+      let objName = name;
+      // Palisade: senkrechte Mauerstücke (West/Ost) nutzen die
+      // Seitenansicht-Grafiken, waagerechte die Frontansicht
+      if (id === T.PALISADE) {
+        const oben = a.map[ty - 1]?.[tx] === T.PALISADE;
+        const unten = a.map[ty + 1]?.[tx] === T.PALISADE;
+        const seitlich = a.map[ty]?.[tx - 1] === T.PALISADE || a.map[ty]?.[tx + 1] === T.PALISADE;
+        if ((oben || unten) && !seitlich) objName = 'palisade_seite';
+      }
+      if (id === T.TREE) {
+        let nachbarn = 0;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+          if (a.map[ty + dy]?.[tx + dx] === T.TREE) nachbarn++;
+        }
+        if (nachbarn >= 4) objName = 'wald';
+      }
+      const obj = this.provider.objectKey(objName, variant, a.depth, a.theme);
+      const objImg = tag(this.add.image(tx * TILE + 16, ty * TILE + 16, obj).setDepth(ty * TILE + 26));
+      // Größe je Objekttyp (Baukasten-Regler): displaySize macht die
+      // Texturauflösung egal - Uploads dürfen größer sein als 32px
+      const skala = this.objektSkala(objName);
+      objImg.setDisplaySize(TILE * skala, TILE * skala);
+      if (skala > 1.15) objImg.setOrigin(0.5, 0.7);
+      objImg.setData('objTyp', objName === 'wald' ? 'baum' : objName);
+      return;
+    }
+    const key = this.provider.tileKey(name, variant, a.depth, a.theme);
+    const img = tag(this.add.image(tx * TILE + 16, ty * TILE + 16, key).setDepth(-10));
+    // Gebäude verdecken den Spieler KOMPLETT, wenn er dahinter steht
+    // (Runde 14: vorher "stand" man optisch auf dem Dach) - alle Teile
+    // eines Hauses sortieren sich auf die Tiefe seiner Vorderkante
+    if (id === T.HWALL || id === T.CWALL) {
+      let fy = ty;
+      while (fy + 1 < a.h && (a.map[fy + 1][tx] === T.HWALL || a.map[fy + 1][tx] === T.CWALL || a.map[fy + 1][tx] === T.HDOOR || a.map[fy + 1][tx] === T.CDOOR)) fy++;
+      img.setDepth(fy * TILE + 16);
+    }
+    // Wasser merken: die Varianten laufen als Animation durch (Runde 13)
+    if (id === T.WATER) this.wasserBilder.push({ img, variant });
+    // Wege: die Karrenspuren der Grafik laufen senkrecht - waagerechte
+    // Wegstücke werden gedreht, sonst sieht "nach rechts" aus wie
+    // "nach oben" (Runde 15)
+    if (id === T.PATH && this.provider.tileVarianten('weg') > 0) {
+      const waag = (a.map[ty]?.[tx - 1] === T.PATH || a.map[ty]?.[tx + 1] === T.PATH);
+      const senk = (a.map[ty - 1]?.[tx] === T.PATH || a.map[ty + 1]?.[tx] === T.PATH);
+      if (waag && !senk) img.setAngle(90);
+    }
+  }
+
   private loadAreaObjects(a: AreaData): void {
-    // Tiles als statische Bilder; stehende Objekte werden für die
-    // Y-Sortierung vom Boden getrennt (Pseudo-3D, Masterprompt 5.1)
-    const STANDING = new Set<number>([T.TREE, T.ROCK, T.GRAVE, T.WELL, T.FENCE, T.ORE, T.ALTAR, T.SHELF, T.SHRINE, T.RACK, T.CAGE,
-      T.BETT, T.TISCH, T.STUHL, T.KAMIN, T.TRESEN]);
+    // Tiles als statische Bilder (Pseudo-3D, Masterprompt 5.1)
     for (let ty = 0; ty < a.h; ty++) {
       for (let tx = 0; tx < a.w; tx++) {
-        const id = a.map[ty][tx];
-        const name = tileNameAt(a.map, tx, ty);
-        const variant = ((tx * 73856093) ^ (ty * 19349663)) % 7;
-        // Haus-Sprites (Runde 18): Gebäude mit Gesamtbild zeichnen keine
-        // Wand-Kacheln mehr - nur Gras darunter, Kollision bleibt
-        const imHaus = this.hausSpriteAn && a.hausPlaetze?.find((hp) => tx >= hp.x0 && tx <= hp.x1 && ty >= hp.y0 && ty <= hp.y1);
-        if (imHaus && (id === T.HWALL || id === T.HDOOR)) {
-          const ground = this.provider.tileKey('gras', variant, a.depth, a.theme);
-          this.tileImages.push(this.add.image(tx * TILE + 16, ty * TILE + 16, ground).setDepth(-10));
-          continue;
-        }
-        if (STANDING.has(id)) {
-          const groundName = a.innen ? 'holzboden' : a.dark ? 'krypta_boden' : 'gras';
-          const ground = this.provider.tileKey(groundName, variant, a.depth, a.theme);
-          this.tileImages.push(this.add.image(tx * TILE + 16, ty * TILE + 16, ground).setDepth(-10));
-          // Dichter Wald: Bäume mit vielen Baum-Nachbarn nutzen die
-          // wald-Grafiken (assets/tiles/wald1.png ...), freie Bäume baum*
-          let objName = name;
-          // Palisade: senkrechte Mauerstücke (West/Ost) nutzen die
-          // Seitenansicht-Grafiken, waagerechte die Frontansicht
-          if (id === T.PALISADE) {
-            const oben = a.map[ty - 1]?.[tx] === T.PALISADE;
-            const unten = a.map[ty + 1]?.[tx] === T.PALISADE;
-            const seitlich = a.map[ty]?.[tx - 1] === T.PALISADE || a.map[ty]?.[tx + 1] === T.PALISADE;
-            if ((oben || unten) && !seitlich) objName = 'palisade_seite';
-          }
-          if (id === T.TREE) {
-            let nachbarn = 0;
-            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
-              if (a.map[ty + dy]?.[tx + dx] === T.TREE) nachbarn++;
-            }
-            if (nachbarn >= 4) objName = 'wald';
-          }
-          const obj = this.provider.objectKey(objName, variant, a.depth, a.theme);
-          const objImg = this.add.image(tx * TILE + 16, ty * TILE + 16, obj).setDepth(ty * TILE + 26);
-          // Bäume ragen 2 Felder hoch (Runde 18: wirkten wie Büsche)
-          if (objName === 'baum' || objName === 'wald') {
-            objImg.setScale(1.85).setOrigin(0.5, 0.7);
-          }
-          this.tileImages.push(objImg);
-          continue;
-        }
-        const key = this.provider.tileKey(name, variant, a.depth, a.theme);
-        const img = this.add.image(tx * TILE + 16, ty * TILE + 16, key).setDepth(-10);
-        // Gebäude verdecken den Spieler KOMPLETT, wenn er dahinter steht
-        // (Runde 14: vorher "stand" man optisch auf dem Dach) - alle Teile
-        // eines Hauses sortieren sich auf die Tiefe seiner Vorderkante
-        if (id === T.HWALL || id === T.CWALL) {
-          let fy = ty;
-          while (fy + 1 < a.h && (a.map[fy + 1][tx] === T.HWALL || a.map[fy + 1][tx] === T.CWALL || a.map[fy + 1][tx] === T.HDOOR || a.map[fy + 1][tx] === T.CDOOR)) fy++;
-          img.setDepth(fy * TILE + 16);
-        }
-        // Wasser merken: die Varianten laufen als Animation durch (Runde 13)
-        if (id === T.WATER) this.wasserBilder.push({ img, variant });
-        // Wege: die Karrenspuren der Grafik laufen senkrecht - waagerechte
-        // Wegstücke werden gedreht, sonst sieht "nach rechts" aus wie
-        // "nach oben" (Runde 15)
-        if (id === T.PATH && this.provider.tileVarianten('weg') > 0) {
-          const waag = (a.map[ty]?.[tx - 1] === T.PATH || a.map[ty]?.[tx + 1] === T.PATH);
-          const senk = (a.map[ty - 1]?.[tx] === T.PATH || a.map[ty + 1]?.[tx] === T.PATH);
-          if (waag && !senk) img.setAngle(90);
-        }
-        this.tileImages.push(img);
+        this.zeichneKachel(a, tx, ty);
       }
     }
     // Zerstörbare Objekte
@@ -2650,27 +2775,15 @@ export class WorldScene extends CombatScene {
     this.refreshTile(tx, ty);
   }
 
+  // Eine Kachel neu zeichnen (Baukasten, Treppen, Breschen, gefällte
+  // Bäume): alle Bilder dieser Kachel weg, dann derselbe Pfad wie beim
+  // Gebietsaufbau - vorher zeichnete hier ein halber Sonderweg (Runde 25)
   private refreshTile(tx: number, ty: number): void {
-    const name = tileNameAt(this.area.map, tx, ty);
-    const variant = ((tx * 73856093) ^ (ty * 19349663)) % 7;
-    const key = this.provider.tileKey(name, variant, this.area.depth, this.area.theme);
-    const remove: Phaser.GameObjects.Image[] = [];
-    let groundDone = false;
-    for (const img of this.tileImages) {
-      if (Math.abs(img.x - (tx * TILE + 16)) > 1 || Math.abs(img.y - (ty * TILE + 16)) > 1) continue;
-      const isImage = img instanceof Phaser.GameObjects.Image;
-      if (!groundDone && img.depth === -10) {
-        if (isImage) img.setTexture(key);
-        groundDone = true;
-      } else if (img.depth > 0 && isImage) {
-        // aufgesetztes Objekt (gefällter Baum, abgebaute Ader) entfernen
-        remove.push(img);
-      }
-    }
-    for (const img of remove) {
-      img.destroy();
-      this.tileImages = this.tileImages.filter((x) => x !== img);
-    }
+    const tag = `${tx},${ty}`;
+    const weg = this.tileImages.filter((img) => img.getData?.('kachel') === tag);
+    for (const img of weg) img.destroy();
+    if (weg.length) this.tileImages = this.tileImages.filter((img) => img.getData?.('kachel') !== tag);
+    this.zeichneKachel(this.area, tx, ty);
   }
 
   protected override showNote(idx: number): void {

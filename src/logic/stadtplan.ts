@@ -2,7 +2,9 @@
 // Objekte fürs Dorf. Liegt im Browser-Speicher; "STADTPLAN KOPIEREN"
 // exportiert das JSON, damit ich es fest in den Code übernehmen kann.
 
-export interface PlanKachel { x: number; y: number; t: number; orig: number }
+// v = im Baukasten fest gewählte Grafik-Variante (1..n); fehlt sie,
+// mischt das Spiel positionsfest wie überall sonst
+export interface PlanKachel { x: number; y: number; t: number; orig: number; v?: number }
 export interface PlanFackel { x: number; y: number }
 export interface PlanTier { x: number; y: number; art: 'huhn' | 'schwein' | 'kuh' | 'hund' | 'schaf' | 'pferd' }
 export interface PlanSchild { x: number; y: number; text: string }
@@ -49,14 +51,19 @@ export function wendePlanAn(map: number[][], plan: Stadtplan): void {
 
 // Kachel setzen; merkt sich das Original der KARTE (nicht früherer
 // Pinselstriche), damit der Radierer sauber zurückbauen kann
-export function setzeKachel(plan: Stadtplan, map: number[][], x: number, y: number, t: number): boolean {
-  if (map[y]?.[x] === undefined || map[y][x] === t) return false;
+export function setzeKachel(plan: Stadtplan, map: number[][], x: number, y: number, t: number, v?: number): boolean {
+  if (map[y]?.[x] === undefined) return false;
   const alt = plan.kacheln.find((k) => k.x === x && k.y === y);
+  if (map[y][x] === t && alt?.v === v) return false;
   if (alt) {
-    if (alt.orig === t) plan.kacheln.splice(plan.kacheln.indexOf(alt), 1);
-    else alt.t = t;
+    if (alt.orig === t && v === undefined) {
+      plan.kacheln.splice(plan.kacheln.indexOf(alt), 1);
+    } else {
+      alt.t = t;
+      alt.v = v;
+    }
   } else {
-    plan.kacheln.push({ x, y, t, orig: map[y][x] });
+    plan.kacheln.push({ x, y, t, orig: map[y][x], ...(v !== undefined ? { v } : {}) });
   }
   map[y][x] = t;
   return true;

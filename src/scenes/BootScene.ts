@@ -133,20 +133,31 @@ export class BootScene extends Phaser.Scene {
     try {
       roh = JSON.parse(localStorage.getItem('ravensmoor_eigene_tiles') ?? '{}') as Record<string, string>;
     } catch { return; }
-    const jobs = Object.entries(roh).map(([name, dataUrl]) => new Promise<void>((resolve) => {
+    const jobs = Object.entries(roh).map(([eintrag, dataUrl]) => new Promise<void>((resolve) => {
+      // Schlüsselform "name#variante" (Runde 25); 0 oder fehlend = Familie
+      const [name, vStr] = eintrag.split('#');
+      const v = parseInt(vStr ?? '0', 10);
       const img = new Image();
       img.onload = () => {
-        const familie = [`hs_tile_${name}`];
-        for (let n = 1; n <= 12; n++) familie.push(`hs_tile_${name}_v${n}`);
-        let getroffen = false;
-        for (const key of familie) {
-          if (this.textures.exists(key)) {
-            this.textures.remove(key);
-            this.textures.addImage(key, img);
-            getroffen = true;
-          }
+        // Eigene Canvas-Kopie je Schlüssel - geteilte Quellen haben sich
+        // beim Entfernen gegenseitig zerschossen (Runde 25)
+        const ersetze = (key: string) => {
+          if (this.textures.exists(key)) this.textures.remove(key);
+          const k = document.createElement('canvas');
+          k.width = img.naturalWidth;
+          k.height = img.naturalHeight;
+          k.getContext('2d')!.drawImage(img, 0, 0);
+          this.textures.addCanvas(key, k);
+        };
+        if (v > 0) {
+          ersetze(`hs_tile_${name}_v${v}`);
+        } else {
+          const familie = [`hs_tile_${name}`];
+          for (let n = 1; n <= 12; n++) familie.push(`hs_tile_${name}_v${n}`);
+          const vorhanden = familie.filter((key) => this.textures.exists(key));
+          if (vorhanden.length) for (const key of vorhanden) ersetze(key);
+          else ersetze(`hs_tile_${name}`);
         }
-        if (!getroffen) this.textures.addImage(`hs_tile_${name}`, img);
         resolve();
       };
       img.onerror = () => resolve();

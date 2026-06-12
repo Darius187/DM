@@ -108,21 +108,31 @@ export class SpriteProvider {
     return list[Math.abs(variant) % list.length];
   }
 
-  // Eigene Tile-Grafik aus dem Baukasten (Runde 24): ersetzt die GANZE
-  // Varianten-Familie, damit das neue Bild überall gilt - existiert noch
-  // gar keine Hot-Swap-Textur, wird der Basis-Schlüssel angelegt
-  setzeEigenesTile(name: string, canvas: HTMLCanvasElement): void {
-    const familie = [`hs_tile_${name}`];
-    for (let n = 1; n <= 12; n++) familie.push(`hs_tile_${name}_v${n}`);
-    let getroffen = false;
-    for (const key of familie) {
-      if (this.tex.exists(key)) {
-        this.tex.remove(key);
-        this.tex.addCanvas(key, canvas);
-        getroffen = true;
-      }
+  // Eigene Tile-Grafik aus dem Baukasten (Runde 24, überarbeitet 25):
+  // mit Variante wird NUR dieser Schlüssel getauscht, ohne die ganze
+  // Familie. Jeder Schlüssel bekommt eine eigene Canvas-KOPIE - mehrere
+  // Texturen auf derselben Quelle haben sich gegenseitig zerschossen.
+  setzeEigenesTile(name: string, canvas: HTMLCanvasElement, variante?: number): void {
+    const kopie = (): HTMLCanvasElement => {
+      const k = document.createElement('canvas');
+      k.width = canvas.width;
+      k.height = canvas.height;
+      k.getContext('2d')!.drawImage(canvas, 0, 0);
+      return k;
+    };
+    const ersetze = (key: string) => {
+      if (this.tex.exists(key)) this.tex.remove(key);
+      this.tex.addCanvas(key, kopie());
+    };
+    if (variante) {
+      ersetze(`hs_tile_${name}_v${variante}`);
+    } else {
+      const familie = [`hs_tile_${name}`];
+      for (let n = 1; n <= 12; n++) familie.push(`hs_tile_${name}_v${n}`);
+      const vorhanden = familie.filter((key) => this.tex.exists(key));
+      if (vorhanden.length) for (const key of vorhanden) ersetze(key);
+      else ersetze(`hs_tile_${name}`);
     }
-    if (!getroffen) this.tex.addCanvas(`hs_tile_${name}`, canvas);
     this.hotVarianten.delete(name);
   }
 

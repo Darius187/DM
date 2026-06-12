@@ -747,3 +747,23 @@ Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.
   die Liste eigener Bilder - die Grundlage, auf der ich Bewohner und
   Tagesabläufe der neuen Stadt zuordne.
 - 59/59 Tests grün (neu: verschiebeHaus), tsc sauber.
+
+## Feedback-Runde 25 - umgesetzt (Baukasten-Generalüberholung)
+
+- Gemalte Objekte sind jetzt identisch mit gebauten: groß, mit Boden
+  darunter, hinter dem Helden sortiert. Ursache war ein halber
+  Render-Sonderweg beim Live-Malen - jetzt gibt es genau EINEN Pfad
+  (zeichneKachel) für Aufbau und Baukasten. Browser-verifiziert.
+- Varianten wählbar: jedes Werkzeug blättert durch "Mischung, 1..n" mit
+  Mini-Vorschau; die Wahl gilt pro gemalter Kachel und wird gespeichert.
+- Größe selbst einstellbar: Regler je Objektart (0,5x-3x) im OBJEKT-Tab,
+  wirkt sofort auf ALLE Objekte dieser Art (verifiziert an 566 Bäumen).
+- Upload-Willkür behoben: Texturen teilten sich eine Quelle und
+  zerschossen sich beim Ersetzen gegenseitig (jetzt Kopie je Schlüssel);
+  außerdem ersetzt der Upload jetzt GEZIELT die gewählte Variante -
+  verifiziert: Variante 2 neu, Variante 1 unangetastet, nach Neuladen
+  beides korrekt.
+- Pferd ist ein ganzes Pferd: die Vierbeiner-Zeichnung zentriert sich
+  selbst (die Kuh war auch schon angeschnitten), große Tiere haben vier
+  Beine. Pixelgenau geprüft: keine belegten Randspalten mehr.
+- 60/60 Tests grün, tsc sauber.
