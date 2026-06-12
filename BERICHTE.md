@@ -850,3 +850,16 @@ Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.
   Kasten verschieb- und skalierbar. Neue Kodex-Regel: alle Fenster
   müssen verschiebbar sein.
 - 64/64 Tests grün, tsc sauber.
+
+## Feedback-Runde 31 - umgesetzt (Stimmung, Licht, Sound, Tab-Fenster)
+
+- Farbige Magie-Lichter in der Krypta (Schreine blau, Altäre violett,
+  Blutbrunnen rot, pulsierend), Feuerball glüht mit hellem Kern,
+  goldener Abend und Morgenblau im Freien, violetter Hauch in der
+  Tiefe, dezente Vignette, Wasser mit Tiefenkante.
+- Hammer/Streitkolben nutzen den gelieferten Aufprall-Klang; Schritt-
+  Sound-Haken (gras/stein) eingebaut - Dateien folgen vom Autor;
+  Münz-Klimpern: eigene muenzen-Datei ersetzt den Synth automatisch.
+- Tab-Fenster: Charakter & Inventar, Sammelalbum und Statistik in einem
+  Fenster (B = direkt zum Album). Browser-verifiziert inkl. Stimmung
+  und farbiger Lichter. 64/64 Tests grün, tsc sauber.

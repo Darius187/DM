@@ -90,3 +90,9 @@ passgenau über dem Haus und machen Skalierung/Verschieben mit.
   Auch hier wird der Hintergrund automatisch freigestellt.
 - Wenn etwas gefällt: dieselbe Datei zusätzlich in assets/tiles/
   legen, dann gilt sie dauerhaft und für jeden.
+
+## Neue Sound-Haken (Runde 31)
+  wucht_schlag   Aufprall von Hammer/Streitkolben (eingebaut, Datei da)
+  schritt_gras   Schritte im Freien (kurz, leise, <0,5s)
+  schritt_stein  Schritte in Krypta/Stuben
+  muenzen        Münz-Klimpern beim Gold-Aufsammeln (ersetzt den Synth)

@@ -36,6 +36,20 @@ export class UIPanels {
   onChanged: (() => void) | null = null;
   onUseScroll: ((scrollSkill: string) => void) | null = null;
   getJournal: (() => string[]) | null = null;
+  // Tab-Fenster (Runde 31): Album und Statistik wohnen mit im Fenster
+  getAlbumZeilen: (() => Array<[string, string]>) | null = null;
+  getStatistikZeilen: (() => Array<[string, string]>) | null = null;
+  private hauptTab: 'held' | 'album' | 'statistik' = 'held';
+
+  // Fenster direkt auf einem Reiter öffnen (B = Album)
+  openTab(tab: 'held' | 'album' | 'statistik'): void {
+    this.hauptTab = tab;
+    if (!this.open_) {
+      this.open_ = true;
+      this.sfx.play('klick');
+    }
+    this.build();
+  }
 
   constructor(
     private scene: Phaser.Scene,
@@ -128,9 +142,43 @@ export class UIPanels {
     c.add(this.scene.add.text(w / 2, 8, '⠿ ziehen zum Verschieben', {
       fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a',
     }).setOrigin(0.5, 0));
-    c.add(this.scene.add.rectangle(w * 0.46, 8, 1, h - 16, LINE).setOrigin(0));
-    this.buildCharacterSide(c, w * 0.46 - 10, h);
-    this.buildInventorySide(c, w * 0.46 + 12, w - (w * 0.46 + 12) - 10, h);
+    // Haupt-Reiter (Runde 31): alles Wichtige in EINEM Fenster
+    const reiter: Array<[typeof this.hauptTab, string]> = [
+      ['held', 'CHARAKTER & INVENTAR'], ['album', 'SAMMELALBUM'], ['statistik', 'STATISTIK'],
+    ];
+    let rx = 14;
+    for (const [id, lbl] of reiter) {
+      const t = this.scene.add.text(rx, 30, lbl, {
+        fontFamily: 'serif', fontSize: '12px', letterSpacing: 1,
+        color: this.hauptTab === id ? '#c9a227' : '#8a7a5a',
+        backgroundColor: this.hauptTab === id ? '#221808' : '#100b06', padding: { x: 9, y: 4 },
+      }).setInteractive({ useHandCursor: true });
+      t.on('pointerdown', () => {
+        this.hauptTab = id;
+        this.build();
+        this.sfx.play('klick');
+      });
+      c.add(t);
+      rx += t.width + 8;
+    }
+    if (this.hauptTab === 'held') {
+      const inhalt = this.scene.add.container(0, 30);
+      c.add(inhalt);
+      c.add(this.scene.add.rectangle(w * 0.46, 56, 1, h - 64, LINE).setOrigin(0));
+      this.buildCharacterSide(inhalt, w * 0.46 - 10, h - 30);
+      this.buildInventorySide(inhalt, w * 0.46 + 12, w - (w * 0.46 + 12) - 10, h - 36);
+      // Phaser-Falle: Kinder des Unter-Containers brauchen die Hitbox-
+      // Korrektur SELBST, sonst tote Knöpfe bei gescrollter Kamera
+      fixUiScroll(inhalt);
+    } else {
+      const zeilen = (this.hauptTab === 'album' ? this.getAlbumZeilen?.() : this.getStatistikZeilen?.()) ?? [['Keine Daten.', '#6a5f4c']];
+      let zy = 64;
+      for (const [text, col] of zeilen) {
+        if (text) c.add(this.scene.add.text(18, zy, text, { fontFamily: 'serif', fontSize: '13px', color: col }));
+        zy += 19;
+        if (zy > h - 20) break;
+      }
+    }
     const closeBtn = this.scene.add.text(w - 10, 8, '✕', { fontFamily: 'serif', fontSize: '16px', color: BONE })
       .setOrigin(1, 0).setInteractive({ useHandCursor: true });
     closeBtn.on('pointerdown', () => this.closeAll());

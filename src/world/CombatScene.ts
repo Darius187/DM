@@ -234,6 +234,27 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   private albumPanel: Phaser.GameObjects.Container | null = null;
 
+  // Sammelalbum-Zeilen (Runde 31): auch das Tab-Fenster nutzt sie
+  albumZeilen(): Array<[string, string]> {
+    const zeilen: Array<[string, string]> = [];
+    zeilen.push(['MONSTERKUNDE', '#c9a227']);
+    for (const [typ, def] of Object.entries(ENEMIES)) {
+      const n = this.album.kills[typ] ?? 0;
+      zeilen.push([n > 0 ? `${def.name}: ${n} erschlagen` : '??? - noch nicht erlegt', n > 0 ? '#d8cfb8' : '#6a5f4c']);
+    }
+    zeilen.push(['', '']);
+    zeilen.push([`VORSTEHER & BOSSE (${this.album.champions.length})`, '#c9a227']);
+    for (const name of this.album.champions.slice(-8)) zeilen.push([name, '#d8cfb8']);
+    if (!this.album.champions.length) zeilen.push(['Noch keiner gefallen.', '#6a5f4c']);
+    zeilen.push(['', '']);
+    zeilen.push([`EPISCHE FUNDE (${this.album.unikate.length})`, '#c9a227']);
+    for (const name of this.album.unikate.slice(-8)) zeilen.push([name, '#b06ae8']);
+    if (!this.album.unikate.length) zeilen.push(['Noch nichts gefunden.', '#6a5f4c']);
+    zeilen.push(['', '']);
+    zeilen.push([`Zerknitterte Notizen gelesen: ${this.album.notizen.length}`, '#9a8c6e']);
+    return zeilen;
+  }
+
   protected toggleAlbum(): void {
     if (this.albumPanel) {
       this.albumPanel.destroy();
@@ -924,7 +945,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const aoe = ms.aoeRadius * TUNING.spielerReichweite;
     const cx = this.px + Math.cos(ang) * versatz;
     const cy = this.py + Math.sin(ang) * versatz;
-    this.playSwingSound('wucht', true);
+    // Runde 31: gelieferter Aufprall-Klang für Hammer/Streitkolben
+    if (this.sfx.has('wucht_schlag')) this.sfx.play('wucht_schlag');
+    else this.playSwingSound('wucht', true);
     this.fx.burst(cx, cy, 0x8c6a3a, 14, 160);
     let hit = false;
     for (const e of [...this.enemies]) {
@@ -2053,11 +2076,20 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         g.lineBetween(pr.x - Math.cos(a) * 7, pr.y - Math.sin(a) * 7, pr.x + Math.cos(a) * 7, pr.y + Math.sin(a) * 7);
       } else {
         if (pr.fire) {
-          g.fillStyle(0xe8842a, 0.35);
-          g.fillCircle(pr.x, pr.y, pr.r + 5);
+          // Runde 31: echtes Glühen - außen weiter Schein, innen heller Kern
+          const flacker = Math.sin(this.time.now / 38) * 1.5;
+          g.fillStyle(0xd85a18, 0.14);
+          g.fillCircle(pr.x, pr.y, pr.r + 11 + flacker);
+          g.fillStyle(0xe8842a, 0.32);
+          g.fillCircle(pr.x, pr.y, pr.r + 5 + flacker * 0.5);
+          g.fillStyle(cssCol(pr.col), 1);
+          g.fillCircle(pr.x, pr.y, pr.r);
+          g.fillStyle(0xffe2a0, 0.9);
+          g.fillCircle(pr.x, pr.y, Math.max(1.5, pr.r * 0.45));
+        } else {
+          g.fillStyle(cssCol(pr.col), 1);
+          g.fillCircle(pr.x, pr.y, pr.r);
         }
-        g.fillStyle(cssCol(pr.col), 1);
-        g.fillCircle(pr.x, pr.y, pr.r);
       }
     }
 

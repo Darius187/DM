@@ -146,6 +146,9 @@ export class WorldScene extends CombatScene {
     this.portalZiel = null;
     this.portalEnts = [];
     this.nebelSprites = [];
+    this.stimmungRect = null;
+    this.vignette = null;
+    this.tode = 0;
     this.relicChoice = null;
     this.pauseMenu = null;
     this.deathOverlay = null;
@@ -195,6 +198,8 @@ export class WorldScene extends CombatScene {
     this.dialog = new DialogUI(this, this.provider);
     this.dialog.onPage = (sprecher, text) => this.chronik('geschichte', `${sprecher}: ${text}`);
     this.panels.getJournal = () => this.journalLines();
+    this.panels.getAlbumZeilen = () => this.albumZeilen();
+    this.panels.getStatistikZeilen = () => this.statistikZeilen();
     this.shop = new ShopUI(this, this.provider, this.sfx, () => this.p);
     this.shop.rabatt = () => this.wohlstand() * 0.05;
     this.stash = new StashUI(this, this.sfx, () => this.p, () => this.lager);
@@ -1396,7 +1401,17 @@ export class WorldScene extends CombatScene {
       img.setDepth(fy * TILE + 16);
     }
     // Wasser merken: die Varianten laufen als Animation durch (Runde 13)
-    if (id === T.WATER) this.wasserBilder.push({ img, variant });
+    if (id === T.WATER) {
+      this.wasserBilder.push({ img, variant });
+      // Tiefenwirkung (Runde 31, Vorbild): dunkler Saum an der Oberkante
+      // des Beckens - das Ufer wirft optisch einen Schatten ins Wasser
+      if (a.map[ty - 1]?.[tx] !== T.WATER) {
+        tag(this.add.rectangle(tx * TILE, ty * TILE, TILE, 7, 0x06121e, 0.5).setOrigin(0).setDepth(-9) as unknown as Phaser.GameObjects.Image);
+      }
+      if (a.map[ty + 1]?.[tx] !== T.WATER) {
+        tag(this.add.rectangle(tx * TILE, (ty + 1) * TILE - 4, TILE, 4, 0x9ab8d0, 0.18).setOrigin(0).setDepth(-9) as unknown as Phaser.GameObjects.Image);
+      }
+    }
     // Wege: die Karrenspuren der Grafik laufen senkrecht - waagerechte
     // Wegstücke werden gedreht, sonst sieht "nach rechts" aus wie
     // "nach oben" (Runde 15)
@@ -1688,6 +1703,75 @@ export class WorldScene extends CombatScene {
       this.nebelSprites.push(n);
     }
     this.logMsg('Nebel-Probe an (F10 -> NEBEL schaltet wieder aus).', 'gold');
+  }
+
+  // Stimmungs-Tönung (Runde 31, Wunsch nach dem bunten Vorbild): goldener
+  // Abend und kühler Morgen im Freien, violetter Hauch in der Krypta -
+  // dazu eine dezente Vignette. Beides bildschirmfest, unter dem HUD.
+  private stimmungRect: Phaser.GameObjects.Rectangle | null = null;
+  private vignette: Phaser.GameObjects.Image | null = null;
+
+  private renderStimmung(): void {
+    if (!this.stimmungRect) {
+      this.stimmungRect = this.add.rectangle(0, 0, 10, 10, 0xffffff, 0)
+        .setOrigin(0).setScrollFactor(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(4005);
+    }
+    if (!this.vignette) {
+      if (!this.textures.exists('vignette')) {
+        const c = document.createElement('canvas');
+        c.width = 256;
+        c.height = 256;
+        const ctx = c.getContext('2d')!;
+        const g2 = ctx.createRadialGradient(128, 128, 70, 128, 128, 185);
+        g2.addColorStop(0, 'rgba(0,0,0,0)');
+        g2.addColorStop(1, 'rgba(0,0,0,0.55)');
+        ctx.fillStyle = g2;
+        ctx.fillRect(0, 0, 256, 256);
+        this.textures.addCanvas('vignette', c);
+      }
+      this.vignette = this.add.image(0, 0, 'vignette').setOrigin(0).setScrollFactor(0).setDepth(4470).setAlpha(0.5);
+    }
+    this.stimmungRect.setSize(this.scale.width, this.scale.height);
+    this.vignette.setDisplaySize(this.scale.width, this.scale.height);
+    let farbe = 0x000000;
+    let staerke = 0;
+    if (this.area.dark) {
+      farbe = 0x5a3aa8; // violetter Hauch in der Tiefe
+      staerke = 0.05;
+    } else if (!this.area.innen) {
+      const t = this.tageszeit;
+      if (t > TAG.abendAb && t < TAG.nachtAb) {
+        // goldener Abend: schwillt an und klingt zur Nacht hin ab
+        const f = 1 - Math.abs((t - (TAG.abendAb + TAG.nachtAb) / 2) / ((TAG.nachtAb - TAG.abendAb) / 2));
+        farbe = 0xe8943a;
+        staerke = 0.12 * f;
+      } else if (t < TAG.morgenAb) {
+        farbe = 0x4a66b8; // kühles Morgenblau
+        staerke = 0.07 * (1 - t / TAG.morgenAb);
+      }
+    }
+    this.stimmungRect.setFillStyle(farbe, staerke);
+  }
+
+  // Schritt-Klänge (Runde 31): spielen nur, wenn der Autor Dateien liefert
+  // (assets/sounds/schritt_gras.mp3 / schritt_stein.mp3)
+  private schrittT = 0;
+  private lastPX = 0;
+  private lastPY = 0;
+
+  private spieleSchritte(dt: number): void {
+    const bewegt = Math.hypot(this.px - this.lastPX, this.py - this.lastPY) > 0.8;
+    this.lastPX = this.px;
+    this.lastPY = this.py;
+    if (!bewegt) {
+      this.schrittT = 0.12;
+      return;
+    }
+    this.schrittT -= dt;
+    if (this.schrittT > 0) return;
+    this.schrittT = 0.34;
+    const name = this.area.dark || this.area.innen ? 'schritt_stein' : 'schritt_gras';
+    if (this.sfx.has(name)) this.sfx.play(name, 0.35);
   }
 
   private treibeNebel(dt: number): void {
@@ -3601,6 +3685,7 @@ export class WorldScene extends CombatScene {
     this.p.hp = this.p.stats.maxhp;
     this.p.mana = this.p.stats.maxmana;
     this.playerDead = false;
+    this.tode++;
     // Der Tod weckt die Tiefe: alle leergeräumten Ebenen erwachen neu
     // (Runde 26 - vorher kehrten Gegner bei JEDEM Betreten zurück)
     for (const a of this.areas.values()) a.geleert = false;
@@ -3635,6 +3720,31 @@ export class WorldScene extends CombatScene {
     if (this.chronikEintraege.length > 240) this.chronikEintraege.shift();
     // Offenes Chat-Fenster zeigt Neues sofort (Runde 29)
     if (this.chronikFenster && kat === this.chronikTab) this.baueChronik();
+  }
+
+  // B öffnet das Tab-Fenster direkt auf dem Sammelalbum (Runde 31)
+  protected override toggleAlbum(): void {
+    this.panels.openTab('album');
+  }
+
+  private tode = 0;
+
+  private statistikZeilen(): Array<[string, string]> {
+    const kills = Object.values(this.album.kills).reduce((a2, b2) => a2 + b2, 0);
+    const top = Object.entries(this.album.kills).sort((a2, b2) => b2[1] - a2[1]).slice(0, 3);
+    const z: Array<[string, string]> = [];
+    z.push(['DEIN WEG DURCH RAVENSMOOR', '#c9a227']);
+    z.push([`Stufe ${this.p.level} · Tag ${this.tag} · ${this.p.gold} Gold`, '#d8cfb8']);
+    z.push([`Erschlagene Kreaturen: ${kills}`, '#d8cfb8']);
+    for (const [typ, n] of top) z.push([`  · ${typ}: ${n}`, '#9a8c6e']);
+    z.push([`Vorsteher & Bosse gefällt: ${this.album.champions.length}`, '#d8cfb8']);
+    z.push([`Epische Funde: ${this.album.unikate.length}`, '#b06ae8']);
+    z.push([`Notizen gelesen: ${this.album.notizen.length}`, '#d8cfb8']);
+    z.push([`Eigene Tode: ${this.tode}`, '#d96b5a']);
+    z.push(['', '']);
+    z.push(['Fertigkeiten:', '#c9a227']);
+    z.push([`  Nahkampf ${this.p.schools.nahkampf.level} · Zauberei ${this.p.schools.zauberei.level} · Bogen ${this.p.schools.bogen.level}`, '#d8cfb8']);
+    return z;
   }
 
   protected override toggleChronik(): void {
@@ -3793,6 +3903,19 @@ export class WorldScene extends CombatScene {
       ctx.fillRect(0, 0, 128, 128);
       this.textures.addCanvas('warmblob', c);
     }
+    if (!this.textures.exists('farbblob')) {
+      // neutraler weißer Verlauf - die Farbe kommt über den Tint (Runde 31)
+      const c2 = document.createElement('canvas');
+      c2.width = 128;
+      c2.height = 128;
+      const ctx2 = c2.getContext('2d')!;
+      const grad2 = ctx2.createRadialGradient(64, 64, 0, 64, 64, 64);
+      grad2.addColorStop(0, 'rgba(255,255,255,0.42)');
+      grad2.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx2.fillStyle = grad2;
+      ctx2.fillRect(0, 0, 128, 128);
+      this.textures.addCanvas('farbblob', c2);
+    }
   }
 
   private fogGfx: Phaser.GameObjects.Graphics | null = null;
@@ -3874,6 +3997,23 @@ export class WorldScene extends CombatScene {
       this.eraseLight(sx, sy - 4 * zm, (95 + Math.sin(time * 7 + t.ph) * 10) * zm);
       warmIdx = this.placeWarm(warmIdx, t.x, t.y - 4, 70, 0.7);
     }
+    // Farbige Magie-Lichter in der Krypta (Runde 31): Kerzenschreine
+    // bläulich, Altäre violett, Blutbrunnen rot - pulsierend
+    if (this.area.dark && !fow) {
+      const puls = 0.55 + Math.sin(time * 2.2) * 0.12;
+      const nah = (x2: number, y2: number) => Math.hypot(x2 - this.px, y2 - this.py) < basisRadius * 1.35;
+      for (const s2 of this.area.shrines) {
+        if (nah(s2.x, s2.y)) warmIdx = this.placeWarm(warmIdx, s2.x, s2.y - 4, 64, puls, 0x6a9af0);
+      }
+      for (const al of this.area.altars) {
+        if (nah(al.x, al.y)) warmIdx = this.placeWarm(warmIdx, al.x, al.y - 4, 78, puls, 0x9a6ae8);
+      }
+      for (const sp2 of this.area.special) {
+        if (sp2.id === 'blutbrunnen' && nah(sp2.x * TILE + 16, sp2.y * TILE + 16)) {
+          warmIdx = this.placeWarm(warmIdx, sp2.x * TILE + 16, sp2.y * TILE + 16, 70, puls, 0xd83a3a);
+        }
+      }
+    }
     for (let i = warmIdx; i < this.warmPool.length; i++) this.warmPool[i].setVisible(false);
     this.lightRT.setAlpha(Math.min(1, 100 / getSettings().bright));
   }
@@ -3888,12 +4028,15 @@ export class WorldScene extends CombatScene {
     this.lightRT.erase(this.lightScratch, x, y);
   }
 
-  private placeWarm(idx: number, x: number, y: number, radius: number, alpha: number): number {
+  // tint gesetzt = farbiges Magie-Licht (weißer Blob wird eingefärbt)
+  private placeWarm(idx: number, x: number, y: number, radius: number, alpha: number, tint?: number): number {
     while (this.warmPool.length <= idx) {
       const img = this.add.image(0, 0, 'warmblob').setBlendMode(Phaser.BlendModes.ADD).setDepth(4010);
       this.warmPool.push(img);
     }
     const img = this.warmPool[idx];
+    img.setTexture(tint ? 'farbblob' : 'warmblob');
+    img.setTint(tint ?? 0xffffff);
     img.setVisible(true).setPosition(x, y).setScale((radius * 2) / 128).setAlpha(alpha);
     return idx + 1;
   }
@@ -4263,6 +4406,8 @@ export class WorldScene extends CombatScene {
     this.animiereWasser(dt);
     this.animiereHaeuser(dt);
     this.treibeNebel(dt);
+    this.renderStimmung();
+    this.spieleSchritte(dt);
     // Bosskampf über drei Kammern (Runde 21, ersetzt das Hinab-Reißen):
     // bei 66%/33% Leben weicht der Ritter durch das Gittertor nach Norden,
     // schickt eine Welle - und stellt sich erst, wenn der Held ihm folgt
