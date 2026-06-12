@@ -3,7 +3,7 @@
 // Gegenstand und Tagebuch. Grafik kommt ausschließlich vom SpriteProvider.
 
 import Phaser from 'phaser';
-import { getSettings } from '../logic/settings';
+import { getSettings, saveSettings } from '../logic/settings';
 import type { Item, GemItem, Rarity } from '../data/types';
 import { RARITY_COLORS, RARITY_NAMES } from '../data/items';
 import { itemStatLine } from '../logic/loot';
@@ -96,6 +96,38 @@ export class UIPanels {
     const bg = this.scene.add.rectangle(0, 0, w, h, PANEL_BG, 0.97).setOrigin(0).setStrokeStyle(1, LINE);
     bg.setInteractive();
     c.add(bg);
+    // Fenster direkt greifen (Runde 23, oft gewünscht): die obere Leiste
+    // zieht das Fenster, der Versatz landet dauerhaft in den Einstellungen
+    // (ui.fenster - gilt damit auch für Handel und Chronik)
+    const griff = this.scene.add.rectangle(0, 0, w - 30, 26, 0xffffff, 0.02).setOrigin(0)
+      .setInteractive({ draggable: true, useHandCursor: true });
+    griff.on('pointerover', () => griff.setFillStyle(0xc9a227, 0.08));
+    griff.on('pointerout', () => griff.setFillStyle(0xffffff, 0.02));
+    // WICHTIG: Schirmkoordinaten des Zeigers nutzen, NICHT die lokalen
+    // drag-Werte - die verschieben sich mit dem Container mit und
+    // schaukeln sich auf (übersteuertes Fenster, Runde 23)
+    let startZeiger: { x: number; y: number } | null = null;
+    let startPos = { x: 0, y: 0 };
+    griff.on('dragstart', (p: Phaser.Input.Pointer) => {
+      startZeiger = { x: p.x, y: p.y };
+      startPos = { x: c.x, y: c.y };
+    });
+    griff.on('drag', (p: Phaser.Input.Pointer) => {
+      if (!startZeiger) return;
+      c.x = startPos.x + (p.x - startZeiger.x);
+      c.y = startPos.y + (p.y - startZeiger.y);
+      const off = getSettings().ui.fenster;
+      off.x = Math.round(c.x - (sw - w) / 2);
+      off.y = Math.round(c.y - (sh - h) / 2);
+    });
+    griff.on('dragend', () => {
+      startZeiger = null;
+      saveSettings();
+    });
+    c.add(griff);
+    c.add(this.scene.add.text(w / 2, 8, '⠿ ziehen zum Verschieben', {
+      fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a',
+    }).setOrigin(0.5, 0));
     c.add(this.scene.add.rectangle(w * 0.46, 8, 1, h - 16, LINE).setOrigin(0));
     this.buildCharacterSide(c, w * 0.46 - 10, h);
     this.buildInventorySide(c, w * 0.46 + 12, w - (w * 0.46 + 12) - 10, h);
