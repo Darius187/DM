@@ -17,7 +17,7 @@ import { newPlayerState, recalc, weaponGem, type PlayerState } from '../logic/pl
 import { addSchoolUse } from '../logic/progression';
 import { applyXp } from '../logic/progression';
 import { MELDUNGEN } from '../data/texte';
-import { getSettings, saveSettings } from '../logic/settings';
+import { getSettings, saveSettings, type Settings } from '../logic/settings';
 import { TUNING, TUNING_ROWS } from '../logic/tuning';
 import { defaultRng, type Rng } from '../logic/rng';
 import { ELITE, ENEMIES } from '../data/enemies';
@@ -167,23 +167,20 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (k === b.interact) this.tryInteract();
       if (k === b.pot) this.drinkPot();
       if (k === b.mpot) this.drinkMpot();
-      if (k === b.s1) this.castSpell(0);
-      if (k === b.s2) this.castSpell(1);
-      if (k === b.s3) this.castSpell(2);
       if (k === '7') this.useFirstScroll();
       if (k === '8') this.runAction('stadtportal');
       if (k === 'b') this.toggleAlbum();
       if (k === 'h') this.toggleChronik();
-      if (k === '9') this.useAbility('feuerregen');
-      if (k === '0') this.useAbility('aderlass');
       if (k === 'f10') { ev.preventDefault(); this.toggleDevPanel(); }
-      // Zauberei-Fähigkeiten reihen sich in die Zauberleiste ein (4-6)
-      if (k === '4') this.useAbility('kettenblitz');
-      if (k === '5') this.useAbility('frostnova');
-      if (k === '6') this.useAbility('bannkreis');
-      // Waffen-Fähigkeiten: R/T wirken je nach Waffe (Nahkampf/Bogen)
-      if (k === b.faehigkeit1) this.useAbility(this.weaponClass() === 'bogen' ? 'mehrfachschuss' : 'rundumschlag');
-      if (k === b.faehigkeit2) this.useAbility(this.weaponClass() === 'bogen' ? 'markierterTod' : 'sturmangriff');
+      // Tastenleiste frei belegbar (Runde 26, "wie bei WoW"): jede Taste
+      // führt aus, was der Spieler auf ihren Slot gelegt hat
+      const slotTaste: Record<string, keyof Settings['tasten']> = {
+        [b.s1]: 't1', [b.s2]: 't2', [b.s3]: 't3',
+        '4': 't4', '5': 't5', '6': 't6', '9': 't9', '0': 't0',
+        [b.faehigkeit1]: 'tr', [b.faehigkeit2]: 'tt',
+      };
+      const slot = slotTaste[k];
+      if (slot) this.runAction(getSettings().tasten[slot]);
       this.onGameKey(k);
     });
     kb.on('keyup', (ev: KeyboardEvent) => {
@@ -198,6 +195,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (this.playerDead || this.uiBlocked()) return;
       if (this.uiEditMode) return; // UI-Modus: Maus gehört den Griffen
       if (this.klickAufUi(ptr)) return; // Leiste/Menü: kein Weltklick
+      // Genereller UI-Schutz (Runde 26): landet der Klick auf IRGENDEINEM
+      // bildschirmfesten, anklickbaren Element (Chronik-Tabs, Album,
+      // Entwicklungskasten ...), schlägt der Held NICHT zu
+      const uiTreffer = this.input.hitTestPointer(ptr) as Array<Phaser.GameObjects.GameObject & { scrollFactorX?: number }>;
+      if (uiTreffer.some((o) => o.scrollFactorX === 0)) return;
       const feld = mausFeld(ptr.button);
       if (!feld) return;
       const aktion = getSettings().maus[feld];
@@ -770,7 +772,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const range = (heavy ? HEAVY_ATTACK.range : (fin ? LIGHT_ATTACK.rangeFinisher : LIGHT_ATTACK.range)) * TUNING.spielerReichweite;
     const arc = (heavy ? HEAVY_ATTACK.arc : (fin ? LIGHT_ATTACK.arcFinisher : LIGHT_ATTACK.arc)) * TUNING.spielerSchwungBreite;
     const sweep = ev.comboIndex === 1 ? -1 : 1;
-    this.fx.addSwing(this.px, this.py, ang, { fin: fin || heavy, col: st.col, w: st.w + (heavy ? 2 : 0), glow: st.glow, sweep, arc });
+    // Der sichtbare Schwung folgt der eingestellten Reichweite (Runde 26:
+    // vorher zeigte er bei runtergeregelter Reichweite zu viel)
+    this.fx.addSwing(this.px, this.py, ang, { fin: fin || heavy, col: st.col, w: st.w + (heavy ? 2 : 0), glow: st.glow, sweep, arc, radius: range - 6 });
     if (st.spark || fin) {
       for (let i = 0; i < (fin ? 7 : 4); i++) {
         const a2 = ang + (Math.random() * 1.8 - 0.9);
@@ -1067,6 +1071,23 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   }
 
   spawnEnemy(type: EnemyTypeId, depth: number, x: number, y: number, elite = false): Enemy {
+    // Entklemmen (Runde 26): Spawns in Wänden/Altären hingen unsichtbar
+    // fest - auf die nächste freie Kachel ausweichen (Ringsuche)
+    if (this.isSolidAt(x, y)) {
+      suche: for (let r = 1; r <= 12; r++) {
+        for (let dy = -r; dy <= r; dy++) {
+          for (let dx = -r; dx <= r; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+            const nx = x + dx * 32, ny = y + dy * 32;
+            if (!this.isSolidAt(nx, ny)) {
+              x = nx;
+              y = ny;
+              break suche;
+            }
+          }
+        }
+      }
+    }
     const e = new Enemy(type, depth, x, y, this.rng);
     if (elite) e.makeElite(this.rng);
     // Krypta-Gegner schleichen statt wuseln (Runde 16: Spannung) -

@@ -24,6 +24,8 @@ export interface Settings {
   lefty: boolean;
   // Maustasten-Belegung: Aktions-Kennungen für Links/Rechts/Mitte/Daumen1/Daumen2
   maus: { m1: string; m2: string; m3: string; m4: string; m5: string };
+  // Tastenleiste frei belegbar (Runde 26, "wie bei WoW"): Slot -> Aktion
+  tasten: { t1: string; t2: string; t3: string; t4: string; t5: string; t6: string; t9: string; t0: string; tr: string; tt: string };
   vorlesen: boolean;      // Dialogtexte per Sprachausgabe vorlesen
   // UI-Versatz (im Entwicklungskasten verschiebbar, Runde 11)
   ui: { hotbar: { x: number; y: number }; mausleiste: { x: number; y: number }; dialog: { x: number; y: number }; log: { x: number; y: number }; orbHp: { x: number; y: number }; orbMp: { x: number; y: number }; fenster: { x: number; y: number } };
@@ -43,6 +45,7 @@ export const DEF_SETTINGS: Settings = {
   blood: true,
   lefty: false,
   maus: { m1: 'angriff', m2: 'block', m3: 's1', m4: 'pot', m5: 's3' },
+  tasten: { t1: 's1', t2: 's2', t3: 's3', t4: 'kettenblitz', t5: 'frostnova', t6: 'bannkreis', t9: 'feuerregen', t0: 'aderlass', tr: 'waffe1', tt: 'waffe2' },
   vorlesen: false,
   ui: { hotbar: { x: 0, y: 0 }, mausleiste: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 } },
   kb: {
@@ -66,6 +69,7 @@ export function getSettings(): Settings {
       Object.assign(current, saved);
       current.kb = { ...DEF_SETTINGS.kb, ...(saved.kb ?? {}) };
       current.maus = { ...DEF_SETTINGS.maus, ...(saved.maus ?? {}) };
+      current.tasten = { ...DEF_SETTINGS.tasten, ...(saved.tasten ?? {}) };
       current.ui = {
         hotbar: { ...DEF_SETTINGS.ui.hotbar, ...(saved.ui?.hotbar ?? {}) },
         mausleiste: { ...DEF_SETTINGS.ui.mausleiste, ...(saved.ui?.mausleiste ?? {}) },

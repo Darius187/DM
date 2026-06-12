@@ -40,8 +40,16 @@ export class SettingsScene extends Phaser.Scene {
     };
     sect('AUDIO');
     y = this.slider(y, 'Lautstärke Effekte', () => s.volEffekte, (v) => { s.volEffekte = v; });
-    y = this.slider(y, 'Lautstärke Atmosphäre', () => s.volAtmosphaere, (v) => { s.volAtmosphaere = v; });
-    y = this.slider(y, 'Lautstärke Musik', () => s.volMusik, (v) => { s.volMusik = v; });
+    y = this.slider(y, 'Lautstärke Atmosphäre', () => s.volAtmosphaere, (v) => {
+      s.volAtmosphaere = v;
+      this.passeLaufendeAn(false, v);
+    });
+    // Runde 26: wirkt SOFORT auf laufende Stücke - vorher griff der Regler
+    // erst beim nächsten Musikstart ("es passiert nichts")
+    y = this.slider(y, 'Lautstärke Musik', () => s.volMusik, (v) => {
+      s.volMusik = v;
+      this.passeLaufendeAn(true, v);
+    });
     sect('GRAFIK & EFFEKTE');
     // Bildgröße (Runde 23 überarbeitet): NUR im Hauptmenü änderbar - im
     // laufenden Spiel behalten fertig aufgebaute Szenen sonst ihre alten
@@ -122,6 +130,18 @@ export class SettingsScene extends Phaser.Scene {
       if (lbl) lbl.setText(keyLabel(getSettings().kb[this.pendingBind]));
       this.pendingBind = null;
     });
+  }
+
+  // Laufende Klänge sofort auf die neue Lautstärke ziehen: Musik-Stücke
+  // (snd_musik_*) beim Musik-Regler, alles andere (Atmosphären-Schleifen)
+  // beim Atmosphäre-Regler
+  private passeLaufendeAn(musik: boolean, wert: number): void {
+    const mgr = this.sound as Phaser.Sound.BaseSoundManager & { sounds?: Phaser.Sound.BaseSound[] };
+    for (const snd of mgr.sounds ?? []) {
+      if (!snd.isPlaying) continue;
+      const istMusik = snd.key.startsWith('snd_musik_');
+      if (istMusik === musik) (snd as Phaser.Sound.WebAudioSound).setVolume(wert / 100);
+    }
   }
 
   private slider(y: number, label: string, get: () => number, set: (v: number) => void, min = 0, max = 100): number {

@@ -9,10 +9,13 @@ import { TUNING } from '../logic/tuning';
 import type { PlayerState } from '../logic/playerState';
 import type { WeaponClass } from '../data/types';
 
+// Wo die Belegung eines Slots gespeichert liegt (Maus- oder Tastenleiste)
+interface Belegung { store: 'maus' | 'tasten'; feld: string }
+
 interface SlotDef {
   key: string;
-  belegung?: 'm1' | 'm2' | 'm3' | 'm4' | 'm5'; // belegbarer Maus-Slot
-  aktion?: () => string;    // Aktions-Kennung zum Ziehen auf die Maus-Leiste
+  belegung?: Belegung;      // alle Slots sind frei belegbar (Runde 26)
+  aktion?: () => string;    // aktuelle Aktions-Kennung (fürs Tauschen)
   ico: () => string;
   name: () => string;
   desc: () => string;
@@ -74,44 +77,10 @@ export class Hud {
       fontFamily: 'serif', fontSize: '11px', color: '#bfa86f', letterSpacing: 1,
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(4603);
 
-    // Leistenbelegung: 1-3 Zauber, 4-6 Zauberei-Fähigkeiten, R/T Waffe
+    // ALLE Slots sind frei belegbar (Runde 26, "wie bei WoW"): Rechtsklick
+    // öffnet die Aktionsliste, Ziehen tauscht zwei Slots
     const p = this.getP;
-    const spellSlot = (i: number, ico: string, desc: string): SlotDef => ({
-      key: String(i + 1),
-      aktion: () => `s${i + 1}`,
-      ico: () => ico,
-      name: () => SPELLS[i].name,
-      desc: () => desc,
-      kosten: () => `${SPELLS[i].mana} Mana`,
-      cdFrac: () => (p().spellCds[i] > 0 ? p().spellCds[i] / SPELLS[i].cd : 0),
-      cdSek: () => p().spellCds[i],
-      locked: () => (!TUNING.alleZauberFrei && p().level < SPELLS[i].unlock ? `ab Spieler-Stufe ${SPELLS[i].unlock}` : null),
-    });
-    const abilitySlot = (key: string, id: () => string, ico: () => string, aktionId?: string): SlotDef => ({
-      key,
-      aktion: () => aktionId ?? id(),
-      ico,
-      name: () => ABILITIES.find((a) => a.id === id())?.name ?? '',
-      desc: () => ABILITIES.find((a) => a.id === id())?.beschreibung ?? '',
-      kosten: () => {
-        const fx = (ABILITY_FX as Record<string, { mana?: number; cd: number }>)[id()];
-        return fx?.mana ? `${fx.mana} Mana` : 'kostenlos';
-      },
-      cdFrac: () => {
-        const fx = (ABILITY_FX as Record<string, { cd: number }>)[id()];
-        const cd = p().abilityCds[id()] ?? 0;
-        return fx && cd > 0 ? cd / fx.cd : 0;
-      },
-      cdSek: () => p().abilityCds[id()] ?? 0,
-      locked: () => {
-        const def = ABILITIES.find((a) => a.id === id());
-        if (!def || TUNING.alleZauberFrei) return null;
-        const schule = { nahkampf: 'Nahkampf', zauberei: 'Zauberei', bogen: 'Bogenschießen' }[def.school];
-        return p().schools[def.school].level < def.unlock ? `ab ${schule} Stufe ${def.unlock}` : null;
-      },
-    });
     const bogen = () => this.getWeaponClass() === 'bogen';
-    // Belegbare Maus-Slots: Rechtsklick wechselt die Aktion durch
     const AKTIONEN: Array<[string, string, string]> = [
       ['angriff', '⚔', 'Angriff (Waffe)'], ['block', '⛨', 'Blocken (gedrückt halten)'],
       ['s1', '✦', 'Feuerball'], ['s2', '☩', 'Heiliges Licht'], ['s3', '❧', 'Heilung'],
@@ -122,44 +91,66 @@ export class Hud {
       ['pot', '🧪', 'Heiltrank'], ['mpot', '⚗', 'Manatrank'], ['rolle', '📜', 'Schriftrolle'],
       ['stadtportal', '⌂', 'Stadtportal (nach Boss-Sieg)'],
     ];
-    const mausSlot = (key: string, feld: 'm1' | 'm2' | 'm3' | 'm4' | 'm5', tasteName: string): SlotDef => {
-      const akt = () => AKTIONEN.find((a) => a[0] === getSettings().maus[feld]) ?? AKTIONEN[0];
-      const spellIdx = () => ['s1', 's2', 's3'].indexOf(akt()[0]);
+    // Waffen-Slots zeigen die Fähigkeit der AKTUELLEN Waffe
+    const echteId = (id: string): string => (id === 'waffe1' ? (bogen() ? 'mehrfachschuss' : 'rundumschlag')
+      : id === 'waffe2' ? (bogen() ? 'markierterTod' : 'sturmangriff') : id);
+    const belegbar = (key: string, quelle: Belegung, tasteName: string): SlotDef => {
+      const aktId = () => (getSettings()[quelle.store] as Record<string, string>)[quelle.feld] ?? 'pot';
+      const eintrag = () => AKTIONEN.find((a) => a[0] === aktId()) ?? AKTIONEN[0];
+      const spellIdx = () => ['s1', 's2', 's3'].indexOf(aktId());
+      const fxVon = () => (ABILITY_FX as Record<string, { mana?: number; cd: number } | undefined>)[echteId(aktId())];
       return {
         key,
-        ico: () => akt()[1],
-        name: () => `${akt()[2]} (${tasteName})`,
-        desc: () => 'Belegen: Zauber von der Tastenleiste hierher ziehen - oder Rechtsklick für die Liste',
-        kosten: () => (spellIdx() >= 0 ? `${SPELLS[spellIdx()].mana} Mana` : ''),
+        belegung: quelle,
+        aktion: aktId,
+        ico: () => (aktId() === 'waffe1' && bogen() ? '⫶' : aktId() === 'waffe2' && bogen() ? '◎' : eintrag()[1]),
+        name: () => `${eintrag()[2]} (${tasteName})`,
+        desc: () => 'Rechtsklick: Belegung wählen · Ziehen auf einen anderen Slot: tauschen',
+        kosten: () => {
+          const i = spellIdx();
+          if (i >= 0) return `${SPELLS[i].mana} Mana`;
+          const fx = fxVon();
+          return fx ? (fx.mana ? `${fx.mana} Mana` : 'kostenlos') : '';
+        },
         cdFrac: () => {
           const i = spellIdx();
-          return i >= 0 && p().spellCds[i] > 0 ? p().spellCds[i] / SPELLS[i].cd : 0;
+          if (i >= 0) return p().spellCds[i] > 0 ? p().spellCds[i] / SPELLS[i].cd : 0;
+          const fx = fxVon();
+          const cd = p().abilityCds[echteId(aktId())] ?? 0;
+          return fx && cd > 0 ? cd / fx.cd : 0;
         },
         cdSek: () => {
           const i = spellIdx();
-          return i >= 0 ? p().spellCds[i] : 0;
+          if (i >= 0) return p().spellCds[i];
+          return p().abilityCds[echteId(aktId())] ?? 0;
         },
-        locked: () => null,
-        belegung: feld,
+        locked: () => {
+          if (TUNING.alleZauberFrei) return null;
+          const i = spellIdx();
+          if (i >= 0) return p().level < SPELLS[i].unlock ? `ab Spieler-Stufe ${SPELLS[i].unlock}` : null;
+          const def = ABILITIES.find((a) => a.id === echteId(aktId()));
+          if (!def) return null;
+          const schule = { nahkampf: 'Nahkampf', zauberei: 'Zauberei', bogen: 'Bogenschießen' }[def.school];
+          return p().schools[def.school].level < def.unlock ? `ab ${schule} Stufe ${def.unlock}` : null;
+        },
       };
     };
     this.slots = [
-      spellSlot(0, '✦', 'Feuriges Geschoss mit Flächenschaden'),
-      spellSlot(1, '☩', 'Heiliger Schlag um dich herum'),
-      spellSlot(2, '❧', 'Heilt einen Teil deines Lebens'),
-      abilitySlot('4', () => 'kettenblitz', () => '⌁'),
-      abilitySlot('5', () => 'frostnova', () => '❄'),
-      abilitySlot('6', () => 'bannkreis', () => '◎'),
-      abilitySlot('9', () => 'feuerregen', () => '☄'),
-      abilitySlot('0', () => 'aderlass', () => '⚱'),
-      abilitySlot('R', () => (bogen() ? 'mehrfachschuss' : 'rundumschlag'), () => (bogen() ? '⫶' : '↻'), 'waffe1'),
-      abilitySlot('T', () => (bogen() ? 'markierterTod' : 'sturmangriff'), () => (bogen() ? '◎' : '⇒'), 'waffe2'),
-      // Belegbare Maus-Slots (Rechtsklick wechselt)
-      mausSlot('M1', 'm1', 'Linke Maustaste'),
-      mausSlot('M2', 'm2', 'Rechte Maustaste'),
-      mausSlot('M3', 'm3', 'Maustaste Mitte'),
-      mausSlot('M4', 'm4', 'Daumentaste 1'),
-      mausSlot('M5', 'm5', 'Daumentaste 2'),
+      belegbar('1', { store: 'tasten', feld: 't1' }, 'Taste 1'),
+      belegbar('2', { store: 'tasten', feld: 't2' }, 'Taste 2'),
+      belegbar('3', { store: 'tasten', feld: 't3' }, 'Taste 3'),
+      belegbar('4', { store: 'tasten', feld: 't4' }, 'Taste 4'),
+      belegbar('5', { store: 'tasten', feld: 't5' }, 'Taste 5'),
+      belegbar('6', { store: 'tasten', feld: 't6' }, 'Taste 6'),
+      belegbar('9', { store: 'tasten', feld: 't9' }, 'Taste 9'),
+      belegbar('0', { store: 'tasten', feld: 't0' }, 'Taste 0'),
+      belegbar('R', { store: 'tasten', feld: 'tr' }, 'Taste R'),
+      belegbar('T', { store: 'tasten', feld: 'tt' }, 'Taste T'),
+      belegbar('M1', { store: 'maus', feld: 'm1' }, 'Linke Maustaste'),
+      belegbar('M2', { store: 'maus', feld: 'm2' }, 'Rechte Maustaste'),
+      belegbar('M3', { store: 'maus', feld: 'm3' }, 'Maustaste Mitte'),
+      belegbar('M4', { store: 'maus', feld: 'm4' }, 'Daumentaste 1'),
+      belegbar('M5', { store: 'maus', feld: 'm5' }, 'Daumentaste 2'),
     ];
     this.aktionen = AKTIONEN;
     this.buildSlotObjects();
@@ -222,7 +213,7 @@ export class Hud {
         zone.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
           if (!ptr.rightButtonDown()) return;
           this.hideTooltip();
-          this.openBelegungsMenue(s, this.slotX(i));
+          this.openBelegungsMenue(s, this.slotX(i), this.slotY(i));
         });
       }
       // Drag & Drop (Runde 20): Zauber von der Tastenleiste auf einen
@@ -256,25 +247,24 @@ export class Hud {
     if (!ghost) return;
     ghost.destroy();
     if (von < 0) return;
-    // Liegt unter dem Zeiger ein Maus-Slot?
+    // Liegt unter dem Zeiger irgendein anderer Slot? Dann tauschen (R26)
     let ziel = -1;
-    for (let j = KB_SLOTS; j < this.slots.length; j++) {
+    for (let j = 0; j < this.slots.length; j++) {
       if (Math.abs(ptr.x - this.slotX(j)) <= 23 && Math.abs(ptr.y - this.slotY(j)) <= 23) { ziel = j; break; }
     }
     if (ziel < 0 || ziel === von) return;
-    const maus = getSettings().maus;
-    const zielFeld = this.slots[ziel].belegung!;
-    const quelle = this.slots[von];
-    if (quelle.belegung) {
-      // Maus-Slot auf Maus-Slot: Belegungen tauschen
-      const merk = maus[quelle.belegung];
-      maus[quelle.belegung] = maus[zielFeld];
-      maus[zielFeld] = merk;
-    } else if (quelle.aktion) {
-      maus[zielFeld] = quelle.aktion();
-    } else {
-      return;
-    }
+    const a = this.slots[von].belegung;
+    const b = this.slots[ziel].belegung;
+    if (!a || !b) return;
+    const s = getSettings();
+    const lese = (q: Belegung) => (s[q.store] as Record<string, string>)[q.feld];
+    const schreibe = (q: Belegung, wert: string) => { (s[q.store] as Record<string, string>)[q.feld] = wert; };
+    const merk = lese(a);
+    // Halten-Aktionen (Angriff/Blocken) funktionieren nur auf Maustasten
+    const haltAktion = (id: string) => id === 'angriff' || id === 'block';
+    if ((b.store === 'tasten' && haltAktion(merk)) || (a.store === 'tasten' && haltAktion(lese(b)))) return;
+    schreibe(a, lese(b));
+    schreibe(b, merk);
     saveSettings();
   }
 
@@ -300,7 +290,7 @@ export class Hud {
     this.menue = null;
   }
 
-  private openBelegungsMenue(s: SlotDef, slotX: number): void {
+  private openBelegungsMenue(s: SlotDef, slotX: number, slotY: number): void {
     this.closeMenue();
     const feld = s.belegung!;
     const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(5300);
@@ -311,17 +301,19 @@ export class Hud {
     deckel.on('pointerdown', () => this.closeMenue());
     c.add(deckel);
     const breite = 230, zeileH = 24;
-    const hoehe = this.aktionen.length * zeileH + 30;
+    // Halten-Aktionen (Angriff/Blocken) nur auf Maustasten anbieten
+    const liste = feld.store === 'tasten' ? this.aktionen.filter(([id]) => id !== 'angriff' && id !== 'block') : this.aktionen;
+    const hoehe = liste.length * zeileH + 30;
     const mx = Math.min(Math.max(8, slotX - breite / 2), this.scene.scale.width - breite - 8);
-    const my = this.slotY(KB_SLOTS) - 30 - hoehe;
+    const my = slotY - 30 - hoehe;
     const bg = this.scene.add.rectangle(mx, my, breite, hoehe, 0x171108, 0.98).setOrigin(0).setStrokeStyle(1, 0xc9a227);
     bg.setInteractive();
     c.add(bg);
     c.add(this.scene.add.text(mx + 10, my + 6, `BELEGUNG ${s.key}`, {
       fontFamily: 'serif', fontSize: '12px', color: '#c9a227', letterSpacing: 1,
     }));
-    const aktiv = getSettings().maus[feld];
-    this.aktionen.forEach(([id, ico, name], i) => {
+    const aktiv = (getSettings()[feld.store] as Record<string, string>)[feld.feld];
+    liste.forEach(([id, ico, name], i) => {
       const zy = my + 26 + i * zeileH;
       const eintrag = this.scene.add.text(mx + 10, zy, `${ico}  ${name}`, {
         fontFamily: 'serif', fontSize: '13px',
@@ -332,7 +324,7 @@ export class Hud {
       eintrag.on('pointerover', () => eintrag.setColor('#c9a227'));
       eintrag.on('pointerout', () => eintrag.setColor(id === aktiv ? '#c9a227' : '#d8cfb8'));
       eintrag.on('pointerdown', () => {
-        getSettings().maus[feld] = id;
+        (getSettings()[feld.store] as Record<string, string>)[feld.feld] = id;
         saveSettings();
         this.closeMenue();
       });
@@ -432,7 +424,7 @@ export class Hud {
     // Tastenkürzel als Teil der Leiste zeichnen (Texte wären teurer)
     // -> stattdessen im Tooltip und unter der Leiste:
     this.infoText.setPosition(w / 2 + getSettings().ui.hotbar.x, h - 42 + getSettings().ui.hotbar.y)
-      .setText(`1-6/9/0 Zauber · R/T Waffe · ${kb.roll === ' ' ? 'LEER' : kb.roll.toUpperCase()} Rolle · B Album · H Chronik · ${extra}`);
+      .setText(`Slots: Rechtsklick = belegen, Ziehen = tauschen · ${kb.roll === ' ' ? 'LEER' : kb.roll.toUpperCase()} Rolle · B Album · H Chronik · ${extra}`);
     // Beschriftung ÜBER der Maus-Leiste, damit sie der Infozeile der
     // Tastenleiste nicht in die Quere kommt
     this.mausInfo.setPosition(
