@@ -15,7 +15,7 @@ export interface EnemyHost {
   playerY(): number;
   playerR(): number;
   enemyMeleeHit(e: Enemy, dmg: number): void;
-  spawnEnemyProjectile(x: number, y: number, vx: number, vy: number, dmg: number, col: string): void;
+  spawnEnemyProjectile(x: number, y: number, vx: number, vy: number, dmg: number, col: string, pfeil?: boolean): void;
   addTelegraph(x: number, y: number, r: number, t: number, dmg: number): void;
   summonAdds(e: Enemy, n: number): void;
   logMsg(text: string, cls?: string): void;
@@ -114,6 +114,9 @@ export class Enemy {
   versteckt = false;
   // Schildträger (Runde 11): blockt Treffer von vorn, weicht nicht zurück
   schild = false;
+  // Schild-Haltung (Runde 20): kurz volle Frontdeckung, dann wieder offen
+  blockT = 0;
+  private blockCd = 2 + Math.random() * 2;
 
   // bei Treffern zurückweichen (Feedback-Runde 2)
   onHurt(): void {
@@ -215,6 +218,16 @@ export class Enemy {
       this.stun -= dt;
       return;
     }
+    // Schild-Haltung: nahe am Spieler regelmäßig in Deckung gehen
+    if (this.schild) {
+      this.blockT = Math.max(0, this.blockT - dt);
+      this.blockCd = Math.max(0, this.blockCd - dt);
+      if (this.blockCd === 0 && d < 90 && this.blockT === 0) {
+        this.blockT = 0.9 + Math.random() * 0.5;
+        this.blockCd = 2.5 + Math.random() * 2;
+      }
+      if (this.blockT > 0) return; // in Deckung: stehen, nicht angreifen
+    }
     // Doppelhieb: zweiter Schlag kurz nach dem ersten
     if (this.secondHitT > 0) {
       this.secondHitT -= dt;
@@ -247,7 +260,7 @@ export class Enemy {
       if (this.shootCd === 0) {
         this.shootCd = ENEMY_AI.rangedShootCd;
         const a = ang + (Math.random() * 0.12 - 0.06);
-        host.spawnEnemyProjectile(this.x, this.y, Math.cos(a) * ENEMY_AI.rangedProjSpeed, Math.sin(a) * ENEMY_AI.rangedProjSpeed, this.dmg, '#cfc4a8');
+        host.spawnEnemyProjectile(this.x, this.y, Math.cos(a) * ENEMY_AI.rangedProjSpeed, Math.sin(a) * ENEMY_AI.rangedProjSpeed, this.dmg, '#cfc4a8', true);
         host.playSound('pfeil_schuss');
       }
       if (d < ENEMY_AI.rangedKeepDist) {

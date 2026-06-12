@@ -19,6 +19,7 @@ export interface FigureSpec {
   scale?: number;       // Templer ist größer
   skeletal?: boolean;   // Skelett-Look (Rippen)
   glow?: string;        // Schatten-Look (Umriss-Glühen)
+  augen?: string;       // Augenfarbe (rot glühend bei Untoten, Runde 20)
 }
 
 export type Dir = 0 | 1 | 2 | 3; // unten, links, rechts, oben
@@ -117,8 +118,8 @@ function drawHumanoidParts(ctx: CanvasRenderingContext2D, f: FigureSpec, dir: Di
     p(ctx, 5, 1 + bob, 6, 2, f.hair);
     p(ctx, 5, 1 + bob, 3, 1, shade(f.hair, 18));
   }
-  // Gesicht je Richtung
-  ctx.fillStyle = f.skeletal ? '#1a0808' : '#26180e';
+  // Gesicht je Richtung - Untote glühen rot (Runde 20)
+  ctx.fillStyle = f.augen ?? (f.skeletal ? '#1a0808' : '#26180e');
   if (dir === 0) { p(ctx, 6, 4 + bob, 1, 1); p(ctx, 9, 4 + bob, 1, 1); }
   if (dir === 1) { p(ctx, 5, 4 + bob, 1, 1); p(ctx, 7, 4 + bob, 1, 1); }
   if (dir === 2) { p(ctx, 8, 4 + bob, 1, 1); p(ctx, 10, 4 + bob, 1, 1); }
@@ -239,10 +240,10 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   // Held (Runde 19): zurück zur Zeichen-Figur, aber markanter - heller
   // Blaugrau-Mantel, kräftige Haut, etwas größer als das Dorfvolk
   spieler:   { tunic: '#46588a', skin: '#d0b08c', hair: '#2e2418', legs: '#262030', weapon: 'schwert', scale: 1.15 },
-  pest:      { tunic: '#5a7a3a', skin: '#9aa87a', hair: '#46602e', legs: '#3a4a26', weapon: null },
-  skelett:   { tunic: '#cfc4a8', skin: '#e0d8c0', hair: '#cfc4a8', legs: '#b8ae90', weapon: 'keule', skeletal: true },
-  schuetze:  { tunic: '#b8a888', skin: '#d0c8b0', hair: '#b8a888', legs: '#a09070', weapon: 'bogen', skeletal: true },
-  schatten:  { tunic: '#3a3450', skin: '#2a2440', hair: '#1e1a30', legs: '#16122a', weapon: null, glow: '#b06ae8' },
+  pest:      { tunic: '#5a7a3a', skin: '#9aa87a', hair: '#46602e', legs: '#3a4a26', weapon: null, augen: '#d83030' },
+  skelett:   { tunic: '#cfc4a8', skin: '#e0d8c0', hair: '#cfc4a8', legs: '#b8ae90', weapon: 'schwert', skeletal: true, augen: '#e03030' },
+  schuetze:  { tunic: '#b8a888', skin: '#d0c8b0', hair: '#b8a888', legs: '#a09070', weapon: 'bogen', skeletal: true, augen: '#e03030' },
+  schatten:  { tunic: '#3a3450', skin: '#2a2440', hair: '#1e1a30', legs: '#16122a', weapon: null, glow: '#b06ae8', augen: '#e84860' },
   templer:   { tunic: '#6a6258', skin: '#8a8278', hair: '#3a3430', legs: '#4a443c', weapon: 'schwert', hat: '#56504a', scale: 1.5 },
   wolf:      { quad: { body: '#4a4440', head: '#3c3834', size: 1, tail: true, ears: true } },
   ratte:     { quad: { body: '#5a4a3a', head: '#4c3e30', size: 0.6, tail: true } },

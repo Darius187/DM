@@ -48,6 +48,8 @@ export class DialogUI {
   private hasChoices = false;
   open = false;
   onClose: (() => void) | null = null;
+  // Chronik-Hook (Runde 20): jede gezeigte Seite wird gemeldet
+  onPage: ((sprecher: string, text: string) => void) | null = null;
 
   constructor(private scene: Phaser.Scene, private provider: SpriteProvider) {
     // Weiter per Taste (E/Enter/Leertaste), solange keine Auswahl ansteht
@@ -77,6 +79,7 @@ export class DialogUI {
     const page = this.queue.shift()!;
     this.hasChoices = !!page.choices;
     page.onShow?.();
+    this.onPage?.(this.speaker, page.text);
     vorlesen(page.text);
     this.build(page);
   }

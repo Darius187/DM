@@ -25,6 +25,7 @@ import type { EnemyTypeId, WeaponClass } from '../data/types';
 import { ABILITY_FX, ABILITIES, LORE_XP } from '../data/balancing';
 import { PickupSystem, AUTO_PICKUP, type Pickup } from './Pickups';
 import { fixUiScroll } from '../ui/dialog';
+import { mausLeisteAnkerX } from '../ui/hud';
 import { TouchControls, isTouchDevice, type TouchHost } from '../ui/touch';
 import { UIPanels } from '../ui/panels';
 import { rollGear, rollGem } from '../logic/loot';
@@ -172,6 +173,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (k === '7') this.useFirstScroll();
       if (k === '8') this.runAction('stadtportal');
       if (k === 'b') this.toggleAlbum();
+      if (k === 'h') this.toggleChronik();
       if (k === '9') this.useAbility('feuerregen');
       if (k === '0') this.useAbility('aderlass');
       if (k === 'f10') { ev.preventDefault(); this.toggleDevPanel(); }
@@ -218,6 +220,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     });
     this.game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
+
+  // Chronik-Hook (Runde 20): die Welt sammelt Geschichte/Beute/Ereignisse
+  protected chronik(_kat: 'geschichte' | 'beute' | 'ereignis', _text: string): void { /* Welt überschreibt */ }
+  protected toggleChronik(): void { /* Welt überschreibt */ }
 
   // --- Sammelalbum (Taste B, Feedback-Runde 6) --------------------------------
   // Jagdstatistik, besiegte Vorsteher, epische Funde, gelesene Notizen
@@ -294,7 +300,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }).setOrigin(0.5).setScrollFactor(0));
     // Anker: Standardposition jedes UI-Teils; der Versatz ist die Differenz
     const teile: Array<[keyof typeof ui, string, number, number]> = [
-      ['hotbar', 'AKTIONSLEISTE', w / 2, h - 66],
+      ['hotbar', 'TASTEN-LEISTE', w / 2, h - 66],
+      ['mausleiste', 'MAUS-LEISTE', mausLeisteAnkerX(w) + 115, h - 66],
       ['dialog', 'DIALOGRAHMEN', w / 2, h - 220],
       ['log', 'MELDUNGEN', w / 2, h - 150],
       ['orbHp', 'LEBENS-KUGEL', 70, h - 66],
@@ -494,6 +501,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.p.inv.push(pk.item);
       const r = pk.item.rarity;
       this.logMsg(`${pk.item.name} aufgehoben`, r >= 3 ? 'magic' : r === 2 ? 'gold' : r === 1 ? 'magic' : '');
+      this.chronik('beute', `${pk.item.name}`);
       this.sfx.play(r >= 3 ? 'item_episch' : 'aufheben');
       // Sammelalbum: epische Funde festhalten
       if (r >= 3 && !this.album.unikate.includes(pk.item.name)) this.album.unikate.push(pk.item.name);
@@ -845,18 +853,28 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   }
 
   damageEnemy(e: Enemy, dmg: number, kx = 0, ky = 0, col?: string | null, melee = true): void {
-    // Schildträger (Runde 11): blocken Treffer von vorn zur Hälfte der Zeit -
-    // dann nur 30% Schaden, kein Rückstoß, kein Zurückweichen
-    if (e.schild && e.hp > 0 && Math.random() < 0.7) {
+    // Ausweichen (Runde 20): flinke Gegner entgehen Nahkampfhieben ab und
+    // zu mit einem Schritt zur Seite - Nahkampf wird ein Tanz
+    const flink = e.type === 'skelett' || e.type === 'schatten' || e.type === 'wolf';
+    if (melee && flink && !e.schild && e.stun <= 0 && Math.random() < 0.16) {
+      const seit = Math.atan2(e.y - this.py, e.x - this.px) + (Math.random() < 0.5 ? 1.5 : -1.5);
+      e.moveBody(this, Math.cos(seit) * 26, Math.sin(seit) * 26);
+      this.fx.float(e.x, e.y - e.r - 8, 'AUSGEWICHEN', '#9ad8a0');
+      return;
+    }
+    // Schild-HALTUNG (Runde 20): geht der Schildträger in Deckung
+    // (blockT), prallt FRONTAL ALLES ab - flankieren oder warten
+    const inHaltung = e.schild && e.blockT > 0;
+    if (e.schild && e.hp > 0 && (inHaltung || Math.random() < 0.7)) {
       const zumSpieler = Math.atan2(this.py - e.y, this.px - e.x);
       const blick = [Math.PI / 2, Math.PI, 0, -Math.PI / 2][e.dir];
       let diff = zumSpieler - blick;
       diff = Math.atan2(Math.sin(diff), Math.cos(diff));
       if (Math.abs(diff) < 1.35) {
-        const rest = Math.max(1, Math.round(dmg * 0.3));
+        const rest = inHaltung ? 0 : Math.max(1, Math.round(dmg * 0.3));
         e.hp -= rest;
         e.hitFlash = 0.06;
-        this.fx.float(e.x, e.y - e.r - 8, 'GEBLOCKT', '#aab4c0');
+        this.fx.float(e.x, e.y - e.r - 8, inHaltung ? 'GEDECKT!' : 'GEBLOCKT', '#aab4c0');
         this.fx.burst(e.x + Math.cos(zumSpieler) * e.r, e.y + Math.sin(zumSpieler) * e.r, 0xaab4c0, 6, 120);
         this.sfx.play('block');
         if (melee) this.gainSchoolUse('nahkampf');
@@ -897,8 +915,30 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   protected killEnemy(e: Enemy): void {
     this.enemies = this.enemies.filter((x) => x !== e);
-    e.sprite?.destroy();
-    e.sprite = null;
+    // Gore-Todessequenz (Runde 20): die Figur färbt sich rot und fällt
+    // in Teile auseinander - abschaltbar über "Blut & Überreste"
+    if (e.sprite && getSettings().blood) {
+      const leiche = e.sprite;
+      e.sprite = null;
+      leiche.setTintFill(0xa81818);
+      this.tweens.add({ targets: leiche, alpha: 0, scaleX: leiche.scaleX * 1.15, scaleY: leiche.scaleY * 0.5, y: leiche.y + 7, duration: 380, onComplete: () => leiche.destroy() });
+      for (let i = 0; i < 6; i++) {
+        const teil = this.add.rectangle(e.x, e.y - 6, 4 + Math.random() * 4, 4 + Math.random() * 4,
+          i < 3 ? parseInt(e.col.slice(1), 16) : 0xa81818).setDepth(e.y + 1);
+        const a = Math.random() * 6.283;
+        const kraft = 26 + Math.random() * 36;
+        this.tweens.add({
+          targets: teil, x: e.x + Math.cos(a) * kraft, y: e.y + Math.sin(a) * kraft * 0.6 + 10,
+          angle: (Math.random() - 0.5) * 300, alpha: 0, duration: 520 + Math.random() * 240,
+          ease: 'Cubic.Out', onComplete: () => teil.destroy(),
+        });
+      }
+      this.fx.burst(e.x, e.y, 0xa81818, 14, 190);
+      if (this.sfx.has('tod_gore')) this.sfx.play('tod_gore');
+    } else {
+      e.sprite?.destroy();
+      e.sprite = null;
+    }
     this.fx.burst(e.x, e.y, parseInt(e.col.slice(1), 16), 16, 170);
     // Todesstoß: schwert_slice (Autor-Sound), dazu der Sterbelaut
     this.sfx.playAbwechselnd('schwert_slice', 3, 0.8);
@@ -966,8 +1006,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
   }
 
-  spawnEnemyProjectile(x: number, y: number, vx: number, vy: number, dmg: number, col: string): void {
-    this.projectiles.push({ x, y, vx, vy, r: 4, dmg, from: 'enemy', col });
+  spawnEnemyProjectile(x: number, y: number, vx: number, vy: number, dmg: number, col: string, pfeil = false): void {
+    this.projectiles.push({ x, y, vx, vy, r: 4, dmg, from: 'enemy', col, arrow: pfeil });
   }
 
   addTelegraph(x: number, y: number, r: number, t: number, dmg: number): void {
@@ -1022,6 +1062,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       case 's3': this.castSpell(2); break;
       case 'kettenblitz': case 'frostnova': case 'bannkreis':
       case 'feuerregen': case 'aderlass': case 'lebenstausch': this.useAbility(id); break;
+      // Waffen-Fähigkeiten auch auf Maustasten legbar (Runde 20)
+      case 'waffe1': this.useAbility(this.weaponClass() === 'bogen' ? 'mehrfachschuss' : 'rundumschlag'); break;
+      case 'waffe2': this.useAbility(this.weaponClass() === 'bogen' ? 'markierterTod' : 'sturmangriff'); break;
       case 'pot': this.drinkPot(); break;
       case 'mpot': this.drinkMpot(); break;
       case 'rolle': this.useFirstScroll(); break;
@@ -1114,7 +1157,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         vx: Math.cos(a) * fx.speed, vy: Math.sin(a) * fx.speed,
         r: 6, dmg, from: 'player', col: '#e8842a', fire: true,
       });
-      this.sfx.play('feuerball');
+      if (!this.sfx.playAbwechselnd('fireball', 2)) this.sfx.play('feuerball');
     } else if (sk.id === 'heiligesLicht') {
       const fx = SPELL_FX.heiligesLicht;
       const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level + zLevel * 2 + stabBonus;

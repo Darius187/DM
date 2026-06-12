@@ -129,6 +129,8 @@ export class WorldScene extends CombatScene {
     this.deathOverlay = null;
     this.msgTexts = [];
     this.ortsText = null;
+    this.chronikFenster = null;
+    this.chronikEintraege = [];
     this.hoverText = null;
     this.wasserBilder = [];
     this.hausBilder = [];
@@ -168,6 +170,7 @@ export class WorldScene extends CombatScene {
     this.rng = seededRng(this.areaSeed);
     this.setupCombat(0, 0);
     this.dialog = new DialogUI(this, this.provider);
+    this.dialog.onPage = (sprecher, text) => this.chronik('geschichte', `${sprecher}: ${text}`);
     this.panels.getJournal = () => this.journalLines();
     this.shop = new ShopUI(this, this.provider, this.sfx, () => this.p);
     this.shop.rabatt = () => this.wohlstand() * 0.05;
@@ -260,8 +263,10 @@ export class WorldScene extends CombatScene {
     });
     // Geschichte zeilenweise, während man läuft
     INTRO_FILM.forEach((zeile, i) => {
-      this.time.delayedCall(7500 + i * 8000, () => {
-        const t = this.add.text(w / 2, h - 170, zeile, {
+      this.time.delayedCall(7500 + i * 9500, () => {
+        // Position folgt dem DIALOGRAHMEN-Griff aus dem UI-Modus (Runde 20)
+        const off = getSettings().ui.dialog;
+        const t = this.add.text(w / 2 + off.x, h - 170 + off.y, zeile, {
           fontFamily: 'serif', fontSize: '19px', color: '#e0d4b4', fontStyle: 'italic',
           stroke: '#000000', strokeThickness: 5, align: 'center',
           wordWrap: { width: Math.min(720, w - 60) },
@@ -2223,17 +2228,25 @@ export class WorldScene extends CombatScene {
       return;
     }
     if (this.area.id === 'wald' && this.px > (this.area.w - 2.5) * TILE) {
-      // Waldrand: Erzähler-Text der Ankunft (Referenz), dann Ravensmoor
-      if (!this.flags.nAnkunft) {
-        this.flags.nAnkunft = true;
-        this.dialog.show(ERZAEHLER.name, [...ERZAEHLER.ankunft]);
-        this.dialog.onClose = () => {
-          this.dialog.onClose = null;
-          this.goArea('village', { x: 3 * TILE, y: 30.5 * TILE });
-          this.logMsg(MELDUNGEN.start, '');
-        };
-      } else {
-        this.goArea('village', { x: 3 * TILE, y: 30.5 * TILE });
+      // Ankunft (Runde 20): KEIN blockierender Dialog mehr - die Zeilen
+      // blenden filmisch ein, während man weiterläuft
+      const erstesMal = !this.flags.nAnkunft;
+      this.flags.nAnkunft = true;
+      this.goArea('village', { x: 3 * TILE, y: 30.5 * TILE });
+      if (erstesMal) {
+        this.logMsg(MELDUNGEN.start, '');
+        ERZAEHLER.ankunft.forEach((zeile, i) => {
+          this.time.delayedCall(1500 + i * 7000, () => {
+            const off2 = getSettings().ui.dialog;
+            const t = this.add.text(this.scale.width / 2 + off2.x, this.scale.height - 170 + off2.y, typeof zeile === 'string' ? zeile : (zeile as { text: string }).text, {
+              fontFamily: 'serif', fontSize: '18px', color: '#e0d4b4', fontStyle: 'italic',
+              stroke: '#000000', strokeThickness: 5, align: 'center',
+              wordWrap: { width: Math.min(700, this.scale.width - 60) },
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(5900).setAlpha(0);
+            this.tweens.add({ targets: t, alpha: 1, duration: 800 });
+            this.tweens.add({ targets: t, alpha: 0, duration: 800, delay: 5400, onComplete: () => t.destroy() });
+          });
+        });
       }
     }
   }
@@ -2703,7 +2716,67 @@ export class WorldScene extends CombatScene {
 
   // --- HUD und Meldungen ----------------------------------------------------------
 
+  // Chronik (Runde 20): nachlesbar, was geschah - Taste H
+  private chronikEintraege: Array<{ kat: 'geschichte' | 'beute' | 'ereignis'; text: string; tag: number }> = [];
+  private chronikTab: 'geschichte' | 'beute' | 'ereignis' = 'ereignis';
+  private chronikFenster: Phaser.GameObjects.Container | null = null;
+
+  protected override chronik(kat: 'geschichte' | 'beute' | 'ereignis', text: string): void {
+    const letzter = this.chronikEintraege[this.chronikEintraege.length - 1];
+    if (letzter && letzter.text === text) return; // keine Doppel-Einträge
+    this.chronikEintraege.push({ kat, text, tag: this.tag });
+    if (this.chronikEintraege.length > 240) this.chronikEintraege.shift();
+  }
+
+  protected override toggleChronik(): void {
+    if (this.chronikFenster) {
+      this.chronikFenster.destroy();
+      this.chronikFenster = null;
+      return;
+    }
+    const off = getSettings().ui.fenster;
+    const w = Math.min(460, this.scale.width - 30);
+    const h = Math.min(440, this.scale.height - 80);
+    const c = this.add.container((this.scale.width - w) / 2 + off.x, 40 + off.y).setScrollFactor(0).setDepth(5200);
+    this.chronikFenster = c;
+    const bg = this.add.rectangle(0, 0, w, h, 0x14100a, 0.97).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
+    bg.setInteractive();
+    c.add(bg);
+    c.add(this.add.text(14, 8, 'CHRONIK (H zum Schließen)', { fontFamily: 'serif', fontSize: '15px', color: '#c9a227', letterSpacing: 2 }));
+    let tx = 14;
+    const tabs: Array<[typeof this.chronikTab, string]> = [['ereignis', 'Ereignisse'], ['geschichte', 'Geschichte'], ['beute', 'Beute']];
+    for (const [id, lbl] of tabs) {
+      const t = this.add.text(tx, 32, lbl, {
+        fontFamily: 'serif', fontSize: '13px', letterSpacing: 1,
+        color: this.chronikTab === id ? '#c9a227' : '#8a7a5a',
+        backgroundColor: this.chronikTab === id ? '#221808' : undefined, padding: { x: 8, y: 3 },
+      }).setInteractive({ useHandCursor: true });
+      t.on('pointerdown', () => {
+        this.chronikTab = id;
+        this.toggleChronik();
+        this.toggleChronik();
+        this.sfx.play('klick');
+      });
+      c.add(t);
+      tx += t.width + 12;
+    }
+    const passend = this.chronikEintraege.filter((e2) => e2.kat === this.chronikTab).slice(-18);
+    let y = 62;
+    if (!passend.length) c.add(this.add.text(14, y, 'Noch nichts verzeichnet.', { fontFamily: 'serif', fontSize: '13px', color: '#6a5f4c', fontStyle: 'italic' }));
+    for (const e2 of passend) {
+      const zeile = this.add.text(14, y, `Tag ${e2.tag} · ${e2.text}`, {
+        fontFamily: 'serif', fontSize: '12.5px', color: '#d8cfb8', wordWrap: { width: w - 28 },
+      });
+      c.add(zeile);
+      y += zeile.height + 5;
+      if (y > h - 24) break;
+    }
+    fixUiScroll(c);
+    this.sfx.play('klick');
+  }
+
   override logMsg(text: string, cls?: string): void {
+    this.chronik(cls === 'gold' || cls === 'magic' ? 'ereignis' : 'ereignis', text);
     const colors: Record<string, string> = { gold: '#c9a227', bad: '#d96b5a', magic: '#8aa6e8' };
     const off = getSettings().ui.log;
     const t = this.add.text(this.scale.width / 2 + off.x, this.scale.height - 150 + off.y, text, {
@@ -3158,6 +3231,17 @@ export class WorldScene extends CombatScene {
     } else {
       this.sfx.stopLoop('regen_draussen');
       this.sfx.stopLoop('regen_drinnen');
+    }
+    // Nachtklang in der Stadt (Runde 20): nachts midnight, tags Vogelstück
+    if ((this.area.id === 'village' || this.area.innen) && this.sfx.has('musik_nacht')) {
+      const nachtJetzt = this.tageszeit > TAG.nachtAb || this.tageszeit < TAG.morgenAb;
+      const aktuell = this.sfx.aktuelleMusik();
+      if (nachtJetzt && aktuell !== 'musik_nacht' && (aktuell === '' || aktuell === 'musik_dorf')) {
+        this.sfx.playMusic('musik_nacht', { loop: true });
+      } else if (!nachtJetzt && aktuell === 'musik_nacht') {
+        this.sfx.stopMusic();
+        this.spieleDorfMusik();
+      }
     }
     // Herzschlag bei niedrigem Leben (Runde 12)
     if (!this.playerDead && this.p.hp < this.p.stats.maxhp * 0.3) this.sfx.startLoop('herzschlag');
