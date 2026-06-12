@@ -124,6 +124,7 @@ export class WorldScene extends CombatScene {
     this.deathOverlay = null;
     this.msgTexts = [];
     this.ortsText = null;
+    this.wasserBilder = [];
     this.regenGfx = null;
     this.regenTropfen = [];
     this.regnet = false;
@@ -253,6 +254,22 @@ export class WorldScene extends CombatScene {
   }
 
   // --- Wetter und Stimmung (Runde 12) -----------------------------------------
+
+  // Wasser-Animation: vorhandene wasser1..N-Grafiken im Takt durchwechseln
+  private wasserBilder: Array<{ img: Phaser.GameObjects.Image; variant: number }> = [];
+  private wasserFrame = 0;
+  private wasserT = 0;
+
+  private animiereWasser(dt: number): void {
+    if (this.wasserBilder.length < 1 || this.provider.tileVarianten('wasser') < 2) return;
+    this.wasserT += dt;
+    if (this.wasserT < 0.5) return;
+    this.wasserT = 0;
+    this.wasserFrame++;
+    for (const w of this.wasserBilder) {
+      w.img.setTexture(this.provider.tileKey('wasser', w.variant + this.wasserFrame, this.area.depth, this.area.theme));
+    }
+  }
 
   private ortsText: Phaser.GameObjects.Text | null = null;
 
@@ -416,6 +433,7 @@ export class WorldScene extends CombatScene {
   private unloadAreaObjects(): void {
     for (const img of this.tileImages) img.destroy();
     this.tileImages = [];
+    this.wasserBilder = [];
     for (const b of this.breakableEnts) b.img.destroy();
     this.breakableEnts = [];
     this.hittables = [];
@@ -448,6 +466,14 @@ export class WorldScene extends CombatScene {
           // Dichter Wald: Bäume mit vielen Baum-Nachbarn nutzen die
           // wald-Grafiken (assets/tiles/wald1.png ...), freie Bäume baum*
           let objName = name;
+          // Palisade: senkrechte Mauerstücke (West/Ost) nutzen die
+          // Seitenansicht-Grafiken, waagerechte die Frontansicht
+          if (id === T.PALISADE) {
+            const oben = a.map[ty - 1]?.[tx] === T.PALISADE;
+            const unten = a.map[ty + 1]?.[tx] === T.PALISADE;
+            const seitlich = a.map[ty]?.[tx - 1] === T.PALISADE || a.map[ty]?.[tx + 1] === T.PALISADE;
+            if ((oben || unten) && !seitlich) objName = 'palisade_seite';
+          }
           if (id === T.TREE) {
             let nachbarn = 0;
             for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
@@ -465,6 +491,8 @@ export class WorldScene extends CombatScene {
         if (id === T.HWALL || id === T.CWALL) {
           img.setDepth(ty * TILE + 16);
         }
+        // Wasser merken: die Varianten laufen als Animation durch (Runde 13)
+        if (id === T.WATER) this.wasserBilder.push({ img, variant });
         this.tileImages.push(img);
       }
     }
@@ -2607,6 +2635,7 @@ export class WorldScene extends CombatScene {
     this.updateCombat(dt);
     this.renderRegen(dt);
     this.renderOrtsname();
+    this.animiereWasser(dt);
     // Regen-Klang: draußen rauscht es, in der Stube gedämpft (Runde 12)
     if (this.regnet && !this.area.dark) {
       if (this.area.innen) {

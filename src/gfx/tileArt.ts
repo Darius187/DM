@@ -413,7 +413,7 @@ export function drawObjectArt(ctx: Ctx, name: string, n: number, theme?: CryptTh
       ctx.fillRect(4, 8, 4, 18); ctx.fillRect(24, 8, 4, 18);
       ctx.fillRect(0, 12, TILE, 4); ctx.fillRect(0, 20, TILE, 4);
       break;
-    case 'palisade':
+    case 'palisade': case 'palisade_seite':
       for (let i = 0; i < 4; i++) {
         const px2 = 1 + i * 8;
         ctx.fillStyle = i % 2 === (n % 2) ? '#5c4427' : '#4e3a20';

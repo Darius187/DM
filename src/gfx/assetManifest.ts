@@ -39,10 +39,11 @@ export const SOUNDS = [
   'herzschlag', 'regen_draussen', 'regen_drinnen',
   'krypta_betreten', 'krypta_grusel1', 'krypta_grusel2', 'krypta_grusel3',
   'krypta_grusel4', 'krypta_grusel5',
-  // Schwert-Sounds des Autors (Haken bereit, Dateien folgen):
-  // armor_cut = Treffer auf Gepanzerte, schwert_slice = weiche Gegner +
-  // Todesstoß, swoosh1-4 = Schwung ohne Treffer (abwechselnd)
-  'armor_cut', 'schwert_slice', 'swoosh1', 'swoosh2', 'swoosh3', 'swoosh4',
+  // Schwert-Sounds des Autors: armor_cut = Gepanzerte, schwert_slice =
+  // weiche Gegner + Todesstoß, swoosh = Schwung (abwechselnd), block1/2
+  'armor_cut1', 'armor_cut2', 'schwert_slice1', 'schwert_slice2', 'schwert_slice3',
+  'swoosh1', 'swoosh2', 'swoosh3', 'swoosh4', 'swoosh5', 'swoosh6', 'swoosh7', 'swoosh8',
+  'block1', 'block2',
 ] as const;
 
 // Figuren-Spritesheets: <name>_<richtung>_<frame>.png oder <name>.png + <name>.json
@@ -62,7 +63,7 @@ export const TILE_NAMES = [
   'krypta_boden', 'krypta_wand', 'krypta_wand_front', 'knochen', 'blut', 'rune',
   'altar', 'regal', 'treppe_ab', 'treppe_auf', 'erzader', 'fels',
   'fass', 'kiste', 'krug', 'heuhaufen', 'streckbank', 'kaefig', 'kerzenschrein',
-  'spinnwebe', 'knochenhaufen', 'palisade', 'stadttor',
+  'spinnwebe', 'knochenhaufen', 'palisade', 'palisade_seite', 'stadttor',
   'holzboden', 'bett', 'tisch', 'stuhl', 'kamin', 'teppich', 'tresen',
 ] as const;
 

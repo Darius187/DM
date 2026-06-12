@@ -67,6 +67,8 @@ export class SoundProvider {
 
   // Effekt abspielen: Datei falls vorhanden, sonst Synthese
   play(name: string, volMult = 1): void {
+    // Block-Klang: die zwei Autor-Varianten abwechselnd (Held UND Gegner)
+    if (name === 'block' && this.playAbwechselnd('block', 2, volMult)) return;
     const s = getSettings();
     const vol = (s.volEffekte / 100) * volMult;
     if (vol <= 0.01) return;

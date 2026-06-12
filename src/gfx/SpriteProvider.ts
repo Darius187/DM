@@ -108,6 +108,12 @@ export class SpriteProvider {
     return list[Math.abs(variant) % list.length];
   }
 
+  // Wie viele echte Hot-Swap-Varianten gibt es? (0 = nur Fallback)
+  tileVarianten(name: string): number {
+    this.hotTile(name, 0);
+    return this.hotVarianten.get(name)?.length ?? 0;
+  }
+
   tileKey(name: string, variant: number, themeId = 0, theme?: CryptTheme): string {
     const hot = this.hotTile(name, variant);
     if (hot) return hot;

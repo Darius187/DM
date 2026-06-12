@@ -622,7 +622,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   private playSwingSound(cls: WeaponClass, fin: boolean): void {
     // Schwung ohne Treffer: die swoosh-Dateien des Autors abwechselnd,
     // sonst die bisherigen Synth-Klänge
-    if (cls === 'schwert' && this.sfx.playAbwechselnd('swoosh', 4)) return;
+    if (cls === 'schwert' && this.sfx.playAbwechselnd('swoosh', 8)) return;
     if (cls === 'axt') this.sfx.play('axt_swing');
     else if (cls === 'stange') this.sfx.play('hellebarde_stoss');
     else if (cls === 'wucht') this.sfx.play('hammer_schlag');
@@ -633,14 +633,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Schildträger), schwert_slice auf weiche Gegner - Fallback: alte Klänge
   private playHitSound(e: Enemy): void {
     const gepanzert = e.type === 'templer' || e.schild;
-    if (gepanzert && this.sfx.has('armor_cut')) {
-      this.sfx.play('armor_cut');
-      return;
-    }
-    if (!gepanzert && this.sfx.has('schwert_slice')) {
-      this.sfx.play('schwert_slice');
-      return;
-    }
+    if (gepanzert && this.sfx.playAbwechselnd('armor_cut', 2)) return;
+    if (!gepanzert && this.sfx.playAbwechselnd('schwert_slice', 3)) return;
     this.sfx.play(e.type === 'skelett' || e.type === 'schuetze' ? 'treffer_knochen' : 'treffer_fleisch');
   }
 
@@ -832,7 +826,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     e.sprite = null;
     this.fx.burst(e.x, e.y, parseInt(e.col.slice(1), 16), 16, 170);
     // Todesstoß: schwert_slice (Autor-Sound), dazu der Sterbelaut
-    if (this.sfx.has('schwert_slice')) this.sfx.play('schwert_slice', 0.8);
+    this.sfx.playAbwechselnd('schwert_slice', 3, 0.8);
     this.sfx.play('tod');
     this.giveXp(e.xp);
     // Sammelalbum: Jagdstatistik und besiegte Vorsteher
