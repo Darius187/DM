@@ -659,3 +659,26 @@ Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.
   Musikwechsel im Dorf. 51/51 Tests grün, tsc sauber.
 - Offen/ehrlich: tod_gore.mp3 und musik_kirche.mp3 fehlen noch (Dateien
   vom Autor); Touch nicht auf echtem Gerät getestet.
+
+## Feedback-Runde 21 - umgesetzt (Bosskampf-Räume, Sieg-Fenster, Zoom, Dev-Werkzeuge)
+
+- Sieg-Fenster-Fehler GEFUNDEN und behoben: der WEITERSPIELEN-Knopf bekam
+  seine Hitbox-Korrektur nie (fixUiScroll lief vor dem Hinzufügen) - im
+  gescrollten Bossraum war er daher nicht klickbar. Im Browser verifiziert:
+  Klick schließt das Fenster, Neues Spiel+ startet.
+- Stadtmusik im Dungeon behoben: musik_nacht fehlte in der Wechselliste -
+  nach dem Laden lief die Nacht-Stadtmusik bis in die Krypta. Verifiziert:
+  Dorf nachts musik_nacht -> Krypta musik_krypta.
+- Bosskampf NEU, ohne Beamen: ein Grab mit drei Kammern und Gittertoren.
+  Bei 66%/33% weicht der Ritter nach Norden, das Tor birst, eine Welle
+  stürmt heraus - er stellt sich erst, wenn man ihm folgt. Komplett im
+  Browser durchgespielt (beide Rückzüge, Wellen, Sieg, Abstieg).
+- Nebenbei gefunden: in NG+ konnte sich der Schattenfürst nie erheben
+  (Prüfung verlangte !bossDead). Behoben.
+- Bildgröße-Regler in den Einstellungen (100-200%, wirkt sofort): das Spiel
+  rückt näher ans Geschehen, UI wächst mit. Ehrlich: Hochskalieren ist
+  etwas pixeliger; die scharfe HD-Variante steht in TODO.md.
+- F10 erweitert: Beute-Menge-Regler (Drops x0-x3), ZAUBER FREISCHALTEN
+  (alle Sperren aus, zum Testen), ZUM BOSS / IN DIE STADT (Dev-Sprünge,
+  verifiziert). 52/52 Tests grün (neuer Test: Tore versiegeln die
+  hinteren Kammern, nach dem Sieg alles erreichbar), tsc sauber.

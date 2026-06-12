@@ -5,6 +5,7 @@
 import Phaser from 'phaser';
 import { SPELLS, ABILITIES, ABILITY_FX } from '../data/balancing';
 import { getSettings, saveSettings } from '../logic/settings';
+import { TUNING } from '../logic/tuning';
 import type { PlayerState } from '../logic/playerState';
 import type { WeaponClass } from '../data/types';
 
@@ -84,7 +85,7 @@ export class Hud {
       kosten: () => `${SPELLS[i].mana} Mana`,
       cdFrac: () => (p().spellCds[i] > 0 ? p().spellCds[i] / SPELLS[i].cd : 0),
       cdSek: () => p().spellCds[i],
-      locked: () => (p().level < SPELLS[i].unlock ? `ab Spieler-Stufe ${SPELLS[i].unlock}` : null),
+      locked: () => (!TUNING.alleZauberFrei && p().level < SPELLS[i].unlock ? `ab Spieler-Stufe ${SPELLS[i].unlock}` : null),
     });
     const abilitySlot = (key: string, id: () => string, ico: () => string, aktionId?: string): SlotDef => ({
       key,
@@ -104,7 +105,7 @@ export class Hud {
       cdSek: () => p().abilityCds[id()] ?? 0,
       locked: () => {
         const def = ABILITIES.find((a) => a.id === id());
-        if (!def) return null;
+        if (!def || TUNING.alleZauberFrei) return null;
         const schule = { nahkampf: 'Nahkampf', zauberei: 'Zauberei', bogen: 'Bogenschießen' }[def.school];
         return p().schools[def.school].level < def.unlock ? `ab ${schule} Stufe ${def.unlock}` : null;
       },

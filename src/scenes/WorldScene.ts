@@ -876,6 +876,12 @@ export class WorldScene extends CombatScene {
 
   protected override areaDark(): boolean { return this.area?.dark ?? false; }
 
+  // Dev-Sprung aus dem F10-Kasten (Runde 21): direkt vors Bossgrab / in die Stadt
+  protected override devTeleport(ziel: 'boss' | 'village'): void {
+    this.goArea(ziel);
+    this.logMsg(ziel === 'boss' ? 'Dev-Sprung: Grab des Kreuzritters.' : 'Dev-Sprung: Ravensmoor.', 'gold');
+  }
+
   protected override uiBlocked(): boolean {
     return super.uiBlocked() || this.dialog?.open || this.shop?.open || this.stash?.open || !!this.deathOverlay || !!this.pauseMenu;
   }

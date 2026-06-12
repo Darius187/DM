@@ -13,7 +13,9 @@ export interface Settings {
   volEffekte: number;     // 0-100
   volAtmosphaere: number; // 0-100
   volMusik: number;       // 0-100 (Musikstücke, Runde 17)
-  bright: number;         // 70-140
+  bright: number;
+  // Bildgröße in Prozent (Runde 21): 100 = wie bisher, größer = näher dran
+  zoom: number;         // 70-140
   tempo: number;          // Spieler-Tempo in % (70-110)
   fow: boolean;           // Nebel des Krieges im Dunkelwald
   shake: boolean;
@@ -33,6 +35,7 @@ export const DEF_SETTINGS: Settings = {
   volAtmosphaere: 50,
   volMusik: 55,
   bright: 100,
+  zoom: 100,
   tempo: 90,
   fow: true,
   shake: true,

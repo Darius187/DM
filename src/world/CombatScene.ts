@@ -276,6 +276,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected devTypIdx = 0;
   // Häuser justieren: Welt überschreibt
   toggleHausEdit(): void { /* Welt überschreibt */ }
+  // Dev-Sprung zum Boss / in die Stadt (Runde 21): Welt überschreibt
+  protected devTeleport(_ziel: 'boss' | 'village'): void { /* Welt überschreibt */ }
 
   // UI-Verschiebemodus (Runde 11): Leiste, Dialograhmen und Meldungs-Log
   // per Maus ziehen; die Versätze landen in den Einstellungen und im Bericht
@@ -333,7 +335,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       return;
     }
     const c = this.add.container(20, 80).setScrollFactor(0).setDepth(6500);
-    const h = TUNING_ROWS.length * 34 + 96 + 130;
+    const h = TUNING_ROWS.length * 34 + 96 + 158;
     const bg = this.add.rectangle(0, 0, 340, h, 0x171108, 0.97).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
     bg.setInteractive();
     c.add(bg);
@@ -417,6 +419,31 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }).setInteractive({ useHandCursor: true });
     hausBtn.on('pointerdown', () => this.toggleHausEdit());
     c.add(hausBtn);
+    // Dev-Sprünge und Zauber-Freischaltung (Runde 21): schneller testen
+    const zauberBtn = this.add.text(180, y + 34, TUNING.alleZauberFrei ? 'ZAUBER: ALLE FREI' : 'ZAUBER FREISCHALTEN', {
+      fontFamily: 'serif', fontSize: '13px', color: TUNING.alleZauberFrei ? '#c9a227' : '#d8cfb8', letterSpacing: 1,
+      backgroundColor: '#221808', padding: { x: 12, y: 5 },
+    }).setInteractive({ useHandCursor: true });
+    zauberBtn.on('pointerdown', () => {
+      TUNING.alleZauberFrei = !TUNING.alleZauberFrei;
+      zauberBtn.setText(TUNING.alleZauberFrei ? 'ZAUBER: ALLE FREI' : 'ZAUBER FREISCHALTEN')
+        .setColor(TUNING.alleZauberFrei ? '#c9a227' : '#d8cfb8');
+      this.sfx.play('klick');
+      this.logMsg(TUNING.alleZauberFrei ? 'Alle Zauber und Fähigkeiten freigeschaltet (Dev).' : 'Zauber-Sperren wieder aktiv.', 'gold');
+    });
+    c.add(zauberBtn);
+    const teleBoss = this.add.text(12, y + 62, 'ZUM BOSS', {
+      fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
+      backgroundColor: '#221808', padding: { x: 12, y: 5 },
+    }).setInteractive({ useHandCursor: true });
+    teleBoss.on('pointerdown', () => this.devTeleport('boss'));
+    c.add(teleBoss);
+    const teleStadt = this.add.text(110, y + 62, 'IN DIE STADT', {
+      fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
+      backgroundColor: '#221808', padding: { x: 12, y: 5 },
+    }).setInteractive({ useHandCursor: true });
+    teleStadt.on('pointerdown', () => this.devTeleport('village'));
+    c.add(teleStadt);
     const uiBtn = this.add.text(180, y + 6, this.uiEditMode ? 'UI FIXIEREN' : 'UI VERSCHIEBEN', {
       fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
       backgroundColor: '#221808', padding: { x: 12, y: 5 },
@@ -543,14 +570,16 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Beute beim Gegner-Tod (Referenz killEnemy) - Welt und Arena nutzbar
   protected dropLoot(e: Enemy): void {
     const depth = this.areaDepth();
+    // Beute-Menge (Runde 21, F10): skaliert alle Drop-Chancen außer Gold
+    const rate = TUNING.beuteRate;
     const g = 2 + Math.floor(Math.random() * 6) + depth * KILL_DROPS.goldPerDepth;
     this.pickups.add({ kind: 'gold', amt: g, x: e.x + rndOff(8), y: e.y + rndOff(8), bob: Math.random() * 6 });
-    if (Math.random() < KILL_DROPS.potionChance) this.pickups.add({ kind: 'potion', x: e.x + rndOff(12), y: e.y + rndOff(12), bob: Math.random() * 6 });
-    if (Math.random() < KILL_DROPS.mpotionChance) this.pickups.add({ kind: 'mpotion', x: e.x + rndOff(12), y: e.y + rndOff(12), bob: Math.random() * 6 });
-    if (Math.random() < KILL_DROPS.gearChance) this.pickups.add({ kind: 'gear', item: rollGear(this.rng, depth), x: e.x, y: e.y, bob: Math.random() * 6 });
-    if (e.elite) this.pickups.add({ kind: 'gear', item: rollGear(this.rng, depth + 1), x: e.x, y: e.y + 12, bob: Math.random() * 6 });
-    if (Math.random() < KILL_DROPS.gemChance) this.pickups.add({ kind: 'gem', item: rollGem(this.rng, depth), x: e.x + rndOff(10), y: e.y + rndOff(10), bob: Math.random() * 6 });
-    if (Math.random() < KILL_DROPS.scrollChance) {
+    if (Math.random() < KILL_DROPS.potionChance * rate) this.pickups.add({ kind: 'potion', x: e.x + rndOff(12), y: e.y + rndOff(12), bob: Math.random() * 6 });
+    if (Math.random() < KILL_DROPS.mpotionChance * rate) this.pickups.add({ kind: 'mpotion', x: e.x + rndOff(12), y: e.y + rndOff(12), bob: Math.random() * 6 });
+    if (Math.random() < KILL_DROPS.gearChance * rate) this.pickups.add({ kind: 'gear', item: rollGear(this.rng, depth), x: e.x, y: e.y, bob: Math.random() * 6 });
+    if (e.elite && Math.random() < Math.min(1, rate)) this.pickups.add({ kind: 'gear', item: rollGear(this.rng, depth + 1), x: e.x, y: e.y + 12, bob: Math.random() * 6 });
+    if (Math.random() < KILL_DROPS.gemChance * rate) this.pickups.add({ kind: 'gem', item: rollGem(this.rng, depth), x: e.x + rndOff(10), y: e.y + rndOff(10), bob: Math.random() * 6 });
+    if (Math.random() < KILL_DROPS.scrollChance * rate) {
       const rollen = [
         ['Zauberrolle: Heiliges Licht', 'heiligesLicht'],
         ['Zauberrolle: Heilung', 'heilung'],
@@ -1119,7 +1148,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   castSpell(i: number, kostenlos = false): void {
     const sk = SPELLS[i];
     if (!sk) return;
-    if (!kostenlos && this.p.level < sk.unlock) {
+    if (!kostenlos && !TUNING.alleZauberFrei && this.p.level < sk.unlock) {
       this.logMsg(`${sk.name} - ab Stufe ${sk.unlock}`, 'bad');
       return;
     }
@@ -1187,7 +1216,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected abilityReady(id: string): boolean {
     const def = ABILITIES.find((a) => a.id === id);
     if (!def) return false;
-    if (this.p.schools[def.school].level < def.unlock) {
+    if (!TUNING.alleZauberFrei && this.p.schools[def.school].level < def.unlock) {
       this.logMsg(`${def.name} - ${def.school === 'nahkampf' ? 'Nahkampf' : def.school === 'zauberei' ? 'Zauberei' : 'Bogenschießen'} Stufe ${def.unlock} nötig`, 'bad');
       return false;
     }

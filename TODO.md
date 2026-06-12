@@ -39,3 +39,8 @@
 - Geschlossene Dorf-Wirtschaft (Runde-16-Wunsch, nächster Ausbau):
   sichtbare Lager/Vorräte je Betrieb, Träger-NPCs bringen Waren
   (Korn -> Mühle -> Backhaus), Bestände beeinflussen Angebote.
+- HD-Bild (Runde 21 notiert): Der Bildgrößen-Regler skaliert hoch und wird
+  dadurch pixeliger. Die scharfe Lösung wäre, die Kacheln/Figuren aus den
+  300px-Quellen gleich in größerer Zielauflösung zu rendern (TILE 32 -> 48):
+  eigene Phase, weil Tempo-/Reichweiten-Werte in Pixeln mitskaliert werden
+  müssen. Lohnt, sobald die Sprite-Sätze des Autors final sind.
