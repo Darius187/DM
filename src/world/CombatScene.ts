@@ -192,6 +192,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (this.touch) return; // Touch-Steuerung übernimmt alle Zeiger
       if (this.playerDead || this.uiBlocked()) return;
       if (this.uiEditMode) return; // UI-Modus: Maus gehört den Griffen
+      if (this.klickAufUi(ptr)) return; // Leiste/Menü: kein Weltklick
       const feld = mausFeld(ptr.button);
       if (!feld) return;
       const aktion = getSettings().maus[feld];
@@ -366,6 +367,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   // Unterklassen: zusätzliche Tasten (Interaktion, Inventar, Zauber)
   protected onGameKey(_k: string): void { /* optional */ }
+  // Klick liegt auf einer UI-Fläche (Leiste, Menü) - Welt ignoriert ihn
+  protected klickAufUi(_ptr: Phaser.Input.Pointer): boolean { return false; }
   protected uiBlocked(): boolean { return this.panels?.blocked ?? false; }
 
   // --- Interaktion und Aufheben ---------------------------------------------

@@ -147,6 +147,42 @@ export const INNENRAEUME: Readonly<Record<string, InnenraumDef>> = {
       { id: 'magd', name: 'Magd Trine', x: 7, y: 6, nurAbends: true },
     ],
   },
+  // Kirchenschiff: Bankreihen, Mittelgang, Altartisch mit Kerzen
+  kirche: {
+    haus: 'kirche', name: 'Kirche St. Marien', w: 14, h: 11,
+    moebel: [
+      M('tisch', 6, 1), M('tisch', 7, 1), M('regal', 1, 1), M('regal', 12, 1),
+      M('teppich', 6, 3), M('teppich', 7, 3), M('teppich', 6, 5), M('teppich', 7, 5), M('teppich', 6, 7), M('teppich', 7, 7),
+      M('stuhl', 3, 4), M('stuhl', 4, 4), M('stuhl', 9, 4), M('stuhl', 10, 4),
+      M('stuhl', 3, 6), M('stuhl', 4, 6), M('stuhl', 9, 6), M('stuhl', 10, 6),
+      M('stuhl', 3, 8), M('stuhl', 4, 8), M('stuhl', 9, 8), M('stuhl', 10, 8),
+    ],
+    bewohner: [],
+  },
+  // Bauernhäuser: einfache Stuben der beiden Höfe
+  bauernhausA: {
+    haus: 'bauernhausA', name: 'Bauernhaus (Veit)', w: 11, h: 9,
+    moebel: [
+      M('kamin', 5, 1), M('bett', 1, 4), M('bett', 8, 4), M('tisch', 4, 5),
+      M('stuhl', 3, 5), M('stuhl', 5, 6), M('regal', 8, 1), M('teppich', 4, 4),
+    ],
+    bewohner: [
+      { id: 'frau1', name: 'Bäuerin Ottilie', x: 5, y: 4 },
+      { id: 'bauer1', name: 'Bauer Veit', x: 3, y: 6, nurAbends: true },
+    ],
+    faesser: [[1, 6], [9, 6]],
+  },
+  bauernhausB: {
+    haus: 'bauernhausB', name: 'Bauernhaus (Grete)', w: 11, h: 9,
+    moebel: [
+      M('kamin', 5, 1), M('bett', 8, 4), M('tisch', 3, 4), M('stuhl', 2, 4),
+      M('regal', 1, 1), M('teppich', 5, 5),
+    ],
+    bewohner: [
+      { id: 'bauer2', name: 'Bäuerin Grete', x: 4, y: 5, nurAbends: true },
+    ],
+    faesser: [[9, 6], [9, 5]],
+  },
   // --- Runde 10: die Zünfte ---
   badehaus: {
     haus: 'badehaus', name: 'Badehaus', w: 12, h: 9,

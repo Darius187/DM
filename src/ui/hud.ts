@@ -190,20 +190,75 @@ export class Hud {
       zone.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showSlotTooltip(s, ptr));
       zone.on('pointerout', () => this.hideTooltip());
       if (s.belegung) {
+        // Rechtsklick: Auswahlmenü nach oben (Runde 14) - der Zauber darf
+        // beim Belegen natürlich NICHT gleich wirken
         zone.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
           if (!ptr.rightButtonDown()) return;
-          // Belegung zyklisch wechseln und speichern
-          const set = getSettings();
-          const feld = s.belegung as 'm3' | 'm4' | 'm5';
-          const idx = this.aktionen.findIndex((a) => a[0] === set.maus[feld]);
-          set.maus[feld] = this.aktionen[(idx + 1) % this.aktionen.length][0];
-          saveSettings();
           this.hideTooltip();
-          this.showSlotTooltip(s, ptr);
+          this.openBelegungsMenue(s, x);
         });
       }
       this.slotZones.push(zone);
     }
+  }
+
+  // --- Belegungs-Menü (Runde 14) ---------------------------------------------
+
+  private menue: Phaser.GameObjects.Container | null = null;
+
+  // Weltklicks blockieren, solange der Zeiger auf der Leiste liegt oder
+  // das Belegungs-Menü offen ist (sonst wirkt der Zauber beim Anklicken)
+  klickBlockiert(ptr: Phaser.Input.Pointer): boolean {
+    if (this.menue) return true;
+    const y0 = this.slotY() - 24;
+    const x0 = this.slotX(0) - 24;
+    const x1 = this.slotX(this.slots.length - 1) + 24;
+    return ptr.y >= y0 && ptr.y <= y0 + 48 && ptr.x >= x0 && ptr.x <= x1;
+  }
+
+  private closeMenue(): void {
+    this.menue?.destroy();
+    this.menue = null;
+  }
+
+  private openBelegungsMenue(s: SlotDef, slotX: number): void {
+    this.closeMenue();
+    const feld = s.belegung!;
+    const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(5300);
+    this.menue = c;
+    // Klick daneben schließt nur das Menü
+    const deckel = this.scene.add.rectangle(0, 0, this.scene.scale.width, this.scene.scale.height, 0x000000, 0.01)
+      .setOrigin(0).setScrollFactor(0).setInteractive();
+    deckel.on('pointerdown', () => this.closeMenue());
+    c.add(deckel);
+    const breite = 230, zeileH = 24;
+    const hoehe = this.aktionen.length * zeileH + 30;
+    const mx = Math.min(Math.max(8, slotX - breite / 2), this.scene.scale.width - breite - 8);
+    const my = this.slotY() - 30 - hoehe;
+    const bg = this.scene.add.rectangle(mx, my, breite, hoehe, 0x171108, 0.98).setOrigin(0).setStrokeStyle(1, 0xc9a227);
+    bg.setInteractive();
+    c.add(bg);
+    c.add(this.scene.add.text(mx + 10, my + 6, `BELEGUNG ${s.key}`, {
+      fontFamily: 'serif', fontSize: '12px', color: '#c9a227', letterSpacing: 1,
+    }));
+    const aktiv = getSettings().maus[feld];
+    this.aktionen.forEach(([id, ico, name], i) => {
+      const zy = my + 26 + i * zeileH;
+      const eintrag = this.scene.add.text(mx + 10, zy, `${ico}  ${name}`, {
+        fontFamily: 'serif', fontSize: '13px',
+        color: id === aktiv ? '#c9a227' : '#d8cfb8',
+        backgroundColor: id === aktiv ? '#221808' : undefined,
+        padding: { x: 6, y: 2 },
+      }).setScrollFactor(0).setInteractive({ useHandCursor: true });
+      eintrag.on('pointerover', () => eintrag.setColor('#c9a227'));
+      eintrag.on('pointerout', () => eintrag.setColor(id === aktiv ? '#c9a227' : '#d8cfb8'));
+      eintrag.on('pointerdown', () => {
+        getSettings().maus[feld] = id;
+        saveSettings();
+        this.closeMenue();
+      });
+      c.add(eintrag);
+    });
   }
 
   private showSlotTooltip(s: SlotDef, ptr: Phaser.Input.Pointer): void {
@@ -259,7 +314,15 @@ export class Hud {
     this.potText.setPosition(28 + ORB_R, h - 12).setText(`${kb.pot.toUpperCase()} Trank x${p.pot}`);
     this.mpotText.setPosition(w - 28 - ORB_R, h - 12).setText(`${kb.mpot.toUpperCase()} Trank x${p.mpot}`);
 
-    // Zauber-/Fähigkeitsleiste
+    // Zauber-/Fähigkeitsleiste auf eigenem Paneel (Runde 14)
+    const px0 = this.slotX(0) - 26, px1 = this.slotX(this.slots.length - 1) + 26;
+    const py0 = this.slotY() - 25;
+    g.fillStyle(0x0c0905, 0.92);
+    g.fillRoundedRect(px0, py0, px1 - px0, 50, 8);
+    g.lineStyle(2, 0x3a2f1c, 1);
+    g.strokeRoundedRect(px0, py0, px1 - px0, 50, 8);
+    g.lineStyle(1, 0xc9a227, 0.35);
+    g.strokeRoundedRect(px0 + 2, py0 + 2, px1 - px0 - 4, 46, 7);
     for (let i = 0; i < this.slots.length; i++) {
       const s = this.slots[i];
       const x = this.slotX(i);

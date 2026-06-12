@@ -493,9 +493,15 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
     map[y][w - 1] = T.TREE;
     if (rng.random() < 0.7) map[y][w - 2] = T.TREE;
   }
-  for (let i = 0; i < 70; i++) {
+  // Deutlich mehr Bäume (Runde 14: "cozy") - aber nie direkt am Weg
+  for (let i = 0; i < 170; i++) {
     const x = ri(rng, 2, w - 3), y = ri(rng, 2, h - 3);
-    if (map[y][x] === T.GRASS && rng.random() < 0.6) map[y][x] = T.TREE;
+    if (map[y][x] !== T.GRASS || rng.random() > 0.65) continue;
+    let amWeg = false;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      if (map[y + dy]?.[x + dx] === T.PATH) amWeg = true;
+    }
+    if (!amWeg) map[y][x] = T.TREE;
   }
 
   // Bach im Osten mit Mühle
@@ -531,6 +537,7 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   // 2. Kirche St. Marien mit Friedhof (Johannes), Tür = Kryptaeingang
   carve(map, 56, 8, 70, 16, T.CWALL);
   map[16][63] = T.CDOOR;
+  tuer(58, 16, 'kirche'); // Seitenpforte ins Kirchenschiff (Runde 14)
   carve(map, 63, 17, 64, 26, T.PATH);
   label(63.5, 7.2, 'Kirche St. Marien');
   a.cryptDoor = { x: 63 * TILE + 16, y: 16 * TILE + 16 };
@@ -579,6 +586,7 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
 
   // 6a. Bauernhof 1 (Nordwesten): Schweine + Hühner im Gatter, Acker
   carve(map, 14, 8, 22, 13, T.HWALL);
+  tuer(18, 13, 'bauernhausA');
   carve(map, 17, 14, 18, 18, T.PATH);
   // Der Hofpfad führt ÖSTLICH an der Taverne vorbei zur Salzstraße
   // (Runde 12: vorher schnitt er mitten durchs Gebäude)
@@ -599,6 +607,7 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
 
   // 6b. Bauernhof 2 (Südosten): Kuh im Gatter, Acker
   carve(map, 56, 44, 64, 49, T.HWALL);
+  tuer(59, 49, 'bauernhausB');
   carve(map, 59, 50, 60, 51, T.PATH);
   carve(map, 47, 50, 59, 51, T.PATH);
   label(60, 43.2, 'Bauernhof');
@@ -906,8 +915,8 @@ export function buildForest(rng: Rng): AreaData {
     if (map[gy][gx] === T.TREE && rng.random() < 0.8) map[gy][gx] = T.GRASS;
   }
 
-  // Landherr wartet am Westrand (Intro-Szene)
-  a.npcs.push({ id: 'landherr', name: 'Der Landherr', x: 5 * TILE, y: 11.5 * TILE });
+  // Kein Landherr im Wald (Runde 14): der Auftrag kommt per Siegelbrief
+  // des Amtmanns - niemand wartet unrealistisch zwischen den Bäumen.
 
   // Wolf-Begegnungen lauern AM Pfad (folgen seinem Verlauf)
   a.enemySpawns.push({ type: 'wolf', x: 24 * TILE, y: (pfadY[24] ?? 12) * TILE, elite: false });

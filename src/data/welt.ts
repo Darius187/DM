@@ -40,7 +40,7 @@ export const EINFALL = {
 // durch die zwei Tore der Salzstraße.
 export const STADTMAUER = {
   stufen: [
-    { name: 'Palisade', gold: 120, holz: 30, stein: 10, naechte: 3, beschreibung: 'Angespitzte Pfähle rund um Ravensmoor mit zwei verschließbaren Toren - der Bau dauert drei Nächte' },
+    { name: 'Palisade', gold: 750, holz: 80, stein: 30, naechte: 3, beschreibung: 'Angespitzte Pfähle rund um Ravensmoor mit zwei verschließbaren Toren - der Bau dauert drei Nächte' },
   ],
 } as const;
 

@@ -12,7 +12,7 @@ import { ShopUI } from '../ui/shop';
 import { Hud } from '../ui/hud';
 import { StashUI } from '../ui/stash';
 import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
-import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, VOLK, type DlgPage } from '../data/dialoge';
+import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, VOLK, SMALLTALK, type DlgPage } from '../data/dialoge';
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER } from '../data/crafting';
@@ -379,6 +379,7 @@ export class WorldScene extends CombatScene {
     }
     if (id === 'crypt1' && !a.dark) { /* nie - nur für die Lesbarkeit */ }
     if (id === 'crypt1') this.sfx.play('krypta_betreten');
+    if (id === 'crypt3') this.flags.ebene3 = true;
     this.gruselT = 6 + Math.random() * 8;
     // Kleine Stuben mittig im Bild statt oben links in der Ecke
     const mapW = a.w * TILE, mapH = a.h * TILE;
@@ -487,9 +488,13 @@ export class WorldScene extends CombatScene {
         }
         const key = this.provider.tileKey(name, variant, a.depth, a.theme);
         const img = this.add.image(tx * TILE + 16, ty * TILE + 16, key).setDepth(-10);
-        // Gebäudefassaden sortieren sich vor den Spieler, wenn er dahinter steht
+        // Gebäude verdecken den Spieler KOMPLETT, wenn er dahinter steht
+        // (Runde 14: vorher "stand" man optisch auf dem Dach) - alle Teile
+        // eines Hauses sortieren sich auf die Tiefe seiner Vorderkante
         if (id === T.HWALL || id === T.CWALL) {
-          img.setDepth(ty * TILE + 16);
+          let fy = ty;
+          while (fy + 1 < a.h && (a.map[fy + 1][tx] === T.HWALL || a.map[fy + 1][tx] === T.CWALL || a.map[fy + 1][tx] === T.HDOOR || a.map[fy + 1][tx] === T.CDOOR)) fy++;
+          img.setDepth(fy * TILE + 16);
         }
         // Wasser merken: die Varianten laufen als Animation durch (Runde 13)
         if (id === T.WATER) this.wasserBilder.push({ img, variant });
@@ -609,6 +614,10 @@ export class WorldScene extends CombatScene {
     return this.area?.dark ? TUNING.kryptaTempo : 1;
   }
 
+  protected override klickAufUi(ptr: Phaser.Input.Pointer): boolean {
+    return this.hud?.klickBlockiert(ptr) ?? false;
+  }
+
   protected override uiBlocked(): boolean {
     return super.uiBlocked() || this.dialog?.open || this.shop?.open || this.stash?.open || !!this.deathOverlay || !!this.pauseMenu;
   }
@@ -685,6 +694,25 @@ export class WorldScene extends CombatScene {
     // Gehöft-Interaktionen (Lager, Bett, Kamin, Feld, Gartenschrein)
     const gh = this.gehoeftHint();
     if (gh) return gh;
+    // Anschlagbrett und Stadttore VOR den NPCs (Runde 14: vorbeilaufende
+    // Dörfler dürfen den Hinweis nicht verdrängen)
+    if (this.area.id === 'village') {
+      const brett = this.area.special.find((sp) => sp.id === 'brett');
+      if (brett && near((brett.x + 0.5) * TILE, (brett.y + 0.5) * TILE, 48)) {
+        return { text: `Anschlagbrett - ${ik} zum Lesen`, action: () => this.readBrett() };
+      }
+      if (this.stadtmauerStufe >= 1) {
+        for (const [tx, west] of [[2, true], [this.area.w - 3, false]] as const) {
+          if (near((tx + 0.5) * TILE, 31 * TILE, 56)) {
+            const zu = west ? this.torWestZu : this.torOstZu;
+            return {
+              text: `${west ? 'Westtor' : 'Osttor'} (${zu ? 'geschlossen' : 'offen'}) - ${ik} zum ${zu ? 'Öffnen' : 'Schließen'}`,
+              action: () => this.toggleTor(west),
+            };
+          }
+        }
+      }
+    }
     // NPCs (schlafende sind unsichtbar und nicht ansprechbar)
     for (const n of this.npcEnts) {
       if (n.sprite.visible && near(n.curX, n.curY, 56)) {
@@ -727,25 +755,6 @@ export class WorldScene extends CombatScene {
     for (const wl of this.area.wells) {
       if (!wl.used && near(wl.x, wl.y, 46)) {
         return { text: `Blutbrunnen - ${ik} zum Trinken`, action: () => this.useWell(wl) };
-      }
-    }
-    // Anschlagbrett mit dem täglichen Kopfgeld
-    if (this.area.id === 'village') {
-      const brett = this.area.special.find((s) => s.id === 'brett');
-      if (brett && near((brett.x + 0.5) * TILE, (brett.y + 0.5) * TILE, 48)) {
-        return { text: `Anschlagbrett - ${ik} zum Lesen`, action: () => this.readBrett() };
-      }
-      // Stadttore der Palisade: öffnen/schließen
-      if (this.stadtmauerStufe >= 1) {
-        for (const [tx, west] of [[2, true], [this.area.w - 3, false]] as const) {
-          if (near((tx + 0.5) * TILE, 31 * TILE, 56)) {
-            const zu = west ? this.torWestZu : this.torOstZu;
-            return {
-              text: `${west ? 'Westtor' : 'Osttor'} (${zu ? 'geschlossen' : 'offen'}) - ${ik} zum ${zu ? 'Öffnen' : 'Schließen'}`,
-              action: () => this.toggleTor(west),
-            };
-          }
-        }
       }
     }
     // Opferaltar
@@ -864,6 +873,13 @@ export class WorldScene extends CombatScene {
       const p0 = punkte[i % punkte.length];
       const e = this.spawnEnemy(pick(this.rng, typen), EINFALL.tiefe, p0.x * TILE + (Math.random() - 0.5) * 40, p0.y * TILE + (Math.random() - 0.5) * 40, this.rng.random() < 0.15);
       e.aggro = 5000; // sie suchen den Verteidiger, egal wie weit
+    }
+    if (!this.flags.wurdeBelagert) {
+      this.flags.wurdeBelagert = true;
+      // Nach dem ersten Schrecken raet der Schulze zur Mauer
+      this.time.delayedCall(4000, () => {
+        if (this.area.id === 'village') this.logMsg('Schulze Bertram: »Das darf nie wieder geschehen - redet mit dem Schmied über eine Palisade!«', 'gold');
+      });
     }
     this.sfx.playMusic('musik_einfall');
     this.logMsg(this.stadtmauerStufe >= 1
@@ -1025,9 +1041,22 @@ export class WorldScene extends CombatScene {
         this.talkZunft(id, npc.name);
         break;
       default: {
-        // Dorfvolk: Berufe und Familien (Feedback-Runde 9)
-        const zeilen = VOLK[id];
-        if (zeilen) this.dialog.show(npc.name, [...zeilen]);
+        // Dorfvolk (Runde 14): persönliche Zeile + Smalltalk zur Lage -
+        // JEDER ist ansprechbar, auch ohne eigene VOLK-Zeilen
+        const frauen = new Set(['frau1', 'frau2', 'witwe', 'wirtin', 'magd', 'waescherin', 'hebamme', 'weberin', 'bauer2']);
+        const kinder = new Set(['kind1', 'kind2']);
+        const pool = kinder.has(id) ? SMALLTALK.kinder : frauen.has(id) ? SMALLTALK.frauen : SMALLTALK.maenner;
+        const zeilen: string[] = [];
+        const eigene = VOLK[id];
+        if (eigene) zeilen.push(pick(this.rng, eigene as unknown as string[]));
+        // Lage-Spruch: Einfall > Boss > Regen > Nacht > Allgemeines
+        const nacht = this.tageszeit > TAG.nachtAb || this.tageszeit < TAG.morgenAb;
+        if (this.flags.wurdeBelagert && Math.random() < 0.4) zeilen.push(pick(this.rng, SMALLTALK.nachEinfall as unknown as string[]));
+        else if (this.bossDead && Math.random() < 0.4) zeilen.push(pick(this.rng, SMALLTALK.nachBoss as unknown as string[]));
+        else if (this.regnet && Math.random() < 0.5) zeilen.push(pick(this.rng, SMALLTALK.regen as unknown as string[]));
+        else if (nacht && Math.random() < 0.5) zeilen.push(pick(this.rng, SMALLTALK.nacht as unknown as string[]));
+        else zeilen.push(pick(this.rng, pool as unknown as string[]));
+        this.dialog.show(npc.name, zeilen);
         break;
       }
     }
@@ -1312,6 +1341,14 @@ export class WorldScene extends CombatScene {
 
   // Wiederaufbau des Gehöfts in 3 Stufen (Masterprompt 7.4)
   protected openAufbau(): void {
+    // Erst verdienen (Runde 14): der Schmied baut, wenn man sich unten
+    // bewährt hat - Ebene 3 der Krypta erreicht
+    if (!this.flags.ebene3 && this.aufbauStufe === 0) {
+      this.dialog.show('Schmied', [
+        'Das Gehöft? Gemach. Erst will ich sehen, dass ihr kein Strohfeuer seid - steigt in die Krypta, mindestens bis in die Kultstätte. Dann reden wir über Balken und Steine.',
+      ], 'schmied');
+      return;
+    }
     if (this.aufbauBestellt) {
       this.dialog.show('Schmied', ['Wir sind dran. Schlaft eine Nacht - morgen früh steht mehr als heute.'], 'schmied');
       return;
@@ -1385,6 +1422,13 @@ export class WorldScene extends CombatScene {
   // Stadtmauer: Palisade als Bauprojekt (Feedback-Runde 7). Holz gibt es an
   // den Bäumen rund ums Dorf ODER beim Schmied zu kaufen - kein Zwangs-Grind.
   private openStadtmauer(): void {
+    // Mauern baut man erst, wenn man weiß wozu: nach dem ersten Einfall
+    if (!this.flags.wurdeBelagert && this.stadtmauerStufe === 0) {
+      this.dialog.show('Schmied', [
+        'Eine Mauer? Um Ravensmoor? Spart euer Gold - hier war seit Jahren kein Feind. Sollte sich das ändern, bin ich der Erste, der Pfähle spitzt.',
+      ], 'schmied');
+      return;
+    }
     if (this.stadtmauerRestNaechte > 0) {
       this.dialog.show('Schmied', [`Wir setzen Pfahl um Pfahl. Noch ${this.stadtmauerRestNaechte} ${this.stadtmauerRestNaechte === 1 ? 'Nacht' : 'Nächte'}, dann steht der Ring.`], 'schmied');
       return;
@@ -2335,24 +2379,36 @@ export class WorldScene extends CombatScene {
     this.renderFog();
     // Nebel des Krieges im Dunkelwald: Sichtkreis auch über Tage (einstellbar)
     const fow = !this.area.dark && this.area.id === 'wald' && getSettings().fow;
-    if (!this.area.dark && !fow) {
+    // Stuben bleiben warm und hell
+    if (this.area.innen) {
       this.lightRT.setVisible(false);
       for (const img of this.warmPool) img.setVisible(false);
       return;
+    }
+    // Draußen (Runde 14): immer ein Sichtkreis um den Spieler - tagsüber
+    // weit, nachts eng und dunkel; der Morgen graut langsam auf
+    let nachtFaktor = 0;
+    if (!this.area.dark) {
+      const t = this.tageszeit;
+      if (t < TAG.morgenAb) nachtFaktor = 1 - t / TAG.morgenAb;
+      else if (t > TAG.abendAb) nachtFaktor = Math.min(1, (t - TAG.abendAb) / (TAG.nachtAb - TAG.abendAb));
     }
     if (this.lightRT.width !== this.scale.width || this.lightRT.height !== this.scale.height) {
       this.lightRT.setSize(this.scale.width, this.scale.height);
     }
     this.lightRT.setVisible(true);
     this.lightRT.clear();
-    this.lightRT.fill(0x020100, fow ? 0.88 : 0.97);
+    const dunkelAlpha = this.area.dark ? 0.97 : Math.min(0.92, 0.30 + 0.62 * nachtFaktor + (fow ? 0.2 : 0));
+    this.lightRT.fill(0x020100, dunkelAlpha);
     const time = this.time.now / 1000;
     const flicker = 1 + Math.sin(time * 9) * 0.025 + Math.sin(time * 23) * 0.015;
-    const playerRadius = (fow ? 330 : 235 + this.p.stats.licht) * flicker;
+    let basisRadius = this.area.dark ? 235 + this.p.stats.licht : 640 - 400 * nachtFaktor + this.p.stats.licht;
+    if (fow) basisRadius = Math.min(basisRadius, 330);
+    const playerRadius = basisRadius * flicker;
     const px = this.px - cam.scrollX, py = this.py - cam.scrollY;
     this.eraseLight(px, py, playerRadius);
     let warmIdx = 0;
-    if (!fow) warmIdx = this.placeWarm(warmIdx, this.px, this.py, 160, 0.5);
+    if (!fow && (this.area.dark || nachtFaktor > 0.3)) warmIdx = this.placeWarm(warmIdx, this.px, this.py, 160, 0.5);
     for (const t of (fow ? [] : this.area.torches)) {
       const sx = t.x - cam.scrollX, sy = t.y - cam.scrollY;
       if (sx < -160 || sy < -160 || sx > this.scale.width + 160 || sy > this.scale.height + 160) continue;
@@ -2555,7 +2611,9 @@ export class WorldScene extends CombatScene {
     for (const n of this.npcEnts) {
       let sichtbar: boolean;
       if (this.area.innen) {
-        sichtbar = n.nurAbends ? (abend || nacht) : true;
+        // erst nachts daheim - abends stehen sie noch sichtbar draußen
+        // (Runde 14: sonst gab es sie kurzzeitig doppelt)
+        sichtbar = n.nurAbends ? nacht : true;
       } else if (this.einfallAktiv) {
         sichtbar = n.kaempfer === true;
       } else {

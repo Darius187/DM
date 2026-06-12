@@ -29,11 +29,13 @@ export interface AufbauStufe {
   beschreibung: string;
 }
 export const AUFBAU_STUFEN: ReadonlyArray<AufbauStufe> = [
-  { name: 'Rohbau', gold: 150, holz: 12, stein: 8, eisen: 0,
+  // Runde 14: deutlich teurer - ein Haus ist ein Lebensziel, kein
+  // Taschengeld (der Autor hatte nach Ebene 1 bereits 1500 Gold)
+  { name: 'Rohbau', gold: 900, holz: 40, stein: 25, eisen: 0,
     beschreibung: 'Dach dicht, eine Truhe (Lager), Strohlager (Rasten)' },
-  { name: 'Wohnhaus', gold: 350, holz: 20, stein: 14, eisen: 4,
+  { name: 'Wohnhaus', gold: 1800, holz: 60, stein: 40, eisen: 12,
     beschreibung: 'Kamin (Feuer machen = Buff "Aufgewärmt"), richtiges Bett (Speichern + Tag überspringen)' },
-  { name: 'Hof', gold: 600, holz: 30, stein: 20, eisen: 8,
+  { name: 'Hof', gold: 3200, holz: 90, stein: 60, eisen: 25,
     beschreibung: 'Feld (3x3 Beete), Einrichtung wählbar, Schrein im Garten (Schnellreise)' },
 ];
 

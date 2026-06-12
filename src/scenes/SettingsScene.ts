@@ -64,6 +64,11 @@ export class SettingsScene extends Phaser.Scene {
       ['pause', 'Pause'],
     ];
     for (const [id, label] of rows) y = this.keyRow(y, id, label);
+    y += 6;
+    this.add.text(this.colX, y, 'F10 im Spiel: Entwicklungskasten (Balancing, UI verschieben)', {
+      fontFamily: 'serif', fontSize: '12px', color: '#8a7a5a', fontStyle: 'italic',
+    });
+    y += 22;
     y = Math.max(y, leftEnd);
 
     this.makeButton(w / 2 - 90, y + 24, 'STANDARD', () => {

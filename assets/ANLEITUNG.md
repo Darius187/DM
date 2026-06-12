@@ -41,3 +41,9 @@ Die wichtigsten Namen:
   "Nearest Neighbor" (ohne Weichzeichnen) herunterskalieren
 - Licht kommt von OBEN LINKS
 - Boden-Tiles opak und nahtlos; Objekte (Baum, Möbel) transparent
+
+## WICHTIG: Sound-Längen (Lehre aus Runde 14)
+Kampf-Effekte (swoosh, slice, armor_cut, block) müssen KURZ sein -
+unter 3 Sekunden. Eine 48s-Compilation als swoosh2 hat bei jedem
+Schwerthieb eine Dauerbeschallung gestartet. Lange Stücke nur für
+musik_* und Atmosphären-Loops verwenden.
