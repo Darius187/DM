@@ -620,10 +620,28 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   }
 
   private playSwingSound(cls: WeaponClass, fin: boolean): void {
+    // Schwung ohne Treffer: die swoosh-Dateien des Autors abwechselnd,
+    // sonst die bisherigen Synth-Klänge
+    if (cls === 'schwert' && this.sfx.playAbwechselnd('swoosh', 4)) return;
     if (cls === 'axt') this.sfx.play('axt_swing');
     else if (cls === 'stange') this.sfx.play('hellebarde_stoss');
     else if (cls === 'wucht') this.sfx.play('hammer_schlag');
     else this.sfx.play(fin ? 'schwert_finisher' : 'schwert_swing');
+  }
+
+  // Treffer-Schema (Runde 12): armor_cut auf Gepanzerte (Tempelritter,
+  // Schildträger), schwert_slice auf weiche Gegner - Fallback: alte Klänge
+  private playHitSound(e: Enemy): void {
+    const gepanzert = e.type === 'templer' || e.schild;
+    if (gepanzert && this.sfx.has('armor_cut')) {
+      this.sfx.play('armor_cut');
+      return;
+    }
+    if (!gepanzert && this.sfx.has('schwert_slice')) {
+      this.sfx.play('schwert_slice');
+      return;
+    }
+    this.sfx.play(e.type === 'skelett' || e.type === 'schuetze' ? 'treffer_knochen' : 'treffer_fleisch');
   }
 
   protected meleeArcAttack(ev: AttackEvent, ang: number): void {
@@ -790,7 +808,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.fx.float(e.x + (Math.random() * 12 - 6), e.y - e.r - 8, String(dmg), col ?? '#e8dcc0');
     if (kx || ky) e.moveBody(this, kx, ky);
     this.fx.burst(e.x, e.y, 0xa82020, 6, 120);
-    this.sfx.play(e.type === 'skelett' || e.type === 'schuetze' ? 'treffer_knochen' : 'treffer_fleisch');
+    this.playHitSound(e);
     if (this.p.stats.leech) this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + this.p.stats.leech);
     // Nahkampf-Schule steigt nur mit Nahkampf-Treffern
     if (melee) this.gainSchoolUse('nahkampf');
@@ -813,6 +831,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     e.sprite?.destroy();
     e.sprite = null;
     this.fx.burst(e.x, e.y, parseInt(e.col.slice(1), 16), 16, 170);
+    // Todesstoß: schwert_slice (Autor-Sound), dazu der Sterbelaut
+    if (this.sfx.has('schwert_slice')) this.sfx.play('schwert_slice', 0.8);
     this.sfx.play('tod');
     this.giveXp(e.xp);
     // Sammelalbum: Jagdstatistik und besiegte Vorsteher

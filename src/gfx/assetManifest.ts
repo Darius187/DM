@@ -35,9 +35,14 @@ export const SOUNDS = [
   // UI
   'klick', 'item_episch', 'levelup', 'fertigkeit_neu',
   // Musik und große Stimmungs-Sounds (Runde 12, .mp3 vom Autor)
-  'musik_intro', 'musik_einfall', 'musik_boss', 'herzschlag',
+  'musik_intro', 'musik_einfall', 'musik_boss', 'musik_menue', 'musik_tod',
+  'herzschlag', 'regen_draussen', 'regen_drinnen',
   'krypta_betreten', 'krypta_grusel1', 'krypta_grusel2', 'krypta_grusel3',
-  'krypta_grusel4', 'krypta_grusel5', 'regen',
+  'krypta_grusel4', 'krypta_grusel5',
+  // Schwert-Sounds des Autors (Haken bereit, Dateien folgen):
+  // armor_cut = Treffer auf Gepanzerte, schwert_slice = weiche Gegner +
+  // Todesstoß, swoosh1-4 = Schwung ohne Treffer (abwechselnd)
+  'armor_cut', 'schwert_slice', 'swoosh1', 'swoosh2', 'swoosh3', 'swoosh4',
 ] as const;
 
 // Figuren-Spritesheets: <name>_<richtung>_<frame>.png oder <name>.png + <name>.json

@@ -5,6 +5,7 @@ import Phaser from 'phaser';
 import { TITEL } from '../data/texte';
 import { hasSave, readSave, AUTOSAVE_SLOT } from '../logic/save';
 import { storage } from '../logic/gameStorage';
+import { getSettings } from '../logic/settings';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -13,6 +14,13 @@ export class TitleScene extends Phaser.Scene {
 
   create(): void {
     const w = this.scale.width, h = this.scale.height;
+    // Menü-Musik (Runde 12): läuft im Hauptmenü, endet beim Spielstart
+    if (this.cache.audio.exists('snd_musik_menue') && !this.sound.get('snd_musik_menue')?.isPlaying) {
+      this.sound.play('snd_musik_menue', { loop: true, volume: getSettings().volAtmosphaere / 100 });
+    }
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.sound.get('snd_musik_menue')?.stop();
+    });
 
     if (this.textures.exists('hs_ravensmoor-title')) {
       const img = this.add.image(w / 2, h / 2, 'hs_ravensmoor-title');
@@ -28,7 +36,7 @@ export class TitleScene extends Phaser.Scene {
       stroke: '#000000', strokeThickness: 6,
     }).setOrigin(0.5);
     // Sichtbare Versionsnummer, damit alte Stände sofort auffallen
-    this.add.text(10, h - 10, 'Stand: Feedback-Runde 11 (11.06.2026)', {
+    this.add.text(10, h - 10, 'Stand: Feedback-Runde 12 (12.06.2026)', {
       fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c',
     }).setOrigin(0, 1);
     this.add.text(w / 2, h * 0.2 + 52, TITEL.unter, {

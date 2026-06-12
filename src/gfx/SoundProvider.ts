@@ -91,6 +91,24 @@ export class SoundProvider {
     // Kein Synth-Loop: Dauer-Piepen wäre schlimmer als Stille
   }
 
+  // Gibt es diesen Klang als echte Datei? (für Sound-Schemata mit Fallback)
+  has(name: string): boolean {
+    return this.scene.cache.audio.exists(`snd_${name}`);
+  }
+
+  // Spielt abwechselnd eine der vorhandenen Varianten (swoosh1, swoosh2 ...)
+  private wechselZaehler = new Map<string, number>();
+
+  playAbwechselnd(basis: string, anzahl: number, volMult = 1): boolean {
+    const da: string[] = [];
+    for (let i = 1; i <= anzahl; i++) if (this.has(`${basis}${i}`)) da.push(`${basis}${i}`);
+    if (!da.length) return false;
+    const n = (this.wechselZaehler.get(basis) ?? 0) % da.length;
+    this.wechselZaehler.set(basis, n + 1);
+    this.play(da[n], volMult);
+    return true;
+  }
+
   stopLoop(name: string): void {
     const snd = this.loops.get(name);
     if (snd) {

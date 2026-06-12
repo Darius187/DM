@@ -2172,6 +2172,7 @@ export class WorldScene extends CombatScene {
     const bg = this.add.rectangle(0, 0, w, h, 0x000000, 0.9).setOrigin(0);
     bg.setInteractive();
     c.add(bg);
+    this.sfx.playMusic('musik_tod');
     c.add(this.add.text(w / 2, h * 0.32, TOD.titel, {
       fontFamily: 'serif', fontSize: '46px', color: '#8c1a1a', letterSpacing: 5,
     }).setOrigin(0.5));
@@ -2193,6 +2194,7 @@ export class WorldScene extends CombatScene {
   private respawn(c: Phaser.GameObjects.Container): void {
     c.destroy();
     this.deathOverlay = null;
+    if (this.sfx.aktuelleMusik() === 'musik_tod') this.sfx.stopMusic();
     this.p.hp = this.p.stats.maxhp;
     this.p.mana = this.p.stats.maxmana;
     this.playerDead = false;
@@ -2605,6 +2607,19 @@ export class WorldScene extends CombatScene {
     this.updateCombat(dt);
     this.renderRegen(dt);
     this.renderOrtsname();
+    // Regen-Klang: draußen rauscht es, in der Stube gedämpft (Runde 12)
+    if (this.regnet && !this.area.dark) {
+      if (this.area.innen) {
+        this.sfx.startLoop('regen_drinnen');
+        this.sfx.stopLoop('regen_draussen');
+      } else {
+        this.sfx.startLoop('regen_draussen');
+        this.sfx.stopLoop('regen_drinnen');
+      }
+    } else {
+      this.sfx.stopLoop('regen_draussen');
+      this.sfx.stopLoop('regen_drinnen');
+    }
     // Herzschlag bei niedrigem Leben (Runde 12)
     if (!this.playerDead && this.p.hp < this.p.stats.maxhp * 0.3) this.sfx.startLoop('herzschlag');
     else this.sfx.stopLoop('herzschlag');
