@@ -7,6 +7,8 @@ export const TUNING = {
   gegnerSchaden: 1.0,
   gegnerTempo: 1.0,
   kryptaTempo: 0.65,
+  // Runde 16: Krypta-Gegner schleichen (Horror statt Gewusel)
+  kryptaGegnerTempo: 0.72,
 };
 
 export const TUNING_ROWS: Array<[keyof typeof TUNING, string, number, number, number]> = [
@@ -15,4 +17,5 @@ export const TUNING_ROWS: Array<[keyof typeof TUNING, string, number, number, nu
   ['gegnerSchaden', 'Gegner-Schaden x', 0.2, 4, 0.1],
   ['gegnerTempo', 'Gegner-Tempo x', 0.4, 2, 0.05],
   ['kryptaTempo', 'Spieler-Tempo Krypta x', 0.3, 1.2, 0.05],
+  ['kryptaGegnerTempo', 'Gegner-Tempo Krypta x', 0.3, 1.2, 0.04],
 ];

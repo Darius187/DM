@@ -20,10 +20,11 @@ export const LIGHT_ATTACK = {
   recoveryS: 0.34,          // Erholzeit normaler Hieb (Referenz atkCd)
   recoveryFinisherS: 0.52,  // Erholzeit Finisher (Referenz)
   cancelPct: 0.5,           // Erholphase ab 50% durch Rolle oder Block abbrechbar
-  range: 58,
-  rangeFinisher: 68,
-  arc: 1.15,                // Trefferkegel (rad, halbe Breite)
-  arcFinisher: 1.5,         // breiterer Bogen beim Finisher
+  // Runde 16: Hieb präziser - kleinerer Kegel, etwas kürzere Reichweite
+  range: 50,
+  rangeFinisher: 60,
+  arc: 0.85,                // Trefferkegel (rad, halbe Breite)
+  arcFinisher: 1.2,         // breiterer Bogen beim Finisher
   dmgVarianceMin: 0.85,
   dmgVarianceMax: 1.2,
 } as const;

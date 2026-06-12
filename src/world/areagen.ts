@@ -29,6 +29,8 @@ export interface NpcSpawn {
   kaempfer?: boolean;
   // Innenräume: tagsüber bei der Arbeit, erst abends/nachts daheim
   nurAbends?: boolean;
+  // Sichtbares Tagwerk (Runde 16): die Bewohner ARBEITEN an ihrem Platz
+  arbeit?: 'hacken' | 'schmieden' | 'fischen' | 'feld' | 'fuettern' | 'waschen' | 'backen' | 'weben';
 }
 
 export interface AnimalSpawn {
@@ -458,6 +460,31 @@ export function buildBoss(rng: Rng, bossDead: boolean): AreaData {
   return a;
 }
 
+// Das Innere Grab (Runde 16): Bei 25% Leben reißt der Tempelritter den
+// Helden mit hinab - enge Kammer, keine Treppe, bis der Ritter fällt.
+export function buildBossInner(rng: Rng): AreaData {
+  const w = 22, h = 16;
+  const map = blank(w, h, T.WALL);
+  const a: AreaData = {
+    id: 'bossinner', name: 'Das Innere Grab', dark: true, depth: 7, theme: CRYPT_THEMES[6],
+    w, h, map, spawn: { x: 11 * TILE, y: 12.5 * TILE },
+    torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
+    breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
+    ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
+    npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
+  };
+  carve(map, 3, 3, w - 4, h - 4, T.FLOOR);
+  // Runenkreis in der Mitte, Blut an den Rändern
+  for (const [rx, ry] of [[9, 6], [11, 5], [13, 6], [14, 8], [13, 10], [11, 11], [9, 10], [8, 8]]) map[ry][rx] = T.RUNE;
+  for (let i = 0; i < 10; i++) {
+    const bx = ri(rng, 4, w - 5), by = ri(rng, 4, h - 5);
+    if (map[by][bx] === T.FLOOR) map[by][bx] = rng.random() < 0.6 ? T.BLOOD : T.BONES;
+  }
+  for (let x = 4; x <= w - 5; x += 3) a.torches.push({ x: x * TILE + 16, y: 2 * TILE + 24, ph: rnd(rng, 0, 6.28) });
+  a.upPos = { x: 11 * TILE + 16, y: 13 * TILE + 16 }; // Treppe erscheint erst nach dem Sieg
+  return a;
+}
+
 // --- Ravensmoor: ein echtes Dorf des 17. Jahrhunderts (Masterprompt 7.2) ---
 // Referenzdorf war 46x30 - dieses ist 92x60, entlang der alten Salzstraße.
 
@@ -573,7 +600,7 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   // Magd Trine hilft tagsüber an der Mühle, abends geht sie heim in die Gasse
   a.npcs.push({ id: 'magd', name: 'Magd Trine', x: 78 * TILE, y: 41 * TILE, abend: { x: 46.5 * TILE, y: 48.5 * TILE } });
   // Wäscherin Ida am Steg über den Bach
-  a.npcs.push({ id: 'waescherin', name: 'Wäscherin Ida', x: 79 * TILE, y: 28.5 * TILE, abend: { x: 53.5 * TILE, y: 48.5 * TILE } });
+  a.npcs.push({ id: 'waescherin', name: 'Wäscherin Ida', x: 79 * TILE, y: 28.5 * TILE, abend: { x: 53.5 * TILE, y: 48.5 * TILE }, arbeit: 'waschen' });
 
   // 5. Schmiede (südlich der Straße)
   carve(map, 30, 38, 36, 42, T.HWALL);
@@ -582,7 +609,7 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   tuer(32, 42, 'schmiede');
   label(33, 37.2, 'Schmiede');
   a.torches.push({ x: 34 * TILE, y: 43 * TILE, ph: rnd(rng, 0, 6.28) });
-  a.npcs.push({ id: 'schmied', name: 'Schmied', x: 33 * TILE, y: 44 * TILE, abend: { x: 16 * TILE, y: 31.5 * TILE }, kaempfer: true });
+  a.npcs.push({ id: 'schmied', name: 'Schmied', x: 33 * TILE, y: 44 * TILE, abend: { x: 16 * TILE, y: 31.5 * TILE }, kaempfer: true, arbeit: 'schmieden' });
 
   // 6a. Bauernhof 1 (Nordwesten): Schweine + Hühner im Gatter, Acker
   carve(map, 14, 8, 22, 13, T.HWALL);
@@ -601,9 +628,9 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   a.animals.push({ type: 'schwein', x: 20 * TILE, y: 20 * TILE, pen: pen1 });
   a.animals.push({ type: 'huhn', x: 18 * TILE, y: 19.5 * TILE, pen: pen1 });
   carve(map, 25, 8, 30, 13, T.FIELD);
-  a.npcs.push({ id: 'bauer1', name: 'Bauer Veit', x: 27 * TILE, y: 11 * TILE, abend: { x: 19 * TILE, y: 31.5 * TILE }, kaempfer: true });
+  a.npcs.push({ id: 'bauer1', name: 'Bauer Veit', x: 27 * TILE, y: 11 * TILE, abend: { x: 19 * TILE, y: 31.5 * TILE }, kaempfer: true, arbeit: 'feld' });
   // Hirtenjunge Lenz hütet die Tiere des Hofs
-  a.npcs.push({ id: 'hirte', name: 'Hirtenjunge Lenz', x: 19 * TILE, y: 19.5 * TILE, abend: { x: 46.5 * TILE, y: 48.5 * TILE } });
+  a.npcs.push({ id: 'hirte', name: 'Hirtenjunge Lenz', x: 19 * TILE, y: 19.5 * TILE, abend: { x: 46.5 * TILE, y: 48.5 * TILE }, arbeit: 'fuettern' });
 
   // 6b. Bauernhof 2 (Südosten): Kuh im Gatter, Acker
   carve(map, 56, 44, 64, 49, T.HWALL);
@@ -618,7 +645,7 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   a.animals.push({ type: 'kuh', x: 70 * TILE, y: 47 * TILE, pen: pen2 });
   a.animals.push({ type: 'huhn', x: 68 * TILE, y: 46 * TILE, pen: pen2 });
   carve(map, 56, 53, 63, 56, T.FIELD);
-  a.npcs.push({ id: 'bauer2', name: 'Bäuerin Grete', x: 59 * TILE, y: 54 * TILE, abend: { x: 60 * TILE, y: 50.5 * TILE } });
+  a.npcs.push({ id: 'bauer2', name: 'Bäuerin Grete', x: 59 * TILE, y: 54 * TILE, abend: { x: 60 * TILE, y: 50.5 * TILE }, arbeit: 'feld' });
 
   // 7. Fahrender Händler am Marktplatz (Karren)
   a.npcs.push({ id: 'haendler', name: 'Fahrender Händler', x: 50.5 * TILE, y: 28 * TILE });
@@ -637,14 +664,14 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   tuer(59, 24, 'backhaus');
   label(59.5, 18.2, 'Backhaus');
   a.chimneys.push({ x: 58 * TILE + 6, y: 19 * TILE + 2 });
-  a.npcs.push({ id: 'baecker', name: 'Bäcker Matthes', x: 59.5 * TILE, y: 26 * TILE, abend: { x: 59.5 * TILE, y: 25.5 * TILE } });
+  a.npcs.push({ id: 'baecker', name: 'Bäcker Matthes', x: 59.5 * TILE, y: 26 * TILE, abend: { x: 59.5 * TILE, y: 25.5 * TILE }, arbeit: 'backen' });
 
   // 7d. Zimmerei westlich der Straße - Werkstatt mit Holzlager
   carve(map, 25, 18, 30, 21, T.HWALL);
   carve(map, 27, 22, 28, 29, T.PATH);
   tuer(27, 21, 'zimmerei');
   label(27.5, 17.2, 'Zimmerei');
-  a.npcs.push({ id: 'zimmermann', name: 'Zimmermann Jakob', x: 27.5 * TILE, y: 23 * TILE, abend: { x: 46.5 * TILE, y: 42.5 * TILE }, kaempfer: true });
+  a.npcs.push({ id: 'zimmermann', name: 'Zimmermann Jakob', x: 27.5 * TILE, y: 23 * TILE, abend: { x: 46.5 * TILE, y: 42.5 * TILE }, kaempfer: true, arbeit: 'hacken' });
   for (const [bx, by] of [[31, 19], [31, 20]] as const) {
     a.breakables.push({ kind: 'kiste', x: bx * TILE + 16, y: by * TILE + 16, ambush: false });
   }
@@ -696,7 +723,7 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   carve(map, 24, 33, 28, 36, T.HWALL);
   tuer(26, 36, 'weberei');
   label(26.5, 32.2, 'Weberei');
-  a.npcs.push({ id: 'weberin', name: 'Weberin Adelheid', x: 26.5 * TILE, y: 38 * TILE, mittag: { x: 45.5 * TILE, y: 33 * TILE }, abend: { x: 26.5 * TILE, y: 37.5 * TILE } });
+  a.npcs.push({ id: 'weberin', name: 'Weberin Adelheid', x: 26.5 * TILE, y: 38 * TILE, mittag: { x: 45.5 * TILE, y: 33 * TILE }, abend: { x: 26.5 * TILE, y: 37.5 * TILE }, arbeit: 'weben' });
 
   // 10d. Gerberei am Bach, flussabwärts am Südrand (es stinkt eben)
   carve(map, 74, 52, 78, 55, T.HWALL);
@@ -725,7 +752,7 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   carve(map, 84, 20, 87, 23, T.HWALL);
   tuer(85, 23, 'fischerhuette');
   label(85.5, 19.2, 'Fischerhütte');
-  a.npcs.push({ id: 'fischer', name: 'Fischer Nepomuk', x: 83 * TILE, y: 26 * TILE, mittag: { x: 83 * TILE, y: 26 * TILE }, abend: { x: 85.5 * TILE, y: 24.5 * TILE } });
+  a.npcs.push({ id: 'fischer', name: 'Fischer Nepomuk', x: 83 * TILE, y: 26 * TILE, mittag: { x: 83 * TILE, y: 26 * TILE }, abend: { x: 85.5 * TILE, y: 24.5 * TILE }, arbeit: 'fischen' });
 
   // 10h. Imkerei am Ostufer, südlich der Brücke
   carve(map, 84, 36, 87, 39, T.HWALL);
@@ -746,7 +773,7 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   a.animals.push({ type: 'schaf', x: 27 * TILE, y: 54 * TILE, pen: pen3 });
   a.animals.push({ type: 'schaf', x: 30 * TILE, y: 55 * TILE, pen: pen3 });
   a.animals.push({ type: 'schaf', x: 32 * TILE, y: 54 * TILE, pen: pen3 });
-  a.npcs.push({ id: 'schaefer', name: 'Schäfer Tobias', x: 29 * TILE, y: 51 * TILE, mittag: { x: 29 * TILE, y: 51 * TILE }, abend: { x: 17.5 * TILE, y: 30.5 * TILE } });
+  a.npcs.push({ id: 'schaefer', name: 'Schäfer Tobias', x: 29 * TILE, y: 51 * TILE, mittag: { x: 29 * TILE, y: 51 * TILE }, abend: { x: 17.5 * TILE, y: 30.5 * TILE }, arbeit: 'fuettern' });
 
   // 8. Das niedergebrannte Gehöft (Wiederaufbau-Projekt, Phase 7)
   if (aufbauStufe === 0) {

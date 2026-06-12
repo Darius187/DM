@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir } from '../world/Enemy';
-import { buildCrypt, buildBoss, buildVillage, buildForest, buildInterior, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { buildCrypt, buildBoss, buildBossInner, buildVillage, buildForest, buildInterior, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { LANDHERR } from '../data/dialoge';
 import storyJson from '../data/story.json';
@@ -50,6 +50,7 @@ interface NpcEntity extends NpcSpawn {
   label: Phaser.GameObjects.Text;
   curX: number;
   curY: number;
+  arbeitT?: number; // Takt des sichtbaren Tagwerks (Runde 16)
 }
 
 interface AnimalEntity extends AnimalSpawn {
@@ -92,6 +93,10 @@ export class WorldScene extends CombatScene {
   torOstZu = false;
   private letzterEinfallTag = 0;
   private einfallAktiv = false;
+  // Belagerung (Runde 16): Breschen in der Palisade + Gegner überleben
+  // den Blick ins Gemeindehaus
+  private breschen: Array<{ x: number; y: number }> = [];
+  private einfallRest: Array<{ type: string; hp: number; x: number; y: number; elite: boolean; champion: boolean; name: string; schild: boolean }> = [];
   // 3x3 Beete des Hofs (Stufe 3)
   feld: Array<{ saatId: string | null; tageGewachsen: number; gegossen: boolean }> =
     Array.from({ length: 9 }, () => ({ saatId: null, tageGewachsen: 0, gegossen: false }));
@@ -150,6 +155,8 @@ export class WorldScene extends CombatScene {
     this.einfallAktiv = false;
     this.tagwerke = {};
     this.dorfkasse = 0;
+    this.breschen = [];
+    this.einfallRest = [];
     this.einrichtung = 0;
     this.tag = 1;
     this.tageszeit = 0.3;
@@ -335,6 +342,7 @@ export class WorldScene extends CombatScene {
     const rng = seededRng(this.areaSeed + id.length * 1009 + id.charCodeAt(id.length - 1));
     let a: AreaData;
     if (id === 'boss') a = buildBoss(rng, this.bossDead && !this.flags.ngPlus);
+    else if (id === 'bossinner') a = buildBossInner(rng);
     else if (id === 'village') {
       a = buildVillage(rng, this.aufbauStufe, this.stadtmauerStufe);
       this.applyTore(a);
@@ -349,9 +357,20 @@ export class WorldScene extends CombatScene {
   aufbauStufe = 0; // Wiederaufbau des Gehöfts (Phase 7)
 
   goArea(id: string, spawnAt?: { x: number; y: number }): void {
-    // Ein laufender Einfall verpufft beim Gebietswechsel (kein Exploit:
-    // die Belohnung gibt es nur, wenn man bleibt und kämpft)
-    this.einfallAktiv = false;
+    // Ein laufender Einfall verpufft beim Verlassen des Dorfes (kein
+    // Exploit) - der Blick ins Gemeindehaus unterbricht ihn aber NICHT
+    // (Runde 16): die Angreifer warten draußen
+    if (this.einfallAktiv) {
+      if (this.area?.id === 'village' && id.startsWith('innen_')) {
+        this.einfallRest = this.enemies.map((e) => ({
+          type: e.type, hp: e.hp, x: e.x, y: e.y, elite: e.elite,
+          champion: e.champion, name: e.name, schild: e.schild,
+        }));
+      } else if (id !== 'village' && !id.startsWith('innen_')) {
+        this.einfallAktiv = false;
+        this.einfallRest = [];
+      }
+    }
     const a = this.getArea(id);
     this.area = a;
     this.unloadAreaObjects();
@@ -387,6 +406,22 @@ export class WorldScene extends CombatScene {
     const by = Math.min(0, -(this.scale.height - mapH) / 2);
     this.cameras.main.setBounds(bx, by, Math.max(mapW, this.scale.width), Math.max(mapH, this.scale.height));
     this.cameras.main.setBackgroundColor(a.innen ? '#0e0a06' : a.dark ? '#050403' : '#0c1208');
+    // Einfall: Angreifer kehren aus dem Zwischenspeicher zurück
+    if (id === 'village' && this.einfallAktiv && this.einfallRest.length) {
+      for (const r of this.einfallRest) {
+        const e = this.spawnEnemy(r.type as never, EINFALL.tiefe, r.x, r.y, r.elite);
+        e.hp = Math.min(e.maxhp, r.hp);
+        e.champion = r.champion;
+        e.name = r.name;
+        e.schild = r.schild;
+        e.aggro = 5000;
+      }
+      this.einfallRest = [];
+    }
+    // Während des Einfalls drängen sich die Flüchtlinge im Gemeindehaus
+    if (id === 'innen_gemeindehaus' && this.einfallAktiv) {
+      this.addFluechtlinge();
+    }
     // Erzähler-Interludien (Referenz)
     if (id === 'crypt1' && !this.flags.nCrypt) {
       this.flags.nCrypt = true;
@@ -626,6 +661,8 @@ export class WorldScene extends CombatScene {
     return this.hud?.klickBlockiert(ptr) ?? false;
   }
 
+  protected override areaDark(): boolean { return this.area?.dark ?? false; }
+
   protected override uiBlocked(): boolean {
     return super.uiBlocked() || this.dialog?.open || this.shop?.open || this.stash?.open || !!this.deathOverlay || !!this.pauseMenu;
   }
@@ -855,6 +892,82 @@ export class WorldScene extends CombatScene {
 
   // --- Einfälle: Monster-Trupps greifen Ravensmoor an (Feedback-Runde 7) ----
 
+  // Ein Arbeitsschlag des Bewohners: Funken, Späne, Wasser - mit Geräusch,
+  // dessen Lautstärke mit der Entfernung fällt (Runde 16)
+  private arbeitsTakt(n: NpcEntity): void {
+    const dist = Math.hypot(n.curX - this.px, n.curY - this.py);
+    if (dist > 520) return;
+    const vol = Math.max(0.1, 1 - dist / 520) * 0.7;
+    switch (n.arbeit) {
+      case 'hacken':
+        this.fx.burst(n.curX + 10, n.curY, 0x8a6a42, 5, 80);
+        this.sfx.play('holz_hacken', vol);
+        break;
+      case 'schmieden':
+        this.fx.burst(n.curX + 8, n.curY - 4, 0xf0a830, 7, 120);
+        this.sfx.play('schmiede_hammer', vol);
+        break;
+      case 'fischen':
+        this.fx.burst(n.curX + 24, n.curY + 6, 0x6a8ad8, 4, 60);
+        break;
+      case 'feld':
+        this.fx.burst(n.curX + 8, n.curY + 8, 0x5a4427, 4, 60);
+        this.sfx.play('stein_hacken', vol * 0.5);
+        break;
+      case 'fuettern':
+        this.fx.burst(n.curX + 12, n.curY + 4, 0xb89a4e, 4, 50);
+        break;
+      case 'waschen':
+        this.fx.burst(n.curX + 10, n.curY + 8, 0x8ab4cc, 5, 70);
+        break;
+      case 'backen':
+        this.fx.smoke(n.curX + 6, n.curY - 14);
+        break;
+      case 'weben':
+        this.fx.burst(n.curX + 6, n.curY, 0xd8cfb8, 3, 40);
+        break;
+    }
+  }
+
+  // Frauen, Kinder und Alte sichtbar im Gemeindehaus (Runde 16)
+  private addFluechtlinge(): void {
+    const leute: Array<[string, string, number, number]> = [
+      ['frau1', 'Bäckersfrau Elsbeth', 4, 6], ['frau2', 'Margret', 6, 7],
+      ['witwe', 'Witwe Käthe', 9, 6], ['kind1', 'Hannes', 5, 8],
+      ['kind2', 'Lisbeth', 8, 8], ['hebamme', 'Hebamme Walpurga', 11, 7],
+      ['waescherin', 'Wäscherin Ida', 12, 5],
+    ];
+    for (const [figur, name, tx, ty] of leute) {
+      const x = tx * TILE + 16, y = ty * TILE + 16;
+      const sprite = this.add.sprite(x, y, '__DEFAULT').setDepth(y);
+      this.provider.applyFigure(sprite, figur, 0, 0);
+      const lbl = this.add.text(x, y - 22, name, {
+        fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8e6', stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(2300);
+      this.npcEnts.push({ id: figur, figur, name, x, y, sprite, label: lbl, curX: x, curY: y });
+    }
+    this.logMsg('Das Dorf drängt sich zitternd um das Feuer.', '');
+  }
+
+  // Bresche in die Palisade schlagen (Belagerung)
+  private schlageBresche(): void {
+    const a = this.getArea('village');
+    const kandidaten: Array<{ x: number; y: number }> = [];
+    for (let x = 3; x < a.w - 3; x++) {
+      for (const y of [2, a.h - 3]) {
+        if (a.map[y][x] === T.PALISADE) kandidaten.push({ x, y });
+      }
+    }
+    for (let i = 0; i < 2 && kandidaten.length; i++) {
+      const b = kandidaten.splice(Math.floor(Math.random() * kandidaten.length), 1)[0];
+      a.map[b.y][b.x] = T.GRASS;
+      this.breschen.push(b);
+      if (this.area.id === 'village') this.refreshTile(b.x, b.y);
+    }
+    this.logMsg('Die Palisade BIRST - Breschen im Norden und Süden!', 'bad');
+    this.shake(10);
+  }
+
   private startEinfall(): void {
     // Mit Palisade kommen die Trupps nur durch OFFENE Tore der Salzstraße;
     // sind beide zu, ist Ravensmoor sicher (Feedback-Runde 8). Ohne Mauer
@@ -875,12 +988,31 @@ export class WorldScene extends CombatScene {
     }
     this.einfallAktiv = true;
     this.letzterEinfallTag = this.tag;
-    const anzahl = Math.min(EINFALL.anzahlMax, EINFALL.anzahlBasis + Math.floor(this.tag / 7) * EINFALL.anzahlProWoche);
+    // Jeder 7. Tag ist eine BELAGERUNG (Runde 16): größerer Trupp, ein
+    // Rammbock-Anführer - und die Palisade bekommt Breschen
+    const belagerung = this.flags.wurdeBelagert === true && this.tag % 7 === 0;
+    if (belagerung && this.stadtmauerStufe >= 1) {
+      this.schlageBresche();
+      for (const b of this.breschen) punkte.push({ x: b.x, y: Math.min(b.y + 1.5, 57) });
+    }
+    const anzahl = Math.min(EINFALL.anzahlMax, EINFALL.anzahlBasis + Math.floor(this.tag / 7) * EINFALL.anzahlProWoche) + (belagerung ? 4 : 0);
     const typen = ['skelett', 'pest', 'wolf', 'skelett'] as const;
     for (let i = 0; i < anzahl; i++) {
       const p0 = punkte[i % punkte.length];
       const e = this.spawnEnemy(pick(this.rng, typen), EINFALL.tiefe, p0.x * TILE + (Math.random() - 0.5) * 40, p0.y * TILE + (Math.random() - 0.5) * 40, this.rng.random() < 0.15);
       e.aggro = 5000; // sie suchen den Verteidiger, egal wie weit
+    }
+    if (belagerung) {
+      const p0 = punkte[0];
+      const ram = this.spawnEnemy('skelett', EINFALL.tiefe + 2, p0.x * TILE, p0.y * TILE, true);
+      ram.champion = true;
+      ram.name = 'Der Rammbock';
+      ram.schild = true;
+      ram.maxhp = Math.round(ram.maxhp * 3.5);
+      ram.hp = ram.maxhp;
+      ram.dmg = Math.round(ram.dmg * 1.5);
+      ram.aggro = 5000;
+      this.logMsg('BELAGERUNG! Ein gepanzertes Untier führt den Trupp an!', 'bad');
     }
     if (!this.flags.wurdeBelagert) {
       this.flags.wurdeBelagert = true;
@@ -1401,6 +1533,10 @@ export class WorldScene extends CombatScene {
 
   // Tore der Palisade: setzt die Tor-Tiles je Schließzustand (Feedback-Runde 8)
   private applyTore(a: AreaData): void {
+    // Breschen aus Belagerungen bleiben offen, bis der Schmied sie flickt
+    for (const b of this.breschen) {
+      if (a.map[b.y]?.[b.x] === T.PALISADE) a.map[b.y][b.x] = T.GRASS;
+    }
     if (this.stadtmauerStufe < 1) return;
     const set = (tx: number, zu: boolean) => {
       for (const ty of [30, 31]) a.map[ty][tx] = zu ? T.TOR : T.PATH;
@@ -1439,6 +1575,37 @@ export class WorldScene extends CombatScene {
     }
     if (this.stadtmauerRestNaechte > 0) {
       this.dialog.show('Schmied', [`Wir setzen Pfahl um Pfahl. Noch ${this.stadtmauerRestNaechte} ${this.stadtmauerRestNaechte === 1 ? 'Nacht' : 'Nächte'}, dann steht der Ring.`], 'schmied');
+      return;
+    }
+    // Breschen flicken (Runde 16)
+    if (this.breschen.length > 0) {
+      const gold = 60 * this.breschen.length, holz = 10 * this.breschen.length;
+      this.dialog.show('Schmied', [{
+        text: `Die Belagerung hat ${this.breschen.length} ${this.breschen.length === 1 ? 'Bresche' : 'Breschen'} gerissen. Ausbessern kostet ${gold} Gold und ${holz} Holz.`,
+        choices: [
+          {
+            label: `Ausbessern (${gold} Gold, ${holz} Holz)`,
+            fn: () => {
+              if (this.p.gold < gold || this.p.materials.holz < holz) {
+                this.logMsg('Dafür reichen Gold oder Holz nicht.', 'bad');
+                this.sfx.play('fehler');
+                return;
+              }
+              this.p.gold -= gold;
+              this.p.materials.holz -= holz;
+              const dorf = this.getArea('village');
+              for (const b of this.breschen) {
+                dorf.map[b.y][b.x] = T.PALISADE;
+                if (this.area.id === 'village') this.refreshTile(b.x, b.y);
+              }
+              this.breschen = [];
+              this.sfx.play('schmiede_hammer');
+              this.logMsg('Die Palisade steht wieder geschlossen.', 'gold');
+            },
+          },
+          { label: 'Später' },
+        ],
+      }], 'schmied');
       return;
     }
     if (this.stadtmauerStufe >= STADTMAUER.stufen.length) {
@@ -1801,7 +1968,7 @@ export class WorldScene extends CombatScene {
         action: () => {
           const id = this.area.id;
           if (id === 'crypt5') this.goArea('boss');
-          else if (id === 'boss') this.goArea('crypt6');
+          else if (id === 'boss' || id === 'bossinner') this.goArea('crypt6');
           else if (id.startsWith('crypt')) this.goArea(`crypt${parseInt(id.replace('crypt', ''), 10) + 1}`);
         },
       };
@@ -1816,6 +1983,7 @@ export class WorldScene extends CombatScene {
             const door = village.cryptDoor;
             this.goArea('village', door ? { x: door.x, y: door.y + 40 } : undefined);
           } else if (id === 'boss') this.goArea('crypt5', this.getArea('crypt5').downPos);
+          else if (id === 'bossinner') this.goArea('boss');
           else if (id === 'crypt6') this.goArea('boss');
           else if (id.startsWith('crypt')) {
             const n = parseInt(id.replace('crypt', ''), 10);
@@ -1946,6 +2114,15 @@ export class WorldScene extends CombatScene {
         this.refreshTile(16, 3);
         this.logMsg('Hinter dem Grab bricht der Boden auf - die Endlose Tiefe liegt offen.', 'gold');
       }
+      // Im Inneren Grab (Runde 16): Aufgang + Abstieg erscheinen nach dem Sieg
+      if (this.area.id === 'bossinner') {
+        this.area.map[13][11] = T.STAIRUP;
+        this.area.map[3][11] = T.STAIR;
+        this.area.downPos = { x: 11 * TILE + 16, y: 3 * TILE + 16 };
+        this.refreshTile(11, 13);
+        this.refreshTile(11, 3);
+        this.logMsg('Die Mauern atmen auf: Aufgang und ein tieferer Abstieg liegen frei.', 'gold');
+      }
       return;
     }
     if (e.champion && this.area.id === 'boss' && !this.bossDead) {
@@ -2074,7 +2251,8 @@ export class WorldScene extends CombatScene {
       this.flags.ngPlus = true;
       // Du bleibst im Grab und lootest in Ruhe; die Ebenen erwachen erst,
       // wenn du sie wieder betrittst (Feedback-Runde 5)
-      for (const id of ['crypt1', 'crypt2', 'crypt3', 'crypt4', 'crypt5']) this.areas.delete(id);
+      for (const id of ['crypt1', 'crypt2', 'crypt3', 'crypt4', 'crypt5', 'bossinner']) this.areas.delete(id);
+      this.flags.bossEskaliert = false;
       this.logMsg('Die Krypta regt sich erneut - stärker als zuvor (Neues Spiel+).', 'magic');
       this.logMsg('Taste 8: Stadtportal nach Ravensmoor.', 'gold');
     };
@@ -2129,6 +2307,7 @@ export class WorldScene extends CombatScene {
         letzterEinfallTag: this.letzterEinfallTag,
         tagwerke: this.tagwerke,
         dorfkasse: this.dorfkasse,
+        breschen: this.breschen,
       },
     };
   }
@@ -2181,6 +2360,7 @@ export class WorldScene extends CombatScene {
     this.letzterEinfallTag = data.welt.letzterEinfallTag ?? 0;
     this.tagwerke = data.welt.tagwerke ?? {};
     this.dorfkasse = data.welt.dorfkasse ?? 0;
+    this.breschen = data.welt.breschen ?? [];
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
     recalc(p);
     p.hp = Math.min(p.stats.maxhp, s.hp || p.stats.maxhp);
@@ -2656,6 +2836,14 @@ export class WorldScene extends CombatScene {
         n.curX += Math.cos(a) * 50 * dt;
         n.curY += Math.sin(a) * 50 * dt;
         this.provider.applyFigure(n.sprite, n.figur ?? n.id, angleToDir(a), Math.floor(this.time.now / 140) % 4);
+      } else if (n.arbeit && !abend && !mittagPhase) {
+        // Sichtbares Tagwerk (Runde 16): werkeln statt rumstehen
+        this.provider.applyFigure(n.sprite, n.figur ?? n.id, 0, Math.floor(this.time.now / 260) % 4);
+        n.arbeitT = (n.arbeitT ?? Math.random() * 3) - dt;
+        if (n.arbeitT <= 0) {
+          n.arbeitT = 2.4 + Math.random() * 2.2;
+          this.arbeitsTakt(n);
+        }
       } else {
         this.provider.applyFigure(n.sprite, n.figur ?? n.id, 0, 0);
       }
@@ -2716,6 +2904,32 @@ export class WorldScene extends CombatScene {
     this.renderRegen(dt);
     this.renderOrtsname();
     this.animiereWasser(dt);
+    // Boss-Eskalation (Runde 16): unter 25% reißt der Ritter den Helden
+    // mit hinab ins Innere Grab - echter Raumwechsel
+    if (this.area.id === 'boss' && !this.flags.bossEskaliert) {
+      const boss = this.enemies.find((e) => e.boss);
+      if (boss && boss.hp > 0 && boss.hp < boss.maxhp * 0.25) {
+        this.flags.bossEskaliert = true;
+        const istNgPlus = this.flags.ngPlus === true;
+        const restHp = boss.hp;
+        this.shake(12);
+        this.sfx.play('templer_stimme');
+        this.logMsg('»GENUG! Hinab mit dir - wo niemand dein Ende bezeugt!«', 'bad');
+        this.cameras.main.fadeOut(600, 0, 0, 0);
+        this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+          this.cameras.main.fadeIn(700, 0, 0, 0);
+          this.goArea('bossinner');
+          const b2 = this.spawnEnemy('templer', istNgPlus ? 9 : 6, 11 * TILE + 16, 6 * TILE);
+          b2.hp = Math.max(1, restHp);
+          if (istNgPlus) {
+            b2.name = 'Der Schattenfürst';
+            b2.col = '#2a2440';
+          }
+          this.fx.burst(b2.x, b2.y, 0xc03030, 30, 260);
+          this.logMsg('Das Innere Grab - hier endet einer von euch beiden.', 'bad');
+        });
+      }
+    }
     // Regen-Klang: draußen rauscht es, in der Stube gedämpft (Runde 12)
     if (this.regnet && !this.area.dark) {
       if (this.area.innen) {

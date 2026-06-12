@@ -102,24 +102,25 @@ export class DialogUI {
 
     const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(5000);
     this.container = c;
-    const nameText = this.scene.add.text(textX, 10, this.speaker, {
-      fontFamily: 'serif', fontSize: '14px', color: '#c9a227', letterSpacing: 1,
+    // Runde 16: bessere Lesbarkeit - größere Schrift, mehr Luft, klarer Name
+    const nameText = this.scene.add.text(textX, 12, this.speaker.toUpperCase(), {
+      fontFamily: 'serif', fontSize: '14px', color: '#c9a227', letterSpacing: 2,
     });
-    const bodyText = this.scene.add.text(textX, 32, page.text, {
-      fontFamily: 'serif', fontSize: '16px', color: '#e0d4b4', fontStyle: 'italic',
-      wordWrap: { width: textW }, lineSpacing: 4,
+    const bodyText = this.scene.add.text(textX, 36, page.text, {
+      fontFamily: 'serif', fontSize: '17px', color: '#e8dcc0', fontStyle: 'italic',
+      wordWrap: { width: textW }, lineSpacing: 6,
     });
     const buttons: Phaser.GameObjects.Text[] = [];
     const choices = page.choices ?? [{
       label: this.queue.length ? 'Weiter' : this.speaker.startsWith('Aus ') ? 'Schließen' : 'Lebt wohl',
       fn: undefined,
     }];
-    const btnY = 32 + bodyText.height + 12;
+    const btnY = 36 + bodyText.height + 14;
     let bx = textX;
     for (const ch of choices) {
       const b = this.scene.add.text(bx, btnY, ch.label.toUpperCase(), {
         fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
-        backgroundColor: '#221808', padding: { x: 12, y: 5 },
+        backgroundColor: '#221808', padding: { x: 14, y: 6 },
       }).setInteractive({ useHandCursor: true });
       b.on('pointerover', () => b.setColor('#c9a227'));
       b.on('pointerout', () => b.setColor('#d8cfb8'));
@@ -139,9 +140,21 @@ export class DialogUI {
       buttons.push(b);
       bx += b.width + 8;
     }
-    const h = btnY + 36;
-    const bg = this.scene.add.rectangle(0, 0, w, h, 0x171108, 0.97).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
+    const h = btnY + 42;
+    // Pergament-Rahmen: abgerundetes Paneel mit doppelter Borte (Runde 16)
+    const gfx = this.scene.add.graphics();
+    gfx.fillStyle(0x14100a, 0.97);
+    gfx.fillRoundedRect(0, 0, w, h, 10);
+    gfx.lineStyle(2, 0x4a3a26, 1);
+    gfx.strokeRoundedRect(0, 0, w, h, 10);
+    gfx.lineStyle(1, 0xc9a227, 0.35);
+    gfx.strokeRoundedRect(3, 3, w - 6, h - 6, 8);
+    // Goldene Linie unter dem Sprechernamen
+    gfx.lineStyle(1, 0xc9a227, 0.5);
+    gfx.lineBetween(textX, 30, textX + Math.min(nameText.width + 24, textW), 30);
+    const bg = this.scene.add.rectangle(0, 0, w, h, 0x000000, 0.001).setOrigin(0);
     bg.setInteractive();
+    c.add(gfx);
     c.add(bg);
     if (hasPortrait) {
       const frame = this.scene.add.rectangle(48, Math.min(56, h / 2), 72, 72, 0x0e0a06).setStrokeStyle(2, 0x5a4a32);

@@ -441,6 +441,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   }
 
   protected areaDepth(): number { return 1; }
+  protected areaDark(): boolean { return false; }
   protected stepSound(): string { return 'schritte_stein'; }
   // Gebietsfaktor: Dorf flott, Krypta bedächtig (Feedback-Runde 3)
   protected areaSpeedFactor(): number { return 1; }
@@ -716,8 +717,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   }
 
   // Rundumschlag (Axt-Finisher und Nahkampf-Fähigkeit Stufe 3)
-  protected spinAttack(dmgMult: number): void {
-    const radius = ABILITY_FX.rundumschlag.radius;
+  protected spinAttack(dmgMult: number, radius: number = ABILITY_FX.rundumschlag.radius): void {
     const st = this.swingStyle();
     this.fx.addSwing(this.px, this.py, this.pdir, { fin: true, col: st.col, w: st.w + 1, glow: st.glow, arc: 3.14, radius: radius - 18 });
     this.playSwingSound('axt', true);
@@ -920,6 +920,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   spawnEnemy(type: EnemyTypeId, depth: number, x: number, y: number, elite = false): Enemy {
     const e = new Enemy(type, depth, x, y, this.rng);
     if (elite) e.makeElite(this.rng);
+    // Krypta-Gegner schleichen statt wuseln (Runde 16: Spannung) -
+    // Faktor im Entwicklungskasten justierbar
+    if (this.areaDark() && !e.boss) e.speed *= TUNING.kryptaGegnerTempo;
     // Manche Skelette tragen Schilde (Runde 11) - sie blocken von vorn
     if (type === 'skelett' && !e.boss && this.rng.random() < 0.25) {
       e.schild = true;
@@ -1005,14 +1008,23 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       return;
     }
     if (this.p.spellCds[i] > 0) return;
-    // Zauberei-Schule senkt Manakosten (3% je Stufe)
+    // Zauberei-Schule senkt Manakosten (3% je Stufe); fehlt Mana, zahlt
+    // das Leben den Rest eins zu eins - Blutmagie (Runde 16)
     const kosten = kostenlos ? 0 : Math.round(sk.mana * (1 - this.p.schools.zauberei.level * SCHOOLS.zaubereiKostenPerLevel));
     if (this.p.mana < kosten) {
-      this.logMsg(MELDUNGEN.nichtGenugMana, 'bad');
-      this.sfx.play('fehler');
-      return;
+      const fehlt = Math.ceil(kosten - this.p.mana);
+      if (this.p.hp - fehlt < 5) {
+        this.logMsg(MELDUNGEN.nichtGenugMana, 'bad');
+        this.sfx.play('fehler');
+        return;
+      }
+      this.p.mana = 0;
+      this.p.hp -= fehlt;
+      this.fx.burst(this.px, this.py, 0xa83a6a, 10, 130);
+      this.fx.float(this.px, this.py - 24, `-${fehlt} Leben (Blutzauber)`, '#e05a4a');
+    } else {
+      this.p.mana -= kosten;
     }
-    this.p.mana -= kosten;
     this.p.spellCds[i] = sk.cd;
     const zLevel = this.p.schools.zauberei.level;
     // Zauberstab verstärkt gewirkte Zauber (halber Stabwert)
@@ -1071,37 +1083,35 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     if (!this.abilityReady(id)) return;
     switch (id) {
       case 'aderlass': {
-        // Leben gegen Mana (Runde 11) - nie unter 5 Leben schneiden
+        // Runde 16: Leben und Mana sind EIN Kreislauf - getauscht wird
+        // eins zu eins, ohne Kosten (nie unter 5 Leben schneiden)
         const fx = ABILITY_FX.aderlass;
-        if (this.p.hp <= fx.leben + 5) {
-          this.logMsg('Zu wenig Leben für den Aderlass.', 'bad');
-          this.sfx.play('fehler');
-          return;
-        }
-        if (this.p.mana >= this.p.stats.maxmana) {
-          this.logMsg('Dein Mana ist bereits voll.', '');
+        const menge = Math.min(fx.menge, this.p.hp - 5, this.p.stats.maxmana - this.p.mana);
+        if (menge <= 0) {
+          this.logMsg(this.p.mana >= this.p.stats.maxmana ? 'Dein Mana ist bereits voll.' : 'Zu wenig Leben für den Aderlass.', 'bad');
           return;
         }
         this.p.abilityCds[id] = fx.cd;
-        this.p.hp -= fx.leben;
-        this.p.mana = Math.min(this.p.stats.maxmana, this.p.mana + fx.mana);
+        this.p.hp -= menge;
+        this.p.mana = Math.min(this.p.stats.maxmana, this.p.mana + menge);
         this.fx.burst(this.px, this.py, 0xa83a6a, 14, 150);
-        this.fx.float(this.px, this.py - 24, `-${fx.leben} Leben, +${fx.mana} Mana`, '#8aa6e8');
+        this.fx.float(this.px, this.py - 24, `${menge} Leben -> Mana`, '#8aa6e8');
         this.sfx.play('trank');
         this.gainSchoolUse('zauberei');
         break;
       }
       case 'lebenstausch': {
         const fx = ABILITY_FX.lebenstausch;
-        if (this.p.hp >= this.p.stats.maxhp) {
-          this.logMsg('Dein Leben ist bereits voll.', '');
+        const menge = Math.min(fx.menge, Math.floor(this.p.mana), this.p.stats.maxhp - Math.ceil(this.p.hp));
+        if (menge <= 0) {
+          this.logMsg(this.p.hp >= this.p.stats.maxhp ? 'Dein Leben ist bereits voll.' : 'Zu wenig Mana für den Tausch.', 'bad');
           return;
         }
-        if (!this.paySpellCost(fx.mana)) return;
         this.p.abilityCds[id] = fx.cd;
-        this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + fx.leben);
+        this.p.mana -= menge;
+        this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + menge);
         this.fx.burst(this.px, this.py, 0x9ad8a0, 14, 150);
-        this.fx.float(this.px, this.py - 24, `+${fx.leben} Leben`, '#9ad8a0');
+        this.fx.float(this.px, this.py - 24, `${menge} Mana -> Leben`, '#9ad8a0');
         this.sfx.play('trank');
         this.gainSchoolUse('zauberei');
         break;
@@ -1140,9 +1150,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         break;
       }
       case 'rundumschlag': {
-        // Rundumschlag auch für Schwerter (Nahkampf Stufe 3)
-        this.p.abilityCds[id] = ABILITY_FX.rundumschlag.cd;
-        this.spinAttack(ABILITY_FX.rundumschlag.dmgMult);
+        // Rundumschlag für alle Nahkämpfer - mit der Hellebarde (Stange)
+        // aber DIE Spezialität: größerer Kreis, mehr Wucht (Runde 16)
+        const fx = ABILITY_FX.rundumschlag;
+        const stange = this.weaponClass() === 'stange';
+        this.p.abilityCds[id] = fx.cd;
+        this.spinAttack(stange ? fx.stangeDmgMult : fx.dmgMult, stange ? fx.stangeRadius : fx.radius);
         break;
       }
       case 'sturmangriff': {
@@ -1282,10 +1295,20 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   private paySpellCost(mana: number): boolean {
     const kosten = Math.round(mana * (1 - this.p.schools.zauberei.level * SCHOOLS.zaubereiKostenPerLevel));
+    // Blutmagie (Runde 16): Leben und Mana sind verbunden - fehlt Mana,
+    // zahlt das Leben den Rest eins zu eins (nie unter 5 Leben)
     if (this.p.mana < kosten) {
-      this.logMsg(MELDUNGEN.nichtGenugMana, 'bad');
-      this.sfx.play('fehler');
-      return false;
+      const fehlt = Math.ceil(kosten - this.p.mana);
+      if (this.p.hp - fehlt < 5) {
+        this.logMsg(MELDUNGEN.nichtGenugMana, 'bad');
+        this.sfx.play('fehler');
+        return false;
+      }
+      this.p.mana = 0;
+      this.p.hp -= fehlt;
+      this.fx.burst(this.px, this.py, 0xa83a6a, 10, 130);
+      this.fx.float(this.px, this.py - 24, `-${fehlt} Leben (Blutzauber)`, '#e05a4a');
+      return true;
     }
     this.p.mana -= kosten;
     return true;
@@ -1403,7 +1426,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
     // Spieler-Status
     this.playerHitFlash = Math.max(0, this.playerHitFlash - dt);
-    this.p.mana = Math.min(this.p.stats.maxmana, this.p.mana + 2.2 * dt);
+    // Zauberstab in der Hand: Mana fließt doppelt so schnell (Runde 16)
+    const manaRegen = this.weaponClass() === 'stab' ? 4.4 : 2.2;
+    this.p.mana = Math.min(this.p.stats.maxmana, this.p.mana + manaRegen * dt);
     for (let i = 0; i < this.p.spellCds.length; i++) this.p.spellCds[i] = Math.max(0, this.p.spellCds[i] - dt);
     for (const k of Object.keys(this.p.abilityCds)) this.p.abilityCds[k] = Math.max(0, this.p.abilityCds[k] - dt);
     if (this.p.buffT > 0) {

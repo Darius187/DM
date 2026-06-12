@@ -87,8 +87,8 @@ export const ABILITIES: ReadonlyArray<AbilityDef> = [
   { id: 'kettenblitz', school: 'zauberei', unlock: 3, name: 'Kettenblitz', beschreibung: 'Springt auf 2 weitere Gegner' },
   { id: 'frostnova', school: 'zauberei', unlock: 6, name: 'Frostnova', beschreibung: 'Kreis, verlangsamt' },
   { id: 'bannkreis', school: 'zauberei', unlock: 9, name: 'Bannkreis', beschreibung: 'Fläche, die Untote schwächt' },
-  { id: 'aderlass', school: 'zauberei', unlock: 2, name: 'Aderlass', beschreibung: 'Tauscht eigenes Leben gegen Mana' },
-  { id: 'lebenstausch', school: 'zauberei', unlock: 4, name: 'Lebenstausch', beschreibung: 'Tauscht Mana gegen Leben' },
+  { id: 'aderlass', school: 'zauberei', unlock: 2, name: 'Aderlass', beschreibung: 'Tauscht Leben eins zu eins in Mana' },
+  { id: 'lebenstausch', school: 'zauberei', unlock: 4, name: 'Lebenstausch', beschreibung: 'Tauscht Mana eins zu eins in Leben' },
   { id: 'feuerregen', school: 'zauberei', unlock: 8, name: 'Feuerregen', beschreibung: 'Feuerschläge regnen auf den Zielort' },
   { id: 'mehrfachschuss', school: 'bogen', unlock: 3, name: 'Mehrfachschuss', beschreibung: '3 Pfeile im Fächer' },
   { id: 'durchschlag', school: 'bogen', unlock: 6, name: 'Durchschlag', beschreibung: 'Pfeil durchdringt Gegner' },
@@ -97,14 +97,15 @@ export const ABILITIES: ReadonlyArray<AbilityDef> = [
 
 // Fähigkeitswerte der neuen Fertigkeiten (eigene Festlegung, leicht änderbar - DECISIONS.md)
 export const ABILITY_FX = {
-  rundumschlag: { dmgMult: 1.2, radius: 70, cd: 5 },
+  rundumschlag: { dmgMult: 1.2, radius: 70, cd: 5, stangeRadius: 105, stangeDmgMult: 1.5 },
   sturmangriff: { distance: 160, speed: 700, dmgMult: 1.4, cd: 7 },
   hinrichtung: { dmgMultVsStunned: 2.5, cd: 10 },
   kettenblitz: { mana: 16, dmgBase: 18, dmgPerLevel: 5, jumps: 3, jumpRange: 150, cd: 2 },
   frostnova: { mana: 20, dmgBase: 12, dmgPerLevel: 3, radius: 120, slowS: 4.5, cd: 4 },
   bannkreis: { mana: 30, radius: 130, dauerS: 6, untoteDmgMult: 0.7, cd: 9 },
-  aderlass: { leben: 15, mana: 25, cd: 4 },
-  lebenstausch: { mana: 30, leben: 20, cd: 4 },
+  // Runde 16: Leben<->Mana als 1:1-Kreislauf, kostenlos, kurzer Takt
+  aderlass: { menge: 20, cd: 1.5 },
+  lebenstausch: { menge: 20, cd: 1.5 },
   feuerregen: { mana: 40, dmgBase: 16, dmgPerLevel: 4, einschlaege: 6, radius: 50, streuung: 85, dauerS: 1.8, reichweite: 320, cd: 11 },
   mehrfachschuss: { arrows: 3, spread: 0.18, cd: 4 },
   durchschlag: { pierceCount: 99, dmgMult: 1.3, cd: 6 },

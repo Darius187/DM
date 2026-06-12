@@ -35,3 +35,6 @@
 - Begehbare Häuser (Innenräume für Taverne, Hütten, Kirche) - eigene
   Phase: Innen-Karten, Tür-Übergänge, NPCs sichtbar am Tisch/im Bett.
   Aktuell verschwinden die Bewohner nachts "in" ihre Häuser.
+- Geschlossene Dorf-Wirtschaft (Runde-16-Wunsch, nächster Ausbau):
+  sichtbare Lager/Vorräte je Betrieb, Träger-NPCs bringen Waren
+  (Korn -> Mühle -> Backhaus), Bestände beeinflussen Angebote.

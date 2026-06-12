@@ -63,9 +63,9 @@ export function rollGear(
   // Bögen (~15%) und Zauberstäbe (~12%) mischen sich unter die Waffen-Drops
   let bases: ReadonlyArray<readonly [string, number, Item['weaponClass'], Genus]> | typeof ARMORS = ARMORS;
   if (kind === 'weapon') {
+    // Runde 16: Zauberstäbe zurück in den Drops (~12%), Bögen ~15%
     const r2 = rng.random();
-    bases = includeBows && r2 < 0.15 ? BOWS : WEAPONS;
-    void STAVES; // Zauberstäbe auf Wunsch des Autors wieder aus den Drops
+    bases = includeBows && r2 < 0.15 ? BOWS : r2 < 0.27 ? STAVES : WEAPONS;
   }
   const maxIdx = Math.max(1, Math.min(Math.floor(depth * 1.2) + 1, bases.length - 1));
   const base = bases[ri(rng, Math.max(0, maxIdx - 2), maxIdx)];

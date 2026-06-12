@@ -48,6 +48,7 @@ export interface SaveData {
     letzterEinfallTag?: number;
     tagwerke?: Record<string, number>;
     dorfkasse?: number;
+    breschen?: Array<{ x: number; y: number }>;
   };
 }
 
