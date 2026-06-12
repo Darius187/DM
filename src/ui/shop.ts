@@ -23,7 +23,7 @@ export class ShopUI {
   private stocks = new Map<string, ShopOffer[]>();
   private mode: 'kaufen' | 'verkaufen' | 'schmieden' = 'kaufen';
   // Verkaufs-Filter wie im Inventar (Feedback-Runde 6)
-  private sellFilter: 'alle' | 'weapon' | 'armor' | 'ring' | 'gem' = 'alle';
+  private sellFilter: 'alle' | 'weapon' | 'armor' | 'schild' | 'ring' | 'gem' = 'alle';
   private shopId = '';
   private title = '';
   private canSell = false;
@@ -300,7 +300,7 @@ export class ShopUI {
       // Filter-Reiter wie im Inventar
       let fx = 16;
       const filter: Array<[typeof this.sellFilter, string]> = [
-        ['alle', 'Alle'], ['weapon', 'Waffen'], ['armor', 'Rüstung'], ['ring', 'Ringe'], ['gem', 'Steine'],
+        ['alle', 'Alle'], ['weapon', 'Waffen'], ['armor', 'Rüstung'], ['schild', 'Schilde'], ['ring', 'Ringe'], ['gem', 'Steine'],
       ];
       for (const [id, lbl] of filter) {
         const t = this.scene.add.text(fx, y, lbl, {
@@ -318,11 +318,24 @@ export class ShopUI {
         fx += t.width + 10;
       }
       y += 28;
-      const sellable = p.inv.filter((it) => (it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'ring' || it.kind === 'gem')
-        && it !== p.weapon && it !== p.armorIt && it !== p.ring
+      const sellable = p.inv.filter((it) => (it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'schild' || it.kind === 'ring' || it.kind === 'gem')
+        && it !== p.weapon && it !== p.armorIt && it !== p.ring && it !== p.schildIt
         && (this.sellFilter === 'alle' || it.kind === this.sellFilter));
       if (!sellable.length) {
         c.add(this.scene.add.text(16, y, 'Nichts zu verkaufen.', { fontFamily: 'serif', fontSize: '14px', color: '#8a7a5a', fontStyle: 'italic' }));
+      } else {
+        // ALLES VERKAUFEN (Runde 28): räumt den aktuellen Reiter auf einmal -
+        // Angelegtes ist durch den Filter oben bereits geschützt
+        const summe = sellable.reduce((g, it) => g + Math.round(gearPrice(it) * ANKAUF_FAKTOR), 0);
+        const alles = this.scene.add.text(w - 16, y - 28, `ALLES VERKAUFEN (${sellable.length} Stück, ${summe} G)`, {
+          fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8', letterSpacing: 1,
+          backgroundColor: '#221808', padding: { x: 10, y: 4 },
+        }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+        alles.on('pointerdown', () => {
+          for (const it of [...sellable]) this.sell(it);
+          this.sfx.play('muenzen');
+        });
+        c.add(alles);
       }
       blaettern(sellable.length);
       for (const it of sellable.slice(this.scroll, this.scroll + visible - 1)) {

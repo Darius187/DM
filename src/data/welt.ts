@@ -38,6 +38,9 @@ export const EINFALL = {
 // Stadtmauer (Feedback-Runde 7): Palisade als Bauprojekt beim Schmied.
 // Stufe 1 ist unzerstörbar für normale Monster - sie kommen nur noch
 // durch die zwei Tore der Salzstraße.
+// Fester Stadt-Anker des Portal-Paars (Runde 28): am Marktplatz
+export const PORTAL_STADT = { x: 43 * 32 + 16, y: 30 * 32 + 16 } as const;
+
 export const STADTMAUER = {
   stufen: [
     { name: 'Palisade', gold: 750, holz: 80, stein: 30, naechte: 3, beschreibung: 'Angespitzte Pfähle rund um Ravensmoor mit zwei verschließbaren Toren - der Bau dauert drei Nächte' },

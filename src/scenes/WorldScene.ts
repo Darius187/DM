@@ -16,7 +16,7 @@ import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDL
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER } from '../data/crafting';
-import { TAG, KOPFGELD, EINFALL, STADTMAUER, tageszeitLabel } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, tageszeitLabel } from '../data/welt';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, tileNameAt } from '../world/tiles';
@@ -99,6 +99,8 @@ export class WorldScene extends CombatScene {
   torWestZu = false;
   torOstZu = false;
   private letzterEinfallTag = 0;
+  // Jeder 3. Einfall ist eine Belagerung (Runde 28, statt Kalendertag %7)
+  private einfallZaehler = 0;
   private einfallAktiv = false;
   // Belagerung (Runde 16): Breschen in der Palisade + Gegner überleben
   // den Blick ins Gemeindehaus
@@ -141,6 +143,8 @@ export class WorldScene extends CombatScene {
     this.hausNachtEnts = [];
     this.hausEditLabels = [];
     this.hausEditAn = false;
+    this.portalZiel = null;
+    this.portalEnts = [];
     this.relicChoice = null;
     this.pauseMenu = null;
     this.deathOverlay = null;
@@ -174,6 +178,7 @@ export class WorldScene extends CombatScene {
     this.torWestZu = false;
     this.torOstZu = false;
     this.letzterEinfallTag = 0;
+    this.einfallZaehler = 0;
     this.einfallAktiv = false;
     this.tagwerke = {};
     this.dorfkasse = 0;
@@ -1269,6 +1274,8 @@ export class WorldScene extends CombatScene {
     this.animalEnts = [];
     for (const s of this.schildEnts) for (const o of s.objs) o.destroy();
     this.schildEnts = [];
+    for (const img of this.portalEnts) img.destroy();
+    this.portalEnts = [];
     // Bilder hängen in tileImages (oben zerstört) - nur die Listen leeren
     this.hausAnimEnts = [];
     this.hausNachtEnts = [];
@@ -1510,6 +1517,8 @@ export class WorldScene extends CombatScene {
       const [gebiet, sx, sy] = key.split('_');
       if (gebiet === a.id) this.addStumpf(parseInt(sx, 10), parseInt(sy, 10));
     }
+    // Offenes Portal-Paar wieder aufstellen (Runde 28)
+    this.zeichnePortale();
     // Ortsnamen erscheinen als Einblendung, wenn man in die Nähe kommt
     // (Runde 12: nicht mehr halb versteckt in der Welt)
   }
@@ -1679,6 +1688,9 @@ export class WorldScene extends CombatScene {
   protected override interactHint(): { text: string; action: () => void } | null {
     const ik = getSettings().kb.interact.toUpperCase();
     const near = (x: number, y: number, dist: number) => Math.hypot(x - this.px, y - this.py) < dist;
+    // Offenes Portal-Paar hat Vorrang (Runde 28)
+    const portal = this.portalAktion();
+    if (portal) return portal;
     // Treppen und Kryptaeingang zuerst (liegen unter den Füßen)
     const st = this.stairHint();
     if (st) return st;
@@ -1940,7 +1952,8 @@ export class WorldScene extends CombatScene {
     this.letzterEinfallTag = this.tag;
     // Jeder 7. Tag ist eine BELAGERUNG (Runde 16): größerer Trupp, ein
     // Rammbock-Anführer - und die Palisade bekommt Breschen
-    const belagerung = this.flags.wurdeBelagert === true && this.tag % 7 === 0;
+    this.einfallZaehler++;
+    const belagerung = this.einfallZaehler >= 3 && this.einfallZaehler % 3 === 0;
     if (belagerung && this.stadtmauerStufe >= 1) {
       this.schlageBresche();
       for (const b of this.breschen) punkte.push({ x: b.x, y: Math.min(b.y + 1.5, 57) });
@@ -3128,6 +3141,14 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // --- Stadtportal als BLEIBENDES Portal-Paar (Runde 28) ----------------------
+  // Öffnen merkt sich die Stelle im Dungeon und stellt dort UND am
+  // Marktplatz einen sichtbaren Wirbel auf. In der Stadt Tränke holen,
+  // durchschreiten - zurück an exakt dieselbe Stelle, Portal schließt.
+
+  private portalZiel: { areaId: string; x: number; y: number } | null = null;
+  private portalEnts: Phaser.GameObjects.Image[] = [];
+
   protected override castTownPortal(): void {
     if (!this.bossDead && !this.flags.ngPlusGeschafft) {
       this.logMsg('Das Stadtportal öffnet sich erst, wenn der Tempelritter gefallen ist.', 'bad');
@@ -3138,10 +3159,70 @@ export class WorldScene extends CombatScene {
       this.logMsg('Du stehst bereits in Ravensmoor.', '');
       return;
     }
+    this.portalZiel = { areaId: this.area.id, x: this.px, y: this.py };
     this.fx.burst(this.px, this.py, 0x8aa6e8, 24, 200);
     this.sfx.play('heiliges_licht');
-    this.goArea('village');
-    this.logMsg('Das Portal trägt dich nach Ravensmoor.', 'magic');
+    this.goArea('village', { x: PORTAL_STADT.x, y: PORTAL_STADT.y + 40 });
+    this.logMsg('Das Portal trägt dich nach Ravensmoor - es bleibt offen, bis du zurückkehrst.', 'magic');
+  }
+
+  // Wirbel zeichnen (beim Gebietsaufbau): in der Stadt am Marktplatz,
+  // im Dungeon an der gemerkten Stelle
+  private zeichnePortale(): void {
+    for (const img of this.portalEnts) img.destroy();
+    this.portalEnts = [];
+    if (!this.portalZiel) return;
+    const stelle = this.area.id === 'village' ? PORTAL_STADT
+      : this.area.id === this.portalZiel.areaId ? { x: this.portalZiel.x, y: this.portalZiel.y } : null;
+    if (!stelle) return;
+    if (!this.textures.exists('portalwirbel')) {
+      const cv = document.createElement('canvas');
+      cv.width = 64;
+      cv.height = 64;
+      const ctx = cv.getContext('2d')!;
+      for (let i = 0; i < 3; i++) {
+        ctx.strokeStyle = ['#8aa6e8', '#b8c8f0', '#5a76c8'][i];
+        ctx.lineWidth = 3 - i * 0.5;
+        ctx.beginPath();
+        ctx.ellipse(32, 32, 22 - i * 6, 28 - i * 7, 0.3 * i, 0, 6.283);
+        ctx.stroke();
+      }
+      this.textures.addCanvas('portalwirbel', cv);
+    }
+    const img = this.add.image(stelle.x, stelle.y, 'portalwirbel').setDepth(stelle.y + 8).setAlpha(0.9);
+    this.tweens.add({ targets: img, angle: 360, duration: 2600, repeat: -1 });
+    this.tweens.add({ targets: img, alpha: 0.55, scaleX: 0.9, duration: 700, yoyo: true, repeat: -1 });
+    this.portalEnts.push(img);
+  }
+
+  // E am Wirbel: durchschreiten. Aus der Stadt zurück = Portal schließt;
+  // aus dem Dungeon hinauf = Portal bleibt offen
+  private portalAktion(): { text: string; action: () => void } | null {
+    if (!this.portalZiel) return null;
+    const ik = getSettings().kb.interact.toUpperCase();
+    const ziel = this.portalZiel;
+    if (this.area.id === 'village' && Math.hypot(this.px - PORTAL_STADT.x, this.py - PORTAL_STADT.y) < 64) {
+      return {
+        text: `Portal in die Tiefe - ${ik} zum Durchschreiten`,
+        action: () => {
+          this.sfx.play('heiliges_licht');
+          this.goArea(ziel.areaId, { x: ziel.x, y: ziel.y });
+          this.portalZiel = null;
+          this.zeichnePortale();
+          this.logMsg('Das Portal schließt sich hinter dir.', 'magic');
+        },
+      };
+    }
+    if (this.area.id === ziel.areaId && Math.hypot(this.px - ziel.x, this.py - ziel.y) < 64) {
+      return {
+        text: `Portal nach Ravensmoor - ${ik} zum Durchschreiten`,
+        action: () => {
+          this.sfx.play('heiliges_licht');
+          this.goArea('village', { x: PORTAL_STADT.x, y: PORTAL_STADT.y + 40 });
+        },
+      };
+    }
+    return null;
   }
 
   protected override onPortalPickup(): void {
@@ -3260,6 +3341,7 @@ export class WorldScene extends CombatScene {
         torWestZu: this.torWestZu,
         torOstZu: this.torOstZu,
         letzterEinfallTag: this.letzterEinfallTag,
+        einfallZaehler: this.einfallZaehler,
         tagwerke: this.tagwerke,
         dorfkasse: this.dorfkasse,
         breschen: this.breschen,
@@ -3314,6 +3396,7 @@ export class WorldScene extends CombatScene {
     this.torWestZu = data.welt.torWestZu ?? false;
     this.torOstZu = data.welt.torOstZu ?? false;
     this.letzterEinfallTag = data.welt.letzterEinfallTag ?? 0;
+    this.einfallZaehler = data.welt.einfallZaehler ?? 0;
     this.tagwerke = data.welt.tagwerke ?? {};
     this.dorfkasse = data.welt.dorfkasse ?? 0;
     this.breschen = data.welt.breschen ?? [];
@@ -3820,10 +3903,15 @@ export class WorldScene extends CombatScene {
       this.wuerfleWetter();
     }
     const abend = this.tageszeit > TAG.abendAb;
-    // Einfall: nach dem Boss-Sieg greifen abends Monster-Trupps das Dorf an
-    if (abend && (this.bossDead || this.flags.ngPlusGeschafft) && this.area.id === 'village'
+    // Einfall: nach dem Boss-Sieg greifen Monster-Trupps das Dorf an.
+    // Der ERSTE kommt SOFORT beim nächsten Stadtbesuch (Runde 28: vorher
+    // nur abends - wer tagsüber heimkam, erlebte nie etwas)
+    const siegErrungen = this.bossDead || this.flags.ngPlusGeschafft === true;
+    const ersterSteht = siegErrungen && this.flags.ersterEinfallKam !== true;
+    if ((ersterSteht || (abend && siegErrungen)) && this.area.id === 'village'
       && !this.einfallAktiv && !this.playerDead
-      && this.tag - this.letzterEinfallTag > EINFALL.pauseTage) {
+      && (ersterSteht || this.tag - this.letzterEinfallTag > EINFALL.pauseTage)) {
+      this.flags.ersterEinfallKam = true;
       this.startEinfall();
     }
     // NPCs: 2 Positionen je Tageszeit, sie gehen sichtbar dorthin.

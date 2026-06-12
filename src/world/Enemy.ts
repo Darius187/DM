@@ -2,7 +2,7 @@
 // erweitert um Telegraph-Werte aus dem Masterprompt und Haltungsbruch.
 
 import Phaser from 'phaser';
-import { ENEMIES, ELITE, ENEMY_AI, BOSS } from '../data/enemies';
+import { ENEMIES, ELITE, ENEMY_AI, BOSS, kampfTiefe } from '../data/enemies';
 import type { EnemyTypeId, EliteAffix } from '../data/types';
 import { BOSS_TEXTE } from '../data/texte';
 import type { Rng } from '../logic/rng';
@@ -150,9 +150,11 @@ export class Enemy {
     this.y = y;
     this.r = def.r;
     this.col = def.col;
-    this.maxhp = def.hpBase + def.hpPerDepth * depth;
+    // Endlose Tiefe: ab Ebene 7 gedämpft, sonst unspielbar (Runde 28)
+    const kt = kampfTiefe(depth);
+    this.maxhp = Math.round(def.hpBase + def.hpPerDepth * kt);
     this.hp = this.maxhp;
-    this.dmg = def.dmgBase + def.dmgPerDepth * depth;
+    this.dmg = Math.round(def.dmgBase + def.dmgPerDepth * kt);
     this.speed = rnd(rng, def.speedMin, def.speedMax);
     this.xp = def.xpBase + def.xpPerDepth * depth;
     this.aggro = def.aggro;

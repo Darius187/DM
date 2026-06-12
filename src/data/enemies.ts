@@ -59,6 +59,12 @@ export const ELITE = {
 } as const;
 
 // Gegner-KI-Timings (Referenz update/bossAI)
+// Endlose Tiefe (Runde 28): unter Ebene 6 wächst die Gegnerstärke nur
+// noch halb so schnell - ab Stufe ~16 war es "kaum noch spielbar"
+export function kampfTiefe(depth: number): number {
+  return depth <= 6 ? depth : 6 + (depth - 6) * 0.5;
+}
+
 export const ENEMY_AI = {
   meleeAtkCd: 1.05,
   meleeWindup: 0.36,    // Telegraph-Vorwarnung normaler Gegner

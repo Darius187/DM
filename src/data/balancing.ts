@@ -97,7 +97,9 @@ export const ABILITIES: ReadonlyArray<AbilityDef> = [
 
 // Fähigkeitswerte der neuen Fertigkeiten (eigene Festlegung, leicht änderbar - DECISIONS.md)
 export const ABILITY_FX = {
-  rundumschlag: { dmgMult: 1.2, radius: 70, cd: 5, stangeRadius: 105, stangeDmgMult: 1.5 },
+  // Runde 28: cd 5 -> 2,5 und mehr Schaden - mit cd 5 war er gegen die
+  // Zauber chancenlos (Rückmeldung des Autors)
+  rundumschlag: { dmgMult: 1.5, radius: 75, cd: 2.5, stangeRadius: 105, stangeDmgMult: 1.8 },
   sturmangriff: { distance: 160, speed: 700, dmgMult: 1.4, cd: 7 },
   hinrichtung: { dmgMultVsStunned: 2.5, cd: 10 },
   kettenblitz: { mana: 16, dmgBase: 18, dmgPerLevel: 5, jumps: 3, jumpRange: 150, cd: 2 },

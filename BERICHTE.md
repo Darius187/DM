@@ -806,3 +806,17 @@ Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.
 - Neuer F10-Regler: Gegner-Schlagtempo. Bogen auf Mittelweg (schneller
   gespannt, etwas weniger Spitzenschaden).
 - 64/64 Tests grün, tsc sauber.
+
+## Feedback-Runde 28 - umgesetzt (Portal-Paar, Einfall-Timing, Tiefe, Komfort)
+
+- Stadtportal neu: bleibendes Portal-Paar mit sichtbarem Wirbel - Tränke
+  holen, durchschreiten, exakt an der alten Stelle weiterkämpfen.
+  Verifiziert: Rundlauf punktgenau, Portal schließt bei Rückkehr.
+- Der erste Einfall kommt jetzt SOFORT beim Heimkommen nach dem Boss-Sieg
+  (verifiziert: 5 Angreifer am hellen Tag); Belagerung = jeder 3. Einfall
+  statt "Kalendertag durch 7".
+- Endlose Tiefe: ab Ebene 7 halbiertes Stärkewachstum - tief unten bleibt
+  es hart, aber spielbar.
+- Rundumschlag: halbe Abklingzeit, mehr Schaden. Edelsteine sortieren
+  nach Kraft. Handel: "ALLES VERKAUFEN" je Reiter + Schilde-Reiter.
+- 64/64 Tests grün, tsc sauber.

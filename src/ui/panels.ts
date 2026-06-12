@@ -261,7 +261,11 @@ export class UIPanels {
       .filter((it) => this.filter === 'alle' ? true
         : this.filter === 'rest' ? !['weapon', 'armor', 'ring'].includes(it.kind)
         : it.kind === this.filter)
-      .sort((a, b) => (b.rarity ?? 0) - (a.rarity ?? 0) || (b.val + (b.upgrade ?? 0) * 2) - (a.val + (a.upgrade ?? 0) * 2));
+      .sort((a, b) => {
+        // Edelsteine tragen ihre Güte in power, nicht in val (Runde 28)
+        const wert = (it: Item): number => it.kind === 'gem' ? (it as GemItem).power : it.val + (it.upgrade ?? 0) * 2;
+        return (b.rarity ?? 0) - (a.rarity ?? 0) || wert(b) - wert(a);
+      });
 
     const rowH = 42;
     const listTop = 58;

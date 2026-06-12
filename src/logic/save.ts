@@ -46,6 +46,7 @@ export interface SaveData {
     torWestZu?: boolean;
     torOstZu?: boolean;
     letzterEinfallTag?: number;
+    einfallZaehler?: number;
     tagwerke?: Record<string, number>;
     dorfkasse?: number;
     breschen?: Array<{ x: number; y: number }>;
