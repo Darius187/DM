@@ -878,3 +878,16 @@ Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.
   Drossel lässt nur 1 von 30 Sofort-Rufen durch, Pest-Tod fehlerfrei).
 - HINWEIS: pest_death4.mp3 und living_dead.mp3 kamen beschädigt (0 Byte)
   an und fehlen noch - bitte neu schicken. 64/64 Tests grün, tsc sauber.
+
+## Feedback-Runde 33 - umgesetzt (Grafik-Richtung, Ausruestung sichtbar)
+
+- Grafik-Weg festgelegt: HYBRID (KI-Optik vom Autor, Animation/Logik von
+  mir, gezeichnete Figur als Rueckfall). Duesterer Stil in Slormancer-Liga,
+  Held auf 64 px. Komplett dokumentiert in GRAFIK-RICHTUNG.md inklusive der
+  Datei-Namen, mit denen KI-Bilder ins Spiel fallen.
+- Ausruestung sieht man jetzt am Helden: vier Ruestungsstufen (Stoff, Leder,
+  Kette, Platte) und die getragene Waffe in der Hand (inkl. neuem
+  Zauberstab). Browser-verifiziert.
+- Hot-Swap-Pipeline pro Stufe bewiesen: ein eingeschleustes Test-Bild wird
+  vom geruesteten Helden sofort verwendet - deine KI-Pakete fallen also
+  wirklich rein. 64/64 Tests gruen, tsc sauber.

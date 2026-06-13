@@ -53,6 +53,9 @@ export const SPRITE_NAMES = [
   'spieler', 'pest', 'skelett', 'schuetze', 'schatten', 'templer', 'wolf', 'ratte',
   'heinrich', 'magdalena', 'johannes', 'landherr', 'schmied', 'mueller',
   'bauer1', 'bauer2', 'haendler', 'huhn', 'schwein', 'kuh', 'hund',
+  // Held je Ruestungsstufe (Feedback-Runde 33): ein eigenes Sprite-Paket
+  // pro Stufe wird bevorzugt, sonst die gezeichnete Stufe als Rueckfall.
+  'spieler_stoff', 'spieler_leder', 'spieler_kette', 'spieler_platte',
 ] as const;
 
 // Tiles für das Grafik-Upgrade (assets/tiles/<name>.png).

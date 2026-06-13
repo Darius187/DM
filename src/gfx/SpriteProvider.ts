@@ -25,13 +25,25 @@ export class SpriteProvider {
   // Hot-Swap: Atlas `as_<name>` oder Einzelbilder `hs_<name>_<richtung>_<frame>`.
   figureFrame(name: string, dir: Dir, step: number): { key: string; frame?: string } {
     const dirName = DIR_NAMES[dir];
-    const single = `hs_${name}_${dirName}_${(step % gfxConfig.walkFrames) + 1}`;
-    if (this.tex.exists(single)) return { key: single };
-    const atlas = `as_${name}`;
-    if (this.tex.exists(atlas)) {
-      const frameName = `${name}_${dirName}_${(step % gfxConfig.walkFrames) + 1}`;
-      if (this.tex.get(atlas).has(frameName)) return { key: atlas, frame: frameName };
+    const frameNo = (step % gfxConfig.walkFrames) + 1;
+    const versuch = (lookup: string): { key: string; frame?: string } | null => {
+      const single = `hs_${lookup}_${dirName}_${frameNo}`;
+      if (this.tex.exists(single)) return { key: single };
+      const atlas = `as_${lookup}`;
+      if (this.tex.exists(atlas)) {
+        const frameName = `${lookup}_${dirName}_${frameNo}`;
+        if (this.tex.get(atlas).has(frameName)) return { key: atlas, frame: frameName };
+      }
+      return null;
+    };
+    // 1. exaktes Paket (z. B. spieler_platte_schwert). 2. Held: nur die
+    // Ruestungsstufe ohne Waffe - so genuegt EIN KI-Paket je Stufe (Runde 33).
+    let hit = versuch(name);
+    if (!hit) {
+      const m = /^(spieler_(?:stoff|leder|kette|platte))_/.exec(name);
+      if (m) hit = versuch(m[1]);
     }
+    if (hit) return hit;
     this.ensureFallbackFigure(name);
     return { key: `fig_${name}`, frame: `d${dir}f${step % 4}` };
   }

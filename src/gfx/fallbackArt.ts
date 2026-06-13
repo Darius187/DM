@@ -3,6 +3,7 @@
 // konsistent. Wird nur genutzt, wenn keine echte Grafikdatei vorliegt.
 
 import gfxConfig from '../data/gfx.json';
+import { heldTier, type HeldTier } from '../data/helden';
 
 export const SPRITE = gfxConfig.spriteSize;
 export const TILE = gfxConfig.tileSize;
@@ -15,7 +16,7 @@ export interface FigureSpec {
   legs: string;         // Beine
   hat?: string;         // Hut/Helm (optional)
   robe?: boolean;       // Robe statt Beine (Priester, Magdalena)
-  weapon?: 'schwert' | 'axt' | 'stange' | 'wucht' | 'bogen' | 'keule' | null;
+  weapon?: 'schwert' | 'axt' | 'stange' | 'wucht' | 'bogen' | 'keule' | 'stab' | null;
   scale?: number;       // Templer ist größer
   skeletal?: boolean;   // Skelett-Look (Rippen)
   glow?: string;        // Schatten-Look (Umriss-Glühen)
@@ -159,6 +160,11 @@ function drawHeldWeapon(ctx: CanvasRenderingContext2D, w: NonNullable<FigureSpec
     case 'keule':
       p(ctx, x, 5 + bob, 1, 5, '#6a5430');
       break;
+    case 'stab':
+      p(ctx, x, 0 + bob, 1, 11, '#6a4a2a');       // langer Holzstab
+      p(ctx, x - 1, 0 + bob, 3, 2, '#56d0e0');    // leuchtender Kristall
+      p(ctx, x - 1, 0 + bob, 1, 1, '#c8f6ff');    // Glanzpunkt
+      break;
     case 'bogen':
       ctx.strokeStyle = '#7a5c34';
       ctx.lineWidth = PX;
@@ -300,3 +306,26 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   // glühend roten Augen verraten ihn
   lebender_toter: { tunic: '#6a6254', skin: '#cabfa8', hair: '#4a4036', legs: '#3e3a30', weapon: null, augen: '#e02828' },
 };
+
+// Helden-Aussehen nach Ruestungsstufe x Waffe (Feedback-Runde 32):
+// vier sichtbare Stufen (Stoff/Leder/Kette/Platte), jede mit der getragenen
+// Waffe in der Hand. Eigene Figurnamen `spieler_<stufe>_<waffe>`, damit jede
+// Stufe spaeter 1:1 durch ein eigenes Sprite-Paket ersetzt werden kann (Hot-Swap).
+const SPIELER_STUFEN: Record<HeldTier, Omit<FigureSpec, 'weapon'>> = {
+  stoff:  { tunic: '#46588a', skin: '#d0b08c', hair: '#2e2418', legs: '#262030', scale: 1.15 },
+  leder:  { tunic: '#6a4326', skin: '#d0b08c', hair: '#2e2418', legs: '#3a2a1a', scale: 1.15 },
+  kette:  { tunic: '#7a7d84', skin: '#d0b08c', hair: '#2e2418', legs: '#4a4e57', hat: '#6a6d74', scale: 1.18 },
+  platte: { tunic: '#8a929c', skin: '#d0b08c', hair: '#2e2418', legs: '#565d68', hat: '#9aa0a8', scale: 1.2 },
+};
+const SPIELER_WAFFEN = ['schwert', 'axt', 'stange', 'wucht', 'bogen', 'stab'] as const;
+for (const stufe of Object.keys(SPIELER_STUFEN) as HeldTier[]) {
+  for (const w of SPIELER_WAFFEN) {
+    FIGURES[`spieler_${stufe}_${w}`] = { ...SPIELER_STUFEN[stufe], weapon: w };
+  }
+}
+
+// Figurname des Helden je getragener Ruestung (Wert, null = nichts) und Waffe.
+export function spielerFigur(ruestwert: number | null, waffe: string): string {
+  const w = (SPIELER_WAFFEN as readonly string[]).includes(waffe) ? waffe : 'schwert';
+  return `spieler_${heldTier(ruestwert)}_${w}`;
+}

@@ -5,6 +5,7 @@
 import Phaser from 'phaser';
 import { SpriteProvider } from '../gfx/SpriteProvider';
 import { SoundProvider } from '../gfx/SoundProvider';
+import { spielerFigur } from '../gfx/fallbackArt';
 import { EffectSystem } from './effects';
 import { Enemy, angleToDir, type EnemyHost } from './Enemy';
 import {
@@ -111,7 +112,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.album = { kills: {}, champions: [], unikate: [], notizen: [] };
     this.albumPanel = null;
     this.playerSprite = this.add.sprite(startX, startY, '__DEFAULT').setDepth(startY);
-    this.provider.applyFigure(this.playerSprite, 'spieler', 0, 0);
+    this.provider.applyFigure(this.playerSprite, this.heldFigur(), 0, 0);
     // Held-Sprite des Autors wirkt sonst winzig neben den Figuren (Runde 17)
     if (this.textures.exists('hs_spieler_unten_1')) this.playerSprite.setScale(1.35);
     this.overlay = this.add.graphics().setDepth(2600);
@@ -798,6 +799,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   protected weaponClass(): WeaponClass {
     return this.p.weapon?.weaponClass ?? 'schwert';
+  }
+
+  // Figurname des Helden - richtet sich nach getragener Ruestung und Waffe,
+  // damit man die Ausruestung am Helden SIEHT (Feedback-Runde 32). Jede Stufe
+  // ist ueber Hot-Swap durch ein eigenes Sprite-Paket ersetzbar.
+  protected heldFigur(): string {
+    return spielerFigur(this.p.armorIt ? this.p.armorIt.val : null, this.weaponClass());
   }
 
   // --- Bogen: halten = spannen, loslassen = Schuss (Pfeile als Ressource) ---
@@ -1970,7 +1978,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.playerSprite.setPosition(this.px, this.py).setDepth(this.py);
     const moving = this.keysDown['w'] || this.keysDown['a'] || this.keysDown['s'] || this.keysDown['d']
       || this.keysDown['arrowup'] || this.keysDown['arrowdown'] || this.keysDown['arrowleft'] || this.keysDown['arrowright'];
-    this.provider.applyFigure(this.playerSprite, 'spieler', angleToDir(this.pdir), moving ? this.pstep : 0);
+    this.provider.applyFigure(this.playerSprite, this.heldFigur(), angleToDir(this.pdir), moving ? this.pstep : 0);
     if (this.playerHitFlash > 0) this.playerSprite.setTintFill(0xffffff);
     else this.playerSprite.clearTint();
 
