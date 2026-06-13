@@ -2130,7 +2130,7 @@ export class WorldScene extends CombatScene {
       for (const b of this.breschen) punkte.push({ x: b.x, y: Math.min(b.y + 1.5, 57) });
     }
     const anzahl = Math.min(EINFALL.anzahlMax, EINFALL.anzahlBasis + Math.floor(this.tag / 7) * EINFALL.anzahlProWoche) + (belagerung ? 4 : 0);
-    const typen = ['skelett', 'pest', 'wolf', 'skelett'] as const;
+    const typen = ['skelett', 'pest', 'wolf', 'lebender_toter'] as const;
     for (let i = 0; i < anzahl; i++) {
       const p0 = punkte[i % punkte.length];
       const e = this.spawnEnemy(pick(this.rng, typen), EINFALL.tiefe, p0.x * TILE + (Math.random() - 0.5) * 40, p0.y * TILE + (Math.random() - 0.5) * 40, this.rng.random() < 0.15);

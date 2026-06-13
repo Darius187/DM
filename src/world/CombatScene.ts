@@ -444,7 +444,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Gegnertyp-Feinjustierung (Runde 18): Typ wählen, Tempo/Schaden drehen
     c.add(this.add.text(12, y + 2, 'JE GEGNERTYP:', { fontFamily: 'serif', fontSize: '12px', color: '#c9a227', letterSpacing: 1 }));
     y += 20;
-    const typen = ['pest', 'skelett', 'schuetze', 'schatten', 'wolf', 'ratte', 'templer'];
+    const typen = ['pest', 'skelett', 'schuetze', 'schatten', 'wolf', 'ratte', 'templer', 'lebender_toter'];
     const typText = this.add.text(80, y, typen[this.devTypIdx], { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8' });
     const mkTyp = (x: number, lbl: string, delta: number) => {
       const b = this.add.text(x, y, lbl, {
@@ -579,6 +579,17 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected weltPunkt(ptr: Phaser.Input.Pointer): { x: number; y: number } {
     const p = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
     return { x: p.x, y: p.y };
+  }
+
+  // Begegnungs-Ruf (Runde 32): wenn ein Monster den Helden zum ersten
+  // Mal erblickt - bewusst GEDROSSELT (sonst wird man verrückt): global
+  // höchstens alle 9 Sekunden und nur in ~35% der Begegnungen
+  private letzterBegegnungsRuf = -99999;
+
+  begegnungsRuf(e: Enemy): void {
+    if (this.time.now < this.letzterBegegnungsRuf + 9000 || Math.random() > 0.35) return;
+    const basis = (e.champion || e.elite) ? 'begegnung_miniboss' : `begegnung_${e.type}`;
+    if (this.sfx.playAbwechselnd(basis, 3, 0.8)) this.letzterBegegnungsRuf = this.time.now;
   }
 
   // Rudel-Verhalten (Runde 27): lebende Verbündete im Umkreis zählen
@@ -1111,9 +1122,17 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       e.sprite = null;
     }
     this.fx.burst(e.x, e.y, parseInt(e.col.slice(1), 16), 16, 170);
-    // Todesstoß: schwert_slice (Autor-Sound), dazu der Sterbelaut
+    // Todesstoß: schwert_slice (Autor-Sound), dazu der Sterbelaut -
+    // Runde 32: eigene Todes-Schreie je Gegnerart (rotierend), auch für
+    // Elite/Boss-Varianten desselben Typs; universal als Fallback
     this.sfx.playAbwechselnd('schwert_slice', 3, 0.8);
-    this.sfx.play('tod');
+    const todBasis = e.type === 'pest' ? 'tod_pest'
+      : e.type === 'skelett' && e.schild ? 'tod_skelett_schild'
+      : (e.type === 'skelett' || e.type === 'schuetze') ? 'tod_skelett'
+      : 'tod_universal';
+    if (!this.sfx.playAbwechselnd(todBasis, 3, 0.9) && !this.sfx.playAbwechselnd('tod_universal', 3, 0.9)) {
+      this.sfx.play('tod');
+    }
     this.giveXp(e.xp);
     // Sammelalbum: Jagdstatistik und besiegte Vorsteher
     this.album.kills[e.type] = (this.album.kills[e.type] ?? 0) + 1;

@@ -863,3 +863,18 @@ Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.
 - Tab-Fenster: Charakter & Inventar, Sammelalbum und Statistik in einem
   Fenster (B = direkt zum Album). Browser-verifiziert inkl. Stimmung
   und farbiger Lichter. 64/64 Tests grün, tsc sauber.
+
+## Feedback-Runde 32 - umgesetzt (Monster-Sounds, neuer Gegner)
+
+- Todes-Sounds je Gegnertyp eingebaut: Pest, Skelett (mit/ohne Schild)
+  und ein universeller Tod, der rotiert und auch für Boss und den neuen
+  Gegner dient. Je 1-3 Varianten, sauberer Fallback.
+- Begegnungs-Sounds: ein Gegner ruft beim ersten Erblicken - aber
+  gedrosselt (9s Sperre, nur 35% Chance), damit es nicht nervt.
+  Elite/Champions haben einen eigenen Miniboss-Ruf.
+- NEUER Gegner "Lebender Toter": sieht aus wie ein Dorfbewohner mit
+  roten Augen, spawnt in der Krypta und bei den Stadt-Einfällen.
+  Browser-verifiziert (Sprite mit roten Augen, 5 Stück in der Gruft,
+  Drossel lässt nur 1 von 30 Sofort-Rufen durch, Pest-Tod fehlerfrei).
+- HINWEIS: pest_death4.mp3 und living_dead.mp3 kamen beschädigt (0 Byte)
+  an und fehlen noch - bitte neu schicken. 64/64 Tests grün, tsc sauber.

@@ -52,7 +52,7 @@ export interface GemItem extends Item {
   power: number;
 }
 
-export type EnemyTypeId = 'pest' | 'skelett' | 'schuetze' | 'schatten' | 'templer' | 'wolf' | 'ratte';
+export type EnemyTypeId = 'pest' | 'skelett' | 'schuetze' | 'schatten' | 'templer' | 'wolf' | 'ratte' | 'lebender_toter';
 
 export interface EnemyDef {
   name: string;

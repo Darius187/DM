@@ -50,7 +50,7 @@ export class TitleScene extends Phaser.Scene {
       stroke: '#000000', strokeThickness: 6,
     }).setOrigin(0.5);
     // Sichtbare Versionsnummer, damit alte Stände sofort auffallen
-    this.add.text(10, h - 10, 'Stand: Feedback-Runde 31 (12.06.2026)', {
+    this.add.text(10, h - 10, 'Stand: Feedback-Runde 32 (13.06.2026)', {
       fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c',
     }).setOrigin(0, 1);
     this.add.text(w / 2, h * 0.2 + 52, TITEL.unter, {

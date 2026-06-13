@@ -27,7 +27,7 @@ export const SOUNDS = [
   // Gegner
   'skelett_klappern', 'pest_stoehnen', 'schatten_fluestern', 'templer_stimme',
   // Welt
-  'schritte_gras', 'schritte_stein', 'tuer', 'truhe', 'muenzen', 'schritt_stein', 'schritt_gras', 'wucht_schlag', 'trank',
+  'schritte_gras', 'schritte_stein', 'tuer', 'truhe', 'muenzen', 'tod_pest1', 'tod_pest2', 'tod_pest3', 'tod_skelett1', 'tod_skelett2', 'tod_skelett3', 'tod_skelett_schild1', 'tod_skelett_schild2', 'tod_skelett_schild3', 'tod_universal1', 'tod_universal2', 'tod_universal3', 'begegnung_pest1', 'begegnung_pest2', 'begegnung_pest3', 'begegnung_skelett1', 'begegnung_skelett2', 'begegnung_skelett3', 'begegnung_miniboss1', 'begegnung_miniboss2', 'begegnung_miniboss3', 'begegnung_lebender_toter1', 'begegnung_lebender_toter2', 'begegnung_lebender_toter3', 'schritt_stein', 'schritt_gras', 'wucht_schlag', 'trank',
   'holz_hacken', 'stein_hacken', 'feuer_knistern', 'muehle', 'schmiede_hammer',
   'huhn', 'schwein', 'kuh', 'hund', 'wolf', 'kraehen',
   // Atmosphäre (Loops)

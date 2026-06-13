@@ -340,9 +340,9 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
   }
 
   // Gegner (Referenz-Verteilung)
-  const types: EnemyTypeId[] = ['pest', 'pest', 'skelett', 'skelett'];
+  const types: EnemyTypeId[] = ['pest', 'pest', 'skelett', 'skelett', 'lebender_toter'];
   if (n >= 2) types.push('schuetze', 'schuetze');
-  if (n >= 3) types.push('schatten', 'schuetze');
+  if (n >= 3) types.push('schatten', 'schuetze', 'lebender_toter');
   if (n >= 4) types.push('schatten', 'schatten', 'skelett');
   for (const r of rooms) {
     if (r === start) continue;

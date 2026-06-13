@@ -296,4 +296,7 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   hund:      { quad: { body: '#7a6244', head: '#6a5438', size: 0.8, tail: true, ears: true } },
   // size 1,35: mehr passt samt Umriss-Kontur nicht ins 32er-Raster
   pferd:     { quad: { body: '#6a4a30', head: '#5a3e28', size: 1.35, tail: true, ears: true } },
+  // Lebender Toter (Runde 32): sieht aus wie ein Bewohner - nur die
+  // glühend roten Augen verraten ihn
+  lebender_toter: { tunic: '#6a6254', skin: '#cabfa8', hair: '#4a4036', legs: '#3e3a30', weapon: null, augen: '#e02828' },
 };

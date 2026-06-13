@@ -24,6 +24,8 @@ export interface EnemyHost {
   burstFx(x: number, y: number, col: number, n: number, spd: number): void;
   // Rudel-Verhalten (Runde 27): wie viele Verbündete stehen nahe bei e?
   verbuendeteNahe(e: Enemy, radius: number): number;
+  // Begegnungs-Ruf (Runde 32): erster Sichtkontakt, gedrosselt
+  begegnungsRuf(e: Enemy): void;
 }
 
 // Angriffsmuster je Gegnertyp (Masterprompt 4.3: 2-3 Muster, Telegraph 0,35-0,85 s)
@@ -54,6 +56,10 @@ const PATTERNS: Partial<Record<EnemyTypeId, AttackPattern[]>> = {
   ],
   ratte: [
     { id: 'hieb', windup: 0.35, weight: 1 },
+  ],
+  lebender_toter: [
+    { id: 'hieb', windup: 0.42, weight: 3 },
+    { id: 'doppelhieb', windup: 0.55, weight: 1 },
   ],
 };
 
@@ -120,6 +126,7 @@ export class Enemy {
   // Schild-Haltung (Runde 20): kurz volle Frontdeckung, dann wieder offen
   blockT = 0;
   private steuerWinkel = 0;  // gewählte Ausweichdrehung am Hindernis
+  private begegnet = false;  // Begegnungs-Ruf nur beim ersten Sichtkontakt
   private mutT = -1;         // > 0: sammelt sich noch, stürmt nicht allein
   private blockCd = 2 + Math.random() * 2;
 
@@ -267,6 +274,10 @@ export class Enemy {
     if (d > this.aggro) {
       this.ambientSound(host, d, dt);
       return;
+    }
+    if (!this.begegnet) {
+      this.begegnet = true;
+      host.begegnungsRuf(this);
     }
 
     const slowF = this.slowT > 0 ? ENEMY_AI.slowFactorEis : 1;

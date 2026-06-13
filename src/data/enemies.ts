@@ -12,6 +12,12 @@ export const ENEMIES: Readonly<Record<EnemyTypeId, EnemyDef>> = {
     name: 'Skelett', hpBase: 18, hpPerDepth: 7, dmgBase: 5, dmgPerDepth: 2,
     speedMin: 82, speedMax: 102, r: 10, col: '#cfc4a8', xpBase: 9, xpPerDepth: 3, aggro: 250,
   },
+  // Runde 32: Lebende Tote - einst Bewohner von Ravensmoor, jetzt mit
+  // glühend roten Augen; zwischen Pestopfer und Skelett angesiedelt
+  lebender_toter: {
+    name: 'Lebender Toter', hpBase: 26, hpPerDepth: 9, dmgBase: 7, dmgPerDepth: 3,
+    speedMin: 52, speedMax: 70, r: 11, col: '#9a8a6e', xpBase: 11, xpPerDepth: 3, aggro: 240,
+  },
   schuetze: {
     name: 'Skelett-Schütze', hpBase: 14, hpPerDepth: 6, dmgBase: 7, dmgPerDepth: 3,
     speedMin: 55, speedMax: 70, r: 10, col: '#b8a888', xpBase: 14, xpPerDepth: 4, aggro: 330, ranged: true,
