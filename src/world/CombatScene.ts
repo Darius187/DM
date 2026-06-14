@@ -21,7 +21,7 @@ import { addSchoolUse } from '../logic/progression';
 import { applyXp } from '../logic/progression';
 import { MELDUNGEN } from '../data/texte';
 import { getSettings, saveSettings, type Settings } from '../logic/settings';
-import { TUNING, TUNING_ROWS } from '../logic/tuning';
+import { TUNING, TUNING_ROWS, neuerTypTuning } from '../logic/tuning';
 import { defaultRng, type Rng } from '../logic/rng';
 import { ELITE, ENEMIES } from '../data/enemies';
 import type { EnemyTypeId, WeaponClass } from '../data/types';
@@ -390,7 +390,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       merk = { ...merk, ...JSON.parse(localStorage.getItem('ravensmoor_devkasten') ?? '{}') };
     } catch { /* egal */ }
     const c = this.add.container(merk.x, merk.y).setScrollFactor(0).setDepth(6500);
-    const h = TUNING_ROWS.length * 29 + 96 + 186;
+    const h = TUNING_ROWS.length * 29 + 96 + 186 + 52; // +52: zwei neue Per-Typ-Zeilen
     // Bei kleinen Fenstern schrumpft der ganze Kasten, statt unten
     // abgeschnitten zu werden (Runde 29: Regler "nicht gefunden")
     c.setScale(Math.min(merk.s, Math.max(0.6, (this.scale.height - 60) / h)));
@@ -473,13 +473,16 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     c.add(typText);
     y += 24;
     const typZeilen: Phaser.GameObjects.Text[] = [];
-    const zeichneTypWerte = () => {
-      const t = TUNING.typ[typen[this.devTypIdx]] ?? { tempo: 1, schaden: 1 };
-      typZeilen[0]?.setText(t.tempo.toFixed(2));
-      typZeilen[1]?.setText(t.schaden.toFixed(2));
+    const typFelder = ['tempo', 'schaden', 'schlagtempo', 'reichweite'] as const;
+    const typLabel: Record<typeof typFelder[number], string> = {
+      tempo: 'Typ-Tempo x', schaden: 'Typ-Schaden x', schlagtempo: 'Typ-Schlagtempo x', reichweite: 'Typ-Reichweite x',
     };
-    (['tempo', 'schaden'] as const).forEach((feld, fi) => {
-      c.add(this.add.text(12, y, feld === 'tempo' ? 'Typ-Tempo x' : 'Typ-Schaden x', { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8' }));
+    const zeichneTypWerte = () => {
+      const t = TUNING.typ[typen[this.devTypIdx]] ?? neuerTypTuning();
+      typFelder.forEach((feld, fi) => typZeilen[fi]?.setText(t[feld].toFixed(2)));
+    };
+    typFelder.forEach((feld, fi) => {
+      c.add(this.add.text(12, y, typLabel[feld], { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8' }));
       const wert = this.add.text(250, y, '1.00', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' }).setOrigin(0.5, 0);
       typZeilen[fi] = wert;
       const mkW = (x: number, lbl: string, delta: number) => {
@@ -488,7 +491,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         }).setInteractive({ useHandCursor: true });
         b.on('pointerdown', () => {
           const typ = typen[this.devTypIdx];
-          if (!TUNING.typ[typ]) TUNING.typ[typ] = { tempo: 1, schaden: 1 };
+          if (!TUNING.typ[typ]) TUNING.typ[typ] = neuerTypTuning();
           TUNING.typ[typ][feld] = Math.round(Math.min(10, Math.max(0.1, TUNING.typ[typ][feld] + delta)) * 100) / 100;
           zeichneTypWerte();
           this.sfx.play('klick');
@@ -1266,6 +1269,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     if (typTuning) {
       e.speed *= typTuning.tempo;
       e.dmg = Math.round(e.dmg * typTuning.schaden);
+      e.schlagtempoF = typTuning.schlagtempo;
+      e.reichweiteF = typTuning.reichweite;
     }
     // Manche Skelette tragen Schilde (Runde 11) - sie blocken von vorn.
     // Ab Ebene 2 (Runde 17), und das Schild ist im Bild SICHTBAR

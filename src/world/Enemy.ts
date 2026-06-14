@@ -107,6 +107,8 @@ export class Enemy {
   stepT = 0;
   markedT = 0; // Markierter Tod (Bogen Stufe 9)
   banishedT = 0; // Bannkreis schwächt Untote
+  schlagtempoF = 1; // Per-Typ-Schlagtempo (F10, beim Spawn gesetzt)
+  reichweiteF = 1;  // Per-Typ-Hiebreichweite (F10, beim Spawn gesetzt)
   private pattern: AttackPattern['id'] = 'hieb';
   private secondHitT = 0;   // Doppelhieb: zweiter Schlag
   private lungeT = 0;       // Sprungangriff: Restflugzeit
@@ -242,7 +244,7 @@ export class Enemy {
       }
       if (this.blockT > 0) {
         // Deckung läuft ab und der Spieler steht dran: Gegenstoß (Runde 27)
-        if (this.blockT <= dt * 2 && d < this.r + host.playerR() + 22 * TUNING.gegnerReichweite && this.windup <= 0
+        if (this.blockT <= dt * 2 && d < this.r + host.playerR() + 22 * (TUNING.gegnerReichweite * this.reichweiteF) && this.windup <= 0
           && TUNING.gegnerCleverness >= 0.5) {
           this.startPattern(host, 'hieb', 0.2);
         }
@@ -252,7 +254,7 @@ export class Enemy {
     // Doppelhieb: zweiter Schlag kurz nach dem ersten
     if (this.secondHitT > 0) {
       this.secondHitT -= dt;
-      if (this.secondHitT <= 0 && d < this.r + host.playerR() + 20 * TUNING.gegnerReichweite) {
+      if (this.secondHitT <= 0 && d < this.r + host.playerR() + 20 * (TUNING.gegnerReichweite * this.reichweiteF)) {
         host.enemyMeleeHit(this, Math.round(this.dmg * 0.7));
       }
     }
@@ -297,7 +299,7 @@ export class Enemy {
       // wer nachsetzt, kassiert einen schnellen Gegenhieb, und gewichen
       // wird SCHRÄG statt stur rückwärts (seitlich raus, neuer Winkel)
       this.retreatT -= dt;
-      if (d < this.r + host.playerR() + 20 * TUNING.gegnerReichweite && this.windup <= 0
+      if (d < this.r + host.playerR() + 20 * (TUNING.gegnerReichweite * this.reichweiteF) && this.windup <= 0
         && Math.random() < 0.6 * TUNING.gegnerCleverness) {
         this.retreatT = 0;
         this.atkCd = Math.max(this.atkCd, 0.1);
@@ -307,7 +309,7 @@ export class Enemy {
       const rw = ang + Math.PI + this.orbitDir * 0.7;
       this.moveBody(host, Math.cos(rw) * this.speed * 0.85 * slowF * dt, Math.sin(rw) * this.speed * 0.85 * slowF * dt);
       this.advanceStep(dt);
-    } else if (d > this.r + host.playerR() + 6 + 14 * (TUNING.gegnerReichweite - 1)) {
+    } else if (d > this.r + host.playerR() + 6 + 14 * ((TUNING.gegnerReichweite * this.reichweiteF) - 1)) {
       // Wolf darf den Sprung auch aus kurzer Distanz ansetzen
       if (this.type === 'wolf' && d < 120 && d > 50 && this.atkCd === 0 && Math.random() < 0.4) {
         this.startPattern(host, 'sprung');
@@ -388,8 +390,8 @@ export class Enemy {
     this.pattern = id;
     // Schlagtempo-Regler (F10, Runde 27): höher = kürzeres Ausholen,
     // kürzere Pausen zwischen den Hieben
-    this.windup = (windup ?? def?.windup ?? ENEMY_AI.meleeWindup) / TUNING.gegnerSchlagtempo;
-    this.atkCd = (ENEMY_AI.meleeAtkCd + (id === 'hieb' ? 0 : 0.6)) / TUNING.gegnerSchlagtempo;
+    this.windup = (windup ?? def?.windup ?? ENEMY_AI.meleeWindup) / (TUNING.gegnerSchlagtempo * this.schlagtempoF);
+    this.atkCd = (ENEMY_AI.meleeAtkCd + (id === 'hieb' ? 0 : 0.6)) / (TUNING.gegnerSchlagtempo * this.schlagtempoF);
     host.playSound('telegraph', 0.7);
   }
 
@@ -398,14 +400,14 @@ export class Enemy {
     const ang = Math.atan2(py - this.y, px - this.x);
     switch (this.pattern) {
       case 'hieb':
-        if (d < this.r + host.playerR() + 18 * TUNING.gegnerReichweite) host.enemyMeleeHit(this, Math.round(this.dmg * (0.8 + Math.random() * 0.35)));
+        if (d < this.r + host.playerR() + 18 * (TUNING.gegnerReichweite * this.reichweiteF)) host.enemyMeleeHit(this, Math.round(this.dmg * (0.8 + Math.random() * 0.35)));
         if (this.type === 'skelett' || this.type === 'wolf' || this.type === 'schatten') {
           this.retreatT = 0.35 + Math.random() * 0.25;
           this.orbitDir = Math.random() < 0.5 ? 1 : -1;
         }
         break;
       case 'doppelhieb':
-        if (d < this.r + host.playerR() + 20 * TUNING.gegnerReichweite) host.enemyMeleeHit(this, Math.round(this.dmg * 0.7));
+        if (d < this.r + host.playerR() + 20 * (TUNING.gegnerReichweite * this.reichweiteF)) host.enemyMeleeHit(this, Math.round(this.dmg * 0.7));
         this.secondHitT = 0.25;
         break;
       case 'giftwolke':
@@ -462,7 +464,7 @@ export class Enemy {
           this.lungeT = 0.7;
           this.lungeVx = Math.cos(a2) * 520;
           this.lungeVy = Math.sin(a2) * 520;
-        } else if (d < this.r + host.playerR() + BOSS.meleeRange * TUNING.gegnerReichweite) {
+        } else if (d < this.r + host.playerR() + BOSS.meleeRange * (TUNING.gegnerReichweite * this.reichweiteF)) {
           host.enemyMeleeHit(this, Math.round(this.dmg * (0.85 + Math.random() * 0.25)));
         }
       }
