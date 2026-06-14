@@ -12,6 +12,9 @@ export class SettingsScene extends Phaser.Scene {
   private colX = 0;
   private pendingBind: keyof Settings['kb'] | null = null;
   private bindLabels = new Map<keyof Settings['kb'], Phaser.GameObjects.Text>();
+  // Aktiver Schieberegler beim Ziehen (Runde 34): vorher reagierte der Regler
+  // nur auf einen Klick auf die 6px-Leiste - praktisch nicht zu treffen.
+  private dragSlider: ((x: number) => void) | null = null;
 
   constructor() {
     super('Settings');
@@ -29,6 +32,11 @@ export class SettingsScene extends Phaser.Scene {
     this.add.text(w / 2, 36, 'EINSTELLUNGEN', {
       fontFamily: 'serif', fontSize: '34px', color: '#d8cfb8', letterSpacing: 5,
     }).setOrigin(0.5);
+
+    // Ziehen über die ganze Szene auswerten (Regler-Knopf festhalten + schieben)
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => { if (this.dragSlider) this.dragSlider(p.x); });
+    this.input.on('pointerup', () => { this.dragSlider = null; });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.dragSlider = null; });
 
     // Zwei Spalten, damit nichts aus dem Bild läuft (TODO.md erledigt)
     this.colX = w / 2 - 520;
@@ -131,19 +139,25 @@ export class SettingsScene extends Phaser.Scene {
   }
 
   private slider(y: number, label: string, get: () => number, set: (v: number) => void, min = 0, max = 100): number {
-    const x0 = this.colX;
+    const x0 = this.colX, trackX = x0 + 330 - 90, trackW = 180, cy = y + 8;
     this.add.text(x0, y, label, { fontFamily: 'serif', fontSize: '15px', color: '#d8cfb8' });
-    const bar = this.add.rectangle(x0 + 330, y + 8, 180, 6, 0x3a2f24).setInteractive({ useHandCursor: true });
-    const fillW = () => 180 * ((get() - min) / (max - min));
-    const fill = this.add.rectangle(x0 + 330 - 90, y + 8, fillW(), 6, 0xc9a227).setOrigin(0, 0.5);
-    const val = this.add.text(x0 + 435, y, `${get()}%`, { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' });
-    bar.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      const rel = Phaser.Math.Clamp((p.x - (x0 + 330 - 90)) / 180, 0, 1);
+    this.add.rectangle(x0 + 330, cy, trackW, 6, 0x3a2f24);
+    const fill = this.add.rectangle(trackX, cy, 0, 6, 0xc9a227).setOrigin(0, 0.5);
+    const knob = this.add.circle(trackX, cy, 9, 0xe8d28a).setStrokeStyle(2, 0x6a5430);
+    const val = this.add.text(x0 + 435, y, '', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' });
+    const refresh = () => {
+      const f = Phaser.Math.Clamp((get() - min) / (max - min), 0, 1);
+      fill.width = trackW * f; knob.x = trackX + trackW * f; val.setText(`${get()}%`);
+    };
+    refresh();
+    const applyAt = (px: number) => {
+      const rel = Phaser.Math.Clamp((px - trackX) / trackW, 0, 1);
       set(Math.round((min + rel * (max - min)) / 5) * 5);
-      fill.width = fillW();
-      val.setText(`${get()}%`);
-      saveSettings();
-    });
+      refresh(); saveSettings();
+    };
+    // Grosse, leicht zu treffende Greiffläche (statt 6px); ziehen über die Szene
+    const hit = this.add.rectangle(x0 + 330, cy, trackW + 18, 28, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', (p: Phaser.Input.Pointer) => { this.dragSlider = applyAt; applyAt(p.x); });
     return y + 30;
   }
 
