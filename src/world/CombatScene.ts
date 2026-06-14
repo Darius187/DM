@@ -390,7 +390,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       merk = { ...merk, ...JSON.parse(localStorage.getItem('ravensmoor_devkasten') ?? '{}') };
     } catch { /* egal */ }
     const c = this.add.container(merk.x, merk.y).setScrollFactor(0).setDepth(6500);
-    const h = TUNING_ROWS.length * 29 + 96 + 186 + 52; // +52: zwei neue Per-Typ-Zeilen
+    const h = TUNING_ROWS.length * 29 + 96 + 186 + 52 + 30; // +52 Per-Typ-Zeilen, +30 Physik-Schalter
     // Bei kleinen Fenstern schrumpft der ganze Kasten, statt unten
     // abgeschnitten zu werden (Runde 29: Regler "nicht gefunden")
     c.setScale(Math.min(merk.s, Math.max(0.6, (this.scale.height - 60) / h)));
@@ -551,6 +551,19 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }).setInteractive({ useHandCursor: true });
     nebelBtn.on('pointerdown', () => { this.devToggleNebel(); this.sfx.play('klick'); });
     c.add(nebelBtn);
+    // Physik-Test (Runde 35): nicht live - Fässer/Kisten lassen sich schieben
+    const physikLbl = () => TUNING.physikTest ? 'PHYSIK-TEST: AN (Fässer/Kisten schieben)' : 'PHYSIK-TEST: AUS';
+    const physikBtn = this.add.text(12, y + 118, physikLbl(), {
+      fontFamily: 'serif', fontSize: '13px', color: TUNING.physikTest ? '#c9a227' : '#d8cfb8', letterSpacing: 1,
+      backgroundColor: '#221808', padding: { x: 12, y: 5 },
+    }).setInteractive({ useHandCursor: true });
+    physikBtn.on('pointerdown', () => {
+      TUNING.physikTest = !TUNING.physikTest;
+      physikBtn.setText(physikLbl()).setColor(TUNING.physikTest ? '#c9a227' : '#d8cfb8');
+      this.sfx.play('klick');
+      this.logMsg(TUNING.physikTest ? 'Physik-Test an: lauf in die Fässer/Kisten, um sie zu schieben.' : 'Physik-Test aus.', 'gold');
+    });
+    c.add(physikBtn);
     const baukasten = this.add.text(220, y + 62, 'BAUKASTEN', {
       fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
       backgroundColor: '#221808', padding: { x: 12, y: 5 },

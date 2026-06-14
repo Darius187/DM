@@ -29,6 +29,8 @@ export const TUNING = {
   typ: {} as Record<string, { tempo: number; schaden: number; schlagtempo: number; reichweite: number }>,
   // Runde 21: Dev-Schalter - alle Zauber/Fähigkeiten ohne Stufen-Sperre
   alleZauberFrei: false,
+  // Runde 35: Physik-Test (nicht live) - Fässer/Kisten lassen sich schieben
+  physikTest: false,
 };
 
 // Frische Standard-Feinwerte für einen Gegnertyp (alles neutral = 1).

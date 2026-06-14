@@ -27,3 +27,10 @@
    STETIGE Skalierung umbauen (Block-Wahrscheinlichkeit, Sammel-Dauer, Konter-
    Chance wachsen alle mit dem Regler), dann macht jeder Schritt einen
    spuerbaren Unterschied. Soll ich das umbauen?
+9. Physik-Test (Runde 35): Erste Stufe gebaut - im F10 "PHYSIK-TEST" anschalten,
+   dann Fässer/Kisten schieben. Offen, was sich SONST noch physikalisch
+   verhalten soll: (a) Pfeile, die in Wand/Boden/Gegner stecken bleiben,
+   (b) Rückstoß auf lebende Gegner je nach Waffe (Hammer wirft weiter als
+   Schwert - analog zur Gore-Wucht GORE_WUCHT), (c) weitere schiebbare Dinge
+   (Stühle, Krüge rollen?). Sag, was als Nächstes dran ist, dann baue ich es
+   - weiterhin erst hinter dem Schalter, dann live schalten.

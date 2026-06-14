@@ -25,7 +25,7 @@ import { DialogUI, fixUiScroll } from '../ui/dialog';
 import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, RELIKT, ENDEN, TOD, INTRO_FILM } from '../data/texte';
 import { ALTAR, BLOOD_WELL, CHEST, RELIC_ACCEPT_ELIXIRS } from '../data/balancing';
 import { BREAKABLES, BREAKABLE_LOOT, BEINHAUS, CHEST_VERFLUCHT, BOSS_KAMPF } from '../data/krypta';
-import { DEATH, SHRINE } from '../data/kampf';
+import { DEATH, SHRINE, PHYSIK } from '../data/kampf';
 import { TEMPLERKLINGE, BOSS_GOLD } from '../data/items';
 import { rollGear, rollGem } from '../logic/loot';
 import { recalc } from '../logic/playerState';
@@ -46,6 +46,10 @@ interface BreakableEntity extends BreakableSpawn {
   hp: number;
   img: Phaser.GameObjects.Image;
   r: number;
+  vx?: number; // Schiebe-Physik (Runde 35, nur im Physik-Test)
+  vy?: number;
+  hit?: { x: number; y: number; r: number; onHit: (fromAngle: number) => void };
+  quelle?: BreakableSpawn; // Original-Eintrag in area.breakables (für Zerstören/Speichern)
 }
 
 interface NpcEntity extends NpcSpawn {
@@ -199,9 +203,11 @@ export class WorldScene extends CombatScene {
     // Dev-Werkzeug: ?zeit=0.85 startet zu einer bestimmten Tageszeit (Testen
     // von Hausfenstern/Nacht); nur im Dev-Build.
     if (import.meta.env.DEV) {
-      const roh = new URLSearchParams(location.search).get('zeit');
+      const q = new URLSearchParams(location.search);
+      const roh = q.get('zeit');
       const z = roh === null ? NaN : Number(roh);
       if (Number.isFinite(z) && z >= 0 && z <= 1) this.tageszeit = z;
+      if (q.get('physik') === '1') TUNING.physikTest = true; // Physik-Test direkt an
     }
     this.kopfgeld = null;
     this.feld = Array.from({ length: 9 }, () => ({ saatId: null, tageGewachsen: 0, gegossen: false }));
@@ -1470,12 +1476,11 @@ export class WorldScene extends CombatScene {
     // Zerstörbare Objekte
     for (const b of a.breakables) {
       const img = this.add.image(b.x, b.y, this.provider.breakableKey(b.kind)).setDepth(b.y);
-      const ent: BreakableEntity = { ...b, hp: BREAKABLES[b.kind].hp, img, r: 13 };
+      const ent: BreakableEntity = { ...b, hp: BREAKABLES[b.kind].hp, img, r: 13, vx: 0, vy: 0, quelle: b };
+      const hit = { x: b.x, y: b.y, r: 13, onHit: (ang: number) => this.hitBreakable(ent, ang) };
+      ent.hit = hit;
       this.breakableEnts.push(ent);
-      this.hittables.push({
-        x: b.x, y: b.y, r: 13,
-        onHit: (ang) => this.hitBreakable(ent, ang),
-      });
+      this.hittables.push(hit);
     }
     // Gegner (NG+ macht alle zäher; Champions sind die Minibosse der Ebene)
     const tiefenBonus = this.flags.ngPlus ? 3 : 0;
@@ -1658,6 +1663,54 @@ export class WorldScene extends CombatScene {
     for (const o of this.hausNachtEnts) {
       const ziel = this.fensterAlpha(this.tageszeit, o.schlaf);
       o.img.setAlpha(o.img.alpha + (ziel - o.img.alpha) * Math.min(1, dt * 2));
+    }
+  }
+
+  // Schiebe-Physik für Fässer/Kisten (Runde 35, NUR im Physik-Test): der
+  // Spieler drückt sie weg, sie gleiten aus, prallen an Wänden und stoßen sich
+  // gegenseitig. Trefferziel und Speicher-Eintrag laufen mit (verschoben =
+  // dort getroffen, dort zerstört). Off = exakt das alte Verhalten.
+  private updateSchiebephysik(dt: number): void {
+    if (!TUNING.physikTest) return;
+    const pr = this.playerR();
+    const ents = this.breakableEnts;
+    for (const ent of ents) {
+      if (ent.vx === undefined) { ent.vx = 0; ent.vy = 0; }
+      const dx = ent.x - this.px, dy = ent.y - this.py;
+      const dist = Math.hypot(dx, dy) || 0.001;
+      const minD = pr + ent.r;
+      if (dist < minD) {
+        const nx = dx / dist, ny = dy / dist;
+        ent.x += nx * (minD - dist); ent.y += ny * (minD - dist); // aus der Überlappung
+        ent.vx = nx * PHYSIK.schub; ent.vy = ny * PHYSIK.schub;    // schiebt mit festem Tempo
+      }
+    }
+    // Kiste an Kiste: trennen + Impuls weitergeben
+    for (let i = 0; i < ents.length; i++) {
+      for (let j = i + 1; j < ents.length; j++) {
+        const a = ents[i], b = ents[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const dist = Math.hypot(dx, dy) || 0.001;
+        const minD = a.r + b.r;
+        if (dist < minD) {
+          const nx = dx / dist, ny = dy / dist, halb = (minD - dist) / 2;
+          a.x -= nx * halb; a.y -= ny * halb; b.x += nx * halb; b.y += ny * halb;
+          a.vx = (a.vx ?? 0) - nx * PHYSIK.stoss; a.vy = (a.vy ?? 0) - ny * PHYSIK.stoss;
+          b.vx = (b.vx ?? 0) + nx * PHYSIK.stoss; b.vy = (b.vy ?? 0) + ny * PHYSIK.stoss;
+        }
+      }
+    }
+    for (const ent of ents) {
+      let vx = ent.vx ?? 0, vy = ent.vy ?? 0;
+      if (Math.abs(vx) < 1.5 && Math.abs(vy) < 1.5) { ent.vx = 0; ent.vy = 0; continue; }
+      const nxp = ent.x + vx * dt;
+      if (!this.isSolidAt(nxp + Math.sign(vx) * ent.r, ent.y)) ent.x = nxp; else vx = -vx * PHYSIK.prall;
+      const nyp = ent.y + vy * dt;
+      if (!this.isSolidAt(ent.x, nyp + Math.sign(vy) * ent.r)) ent.y = nyp; else vy = -vy * PHYSIK.prall;
+      ent.vx = vx * PHYSIK.reibung; ent.vy = vy * PHYSIK.reibung;
+      ent.img.setPosition(ent.x, ent.y).setDepth(ent.y);
+      if (ent.hit) { ent.hit.x = ent.x; ent.hit.y = ent.y; }
+      if (ent.quelle) { ent.quelle.x = ent.x; ent.quelle.y = ent.y; }
     }
   }
 
@@ -1862,8 +1915,8 @@ export class WorldScene extends CombatScene {
     this.applyHitstop(40);
     ent.img.destroy();
     this.breakableEnts = this.breakableEnts.filter((b) => b !== ent);
-    this.hittables = this.hittables.filter((h) => !(h.x === ent.x && h.y === ent.y));
-    this.area.breakables = this.area.breakables.filter((b) => !(b.x === ent.x && b.y === ent.y));
+    this.hittables = this.hittables.filter((h) => h !== ent.hit);
+    this.area.breakables = this.area.breakables.filter((b) => b !== ent.quelle);
     this.dropBreakableLoot(ent);
     if (ent.ambush) {
       // Skript-Moment: dahinter lauert etwas
@@ -4519,6 +4572,7 @@ export class WorldScene extends CombatScene {
     this.renderHover();
     this.animiereWasser(dt);
     this.animiereHaeuser(dt);
+    this.updateSchiebephysik(dt);
     this.treibeNebel(dt);
     this.renderStimmung();
     this.spieleSchritte(dt);

@@ -96,6 +96,11 @@ export const GORE_WUCHT: Record<string, number> = {
   wucht: 1.7, axt: 1.3, stange: 1.05, schwert: 1.0, bogen: 0.7, stab: 0.7,
 };
 
+// Schiebe-Physik für Fässer/Kisten (Runde 35, nur im Physik-Test). schub =
+// Tempo, mit dem der Spieler sie wegschiebt; stoss = Impuls Kiste-an-Kiste;
+// reibung = Ausgleiten pro Frame; prall = Rückstoß an der Wand. Tunbar.
+export const PHYSIK = { schub: 150, stoss: 26, reibung: 0.86, prall: 0.3 } as const;
+
 // Tod und Rasten (Masterprompt 4.4 - schlägt Referenz: dort 20% Goldverlust)
 export const DEATH = {
   goldLossPct: 0.15,    // 15% Goldverlust
