@@ -7,7 +7,8 @@
 // wohnt über/neben der Werkstatt.
 
 export interface InnenMoebel {
-  tile: 'bett' | 'tisch' | 'stuhl' | 'kamin' | 'teppich' | 'tresen' | 'regal';
+  tile: 'bett' | 'tisch' | 'stuhl' | 'kamin' | 'teppich' | 'tresen' | 'regal'
+    | 'kerze' | 'wandfackel' | 'brennholz' | 'kessel';
   x: number;
   y: number;
 }
@@ -41,7 +42,7 @@ export const INNENRAEUME: Readonly<Record<string, InnenraumDef>> = {
       M('kamin', 15, 1), M('teppich', 14, 4), M('teppich', 15, 4),
       M('tisch', 8, 5), M('stuhl', 7, 5), M('stuhl', 9, 5), M('stuhl', 8, 7),
       M('tisch', 13, 7), M('stuhl', 12, 7), M('stuhl', 14, 7),
-      M('tisch', 4, 8), M('stuhl', 5, 8),
+      M('tisch', 4, 8), M('stuhl', 5, 8), M('kerze', 8, 4),
     ],
     bewohner: [
       { id: 'wirtin', name: 'Wirtin Mathilde', x: 4, y: 5 },
@@ -108,6 +109,7 @@ export const INNENRAEUME: Readonly<Record<string, InnenraumDef>> = {
     moebel: [
       M('kamin', 5, 1), M('regal', 1, 1), M('regal', 8, 1), M('regal', 3, 1),
       M('bett', 8, 5), M('tisch', 4, 4), M('stuhl', 3, 4), M('teppich', 5, 5),
+      M('kessel', 5, 3),
     ],
     bewohner: [],
     faesser: [[1, 6]],
@@ -152,6 +154,7 @@ export const INNENRAEUME: Readonly<Record<string, InnenraumDef>> = {
     haus: 'kirche', name: 'Kirche St. Marien', w: 14, h: 11,
     moebel: [
       M('tisch', 6, 1), M('tisch', 7, 1), M('regal', 1, 1), M('regal', 12, 1),
+      M('kerze', 5, 1), M('kerze', 8, 1),
       M('teppich', 6, 3), M('teppich', 7, 3), M('teppich', 6, 5), M('teppich', 7, 5), M('teppich', 6, 7), M('teppich', 7, 7),
       M('stuhl', 3, 4), M('stuhl', 4, 4), M('stuhl', 9, 4), M('stuhl', 10, 4),
       M('stuhl', 3, 6), M('stuhl', 4, 6), M('stuhl', 9, 6), M('stuhl', 10, 6),

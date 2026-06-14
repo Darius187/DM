@@ -9,13 +9,15 @@ export const T = {
   WATER: 27, FIELD: 28, FENCE: 29, PALISADE: 30, TOR: 31,
   // Innenräume (Feedback-Runde 9)
   HOLZ: 32, BETT: 33, TISCH: 34, STUHL: 35, KAMIN: 36, TEPPICH: 37, TRESEN: 38, HDOOR: 39,
+  // Innen-Requisiten mit Licht (Runde 35): Kerzenständer, Wandfackel, Brennholz, Kessel
+  KERZE: 40, WANDFACKEL: 41, BRENNHOLZ: 42, KESSEL: 43,
 } as const;
 export type TileId = (typeof T)[keyof typeof T];
 
 export const SOLID = new Set<number>([
   T.HWALL, T.TREE, T.CWALL, T.WALL, T.GRAVE, T.WELL, T.ALTAR, T.SHELF,
   T.SHRINE, T.ORE, T.ROCK, T.RACK, T.CAGE, T.WATER, T.FENCE, T.PALISADE, T.TOR,
-  T.BETT, T.TISCH, T.KAMIN, T.TRESEN,
+  T.BETT, T.TISCH, T.KAMIN, T.TRESEN, T.BRENNHOLZ, T.KESSEL,
 ]);
 
 // Tile-ID -> Name für den SpriteProvider (Hot-Swap-fähig).
@@ -31,6 +33,7 @@ const NAME: Record<number, string> = {
   [T.TOR]: 'stadttor',
   [T.HOLZ]: 'holzboden', [T.BETT]: 'bett', [T.TISCH]: 'tisch', [T.STUHL]: 'stuhl',
   [T.KAMIN]: 'kamin', [T.TEPPICH]: 'teppich', [T.TRESEN]: 'tresen', [T.HDOOR]: 'haustuer',
+  [T.KERZE]: 'kerze', [T.WANDFACKEL]: 'wandfackel', [T.BRENNHOLZ]: 'brennholz', [T.KESSEL]: 'kessel',
 };
 
 // Liefert den Tile-Namen unter Berücksichtigung von Fassade/Dach:

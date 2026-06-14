@@ -345,6 +345,7 @@ export const STANDING_OBJECTS = new Set([
   'baum', 'fels', 'grabstein', 'brunnen', 'zaun', 'erzader', 'altar',
   'regal', 'kerzenschrein', 'streckbank', 'kaefig', 'palisade',
   'bett', 'tisch', 'stuhl', 'kamin', 'tresen',
+  'kerze', 'wandfackel', 'brennholz', 'kessel',
 ]);
 
 export function drawObjectArt(ctx: Ctx, name: string, n: number, theme?: CryptTheme): void {
@@ -473,6 +474,48 @@ export function drawObjectArt(ctx: Ctx, name: string, n: number, theme?: CryptTh
       ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(1, 8, 30, 2);
       ctx.fillStyle = '#8a6a4a'; ctx.beginPath(); ctx.ellipse(9, 9, 2.4, 3, 0, 0, 6.283); ctx.fill(); // Krug
       ctx.fillStyle = '#b8bcc4'; ctx.beginPath(); ctx.arc(22, 10, 2, 0, 6.283); ctx.fill(); // Becher
+      break;
+    case 'kerze':
+      // Kerzenständer (Kandelaber): Fuß, Schaft, Kerze - Flamme kommt als Overlay
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.beginPath(); ctx.ellipse(16, 27, 6, 2.4, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#3a3026'; ctx.fillRect(14, 24, 4, 3);     // Fuß
+      ctx.fillStyle = '#6a5a3a'; ctx.fillRect(15, 14, 2, 11);    // Schaft (Messing)
+      ctx.fillStyle = '#8a7448'; ctx.fillRect(15, 14, 1, 11);
+      ctx.fillStyle = '#7a6a48'; ctx.fillRect(12, 22, 8, 2);     // Teller
+      ctx.fillStyle = '#e8e0c8'; ctx.fillRect(14, 8, 4, 7);      // Kerze (Wachs)
+      ctx.fillStyle = '#fff8e0'; ctx.fillRect(14, 8, 1, 7);
+      ctx.fillStyle = '#2a2018'; ctx.fillRect(15, 7, 1, 2);      // Docht
+      break;
+    case 'wandfackel':
+      // Wandfackel: Eisenhalter + Fackelkopf - Flamme kommt als Overlay
+      ctx.fillStyle = '#2a2620'; ctx.fillRect(14, 10, 4, 16);    // Stiel
+      ctx.fillStyle = '#3a3630'; ctx.fillRect(14, 10, 1, 16);
+      ctx.fillStyle = '#4a4036'; ctx.fillRect(11, 16, 10, 3);    // Wandhalterung
+      ctx.fillStyle = '#5a4e40'; ctx.fillRect(11, 16, 10, 1);
+      ctx.fillStyle = '#241c12'; ctx.beginPath(); ctx.ellipse(16, 9, 4, 3, 0, 0, 6.283); ctx.fill(); // Pechkopf
+      break;
+    case 'brennholz':
+      // Brennholzstapel neben dem Kamin
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.beginPath(); ctx.ellipse(16, 26, 12, 3, 0, 0, 6.283); ctx.fill();
+      for (const [ly, lx0] of [[20, 5], [20, 13], [20, 21], [15, 9], [15, 17], [11, 13]] as Array<[number, number]>) {
+        ctx.fillStyle = '#5a4026'; ctx.fillRect(lx0, ly, 7, 5);
+        ctx.fillStyle = '#cdb98a'; ctx.beginPath(); ctx.ellipse(lx0 + 0.5, ly + 2.5, 1.6, 2.2, 0, 0, 6.283); ctx.fill(); // Schnittfläche
+        ctx.fillStyle = '#9a7a4a'; ctx.beginPath(); ctx.ellipse(lx0 + 0.5, ly + 2.5, 0.8, 1.3, 0, 0, 6.283); ctx.fill();
+      }
+      break;
+    case 'kessel':
+      // Kessel über dem Feuer (Dreifuß + schwarzer Topf)
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(16, 27, 9, 3, 0, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = '#2a2620'; ctx.lineWidth = 2;            // Dreifuß
+      ctx.beginPath(); ctx.moveTo(9, 26); ctx.lineTo(13, 16); ctx.moveTo(23, 26); ctx.lineTo(19, 16); ctx.moveTo(16, 27); ctx.lineTo(16, 18); ctx.stroke();
+      ctx.fillStyle = '#1c1a18'; ctx.beginPath(); ctx.ellipse(16, 16, 9, 8, 0, 0, 6.283); ctx.fill(); // Topf
+      ctx.fillStyle = '#2e2a26'; ctx.beginPath(); ctx.ellipse(16, 11, 8, 3, 0, 0, 6.283); ctx.fill(); // Rand
+      ctx.fillStyle = '#0e0c0a'; ctx.beginPath(); ctx.ellipse(16, 11, 6.5, 2.2, 0, 0, 6.283); ctx.fill(); // Öffnung
+      ctx.strokeStyle = '#3a3630'; ctx.lineWidth = 1.4;          // Henkel
+      ctx.beginPath(); ctx.arc(16, 11, 8, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
       break;
     default:
       drawTileArt(ctx, name, n, theme);

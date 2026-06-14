@@ -78,6 +78,7 @@ export interface AreaData {
   geleert?: boolean;          // Ebene leergeräumt - bleibt leer bis zum Tod (Runde 26)
   baeume: Pos[];              // fällbare Bäume (Holz)
   chimneys: Pos[];            // Schornsteinrauch
+  herde?: Array<Pos & { ph: number; art: 'kamin' | 'kerze' | 'wandfackel' }>; // Innen-Lichtquellen (Runde 35)
   cryptDoor?: Pos;            // Kirchentür -> Krypta
   gehoeft?: { x0: number; y0: number; x1: number; y1: number }; // Wiederaufbau
   // Innenräume (Feedback-Runde 9)
@@ -954,7 +955,7 @@ export function buildInterior(def: InnenraumDef): AreaData {
     torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
     breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
     ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
-    npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
+    npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [], herde: [],
     innen: true, innenHaus: def.haus,
   };
   // Wände rundum, Tür unten in der Mitte
@@ -968,11 +969,34 @@ export function buildInterior(def: InnenraumDef): AreaData {
   const TILES: Record<InnenMoebel['tile'], number> = {
     bett: T.BETT, tisch: T.TISCH, stuhl: T.STUHL, kamin: T.KAMIN,
     teppich: T.TEPPICH, tresen: T.TRESEN, regal: T.SHELF,
+    kerze: T.KERZE, wandfackel: T.WANDFACKEL, brennholz: T.BRENNHOLZ, kessel: T.KESSEL,
   };
+  // Lichtquellen innen (Runde 35): Kamin gross, Wandfackel mittel, Kerze klein.
+  // y leicht hoch (-8), damit der Schein aus dem Feuer kommt, nicht vom Boden.
+  const lichtArt: Partial<Record<InnenMoebel['tile'], 'kamin' | 'kerze' | 'wandfackel'>> = {
+    kamin: 'kamin', kerze: 'kerze', wandfackel: 'wandfackel',
+  };
+  const frei = (tx: number, ty: number): boolean =>
+    tx > 0 && ty > 0 && tx < w - 1 && ty < h - 1 && map[ty][tx] === T.HOLZ;
   for (const m of def.moebel) {
     map[m.y][m.x] = TILES[m.tile];
-    // Kamine geben warmes, flackerndes Licht
-    if (m.tile === 'kamin') a.torches.push({ x: m.x * TILE + 16, y: m.y * TILE + 24, ph: Math.random() * 6.28 });
+    const art = lichtArt[m.tile];
+    if (art) {
+      const yOff = art === 'kamin' ? 24 : art === 'wandfackel' ? 18 : 14;
+      a.herde!.push({ x: m.x * TILE + 16, y: m.y * TILE + yOff, ph: Math.random() * 6.28, art });
+    }
+    // Brennholz neben jeden Kamin stapeln (erstes freies Nachbarfeld)
+    if (m.tile === 'kamin') {
+      const nb = ([[m.x + 1, m.y], [m.x - 1, m.y], [m.x, m.y + 1]] as Array<[number, number]>).find(([nx, ny]) => frei(nx, ny));
+      if (nb) map[nb[1]][nb[0]] = T.BRENNHOLZ;
+    }
+  }
+  // Wandfackeln flankieren den oberen Raum (Licht von der Wand), wo frei
+  for (const fx of [2, w - 3]) {
+    if (frei(fx, 1)) {
+      map[1][fx] = T.WANDFACKEL;
+      a.herde!.push({ x: fx * TILE + 16, y: 1 * TILE + 18, ph: Math.random() * 6.28, art: 'wandfackel' });
+    }
   }
   for (const [fx, fy] of def.faesser ?? []) {
     a.breakables.push({ kind: 'fass', x: fx * TILE + 16, y: fy * TILE + 16, ambush: false });

@@ -1347,7 +1347,7 @@ export class WorldScene extends CombatScene {
 
   // Stehende Objekte trennen sich vom Boden für die Y-Sortierung
   private static readonly STANDING = new Set<number>([T.TREE, T.ROCK, T.GRAVE, T.WELL, T.FENCE, T.ORE, T.ALTAR, T.SHELF, T.SHRINE, T.RACK, T.CAGE,
-    T.BETT, T.TISCH, T.STUHL, T.KAMIN, T.TRESEN]);
+    T.BETT, T.TISCH, T.STUHL, T.KAMIN, T.TRESEN, T.KERZE, T.WANDFACKEL, T.BRENNHOLZ, T.KESSEL]);
 
   // Vom Autor eingestellte Objektgrößen (Baukasten, Runde 25)
   private objektSkalen(): Record<string, number> {
@@ -3987,10 +3987,32 @@ export class WorldScene extends CombatScene {
     this.renderFog();
     // Nebel des Krieges im Dunkelwald: Sichtkreis auch über Tage (einstellbar)
     const fow = !this.area.dark && this.area.id === 'wald' && getSettings().fow;
-    // Stuben bleiben warm und hell
+    // Innenräume (Runde 35): sanft abgedunkelte, WARME Stube - Kamin, Kerzen
+    // und Wandfackeln werfen das flackernde Licht, der Held trägt ein kleines
+    // Grundlicht. So lebt die Stube; ganz dunkel wird es nie.
     if (this.area.innen) {
-      this.lightRT.setVisible(false);
-      for (const img of this.warmPool) img.setVisible(false);
+      if (this.lightRT.width !== this.scale.width || this.lightRT.height !== this.scale.height) {
+        this.lightRT.setSize(this.scale.width, this.scale.height);
+      }
+      this.lightRT.setVisible(true);
+      this.lightRT.clear();
+      this.lightRT.fill(0x0a0703, 0.5); // gedämpfte, warme Dunkelheit
+      const tInnen = this.time.now / 1000;
+      const zmI = cam.zoom;
+      const pxI = (this.px - cam.worldView.x) * zmI, pyI = (this.py - cam.worldView.y) * zmI;
+      this.eraseLight(pxI, pyI, 150 * zmI);
+      let wi = this.placeWarm(0, this.px, this.py, 110, 0.16);
+      for (const hd of this.area.herde ?? []) {
+        const sx = (hd.x - cam.worldView.x) * zmI, sy = (hd.y - cam.worldView.y) * zmI;
+        if (sx < -200 || sy < -200 || sx > this.scale.width + 200 || sy > this.scale.height + 200) continue;
+        const flick = 1 + Math.sin(tInnen * 7 + hd.ph) * 0.06 + Math.sin(tInnen * 19 + hd.ph) * 0.03;
+        const r = hd.art === 'kamin' ? 156 : hd.art === 'wandfackel' ? 98 : 60;
+        const al = hd.art === 'kamin' ? 0.62 : hd.art === 'wandfackel' ? 0.46 : 0.32;
+        this.eraseLight(sx, sy - 6 * zmI, r * flick * zmI);
+        wi = this.placeWarm(wi, hd.x, hd.y - 6, r * 0.82, al * flick);
+      }
+      for (let i = wi; i < this.warmPool.length; i++) this.warmPool[i].setVisible(false);
+      this.lightRT.setAlpha(Math.min(1, 100 / getSettings().bright));
       return;
     }
     // Draußen (Runde 14): immer ein Sichtkreis um den Spieler - tagsüber
@@ -4096,6 +4118,29 @@ export class WorldScene extends CombatScene {
       g.fillEllipse(t.x, t.y - 4 + f * 0.3, 7, 11 + f * 2);
       g.fillStyle(0xf8d878, 1);
       g.fillEllipse(t.x, t.y - 3, 3.6, 6);
+    }
+    // Innen-Lichtquellen (Runde 35): lebendige Flammen über Kamin/Kerze/Fackel
+    for (const hd of this.area.herde ?? []) {
+      const f = Math.sin(time * 9 + hd.ph);
+      if (hd.art === 'kamin') {
+        g.fillStyle(0xe8842a, 0.9);
+        g.fillEllipse(hd.x, hd.y - 12 + f * 1.5, 7, 12 + f * 2);
+        g.fillStyle(0xf8d878, 0.95);
+        g.fillEllipse(hd.x, hd.y - 11, 3.6, 7 + f);
+        g.fillStyle(0xfff0c0, 0.7);
+        g.fillEllipse(hd.x, hd.y - 10, 1.6, 4);
+      } else if (hd.art === 'wandfackel') {
+        g.fillStyle(0xe8842a, 1);
+        g.fillEllipse(hd.x, hd.y - 9 + f * 0.4, 4.5, 8 + f);
+        g.fillStyle(0xf8d878, 1);
+        g.fillEllipse(hd.x, hd.y - 8, 2.2, 4.5);
+      } else { // kerze
+        const cf = f * 0.5;
+        g.fillStyle(0xf8d060, 0.9);
+        g.fillEllipse(hd.x, hd.y - 7 + cf, 1.5, 3.2);
+        g.fillStyle(0xfff4d0, 0.95);
+        g.fillCircle(hd.x, hd.y - 7 + cf, 0.8);
+      }
     }
     // Truhen
     for (const ch of this.area.chests) {
