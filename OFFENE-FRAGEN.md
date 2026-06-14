@@ -34,3 +34,11 @@
    Schwert - analog zur Gore-Wucht GORE_WUCHT), (c) weitere schiebbare Dinge
    (Stühle, Krüge rollen?). Sag, was als Nächstes dran ist, dann baue ich es
    - weiterhin erst hinter dem Schalter, dann live schalten.
+10. Gegner-Vielfalt (Runde 35, Autorwunsch "mal Schwert, mal Schild, immer
+    unterschiedlich"): Aggression + Flankieren sind drin. Offen ist die OPTISCHE
+    Vielfalt: Schilde gibt es bisher nur für Skelette (Verhalten UND Bild).
+    Schilde/Schwerter auch für Pest/Lebende Tote brauchen je eine sichtbare
+    Variante in der Figur-Zeichnung (fallbackArt). Soll ich (a) das Schild-Bild
+    auf Pest/Lebende Tote erweitern, (b) eine Schwert-Variante (mehr Reichweite/
+    Schaden, sichtbare Klinge) ergänzen, (c) beides mit Zufalls-Mischung je
+    Spawn? Sag, welche Mischung dir vorschwebt, dann zeichne ich die Varianten.

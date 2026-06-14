@@ -81,7 +81,32 @@ export const ENEMY_AI = {
   rangedMinShoot: 90,
   slowFactorEis: 0.5,   // Frostsplitter verlangsamt auf 50%
   slowDauerEis: 1.2,
+  // Aggression (Runde 35): Gegner gingen nach jedem Schlag passiv zurück und
+  // ließen sich abschnetzeln. Jetzt weichen sie seltener/kürzer und setzen
+  // härter nach. rueckzugDauer = wie lange weggetänzelt wird; konterChance =
+  // Chance, aus dem Rückzug heraus zurückzuschlagen, wenn der Held nachsetzt.
+  rueckzugDauer: 0.26,
+  konterChance: 0.85,
+  // Sammeln vor dem Sturm (Gruppendynamik): kürzer warten, früher losstürmen
+  sammelnMin: 0.4,
+  sammelnSpanne: 0.6,
+  sammelnAb: 1,         // ab so vielen nahen Verbündeten gemeinsam angreifen
 } as const;
+
+// Aggressions-Profil je Gegnertyp (Runde 35): rueckzugChance = wie oft ein
+// Gegner nach seinem Hieb kurz wegtänzelt (0 = bleibt stur dran und drängt),
+// sonst geht er sofort wieder auf Konfrontation. So bekommt jede Art ihr
+// eigenes Gefühl: Pest/Lebende Tote drängen, Skelette skirmishen, Schatten
+// tänzeln. Tunbar je Typ (auch über den F10-Per-Typ-Regler ergänzbar).
+export const AGGRO: Record<string, { rueckzugChance: number }> = {
+  pest: { rueckzugChance: 0.0 },
+  lebender_toter: { rueckzugChance: 0.08 },
+  skelett: { rueckzugChance: 0.3 },
+  schatten: { rueckzugChance: 0.45 },
+  wolf: { rueckzugChance: 0.4 },
+  ratte: { rueckzugChance: 0.5 },
+};
+export const AGGRO_STD = { rueckzugChance: 0.22 };
 
 // Boss "Der Tempelritter" (Referenz bossAI):
 // Phase 2 ab 50% HP, Beschwörung bei 66%/33%, Slam-Telegraph, Projektilfächer in Phase 2

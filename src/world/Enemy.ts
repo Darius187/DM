@@ -2,7 +2,7 @@
 // erweitert um Telegraph-Werte aus dem Masterprompt und Haltungsbruch.
 
 import Phaser from 'phaser';
-import { ENEMIES, ELITE, ENEMY_AI, BOSS, kampfTiefe } from '../data/enemies';
+import { ENEMIES, ELITE, ENEMY_AI, AGGRO, AGGRO_STD, BOSS, kampfTiefe } from '../data/enemies';
 import type { EnemyTypeId, EliteAffix } from '../data/types';
 import { BOSS_TEXTE } from '../data/texte';
 import type { Rng } from '../logic/rng';
@@ -15,6 +15,7 @@ export interface EnemyHost {
   playerX(): number;
   playerY(): number;
   playerR(): number;
+  playerDir(): number; // Blickrichtung des Spielers (rad) für die Flanken-KI
   enemyMeleeHit(e: Enemy, dmg: number): void;
   spawnEnemyProjectile(x: number, y: number, vx: number, vy: number, dmg: number, col: string, pfeil?: boolean): void;
   addTelegraph(x: number, y: number, r: number, t: number, dmg: number): void;
@@ -121,6 +122,9 @@ export class Enemy {
   private flankAng = (Math.random() - 0.5) * 2.2;
   private orbitDir = Math.random() < 0.5 ? 1 : -1;
   private retreatT = 0;
+  // Rolle (Runde 35): 'flanke' umläuft den Spieler und greift von HINTEN an,
+  // 'front' bindet vorn (Tanks/Schildträger). Im Konstruktor je Typ gesetzt.
+  rolle: 'front' | 'flanke' = 'front';
   champion = false;
   versteckt = false;
   // Schildträger (Runde 11): blockt Treffer von vorn, weicht nicht zurück
@@ -135,9 +139,11 @@ export class Enemy {
   // bei Treffern zurückweichen (Feedback-Runde 2)
   onHurt(): void {
     if (this.boss) return;
-    const flink = this.type === 'skelett' || this.type === 'wolf' || this.type === 'schatten';
-    if (Math.random() < (flink ? 0.7 : 0.35)) {
-      this.retreatT = 0.3 + Math.random() * 0.2;
+    // Runde 35: beim Treffer nur noch SELTEN zurückzucken (vorher 0,7 für
+    // flinke Typen - man konnte sie folgenlos abschnetzeln). Richtet sich
+    // nach dem Aggressions-Profil; Pest/Lebende Tote zucken so gut wie nie.
+    if (Math.random() < (AGGRO[this.type] ?? AGGRO_STD).rueckzugChance * 0.7) {
+      this.retreatT = ENEMY_AI.rueckzugDauer + Math.random() * 0.14;
       this.orbitDir = Math.random() < 0.5 ? 1 : -1;
     }
   }
@@ -170,6 +176,11 @@ export class Enemy {
     this.ranged = def.ranged ?? false;
     this.boss = def.boss ?? false;
     this.name = def.name;
+    // Rolle (Runde 35): flinke, leichte Gegner umlaufen den Spieler und fallen
+    // von hinten an; Pest/Lebende Tote drängen stur von vorn. Schildträger
+    // werden später (beim Spawn) ohnehin auf 'front' gesetzt.
+    const flinkTyp = type === 'schatten' || type === 'wolf' || type === 'ratte';
+    this.rolle = flinkTyp || (type === 'skelett' && Math.random() < 0.5) ? 'flanke' : 'front';
     this.atkCd = rnd(rng, 0, 1);
     this.shootCd = rnd(rng, 0, 1.5);
     this.wobble = rnd(rng, 0, 6.28);
@@ -299,8 +310,10 @@ export class Enemy {
       // wer nachsetzt, kassiert einen schnellen Gegenhieb, und gewichen
       // wird SCHRÄG statt stur rückwärts (seitlich raus, neuer Winkel)
       this.retreatT -= dt;
+      // wer den Spieler noch in Reichweite hat, dreht meist um und schlägt zu
+      // (Runde 35: vorher 0,6 - Gegner liefen oft folgenlos weg)
       if (d < this.r + host.playerR() + 20 * (TUNING.gegnerReichweite * this.reichweiteF) && this.windup <= 0
-        && Math.random() < 0.6 * TUNING.gegnerCleverness) {
+        && Math.random() < ENEMY_AI.konterChance * TUNING.gegnerCleverness) {
         this.retreatT = 0;
         this.atkCd = Math.max(this.atkCd, 0.1);
         this.startPattern(host, 'hieb', 0.18);
@@ -318,10 +331,10 @@ export class Enemy {
       // Sammeln statt einzeln anrennen (Runde 27): Skelette und Pestopfer
       // warten in Sichtweite kurz auf Verbündete - kommt Verstärkung in die
       // Nähe, stürmen alle gemeinsam
-      if (TUNING.gegnerCleverness >= 0.5 && (this.type === 'skelett' || this.type === 'pest') && d < 170 && d > 70) {
-        if (this.mutT < 0) this.mutT = 0.9 + Math.random() * 1.3;
+      if (TUNING.gegnerCleverness >= 0.5 && this.type === 'skelett' && d < 160 && d > 80) {
+        if (this.mutT < 0) this.mutT = ENEMY_AI.sammelnMin + Math.random() * ENEMY_AI.sammelnSpanne;
         if (this.mutT > 0) {
-          if (host.verbuendeteNahe(this, 150) >= 2) this.mutT = 0;
+          if (host.verbuendeteNahe(this, 150) >= ENEMY_AI.sammelnAb) this.mutT = 0;
           else {
             this.mutT -= dt;
             const oa2 = ang + this.orbitDir * 1.5;
@@ -335,6 +348,13 @@ export class Enemy {
         // Erholzeit: nicht anstehen, sondern den Spieler umkreisen
         const oa = ang + this.orbitDir * 1.45;
         this.moveBody(host, Math.cos(oa) * this.speed * 0.55 * slowF * dt, Math.sin(oa) * this.speed * 0.55 * slowF * dt);
+      } else if (this.rolle === 'flanke' && d < 230) {
+        // Flanke (Runde 35): zur RÜCKSEITE des Spielers laufen und von hinten
+        // angreifen - umläuft ihn, während die Tanks vorne binden.
+        const pd = host.playerDir();
+        const rx = px + Math.cos(pd + Math.PI) * (host.playerR() + this.r + 6);
+        const ry = py + Math.sin(pd + Math.PI) * (host.playerR() + this.r + 6);
+        this.laufe(host, Math.atan2(ry - this.y, rx - this.x), this.speed * slowF, dt);
       } else {
         // Annäherung versetzt aus dem eigenen Flankenwinkel -> Umzingeln;
         // laufe() umgeht dabei Hindernisse, statt dagegen zu rennen
@@ -401,8 +421,10 @@ export class Enemy {
     switch (this.pattern) {
       case 'hieb':
         if (d < this.r + host.playerR() + 18 * (TUNING.gegnerReichweite * this.reichweiteF)) host.enemyMeleeHit(this, Math.round(this.dmg * (0.8 + Math.random() * 0.35)));
-        if (this.type === 'skelett' || this.type === 'wolf' || this.type === 'schatten') {
-          this.retreatT = 0.35 + Math.random() * 0.25;
+        // Aggression (Runde 35): nur MANCHMAL kurz zurückweichen, je nach Typ;
+        // sonst bleibt er dran und setzt nach (Pest/Lebende Tote drängen stur).
+        if (Math.random() < (AGGRO[this.type] ?? AGGRO_STD).rueckzugChance) {
+          this.retreatT = ENEMY_AI.rueckzugDauer + Math.random() * 0.18;
           this.orbitDir = Math.random() < 0.5 ? 1 : -1;
         }
         break;

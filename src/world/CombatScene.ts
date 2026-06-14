@@ -89,6 +89,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   playerX(): number { return this.px; }
   playerY(): number { return this.py; }
   playerR(): number { return PLAYER.radius; }
+  playerDir(): number { return this.pdir; } // Blickrichtung für die Flanken-KI
   logMsg(_text: string, _cls?: string): void { /* überschreibbar (HUD) */ }
   playSound(name: string, volMult = 1): void { this.sfx.play(name, volMult); }
   burstFx(x: number, y: number, col: number, n: number, spd: number): void { this.fx.burst(x, y, col, n, spd); }
@@ -1294,6 +1295,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Ab Ebene 2 (Runde 17), und das Schild ist im Bild SICHTBAR
     if (type === 'skelett' && !e.boss && depth >= 2 && this.rng.random() < 0.3) {
       e.schild = true;
+      e.rolle = 'front'; // Schildträger sind die Tanks: sie binden vorn (Runde 35)
       e.name = `${e.name} · Schildträger`;
     }
     // Entwicklungskasten-Faktoren
