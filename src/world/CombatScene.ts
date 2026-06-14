@@ -5,7 +5,9 @@
 import Phaser from 'phaser';
 import { SpriteProvider } from '../gfx/SpriteProvider';
 import { SoundProvider } from '../gfx/SoundProvider';
-import { spielerFigur } from '../gfx/fallbackArt';
+import { spielerFigur, type Dir } from '../gfx/fallbackArt';
+import { createRitterTexture } from '../gfx/RitterHeld';
+import { RITTER_TEXTUR_SKALA } from '../data/helden';
 import { EffectSystem } from './effects';
 import { Enemy, angleToDir, type EnemyHost } from './Enemy';
 import {
@@ -114,8 +116,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.playerDead = false;
     this.album = { kills: {}, champions: [], unikate: [], notizen: [] };
     this.albumPanel = null;
+    // Gezeichneter Ritter-Held (held_ritter) - Quelle ist RitterHeld.ts.
+    // Knackig statt weichgezeichnet (NEAREST), da 4-fach hochaufgeloest.
+    createRitterTexture(this);
+    this.textures.get('held_ritter').setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.playerSprite = this.add.sprite(startX, startY, '__DEFAULT').setDepth(startY);
-    this.provider.applyFigure(this.playerSprite, this.heldFigur(), 0, 0);
+    this.zeichneHeld(0, 0);
     // Held-Sprite des Autors wirkt sonst winzig neben den Figuren (Runde 17)
     if (this.textures.exists('hs_spieler_unten_1')) this.playerSprite.setScale(1.35);
     this.overlay = this.add.graphics().setDepth(2600);
@@ -1995,6 +2001,27 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.telegraphs = this.telegraphs.filter((tg) => tg.t > -0.15);
   }
 
+  // Held zeichnen: bevorzugt echte Hot-Swap-Sprites (KI-Pakete des Autors),
+  // sonst die gezeichnete Ritter-Textur 'held_ritter', sonst der Pixel-Fallback.
+  // Die Ritter-Textur ist frontal (eine Ansicht) - links/rechts wird gespiegelt.
+  protected zeichneHeld(dir: Dir, step: number): void {
+    const f = this.provider.figureFrame(this.heldFigur(), dir, step);
+    const istFallback = f.key.startsWith('fig_');
+    if (istFallback && this.textures.exists('held_ritter')) {
+      if (this.playerSprite.texture.key !== 'held_ritter') {
+        this.playerSprite.setTexture('held_ritter').setOrigin(0.5, 0.9).setScale(RITTER_TEXTUR_SKALA);
+      }
+      this.playerSprite.setFlipX(dir === 1); // links: Schild/Schwert seitenverkehrt andeuten
+      return;
+    }
+    // echte Sprites (oder kein Ritter vorhanden): Ursprung/Skala zuruecksetzen
+    if (this.playerSprite.texture.key === 'held_ritter') {
+      this.playerSprite.setOrigin(0.5, 0.5).setFlipX(false);
+      this.playerSprite.setScale(this.textures.exists('hs_spieler_unten_1') ? 1.35 : 1);
+    }
+    this.provider.applyFigure(this.playerSprite, this.heldFigur(), dir, step);
+  }
+
   // Sprites und Overlay (Ringe, Balken, Telegraphen) zeichnen
   protected renderEntities(): void {
     const time = this.time.now / 1000;
@@ -2005,14 +2032,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.reitPferd.setVisible(true).setPosition(this.px, this.py + 6 + bob).setScale(1.45).setDepth(this.py);
       this.provider.applyFigure(this.reitPferd, 'pferd', angleToDir(this.pdir), this.pstep);
       this.playerSprite.setPosition(this.px - 2, this.py - 15 + bob).setDepth(this.py + 1);
-      this.provider.applyFigure(this.playerSprite, this.heldFigur(), angleToDir(this.pdir), this.pstep);
+      this.zeichneHeld(angleToDir(this.pdir), this.pstep);
       this.playerSprite.clearTint();
     } else {
       this.reitPferd?.setVisible(false);
       this.playerSprite.setPosition(this.px, this.py).setDepth(this.py);
       const moving = this.keysDown['w'] || this.keysDown['a'] || this.keysDown['s'] || this.keysDown['d']
         || this.keysDown['arrowup'] || this.keysDown['arrowdown'] || this.keysDown['arrowleft'] || this.keysDown['arrowright'];
-      this.provider.applyFigure(this.playerSprite, this.heldFigur(), angleToDir(this.pdir), moving ? this.pstep : 0);
+      this.zeichneHeld(angleToDir(this.pdir), moving ? this.pstep : 0);
     }
     if (this.playerHitFlash > 0) this.playerSprite.setTintFill(0xffffff);
     else this.playerSprite.clearTint();
