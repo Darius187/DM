@@ -5,7 +5,7 @@
 import Phaser from 'phaser';
 import { getSettings } from '../logic/settings';
 
-interface Particle { x: number; y: number; vx: number; vy: number; life: number; col: number; alphaCol?: string; sz: number; grav?: boolean }
+interface Particle { x: number; y: number; vx: number; vy: number; life: number; col: number; alphaCol?: string; sz: number; ground?: boolean }
 interface Mist { x: number; y: number; r: number; maxR: number; life: number; maxLife: number; col: number }
 interface Flash { x: number; y: number; r: number; life: number; maxLife: number; col: number }
 interface Swing { x: number; y: number; ang: number; life: number; maxLife: number; col: string; w: number; glow?: string; sweep: number; fin: boolean; radius: number; arc: number }
@@ -45,15 +45,16 @@ export class EffectSystem {
     });
   }
 
-  // Gore-Partikel (Runde 34): langsamer, laenger, mit Schwerkraft - sie
-  // fliegen auf und fallen auseinander (passt zur Laenge der Todeslaute).
-  goreBurst(x: number, y: number, col: number, n: number, spd: number): void {
+  // Gore-Partikel (Runde 35): TOP-DOWN - die Stücke stieben radial vom Treffer
+  // weg und gleiten am Boden aus (kein Fallen nach unten, das Spiel ist von
+  // oben). wucht skaliert die Wurfweite (Hammer wirft weiter als ein Schwert).
+  goreBurst(x: number, y: number, col: number, n: number, spd: number, wucht = 1): void {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * 6.283;
-      const s = spd * (0.25 + Math.random() * 0.75);
+      const s = spd * wucht * (0.25 + Math.random() * 0.75);
       this.particles.push({
-        x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 18,
-        life: 1.0 + Math.random() * 0.9, col, sz: 2 + Math.random() * 2.5, grav: true,
+        x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+        life: 0.8 + Math.random() * 0.8, col, sz: 2 + Math.random() * 2.5, ground: true,
       });
     }
     if (this.particles.length > 500) this.particles.splice(0, this.particles.length - 500);
@@ -71,14 +72,15 @@ export class EffectSystem {
     if (this.flashes.length > 30) this.flashes.shift();
   }
 
-  // Komplette Todes-Gore-Sequenz: Lichtblitz + fallende Partikel + Nebel.
-  // white=true fuer Skelette (Knochenweiss/-staub statt Blutrot).
-  deathGore(x: number, y: number, white: boolean): void {
+  // Komplette Todes-Gore-Sequenz: Lichtblitz + radial stiebende Partikel +
+  // Nebel. white=true fuer Skelette (Knochenweiss/-staub statt Blutrot).
+  // wucht aus der Waffe (Hammer schleudert die Teile weiter).
+  deathGore(x: number, y: number, white: boolean, wucht = 1): void {
     const haupt = white ? 0xe8e2d0 : 0xb01818;
     const dunkel = white ? 0xb8b2a0 : 0x7a0e0e;
     this.flash(x, y - 4, white ? 22 : 28, white ? 0xf0ece0 : 0xd83828);
-    this.goreBurst(x, y - 4, haupt, 18, 140);
-    this.goreBurst(x, y - 4, dunkel, 12, 95);
+    this.goreBurst(x, y - 4, haupt, 18, 140, wucht);
+    this.goreBurst(x, y - 4, dunkel, 12, 95, wucht);
     this.mist(x, y, white ? 0x9a9480 : 0x7a1212, white ? 36 : 46);
   }
 
@@ -114,7 +116,7 @@ export class EffectSystem {
     for (const pa of this.particles) {
       pa.x += pa.vx * dt;
       pa.y += pa.vy * dt;
-      if (pa.grav) { pa.vx *= 0.95; pa.vy = pa.vy * 0.985 + 340 * dt; } // fallen
+      if (pa.ground) { pa.vx *= 0.86; pa.vy *= 0.86; } // Top-Down: gleitet aus, bleibt liegen
       else { pa.vx *= 0.9; pa.vy *= 0.9; }
       pa.life -= dt;
     }

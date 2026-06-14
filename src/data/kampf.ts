@@ -89,6 +89,13 @@ export const WEAPON_MOVESETS = {
 // leicht abgeschwächt, da man hinter dem Schild gedeckt bleibt
 export const GUARDED_ATTACK = { dmgMult: 0.8, recoveryMult: 1.25 } as const;
 
+// Wucht der Waffe für den Todes-Gore (Runde 35): wie weit die Teile/Partikel
+// vom Treffer wegfliegen. Hammer/Streitkolben (wucht) schlägt am härtesten,
+// Axt drückt mit, Schwert mittig, Bogen/Stab wenig. Leicht änderbar.
+export const GORE_WUCHT: Record<string, number> = {
+  wucht: 1.7, axt: 1.3, stange: 1.05, schwert: 1.0, bogen: 0.7, stab: 0.7,
+};
+
 // Tod und Rasten (Masterprompt 4.4 - schlägt Referenz: dort 20% Goldverlust)
 export const DEATH = {
   goldLossPct: 0.15,    // 15% Goldverlust

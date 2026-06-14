@@ -14,7 +14,7 @@ import {
   newCombatState, inputLight, inputHeavy, inputRoll, inputBlockStart, inputBlockEnd,
   stepCombat, resolveIncoming, damageAfterArmor, blockedDamage, type CombatState, type AttackEvent,
 } from '../logic/combat';
-import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TIMESCALE, WEAPON_MOVESETS } from '../data/kampf';
+import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TIMESCALE, WEAPON_MOVESETS, GORE_WUCHT } from '../data/kampf';
 import { ALTAR, SPELLS, SPELL_FX, SCHOOLS } from '../data/balancing';
 import { newPlayerState, recalc, weaponGem, type PlayerState } from '../logic/playerState';
 import { addSchoolUse } from '../logic/progression';
@@ -1123,6 +1123,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // dazu Lichtblitz + Blutnebel. Länger, passend zu den Todeslauten.
     // Abschaltbar über "Blut & Überreste".
     const knochen = e.type === 'skelett' || e.type === 'schuetze';
+    // Wucht der tötenden Waffe: Hammer schleudert die Teile weiter als ein
+    // Schwert (Runde 35, Werte in kampf.ts).
+    const wucht = GORE_WUCHT[this.weaponClass()] ?? 1;
     if (e.sprite && getSettings().blood) {
       const leiche = e.sprite;
       e.sprite = null;
@@ -1132,14 +1135,16 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       for (let i = 0; i < 8; i++) {
         const teil = this.add.rectangle(e.x, e.y - 6, 3 + Math.random() * 5, 3 + Math.random() * 5,
           i % 2 ? teilHell : teilDunkel).setDepth(e.y + 1);
-        const a = Math.random() * 6.283, kraft = 22 + Math.random() * 40;
+        // TOP-DOWN: die Teile gleiten radial vom Tod weg und bleiben liegen
+        // (kein Fall nach unten); Wurfweite skaliert mit der Waffenwucht.
+        const a = Math.random() * 6.283, kraft = (22 + Math.random() * 40) * wucht;
         this.tweens.add({
-          targets: teil, x: e.x + Math.cos(a) * kraft, y: e.y + Math.sin(a) * kraft * 0.5 + 26,
-          angle: (Math.random() - 0.5) * 360, alpha: 0, duration: 1100 + Math.random() * 500,
-          ease: 'Quad.In', onComplete: () => teil.destroy(),
+          targets: teil, x: e.x + Math.cos(a) * kraft, y: e.y - 6 + Math.sin(a) * kraft,
+          angle: (Math.random() - 0.5) * 360, alpha: 0, duration: 700 + Math.random() * 500,
+          ease: 'Quad.Out', onComplete: () => teil.destroy(),
         });
       }
-      this.fx.deathGore(e.x, e.y, knochen);
+      this.fx.deathGore(e.x, e.y, knochen, wucht);
       if (this.sfx.has('tod_gore')) this.sfx.play('tod_gore');
     } else {
       e.sprite?.destroy();
