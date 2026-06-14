@@ -5,7 +5,9 @@
 import Phaser from 'phaser';
 import { getSettings } from '../logic/settings';
 
-interface Particle { x: number; y: number; vx: number; vy: number; life: number; col: number; alphaCol?: string; sz: number }
+interface Particle { x: number; y: number; vx: number; vy: number; life: number; col: number; alphaCol?: string; sz: number; grav?: boolean }
+interface Mist { x: number; y: number; r: number; maxR: number; life: number; maxLife: number; col: number }
+interface Flash { x: number; y: number; r: number; life: number; maxLife: number; col: number }
 interface Swing { x: number; y: number; ang: number; life: number; maxLife: number; col: string; w: number; glow?: string; sweep: number; fin: boolean; radius: number; arc: number }
 interface FloatText { obj: Phaser.GameObjects.Text; life: number }
 interface Lightning { points: Array<{ x: number; y: number }>; life: number }
@@ -15,6 +17,8 @@ export class EffectSystem {
   private swings: Swing[] = [];
   private floats: FloatText[] = [];
   private lightnings: Lightning[] = [];
+  private mists: Mist[] = [];
+  private flashes: Flash[] = [];
   private gfx: Phaser.GameObjects.Graphics;
 
   constructor(private scene: Phaser.Scene, depth = 2500) {
@@ -39,6 +43,43 @@ export class EffectSystem {
       vx: Math.random() * 14 - 7, vy: -16 - Math.random() * 12,
       life: 1.8 + Math.random() * 0.8, col: 0x828282, sz: 3 + Math.random() * 2,
     });
+  }
+
+  // Gore-Partikel (Runde 34): langsamer, laenger, mit Schwerkraft - sie
+  // fliegen auf und fallen auseinander (passt zur Laenge der Todeslaute).
+  goreBurst(x: number, y: number, col: number, n: number, spd: number): void {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * 6.283;
+      const s = spd * (0.25 + Math.random() * 0.75);
+      this.particles.push({
+        x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 18,
+        life: 1.0 + Math.random() * 0.9, col, sz: 2 + Math.random() * 2.5, grav: true,
+      });
+    }
+    if (this.particles.length > 500) this.particles.splice(0, this.particles.length - 500);
+  }
+
+  // Blutnebel / Knochenstaub: weicher Schleier, geht langsam auf und verweht
+  mist(x: number, y: number, col: number, maxR = 42): void {
+    this.mists.push({ x, y, r: maxR * 0.35, maxR, life: 1.5, maxLife: 1.5, col });
+    if (this.mists.length > 30) this.mists.shift();
+  }
+
+  // kurzer Lichtblitz beim Tod (extra Gore)
+  flash(x: number, y: number, r: number, col: number): void {
+    this.flashes.push({ x, y, r, life: 0.3, maxLife: 0.3, col });
+    if (this.flashes.length > 30) this.flashes.shift();
+  }
+
+  // Komplette Todes-Gore-Sequenz: Lichtblitz + fallende Partikel + Nebel.
+  // white=true fuer Skelette (Knochenweiss/-staub statt Blutrot).
+  deathGore(x: number, y: number, white: boolean): void {
+    const haupt = white ? 0xe8e2d0 : 0xb01818;
+    const dunkel = white ? 0xb8b2a0 : 0x7a0e0e;
+    this.flash(x, y - 4, white ? 22 : 28, white ? 0xf0ece0 : 0xd83828);
+    this.goreBurst(x, y - 4, haupt, 18, 140);
+    this.goreBurst(x, y - 4, dunkel, 12, 95);
+    this.mist(x, y, white ? 0x9a9480 : 0x7a1212, white ? 36 : 46);
   }
 
   addSwing(x: number, y: number, ang: number, opts: { fin?: boolean; col?: string; w?: number; glow?: string; sweep?: number; radius?: number; arc?: number }): void {
@@ -73,11 +114,15 @@ export class EffectSystem {
     for (const pa of this.particles) {
       pa.x += pa.vx * dt;
       pa.y += pa.vy * dt;
-      pa.vx *= 0.9;
-      pa.vy *= 0.9;
+      if (pa.grav) { pa.vx *= 0.95; pa.vy = pa.vy * 0.985 + 340 * dt; } // fallen
+      else { pa.vx *= 0.9; pa.vy *= 0.9; }
       pa.life -= dt;
     }
     this.particles = this.particles.filter((pa) => pa.life > 0);
+    for (const m of this.mists) { m.life -= dt; m.r += (m.maxR - m.r) * dt * 2.2; }
+    this.mists = this.mists.filter((m) => m.life > 0);
+    for (const fl of this.flashes) fl.life -= dt;
+    this.flashes = this.flashes.filter((fl) => fl.life > 0);
     for (const s of this.swings) s.life -= dt;
     this.swings = this.swings.filter((s) => s.life > 0);
     for (const f of this.floats) {
@@ -105,6 +150,24 @@ export class EffectSystem {
       g.beginPath();
       g.arc(s.x, s.y, rad, s.ang - s.arc + shift, s.ang + s.arc + shift);
       g.strokePath();
+    }
+    // Lichtblitz (hinter den Partikeln) - kurzer heller Gore-Puls
+    for (const fl of this.flashes) {
+      const p = fl.life / fl.maxLife;
+      g.fillStyle(fl.col, 0.5 * p);
+      g.fillCircle(fl.x, fl.y, fl.r * (1.4 - 0.4 * p));
+      g.fillStyle(0xffffff, 0.34 * p);
+      g.fillCircle(fl.x, fl.y, fl.r * 0.4);
+    }
+    // Blutnebel / Knochenstaub - weicher, mehrlagiger Schleier
+    for (const m of this.mists) {
+      const a = Phaser.Math.Clamp(m.life / m.maxLife, 0, 1) * 0.26;
+      g.fillStyle(m.col, a);
+      g.fillCircle(m.x, m.y, m.r);
+      g.fillStyle(m.col, a * 0.7);
+      g.fillCircle(m.x - m.r * 0.3, m.y - m.r * 0.25, m.r * 0.55);
+      g.fillStyle(m.col, a * 0.7);
+      g.fillCircle(m.x + m.r * 0.35, m.y - m.r * 0.1, m.r * 0.5);
     }
     for (const pa of this.particles) {
       g.fillStyle(pa.col, Phaser.Math.Clamp(pa.life * 3, 0, 1));

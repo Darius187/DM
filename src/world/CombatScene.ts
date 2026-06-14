@@ -1084,7 +1084,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     e.onHurt();
     this.fx.float(e.x + (Math.random() * 12 - 6), e.y - e.r - 8, String(dmg), col ?? '#e8dcc0');
     if (kx || ky) e.moveBody(this, kx, ky);
-    this.fx.burst(e.x, e.y, 0xa82020, 6, 120);
+    // Treffer-Spritzer: Blut bei Fleisch, Knochenstaub bei Skeletten (Runde 34)
+    this.fx.burst(e.x, e.y, (e.type === 'skelett' || e.type === 'schuetze') ? 0xcfc4a8 : 0xa82020, 6, 120);
     this.playHitSound(e);
     if (this.p.stats.leech) this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + this.p.stats.leech);
     // Nahkampf-Schule steigt nur mit Nahkampf-Treffern
@@ -1105,31 +1106,35 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   protected killEnemy(e: Enemy): void {
     this.enemies = this.enemies.filter((x) => x !== e);
-    // Gore-Todessequenz (Runde 20): die Figur färbt sich rot und fällt
-    // in Teile auseinander - abschaltbar über "Blut & Überreste"
+    // Gore-Todessequenz (Runde 20, überarbeitet 34): die Figur zerfällt
+    // langsam, ALLE Partikel fallen blutrot auseinander (Skelette weiß),
+    // dazu Lichtblitz + Blutnebel. Länger, passend zu den Todeslauten.
+    // Abschaltbar über "Blut & Überreste".
+    const knochen = e.type === 'skelett' || e.type === 'schuetze';
     if (e.sprite && getSettings().blood) {
       const leiche = e.sprite;
       e.sprite = null;
-      leiche.setTintFill(0xa81818);
-      this.tweens.add({ targets: leiche, alpha: 0, scaleX: leiche.scaleX * 1.15, scaleY: leiche.scaleY * 0.5, y: leiche.y + 7, duration: 380, onComplete: () => leiche.destroy() });
-      for (let i = 0; i < 6; i++) {
-        const teil = this.add.rectangle(e.x, e.y - 6, 4 + Math.random() * 4, 4 + Math.random() * 4,
-          i < 3 ? parseInt(e.col.slice(1), 16) : 0xa81818).setDepth(e.y + 1);
-        const a = Math.random() * 6.283;
-        const kraft = 26 + Math.random() * 36;
+      leiche.setTintFill(knochen ? 0xe8e2d0 : 0xa01414);
+      this.tweens.add({ targets: leiche, alpha: 0, scaleX: leiche.scaleX * 1.2, scaleY: leiche.scaleY * 0.45, y: leiche.y + 9, duration: 900, ease: 'Quad.In', onComplete: () => leiche.destroy() });
+      const teilHell = knochen ? 0xd8d2c0 : 0xa01414, teilDunkel = knochen ? 0xb8b2a0 : 0x701010;
+      for (let i = 0; i < 8; i++) {
+        const teil = this.add.rectangle(e.x, e.y - 6, 3 + Math.random() * 5, 3 + Math.random() * 5,
+          i % 2 ? teilHell : teilDunkel).setDepth(e.y + 1);
+        const a = Math.random() * 6.283, kraft = 22 + Math.random() * 40;
         this.tweens.add({
-          targets: teil, x: e.x + Math.cos(a) * kraft, y: e.y + Math.sin(a) * kraft * 0.6 + 10,
-          angle: (Math.random() - 0.5) * 300, alpha: 0, duration: 520 + Math.random() * 240,
-          ease: 'Cubic.Out', onComplete: () => teil.destroy(),
+          targets: teil, x: e.x + Math.cos(a) * kraft, y: e.y + Math.sin(a) * kraft * 0.5 + 26,
+          angle: (Math.random() - 0.5) * 360, alpha: 0, duration: 1100 + Math.random() * 500,
+          ease: 'Quad.In', onComplete: () => teil.destroy(),
         });
       }
-      this.fx.burst(e.x, e.y, 0xa81818, 14, 190);
+      this.fx.deathGore(e.x, e.y, knochen);
       if (this.sfx.has('tod_gore')) this.sfx.play('tod_gore');
     } else {
       e.sprite?.destroy();
       e.sprite = null;
+      // ohne Blut: dezenter neutraler Staub-Puff als Feedback
+      this.fx.burst(e.x, e.y, knochen ? 0xcfc4a8 : 0x8a8276, 12, 150);
     }
-    this.fx.burst(e.x, e.y, parseInt(e.col.slice(1), 16), 16, 170);
     // Todesstoß: schwert_slice (Autor-Sound), dazu der Sterbelaut -
     // Runde 32: eigene Todes-Schreie je Gegnerart (rotierend), auch für
     // Elite/Boss-Varianten desselben Typs; universal als Fallback
