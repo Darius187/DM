@@ -891,3 +891,16 @@ Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.
 - Hot-Swap-Pipeline pro Stufe bewiesen: ein eingeschleustes Test-Bild wird
   vom geruesteten Helden sofort verwendet - deine KI-Pakete fallen also
   wirklich rein. 64/64 Tests gruen, tsc sauber.
+
+## Feedback-Runde 34 - umgesetzt (Sound-Fix, Todes-Gore, Reit-Intro)
+
+- Lautstaerke-Regler: jetzt ziehbarer Knopf mit grosser Greifflaeche -
+  Musik (und alles andere) laesst sich jederzeit runterregeln. Der alte
+  6px-Klickbalken war kaum zu treffen. Verifiziert.
+- Todesanimation: ALLE Gegner zerfallen jetzt blutrot in langsam fallende
+  Partikel, mit Lichtblitz und Blutnebel (extra Gore), passend zur Laenge
+  der Todeslaute. Skelette zerfallen weiss (Knochenstaub). Verifiziert.
+- Reit-Eroeffnung: der Held reitet zu Spielbeginn von selbst durch den
+  Dunkelwald, waehrend epische Musik und der Prolog laufen - ein echter
+  Vorspann. Per Klick ueberspringbar, endet sauber im Dorf. Verifiziert.
+  64/64 Tests gruen, tsc sauber.

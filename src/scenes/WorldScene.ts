@@ -132,6 +132,11 @@ export class WorldScene extends CombatScene {
     // (sonst friert das Spiel nach Pause -> Hauptmenü -> Laden ein).
     this.areas.clear();
     this.flags = {};
+    this.reitIntro = false; // Reit-Eröffnung sauber zurücksetzen (Instanz-Reuse)
+    this.reitPferd?.destroy();
+    this.reitPferd = null;
+    this.reitSkipHint?.destroy();
+    this.reitSkipHint = null;
     this.bossDead = false;
     this.bossPhase = 0;
     this.bossRueckzug = null;
@@ -277,8 +282,11 @@ export class WorldScene extends CombatScene {
 
   // --- Intro-Film (Runde 12) -------------------------------------------------
 
+  private reitSkipHint: Phaser.GameObjects.Text | null = null;
+
   private startIntroFilm(): void {
     this.sfx.playMusic('musik_intro');
+    this.reitIntro = true; // der Held reitet PC-gesteuert durch den Wald
     const w = this.scale.width, h = this.scale.height;
     // Titel groß, Ein- und Ausblenden wie im Film
     const titel = this.add.text(w / 2, h * 0.3, 'RAVENSMOOR', {
@@ -312,6 +320,29 @@ export class WorldScene extends CombatScene {
         }
       });
     });
+    // Überspringen erlauben - nach kurzer Verzögerung, damit kein Startklick durchschlägt
+    this.time.delayedCall(2500, () => {
+      if (!this.reitIntro) return;
+      this.reitSkipHint = this.add.text(w - 20, h - 24, 'Klick: Vorspann überspringen', {
+        fontFamily: 'serif', fontSize: '13px', color: '#9a8a6a',
+      }).setOrigin(1, 1).setScrollFactor(0).setDepth(5900);
+      this.input.once('pointerdown', () => this.skipReitIntro());
+    });
+  }
+
+  // Vorspann überspringen: bis ans Waldende reiten, checkTriggers schaltet ins Dorf
+  private skipReitIntro(): void {
+    if (!this.reitIntro || this.area.id !== 'wald') return;
+    this.px = (this.area.w - 2.4) * TILE;
+  }
+
+  // Reit-Eröffnung beenden: Pferd und Hinweis entfernen, Steuerung freigeben
+  private endeReitIntro(): void {
+    this.reitIntro = false;
+    this.reitPferd?.destroy();
+    this.reitPferd = null;
+    this.reitSkipHint?.destroy();
+    this.reitSkipHint = null;
   }
 
   // --- Wetter und Stimmung (Runde 12) -----------------------------------------
@@ -3149,6 +3180,7 @@ export class WorldScene extends CombatScene {
     if (this.area.id === 'wald' && this.px > (this.area.w - 2.5) * TILE) {
       // Ankunft (Runde 20): KEIN blockierender Dialog mehr - die Zeilen
       // blenden filmisch ein, während man weiterläuft
+      if (this.reitIntro) this.endeReitIntro(); // Ritt am Waldrand beenden
       const erstesMal = !this.flags.nAnkunft;
       this.flags.nAnkunft = true;
       this.goArea('village', { x: 3 * TILE, y: 30.5 * TILE });
