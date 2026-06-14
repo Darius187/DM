@@ -19,3 +19,11 @@
 7. "Kohle vom Köhler" (Masterprompt 7.2): Es gibt keinen Köhler-NPC in der
    Gebäudeliste. Zwischenlösung: Der Schmied verkauft Kohle (12 Gold).
    Soll ein Köhler im Wald dazukommen?
+8. Cleverness-Regler (Runde 35, deine Frage "bringt nichts?"): Er wirkt, ABER
+   zwei der drei Verhalten sind reine AN/AUS-Schwellen (ab 0,5: Schild-
+   Gegenstoss + Sammeln auf Verbuendete); nur der Rueckzugs-Konter skaliert
+   stetig. Zwischen 0,5 und 2,0 aendert sich also fast nichts - dein Eindruck
+   stimmt. Vorschlag/Zwischenloesung: belassen wie es ist; ich kann es auf
+   STETIGE Skalierung umbauen (Block-Wahrscheinlichkeit, Sammel-Dauer, Konter-
+   Chance wachsen alle mit dem Regler), dann macht jeder Schritt einen
+   spuerbaren Unterschied. Soll ich das umbauen?
