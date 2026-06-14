@@ -196,6 +196,13 @@ export class WorldScene extends CombatScene {
     this.einrichtung = 0;
     this.tag = 1;
     this.tageszeit = 0.3;
+    // Dev-Werkzeug: ?zeit=0.85 startet zu einer bestimmten Tageszeit (Testen
+    // von Hausfenstern/Nacht); nur im Dev-Build.
+    if (import.meta.env.DEV) {
+      const roh = new URLSearchParams(location.search).get('zeit');
+      const z = roh === null ? NaN : Number(roh);
+      if (Number.isFinite(z) && z >= 0 && z <= 1) this.tageszeit = z;
+    }
     this.kopfgeld = null;
     this.feld = Array.from({ length: 9 }, () => ({ saatId: null, tageGewachsen: 0, gegossen: false }));
     this.rng = seededRng(this.areaSeed);
@@ -1602,7 +1609,23 @@ export class WorldScene extends CombatScene {
   // sich passgenau über das Hausbild. Frames wechseln alle 0,4s; das
   // Nachtlicht blendet abends ein und morgens wieder aus.
   private hausAnimEnts: Array<{ img: Phaser.GameObjects.Image; keys: string[]; idx: number; t: number }> = [];
-  private hausNachtEnts: Phaser.GameObjects.Image[] = [];
+  private hausNachtEnts: Array<{ img: Phaser.GameObjects.Image; schlaf: number }> = [];
+
+  // Schlafenszeit eines Hauses (Runde 35): gestreut über die Nacht, damit die
+  // Fenster NICHT alle gleichzeitig erlöschen. Deterministisch aus der Position.
+  private fensterSchlaf(seed: number): number {
+    const h = Math.abs(Math.sin(seed * 12.9898) * 43758.5453) % 1;
+    return TAG.nachtAb + h * 0.18; // 0,78 .. 0,96
+  }
+
+  // Fensterlicht-Stärke nach Tageszeit: tags AUS, abends an, nachts erlischt
+  // jedes Haus zu seiner Schlafenszeit - tief in der Nacht alle dunkel.
+  private fensterAlpha(t: number, schlaf: number): number {
+    if (t < TAG.abendAb) return 0;                              // Tag: aus
+    const ein = Math.min(1, (t - TAG.abendAb) / 0.04);          // abends einblenden
+    const aus = t < schlaf ? 1 : Math.max(0, 1 - (t - schlaf) / 0.04); // zur Schlafenszeit erlöschen
+    return ein * aus;
+  }
 
   private bauHausOverlays(haus: Phaser.GameObjects.Image, key: string): void {
     const vn = /_v(\d+)$/.exec(key)?.[1];
@@ -1618,7 +1641,9 @@ export class WorldScene extends CombatScene {
       if (this.textures.exists(`hs_haus${vn}_anim${k}`)) animKeys.push(`hs_haus${vn}_anim${k}`);
     }
     if (animKeys.length) this.hausAnimEnts.push({ img: overlay(animKeys[0]), keys: animKeys, idx: 0, t: 0 });
-    if (this.textures.exists(`hs_haus${vn}_nacht`)) this.hausNachtEnts.push(overlay(`hs_haus${vn}_nacht`).setAlpha(0));
+    if (this.textures.exists(`hs_haus${vn}_nacht`)) {
+      this.hausNachtEnts.push({ img: overlay(`hs_haus${vn}_nacht`).setAlpha(0), schlaf: this.fensterSchlaf(haus.x * 0.013 + haus.y * 0.071) });
+    }
   }
 
   private animiereHaeuser(dt: number): void {
@@ -1630,11 +1655,9 @@ export class WorldScene extends CombatScene {
         a2.img.setTexture(a2.keys[a2.idx]);
       }
     }
-    if (this.hausNachtEnts.length) {
-      const nacht = this.tageszeit > TAG.nachtAb || this.tageszeit < TAG.morgenAb;
-      const abend = this.tageszeit > TAG.abendAb || nacht;
-      const ziel = nacht ? 1 : abend ? 0.55 : 0;
-      for (const o of this.hausNachtEnts) o.setAlpha(o.alpha + (ziel - o.alpha) * Math.min(1, dt * 2));
+    for (const o of this.hausNachtEnts) {
+      const ziel = this.fensterAlpha(this.tageszeit, o.schlaf);
+      o.img.setAlpha(o.img.alpha + (ziel - o.img.alpha) * Math.min(1, dt * 2));
     }
   }
 
@@ -4050,6 +4073,20 @@ export class WorldScene extends CombatScene {
       if (sx < -160 || sy < -160 || sx > this.scale.width + 160 || sy > this.scale.height + 160) continue;
       this.eraseLight(sx, sy - 4 * zm, (95 + Math.sin(time * 7 + t.ph) * 10) * zm);
       warmIdx = this.placeWarm(warmIdx, t.x, t.y - 4, 70, 0.7);
+    }
+    // Hausfenster im Dorf (Runde 35): abends leuchten die Fenster warm, nachts
+    // erlischt ein Haus nach dem anderen, tagsüber sind alle dunkel.
+    if (this.area.id === 'village' && !fow) {
+      for (const hp of this.area.hausPlaetze ?? []) {
+        const fa = this.fensterAlpha(this.tageszeit, this.fensterSchlaf(hp.x0 * 0.013 + hp.y0 * 0.071));
+        if (fa <= 0.02) continue;
+        const wx = ((hp.x0 + hp.x1 + 1) / 2) * TILE, wy = (hp.y1 - 0.2) * TILE;
+        const sx = (wx - cam.worldView.x) * zm, sy = (wy - cam.worldView.y) * zm;
+        if (sx < -160 || sy < -160 || sx > this.scale.width + 160 || sy > this.scale.height + 160) continue;
+        const flick = 1 + Math.sin(time * 5 + hp.x0) * 0.04;
+        this.eraseLight(sx, sy, 72 * fa * zm);
+        warmIdx = this.placeWarm(warmIdx, wx, wy, 60, 0.5 * fa * flick, 0xffce7a);
+      }
     }
     // Farbige Magie-Lichter in der Krypta (Runde 31): Kerzenschreine
     // bläulich, Altäre violett, Blutbrunnen rot - pulsierend
