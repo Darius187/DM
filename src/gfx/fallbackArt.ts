@@ -324,6 +324,17 @@ for (const stufe of Object.keys(SPIELER_STUFEN) as HeldTier[]) {
   }
 }
 
+// Bewaffnete "Gefallene" (Runde 35): je Untoten-Typ eine sichtbare Waffe -
+// klont die Basis-Figur und tauscht nur die Waffe (analog zum Helden).
+const GEFALLENE_FIG_TYPEN = ['skelett', 'pest', 'lebender_toter'] as const;
+const GEFALLENE_FIG_WAFFEN = ['schwert', 'axt', 'wucht', 'bogen', 'stab'] as const;
+for (const t of GEFALLENE_FIG_TYPEN) {
+  const basis = FIGURES[t] as FigureSpec;
+  for (const w of GEFALLENE_FIG_WAFFEN) {
+    FIGURES[`${t}_${w}`] = { ...basis, weapon: w };
+  }
+}
+
 // Figurname des Helden je getragener Ruestung (Wert, null = nichts) und Waffe.
 export function spielerFigur(ruestwert: number | null, waffe: string): string {
   const w = (SPIELER_WAFFEN as readonly string[]).includes(waffe) ? waffe : 'schwert';

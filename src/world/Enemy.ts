@@ -129,6 +129,11 @@ export class Enemy {
   versteckt = false;
   // Schildträger (Runde 11): blockt Treffer von vorn, weicht nicht zurück
   schild = false;
+  // Bewaffnete Gefallene (Runde 35): sichtbare Waffen-Figur + Magie-Geschoss
+  figurName?: string;
+  magie = false;
+  // Sichtbarer Figurname (mit Waffe, falls "Gefallener"), sonst der Typ
+  figur(): string { return this.figurName ?? this.type; }
   // Schild-Haltung (Runde 20): kurz volle Frontdeckung, dann wieder offen
   blockT = 0;
   private steuerWinkel = 0;  // gewählte Ausweichdrehung am Hindernis
@@ -298,8 +303,9 @@ export class Enemy {
       if (this.shootCd === 0) {
         this.shootCd = ENEMY_AI.rangedShootCd;
         const a = ang + (Math.random() * 0.12 - 0.06);
-        host.spawnEnemyProjectile(this.x, this.y, Math.cos(a) * ENEMY_AI.rangedProjSpeed, Math.sin(a) * ENEMY_AI.rangedProjSpeed, this.dmg, '#cfc4a8', true);
-        host.playSound('pfeil_schuss');
+        // Zauberstab-Gefallene schleudern ein violettes Arkangeschoss statt Pfeil
+        host.spawnEnemyProjectile(this.x, this.y, Math.cos(a) * ENEMY_AI.rangedProjSpeed, Math.sin(a) * ENEMY_AI.rangedProjSpeed, this.dmg, this.magie ? '#b06ae8' : '#cfc4a8', !this.magie);
+        host.playSound(this.magie ? 'fireball1' : 'pfeil_schuss');
       }
       if (d < ENEMY_AI.rangedKeepDist) {
         this.moveBody(host, -Math.cos(ang) * this.speed * 0.6 * slowF * dt, -Math.sin(ang) * this.speed * 0.6 * slowF * dt);

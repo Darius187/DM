@@ -108,6 +108,33 @@ export const AGGRO: Record<string, { rueckzugChance: number }> = {
 };
 export const AGGRO_STD = { rueckzugChance: 0.22 };
 
+// "Gefallene" (Runde 35, hinter dem F10-Schalter zum Balance-Test): gefallene
+// Krieger/Magier - Skelette, Pestopfer und Lebende Tote tragen zufällig eine
+// Waffe. figur = sichtbare Waffe am Gegner; dmg/reich/tempoMult skalieren die
+// Werte (Schlagtempo klein = langsamer, schwerer); schild/ranged/magie steuern
+// das Verhalten. weight = Häufigkeit. Alles hier tunbar, um die Balance zu testen.
+export interface GefalleneWaffe {
+  id: string;
+  label: string;
+  figur: 'schwert' | 'axt' | 'wucht' | 'bogen' | 'stab';
+  schild?: boolean;
+  ranged?: boolean;
+  magie?: boolean;
+  dmgMult: number;
+  reichMult: number;
+  tempoMult: number;
+  weight: number;
+}
+export const GEFALLENE_TYPEN = ['skelett', 'pest', 'lebender_toter'] as const;
+export const GEFALLENE_WAFFEN: ReadonlyArray<GefalleneWaffe> = [
+  { id: 'schwert', label: 'mit Schwert', figur: 'schwert', dmgMult: 1.0, reichMult: 1.15, tempoMult: 1.0, weight: 3 },
+  { id: 'schwertschild', label: 'mit Schwert & Schild', figur: 'schwert', schild: true, dmgMult: 0.9, reichMult: 1.1, tempoMult: 0.95, weight: 2 },
+  { id: 'axt', label: 'mit Axt', figur: 'axt', dmgMult: 1.2, reichMult: 1.15, tempoMult: 0.9, weight: 2 },
+  { id: 'hammer', label: 'mit Hammer', figur: 'wucht', dmgMult: 1.5, reichMult: 1.25, tempoMult: 0.62, weight: 1 },
+  { id: 'bogen', label: 'mit Bogen', figur: 'bogen', ranged: true, dmgMult: 0.85, reichMult: 1, tempoMult: 1, weight: 2 },
+  { id: 'stab', label: 'mit Zauberstab', figur: 'stab', ranged: true, magie: true, dmgMult: 1.05, reichMult: 1, tempoMult: 1, weight: 1 },
+];
+
 // Boss "Der Tempelritter" (Referenz bossAI):
 // Phase 2 ab 50% HP, Beschwörung bei 66%/33%, Slam-Telegraph, Projektilfächer in Phase 2
 export const BOSS = {

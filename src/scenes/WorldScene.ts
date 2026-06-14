@@ -208,6 +208,7 @@ export class WorldScene extends CombatScene {
       const z = roh === null ? NaN : Number(roh);
       if (Number.isFinite(z) && z >= 0 && z <= 1) this.tageszeit = z;
       if (q.get('physik') === '1') TUNING.physikTest = true; // Physik-Test direkt an
+      if (q.get('gefallene') === '1') TUNING.gefallene = true; // Gefallene direkt an
     }
     this.kopfgeld = null;
     this.feld = Array.from({ length: 9 }, () => ({ saatId: null, tageGewachsen: 0, gegossen: false }));

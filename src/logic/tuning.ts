@@ -31,6 +31,9 @@ export const TUNING = {
   alleZauberFrei: false,
   // Runde 35: Physik-Test (nicht live) - Fässer/Kisten lassen sich schieben
   physikTest: false,
+  // Runde 35: "Gefallene" - bewaffnete Gegner (Schwert/Axt/Hammer/Bogen/Stab/
+  // Schild). Hinter dem Schalter, weil es die Balance stört (Autor testet erst).
+  gefallene: false,
 };
 
 // Frische Standard-Feinwerte für einen Gegnertyp (alles neutral = 1).

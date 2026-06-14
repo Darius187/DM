@@ -23,7 +23,7 @@ import { MELDUNGEN } from '../data/texte';
 import { getSettings, saveSettings, type Settings } from '../logic/settings';
 import { TUNING, TUNING_ROWS, neuerTypTuning } from '../logic/tuning';
 import { defaultRng, type Rng } from '../logic/rng';
-import { ELITE, ENEMIES } from '../data/enemies';
+import { ELITE, ENEMIES, GEFALLENE_TYPEN, GEFALLENE_WAFFEN } from '../data/enemies';
 import type { EnemyTypeId, WeaponClass } from '../data/types';
 import { ABILITY_FX, ABILITIES, LORE_XP } from '../data/balancing';
 import { PickupSystem, AUTO_PICKUP, type Pickup } from './Pickups';
@@ -391,7 +391,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       merk = { ...merk, ...JSON.parse(localStorage.getItem('ravensmoor_devkasten') ?? '{}') };
     } catch { /* egal */ }
     const c = this.add.container(merk.x, merk.y).setScrollFactor(0).setDepth(6500);
-    const h = TUNING_ROWS.length * 29 + 96 + 186 + 52 + 30; // +52 Per-Typ-Zeilen, +30 Physik-Schalter
+    const h = TUNING_ROWS.length * 29 + 96 + 186 + 52 + 60; // +52 Per-Typ, +60 Physik/Gefallene-Schalter
     // Bei kleinen Fenstern schrumpft der ganze Kasten, statt unten
     // abgeschnitten zu werden (Runde 29: Regler "nicht gefunden")
     c.setScale(Math.min(merk.s, Math.max(0.6, (this.scale.height - 60) / h)));
@@ -565,6 +565,19 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.logMsg(TUNING.physikTest ? 'Physik-Test an: lauf in die Fässer/Kisten, um sie zu schieben.' : 'Physik-Test aus.', 'gold');
     });
     c.add(physikBtn);
+    // Gefallene (Runde 35): bewaffnete Gegner - greift erst bei NEUEN Spawns
+    const gefLbl = () => TUNING.gefallene ? 'GEFALLENE (bewaffnet): AN' : 'GEFALLENE (bewaffnet): AUS';
+    const gefBtn = this.add.text(12, y + 146, gefLbl(), {
+      fontFamily: 'serif', fontSize: '13px', color: TUNING.gefallene ? '#c9a227' : '#d8cfb8', letterSpacing: 1,
+      backgroundColor: '#221808', padding: { x: 12, y: 5 },
+    }).setInteractive({ useHandCursor: true });
+    gefBtn.on('pointerdown', () => {
+      TUNING.gefallene = !TUNING.gefallene;
+      gefBtn.setText(gefLbl()).setColor(TUNING.gefallene ? '#c9a227' : '#d8cfb8');
+      this.sfx.play('klick');
+      this.logMsg(TUNING.gefallene ? 'Gefallene an: neue Gegner tragen Waffen (Schwert/Axt/Hammer/Bogen/Stab/Schild).' : 'Gefallene aus.', 'gold');
+    });
+    c.add(gefBtn);
     const baukasten = this.add.text(220, y + 62, 'BAUKASTEN', {
       fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
       backgroundColor: '#221808', padding: { x: 12, y: 5 },
@@ -1292,11 +1305,29 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       e.reichweiteF = typTuning.reichweite;
     }
     // Manche Skelette tragen Schilde (Runde 11) - sie blocken von vorn.
-    // Ab Ebene 2 (Runde 17), und das Schild ist im Bild SICHTBAR
-    if (type === 'skelett' && !e.boss && depth >= 2 && this.rng.random() < 0.3) {
+    // Ab Ebene 2 (Runde 17), und das Schild ist im Bild SICHTBAR. Im
+    // Gefallenen-Modus übernimmt der Loadout unten die Schild-Vergabe.
+    if (!TUNING.gefallene && type === 'skelett' && !e.boss && depth >= 2 && this.rng.random() < 0.3) {
       e.schild = true;
       e.rolle = 'front'; // Schildträger sind die Tanks: sie binden vorn (Runde 35)
       e.name = `${e.name} · Schildträger`;
+    }
+    // "Gefallene" (Runde 35, F10-Schalter): bewaffnete Untote. Balance-Test -
+    // Schwert/Axt/Hammer/Bogen/Stab/Schild zufällig, sichtbar an der Figur.
+    if (TUNING.gefallene && !e.boss && !e.ranged && (GEFALLENE_TYPEN as readonly string[]).includes(type)) {
+      let total = 0;
+      for (const w of GEFALLENE_WAFFEN) total += w.weight;
+      let roll = this.rng.random() * total;
+      let w = GEFALLENE_WAFFEN[0];
+      for (const cand of GEFALLENE_WAFFEN) { roll -= cand.weight; if (roll <= 0) { w = cand; break; } }
+      e.figurName = `${type}_${w.figur}`;
+      e.dmg = Math.max(1, Math.round(e.dmg * w.dmgMult));
+      e.reichweiteF *= w.reichMult;
+      e.schlagtempoF *= w.tempoMult;
+      if (w.schild) { e.schild = true; e.rolle = 'front'; }
+      if (w.ranged) { e.ranged = true; e.aggro = Math.max(e.aggro, 320); e.rolle = 'front'; }
+      if (w.magie) e.magie = true;
+      e.name = `${e.name} ${w.label}`;
     }
     // Entwicklungskasten-Faktoren
     e.maxhp = Math.round(e.maxhp * TUNING.gegnerLeben);
@@ -1304,7 +1335,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     e.dmg = Math.round(e.dmg * TUNING.gegnerSchaden);
     e.speed *= TUNING.gegnerTempo;
     e.sprite = this.add.sprite(x, y, '__DEFAULT');
-    this.provider.applyFigure(e.sprite, type, 0, 0);
+    this.provider.applyFigure(e.sprite, e.figur(), 0, 0);
     if (e.boss) e.sprite.setScale(1.5);
     else if (e.elite) e.sprite.setScale(1.25);
     this.enemies.push(e);
@@ -2078,7 +2109,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (!sichtbar) continue;
       const wob = Math.sin(e.wobble) * 1.5;
       e.sprite.setPosition(e.x, e.y + wob).setDepth(e.y);
-      this.provider.applyFigure(e.sprite, e.type, e.dir, e.step);
+      this.provider.applyFigure(e.sprite, e.figur(), e.dir, e.step);
       if (e.boss) e.sprite.setScale(1.5);
       else if (e.elite) e.sprite.setScale(1.25);
       if (e.hitFlash > 0) e.sprite.setTintFill(0xffffff);
