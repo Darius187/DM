@@ -6,6 +6,10 @@ export const TAG = {
   nachtAb: 0.78,        // ab hier schlafen die Dorfbewohner in ihren Häusern
   morgenAb: 0.2,        // ab hier sind sie wieder auf den Beinen
   haendlerWechselTage: 7,
+  // Unter der Erde verrinnt die Zeit kaum (Runde 40, Autorwunsch): die Uhr
+  // bleibt nicht stehen, läuft aber nur mit einem Bruchteil - tief im
+  // Gemäuer verliert man das Gefühl für Tag und Nacht.
+  dungeonFaktor: 0.08,
 } as const;
 
 // Anzeige der Tageszeit (Sonnen-/Mondstand in der HUD-Zeile)

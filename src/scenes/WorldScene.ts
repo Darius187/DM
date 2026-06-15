@@ -4377,8 +4377,9 @@ export class WorldScene extends CombatScene {
   private smokeT = 0;
   private crowT = 6;
 
-  private updateVillageLife(dt: number): void {
-    // Spieltag-Uhr
+  // Spieltag-Uhr (Runde 40 aus updateVillageLife herausgelöst): läuft auch
+  // unter der Erde weiter, dort nur stark verlangsamt (TAG.dungeonFaktor).
+  private advanceClock(dt: number): void {
     this.tageszeit += dt / TAG.dauerS;
     if (this.tageszeit >= 1) {
       this.tageszeit = 0;
@@ -4386,6 +4387,9 @@ export class WorldScene extends CombatScene {
       this.logMsg(`Tag ${this.tag} bricht an.`, '');
       this.wuerfleWetter();
     }
+  }
+
+  private updateVillageLife(dt: number): void {
     const abend = this.tageszeit > TAG.abendAb;
     // Einfall: nach dem Boss-Sieg greifen Monster-Trupps das Dorf an.
     // Der ERSTE kommt SOFORT beim nächsten Stadtbesuch (Runde 28: vorher
@@ -4642,6 +4646,8 @@ export class WorldScene extends CombatScene {
     if (!this.playerDead && !this.uiBlocked()) {
       this.checkTriggers();
       this.checkBeinhaus();
+      // Uhr läuft überall - im Dungeon nur ein Bruchteil (Runde 40)
+      this.advanceClock(dt * (this.area.dark ? TAG.dungeonFaktor : 1));
       if (!this.area.dark) this.updateVillageLife(dt);
       // Kamin-Buff "Aufgewärmt": Regeneration im Kryptagang
       if (this.area.dark && this.p.warmBuff) {
