@@ -1506,7 +1506,8 @@ export class WorldScene extends CombatScene {
     }
     // Zerstörbare Objekte
     for (const b of a.breakables) {
-      const img = this.add.image(b.x, b.y, this.provider.breakableKey(b.kind)).setDepth(b.y);
+      // 64px-Detailgrafik auf ~36px heruntergerechnet (Runde 40)
+      const img = this.add.image(b.x, b.y, this.provider.breakableKey(b.kind)).setDepth(b.y).setDisplaySize(36, 36);
       const ent: BreakableEntity = { ...b, hp: BREAKABLES[b.kind].hp, img, r: 13, vx: 0, vy: 0, quelle: b };
       const hit = { x: b.x, y: b.y, r: 13, onHit: (ang: number) => this.hitBreakable(ent, ang) };
       ent.hit = hit;
@@ -1849,6 +1850,11 @@ export class WorldScene extends CombatScene {
     this.add.text(sw / 2, sh * 0.12, 'PROBEN: Taverne & Wirtin (Entwurf)', { fontFamily: 'serif', fontSize: '20px', color: '#c9a227', letterSpacing: 2 }).setOrigin(0.5).setScrollFactor(0).setDepth(7001);
     this.add.text(sw * 0.32, sh * 0.78, 'Taverne "Zum Schwarzen Raben"', { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8' }).setOrigin(0.5).setScrollFactor(0).setDepth(7001);
     this.add.text(sw * 0.66, sh * 0.78, 'Wirtin Mathilde', { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8' }).setOrigin(0.5).setScrollFactor(0).setDepth(7001);
+    // Zerstörbare Objekte (Detailprobe)
+    const brks = ['fass', 'kiste', 'krug', 'heuhaufen', 'knochenhaufen'];
+    brks.forEach((k, i) => {
+      this.add.image(sw * 0.5 - 200 + i * 100, sh * 0.92, this.provider.breakableKey(k)).setScrollFactor(0).setDepth(7001).setScale(2.6);
+    });
   }
 
   private ensureNebelTextur(): void {

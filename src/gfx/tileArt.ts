@@ -2,7 +2,7 @@
 // Texturen-Generator. Variante (0-6) bringt Beschnitt-Abwechslung wie
 // das tileNoise der Referenz.
 
-import { TILE, shade } from './fallbackArt';
+import { TILE } from './fallbackArt';
 import type { CryptTheme } from '../data/krypta';
 
 type Ctx = CanvasRenderingContext2D;
@@ -539,44 +539,81 @@ export function drawObjectArt(ctx: Ctx, name: string, n: number, theme?: CryptTh
 }
 
 // Zerstörbare Objekte als eigenständige Sprites (über dem Boden)
+// Detaillierte 64px-Variante (Runde 40, Autorwunsch "maximale Details in
+// 64x64 runterskaliert"). Objekte mittig (Zentrum ~y30), Bodenschatten unten.
 export function drawBreakable(ctx: Ctx, kind: string): void {
-  ctx.clearRect(0, 0, TILE, TILE);
+  const cx = 32;
+  ctx.clearRect(0, 0, 64, 64);
+  ctx.fillStyle = 'rgba(0,0,0,0.26)'; ctx.beginPath(); ctx.ellipse(cx, 50, 16, 4.5, 0, 0, 6.283); ctx.fill();
   switch (kind) {
-    case 'fass':
-      ctx.fillStyle = '#6a4c28'; ctx.beginPath(); ctx.ellipse(16, 17, 9, 11, 0, 0, 6.283); ctx.fill();
-      ctx.fillStyle = shade('#6a4c28', 16); ctx.fillRect(8, 12, 16, 3);
-      ctx.strokeStyle = '#3a3026'; ctx.beginPath(); ctx.ellipse(16, 17, 9, 11, 0, 0, 6.283); ctx.stroke();
-      ctx.strokeStyle = '#26201a';
-      ctx.beginPath(); ctx.moveTo(7, 13); ctx.lineTo(25, 13); ctx.moveTo(7, 21); ctx.lineTo(25, 21); ctx.stroke();
+    case 'fass': {
+      const cy = 30, rx = 15, ry = 19;
+      const body = () => { ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, 6.283); };
+      ctx.fillStyle = '#684a28'; body(); ctx.fill();
+      ctx.save(); body(); ctx.clip();
+      ctx.fillStyle = 'rgba(255,238,205,0.13)'; ctx.fillRect(cx - rx, cy - ry, 9, ry * 2);  // Lichtseite
+      ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(cx + 6, cy - ry, 11, ry * 2);          // Schattenseite
+      ctx.strokeStyle = 'rgba(38,28,18,0.45)'; ctx.lineWidth = 1;
+      for (const dx of [-10, -4, 2, 8]) { ctx.beginPath(); ctx.moveTo(cx + dx, cy - ry); ctx.lineTo(cx + dx, cy + ry); ctx.stroke(); }
+      ctx.fillStyle = '#322820'; for (const yy of [cy - ry + 5, cy, cy + ry - 6]) ctx.fillRect(cx - rx, yy, rx * 2, 3);   // Reifen
+      ctx.fillStyle = 'rgba(210,200,180,0.3)'; for (const yy of [cy - ry + 5, cy, cy + ry - 6]) ctx.fillRect(cx - rx, yy, rx * 2, 1);
+      ctx.restore();
+      ctx.fillStyle = '#5a3f22'; ctx.beginPath(); ctx.ellipse(cx, cy - ry, rx - 1, 4.4, 0, 0, 6.283); ctx.fill();        // Deckel
+      ctx.fillStyle = '#73512c'; ctx.beginPath(); ctx.ellipse(cx, cy - ry, rx - 4, 2.6, 0, 0, 6.283); ctx.fill();
       break;
-    case 'kiste':
-      ctx.fillStyle = '#7a5c34'; ctx.fillRect(6, 9, 20, 17);
-      ctx.strokeStyle = '#4a3a20'; ctx.strokeRect(6.5, 9.5, 19, 16);
-      ctx.beginPath(); ctx.moveTo(6, 9); ctx.lineTo(26, 26); ctx.moveTo(26, 9); ctx.lineTo(6, 26); ctx.stroke();
+    }
+    case 'kiste': {
+      const x0 = 12, y0 = 12, w = 40, h = 38;
+      ctx.fillStyle = '#7a5c34'; ctx.fillRect(x0, y0, w, h);
+      ctx.fillStyle = 'rgba(255,230,190,0.07)'; for (let px = x0 + 4; px < x0 + w; px += 8) ctx.fillRect(px, y0, 1, h);   // Maserung
+      ctx.fillStyle = 'rgba(38,26,14,0.42)'; for (let py = y0 + 10; py < y0 + h; py += 10) ctx.fillRect(x0, py, w, 1.6); // Planken
+      ctx.fillStyle = '#8a6a3e'; ctx.fillRect(x0, y0, w, 8); ctx.fillStyle = 'rgba(38,26,14,0.42)'; ctx.fillRect(x0, y0 + 8, w, 1.6); // Deckel
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x0 + w - 6, y0, 6, h); ctx.fillRect(x0, y0 + h - 5, w, 5);        // Schatten
+      ctx.fillStyle = '#3a3026'; for (const [bx, by] of [[x0, y0], [x0 + w - 6, y0], [x0, y0 + h - 6], [x0 + w - 6, y0 + h - 6]]) ctx.fillRect(bx, by, 6, 6); // Eckbeschläge
+      ctx.fillStyle = '#5a5048'; for (const [bx, by] of [[x0 + 3, y0 + 3], [x0 + w - 3, y0 + 3], [x0 + 3, y0 + h - 3], [x0 + w - 3, y0 + h - 3]]) { ctx.beginPath(); ctx.arc(bx, by, 1.1, 0, 6.283); ctx.fill(); }
+      ctx.strokeStyle = '#4a3a20'; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, y0 + 0.5, w - 1, h - 1);
       break;
-    case 'krug':
-      ctx.fillStyle = '#8a6a4a'; ctx.beginPath(); ctx.ellipse(16, 19, 7, 8, 0, 0, 6.283); ctx.fill();
-      ctx.fillStyle = '#6a4c30'; ctx.fillRect(12, 8, 8, 5);
+    }
+    case 'krug': {
+      const cy = 32;
+      ctx.fillStyle = '#9a6a44'; ctx.beginPath(); ctx.ellipse(cx, cy + 6, 13, 15, 0, 0, 6.283); ctx.fill();             // Bauch
+      ctx.fillStyle = '#8a5e3a'; ctx.fillRect(cx - 5, cy - 12, 10, 13);                                                 // Hals
+      ctx.strokeStyle = '#8a5e3a'; ctx.lineWidth = 3.4; ctx.beginPath(); ctx.arc(cx + 12, cy - 1, 6, -1.2, 1.2); ctx.stroke(); ctx.lineWidth = 1; // Henkel
+      ctx.fillStyle = '#7a5230'; ctx.beginPath(); ctx.ellipse(cx, cy - 12, 6, 2.6, 0, 0, 6.283); ctx.fill();            // Mündung
+      ctx.fillStyle = '#5a3c22'; ctx.beginPath(); ctx.ellipse(cx, cy - 12, 4, 1.6, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(255,240,210,0.18)'; ctx.beginPath(); ctx.ellipse(cx - 5, cy + 3, 3.2, 7, 0, 0, 6.283); ctx.fill(); // Glasur
+      ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(cx + 7, cy + 8, 3.4, 9, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#6a4226'; ctx.fillRect(cx - 13, cy + 1, 26, 2);                                                  // Zierband
       break;
-    case 'knochenhaufen':
-      ctx.fillStyle = '#cfc4a8';
-      ctx.fillRect(8, 20, 10, 3); ctx.fillRect(16, 15, 9, 3);
-      ctx.beginPath(); ctx.arc(13, 13, 4.5, 0, 6.283); ctx.fill();
-      ctx.fillStyle = '#1a1410'; ctx.fillRect(11, 12, 2, 2); ctx.fillRect(14.5, 12, 2, 2);
+    }
+    case 'knochenhaufen': {
+      const cy = 34;
+      ctx.strokeStyle = '#cfc4a8'; ctx.lineWidth = 3.4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(cx - 13, cy + 6); ctx.lineTo(cx + 13, cy - 3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - 11, cy - 5); ctx.lineTo(cx + 11, cy + 9); ctx.stroke();
+      ctx.lineCap = 'butt'; ctx.lineWidth = 1;
+      ctx.fillStyle = '#e0d6ba'; ctx.beginPath(); ctx.arc(cx, cy - 5, 8, 0, 6.283); ctx.fill();                         // Schädel
+      ctx.fillStyle = '#cfc4a8'; ctx.fillRect(cx - 5, cy + 1, 10, 5);                                                   // Kiefer
+      ctx.fillStyle = '#1a1410'; ctx.beginPath(); ctx.arc(cx - 3, cy - 6, 2.2, 0, 6.283); ctx.arc(cx + 3, cy - 6, 2.2, 0, 6.283); ctx.fill();
+      ctx.fillRect(cx - 1, cy - 2, 2, 2.4);                                                                              // Nase
+      ctx.strokeStyle = '#9a8e70'; for (let i = -3; i <= 3; i += 2) { ctx.beginPath(); ctx.moveTo(cx + i, cy + 1); ctx.lineTo(cx + i, cy + 5); ctx.stroke(); }
       break;
-    case 'spinnwebe':
-      ctx.strokeStyle = 'rgba(220,220,220,0.5)';
-      for (let i = 0; i < 5; i++) {
-        ctx.beginPath(); ctx.moveTo(2, 2);
-        ctx.lineTo(2 + Math.cos(i * 0.35) * 26, 2 + Math.sin(i * 0.35) * 26); ctx.stroke();
-      }
-      ctx.beginPath(); ctx.arc(2, 2, 12, 0, 1.6); ctx.stroke();
-      ctx.beginPath(); ctx.arc(2, 2, 20, 0, 1.6); ctx.stroke();
+    }
+    case 'spinnwebe': {
+      ctx.strokeStyle = 'rgba(220,224,230,0.42)'; ctx.lineWidth = 0.8;
+      for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.moveTo(4, 4); ctx.lineTo(4 + Math.cos(i * 0.28) * 56, 4 + Math.sin(i * 0.28) * 56); ctx.stroke(); }
+      for (let r = 12; r <= 52; r += 10) { ctx.beginPath(); ctx.arc(4, 4, r, 0, 1.55); ctx.stroke(); }
+      ctx.lineWidth = 1;
       break;
-    case 'heuhaufen':
-      ctx.fillStyle = '#b89a4e'; ctx.beginPath(); ctx.ellipse(16, 19, 12, 9, 0, 0, 6.283); ctx.fill();
-      ctx.strokeStyle = '#8a7038';
-      ctx.beginPath(); ctx.moveTo(8, 16); ctx.lineTo(13, 21); ctx.moveTo(16, 12); ctx.lineTo(20, 18); ctx.stroke();
+    }
+    case 'heuhaufen': {
+      const cy = 36;
+      ctx.fillStyle = '#b89a4e'; ctx.beginPath(); ctx.ellipse(cx, cy, 20, 14, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#a8893e'; ctx.beginPath(); ctx.ellipse(cx, cy + 3, 20, 11, 0, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = '#8a7038'; ctx.lineWidth = 1;
+      for (let i = 0; i < 24; i++) { const a = (i * 2.39) % 6.283; const r1 = 5 + (i * 7 % 13); const ex = cx + Math.cos(a) * r1, ey = cy + Math.sin(a) * r1 * 0.7; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(a) * 4, ey + Math.sin(a) * 3); ctx.stroke(); }
+      ctx.fillStyle = 'rgba(255,240,180,0.22)'; ctx.beginPath(); ctx.ellipse(cx - 3, cy - 5, 10, 4, 0, 0, 6.283); ctx.fill();
       break;
+    }
   }
 }

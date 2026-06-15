@@ -260,9 +260,10 @@ export class SpriteProvider {
     if (hot) return hot;
     const key = `brk_${kind}`;
     if (!this.tex.exists(key)) {
+      // 64px gezeichnet, im Spiel heruntergerechnet (Runde 40: mehr Details)
       const canvas = document.createElement('canvas');
-      canvas.width = TILE;
-      canvas.height = TILE;
+      canvas.width = 64;
+      canvas.height = 64;
       drawBreakable(canvas.getContext('2d')!, kind);
       this.tex.addCanvas(key, canvas);
     }
