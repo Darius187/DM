@@ -1202,10 +1202,12 @@ export class WorldScene extends CombatScene {
         this.einfallRest = [];
       }
     }
-    // Leergeräumte Krypta-Ebenen merken (Runde 26, Wunsch): wer beim
+    // Leergeräumte Ebenen merken (Runde 26, erweitert Runde 40): wer beim
     // Verlassen keinen Gegner übrig lässt, findet die Ebene leer wieder -
-    // erst der eigene Tod weckt die Tiefe neu (Bossgrab ausgenommen)
-    if (this.area && this.area.dark && this.area.id !== 'boss') {
+    // erst der eigene Tod weckt sie neu. Galt früher nur für Krypta-Ebenen,
+    // jetzt für ALLE Gebiete mit festen Gegnern (Autorwunsch: auch der Wald
+    // blieb sonst beim Zurücklaufen voll). Bossgrab bleibt ausgenommen.
+    if (this.area && this.area.id !== 'boss' && this.area.enemySpawns.length > 0) {
       // versteckte (nie ausgelöste) Hinterhalte zählen NICHT (Runde 30:
       // deshalb galt eine geräumte Ebene oft als "nicht leer")
       this.area.geleert = !this.enemies.some((e) => e.hp > 0 && !e.versteckt);
