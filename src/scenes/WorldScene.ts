@@ -225,6 +225,8 @@ export class WorldScene extends CombatScene {
     this.worldGfx = this.add.graphics().setDepth(2450);
     this.minimapGfx = this.add.graphics().setScrollFactor(0).setDepth(4500);
     this.hud = new Hud(this, () => this.p, () => this.weaponClass());
+    // Schriftrollen/Tränke aus dem Inventar auf die Leiste ziehen (Runde 40)
+    this.panels.onAssignToSlot = (x, y, id) => this.hud.belegeBeiPunkt(x, y, id);
     this.hudText = this.add.text(0, 0, '', { fontFamily: 'serif', fontSize: '13px', color: '#bfa86f' }).setScrollFactor(0).setDepth(4610);
     this.areaText = this.add.text(this.scale.width / 2, 16, '', {
       fontFamily: 'serif', fontSize: '15px', color: '#bfa86f', letterSpacing: 2,

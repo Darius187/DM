@@ -28,6 +28,16 @@ const KLASSEN_NAMEN: Record<string, string> = {
   schwert: 'Schwert', axt: 'Axt', stange: 'Stangenwaffe', wucht: 'Wuchtwaffe', bogen: 'Bogen', stab: 'Zauberstab',
 };
 
+// Welche Inventar-Gegenstände sich auf die Aktionsleiste ziehen lassen und
+// welche Leisten-Aktion sie belegen (Runde 40). Schriftrollen waren der
+// Auslöser - der Autor konnte sie nicht unten ins Menü ziehen.
+const SLOT_AKTION: Record<string, string> = {
+  scroll: 'rolle', potion: 'pot', mpotion: 'mpot',
+};
+const ZIEH_GLYPH: Record<string, string> = {
+  scroll: '📜', potion: '🧪', mpotion: '⚗',
+};
+
 export class UIPanels {
   private open_ = false;
   private container: Phaser.GameObjects.Container | null = null;
@@ -35,6 +45,10 @@ export class UIPanels {
   private scroll = 0;
   onChanged: (() => void) | null = null;
   onUseScroll: ((scrollSkill: string) => void) | null = null;
+  // Inventar -> Aktionsleiste ziehen (Runde 40): legt eine Schriftrolle/einen
+  // Trank auf den Slot unter (x,y). Gibt true zurück, wenn ein Slot belegt wurde.
+  onAssignToSlot: ((x: number, y: number, aktionId: string) => boolean) | null = null;
+  private dragGhost: Phaser.GameObjects.Text | null = null;
   getJournal: (() => string[]) | null = null;
   // Tab-Fenster (Runde 31): Album und Statistik wohnen mit im Fenster
   getAlbumZeilen: (() => Array<[string, string]>) | null = null;
@@ -352,13 +366,16 @@ export class UIPanels {
       ['alle', 'ALLE'], ['weapon', 'WAFFEN'], ['armor', 'RÜSTUNG'], ['schild', 'SCHILDE'],
       ['ring', 'RINGE'], ['gem', 'STEINE'], ['scroll', 'ROLLEN'], ['rest', 'SONST'],
     ];
-    let tx2 = x0;
+    let tx2 = x0, ty2 = 34;
     for (const [id, lbl] of tabs) {
-      const t = this.scene.add.text(tx2, 34, lbl, {
+      const t = this.scene.add.text(tx2, ty2, lbl, {
         fontFamily: 'serif', fontSize: '11px', letterSpacing: 1,
         color: this.filter === id ? GOLD : '#8a7a5a',
-        backgroundColor: this.filter === id ? '#221808' : undefined, padding: { x: 6, y: 2 },
+        backgroundColor: this.filter === id ? '#221808' : undefined, padding: { x: 5, y: 2 },
       }).setInteractive({ useHandCursor: true });
+      // Umbruch in eine zweite Reihe, wenn die Reiter sonst aus dem Menü ragen
+      // (Bug Runde 39: "SONST" stand außerhalb)
+      if (tx2 > x0 && tx2 + t.width > x0 + w) { tx2 = x0; ty2 += 20; t.setPosition(tx2, ty2); }
       t.on('pointerdown', () => {
         this.filter = id;
         this.scroll = 0;
@@ -366,15 +383,18 @@ export class UIPanels {
         this.sfx.play('klick');
       });
       c.add(t);
-      tx2 += t.width + 8;
+      tx2 += t.width + 6;
     }
+    const tabUmbruch = ty2 > 34;
 
     // Angelegtes erscheint NUR links im Charakter (Feedback-Runde 2);
-    // Rest nach Filter, beste zuerst (Seltenheit, dann Wert)
+    // Rest nach Filter, beste zuerst (Seltenheit, dann Wert).
+    // WAFFEN umfasst auch Pfeile (Autorwunsch Runde 39: Pfeil/Bogen sind Waffen).
     const inv = p.inv
       .filter((it) => it !== p.weapon && it !== p.armorIt && it !== p.ring && it !== p.schildIt)
       .filter((it) => this.filter === 'alle' ? true
-        : this.filter === 'rest' ? !['weapon', 'armor', 'schild', 'ring', 'gem', 'scroll'].includes(it.kind)
+        : this.filter === 'weapon' ? (it.kind === 'weapon' || it.kind === 'arrows')
+        : this.filter === 'rest' ? !['weapon', 'arrows', 'armor', 'schild', 'ring', 'gem', 'scroll'].includes(it.kind)
         : it.kind === this.filter)
       .sort((a, b) => {
         // Edelsteine tragen ihre Güte in power, nicht in val (Runde 28)
@@ -383,7 +403,7 @@ export class UIPanels {
       });
 
     const rowH = 42;
-    const listTop = 58;
+    const listTop = (tabUmbruch ? 78 : 58);
     const visible = Math.floor((h - listTop - 14) / rowH);
     const maxScroll = Math.max(0, inv.length - visible);
     this.scroll = Math.min(this.scroll, maxScroll);
@@ -437,6 +457,29 @@ export class UIPanels {
     row.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
     row.on('pointerout', () => this.hideTooltip());
     row.on('pointerdown', (ptr: Phaser.Input.Pointer) => this.clickItem(it, ptr.rightButtonDown()));
+    // Schriftrollen/Tränke auf die Aktionsleiste ziehen (Runde 40)
+    const slotAktion = SLOT_AKTION[it.kind];
+    if (slotAktion && this.onAssignToSlot) this.macheZiehbar(row, it, slotAktion);
+  }
+
+  // Eine Inventarzeile auf die Aktionsleiste ziehbar machen (Runde 40):
+  // beim Loslassen über einem Slot wird die passende Aktion dort belegt.
+  private macheZiehbar(row: Phaser.GameObjects.Rectangle, it: Item, aktionId: string): void {
+    this.scene.input.setDraggable(row);
+    row.on('dragstart', (ptr: Phaser.Input.Pointer) => {
+      if (ptr.rightButtonDown()) return;
+      this.hideTooltip();
+      this.dragGhost?.destroy();
+      this.dragGhost = this.scene.add.text(ptr.x, ptr.y, ZIEH_GLYPH[it.kind] ?? '📜', {
+        fontFamily: 'serif', fontSize: '24px', color: '#f0dfa0', stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(6200);
+    });
+    row.on('drag', (ptr: Phaser.Input.Pointer) => this.dragGhost?.setPosition(ptr.x, ptr.y));
+    row.on('dragend', (ptr: Phaser.Input.Pointer) => {
+      this.dragGhost?.destroy();
+      this.dragGhost = null;
+      if (this.onAssignToSlot?.(ptr.x, ptr.y, aktionId)) this.sfx.play('klick');
+    });
   }
 
   private clickItem(it: Item, rechts: boolean): void {

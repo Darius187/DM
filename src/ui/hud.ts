@@ -286,6 +286,23 @@ export class Hud {
     saveSettings();
   }
 
+  // Einen Gegenstand aus dem Inventar auf den Slot unter (x,y) legen
+  // (Runde 40): das Inventar darf Schriftrollen/Tränke direkt auf die Leiste
+  // ziehen. Liegt dort ein belegbarer Slot, wird die Aktion gesetzt. Halten-
+  // Aktionen (Angriff/Blocken) sind hier nicht im Spiel.
+  belegeBeiPunkt(x: number, y: number, aktionId: string): boolean {
+    if (!this.aktionen.some(([id]) => id === aktionId)) return false;
+    for (let j = 0; j < this.slots.length; j++) {
+      if (Math.abs(x - this.slotX(j)) > 23 || Math.abs(y - this.slotY(j)) > 23) continue;
+      const feld = this.slots[j].belegung;
+      if (!feld) return false;
+      (getSettings()[feld.store] as Record<string, string>)[feld.feld] = aktionId;
+      saveSettings();
+      return true;
+    }
+    return false;
+  }
+
   // --- Belegungs-Menü (Runde 14) ---------------------------------------------
 
   private menue: Phaser.GameObjects.Container | null = null;
