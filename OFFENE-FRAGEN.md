@@ -42,3 +42,14 @@
     auf Pest/Lebende Tote erweitern, (b) eine Schwert-Variante (mehr Reichweite/
     Schaden, sichtbare Klinge) ergänzen, (c) beides mit Zufalls-Mischung je
     Spawn? Sag, welche Mischung dir vorschwebt, dann zeichne ich die Varianten.
+
+11. Screenshot-"Fehler" Krypta Ebene 1 (Runde 40, "was ist das fuer ein Fehler -
+    siehe Screenshot"): Ich habe Ebene 1 nachgestellt (Playwright) - Boden, Waende,
+    Faesser/Kisten, Blutspuren und die Dunkelheit rendern stimmig, ich finde keinen
+    klaren Render-Bug. STARKE Vermutung: der rot markierte "leere" Bereich war die
+    Folge des Geleert-Fehlers (du kamst in eine faelschlich als geraeumt geltende,
+    also leere Ebene zurueck - dunkel, nur noch Props und alte Blutspuren). Den
+    Geleert-Fehler habe ich behoben; damit sollte sich das erledigt haben.
+    Falls es DOCH ein eigener Render-Fehler ist: bitte den Screenshot mit einem
+    Pfeil auf die GENAUE Stelle (welches Objekt/welche Kachel wirkt falsch) - dann
+    fixe ich gezielt, statt auf Verdacht (CLAUDE.md-Regel "erst reproduzieren").
