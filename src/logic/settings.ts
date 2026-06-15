@@ -53,9 +53,9 @@ export const DEF_SETTINGS: Settings = {
   tasten: { t1: 's1', t2: 's2', t3: 's3', t4: 'kettenblitz', t5: 'frostnova', t6: 'bannkreis', t9: 'feuerregen', t0: 'aderlass', tr: 'waffe1', tt: 'waffe2' },
   vorlesen: false,
   ui: { hotbar: { x: 0, y: 0 }, mausleiste: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 } },
-  chronikBox: { x: 10, y: -420, w: 380, h: 300 },
+  chronikBox: { x: 8, y: -308, w: 380, h: 300 }, // ganz links UNTEN (Runde 40)
   chronikAuto: true,
-  uiLayoutV: 2, // Runde 40: Aktionsleisten neu als zentrierter Block
+  uiLayoutV: 3, // Runde 40: Orbs an den Leisten, Meldungen oben, Chronik unten links
   kb: {
     roll: ' ', interact: 'e', inv: 'i', charakter: 'c',
     pot: 'q', mpot: 'f', s1: '1', s2: '2', s3: '3',
@@ -89,11 +89,17 @@ export function getSettings(): Settings {
         fenster: { ...DEF_SETTINGS.ui.fenster, ...(saved.ui?.fenster ?? {}) },
       };
       // Layout-Migration (Runde 40): die Aktionsleisten sind jetzt EIN zentrierter
-      // Block. Alte, von Hand verschobene Versätze passen nicht mehr und ließen
-      // die Leisten "total verschoben" wirken - daher einmalig nullen.
+      // Block, die Orbs flankieren die Leisten, die Meldungen stehen oben und die
+      // Chronik unten links. Alte, von Hand verschobene Versätze passen nicht mehr
+      // und ließen die UI "total verschoben" wirken - daher einmalig nullen und
+      // die neuen Standardplätze übernehmen.
       if ((saved.uiLayoutV ?? 0) < DEF_SETTINGS.uiLayoutV) {
         current.ui.hotbar = { x: 0, y: 0 };
         current.ui.mausleiste = { x: 0, y: 0 };
+        current.ui.orbHp = { x: 0, y: 0 };
+        current.ui.orbMp = { x: 0, y: 0 };
+        current.ui.log = { x: 0, y: 0 };
+        current.chronikBox = { ...DEF_SETTINGS.chronikBox };
         current.uiLayoutV = DEF_SETTINGS.uiLayoutV;
         try { localStorage.setItem(KEY, JSON.stringify(current)); } catch { /* gesperrt */ }
       }

@@ -61,6 +61,17 @@ export function mausLeisteAnkerX(w: number): number {
 export function tastenLeisteMitteX(w: number): number {
   return mausLeisteAnkerX(w) + MAUS_SLOTS * SLOT_W + LEISTEN_LUECKE + (KB_SLOTS * SLOT_W) / 2;
 }
+// Kugeln flankieren die Leisten (Runde 40, Autorwunsch): Lebenskugel direkt
+// links neben der Maus-Leiste, Manakugel direkt rechts neben der Tastenleiste.
+const ORB_BALKEN_LUECKE = 14; // Abstand Kugel <-> Leistenkante
+export function orbHpAnkerX(w: number): number {
+  // linke Kante der Maus-Leiste (slotX(KB_SLOTS) - 26, ohne Benutzer-Versatz)
+  return mausLeisteAnkerX(w) + 21 - 26 - ORB_BALKEN_LUECKE - ORB_R;
+}
+export function orbMpAnkerX(w: number): number {
+  // rechte Kante der Tastenleiste (slotX(KB_SLOTS-1) + 26, ohne Versatz)
+  return mausLeisteAnkerX(w) + MAUS_SLOTS * SLOT_W + LEISTEN_LUECKE + (KB_SLOTS - 1) * SLOT_W + 21 + 26 + ORB_BALKEN_LUECKE + ORB_R;
+}
 
 export class Hud {
   private gfx: Phaser.GameObjects.Graphics;
@@ -435,30 +446,37 @@ export class Hud {
     const kb = getSettings().kb;
     g.clear();
 
-    // Orbs: dunkler Grund, Füllung über Beschnitt von unten, Rahmen
-    const orb = (img: Phaser.GameObjects.Image, x: number, frac: number, dy = 0) => {
-      img.setPosition(x, h - 24 - ORB_R + dy);
+    // Orbs flankieren die Aktionsleisten (Runde 40, Autorwunsch): Lebenskugel
+    // direkt links neben der Maus-Leiste, Manakugel direkt rechts neben der
+    // Tastenleiste. Anker folgt den ECHTEN Leistenkanten (slotX bezieht die
+    // Benutzer-Versätze mit ein), der gespeicherte orbHp/orbMp-Versatz erlaubt
+    // weiterhin freies Verschieben.
+    const orb = (img: Phaser.GameObjects.Image, x: number, y: number, frac: number) => {
+      img.setPosition(x, y);
       g.fillStyle(0x120505, 1);
-      g.fillCircle(x, h - 24 - ORB_R + dy, ORB_R);
+      g.fillCircle(x, y, ORB_R);
       const ch = Math.round(ORB_R * 2 * Phaser.Math.Clamp(frac, 0, 1));
       img.setCrop(0, ORB_R * 2 - ch, ORB_R * 2, ch);
       g.lineStyle(3, 0x3a2f24, 1);
-      g.strokeCircle(x, h - 24 - ORB_R + dy, ORB_R);
+      g.strokeCircle(x, y, ORB_R);
     };
-    // Versätze einfangen (Runde 29): die Lebenskugel war aus dem Bild
-    // gezogen worden und damit "verschwunden" - nie weiter als an den Rand
-    const fang = (o: { x: number; y: number }, basisX: number) => ({
-      x: Math.max(ORB_R - basisX, Math.min(w - ORB_R - basisX, o.x)),
-      y: Math.max(ORB_R + 24 - (h - 24 - ORB_R), Math.min(0 + 10, o.y)),
-    });
-    const oh = fang(getSettings().ui.orbHp, 28 + ORB_R);
-    const om = fang(getSettings().ui.orbMp, w - 28 - ORB_R);
-    orb(this.hpImg, 28 + ORB_R + oh.x, p.hp / p.stats.maxhp, oh.y);
-    orb(this.mpImg, w - 28 - ORB_R + om.x, p.mana / p.stats.maxmana, om.y);
-    this.hpText.setPosition(28 + ORB_R + oh.x, h - 24 - ORB_R + oh.y).setText(String(Math.max(0, Math.ceil(p.hp))));
-    this.mpText.setPosition(w - 28 - ORB_R + om.x, h - 24 - ORB_R + om.y).setText(String(Math.ceil(p.mana)));
-    this.potText.setPosition(28 + ORB_R + oh.x, h - 12 + oh.y).setText(`${kb.pot.toUpperCase()} Trank x${p.pot}`);
-    this.mpotText.setPosition(w - 28 - ORB_R + om.x, h - 12 + om.y).setText(`${kb.mpot.toUpperCase()} Trank x${p.mpot}`);
+    const balkenLinks = this.slotX(KB_SLOTS) - 26;       // linke Kante der Maus-Leiste
+    const balkenRechts = this.slotX(KB_SLOTS - 1) + 26;   // rechte Kante der Tastenleiste
+    const orbY0 = h - 24 - ORB_R;
+    // auf dem Bildschirm halten (Runde 29: nie aus dem Bild ziehen)
+    const klemmX = (x: number) => Math.max(ORB_R + 2, Math.min(w - ORB_R - 2, x));
+    const klemmY = (y: number) => Math.max(ORB_R + 2, Math.min(h - ORB_R - 2, y));
+    const oh = getSettings().ui.orbHp, om = getSettings().ui.orbMp;
+    const hx = klemmX(balkenLinks - ORB_BALKEN_LUECKE - ORB_R + oh.x);
+    const hy = klemmY(orbY0 + oh.y);
+    const mx = klemmX(balkenRechts + ORB_BALKEN_LUECKE + ORB_R + om.x);
+    const my = klemmY(orbY0 + om.y);
+    orb(this.hpImg, hx, hy, p.hp / p.stats.maxhp);
+    orb(this.mpImg, mx, my, p.mana / p.stats.maxmana);
+    this.hpText.setPosition(hx, hy).setText(String(Math.max(0, Math.ceil(p.hp))));
+    this.mpText.setPosition(mx, my).setText(String(Math.ceil(p.mana)));
+    this.potText.setPosition(hx, hy + ORB_R + 12).setText(`${kb.pot.toUpperCase()} Trank x${p.pot}`);
+    this.mpotText.setPosition(mx, my + ORB_R + 12).setText(`${kb.mpot.toUpperCase()} Trank x${p.mpot}`);
 
     // Zwei getrennte Paneele (Runde 20): Tastenleiste und Maus-Leiste
     const panel = (a: number, b: number) => {

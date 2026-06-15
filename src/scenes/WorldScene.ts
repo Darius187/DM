@@ -1234,9 +1234,12 @@ export class WorldScene extends CombatScene {
     // jetzt für ALLE Gebiete mit festen Gegnern (Autorwunsch: auch der Wald
     // blieb sonst beim Zurücklaufen voll). Bossgrab bleibt ausgenommen.
     if (this.area && this.area.id !== 'boss' && this.area.enemySpawns.length > 0) {
-      // versteckte (nie ausgelöste) Hinterhalte zählen NICHT (Runde 30:
-      // deshalb galt eine geräumte Ebene oft als "nicht leer")
-      this.area.geleert = !this.enemies.some((e) => e.hp > 0 && !e.versteckt);
+      // Geleert heißt: KEIN lebender Gegner mehr da - egal ob gerade sichtbar.
+      // (Runde 40 Fehlerfix: `versteckt` ist nur ein Sichtlinien-Flag aus der
+      // dunklen Krypta. Wer zur Treppe lief, hatte die restlichen Gegner um
+      // die Ecke gerade nicht im Blick - die galten fälschlich als erledigt,
+      // und die ganze Ebene war beim Zurückkommen leer, obwohl voller Gegner.)
+      this.area.geleert = !this.enemies.some((e) => e.hp > 0);
     }
     const a = this.getArea(id);
     this.area = a;
@@ -4166,12 +4169,16 @@ export class WorldScene extends CombatScene {
     this.chronik(cls === 'gold' || cls === 'magic' ? 'ereignis' : 'ereignis', text);
     const colors: Record<string, string> = { gold: '#c9a227', bad: '#d96b5a', magic: '#8aa6e8' };
     const off = getSettings().ui.log;
-    const t = this.add.text(this.scale.width / 2 + off.x, this.scale.height - 150 + off.y, text, {
+    // Meldungen ins obere Viertel (Runde 40, Autorwunsch): überschnitten sich
+    // unten mit den Dialograhmen. Neueste oben, ältere rutschen nach unten weg -
+    // unter der Gebietsüberschrift (y=16), bleibt im oberen Viertel.
+    const basisY = 64;
+    const t = this.add.text(this.scale.width / 2 + off.x, basisY + off.y, text, {
       fontFamily: 'serif', fontSize: '15px', color: colors[cls ?? ''] ?? '#cdbf9d',
       stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(4750);
     this.msgTexts.unshift(t);
-    for (let i = 0; i < this.msgTexts.length; i++) this.msgTexts[i].setY(this.scale.height - 150 + off.y - i * 18);
+    for (let i = 0; i < this.msgTexts.length; i++) this.msgTexts[i].setY(basisY + off.y + i * 18);
     while (this.msgTexts.length > 3) this.msgTexts.pop()!.destroy();
     this.time.delayedCall(3200, () => {
       this.tweens.add({ targets: t, alpha: 0, duration: 900, onComplete: () => t.destroy() });

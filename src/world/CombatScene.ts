@@ -28,7 +28,7 @@ import type { EnemyTypeId, WeaponClass } from '../data/types';
 import { ABILITY_FX, ABILITIES, LORE_XP, ROLLEN_ZAUBER, XP } from '../data/balancing';
 import { PickupSystem, AUTO_PICKUP, type Pickup } from './Pickups';
 import { fixUiScroll } from '../ui/dialog';
-import { mausLeisteAnkerX, tastenLeisteMitteX } from '../ui/hud';
+import { mausLeisteAnkerX, tastenLeisteMitteX, orbHpAnkerX, orbMpAnkerX } from '../ui/hud';
 import { TouchControls, isTouchDevice, type TouchHost } from '../ui/touch';
 import { UIPanels } from '../ui/panels';
 import { rollGear, rollGem } from '../logic/loot';
@@ -364,9 +364,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       ['hotbar', 'TASTEN-LEISTE', tastenLeisteMitteX(w), h - 66],
       ['mausleiste', 'MAUS-LEISTE', mausLeisteAnkerX(w) + 115, h - 66],
       ['dialog', 'DIALOGRAHMEN', w / 2, h - 220],
-      ['log', 'MELDUNGEN', w / 2, h - 150],
-      ['orbHp', 'LEBENS-KUGEL', 70, h - 66],
-      ['orbMp', 'MANA-KUGEL', w - 70, h - 66],
+      ['log', 'MELDUNGEN', w / 2, 64],
+      ['orbHp', 'LEBENS-KUGEL', orbHpAnkerX(w), h - 66],
+      ['orbMp', 'MANA-KUGEL', orbMpAnkerX(w), h - 66],
       ['fenster', 'FENSTER (INVENTAR/HANDEL)', w / 2, h / 2 - 80],
     ];
     for (const [key, name, ax, ay] of teile) {
