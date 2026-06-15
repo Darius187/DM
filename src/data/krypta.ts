@@ -19,7 +19,7 @@ export const CRYPT_THEMES: Readonly<Record<number, CryptTheme>> = {
   3: { name: 'Die alte Kultstätte',   floor: [26, -7, -9], wallTop: '#130808', wallFace: '#321a12', bones: 0.045, blood: 0.095, rune: '#c03030', torchMod: 3 },
   // NEU (Feedback-Runde 4): zwei weitere Ebenen vor dem Grab
   4: { name: 'Das Verlies',           floor: [22, -2, -4], wallTop: '#0a0a0c', wallFace: '#1e2026', bones: 0.060, blood: 0.040, rune: '#5a7ae0', torchMod: 4 },
-  5: { name: 'Die Lavahöhle',         floor: [34, -14, -18], wallTop: '#160604', wallFace: '#3a140a', bones: 0.020, blood: 0.140, rune: '#e06a2a', torchMod: 2 },
+  5: { name: 'Die Glutkatakomben',    floor: [34, -14, -18], wallTop: '#160604', wallFace: '#3a140a', bones: 0.020, blood: 0.140, rune: '#e06a2a', torchMod: 2 },
   6: { name: 'Grab des Kreuzritters', floor: [24, -5, -7], wallTop: '#130808', wallFace: '#321a12', bones: 0.040, blood: 0.060, rune: '#c03030', torchMod: 3 },
 };
 

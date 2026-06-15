@@ -770,6 +770,11 @@ export class WorldScene extends CombatScene {
     if (ptr.x > this.scale.width - 250) return; // Klick aufs Panel
     const tool = this.baukastenTool;
     if (!tool) return;
+    try { this.baukastenMalen(ptr, tool); }
+    catch (e) { this.logMsg('Baukasten: Aktion fehlgeschlagen (übersprungen).', 'bad'); if (import.meta.env.DEV) console.error('Baukasten-Fehler:', e); }
+  };
+
+  private baukastenMalen(ptr: Phaser.Input.Pointer, tool: NonNullable<typeof this.baukastenTool>): void {
     const { x: wx, y: wy } = this.weltPunkt(ptr);
     const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
     if (tool.art === 'kachel') {
@@ -825,7 +830,7 @@ export class WorldScene extends CombatScene {
       return;
     }
     speichereStadtplan(this.stadtplan);
-  };
+  }
 
   private baukastenMove = (ptr: Phaser.Input.Pointer): void => {
     if (!ptr.isDown || !this.baukastenPanel) return;
@@ -1934,7 +1939,10 @@ export class WorldScene extends CombatScene {
   }
 
   protected override uiBlocked(): boolean {
-    return super.uiBlocked() || this.dialog?.open || this.shop?.open || this.stash?.open || !!this.deathOverlay || !!this.pauseMenu || !!this.heldEditor?.blocked;
+    // Baukasten zählt als blockierend (Runde 40): beim Welt-Editieren darf der
+    // Held NICHT zuschlagen/zaubern - jeder Mal-Klick löste sonst zugleich eine
+    // Kampfaktion in der laufenden Welt aus (mögliche Absturzquelle beim "Weg malen").
+    return super.uiBlocked() || this.dialog?.open || this.shop?.open || this.stash?.open || !!this.deathOverlay || !!this.pauseMenu || !!this.heldEditor?.blocked || !!this.baukastenPanel;
   }
 
   // --- Zerstörbare Objekte ---------------------------------------------------
