@@ -113,6 +113,9 @@ export class Enemy {
   schlagtempoF = 1; // Per-Typ-Schlagtempo (F10, beim Spawn gesetzt)
   reichweiteF = 1;  // Per-Typ-Hiebreichweite (F10, beim Spawn gesetzt)
   kvx = 0; kvy = 0; // Physik-Rückstoß-Geschwindigkeit (Runde 36, Physik-Test)
+  // Steckende Pfeile (Runde 40, Physik-Test): bleiben im Körper, bis er fällt.
+  // rx/ry = Versatz vom Mittelpunkt (wandert mit), ang = Einschlagwinkel.
+  steckPfeile?: Array<{ rx: number; ry: number; ang: number }>;
   private pattern: AttackPattern['id'] = 'hieb';
   private secondHitT = 0;   // Doppelhieb: zweiter Schlag
   private lungeT = 0;       // Sprungangriff: Restflugzeit

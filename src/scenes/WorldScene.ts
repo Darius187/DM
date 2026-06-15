@@ -1690,6 +1690,9 @@ export class WorldScene extends CombatScene {
     const pr = this.playerR();
     const ents = this.breakableEnts;
     for (const ent of ents) {
+      // Spinnweben kleben an der Wand - die schiebt man nicht (Autorwunsch R40),
+      // sie lassen sich aber weiter zerschlagen
+      if (ent.kind === 'spinnwebe') continue;
       if (ent.vx === undefined) { ent.vx = 0; ent.vy = 0; }
       const dx = ent.x - this.px, dy = ent.y - this.py;
       const dist = Math.hypot(dx, dy) || 0.001;
@@ -1700,8 +1703,10 @@ export class WorldScene extends CombatScene {
         const bremse = 1 / (1 + masse * 0.55);
         ent.x += nx * (minD - dist); ent.y += ny * (minD - dist); // aus der Überlappung
         // Eine Kiste kann NIE schneller sein als der Held, der sie schiebt -
-        // sonst fliegt sie davon. Schwerer = langsamer + bremst den Helden mehr.
-        const spielerTempo = PLAYER.speed * (getSettings().tempo / 100);
+        // sonst fliegt sie davon (Bug R40: areaSpeedFactor fehlte, deshalb
+        // entwischte die Kiste in der langsamen Krypta und der Held wurde
+        // nicht gebremst). Jetzt mit dem echten Lauftempo gedeckelt.
+        const spielerTempo = PLAYER.speed * (getSettings().tempo / 100) * this.areaSpeedFactor();
         const tempo = Math.min(PHYSIK.schub / masse, spielerTempo * bremse * 0.92);
         ent.vx = nx * tempo; ent.vy = ny * tempo;
         this.schiebeBremse = Math.min(this.schiebeBremse, bremse);
@@ -4628,13 +4633,16 @@ export class WorldScene extends CombatScene {
   update(_time: number, delta: number): void {
     if (!this.area) return;
     const dt = Math.min(0.05, delta / 1000);
+    // Schiebephysik VOR der Bewegung (Runde 40): so bremst die Kiste den Helden
+    // im selben Frame, in dem er sie berührt - vorher hinkte die Bremse einen
+    // Frame hinterher und griff kaum
+    this.updateSchiebephysik(dt);
     this.updateCombat(dt);
     this.renderRegen(dt);
     this.renderOrtsname();
     this.renderHover();
     this.animiereWasser(dt);
     this.animiereHaeuser(dt);
-    this.updateSchiebephysik(dt);
     // Chronik weicht offenen Fenstern (Inventar/Charakter/Dialog), damit sich
     // die Schriften nicht überlagern - sie kommt danach von selbst zurück (R36)
     this.chronikFenster?.setVisible(!this.uiBlocked());

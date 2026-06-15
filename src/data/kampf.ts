@@ -108,11 +108,13 @@ export const BREAKABLE_MASSE: Record<string, number> = {
 // Pfeil-an-Wand-Physik (Runde 40, nur im Physik-Test): ein Pfeil bleibt
 // entweder in der Wand stecken ODER prallt ab - beides soll vorkommen.
 // steckChance = Anteil steckenbleibender Pfeile; maxPraller = nach so vielen
-// Abprallern bleibt er stecken (verliert Schwung); prallDaempfung = Tempo nach
-// dem Abprall; steckDauerS = wie lange ein steckender Pfeil sichtbar bleibt;
-// minPrallTempo = darunter bleibt er liegen statt weiterzuspringen.
+// Abprallern bleibt er stecken; prallDaempfung = Tempo direkt nach dem Abprall;
+// prallReibung = starke Bremse je Sekunde NACH dem Abprall, damit ein
+// abgeprallter Pfeil nur kurz wegspringt statt endlos durch den Raum zu
+// fliegen (Autorwunsch Runde 40); steckDauerS = Liegedauer eines steckenden
+// Pfeils; minPrallTempo = darunter kommt er zur Ruhe und bleibt liegen.
 export const PFEIL_PHYSIK = {
-  steckChance: 0.5, maxPraller: 2, prallDaempfung: 0.62, steckDauerS: 4, minPrallTempo: 70,
+  steckChance: 0.5, maxPraller: 1, prallDaempfung: 0.6, prallReibung: 0.02, steckDauerS: 4, minPrallTempo: 80,
 } as const;
 
 export const PHYSIK = {

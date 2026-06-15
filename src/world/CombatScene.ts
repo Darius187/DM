@@ -2222,6 +2222,18 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         if (pr.steckT <= 0) pr.dead = true;
         continue;
       }
+      // Abgeprallter Pfeil (Physik-Test): stark abbremsen, damit er nur kurz
+      // wegspringt und dann liegen bleibt - nicht endlos durch den Raum fliegt
+      if (pr.arrow && (pr.praller ?? 0) > 0) {
+        const f = Math.pow(PFEIL_PHYSIK.prallReibung, dt);
+        pr.vx *= f; pr.vy *= f;
+        if (Math.hypot(pr.vx, pr.vy) < PFEIL_PHYSIK.minPrallTempo) {
+          pr.steckt = true; pr.steckT = PFEIL_PHYSIK.steckDauerS;
+          pr.steckAng = Math.atan2(pr.vy, pr.vx);
+          pr.vx = 0; pr.vy = 0;
+          continue;
+        }
+      }
       const ox = pr.x, oy = pr.y; // letzte freie Stelle (vor dem Schritt)
       pr.x += pr.vx * dt;
       pr.y += pr.vy * dt;
@@ -2247,6 +2259,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
             if (pr.hitIds?.has(e.id)) continue;
             if (pr.pierce) (pr.hitIds ??= new Set()).add(e.id);
             else pr.dead = true;
+            // Pfeil bleibt im Gegner stecken (Physik-Test, Runde 40), bis er
+            // fällt - der getroffene Pfeil verschwindet, der Schaft bleibt sichtbar
+            if (TUNING.physikTest && pr.arrow && !pr.pierce && e.hp > 0) {
+              const a = Math.atan2(pr.vy, pr.vx);
+              const tief = Math.min(e.r, e.r * 0.5 + 4);
+              (e.steckPfeile ??= []).push({ rx: Math.cos(a) * tief, ry: Math.sin(a) * tief, ang: a });
+              if (e.steckPfeile.length > 6) e.steckPfeile.shift();
+            }
             this.onPlayerProjectileHit(pr, e);
             break;
           }
@@ -2466,6 +2486,16 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
     for (const e of this.enemies) {
       if (e.versteckt) continue;
+      // Steckende Pfeile im Körper (Physik-Test, Runde 40) - bleiben bis zum Tod
+      if (e.steckPfeile) {
+        for (const sp of e.steckPfeile) {
+          const bx = e.x + sp.rx, by = e.y + sp.ry;
+          g.lineStyle(2, 0xd8d0b8, 1);
+          g.lineBetween(bx - Math.cos(sp.ang) * 7, by - Math.sin(sp.ang) * 7, bx, by);
+          g.fillStyle(0x6a5a3a, 1);
+          g.fillCircle(bx - Math.cos(sp.ang) * 7, by - Math.sin(sp.ang) * 7, 1.5);
+        }
+      }
       if (e.windup > 0) {
         g.lineStyle(2.5, 0xe14632, 0.35 + 0.5 * Math.abs(Math.sin(time * 26)));
         g.strokeCircle(e.x, e.y, e.r + 5);
