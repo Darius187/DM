@@ -6,6 +6,7 @@ import Phaser from 'phaser';
 import { SpriteProvider } from '../gfx/SpriteProvider';
 import { SoundProvider } from '../gfx/SoundProvider';
 import { spielerFigur, type Dir } from '../gfx/fallbackArt';
+import { HELD_SKALA } from '../data/helden';
 import { EffectSystem } from './effects';
 import { Enemy, angleToDir, type EnemyHost } from './Enemy';
 import {
@@ -117,9 +118,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.album = { kills: {}, champions: [], unikate: [], notizen: [] };
     this.albumPanel = null;
     this.playerSprite = this.add.sprite(startX, startY, '__DEFAULT').setDepth(startY);
-    this.zeichneHeld(0, 0);
-    // Held-Sprite des Autors wirkt sonst winzig neben den Figuren (Runde 17)
-    if (this.textures.exists('hs_spieler_unten_1')) this.playerSprite.setScale(1.35);
+    this.zeichneHeld(0, 0); // setzt Textur UND Skala (Held bzw. Hot-Swap)
     this.overlay = this.add.graphics().setDepth(2600);
     this.pickups = new PickupSystem(this, this.provider);
     this.panels = new UIPanels(this, this.provider, this.sfx, () => this.p);
@@ -2282,6 +2281,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // falls der Autor ein KI-Paket einschleust. Kein statischer Ritter mehr.
   protected zeichneHeld(dir: Dir, step: number): void {
     this.provider.applyFigure(this.playerSprite, this.heldFigur(), dir, step);
+    // 64px-Held kleiner darstellen; echte Hot-Swap-Sprites des Autors größer.
+    // (Hier gesetzt, damit auch nach der Todes-Animation die Skala stimmt.)
+    this.playerSprite.setScale(this.textures.exists('hs_spieler_unten_1') ? 1.35 : HELD_SKALA);
   }
 
   // Sprites und Overlay (Ringe, Balken, Telegraphen) zeichnen

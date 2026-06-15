@@ -5,9 +5,11 @@
 import Phaser from 'phaser';
 import gfxConfig from '../data/gfx.json';
 import { drawHumanoid, drawQuadruped, drawChicken, FIGURES, SPRITE, TILE, type Dir, type FigureSpec, type QuadSpec } from './fallbackArt';
+import { drawHeld, HELD_CELL } from './heldArt';
 import { drawItemIcon, iconKey, ICON_SIZE } from './itemIcons';
 import { drawTileArt, drawObjectArt, drawBreakable } from './tileArt';
 import type { CryptTheme } from '../data/krypta';
+import type { HeldTier } from '../data/helden';
 import type { Item } from '../data/types';
 
 const DIR_NAMES = gfxConfig.directions; // ['unten','links','rechts','oben']
@@ -44,8 +46,39 @@ export class SpriteProvider {
       if (m) hit = versuch(m[1]);
     }
     if (hit) return hit;
+    // Held in hoher Auflösung (Runde 37): eigene, detaillierte 64px-Figur
+    const held = /^spieler_(stoff|leder|kette|platte)$/.exec(name);
+    if (held) {
+      this.ensureHeldFigure(held[1] as HeldTier);
+      return { key: `held_${held[1]}`, frame: `d${dir}f${step % 4}` };
+    }
     this.ensureFallbackFigure(name);
     return { key: `fig_${name}`, frame: `d${dir}f${step % 4}` };
+  }
+
+  // Detaillierte Helden-Figur (Runde 37): 64px-Zellen, 4 Richtungen x 4 Schritte
+  private ensureHeldFigure(tier: HeldTier): void {
+    const key = `held_${tier}`;
+    if (this.tex.exists(key)) return;
+    const C = HELD_CELL;
+    const canvas = document.createElement('canvas');
+    canvas.width = C * 4;
+    canvas.height = C * 4;
+    const ctx = canvas.getContext('2d')!;
+    for (let dir = 0 as Dir; dir < 4; dir++) {
+      for (let frame = 0; frame < 4; frame++) {
+        ctx.save();
+        ctx.translate(frame * C, dir * C);
+        drawHeld(ctx, tier, dir as Dir, frame);
+        ctx.restore();
+      }
+    }
+    const t = this.tex.addCanvas(key, canvas)!;
+    for (let dir = 0; dir < 4; dir++) {
+      for (let frame = 0; frame < 4; frame++) {
+        t.add(`d${dir}f${frame}`, 0, frame * C, dir * C, C, C);
+      }
+    }
   }
 
   // Sprite-Textur setzen (eigener Mini-Animator, einheitlich für beide Quellen)

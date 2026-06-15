@@ -10,6 +10,10 @@ export const HELD = {
 
 export type HeldTier = 'stoff' | 'leder' | 'kette' | 'platte';
 
+// Anzeige-Skala der detaillierten 64px-Held-Figur (Runde 37): on-screen ~40px,
+// etwas heldenhafter als das 32px-Dorfvolk. In einer Zeile justierbar.
+export const HELD_SKALA = 0.78;
+
 // Ruestungswert (oder null = nichts getragen) -> sichtbare Stufe.
 // Jede getragene Ruestung zeigt mindestens Leder, damit man den Wechsel sieht.
 export function heldTier(ruestwert: number | null): HeldTier {
