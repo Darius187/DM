@@ -43,6 +43,28 @@ export class EffectSystem {
     if (this.particles.length > 400) this.particles.splice(0, this.particles.length - 400);
   }
 
+  // Fortgeschritten (Runde 40): wuchtiger Feuerstoß - heller Blitz, Flammen-
+  // und Glutpartikel in mehreren Schichten. Für Feuerwand/-walze/-regen, damit
+  // die Feuerzauber feurig leuchten statt nur ein paar Funken zu werfen.
+  feuerStoss(x: number, y: number, wucht = 1): void {
+    this.flash(x, y - 2, 13 * wucht, 0xf0902a);
+    this.burst(x, y - 2, 0xe8641a, Math.round(10 * wucht), 190 * wucht);
+    this.burst(x, y - 2, 0xf8d060, Math.round(7 * wucht), 130 * wucht);
+    this.burst(x, y, 0xd02818, Math.round(4 * wucht), 90 * wucht); // dunkle Glut
+    this.flames(x, y, Math.round(3 * wucht));
+  }
+
+  // Lodernde Einzelflammen, die kurz nach oben züngeln (Top-Down-Andeutung)
+  private flames(x: number, y: number, n: number): void {
+    for (let i = 0; i < n; i++) {
+      this.particles.push({
+        x: x + (Math.random() * 8 - 4), y: y + (Math.random() * 4 - 2),
+        vx: Math.random() * 18 - 9, vy: -26 - Math.random() * 22,
+        life: 0.3 + Math.random() * 0.25, col: i % 2 ? 0xf8c850 : 0xe8641a, sz: 2 + Math.random() * 2,
+      });
+    }
+  }
+
   smoke(x: number, y: number): void {
     this.particles.push({
       x: x + (Math.random() * 4 - 2), y,

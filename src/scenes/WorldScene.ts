@@ -1512,7 +1512,7 @@ export class WorldScene extends CombatScene {
     // Gegner (NG+ macht alle zäher; Champions sind die Minibosse der Ebene)
     const tiefenBonus = this.flags.ngPlus ? 3 : 0;
     if (a.geleert) {
-      this.logMsg('Totenstill - du hast hier aufgeräumt. Erst dein Tod weckt die Tiefe neu.', '');
+      this.logMsg('Totenstill - du hast hier aufgeräumt. Hier bleibt es ruhig.', '');
     }
     for (const sp of a.geleert ? [] : a.enemySpawns) {
       const e = this.spawnEnemy(sp.type, a.depth + tiefenBonus, sp.x, sp.y, sp.elite);
@@ -3877,9 +3877,10 @@ export class WorldScene extends CombatScene {
     this.p.mana = this.p.stats.maxmana;
     this.playerDead = false;
     this.tode++;
-    // Der Tod weckt die Tiefe: alle leergeräumten Ebenen erwachen neu
-    // (Runde 26 - vorher kehrten Gegner bei JEDEM Betreten zurück)
-    for (const a of this.areas.values()) a.geleert = false;
+    // Geleerte Ebenen bleiben geleert - AUCH nach dem Tod (Autorwunsch, mehrfach
+    // bekräftigt Runde 40: "ich bin gestorben und Ebene 1 war wieder voller
+    // Gegner, das will ich nicht"). Der frühere Tod-Reset (alle geleert=false)
+    // ist daher entfernt.
     // Layout, Minimap und aufgedeckte Treppen BLEIBEN erhalten (Runde 5)
     // Auferstehung auf dem Friedhof neben der Kirche (Feedback-Runde 8):
     // etwas Gutes wacht über Ravensmoor und schickt dich zurück
@@ -4234,6 +4235,15 @@ export class WorldScene extends CombatScene {
         if (sx < -120 || sy < -120 || sx > this.scale.width + 120 || sy > this.scale.height + 120) continue;
         this.eraseLight(sx, sy, 70 * zm);
         warmIdx = this.placeWarm(warmIdx, pr.x, pr.y, 58, 0.55, pr.fire ? 0xe8842a : 0xb06ae8);
+      }
+      // Feuerzauber-Lichter (Runde 40): Feuerwand/-walze/-regen lodern orange
+      const flackerF = 1 + Math.sin(time * 17) * 0.08;
+      for (const fl of this.feuerLichter) {
+        const sx = (fl.x - cam.worldView.x) * zm, sy = (fl.y - cam.worldView.y) * zm;
+        if (sx < -140 || sy < -140 || sx > this.scale.width + 140 || sy > this.scale.height + 140) continue;
+        const p2 = Phaser.Math.Clamp(fl.t / fl.maxT, 0, 1);
+        this.eraseLight(sx, sy - 4 * zm, fl.r * (0.7 + 0.3 * p2) * flackerF * zm);
+        warmIdx = this.placeWarm(warmIdx, fl.x, fl.y - 4, fl.r * 0.82, 0.6 * p2 * flackerF, 0xe8842a);
       }
     }
     // Farbige Magie-Lichter in der Krypta (Runde 31): Kerzenschreine
@@ -4642,6 +4652,14 @@ export class WorldScene extends CombatScene {
 
   private uiCam!: Phaser.Cameras.Scene2D.Camera;
 
+  // Temporäre Feuerlichter (Runde 40): Feuerzauber lassen den dunklen Gang
+  // orange aufleuchten. Werden in renderLight verbraucht, in update gealtert.
+  private feuerLichter: Array<{ x: number; y: number; r: number; t: number; maxT: number }> = [];
+  protected override feuerlicht(x: number, y: number, r: number, dauerS: number): void {
+    this.feuerLichter.push({ x, y, r, t: dauerS, maxT: dauerS });
+    if (this.feuerLichter.length > 80) this.feuerLichter.splice(0, this.feuerLichter.length - 80);
+  }
+
   // Fenstergröße/Vollbild geändert (Runde 40): Kameras + Lichtschicht auf die
   // neue Größe ziehen und alle OFFENEN, mittig gebauten Fenster neu aufbauen,
   // damit sie wieder zentriert/passend sitzen (Charakterfenster, Pause, Editor,
@@ -4686,6 +4704,10 @@ export class WorldScene extends CombatScene {
     // Frame hinterher und griff kaum
     this.updateSchiebephysik(dt);
     this.updateCombat(dt);
+    if (this.feuerLichter.length) {
+      for (const fl of this.feuerLichter) fl.t -= dt;
+      this.feuerLichter = this.feuerLichter.filter((fl) => fl.t > 0);
+    }
     this.renderRegen(dt);
     this.renderOrtsname();
     this.renderHover();

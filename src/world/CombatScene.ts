@@ -1615,9 +1615,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
           // Flamme stürzt kurz vor dem Einschlag herab und landet im Ring
           this.time.delayedCall(Math.max(0, treffMs - fallS * 1000), () => this.fx.flameDrop(ex, ey, fallS));
           this.time.delayedCall(treffMs, () => {
-            this.fx.burst(ex, ey, 0xe8641a, 20, 220);
-            this.fx.burst(ex, ey, 0xf8d878, 10, 130);
-            this.fx.flash(ex, ey, 16, 0xf0902a);
+            this.fx.feuerStoss(ex, ey, 1.4);
+            this.feuerlicht(ex, ey, 78, 0.5);
             this.sfx.play('treffer_fleisch', 0.5);
             this.shake(2);
             for (const e of [...this.enemies]) {
@@ -1695,7 +1694,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         const ticks = Math.max(1, Math.round(fx.dauerS / fx.tickS));
         for (let t2 = 0; t2 < ticks; t2++) {
           this.time.delayedCall(t2 * fx.tickS * 1000, () => {
-            for (const s of segs) { this.fx.burst(s.x, s.y - 4, 0xe8842a, 4, 70); this.fx.burst(s.x, s.y - 6, 0xf8d878, 2, 40); }
+            for (const s of segs) { this.fx.feuerStoss(s.x, s.y - 4, 0.8); this.feuerlicht(s.x, s.y, 60, 0.3); }
             for (const e of [...this.enemies]) {
               if (segs.some((s) => Math.hypot(e.x - s.x, e.y - s.y) < fx.breite + e.r)) this.damageEnemy(e, Math.round(dmg), 0, 0, '#f0a868', false);
             }
@@ -1715,8 +1714,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
           this.time.delayedCall(s * fx.schrittMs, () => {
             const dist = ((s + 1) / fx.schritte) * fx.distance;
             const cx = this.px + Math.cos(ang) * dist, cy = this.py + Math.sin(ang) * dist;
-            this.fx.burst(cx, cy, 0xe8842a, 8, 110);
-            this.fx.burst(cx, cy, 0xf8d878, 4, 70);
+            this.fx.feuerStoss(cx, cy, 1.2);
+            this.feuerlicht(cx, cy, 80, 0.4);
             for (const e of [...this.enemies]) {
               if (hitIds.has(e.id)) continue;
               if (Math.hypot(e.x - cx, e.y - cy) < fx.breite / 2 + e.r) {
@@ -2213,6 +2212,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   }
 
   protected onMaterialPickup(_pk: Pickup): void { /* Welt verbucht Material */ }
+
+  // Temporäres Feuerlicht (Runde 40): Feuerzauber erhellen den dunklen Gang
+  // kurz orange. In der Welt überschrieben (Lichtschicht), in der Arena No-Op.
+  protected feuerlicht(_x: number, _y: number, _r: number, _dauerS: number): void { /* Welt */ }
 
   private movePlayer(dx: number, dy: number): void {
     const r = PLAYER.radius;
