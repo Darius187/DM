@@ -44,13 +44,22 @@ const SLOT_KAT_FARBE: Record<SlotKat, number> = {
 const ORB_R = 42;
 // Getrennte Leisten (Runde 20): Tastatur-Slots 1-6/9/0/R/T und Maus-Slots M1-M5
 const KB_SLOTS = 10;
+const MAUS_SLOTS = 5;
 const SLOT_W = 46;
+const LEISTEN_LUECKE = 30; // Abstand zwischen Maus- und Tastenleiste
 
-// Standard-Anker der Maus-Leiste: rechts neben der Tastenleiste, aber nie
-// aus dem Bild geschoben (Fenstergröße ist frei). Auch der UI-Verschiebe-
-// Griff im Entwicklungskasten nutzt diesen Anker.
+// Beide Leisten bilden EINEN zentrierten Block (Runde 40, Autorwunsch
+// "mittig, skaliert nicht verrutschen"): Maus-Leiste links, Tastenleiste
+// rechts. Anker = linke Kante des Blocks, rechnet sich aus w/2 - bleibt also
+// auf jeder Fenstergröße zentriert. mausLeisteAnkerX wird auch vom
+// UI-Verschiebe-Griff genutzt.
+const BLOCK_W = MAUS_SLOTS * SLOT_W + LEISTEN_LUECKE + KB_SLOTS * SLOT_W;
 export function mausLeisteAnkerX(w: number): number {
-  return Math.min(w / 2 + (KB_SLOTS * SLOT_W) / 2 + 30, w - 5 * SLOT_W - 36);
+  return Math.round(w / 2 - BLOCK_W / 2);
+}
+// Mitte der Tastenleiste (für den UI-Verschiebe-Griff im Entwicklungskasten)
+export function tastenLeisteMitteX(w: number): number {
+  return mausLeisteAnkerX(w) + MAUS_SLOTS * SLOT_W + LEISTEN_LUECKE + (KB_SLOTS * SLOT_W) / 2;
 }
 
 export class Hud {
@@ -198,12 +207,14 @@ export class Hud {
 
   private slotX(i: number): number {
     const w = this.scene.scale.width;
+    const links = mausLeisteAnkerX(w);
     if (i < KB_SLOTS) {
-      const total = KB_SLOTS * SLOT_W;
-      return w / 2 - total / 2 + i * SLOT_W + 21 + getSettings().ui.hotbar.x;
+      // Tastenleiste sitzt RECHTS im zentrierten Block
+      return links + MAUS_SLOTS * SLOT_W + LEISTEN_LUECKE + i * SLOT_W + 21 + getSettings().ui.hotbar.x;
     }
+    // Maus-Leiste sitzt LINKS im Block
     const j = i - KB_SLOTS;
-    return mausLeisteAnkerX(w) + j * SLOT_W + 21 + getSettings().ui.mausleiste.x;
+    return links + j * SLOT_W + 21 + getSettings().ui.mausleiste.x;
   }
 
   private slotY(i: number): number {

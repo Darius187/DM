@@ -27,7 +27,7 @@ import type { EnemyTypeId, WeaponClass } from '../data/types';
 import { ABILITY_FX, ABILITIES, LORE_XP, ROLLEN_ZAUBER } from '../data/balancing';
 import { PickupSystem, AUTO_PICKUP, type Pickup } from './Pickups';
 import { fixUiScroll } from '../ui/dialog';
-import { mausLeisteAnkerX } from '../ui/hud';
+import { mausLeisteAnkerX, tastenLeisteMitteX } from '../ui/hud';
 import { TouchControls, isTouchDevice, type TouchHost } from '../ui/touch';
 import { UIPanels } from '../ui/panels';
 import { rollGear, rollGem } from '../logic/loot';
@@ -360,7 +360,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     c.add(reset);
     // Anker: Standardposition jedes UI-Teils; der Versatz ist die Differenz
     const teile: Array<[keyof typeof ui, string, number, number]> = [
-      ['hotbar', 'TASTEN-LEISTE', w / 2, h - 66],
+      ['hotbar', 'TASTEN-LEISTE', tastenLeisteMitteX(w), h - 66],
       ['mausleiste', 'MAUS-LEISTE', mausLeisteAnkerX(w) + 115, h - 66],
       ['dialog', 'DIALOGRAHMEN', w / 2, h - 220],
       ['log', 'MELDUNGEN', w / 2, h - 150],
