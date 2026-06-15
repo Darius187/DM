@@ -8,6 +8,7 @@ import {
   RARITY_ROLL, GEAR_KIND_ROLL, SOCKET_CHANCE, PRICE, ARROW_STACK, SCHILDE,
 } from '../data/items';
 import type { AffixDef, AffixRoll, GemItem, Item, Rarity } from '../data/types';
+import { LIGHT_ATTACK } from '../data/kampf';
 import { type Rng, defaultRng, ri, pick } from './rng';
 
 function rollAffixes(rng: Rng, n: number, pool: ReadonlyArray<AffixDef>): AffixRoll[] {
@@ -114,7 +115,7 @@ export function itemStatLine(it: Item, mitBoni = true): string {
   if (it.kind === 'ring') return stufe + it.boni.map((b) => b.t.replace('#', String(b.v))).join(' · ');
   const up = it.upgrade ? ` (+${it.upgrade})` : '';
   if (it.kind === 'schild') return `${stufe}${effectiveVal(it)} Rüstung${up} · voller Block (30%/0% Durchschlag)`;
-  let s = it.kind === 'weapon' ? `${stufe}${effectiveVal(it)} Schaden${up}` : `${stufe}${effectiveVal(it)} Rüstung${up}`;
+  let s = it.kind === 'weapon' ? `${stufe}${weaponDamageRange(it)} Schaden${up}` : `${stufe}${effectiveVal(it)} Rüstung${up}`;
   if (mitBoni) for (const b of it.boni) s += ' · ' + b.t.replace('#', String(b.v));
   if (it.sock) s += it.sock.gem ? ` · ◆ ${it.sock.gem.name} (+${it.sock.gem.power} ${ { feuer: 'Feuer', eis: 'Eis', schatten: 'Schatten' }[it.sock.gem.elem] })` : ' · ◇ Leere Fassung';
   return s;
@@ -124,4 +125,14 @@ export function itemStatLine(it: Item, mitBoni = true): string {
 export function effectiveVal(it: Item): number {
   const perStufe = it.kind === 'weapon' ? 2 : 1;
   return it.val + (it.upgrade ?? 0) * perStufe;
+}
+
+// Schadens-Spanne einer Waffe (Runde 40, Autorwunsch "Schaden von bis wie im
+// RPG"): der Treffer würfelt zwischen den Varianz-Grenzen des leichten Hiebs.
+// "min - max" für die Anzeige.
+export function weaponDamageRange(it: Item): string {
+  const base = effectiveVal(it);
+  const min = Math.max(1, Math.round(base * LIGHT_ATTACK.dmgVarianceMin));
+  const max = Math.max(min, Math.round(base * LIGHT_ATTACK.dmgVarianceMax));
+  return `${min}-${max}`;
 }

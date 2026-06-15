@@ -4204,6 +4204,17 @@ export class WorldScene extends CombatScene {
         warmIdx = this.placeWarm(warmIdx, wx, wy, 60, 0.5 * fa * flick, 0xffce7a);
       }
     }
+    // Glühende Geschosse werfen Licht (Runde 40): Feuerball orange, Zauberstab-
+    // Arkankugel violett - sie erhellen den Gang im Flug (Autorwunsch "Effekt Licht")
+    if ((this.area.dark || nachtFaktor > 0.3) && !fow) {
+      for (const pr of this.projectiles) {
+        if (!pr.fire && !pr.magie) continue;
+        const sx = (pr.x - cam.worldView.x) * zm, sy = (pr.y - cam.worldView.y) * zm;
+        if (sx < -120 || sy < -120 || sx > this.scale.width + 120 || sy > this.scale.height + 120) continue;
+        this.eraseLight(sx, sy, 70 * zm);
+        warmIdx = this.placeWarm(warmIdx, pr.x, pr.y, 58, 0.55, pr.fire ? 0xe8842a : 0xb06ae8);
+      }
+    }
     // Farbige Magie-Lichter in der Krypta (Runde 31): Kerzenschreine
     // bläulich, Altäre violett, Blutbrunnen rot - pulsierend
     if (this.area.dark && !fow) {

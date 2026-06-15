@@ -14,7 +14,7 @@ export const PLAYER_BASE = {
 // Runde 38: Stufen kamen zu schnell (fast Stufe 5 auf Ebene 1). Steilere
 // Kurve -> Aufstiege fühlen sich verdient an. Über Gegner-XP fein justierbar.
 export const XP = {
-  firstLevel: 110,
+  firstLevel: 190,
   exponent: 1.55,
   levelHealPct: 0.5, // Stufenaufstieg heilt 50% max. HP, Mana voll
 } as const;

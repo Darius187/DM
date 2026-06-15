@@ -77,12 +77,13 @@ export const WEAPON_MOVESETS = {
   axt:     { comboLength: 2, sweep360: true, speedMult: 0.9 },   // 3. Eingabe = Rundumschlag
   stange:  { comboLength: 1, thrust: true, range: 96, arc: 0.35, knockback: 14, speedMult: 0.95 },
   wucht:   { comboLength: 1, overhead: true, aoeRadius: 40, postureDmgMult: 2.0, speedMult: 0.7, miniShake: true },
-  // Runde 27: Mittelweg zwischen dem alten (zu flotten) und dem zuletzt
-  // genervten Bogen - schnelleres Spannen, dafür etwas weniger Spitze
-  bogen:   { drawTimeMaxS: 0.95, dmgMultFull: 1.7, projSpeed: 440, speedMult: 1.0 },
+  // Runde 27/40: Bogen-Flugtempo auf Feuerball-Niveau gebracht (Autorwunsch:
+  // "Schussgeschwindigkeit ungefähr wie der Feuerball" = 390)
+  bogen:   { drawTimeMaxS: 0.95, dmgMultFull: 1.7, projSpeed: 390, speedMult: 1.0 },
   // Zauberstab: manafreies Arkangeschoss, skaliert mit der Zauberei-Schule,
-  // und verstärkt gewirkte Zauber (halber Stabwert als Bonus)
-  stab:    { projSpeed: 360, dmgMult: 0.75, spellBonusFaktor: 0.5, zaubereiBonusJeStufe: 0.05 },
+  // und verstärkt gewirkte Zauber (halber Stabwert als Bonus). Flugtempo wie
+  // der Feuerball (Runde 40), das Geschoss glüht und wirft Licht.
+  stab:    { projSpeed: 390, dmgMult: 0.75, spellBonusFaktor: 0.5, zaubereiBonusJeStufe: 0.05 },
 } as const;
 
 // Gedeckter Schlag: Angriff aus dem Block heraus (Feedback-Runde 1) -

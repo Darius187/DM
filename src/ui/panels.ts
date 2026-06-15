@@ -6,7 +6,7 @@ import Phaser from 'phaser';
 import { getSettings, saveSettings } from '../logic/settings';
 import type { Item, GemItem, Rarity } from '../data/types';
 import { RARITY_COLORS, RARITY_NAMES } from '../data/items';
-import { itemStatLine } from '../logic/loot';
+import { itemStatLine, weaponDamageRange } from '../logic/loot';
 import { recalc, weaponGem, type PlayerState } from '../logic/playerState';
 import { calcStats, type Stats } from '../logic/progression';
 import { MELDUNGEN } from '../data/texte';
@@ -252,8 +252,11 @@ export class UIPanels {
     let wy = 200;
     c.add(this.scene.add.text(14, wy - 18, 'WERTE', { fontFamily: 'serif', fontSize: '12px', color: GOLD, letterSpacing: 2 }));
     c.add(this.scene.add.rectangle(12, wy - 4, w - 12, 78, 0x0e0a06, 0.6).setOrigin(0).setStrokeStyle(1, LINE));
+    // Schaden als Spanne (Runde 40): ein Treffer würfelt zwischen min und max
+    const dmgMin = Math.max(1, Math.round(p.stats.dmg * 0.85));
+    const dmgMax = Math.max(dmgMin, Math.round(p.stats.dmg * 1.2));
     const werte: Array<[string, string]> = [
-      ['Schaden', String(p.stats.dmg)], ['Rüstung', String(p.stats.armor)],
+      ['Schaden', `${dmgMin}-${dmgMax}`], ['Rüstung', String(p.stats.armor)],
       ['Leben', `${Math.ceil(p.hp)}/${p.stats.maxhp}`], ['Mana', `${Math.ceil(p.mana)}/${p.stats.maxmana}`],
       ['Lebensraub', String(p.stats.leech)], ['Lichtradius', `+${p.stats.licht}`],
     ];
@@ -440,7 +443,7 @@ export class UIPanels {
       fontFamily: 'serif', fontSize: '13px', color: RARITY_COLORS[rar],
     }));
     const typ = it.kind === 'weapon' ? KLASSEN_NAMEN[it.weaponClass ?? 'schwert'] : TYP_NAMEN[it.kind] ?? '';
-    const wert = it.kind === 'weapon' ? `${it.val + (it.upgrade ?? 0) * 2} Schaden` : (it.kind === 'armor' || it.kind === 'schild') ? `${it.val + (it.upgrade ?? 0)} Rüstung` : '';
+    const wert = it.kind === 'weapon' ? `${weaponDamageRange(it)} Schaden` : (it.kind === 'armor' || it.kind === 'schild') ? `${it.val + (it.upgrade ?? 0)} Rüstung` : '';
     const grund = this.scene.add.text(x0 + 40, y + 21, `${typ}${wert ? ' · ' + wert : ''}`, {
       fontFamily: 'serif', fontSize: '10.5px', color: '#9a8c6e',
     });

@@ -36,7 +36,7 @@ import { NOTIZEN } from '../data/texte';
 
 export interface Projectile {
   x: number; y: number; vx: number; vy: number; r: number; dmg: number;
-  from: 'player' | 'enemy'; col: string; fire?: boolean; pierce?: boolean; arrow?: boolean;
+  from: 'player' | 'enemy'; col: string; fire?: boolean; magie?: boolean; pierce?: boolean; arrow?: boolean;
   hitIds?: Set<number>; dead?: boolean;
   // Pfeil-Wand-Physik (Runde 40, Physik-Test): steckt im Mauerwerk oder prallt ab
   steckt?: boolean; steckT?: number; praller?: number; steckAng?: number;
@@ -1012,7 +1012,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.projectiles.push({
       x: this.px + Math.cos(ang) * 14, y: this.py + Math.sin(ang) * 14,
       vx: Math.cos(ang) * ms.projSpeed, vy: Math.sin(ang) * ms.projSpeed,
-      r: 5, dmg, from: 'player', col: '#b06ae8',
+      r: 4, dmg, from: 'player', col: '#b06ae8', magie: true, // glühende Arkankugel mit Licht (R40)
     });
     this.fx.burst(this.px + Math.cos(ang) * 18, this.py + Math.sin(ang) * 18, 0xb06ae8, 4, 80);
     this.sfx.play('schatten_fluestern', 0.8);
@@ -1165,8 +1165,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     e.onHurt();
     this.fx.float(e.x + (Math.random() * 12 - 6), e.y - e.r - 8, String(dmg), col ?? '#e8dcc0');
     if (kx || ky) {
-      if (TUNING.physikTest && !e.boss) {
-        // Physik-Test: Rückstoß als Impuls - der Gegner gleitet/prallt weg
+      // Nur kräftige Treffer (Finisher/Schwer) schleudern den Gegner im Physik-
+      // Test als Impuls weg - sonst hielt das Dauer-Wegrutschen die Gegner im
+      // Gleit-Zustand fest und sie kamen NIE zum Schlag (Autorbug Runde 40:
+      // "ich drücke nur die linke Maustaste und die Gegner schlagen nicht zu").
+      // Leichte Hiebe geben nur einen kleinen Schubs - die KI läuft weiter.
+      const stark = Math.hypot(kx, ky) >= 10;
+      if (TUNING.physikTest && !e.boss && stark) {
         e.kvx = Phaser.Math.Clamp(e.kvx + kx * PHYSIK.gegnerStoss, -PHYSIK.gegnerKvMax, PHYSIK.gegnerKvMax);
         e.kvy = Phaser.Math.Clamp(e.kvy + ky * PHYSIK.gegnerStoss, -PHYSIK.gegnerKvMax, PHYSIK.gegnerKvMax);
       } else {
@@ -2545,28 +2550,42 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Projektile
     for (const pr of this.projectiles) {
       if (pr.arrow) {
-        // Steckender Pfeil behält seinen Einschlagwinkel und verblasst zum Ende
         const a = pr.steckt ? (pr.steckAng ?? 0) : Math.atan2(pr.vy, pr.vx);
-        const alpha = pr.steckt ? Phaser.Math.Clamp((pr.steckT ?? 0) / 1.2, 0.2, 1) : 1;
-        g.lineStyle(2, pr.steckt ? 0xb8b09a : 0xd8d0b8, alpha);
-        g.lineBetween(pr.x - Math.cos(a) * 7, pr.y - Math.sin(a) * 7, pr.x + Math.cos(a) * 7, pr.y + Math.sin(a) * 7);
-        if (pr.steckt) { g.fillStyle(0x6a5a3a, alpha); g.fillCircle(pr.x + Math.cos(a) * 7, pr.y + Math.sin(a) * 7, 1.6); }
-      } else {
-        if (pr.fire) {
-          // Runde 31: echtes Glühen - außen weiter Schein, innen heller Kern
-          const flacker = Math.sin(this.time.now / 38) * 1.5;
-          g.fillStyle(0xd85a18, 0.14);
-          g.fillCircle(pr.x, pr.y, pr.r + 11 + flacker);
-          g.fillStyle(0xe8842a, 0.32);
-          g.fillCircle(pr.x, pr.y, pr.r + 5 + flacker * 0.5);
-          g.fillStyle(cssCol(pr.col), 1);
-          g.fillCircle(pr.x, pr.y, pr.r);
-          g.fillStyle(0xffe2a0, 0.9);
-          g.fillCircle(pr.x, pr.y, Math.max(1.5, pr.r * 0.45));
+        const ca = Math.cos(a), sa = Math.sin(a), nx = -sa, ny = ca;
+        if (pr.steckt) {
+          // Steckender Pfeil: Schaft mit Nocke, verblasst zum Ende
+          const alpha = Phaser.Math.Clamp((pr.steckT ?? 0) / 1.2, 0.2, 1);
+          g.lineStyle(2, 0xb8b09a, alpha);
+          g.lineBetween(pr.x - ca * 9, pr.y - sa * 9, pr.x + ca * 3, pr.y + sa * 3);
+          g.fillStyle(0x6a5a3a, alpha); g.fillCircle(pr.x - ca * 9, pr.y - sa * 9, 1.6);
         } else {
-          g.fillStyle(cssCol(pr.col), 1);
-          g.fillCircle(pr.x, pr.y, pr.r);
+          // Fliegender Pfeil mit echter SPITZE (Autorwunsch R40: keine Kugel)
+          const hx = pr.x + ca * 7, hy = pr.y + sa * 7;   // Spitze vorne
+          const tx = pr.x - ca * 8, ty = pr.y - sa * 8;   // Schaftende
+          g.lineStyle(1.8, 0x9a8758, 1);                  // Holzschaft
+          g.lineBetween(tx, ty, pr.x + ca * 2, pr.y + sa * 2);
+          g.fillStyle(0xe8e2d0, 1);                       // Eisenspitze (Dreieck)
+          g.fillTriangle(hx, hy, pr.x + nx * 2.8, pr.y + ny * 2.8, pr.x - nx * 2.8, pr.y - ny * 2.8);
+          g.lineStyle(1.3, 0xb04030, 0.95);               // Befiederung hinten
+          g.lineBetween(tx, ty, tx - ca * 2 + nx * 2.6, ty - sa * 2 + ny * 2.6);
+          g.lineBetween(tx, ty, tx - ca * 2 - nx * 2.6, ty - sa * 2 - ny * 2.6);
         }
+      } else if (pr.fire || pr.magie) {
+        // Glühendes Geschoss (Feuerball ODER Zauberstab-Arkankugel, R40):
+        // weicher Schein außen, heller Kern - der Lichtwurf kommt aus renderLight
+        const feuer = !!pr.fire;
+        const flacker = Math.sin(this.time.now / (feuer ? 38 : 44)) * 1.5;
+        g.fillStyle(feuer ? 0xd85a18 : 0x7a3ad0, 0.15);
+        g.fillCircle(pr.x, pr.y, pr.r + 11 + flacker);
+        g.fillStyle(feuer ? 0xe8842a : 0xb06ae8, 0.33);
+        g.fillCircle(pr.x, pr.y, pr.r + 5 + flacker * 0.5);
+        g.fillStyle(cssCol(pr.col), 1);
+        g.fillCircle(pr.x, pr.y, pr.r);
+        g.fillStyle(feuer ? 0xffe2a0 : 0xe6d0ff, 0.9);
+        g.fillCircle(pr.x, pr.y, Math.max(1.4, pr.r * 0.45));
+      } else {
+        g.fillStyle(cssCol(pr.col), 1);
+        g.fillCircle(pr.x, pr.y, pr.r);
       }
     }
 

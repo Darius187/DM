@@ -117,12 +117,13 @@ describe('gearPrice', () => {
 });
 
 describe('itemStatLine / effectiveVal', () => {
-  it('zeigt Schaden, Boni und Fassung an', () => {
+  it('zeigt Schaden als Spanne, Boni und Fassung an', () => {
     const it = {
       kind: 'weapon' as const, name: 'Langschwert', rarity: 2 as const, val: 14,
       boni: [{ k: 'hp' as const, v: 10, t: '+# Leben' }], sock: { gem: null },
     };
-    expect(itemStatLine(it)).toBe('14 Schaden · +10 Leben · ◇ Leere Fassung');
+    // Schaden als von-bis (Runde 40): 14 * 0,85..1,2 = 12-17
+    expect(itemStatLine(it)).toBe('12-17 Schaden · +10 Leben · ◇ Leere Fassung');
   });
 
   it('Schmiede-Verbesserung erhöht Waffenschaden um 2 je Stufe', () => {
