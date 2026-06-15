@@ -1605,11 +1605,11 @@ export class WorldScene extends CombatScene {
     // F10 "HÄUSER JUSTIEREN" verschiebt sie, Werte überleben im Browser
     if (this.hausSpriteAn && a.hausPlaetze) {
       const just = this.hausJustierung();
-      a.hausPlaetze.forEach((hp, i) => {
-        // Hochgeladenes Haus-Sprite bevorzugen, sonst DETAILLIERTES prozedurales
-        // Fachwerkhaus (Runde 40: ersetzt die schäbigen PNGs mit weißem Rand).
-        const upload = this.provider.tileKey('haus', i + 1, 0);
-        const key = upload.startsWith('hs_tile_haus') ? upload : this.hausProcKey(hp);
+      a.hausPlaetze.forEach((hp) => {
+        // IMMER das detaillierte prozedurale Fachwerkhaus (Runde 40: ersetzt die
+        // schäbigen haus*.png mit weißem Rand). Eine im Baukasten je Haus
+        // hochgeladene Grafik überschreibt es weiter unten via wendeHausBildAn.
+        const key = this.hausProcKey(hp);
         const breite = (hp.x1 - hp.x0 + 1) * TILE;
         const j = just[hp.id] ?? { dx: 0, dy: 0, skala: 1 };
         // Runde 24: die Grundfläche ist bereits um GANZE Kacheln verschoben
