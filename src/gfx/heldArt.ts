@@ -102,7 +102,9 @@ function rumpf(ctx: CanvasRenderingContext2D, p: Pal): void {
 
 function arm(ctx: CanvasRenderingContext2D, p: Pal, sx: number, vor: number, dunkel: boolean): void {
   rr(ctx, sx - 2.4, 26 + Math.max(0, -vor), 4.8, 13, 2.2, dunkel ? p.wamsS : p.wams);
-  ell(ctx, sx, 39 + vor * 0.5, 2.6, 2.6, p.haut); // Hand
+  // Hand als Lederhandschuh in Armfarbe (Autorwunsch R40): nicht mehr nackte
+  // Haut, sondern dieselbe Farbe wie der Ärmel, etwas abgedunkelt
+  ell(ctx, sx, 39 + vor * 0.5, 2.7, 2.7, shade(dunkel ? p.wamsS : p.wams, -10)); // Handschuh
 }
 
 function auge(ctx: CanvasRenderingContext2D, x: number, y: number): void {
