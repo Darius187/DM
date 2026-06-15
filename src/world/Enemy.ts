@@ -132,6 +132,15 @@ export class Enemy {
   versteckt = false;
   // Schildträger (Runde 11): blockt Treffer von vorn, weicht nicht zurück
   schild = false;
+  // Kampfbewusst (Runde 38): Monster gehen kurz in Deckung und parieren statt
+  // wegzuweichen - echter Schlagabtausch. Tiere (Wolf/Ratte) nicht.
+  kampfbewusst = false;
+  // Festhäng-Erkennung (Runde 38): kommt der Gegner trotz Annäherung kaum vom
+  // Fleck, schlägt er einen Bogen statt stur gegen das Hindernis zu drücken.
+  private letztX = 0;
+  private letztY = 0;
+  private hängtT = 0;
+  private umwegT = 0;
   // Bewaffnete Gefallene (Runde 35): sichtbare Waffen-Figur + Magie-Geschoss
   figurName?: string;
   magie = false;
@@ -189,6 +198,10 @@ export class Enemy {
     // werden später (beim Spawn) ohnehin auf 'front' gesetzt.
     const flinkTyp = type === 'schatten' || type === 'wolf' || type === 'ratte';
     this.rolle = flinkTyp || (type === 'skelett' && Math.random() < 0.5) ? 'flanke' : 'front';
+    // Monster sind kampfbewusst (parieren), Tiere und Fernkämpfer nicht.
+    const tier = type === 'wolf' || type === 'ratte';
+    this.kampfbewusst = !tier && !this.ranged;
+    this.letztX = x; this.letztY = y;
     this.atkCd = rnd(rng, 0, 1);
     this.shootCd = rnd(rng, 0, 1.5);
     this.wobble = rnd(rng, 0, 6.28);
@@ -269,18 +282,20 @@ export class Enemy {
       this.gatherCorpse(host, dt, d, ang);
       return;
     }
-    // Schild-Haltung: nahe am Spieler regelmäßig in Deckung gehen
-    if (this.schild) {
+    // Deckung/Parade (Runde 38): Schildträger UND kampfbewusste Monster gehen
+    // nahe am Spieler kurz in Deckung und parieren - Schildträger öfter/länger,
+    // Monster seltener/kürzer. Statt zurückzuweichen ein echter Schlagabtausch.
+    if (this.schild || this.kampfbewusst) {
       this.blockT = Math.max(0, this.blockT - dt);
       this.blockCd = Math.max(0, this.blockCd - dt);
-      if (this.blockCd === 0 && d < 90 && this.blockT === 0) {
-        this.blockT = 0.9 + Math.random() * 0.5;
-        this.blockCd = 2.5 + Math.random() * 2;
+      const nahGenug = d < this.r + host.playerR() + 26 * (TUNING.gegnerReichweite * this.reichweiteF);
+      if (this.blockCd === 0 && nahGenug && this.blockT === 0 && TUNING.gegnerCleverness >= 0.5) {
+        this.blockT = this.schild ? 0.9 + Math.random() * 0.5 : 0.4 + Math.random() * 0.3;
+        this.blockCd = this.schild ? 2.5 + Math.random() * 2 : 3.2 + Math.random() * 2.6;
       }
       if (this.blockT > 0) {
         // Deckung läuft ab und der Spieler steht dran: Gegenstoß (Runde 27)
-        if (this.blockT <= dt * 2 && d < this.r + host.playerR() + 22 * (TUNING.gegnerReichweite * this.reichweiteF) && this.windup <= 0
-          && TUNING.gegnerCleverness >= 0.5) {
+        if (this.blockT <= dt * 2 && nahGenug && this.windup <= 0 && TUNING.gegnerCleverness >= 0.5) {
           this.startPattern(host, 'hieb', 0.2);
         }
         return; // in Deckung: stehen, nicht angreifen
@@ -348,6 +363,17 @@ export class Enemy {
       this.moveBody(host, Math.cos(rw) * this.speed * 0.85 * slowF * dt, Math.sin(rw) * this.speed * 0.85 * slowF * dt);
       this.advanceStep(dt);
     } else if (d > this.r + host.playerR() + 6 + 14 * ((TUNING.gegnerReichweite * this.reichweiteF) - 1)) {
+      // Festhäng-Erkennung (Runde 38): kam der Gegner in ~0,3 s trotz
+      // Annäherung kaum vom Fleck (Regal/Ecke), schlägt er einen Bogen.
+      this.hängtT += dt;
+      if (this.hängtT > 0.3) {
+        if (Math.hypot(this.x - this.letztX, this.y - this.letztY) < 2.5 && this.umwegT <= 0) {
+          this.umwegT = 0.7;
+          this.orbitDir = Math.random() < 0.5 ? 1 : -1;
+          this.steuerWinkel = 0;
+        }
+        this.letztX = this.x; this.letztY = this.y; this.hängtT = 0;
+      }
       // Wolf darf den Sprung auch aus kurzer Distanz ansetzen
       if (this.type === 'wolf' && d < 120 && d > 50 && this.atkCd === 0 && Math.random() < 0.4) {
         this.startPattern(host, 'sprung');
@@ -369,7 +395,12 @@ export class Enemy {
           }
         }
       }
-      if (this.atkCd > 0 && d < 110) {
+      if (this.umwegT > 0) {
+        // hängt am Hindernis (Festhäng-Erkennung): seitlich ausweichen, um es
+        // zu umrunden, statt stur dagegen zu drücken (Runde 38)
+        this.umwegT -= dt;
+        this.laufe(host, ang + this.orbitDir * 1.5, this.speed * slowF, dt);
+      } else if (this.atkCd > 0 && d < 110) {
         // Erholzeit: nicht anstehen, sondern den Spieler umkreisen
         const oa = ang + this.orbitDir * 1.45;
         this.moveBody(host, Math.cos(oa) * this.speed * 0.55 * slowF * dt, Math.sin(oa) * this.speed * 0.55 * slowF * dt);

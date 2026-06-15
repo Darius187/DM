@@ -105,44 +105,50 @@ function arm(ctx: CanvasRenderingContext2D, p: Pal, sx: number, vor: number, dun
   ell(ctx, sx, 39 + vor * 0.5, 2.6, 2.6, p.haut); // Hand
 }
 
-// Runder Kopf + Kapuze/Helm; Gesicht je Blickrichtung
+function auge(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.fillStyle = '#241813';
+  ctx.beginPath(); ctx.ellipse(x, y, 1.25, 1.7, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+// Kopf: die Kapuze/der Helm bedeckt den ganzen Scheitel (KEIN kahler Kopf),
+// das Gesicht sitzt als kleinere Haut-Öffnung davor. Gesicht je Blickrichtung.
 function kopf(ctx: CanvasRenderingContext2D, p: Pal, dir: Dir): void {
   const cx = 32, cy = 15;
-  // Umhang-/Kapuzen-Schulterkragen hinter dem Kopf
-  poly(ctx, [[21, 26], [43, 26], [40, 21], [24, 21]], p.kapS);
-  // RUNDER Kopf
-  ell(ctx, cx, cy, 8.2, 9, p.haut);
-  ctx.fillStyle = p.hautS;                              // Wangenschatten rechts
-  ctx.beginPath(); ctx.ellipse(cx + 4, cy + 1, 4, 7, 0, 0, Math.PI * 2); ctx.fill();
-  ell(ctx, cx - 2.5, cy - 1.5, 3, 3.5, p.hautH);       // Stirnlicht
-  // Kapuze (oder Helm): runde Haube über Kopf, vorn offen
+  // Kapuzen-/Helmkragen auf den Schultern
+  poly(ctx, [[20, 27], [44, 27], [41, 20.5], [23, 20.5]], p.kapS);
+
+  // Haube/Helm als VOLLER Dom über dem Kopf (deckt den Scheitel komplett)
+  ctx.fillStyle = p.kap;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - 2, p.helm ? 9.5 : 11, p.helm ? 10.5 : 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = p.kapH; // Lichtkante oben links
+  ctx.beginPath(); ctx.ellipse(cx - 3.6, cy - 8, 4.6, 3.2, -0.5, 0, Math.PI * 2); ctx.fill();
   if (p.helm) {
-    poly(ctx, [[cx - 9, cy + 1], [cx - 8, cy - 8], [cx, cy - 12], [cx + 8, cy - 8], [cx + 9, cy + 1]], p.kap);
-    ell(ctx, cx, cy - 7, 8.5, 6, p.kap);
-    ctx.fillStyle = p.kapH; ctx.fillRect(cx - 1, cy - 12, 2, 6);            // Helmgrat
-    if (p.metall) { ctx.fillStyle = '#eef3f8'; ctx.globalAlpha = 0.5; ell(ctx, cx - 3, cy - 6, 1.6, 3, '#eef3f8'); ctx.globalAlpha = 1; }
-  } else {
-    // Stoff-/Kettenkapuze: Haube hinter und über dem Kopf, Gesichtsöffnung frei
-    ctx.fillStyle = p.kap;
-    ctx.beginPath(); ctx.ellipse(cx, cy - 2, 11, 11.5, 0, Math.PI * 0.92, Math.PI * 0.08, true); ctx.fill();
-    poly(ctx, [[cx - 11, cy - 1], [cx - 7.5, cy + 9], [cx - 5, cy + 8], [cx - 8, cy - 1]], p.kap); // linke Seite
-    poly(ctx, [[cx + 11, cy - 1], [cx + 7.5, cy + 9], [cx + 5, cy + 8], [cx + 8, cy - 1]], p.kapS); // rechte Seite
-    ctx.fillStyle = p.kapH;
-    ctx.beginPath(); ctx.ellipse(cx - 3, cy - 8, 5, 3, -0.4, 0, Math.PI * 2); ctx.fill();          // Lichtkante
-    if (p.metall) { ctx.fillStyle = '#cfd4da'; for (let i = 0; i < 6; i++) ctx.fillRect(cx - 9 + i * 3, cy - 9 + (i % 2), 1, 1); }
+    ctx.fillStyle = p.kapH; ctx.fillRect(cx - 1, cy - 12, 2, 9);                 // Helmgrat
+    if (p.metall) { ctx.globalAlpha = 0.5; ell(ctx, cx - 4, cy - 4, 1.7, 4, '#eef3f8'); ctx.globalAlpha = 1; }
+  } else if (p.metall) {
+    ctx.fillStyle = '#cfd4da'; for (let i = 0; i < 7; i++) ctx.fillRect(cx - 9 + i * 3, cy - 9 + (i % 2) * 2, 1, 1);
   }
-  // Gesicht je Richtung
-  ctx.fillStyle = '#241813';
-  if (dir === 3) { // oben: Hinterkopf, kein Gesicht
-    ctx.fillStyle = p.kap; ell(ctx, cx, cy, 7.5, 8, p.kap);
+
+  if (dir === 3) { // Rückansicht: nur Haube, keine Öffnung
+    ctx.fillStyle = p.kapS;
+    ctx.beginPath(); ctx.ellipse(cx, cy + 2, 6.5, 5, 0, 0, Math.PI * 2); ctx.fill();
     return;
   }
-  // Brauenschatten
-  ctx.fillStyle = p.hautS; ctx.globalAlpha = 0.5; ctx.fillRect(cx - 6, cy - 2, 12, 1.4); ctx.globalAlpha = 1;
-  ctx.fillStyle = '#241813';
-  if (dir === 0) { ell(ctx, cx - 3, cy, 1.3, 1.6, '#241813'); ell(ctx, cx + 3, cy, 1.3, 1.6, '#241813'); ctx.fillRect(cx - 0.6, cy + 1.5, 1.2, 2.5); }
-  if (dir === 1) { ell(ctx, cx - 4, cy, 1.3, 1.6, '#241813'); ell(ctx, cx - 0.5, cy, 1.2, 1.5, '#241813'); ctx.fillStyle = p.hautS; ctx.fillRect(cx - 6, cy + 1, 3, 3); }
-  if (dir === 2) { ell(ctx, cx + 4, cy, 1.3, 1.6, '#241813'); ell(ctx, cx + 0.5, cy, 1.2, 1.5, '#241813'); ctx.fillStyle = p.hautS; ctx.fillRect(cx + 3, cy + 1, 3, 3); }
+
+  // Gesichtsöffnung: dunkler Rahmen + Haut, je Richtung etwas versetzt
+  const ox = dir === 1 ? -1.8 : dir === 2 ? 1.8 : 0;
+  ctx.fillStyle = '#191310';
+  ctx.beginPath(); ctx.ellipse(cx + ox, cy + 1.5, 5.8, 6.6, 0, 0, Math.PI * 2); ctx.fill();
+  ell(ctx, cx + ox, cy + 2, 4.8, 5.6, p.haut);
+  ell(ctx, cx + ox - 1.4, cy, 1.9, 2.4, p.hautH);                                // Stirnlicht
+  ctx.fillStyle = p.hautS;                                                       // Wangenschatten gegenüber
+  ctx.beginPath(); ctx.ellipse(cx + ox + (dir === 2 ? -2.4 : 2.4), cy + 2.6, 1.8, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+  // Augen je Blickrichtung
+  if (dir === 0) { auge(ctx, cx - 2.3, cy + 1); auge(ctx, cx + 2.3, cy + 1); }
+  if (dir === 1) { auge(ctx, cx - 3.2, cy + 1); auge(ctx, cx + 0.2, cy + 1); }
+  if (dir === 2) { auge(ctx, cx + 3.2, cy + 1); auge(ctx, cx - 0.2, cy + 1); }
 }
 
 // Eine Figur in die aktuelle 64x64-Zelle zeichnen (Ursprung links oben).

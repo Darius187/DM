@@ -1111,28 +1111,32 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   damageEnemy(e: Enemy, dmg: number, kx = 0, ky = 0, col?: string | null, melee = true): void {
     // Ausweichen (Runde 20): flinke Gegner entgehen Nahkampfhieben ab und
     // zu mit einem Schritt zur Seite - Nahkampf wird ein Tanz
-    const flink = e.type === 'skelett' || e.type === 'schatten' || e.type === 'wolf';
-    if (melee && flink && !e.schild && e.stun <= 0 && Math.random() < 0.16) {
+    // Nur TIERE (Wolf/Ratte) weichen noch seitlich aus - Monster stehen und
+    // parieren (Runde 38, Autorwunsch "kein Wegweichen bei jedem Schlag").
+    const tier = e.type === 'wolf' || e.type === 'ratte';
+    if (melee && tier && !e.schild && e.stun <= 0 && Math.random() < 0.16) {
       const seit = Math.atan2(e.y - this.py, e.x - this.px) + (Math.random() < 0.5 ? 1.5 : -1.5);
       e.moveBody(this, Math.cos(seit) * 26, Math.sin(seit) * 26);
       this.fx.float(e.x, e.y - e.r - 8, 'AUSGEWICHEN', '#9ad8a0');
       return;
     }
-    // Schild-HALTUNG (Runde 20): geht der Schildträger in Deckung
-    // (blockT), prallt FRONTAL ALLES ab - flankieren oder warten
-    const inHaltung = e.schild && e.blockT > 0;
-    if (e.schild && e.hp > 0 && (inHaltung || Math.random() < 0.7)) {
+    // Parade (Runde 38): wer die Deckung oben hat (blockT - Schild ODER
+    // kampfbewusstes Monster), pariert den Frontaltreffer und KONTERT sofort;
+    // Schildträger fangen Treffer auch passiv (50%) teilweise ab.
+    const inDeckung = e.blockT > 0;
+    if (e.hp > 0 && (inDeckung || (e.schild && Math.random() < 0.5))) {
       const zumSpieler = Math.atan2(this.py - e.y, this.px - e.x);
       const blick = [Math.PI / 2, Math.PI, 0, -Math.PI / 2][e.dir];
       let diff = zumSpieler - blick;
       diff = Math.atan2(Math.sin(diff), Math.cos(diff));
       if (Math.abs(diff) < 1.35) {
-        const rest = inHaltung ? 0 : Math.max(1, Math.round(dmg * 0.3));
+        const rest = inDeckung ? 0 : Math.max(1, Math.round(dmg * 0.3));
         e.hp -= rest;
         e.hitFlash = 0.06;
-        this.fx.float(e.x, e.y - e.r - 8, inHaltung ? 'GEDECKT!' : 'GEBLOCKT', '#aab4c0');
+        this.fx.float(e.x, e.y - e.r - 8, inDeckung ? 'PARIERT' : 'GEBLOCKT', '#aab4c0');
         this.fx.burst(e.x + Math.cos(zumSpieler) * e.r, e.y + Math.sin(zumSpieler) * e.r, 0xaab4c0, 6, 120);
         this.sfx.play('block');
+        if (inDeckung) { e.blockT = 0; e.atkCd = Math.min(e.atkCd, 0.12); } // sofortiger Konter
         if (melee) this.gainSchoolUse('nahkampf');
         if (e.hp <= 0) this.killEnemy(e);
         return;

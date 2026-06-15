@@ -101,15 +101,19 @@ export const ENEMY_AI = {
 // sonst geht er sofort wieder auf Konfrontation. So bekommt jede Art ihr
 // eigenes Gefühl: Pest/Lebende Tote drängen, Skelette skirmishen, Schatten
 // tänzeln. Tunbar je Typ (auch über den F10-Per-Typ-Regler ergänzbar).
+// Runde 38: MONSTER weichen nicht mehr zurück (Autorwunsch "echter
+// Schlagabtausch, kein Schritt-nach-hinten bei jedem Treffer") - sie bleiben
+// stehen und parieren. Nur TIERE (Wolf/Ratte) tänzeln noch weg.
 export const AGGRO: Record<string, { rueckzugChance: number }> = {
   pest: { rueckzugChance: 0.0 },
-  lebender_toter: { rueckzugChance: 0.08 },
-  skelett: { rueckzugChance: 0.3 },
-  schatten: { rueckzugChance: 0.45 },
-  wolf: { rueckzugChance: 0.4 },
-  ratte: { rueckzugChance: 0.5 },
+  lebender_toter: { rueckzugChance: 0.0 },
+  skelett: { rueckzugChance: 0.0 },
+  schatten: { rueckzugChance: 0.0 },
+  schuetze: { rueckzugChance: 0.0 },
+  wolf: { rueckzugChance: 0.35 },
+  ratte: { rueckzugChance: 0.45 },
 };
-export const AGGRO_STD = { rueckzugChance: 0.22 };
+export const AGGRO_STD = { rueckzugChance: 0.0 };
 
 // "Gefallene" (Runde 35, hinter dem F10-Schalter zum Balance-Test): gefallene
 // Krieger/Magier - Skelette, Pestopfer und Lebende Tote tragen zufällig eine
