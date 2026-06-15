@@ -24,7 +24,22 @@ interface SlotDef {
   cdSek: () => number;      // Restsekunden
   locked: () => string | null; // Grund, falls gesperrt
   farbe?: () => string;     // Icon-Farbe (Runde 30: farbige Aktionen)
+  kategorie?: () => SlotKat; // Kampf/Zauber/Bogen/Item (Runde 36, Slot-Rahmen)
 }
+
+// Kategorie eines Slots (Runde 36): die Actionbar färbt den Rahmen danach,
+// damit Zauber/Kampf/Bogen/Item auf einen Blick auseinandergehen.
+type SlotKat = 'kampf' | 'zauber' | 'bogen' | 'item';
+const SLOT_KAT: Record<string, SlotKat> = {
+  angriff: 'kampf', block: 'kampf', rundumschlag: 'kampf', sturmangriff: 'kampf',
+  mehrfachschuss: 'bogen', markierterTod: 'bogen',
+  s1: 'zauber', s2: 'zauber', s3: 'zauber', kettenblitz: 'zauber', frostnova: 'zauber',
+  bannkreis: 'zauber', feuerregen: 'zauber', aderlass: 'zauber', lebenstausch: 'zauber',
+  pot: 'item', mpot: 'item', rolle: 'item', stadtportal: 'item',
+};
+const SLOT_KAT_FARBE: Record<SlotKat, number> = {
+  kampf: 0xc85a3a, zauber: 0x6a7ae0, bogen: 0x5ac06a, item: 0xb89a4a,
+};
 
 const ORB_R = 42;
 // Getrennte Leisten (Runde 20): Tastatur-Slots 1-6/9/0/R/T und Maus-Slots M1-M5
@@ -106,6 +121,7 @@ export class Hud {
         aktion: aktId,
         ico: () => (aktId() === 'waffe1' && bogen() ? '⫶' : aktId() === 'waffe2' && bogen() ? '◎' : eintrag()[1]),
         farbe: () => eintrag()[3],
+        kategorie: () => SLOT_KAT[echteId(aktId())] ?? 'item',
         name: () => `${eintrag()[2]} (${tasteName})`,
         desc: () => 'Rechtsklick: Belegung wählen · Ziehen auf einen anderen Slot: tauschen',
         kosten: () => {
@@ -416,7 +432,14 @@ export class Hud {
       const locked = s.locked() !== null;
       g.fillStyle(0x100b06, 0.92);
       g.fillRect(x - 21, y - 21, 42, 42);
-      g.lineStyle(1, locked ? 0x3a3228 : 0x4a3a26, 1);
+      // Kategorie-Färbung (Runde 36): Rahmen + dezenter Schimmer je nach
+      // Kampf/Zauber/Bogen/Item - so unterscheidet man die Slots auf einen Blick
+      const katFarbe = SLOT_KAT_FARBE[s.kategorie?.() ?? 'item'];
+      if (!locked) {
+        g.fillStyle(katFarbe, 0.14);
+        g.fillRect(x - 20, y - 20, 40, 40);
+      }
+      g.lineStyle(locked ? 1 : 2, locked ? 0x3a3228 : katFarbe, locked ? 1 : 0.9);
       g.strokeRect(x - 21, y - 21, 42, 42);
       const cd = s.cdFrac();
       if (cd > 0) {

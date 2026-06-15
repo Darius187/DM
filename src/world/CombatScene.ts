@@ -755,15 +755,20 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     if (Math.random() < KILL_DROPS.gemChance * rate) this.pickups.add({ kind: 'gem', item: rollGem(this.rng, depth), x: e.x + rndOff(10), y: e.y + rndOff(10), bob: Math.random() * 6 });
     if (Math.random() < KILL_DROPS.scrollChance * rate) {
       const rollen = [
-        ['Zauberrolle: Heiliges Licht', 'heiligesLicht'],
-        ['Zauberrolle: Heilung', 'heilung'],
-        ['Zauberrolle: Frostnova', 'frostnova'],
-        ['Zauberrolle: Kettenblitz', 'kettenblitz'],
+        ['Zauberrolle: Heiliges Licht', 'heiligesLicht', 1],
+        ['Zauberrolle: Heilung', 'heilung', 1],
+        ['Zauberrolle: Frostnova', 'frostnova', 1],
+        ['Zauberrolle: Kettenblitz', 'kettenblitz', 1],
+        // Besondere Rollen (Runde 36): seltener, dafür wuchtige Flächenzauber
+        ['Zauberrolle: Feuerwand', 'feuerwand', 2],
+        ['Zauberrolle: Feuerwalze', 'feuerwalze', 2],
+        ['Zauberrolle: Eisregen', 'eisregen', 2],
+        ['Zauberrolle: Gewitter', 'gewitter', 2],
       ] as const;
-      const [name, skill] = rollen[Math.floor(Math.random() * rollen.length)];
+      const [name, skill, rar] = rollen[Math.floor(Math.random() * rollen.length)];
       this.pickups.add({
         kind: 'gear',
-        item: { kind: 'scroll', name, rarity: 1, val: 0, boni: [], scrollSkill: skill, stack: 5 },
+        item: { kind: 'scroll', name, rarity: rar, val: 0, boni: [], scrollSkill: skill, stack: 5 },
         x: e.x + rndOff(10), y: e.y + rndOff(10), bob: Math.random() * 6,
       });
     }
@@ -1489,6 +1494,16 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     return true;
   }
 
+  // Zielpunkt unter dem Mauszeiger, auf die Reichweite begrenzt (Runde 36,
+  // von den Flächen-/Rollen-Zaubern genutzt)
+  protected zielPunkt(reichweite: number): { x: number; y: number } {
+    const ptr = this.input.activePointer;
+    const { x: wx, y: wy } = this.weltPunkt(ptr);
+    const d = Math.hypot(wx - this.px, wy - this.py);
+    const f = d > reichweite ? reichweite / d : 1;
+    return { x: this.px + (wx - this.px) * f, y: this.py + (wy - this.py) * f };
+  }
+
   useAbility(id: string): void {
     if (!this.abilityReady(id)) return;
     switch (id) {
@@ -1556,6 +1571,106 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
           });
         }
         this.sfx.play('heiliges_licht', 0.8);
+        this.gainSchoolUse('zauberei');
+        break;
+      }
+      // --- Vier Rollen-Zauber (Runde 36): nur über Schriftrollen wirkbar ---
+      case 'gewitter': {
+        const fx = ABILITY_FX.gewitter;
+        this.p.abilityCds[id] = fx.cd;
+        const z = this.zielPunkt(fx.reichweite);
+        const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level;
+        for (let i = 0; i < fx.einschlaege; i++) {
+          const ex = z.x + (Math.random() - 0.5) * fx.streuung * 2;
+          const ey = z.y + (Math.random() - 0.5) * fx.streuung * 2;
+          this.telegraphs.push({ x: ex, y: ey, r: fx.radius, t: (i + 1) * (fx.dauerS / fx.einschlaege), maxT: fx.dauerS, dmg: 0, holy: true });
+          this.time.delayedCall((i + 1) * (fx.dauerS * 1000 / fx.einschlaege), () => {
+            this.fx.lightning([{ x: ex + (Math.random() - 0.5) * 22, y: ey - 230 }, { x: ex + (Math.random() - 0.5) * 14, y: ey - 110 }, { x: ex, y: ey }]);
+            this.fx.burst(ex, ey, 0xaee0ff, 16, 230);
+            this.fx.burst(ex, ey, 0xffffff, 6, 120);
+            this.shake(3);
+            this.sfx.play('block', 0.5);
+            for (const e of [...this.enemies]) {
+              if (Math.hypot(e.x - ex, e.y - ey) < fx.radius + e.r) this.damageEnemy(e, Math.round(dmg * (0.85 + Math.random() * 0.3)), 0, 0, '#cfe8ff', false);
+            }
+          });
+        }
+        this.sfx.play('heiliges_licht', 0.7);
+        this.gainSchoolUse('zauberei');
+        break;
+      }
+      case 'eisregen': {
+        const fx = ABILITY_FX.eisregen;
+        this.p.abilityCds[id] = fx.cd;
+        const z = this.zielPunkt(fx.reichweite);
+        const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level;
+        for (let i = 0; i < fx.einschlaege; i++) {
+          const ex = z.x + (Math.random() - 0.5) * fx.streuung * 2;
+          const ey = z.y + (Math.random() - 0.5) * fx.streuung * 2;
+          this.telegraphs.push({ x: ex, y: ey, r: fx.radius, t: (i + 1) * (fx.dauerS / fx.einschlaege), maxT: fx.dauerS, dmg: 0, holy: true });
+          this.time.delayedCall((i + 1) * (fx.dauerS * 1000 / fx.einschlaege), () => {
+            this.fx.burst(ex, ey, 0x9ad8f0, 14, 170);
+            this.fx.burst(ex, ey, 0xffffff, 5, 90);
+            this.shake(1);
+            for (const e of [...this.enemies]) {
+              if (Math.hypot(e.x - ex, e.y - ey) < fx.radius + e.r) {
+                this.damageEnemy(e, Math.round(dmg * (0.85 + Math.random() * 0.3)), 0, 0, '#cfeefb', false);
+                e.slowT = Math.max(e.slowT, fx.slowS);
+              }
+            }
+          });
+        }
+        this.sfx.play('bogen_spannen', 0.7);
+        this.gainSchoolUse('zauberei');
+        break;
+      }
+      case 'feuerwand': {
+        const fx = ABILITY_FX.feuerwand;
+        this.p.abilityCds[id] = fx.cd;
+        const z = this.zielPunkt(fx.reichweite);
+        const perp = this.aimAngle() + Math.PI / 2;
+        const segs: Array<{ x: number; y: number }> = [];
+        for (let i = 0; i < fx.segmente; i++) {
+          const t2 = i / (fx.segmente - 1) - 0.5; // -0.5 .. +0.5 entlang der Wand
+          segs.push({ x: z.x + Math.cos(perp) * t2 * fx.laenge, y: z.y + Math.sin(perp) * t2 * fx.laenge });
+        }
+        const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level;
+        const ticks = Math.max(1, Math.round(fx.dauerS / fx.tickS));
+        for (let t2 = 0; t2 < ticks; t2++) {
+          this.time.delayedCall(t2 * fx.tickS * 1000, () => {
+            for (const s of segs) { this.fx.burst(s.x, s.y - 4, 0xe8842a, 4, 70); this.fx.burst(s.x, s.y - 6, 0xf8d878, 2, 40); }
+            for (const e of [...this.enemies]) {
+              if (segs.some((s) => Math.hypot(e.x - s.x, e.y - s.y) < fx.breite + e.r)) this.damageEnemy(e, Math.round(dmg), 0, 0, '#f0a868', false);
+            }
+          });
+        }
+        this.sfx.play(this.sfx.has('fireball1') ? 'fireball1' : 'heiliges_licht', 0.7);
+        this.gainSchoolUse('zauberei');
+        break;
+      }
+      case 'feuerwalze': {
+        const fx = ABILITY_FX.feuerwalze;
+        this.p.abilityCds[id] = fx.cd;
+        const ang = this.aimAngle();
+        const hitIds = new Set<number>();
+        const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level;
+        for (let s = 0; s < fx.schritte; s++) {
+          this.time.delayedCall(s * fx.schrittMs, () => {
+            const dist = ((s + 1) / fx.schritte) * fx.distance;
+            const cx = this.px + Math.cos(ang) * dist, cy = this.py + Math.sin(ang) * dist;
+            this.fx.burst(cx, cy, 0xe8842a, 8, 110);
+            this.fx.burst(cx, cy, 0xf8d878, 4, 70);
+            for (const e of [...this.enemies]) {
+              if (hitIds.has(e.id)) continue;
+              if (Math.hypot(e.x - cx, e.y - cy) < fx.breite / 2 + e.r) {
+                hitIds.add(e.id);
+                this.damageEnemy(e, Math.round(dmg), Math.cos(ang) * 16, Math.sin(ang) * 16, '#f0a868', false);
+              }
+            }
+          });
+        }
+        this.shake(2);
+        this.sfx.play(this.sfx.has('fireball2') ? 'fireball2' : 'heiliges_licht', 0.8);
         this.gainSchoolUse('zauberei');
         break;
       }

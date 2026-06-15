@@ -279,6 +279,9 @@ export class WorldScene extends CombatScene {
     if (import.meta.env.DEV) {
       (window as unknown as { __welt?: WorldScene }).__welt = this;
     }
+    // Chronik-Fenster ist standardmäßig offen (Autorwunsch Runde 36) - per H
+    // weiterhin schließ-/öffnbar; Position/Größe bleiben gespeichert.
+    if (getSettings().chronikAuto !== false) this.baueChronik();
   }
 
   // Dorf-Musik: spielt einmal, dann 2-4 Minuten Stille (Runde 18)

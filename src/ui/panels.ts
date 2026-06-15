@@ -220,7 +220,7 @@ export class UIPanels {
         slotBg.setInteractive({ useHandCursor: true });
         slotBg.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
         slotBg.on('pointerout', () => this.hideTooltip());
-        slotBg.on('pointerdown', () => this.clickItem(it)); // Klick legt ab
+        slotBg.on('pointerdown', (ptr: Phaser.Input.Pointer) => this.clickItem(it, ptr.rightButtonDown())); // Klick legt ab
       } else {
         c.add(this.scene.add.text(170, sy + 12, `${label}: -`, { fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c' }));
       }
@@ -372,11 +372,16 @@ export class UIPanels {
     }
     row.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
     row.on('pointerout', () => this.hideTooltip());
-    row.on('pointerdown', () => this.clickItem(it));
+    row.on('pointerdown', (ptr: Phaser.Input.Pointer) => this.clickItem(it, ptr.rightButtonDown()));
   }
 
-  private clickItem(it: Item): void {
+  private clickItem(it: Item, rechts: boolean): void {
     const p = this.getPlayer();
+    // Verbrauchsgegenstände (Tränke/Rollen/Proviant) lösen NUR per Rechtsklick
+    // aus (Autorwunsch Runde 36) - vorher gingen Rollen sofort beim Antippen
+    // los. Linksklick wählt nur an (zeigt den Tooltip).
+    const verbrauch = it.kind === 'potion' || it.kind === 'mpotion' || it.kind === 'scroll' || it.kind === 'food';
+    if (verbrauch && !rechts) { this.sfx.play('klick'); return; }
     if (it.kind === 'gem') {
       const gem = it as GemItem;
       if (p.weapon?.sock) {
@@ -410,6 +415,9 @@ export class UIPanels {
     }
     else if (it.kind === 'potion') {
       p.pot++;
+      p.inv = p.inv.filter((x) => x !== it);
+    } else if (it.kind === 'mpotion') {
+      p.mpot++;
       p.inv = p.inv.filter((x) => x !== it);
     } else if (it.kind === 'scroll' && it.scrollSkill) {
       it.stack = (it.stack ?? 1) - 1;
@@ -473,11 +481,13 @@ export class UIPanels {
         lines.push(['Kein Unterschied zu jetzt', '#8a7a5a']);
       }
     }
-    if (it.kind === 'gem') lines.push(['Klicken: in Waffe fassen', '#8a7a5a']);
-    else if (it.kind === 'scroll') lines.push(['Klicken: Rolle einsetzen', '#8a7a5a']);
-    else if (it.kind === 'food') lines.push(['Klicken: verzehren', '#8a7a5a']);
-    else if (it.kind === 'schild') lines.push(['Klicken: an-/ablegen (nicht mit Bogen/Stab)', '#8a7a5a']);
-    else if (it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'ring') lines.push(['Klicken: an-/ablegen', '#8a7a5a']);
+    if (it.kind === 'gem') lines.push(['Linksklick: in Waffe fassen', '#8a7a5a']);
+    else if (it.kind === 'scroll') lines.push(['Rechtsklick: Rolle wirken', '#c9a227']);
+    else if (it.kind === 'food') lines.push(['Rechtsklick: verzehren', '#c9a227']);
+    else if (it.kind === 'potion') lines.push(['Rechtsklick: in den Heiltrank-Beutel', '#c9a227']);
+    else if (it.kind === 'mpotion') lines.push(['Rechtsklick: in den Manatrank-Beutel', '#c9a227']);
+    else if (it.kind === 'schild') lines.push(['Linksklick: an-/ablegen (nicht mit Bogen/Stab)', '#8a7a5a']);
+    else if (it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'ring') lines.push(['Linksklick: an-/ablegen', '#8a7a5a']);
     this.renderTooltip(lines, ptr);
   }
 

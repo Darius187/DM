@@ -32,6 +32,7 @@ export interface Settings {
   // Chronik als Chat-Fenster (Runde 29): frei verschieb- UND skalierbar;
   // y zählt vom UNTEREN Bildrand (Chat-Verankerung wie bei WoW)
   chronikBox: { x: number; y: number; w: number; h: number };
+  chronikAuto: boolean;   // Chronik-Fenster beim Spielstart offen (Runde 36)
   kb: KeyBindings;
 }
 
@@ -52,6 +53,7 @@ export const DEF_SETTINGS: Settings = {
   vorlesen: false,
   ui: { hotbar: { x: 0, y: 0 }, mausleiste: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 } },
   chronikBox: { x: 10, y: -420, w: 380, h: 300 },
+  chronikAuto: true,
   kb: {
     roll: ' ', interact: 'e', inv: 'i', charakter: 'c',
     pot: 'q', mpot: 'f', s1: '1', s2: '2', s3: '3',

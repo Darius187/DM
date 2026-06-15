@@ -109,6 +109,12 @@ export const ABILITY_FX = {
   aderlass: { menge: 20, cd: 1.5 },
   lebenstausch: { menge: 20, cd: 1.5 },
   feuerregen: { mana: 40, dmgBase: 16, dmgPerLevel: 4, einschlaege: 6, radius: 50, streuung: 85, dauerS: 1.8, reichweite: 320, cd: 11 },
+  // Runde 36: vier besondere ROLLEN-Zauber (nur über Schriftrollen wirkbar,
+  // daher mana/cd 0 - useScroll regelt das). Werte leicht änderbar.
+  gewitter: { mana: 0, dmgBase: 24, dmgPerLevel: 5, einschlaege: 8, radius: 44, streuung: 120, dauerS: 1.5, reichweite: 360, cd: 0 },
+  eisregen: { mana: 0, dmgBase: 14, dmgPerLevel: 3, einschlaege: 8, radius: 52, streuung: 105, dauerS: 1.8, reichweite: 330, slowS: 3.5, cd: 0 },
+  feuerwand: { mana: 0, dmgBase: 12, dmgPerLevel: 3, laenge: 160, breite: 34, segmente: 6, dauerS: 4, tickS: 0.5, reichweite: 200, cd: 0 },
+  feuerwalze: { mana: 0, dmgBase: 20, dmgPerLevel: 4, distance: 280, breite: 64, schritte: 16, schrittMs: 45, cd: 0 },
   mehrfachschuss: { arrows: 3, spread: 0.18, cd: 4 },
   durchschlag: { pierceCount: 99, dmgMult: 1.3, cd: 6 },
   markierterTod: { bonusDmgPct: 0.25, dauerS: 8, cd: 10 },

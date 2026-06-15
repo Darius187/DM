@@ -41,6 +41,11 @@ export const SHOP_MAGDALENA: ReadonlyArray<ShopOfferDef> = [
   { kind: 'scroll', name: 'Zauberrolle: Heiliges Licht', price: 60, scrollSkill: 'heiligesLicht', inf: true },
   { kind: 'scroll', name: 'Zauberrolle: Frostnova', price: 85, scrollSkill: 'frostnova', inf: true },
   { kind: 'scroll', name: 'Zauberrolle: Kettenblitz', price: 95, scrollSkill: 'kettenblitz', inf: true },
+  // Besondere Flächen-Rollen (Runde 36): teurer, dafür wuchtig
+  { kind: 'scroll', name: 'Zauberrolle: Feuerwand', price: 140, scrollSkill: 'feuerwand', inf: true },
+  { kind: 'scroll', name: 'Zauberrolle: Feuerwalze', price: 150, scrollSkill: 'feuerwalze', inf: true },
+  { kind: 'scroll', name: 'Zauberrolle: Eisregen', price: 150, scrollSkill: 'eisregen', inf: true },
+  { kind: 'scroll', name: 'Zauberrolle: Gewitter', price: 170, scrollSkill: 'gewitter', inf: true },
   // Tränke-Rezepte: Kräuter gegen Tränke (Masterprompt 7.4)
   { kind: 'rezept', name: 'Heiltrank brauen (2 Kräuter)', price: 0, inf: true, rezept: { kraeuter: 2, ergebnis: 'potion' } },
   { kind: 'rezept', name: 'Manatrank brauen (3 Kräuter)', price: 0, inf: true, rezept: { kraeuter: 3, ergebnis: 'mpotion' } },
