@@ -1490,6 +1490,12 @@ export class WorldScene extends CombatScene {
       this.breakableEnts.push(ent);
       this.hittables.push(hit);
     }
+    // Mauerrisse vor Geheimkammern (Runde 40): als Trefferziel - Angriffe
+    // brechen sie auf, dahinter öffnet sich der verborgene Durchgang
+    for (const c of a.cracks ?? []) {
+      const hit = { x: c.tx * TILE + 16, y: c.ty * TILE + 16, r: 16, onHit: (ang: number) => this.hitCrack(c, hit, ang) };
+      this.hittables.push(hit);
+    }
     // Gegner (NG+ macht alle zäher; Champions sind die Minibosse der Ebene)
     const tiefenBonus = this.flags.ngPlus ? 3 : 0;
     if (a.geleert) {
@@ -1914,6 +1920,29 @@ export class WorldScene extends CombatScene {
   }
 
   // --- Zerstörbare Objekte ---------------------------------------------------
+
+  // Mauerriss aufbrechen (Runde 40): jeder Treffer bröckelt, beim letzten
+  // öffnet sich der Durchgang zur Geheimkammer.
+  private hitCrack(c: { tx: number; ty: number; hp: number }, hit: { onHit: (a: number) => void }, ang: number): void {
+    if (c.hp <= 0) return;
+    c.hp--;
+    const cx = c.tx * TILE + 16, cy = c.ty * TILE + 16;
+    this.fx.burst(cx + Math.cos(ang) * 6, cy + Math.sin(ang) * 6, 0x4a4036, 10, 130);
+    this.sfx.play('treffer_knochen', 0.6);
+    this.shake(3);
+    if (c.hp > 0) return;
+    // Durchbruch: Wand wird zu Boden, Durchgang frei
+    this.fx.burst(cx, cy, 0x5a4c38, 22, 200);
+    this.sfx.play('fass_bruch');
+    this.applyHitstop(60);
+    this.area.map[c.ty][c.tx] = T.FLOOR;
+    this.area.cracks = (this.area.cracks ?? []).filter((x) => x !== c);
+    this.hittables = this.hittables.filter((h) => h !== hit);
+    // Kachel und die Wand darüber neu zeichnen (Fassade/Dach hängt am Boden darunter)
+    this.refreshTile(c.tx, c.ty);
+    this.refreshTile(c.tx, c.ty - 1);
+    this.logMsg('Die brüchige Wand bricht ein - ein verborgener Durchgang öffnet sich!', 'magic');
+  }
 
   private hitBreakable(ent: BreakableEntity, ang: number): void {
     if (ent.hp <= 0) return;
@@ -3998,8 +4027,9 @@ export class WorldScene extends CombatScene {
   }
 
   private renderHud(): void {
-    // Sonnen-/Mondstand: in der Krypta steht die Zeit still
-    const zeit = this.area.dark ? '⌛ Zeit steht still' : tageszeitLabel(this.tageszeit);
+    // Sonnen-/Mondstand: in der Krypta verrinnt die Zeit nur sehr langsam
+    // (Runde 40: läuft weiter, ⌛ zeigt das Schleichen unter der Erde an)
+    const zeit = this.area.dark ? `⌛ ${tageszeitLabel(this.tageszeit)}` : tageszeitLabel(this.tageszeit);
     this.hud.update(`STUFE ${this.p.level} · ${this.p.gold} GOLD · Tag ${this.tag} · ${zeit}`);
     this.hudText.setPosition(8, 8).setText('');
   }

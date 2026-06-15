@@ -220,6 +220,22 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       ctx.fillRect(0, TILE - 10, TILE, 1);
       break;
     }
+    case 'mauerriss': {
+      // Brüchige Wand (Front) mit deutlichen Rissen - lädt zum Aufbrechen ein
+      const wt = theme ?? { wallTop: '#0f0c08', wallFace: '#262017' } as CryptTheme;
+      ctx.fillStyle = wt.wallTop; ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = wt.wallFace; ctx.fillRect(0, TILE - 12, TILE, 12);
+      // dunkle Risse, die von oben nach unten zacken
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(10, 2); ctx.lineTo(14, 11); ctx.lineTo(9, 20); ctx.lineTo(13, TILE - 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(22, 4); ctx.lineTo(18, 13); ctx.lineTo(23, 22); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(14, 11); ctx.lineTo(22, 13); ctx.stroke();
+      // ein paar lose Brocken als Lichtkante
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fillRect(8, 14, 3, 2); ctx.fillRect(19, 18, 3, 2); ctx.fillRect(13, 24, 2, 2);
+      ctx.lineWidth = 1;
+      break;
+    }
     case 'knochen':
       floorBase(ctx, n, theme);
       ctx.fillStyle = '#cfc4a8';

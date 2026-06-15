@@ -92,6 +92,15 @@ export const BREAKABLE_LOOT = {
 } as const;
 // Anzahl zerstörbarer Objekte pro Krypta-Ebene / im Dorf
 export const BREAKABLES_PER_LEVEL = { min: 14, max: 22 } as const;
+
+// Geheimkammern (Runde 40, Autorwunsch): hinter einem brüchigen Mauerriss
+// verbirgt sich eine kleine Kammer mit besserer Beute. Der Riss wird mit
+// Angriffen aufgebrochen (rissHp Treffer). Tunbar.
+export const GEHEIMKAMMER = {
+  chance: 0.7,   // Anteil der Krypta-Ebenen mit einer Geheimkammer
+  rissHp: 4,     // so viele Treffer hält der Mauerriss
+  kammer: 3,     // Kantenlänge der quadratischen Kammer (Tiles)
+} as const;
 export const BREAKABLES_VILLAGE = 6;
 
 // Kerzenschrein: 1 pro Ebene (Rast-/Speicherpunkt)

@@ -2,7 +2,7 @@
 // erweitert um die handgebauten Spezialräume aus Masterprompt 7.3.
 
 import { T, SOLID } from './tiles';
-import { CRYPT_THEMES, CRYPT_GEN, CHEST_VERFLUCHT, ALTAR_COUNT, CHESTS_PER_LEVEL, BREAKABLES_PER_LEVEL, ORE_VEINS, ROCKS_PER_LEVEL, type CryptTheme, type BreakableKind } from '../data/krypta';
+import { CRYPT_THEMES, CRYPT_GEN, CHEST_VERFLUCHT, ALTAR_COUNT, CHESTS_PER_LEVEL, BREAKABLES_PER_LEVEL, ORE_VEINS, ROCKS_PER_LEVEL, GEHEIMKAMMER, type CryptTheme, type BreakableKind } from '../data/krypta';
 import { MAX_SCRIPTED_SCARES } from '../data/enemies';
 import type { EnemyTypeId } from '../data/types';
 import { rnd, ri, pick, type Rng } from '../logic/rng';
@@ -76,6 +76,7 @@ export interface AreaData {
   kraeuter: Pos[];            // Kräuter am Waldrand (Masterprompt 7.4)
   schilder?: Array<Pos & { text: string }>; // beschriftbare Schilder (Baukasten, Runde 22)
   geleert?: boolean;          // Ebene leergeräumt - bleibt leer bis zum Tod (Runde 26)
+  cracks?: Array<{ tx: number; ty: number; hp: number }>; // Mauerrisse vor Geheimkammern (Runde 40)
   baeume: Pos[];              // fällbare Bäume (Holz)
   chimneys: Pos[];            // Schornsteinrauch
   herde?: Array<Pos & { ph: number; art: 'kamin' | 'kerze' | 'wandfackel' }>; // Innen-Lichtquellen (Runde 35)
@@ -424,7 +425,64 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
   const [typ2, name2] = ZWEIT[themaNr] ?? ZWEIT[3];
   a.enemySpawns.push({ type: typ2, elite: true, champion: name2, x: mitte.cx * TILE + 16, y: mitte.cy * TILE + 16 });
 
+  // Geheimkammer (Runde 40): hinter einem Mauerriss verborgener Raum mit
+  // besserer Beute - der Riss wird mit Angriffen aufgebrochen.
+  a.cracks = [];
+  if (rng.random() < GEHEIMKAMMER.chance) legeGeheimkammer(map, w, h, rng, a);
+
   return a;
+}
+
+// Eine Geheimkammer in das Mauerwerk schneiden: ein quadratischer Raum, der nur
+// über einen einzigen Mauerriss erreichbar ist. Der Raum bleibt vollständig
+// von Wand umschlossen (außer dem Riss), damit er wirklich verborgen ist.
+function legeGeheimkammer(map: number[][], w: number, h: number, rng: Rng, a: AreaData): void {
+  const k = GEHEIMKAMMER.kammer;
+  const halfK = k >> 1;
+  const istWand = (x: number, y: number): boolean => map[y]?.[x] === T.WALL;
+  const istBoden = (x: number, y: number): boolean => map[y]?.[x] === T.FLOOR;
+  // Alle Bodenkacheln sammeln und mischen, damit die Kammer zufällig sitzt
+  const boeden: Array<[number, number]> = [];
+  for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) if (istBoden(x, y)) boeden.push([x, y]);
+  for (let i = boeden.length - 1; i > 0; i--) { const j = ri(rng, 0, i); [boeden[i], boeden[j]] = [boeden[j], boeden[i]]; }
+  const dirs: Array<[number, number]> = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  for (const [fx, fy] of boeden) {
+    for (let d = dirs.length - 1; d > 0; d--) { const j = ri(rng, 0, d); [dirs[d], dirs[j]] = [dirs[j], dirs[d]]; }
+    for (const [dx, dy] of dirs) {
+      const crackX = fx + dx, crackY = fy + dy;
+      if (!istWand(crackX, crackY)) continue;
+      // Kammerkacheln (k×k) eine Kachel hinter dem Riss
+      const kammer: Array<[number, number]> = [];
+      for (let s = 2; s <= k + 1; s++) {
+        for (let t = -halfK; t <= halfK; t++) {
+          const x = fx + dx * s + (dy !== 0 ? t : 0);
+          const y = fy + dy * s + (dx !== 0 ? t : 0);
+          kammer.push([x, y]);
+        }
+      }
+      // Alles muss in Grenzen UND Wand sein (sonst keine echte Geheimkammer)
+      const drin = (x: number, y: number): boolean => x >= 1 && y >= 1 && x < w - 1 && y < h - 1;
+      if (!kammer.every(([x, y]) => drin(x, y) && istWand(x, y))) continue;
+      // Hülle prüfen: kein Nachbar der Kammer darf Boden sein (außer dem Riss),
+      // damit die Kammer nicht heimlich an einen anderen Raum grenzt
+      const kammerSet = new Set(kammer.map(([x, y]) => `${x},${y}`));
+      const leck = kammer.some(([x, y]) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([nx, ny]) => {
+        const px = x + nx, py = y + ny;
+        if (kammerSet.has(`${px},${py}`) || (px === crackX && py === crackY)) return false;
+        return !istWand(px, py); // Boden/anderes = Leck
+      }));
+      if (leck) continue;
+      // Passt: Kammer ausheben, Riss setzen, Beute hineinlegen
+      for (const [x, y] of kammer) map[y][x] = T.FLOOR;
+      map[crackY][crackX] = T.CRACK;
+      a.cracks!.push({ tx: crackX, ty: crackY, hp: GEHEIMKAMMER.rissHp });
+      const ccx = fx + dx * (2 + halfK), ccy = fy + dy * (2 + halfK);
+      a.chests.push({ x: ccx * TILE + 16, y: ccy * TILE + 16, open: false, selten: true });
+      a.gear.push({ x: ccx * TILE + 16, y: (ccy + 1 < h - 1 && istBoden(ccx, ccy + 1) ? ccy + 1 : ccy) * TILE + 16 });
+      a.special.push({ id: 'geheimkammer', x: ccx, y: ccy, raum: 'Geheimkammer' });
+      return;
+    }
+  }
 }
 
 // Bossgrab (Runde 21): DREI Kammern übereinander. Der Held betritt den

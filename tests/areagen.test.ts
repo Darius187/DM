@@ -15,7 +15,9 @@ function reachable(a: AreaData, fromX: number, fromY: number): boolean[][] {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = x + dx, ny = y + dy;
       if (nx < 0 || ny < 0 || nx >= a.w || ny >= a.h || seen[ny][nx]) continue;
-      if (SOLID.has(a.map[ny][nx])) continue;
+      // Mauerrisse (Geheimkammern, Runde 40) sind aufbrechbar - der Spieler
+      // kommt durch, also zählen sie für die Erreichbarkeit als begehbar
+      if (SOLID.has(a.map[ny][nx]) && a.map[ny][nx] !== T.CRACK) continue;
       seen[ny][nx] = true;
       queue.push([nx, ny]);
     }
@@ -73,6 +75,27 @@ describe('Krypta-Generator: jeder Spezialraum erreichbar', () => {
       // Kultstätte: zwei Altäre
       expect(ids(3).filter((x) => x === 'altar').length).toBe(2);
     }
+  });
+
+  it('Geheimkammer: hinter dem Riss verborgen, nur durch ihn erreichbar', () => {
+    let gefunden = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const a = buildCrypt(((seed % 5) + 1), seededRng(seed * 5003));
+      const kammer = a.special.find((s) => s.id === 'geheimkammer');
+      if (!kammer) continue;
+      gefunden++;
+      // Es gibt mindestens einen Riss
+      expect(a.cracks && a.cracks.length >= 1, `Seed ${seed}: Riss fehlt`).toBe(true);
+      const sx = Math.floor(a.spawn.x / 32), sy = Math.floor(a.spawn.y / 32);
+      // OHNE den Riss zu nutzen, ist die Kammer NICHT erreichbar (echt geheim)
+      const ohneRiss: AreaData = { ...a, map: a.map.map((r) => r.map((t) => (t === T.CRACK ? T.WALL : t))) };
+      const seenOhne = reachable(ohneRiss, sx, sy);
+      expect(targetReachable(seenOhne, kammer.x, kammer.y), `Seed ${seed}: Kammer ohne Riss erreichbar (nicht geheim)`).toBe(false);
+      // MIT Riss (aufbrechbar) ist sie erreichbar
+      const seenMit = reachable(a, sx, sy);
+      expect(targetReachable(seenMit, kammer.x, kammer.y), `Seed ${seed}: Kammer auch mit Riss unerreichbar`).toBe(true);
+    }
+    expect(gefunden, 'In 60 Seeds entstand keine einzige Geheimkammer').toBeGreaterThan(5);
   });
 
   it('Bossraum: Aufgang erreichbar, Leibwache gesetzt (Boss kommt erst nach ihrem Fall)', () => {
