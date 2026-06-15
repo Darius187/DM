@@ -37,7 +37,7 @@ import { seededRng, pick, ri } from '../logic/rng';
 import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type SaveData } from '../logic/save';
 import { storage } from '../logic/gameStorage';
 import { ladeStadtplan, speichereStadtplan, loescheStadtplan, wendePlanAn, setzeKachel, radiere, type Stadtplan, type PlanTier } from '../logic/stadtplan';
-import { alsCanvas, stelleFrei, verarbeiteUpload } from '../gfx/bildVerarbeitung';
+import { alsCanvas, stelleFrei, verarbeiteUpload, verkleinereCanvas } from '../gfx/bildVerarbeitung';
 import { zoomFaktor } from '../logic/zoom';
 import type { Item } from '../data/types';
 import type { Pickup } from '../world/Pickups';
@@ -915,7 +915,10 @@ export class WorldScene extends CombatScene {
       // vorher klebte das Schachbrett am hochgeladenen Haus)
       const canvas = alsCanvas(roh);
       stelleFrei(canvas);
-      const daten = canvas.toDataURL('image/png');
+      // Vor dem Speichern VERKLEINERN (Autorbug R40 "Baukasten speichert nur
+      // manchmal"): volle PNGs im localStorage sprengten das ~5MB-Limit, danach
+      // scheiterte JEDER weitere Save (Bilder, Kacheln, Hauspositionen) still.
+      const daten = verkleinereCanvas(canvas, 256).toDataURL('image/png');
       try {
         const store = this.hausBilderStore();
         store[id] = daten;

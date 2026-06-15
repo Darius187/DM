@@ -28,6 +28,13 @@ export function alsCanvas(img: HTMLImageElement): HTMLCanvasElement {
 
 // Herunterrechnen in Halbierungsschritten (deutlich sauberer als ein
 // einziger Sprung von 300 auf 32 Pixel)
+// Größte Kante auf max begrenzen (für localStorage-schonende Uploads, R40)
+export function verkleinereCanvas(quelle: HTMLCanvasElement, max: number): HTMLCanvasElement {
+  const s = max / Math.max(quelle.width, quelle.height);
+  if (s >= 1) return quelle;
+  return rechneHerunter(quelle, Math.max(1, Math.round(quelle.width * s)), Math.max(1, Math.round(quelle.height * s)));
+}
+
 export function rechneHerunter(quelle: HTMLCanvasElement, zw: number, zh: number): HTMLCanvasElement {
   let akt = quelle;
   while (akt.width / 2 >= zw && akt.height / 2 >= zh) {
