@@ -4,7 +4,7 @@
 // die Werte im Browser ab und baut die Figur in der Welt neu auf.
 
 import Phaser from 'phaser';
-import { getHeldForm, saveHeldForm, HELDFORM_REGLER, DEF_HELDFORM, FARB_TEILE, FARB_PALETTE, type HeldForm } from '../data/heldForm';
+import { getHeldForm, getFormen, saveHeldForm, standardForm, HELDFORM_REGLER, FARB_TEILE, FARB_PALETTE, type HeldFormen } from '../data/heldForm';
 import { drawHeld, HELD_CELL } from '../gfx/heldArt';
 import type { HeldTier } from '../data/helden';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
@@ -14,6 +14,7 @@ const BONE = '#d8cfb8';
 const PANEL_BG = 0x171108;
 const LINE = 0x4a3a26;
 const VORSCHAU_KEY = 'held_vorschau';
+const TIER_NAMEN: Record<HeldTier, string> = { stoff: 'Stoff', leder: 'Leder', kette: 'Kettenhemd', platte: 'Platte' };
 
 export class HeldEditor {
   private open_ = false;
@@ -21,13 +22,23 @@ export class HeldEditor {
   private canvas: HTMLCanvasElement | null = null;
   private vorschau: Phaser.GameObjects.Image | null = null;
   private dir = 0;              // Blickrichtung der Vorschau
-  private previewTier: HeldTier | null = null; // Rüstung in der Vorschau (null = getragene)
+  private editTier: HeldTier | null = null; // bearbeitete Rüstungsstufe (null = getragene)
   private farbTeil: 'wams' | 'cape' | 'kapuze' | 'guertel' = 'wams'; // welches Teil färbt der Picker
   private animFrame = 0;
   private animTimer: Phaser.Time.TimerEvent | null = null;
-  private snapshot: HeldForm | null = null; // Stand beim Öffnen (für Verwerfen)
+  private snapshot: HeldFormen | null = null; // alle Stufen beim Öffnen (für Verwerfen)
   private gespeichert = false;
   onApply: (() => void) | null = null; // Welt-Held neu zeichnen
+
+  // aktuell im Editor bearbeitete Stufe (Standard: die getragene)
+  private tier(): HeldTier { return this.editTier ?? this.getTier(); }
+
+  private kopiereFormen(): HeldFormen {
+    const f = getFormen();
+    const out = {} as HeldFormen;
+    for (const t of ['stoff', 'leder', 'kette', 'platte'] as HeldTier[]) out[t] = { ...f[t], farben: { ...f[t].farben } };
+    return out;
+  }
 
   constructor(
     private scene: Phaser.Scene,
@@ -44,8 +55,7 @@ export class HeldEditor {
 
   openEditor(): void {
     this.open_ = true;
-    const cur = getHeldForm();
-    this.snapshot = { ...cur, farben: { ...cur.farben } }; // Stand sichern (Farben tief kopieren)
+    this.snapshot = this.kopiereFormen(); // ALLE Stufen sichern (tiefe Kopie)
     this.gespeichert = false;
     this.build();
     this.animTimer = this.scene.time.addEvent({
@@ -55,12 +65,14 @@ export class HeldEditor {
   }
 
   close(): void {
-    // Nicht gespeicherte Änderungen verwerfen: Form auf den Öffnungsstand
-    // zurücksetzen (die Welt-Figur wurde nur beim Speichern angefasst)
+    // Nicht gespeicherte Änderungen aller Stufen verwerfen (die Welt-Figur
+    // wurde nur beim Speichern angefasst)
     if (!this.gespeichert && this.snapshot) {
-      const cur = getHeldForm();
-      Object.assign(cur, this.snapshot);
-      cur.farben = { ...this.snapshot.farben }; // Farben getrennt zurückspielen
+      const formen = getFormen();
+      for (const t of ['stoff', 'leder', 'kette', 'platte'] as HeldTier[]) {
+        Object.assign(formen[t], this.snapshot[t]);
+        formen[t].farben = { ...this.snapshot[t].farben };
+      }
     }
     this.open_ = false;
     this.animTimer?.remove();
@@ -80,9 +92,9 @@ export class HeldEditor {
     c.add(this.scene.add.rectangle(-ox, -oy, sw, sh, 0x000000, 0.55).setOrigin(0).setInteractive());
     c.add(this.scene.add.rectangle(0, 0, w, h, PANEL_BG, 0.98).setOrigin(0).setStrokeStyle(1, 0xc9a227));
     c.add(this.scene.add.text(w / 2, 12, 'FIGUR-EDITOR', { fontFamily: 'serif', fontSize: '18px', color: GOLD, letterSpacing: 3 }).setOrigin(0.5, 0));
-    c.add(this.scene.add.text(w / 2, 36, 'Proportionen, Rüstung & Farben des Helden frei einstellen', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a', fontStyle: 'italic' }).setOrigin(0.5, 0));
+    c.add(this.scene.add.text(w / 2, 36, `Du bearbeitest gerade die Stufe: ${TIER_NAMEN[this.tier()]}`, { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a', fontStyle: 'italic' }).setOrigin(0.5, 0));
 
-    const f = getHeldForm();
+    const f = getHeldForm(this.tier());
 
     // --- Spalte 1: Vorschau + Rüstungs-Auswahl ---
     c.add(this.scene.add.rectangle(20, 56, 200, 330, 0x0c0905, 0.7).setOrigin(0).setStrokeStyle(1, LINE));
@@ -97,12 +109,12 @@ export class HeldEditor {
     this.vorschau.setData('pixel', true);
     c.add(this.vorschau);
     c.add(this.knopf(78, 392, '↻ drehen', 84, () => { this.dir = (this.dir + 1) % 4; this.zeichneVorschau(); }));
-    c.add(this.scene.add.text(20, 420, 'RÜSTUNG ANSEHEN', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a', letterSpacing: 1 }));
+    c.add(this.scene.add.text(20, 420, 'RÜSTUNG BEARBEITEN', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a', letterSpacing: 1 }));
     const tiers: Array<[HeldTier, string]> = [['stoff', 'Stoff'], ['leder', 'Leder'], ['kette', 'Kette'], ['platte', 'Platte']];
     tiers.forEach(([t, lbl], i) => {
       c.add(this.knopf(20 + (i % 2) * 100, 436 + Math.floor(i / 2) * 26, lbl, 94, () => {
-        this.previewTier = t; this.build();
-      }, this.previewTier === t ? GOLD : BONE));
+        this.editTier = t; this.build();
+      }, this.tier() === t ? GOLD : BONE));
     });
 
     // --- Spalte 2: Zahlen-Regler ---
@@ -157,7 +169,9 @@ export class HeldEditor {
       hinweis.setText('✓ übernommen');
     }, GOLD));
     c.add(this.knopf(rx + 170, h - 40, 'ZURÜCKSETZEN', 130, () => {
-      Object.assign(getHeldForm(), { ...DEF_HELDFORM, farben: {} });
+      const d = standardForm(this.tier());        // nur die bearbeitete Stufe
+      const z = getHeldForm(this.tier());
+      Object.assign(z, d); z.farben = { ...d.farben };
       this.build();
     }));
     c.add(this.knopf(rx + 320, h - 40, 'SCHLIESSEN', 110, () => this.close()));
@@ -182,7 +196,7 @@ export class HeldEditor {
     if (!this.canvas) return;
     const ctx = this.canvas.getContext('2d')!;
     ctx.clearRect(0, 0, HELD_CELL, HELD_CELL);
-    drawHeld(ctx, this.previewTier ?? this.getTier(), this.dir as 0 | 1 | 2 | 3, this.animFrame);
+    drawHeld(ctx, this.tier(), this.dir as 0 | 1 | 2 | 3, this.animFrame);
     if (this.scene.textures.exists(VORSCHAU_KEY)) (this.scene.textures.get(VORSCHAU_KEY) as Phaser.Textures.CanvasTexture).refresh();
   }
 }

@@ -7,6 +7,7 @@ import { SpriteProvider } from '../gfx/SpriteProvider';
 import { SoundProvider } from '../gfx/SoundProvider';
 import { spielerFigur, type Dir } from '../gfx/fallbackArt';
 import { getHeldForm } from '../data/heldForm';
+import { heldTier } from '../data/helden';
 import { EffectSystem } from './effects';
 import { Enemy, angleToDir, type EnemyHost } from './Enemy';
 import {
@@ -2380,7 +2381,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.provider.applyFigure(this.playerSprite, this.heldFigur(), dir, step);
     // 64px-Held kleiner darstellen; echte Hot-Swap-Sprites des Autors größer.
     // (Hier gesetzt, damit auch nach der Todes-Animation die Skala stimmt.)
-    this.playerSprite.setScale(this.textures.exists('hs_spieler_unten_1') ? 1.35 : getHeldForm().skala);
+    const tier = heldTier(this.p.armorIt ? this.p.armorIt.val : null);
+    this.playerSprite.setScale(this.textures.exists('hs_spieler_unten_1') ? 1.35 : getHeldForm(tier).skala);
   }
 
   // Sprites und Overlay (Ringe, Balken, Telegraphen) zeichnen

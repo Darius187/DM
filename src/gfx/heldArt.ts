@@ -211,7 +211,7 @@ function kopf(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, dir: Dir): voi
 
 // Eine Figur in die aktuelle 64x64-Zelle zeichnen (Ursprung links oben).
 export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir, frame: number): void {
-  const f = getHeldForm();
+  const f = getHeldForm(tier);
   // Palette: erst Helligkeit tönen, dann Farb-Überschreibungen je Teil
   const p: Pal = f.ruestHell ? tintPal(PALETTEN[tier], f.ruestHell) : { ...PALETTEN[tier] };
   const fb = f.farben;

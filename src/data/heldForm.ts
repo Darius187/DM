@@ -3,6 +3,8 @@
 // sind Pixel im 64px-Zeichenraster (drawHeld); der Figur-Editor verstellt sie
 // live und speichert sie im Browser. So tunt der Autor die Proportionen selbst.
 
+import type { HeldTier } from './helden';
+
 export interface HeldForm {
   kopfR: number;      // Kopf-/Kapuzenradius (Standard 5.8 - kein Ballon mehr)
   kopfY: number;      // Höhe der Kopfmitte
@@ -72,19 +74,54 @@ export const FARB_PALETTE: string[] = [
   '#5a3a6a', '#8a6a2a', '#c9a227', '#2a2a2e', '#8a8276', '#a83838',
 ];
 
-const KEY = 'ravensmoor_heldform_v1';
-let current: HeldForm | null = null;
+// Pro Rüstungsstufe ein eigenes Aussehen (Runde 40, Autorwunsch "je nach
+// Rüstung verändert sich das Aussehen"): der Held wechselt automatisch das
+// Aussehen, sobald sich die getragene Rüstung (stoff/leder/kette/platte) ändert.
+export type HeldFormen = Record<HeldTier, HeldForm>;
 
-export function getHeldForm(): HeldForm {
-  if (current) return current;
-  current = { ...DEF_HELDFORM };
+const KEY = 'ravensmoor_heldformen_v1';
+let formen: HeldFormen | null = null;
+
+function frisch(over: Partial<HeldForm> = {}): HeldForm {
+  return { ...DEF_HELDFORM, ...over, farben: { ...(over.farben ?? {}) } };
+}
+
+// Sinnvolle Start-Looks je Stufe (die Stufen-Palette gibt die Grundfarbe,
+// hier nur die Form-Unterschiede): Kette zeigt das Gittermuster, Platte trägt
+// ein leicht gesenktes Visier - der Autor kann alles im Editor weiter tunen.
+function defaults(): HeldFormen {
+  return {
+    stoff: frisch(),
+    leder: frisch({ gesichtOffen: 0.95 }),
+    kette: frisch({ kettenGitter: 1, gesichtOffen: 0.88, visier: 0.15 }),
+    platte: frisch({ visier: 0.35, gesichtOffen: 0.82 }),
+  };
+}
+
+export function getFormen(): HeldFormen {
+  if (formen) return formen;
+  formen = defaults();
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) current = { ...DEF_HELDFORM, ...(JSON.parse(raw) as Partial<HeldForm>) };
+    if (raw) {
+      const saved = JSON.parse(raw) as Partial<Record<HeldTier, Partial<HeldForm>>>;
+      for (const tier of ['stoff', 'leder', 'kette', 'platte'] as HeldTier[]) {
+        if (saved[tier]) formen[tier] = { ...formen[tier], ...saved[tier], farben: { ...formen[tier].farben, ...(saved[tier]!.farben ?? {}) } };
+      }
+    }
   } catch { /* localStorage gesperrt - Standard */ }
-  return current;
+  return formen;
+}
+
+export function getHeldForm(tier: HeldTier): HeldForm {
+  return getFormen()[tier];
+}
+
+// Standard-Look einer Stufe (für den ZURÜCKSETZEN-Knopf im Editor)
+export function standardForm(tier: HeldTier): HeldForm {
+  return defaults()[tier];
 }
 
 export function saveHeldForm(): void {
-  try { localStorage.setItem(KEY, JSON.stringify(getHeldForm())); } catch { /* gesperrt */ }
+  try { localStorage.setItem(KEY, JSON.stringify(getFormen())); } catch { /* gesperrt */ }
 }
