@@ -3,7 +3,7 @@
 // + Gehschritt. Höhere Auflösung als die 32px-Dorf-/Gegner-Figuren, damit der
 // Held klarer und detaillierter wirkt. Waffenlos (geschlagen wird per FX).
 
-import type { Dir } from './fallbackArt';
+import { shade, type Dir } from './fallbackArt';
 import type { HeldTier } from '../data/helden';
 
 export const HELD_CELL = 64; // Kantenlänge einer Figur-Zelle
@@ -107,48 +107,47 @@ function arm(ctx: CanvasRenderingContext2D, p: Pal, sx: number, vor: number, dun
 
 function auge(ctx: CanvasRenderingContext2D, x: number, y: number): void {
   ctx.fillStyle = '#241813';
-  ctx.beginPath(); ctx.ellipse(x, y, 1.25, 1.7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x, y, 0.95, 1.3, 0, 0, Math.PI * 2); ctx.fill();
 }
 
-// Kopf: die Kapuze/der Helm bedeckt den ganzen Scheitel (KEIN kahler Kopf),
-// das Gesicht sitzt als kleinere Haut-Öffnung davor. Gesicht je Blickrichtung.
+// Kopf (Runde 39 verkleinert): die Kapuze schließt ENG um den Kopf (kein
+// Ballon mehr), ein Hals verbindet Kopf und Rumpf. Gesicht je Blickrichtung.
 function kopf(ctx: CanvasRenderingContext2D, p: Pal, dir: Dir): void {
-  const cx = 32, cy = 15;
-  // Kapuzen-/Helmkragen auf den Schultern
-  poly(ctx, [[20, 27], [44, 27], [41, 20.5], [23, 20.5]], p.kapS);
-
-  // Haube/Helm als VOLLER Dom über dem Kopf (deckt den Scheitel komplett)
+  const cx = 32, cy = 14;
+  // Hals
+  ctx.fillStyle = shade(p.haut, -16); ctx.fillRect(cx - 2.4, cy + 5, 4.8, 5);
+  // Kragen auf den Schultern
+  poly(ctx, [[cx - 8, 26], [cx + 8, 26], [cx + 6, 21], [cx - 6, 21]], p.kapS);
+  // Kapuze/Helm - enge Haube, deckt den Scheitel, vorn offen
+  const hr = p.helm ? 6.4 : 7;
   ctx.fillStyle = p.kap;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy - 2, p.helm ? 9.5 : 11, p.helm ? 10.5 : 12, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = p.kapH; // Lichtkante oben links
-  ctx.beginPath(); ctx.ellipse(cx - 3.6, cy - 8, 4.6, 3.2, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx, cy - 1, hr, hr + 0.7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = p.kapH;
+  ctx.beginPath(); ctx.ellipse(cx - 2.3, cy - 4, 2.5, 1.9, -0.5, 0, Math.PI * 2); ctx.fill();
   if (p.helm) {
-    ctx.fillStyle = p.kapH; ctx.fillRect(cx - 1, cy - 12, 2, 9);                 // Helmgrat
-    if (p.metall) { ctx.globalAlpha = 0.5; ell(ctx, cx - 4, cy - 4, 1.7, 4, '#eef3f8'); ctx.globalAlpha = 1; }
+    ctx.fillStyle = p.kapH; ctx.fillRect(cx - 0.8, cy - 8, 1.6, 6);
+    if (p.metall) { ctx.globalAlpha = 0.5; ell(ctx, cx - 2.6, cy - 3, 1.1, 2.6, '#eef3f8'); ctx.globalAlpha = 1; }
   } else if (p.metall) {
-    ctx.fillStyle = '#cfd4da'; for (let i = 0; i < 7; i++) ctx.fillRect(cx - 9 + i * 3, cy - 9 + (i % 2) * 2, 1, 1);
+    ctx.fillStyle = '#cfd4da'; for (let i = 0; i < 5; i++) ctx.fillRect(cx - 5.5 + i * 2.6, cy - 6 + (i % 2) * 2, 1, 1);
   }
 
-  if (dir === 3) { // Rückansicht: nur Haube, keine Öffnung
+  if (dir === 3) { // Rückansicht: nur Haube
     ctx.fillStyle = p.kapS;
-    ctx.beginPath(); ctx.ellipse(cx, cy + 2, 6.5, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx, cy + 0.5, 4.6, 4.2, 0, 0, Math.PI * 2); ctx.fill();
     return;
   }
 
-  // Gesichtsöffnung: dunkler Rahmen + Haut, je Richtung etwas versetzt
-  const ox = dir === 1 ? -1.8 : dir === 2 ? 1.8 : 0;
+  // Gesichtsöffnung: dunkler Rahmen + Haut, je Richtung leicht versetzt
+  const ox = dir === 1 ? -1.2 : dir === 2 ? 1.2 : 0;
   ctx.fillStyle = '#191310';
-  ctx.beginPath(); ctx.ellipse(cx + ox, cy + 1.5, 5.8, 6.6, 0, 0, Math.PI * 2); ctx.fill();
-  ell(ctx, cx + ox, cy + 2, 4.8, 5.6, p.haut);
-  ell(ctx, cx + ox - 1.4, cy, 1.9, 2.4, p.hautH);                                // Stirnlicht
-  ctx.fillStyle = p.hautS;                                                       // Wangenschatten gegenüber
-  ctx.beginPath(); ctx.ellipse(cx + ox + (dir === 2 ? -2.4 : 2.4), cy + 2.6, 1.8, 3.4, 0, 0, Math.PI * 2); ctx.fill();
-  // Augen je Blickrichtung
-  if (dir === 0) { auge(ctx, cx - 2.3, cy + 1); auge(ctx, cx + 2.3, cy + 1); }
-  if (dir === 1) { auge(ctx, cx - 3.2, cy + 1); auge(ctx, cx + 0.2, cy + 1); }
-  if (dir === 2) { auge(ctx, cx + 3.2, cy + 1); auge(ctx, cx - 0.2, cy + 1); }
+  ctx.beginPath(); ctx.ellipse(cx + ox, cy + 1, 4, 4.6, 0, 0, Math.PI * 2); ctx.fill();
+  ell(ctx, cx + ox, cy + 1.3, 3.3, 3.9, p.haut);
+  ell(ctx, cx + ox - 1, cy - 0.2, 1.2, 1.6, p.hautH);
+  ctx.fillStyle = p.hautS;
+  ctx.beginPath(); ctx.ellipse(cx + ox + (dir === 2 ? -1.7 : 1.7), cy + 1.7, 1.2, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+  if (dir === 0) { auge(ctx, cx - 1.6, cy + 0.8); auge(ctx, cx + 1.6, cy + 0.8); }
+  if (dir === 1) { auge(ctx, cx - 2.2, cy + 0.8); auge(ctx, cx + 0.2, cy + 0.8); }
+  if (dir === 2) { auge(ctx, cx + 2.2, cy + 0.8); auge(ctx, cx - 0.2, cy + 0.8); }
 }
 
 // Eine Figur in die aktuelle 64x64-Zelle zeichnen (Ursprung links oben).
