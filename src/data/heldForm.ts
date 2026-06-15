@@ -19,16 +19,29 @@ export interface HeldForm {
   gesichtOffen: number; // Größe der Gesichtsöffnung (1 = wie bisher, klein = verdeckter)
   visier: number;       // Visier von oben über die Augen (0 = keins, 1 = fast zu)
   ruestHell: number;    // Rüstung heller/dunkler (- dunkel ... + hell)
+  // Umhang + Gürtel + Schmuck (Runde 40, Erweiterung)
+  capeBreite: number;   // Weite des Umhangs unten (klein = schmaler)
+  capeLaenge: number;   // Länge des Umhangs
+  guertelBreite: number;// Gürtelbreite
+  kettenGitter: number; // Kettenhemd-Gittermuster (0 = aus, 1 = an)
+  leuchten: number;     // goldenes Leuchten (epische Rüstung) (0 = aus, 1 = an)
+  // Farb-Überschreibungen je Teil (leer = Standardfarbe der Rüstungsstufe)
+  farben: { wams?: string; cape?: string; kapuze?: string; guertel?: string };
 }
 
 export const DEF_HELDFORM: HeldForm = {
   kopfR: 5.8, kopfY: 14.5, schulterY: 24, schulterB: 10, tailleB: 6,
   rumpfH: 17, armL: 13, armB: 4.6, beinL: 13, beinB: 6.4, skala: 0.6,
   gesichtOffen: 1.0, visier: 0, ruestHell: 0,
+  capeBreite: 1.0, capeLaenge: 1.0, guertelBreite: 1.0, kettenGitter: 1, leuchten: 0,
+  farben: {},
 };
 
+// Zahlen-Felder der HeldForm (alles außer den Farb-Überschreibungen)
+export type HeldFormNum = Exclude<keyof HeldForm, 'farben'>;
+
 // Grenzen + Schrittweite je Regler für den Editor (Label, min, max, step)
-export const HELDFORM_REGLER: Array<[keyof HeldForm, string, number, number, number]> = [
+export const HELDFORM_REGLER: Array<[HeldFormNum, string, number, number, number]> = [
   ['kopfR', 'Kopfgröße', 3.5, 8, 0.2],
   ['kopfY', 'Kopfhöhe', 10, 18, 0.5],
   ['schulterB', 'Schulterbreite', 6, 14, 0.5],
@@ -43,6 +56,20 @@ export const HELDFORM_REGLER: Array<[keyof HeldForm, string, number, number, num
   ['gesichtOffen', 'Gesicht offen', 0.2, 1.3, 0.1],
   ['visier', 'Visier', 0, 1, 0.1],
   ['ruestHell', 'Rüstung hell/dunkel', -40, 40, 5],
+  ['capeBreite', 'Umhang-Weite', 0.4, 1.6, 0.1],
+  ['capeLaenge', 'Umhang-Länge', 0.5, 1.3, 0.1],
+  ['guertelBreite', 'Gürtelbreite', 0.5, 1.6, 0.1],
+  ['kettenGitter', 'Kettengitter', 0, 1, 1],
+  ['leuchten', 'Gold-Leuchten', 0, 1, 1],
+];
+
+// Wählbare Farben je Teil (Name -> Hex) für den Farb-Picker im Editor
+export const FARB_TEILE: Array<['wams' | 'cape' | 'kapuze' | 'guertel', string]> = [
+  ['wams', 'Wams'], ['cape', 'Umhang'], ['kapuze', 'Kapuze/Helm'], ['guertel', 'Gürtel'],
+];
+export const FARB_PALETTE: string[] = [
+  '#7a2e28', '#6a4326', '#7a7d84', '#9aa1a9', '#3a5a7a', '#2e4a3a',
+  '#5a3a6a', '#8a6a2a', '#c9a227', '#2a2a2e', '#8a8276', '#a83838',
 ];
 
 const KEY = 'ravensmoor_heldform_v1';

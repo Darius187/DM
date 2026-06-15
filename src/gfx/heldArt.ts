@@ -99,23 +99,42 @@ function bein(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, lx: number, vo
 }
 
 function umhang(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, sway: number): void {
-  const oy = f.schulterY - 1, uy = f.schulterY + f.rumpfH + f.beinL - 0.5; // Saum bis kurz über die Füße
-  const ow = f.schulterB - 4, uw = f.schulterB + 8;
+  const oy = f.schulterY - 1;
+  const fullUy = f.schulterY + f.rumpfH + f.beinL - 0.5;      // Saum bis kurz über die Füße
+  const uy = oy + (fullUy - oy) * f.capeLaenge;               // Länge regelbar
+  const ow = f.schulterB - 4, uw = (f.schulterB + 8) * f.capeBreite; // Weite unten regelbar
   poly(ctx, [[CX - ow, oy], [CX + ow, oy], [CX + uw + sway, uy - 14], [CX + uw + 2 + sway, uy], [CX - uw - 2 - sway, uy], [CX - uw + sway, uy - 14]], p.umh);
   poly(ctx, [[CX, oy], [CX + ow, oy], [CX + uw + sway, uy - 14], [CX + uw + 2 + sway, uy], [CX, uy - 2]], p.umhS);
 }
 
-function rumpf(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm): void {
+function rumpf(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, gitter: boolean): void {
   const sy = f.schulterY, wy = sy + f.rumpfH, my = (sy + wy) / 2;
   const sb = f.schulterB, tb = f.tailleB, mb = (sb + tb) / 2;
+  const wamsPfad = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(CX - sb, sy); ctx.lineTo(CX + sb, sy); ctx.lineTo(CX + mb, my);
+    ctx.lineTo(CX + tb, wy); ctx.lineTo(CX - tb, wy); ctx.lineTo(CX - mb, my); ctx.closePath();
+  };
   // Wams: Schultern breit, Taille schmaler
   poly(ctx, [[CX - sb, sy], [CX + sb, sy], [CX + mb, my], [CX + tb, wy], [CX - tb, wy], [CX - mb, my]], p.wams);
   poly(ctx, [[CX, sy], [CX + sb, sy], [CX + mb, my], [CX + tb, wy], [CX, wy]], p.wamsS); // rechte Hälfte dunkler
   ctx.fillStyle = p.wamsH; ctx.fillRect(CX - sb + 3, sy + 1, 4, f.rumpfH - 5);            // Lichtkante links
   poly(ctx, [[CX - 1, sy + 1], [CX + 1, sy + 1], [CX + 0.5, wy - 1], [CX - 0.5, wy - 1]], p.wamsS); // Mittelnaht
-  if (p.metall) { ctx.fillStyle = '#eef3f8'; ctx.globalAlpha = 0.5; ctx.fillRect(CX - sb + 4, sy + 2, 3, 5); ctx.globalAlpha = 1; }
-  // Gürtel + Schnalle
-  rr(ctx, CX - tb - 1, wy - 1.5, 2 * tb + 2, 3, 1, '#3a2a18');
+  // Kettenhemd-Gittermuster: abwechselnd helle/dunkle Pixel, auf das Wams geklippt
+  if (gitter) {
+    ctx.save(); wamsPfad(); ctx.clip();
+    for (let yy = sy; yy < wy; yy += 2) {
+      for (let xx = CX - sb; xx < CX + sb; xx += 2) {
+        ctx.fillStyle = ((xx + yy) & 3) === 0 ? 'rgba(238,243,248,0.22)' : 'rgba(0,0,0,0.26)';
+        ctx.fillRect(xx, yy, 1, 1);
+      }
+    }
+    ctx.restore();
+  }
+  if (p.metall && !gitter) { ctx.fillStyle = '#eef3f8'; ctx.globalAlpha = 0.5; ctx.fillRect(CX - sb + 4, sy + 2, 3, 5); ctx.globalAlpha = 1; }
+  // Gürtel + Schnalle (Breite + Farbe regelbar)
+  const bh = (tb + 1) * f.guertelBreite;
+  rr(ctx, CX - bh, wy - 1.5, 2 * bh, 3, 1, f.farben.guertel ?? '#3a2a18');
   ctx.fillStyle = '#c9a23a'; ctx.fillRect(CX - 1.2, wy - 1.2, 2.4, 2.4);
 }
 
@@ -193,7 +212,12 @@ function kopf(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, dir: Dir): voi
 // Eine Figur in die aktuelle 64x64-Zelle zeichnen (Ursprung links oben).
 export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir, frame: number): void {
   const f = getHeldForm();
-  const p = f.ruestHell ? tintPal(PALETTEN[tier], f.ruestHell) : PALETTEN[tier];
+  // Palette: erst Helligkeit tönen, dann Farb-Überschreibungen je Teil
+  const p: Pal = f.ruestHell ? tintPal(PALETTEN[tier], f.ruestHell) : { ...PALETTEN[tier] };
+  const fb = f.farben;
+  if (fb.wams) { p.wams = fb.wams; p.wamsH = shade(fb.wams, 20); p.wamsS = shade(fb.wams, -24); }
+  if (fb.cape) { p.umh = fb.cape; p.umhS = shade(fb.cape, -22); }
+  if (fb.kapuze) { p.kap = fb.kapuze; p.kapH = shade(fb.kapuze, 18); p.kapS = shade(fb.kapuze, -22); }
   const step = frame % 4;            // 0 stehen, 1 links vor, 2 stehen, 3 rechts vor
   const bobUp = step === 1 || step === 3 ? -1.4 : 0;
   const sway = step === 1 ? 2 : step === 3 ? -2 : 0;
@@ -203,6 +227,14 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir
 
   ctx.save();
   ctx.translate(0, bobUp);
+
+  // Goldenes Leuchten epischer Rüstungen (Figur-Editor, Runde 40): weicher
+  // Schein hinter der Figur, gebacken in die Zelle
+  if (f.leuchten > 0) {
+    for (const [r2, a2] of [[19, 0.10], [13, 0.16], [8, 0.2]] as const) {
+      ell(ctx, CX, 36, r2, r2 * 1.25, `rgba(244,206,90,${a2})`);
+    }
+  }
 
   umhang(ctx, p, f, sway);
 
@@ -214,7 +246,7 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir
 
   // hinterer Arm (gegenläufig), Rumpf, vorderer Arm - an den Schultern
   arm(ctx, p, f, CX - f.schulterB, -lVor, true);
-  rumpf(ctx, p, f);
+  rumpf(ctx, p, f, tier === 'kette' && f.kettenGitter > 0);
   arm(ctx, p, f, CX + f.schulterB, lVor, false);
 
   kopf(ctx, p, f, dir);

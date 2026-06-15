@@ -13,10 +13,11 @@ describe('HeldForm / Figur-Editor-Daten', () => {
     }
   });
 
-  it('deckt alle einstellbaren Proportionen ab', () => {
+  it('deckt alle numerischen Proportionen mit einem Regler ab', () => {
     const felder = HELDFORM_REGLER.map(([f]) => f);
     for (const k of Object.keys(DEF_HELDFORM)) {
-      expect(felder.includes(k as keyof typeof DEF_HELDFORM), `${k} hat keinen Regler`).toBe(true);
+      if (k === 'farben') continue; // Farben hat einen eigenen Picker, keinen Zahlenregler
+      expect((felder as string[]).includes(k), `${k} hat keinen Regler`).toBe(true);
     }
   });
 });

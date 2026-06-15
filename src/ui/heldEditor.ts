@@ -4,7 +4,7 @@
 // die Werte im Browser ab und baut die Figur in der Welt neu auf.
 
 import Phaser from 'phaser';
-import { getHeldForm, saveHeldForm, HELDFORM_REGLER, DEF_HELDFORM, type HeldForm } from '../data/heldForm';
+import { getHeldForm, saveHeldForm, HELDFORM_REGLER, DEF_HELDFORM, FARB_TEILE, FARB_PALETTE, type HeldForm } from '../data/heldForm';
 import { drawHeld, HELD_CELL } from '../gfx/heldArt';
 import type { HeldTier } from '../data/helden';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
@@ -22,6 +22,7 @@ export class HeldEditor {
   private vorschau: Phaser.GameObjects.Image | null = null;
   private dir = 0;              // Blickrichtung der Vorschau
   private previewTier: HeldTier | null = null; // Rüstung in der Vorschau (null = getragene)
+  private farbTeil: 'wams' | 'cape' | 'kapuze' | 'guertel' = 'wams'; // welches Teil färbt der Picker
   private animFrame = 0;
   private animTimer: Phaser.Time.TimerEvent | null = null;
   private snapshot: HeldForm | null = null; // Stand beim Öffnen (für Verwerfen)
@@ -40,7 +41,8 @@ export class HeldEditor {
 
   openEditor(): void {
     this.open_ = true;
-    this.snapshot = { ...getHeldForm() }; // Stand sichern, um Verwerfen zu erlauben
+    const cur = getHeldForm();
+    this.snapshot = { ...cur, farben: { ...cur.farben } }; // Stand sichern (Farben tief kopieren)
     this.gespeichert = false;
     this.build();
     this.animTimer = this.scene.time.addEvent({
@@ -52,7 +54,11 @@ export class HeldEditor {
   close(): void {
     // Nicht gespeicherte Änderungen verwerfen: Form auf den Öffnungsstand
     // zurücksetzen (die Welt-Figur wurde nur beim Speichern angefasst)
-    if (!this.gespeichert && this.snapshot) Object.assign(getHeldForm(), this.snapshot);
+    if (!this.gespeichert && this.snapshot) {
+      const cur = getHeldForm();
+      Object.assign(cur, this.snapshot);
+      cur.farben = { ...this.snapshot.farben }; // Farben getrennt zurückspielen
+    }
     this.open_ = false;
     this.animTimer?.remove();
     this.animTimer = null;
@@ -64,19 +70,19 @@ export class HeldEditor {
   private build(): void {
     this.container?.destroy();
     const sw = this.scene.scale.width, sh = this.scene.scale.height;
-    const w = 580, h = 580;
+    const w = 760, h = 620;
     const ox = (sw - w) / 2, oy = (sh - h) / 2;
     const c = this.scene.add.container(ox, oy).setScrollFactor(0).setDepth(6300);
     this.container = c;
-    // abdunkelnder Hintergrund (relativ zur Containerlage), fängt Außenklicks ab
     c.add(this.scene.add.rectangle(-ox, -oy, sw, sh, 0x000000, 0.55).setOrigin(0).setInteractive());
     c.add(this.scene.add.rectangle(0, 0, w, h, PANEL_BG, 0.98).setOrigin(0).setStrokeStyle(1, 0xc9a227));
     c.add(this.scene.add.text(w / 2, 12, 'FIGUR-EDITOR', { fontFamily: 'serif', fontSize: '18px', color: GOLD, letterSpacing: 3 }).setOrigin(0.5, 0));
-    c.add(this.scene.add.text(w / 2, 36, 'Proportionen des Helden frei einstellen', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a', fontStyle: 'italic' }).setOrigin(0.5, 0));
+    c.add(this.scene.add.text(w / 2, 36, 'Proportionen, Rüstung & Farben des Helden frei einstellen', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a', fontStyle: 'italic' }).setOrigin(0.5, 0));
 
-    // Vorschau links
-    const px = 120, py = 250;
-    c.add(this.scene.add.rectangle(20, 56, 200, 320, 0x0c0905, 0.7).setOrigin(0).setStrokeStyle(1, LINE));
+    const f = getHeldForm();
+
+    // --- Spalte 1: Vorschau + Rüstungs-Auswahl ---
+    c.add(this.scene.add.rectangle(20, 56, 200, 330, 0x0c0905, 0.7).setOrigin(0).setStrokeStyle(1, LINE));
     if (!this.scene.textures.exists(VORSCHAU_KEY)) {
       this.canvas = document.createElement('canvas');
       this.canvas.width = HELD_CELL; this.canvas.height = HELD_CELL;
@@ -84,58 +90,74 @@ export class HeldEditor {
     } else {
       this.canvas = this.scene.textures.get(VORSCHAU_KEY).getSourceImage() as HTMLCanvasElement;
     }
-    this.vorschau = this.scene.add.image(px, py, VORSCHAU_KEY).setOrigin(0.5).setScale(2.6);
+    this.vorschau = this.scene.add.image(120, 250, VORSCHAU_KEY).setOrigin(0.5).setScale(3.0);
     this.vorschau.setData('pixel', true);
     c.add(this.vorschau);
-    // Richtung drehen
-    c.add(this.knopf(78, 384, '↻ drehen', 84, () => { this.dir = (this.dir + 1) % 4; this.zeichneVorschau(); }));
-    // Rüstungs-Vorschau wählen (Stoff/Leder/Kette/Platte) - der Editor zeigt,
-    // wie die Form auf jeder Rüstung wirkt (Autorwunsch: helle/dunkle Rüstungen + Helm)
-    c.add(this.scene.add.text(20, 414, 'RÜSTUNG ANSEHEN', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a', letterSpacing: 1 }));
+    c.add(this.knopf(78, 392, '↻ drehen', 84, () => { this.dir = (this.dir + 1) % 4; this.zeichneVorschau(); }));
+    c.add(this.scene.add.text(20, 420, 'RÜSTUNG ANSEHEN', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a', letterSpacing: 1 }));
     const tiers: Array<[HeldTier, string]> = [['stoff', 'Stoff'], ['leder', 'Leder'], ['kette', 'Kette'], ['platte', 'Platte']];
     tiers.forEach(([t, lbl], i) => {
-      c.add(this.knopf(20 + (i % 2) * 100, 430 + Math.floor(i / 2) * 26, lbl, 94, () => {
+      c.add(this.knopf(20 + (i % 2) * 100, 436 + Math.floor(i / 2) * 26, lbl, 94, () => {
         this.previewTier = t; this.build();
       }, this.previewTier === t ? GOLD : BONE));
     });
 
-    // Regler rechts: je Zeile  Label  [-] Wert [+]
-    const rx = 250;
-    let ry = 60;
-    const f = getHeldForm();
+    // --- Spalte 2: Zahlen-Regler ---
+    const rx = 246;
+    let ry = 58;
     for (const [feld, label, min, max, step] of HELDFORM_REGLER) {
-      c.add(this.scene.add.text(rx, ry + 2, label, { fontFamily: 'serif', fontSize: '12px', color: BONE }));
-      const wertText = this.scene.add.text(rx + 250, ry + 2, this.fmt(f[feld]), {
-        fontFamily: 'serif', fontSize: '12px', color: GOLD,
-      }).setOrigin(1, 0);
+      c.add(this.scene.add.text(rx, ry + 2, label, { fontFamily: 'serif', fontSize: '11.5px', color: BONE }));
+      const wertText = this.scene.add.text(rx + 212, ry + 2, this.fmt(f[feld]), { fontFamily: 'serif', fontSize: '11.5px', color: GOLD }).setOrigin(1, 0);
       const setze = (v: number) => {
         const nv = Math.round(Math.min(max, Math.max(min, v)) / step) * step;
         f[feld] = Number(nv.toFixed(2));
         wertText.setText(this.fmt(f[feld]));
         this.zeichneVorschau();
       };
-      c.add(this.knopf(rx + 170, ry, '−', 26, () => setze(f[feld] - step)));
-      c.add(this.knopf(rx + 262, ry, '+', 26, () => setze(f[feld] + step)));
+      c.add(this.knopf(rx + 146, ry, '−', 24, () => setze(f[feld] - step)));
+      c.add(this.knopf(rx + 218, ry, '+', 24, () => setze(f[feld] + step)));
       c.add(wertText);
-      ry += 26;
+      ry += 24;
     }
 
-    // Knöpfe unten: Speichern wendet auf die Welt-Figur an, Zurücksetzen
-    // stellt die Standardwerte in der Vorschau her (erst Speichern übernimmt sie)
-    const hinweis = this.scene.add.text(20, h - 44, '', { fontFamily: 'serif', fontSize: '11px', color: '#6ad06a' });
+    // --- Spalte 3: Farben je Teil ---
+    const fx = 520;
+    c.add(this.scene.add.text(fx, 56, 'FARBEN', { fontFamily: 'serif', fontSize: '13px', color: GOLD, letterSpacing: 2 }));
+    c.add(this.scene.add.text(fx, 74, 'Teil wählen, dann Farbe antippen:', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }));
+    FARB_TEILE.forEach(([id, lbl], i) => {
+      c.add(this.knopf(fx + (i % 2) * 110, 92 + Math.floor(i / 2) * 26, lbl, 104, () => {
+        this.farbTeil = id; this.build();
+      }, this.farbTeil === id ? GOLD : BONE));
+    });
+    // Farbfelder
+    FARB_PALETTE.forEach((col, i) => {
+      const bx = fx + (i % 4) * 38, by = 150 + Math.floor(i / 4) * 30;
+      const sw2 = this.scene.add.rectangle(bx, by, 30, 24, Phaser.Display.Color.HexStringToColor(col).color)
+        .setOrigin(0).setStrokeStyle(f.farben[this.farbTeil] === col ? 2 : 1, f.farben[this.farbTeil] === col ? 0xffffff : LINE)
+        .setInteractive({ useHandCursor: true });
+      sw2.on('pointerdown', () => { f.farben[this.farbTeil] = col; this.build(); });
+      c.add(sw2);
+    });
+    c.add(this.knopf(fx, 246, 'Standardfarbe', 130, () => { delete f.farben[this.farbTeil]; this.build(); }));
+    c.add(this.scene.add.text(fx, 280, 'Tipp: Gürtel, Umhang, Helm und\nWams getrennt färbbar. Kettengitter\nund Gold-Leuchten als Regler links.', {
+      fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a', lineSpacing: 3,
+    }));
+
+    // --- Knöpfe unten ---
+    const hinweis = this.scene.add.text(20, h - 42, '', { fontFamily: 'serif', fontSize: '11px', color: '#6ad06a' });
     c.add(hinweis);
-    c.add(this.knopf(rx + 30, h - 40, 'SPEICHERN', 110, () => {
+    c.add(this.knopf(rx + 30, h - 40, 'SPEICHERN', 120, () => {
       saveHeldForm();
       this.provider.invalidateHeld();
       this.onApply?.();
       this.gespeichert = true;
       hinweis.setText('✓ übernommen');
     }, GOLD));
-    c.add(this.knopf(rx + 160, h - 40, 'ZURÜCKSETZEN', 130, () => {
-      Object.assign(getHeldForm(), DEF_HELDFORM);
-      this.build(); // Werte-Texte + Vorschau neu
+    c.add(this.knopf(rx + 170, h - 40, 'ZURÜCKSETZEN', 130, () => {
+      Object.assign(getHeldForm(), { ...DEF_HELDFORM, farben: {} });
+      this.build();
     }));
-    c.add(this.knopf(rx + 300, h - 40, 'SCHLIESSEN', 110, () => this.close()));
+    c.add(this.knopf(rx + 320, h - 40, 'SCHLIESSEN', 110, () => this.close()));
 
     this.zeichneVorschau();
   }
