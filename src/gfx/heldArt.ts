@@ -120,29 +120,33 @@ function rumpf(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, gitter: boole
   poly(ctx, [[CX, sy], [CX + sb, sy], [CX + mb, my], [CX + tb, wy], [CX, wy]], p.wamsS); // rechte Hälfte dunkler
   ctx.fillStyle = p.wamsH; ctx.fillRect(CX - sb + 3, sy + 1, 4, f.rumpfH - 5);            // Lichtkante links
   poly(ctx, [[CX - 1, sy + 1], [CX + 1, sy + 1], [CX + 0.5, wy - 1], [CX - 0.5, wy - 1]], p.wamsS); // Mittelnaht
-  // Kettenhemd-Gittermuster: abwechselnd helle/dunkle Pixel, auf das Wams geklippt
+  // Kettenhemd: VERSETZTE Ringreihen (Autorbug R40: das alte Gitter sah aus wie
+  // eine Steppjacke). Jeder Ring = heller Reflex + Schatten darunter, jede zweite
+  // Reihe um einen halben Ring versetzt -> Maschen-Optik statt Karos.
   if (gitter) {
     ctx.save(); wamsPfad(); ctx.clip();
-    for (let yy = sy; yy < wy; yy += 2) {
-      for (let xx = CX - sb; xx < CX + sb; xx += 2) {
-        ctx.fillStyle = ((xx + yy) & 3) === 0 ? 'rgba(238,243,248,0.22)' : 'rgba(0,0,0,0.26)';
-        ctx.fillRect(xx, yy, 1, 1);
+    for (let row = 0, yy = sy - 1; yy < wy; yy += 2, row++) {
+      const off = (row % 2) ? 1 : 0;
+      for (let xx = CX - sb + off; xx < CX + sb; xx += 2) {
+        ctx.fillStyle = 'rgba(222,230,240,0.6)'; ctx.fillRect(xx, yy, 1, 1);        // Ringreflex
+        ctx.fillStyle = 'rgba(0,0,0,0.42)'; ctx.fillRect(xx + 0.4, yy + 1, 1, 0.9); // Ringschatten
       }
     }
     ctx.restore();
   }
-  if (p.metall && !gitter) { ctx.fillStyle = '#eef3f8'; ctx.globalAlpha = 0.5; ctx.fillRect(CX - sb + 4, sy + 2, 3, 5); ctx.globalAlpha = 1; }
-  // Gürtel + Schnalle (Breite + Farbe regelbar)
+  if (p.metall && !gitter) { ctx.fillStyle = shade('#eef3f8', f.ruestHell); ctx.globalAlpha = 0.5; ctx.fillRect(CX - sb + 4, sy + 2, 3, 5); ctx.globalAlpha = 1; }
+  // Gürtel + Schnalle (Breite + Farben regelbar - auch die Schnalle, Autorwunsch R40)
   const bh = (tb + 1) * f.guertelBreite;
   rr(ctx, CX - bh, wy - 1.5, 2 * bh, 3, 1, f.farben.guertel ?? '#3a2a18');
-  ctx.fillStyle = '#c9a23a'; ctx.fillRect(CX - 1.2, wy - 1.2, 2.4, 2.4);
+  ctx.fillStyle = f.farben.schnalle ?? '#c9a23a'; ctx.fillRect(CX - 1.2, wy - 1.2, 2.4, 2.4);
 }
 
 function arm(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, sx: number, vor: number, dunkel: boolean): void {
   const top = f.schulterY + 2 + Math.max(0, -vor), hw = f.armB / 2;
   rr(ctx, sx - hw, top, f.armB, f.armL, 2.2, dunkel ? p.wamsS : p.wams);
-  // Hand als Lederhandschuh in Armfarbe (Autorwunsch R40)
-  ell(ctx, sx, top + f.armL + vor * 0.5, hw + 0.3, hw + 0.3, shade(dunkel ? p.wamsS : p.wams, -10));
+  // BEIDE Handschuhe in derselben Farbe (Autorbug R40: vorher unterschiedlich
+  // hell, weil an die Armseite gekoppelt). Eigene Handschuhfarbe oder aus dem Wams.
+  ell(ctx, sx, top + f.armL + vor * 0.5, hw + 0.3, hw + 0.3, f.farben.hand ?? shade(p.wams, -14));
 }
 
 function auge(ctx: CanvasRenderingContext2D, x: number, y: number, s: number): void {
@@ -166,9 +170,9 @@ function kopf(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, dir: Dir): voi
   ctx.beginPath(); ctx.ellipse(cx - r * 0.4, cy - r * 0.7, 2.5 * s, 1.9 * s, -0.5, 0, Math.PI * 2); ctx.fill();
   if (p.helm) {
     ctx.fillStyle = p.kapH; ctx.fillRect(cx - 0.8, cy - r - 1.5, 1.6, r * 1.0);
-    if (p.metall) { ctx.globalAlpha = 0.5; ell(ctx, cx - r * 0.45, cy - r * 0.5, 1.1 * s, 2.6 * s, '#eef3f8'); ctx.globalAlpha = 1; }
+    if (p.metall) { ctx.globalAlpha = 0.5; ell(ctx, cx - r * 0.45, cy - r * 0.5, 1.1 * s, 2.6 * s, shade('#eef3f8', f.ruestHell)); ctx.globalAlpha = 1; }
   } else if (p.metall) {
-    ctx.fillStyle = '#cfd4da'; for (let i = 0; i < 5; i++) ctx.fillRect(cx - r * 0.95 + i * (r * 0.45), cy - r + (i % 2) * 2, 1, 1);
+    ctx.fillStyle = shade('#cfd4da', f.ruestHell); for (let i = 0; i < 5; i++) ctx.fillRect(cx - r * 0.95 + i * (r * 0.45), cy - r + (i % 2) * 2, 1, 1);
   }
 
   if (dir === 3) { // Rückansicht: nur Haube
@@ -199,7 +203,7 @@ function kopf(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, dir: Dir): voi
   if (f.visier > 0) {
     ctx.save();
     ctx.beginPath(); ctx.ellipse(fcx, fcy, frx + 0.4, fry + 0.4, 0, 0, Math.PI * 2); ctx.clip();
-    const steel = p.metall ? '#9aa1aa' : shade(p.kap, 22);
+    const steel = p.metall ? shade('#9aa1aa', f.ruestHell) : shade(p.kap, 22);
     const visTop = fcy - fry, visBot = visTop + f.visier * 2 * fry;
     ctx.fillStyle = steel; ctx.fillRect(fcx - frx - 0.5, visTop - 0.5, frx * 2 + 1, visBot - visTop + 0.5);
     ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(fcx - frx, visTop + 0.4, frx * 2, 0.7); // Lichtkante
@@ -212,12 +216,14 @@ function kopf(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, dir: Dir): voi
 // Eine Figur in die aktuelle 64x64-Zelle zeichnen (Ursprung links oben).
 export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir, frame: number): void {
   const f = getHeldForm(tier);
-  // Palette: erst Helligkeit tönen, dann Farb-Überschreibungen je Teil
-  const p: Pal = f.ruestHell ? tintPal(PALETTEN[tier], f.ruestHell) : { ...PALETTEN[tier] };
+  // Palette: erst Farb-Überschreibungen je Teil, DANN Helligkeit auf ALLES
+  // (Autorbug R40: Helligkeit ließ überschriebene Teile + Helm unberührt)
+  let p: Pal = { ...PALETTEN[tier] };
   const fb = f.farben;
   if (fb.wams) { p.wams = fb.wams; p.wamsH = shade(fb.wams, 20); p.wamsS = shade(fb.wams, -24); }
   if (fb.cape) { p.umh = fb.cape; p.umhS = shade(fb.cape, -22); }
   if (fb.kapuze) { p.kap = fb.kapuze; p.kapH = shade(fb.kapuze, 18); p.kapS = shade(fb.kapuze, -22); }
+  if (f.ruestHell) p = tintPal(p, f.ruestHell);
   const step = frame % 4;            // 0 stehen, 1 links vor, 2 stehen, 3 rechts vor
   const bobUp = step === 1 || step === 3 ? -1.4 : 0;
   const sway = step === 1 ? 2 : step === 3 ? -2 : 0;
@@ -228,12 +234,11 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir
   ctx.save();
   ctx.translate(0, bobUp);
 
-  // Goldenes Leuchten epischer Rüstungen (Figur-Editor, Runde 40): weicher
-  // Schein hinter der Figur, gebacken in die Zelle
+  // Leuchtende KONTUR statt Halo (Autorwunsch R40): ein Schatten-Glühen um jede
+  // Form lässt die Rüstung umrissen leuchten. Wird nach der Figur zurückgesetzt.
   if (f.leuchten > 0) {
-    for (const [r2, a2] of [[19, 0.10], [13, 0.16], [8, 0.2]] as const) {
-      ell(ctx, CX, 36, r2, r2 * 1.25, `rgba(244,206,90,${a2})`);
-    }
+    ctx.shadowColor = 'rgba(246,210,96,0.95)';
+    ctx.shadowBlur = 4;
   }
 
   umhang(ctx, p, f, sway);

@@ -4,7 +4,7 @@
 // die Werte im Browser ab und baut die Figur in der Welt neu auf.
 
 import Phaser from 'phaser';
-import { getHeldForm, getFormen, saveHeldForm, standardForm, HELDFORM_REGLER, FARB_TEILE, FARB_PALETTE, type HeldFormen } from '../data/heldForm';
+import { getHeldForm, getFormen, saveHeldForm, standardForm, getPresets, savePreset, deletePreset, HELDFORM_REGLER, FARB_TEILE, FARB_PALETTE, type HeldFormen, type FarbTeil } from '../data/heldForm';
 import { drawHeld, HELD_CELL } from '../gfx/heldArt';
 import type { HeldTier } from '../data/helden';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
@@ -23,7 +23,7 @@ export class HeldEditor {
   private vorschau: Phaser.GameObjects.Image | null = null;
   private dir = 0;              // Blickrichtung der Vorschau
   private editTier: HeldTier | null = null; // bearbeitete Rüstungsstufe (null = getragene)
-  private farbTeil: 'wams' | 'cape' | 'kapuze' | 'guertel' = 'wams'; // welches Teil färbt der Picker
+  private farbTeil: FarbTeil = 'wams'; // welches Teil färbt der Picker
   private animFrame = 0;
   private animTimer: Phaser.Time.TimerEvent | null = null;
   private snapshot: HeldFormen | null = null; // alle Stufen beim Öffnen (für Verwerfen)
@@ -144,19 +144,46 @@ export class HeldEditor {
         this.farbTeil = id; this.build();
       }, this.farbTeil === id ? GOLD : BONE));
     });
-    // Farbfelder
+    // Farbfelder (unter den 3 Reihen Teil-Knöpfen)
+    const swY = 92 + Math.ceil(FARB_TEILE.length / 2) * 26 + 6;
     FARB_PALETTE.forEach((col, i) => {
-      const bx = fx + (i % 4) * 38, by = 150 + Math.floor(i / 4) * 30;
+      const bx = fx + (i % 4) * 38, by = swY + Math.floor(i / 4) * 30;
       const sw2 = this.scene.add.rectangle(bx, by, 30, 24, Phaser.Display.Color.HexStringToColor(col).color)
         .setOrigin(0).setStrokeStyle(f.farben[this.farbTeil] === col ? 2 : 1, f.farben[this.farbTeil] === col ? 0xffffff : LINE)
         .setInteractive({ useHandCursor: true });
       sw2.on('pointerdown', () => { f.farben[this.farbTeil] = col; this.build(); });
       c.add(sw2);
     });
-    c.add(this.knopf(fx, 246, 'Standardfarbe', 130, () => { delete f.farben[this.farbTeil]; this.build(); }));
-    c.add(this.scene.add.text(fx, 280, 'Tipp: Gürtel, Umhang, Helm und\nWams getrennt färbbar. Kettengitter\nund Gold-Leuchten als Regler links.', {
-      fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a', lineSpacing: 3,
-    }));
+    c.add(this.knopf(fx, swY + 96, 'Standardfarbe', 130, () => { delete f.farben[this.farbTeil]; this.build(); }));
+
+    // --- Vorlagen-Bibliothek (Speichern unter Name + Laden/Löschen) ---
+    let vy = swY + 132;
+    c.add(this.scene.add.text(fx, vy, 'VORLAGEN', { fontFamily: 'serif', fontSize: '13px', color: GOLD, letterSpacing: 2 }));
+    vy += 20;
+    c.add(this.knopf(fx, vy, 'SPEICHERN UNTER…', 200, () => {
+      const vorschlag = `Rüstung_${this.tier()}`;
+      const name = (typeof window !== 'undefined' ? window.prompt('Name der Vorlage:', vorschlag) : vorschlag)?.trim();
+      if (name) { savePreset(name, getHeldForm(this.tier())); this.build(); }
+    }, GOLD));
+    vy += 28;
+    const presets = Object.keys(getPresets());
+    if (presets.length === 0) {
+      c.add(this.scene.add.text(fx, vy, 'Noch keine gespeichert.', { fontFamily: 'serif', fontSize: '10px', color: '#6a5f4c', fontStyle: 'italic' }));
+    }
+    for (const name of presets.slice(0, 7)) {
+      const row = this.scene.add.text(fx, vy + 2, name.length > 24 ? name.slice(0, 23) + '…' : name, { fontFamily: 'serif', fontSize: '11px', color: BONE }).setInteractive({ useHandCursor: true });
+      row.on('pointerover', () => row.setColor(GOLD));
+      row.on('pointerout', () => row.setColor(BONE));
+      row.on('pointerdown', () => { // laden: auf die aktuelle Stufe anwenden
+        const p = getPresets()[name]; if (!p) return;
+        const z = getHeldForm(this.tier());
+        Object.assign(z, p); z.farben = { ...p.farben };
+        this.build();
+      });
+      c.add(row);
+      c.add(this.knopf(fx + 196, vy, '×', 22, () => { deletePreset(name); this.build(); }));
+      vy += 22;
+    }
 
     // --- Knöpfe unten ---
     const hinweis = this.scene.add.text(20, h - 42, '', { fontFamily: 'serif', fontSize: '11px', color: '#6ad06a' });

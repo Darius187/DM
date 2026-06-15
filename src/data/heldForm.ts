@@ -28,7 +28,7 @@ export interface HeldForm {
   kettenGitter: number; // Kettenhemd-Gittermuster (0 = aus, 1 = an)
   leuchten: number;     // goldenes Leuchten (epische Rüstung) (0 = aus, 1 = an)
   // Farb-Überschreibungen je Teil (leer = Standardfarbe der Rüstungsstufe)
-  farben: { wams?: string; cape?: string; kapuze?: string; guertel?: string };
+  farben: { wams?: string; cape?: string; kapuze?: string; guertel?: string; schnalle?: string; hand?: string };
 }
 
 export const DEF_HELDFORM: HeldForm = {
@@ -66,8 +66,10 @@ export const HELDFORM_REGLER: Array<[HeldFormNum, string, number, number, number
 ];
 
 // Wählbare Farben je Teil (Name -> Hex) für den Farb-Picker im Editor
-export const FARB_TEILE: Array<['wams' | 'cape' | 'kapuze' | 'guertel', string]> = [
-  ['wams', 'Wams'], ['cape', 'Umhang'], ['kapuze', 'Kapuze/Helm'], ['guertel', 'Gürtel'],
+export type FarbTeil = 'wams' | 'cape' | 'kapuze' | 'guertel' | 'schnalle' | 'hand';
+export const FARB_TEILE: Array<[FarbTeil, string]> = [
+  ['wams', 'Wams'], ['cape', 'Umhang'], ['kapuze', 'Kapuze/Helm'],
+  ['guertel', 'Gürtel'], ['schnalle', 'Schnalle'], ['hand', 'Handschuhe'],
 ];
 export const FARB_PALETTE: string[] = [
   '#7a2e28', '#6a4326', '#7a7d84', '#9aa1a9', '#3a5a7a', '#2e4a3a',
@@ -120,6 +122,30 @@ export function getHeldForm(tier: HeldTier): HeldForm {
 // Standard-Look einer Stufe (für den ZURÜCKSETZEN-Knopf im Editor)
 export function standardForm(tier: HeldTier): HeldForm {
   return defaults()[tier];
+}
+
+// --- Benannte Vorlagen (Runde 40, Autorwunsch "Figur speichern unter Name,
+// z.B. Rüstung_kette_episch") - eine Bibliothek gespeicherter Looks. ---
+const PRESET_KEY = 'ravensmoor_heldvorlagen_v1';
+
+export function getPresets(): Record<string, HeldForm> {
+  try {
+    const raw = localStorage.getItem(PRESET_KEY);
+    if (raw) return JSON.parse(raw) as Record<string, HeldForm>;
+  } catch { /* gesperrt */ }
+  return {};
+}
+
+export function savePreset(name: string, form: HeldForm): void {
+  const all = getPresets();
+  all[name] = { ...form, farben: { ...form.farben } };
+  try { localStorage.setItem(PRESET_KEY, JSON.stringify(all)); } catch { /* gesperrt */ }
+}
+
+export function deletePreset(name: string): void {
+  const all = getPresets();
+  delete all[name];
+  try { localStorage.setItem(PRESET_KEY, JSON.stringify(all)); } catch { /* gesperrt */ }
 }
 
 export function saveHeldForm(): void {
