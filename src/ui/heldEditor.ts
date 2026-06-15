@@ -39,6 +39,9 @@ export class HeldEditor {
 
   toggle(): void { this.open_ ? this.close() : this.openEditor(); }
 
+  // Bei Fenstergröße-Änderung neu aufbauen (zentriert sich neu)
+  relayout(): void { if (this.open_) this.build(); }
+
   openEditor(): void {
     this.open_ = true;
     const cur = getHeldForm();

@@ -246,6 +246,11 @@ export class WorldScene extends CombatScene {
     // bleibt gestochen scharf (vorher: gestrecktes Canvas = Pixelmatsch)
     this.uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height);
     this.uiCam.setScroll(0, 0);
+    // Fenstergröße ändern / Vollbild (F11): Kameras, Lichtschicht und OFFENE
+    // Fenster neu ausrichten - sonst hingen Charakterfenster & Co. schief und
+    // das Bild "brach" (Autorbug Runde 40). Beim Verlassen wieder abmelden.
+    this.scale.on('resize', this.onResize, this);
+    this.events.once('shutdown', () => this.scale.off('resize', this.onResize, this));
 
     // Dev-Werkzeug: ?ruestzeug=1 gibt Testausrüstung (nur Dev-Build)
     if (import.meta.env.DEV && new URLSearchParams(location.search).get('ruestzeug')) {
@@ -4636,6 +4641,22 @@ export class WorldScene extends CombatScene {
   }
 
   private uiCam!: Phaser.Cameras.Scene2D.Camera;
+
+  // Fenstergröße/Vollbild geändert (Runde 40): Kameras + Lichtschicht auf die
+  // neue Größe ziehen und alle OFFENEN, mittig gebauten Fenster neu aufbauen,
+  // damit sie wieder zentriert/passend sitzen (Charakterfenster, Pause, Editor,
+  // Shop, Lager). Die HUD-Leisten/Kugeln richten sich pro Frame selbst aus.
+  private onResize(): void {
+    if (!this.area) return;
+    const w = this.scale.width, h = this.scale.height;
+    this.cameras.main.setSize(w, h);
+    this.uiCam?.setSize(w, h);
+    this.lightRT?.setSize(w, h);
+    this.areaText?.setPosition(w / 2, 16);
+    this.panels?.refresh();              // Charakter/Inventar neu zentrieren
+    this.heldEditor?.relayout();
+    if (this.pauseMenu) { this.pauseMenu.destroy(); this.pauseMenu = null; this.togglePause(); }
+  }
 
   // Jedes Objekt gehört GENAU EINER Kamera (Runde 27): bildschirmfeste
   // Elemente (scrollFactor 0) der scharfen UI-Kamera, alles andere der
