@@ -7,7 +7,6 @@ export const PLAYER = {
   speed: 178,          // Referenz
   radius: 11,          // Referenz
   blockSpeedMult: 0.45, // Referenz: Blocken verlangsamt
-  sprintMult: 1.5,     // Leertaste gehalten: rennen (+50%, Autorwunsch Runde 40)
   heavyWalkMult: 0.5,  // beim schweren Schlag (Umschalt) bedächtig weitergehen
 } as const;
 
@@ -57,12 +56,13 @@ export const BLOCK = {
   riposteWindowS: 1.3,  // Zeitfenster für die Riposte (Referenz)
 } as const;
 
-// Ausweichrolle
+// Ausweichrolle - schwächer als die Referenz (Autorwunsch Runde 40: "nur
+// Ausweichrolle, aber nicht so stark wie davor"): kürzerer Satz statt weitem Hechtsprung
 export const ROLL = {
-  iFramesMs: 300,       // 300 ms Unverwundbarkeit
+  iFramesMs: 260,       // Unverwundbarkeit (= Rolldauer)
   cooldownS: 0.9,       // Abklingzeit 0,9 s
-  speed: 560,           // Referenz Dash-Geschwindigkeit
-  durationS: 0.3,       // Rolldauer = Unverwundbarkeitsfenster
+  speed: 400,           // kürzerer Satz (vorher 560)
+  durationS: 0.26,      // Rolldauer = Unverwundbarkeitsfenster
 } as const;
 
 // Hit-Stop bei Treffern (Masterprompt: leicht 50 / Finisher 80 / schwer+Parade 100)
