@@ -13,7 +13,7 @@ import {
   newCombatState, inputLight, inputHeavy, inputRoll, inputBlockStart, inputBlockEnd,
   stepCombat, resolveIncoming, damageAfterArmor, blockedDamage, type CombatState, type AttackEvent,
 } from '../logic/combat';
-import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TIMESCALE, WEAPON_MOVESETS, GORE_WUCHT, PHYSIK } from '../data/kampf';
+import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TIMESCALE, WEAPON_MOVESETS, GORE_WUCHT, PHYSIK, PFEIL_PHYSIK } from '../data/kampf';
 import { ALTAR, SPELLS, SPELL_FX, SCHOOLS } from '../data/balancing';
 import { newPlayerState, recalc, weaponGem, type PlayerState } from '../logic/playerState';
 import { addSchoolUse } from '../logic/progression';
@@ -38,6 +38,8 @@ export interface Projectile {
   x: number; y: number; vx: number; vy: number; r: number; dmg: number;
   from: 'player' | 'enemy'; col: string; fire?: boolean; pierce?: boolean; arrow?: boolean;
   hitIds?: Set<number>; dead?: boolean;
+  // Pfeil-Wand-Physik (Runde 40, Physik-Test): steckt im Mauerwerk oder prallt ab
+  steckt?: boolean; steckT?: number; praller?: number; steckAng?: number;
 }
 
 export interface Telegraph { x: number; y: number; r: number; t: number; maxT: number; dmg: number; holy?: boolean; done?: boolean; art?: 'feuer' }
@@ -2214,9 +2216,18 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   private updateProjectiles(dt: number): void {
     for (const pr of this.projectiles) {
+      // Steckende Pfeile (Physik-Test): liegen still und verblassen langsam
+      if (pr.steckt) {
+        pr.steckT = (pr.steckT ?? 0) - dt;
+        if (pr.steckT <= 0) pr.dead = true;
+        continue;
+      }
+      const ox = pr.x, oy = pr.y; // letzte freie Stelle (vor dem Schritt)
       pr.x += pr.vx * dt;
       pr.y += pr.vy * dt;
       if (this.isSolidAt(pr.x, pr.y)) {
+        // Pfeil-Wand-Physik nur im Physik-Test (Runde 40): stecken oder abprallen
+        if (TUNING.physikTest && pr.arrow && this.pfeilTrifftWand(pr, ox, oy)) continue;
         pr.dead = true;
         if (pr.fire) this.fx.burst(pr.x, pr.y, 0xe8842a, 10, 150);
         if (pr.arrow) this.sfx.play('pfeil_einschlag', 0.5);
@@ -2256,6 +2267,43 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
     this.projectiles = this.projectiles.filter((pr) => !pr.dead
       && Math.abs(pr.x - this.px) < 1400 && Math.abs(pr.y - this.py) < 1400);
+  }
+
+  // Pfeil trifft eine Wand (Physik-Test, Runde 40): bleibt entweder im
+  // Mauerwerk stecken ODER prallt physikalisch korrekt ab. Beides kommt vor.
+  // ox/oy = letzte freie Stelle vor dem Schritt. Gibt true zurück, wenn der
+  // Pfeil weiterlebt (steckend oder abprallend), sonst false (dann stirbt er).
+  private pfeilTrifftWand(pr: Projectile, ox: number, oy: number): boolean {
+    // Wand-Normale bestimmen: welche Achse hat in die Wand geführt?
+    const wandX = this.isSolidAt(pr.x, oy); // horizontaler Schritt traf
+    const wandY = this.isSolidAt(ox, pr.y); // vertikaler Schritt traf
+    const tempo = Math.hypot(pr.vx, pr.vy);
+    const praller = pr.praller ?? 0;
+    // Stecken bleiben: per Zufall, oder wenn schon zu oft geprallt / zu langsam
+    const bleibtStecken = praller >= PFEIL_PHYSIK.maxPraller
+      || tempo < PFEIL_PHYSIK.minPrallTempo
+      || Math.random() < PFEIL_PHYSIK.steckChance;
+    if (bleibtStecken) {
+      // Auf die letzte freie Stelle zurücksetzen und im Mauerwerk verkeilen
+      pr.x = ox + pr.vx * 0.012;
+      pr.y = oy + pr.vy * 0.012;
+      pr.steckt = true;
+      pr.steckT = PFEIL_PHYSIK.steckDauerS;
+      pr.steckAng = Math.atan2(pr.vy, pr.vx);
+      pr.vx = 0; pr.vy = 0;
+      this.sfx.play('pfeil_einschlag', 0.5);
+      return true;
+    }
+    // Abprallen: an der getroffenen Achse spiegeln, Schwung verlieren
+    pr.x = ox; pr.y = oy;
+    if (wandX && !wandY) pr.vx = -pr.vx;
+    else if (wandY && !wandX) pr.vy = -pr.vy;
+    else { pr.vx = -pr.vx; pr.vy = -pr.vy; } // Ecke: zurückwerfen
+    pr.vx *= PFEIL_PHYSIK.prallDaempfung;
+    pr.vy *= PFEIL_PHYSIK.prallDaempfung;
+    pr.praller = praller + 1;
+    this.sfx.play('pfeil_einschlag', 0.3);
+    return true;
   }
 
   protected onPlayerProjectileHit(pr: Projectile, e: Enemy): void {
@@ -2467,9 +2515,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Projektile
     for (const pr of this.projectiles) {
       if (pr.arrow) {
-        const a = Math.atan2(pr.vy, pr.vx);
-        g.lineStyle(2, 0xd8d0b8, 1);
+        // Steckender Pfeil behält seinen Einschlagwinkel und verblasst zum Ende
+        const a = pr.steckt ? (pr.steckAng ?? 0) : Math.atan2(pr.vy, pr.vx);
+        const alpha = pr.steckt ? Phaser.Math.Clamp((pr.steckT ?? 0) / 1.2, 0.2, 1) : 1;
+        g.lineStyle(2, pr.steckt ? 0xb8b09a : 0xd8d0b8, alpha);
         g.lineBetween(pr.x - Math.cos(a) * 7, pr.y - Math.sin(a) * 7, pr.x + Math.cos(a) * 7, pr.y + Math.sin(a) * 7);
+        if (pr.steckt) { g.fillStyle(0x6a5a3a, alpha); g.fillCircle(pr.x + Math.cos(a) * 7, pr.y + Math.sin(a) * 7, 1.6); }
       } else {
         if (pr.fire) {
           // Runde 31: echtes Glühen - außen weiter Schein, innen heller Kern
