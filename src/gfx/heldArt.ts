@@ -135,10 +135,43 @@ function rumpf(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, gitter: boole
     ctx.restore();
   }
   if (p.metall && !gitter) { ctx.fillStyle = shade('#eef3f8', f.ruestHell); ctx.globalAlpha = 0.5; ctx.fillRect(CX - sb + 4, sy + 2, 3, 5); ctx.globalAlpha = 1; }
+  // Rost-Patina + Verschmutzung (Runde 40) - auf das Wams geklippt, ortsfest
+  if (f.rost > 0 || f.schmutz > 0) {
+    ctx.save(); wamsPfad(); ctx.clip();
+    if (f.rost > 0) {
+      for (let yy = sy; yy < wy; yy++) for (let xx = Math.floor(CX - sb); xx < CX + sb; xx++) {
+        const hsh = (((xx * 73856093) ^ (yy * 19349663)) >>> 8) & 0xff;
+        if (hsh / 255 < f.rost * 0.2) { ctx.fillStyle = (hsh & 1) ? 'rgba(124,62,28,0.55)' : 'rgba(92,46,20,0.6)'; ctx.fillRect(xx, yy, 1, 1); }
+      }
+    }
+    if (f.schmutz > 0) {
+      for (let k = 0; k < 5; k++) {
+        const yy = wy - 1 - k;
+        ctx.fillStyle = `rgba(28,22,14,${f.schmutz * (0.5 - k * 0.08)})`;
+        ctx.fillRect(CX - sb, yy, sb * 2, 1);
+      }
+    }
+    ctx.restore();
+  }
   // Gürtel + Schnalle (Breite + Farben regelbar - auch die Schnalle, Autorwunsch R40)
   const bh = (tb + 1) * f.guertelBreite;
   rr(ctx, CX - bh, wy - 1.5, 2 * bh, 3, 1, f.farben.guertel ?? '#3a2a18');
   ctx.fillStyle = f.farben.schnalle ?? '#c9a23a'; ctx.fillRect(CX - 1.2, wy - 1.2, 2.4, 2.4);
+}
+
+// Schulterplatten/Pauldrons (Runde 40): 0 keine, 1 schlicht, 2 massiv verziert
+function pauldrons(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm): void {
+  if (f.schultern <= 0) return;
+  const sy = f.schulterY, sb = f.schulterB, gross = f.schultern >= 2;
+  const r = gross ? 5.6 : 3.9;
+  for (const side of [-1, 1] as const) {
+    const x = CX + side * (sb + (gross ? 0.6 : -0.4));
+    ctx.fillStyle = p.metall ? shade('#9aa1aa', f.ruestHell) : shade(p.wams, 10);
+    ctx.beginPath(); ctx.ellipse(x, sy + 1.5, r, r * 0.9, 0, Math.PI, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = shade(p.wams, -26); ctx.fillRect(x - r, sy + 1, r * 2, 1.1); // Unterkante
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x - r + 1, sy - r * 0.6, r * 0.7, 1); // Lichtkante
+    if (gross) { ctx.fillStyle = f.farben.schnalle ?? '#c9a23a'; ctx.fillRect(x - 0.8, sy - 2, 1.6, 1.6); } // Niete/Verzierung
+  }
 }
 
 function arm(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, sx: number, vor: number, dunkel: boolean): void {
@@ -253,6 +286,7 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir
   arm(ctx, p, f, CX - f.schulterB, -lVor, true);
   rumpf(ctx, p, f, tier === 'kette' && f.kettenGitter > 0);
   arm(ctx, p, f, CX + f.schulterB, lVor, false);
+  pauldrons(ctx, p, f); // Schulterplatten über den Armansätzen
 
   kopf(ctx, p, f, dir);
 

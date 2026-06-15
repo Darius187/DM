@@ -85,7 +85,7 @@ export class HeldEditor {
   private build(): void {
     this.container?.destroy();
     const sw = this.scene.scale.width, sh = this.scene.scale.height;
-    const w = 760, h = 620;
+    const w = 760, h = 664;
     const ox = (sw - w) / 2, oy = (sh - h) / 2;
     const c = this.scene.add.container(ox, oy).setScrollFactor(0).setDepth(6300);
     this.container = c;
@@ -119,9 +119,9 @@ export class HeldEditor {
 
     // --- Spalte 2: Zahlen-Regler ---
     const rx = 246;
-    let ry = 58;
+    let ry = 56;
     for (const [feld, label, min, max, step] of HELDFORM_REGLER) {
-      c.add(this.scene.add.text(rx, ry + 2, label, { fontFamily: 'serif', fontSize: '11.5px', color: BONE }));
+      c.add(this.scene.add.text(rx, ry + 1, label, { fontFamily: 'serif', fontSize: '11.5px', color: BONE }));
       const wertText = this.scene.add.text(rx + 212, ry + 2, this.fmt(f[feld]), { fontFamily: 'serif', fontSize: '11.5px', color: GOLD }).setOrigin(1, 0);
       const setze = (v: number) => {
         const nv = Math.round(Math.min(max, Math.max(min, v)) / step) * step;
@@ -132,7 +132,7 @@ export class HeldEditor {
       c.add(this.knopf(rx + 146, ry, '−', 24, () => setze(f[feld] - step)));
       c.add(this.knopf(rx + 218, ry, '+', 24, () => setze(f[feld] + step)));
       c.add(wertText);
-      ry += 24;
+      ry += 22;
     }
 
     // --- Spalte 3: Farben je Teil ---

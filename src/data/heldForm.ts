@@ -26,7 +26,10 @@ export interface HeldForm {
   capeLaenge: number;   // Länge des Umhangs
   guertelBreite: number;// Gürtelbreite
   kettenGitter: number; // Kettenhemd-Gittermuster (0 = aus, 1 = an)
-  leuchten: number;     // goldenes Leuchten (epische Rüstung) (0 = aus, 1 = an)
+  leuchten: number;     // leuchtende Kontur (epische Rüstung) (0 = aus, 1 = an)
+  schultern: number;    // Schulterplatten/Pauldrons (0 keine, 1 schlicht, 2 massiv)
+  rost: number;         // Rost-Patina auf der Rüstung (0 sauber .. 1 verrostet)
+  schmutz: number;      // Verschmutzung am unteren Rand (0 sauber .. 1 dreckig)
   // Farb-Überschreibungen je Teil (leer = Standardfarbe der Rüstungsstufe)
   farben: { wams?: string; cape?: string; kapuze?: string; guertel?: string; schnalle?: string; hand?: string };
 }
@@ -36,6 +39,7 @@ export const DEF_HELDFORM: HeldForm = {
   rumpfH: 17, armL: 13, armB: 4.6, beinL: 13, beinB: 6.4, skala: 0.6,
   gesichtOffen: 1.0, visier: 0, ruestHell: 0,
   capeBreite: 1.0, capeLaenge: 1.0, guertelBreite: 1.0, kettenGitter: 1, leuchten: 0,
+  schultern: 0, rost: 0, schmutz: 0,
   farben: {},
 };
 
@@ -62,7 +66,10 @@ export const HELDFORM_REGLER: Array<[HeldFormNum, string, number, number, number
   ['capeLaenge', 'Umhang-Länge', 0.5, 1.3, 0.1],
   ['guertelBreite', 'Gürtelbreite', 0.5, 1.6, 0.1],
   ['kettenGitter', 'Kettengitter', 0, 1, 1],
-  ['leuchten', 'Gold-Leuchten', 0, 1, 1],
+  ['leuchten', 'Leucht-Kontur', 0, 1, 1],
+  ['schultern', 'Schulterplatten', 0, 2, 1],
+  ['rost', 'Rost', 0, 1, 0.1],
+  ['schmutz', 'Verschmutzung', 0, 1, 0.1],
 ];
 
 // Wählbare Farben je Teil (Name -> Hex) für den Farb-Picker im Editor
