@@ -2179,7 +2179,11 @@ export class WorldScene extends CombatScene {
     this.pickups.add({ kind: 'gold', amt: ri(this.rng, CHEST.goldMin, CHEST.goldMax) + d * CHEST.goldPerDepth, x: ch.x - 10, y: ch.y + 8, bob: 0 });
     const bonus = (ch.selten || ch.verflucht) ? 1 : (Math.random() < CHEST.betterGearChance ? 1 : 0);
     this.pickups.add({ kind: 'gear', item: rollGear(this.rng, d + bonus), x: ch.x, y: ch.y + 18, bob: 0 });
-    if (Math.random() < CHEST.gemChance || ch.selten || ch.verflucht) {
+    // Edelstein NUR noch selten UND am Beute-Regler (Autorbug Runde 40: Truhen
+    // ignorierten beuteRate und selten/verflucht gaben GARANTIERT einen Stein -
+    // deshalb 5 Sockelsteine auf Ebene 1 trotz Beutemenge 0,2). Die Sondertruhe
+    // belohnt schon mit besserer Ausrüstung (bonus), der Stein ist Bonus-Glück.
+    if (Math.random() < CHEST.gemChance * TUNING.beuteRate) {
       this.pickups.add({ kind: 'gem', item: rollGem(this.rng, d), x: ch.x + 14, y: ch.y + 10, bob: 0 });
     }
     this.logMsg(MELDUNGEN.truhe, 'gold');

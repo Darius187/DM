@@ -24,7 +24,7 @@ import { TUNING, TUNING_ROWS, neuerTypTuning } from '../logic/tuning';
 import { defaultRng, type Rng } from '../logic/rng';
 import { ELITE, ENEMIES, GEFALLENE_TYPEN, GEFALLENE_WAFFEN } from '../data/enemies';
 import type { EnemyTypeId, WeaponClass } from '../data/types';
-import { ABILITY_FX, ABILITIES, LORE_XP, ROLLEN_ZAUBER } from '../data/balancing';
+import { ABILITY_FX, ABILITIES, LORE_XP, ROLLEN_ZAUBER, XP } from '../data/balancing';
 import { PickupSystem, AUTO_PICKUP, type Pickup } from './Pickups';
 import { fixUiScroll } from '../ui/dialog';
 import { mausLeisteAnkerX, tastenLeisteMitteX } from '../ui/hud';
@@ -1245,7 +1245,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     if (!this.sfx.playAbwechselnd(todBasis, 3, 0.9) && !this.sfx.playAbwechselnd('tod_universal', 3, 0.9)) {
       this.sfx.play('tod');
     }
-    this.giveXp(e.xp);
+    this.giveXp(Math.max(1, Math.round(e.xp * XP.gegnerMult)));
     // Sammelalbum: Jagdstatistik und besiegte Vorsteher
     this.album.kills[e.type] = (this.album.kills[e.type] ?? 0) + 1;
     if ((e.champion || e.boss) && !this.album.champions.includes(e.name)) this.album.champions.push(e.name);

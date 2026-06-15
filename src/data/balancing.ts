@@ -10,12 +10,15 @@ export const PLAYER_BASE = {
   startGold: 25, startPot: 2, startMpot: 1,
 } as const;
 
-// XP-Kurve (Referenz gainXP): nächste Stufe = round(45 * Stufe^1.45)
-// Runde 38: Stufen kamen zu schnell (fast Stufe 5 auf Ebene 1). Steilere
-// Kurve -> Aufstiege fühlen sich verdient an. Über Gegner-XP fein justierbar.
+// XP-Kurve (Referenz gainXP): nächste Stufe = round(firstLevel * Stufe^exponent)
+// Runde 40: DEUTLICH langsamer (Autorkritik, mehrfach: "am Ende von Ebene 1
+// schon Stufe 3, viel zu schnell - Stufe 2 erst IN Ebene 2"). firstLevel hoch
+// UND gegnerMult senkt die Gegner-XP auf einen Bruchteil. Spätere, größere
+// Karten und mehr Ebenen sollen die Stufen tragen, nicht ein einzelnes Level.
 export const XP = {
-  firstLevel: 190,
+  firstLevel: 300,
   exponent: 1.55,
+  gegnerMult: 0.3,   // Gegner geben nur 30% ihrer Basis-XP (eine Stellschraube)
   levelHealPct: 0.5, // Stufenaufstieg heilt 50% max. HP, Mana voll
 } as const;
 
@@ -61,7 +64,7 @@ export const BLOOD_WELL = {
 export const CHEST = {
   goldMin: 15, goldMax: 35, goldPerDepth: 8,
   betterGearChance: 0.2, // 20% Chance auf Beute der nächsthöheren Ebene
-  gemChance: 0.35,
+  gemChance: 0.12,       // Runde 40: stark gesenkt (war 0.35) + jetzt am Beute-Regler
 } as const;
 
 // Lore-Funde (Referenz)
