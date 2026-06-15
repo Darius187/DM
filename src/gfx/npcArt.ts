@@ -2,8 +2,6 @@
 // Helden zeichnen). Erste Entwürfe - rein prozedural auf Canvas, damit sie wie
 // die übrige Grafik tunbar bleiben. Düsterer 1635er Ton.
 
-import { shade } from './fallbackArt';
-
 function poly(ctx: CanvasRenderingContext2D, pts: number[][], c: string): void {
   ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
   for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
@@ -36,8 +34,8 @@ export function drawWirtin(ctx: CanvasRenderingContext2D): void {
     rr(ctx, sx - 2.1, 34, 4.2, 4, 1.6, '#7a5a4a');           // gekrempelt
     ell(ctx, sx, 39, 2.2, 2.2, '#d0a884');                   // Hand
   }
-  const hy = 16;
-  ctx.fillStyle = shade('#d0a884', -16); ctx.fillRect(cx - 2.2, hy + 4, 4.4, 5); // Hals
+  // Kopf SITZT direkt auf den Schultern - KEIN Hals (Autorwunsch R40)
+  const hy = 20;
   ell(ctx, cx, hy, 6, 6.4, '#d0a884');                        // Kopf
   ell(ctx, cx - 1.6, hy - 1.4, 2, 2.4, '#e0bb96');
   poly(ctx, [[cx - 6, hy - 1], [cx + 6, hy - 1], [cx + 5, hy - 6], [cx - 5, hy - 6]], '#4a3526'); // Haar
