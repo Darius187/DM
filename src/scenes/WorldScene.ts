@@ -1060,6 +1060,8 @@ export class WorldScene extends CombatScene {
         [T.STAIR]: 'Treppe hinab', [T.STAIRUP]: 'Treppe hinauf', [T.ALTAR]: 'Opferaltar',
         [T.RACK]: 'Streckbank', [T.CAGE]: 'Käfig', [T.TOR]: 'Stadttor', [T.HDOOR]: 'Haustür',
         [T.CDOOR]: 'Kirchentür (Krypta)', [T.TREE]: 'Baum', [T.PALISADE]: 'Palisade', [T.ROCK]: 'Felsbrocken',
+        // Mauerriss (Runde 40): Tooltip verrät den verborgenen Durchgang
+        [T.CRACK]: 'Brüchige Wand - mit Angriffen aufbrechen',
       };
       name = tid !== undefined ? NAMEN[tid] ?? null : null;
     }
@@ -3776,7 +3778,7 @@ export class WorldScene extends CombatScene {
     mkBtn(h * 0.34, 'WEITER', () => this.togglePause());
     for (let slot = 1; slot <= 3; slot++) {
       const vorhanden = readSave(storage, slot);
-      const info = vorhanden ? ` (belegt: ${new Date(vorhanden.zeit).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })})` : ' (leer)';
+      const info = vorhanden ? ` (belegt: ${new Date(vorhanden.zeit).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })})` : ' (leer)';
       mkBtn(h * 0.34 + slot * 52, `SPEICHERN - PLATZ ${slot}${info}`, () => {
         this.saveToSlot(slot);
         // Sichtbare Bestätigung statt stillem Klick (Feedback-Runde 1)

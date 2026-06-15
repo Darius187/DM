@@ -2083,12 +2083,17 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         this.rollLight = 0.04;
         this.fx.burst(this.px, this.py + 8, 0x8a8276, 1, 40);
       }
-    } else if ((dx || dy) && this.combat.action !== 'heavyWindup') {
+    } else if (dx || dy) {
       const l = Math.hypot(dx, dy);
       const drawing = this.bowDrawT >= 0;
-      const spd = PLAYER.speed * (getSettings().tempo / 100) * this.areaSpeedFactor() * (this.combat.blocking ? PLAYER.blockSpeedMult : 1) * (drawing ? 0.55 : 1) * this.schiebeBremse;
+      const heavy = this.combat.action === 'heavyWindup';
+      // Rennen mit gehaltener Leertaste (Runde 40), aber nicht beim Blocken/
+      // Spannen/schweren Ausholen; beim schweren Schlag darf man bedächtig gehen
+      const sprint = (this.keysDown[' '] && !this.combat.blocking && !drawing && !heavy) ? PLAYER.sprintMult : 1;
+      const heavyWalk = heavy ? PLAYER.heavyWalkMult : 1;
+      const spd = PLAYER.speed * (getSettings().tempo / 100) * this.areaSpeedFactor() * (this.combat.blocking ? PLAYER.blockSpeedMult : 1) * (drawing ? 0.55 : 1) * sprint * heavyWalk * this.schiebeBremse;
       this.movePlayer((dx / l) * spd * dt, (dy / l) * spd * dt);
-      if (!this.combat.blocking && !drawing) this.pdir = Math.atan2(dy, dx);
+      if (!this.combat.blocking && !drawing && !heavy) this.pdir = Math.atan2(dy, dx);
       this.pstepT += dt;
       if (this.pstepT > 0.13) {
         this.pstepT = 0;

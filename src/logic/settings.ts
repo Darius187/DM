@@ -44,7 +44,7 @@ export const DEF_SETTINGS: Settings = {
   zoom: 100,
   tempo: 90,
   fow: true,
-  shake: true,
+  shake: false,
   dmgNums: true,
   blood: true,
   lefty: false,

@@ -7,6 +7,8 @@ export const PLAYER = {
   speed: 178,          // Referenz
   radius: 11,          // Referenz
   blockSpeedMult: 0.45, // Referenz: Blocken verlangsamt
+  sprintMult: 1.5,     // Leertaste gehalten: rennen (+50%, Autorwunsch Runde 40)
+  heavyWalkMult: 0.5,  // beim schweren Schlag (Umschalt) bedächtig weitergehen
 } as const;
 
 // Leichter Angriff: 3er-Kombo mit Finisher

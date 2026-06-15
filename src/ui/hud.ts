@@ -335,12 +335,23 @@ export class Hud {
       .setOrigin(0).setScrollFactor(0).setInteractive();
     deckel.on('pointerdown', () => this.closeMenue());
     c.add(deckel);
-    const breite = 230, zeileH = 24;
+    const breite = 232, zeileH = 22, kopfH = 21;
     // Halten-Aktionen (Angriff/Blocken) nur auf Maustasten anbieten
     const liste = feld.store === 'tasten' ? this.aktionen.filter(([id]) => id !== 'angriff' && id !== 'block') : this.aktionen;
-    const hoehe = liste.length * zeileH + 30;
+    // Nach Kategorie ordnen (Runde 40, Autorwunsch "aufräumen, nach Magier/
+    // Krieger/... oder farblich gruppieren"): Überschriften + farbige Blöcke
+    // statt einer unübersichtlichen Liste.
+    const katOrder: Array<[SlotKat, string]> = [
+      ['kampf', 'NAHKAMPF'], ['bogen', 'BOGEN'], ['zauber', 'ZAUBER'], ['item', 'GEGENSTAND'],
+    ];
+    const katVon = (id: string): SlotKat => (id === 'waffe1' || id === 'waffe2') ? 'kampf' : (SLOT_KAT[id] ?? 'item');
+    const gruppen = katOrder
+      .map(([kat, titel]) => [kat, titel, liste.filter(([id]) => katVon(id) === kat)] as const)
+      .filter(([, , eintr]) => eintr.length > 0);
+    const zeilenGesamt = gruppen.reduce((n, [, , e]) => n + e.length, 0);
+    const hoehe = zeilenGesamt * zeileH + gruppen.length * kopfH + 34;
     const mx = Math.min(Math.max(8, slotX - breite / 2), this.scene.scale.width - breite - 8);
-    const my = slotY - 30 - hoehe;
+    const my = Math.max(8, slotY - 30 - hoehe);
     const bg = this.scene.add.rectangle(mx, my, breite, hoehe, 0x171108, 0.98).setOrigin(0).setStrokeStyle(1, 0xc9a227);
     bg.setInteractive();
     c.add(bg);
@@ -348,23 +359,33 @@ export class Hud {
       fontFamily: 'serif', fontSize: '12px', color: '#c9a227', letterSpacing: 1,
     }));
     const aktiv = (getSettings()[feld.store] as Record<string, string>)[feld.feld];
-    liste.forEach(([id, ico, name, farbe], i) => {
-      const zy = my + 26 + i * zeileH;
-      const eintrag = this.scene.add.text(mx + 10, zy, `${ico}  ${name}`, {
-        fontFamily: 'serif', fontSize: '13px',
-        color: id === aktiv ? '#c9a227' : farbe,
-        backgroundColor: id === aktiv ? '#221808' : undefined,
-        padding: { x: 6, y: 2 },
-      }).setScrollFactor(0).setInteractive({ useHandCursor: true });
-      eintrag.on('pointerover', () => eintrag.setColor('#c9a227'));
-      eintrag.on('pointerout', () => eintrag.setColor(id === aktiv ? '#c9a227' : farbe));
-      eintrag.on('pointerdown', () => {
-        (getSettings()[feld.store] as Record<string, string>)[feld.feld] = id;
-        saveSettings();
-        this.closeMenue();
-      });
-      c.add(eintrag);
-    });
+    let zy = my + 26;
+    for (const [kat, titel, eintraege] of gruppen) {
+      const katFarbe = '#' + SLOT_KAT_FARBE[kat].toString(16).padStart(6, '0');
+      // Kategorie-Kopf: farbiger Balken + Titel
+      c.add(this.scene.add.rectangle(mx + 6, zy + 2, 3, kopfH - 6, SLOT_KAT_FARBE[kat]).setOrigin(0));
+      c.add(this.scene.add.text(mx + 13, zy, titel, {
+        fontFamily: 'serif', fontSize: '11px', color: katFarbe, letterSpacing: 2,
+      }));
+      zy += kopfH;
+      for (const [id, ico, name] of eintraege) {
+        const eintrag = this.scene.add.text(mx + 16, zy, `${ico}  ${name}`, {
+          fontFamily: 'serif', fontSize: '12.5px',
+          color: id === aktiv ? '#f0dca0' : katFarbe,
+          backgroundColor: id === aktiv ? '#221808' : undefined,
+          padding: { x: 6, y: 1 },
+        }).setScrollFactor(0).setInteractive({ useHandCursor: true });
+        eintrag.on('pointerover', () => eintrag.setColor('#f8e8b8'));
+        eintrag.on('pointerout', () => eintrag.setColor(id === aktiv ? '#f0dca0' : katFarbe));
+        eintrag.on('pointerdown', () => {
+          (getSettings()[feld.store] as Record<string, string>)[feld.feld] = id;
+          saveSettings();
+          this.closeMenue();
+        });
+        c.add(eintrag);
+        zy += zeileH;
+      }
+    }
   }
 
   private showSlotTooltip(s: SlotDef, ptr: Phaser.Input.Pointer): void {
