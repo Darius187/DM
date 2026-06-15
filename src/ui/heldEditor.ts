@@ -21,6 +21,7 @@ export class HeldEditor {
   private canvas: HTMLCanvasElement | null = null;
   private vorschau: Phaser.GameObjects.Image | null = null;
   private dir = 0;              // Blickrichtung der Vorschau
+  private previewTier: HeldTier | null = null; // Rüstung in der Vorschau (null = getragene)
   private animFrame = 0;
   private animTimer: Phaser.Time.TimerEvent | null = null;
   private snapshot: HeldForm | null = null; // Stand beim Öffnen (für Verwerfen)
@@ -63,7 +64,7 @@ export class HeldEditor {
   private build(): void {
     this.container?.destroy();
     const sw = this.scene.scale.width, sh = this.scene.scale.height;
-    const w = 580, h = 520;
+    const w = 580, h = 580;
     const ox = (sw - w) / 2, oy = (sh - h) / 2;
     const c = this.scene.add.container(ox, oy).setScrollFactor(0).setDepth(6300);
     this.container = c;
@@ -74,8 +75,8 @@ export class HeldEditor {
     c.add(this.scene.add.text(w / 2, 36, 'Proportionen des Helden frei einstellen', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a', fontStyle: 'italic' }).setOrigin(0.5, 0));
 
     // Vorschau links
-    const px = 120, py = 280;
-    c.add(this.scene.add.rectangle(20, 56, 200, h - 130, 0x0c0905, 0.7).setOrigin(0).setStrokeStyle(1, LINE));
+    const px = 120, py = 250;
+    c.add(this.scene.add.rectangle(20, 56, 200, 320, 0x0c0905, 0.7).setOrigin(0).setStrokeStyle(1, LINE));
     if (!this.scene.textures.exists(VORSCHAU_KEY)) {
       this.canvas = document.createElement('canvas');
       this.canvas.width = HELD_CELL; this.canvas.height = HELD_CELL;
@@ -87,17 +88,25 @@ export class HeldEditor {
     this.vorschau.setData('pixel', true);
     c.add(this.vorschau);
     // Richtung drehen
-    const dreh = this.knopf(120, h - 64, '↻ drehen', 80, () => { this.dir = (this.dir + 1) % 4; this.zeichneVorschau(); });
-    c.add(dreh);
+    c.add(this.knopf(78, 384, '↻ drehen', 84, () => { this.dir = (this.dir + 1) % 4; this.zeichneVorschau(); }));
+    // Rüstungs-Vorschau wählen (Stoff/Leder/Kette/Platte) - der Editor zeigt,
+    // wie die Form auf jeder Rüstung wirkt (Autorwunsch: helle/dunkle Rüstungen + Helm)
+    c.add(this.scene.add.text(20, 414, 'RÜSTUNG ANSEHEN', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a', letterSpacing: 1 }));
+    const tiers: Array<[HeldTier, string]> = [['stoff', 'Stoff'], ['leder', 'Leder'], ['kette', 'Kette'], ['platte', 'Platte']];
+    tiers.forEach(([t, lbl], i) => {
+      c.add(this.knopf(20 + (i % 2) * 100, 430 + Math.floor(i / 2) * 26, lbl, 94, () => {
+        this.previewTier = t; this.build();
+      }, this.previewTier === t ? GOLD : BONE));
+    });
 
     // Regler rechts: je Zeile  Label  [-] Wert [+]
     const rx = 250;
-    let ry = 64;
+    let ry = 60;
     const f = getHeldForm();
     for (const [feld, label, min, max, step] of HELDFORM_REGLER) {
-      c.add(this.scene.add.text(rx, ry + 2, label, { fontFamily: 'serif', fontSize: '12.5px', color: BONE }));
+      c.add(this.scene.add.text(rx, ry + 2, label, { fontFamily: 'serif', fontSize: '12px', color: BONE }));
       const wertText = this.scene.add.text(rx + 250, ry + 2, this.fmt(f[feld]), {
-        fontFamily: 'serif', fontSize: '12.5px', color: GOLD,
+        fontFamily: 'serif', fontSize: '12px', color: GOLD,
       }).setOrigin(1, 0);
       const setze = (v: number) => {
         const nv = Math.round(Math.min(max, Math.max(min, v)) / step) * step;
@@ -108,7 +117,7 @@ export class HeldEditor {
       c.add(this.knopf(rx + 170, ry, '−', 26, () => setze(f[feld] - step)));
       c.add(this.knopf(rx + 262, ry, '+', 26, () => setze(f[feld] + step)));
       c.add(wertText);
-      ry += 30;
+      ry += 26;
     }
 
     // Knöpfe unten: Speichern wendet auf die Welt-Figur an, Zurücksetzen
@@ -148,7 +157,7 @@ export class HeldEditor {
     if (!this.canvas) return;
     const ctx = this.canvas.getContext('2d')!;
     ctx.clearRect(0, 0, HELD_CELL, HELD_CELL);
-    drawHeld(ctx, this.getTier(), this.dir as 0 | 1 | 2 | 3, this.animFrame);
+    drawHeld(ctx, this.previewTier ?? this.getTier(), this.dir as 0 | 1 | 2 | 3, this.animFrame);
     if (this.scene.textures.exists(VORSCHAU_KEY)) (this.scene.textures.get(VORSCHAU_KEY) as Phaser.Textures.CanvasTexture).refresh();
   }
 }

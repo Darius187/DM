@@ -51,6 +51,19 @@ const PALETTEN: Record<HeldTier, Pal> = {
   },
 };
 
+// Rüstungsfarben heller/dunkler tönen (Figur-Editor: dunkle/helle Rüstung).
+// Haut + Helm-/Metall-Flags bleiben unberührt.
+function tintPal(p: Pal, hell: number): Pal {
+  const s = (c: string) => shade(c, hell);
+  return {
+    ...p,
+    wamsH: s(p.wamsH), wams: s(p.wams), wamsS: s(p.wamsS),
+    kapH: s(p.kapH), kap: s(p.kap), kapS: s(p.kapS),
+    bein: s(p.bein), beinS: s(p.beinS), stiefel: s(p.stiefel),
+    umh: s(p.umh), umhS: s(p.umhS),
+  };
+}
+
 function poly(ctx: CanvasRenderingContext2D, pts: number[][], c: string): void {
   ctx.fillStyle = c;
   ctx.beginPath();
@@ -145,23 +158,42 @@ function kopf(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, dir: Dir): voi
     return;
   }
 
-  // Gesichtsöffnung: dunkler Rahmen + Haut, je Richtung leicht versetzt
+  // Gesichtsöffnung: dunkler Rahmen + Haut, je Richtung leicht versetzt.
+  // gesichtOffen skaliert die Öffnung (klein = mehr verdeckt).
   const ox = dir === 1 ? -1.2 * s : dir === 2 ? 1.2 * s : 0;
+  const go = f.gesichtOffen;
+  const fcx = cx + ox, fcy = cy + 1;
+  const frx = (4 * s * 0.7 + r * 0.18) * go, fry = (4.6 * s * 0.7 + r * 0.2) * go;
   ctx.fillStyle = '#191310';
-  ctx.beginPath(); ctx.ellipse(cx + ox, cy + 1, 4 * s * 0.7 + r * 0.18, 4.6 * s * 0.7 + r * 0.2, 0, 0, Math.PI * 2); ctx.fill();
-  ell(ctx, cx + ox, cy + 1.3, 3.3 * s, 3.9 * s, p.haut);
-  ell(ctx, cx + ox - 1 * s, cy - 0.2, 1.2 * s, 1.6 * s, p.hautH);
+  ctx.beginPath(); ctx.ellipse(fcx, fcy, frx, fry, 0, 0, Math.PI * 2); ctx.fill();
+  ell(ctx, fcx, cy + 1.3, 3.3 * s * go, 3.9 * s * go, p.haut);
+  ell(ctx, fcx - 1 * s * go, cy - 0.2, 1.2 * s * go, 1.6 * s * go, p.hautH);
   ctx.fillStyle = p.hautS;
-  ctx.beginPath(); ctx.ellipse(cx + ox + (dir === 2 ? -1.7 : 1.7) * s, cy + 1.7, 1.2 * s, 2.4 * s, 0, 0, Math.PI * 2); ctx.fill();
-  if (dir === 0) { auge(ctx, cx - 1.6 * s, cy + 0.8, s); auge(ctx, cx + 1.6 * s, cy + 0.8, s); }
-  if (dir === 1) { auge(ctx, cx - 2.2 * s, cy + 0.8, s); auge(ctx, cx + 0.2 * s, cy + 0.8, s); }
-  if (dir === 2) { auge(ctx, cx + 2.2 * s, cy + 0.8, s); auge(ctx, cx - 0.2 * s, cy + 0.8, s); }
+  ctx.beginPath(); ctx.ellipse(fcx + (dir === 2 ? -1.7 : 1.7) * s * go, cy + 1.7, 1.2 * s * go, 2.4 * s * go, 0, 0, Math.PI * 2); ctx.fill();
+  if (go > 0.45) {
+    if (dir === 0) { auge(ctx, cx - 1.6 * s, cy + 0.8, s); auge(ctx, cx + 1.6 * s, cy + 0.8, s); }
+    if (dir === 1) { auge(ctx, cx - 2.2 * s, cy + 0.8, s); auge(ctx, cx + 0.2 * s, cy + 0.8, s); }
+    if (dir === 2) { auge(ctx, cx + 2.2 * s, cy + 0.8, s); auge(ctx, cx - 0.2 * s, cy + 0.8, s); }
+  }
+  // Modulares Visier: senkt sich von oben über das Gesicht, lässt einen
+  // Augenschlitz frei (Figur-Editor, Runde 40)
+  if (f.visier > 0) {
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(fcx, fcy, frx + 0.4, fry + 0.4, 0, 0, Math.PI * 2); ctx.clip();
+    const steel = p.metall ? '#9aa1aa' : shade(p.kap, 22);
+    const visTop = fcy - fry, visBot = visTop + f.visier * 2 * fry;
+    ctx.fillStyle = steel; ctx.fillRect(fcx - frx - 0.5, visTop - 0.5, frx * 2 + 1, visBot - visTop + 0.5);
+    ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(fcx - frx, visTop + 0.4, frx * 2, 0.7); // Lichtkante
+    const slitY = cy + 0.8;
+    if (visBot > slitY - 0.5) { ctx.fillStyle = '#0c0907'; ctx.fillRect(fcx - frx, slitY - 0.7, frx * 2, 1.3); } // Augenschlitz
+    ctx.restore();
+  }
 }
 
 // Eine Figur in die aktuelle 64x64-Zelle zeichnen (Ursprung links oben).
 export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir, frame: number): void {
-  const p = PALETTEN[tier];
   const f = getHeldForm();
+  const p = f.ruestHell ? tintPal(PALETTEN[tier], f.ruestHell) : PALETTEN[tier];
   const step = frame % 4;            // 0 stehen, 1 links vor, 2 stehen, 3 rechts vor
   const bobUp = step === 1 || step === 3 ? -1.4 : 0;
   const sway = step === 1 ? 2 : step === 3 ? -2 : 0;

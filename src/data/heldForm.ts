@@ -15,11 +15,16 @@ export interface HeldForm {
   beinL: number;      // Beinlänge
   beinB: number;      // Beinbreite
   skala: number;      // Anzeige-Skala der Figur in der Welt (war HELD_SKALA)
+  // Kopfbedeckung modular (Runde 40): Visier + wie viel Gesicht/Augen man sieht
+  gesichtOffen: number; // Größe der Gesichtsöffnung (1 = wie bisher, klein = verdeckter)
+  visier: number;       // Visier von oben über die Augen (0 = keins, 1 = fast zu)
+  ruestHell: number;    // Rüstung heller/dunkler (- dunkel ... + hell)
 }
 
 export const DEF_HELDFORM: HeldForm = {
   kopfR: 5.8, kopfY: 14.5, schulterY: 24, schulterB: 10, tailleB: 6,
   rumpfH: 17, armL: 13, armB: 4.6, beinL: 13, beinB: 6.4, skala: 0.6,
+  gesichtOffen: 1.0, visier: 0, ruestHell: 0,
 };
 
 // Grenzen + Schrittweite je Regler für den Editor (Label, min, max, step)
@@ -35,6 +40,9 @@ export const HELDFORM_REGLER: Array<[keyof HeldForm, string, number, number, num
   ['beinL', 'Beinlänge', 8, 18, 0.5],
   ['beinB', 'Beinbreite', 4, 9, 0.2],
   ['skala', 'Gesamtgröße', 0.4, 1.0, 0.05],
+  ['gesichtOffen', 'Gesicht offen', 0.2, 1.3, 0.1],
+  ['visier', 'Visier', 0, 1, 0.1],
+  ['ruestHell', 'Rüstung hell/dunkel', -40, 40, 5],
 ];
 
 const KEY = 'ravensmoor_heldform_v1';
