@@ -53,7 +53,8 @@ export const DEF_SETTINGS: Settings = {
   tasten: { t1: 's1', t2: 's2', t3: 's3', t4: 'kettenblitz', t5: 'frostnova', t6: 'bannkreis', t9: 'feuerregen', t0: 'aderlass', tr: 'waffe1', tt: 'waffe2' },
   vorlesen: false,
   ui: { hotbar: { x: 0, y: 0 }, mausleiste: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 } },
-  chronikBox: { x: 8, y: -308, w: 380, h: 300 }, // ganz links UNTEN (Runde 40)
+  chronikBox: { x: 8, y: -418, w: 380, h: 300 }, // links unten, knapp ÜBER der
+  // Lebenskugel/Leiste (Runde 40): tiefer würde die Kugel verdecken
   chronikAuto: true,
   uiLayoutV: 3, // Runde 40: Orbs an den Leisten, Meldungen oben, Chronik unten links
   kb: {
