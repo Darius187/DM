@@ -13,6 +13,7 @@ import { Hud } from '../ui/hud';
 import { StashUI } from '../ui/stash';
 import { HeldEditor } from '../ui/heldEditor';
 import { heldTier } from '../data/helden';
+import { drawWirtin, drawTaverne } from '../gfx/npcArt';
 import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
 import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, VOLK, SMALLTALK, type DlgPage } from '../data/dialoge';
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
@@ -1828,6 +1829,27 @@ export class WorldScene extends CombatScene {
   private nebelAktiv = true;
   private nebelStaerke = 0;
   private bodennebelSprites: Phaser.GameObjects.Image[] = [];
+
+  // DEV-Vorschau (Runde 40): zeichnet die neuen Proben (Wirtin + Taverne) groß
+  // auf den Bildschirm, um sie dem Autor zu zeigen.
+  zeichneProben(): void {
+    const mk = (key: string, w: number, h: number, draw: (c: CanvasRenderingContext2D) => void) => {
+      if (!this.textures.exists(key)) {
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        draw(cv.getContext('2d')!);
+        this.textures.addCanvas(key, cv);
+      }
+    };
+    mk('probe_wirtin', 64, 64, drawWirtin);
+    mk('probe_taverne', 128, 128, drawTaverne);
+    const sw = this.scale.width, sh = this.scale.height;
+    this.add.rectangle(0, 0, sw, sh, 0x0a0806, 0.96).setOrigin(0).setScrollFactor(0).setDepth(7000);
+    this.add.image(sw * 0.32, sh * 0.52, 'probe_taverne').setScrollFactor(0).setDepth(7001).setScale(3.4);
+    this.add.image(sw * 0.66, sh * 0.52, 'probe_wirtin').setScrollFactor(0).setDepth(7001).setScale(4.2);
+    this.add.text(sw / 2, sh * 0.12, 'PROBEN: Taverne & Wirtin (Entwurf)', { fontFamily: 'serif', fontSize: '20px', color: '#c9a227', letterSpacing: 2 }).setOrigin(0.5).setScrollFactor(0).setDepth(7001);
+    this.add.text(sw * 0.32, sh * 0.78, 'Taverne "Zum Schwarzen Raben"', { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8' }).setOrigin(0.5).setScrollFactor(0).setDepth(7001);
+    this.add.text(sw * 0.66, sh * 0.78, 'Wirtin Mathilde', { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8' }).setOrigin(0.5).setScrollFactor(0).setDepth(7001);
+  }
 
   private ensureNebelTextur(): void {
     if (this.textures.exists('nebelschwade')) return;
