@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calcStats, xpForNextLevel, applyXp, schoolLevelForUses, addSchoolUse, unlockedAbilities } from '../src/logic/progression';
+import { XP } from '../src/data/balancing';
 
 describe('calcStats (Referenzformeln)', () => {
   it('Basiswerte Stufe 1 ohne Ausrüstung', () => {
@@ -37,13 +38,13 @@ describe('calcStats (Referenzformeln)', () => {
 });
 
 describe('XP-Kurve (Referenz)', () => {
-  it('xpNext = round(45 * Stufe^1.45)', () => {
-    expect(xpForNextLevel(1)).toBe(45);
-    expect(xpForNextLevel(2)).toBe(Math.round(45 * Math.pow(2, 1.45)));
+  it('xpNext = round(firstLevel * Stufe^exponent)', () => {
+    expect(xpForNextLevel(1)).toBe(XP.firstLevel);
+    expect(xpForNextLevel(2)).toBe(Math.round(XP.firstLevel * Math.pow(2, XP.exponent)));
   });
 
   it('applyXp trägt Überschuss über mehrere Stufen', () => {
-    const r = applyXp(1, 0, 45, 45 + xpForNextLevel(2) + 5);
+    const r = applyXp(1, 0, XP.firstLevel, XP.firstLevel + xpForNextLevel(2) + 5);
     expect(r.level).toBe(3);
     expect(r.xp).toBe(5);
     expect(r.levelsGained).toBe(2);
