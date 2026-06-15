@@ -99,6 +99,12 @@ export const GORE_WUCHT: Record<string, number> = {
 // Schiebe-Physik für Fässer/Kisten (Runde 35, nur im Physik-Test). schub =
 // Tempo, mit dem der Spieler sie wegschiebt; stoss = Impuls Kiste-an-Kiste;
 // reibung = Ausgleiten pro Frame; prall = Rückstoß an der Wand. Tunbar.
+// Gewicht der schiebbaren Objekte (Runde 39): schwerer = langsamer zu schieben
+// UND bremst den Helden mehr. So fühlen sich Fässer/Kisten nicht mehr wie Luft an.
+export const BREAKABLE_MASSE: Record<string, number> = {
+  fass: 1.6, kiste: 1.4, knochenhaufen: 1.1, krug: 0.7, heuhaufen: 0.6,
+};
+
 export const PHYSIK = {
   schub: 150, stoss: 26, reibung: 0.86, prall: 0.3,
   // Gegner-Rückstoß im Physik-Test (Runde 36): Treffer geben einen Impuls,

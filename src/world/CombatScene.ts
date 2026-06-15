@@ -76,6 +76,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected overlay!: Phaser.GameObjects.Graphics;
   // Additives Leuchten für stärkere Gegner (Runde 39, statt hartem Kreis)
   protected auraGfx!: Phaser.GameObjects.Graphics;
+  // Schiebe-Widerstand (Runde 39): < 1 bremst den Helden beim Kistenschieben
+  protected schiebeBremse = 1;
   protected keysDown: Record<string, boolean> = {};
   protected mouseDown = false;
   protected touch: TouchControls | null = null;
@@ -773,7 +775,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     if (Math.random() < KILL_DROPS.potionChance * rate) this.pickups.add({ kind: 'potion', x: e.x + rndOff(12), y: e.y + rndOff(12), bob: Math.random() * 6 });
     if (Math.random() < KILL_DROPS.mpotionChance * rate) this.pickups.add({ kind: 'mpotion', x: e.x + rndOff(12), y: e.y + rndOff(12), bob: Math.random() * 6 });
     if (Math.random() < KILL_DROPS.gearChance * rate) this.pickups.add({ kind: 'gear', item: rollGear(this.rng, depth), x: e.x, y: e.y, bob: Math.random() * 6 });
-    if (e.elite && Math.random() < Math.min(1, rate)) this.pickups.add({ kind: 'gear', item: rollGear(this.rng, depth + 1), x: e.x, y: e.y + 12, bob: Math.random() * 6 });
+    // Elites lassen nicht mehr GARANTIERT Beute fallen (Runde 39: das flutete
+    // Ebene 1 mit Seltenen) - nur noch ~halb so oft, dafür weiter etwas besser.
+    if (e.elite && Math.random() < 0.45 * rate) this.pickups.add({ kind: 'gear', item: rollGear(this.rng, depth + 1), x: e.x, y: e.y + 12, bob: Math.random() * 6 });
     if (Math.random() < KILL_DROPS.gemChance * rate) this.pickups.add({ kind: 'gem', item: rollGem(this.rng, depth), x: e.x + rndOff(10), y: e.y + rndOff(10), bob: Math.random() * 6 });
     if (Math.random() < KILL_DROPS.scrollChance * rate) {
       const rollen = [
@@ -2068,7 +2072,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     } else if ((dx || dy) && this.combat.action !== 'heavyWindup') {
       const l = Math.hypot(dx, dy);
       const drawing = this.bowDrawT >= 0;
-      const spd = PLAYER.speed * (getSettings().tempo / 100) * this.areaSpeedFactor() * (this.combat.blocking ? PLAYER.blockSpeedMult : 1) * (drawing ? 0.55 : 1);
+      const spd = PLAYER.speed * (getSettings().tempo / 100) * this.areaSpeedFactor() * (this.combat.blocking ? PLAYER.blockSpeedMult : 1) * (drawing ? 0.55 : 1) * this.schiebeBremse;
       this.movePlayer((dx / l) * spd * dt, (dy / l) * spd * dt);
       if (!this.combat.blocking && !drawing) this.pdir = Math.atan2(dy, dx);
       this.pstepT += dt;

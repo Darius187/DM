@@ -103,9 +103,9 @@ export const RARITY_NAMES: Readonly<Record<Rarity, string>> = {
 // Ebene 1, jede Waffe wirkt nicht besonders"). Jetzt sind hohe Stufen rar -
 // ein Epic ist ein Ereignis, das meiste ist gewöhnlich (zum Verkaufen).
 export const RARITY_ROLL = {
-  epicBase: 0.006, epicPerDepth: 0.003,
-  rareBase: 0.045, rarePerDepth: 0.008,
-  magicChance: 0.30,
+  epicBase: 0.003, epicPerDepth: 0.002,
+  rareBase: 0.022, rarePerDepth: 0.006,
+  magicChance: 0.24,
 } as const;
 
 // Art-Verteilung beim Gear-Drop (Referenz): 42% Waffe, 36% Rüstung, 22% Ring
@@ -119,8 +119,8 @@ export const KILL_DROPS = {
   goldMin: 2, goldMax: 7, goldPerDepth: 2,
   potionChance: 0.10,
   mpotionChance: 0.07,
-  // Runde 38: 0,11 -> 0,06 - das Inventar war sofort prall voll
-  gearChance: 0.06,
+  // Runde 38/39: 0,11 -> 0,06 -> 0,045 - Beute soll selten & wertvoll sein
+  gearChance: 0.045,
   // Runde 29: 0,05 -> 0,02 - die Splitter fluteten das Inventar
   gemChance: 0.02,
   scrollChance: 0.04, // NEU: Zauberrollen als Drops (Masterprompt 6.2)

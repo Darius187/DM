@@ -25,7 +25,7 @@ import { DialogUI, fixUiScroll } from '../ui/dialog';
 import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, RELIKT, ENDEN, TOD, INTRO_FILM } from '../data/texte';
 import { ALTAR, BLOOD_WELL, CHEST, RELIC_ACCEPT_ELIXIRS } from '../data/balancing';
 import { BREAKABLES, BREAKABLE_LOOT, BEINHAUS, CHEST_VERFLUCHT, BOSS_KAMPF } from '../data/krypta';
-import { DEATH, SHRINE, PHYSIK } from '../data/kampf';
+import { DEATH, SHRINE, PHYSIK, BREAKABLE_MASSE, PLAYER } from '../data/kampf';
 import { TEMPLERKLINGE, BOSS_GOLD } from '../data/items';
 import { rollGear, rollGem } from '../logic/loot';
 import { recalc } from '../logic/playerState';
@@ -1675,6 +1675,7 @@ export class WorldScene extends CombatScene {
   // gegenseitig. Trefferziel und Speicher-Eintrag laufen mit (verschoben =
   // dort getroffen, dort zerstört). Off = exakt das alte Verhalten.
   private updateSchiebephysik(dt: number): void {
+    this.schiebeBremse = 1;
     if (!TUNING.physikTest) return;
     const pr = this.playerR();
     const ents = this.breakableEnts;
@@ -1685,8 +1686,15 @@ export class WorldScene extends CombatScene {
       const minD = pr + ent.r;
       if (dist < minD) {
         const nx = dx / dist, ny = dy / dist;
+        const masse = BREAKABLE_MASSE[ent.kind] ?? 1;
+        const bremse = 1 / (1 + masse * 0.55);
         ent.x += nx * (minD - dist); ent.y += ny * (minD - dist); // aus der Überlappung
-        ent.vx = nx * PHYSIK.schub; ent.vy = ny * PHYSIK.schub;    // schiebt mit festem Tempo
+        // Eine Kiste kann NIE schneller sein als der Held, der sie schiebt -
+        // sonst fliegt sie davon. Schwerer = langsamer + bremst den Helden mehr.
+        const spielerTempo = PLAYER.speed * (getSettings().tempo / 100);
+        const tempo = Math.min(PHYSIK.schub / masse, spielerTempo * bremse * 0.92);
+        ent.vx = nx * tempo; ent.vy = ny * tempo;
+        this.schiebeBremse = Math.min(this.schiebeBremse, bremse);
       }
     }
     // Kiste an Kiste: trennen + Impuls weitergeben

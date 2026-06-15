@@ -363,14 +363,18 @@ export class Enemy {
       this.moveBody(host, Math.cos(rw) * this.speed * 0.85 * slowF * dt, Math.sin(rw) * this.speed * 0.85 * slowF * dt);
       this.advanceStep(dt);
     } else if (d > this.r + host.playerR() + 6 + 14 * ((TUNING.gegnerReichweite * this.reichweiteF) - 1)) {
-      // Festhäng-Erkennung (Runde 38): kam der Gegner in ~0,3 s trotz
-      // Annäherung kaum vom Fleck (Regal/Ecke), schlägt er einen Bogen.
+      // Festhäng-Erkennung (Runde 38/39): kam der Gegner in ~0,25 s trotz
+      // Annäherung kaum vom Fleck (Regal/Ecke), schlägt er einen Bogen - und
+      // zwar zur tatsächlich FREIEN Seite (sonst drückt er weiter ins Hindernis).
       this.hängtT += dt;
-      if (this.hängtT > 0.3) {
-        if (Math.hypot(this.x - this.letztX, this.y - this.letztY) < 2.5 && this.umwegT <= 0) {
-          this.umwegT = 0.7;
-          this.orbitDir = Math.random() < 0.5 ? 1 : -1;
+      if (this.hängtT > 0.25) {
+        if (Math.hypot(this.x - this.letztX, this.y - this.letztY) < 2 && this.umwegT <= 0) {
+          this.umwegT = 0.8;
           this.steuerWinkel = 0;
+          const probe = this.r + 16;
+          const frei = (a: number) => !host.isSolidAt(this.x + Math.cos(a) * probe, this.y + Math.sin(a) * probe);
+          const freiL = frei(ang + 1.6), freiR = frei(ang - 1.6);
+          this.orbitDir = freiL && !freiR ? 1 : freiR && !freiL ? -1 : -this.orbitDir; // freie Seite, sonst umkehren
         }
         this.letztX = this.x; this.letztY = this.y; this.hängtT = 0;
       }
@@ -396,10 +400,12 @@ export class Enemy {
         }
       }
       if (this.umwegT > 0) {
-        // hängt am Hindernis (Festhäng-Erkennung): seitlich ausweichen, um es
-        // zu umrunden, statt stur dagegen zu drücken (Runde 38)
+        // hängt am Hindernis: ENTSCHLOSSEN seitlich ausweichen (direkt, damit
+        // laufe() nicht zurück ins Hindernis dreht) - moveBody gleitet eh an
+        // Wänden entlang. Runde 39.
         this.umwegT -= dt;
-        this.laufe(host, ang + this.orbitDir * 1.5, this.speed * slowF, dt);
+        const seit = ang + this.orbitDir * 1.45;
+        this.moveBody(host, Math.cos(seit) * this.speed * slowF * dt, Math.sin(seit) * this.speed * slowF * dt);
       } else if (this.atkCd > 0 && d < 110) {
         // Erholzeit: nicht anstehen, sondern den Spieler umkreisen
         const oa = ang + this.orbitDir * 1.45;
@@ -448,6 +454,15 @@ export class Enemy {
     this.moveBody(host, Math.cos(ziel) * tempo * dt, Math.sin(ziel) * tempo * dt);
   }
 
+  // Vorstoß zum Spieler beim Schlag (Runde 39): schließt die Lücke eines
+  // Rückschritts - aber nur bis zum Kontakt, nicht durch den Spieler hindurch.
+  private lungeIn(host: EnemyHost, px: number, py: number, dist: number): void {
+    const dx = px - this.x, dy = py - this.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const ziel = Math.min(dist, Math.max(0, d - (this.r + host.playerR()) + 6));
+    if (ziel > 0.5) this.moveBody(host, (dx / d) * ziel, (dy / d) * ziel);
+  }
+
   // Über die Leiche herfallen (Runde 35): an die Leiche heran, dann langsam
   // im Kreis darum scharren und gelegentlich daran "fressen" (Blutspritzer).
   private gatherCorpse(host: EnemyHost, dt: number, d: number, ang: number): void {
@@ -485,21 +500,26 @@ export class Enemy {
     host.playSound('telegraph', 0.7);
   }
 
-  private executePattern(host: EnemyHost, d: number): void {
+  private executePattern(host: EnemyHost, _d: number): void {
     const px = host.playerX(), py = host.playerY();
     const ang = Math.atan2(py - this.y, px - this.x);
     switch (this.pattern) {
-      case 'hieb':
-        if (d < this.r + host.playerR() + 18 * (TUNING.gegnerReichweite * this.reichweiteF)) host.enemyMeleeHit(this, Math.round(this.dmg * (0.8 + Math.random() * 0.35)));
-        // Aggression (Runde 35): nur MANCHMAL kurz zurückweichen, je nach Typ;
-        // sonst bleibt er dran und setzt nach (Pest/Lebende Tote drängen stur).
+      case 'hieb': {
+        // Vorstoß in den Schlag (Runde 39): der Gegner setzt mit dem Hieb NACH,
+        // damit ein simpler Schritt zurück nicht reicht - man muss rollen oder
+        // seitlich ausweichen. Macht jeden Gegner bedrohlich (Duell-Gefühl).
+        this.lungeIn(host, px, py, 26);
+        const d2 = Math.hypot(px - this.x, py - this.y);
+        if (d2 < this.r + host.playerR() + 16 * (TUNING.gegnerReichweite * this.reichweiteF)) host.enemyMeleeHit(this, Math.round(this.dmg * (0.8 + Math.random() * 0.35)));
         if (Math.random() < (AGGRO[this.type] ?? AGGRO_STD).rueckzugChance) {
           this.retreatT = ENEMY_AI.rueckzugDauer + Math.random() * 0.18;
           this.orbitDir = Math.random() < 0.5 ? 1 : -1;
         }
         break;
+      }
       case 'doppelhieb':
-        if (d < this.r + host.playerR() + 20 * (TUNING.gegnerReichweite * this.reichweiteF)) host.enemyMeleeHit(this, Math.round(this.dmg * 0.7));
+        this.lungeIn(host, px, py, 22);
+        if (Math.hypot(px - this.x, py - this.y) < this.r + host.playerR() + 18 * (TUNING.gegnerReichweite * this.reichweiteF)) host.enemyMeleeHit(this, Math.round(this.dmg * 0.7));
         this.secondHitT = 0.25;
         break;
       case 'giftwolke':
