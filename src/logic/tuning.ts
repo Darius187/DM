@@ -10,8 +10,10 @@ export const TUNING = {
   // Runde 16: Krypta-Gegner schleichen (Horror statt Gewusel)
   kryptaGegnerTempo: 0.72,
   // Runde 21: Beutemenge - skaliert die Drop-Chancen von Gegnern (Waffen,
-  // Rüstung, Tränke, Steine, Rollen); 0 = nur Gold, 1 = wie bisher
-  beuteRate: 1.0,
+  // Rüstung, Tränke, Steine, Rollen); 0 = nur Gold, 1 = wie bisher.
+  // Runde 40: Standard auf 0.4 gesenkt (Autorwunsch "Beute runter" - zu viele
+  // seltene Funde auf Ebene 1).
+  beuteRate: 0.4,
   // Runde 22: Nahkampf-Reichweiten zum Justieren - Held (Hieb-Weite und
   // Schwung-Breite) und Gegner (wie weit ihr Schlag trägt)
   spielerReichweite: 1.0,
@@ -22,18 +24,19 @@ export const TUNING = {
   gegnerSchlagtempo: 1.0,
   // Runde 29: skaliert Konter beim Rückzug, Gegenstoß aus der Deckung
   // und das Sammeln vor dem Sturm (0 = stumpf wie früher)
-  gegnerCleverness: 1.0,
+  gegnerCleverness: 2.0,
   // Runde 18/35: Feinjustierung je Gegnertyp (F10 - Pfeile wechseln den Typ).
   // tempo = Lauftempo, schaden = Schaden, schlagtempo = Ausholen/Pausen,
   // reichweite = Hiebweite, leben = HP. Wirkt auf NEUE Spawns dieses Typs.
   typ: {} as Record<string, { tempo: number; schaden: number; schlagtempo: number; reichweite: number; leben: number }>,
   // Runde 21: Dev-Schalter - alle Zauber/Fähigkeiten ohne Stufen-Sperre
   alleZauberFrei: false,
-  // Runde 35: Physik-Test (nicht live) - Fässer/Kisten lassen sich schieben
-  physikTest: false,
-  // Runde 35: "Gefallene" - bewaffnete Gegner (Schwert/Axt/Hammer/Bogen/Stab/
-  // Schild). Hinter dem Schalter, weil es die Balance stört (Autor testet erst).
-  gefallene: false,
+  // Physik-Test - Fässer/Kisten/Pfeile mit Physik. Runde 40: standardmäßig AN
+  // (Autorwunsch "komplett ins Spiel aufnehmen").
+  physikTest: true,
+  // "Gefallene" - bewaffnete Gegner (Schwert/Axt/Hammer/Bogen/Stab/Schild).
+  // Runde 40: standardmäßig AN (Autorwunsch "komplett ins Spiel aufnehmen").
+  gefallene: true,
 };
 
 // Frische Standard-Feinwerte für einen Gegnertyp (alles neutral = 1).

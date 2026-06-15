@@ -3,7 +3,7 @@
 import type { Item, GemItem } from '../data/types';
 import { PLAYER_BASE } from '../data/balancing';
 import { FLASKS } from '../data/kampf';
-import { calcStats, type SchoolState, type Stats } from './progression';
+import { calcStats, xpForNextLevel, type SchoolState, type Stats } from './progression';
 import type { MaterialId } from '../data/crafting';
 
 export interface PlayerState {
@@ -41,7 +41,9 @@ export interface PlayerState {
 export function newPlayerState(): PlayerState {
   const startWeapon: Item = { kind: 'weapon', name: 'Rostige Klinge', rarity: 0, val: 5, boni: [], weaponClass: 'schwert' };
   const p: PlayerState = {
-    level: 1, xp: 0, xpNext: 45,
+    // xpNext aus der KURVE (Autorbug R40: hier stand fest 45 -> Stufe 2 nach 3
+    // Gegnern, obwohl firstLevel längst 300 ist). Jetzt korrekt xpForNextLevel(1).
+    level: 1, xp: 0, xpNext: xpForNextLevel(1),
     gold: PLAYER_BASE.startGold, pot: PLAYER_BASE.startPot, mpot: PLAYER_BASE.startMpot,
     elixirs: 0, hasKey: false,
     hp: 1, mana: 1,

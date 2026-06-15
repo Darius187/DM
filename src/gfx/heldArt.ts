@@ -166,7 +166,7 @@ function pauldrons(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm): void {
   const r = gross ? 5.6 : 3.9;
   for (const side of [-1, 1] as const) {
     const x = CX + side * (sb + (gross ? 0.6 : -0.4));
-    ctx.fillStyle = p.metall ? shade('#9aa1aa', f.ruestHell) : shade(p.wams, 10);
+    ctx.fillStyle = f.farben.schulter ?? (p.metall ? shade('#9aa1aa', f.ruestHell) : shade(p.wams, 10));
     ctx.beginPath(); ctx.ellipse(x, sy + 1.5, r, r * 0.9, 0, Math.PI, Math.PI * 2); ctx.fill();
     ctx.fillStyle = shade(p.wams, -26); ctx.fillRect(x - r, sy + 1, r * 2, 1.1); // Unterkante
     ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x - r + 1, sy - r * 0.6, r * 0.7, 1); // Lichtkante
@@ -174,11 +174,12 @@ function pauldrons(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm): void {
   }
 }
 
-function arm(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, sx: number, vor: number, dunkel: boolean): void {
+function arm(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, sx: number, vor: number): void {
   const top = f.schulterY + 2 + Math.max(0, -vor), hw = f.armB / 2;
-  rr(ctx, sx - hw, top, f.armB, f.armL, 2.2, dunkel ? p.wamsS : p.wams);
-  // BEIDE Handschuhe in derselben Farbe (Autorbug R40: vorher unterschiedlich
-  // hell, weil an die Armseite gekoppelt). Eigene Handschuhfarbe oder aus dem Wams.
+  // BEIDE Ärmel gleiche Farbe (Autorbug R40: vorher vorne/hinten verschieden hell)
+  rr(ctx, sx - hw, top, f.armB, f.armL, 2.2, p.wams);
+  ctx.fillStyle = p.wamsS; ctx.fillRect(sx + hw * 0.3, top, hw * 0.6, f.armL); // dezente Schattenkante (gleiche Grundfarbe)
+  // BEIDE Handschuhe gleiche Farbe (eigene Handschuhfarbe oder aus dem Wams)
   ell(ctx, sx, top + f.armL + vor * 0.5, hw + 0.3, hw + 0.3, f.farben.hand ?? shade(p.wams, -14));
 }
 
@@ -236,7 +237,7 @@ function kopf(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, dir: Dir): voi
   if (f.visier > 0) {
     ctx.save();
     ctx.beginPath(); ctx.ellipse(fcx, fcy, frx + 0.4, fry + 0.4, 0, 0, Math.PI * 2); ctx.clip();
-    const steel = p.metall ? shade('#9aa1aa', f.ruestHell) : shade(p.kap, 22);
+    const steel = f.farben.visier ?? (p.metall ? shade('#9aa1aa', f.ruestHell) : shade(p.kap, 22));
     const visTop = fcy - fry, visBot = visTop + f.visier * 2 * fry;
     ctx.fillStyle = steel; ctx.fillRect(fcx - frx - 0.5, visTop - 0.5, frx * 2 + 1, visBot - visTop + 0.5);
     ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(fcx - frx, visTop + 0.4, frx * 2, 0.7); // Lichtkante
@@ -283,9 +284,9 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir
   bein(ctx, p, f, CX + spreiz, -lVor);
 
   // hinterer Arm (gegenläufig), Rumpf, vorderer Arm - an den Schultern
-  arm(ctx, p, f, CX - f.schulterB, -lVor, true);
+  arm(ctx, p, f, CX - f.schulterB, -lVor);
   rumpf(ctx, p, f, tier === 'kette' && f.kettenGitter > 0);
-  arm(ctx, p, f, CX + f.schulterB, lVor, false);
+  arm(ctx, p, f, CX + f.schulterB, lVor);
   pauldrons(ctx, p, f); // Schulterplatten über den Armansätzen
 
   kopf(ctx, p, f, dir);

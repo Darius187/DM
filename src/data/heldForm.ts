@@ -31,7 +31,7 @@ export interface HeldForm {
   rost: number;         // Rost-Patina auf der Rüstung (0 sauber .. 1 verrostet)
   schmutz: number;      // Verschmutzung am unteren Rand (0 sauber .. 1 dreckig)
   // Farb-Überschreibungen je Teil (leer = Standardfarbe der Rüstungsstufe)
-  farben: { wams?: string; cape?: string; kapuze?: string; guertel?: string; schnalle?: string; hand?: string };
+  farben: { wams?: string; cape?: string; kapuze?: string; guertel?: string; schnalle?: string; hand?: string; schulter?: string; visier?: string };
 }
 
 export const DEF_HELDFORM: HeldForm = {
@@ -73,14 +73,18 @@ export const HELDFORM_REGLER: Array<[HeldFormNum, string, number, number, number
 ];
 
 // Wählbare Farben je Teil (Name -> Hex) für den Farb-Picker im Editor
-export type FarbTeil = 'wams' | 'cape' | 'kapuze' | 'guertel' | 'schnalle' | 'hand';
+export type FarbTeil = 'wams' | 'cape' | 'kapuze' | 'guertel' | 'schnalle' | 'hand' | 'schulter' | 'visier';
 export const FARB_TEILE: Array<[FarbTeil, string]> = [
-  ['wams', 'Wams'], ['cape', 'Umhang'], ['kapuze', 'Kapuze/Helm'],
-  ['guertel', 'Gürtel'], ['schnalle', 'Schnalle'], ['hand', 'Handschuhe'],
+  ['wams', 'Wams'], ['cape', 'Umhang'], ['kapuze', 'Kapuze/Helm'], ['guertel', 'Gürtel'],
+  ['schnalle', 'Schnalle'], ['hand', 'Handschuhe'], ['schulter', 'Schulterplatten'], ['visier', 'Visier'],
 ];
+// Erweiterte Palette (Runde 40, Autorwunsch "viel mehr Farben"): Rot-/Braun-/
+// Grün-/Blau-/Violett-/Grau-/Gold-Töne in je hell/mittel/dunkel.
 export const FARB_PALETTE: string[] = [
-  '#7a2e28', '#6a4326', '#7a7d84', '#9aa1a9', '#3a5a7a', '#2e4a3a',
-  '#5a3a6a', '#8a6a2a', '#c9a227', '#2a2a2e', '#8a8276', '#a83838',
+  '#a83838', '#7a2e28', '#52201c', '#c87a3a', '#8a5a2a', '#5a3a1c',
+  '#b8a06a', '#8a6a3a', '#5a4326', '#6aa05a', '#3e7a4a', '#22432e',
+  '#5a8ab0', '#3a5a7a', '#22384e', '#9a6ad0', '#5a3a6a', '#34223e',
+  '#d8d0c0', '#9aa1a9', '#5a5e66', '#2a2a2e', '#e0c050', '#c9a227',
 ];
 
 // Pro Rüstungsstufe ein eigenes Aussehen (Runde 40, Autorwunsch "je nach

@@ -1852,20 +1852,22 @@ export class WorldScene extends CombatScene {
   }
 
   private ensureNebelTextur(): void {
-    if (this.textures.exists('nebelschwade')) return;
+    if (this.textures.exists('bodennebel_tex')) return;
     const cv = document.createElement('canvas');
-    cv.width = 512; cv.height = 512;
+    cv.width = 256; cv.height = 256;
     const ctx = cv.getContext('2d')!;
-    for (let i = 0; i < 7; i++) {
-      const gx = 90 + Math.random() * 332, gy = 120 + Math.random() * 272;
-      const r = 90 + Math.random() * 130;
+    // Weiche Schwaden, deren Kerne WEIT innerhalb bleiben - so läuft die Alpha
+    // zum Rand voll auf 0 aus und es gibt KEINE harte Quadratkante (Autorbug R40).
+    for (let i = 0; i < 6; i++) {
+      const gx = 80 + Math.random() * 96, gy = 80 + Math.random() * 96; // Kerne in [80,176]
+      const r = 50 + Math.random() * 26;                                 // + r <= ~202 < 256
       const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, r);
-      g.addColorStop(0, 'rgba(200,212,224,0.26)');
-      g.addColorStop(0.6, 'rgba(184,198,214,0.14)');
+      g.addColorStop(0, 'rgba(200,212,224,0.22)');
+      g.addColorStop(0.55, 'rgba(184,198,214,0.10)');
       g.addColorStop(1, 'rgba(170,184,200,0)');
-      ctx.fillStyle = g; ctx.fillRect(0, 0, 512, 512);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
     }
-    this.textures.addCanvas('nebelschwade', cv);
+    this.textures.addCanvas('bodennebel_tex', cv);
   }
 
   private renderBodennebel(dt: number): void {
@@ -1877,22 +1879,28 @@ export class WorldScene extends CombatScene {
       return;
     }
     this.ensureNebelTextur();
-    const w = this.scale.width, h = this.scale.height;
+    // WELT-verankert (Autorbug R40: vorher bildschirmfest -> "Viereck bewegt
+    // sich mit der Figur"). Die Schwaden liegen auf dem Spielfeld, driften
+    // langsam und werden NUR weit außerhalb der Sicht umgesetzt (nahtlos).
+    const view = this.cameras.main.worldView;
+    const cx = view.centerX, cy = view.centerY;
+    const rx = view.width * 0.85, ry = view.height * 0.85;
     if (!this.bodennebelSprites.length) {
-      for (let i = 0; i < 8; i++) {
-        const s = this.add.image(0, 0, 'nebelschwade').setScrollFactor(0).setDepth(4180).setDisplaySize(700, 540);
-        s.setData('x', Math.random() * w); s.setData('y', Math.random() * h);
-        s.setData('vx', 7 + Math.random() * 9); s.setData('vy', (Math.random() - 0.5) * 4);
+      for (let i = 0; i < 12; i++) {
+        const s = this.add.image(0, 0, 'bodennebel_tex').setDepth(2900).setDisplaySize(360, 300);
+        s.setData('x', cx + (Math.random() * 2 - 1) * rx);
+        s.setData('y', cy + (Math.random() * 2 - 1) * ry);
+        s.setData('vx', 5 + Math.random() * 6); s.setData('vy', (Math.random() - 0.5) * 3.5);
         this.bodennebelSprites.push(s);
       }
     }
     for (const s of this.bodennebelSprites) {
       let x = (s.getData('x') as number) + (s.getData('vx') as number) * dt;
       let y = (s.getData('y') as number) + (s.getData('vy') as number) * dt;
-      if (x > w + 340) x = -340; else if (x < -340) x = w + 340;
-      if (y > h + 260) y = -260; else if (y < -260) y = h + 260;
+      while (x - cx > rx) x -= 2 * rx; while (cx - x > rx) x += 2 * rx;
+      while (y - cy > ry) y -= 2 * ry; while (cy - y > ry) y += 2 * ry;
       s.setData('x', x); s.setData('y', y);
-      s.setVisible(true).setPosition(x, y).setAlpha(this.nebelStaerke * 0.85);
+      s.setVisible(true).setPosition(x, y).setAlpha(this.nebelStaerke * 0.6);
     }
   }
 

@@ -140,24 +140,25 @@ export class HeldEditor {
     c.add(this.scene.add.text(fx, 56, 'FARBEN', { fontFamily: 'serif', fontSize: '13px', color: GOLD, letterSpacing: 2 }));
     c.add(this.scene.add.text(fx, 74, 'Teil wählen, dann Farbe antippen:', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }));
     FARB_TEILE.forEach(([id, lbl], i) => {
-      c.add(this.knopf(fx + (i % 2) * 110, 92 + Math.floor(i / 2) * 26, lbl, 104, () => {
+      c.add(this.knopf(fx + (i % 2) * 110, 90 + Math.floor(i / 2) * 25, lbl, 104, () => {
         this.farbTeil = id; this.build();
       }, this.farbTeil === id ? GOLD : BONE));
     });
-    // Farbfelder (unter den 3 Reihen Teil-Knöpfen)
-    const swY = 92 + Math.ceil(FARB_TEILE.length / 2) * 26 + 6;
+    // Farbfelder (6 Spalten, unter den Teil-Knöpfen)
+    const swY = 90 + Math.ceil(FARB_TEILE.length / 2) * 25 + 6;
     FARB_PALETTE.forEach((col, i) => {
-      const bx = fx + (i % 4) * 38, by = swY + Math.floor(i / 4) * 30;
-      const sw2 = this.scene.add.rectangle(bx, by, 30, 24, Phaser.Display.Color.HexStringToColor(col).color)
+      const bx = fx + (i % 6) * 32, by = swY + Math.floor(i / 6) * 26;
+      const sw2 = this.scene.add.rectangle(bx, by, 28, 22, Phaser.Display.Color.HexStringToColor(col).color)
         .setOrigin(0).setStrokeStyle(f.farben[this.farbTeil] === col ? 2 : 1, f.farben[this.farbTeil] === col ? 0xffffff : LINE)
         .setInteractive({ useHandCursor: true });
       sw2.on('pointerdown', () => { f.farben[this.farbTeil] = col; this.build(); });
       c.add(sw2);
     });
-    c.add(this.knopf(fx, swY + 96, 'Standardfarbe', 130, () => { delete f.farben[this.farbTeil]; this.build(); }));
+    const swEnd = swY + Math.ceil(FARB_PALETTE.length / 6) * 26 + 4;
+    c.add(this.knopf(fx, swEnd, 'Standardfarbe', 130, () => { delete f.farben[this.farbTeil]; this.build(); }));
 
     // --- Vorlagen-Bibliothek (Speichern unter Name + Laden/Löschen) ---
-    let vy = swY + 132;
+    let vy = swEnd + 32;
     c.add(this.scene.add.text(fx, vy, 'VORLAGEN', { fontFamily: 'serif', fontSize: '13px', color: GOLD, letterSpacing: 2 }));
     vy += 20;
     c.add(this.knopf(fx, vy, 'SPEICHERN UNTER…', 200, () => {
