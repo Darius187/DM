@@ -72,8 +72,11 @@ export function kampfTiefe(depth: number): number {
 }
 
 export const ENEMY_AI = {
-  meleeAtkCd: 1.05,
-  meleeWindup: 0.36,    // Telegraph-Vorwarnung normaler Gegner
+  // Runde 35: Gegner wirkten harmlos (langes Anlaufen, träges Nachsetzen).
+  // Kürzeres Ausholen + deutlich kürzere Pause = "zack-zack" statt gemütlich.
+  // Über den F10-Schlagtempo-Regler (global UND je Typ) wieder entschärfbar.
+  meleeAtkCd: 0.7,
+  meleeWindup: 0.28,    // Telegraph-Vorwarnung normaler Gegner
   rangedShootCd: 1.8,
   rangedProjSpeed: 265,
   rangedKeepDist: 140,

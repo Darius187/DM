@@ -25,8 +25,8 @@ export const TUNING = {
   gegnerCleverness: 1.0,
   // Runde 18/35: Feinjustierung je Gegnertyp (F10 - Pfeile wechseln den Typ).
   // tempo = Lauftempo, schaden = Schaden, schlagtempo = Ausholen/Pausen,
-  // reichweite = Hiebweite. Wirkt auf NEUE Spawns dieses Typs.
-  typ: {} as Record<string, { tempo: number; schaden: number; schlagtempo: number; reichweite: number }>,
+  // reichweite = Hiebweite, leben = HP. Wirkt auf NEUE Spawns dieses Typs.
+  typ: {} as Record<string, { tempo: number; schaden: number; schlagtempo: number; reichweite: number; leben: number }>,
   // Runde 21: Dev-Schalter - alle Zauber/Fähigkeiten ohne Stufen-Sperre
   alleZauberFrei: false,
   // Runde 35: Physik-Test (nicht live) - Fässer/Kisten lassen sich schieben
@@ -37,8 +37,8 @@ export const TUNING = {
 };
 
 // Frische Standard-Feinwerte für einen Gegnertyp (alles neutral = 1).
-export function neuerTypTuning(): { tempo: number; schaden: number; schlagtempo: number; reichweite: number } {
-  return { tempo: 1, schaden: 1, schlagtempo: 1, reichweite: 1 };
+export function neuerTypTuning(): { tempo: number; schaden: number; schlagtempo: number; reichweite: number; leben: number } {
+  return { tempo: 1, schaden: 1, schlagtempo: 1, reichweite: 1, leben: 1 };
 }
 
 export const TUNING_ROWS: Array<[keyof typeof TUNING, string, number, number, number]> = [

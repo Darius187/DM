@@ -3765,9 +3765,13 @@ export class WorldScene extends CombatScene {
     this.p.gold -= lost;
     const c = this.add.container(0, 0).setScrollFactor(0).setDepth(6000);
     const w = this.scale.width, h = this.scale.height;
-    const bg = this.add.rectangle(0, 0, w, h, 0x000000, 0.55).setOrigin(0); // Runde 18: Welt bleibt sichtbar
+    // Runde 35: dünner Schleier statt Vorhang - man sieht im Hintergrund, wie
+    // die Gegner über die Leiche herfallen. Das Fenster blendet sanft ein.
+    const bg = this.add.rectangle(0, 0, w, h, 0x000000, 0.4).setOrigin(0);
     bg.setInteractive();
     c.add(bg);
+    c.setAlpha(0);
+    this.tweens.add({ targets: c, alpha: 1, duration: 700, ease: 'Quad.Out' });
     this.sfx.playMusic('musik_tod');
     c.add(this.add.text(w / 2, h * 0.32, TOD.titel, {
       fontFamily: 'serif', fontSize: '46px', color: '#8c1a1a', letterSpacing: 5,
@@ -3790,6 +3794,7 @@ export class WorldScene extends CombatScene {
   private respawn(c: Phaser.GameObjects.Container): void {
     c.destroy();
     this.deathOverlay = null;
+    this.belebePlayerSprite(); // Leichen-Pose (Tönung/Neigung) zurücksetzen
     if (this.sfx.aktuelleMusik() === 'musik_tod') this.sfx.stopMusic();
     this.p.hp = this.p.stats.maxhp;
     this.p.mana = this.p.stats.maxmana;

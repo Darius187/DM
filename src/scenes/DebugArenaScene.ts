@@ -85,6 +85,7 @@ export class DebugArenaScene extends CombatScene {
   protected onPlayerDeath(): void {
     this.p.hp = this.p.stats.maxhp;
     this.playerDead = false;
+    this.belebePlayerSprite();
     this.logMsg('Arena: Tod zurückgesetzt (volles Leben)', 'bad');
   }
 

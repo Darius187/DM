@@ -16,6 +16,7 @@ export interface EnemyHost {
   playerY(): number;
   playerR(): number;
   playerDir(): number; // Blickrichtung des Spielers (rad) für die Flanken-KI
+  playerTot(): boolean; // tot: Gegner scharen sich um die Leiche statt anzugreifen
   enemyMeleeHit(e: Enemy, dmg: number): void;
   spawnEnemyProjectile(x: number, y: number, vx: number, vy: number, dmg: number, col: string, pfeil?: boolean): void;
   addTelegraph(x: number, y: number, r: number, t: number, dmg: number): void;
@@ -250,6 +251,12 @@ export class Enemy {
       this.stun -= dt;
       return;
     }
+    // Spieler tot: nicht mehr angreifen, sondern sich im Kreis um die Leiche
+    // scharen und über sie herfallen (Runde 35).
+    if (host.playerTot()) {
+      this.gatherCorpse(host, dt, d, ang);
+      return;
+    }
     // Schild-Haltung: nahe am Spieler regelmäßig in Deckung gehen
     if (this.schild) {
       this.blockT = Math.max(0, this.blockT - dt);
@@ -396,6 +403,20 @@ export class Enemy {
       this.steuerWinkel = 0;
     }
     this.moveBody(host, Math.cos(ziel) * tempo * dt, Math.sin(ziel) * tempo * dt);
+  }
+
+  // Über die Leiche herfallen (Runde 35): an die Leiche heran, dann langsam
+  // im Kreis darum scharren und gelegentlich daran "fressen" (Blutspritzer).
+  private gatherCorpse(host: EnemyHost, dt: number, d: number, ang: number): void {
+    const ring = host.playerR() + this.r + 5;
+    if (d > ring + 6) {
+      this.laufe(host, ang, this.speed * 0.7, dt);
+    } else {
+      const oa = ang + this.orbitDir * 1.5;
+      this.moveBody(host, Math.cos(oa) * this.speed * 0.28 * dt, Math.sin(oa) * this.speed * 0.28 * dt);
+      if (Math.random() < dt * 0.6) host.burstFx(host.playerX(), host.playerY() - 2, 0x7a1010, 3, 55);
+    }
+    this.advanceStep(dt);
   }
 
   private choosePattern(host: EnemyHost): void {

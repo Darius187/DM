@@ -90,6 +90,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   playerY(): number { return this.py; }
   playerR(): number { return PLAYER.radius; }
   playerDir(): number { return this.pdir; } // Blickrichtung für die Flanken-KI
+  playerTot(): boolean { return this.playerDead; } // Leiche: Gegner scharen sich
   logMsg(_text: string, _cls?: string): void { /* überschreibbar (HUD) */ }
   playSound(name: string, volMult = 1): void { this.sfx.play(name, volMult); }
   burstFx(x: number, y: number, col: number, n: number, spd: number): void { this.fx.burst(x, y, col, n, spd); }
@@ -164,6 +165,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     kb.on('keydown', (ev: KeyboardEvent) => {
       const k = ev.key.toLowerCase();
       this.keysDown[k] = true;
+      // Dev: K tötet den Helden sofort (Todes-Sequenz testen) - auch bei
+      // offenem Fenster, damit man es jederzeit auslösen kann. Nur Dev-Build.
+      if (import.meta.env.DEV && k === 'k' && !this.playerDead) { this.hurtPlayer(99999); return; }
       if (this.playerDead) return;
       const b = getSettings().kb;
       // Offene Fenster: nur Schließen-Tasten durchlassen
@@ -391,7 +395,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       merk = { ...merk, ...JSON.parse(localStorage.getItem('ravensmoor_devkasten') ?? '{}') };
     } catch { /* egal */ }
     const c = this.add.container(merk.x, merk.y).setScrollFactor(0).setDepth(6500);
-    const h = TUNING_ROWS.length * 29 + 96 + 186 + 52 + 60; // +52 Per-Typ, +60 Physik/Gefallene-Schalter
+    const h = TUNING_ROWS.length * 29 + 96 + 186 + 78 + 60; // +78 Per-Typ (5 Zeilen), +60 Physik/Gefallene-Schalter
     // Bei kleinen Fenstern schrumpft der ganze Kasten, statt unten
     // abgeschnitten zu werden (Runde 29: Regler "nicht gefunden")
     c.setScale(Math.min(merk.s, Math.max(0.6, (this.scale.height - 60) / h)));
@@ -474,9 +478,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     c.add(typText);
     y += 24;
     const typZeilen: Phaser.GameObjects.Text[] = [];
-    const typFelder = ['tempo', 'schaden', 'schlagtempo', 'reichweite'] as const;
+    const typFelder = ['leben', 'tempo', 'schaden', 'schlagtempo', 'reichweite'] as const;
     const typLabel: Record<typeof typFelder[number], string> = {
-      tempo: 'Typ-Tempo x', schaden: 'Typ-Schaden x', schlagtempo: 'Typ-Schlagtempo x', reichweite: 'Typ-Reichweite x',
+      leben: 'Typ-Leben x', tempo: 'Typ-Tempo x', schaden: 'Typ-Schaden x', schlagtempo: 'Typ-Schlagtempo x', reichweite: 'Typ-Reichweite x',
     };
     const zeichneTypWerte = () => {
       const t = TUNING.typ[typen[this.devTypIdx]] ?? neuerTypTuning();
@@ -1215,6 +1219,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // --- EnemyHost ------------------------------------------------------------
 
   enemyMeleeHit(e: Enemy, dmg: number): void {
+    if (this.playerDead) return; // Leiche nimmt keinen Schaden mehr (Runde 35)
     const aTo = Math.atan2(e.y - this.py, e.x - this.px);
     let diff = aTo - this.pdir;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
@@ -1303,6 +1308,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       e.dmg = Math.round(e.dmg * typTuning.schaden);
       e.schlagtempoF = typTuning.schlagtempo;
       e.reichweiteF = typTuning.reichweite;
+      e.maxhp = Math.max(1, Math.round(e.maxhp * (typTuning.leben ?? 1))); // Leben je Typ (Runde 35)
     }
     // Manche Skelette tragen Schilde (Runde 11) - sie blocken von vorn.
     // Ab Ebene 2 (Runde 17), und das Schild ist im Bild SICHTBAR. Im
@@ -1754,8 +1760,34 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.sfx.play('treffer_fleisch');
     if (this.p.hp <= 0 && !this.playerDead) {
       this.playerDead = true;
-      this.onPlayerDeath();
+      this.beginDeathScene();
+      // Das "Gestorben"-Fenster kommt nach einem kurzen Moment - solange sieht
+      // man die Gore-Sequenz und wie sich die Gegner um die Leiche scharen.
+      this.time.delayedCall(1300, () => { if (this.playerDead) this.onPlayerDeath(); });
     }
+  }
+
+  // Held zerfällt wie ein Gegner (Gore), der Leichnam bleibt liegen. Die Welt
+  // läuft danach weiter (updateTodesszene), die Gegner fallen über ihn her.
+  protected beginDeathScene(): void {
+    if (getSettings().blood) {
+      this.fx.deathGore(this.px, this.py, false, 1.3);
+      const leiche = this.playerSprite;
+      leiche.setTintFill(0xa01414);
+      this.tweens.add({
+        targets: leiche, scaleX: leiche.scaleX * 1.15, scaleY: leiche.scaleY * 0.5,
+        y: leiche.y + 8, angle: 12, alpha: 0.9, duration: 650, ease: 'Quad.In',
+      });
+      // Blutlache unter der Leiche
+      this.fx.burst(this.px, this.py + 4, 0x7a1010, 16, 120);
+    }
+    if (this.sfx.has('tod_gore')) this.sfx.play('tod_gore');
+  }
+
+  // Leichen-Pose zurücksetzen (Wiederbelebung): Tönung, Neigung, Skala
+  protected belebePlayerSprite(): void {
+    this.tweens.killTweensOf(this.playerSprite);
+    this.playerSprite.setAngle(0).setAlpha(1).clearTint();
   }
 
   applyHitstop(ms: number): void {
@@ -1775,6 +1807,35 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     if (this.pstepT > 0.1) { this.pstepT = 0; this.pstep = (this.pstep + 1) % 4; }
   }
 
+  // Gegner auseinanderdrücken (geteilt von Normal- und Todes-Schleife)
+  private separateEnemies(): void {
+    const en = this.enemies;
+    for (let i = 0; i < en.length; i++) {
+      for (let j = i + 1; j < en.length; j++) {
+        const A = en[i], B = en[j];
+        const d = Math.hypot(A.x - B.x, A.y - B.y), m = A.r + B.r;
+        if (d < m && d > 0.01) {
+          const a = Math.atan2(B.y - A.y, B.x - A.x), push = (m - d) / 2;
+          A.moveBody(this, -Math.cos(a) * push, -Math.sin(a) * push);
+          B.moveBody(this, Math.cos(a) * push, Math.sin(a) * push);
+        }
+      }
+    }
+  }
+
+  // Nach dem Spielertod läuft die Welt WEITER: die Gegner scharen sich um die
+  // Leiche und fallen über sie her, während man zuschaut (das Gestorben-Fenster
+  // liegt halbtransparent darüber). Spieler-Eingabe/Bewegung bleibt aus.
+  protected updateTodesszene(dt: number): void {
+    // Leiche = letzte Spielerposition (px/py bleiben beim Tod stehen)
+    for (const e of [...this.enemies]) e.update(this, dt);
+    this.separateEnemies();
+    this.updateProjectiles(dt);
+    this.fx.update(dt);
+    this.shakeAmt = Math.max(0, this.shakeAmt - dt * 18);
+    this.renderEntities();
+  }
+
   // --- Update ---------------------------------------------------------------
 
   protected updateCombat(rawDt: number): number {
@@ -1784,7 +1845,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       dt *= HITSTOP_TIMESCALE;
     }
     if (this.playerDead) {
-      this.fx.update(dt);
+      this.updateTodesszene(dt);
       return dt;
     }
     // Offene Fenster/Dialoge pausieren die Welt (Referenz-Verhalten)
@@ -1869,19 +1930,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       e.update(this, dt);
       if (this.playerDead) return dt;
     }
-    // Gegner auseinanderdrücken
-    const en = this.enemies;
-    for (let i = 0; i < en.length; i++) {
-      for (let j = i + 1; j < en.length; j++) {
-        const A = en[i], B = en[j];
-        const d = Math.hypot(A.x - B.x, A.y - B.y), m = A.r + B.r;
-        if (d < m && d > 0.01) {
-          const a = Math.atan2(B.y - A.y, B.x - A.x), push = (m - d) / 2;
-          A.moveBody(this, -Math.cos(a) * push, -Math.sin(a) * push);
-          B.moveBody(this, Math.cos(a) * push, Math.sin(a) * push);
-        }
-      }
-    }
+    this.separateEnemies();
 
     // Bannkreise: Untote in der Fläche werden geschwächt
     for (const z of this.banishZones) {
@@ -2081,24 +2130,28 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Sprites und Overlay (Ringe, Balken, Telegraphen) zeichnen
   protected renderEntities(): void {
     const time = this.time.now / 1000;
-    // Spieler (im Reit-Intro auf dem Pferd, sonst normal)
-    if (this.reitIntro) {
-      const bob = Math.sin(time * 7) * 1.5; // Wippen des Ritts
-      if (!this.reitPferd) this.reitPferd = this.add.sprite(this.px, this.py, '__DEFAULT');
-      this.reitPferd.setVisible(true).setPosition(this.px, this.py + 6 + bob).setScale(1.45).setDepth(this.py);
-      this.provider.applyFigure(this.reitPferd, 'pferd', angleToDir(this.pdir), this.pstep);
-      this.playerSprite.setPosition(this.px - 2, this.py - 15 + bob).setDepth(this.py + 1);
-      this.zeichneHeld(angleToDir(this.pdir), this.pstep);
-      this.playerSprite.clearTint();
-    } else {
-      this.reitPferd?.setVisible(false);
-      this.playerSprite.setPosition(this.px, this.py).setDepth(this.py);
-      const moving = this.keysDown['w'] || this.keysDown['a'] || this.keysDown['s'] || this.keysDown['d']
-        || this.keysDown['arrowup'] || this.keysDown['arrowdown'] || this.keysDown['arrowleft'] || this.keysDown['arrowright'];
-      this.zeichneHeld(angleToDir(this.pdir), moving ? this.pstep : 0);
+    // Tot: der Leichnam-Tween (beginDeathScene) hält die Pose - NICHT mehr über
+    // zeichneHeld überschreiben. Die Gegner werden unten weiter gezeichnet.
+    if (!this.playerDead) {
+      // Spieler (im Reit-Intro auf dem Pferd, sonst normal)
+      if (this.reitIntro) {
+        const bob = Math.sin(time * 7) * 1.5; // Wippen des Ritts
+        if (!this.reitPferd) this.reitPferd = this.add.sprite(this.px, this.py, '__DEFAULT');
+        this.reitPferd.setVisible(true).setPosition(this.px, this.py + 6 + bob).setScale(1.45).setDepth(this.py);
+        this.provider.applyFigure(this.reitPferd, 'pferd', angleToDir(this.pdir), this.pstep);
+        this.playerSprite.setPosition(this.px - 2, this.py - 15 + bob).setDepth(this.py + 1);
+        this.zeichneHeld(angleToDir(this.pdir), this.pstep);
+        this.playerSprite.clearTint();
+      } else {
+        this.reitPferd?.setVisible(false);
+        this.playerSprite.setPosition(this.px, this.py).setDepth(this.py);
+        const moving = this.keysDown['w'] || this.keysDown['a'] || this.keysDown['s'] || this.keysDown['d']
+          || this.keysDown['arrowup'] || this.keysDown['arrowdown'] || this.keysDown['arrowleft'] || this.keysDown['arrowright'];
+        this.zeichneHeld(angleToDir(this.pdir), moving ? this.pstep : 0);
+      }
+      if (this.playerHitFlash > 0) this.playerSprite.setTintFill(0xffffff);
+      else this.playerSprite.clearTint();
     }
-    if (this.playerHitFlash > 0) this.playerSprite.setTintFill(0xffffff);
-    else this.playerSprite.clearTint();
 
     for (const e of this.enemies) {
       if (!e.sprite) continue;
