@@ -4,8 +4,28 @@
 
 import { TILE } from './fallbackArt';
 import type { CryptTheme } from '../data/krypta';
+import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64 } from './detailArt';
 
 type Ctx = CanvasRenderingContext2D;
+
+// Wasser-Animationsschleife (Runde 40): so viele Phasen-Frames bildet der Fluss,
+// bevor er sich wiederholt - begrenzt zugleich die Zahl gecachter Texturen.
+export const WASSER_FRAMES = 8;
+
+// Detailliertes 64px-Objekt sauber auf die 32px-Kachel herunterrechnen
+// (Runde 40, "den Rest in 64px runterskaliert"). Überlagert vorhandenen Inhalt
+// (z. B. die Bodenplatte) nicht-destruktiv, weil die Quellen auf transparentem
+// Grund zeichnen.
+function detail(ctx: Ctx, draw: (c: Ctx) => void): void {
+  const g = document.createElement('canvas');
+  g.width = 64; g.height = 64;
+  draw(g.getContext('2d')!);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(g, 0, 0, 64, 64, 0, 0, TILE, TILE);
+  ctx.restore();
+}
 
 function grasBase(ctx: Ctx, n: number): void {
   const g = 46 + n * 2;
@@ -72,24 +92,13 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       ctx.fillStyle = '#1c3018'; ctx.beginPath(); ctx.arc(16, 12, 12, 0, 6.283); ctx.fill();
       ctx.fillStyle = 'rgba(40,70,34,0.8)'; ctx.beginPath(); ctx.arc(12, 9, 7, 0, 6.283); ctx.fill();
       break;
-    case 'wasser': {
-      ctx.fillStyle = '#16222e'; ctx.fillRect(0, 0, TILE, TILE);
-      ctx.fillStyle = 'rgba(120,150,180,0.18)';
-      ctx.fillRect(2 + n * 2, 6 + n, 10, 2); ctx.fillRect(14, 20 - n, 12, 2);
-      // Glitzerpunkte und dunkler Grund
-      ctx.fillStyle = 'rgba(180,210,235,0.30)';
-      ctx.fillRect(((n * 13) % 24) + 4, ((n * 7) % 22) + 4, 2, 1);
-      ctx.fillRect(((n * 19) % 22) + 5, ((n * 11) % 24) + 4, 1, 1);
-      ctx.fillStyle = 'rgba(0,0,0,0.18)';
-      ctx.fillRect(((n * 9) % 18) + 6, ((n * 15) % 16) + 10, 8, 3);
+    case 'wasser':
+      // Animiert: n trägt die Phase (variant + Frame), Wellen wandern abwärts
+      detail(ctx, (c) => wasser64(c, (((n % WASSER_FRAMES) + WASSER_FRAMES) % WASSER_FRAMES) / WASSER_FRAMES));
       break;
-    }
-    case 'acker': {
-      ctx.fillStyle = '#3a2c1c'; ctx.fillRect(0, 0, TILE, TILE);
-      ctx.fillStyle = '#2c2014';
-      for (let i = 0; i < 4; i++) ctx.fillRect(0, 2 + i * 8, TILE, 3);
+    case 'acker':
+      detail(ctx, acker64);
       break;
-    }
     case 'zaun':
       grasBase(ctx, n);
       ctx.fillStyle = '#5c4427';
@@ -237,11 +246,9 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       break;
     }
     case 'knochen':
+      // Liegendes Skelett (Runde 40, Batch 2) auf der Bodenplatte
       floorBase(ctx, n, theme);
-      ctx.fillStyle = '#cfc4a8';
-      ctx.fillRect(6, 19, 9, 2.5); ctx.fillRect(18, 10, 8, 2.5);
-      ctx.beginPath(); ctx.arc(12, 11, 4, 0, 6.283); ctx.fill();
-      ctx.fillStyle = '#1a1410'; ctx.fillRect(10, 10, 1.8, 2); ctx.fillRect(13.2, 10, 1.8, 2);
+      detail(ctx, skelett64);
       break;
     case 'blut':
       floorBase(ctx, n, theme);
@@ -260,16 +267,11 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       ctx.globalAlpha = 1;
       break;
     }
-    case 'altar': {
+    case 'altar':
+      // Opferaltar (Runde 40, Batch 2): Stein, Blutrinne, Schädel, Kerzen
       floorBase(ctx, n, theme);
-      ctx.fillStyle = '#3a362e'; ctx.fillRect(4, 9, TILE - 8, TILE - 12);
-      ctx.fillStyle = '#4e4a40'; ctx.fillRect(2, 6, TILE - 4, 7);
-      ctx.fillStyle = 'rgba(110,16,16,0.8)'; ctx.fillRect(12, 13, 8, 3); ctx.fillRect(15, 16, 3, 9);
-      ctx.fillStyle = '#f8d878';
-      ctx.beginPath(); ctx.ellipse(6, 4, 1.6, 3, 0, 0, 6.283); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(26, 4, 1.6, 3, 0, 0, 6.283); ctx.fill();
+      detail(ctx, altar64);
       break;
-    }
     case 'regal': {
       ctx.fillStyle = '#2e2114'; ctx.fillRect(0, 0, TILE, TILE);
       ctx.fillStyle = '#1a1108'; ctx.fillRect(2, 4, TILE - 4, 9); ctx.fillRect(2, 18, TILE - 4, 9);
@@ -297,11 +299,9 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(10, 10, 8, 3);
       break;
     case 'streckbank':
+      // Folterbank (Runde 40, Batch 2): Rahmen, Walzen, Seile, Blut
       floorBase(ctx, n, theme);
-      ctx.fillStyle = '#3a2c1a'; ctx.fillRect(4, 10, 24, 12);
-      ctx.fillStyle = '#241a0e'; ctx.fillRect(2, 8, 5, 16); ctx.fillRect(25, 8, 5, 16);
-      ctx.strokeStyle = '#6a665e'; ctx.beginPath(); ctx.moveTo(7, 14); ctx.lineTo(25, 14); ctx.moveTo(7, 19); ctx.lineTo(25, 19); ctx.stroke();
-      ctx.fillStyle = 'rgba(110,16,16,0.5)'; ctx.fillRect(12, 12, 6, 8);
+      detail(ctx, folterbank64);
       break;
     case 'kaefig':
       floorBase(ctx, n, theme);
@@ -382,11 +382,8 @@ export function drawObjectArt(ctx: Ctx, name: string, n: number, theme?: CryptTh
       ctx.beginPath(); ctx.arc(14, 17, 2.5, 0, 6.283); ctx.fill();
       break;
     case 'fels':
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      ctx.beginPath(); ctx.ellipse(16, 26, 11, 3.5, 0, 0, 6.283); ctx.fill();
-      ctx.fillStyle = '#6a665e';
-      ctx.beginPath(); ctx.moveTo(5, 24); ctx.lineTo(8, 10); ctx.lineTo(20, 7); ctx.lineTo(27, 16); ctx.lineTo(23, 25); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(10, 10, 8, 3);
+      // Felsbrocken (Runde 40, Batch 2): facettierter Granitblock mit Moos
+      detail(ctx, fels64);
       break;
     case 'grabstein':
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -426,9 +423,8 @@ export function drawObjectArt(ctx: Ctx, name: string, n: number, theme?: CryptTh
       ctx.beginPath(); ctx.ellipse(16, 14, 1.8, 1, 0, 0, 6.283); ctx.stroke();
       break;
     case 'zaun':
-      ctx.fillStyle = '#5c4427';
-      ctx.fillRect(4, 8, 4, 18); ctx.fillRect(24, 8, 4, 18);
-      ctx.fillRect(0, 12, TILE, 4); ctx.fillRect(0, 20, TILE, 4);
+      // Zaun (Runde 40, Batch 2): verwitterte Latten mit Maserung und Nägeln
+      detail(ctx, zaun64);
       break;
     case 'palisade': case 'palisade_seite':
       for (let i = 0; i < 4; i++) {

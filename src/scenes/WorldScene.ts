@@ -24,6 +24,8 @@ import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, tileNameAt } from '../world/tiles';
 import { TILE } from '../gfx/fallbackArt';
+import { WASSER_FRAMES } from '../gfx/tileArt';
+import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64 } from '../gfx/detailArt';
 import { DialogUI, fixUiScroll } from '../ui/dialog';
 import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, RELIKT, ENDEN, TOD, INTRO_FILM } from '../data/texte';
 import { ALTAR, BLOOD_WELL, CHEST, RELIC_ACCEPT_ELIXIRS } from '../data/balancing';
@@ -385,11 +387,14 @@ export class WorldScene extends CombatScene {
   private wasserT = 0;
 
   private animiereWasser(dt: number): void {
-    if (this.wasserBilder.length < 1 || this.provider.tileVarianten('wasser') < 2) return;
+    // Auch das prozedurale Wasser fließt jetzt (Runde 40, Autorwunsch
+    // "wasser/fluss mit animation"): die Phasen-Frames wandern als Wellen.
+    // Hot-Swap-Wasser mit nur einer Variante bleibt still (nichts zu wechseln).
+    if (this.wasserBilder.length < 1) return;
     this.wasserT += dt;
-    if (this.wasserT < 0.5) return;
+    if (this.wasserT < 0.18) return;
     this.wasserT = 0;
-    this.wasserFrame++;
+    this.wasserFrame = (this.wasserFrame + 1) % WASSER_FRAMES;
     // Zerstörte Kacheln aussortieren (Runde 30: der Baukasten malt Kacheln
     // neu - setTexture auf den alten Bildern stürzte das Spiel ab)
     this.wasserBilder = this.wasserBilder.filter((w) => w.img.active);
@@ -1878,6 +1883,38 @@ export class WorldScene extends CombatScene {
     const brks = ['fass', 'kiste', 'krug', 'heuhaufen', 'knochenhaufen'];
     brks.forEach((k, i) => {
       this.add.image(sw * 0.5 - 200 + i * 100, sh * 0.92, this.provider.breakableKey(k)).setScrollFactor(0).setDepth(7001).setScale(2.6);
+    });
+  }
+
+  // DEV-Vorschau Batch 2 (Runde 40): die neuen 64px-Objekte groß zeigen.
+  zeichneProbenBatch2(): void {
+    const mk = (key: string, draw: (c: CanvasRenderingContext2D) => void) => {
+      if (this.textures.exists(key)) this.textures.remove(key);
+      const cv = document.createElement('canvas'); cv.width = 64; cv.height = 64;
+      draw(cv.getContext('2d')!);
+      this.textures.addCanvas(key, cv);
+    };
+    mk('p2_fels', fels64);
+    mk('p2_zaun', zaun64);
+    mk('p2_acker', acker64);
+    mk('p2_folter', folterbank64);
+    mk('p2_skelett', skelett64);
+    mk('p2_altar', altar64);
+    mk('p2_wasser', (c) => wasser64(c, 0.3));
+    const sw = this.scale.width, sh = this.scale.height;
+    this.add.rectangle(0, 0, sw, sh, 0x0a0806, 0.97).setOrigin(0).setScrollFactor(0).setDepth(7000);
+    this.add.text(sw / 2, sh * 0.1, 'BATCH 2: Felsbrocken · Zaun · Acker · Folterbank · Skelett · Altar · Wasser', {
+      fontFamily: 'serif', fontSize: '18px', color: '#c9a227', letterSpacing: 1,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(7001);
+    const items: Array<[string, string]> = [
+      ['p2_fels', 'Felsbrocken'], ['p2_zaun', 'Zaun'], ['p2_acker', 'Acker/Felder'],
+      ['p2_folter', 'Folterbank'], ['p2_skelett', 'Liegendes Skelett'], ['p2_altar', 'Altar'], ['p2_wasser', 'Wasser/Fluss'],
+    ];
+    const n = items.length, gap = Math.min(165, (sw - 80) / n);
+    items.forEach(([key, label], i) => {
+      const x = sw / 2 + (i - (n - 1) / 2) * gap;
+      this.add.image(x, sh * 0.45, key).setScrollFactor(0).setDepth(7001).setScale(3.0);
+      this.add.text(x, sh * 0.64, label, { fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8' }).setOrigin(0.5).setScrollFactor(0).setDepth(7001);
     });
   }
 
