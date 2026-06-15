@@ -39,7 +39,7 @@ export class UIPanels {
   // Tab-Fenster (Runde 31): Album und Statistik wohnen mit im Fenster
   getAlbumZeilen: (() => Array<[string, string]>) | null = null;
   getStatistikZeilen: (() => Array<[string, string]>) | null = null;
-  private hauptTab: 'held' | 'album' | 'statistik' = 'held';
+  private hauptTab: 'held' | 'faehigkeiten' | 'aufgaben' | 'album' | 'statistik' = 'held';
 
   // Fenster direkt auf einem Reiter öffnen (B = Album)
   openTab(tab: 'held' | 'album' | 'statistik'): void {
@@ -142,9 +142,11 @@ export class UIPanels {
     c.add(this.scene.add.text(w / 2, 8, '⠿ ziehen zum Verschieben', {
       fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a',
     }).setOrigin(0.5, 0));
-    // Haupt-Reiter (Runde 31): alles Wichtige in EINEM Fenster
+    // Haupt-Reiter (Runde 38: eigene Tabs für Fähigkeiten und Aufgaben,
+    // damit der Charakter-Tab nicht mehr überladen ist und nichts überlappt)
     const reiter: Array<[typeof this.hauptTab, string]> = [
-      ['held', 'CHARAKTER & INVENTAR'], ['album', 'SAMMELALBUM'], ['statistik', 'STATISTIK'],
+      ['held', 'CHARAKTER'], ['faehigkeiten', 'FÄHIGKEITEN'], ['aufgaben', 'AUFGABEN'],
+      ['album', 'ALBUM'], ['statistik', 'STATISTIK'],
     ];
     let rx = 14;
     for (const [id, lbl] of reiter) {
@@ -159,26 +161,33 @@ export class UIPanels {
         this.sfx.play('klick');
       });
       c.add(t);
-      rx += t.width + 8;
+      rx += t.width + 7;
     }
+    // Trennlinie unter den Reitern - der Inhalt beginnt klar darunter (kein
+    // Überlappen der Sektionstitel mehr, Autorkritik Runde 38)
+    c.add(this.scene.add.rectangle(0, 54, w, 1, LINE).setOrigin(0));
+    const inhalt = this.scene.add.container(0, 56);
+    c.add(inhalt);
     if (this.hauptTab === 'held') {
-      const inhalt = this.scene.add.container(0, 30);
-      c.add(inhalt);
-      c.add(this.scene.add.rectangle(w * 0.46, 56, 1, h - 64, LINE).setOrigin(0));
-      this.buildCharacterSide(inhalt, w * 0.46 - 10, h - 30);
-      this.buildInventorySide(inhalt, w * 0.46 + 12, w - (w * 0.46 + 12) - 10, h - 36);
-      // Phaser-Falle: Kinder des Unter-Containers brauchen die Hitbox-
-      // Korrektur SELBST, sonst tote Knöpfe bei gescrollter Kamera
-      fixUiScroll(inhalt);
+      inhalt.add(this.scene.add.rectangle(w * 0.46, 4, 1, h - 64, LINE).setOrigin(0));
+      this.buildCharacterSide(inhalt, w * 0.46 - 10, h - 60);
+      this.buildInventorySide(inhalt, w * 0.46 + 12, w - (w * 0.46 + 12) - 10, h - 62);
+    } else if (this.hauptTab === 'faehigkeiten') {
+      this.buildSkillsTab(inhalt, w, h - 62);
+    } else if (this.hauptTab === 'aufgaben') {
+      this.buildTasksTab(inhalt, w, h - 62);
     } else {
       const zeilen = (this.hauptTab === 'album' ? this.getAlbumZeilen?.() : this.getStatistikZeilen?.()) ?? [['Keine Daten.', '#6a5f4c']];
-      let zy = 64;
+      let zy = 8;
       for (const [text, col] of zeilen) {
-        if (text) c.add(this.scene.add.text(18, zy, text, { fontFamily: 'serif', fontSize: '13px', color: col }));
+        if (text) inhalt.add(this.scene.add.text(18, zy, text, { fontFamily: 'serif', fontSize: '13px', color: col }));
         zy += 19;
-        if (zy > h - 20) break;
+        if (zy > h - 76) break;
       }
     }
+    // Phaser-Falle: Kinder des Unter-Containers brauchen die Hitbox-Korrektur
+    // SELBST, sonst tote Knöpfe bei gescrollter Kamera
+    fixUiScroll(inhalt);
     const closeBtn = this.scene.add.text(w - 10, 8, '✕', { fontFamily: 'serif', fontSize: '16px', color: BONE })
       .setOrigin(1, 0).setInteractive({ useHandCursor: true });
     closeBtn.on('pointerdown', () => this.closeAll());
@@ -190,88 +199,143 @@ export class UIPanels {
 
   private buildCharacterSide(c: Phaser.GameObjects.Container, w: number, _h: number): void {
     const p = this.getPlayer();
-    c.add(this.scene.add.text(14, 10, 'CHARAKTER', { fontFamily: 'serif', fontSize: '16px', color: GOLD, letterSpacing: 2 }));
-
     const variante = p.armorIt && p.armorIt.val >= 8 ? 'ruestung2' : undefined;
     const ptKey = this.provider.portraitKey('spieler', variante);
-    c.add(this.scene.add.rectangle(64, 92, 92, 92, 0x0e0a06).setStrokeStyle(2, 0x5a4a32));
+    c.add(this.scene.add.rectangle(58, 60, 88, 88, 0x0e0a06).setStrokeStyle(2, 0x5a4a32));
     if (ptKey) {
-      const img = this.scene.add.image(64, 92, ptKey);
-      img.setScale(86 / Math.max(img.width, img.height));
+      const img = this.scene.add.image(58, 60, ptKey);
+      img.setScale(82 / Math.max(img.width, img.height));
       c.add(img);
     } else {
       const f = this.provider.figureFrame('spieler', 0, 0);
-      c.add(this.scene.add.image(64, 92, f.key, f.frame).setScale(2.6));
+      c.add(this.scene.add.image(58, 60, f.key, f.frame).setScale(2.2));
     }
-    c.add(this.scene.add.text(64, 144, `Stufe ${p.level}`, { fontFamily: 'serif', fontSize: '13px', color: BONE }).setOrigin(0.5, 0));
+    c.add(this.scene.add.text(58, 108, `Stufe ${p.level}`, { fontFamily: 'serif', fontSize: '13px', color: GOLD }).setOrigin(0.5, 0));
 
-    // Slots rechts neben dem Portrait
+    // Ausrüstungs-Slots rechts neben dem Portrait
     const slots: Array<[string, Item | null]> = [['Waffe', p.weapon], ['Rüstung', p.armorIt], ['Ring', p.ring], ['Schild', p.schildIt]];
-    let sy = 40;
+    let sy = 16;
     for (const [label, it] of slots) {
-      const slotBg = this.scene.add.rectangle(124, sy, 40, 40, 0x100b06).setOrigin(0)
+      const slotBg = this.scene.add.rectangle(116, sy, 38, 38, 0x100b06).setOrigin(0)
         .setStrokeStyle(1, it ? Phaser.Display.Color.HexStringToColor(RARITY_COLORS[(it.rarity ?? 0) as Rarity]).color : LINE);
       c.add(slotBg);
       if (it) {
-        c.add(this.scene.add.image(144, sy + 20, this.provider.itemIcon(it)).setScale(0.5));
+        c.add(this.scene.add.image(135, sy + 19, this.provider.itemIcon(it)).setScale(0.48));
         const gem = it === p.weapon ? weaponGem(p) : null;
-        c.add(this.scene.add.text(170, sy + 2, it.name, { fontFamily: 'serif', fontSize: '12px', color: RARITY_COLORS[(it.rarity ?? 0) as Rarity], wordWrap: { width: w - 176 } }));
-        if (gem) c.add(this.scene.add.text(170, sy + 27, `◆ ${gem.name}`, { fontFamily: 'serif', fontSize: '10px', color: gem.col }));
+        c.add(this.scene.add.text(160, sy + 2, it.name, { fontFamily: 'serif', fontSize: '12px', color: RARITY_COLORS[(it.rarity ?? 0) as Rarity], wordWrap: { width: w - 166 } }));
+        if (gem) c.add(this.scene.add.text(160, sy + 25, `◆ ${gem.name}`, { fontFamily: 'serif', fontSize: '10px', color: gem.col }));
         slotBg.setInteractive({ useHandCursor: true });
         slotBg.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
         slotBg.on('pointerout', () => this.hideTooltip());
-        slotBg.on('pointerdown', (ptr: Phaser.Input.Pointer) => this.clickItem(it, ptr.rightButtonDown())); // Klick legt ab
+        slotBg.on('pointerdown', (ptr: Phaser.Input.Pointer) => this.clickItem(it, ptr.rightButtonDown()));
       } else {
-        c.add(this.scene.add.text(170, sy + 12, `${label}: -`, { fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c' }));
+        c.add(this.scene.add.text(160, sy + 11, `${label}: -`, { fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c' }));
       }
-      sy += 46;
+      sy += 44;
     }
 
-    const m = p.materials;
-    const stats = [
-      `Schaden ${p.stats.dmg}   Rüstung ${p.stats.armor}`,
-      `Leben ${Math.ceil(p.hp)}/${p.stats.maxhp}   Mana ${Math.ceil(p.mana)}/${p.stats.maxmana}`,
-      `Lebensraub ${p.stats.leech}   Lichtradius +${p.stats.licht}`,
-      `Gold ${p.gold}   Flaschen ${p.flaskCount}/${p.flaskMax}`,
-      `Holz ${m.holz} · Stein ${m.stein} · Eisen ${m.eisen} · Kräuter ${m.kraeuter} · Kohle ${m.kohle}`,
+    // WERTE: zwei saubere Spalten Label/Wert (Runde 38, übersichtlicher)
+    let wy = 200;
+    c.add(this.scene.add.text(14, wy - 18, 'WERTE', { fontFamily: 'serif', fontSize: '12px', color: GOLD, letterSpacing: 2 }));
+    c.add(this.scene.add.rectangle(12, wy - 4, w - 12, 78, 0x0e0a06, 0.6).setOrigin(0).setStrokeStyle(1, LINE));
+    const werte: Array<[string, string]> = [
+      ['Schaden', String(p.stats.dmg)], ['Rüstung', String(p.stats.armor)],
+      ['Leben', `${Math.ceil(p.hp)}/${p.stats.maxhp}`], ['Mana', `${Math.ceil(p.mana)}/${p.stats.maxmana}`],
+      ['Lebensraub', String(p.stats.leech)], ['Lichtradius', `+${p.stats.licht}`],
     ];
-    c.add(this.scene.add.text(14, 188, stats.join('\n'), { fontFamily: 'serif', fontSize: '13px', color: '#c8b890', lineSpacing: 5 }));
+    const spalte = (w - 24) / 2;
+    werte.forEach(([k, v], i) => {
+      const x = 20 + (i % 2) * spalte, y = wy + 4 + ((i / 2) | 0) * 23;
+      c.add(this.scene.add.text(x, y, k, { fontFamily: 'serif', fontSize: '12px', color: BONE }));
+      c.add(this.scene.add.text(x + spalte - 14, y, v, { fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0' }).setOrigin(1, 0));
+    });
 
-    // Fertigkeits-Schulen mit Fähigkeiten-Übersicht (Tooltip)
-    let schY = 300;
-    c.add(this.scene.add.text(14, schY - 18, 'FERTIGKEITEN (steigen durch Benutzung)', { fontFamily: 'serif', fontSize: '12px', color: GOLD, letterSpacing: 1 }));
-    const schools: Array<['nahkampf' | 'zauberei' | 'bogen', string]> = [
-      ['nahkampf', 'Nahkampf'], ['zauberei', 'Zauberei'], ['bogen', 'Bogenschießen'],
+    // VORRAT: Gold/Flaschen + Rohstoffe als klare Reihen mit Farbpunkten
+    const m = p.materials;
+    let vy = wy + 92;
+    c.add(this.scene.add.text(14, vy - 18, 'VORRAT', { fontFamily: 'serif', fontSize: '12px', color: GOLD, letterSpacing: 2 }));
+    c.add(this.scene.add.rectangle(12, vy - 4, w - 12, 96, 0x0e0a06, 0.6).setOrigin(0).setStrokeStyle(1, LINE));
+    const vorrat: Array<[string, string, number]> = [
+      ['Gold', String(p.gold), 0xe0b53a], ['Flaschen', `${p.flaskCount}/${p.flaskMax}`, 0xd8402a],
+      ['Holz', String(m.holz), 0x8a6434], ['Stein', String(m.stein), 0x8a8e96],
+      ['Eisen', String(m.eisen), 0xb8bcc4], ['Kräuter', String(m.kraeuter), 0x4a8a3a],
+      ['Kohle', String(m.kohle), 0x2a2a30],
     ];
-    for (const [id, label] of schools) {
+    vorrat.forEach(([k, v, col], i) => {
+      const x = 20 + (i % 2) * spalte, y = vy + 4 + ((i / 2) | 0) * 23;
+      c.add(this.scene.add.circle(x + 4, y + 8, 4, col));
+      c.add(this.scene.add.text(x + 14, y, k, { fontFamily: 'serif', fontSize: '12px', color: BONE }));
+      c.add(this.scene.add.text(x + spalte - 14, y, v, { fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0' }).setOrigin(1, 0));
+    });
+  }
+
+  // --- Fähigkeiten-Tab (Runde 38): die drei Schulen, je in Klassenfarbe ------
+  private buildSkillsTab(c: Phaser.GameObjects.Container, w: number, _h: number): void {
+    const p = this.getPlayer();
+    c.add(this.scene.add.text(16, 6, 'FERTIGKEITEN', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
+    c.add(this.scene.add.text(16, 26, 'Steigen durch Benutzung - jede Schule schaltet mit der Stufe neue Fähigkeiten frei.', { fontFamily: 'serif', fontSize: '11.5px', color: '#8a7a5a' }));
+    const schools: Array<['nahkampf' | 'zauberei' | 'bogen', string, string, number]> = [
+      ['nahkampf', 'Krieger - Nahkampf', '⚔', 0xc85a3a],
+      ['zauberei', 'Zauberer - Zauberei', '✦', 0x8c7ad0],
+      ['bogen', 'Bogenschütze - Bogen', '➶', 0x5ac06a],
+    ];
+    let y = 54;
+    for (const [id, label, ico, col] of schools) {
       const st = p.schools[id];
       const nextAt = st.level >= SCHOOLS.maxLevel ? null : SCHOOLS.usesPerLevel[st.level + 1];
       const prevAt = SCHOOLS.usesPerLevel[st.level] ?? 0;
       const frac = nextAt === null ? 1 : Phaser.Math.Clamp((st.uses - prevAt) / (nextAt - prevAt), 0, 1);
-      c.add(this.scene.add.text(14, schY, `${label} - Stufe ${st.level}`, { fontFamily: 'serif', fontSize: '12.5px', color: BONE }));
-      c.add(this.scene.add.rectangle(14, schY + 17, w - 28, 6, 0x0e0a06).setOrigin(0).setStrokeStyle(1, LINE));
-      c.add(this.scene.add.rectangle(15, schY + 18, (w - 30) * frac, 4, 0x8c7ad0).setOrigin(0));
-      // Fähigkeiten dieser Schule: freigeschaltet golden, sonst grau
-      let ax = 14;
+      // Klassen-Kachel
+      c.add(this.scene.add.rectangle(14, y, w - 28, 120, 0x0e0a06, 0.7).setOrigin(0).setStrokeStyle(1, col));
+      c.add(this.scene.add.circle(40, y + 28, 17, 0x140f08).setStrokeStyle(2, col));
+      c.add(this.scene.add.text(40, y + 28, ico, { fontFamily: 'serif', fontSize: '20px', color: `#${col.toString(16).padStart(6, '0')}` }).setOrigin(0.5));
+      c.add(this.scene.add.text(68, y + 12, label, { fontFamily: 'serif', fontSize: '14px', color: '#e8dcc0', letterSpacing: 1 }));
+      c.add(this.scene.add.text(w - 42, y + 12, `Stufe ${st.level}`, { fontFamily: 'serif', fontSize: '14px', color: `#${col.toString(16).padStart(6, '0')}` }).setOrigin(1, 0));
+      // Fortschrittsbalken
+      c.add(this.scene.add.rectangle(68, y + 36, w - 120, 8, 0x080604).setOrigin(0).setStrokeStyle(1, LINE));
+      c.add(this.scene.add.rectangle(69, y + 37, (w - 122) * frac, 6, col).setOrigin(0));
+      c.add(this.scene.add.text(w - 42, y + 33, nextAt === null ? 'Meister' : `${st.uses}/${nextAt}`, { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }).setOrigin(1, 0));
+      // Fähigkeiten der Schule als Chips (frei = farbig, gesperrt = grau)
+      let ax = 28;
+      const ay = y + 56;
       for (const a of ABILITIES.filter((a2) => a2.school === id)) {
         const frei = st.level >= a.unlock;
-        const t = this.scene.add.text(ax, schY + 27, `${a.name} (${a.unlock})`, {
-          fontFamily: 'serif', fontSize: '10.5px', color: frei ? GOLD : '#6a5f4c',
+        const chip = this.scene.add.text(ax, ay, `${a.name} ·${a.unlock}`, {
+          fontFamily: 'serif', fontSize: '11px', color: frei ? '#e8dcc0' : '#6a5f4c',
+          backgroundColor: frei ? '#1c1408' : '#0c0906', padding: { x: 7, y: 3 },
         }).setInteractive({ useHandCursor: true });
-        t.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTextTooltip(`${a.name} - ab ${label} Stufe ${a.unlock}`, a.beschreibung, ptr));
-        t.on('pointerout', () => this.hideTooltip());
-        c.add(t);
-        ax += t.width + 10;
+        chip.setStroke(frei ? `#${col.toString(16).padStart(6, '0')}` : '#2a2018', frei ? 1 : 0);
+        chip.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTextTooltip(`${a.name} - ab ${label} Stufe ${a.unlock}`, a.beschreibung, ptr));
+        chip.on('pointerout', () => this.hideTooltip());
+        c.add(chip);
+        ax += chip.width + 8;
+        if (ax > w - 90) { ax = 28; }
       }
-      schY += 52;
+      y += 132;
     }
-    // Aufgaben (Tagebuch) unter den Fertigkeiten
+  }
+
+  // --- Aufgaben-Tab (Runde 38): das Tagebuch, sauber als Liste --------------
+  private buildTasksTab(c: Phaser.GameObjects.Container, w: number, h: number): void {
+    c.add(this.scene.add.text(16, 6, 'AUFGABEN', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
     const journal = this.getJournal?.() ?? [];
-    if (journal.length) {
-      c.add(this.scene.add.text(14, schY - 4, 'AUFGABEN', { fontFamily: 'serif', fontSize: '12px', color: GOLD, letterSpacing: 1 }));
-      c.add(this.scene.add.text(14, schY + 14, journal.join('\n'), {
-        fontFamily: 'serif', fontSize: '11.5px', color: '#c8b890', lineSpacing: 4, wordWrap: { width: w - 24 },
-      }));
+    if (!journal.length) {
+      c.add(this.scene.add.text(18, 40, 'Noch keine offenen Aufgaben.', { fontFamily: 'serif', fontSize: '13px', color: '#8a7a5a' }));
+      return;
+    }
+    let y = 40;
+    for (const eintrag of journal) {
+      if (y > h - 20) break;
+      // "·" = Hauptaufgabe (goldener Punkt), "—" = eingerückter Hinweis
+      const unter = /^\s*—/.test(eintrag);
+      const txt = eintrag.replace(/^\s*[—·-]\s*/, '');
+      c.add(this.scene.add.circle(unter ? 36 : 22, y + 8, unter ? 2.5 : 4, unter ? 0x8a7a5a : 0xc9a227));
+      const t = this.scene.add.text(unter ? 48 : 34, y, txt, {
+        fontFamily: 'serif', fontSize: unter ? '12.5px' : '13.5px',
+        color: unter ? '#c8b890' : '#e8dcc0', wordWrap: { width: w - (unter ? 64 : 50) }, lineSpacing: 3,
+      });
+      c.add(t);
+      y += Math.max(22, t.height + 8);
     }
   }
 
