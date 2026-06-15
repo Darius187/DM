@@ -115,10 +115,17 @@ export const ABILITY_FX = {
   eisregen: { mana: 0, dmgBase: 14, dmgPerLevel: 3, einschlaege: 8, radius: 52, streuung: 105, dauerS: 1.8, reichweite: 330, slowS: 3.5, cd: 0 },
   feuerwand: { mana: 0, dmgBase: 12, dmgPerLevel: 3, laenge: 160, breite: 34, segmente: 6, dauerS: 4, tickS: 0.5, reichweite: 200, cd: 0 },
   feuerwalze: { mana: 0, dmgBase: 20, dmgPerLevel: 4, distance: 280, breite: 64, schritte: 16, schrittMs: 45, cd: 0 },
+  // Windstoß (Runde 36): fegt Gegner im Kegel vor dem Helden weg - mit dem
+  // Physik-Test gleiten/prallen sie richtig, sonst nur ein kräftiger Schubs.
+  windstoss: { mana: 0, dmgBase: 6, dmgPerLevel: 2, reichweite: 230, kraft: 60, cd: 0 },
   mehrfachschuss: { arrows: 3, spread: 0.18, cd: 4 },
   durchschlag: { pierceCount: 99, dmgMult: 1.3, cd: 6 },
   markierterTod: { bonusDmgPct: 0.25, dauerS: 8, cd: 10 },
 } as const;
+
+// Nur über Schriftrollen wirkbare Flächenzauber (Runde 36): stehen NICHT in
+// den lernbaren Fähigkeiten (ABILITIES), sind aber immer "bereit".
+export const ROLLEN_ZAUBER = ['gewitter', 'eisregen', 'feuerwand', 'feuerwalze', 'windstoss'] as const;
 
 // Ende: Annehmen gibt +30 max. Leben (Referenz: 3 Elixiere a 10)
 export const RELIC_ACCEPT_ELIXIRS = 3;

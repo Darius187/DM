@@ -46,6 +46,7 @@ export const SHOP_MAGDALENA: ReadonlyArray<ShopOfferDef> = [
   { kind: 'scroll', name: 'Zauberrolle: Feuerwalze', price: 150, scrollSkill: 'feuerwalze', inf: true },
   { kind: 'scroll', name: 'Zauberrolle: Eisregen', price: 150, scrollSkill: 'eisregen', inf: true },
   { kind: 'scroll', name: 'Zauberrolle: Gewitter', price: 170, scrollSkill: 'gewitter', inf: true },
+  { kind: 'scroll', name: 'Zauberrolle: Windstoß', price: 120, scrollSkill: 'windstoss', inf: true },
   // Tränke-Rezepte: Kräuter gegen Tränke (Masterprompt 7.4)
   { kind: 'rezept', name: 'Heiltrank brauen (2 Kräuter)', price: 0, inf: true, rezept: { kraeuter: 2, ergebnis: 'potion' } },
   { kind: 'rezept', name: 'Manatrank brauen (3 Kräuter)', price: 0, inf: true, rezept: { kraeuter: 3, ergebnis: 'mpotion' } },

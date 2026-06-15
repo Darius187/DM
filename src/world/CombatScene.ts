@@ -14,7 +14,7 @@ import {
   newCombatState, inputLight, inputHeavy, inputRoll, inputBlockStart, inputBlockEnd,
   stepCombat, resolveIncoming, damageAfterArmor, blockedDamage, type CombatState, type AttackEvent,
 } from '../logic/combat';
-import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TIMESCALE, WEAPON_MOVESETS, GORE_WUCHT } from '../data/kampf';
+import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TIMESCALE, WEAPON_MOVESETS, GORE_WUCHT, PHYSIK } from '../data/kampf';
 import { ALTAR, SPELLS, SPELL_FX, SCHOOLS } from '../data/balancing';
 import { newPlayerState, recalc, weaponGem, type PlayerState } from '../logic/playerState';
 import { addSchoolUse } from '../logic/progression';
@@ -25,7 +25,7 @@ import { TUNING, TUNING_ROWS, neuerTypTuning } from '../logic/tuning';
 import { defaultRng, type Rng } from '../logic/rng';
 import { ELITE, ENEMIES, GEFALLENE_TYPEN, GEFALLENE_WAFFEN } from '../data/enemies';
 import type { EnemyTypeId, WeaponClass } from '../data/types';
-import { ABILITY_FX, ABILITIES, LORE_XP } from '../data/balancing';
+import { ABILITY_FX, ABILITIES, LORE_XP, ROLLEN_ZAUBER } from '../data/balancing';
 import { PickupSystem, AUTO_PICKUP, type Pickup } from './Pickups';
 import { fixUiScroll } from '../ui/dialog';
 import { mausLeisteAnkerX } from '../ui/hud';
@@ -764,6 +764,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         ['Zauberrolle: Feuerwalze', 'feuerwalze', 2],
         ['Zauberrolle: Eisregen', 'eisregen', 2],
         ['Zauberrolle: Gewitter', 'gewitter', 2],
+        ['Zauberrolle: Windstoß', 'windstoss', 2],
       ] as const;
       const [name, skill, rar] = rollen[Math.floor(Math.random() * rollen.length)];
       this.pickups.add({
@@ -1131,7 +1132,15 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     e.hitFlash = 0.12;
     e.onHurt();
     this.fx.float(e.x + (Math.random() * 12 - 6), e.y - e.r - 8, String(dmg), col ?? '#e8dcc0');
-    if (kx || ky) e.moveBody(this, kx, ky);
+    if (kx || ky) {
+      if (TUNING.physikTest && !e.boss) {
+        // Physik-Test: Rückstoß als Impuls - der Gegner gleitet/prallt weg
+        e.kvx = Phaser.Math.Clamp(e.kvx + kx * PHYSIK.gegnerStoss, -PHYSIK.gegnerKvMax, PHYSIK.gegnerKvMax);
+        e.kvy = Phaser.Math.Clamp(e.kvy + ky * PHYSIK.gegnerStoss, -PHYSIK.gegnerKvMax, PHYSIK.gegnerKvMax);
+      } else {
+        e.moveBody(this, kx, ky);
+      }
+    }
     // Treffer-Spritzer: Blut bei Fleisch, Knochenstaub bei Skeletten (Runde 34)
     this.fx.burst(e.x, e.y, (e.type === 'skelett' || e.type === 'schuetze') ? 0xcfc4a8 : 0xa82020, 6, 120);
     this.playHitSound(e);
@@ -1485,7 +1494,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   protected abilityReady(id: string): boolean {
     const def = ABILITIES.find((a) => a.id === id);
-    if (!def) return false;
+    if (!def) {
+      // Rollen-Zauber (Runde 36) sind nicht lernbar, aber per Schriftrolle
+      // immer wirkbar - nur die eigene Abklingzeit zählt.
+      if ((ROLLEN_ZAUBER as readonly string[]).includes(id)) return (this.p.abilityCds[id] ?? 0) <= 0;
+      return false;
+    }
     if (!TUNING.alleZauberFrei && this.p.schools[def.school].level < def.unlock) {
       this.logMsg(`${def.name} - ${def.school === 'nahkampf' ? 'Nahkampf' : def.school === 'zauberei' ? 'Zauberei' : 'Bogenschießen'} Stufe ${def.unlock} nötig`, 'bad');
       return false;
@@ -1671,6 +1685,30 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         }
         this.shake(2);
         this.sfx.play(this.sfx.has('fireball2') ? 'fireball2' : 'heiliges_licht', 0.8);
+        this.gainSchoolUse('zauberei');
+        break;
+      }
+      case 'windstoss': {
+        const fx = ABILITY_FX.windstoss;
+        this.p.abilityCds[id] = fx.cd;
+        const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level;
+        // Radialer Sturmstoß: fegt ALLE Gegner ringsum vom Helden weg
+        // (mit Physik-Test gleiten/prallen sie, sonst ein kräftiger Schubs).
+        for (const e of [...this.enemies]) {
+          const dx = e.x - this.px, dy = e.y - this.py, d = Math.hypot(dx, dy);
+          if (d > fx.reichweite || d < 1) continue;
+          const a2 = Math.atan2(dy, dx);
+          const kn = fx.kraft * (1 - (d / fx.reichweite) * 0.4); // näher = stärker
+          this.damageEnemy(e, Math.round(dmg), Math.cos(a2) * kn, Math.sin(a2) * kn, '#cfe8ff', false);
+          e.slowT = Math.max(e.slowT, 0.4);
+        }
+        this.telegraphs.push({ x: this.px, y: this.py, r: fx.reichweite, t: 0.25, maxT: 0.25, dmg: 0, holy: true });
+        for (let i = 0; i < 26; i++) {
+          const a3 = Math.random() * 6.283, r = 20 + Math.random() * fx.reichweite;
+          this.fx.burst(this.px + Math.cos(a3) * r * 0.4, this.py + Math.sin(a3) * r * 0.4, 0xcfe8ff, 1, 80 + r);
+        }
+        this.shake(2);
+        this.sfx.play(this.sfx.has('swoosh1') ? 'swoosh1' : 'rolle', 0.9);
         this.gainSchoolUse('zauberei');
         break;
       }

@@ -9,6 +9,7 @@ import type { Rng } from '../logic/rng';
 import { rnd, pick } from '../logic/rng';
 import type { Dir } from '../gfx/fallbackArt';
 import { TUNING } from '../logic/tuning';
+import { PHYSIK } from '../data/kampf';
 
 export interface EnemyHost {
   isSolidAt(x: number, y: number): boolean;
@@ -111,6 +112,7 @@ export class Enemy {
   banishedT = 0; // Bannkreis schwächt Untote
   schlagtempoF = 1; // Per-Typ-Schlagtempo (F10, beim Spawn gesetzt)
   reichweiteF = 1;  // Per-Typ-Hiebreichweite (F10, beim Spawn gesetzt)
+  kvx = 0; kvy = 0; // Physik-Rückstoß-Geschwindigkeit (Runde 36, Physik-Test)
   private pattern: AttackPattern['id'] = 'hieb';
   private secondHitT = 0;   // Doppelhieb: zweiter Schlag
   private lungeT = 0;       // Sprungangriff: Restflugzeit
@@ -242,6 +244,16 @@ export class Enemy {
     // Blickrichtung für das Sprite
     const ang = Math.atan2(py - this.y, px - this.x);
     this.dir = angleToDir(ang);
+
+    // Physik-Rückstoß (Runde 36, nur im Physik-Test): weggeschleudert gleitet
+    // und prallt der Gegner, bevor die KI wieder übernimmt. Bosse bleiben fest.
+    if (TUNING.physikTest && !this.boss && (Math.abs(this.kvx) > 8 || Math.abs(this.kvy) > 8)) {
+      this.moveBody(host, this.kvx * dt, this.kvy * dt);
+      this.kvx *= PHYSIK.gegnerReibung;
+      this.kvy *= PHYSIK.gegnerReibung;
+      this.advanceStep(dt);
+      return;
+    }
 
     if (this.boss) {
       this.bossAI(host, dt, d);
