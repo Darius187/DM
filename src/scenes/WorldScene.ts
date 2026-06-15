@@ -4582,6 +4582,9 @@ export class WorldScene extends CombatScene {
     this.animiereWasser(dt);
     this.animiereHaeuser(dt);
     this.updateSchiebephysik(dt);
+    // Chronik weicht offenen Fenstern (Inventar/Charakter/Dialog), damit sich
+    // die Schriften nicht überlagern - sie kommt danach von selbst zurück (R36)
+    this.chronikFenster?.setVisible(!this.uiBlocked());
     this.treibeNebel(dt);
     this.renderStimmung();
     this.spieleSchritte(dt);
