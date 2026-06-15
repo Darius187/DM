@@ -7,10 +7,6 @@ export const HELD = {
   platteAb: 22, // ab diesem Ruestungswert: Plattenlook
 } as const;
 
-// Anzeige-Skalierung der gezeichneten Ritter-Textur (held_ritter, 288x392px,
-// 4-fach hochaufgeloest). On-Screen-Hoehe der Figur ~ 79 Einheiten * 4 * Skala.
-// In einer Zeile aenderbar, falls der Held groesser/kleiner wirken soll.
-export const RITTER_TEXTUR_SKALA = 0.15;
 
 export type HeldTier = 'stoff' | 'leder' | 'kette' | 'platte';
 

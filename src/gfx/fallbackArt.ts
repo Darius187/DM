@@ -251,9 +251,10 @@ export function shade(hex: string, amt: number): string {
 
 // Figuren-Vorlagen für alle Sprite-Namen (Fallback-Kasten)
 export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken: true }> = {
-  // Held (Runde 19): zurück zur Zeichen-Figur, aber markanter - heller
-  // Blaugrau-Mantel, kräftige Haut, etwas größer als das Dorfvolk
-  spieler:   { tunic: '#46588a', skin: '#d0b08c', hair: '#2e2418', legs: '#262030', weapon: 'schwert', scale: 1.15 },
+  // Held (Runde 37 neu): gekapuzter Wanderer/Ermittler im düsteren 1635 -
+  // KEIN blaues Hemd, KEINE Waffe in der Hand (geschlagen wird per Schwung-FX).
+  // Oxblut-Wams, dunkler Lederumhang/Kapuze, kräftige Haut, größer als das Volk.
+  spieler:   { tunic: '#6e2f2a', skin: '#d0a884', hair: '#2e2418', legs: '#3a2c1c', hat: '#39332c', weapon: null, scale: 1.18 },
   pest:      { tunic: '#5a7a3a', skin: '#9aa87a', hair: '#46602e', legs: '#3a4a26', weapon: null, augen: '#d83030' },
   skelett:   { tunic: '#cfc4a8', skin: '#e0d8c0', hair: '#cfc4a8', legs: '#b8ae90', weapon: 'schwert', skeletal: true, augen: '#e03030' },
   schuetze:  { tunic: '#b8a888', skin: '#d0c8b0', hair: '#b8a888', legs: '#a09070', weapon: 'bogen', skeletal: true, augen: '#e03030' },
@@ -311,17 +312,17 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
 // vier sichtbare Stufen (Stoff/Leder/Kette/Platte), jede mit der getragenen
 // Waffe in der Hand. Eigene Figurnamen `spieler_<stufe>_<waffe>`, damit jede
 // Stufe spaeter 1:1 durch ein eigenes Sprite-Paket ersetzt werden kann (Hot-Swap).
-const SPIELER_STUFEN: Record<HeldTier, Omit<FigureSpec, 'weapon'>> = {
-  stoff:  { tunic: '#46588a', skin: '#d0b08c', hair: '#2e2418', legs: '#262030', scale: 1.15 },
-  leder:  { tunic: '#6a4326', skin: '#d0b08c', hair: '#2e2418', legs: '#3a2a1a', scale: 1.15 },
-  kette:  { tunic: '#7a7d84', skin: '#d0b08c', hair: '#2e2418', legs: '#4a4e57', hat: '#6a6d74', scale: 1.18 },
-  platte: { tunic: '#8a929c', skin: '#d0b08c', hair: '#2e2418', legs: '#565d68', hat: '#9aa0a8', scale: 1.2 },
+// Held je Rüstungsstufe (Runde 37): waffenlos, heroisch, KEIN Blau.
+// stoff = gekapuzter Wanderer (Oxblut), leder = Lederkapuze, kette = Kettenkoif,
+// platte = Plattenhelm. Die Ausrüstung wächst sichtbar mit der Stufe.
+const SPIELER_STUFEN: Record<HeldTier, FigureSpec> = {
+  stoff:  { tunic: '#6e2f2a', skin: '#d0a884', hair: '#2e2418', legs: '#3a2c1c', hat: '#39332c', weapon: null, scale: 1.18 },
+  leder:  { tunic: '#6a4326', skin: '#d0a884', hair: '#2e2418', legs: '#3a2a1a', hat: '#4a3826', weapon: null, scale: 1.18 },
+  kette:  { tunic: '#7a7d84', skin: '#d0a884', hair: '#2e2418', legs: '#4a4e57', hat: '#6a6d74', weapon: null, scale: 1.2 },
+  platte: { tunic: '#9099a0', skin: '#d0a884', hair: '#2e2418', legs: '#565d68', hat: '#9aa0a8', weapon: null, scale: 1.22 },
 };
-const SPIELER_WAFFEN = ['schwert', 'axt', 'stange', 'wucht', 'bogen', 'stab'] as const;
 for (const stufe of Object.keys(SPIELER_STUFEN) as HeldTier[]) {
-  for (const w of SPIELER_WAFFEN) {
-    FIGURES[`spieler_${stufe}_${w}`] = { ...SPIELER_STUFEN[stufe], weapon: w };
-  }
+  FIGURES[`spieler_${stufe}`] = SPIELER_STUFEN[stufe];
 }
 
 // Bewaffnete "Gefallene" (Runde 35): je Untoten-Typ eine sichtbare Waffe -
@@ -335,8 +336,8 @@ for (const t of GEFALLENE_FIG_TYPEN) {
   }
 }
 
-// Figurname des Helden je getragener Ruestung (Wert, null = nichts) und Waffe.
-export function spielerFigur(ruestwert: number | null, waffe: string): string {
-  const w = (SPIELER_WAFFEN as readonly string[]).includes(waffe) ? waffe : 'schwert';
-  return `spieler_${heldTier(ruestwert)}_${w}`;
+// Figurname des Helden je getragener Ruestung (Wert, null = nichts).
+// Waffenlos (Runde 37): der Held trägt keine Waffe in der Hand.
+export function spielerFigur(ruestwert: number | null): string {
+  return `spieler_${heldTier(ruestwert)}`;
 }

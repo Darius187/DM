@@ -453,10 +453,11 @@ export class Hud {
       // Tastenkürzel klein oben links
       g.fillStyle(0x000000, 0);
     }
-    // Tastenkürzel als Teil der Leiste zeichnen (Texte wären teurer)
-    // -> stattdessen im Tooltip und unter der Leiste:
-    this.infoText.setPosition(w / 2 + getSettings().ui.hotbar.x, h - 42 + getSettings().ui.hotbar.y)
-      .setText(`Slots: Rechtsklick = belegen, Ziehen = tauschen · ${kb.roll === ' ' ? 'LEER' : kb.roll.toUpperCase()} Rolle · B Album · H Chronik · ${extra}`);
+    // Statuszeile (Runde 37): nur noch Stufe/Gold/Tag/Zeit - sauber, mit
+    // Abstand zur Leiste. Der frühere Slot-Hilfetext stand schon in den
+    // Tooltips ("Rechtsklick: belegen, Ziehen: tauschen") und überlud die Zeile.
+    this.infoText.setPosition(w / 2 + getSettings().ui.hotbar.x, h - 33 + getSettings().ui.hotbar.y)
+      .setText(extra);
     // Beschriftung ÜBER der Maus-Leiste, damit sie der Infozeile der
     // Tastenleiste nicht in die Quere kommt
     this.mausInfo.setPosition(

@@ -6,8 +6,6 @@ import Phaser from 'phaser';
 import { SpriteProvider } from '../gfx/SpriteProvider';
 import { SoundProvider } from '../gfx/SoundProvider';
 import { spielerFigur, type Dir } from '../gfx/fallbackArt';
-import { createRitterTexture } from '../gfx/RitterHeld';
-import { RITTER_TEXTUR_SKALA } from '../data/helden';
 import { EffectSystem } from './effects';
 import { Enemy, angleToDir, type EnemyHost } from './Enemy';
 import {
@@ -118,10 +116,6 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.playerDead = false;
     this.album = { kills: {}, champions: [], unikate: [], notizen: [] };
     this.albumPanel = null;
-    // Gezeichneter Ritter-Held (held_ritter) - Quelle ist RitterHeld.ts.
-    // Knackig statt weichgezeichnet (NEAREST), da 4-fach hochaufgeloest.
-    createRitterTexture(this);
-    this.textures.get('held_ritter').setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.playerSprite = this.add.sprite(startX, startY, '__DEFAULT').setDepth(startY);
     this.zeichneHeld(0, 0);
     // Held-Sprite des Autors wirkt sonst winzig neben den Figuren (Runde 17)
@@ -737,8 +731,32 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.p.mana = this.p.stats.maxmana;
       this.logMsg(MELDUNGEN.stufe(this.p.level), 'gold');
       this.sfx.play('levelup');
-      this.fx.burst(this.px, this.py, 0xc9a227, 22, 150);
+      this.zeigeLevelUp(this.p.level);
     }
+  }
+
+  // Levelaufstieg cool sichtbar machen (Runde 37): Gold-Puls am Helden,
+  // aufsteigende Funken, ein bildschirmfestes Banner und ein kurzer Schimmer.
+  protected zeigeLevelUp(level: number): void {
+    this.fx.flash(this.px, this.py - 6, 48, 0xf0dc8a);
+    this.fx.burst(this.px, this.py, 0xf6e29a, 26, 210);
+    for (let i = 0; i < 14; i++) {
+      this.fx.burst(this.px + (Math.random() - 0.5) * 22, this.py, 0xfff0c0, 1, 80 + Math.random() * 70);
+    }
+    const w = this.scale.width, h = this.scale.height;
+    const schimmer = this.add.rectangle(0, 0, w, h, 0xf0dc8a, 0.16).setOrigin(0).setScrollFactor(0).setDepth(5390).setAlpha(0);
+    this.tweens.add({ targets: schimmer, alpha: 1, duration: 110, yoyo: true, hold: 70, onComplete: () => schimmer.destroy() });
+    const c = this.add.container(w / 2, h * 0.32).setScrollFactor(0).setDepth(5400);
+    const haupt = this.add.text(0, 0, `STUFE ${level}`, {
+      fontFamily: 'serif', fontSize: '54px', color: '#f6e29a', stroke: '#4a3200', strokeThickness: 8, fontStyle: 'bold', letterSpacing: 3,
+    }).setOrigin(0.5);
+    const sub = this.add.text(0, 44, 'AUFGESTIEGEN', {
+      fontFamily: 'serif', fontSize: '18px', color: '#e8c860', letterSpacing: 10,
+    }).setOrigin(0.5);
+    c.add([haupt, sub]);
+    c.setScale(0.4).setAlpha(0);
+    this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 300, ease: 'Back.Out' });
+    this.tweens.add({ targets: c, alpha: 0, y: c.y - 30, delay: 1250, duration: 680, ease: 'Quad.In', onComplete: () => c.destroy() });
   }
 
   // Beute beim Gegner-Tod (Referenz killEnemy) - Welt und Arena nutzbar
@@ -854,7 +872,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // damit man die Ausruestung am Helden SIEHT (Feedback-Runde 32). Jede Stufe
   // ist ueber Hot-Swap durch ein eigenes Sprite-Paket ersetzbar.
   protected heldFigur(): string {
-    return spielerFigur(this.p.armorIt ? this.p.armorIt.val : null, this.weaponClass());
+    return spielerFigur(this.p.armorIt ? this.p.armorIt.val : null);
   }
 
   // --- Bogen: halten = spannen, loslassen = Schuss (Pfeile als Ressource) ---
@@ -2259,24 +2277,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.telegraphs = this.telegraphs.filter((tg) => tg.t > -0.15);
   }
 
-  // Held zeichnen: bevorzugt echte Hot-Swap-Sprites (KI-Pakete des Autors),
-  // sonst die gezeichnete Ritter-Textur 'held_ritter', sonst der Pixel-Fallback.
-  // Die Ritter-Textur ist frontal (eine Ansicht) - links/rechts wird gespiegelt.
+  // Held zeichnen (Runde 37): die animierte prozedurale Figur (4 Richtungen +
+  // Gehschritt, Stil wie die anderen Figuren) - bzw. echte Hot-Swap-Sprites,
+  // falls der Autor ein KI-Paket einschleust. Kein statischer Ritter mehr.
   protected zeichneHeld(dir: Dir, step: number): void {
-    const f = this.provider.figureFrame(this.heldFigur(), dir, step);
-    const istFallback = f.key.startsWith('fig_');
-    if (istFallback && this.textures.exists('held_ritter')) {
-      if (this.playerSprite.texture.key !== 'held_ritter') {
-        this.playerSprite.setTexture('held_ritter').setOrigin(0.5, 0.9).setScale(RITTER_TEXTUR_SKALA);
-      }
-      this.playerSprite.setFlipX(dir === 1); // links: Schild/Schwert seitenverkehrt andeuten
-      return;
-    }
-    // echte Sprites (oder kein Ritter vorhanden): Ursprung/Skala zuruecksetzen
-    if (this.playerSprite.texture.key === 'held_ritter') {
-      this.playerSprite.setOrigin(0.5, 0.5).setFlipX(false);
-      this.playerSprite.setScale(this.textures.exists('hs_spieler_unten_1') ? 1.35 : 1);
-    }
     this.provider.applyFigure(this.playerSprite, this.heldFigur(), dir, step);
   }
 
