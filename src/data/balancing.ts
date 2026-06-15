@@ -11,9 +11,11 @@ export const PLAYER_BASE = {
 } as const;
 
 // XP-Kurve (Referenz gainXP): nächste Stufe = round(45 * Stufe^1.45)
+// Runde 38: Stufen kamen zu schnell (fast Stufe 5 auf Ebene 1). Steilere
+// Kurve -> Aufstiege fühlen sich verdient an. Über Gegner-XP fein justierbar.
 export const XP = {
-  firstLevel: 45,
-  exponent: 1.45,
+  firstLevel: 80,
+  exponent: 1.5,
   levelHealPct: 0.5, // Stufenaufstieg heilt 50% max. HP, Mana voll
 } as const;
 
