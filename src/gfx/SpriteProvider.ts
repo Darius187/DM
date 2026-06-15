@@ -56,11 +56,29 @@ export class SpriteProvider {
     return { key: `fig_${name}`, frame: `d${dir}f${step % 4}` };
   }
 
-  // Held-Atlanten verwerfen (Figur-Editor, Runde 40): nach einer Proportions-
-  // Änderung werden die 64px-Figuren beim nächsten Zugriff neu gezeichnet.
+  // Held-Atlanten nach einer Proportions-Änderung NEU ZEICHNEN (Figur-Editor,
+  // Runde 40). WICHTIG: die Textur NICHT entfernen (das ließ den Spieler-Sprite
+  // auf eine null-glTexture zeigen -> Absturz beim Speichern). Stattdessen den
+  // Canvas der bestehenden Textur überzeichnen und auffrischen - die Referenz
+  // bleibt gültig, die Figur aktualisiert sich sofort.
   invalidateHeld(): void {
-    for (const tier of ['stoff', 'leder', 'kette', 'platte']) {
-      if (this.tex.exists(`held_${tier}`)) this.tex.remove(`held_${tier}`);
+    const C = HELD_CELL;
+    for (const tier of ['stoff', 'leder', 'kette', 'platte'] as HeldTier[]) {
+      const key = `held_${tier}`;
+      if (!this.tex.exists(key)) continue;
+      const tex = this.tex.get(key) as Phaser.Textures.CanvasTexture;
+      const canvas = tex.getSourceImage() as HTMLCanvasElement;
+      const ctx = canvas.getContext('2d')!;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let dir = 0 as Dir; dir < 4; dir++) {
+        for (let frame = 0; frame < 4; frame++) {
+          ctx.save();
+          ctx.translate(frame * C, dir * C);
+          drawHeld(ctx, tier, dir as Dir, frame);
+          ctx.restore();
+        }
+      }
+      tex.refresh();
     }
   }
 

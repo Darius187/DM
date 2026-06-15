@@ -33,6 +33,7 @@ export interface Settings {
   // y zählt vom UNTEREN Bildrand (Chat-Verankerung wie bei WoW)
   chronikBox: { x: number; y: number; w: number; h: number };
   chronikAuto: boolean;   // Chronik-Fenster beim Spielstart offen (Runde 36)
+  uiLayoutV: number;      // Layout-Version: ältere UI-Versätze einmalig zurücksetzen
   kb: KeyBindings;
 }
 
@@ -54,6 +55,7 @@ export const DEF_SETTINGS: Settings = {
   ui: { hotbar: { x: 0, y: 0 }, mausleiste: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 } },
   chronikBox: { x: 10, y: -420, w: 380, h: 300 },
   chronikAuto: true,
+  uiLayoutV: 2, // Runde 40: Aktionsleisten neu als zentrierter Block
   kb: {
     roll: ' ', interact: 'e', inv: 'i', charakter: 'c',
     pot: 'q', mpot: 'f', s1: '1', s2: '2', s3: '3',
@@ -86,6 +88,15 @@ export function getSettings(): Settings {
         orbMp: { ...DEF_SETTINGS.ui.orbMp, ...(saved.ui?.orbMp ?? {}) },
         fenster: { ...DEF_SETTINGS.ui.fenster, ...(saved.ui?.fenster ?? {}) },
       };
+      // Layout-Migration (Runde 40): die Aktionsleisten sind jetzt EIN zentrierter
+      // Block. Alte, von Hand verschobene Versätze passen nicht mehr und ließen
+      // die Leisten "total verschoben" wirken - daher einmalig nullen.
+      if ((saved.uiLayoutV ?? 0) < DEF_SETTINGS.uiLayoutV) {
+        current.ui.hotbar = { x: 0, y: 0 };
+        current.ui.mausleiste = { x: 0, y: 0 };
+        current.uiLayoutV = DEF_SETTINGS.uiLayoutV;
+        try { localStorage.setItem(KEY, JSON.stringify(current)); } catch { /* gesperrt */ }
+      }
     }
   } catch { /* localStorage gesperrt - Standardwerte nutzen */ }
   return current;
