@@ -74,6 +74,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   panels!: UIPanels;
   protected hintText!: Phaser.GameObjects.Text;
   protected overlay!: Phaser.GameObjects.Graphics;
+  // Additives Leuchten für stärkere Gegner (Runde 39, statt hartem Kreis)
+  protected auraGfx!: Phaser.GameObjects.Graphics;
   protected keysDown: Record<string, boolean> = {};
   protected mouseDown = false;
   protected touch: TouchControls | null = null;
@@ -120,6 +122,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.playerSprite = this.add.sprite(startX, startY, '__DEFAULT').setDepth(startY);
     this.zeichneHeld(0, 0); // setzt Textur UND Skala (Held bzw. Hot-Swap)
     this.overlay = this.add.graphics().setDepth(2600);
+    // Elite-/Champion-Leuchten: eigene ADD-Schicht, damit der Schein den
+    // Gegner aufhellt statt ihn zu verdecken (kein harter Kreis mehr).
+    this.auraGfx = this.add.graphics().setDepth(2590).setBlendMode(Phaser.BlendModes.ADD);
     this.pickups = new PickupSystem(this, this.provider);
     this.panels = new UIPanels(this, this.provider, this.sfx, () => this.p);
     this.panels.onUseScroll = (skill) => this.useScroll(skill);
@@ -2334,6 +2339,21 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
     const g = this.overlay;
     g.clear();
+    // Leuchten der stärkeren Gegner (Runde 39): weicher, pulsierender ADD-
+    // Schein in der Affix-Farbe - hebt Minibosse hervor, ohne harten Kreis.
+    const ag = this.auraGfx;
+    ag.clear();
+    for (const e of this.enemies) {
+      if (e.versteckt || e.boss || !(e.elite || e.champion)) continue;
+      const col = eliteLeuchtFarbe(e);
+      const puls = 0.55 + 0.45 * Math.sin(time * 3 + e.wobble);
+      for (let i = 0; i < 3; i++) {
+        ag.fillStyle(col, (0.12 - i * 0.035) * puls);
+        ag.fillCircle(e.x, e.y - e.r * 0.1, e.r + 3 + i * 5);
+      }
+      ag.fillStyle(col, 0.1 * puls); // Boden-Schein
+      ag.fillEllipse(e.x, e.y + e.r * 0.75, (e.r + 12) * 2, e.r + 5);
+    }
     // Schildträger erkennbar machen (Runde 17): kleines Rundschild an der
     // dem Spieler zugewandten Seite
     for (const e of this.enemies) {
@@ -2382,10 +2402,6 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (e.windup > 0) {
         g.lineStyle(2.5, 0xe14632, 0.35 + 0.5 * Math.abs(Math.sin(time * 26)));
         g.strokeCircle(e.x, e.y, e.r + 5);
-      }
-      if (e.elite) {
-        g.lineStyle(1.5, 0xe0b53a, 0.75);
-        g.strokeCircle(e.x, e.y, e.r + 4);
       }
       if (e.hp < e.maxhp) {
         const w = e.boss ? 60 : e.r * 2;
@@ -2467,4 +2483,16 @@ function cssCol(c: string): number {
 
 function rndOff(n: number): number {
   return Math.random() * n * 2 - n;
+}
+
+// Leuchtfarbe stärkerer Gegner je Affix (Runde 39): das Aura-Leuchten liest
+// sich so auch als Gefahren-Hinweis (feurig=orange, vampirisch=rot ...).
+function eliteLeuchtFarbe(e: Enemy): number {
+  switch (e.affix) {
+    case 'Feurig': return 0xe8842a;
+    case 'Vampirisch': return 0xd83a3a;
+    case 'Schnell': return 0x5ad0ec;
+    case 'Teilend': return 0x7ac84a;
+    default: return 0xe0b53a; // Champion / unbenannt: Gold
+  }
 }
