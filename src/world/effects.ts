@@ -11,6 +11,10 @@ interface Flash { x: number; y: number; r: number; life: number; maxLife: number
 interface Swing { x: number; y: number; ang: number; life: number; maxLife: number; col: string; w: number; glow?: string; sweep: number; fin: boolean; radius: number; arc: number }
 interface FloatText { obj: Phaser.GameObjects.Text; life: number }
 interface Lightning { points: Array<{ x: number; y: number }>; life: number }
+// Frost-Aura (Runde 40): blau leuchtender Stoßring, der nach außen wächst
+interface Aura { x: number; y: number; r: number; maxR: number; life: number; maxLife: number; col: number }
+// Fallende Flamme (Runde 40): Feuerregen - Streifen, der von oben einschlägt
+interface FireDrop { x: number; y: number; vy: number; life: number; len: number; flacker: number }
 
 export class EffectSystem {
   private particles: Particle[] = [];
@@ -19,6 +23,8 @@ export class EffectSystem {
   private lightnings: Lightning[] = [];
   private mists: Mist[] = [];
   private flashes: Flash[] = [];
+  private auras: Aura[] = [];
+  private fireDrops: FireDrop[] = [];
   private gfx: Phaser.GameObjects.Graphics;
 
   constructor(private scene: Phaser.Scene, depth = 2500) {
@@ -100,6 +106,24 @@ export class EffectSystem {
     this.lightnings.push({ points, life: 0.25 });
   }
 
+  // Frost-Aura (Runde 40): ein blau glühender Stoßring wächst nach außen und
+  // verblasst - so wirkt Frostnova wie eine Aura, nicht wie ein flacher Kreis.
+  frostNova(x: number, y: number, maxR: number): void {
+    this.auras.push({ x, y, r: maxR * 0.25, maxR, life: 0.6, maxLife: 0.6, col: 0x6ad0f0 });
+  }
+
+  // Fallende Flamme (Runde 40): ein Feuerstreif schlägt nach fallS Sekunden am
+  // Boden ein - der Feuerregen sieht damit nach echtem Regen aus, nicht nach
+  // Kreisen. Die Flamme startet oberhalb des Ziels und stürzt herab.
+  flameDrop(x: number, groundY: number, fallS: number): void {
+    const hoehe = 150 + Math.random() * 40;
+    this.fireDrops.push({
+      x, y: groundY - hoehe, vy: hoehe / fallS, life: fallS,
+      len: 16 + Math.random() * 8, flacker: Math.random() * 6.283,
+    });
+    if (this.fireDrops.length > 120) this.fireDrops.splice(0, this.fireDrops.length - 120);
+  }
+
   float(x: number, y: number, txt: string, col: string): void {
     if (!getSettings().dmgNums && /^[0-9-]/.test(txt)) return;
     const obj = this.scene.add.text(x, y, txt, {
@@ -125,6 +149,10 @@ export class EffectSystem {
     this.mists = this.mists.filter((m) => m.life > 0);
     for (const fl of this.flashes) fl.life -= dt;
     this.flashes = this.flashes.filter((fl) => fl.life > 0);
+    for (const au of this.auras) { au.life -= dt; au.r += (au.maxR - au.r) * dt * 7; }
+    this.auras = this.auras.filter((au) => au.life > 0);
+    for (const fd of this.fireDrops) { fd.y += fd.vy * dt; fd.life -= dt; fd.flacker += dt * 18; }
+    this.fireDrops = this.fireDrops.filter((fd) => fd.life > 0);
     for (const s of this.swings) s.life -= dt;
     this.swings = this.swings.filter((s) => s.life > 0);
     for (const f of this.floats) {
@@ -160,6 +188,29 @@ export class EffectSystem {
       g.fillCircle(fl.x, fl.y, fl.r * (1.4 - 0.4 * p));
       g.fillStyle(0xffffff, 0.34 * p);
       g.fillCircle(fl.x, fl.y, fl.r * 0.4);
+    }
+    // Frost-Aura (Runde 40): weicher blauer Schleier innen, heller Frostring
+    // außen, der mit dem Ausbreiten heller aufblitzt und dann verblasst
+    for (const au of this.auras) {
+      const p = Phaser.Math.Clamp(au.life / au.maxLife, 0, 1); // 1 -> 0
+      g.fillStyle(au.col, 0.16 * p);
+      g.fillCircle(au.x, au.y, au.r);
+      g.lineStyle(3 + 5 * p, 0xaef0ff, 0.65 * p);
+      g.strokeCircle(au.x, au.y, au.r);
+      g.lineStyle(1.5, 0xffffff, 0.45 * p);
+      g.strokeCircle(au.x, au.y, au.r * 0.66);
+    }
+    // Feuerregen (Runde 40): stürzende Flammen mit hellem Kern und Schweif
+    for (const fd of this.fireDrops) {
+      const wob = Math.sin(fd.flacker) * 1.5;
+      g.fillStyle(0xc8401a, 0.4);
+      g.fillCircle(fd.x + wob, fd.y - fd.len, 2);
+      g.fillStyle(0xf0721e, 0.8);
+      g.fillCircle(fd.x + wob * 0.6, fd.y - fd.len * 0.5, 3);
+      g.fillStyle(0xf8d060, 1);
+      g.fillCircle(fd.x, fd.y, 3.6);
+      g.fillStyle(0xfff0c0, 0.9);
+      g.fillCircle(fd.x, fd.y, 1.8);
     }
     // Blutnebel / Knochenstaub - weicher, mehrlagiger Schleier
     for (const m of this.mists) {

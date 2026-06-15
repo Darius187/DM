@@ -40,7 +40,7 @@ export interface Projectile {
   hitIds?: Set<number>; dead?: boolean;
 }
 
-export interface Telegraph { x: number; y: number; r: number; t: number; maxT: number; dmg: number; holy?: boolean; done?: boolean }
+export interface Telegraph { x: number; y: number; r: number; t: number; maxT: number; dmg: number; holy?: boolean; done?: boolean; art?: 'feuer' }
 
 export abstract class CombatScene extends Phaser.Scene implements EnemyHost, TouchHost {
   declare provider: SpriteProvider;
@@ -1597,14 +1597,19 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         const zx = this.px + (wx - this.px) * f;
         const zy = this.py + (wy - this.py) * f;
         const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level;
+        const fallS = 0.45; // wie lange eine Flamme sichtbar herabstürzt
         for (let i = 0; i < fx.einschlaege; i++) {
           const ex = zx + (Math.random() - 0.5) * fx.streuung * 2;
           const ey = zy + (Math.random() - 0.5) * fx.streuung * 2;
-          // Warnring sofort, Einschlag zeitversetzt
-          this.telegraphs.push({ x: ex, y: ey, r: fx.radius, t: (i + 1) * (fx.dauerS / fx.einschlaege), maxT: fx.dauerS, dmg: 0, holy: true });
-          this.time.delayedCall((i + 1) * (fx.dauerS * 1000 / fx.einschlaege), () => {
-            this.fx.burst(ex, ey, 0xd8842a, 18, 200);
-            this.fx.burst(ex, ey, 0xf8d878, 8, 120);
+          const treffMs = (i + 1) * (fx.dauerS * 1000 / fx.einschlaege);
+          // Glühender Boden-Warnring (Runde 40: feurig statt heiligem Gold)
+          this.telegraphs.push({ x: ex, y: ey, r: fx.radius, t: treffMs / 1000, maxT: fx.dauerS, dmg: 0, holy: true, art: 'feuer' });
+          // Flamme stürzt kurz vor dem Einschlag herab und landet im Ring
+          this.time.delayedCall(Math.max(0, treffMs - fallS * 1000), () => this.fx.flameDrop(ex, ey, fallS));
+          this.time.delayedCall(treffMs, () => {
+            this.fx.burst(ex, ey, 0xe8641a, 20, 220);
+            this.fx.burst(ex, ey, 0xf8d878, 10, 130);
+            this.fx.flash(ex, ey, 16, 0xf0902a);
             this.sfx.play('treffer_fleisch', 0.5);
             this.shake(2);
             for (const e of [...this.enemies]) {
@@ -1821,8 +1826,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         const fx = ABILITY_FX.frostnova;
         if (!this.paySpellCost(fx.mana)) return;
         this.p.abilityCds[id] = fx.cd;
-        this.fx.burst(this.px, this.py, 0x5ac8e8, 30, 200);
-        this.telegraphs.push({ x: this.px, y: this.py, r: fx.radius, t: 0.22, maxT: 0.22, dmg: 0, holy: true });
+        // Blaue Frost-Aura statt flachem Kreis (Runde 40): Stoßring + Eispartikel
+        this.fx.frostNova(this.px, this.py, fx.radius);
+        this.fx.burst(this.px, this.py, 0x9ae0f8, 26, 220);
+        this.fx.burst(this.px, this.py, 0xd8f4ff, 14, 120);
         const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level;
         for (const e of [...this.enemies]) {
           if (Math.hypot(e.x - this.px, e.y - this.py) < fx.radius + e.r) {
@@ -2376,8 +2383,16 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     for (const tg of this.telegraphs) {
       const prog = 1 - Math.max(0, tg.t) / tg.maxT;
       if (tg.holy) {
-        g.lineStyle(3, 0xf0dc96, Math.max(0, tg.t * 4));
-        g.strokeCircle(tg.x, tg.y, tg.r);
+        if (tg.art === 'feuer') {
+          // glühender Ring, der sich zum Einschlag hin füllt (Runde 40)
+          g.lineStyle(2.5, 0xe8641a, 0.85);
+          g.strokeCircle(tg.x, tg.y, tg.r);
+          g.fillStyle(0xc8401a, 0.1 + prog * 0.28);
+          g.fillCircle(tg.x, tg.y, tg.r * prog);
+        } else {
+          g.lineStyle(3, 0xf0dc96, Math.max(0, tg.t * 4));
+          g.strokeCircle(tg.x, tg.y, tg.r);
+        }
         continue;
       }
       g.lineStyle(1.5, 0xc83c28, 0.8);
