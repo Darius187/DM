@@ -10,6 +10,82 @@ function poly(ctx: CanvasRenderingContext2D, pts: number[][], c: string): void {
 function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, c: string): void {
   ctx.fillStyle = c; ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill();
 }
+// Detailliertes Fachwerkhaus (Runde 40), füllt w×h px. Wände unten, Dach oben
+// mit Überstand. variante 0-3 ändert Putz-/Dach-/Fensterfarben. Sauber, ohne
+// weißen Rand (Autorbug: die PNG-Häuser waren schäbig + hatten weiße Ränder).
+export function drawHaus(ctx: CanvasRenderingContext2D, w: number, h: number, variante: number): void {
+  ctx.clearRect(0, 0, w, h);
+  const putz = ['#b9a988', '#a89878', '#c2b08a', '#9a8e72'][variante % 4];
+  const balken = ['#3a281a', '#33241a', '#42301e', '#2e2216'][variante % 4];
+  const dach = ['#3a2e26', '#4a3a2e', '#322822', '#463026'][variante % 4];
+  const wandTop = Math.round(h * 0.40);           // Oberkante der Wand (Dach darüber)
+  const sockelTop = Math.round(h - (h - wandTop) * 0.26);
+  const ueber = Math.round(w * 0.06);             // Dachüberstand
+  // --- Wand ---
+  ctx.fillStyle = putz; ctx.fillRect(0, wandTop, w, h - wandTop);
+  // Steinsockel mit Mauerwerk
+  ctx.fillStyle = '#4a443c'; ctx.fillRect(0, sockelTop, w, h - sockelTop);
+  for (let y = sockelTop + 2; y < h; y += Math.max(4, h * 0.03)) {
+    for (let x = 0; x < w; x += Math.max(8, w * 0.07)) {
+      ctx.fillStyle = (Math.floor(x / 8) + Math.floor(y / 4)) % 2 ? '#423c34' : '#534b41';
+      ctx.fillRect(x + ((Math.floor((y - sockelTop) / 4)) % 2) * (w * 0.035), y, w * 0.06, h * 0.022);
+    }
+  }
+  // Fachwerk-Balken
+  const bw = Math.max(2, Math.round(w * 0.035));
+  ctx.fillStyle = balken;
+  ctx.fillRect(0, wandTop, w, bw); ctx.fillRect(0, sockelTop - bw, w, bw);          // waagerecht
+  const mid = (wandTop + sockelTop) / 2;
+  ctx.fillRect(0, mid, w, bw * 0.8);
+  const stiele = Math.max(2, Math.round(w / (w * 0.34)));
+  for (let i = 0; i <= stiele; i++) { const x = Math.round((i / stiele) * (w - bw)); ctx.fillRect(x, wandTop, bw, sockelTop - wandTop); }
+  // Andreaskreuze im oberen Feld
+  for (let i = 0; i < stiele; i++) {
+    const x0 = (i / stiele) * w + bw, x1 = ((i + 1) / stiele) * w - bw;
+    if (i % 2 === 0) { poly(ctx, [[x0, wandTop + bw], [x1, mid - 1], [x1 - bw, mid - 1], [x0, wandTop + bw * 2]], balken); }
+  }
+  // Fenster (warm beleuchtet) in den Wandfeldern
+  const fw = Math.min(w * 0.16, 26), fh = Math.min((sockelTop - mid) * 0.7, 22);
+  for (let i = 0; i < stiele; i++) {
+    if (i % 2 === 1) continue;
+    const fx = (i + 0.5) / stiele * w - fw / 2, fy = mid + (sockelTop - mid - fh) / 2;
+    ctx.fillStyle = '#2a1c10'; ctx.fillRect(fx - 2, fy - 2, fw + 4, fh + 4);
+    ctx.fillStyle = ['#e8b65a', '#d89a3a', '#e0a848'][variante % 3]; ctx.fillRect(fx, fy, fw, fh);
+    ctx.fillStyle = '#2a1c10'; ctx.fillRect(fx + fw / 2 - 0.8, fy, 1.6, fh); ctx.fillRect(fx, fy + fh / 2 - 0.8, fw, 1.6);
+  }
+  // Tür (mittig)
+  const dw = Math.min(w * 0.2, 30), dh = (h - mid) * 0.62;
+  const dx = w / 2 - dw / 2, dy = h - dh;
+  ctx.fillStyle = '#2e2014'; ctx.fillRect(dx, dy, dw, dh);
+  ctx.fillStyle = '#46301c'; ctx.fillRect(dx + 2, dy + 2, dw - 4, dh - 2);
+  ctx.fillStyle = '#2e2014'; ctx.fillRect(dx + dw / 2 - 1, dy + 2, 2, dh - 2);
+  ctx.fillStyle = '#caa24a'; ctx.beginPath(); ctx.arc(dx + dw * 0.78, dy + dh * 0.5, Math.max(1, w * 0.012), 0, 6.283); ctx.fill();
+  // --- Dach (Steildach mit Schindeln + Überstand) ---
+  const first = Math.round(w * (0.42 + (variante % 2) * 0.08));
+  poly(ctx, [[-ueber, wandTop + 2], [first, Math.round(h * 0.04)], [w + ueber, wandTop + 2]], dach);
+  const reihen = 6;
+  for (let r = 0; r < reihen; r++) {
+    const t0 = r / reihen, t1 = (r + 1) / reihen;
+    const yb = wandTop + 2 - t0 * (wandTop - h * 0.04);
+    const yt = wandTop + 2 - t1 * (wandTop - h * 0.04);
+    ctx.fillStyle = r % 2 ? shadeHex(dach, -10) : shadeHex(dach, 8);
+    poly(ctx, [[-ueber + t0 * (first + ueber), yb], [w + ueber - t0 * (w + ueber - first), yb], [w + ueber - t1 * (w + ueber - first), yt], [-ueber + t1 * (first + ueber), yt]], ctx.fillStyle as string);
+  }
+  // Firstbalken + Dachkante
+  ctx.fillStyle = balken; ctx.fillRect(-ueber, wandTop, w + 2 * ueber, Math.max(2, h * 0.018));
+  // Schornstein
+  ctx.fillStyle = '#3a322a'; const cw = w * 0.08; ctx.fillRect(w * 0.7, h * 0.06, cw, wandTop - h * 0.06);
+  ctx.fillStyle = '#2a241e'; ctx.fillRect(w * 0.7, h * 0.06, cw, h * 0.03);
+}
+
+// Hex aufhellen/abdunkeln (lokal, ohne fallbackArt-Import)
+function shadeHex(hex: string, d: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const cl = (v: number) => Math.max(0, Math.min(255, v + d));
+  const r = cl((n >> 16) & 255), g = cl((n >> 8) & 255), b = cl(n & 255);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
 function ell(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, c: string): void {
   ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
 }

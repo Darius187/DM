@@ -13,7 +13,7 @@ import { Hud } from '../ui/hud';
 import { StashUI } from '../ui/stash';
 import { HeldEditor } from '../ui/heldEditor';
 import { heldTier } from '../data/helden';
-import { drawWirtin, drawTaverne } from '../gfx/npcArt';
+import { drawWirtin, drawTaverne, drawHaus } from '../gfx/npcArt';
 import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
 import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, VOLK, SMALLTALK, type DlgPage } from '../data/dialoge';
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
@@ -1606,8 +1606,10 @@ export class WorldScene extends CombatScene {
     if (this.hausSpriteAn && a.hausPlaetze) {
       const just = this.hausJustierung();
       a.hausPlaetze.forEach((hp, i) => {
-        const key = this.provider.tileKey('haus', i + 1, 0);
-        if (!key.startsWith('hs_tile_haus')) return; // kein Sprite vorhanden
+        // Hochgeladenes Haus-Sprite bevorzugen, sonst DETAILLIERTES prozedurales
+        // Fachwerkhaus (Runde 40: ersetzt die schäbigen PNGs mit weißem Rand).
+        const upload = this.provider.tileKey('haus', i + 1, 0);
+        const key = upload.startsWith('hs_tile_haus') ? upload : this.hausProcKey(hp);
         const breite = (hp.x1 - hp.x0 + 1) * TILE;
         const j = just[hp.id] ?? { dx: 0, dy: 0, skala: 1 };
         // Runde 24: die Grundfläche ist bereits um GANZE Kacheln verschoben
@@ -1668,6 +1670,22 @@ export class WorldScene extends CombatScene {
     const ein = Math.min(1, (t - TAG.abendAb) / 0.04);          // abends einblenden
     const aus = t < schlaf ? 1 : Math.max(0, 1 - (t - schlaf) / 0.04); // zur Schlafenszeit erlöschen
     return ein * aus;
+  }
+
+  // Prozedurales Fachwerkhaus-Sprite für eine Grundfläche (Runde 40): einmal
+  // je Größe+Variante erzeugt, sauber und ohne weißen Rand.
+  private hausProcKey(hp: { x0: number; y0: number; x1: number; y1: number; id: string }): string {
+    const wT = hp.x1 - hp.x0 + 1, hT = hp.y1 - hp.y0 + 1;
+    const variante = (hp.id.charCodeAt(0) + hp.id.length) % 4;
+    const key = `hausproc_${wT}x${hT}_${variante}`;
+    if (!this.textures.exists(key)) {
+      const cw = wT * TILE, ch = Math.round((hT * TILE) / 0.6);
+      const cv = document.createElement('canvas');
+      cv.width = cw; cv.height = ch;
+      drawHaus(cv.getContext('2d')!, cw, ch, variante);
+      this.textures.addCanvas(key, cv);
+    }
+    return key;
   }
 
   private bauHausOverlays(haus: Phaser.GameObjects.Image, key: string): void {
