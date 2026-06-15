@@ -77,23 +77,28 @@ describe('Krypta-Generator: jeder Spezialraum erreichbar', () => {
     }
   });
 
-  it('Geheimkammer: hinter dem Riss verborgen, nur durch ihn erreichbar', () => {
+  it('Geheimkammer: bis zum Aufbrechen massiver Fels, dann erreichbar', () => {
     let gefunden = 0;
     for (let seed = 1; seed <= 60; seed++) {
       const a = buildCrypt(((seed % 5) + 1), seededRng(seed * 5003));
-      const kammer = a.special.find((s) => s.id === 'geheimkammer');
-      if (!kammer) continue;
+      const cracks = a.cracks ?? [];
+      if (!cracks.length) continue;
       gefunden++;
-      // Es gibt mindestens einen Riss
-      expect(a.cracks && a.cracks.length >= 1, `Seed ${seed}: Riss fehlt`).toBe(true);
+      const c = cracks[0];
+      // Vor dem Aufbrechen: Riss-Kachel ist CRACK, die Kammer ist KOMPLETT Wand
+      // (wirklich unsichtbar, kein ausgehobener Raum, der Licht durchlässt)
+      expect(a.map[c.ty][c.tx], `Seed ${seed}: Riss-Kachel ist kein CRACK`).toBe(T.CRACK);
+      expect(c.kammer.every(([x, y]) => a.map[y][x] === T.WALL), `Seed ${seed}: Kammer ist nicht massiv`).toBe(true);
+      const kx = Math.floor(c.chestX / 32), ky = Math.floor(c.chestY / 32);
       const sx = Math.floor(a.spawn.x / 32), sy = Math.floor(a.spawn.y / 32);
-      // OHNE den Riss zu nutzen, ist die Kammer NICHT erreichbar (echt geheim)
-      const ohneRiss: AreaData = { ...a, map: a.map.map((r) => r.map((t) => (t === T.CRACK ? T.WALL : t))) };
-      const seenOhne = reachable(ohneRiss, sx, sy);
-      expect(targetReachable(seenOhne, kammer.x, kammer.y), `Seed ${seed}: Kammer ohne Riss erreichbar (nicht geheim)`).toBe(false);
-      // MIT Riss (aufbrechbar) ist sie erreichbar
-      const seenMit = reachable(a, sx, sy);
-      expect(targetReachable(seenMit, kammer.x, kammer.y), `Seed ${seed}: Kammer auch mit Riss unerreichbar`).toBe(true);
+      // Selbst wenn man den Riss als begehbar zählt: dahinter ist Fels -> die
+      // Truhe ist NICHT erreichbar, solange nichts ausgehoben wurde
+      expect(targetReachable(reachable(a, sx, sy), kx, ky), `Seed ${seed}: Truhe vorm Aufbrechen erreichbar`).toBe(false);
+      // Nach dem Aufbrechen (Riss + Kammer ausgehoben) ist die Truhe erreichbar
+      const offen: AreaData = { ...a, map: a.map.map((r) => [...r]) };
+      offen.map[c.ty][c.tx] = T.FLOOR;
+      for (const [x, y] of c.kammer) offen.map[y][x] = T.FLOOR;
+      expect(targetReachable(reachable(offen, sx, sy), kx, ky), `Seed ${seed}: Truhe nach Aufbrechen unerreichbar`).toBe(true);
     }
     expect(gefunden, 'In 60 Seeds entstand keine einzige Geheimkammer').toBeGreaterThan(5);
   });

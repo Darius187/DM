@@ -1923,7 +1923,7 @@ export class WorldScene extends CombatScene {
 
   // Mauerriss aufbrechen (Runde 40): jeder Treffer bröckelt, beim letzten
   // öffnet sich der Durchgang zur Geheimkammer.
-  private hitCrack(c: { tx: number; ty: number; hp: number }, hit: { onHit: (a: number) => void }, ang: number): void {
+  private hitCrack(c: NonNullable<AreaData['cracks']>[number], hit: { onHit: (a: number) => void }, ang: number): void {
     if (c.hp <= 0) return;
     c.hp--;
     const cx = c.tx * TILE + 16, cy = c.ty * TILE + 16;
@@ -1931,17 +1931,24 @@ export class WorldScene extends CombatScene {
     this.sfx.play('treffer_knochen', 0.6);
     this.shake(3);
     if (c.hp > 0) return;
-    // Durchbruch: Wand wird zu Boden, Durchgang frei
+    // Durchbruch: Riss wird Boden, dahinter die Kammer ausheben (war bis eben
+    // massiver Fels - deshalb vorher unsichtbar), Truhe erscheint
     this.fx.burst(cx, cy, 0x5a4c38, 22, 200);
     this.sfx.play('fass_bruch');
     this.applyHitstop(60);
     this.area.map[c.ty][c.tx] = T.FLOOR;
+    for (const [kx, ky] of c.kammer) this.area.map[ky][kx] = T.FLOOR;
     this.area.cracks = (this.area.cracks ?? []).filter((x) => x !== c);
     this.hittables = this.hittables.filter((h) => h !== hit);
-    // Kachel und die Wand darüber neu zeichnen (Fassade/Dach hängt am Boden darunter)
+    // Riss, Kammerkacheln und die Wände darüber neu zeichnen (Fassade/Dach
+    // hängt am Boden darunter), damit der Durchbruch sofort sichtbar wird
     this.refreshTile(c.tx, c.ty);
     this.refreshTile(c.tx, c.ty - 1);
-    this.logMsg('Die brüchige Wand bricht ein - ein verborgener Durchgang öffnet sich!', 'magic');
+    for (const [kx, ky] of c.kammer) { this.refreshTile(kx, ky); this.refreshTile(kx, ky - 1); }
+    // Belohnung: eine seltene Truhe in der Kammer (Truhen zeichnet worldGfx
+    // jeden Frame aus area.chests - daher reicht das Anhängen)
+    this.area.chests.push({ x: c.chestX, y: c.chestY, open: false, selten: true });
+    this.logMsg('Die brüchige Wand bricht ein - eine verborgene Kammer tut sich auf!', 'magic');
   }
 
   private hitBreakable(ent: BreakableEntity, ang: number): void {

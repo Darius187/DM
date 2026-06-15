@@ -76,7 +76,10 @@ export interface AreaData {
   kraeuter: Pos[];            // Kräuter am Waldrand (Masterprompt 7.4)
   schilder?: Array<Pos & { text: string }>; // beschriftbare Schilder (Baukasten, Runde 22)
   geleert?: boolean;          // Ebene leergeräumt - bleibt leer bis zum Tod (Runde 26)
-  cracks?: Array<{ tx: number; ty: number; hp: number }>; // Mauerrisse vor Geheimkammern (Runde 40)
+  // Mauerrisse vor Geheimkammern (Runde 40): die Kammer bleibt massiver Fels,
+  // bis der Riss aufbricht - erst dann wird sie ausgehoben (kammer) und die
+  // Truhe (chestX/chestY) erscheint. So ist sie vorher wirklich unsichtbar.
+  cracks?: Array<{ tx: number; ty: number; hp: number; kammer: Array<[number, number]>; chestX: number; chestY: number }>;
   baeume: Pos[];              // fällbare Bäume (Holz)
   chimneys: Pos[];            // Schornsteinrauch
   herde?: Array<Pos & { ph: number; art: 'kamin' | 'kerze' | 'wandfackel' }>; // Innen-Lichtquellen (Runde 35)
@@ -472,14 +475,14 @@ function legeGeheimkammer(map: number[][], w: number, h: number, rng: Rng, a: Ar
         return !istWand(px, py); // Boden/anderes = Leck
       }));
       if (leck) continue;
-      // Passt: Kammer ausheben, Riss setzen, Beute hineinlegen
-      for (const [x, y] of kammer) map[y][x] = T.FLOOR;
+      // Passt: NUR den Riss setzen. Die Kammer bleibt Fels und wird erst beim
+      // Aufbrechen ausgehoben - vorher ist nichts zu sehen (kein Lichtleck).
       map[crackY][crackX] = T.CRACK;
-      a.cracks!.push({ tx: crackX, ty: crackY, hp: GEHEIMKAMMER.rissHp });
       const ccx = fx + dx * (2 + halfK), ccy = fy + dy * (2 + halfK);
-      a.chests.push({ x: ccx * TILE + 16, y: ccy * TILE + 16, open: false, selten: true });
-      a.gear.push({ x: ccx * TILE + 16, y: (ccy + 1 < h - 1 && istBoden(ccx, ccy + 1) ? ccy + 1 : ccy) * TILE + 16 });
-      a.special.push({ id: 'geheimkammer', x: ccx, y: ccy, raum: 'Geheimkammer' });
+      a.cracks!.push({
+        tx: crackX, ty: crackY, hp: GEHEIMKAMMER.rissHp,
+        kammer, chestX: ccx * TILE + 16, chestY: ccy * TILE + 16,
+      });
       return;
     }
   }
