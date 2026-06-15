@@ -4660,6 +4660,10 @@ export class WorldScene extends CombatScene {
       n.sprite.setPosition(n.curX, n.curY).setDepth(n.curY);
       n.label.setPosition(n.curX, n.curY - 22);
     }
+    // Bewohner dürfen nicht ineinander stehen (Runde 40, Autorwunsch): mehrere
+    // teilen sich oft dasselbe Mittags-/Abendziel (Taverne, Markt) und stapelten
+    // sich. Sichtbare Nachbarn sanft auseinanderschieben - wie bei den Gegnern.
+    this.trenneNpcs();
     // Tiere laufen in Gattern umher, mit Lauten
     for (const t of this.animalEnts) {
       t.pauseT -= dt;
@@ -4702,6 +4706,37 @@ export class WorldScene extends CombatScene {
     if (this.crowT <= 0) {
       this.crowT = 9 + Math.random() * 14;
       if (this.area.id === 'village') this.sfx.play('kraehen', 0.4);
+    }
+  }
+
+  // Bewohner-Trennung (Runde 40): überlappende sichtbare NPCs achsenweise
+  // auseinanderschieben, ohne durch Wände zu drücken (isSolidAt-Prüfung wie in
+  // der NPC-Bewegung). NPC_R ist der "Persönlichkeitsabstand" der 32px-Figuren.
+  private static readonly NPC_R = 12;
+  private trenneNpcs(): void {
+    const ns = this.npcEnts;
+    const r2 = WorldScene.NPC_R * 2;
+    for (let i = 0; i < ns.length; i++) {
+      const A = ns[i];
+      if (!A.sprite.visible) continue;
+      for (let j = i + 1; j < ns.length; j++) {
+        const B = ns[j];
+        if (!B.sprite.visible) continue;
+        const dx = B.curX - A.curX, dy = B.curY - A.curY;
+        const d = Math.hypot(dx, dy);
+        if (d >= r2 || d < 0.01) continue;
+        const a = Math.atan2(dy, dx), push = (r2 - d) / 2;
+        const ax = -Math.cos(a) * push, ay = -Math.sin(a) * push;
+        const bx = Math.cos(a) * push, by = Math.sin(a) * push;
+        if (!this.isSolidAt(A.curX + ax, A.curY)) A.curX += ax;
+        if (!this.isSolidAt(A.curX, A.curY + ay)) A.curY += ay;
+        if (!this.isSolidAt(B.curX + bx, B.curY)) B.curX += bx;
+        if (!this.isSolidAt(B.curX, B.curY + by)) B.curY += by;
+        A.sprite.setPosition(A.curX, A.curY).setDepth(A.curY);
+        A.label.setPosition(A.curX, A.curY - 22);
+        B.sprite.setPosition(B.curX, B.curY).setDepth(B.curY);
+        B.label.setPosition(B.curX, B.curY - 22);
+      }
     }
   }
 

@@ -8,6 +8,7 @@ import { drawHumanoid, drawQuadruped, drawChicken, FIGURES, SPRITE, TILE, type D
 import { drawHeld, HELD_CELL } from './heldArt';
 import { drawItemIcon, iconKey, ICON_SIZE } from './itemIcons';
 import { drawTileArt, drawObjectArt, drawBreakable } from './tileArt';
+import { DETAIL_NPCS } from './npcArt';
 import type { CryptTheme } from '../data/krypta';
 import type { HeldTier } from '../data/helden';
 import type { Item } from '../data/types';
@@ -118,6 +119,15 @@ export class SpriteProvider {
   private ensureFallbackFigure(name: string): void {
     const key = `fig_${name}`;
     if (this.tex.exists(key)) return;
+    // Detaillierte NPC-Figur (Runde 40): in 64px zeichnen, dann sauber auf die
+    // 32px-Zelle herunterrechnen - so steht z. B. die neue Wirtin Mathilde
+    // wirklich im Spiel (vorher nur in der Vorschau) und reiht sich nahtlos
+    // zwischen die übrigen Bewohner ein.
+    const detail = DETAIL_NPCS[name];
+    if (detail) {
+      this.ensureDetailNpc(key, detail);
+      return;
+    }
     const spec = FIGURES[name] ?? FIGURES['spieler'];
     const canvas = document.createElement('canvas');
     canvas.width = SPRITE * 4;
@@ -131,6 +141,33 @@ export class SpriteProvider {
         else if ('quad' in spec) drawQuadruped(ctx, spec.quad as QuadSpec, dir as Dir, frame);
         else drawHumanoid(ctx, spec as FigureSpec, dir as Dir, frame);
         ctx.restore();
+      }
+    }
+    const t = this.tex.addCanvas(key, canvas)!;
+    for (let dir = 0; dir < 4; dir++) {
+      for (let frame = 0; frame < 4; frame++) {
+        t.add(`d${dir}f${frame}`, 0, frame * SPRITE, dir * SPRITE, SPRITE, SPRITE);
+      }
+    }
+  }
+
+  // Detaillierte 64px-NPC-Figur auf die 32px-Zelle herunterrechnen und als
+  // 16-Zellen-Atlas ablegen (Runde 40). Frontansicht für alle Richtungen/
+  // Schritte - die Figur steht meist (Wirtin hinter dem Tresen).
+  private ensureDetailNpc(key: string, draw: (ctx: CanvasRenderingContext2D) => void): void {
+    const gross = document.createElement('canvas');
+    gross.width = 64;
+    gross.height = 64;
+    draw(gross.getContext('2d')!);
+    const canvas = document.createElement('canvas');
+    canvas.width = SPRITE * 4;
+    canvas.height = SPRITE * 4;
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    for (let dir = 0; dir < 4; dir++) {
+      for (let frame = 0; frame < 4; frame++) {
+        ctx.drawImage(gross, 0, 0, 64, 64, frame * SPRITE, dir * SPRITE, SPRITE, SPRITE);
       }
     }
     const t = this.tex.addCanvas(key, canvas)!;

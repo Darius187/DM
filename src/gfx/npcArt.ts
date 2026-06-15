@@ -125,6 +125,14 @@ export function drawWirtin(ctx: CanvasRenderingContext2D): void {
   ctx.fillStyle = '#52525a'; ctx.fillRect(cx + 12.5, 37, 1.4, 3);
 }
 
+// Registry detaillierter NPC-Figuren (Runde 40): Figurname -> Zeichenfunktion
+// in eine 64px-Zelle (Frontansicht). Der SpriteProvider rechnet sie auf die
+// 32px-Figurzelle herunter, damit sie sich nahtlos zwischen die übrigen
+// Bewohner einfügen (gleiche Größe, gleiche Y-Sortierung).
+export const DETAIL_NPCS: Record<string, (ctx: CanvasRenderingContext2D) => void> = {
+  wirtin: drawWirtin,
+};
+
 // --- Gebäude: Taverne "Zum Schwarzen Raben" (128x128) ----------------------
 export function drawTaverne(ctx: CanvasRenderingContext2D): void {
   // Steinsockel mit Mauerwerk
