@@ -5,6 +5,7 @@
 
 import { shade, type Dir } from './fallbackArt';
 import type { HeldTier } from '../data/helden';
+import { getHeldForm, type HeldForm } from '../data/heldForm';
 
 export const HELD_CELL = 64; // Kantenlänge einer Figur-Zelle
 
@@ -71,113 +72,120 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   ctx.fill();
 }
 
-// Ein Bein + Stiefel an Position lx, mit vor/zurück-Versatz dy (Gehschritt)
-function bein(ctx: CanvasRenderingContext2D, p: Pal, lx: number, vor: number): void {
-  const top = 39, len = 13 + vor;
-  rr(ctx, lx - 3.2, top, 6.4, len, 2.4, p.bein);
-  ctx.fillStyle = p.beinS; ctx.fillRect(lx + 0.6, top, 2.6, len); // Schattenseite
-  // Stiefel
+const CX = 32; // Figurmitte (X) in der Zelle
+
+// Ein Bein + Stiefel an Position lx, mit vor/zurück-Versatz vor (Gehschritt)
+function bein(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, lx: number, vor: number): void {
+  const top = f.schulterY + f.rumpfH - 2, len = f.beinL + vor;
+  const hw = f.beinB / 2;
+  rr(ctx, lx - hw, top, f.beinB, len, 2.4, p.bein);
+  ctx.fillStyle = p.beinS; ctx.fillRect(lx + hw * 0.3, top, hw * 0.8, len); // Schattenseite
   const fy = top + len - 1;
-  poly(ctx, [[lx - 3.4, fy], [lx + 3.2, fy], [lx + 5.6, fy + 4.5], [lx - 3.4, fy + 4.5]], p.stiefel);
-  ctx.fillStyle = '#000'; ctx.globalAlpha = 0.25; ctx.fillRect(lx - 3.4, fy + 3.6, 9, 1); ctx.globalAlpha = 1;
+  poly(ctx, [[lx - hw - 0.2, fy], [lx + hw, fy], [lx + hw + 2.4, fy + 4.5], [lx - hw - 0.2, fy + 4.5]], p.stiefel);
+  ctx.fillStyle = '#000'; ctx.globalAlpha = 0.25; ctx.fillRect(lx - hw - 0.2, fy + 3.6, f.beinB + 2.6, 1); ctx.globalAlpha = 1;
 }
 
-function umhang(ctx: CanvasRenderingContext2D, p: Pal, sway: number): void {
-  // hinter dem Körper, weitet sich nach unten, leichtes Wehen (sway)
-  poly(ctx, [[26, 23], [38, 23], [44 + sway, 40], [46 + sway, 54], [18 - sway, 54], [20 - sway, 40]], p.umh);
-  poly(ctx, [[32, 23], [38, 23], [44 + sway, 40], [46 + sway, 54], [32, 52]], p.umhS); // Faltenschatten
+function umhang(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, sway: number): void {
+  const oy = f.schulterY - 1, uy = f.schulterY + f.rumpfH + f.beinL - 0.5; // Saum bis kurz über die Füße
+  const ow = f.schulterB - 4, uw = f.schulterB + 8;
+  poly(ctx, [[CX - ow, oy], [CX + ow, oy], [CX + uw + sway, uy - 14], [CX + uw + 2 + sway, uy], [CX - uw - 2 - sway, uy], [CX - uw + sway, uy - 14]], p.umh);
+  poly(ctx, [[CX, oy], [CX + ow, oy], [CX + uw + sway, uy - 14], [CX + uw + 2 + sway, uy], [CX, uy - 2]], p.umhS);
 }
 
-function rumpf(ctx: CanvasRenderingContext2D, p: Pal): void {
+function rumpf(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm): void {
+  const sy = f.schulterY, wy = sy + f.rumpfH, my = (sy + wy) / 2;
+  const sb = f.schulterB, tb = f.tailleB, mb = (sb + tb) / 2;
   // Wams: Schultern breit, Taille schmaler
-  poly(ctx, [[22, 24], [42, 24], [40, 34], [38, 41], [26, 41], [24, 34]], p.wams);
-  poly(ctx, [[32, 24], [42, 24], [40, 34], [38, 41], [32, 41]], p.wamsS); // rechte Hälfte dunkler
-  ctx.fillStyle = p.wamsH; ctx.fillRect(25, 25, 4, 12);                   // Lichtkante links
-  poly(ctx, [[31, 25], [33, 25], [32.5, 40], [31.5, 40]], p.wamsS);       // Mittelnaht
-  if (p.metall) { ctx.fillStyle = '#eef3f8'; ctx.globalAlpha = 0.5; ctx.fillRect(26, 26, 3, 5); ctx.globalAlpha = 1; }
+  poly(ctx, [[CX - sb, sy], [CX + sb, sy], [CX + mb, my], [CX + tb, wy], [CX - tb, wy], [CX - mb, my]], p.wams);
+  poly(ctx, [[CX, sy], [CX + sb, sy], [CX + mb, my], [CX + tb, wy], [CX, wy]], p.wamsS); // rechte Hälfte dunkler
+  ctx.fillStyle = p.wamsH; ctx.fillRect(CX - sb + 3, sy + 1, 4, f.rumpfH - 5);            // Lichtkante links
+  poly(ctx, [[CX - 1, sy + 1], [CX + 1, sy + 1], [CX + 0.5, wy - 1], [CX - 0.5, wy - 1]], p.wamsS); // Mittelnaht
+  if (p.metall) { ctx.fillStyle = '#eef3f8'; ctx.globalAlpha = 0.5; ctx.fillRect(CX - sb + 4, sy + 2, 3, 5); ctx.globalAlpha = 1; }
   // Gürtel + Schnalle
-  rr(ctx, 25, 39.5, 14, 3, 1, '#3a2a18');
-  ctx.fillStyle = '#c9a23a'; ctx.fillRect(31, 39.8, 2.4, 2.4);
+  rr(ctx, CX - tb - 1, wy - 1.5, 2 * tb + 2, 3, 1, '#3a2a18');
+  ctx.fillStyle = '#c9a23a'; ctx.fillRect(CX - 1.2, wy - 1.2, 2.4, 2.4);
 }
 
-function arm(ctx: CanvasRenderingContext2D, p: Pal, sx: number, vor: number, dunkel: boolean): void {
-  rr(ctx, sx - 2.4, 26 + Math.max(0, -vor), 4.8, 13, 2.2, dunkel ? p.wamsS : p.wams);
-  // Hand als Lederhandschuh in Armfarbe (Autorwunsch R40): nicht mehr nackte
-  // Haut, sondern dieselbe Farbe wie der Ärmel, etwas abgedunkelt
-  ell(ctx, sx, 39 + vor * 0.5, 2.7, 2.7, shade(dunkel ? p.wamsS : p.wams, -10)); // Handschuh
+function arm(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, sx: number, vor: number, dunkel: boolean): void {
+  const top = f.schulterY + 2 + Math.max(0, -vor), hw = f.armB / 2;
+  rr(ctx, sx - hw, top, f.armB, f.armL, 2.2, dunkel ? p.wamsS : p.wams);
+  // Hand als Lederhandschuh in Armfarbe (Autorwunsch R40)
+  ell(ctx, sx, top + f.armL + vor * 0.5, hw + 0.3, hw + 0.3, shade(dunkel ? p.wamsS : p.wams, -10));
 }
 
-function auge(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+function auge(ctx: CanvasRenderingContext2D, x: number, y: number, s: number): void {
   ctx.fillStyle = '#241813';
-  ctx.beginPath(); ctx.ellipse(x, y, 0.95, 1.3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x, y, 0.95 * s, 1.3 * s, 0, 0, Math.PI * 2); ctx.fill();
 }
 
-// Kopf (Runde 39 verkleinert): die Kapuze schließt ENG um den Kopf (kein
-// Ballon mehr), ein Hals verbindet Kopf und Rumpf. Gesicht je Blickrichtung.
-function kopf(ctx: CanvasRenderingContext2D, p: Pal, dir: Dir): void {
-  const cx = 32, cy = 14;
-  // Hals
-  ctx.fillStyle = shade(p.haut, -16); ctx.fillRect(cx - 2.4, cy + 5, 4.8, 5);
+// Kopf (parametrisiert, Runde 40): Größe/Höhe kommen aus der HeldForm, das
+// Gesicht skaliert mit. Die Kapuze schließt eng um den Kopf (kein Ballon).
+function kopf(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, dir: Dir): void {
+  const cx = CX, cy = f.kopfY, r = f.kopfR, s = r / 5.8; // s = Gesichts-Skala
+  // Hals zur Schulterlinie
+  ctx.fillStyle = shade(p.haut, -16); ctx.fillRect(cx - 2.4 * s, cy + r * 0.8, 4.8 * s, f.schulterY - (cy + r * 0.8) + 2);
   // Kragen auf den Schultern
-  poly(ctx, [[cx - 8, 26], [cx + 8, 26], [cx + 6, 21], [cx - 6, 21]], p.kapS);
-  // Kapuze/Helm - enge Haube, deckt den Scheitel, vorn offen
-  const hr = p.helm ? 6.4 : 7;
+  poly(ctx, [[cx - r - 1, f.schulterY + 2], [cx + r + 1, f.schulterY + 2], [cx + r - 1, f.schulterY - 3], [cx - r + 1, f.schulterY - 3]], p.kapS);
+  // Kapuze/Helm - enge Haube
+  const hr = p.helm ? r * 0.92 : r;
   ctx.fillStyle = p.kap;
   ctx.beginPath(); ctx.ellipse(cx, cy - 1, hr, hr + 0.7, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = p.kapH;
-  ctx.beginPath(); ctx.ellipse(cx - 2.3, cy - 4, 2.5, 1.9, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx - r * 0.4, cy - r * 0.7, 2.5 * s, 1.9 * s, -0.5, 0, Math.PI * 2); ctx.fill();
   if (p.helm) {
-    ctx.fillStyle = p.kapH; ctx.fillRect(cx - 0.8, cy - 8, 1.6, 6);
-    if (p.metall) { ctx.globalAlpha = 0.5; ell(ctx, cx - 2.6, cy - 3, 1.1, 2.6, '#eef3f8'); ctx.globalAlpha = 1; }
+    ctx.fillStyle = p.kapH; ctx.fillRect(cx - 0.8, cy - r - 1.5, 1.6, r * 1.0);
+    if (p.metall) { ctx.globalAlpha = 0.5; ell(ctx, cx - r * 0.45, cy - r * 0.5, 1.1 * s, 2.6 * s, '#eef3f8'); ctx.globalAlpha = 1; }
   } else if (p.metall) {
-    ctx.fillStyle = '#cfd4da'; for (let i = 0; i < 5; i++) ctx.fillRect(cx - 5.5 + i * 2.6, cy - 6 + (i % 2) * 2, 1, 1);
+    ctx.fillStyle = '#cfd4da'; for (let i = 0; i < 5; i++) ctx.fillRect(cx - r * 0.95 + i * (r * 0.45), cy - r + (i % 2) * 2, 1, 1);
   }
 
   if (dir === 3) { // Rückansicht: nur Haube
     ctx.fillStyle = p.kapS;
-    ctx.beginPath(); ctx.ellipse(cx, cy + 0.5, 4.6, 4.2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx, cy + 0.5, r * 0.8, r * 0.72, 0, 0, Math.PI * 2); ctx.fill();
     return;
   }
 
   // Gesichtsöffnung: dunkler Rahmen + Haut, je Richtung leicht versetzt
-  const ox = dir === 1 ? -1.2 : dir === 2 ? 1.2 : 0;
+  const ox = dir === 1 ? -1.2 * s : dir === 2 ? 1.2 * s : 0;
   ctx.fillStyle = '#191310';
-  ctx.beginPath(); ctx.ellipse(cx + ox, cy + 1, 4, 4.6, 0, 0, Math.PI * 2); ctx.fill();
-  ell(ctx, cx + ox, cy + 1.3, 3.3, 3.9, p.haut);
-  ell(ctx, cx + ox - 1, cy - 0.2, 1.2, 1.6, p.hautH);
+  ctx.beginPath(); ctx.ellipse(cx + ox, cy + 1, 4 * s * 0.7 + r * 0.18, 4.6 * s * 0.7 + r * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+  ell(ctx, cx + ox, cy + 1.3, 3.3 * s, 3.9 * s, p.haut);
+  ell(ctx, cx + ox - 1 * s, cy - 0.2, 1.2 * s, 1.6 * s, p.hautH);
   ctx.fillStyle = p.hautS;
-  ctx.beginPath(); ctx.ellipse(cx + ox + (dir === 2 ? -1.7 : 1.7), cy + 1.7, 1.2, 2.4, 0, 0, Math.PI * 2); ctx.fill();
-  if (dir === 0) { auge(ctx, cx - 1.6, cy + 0.8); auge(ctx, cx + 1.6, cy + 0.8); }
-  if (dir === 1) { auge(ctx, cx - 2.2, cy + 0.8); auge(ctx, cx + 0.2, cy + 0.8); }
-  if (dir === 2) { auge(ctx, cx + 2.2, cy + 0.8); auge(ctx, cx - 0.2, cy + 0.8); }
+  ctx.beginPath(); ctx.ellipse(cx + ox + (dir === 2 ? -1.7 : 1.7) * s, cy + 1.7, 1.2 * s, 2.4 * s, 0, 0, Math.PI * 2); ctx.fill();
+  if (dir === 0) { auge(ctx, cx - 1.6 * s, cy + 0.8, s); auge(ctx, cx + 1.6 * s, cy + 0.8, s); }
+  if (dir === 1) { auge(ctx, cx - 2.2 * s, cy + 0.8, s); auge(ctx, cx + 0.2 * s, cy + 0.8, s); }
+  if (dir === 2) { auge(ctx, cx + 2.2 * s, cy + 0.8, s); auge(ctx, cx - 0.2 * s, cy + 0.8, s); }
 }
 
 // Eine Figur in die aktuelle 64x64-Zelle zeichnen (Ursprung links oben).
 export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir, frame: number): void {
   const p = PALETTEN[tier];
+  const f = getHeldForm();
   const step = frame % 4;            // 0 stehen, 1 links vor, 2 stehen, 3 rechts vor
   const bobUp = step === 1 || step === 3 ? -1.4 : 0;
   const sway = step === 1 ? 2 : step === 3 ? -2 : 0;
 
   // Bodenschatten
-  ell(ctx, 32, 58, 14, 3.4, 'rgba(0,0,0,0.32)');
+  ell(ctx, CX, 58, 14, 3.4, 'rgba(0,0,0,0.32)');
 
   ctx.save();
   ctx.translate(0, bobUp);
 
-  umhang(ctx, p, sway);
+  umhang(ctx, p, f, sway);
 
-  // Beine mit Gehschritt
+  // Beine mit Gehschritt - Spreizung an der Taille
   const lVor = step === 1 ? 1.5 : step === 3 ? -1.5 : 0;
-  bein(ctx, p, 28, lVor);
-  bein(ctx, p, 36, -lVor);
+  const spreiz = Math.max(2.4, f.tailleB * 0.65);
+  bein(ctx, p, f, CX - spreiz, lVor);
+  bein(ctx, p, f, CX + spreiz, -lVor);
 
-  // hinterer Arm (gegenläufig), Rumpf, vorderer Arm
-  arm(ctx, p, 22, -lVor, true);
-  rumpf(ctx, p);
-  arm(ctx, p, 42, lVor, false);
+  // hinterer Arm (gegenläufig), Rumpf, vorderer Arm - an den Schultern
+  arm(ctx, p, f, CX - f.schulterB, -lVor, true);
+  rumpf(ctx, p, f);
+  arm(ctx, p, f, CX + f.schulterB, lVor, false);
 
-  kopf(ctx, p, dir);
+  kopf(ctx, p, f, dir);
 
   ctx.restore();
 }

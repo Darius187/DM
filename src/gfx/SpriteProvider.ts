@@ -56,6 +56,14 @@ export class SpriteProvider {
     return { key: `fig_${name}`, frame: `d${dir}f${step % 4}` };
   }
 
+  // Held-Atlanten verwerfen (Figur-Editor, Runde 40): nach einer Proportions-
+  // Änderung werden die 64px-Figuren beim nächsten Zugriff neu gezeichnet.
+  invalidateHeld(): void {
+    for (const tier of ['stoff', 'leder', 'kette', 'platte']) {
+      if (this.tex.exists(`held_${tier}`)) this.tex.remove(`held_${tier}`);
+    }
+  }
+
   // Detaillierte Helden-Figur (Runde 37): 64px-Zellen, 4 Richtungen x 4 Schritte
   private ensureHeldFigure(tier: HeldTier): void {
     const key = `held_${tier}`;

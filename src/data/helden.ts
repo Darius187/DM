@@ -10,9 +10,8 @@ export const HELD = {
 
 export type HeldTier = 'stoff' | 'leder' | 'kette' | 'platte';
 
-// Anzeige-Skala der detaillierten 64px-Held-Figur (Runde 39): etwas größer als
-// das normale Volk/Gegner, damit der Held nicht winzig wirkt. Eine Zeile.
-export const HELD_SKALA = 0.6;
+// Anzeige-Skala der Held-Figur wohnt jetzt in HeldForm.skala (Figur-Editor,
+// Runde 40) - so kann der Autor die Größe mitsamt den Proportionen einstellen.
 
 // Ruestungswert (oder null = nichts getragen) -> sichtbare Stufe.
 // Jede getragene Ruestung zeigt mindestens Leder, damit man den Wechsel sieht.

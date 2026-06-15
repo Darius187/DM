@@ -11,6 +11,8 @@ import storyJson from '../data/story.json';
 import { ShopUI } from '../ui/shop';
 import { Hud } from '../ui/hud';
 import { StashUI } from '../ui/stash';
+import { HeldEditor } from '../ui/heldEditor';
+import { heldTier } from '../data/helden';
 import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
 import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, VOLK, SMALLTALK, type DlgPage } from '../data/dialoge';
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
@@ -95,6 +97,7 @@ export class WorldScene extends CombatScene {
   private dialog!: DialogUI;
   private shop!: ShopUI;
   private stash!: StashUI;
+  private heldEditor!: HeldEditor;
   private lager: Item[] = [];
   aufbauBestellt = false;
   // Stadtmauer + Einfälle (Feedback-Runde 7/8)
@@ -222,6 +225,9 @@ export class WorldScene extends CombatScene {
     this.shop = new ShopUI(this, this.provider, this.sfx, () => this.p);
     this.shop.rabatt = () => this.wohlstand() * 0.05;
     this.stash = new StashUI(this, this.sfx, () => this.p, () => this.lager);
+    // Figur-Editor (Runde 40): Proportionen des Helden live einstellen
+    this.heldEditor = new HeldEditor(this, this.provider, () => heldTier(this.p.armorIt ? this.p.armorIt.val : null));
+    this.heldEditor.onApply = () => this.zeichneHeld(angleToDir(this.pdir), this.pstep);
     this.worldGfx = this.add.graphics().setDepth(2450);
     this.minimapGfx = this.add.graphics().setScrollFactor(0).setDepth(4500);
     this.hud = new Hud(this, () => this.p, () => this.weaponClass());
@@ -1923,7 +1929,7 @@ export class WorldScene extends CombatScene {
   }
 
   protected override uiBlocked(): boolean {
-    return super.uiBlocked() || this.dialog?.open || this.shop?.open || this.stash?.open || !!this.deathOverlay || !!this.pauseMenu;
+    return super.uiBlocked() || this.dialog?.open || this.shop?.open || this.stash?.open || !!this.deathOverlay || !!this.pauseMenu || !!this.heldEditor?.blocked;
   }
 
   // --- Zerstörbare Objekte ---------------------------------------------------
@@ -3787,12 +3793,16 @@ export class WorldScene extends CombatScene {
         this.logMsg(`✓ Spielstand ${slot} gespeichert`, 'gold');
       });
     }
-    mkBtn(h * 0.34 + 4 * 52, 'EINSTELLUNGEN', () => {
+    mkBtn(h * 0.34 + 4 * 52, 'FIGUR ANPASSEN', () => {
+      this.togglePause();
+      this.heldEditor.openEditor();
+    });
+    mkBtn(h * 0.34 + 5 * 52, 'EINSTELLUNGEN', () => {
       this.togglePause();
       this.scene.pause();
       this.scene.launch('Settings', { zurueck: 'World', resume: true });
     });
-    mkBtn(h * 0.34 + 5 * 52, 'HAUPTMENÜ', () => {
+    mkBtn(h * 0.34 + 6 * 52, 'HAUPTMENÜ', () => {
       this.autosave();
       this.scene.start('Title');
     });
