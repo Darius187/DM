@@ -34,6 +34,7 @@ export interface Settings {
   chronikBox: { x: number; y: number; w: number; h: number };
   chronikAuto: boolean;   // Chronik-Fenster beim Spielstart offen (Runde 36)
   postFx: boolean;        // Nachbearbeitung: Bloom auf Lichter + Vignette (Runde 40)
+  audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
   uiLayoutV: number;      // Layout-Version: ältere UI-Versätze einmalig zurücksetzen
   kb: KeyBindings;
 }
@@ -41,7 +42,7 @@ export interface Settings {
 export const DEF_SETTINGS: Settings = {
   volEffekte: 60,
   volAtmosphaere: 50,
-  volMusik: 55,
+  volMusik: 20, // Runde 40 (Autorwunsch): Musik leise im Hintergrund
   bright: 100,
   zoom: 100,
   tempo: 90,
@@ -58,6 +59,7 @@ export const DEF_SETTINGS: Settings = {
   // Lebenskugel/Leiste (Runde 40): tiefer würde die Kugel verdecken
   chronikAuto: true,
   postFx: true,
+  audioV: 1,
   uiLayoutV: 3, // Runde 40: Orbs an den Leisten, Meldungen oben, Chronik unten links
   kb: {
     roll: ' ', interact: 'e', inv: 'i', charakter: 'c',
@@ -104,6 +106,13 @@ export function getSettings(): Settings {
         current.ui.log = { x: 0, y: 0 };
         current.chronikBox = { ...DEF_SETTINGS.chronikBox };
         current.uiLayoutV = DEF_SETTINGS.uiLayoutV;
+        try { localStorage.setItem(KEY, JSON.stringify(current)); } catch { /* gesperrt */ }
+      }
+      // Audio-Migration (Runde 40, Autorwunsch "Musik bei 20%"): einmalig die
+      // Musik-Lautstärke auf den neuen Standard setzen, danach frei regelbar.
+      if ((saved.audioV ?? 0) < DEF_SETTINGS.audioV) {
+        current.volMusik = DEF_SETTINGS.volMusik;
+        current.audioV = DEF_SETTINGS.audioV;
         try { localStorage.setItem(KEY, JSON.stringify(current)); } catch { /* gesperrt */ }
       }
     }
