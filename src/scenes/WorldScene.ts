@@ -4674,9 +4674,9 @@ export class WorldScene extends CombatScene {
     }
     this.lightRT.setVisible(true);
     this.lightRT.clear();
-    // Runde 41: Tag-Grundschleier deutlich heller (war 0.30 -> sah aus wie
-    // Dämmerung). Tag ~0.10, Nacht weiter dunkel.
-    const dunkelAlpha = this.area.dark ? 0.97 : Math.min(0.92, 0.10 + 0.78 * nachtFaktor + (fow ? 0.2 : 0));
+    // Runde 41: Tag-Grundschleier sehr hell (Autorkritik "Stadt zu dunkel,
+    // Bloom macht's noch dunkler"). Tag ~0.04 (kaum Schleier), Nacht weiter dunkel.
+    const dunkelAlpha = this.area.dark ? 0.97 : Math.min(0.92, 0.04 + 0.82 * nachtFaktor + (fow ? 0.2 : 0));
     this.lightRT.fill(0x020100, dunkelAlpha);
     const time = this.time.now / 1000;
     const flicker = 1 + Math.sin(time * 9) * 0.025 + Math.sin(time * 23) * 0.015;
