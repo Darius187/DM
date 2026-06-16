@@ -18,9 +18,10 @@ export interface FigureSpec {
   robe?: boolean;       // Robe statt Beine (Priester, Magdalena)
   weapon?: 'schwert' | 'axt' | 'stange' | 'wucht' | 'bogen' | 'keule' | 'stab' | null;
   scale?: number;       // Templer ist größer
-  skeletal?: boolean;   // Skelett-Look (Rippen)
+  skeletal?: boolean;   // Skelett-Look (Schädel, Brustkorb)
   glow?: string;        // Schatten-Look (Umriss-Glühen)
   augen?: string;       // Augenfarbe (rot glühend bei Untoten, Runde 20)
+  seuche?: boolean;     // Pest-Look: Beulen + Lumpen (Runde 40)
 }
 
 export type Dir = 0 | 1 | 2 | 3; // unten, links, rechts, oben
@@ -100,8 +101,25 @@ function drawHumanoidParts(ctx: CanvasRenderingContext2D, f: FigureSpec, dir: Di
   p(ctx, 10, 7 + bob, 1, 3, shade(f.tunic, -16));
   if (!f.robe) p(ctx, 5, 9 + bob, 6, 1, shade(f.tunic, -30));
   if (f.skeletal) {
-    p(ctx, 6, 7 + bob, 4, 1, '#efe6cc');
-    p(ctx, 6, 9 + bob, 4, 1, '#efe6cc');
+    // Brustkorb (Runde 40 detaillierter): dunkler Brustraum, Wirbelsäule,
+    // drei Rippenpaare mit Lücken - in echten Pixeln für feinere Linien.
+    const by = (6 + bob) * PX;
+    ctx.fillStyle = shade(f.tunic, -38); ctx.fillRect(10, by, 12, 8);
+    ctx.fillStyle = '#e6ddc2'; ctx.fillRect(15, by, 2, 8);            // Wirbelsäule
+    for (let r = 0; r < 3; r++) {
+      const ry = by + 1 + r * 2.4;
+      ctx.fillRect(11, ry, 4, 1);                                     // linke Rippe
+      ctx.fillRect(17, ry, 4, 1);                                     // rechte Rippe
+    }
+    ctx.fillStyle = '#cfc4a8'; ctx.fillRect(13, by + 7, 6, 1);        // Beckenkamm
+  }
+  // Pest-Beulen (Runde 40): geschwollene, dunkelrote Beulen an Hals und Brust
+  if (f.seuche) {
+    const sy = (6 + bob) * PX;
+    for (const [bx, byo] of [[11, 1], [18, 3], [14, 5]] as Array<[number, number]>) {
+      ctx.fillStyle = '#5a1414'; ctx.fillRect(bx, sy + byo, 2, 2);
+      ctx.fillStyle = '#8a2a2a'; ctx.fillRect(bx, sy + byo, 1, 1);
+    }
   }
   // Arme schwingen gegenläufig zu den Beinen
   const armCol = f.skeletal ? '#d8cfb0' : f.tunic;
@@ -126,6 +144,15 @@ function drawHumanoidParts(ctx: CanvasRenderingContext2D, f: FigureSpec, dir: Di
   if (dir === 2) { p(ctx, 8, 4 + bob, 1, 1); p(ctx, 10, 4 + bob, 1, 1); }
   // dir 3 (oben): kein Gesicht, Hinterkopf
   if (dir === 3 && !f.hat) p(ctx, 5, 2 + bob, 6, 3, f.hair);
+  // Schädel-Details (Runde 40): Nasenloch + Kieferlinie mit Zähnen - macht aus
+  // dem hellen Kopf einen erkennbaren Totenschädel (nur Frontansichten).
+  if (f.skeletal && dir !== 3) {
+    const hy = (2 + bob) * PX;
+    ctx.fillStyle = '#1a1208'; ctx.fillRect(15, hy + 5, 2, 2);          // Nasenloch
+    ctx.fillStyle = shade(f.skin, -34); ctx.fillRect(11, hy + 7, 10, 1); // Kieferlinie
+    ctx.fillStyle = '#15100a';
+    for (let t = 0; t < 4; t++) ctx.fillRect(12 + t * 2.4, hy + 7, 1, 2); // Zähne
+  }
 
   // Waffe in der Hand (rechts, bei links-Blick links)
   if (f.weapon) drawHeldWeapon(ctx, f.weapon, dir, bob);
@@ -255,7 +282,7 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   // KEIN blaues Hemd, KEINE Waffe in der Hand (geschlagen wird per Schwung-FX).
   // Oxblut-Wams, dunkler Lederumhang/Kapuze, kräftige Haut, größer als das Volk.
   spieler:   { tunic: '#6e2f2a', skin: '#d0a884', hair: '#2e2418', legs: '#3a2c1c', hat: '#39332c', weapon: null, scale: 1.18 },
-  pest:      { tunic: '#5a7a3a', skin: '#9aa87a', hair: '#46602e', legs: '#3a4a26', weapon: null, augen: '#d83030' },
+  pest:      { tunic: '#5a7a3a', skin: '#9aa87a', hair: '#46602e', legs: '#3a4a26', weapon: null, augen: '#d83030', seuche: true },
   skelett:   { tunic: '#cfc4a8', skin: '#e0d8c0', hair: '#cfc4a8', legs: '#b8ae90', weapon: 'schwert', skeletal: true, augen: '#e03030' },
   schuetze:  { tunic: '#b8a888', skin: '#d0c8b0', hair: '#b8a888', legs: '#a09070', weapon: 'bogen', skeletal: true, augen: '#e03030' },
   schatten:  { tunic: '#3a3450', skin: '#2a2440', hair: '#1e1a30', legs: '#16122a', weapon: null, glow: '#b06ae8', augen: '#e84860' },
