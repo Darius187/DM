@@ -81,6 +81,17 @@ export const GEMS: ReadonlyArray<GemDef> = [
 // Edelstein-Stärke: ri(2,4) + Ebene (Referenz rollGem)
 export const GEM_POWER = { min: 2, max: 4 } as const;
 
+// Elementarpfeile (Runde 44, Autorwunsch): Ist im Bogen ein Edelstein gefasst
+// UND die Bogen-Schule mindestens 'stufe', verschießt er glühende Element-
+// Pfeile. Feuer entzündet (DoT), Eis verlangsamt, Schatten saugt Leben.
+export const ELEM_PFEIL = {
+  stufe: 3,            // ab Bogen-Stufe 3 wirken gefasste Steine am Bogen
+  brennDauerS: 2.6,    // Feuer: Brenndauer
+  brennDpsMult: 0.4,   // Feuer: DoT pro Sekunde = Pfeilschaden * dies
+  slowS: 1.8,          // Eis: Verlangsamung
+  leech: 2,            // Schatten: Leben je Treffer
+} as const;
+
 // Raritätsfarben wie in der Referenz (CSS r0-r3)
 export const RARITY_COLORS: Readonly<Record<Rarity, string>> = {
   0: '#a8a294', // Gewöhnlich (grau, hebt sich von der Schriftfarbe ab - Runde 18)

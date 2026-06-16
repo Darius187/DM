@@ -32,13 +32,14 @@ import { mausLeisteAnkerX, tastenLeisteMitteX, orbHpAnkerX, orbMpAnkerX } from '
 import { TouchControls, isTouchDevice, type TouchHost } from '../ui/touch';
 import { UIPanels } from '../ui/panels';
 import { rollGear, rollGem } from '../logic/loot';
-import { KILL_DROPS, LEECH_HEAL_PER_POINT } from '../data/items';
+import { KILL_DROPS, LEECH_HEAL_PER_POINT, ELEM_PFEIL } from '../data/items';
 import { NOTIZEN } from '../data/texte';
 
 export interface Projectile {
   x: number; y: number; vx: number; vy: number; r: number; dmg: number;
   from: 'player' | 'enemy'; col: string; fire?: boolean; magie?: boolean; pierce?: boolean; arrow?: boolean;
   hitIds?: Set<number>; dead?: boolean;
+  elem?: 'feuer' | 'eis' | 'schatten'; gemPower?: number; // Elementarpfeil (Runde 44)
   // Pfeil-Wand-Physik (Runde 40, Physik-Test): steckt im Mauerwerk oder prallt ab
   steckt?: boolean; steckT?: number; praller?: number; steckAng?: number;
 }
@@ -994,11 +995,21 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.pdir = ang;
     const dmgMult = 1 + drawn * (ms.dmgMultFull - 1);
     const schulBonus = 1 + this.p.schools.bogen.level * 0.025;
-    const dmg = Math.round(this.rollDamage(dmgMult) * schulBonus);
+    let dmg = Math.round(this.rollDamage(dmgMult) * schulBonus);
+    // Elementarpfeil: gefasster Stein + genug Bogen-Erfahrung -> glühender
+    // Element-Pfeil (Autorwunsch R44). Farbe/Glühen/Effekt nach Stein.
+    const gem = weaponGem(this.p);
+    const elementar = !!gem && this.p.schools.bogen.level >= ELEM_PFEIL.stufe;
+    if (elementar) dmg += gem!.power;
     this.projectiles.push({
       x: this.px + Math.cos(ang) * 14, y: this.py + Math.sin(ang) * 14,
       vx: Math.cos(ang) * ms.projSpeed, vy: Math.sin(ang) * ms.projSpeed,
-      r: 4, dmg, from: 'player', col: '#d8d0b8', arrow: true,
+      r: elementar ? 5 : 4, dmg, from: 'player', col: elementar ? gem!.col : '#d8d0b8', arrow: true,
+      // Glühen: Feuer als Feuer-Geschoss, Eis/Schatten als magisches Leuchten
+      fire: elementar && gem!.elem === 'feuer',
+      magie: !!elementar && gem!.elem !== 'feuer',
+      elem: elementar ? gem!.elem : undefined,
+      gemPower: elementar ? gem!.power : undefined,
       // Durchschlag (Bogen Stufe 6): Pfeile durchdringen Gegner
       pierce: this.p.schools.bogen.level >= 6,
     });
@@ -2506,7 +2517,23 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.gainSchoolUse('bogen');
       this.sfx.play('pfeil_einschlag');
     }
-    if (pr.fire) {
+    // Elementarpfeil-Wirkung (Runde 44): Feuer entzündet (DoT + Splash), Eis
+    // verlangsamt, Schatten saugt Leben. Farbiger Funkenausbruch je Element.
+    if (pr.elem) {
+      this.fx.burst(pr.x, pr.y, parseInt(pr.col.slice(1), 16), 12, 150);
+      if (pr.elem === 'feuer') {
+        e.brennT = Math.max(e.brennT, ELEM_PFEIL.brennDauerS);
+        e.brennDps = Math.max(e.brennDps, pr.dmg * ELEM_PFEIL.brennDpsMult);
+        for (const o of [...this.enemies]) {
+          if (o !== e && Math.hypot(pr.x - o.x, pr.y - o.y) < 40) this.damageEnemy(o, Math.round(pr.dmg * 0.4), 0, 0, null, false);
+        }
+      } else if (pr.elem === 'eis') {
+        e.slowT = Math.max(e.slowT, ELEM_PFEIL.slowS);
+        this.fx.welle(pr.x, pr.y, 26, 0x9ad8f0);
+      } else if (pr.elem === 'schatten') {
+        this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + ELEM_PFEIL.leech);
+      }
+    } else if (pr.fire) {
       this.fx.burst(pr.x, pr.y, 0xe8842a, 14, 170);
       for (const o of [...this.enemies]) {
         if (o !== e && Math.hypot(pr.x - o.x, pr.y - o.y) < 46) this.damageEnemy(o, Math.round(pr.dmg * 0.5), 0, 0, null, false);
