@@ -1928,6 +1928,16 @@ export class WorldScene extends CombatScene {
     this.panels.refresh();
   }
 
+  // Panische Tiere überspringen Gatter-Zäune (Runde 41), nur feste Hindernisse
+  // (Wände, Bäume, Wasser, Palisaden ...) stoppen sie.
+  private solidFuerTier(x: number, y: number): boolean {
+    const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+    if (tx < 0 || ty < 0 || tx >= this.area.w || ty >= this.area.h) return true;
+    const t = this.area.map[ty][tx];
+    if (t === T.FENCE) return false;
+    return SOLID.has(t);
+  }
+
   // Geschosse fliegen über Wasser/Abgrund (Runde 41) - nur echte Hindernisse
   // (Wände, Bäume, Zäune, Palisaden ...) stoppen sie.
   protected override projektilWand(x: number, y: number): boolean {
@@ -5082,12 +5092,18 @@ export class WorldScene extends CombatScene {
       if (this.grosserEinfall) {
         let bd = 1e9; let bm: Enemy | null = null;
         for (const e of this.enemies) { if (e.hp <= 0) continue; const d = Math.hypot(e.x - t.curX, e.y - t.curY); if (d < bd) { bd = d; bm = e; } }
-        if (bm && bd < 180) {
-          const a = Math.atan2(t.curY - bm.y, t.curX - bm.x); // weg vom Monster
-          const spd = t.type === 'huhn' ? 54 : t.type === 'hund' ? 58 : 42;
+        // Runde 41 (Autorbug "Tiere rannten nicht weg"): solange Monster im Dorf
+        // sind, rennen die Tiere PANISCH quer über die Karte - aus den Gattern
+        // heraus (Zäune überspringen sie in Panik), nicht erst wenn ein Monster
+        // direkt daneben steht.
+        if (bm) {
+          const weg = Math.atan2(t.curY - bm.y, t.curX - bm.x);
+          const zappel = bd > 240 ? (Math.sin((t.curX + t.curY) * 0.03 + this.time.now * 0.002) * 0.7) : 0;
+          const a = weg + zappel;
+          const spd = (t.type === 'huhn' ? 54 : t.type === 'hund' ? 58 : 42) * 1.35;
           const nx = t.curX + Math.cos(a) * spd * dt, ny = t.curY + Math.sin(a) * spd * dt;
-          if (!this.isSolidAt(nx, t.curY)) t.curX = nx;
-          if (!this.isSolidAt(t.curX, ny)) t.curY = ny;
+          if (!this.solidFuerTier(nx, t.curY)) t.curX = nx;
+          if (!this.solidFuerTier(t.curX, ny)) t.curY = ny;
           t.dir = Math.cos(a) < 0 ? 1 : 2;
           t.stepT += dt; if (t.stepT > 0.11) { t.stepT = 0; t.step = (t.step + 1) % 4; }
           if (t.soundT <= 0) { t.soundT = 1.4 + Math.random() * 2; if (Math.hypot(t.curX - this.px, t.curY - this.py) < 460) this.sfx.play(t.type, 0.6); }
@@ -5385,7 +5401,9 @@ export class WorldScene extends CombatScene {
       this.checkBeinhaus();
       // Uhr läuft überall - im Dungeon nur ein Bruchteil (Runde 40)
       this.advanceClock(dt * (this.area.dark ? TAG.dungeonFaktor : 1));
-      if (!this.area.dark) this.updateVillageLife(dt);
+      // Dorfleben mit demselben Angriffs-Tempo wie der Kampf (Bewohner/Tiere
+      // fliehen genauso bedächtig wie Held und Gegner während des Einfalls).
+      if (!this.area.dark) this.updateVillageLife(dt * kampfTempo);
       // Kamin-Buff "Aufgewärmt": Regeneration im Kryptagang
       if (this.area.dark && this.p.warmBuff) {
         this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + KAMIN_BUFF.hpRegenPerS * dt);
