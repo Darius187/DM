@@ -1109,10 +1109,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   protected thrustAttack(ev: AttackEvent, ang: number): void {
     const ms = WEAPON_MOVESETS.stange;
-    const st = this.swingStyle();
     const stRange = ms.range * TUNING.spielerReichweite;
     const stArc = ms.arc * TUNING.spielerSchwungBreite;
-    this.fx.addSwing(this.px, this.py, ang, { col: st.col, w: st.w, glow: st.glow, arc: stArc, radius: stRange - 20 });
+    // Stich statt Schwung: gerade Lanze nach vorn + kleiner Ausfallschritt
+    this.fx.stoss(this.px, this.py, ang, stRange, 'rgba(214,210,194,');
+    this.movePlayer(Math.cos(ang) * 7, Math.sin(ang) * 7);
     this.playSwingSound('stange', false);
     const hit = this.hitEnemiesInArc(ang, stRange, stArc, ev.dmgMult, ms.knockback, false);
     if (hit) {

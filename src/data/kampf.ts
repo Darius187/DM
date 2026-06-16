@@ -77,7 +77,9 @@ export const ENEMY_HIT_PCT = { min: 0.10, max: 0.16 } as const;
 export const WEAPON_MOVESETS = {
   schwert: { comboLength: 3, speedMult: 1.0 },
   axt:     { comboLength: 2, sweep360: true, speedMult: 0.9 },   // 3. Eingabe = Rundumschlag
-  stange:  { comboLength: 1, thrust: true, range: 96, arc: 0.35, knockback: 14, speedMult: 0.95 },
+  // Hellebarde (Runde 44): präziser STICH statt Schwung - schmaler Trefferkegel
+  // (arc 0,35 -> 0,20), dafür mehr Reichweite (96 -> 116). Spürbarer Stoß-Schub.
+  stange:  { comboLength: 1, thrust: true, range: 116, arc: 0.20, knockback: 18, speedMult: 0.95 },
   wucht:   { comboLength: 1, overhead: true, aoeRadius: 40, postureDmgMult: 2.0, speedMult: 0.7, miniShake: true },
   // Runde 27/40: Bogen-Flugtempo auf Feuerball-Niveau gebracht (Autorwunsch:
   // "Schussgeschwindigkeit ungefähr wie der Feuerball" = 390)

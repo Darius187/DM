@@ -15,6 +15,8 @@ interface Lightning { points: Array<{ x: number; y: number }>; life: number }
 interface Aura { x: number; y: number; r: number; maxR: number; life: number; maxLife: number; col: number }
 // Fallende Flamme (Runde 40): Feuerregen - Streifen, der von oben einschlägt
 interface FireDrop { x: number; y: number; vy: number; life: number; len: number; flacker: number }
+// Stich-Lanze (Runde 44): gerader Stoß nach vorn (Hellebarde)
+interface Stoss { x: number; y: number; ang: number; len: number; life: number; maxLife: number; col: string }
 
 export class EffectSystem {
   private particles: Particle[] = [];
@@ -25,6 +27,7 @@ export class EffectSystem {
   private flashes: Flash[] = [];
   private auras: Aura[] = [];
   private fireDrops: FireDrop[] = [];
+  private stosse: Stoss[] = [];
   private gfx: Phaser.GameObjects.Graphics;
 
   constructor(private scene: Phaser.Scene, depth = 2500) {
@@ -123,6 +126,12 @@ export class EffectSystem {
     });
   }
 
+  // Hellebarden-Stich (Runde 44): eine Lanze schießt gerade nach vorn, kein
+  // breiter Schwung - präzise auf Reichweite. col z.B. 'rgba(210,206,190,'.
+  stoss(x: number, y: number, ang: number, len: number, col: string): void {
+    this.stosse.push({ x, y, ang, len, life: 0.16, maxLife: 0.16, col });
+  }
+
   // Kettenblitz: gezackte Linie zwischen den Zielen
   lightning(points: Array<{ x: number; y: number }>): void {
     this.lightnings.push({ points, life: 0.25 });
@@ -183,6 +192,8 @@ export class EffectSystem {
     this.fireDrops = this.fireDrops.filter((fd) => fd.life > 0);
     for (const s of this.swings) s.life -= dt;
     this.swings = this.swings.filter((s) => s.life > 0);
+    for (const s of this.stosse) s.life -= dt;
+    this.stosse = this.stosse.filter((s) => s.life > 0);
     for (const f of this.floats) {
       f.obj.y -= 34 * dt;
       f.life -= dt;
@@ -208,6 +219,21 @@ export class EffectSystem {
       g.beginPath();
       g.arc(s.x, s.y, rad, s.ang - s.arc + shift, s.ang + s.arc + shift);
       g.strokePath();
+    }
+    // Stich-Lanzen (Runde 44): schießen gerade nach vorn und ziehen sich zurück
+    for (const s of this.stosse) {
+      const prog = 1 - s.life / s.maxLife;        // 0 -> 1
+      const reach = s.len * Math.min(1, prog * 2.2); // schnell raus, dann halten
+      const ca = Math.cos(s.ang), sa = Math.sin(s.ang);
+      const tipX = s.x + ca * reach, tipY = s.y + sa * reach;
+      const baseX = s.x + ca * 8, baseY = s.y + sa * 8;
+      const col = cssToHex(s.col);
+      g.lineStyle(5, col, 0.5 * (1 - prog));       // breiter Schein
+      g.beginPath(); g.moveTo(baseX, baseY); g.lineTo(tipX, tipY); g.strokePath();
+      g.lineStyle(2.2, col, 0.95 * (1 - prog));    // scharfe Klinge
+      g.beginPath(); g.moveTo(baseX, baseY); g.lineTo(tipX, tipY); g.strokePath();
+      g.fillStyle(0xffffff, 0.8 * (1 - prog));     // heller Stoß-Punkt
+      g.fillCircle(tipX, tipY, 2.6);
     }
     // Lichtblitz (hinter den Partikeln) - kurzer heller Gore-Puls
     for (const fl of this.flashes) {

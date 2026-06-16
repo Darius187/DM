@@ -109,7 +109,9 @@ export const ABILITY_FX = {
   // haben spaeter massig Gegner"). Die Faehigkeiten sollen Werkzeuge gegen
   // Massen sein, nicht alle paar Sekunden mal.
   rundumschlag: { dmgMult: 1.5, radius: 75, cd: 1.8, stangeRadius: 105, stangeDmgMult: 1.8 },
-  sturmangriff: { distance: 160, speed: 700, dmgMult: 1.4, cd: 5 },
+  // Runde 44: deutlich gekürzt (160->85 px, ~2,5 Kacheln) - war "durch die
+  // halbe Karte". Ein kurzer, harter Ansturm statt Dauer-Sprint.
+  sturmangriff: { distance: 85, speed: 700, dmgMult: 1.4, cd: 5 },
   hinrichtung: { dmgMultVsStunned: 2.5, cd: 7 },
   kettenblitz: { mana: 16, dmgBase: 18, dmgPerLevel: 5, jumps: 3, jumpRange: 150, cd: 1.2 },
   // Frostnova: laengerer, klar spuerbarer Slow als Crowd-Control, oefter wirkbar
