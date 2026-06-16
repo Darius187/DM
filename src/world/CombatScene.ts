@@ -89,6 +89,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   // --- Von Unterklassen zu liefern ---
   abstract isSolidAt(x: number, y: number): boolean;
+  // Was ein GESCHOSS blockt (Standard = wie das Gehen). WorldScene lässt Pfeile/
+  // Zauber über Wasser und Abgrund hinwegfliegen (Runde 41).
+  protected projektilWand(x: number, y: number): boolean { return this.isSolidAt(x, y); }
   protected abstract onEnemyKilled(e: Enemy): void;
   protected abstract onPlayerDeath(): void;
 
@@ -2327,7 +2330,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       const ox = pr.x, oy = pr.y; // letzte freie Stelle (vor dem Schritt)
       pr.x += pr.vx * dt;
       pr.y += pr.vy * dt;
-      if (this.isSolidAt(pr.x, pr.y)) {
+      if (this.projektilWand(pr.x, pr.y)) {
         // Pfeil-Wand-Physik nur im Physik-Test (Runde 40): stecken oder abprallen
         if (TUNING.physikTest && pr.arrow && this.pfeilTrifftWand(pr, ox, oy)) continue;
         pr.dead = true;

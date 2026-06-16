@@ -30,6 +30,12 @@ export const SOLID = new Set<number>([
   T.PILLAR, // Steinpfeiler
 ]);
 
+// Bodennahe Lücken, über die GESCHOSSE hinwegfliegen (Runde 41, Autorbug
+// "über den Fluss kann ich nicht laufen - richtig - aber auch nicht schießen"):
+// Wasser und Abgrund blocken zwar das Gehen, ein Pfeil/Feuerball fliegt aber
+// darüber. Wände/Bäume/Zäune/Palisaden blocken weiterhin.
+export const FLYOVER = new Set<number>([T.WATER, T.ABYSS]);
+
 // Tile-ID -> Name für den SpriteProvider (Hot-Swap-fähig).
 // HWALL/CWALL/WALL brauchen Kontext (Fassade vs. Dach), siehe tileNameAt.
 const NAME: Record<number, string> = {

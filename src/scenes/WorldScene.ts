@@ -23,7 +23,7 @@ import { GATHER } from '../data/crafting';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, tageszeitLabel } from '../data/welt';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
-import { T, SOLID, tileNameAt } from '../world/tiles';
+import { T, SOLID, FLYOVER, tileNameAt } from '../world/tiles';
 import { TILE } from '../gfx/fallbackArt';
 import { WASSER_FRAMES } from '../gfx/tileArt';
 import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64, drawSchlucht, drawKristall } from '../gfx/detailArt';
@@ -1908,6 +1908,16 @@ export class WorldScene extends CombatScene {
     const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
     if (tx < 0 || ty < 0 || tx >= this.area.w || ty >= this.area.h) return true;
     return SOLID.has(this.area.map[ty][tx]);
+  }
+
+  // Geschosse fliegen über Wasser/Abgrund (Runde 41) - nur echte Hindernisse
+  // (Wände, Bäume, Zäune, Palisaden ...) stoppen sie.
+  protected override projektilWand(x: number, y: number): boolean {
+    const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+    if (tx < 0 || ty < 0 || tx >= this.area.w || ty >= this.area.h) return true;
+    const t = this.area.map[ty][tx];
+    if (FLYOVER.has(t)) return false;
+    return SOLID.has(t);
   }
 
   protected override areaDepth(): number {
