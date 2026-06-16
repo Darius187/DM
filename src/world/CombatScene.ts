@@ -1563,12 +1563,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     } else if (sk.id === 'heiligesLicht') {
       const fx = SPELL_FX.heiligesLicht;
       const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level + zLevel * 2 + stabBonus;
-      this.fx.burst(this.px, this.py, 0xf0dc92, 34, 220);
-      this.shake(4);
+      this.heiligesLichtEffekt(this.px, this.py, fx.radius);
+      this.shake(5);
       this.sfx.play('heiliges_licht');
       for (const e of [...this.enemies]) {
         if (Math.hypot(e.x - this.px, e.y - this.py) < fx.radius + e.r) {
-          this.damageEnemy(e, Math.round(dmg * (0.9 + Math.random() * 0.3)), 0, 0, null, false);
+          // Säuberung: Untote (alles außer Wolf/Ratte) nehmen mehr Schaden
+          const untot = e.type !== 'wolf' && e.type !== 'ratte';
+          this.damageEnemy(e, Math.round(dmg * (untot ? 1.4 : 1) * (0.9 + Math.random() * 0.3)), 0, 0, '#fff4cc', false);
         }
       }
       this.telegraphs.push({ x: this.px, y: this.py, r: fx.radius, t: 0.22, maxT: 0.22, dmg: 0, holy: true });
@@ -1580,6 +1582,30 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.sfx.play('heilung');
     }
     this.gainSchoolUse('zauberei');
+  }
+
+  // Greller, göttlicher Lichtblitz - "Heiliges Licht der Säuberung" (Runde 41,
+  // Autorwunsch). Lichtsäule von oben, weißer Blitz, ausbreitender Reinigungsring.
+  protected heiligesLichtEffekt(x: number, y: number, radius: number): void {
+    this.cameras.main.flash(300, 255, 250, 225);
+    // Lichtsäule von oben (lokale Koordinaten, damit das Aufflackern sauber skaliert)
+    const saeule = this.add.graphics().setDepth(y + 60).setBlendMode(Phaser.BlendModes.ADD).setPosition(x, y);
+    const h = 440;
+    for (let i = 0; i < 5; i++) {
+      const w = radius * (0.55 - i * 0.08);
+      saeule.fillStyle(i < 2 ? 0xffffff : 0xfff0bc, 0.5 - i * 0.08);
+      saeule.fillRect(-w, -h, w * 2, h + 12);
+    }
+    saeule.fillStyle(0xfff4cc, 0.5); saeule.fillCircle(0, 0, radius * 0.5);
+    this.tweens.add({ targets: saeule, alpha: 0, scaleY: 1.12, duration: 640, ease: 'Quad.out', onComplete: () => saeule.destroy() });
+    // ausbreitender Reinigungsring
+    const ring = this.add.graphics().setDepth(y + 61).setBlendMode(Phaser.BlendModes.ADD).setPosition(x, y);
+    ring.lineStyle(5, 0xffffff, 0.95); ring.strokeCircle(0, 0, radius * 0.35);
+    ring.lineStyle(2, 0xfff0bc, 0.8); ring.strokeCircle(0, 0, radius * 0.35);
+    this.tweens.add({ targets: ring, scale: radius / (radius * 0.35), alpha: 0, duration: 540, ease: 'Cubic.out', onComplete: () => ring.destroy() });
+    // göttliche Strahlen + Funken
+    this.fx.burst(x, y, 0xfff4c8, 46, 290);
+    this.fx.burst(x, y, 0xffffff, 26, 170);
   }
 
   // --- Fähigkeiten der drei Schulen (Masterprompt Teil 6) -------------------
