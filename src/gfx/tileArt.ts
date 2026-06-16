@@ -4,7 +4,7 @@
 
 import { TILE } from './fallbackArt';
 import type { CryptTheme } from '../data/krypta';
-import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64 } from './detailArt';
+import { fels64, zaun64, acker64, folterbank64, altar64, wasser64 } from './detailArt';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -52,6 +52,9 @@ function floorBase(ctx: Ctx, n: number, theme?: CryptTheme): void {
   const g = f[0] + n * 2;
   ctx.fillStyle = `rgb(${g},${g + f[1]},${g + f[2]})`;
   ctx.fillRect(0, 0, TILE, TILE);
+  // Eigener Stil ab Ebene 4 (Runde 40): Kerker-Quaderstein bzw. Glut-Boden
+  if (theme?.stil === 'verlies') { floorVerlies(ctx, n, g); return; }
+  if (theme?.stil === 'glut') { floorGlut(ctx, n); return; }
   ctx.strokeStyle = 'rgba(0,0,0,0.25)';
   ctx.strokeRect(0.5, 0.5, TILE - 1, TILE - 1);
   // Plattenfugen + abgenutzte Stellen je Variante
@@ -67,6 +70,31 @@ function floorBase(ctx: Ctx, n: number, theme?: CryptTheme): void {
     ctx.moveTo(4, 8); ctx.lineTo(13, 14); ctx.lineTo(11, 22); ctx.lineTo(19, 27);
     ctx.stroke();
   }
+}
+
+// Verlies (Ebene 4): großer, kalter Quaderstein - tiefe Fuge ringsum, kühle
+// Lichtkante oben, gelegentlich Eisennieten. Sauberer/kälter als das Krypta-
+// Pflaster -> wirkt wie ein anderer Abschnitt (Kerker).
+function floorVerlies(ctx: Ctx, n: number, g: number): void {
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1.5; ctx.strokeRect(1, 1, TILE - 2, TILE - 2);
+  ctx.fillStyle = `rgba(${g + 24},${g + 30},${g + 42},0.3)`; ctx.fillRect(2, 2, TILE - 4, 2);   // kühle Lichtkante
+  ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(2, TILE - 4, TILE - 4, 2);                    // Schattenkante
+  ctx.fillStyle = `rgba(${g + 12},${g + 16},${g + 26},0.1)`; ctx.fillRect(3, 4, TILE - 6, TILE - 8); // Innenglanz
+  if (n % 3 === 0) { ctx.fillStyle = '#2c333f'; for (const [bx, by] of [[4, 4], [TILE - 6, 4], [4, TILE - 6], [TILE - 6, TILE - 6]]) ctx.fillRect(bx, by, 2, 2); }
+  if (n === 5 || n === 1) { ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(8, 6); ctx.lineTo(13, 15); ctx.lineTo(11, 24); ctx.stroke(); }
+  ctx.lineWidth = 1;
+}
+
+// Glutkatakomben (Ebene 5): verkohlter Boden mit glühenden Rissen.
+function floorGlut(ctx: Ctx, n: number): void {
+  ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  for (let i = 0; i < 3; i++) ctx.fillRect(((n * 7 + i * 11) % 24) + 3, ((n * 5 + i * 9) % 24) + 3, 5, 4);
+  const sx = (n % 3) * 8 + 4;
+  ctx.strokeStyle = 'rgba(228,108,40,0.55)'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(sx, 3); ctx.lineTo(sx + 5, 13); ctx.lineTo(sx + 1, 23); ctx.lineTo(sx + 8, TILE - 1); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,190,100,0.55)'; ctx.lineWidth = 0.6; ctx.stroke();  // heißer Kern
+  ctx.fillStyle = 'rgba(255,150,60,0.6)'; ctx.fillRect(((n * 13) % 26) + 3, ((n * 9) % 26) + 3, 1.5, 1.5);
+  ctx.lineWidth = 1;
 }
 
 export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptTheme): void {
@@ -227,6 +255,15 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       ctx.fillRect((n % 2) * 8 + 19, TILE - 6, 1, 6);
       ctx.fillStyle = 'rgba(255,255,255,0.05)';
       ctx.fillRect(0, TILE - 10, TILE, 1);
+      // Stil-Akzent ab Ebene 4 (Runde 40)
+      if (wt.stil === 'verlies') {
+        ctx.fillStyle = 'rgba(96,116,150,0.12)'; ctx.fillRect(0, TILE - 10, TILE, 2);   // kühler Glanz
+        ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect((n % 3) * 10 + 3, TILE - 10, 1, 10); // saubere Quaderfuge
+      } else if (wt.stil === 'glut') {
+        ctx.strokeStyle = 'rgba(230,110,40,0.5)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo((n % 4) * 7 + 4, TILE - 9); ctx.lineTo((n % 4) * 7 + 7, TILE - 2); ctx.stroke();
+        ctx.lineWidth = 1;
+      }
       break;
     }
     case 'mauerriss': {
@@ -246,9 +283,11 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       break;
     }
     case 'knochen':
-      // Liegendes Skelett (Runde 40, Batch 2) auf der Bodenplatte
+      // Boden-Skelette weglassen (Runde 40, Autorwunsch): nur noch ein dezenter
+      // dunkler Fleck am Boden, KEIN ganzes Skelett mehr auf der Kachel.
       floorBase(ctx, n, theme);
-      detail(ctx, skelett64);
+      ctx.fillStyle = 'rgba(20,16,12,0.28)';
+      ctx.beginPath(); ctx.ellipse(15 + (n % 4), 16 + (n % 3), 7, 4, 0, 0, 6.283); ctx.fill();
       break;
     case 'blut':
       floorBase(ctx, n, theme);

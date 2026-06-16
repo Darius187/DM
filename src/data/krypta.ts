@@ -11,15 +11,19 @@ export interface CryptTheme {
   blood: number;
   rune: string;
   torchMod: number;
+  // Boden-/Wand-STIL ab Ebene 4 (Runde 40, Autorwunsch "wie ein neuer
+  // Abschnitt"): 'verlies' = kalter Quaderstein-Kerker, 'glut' = verbrannter
+  // Boden mit glühenden Rissen. Ohne stil: das klassische Krypta-Pflaster.
+  stil?: 'verlies' | 'glut';
 }
 
 export const CRYPT_THEMES: Readonly<Record<number, CryptTheme>> = {
   1: { name: 'Krypta - Gruft',        floor: [27, -3, -6], wallTop: '#0f0c08', wallFace: '#262017', bones: 0.030, blood: 0.015, rune: '#7a3aa0', torchMod: 4 },
   2: { name: 'Krypta - Beinhaus',     floor: [31, 3, -2],  wallTop: '#0b0d0a', wallFace: '#222818', bones: 0.110, blood: 0.030, rune: '#7a3aa0', torchMod: 5 },
   3: { name: 'Die alte Kultstätte',   floor: [26, -7, -9], wallTop: '#130808', wallFace: '#321a12', bones: 0.045, blood: 0.095, rune: '#c03030', torchMod: 3 },
-  // NEU (Feedback-Runde 4): zwei weitere Ebenen vor dem Grab
-  4: { name: 'Das Verlies',           floor: [22, -2, -4], wallTop: '#0a0a0c', wallFace: '#1e2026', bones: 0.060, blood: 0.040, rune: '#5a7ae0', torchMod: 4 },
-  5: { name: 'Die Glutkatakomben',    floor: [34, -14, -18], wallTop: '#160604', wallFace: '#3a140a', bones: 0.020, blood: 0.140, rune: '#e06a2a', torchMod: 2 },
+  // NEU (Feedback-Runde 4): zwei weitere Ebenen vor dem Grab - eigener Stil
+  4: { name: 'Das Verlies',           floor: [30, 2, 8],   wallTop: '#0a0c12', wallFace: '#2a3242', bones: 0.060, blood: 0.040, rune: '#5a7ae0', torchMod: 4, stil: 'verlies' },
+  5: { name: 'Die Glutkatakomben',    floor: [26, -10, -16], wallTop: '#160604', wallFace: '#3a140a', bones: 0.020, blood: 0.140, rune: '#e06a2a', torchMod: 2, stil: 'glut' },
   6: { name: 'Grab des Kreuzritters', floor: [24, -5, -7], wallTop: '#130808', wallFace: '#321a12', bones: 0.040, blood: 0.060, rune: '#c03030', torchMod: 3 },
 };
 
