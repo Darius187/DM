@@ -9,6 +9,8 @@ import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
 import { NebelFratzen } from '../systems/NebelFratzen';
+import { RabenSchwarm } from '../systems/Raben';
+import { RABEN } from '../data/raben';
 import { LANDHERR } from '../data/dialoge';
 import storyJson from '../data/story.json';
 import { ShopUI } from '../ui/shop';
@@ -148,6 +150,7 @@ export class WorldScene extends CombatScene {
   private bossLeichen: Array<{ g: Phaser.GameObjects.Graphics; x: number; y: number; ph: number }> = [];
   private bossTorZu = false;                     // Eingangstor hinter dem Helden versiegelt
   private bossNebel: NebelFratzen | null = null; // Fratzen-Nebel über dem Blutstrom (Runde 41)
+  private raben: RabenSchwarm | null = null;     // Raben im Freien (Runde 45)
   private kadaver: Kadaver[] = [];               // gerissene Tiere - Monster fressen daran (Runde 41)
   private deathOverlay: Phaser.GameObjects.Container | null = null;
 
@@ -1312,6 +1315,7 @@ export class WorldScene extends CombatScene {
     // auch wenn man mitten im Kampf geflohen ist und wiederkommt
     if (id === 'boss' && this.bossKampfSteht() && !a.geleert) this.resetBossTore(a);
     if (id === 'boss') this.baueBossBlut();
+    if (!a.dark && !a.innen && (id === 'village' || id === 'wald')) this.baueRaben();
     if (id === 'crypt3') this.flags.ebene3 = true;
     this.gruselT = 6 + Math.random() * 8;
     // Gebiets-Musik (Runde 17): liegt musik_dorf/wald/krypta als Loop vor,
@@ -1421,6 +1425,31 @@ export class WorldScene extends CombatScene {
   // blutgetränkt, aus dem Grab quillt ein Becken (font), durch die Wächterhalle
   // wälzt sich ein leuchtender Blutstrom (river), überall rinnt und tropft es.
   // Rein optisch (keine Kollision) - der Kampf bleibt frei begehbar.
+  // Raben im Freien (Runde 45): Sitzplätze aus Baumkronen, Dächern und
+  // Grabsteinen sammeln, dann den Schwarm setzen. Rufe laufen räumlich.
+  private baueRaben(): void {
+    const a = this.area;
+    const sitz: Array<{ x: number; y: number }> = [];
+    for (let ty = 0; ty < a.h; ty++) {
+      const reihe = a.map[ty]; if (!reihe) continue;
+      for (let tx = 0; tx < a.w; tx++) {
+        if (reihe[tx] === T.TREE) sitz.push({ x: tx * TILE + 16, y: ty * TILE - 10 });          // Baumkrone
+        else if (reihe[tx] === T.GRAVE) sitz.push({ x: tx * TILE + 16, y: ty * TILE + 4 });      // Grabstein
+      }
+    }
+    for (const hp of a.hausPlaetze ?? []) {
+      sitz.push({ x: ((hp.x0 + hp.x1 + 1) / 2) * TILE, y: hp.y0 * TILE - 2 });                    // Dachfirst
+    }
+    const anzahl = a.id === 'village' ? RABEN.anzahlDorf : RABEN.anzahlWald;
+    this.raben = new RabenSchwarm(this, anzahl, {
+      spielerX: () => this.px,
+      spielerY: () => this.py,
+      sitzplaetze: () => sitz,
+      aas: () => this.kadaver.map((k) => ({ x: k.x, y: k.y })),
+      ruf: (x, y) => this.sfx.playAt('rabenruf', x, y, 0.9),
+    });
+  }
+
   private baueBossBlut(): void {
     const T = TILE;
     const blut = (x: number, y: number, w: number, h: number, intensity: 'drip' | 'trickle' | 'river' | 'font') =>
@@ -1523,6 +1552,7 @@ export class WorldScene extends CombatScene {
     this.bossBlut = [];
     this.bossBlutBoden?.destroy(); this.bossBlutBoden = null;
     this.bossNebel?.destroy(); this.bossNebel = null;
+    this.raben?.destroy(); this.raben = null;
     for (const l of this.bossLeichen) l.g.destroy();
     this.bossLeichen = [];
     this.bossTorZu = false;
@@ -5269,7 +5299,6 @@ export class WorldScene extends CombatScene {
   // --- Dorfleben: Tiere, Tagesablauf, Atmosphäre ------------------------------------
 
   private smokeT = 0;
-  private crowT = 6;
 
   // Spieltag-Uhr (Runde 40 aus updateVillageLife herausgelöst): läuft auch
   // unter der Erde weiter, dort nur stark verlangsamt (TAG.dungeonFaktor).
@@ -5462,12 +5491,9 @@ export class WorldScene extends CombatScene {
       this.smokeT = 0.35;
       for (const ch of this.area.chimneys) this.fx.smoke(ch.x, ch.y);
     }
-    // Krähen auf dem Friedhof
-    this.crowT -= dt;
-    if (this.crowT <= 0) {
-      this.crowT = 9 + Math.random() * 14;
-      if (this.area.id === 'village') this.sfx.play('kraehen', 0.4);
-    }
+    // Raben (Runde 45): eigenes Verhalten + räumliche Rufe ersetzen den alten
+    // generischen Krähenton
+    this.raben?.update(dt, this.time.now);
   }
 
   // Bewohner-Trennung (Runde 40): überlappende sichtbare NPCs achsenweise

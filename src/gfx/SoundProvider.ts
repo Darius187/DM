@@ -43,6 +43,8 @@ const SYNTH: Record<string, SynthStep[]> = {
   kuh: [{ freq: 110, dur: 0.5, type: 'triangle', vol: 0.03 }],
   hund: [{ freq: 340, dur: 0.1, type: 'square', vol: 0.035 }],
   kraehen: [{ freq: 500, dur: 0.12, type: 'sawtooth', vol: 0.025 }],
+  // Heiseres "kraa-kraa" des Raben (Runde 45); echte Datei snd_rabenruf gewinnt
+  rabenruf: [{ freq: 360, dur: 0.16, type: 'sawtooth', vol: 0.032 }, { freq: 300, dur: 0.17, type: 'sawtooth', vol: 0.03, delay: 0.2 }],
   klick: [{ freq: 500, dur: 0.05, type: 'sine', vol: 0.04 }],
   item_episch: [{ freq: 520, dur: 0.12, type: 'sine', vol: 0.05 }, { freq: 780, dur: 0.14, type: 'sine', vol: 0.05, delay: 0.1 }, { freq: 1040, dur: 0.2, type: 'sine', vol: 0.05, delay: 0.22 }],
   levelup: [{ freq: 440, dur: 0.15, type: 'triangle', vol: 0.06 }, { freq: 660, dur: 0.22, type: 'triangle', vol: 0.05, delay: 0.1 }],
