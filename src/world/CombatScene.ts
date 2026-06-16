@@ -14,7 +14,7 @@ import {
   newCombatState, inputLight, inputHeavy, inputRoll, inputBlockStart, inputBlockEnd,
   stepCombat, resolveIncoming, damageAfterArmor, blockedDamage, type CombatState, type AttackEvent,
 } from '../logic/combat';
-import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TIMESCALE, WEAPON_MOVESETS, GORE_WUCHT, PHYSIK, PFEIL_PHYSIK } from '../data/kampf';
+import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TIMESCALE, WEAPON_MOVESETS, GORE_WUCHT, KNOCKBACK, PHYSIK, PFEIL_PHYSIK } from '../data/kampf';
 import { ALTAR, SPELLS, SPELL_FX, SCHOOLS } from '../data/balancing';
 import { newPlayerState, recalc, weaponGem, aktiveWaffe, type PlayerState } from '../logic/playerState';
 import { addSchoolUse } from '../logic/progression';
@@ -1132,30 +1132,40 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Runde 31: gelieferter Aufprall-Klang für Hammer/Streitkolben
     if (this.sfx.has('wucht_schlag')) this.sfx.play('wucht_schlag');
     else this.playSwingSound('wucht', true);
-    this.fx.burst(cx, cy, 0x8c6a3a, 14, 160);
+    // Aufprall: Staubwolke + ausbreitender Wucht-Ring (Runde 44)
+    this.fx.burst(cx, cy, 0x8c6a3a, 20, 220);
+    this.fx.welle(cx, cy, aoe + 18, 0xcdbf9d);
     let hit = false;
     for (const e of [...this.enemies]) {
       if (Math.hypot(e.x - cx, e.y - cy) < aoe + e.r) {
-        this.damageEnemy(e, this.rollDamage(ev.dmgMult), Math.cos(ang) * 10, Math.sin(ang) * 10);
-        e.stun = Math.max(e.stun, HEAVY_ATTACK.postureStunS * 0.5); // bester Haltungsschaden
+        this.damageEnemy(e, this.rollDamage(ev.dmgMult), 0, 0);
+        // Brachialer Rückstoß weg vom Einschlag (Autorwunsch R44)
+        const ka = Math.atan2(e.y - cy, e.x - cx);
+        e.stossWeg(Math.cos(ka) * KNOCKBACK.hammer, Math.sin(ka) * KNOCKBACK.hammer, KNOCKBACK.hammerStunS);
         hit = true;
       }
     }
-    if (ms.miniShake) this.shake(4);
+    this.shake(hit ? 8 : 4);
     if (hit) this.applyHitstop(HITSTOP_MS.finisher);
   }
 
   // Rundumschlag (Axt-Finisher und Nahkampf-Fähigkeit Stufe 3)
   protected spinAttack(dmgMult: number, radius: number = ABILITY_FX.rundumschlag.radius): void {
     const st = this.swingStyle();
-    this.fx.addSwing(this.px, this.py, this.pdir, { fin: true, col: st.col, w: st.w + 1, glow: st.glow, arc: 3.14, radius: radius - 18 });
+    // Voller 360°-Wirbel + ausbreitender Stoßring, damit der Rundumschlag
+    // sichtbar "räumt" (Autorwunsch R44: besser visualisiert)
+    this.fx.addSwing(this.px, this.py, this.pdir, { fin: true, col: st.col, w: st.w + 2, glow: st.glow, arc: 6.28, radius: radius - 12 });
+    this.fx.welle(this.px, this.py, radius + 10, 0xe8dcc0);
+    this.fx.burst(this.px, this.py, 0xd8cfb8, 14, 200);
     this.playSwingSound('axt', true);
     let hit = false;
     for (const e of [...this.enemies]) {
       const d = Math.hypot(e.x - this.px, e.y - this.py);
       if (d < radius + e.r) {
         const a = Math.atan2(e.y - this.py, e.x - this.px);
-        this.damageEnemy(e, this.rollDamage(dmgMult), Math.cos(a) * 10, Math.sin(a) * 10);
+        this.damageEnemy(e, this.rollDamage(dmgMult), 0, 0);
+        // Rundumschlag/Axt schleudert alle Getroffenen nach außen (Runde 44)
+        e.stossWeg(Math.cos(a) * KNOCKBACK.axt, Math.sin(a) * KNOCKBACK.axt, KNOCKBACK.axtStunS);
         hit = true;
       }
     }

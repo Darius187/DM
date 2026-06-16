@@ -134,6 +134,12 @@ export class EffectSystem {
     this.auras.push({ x, y, r: maxR * 0.25, maxR, life: 0.6, maxLife: 0.6, col: 0x6ad0f0 });
   }
 
+  // Wucht-Welle (Runde 44): farbiger Stoßring für schwere Treffer (Hammer/Axt),
+  // wächst kurz nach außen und verblasst - macht den Aufprall spürbar.
+  welle(x: number, y: number, maxR: number, col: number): void {
+    this.auras.push({ x, y, r: maxR * 0.3, maxR, life: 0.34, maxLife: 0.34, col });
+  }
+
   // Fallende Flamme (Runde 40): ein Feuerstreif schlägt nach fallS Sekunden am
   // Boden ein - der Feuerregen sieht damit nach echtem Regen aus, nicht nach
   // Kreisen. Die Flamme startet oberhalb des Ziels und stürzt herab.

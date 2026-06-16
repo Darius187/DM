@@ -96,6 +96,14 @@ export const WEAPON_MOVESETS = {
 // leicht abgeschwächt, da man hinter dem Schild gedeckt bleibt
 export const GUARDED_ATTACK = { dmgMult: 0.8, recoveryMult: 1.25 } as const;
 
+// Wucht-Rückstoß (Runde 44, Autorwunsch "krasser Wuchteffekt"): Impuls (px/s),
+// mit dem schwere Waffen Gegner zurückschleudern, plus kurze Betäubung danach.
+// Hammer/Streitkolben = brachial, Axt(-Rundumschlag) = spürbar.
+export const KNOCKBACK = {
+  hammer: 380, hammerStunS: 0.55,
+  axt: 250, axtStunS: 0.3,
+} as const;
+
 // Wucht der Waffe für den Todes-Gore (Runde 35): wie weit die Teile/Partikel
 // vom Treffer wegfliegen. Hammer/Streitkolben (wucht) schlägt am härtesten,
 // Axt drückt mit, Schwert mittig, Bogen/Stab wenig. Leicht änderbar.

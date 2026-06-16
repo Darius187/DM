@@ -116,6 +116,8 @@ export class Enemy {
   schlagtempoF = 1; // Per-Typ-Schlagtempo (F10, beim Spawn gesetzt)
   reichweiteF = 1;  // Per-Typ-Hiebreichweite (F10, beim Spawn gesetzt)
   kvx = 0; kvy = 0; // Physik-Rückstoß-Geschwindigkeit (Runde 36, Physik-Test)
+  kbT = 0;          // Rückstoß-Restzeit (Runde 44): Wucht-/Axt-Treffer schleudern
+  //                   den Gegner kurz zurück, unabhängig vom Physik-Test.
   // Steckende Pfeile (Runde 40, Physik-Test): bleiben im Körper, bis er fällt.
   // rx/ry = Versatz vom Mittelpunkt (wandert mit), ang = Einschlagwinkel.
   steckPfeile?: Array<{ rx: number; ry: number; ang: number }>;
@@ -244,6 +246,16 @@ export class Enemy {
       && !host.isSolidAt(this.x - r, ny + r) && !host.isSolidAt(this.x + r, ny + r)) this.y = ny;
   }
 
+  // Wucht-Rückstoß (Runde 44): schleudert den Gegner mit Geschwindigkeit vx/vy
+  // weg und betäubt ihn kurz, damit er nicht sofort wieder heranläuft. Wirkt
+  // IMMER (nicht nur im Physik-Test), aber bei Bossen stark gedämpft.
+  stossWeg(vx: number, vy: number, stunS: number): void {
+    const f = this.boss ? 0.18 : this.champion ? 0.5 : 1;
+    this.kvx = vx * f; this.kvy = vy * f;
+    this.kbT = 0.22;
+    this.stun = Math.max(this.stun, stunS * f);
+  }
+
   hasLineOfSight(host: EnemyHost): boolean {
     const steps = 14;
     const px = host.playerX(), py = host.playerY();
@@ -269,6 +281,16 @@ export class Enemy {
     const ang = Math.atan2(py - this.y, px - this.x);
     this.dir = angleToDir(ang);
 
+    // Wucht-Rückstoß (Runde 44): Hammer/Axt schleudern den Gegner zurück - er
+    // gleitet mit Reibung aus, bevor die KI (nach dem kurzen Stun) übernimmt.
+    // Gilt IMMER, nicht nur im Physik-Test.
+    if (this.kbT > 0) {
+      this.kbT -= dt;
+      this.moveBody(host, this.kvx * dt, this.kvy * dt);
+      this.kvx *= 0.86; this.kvy *= 0.86;
+      this.advanceStep(dt);
+      return;
+    }
     // Physik-Rückstoß (Runde 36, nur im Physik-Test): weggeschleudert gleitet
     // und prallt der Gegner, bevor die KI wieder übernimmt. Bosse bleiben fest.
     if (TUNING.physikTest && !this.boss && (Math.abs(this.kvx) > 8 || Math.abs(this.kvy) > 8)) {
