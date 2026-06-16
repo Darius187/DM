@@ -177,6 +177,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       // offenem Fenster, damit man es jederzeit auslösen kann. Nur Dev-Build.
       if (import.meta.env.DEV && k === 'k' && !this.playerDead) { this.hurtPlayer(99999); return; }
       if (this.playerDead) return;
+      // Escape bricht den Bodenzauber-Zielmodus ab (Runde 46)
+      if (k === 'escape' && this.zielModus) { this.zielModus = null; this.logMsg('Abgebrochen.', ''); return; }
       const b = getSettings().kb;
       // Offene Fenster: nur Schließen-Tasten durchlassen
       if (this.uiBlocked()) {
@@ -224,6 +226,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       // Entwicklungskasten ...), schlägt der Held NICHT zu
       const uiTreffer = this.input.hitTestPointer(ptr) as Array<Phaser.GameObjects.GameObject & { scrollFactorX?: number }>;
       if (uiTreffer.some((o) => o.scrollFactorX === 0)) return;
+      // Bodenzauber-Zielmodus (Runde 46): Linksklick wirkt am Cursor, jeder
+      // andere Klick bricht ab. Kein Weltangriff währenddessen.
+      if (this.zielModus) {
+        if (ptr.button === 0) this.bestaetigeZiel();
+        else { this.zielModus = null; this.logMsg('Abgebrochen.', ''); }
+        return;
+      }
       const feld = mausFeld(ptr.button);
       if (!feld) return;
       const aktion = getSettings().maus[feld];
@@ -863,6 +872,22 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Beim Auslösen über die Actionbar (Mausklick) zielt der Cursor auf die
   // Leiste - dann automatisch auf den nächsten Gegner zielen (Runde 40).
   protected barCastAim = false;
+
+  // Bodenzauber-Zielmodus (Runde 46, Autorwunsch): erst die Fähigkeit anwählen,
+  // dann mit der Maus den Ort wählen, dann per Klick auslösen. Gilt für AoE-
+  // Zauber am Boden (Feuerregen/Eisregen/Gewitter/Feuerwand) und Heilen.
+  protected zielModus: string | null = null;
+  protected readonly bodenZauber = new Set(['feuerregen', 'eisregen', 'gewitter', 'feuerwand']);
+
+  // Klick bestätigt den Bodenzauber am Cursor
+  protected bestaetigeZiel(): void {
+    const id = this.zielModus;
+    this.zielModus = null;
+    if (!id) return;
+    this.barCastAim = false; // am Cursor wirken, nicht auf den nächsten Gegner
+    this.pdir = this.aimAngle();
+    this.useAbility(id, true);
+  }
   protected naechsterGegner(maxD = 1e9): Enemy | null {
     let best: Enemy | null = null, bd = maxD;
     for (const e of this.enemies) {
@@ -1712,7 +1737,15 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     return { x: this.px + (wx - this.px) * f, y: this.py + (wy - this.py) * f };
   }
 
-  useAbility(id: string): void {
+  useAbility(id: string, sofort = false): void {
+    // Bodenzauber (Runde 46): nicht sofort wirken, sondern in den Zielmodus -
+    // der Klick (bestaetigeZiel -> sofort=true) löst dann am Cursor aus.
+    if (!sofort && this.bodenZauber.has(id)) {
+      if (!this.abilityReady(id)) { this.sfx.play('fehler'); return; }
+      this.zielModus = this.zielModus === id ? null : id; // erneut = abwählen
+      if (this.zielModus) this.logMsg('Ort wählen - Klick wirkt, Rechtsklick bricht ab', 'gold');
+      return;
+    }
     if (!this.abilityReady(id)) return;
     switch (id) {
       case 'aderlass': {
@@ -2100,7 +2133,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     schools.zauberei.level = 9;
     this.p.mana = 999;
     this.p.abilityCds[scrollSkill] = 0;
-    this.useAbility(scrollSkill);
+    this.useAbility(scrollSkill, true); // Rollen wirken sofort (kein Zielmodus)
     schools.zauberei.level = save.z;
     this.p.mana = Math.min(save.mana, this.p.stats.maxmana);
     this.p.abilityCds[scrollSkill] = save.cds[scrollSkill] ?? 0;
@@ -2227,7 +2260,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const step = stepCombat(this.combat, dt);
     if (step.attack) this.executeAttack(step.attack);
     const attackHeld = this.mouseDown || (this.touch?.attackHeld && this.weaponClass() !== 'bogen');
-    if (attackHeld && !this.uiBlocked()) this.tryLight();
+    if (attackHeld && !this.uiBlocked() && !this.zielModus) this.tryLight();
 
     // Bewegung (Tastatur + Touch-Joystick)
     let dx = 0, dy = 0;
@@ -2579,6 +2612,29 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   }
 
   // Sprites und Overlay (Ringe, Balken, Telegraphen) zeichnen
+  // Ziel-Reticle des Bodenzauber-Modus (Runde 46): Reichweiten-Kreis um den
+  // Helden, Linie zum Ziel, pulsierender Wirkkreis + Fadenkreuz am Cursor.
+  private zeichneZielReticle(g: Phaser.GameObjects.Graphics, time: number): void {
+    const id = this.zielModus;
+    if (!id) return;
+    const fx = (ABILITY_FX as Record<string, { reichweite?: number; radius?: number; streuung?: number; laenge?: number }>)[id] ?? {};
+    const reich = fx.reichweite ?? 300;
+    const ptr = this.input.activePointer;
+    const { x: wx, y: wy } = this.weltPunkt(ptr);
+    const d = Math.hypot(wx - this.px, wy - this.py) || 1;
+    const f = d > reich ? reich / d : 1;
+    const zx = this.px + (wx - this.px) * f, zy = this.py + (wy - this.py) * f;
+    const farbe = id === 'eisregen' ? 0x8ad0f0 : id === 'gewitter' ? 0xaee0ff : 0xf08a3a;
+    const aoe = id === 'feuerwand' ? (fx.laenge ?? 120) / 2 : (fx.radius ?? 40) + (fx.streuung ?? 0);
+    const puls = 0.55 + Math.sin(time * 6) * 0.2;
+    g.lineStyle(1, farbe, 0.22); g.strokeCircle(this.px, this.py, reich);          // Reichweite
+    g.lineStyle(1, farbe, 0.30); g.beginPath(); g.moveTo(this.px, this.py); g.lineTo(zx, zy); g.strokePath();
+    g.fillStyle(farbe, 0.10); g.fillCircle(zx, zy, aoe);
+    g.lineStyle(2, farbe, puls); g.strokeCircle(zx, zy, aoe);                       // Wirkkreis
+    g.lineStyle(1.5, farbe, puls);
+    g.beginPath(); g.moveTo(zx - 8, zy); g.lineTo(zx + 8, zy); g.moveTo(zx, zy - 8); g.lineTo(zx, zy + 8); g.strokePath();
+  }
+
   protected renderEntities(): void {
     const time = this.time.now / 1000;
     // Tot: der Leichnam-Tween (beginDeathScene) hält die Pose - NICHT mehr über
@@ -2685,6 +2741,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       g.fillStyle(0xb43c1e, 0.12 + prog * 0.22);
       g.fillCircle(tg.x, tg.y, tg.r * prog);
     }
+    // Ziel-Reticle des Bodenzauber-Modus (Runde 46)
+    if (this.zielModus) this.zeichneZielReticle(g, time);
     // Bannkreise
     for (const z of this.banishZones) {
       g.lineStyle(2, 0xf0dc96, 0.5 + Math.sin(time * 4) * 0.15);
