@@ -688,10 +688,13 @@ export function buildKirchenschiff(rng: Rng): AreaData {
   a.altars.push({ x: 6 * TILE + 16, y: 3 * TILE + 16, used: false });
   map[3][4] = T.WENDEL;
   a.downPos = { x: 4 * TILE + 16, y: 3 * TILE + 16 };
-  map[2][8] = T.CRACK;           // bröckelnde Wand hinter dem Altar
-  map[1][8] = T.FLOOR;           // verborgene Nische dahinter
+  // bröckelnde Wand hinter dem Altar - AUFBRECHBAR (mit Angriffen), dahinter
+  // eine Geheimkammer mit seltener Truhe (Runde 41). Die Nische bleibt Fels, bis
+  // man durchbricht (kein Lichtleck) - wie die Krypta-Geheimkammern.
+  map[2][8] = T.CRACK;
   map[2][7] = T.WALL; map[2][9] = T.WALL;
-  a.gear.push({ x: 8 * TILE + 16, y: 1 * TILE + 16 }); // Geheim-Beute
+  a.cracks = a.cracks ?? [];
+  a.cracks.push({ tx: 8, ty: 2, hp: GEHEIMKAMMER.rissHp, kammer: [[8, 1], [9, 1], [7, 1]], chestX: 8 * TILE + 16, chestY: 1 * TILE + 16 });
   a.torches.push({ x: 4 * TILE + 16, y: 3 * TILE + 24, ph: rnd(rng, 0, 6.28) });
   a.torches.push({ x: 8 * TILE + 16, y: 3 * TILE + 24, ph: rnd(rng, 0, 6.28) });
   for (let y = 7; y < h - 4; y += 5) {
