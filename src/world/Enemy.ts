@@ -309,13 +309,17 @@ export class Enemy {
       this.blockT = Math.max(0, this.blockT - dt);
       this.blockCd = Math.max(0, this.blockCd - dt);
       const nahGenug = d < this.r + host.playerR() + 26 * (TUNING.gegnerReichweite * this.reichweiteF);
-      if (this.blockCd === 0 && nahGenug && this.blockT === 0 && TUNING.gegnerCleverness >= 0.5) {
+      // Cleverness STETIG (Runde 41): die Pause zwischen Blocks skaliert mit dem
+      // Regler - höher = blockt öfter. Bei 2.0 (Standard) wie bisher.
+      const clever = Math.max(0.05, TUNING.gegnerCleverness);
+      if (this.blockCd === 0 && nahGenug && this.blockT === 0 && clever > 0.05) {
         this.blockT = this.schild ? 0.9 + Math.random() * 0.5 : 0.4 + Math.random() * 0.3;
-        this.blockCd = this.schild ? 2.5 + Math.random() * 2 : 3.2 + Math.random() * 2.6;
+        this.blockCd = (this.schild ? 2.5 + Math.random() * 2 : 3.2 + Math.random() * 2.6) * 2 / clever;
       }
       if (this.blockT > 0) {
-        // Deckung läuft ab und der Spieler steht dran: Gegenstoß (Runde 27)
-        if (this.blockT <= dt * 2 && nahGenug && this.windup <= 0 && TUNING.gegnerCleverness >= 0.5) {
+        // Deckung läuft ab und der Spieler steht dran: Gegenstoß (Runde 27).
+        // Konter-Chance skaliert STETIG mit der Cleverness (bei 2.0 = sicher).
+        if (this.blockT <= dt * 2 && nahGenug && this.windup <= 0 && Math.random() < 0.5 * clever) {
           this.startPattern(host, 'hieb', 0.2);
         }
         return; // in Deckung: stehen, nicht angreifen
@@ -406,8 +410,10 @@ export class Enemy {
       // Sammeln statt einzeln anrennen (Runde 27): Skelette und Pestopfer
       // warten in Sichtweite kurz auf Verbündete - kommt Verstärkung in die
       // Nähe, stürmen alle gemeinsam
-      if (TUNING.gegnerCleverness >= 0.5 && this.type === 'skelett' && d < 160 && d > 80) {
-        if (this.mutT < 0) this.mutT = ENEMY_AI.sammelnMin + Math.random() * ENEMY_AI.sammelnSpanne;
+      // Sammel-Dauer skaliert STETIG mit der Cleverness (Runde 41): cleverer =
+      // wartet länger geduldig auf Verbündete; bei 2.0 wie bisher.
+      if (TUNING.gegnerCleverness > 0.05 && this.type === 'skelett' && d < 160 && d > 80) {
+        if (this.mutT < 0) this.mutT = (ENEMY_AI.sammelnMin + Math.random() * ENEMY_AI.sammelnSpanne) * Math.min(2, TUNING.gegnerCleverness) / 2;
         if (this.mutT > 0) {
           if (host.verbuendeteNahe(this, 150) >= ENEMY_AI.sammelnAb) this.mutT = 0;
           else {
