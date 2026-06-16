@@ -10,6 +10,7 @@ import { SpriteProvider } from '../gfx/SpriteProvider';
 import { SoundProvider } from '../gfx/SoundProvider';
 import { LightingManager } from '../systems/LightingManager';
 import { ScareTrigger, type TriggerDef } from '../systems/ScareTrigger';
+import { BloodFlow } from '../systems/BloodFlow';
 import { PROLOG_LICHT } from '../data/prolog';
 
 const TILE = 32;
@@ -19,6 +20,7 @@ export class KammerDerFinsternis extends Phaser.Scene {
   private sfx!: SoundProvider;
   private lighting!: LightingManager;
   private scare!: ScareTrigger;
+  private bluten: BloodFlow[] = [];
   private player!: Phaser.GameObjects.Sprite;
   private px = 0; private py = 0; private pdir = 0; private pstep = 0; private stepT = 0;
   private playerRef = { x: 0, y: 0 };
@@ -49,6 +51,12 @@ export class KammerDerFinsternis extends Phaser.Scene {
       playSound: (k, v) => this.sfx.play(k, v),
     });
     this.scare.addMany(this.scareDefs());
+
+    // Mehr Blut (Autorwunsch "viel zu wenig Blut"): es tropft schon hier an
+    // mehreren Stellen von der Decke und sammelt sich in wachsenden Pfützen.
+    for (const [tx, ty] of [[6, 8], [11, 5], [16, 9], [20, 6], [9, 13], [18, 13]] as Array<[number, number]>) {
+      this.bluten.push(new BloodFlow(this, { x: tx * TILE + 16, y: ty * TILE + 16, w: 56, intensity: 'drip', playSound: (k, v) => this.sfx.play(k, v) }));
+    }
 
     this.keys = this.input.keyboard!.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E') as Record<string, Phaser.Input.Keyboard.Key>;
     this.input.keyboard!.on('keydown-E', () => this.interagiere());
@@ -126,7 +134,10 @@ export class KammerDerFinsternis extends Phaser.Scene {
       // im Eingangsgang: eine Ratte huscht voraus, dann ein Sting beim Eintritt
       { x: 12 * TILE, y: 22 * TILE, w: 96, h: 48, effekte: [{ typ: 'ratte', x: 13 * TILE, y: 20 * TILE, richtung: -Math.PI / 2 }] },
       { x: 12 * TILE, y: 17 * TILE, w: 96, h: 40, effekte: [{ typ: 'sting' }, { typ: 'flackern', staerke: 0.4 }] },
-      { x: 7 * TILE, y: 9 * TILE, w: 64, h: 48, effekte: [{ typ: 'sting' }, { typ: 'silhouette', variante: 'huscht', richtung: Math.PI, x: 5 * TILE, y: 9 * TILE }] },
+      // scheue Schatten huschen HÖHER, oben an den Wänden quer durchs Bild (Runde 41)
+      { x: 8 * TILE, y: 4 * TILE, w: 130, h: 48, effekte: [{ typ: 'silhouette', variante: 'huscht', richtung: 0, x: 4 * TILE, y: 3 * TILE }] },
+      { x: 14 * TILE, y: 4 * TILE, w: 130, h: 48, effekte: [{ typ: 'sting' }, { typ: 'silhouette', variante: 'huscht', richtung: Math.PI, x: 21 * TILE, y: 3 * TILE }] },
+      { x: 7 * TILE, y: 9 * TILE, w: 64, h: 48, effekte: [{ typ: 'silhouette', variante: 'huscht', richtung: Math.PI, x: 5 * TILE, y: 6 * TILE }] },
       { x: 15 * TILE, y: 12 * TILE, w: 80, h: 48, effekte: [{ typ: 'ratte', x: 16 * TILE, y: 12 * TILE, richtung: 0.4 }] },
       { x: 16 * TILE, y: 7 * TILE, w: 64, h: 48, effekte: [{ typ: 'leiche', x: 17 * TILE, y: 7 * TILE }, { typ: 'shake', staerke: 0.006 }] },
     ];
@@ -141,8 +152,8 @@ export class KammerDerFinsternis extends Phaser.Scene {
     this.lighting.addLight(b.x, b.y - 6, PROLOG_LICHT.beckenRadius, PROLOG_LICHT.beckenFlicker);
     this.lighting.pulse(0.8);
     this.sfx.play('feuer_knistern', 0.8);
-    // jedes entzündete Becken enthüllt kurz einen Schreck
-    this.scare.feuere({ x: b.x - 30, y: b.y - 30, w: 60, h: 60, effekte: [{ typ: 'sting' }, { typ: 'silhouette', variante: 'huscht', richtung: Math.random() * 6.283, x: b.x + (Math.random() - 0.5) * 80, y: b.y - 20 }] });
+    // jedes entzündete Becken enthüllt kurz einen scheuen Schatten - HÖHER oben
+    this.scare.feuere({ x: b.x - 30, y: b.y - 30, w: 60, h: 60, effekte: [{ typ: 'sting' }, { typ: 'silhouette', variante: 'huscht', richtung: Math.random() < 0.5 ? 0 : Math.PI, x: b.x + (Math.random() - 0.5) * 120, y: b.y - 70 }] });
     const offen = this.becken.filter((b2) => b2.lit).length;
     if (offen >= this.becken.length) {
       this.exit.offen = true; this.map[this.exit.ty][this.exit.tx] = 0; this.zeichneTuer();
@@ -166,6 +177,7 @@ export class KammerDerFinsternis extends Phaser.Scene {
     this.bewege(dt);
     this.lighting.update(time, delta);
     this.scare.update({ x: this.px, y: this.py });
+    for (const b of this.bluten) b.update(time, delta);
     this.zeichneBecken(time);
     // Atmosphäre: gelegentlich ferne Glocke / Flüstern
     this.atmosT -= dt;

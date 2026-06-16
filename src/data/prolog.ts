@@ -24,7 +24,7 @@ export const PROLOG_SCARE = {
   shakeGross: 0.016,
   flackerDauer: 280,          // ms Lichtweitung beim Schreck
   silhouetteDauer: 2000,      // ms, wie lange der Templer-Glimpse steht
-  silhouetteHuschDauer: 650,  // ms, normaler huschender Schatten
+  silhouetteHuschDauer: 430,  // ms, huschender Schatten - kurz/scheu (Runde 41)
   ratteTempo: 230,            // px/s, weghuschende Ratte
   leicheFallDauer: 520,
   bodenSturzSchaden: 4,       // einbrechender Boden - WENIG Schaden (Fallen lehren Furcht)

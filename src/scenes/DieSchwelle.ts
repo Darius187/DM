@@ -52,10 +52,13 @@ export class DieSchwelle extends Phaser.Scene {
     this.scare = new ScareTrigger(this, { lighting: this.lighting, playSound: (k, v) => this.sfx.play(k, v) });
     this.scare.addMany(this.scareDefs());
 
-    // Blut nur als ANDEUTUNG (Stufe 'drip'): sickert durch Risse, tropft von der
-    // Decke, kleine wachsende Pfützen. Man versteht es noch nicht.
-    for (const [tx, ty] of [[9, 5], [16, 8], [12, 12]] as Array<[number, number]>) {
-      this.bluten.push(new BloodFlow(this, { x: tx * TILE + 16, y: ty * TILE + 16, w: 60, intensity: 'drip', playSound: (k, v) => this.sfx.play(k, v) }));
+    // Deutlich MEHR Blut (Autorwunsch): überall tropft und sickert es, und an
+    // zwei Stellen rinnt es schon (Stufe 'trickle') - es wird unten schlimmer.
+    for (const [tx, ty] of [[6, 4], [9, 5], [16, 8], [12, 12], [20, 6], [4, 10], [18, 13], [11, 9]] as Array<[number, number]>) {
+      this.bluten.push(new BloodFlow(this, { x: tx * TILE + 16, y: ty * TILE + 16, w: 58, intensity: 'drip', playSound: (k, v) => this.sfx.play(k, v) }));
+    }
+    for (const [tx, ty] of [[8, 14], [17, 14]] as Array<[number, number]>) {
+      this.bluten.push(new BloodFlow(this, { x: tx * TILE + 16, y: ty * TILE + 16, w: 90, intensity: 'trickle', playSound: (k, v) => this.sfx.play(k, v) }));
     }
 
     this.keys = this.input.keyboard!.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E') as Record<string, Phaser.Input.Keyboard.Key>;
