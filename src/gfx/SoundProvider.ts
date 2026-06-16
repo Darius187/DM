@@ -63,7 +63,12 @@ export class SoundProvider {
   private ac: AudioContext | null = null;
   private loops = new Map<string, Phaser.Sound.BaseSound>();
 
-  constructor(private scene: Phaser.Scene) {}
+  constructor(private scene: Phaser.Scene) {
+    // Beim Verlassen der Szene alle eigenen Loops/Musik stoppen (Runde 41):
+    // sonst lief die Prolog-Atmosphäre (krypta_droehnen) nach dem Übergang zur
+    // Boss-Arena weiter UND die Bossmusik dazu - es klang nach "doppelter Musik".
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.stopLoops(); this.stopMusic(); });
+  }
 
   // Effekt abspielen: Datei falls vorhanden, sonst Synthese
   play(name: string, volMult = 1): void {

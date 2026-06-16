@@ -5318,7 +5318,12 @@ export class WorldScene extends CombatScene {
     // im selben Frame, in dem er sie berührt - vorher hinkte die Bremse einen
     // Frame hinterher und griff kaum
     this.updateSchiebephysik(dt);
-    this.updateCombat(dt);
+    // Während eines Angriffs auf die Stadt bewegen sich Held UND alle Einheiten
+    // bedächtig wie in der Krypta (Runde 41, Autorwunsch); danach wieder normal.
+    // Echte Slow-Motion über das Kampf-dt - so werden Held, Gegner UND Geschosse
+    // gleichmäßig verlangsamt. Die Uhr (advanceClock) bleibt davon unberührt.
+    const kampfTempo = this.einfallAktiv ? TUNING.kryptaTempo : 1;
+    this.updateCombat(dt * kampfTempo);
     if (this.feuerLichter.length) {
       for (const fl of this.feuerLichter) fl.t -= dt;
       this.feuerLichter = this.feuerLichter.filter((fl) => fl.t > 0);
