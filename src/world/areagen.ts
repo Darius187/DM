@@ -208,39 +208,44 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
     const base = mid.filter((rr) => rr.w >= 6 && rr.h >= 6 && !enthaeltTreppe(rr)).sort((a2, b2) => b2.w * b2.h - a2.w * a2.h)[0];
     if (base) {
       mid.splice(mid.indexOf(base), 1); // nicht zusätzlich als Spezialraum nutzen
-      // Zu einer großen Höhle aufweiten - aber nur, wenn dabei keine Treppe
-      // verschluckt wird (sonst bleibt es der Ursprungsraum). Eine breite
-      // Schlucht wirkt viel dramatischer als ein enges Loch.
+      // Zu einer großen Halle aufweiten (nur wenn dabei keine Treppe verschluckt
+      // wird). Aufbau: NAHSEITE (links, mit dem Level verbunden) - breite Schlucht
+      // - TRESOR-INSEL (rechts), die NUR über den Steg erreichbar ist. So führt
+      // die Brücke zu einem echten Ziel (Truhe + Wächter) statt ins Leere.
       let x0 = base.x, y0 = base.y, x1 = base.x + base.w - 1, y1 = base.y + base.h - 1;
       const tw = Math.min(14, w - 4), thh = Math.min(11, h - 4);
       const ex0 = Math.max(1, Math.min(base.cx - (tw >> 1), w - 2 - tw)), ey0 = Math.max(1, Math.min(base.cy - (thh >> 1), h - 2 - thh));
       const ex1 = ex0 + tw - 1, ey1 = ey0 + thh - 1;
       const trifft = (sx: number, sy: number) => sx >= ex0 && sx <= ex1 && sy >= ey0 && sy <= ey1;
       if (!trifft(start.cx, start.cy) && !trifft(far.cx, far.cy)) {
-        x0 = ex0; y0 = ey0; x1 = ex1; y1 = ey1;
-        carve(map, x0, y0, x1, y1, T.FLOOR);
+        x0 = ex0; y0 = ey0; x1 = ex1; y1 = ey1; carve(map, x0, y0, x1, y1, T.FLOOR);
       }
-      const cx2 = (x0 + x1) >> 1, cy2 = (y0 + y1) >> 1;
-      // Innenfläche = Abgrund, 1 Kachel Boden-RING außen, Kreuz-Steg über die
-      // Mitte: Ring + Steg halten die Ebene IMMER durchquerbar.
-      for (let yy = y0 + 1; yy <= y1 - 1; yy++) {
-        for (let xx = x0 + 1; xx <= x1 - 1; xx++) map[yy][xx] = T.ABYSS;
+      const cy2 = (y0 + y1) >> 1;
+      // Nahseite reicht bis zur Korridor-Spalte (base.cx), damit jeder Gang dort
+      // auf Boden landet. Rechts davon ALLES Abgrund - mittendrin eine kleine
+      // TRESOR-INSEL, RINGSUM vom Abgrund umschlossen: nur der Steg führt hin.
+      const inselLinks = x1 - 3;
+      const nahRechts = Math.max(x0 + 2, Math.min(base.cx, inselLinks - 2));
+      for (let yy = y0; yy <= y1; yy++) {
+        for (let xx = nahRechts + 1; xx <= x1; xx++) map[yy][xx] = T.ABYSS;
       }
-      // EIN breiter Steg quer über die Mitte (verbindet linke + rechte
-      // Ringseite). Der Abgrund bleibt oben UND unten offen, damit die glühende
-      // Tiefe gut sichtbar ist - der Ring drumherum sichert die Durchquerbarkeit.
-      for (let xx = x0; xx <= x1; xx++) { map[cy2][xx] = T.BRIDGE; map[cy2 - 1][xx] = T.BRIDGE; }
-      // Akzentfarbe aus dem Ebenen-Thema (R40): Verlies blau-kalt, Glutkatakomben
-      // glühend orange - so leuchtet jede Schlucht in ihrer eigenen Farbe.
-      a.schlucht = { x0, y0, x1, y1, akzent: th.rune };
-      a.special.push({ id: 'schlucht', x: cx2, y: cy2, raum: 'Die Schlucht' });
-      // Wächter der Schlucht (Runde 40): ein Champion bewacht die Überquerung
+      // Insel-Pocket (vom Abgrund eingeschlossen)
+      for (let yy = cy2 - 2; yy <= cy2 + 2; yy++) {
+        for (let xx = inselLinks; xx <= x1 - 1; xx++) map[yy][xx] = T.FLOOR;
+      }
+      // Steg von der Nahseite quer über die Schlucht bis in die Insel
+      for (let xx = nahRechts; xx <= x1 - 1; xx++) { map[cy2][xx] = T.BRIDGE; map[cy2 - 1][xx] = T.BRIDGE; }
+      a.schlucht = { x0: nahRechts + 1, y0, x1, y1, akzent: th.rune };
+      a.special.push({ id: 'schlucht', x: nahRechts, y: cy2, raum: 'Die Schlucht' });
+      // Wächter auf dem Steg + Tresor-Truhe auf der Insel (Runde 40)
       const wTyp: EnemyTypeId = n >= 5 ? 'schatten' : 'skelett';
-      a.enemySpawns.push({ type: wTyp, elite: true, champion: 'Wächter der Schlucht', x: cx2 * TILE + 16, y: cy2 * TILE + 16 });
-      // Vier Leucht-Kristalle als Tor-Pfosten an den Steg-Enden (Set-Piece)
+      const stegMitte = (nahRechts + inselLinks) >> 1;
+      a.enemySpawns.push({ type: wTyp, elite: true, champion: 'Wächter der Schlucht', x: stegMitte * TILE + 16, y: cy2 * TILE + 16 });
+      a.chests.push({ x: (x1 - 2) * TILE + 16, y: (cy2 + 2) * TILE + 16, open: false, selten: true });
+      // Leucht-Kristalle als Tor-Pfosten an beiden Steg-Enden (Set-Piece)
       a.kristalle = [
-        { x: x0 * TILE + 16, y: (cy2 - 2) * TILE + 16 }, { x: x0 * TILE + 16, y: (cy2 + 1) * TILE + 16 },
-        { x: x1 * TILE + 16, y: (cy2 - 2) * TILE + 16 }, { x: x1 * TILE + 16, y: (cy2 + 1) * TILE + 16 },
+        { x: nahRechts * TILE + 16, y: (cy2 - 2) * TILE + 16 }, { x: nahRechts * TILE + 16, y: (cy2 + 1) * TILE + 16 },
+        { x: (x1 - 2) * TILE + 16, y: (cy2 - 2) * TILE + 16 }, { x: (x1 - 2) * TILE + 16, y: (cy2 + 1) * TILE + 16 },
       ];
     }
   }

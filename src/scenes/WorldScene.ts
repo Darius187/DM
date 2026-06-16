@@ -1485,6 +1485,9 @@ export class WorldScene extends CombatScene {
     // der Abgrund darunter (Runde 40)
     if (id === T.BRIDGE) img.setDepth(-8);
     if (id === T.ABYSS) img.setDepth(-12);
+    // Tresor-Insel-Boden liegt MITTEN im Tiefenbild-Rechteck -> über das Bild
+    // heben, sonst verdeckt das Schlucht-Bild (-9) die Insel.
+    if (id === T.FLOOR && a.schlucht && tx >= a.schlucht.x0 && tx <= a.schlucht.x1 && ty >= a.schlucht.y0 && ty <= a.schlucht.y1) img.setDepth(-8);
     // Gebäude verdecken den Spieler KOMPLETT, wenn er dahinter steht
     // (Runde 14: vorher "stand" man optisch auf dem Dach) - alle Teile
     // eines Hauses sortieren sich auf die Tiefe seiner Vorderkante
@@ -1679,8 +1682,10 @@ export class WorldScene extends CombatScene {
     this.schluchtKristalle = [];
     const s = a.schlucht;
     if (!s) return;
-    const px0 = (s.x0 + 1) * TILE, py0 = (s.y0 + 1) * TILE;
-    const wpx = (s.x1 - s.x0 - 1) * TILE, hpx = (s.y1 - s.y0 - 1) * TILE;
+    // a.schlucht ist jetzt das exakte Abgrund-Rechteck (Runde 40): Bild deckt es
+    // genau ab. Steg (-8) liegt darüber, Abgrund-Boden (-12) darunter.
+    const px0 = s.x0 * TILE, py0 = s.y0 * TILE;
+    const wpx = (s.x1 - s.x0 + 1) * TILE, hpx = (s.y1 - s.y0 + 1) * TILE;
     if (wpx < 8 || hpx < 8) return;
     const key = `schlucht_${a.id}`;
     if (this.textures.exists(key)) this.textures.remove(key);
@@ -4512,9 +4517,9 @@ export class WorldScene extends CombatScene {
       // ganze Schlucht aus dem Dunkel, sobald man in der Nähe steht.
       if (this.schlucht) {
         const s = this.schlucht;
-        const breite = (s.x1 - s.x0) * TILE, hoehe = (s.y1 - s.y0) * TILE;
-        const cxp = (s.x0 + 1) * TILE + (breite - 2 * TILE) / 2;
-        const cyp = (s.y0 + 1) * TILE + (hoehe - 2 * TILE) * 0.6;
+        const breite = (s.x1 - s.x0 + 1) * TILE, hoehe = (s.y1 - s.y0 + 1) * TILE;
+        const cxp = s.x0 * TILE + breite / 2;
+        const cyp = s.y0 * TILE + hoehe * 0.6;
         if (Math.hypot(cxp - this.px, cyp - this.py) < basisRadius * 1.7) {
           const sx = (cxp - cam.worldView.x) * zm, sy = (cyp - cam.worldView.y) * zm;
           this.eraseLight(sx, sy, breite * 0.5 * zm);
