@@ -355,6 +355,20 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       ctx.fillStyle = '#4a4434';
       for (let i = 1; i < 4; i++) ctx.fillRect(6, 3 + i * 6, TILE - 12, 2);
       break;
+    case 'wendeltreppe': {
+      // Wendeltreppe von oben: runde, sich nach innen windende Stufen, dunkles
+      // Zentrum (der Abstieg). (Runde 41)
+      ctx.fillStyle = '#0a0805'; ctx.fillRect(0, 0, TILE, TILE);
+      const cx = 16, cy = 16;
+      for (let i = 0; i < 9; i++) {
+        const a0 = i * 0.72, a1 = a0 + 0.9, r = 14 - i * 1.4;
+        ctx.fillStyle = i % 2 ? '#3a342a' : '#4a4434';
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, Math.max(2, r), a0, a1); ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = '#050403'; ctx.beginPath(); ctx.arc(cx, cy, 2.6, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = '#c9a227'; ctx.lineWidth = 1; ctx.strokeRect(3.5, 3.5, TILE - 7, TILE - 7);
+      break;
+    }
     case 'erzader':
       floorBase(ctx, n, theme);
       ctx.fillStyle = '#4a4640'; ctx.beginPath(); ctx.arc(16, 16, 11, 0, 6.283); ctx.fill();

@@ -19,6 +19,8 @@ export const T = {
   ABYSS: 45, BRIDGE: 46,
   // Steinpfeiler (Runde 40): Säulenhallen für Abwechslung - massiv, blockt
   PILLAR: 47,
+  // Wendeltreppe (Runde 41): begehbarer Abstieg links vom Altar in den Prolog
+  WENDEL: 48,
 } as const;
 export type TileId = (typeof T)[keyof typeof T];
 
@@ -52,6 +54,7 @@ const NAME: Record<number, string> = {
   [T.KERZE]: 'kerze', [T.WANDFACKEL]: 'wandfackel', [T.BRENNHOLZ]: 'brennholz', [T.KESSEL]: 'kessel',
   [T.CRACK]: 'mauerriss',
   [T.ABYSS]: 'abgrund', [T.BRIDGE]: 'bruecke', [T.PILLAR]: 'saeule',
+  [T.WENDEL]: 'wendeltreppe',
 };
 
 // Liefert den Tile-Namen unter Berücksichtigung von Fassade/Dach:

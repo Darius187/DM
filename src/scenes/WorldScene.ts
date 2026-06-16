@@ -3714,6 +3714,17 @@ export class WorldScene extends CombatScene {
         return { text: `${name} - ${ik} zum Eintreten`, action: () => this.goArea(`innen_${door.haus}`) };
       }
     }
+    if (tid === T.WENDEL) {
+      // Wendeltreppe links vom Altar (Runde 41): erster Abstieg = Angst-Prolog,
+      // danach normal in die Krypta.
+      return {
+        text: `Wendeltreppe hinab zu Ebene 1 - ${ik} zum Hinabsteigen`,
+        action: () => {
+          if (!this.flags.prologGesehen) this.starteProlog('crypt1', 'Treppenabstieg', { weiter: 'KammerDerFinsternis' });
+          else this.goArea('crypt1');
+        },
+      };
+    }
     if (tid === T.STAIR) {
       const indieTiefe = this.area.id === 'boss' || this.area.depth > 5;
       // Ziel-Etage immer benennen (Runde 40, Autorwunsch "bei der Treppe soll

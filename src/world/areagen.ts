@@ -681,11 +681,17 @@ export function buildKirchenschiff(rng: Rng): AreaData {
   for (let y = 6; y <= h - 6; y += 2) {
     for (const x of [3, 4, 8, 9]) map[y][x] = T.STUHL;
   }
-  // Altar am Kopfende, Kerzen, dahinter der Geheimgang hinab
+  // Altar am Kopfende, Kerzen. Runde 41 (Autorwunsch): der Abstieg ist KEINE
+  // Treppe hinter dem Altar mehr, sondern eine WENDELTREPPE LINKS neben dem
+  // Altar. Hinter dem Altar bröckelt eine Wand - dahinter eine Geheim-Nische.
   map[3][6] = T.ALTAR;
   a.altars.push({ x: 6 * TILE + 16, y: 3 * TILE + 16, used: false });
-  map[2][6] = T.STAIR;
-  a.downPos = { x: 6 * TILE + 16, y: 2 * TILE + 16 };
+  map[3][4] = T.WENDEL;
+  a.downPos = { x: 4 * TILE + 16, y: 3 * TILE + 16 };
+  map[2][8] = T.CRACK;           // bröckelnde Wand hinter dem Altar
+  map[1][8] = T.FLOOR;           // verborgene Nische dahinter
+  map[2][7] = T.WALL; map[2][9] = T.WALL;
+  a.gear.push({ x: 8 * TILE + 16, y: 1 * TILE + 16 }); // Geheim-Beute
   a.torches.push({ x: 4 * TILE + 16, y: 3 * TILE + 24, ph: rnd(rng, 0, 6.28) });
   a.torches.push({ x: 8 * TILE + 16, y: 3 * TILE + 24, ph: rnd(rng, 0, 6.28) });
   for (let y = 7; y < h - 4; y += 5) {
