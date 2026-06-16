@@ -5018,14 +5018,20 @@ export class WorldScene extends CombatScene {
     }
   }
 
-  // Wogende Weizenfelder auf allen sichtbaren T.FIELD-Kacheln (Runde 43, Test):
-  // goldene Halme, die sich gemeinsam im Wind wiegen. Nur der Kameraausschnitt,
-  // damit es auch bei großen Feldern günstig bleibt.
+  // Wogende Weizenfelder auf allen sichtbaren T.FIELD-Kacheln (Runde 44): DICHTE
+  // goldene Halme, die GEMEINSAM in EINE Windrichtung wogen. Der Windstoß rollt
+  // als langsame Welle nach Osten über das Feld - alle lehnen sich vor und leicht
+  // zurück, nicht jeder für sich. Nur der Kameraausschnitt, damit es günstig bleibt.
+  private static readonly WEIZEN_TUFTEN: Array<[number, number]> = (() => {
+    const t: Array<[number, number]> = [];
+    for (const gx of [3, 9, 15, 21, 27]) for (const gy of [7, 14, 21, 28]) t.push([gx, gy]);
+    return t; // 5x4 = 20 Halme je Kachel -> dicht
+  })();
   private zeichneWogendeFelder(g: Phaser.GameObjects.Graphics, time: number): void {
     const cam = this.cameras.main, v = cam.worldView;
     const tx0 = Math.max(0, Math.floor(v.x / TILE)), tx1 = Math.min(this.area.w - 1, Math.ceil(v.right / TILE));
     const ty0 = Math.max(0, Math.floor(v.y / TILE)), ty1 = Math.min(this.area.h - 1, Math.ceil(v.bottom / TILE));
-    const tuften: Array<[number, number]> = [[7, 23], [14, 13], [20, 27], [26, 17], [11, 29], [23, 9]];
+    const windDir = 1; // Ostwind: alle Halme lehnen nach +x
     for (let ty = ty0; ty <= ty1; ty++) {
       const reihe = this.area.map[ty]; if (!reihe) continue;
       for (let tx = tx0; tx <= tx1; tx++) {
@@ -5034,13 +5040,21 @@ export class WorldScene extends CombatScene {
         // die echten Saat-Pflanzen, kein wilder Weizen darüber.
         if (this.area.id === 'village' && tx >= 36 && tx <= 38 && ty >= 24 && ty <= 26) continue;
         const baseX = tx * TILE, baseY = ty * TILE;
-        for (const [ox, oy] of tuften) {
-          const x = baseX + ox, y = baseY + oy;
-          const sw = Math.sin(time * 1.5 + x * 0.15 + y * 0.2) * 2.4;
-          const hh = 9 + ((tx * 7 + ty * 13 + ox) % 4);
-          g.lineStyle(1.4, 0xbf9c36, 0.95);
-          g.beginPath(); g.moveTo(x, y); g.lineTo(x + sw * 0.5, y - hh * 0.5); g.lineTo(x + sw, y - hh); g.strokePath();
-          g.fillStyle(0xe2c64a, 0.95); g.fillEllipse(x + sw, y - hh - 1, 3, 5);
+        for (const [gx, gy] of WorldScene.WEIZEN_TUFTEN) {
+          // leichter, fester Versatz pro Halm, damit kein starres Raster entsteht
+          const jx = ((tx * 131 + ty * 57 + gx * 13 + gy * 7) % 7) - 3;
+          const jy = ((tx * 71 + ty * 191 + gx * 5 + gy * 11) % 5) - 2;
+          const x = baseX + gx + jx, y = baseY + gy + jy;
+          // GEMEINSAME Windphase: rollt langsam als Welle übers Feld (niedrige
+          // Ortsfrequenz -> Nachbarn fast synchron). lean: vor + leicht zurück.
+          const lean = 0.35 + 0.65 * Math.sin(time * 1.0 - x * 0.010 - y * 0.005);
+          const sway = windDir * lean * 6;
+          const hh = 12 + ((tx * 7 + ty * 13 + gx) % 5);
+          const tipx = x + sway, tipy = y - hh;
+          g.lineStyle(1.5, 0xb89530, 0.95);
+          g.beginPath(); g.moveTo(x, y); g.lineTo(x + sway * 0.45, y - hh * 0.55); g.lineTo(tipx, tipy); g.strokePath();
+          g.fillStyle(0xe2c64a, 0.95); g.fillEllipse(tipx, tipy - 1, 3, 6);
+          g.fillStyle(0xf2e0a8, 0.5); g.fillEllipse(tipx - 0.6, tipy - 2, 1.2, 2.6);
         }
       }
     }
