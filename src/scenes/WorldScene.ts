@@ -1260,7 +1260,10 @@ export class WorldScene extends CombatScene {
     this.telegraphs = [];
     this.decals = [];
     this.banishZones = [];
-    this.areaText.setText(a.name.toUpperCase());
+    // Etage oben immer mitzeigen (Runde 40, Autorwunsch "damit man immer weiß,
+    // auf welcher Etage man ist"): Krypta-Ebenen tragen ihre Tiefe als EBENE n.
+    const ebeneText = a.id.startsWith('crypt') ? ` · EBENE ${a.depth}` : a.id === 'boss' ? ' · EBENE 6' : '';
+    this.areaText.setText(a.name.toUpperCase() + ebeneText);
     this.sfx.play('gebietswechsel');
     this.sfx.stopLoops();
     if (a.dark) this.sfx.startLoop('krypta_droehnen');
@@ -3434,8 +3437,15 @@ export class WorldScene extends CombatScene {
     }
     if (tid === T.STAIR) {
       const indieTiefe = this.area.id === 'boss' || this.area.depth > 5;
+      // Ziel-Etage immer benennen (Runde 40, Autorwunsch "bei der Treppe soll
+      // immer das Level stehen")
+      const idA = this.area.id;
+      const zielAb = idA === 'kirchenschiff' ? 'Ebene 1'
+        : idA === 'crypt5' ? 'Grab des Kreuzritters'
+        : indieTiefe ? `Endlose Tiefe, Ebene ${this.area.depth + 1}`
+        : idA.startsWith('crypt') ? `Ebene ${parseInt(idA.replace('crypt', ''), 10) + 1}` : 'hinab';
       return {
-        text: indieTiefe ? `Abstieg in die Endlose Tiefe - ${ik} zum Hinabsteigen` : `Treppe hinab - ${ik} zum Hinabsteigen`,
+        text: `Treppe hinab zu ${zielAb} - ${ik} zum Hinabsteigen`,
         action: () => {
           const id = this.area.id;
           if (id === 'kirchenschiff') this.goArea('crypt1');
@@ -3446,8 +3456,13 @@ export class WorldScene extends CombatScene {
       };
     }
     if (tid === T.STAIRUP) {
+      const idU = this.area.id;
+      const zielAuf = idU === 'crypt1' ? 'Kirche St. Marien'
+        : idU === 'boss' ? 'Ebene 5'
+        : idU === 'crypt6' ? 'Grab des Kreuzritters'
+        : idU.startsWith('crypt') ? `Ebene ${parseInt(idU.replace('crypt', ''), 10) - 1}` : 'hinauf';
       return {
-        text: `Treppe hinauf - ${ik} zum Hinaufsteigen`,
+        text: `Treppe hinauf zu ${zielAuf} - ${ik} zum Hinaufsteigen`,
         action: () => {
           const id = this.area.id;
           if (id === 'crypt1') {
