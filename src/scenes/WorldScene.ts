@@ -3970,8 +3970,10 @@ export class WorldScene extends CombatScene {
   private portalZiel: { areaId: string; x: number; y: number } | null = null;
   private portalEnts: Phaser.GameObjects.Image[] = [];
 
-  protected override castTownPortal(): void {
-    if (!this.bossDead && !this.flags.ngPlusGeschafft) {
+  protected override castTownPortal(viaScroll = false): void {
+    // Die feste Stadtportal-Taste öffnet erst nach dem Boss; eine Stadtportal-
+    // ROLLE wirkt jederzeit (Runde 41) - sie ist das Mittel selbst.
+    if (!viaScroll && !this.bossDead && !this.flags.ngPlusGeschafft) {
       this.logMsg('Das Stadtportal öffnet sich erst, wenn der Tempelritter gefallen ist.', 'bad');
       this.sfx.play('fehler');
       return;

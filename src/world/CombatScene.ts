@@ -191,7 +191,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (k === '7') this.useFirstScroll();
       if (k === '8') this.runAction('stadtportal');
       if (k === 'b') this.toggleAlbum();
-      if (k === 'x') this.wechsleWaffe();   // Hauptwaffe <-> Bogen (Runde 41)
+      if (k === 'alt' && !ev.repeat) { ev.preventDefault(); this.wechsleWaffe(); } // Hauptwaffe <-> Bogen (Runde 41)
       if (k === 'h') this.toggleChronik();
       if (k === 'f10') { ev.preventDefault(); this.toggleDevPanel(); }
       // Tastenleiste frei belegbar (Runde 26, "wie bei WoW"): jede Taste
@@ -845,6 +845,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         ['Zauberrolle: Eisregen', 'eisregen', 2],
         ['Zauberrolle: Gewitter', 'gewitter', 2],
         ['Zauberrolle: Windstoß', 'windstoss', 2],
+        ['Zauberrolle: Stadtportal', 'stadtportal', 1],
       ] as const;
       const [name, skill, rar] = rollen[Math.floor(Math.random() * rollen.length)];
       this.pickups.add({
@@ -1506,7 +1507,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   // Stadtportal (Feedback-Runde 5): jederzeit zurück nach Ravensmoor,
   // sobald der Tempelritter einmal gefallen ist
-  protected castTownPortal(): void { /* Welt überschreibt */ }
+  protected castTownPortal(_viaScroll = false): void { /* Welt überschreibt */ }
 
   useFirstScroll(): void {
     const rolle = this.p.inv.find((it) => it.kind === 'scroll' && it.scrollSkill);
@@ -2048,6 +2049,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Zauberrolle einsetzen: wirkt einmal ohne Manakosten, auch oberhalb
   // der eigenen Stufe (Vorgeschmack-Design, Masterprompt 6.2)
   useScroll(scrollSkill: string): void {
+    // Stadtportal-Rolle (Runde 41): trägt den Helden auch VOR dem Boss zurück
+    // nach Ravensmoor - die Rolle selbst ist das Mittel (umgeht die Boss-Sperre).
+    if (scrollSkill === 'stadtportal') { this.castTownPortal(true); return; }
     const spellIdx = SPELLS.findIndex((s) => s.id === scrollSkill);
     if (spellIdx >= 0) {
       const cd = this.p.spellCds[spellIdx];
@@ -2590,21 +2594,22 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       ag.fillStyle(col, 0.1 * puls); // Boden-Schein
       ag.fillEllipse(e.x, e.y + e.r * 0.75, (e.r + 12) * 2, e.r + 5);
     }
-    // Schildträger (Runde 41, Autorwunsch): ein deutliches, größeres Rundschild
-    // VOR DER BRUST zum Helden hin - nicht mehr ein "Teller" an der Seite. Mit
-    // Rand, Lichtkante und Schildbuckel, damit es klar als Schild lesbar ist.
+    // Schildträger (Runde 41, Autorwunsch "kein CD, Gesicht muss sichtbar
+    // bleiben"): ein kleineres WAPPENSCHILD (Heater, unten spitz) vor dem
+    // TORSO/Bauch zum Helden hin - tief genug, dass Kopf und Gesicht frei bleiben.
     for (const e of this.enemies) {
       if (!e.schild || e.versteckt || e.hp <= 0) continue;
-      const ang = Math.atan2(this.py - e.y, this.px - e.x); // zum Helden gewandt
-      const sx = e.x + Math.cos(ang) * (e.r * 0.55);
-      const sy = e.y + Math.sin(ang) * (e.r * 0.55) - 6;    // auf Brusthöhe
-      const R = Math.max(9, e.r * 0.95);
-      g.fillStyle(0x23201c, 1); g.fillCircle(sx, sy, R + 1.2);                 // dunkler Rand
-      g.fillStyle(0x808690, 1); g.fillCircle(sx, sy, R);                       // Schildfläche
-      g.fillStyle(0x9ca3ad, 1); g.fillCircle(sx - R * 0.26, sy - R * 0.3, R * 0.5); // Lichtkante
-      g.fillStyle(0x4a4640, 1); g.fillCircle(sx, sy, R * 0.34);                // Schildbuckel
-      g.fillStyle(0x23201c, 1); g.fillCircle(sx, sy, R * 0.16);
-      g.lineStyle(1.4, 0x16130f, 1); g.strokeCircle(sx, sy, R);
+      const ang = Math.atan2(this.py - e.y, this.px - e.x);
+      const cx = e.x + Math.cos(ang) * (e.r * 0.4);
+      const cy = e.y + Math.sin(ang) * (e.r * 0.4) + e.r * 0.18; // tiefer = Bauchhöhe
+      const hw = Math.max(6, e.r * 0.58);
+      const top = cy - e.r * 0.42, mid = cy + e.r * 0.12, bot = cy + e.r * 0.62;
+      const pts = [{ x: cx - hw, y: top }, { x: cx + hw, y: top }, { x: cx + hw, y: mid }, { x: cx, y: bot }, { x: cx - hw, y: mid }];
+      g.fillStyle(0x7a808a, 1); g.fillPoints(pts, true);                                     // Schildfläche
+      g.fillStyle(0x9aa0aa, 1); g.fillPoints([pts[0], pts[1], { x: cx, y: mid }], true);     // helle obere Hälfte (Lichtkante)
+      g.fillStyle(0x4a4640, 1); g.fillCircle(cx, cy, Math.max(2, e.r * 0.15));               // Schildbuckel
+      g.fillStyle(0x23201c, 1); g.fillCircle(cx, cy, Math.max(1, e.r * 0.06));
+      g.lineStyle(1.6, 0x16130f, 1); g.strokePoints(pts, true, true);                        // dunkler Rand
     }
     // Telegraphen
     for (const tg of this.telegraphs) {
