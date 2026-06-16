@@ -7,6 +7,7 @@ import { Enemy, angleToDir } from '../world/Enemy';
 import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildInterior, verschiebeHaus, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
+import { BloodFlow } from '../systems/BloodFlow';
 import { LANDHERR } from '../data/dialoge';
 import storyJson from '../data/story.json';
 import { ShopUI } from '../ui/shop';
@@ -135,6 +136,8 @@ export class WorldScene extends CombatScene {
   private hudText!: Phaser.GameObjects.Text;
   private areaText!: Phaser.GameObjects.Text;
   private einfallText!: Phaser.GameObjects.Text;
+  private bossBlut: BloodFlow[] = [];           // Blut-Apokalypse im Bossraum (Runde 41)
+  private bossBlutBoden: Phaser.GameObjects.Graphics | null = null;
   private deathOverlay: Phaser.GameObjects.Container | null = null;
 
   constructor() {
@@ -1293,6 +1296,7 @@ export class WorldScene extends CombatScene {
     // Bossgrab: solange der Ritter lebt, sind die Gittertore versiegelt -
     // auch wenn man mitten im Kampf geflohen ist und wiederkommt
     if (id === 'boss' && this.bossKampfSteht() && !a.geleert) this.resetBossTore(a);
+    if (id === 'boss') this.baueBossBlut();
     if (id === 'crypt3') this.flags.ebene3 = true;
     this.gruselT = 6 + Math.random() * 8;
     // Gebiets-Musik (Runde 17): liegt musik_dorf/wald/krypta als Loop vor,
@@ -1398,6 +1402,23 @@ export class WorldScene extends CombatScene {
     this.goArea('crypt1');
   }
 
+  // Blut-Apokalypse im Bossraum (Runde 41, Autorwunsch): der ganze Boden ist
+  // blutgetränkt, aus dem Grab quillt ein Becken (font), durch die Wächterhalle
+  // wälzt sich ein leuchtender Blutstrom (river), überall rinnt und tropft es.
+  // Rein optisch (keine Kollision) - der Kampf bleibt frei begehbar.
+  private baueBossBlut(): void {
+    const T = TILE;
+    const blut = (x: number, y: number, w: number, h: number, intensity: 'drip' | 'trickle' | 'river' | 'font') =>
+      this.bossBlut.push(new BloodFlow(this, { x, y, w, h, intensity, depth: -9, playSound: (k, v) => this.sfx.play(k, v) }));
+    const g = this.add.graphics().setDepth(-10); // blutgetränkter Grund über alle Kammern
+    g.fillStyle(0x3a0808, 0.32); g.fillRect(3 * T, 4 * T, 28 * T, 50 * T);
+    this.bossBlutBoden = g;
+    blut(16 * T + 16, 9 * T + 16, 7 * T, 5 * T, 'font');     // Becken am Grab
+    blut(16 * T + 16, 27 * T + 16, 24 * T, 6 * T, 'river');  // Strom durch die Halle
+    for (const [tx, ty] of [[8, 33], [24, 32], [16, 45]] as Array<[number, number]>) blut(tx * T + 16, ty * T + 16, 110, 64, 'trickle');
+    for (const [tx, ty] of [[8, 44], [24, 44], [16, 48], [10, 12], [22, 13], [8, 20], [24, 20], [16, 40], [6, 50], [27, 50]] as Array<[number, number]>) blut(tx * T + 16, ty * T + 16, 70, 52, 'drip');
+  }
+
   private talkLandherr(): void {
     if (!this.flags.auftragErhalten) {
       this.dialog.show(storyJson.landherr.name, [
@@ -1444,6 +1465,9 @@ export class WorldScene extends CombatScene {
     this.schildEnts = [];
     for (const img of this.portalEnts) img.destroy();
     this.portalEnts = [];
+    for (const b of this.bossBlut) b.destroy();
+    this.bossBlut = [];
+    this.bossBlutBoden?.destroy(); this.bossBlutBoden = null;
     // Bilder hängen in tileImages (oben zerstört) - nur die Listen leeren
     this.hausAnimEnts = [];
     this.hausNachtEnts = [];
@@ -5362,7 +5386,10 @@ export class WorldScene extends CombatScene {
     // Bosskampf über drei Kammern (Runde 21, ersetzt das Hinab-Reißen):
     // bei 66%/33% Leben weicht der Ritter durch das Gittertor nach Norden,
     // schickt eine Welle - und stellt sich erst, wenn der Held ihm folgt
-    if (this.area.id === 'boss') this.updateBossKampf();
+    if (this.area.id === 'boss') {
+      this.updateBossKampf();
+      for (const b of this.bossBlut) b.update(this.time.now, delta);
+    }
     // Regen-Klang: draußen rauscht es, in der Stube gedämpft (Runde 12)
     if (this.regnet && !this.area.dark) {
       if (this.area.innen) {
