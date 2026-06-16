@@ -2534,19 +2534,21 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       ag.fillStyle(col, 0.1 * puls); // Boden-Schein
       ag.fillEllipse(e.x, e.y + e.r * 0.75, (e.r + 12) * 2, e.r + 5);
     }
-    // Schildträger erkennbar machen (Runde 17): kleines Rundschild an der
-    // dem Spieler zugewandten Seite
+    // Schildträger (Runde 41, Autorwunsch): ein deutliches, größeres Rundschild
+    // VOR DER BRUST zum Helden hin - nicht mehr ein "Teller" an der Seite. Mit
+    // Rand, Lichtkante und Schildbuckel, damit es klar als Schild lesbar ist.
     for (const e of this.enemies) {
       if (!e.schild || e.versteckt || e.hp <= 0) continue;
-      const seite = [Math.PI / 2, Math.PI, 0, -Math.PI / 2][e.dir];
-      const sx = e.x + Math.cos(seite) * (e.r + 3);
-      const sy = e.y + Math.sin(seite) * (e.r + 3) - 4;
-      g.fillStyle(0x8a8e96, 1);
-      g.fillCircle(sx, sy, 5.5);
-      g.fillStyle(0x55504a, 1);
-      g.fillCircle(sx, sy, 2.2);
-      g.lineStyle(1, 0x2a2622, 1);
-      g.strokeCircle(sx, sy, 5.5);
+      const ang = Math.atan2(this.py - e.y, this.px - e.x); // zum Helden gewandt
+      const sx = e.x + Math.cos(ang) * (e.r * 0.55);
+      const sy = e.y + Math.sin(ang) * (e.r * 0.55) - 6;    // auf Brusthöhe
+      const R = Math.max(9, e.r * 0.95);
+      g.fillStyle(0x23201c, 1); g.fillCircle(sx, sy, R + 1.2);                 // dunkler Rand
+      g.fillStyle(0x808690, 1); g.fillCircle(sx, sy, R);                       // Schildfläche
+      g.fillStyle(0x9ca3ad, 1); g.fillCircle(sx - R * 0.26, sy - R * 0.3, R * 0.5); // Lichtkante
+      g.fillStyle(0x4a4640, 1); g.fillCircle(sx, sy, R * 0.34);                // Schildbuckel
+      g.fillStyle(0x23201c, 1); g.fillCircle(sx, sy, R * 0.16);
+      g.lineStyle(1.4, 0x16130f, 1); g.strokeCircle(sx, sy, R);
     }
     // Telegraphen
     for (const tg of this.telegraphs) {

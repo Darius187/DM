@@ -137,22 +137,16 @@ function drawHumanoidParts(ctx: CanvasRenderingContext2D, f: FigureSpec, dir: Di
     p(ctx, 5, 1 + bob, 6, 2, f.hair);
     p(ctx, 5, 1 + bob, 3, 1, shade(f.hair, 18));
   }
-  // Gesicht je Richtung - Untote glühen rot (Runde 20)
-  ctx.fillStyle = f.augen ?? (f.skeletal ? '#1a0808' : '#26180e');
+  // Augen je Richtung - schlichte dunkle Augenhöhlen. Runde 41 (Autorwunsch):
+  // KEINE rot glühenden Augen und KEINE Totenschädel-Gesichter mehr (sah nicht
+  // gut aus) - nur noch dezente schwarze Augen, kein Mund/Kiefer. (Der
+  // Grabschatten behält über f.augen seine glimmenden Augen als einziges Merkmal.)
+  ctx.fillStyle = f.augen ?? (f.skeletal ? '#120a0a' : '#26180e');
   if (dir === 0) { p(ctx, 6, 4 + bob, 1, 1); p(ctx, 9, 4 + bob, 1, 1); }
   if (dir === 1) { p(ctx, 5, 4 + bob, 1, 1); p(ctx, 7, 4 + bob, 1, 1); }
   if (dir === 2) { p(ctx, 8, 4 + bob, 1, 1); p(ctx, 10, 4 + bob, 1, 1); }
   // dir 3 (oben): kein Gesicht, Hinterkopf
   if (dir === 3 && !f.hat) p(ctx, 5, 2 + bob, 6, 3, f.hair);
-  // Schädel-Details (Runde 40): Nasenloch + Kieferlinie mit Zähnen - macht aus
-  // dem hellen Kopf einen erkennbaren Totenschädel (nur Frontansichten).
-  if (f.skeletal && dir !== 3) {
-    const hy = (2 + bob) * PX;
-    ctx.fillStyle = '#1a1208'; ctx.fillRect(15, hy + 5, 2, 2);          // Nasenloch
-    ctx.fillStyle = shade(f.skin, -34); ctx.fillRect(11, hy + 7, 10, 1); // Kieferlinie
-    ctx.fillStyle = '#15100a';
-    for (let t = 0; t < 4; t++) ctx.fillRect(12 + t * 2.4, hy + 7, 1, 2); // Zähne
-  }
 
   // Waffe in der Hand (rechts, bei links-Blick links)
   if (f.weapon) drawHeldWeapon(ctx, f.weapon, dir, bob);
@@ -282,9 +276,9 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   // KEIN blaues Hemd, KEINE Waffe in der Hand (geschlagen wird per Schwung-FX).
   // Oxblut-Wams, dunkler Lederumhang/Kapuze, kräftige Haut, größer als das Volk.
   spieler:   { tunic: '#6e2f2a', skin: '#d0a884', hair: '#2e2418', legs: '#3a2c1c', hat: '#39332c', weapon: null, scale: 1.18 },
-  pest:      { tunic: '#5a7a3a', skin: '#9aa87a', hair: '#46602e', legs: '#3a4a26', weapon: null, augen: '#d83030', seuche: true },
-  skelett:   { tunic: '#cfc4a8', skin: '#e0d8c0', hair: '#cfc4a8', legs: '#b8ae90', weapon: 'schwert', skeletal: true, augen: '#e03030' },
-  schuetze:  { tunic: '#b8a888', skin: '#d0c8b0', hair: '#b8a888', legs: '#a09070', weapon: 'bogen', skeletal: true, augen: '#e03030' },
+  pest:      { tunic: '#5a7a3a', skin: '#9aa87a', hair: '#46602e', legs: '#3a4a26', weapon: null, seuche: true },
+  skelett:   { tunic: '#cfc4a8', skin: '#e0d8c0', hair: '#cfc4a8', legs: '#b8ae90', weapon: 'schwert', skeletal: true },
+  schuetze:  { tunic: '#b8a888', skin: '#d0c8b0', hair: '#b8a888', legs: '#a09070', weapon: 'bogen', skeletal: true },
   // Grabschatten (Runde 41): echter schwarzer Schatten statt buntem Männchen -
   // durchgehend nahezu schwarze Silhouette, nur die Augen glimmen. Wird in der
   // Szene zusätzlich halbtransparent gerendert und gleitet (kein Hüpfen).
@@ -335,7 +329,7 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   pferd:     { quad: { body: '#6a4a30', head: '#5a3e28', size: 1.35, tail: true, ears: true } },
   // Lebender Toter (Runde 32): sieht aus wie ein Bewohner - nur die
   // glühend roten Augen verraten ihn
-  lebender_toter: { tunic: '#6a6254', skin: '#cabfa8', hair: '#4a4036', legs: '#3e3a30', weapon: null, augen: '#e02828' },
+  lebender_toter: { tunic: '#6a6254', skin: '#cabfa8', hair: '#4a4036', legs: '#3e3a30', weapon: null },
 };
 
 // Helden-Aussehen nach Ruestungsstufe x Waffe (Feedback-Runde 32):
