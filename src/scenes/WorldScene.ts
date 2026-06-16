@@ -1293,8 +1293,11 @@ export class WorldScene extends CombatScene {
     {
       const aktuell = this.sfx.aktuelleMusik();
       // musik_nacht MUSS wechselbar sein, sonst läuft die Stadt-Nachtmusik
-      // nach dem Laden bis in die Krypta weiter (Fehlerbericht Runde 21)
-      const wechselbar = !aktuell || aktuell.startsWith('musik_dorf') || aktuell.startsWith('musik_nacht') || aktuell.startsWith('musik_wald') || aktuell.startsWith('musik_krypta');
+      // nach dem Laden bis in die Krypta weiter (Fehlerbericht Runde 21).
+      // musik_boss ebenso (Runde 41): wer durchs Portal wieder runter zum
+      // Bossraum und dann TIEFER ging (crypt6+, dunkel), hörte sonst die
+      // Bossmusik in Endlosschleife - sie wurde nie durch die Kryptamusik ersetzt.
+      const wechselbar = !aktuell || aktuell.startsWith('musik_dorf') || aktuell.startsWith('musik_nacht') || aktuell.startsWith('musik_wald') || aktuell.startsWith('musik_krypta') || aktuell.startsWith('musik_boss');
       if (wechselbar) {
         const nachts = this.tageszeit > TAG.nachtAb || this.tageszeit < TAG.morgenAb;
         const loopName = a.dark && id !== 'boss' ? 'musik_krypta'

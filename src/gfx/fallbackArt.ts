@@ -285,7 +285,10 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   pest:      { tunic: '#5a7a3a', skin: '#9aa87a', hair: '#46602e', legs: '#3a4a26', weapon: null, augen: '#d83030', seuche: true },
   skelett:   { tunic: '#cfc4a8', skin: '#e0d8c0', hair: '#cfc4a8', legs: '#b8ae90', weapon: 'schwert', skeletal: true, augen: '#e03030' },
   schuetze:  { tunic: '#b8a888', skin: '#d0c8b0', hair: '#b8a888', legs: '#a09070', weapon: 'bogen', skeletal: true, augen: '#e03030' },
-  schatten:  { tunic: '#3a3450', skin: '#2a2440', hair: '#1e1a30', legs: '#16122a', weapon: null, glow: '#b06ae8', augen: '#e84860' },
+  // Grabschatten (Runde 41): echter schwarzer Schatten statt buntem Männchen -
+  // durchgehend nahezu schwarze Silhouette, nur die Augen glimmen. Wird in der
+  // Szene zusätzlich halbtransparent gerendert und gleitet (kein Hüpfen).
+  schatten:  { tunic: '#0c0a14', skin: '#0a0812', hair: '#08060f', legs: '#070510', weapon: null, glow: '#1a1026', augen: '#e84860' },
   templer:   { tunic: '#6a6258', skin: '#8a8278', hair: '#3a3430', legs: '#4a443c', weapon: 'schwert', hat: '#56504a', scale: 1.5 },
   wolf:      { quad: { body: '#4a4440', head: '#3c3834', size: 1, tail: true, ears: true } },
   ratte:     { quad: { body: '#5a4a3a', head: '#4c3e30', size: 0.6, tail: true } },

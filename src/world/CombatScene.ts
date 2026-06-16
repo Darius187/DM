@@ -2498,9 +2498,16 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       e.sprite.setVisible(sichtbar);
       e.versteckt = !sichtbar;
       if (!sichtbar) continue;
-      const wob = Math.sin(e.wobble) * 1.5;
+      // Grabschatten gleitet als halbdurchsichtiger schwarzer Schatten (Runde 41,
+      // Autorkritik "soll ein richtiger schwarzer Schatten sein, kein hüpfendes
+      // Etwas"): kein Lauf-Hüpfen (Schritt eingefroren), sanftes Schweben, halb-
+      // transparent.
+      const istSchatten = e.type === 'schatten';
+      const wob = istSchatten ? Math.sin(e.wobble * 0.6) * 2.5 : Math.sin(e.wobble) * 1.5;
       e.sprite.setPosition(e.x, e.y + wob).setDepth(e.y);
-      this.provider.applyFigure(e.sprite, e.figur(), e.dir, e.step);
+      this.provider.applyFigure(e.sprite, e.figur(), e.dir, istSchatten ? 0 : e.step);
+      if (istSchatten) e.sprite.setAlpha(0.72);
+      else if (e.sprite.alpha !== 1) e.sprite.setAlpha(1);
       if (e.boss) e.sprite.setScale(1.5);
       else if (e.elite) e.sprite.setScale(1.25);
       if (e.hitFlash > 0) e.sprite.setTintFill(0xffffff);
