@@ -76,6 +76,10 @@ export interface AreaData {
   kraeuter: Pos[];            // Kräuter am Waldrand (Masterprompt 7.4)
   schilder?: Array<Pos & { text: string }>; // beschriftbare Schilder (Baukasten, Runde 22)
   geleert?: boolean;          // Ebene leergeräumt - bleibt leer bis zum Tod (Runde 26)
+  // Schlucht/Brücke ab Ebene 4 (Runde 40): die Tile-Koordinaten der Schlucht,
+  // damit der eigene Tiefen-Renderer den Abgrund als EIN tiefes Bild zeichnet
+  // (statt sich wiederholender Kacheln) und Licht aus der Tiefe hinaufwirft.
+  schlucht?: { x0: number; y0: number; x1: number; y1: number; akzent: string };
   // Mauerrisse vor Geheimkammern (Runde 40): die Kammer bleibt massiver Fels,
   // bis der Riss aufbricht - erst dann wird sie ausgehoben (kammer) und die
   // Truhe (chestX/chestY) erscheint. So ist sie vorher wirklich unsichtbar.
@@ -177,15 +181,35 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
   // so bleibt die Ebene IMMER durchquerbar (Korridore treffen die Mitte/den
   // Rand), egal wie die Gänge laufen. Rein optischer Test, ob Brücken taugen.
   if (n >= 4) {
-    const r = mid.filter((rr) => rr.w >= 6 && rr.h >= 6).sort((a2, b2) => b2.w * b2.h - a2.w * a2.h)[0];
-    if (r) {
-      mid.splice(mid.indexOf(r), 1); // nicht zusätzlich als Spezialraum nutzen
-      for (let yy = r.y + 1; yy <= r.y + r.h - 2; yy++) {
-        for (let xx = r.x + 1; xx <= r.x + r.w - 2; xx++) map[yy][xx] = T.ABYSS;
+    const base = mid.filter((rr) => rr.w >= 6 && rr.h >= 6).sort((a2, b2) => b2.w * b2.h - a2.w * a2.h)[0];
+    if (base) {
+      mid.splice(mid.indexOf(base), 1); // nicht zusätzlich als Spezialraum nutzen
+      // Zu einer großen Höhle aufweiten - aber nur, wenn dabei keine Treppe
+      // verschluckt wird (sonst bleibt es der Ursprungsraum). Eine breite
+      // Schlucht wirkt viel dramatischer als ein enges Loch.
+      let x0 = base.x, y0 = base.y, x1 = base.x + base.w - 1, y1 = base.y + base.h - 1;
+      const tw = Math.min(14, w - 4), thh = Math.min(11, h - 4);
+      const ex0 = Math.max(1, Math.min(base.cx - (tw >> 1), w - 2 - tw)), ey0 = Math.max(1, Math.min(base.cy - (thh >> 1), h - 2 - thh));
+      const ex1 = ex0 + tw - 1, ey1 = ey0 + thh - 1;
+      const trifft = (sx: number, sy: number) => sx >= ex0 && sx <= ex1 && sy >= ey0 && sy <= ey1;
+      if (!trifft(start.cx, start.cy) && !trifft(far.cx, far.cy)) {
+        x0 = ex0; y0 = ey0; x1 = ex1; y1 = ey1;
+        carve(map, x0, y0, x1, y1, T.FLOOR);
       }
-      for (let xx = r.x + 1; xx <= r.x + r.w - 2; xx++) { map[r.cy][xx] = T.BRIDGE; map[r.cy - 1][xx] = T.BRIDGE; }
-      for (let yy = r.y + 1; yy <= r.y + r.h - 2; yy++) { map[yy][r.cx] = T.BRIDGE; map[yy][r.cx - 1] = T.BRIDGE; }
-      a.special.push({ id: 'schlucht', x: r.cx, y: r.cy, raum: 'Schlucht mit Steg' });
+      const cx2 = (x0 + x1) >> 1, cy2 = (y0 + y1) >> 1;
+      // Innenfläche = Abgrund, 1 Kachel Boden-RING außen, Kreuz-Steg über die
+      // Mitte: Ring + Steg halten die Ebene IMMER durchquerbar.
+      for (let yy = y0 + 1; yy <= y1 - 1; yy++) {
+        for (let xx = x0 + 1; xx <= x1 - 1; xx++) map[yy][xx] = T.ABYSS;
+      }
+      // EIN breiter Steg quer über die Mitte (verbindet linke + rechte
+      // Ringseite). Der Abgrund bleibt oben UND unten offen, damit die glühende
+      // Tiefe gut sichtbar ist - der Ring drumherum sichert die Durchquerbarkeit.
+      for (let xx = x0; xx <= x1; xx++) { map[cy2][xx] = T.BRIDGE; map[cy2 - 1][xx] = T.BRIDGE; }
+      // Akzentfarbe aus dem Ebenen-Thema (R40): Verlies blau-kalt, Glutkatakomben
+      // glühend orange - so leuchtet jede Schlucht in ihrer eigenen Farbe.
+      a.schlucht = { x0, y0, x1, y1, akzent: th.rune };
+      a.special.push({ id: 'schlucht', x: cx2, y: cy2, raum: 'Die Schlucht' });
     }
   }
 

@@ -25,7 +25,7 @@ import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, tileNameAt } from '../world/tiles';
 import { TILE } from '../gfx/fallbackArt';
 import { WASSER_FRAMES } from '../gfx/tileArt';
-import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64 } from '../gfx/detailArt';
+import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64, drawSchlucht } from '../gfx/detailArt';
 import { DialogUI, fixUiScroll } from '../ui/dialog';
 import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, RELIKT, ENDEN, TOD, INTRO_FILM } from '../data/texte';
 import { ALTAR, BLOOD_WELL, CHEST, RELIC_ACCEPT_ELIXIRS } from '../data/balancing';
@@ -1481,6 +1481,10 @@ export class WorldScene extends CombatScene {
     }
     const key = this.provider.tileKey(name, variant, a.depth, a.theme);
     const img = tag(this.add.image(tx * TILE + 16, ty * TILE + 16, key).setDepth(-10));
+    // Steg liegt ÜBER dem Schlucht-Tiefenbild (das bei -9 gezeichnet wird),
+    // der Abgrund darunter (Runde 40)
+    if (id === T.BRIDGE) img.setDepth(-8);
+    if (id === T.ABYSS) img.setDepth(-12);
     // Gebäude verdecken den Spieler KOMPLETT, wenn er dahinter steht
     // (Runde 14: vorher "stand" man optisch auf dem Dach) - alle Teile
     // eines Hauses sortieren sich auf die Tiefe seiner Vorderkante
@@ -1658,8 +1662,35 @@ export class WorldScene extends CombatScene {
     }
     // Offenes Portal-Paar wieder aufstellen (Runde 28)
     this.zeichnePortale();
+    // Schlucht-Tiefenbild (Runde 40): EIN großes Bild über den Abgrund
+    this.bauSchlucht(a);
     // Ortsnamen erscheinen als Einblendung, wenn man in die Nähe kommt
     // (Runde 12: nicht mehr halb versteckt in der Welt)
+  }
+
+  // Schlucht ab Ebene 4 (Runde 40): über die Abgrund-Innenfläche EIN gezeichnetes
+  // Tiefenbild legen (Trichter + glühender Grund) statt sich wiederholender
+  // Kacheln. Tiefe -9: über dem Abgrund-Boden (-12), unter dem Steg (-8).
+  private schlucht: { x0: number; y0: number; x1: number; y1: number } | null = null;
+  private schluchtAkzent = 0x5a7ae0;
+  private bauSchlucht(a: AreaData): void {
+    this.schlucht = null;
+    const s = a.schlucht;
+    if (!s) return;
+    const px0 = (s.x0 + 1) * TILE, py0 = (s.y0 + 1) * TILE;
+    const wpx = (s.x1 - s.x0 - 1) * TILE, hpx = (s.y1 - s.y0 - 1) * TILE;
+    if (wpx < 8 || hpx < 8) return;
+    const key = `schlucht_${a.id}`;
+    if (this.textures.exists(key)) this.textures.remove(key);
+    const cv = document.createElement('canvas');
+    cv.width = wpx; cv.height = hpx;
+    drawSchlucht(cv.getContext('2d')!, wpx, hpx, s.akzent);
+    this.textures.addCanvas(key, cv);
+    const img = this.add.image(px0, py0, key).setOrigin(0).setDepth(-9);
+    this.tileImages.push(img);
+    this.schlucht = { x0: s.x0, y0: s.y0, x1: s.x1, y1: s.y1 };
+    const n = parseInt(s.akzent.replace('#', ''), 16);
+    this.schluchtAkzent = n;
   }
 
   // --- Haus-Animationen (Runde 24) --------------------------------------------
@@ -4459,6 +4490,20 @@ export class WorldScene extends CombatScene {
       for (const sp2 of this.area.special) {
         if (sp2.id === 'blutbrunnen' && nah(sp2.x * TILE + 16, sp2.y * TILE + 16)) {
           warmIdx = this.placeWarm(warmIdx, sp2.x * TILE + 16, sp2.y * TILE + 16, 70, puls, 0xd83a3a);
+        }
+      }
+      // Schlucht-Glühen (Runde 40): die Tiefe leuchtet in der Akzentfarbe der
+      // Ebene und wirft Licht auf den Steg - man "sieht unten was". Holt die
+      // ganze Schlucht aus dem Dunkel, sobald man in der Nähe steht.
+      if (this.schlucht) {
+        const s = this.schlucht;
+        const breite = (s.x1 - s.x0) * TILE, hoehe = (s.y1 - s.y0) * TILE;
+        const cxp = (s.x0 + 1) * TILE + (breite - 2 * TILE) / 2;
+        const cyp = (s.y0 + 1) * TILE + (hoehe - 2 * TILE) * 0.6;
+        if (Math.hypot(cxp - this.px, cyp - this.py) < basisRadius * 1.7) {
+          const sx = (cxp - cam.worldView.x) * zm, sy = (cyp - cam.worldView.y) * zm;
+          this.eraseLight(sx, sy, breite * 0.5 * zm);
+          warmIdx = this.placeWarm(warmIdx, cxp, cyp, breite * 0.4, (0.5 + Math.sin(time * 1.6) * 0.12) * 0.7, this.schluchtAkzent);
         }
       }
     }

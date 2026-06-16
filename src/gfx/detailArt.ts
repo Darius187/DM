@@ -6,6 +6,60 @@
 
 type Ctx = CanvasRenderingContext2D;
 
+function hexRgb(hex: string): [number, number, number] {
+  const n = parseInt(hex.replace('#', ''), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+// Schlucht-Tiefenbild (Runde 40, Autorwunsch "es soll aussehen, als hätte es
+// Tiefe; vielleicht sieht man unten auch was"). EIN großes Bild über die ganze
+// Schlucht statt sich wiederholender Kacheln: ein Trichter aus zurückweichenden
+// Felswänden zieht zum Grund, der in der Akzentfarbe der Ebene glüht (Verlies
+// kalt-blau, Glutkatakomben glühend orange). w/h in Pixeln, akzent als #rrggbb.
+export function drawSchlucht(ctx: Ctx, w: number, h: number, akzent: string): void {
+  const [ar, ag, ab] = hexRgb(akzent);
+  ctx.clearRect(0, 0, w, h);
+  // 1) Senkrechter Tiefenverlauf: oben gebrochener Felssaum (Lichtkante), dann
+  //    rasch ins Schwarze, am GRUND (unteres Drittel) glüht die Tiefe.
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, 'rgb(54,48,40)');     // ferner oberer Wandsaum, beleuchtet
+  g.addColorStop(0.1, 'rgb(24,21,17)');
+  g.addColorStop(0.42, '#040305');        // tiefste Finsternis
+  g.addColorStop(0.7, '#060507');
+  g.addColorStop(1, 'rgb(16,14,12)');     // nahe Lippe (unten)
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  // 2) Seitenwände abdunkeln (Vignette links/rechts) - der Schacht ist eng
+  const sg = ctx.createLinearGradient(0, 0, w, 0);
+  sg.addColorStop(0, 'rgba(0,0,0,0.55)'); sg.addColorStop(0.18, 'rgba(0,0,0,0)');
+  sg.addColorStop(0.82, 'rgba(0,0,0,0)'); sg.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx.fillStyle = sg; ctx.fillRect(0, 0, w, h);
+  // 3) Gesteinsschichten an den oberen Wänden (waagerechte Kanten)
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1;
+  for (let k = 1; k <= 5; k++) { const yy = (k / 12) * h; ctx.beginPath(); ctx.moveTo(0, yy); ctx.lineTo(w, yy + (k % 2 ? 2 : -2)); ctx.stroke(); }
+  // 4) Glühender Grund (das "man sieht unten was"): breites Leuchtband tief unten
+  const gy = h * 0.82;
+  const grad = ctx.createRadialGradient(w / 2, gy, 2, w / 2, gy, w * 0.62);
+  grad.addColorStop(0, `rgba(${Math.min(255, ar + 40)},${Math.min(255, ag + 35)},${Math.min(255, ab + 35)},0.78)`);
+  grad.addColorStop(0.45, `rgba(${ar},${ag},${ab},0.26)`);
+  grad.addColorStop(1, `rgba(${ar},${ag},${ab},0)`);
+  ctx.fillStyle = grad; ctx.fillRect(0, h * 0.45, w, h * 0.55);
+  // 5) glühende Adern/Funken im Grund
+  for (let i = 0; i < 22; i++) {
+    const gx = (i * 73 % (w - 8)) + 4;
+    const gyy = gy + (Math.sin(i * 1.7) * h * 0.12);
+    const fade = 0.6 - Math.abs(gyy - gy) / (h * 0.3);
+    if (fade <= 0) continue;
+    ctx.fillStyle = `rgba(${Math.min(255, ar + 90)},${Math.min(255, ag + 80)},${Math.min(255, ab + 80)},${fade})`;
+    ctx.fillRect(gx, gyy, 1.6, 1.6);
+  }
+  // 6) helle, gebrochene Boden-Lippe ringsum (wo der Boden abbricht)
+  ctx.strokeStyle = 'rgba(132,120,98,0.75)'; ctx.lineWidth = 2.5;
+  ctx.strokeRect(1.5, 1.5, w - 3, h - 3);
+  ctx.fillStyle = 'rgba(150,138,114,0.4)'; ctx.fillRect(0, 0, w, 2);   // oberer Saum am hellsten
+  ctx.strokeStyle = 'rgba(0,0,0,0.65)'; ctx.lineWidth = 2;
+  ctx.strokeRect(4.5, 4.5, w - 9, h - 9);
+}
+
 function ell(ctx: Ctx, x: number, y: number, rx: number, ry: number, c: string): void {
   ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
 }
