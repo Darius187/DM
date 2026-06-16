@@ -249,6 +249,7 @@ export class WorldScene extends CombatScene {
     // bleibt gestochen scharf (vorher: gestrecktes Canvas = Pixelmatsch)
     this.uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height);
     this.uiCam.setScroll(0, 0);
+    this.wendePostFxAn();
     // Fenstergröße ändern / Vollbild (F11): Kameras, Lichtschicht und OFFENE
     // Fenster neu ausrichten - sonst hingen Charakterfenster & Co. schief und
     // das Bild "brach" (Autorbug Runde 40). Beim Verlassen wieder abmelden.
@@ -4886,6 +4887,22 @@ export class WorldScene extends CombatScene {
       .setOrigin(0).setScrollFactor(0).setDepth(4000);
   }
 
+  // Sanfte GPU-Nachbearbeitung der WELT-Kamera (Runde 40, Autorwunsch
+  // "aufwerten"): dezentes Bloom lässt Fackeln/Feuer/Zauber glühen, eine weiche
+  // Vignette schließt die Ränder ab - mehr Tiefe und 1635er-Düsternis, ohne den
+  // Pixel-Look zu verwaschen. Die UI-Kamera bleibt unangetastet (scharfe Schrift).
+  // Abschaltbar (settings.postFx), z. B. für schwache Geräte.
+  private postFxAktiv: boolean | null = null;
+  private wendePostFxAn(): void {
+    const an = getSettings().postFx !== false;
+    this.postFxAktiv = an;
+    const cam = this.cameras.main;
+    cam.postFX.clear();
+    if (!an) return;
+    cam.postFX.addVignette(0.5, 0.5, 0.92, 0.34);
+    cam.postFX.addBloom(0xffffff, 1, 1, 0.7, 0.55, 4);
+  }
+
   private onResize(): void {
     if (!this.area) return;
     const w = this.scale.width, h = this.scale.height;
@@ -4921,6 +4938,8 @@ export class WorldScene extends CombatScene {
   update(_time: number, delta: number): void {
     if (!this.area) return;
     const dt = Math.min(0.05, delta / 1000);
+    // Nachbearbeitung nachziehen, falls in den Einstellungen umgeschaltet
+    if ((getSettings().postFx !== false) !== this.postFxAktiv) this.wendePostFxAn();
     // Schiebephysik VOR der Bewegung (Runde 40): so bremst die Kiste den Helden
     // im selben Frame, in dem er sie berührt - vorher hinkte die Bremse einen
     // Frame hinterher und griff kaum

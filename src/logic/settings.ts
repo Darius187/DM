@@ -33,6 +33,7 @@ export interface Settings {
   // y zählt vom UNTEREN Bildrand (Chat-Verankerung wie bei WoW)
   chronikBox: { x: number; y: number; w: number; h: number };
   chronikAuto: boolean;   // Chronik-Fenster beim Spielstart offen (Runde 36)
+  postFx: boolean;        // Nachbearbeitung: Bloom auf Lichter + Vignette (Runde 40)
   uiLayoutV: number;      // Layout-Version: ältere UI-Versätze einmalig zurücksetzen
   kb: KeyBindings;
 }
@@ -56,6 +57,7 @@ export const DEF_SETTINGS: Settings = {
   chronikBox: { x: 8, y: -418, w: 380, h: 300 }, // links unten, knapp ÜBER der
   // Lebenskugel/Leiste (Runde 40): tiefer würde die Kugel verdecken
   chronikAuto: true,
+  postFx: true,
   uiLayoutV: 3, // Runde 40: Orbs an den Leisten, Meldungen oben, Chronik unten links
   kb: {
     roll: ' ', interact: 'e', inv: 'i', charakter: 'c',
