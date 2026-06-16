@@ -122,6 +122,38 @@ export function fels64(ctx: Ctx): void {
   ctx.fillStyle = 'rgba(230,224,200,0.18)'; poly(ctx, [[14, 24], [26, 13], [40, 15], [30, 19], [18, 27]], 'rgba(230,224,200,0.16)');
 }
 
+// --- Erzader (Runde 42: aufgewertet auf aktuelle Qualität) ------------------
+// Ein dunkler Gesteinsbrocken im Krypta-Boden, durchzogen von glitzernden
+// Gold- und Silberadern mit einzelnen Lichtfunken - statt des alten grauen
+// Kreises mit drei Klötzchen.
+export function erzader64(ctx: Ctx): void {
+  schatten(ctx, 32, 20, 50);
+  // Gesteinsblock mit Facetten (dunkler als oberirdischer Fels)
+  poly(ctx, [[10, 42], [14, 24], [28, 14], [46, 16], [54, 32], [50, 46], [28, 50]], '#46423b');
+  poly(ctx, [[14, 24], [28, 14], [46, 16], [36, 30], [18, 32]], '#565249'); // Lichtfläche oben
+  poly(ctx, [[36, 30], [46, 16], [54, 32], [50, 46], [38, 44]], '#393530'); // Schattenflanke rechts
+  poly(ctx, [[10, 42], [14, 24], [18, 32], [24, 44]], '#322f2a');           // Schattenflanke links
+  // Risse, durch die das Erz tritt
+  ctx.strokeStyle = 'rgba(16,14,10,0.6)'; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(26, 16); ctx.lineTo(30, 30); ctx.lineTo(24, 44); ctx.stroke();
+  ctx.lineWidth = 1;
+  // Goldader: ein geschwungener Strang aus Nuggets
+  const gold: Array<[number, number, number]> = [[20, 34, 3.2], [26, 28, 2.4], [31, 23, 3.6], [37, 27, 2.6], [42, 33, 3.0], [34, 38, 2.2]];
+  for (const [gx, gy, r] of gold) {
+    ell(ctx, gx, gy, r, r * 0.82, '#9a7322');           // dunkler Saum
+    ell(ctx, gx - 0.4, gy - 0.4, r * 0.7, r * 0.6, '#e0b84a'); // Goldkern
+    ell(ctx, gx - r * 0.35, gy - r * 0.35, r * 0.3, r * 0.24, '#fff0c0'); // Lichtfunke
+  }
+  // Silberader: feinere helle Sprenkel quer dazu
+  for (const [sx, sy, r] of [[44, 24, 2.0], [48, 30, 1.6], [22, 42, 1.8], [16, 30, 1.5]] as Array<[number, number, number]>) {
+    ell(ctx, sx, sy, r, r * 0.8, '#7d828c');
+    ell(ctx, sx - 0.3, sy - 0.3, r * 0.55, r * 0.5, '#d2d6de');
+  }
+  // Lichtkante oben am Block
+  ctx.fillStyle = 'rgba(226,220,198,0.14)';
+  poly(ctx, [[16, 26], [28, 15], [44, 17], [34, 21], [20, 29]], 'rgba(226,220,198,0.14)');
+}
+
 // --- Zaun (verwitterte Holzlatten mit Maserung und Nägeln) ------------------
 export function zaun64(ctx: Ctx): void {
   schatten(ctx, 32, 26, 52);

@@ -4953,6 +4953,52 @@ export class WorldScene extends CombatScene {
     return idx + 1;
   }
 
+  // Truhe zeichnen (Runde 42, "auf aktuelle Qualität hoch"): Holzkorpus mit
+  // Maserung, gewölbtem Deckel, zwei Eisenbändern mit Nieten und Schlossplatte.
+  // Verfluchte Truhen in violettem Holz mit pulsierendem Schein.
+  private zeichneTruhe(g: Phaser.GameObjects.Graphics, ch: { x: number; y: number; open: boolean; verflucht?: boolean }, time: number): void {
+    const { x, y } = ch;
+    const fluch = ch.verflucht === true;
+    const holz = fluch ? 0x352a44 : 0x6b4a24, holzD = fluch ? 0x241a30 : 0x4a3018, holzL = fluch ? 0x44365a : 0x7d5a2e;
+    const eisen = fluch ? 0x4a3a68 : 0x3a3640, eisenL = fluch ? 0x6a548c : 0x55515c, niet = fluch ? 0x8a6ab0 : 0x6a6470;
+    const gold = fluch ? 0x9a5ae8 : 0xc9a227;
+    g.fillStyle(0x000000, 0.4); g.fillEllipse(x, y + 10, 28, 10);   // Schatten
+    if (!ch.open) {
+      // Schein ZUERST (hinter der Truhe), damit der Korpus scharf bleibt
+      g.fillStyle(gold, (fluch ? 0.12 : 0.06) + Math.sin(time * 3 + x) * (fluch ? 0.06 : 0.03));
+      g.fillCircle(x, y - 4, fluch ? 13 : 15);
+    }
+    if (ch.open) {
+      g.fillStyle(holz, 1); g.fillRect(x - 13, y - 2, 26, 12);
+      g.fillStyle(holzD, 1); g.fillRect(x - 13, y + 5, 26, 5);
+      g.fillStyle(0x140d07, 1); g.fillRect(x - 11, y - 4, 22, 8);   // dunkler Innenraum
+      g.fillStyle(gold, 0.5 + Math.sin(time * 4 + x) * 0.12); g.fillEllipse(x, y, 16, 5); // Goldglanz
+      g.fillStyle(holzL, 1); g.fillRect(x - 13, y - 16, 26, 6);     // aufgeklappter Deckel
+      g.fillStyle(eisen, 1); g.fillRect(x - 5, y - 16, 3, 6); g.fillRect(x + 3, y - 16, 3, 6);
+      g.fillRect(x - 8, y - 2, 3, 12); g.fillRect(x + 5, y - 2, 3, 12); // Bänder am Korpus
+      return;
+    }
+    // Korpus mit Planken
+    g.fillStyle(holz, 1); g.fillRect(x - 13, y - 2, 26, 12);
+    g.fillStyle(holzD, 1); g.fillRect(x - 13, y + 7, 26, 3);
+    g.lineStyle(1, holzD, 0.8); g.lineBetween(x - 4, y, x - 4, y + 9); g.lineBetween(x + 5, y, x + 5, y + 9);
+    g.fillStyle(holzL, 0.7); g.fillRect(x - 13, y - 2, 26, 2);
+    // Gewölbter Deckel
+    g.fillStyle(holz, 1); g.fillRoundedRect(x - 14, y - 13, 28, 12, { tl: 7, tr: 7, bl: 0, br: 0 });
+    g.fillStyle(holzL, 0.8); g.fillRoundedRect(x - 14, y - 13, 28, 4, { tl: 7, tr: 7, bl: 0, br: 0 });
+    g.fillStyle(holzD, 1); g.fillRect(x - 14, y - 2, 28, 1);        // Deckelfuge
+    // Eisenbänder mit Nieten
+    for (const bx of [x - 8, x + 5]) {
+      g.fillStyle(eisen, 1); g.fillRect(bx, y - 13, 3, 23);
+      g.fillStyle(eisenL, 1); g.fillRect(bx, y - 13, 1, 23);
+      g.fillStyle(niet, 1); g.fillCircle(bx + 1.5, y - 10, 1.2); g.fillCircle(bx + 1.5, y + 7, 1.2);
+    }
+    // Schlossplatte mit Schlüsselloch
+    g.fillStyle(eisen, 1); g.fillRect(x - 3, y - 4, 6, 7);
+    g.fillStyle(gold, 1); g.fillRect(x - 2, y - 3, 4, 5);
+    g.fillStyle(0x16100a, 1); g.fillCircle(x, y - 1, 1.1); g.fillRect(x - 0.5, y - 1, 1, 3);
+  }
+
   private renderWorldOverlay(): void {
     const g = this.worldGfx;
     const time = this.time.now / 1000;
@@ -5003,32 +5049,8 @@ export class WorldScene extends CombatScene {
         g.fillCircle(hd.x, hd.y - 7 + cf, 0.8);
       }
     }
-    // Truhen
-    for (const ch of this.area.chests) {
-      const { x, y } = ch;
-      g.fillStyle(0x000000, 0.4);
-      g.fillEllipse(x, y + 9, 26, 10);
-      if (ch.open) {
-        g.fillStyle(0x3a2814, 1);
-        g.fillRect(x - 12, y - 4, 24, 12);
-        g.fillStyle(0x16100a, 1);
-        g.fillRect(x - 10, y - 2, 20, 8);
-        g.fillStyle(0x5a3f20, 1);
-        g.fillRect(x - 12, y - 14, 24, 6);
-      } else {
-        // Verfluchte Truhen: dunkleres Holz, violette Beschläge, pulsierender Schein
-        const fluch = ch.verflucht === true;
-        g.fillStyle(fluch ? 0x2e2236 : 0x5a3f20, 1);
-        g.fillRect(x - 12, y - 10, 24, 18);
-        g.fillStyle(fluch ? 0x1c1424 : 0x3a2814, 1);
-        g.fillRect(x - 12, y - 10, 24, 7);
-        g.fillStyle(fluch ? 0x8c4ae0 : 0xc9a227, 1);
-        g.fillRect(x - 12, y - 3, 24, 2);
-        g.fillRect(x - 2, y - 2, 4, 6);
-        g.fillStyle(fluch ? 0x8c4ae0 : 0xe0b53a, 0.15 + Math.sin(time * 3 + x) * 0.08);
-        g.fillCircle(x, y, 16);
-      }
-    }
+    // Truhen (Runde 42: aufgewertet - Holzmaserung, Eisenbänder, Schloss)
+    for (const ch of this.area.chests) this.zeichneTruhe(g, ch, time);
     // Anschlagbrett auf dem Marktplatz (Kopfgeld)
     if (this.area.id === 'village') {
       const brett = this.area.special.find((s) => s.id === 'brett');

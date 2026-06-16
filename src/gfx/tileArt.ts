@@ -4,7 +4,7 @@
 
 import { TILE } from './fallbackArt';
 import type { CryptTheme } from '../data/krypta';
-import { fels64, zaun64, acker64, folterbank64, altar64, wasser64 } from './detailArt';
+import { fels64, zaun64, acker64, folterbank64, altar64, wasser64, erzader64 } from './detailArt';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -371,8 +371,7 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
     }
     case 'erzader':
       floorBase(ctx, n, theme);
-      ctx.fillStyle = '#4a4640'; ctx.beginPath(); ctx.arc(16, 16, 11, 0, 6.283); ctx.fill();
-      ctx.fillStyle = '#8a8e96'; ctx.fillRect(9, 12, 4, 3); ctx.fillRect(17, 17, 5, 3); ctx.fillRect(14, 8, 3, 3);
+      detail(ctx, erzader64);
       break;
     case 'fels':
       grasBase(ctx, n);
