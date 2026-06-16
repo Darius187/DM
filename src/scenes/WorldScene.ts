@@ -2624,6 +2624,7 @@ export class WorldScene extends CombatScene {
   private startGrosserEinfall(): void {
     this.einfallAktiv = true;
     this.grosserEinfall = true;
+    this.flags.wurdeBelagert = true; // Runde 41 Fix: schaltet die Palisade beim Schmied frei (fehlte hier)
     this.letzterEinfallTag = this.tag;
     for (const n of this.npcEnts) n.imHaus = false; // alle fliehen erst noch
     const punkte = [
