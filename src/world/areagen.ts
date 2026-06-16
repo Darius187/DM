@@ -181,6 +181,12 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
   a.spawn = { x: (start.cx + 1) * TILE + 16, y: start.cy * TILE + 16 };
   a.upPos = { x: start.cx * TILE + 16, y: start.cy * TILE + 16 };
   a.downPos = { x: far.cx * TILE + 16, y: far.cy * TILE + 16 };
+  // Enthält ein Raum-Rechteck eine Treppen-Kachel? (Runde 40) Schlucht und
+  // Säulenhalle dürfen NICHT auf so einem Raum liegen, sonst überschreiben sie
+  // die Treppe (Räume können sich überlappen).
+  const enthaeltTreppe = (rr: Room): boolean =>
+    (start.cx >= rr.x && start.cx <= rr.x + rr.w - 1 && start.cy >= rr.y && start.cy <= rr.y + rr.h - 1) ||
+    (far.cx >= rr.x && far.cx <= rr.x + rr.w - 1 && far.cy >= rr.y && far.cy <= rr.y + rr.h - 1);
 
   // Pool für Spezialräume: Räume ohne Treppen, große zuerst
   // (Pflichträume wie Annas Grabkammer werden vor Altären/Bibliothek gesetzt)
@@ -199,7 +205,7 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
   // so bleibt die Ebene IMMER durchquerbar (Korridore treffen die Mitte/den
   // Rand), egal wie die Gänge laufen. Rein optischer Test, ob Brücken taugen.
   if (n >= 4) {
-    const base = mid.filter((rr) => rr.w >= 6 && rr.h >= 6).sort((a2, b2) => b2.w * b2.h - a2.w * a2.h)[0];
+    const base = mid.filter((rr) => rr.w >= 6 && rr.h >= 6 && !enthaeltTreppe(rr)).sort((a2, b2) => b2.w * b2.h - a2.w * a2.h)[0];
     if (base) {
       mid.splice(mid.indexOf(base), 1); // nicht zusätzlich als Spezialraum nutzen
       // Zu einer großen Höhle aufweiten - aber nur, wenn dabei keine Treppe
@@ -243,7 +249,7 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
   // mit einem Raster einzelner Steinpfeiler (Wandblöcke), Gänge dazwischen. Die
   // Mitte bleibt frei (Korridor-Anschluss), darum bleibt die Halle durchquerbar.
   for (let made = 0, tries = 0; made < (n >= 3 ? 2 : 1) && tries < 10; tries++) {
-    const r = mid.filter((rr) => rr.w >= 6 && rr.h >= 6 && map[rr.cy][rr.cx] === T.FLOOR).sort((a2, b2) => b2.w * b2.h - a2.w * a2.h)[0];
+    const r = mid.filter((rr) => rr.w >= 6 && rr.h >= 6 && map[rr.cy][rr.cx] === T.FLOOR && !enthaeltTreppe(rr)).sort((a2, b2) => b2.w * b2.h - a2.w * a2.h)[0];
     if (!r) break;
     mid.splice(mid.indexOf(r), 1);
     // Halle als volles Rechteck sichern (falls oval ausgehoben), dann das Raster
@@ -519,6 +525,11 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
   // besserer Beute - der Riss wird mit Angriffen aufgebrochen.
   a.cracks = [];
   if (rng.random() < GEHEIMKAMMER.chance) legeGeheimkammer(map, w, h, rng, a);
+
+  // Treppen GANZ zuletzt sichern (Runde 40): kein späterer Eingriff darf sie
+  // überschrieben haben (Sicherheitsnetz zusätzlich zu den Raum-Wächtern).
+  map[start.cy][start.cx] = T.STAIRUP;
+  map[far.cy][far.cx] = T.STAIR;
 
   return a;
 }
