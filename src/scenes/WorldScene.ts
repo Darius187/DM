@@ -6,6 +6,7 @@ import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir } from '../world/Enemy';
 import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildInterior, verschiebeHaus, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
+import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { LANDHERR } from '../data/dialoge';
 import storyJson from '../data/story.json';
 import { ShopUI } from '../ui/shop';
@@ -1352,6 +1353,35 @@ export class WorldScene extends CombatScene {
     }
     // Autosave bei Gebietswechsel (Referenz-Verhalten)
     this.autosave();
+  }
+
+  // Den kampffreien Angst-Prolog ("Ebene 1") starten: die WorldScene legt sich
+  // PAUSIERT in den Hintergrund (voller Zustand bleibt erhalten), die Prolog-
+  // Szene läuft darüber. Ihr Ende meldet sich per Spiel-Event zurück (prologFertig
+  // entscheidet das Ziel - Dorf nach dem Eröffnungs-Prolog, Boss nach Blutstrom).
+  private starteProlog(ziel: 'village' | 'boss', erste: 'KammerDerFinsternis' | 'BlutstromGang'): void {
+    this.registry.set(PROLOG_AKTIV, true);
+    this.registry.set('prologZiel', ziel);
+    // Wenn die Szene wieder aufwacht (vom Prolog geweckt), geht es weiter -
+    // erst DANN ist sie sicher wieder aktiv (robuster als ein synchrones Event).
+    this.events.once(Phaser.Scenes.Events.WAKE, () => this.prologFertig());
+    this.sfx.stopLoops();
+    this.sfx.stopMusic();
+    this.scene.launch(erste);
+    this.scene.sleep();   // hält Update UND Rendern an - Zustand bleibt erhalten
+  }
+
+  private prologFertig(): void {
+    if (this.registry.get(PROLOG_AKTIV) !== true) return; // nur echte Prolog-Rückkehr
+    this.registry.set(PROLOG_AKTIV, false);
+    const ziel = this.registry.get('prologZiel') as string;
+    if (ziel === 'boss') { this.goArea('boss'); return; }
+    // Eröffnungs-Prolog vorbei: zurück ans Tageslicht, der Auftrag steht weiter.
+    this.flags.prologGesehen = true;
+    const dorf = this.getArea('village');
+    const tor = dorf.cryptDoor;
+    this.goArea('village', tor ? { x: tor.x, y: tor.y + 40 } : undefined);
+    this.logMsg('Du fliehst ans Tageslicht. Unter der Kirche wartet etwas, das vom Blut der Toten lebt.', 'bad');
   }
 
   private talkLandherr(): void {
@@ -3613,7 +3643,13 @@ export class WorldScene extends CombatScene {
         text: `Treppe hinab zu ${zielAb} - ${ik} zum Hinabsteigen`,
         action: () => {
           const id = this.area.id;
-          if (id === 'kirchenschiff') this.goArea('crypt1');
+          // Erster Abstieg unter die Kirche = der Angst-Prolog "Ebene 1"
+          // (Kammer -> Schwelle), danach Rückkehr ins Dorf. Später führt
+          // dieselbe Treppe normal in die Krypta.
+          if (id === 'kirchenschiff' && !this.flags.prologGesehen) this.starteProlog('village', 'KammerDerFinsternis');
+          else if (id === 'kirchenschiff') this.goArea('crypt1');
+          // Letzter Abstieg vor dem Boss = der Blutstrom-Gang (einmalig).
+          else if (id === 'crypt5' && !this.flags.blutstromGesehen) { this.flags.blutstromGesehen = true; this.starteProlog('boss', 'BlutstromGang'); }
           else if (id === 'crypt5') this.goArea('boss');
           else if (id === 'boss') this.goArea('crypt6');
           else if (id.startsWith('crypt')) this.goArea(`crypt${parseInt(id.replace('crypt', ''), 10) + 1}`);

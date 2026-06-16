@@ -11,6 +11,7 @@ import { SoundProvider } from '../gfx/SoundProvider';
 import { LightingManager } from '../systems/LightingManager';
 import { ScareTrigger, type TriggerDef } from '../systems/ScareTrigger';
 import { BloodFlow } from '../systems/BloodFlow';
+import { beendeProlog } from '../systems/prologFluss';
 import { PROLOG_LICHT } from '../data/prolog';
 
 const TILE = 32;
@@ -27,6 +28,7 @@ export class DieSchwelle extends Phaser.Scene {
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private map: number[][] = [];
   private tor = { tx: 13, ty: 1, gelesen: false };
+  private rueckweg = { tx: 13, ty: 16, frei: false, sprite: null as Phaser.GameObjects.Graphics | null, verlassen: false };
   private hint!: Phaser.GameObjects.Text;
   private atmosT = 2;
 
@@ -107,11 +109,32 @@ export class DieSchwelle extends Phaser.Scene {
 
   private interagiere(): void {
     const tx = this.tor.tx * TILE + 16, ty = this.tor.ty * TILE + 16;
-    if (Math.hypot(tx - this.px, ty - this.py) < 56) {
+    if (Math.hypot(tx - this.px, ty - this.py) < 56 && !this.tor.gelesen) {
       this.tor.gelesen = true;
-      this.zeigeMeldung('In das Tor geritzt: »Was unten ruht, nährt sich am Blut. Steig nicht hinab, oder werde Teil davon.« - Das Tor ist verriegelt.');
+      this.zeigeMeldung('In das Tor geritzt: »Was unten ruht, nährt sich am Blut. Steig nicht hinab, oder werde Teil davon.« - Das Tor ist verriegelt. Hier geht es nicht weiter.');
       this.sfx.play('krypta_grusel2', 0.6);
+      // Der Rückweg ans Tageslicht gibt sich frei (Briefing: Schalter/Tür zurück
+      // ins Dorf am Ende). Man kehrt mit einer Frage um, nicht mit einer Antwort.
+      this.time.delayedCall(2600, () => this.gibRueckwegFrei());
     }
+  }
+
+  private gibRueckwegFrei(): void {
+    if (this.rueckweg.frei) return;
+    this.rueckweg.frei = true;
+    this.zeichneRueckweg();
+    this.zeigeMeldung('Kehr um. Melde dem Fürsten, was unter der Kirche haust. (Treppe zurück ans Tageslicht)');
+    this.sfx.play('gebietswechsel', 0.6);
+  }
+
+  private zeichneRueckweg(): void {
+    const g = this.rueckweg.sprite ?? this.add.graphics();
+    this.rueckweg.sprite = g; g.clear();
+    const x = this.rueckweg.tx * TILE, y = this.rueckweg.ty * TILE;
+    g.setDepth(y - 4);
+    g.fillStyle(0x0a0d08, 1); g.fillRect(x + 3, y + 2, 26, 28);            // Treppenschacht
+    for (let i = 0; i < 4; i++) { g.fillStyle(0x1c2418, 1); g.fillRect(x + 4, y + 4 + i * 6, 24, 3); } // Stufen
+    g.fillStyle(0x9ab07a, 0.5); g.fillRect(x + 3, y + 2, 26, 3);           // fahler Tageslicht-Schimmer oben
   }
 
   private zeigeMeldung(t: string): void {
@@ -127,6 +150,14 @@ export class DieSchwelle extends Phaser.Scene {
     for (const b of this.bluten) { b.update(time, delta); b.addPullEffect({ x: this.px, y: this.py }); }
     this.atmosT -= dt;
     if (this.atmosT <= 0) { this.atmosT = 8 + Math.random() * 12; this.sfx.play(Math.random() < 0.5 ? 'krypta_grusel3' : 'kraehen', 0.4); }
+
+    // Rückweg erreicht -> Eröffnungs-Prolog zu Ende (zurück ins Dorf bzw. Titel).
+    if (this.rueckweg.frei && !this.rueckweg.verlassen
+      && Math.hypot((this.rueckweg.tx * TILE + 16) - this.px, (this.rueckweg.ty * TILE + 16) - this.py) < 26) {
+      this.rueckweg.verlassen = true;
+      this.sfx.play('gebietswechsel', 0.7);
+      this.time.delayedCall(400, () => beendeProlog(this));
+    }
   }
 
   private bewege(dt: number): void {

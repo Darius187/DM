@@ -13,6 +13,7 @@ import { SoundProvider } from '../gfx/SoundProvider';
 import { LightingManager } from '../systems/LightingManager';
 import { ScareTrigger, type TriggerDef } from '../systems/ScareTrigger';
 import { BloodFlow } from '../systems/BloodFlow';
+import { beendeProlog } from '../systems/prologFluss';
 import { PROLOG_LICHT } from '../data/prolog';
 
 const TILE = 32;
@@ -190,10 +191,13 @@ export class BlutstromGang extends Phaser.Scene {
       this.zeigeTempler();
     }
 
-    // Boss-Tür am oberen Ende
+    // Boss-Tür am oberen Ende -> hinüber in die Boss-Arena (im Spiel), bzw.
+    // zurück zum Titel beim Standalone-Test.
     if (!this.exit.erreicht && Math.hypot((this.exit.tx * TILE + 16) - this.px, (this.exit.ty * TILE + 16) - this.py) < 30) {
       this.exit.erreicht = true;
-      this.zeigeMeldung('Hinter dem Tor wartet der Templer in seiner Arena. (Boss-Arena folgt)');
+      this.zeigeMeldung('Du trittst über die Schwelle. Hinter dem Tor wartet der Templer in seiner Arena.');
+      this.sfx.play('gebietswechsel', 0.7);
+      this.time.delayedCall(900, () => beendeProlog(this));
     }
 
     this.atmosT -= dt;

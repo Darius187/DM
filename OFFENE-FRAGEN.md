@@ -53,3 +53,10 @@
     Falls es DOCH ein eigener Render-Fehler ist: bitte den Screenshot mit einem
     Pfeil auf die GENAUE Stelle (welches Objekt/welche Kachel wirkt falsch) - dann
     fixe ich gezielt, statt auf Verdacht (CLAUDE.md-Regel "erst reproduzieren").
+
+- Prolog "Ebene 1" - Platzierung im Hauptspielfluss (ich habe es eingebaut, brauche aber deine Bestätigung der Lesart):
+  Ich habe die drei Räume nach ihrem Briefing-ZWECK verteilt, nicht alle drei an den Anfang:
+  - ERÖFFNUNGS-PROLOG (einmalig, beim ERSTEN Abstieg unter die Kirche): Kammer der Finsternis -> Die Schwelle -> Schalter/Treppe zurück ans Tageslicht -> wieder im Dorf. Danach führt dieselbe Treppe normal in die Krypta (crypt1). Begründung: die Treppe ist im Spiel schon als "Ebene 1" beschriftet, die Schwelle ist laut Briefing "das Finale von Ebene 1", und du wolltest einen Schalter, der zurück ins Dorf bringt (= du fliehst und meldest dem Fürsten, was du gesehen hast - passt zum Boten, der nie zurückkam).
+  - PRE-BOSS (einmalig, letzter Abstieg vor dem Boss, crypt5 -> Boss): Der Blutstrom-Gang. Begründung: das Briefing nennt ihn ausdrücklich "der Gang DIREKT vor der Boss-Arena".
+  ZWISCHENLÖSUNG falls du es anders willst: (a) alle drei Räume als ein Block am Anfang, oder (b) der Eröffnungs-Prolog führt direkt in die Krypta (statt zurück ins Dorf). Beides ist ein Ein-Zeilen-Wechsel.
+  OFFEN/Folgefrage: Soll der Prolog dann auch die Krypta-Nummerierung verschieben (Krypta = "Ebene 2-6" statt 1-5)? Aktuell NICHT verschoben (Krypta bleibt Ebene 1-5), weil das viele Stellen berührt - sag Bescheid, wenn die Krypta hochzählen soll.

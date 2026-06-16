@@ -162,10 +162,12 @@ export class KammerDerFinsternis extends Phaser.Scene {
     // Atmosphäre: gelegentlich ferne Glocke / Flüstern
     this.atmosT -= dt;
     if (this.atmosT <= 0) { this.atmosT = 9 + Math.random() * 12; this.sfx.play(Math.random() < 0.5 ? 'kraehen' : 'krypta_grusel1', 0.4); }
-    // Exit erreicht?
+    // Exit erreicht? Weiter zur "Schwelle". Im Spiel bleibt die WorldScene
+    // pausiert im Hintergrund; im Standalone-Test startet die Szene direkt.
     if (this.exit.offen && Math.hypot((this.exit.tx * TILE + 16) - this.px, (this.exit.ty * TILE + 16) - this.py) < 28) {
       this.exit.offen = false; // einmal
-      this.zeigeMeldung('Du steigst tiefer hinab... (Ebene 2 folgt)');
+      this.zeigeMeldung('Du steigst tiefer hinab...');
+      this.time.delayedCall(700, () => this.scene.start('DieSchwelle'));
     }
   }
 
