@@ -11,14 +11,16 @@ export const TUNING = {
   kryptaGegnerTempo: 0.72,
   // Runde 21: Beutemenge - skaliert die Drop-Chancen von Gegnern (Waffen,
   // Rüstung, Tränke, Steine, Rollen); 0 = nur Gold, 1 = wie bisher.
-  // Runde 40: Standard auf 0.4 gesenkt (Autorwunsch "Beute runter" - zu viele
-  // seltene Funde auf Ebene 1).
-  beuteRate: 0.4,
+  // Runde 40: Standard auf 0.4 gesenkt (Autorwunsch "Beute runter"), dann per
+  // Tuning-Bericht auf 0.3 (noch weniger Drops).
+  beuteRate: 0.3,
   // Runde 22: Nahkampf-Reichweiten zum Justieren - Held (Hieb-Weite und
-  // Schwung-Breite) und Gegner (wie weit ihr Schlag trägt)
-  spielerReichweite: 1.0,
+  // Schwung-Breite) und Gegner (wie weit ihr Schlag trägt).
+  // Runde 40 (Tuning-Bericht): Held kürzer (0.8), Gegner weiter (1.4) -
+  // gefährlichere Nahkämpfe, man muss näher ran.
+  spielerReichweite: 0.8,
   spielerSchwungBreite: 1.0,
-  gegnerReichweite: 1.0,
+  gegnerReichweite: 1.4,
   // Runde 27: Schlagtempo der Gegner - höher = kürzeres Ausholen und
   // kürzere Pausen zwischen den Hieben
   gegnerSchlagtempo: 1.0,

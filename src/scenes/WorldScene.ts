@@ -242,8 +242,7 @@ export class WorldScene extends CombatScene {
       fontFamily: 'serif', fontSize: '15px', color: '#bfa86f', letterSpacing: 2,
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(4610);
     this.ensureLightTextures();
-    this.lightRT = this.add.renderTexture(0, 0, this.scale.width, this.scale.height)
-      .setOrigin(0).setScrollFactor(0).setDepth(4000);
+    this.erstelleLichtTextur();
     this.cameras.main.startFollow(this.playerSprite, true, 0.15, 0.15);
     // Bildgröße NEU (Runde 27): die Welt zoomt über die Haupt-Kamera,
     // die UI rendert eine zweite Kamera in voller Auflösung - Schrift
@@ -4315,7 +4314,7 @@ export class WorldScene extends CombatScene {
     // Grundlicht. So lebt die Stube; ganz dunkel wird es nie.
     if (this.area.innen) {
       if (this.lightRT.width !== this.scale.width || this.lightRT.height !== this.scale.height) {
-        this.lightRT.setSize(this.scale.width, this.scale.height);
+        this.erstelleLichtTextur();
       }
       this.lightRT.setVisible(true);
       this.lightRT.clear();
@@ -4347,7 +4346,7 @@ export class WorldScene extends CombatScene {
       else if (t > TAG.abendAb) nachtFaktor = Math.min(1, (t - TAG.abendAb) / (TAG.nachtAb - TAG.abendAb));
     }
     if (this.lightRT.width !== this.scale.width || this.lightRT.height !== this.scale.height) {
-      this.lightRT.setSize(this.scale.width, this.scale.height);
+      this.erstelleLichtTextur();
     }
     this.lightRT.setVisible(true);
     this.lightRT.clear();
@@ -4861,12 +4860,23 @@ export class WorldScene extends CombatScene {
   // neue Größe ziehen und alle OFFENEN, mittig gebauten Fenster neu aufbauen,
   // damit sie wieder zentriert/passend sitzen (Charakterfenster, Pause, Editor,
   // Shop, Lager). Die HUD-Leisten/Kugeln richten sich pro Frame selbst aus.
+  // Lichtschicht (Dunkelheits-Overlay) frisch erzeugen statt setSize (Runde 40
+  // Fehlerfix): das In-Place-setSize einer RenderTexture ließ nach dem
+  // Fenstergröße-Ändern/Vollbild den Framebuffer kaputt zurück - die Dunkelheit
+  // deckte das Bild nicht mehr ab, die ganze Krypta lag offen. Neu erzeugt ist
+  // der Framebuffer sauber.
+  private erstelleLichtTextur(): void {
+    this.lightRT?.destroy();
+    this.lightRT = this.add.renderTexture(0, 0, this.scale.width, this.scale.height)
+      .setOrigin(0).setScrollFactor(0).setDepth(4000);
+  }
+
   private onResize(): void {
     if (!this.area) return;
     const w = this.scale.width, h = this.scale.height;
     this.cameras.main.setSize(w, h);
     this.uiCam?.setSize(w, h);
-    this.lightRT?.setSize(w, h);
+    this.erstelleLichtTextur();
     this.areaText?.setPosition(w / 2, 16);
     this.panels?.refresh();              // Charakter/Inventar neu zentrieren
     this.heldEditor?.relayout();
