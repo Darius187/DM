@@ -4368,9 +4368,9 @@ export class WorldScene extends CombatScene {
     // übers ganze Bild (desättigt) und dunkelt es ab - es wird dämmrig-fahl wie
     // bei Regen, nicht heller.
     if (this.nebelStaerke > 0.02) {
-      g.fillStyle(0x444c58, 0.12 * this.nebelStaerke);  // kühles Grau, desättigt
+      g.fillStyle(0x4a5260, 0.10 * this.nebelStaerke);  // kühles Grau, desättigt
       g.fillRect(0, 0, w, h);
-      g.fillStyle(0x0e1218, 0.22 * this.nebelStaerke);  // gleichmäßiges Abdunkeln
+      g.fillStyle(0x11151c, 0.11 * this.nebelStaerke);  // leichtes Abdunkeln (Runde 40: war zu düster)
       g.fillRect(0, 0, w, h);
     }
     // Dunkelwald: tiefer Grünstich, der das Dorf wärmer wirken lässt
@@ -4443,7 +4443,7 @@ export class WorldScene extends CombatScene {
     // die Sicht zusätzlich. Schalter + Regler im F10-Kasten.
     if (!this.area.dark && TUNING.sichtBegrenzung) {
       basisRadius = Math.min(basisRadius, TUNING.sichtweiteDorf);
-      if (this.nebelStaerke > 0.05) basisRadius *= 1 - 0.30 * this.nebelStaerke;
+      if (this.nebelStaerke > 0.05) basisRadius *= 1 - 0.15 * this.nebelStaerke;
     }
     const playerRadius = basisRadius * flicker;
     // Welt -> Schirm MIT Kamera-Zoom (Runde 27): worldView + zoom statt
@@ -4993,7 +4993,7 @@ export class WorldScene extends CombatScene {
     const cam = this.cameras.main;
     cam.postFX.clear();
     if (!an) return;
-    cam.postFX.addVignette(0.5, 0.5, 0.92, 0.34);
+    cam.postFX.addVignette(0.5, 0.5, 0.95, 0.24);
     cam.postFX.addBloom(0xffffff, 1, 1, 0.7, 0.55, 4);
   }
 

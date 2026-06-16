@@ -31,7 +31,7 @@ export const TUNING = {
   // Mensch sieht", deutlich weiter als im Dungeon. Schalter + Regler im F10-
   // Kasten. sichtweiteDorf in Pixeln (Lichtradius um den Helden).
   sichtBegrenzung: true,
-  sichtweiteDorf: 440,
+  sichtweiteDorf: 560,
   // Runde 40: Gegner-Dichte (Multiplikator auf die Anzahl je Raum) - wirkt auf
   // NEU erzeugte Ebenen. 1 = wie bisher, 0.5 = halb so viele.
   gegnerDichte: 1.0,
