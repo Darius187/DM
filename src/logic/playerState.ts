@@ -20,6 +20,8 @@ export interface PlayerState {
   stats: Stats;
   inv: Item[];
   weapon: Item | null;
+  bogen: Item | null;     // zweiter Waffenplatz: ein Bogen (Runde 41)
+  bogenAktiv: boolean;    // ist der Bogen gerade gezückt (statt der Hauptwaffe)?
   armorIt: Item | null;
   ring: Item | null;
   schildIt: Item | null;
@@ -49,7 +51,7 @@ export function newPlayerState(): PlayerState {
     hp: 1, mana: 1,
     stats: { dmg: 0, armor: 0, maxhp: 1, maxmana: 1, leech: 0, licht: 0 },
     inv: [startWeapon],
-    weapon: startWeapon, armorIt: null, ring: null, schildIt: null,
+    weapon: startWeapon, bogen: null, bogenAktiv: false, armorIt: null, ring: null, schildIt: null,
     flaskMax: FLASKS.start, flaskCount: FLASKS.start, flaskPowerUp: false,
     arrows: 0,
     schools: { nahkampf: { uses: 0, level: 0 }, zauberei: { uses: 0, level: 0 }, bogen: { uses: 0, level: 0 } },
@@ -65,12 +67,19 @@ export function newPlayerState(): PlayerState {
   return p;
 }
 
+// Die gerade GEFÜHRTE Waffe (Hauptwaffe oder gezückter Bogen, Runde 41).
+export function aktiveWaffe(p: PlayerState): Item | null {
+  return p.bogenAktiv && p.bogen ? p.bogen : p.weapon;
+}
+
 export function recalc(p: PlayerState): void {
-  p.stats = calcStats(p.level, p.elixirs, [p.weapon, p.armorIt, p.ring, p.schildIt], p.schools.nahkampf.level);
+  // Werte zählen für die geführte Waffe; das Schild ist beim Bogen inaktiv.
+  const schild = p.bogenAktiv ? null : p.schildIt;
+  p.stats = calcStats(p.level, p.elixirs, [aktiveWaffe(p), p.armorIt, p.ring, schild], p.schools.nahkampf.level);
   p.hp = Math.min(p.hp, p.stats.maxhp);
   p.mana = Math.min(p.mana, p.stats.maxmana);
 }
 
 export function weaponGem(p: PlayerState): GemItem | null {
-  return p.weapon?.sock?.gem ?? null;
+  return aktiveWaffe(p)?.sock?.gem ?? null;
 }

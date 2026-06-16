@@ -7,7 +7,7 @@ import { getSettings, saveSettings } from '../logic/settings';
 import type { Item, GemItem, Rarity } from '../data/types';
 import { RARITY_COLORS, RARITY_NAMES } from '../data/items';
 import { itemStatLine, weaponDamageRange } from '../logic/loot';
-import { recalc, weaponGem, type PlayerState } from '../logic/playerState';
+import { recalc, type PlayerState } from '../logic/playerState';
 import { calcStats, type Stats } from '../logic/progression';
 import { MELDUNGEN } from '../data/texte';
 import { SCHOOLS, ABILITIES } from '../data/balancing';
@@ -226,26 +226,37 @@ export class UIPanels {
     }
     c.add(this.scene.add.text(58, 108, `Stufe ${p.level}`, { fontFamily: 'serif', fontSize: '13px', color: GOLD }).setOrigin(0.5, 0));
 
-    // Ausrüstungs-Slots rechts neben dem Portrait
-    const slots: Array<[string, Item | null]> = [['Waffe', p.weapon], ['Rüstung', p.armorIt], ['Ring', p.ring], ['Schild', p.schildIt]];
-    let sy = 16;
-    for (const [label, it] of slots) {
-      const slotBg = this.scene.add.rectangle(116, sy, 38, 38, 0x100b06).setOrigin(0)
-        .setStrokeStyle(1, it ? Phaser.Display.Color.HexStringToColor(RARITY_COLORS[(it.rarity ?? 0) as Rarity]).color : LINE);
+    // Ausrüstungs-Slots rechts neben dem Portrait. Zweiter Waffenplatz "Bogen"
+    // (Runde 41): aktive Waffe markiert, das Schild bei gezücktem Bogen grau.
+    const slots: Array<{ label: string; it: Item | null; inaktiv?: boolean; aktiv?: boolean }> = [
+      { label: 'Waffe', it: p.weapon, aktiv: !!p.bogen && !p.bogenAktiv },
+      { label: 'Bogen', it: p.bogen, aktiv: p.bogenAktiv },
+      { label: 'Rüstung', it: p.armorIt },
+      { label: 'Ring', it: p.ring },
+      { label: 'Schild', it: p.schildIt, inaktiv: p.bogenAktiv && !!p.schildIt },
+    ];
+    let sy = 14;
+    const SH = 34, SP = 37;
+    for (const { label, it, inaktiv, aktiv } of slots) {
+      const slotBg = this.scene.add.rectangle(116, sy, 38, SH, 0x100b06).setOrigin(0)
+        .setStrokeStyle(aktiv ? 2 : 1, aktiv ? 0xc9a227 : (it ? Phaser.Display.Color.HexStringToColor(RARITY_COLORS[(it.rarity ?? 0) as Rarity]).color : LINE));
       c.add(slotBg);
       if (it) {
-        c.add(this.scene.add.image(135, sy + 19, this.provider.itemIcon(it)).setScale(0.48));
-        const gem = it === p.weapon ? weaponGem(p) : null;
-        c.add(this.scene.add.text(160, sy + 2, it.name, { fontFamily: 'serif', fontSize: '12px', color: RARITY_COLORS[(it.rarity ?? 0) as Rarity], wordWrap: { width: w - 166 } }));
-        if (gem) c.add(this.scene.add.text(160, sy + 25, `◆ ${gem.name}`, { fontFamily: 'serif', fontSize: '10px', color: gem.col }));
+        const ic = this.scene.add.image(135, sy + SH / 2, this.provider.itemIcon(it)).setScale(0.44);
+        if (inaktiv) ic.setAlpha(0.32);
+        c.add(ic);
+        const gem = (it === p.weapon || it === p.bogen) ? (it.sock?.gem ?? null) : null;
+        const zusatz = inaktiv ? '  (inaktiv)' : aktiv ? '  - in Hand' : '';
+        c.add(this.scene.add.text(160, sy + 1, it.name + zusatz, { fontFamily: 'serif', fontSize: '12px', color: inaktiv ? '#5a5348' : RARITY_COLORS[(it.rarity ?? 0) as Rarity], wordWrap: { width: w - 166 } }));
+        if (gem) c.add(this.scene.add.text(160, sy + 18, `◆ ${gem.name}`, { fontFamily: 'serif', fontSize: '10px', color: gem.col }));
         slotBg.setInteractive({ useHandCursor: true });
         slotBg.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
         slotBg.on('pointerout', () => this.hideTooltip());
         slotBg.on('pointerdown', (ptr: Phaser.Input.Pointer) => this.clickItem(it, ptr.rightButtonDown()));
       } else {
-        c.add(this.scene.add.text(160, sy + 11, `${label}: -`, { fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c' }));
+        c.add(this.scene.add.text(160, sy + 9, `${label}: -`, { fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c' }));
       }
-      sy += 44;
+      sy += SP;
     }
 
     // WERTE: zwei saubere Spalten Label/Wert (Runde 38, übersichtlicher)
@@ -430,7 +441,7 @@ export class UIPanels {
 
   private buildItemRow(c: Phaser.GameObjects.Container, it: Item, x0: number, y: number, w: number): void {
     const p = this.getPlayer();
-    const equipped = it === p.weapon || it === p.armorIt || it === p.ring || it === p.schildIt;
+    const equipped = it === p.weapon || it === p.bogen || it === p.armorIt || it === p.ring || it === p.schildIt;
     const rar = (it.rarity ?? 0) as Rarity;
     const rarCol = Phaser.Display.Color.HexStringToColor(RARITY_COLORS[rar]).color;
     const row = this.scene.add.rectangle(x0, y, w, 38, equipped ? 0xc9a227 : 0xffffff, equipped ? 0.07 : 0.02).setOrigin(0);
@@ -505,22 +516,24 @@ export class UIPanels {
         return;
       }
     } else if (it.kind === 'weapon') {
-      p.weapon = p.weapon === it ? null : it;
-      const wc = p.weapon?.weaponClass;
-      if ((wc === 'bogen' || wc === 'stab') && p.schildIt) {
-        p.schildIt = null;
-        this.sfx.play('klick');
+      if (it.weaponClass === 'bogen') {
+        // Bogen belegt den ZWEITEN Waffenplatz (Runde 41) - per X im Spiel
+        // zwischen Hauptwaffe und Bogen umschaltbar.
+        p.bogen = p.bogen === it ? null : it;
+        if (!p.bogen) p.bogenAktiv = false;
+      } else {
+        p.weapon = p.weapon === it ? null : it;
+        // Stab als Hauptwaffe braucht beide Hände -> Schild ablegen
+        if (p.weapon?.weaponClass === 'stab' && p.schildIt) { p.schildIt = null; this.sfx.play('klick'); }
       }
     }
     else if (it.kind === 'armor') p.armorIt = p.armorIt === it ? null : it;
     else if (it.kind === 'ring') p.ring = p.ring === it ? null : it;
     else if (it.kind === 'schild') {
-      // Schild nur zur Nahkampfwaffe - Bogen und Stab brauchen beide Hände
-      const wc = p.weapon?.weaponClass;
-      if (wc === 'bogen' || wc === 'stab') {
-        this.sfx.play('fehler');
-        return;
-      }
+      // Schild nur, wenn die HAUPTWAFFE kein Stab ist. Ein Bogen im Zweitplatz
+      // verbietet das Schild NICHT - es wird nur inaktiv, solange der Bogen
+      // gezückt ist (Autorwunsch: Schild bleibt sichtbar, nur grau).
+      if (p.weapon?.weaponClass === 'stab') { this.sfx.play('fehler'); return; }
       p.schildIt = p.schildIt === it ? null : it;
     }
     else if (it.kind === 'potion') {

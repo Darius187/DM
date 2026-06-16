@@ -16,7 +16,7 @@ import {
 } from '../logic/combat';
 import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TIMESCALE, WEAPON_MOVESETS, GORE_WUCHT, PHYSIK, PFEIL_PHYSIK } from '../data/kampf';
 import { ALTAR, SPELLS, SPELL_FX, SCHOOLS } from '../data/balancing';
-import { newPlayerState, recalc, weaponGem, type PlayerState } from '../logic/playerState';
+import { newPlayerState, recalc, weaponGem, aktiveWaffe, type PlayerState } from '../logic/playerState';
 import { addSchoolUse } from '../logic/progression';
 import { applyXp } from '../logic/progression';
 import { MELDUNGEN } from '../data/texte';
@@ -191,6 +191,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (k === '7') this.useFirstScroll();
       if (k === '8') this.runAction('stadtportal');
       if (k === 'b') this.toggleAlbum();
+      if (k === 'x') this.wechsleWaffe();   // Hauptwaffe <-> Bogen (Runde 41)
       if (k === 'h') this.toggleChronik();
       if (k === 'f10') { ev.preventDefault(); this.toggleDevPanel(); }
       // Tastenleiste frei belegbar (Runde 26, "wie bei WoW"): jede Taste
@@ -941,8 +942,24 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // --- Angriffe ausführen -------------------------------------------------
 
   protected weaponClass(): WeaponClass {
-    return this.p.weapon?.weaponClass ?? 'schwert';
+    return aktiveWaffe(this.p)?.weaponClass ?? 'schwert';
   }
+
+  // Zwischen Hauptwaffe und gezücktem Bogen umschalten (Runde 41, Autorwunsch:
+  // zweiter Waffenplatz + Tastendruck). Geht nur, wenn ein Bogen ausgerüstet ist.
+  protected wechsleWaffe(): void {
+    if (!this.p.bogen) { this.logMsg('Kein Bogen ausgerüstet.', 'bad'); return; }
+    if (this.combat.action !== 'idle' && this.combat.action !== 'attack') return;
+    this.bowDrawT = -1;                 // ein laufendes Spannen abbrechen
+    this.p.bogenAktiv = !this.p.bogenAktiv;
+    recalc(this.p);
+    this.sfx.play('klick');
+    this.logMsg(this.p.bogenAktiv ? `Bogen gezückt: ${this.p.bogen.name}` : `Waffe gezückt: ${this.p.weapon?.name ?? '-'}`, 'gold');
+    this.onWaffeGewechselt();
+  }
+
+  // Hook: die Welt aktualisiert HUD/Leiste nach dem Waffenwechsel.
+  protected onWaffeGewechselt(): void { /* von WorldScene überschrieben */ }
 
   // Figurname des Helden - richtet sich nach getragener Ruestung und Waffe,
   // damit man die Ausruestung am Helden SIEHT (Feedback-Runde 32). Jede Stufe
@@ -1019,7 +1036,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (gem.elem === 'eis') return { col: 'rgba(170,225,245,', w: 5, glow: 'rgba(90,200,232,', spark: 0xaee0f0 };
       return { col: 'rgba(200,140,245,', w: 5, glow: 'rgba(176,106,232,', spark: 0xb06ae8 };
     }
-    const w = this.p.weapon;
+    const w = aktiveWaffe(this.p);
     if (!w) return { col: 'rgba(185,178,160,', w: 3 };
     if (w.name.includes('Templerklinge')) return { col: 'rgba(255,238,180,', w: 6, glow: 'rgba(201,162,39,', spark: 0xf0d878 };
     if (w.rarity >= 2) return { col: 'rgba(240,210,120,', w: 5, glow: 'rgba(201,162,39,', spark: 0xe0b53a };
@@ -1558,8 +1575,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.p.spellCds[i] = sk.cd;
     const zLevel = this.p.schools.zauberei.level;
     // Zauberstab verstärkt gewirkte Zauber (halber Stabwert)
-    const stabBonus = this.weaponClass() === 'stab' && this.p.weapon
-      ? Math.round((this.p.weapon.val + (this.p.weapon.upgrade ?? 0) * 2) * WEAPON_MOVESETS.stab.spellBonusFaktor)
+    const stabWaffe = aktiveWaffe(this.p);
+    const stabBonus = this.weaponClass() === 'stab' && stabWaffe
+      ? Math.round((stabWaffe.val + (stabWaffe.upgrade ?? 0) * 2) * WEAPON_MOVESETS.stab.spellBonusFaktor)
       : 0;
     if (sk.id === 'feuerball') {
       const fx = SPELL_FX.feuerball;

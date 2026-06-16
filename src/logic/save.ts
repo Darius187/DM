@@ -20,6 +20,7 @@ export interface SaveData {
     arrows: number;
     inv: Item[];
     weaponIdx: number; armorIdx: number; ringIdx: number; schildIdx?: number;
+    bogenIdx?: number; bogenAktiv?: boolean; // zweiter Waffenplatz (Runde 41)
     schools: Record<'nahkampf' | 'zauberei' | 'bogen', SchoolState>;
     materials: Record<string, number>;
     tools?: { axt: boolean; spitzhacke: boolean };
@@ -105,11 +106,13 @@ function migrate(_data: SaveData): SaveData | null {
 }
 
 // Roundtrip-Hilfe: Equipment wird über Indizes referenziert (Referenz-Prinzip)
-export function equipIndices(inv: Item[], weapon: Item | null, armor: Item | null, ring: Item | null, schild: Item | null = null) {
+export function equipIndices(inv: Item[], weapon: Item | null, armor: Item | null, ring: Item | null, schild: Item | null = null, bogen: Item | null = null, bogenAktiv = false) {
   return {
     weaponIdx: weapon ? inv.indexOf(weapon) : -1,
     armorIdx: armor ? inv.indexOf(armor) : -1,
     ringIdx: ring ? inv.indexOf(ring) : -1,
     schildIdx: schild ? inv.indexOf(schild) : -1,
+    bogenIdx: bogen ? inv.indexOf(bogen) : -1,
+    bogenAktiv,
   };
 }

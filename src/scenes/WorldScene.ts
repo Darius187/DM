@@ -1917,6 +1917,12 @@ export class WorldScene extends CombatScene {
     return SOLID.has(this.area.map[ty][tx]);
   }
 
+  // Nach dem Waffenwechsel (X): offenes Charakterfenster auffrischen, damit die
+  // aktive Waffe markiert und das Schild ggf. grau dargestellt wird.
+  protected override onWaffeGewechselt(): void {
+    this.panels.refresh();
+  }
+
   // Geschosse fliegen über Wasser/Abgrund (Runde 41) - nur echte Hindernisse
   // (Wände, Bäume, Zäune, Palisaden ...) stoppen sie.
   protected override projektilWand(x: number, y: number): boolean {
@@ -4115,7 +4121,7 @@ export class WorldScene extends CombatScene {
         flaskMax: p.flaskMax, flaskPowerUp: p.flaskPowerUp,
         arrows: p.arrows,
         inv: p.inv,
-        ...equipIndices(p.inv, p.weapon, p.armorIt, p.ring, p.schildIt),
+        ...equipIndices(p.inv, p.weapon, p.armorIt, p.ring, p.schildIt, p.bogen, p.bogenAktiv),
         schools: p.schools,
         materials: p.materials,
         tools: p.tools,
@@ -4174,6 +4180,8 @@ export class WorldScene extends CombatScene {
     p.armorIt = s.armorIdx >= 0 ? p.inv[s.armorIdx] ?? null : null;
     p.ring = s.ringIdx >= 0 ? p.inv[s.ringIdx] ?? null : null;
     p.schildIt = (s.schildIdx ?? -1) >= 0 ? p.inv[s.schildIdx!] ?? null : null;
+    p.bogen = (s.bogenIdx ?? -1) >= 0 ? p.inv[s.bogenIdx!] ?? null : null;
+    p.bogenAktiv = !!s.bogenAktiv && !!p.bogen;
     p.schools = s.schools;
     p.materials = { holz: 0, stein: 0, eisen: 0, kraeuter: 0, kohle: 0, fell: 0, wolle: 0, ...s.materials };
     p.tools = s.tools ?? { axt: false, spitzhacke: false };
