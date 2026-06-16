@@ -3965,7 +3965,7 @@ export class WorldScene extends CombatScene {
       return {
         text: `Wendeltreppe hinab zu Ebene 1 - ${ik} zum Hinabsteigen`,
         action: () => {
-          if (!this.flags.prologGesehen) this.starteProlog('crypt1', 'Treppenabstieg', { weiter: 'KammerDerFinsternis' });
+          if (!this.flags.prologGesehen) this.starteProlog('crypt1', 'Treppenabstieg', { weiter: 'LangerGang' });
           else this.goArea('crypt1');
         },
       };
@@ -3986,7 +3986,7 @@ export class WorldScene extends CombatScene {
           // Erster Abstieg unter die Kirche = der Angst-Prolog "Ebene 1"
           // (Kammer -> Schwelle), danach Rückkehr ins Dorf. Später führt
           // dieselbe Treppe normal in die Krypta.
-          if (id === 'kirchenschiff' && !this.flags.prologGesehen) this.starteProlog('crypt1', 'Treppenabstieg', { weiter: 'KammerDerFinsternis' });
+          if (id === 'kirchenschiff' && !this.flags.prologGesehen) this.starteProlog('crypt1', 'Treppenabstieg', { weiter: 'LangerGang' });
           else if (id === 'kirchenschiff') this.goArea('crypt1');
           // Letzter Abstieg vor dem Boss: direkt in die Boss-Arena - ihr
           // Vorhof IST der Blutstrom (man watet mit der echten Waffe hindurch,

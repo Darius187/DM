@@ -11,6 +11,7 @@ import { BlutstromGang } from './scenes/BlutstromGang';
 import { TreppenProbe } from './scenes/TreppenProbe';
 import { NebelProbe } from './scenes/NebelProbe';
 import { Treppenabstieg } from './scenes/Treppenabstieg';
+import { LangerGang } from './scenes/LangerGang';
 import { DieStelen } from './scenes/DieStelen';
 import { PlattenPfad } from './scenes/PlattenPfad';
 import { Geheimwand } from './scenes/Geheimwand';
@@ -28,7 +29,7 @@ const game = new Phaser.Game({
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, TitleScene, WorldScene, DebugArenaScene, UIScene, SettingsScene, KammerDerFinsternis, DieSchwelle, BlutstromGang, TreppenProbe, NebelProbe, Treppenabstieg, DieStelen, PlattenPfad, Geheimwand],
+  scene: [BootScene, TitleScene, WorldScene, DebugArenaScene, UIScene, SettingsScene, KammerDerFinsternis, DieSchwelle, BlutstromGang, TreppenProbe, NebelProbe, Treppenabstieg, LangerGang, DieStelen, PlattenPfad, Geheimwand],
 });
 
 // Dev-Hook für die automatisierte Browser-Verifikation (CLAUDE.md Regel 1/9)
