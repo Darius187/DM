@@ -1554,7 +1554,10 @@ export class WorldScene extends CombatScene {
     const name = tileNameAt(a.map, tx, ty);
     // Im Baukasten gewählte Variante schlägt den Positions-Hash
     const planV = this.planKachelAn(tx, ty)?.v;
-    const variant = planV !== undefined ? planV - 1 : ((tx * 73856093) ^ (ty * 19349663)) % 7;
+    // Wasser nutzt IMMER dieselbe Variante (Runde 41, Autorbug "hässliche
+    // Überläufe"): so haben alle Wasserkacheln dieselbe Phase und passen mit der
+    // nahtlos kachelbaren Textur gleichmäßig zusammen.
+    const variant = id === T.WATER ? 0 : planV !== undefined ? planV - 1 : ((tx * 73856093) ^ (ty * 19349663)) % 7;
     const tag = (img: Phaser.GameObjects.Image): Phaser.GameObjects.Image => {
       img.setData('kachel', `${tx},${ty}`);
       this.tileImages.push(img);

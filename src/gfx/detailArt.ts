@@ -271,36 +271,40 @@ export function altar64(ctx: Ctx): void {
 // Autorwunsch "eigene detaillierte Wasser-Simulation").
 export function wasser64(ctx: Ctx, phase: number): void {
   const w = 64, tau = Math.PI * 2;
-  // Runde 41 (Autorkritik "Fluss waagerecht, Textur senkrecht"): RICHTUNGSLOSE
-  // Kräuselung statt gerichteter Wellenbänder - so wirkt das Wasser in JEDER
-  // Lage stimmig (waagerechter ODER senkrechter Fluss), ohne falsche Fließrichtung.
-  const grad = ctx.createLinearGradient(0, 0, 0, w);
-  grad.addColorStop(0, '#193241'); grad.addColorStop(0.5, '#142a37'); grad.addColorStop(1, '#102330');
-  ctx.fillStyle = grad; ctx.fillRect(0, 0, w, w);
-  // dunkle Tiefen-Mottle (gleichmäßig per goldenem Winkel gestreut, leicht pulsierend)
-  ctx.fillStyle = 'rgba(8,18,26,0.32)';
+  // Runde 41 (Autorbug "hässliche Überläufe, Felder müssen zueinander passen"):
+  // NAHTLOS kachelbares Wasser. FLACHER Grundton (kein gerichteter Verlauf, der
+  // an den Kachelkanten eine Naht erzeugt), und alle Merkmale werden an den
+  // Rändern UMLAUFEND (wrap) gezeichnet - so passt jede Kachel an jede andere.
+  ctx.fillStyle = '#163039'; ctx.fillRect(0, 0, w, w);
+  // Helfer: zeichnet einen Fleck und seine umlaufenden Kopien (Wrap an allen Kanten)
+  const wrap = (zeichne: (ox: number, oy: number) => void) => {
+    for (const ox of [-w, 0, w]) for (const oy of [-w, 0, w]) zeichne(ox, oy);
+  };
+  // dunkle Tiefen-Mottle (gleichmäßig gestreut, sanft pulsierend)
   for (let i = 0; i < 16; i++) {
     const a = i * 2.39996;
-    const x = (Math.sin(a * 7.1) * 0.5 + 0.5) * w, y = (Math.cos(a * 5.3) * 0.5 + 0.5) * w;
-    const r = 4 + (i % 3) * 2 + Math.sin(phase * tau + i) * 1.2;
-    ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.72, a, 0, tau); ctx.fill();
+    const x = (((Math.sin(a * 7.1) * 0.5 + 0.5) * w + Math.sin(phase * tau + i) * 3) % w + w) % w;
+    const y = (((Math.cos(a * 5.3) * 0.5 + 0.5) * w + Math.cos(phase * tau + i) * 3) % w + w) % w;
+    const r = 5 + (i % 3) * 2;
+    ctx.fillStyle = 'rgba(8,20,28,0.34)';
+    wrap((ox, oy) => { ctx.beginPath(); ctx.ellipse(x + ox, y + oy, r, r * 0.74, a, 0, tau); ctx.fill(); });
   }
-  // helle Kräusel-Bögen in wechselnder Ausrichtung, driften sanft
-  ctx.strokeStyle = 'rgba(150,192,216,0.30)'; ctx.lineWidth = 1.3;
+  // helle Kräusel-Bögen (driften), umlaufend
+  ctx.lineWidth = 1.3; ctx.strokeStyle = 'rgba(150,192,216,0.30)';
   for (let i = 0; i < 13; i++) {
     const a = i * 2.39996;
-    const x = (Math.sin(a * 3.1) * 0.5 + 0.5) * w + Math.sin(phase * tau * 0.5 + i) * 3;
-    const y = (Math.cos(a * 2.7) * 0.5 + 0.5) * w + Math.cos(phase * tau * 0.5 + i * 1.3) * 3;
+    const x = (((Math.sin(a * 3.1) * 0.5 + 0.5) * w + Math.sin(phase * tau * 0.5 + i) * 4) % w + w) % w;
+    const y = (((Math.cos(a * 2.7) * 0.5 + 0.5) * w + Math.cos(phase * tau * 0.5 + i * 1.3) * 4) % w + w) % w;
     const rot = a + phase * 0.6;
-    ctx.beginPath(); ctx.arc(x, y, 3 + (i % 2), rot, rot + 2.1); ctx.stroke();
+    wrap((ox, oy) => { ctx.beginPath(); ctx.arc(x + ox, y + oy, 3 + (i % 2), rot, rot + 2.1); ctx.stroke(); });
   }
-  // feine Kaustik-Glanzpunkte
+  // feine Kaustik-Glanzpunkte, umlaufend
   ctx.fillStyle = 'rgba(210,234,248,0.5)';
   for (let i = 0; i < 11; i++) {
     const a = i * 1.111;
-    const x = (Math.sin(a * 9 + phase * tau * 0.4) * 0.5 + 0.5) * w;
-    const y = (Math.cos(a * 6 + phase * tau * 0.4) * 0.5 + 0.5) * w;
-    ctx.fillRect(x, y, 1.4, 1.4);
+    const x = (((Math.sin(a * 9 + phase * tau * 0.4) * 0.5 + 0.5) * w) % w + w) % w;
+    const y = (((Math.cos(a * 6 + phase * tau * 0.4) * 0.5 + 0.5) * w) % w + w) % w;
+    wrap((ox, oy) => ctx.fillRect(x + ox, y + oy, 1.4, 1.4));
   }
   ctx.lineWidth = 1;
 }
