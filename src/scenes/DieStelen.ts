@@ -12,6 +12,7 @@ import { LightingManager } from '../systems/LightingManager';
 import { ScareTrigger, type TriggerDef } from '../systems/ScareTrigger';
 import { BloodFlow } from '../systems/BloodFlow';
 import { PROLOG_LICHT } from '../data/prolog';
+import { registriereSchwung } from '../systems/prologSchwung';
 
 const TILE = 32;
 
@@ -62,6 +63,7 @@ export class DieStelen extends Phaser.Scene {
 
     this.keys = this.input.keyboard!.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E') as Record<string, Phaser.Input.Keyboard.Key>;
     this.input.keyboard!.on('keydown-E', () => this.interagiere());
+    registriereSchwung(this, () => ({ x: this.px, y: this.py }), this.sfx);
     this.sfx.startLoop('krypta_droehnen');
 
     this.hint = this.add.text(0, 0, '', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227', stroke: '#000', strokeThickness: 3, align: 'center', wordWrap: { width: 580 } })

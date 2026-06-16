@@ -12,6 +12,7 @@ import { LightingManager } from '../systems/LightingManager';
 import { ScareTrigger, type TriggerDef } from '../systems/ScareTrigger';
 import { BloodFlow } from '../systems/BloodFlow';
 import { PROLOG_LICHT } from '../data/prolog';
+import { registriereSchwung } from '../systems/prologSchwung';
 
 const TILE = 32;
 
@@ -60,6 +61,7 @@ export class KammerDerFinsternis extends Phaser.Scene {
 
     this.keys = this.input.keyboard!.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E') as Record<string, Phaser.Input.Keyboard.Key>;
     this.input.keyboard!.on('keydown-E', () => this.interagiere());
+    registriereSchwung(this, () => ({ x: this.px, y: this.py }), this.sfx);
 
     // Dauer-Atmosphäre: Tropfen, fernes Flüstern, ferner Glockenschlag
     this.sfx.startLoop('krypta_droehnen');

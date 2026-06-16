@@ -11,6 +11,7 @@ import { LightingManager } from '../systems/LightingManager';
 import { ScareTrigger, type TriggerDef } from '../systems/ScareTrigger';
 import { BloodFlow } from '../systems/BloodFlow';
 import { PROLOG_LICHT } from '../data/prolog';
+import { registriereSchwung } from '../systems/prologSchwung';
 
 export const TILE = 32;
 
@@ -53,6 +54,7 @@ export abstract class PrologRaum extends Phaser.Scene {
     this.scare.addMany(this.scareDefs());
     this.keys = this.input.keyboard!.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E') as Record<string, Phaser.Input.Keyboard.Key>;
     this.input.keyboard!.on('keydown-E', () => this.onInteract());
+    registriereSchwung(this, () => ({ x: this.px, y: this.py }), this.sfx); // Waffe schwingen (kampffrei)
     this.sfx.startLoop('krypta_droehnen');
     this.hint = this.add.text(0, 0, '', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227', stroke: '#000', strokeThickness: 3, align: 'center', wordWrap: { width: 580 } })
       .setOrigin(0.5).setScrollFactor(0).setDepth(5000).setVisible(false);
