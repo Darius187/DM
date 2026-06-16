@@ -72,6 +72,7 @@ export const SHOP_BAUER1: ReadonlyArray<ShopOfferDef> = [
   { kind: 'food', name: 'Speck', price: 18, inf: true, food: { hpRegen: 2, dauerS: 45 } },
   { kind: 'seed', name: 'Saatgut: Rüben', price: 8, inf: true, seedId: 'rueben' },
   { kind: 'seed', name: 'Saatgut: Kohl', price: 10, inf: true, seedId: 'kohl' },
+  { kind: 'seed', name: 'Saatgut: Weizen', price: 12, inf: true, seedId: 'weizen' },
 ];
 
 export const SHOP_BAUER2: ReadonlyArray<ShopOfferDef> = [

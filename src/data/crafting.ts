@@ -43,10 +43,14 @@ export const AUFBAU_STUFEN: ReadonlyArray<AufbauStufe> = [
 export const KAMIN_BUFF = { hpRegenPerS: 1.2, giltFuerNaechstenKryptagang: true } as const;
 
 // Farm: 3x3 Beete (Masterprompt 7.4 - bewusst LIGHT)
-export interface SaatDef { id: string; name: string; preis: number; tageBisErnte: number; ertragName: string; ertragWert: number; food: { hpRegen: number; dauerS: number } }
+// typ steuert die Pflanzen-Darstellung im Beet (Runde 43): 'wurzel' = buschiges
+// Blattwerk (Rüben), 'blatt' = runder Kohlkopf, 'halm' = Getreidehalme (Weizen).
+export type SaatTyp = 'wurzel' | 'blatt' | 'halm';
+export interface SaatDef { id: string; name: string; preis: number; tageBisErnte: number; ertragName: string; ertragWert: number; typ: SaatTyp; food: { hpRegen: number; dauerS: number } }
 export const SAATGUT: ReadonlyArray<SaatDef> = [
-  { id: 'rueben', name: 'Saatgut: Rüben', preis: 8, tageBisErnte: 2, ertragName: 'Rüben', ertragWert: 14, food: { hpRegen: 1, dauerS: 40 } },
-  { id: 'kohl', name: 'Saatgut: Kohl', preis: 10, tageBisErnte: 3, ertragName: 'Kohl', ertragWert: 20, food: { hpRegen: 1.5, dauerS: 45 } },
+  { id: 'rueben', name: 'Saatgut: Rüben', preis: 8, tageBisErnte: 2, ertragName: 'Rüben', ertragWert: 14, typ: 'wurzel', food: { hpRegen: 1, dauerS: 40 } },
+  { id: 'kohl', name: 'Saatgut: Kohl', preis: 10, tageBisErnte: 3, ertragName: 'Kohl', ertragWert: 20, typ: 'blatt', food: { hpRegen: 1.5, dauerS: 45 } },
+  { id: 'weizen', name: 'Saatgut: Weizen', preis: 12, tageBisErnte: 4, ertragName: 'Weizen', ertragWert: 26, typ: 'halm', food: { hpRegen: 2, dauerS: 50 } },
 ];
 export const FELD_GROESSE = 3; // 3x3 Beete
 

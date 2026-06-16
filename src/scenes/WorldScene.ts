@@ -4982,6 +4982,70 @@ export class WorldScene extends CombatScene {
     return idx + 1;
   }
 
+  // Eine wachsende Beet-Pflanze je Saat-Typ, die sich im Wind wiegt (Runde 43).
+  // prog 0..1 = Wachstumsfortschritt; der Windschwung wächst mit der Höhe.
+  private zeichnePflanze(g: Phaser.GameObjects.Graphics, x: number, y: number, typ: 'wurzel' | 'blatt' | 'halm', prog: number, time: number, gegossen: boolean): void {
+    if (gegossen) { g.fillStyle(0x241a10, 0.55); g.fillEllipse(x, y + 3, 20, 9); } // feuchte Erde
+    const reif = prog >= 1;
+    const ph = x * 0.13 + y * 0.21;
+    const schwung = Math.sin(time * 1.6 + ph) * (0.6 + prog * 3.2);
+    const h = 4 + prog * 15;
+    if (typ === 'halm') {
+      // Weizen: mehrere Halme mit Ähren, golden wenn reif
+      const halm = reif ? 0xc7a23a : 0x7a9a44, aehre = reif ? 0xe8c84a : 0x9ab04a;
+      for (const dx of [-6, -2, 2, 6]) {
+        const bxp = x + dx, topx = bxp + schwung * (0.7 + Math.abs(dx) * 0.05), topy = y - h;
+        g.lineStyle(1.6, halm, 1);
+        g.beginPath(); g.moveTo(bxp, y); g.lineTo((bxp + topx) / 2 + schwung * 0.3, y - h * 0.5); g.lineTo(topx, topy); g.strokePath();
+        g.fillStyle(aehre, 1); g.fillEllipse(topx, topy - 1, 4, 7);
+        if (reif) { g.fillStyle(0xf2e0a8, 0.7); g.fillEllipse(topx - 0.8, topy - 2, 1.6, 3); }
+      }
+    } else if (typ === 'blatt') {
+      // Kohl: runder Blattkopf, leicht wiegend
+      const r = 3 + prog * 6;
+      g.fillStyle(0x355428, 1); g.fillCircle(x + schwung * 0.5, y - r * 0.4, r + 2);
+      g.fillStyle(reif ? 0x6a9a4a : 0x547f38, 1); g.fillCircle(x + schwung * 0.4, y - r * 0.5, r);
+      g.fillStyle(0x7ab058, 0.8); g.fillCircle(x + schwung * 0.4 - r * 0.3, y - r * 0.7, r * 0.45);
+    } else {
+      // Rüben: buschiges, fächerndes Blattwerk; reif schaut der Rübenkopf heraus
+      const blatt = reif ? 0x7ab048 : 0x4a7a3a;
+      for (const dx of [-5, -2, 1, 4]) {
+        const topx = x + dx + schwung * (0.5 + Math.abs(dx) * 0.06), topy = y - h * 0.7;
+        g.lineStyle(2, blatt, 1); g.beginPath(); g.moveTo(x, y); g.lineTo(topx, topy); g.strokePath();
+        g.fillStyle(blatt, 1); g.fillEllipse(topx, topy, 3, 5);
+      }
+      if (reif) { g.fillStyle(0xb46a8a, 1); g.fillCircle(x, y + 1, 3.5); g.fillStyle(0xcf86a4, 0.8); g.fillCircle(x - 1, y, 1.6); }
+    }
+  }
+
+  // Wogende Weizenfelder auf allen sichtbaren T.FIELD-Kacheln (Runde 43, Test):
+  // goldene Halme, die sich gemeinsam im Wind wiegen. Nur der Kameraausschnitt,
+  // damit es auch bei großen Feldern günstig bleibt.
+  private zeichneWogendeFelder(g: Phaser.GameObjects.Graphics, time: number): void {
+    const cam = this.cameras.main, v = cam.worldView;
+    const tx0 = Math.max(0, Math.floor(v.x / TILE)), tx1 = Math.min(this.area.w - 1, Math.ceil(v.right / TILE));
+    const ty0 = Math.max(0, Math.floor(v.y / TILE)), ty1 = Math.min(this.area.h - 1, Math.ceil(v.bottom / TILE));
+    const tuften: Array<[number, number]> = [[7, 23], [14, 13], [20, 27], [26, 17], [11, 29], [23, 9]];
+    for (let ty = ty0; ty <= ty1; ty++) {
+      const reihe = this.area.map[ty]; if (!reihe) continue;
+      for (let tx = tx0; tx <= tx1; tx++) {
+        if (reihe[tx] !== T.FIELD) continue;
+        // Die bepflanzbaren Hof-Beete (36-38, 24-26) bleiben frei - dort wachsen
+        // die echten Saat-Pflanzen, kein wilder Weizen darüber.
+        if (this.area.id === 'village' && tx >= 36 && tx <= 38 && ty >= 24 && ty <= 26) continue;
+        const baseX = tx * TILE, baseY = ty * TILE;
+        for (const [ox, oy] of tuften) {
+          const x = baseX + ox, y = baseY + oy;
+          const sw = Math.sin(time * 1.5 + x * 0.15 + y * 0.2) * 2.4;
+          const hh = 9 + ((tx * 7 + ty * 13 + ox) % 4);
+          g.lineStyle(1.4, 0xbf9c36, 0.95);
+          g.beginPath(); g.moveTo(x, y); g.lineTo(x + sw * 0.5, y - hh * 0.5); g.lineTo(x + sw, y - hh); g.strokePath();
+          g.fillStyle(0xe2c64a, 0.95); g.fillEllipse(x + sw, y - hh - 1, 3, 5);
+        }
+      }
+    }
+  }
+
   // Truhe zeichnen (Runde 42, "auf aktuelle Qualität hoch"): Holzkorpus mit
   // Maserung, gewölbtem Deckel, zwei Eisenbändern mit Nieten und Schlossplatte.
   // Verfluchte Truhen in violettem Holz mit pulsierendem Schein.
@@ -5098,7 +5162,7 @@ export class WorldScene extends CombatScene {
         g.fillCircle(bx + 7, by - 17, 2.5);
       }
     }
-    // Beete des Hofs (Stufe 3): Setzlinge je Wachstumsstand
+    // Beete des Hofs (Stufe 3): wachsende Pflanzen je Saat-Typ, im Wind wiegend
     if (this.area.id === 'village' && this.aufbauStufe >= 3) {
       for (let idx = 0; idx < 9; idx++) {
         const beet = this.feld[idx];
@@ -5106,17 +5170,13 @@ export class WorldScene extends CombatScene {
         const def = SAATGUT.find((s) => s.id === beet.saatId)!;
         const bx = (36 + (idx % 3)) * TILE + 16;
         const by = (24 + Math.floor(idx / 3)) * TILE + 16;
-        if (beet.gegossen) {
-          g.fillStyle(0x241a10, 0.7);
-          g.fillCircle(bx, by + 4, 8);
-        }
         const prog = Math.min(1, beet.tageGewachsen / def.tageBisErnte);
-        const size = 3 + prog * 7;
-        g.fillStyle(prog >= 1 ? 0x7ab048 : 0x4a7a3a, 1);
-        g.fillCircle(bx, by - size / 2, size / 2 + 2);
-        g.fillRect(bx - 1, by - size, 2, size);
+        this.zeichnePflanze(g, bx, by + 8, def.typ, prog, time, beet.gegossen);
       }
     }
+    // Weizenfelder (T.FIELD): wogende Halme als Test (Runde 43) - nur sichtbare
+    // Kacheln, damit es günstig bleibt. Tagsüber golden, im Wind wiegend.
+    this.zeichneWogendeFelder(g, time);
     // Blutbrunnen
     for (const wl of this.area.wells) {
       g.fillStyle(0x55504a, 1);
