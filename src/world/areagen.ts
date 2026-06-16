@@ -116,6 +116,17 @@ function carve(map: number[][], x0: number, y0: number, x1: number, y1: number, 
   }
 }
 
+// Runde Kaverne: nur Kacheln innerhalb der eingeschriebenen Ellipse (Runde 40)
+function carveOval(map: number[][], x: number, y: number, rw: number, rh: number, id: number): void {
+  const cx = x + (rw - 1) / 2, cy = y + (rh - 1) / 2, rx = rw / 2, ry = rh / 2;
+  for (let j = 0; j < rh; j++) {
+    for (let i = 0; i < rw; i++) {
+      const nx = (x + i - cx) / rx, ny = (y + j - cy) / ry;
+      if (nx * nx + ny * ny <= 1.05 && y + j >= 0 && x + i >= 0 && y + j < map.length && x + i < map[0].length) map[y + j][x + i] = id;
+    }
+  }
+}
+
 export function buildCrypt(n: number, rng: Rng): AreaData {
   // Endlose Tiefe (Feedback-Runde 6): ab Ebene 6 wiederholen sich die Themen,
   // die Gegner skalieren über die Tiefe aber weiter
@@ -132,14 +143,18 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
     npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
   };
 
-  // Räume + Korridore (Referenz)
+  // Räume + Korridore (Referenz). Abwechslung (Runde 40, Autorwunsch "Räume
+  // dürfen mal anders sein"): manche Räume werden RUNDE Kavernen statt Kästen.
+  // Korridore werden danach gegraben und stanzen sich nötigenfalls durch den
+  // Rand - die Verbindung bleibt also erhalten.
   const rooms: Room[] = [];
   for (let i = 0; i < CRYPT_GEN.roomsBase + n; i++) {
     const rw = ri(rng, CRYPT_GEN.roomWMin, CRYPT_GEN.roomWMax);
     const rh = ri(rng, CRYPT_GEN.roomHMin, CRYPT_GEN.roomHMax);
     const x = ri(rng, 1, w - rw - 2), y = ri(rng, 1, h - rh - 2);
     rooms.push({ x, y, w: rw, h: rh, cx: x + (rw >> 1), cy: y + (rh >> 1) });
-    carve(map, x, y, x + rw - 1, y + rh - 1, T.FLOOR);
+    if (rw >= 5 && rh >= 5 && rng.random() < 0.38) carveOval(map, x, y, rw, rh, T.FLOOR);
+    else carve(map, x, y, x + rw - 1, y + rh - 1, T.FLOOR);
   }
   for (let i = 1; i < rooms.length; i++) {
     const A = rooms[i - 1], B = rooms[i];
@@ -222,6 +237,25 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
         { x: x1 * TILE + 16, y: (cy2 - 2) * TILE + 16 }, { x: x1 * TILE + 16, y: (cy2 + 1) * TILE + 16 },
       ];
     }
+  }
+
+  // Säulenhallen (Runde 40, Abwechslung): 1-2 große Räume werden zu Pfeilersälen
+  // mit einem Raster einzelner Steinpfeiler (Wandblöcke), Gänge dazwischen. Die
+  // Mitte bleibt frei (Korridor-Anschluss), darum bleibt die Halle durchquerbar.
+  for (let made = 0, tries = 0; made < (n >= 3 ? 2 : 1) && tries < 10; tries++) {
+    const r = mid.filter((rr) => rr.w >= 6 && rr.h >= 6 && map[rr.cy][rr.cx] === T.FLOOR).sort((a2, b2) => b2.w * b2.h - a2.w * a2.h)[0];
+    if (!r) break;
+    mid.splice(mid.indexOf(r), 1);
+    // Halle als volles Rechteck sichern (falls oval ausgehoben), dann das Raster
+    carve(map, r.x, r.y, r.x + r.w - 1, r.y + r.h - 1, T.FLOOR);
+    for (let yy = r.y + 2; yy <= r.y + r.h - 3; yy += 2) {
+      for (let xx = r.x + 2; xx <= r.x + r.w - 3; xx += 2) {
+        if (Math.abs(xx - r.cx) <= 1 && Math.abs(yy - r.cy) <= 1) continue; // Mitte frei
+        map[yy][xx] = T.PILLAR;
+      }
+    }
+    a.special.push({ id: 'saeulenhalle', x: r.cx, y: r.cy, raum: 'Säulenhalle' });
+    made++;
   }
 
   // --- Pflicht-Spezialräume zuerst ---

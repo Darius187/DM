@@ -17,6 +17,8 @@ export const T = {
   // Brücken-Prototyp (Runde 40, ab Ebene 4): ABGRUND = bodenloser Schacht
   // (nicht begehbar), BRUECKE = begehbarer Steg darüber.
   ABYSS: 45, BRIDGE: 46,
+  // Steinpfeiler (Runde 40): Säulenhallen für Abwechslung - massiv, blockt
+  PILLAR: 47,
 } as const;
 export type TileId = (typeof T)[keyof typeof T];
 
@@ -25,6 +27,7 @@ export const SOLID = new Set<number>([
   T.SHRINE, T.ORE, T.ROCK, T.RACK, T.CAGE, T.WATER, T.FENCE, T.PALISADE, T.TOR,
   T.BETT, T.TISCH, T.KAMIN, T.TRESEN, T.BRENNHOLZ, T.KESSEL, T.CRACK,
   T.ABYSS, // bodenloser Schacht - wie Wasser unbegehbar (BRUECKE führt hinüber)
+  T.PILLAR, // Steinpfeiler
 ]);
 
 // Tile-ID -> Name für den SpriteProvider (Hot-Swap-fähig).
@@ -42,7 +45,7 @@ const NAME: Record<number, string> = {
   [T.KAMIN]: 'kamin', [T.TEPPICH]: 'teppich', [T.TRESEN]: 'tresen', [T.HDOOR]: 'haustuer',
   [T.KERZE]: 'kerze', [T.WANDFACKEL]: 'wandfackel', [T.BRENNHOLZ]: 'brennholz', [T.KESSEL]: 'kessel',
   [T.CRACK]: 'mauerriss',
-  [T.ABYSS]: 'abgrund', [T.BRIDGE]: 'bruecke',
+  [T.ABYSS]: 'abgrund', [T.BRIDGE]: 'bruecke', [T.PILLAR]: 'saeule',
 };
 
 // Liefert den Tile-Namen unter Berücksichtigung von Fassade/Dach:

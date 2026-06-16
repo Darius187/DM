@@ -1405,7 +1405,7 @@ export class WorldScene extends CombatScene {
 
   // Stehende Objekte trennen sich vom Boden für die Y-Sortierung
   private static readonly STANDING = new Set<number>([T.TREE, T.ROCK, T.GRAVE, T.WELL, T.FENCE, T.ORE, T.ALTAR, T.SHELF, T.SHRINE, T.RACK, T.CAGE,
-    T.BETT, T.TISCH, T.STUHL, T.KAMIN, T.TRESEN, T.KERZE, T.WANDFACKEL, T.BRENNHOLZ, T.KESSEL]);
+    T.BETT, T.TISCH, T.STUHL, T.KAMIN, T.TRESEN, T.KERZE, T.WANDFACKEL, T.BRENNHOLZ, T.KESSEL, T.PILLAR]);
 
   // Vom Autor eingestellte Objektgrößen (Baukasten, Runde 25)
   private objektSkalen(): Record<string, number> {

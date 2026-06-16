@@ -414,6 +414,24 @@ export function drawObjectArt(ctx: Ctx, name: string, n: number, theme?: CryptTh
       // Felsbrocken (Runde 40, Batch 2): facettierter Granitblock mit Moos
       detail(ctx, fels64);
       break;
+    case 'saeule': {
+      // Steinpfeiler (Runde 40, Säulenhalle): Sockel, kannelierter Schaft,
+      // Kapitell - ragt über die Kachel hinaus für Höhenwirkung.
+      ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.beginPath(); ctx.ellipse(16, 28, 10, 3.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#3a352c'; ctx.fillRect(8, 25, 16, 4);                 // Sockel
+      ctx.fillStyle = '#4e483c'; ctx.fillRect(10, 6, 12, 20);               // Schaft
+      ctx.fillStyle = 'rgba(255,246,210,0.12)'; ctx.fillRect(10, 6, 3, 20); // Lichtkante
+      ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(19, 6, 3, 20);       // Schattenkante
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';                                    // Kanneluren
+      for (const cxk of [13, 16, 19]) ctx.fillRect(cxk, 7, 1, 18);
+      ctx.fillStyle = '#56503f'; ctx.fillRect(7, 2, 18, 5);                  // Kapitell
+      ctx.fillStyle = 'rgba(255,246,210,0.14)'; ctx.fillRect(7, 2, 18, 1.5);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(7, 6, 18, 1.5);
+      // Risse
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(14, 9); ctx.lineTo(16, 16); ctx.lineTo(13, 23); ctx.stroke();
+      break;
+    }
     case 'grabstein':
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath(); ctx.ellipse(16, 27, 8, 3, 0, 0, 6.283); ctx.fill();
