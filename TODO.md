@@ -44,3 +44,10 @@
   300px-Quellen gleich in größerer Zielauflösung zu rendern (TILE 32 -> 48):
   eigene Phase, weil Tempo-/Reichweiten-Werte in Pixeln mitskaliert werden
   müssen. Lohnt, sobald die Sprite-Sätze des Autors final sind.
+
+- Prolog: ab dem 3. Raum wiederholt sich der Spieler-/Bewegungs-/solid-/
+  Lichtaufbau in KammerDerFinsternis/DieSchwelle/BlutstromGang (CLAUDE.md
+  Regel 3, "ab dem dritten Mal extrahieren"). Schlanke Basisklasse
+  PrologRaum (Held, bewege, solid, Licht, hint/zeigeMeldung, Titel)
+  herausziehen, alle drei migrieren, alle drei neu verifizieren. Bewusst
+  als eigener Schritt (kein Nebenbei-Refactoring).

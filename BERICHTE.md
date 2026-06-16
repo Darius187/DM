@@ -904,3 +904,36 @@ Stand: 51/51 Tests grün, Version auf dem Titel: Feedback-Runde 11.
   Dunkelwald, waehrend epische Musik und der Prolog laufen - ein echter
   Vorspann. Per Klick ueberspringbar, endet sauber im Dorf. Verifiziert.
   64/64 Tests gruen, tsc sauber.
+
+## Ebene 1 - Die kampffreie Angst-Ebene (Prolog, Briefing-Auftrag)
+
+Drei wiederverwendbare Systeme zuerst gebaut und einzeln verifiziert, dann die
+Raeume - genau in der vom Briefing geforderten Reihenfolge.
+
+FERTIG und browser-verifiziert (tsc sauber, 71/71 Tests gruen):
+- LightingManager (src/systems): winziger weicher Lichtkreis, fast totale
+  Finsternis ringsum; Zusatzlichter, Puls, Resize-fest (RenderTexture neu
+  statt setSize).
+- ScareTrigger (src/systems): datengetriebene Schreck-Zonen (einmalig),
+  mehrere Effekte je Trigger - sting/shake/flackern/Leiche/Silhouette/Ratte/
+  Mauer/Tuer + Fallen (bodenbruch/truemmer, wenig Schaden). KEIN echter Kampf.
+- BloodFlow (src/systems): EINE Blut-Ader-Komponente in fuenf Staerken
+  (drip -> trickle -> stream -> river -> font), gleicher Look (tiefes Rot,
+  leuchtend, zaehfluessig, Puls); Sog-Effekt (Fluestern + rote Vignette).
+- Raum 1 "Die Kammer der Finsternis": tasten im Dunkeln, vier Kohlebecken
+  entzuenden (Licht weitet sich, Schreck, Dunkel kriecht zurueck), Ausgang
+  oeffnet wenn alle brennen. Ein harmloses Huschen, sonst nichts.
+- Raum 2 "Die Schwelle": erste Bluttropfen (BloodFlow 'drip'), ins Nasse
+  treten im Dunkeln, der Templer-Glimpse (2s, dann weg), verriegeltes Tor
+  mit eingeritzter Warnung.
+- Raum 3 "Der Blutstrom" (Gang vor der Boss-Arena): der leuchtende Strom
+  (BloodFlow 'river') als Hindernis UND Hauptlichtquelle, Querung auf
+  versunkenen Grabplatten (Blut unbegehbar = kampffrei), bleiche Haende aus
+  dem Blut, Notiz des Pater Johannes (das Blut naehrt das Geschenk und haelt
+  den Templer am Leben), der Templer klar am anderen Ufer.
+
+OFFEN (mit dem Autor abzustimmen, in OFFENE-FRAGEN.md): Boss-Arena (BloodFlow
+'font', Becken aus dem sich der Templer erhebt) - die beginnt den Kampf, gehoert
+also zur Arena, nicht zur kampffreien Ebene; Einbettung in den Hauptspielfluss
+(Reihenfolge, Uebergang Dorf->Ebene 1->Krypta, Tuer-Schalter zum Zurueck ins
+Dorf); echte Audio-Assets (aktuell stille/prozedurale Fallback-Haken).
