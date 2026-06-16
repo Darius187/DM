@@ -139,6 +139,8 @@ export class Enemy {
   // Jagd-Ziel (Runde 40, großer Einfall): Position eines Tieres/Bewohners, dem
   // der Gegner hinterherrennt statt den Spieler zu suchen. null = normale KI.
   jagdZiel: { x: number; y: number } | null = null;
+  // Einfall-Failsafe (Runde 41): erkennt im Gelände festsitzende Nachzügler
+  fsT = 0; fsX?: number; fsY?: number;
   // Schildträger (Runde 11): blockt Treffer von vorn, weicht nicht zurück
   schild = false;
   // Kampfbewusst (Runde 38): Monster gehen kurz in Deckung und parieren statt

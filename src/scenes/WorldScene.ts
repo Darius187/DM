@@ -65,6 +65,7 @@ interface NpcEntity extends NpcSpawn {
   curY: number;
   arbeitT?: number; // Takt des sichtbaren Tagwerks (Runde 16)
   imHaus?: boolean; // beim großen Einfall: ins Gemeindehaus geflüchtet (Runde 40)
+  umgehSeite?: number; // Seite, zu der dieser Bewohner Hindernisse umläuft (Runde 41)
 }
 
 interface AnimalEntity extends AnimalSpawn {
@@ -133,6 +134,7 @@ export class WorldScene extends CombatScene {
   private hud!: Hud;
   private hudText!: Phaser.GameObjects.Text;
   private areaText!: Phaser.GameObjects.Text;
+  private einfallText!: Phaser.GameObjects.Text;
   private deathOverlay: Phaser.GameObjects.Container | null = null;
 
   constructor() {
@@ -244,6 +246,11 @@ export class WorldScene extends CombatScene {
     this.areaText = this.add.text(this.scale.width / 2, 16, '', {
       fontFamily: 'serif', fontSize: '15px', color: '#bfa86f', letterSpacing: 2,
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(4610);
+    // Live-Anzeige der verbliebenen Angreifer während des großen Einfalls
+    // (Runde 41, Autorwunsch "ich weiß nicht, ob ich alle erwischt habe").
+    this.einfallText = this.add.text(this.scale.width / 2, 40, '', {
+      fontFamily: 'serif', fontSize: '14px', color: '#e0704a', stroke: '#000', strokeThickness: 3, letterSpacing: 1,
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(4610).setVisible(false);
     this.ensureLightTextures();
     this.erstelleLichtTextur();
     this.cameras.main.startFollow(this.playerSprite, true, 0.15, 0.15);
@@ -2696,6 +2703,41 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // Live-Zähler der Angreifer + Failsafe für Nachzügler (Runde 41). Der Autor
+  // wusste nicht, ob er ALLE erwischt hatte, weil Bewohner noch panisch liefen,
+  // aber kein Gegner mehr zu sehen war - ein Monster steckte hinter Fluss/Fels
+  // fest. Jetzt: Zahl sichtbar, und festsitzende Letzte werden zum Helden geholt.
+  private zeigeEinfallStand(dt: number): void {
+    const lebende = this.enemies.filter((e) => e.hp > 0);
+    this.einfallText.setText(`VERTEIDIGE RAVENSMOOR  ·  noch ${lebende.length} Angreifer`)
+      .setVisible(true).setPosition(this.scale.width / 2, 40);
+    if (lebende.length === 0 || lebende.length > 6) return; // nur die letzten Nachzügler
+    for (const e of lebende) {
+      const d = Math.hypot(e.x - this.px, e.y - this.py);
+      const bewegt = Math.hypot(e.x - (e.fsX ?? e.x), e.y - (e.fsY ?? e.y)) > 4;
+      if (d < 360 || bewegt) { e.fsT = 0; e.fsX = e.x; e.fsY = e.y; continue; }
+      e.fsT += dt;
+      if (e.fsT >= 5) {
+        const ziel = this.freierPlatzNahe(this.px, this.py, 150, 240);
+        if (ziel) {
+          this.fx.burst(e.x, e.y, 0x6a2a8a, 10, 140);
+          e.x = ziel.x; e.y = ziel.y; e.fsT = 0; e.fsX = e.x; e.fsY = e.y;
+          this.fx.burst(e.x, e.y, 0x6a2a8a, 12, 160);
+          this.logMsg('Ein Nachzügler bricht aus den Schatten hervor!', 'bad');
+        }
+      }
+    }
+  }
+
+  private freierPlatzNahe(cx: number, cy: number, rMin: number, rMax: number): { x: number; y: number } | null {
+    for (let t = 0; t < 24; t++) {
+      const a = Math.random() * 6.283, r = rMin + Math.random() * (rMax - rMin);
+      const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+      if (!this.isSolidAt(x, y)) return { x, y };
+    }
+    return null;
+  }
+
   // --- Kopfgeld am Anschlagbrett (Feedback-Runde 6) --------------------------
 
   private kopfgeld: { tag: number; ebene: number; erledigt: boolean } | null = null;
@@ -4938,7 +4980,12 @@ export class WorldScene extends CombatScene {
       else this.startEinfall();
     }
     // Chaos beim großen Einfall: Monster reißen Vieh, jagen Bewohner (Runde 40)
-    if (this.grosserEinfall && this.einfallAktiv && !this.playerDead) this.aktualisiereChaos(dt);
+    if (this.grosserEinfall && this.einfallAktiv && !this.playerDead) {
+      this.aktualisiereChaos(dt);
+      this.zeigeEinfallStand(dt);
+    } else if (this.einfallText.visible) {
+      this.einfallText.setVisible(false);
+    }
     // NPCs: 2 Positionen je Tageszeit, sie gehen sichtbar dorthin.
     // Nachts schlafen sie in ihren Häusern - in den Stuben sieht man dann
     // die Familien. Beim Einfall fliehen alle Nicht-Kämpfer ins
@@ -4979,8 +5026,20 @@ export class WorldScene extends CombatScene {
         const tempo = panik ? 100 : 50;
         const nx = n.curX + Math.cos(a) * tempo * dt;
         const ny = n.curY + Math.sin(a) * tempo * dt;
-        if (!this.isSolidAt(nx, n.curY)) n.curX = nx;
-        if (!this.isSolidAt(n.curX, ny)) n.curY = ny;
+        const vorX = !this.isSolidAt(nx, n.curY), vorY = !this.isSolidAt(n.curX, ny);
+        if (vorX) n.curX = nx;
+        if (vorY) n.curY = ny;
+        // Festgelaufen an Fels/Flussrand (Runde 41, Autorbug "Bewohner hängen an
+        // Felsen oder hinter dem Fluss fest"): seitlich am Hindernis entlang
+        // schieben, statt stur dagegen zu drücken.
+        if (!vorX && !vorY) {
+          const seite = (n.umgehSeite ??= Math.random() < 0.5 ? 1 : -1);
+          const sa = a + seite * Math.PI / 2;
+          const sx = n.curX + Math.cos(sa) * tempo * dt, sy = n.curY + Math.sin(sa) * tempo * dt;
+          if (!this.isSolidAt(sx, n.curY)) n.curX = sx;
+          else if (!this.isSolidAt(n.curX, sy)) n.curY = sy;
+          else n.umgehSeite = -seite; // Sackgasse: nächstes Mal andere Seite
+        }
         this.provider.applyFigure(n.sprite, n.figur ?? n.id, angleToDir(a), Math.floor(this.time.now / 140) % 4);
       } else if (n.arbeit && !abend && !mittagPhase) {
         // Sichtbares Tagwerk (Runde 16): werkeln statt rumstehen
