@@ -768,6 +768,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected onMedaillonPickup(): void { /* Welt überschreibt */ }
 
   giveXp(n: number): void {
+    const vorher = this.p.level;
     const r = applyXp(this.p.level, this.p.xp, this.p.xpNext, n);
     this.p.xp = r.xp;
     this.p.xpNext = r.xpNext;
@@ -778,13 +779,17 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.p.mana = this.p.stats.maxmana;
       this.logMsg(MELDUNGEN.stufe(this.p.level), 'gold');
       this.sfx.play('levelup');
-      this.zeigeLevelUp(this.p.level);
+      // Was wurde mit dieser Stufe freigeschaltet? (Runde 41, Autorwunsch:
+      // beim Level-up zusätzlich anzeigen, was neu freigeschaltet ist.)
+      const frei = SPELLS.filter((s) => s.unlock > vorher && s.unlock <= this.p.level).map((s) => s.name);
+      for (const name of frei) this.logMsg(`Neu erlernt: ${name}!`, 'magic');
+      this.zeigeLevelUp(this.p.level, frei);
     }
   }
 
   // Levelaufstieg cool sichtbar machen (Runde 37): Gold-Puls am Helden,
   // aufsteigende Funken, ein bildschirmfestes Banner und ein kurzer Schimmer.
-  protected zeigeLevelUp(level: number): void {
+  protected zeigeLevelUp(level: number, freigeschaltet: string[] = []): void {
     this.fx.flash(this.px, this.py - 6, 48, 0xf0dc8a);
     this.fx.burst(this.px, this.py, 0xf6e29a, 26, 210);
     for (let i = 0; i < 14; i++) {
@@ -801,6 +806,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       fontFamily: 'serif', fontSize: '18px', color: '#e8c860', letterSpacing: 10,
     }).setOrigin(0.5);
     c.add([haupt, sub]);
+    // Freischaltungs-Zeile (Runde 41): zeigt, was diese Stufe neu bringt
+    if (freigeschaltet.length) {
+      const frei = this.add.text(0, 76, `Neu erlernt: ${freigeschaltet.join(', ')}`, {
+        fontFamily: 'serif', fontSize: '17px', color: '#bfa0ef', stroke: '#1a0d33', strokeThickness: 4, letterSpacing: 1,
+      }).setOrigin(0.5);
+      c.add(frei);
+    }
     c.setScale(0.4).setAlpha(0);
     this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 300, ease: 'Back.Out' });
     this.tweens.add({ targets: c, alpha: 0, y: c.y - 30, delay: 1250, duration: 680, ease: 'Quad.In', onComplete: () => c.destroy() });
