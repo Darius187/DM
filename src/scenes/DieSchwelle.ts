@@ -199,8 +199,9 @@ export class DieSchwelle extends Phaser.Scene {
       && Math.hypot((this.treppe.tx * TILE + 16) - this.px, (this.treppe.ty * TILE + 16) - this.py) < 26) {
       this.treppe.genommen = true;
       this.sfx.play('gebietswechsel', 0.8);
-      this.zeigeMeldung('Du steigst hinab in die Krypta...');
-      this.time.delayedCall(500, () => beendeProlog(this)); // Registry-Ziel = crypt1
+      this.zeigeMeldung('Du steigst die enge Wendeltreppe hinab in die Krypta...');
+      // schmaler 3D-Abstieg, dann erst zurück in die Welt (crypt1)
+      this.time.delayedCall(500, () => this.scene.start('Treppenabstieg', { schmal: true, weiter: 'beenden' }));
     }
     // Rückweg erreicht -> optional zurück ins Dorf.
     if (this.rueckweg.frei && !this.rueckweg.verlassen && !this.treppe.genommen

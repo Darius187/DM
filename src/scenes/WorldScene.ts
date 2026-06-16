@@ -1369,13 +1369,13 @@ export class WorldScene extends CombatScene {
   // Szene läuft darüber. Beim Aufwachen entscheidet prologFertig das Ziel - das
   // legt die Prolog-Szene über die Registry fest (Abstieg in die Krypta, Rückweg
   // ins Dorf, oder Boss-Arena nach dem Blutstrom).
-  private starteProlog(ziel: 'crypt1' | 'boss', erste: 'KammerDerFinsternis' | 'BlutstromGang'): void {
+  private starteProlog(ziel: 'crypt1' | 'boss', erste: string, data?: object): void {
     this.registry.set(PROLOG_AKTIV, true);
     this.registry.set('prologZiel', ziel);
     this.events.once(Phaser.Scenes.Events.WAKE, () => this.prologFertig());
     this.sfx.stopLoops();
     this.sfx.stopMusic();
-    this.scene.launch(erste);
+    this.scene.launch(erste, data);
     this.scene.sleep();   // hält Update UND Rendern an - Zustand bleibt erhalten
   }
 
@@ -3706,7 +3706,7 @@ export class WorldScene extends CombatScene {
           // Erster Abstieg unter die Kirche = der Angst-Prolog "Ebene 1"
           // (Kammer -> Schwelle), danach Rückkehr ins Dorf. Später führt
           // dieselbe Treppe normal in die Krypta.
-          if (id === 'kirchenschiff' && !this.flags.prologGesehen) this.starteProlog('crypt1', 'KammerDerFinsternis');
+          if (id === 'kirchenschiff' && !this.flags.prologGesehen) this.starteProlog('crypt1', 'Treppenabstieg', { weiter: 'KammerDerFinsternis' });
           else if (id === 'kirchenschiff') this.goArea('crypt1');
           // Letzter Abstieg vor dem Boss = der Blutstrom-Gang (einmalig).
           else if (id === 'crypt5' && !this.flags.blutstromGesehen) { this.flags.blutstromGesehen = true; this.starteProlog('boss', 'BlutstromGang'); }
