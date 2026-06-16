@@ -270,48 +270,37 @@ export function altar64(ctx: Ctx): void {
 // einen lebendigen, fließenden Eindruck statt nur ein paar Linien (Runde 40,
 // Autorwunsch "eigene detaillierte Wasser-Simulation").
 export function wasser64(ctx: Ctx, phase: number): void {
-  const w = 64;
-  // Tiefenverlauf: oben kühler Himmelreflex, unten dunkler Grund
+  const w = 64, tau = Math.PI * 2;
+  // Runde 41 (Autorkritik "Fluss waagerecht, Textur senkrecht"): RICHTUNGSLOSE
+  // Kräuselung statt gerichteter Wellenbänder - so wirkt das Wasser in JEDER
+  // Lage stimmig (waagerechter ODER senkrechter Fluss), ohne falsche Fließrichtung.
   const grad = ctx.createLinearGradient(0, 0, 0, w);
-  grad.addColorStop(0, '#1d3744'); grad.addColorStop(0.5, '#142a37'); grad.addColorStop(1, '#0d1b25');
+  grad.addColorStop(0, '#193241'); grad.addColorStop(0.5, '#142a37'); grad.addColorStop(1, '#102330');
   ctx.fillStyle = grad; ctx.fillRect(0, 0, w, w);
-  const tau = Math.PI * 2;
-  // Wellenbänder (sinusförmige Helligkeitslinien, fließen nach unten)
-  const band = (anz: number, amp: number, freq: number, speed: number, thick: number, col: string) => {
-    ctx.strokeStyle = col; ctx.lineWidth = thick;
-    for (let k = 0; k < anz; k++) {
-      const baseY = ((k / anz + phase * speed) % 1) * w;
-      ctx.beginPath();
-      for (let x = 0; x <= w; x += 3) {
-        const y = baseY + Math.sin((x / w) * tau * freq + phase * tau * speed) * amp;
-        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    }
-  };
-  band(5, 2.6, 1.5, 1.0, 1.5, 'rgba(120,162,192,0.22)');  // große, langsame Wogen
-  band(7, 1.2, 3.2, 1.7, 0.8, 'rgba(158,196,220,0.16)');  // feine, schnelle Kräuselung
-  // dunkle Strömungsadern (geben Tiefe und Sog)
-  ctx.strokeStyle = 'rgba(6,14,20,0.5)'; ctx.lineWidth = 2.4;
-  for (let k = 0; k < 3; k++) {
-    const baseY = ((k / 3 + phase * 0.7) % 1) * w;
-    ctx.beginPath();
-    for (let x = 0; x <= w; x += 4) ctx.lineTo(x, baseY + Math.sin((x / w) * tau + phase * tau) * 3);
-    ctx.stroke();
+  // dunkle Tiefen-Mottle (gleichmäßig per goldenem Winkel gestreut, leicht pulsierend)
+  ctx.fillStyle = 'rgba(8,18,26,0.32)';
+  for (let i = 0; i < 16; i++) {
+    const a = i * 2.39996;
+    const x = (Math.sin(a * 7.1) * 0.5 + 0.5) * w, y = (Math.cos(a * 5.3) * 0.5 + 0.5) * w;
+    const r = 4 + (i % 3) * 2 + Math.sin(phase * tau + i) * 1.2;
+    ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.72, a, 0, tau); ctx.fill();
   }
-  // Kaustik-Glanz: kurze helle Bögen, die mit der Strömung wandern
-  ctx.strokeStyle = 'rgba(204,230,246,0.5)'; ctx.lineWidth = 1.2;
-  for (let i = 0; i < 9; i++) {
-    const cx = (i * 23 + 7) % (w - 8) + 4;
-    const cy = ((i * 0.111 + phase * 1.2) % 1) * w;
-    ctx.beginPath(); ctx.arc(cx, cy, 2.2, 0.5, 2.4); ctx.stroke();
+  // helle Kräusel-Bögen in wechselnder Ausrichtung, driften sanft
+  ctx.strokeStyle = 'rgba(150,192,216,0.30)'; ctx.lineWidth = 1.3;
+  for (let i = 0; i < 13; i++) {
+    const a = i * 2.39996;
+    const x = (Math.sin(a * 3.1) * 0.5 + 0.5) * w + Math.sin(phase * tau * 0.5 + i) * 3;
+    const y = (Math.cos(a * 2.7) * 0.5 + 0.5) * w + Math.cos(phase * tau * 0.5 + i * 1.3) * 3;
+    const rot = a + phase * 0.6;
+    ctx.beginPath(); ctx.arc(x, y, 3 + (i % 2), rot, rot + 2.1); ctx.stroke();
   }
-  // Schaumtupfer
-  ctx.fillStyle = 'rgba(222,240,250,0.42)';
-  for (let i = 0; i < 6; i++) {
-    const fx = (i * 37 + 11) % (w - 4) + 2;
-    const fy = ((i * 0.27 + phase * 0.85) % 1) * w;
-    ctx.fillRect(fx, fy, 2, 1);
+  // feine Kaustik-Glanzpunkte
+  ctx.fillStyle = 'rgba(210,234,248,0.5)';
+  for (let i = 0; i < 11; i++) {
+    const a = i * 1.111;
+    const x = (Math.sin(a * 9 + phase * tau * 0.4) * 0.5 + 0.5) * w;
+    const y = (Math.cos(a * 6 + phase * tau * 0.4) * 0.5 + 0.5) * w;
+    ctx.fillRect(x, y, 1.4, 1.4);
   }
   ctx.lineWidth = 1;
 }
