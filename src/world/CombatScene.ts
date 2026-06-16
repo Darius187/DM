@@ -398,7 +398,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       merk = { ...merk, ...JSON.parse(localStorage.getItem('ravensmoor_devkasten') ?? '{}') };
     } catch { /* egal */ }
     const c = this.add.container(merk.x, merk.y).setScrollFactor(0).setDepth(6500);
-    const h = TUNING_ROWS.length * 29 + 96 + 186 + 78 + 60; // +78 Per-Typ (5 Zeilen), +60 Physik/Gefallene-Schalter
+    const h = TUNING_ROWS.length * 29 + 96 + 186 + 78 + 88; // +78 Per-Typ (5 Zeilen), +88 Physik/Gefallene/Sicht-Schalter
     // Bei kleinen Fenstern schrumpft der ganze Kasten, statt unten
     // abgeschnitten zu werden (Runde 29: Regler "nicht gefunden")
     c.setScale(Math.min(merk.s, Math.max(0.6, (this.scale.height - 60) / h)));
@@ -585,6 +585,21 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.logMsg(TUNING.gefallene ? 'Gefallene an: neue Gegner tragen Waffen (Schwert/Axt/Hammer/Bogen/Stab/Schild).' : 'Gefallene aus.', 'gold');
     });
     c.add(gefBtn);
+    // Sicht-Begrenzung (Runde 40): draußen nur so weit sehen wie ein Mensch -
+    // der Regler "Dorf: Sichtweite" oben stellt die Weite ein, dieser Schalter
+    // schaltet die Begrenzung ganz an/aus.
+    const sichtLbl = () => TUNING.sichtBegrenzung ? 'SICHT-BEGRENZUNG: AN (Dorf/Wald)' : 'SICHT-BEGRENZUNG: AUS';
+    const sichtBtn = this.add.text(12, y + 174, sichtLbl(), {
+      fontFamily: 'serif', fontSize: '13px', color: TUNING.sichtBegrenzung ? '#c9a227' : '#d8cfb8', letterSpacing: 1,
+      backgroundColor: '#221808', padding: { x: 12, y: 5 },
+    }).setInteractive({ useHandCursor: true });
+    sichtBtn.on('pointerdown', () => {
+      TUNING.sichtBegrenzung = !TUNING.sichtBegrenzung;
+      sichtBtn.setText(sichtLbl()).setColor(TUNING.sichtBegrenzung ? '#c9a227' : '#d8cfb8');
+      this.sfx.play('klick');
+      this.logMsg(TUNING.sichtBegrenzung ? 'Sicht-Begrenzung an: draußen siehst du nur so weit wie ein Mensch.' : 'Sicht-Begrenzung aus: volle Sicht.', 'gold');
+    });
+    c.add(sichtBtn);
     const baukasten = this.add.text(220, y + 62, 'BAUKASTEN', {
       fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
       backgroundColor: '#221808', padding: { x: 12, y: 5 },

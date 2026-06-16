@@ -16,7 +16,9 @@ const METALL: Record<Rarity, { klinge: string; glanz: string; griff: string }> =
   3: { klinge: '#c79af0', glanz: '#ecd8ff', griff: '#5a3a7a' },
 };
 
-// Farbiger Seltenheits-Schein + Rahmen hinter jedem Icon
+// Weicher Seltenheits-Schein hinter jedem Icon (Runde 40: der eckige Rahmen ist
+// raus - er sah auf der Bodenbeute schlecht aus, im Inventar tragen die Felder
+// ihre eigene Seltenheitsumrandung). Nur noch der runde Schimmer bleibt.
 function rarityBackdrop(ctx: CanvasRenderingContext2D, rar: Rarity): void {
   const rgb = RARITY_RGB[rar];
   if (rgb) {
@@ -26,11 +28,6 @@ function rarityBackdrop(ctx: CanvasRenderingContext2D, rar: Rarity): void {
     grad.addColorStop(1, `rgba(${rgb},0)`);
     ctx.fillStyle = grad; ctx.fillRect(0, 0, ICON_SIZE, ICON_SIZE);
   }
-  ctx.strokeStyle = RARITY_COLORS[rar];
-  ctx.globalAlpha = rar === 0 ? 0.3 : 0.75;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(2.5, 2.5, 59, 59);
-  ctx.globalAlpha = 1;
 }
 
 // Edelstein in Seltenheitsfarbe (auf Knauf/Brust/Reif ab Selten)

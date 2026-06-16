@@ -1928,11 +1928,13 @@ export class WorldScene extends CombatScene {
     const ctx = cv.getContext('2d')!;
     // EINE weiche runde Wolke, die zum Rand voll auf Alpha 0 ausläuft - so hat
     // jeder Schwaden weiche Kanten, keine Quadrate (Autorbug R40: Nebelkanten).
+    // kühles, gedämpftes Grau (Runde 40): Nebel als fahle Schwade, nicht als
+    // helle weiße Wolke, die alles aufhellt.
     const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 124);
-    g.addColorStop(0, 'rgba(198,210,222,0.34)');
-    g.addColorStop(0.5, 'rgba(186,200,216,0.15)');
-    g.addColorStop(0.85, 'rgba(180,194,210,0.03)');
-    g.addColorStop(1, 'rgba(180,194,210,0)');
+    g.addColorStop(0, 'rgba(150,162,176,0.30)');
+    g.addColorStop(0.5, 'rgba(140,152,168,0.13)');
+    g.addColorStop(0.85, 'rgba(134,146,162,0.03)');
+    g.addColorStop(1, 'rgba(134,146,162,0)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
     this.textures.addCanvas('bodennebel_tex', cv);
   }
@@ -4307,6 +4309,16 @@ export class WorldScene extends CombatScene {
     g.fillRect(0, h * 0.9, w, h * 0.1);
     g.fillRect(0, 0, w * 0.07, h);
     g.fillRect(w * 0.93, 0, w * 0.07, h);
+    // Nebel = trübes Wetter (Runde 40, Autorwunsch): pralle Sonne und Nebel
+    // passen nicht zusammen. Bei aktivem Nebel legt sich ein kühler Grauschleier
+    // übers ganze Bild (desättigt) und dunkelt es ab - es wird dämmrig-fahl wie
+    // bei Regen, nicht heller.
+    if (this.nebelStaerke > 0.02) {
+      g.fillStyle(0x444c58, 0.12 * this.nebelStaerke);  // kühles Grau, desättigt
+      g.fillRect(0, 0, w, h);
+      g.fillStyle(0x0e1218, 0.22 * this.nebelStaerke);  // gleichmäßiges Abdunkeln
+      g.fillRect(0, 0, w, h);
+    }
     // Dunkelwald: tiefer Grünstich, der das Dorf wärmer wirken lässt
     if (this.area.id === 'wald') {
       g.fillStyle(0x08140a, 0.22);
@@ -4372,6 +4384,13 @@ export class WorldScene extends CombatScene {
     const flicker = 1 + Math.sin(time * 9) * 0.025 + Math.sin(time * 23) * 0.015;
     let basisRadius = this.area.dark ? 235 + this.p.stats.licht : 640 - 400 * nachtFaktor + this.p.stats.licht;
     if (fow) basisRadius = Math.min(basisRadius, 330);
+    // Sichtweite draußen begrenzen (Runde 40, Autorwunsch "so weit wie ein
+    // Mensch sieht"): im Dorf/Wald auf sichtweiteDorf kappen; Nebel verkürzt
+    // die Sicht zusätzlich. Schalter + Regler im F10-Kasten.
+    if (!this.area.dark && TUNING.sichtBegrenzung) {
+      basisRadius = Math.min(basisRadius, TUNING.sichtweiteDorf);
+      if (this.nebelStaerke > 0.05) basisRadius *= 1 - 0.30 * this.nebelStaerke;
+    }
     const playerRadius = basisRadius * flicker;
     // Welt -> Schirm MIT Kamera-Zoom (Runde 27): worldView + zoom statt
     // roher scroll-Differenz, und die Lichtradien wachsen mit

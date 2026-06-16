@@ -27,6 +27,11 @@ export const TUNING = {
   // Runde 29: skaliert Konter beim Rückzug, Gegenstoß aus der Deckung
   // und das Sammeln vor dem Sturm (0 = stumpf wie früher)
   gegnerCleverness: 2.0,
+  // Runde 40: Sichtweite draußen (Dorf/Wald) begrenzen - "so weit wie ein
+  // Mensch sieht", deutlich weiter als im Dungeon. Schalter + Regler im F10-
+  // Kasten. sichtweiteDorf in Pixeln (Lichtradius um den Helden).
+  sichtBegrenzung: true,
+  sichtweiteDorf: 440,
   // Runde 18/35: Feinjustierung je Gegnertyp (F10 - Pfeile wechseln den Typ).
   // tempo = Lauftempo, schaden = Schaden, schlagtempo = Ausholen/Pausen,
   // reichweite = Hiebweite, leben = HP. Wirkt auf NEUE Spawns dieses Typs.
@@ -59,4 +64,5 @@ export const TUNING_ROWS: Array<[keyof typeof TUNING, string, number, number, nu
   ['gegnerReichweite', 'Gegner: Hieb-Reichweite x', 0.5, 3, 0.1],
   ['gegnerSchlagtempo', 'Gegner: Schlagtempo x', 0.3, 3, 0.1],
   ['gegnerCleverness', 'Gegner: Cleverness x', 0, 2, 0.25],
+  ['sichtweiteDorf', 'Dorf: Sichtweite (px)', 200, 760, 20],
 ];
