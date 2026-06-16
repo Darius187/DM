@@ -234,7 +234,7 @@ export class WorldScene extends CombatScene {
     this.heldEditor.onApply = () => this.zeichneHeld(angleToDir(this.pdir), this.pstep);
     this.worldGfx = this.add.graphics().setDepth(2450);
     this.minimapGfx = this.add.graphics().setScrollFactor(0).setDepth(4500);
-    this.hud = new Hud(this, () => this.p, () => this.weaponClass());
+    this.hud = new Hud(this, () => this.p, () => this.weaponClass(), (id) => this.runActionFromBar(id));
     // Schriftrollen/Tränke aus dem Inventar auf die Leiste ziehen (Runde 40)
     this.panels.onAssignToSlot = (x, y, id) => this.hud.belegeBeiPunkt(x, y, id);
     this.hudText = this.add.text(0, 0, '', { fontFamily: 'serif', fontSize: '13px', color: '#bfa86f' }).setScrollFactor(0).setDepth(4610);
@@ -1676,6 +1676,11 @@ export class WorldScene extends CombatScene {
   // Kacheln. Tiefe -9: über dem Abgrund-Boden (-12), unter dem Steg (-8).
   private schlucht: { x0: number; y0: number; x1: number; y1: number } | null = null;
   private schluchtAkzent = 0x5a7ae0;
+  // Akzentfarbe aufhellen (für Fackel-Flammen in Schlucht-Ebenen, Runde 40)
+  private akzentHell(c: number, add: number): number {
+    const r = Math.min(255, ((c >> 16) & 255) + add), g = Math.min(255, ((c >> 8) & 255) + add), b = Math.min(255, (c & 255) + add);
+    return (r << 16) | (g << 8) | b;
+  }
   private schluchtKristalle: Array<{ x: number; y: number }> = [];
   private bauSchlucht(a: AreaData): void {
     this.schlucht = null;
@@ -4460,7 +4465,7 @@ export class WorldScene extends CombatScene {
       const sx = (t.x - cam.worldView.x) * zm, sy = (t.y - cam.worldView.y) * zm;
       if (sx < -160 || sy < -160 || sx > this.scale.width + 160 || sy > this.scale.height + 160) continue;
       this.eraseLight(sx, sy - 4 * zm, (95 + Math.sin(time * 7 + t.ph) * 10) * zm);
-      warmIdx = this.placeWarm(warmIdx, t.x, t.y - 4, 70, 0.7);
+      warmIdx = this.placeWarm(warmIdx, t.x, t.y - 4, 70, 0.7, this.schlucht ? this.schluchtAkzent : undefined);
     }
     // Hausfenster im Dorf (Runde 35): abends leuchten die Fenster warm, nachts
     // erlischt ein Haus nach dem anderen, tagsüber sind alle dunkel.
@@ -4575,14 +4580,17 @@ export class WorldScene extends CombatScene {
         g.fillRect(dc.x + 1, dc.y + 3, 6, 2);
       }
     }
-    // Fackeln (Flammen)
+    // Fackeln (Flammen). In Schlucht-Ebenen nehmen sie die Akzentfarbe der
+    // Kristalle an (Runde 40, Autorwunsch) - Verlies kalt-blau, Glut orange.
+    const flammAussen = this.schlucht ? this.akzentHell(this.schluchtAkzent, 36) : 0xe8842a;
+    const flammKern = this.schlucht ? this.akzentHell(this.schluchtAkzent, 130) : 0xf8d878;
     for (const t of this.area.torches) {
       g.fillStyle(0x3a2c1c, 1);
       g.fillRect(t.x - 2, t.y, 4, 8);
       const f = Math.sin(time * 9 + t.ph) * 1.5;
-      g.fillStyle(0xe8842a, 1);
+      g.fillStyle(flammAussen, 1);
       g.fillEllipse(t.x, t.y - 4 + f * 0.3, 7, 11 + f * 2);
-      g.fillStyle(0xf8d878, 1);
+      g.fillStyle(flammKern, 1);
       g.fillEllipse(t.x, t.y - 3, 3.6, 6);
     }
     // Innen-Lichtquellen (Runde 35): lebendige Flammen über Kamin/Kerze/Fackel

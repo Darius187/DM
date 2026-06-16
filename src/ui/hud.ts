@@ -93,6 +93,8 @@ export class Hud {
     private scene: Phaser.Scene,
     private getP: () => PlayerState,
     private getWeaponClass: () => WeaponClass,
+    // Klick auf einen Slot löst die Aktion aus (Runde 40, Autorwunsch)
+    private onActivate: (id: string) => void = () => {},
   ) {
     this.ensureOrbTextures();
     this.gfx = scene.add.graphics().setScrollFactor(0).setDepth(4600);
@@ -247,21 +249,33 @@ export class Hud {
       const zone = this.scene.add.zone(x, this.slotY(i), 42, 42).setOrigin(0.5).setScrollFactor(0).setInteractive();
       zone.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showSlotTooltip(s, ptr));
       zone.on('pointerout', () => this.hideTooltip());
-      if (s.belegung) {
-        // Rechtsklick: Auswahlmenü nach oben (Runde 14) - der Zauber darf
-        // beim Belegen natürlich NICHT gleich wirken
-        zone.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
-          if (!ptr.rightButtonDown()) return;
+      zone.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
+        if (ptr.rightButtonDown()) {
+          // Rechtsklick: Belegungs-Menü (der Zauber wirkt dabei NICHT)
+          if (!s.belegung) return;
           this.hideTooltip();
           this.openBelegungsMenue(s, this.slotX(i), this.slotY(i));
-        });
-      }
+          this.klickSlot = -1;
+          return;
+        }
+        // Linksklick-Kandidat: löst beim Loslassen die Aktion aus, SOFERN nicht
+        // gezogen wurde (Ziehen verschiebt/tauscht, Klick castet - Autorwunsch R40)
+        this.klickSlot = i;
+      });
+      // Klick (ohne Ziehen) auf einen belegten Slot feuert die Aktion
+      zone.on('pointerup', (ptr: Phaser.Input.Pointer) => {
+        if (ptr.button !== 0 || this.klickSlot !== i) return;
+        this.klickSlot = -1;
+        const id = s.aktion?.();
+        if (id) { this.hideTooltip(); this.onActivate(id); }
+      });
       // Drag & Drop (Runde 20): Zauber von der Tastenleiste auf einen
       // Maus-Slot ziehen belegt ihn; zwischen Maus-Slots ziehen tauscht.
       this.scene.input.setDraggable(zone);
       zone.on('dragstart', (ptr: Phaser.Input.Pointer) => {
         if (ptr.rightButtonDown()) return;
         if (!s.aktion && !s.belegung) return;
+        this.klickSlot = -1; // es wird gezogen, kein Klick
         this.hideTooltip();
         this.dragVon = i;
         this.dragGhost = this.scene.add.text(ptr.x, ptr.y, s.ico(), {
@@ -278,6 +292,7 @@ export class Hud {
 
   private dragGhost: Phaser.GameObjects.Text | null = null;
   private dragVon = -1;
+  private klickSlot = -1; // welcher Slot gerade als Linksklick-Kandidat gilt
 
   private endDrag(ptr: Phaser.Input.Pointer): void {
     const ghost = this.dragGhost;

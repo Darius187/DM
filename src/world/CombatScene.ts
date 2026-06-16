@@ -841,15 +841,30 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   // --- Eingabe-Aktionen -------------------------------------------------
 
+  // Beim Auslösen über die Actionbar (Mausklick) zielt der Cursor auf die
+  // Leiste - dann automatisch auf den nächsten Gegner zielen (Runde 40).
+  protected barCastAim = false;
+  protected naechsterGegner(maxD = 1e9): Enemy | null {
+    let best: Enemy | null = null, bd = maxD;
+    for (const e of this.enemies) {
+      if (e.hp <= 0 || e.versteckt) continue;
+      const d = Math.hypot(e.x - this.px, e.y - this.py);
+      if (d < bd) { bd = d; best = e; }
+    }
+    return best;
+  }
+
+  // Aktion über die Actionbar mit Auto-Ziel auslösen (Runde 40)
+  runActionFromBar(id: string): void {
+    this.barCastAim = true;
+    this.runAction(id);
+    this.barCastAim = false;
+  }
+
   protected aimAngle(): number {
-    // Touch: Auto-Aim auf den nächsten Gegner (Referenz-Verhalten)
-    if (this.touch) {
-      let best: Enemy | null = null;
-      let bd = 160;
-      for (const e of this.enemies) {
-        const d = Math.hypot(e.x - this.px, e.y - this.py);
-        if (d < bd) { bd = d; best = e; }
-      }
+    // Touch ODER Actionbar-Klick: Auto-Aim auf den nächsten Gegner
+    if (this.touch || this.barCastAim) {
+      const best = this.naechsterGegner(this.barCastAim ? 640 : 160);
       if (best) return Math.atan2(best.y - this.py, best.x - this.px);
       return this.pdir;
     }
@@ -1584,6 +1599,15 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Zielpunkt unter dem Mauszeiger, auf die Reichweite begrenzt (Runde 36,
   // von den Flächen-/Rollen-Zaubern genutzt)
   protected zielPunkt(reichweite: number): { x: number; y: number } {
+    // Actionbar-Klick: auf den nächsten Gegner zielen, sonst vor den Helden
+    if (this.barCastAim) {
+      const best = this.naechsterGegner();
+      const tx = best ? best.x : this.px + Math.cos(this.pdir) * reichweite * 0.6;
+      const ty = best ? best.y : this.py + Math.sin(this.pdir) * reichweite * 0.6;
+      const d = Math.hypot(tx - this.px, ty - this.py) || 1;
+      const f = d > reichweite ? reichweite / d : 1;
+      return { x: this.px + (tx - this.px) * f, y: this.py + (ty - this.py) * f };
+    }
     const ptr = this.input.activePointer;
     const { x: wx, y: wy } = this.weltPunkt(ptr);
     const d = Math.hypot(wx - this.px, wy - this.py);
