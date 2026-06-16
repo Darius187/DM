@@ -28,10 +28,11 @@ export const TUNING = {
   // und das Sammeln vor dem Sturm (0 = stumpf wie früher)
   gegnerCleverness: 2.0,
   // Runde 40: Sichtweite draußen (Dorf/Wald) begrenzen - "so weit wie ein
-  // Mensch sieht", deutlich weiter als im Dungeon. Schalter + Regler im F10-
-  // Kasten. sichtweiteDorf in Pixeln (Lichtradius um den Helden).
-  sichtBegrenzung: true,
-  sichtweiteDorf: 560,
+  // Mensch sieht". Runde 41: standardmäßig AUS - der Autor fand die Begrenzung
+  // im Dorf störend ("kacke"); volle Sicht ist tagsüber schöner. Schalter +
+  // Regler bleiben im F10-Kasten zum Ausprobieren. sichtweiteDorf in Pixeln.
+  sichtBegrenzung: false,
+  sichtweiteDorf: 640,
   // Runde 40: Gegner-Dichte (Multiplikator auf die Anzahl je Raum) - wirkt auf
   // NEU erzeugte Ebenen. 1 = wie bisher, 0.5 = halb so viele.
   gegnerDichte: 1.0,

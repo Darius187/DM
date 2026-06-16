@@ -165,7 +165,6 @@ export class WorldScene extends CombatScene {
     this.portalEnts = [];
     this.nebelSprites = [];
     this.stimmungRect = null;
-    this.vignette = null;
     this.tode = 0;
     this.relicChoice = null;
     this.pauseMenu = null;
@@ -2105,33 +2104,17 @@ export class WorldScene extends CombatScene {
   }
 
   // Stimmungs-Tönung (Runde 31, Wunsch nach dem bunten Vorbild): goldener
-  // Abend und kühler Morgen im Freien, violetter Hauch in der Krypta -
-  // dazu eine dezente Vignette. Beides bildschirmfest, unter dem HUD.
+  // Abend und kühler Morgen im Freien, violetter Hauch in der Krypta.
+  // Bildschirmfest, unter dem HUD. (Runde 41: Vignette ganz raus - der Autor
+  // fand das Gesamtbild dadurch zu düster, der Tag sah aus wie Dämmerung.)
   private stimmungRect: Phaser.GameObjects.Rectangle | null = null;
-  private vignette: Phaser.GameObjects.Image | null = null;
 
   private renderStimmung(): void {
     if (!this.stimmungRect) {
       this.stimmungRect = this.add.rectangle(0, 0, 10, 10, 0xffffff, 0)
         .setOrigin(0).setScrollFactor(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(4005);
     }
-    if (!this.vignette) {
-      if (!this.textures.exists('vignette')) {
-        const c = document.createElement('canvas');
-        c.width = 256;
-        c.height = 256;
-        const ctx = c.getContext('2d')!;
-        const g2 = ctx.createRadialGradient(128, 128, 70, 128, 128, 185);
-        g2.addColorStop(0, 'rgba(0,0,0,0)');
-        g2.addColorStop(1, 'rgba(0,0,0,0.55)');
-        ctx.fillStyle = g2;
-        ctx.fillRect(0, 0, 256, 256);
-        this.textures.addCanvas('vignette', c);
-      }
-      this.vignette = this.add.image(0, 0, 'vignette').setOrigin(0).setScrollFactor(0).setDepth(4470).setAlpha(0.5);
-    }
     this.stimmungRect.setSize(this.scale.width, this.scale.height);
-    this.vignette.setDisplaySize(this.scale.width, this.scale.height);
     let farbe = 0x000000;
     let staerke = 0;
     if (this.area.dark) {
@@ -4610,7 +4593,9 @@ export class WorldScene extends CombatScene {
     }
     this.lightRT.setVisible(true);
     this.lightRT.clear();
-    const dunkelAlpha = this.area.dark ? 0.97 : Math.min(0.92, 0.30 + 0.62 * nachtFaktor + (fow ? 0.2 : 0));
+    // Runde 41: Tag-Grundschleier deutlich heller (war 0.30 -> sah aus wie
+    // Dämmerung). Tag ~0.10, Nacht weiter dunkel.
+    const dunkelAlpha = this.area.dark ? 0.97 : Math.min(0.92, 0.10 + 0.78 * nachtFaktor + (fow ? 0.2 : 0));
     this.lightRT.fill(0x020100, dunkelAlpha);
     const time = this.time.now / 1000;
     const flicker = 1 + Math.sin(time * 9) * 0.025 + Math.sin(time * 23) * 0.015;
@@ -5193,9 +5178,9 @@ export class WorldScene extends CombatScene {
   }
 
   // Sanfte GPU-Nachbearbeitung der WELT-Kamera (Runde 40, Autorwunsch
-  // "aufwerten"): dezentes Bloom lässt Fackeln/Feuer/Zauber glühen, eine weiche
-  // Vignette schließt die Ränder ab - mehr Tiefe und 1635er-Düsternis, ohne den
+  // "aufwerten"): dezentes Bloom lässt Fackeln/Feuer/Zauber glühen, ohne den
   // Pixel-Look zu verwaschen. Die UI-Kamera bleibt unangetastet (scharfe Schrift).
+  // Runde 41: Vignette entfernt (machte alles zu düster), nur noch das Glühen.
   // Abschaltbar (settings.postFx), z. B. für schwache Geräte.
   private postFxAktiv: boolean | null = null;
   private wendePostFxAn(): void {
@@ -5204,8 +5189,7 @@ export class WorldScene extends CombatScene {
     const cam = this.cameras.main;
     cam.postFX.clear();
     if (!an) return;
-    cam.postFX.addVignette(0.5, 0.5, 0.95, 0.24);
-    cam.postFX.addBloom(0xffffff, 1, 1, 0.7, 0.55, 4);
+    cam.postFX.addBloom(0xffffff, 1, 1, 0.7, 0.45, 4);
   }
 
   private onResize(): void {

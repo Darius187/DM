@@ -33,7 +33,7 @@ export interface Settings {
   // y zählt vom UNTEREN Bildrand (Chat-Verankerung wie bei WoW)
   chronikBox: { x: number; y: number; w: number; h: number };
   chronikAuto: boolean;   // Chronik-Fenster beim Spielstart offen (Runde 36)
-  postFx: boolean;        // Nachbearbeitung: Bloom auf Lichter + Vignette (Runde 40)
+  postFx: boolean;        // Nachbearbeitung: Bloom/Leuchten auf Lichter (Runde 40; Vignette ab R41 raus)
   audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
   uiLayoutV: number;      // Layout-Version: ältere UI-Versätze einmalig zurücksetzen
   kb: KeyBindings;
