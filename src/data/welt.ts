@@ -39,6 +39,17 @@ export const EINFALL = {
   pauseTage: 1,          // mindestens ein ruhiger Tag zwischen Einfällen
 } as const;
 
+// Kämpfende Bewohner beim Einfall (Runde 41, Autorwunsch "der Schmied kann
+// mitkämpfen"): Schmied & andere kaempfer-NPCs greifen Monster aktiv an.
+export const KAEMPFER = {
+  hp: 70,                // Lebenspunkte des kämpfenden Bewohners
+  dmg: 14,               // Schaden pro Schlag
+  cd: 0.9,               // Schlag-Abklingzeit
+  gegnerDmg: 7,          // was er pro Schlag selbst einsteckt (Nahkampf-Risiko)
+  aggro: 280,            // Reichweite, in der er sich einen Gegner sucht
+  tempo: 76,             // Lauftempo zum Gegner
+} as const;
+
 // Stadtmauer (Feedback-Runde 7): Palisade als Bauprojekt beim Schmied.
 // Stufe 1 ist unzerstörbar für normale Monster - sie kommen nur noch
 // durch die zwei Tore der Salzstraße.

@@ -21,7 +21,7 @@ import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDL
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER } from '../data/crafting';
-import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, tageszeitLabel } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, tageszeitLabel } from '../data/welt';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, FLYOVER, tileNameAt } from '../world/tiles';
@@ -67,7 +67,12 @@ interface NpcEntity extends NpcSpawn {
   arbeitT?: number; // Takt des sichtbaren Tagwerks (Runde 16)
   imHaus?: boolean; // beim großen Einfall: ins Gemeindehaus geflüchtet (Runde 40)
   umgehSeite?: number; // Seite, zu der dieser Bewohner Hindernisse umläuft (Runde 41)
+  hp?: number;        // Kämpfer-Bewohner (Schmied & Co.) haben Lebenspunkte (Runde 41)
+  atkCd?: number;     // Schlag-Abklingzeit des kämpfenden Bewohners
+  flashT?: number;    // kurzes Aufblitzen bei Treffer
 }
+
+interface Kadaver { x: number; y: number; g: Phaser.GameObjects.Graphics; t: number; ph: number }
 
 interface AnimalEntity extends AnimalSpawn {
   sprite: Phaser.GameObjects.Sprite;
@@ -140,6 +145,7 @@ export class WorldScene extends CombatScene {
   private bossBlutBoden: Phaser.GameObjects.Graphics | null = null;
   private bossLeichen: Array<{ g: Phaser.GameObjects.Graphics; x: number; y: number; ph: number }> = [];
   private bossTorZu = false;                     // Eingangstor hinter dem Helden versiegelt
+  private kadaver: Kadaver[] = [];               // gerissene Tiere - Monster fressen daran (Runde 41)
   private deathOverlay: Phaser.GameObjects.Container | null = null;
 
   constructor() {
@@ -1508,6 +1514,8 @@ export class WorldScene extends CombatScene {
     for (const l of this.bossLeichen) l.g.destroy();
     this.bossLeichen = [];
     this.bossTorZu = false;
+    for (const k of this.kadaver) k.g.destroy();
+    this.kadaver = [];
     // Bilder hängen in tileImages (oben zerstört) - nur die Listen leeren
     this.hausAnimEnts = [];
     this.hausNachtEnts = [];
@@ -2700,7 +2708,7 @@ export class WorldScene extends CombatScene {
     this.grosserEinfall = true;
     this.flags.wurdeBelagert = true; // Runde 41 Fix: schaltet die Palisade beim Schmied frei (fehlte hier)
     this.letzterEinfallTag = this.tag;
-    for (const n of this.npcEnts) n.imHaus = false; // alle fliehen erst noch
+    for (const n of this.npcEnts) { n.imHaus = false; n.hp = undefined; n.atkCd = 0; } // Kämpfer wieder frisch
     const punkte = [
       { x: 3.5, y: 30.5 }, { x: 88, y: 30.5 }, { x: 20, y: 3.5 }, { x: 70, y: 3.5 },
       { x: 20, y: 56 }, { x: 70, y: 56 }, { x: 3.5, y: 15 }, { x: 88, y: 45 },
@@ -2756,9 +2764,21 @@ export class WorldScene extends CombatScene {
   // nächste lebende Vieh oder einen fliehenden Bewohner. Vieh wird gerissen
   // (verschwindet), erwischte Bewohner werden verschleppt (kehren beim nächsten
   // Besuch wieder - kein dauerhafter Verlust, der Spieler soll sie aber schützen).
-  private aktualisiereChaos(_dt: number): void {
+  private aktualisiereChaos(dt: number): void {
+    this.updateKadaver(dt);
     for (const e of this.enemies) {
-      if (e.hp <= 0 || !e.jagdZiel) continue; // nur lebende Räuber
+      if (e.hp <= 0) continue;
+      // FÜTTER-CLUSTER (Runde 41): ein naher, "freier" Kadaver zieht JEDES
+      // Monster an - sie sammeln sich und fressen, wie um den toten Helden.
+      // Kommt der Held oder ein Bewohner zu nah, ist der Kadaver nicht mehr frei
+      // und sie lassen ab (Held/Bewohner verscheucht sie).
+      const kad = this.naechsterFreierKadaver(e.x, e.y, 170);
+      if (kad) {
+        e.jagdZiel = { x: kad.x, y: kad.y };
+        if (Math.hypot(kad.x - e.x, kad.y - e.y) < 44) { e.atkCd = Math.max(e.atkCd, 0.7); kad.t -= dt * 1.1; }
+        continue;
+      }
+      if (!e.jagdZiel) continue; // nur Räuber jagen Beute (sonst: Held, normale KI)
       let bx = 0, by = 0, bd = 1e9, tier: AnimalEntity | null = null, npc: NpcEntity | null = null;
       for (const t of this.animalEnts) {
         const d = Math.hypot(t.curX - e.x, t.curY - e.y);
@@ -2771,21 +2791,56 @@ export class WorldScene extends CombatScene {
       }
       if (tier === null && npc === null) { e.jagdZiel = null; continue; } // nichts mehr -> Held
       e.jagdZiel = { x: bx, y: by };
-      // großzügige Reichweite (durch dünne Gatterzäune hindurch erreichen sie
-      // das Vieh; Bewohner etwas enger)
       if (bd < (tier ? 42 : 28)) {
         if (tier) {
-          this.fx.burst(tier.curX, tier.curY, 0x7a1010, 12, 90);
+          // Vieh gerissen: ein KADAVER bleibt zurück (Fütter-Cluster), der
+          // Räuber bleibt und frisst, weitere Monster kommen dazu.
+          const tx = tier.curX, ty = tier.curY;
+          this.fx.burst(tx, ty, 0x7a1010, 14, 100);
           this.sfx.play(tier.type, 0.4);
           tier.sprite.destroy();
           this.animalEnts.splice(this.animalEnts.indexOf(tier), 1);
-          e.atkCd = Math.max(e.atkCd, 1.2); // kurz fressen
+          this.legeKadaver(tx, ty);
+          e.jagdZiel = { x: tx, y: ty }; e.atkCd = Math.max(e.atkCd, 1.0);
         } else if (npc) {
           this.fx.burst(npc.curX, npc.curY, 0x7a1010, 8, 70);
-          npc.imHaus = true; // verschleppt/in Sicherheit - verschwindet
-          e.jagdZiel = null;  // sucht sich neue Beute / den Helden
+          npc.imHaus = true;
+          e.jagdZiel = null;
         }
       }
+    }
+  }
+
+  // Ein gerissenes Tier bleibt als Kadaver liegen, an dem die Monster fressen.
+  private legeKadaver(x: number, y: number): void {
+    const g = this.add.graphics().setDepth(y - 2);
+    this.kadaver.push({ x, y, g, t: 9 + Math.random() * 4, ph: Math.random() * 6.283 });
+  }
+
+  // Nächster Kadaver in Reichweite, der gerade FREI ist (kein Held/Bewohner nah).
+  private naechsterFreierKadaver(x: number, y: number, range: number): Kadaver | null {
+    let best: Kadaver | null = null, bd = range;
+    for (const k of this.kadaver) {
+      const d = Math.hypot(k.x - x, k.y - y);
+      if (d >= bd) continue;
+      if (Math.hypot(k.x - this.px, k.y - this.py) < 96) continue;          // Held verscheucht
+      if (this.npcEnts.some((n) => n.sprite.visible && !n.imHaus && Math.hypot(n.curX - k.x, n.curY - k.y) < 80)) continue; // Bewohner verscheucht
+      bd = d; best = k;
+    }
+    return best;
+  }
+
+  private updateKadaver(dt: number): void {
+    for (const k of this.kadaver) k.t -= dt * 0.4;                          // langsamer Grundverfall
+    this.kadaver = this.kadaver.filter((k) => { if (k.t <= 0) { k.g.destroy(); return false; } return true; });
+    const t = this.time.now / 1000;
+    for (const k of this.kadaver) {
+      const g = k.g; g.clear();
+      const puls = 0.9 + Math.sin(t * 2 + k.ph) * 0.1;
+      g.fillStyle(0x5a0c0c, 0.6); g.fillEllipse(k.x, k.y + 4, 32 * puls, 13);        // Blutlache
+      g.fillStyle(0x3a1414, 1); g.fillEllipse(k.x, k.y, 18, 11);                      // Rumpf
+      g.fillStyle(0x7a2a2a, 1); g.fillEllipse(k.x - 3, k.y - 2, 9, 5);                // aufgerissen
+      g.fillStyle(0xcdbf9d, 0.9); for (const [ox, oy] of [[-8, 2], [6, -3], [3, 5], [-2, -4]] as Array<[number, number]>) g.fillRect(k.x + ox, k.y + oy, 5, 1.6); // Knochen/Rippen
     }
   }
 
@@ -4008,6 +4063,7 @@ export class WorldScene extends CombatScene {
         this.flags.kriegBegonnen = true; // Quest-/Story-Zustand SOFORT setzen (zuverlässig)
         for (const e of this.enemies) e.jagdZiel = null;
         for (const n of this.npcEnts) n.imHaus = false; // die Überlebenden kehren zurück
+        for (const k of this.kadaver) k.g.destroy(); this.kadaver = []; // Kadaver verschwinden nach dem Sturm
         this.logMsg('Der letzte Angreifer fällt. Ravensmoor steht noch - fürs Erste.', 'gold');
         this.sfx.play('muenzen');
         this.shake(3);
@@ -5120,17 +5176,39 @@ export class WorldScene extends CombatScene {
       // Nachbarn), abends heimwärts (Runde 10)
       const mittagPhase = this.tageszeit >= 0.45 && this.tageszeit <= TAG.abendAb;
       const panik = this.grosserEinfall && !n.kaempfer && !n.imHaus;
+      // KÄMPFENDE Bewohner (Schmied & Co.) suchen sich beim Einfall einen Gegner
+      // und gehen ihn an (Runde 41, Autorwunsch "der Schmied kann mitkämpfen").
+      const kampf = this.grosserEinfall && !!n.kaempfer && !n.imHaus;
+      let kampfGegner: Enemy | null = null;
+      if (kampf) {
+        let bd: number = KAEMPFER.aggro;
+        for (const e of this.enemies) { if (e.hp <= 0) continue; const dd = Math.hypot(e.x - n.curX, e.y - n.curY); if (dd < bd) { bd = dd; kampfGegner = e; } }
+        n.hp = n.hp ?? KAEMPFER.hp;
+        n.atkCd = Math.max(0, (n.atkCd ?? 0) - dt);
+        n.flashT = Math.max(0, (n.flashT ?? 0) - dt);
+      }
       const ziel = panik ? this.fluchtpunkt
+        : kampfGegner ? { x: kampfGegner.x, y: kampfGegner.y }
         : abend && n.abend ? n.abend
         : mittagPhase && n.mittag ? n.mittag
         : { x: n.x, y: n.y };
       const d = Math.hypot(ziel.x - n.curX, ziel.y - n.curY);
       if (panik && d < 36) { n.imHaus = true; continue; } // im Gemeindehaus angekommen
-      if (d > 4) {
+      // Kämpfer schlägt zu, wenn der Gegner in Reichweite ist
+      if (kampf && kampfGegner && d < 34 && (n.atkCd ?? 0) <= 0) {
+        n.atkCd = KAEMPFER.cd;
+        const a = Math.atan2(kampfGegner.y - n.curY, kampfGegner.x - n.curX);
+        this.damageEnemy(kampfGegner, KAEMPFER.dmg, Math.cos(a) * 14, Math.sin(a) * 14, '#d8cfb8', false);
+        this.fx.addSwing(n.curX, n.curY - 6, a, { col: 'rgba(216,207,184,', w: 4, radius: 24 });
+        this.sfx.play('schwert_slice1', 0.45);
+        n.hp = (n.hp ?? KAEMPFER.hp) - KAEMPFER.gegnerDmg; n.flashT = 0.16;
+        if (n.hp <= 0) { n.imHaus = true; this.fx.burst(n.curX, n.curY, 0x7a1010, 12, 100); this.logMsg(`${n.name} wird überrannt und zieht sich zurück!`, 'bad'); continue; }
+      }
+      if (d > 4 && !(kampf && d < 30)) {
         const a = Math.atan2(ziel.y - n.curY, ziel.x - n.curX);
         // Runde 17: Bewohner laufen NICHT mehr durch Gebäude - sie
         // schieben sich achsenweise an Wänden entlang. Panik = schneller.
-        const tempo = panik ? 100 : 50;
+        const tempo = panik ? 100 : kampf ? KAEMPFER.tempo : 50;
         const nx = n.curX + Math.cos(a) * tempo * dt;
         const ny = n.curY + Math.sin(a) * tempo * dt;
         const vorX = !this.isSolidAt(nx, n.curY), vorY = !this.isSolidAt(n.curX, ny);
@@ -5160,6 +5238,7 @@ export class WorldScene extends CombatScene {
         this.provider.applyFigure(n.sprite, n.figur ?? n.id, 0, 0);
       }
       n.sprite.setPosition(n.curX, n.curY).setDepth(n.curY);
+      if ((n.flashT ?? 0) > 0) n.sprite.setTintFill(0xff7048); else n.sprite.clearTint();
       n.label.setPosition(n.curX, n.curY - 22);
     }
     // Bewohner dürfen nicht ineinander stehen (Runde 40, Autorwunsch): mehrere
