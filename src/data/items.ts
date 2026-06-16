@@ -116,7 +116,9 @@ export const SOCKET_CHANCE = 0.2 as const;
 
 // Drop-Chancen beim Gegner-Tod (Referenz killEnemy)
 export const KILL_DROPS = {
-  goldMin: 2, goldMax: 7, goldPerDepth: 2,
+  // Runde 42: Gold-MENGE je Drop um ~50% gesenkt (Autorwunsch), Drop-Chance bleibt.
+  // Vorher 2..7 + Tiefe*2 -> jetzt 1..4 + Tiefe*1.
+  goldMin: 1, goldMax: 4, goldPerDepth: 1,
   potionChance: 0.10,
   mpotionChance: 0.07,
   // Runde 38/39: 0,11 -> 0,06 -> 0,045 - Beute soll selten & wertvoll sein
@@ -125,6 +127,12 @@ export const KILL_DROPS = {
   gemChance: 0.02,
   scrollChance: 0.04, // NEU: Zauberrollen als Drops (Masterprompt 6.2)
 } as const;
+
+// Lebensraub (Runde 42): Ein Ring "+2/+3 Lebensraub" heilte 2-3 HP JE Treffer -
+// mit schneller Waffe komplett imba. Jetzt heilt EIN Punkt nur noch 0,1 HP je
+// Treffer (also +2 -> 0,2/Treffer, wie vom Autor gewünscht). Die Bruchteile
+// werden aufsummiert (leechCarry), damit es über viele Treffer trotzdem wirkt.
+export const LEECH_HEAL_PER_POINT = 0.1;
 
 // Trank-/Elixier-Werte (Referenz)
 export const POTION_HEAL_PCT = 0.45;   // Heiltrank: 45% Leben
