@@ -37,6 +37,10 @@ export const EINFALL = {
   belohnungGold: 60,
   belohnungGoldProTag: 5,
   pauseTage: 1,          // mindestens ein ruhiger Tag zwischen Einfällen
+  // Ein Monster, das nah am Helden ODER einem Kämpfer steht, lässt sich NICHT
+  // mehr von einem Kadaver ablenken (Runde 46): so "weiß" es klar, wen es
+  // angreift, statt am Aas-Rand hin und her zu zucken.
+  bindeNah: 120,
 } as const;
 
 // Kämpfende Bewohner beim Einfall (Runde 41, Autorwunsch "der Schmied kann

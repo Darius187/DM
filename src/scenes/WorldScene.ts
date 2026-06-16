@@ -2885,12 +2885,23 @@ export class WorldScene extends CombatScene {
       // Monster an - sie sammeln sich und fressen, wie um den toten Helden.
       // Kommt der Held oder ein Bewohner zu nah, ist der Kadaver nicht mehr frei
       // und sie lassen ab (Held/Bewohner verscheucht sie).
-      const kad = this.naechsterFreierKadaver(e.x, e.y, 170);
+      // Ein Monster, das nah am Helden ODER einem sichtbaren Kämpfer steht, ist
+      // im Gefecht GEBUNDEN und lässt sich nicht vom Aas ablenken (Runde 46):
+      // so wackelt das Ziel nicht mehr am Kadaver-Rand hin und her.
+      let gebunden = Math.hypot(this.px - e.x, this.py - e.y) < EINFALL.bindeNah;
+      if (!gebunden) {
+        for (const n of this.npcEnts) {
+          if (!n.kaempfer || n.imHaus || n.verwundet || !n.sprite.visible) continue;
+          if (Math.hypot(n.curX - e.x, n.curY - e.y) < EINFALL.bindeNah) { gebunden = true; break; }
+        }
+      }
+      const kad = gebunden ? null : this.naechsterFreierKadaver(e.x, e.y, 170);
       if (kad) {
         e.jagdZiel = { x: kad.x, y: kad.y };
         if (Math.hypot(kad.x - e.x, kad.y - e.y) < 44) { e.atkCd = Math.max(e.atkCd, 0.7); kad.t -= dt * 1.1; }
         continue;
       }
+      if (gebunden && e.jagdZiel) e.jagdZiel = null; // im Gefecht: zurück zur Held-KI
       if (!e.jagdZiel) continue; // nur Räuber jagen Beute (sonst: Held, normale KI)
       let bx = 0, by = 0, bd = 1e9, tier: AnimalEntity | null = null, npc: NpcEntity | null = null;
       for (const t of this.animalEnts) {
