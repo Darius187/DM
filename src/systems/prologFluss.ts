@@ -15,9 +15,10 @@ export const PROLOG_AKTIV = 'prologAktiv';   // Registry-Flag: läuft aus dem ec
 // wecken sie und stoppen uns selbst. Den Rest (Zielgebiet) erledigt die
 // WorldScene in ihrem eigenen WAKE-Ereignis (robust: erst dort ist sie wirklich
 // wieder aktiv). Beim Standalone-Test ist keine WorldScene da -> zurück zum Titel.
-export function beendeProlog(scene: Phaser.Scene): void {
+export function beendeProlog(scene: Phaser.Scene, ziel?: string): void {
   const ausSpiel = scene.game.registry.get(PROLOG_AKTIV) === true;
   if (ausSpiel) {
+    if (ziel) scene.game.registry.set('prologZiel', ziel); // Ziel überschreiben (z. B. Rückweg ins Dorf)
     scene.scene.wake('World');
     scene.scene.stop();
   } else {

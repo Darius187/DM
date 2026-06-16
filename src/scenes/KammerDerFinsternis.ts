@@ -61,16 +61,21 @@ export class KammerDerFinsternis extends Phaser.Scene {
       .setOrigin(0.5).setScrollFactor(0).setDepth(5000).setVisible(false);
     this.add.text(this.scale.width / 2, 18, 'DIE KAMMER DER FINSTERNIS', { fontFamily: 'serif', fontSize: '15px', color: '#8a7a5a', letterSpacing: 2 })
       .setOrigin(0.5).setScrollFactor(0).setDepth(5000);
-    this.zeigeMeldung('Die Tür fällt hinter dir zu. Nur deine Laterne bleibt. Entzünde die Kohlebecken (E).');
+    this.zeigeMeldung('Die Tür fällt hinter dir zu. Nur deine Laterne bleibt. Der Gang führt hinab - folge ihm in die Kammer.');
   }
 
   // --- Aufbau ---------------------------------------------------------------
 
   private baueRaum(): void {
-    const W = 26, H = 19;
-    this.map = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (x === 0 || y === 0 || x === W - 1 || y === H - 1) ? 1 : 0));
+    // Runde 41 (Autorwunsch): erst ein LÄNGERER Eingangsgang, der in die Kammer
+    // führt. Der Spieler startet unten im Gang (die Tür fällt hinter ihm zu) und
+    // tastet sich nach oben in die Kohlebecken-Kammer.
+    const W = 26, H = 30;
+    this.map = Array.from({ length: H }, () => Array.from({ length: W }, () => 1)); // alles Wand
+    for (let y = 1; y <= 16; y++) for (let x = 1; x <= W - 2; x++) this.map[y][x] = 0; // Kammer
+    for (let y = 16; y <= 28; y++) for (let x = 12; x <= 14; x++) this.map[y][x] = 0;  // Eingangsgang
     // ein paar innere Mauervorsprünge (Nischen, Ecken zum Verstecken der Schrecks)
-    for (const [x, y] of [[8, 6], [8, 7], [17, 11], [18, 11], [13, 4], [6, 13]]) this.map[y][x] = 1;
+    for (const [x, y] of [[8, 6], [8, 7], [17, 11], [18, 11], [6, 13]]) this.map[y][x] = 1;
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
         const wand = this.map[y][x] === 1;
@@ -91,7 +96,7 @@ export class KammerDerFinsternis extends Phaser.Scene {
   }
 
   private bauePlayer(): void {
-    this.px = 13 * TILE + 16; this.py = 16 * TILE + 16;
+    this.px = 13 * TILE + 16; this.py = 27 * TILE + 16; // unten im Eingangsgang
     this.player = this.add.sprite(this.px, this.py, '__DEFAULT').setDepth(this.py);
     this.provider.applyFigure(this.player, 'spieler_stoff', 0, 0);
     // Kamera folgt dem Helden: er bleibt zentriert, die Finsternis ringsum -
@@ -118,6 +123,9 @@ export class KammerDerFinsternis extends Phaser.Scene {
   private scareDefs(): TriggerDef[] {
     // Schrecks an den Nischen/Wegen - reine Atmosphäre, kein Kampf.
     return [
+      // im Eingangsgang: eine Ratte huscht voraus, dann ein Sting beim Eintritt
+      { x: 12 * TILE, y: 22 * TILE, w: 96, h: 48, effekte: [{ typ: 'ratte', x: 13 * TILE, y: 20 * TILE, richtung: -Math.PI / 2 }] },
+      { x: 12 * TILE, y: 17 * TILE, w: 96, h: 40, effekte: [{ typ: 'sting' }, { typ: 'flackern', staerke: 0.4 }] },
       { x: 7 * TILE, y: 9 * TILE, w: 64, h: 48, effekte: [{ typ: 'sting' }, { typ: 'silhouette', variante: 'huscht', richtung: Math.PI, x: 5 * TILE, y: 9 * TILE }] },
       { x: 15 * TILE, y: 12 * TILE, w: 80, h: 48, effekte: [{ typ: 'ratte', x: 16 * TILE, y: 12 * TILE, richtung: 0.4 }] },
       { x: 16 * TILE, y: 7 * TILE, w: 64, h: 48, effekte: [{ typ: 'leiche', x: 17 * TILE, y: 7 * TILE }, { typ: 'shake', staerke: 0.006 }] },

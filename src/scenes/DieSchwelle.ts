@@ -1,9 +1,11 @@
-// Prolog-Raum 2: "Die Schwelle" - das Finale von Ebene 1 (Briefing). Reine
-// Spannung, kein Kampf. Der Spieler sieht die ERSTEN Bluttropfen, ohne sie zu
-// verstehen (BloodFlow auf 'drip'), tritt im Dunkeln in etwas Nasses, der
-// Templer erscheint für zwei Sekunden als Silhouette und ist wieder weg, und ein
-// verriegeltes Tor mit eingeritzter Warnung versperrt den Weg nach unten. Man
-// verlässt die Szene mit einer Frage, nicht mit einer Antwort.
+// Prolog-Raum 2: "Die Schwelle" - das Finale des Eröffnungs-Prologs (Ebene 0).
+// Reine Spannung, kein Kampf. Erste Bluttropfen (BloodFlow 'drip'), im Dunkeln
+// in etwas Nasses treten, der Templer als Zwei-Sekunden-Silhouette, ein
+// verriegeltes, verbotenes Tor mit eingeritzter Warnung. Am Ende ein HEBEL:
+// er lässt hinter dem Spieler das Eingangstor wieder aufmahlen - er KÖNNTE
+// umkehren (zurück ins Dorf), MUSS aber nicht. Vor ihm öffnet sich die Treppe
+// hinab in die Krypta (das frühere Level 1). Atmosphäre, etwas Schrecken, mehr
+// nicht - der Spieler trifft eine Wahl, kein Kampf.
 
 import Phaser from 'phaser';
 import { SpriteProvider } from '../gfx/SpriteProvider';
@@ -28,7 +30,9 @@ export class DieSchwelle extends Phaser.Scene {
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private map: number[][] = [];
   private tor = { tx: 13, ty: 1, gelesen: false };
-  private rueckweg = { tx: 13, ty: 16, frei: false, sprite: null as Phaser.GameObjects.Graphics | null, verlassen: false };
+  private hebel = { tx: 17, ty: 3, gezogen: false, sprite: null as Phaser.GameObjects.Graphics | null };
+  private treppe = { tx: 9, ty: 2, frei: false, sprite: null as Phaser.GameObjects.Graphics | null, genommen: false };   // -> Krypta (crypt1)
+  private rueckweg = { tx: 13, ty: 16, frei: false, sprite: null as Phaser.GameObjects.Graphics | null, verlassen: false }; // -> Dorf (optional)
   private hint!: Phaser.GameObjects.Text;
   private atmosT = 2;
 
@@ -41,6 +45,7 @@ export class DieSchwelle extends Phaser.Scene {
     this.baueRaum();
     this.bauePlayer();
     this.baueTor();
+    this.baueHebel();
 
     this.lighting = new LightingManager(this, { radius: PROLOG_LICHT.spielerRadius });
     this.lighting.followPlayer(this.playerRef);
@@ -107,34 +112,72 @@ export class DieSchwelle extends Phaser.Scene {
     ];
   }
 
+  // Wandhebel neben dem verriegelten Tor.
+  private baueHebel(): void {
+    const g = this.add.graphics().setDepth(this.hebel.ty * TILE + 16);
+    this.hebel.sprite = g;
+    this.zeichneHebel();
+  }
+
+  private zeichneHebel(): void {
+    const g = this.hebel.sprite!; g.clear();
+    const x = this.hebel.tx * TILE, y = this.hebel.ty * TILE;
+    g.fillStyle(0x2a2620, 1); g.fillRect(x + 13, y + 10, 6, 16);                 // Sockel
+    g.lineStyle(3, this.hebel.gezogen ? 0x9ab07a : 0xb8a86a, 1);
+    if (this.hebel.gezogen) g.lineBetween(x + 16, y + 18, x + 24, y + 26);       // unten = gezogen
+    else g.lineBetween(x + 16, y + 18, x + 24, y + 10);                          // oben = bereit
+    g.fillStyle(this.hebel.gezogen ? 0x9ab07a : 0xc9a227, 1);
+    g.fillCircle(x + (this.hebel.gezogen ? 24 : 24), y + (this.hebel.gezogen ? 26 : 10), 2.4);
+  }
+
   private interagiere(): void {
-    const tx = this.tor.tx * TILE + 16, ty = this.tor.ty * TILE + 16;
-    if (Math.hypot(tx - this.px, ty - this.py) < 56 && !this.tor.gelesen) {
+    // Verbotenes Tor lesen (Atmosphäre)
+    const gx = this.tor.tx * TILE + 16, gy = this.tor.ty * TILE + 16;
+    if (Math.hypot(gx - this.px, gy - this.py) < 56 && !this.tor.gelesen) {
       this.tor.gelesen = true;
-      this.zeigeMeldung('In das Tor geritzt: »Was unten ruht, nährt sich am Blut. Steig nicht hinab, oder werde Teil davon.« - Das Tor ist verriegelt. Hier geht es nicht weiter.');
+      this.zeigeMeldung('In das Tor geritzt: »Was unten ruht, nährt sich am Blut. Steig nicht hinab, oder werde Teil davon.« Das Tor ist verriegelt - dahinter geht es nicht.');
       this.sfx.play('krypta_grusel2', 0.6);
-      // Der Rückweg ans Tageslicht gibt sich frei (Briefing: Schalter/Tür zurück
-      // ins Dorf am Ende). Man kehrt mit einer Frage um, nicht mit einer Antwort.
-      this.time.delayedCall(2600, () => this.gibRueckwegFrei());
+      return;
+    }
+    // Hebel ziehen: Eingang öffnet sich (Rückweg), Treppe in die Krypta gibt sich frei
+    const hx = this.hebel.tx * TILE + 16, hy = this.hebel.ty * TILE + 16;
+    if (Math.hypot(hx - this.px, hy - this.py) < 56 && !this.hebel.gezogen) {
+      this.hebel.gezogen = true;
+      this.zeichneHebel();
+      this.sfx.play('gebietswechsel', 0.8);
+      this.cameras.main.shake(360, 0.006);
+      this.gibAusgaengeFrei();
     }
   }
 
-  private gibRueckwegFrei(): void {
-    if (this.rueckweg.frei) return;
-    this.rueckweg.frei = true;
-    this.zeichneRueckweg();
-    this.zeigeMeldung('Kehr um. Melde dem Fürsten, was unter der Kirche haust. (Treppe zurück ans Tageslicht)');
-    this.sfx.play('gebietswechsel', 0.6);
+  // Hebel gezogen: hinter dem Spieler mahlt das Eingangstor auf (Rückweg ins
+  // Dorf, optional), vor ihm öffnet sich die Treppe hinab in die Krypta.
+  private gibAusgaengeFrei(): void {
+    this.treppe.frei = true; this.rueckweg.frei = true;
+    this.zeichneTreppe(); this.zeichneRueckweg();
+    this.zeigeMeldung('Der Hebel rastet ein. Hinter dir mahlt das Tor auf - du könntest umkehren. Vor dir führt eine Treppe HINAB in die Krypta.');
   }
 
+  // Treppe hinab in die Krypta (das frühere Level 1).
+  private zeichneTreppe(): void {
+    const g = this.treppe.sprite ?? this.add.graphics();
+    this.treppe.sprite = g; g.clear();
+    const x = this.treppe.tx * TILE, y = this.treppe.ty * TILE;
+    g.setDepth(y - 4);
+    g.fillStyle(0x050403, 1); g.fillRect(x + 2, y + 2, 28, 30);            // dunkler Schacht
+    for (let i = 0; i < 5; i++) { g.fillStyle(0x18140e, 1); g.fillRect(x + 3, y + 4 + i * 5, 26, 2.4); } // Stufen
+    g.fillStyle(0x7a1414, 0.4); g.fillRect(x + 2, y + 28, 28, 4);          // roter Schimmer aus der Tiefe
+  }
+
+  // Rückweg ans Tageslicht (Eingangstor, optional).
   private zeichneRueckweg(): void {
     const g = this.rueckweg.sprite ?? this.add.graphics();
     this.rueckweg.sprite = g; g.clear();
     const x = this.rueckweg.tx * TILE, y = this.rueckweg.ty * TILE;
     g.setDepth(y - 4);
-    g.fillStyle(0x0a0d08, 1); g.fillRect(x + 3, y + 2, 26, 28);            // Treppenschacht
-    for (let i = 0; i < 4; i++) { g.fillStyle(0x1c2418, 1); g.fillRect(x + 4, y + 4 + i * 6, 24, 3); } // Stufen
-    g.fillStyle(0x9ab07a, 0.5); g.fillRect(x + 3, y + 2, 26, 3);           // fahler Tageslicht-Schimmer oben
+    g.fillStyle(0x0a0d08, 1); g.fillRect(x + 3, y + 2, 26, 28);            // Treppenschacht hinauf
+    for (let i = 0; i < 4; i++) { g.fillStyle(0x1c2418, 1); g.fillRect(x + 4, y + 4 + i * 6, 24, 3); }
+    g.fillStyle(0x9ab07a, 0.5); g.fillRect(x + 3, y + 2, 26, 3);           // fahler Tageslicht-Schimmer
   }
 
   private zeigeMeldung(t: string): void {
@@ -151,12 +194,20 @@ export class DieSchwelle extends Phaser.Scene {
     this.atmosT -= dt;
     if (this.atmosT <= 0) { this.atmosT = 8 + Math.random() * 12; this.sfx.play(Math.random() < 0.5 ? 'krypta_grusel3' : 'kraehen', 0.4); }
 
-    // Rückweg erreicht -> Eröffnungs-Prolog zu Ende (zurück ins Dorf bzw. Titel).
-    if (this.rueckweg.frei && !this.rueckweg.verlassen
+    // Treppe hinab erreicht -> in die Krypta (das frühere Level 1).
+    if (this.treppe.frei && !this.treppe.genommen && !this.rueckweg.verlassen
+      && Math.hypot((this.treppe.tx * TILE + 16) - this.px, (this.treppe.ty * TILE + 16) - this.py) < 26) {
+      this.treppe.genommen = true;
+      this.sfx.play('gebietswechsel', 0.8);
+      this.zeigeMeldung('Du steigst hinab in die Krypta...');
+      this.time.delayedCall(500, () => beendeProlog(this)); // Registry-Ziel = crypt1
+    }
+    // Rückweg erreicht -> optional zurück ins Dorf.
+    if (this.rueckweg.frei && !this.rueckweg.verlassen && !this.treppe.genommen
       && Math.hypot((this.rueckweg.tx * TILE + 16) - this.px, (this.rueckweg.ty * TILE + 16) - this.py) < 26) {
       this.rueckweg.verlassen = true;
       this.sfx.play('gebietswechsel', 0.7);
-      this.time.delayedCall(400, () => beendeProlog(this));
+      this.time.delayedCall(400, () => beendeProlog(this, 'rueckweg'));
     }
   }
 
