@@ -264,7 +264,12 @@ export class SpriteProvider {
   }
 
   tileKey(name: string, variant: number, themeId = 0, theme?: CryptTheme): string {
-    const hot = this.hotTile(name, variant);
+    // Gras und Wege werden bewusst PROZEDURAL gezeichnet (Runde 45): nur so gibt
+    // es nahtlosen Rasen und Wege mit Gabelungen/Kreuzungen (die statischen
+    // gras*/weg*-PNG könnten keine Kreuzungen). Die Uploads bleiben im Repo,
+    // werden hier nur übergangen.
+    const proceduralNur = name === 'gras' || name === 'weg';
+    const hot = proceduralNur ? null : this.hotTile(name, variant);
     if (hot) return hot;
     const key = `tile_${name}_${themeId}_${variant}`;
     if (!this.tex.exists(key)) {

@@ -1569,7 +1569,18 @@ export class WorldScene extends CombatScene {
     // Wasser nutzt IMMER dieselbe Variante (Runde 41, Autorbug "hässliche
     // Überläufe"): so haben alle Wasserkacheln dieselbe Phase und passen mit der
     // nahtlos kachelbaren Textur gleichmäßig zusammen.
-    const variant = id === T.WATER ? 0 : planV !== undefined ? planV - 1 : ((tx * 73856093) ^ (ty * 19349663)) % 7;
+    // Wege (Runde 45): die Variante ist eine 4-Bit-Verbindungsmaske (1=N,2=O,
+    // 4=S,8=W) - so zeichnet die Kachel automatisch Geraden, Kurven, T-Stücke
+    // und Kreuzungen. Verbindung an Weg-Nachbarn UND Tore/Türen, damit Wege
+    // sauber an Gebäude/Stadttore anschließen.
+    const istWeg = (nx: number, ny: number): boolean => {
+      const t = a.map[ny]?.[nx];
+      return t === T.PATH || t === T.HDOOR || t === T.CDOOR || t === T.TOR;
+    };
+    const wegMaske = (id === T.PATH)
+      ? (istWeg(tx, ty - 1) ? 1 : 0) | (istWeg(tx + 1, ty) ? 2 : 0) | (istWeg(tx, ty + 1) ? 4 : 0) | (istWeg(tx - 1, ty) ? 8 : 0)
+      : 0;
+    const variant = id === T.WATER ? 0 : id === T.PATH ? wegMaske : planV !== undefined ? planV - 1 : ((tx * 73856093) ^ (ty * 19349663)) % 7;
     const tag = (img: Phaser.GameObjects.Image): Phaser.GameObjects.Image => {
       img.setData('kachel', `${tx},${ty}`);
       this.tileImages.push(img);

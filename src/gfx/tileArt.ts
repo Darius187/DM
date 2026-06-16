@@ -28,23 +28,75 @@ function detail(ctx: Ctx, draw: (c: Ctx) => void): void {
 }
 
 function grasBase(ctx: Ctx, n: number): void {
-  const g = 46 + n * 2;
-  ctx.fillStyle = `rgb(${g - 14},${g},${g - 22})`;
+  // Einheitliche Grundfarbe (Runde 45): KEINE variantenabhängige Helligkeit
+  // mehr - sonst entsteht ein Schachbrett-Raster zwischen den Kacheln. n streut
+  // nur noch die Halme/Details, damit alles nahtlos zusammenpasst (wie Wasser).
+  ctx.fillStyle = '#37502a';
   ctx.fillRect(0, 0, TILE, TILE);
-  // Grasbüschel und Sprenkel je Variante (deterministisch, kein Flackern)
-  ctx.fillStyle = `rgba(${g - 4},${g + 14},${g - 12},0.8)`;
-  for (let i = 0; i < 5; i++) {
-    const tx = ((i * 13 + n * 7) % 28) + 2, ty = ((i * 19 + n * 11) % 26) + 3;
-    ctx.fillRect(tx, ty, 1, 3);
-    ctx.fillRect(tx + 2, ty + 1, 1, 2);
+  // sehr feine, AUSGEWOGENE Tonwertflecken (je gleich viel hell wie dunkel, klein
+  // und schwach), damit KEIN Kachel-Raster entsteht - nur leichte Lebendigkeit.
+  ctx.fillStyle = 'rgba(26,40,20,0.18)';
+  for (let i = 0; i < 3; i++) { const x = (i * 11 + n * 7) % 30, y = (i * 19 + n * 5) % 30; ctx.beginPath(); ctx.ellipse(x, y, 4, 3, 0, 0, 6.283); ctx.fill(); }
+  ctx.fillStyle = 'rgba(78,102,56,0.16)';
+  for (let i = 0; i < 3; i++) { const x = (i * 17 + n * 13 + 9) % 30, y = (i * 23 + n * 9 + 7) % 30; ctx.beginPath(); ctx.ellipse(x, y, 4, 3, 0, 0, 6.283); ctx.fill(); }
+  // Grashalme in drei Grüntönen, leicht geneigt
+  const halme: Array<[string, number]> = [['#2c441f', 7], ['#496b32', 6], ['#5f8440', 4]];
+  for (const [col, anz] of halme) {
+    ctx.strokeStyle = col; ctx.lineWidth = 1;
+    for (let i = 0; i < anz; i++) {
+      const x = ((i * 13 + n * 7 + col.length * 5) % 30) + 1;
+      const y = ((i * 23 + n * 11) % 24) + 6;
+      const lean = ((i + n) % 3) - 1;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + lean, y - 3 - (i % 2)); ctx.stroke();
+    }
   }
-  ctx.fillStyle = 'rgba(14,26,10,0.5)';
-  for (let i = 0; i < 4; i++) {
-    ctx.fillRect(((i * 23 + n * 5) % 29) + 1, ((i * 17 + n * 13) % 28) + 2, 2, 1);
+  // gelegentlich Klee/Blüte oder Steinchen je Variante
+  if (n === 2) { ctx.fillStyle = '#c8b8d8'; ctx.fillRect(9, 9, 2, 2); ctx.fillStyle = '#d8cc88'; ctx.fillRect(22, 18, 2, 2); }
+  if (n === 4) { ctx.fillStyle = 'rgba(120,150,80,0.7)'; for (const [dx, dy] of [[0, -1], [-1, 1], [1, 1]]) { ctx.fillRect(14 + dx, 16 + dy, 2, 2); } }
+  if (n === 6) { ctx.fillStyle = 'rgba(96,90,80,0.55)'; ctx.beginPath(); ctx.arc(18, 20, 2.5, 0, 6.283); ctx.fill(); }
+}
+
+// Ist Punkt (x,y) Teil des Erdwegs für diese Verbindungsmaske? (Runde 45)
+function istWegErde(mask: number, x: number, y: number): boolean {
+  const C = 16, BW = 8;
+  if (Math.hypot(x - C, y - C) <= BW + 1.5) return true;      // Nabe
+  if ((mask & 1) && y <= C && Math.abs(x - C) <= BW) return true; // Nord
+  if ((mask & 4) && y >= C && Math.abs(x - C) <= BW) return true; // Süd
+  if ((mask & 8) && x <= C && Math.abs(y - C) <= BW) return true; // West
+  if ((mask & 2) && x >= C && Math.abs(y - C) <= BW) return true; // Ost
+  return false;
+}
+
+// Erdweg nach 4-Bit-Verbindungsmaske: zeichnet Bänder zu den verbundenen
+// Seiten + Nabe, mit Erdstruktur, Karrenspuren und gefederten Grasrändern.
+function wegKachel(ctx: Ctx, mask: number): void {
+  const C = 16, BW = 8;
+  const dirt = '#79582f', dirtD = '#5a4022', dirtL = '#967046';
+  ctx.fillStyle = dirt;
+  ctx.beginPath(); ctx.arc(C, C, BW, 0, 6.283); ctx.fill();            // Nabe (bündig, kein Wulst)
+  if (mask & 1) ctx.fillRect(C - BW, 0, BW * 2, C);                    // Nord
+  if (mask & 4) ctx.fillRect(C - BW, C, BW * 2, TILE - C);             // Süd
+  if (mask & 8) ctx.fillRect(0, C - BW, C, BW * 2);                    // West
+  if (mask & 2) ctx.fillRect(C, C - BW, TILE - C, BW * 2);             // Ost
+  // Erdstruktur (dunkle Schollen, helle Kiesel) - nur auf der Erde
+  ctx.fillStyle = dirtD;
+  for (let i = 0; i < 14; i++) { const x = (i * 7 + 3) % TILE, y = (i * 11 + 5) % TILE; if (istWegErde(mask, x, y)) ctx.fillRect(x, y, 2, 1); }
+  ctx.fillStyle = dirtL;
+  for (let i = 0; i < 10; i++) { const x = (i * 13 + 6) % TILE, y = (i * 17 + 2) % TILE; if (istWegErde(mask, x, y)) ctx.fillRect(x, y, 1, 1); }
+  // Karrenspuren auf durchgehenden Geraden
+  ctx.strokeStyle = 'rgba(0,0,0,0.14)'; ctx.lineWidth = 2;
+  if ((mask & 1) && (mask & 4)) { for (const rx of [C - 4, C + 4]) { ctx.beginPath(); ctx.moveTo(rx, 0); ctx.lineTo(rx, TILE); ctx.stroke(); } }
+  if ((mask & 2) && (mask & 8)) { for (const ry of [C - 4, C + 4]) { ctx.beginPath(); ctx.moveTo(0, ry); ctx.lineTo(TILE, ry); ctx.stroke(); } }
+  // Grasfederung: ein paar Halme ragen über die Bandränder (bricht harte Kanten)
+  ctx.strokeStyle = '#46682f'; ctx.lineWidth = 1;
+  for (let i = 0; i < 22; i++) {
+    const x = (i * 9 + 2) % TILE, y = (i * 5 + 1) % TILE;
+    // nahe der Grenze: Erde-Nachbar in einer Richtung, aber selbst Gras
+    if (istWegErde(mask, x, y)) continue;
+    if (istWegErde(mask, x + 2, y) || istWegErde(mask, x - 2, y) || istWegErde(mask, x, y + 2) || istWegErde(mask, x, y - 2)) {
+      ctx.beginPath(); ctx.moveTo(x, y + 2); ctx.lineTo(x + ((i % 3) - 1), y - 1); ctx.stroke();
+    }
   }
-  if (n === 3) { ctx.fillStyle = 'rgba(20,40,16,0.5)'; ctx.fillRect(8, 12, 3, 6); ctx.fillRect(20, 6, 3, 6); }
-  if (n === 2) { ctx.fillStyle = '#b8aed0'; ctx.fillRect(9, 9, 2, 2); ctx.fillStyle = '#d0c890'; ctx.fillRect(22, 18, 2, 2); }
-  if (n === 6) { ctx.fillStyle = 'rgba(90,86,78,0.6)'; ctx.beginPath(); ctx.arc(18, 20, 3, 0, 6.283); ctx.fill(); }
 }
 
 function floorBase(ctx: Ctx, n: number, theme?: CryptTheme): void {
@@ -100,20 +152,12 @@ function floorGlut(ctx: Ctx, n: number): void {
 export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptTheme): void {
   switch (name) {
     case 'gras': grasBase(ctx, n); break;
-    case 'weg': {
-      const g = 72 + n * 2;
-      ctx.fillStyle = `rgb(${g},${g - 10},${g - 26})`;
-      ctx.fillRect(0, 0, TILE, TILE);
-      ctx.fillStyle = 'rgba(0,0,0,0.12)'; if (n < 2) ctx.fillRect(n * 9, 10, 5, 4);
-      ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(4 + n * 3, 22, 4, 3);
-      // Kiesel und Karrenspuren
-      ctx.fillStyle = `rgba(${g + 22},${g + 8},${g - 10},0.7)`;
-      for (let i = 0; i < 4; i++) {
-        ctx.fillRect(((i * 17 + n * 9) % 27) + 2, ((i * 23 + n * 5) % 26) + 3, 2, 2);
-      }
-      if (n % 3 === 0) { ctx.fillStyle = 'rgba(0,0,0,0.08)'; ctx.fillRect(8, 0, 3, TILE); ctx.fillRect(21, 0, 3, TILE); }
+    case 'weg':
+      // n ist die 4-Bit-Verbindungsmaske (1=N,2=O,4=S,8=W), gesetzt beim Platzieren.
+      // So entstehen Geraden, Kurven, T-Stücke und Kreuzungen automatisch (R45).
+      grasBase(ctx, 0);
+      wegKachel(ctx, n);
       break;
-    }
     case 'baum':
       grasBase(ctx, n);
       ctx.fillStyle = '#241a10'; ctx.fillRect(13, 18, 6, 10);
