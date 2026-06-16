@@ -2823,7 +2823,7 @@ export class WorldScene extends CombatScene {
           // Räuber bleibt und frisst, weitere Monster kommen dazu.
           const tx = tier.curX, ty = tier.curY;
           this.fx.burst(tx, ty, 0x7a1010, 14, 100);
-          this.sfx.play(tier.type, 0.4);
+          this.sfx.playAt(tier.type, tx, ty, 0.4);
           tier.sprite.destroy();
           this.animalEnts.splice(this.animalEnts.indexOf(tier), 1);
           this.legeKadaver(tx, ty);

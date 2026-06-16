@@ -4,6 +4,7 @@
 
 import Phaser from 'phaser';
 import { getSettings } from '../logic/settings';
+import { raeumlichesAudio } from '../logic/audioRaum';
 
 interface SynthStep { freq: number; dur: number; type: OscillatorType; vol: number; delay?: number }
 
@@ -70,20 +71,33 @@ export class SoundProvider {
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.stopLoops(); this.stopMusic(); });
   }
 
-  // Effekt abspielen: Datei falls vorhanden, sonst Synthese
-  play(name: string, volMult = 1): void {
+  // Effekt abspielen: Datei falls vorhanden, sonst Synthese. pan in [-1,1]
+  // (links/rechts) - Stereo (Runde 45).
+  play(name: string, volMult = 1, pan = 0): void {
     // Block-Klang: die zwei Autor-Varianten abwechselnd (Held UND Gegner)
     if (name === 'block' && this.playAbwechselnd('block', 2, volMult)) return;
     const s = getSettings();
     const vol = (s.volEffekte / 100) * volMult;
     if (vol <= 0.01) return;
     if (this.scene.cache.audio.exists(`snd_${name}`)) {
-      this.scene.sound.play(`snd_${name}`, { volume: vol });
+      this.scene.sound.play(`snd_${name}`, { volume: vol, pan });
       return;
     }
     const steps = SYNTH[name];
     if (!steps) return;
-    for (const st of steps) this.beep(st, vol);
+    for (const st of steps) this.beep(st, vol, pan);
+  }
+
+  // Räumlicher Effekt (Runde 45): an einer WELT-Position abgespielt - pannt
+  // links/rechts und wird mit der Entfernung zur Bildmitte leiser. So hört man
+  // z. B. den Feuerball/Pfeil über den Monitor huschen und Tiere nur in der Nähe.
+  playAt(name: string, x: number, y: number, volMult = 1): void {
+    const cam = this.scene.cameras?.main;
+    if (!cam) { this.play(name, volMult); return; }
+    const v = cam.worldView;
+    const { pan, vol } = raeumlichesAudio(v.centerX, v.centerY, v.width / 2, v.height / 2, x, y);
+    if (vol <= 0.02) return;
+    this.play(name, volMult * vol, pan);
   }
 
   // Atmosphären-Loop starten/stoppen (eigener Lautstärkeregler)
@@ -106,14 +120,26 @@ export class SoundProvider {
   // Spielt abwechselnd eine der vorhandenen Varianten (swoosh1, swoosh2 ...)
   private wechselZaehler = new Map<string, number>();
 
-  playAbwechselnd(basis: string, anzahl: number, volMult = 1): boolean {
+  playAbwechselnd(basis: string, anzahl: number, volMult = 1, pan = 0): boolean {
     const da: string[] = [];
     for (let i = 1; i <= anzahl; i++) if (this.has(`${basis}${i}`)) da.push(`${basis}${i}`);
     if (!da.length) return false;
     const n = (this.wechselZaehler.get(basis) ?? 0) % da.length;
     this.wechselZaehler.set(basis, n + 1);
-    this.play(da[n], volMult);
+    this.play(da[n], volMult, pan);
     return true;
+  }
+
+  // Räumlich abwechselnd (Runde 45): wie playAbwechselnd, aber an einer Welt-
+  // Position (pannt + wird mit Entfernung leiser). Zu weit weg = still (gilt als
+  // behandelt, damit kein Synth-Fallback dazwischenfunkt).
+  playAtAbwechselnd(basis: string, anzahl: number, x: number, y: number, volMult = 1): boolean {
+    const cam = this.scene.cameras?.main;
+    if (!cam) return this.playAbwechselnd(basis, anzahl, volMult);
+    const v = cam.worldView;
+    const { pan, vol } = raeumlichesAudio(v.centerX, v.centerY, v.width / 2, v.height / 2, x, y);
+    if (vol <= 0.02) return true;
+    return this.playAbwechselnd(basis, anzahl, volMult * vol, pan);
   }
 
   stopLoop(name: string): void {
@@ -155,7 +181,7 @@ export class SoundProvider {
     return this.musik?.isPlaying ? this.musikName : '';
   }
 
-  private beep(st: SynthStep, vol: number): void {
+  private beep(st: SynthStep, vol: number, pan = 0): void {
     try {
       if (!this.ac) this.ac = new AudioContext();
       const t0 = this.ac.currentTime + (st.delay ?? 0);
@@ -166,7 +192,15 @@ export class SoundProvider {
       g.gain.setValueAtTime(st.vol * vol * 1.6, t0);
       g.gain.exponentialRampToValueAtTime(0.0001, t0 + st.dur);
       o.connect(g);
-      g.connect(this.ac.destination);
+      // Stereo-Pan (Runde 45): links/rechts je nach Position
+      if (pan !== 0 && this.ac.createStereoPanner) {
+        const p = this.ac.createStereoPanner();
+        p.pan.value = Math.max(-1, Math.min(1, pan));
+        g.connect(p);
+        p.connect(this.ac.destination);
+      } else {
+        g.connect(this.ac.destination);
+      }
       o.start(t0);
       o.stop(t0 + st.dur);
     } catch { /* Audio gesperrt (Autoplay-Policy) - still bleiben */ }

@@ -677,7 +677,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   begegnungsRuf(e: Enemy): void {
     if (this.time.now < this.letzterBegegnungsRuf + 9000 || Math.random() > 0.35) return;
     const basis = (e.champion || e.elite) ? 'begegnung_miniboss' : `begegnung_${e.type}`;
-    if (this.sfx.playAbwechselnd(basis, 3, 0.8)) this.letzterBegegnungsRuf = this.time.now;
+    if (this.sfx.playAtAbwechselnd(basis, 3, e.x, e.y, 0.8)) this.letzterBegegnungsRuf = this.time.now;
   }
 
   // Rudel-Verhalten (Runde 27): lebende Verbündete im Umkreis zählen
@@ -1072,9 +1072,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Schildträger), schwert_slice auf weiche Gegner - Fallback: alte Klänge
   private playHitSound(e: Enemy): void {
     const gepanzert = e.type === 'templer' || e.schild;
-    if (gepanzert && this.sfx.playAbwechselnd('armor_cut', 2)) return;
-    if (!gepanzert && this.sfx.playAbwechselnd('schwert_slice', 3)) return;
-    this.sfx.play(e.type === 'skelett' || e.type === 'schuetze' ? 'treffer_knochen' : 'treffer_fleisch');
+    if (gepanzert && this.sfx.playAtAbwechselnd('armor_cut', 2, e.x, e.y)) return;
+    if (!gepanzert && this.sfx.playAtAbwechselnd('schwert_slice', 3, e.x, e.y)) return;
+    this.sfx.playAt(e.type === 'skelett' || e.type === 'schuetze' ? 'treffer_knochen' : 'treffer_fleisch', e.x, e.y);
   }
 
   protected meleeArcAttack(ev: AttackEvent, ang: number): void {
@@ -1361,8 +1361,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       : e.type === 'skelett' && e.schild ? 'tod_skelett_schild'
       : (e.type === 'skelett' || e.type === 'schuetze') ? 'tod_skelett'
       : 'tod_universal';
-    if (!this.sfx.playAbwechselnd(todBasis, 3, 0.9) && !this.sfx.playAbwechselnd('tod_universal', 3, 0.9)) {
-      this.sfx.play('tod');
+    if (!this.sfx.playAtAbwechselnd(todBasis, 3, e.x, e.y, 0.9) && !this.sfx.playAtAbwechselnd('tod_universal', 3, e.x, e.y, 0.9)) {
+      this.sfx.playAt('tod', e.x, e.y);
     }
     this.giveXp(Math.max(1, Math.round(e.xp * XP.gegnerMult)));
     // Sammelalbum: Jagdstatistik und besiegte Vorsteher
@@ -1433,6 +1433,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   spawnEnemyProjectile(x: number, y: number, vx: number, vy: number, dmg: number, col: string, pfeil = false): void {
     this.projectiles.push({ x, y, vx, vy, r: 4, dmg, from: 'enemy', col, arrow: pfeil });
+    // Abschuss räumlich hörbar (Runde 45): Pfeil/Zauber von der Seite pannt mit
+    this.sfx.playAt(pfeil ? 'pfeil_schuss' : 'feuerball', x, y, 0.45);
   }
 
   addTelegraph(x: number, y: number, r: number, t: number, dmg: number): void {
@@ -2427,7 +2429,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         if (TUNING.physikTest && pr.arrow && this.pfeilTrifftWand(pr, ox, oy)) continue;
         pr.dead = true;
         if (pr.fire) this.fx.burst(pr.x, pr.y, 0xe8842a, 10, 150);
-        if (pr.arrow) this.sfx.play('pfeil_einschlag', 0.5);
+        if (pr.arrow) this.sfx.playAt('pfeil_einschlag', pr.x, pr.y, 0.5);
         continue;
       }
       if (pr.from === 'player') {
@@ -2496,7 +2498,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       pr.steckT = PFEIL_PHYSIK.steckDauerS;
       pr.steckAng = Math.atan2(pr.vy, pr.vx);
       pr.vx = 0; pr.vy = 0;
-      this.sfx.play('pfeil_einschlag', 0.5);
+      this.sfx.playAt('pfeil_einschlag', pr.x, pr.y, 0.5);
       return true;
     }
     // Abprallen: an der getroffenen Achse spiegeln, Schwung verlieren
@@ -2507,7 +2509,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     pr.vx *= PFEIL_PHYSIK.prallDaempfung;
     pr.vy *= PFEIL_PHYSIK.prallDaempfung;
     pr.praller = praller + 1;
-    this.sfx.play('pfeil_einschlag', 0.3);
+    this.sfx.playAt('pfeil_einschlag', pr.x, pr.y, 0.3);
     return true;
   }
 
@@ -2515,7 +2517,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.damageEnemy(e, Math.round(pr.dmg * (0.9 + Math.random() * 0.25)), 0, 0, null, false);
     if (pr.arrow) {
       this.gainSchoolUse('bogen');
-      this.sfx.play('pfeil_einschlag');
+      this.sfx.playAt('pfeil_einschlag', e.x, e.y);
     }
     // Elementarpfeil-Wirkung (Runde 44): Feuer entzündet (DoT + Splash), Eis
     // verlangsamt, Schatten saugt Leben. Farbiger Funkenausbruch je Element.
