@@ -4609,29 +4609,32 @@ export class WorldScene extends CombatScene {
     const bg = this.add.rectangle(0, 0, w, h, 0x14100a, 0.82).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
     bg.setInteractive();
     c.add(bg);
-    // Kopfzeile: Titel + Tabs + Ziehen
-    const kopf = this.add.rectangle(0, 0, w - 20, 26, 0xffffff, 0.03).setOrigin(0)
+    // Kopfzeile: Titel + Tabs + Ziehen. Der GANZE Kopf UND das Wort CHRONIK
+    // ziehen das Fenster (Autorwunsch R43: "auf chronik klicken zum verschieben").
+    const kopf = this.add.rectangle(0, 0, w, 26, 0xffffff, 0.03).setOrigin(0)
       .setInteractive({ draggable: true, useHandCursor: true });
     let startZeiger: { x: number; y: number } | null = null;
     let startPos = { x: 0, y: 0 };
-    kopf.on('dragstart', (pz: Phaser.Input.Pointer) => {
-      startZeiger = { x: pz.x, y: pz.y };
-      startPos = { x: c.x, y: c.y };
-    });
-    kopf.on('drag', (pz: Phaser.Input.Pointer) => {
+    const ziehStart = (pz: Phaser.Input.Pointer) => { startZeiger = { x: pz.x, y: pz.y }; startPos = { x: c.x, y: c.y }; };
+    const ziehMove = (pz: Phaser.Input.Pointer) => {
       if (!startZeiger) return;
       c.x = startPos.x + (pz.x - startZeiger.x);
       c.y = startPos.y + (pz.y - startZeiger.y);
       box.x = Math.round(c.x);
       box.y = Math.round(c.y - this.scale.height);
-    });
-    kopf.on('dragend', () => {
-      startZeiger = null;
-      saveSettings();
-    });
+    };
+    const ziehEnd = () => { startZeiger = null; saveSettings(); };
+    const macheZiehbar = (obj: Phaser.GameObjects.GameObject) => {
+      obj.setInteractive({ draggable: true, useHandCursor: true });
+      obj.on('dragstart', ziehStart); obj.on('drag', ziehMove); obj.on('dragend', ziehEnd);
+    };
+    macheZiehbar(kopf);
     c.add(kopf);
-    c.add(this.add.text(10, 6, 'CHRONIK', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227', letterSpacing: 2 }));
-    let tx = 90;
+    // Titel als deutlicher Ziehgriff (Doppelpfeil + Wort CHRONIK)
+    const titel = this.add.text(10, 6, '⠿ CHRONIK', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227', letterSpacing: 2 });
+    macheZiehbar(titel);
+    c.add(titel);
+    let tx = 110;
     const tabs: Array<[typeof this.chronikTab, string]> = [['ereignis', 'Ereignisse'], ['geschichte', 'Geschichte'], ['beute', 'Beute']];
     for (const [id, lbl] of tabs) {
       const t = this.add.text(tx, 5, lbl, {

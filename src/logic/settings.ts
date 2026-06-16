@@ -56,13 +56,13 @@ export const DEF_SETTINGS: Settings = {
   tasten: { t1: 's1', t2: 's2', t3: 's3', t4: 'kettenblitz', t5: 'frostnova', t6: 'bannkreis', t9: 'feuerregen', t0: 'aderlass', tr: 'waffe1', tt: 'waffe2' },
   vorlesen: false,
   ui: { hotbar: { x: 0, y: 0 }, mausleiste: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 } },
-  chronikBox: { x: 8, y: -418, w: 380, h: 300 }, // links unten, knapp ÜBER der
-  // Lebenskugel/Leiste (Runde 40): tiefer würde die Kugel verdecken
+  chronikBox: { x: 4, y: -430, w: 340, h: 270 }, // Runde 43: bündig am LINKEN
+  // Bildschirmrand, kompakter, knapp über der Lebenskugel/Leiste
   chronikAuto: true,
   postFx: true,
   audioV: 1,
   zoomV: 1,
-  uiLayoutV: 3, // Runde 40: Orbs an den Leisten, Meldungen oben, Chronik unten links
+  uiLayoutV: 4, // Runde 43: Chronik bündig links angedockt
   kb: {
     roll: ' ', interact: 'e', inv: 'i', charakter: 'c',
     pot: 'q', mpot: 'f', s1: '1', s2: '2', s3: '3',
