@@ -584,21 +584,23 @@ export class UIPanels {
     ];
     // Bonus-Werte IMMER grün (Runde 29)
     for (const b of it.boni) lines.push([`+ ${b.t.replace('#', String(b.v)).replace(/^\+/, '')}`, '#6ad06a']);
-    // Differenzen zum aktuellen Stand, grün/rot (Feedback-Runde 1)
+    // Vergleich: aktuelle Werte UND die, die man bekäme (Runde 41, Autorwunsch
+    // "die Werte die man hat und daneben die die man bekommt - also beides").
     if ((it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'ring' || it.kind === 'schild')
-      && it !== p.weapon && it !== p.armorIt && it !== p.ring && it !== p.schildIt) {
+      && it !== p.weapon && it !== p.bogen && it !== p.armorIt && it !== p.ring && it !== p.schildIt) {
       const neu = this.statsWith(it);
       const cur = p.stats;
-      const diffs: Array<[string, number]> = [
-        ['Schaden', neu.dmg - cur.dmg], ['Rüstung', neu.armor - cur.armor],
-        ['Leben', neu.maxhp - cur.maxhp], ['Mana', neu.maxmana - cur.maxmana],
-        ['Lebensraub', neu.leech - cur.leech], ['Lichtradius', neu.licht - cur.licht],
+      const werte: Array<[string, number, number]> = [
+        ['Schaden', cur.dmg, neu.dmg], ['Rüstung', cur.armor, neu.armor],
+        ['Leben', cur.maxhp, neu.maxhp], ['Mana', cur.maxmana, neu.maxmana],
+        ['Lebensraub', cur.leech, neu.leech], ['Lichtradius', cur.licht, neu.licht],
       ];
-      const relevant = diffs.filter(([, d]) => d !== 0);
+      const relevant = werte.filter(([, a, b]) => a !== 0 || b !== 0);
       if (relevant.length) {
-        lines.push(['— beim Anlegen —', '#8a7a5a']);
-        for (const [name, d] of relevant) {
-          lines.push([`${d > 0 ? '+' : ''}${d} ${name}`, d > 0 ? '#6ad06a' : '#e05a4a']);
+        lines.push(['— jetzt  →  mit diesem —', '#8a7a5a']);
+        for (const [name, a, b] of relevant) {
+          const col = b > a ? '#6ad06a' : b < a ? '#e05a4a' : BONE;
+          lines.push([`${name}: ${a}  →  ${b}`, col]);
         }
       } else {
         lines.push(['Kein Unterschied zu jetzt', '#8a7a5a']);
