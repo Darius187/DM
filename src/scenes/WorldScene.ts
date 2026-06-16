@@ -145,6 +145,7 @@ export class WorldScene extends CombatScene {
   private hudText!: Phaser.GameObjects.Text;
   private areaText!: Phaser.GameObjects.Text;
   private einfallText!: Phaser.GameObjects.Text;
+  private bannerObs: Array<Phaser.GameObjects.Rectangle | Phaser.GameObjects.Text> = []; // Kampf-Banner (Runde 45)
   private bossBlut: BloodFlow[] = [];           // Blut-Apokalypse im Bossraum (Runde 41)
   private bossBlutBoden: Phaser.GameObjects.Graphics | null = null;
   private bossLeichen: Array<{ g: Phaser.GameObjects.Graphics; x: number; y: number; ph: number }> = [];
@@ -1553,6 +1554,7 @@ export class WorldScene extends CombatScene {
     this.bossBlutBoden?.destroy(); this.bossBlutBoden = null;
     this.bossNebel?.destroy(); this.bossNebel = null;
     this.raben?.destroy(); this.raben = null;
+    for (const o of this.bannerObs) o.destroy(); this.bannerObs = [];
     for (const l of this.bossLeichen) l.g.destroy();
     this.bossLeichen = [];
     this.bossTorZu = false;
@@ -2749,6 +2751,9 @@ export class WorldScene extends CombatScene {
       : 'EINFALL! Monster brechen aus dem Dunkelwald über Ravensmoor herein!', 'bad');
     this.logMsg('Frauen, Kinder und Alte fliehen ins Gemeindehaus!', '');
     this.sfx.play('templer_stimme');
+    this.zeigeKampfBanner('BESCHÜTZE DIE EINWOHNER', this.stadtmauerStufe >= 1
+      ? 'Ein Trupp drängt durch die Tore - haltet die Mauer!'
+      : 'Monster brechen aus dem Dunkelwald herein - verteidigt Ravensmoor!');
     this.shake(6);
   }
 
@@ -2813,7 +2818,38 @@ export class WorldScene extends CombatScene {
     this.logMsg('VERTEIDIGE RAVENSMOOR! Beschütze Bewohner und Vieh!', 'gold');
     this.chronik('geschichte', 'Der Sturm auf Ravensmoor - die Toten erheben sich zum Krieg.');
     this.sfx.play('templer_stimme');
+    this.zeigeKampfBanner('BESCHÜTZE DIE EINWOHNER', 'Eine Heerschar bricht über Ravensmoor herein - haltet die Toten auf!');
     this.shake(12);
+  }
+
+  // Großes dramatisches Kampf-Banner (Runde 45, Autorwunsch "muss groß kommen"):
+  // Titel + Untertitel, blendet groß ein, hält, blendet aus. Auf der UI-Kamera
+  // (scrollFactor 0), kein Container -> keine Kamera-Filter-Falle.
+  private zeigeKampfBanner(titel: string, unter: string): void {
+    for (const o of this.bannerObs) o.destroy();
+    this.bannerObs = [];
+    const w = this.scale.width, h = this.scale.height, cy = h * 0.24;
+    const mk = <T extends Phaser.GameObjects.Rectangle | Phaser.GameObjects.Text>(o: T): T => {
+      o.setScrollFactor(0).setDepth(4820).setAlpha(0); this.bannerObs.push(o); return o;
+    };
+    mk(this.add.rectangle(w / 2, cy, w, 104, 0x140404, 0.55));
+    mk(this.add.rectangle(w / 2, cy - 52, w, 2, 0x8c1a1a, 0.85));
+    mk(this.add.rectangle(w / 2, cy + 52, w, 2, 0x8c1a1a, 0.85));
+    const titelT = mk(this.add.text(w / 2, cy - 14, titel, {
+      fontFamily: 'serif', fontSize: '46px', color: '#e8c84a', stroke: '#000000', strokeThickness: 7, letterSpacing: 4,
+    }).setOrigin(0.5));
+    mk(this.add.text(w / 2, cy + 28, unter, {
+      fontFamily: 'serif', fontSize: '19px', color: '#e6b6a4', fontStyle: 'italic', stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5));
+    titelT.setScale(1.22);
+    // Einblenden: alle auf ihre Basis-Deckkraft (Objekt-Alpha 0->1, die
+    // Transparenz steckt in der Füllfarbe), Titel zieht sich auf Normalgröße
+    this.tweens.add({ targets: this.bannerObs, alpha: 1, duration: 550, ease: 'Sine.Out' });
+    this.tweens.add({ targets: titelT, scale: 1, duration: 620, ease: 'Back.Out' });
+    this.tweens.add({
+      targets: this.bannerObs, alpha: 0, duration: 950, delay: 2900, ease: 'Sine.In',
+      onComplete: () => { for (const o of this.bannerObs) o.destroy(); this.bannerObs = []; },
+    });
   }
 
   // Chaos-Schicht des großen Einfalls (Runde 40): Räuber-Monster jagen das
