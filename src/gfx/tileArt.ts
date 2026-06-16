@@ -272,6 +272,35 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       floorBase(ctx, n, theme);
       detail(ctx, altar64);
       break;
+    case 'abgrund': {
+      // Bodenloser Schacht (Brücken-Prototyp ab Ebene 4): oben ein fahler
+      // Felssaum, der nach unten in pures Schwarz abfällt - Blick in die Tiefe.
+      const g2 = ctx.createLinearGradient(0, 0, 0, TILE);
+      g2.addColorStop(0, '#1b1612'); g2.addColorStop(0.22, '#0a0809'); g2.addColorStop(1, '#000000');
+      ctx.fillStyle = g2; ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = 'rgba(120,108,92,0.18)'; ctx.fillRect(0, 0, TILE, 1);   // Lichtkante der Schachtmauer
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 3, TILE, 2);          // Schattenkante darunter
+      ctx.fillStyle = 'rgba(90,80,68,0.16)';                                   // ferne Felsbrocken tief unten
+      ctx.fillRect(((n * 13) % 22) + 5, ((n * 7) % 10) + 18, 2, 1);
+      ctx.fillRect(((n * 19) % 20) + 6, ((n * 11) % 8) + 22, 1, 1);
+      break;
+    }
+    case 'bruecke': {
+      // Holzsteg über den Abgrund: Planken quer, dunkle Spalten (die Tiefe
+      // schimmert durch), seitliche Trägerbalken, Eisennägel.
+      ctx.fillStyle = '#0a0809'; ctx.fillRect(0, 0, TILE, TILE);
+      for (let i = 0; i < 5; i++) {
+        const y = i * 6 + 1;
+        ctx.fillStyle = i % 2 ? '#5a4228' : '#624a2e'; ctx.fillRect(0, y, TILE, 5);
+        ctx.fillStyle = 'rgba(255,236,196,0.08)'; ctx.fillRect(0, y, TILE, 1);   // Lichtkante
+        ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, y + 5, TILE, 1);      // Spalt
+        ctx.fillStyle = 'rgba(40,28,16,0.4)'; ctx.fillRect(((i * 11) % 24) + 3, y + 1, 1, 3); // Maserung
+      }
+      ctx.fillStyle = '#3a2a18'; ctx.fillRect(0, 0, 2, TILE); ctx.fillRect(TILE - 2, 0, 2, TILE); // Trägerbalken
+      ctx.fillStyle = '#2a2620';
+      for (const yy of [3, 15, 27]) { ctx.fillRect(3, yy, 1.6, 1.6); ctx.fillRect(TILE - 4, yy, 1.6, 1.6); }
+      break;
+    }
     case 'regal': {
       ctx.fillStyle = '#2e2114'; ctx.fillRect(0, 0, TILE, TILE);
       ctx.fillStyle = '#1a1108'; ctx.fillRect(2, 4, TILE - 4, 9); ctx.fillRect(2, 18, TILE - 4, 9);

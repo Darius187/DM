@@ -1844,10 +1844,13 @@ export class WorldScene extends CombatScene {
 
   protected override areaDark(): boolean { return this.area?.dark ?? false; }
 
-  // Dev-Sprung aus dem F10-Kasten (Runde 21): direkt vors Bossgrab / in die Stadt
-  protected override devTeleport(ziel: 'boss' | 'village'): void {
+  // Dev-Sprung aus dem F10-Kasten (Runde 21, R40: zu jeder Krypta-Ebene)
+  protected override devTeleport(ziel: string): void {
     this.goArea(ziel);
-    this.logMsg(ziel === 'boss' ? 'Dev-Sprung: Grab des Kreuzritters.' : 'Dev-Sprung: Ravensmoor.', 'gold');
+    const name = ziel === 'boss' ? 'Grab des Kreuzritters'
+      : ziel === 'village' ? 'Ravensmoor'
+      : ziel.startsWith('crypt') ? `Krypta - Ebene ${ziel.replace('crypt', '')}` : ziel;
+    this.logMsg(`Dev-Sprung: ${name}.`, 'gold');
   }
 
   // Tageszeit aus dem F10-Kasten setzen (Runde 30)

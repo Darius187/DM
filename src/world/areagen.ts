@@ -171,6 +171,24 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
     return mid.splice(idx, 1)[0];
   };
 
+  // Brücken-Prototyp ab Ebene 4 (Runde 40, Autorwunsch "neuer Stil ab Level 4"):
+  // einen großen Raum in eine Schlucht mit Kreuz-Steg verwandeln. Ein 1 Kachel
+  // breiter Boden-RING bleibt außen stehen UND der Steg führt über die Mitte -
+  // so bleibt die Ebene IMMER durchquerbar (Korridore treffen die Mitte/den
+  // Rand), egal wie die Gänge laufen. Rein optischer Test, ob Brücken taugen.
+  if (n >= 4) {
+    const r = mid.filter((rr) => rr.w >= 6 && rr.h >= 6).sort((a2, b2) => b2.w * b2.h - a2.w * a2.h)[0];
+    if (r) {
+      mid.splice(mid.indexOf(r), 1); // nicht zusätzlich als Spezialraum nutzen
+      for (let yy = r.y + 1; yy <= r.y + r.h - 2; yy++) {
+        for (let xx = r.x + 1; xx <= r.x + r.w - 2; xx++) map[yy][xx] = T.ABYSS;
+      }
+      for (let xx = r.x + 1; xx <= r.x + r.w - 2; xx++) { map[r.cy][xx] = T.BRIDGE; map[r.cy - 1][xx] = T.BRIDGE; }
+      for (let yy = r.y + 1; yy <= r.y + r.h - 2; yy++) { map[yy][r.cx] = T.BRIDGE; map[yy][r.cx - 1] = T.BRIDGE; }
+      a.special.push({ id: 'schlucht', x: r.cx, y: r.cy, raum: 'Schlucht mit Steg' });
+    }
+  }
+
   // --- Pflicht-Spezialräume zuerst ---
 
   // Grabkammer der Anna (Ebene 2): Sarg + Medaillon

@@ -317,8 +317,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected devTypIdx = 0;
   // Häuser justieren: Welt überschreibt
   toggleHausEdit(): void { /* Welt überschreibt */ }
-  // Dev-Sprung zum Boss / in die Stadt (Runde 21): Welt überschreibt
-  protected devTeleport(_ziel: 'boss' | 'village'): void { /* Welt überschreibt */ }
+  // Dev-Sprung zu einem Gebiet (Runde 21, erweitert R40 auf einzelne Ebenen):
+  // Welt überschreibt
+  protected devTeleport(_ziel: string): void { /* Welt überschreibt */ }
   // Tageszeit setzen + Nebel-Test (Runde 30): Welt überschreibt
   protected devSetTageszeit(_z: number): void { /* Welt überschreibt */ }
   protected devToggleNebel(): void { /* Welt überschreibt */ }
@@ -398,7 +399,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       merk = { ...merk, ...JSON.parse(localStorage.getItem('ravensmoor_devkasten') ?? '{}') };
     } catch { /* egal */ }
     const c = this.add.container(merk.x, merk.y).setScrollFactor(0).setDepth(6500);
-    const h = TUNING_ROWS.length * 29 + 96 + 186 + 78 + 88; // +78 Per-Typ (5 Zeilen), +88 Physik/Gefallene/Sicht-Schalter
+    const h = TUNING_ROWS.length * 29 + 96 + 186 + 78 + 128; // +78 Per-Typ, +88 Schalter, +40 Sprung-Reihe
     // Bei kleinen Fenstern schrumpft der ganze Kasten, statt unten
     // abgeschnitten zu werden (Runde 29: Regler "nicht gefunden")
     c.setScale(Math.min(merk.s, Math.max(0.6, (this.scale.height - 60) / h)));
@@ -532,18 +533,24 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.logMsg(TUNING.alleZauberFrei ? 'Alle Zauber und Fähigkeiten freigeschaltet (Dev).' : 'Zauber-Sperren wieder aktiv.', 'gold');
     });
     c.add(zauberBtn);
-    const teleBoss = this.add.text(12, y + 62, 'ZUM BOSS', {
-      fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
-      backgroundColor: '#221808', padding: { x: 12, y: 5 },
-    }).setInteractive({ useHandCursor: true });
-    teleBoss.on('pointerdown', () => this.devTeleport('boss'));
-    c.add(teleBoss);
-    const teleStadt = this.add.text(110, y + 62, 'IN DIE STADT', {
-      fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
-      backgroundColor: '#221808', padding: { x: 12, y: 5 },
-    }).setInteractive({ useHandCursor: true });
-    teleStadt.on('pointerdown', () => this.devTeleport('village'));
-    c.add(teleStadt);
+    // Dev-Teleport-Reihe (Runde 40): zu jeder Krypta-Ebene, zum Grab und in die
+    // Stadt - zum Testen des Brücken-Prototyps ab Ebene 4 (E4/E5 hervorgehoben).
+    // Eigene Sektion unten, damit nichts überlappt.
+    c.add(this.add.text(12, y + 202, 'SPRUNG (Brücken-Test ab E4):', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a', letterSpacing: 1 }));
+    const ziele: Array<[string, string]> = [
+      ['E1', 'crypt1'], ['E2', 'crypt2'], ['E3', 'crypt3'], ['E4', 'crypt4'], ['E5', 'crypt5'], ['GRAB', 'boss'], ['STADT', 'village'],
+    ];
+    let txi = 12;
+    for (const [lbl, id] of ziele) {
+      const hervor = id === 'crypt4' || id === 'crypt5';
+      const b = this.add.text(txi, y + 218, lbl, {
+        fontFamily: 'serif', fontSize: '12px', color: hervor ? '#c9a227' : '#d8cfb8',
+        backgroundColor: hervor ? '#2a2008' : '#221808', padding: { x: 6, y: 4 },
+      }).setInteractive({ useHandCursor: true });
+      b.on('pointerdown', () => { this.devTeleport(id); this.sfx.play('klick'); });
+      c.add(b);
+      txi += b.width + 4;
+    }
     // Tageszeit + Nebel (Runde 30)
     let dx2 = 12;
     for (const [lbl, z] of [['TAG', 0.4], ['ABEND', 0.74], ['NACHT', 0.85]] as const) {
