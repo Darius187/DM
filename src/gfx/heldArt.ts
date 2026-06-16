@@ -293,3 +293,104 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir
 
   ctx.restore();
 }
+
+// Helden-Brustbild (Runde 43): unser Held nach der Konzeptzeichnung des Autors -
+// bärtiger Mann mit braunem Wuschelhaar, Lederrüstung, Kapuzenkragen und runder
+// Goldfibel. Frontal, ohne Waffe/Schild. Wird als Textur pt_spieler registriert
+// und im Charakter- wie Dialogfenster gezeigt. Alles in S-Einheiten, damit es in
+// jeder Zielgröße sauber skaliert.
+export function drawHeldPortrait(ctx: CanvasRenderingContext2D, S = 128): void {
+  const u = S / 128, C = S / 2;
+  const haut = '#c5895c', hautH = '#dba87b', hautS = '#9a6240';
+  const haar = '#5f4127', haarH = '#7d5836', haarD = '#3a2614';
+  const leder = '#6e4a28', lederH = '#8c6238', lederD = '#46301a';
+  const kragenD = '#352312';
+  const gold = '#c9a227', goldH = '#ecce52', goldD = '#7e5f17';
+  const kette = '#8d929b', ketteD = '#5f636b';
+
+  // Hintergrund: warmes Bernsteinlicht (Waldlichtung im Abendlicht)
+  const bg = ctx.createRadialGradient(C, S * 0.32, 8 * u, C, S * 0.52, S * 0.72);
+  bg.addColorStop(0, '#cca25c'); bg.addColorStop(0.55, '#8a6c3c'); bg.addColorStop(1, '#3d2f18');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, S, S);
+
+  // Kapuzenkragen hinter den Schultern (breiter dunkler Stoff)
+  poly(ctx, [[C - 60 * u, S + 2], [C - 50 * u, S * 0.60], [C, S * 0.52], [C + 50 * u, S * 0.60], [C + 60 * u, S + 2]], kragenD);
+  // Lederrüstung über Brust/Schultern
+  poly(ctx, [[C - 52 * u, S + 2], [C - 47 * u, S * 0.70], [C - 18 * u, S * 0.59], [C + 18 * u, S * 0.59], [C + 47 * u, S * 0.70], [C + 52 * u, S + 2]], leder);
+  // Schulterkappen (Pauldrons) mit Lichtkante und Nieten
+  for (const sx of [-1, 1]) {
+    ell(ctx, C + sx * 41 * u, S * 0.73, 15 * u, 12 * u, lederH);
+    ell(ctx, C + sx * 41 * u, S * 0.755, 13 * u, 10 * u, leder);
+    ctx.fillStyle = lederD;
+    for (const a of [-0.9, -0.2, 0.5]) ctx.fillRect(C + sx * 41 * u + Math.cos(a) * 9 * u, S * 0.73 + Math.sin(a) * 7 * u, 1.6 * u, 1.6 * u);
+  }
+  // V-Ausschnitt mit angedeutetem Kettenhemd
+  poly(ctx, [[C - 14 * u, S * 0.62], [C + 14 * u, S * 0.62], [C, S * 0.86]], ketteD);
+  ctx.fillStyle = kette;
+  for (let ry = 0; ry < 8; ry++) for (let rxn = -3; rxn <= 3; rxn++) {
+    const yy = S * 0.65 + ry * 2.4 * u, xx = C + rxn * 2.6 * u + (ry % 2) * 1.3 * u;
+    if (Math.abs(xx - C) < (S * 0.86 - yy) * 0.6 + 2 * u) ctx.fillRect(xx, yy, 1.5 * u, 1.5 * u);
+  }
+  // Gekreuzte Lederriemen über der Brust
+  ctx.strokeStyle = lederD; ctx.lineWidth = 3 * u; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(C - 22 * u, S * 0.64); ctx.lineTo(C + 16 * u, S * 0.90); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(C + 22 * u, S * 0.64); ctx.lineTo(C - 16 * u, S * 0.90); ctx.stroke();
+  ctx.lineWidth = 1;
+  // Runde Goldfibel am Kragen
+  ell(ctx, C, S * 0.605, 7.5 * u, 7.5 * u, goldD);
+  ell(ctx, C, S * 0.60, 6 * u, 6 * u, gold);
+  ell(ctx, C - 1.8 * u, S * 0.588, 2.4 * u, 2.4 * u, goldH);
+
+  // Hals
+  rr(ctx, C - 7 * u, S * 0.46, 14 * u, 14 * u, 4 * u, hautS);
+  rr(ctx, C - 6 * u, S * 0.45, 12 * u, 12 * u, 4 * u, haut);
+
+  // Haar hinten (Rahmen um den Kopf)
+  ell(ctx, C, S * 0.30, 26 * u, 27 * u, haarD);
+  // Kopf/Gesicht
+  ell(ctx, C, S * 0.31, 21 * u, 24 * u, haut);
+  ell(ctx, C - 7 * u, S * 0.24, 8 * u, 9 * u, hautH);          // Stirn-Licht
+  ell(ctx, C + 13 * u, S * 0.34, 6 * u, 10 * u, hautS);        // Wangenschatten rechts
+  // Ohren
+  for (const sx of [-1, 1]) { ell(ctx, C + sx * 21 * u, S * 0.33, 3.5 * u, 5 * u, haut); }
+
+  // Vollbart (deckt Wangen/Kinn)
+  poly(ctx, [[C - 17 * u, S * 0.32], [C - 19 * u, S * 0.40], [C - 11 * u, S * 0.50], [C, S * 0.535],
+    [C + 11 * u, S * 0.50], [C + 19 * u, S * 0.40], [C + 17 * u, S * 0.32],
+    [C + 12 * u, S * 0.41], [C, S * 0.43], [C - 12 * u, S * 0.41]], haar);
+  ell(ctx, C, S * 0.46, 9 * u, 6 * u, haarH);                  // Bart-Licht Kinn
+  // Schnurrbart
+  poly(ctx, [[C - 8 * u, S * 0.385], [C, S * 0.40], [C + 8 * u, S * 0.385], [C + 6 * u, S * 0.415], [C - 6 * u, S * 0.415]], haarD);
+
+  // Augenbrauen
+  ctx.fillStyle = haarD;
+  ctx.fillRect(C - 12 * u, S * 0.295, 8 * u, 2 * u);
+  ctx.fillRect(C + 4 * u, S * 0.295, 8 * u, 2 * u);
+  // Augen
+  for (const sx of [-1, 1]) {
+    ell(ctx, C + sx * 8 * u, S * 0.335, 3.2 * u, 2.3 * u, '#efe7d6');
+    ell(ctx, C + sx * 8 * u, S * 0.335, 1.7 * u, 1.9 * u, '#4a3a2a');
+    ctx.fillStyle = '#0e0a07'; ctx.fillRect(C + sx * 8 * u - 0.8 * u, S * 0.335 - 0.8 * u, 1.6 * u, 1.6 * u);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(C + sx * 8 * u - 1.4 * u, S * 0.327, 0.9 * u, 0.9 * u);
+  }
+  // Nase
+  poly(ctx, [[C - 2.4 * u, S * 0.34], [C + 2.4 * u, S * 0.34], [C + 3.2 * u, S * 0.385], [C - 3.2 * u, S * 0.385]], hautS);
+  ell(ctx, C, S * 0.36, 2.4 * u, 2.2 * u, haut);
+
+  // Haar vorn: wuscheliger Pony in Strähnen
+  ctx.fillStyle = haar;
+  const strähnen: number[][] = [[-20, 0.20, 7, 9], [-12, 0.16, 8, 9], [-2, 0.15, 8, 8], [8, 0.16, 8, 9], [17, 0.20, 7, 9]];
+  for (const [dx, ry, rx, rry] of strähnen) ell(ctx, C + dx * u, S * ry, rx * u, rry * u, haar);
+  // Licht in den oberen Strähnen
+  ctx.fillStyle = haarH;
+  for (const [dx, ry] of [[-14, 0.15], [-3, 0.14], [9, 0.15]]) ell(ctx, C + dx * u, S * ry - 1 * u, 3.5 * u, 4 * u, haarH);
+  // Haarspitzen über die Stirn
+  ctx.fillStyle = haar;
+  for (const [dx, w2] of [[-16, 5], [-7, 6], [3, 6], [12, 5]]) poly(ctx, [[C + dx * u, S * 0.24], [C + (dx + w2) * u, S * 0.24], [C + (dx + w2 / 2) * u, S * 0.31]], haar);
+
+  // sanfter Vignetten-Rand
+  ctx.fillStyle = 'rgba(20,14,8,0.0)';
+  const vg = ctx.createRadialGradient(C, C, S * 0.34, C, C, S * 0.6);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(20,14,8,0.45)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, S, S);
+}

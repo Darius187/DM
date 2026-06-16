@@ -5,7 +5,7 @@
 import Phaser from 'phaser';
 import gfxConfig from '../data/gfx.json';
 import { drawHumanoid, drawQuadruped, drawChicken, FIGURES, SPRITE, TILE, type Dir, type FigureSpec, type QuadSpec } from './fallbackArt';
-import { drawHeld, HELD_CELL } from './heldArt';
+import { drawHeld, HELD_CELL, drawHeldPortrait } from './heldArt';
 import { drawItemIcon, iconKey, ICON_SIZE } from './itemIcons';
 import { drawTileArt, drawObjectArt, drawBreakable } from './tileArt';
 import { DETAIL_NPCS } from './npcArt';
@@ -314,6 +314,17 @@ export class SpriteProvider {
   portraitKey(name: string, variante?: string): string | null {
     if (variante && this.tex.exists(`pt_${name}_${variante}`)) return `pt_${name}_${variante}`;
     if (this.tex.exists(`pt_${name}`)) return `pt_${name}`;
+    // Helden-Brustbild bei Bedarf prozedural erzeugen (Runde 43), wenn kein
+    // Asset vorliegt - so erscheint unser Held im Charakter- und Dialogfenster.
+    if (name === 'spieler') {
+      const key = 'pt_spieler';
+      const S = 128;
+      const canvas = document.createElement('canvas');
+      canvas.width = S; canvas.height = S;
+      drawHeldPortrait(canvas.getContext('2d')!, S);
+      this.tex.addCanvas(key, canvas);
+      return key;
+    }
     return null;
   }
 }
