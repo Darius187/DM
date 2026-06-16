@@ -22,6 +22,7 @@ export interface FigureSpec {
   glow?: string;        // Schatten-Look (Umriss-Glühen)
   augen?: string;       // Augenfarbe (rot glühend bei Untoten, Runde 20)
   seuche?: boolean;     // Pest-Look: Beulen + Lumpen (Runde 40)
+  ritter?: boolean;     // Templer-Politur: Schulterpanzer, Tabard-Kreuz, Helmvisier (Runde 41)
 }
 
 export type Dir = 0 | 1 | 2 | 3; // unten, links, rechts, oben
@@ -120,6 +121,17 @@ function drawHumanoidParts(ctx: CanvasRenderingContext2D, f: FigureSpec, dir: Di
       ctx.fillStyle = '#5a1414'; ctx.fillRect(bx, sy + byo, 2, 2);
       ctx.fillStyle = '#8a2a2a'; ctx.fillRect(bx, sy + byo, 1, 1);
     }
+  }
+  // Templer-Politur (Runde 41, dezent): ein blasses Tabard-Kreuz auf der Brust
+  // und Schulterpanzer - macht aus der grauen Figur einen erkennbaren Ritter.
+  if (f.ritter) {
+    const by = (6 + bob) * PX;
+    ctx.fillStyle = '#777068'; ctx.fillRect(13, by + 1, 6, 7);             // dezentes Tabard (nah am Wams)
+    ctx.fillStyle = '#7a322a'; ctx.fillRect(15, by + 2, 2, 5);             // verblasstes Kreuz senkrecht
+    ctx.fillStyle = '#7a322a'; ctx.fillRect(14, by + 3, 4, 1.4);           // Kreuz waagerecht
+    ctx.fillStyle = '#3a3630'; ctx.fillRect(9, by, 3, 2);                  // Schulterpanzer links
+    ctx.fillStyle = '#3a3630'; ctx.fillRect(20, by, 3, 2);                // Schulterpanzer rechts
+    ctx.fillStyle = '#5a544c'; ctx.fillRect(9, by, 3, 1); ctx.fillRect(20, by, 3, 1); // Lichtkante
   }
   // Arme schwingen gegenläufig zu den Beinen
   const armCol = f.skeletal ? '#d8cfb0' : f.tunic;
@@ -283,7 +295,7 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   // durchgehend nahezu schwarze Silhouette, nur die Augen glimmen. Wird in der
   // Szene zusätzlich halbtransparent gerendert und gleitet (kein Hüpfen).
   schatten:  { tunic: '#0c0a14', skin: '#0a0812', hair: '#08060f', legs: '#070510', weapon: null, glow: '#1a1026', augen: '#e84860' },
-  templer:   { tunic: '#6a6258', skin: '#8a8278', hair: '#3a3430', legs: '#4a443c', weapon: 'schwert', hat: '#56504a', scale: 1.5 },
+  templer:   { tunic: '#6a6258', skin: '#8a8278', hair: '#3a3430', legs: '#4a443c', weapon: 'schwert', hat: '#56504a', scale: 1.5, ritter: true },
   wolf:      { quad: { body: '#4a4440', head: '#3c3834', size: 1, tail: true, ears: true } },
   ratte:     { quad: { body: '#5a4a3a', head: '#4c3e30', size: 0.6, tail: true } },
   heinrich:  { tunic: '#7a4a2a', skin: '#c8b090', hair: '#4a3a26', legs: '#3a2c1c' },
