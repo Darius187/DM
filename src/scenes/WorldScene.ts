@@ -103,6 +103,7 @@ export class WorldScene extends CombatScene {
   private tileImages: Phaser.GameObjects.Image[] = [];
   private breakableEnts: BreakableEntity[] = [];
   private worldGfx!: Phaser.GameObjects.Graphics; // Truhen, Brunnen, Fackeln
+  private bodenGfx!: Phaser.GameObjects.Graphics;  // Blutspuren AUF dem Boden (unter den Figuren)
   private lightRT!: Phaser.GameObjects.RenderTexture;
   private warmPool: Phaser.GameObjects.Image[] = [];
   private minimapGfx!: Phaser.GameObjects.Graphics;
@@ -252,6 +253,9 @@ export class WorldScene extends CombatScene {
     this.heldEditor = new HeldEditor(this, this.provider, () => heldTier(this.p.armorIt ? this.p.armorIt.val : null));
     this.heldEditor.onApply = () => this.zeichneHeld(angleToDir(this.pdir), this.pstep);
     this.worldGfx = this.add.graphics().setDepth(2450);
+    // Blutspuren liegen UNTER den Figuren (Autorbug R45: lagen "vor" den
+    // Einheiten). Boden = -10, Figuren = y (positiv); -5 liegt sauber dazwischen.
+    this.bodenGfx = this.add.graphics().setDepth(-5);
     this.minimapGfx = this.add.graphics().setScrollFactor(0).setDepth(4500);
     this.hud = new Hud(this, () => this.p, () => this.weaponClass(), (id) => this.runActionFromBar(id));
     // Schriftrollen/Tränke aus dem Inventar auf die Leiste ziehen (Runde 40)
@@ -5110,14 +5114,18 @@ export class WorldScene extends CombatScene {
     const g = this.worldGfx;
     const time = this.time.now / 1000;
     g.clear();
-    // Blutspuren gefallener Gegner
+    // Blutspuren liegen AUF dem Boden (eigene Ebene unter den Figuren, R45)
+    const bg = this.bodenGfx;
+    bg.clear();
     for (const dc of this.decals) {
-      g.fillStyle(0x5a0e0e, 0.4);
-      g.fillEllipse(dc.x, dc.y, dc.r * 2, dc.r * 1.2);
+      bg.fillStyle(0x4a0c0c, 0.5);
+      bg.fillEllipse(dc.x, dc.y, dc.r * 2, dc.r * 1.2);
+      bg.fillStyle(0x5e1010, 0.35);
+      bg.fillEllipse(dc.x, dc.y, dc.r * 2.6, dc.r * 1.5);
       if (dc.bone) {
-        g.fillStyle(0xcfc4a8, 0.8);
-        g.fillRect(dc.x - 5, dc.y - 1, 7, 2);
-        g.fillRect(dc.x + 1, dc.y + 3, 6, 2);
+        bg.fillStyle(0xcfc4a8, 0.8);
+        bg.fillRect(dc.x - 5, dc.y - 1, 7, 2);
+        bg.fillRect(dc.x + 1, dc.y + 3, 6, 2);
       }
     }
     // Fackeln (Flammen). In Schlucht-Ebenen nehmen sie die Akzentfarbe der
