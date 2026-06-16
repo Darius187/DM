@@ -95,6 +95,7 @@ export const ABILITIES: ReadonlyArray<AbilityDef> = [
   { id: 'bannkreis', school: 'zauberei', unlock: 9, name: 'Bannkreis', beschreibung: 'Fläche, die Untote schwächt' },
   { id: 'aderlass', school: 'zauberei', unlock: 2, name: 'Aderlass', beschreibung: 'Tauscht Leben eins zu eins in Mana' },
   { id: 'lebenstausch', school: 'zauberei', unlock: 4, name: 'Lebenstausch', beschreibung: 'Tauscht Mana eins zu eins in Leben' },
+  { id: 'heilen', school: 'zauberei', unlock: 3, name: 'Heilende Hand', beschreibung: 'Ort wählen: hebt einen verwundeten Helfer wieder auf die Beine (sonst heilt es dich)' },
   { id: 'feuerregen', school: 'zauberei', unlock: 8, name: 'Feuerregen', beschreibung: 'Feuerschläge regnen auf den Zielort' },
   { id: 'mehrfachschuss', school: 'bogen', unlock: 3, name: 'Mehrfachschuss', beschreibung: '3 Pfeile im Fächer' },
   { id: 'durchschlag', school: 'bogen', unlock: 6, name: 'Durchschlag', beschreibung: 'Pfeil durchdringt Gegner' },
@@ -112,6 +113,10 @@ export const ABILITY_FX = {
   // Runde 44: deutlich gekürzt (160->85 px, ~2,5 Kacheln) - war "durch die
   // halbe Karte". Ein kurzer, harter Ansturm statt Dauer-Sprint.
   sturmangriff: { distance: 85, speed: 700, dmgMult: 1.4, cd: 5 },
+  // Heilende Hand (Runde 46): Bodenziel. Hebt einen verwundeten Helfer im
+  // Umkreis wieder auf (reviveFrac seiner Leben); ist keiner da, heilt es den
+  // Helden (selbstHealPct). reichweite = wie weit man zielen kann.
+  heilen: { mana: 24, cd: 6, reichweite: 320, radius: 48, reviveFrac: 0.7, selbstHealPct: 0.35 },
   hinrichtung: { dmgMultVsStunned: 2.5, cd: 7 },
   kettenblitz: { mana: 16, dmgBase: 18, dmgPerLevel: 5, jumps: 3, jumpRange: 150, cd: 1.2 },
   // Frostnova: laengerer, klar spuerbarer Slow als Crowd-Control, oefter wirkbar

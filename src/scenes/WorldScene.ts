@@ -33,7 +33,7 @@ import { WASSER_FRAMES } from '../gfx/tileArt';
 import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64, drawSchlucht, drawKristall } from '../gfx/detailArt';
 import { DialogUI, fixUiScroll } from '../ui/dialog';
 import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, RELIKT, ENDEN, TOD, INTRO_FILM } from '../data/texte';
-import { ALTAR, BLOOD_WELL, CHEST, RELIC_ACCEPT_ELIXIRS } from '../data/balancing';
+import { ALTAR, BLOOD_WELL, CHEST, RELIC_ACCEPT_ELIXIRS, ABILITY_FX } from '../data/balancing';
 import { BREAKABLES, BREAKABLE_LOOT, BEINHAUS, CHEST_VERFLUCHT, BOSS_KAMPF } from '../data/krypta';
 import { DEATH, SHRINE, PHYSIK, BREAKABLE_MASSE, PLAYER } from '../data/kampf';
 import { TEMPLERKLINGE, BOSS_GOLD } from '../data/items';
@@ -73,6 +73,7 @@ interface NpcEntity extends NpcSpawn {
   hp?: number;        // Kämpfer-Bewohner (Schmied & Co.) haben Lebenspunkte (Runde 41)
   atkCd?: number;     // Schlag-Abklingzeit des kämpfenden Bewohners
   flashT?: number;    // kurzes Aufblitzen bei Treffer
+  verwundet?: boolean; // niedergeschlagen: liegt am Boden, bis der Held ihn heilt (Runde 46)
 }
 
 interface Kadaver { x: number; y: number; g: Phaser.GameObjects.Graphics; t: number; ph: number }
@@ -2852,6 +2853,26 @@ export class WorldScene extends CombatScene {
     });
   }
 
+  // Heilende Hand am Zielort (Runde 46): hebt den nächsten verwundeten Helfer im
+  // Umkreis wieder auf die Beine. Liefert true, wenn jemand geheilt wurde.
+  protected override heileVerwundete(x: number, y: number, radius: number): boolean {
+    let best: NpcEntity | null = null, bd = radius;
+    for (const n of this.npcEnts) {
+      if (!n.verwundet) continue;
+      const d = Math.hypot(n.curX - x, n.curY - y);
+      if (d < bd) { bd = d; best = n; }
+    }
+    if (!best) return false;
+    best.verwundet = false;
+    best.hp = Math.round(KAEMPFER.hp * ABILITY_FX.heilen.reviveFrac);
+    best.atkCd = 0;
+    best.sprite.setScale(1, 1).clearTint();
+    this.fx.burst(best.curX, best.curY, 0x7ce08a, 20, 170);
+    this.sfx.playAt('heilung', best.curX, best.curY);
+    this.logMsg(`${best.name} ist wieder auf den Beinen - und kämpft weiter!`, 'gold');
+    return true;
+  }
+
   // Chaos-Schicht des großen Einfalls (Runde 40): Räuber-Monster jagen das
   // nächste lebende Vieh oder einen fliehenden Bewohner. Vieh wird gerissen
   // (verschwindet), erwischte Bewohner werden verschleppt (kehren beim nächsten
@@ -5392,6 +5413,17 @@ export class WorldScene extends CombatScene {
       n.sprite.setVisible(sichtbar);
       n.label.setVisible(sichtbar);
       if (!sichtbar) continue;
+      // Verwundet niedergeschlagen (Runde 46): liegt geduckt am Boden, kämpft
+      // und flieht nicht - wartet darauf, dass der Held ihn heilt. Pulsierender
+      // roter Schein signalisiert "hier kannst du helfen".
+      if (n.verwundet) {
+        this.provider.applyFigure(n.sprite, n.figur ?? n.id, 2, 0);
+        n.sprite.setPosition(n.curX, n.curY + 6).setDepth(n.curY).setScale(1, 0.55);
+        const puls = 0.4 + Math.sin(this.time.now / 220) * 0.25;
+        n.sprite.setTint(Phaser.Display.Color.GetColor(180 + Math.round(puls * 60), 50, 50));
+        n.label.setPosition(n.curX, n.curY - 14).setText(`${n.name} - verwundet (heilen!)`).setColor('#e86a5a');
+        continue;
+      }
       // Tagesablauf: morgens Arbeit, mittags soziale Runde (Markt, Taverne,
       // Nachbarn), abends heimwärts (Runde 10)
       const mittagPhase = this.tageszeit >= 0.45 && this.tageszeit <= TAG.abendAb;
@@ -5422,7 +5454,7 @@ export class WorldScene extends CombatScene {
         this.fx.addSwing(n.curX, n.curY - 6, a, { col: 'rgba(216,207,184,', w: 4, radius: 24 });
         this.sfx.play('schwert_slice1', 0.45);
         n.hp = (n.hp ?? KAEMPFER.hp) - KAEMPFER.gegnerDmg; n.flashT = 0.16;
-        if (n.hp <= 0) { n.imHaus = true; this.fx.burst(n.curX, n.curY, 0x7a1010, 12, 100); this.logMsg(`${n.name} wird überrannt und zieht sich zurück!`, 'bad'); continue; }
+        if (n.hp <= 0) { n.verwundet = true; n.hp = 0; this.fx.burst(n.curX, n.curY, 0x7a1010, 14, 110); this.logMsg(`${n.name} ist verwundet gefallen - heile ihn, sonst fällt er aus!`, 'bad'); continue; }
       }
       if (d > 4 && !(kampf && d < 30)) {
         const a = Math.atan2(ziel.y - n.curY, ziel.x - n.curX);

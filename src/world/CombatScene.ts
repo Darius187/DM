@@ -877,7 +877,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // dann mit der Maus den Ort wählen, dann per Klick auslösen. Gilt für AoE-
   // Zauber am Boden (Feuerregen/Eisregen/Gewitter/Feuerwand) und Heilen.
   protected zielModus: string | null = null;
-  protected readonly bodenZauber = new Set(['feuerregen', 'eisregen', 'gewitter', 'feuerwand']);
+  protected readonly bodenZauber = new Set(['feuerregen', 'eisregen', 'gewitter', 'feuerwand', 'heilen']);
+
+  // Verwundeten Helfer am Zielort heilen (Runde 46). Welt überschreibt es; hier
+  // (Arena) gibt es keine Helfer -> false, dann heilt sich der Held selbst.
+  protected heileVerwundete(_x: number, _y: number, _radius: number): boolean { return false; }
 
   // Klick bestätigt den Bodenzauber am Cursor
   protected bestaetigeZiel(): void {
@@ -1552,7 +1556,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       case 's2': this.castSpell(1); break;
       case 's3': this.castSpell(2); break;
       case 'kettenblitz': case 'frostnova': case 'bannkreis':
-      case 'feuerregen': case 'aderlass': case 'lebenstausch': this.useAbility(id); break;
+      case 'feuerregen': case 'aderlass': case 'lebenstausch': case 'heilen': this.useAbility(id); break;
       // Waffen-Fähigkeiten auch auf Maustasten legbar (Runde 20)
       case 'waffe1': this.useAbility(this.weaponClass() === 'bogen' ? 'mehrfachschuss' : 'rundumschlag'); break;
       case 'waffe2': this.useAbility(this.weaponClass() === 'bogen' ? 'markierterTod' : 'sturmangriff'); break;
@@ -1779,6 +1783,24 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         this.fx.burst(this.px, this.py, 0x9ad8a0, 14, 150);
         this.fx.float(this.px, this.py - 24, `${menge} Mana -> Leben`, '#9ad8a0');
         this.sfx.play('trank');
+        this.gainSchoolUse('zauberei');
+        break;
+      }
+      case 'heilen': {
+        const fx = ABILITY_FX.heilen;
+        if (!this.paySpellCost(fx.mana)) return;
+        this.p.abilityCds[id] = fx.cd;
+        const z = this.zielPunkt(fx.reichweite);
+        const geheilt = this.heileVerwundete(z.x, z.y, fx.radius);
+        if (!geheilt) {
+          // niemand am Ort zu heilen: den Helden selbst aufpäppeln
+          const heal = Math.round(this.p.stats.maxhp * fx.selbstHealPct);
+          this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + heal);
+          this.fx.float(this.px, this.py - 24, `+${heal}`, '#7ce08a');
+        }
+        this.fx.welle(z.x, z.y, fx.radius, 0x7ce08a);
+        this.fx.burst(z.x, z.y, 0x7ce08a, 16, 150);
+        this.sfx.play('heilung');
         this.gainSchoolUse('zauberei');
         break;
       }
