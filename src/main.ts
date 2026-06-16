@@ -5,6 +5,7 @@ import { DebugArenaScene } from './scenes/DebugArenaScene';
 import { WorldScene } from './scenes/WorldScene';
 import { UIScene } from './scenes/UIScene';
 import { SettingsScene } from './scenes/SettingsScene';
+import { KammerDerFinsternis } from './scenes/KammerDerFinsternis';
 import { TUNING } from './logic/tuning';
 
 // Bildgröße (Runde 27): KEIN gestrecktes Canvas mehr (machte Schrift
@@ -19,7 +20,7 @@ const game = new Phaser.Game({
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, TitleScene, WorldScene, DebugArenaScene, UIScene, SettingsScene],
+  scene: [BootScene, TitleScene, WorldScene, DebugArenaScene, UIScene, SettingsScene, KammerDerFinsternis],
 });
 
 // Dev-Hook für die automatisierte Browser-Verifikation (CLAUDE.md Regel 1/9)

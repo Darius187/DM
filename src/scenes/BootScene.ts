@@ -123,7 +123,10 @@ export class BootScene extends Phaser.Scene {
     logAssetStatus();
     // Eigene Baukasten-Bilder (Runde 24) ÜBER die geladenen Texturen legen,
     // erst dann ins Menü - sonst rendert das Dorf einmal mit alten Tiles
-    void this.wendeEigeneTilesAn().then(() => this.scene.start('Title'));
+    // Prolog-Direkteinstieg zum Testen: ?prolog=kammer startet die Angst-Ebene
+    const prolog = new URLSearchParams(location.search).get('prolog');
+    const ziel = prolog === 'kammer' || prolog === '1' ? 'KammerDerFinsternis' : 'Title';
+    void this.wendeEigeneTilesAn().then(() => this.scene.start(ziel));
   }
 
   // Vom Autor im Baukasten hochgeladene Tile-Bilder (Browser-Speicher)
