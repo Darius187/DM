@@ -226,33 +226,46 @@ export class UIPanels {
     }
     c.add(this.scene.add.text(58, 108, `Stufe ${p.level}`, { fontFamily: 'serif', fontSize: '13px', color: GOLD }).setOrigin(0.5, 0));
 
-    // Ausrüstungs-Slots rechts neben dem Portrait. Zweiter Waffenplatz "Bogen"
-    // (Runde 41): aktive Waffe markiert, das Schild bei gezücktem Bogen grau.
-    const slots: Array<{ label: string; it: Item | null; inaktiv?: boolean; aktiv?: boolean }> = [
-      { label: 'Waffe', it: p.weapon, aktiv: !!p.bogen && !p.bogenAktiv },
-      { label: 'Bogen', it: p.bogen, aktiv: p.bogenAktiv },
+    const rarCol = (it: Item) => Phaser.Display.Color.HexStringToColor(RARITY_COLORS[(it.rarity ?? 0) as Rarity]).color;
+    const slotBoxMit = (it: Item | null, bx: number, by: number, bw: number, bh: number, aktiv: boolean, inaktiv: boolean) => {
+      const box = this.scene.add.rectangle(bx, by, bw, bh, 0x100b06).setOrigin(0)
+        .setStrokeStyle(aktiv ? 2 : 1, aktiv ? 0xc9a227 : (it ? rarCol(it) : LINE));
+      c.add(box);
+      if (it) {
+        const ic = this.scene.add.image(bx + bw / 2, by + bh / 2, this.provider.itemIcon(it)).setScale(0.44);
+        if (inaktiv) ic.setAlpha(0.32);
+        c.add(ic);
+        box.setInteractive({ useHandCursor: true });
+        box.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
+        box.on('pointerout', () => this.hideTooltip());
+        box.on('pointerdown', (ptr: Phaser.Input.Pointer) => this.clickItem(it, ptr.rightButtonDown()));
+      }
+      return box;
+    };
+
+    // Waffe und Bogen NEBENEINANDER (Runde 41, Autorwunsch): der Bogen steht
+    // rechts neben der Hauptwaffe, per ALT umschaltbar; gefuehrte Waffe gold.
+    slotBoxMit(p.weapon, 116, 14, 38, 34, !p.bogenAktiv, false);
+    slotBoxMit(p.bogen, 158, 14, 38, 34, !!p.bogen && p.bogenAktiv, false);
+    c.add(this.scene.add.text(135, 50, 'Waffe', { fontFamily: 'serif', fontSize: '9px', color: !p.bogenAktiv ? GOLD : '#6a5f4c' }).setOrigin(0.5, 0));
+    c.add(this.scene.add.text(177, 50, 'Bogen', { fontFamily: 'serif', fontSize: '9px', color: p.bogenAktiv ? GOLD : '#6a5f4c' }).setOrigin(0.5, 0));
+    const akt = p.bogenAktiv && p.bogen ? p.bogen : p.weapon;
+    c.add(this.scene.add.text(206, 16, akt ? akt.name : '-', { fontFamily: 'serif', fontSize: '12px', color: akt ? RARITY_COLORS[(akt.rarity ?? 0) as Rarity] : '#6a5f4c', wordWrap: { width: w - 212 } }));
+    c.add(this.scene.add.text(206, 34, p.bogen ? 'ALT: Waffe / Bogen wechseln' : 'Bogen in den 2. Platz legbar', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }));
+
+    // Restliche Ausrüstung als volle Reihen darunter
+    const rest: Array<{ label: string; it: Item | null; inaktiv?: boolean }> = [
       { label: 'Rüstung', it: p.armorIt },
       { label: 'Ring', it: p.ring },
       { label: 'Schild', it: p.schildIt, inaktiv: p.bogenAktiv && !!p.schildIt },
     ];
-    let sy = 14;
+    let sy = 62;
     const SH = 34, SP = 37;
-    for (const { label, it, inaktiv, aktiv } of slots) {
-      const slotBg = this.scene.add.rectangle(116, sy, 38, SH, 0x100b06).setOrigin(0)
-        .setStrokeStyle(aktiv ? 2 : 1, aktiv ? 0xc9a227 : (it ? Phaser.Display.Color.HexStringToColor(RARITY_COLORS[(it.rarity ?? 0) as Rarity]).color : LINE));
-      c.add(slotBg);
+    for (const { label, it, inaktiv } of rest) {
+      slotBoxMit(it, 116, sy, 38, SH, false, !!inaktiv);
       if (it) {
-        const ic = this.scene.add.image(135, sy + SH / 2, this.provider.itemIcon(it)).setScale(0.44);
-        if (inaktiv) ic.setAlpha(0.32);
-        c.add(ic);
-        const gem = (it === p.weapon || it === p.bogen) ? (it.sock?.gem ?? null) : null;
-        const zusatz = inaktiv ? '  (inaktiv)' : aktiv ? '  - in Hand' : '';
-        c.add(this.scene.add.text(160, sy + 1, it.name + zusatz, { fontFamily: 'serif', fontSize: '12px', color: inaktiv ? '#5a5348' : RARITY_COLORS[(it.rarity ?? 0) as Rarity], wordWrap: { width: w - 166 } }));
-        if (gem) c.add(this.scene.add.text(160, sy + 18, `◆ ${gem.name}`, { fontFamily: 'serif', fontSize: '10px', color: gem.col }));
-        slotBg.setInteractive({ useHandCursor: true });
-        slotBg.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
-        slotBg.on('pointerout', () => this.hideTooltip());
-        slotBg.on('pointerdown', (ptr: Phaser.Input.Pointer) => this.clickItem(it, ptr.rightButtonDown()));
+        const zusatz = inaktiv ? '  (inaktiv)' : '';
+        c.add(this.scene.add.text(160, sy + 9, it.name + zusatz, { fontFamily: 'serif', fontSize: '12px', color: inaktiv ? '#5a5348' : RARITY_COLORS[(it.rarity ?? 0) as Rarity], wordWrap: { width: w - 166 } }));
       } else {
         c.add(this.scene.add.text(160, sy + 9, `${label}: -`, { fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c' }));
       }
