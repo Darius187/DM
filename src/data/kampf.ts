@@ -85,7 +85,9 @@ export const WEAPON_MOVESETS = {
   // Zauberstab: manafreies Arkangeschoss, skaliert mit der Zauberei-Schule,
   // und verstärkt gewirkte Zauber (halber Stabwert als Bonus). Flugtempo wie
   // der Feuerball (Runde 40), das Geschoss glüht und wirft Licht.
-  stab:    { projSpeed: 390, dmgMult: 0.75, spellBonusFaktor: 0.5, zaubereiBonusJeStufe: 0.05 },
+  // recoverS (Runde 41): eigene, langsamere Schuss-Erholung - der Stab feuerte
+  // mit der Standard-Erholzeit (0,34 s) zu schnell ("schießt zu schnell").
+  stab:    { projSpeed: 390, dmgMult: 0.75, spellBonusFaktor: 0.5, zaubereiBonusJeStufe: 0.05, recoverS: 0.55 },
 } as const;
 
 // Gedeckter Schlag: Angriff aus dem Block heraus (Feedback-Runde 1) -

@@ -28,8 +28,8 @@ export interface SpellDef {
 }
 export const SPELLS: ReadonlyArray<SpellDef> = [
   { id: 'feuerball', name: 'Feuerball', ico: '✦', mana: 12, unlock: 2, cd: 0.55 },
-  { id: 'heiligesLicht', name: 'Heiliges Licht', ico: '☩', mana: 22, unlock: 3, cd: 3 },
-  { id: 'heilung', name: 'Heilung', ico: '❧', mana: 26, unlock: 5, cd: 5 },
+  { id: 'heiligesLicht', name: 'Heiliges Licht', ico: '☩', mana: 22, unlock: 3, cd: 2 },
+  { id: 'heilung', name: 'Heilung', ico: '❧', mana: 26, unlock: 5, cd: 4 },
 ];
 
 // Zauberwirkung (Referenz castSkill)
@@ -104,16 +104,22 @@ export const ABILITIES: ReadonlyArray<AbilityDef> = [
 export const ABILITY_FX = {
   // Runde 28: cd 5 -> 2,5 und mehr Schaden - mit cd 5 war er gegen die
   // Zauber chancenlos (Rückmeldung des Autors)
-  rundumschlag: { dmgMult: 1.5, radius: 75, cd: 2.5, stangeRadius: 105, stangeDmgMult: 1.8 },
-  sturmangriff: { distance: 160, speed: 700, dmgMult: 1.4, cd: 7 },
-  hinrichtung: { dmgMultVsStunned: 2.5, cd: 10 },
-  kettenblitz: { mana: 16, dmgBase: 18, dmgPerLevel: 5, jumps: 3, jumpRange: 150, cd: 2 },
-  frostnova: { mana: 20, dmgBase: 12, dmgPerLevel: 3, radius: 120, slowS: 4.5, cd: 4 },
-  bannkreis: { mana: 30, radius: 130, dauerS: 6, untoteDmgMult: 0.7, cd: 9 },
+  // Runde 41: Abklingzeiten generell runter (Autorwunsch - "sonst nutzlos, wir
+  // haben spaeter massig Gegner"). Die Faehigkeiten sollen Werkzeuge gegen
+  // Massen sein, nicht alle paar Sekunden mal.
+  rundumschlag: { dmgMult: 1.5, radius: 75, cd: 1.8, stangeRadius: 105, stangeDmgMult: 1.8 },
+  sturmangriff: { distance: 160, speed: 700, dmgMult: 1.4, cd: 5 },
+  hinrichtung: { dmgMultVsStunned: 2.5, cd: 7 },
+  kettenblitz: { mana: 16, dmgBase: 18, dmgPerLevel: 5, jumps: 3, jumpRange: 150, cd: 1.2 },
+  // Frostnova: laengerer, klar spuerbarer Slow als Crowd-Control, oefter wirkbar
+  frostnova: { mana: 20, dmgBase: 12, dmgPerLevel: 3, radius: 130, slowS: 6, cd: 2.5 },
+  bannkreis: { mana: 30, radius: 130, dauerS: 6, untoteDmgMult: 0.7, cd: 6 },
   // Runde 16: Leben<->Mana als 1:1-Kreislauf, kostenlos, kurzer Takt
   aderlass: { menge: 20, cd: 1.5 },
   lebenstausch: { menge: 20, cd: 1.5 },
-  feuerregen: { mana: 40, dmgBase: 16, dmgPerLevel: 4, einschlaege: 6, radius: 50, streuung: 85, dauerS: 1.8, reichweite: 320, cd: 11 },
+  // Feuerregen (Runde 41): zuendet getroffene Gegner an - Brand-DoT ueber
+  // brennDauerS Sekunden, pro Sekunde brennDpsMult x Treffer-Schaden.
+  feuerregen: { mana: 40, dmgBase: 16, dmgPerLevel: 4, einschlaege: 6, radius: 50, streuung: 85, dauerS: 1.8, reichweite: 320, cd: 6, brennDauerS: 3, brennDpsMult: 0.45 },
   // Runde 36: vier besondere ROLLEN-Zauber (nur über Schriftrollen wirkbar,
   // daher mana/cd 0 - useScroll regelt das). Werte leicht änderbar.
   gewitter: { mana: 0, dmgBase: 24, dmgPerLevel: 5, einschlaege: 8, radius: 44, streuung: 120, dauerS: 1.5, reichweite: 360, cd: 0 },
@@ -123,10 +129,13 @@ export const ABILITY_FX = {
   // Windstoß (Runde 36): fegt Gegner im Kegel vor dem Helden weg - mit dem
   // Physik-Test gleiten/prallen sie richtig, sonst nur ein kräftiger Schubs.
   windstoss: { mana: 0, dmgBase: 6, dmgPerLevel: 2, reichweite: 230, kraft: 60, cd: 0 },
-  mehrfachschuss: { arrows: 3, spread: 0.18, cd: 4 },
-  durchschlag: { pierceCount: 99, dmgMult: 1.3, cd: 6 },
-  markierterTod: { bonusDmgPct: 0.25, dauerS: 8, cd: 10 },
+  mehrfachschuss: { arrows: 3, spread: 0.18, cd: 2.5 },
+  durchschlag: { pierceCount: 99, dmgMult: 1.3, cd: 4 },
+  markierterTod: { bonusDmgPct: 0.25, dauerS: 8, cd: 7 },
 } as const;
+
+// Takt des Brand-Schadens (Runde 41): alle BRAND_TICK_S Sekunden ein Tick.
+export const BRAND_TICK_S = 0.5;
 
 // Nur über Schriftrollen wirkbare Flächenzauber (Runde 36): stehen NICHT in
 // den lernbaren Fähigkeiten (ABILITIES), sind aber immer "bereit".

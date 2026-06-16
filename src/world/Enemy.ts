@@ -103,6 +103,9 @@ export class Enemy {
   windup = 0;
   stun = 0;
   slowT = 0;
+  brennT = 0;        // Brand-Restzeit (Sekunden) - Feuerregen-DoT (Runde 41)
+  brennDps = 0;      // Schaden pro Sekunde, solange brennT > 0
+  brennTick = 0;     // Takt bis zum nächsten Brand-Schaden
   hitFlash = 0;
   wobble: number;
   dir: Dir = 0;

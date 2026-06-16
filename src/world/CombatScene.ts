@@ -25,7 +25,7 @@ import { TUNING, TUNING_ROWS, neuerTypTuning } from '../logic/tuning';
 import { defaultRng, type Rng } from '../logic/rng';
 import { ELITE, ENEMIES, GEFALLENE_TYPEN, GEFALLENE_WAFFEN } from '../data/enemies';
 import type { EnemyTypeId, WeaponClass } from '../data/types';
-import { ABILITY_FX, ABILITIES, LORE_XP, ROLLEN_ZAUBER, XP } from '../data/balancing';
+import { ABILITY_FX, ABILITIES, LORE_XP, ROLLEN_ZAUBER, XP, BRAND_TICK_S } from '../data/balancing';
 import { PickupSystem, AUTO_PICKUP, type Pickup } from './Pickups';
 import { fixUiScroll } from '../ui/dialog';
 import { mausLeisteAnkerX, tastenLeisteMitteX, orbHpAnkerX, orbMpAnkerX } from '../ui/hud';
@@ -977,6 +977,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.pdir = ang;
     if (cls === 'stab') {
       this.staffBolt(ev, ang);
+      // Eigene, langsamere Schuss-Erholung (Runde 41) statt der Standard-0,34s
+      this.combat.recoverTotal = WEAPON_MOVESETS.stab.recoverS;
+      this.combat.recoverT = WEAPON_MOVESETS.stab.recoverS;
       return;
     }
     if (cls === 'stange' && ev.type === 'light') {
@@ -1681,6 +1684,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
             for (const e of [...this.enemies]) {
               if (Math.hypot(e.x - ex, e.y - ey) < fx.radius + e.r) {
                 this.damageEnemy(e, Math.round(dmg * (0.85 + Math.random() * 0.3)), 0, 0, '#f0a868', false);
+                // Brand entzünden/auffrischen (Runde 41): wirkt nach dem Regen weiter
+                e.brennT = Math.max(e.brennT, fx.brennDauerS);
+                e.brennDps = Math.max(e.brennDps, dmg * fx.brennDpsMult);
               }
             }
           });
@@ -2190,6 +2196,17 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     for (const e of [...this.enemies]) {
       e.update(this, dt);
       if (this.playerDead) return dt;
+      // Brand-DoT (Runde 41, Feuerregen): tickt Schaden, während es brennt
+      if (e.brennT > 0 && e.hp > 0) {
+        e.brennT -= dt;
+        e.brennTick -= dt;
+        if (e.brennTick <= 0) {
+          e.brennTick = BRAND_TICK_S;
+          this.damageEnemy(e, Math.max(1, Math.round(e.brennDps * BRAND_TICK_S)), 0, 0, '#f0824a', false);
+          this.fx.burst(e.x, e.y - 6, 0xf0824a, 4, 70);
+        }
+        if (e.brennT <= 0) e.brennDps = 0;
+      }
     }
     this.separateEnemies();
 
