@@ -146,6 +146,13 @@ export const SHOP_SCHAEFER: ReadonlyArray<ShopOfferDef> = [
   { kind: 'food', name: 'Schafskäse', price: 13, inf: true, food: { hpRegen: 1.6, dauerS: 40 } },
 ];
 
+// Köhler Anselm im Dunkelwald (Runde 41, Autorwunsch): brennt Holz zu Kohle -
+// Kohle hier günstiger als beim Schmied, dazu Brennholz.
+export const SHOP_KOEHLER: ReadonlyArray<ShopOfferDef> = [
+  { kind: 'material', name: 'Kohle', price: 9, inf: true, materialId: 'kohle' },
+  { kind: 'material', name: 'Holz', price: 4, inf: true, materialId: 'holz' },
+];
+
 // Bader Severin: Behandlung gegen Gold (kein Sortiment - eine Dienstleistung)
 export const BADER_BEHANDLUNG = { gold: 25 } as const;
 

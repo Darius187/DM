@@ -18,7 +18,7 @@ import { heldTier } from '../data/helden';
 import { drawWirtin, drawTaverne, drawHaus } from '../gfx/npcArt';
 import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
 import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, VOLK, SMALLTALK, type DlgPage } from '../data/dialoge';
-import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
+import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER } from '../data/crafting';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, tageszeitLabel } from '../data/welt';
@@ -3029,7 +3029,7 @@ export class WorldScene extends CombatScene {
       case 'landherr': this.talkLandherr(); break;
       case 'schulze': this.talkSchulze(); break;
       case 'bader': case 'kuefer': case 'weberin': case 'gerber':
-      case 'hebamme': case 'kuester': case 'fischer': case 'imker': case 'schaefer':
+      case 'hebamme': case 'kuester': case 'fischer': case 'imker': case 'schaefer': case 'koehler':
         this.talkZunft(id, npc.name);
         break;
       default: {
@@ -3124,6 +3124,7 @@ export class WorldScene extends CombatScene {
       gerber: ['GERBEREI', SHOP_GERBER, true],
       hebamme: ['HEBAMME WALPURGA', SHOP_HEBAMME, false],
       schaefer: ['SCHAFWEIDE', SHOP_SCHAEFER, false],
+      koehler: ['MEILER DES KÖHLERS', SHOP_KOEHLER, true],
     };
     const sh = shops[id];
     if (sh) choices.push({ label: 'Handel', fn: () => this.shop.openShop(id, sh[0], sh[1], { ankauf: sh[2] }) });

@@ -1231,6 +1231,15 @@ export function buildForest(rng: Rng): AreaData {
   a.shrines.push({ x: cx * TILE + 16, y: (Math.max(3, lyMitte - 3)) * TILE + 16 });
   a.labels.push({ x: cx * TILE, y: (Math.max(3, lyMitte - 3)) * TILE, t: 'Lichtung' });
 
+  // Köhler-Lichtung (Runde 41, Autorwunsch "Köhler im Wald"): ein Kohlenmeiler,
+  // an dem der Köhler Holz zu Kohle brennt - hier kauft man Kohle günstiger.
+  const koX = 30, koLy = pfadY[koX] ?? 13, koVy = Math.min(h - 4, koLy + 5);
+  carve(map, koX - 3, koVy - 2, koX + 3, koVy + 2, T.GRASS);
+  for (let yy = Math.min(koLy, koVy); yy <= Math.max(koLy, koVy); yy++) if (map[yy]?.[koX] === T.TREE) map[yy][koX] = T.GRASS;
+  map[koVy][koX] = T.BURNT; map[koVy][koX + 1] = T.BURNT;   // der Meiler (verkohltes Erdreich)
+  a.labels.push({ x: koX * TILE, y: (koVy - 2) * TILE, t: 'Kohlenmeiler' });
+  a.npcs.push({ id: 'koehler', name: 'Köhler Anselm', x: (koX - 2) * TILE, y: koVy * TILE });
+
   // Zwei kleine Nebenlichtungen abseits des Pfads (Kräuter, Felsen)
   for (const lx of [18, 40, 64, 90, 112]) {
     const ly = pfadY[lx] ?? 13;

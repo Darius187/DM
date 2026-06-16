@@ -234,6 +234,11 @@ export const VOLK: Readonly<Record<string, ReadonlyArray<string>>> = {
     'Tobias, Schäfer. Die Herde frisst die Weide kurz und gibt Wolle für die Adelheid. Nachts zähle ich sie zweimal - der Wald ist nah.',
     'Wolle gefällig? Die Weberin zahlt für abgelieferte Wolle übrigens mehr, als ich dafür nehme. So bleibt das Geld im Dorf.',
   ],
+  koehler: [
+    'Anselm, Köhler. Der Meiler muss tagelang glimmen, ohne offene Flamme - sonst verbrennt das Holz zu Asche statt zu Kohle. Eine Kunst, die Geduld braucht.',
+    'Kohle braucht Ihr? Beim Schmied kostet sie mehr - ich brenne sie hier selbst, drum gebe ich sie günstiger. Brennholz hab ich auch.',
+    'Allein im Wald zu hocken macht einem nichts aus - solange das nachts nicht raschelt. In letzter Zeit raschelt es zu oft.',
+  ],
 } as const;
 
 // Smalltalk des Dorfvolks (Runde 14): jeder ist ansprechbar. Männer,
