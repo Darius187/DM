@@ -35,6 +35,7 @@ export interface Settings {
   chronikAuto: boolean;   // Chronik-Fenster beim Spielstart offen (Runde 36)
   postFx: boolean;        // Nachbearbeitung: Bloom/Leuchten auf Lichter (Runde 40; Vignette ab R41 raus)
   audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
+  zoomV: number;          // einmaliger Zoom-Standard (Runde 41: 130%)
   uiLayoutV: number;      // Layout-Version: ältere UI-Versätze einmalig zurücksetzen
   kb: KeyBindings;
 }
@@ -44,7 +45,7 @@ export const DEF_SETTINGS: Settings = {
   volAtmosphaere: 50,
   volMusik: 20, // Runde 40 (Autorwunsch): Musik leise im Hintergrund
   bright: 100,
-  zoom: 100,
+  zoom: 130, // Runde 41 (Autorwunsch): Spielwelt-Zoom standardmäßig 130%
   tempo: 90,
   fow: true,
   shake: false,
@@ -60,6 +61,7 @@ export const DEF_SETTINGS: Settings = {
   chronikAuto: true,
   postFx: true,
   audioV: 1,
+  zoomV: 1,
   uiLayoutV: 3, // Runde 40: Orbs an den Leisten, Meldungen oben, Chronik unten links
   kb: {
     roll: ' ', interact: 'e', inv: 'i', charakter: 'c',
@@ -113,6 +115,13 @@ export function getSettings(): Settings {
       if ((saved.audioV ?? 0) < DEF_SETTINGS.audioV) {
         current.volMusik = DEF_SETTINGS.volMusik;
         current.audioV = DEF_SETTINGS.audioV;
+        try { localStorage.setItem(KEY, JSON.stringify(current)); } catch { /* gesperrt */ }
+      }
+      // Zoom-Migration (Runde 41, Autorwunsch "Standard 130%"): einmalig auf den
+      // neuen Standard setzen, danach frei regelbar.
+      if ((saved.zoomV ?? 0) < DEF_SETTINGS.zoomV) {
+        current.zoom = DEF_SETTINGS.zoom;
+        current.zoomV = DEF_SETTINGS.zoomV;
         try { localStorage.setItem(KEY, JSON.stringify(current)); } catch { /* gesperrt */ }
       }
     }
