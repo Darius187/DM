@@ -42,6 +42,10 @@ export const CRYPT_GEN = {
   roomsBase: 10, // + Ebene
   roomWMin: 4, roomWMax: 9,
   roomHMin: 4, roomHMax: 8,
+  // Kein-Spawn-Radius um die Treppen (Runde 42, Autorwunsch): direkt nach dem
+  // Abstieg sollen KEINE gewöhnlichen Gegner am Eingang stehen - man soll
+  // ankommen können, ohne sofort zerschnetzelt zu werden. ~5 Kacheln in Pixeln.
+  keinSpawnRadius: 168,
   // Bossgrab (Runde 21): drei Kammern übereinander, der Ritter weicht
   // bei 66%/33% Leben nach Norden zurück - der Held folgt ihm
   bossW: 34, bossH: 58,

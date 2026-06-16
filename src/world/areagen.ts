@@ -538,6 +538,14 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
   map[start.cy][start.cx] = T.STAIRUP;
   map[far.cy][far.cx] = T.STAIR;
 
+  // Kein-Spawn-Radius um BEIDE Treppen (Runde 42): gewöhnliche Gegner zu nah am
+  // Auf-/Abgang werden verworfen, damit man nach dem Abstieg ankommen kann.
+  // Minibosse/Champions (sp.champion) bleiben - sie BEWACHEN die Treppen bewusst.
+  const r2 = CRYPT_GEN.keinSpawnRadius * CRYPT_GEN.keinSpawnRadius;
+  const nah = (x: number, y: number, p?: Pos) => !!p && (x - p.x) ** 2 + (y - p.y) ** 2 < r2;
+  a.enemySpawns = a.enemySpawns.filter((sp) =>
+    !!sp.champion || (!nah(sp.x, sp.y, a.upPos) && !nah(sp.x, sp.y, a.downPos)));
+
   return a;
 }
 
