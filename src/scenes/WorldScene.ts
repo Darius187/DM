@@ -25,7 +25,7 @@ import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, tileNameAt } from '../world/tiles';
 import { TILE } from '../gfx/fallbackArt';
 import { WASSER_FRAMES } from '../gfx/tileArt';
-import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64, drawSchlucht } from '../gfx/detailArt';
+import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64, drawSchlucht, drawKristall } from '../gfx/detailArt';
 import { DialogUI, fixUiScroll } from '../ui/dialog';
 import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, RELIKT, ENDEN, TOD, INTRO_FILM } from '../data/texte';
 import { ALTAR, BLOOD_WELL, CHEST, RELIC_ACCEPT_ELIXIRS } from '../data/balancing';
@@ -1673,8 +1673,10 @@ export class WorldScene extends CombatScene {
   // Kacheln. Tiefe -9: über dem Abgrund-Boden (-12), unter dem Steg (-8).
   private schlucht: { x0: number; y0: number; x1: number; y1: number } | null = null;
   private schluchtAkzent = 0x5a7ae0;
+  private schluchtKristalle: Array<{ x: number; y: number }> = [];
   private bauSchlucht(a: AreaData): void {
     this.schlucht = null;
+    this.schluchtKristalle = [];
     const s = a.schlucht;
     if (!s) return;
     const px0 = (s.x0 + 1) * TILE, py0 = (s.y0 + 1) * TILE;
@@ -1691,6 +1693,19 @@ export class WorldScene extends CombatScene {
     this.schlucht = { x0: s.x0, y0: s.y0, x1: s.x1, y1: s.y1 };
     const n = parseInt(s.akzent.replace('#', ''), 16);
     this.schluchtAkzent = n;
+    // Leucht-Kristalle als Tor-Pfosten am Steg (Set-Piece, Runde 40)
+    const kkey = `kristall_${s.akzent}`;
+    if (!this.textures.exists(kkey)) {
+      const kcv = document.createElement('canvas');
+      kcv.width = 48; kcv.height = 48;
+      drawKristall(kcv.getContext('2d')!, s.akzent);
+      this.textures.addCanvas(kkey, kcv);
+    }
+    for (const k of a.kristalle ?? []) {
+      const img = this.add.image(k.x, k.y + 6, kkey).setDepth(k.y + 6);
+      this.tileImages.push(img);
+      this.schluchtKristalle.push({ x: k.x, y: k.y });
+    }
   }
 
   // --- Haus-Animationen (Runde 24) --------------------------------------------
@@ -4505,6 +4520,13 @@ export class WorldScene extends CombatScene {
           this.eraseLight(sx, sy, breite * 0.5 * zm);
           warmIdx = this.placeWarm(warmIdx, cxp, cyp, breite * 0.4, (0.5 + Math.sin(time * 1.6) * 0.12) * 0.7, this.schluchtAkzent);
         }
+      }
+      // Leucht-Kristalle werfen je einen pulsierenden Akzent-Schein (Runde 40)
+      for (const k of this.schluchtKristalle) {
+        if (!nah(k.x, k.y)) continue;
+        const sx = (k.x - cam.worldView.x) * zm, sy = (k.y - cam.worldView.y) * zm;
+        this.eraseLight(sx, sy - 8 * zm, 46 * zm);
+        warmIdx = this.placeWarm(warmIdx, k.x, k.y - 8, 58, puls * 0.8, this.schluchtAkzent);
       }
     }
     for (let i = warmIdx; i < this.warmPool.length; i++) this.warmPool[i].setVisible(false);

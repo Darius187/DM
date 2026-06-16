@@ -80,6 +80,9 @@ export interface AreaData {
   // damit der eigene Tiefen-Renderer den Abgrund als EIN tiefes Bild zeichnet
   // (statt sich wiederholender Kacheln) und Licht aus der Tiefe hinaufwirft.
   schlucht?: { x0: number; y0: number; x1: number; y1: number; akzent: string };
+  // Leucht-Kristalle als Set-Piece an der Schlucht (Runde 40): glühen in der
+  // Akzentfarbe und rahmen den Steg ein. Rein optisch (keine Kollision).
+  kristalle?: Array<{ x: number; y: number }>;
   // Mauerrisse vor Geheimkammern (Runde 40): die Kammer bleibt massiver Fels,
   // bis der Riss aufbricht - erst dann wird sie ausgehoben (kammer) und die
   // Truhe (chestX/chestY) erscheint. So ist sie vorher wirklich unsichtbar.
@@ -210,6 +213,14 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
       // glühend orange - so leuchtet jede Schlucht in ihrer eigenen Farbe.
       a.schlucht = { x0, y0, x1, y1, akzent: th.rune };
       a.special.push({ id: 'schlucht', x: cx2, y: cy2, raum: 'Die Schlucht' });
+      // Wächter der Schlucht (Runde 40): ein Champion bewacht die Überquerung
+      const wTyp: EnemyTypeId = n >= 5 ? 'schatten' : 'skelett';
+      a.enemySpawns.push({ type: wTyp, elite: true, champion: 'Wächter der Schlucht', x: cx2 * TILE + 16, y: cy2 * TILE + 16 });
+      // Vier Leucht-Kristalle als Tor-Pfosten an den Steg-Enden (Set-Piece)
+      a.kristalle = [
+        { x: x0 * TILE + 16, y: (cy2 - 2) * TILE + 16 }, { x: x0 * TILE + 16, y: (cy2 + 1) * TILE + 16 },
+        { x: x1 * TILE + 16, y: (cy2 - 2) * TILE + 16 }, { x: x1 * TILE + 16, y: (cy2 + 1) * TILE + 16 },
+      ];
     }
   }
 

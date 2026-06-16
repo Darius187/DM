@@ -63,6 +63,35 @@ export function drawSchlucht(ctx: Ctx, w: number, h: number, akzent: string): vo
 function ell(ctx: Ctx, x: number, y: number, rx: number, ry: number, c: string): void {
   ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
 }
+
+// Leucht-Kristall (Runde 40, Schlucht-Set-Piece): ein Cluster spitzer Scherben,
+// das in der Akzentfarbe der Ebene glüht. 48x48-Zelle, Fuß bei y44.
+export function drawKristall(ctx: Ctx, akzent: string): void {
+  const [r, g, b] = hexRgb(akzent);
+  const cx = 24, fy = 44;
+  ell(ctx, cx, fy + 2, 13, 4, 'rgba(0,0,0,0.3)');                 // Bodenschatten
+  // weiches Glühen um den Cluster
+  const glow = ctx.createRadialGradient(cx, 28, 2, cx, 28, 24);
+  glow.addColorStop(0, `rgba(${r},${g},${b},0.5)`);
+  glow.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, 48, 48);
+  const dunkel = `rgb(${Math.round(r * 0.35)},${Math.round(g * 0.35)},${Math.round(b * 0.4)})`;
+  const hell = `rgb(${Math.min(255, r + 80)},${Math.min(255, g + 80)},${Math.min(255, b + 80)})`;
+  const kern = `rgb(${Math.min(255, r + 150)},${Math.min(255, g + 150)},${Math.min(255, b + 150)})`;
+  // einzelne Scherbe: Spitze oben, Sockel am Fuß
+  const shard = (bx: number, tipY: number, br: number) => {
+    poly(ctx, [[bx, fy], [bx - br, fy - 6], [bx - br * 0.5, tipY + 4], [bx, tipY], [bx + br * 0.5, tipY + 4], [bx + br, fy - 6]], dunkel);
+    poly(ctx, [[bx, fy], [bx - br * 0.5, fy - 7], [bx - br * 0.2, tipY + 3], [bx, tipY]], hell);   // beleuchtete Kante
+    ctx.strokeStyle = kern; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(bx, tipY + 2); ctx.lineTo(bx, fy - 4); ctx.stroke(); // glühender Kern
+  };
+  shard(cx - 8, 20, 5);
+  shard(cx + 9, 16, 5.5);
+  shard(cx, 8, 6.5);            // höchste Scherbe in der Mitte
+  shard(cx + 3, 26, 4);
+  // Funken am Kern
+  ctx.fillStyle = kern;
+  for (const [sx, sy] of [[cx, 12], [cx + 9, 20], [cx - 8, 24]]) ctx.fillRect(sx - 0.5, sy, 1.5, 1.5);
+}
 function poly(ctx: Ctx, pts: number[][], c: string): void {
   ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
   for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
