@@ -198,8 +198,8 @@ export class DieStelen extends Phaser.Scene {
     if (this.atmosT <= 0) { this.atmosT = 8 + Math.random() * 10; this.sfx.play(Math.random() < 0.5 ? 'kraehen' : 'krypta_grusel1', 0.4); }
     if (this.geloest && this.exit.offen && Math.hypot((this.exit.tx * TILE + 16) - this.px, (this.exit.ty * TILE + 16) - this.py) < 28) {
       this.exit.offen = false;
-      this.zeigeMeldung('Du steigst tiefer hinab...');
-      this.time.delayedCall(700, () => this.scene.start('DieSchwelle'));
+      this.zeigeMeldung('Eine weitere Kammer öffnet sich...');
+      this.time.delayedCall(700, () => this.scene.start('PlattenPfad'));
     }
   }
 
