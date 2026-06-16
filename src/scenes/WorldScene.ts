@@ -5512,7 +5512,10 @@ export class WorldScene extends CombatScene {
     const cam = this.cameras.main;
     cam.postFX.clear();
     if (!an) return;
-    cam.postFX.addBloom(0xffffff, 1, 1, 0.7, 0.45, 4);
+    // Runde 42: deutlich kräftigeres Leuchten (Autorkritik "Leuchten = immer
+    // aus, ich sehe keine Effekte") - Fackeln, Feuer und Zauber glühen jetzt
+    // sichtbar. blurStrength 0,7->1,0, strength 0,45->1,1, steps 4->6.
+    cam.postFX.addBloom(0xffffff, 1, 1, 1.0, 1.1, 6);
   }
 
   private onResize(): void {
