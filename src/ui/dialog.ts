@@ -127,7 +127,12 @@ export class DialogUI {
       }).setInteractive({ useHandCursor: true });
       b.on('pointerover', () => b.setColor('#c9a227'));
       b.on('pointerout', () => b.setColor('#d8cfb8'));
-      b.on('pointerdown', () => {
+      b.on('pointerdown', (_p: Phaser.Input.Pointer, _lx: number, _ly: number, ev?: Phaser.Types.Input.EventData) => {
+        // WICHTIG (Autorbug R42): Der Klick darf NICHT an den Welt-Handler
+        // durchschlagen, sonst schwingt der Held mit dem Schwert. Da close()
+        // den Container zerstört, findet der Welt-Klick-Schutz danach kein
+        // UI-Element mehr - also hier die Weitergabe stoppen.
+        ev?.stopPropagation();
         if (ch.fn) {
           // Auswahl übernimmt die Steuerung (z. B. Shop öffnen, Ende wählen)
           this.queue = [];
