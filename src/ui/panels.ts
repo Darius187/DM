@@ -53,7 +53,8 @@ export class UIPanels {
   // Tab-Fenster (Runde 31): Album und Statistik wohnen mit im Fenster
   getAlbumZeilen: (() => Array<[string, string]>) | null = null;
   getStatistikZeilen: (() => Array<[string, string]>) | null = null;
-  private hauptTab: 'held' | 'faehigkeiten' | 'aufgaben' | 'album' | 'statistik' = 'held';
+  getKontakteZeilen: (() => Array<[string, string]>) | null = null;
+  private hauptTab: 'held' | 'faehigkeiten' | 'aufgaben' | 'album' | 'statistik' | 'kontakte' = 'held';
 
   // Fenster direkt auf einem Reiter öffnen (B = Album)
   openTab(tab: 'held' | 'album' | 'statistik'): void {
@@ -160,7 +161,7 @@ export class UIPanels {
     // damit der Charakter-Tab nicht mehr überladen ist und nichts überlappt)
     const reiter: Array<[typeof this.hauptTab, string]> = [
       ['held', 'CHARAKTER'], ['faehigkeiten', 'FÄHIGKEITEN'], ['aufgaben', 'AUFGABEN'],
-      ['album', 'ALBUM'], ['statistik', 'STATISTIK'],
+      ['kontakte', 'KONTAKTE'], ['album', 'ALBUM'], ['statistik', 'STATISTIK'],
     ];
     let rx = 14;
     for (const [id, lbl] of reiter) {
@@ -191,7 +192,10 @@ export class UIPanels {
     } else if (this.hauptTab === 'aufgaben') {
       this.buildTasksTab(inhalt, w, h - 62);
     } else {
-      const zeilen = (this.hauptTab === 'album' ? this.getAlbumZeilen?.() : this.getStatistikZeilen?.()) ?? [['Keine Daten.', '#6a5f4c']];
+      const quelle = this.hauptTab === 'album' ? this.getAlbumZeilen
+        : this.hauptTab === 'kontakte' ? this.getKontakteZeilen
+        : this.getStatistikZeilen;
+      const zeilen = quelle?.() ?? [['Keine Daten.', '#6a5f4c']];
       let zy = 8;
       for (const [text, col] of zeilen) {
         if (text) inhalt.add(this.scene.add.text(18, zy, text, { fontFamily: 'serif', fontSize: '13px', color: col }));

@@ -18,7 +18,7 @@ import { HeldEditor } from '../ui/heldEditor';
 import { heldTier } from '../data/helden';
 import { drawWirtin, drawTaverne, drawHaus } from '../gfx/npcArt';
 import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
-import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, VOLK, SMALLTALK, type DlgPage } from '../data/dialoge';
+import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, VOLK, SMALLTALK, KONTAKT_ANGEBOT, type DlgPage } from '../data/dialoge';
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER } from '../data/crafting';
@@ -244,6 +244,7 @@ export class WorldScene extends CombatScene {
     this.panels.getJournal = () => this.journalLines();
     this.panels.getAlbumZeilen = () => this.albumZeilen();
     this.panels.getStatistikZeilen = () => this.statistikZeilen();
+    this.panels.getKontakteZeilen = () => this.kontakteZeilen();
     this.shop = new ShopUI(this, this.provider, this.sfx, () => this.p);
     this.shop.rabatt = () => this.wohlstand() * 0.05;
     this.stash = new StashUI(this, this.sfx, () => this.p, () => this.lager);
@@ -3017,9 +3018,34 @@ export class WorldScene extends CombatScene {
 
   // --- NPC-Gespräche (Texte aus src/data/dialoge.ts) -------------------------
 
+  // Kontakt-Protokoll (Runde 42): merkt sich, mit wem gesprochen wurde und
+  // was derjenige anbietet - für den neuen KONTAKTE-Reiter im Charakterfenster.
+  private kontakte: Array<{ id: string; name: string; angebot: string }> = [];
+
+  private merkeKontakt(id: string, name: string): void {
+    if (this.kontakte.some((k) => k.id === id)) return;
+    this.kontakte.push({ id, name, angebot: KONTAKT_ANGEBOT[id] ?? 'Neuigkeiten aus dem Dorf' });
+  }
+
+  kontakteZeilen(): Array<[string, string]> {
+    const zeilen: Array<[string, string]> = [];
+    zeilen.push([`BEGEGNUNGEN (${this.kontakte.length})`, '#c9a227']);
+    if (!this.kontakte.length) {
+      zeilen.push(['Du hast noch mit niemandem gesprochen.', '#6a5f4c']);
+      zeilen.push(['Sprich die Leute von Ravensmoor an (Taste E).', '#6a5f4c']);
+      return zeilen;
+    }
+    for (const k of this.kontakte) {
+      zeilen.push([k.name, '#d8cfb8']);
+      zeilen.push([`   ${k.angebot}`, '#9a8c6e']);
+    }
+    return zeilen;
+  }
+
   private talkTo(id: string): void {
     const npc = this.npcEnts.find((n) => n.id === id);
     if (!npc) return;
+    this.merkeKontakt(id, npc.name);
     switch (id) {
       case 'johannes': this.talkJohannes(); break;
       case 'heinrich': this.talkHeinrich(); break;

@@ -316,3 +316,28 @@ export const SMALLTALK = {
     'Wenn die wiederkommen, stehe ich mit der Mistgabel bereit. Hinter Euch, versteht sich.',
   ],
 } as const;
+
+// Kontakt-Protokoll (Runde 42): kurzer Vermerk je NPC, WAS er anbietet -
+// gespeist aus den tatsächlichen Läden/Diensten. Wer hier fehlt, gilt als
+// einfacher Dörfler ('Neuigkeiten aus dem Dorf').
+export const KONTAKT_ANGEBOT: Record<string, string> = {
+  schmied: 'Schmiede: Waffen, Rüstung & Werkzeug',
+  haendler: 'Händler: allerlei Waren',
+  mueller: 'Mühle: Mehl & Korn',
+  bauer1: 'Bauernhof: Lebensmittel, kauft Beute an',
+  bauer2: 'Bauernhof: Lebensmittel, kauft Beute an',
+  bader: 'Bader: Tränke & volle Heilung',
+  magdalena: 'Kräuterkundige: Tränke & Rat',
+  heinrich: 'Auftrag um seine Tochter; einfache Waren',
+  johannes: 'Pater: Segen & Beistand',
+  schulze: 'Dorfvorsteher: Belange des Dorfes',
+  landherr: 'Auftraggeber des Helden',
+  fischer: 'Fischerhütte: Fisch',
+  imker: 'Imkerei: Honig & Met',
+  weberin: 'Weberei: Tuch & Garn (kauft an)',
+  gerber: 'Gerberei: Leder (kauft an)',
+  hebamme: 'Hebamme: Heilkräuter',
+  schaefer: 'Schafweide: Wolle',
+  koehler: 'Köhler: Kohle & Holz (kauft an)',
+  kuester: 'Küster: Unterricht (Erfahrung)',
+};
