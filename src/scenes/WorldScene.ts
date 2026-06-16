@@ -138,6 +138,8 @@ export class WorldScene extends CombatScene {
   private einfallText!: Phaser.GameObjects.Text;
   private bossBlut: BloodFlow[] = [];           // Blut-Apokalypse im Bossraum (Runde 41)
   private bossBlutBoden: Phaser.GameObjects.Graphics | null = null;
+  private bossLeichen: Array<{ g: Phaser.GameObjects.Graphics; x: number; y: number; ph: number }> = [];
+  private bossTorZu = false;                     // Eingangstor hinter dem Helden versiegelt
   private deathOverlay: Phaser.GameObjects.Container | null = null;
 
   constructor() {
@@ -1414,9 +1416,44 @@ export class WorldScene extends CombatScene {
     g.fillStyle(0x3a0808, 0.32); g.fillRect(3 * T, 4 * T, 28 * T, 50 * T);
     this.bossBlutBoden = g;
     blut(16 * T + 16, 9 * T + 16, 7 * T, 5 * T, 'font');     // Becken am Grab
-    blut(16 * T + 16, 27 * T + 16, 24 * T, 6 * T, 'river');  // Strom durch die Halle
-    for (const [tx, ty] of [[8, 33], [24, 32], [16, 45]] as Array<[number, number]>) blut(tx * T + 16, ty * T + 16, 110, 64, 'trickle');
-    for (const [tx, ty] of [[8, 44], [24, 44], [16, 48], [10, 12], [22, 13], [8, 20], [24, 20], [16, 40], [6, 50], [27, 50]] as Array<[number, number]>) blut(tx * T + 16, ty * T + 16, 70, 52, 'drip');
+    blut(16 * T + 16, 27 * T + 16, 26 * T, 8 * T, 'river');  // Strom durch die Halle
+    // Der breite BLUTSTROM im Vorhof (Eingang): hier watet man hindurch,
+    // Tote treiben darin (Autorwunsch: 3-4x breit, ein echter Fluss).
+    blut(16 * T + 16, 46 * T + 16, 27 * T, 13 * T, 'river');
+    this.baueSchwimmendeTote();
+    for (const [tx, ty] of [[8, 33], [24, 32]] as Array<[number, number]>) blut(tx * T + 16, ty * T + 16, 110, 64, 'trickle');
+    for (const [tx, ty] of [[10, 12], [22, 13], [8, 20], [24, 20], [16, 40]] as Array<[number, number]>) blut(tx * T + 16, ty * T + 16, 70, 52, 'drip');
+  }
+
+  // Tote/Untote treiben im Blutstrom des Vorhofs - bleiche Leiber, halb
+  // versunken, sie heben und senken sich träge (Runde 41).
+  private baueSchwimmendeTote(): void {
+    const T = TILE;
+    for (const [tx, ty] of [[7, 48], [12, 50], [20, 49], [25, 47], [9, 44], [22, 45], [14, 47], [18, 51], [16, 42]] as Array<[number, number]>) {
+      const g = this.add.graphics().setDepth(-8.5);
+      this.bossLeichen.push({ g, x: tx * T + 16, y: ty * T + 16, ph: Math.random() * 6.283 });
+    }
+  }
+
+  private zeichneSchwimmendeTote(time: number): void {
+    const t = time / 1000;
+    for (const l of this.bossLeichen) {
+      const g = l.g; g.clear();
+      const heb = Math.sin(t * 0.8 + l.ph) * 2.2;          // träges Heben/Senken
+      const dreh = Math.sin(t * 0.3 + l.ph) * 0.12;
+      const cx = l.x, cy = l.y + heb;
+      const dx = Math.cos(dreh), dy = Math.sin(dreh);
+      // Rumpf (bleich, halb im Blut versunken)
+      g.fillStyle(0x9a8f7a, 0.85);
+      g.fillEllipse(cx, cy, 22, 11);
+      g.fillStyle(0xb7ac96, 0.9); g.fillEllipse(cx - dx * 9, cy - dy * 9, 7, 7);     // Kopf
+      // Arme treiben seitlich
+      g.fillStyle(0x9a8f7a, 0.7);
+      g.fillEllipse(cx + dy * 10, cy - dx * 10, 9, 4);
+      g.fillEllipse(cx - dy * 10, cy + dx * 10, 9, 4);
+      // blutiger Saum, wo der Körper eintaucht
+      g.fillStyle(0x5a0c0c, 0.55); g.fillEllipse(cx, cy + 3, 24, 7);
+    }
   }
 
   private talkLandherr(): void {
@@ -1468,6 +1505,9 @@ export class WorldScene extends CombatScene {
     for (const b of this.bossBlut) b.destroy();
     this.bossBlut = [];
     this.bossBlutBoden?.destroy(); this.bossBlutBoden = null;
+    for (const l of this.bossLeichen) l.g.destroy();
+    this.bossLeichen = [];
+    this.bossTorZu = false;
     // Bilder hängen in tileImages (oben zerstört) - nur die Listen leeren
     this.hausAnimEnts = [];
     this.hausNachtEnts = [];
@@ -3743,8 +3783,9 @@ export class WorldScene extends CombatScene {
           // dieselbe Treppe normal in die Krypta.
           if (id === 'kirchenschiff' && !this.flags.prologGesehen) this.starteProlog('crypt1', 'Treppenabstieg', { weiter: 'KammerDerFinsternis' });
           else if (id === 'kirchenschiff') this.goArea('crypt1');
-          // Letzter Abstieg vor dem Boss = der Blutstrom-Gang (einmalig).
-          else if (id === 'crypt5' && !this.flags.blutstromGesehen) { this.flags.blutstromGesehen = true; this.starteProlog('boss', 'BlutstromGang'); }
+          // Letzter Abstieg vor dem Boss: direkt in die Boss-Arena - ihr
+          // Vorhof IST der Blutstrom (man watet mit der echten Waffe hindurch,
+          // nahtlos, dann fällt das Tor hinter einem zu). Runde 41.
           else if (id === 'crypt5') this.goArea('boss');
           else if (id === 'boss') this.goArea('crypt6');
           else if (id.startsWith('crypt')) this.goArea(`crypt${parseInt(id.replace('crypt', ''), 10) + 1}`);
@@ -3753,6 +3794,11 @@ export class WorldScene extends CombatScene {
     }
     if (tid === T.STAIRUP) {
       const idU = this.area.id;
+      // Boss-Arena: der Rückweg ist versiegelt, solange der Templer lebt und das
+      // Tor hinter dir zugefallen ist (Runde 41).
+      if (idU === 'boss' && this.bossTorZu && this.bossKampfSteht()) {
+        return { text: 'Das Tor ist versiegelt - bis der Templer fällt.', action: () => { this.logMsg('Das Tor gibt nicht nach. Erst muss der Templer fallen.', 'bad'); this.sfx.play('fehler'); } };
+      }
       const zielAuf = idU === 'crypt1' ? 'Kirche St. Marien'
         : idU === 'boss' ? 'Ebene 5'
         : idU === 'crypt6' ? 'Grab des Kreuzritters'
@@ -5400,6 +5446,14 @@ export class WorldScene extends CombatScene {
     if (this.area.id === 'boss') {
       this.updateBossKampf();
       for (const b of this.bossBlut) b.update(this.time.now, delta);
+      this.zeichneSchwimmendeTote(this.time.now);
+      // Das Tor fällt hinter dem Helden zu, sobald er den Blutstrom durchquert
+      // hat und der Kampf steht - kein Zurück, bis der Templer fällt (Runde 41).
+      if (!this.bossTorZu && this.bossKampfSteht() && this.py < 40 * TILE) {
+        this.bossTorZu = true;
+        this.logMsg('Hinter dir mahlt das Tor zu. Kein Zurück - bis der Templer fällt.', 'bad');
+        this.sfx.play('tuer'); this.shake(8);
+      }
     }
     // Regen-Klang: draußen rauscht es, in der Stube gedämpft (Runde 12)
     if (this.regnet && !this.area.dark) {
