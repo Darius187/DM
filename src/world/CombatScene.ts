@@ -32,7 +32,7 @@ import { mausLeisteAnkerX, tastenLeisteMitteX, orbHpAnkerX, orbMpAnkerX } from '
 import { TouchControls, isTouchDevice, type TouchHost } from '../ui/touch';
 import { UIPanels } from '../ui/panels';
 import { rollGear, rollGem } from '../logic/loot';
-import { KILL_DROPS } from '../data/items';
+import { KILL_DROPS, LEECH_HEAL_PER_POINT } from '../data/items';
 import { NOTIZEN } from '../data/texte';
 
 export interface Projectile {
@@ -58,6 +58,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   pdir = 0; // Blickwinkel (rad)
   pstep = 0;
   private pstepT = 0;
+  private leechCarry = 0;   // gesammelte Lebensraub-Bruchteile (Runde 42)
   playerSprite!: Phaser.GameObjects.Sprite;
   playerHitFlash = 0;
   playerDead = false;
@@ -824,7 +825,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const depth = this.areaDepth();
     // Beute-Menge (Runde 21, F10): skaliert alle Drop-Chancen außer Gold
     const rate = TUNING.beuteRate;
-    const g = 2 + Math.floor(Math.random() * 6) + depth * KILL_DROPS.goldPerDepth;
+    const g = KILL_DROPS.goldMin + Math.floor(Math.random() * (KILL_DROPS.goldMax - KILL_DROPS.goldMin + 1)) + depth * KILL_DROPS.goldPerDepth;
     this.pickups.add({ kind: 'gold', amt: g, x: e.x + rndOff(8), y: e.y + rndOff(8), bob: Math.random() * 6 });
     if (Math.random() < KILL_DROPS.potionChance * rate) this.pickups.add({ kind: 'potion', x: e.x + rndOff(12), y: e.y + rndOff(12), bob: Math.random() * 6 });
     if (Math.random() < KILL_DROPS.mpotionChance * rate) this.pickups.add({ kind: 'mpotion', x: e.x + rndOff(12), y: e.y + rndOff(12), bob: Math.random() * 6 });
@@ -1268,7 +1269,16 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Treffer-Spritzer: Blut bei Fleisch, Knochenstaub bei Skeletten (Runde 34)
     this.fx.burst(e.x, e.y, (e.type === 'skelett' || e.type === 'schuetze') ? 0xcfc4a8 : 0xa82020, 6, 120);
     this.playHitSound(e);
-    if (this.p.stats.leech) this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + this.p.stats.leech);
+    // Lebensraub: nur ein Bruchteil je Punkt und Treffer (Runde 42), Bruchteile
+    // werden gesammelt und als ganze HP gutgeschrieben - kein Voll-Heilen mehr.
+    if (this.p.stats.leech && this.p.hp < this.p.stats.maxhp) {
+      this.leechCarry += this.p.stats.leech * LEECH_HEAL_PER_POINT;
+      if (this.leechCarry >= 1) {
+        const heal = Math.floor(this.leechCarry);
+        this.leechCarry -= heal;
+        this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + heal);
+      }
+    }
     // Nahkampf-Schule steigt nur mit Nahkampf-Treffern
     if (melee) this.gainSchoolUse('nahkampf');
     if (e.hp <= 0) this.killEnemy(e);
@@ -2599,9 +2609,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // TORSO/Bauch zum Helden hin - tief genug, dass Kopf und Gesicht frei bleiben.
     for (const e of this.enemies) {
       if (!e.schild || e.versteckt || e.hp <= 0) continue;
+      // Das Schild MUSS mit dem Wippen der Figur mitgehen (Autorkritik Runde 42:
+      // "Schild hängt in der Luft"). Dasselbe Lauf-Wippen wie der Sprite (oben).
+      const wob = Math.sin(e.wobble) * 1.5;
       const ang = Math.atan2(this.py - e.y, this.px - e.x);
       const cx = e.x + Math.cos(ang) * (e.r * 0.4);
-      const cy = e.y + Math.sin(ang) * (e.r * 0.4) + e.r * 0.18; // tiefer = Bauchhöhe
+      const cy = e.y + wob + Math.sin(ang) * (e.r * 0.4) + e.r * 0.18; // tiefer = Bauchhöhe, wippt mit
       const hw = Math.max(6, e.r * 0.58);
       const top = cy - e.r * 0.42, mid = cy + e.r * 0.12, bot = cy + e.r * 0.62;
       const pts = [{ x: cx - hw, y: top }, { x: cx + hw, y: top }, { x: cx + hw, y: mid }, { x: cx, y: bot }, { x: cx - hw, y: mid }];
