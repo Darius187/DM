@@ -8,6 +8,7 @@ import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, bui
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
+import { NebelFratzen } from '../systems/NebelFratzen';
 import { LANDHERR } from '../data/dialoge';
 import storyJson from '../data/story.json';
 import { ShopUI } from '../ui/shop';
@@ -145,6 +146,7 @@ export class WorldScene extends CombatScene {
   private bossBlutBoden: Phaser.GameObjects.Graphics | null = null;
   private bossLeichen: Array<{ g: Phaser.GameObjects.Graphics; x: number; y: number; ph: number }> = [];
   private bossTorZu = false;                     // Eingangstor hinter dem Helden versiegelt
+  private bossNebel: NebelFratzen | null = null; // Fratzen-Nebel über dem Blutstrom (Runde 41)
   private kadaver: Kadaver[] = [];               // gerissene Tiere - Monster fressen daran (Runde 41)
   private deathOverlay: Phaser.GameObjects.Container | null = null;
 
@@ -1429,6 +1431,10 @@ export class WorldScene extends CombatScene {
     this.baueSchwimmendeTote();
     for (const [tx, ty] of [[8, 33], [24, 32]] as Array<[number, number]>) blut(tx * T + 16, ty * T + 16, 110, 64, 'trickle');
     for (const [tx, ty] of [[10, 12], [22, 13], [8, 20], [24, 20], [16, 40]] as Array<[number, number]>) blut(tx * T + 16, ty * T + 16, 70, 52, 'drip');
+    // Über dem ganzen Strom wabert der Fratzen-Nebel (Autorwunsch Runde 41):
+    // kaum sichtbare Gesichter steigen aus dem Blut, dichter über dem Vorhof.
+    this.bossNebel = new NebelFratzen(this, { x: 3 * T, y: 4 * T, w: 28 * T, h: 50 * T },
+      { anzahl: 13, depth: 1900, maxAlpha: 0.42 });
   }
 
   // Tote/Untote treiben im Blutstrom des Vorhofs - bleiche Leiber, halb
@@ -1511,6 +1517,7 @@ export class WorldScene extends CombatScene {
     for (const b of this.bossBlut) b.destroy();
     this.bossBlut = [];
     this.bossBlutBoden?.destroy(); this.bossBlutBoden = null;
+    this.bossNebel?.destroy(); this.bossNebel = null;
     for (const l of this.bossLeichen) l.g.destroy();
     this.bossLeichen = [];
     this.bossTorZu = false;
