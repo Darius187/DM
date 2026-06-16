@@ -125,7 +125,7 @@ export class BootScene extends Phaser.Scene {
     // erst dann ins Menü - sonst rendert das Dorf einmal mit alten Tiles
     // Prolog-Direkteinstieg zum Testen: ?prolog=kammer startet die Angst-Ebene
     const prolog = new URLSearchParams(location.search).get('prolog');
-    const ziel = prolog === 'kammer' || prolog === '1' ? 'KammerDerFinsternis' : 'Title';
+    const ziel = prolog === 'schwelle' ? 'DieSchwelle' : prolog === 'kammer' || prolog === '1' ? 'KammerDerFinsternis' : 'Title';
     void this.wendeEigeneTilesAn().then(() => this.scene.start(ziel));
   }
 
