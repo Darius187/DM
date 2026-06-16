@@ -133,6 +133,9 @@ export class Enemy {
   rolle: 'front' | 'flanke' = 'front';
   champion = false;
   versteckt = false;
+  // Jagd-Ziel (Runde 40, großer Einfall): Position eines Tieres/Bewohners, dem
+  // der Gegner hinterherrennt statt den Spieler zu suchen. null = normale KI.
+  jagdZiel: { x: number; y: number } | null = null;
   // Schildträger (Runde 11): blockt Treffer von vorn, weicht nicht zurück
   schild = false;
   // Kampfbewusst (Runde 38): Monster gehen kurz in Deckung und parieren statt
@@ -271,6 +274,15 @@ export class Enemy {
       return;
     }
 
+    // Jagd auf Tier/Bewohner (Runde 40, großer Einfall): rennt stur zum Ziel,
+    // statt den Spieler zu suchen. Das Reißen erledigt das Skript in der Szene.
+    if (this.jagdZiel) {
+      const a2 = Math.atan2(this.jagdZiel.y - this.y, this.jagdZiel.x - this.x);
+      this.dir = angleToDir(a2);
+      this.laufe(host, a2, this.speed, dt);
+      this.advanceStep(dt);
+      return;
+    }
     if (this.boss) {
       this.bossAI(host, dt, d);
       return;

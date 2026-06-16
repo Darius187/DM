@@ -63,6 +63,7 @@ interface NpcEntity extends NpcSpawn {
   curX: number;
   curY: number;
   arbeitT?: number; // Takt des sichtbaren Tagwerks (Runde 16)
+  imHaus?: boolean; // beim großen Einfall: ins Gemeindehaus geflüchtet (Runde 40)
 }
 
 interface AnimalEntity extends AnimalSpawn {
@@ -112,6 +113,7 @@ export class WorldScene extends CombatScene {
   // Jeder 3. Einfall ist eine Belagerung (Runde 28, statt Kalendertag %7)
   private einfallZaehler = 0;
   private einfallAktiv = false;
+  private grosserEinfall = false; // der erste, dramatische Einfall nach dem Boss-Sieg (Runde 40)
   // Belagerung (Runde 16): Breschen in der Palisade + Gegner überleben
   // den Blick ins Gemeindehaus
   private breschen: Array<{ x: number; y: number }> = [];
@@ -199,6 +201,7 @@ export class WorldScene extends CombatScene {
     this.letzterEinfallTag = 0;
     this.einfallZaehler = 0;
     this.einfallAktiv = false;
+    this.grosserEinfall = false;
     this.tagwerke = {};
     this.dorfkasse = 0;
     this.breschen = [];
@@ -2567,6 +2570,106 @@ export class WorldScene extends CombatScene {
     this.shake(6);
   }
 
+  // Fluchtpunkt der Bewohner beim großen Einfall: vor dem Gemeindehaus (Tür 51,25)
+  private fluchtpunkt = { x: 51 * TILE + 16, y: 26 * TILE + 16 };
+
+  // Der GROSSE Einfall (Runde 40, Autorwunsch): der dramatische Sturm direkt nach
+  // dem Boss-Sieg. Eine Heerschar bricht herein, reißt das Vieh, jagt die
+  // Bewohner - Chaos und Panik, das Dorf muss verteidigt werden. Danach geht die
+  // Geschichte weiter (der Boss hatte das Relikt nicht, der Krieg hat begonnen).
+  private startGrosserEinfall(): void {
+    this.einfallAktiv = true;
+    this.grosserEinfall = true;
+    this.letzterEinfallTag = this.tag;
+    for (const n of this.npcEnts) n.imHaus = false; // alle fliehen erst noch
+    const punkte = [
+      { x: 3.5, y: 30.5 }, { x: 88, y: 30.5 }, { x: 20, y: 3.5 }, { x: 70, y: 3.5 },
+      { x: 20, y: 56 }, { x: 70, y: 56 }, { x: 3.5, y: 15 }, { x: 88, y: 45 },
+      { x: 46, y: 3.5 }, { x: 46, y: 56 }, { x: 3.5, y: 45 }, { x: 88, y: 15 },
+    ];
+    const typen = ['skelett', 'pest', 'wolf', 'lebender_toter', 'schatten'] as const;
+    // Räuber NAHE einem Tier/Bewohner einsetzen, damit sie sofort darüber
+    // herfallen (das Vieh steht in Gattern am Dorfrand - vom fernen Kartenrand
+    // kämen sie nie an).
+    const beute = [
+      ...this.animalEnts.map((t) => ({ x: t.curX, y: t.curY })),
+      ...this.npcEnts.filter((n) => !n.kaempfer).map((n) => ({ x: n.curX, y: n.curY })),
+    ];
+    const beuteSpawn = (): { x: number; y: number } => {
+      if (beute.length) {
+        const z = beute[Math.floor(Math.random() * beute.length)];
+        for (let t = 0; t < 16; t++) {
+          const ang = Math.random() * 6.283, r = 70 + Math.random() * 70;
+          const px = z.x + Math.cos(ang) * r, py = z.y + Math.sin(ang) * r;
+          if (!this.isSolidAt(px, py) && Math.hypot(px - this.px, py - this.py) > 90) return { x: px, y: py };
+        }
+        return { x: z.x, y: z.y - 60 };
+      }
+      return { x: 46 * TILE, y: 22 * TILE };
+    };
+    for (let i = 0; i < 32; i++) {
+      const raeuber = i % 2 === 0;
+      const pos = raeuber ? beuteSpawn() : (() => { const p0 = punkte[i % punkte.length]; return { x: p0.x * TILE + (Math.random() - 0.5) * 70, y: p0.y * TILE + (Math.random() - 0.5) * 70 }; })();
+      const e = this.spawnEnemy(pick(this.rng, typen), EINFALL.tiefe + 1, pos.x, pos.y, this.rng.random() < 0.18);
+      e.aggro = 5000;
+      // Räuber (jagdZiel markiert sie) reißen Vieh und verschleppen Bewohner,
+      // statt nur den Helden zu suchen - und sind flinker als die fliehende Beute.
+      if (raeuber) { e.jagdZiel = { x: e.x, y: e.y }; e.speed *= 1.4; }
+    }
+    const champ = this.spawnEnemy('schatten', EINFALL.tiefe + 2, 46 * TILE, 5 * TILE, true);
+    champ.champion = true;
+    champ.name = 'Vorbote des Krieges';
+    champ.maxhp = Math.round(champ.maxhp * 3);
+    champ.hp = champ.maxhp;
+    champ.dmg = Math.round(champ.dmg * 1.4);
+    champ.r = Math.round(champ.r * 1.2);
+    champ.aggro = 5000;
+    champ.sprite?.setScale(1.6);
+    this.sfx.playMusic('musik_einfall');
+    this.logMsg('DIE GRÄBER ÖFFNEN SICH - eine Heerschar bricht über Ravensmoor herein!', 'bad');
+    this.logMsg('VERTEIDIGE RAVENSMOOR! Beschütze Bewohner und Vieh!', 'gold');
+    this.chronik('geschichte', 'Der Sturm auf Ravensmoor - die Toten erheben sich zum Krieg.');
+    this.sfx.play('templer_stimme');
+    this.shake(12);
+  }
+
+  // Chaos-Schicht des großen Einfalls (Runde 40): Räuber-Monster jagen das
+  // nächste lebende Vieh oder einen fliehenden Bewohner. Vieh wird gerissen
+  // (verschwindet), erwischte Bewohner werden verschleppt (kehren beim nächsten
+  // Besuch wieder - kein dauerhafter Verlust, der Spieler soll sie aber schützen).
+  private aktualisiereChaos(_dt: number): void {
+    for (const e of this.enemies) {
+      if (e.hp <= 0 || !e.jagdZiel) continue; // nur lebende Räuber
+      let bx = 0, by = 0, bd = 1e9, tier: AnimalEntity | null = null, npc: NpcEntity | null = null;
+      for (const t of this.animalEnts) {
+        const d = Math.hypot(t.curX - e.x, t.curY - e.y);
+        if (d < bd) { bd = d; bx = t.curX; by = t.curY; tier = t; npc = null; }
+      }
+      for (const n of this.npcEnts) {
+        if (n.imHaus || n.kaempfer || !n.sprite.visible) continue;
+        const d = Math.hypot(n.curX - e.x, n.curY - e.y);
+        if (d < bd) { bd = d; bx = n.curX; by = n.curY; npc = n; tier = null; }
+      }
+      if (tier === null && npc === null) { e.jagdZiel = null; continue; } // nichts mehr -> Held
+      e.jagdZiel = { x: bx, y: by };
+      // großzügige Reichweite (durch dünne Gatterzäune hindurch erreichen sie
+      // das Vieh; Bewohner etwas enger)
+      if (bd < (tier ? 42 : 28)) {
+        if (tier) {
+          this.fx.burst(tier.curX, tier.curY, 0x7a1010, 12, 90);
+          this.sfx.play(tier.type, 0.4);
+          tier.sprite.destroy();
+          this.animalEnts.splice(this.animalEnts.indexOf(tier), 1);
+          e.atkCd = Math.max(e.atkCd, 1.2); // kurz fressen
+        } else if (npc) {
+          this.fx.burst(npc.curX, npc.curY, 0x7a1010, 8, 70);
+          npc.imHaus = true; // verschleppt/in Sicherheit - verschwindet
+          e.jagdZiel = null;  // sucht sich neue Beute / den Helden
+        }
+      }
+    }
+  }
+
   // --- Kopfgeld am Anschlagbrett (Feedback-Runde 6) --------------------------
 
   private kopfgeld: { tag: number; ebene: number; erledigt: boolean } | null = null;
@@ -3721,13 +3824,46 @@ export class WorldScene extends CombatScene {
     // Einfall abgewehrt: Belohnung der Dörfler, sobald der letzte Angreifer fällt
     if (this.einfallAktiv && this.area.id === 'village' && this.enemies.length === 0) {
       this.einfallAktiv = false;
-      const gold = EINFALL.belohnungGold + this.tag * EINFALL.belohnungGoldProTag;
-      this.p.gold += gold;
-      this.p.materials.holz += 2;
-      this.logMsg(`Ravensmoor ist verteidigt! Die Dörfler sammeln ${gold} Gold und 2 Holz für dich.`, 'gold');
-      this.sfx.play('muenzen');
       if (this.sfx.aktuelleMusik() === 'musik_einfall') this.sfx.stopMusic();
+      if (this.grosserEinfall) {
+        // Der große Sturm ist abgewehrt - jetzt geht die Geschichte weiter
+        this.grosserEinfall = false;
+        this.flags.kriegBegonnen = true; // Quest-/Story-Zustand SOFORT setzen (zuverlässig)
+        for (const e of this.enemies) e.jagdZiel = null;
+        for (const n of this.npcEnts) n.imHaus = false; // die Überlebenden kehren zurück
+        this.logMsg('Der letzte Angreifer fällt. Ravensmoor steht noch - fürs Erste.', 'gold');
+        this.sfx.play('muenzen');
+        this.shake(3);
+        this.time.delayedCall(2800, () => this.zeigeKriegsEroeffnung()); // dramatische Enthüllung
+      } else {
+        const gold = EINFALL.belohnungGold + this.tag * EINFALL.belohnungGoldProTag;
+        this.p.gold += gold;
+        this.p.materials.holz += 2;
+        this.logMsg(`Ravensmoor ist verteidigt! Die Dörfler sammeln ${gold} Gold und 2 Holz für dich.`, 'gold');
+        this.sfx.play('muenzen');
+      }
     }
+  }
+
+  // Die Geschichte geht weiter (Runde 40, Autorwunsch): nach dem ersten Sturm
+  // enthüllt sich, dass der Tempelritter nur der Anfang war - das Relikt war
+  // nicht bei ihm, der Krieg gegen die Lebenden hat begonnen, die Gräber öffnen
+  // sich. Setzt den neuen Auftrag.
+  private zeigeKriegsEroeffnung(): void {
+    if (this.area.id !== 'village') return;
+    this.flags.kriegBegonnen = true; // (bereits beim Sieg gesetzt - hier zur Sicherheit)
+    this.logMsg('Pater Johannes: »Der Tempelritter trug das Relikt gar nicht bei sich...«', 'magic');
+    this.chronik('geschichte', 'Pater Johannes: Der Tempelritter war nur ein Vorbote - das Relikt war nicht bei ihm.');
+    this.time.delayedCall(4200, () => {
+      if (this.area.id !== 'village') return;
+      this.logMsg('»...Im Sterben rief er den Krieg gegen die Lebenden aus. Überall im Land öffnen sich nun die Gräber.«', 'bad');
+      this.chronik('geschichte', 'Der Krieg gegen die Lebenden hat begonnen - die Gräber des Landes öffnen sich.');
+    });
+    this.time.delayedCall(8400, () => {
+      if (this.area.id !== 'village') return;
+      this.logMsg('Auftrag: Finde das WAHRE Relikt und halte die Toten auf, ehe der Krieg das Land verschlingt.', 'gold');
+      this.sfx.play('templer_stimme');
+    });
   }
 
   // --- Stadtportal als BLEIBENDES Portal-Paar (Runde 28) ----------------------
@@ -4064,6 +4200,7 @@ export class WorldScene extends CombatScene {
     if (f.rattenAktiv) out.push('· Erledige die Ratten im Lager der Mühle.');
     if (f.medaillonGenommen && !f.annaQuestFertig) out.push('· Bring Annas Medaillon zu Heinrich in die Taverne.');
     if (f.ngPlus && !f.ngPlusGeschafft) out.push('· Neues Spiel+: Im Grab des Kreuzritters wartet der Schattenfürst.');
+    if (f.kriegBegonnen) out.push('· Der Krieg hat begonnen - finde das WAHRE Relikt, ehe die Gräber das Land verschlingen.');
     out.push('— Holz: Bäume mit der Axt (3 Schläge) · Stein/Eisen: Spitzhacke');
     out.push('— Schmied: Waffen verbessern & Wiederaufbau · Magdalena: Tränke brauen');
     return out;
@@ -4763,8 +4900,11 @@ export class WorldScene extends CombatScene {
       && !this.einfallAktiv && !this.playerDead
       && (ersterSteht || this.tag - this.letzterEinfallTag > EINFALL.pauseTage)) {
       this.flags.ersterEinfallKam = true;
-      this.startEinfall();
+      if (ersterSteht) this.startGrosserEinfall(); // der dramatische Sturm nach dem Boss
+      else this.startEinfall();
     }
+    // Chaos beim großen Einfall: Monster reißen Vieh, jagen Bewohner (Runde 40)
+    if (this.grosserEinfall && this.einfallAktiv && !this.playerDead) this.aktualisiereChaos(dt);
     // NPCs: 2 Positionen je Tageszeit, sie gehen sichtbar dorthin.
     // Nachts schlafen sie in ihren Häusern - in den Stuben sieht man dann
     // die Familien. Beim Einfall fliehen alle Nicht-Kämpfer ins
@@ -4776,6 +4916,10 @@ export class WorldScene extends CombatScene {
         // erst nachts daheim - abends stehen sie noch sichtbar draußen
         // (Runde 14: sonst gab es sie kurzzeitig doppelt)
         sichtbar = n.nurAbends ? nacht : true;
+      } else if (this.grosserEinfall) {
+        // Großer Einfall (Runde 40): Nicht-Kämpfer fliehen SICHTBAR ins
+        // Gemeindehaus und sind erst dann sicher (imHaus). Kämpfer bleiben.
+        sichtbar = n.kaempfer ? true : !n.imHaus;
       } else if (this.einfallAktiv) {
         sichtbar = n.kaempfer === true;
       } else {
@@ -4787,16 +4931,20 @@ export class WorldScene extends CombatScene {
       // Tagesablauf: morgens Arbeit, mittags soziale Runde (Markt, Taverne,
       // Nachbarn), abends heimwärts (Runde 10)
       const mittagPhase = this.tageszeit >= 0.45 && this.tageszeit <= TAG.abendAb;
-      const ziel = abend && n.abend ? n.abend
+      const panik = this.grosserEinfall && !n.kaempfer && !n.imHaus;
+      const ziel = panik ? this.fluchtpunkt
+        : abend && n.abend ? n.abend
         : mittagPhase && n.mittag ? n.mittag
         : { x: n.x, y: n.y };
       const d = Math.hypot(ziel.x - n.curX, ziel.y - n.curY);
+      if (panik && d < 36) { n.imHaus = true; continue; } // im Gemeindehaus angekommen
       if (d > 4) {
         const a = Math.atan2(ziel.y - n.curY, ziel.x - n.curX);
         // Runde 17: Bewohner laufen NICHT mehr durch Gebäude - sie
-        // schieben sich achsenweise an Wänden entlang
-        const nx = n.curX + Math.cos(a) * 50 * dt;
-        const ny = n.curY + Math.sin(a) * 50 * dt;
+        // schieben sich achsenweise an Wänden entlang. Panik = schneller.
+        const tempo = panik ? 100 : 50;
+        const nx = n.curX + Math.cos(a) * tempo * dt;
+        const ny = n.curY + Math.sin(a) * tempo * dt;
         if (!this.isSolidAt(nx, n.curY)) n.curX = nx;
         if (!this.isSolidAt(n.curX, ny)) n.curY = ny;
         this.provider.applyFigure(n.sprite, n.figur ?? n.id, angleToDir(a), Math.floor(this.time.now / 140) % 4);
@@ -4822,6 +4970,25 @@ export class WorldScene extends CombatScene {
     for (const t of this.animalEnts) {
       t.pauseT -= dt;
       t.soundT -= dt;
+      // Panik beim großen Einfall (Runde 40): vom nächsten Monster wegrennen,
+      // auch aus dem Gatter heraus - die Räuber jagen hinterher und reißen sie.
+      if (this.grosserEinfall) {
+        let bd = 1e9; let bm: Enemy | null = null;
+        for (const e of this.enemies) { if (e.hp <= 0) continue; const d = Math.hypot(e.x - t.curX, e.y - t.curY); if (d < bd) { bd = d; bm = e; } }
+        if (bm && bd < 180) {
+          const a = Math.atan2(t.curY - bm.y, t.curX - bm.x); // weg vom Monster
+          const spd = t.type === 'huhn' ? 54 : t.type === 'hund' ? 58 : 42;
+          const nx = t.curX + Math.cos(a) * spd * dt, ny = t.curY + Math.sin(a) * spd * dt;
+          if (!this.isSolidAt(nx, t.curY)) t.curX = nx;
+          if (!this.isSolidAt(t.curX, ny)) t.curY = ny;
+          t.dir = Math.cos(a) < 0 ? 1 : 2;
+          t.stepT += dt; if (t.stepT > 0.11) { t.stepT = 0; t.step = (t.step + 1) % 4; }
+          if (t.soundT <= 0) { t.soundT = 1.4 + Math.random() * 2; if (Math.hypot(t.curX - this.px, t.curY - this.py) < 460) this.sfx.play(t.type, 0.6); }
+          this.provider.applyFigure(t.sprite, t.type, t.dir, t.step);
+          t.sprite.setPosition(t.curX, t.curY).setDepth(t.curY);
+          continue;
+        }
+      }
       if (t.soundT <= 0) {
         t.soundT = 6 + Math.random() * 14;
         const d = Math.hypot(t.curX - this.px, t.curY - this.py);
