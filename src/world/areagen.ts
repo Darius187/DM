@@ -6,6 +6,7 @@ import { CRYPT_THEMES, CRYPT_GEN, CHEST_VERFLUCHT, ALTAR_COUNT, CHESTS_PER_LEVEL
 import { MAX_SCRIPTED_SCARES } from '../data/enemies';
 import type { EnemyTypeId } from '../data/types';
 import { rnd, ri, pick, type Rng } from '../logic/rng';
+import { TUNING } from '../logic/tuning';
 import type { InnenraumDef, InnenMoebel } from '../data/innenraeume';
 
 export interface Pos { x: number; y: number }
@@ -449,7 +450,8 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
   if (n >= 4) types.push('schatten', 'schatten', 'skelett');
   for (const r of rooms) {
     if (r === start) continue;
-    const cnt = ri(rng, 1, 2) + Math.min(3, Math.ceil(n / 1.5));
+    // Anzahl je Raum, skaliert mit der Tiefe; gegnerDichte (F10) regelt sie
+    const cnt = Math.max(0, Math.round((ri(rng, 1, 2) + Math.min(3, Math.ceil(n / 1.5))) * TUNING.gegnerDichte));
     for (let i = 0; i < cnt; i++) {
       let ex = 0, ey = 0, tries = 0;
       do {

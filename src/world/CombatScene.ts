@@ -399,7 +399,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       merk = { ...merk, ...JSON.parse(localStorage.getItem('ravensmoor_devkasten') ?? '{}') };
     } catch { /* egal */ }
     const c = this.add.container(merk.x, merk.y).setScrollFactor(0).setDepth(6500);
-    const h = TUNING_ROWS.length * 29 + 96 + 186 + 78 + 128; // +78 Per-Typ, +88 Schalter, +40 Sprung-Reihe
+    const h = TUNING_ROWS.length * 29 + 96 + 186 + 78 + 156; // +78 Per-Typ, +116 Schalter (inkl. Unbesiegbar), +40 Sprung-Reihe
     // Bei kleinen Fenstern schrumpft der ganze Kasten, statt unten
     // abgeschnitten zu werden (Runde 29: Regler "nicht gefunden")
     c.setScale(Math.min(merk.s, Math.max(0.6, (this.scale.height - 60) / h)));
@@ -536,14 +536,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Dev-Teleport-Reihe (Runde 40): zu jeder Krypta-Ebene, zum Grab und in die
     // Stadt - zum Testen des Brücken-Prototyps ab Ebene 4 (E4/E5 hervorgehoben).
     // Eigene Sektion unten, damit nichts überlappt.
-    c.add(this.add.text(12, y + 202, 'SPRUNG (Brücken-Test ab E4):', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a', letterSpacing: 1 }));
+    c.add(this.add.text(12, y + 230, 'SPRUNG (Brücken-Test ab E4):', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a', letterSpacing: 1 }));
     const ziele: Array<[string, string]> = [
       ['E1', 'crypt1'], ['E2', 'crypt2'], ['E3', 'crypt3'], ['E4', 'crypt4'], ['E5', 'crypt5'], ['GRAB', 'boss'], ['STADT', 'village'],
     ];
     let txi = 12;
     for (const [lbl, id] of ziele) {
       const hervor = id === 'crypt4' || id === 'crypt5';
-      const b = this.add.text(txi, y + 218, lbl, {
+      const b = this.add.text(txi, y + 246, lbl, {
         fontFamily: 'serif', fontSize: '12px', color: hervor ? '#c9a227' : '#d8cfb8',
         backgroundColor: hervor ? '#2a2008' : '#221808', padding: { x: 6, y: 4 },
       }).setInteractive({ useHandCursor: true });
@@ -607,6 +607,19 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.logMsg(TUNING.sichtBegrenzung ? 'Sicht-Begrenzung an: draußen siehst du nur so weit wie ein Mensch.' : 'Sicht-Begrenzung aus: volle Sicht.', 'gold');
     });
     c.add(sichtBtn);
+    // Unbesiegbarkeit (Runde 40): zum Testen der neuen Ebenen
+    const unbLbl = () => TUNING.unbesiegbar ? 'UNBESIEGBAR: AN (kein Schaden)' : 'UNBESIEGBAR: AUS';
+    const unbBtn = this.add.text(12, y + 202, unbLbl(), {
+      fontFamily: 'serif', fontSize: '13px', color: TUNING.unbesiegbar ? '#c9a227' : '#d8cfb8', letterSpacing: 1,
+      backgroundColor: TUNING.unbesiegbar ? '#2a2008' : '#221808', padding: { x: 12, y: 5 },
+    }).setInteractive({ useHandCursor: true });
+    unbBtn.on('pointerdown', () => {
+      TUNING.unbesiegbar = !TUNING.unbesiegbar;
+      unbBtn.setText(unbLbl()).setColor(TUNING.unbesiegbar ? '#c9a227' : '#d8cfb8').setBackgroundColor(TUNING.unbesiegbar ? '#2a2008' : '#221808');
+      this.sfx.play('klick');
+      this.logMsg(TUNING.unbesiegbar ? 'Unbesiegbar an: du nimmst keinen Schaden (Dev).' : 'Unbesiegbar aus.', 'gold');
+    });
+    c.add(unbBtn);
     const baukasten = this.add.text(220, y + 62, 'BAUKASTEN', {
       fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
       backgroundColor: '#221808', padding: { x: 12, y: 5 },
@@ -1969,6 +1982,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // --- Schaden am Spieler -----------------------------------------------
 
   hurtPlayer(dmg: number, alreadyReduced = false): void {
+    if (TUNING.unbesiegbar) return; // Dev-Unbesiegbarkeit zum Testen (Runde 40)
     const eff = alreadyReduced ? dmg : damageAfterArmor(dmg, this.p.stats.armor);
     this.p.hp -= eff;
     this.playerHitFlash = 0.18;

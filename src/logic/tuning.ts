@@ -32,6 +32,11 @@ export const TUNING = {
   // Kasten. sichtweiteDorf in Pixeln (Lichtradius um den Helden).
   sichtBegrenzung: true,
   sichtweiteDorf: 440,
+  // Runde 40: Gegner-Dichte (Multiplikator auf die Anzahl je Raum) - wirkt auf
+  // NEU erzeugte Ebenen. 1 = wie bisher, 0.5 = halb so viele.
+  gegnerDichte: 1.0,
+  // Runde 40: Unbesiegbarkeit (Dev) - der Held nimmt keinen Schaden. Zum Testen.
+  unbesiegbar: false,
   // Runde 18/35: Feinjustierung je Gegnertyp (F10 - Pfeile wechseln den Typ).
   // tempo = Lauftempo, schaden = Schaden, schlagtempo = Ausholen/Pausen,
   // reichweite = Hiebweite, leben = HP. Wirkt auf NEUE Spawns dieses Typs.
@@ -64,5 +69,6 @@ export const TUNING_ROWS: Array<[keyof typeof TUNING, string, number, number, nu
   ['gegnerReichweite', 'Gegner: Hieb-Reichweite x', 0.5, 3, 0.1],
   ['gegnerSchlagtempo', 'Gegner: Schlagtempo x', 0.3, 3, 0.1],
   ['gegnerCleverness', 'Gegner: Cleverness x', 0, 2, 0.25],
+  ['gegnerDichte', 'Gegner: Dichte (Anzahl) x', 0.2, 2, 0.1],
   ['sichtweiteDorf', 'Dorf: Sichtweite (px)', 200, 760, 20],
 ];
