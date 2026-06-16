@@ -186,8 +186,8 @@ export class KammerDerFinsternis extends Phaser.Scene {
     // pausiert im Hintergrund; im Standalone-Test startet die Szene direkt.
     if (this.exit.offen && Math.hypot((this.exit.tx * TILE + 16) - this.px, (this.exit.ty * TILE + 16) - this.py) < 28) {
       this.exit.offen = false; // einmal
-      this.zeigeMeldung('Du steigst tiefer hinab...');
-      this.time.delayedCall(700, () => this.scene.start('DieSchwelle'));
+      this.zeigeMeldung('Eine weitere Kammer öffnet sich...');
+      this.time.delayedCall(700, () => this.scene.start('DieStelen'));
     }
   }
 

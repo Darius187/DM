@@ -11,6 +11,7 @@ import { BlutstromGang } from './scenes/BlutstromGang';
 import { TreppenProbe } from './scenes/TreppenProbe';
 import { NebelProbe } from './scenes/NebelProbe';
 import { Treppenabstieg } from './scenes/Treppenabstieg';
+import { DieStelen } from './scenes/DieStelen';
 import { TUNING } from './logic/tuning';
 
 // Bildgröße (Runde 27): KEIN gestrecktes Canvas mehr (machte Schrift
@@ -25,7 +26,7 @@ const game = new Phaser.Game({
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, TitleScene, WorldScene, DebugArenaScene, UIScene, SettingsScene, KammerDerFinsternis, DieSchwelle, BlutstromGang, TreppenProbe, NebelProbe, Treppenabstieg],
+  scene: [BootScene, TitleScene, WorldScene, DebugArenaScene, UIScene, SettingsScene, KammerDerFinsternis, DieSchwelle, BlutstromGang, TreppenProbe, NebelProbe, Treppenabstieg, DieStelen],
 });
 
 // Dev-Hook für die automatisierte Browser-Verifikation (CLAUDE.md Regel 1/9)
