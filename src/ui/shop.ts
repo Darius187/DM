@@ -32,6 +32,9 @@ export class ShopUI {
 
   // Dorfkassen-Rabatt (Runde 11): Spenden senken die Preise im Dorf
   rabatt: () => number = () => 0;
+  // Dorf-Lager (Runde 51): der Schmied schmiedet aus den Eisenbarren, die die
+  // Dorf-Schmelze erzeugt - die liegen im Lager, nicht in der Heldentasche.
+  lager: () => Record<string, number> = () => ({});
 
   private scroll = 0;
 
@@ -225,15 +228,14 @@ export class ShopUI {
     const stufe = it.upgrade ?? 0;
     if (stufe >= SCHMIEDE_UPGRADE.maxStufe) return;
     const gold = SCHMIEDE_UPGRADE.goldProStufe[stufe];
-    const eisen = SCHMIEDE_UPGRADE.eisenProStufe[stufe];
-    const kohle = SCHMIEDE_UPGRADE.kohleProStufe[stufe];
-    if (p.gold < gold || p.materials.eisen < eisen || p.materials.kohle < kohle) {
+    const barren = SCHMIEDE_UPGRADE.barrenProStufe[stufe];
+    const lager = this.lager();
+    if (p.gold < gold || (lager['barren'] ?? 0) < barren) {
       this.sfx.play('fehler');
       return;
     }
     p.gold -= gold;
-    p.materials.eisen -= eisen;
-    p.materials.kohle -= kohle;
+    lager['barren'] = (lager['barren'] ?? 0) - barren;
     it.upgrade = stufe + 1;
     recalc(p);
     this.sfx.play('schmiede_hammer');
@@ -394,7 +396,7 @@ export class ShopUI {
       fontFamily: 'serif', fontSize: '14.5px', color: RARITY_COLORS[(it.rarity ?? 0) as Rarity],
     }));
     const sub = maxed ? 'Voll verbessert'
-      : `Nächste Stufe: ${SCHMIEDE_UPGRADE.goldProStufe[stufe]} G · ${SCHMIEDE_UPGRADE.eisenProStufe[stufe]} Eisen · ${SCHMIEDE_UPGRADE.kohleProStufe[stufe]} Kohle`;
+      : `Nächste Stufe: ${SCHMIEDE_UPGRADE.goldProStufe[stufe]} G · ${SCHMIEDE_UPGRADE.barrenProStufe[stufe]} Eisenbarren (Dorf-Lager: ${this.lager()['barren'] ?? 0})`;
     c.add(this.scene.add.text(16, y + 18, sub, { fontFamily: 'serif', fontSize: '11.5px', color: '#9a8c6e' }));
     if (!maxed) {
       const btn = this.scene.add.text(w - 16, y + 6, 'Schmieden', {

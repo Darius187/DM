@@ -260,6 +260,7 @@ export class WorldScene extends CombatScene {
     this.panels.getKontakteZeilen = () => this.kontakteZeilen();
     this.shop = new ShopUI(this, this.provider, this.sfx, () => this.p);
     this.shop.rabatt = () => this.wohlstand() * 0.05;
+    this.shop.lager = () => this.dorfLager;   // Schmied schmiedet aus Dorf-Barren
     this.stash = new StashUI(this, this.sfx, () => this.p, () => this.lager);
     // Figur-Editor (Runde 40): Proportionen des Helden live einstellen
     this.heldEditor = new HeldEditor(this, this.provider, () => heldTier(this.p.armorIt ? this.p.armorIt.val : null));
@@ -3395,6 +3396,26 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // Eisen+Kohle für die Dorf-Schmelze stiften (Runde 51): der Held bringt sein
+  // erschürftes Erz ins Dorf-Lager, die Schmelze macht über die Tage Eisenbarren
+  // daraus - das Metall für die Waffen. So beschleunigt der Held die Kette, ohne
+  // selbst zu verhütten (Eisen -> Barren -> Waffe, je in der richtigen Hand).
+  private stifteSchmelze(): void {
+    const eisen = Math.min(this.p.materials.eisen, 8);
+    const kohle = Math.min(this.p.materials.kohle, 4);
+    if (eisen < 2 || kohle < 1) {
+      this.logMsg('Dafür hast du zu wenig Eisen oder Kohle.', 'bad');
+      this.sfx.play('fehler');
+      return;
+    }
+    this.p.materials.eisen -= eisen;
+    this.p.materials.kohle -= kohle;
+    this.dorfLager['eisen'] = (this.dorfLager['eisen'] ?? 0) + eisen;
+    this.dorfLager['kohle'] = (this.dorfLager['kohle'] ?? 0) + kohle;
+    this.sfx.play('stein_hacken');
+    this.logMsg(`${eisen} Eisen und ${kohle} Kohle für die Schmelze gestiftet - daraus werden Eisenbarren.`, 'gold');
+  }
+
   private spendeKirche(): void {
     const betrag = 25;
     if (this.p.gold < betrag) {
@@ -3636,14 +3657,22 @@ export class WorldScene extends CombatScene {
       this.flags.schmied1 = true;
       pages.push(SCHMIED.begruessung[0].text);
     }
+    const barren = this.dorfLager['barren'] ?? 0;
+    const eisen = this.p.materials.eisen, kohle = this.p.materials.kohle;
+    const choices: Array<{ label: string; fn?: () => void }> = [
+      { label: 'Handel', fn: () => this.shop.openShop('schmied', 'SCHMIEDE', SHOP_SCHMIED, { ankauf: true, schmieden: true }) },
+    ];
+    // Eisen+Kohle für die Schmelze stiften: füttert die Dorf-Schmelze, die daraus
+    // Eisenbarren macht - das Metall, aus dem der Schmied Waffen schmiedet.
+    if (eisen >= 2 && kohle >= 1) choices.push({ label: 'Eisen & Kohle für die Schmelze stiften', fn: () => this.stifteSchmelze() });
+    choices.push(
+      { label: 'Wiederaufbau', fn: () => this.openAufbau() },
+      { label: 'Stadtmauer', fn: () => this.openStadtmauer() },
+      { label: 'Lebt wohl' },
+    );
     pages.push({
-      text: SCHMIED.handel.text,
-      choices: [
-        { label: 'Handel', fn: () => this.shop.openShop('schmied', 'SCHMIEDE', SHOP_SCHMIED, { ankauf: true, schmieden: true }) },
-        { label: 'Wiederaufbau', fn: () => this.openAufbau() },
-        { label: 'Stadtmauer', fn: () => this.openStadtmauer() },
-        { label: 'Lebt wohl' },
-      ],
+      text: `${SCHMIED.handel.text}\n(Im Dorf-Lager liegen ${barren} Eisenbarren - daraus schmiede ich Eure Klingen.)`,
+      choices,
     });
     this.dialog.show('Schmied', pages, 'schmied');
   }

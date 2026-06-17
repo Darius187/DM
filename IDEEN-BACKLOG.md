@@ -27,10 +27,12 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
       (Wachen geräumt) -> die Knappen fördern täglich Golderz (sichern ->
       Produktion). OFFEN: dieselbe Sichern->Produktion-Logik für die noch zu
       bauenden Stätten Holzfäller-Lager / Steinbruch (Anfangsquests).
-- [ ] Eisen-Kette schließen (Autorwunsch "aus den Erzen müssen Waffen
-      geschmiedet werden"): Eisen -> Eisenbarren (Dorf-Schmelze, da) -> WAFFEN.
-      Aktuell verbessert der Schmied Waffen aus rohem Eisen+Kohle, der Barren
-      ist noch ungenutzt. Richtung klären (Barren als Schmiede-Material?).
+- [x] Eisen-Kette geschlossen (Autorwunsch, historisch korrekt): Eisen ->
+      Eisenbarren (Dorf-Schmelze) -> WAFFEN. Der Schmied verbessert Waffen jetzt
+      aus EISENBARREN aus dem Dorf-Lager (statt rohem Eisen+Kohle). Der Held
+      kann beim Schmied Eisen+Kohle für die Schmelze stiften, um Barren-Nachschub
+      zu beschleunigen. OFFEN/später: Eisenbarren auch für Armee-Ausrüstung
+      (Schlacht-System), dann ist Barren DAS Kriegsmetall.
 - [ ] Kloster als Platzhalter im NORDOSTEN, weit weg (~Halbtagesreise) - dort der
       Showdown; von dort spawnen die Monster Richtung Dorf. Braucht erst die
       verbundene Welt-Struktur (mehrere Gebiete), dann als NO-Endgebiet.

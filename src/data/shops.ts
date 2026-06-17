@@ -91,12 +91,14 @@ export const HAENDLER_ROTATION = {
   wechselTage: 7,        // wöchentlich (Spielzeit)
 } as const;
 
-// Schmiede-Verbesserung: +1 bis +3 je Item (Masterprompt 7.2)
+// Schmiede-Verbesserung: +1 bis +3 je Item (Masterprompt 7.2). Historisch
+// korrekt (Autorwunsch Runde 51): geschmiedet wird aus EISENBARREN - das Erz
+// verhüttet die Dorf-Schmelze erst zu Stabeisen, dann schmiedet der Schmied
+// daraus. Die Barren liegen im Dorf-Lager (Bewohner verarbeiten, Held nutzt).
 export const SCHMIEDE_UPGRADE = {
   maxStufe: 3,
   goldProStufe: [60, 120, 220],
-  eisenProStufe: [1, 2, 3],
-  kohleProStufe: [1, 1, 2],
+  barrenProStufe: [1, 2, 3],   // Eisenbarren aus der Dorf-Schmelze
   dmgProStufe: 2,    // Waffen: +2 Schaden je Stufe
   armorProStufe: 1,  // Rüstung: +1 Rüstung je Stufe
 } as const;
