@@ -68,6 +68,7 @@ export const TILE_NAMES = [
   'krypta_boden', 'krypta_wand', 'krypta_wand_front', 'knochen', 'blut', 'rune',
   'altar', 'regal', 'regal_geleert', 'regal_leer', 'treppe_ab', 'treppe_auf', 'erzader', 'fels',
   'fass', 'kiste', 'krug', 'heuhaufen', 'streckbank', 'streckbank_r', 'kaefig', 'zellentor', 'kerzenschrein',
+  'eiserne_jungfrau', 'kohlebecken',
   'spinnwebe', 'knochenhaufen', 'palisade', 'palisade_seite', 'stadttor',
   'holzboden', 'bett', 'tisch', 'stuhl', 'kamin', 'teppich', 'tresen',
   'haus',

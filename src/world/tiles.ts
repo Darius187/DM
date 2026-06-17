@@ -30,13 +30,16 @@ export const T = {
   // Offenes Zellentor (Runde 50): BEGEHBAR - man geht durch das aufgeschwungene
   // Gitter in die Zelle (kein Laden), keine solide Barriere.
   ZELLENTOR: 52,
+  // Folterinstrumente (Runde 50): Eiserne Jungfrau (Stachelsarg) und Kohle-
+  // becken mit glühenden Brandeisen - beide solide Requisiten der Folterkammer.
+  IRONMAIDEN: 53, KOHLEBECKEN: 54,
 } as const;
 export type TileId = (typeof T)[keyof typeof T];
 
 export const SOLID = new Set<number>([
   T.HWALL, T.TREE, T.CWALL, T.WALL, T.GRAVE, T.WELL, T.ALTAR, T.SHELF,
   T.SHELF_GELEERT, T.SHELF_LEER,
-  T.SHRINE, T.ORE, T.ROCK, T.RACK, T.RACK_R, T.CAGE, T.WATER, T.FENCE, T.PALISADE, T.TOR,
+  T.SHRINE, T.ORE, T.ROCK, T.RACK, T.RACK_R, T.CAGE, T.IRONMAIDEN, T.KOHLEBECKEN, T.WATER, T.FENCE, T.PALISADE, T.TOR,
   T.BETT, T.TISCH, T.KAMIN, T.TRESEN, T.BRENNHOLZ, T.KESSEL, T.CRACK,
   T.ABYSS, // bodenloser Schacht - wie Wasser unbegehbar (BRUECKE führt hinüber)
   T.PILLAR, // Steinpfeiler
@@ -58,6 +61,7 @@ const NAME: Record<number, string> = {
   [T.BONES]: 'knochen', [T.BLOOD]: 'blut',
   [T.RUNE]: 'rune', [T.SHRINE]: 'kerzenschrein', [T.ORE]: 'erzader', [T.ROCK]: 'fels',
   [T.RACK]: 'streckbank', [T.RACK_R]: 'streckbank_r', [T.CAGE]: 'kaefig', [T.ZELLENTOR]: 'zellentor',
+  [T.IRONMAIDEN]: 'eiserne_jungfrau', [T.KOHLEBECKEN]: 'kohlebecken',
   [T.WATER]: 'wasser', [T.FIELD]: 'acker', [T.FENCE]: 'zaun', [T.PALISADE]: 'palisade',
   [T.TOR]: 'stadttor',
   [T.HOLZ]: 'holzboden', [T.BETT]: 'bett', [T.TISCH]: 'tisch', [T.STUHL]: 'stuhl',

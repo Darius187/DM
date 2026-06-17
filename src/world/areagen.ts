@@ -331,8 +331,19 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
       // weitere Käfige als Deko in den übrigen Ecken
       const cages: Array<[number, number]> = [[r.x + r.w - 1, r.y], [r.x, r.y + r.h - 1]];
       for (const [cx, cy] of cages) if (map[cy][cx] === T.FLOOR) map[cy][cx] = T.CAGE;
-      for (let i = 0; i < 4; i++) {
-        const bx = r.cx + ri(rng, -2, 2), by = r.cy + ri(rng, -2, 2);
+      // Folterinstrumente (Runde 50, Autorwunsch "Folterkammer mit Instrumenten +
+      // mehr Blut"): Eiserne Jungfrau an der einen, Kohlebecken (mit Glut-Licht)
+      // an der anderen Wand. Beide nur setzen, wo wirklich Boden frei ist.
+      const jungfrauX = r.x + 1, jungfrauY = r.y + r.h - 1;
+      if (map[jungfrauY]?.[jungfrauX] === T.FLOOR) map[jungfrauY][jungfrauX] = T.IRONMAIDEN;
+      const beckenX = r.x + r.w - 2, beckenY = r.y + r.h - 1;
+      if (map[beckenY]?.[beckenX] === T.FLOOR) {
+        map[beckenY][beckenX] = T.KOHLEBECKEN;
+        a.torches.push({ x: beckenX * TILE + 16, y: beckenY * TILE + 12, ph: rnd(rng, 0, 6.28) });
+      }
+      // mehr Blut in der Folterkammer (8 statt 4 Spritzer)
+      for (let i = 0; i < 8; i++) {
+        const bx = r.cx + ri(rng, -3, 3), by = r.cy + ri(rng, -2, 2);
         if (map[by]?.[bx] === T.FLOOR) map[by][bx] = T.BLOOD;
       }
       a.notes.push({ x: (r.cx + 1) * TILE + 8, y: (r.cy + 1) * TILE + 8, idx: 4 });

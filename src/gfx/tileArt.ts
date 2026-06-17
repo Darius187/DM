@@ -533,6 +533,58 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
         ctx.fillStyle = '#2a2620'; ctx.fillRect(14.5, 23.4, 1, 1); ctx.fillRect(17, 23.4, 1, 1); // Augenhöhlen
       }
       break;
+    case 'eiserne_jungfrau': {
+      // Eiserne Jungfrau (Runde 50): aufrechter Stachelsarg, einen Spalt offen -
+      // im Inneren Stacheln, am Fuß eine Blutlache. Klassisches Folterinstrument.
+      floorBase(ctx, n, theme);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(16, 28, 11, 3.5, 0, 0, 6.283); ctx.fill();
+      // Korpus (Sarg-Silhouette: oben gerundet, zum Fuß verjüngt)
+      ctx.fillStyle = '#3a3832';
+      ctx.beginPath();
+      ctx.moveTo(16, 2); ctx.quadraticCurveTo(25, 3, 24, 12); ctx.lineTo(21, 28); ctx.lineTo(11, 28); ctx.lineTo(8, 12); ctx.quadraticCurveTo(7, 3, 16, 2);
+      ctx.closePath(); ctx.fill();
+      // Lichtkante links, Schatten rechts (Metall)
+      ctx.fillStyle = 'rgba(180,176,162,0.35)'; ctx.fillRect(9, 6, 1.5, 20);
+      ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(21.5, 6, 1.5, 20);
+      // geöffneter Türspalt (dunkles Inneres) mit Stacheln
+      ctx.fillStyle = '#0c0a08';
+      ctx.beginPath(); ctx.moveTo(16, 4); ctx.lineTo(20, 6); ctx.lineTo(18, 26); ctx.lineTo(16, 26); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#9a948a'; ctx.lineWidth = 0.7;
+      for (let i = 0; i < 5; i++) { const yy = 7 + i * 4; ctx.beginPath(); ctx.moveTo(19.5, yy); ctx.lineTo(16.5, yy + 1.5); ctx.stroke(); }
+      ctx.lineWidth = 1;
+      // Nietenreihen
+      ctx.fillStyle = '#1c1a16';
+      for (const yy of [8, 14, 20]) { ctx.fillRect(11, yy, 1.4, 1.4); ctx.fillRect(20, yy, 1.4, 1.4); }
+      // Gesichtsmaske-Andeutung am Kopf
+      ctx.fillStyle = '#2a2824'; ctx.fillRect(13, 6, 6, 4);
+      ctx.fillStyle = '#0c0a08'; ctx.fillRect(14, 7, 1.4, 1.4); ctx.fillRect(17, 7, 1.4, 1.4);
+      // Blut am Fuß
+      ctx.fillStyle = 'rgba(96,12,12,0.6)'; ctx.beginPath(); ctx.ellipse(16, 27, 7, 2.6, 0, 0, 6.283); ctx.fill();
+      break;
+    }
+    case 'kohlebecken': {
+      // Kohlebecken mit glühenden Brandeisen (Runde 50): eiserne Schale auf
+      // Dreifuß, glühende Kohlen, zwei eingesteckte Brandeisen. Wärmequelle.
+      floorBase(ctx, n, theme);
+      ctx.fillStyle = 'rgba(208,96,40,0.12)'; ctx.beginPath(); ctx.arc(16, 16, 14, 0, 6.283); ctx.fill(); // Glutschein
+      // Dreifuß-Beine
+      ctx.strokeStyle = '#2a2620'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(16, 20); ctx.lineTo(9, 29); ctx.moveTo(16, 20); ctx.lineTo(23, 29); ctx.moveTo(16, 20); ctx.lineTo(16, 30); ctx.stroke();
+      // Schale
+      ctx.fillStyle = '#3a352c'; ctx.beginPath(); ctx.ellipse(16, 17, 11, 5.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#1c1812'; ctx.beginPath(); ctx.ellipse(16, 16, 9, 4.2, 0, 0, 6.283); ctx.fill();
+      // glühende Kohlen
+      ctx.fillStyle = '#d85a28'; for (const [cx, cy] of [[12, 16], [16, 15], [19, 17], [14, 18]]) { ctx.beginPath(); ctx.arc(cx, cy, 1.8, 0, 6.283); ctx.fill(); }
+      ctx.fillStyle = '#f8c050'; for (const [cx, cy] of [[15, 16], [18, 16]]) { ctx.beginPath(); ctx.arc(cx, cy, 1, 0, 6.283); ctx.fill(); }
+      // zwei eingesteckte Brandeisen mit glühender Spitze
+      ctx.strokeStyle = '#1c1814'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(13, 15); ctx.lineTo(5, 6); ctx.moveTo(19, 15); ctx.lineTo(27, 7); ctx.stroke();
+      ctx.fillStyle = '#e87838'; ctx.beginPath(); ctx.arc(13, 15, 1.4, 0, 6.283); ctx.fill(); ctx.beginPath(); ctx.arc(19, 15, 1.4, 0, 6.283); ctx.fill();
+      // Henkel/Griffe der Eisen
+      ctx.fillStyle = '#3a2c1a'; ctx.fillRect(4, 4, 3, 2); ctx.fillRect(26, 5, 3, 2);
+      ctx.lineWidth = 1;
+      break;
+    }
     case 'zellentor':
       // Offenes Zellentor (Runde 50): BEGEHBARE Schwelle - der Boden ist frei,
       // links/rechts die Türpfosten mit Angeln, das Gittertor steht zur Seite
@@ -625,7 +677,8 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
 // die Y-Sortierung: der Boden liegt separat darunter (Masterprompt 5.1).
 export const STANDING_OBJECTS = new Set([
   'baum', 'fels', 'grabstein', 'brunnen', 'zaun', 'erzader', 'altar',
-  'regal', 'regal_geleert', 'regal_leer', 'kerzenschrein', 'streckbank', 'streckbank_r', 'kaefig', 'palisade',
+  'regal', 'regal_geleert', 'regal_leer', 'kerzenschrein', 'streckbank', 'streckbank_r', 'kaefig',
+  'eiserne_jungfrau', 'kohlebecken', 'palisade',
   'bett', 'tisch', 'stuhl', 'kamin', 'tresen',
   'kerze', 'wandfackel', 'brennholz', 'kessel',
 ]);
