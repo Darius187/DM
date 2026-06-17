@@ -54,7 +54,7 @@ export function drawItemIcon(ctx: CanvasRenderingContext2D, it: Item): void {
     case 'potion': drawPotion(ctx, '#d8402a'); break;
     case 'mpotion': drawPotion(ctx, '#4a6ae0'); break;
     case 'elixir': drawPotion(ctx, '#c9a227'); break;
-    case 'scroll': drawScroll(ctx); break;
+    case 'scroll': drawScroll(ctx, it); break;
     case 'arrows': drawArrows(ctx); break;
     case 'relic': drawRelic(ctx); break;
     case 'food': drawFood(ctx, it.name); break;
@@ -156,11 +156,49 @@ function drawPotion(ctx: CanvasRenderingContext2D, col: string): void {
   ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(-6, -2, 3, 14);
 }
 
-function drawScroll(ctx: CanvasRenderingContext2D): void {
-  ctx.fillStyle = '#d8cba8'; ctx.fillRect(-14, -16, 28, 32);
-  ctx.fillStyle = '#8a7048'; ctx.fillRect(-16, -18, 32, 5); ctx.fillRect(-16, 13, 32, 5);
-  ctx.fillStyle = '#6a5a40';
-  for (let i = 0; i < 4; i++) ctx.fillRect(-10, -9 + i * 6, 20, 2);
+// Schriftrollen unterscheiden sich jetzt OPTISCH je Zauber (Runde 49, Autor-
+// wunsch): farbiges Wachssiegel + Rune in der Elementfarbe; Bücher (10 Nutzungen)
+// bekommen einen dunkleren Buchdeckel mit Goldband statt loser Rolle.
+const SCROLL_FARBE: Record<string, { c: number; rune: 'flamme' | 'tropfen' | 'blitz' | 'kreuz' | 'kreis' | 'blatt' }> = {
+  feuerregen: { c: 0xe8842a, rune: 'flamme' }, feuerwand: { c: 0xe8642a, rune: 'flamme' },
+  eisregen: { c: 0x6ad0f0, rune: 'tropfen' }, frostnova: { c: 0x8ad0f0, rune: 'tropfen' },
+  gewitter: { c: 0xaee0ff, rune: 'blitz' }, kettenblitz: { c: 0x9ae0f8, rune: 'blitz' },
+  heiligesLicht: { c: 0xf0dc96, rune: 'kreuz' }, bannkreis: { c: 0xf0dc96, rune: 'kreis' },
+  heilung: { c: 0x7ce08a, rune: 'blatt' }, heilen: { c: 0x7ce08a, rune: 'blatt' },
+  stadtportal: { c: 0x8aa6e8, rune: 'kreis' },
+};
+
+function drawScroll(ctx: CanvasRenderingContext2D, it: Item): void {
+  const def = SCROLL_FARBE[it.scrollSkill ?? ''] ?? { c: 0xb0a484, rune: 'kreis' as const };
+  const buch = (it.stack ?? 1) >= 10; // Bücher = seltene 10er-Rollen (Autorwunsch)
+  const hex = `#${def.c.toString(16).padStart(6, '0')}`;
+  if (buch) {
+    // Buchdeckel
+    ctx.fillStyle = '#3a2818'; ctx.fillRect(-13, -17, 26, 34);
+    ctx.fillStyle = '#241a10'; ctx.fillRect(-13, -17, 5, 34); // Buchrücken
+    ctx.fillStyle = hex; ctx.globalAlpha = 0.85; ctx.fillRect(-4, -17, 4, 34); ctx.globalAlpha = 1; // farbiges Lesezeichen
+    ctx.strokeStyle = '#c9a227'; ctx.lineWidth = 1.5; ctx.strokeRect(-10, -14, 20, 28); // Goldborte
+  } else {
+    // Pergamentrolle
+    ctx.fillStyle = '#d8cba8'; ctx.fillRect(-14, -16, 28, 32);
+    ctx.fillStyle = '#8a7048'; ctx.fillRect(-16, -18, 32, 5); ctx.fillRect(-16, 13, 32, 5);
+    ctx.fillStyle = 'rgba(106,90,64,0.6)';
+    for (let i = 0; i < 3; i++) ctx.fillRect(-9, -8 + i * 7, 18, 1.6);
+  }
+  // Wachssiegel in der Elementfarbe
+  ctx.fillStyle = hex; ctx.beginPath(); ctx.arc(0, buch ? 2 : 0, 8, 0, 6.283); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.arc(0, buch ? 2 : 0, 8, 0, 6.283); ctx.lineWidth = 0; ctx.stroke();
+  // Rune auf dem Siegel
+  ctx.save(); ctx.translate(0, buch ? 2 : 0); ctx.strokeStyle = 'rgba(20,12,8,0.8)'; ctx.fillStyle = 'rgba(20,12,8,0.85)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+  switch (def.rune) {
+    case 'flamme': ctx.beginPath(); ctx.moveTo(0, 4); ctx.quadraticCurveTo(-4, 0, 0, -4); ctx.quadraticCurveTo(4, 0, 0, 4); ctx.fill(); break;
+    case 'tropfen': ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(3, 2); ctx.arc(0, 2, 3, 0, Math.PI); ctx.closePath(); ctx.fill(); break;
+    case 'blitz': ctx.beginPath(); ctx.moveTo(1, -4); ctx.lineTo(-2, 0); ctx.lineTo(1, 0); ctx.lineTo(-1, 4); ctx.stroke(); break;
+    case 'kreuz': ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(0, 4); ctx.moveTo(-3, -1); ctx.lineTo(3, -1); ctx.stroke(); break;
+    case 'blatt': ctx.beginPath(); ctx.ellipse(0, 0, 2.4, 4, 0, 0, 6.283); ctx.fill(); break;
+    default: ctx.beginPath(); ctx.arc(0, 0, 3.2, 0, 6.283); ctx.stroke(); break;
+  }
+  ctx.restore();
 }
 
 function drawArrows(ctx: CanvasRenderingContext2D): void {

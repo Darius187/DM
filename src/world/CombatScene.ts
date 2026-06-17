@@ -878,7 +878,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // dann mit der Maus den Ort wählen, dann per Klick auslösen. Gilt für AoE-
   // Zauber am Boden (Feuerregen/Eisregen/Gewitter/Feuerwand) und Heilen.
   protected zielModus: string | null = null;
-  protected readonly bodenZauber = new Set(['feuerregen', 'eisregen', 'gewitter', 'feuerwand', 'heilen', 'hagel']);
+  protected readonly bodenZauber = new Set(['feuerregen', 'eisregen', 'gewitter', 'feuerwand', 'heilen', 'hagel', 'bannkreis']);
 
   // Verwundeten Helfer am Zielort heilen (Runde 46). Welt überschreibt es; hier
   // (Arena) gibt es keine Helfer -> false, dann heilt sich der Held selbst.
@@ -2093,7 +2093,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         const fx = ABILITY_FX.bannkreis;
         if (!this.paySpellCost(fx.mana)) return;
         this.p.abilityCds[id] = fx.cd;
-        this.banishZones.push({ x: this.px, y: this.py, r: fx.radius, t: fx.dauerS });
+        // Wird wie Feuerregen auf den ZIELORT gelegt (Runde 49, Autorwunsch)
+        const z = this.zielPunkt(fx.reichweite);
+        this.banishZones.push({ x: z.x, y: z.y, r: fx.radius, t: fx.dauerS });
         this.sfx.play('heiliges_licht');
         this.gainSchoolUse('zauberei');
         break;
@@ -2773,7 +2775,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const d = Math.hypot(wx - this.px, wy - this.py) || 1;
     const f = d > reich ? reich / d : 1;
     const zx = this.px + (wx - this.px) * f, zy = this.py + (wy - this.py) * f;
-    const farbe = id === 'eisregen' ? 0x8ad0f0 : id === 'gewitter' ? 0xaee0ff : id === 'hagel' ? 0xd8d0b8 : 0xf08a3a;
+    const farbe = id === 'eisregen' ? 0x8ad0f0 : id === 'gewitter' ? 0xaee0ff : id === 'hagel' ? 0xd8d0b8 : id === 'bannkreis' ? 0xf0dc96 : 0xf08a3a;
     const aoe = id === 'feuerwand' ? (fx.laenge ?? 120) / 2 : (fx.radius ?? 40) + (fx.streuung ?? 0);
     const puls = 0.55 + Math.sin(time * 6) * 0.2;
     g.lineStyle(1, farbe, 0.22); g.strokeCircle(this.px, this.py, reich);          // Reichweite

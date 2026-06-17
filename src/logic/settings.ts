@@ -37,6 +37,7 @@ export interface Settings {
   audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
   zoomV: number;          // einmaliger Zoom-Standard (Runde 41: 130%)
   uiLayoutV: number;      // Layout-Version: ältere UI-Versätze einmalig zurücksetzen
+  barV: number;           // Leisten-Belegung: einmalig auf "leer bis auf Basics" setzen
   kb: KeyBindings;
 }
 
@@ -52,8 +53,10 @@ export const DEF_SETTINGS: Settings = {
   dmgNums: true,
   blood: true,
   lefty: false,
-  maus: { m1: 'angriff', m2: 'block', m3: 's1', m4: 'pot', m5: 's3' },
-  tasten: { t1: 's1', t2: 's2', t3: 's3', t4: 'kettenblitz', t5: 'frostnova', t6: 'bannkreis', t9: 'feuerregen', t0: 'aderlass', tr: 'waffe1', tt: 'waffe2' },
+  // Runde 49 (Autorwunsch): Leiste startet LEER bis auf Angriff/Block/Tränke -
+  // die Skills legt man sich selbst rein, sobald sie freigeschaltet sind.
+  maus: { m1: 'angriff', m2: 'block', m3: 'leer', m4: 'pot', m5: 'leer' },
+  tasten: { t1: 'leer', t2: 'leer', t3: 'leer', t4: 'leer', t5: 'leer', t6: 'leer', t9: 'leer', t0: 'leer', tr: 'waffe1', tt: 'waffe2' },
   vorlesen: false,
   ui: { hotbar: { x: 0, y: 0 }, mausleiste: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 } },
   chronikBox: { x: 4, y: -430, w: 340, h: 270 }, // Runde 43: bündig am LINKEN
@@ -63,6 +66,7 @@ export const DEF_SETTINGS: Settings = {
   audioV: 1,
   zoomV: 1,
   uiLayoutV: 4, // Runde 43: Chronik bündig links angedockt
+  barV: 1,      // Runde 49: Leiste startet leer (Skills selbst belegen)
   kb: {
     roll: ' ', interact: 'e', inv: 'i', charakter: 'c',
     pot: 'q', mpot: 'f', s1: '1', s2: '2', s3: '3',
@@ -108,6 +112,15 @@ export function getSettings(): Settings {
         current.ui.log = { x: 0, y: 0 };
         current.chronikBox = { ...DEF_SETTINGS.chronikBox };
         current.uiLayoutV = DEF_SETTINGS.uiLayoutV;
+        try { localStorage.setItem(KEY, JSON.stringify(current)); } catch { /* gesperrt */ }
+      }
+      // Leisten-Migration (Runde 49): die Skill-Plätze einmalig leeren - man
+      // belegt sie selbst, sobald die Fähigkeiten freigeschaltet sind. Angriff/
+      // Block/Tränke/Waffen-Fähigkeiten bleiben als spielbare Basis.
+      if ((saved.barV ?? 0) < DEF_SETTINGS.barV) {
+        current.maus = { ...DEF_SETTINGS.maus };
+        current.tasten = { ...DEF_SETTINGS.tasten };
+        current.barV = DEF_SETTINGS.barV;
         try { localStorage.setItem(KEY, JSON.stringify(current)); } catch { /* gesperrt */ }
       }
       // Audio-Migration (Runde 40, Autorwunsch "Musik bei 20%"): einmalig die

@@ -122,13 +122,17 @@ export class Hud {
     const p = this.getP;
     const bogen = () => this.getWeaponClass() === 'bogen';
     const AKTIONEN: Array<[string, string, string, string]> = [
+      ['leer', '·', '(leerer Platz)', '#5a4f3c'],
       ['angriff', '⚔', 'Angriff (Waffe)', '#d8cfb8'], ['block', '⛨', 'Blocken (gedrückt halten)', '#aab4c0'],
       ['s1', '✦', 'Feuerball', '#f0883a'], ['s2', '☩', 'Heiliges Licht', '#f0e08a'], ['s3', '❧', 'Heilung', '#6ad06a'],
       ['kettenblitz', '⌁', 'Kettenblitz', '#9ae0f8'], ['frostnova', '❄', 'Frostnova', '#74aef0'], ['bannkreis', '◎', 'Bannkreis', '#d8b84a'],
       ['feuerregen', '☄', 'Feuerregen (auf den Zielort)', '#e85a3a'],
       ['aderlass', '⚱', 'Aderlass (Leben gegen Mana)', '#c04848'], ['lebenstausch', '❤', 'Lebenstausch (Mana gegen Leben)', '#e87a9a'],
       ['waffe1', '↻', 'Waffen-Fähigkeit I (je nach Waffe)', '#d8cfb8'], ['waffe2', '⇒', 'Waffen-Fähigkeit II (je nach Waffe)', '#d8cfb8'],
-      ['pot', '🧪', 'Heiltrank', '#e05a4a'], ['mpot', '⚗', 'Manatrank', '#5a7ae0'], ['rolle', '📜', 'Schriftrolle', '#cdbf9d'],
+      // 'rolle' (Zufalls-Schriftrolle) ENTFERNT (Runde 49, Autorwunsch): nahm
+      // immer eine zufällige Rolle. Schriftrollen legt man jetzt EINZELN aus dem
+      // Inventar auf die Leiste (jede mit ihrer eigenen Wirkung).
+      ['pot', '🧪', 'Heiltrank', '#e05a4a'], ['mpot', '⚗', 'Manatrank', '#5a7ae0'],
       ['stadtportal', '⌂', 'Stadtportal (nach Boss-Sieg)', '#8aa6e8'],
     ];
     // Waffen-Slots zeigen die Fähigkeit der AKTUELLEN Waffe

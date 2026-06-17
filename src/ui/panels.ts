@@ -346,11 +346,12 @@ export class UIPanels {
       c.add(this.scene.add.text(w - 42, y + 33, nextAt === null ? 'Meister' : `${st.uses}/${nextAt}`, { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }).setOrigin(1, 0));
       // Fähigkeiten der Schule als Chips - MIT denselben Symbolen wie die
       // Aktionsleiste (Runde 49). Zauberei zeigt zusätzlich die drei Zauber.
-      const eintraege: Array<{ id: string; name: string; unlock: number }> =
+      const eintraege: Array<{ id: string; name: string; unlock: number }> = (
         id === 'zauberei'
           ? [...SPELLS.map((s) => ({ id: s.id, name: s.name, unlock: s.unlock })),
              ...ABILITIES.filter((a2) => a2.school === id).map((a2) => ({ id: a2.id, name: a2.name, unlock: a2.unlock }))]
-          : ABILITIES.filter((a2) => a2.school === id).map((a2) => ({ id: a2.id, name: a2.name, unlock: a2.unlock }));
+          : ABILITIES.filter((a2) => a2.school === id).map((a2) => ({ id: a2.id, name: a2.name, unlock: a2.unlock }))
+      ).sort((a2, b2) => a2.unlock - b2.unlock); // nach Stufe sortiert (Runde 49)
       let ax = 28;
       const ay = y + 56;
       for (const e of eintraege) {

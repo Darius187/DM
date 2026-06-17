@@ -129,7 +129,7 @@ export const ABILITY_FX = {
   kettenblitz: { mana: 16, dmgBase: 18, dmgPerLevel: 5, jumps: 3, jumpRange: 150, cd: 1.2 },
   // Frostnova: laengerer, klar spuerbarer Slow als Crowd-Control, oefter wirkbar
   frostnova: { mana: 20, dmgBase: 12, dmgPerLevel: 3, radius: 130, slowS: 6, cd: 2.5 },
-  bannkreis: { mana: 30, radius: 130, dauerS: 6, untoteDmgMult: 0.7, cd: 6 },
+  bannkreis: { mana: 30, radius: 130, dauerS: 6, untoteDmgMult: 0.7, cd: 6, reichweite: 300 },
   // Runde 16: Leben<->Mana als 1:1-Kreislauf, kostenlos, kurzer Takt
   aderlass: { menge: 20, cd: 1.5 },
   lebenstausch: { menge: 20, cd: 1.5 },
