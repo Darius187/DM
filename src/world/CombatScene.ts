@@ -27,6 +27,7 @@ import { defaultRng, type Rng } from '../logic/rng';
 import { ELITE, ENEMIES, GEFALLENE_TYPEN, GEFALLENE_WAFFEN } from '../data/enemies';
 import type { EnemyTypeId, WeaponClass } from '../data/types';
 import { ABILITY_FX, ABILITIES, LORE_XP, ROLLEN_ZAUBER, XP, BRAND_TICK_S } from '../data/balancing';
+import { SKILL_ICONS } from '../data/skills';
 import { PickupSystem, AUTO_PICKUP, type Pickup } from './Pickups';
 import { fixUiScroll } from '../ui/dialog';
 import { mausLeisteAnkerX, tastenLeisteMitteX, orbHpAnkerX, orbMpAnkerX } from '../ui/hud';
@@ -1365,11 +1366,52 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const r = addSchoolUse(this.p.schools[school]);
     this.p.schools[school] = r.state;
     if (r.leveledTo !== null) {
-      const name = { nahkampf: 'Nahkampf', zauberei: 'Zauberei', bogen: 'Bogenschießen' }[school];
-      this.logMsg(`${name} Stufe ${r.leveledTo}`, 'gold');
       this.sfx.play('fertigkeit_neu');
       recalc(this.p);
+      this.zeigeSchulAufstieg(school, r.leveledTo);
     }
+  }
+
+  private levelUpObs: Array<Phaser.GameObjects.Rectangle | Phaser.GameObjects.Text> = [];
+
+  // Schul-Aufstiegs-Banner (Runde 50, Autorwunsch): länger sichtbar, zeigt die
+  // NEUE Fähigkeit dieser Stufe mit ihrem Symbol (wie im Tab/der Leiste).
+  protected zeigeSchulAufstieg(school: 'nahkampf' | 'zauberei' | 'bogen', level: number): void {
+    for (const o of this.levelUpObs) o.destroy();
+    this.levelUpObs = [];
+    const name = { nahkampf: 'Nahkampf', zauberei: 'Zauberei', bogen: 'Bogenschießen' }[school];
+    // an dieser Stufe freigeschaltete Fertigkeit(en) (Zauber + Fähigkeiten)
+    const neu: Array<{ id: string; name: string }> = [
+      ...(school === 'zauberei' ? SPELLS.filter((s) => s.unlock === level).map((s) => ({ id: s.id, name: s.name })) : []),
+      ...ABILITIES.filter((a) => a.school === school && a.unlock === level).map((a) => ({ id: a.id, name: a.name })),
+    ];
+    const w = this.scale.width, cy = this.scale.height * 0.30;
+    const mk = <T extends Phaser.GameObjects.Rectangle | Phaser.GameObjects.Text>(o: T): T => {
+      o.setScrollFactor(0).setDepth(4830).setAlpha(0); this.levelUpObs.push(o); return o;
+    };
+    mk(this.add.rectangle(w / 2, cy, w, neu.length ? 92 : 58, 0x0c1004, 0.6));
+    mk(this.add.rectangle(w / 2, cy - (neu.length ? 46 : 29), w, 2, 0xc9a227, 0.85));
+    mk(this.add.rectangle(w / 2, cy + (neu.length ? 46 : 29), w, 2, 0xc9a227, 0.85));
+    const titelY = neu.length ? cy - 22 : cy;
+    const titel = mk(this.add.text(w / 2, titelY, `AUFSTIEG · ${name.toUpperCase()} STUFE ${level}`, {
+      fontFamily: 'serif', fontSize: '30px', color: '#f0e08a', stroke: '#000000', strokeThickness: 5, letterSpacing: 3,
+    }).setOrigin(0.5));
+    if (neu.length) {
+      const txt = neu.map((n) => `${SKILL_ICONS[n.id] ?? '•'} ${n.name}`).join('   ');
+      mk(this.add.text(w / 2, cy + 16, `Neue Fähigkeit:  ${txt}`, {
+        fontFamily: 'serif', fontSize: '18px', color: '#e8dcc0', stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(0.5));
+      mk(this.add.text(w / 2, cy + 38, 'Im Fähigkeiten-Tab ansehen · auf die Aktionsleiste legen', {
+        fontFamily: 'serif', fontSize: '12px', color: '#9a8c6e',
+      }).setOrigin(0.5));
+    }
+    titel.setScale(1.18);
+    this.tweens.add({ targets: this.levelUpObs, alpha: 1, duration: 450, ease: 'Sine.Out' });
+    this.tweens.add({ targets: titel, scale: 1, duration: 520, ease: 'Back.Out' });
+    this.tweens.add({
+      targets: this.levelUpObs, alpha: 0, duration: 800, delay: neu.length ? 4200 : 2600, ease: 'Sine.In',
+      onComplete: () => { for (const o of this.levelUpObs) o.destroy(); this.levelUpObs = []; },
+    });
   }
 
   protected killEnemy(e: Enemy): void {
