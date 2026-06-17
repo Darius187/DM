@@ -67,7 +67,7 @@ export const TILE_NAMES = [
   'kirchentuer', 'haustuer', 'grabstein', 'brunnen', 'brandstelle',
   'krypta_boden', 'krypta_wand', 'krypta_wand_front', 'knochen', 'blut', 'rune',
   'altar', 'regal', 'regal_geleert', 'regal_leer', 'treppe_ab', 'treppe_auf', 'erzader', 'fels',
-  'fass', 'kiste', 'krug', 'heuhaufen', 'streckbank', 'streckbank_r', 'kaefig', 'kerzenschrein',
+  'fass', 'kiste', 'krug', 'heuhaufen', 'streckbank', 'streckbank_r', 'kaefig', 'zellentor', 'kerzenschrein',
   'spinnwebe', 'knochenhaufen', 'palisade', 'palisade_seite', 'stadttor',
   'holzboden', 'bett', 'tisch', 'stuhl', 'kamin', 'teppich', 'tresen',
   'haus',

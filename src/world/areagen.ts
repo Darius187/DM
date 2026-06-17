@@ -310,14 +310,32 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
       const rackX = r.cx + 1 <= r.x + r.w - 1 ? r.cx : r.cx - 1;
       map[r.cy][rackX] = T.RACK;
       map[r.cy][rackX + 1] = T.RACK_R;
-      const cages: Array<[number, number]> = [[r.x, r.y], [r.x + r.w - 1, r.y], [r.x, r.y + r.h - 1]];
+      // Begehbare Zelle (Runde 50, Autorwunsch "Türen/Zellen als begehbare
+      // Eingänge, kein Laden"): eine Gitterreihe (r.y+1) mit einem OFFENEN
+      // Zellentor in der Mitte trennt einen Zellenstreifen (r.y) vom Raum ab -
+      // man geht durch das Tor HINEIN, dahinter (in der Zelle) steht die Beute.
+      let zelleGebaut = false;
+      if (r.h >= 4 && r.w >= 4) {
+        const by = r.y + 1, gx = r.cx;
+        let ok = true;
+        for (const x of [r.cx - 1, r.cx, r.cx + 1]) if (map[r.y]?.[x] !== T.FLOOR || map[by]?.[x] !== T.FLOOR) ok = false;
+        if (ok) {
+          for (const x of [r.cx - 1, r.cx, r.cx + 1]) map[by][x] = (x === gx) ? T.ZELLENTOR : T.CAGE;
+          a.chests.push({ x: gx * TILE + 16, y: r.y * TILE + 16, open: false, selten: true });
+          zelleGebaut = true;
+        }
+      }
+      if (!zelleGebaut) {
+        a.chests.push({ x: (r.x + r.w - 2) * TILE + 16, y: (r.y + r.h - 2) * TILE + 16, open: false, selten: true });
+      }
+      // weitere Käfige als Deko in den übrigen Ecken
+      const cages: Array<[number, number]> = [[r.x + r.w - 1, r.y], [r.x, r.y + r.h - 1]];
       for (const [cx, cy] of cages) if (map[cy][cx] === T.FLOOR) map[cy][cx] = T.CAGE;
       for (let i = 0; i < 4; i++) {
         const bx = r.cx + ri(rng, -2, 2), by = r.cy + ri(rng, -2, 2);
         if (map[by]?.[bx] === T.FLOOR) map[by][bx] = T.BLOOD;
       }
       a.notes.push({ x: (r.cx + 1) * TILE + 8, y: (r.cy + 1) * TILE + 8, idx: 4 });
-      a.chests.push({ x: (r.x + r.w - 2) * TILE + 16, y: (r.y + r.h - 2) * TILE + 16, open: false, selten: true });
       if (a.scareBudget > 0) {
         a.scareBudget--;
         a.enemySpawns.push({ type: 'pest', x: r.x * TILE + 48, y: r.y * TILE + 48, elite: false });

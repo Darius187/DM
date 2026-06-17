@@ -533,6 +533,28 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
         ctx.fillStyle = '#2a2620'; ctx.fillRect(14.5, 23.4, 1, 1); ctx.fillRect(17, 23.4, 1, 1); // Augenhöhlen
       }
       break;
+    case 'zellentor':
+      // Offenes Zellentor (Runde 50): BEGEHBARE Schwelle - der Boden ist frei,
+      // links/rechts die Türpfosten mit Angeln, das Gittertor steht zur Seite
+      // aufgeschwungen (man geht hindurch, kein solides Hindernis).
+      floorBase(ctx, n, theme);
+      // Türpfosten links und rechts
+      ctx.fillStyle = '#43403a'; ctx.fillRect(1, 2, 3, 28); ctx.fillRect(28, 2, 3, 28);
+      ctx.fillStyle = 'rgba(170,164,150,0.5)'; ctx.fillRect(1, 2, 1, 28); ctx.fillRect(28, 2, 1, 28);
+      // Angeln/Scharniere
+      ctx.fillStyle = '#2a2620'; ctx.fillRect(3, 6, 2, 2); ctx.fillRect(3, 22, 2, 2);
+      // das aufgeschwungene Gittertor (steht schräg an der linken Wand)
+      ctx.save();
+      ctx.translate(5, 4); ctx.rotate(-0.5);
+      ctx.strokeStyle = '#5a554e'; ctx.lineWidth = 1.6;
+      for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(i * 3.5, 0); ctx.lineTo(i * 3.5, 22); ctx.stroke(); }
+      ctx.strokeStyle = '#43403a'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(0, 4); ctx.lineTo(11, 4); ctx.moveTo(0, 18); ctx.lineTo(11, 18); ctx.stroke();
+      ctx.restore();
+      ctx.lineWidth = 1;
+      // dunkle Schwelle am Boden (Eintritt)
+      ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(5, 27, 22, 3);
+      break;
     case 'kerzenschrein':
       // Kerzenschrein (Runde 50: massiver Steinsockel mit Lichtkante, mehr Kerzen
       // unterschiedlicher Höhe, geschmolzenes Wachs und ein warmer Lichtschein)

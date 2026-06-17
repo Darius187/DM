@@ -27,6 +27,9 @@ export const T = {
   // Bücherregal-Zustände (Runde 50): SHELF = voll, SHELF_GELEERT = durchsucht
   // (ein paar Reste), SHELF_LEER = von vornherein leer (Deko-Abwechslung).
   SHELF_GELEERT: 50, SHELF_LEER: 51,
+  // Offenes Zellentor (Runde 50): BEGEHBAR - man geht durch das aufgeschwungene
+  // Gitter in die Zelle (kein Laden), keine solide Barriere.
+  ZELLENTOR: 52,
 } as const;
 export type TileId = (typeof T)[keyof typeof T];
 
@@ -54,7 +57,7 @@ const NAME: Record<number, string> = {
   [T.ALTAR]: 'altar', [T.SHELF]: 'regal', [T.SHELF_GELEERT]: 'regal_geleert', [T.SHELF_LEER]: 'regal_leer',
   [T.BONES]: 'knochen', [T.BLOOD]: 'blut',
   [T.RUNE]: 'rune', [T.SHRINE]: 'kerzenschrein', [T.ORE]: 'erzader', [T.ROCK]: 'fels',
-  [T.RACK]: 'streckbank', [T.RACK_R]: 'streckbank_r', [T.CAGE]: 'kaefig',
+  [T.RACK]: 'streckbank', [T.RACK_R]: 'streckbank_r', [T.CAGE]: 'kaefig', [T.ZELLENTOR]: 'zellentor',
   [T.WATER]: 'wasser', [T.FIELD]: 'acker', [T.FENCE]: 'zaun', [T.PALISADE]: 'palisade',
   [T.TOR]: 'stadttor',
   [T.HOLZ]: 'holzboden', [T.BETT]: 'bett', [T.TISCH]: 'tisch', [T.STUHL]: 'stuhl',
