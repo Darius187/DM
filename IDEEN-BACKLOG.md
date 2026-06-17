@@ -5,7 +5,7 @@ Nichts geht verloren - "offen" heißt nicht "verworfen". Erledigtes wandert nach
 unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLAN.md.
 
 ## Gerade in Arbeit
-- [ ] Schlacht-Prototyp im Testmodus (Formationen, Auswahlrahmen, RTS-Steuerung).
+- (frei)
 
 ## Welt & Karte
 - [ ] Holzfäller-Lager, Stein-Bergwerk und Goldlager AUF die Dorfkarte (im
@@ -51,3 +51,5 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [x] Bloom als Regler, standardmäßig aus.
 - [x] Pferd/Kuh-Grafik verbessert.
 - [x] Dorf vergrößert, ringsum Wald (moderate Stufe, nahtlos).
+- [x] Schlacht-Prototyp im Testmodus (Formationen Linie/Keil/Igel, Auswahl-
+      rahmen, AoE4-Vorschau, Marsch, Kampf gegen Untote).
