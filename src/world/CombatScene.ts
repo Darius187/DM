@@ -5,7 +5,8 @@
 import Phaser from 'phaser';
 import { SpriteProvider } from '../gfx/SpriteProvider';
 import { SoundProvider } from '../gfx/SoundProvider';
-import { spielerFigur, type Dir } from '../gfx/fallbackArt';
+import { spielerFigur, TILE, type Dir } from '../gfx/fallbackArt';
+import { Wegfeld } from './Wegfeld';
 import { getHeldForm } from '../data/heldForm';
 import { heldTier } from '../data/helden';
 import { EffectSystem } from './effects';
@@ -2330,6 +2331,38 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
   }
 
+  // --- Flussfeld-Wegfindung (Runde 50) --------------------------------------
+  private wegfeld: Wegfeld | null = null;
+  private wegfeldT = 0;
+  // Gittergröße des aktuellen Gebiets; null = keine Wegfindung (Welt überschreibt).
+  protected feldGroesse(): { w: number; h: number } | null { return null; }
+  // Eine Kachel ist begehbar, wenn ihre Mitte nicht solide ist (Brücke = frei,
+  // Wasser/Zaun/Wand = blockiert) - so führt das Feld über Brücken/Durchgänge.
+  protected begehbarFuerWeg(tx: number, ty: number): boolean {
+    return !this.isSolidAt(tx * TILE + 16, ty * TILE + 16);
+  }
+
+  private updateWegfeld(dt: number): void {
+    const g = this.feldGroesse();
+    if (!g) { this.wegfeld = null; return; }
+    if (!this.wegfeld || !this.wegfeld.passt(g.w, g.h)) this.wegfeld = new Wegfeld(g.w, g.h);
+    this.wegfeldT -= dt;
+    const ptx = Math.floor(this.px / TILE), pty = Math.floor(this.py / TILE);
+    // Neu rechnen alle ~0,3 s ODER sobald der Spieler die Kachel wechselt.
+    if (this.wegfeldT <= 0 || this.wegfeld.zielTx !== ptx || this.wegfeld.zielTy !== pty) {
+      this.wegfeldT = 0.3;
+      this.wegfeld.berechne(ptx, pty, (tx, ty) => this.begehbarFuerWeg(tx, ty));
+    }
+  }
+
+  // Richtung (rad) zum Spieler entlang des Flussfeldes (um Hindernisse herum).
+  wegRichtung(x: number, y: number): number | null {
+    if (!this.wegfeld) return null;
+    const nb = this.wegfeld.bestesNachbarfeld(Math.floor(x / TILE), Math.floor(y / TILE));
+    if (!nb) return null;
+    return Math.atan2((nb.ty * TILE + 16) - y, (nb.tx * TILE + 16) - x);
+  }
+
   // Nach dem Spielertod läuft die Welt WEITER: die Gegner scharen sich um die
   // Leiche und fallen über sie her, während man zuschaut (das Gestorben-Fenster
   // liegt halbtransparent darüber). Spieler-Eingabe/Bewegung bleibt aus.
@@ -2436,7 +2469,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (this.p.foodBuff.restS <= 0) this.p.foodBuff = null;
     }
 
-    // Gegner
+    // Gegner: erst das Flussfeld vom Spieler aus aktualisieren (Wegfindung)
+    this.updateWegfeld(dt);
     for (const e of [...this.enemies]) {
       e.update(this, dt);
       if (this.playerDead) return dt;

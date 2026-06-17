@@ -29,6 +29,9 @@ export interface EnemyHost {
   verbuendeteNahe(e: Enemy, radius: number): number;
   // Begegnungs-Ruf (Runde 32): erster Sichtkontakt, gedrosselt
   begegnungsRuf(e: Enemy): void;
+  // Flussfeld-Wegfindung (Runde 50): Richtung (rad) zum Spieler, die um
+  // Hindernisse herum führt; null, wenn kein Feld vorliegt -> direkter Weg.
+  wegRichtung(x: number, y: number): number | null;
 }
 
 // Angriffsmuster je Gegnertyp (Masterprompt 4.3: 2-3 Muster, Telegraph 0,35-0,85 s)
@@ -471,10 +474,13 @@ export class Enemy {
         const ry = py + Math.sin(pd + Math.PI) * (host.playerR() + this.r + 6);
         this.laufe(host, Math.atan2(ry - this.y, rx - this.x), this.speed * slowF, dt);
       } else {
-        // Annäherung versetzt aus dem eigenen Flankenwinkel -> Umzingeln;
-        // laufe() umgeht dabei Hindernisse, statt dagegen zu rennen
+        // Annäherung: das Flussfeld führt um Hindernisse herum (Zäune, Wasser)
+        // und über Brücken/Durchgänge - direkter Weg nur als Rückfall (Runde 50).
+        // Nah dran (Melee) zählt der direkte Winkel, dort ist das Kachelraster zu grob.
+        const wegAng = d > 70 ? host.wegRichtung(this.x, this.y) : null;
         const fade = Math.min(1, Math.max(0, (d - 50) / 160));
-        const fa = ang + this.flankAng * fade;
+        const basis = wegAng ?? ang;
+        const fa = basis + this.flankAng * fade * (wegAng !== null ? 0.4 : 1);
         this.laufe(host, fa, this.speed * slowF, dt);
       }
       this.advanceStep(dt);

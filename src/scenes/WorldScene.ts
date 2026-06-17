@@ -1193,6 +1193,11 @@ export class WorldScene extends CombatScene {
 
   // --- Arealverwaltung -----------------------------------------------------
 
+  // Gittergröße fürs Flussfeld der Wegfindung (Runde 50)
+  protected override feldGroesse(): { w: number; h: number } | null {
+    return this.area ? { w: this.area.w, h: this.area.h } : null;
+  }
+
   private getArea(id: string): AreaData {
     const cached = this.areas.get(id);
     if (cached) return cached;
