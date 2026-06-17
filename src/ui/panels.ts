@@ -58,7 +58,10 @@ export class UIPanels {
   getAlbumZeilen: (() => Array<[string, string]>) | null = null;
   getStatistikZeilen: (() => Array<[string, string]>) | null = null;
   getKontakteZeilen: (() => Array<[string, string]>) | null = null;
-  private hauptTab: 'held' | 'faehigkeiten' | 'aufgaben' | 'album' | 'statistik' | 'kontakte' = 'held';
+  // Karte des Fürstentums (Runde 51)
+  getKarte: (() => { aufgedeckt: boolean; gebiete: Array<{ id: string; name: string; gx: number; gy: number; sichtbar: boolean; thumb: { w: number; h: number; farben: number[][] } | null }> }) | null = null;
+  toggleKarteDev: (() => void) | null = null;
+  private hauptTab: 'held' | 'faehigkeiten' | 'aufgaben' | 'album' | 'statistik' | 'kontakte' | 'karte' = 'held';
 
   // Fenster direkt auf einem Reiter öffnen (B = Album)
   openTab(tab: 'held' | 'album' | 'statistik'): void {
@@ -164,7 +167,7 @@ export class UIPanels {
     // Haupt-Reiter (Runde 38: eigene Tabs für Fähigkeiten und Aufgaben,
     // damit der Charakter-Tab nicht mehr überladen ist und nichts überlappt)
     const reiter: Array<[typeof this.hauptTab, string]> = [
-      ['held', 'CHARAKTER'], ['faehigkeiten', 'FÄHIGKEITEN'], ['aufgaben', 'AUFGABEN'],
+      ['held', 'CHARAKTER'], ['faehigkeiten', 'FÄHIGKEITEN'], ['karte', 'KARTE'], ['aufgaben', 'AUFGABEN'],
       ['kontakte', 'KONTAKTE'], ['album', 'ALBUM'], ['statistik', 'STATISTIK'],
     ];
     let rx = 14;
@@ -193,6 +196,8 @@ export class UIPanels {
       this.buildInventorySide(inhalt, w * 0.46 + 12, w - (w * 0.46 + 12) - 10, h - 62);
     } else if (this.hauptTab === 'faehigkeiten') {
       this.buildSkillsTab(inhalt, w, h - 62);
+    } else if (this.hauptTab === 'karte') {
+      this.buildMapTab(inhalt, w, h - 62);
     } else if (this.hauptTab === 'aufgaben') {
       this.buildTasksTab(inhalt, w, h - 62);
     } else {
@@ -316,6 +321,49 @@ export class UIPanels {
       c.add(this.scene.add.text(x + 14, y, k, { fontFamily: 'serif', fontSize: '12px', color: BONE }));
       c.add(this.scene.add.text(x + spalte - 14, y, v, { fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0' }).setOrigin(1, 0));
     });
+  }
+
+  // --- Karten-Tab (Runde 51): das Fürstentum als Übersicht, Nebel des Krieges -
+  private buildMapTab(c: Phaser.GameObjects.Container, w: number, h: number): void {
+    c.add(this.scene.add.text(16, 6, 'KARTE - Das Fürstentum von Ravensmoor', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
+    c.add(this.scene.add.text(16, 26, 'Erforschte Gebiete der Oberwelt. Schwarz = noch unerforscht. Krypten liegen unter der Erde.', { fontFamily: 'serif', fontSize: '11.5px', color: '#8a7a5a' }));
+    const info = this.getKarte?.();
+    if (!info || !info.gebiete.length) { c.add(this.scene.add.text(16, 56, 'Keine Kartendaten.', { fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c' })); return; }
+    // Dev-Aufdeck-Knopf (in der finalen Version entfernbar)
+    const dev = this.scene.add.text(w - 16, 6, info.aufgedeckt ? 'AUFDECKEN: AN (Dev)' : 'ALLES AUFDECKEN (Dev)', {
+      fontFamily: 'serif', fontSize: '11px', color: info.aufgedeckt ? '#9ad86a' : '#d0a0a0', backgroundColor: '#1c1408', padding: { x: 8, y: 4 },
+    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    dev.on('pointerdown', () => { this.toggleKarteDev?.(); this.build(); });
+    c.add(dev);
+
+    const maxGx = Math.max(...info.gebiete.map((g) => g.gx)), maxGy = Math.max(...info.gebiete.map((g) => g.gy));
+    const cols = maxGx + 1, rows = maxGy + 1, gap = 14, top = 52, leftPad = 16;
+    const availW = w - leftPad * 2, availH = h - top - 12;
+    const boxW = Math.floor((availW - (cols - 1) * gap) / cols);
+    const boxH = Math.floor(Math.min(boxW * 0.72, (availH - (rows - 1) * gap) / rows));
+    const g = this.scene.add.graphics();
+    c.add(g);
+    for (const geb of info.gebiete) {
+      const bx = leftPad + geb.gx * (boxW + gap), by = top + geb.gy * (boxH + gap);
+      if (geb.sichtbar && geb.thumb) {
+        const th = geb.thumb;
+        const cell = Math.max(1, Math.min(boxW / th.w, (boxH - 16) / th.h));
+        const tx0 = bx + (boxW - th.w * cell) / 2, ty0 = by + (boxH - 16 - th.h * cell) / 2;
+        for (let yy = 0; yy < th.h; yy++) {
+          for (let xx = 0; xx < th.w; xx++) {
+            g.fillStyle(th.farben[yy][xx], 1);
+            g.fillRect(Math.round(tx0 + xx * cell), Math.round(ty0 + yy * cell), Math.ceil(cell), Math.ceil(cell));
+          }
+        }
+        g.lineStyle(1, 0x6e5a36, 1); g.strokeRect(bx, by, boxW, boxH);
+        c.add(this.scene.add.text(bx + boxW / 2, by + boxH - 14, geb.name, { fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5, 0));
+      } else {
+        g.fillStyle(0x000000, 1); g.fillRect(bx, by, boxW, boxH);
+        g.lineStyle(1, 0x2a2218, 1); g.strokeRect(bx, by, boxW, boxH);
+        c.add(this.scene.add.text(bx + boxW / 2, by + boxH / 2 - 14, '?', { fontFamily: 'serif', fontSize: '26px', color: '#3a3228' }).setOrigin(0.5));
+        c.add(this.scene.add.text(bx + boxW / 2, by + boxH - 14, 'unerforscht', { fontFamily: 'serif', fontSize: '11px', color: '#5a5246' }).setOrigin(0.5, 0));
+      }
+    }
   }
 
   // --- Fähigkeiten-Tab (Runde 38): die drei Schulen, je in Klassenfarbe ------

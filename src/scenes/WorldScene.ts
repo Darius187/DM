@@ -95,6 +95,27 @@ interface AnimalEntity extends AnimalSpawn {
   dir: Dir;
 }
 
+// Karte des Fürstentums (Runde 51, Autorwunsch): die OBERWELT-Gebiete mit ihrer
+// Lage zueinander (gx/gy = Rasterplatz). Krypten sind unterirdisch -> nicht auf
+// der Übersichtskarte. Neue angrenzende Gebiete kommen hier dazu.
+export interface FuerstentumGebiet { id: string; name: string; gx: number; gy: number }
+export const FUERSTENTUM: ReadonlyArray<FuerstentumGebiet> = [
+  { id: 'wald', name: 'Dunkelwald', gx: 0, gy: 0 },
+  { id: 'village', name: 'Ravensmoor', gx: 1, gy: 0 },
+];
+
+// Eine Kachel auf eine Minikarten-Farbe abbilden.
+function minikartenFarbe(t: number): number {
+  if (t === T.WATER) return 0x244e6a;
+  if (t === T.TREE) return 0x243a1c;
+  if (t === T.PATH) return 0x6a5a3c;
+  if (t === T.GRASS || t === T.FIELD) return 0x44542a;
+  if (t === T.HWALL || t === T.CWALL || t === T.WALL || t === T.PALISADE || t === T.TOR || t === T.FENCE) return 0x5a4730;
+  if (t === T.WELL || t === T.WELL_BLUT) return 0x3a6a86;
+  if (SOLID.has(t)) return 0x39322a;
+  return 0x4a443a;
+}
+
 export class WorldScene extends CombatScene {
   private areas = new Map<string, AreaData>();
   private area!: AreaData;
@@ -230,6 +251,7 @@ export class WorldScene extends CombatScene {
     this.tagwerke = {};
     this.dorfkasse = 0;
     this.dorfLager = { ...DORF_LAGER_START };
+    this.karteAufgedeckt = false;
     this.naechsteAbgabe = ABGABE.intervallTage;
     this.abgabeRueckstand = 0;
     this.breschen = [];
@@ -258,6 +280,8 @@ export class WorldScene extends CombatScene {
     this.panels.getAlbumZeilen = () => this.albumZeilen();
     this.panels.getStatistikZeilen = () => this.statistikZeilen();
     this.panels.getKontakteZeilen = () => this.kontakteZeilen();
+    this.panels.getKarte = () => this.getKarteInfo();
+    this.panels.toggleKarteDev = () => { this.karteAufgedeckt = !this.karteAufgedeckt; };
     this.shop = new ShopUI(this, this.provider, this.sfx, () => this.p);
     this.shop.rabatt = () => this.wohlstand() * 0.05;
     this.shop.lager = () => this.dorfLager;   // Schmied schmiedet aus Dorf-Barren
@@ -1297,6 +1321,7 @@ export class WorldScene extends CombatScene {
     }
     const a = this.getArea(id);
     this.area = a;
+    if (FUERSTENTUM.some((g) => g.id === id)) this.flags[`besucht_${id}`] = true; // Karte: erforscht
     this.unloadAreaObjects();
     this.loadAreaObjects(a);
     const s = spawnAt ?? a.spawn;
@@ -3304,6 +3329,35 @@ export class WorldScene extends CombatScene {
   private dorfLager: Record<string, number> = { ...DORF_LAGER_START };
   private naechsteAbgabe: number = ABGABE.intervallTage;
   private abgabeRueckstand = 0;
+
+  // --- Karte des Fürstentums (Runde 51) -------------------------------------
+  private karteAufgedeckt = false; // Dev-Aufdecken (nicht gespeichert, Final entfernbar)
+
+  private getKarteInfo(): { aufgedeckt: boolean; gebiete: Array<{ id: string; name: string; gx: number; gy: number; sichtbar: boolean; thumb: { w: number; h: number; farben: number[][] } | null }> } {
+    return {
+      aufgedeckt: this.karteAufgedeckt,
+      gebiete: FUERSTENTUM.map((g) => {
+        const sichtbar = this.karteAufgedeckt || !!this.flags[`besucht_${g.id}`];
+        return { id: g.id, name: g.name, gx: g.gx, gy: g.gy, sichtbar, thumb: sichtbar ? this.gebietThumb(g.id) : null };
+      }),
+    };
+  }
+
+  // Downscaled Minikarte eines Gebiets (Farb-Raster, max ~64 breit).
+  private gebietThumb(id: string): { w: number; h: number; farben: number[][] } {
+    const a = this.getArea(id);
+    const maxB = 64;
+    const schritt = Math.max(1, Math.ceil(a.w / maxB));
+    const tw = Math.ceil(a.w / schritt), th = Math.ceil(a.h / schritt);
+    const farben: number[][] = Array.from({ length: th }, () => new Array<number>(tw).fill(0x14110c));
+    for (let ty = 0; ty < th; ty++) {
+      for (let tx = 0; tx < tw; tx++) {
+        const sx = Math.min(a.w - 1, tx * schritt), sy = Math.min(a.h - 1, ty * schritt);
+        farben[ty][tx] = minikartenFarbe(a.map[sy][sx]);
+      }
+    }
+    return { w: tw, h: th, farben };
+  }
 
   // Täglicher Wirtschafts-Tick (beim Tageswechsel aus sleep UND advanceClock).
   private wirtschaftsTick(): void {

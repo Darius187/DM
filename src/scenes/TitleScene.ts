@@ -6,6 +6,7 @@ import { TITEL } from '../data/texte';
 import { hasSave, readSave, AUTOSAVE_SLOT } from '../logic/save';
 import { storage } from '../logic/gameStorage';
 import { getSettings } from '../logic/settings';
+import { SPIEL_VERSION } from '../data/version';
 
 export class TitleScene extends Phaser.Scene {
   // Alle sichtbaren Elemente liegen in EINEM Container, damit das Layout bei
@@ -77,7 +78,7 @@ export class TitleScene extends Phaser.Scene {
     c.add(titel);
 
     // Sichtbare Versionsnummer, damit alte Stände sofort auffallen
-    c.add(this.add.text(10, h - 10, 'Stand: Runde 51 (17.06.2026)', {
+    c.add(this.add.text(10, h - 10, `Version: Alpha · Runde ${SPIEL_VERSION} (17.06.2026)`, {
       fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c',
     }).setOrigin(0, 1));
     c.add(this.add.text(w / 2, h * 0.16 + 46, TITEL.unter, {
