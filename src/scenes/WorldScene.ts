@@ -24,6 +24,7 @@ import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDL
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER } from '../data/crafting';
+import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE } from '../data/wirtschaft';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, tageszeitLabel } from '../data/welt';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
@@ -228,6 +229,9 @@ export class WorldScene extends CombatScene {
     this.grosserEinfall = false;
     this.tagwerke = {};
     this.dorfkasse = 0;
+    this.dorfLager = { ...DORF_LAGER_START };
+    this.naechsteAbgabe = ABGABE.intervallTage;
+    this.abgabeRueckstand = 0;
     this.breschen = [];
     this.einfallRest = [];
     this.einrichtung = 0;
@@ -3292,6 +3296,43 @@ export class WorldScene extends CombatScene {
   // Gespendetes Gold gesamt; ab 100/250/500 steigt der Wohlstand des Dorfes
   // und die Händler senken ihre Preise (5% je Stufe)
   dorfkasse = 0;
+  // Wirtschaft Phase 1 (Runde 51): Dorf-Lager, nächste Abgabe, Rückstand.
+  private dorfLager: Record<string, number> = { ...DORF_LAGER_START };
+  private naechsteAbgabe: number = ABGABE.intervallTage;
+  private abgabeRueckstand = 0;
+
+  // Täglicher Wirtschafts-Tick (beim Tageswechsel aus sleep UND advanceClock).
+  private wirtschaftsTick(): void {
+    for (const [m, n] of Object.entries(TAGES_PRODUKTION)) this.dorfLager[m] = (this.dorfLager[m] ?? 0) + (n ?? 0);
+    if (this.tag >= this.naechsteAbgabe) {
+      this.leisteAbgabe();
+      this.naechsteAbgabe = this.tag + ABGABE.intervallTage;
+    }
+  }
+
+  // Abgabe an den Fürsten: Gold aus der Dorfkasse, Material aus dem Lager.
+  // Reicht es nicht, wächst der Rückstand (Druck; später Folgen für die Hilfe).
+  private leisteAbgabe(): void {
+    let fehlt = false;
+    for (const [m, n] of Object.entries(ABGABE.material)) {
+      const da = this.dorfLager[m] ?? 0;
+      if (da >= (n ?? 0)) this.dorfLager[m] = da - (n ?? 0); else { this.dorfLager[m] = 0; fehlt = true; }
+    }
+    if (this.dorfkasse >= ABGABE.gold) this.dorfkasse -= ABGABE.gold; else { this.dorfkasse = 0; fehlt = true; }
+    if (fehlt) {
+      this.abgabeRueckstand++;
+      this.logMsg(`Abgabe an den Fürsten nicht voll geleistet - Rückstand ${this.abgabeRueckstand}. Spende in die Dorfkasse, um Frieden zu wahren.`, 'bad');
+    } else {
+      this.logMsg(`Das Dorf hat seine Abgabe an den Fürsten geleistet (${ABGABE.gold} Gold + Vorräte).`, 'tag');
+    }
+  }
+
+  // Kurze Bestandsaufnahme der Vorratskammer für die Schulze-Anzeige.
+  private lagerText(): string {
+    const teile = Object.entries(this.dorfLager).filter(([, n]) => n > 0)
+      .map(([m, n]) => `${MATERIAL_NAMES[m as MaterialId] ?? m} ${n}`);
+    return teile.length ? teile.join(' · ') : 'leer';
+  }
 
   wohlstand(): number {
     return this.dorfkasse >= 500 ? 3 : this.dorfkasse >= 250 ? 2 : this.dorfkasse >= 100 ? 1 : 0;
@@ -3332,8 +3373,10 @@ export class WorldScene extends CombatScene {
   private talkSchulze(): void {
     const zeilen = [...(VOLK.schulze ?? [])];
     const letzte = zeilen.pop() ?? '...';
+    // Wirtschaft Phase 1 (Runde 51): Vorratskammer + Abgaben-Stand mit anzeigen
+    const abg = `Nächste Abgabe an den Fürsten: Tag ${this.naechsteAbgabe} (${ABGABE.gold} Gold + Vorräte).${this.abgabeRueckstand ? ` Wir sind ${this.abgabeRueckstand} im Rückstand - der Fürst ist erzürnt.` : ''}`;
     this.dialog.show('Schulze Bertram', [...zeilen, {
-      text: `${letzte} Die Dorfkasse hält ${this.dorfkasse} Gold${this.wohlstand() ? ` - der Wohlstand drückt die Preise um ${this.wohlstand() * 5}%` : ''}.`,
+      text: `${letzte} Die Dorfkasse hält ${this.dorfkasse} Gold${this.wohlstand() ? ` - der Wohlstand drückt die Preise um ${this.wohlstand() * 5}%` : ''}.\nVorratskammer: ${this.lagerText()}. ${abg}`,
       choices: [
         { label: 'Für die Dorfkasse spenden (50 Gold)', fn: () => this.spendeDorfkasse(50) },
         { label: 'Lebt wohl' },
@@ -3924,6 +3967,7 @@ export class WorldScene extends CombatScene {
     this.p.mana = this.p.stats.maxmana;
     this.p.flaskCount = this.p.flaskMax;
     this.tag++;
+    this.wirtschaftsTick();
     this.tageszeit = 0.25;
     this.wuerfleWetter();
     for (const [key, tagGefaellt] of this.gefaellteBaeume) {
@@ -4544,6 +4588,7 @@ export class WorldScene extends CombatScene {
         einfallZaehler: this.einfallZaehler,
         tagwerke: this.tagwerke,
         dorfkasse: this.dorfkasse,
+        wirtschaft: { lager: this.dorfLager, naechsteAbgabe: this.naechsteAbgabe, rueckstand: this.abgabeRueckstand },
         breschen: this.breschen,
       },
     };
@@ -4601,6 +4646,10 @@ export class WorldScene extends CombatScene {
     this.einfallZaehler = data.welt.einfallZaehler ?? 0;
     this.tagwerke = data.welt.tagwerke ?? {};
     this.dorfkasse = data.welt.dorfkasse ?? 0;
+    const wi = data.welt.wirtschaft;
+    this.dorfLager = wi?.lager ?? { ...DORF_LAGER_START };
+    this.naechsteAbgabe = wi?.naechsteAbgabe ?? ABGABE.intervallTage;
+    this.abgabeRueckstand = wi?.rueckstand ?? 0;
     this.breschen = data.welt.breschen ?? [];
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
     recalc(p);
@@ -5501,6 +5550,7 @@ export class WorldScene extends CombatScene {
     if (this.tageszeit >= 1) {
       this.tageszeit = 0;
       this.tag++;
+      this.wirtschaftsTick();
       this.logMsg(`Tag ${this.tag} bricht an.`, 'tag');
       this.wuerfleWetter();
     }

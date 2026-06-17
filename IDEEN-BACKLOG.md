@@ -54,7 +54,9 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
       ~5ms -> selbst 1000+ Einheiten flüssig. Wird in die echte Schlacht übernommen.
 
 ## Wirtschaft (Details in WIRTSCHAFT-PLAN.md)
-- [ ] Material-Datenbank + Dorf-Lager + täglicher Produktions-Tick.
+- [x] Wirtschaft Phase 1: Dorf-Lager + tägliche Produktion + ABGABEN an den
+      Fürsten (alle 7 Tage, aus Lager+Dorfkasse; Rückstand = Druck) + Anzeige
+      beim Schulzen. Schlank gehalten. Werte in src/data/wirtschaft.ts.
 - [ ] Weizen->Mehl(Mühle)->Brot(Bäcker); Erz->Barren(Schmelze)->Schmied.
 - [ ] Händler-Bestände an das Lager koppeln (Kauf/Verkauf/Spende).
 - [x] Brunnen größer + Blut-bei-Einfall (verseuchter Brunnen, Blut ringsum).

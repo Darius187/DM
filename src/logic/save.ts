@@ -50,6 +50,8 @@ export interface SaveData {
     einfallZaehler?: number;
     tagwerke?: Record<string, number>;
     dorfkasse?: number;
+    // Wirtschaft Phase 1 (Runde 51): Dorf-Lager + Abgaben-Stand.
+    wirtschaft?: { lager: Record<string, number>; naechsteAbgabe: number; rueckstand: number };
     breschen?: Array<{ x: number; y: number }>;
   };
 }
