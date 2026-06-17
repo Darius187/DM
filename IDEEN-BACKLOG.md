@@ -21,7 +21,8 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
       Showdown; von dort spawnen die Monster Richtung Dorf. Braucht erst die
       verbundene Welt-Struktur (mehrere Gebiete), dann als NO-Endgebiet.
 - [ ] Anhöhen / Bergaufstiege als gefakte Höhe (Klippen-Art, Rampen/Treppen,
-      Schnee oben) - Diablo/Dungeon-Siege-Stil, kein echtes 3D.
+      Schnee oben) - Diablo/Dungeon-Siege-Stil, kein echtes 3D. (Autor will eine
+      DEMO sehen, wie das aussieht.)
 - [ ] Schneegebiet im NORDWESTEN auf einem Berg - Rückzugsort des ganzen Dorfes.
 
 ## Anfang / Quests
@@ -52,9 +53,8 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [ ] Brunnen hochskalieren + Blut-bei-Einfall (kein Wasser mehr).
 
 ## Technik / Sonstiges
-- [ ] Dungeon-Generator logischer machen (Haupthallen + Nebenräume + saubere
-      Gänge statt zufällig überlappender Rechtecke; Requisiten an Wände, nicht in
-      Gänge; Sonderstücke wie Brücke nie auf dem Hauptweg). Eigener Refactor.
+- [~] Logischer Dungeon-Generator als TEST gebaut (Menü -> DUNGEON-PROBE). Noch
+      offen: in den echten Krypta-Generator übernehmen, wenn er gefällt.
 - [ ] Später ggf. Kachel-Zeichenweise auf Tilemap-Layer umstellen (nur falls
       die Welt WIRKLICH riesig werden soll - eigener Schritt, nicht jetzt).
 - [ ] Veröffentlichung: itch.io (Demo öffentlich, Vollversion via Download-Keys
@@ -68,3 +68,5 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [x] Dorf vergrößert, ringsum Wald (moderate Stufe, nahtlos).
 - [x] Schlacht-Prototyp im Testmodus (Formationen Linie/Keil/Igel, Auswahl-
       rahmen, AoE4-Vorschau, Marsch, Kampf gegen Untote).
+- [x] Logischer Dungeon-Generator als Test-Karte (DUNGEON-PROBE).
+- [x] Fluss-Ufer mit Tiefe (Schatten-Saum + Wasserlinie an allen Seiten).
