@@ -69,7 +69,7 @@ export class SettingsScene extends Phaser.Scene {
     y = this.toggle(y, 'Bildschirmwackeln bei Treffern', () => s.shake, (v) => { s.shake = v; });
     y = this.toggle(y, 'Schadenszahlen', () => s.dmgNums, (v) => { s.dmgNums = v; });
     y = this.toggle(y, 'Blut & Überreste', () => s.blood, (v) => { s.blood = v; });
-    y = this.toggle(y, 'Leuchten (Nachbearbeitung)', () => s.postFx, (v) => { s.postFx = v; });
+    y = this.slider(y, 'Leuchten / Bloom-Stärke (0 = aus)', () => s.bloom, (v) => { s.bloom = v; }, 0, 100);
     y = this.toggle(y, 'Nebel des Krieges im Dunkelwald', () => s.fow, (v) => { s.fow = v; });
     y = this.toggle(y, 'Texte vorlesen (Sprachausgabe)', () => s.vorlesen, (v) => { s.vorlesen = v; });
     sect('HANDY');

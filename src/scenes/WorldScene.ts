@@ -5789,18 +5789,17 @@ export class WorldScene extends CombatScene {
   // "aufwerten"): dezentes Bloom lässt Fackeln/Feuer/Zauber glühen, ohne den
   // Pixel-Look zu verwaschen. Die UI-Kamera bleibt unangetastet (scharfe Schrift).
   // Runde 41: Vignette entfernt (machte alles zu düster), nur noch das Glühen.
-  // Abschaltbar (settings.postFx), z. B. für schwache Geräte.
-  private postFxAktiv: boolean | null = null;
+  // Runde 51 (Autorwunsch): aus dem An/Aus-Schalter wird ein REGLER (0-100),
+  // standardmäßig 0 = aus - das feste Bloom war "zu stark".
+  private bloomStaerke: number | null = null;
   private wendePostFxAn(): void {
-    const an = getSettings().postFx !== false;
-    this.postFxAktiv = an;
+    const b = Math.max(0, Math.min(100, getSettings().bloom ?? 0));
+    this.bloomStaerke = b;
     const cam = this.cameras.main;
     cam.postFX.clear();
-    if (!an) return;
-    // Runde 42: deutlich kräftigeres Leuchten (Autorkritik "Leuchten = immer
-    // aus, ich sehe keine Effekte") - Fackeln, Feuer und Zauber glühen jetzt
-    // sichtbar. blurStrength 0,7->1,0, strength 0,45->1,1, steps 4->6.
-    cam.postFX.addBloom(0xffffff, 1, 1, 1.0, 1.1, 6);
+    if (b <= 0) return; // 0 = aus
+    // Regler 0-100 -> Bloom-Stärke 0..1,0 (vorher fest 1,1, Autorkritik "zu stark")
+    cam.postFX.addBloom(0xffffff, 1, 1, 1.0, (b / 100) * 1.0, 6);
   }
 
   private onResize(): void {
@@ -5838,8 +5837,8 @@ export class WorldScene extends CombatScene {
   update(_time: number, delta: number): void {
     if (!this.area) return;
     const dt = Math.min(0.05, delta / 1000);
-    // Nachbearbeitung nachziehen, falls in den Einstellungen umgeschaltet
-    if ((getSettings().postFx !== false) !== this.postFxAktiv) this.wendePostFxAn();
+    // Nachbearbeitung nachziehen, falls der Bloom-Regler verstellt wurde
+    if ((getSettings().bloom ?? 0) !== this.bloomStaerke) this.wendePostFxAn();
     // Schiebephysik VOR der Bewegung (Runde 40): so bremst die Kiste den Helden
     // im selben Frame, in dem er sie berührt - vorher hinkte die Bremse einen
     // Frame hinterher und griff kaum

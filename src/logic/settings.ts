@@ -33,9 +33,10 @@ export interface Settings {
   // y zählt vom UNTEREN Bildrand (Chat-Verankerung wie bei WoW)
   chronikBox: { x: number; y: number; w: number; h: number };
   chronikAuto: boolean;   // Chronik-Fenster beim Spielstart offen (Runde 36)
-  postFx: boolean;        // Nachbearbeitung: Bloom/Leuchten auf Lichter (Runde 40; Vignette ab R41 raus)
+  bloom: number;          // Leucht-/Bloom-Stärke 0-100 (Runde 51: Regler, 0 = aus)
   audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
   zoomV: number;          // einmaliger Zoom-Standard (Runde 41: 130%)
+  bloomV: number;         // einmaliger Bloom-Standard (Runde 51: standardmäßig aus)
   uiLayoutV: number;      // Layout-Version: ältere UI-Versätze einmalig zurücksetzen
   barV: number;           // Leisten-Belegung: einmalig auf "leer bis auf Basics" setzen
   kb: KeyBindings;
@@ -62,9 +63,10 @@ export const DEF_SETTINGS: Settings = {
   chronikBox: { x: 4, y: -430, w: 340, h: 270 }, // Runde 43: bündig am LINKEN
   // Bildschirmrand, kompakter, knapp über der Lebenskugel/Leiste
   chronikAuto: true,
-  postFx: true,
+  bloom: 0, // Runde 51 (Autorwunsch): Bloom standardmäßig AUS, war zu stark
   audioV: 1,
   zoomV: 1,
+  bloomV: 1,
   uiLayoutV: 4, // Runde 43: Chronik bündig links angedockt
   barV: 1,      // Runde 49: Leiste startet leer (Skills selbst belegen)
   kb: {
@@ -135,6 +137,13 @@ export function getSettings(): Settings {
       if ((saved.zoomV ?? 0) < DEF_SETTINGS.zoomV) {
         current.zoom = DEF_SETTINGS.zoom;
         current.zoomV = DEF_SETTINGS.zoomV;
+        try { localStorage.setItem(KEY, JSON.stringify(current)); } catch { /* gesperrt */ }
+      }
+      // Bloom-Migration (Runde 51, Autorwunsch "Bloom zu stark, standardmäßig
+      // aus"): vom alten Schalter (postFx) einmalig auf den Regler 0 = aus.
+      if ((saved.bloomV ?? 0) < DEF_SETTINGS.bloomV) {
+        current.bloom = 0;
+        current.bloomV = DEF_SETTINGS.bloomV;
         try { localStorage.setItem(KEY, JSON.stringify(current)); } catch { /* gesperrt */ }
       }
     }
