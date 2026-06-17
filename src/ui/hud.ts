@@ -34,6 +34,7 @@ interface SlotDef {
 type SlotKat = 'kampf' | 'zauber' | 'bogen' | 'item';
 const SLOT_KAT: Record<string, SlotKat> = {
   angriff: 'kampf', block: 'kampf', rundumschlag: 'kampf', sturmangriff: 'kampf',
+  wuchtschlag: 'kampf', blutdurst: 'kampf', kriegsschrei: 'kampf', erschuetterung: 'kampf',
   mehrfachschuss: 'bogen', markierterTod: 'bogen',
   s1: 'zauber', s2: 'zauber', s3: 'zauber', kettenblitz: 'zauber', frostnova: 'zauber',
   bannkreis: 'zauber', feuerregen: 'zauber', aderlass: 'zauber', lebenstausch: 'zauber',
@@ -129,6 +130,9 @@ export class Hud {
       ['feuerregen', '☄', 'Feuerregen (auf den Zielort)', '#e85a3a'],
       ['aderlass', '⚱', 'Aderlass (Leben gegen Mana)', '#c04848'], ['lebenstausch', '❤', 'Lebenstausch (Mana gegen Leben)', '#e87a9a'],
       ['waffe1', '↻', 'Waffen-Fähigkeit I (je nach Waffe)', '#d8cfb8'], ['waffe2', '⇒', 'Waffen-Fähigkeit II (je nach Waffe)', '#d8cfb8'],
+      // Nahkampf-Fähigkeiten einzeln belegbar (Runde 50)
+      ['wuchtschlag', '⤲', 'Wuchtschlag', '#e0b070'], ['blutdurst', '⚔', 'Blutdurst', '#c83838'],
+      ['kriegsschrei', '⛉', 'Kriegsschrei', '#e0c060'], ['erschuetterung', '⤓', 'Erschütternder Stoß', '#c89858'],
       // 'rolle' (Zufalls-Schriftrolle) ENTFERNT (Runde 49, Autorwunsch): nahm
       // immer eine zufällige Rolle. Schriftrollen legt man jetzt EINZELN aus dem
       // Inventar auf die Leiste (jede mit ihrer eigenen Wirkung).

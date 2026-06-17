@@ -68,7 +68,8 @@ describe('Fertigkeits-Schulen (Learning by doing)', () => {
   });
 
   it('alle 3 Stufen eine neue Fähigkeit je Schule', () => {
-    expect(unlockedAbilities('nahkampf', 9)).toEqual(['rundumschlag', 'sturmangriff', 'hinrichtung']);
+    // Runde 50: vier neue Nahkampf-Fähigkeiten reihen sich nach Stufe ein
+    expect(unlockedAbilities('nahkampf', 9)).toEqual(['wuchtschlag', 'rundumschlag', 'blutdurst', 'kriegsschrei', 'sturmangriff', 'erschuetterung', 'hinrichtung']);
     // Runde 11: Aderlass (Stufe 2) und Lebenstausch (Stufe 4) reihen sich ein;
     // Runde 46: Heilende Hand (Stufe 3) kommt dazu
     expect(unlockedAbilities('zauberei', 6)).toEqual(['kettenblitz', 'frostnova', 'aderlass', 'lebenstausch', 'heilen']);

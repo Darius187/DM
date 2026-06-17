@@ -1626,7 +1626,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       case 's3': this.castSpell(2); break;
       case 'kettenblitz': case 'frostnova': case 'bannkreis':
       case 'feuerregen': case 'aderlass': case 'lebenstausch': case 'heilen':
-      case 'hagel': case 'splitterpfeil': case 'sprungpfeil': case 'fesselpfeil': this.useAbility(id); break;
+      case 'hagel': case 'splitterpfeil': case 'sprungpfeil': case 'fesselpfeil':
+      case 'wuchtschlag': case 'blutdurst': case 'kriegsschrei': case 'erschuetterung': this.useAbility(id); break;
       // Waffen-Fähigkeiten auch auf Maustasten legbar (Runde 20)
       case 'waffe1': this.useAbility(this.weaponClass() === 'bogen' ? 'mehrfachschuss' : 'rundumschlag'); break;
       case 'waffe2': this.useAbility(this.weaponClass() === 'bogen' ? 'markierterTod' : 'sturmangriff'); break;
@@ -2070,6 +2071,110 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         }
         this.sfx.play('rolle');
         this.applyHitstop(HITSTOP_MS.finisher);
+        break;
+      }
+      case 'wuchtschlag': {
+        // Ein brutaler Frontalhieb auf den nächsten Gegner in Blickrichtung -
+        // schleudert ihn weit zurück und betäubt (Runde 50).
+        const fx = ABILITY_FX.wuchtschlag;
+        const ang = this.aimAngle();
+        this.pdir = ang;
+        const st = this.swingStyle();
+        this.fx.addSwing(this.px, this.py, ang, { fin: true, col: st.col, w: st.w + 3, glow: st.glow });
+        this.playSwingSound('wucht', true);
+        // Ziel: nächster Gegner grob vor dem Helden innerhalb der Reichweite
+        let ziel: Enemy | null = null, bd = fx.reichweite + 40;
+        for (const e of this.enemies) {
+          const d = Math.hypot(e.x - this.px, e.y - this.py);
+          if (d > fx.reichweite + e.r) continue;
+          let da = Math.atan2(e.y - this.py, e.x - this.px) - ang;
+          da = Math.atan2(Math.sin(da), Math.cos(da));
+          if (Math.abs(da) < 1.1 && d < bd) { bd = d; ziel = e; }
+        }
+        if (!ziel) { this.logMsg('Kein Ziel für den Wuchtschlag', 'bad'); return; }
+        this.p.abilityCds[id] = fx.cd;
+        this.damageEnemy(ziel, this.rollDamage(fx.dmgMult), 0, 0, '#f0d090');
+        if (ziel.hp > 0) ziel.stossWeg(Math.cos(ang) * fx.knockback, Math.sin(ang) * fx.knockback, fx.stunS);
+        this.fx.float(ziel.x, ziel.y - ziel.r - 20, 'WUCHT', '#f0d090');
+        this.applyHitstop(HITSTOP_MS.finisher);
+        this.shake(5);
+        this.gainSchoolUse('nahkampf');
+        break;
+      }
+      case 'blutdurst': {
+        // Gieriger Rundhieb: heilt dich je getroffenem Gegner (Runde 50). Passt
+        // zum Spiel um die Unsterblichkeit - Leben aus dem Feind saugen.
+        const fx = ABILITY_FX.blutdurst;
+        this.p.abilityCds[id] = fx.cd;
+        const st = this.swingStyle();
+        this.fx.addSwing(this.px, this.py, this.pdir, { fin: true, col: '#b83040', w: st.w + 2, glow: st.glow, arc: 6.28, radius: fx.radius - 12 });
+        this.fx.welle(this.px, this.py, fx.radius + 8, 0xb83040);
+        this.playSwingSound('axt', true);
+        let treffer = 0;
+        for (const e of [...this.enemies]) {
+          if (Math.hypot(e.x - this.px, e.y - this.py) < fx.radius + e.r) {
+            this.damageEnemy(e, this.rollDamage(fx.dmgMult), 0, 0, '#e85a6a');
+            treffer++;
+          }
+        }
+        if (treffer > 0) {
+          const heal = Math.min(fx.healPerHit * treffer, this.p.stats.maxhp - Math.ceil(this.p.hp));
+          if (heal > 0) {
+            this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + heal);
+            this.fx.float(this.px, this.py - 26, `+${heal}`, '#e87a8a');
+            this.fx.burst(this.px, this.py, 0xb83040, 14, 160);
+          }
+          this.applyHitstop(HITSTOP_MS.finisher);
+          this.shake(3);
+        }
+        this.gainSchoolUse('nahkampf');
+        break;
+      }
+      case 'kriegsschrei': {
+        // Schlachtruf: betäubt nahe Gegner kurz und gibt dir den Stärke-Buff
+        // (gleicher wie der Altar, ALTAR.buffDmgMult) für eine Weile (Runde 50).
+        const fx = ABILITY_FX.kriegsschrei;
+        this.p.abilityCds[id] = fx.cd;
+        this.p.buffT = Math.max(this.p.buffT, fx.buffS);
+        this.fx.welle(this.px, this.py, fx.radius, 0xf0d878);
+        this.fx.welle(this.px, this.py, fx.radius * 0.6, 0xf0e0a0);
+        this.fx.burst(this.px, this.py, 0xf0d878, 22, 220);
+        this.fx.float(this.px, this.py - 30, 'KRIEGSSCHREI', '#f0e08a');
+        for (const e of [...this.enemies]) {
+          if (Math.hypot(e.x - this.px, e.y - this.py) < fx.radius + e.r && !e.boss) {
+            e.stun = Math.max(e.stun, fx.stunS);
+          }
+        }
+        this.sfx.play('rolle');
+        this.shake(4);
+        this.gainSchoolUse('nahkampf');
+        break;
+      }
+      case 'erschuetterung': {
+        // Bodenstampfer: schleudert alle Gegner ringsum nach außen und betäubt
+        // sie - das große AoE-Niederschlag-Werkzeug gegen Massen (Runde 50).
+        const fx = ABILITY_FX.erschuetterung;
+        this.p.abilityCds[id] = fx.cd;
+        this.fx.welle(this.px, this.py, fx.radius + 12, 0xd8c0a0);
+        this.fx.welle(this.px, this.py, fx.radius * 0.5, 0xe8d8c0);
+        this.fx.burst(this.px, this.py, 0xc8b088, 26, 240);
+        this.playSwingSound('wucht', true);
+        let hit = false;
+        for (const e of [...this.enemies]) {
+          const d = Math.hypot(e.x - this.px, e.y - this.py);
+          if (d < fx.radius + e.r) {
+            const a = Math.atan2(e.y - this.py, e.x - this.px);
+            this.damageEnemy(e, this.rollDamage(fx.dmgMult), 0, 0, '#e8d0a0');
+            if (e.hp > 0 && !e.boss) e.stossWeg(Math.cos(a) * fx.knockback, Math.sin(a) * fx.knockback, fx.stunS);
+            hit = true;
+          }
+        }
+        for (const hb of [...this.hittables]) {
+          if (Math.hypot(hb.x - this.px, hb.y - this.py) < fx.radius + hb.r) hb.onHit(Math.atan2(hb.y - this.py, hb.x - this.px));
+        }
+        if (hit) this.applyHitstop(HITSTOP_MS.finisher);
+        this.shake(6);
+        this.gainSchoolUse('nahkampf');
         break;
       }
       case 'kettenblitz': {

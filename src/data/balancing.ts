@@ -90,8 +90,12 @@ export const SCHOOLS = {
 
 export interface AbilityDef { id: string; school: 'nahkampf' | 'zauberei' | 'bogen'; unlock: number; name: string; beschreibung: string }
 export const ABILITIES: ReadonlyArray<AbilityDef> = [
+  { id: 'wuchtschlag', school: 'nahkampf', unlock: 2, name: 'Wuchtschlag', beschreibung: 'Ein harter Frontalhieb, der den Getroffenen weit zurückschleudert und betäubt' },
   { id: 'rundumschlag', school: 'nahkampf', unlock: 3, name: 'Rundumschlag', beschreibung: 'Rundumschlag auch für Schwerter (Knopf)' },
+  { id: 'blutdurst', school: 'nahkampf', unlock: 4, name: 'Blutdurst', beschreibung: 'Ein gieriger Rundhieb, der dich für jeden getroffenen Gegner heilt' },
+  { id: 'kriegsschrei', school: 'nahkampf', unlock: 5, name: 'Kriegsschrei', beschreibung: 'Ein Schlachtruf: betäubt nahe Gegner kurz und steigert deinen Schaden für einige Sekunden' },
   { id: 'sturmangriff', school: 'nahkampf', unlock: 6, name: 'Sturmangriff', beschreibung: 'Kurzer Ansturm' },
+  { id: 'erschuetterung', school: 'nahkampf', unlock: 7, name: 'Erschütternder Stoß', beschreibung: 'Du stampfst den Boden und schleuderst alle Gegner ringsum zu Boden' },
   { id: 'hinrichtung', school: 'nahkampf', unlock: 9, name: 'Hinrichtung', beschreibung: 'Bonus gegen taumelnde Gegner' },
   { id: 'kettenblitz', school: 'zauberei', unlock: 3, name: 'Kettenblitz', beschreibung: 'Springt auf 2 weitere Gegner' },
   { id: 'frostnova', school: 'zauberei', unlock: 6, name: 'Frostnova', beschreibung: 'Kreis, verlangsamt' },
@@ -121,6 +125,17 @@ export const ABILITY_FX = {
   // Runde 44: deutlich gekürzt (160->85 px, ~2,5 Kacheln) - war "durch die
   // halbe Karte". Ein kurzer, harter Ansturm statt Dauer-Sprint.
   sturmangriff: { distance: 85, speed: 700, dmgMult: 1.4, cd: 5 },
+  // Vier neue Nahkampf-Fähigkeiten (Runde 50, Autorwunsch "mehr RPG-typische
+  // Krieger-Moves"). Werte leicht änderbar (DECISIONS.md).
+  // Wuchtschlag: ein einziger, brutaler Hieb auf den nächsten Gegner vor dir.
+  wuchtschlag: { dmgMult: 2.2, reichweite: 66, knockback: 340, stunS: 1.3, cd: 5 },
+  // Blutdurst: Rundhieb, der je getroffenem Gegner healPerHit Leben zurückgibt.
+  blutdurst: { dmgMult: 1.25, radius: 82, healPerHit: 7, cd: 9 },
+  // Kriegsschrei: betäubt nahe Gegner kurz und gibt dir den Stärke-Buff (wie
+  // der Altar, ALTAR.buffDmgMult) für buffS Sekunden.
+  kriegsschrei: { radius: 155, stunS: 0.9, buffS: 8, cd: 16 },
+  // Erschütternder Stoß: weiter Bodenstampfer, schleudert alles ringsum weg.
+  erschuetterung: { dmgMult: 1.7, radius: 122, knockback: 420, stunS: 1.6, cd: 12 },
   // Heilende Hand (Runde 46): Bodenziel. Hebt einen verwundeten Helfer im
   // Umkreis wieder auf (reviveFrac seiner Leben); ist keiner da, heilt es den
   // Helden (selbstHealPct). reichweite = wie weit man zielen kann.

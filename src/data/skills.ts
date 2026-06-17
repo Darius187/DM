@@ -10,7 +10,7 @@ export const SKILL_ICONS: Record<string, string> = {
   // Zauberei-Fähigkeiten
   kettenblitz: '⌁', frostnova: '❄', bannkreis: '◎', aderlass: '⚱', lebenstausch: '❤', heilen: '✚', feuerregen: '☄',
   // Nahkampf
-  rundumschlag: '↻', sturmangriff: '⇒', hinrichtung: '☠',
+  wuchtschlag: '⤲', rundumschlag: '↻', blutdurst: '⚔', kriegsschrei: '⛉', sturmangriff: '⇒', erschuetterung: '⤓', hinrichtung: '☠',
   // Bogen
   mehrfachschuss: '⫶', durchschlag: '➶', markierterTod: '◎', hagel: '⇊', splitterpfeil: '✸', sprungpfeil: '⤴', fesselpfeil: '⛓',
 };
@@ -28,7 +28,8 @@ export function skillBeschreibung(id: string): string {
 }
 
 type FxWerte = { dmgBase?: number; dmgPerLevel?: number; dmgMult?: number; mana?: number; cd?: number;
-  healPct?: number; slowS?: number; wurzelS?: number; spruenge?: number; splitter?: number; radius?: number };
+  healPct?: number; slowS?: number; wurzelS?: number; spruenge?: number; splitter?: number; radius?: number;
+  stunS?: number; knockback?: number; healPerHit?: number; buffS?: number };
 
 // Schaden/Wirkung + Abklingzeit als kurzer Tooltip-Text (auf die Heldenstufe
 // gerechnet). Gibt null, wenn es keinen sinnvollen Schadenswert gibt.
@@ -40,10 +41,14 @@ export function skillWirkungText(id: string, level: number): string | null {
   const fx = (ABILITY_FX as Record<string, FxWerte>)[id];
   if (!fx) return null;
   const cd = fx.cd !== undefined ? ` · ${fx.cd} s` : '';
+  if (id === 'kriegsschrei') return `Betäubt ringsum ${fx.stunS} s · +Schaden ${fx.buffS} s${cd}`;
   if (fx.dmgBase !== undefined) { const d = fx.dmgBase + (fx.dmgPerLevel ?? 0) * level; return `~${d} Schaden${cd}`; }
   if (fx.wurzelS !== undefined) return `Fesselt ${fx.wurzelS} s${cd}`;
   if (fx.healPct !== undefined || id === 'heilen') return `Hebt Helfer auf / heilt dich${cd}`;
-  if (fx.dmgMult !== undefined) return `Schaden ×${fx.dmgMult}${fx.spruenge ? ` · springt ${fx.spruenge}×` : ''}${fx.splitter ? ` · ${fx.splitter} Splitter` : ''}${cd}`;
+  if (fx.dmgMult !== undefined) {
+    const zusatz = fx.healPerHit ? ` · +${fx.healPerHit} Leben je Treffer` : fx.stunS ? ` · betäubt ${fx.stunS} s` : '';
+    return `Schaden ×${fx.dmgMult}${zusatz}${fx.spruenge ? ` · springt ${fx.spruenge}×` : ''}${fx.splitter ? ` · ${fx.splitter} Splitter` : ''}${cd}`;
+  }
   return cd ? `Abklingzeit${cd}` : null;
 }
 
