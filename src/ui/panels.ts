@@ -323,9 +323,10 @@ export class UIPanels {
     const p = this.getPlayer();
     c.add(this.scene.add.text(16, 6, 'FERTIGKEITEN', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
     c.add(this.scene.add.text(16, 26, 'Steigen durch Benutzung - jede Schule schaltet mit der Stufe neue Fähigkeiten frei.', { fontFamily: 'serif', fontSize: '11.5px', color: '#8a7a5a' }));
+    // Klassenfarben (Autorwunsch Runde 51): Krieger BLAU, Magier ROT, Bogen GRÜN.
     const schools: Array<['nahkampf' | 'zauberei' | 'bogen', string, string, number]> = [
-      ['nahkampf', 'Krieger - Nahkampf', '⚔', 0xc85a3a],
-      ['zauberei', 'Zauberer - Zauberei', '✦', 0x8c7ad0],
+      ['nahkampf', 'Krieger - Nahkampf', '⚔', 0x5a86e0],
+      ['zauberei', 'Zauberer - Zauberei', '✦', 0xd0563a],
       ['bogen', 'Bogenschütze - Bogen', '➶', 0x5ac06a],
     ];
     let y = 54;

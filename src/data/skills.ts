@@ -4,15 +4,18 @@
 
 import { SPELL_FX, ABILITY_FX, ABILITIES } from './balancing';
 
+// Symbole müssen mit AKTIONEN in hud.ts übereinstimmen. Runde 51: Heilung =
+// Kreuz (war ❧, unklar), Heilende Hand = Hände, Markierter Tod = Fadenkreuz
+// (war ◎ doppelt mit Bannkreis), Blutdurst = Blutstropfen (war ⚔ doppelt mit Angriff).
 export const SKILL_ICONS: Record<string, string> = {
   // Zauber (Zauberei-Schule, liegen in SPELLS)
-  feuerball: '✦', heiligesLicht: '☩', heilung: '❧',
+  feuerball: '✦', heiligesLicht: '☩', heilung: '✚',
   // Zauberei-Fähigkeiten
-  kettenblitz: '⌁', frostnova: '❄', bannkreis: '◎', aderlass: '⚱', lebenstausch: '❤', heilen: '✚', feuerregen: '☄',
+  kettenblitz: '⌁', frostnova: '❄', bannkreis: '◎', aderlass: '⚱', lebenstausch: '❤', heilen: '🤲', feuerregen: '☄',
   // Nahkampf
-  wuchtschlag: '⤲', rundumschlag: '↻', blutdurst: '⚔', kriegsschrei: '⛉', sturmangriff: '⇒', erschuetterung: '⤓', hinrichtung: '☠',
+  wuchtschlag: '⤲', rundumschlag: '↻', blutdurst: '🩸', kriegsschrei: '⛉', sturmangriff: '⇒', erschuetterung: '⤓', hinrichtung: '☠',
   // Bogen
-  mehrfachschuss: '⫶', durchschlag: '➶', markierterTod: '◎', hagel: '⇊', splitterpfeil: '✸', sprungpfeil: '⤴', fesselpfeil: '⛓',
+  mehrfachschuss: '⫶', durchschlag: '➶', markierterTod: '⌖', hagel: '⇊', splitterpfeil: '✸', sprungpfeil: '⤴', fesselpfeil: '⛓',
 };
 
 // Kurzbeschreibung der drei Zauber (ABILITIES hat schon eine eigene beschreibung)

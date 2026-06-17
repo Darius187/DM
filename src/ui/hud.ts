@@ -34,14 +34,16 @@ interface SlotDef {
 type SlotKat = 'kampf' | 'zauber' | 'bogen' | 'item';
 const SLOT_KAT: Record<string, SlotKat> = {
   angriff: 'kampf', block: 'kampf', rundumschlag: 'kampf', sturmangriff: 'kampf',
-  wuchtschlag: 'kampf', blutdurst: 'kampf', kriegsschrei: 'kampf', erschuetterung: 'kampf',
-  mehrfachschuss: 'bogen', markierterTod: 'bogen',
-  s1: 'zauber', s2: 'zauber', s3: 'zauber', kettenblitz: 'zauber', frostnova: 'zauber',
+  wuchtschlag: 'kampf', blutdurst: 'kampf', kriegsschrei: 'kampf', erschuetterung: 'kampf', hinrichtung: 'kampf',
+  mehrfachschuss: 'bogen', markierterTod: 'bogen', hagel: 'bogen', splitterpfeil: 'bogen',
+  durchschlag: 'bogen', sprungpfeil: 'bogen', fesselpfeil: 'bogen',
+  s1: 'zauber', s2: 'zauber', s3: 'zauber', heilen: 'zauber', kettenblitz: 'zauber', frostnova: 'zauber',
   bannkreis: 'zauber', feuerregen: 'zauber', aderlass: 'zauber', lebenstausch: 'zauber',
   pot: 'item', mpot: 'item', rolle: 'item', stadtportal: 'item',
 };
+// Klassenfarben (Autorwunsch Runde 51): Krieger BLAU, Magier ROT, Bogen GRÜN.
 const SLOT_KAT_FARBE: Record<SlotKat, number> = {
-  kampf: 0xc85a3a, zauber: 0x6a7ae0, bogen: 0x5ac06a, item: 0xb89a4a,
+  kampf: 0x5a86e0, zauber: 0xd0563a, bogen: 0x5ac06a, item: 0xb89a4a,
 };
 
 const ORB_R = 42;
@@ -122,20 +124,32 @@ export class Hud {
     // öffnet die Aktionsliste, Ziehen tauscht zwei Slots
     const p = this.getP;
     const bogen = () => this.getWeaponClass() === 'bogen';
+    // ALLE belegbaren Aktionen [id, Symbol, Name, Farbe]. Icons (Runde 51):
+    // Blocken = Schild (vorher Kreuz-im-Schild, sah aus wie Heilung), Heilung =
+    // Kreuz, Heilende Hand = Hände, Markierter Tod = Fadenkreuz (war Doppel mit
+    // Bannkreis). Schriftrollen legt man EINZELN aus dem Inventar.
     const AKTIONEN: Array<[string, string, string, string]> = [
       ['leer', '·', '(leerer Platz)', '#5a4f3c'],
-      ['angriff', '⚔', 'Angriff (Waffe)', '#d8cfb8'], ['block', '⛨', 'Blocken (gedrückt halten)', '#aab4c0'],
-      ['s1', '✦', 'Feuerball', '#f0883a'], ['s2', '☩', 'Heiliges Licht', '#f0e08a'], ['s3', '❧', 'Heilung', '#6ad06a'],
+      // Nahkampf (Krieger)
+      ['angriff', '⚔', 'Angriff (Waffe)', '#d8cfb8'], ['block', '🛡', 'Blocken (gedrückt halten)', '#aab4c0'],
+      ['wuchtschlag', '⤲', 'Wuchtschlag', '#e0b070'], ['rundumschlag', '↻', 'Rundumschlag', '#d8cfb8'],
+      ['blutdurst', '🩸', 'Blutdurst', '#c83838'], ['kriegsschrei', '⛉', 'Kriegsschrei', '#e0c060'],
+      ['sturmangriff', '⇒', 'Sturmangriff', '#d8cfb8'], ['erschuetterung', '⤓', 'Erschütternder Stoß', '#c89858'],
+      ['hinrichtung', '☠', 'Hinrichtung', '#d0d0d0'],
+      // Zauber (Magier)
+      ['s1', '✦', 'Feuerball', '#f0883a'], ['s2', '☩', 'Heiliges Licht', '#f0e08a'], ['s3', '✚', 'Heilung', '#6ad06a'],
+      ['heilen', '🤲', 'Heilende Hand', '#9ad86a'],
       ['kettenblitz', '⌁', 'Kettenblitz', '#9ae0f8'], ['frostnova', '❄', 'Frostnova', '#74aef0'], ['bannkreis', '◎', 'Bannkreis', '#d8b84a'],
       ['feuerregen', '☄', 'Feuerregen (auf den Zielort)', '#e85a3a'],
       ['aderlass', '⚱', 'Aderlass (Leben gegen Mana)', '#c04848'], ['lebenstausch', '❤', 'Lebenstausch (Mana gegen Leben)', '#e87a9a'],
+      // Bogen (Bogenschütze)
+      ['mehrfachschuss', '⫶', 'Mehrfachschuss', '#9ad86a'], ['hagel', '⇊', 'Hagel der Pfeile', '#8ac06a'],
+      ['splitterpfeil', '✸', 'Splitterpfeil', '#9ad86a'], ['durchschlag', '➶', 'Durchschlag', '#8ac06a'],
+      ['sprungpfeil', '⤴', 'Sprungpfeil', '#9ad86a'], ['fesselpfeil', '⛓', 'Fesselpfeil', '#8ac06a'],
+      ['markierterTod', '⌖', 'Markierter Tod', '#9ad86a'],
+      // Waffen-Slots (passen sich der getragenen Waffe an)
       ['waffe1', '↻', 'Waffen-Fähigkeit I (je nach Waffe)', '#d8cfb8'], ['waffe2', '⇒', 'Waffen-Fähigkeit II (je nach Waffe)', '#d8cfb8'],
-      // Nahkampf-Fähigkeiten einzeln belegbar (Runde 50)
-      ['wuchtschlag', '⤲', 'Wuchtschlag', '#e0b070'], ['blutdurst', '⚔', 'Blutdurst', '#c83838'],
-      ['kriegsschrei', '⛉', 'Kriegsschrei', '#e0c060'], ['erschuetterung', '⤓', 'Erschütternder Stoß', '#c89858'],
-      // 'rolle' (Zufalls-Schriftrolle) ENTFERNT (Runde 49, Autorwunsch): nahm
-      // immer eine zufällige Rolle. Schriftrollen legt man jetzt EINZELN aus dem
-      // Inventar auf die Leiste (jede mit ihrer eigenen Wirkung).
+      // Gegenstand
       ['pot', '🧪', 'Heiltrank', '#e05a4a'], ['mpot', '⚗', 'Manatrank', '#5a7ae0'],
       ['stadtportal', '⌂', 'Stadtportal (nach Boss-Sieg)', '#8aa6e8'],
     ];
@@ -336,6 +350,8 @@ export class Hud {
 
   private dragGhost: Phaser.GameObjects.Text | null = null;
   private dragVon = -1;
+  private popupGhost: Phaser.GameObjects.Text | null = null;
+  private justDragged = false;
   private klickSlot = -1; // welcher Slot gerade als Linksklick-Kandidat gilt
 
   private endDrag(ptr: Phaser.Input.Pointer): void {
@@ -404,69 +420,114 @@ export class Hud {
   private closeMenue(): void {
     this.menue?.destroy();
     this.menue = null;
+    this.popupGhost?.destroy();
+    this.popupGhost = null;
   }
 
+  // Stufe (zum Sortieren) einer Aktion: Zauber/Fähigkeit -> Freischalt-Stufe, sonst 0.
+  private skillLevel(id: string): number {
+    const sp = SPELLS.find((s) => s.id === id); if (sp) return sp.unlock;
+    const ab = ABILITIES.find((a) => a.id === id); if (ab) return ab.unlock;
+    return 0;
+  }
+
+  // Action-Bar-Slot unter dem Zeiger (für Drag aus dem Belegungs-Menü).
+  private slotUnter(ptr: Phaser.Input.Pointer): number {
+    for (let i = 0; i < this.slots.length; i++) {
+      if (Math.abs(ptr.x - this.slotX(i)) <= 23 && Math.abs(ptr.y - this.slotY(i)) <= 23) return i;
+    }
+    return -1;
+  }
+
+  private belege(b: Belegung, id: string): void {
+    (getSettings()[b.store] as Record<string, string>)[b.feld] = id;
+    saveSettings();
+  }
+
+  // Belegungs-Menü (Runde 51, Autorwunsch): SPALTEN nebeneinander (Krieger /
+  // Magier / Bogen / Gegenstand) statt einer hohen Liste, die unten aus dem Bild
+  // läuft. Je Spalte nach STUFE sortiert, mit Symbol. Klick belegt diesen Slot,
+  // ZIEHEN auf einen beliebigen Slot belegt jenen.
   private openBelegungsMenue(s: SlotDef, slotX: number, slotY: number): void {
     this.closeMenue();
     const feld = s.belegung!;
     const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(5300);
     this.menue = c;
-    // Klick daneben schließt nur das Menü
     const deckel = this.scene.add.rectangle(0, 0, this.scene.scale.width, this.scene.scale.height, 0x000000, 0.01)
       .setOrigin(0).setScrollFactor(0).setInteractive();
     deckel.on('pointerdown', () => this.closeMenue());
     c.add(deckel);
-    const breite = 232, zeileH = 22, kopfH = 21;
-    // Halten-Aktionen (Angriff/Blocken) nur auf Maustasten anbieten
+
     const liste = feld.store === 'tasten' ? this.aktionen.filter(([id]) => id !== 'angriff' && id !== 'block') : this.aktionen;
-    // Nach Kategorie ordnen (Runde 40, Autorwunsch "aufräumen, nach Magier/
-    // Krieger/... oder farblich gruppieren"): Überschriften + farbige Blöcke
-    // statt einer unübersichtlichen Liste.
-    const katOrder: Array<[SlotKat, string]> = [
-      ['kampf', 'NAHKAMPF'], ['bogen', 'BOGEN'], ['zauber', 'ZAUBER'], ['item', 'GEGENSTAND'],
-    ];
     const katVon = (id: string): SlotKat => (id === 'waffe1' || id === 'waffe2') ? 'kampf' : (SLOT_KAT[id] ?? 'item');
-    const gruppen = katOrder
-      .map(([kat, titel]) => [kat, titel, liste.filter(([id]) => katVon(id) === kat)] as const)
-      .filter(([, , eintr]) => eintr.length > 0);
-    const zeilenGesamt = gruppen.reduce((n, [, , e]) => n + e.length, 0);
-    const hoehe = zeilenGesamt * zeileH + gruppen.length * kopfH + 34;
+    const katOrder: Array<[SlotKat, string]> = [
+      ['kampf', 'KRIEGER · Nahkampf'], ['zauber', 'MAGIER · Zauber'], ['bogen', 'BOGEN'], ['item', 'GEGENSTAND'],
+    ];
+    const spalten = katOrder
+      .map(([kat, titel]) => ({ kat, titel, eintr: liste.filter(([id]) => katVon(id) === kat).sort((a, b) => this.skillLevel(a[0]) - this.skillLevel(b[0])) }))
+      .filter((sp) => sp.eintr.length > 0);
+
+    const rowH = 19, hdrH = 22, padT = 28, padB = 12, padX = 12, gap = 10;
+    const maxRows = Math.max(...spalten.map((sp) => sp.eintr.length));
+    const maxW = this.scene.scale.width - 16;
+    let colW = 196;
+    if (spalten.length * colW + (spalten.length - 1) * gap + padX * 2 > maxW) {
+      colW = Math.floor((maxW - padX * 2 - (spalten.length - 1) * gap) / spalten.length);
+    }
+    const breite = spalten.length * colW + (spalten.length - 1) * gap + padX * 2;
+    const hoehe = padT + hdrH + maxRows * rowH + padB;
     const mx = Math.min(Math.max(8, slotX - breite / 2), this.scene.scale.width - breite - 8);
     const my = Math.max(8, slotY - 30 - hoehe);
+
     const bg = this.scene.add.rectangle(mx, my, breite, hoehe, 0x171108, 0.98).setOrigin(0).setStrokeStyle(1, 0xc9a227);
     bg.setInteractive();
     c.add(bg);
-    c.add(this.scene.add.text(mx + 10, my + 6, `BELEGUNG ${s.key}`, {
-      fontFamily: 'serif', fontSize: '12px', color: '#c9a227', letterSpacing: 1,
+    c.add(this.scene.add.text(mx + padX, my + 8, `BELEGUNG ${s.key}  ·  klicken oder auf einen Slot ziehen`, {
+      fontFamily: 'serif', fontSize: '11px', color: '#c9a227', letterSpacing: 1,
     }));
     const aktiv = (getSettings()[feld.store] as Record<string, string>)[feld.feld];
-    let zy = my + 26;
-    for (const [kat, titel, eintraege] of gruppen) {
-      const katFarbe = '#' + SLOT_KAT_FARBE[kat].toString(16).padStart(6, '0');
-      // Kategorie-Kopf: farbiger Balken + Titel
-      c.add(this.scene.add.rectangle(mx + 6, zy + 2, 3, kopfH - 6, SLOT_KAT_FARBE[kat]).setOrigin(0));
-      c.add(this.scene.add.text(mx + 13, zy, titel, {
-        fontFamily: 'serif', fontSize: '11px', color: katFarbe, letterSpacing: 2,
-      }));
-      zy += kopfH;
-      for (const [id, ico, name] of eintraege) {
-        const eintrag = this.scene.add.text(mx + 16, zy, `${ico}  ${name}`, {
-          fontFamily: 'serif', fontSize: '12.5px',
+
+    spalten.forEach((sp, ci) => {
+      const cx = mx + padX + ci * (colW + gap);
+      const katFarbe = '#' + SLOT_KAT_FARBE[sp.kat].toString(16).padStart(6, '0');
+      if (ci > 0) c.add(this.scene.add.rectangle(cx - gap / 2, my + padT, 1, hdrH + maxRows * rowH, 0x3a2f1c).setOrigin(0));
+      c.add(this.scene.add.rectangle(cx, my + padT + 2, 3, hdrH - 8, SLOT_KAT_FARBE[sp.kat]).setOrigin(0));
+      c.add(this.scene.add.text(cx + 8, my + padT, sp.titel, { fontFamily: 'serif', fontSize: '11px', color: katFarbe, letterSpacing: 1 }));
+      let zy = my + padT + hdrH;
+      for (const [id, ico, name] of sp.eintr) {
+        const lvl = this.skillLevel(id);
+        const kurz = name.replace(/\s*\(.*\)$/, '');               // Klammer-Zusatz weg -> kompakt
+        const eintrag = this.scene.add.text(cx + 4, zy, `${ico} ${kurz}${lvl ? `  ·${lvl}` : ''}`, {
+          fontFamily: 'serif', fontSize: '12px',
           color: id === aktiv ? '#f0dca0' : katFarbe,
           backgroundColor: id === aktiv ? '#221808' : undefined,
-          padding: { x: 6, y: 1 },
+          padding: { x: 4, y: 1 },
         }).setScrollFactor(0).setInteractive({ useHandCursor: true });
         eintrag.on('pointerover', () => eintrag.setColor('#f8e8b8'));
         eintrag.on('pointerout', () => eintrag.setColor(id === aktiv ? '#f0dca0' : katFarbe));
-        eintrag.on('pointerdown', () => {
-          (getSettings()[feld.store] as Record<string, string>)[feld.feld] = id;
-          saveSettings();
+        eintrag.on('pointerup', () => {
+          if (this.justDragged || this.popupGhost) { this.justDragged = false; return; } // war ein Ziehen
+          this.belege(feld, id); this.closeMenue();
+        });
+        // Ziehen auf einen Slot der Aktionsleiste belegt jenen Slot (Autorwunsch)
+        this.scene.input.setDraggable(eintrag);
+        eintrag.on('dragstart', (ptr: Phaser.Input.Pointer) => {
+          this.popupGhost = this.scene.add.text(ptr.x, ptr.y, ico, { fontFamily: 'serif', fontSize: '22px', color: katFarbe })
+            .setOrigin(0.5).setScrollFactor(0).setDepth(5400);
+        });
+        eintrag.on('drag', (ptr: Phaser.Input.Pointer) => this.popupGhost?.setPosition(ptr.x, ptr.y));
+        eintrag.on('dragend', (ptr: Phaser.Input.Pointer) => {
+          this.popupGhost?.destroy(); this.popupGhost = null;
+          const idx = this.slotUnter(ptr);
+          const ziel = idx >= 0 ? this.slots[idx].belegung : feld;
+          if (ziel) this.belege(ziel, id);
+          this.justDragged = true;
           this.closeMenue();
         });
         c.add(eintrag);
-        zy += zeileH;
+        zy += rowH;
       }
-    }
+    });
   }
 
   private showSlotTooltip(s: SlotDef, ptr: Phaser.Input.Pointer): void {

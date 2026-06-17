@@ -33,7 +33,7 @@ export const SPELLS: ReadonlyArray<SpellDef> = [
   { id: 'feuerball', name: 'Feuerball', ico: '✦', mana: 12, unlock: 2, cd: 0.55 },
   // Runde 41 (Autorwunsch): Heilung schon Stufe 3, Heiliges Licht Stufe 4.
   { id: 'heiligesLicht', name: 'Heiliges Licht der Säuberung', ico: '☩', mana: 22, unlock: 4, cd: 2 },
-  { id: 'heilung', name: 'Heilung', ico: '❧', mana: 26, unlock: 3, cd: 4 },
+  { id: 'heilung', name: 'Heilung', ico: '✚', mana: 26, unlock: 3, cd: 4 },
 ];
 
 // Zauberwirkung (Referenz castSkill)
