@@ -20,12 +20,17 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [~] Goldhöhle: spielbarer EINGANG im Wald (Höhlenmaul -> kleine Höhle mit
       Goldadern, dünn bewacht, Truhe, Aufgang zurück). Das große eigene
       Höhlen-Level (Gold für den Fürsten) kommt später daraus.
-- [~] Held sichert, Bewohner schürfen (Autorentscheid Runde 51): Goldader gibt
-      GOLDERZ ins Dorf-Lager (kein Sofort-Gold); die Schmelze macht über die
-      Tage Dorfkassen-Gold daraus (Abgabe-Kreislauf). OFFEN/nächster Schritt:
-      das "Sichern" als Mechanik - geräumte Stätten (Holzfäller-Lager,
-      Bergwerk, Goldhöhle) lassen die Arbeiter dort produzieren / steigern die
-      Tagesproduktion (verknüpft mit den Anfangsquests "Stätte säubern").
+- [x] Held sichert, Bewohner schürfen (Autorentscheid Runde 51): Goldader gibt
+      GOLDERZ ins Dorf-Lager (kein Sofort-Gold). Gold wird NICHT im Dorf
+      verarbeitet (Bergregal/Münzregal des Fürsten, 1635) - Golderz geht als
+      Abgabe an den Fürsten (seine Münze prägt es). Gesicherte Goldhöhle
+      (Wachen geräumt) -> die Knappen fördern täglich Golderz (sichern ->
+      Produktion). OFFEN: dieselbe Sichern->Produktion-Logik für die noch zu
+      bauenden Stätten Holzfäller-Lager / Steinbruch (Anfangsquests).
+- [ ] Eisen-Kette schließen (Autorwunsch "aus den Erzen müssen Waffen
+      geschmiedet werden"): Eisen -> Eisenbarren (Dorf-Schmelze, da) -> WAFFEN.
+      Aktuell verbessert der Schmied Waffen aus rohem Eisen+Kohle, der Barren
+      ist noch ungenutzt. Richtung klären (Barren als Schmiede-Material?).
 - [ ] Kloster als Platzhalter im NORDOSTEN, weit weg (~Halbtagesreise) - dort der
       Showdown; von dort spawnen die Monster Richtung Dorf. Braucht erst die
       verbundene Welt-Struktur (mehrere Gebiete), dann als NO-Endgebiet.

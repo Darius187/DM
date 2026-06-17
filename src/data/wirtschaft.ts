@@ -22,18 +22,27 @@ export const VERARBEITUNG = {
   schmelze: { wer: 'schmied', einEisen: 2, einKohle: 1, aus: 'barren', menge: 2 }, // Schmied: Eisen+Kohle -> Barren
 } as const;
 
-// Gold-Schmelze (Runde 51, Autorentscheid "Held sichert, Bewohner schürfen"):
-// Golderz aus der Goldhöhle ist KEIN Geld - der Schmied schmilzt es im Tagestakt
-// zu GOLD in die Dorfkasse (damit zahlt das Dorf die Abgaben an den Fürsten).
-export const GOLD_SCHMELZE = { wer: 'schmied', ein: 'golderz', proErz: 10, menge: 4 } as const;
+// Gold gehört dem Fürsten (Bergregal/Münzregal, 1635): Gold zu schmelzen und zu
+// prägen war ein REGAL des Landesherrn - ein Dorf durfte das gar nicht. Golderz
+// aus der Goldhöhle wird also NICHT im Dorf verarbeitet, sondern als Abgabe an
+// den Fürsten geliefert (seine Münze prägt daraus Geld). Jeder Klumpen deckt
+// GOLDERZ_WERT der Goldschuld.
+export const GOLDERZ_WERT = 10;
 
-// Schmilzt bis zu GOLD_SCHMELZE.menge Golderz aus dem Lager zu Gold ein, verringert
-// das Lager und gibt das erzeugte Gold (für die Dorfkasse) zurück. Pure -> testbar.
-export function goldSchmelzen(lager: Record<string, number>): number {
-  const menge = Math.min(GOLD_SCHMELZE.menge, lager['golderz'] ?? 0);
-  if (menge <= 0) return 0;
-  lager['golderz'] -= menge;
-  return menge * GOLD_SCHMELZE.proErz;
+// Gesicherte Goldhöhle (Autorwunsch "sichern -> Produktion verknüpfen"): sobald
+// der Held die Höhle von Wachen geräumt hat, fördern die Knappen täglich so viel
+// Golderz ins Dorf-Lager.
+export const GOLDERZ_PRO_TAG = 2;
+
+// Liefert Golderz aus dem Lager an den Fürsten, um die Goldschuld der Abgabe zu
+// decken, und gibt die verbleibende (bar zu zahlende) Goldschuld zurück. Pure.
+export function golderzFuerAbgabe(lager: Record<string, number>, goldSchuld: number): number {
+  const erz = lager['golderz'] ?? 0;
+  if (erz <= 0 || goldSchuld <= 0) return Math.max(0, goldSchuld);
+  const brauchtErz = Math.ceil(goldSchuld / GOLDERZ_WERT);
+  const gibtErz = Math.min(erz, brauchtErz);
+  lager['golderz'] = erz - gibtErz;
+  return Math.max(0, goldSchuld - gibtErz * GOLDERZ_WERT);
 }
 
 // Namen der Wirtschafts-Waren (für Anzeigen), die KEINE Roh-Materialien sind.

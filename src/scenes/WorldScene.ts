@@ -24,7 +24,7 @@ import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDL
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER } from '../data/crafting';
-import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, goldSchmelzen, WAREN_NAMEN } from '../data/wirtschaft';
+import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, tageszeitLabel } from '../data/welt';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
@@ -3317,7 +3317,8 @@ export class WorldScene extends CombatScene {
     this.verarbeite(VERARBEITUNG.backhaus.ein, VERARBEITUNG.backhaus.aus, VERARBEITUNG.backhaus.menge);
     this.verarbeite(VERARBEITUNG.muehle.ein, VERARBEITUNG.muehle.aus, VERARBEITUNG.muehle.menge);
     this.schmelze(VERARBEITUNG.schmelze.einEisen, VERARBEITUNG.schmelze.einKohle, VERARBEITUNG.schmelze.aus, VERARBEITUNG.schmelze.menge);
-    this.schmelzeGold();
+    // 2b) Gesicherte Goldhöhle: die Knappen fördern Golderz (sichern -> Produktion).
+    if (this.flags.goldmineGesichert) this.dorfLager['golderz'] = (this.dorfLager['golderz'] ?? 0) + GOLDERZ_PRO_TAG;
     // 3) Abgabe an den Fürsten, wenn fällig.
     if (this.tag >= this.naechsteAbgabe) {
       this.leisteAbgabe();
@@ -3333,12 +3334,6 @@ export class WorldScene extends CombatScene {
     this.dorfLager[aus] = (this.dorfLager[aus] ?? 0) + menge;
   }
 
-  // Gold-Schmelze: Golderz aus der Goldhöhle -> Gold in die Dorfkasse (Krieg).
-  // Golderz ist kein Geld; der Schmied macht es im Tagestakt zu Gold.
-  private schmelzeGold(): void {
-    this.dorfkasse += goldSchmelzen(this.dorfLager);
-  }
-
   // Schmelze: 2 Eisen + 1 Kohle -> 1 Barren, begrenzt durch Vorrat und Tagesleistung.
   private schmelze(einEisen: number, einKohle: number, aus: string, maxProTag: number): void {
     let getan = 0;
@@ -3350,20 +3345,25 @@ export class WorldScene extends CombatScene {
     }
   }
 
-  // Abgabe an den Fürsten: Gold aus der Dorfkasse, Material aus dem Lager.
-  // Reicht es nicht, wächst der Rückstand (Druck; später Folgen für die Hilfe).
+  // Abgabe an den Fürsten: Material aus dem Lager, dazu die Goldschuld - zuerst
+  // mit GOLDERZ aus der Goldhöhle gedeckt (der Fürst prägt es in seiner Münze),
+  // der Rest aus der Dorfkasse. Reicht es nicht, wächst der Rückstand (Druck).
   private leisteAbgabe(): void {
     let fehlt = false;
     for (const [m, n] of Object.entries(ABGABE.material)) {
       const da = this.dorfLager[m] ?? 0;
       if (da >= (n ?? 0)) this.dorfLager[m] = da - (n ?? 0); else { this.dorfLager[m] = 0; fehlt = true; }
     }
-    if (this.dorfkasse >= ABGABE.gold) this.dorfkasse -= ABGABE.gold; else { this.dorfkasse = 0; fehlt = true; }
+    const vorErz = this.dorfLager['golderz'] ?? 0;
+    const barSchuld = golderzFuerAbgabe(this.dorfLager, ABGABE.gold);
+    const erzGegeben = vorErz - (this.dorfLager['golderz'] ?? 0);
+    if (this.dorfkasse >= barSchuld) this.dorfkasse -= barSchuld; else { this.dorfkasse = 0; fehlt = true; }
     if (fehlt) {
       this.abgabeRueckstand++;
       this.logMsg(`Abgabe an den Fürsten nicht voll geleistet - Rückstand ${this.abgabeRueckstand}. Spende in die Dorfkasse, um Frieden zu wahren.`, 'bad');
     } else {
-      this.logMsg(`Das Dorf hat seine Abgabe an den Fürsten geleistet (${ABGABE.gold} Gold + Vorräte).`, 'tag');
+      const erzText = erzGegeben ? ` (davon ${erzGegeben} Golderz an die fürstliche Münze)` : '';
+      this.logMsg(`Das Dorf hat seine Abgabe an den Fürsten geleistet${erzText}.`, 'tag');
     }
   }
 
@@ -4310,6 +4310,12 @@ export class WorldScene extends CombatScene {
     if (getSettings().blood) {
       this.decals.push({ x: e.x, y: e.y, r: 7 + Math.random() * 5, bone: e.type === 'skelett' || e.type === 'schuetze', a: Math.random() * 6.283 });
       if (this.decals.length > 90) this.decals.shift();
+    }
+    // Goldhöhle gesichert (sichern -> Produktion): fällt die letzte Wache, können
+    // die Knappen gefahrlos schürfen - ab jetzt fördert die Höhle täglich Golderz.
+    if (this.area.id === 'goldmine' && !this.flags.goldmineGesichert && !this.enemies.some((x) => x !== e && x.hp > 0)) {
+      this.flags.goldmineGesichert = true;
+      this.logMsg('Die Goldhöhle ist gesichert - nun können die Knappen des Dorfes hier schürfen.', 'gold');
     }
     if (e.boss) {
       if (this.flags.ngPlus) {
