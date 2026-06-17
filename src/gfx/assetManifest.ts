@@ -64,7 +64,7 @@ export const SPRITE_NAMES = [
 export const TILE_NAMES = [
   'gras', 'weg', 'baum', 'wald', 'baumstumpf', 'wasser', 'acker', 'zaun',
   'fachwerk_fassade', 'fachwerk_dach', 'kirche_fassade', 'kirche_dach',
-  'kirchentuer', 'haustuer', 'grabstein', 'brunnen', 'brandstelle',
+  'kirchentuer', 'haustuer', 'grabstein', 'brunnen', 'brunnen_blut', 'brandstelle',
   'krypta_boden', 'krypta_wand', 'krypta_wand_front', 'knochen', 'blut', 'rune',
   'altar', 'regal', 'regal_geleert', 'regal_leer', 'treppe_ab', 'treppe_auf', 'erzader', 'fels',
   'fass', 'kiste', 'krug', 'heuhaufen', 'streckbank', 'streckbank_r', 'kaefig', 'zellentor', 'kerzenschrein',

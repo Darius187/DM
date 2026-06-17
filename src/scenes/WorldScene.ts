@@ -1095,7 +1095,7 @@ export class WorldScene extends CombatScene {
       const tid = this.area.map[Math.floor(wy / TILE)]?.[Math.floor(wx / TILE)];
       const NAMEN: Record<number, string> = {
         [T.SHELF]: 'Bücherregal', [T.ORE]: 'Erzader', [T.SHRINE]: 'Kerzenschrein',
-        [T.WELL]: this.area.dark ? 'Blutbrunnen' : 'Brunnen', [T.GRAVE]: 'Grabstein',
+        [T.WELL]: this.area.dark ? 'Blutbrunnen' : 'Brunnen', [T.WELL_BLUT]: 'Brunnen (verseucht - kein Wasser)', [T.GRAVE]: 'Grabstein',
         [T.STAIR]: 'Treppe hinab', [T.STAIRUP]: 'Treppe hinauf', [T.ALTAR]: 'Opferaltar',
         [T.RACK]: 'Streckbank', [T.CAGE]: 'Käfig', [T.TOR]: 'Stadttor', [T.HDOOR]: 'Haustür',
         [T.CDOOR]: 'Kirchentür (Krypta)', [T.TREE]: 'Baum', [T.PALISADE]: 'Palisade', [T.ROCK]: 'Felsbrocken',
@@ -1383,6 +1383,8 @@ export class WorldScene extends CombatScene {
       }
       this.einfallRest = [];
     }
+    // Bei der Rückkehr ins belagerte Dorf ist der Brunnen schon verseucht.
+    if (id === 'village' && this.einfallAktiv) this.setzeBrunnenBlutig(true);
     // Während des Einfalls drängen sich die Flüchtlinge im Gemeindehaus
     if (id === 'innen_gemeindehaus' && this.einfallAktiv) {
       this.addFluechtlinge();
@@ -1585,7 +1587,7 @@ export class WorldScene extends CombatScene {
   }
 
   // Stehende Objekte trennen sich vom Boden für die Y-Sortierung
-  private static readonly STANDING = new Set<number>([T.TREE, T.ROCK, T.GRAVE, T.WELL, T.FENCE, T.ORE, T.ALTAR, T.SHELF, T.SHRINE, T.RACK, T.CAGE,
+  private static readonly STANDING = new Set<number>([T.TREE, T.ROCK, T.GRAVE, T.WELL, T.WELL_BLUT, T.FENCE, T.ORE, T.ALTAR, T.SHELF, T.SHRINE, T.RACK, T.CAGE,
     T.BETT, T.TISCH, T.STUHL, T.KAMIN, T.TRESEN, T.KERZE, T.WANDFACKEL, T.BRENNHOLZ, T.KESSEL, T.PILLAR]);
 
   // Vom Autor eingestellte Objektgrößen (Baukasten, Runde 25)
@@ -1597,8 +1599,8 @@ export class WorldScene extends CombatScene {
 
   objektSkala(objName: string): number {
     const key = objName === 'wald' ? 'baum' : objName;
-    // Bäume ragen 2 Felder hoch (Runde 18: wirkten wie Büsche)
-    return this.objektSkalen()[key] ?? (key === 'baum' ? 1.85 : 1);
+    // Bäume ragen 2 Felder hoch (Runde 18); Brunnen etwas größer (Runde 51)
+    return this.objektSkalen()[key] ?? (key === 'baum' ? 1.85 : key === 'brunnen' || key === 'brunnen_blut' ? 1.4 : 1);
   }
 
   // Im Baukasten gewählte Varianten je gemalter Kachel (nur Ravensmoor)
@@ -2734,6 +2736,31 @@ export class WorldScene extends CombatScene {
     this.shake(10);
   }
 
+  // Verseuchter Brunnen (Runde 51, Autorwunsch): bei Einfällen quillt Blut aus
+  // dem Dorfbrunnen, ringsum sammelt sich Blut - niemand bekommt mehr Wasser.
+  // Wird beim Beginn UND bei der Abwehr eines Einfalls umgeschaltet.
+  private brunnenBlutDeko: Phaser.GameObjects.GameObject[] = [];
+  private setzeBrunnenBlutig(blutig: boolean): void {
+    for (const o of this.brunnenBlutDeko) o.destroy();
+    this.brunnenBlutDeko = [];
+    if (this.area.id !== 'village') return;
+    const von = blutig ? T.WELL : T.WELL_BLUT, zu = blutig ? T.WELL_BLUT : T.WELL;
+    for (let ty = 0; ty < this.area.h; ty++) {
+      for (let tx = 0; tx < this.area.w; tx++) {
+        if (this.area.map[ty][tx] !== von) continue;
+        this.area.map[ty][tx] = zu;
+        this.refreshTile(tx, ty);
+        if (!blutig) continue;
+        // Blutlachen ringsum (Sprites knapp über dem Boden, unter dem Spieler)
+        for (const [dx, dy, rw, rh] of [[0, 1, 16, 6], [1, 1, 11, 5], [-1, 1, 11, 5], [1, 0, 9, 9], [-1, 0, 9, 9], [0, 2, 12, 4]] as const) {
+          const px = (tx + dx) * TILE + 16, py = (ty + dy) * TILE + 16;
+          const e = this.add.ellipse(px, py + 4, rw * 2, rh * 2, 0x6a0e0e, 0.5).setDepth(-9);
+          this.brunnenBlutDeko.push(e);
+        }
+      }
+    }
+  }
+
   private startEinfall(): void {
     // Mit Palisade kommen die Trupps nur durch OFFENE Tore der Salzstraße;
     // sind beide zu, ist Ravensmoor sicher (Feedback-Runde 8). Ohne Mauer
@@ -2753,6 +2780,7 @@ export class WorldScene extends CombatScene {
       }
     }
     this.einfallAktiv = true;
+    this.setzeBrunnenBlutig(true);
     this.letzterEinfallTag = this.tag;
     // Jeder 7. Tag ist eine BELAGERUNG (Runde 16): größerer Trupp, ein
     // Rammbock-Anführer - und die Palisade bekommt Breschen
@@ -2809,6 +2837,7 @@ export class WorldScene extends CombatScene {
   // Geschichte weiter (der Boss hatte das Relikt nicht, der Krieg hat begonnen).
   private startGrosserEinfall(): void {
     this.einfallAktiv = true;
+    this.setzeBrunnenBlutig(true);
     this.grosserEinfall = true;
     this.flags.wurdeBelagert = true; // Runde 41 Fix: schaltet die Palisade beim Schmied frei (fehlte hier)
     this.letzterEinfallTag = this.tag;
@@ -4263,6 +4292,7 @@ export class WorldScene extends CombatScene {
     // Einfall abgewehrt: Belohnung der Dörfler, sobald der letzte Angreifer fällt
     if (this.einfallAktiv && this.area.id === 'village' && this.enemies.length === 0) {
       this.einfallAktiv = false;
+      this.setzeBrunnenBlutig(false); // Brunnen wird wieder rein
       if (this.sfx.aktuelleMusik() === 'musik_einfall') this.sfx.stopMusic();
       if (this.grosserEinfall) {
         // Der große Sturm ist abgewehrt - jetzt geht die Geschichte weiter

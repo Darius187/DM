@@ -676,7 +676,7 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
 // Stehende Objekte (Baum, Fels, Grabstein ...) als transparente Sprites für
 // die Y-Sortierung: der Boden liegt separat darunter (Masterprompt 5.1).
 export const STANDING_OBJECTS = new Set([
-  'baum', 'fels', 'grabstein', 'brunnen', 'zaun', 'erzader', 'altar',
+  'baum', 'fels', 'grabstein', 'brunnen', 'brunnen_blut', 'zaun', 'erzader', 'altar',
   'regal', 'regal_geleert', 'regal_leer', 'kerzenschrein', 'streckbank', 'streckbank_r', 'kaefig',
   'eiserne_jungfrau', 'kohlebecken', 'palisade',
   'bett', 'tisch', 'stuhl', 'kamin', 'tresen',
@@ -729,16 +729,36 @@ export function drawObjectArt(ctx: Ctx, name: string, n: number, theme?: CryptTh
       ctx.beginPath(); ctx.arc(16, 8, 6, Math.PI, 0); ctx.fill();
       ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(13, 13, 6, 2);
       break;
-    case 'brunnen':
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      ctx.beginPath(); ctx.ellipse(16, 28, 13, 3.5, 0, 0, 6.283); ctx.fill();
-      ctx.fillStyle = '#55504a'; ctx.beginPath(); ctx.arc(16, 16, 13, 0, 6.283); ctx.fill();
-      ctx.fillStyle = '#10141c'; ctx.beginPath(); ctx.arc(16, 16, 8, 0, 6.283); ctx.fill();
-      // kleines Dachgestell
-      ctx.strokeStyle = '#3a2c1c'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(6, 16); ctx.lineTo(6, 4); ctx.lineTo(26, 4); ctx.lineTo(26, 16); ctx.stroke();
-      ctx.fillStyle = '#4a2a20'; ctx.fillRect(4, 1, 24, 4);
+    case 'brunnen': case 'brunnen_blut': {
+      // Dorfbrunnen (Runde 51 überarbeitet + Blut-Variante): runder Steinkranz
+      // mit Fugen, Wasser mit Glanz, Holzdach mit Winde/Eimer. brunnen_blut =
+      // verseucht (rotes "Wasser", Blut am Rand) bei Monster-Einfällen.
+      const blut = name === 'brunnen_blut';
+      ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.beginPath(); ctx.ellipse(16, 30, 14, 4, 0, 0, 6.283); ctx.fill();
+      // Steinkranz
+      ctx.fillStyle = '#6a655c'; ctx.beginPath(); ctx.arc(16, 19, 14, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#7e786d'; ctx.beginPath(); ctx.arc(16, 19, 14, Math.PI, 0); ctx.fill();
+      ctx.strokeStyle = '#3a352e'; ctx.lineWidth = 1;
+      for (let a = 0; a < 8; a++) { const an = a * Math.PI / 4; ctx.beginPath(); ctx.moveTo(16 + Math.cos(an) * 10.5, 19 + Math.sin(an) * 10.5); ctx.lineTo(16 + Math.cos(an) * 14, 19 + Math.sin(an) * 14); ctx.stroke(); }
+      ctx.fillStyle = '#48443d'; ctx.beginPath(); ctx.arc(16, 19, 10.5, 0, 6.283); ctx.fill();
+      // Wasser (oder Blut)
+      ctx.fillStyle = blut ? '#5a0c0c' : '#1a3a4a'; ctx.beginPath(); ctx.arc(16, 19, 8.5, 0, 6.283); ctx.fill();
+      ctx.fillStyle = blut ? 'rgba(150,20,20,0.5)' : 'rgba(150,200,220,0.32)';
+      ctx.beginPath(); ctx.ellipse(13, 16, 3, 1.6, 0.5, 0, 6.283); ctx.fill();
+      if (blut) { // Blut quillt über den Rand
+        ctx.fillStyle = 'rgba(110,12,12,0.7)';
+        ctx.beginPath(); ctx.ellipse(16, 27, 9, 3, 0, 0, 6.283); ctx.fill();
+        ctx.fillRect(9, 19, 2.5, 8); ctx.fillRect(21, 20, 2.5, 7);
+      }
+      // Holzdach + Winde
+      ctx.strokeStyle = '#3a2c1c'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(5, 19); ctx.lineTo(5, 5); ctx.moveTo(27, 19); ctx.lineTo(27, 5); ctx.stroke();
+      ctx.fillStyle = '#5a3a26';
+      ctx.beginPath(); ctx.moveTo(2, 6); ctx.lineTo(16, 0); ctx.lineTo(30, 6); ctx.lineTo(28, 8); ctx.lineTo(16, 3); ctx.lineTo(4, 8); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#2a2018'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(5, 11); ctx.lineTo(27, 11); ctx.stroke();
+      ctx.fillStyle = '#4a3826'; ctx.fillRect(14, 11, 5, 4); // Eimer
       break;
+    }
     case 'wald':
       // Dichter Wald (Fallback): wie der Baum, nur dunkler und voller
       ctx.fillStyle = 'rgba(0,0,0,0.35)';

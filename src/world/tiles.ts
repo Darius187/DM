@@ -33,11 +33,14 @@ export const T = {
   // Folterinstrumente (Runde 50): Eiserne Jungfrau (Stachelsarg) und Kohle-
   // becken mit glühenden Brandeisen - beide solide Requisiten der Folterkammer.
   IRONMAIDEN: 53, KOHLEBECKEN: 54,
+  // Verseuchter Dorfbrunnen (Runde 51): bei Monster-Einfällen quillt Blut aus
+  // dem Brunnen - niemand bekommt mehr Wasser.
+  WELL_BLUT: 55,
 } as const;
 export type TileId = (typeof T)[keyof typeof T];
 
 export const SOLID = new Set<number>([
-  T.HWALL, T.TREE, T.CWALL, T.WALL, T.GRAVE, T.WELL, T.ALTAR, T.SHELF,
+  T.HWALL, T.TREE, T.CWALL, T.WALL, T.GRAVE, T.WELL, T.WELL_BLUT, T.ALTAR, T.SHELF,
   T.SHELF_GELEERT, T.SHELF_LEER,
   T.SHRINE, T.ORE, T.ROCK, T.RACK, T.RACK_R, T.CAGE, T.IRONMAIDEN, T.KOHLEBECKEN, T.WATER, T.FENCE, T.PALISADE, T.TOR,
   T.BETT, T.TISCH, T.KAMIN, T.TRESEN, T.BRENNHOLZ, T.KESSEL, T.CRACK,
@@ -56,7 +59,7 @@ export const FLYOVER = new Set<number>([T.WATER, T.ABYSS]);
 const NAME: Record<number, string> = {
   [T.GRASS]: 'gras', [T.PATH]: 'weg', [T.TREE]: 'baum', [T.CDOOR]: 'kirchentuer',
   [T.FLOOR]: 'krypta_boden', [T.STAIR]: 'treppe_ab', [T.STAIRUP]: 'treppe_auf',
-  [T.GRAVE]: 'grabstein', [T.BURNT]: 'brandstelle', [T.WELL]: 'brunnen',
+  [T.GRAVE]: 'grabstein', [T.BURNT]: 'brandstelle', [T.WELL]: 'brunnen', [T.WELL_BLUT]: 'brunnen_blut',
   [T.ALTAR]: 'altar', [T.SHELF]: 'regal', [T.SHELF_GELEERT]: 'regal_geleert', [T.SHELF_LEER]: 'regal_leer',
   [T.BONES]: 'knochen', [T.BLOOD]: 'blut',
   [T.RUNE]: 'rune', [T.SHRINE]: 'kerzenschrein', [T.ORE]: 'erzader', [T.ROCK]: 'fels',
