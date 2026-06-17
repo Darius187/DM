@@ -30,9 +30,11 @@ export class DungeonSpielScene extends CombatScene {
   create(): void {
     this.cameras.main.setBackgroundColor('#0a0908');
     this.karte = erzeugeKarte(this.version);
-    this.zeichneDungeon();
     const start = findeStartKachel(this.karte);
+    // WICHTIG: setupCombat erzeugt this.provider - MUSS vor zeichneDungeon laufen
+    // (sonst Absturz: this.provider undefined beim Tile-Zeichnen).
     this.setupCombat(start.x * TILE + TILE / 2, start.y * TILE + TILE / 2);
+    this.zeichneDungeon();
     this.cameras.main.startFollow(this.playerSprite, true, 0.15, 0.15);
     this.cameras.main.setBounds(0, 0, this.karte.w * TILE, this.karte.h * TILE);
     this.spawneTesthorde(start);

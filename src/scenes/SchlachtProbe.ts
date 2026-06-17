@@ -25,12 +25,12 @@ type Stance = 'aggressiv' | 'verteidigen' | 'halten';
 
 interface TypDef { hp: number; dmg: number; reich: number; speed: number; rank: number; figur: string; heiler: boolean; tint?: number }
 const TYP: Record<Typ, TypDef> = {
-  schild:   { hp: 70, dmg: 8,  reich: 30,  speed: 40, rank: 0, figur: 'soldat',      heiler: false, tint: 0xb8c4d2 },
-  nahkampf: { hp: 46, dmg: 12, reich: 30,  speed: 58, rank: 1, figur: 'soldat',      heiler: false },
-  bogen:    { hp: 28, dmg: 9,  reich: 210, speed: 60, rank: 2, figur: 'bogensoldat', heiler: false },
-  heiler:   { hp: 30, dmg: 10, reich: 150, speed: 54, rank: 3, figur: 'johannes',    heiler: true,  tint: 0xe8e0a0 },
-  e_nah:    { hp: 40, dmg: 10, reich: 30,  speed: 54, rank: 1, figur: 'skelett',      heiler: false },
-  e_bogen:  { hp: 24, dmg: 8,  reich: 200, speed: 54, rank: 2, figur: 'schuetze',     heiler: false },
+  schild:   { hp: 130, dmg: 8,  reich: 30,  speed: 40, rank: 0, figur: 'soldat',      heiler: false, tint: 0xb8c4d2 },
+  nahkampf: { hp: 90,  dmg: 12, reich: 30,  speed: 58, rank: 1, figur: 'soldat',      heiler: false },
+  bogen:    { hp: 55,  dmg: 9,  reich: 210, speed: 60, rank: 2, figur: 'bogensoldat', heiler: false },
+  heiler:   { hp: 60,  dmg: 9,  reich: 150, speed: 54, rank: 3, figur: 'johannes',    heiler: true,  tint: 0xe8e0a0 },
+  e_nah:    { hp: 85,  dmg: 10, reich: 30,  speed: 54, rank: 1, figur: 'skelett',      heiler: false },
+  e_bogen:  { hp: 48,  dmg: 8,  reich: 200, speed: 54, rank: 2, figur: 'schuetze',     heiler: false },
 };
 
 // Aufstieg: je Kill +1 XP; bei diesen Schwellen Stufe hoch (max 5). Je Stufe
@@ -76,6 +76,7 @@ export class SchlachtProbe extends Phaser.Scene {
   private fxg!: Phaser.GameObjects.Graphics;
   private infoText!: Phaser.GameObjects.Text;
   private statusText!: Phaser.GameObjects.Text;
+  private seiteKnopf!: Phaser.GameObjects.Text;
   private boxStart: { x: number; y: number } | null = null;
   private boxNow: { x: number; y: number } | null = null;
   private linieStart: { x: number; y: number } | null = null;
@@ -85,6 +86,7 @@ export class SchlachtProbe extends Phaser.Scene {
   private bauGfx!: Phaser.GameObjects.Graphics;
   private platziere: BauTyp | null = null;
   private nachschubT = 0;        // Restzeit bis angeforderter Nachschub eintrifft
+  private steuereTeam: Team = 'spieler';   // welche Seite der Spieler befehligt
   private schlachtLaeuft = false;
   private vorbei = false;
 
@@ -97,6 +99,7 @@ export class SchlachtProbe extends Phaser.Scene {
     this.bauten = [];
     this.platziere = null;
     this.nachschubT = 0;
+    this.steuereTeam = 'spieler';
     this.schlachtLaeuft = false;
     this.vorbei = false;
     this.grid.clear();
@@ -168,6 +171,8 @@ export class SchlachtProbe extends Phaser.Scene {
     x += 14;
     const stances: Array<[string, Stance]> = [['AGGRESSIV', 'aggressiv'], ['VERTEIDIGEN', 'verteidigen'], ['HALTEN', 'halten']];
     for (const [lbl, s] of stances) { const t = this.knopf(x, y1, lbl, () => this.setzeStance(s)); x += t.width + 8; }
+    x += 14;
+    this.seiteKnopf = this.knopf(x, y1, '', () => this.wechsleSeite());
     // zweite Reihe: Bau-Menü (Befestigung an der Front) + Nachschub
     let x2 = 14; const y2 = FELD_H + 60;
     x2 += this.add.text(x2, y2, 'BAU:', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' }).setOrigin(0, 0.5).setDepth(950).width + 8;
@@ -190,6 +195,7 @@ export class SchlachtProbe extends Phaser.Scene {
     const eigene = this.units.filter((u) => u.team === 'spieler' && !u.tot).length;
     const feinde = this.units.filter((u) => u.team === 'feind' && !u.tot).length;
     this.statusText.setText(`Fürsten-Heer ${eigene}  vs  Untote ${feinde}`);
+    if (this.seiteKnopf) this.seiteKnopf.setText(`STEUERE: ${this.steuereTeam === 'spieler' ? 'Fürst' : 'Untote'}`);
     const sel = this.gewaehlte();
     const stance = sel.length ? (sel.every((u) => u.stance === sel[0].stance) ? sel[0].stance : 'gemischt') : '-';
     if (this.platziere) {
@@ -269,16 +275,25 @@ export class SchlachtProbe extends Phaser.Scene {
     const x0 = Math.min(this.boxStart!.x, this.boxNow!.x), x1 = Math.max(this.boxStart!.x, this.boxNow!.x);
     const y0 = Math.min(this.boxStart!.y, this.boxNow!.y), y1 = Math.max(this.boxStart!.y, this.boxNow!.y);
     const klick = Math.hypot(x1 - x0, y1 - y0) < 6;
-    for (const u of this.units) {
-      if (u.team !== 'spieler' || u.tot) continue;
-      u.ausgewaehlt = klick ? (Math.hypot(u.x - x0, u.y - y0) < 20) : (u.x >= x0 && u.x <= x1 && u.y >= y0 && u.y <= y1);
+    if (klick) {
+      // Einzelklick = GENAU eine Einheit (die nächste), nicht die ganze Formation
+      let best: Unit | null = null, bd = 24;
+      for (const u of this.units) { if (u.team !== this.steuereTeam || u.tot) continue; const d = Math.hypot(u.x - x0, u.y - y0); if (d < bd) { bd = d; best = u; } }
+      for (const u of this.units) if (u.team === this.steuereTeam) u.ausgewaehlt = u === best;
+    } else {
+      for (const u of this.units) { if (u.team !== this.steuereTeam || u.tot) continue; u.ausgewaehlt = u.x >= x0 && u.x <= x1 && u.y >= y0 && u.y <= y1; }
     }
     this.setzeStatus();
   }
 
-  private gewaehlte(): Unit[] { return this.units.filter((u) => u.ausgewaehlt && !u.tot && u.team === 'spieler'); }
-  private gruppeMerken(n: number): void { for (const u of this.units) if (u.team === 'spieler') { if (u.ausgewaehlt) u.gruppeNr = n; else if (u.gruppeNr === n) u.gruppeNr = 0; } }
-  private gruppeWaehlen(n: number): void { for (const u of this.units) if (u.team === 'spieler' && !u.tot) u.ausgewaehlt = u.gruppeNr === n; this.setzeStatus(); }
+  private gewaehlte(): Unit[] { return this.units.filter((u) => u.ausgewaehlt && !u.tot && u.team === this.steuereTeam); }
+  private gruppeMerken(n: number): void { for (const u of this.units) if (u.team === this.steuereTeam) { if (u.ausgewaehlt) u.gruppeNr = n; else if (u.gruppeNr === n) u.gruppeNr = 0; } }
+  private gruppeWaehlen(n: number): void { for (const u of this.units) if (u.team === this.steuereTeam && !u.tot) u.ausgewaehlt = u.gruppeNr === n; this.setzeStatus(); }
+  private wechsleSeite(): void {
+    this.steuereTeam = this.steuereTeam === 'spieler' ? 'feind' : 'spieler';
+    for (const u of this.units) u.ausgewaehlt = false;
+    this.setzeStatus();
+  }
   private setzeStance(s: Stance): void { for (const u of this.gewaehlte()) u.stance = s; this.setzeStatus(); this.sfx.play('klick', 0.5); }
 
   private mehrEinheiten(): void {
@@ -324,23 +339,20 @@ export class SchlachtProbe extends Phaser.Scene {
     return ec ? Math.atan2(ec.y - y, ec.x - x) : 0;
   }
 
-  private auswahlGruppe(): Gruppe | null {
-    const sel = this.gewaehlte(); if (!sel.length) return null;
-    const g = sel[0].grp;
-    return g && sel.every((u) => u.grp === g) ? g : null;
-  }
-
+  // Marsch: bildet aus GENAU der Auswahl einen frischen Verband, der die aktuelle
+  // Form beibehält und zum Ziel zieht. So bewegt ein Befehl nur die gewählten
+  // Einheiten (Untergruppe/Einzeln steuerbar), nicht die ganze alte Formation.
   private befehlMarsch(ziel: { x: number; y: number }): void {
-    const g = this.auswahlGruppe();
-    for (const u of this.gewaehlte()) u.fokus = null;
-    if (g) { g.ziel = ziel; g.facing = Math.atan2(ziel.y - g.anker.y, ziel.x - g.anker.x); }
-    else this.gewaehlte().forEach((u, i) => { const a = (i / Math.max(1, this.gewaehlte().length)) * 6.283; u.grp = null; u.off = null; u.ziel = { x: ziel.x + Math.cos(a) * 18, y: ziel.y + Math.sin(a) * 18 }; });
+    const sel = this.gewaehlte(); if (!sel.length) return;
+    const cx = sel.reduce((a, u) => a + u.x, 0) / sel.length, cy = sel.reduce((a, u) => a + u.y, 0) / sel.length;
+    const grp: Gruppe = { anker: { x: cx, y: cy }, facing: 0, ziel };
+    sel.forEach((u) => { u.grp = grp; u.off = { f: u.x - cx, l: u.y - cy }; u.ziel = null; u.fokus = null; });
     this.sfx.play('klick', 0.5);
   }
 
-  // Fokus-Angriff: alle Gewählten greifen GEZIELT diesen Gegner an (ohne Leine).
+  // Fokus-Angriff: alle Gewählten greifen GEZIELT diesen Gegner an (löst Marsch).
   private befehlFokus(ef: Unit): void {
-    for (const u of this.gewaehlte()) u.fokus = ef;
+    for (const u of this.gewaehlte()) { u.fokus = ef; if (u.grp) u.grp.ziel = null; }
     this.sfx.play('klick', 0.5);
   }
 
@@ -448,23 +460,27 @@ export class SchlachtProbe extends Phaser.Scene {
     u.aufstiegFx = Math.max(0, u.aufstiegFx - dt);
 
     const home = this.heimat(u);
+    const fernVonHome = Math.hypot(home.x - u.x, home.y - u.y);
     let bewegtZu: { x: number; y: number } | null = null;
 
     if (u.heiler) {
-      // Heiler kämpft nicht, heilt den am schwersten Verwundeten in Reichweite,
-      // bleibt sonst bei der Truppe (geht zur Heimat).
       this.heilerHandeln(u);
-      if (Math.hypot(home.x - u.x, home.y - u.y) > 3) bewegtZu = home;
+      if (fernVonHome > 3) bewegtZu = home;                          // bei der Truppe bleiben
     } else {
-      // Zielgegner: Fokus (vom Spieler befohlen) hat Vorrang, sonst der nächste.
       if (u.fokus && u.fokus.tot) u.fokus = null;
       const feind = u.fokus ?? this.naechsterFeind(u);
-      if (feind) {
-        const d = Math.hypot(feind.x - u.x, feind.y - u.y);
-        if (d <= u.reich) { this.angriff(u, feind); }
-        else if (this.willEngagieren(u, feind, d, home)) { bewegtZu = { x: feind.x, y: feind.y }; }
-        else if (Math.hypot(home.x - u.x, home.y - u.y) > 3) { bewegtZu = home; }
-      } else if (Math.hypot(home.x - u.x, home.y - u.y) > 4) {
+      if (feind && Math.hypot(feind.x - u.x, feind.y - u.y) <= u.reich) this.angriff(u, feind);
+      const dF = feind ? Math.hypot(feind.x - u.x, feind.y - u.y) : Infinity;
+      if (u.fokus && !u.fokus.tot && dF > u.reich) {
+        bewegtZu = { x: u.fokus.x, y: u.fokus.y };                    // Fokusbefehl: gezielt hinjagen
+      } else if (u.grp && u.grp.ziel) {
+        bewegtZu = fernVonHome > 3 ? home : null;                    // aktiver Marsch/Rückzug: Formation halten (NICHT jagen)
+      } else if (feind && dF > u.reich && this.willEngagieren(u, feind, dF, home)) {
+        bewegtZu = { x: feind.x, y: feind.y };                       // angreifen (mit Leine zur Heimat)
+      } else if (!feind && u.team !== this.steuereTeam && this.schlachtLaeuft) {
+        const m = this.heeresMitte(u.team === 'spieler' ? 'feind' : 'spieler');  // KI-Seite rückt zur Schlacht vor
+        if (m) bewegtZu = m;
+      } else if (fernVonHome > 4) {
         bewegtZu = home;
         if (u.ziel && Math.hypot(u.ziel.x - u.x, u.ziel.y - u.y) <= 4) u.ziel = null;
       } else if (u.ziel) { u.ziel = null; }
@@ -479,7 +495,7 @@ export class SchlachtProbe extends Phaser.Scene {
   // Soll die Einheit zum Gegner vorrücken? Hängt an der Haltung + Leine zur Formation.
   private willEngagieren(u: Unit, feind: Unit, d: number, home: { x: number; y: number }): boolean {
     if (u.fokus) return true;                                  // Fokusbefehl: immer
-    if (u.team === 'feind') return this.schlachtLaeuft;        // Horde rennt frei
+    if (u.team !== this.steuereTeam) return this.schlachtLaeuft; // KI-Seite rennt frei
     if (u.stance === 'halten') return false;                   // nie vom Slot weg
     const sicht = u.stance === 'verteidigen' ? u.reich + 60 : 320;
     const leine = u.stance === 'verteidigen' ? 80 : 210;       // wie weit darf der Gegner von der Heimat sein
@@ -524,7 +540,7 @@ export class SchlachtProbe extends Phaser.Scene {
   }
 
   private naechsterFeind(u: Unit): Unit | null {
-    if (u.team === 'feind' && !this.schlachtLaeuft) return null;
+    if (u.team !== this.steuereTeam && !this.schlachtLaeuft) return null;  // KI-Seite wartet auf ANGRIFF
     let best: Unit | null = null, bd = 340;
     const ringe = Math.ceil(bd / this.ZELL);
     for (const o of this.nachbarn(u.x, u.y, ringe, this._puffer2)) {
