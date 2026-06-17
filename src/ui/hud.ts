@@ -300,6 +300,38 @@ export class Hud {
     }
   }
 
+  // Erhabener 3D-Knopf im WoW-Stil (Runde 50): dunkler Körper, Glas-Glanz auf
+  // der oberen Hälfte, helle Glanzkante oben/links, Schattenkante unten/rechts
+  // und ein kategoriefarbener Außenrahmen. Gesperrte Slots bleiben matt.
+  private zeichne3dKnopf(g: Phaser.GameObjects.Graphics, x: number, y: number, size: number, katFarbe: number, locked: boolean): void {
+    const h = size / 2, r = 6;
+    const x0 = x - h, y0 = y - h;
+    // Schlagschatten unter dem Knopf
+    g.fillStyle(0x000000, 0.45);
+    g.fillRoundedRect(x0 + 1, y0 + 3, size, size, r);
+    // Körper (dunkles Metall)
+    g.fillStyle(locked ? 0x140f0a : 0x1b140c, 0.98);
+    g.fillRoundedRect(x0, y0, size, size, r);
+    if (!locked) {
+      // dezente Kategorie-Tönung + Glas-Glanz auf der oberen Hälfte
+      g.fillStyle(katFarbe, 0.12);
+      g.fillRoundedRect(x0 + 2, y0 + 2, size - 4, size - 4, r - 2);
+      g.fillStyle(0xffffff, 0.10);
+      g.fillRoundedRect(x0 + 3, y0 + 3, size - 6, size * 0.4, r - 3);
+    }
+    // helle Glanzkante oben/links
+    g.lineStyle(2, locked ? 0x2a2218 : 0x6e5a36, locked ? 0.8 : 0.9);
+    g.lineBetween(x0 + 3, y0 + 2, x0 + size - 4, y0 + 2);
+    g.lineBetween(x0 + 2, y0 + 3, x0 + 2, y0 + size - 4);
+    // dunkle Schattenkante unten/rechts
+    g.lineStyle(2, 0x000000, 0.6);
+    g.lineBetween(x0 + 3, y0 + size - 2, x0 + size - 3, y0 + size - 2);
+    g.lineBetween(x0 + size - 2, y0 + 3, x0 + size - 2, y0 + size - 3);
+    // Außenrahmen in Kategoriefarbe
+    g.lineStyle(locked ? 1 : 2, locked ? 0x3a3228 : katFarbe, locked ? 1 : 0.95);
+    g.strokeRoundedRect(x0, y0, size, size, r);
+  }
+
   // --- Drag & Drop auf die Maus-Leiste (Runde 20) ------------------------------
 
   private dragGhost: Phaser.GameObjects.Text | null = null;
@@ -529,21 +561,15 @@ export class Hud {
       const y = this.slotY(i);
       this.slotZones[i].setPosition(x, y);
       const locked = s.locked() !== null;
-      g.fillStyle(0x100b06, 0.92);
-      g.fillRect(x - 21, y - 21, 42, 42);
       // Kategorie-Färbung (Runde 36): Rahmen + dezenter Schimmer je nach
       // Kampf/Zauber/Bogen/Item - so unterscheidet man die Slots auf einen Blick
       const katFarbe = SLOT_KAT_FARBE[s.kategorie?.() ?? 'item'];
-      if (!locked) {
-        g.fillStyle(katFarbe, 0.14);
-        g.fillRect(x - 20, y - 20, 40, 40);
-      }
-      g.lineStyle(locked ? 1 : 2, locked ? 0x3a3228 : katFarbe, locked ? 1 : 0.9);
-      g.strokeRect(x - 21, y - 21, 42, 42);
+      // 3D-Knopf im WoW-Stil (Runde 50, Autorwunsch)
+      this.zeichne3dKnopf(g, x, y, 42, katFarbe, locked);
       const cd = s.cdFrac();
       if (cd > 0) {
         g.fillStyle(0x000000, 0.72);
-        g.fillRect(x - 21, y - 21 + 42 * (1 - cd), 42, 42 * cd);
+        g.fillRoundedRect(x - 20, y - 20 + 40 * (1 - cd), 40, 40 * cd, 5);
       }
       const cdS = s.cdSek();
       this.slotTexts[i].setText(cdS > 0.5 ? String(Math.ceil(cdS)) : `${s.ico()}`)
