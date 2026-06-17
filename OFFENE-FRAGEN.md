@@ -69,7 +69,10 @@
         Kammern/Durchgänge ging (die sind ohnehin schon nahtlos, eine Karte ohne Laden) oder
         um sichtbare Türblätter zwischen den Kammern - sag Bescheid, dann ergänze ich Türrahmen
         an den Durchgängen.
-    (b) "Folterkammer als eigener Raumabschnitt mit Instrumenten + mehr Blut": Aktuell ist die
+    (b) ERLEDIGT in Runde 50: Folterkammer ist jetzt ein eigener TRAKT (Instrumentenraum oben,
+        Eingangsgang, Zellenblock mit begehbaren Zellen unten). Falls die UMSETZUNG anders gewünscht
+        ist (z. B. mehr/weniger Zellen, andere Anordnung), sag Bescheid. Ursprünglicher Hinweis:
+        Aktuell ist die
         Folterkammer EIN Sonderraum (Streckbank über 2 Kacheln, Käfige, begehbare Zelle, Blut,
         Notiz, seltene Truhe, ein gefangenes Wesen). Sie ist NICHT baulich vom Rest abgetrennt.
         Falls du einen klar abgegrenzten Trakt willst (eigener Gang -> mehrere Zellen ->
