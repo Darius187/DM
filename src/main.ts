@@ -18,6 +18,7 @@ import { Geheimwand } from './scenes/Geheimwand';
 import { SchlachtProbe } from './scenes/SchlachtProbe';
 import { DungeonProbe } from './scenes/DungeonProbe';
 import { AnhoeheProbe } from './scenes/AnhoeheProbe';
+import { ReitProbe } from './scenes/ReitProbe';
 import { TUNING } from './logic/tuning';
 
 // Bildgröße (Runde 27): KEIN gestrecktes Canvas mehr (machte Schrift
@@ -32,7 +33,7 @@ const game = new Phaser.Game({
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, TitleScene, WorldScene, DebugArenaScene, UIScene, SettingsScene, KammerDerFinsternis, DieSchwelle, BlutstromGang, TreppenProbe, NebelProbe, Treppenabstieg, LangerGang, DieStelen, PlattenPfad, Geheimwand, SchlachtProbe, DungeonProbe, AnhoeheProbe],
+  scene: [BootScene, TitleScene, WorldScene, DebugArenaScene, UIScene, SettingsScene, KammerDerFinsternis, DieSchwelle, BlutstromGang, TreppenProbe, NebelProbe, Treppenabstieg, LangerGang, DieStelen, PlattenPfad, Geheimwand, SchlachtProbe, DungeonProbe, AnhoeheProbe, ReitProbe],
 });
 
 // Dev-Hook für die automatisierte Browser-Verifikation (CLAUDE.md Regel 1/9)

@@ -69,6 +69,11 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [ ] Veröffentlichung: itch.io (Demo öffentlich, Vollversion via Download-Keys
       an Freunde); später evtl. Tauri-exe / Steam.
 
+## Welt & Karte (Forts.)
+- [~] Reit-Animation: galoppierendes Pferd+Reiter (Seitenansicht, eigener
+      Galopp-Zyklus) als Demo gebaut (Menü -> REIT-PROBE). Falls gut genug,
+      könnte eine VERBESSERTE Reit-Eröffnung zurückkommen (Autor-Entscheidung).
+
 ## Erledigt (Auswahl, Runde 51)
 - [x] Reitszene/Pferd entfernt; Spiel startet frei steuerbar im Wald.
 - [x] Kirche: Steinboden statt Gras, schmale Abstiegstreppe, Sound-Überlappung weg.
