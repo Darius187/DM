@@ -43,8 +43,10 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
       Templer), die Palisade hält nicht, das Dorf wird überrannt.
 - [ ] Flucht des ganzen Dorfes nach NORDWESTEN auf den verschneiten Berg.
 - [ ] Geplanter Gegenangriff zur Säuberung mit Hilfe der Fürsten-Soldaten.
-- [ ] Riesenschlacht: gemessen ~ein paar hundert Einheiten/Seite laufen flüssig;
-      für Tausende später Spatial-Grid in der Schlacht-KI nachrüsten (O(n²)->O(n)).
+- [ ] Riesenschlacht: auf SCHWACHER Hardware ~200-300 Einheiten gesamt sicher
+      flüssig (Messung war auf schnellem i9-Niveau, x~3 für schwache PCs). Für
+      mehr/Sicherheitspuffer: Spatial-Grid in die Schlacht-KI (O(n²)->O(n)) -
+      macht selbst 1000+ billig. Beim ECHTEN Schlacht-Bau gleich einbauen.
 
 ## Wirtschaft (Details in WIRTSCHAFT-PLAN.md)
 - [ ] Material-Datenbank + Dorf-Lager + täglicher Produktions-Tick.
@@ -69,4 +71,5 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [x] Schlacht-Prototyp im Testmodus (Formationen Linie/Keil/Igel, Auswahl-
       rahmen, AoE4-Vorschau, Marsch, Kampf gegen Untote).
 - [x] Logischer Dungeon-Generator als Test-Karte (DUNGEON-PROBE).
+- [x] Generator offener (Diablo-1) + Elite-Themenräume (Blut/Bein/Folter).
 - [x] Fluss-Ufer mit Tiefe (Schatten-Saum + Wasserlinie an allen Seiten).
