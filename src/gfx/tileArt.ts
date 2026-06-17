@@ -348,13 +348,27 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       ctx.fillStyle = 'rgba(20,16,12,0.28)';
       ctx.beginPath(); ctx.ellipse(15 + (n % 4), 16 + (n % 3), 7, 4, 0, 0, 6.283); ctx.fill();
       break;
-    case 'blut':
+    case 'blut': {
+      // Blutlache (Runde 50: reicher, mit dunklem Kern, Spritzern und Schlieren -
+      // Blut steht jetzt nur noch in Sonderräumen und soll dort wirken)
       floorBase(ctx, n, theme);
-      ctx.fillStyle = 'rgba(110,16,16,0.55)';
-      ctx.beginPath(); ctx.arc(13 + n, 14, 7, 0, 6.283); ctx.fill();
-      ctx.beginPath(); ctx.arc(23, 21, 3.5, 0, 6.283); ctx.fill();
-      ctx.beginPath(); ctx.arc(7, 23, 2.5, 0, 6.283); ctx.fill();
+      const bx = 13 + (n % 5), byy = 13 + (n % 4);
+      ctx.fillStyle = 'rgba(86,10,10,0.6)';
+      ctx.beginPath(); ctx.ellipse(bx, byy, 9, 7, (n % 3) * 0.4, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(120,18,18,0.55)';
+      ctx.beginPath(); ctx.ellipse(bx, byy, 6, 4.5, (n % 3) * 0.4, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(40,4,6,0.6)'; // dunkler Kern
+      ctx.beginPath(); ctx.arc(bx - 1, byy, 2.5, 0, 6.283); ctx.fill();
+      // Spritzer ringsum
+      ctx.fillStyle = 'rgba(96,12,12,0.5)';
+      ctx.beginPath(); ctx.arc(24, 22, 2.8, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.arc(7, 24, 2, 0, 6.283); ctx.fill();
+      ctx.fillRect(20 + (n % 3), 6, 2, 1.5); ctx.fillRect(5, 9 + (n % 3), 1.5, 1.5);
+      // Glanzlicht (frisch/feucht)
+      ctx.fillStyle = 'rgba(220,120,120,0.18)';
+      ctx.beginPath(); ctx.ellipse(bx - 2, byy - 2, 2.5, 1.4, 0.5, 0, 6.283); ctx.fill();
       break;
+    }
     case 'rune': {
       floorBase(ctx, n, theme);
       const rc = theme?.rune ?? '#c03030';
@@ -444,21 +458,61 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       detail(ctx, folterbank64);
       break;
     case 'kaefig':
+      // Eisenkäfig (Runde 50: runde Stäbe mit Lichtkante + Schatten = 3D, oben
+      // und unten ein Querband, Knochenrest am Boden statt flachem Strich)
       floorBase(ctx, n, theme);
-      ctx.strokeStyle = '#55504a';
+      // Schatten der Stäbe
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 2.4;
+      for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(7 + i * 5, 4); ctx.lineTo(7 + i * 5, 28); ctx.stroke(); }
+      // Eisenstäbe
+      ctx.strokeStyle = '#5a554e'; ctx.lineWidth = 1.8;
       for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(6 + i * 5, 4); ctx.lineTo(6 + i * 5, 28); ctx.stroke(); }
+      // Lichtkante auf den Stäben
+      ctx.strokeStyle = 'rgba(170,164,150,0.7)'; ctx.lineWidth = 0.6;
+      for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(5.3 + i * 5, 5); ctx.lineTo(5.3 + i * 5, 27); ctx.stroke(); }
+      // Querbänder + Rahmen
+      ctx.strokeStyle = '#43403a'; ctx.lineWidth = 2;
       ctx.strokeRect(4.5, 3.5, 23, 25);
-      if (n % 2 === 0) { ctx.fillStyle = '#cfc4a8'; ctx.fillRect(12, 22, 8, 2.5); ctx.beginPath(); ctx.arc(16, 18, 3, 0, 6.283); ctx.fill(); }
+      ctx.beginPath(); ctx.moveTo(5, 9); ctx.lineTo(27, 9); ctx.moveTo(5, 23); ctx.lineTo(27, 23); ctx.stroke();
+      ctx.lineWidth = 1;
+      if (n % 2 === 0) {
+        // Knochenrest am Boden des Käfigs
+        ctx.fillStyle = '#cfc4a8';
+        ctx.beginPath(); ctx.arc(16, 24, 2.6, 0, 6.283); ctx.fill();   // Schädel
+        ctx.fillRect(11, 25, 9, 1.8);                                   // Rippe/Knochen
+        ctx.fillStyle = '#2a2620'; ctx.fillRect(14.5, 23.4, 1, 1); ctx.fillRect(17, 23.4, 1, 1); // Augenhöhlen
+      }
       break;
     case 'kerzenschrein':
+      // Kerzenschrein (Runde 50: massiver Steinsockel mit Lichtkante, mehr Kerzen
+      // unterschiedlicher Höhe, geschmolzenes Wachs und ein warmer Lichtschein)
       floorBase(ctx, n, theme);
-      ctx.fillStyle = '#3a362e'; ctx.fillRect(6, 14, 20, 12);
+      // warmer Lichtschein hinter den Kerzen
+      ctx.fillStyle = 'rgba(248,200,120,0.10)';
+      ctx.beginPath(); ctx.arc(16, 9, 13, 0, 6.283); ctx.fill();
+      // Steinsockel
+      ctx.fillStyle = '#34302a'; ctx.fillRect(5, 15, 22, 12);
+      ctx.fillStyle = 'rgba(180,170,150,0.18)'; ctx.fillRect(5, 15, 22, 2); // Lichtkante oben
+      ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(5, 25, 22, 2);        // Schatten unten
+      // geschmolzenes Wachs am Sockelrand
+      ctx.fillStyle = '#d8cba0';
+      ctx.fillRect(8, 26, 2, 2); ctx.fillRect(17, 27, 2, 1.5); ctx.fillRect(23, 26, 2, 2);
+      // Kerzen unterschiedlicher Höhe
       ctx.fillStyle = '#e8e0c8';
-      ctx.fillRect(9, 8, 3, 7); ctx.fillRect(15, 5, 3, 10); ctx.fillRect(21, 9, 3, 6);
+      ctx.fillRect(8, 9, 3, 7); ctx.fillRect(13, 4, 3, 12); ctx.fillRect(18, 7, 3, 9); ctx.fillRect(23, 10, 3, 6);
+      ctx.fillStyle = 'rgba(160,150,130,0.6)'; // Wachsschatten an den Kerzen
+      ctx.fillRect(10, 9, 1, 7); ctx.fillRect(15, 4, 1, 12); ctx.fillRect(20, 7, 1, 9); ctx.fillRect(25, 10, 1, 6);
+      // Dochte
+      ctx.fillStyle = '#2a2018';
+      ctx.fillRect(9, 8, 1, 1.5); ctx.fillRect(14, 3, 1, 1.5); ctx.fillRect(19, 6, 1, 1.5); ctx.fillRect(24, 9, 1, 1.5);
+      // Flammen
       ctx.fillStyle = '#f8d878';
-      ctx.beginPath(); ctx.ellipse(10.5, 6, 1.5, 2.5, 0, 0, 6.283); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(16.5, 3, 1.5, 2.5, 0, 0, 6.283); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(22.5, 7, 1.5, 2.5, 0, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(9.5, 6.5, 1.5, 2.6, 0, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(14.5, 1.5, 1.6, 2.8, 0, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(19.5, 4.5, 1.5, 2.6, 0, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(24.5, 7.5, 1.4, 2.3, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#fff4d0'; // heller Kern
+      ctx.beginPath(); ctx.arc(14.5, 2, 0.9, 0, 6.283); ctx.fill();
       break;
     // --- Innenräume (Feedback-Runde 9): warm und wohnlich ---
     case 'holzboden': {

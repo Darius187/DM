@@ -388,13 +388,13 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
     a.notes.push({ x: (r.x + rnd(rng, 1, r.w - 1)) * TILE, y: (r.y + rnd(rng, 1, r.h - 1)) * TILE, idx: Math.min(n, 3) });
   }
 
-  // Knochen/Blut streuen (Referenz-Dichten je Thema)
+  // Nur noch Knochen verstreuen (Runde 50, Autorwunsch "Blut NUR in Sonderräumen"):
+  // Blut markiert jetzt ausschließlich Folterkammer/Blutbrunnen/Opferaltar und
+  // wirkt dadurch als Signal, nicht als allgegenwärtige Pfütze.
   for (let ty = 1; ty < h - 1; ty++) {
     for (let tx = 1; tx < w - 1; tx++) {
       if (map[ty][tx] !== T.FLOOR) continue;
-      const r2 = rng.random();
-      if (r2 < th.bones) map[ty][tx] = T.BONES;
-      else if (r2 < th.bones + th.blood) map[ty][tx] = T.BLOOD;
+      if (rng.random() < th.bones) map[ty][tx] = T.BONES;
     }
   }
 

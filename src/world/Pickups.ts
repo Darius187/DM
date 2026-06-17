@@ -106,12 +106,25 @@ export class PickupSystem {
           g.fillStyle(0x8a7a5a, 1);
           g.fillRect(p.x - 2, sy - 8, 4, 3);
           break;
-        case 'folio':
-          g.fillStyle(0x4a3520, 1);
-          g.fillRect(p.x - 6, sy - 5, 12, 10);
-          g.fillStyle(0xd8cba8, 1);
-          g.fillRect(p.x - 4, sy - 3, 8, 6);
+        case 'folio': {
+          // Vergilbter Foliant (Runde 50): dicker, alter Lederband mit
+          // vergilbten Seiten, Bünden am Rücken und goldener Schließe - kein
+          // flacher Klotz mehr.
+          const by = sy;
+          g.fillStyle(0x000000, 0.28); g.fillEllipse(p.x, sy + 7, 18, 5);
+          // vergilbte Seiten (leicht gestapelt fuer Dicke)
+          g.fillStyle(0xd8c79c, 1); g.fillRect(p.x - 6, by - 6, 13, 12);
+          g.fillStyle(0xc4b083, 1); g.fillRect(p.x - 6, by + 4, 13, 2);
+          // Ledereinband: Rücken links, vordere Kante rechts
+          g.fillStyle(0x5a3418, 1); g.fillRect(p.x - 9, by - 7, 4, 14);
+          g.fillStyle(0x6a4020, 1); g.fillRect(p.x + 5, by - 7, 3, 14);
+          // Bünde am Buchrücken
+          g.fillStyle(0x33200f, 1);
+          g.fillRect(p.x - 9, by - 4, 4, 1.5); g.fillRect(p.x - 9, by + 1, 4, 1.5);
+          // goldene Schließe
+          g.fillStyle(0xc9a227, 1); g.fillRect(p.x + 3, by - 1, 4, 3);
           break;
+        }
         case 'note':
           g.fillStyle(0xd8cba8, 1);
           g.fillRect(p.x - 5, sy - 6, 10, 12);
