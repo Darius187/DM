@@ -231,6 +231,38 @@ export function folterbank64(ctx: Ctx): void {
   ctx.fillStyle = 'rgba(70,8,8,0.6)'; ell(ctx, 24, 36, 2.4, 1.4, ctx.fillStyle as string);
 }
 
+// Breite Streckbank über ZWEI Kacheln (Runde 50): in einem 64 breiten x 32
+// hohen Entwurfsraum gezeichnet, den detailWide() je Hälfte (links/rechts)
+// auf eine Kachel blittet. So wirkt die Bank wie EIN langes Folterbett.
+export function folterbankWide(ctx: Ctx): void {
+  ctx.clearRect(0, 0, 64, 32);
+  ell(ctx, 32, 27, 30, 5, 'rgba(0,0,0,0.28)'); // Bodenschatten quer
+  // Rahmen: Wangen außen, lange Liegefläche dazwischen
+  ctx.fillStyle = '#241a0e'; ctx.fillRect(2, 8, 5, 22); ctx.fillRect(57, 8, 5, 22);
+  ctx.fillStyle = '#3a2c1a'; ctx.fillRect(6, 11, 52, 12);          // Liegefläche
+  ctx.fillStyle = 'rgba(255,236,196,0.10)'; ctx.fillRect(6, 11, 52, 2); // Lichtkante
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(6, 20, 52, 3);   // Schatten
+  // Längslatten
+  ctx.strokeStyle = 'rgba(20,14,8,0.6)'; ctx.lineWidth = 1;
+  for (const ly of [14, 17, 20]) { ctx.beginPath(); ctx.moveTo(8, ly); ctx.lineTo(56, ly); ctx.stroke(); }
+  // Walzen mit Speichen an beiden Enden
+  for (const wx of [6, 58]) {
+    ctx.fillStyle = '#5a4026'; ctx.beginPath(); ctx.arc(wx, 9, 5.5, 0, 6.283); ctx.fill();
+    ctx.strokeStyle = '#3a2814'; ctx.beginPath(); ctx.arc(wx, 9, 5.5, 0, 6.283); ctx.stroke();
+    ctx.strokeStyle = '#2a1c10'; ctx.lineWidth = 1.2;
+    for (let a = 0; a < 4; a++) { const an = a * Math.PI / 4; ctx.beginPath(); ctx.moveTo(wx, 9); ctx.lineTo(wx + Math.cos(an) * 7, 9 + Math.sin(an) * 7); ctx.stroke(); }
+    ctx.lineWidth = 1;
+  }
+  // gespannte Seile zur Mitte
+  ctx.strokeStyle = '#b8a878'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(8, 12); ctx.lineTo(28, 16); ctx.moveTo(56, 12); ctx.lineTo(38, 18); ctx.stroke();
+  ctx.lineWidth = 1;
+  // Blutspuren auf der Liegefläche
+  ctx.fillStyle = 'rgba(110,16,16,0.6)';
+  ell(ctx, 30, 17, 6, 3, 'rgba(110,16,16,0.6)'); ell(ctx, 40, 19, 3, 1.6, 'rgba(110,16,16,0.6)');
+  ell(ctx, 22, 20, 2.4, 1.3, 'rgba(70,8,8,0.6)');
+}
+
 // --- Liegendes Skelett (Schädel, Brustkorb, Glieder am Boden) ---------------
 export function skelett64(ctx: Ctx): void {
   ell(ctx, 32, 40, 22, 7, 'rgba(0,0,0,0.22)'); // breiter, flacher Bodenschatten

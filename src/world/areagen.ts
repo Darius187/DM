@@ -305,7 +305,11 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
   if (n === 1 || n === 3 || n === 4) {
     const r = takeRoom();
     if (r) {
-      map[r.cy][r.cx] = T.RACK;
+      // Streckbank über ZWEI Kacheln (Runde 50): linke + rechte Hälfte. Passt
+      // die rechte Hälfte nicht ins Zimmer, eine Kachel nach links rücken.
+      const rackX = r.cx + 1 <= r.x + r.w - 1 ? r.cx : r.cx - 1;
+      map[r.cy][rackX] = T.RACK;
+      map[r.cy][rackX + 1] = T.RACK_R;
       const cages: Array<[number, number]> = [[r.x, r.y], [r.x + r.w - 1, r.y], [r.x, r.y + r.h - 1]];
       for (const [cx, cy] of cages) if (map[cy][cx] === T.FLOOR) map[cy][cx] = T.CAGE;
       for (let i = 0; i < 4; i++) {

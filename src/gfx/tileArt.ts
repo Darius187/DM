@@ -4,7 +4,7 @@
 
 import { TILE } from './fallbackArt';
 import type { CryptTheme } from '../data/krypta';
-import { fels64, zaun64, acker64, folterbank64, altar64, wasser64, erzader64 } from './detailArt';
+import { fels64, zaun64, acker64, folterbankWide, altar64, wasser64, erzader64 } from './detailArt';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -24,6 +24,19 @@ function detail(ctx: Ctx, draw: (c: Ctx) => void): void {
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(g, 0, 0, 64, 64, 0, 0, TILE, TILE);
+  ctx.restore();
+}
+
+// Wie detail(), aber für ein 64-breites x 32-hohes Motiv, das über ZWEI Kacheln
+// reicht (Runde 50, Streckbank): 'l' blittet die linke, 'r' die rechte Hälfte.
+function detailWide(ctx: Ctx, draw: (c: Ctx) => void, half: 'l' | 'r'): void {
+  const g = document.createElement('canvas');
+  g.width = 64; g.height = 32;
+  draw(g.getContext('2d')!);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(g, half === 'r' ? 32 : 0, 0, 32, 32, 0, 0, TILE, TILE);
   ctx.restore();
 }
 
@@ -453,9 +466,15 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(10, 10, 8, 3);
       break;
     case 'streckbank':
-      // Folterbank (Runde 40, Batch 2): Rahmen, Walzen, Seile, Blut
+      // Folterbank, LINKE Hälfte (Runde 50: jetzt über zwei Kacheln, ein langes
+      // Folterbett statt eines gestauchten Einzeltiles)
       floorBase(ctx, n, theme);
-      detail(ctx, folterbank64);
+      detailWide(ctx, folterbankWide, 'l');
+      break;
+    case 'streckbank_r':
+      // Folterbank, RECHTE Hälfte
+      floorBase(ctx, n, theme);
+      detailWide(ctx, folterbankWide, 'r');
       break;
     case 'kaefig':
       // Eisenkäfig (Runde 50: runde Stäbe mit Lichtkante + Schatten = 3D, oben
@@ -553,7 +572,7 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
 // die Y-Sortierung: der Boden liegt separat darunter (Masterprompt 5.1).
 export const STANDING_OBJECTS = new Set([
   'baum', 'fels', 'grabstein', 'brunnen', 'zaun', 'erzader', 'altar',
-  'regal', 'kerzenschrein', 'streckbank', 'kaefig', 'palisade',
+  'regal', 'kerzenschrein', 'streckbank', 'streckbank_r', 'kaefig', 'palisade',
   'bett', 'tisch', 'stuhl', 'kamin', 'tresen',
   'kerze', 'wandfackel', 'brennholz', 'kessel',
 ]);

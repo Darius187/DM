@@ -21,12 +21,15 @@ export const T = {
   PILLAR: 47,
   // Wendeltreppe (Runde 41): begehbarer Abstieg links vom Altar in den Prolog
   WENDEL: 48,
+  // Rechte Hälfte der Streckbank (Runde 50): die Folterbank steht über ZWEI
+  // Kacheln, RACK = linke Hälfte, RACK_R = rechte Hälfte.
+  RACK_R: 49,
 } as const;
 export type TileId = (typeof T)[keyof typeof T];
 
 export const SOLID = new Set<number>([
   T.HWALL, T.TREE, T.CWALL, T.WALL, T.GRAVE, T.WELL, T.ALTAR, T.SHELF,
-  T.SHRINE, T.ORE, T.ROCK, T.RACK, T.CAGE, T.WATER, T.FENCE, T.PALISADE, T.TOR,
+  T.SHRINE, T.ORE, T.ROCK, T.RACK, T.RACK_R, T.CAGE, T.WATER, T.FENCE, T.PALISADE, T.TOR,
   T.BETT, T.TISCH, T.KAMIN, T.TRESEN, T.BRENNHOLZ, T.KESSEL, T.CRACK,
   T.ABYSS, // bodenloser Schacht - wie Wasser unbegehbar (BRUECKE führt hinüber)
   T.PILLAR, // Steinpfeiler
@@ -46,7 +49,7 @@ const NAME: Record<number, string> = {
   [T.GRAVE]: 'grabstein', [T.BURNT]: 'brandstelle', [T.WELL]: 'brunnen',
   [T.ALTAR]: 'altar', [T.SHELF]: 'regal', [T.BONES]: 'knochen', [T.BLOOD]: 'blut',
   [T.RUNE]: 'rune', [T.SHRINE]: 'kerzenschrein', [T.ORE]: 'erzader', [T.ROCK]: 'fels',
-  [T.RACK]: 'streckbank', [T.CAGE]: 'kaefig',
+  [T.RACK]: 'streckbank', [T.RACK_R]: 'streckbank_r', [T.CAGE]: 'kaefig',
   [T.WATER]: 'wasser', [T.FIELD]: 'acker', [T.FENCE]: 'zaun', [T.PALISADE]: 'palisade',
   [T.TOR]: 'stadttor',
   [T.HOLZ]: 'holzboden', [T.BETT]: 'bett', [T.TISCH]: 'tisch', [T.STUHL]: 'stuhl',
