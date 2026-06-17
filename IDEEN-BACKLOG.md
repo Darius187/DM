@@ -57,10 +57,15 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
       ein, wenn die Stadt überrannt wird, und werden dem Helden ÜBERGEBEN.
 - [ ] Der Held führt sie taktisch (Formationen) gegen die Untoten-Horde, die
       AUCH Formationen kann -> Taktik entscheidet.
-- [ ] Formationen wie im neuesten Age of Empires: erst Formations-VORSCHAU
-      sehen (Geister-Felder), beim Bestätigen marschieren die Einheiten in die
-      Slots (RTS-Stil). Gängige mittelalterliche Formationen.
-- [ ] Steuerung: Maus-Auswahlrahmen, Gruppen auf Strg+1/Strg+2.
+- [x] Formationssystem (AoE-Festformationen + Beyond-All-Reason-Linien) im
+      Schlacht-Prototyp: 5 Festformationen (Linie/Block/Keil/Locker/Schutz) ODER
+      eine eigene Linie mit der rechten Maus ziehen; Rollen ordnen sich selbst
+      (Schild/Nahkampf vorne, Bogen/Heiler hinten); 3 Bewegungsmodi
+      (Formationsmarsch/Direkt/Angriffsmarsch), Formation hält zusammen
+      (Schnelle warten auf Langsame). Pure Formations-Mathematik getestet.
+      OFFEN: ins echte Schlacht-Level übernehmen; Untote AUCH mit Formationen.
+- [ ] Steuerung: Maus-Auswahlrahmen, Gruppen auf Strg+1/Strg+2. (Auswahl +
+      Strg-Gruppen im Prototyp vorhanden.)
 - [ ] Helm's-Klamm-artiger Sturm: Untote kommen in FORMATION (auch dicke wie der
       Templer), die Palisade hält nicht, das Dorf wird überrannt.
 - [ ] Flucht des ganzen Dorfes nach NORDWESTEN auf den verschneiten Berg.
@@ -107,7 +112,10 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [x] Bloom als Regler, standardmäßig aus.
 - [x] Pferd/Kuh-Grafik verbessert.
 - [x] Dorf vergrößert, ringsum Wald (moderate Stufe, nahtlos).
-- [x] Schlacht-Prototyp im Testmodus (Formationen Linie/Keil/Igel, Auswahl-
+- [x] Schlacht-Prototyp NEU (Runde 51): Rollen (Schild/Nahkampf/Bogen/Heiler),
+      5 Formationen + gezogene Linie, 3 Bewegungsmodi, Kohäsion, Absturz nach
+      dem Kampf behoben (State-Reset). Ersetzt die alte Linie/Keil/Igel-Fassung.
+- [x] Schlacht-Prototyp (ALT) im Testmodus (Formationen Linie/Keil/Igel, Auswahl-
       rahmen, AoE4-Vorschau, Marsch, Kampf gegen Untote).
 - [x] Logischer Dungeon-Generator als Test-Karte (DUNGEON-PROBE).
 - [x] Generator offener (Diablo-1) + Elite-Themenräume (Blut/Bein/Folter).
