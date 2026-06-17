@@ -106,3 +106,26 @@ bei Einfällen wird er **blutig** (kein Wasser mehr).
   (gratis, voller Zugriff), die Öffentlichkeit sieht nur eine **Demo** oder nichts.
   So spielt nicht jeder die Vollversion gratis, bevor es ggf. auf Steam geht.
 - Desktop-exe via **Tauri**/Electron möglich; **Steam** erst zur echten Release.
+
+## 8. Erzählweise: MEMOIREN des Helden (Idee Runde 51)
+Rahmen: Die Geschichte wird rückblickend aus den **Memoiren des Helden** erzählt
+(Ich-Form, Vergangenheit), wie ein Tagebuch nach dem Krieg. Beispielton (Autor):
+"Ich entschied mich, das Dorf zu evakuieren und zur letzten Zuflucht
+zurückzukehren ..." Passt perfekt zum Grimdark-1635-Ton und macht den Spieler
+zum Chronisten der eigenen Geschichte.
+- Greift an: Eröffnung, Ankunft in Gebieten, Etappen-/Kapitelübergänge, große
+  Wendepunkte. Die ERZAEHLER-Texte + der Chronik-Tab "Geschichte" sind die
+  natürliche Heimat (zum Nachlesen).
+- **Gesprochene Erzähler-Stimme** - zwei Wege:
+  (a) **Browser-TTS** (schon eingebaut: Einstellung "Texte vorlesen"): gratis,
+      sofort, aber robotisch / je nach Gerät unterschiedlich. Gut als
+      Barrierefreiheit/Fallback.
+  (b) **Aufgenommene Erzähler-Stimme** (echter Sprecher oder KI-Stimme wie
+      ElevenLabs): deutlich stimmungsvoller. Pro Memoiren-Zeile eine .ogg (wie
+      die übrigen Sounds), spielt beim Einblenden. Beste Qualität, mehr Aufwand.
+  EMPFEHLUNG: Text als Memoiren schreiben; BEIDES unterstützen - TTS als
+  Gratis-Default, und WENN eine Aufnahme-Datei vorliegt, spielt SIE statt TTS.
+- Caution: kurz und überspringbar halten (kurze, eindringliche Einträge, keine
+  Textwände).
+- WICHTIG: Memoiren-Texte sind AUTOR-Inhalt (Stimme des Autors) - ich erfinde
+  sie nicht, sondern setze deine Zeilen um / forme Vorhandenes auf Ich-Form um.
