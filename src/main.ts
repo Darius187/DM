@@ -36,6 +36,11 @@ const game = new Phaser.Game({
   scene: [BootScene, TitleScene, WorldScene, DebugArenaScene, UIScene, SettingsScene, KammerDerFinsternis, DieSchwelle, BlutstromGang, TreppenProbe, NebelProbe, Treppenabstieg, LangerGang, DieStelen, PlattenPfad, Geheimwand, SchlachtProbe, DungeonProbe, AnhoeheProbe, ReitProbe],
 });
 
+// Rechtsklick global ohne Browser-Kontextmenü ("Speichern unter") - die
+// Schlacht-/Dungeon-Proben nutzen die rechte Maustaste als Befehl (Autorbug
+// Runde 51). Greift für ALLE Szenen, nicht nur die CombatScene.
+game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
 // Dev-Hook für die automatisierte Browser-Verifikation (CLAUDE.md Regel 1/9)
 if (import.meta.env.DEV) {
   (window as unknown as { __game?: Phaser.Game; __tuning?: typeof TUNING }).__game = game;
