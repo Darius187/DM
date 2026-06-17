@@ -1459,6 +1459,9 @@ export function buildForest(rng: Rng): AreaData {
   a.kraeuter.push({ x: see.x0 * TILE + 16, y: see.cy * TILE + 16 });
   a.kraeuter.push({ x: see.x1 * TILE + 16, y: see.cy * TILE + 16 });
   a.labels.push({ x: (see.cx - 1) * TILE, y: see.y0 * TILE, t: 'Waldsee' });
+  // Fischer am Westufer (Runde 51, Autorwunsch): angelt sichtbar (arbeit
+  // 'fischen'). Eigener Wald-NPC mit der Fischer-Figur; ansprechbar.
+  a.npcs.push({ id: 'waldfischer', name: 'Fischer Konrad', figur: 'fischer', arbeit: 'fischen', x: (see.x0 + 1) * TILE + 16, y: see.cy * TILE + 16 });
 
   // Pestgrube (1635 - die Pest wütet): eine Massengrab-Lichtung, verbrannte
   // Erde und drei Grabhügel. Reine Schauplatz-Atmosphäre.

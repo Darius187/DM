@@ -66,6 +66,13 @@ describe('Waldschauplätze (Runde 51): See + Pestgrube vorhanden und erreichbar'
       // Goldhöhlen-Eingang: Höhlenmaul (STAIR) erreichbar + Rückkehr-Marker
       expect(tileErreichbar(a, seen, T.STAIR), 'Höhlenmaul erreichbar').toBe(true);
       expect(a.special.some((s) => s.id === 'goldmine'), 'Goldhöhlen-Marker').toBe(true);
+
+      // Fischer am Waldsee: steht auf erreichbarem Boden am Ufer
+      const fischer = a.npcs.find((n) => n.id === 'waldfischer');
+      expect(fischer, 'Fischer vorhanden').toBeTruthy();
+      const fxT = Math.floor(fischer!.x / 32), fyT = Math.floor(fischer!.y / 32);
+      expect(SOLID.has(a.map[fyT][fxT]), 'Fischer steht nicht in Wasser/Fels').toBe(false);
+      expect(seen[fyT][fxT], 'Fischer erreichbar').toBe(true);
     });
   }
 });

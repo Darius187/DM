@@ -239,6 +239,11 @@ export const VOLK: Readonly<Record<string, ReadonlyArray<string>>> = {
     'Kohle braucht Ihr? Beim Schmied kostet sie mehr - ich brenne sie hier selbst, drum gebe ich sie günstiger. Brennholz hab ich auch.',
     'Allein im Wald zu hocken macht einem nichts aus - solange das nachts nicht raschelt. In letzter Zeit raschelt es zu oft.',
   ],
+  // PLATZHALTER (Runde 51) - Autor formuliert gern um (OFFENE-FRAGEN.md).
+  waldfischer: [
+    'Konrad, Fischer am Waldsee. Tief und still ist er - er gibt Hecht und Karpfen, wenn man Geduld hat und das Maul hält.',
+    'Seit einer Weile spiegelt sich nachts kein Mond mehr im Wasser, nur Schwärze. Ich werfe die Angel jetzt nur noch bei Tag.',
+  ],
 } as const;
 
 // Smalltalk des Dorfvolks (Runde 14): jeder ist ansprechbar. Männer,
