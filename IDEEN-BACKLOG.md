@@ -17,6 +17,12 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [ ] See im Wald (Atmosphäre, evtl. Fischer).
 - [ ] Goldmine als eigenes Höhlen-Level (Gold für den Fürsten), dünn bewacht
       (Soldaten im Krieg abgezogen).
+- [ ] Kloster als Platzhalter im NORDOSTEN, weit weg (~Halbtagesreise) - dort der
+      Showdown; von dort spawnen die Monster Richtung Dorf. Braucht erst die
+      verbundene Welt-Struktur (mehrere Gebiete), dann als NO-Endgebiet.
+- [ ] Anhöhen / Bergaufstiege als gefakte Höhe (Klippen-Art, Rampen/Treppen,
+      Schnee oben) - Diablo/Dungeon-Siege-Stil, kein echtes 3D.
+- [ ] Schneegebiet im NORDWESTEN auf einem Berg - Rückzugsort des ganzen Dorfes.
 
 ## Anfang / Quests
 - [ ] Anfangsquests vor dem Kirchen-Abstieg: Holzfäller-Lager säubern (wilde
@@ -32,6 +38,12 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
       sehen (Geister-Felder), beim Bestätigen marschieren die Einheiten in die
       Slots (RTS-Stil). Gängige mittelalterliche Formationen.
 - [ ] Steuerung: Maus-Auswahlrahmen, Gruppen auf Strg+1/Strg+2.
+- [ ] Helm's-Klamm-artiger Sturm: Untote kommen in FORMATION (auch dicke wie der
+      Templer), die Palisade hält nicht, das Dorf wird überrannt.
+- [ ] Flucht des ganzen Dorfes nach NORDWESTEN auf den verschneiten Berg.
+- [ ] Geplanter Gegenangriff zur Säuberung mit Hilfe der Fürsten-Soldaten.
+- [ ] Riesenschlacht: gemessen ~ein paar hundert Einheiten/Seite laufen flüssig;
+      für Tausende später Spatial-Grid in der Schlacht-KI nachrüsten (O(n²)->O(n)).
 
 ## Wirtschaft (Details in WIRTSCHAFT-PLAN.md)
 - [ ] Material-Datenbank + Dorf-Lager + täglicher Produktions-Tick.
@@ -40,6 +52,9 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [ ] Brunnen hochskalieren + Blut-bei-Einfall (kein Wasser mehr).
 
 ## Technik / Sonstiges
+- [ ] Dungeon-Generator logischer machen (Haupthallen + Nebenräume + saubere
+      Gänge statt zufällig überlappender Rechtecke; Requisiten an Wände, nicht in
+      Gänge; Sonderstücke wie Brücke nie auf dem Hauptweg). Eigener Refactor.
 - [ ] Später ggf. Kachel-Zeichenweise auf Tilemap-Layer umstellen (nur falls
       die Welt WIRKLICH riesig werden soll - eigener Schritt, nicht jetzt).
 - [ ] Veröffentlichung: itch.io (Demo öffentlich, Vollversion via Download-Keys
