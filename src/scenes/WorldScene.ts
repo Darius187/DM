@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir } from '../world/Enemy';
-import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
@@ -1234,6 +1234,7 @@ export class WorldScene extends CombatScene {
     }
     else if (id.startsWith('innen_')) a = buildInterior(INNENRAEUME[id.replace('innen_', '')]);
     else if (id === 'wald') a = buildForest(rng);
+    else if (id === 'goldmine') a = buildGoldmine(rng);
     else a = buildCrypt(parseInt(id.replace('crypt', ''), 10), rng);
     this.areas.set(id, a);
     return a;
@@ -2609,10 +2610,12 @@ export class WorldScene extends CombatScene {
         }
       }
     }
-    // Erzader / Fels
+    // Erzader / Fels. In der Goldhöhle sind die Adern GOLD (geben Gold).
+    const goldAder = this.area.id === 'goldmine';
     for (const o of this.area.ores) {
       if (near(o.x, o.y + 16, 40)) {
-        return { text: this.p.tools.spitzhacke ? `Erzader - ${ik} zum Abbauen` : 'Erzader - Spitzhacke nötig (Schmied)', action: () => this.mine(o, 'eisen') };
+        const name = goldAder ? 'Goldader' : 'Erzader';
+        return { text: this.p.tools.spitzhacke ? `${name} - ${ik} zum Abbauen` : `${name} - Spitzhacke nötig (Schmied)`, action: () => this.mine(o, goldAder ? 'gold' : 'eisen') };
       }
     }
     for (const o of this.area.rocks) {
@@ -4037,16 +4040,25 @@ export class WorldScene extends CombatScene {
     });
   }
 
-  private mine(o: { x: number; y: number }, what: 'eisen' | 'stein'): void {
+  private mine(o: { x: number; y: number }, what: 'eisen' | 'stein' | 'gold'): void {
     if (!this.p.tools.spitzhacke) {
       this.sfx.play('fehler');
       return;
     }
     this.sfx.play('stein_hacken');
-    this.fx.burst(o.x, o.y, 0x8a8e96, 8, 100);
-    const amt = ri(this.rng, 1, what === 'eisen' ? 2 : 3);
-    this.p.materials[what] += amt;
-    this.logMsg(`+${amt} ${what === 'eisen' ? 'Eisen' : 'Stein'}`, '');
+    this.fx.burst(o.x, o.y, what === 'gold' ? 0xf0c850 : 0x8a8e96, what === 'gold' ? 12 : 8, 120);
+    if (what === 'gold') {
+      // Goldader (Goldhöhle): liefert direkt Gold - der Stoff, mit dem das Dorf
+      // den Fürsten bezahlt (Krieg). Mehr Ausbeute als Erz/Fels.
+      const amt = ri(this.rng, 5, 12);
+      this.p.gold += amt;
+      this.sfx.play('muenzen');
+      this.logMsg(`+${amt} Gold aus der Goldader`, 'gold');
+    } else {
+      const amt = ri(this.rng, 1, what === 'eisen' ? 2 : 3);
+      this.p.materials[what] += amt;
+      this.logMsg(`+${amt} ${what === 'eisen' ? 'Eisen' : 'Stein'}`, '');
+    }
     // Ader/Fels erschöpft: Tile freigeben
     const tx = Math.floor(o.x / TILE), ty = Math.floor(o.y / TILE);
     this.area.map[ty][tx] = T.FLOOR;
@@ -4131,6 +4143,13 @@ export class WorldScene extends CombatScene {
         },
       };
     }
+    if (tid === T.STAIR && this.area.id === 'wald') {
+      // Höhlenmaul im Wald (Runde 51): hinab in die Goldhöhle.
+      return {
+        text: `Eingang zur Goldhöhle - ${ik} zum Hinabsteigen`,
+        action: () => { this.sfx.play('tuer'); this.goArea('goldmine'); },
+      };
+    }
     if (tid === T.STAIR) {
       const indieTiefe = this.area.id === 'boss' || this.area.depth > 5;
       // Ziel-Etage immer benennen (Runde 40, Autorwunsch "bei der Treppe soll
@@ -4155,6 +4174,18 @@ export class WorldScene extends CombatScene {
           else if (id === 'crypt5') this.goArea('boss');
           else if (id === 'boss') this.goArea('crypt6');
           else if (id.startsWith('crypt')) this.goArea(`crypt${parseInt(id.replace('crypt', ''), 10) + 1}`);
+        },
+      };
+    }
+    if (tid === T.STAIRUP && this.area.id === 'goldmine') {
+      // Aus der Goldhöhle zurück ans Höhlenmaul im Wald (Runde 51).
+      return {
+        text: `Hinauf in den Dunkelwald - ${ik}`,
+        action: () => {
+          const wald = this.getArea('wald');
+          const maul = wald.special.find((s) => s.id === 'goldmine');
+          this.sfx.play('tuer');
+          this.goArea('wald', maul ? { x: maul.x, y: maul.y } : undefined);
         },
       };
     }

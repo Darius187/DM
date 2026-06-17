@@ -14,9 +14,12 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [ ] Lange Wald-Anreise als Folge nahtlos verbundener Gebiete (statt EINER
       Riesenkarte) - Wald -> Schauplätze -> Dorf -> ... -> Kloster.
 - [ ] Nahe Dörfer / Burg / Kloster (Finale im Kloster).
-- [ ] See im Wald (Atmosphäre, evtl. Fischer).
-- [ ] Goldmine als eigenes Höhlen-Level (Gold für den Fürsten), dünn bewacht
-      (Soldaten im Krieg abgezogen).
+- [x] Waldsee im Dunkelwald (Atmosphäre, Wasserfläche mit Grasufer). OFFEN:
+      Fischer-NPC am Ufer (evtl.).
+- [x] Pestgrube als Wald-Schauplatz (1635, verbrannte Erde + Grabhügel).
+- [~] Goldhöhle: spielbarer EINGANG im Wald (Höhlenmaul -> kleine Höhle mit
+      Goldadern, die GOLD geben, dünn bewacht, Truhe, Aufgang zurück). Das
+      große eigene Höhlen-Level (Gold für den Fürsten) kommt später daraus.
 - [ ] Kloster als Platzhalter im NORDOSTEN, weit weg (~Halbtagesreise) - dort der
       Showdown; von dort spawnen die Monster Richtung Dorf. Braucht erst die
       verbundene Welt-Struktur (mehrere Gebiete), dann als NO-Endgebiet.

@@ -786,6 +786,59 @@ export function buildKirchenschiff(rng: Rng): AreaData {
   return a;
 }
 
+// --- Die Goldhöhle (Runde 51, Autorwunsch "Eingang zur Goldhöhle") ----------
+// Ein kleiner, dünn bewachter Stollen im Wald: drei verbundene Kavernen, in den
+// Felswänden glänzen Goldadern (Erze, die GOLD geben statt Eisen). Vom Wald aus
+// über das Höhlenmaul betretbar, eine Treppe führt wieder hinauf. Die Goldmine
+// als großes eigenes Level kommt später - das hier ist der spielbare Eingang.
+export function buildGoldmine(rng: Rng): AreaData {
+  const w = 30, h = 20;
+  const map = blank(w, h, T.ROCK);
+  const a: AreaData = {
+    id: 'goldmine', name: 'Die Goldhöhle', dark: true, depth: 1, theme: CRYPT_THEMES[0],
+    w, h, map, spawn: { x: 4 * TILE, y: 15 * TILE },
+    torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
+    breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
+    ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
+    npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
+  };
+  // Eingangskammer unten links (Rückweg in den Wald)
+  carveOval(map, 2, 12, 7, 6, T.FLOOR);
+  map[15][3] = T.STAIRUP;
+  a.upPos = { x: 3 * TILE + 16, y: 15 * TILE + 16 };
+  // Hauptstollen nach Osten + zwei Kavernen, alles verbunden
+  carve(map, 5, 14, 26, 15, T.FLOOR);                 // Stollen
+  carveOval(map, 9, 3, 9, 8, T.FLOOR);                // mittlere Kaverne
+  carveOval(map, 20, 4, 8, 9, T.FLOOR);               // östliche Kaverne (Goldsaal)
+  carve(map, 12, 9, 13, 15, T.FLOOR);                 // Stich: mittlere Kaverne -> Stollen
+  carve(map, 23, 11, 24, 15, T.FLOOR);                // Stich: Ost-Kaverne -> Stollen
+  // Goldadern in den Felswänden am Kavernenrand (mehr im Ost-Saal)
+  const rimOre = (x0: number, y0: number, x1: number, y1: number, max: number): void => {
+    let n = 0;
+    for (let y = y0; y <= y1 && n < max; y++) {
+      for (let x = x0; x <= x1 && n < max; x++) {
+        if (map[y]?.[x] !== T.ROCK) continue;
+        const amFloor = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => map[y + dy]?.[x + dx] === T.FLOOR);
+        if (amFloor && rng.random() < 0.5) { map[y][x] = T.ORE; a.ores.push({ x: x * TILE + 16, y: y * TILE + 16 }); n++; }
+      }
+    }
+  };
+  rimOre(18, 3, 28, 13, 7);   // Ost-Saal: die Hauptadern
+  rimOre(8, 2, 18, 11, 3);    // mittlere Kaverne: ein paar Adern
+  // Dünne Bewachung (Soldaten sind im Krieg abgezogen)
+  a.enemySpawns.push({ type: 'skelett', x: 13 * TILE, y: 6 * TILE, elite: false });
+  a.enemySpawns.push({ type: 'ratte', x: 23 * TILE, y: 8 * TILE, elite: false });
+  a.enemySpawns.push({ type: 'ratte', x: 16 * TILE, y: 14 * TILE, elite: false });
+  // Beute tief im Goldsaal
+  a.chests.push({ x: 25 * TILE + 16, y: 6 * TILE + 16, open: false });
+  // Gedämpftes Grubenlicht
+  for (const [tx, ty] of [[4, 13], [13, 7], [23, 8], [11, 14]] as const) {
+    a.torches.push({ x: tx * TILE + 16, y: ty * TILE, ph: rnd(rng, 0, 6.28) });
+  }
+  a.labels.push({ x: 20 * TILE, y: 3 * TILE, t: 'Goldader' });
+  return a;
+}
+
 export type HausPlatz = NonNullable<AreaData['hausPlaetze']>[number];
 
 // Haus samt Grundfläche um GANZE Kacheln versetzen (Baukasten, Runde 24):
@@ -1415,6 +1468,18 @@ export function buildForest(rng: Rng): AreaData {
     if (map[gy]?.[gx] === T.GRASS) map[gy][gx] = T.GRAVE;
   }
   a.labels.push({ x: (pg.cx - 1) * TILE, y: pg.y0 * TILE, t: 'Pestgrube' });
+
+  // Eingang zur Goldhöhle (Runde 51, Autorwunsch): eine Felsnische am Wegrand,
+  // in der ein dunkler Stollen in den Berg führt. Eine Treppe (STAIR) steigt zur
+  // Goldhöhle hinab; Felsbrocken rahmen das Höhlenmaul. Der Spezial-Marker merkt
+  // die Mündung als Rückkehrpunkt aus der Höhle.
+  const gh = waldLichtung(map, pfadY, 118, 4, 5);
+  map[gh.cy][gh.cx] = T.STAIR;
+  for (const [rx, ry] of [[gh.cx - 1, gh.cy - 1], [gh.cx + 1, gh.cy - 1], [gh.cx - 2, gh.cy], [gh.cx + 2, gh.cy]] as const) {
+    if (map[ry]?.[rx] === T.GRASS) map[ry][rx] = T.ROCK;   // Höhlenmaul-Rahmen (Deko, nicht abbaubar)
+  }
+  a.special.push({ id: 'goldmine', x: gh.cx * TILE + 16, y: (gh.cy + 1) * TILE + 16, raum: 'Goldhöhle' });
+  a.labels.push({ x: (gh.cx - 1) * TILE, y: gh.y0 * TILE, t: 'Goldhöhle' });
 
   // Kein Landherr im Wald (Runde 14): der Auftrag kommt per Siegelbrief
   // des Amtmanns - niemand wartet unrealistisch zwischen den Bäumen.
