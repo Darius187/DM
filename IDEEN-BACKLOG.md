@@ -57,7 +57,13 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [x] Wirtschaft Phase 1: Dorf-Lager + tägliche Produktion + ABGABEN an den
       Fürsten (alle 7 Tage, aus Lager+Dorfkasse; Rückstand = Druck) + Anzeige
       beim Schulzen. Schlank gehalten. Werte in src/data/wirtschaft.ts.
-- [ ] Weizen->Mehl(Mühle)->Brot(Bäcker); Erz->Barren(Schmelze)->Schmied.
+- [~] Wirtschaft Phase 2: Weizen->Mehl(Mühle)->Brot(Bäcker) und Eisen+Kohle->
+      Barren(Schmelze) als AUTOMATISCHER Platzhalter eingebaut (läuft im
+      Tagestakt von selbst, Werte in src/data/wirtschaft.ts -> VERARBEITUNG).
+      Verifiziert: über 5 Tage füllen sich Mehl/Brot/Barren plausibel auf.
+      OFFEN (Autor-ZIEL): die Bewohner Müller/Bäcker/Schmied müssen es sichtbar
+      ABARBEITEN - jede Stufe daran gaten, ob der NPC lebt und im Dorf ist (im
+      Einfall fliehen sie -> die Kette stockt). Struktur dafür steht schon.
 - [ ] Händler-Bestände an das Lager koppeln (Kauf/Verkauf/Spende).
 - [x] Brunnen größer + Blut-bei-Einfall (verseuchter Brunnen, Blut ringsum).
 

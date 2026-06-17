@@ -24,7 +24,7 @@ import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDL
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER } from '../data/crafting';
-import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE } from '../data/wirtschaft';
+import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, WAREN_NAMEN } from '../data/wirtschaft';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, tageszeitLabel } from '../data/welt';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
@@ -3303,10 +3303,40 @@ export class WorldScene extends CombatScene {
 
   // Täglicher Wirtschafts-Tick (beim Tageswechsel aus sleep UND advanceClock).
   private wirtschaftsTick(): void {
+    // 1) Rohstoffe vom Dorf ins Lager.
     for (const [m, n] of Object.entries(TAGES_PRODUKTION)) this.dorfLager[m] = (this.dorfLager[m] ?? 0) + (n ?? 0);
+    // 2) Verarbeitung (Phase 2). AKTUELL automatischer Platzhalter - läuft von
+    //    selbst. ZIEL (Autorwunsch): die Bewohner Müller/Bäcker/Schmied arbeiten
+    //    es sichtbar ab; dann gaten wir jede Stufe daran, ob der NPC lebt und im
+    //    Dorf ist (im Einfall fliehen sie -> die Kette stockt). Reihenfolge:
+    //    LETZTE Stufe zuerst, damit ein frisch erzeugtes Zwischenprodukt nicht
+    //    am selben Tag weiterläuft -> die Kette braucht mehrere Tage.
+    this.verarbeite(VERARBEITUNG.backhaus.ein, VERARBEITUNG.backhaus.aus, VERARBEITUNG.backhaus.menge);
+    this.verarbeite(VERARBEITUNG.muehle.ein, VERARBEITUNG.muehle.aus, VERARBEITUNG.muehle.menge);
+    this.schmelze(VERARBEITUNG.schmelze.einEisen, VERARBEITUNG.schmelze.einKohle, VERARBEITUNG.schmelze.aus, VERARBEITUNG.schmelze.menge);
+    // 3) Abgabe an den Fürsten, wenn fällig.
     if (this.tag >= this.naechsteAbgabe) {
       this.leisteAbgabe();
       this.naechsteAbgabe = this.tag + ABGABE.intervallTage;
+    }
+  }
+
+  // Eine 1:1-Verarbeitungsstufe (Mühle/Backhaus): so viel wie Vorrat + Tagesleistung hergeben.
+  private verarbeite(ein: string, aus: string, maxProTag: number): void {
+    const menge = Math.min(maxProTag, this.dorfLager[ein] ?? 0);
+    if (menge <= 0) return;
+    this.dorfLager[ein] = (this.dorfLager[ein] ?? 0) - menge;
+    this.dorfLager[aus] = (this.dorfLager[aus] ?? 0) + menge;
+  }
+
+  // Schmelze: 2 Eisen + 1 Kohle -> 1 Barren, begrenzt durch Vorrat und Tagesleistung.
+  private schmelze(einEisen: number, einKohle: number, aus: string, maxProTag: number): void {
+    let getan = 0;
+    while (getan < maxProTag && (this.dorfLager['eisen'] ?? 0) >= einEisen && (this.dorfLager['kohle'] ?? 0) >= einKohle) {
+      this.dorfLager['eisen'] -= einEisen;
+      this.dorfLager['kohle'] -= einKohle;
+      this.dorfLager[aus] = (this.dorfLager[aus] ?? 0) + 1;
+      getan++;
     }
   }
 
@@ -3330,7 +3360,7 @@ export class WorldScene extends CombatScene {
   // Kurze Bestandsaufnahme der Vorratskammer für die Schulze-Anzeige.
   private lagerText(): string {
     const teile = Object.entries(this.dorfLager).filter(([, n]) => n > 0)
-      .map(([m, n]) => `${MATERIAL_NAMES[m as MaterialId] ?? m} ${n}`);
+      .map(([m, n]) => `${MATERIAL_NAMES[m as MaterialId] ?? WAREN_NAMEN[m] ?? m} ${n}`);
     return teile.length ? teile.join(' · ') : 'leer';
   }
 

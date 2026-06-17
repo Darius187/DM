@@ -44,11 +44,16 @@ Beim Tageswechsel (sleep / Tag bricht an) läuft EIN Wirtschafts-Tick:
 - Optional: Träger-NPC bringt Material vom Arbeitsplatz ins Lager.
 
 ## Bau-Reihenfolge (Phasen)
-1. Material-Datenbank + Dorf-Lager + täglicher Tick (Holz/Stein/Weizen) + Anzeige.
-2. Verarbeitungskette: Mühle-Gebäude + Weizen->Mehl->Brot.
+1. [FERTIG] Dorf-Lager + täglicher Tick (Holz/Stein/Eisen/Kohle/Kräuter/Weizen)
+   + ABGABEN an den Fürsten + Anzeige beim Schulzen.
+2. [PLATZHALTER LÄUFT] Verarbeitungskette als automatischer Tagestakt:
+   Weizen->Mehl->Brot und Eisen+Kohle->Barren (Werte in src/data/wirtschaft.ts
+   -> VERARBEITUNG; verifiziert über 5 Tage). OFFEN/ZIEL: die Bewohner
+   Müller/Bäcker/Schmied arbeiten es SICHTBAR ab und gaten die Kette (lebt der
+   NPC? im Dorf? -> sonst stockt die Stufe). Helfer in WorldScene stehen schon.
 3. Händler-Bestände an das Lager koppeln (Kauf/Verkauf/Spende).
-4. Brunnen hochskalieren + Blut-bei-Einfall + Wasser.
-5. Sichtbares Tagwerk / Träger (Politur).
+4. [FERTIG] Brunnen hochskaliert + Blut-bei-Einfall.
+5. Sichtbares Tagwerk / Träger (Politur) - greift in Phase 2's ZIEL über.
 
 ## Offene Balancing-Fragen für den Autor
 - Genaue Tagesmengen (z. B. 2 Holz, 1 Stein, 2 Weizen, 1 Brot/Tag?).
