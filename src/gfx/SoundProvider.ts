@@ -195,6 +195,24 @@ export class SoundProvider {
     return this.musikName;
   }
 
+  // Aufgenommene Erzähler-Stimme (Runde 51): spielt assets/sounds/<key>.ogg, wenn
+  // vorhanden (kein TTS). Für Intro-/Ankunfts-Zeilen außerhalb des Dialogs.
+  private stimmeSnd: Phaser.Sound.BaseSound | null = null;
+  spieleStimme(key: string): boolean {
+    this.stoppeStimme();
+    if (!this.scene.cache.audio.exists(`snd_${key}`)) return false;
+    try {
+      const vol = Math.max(0.6, getSettings().volMusik / 100);
+      this.stimmeSnd = this.scene.sound.add(`snd_${key}`, { volume: vol });
+      this.stimmeSnd.play();
+    } catch { return false; }
+    return true;
+  }
+  stoppeStimme(): void {
+    try { this.stimmeSnd?.stop(); this.stimmeSnd?.destroy(); } catch { /* still */ }
+    this.stimmeSnd = null;
+  }
+
   private beep(st: SynthStep, vol: number, pan = 0): void {
     try {
       if (!this.ac) this.ac = new AudioContext();

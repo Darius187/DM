@@ -8,6 +8,13 @@ export const TITEL = {
   intro: 'Anno Domini 1635. Der Krieg wütet seit siebzehn Jahren, die Pest hat das Land geleert, und die Schweden haben das Kirchensilber geraubt. Seitdem, so flüstern die Leute von Ravensmoor, ruhen die Toten unter der Kirche nicht mehr. Du wurdest entsandt, der Sache auf den Grund zu gehen.',
 } as const;
 
+// Erzähler-Seiten mit Stimm-Schlüsseln (Runde 51): macht aus den Memoiren-Zeilen
+// Dialog-Seiten, zu denen - falls aufgenommen - assets/sounds/<basis>_<n>.ogg
+// als echte Erzähler-Stimme abgespielt wird (kein TTS). Ohne Aufnahme: nur Text.
+export function erzaehlerSeiten(zeilen: readonly string[], basis: string): Array<{ text: string; stimme: string }> {
+  return zeilen.map((text, i) => ({ text, stimme: `${basis}_${i + 1}` }));
+}
+
 // Ich-Erzähler-Interludien "Aus meinen Aufzeichnungen" (Referenz)
 export const ERZAEHLER = {
   name: 'Aus meinen Aufzeichnungen',

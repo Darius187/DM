@@ -33,7 +33,7 @@ import { findePfad } from '../world/Wegfeld';
 import { WASSER_FRAMES } from '../gfx/tileArt';
 import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64, drawSchlucht, drawKristall } from '../gfx/detailArt';
 import { DialogUI, fixUiScroll } from '../ui/dialog';
-import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, RELIKT, ENDEN, TOD, INTRO_FILM } from '../data/texte';
+import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, RELIKT, ENDEN, TOD, INTRO_FILM, erzaehlerSeiten } from '../data/texte';
 import { ALTAR, BLOOD_WELL, CHEST, RELIC_ACCEPT_ELIXIRS, ABILITY_FX, BUCH_ZAUBER } from '../data/balancing';
 import { BREAKABLES, BREAKABLE_LOOT, BEINHAUS, CHEST_VERFLUCHT, BOSS_KAMPF } from '../data/krypta';
 import { DEATH, SHRINE, PHYSIK, BREAKABLE_MASSE, PLAYER } from '../data/kampf';
@@ -376,6 +376,7 @@ export class WorldScene extends CombatScene {
     // Geschichte zeilenweise, während man selbst durch den Wald läuft
     INTRO_FILM.forEach((zeile, i) => {
       this.time.delayedCall(7500 + i * 9500, () => {
+        this.sfx.spieleStimme(`erz_intro_${i + 1}`); // aufgenommene Stimme, falls vorhanden
         const off = getSettings().ui.dialog;
         const t = this.add.text(w / 2 + off.x, h - 170 + off.y, zeile, {
           fontFamily: 'serif', fontSize: '19px', color: '#e0d4b4', fontStyle: 'italic',
@@ -1392,11 +1393,11 @@ export class WorldScene extends CombatScene {
     // Erzähler-Interludien (Referenz)
     if (id === 'crypt1' && !this.flags.nCrypt) {
       this.flags.nCrypt = true;
-      this.dialog.show(ERZAEHLER.name, [...ERZAEHLER.krypta]);
+      this.dialog.show(ERZAEHLER.name, erzaehlerSeiten(ERZAEHLER.krypta, 'erz_krypta'));
     }
     if (id === 'boss' && !this.flags.nBoss) {
       this.flags.nBoss = true;
-      this.dialog.show(ERZAEHLER.name, [...ERZAEHLER.boss]);
+      this.dialog.show(ERZAEHLER.name, erzaehlerSeiten(ERZAEHLER.boss, 'erz_boss'));
     }
     // Intro: filmischer Vorspann mit Musik statt Dialog (Runde 12) -
     // der Held läuft, die Geschichte blendet zeilenweise ein
@@ -4143,6 +4144,7 @@ export class WorldScene extends CombatScene {
         this.logMsg(MELDUNGEN.start, '');
         ERZAEHLER.ankunft.forEach((zeile, i) => {
           this.time.delayedCall(1500 + i * 7000, () => {
+            this.sfx.spieleStimme(`erz_ankunft_${i + 1}`); // aufgenommene Stimme, falls vorhanden
             const off2 = getSettings().ui.dialog;
             const t = this.add.text(this.scale.width / 2 + off2.x, this.scale.height - 170 + off2.y, typeof zeile === 'string' ? zeile : (zeile as { text: string }).text, {
               fontFamily: 'serif', fontSize: '18px', color: '#e0d4b4', fontStyle: 'italic',

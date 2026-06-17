@@ -38,6 +38,10 @@ export interface DialogPageDef {
   text: string;
   onShow?: () => void;
   choices?: Array<{ label: string; fn?: () => void }>;
+  // Erzähler-Stimme (Runde 51): liegt assets/sounds/<stimme>.ogg vor, wird die
+  // AUFGENOMMENE Stimme zu dieser Zeile abgespielt (kein TTS). Der Autor nimmt
+  // die Memoiren-Zeilen auf und legt sie unter diesem Schlüssel ab.
+  stimme?: string;
 }
 
 export class DialogUI {
@@ -80,14 +84,35 @@ export class DialogUI {
     this.hasChoices = !!page.choices;
     page.onShow?.();
     this.onPage?.(this.speaker, page.text);
-    vorlesen(page.text);
+    // Erzähler-Stimme: liegt eine AUFNAHME vor, spielt sie (kein TTS); sonst
+    // höchstens das optionale Vorlesen (Barrierefreiheit, standardmäßig aus).
+    const gesprochen = page.stimme ? this.spieleStimme(page.stimme) : false;
+    if (!gesprochen) vorlesen(page.text);
     this.build(page);
+  }
+
+  // Aufgenommene Erzähler-Stimme (Runde 51): nur eine ECHTE Datei wird gespielt.
+  private stimmeSnd: Phaser.Sound.BaseSound | null = null;
+  private spieleStimme(key: string): boolean {
+    this.stoppeStimme();
+    if (!this.scene.cache.audio.exists(`snd_${key}`)) return false;
+    try {
+      const vol = Math.max(0.6, getSettings().volMusik / 100);
+      this.stimmeSnd = this.scene.sound.add(`snd_${key}`, { volume: vol });
+      this.stimmeSnd.play();
+    } catch { return false; }
+    return true;
+  }
+  private stoppeStimme(): void {
+    try { this.stimmeSnd?.stop(); this.stimmeSnd?.destroy(); } catch { /* still */ }
+    this.stimmeSnd = null;
   }
 
   close(): void {
     this.container?.destroy();
     this.container = null;
     vorlesenStopp();
+    this.stoppeStimme();
     if (this.open) {
       this.open = false;
       this.onClose?.();

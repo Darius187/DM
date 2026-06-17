@@ -59,3 +59,15 @@ Bevorzugt **.ogg** (klein, browsertauglich), Dateiname = Sound-Key aus dieser
 Liste, ab nach `assets/sounds/`. Mehr braucht es nicht - das Spiel zieht sie
 automatisch (Hot-Swap). Neue Sound-Keys ergänze ich gern, wenn du eigene Ideen
 hast.
+
+## E) Erzähler-STIMME (Memoiren - zum Aufnehmen, KEIN TTS)
+Runde 51: Story-Zeilen spielen jetzt eine AUFGENOMMENE Stimme, wenn die passende
+Datei vorliegt (sonst nur Text - kein Roboter-TTS). Du sprichst die Memoiren ein
+und legst sie unter diesen Schlüsseln in assets/sounds/ ab:
+- **erz_intro_1 ... erz_intro_7** - die Eröffnungs-/Vorspann-Zeilen.
+- **erz_ankunft_1, erz_ankunft_2** - Ankunft in Ravensmoor.
+- **erz_krypta_1, erz_krypta_2** - Abstieg in die Krypta.
+- **erz_boss_1, erz_boss_2** - vor dem Grab des Kreuzritters.
+(Weitere Story-Beats - totes Dorf, Lager, Kloster - bekommen denselben Mechanismus,
+sobald die Texte/Zeilen stehen; ich vergebe dann erz_<ort>_<n>-Schlüssel.)
+Der Text dieser Zeilen ist DEINER (Stimme des Autors) - ich vertone/erfinde nichts.
