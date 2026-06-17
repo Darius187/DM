@@ -197,6 +197,11 @@ export class WorldScene extends CombatScene {
     this.ortsText = null;
     this.chronikFenster = null;
     this.chronikEintraege = [];
+    this.chronikScroll = 0;
+    // Mausrad-Lauscher genau einmal (re)registrieren - bei Szenen-Neustart wird
+    // dieselbe Instanz benutzt, darum erst abmelden, dann anmelden (Regel 9).
+    this.input.off('wheel', this.chronikWheel);
+    this.input.on('wheel', this.chronikWheel);
     this.hoverText = null;
     this.wasserBilder = [];
     this.hausBilder = [];
@@ -3909,7 +3914,7 @@ export class WorldScene extends CombatScene {
       this.cameras.main.fadeIn(600, 0, 0, 0);
       this.areas.delete('village'); // Bäume respawnen, Bau wird sichtbar
       this.goArea('village', { x: this.px, y: this.py });
-      this.logMsg(`Tag ${this.tag} - du erwachst erholt.`, 'gold');
+      this.logMsg(`Tag ${this.tag} - du erwachst erholt.`, 'tag');
       if (gebaut) this.logMsg(`Der Bau steht: ${gebaut}!`, 'gold');
     });
   }
@@ -4697,15 +4702,36 @@ export class WorldScene extends CombatScene {
   // --- HUD und Meldungen ----------------------------------------------------------
 
   // Chronik (Runde 20): nachlesbar, was geschah - Taste H
-  private chronikEintraege: Array<{ kat: 'geschichte' | 'beute' | 'ereignis'; text: string; tag: number }> = [];
+  private chronikEintraege: Array<{ kat: 'geschichte' | 'beute' | 'ereignis'; text: string; tag: number; gelb?: boolean }> = [];
   private chronikTab: 'geschichte' | 'beute' | 'ereignis' = 'ereignis';
   private chronikFenster: Phaser.GameObjects.Container | null = null;
+  // Scroll-Stand der Chronik (Runde 50): wie viele neueste Einträge nach unten
+  // hinausgeschoben sind. 0 = neueste sichtbar.
+  private chronikScroll = 0;
+  private chronikW = 0;
+  private chronikH = 0;
+  private chronikMaxScroll = 0;
 
-  protected override chronik(kat: 'geschichte' | 'beute' | 'ereignis', text: string): void {
+  // Mausrad über dem Chronik-Fenster blättert durch ältere/neuere Einträge
+  // (Runde 50). Stabiler Handler, in create() genau einmal angemeldet.
+  private chronikWheel = (_p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number): void => {
+    if (!this.chronikFenster || this.chronikMaxScroll === 0) return;
+    const ptr = this.input.activePointer;
+    const cx = this.chronikFenster.x, cy = this.chronikFenster.y;
+    if (ptr.x < cx || ptr.x > cx + this.chronikW || ptr.y < cy || ptr.y > cy + this.chronikH) return;
+    const vor = this.chronikScroll;
+    this.chronikScroll = Phaser.Math.Clamp(this.chronikScroll + (dy < 0 ? 1 : -1), 0, this.chronikMaxScroll);
+    if (this.chronikScroll !== vor) this.baueChronik();
+  };
+
+  // gelb = Tag-Ereignis ("Tag N bricht an") wird in der Chronik hervorgehoben
+  protected override chronik(kat: 'geschichte' | 'beute' | 'ereignis', text: string, gelb = false): void {
     const letzter = this.chronikEintraege[this.chronikEintraege.length - 1];
     if (letzter && letzter.text === text) return; // keine Doppel-Einträge
-    this.chronikEintraege.push({ kat, text, tag: this.tag });
+    this.chronikEintraege.push({ kat, text, tag: this.tag, gelb });
     if (this.chronikEintraege.length > 240) this.chronikEintraege.shift();
+    // Neue Zeile springt ans untere Ende (Chat-Verhalten)
+    this.chronikScroll = 0;
     // Offenes Chat-Fenster zeigt Neues sofort (Runde 29)
     if (this.chronikFenster && kat === this.chronikTab) this.baueChronik();
   }
@@ -4757,6 +4783,7 @@ export class WorldScene extends CombatScene {
     const y = Math.max(0, Math.min(this.scale.height - h, this.scale.height + box.y));
     const c = this.add.container(x, y).setScrollFactor(0).setDepth(5200);
     this.chronikFenster = c;
+    this.chronikW = w; this.chronikH = h;
     const bg = this.add.rectangle(0, 0, w, h, 0x14100a, 0.82).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
     bg.setInteractive();
     c.add(bg);
@@ -4801,16 +4828,24 @@ export class WorldScene extends CombatScene {
       c.add(t);
       tx += t.width + 8;
     }
-    // Einträge im Chat-Stil: neueste UNTEN, von unten nach oben auffüllen
+    // Einträge im Chat-Stil: neueste UNTEN, von unten nach oben auffüllen.
+    // Mit dem Scroll-Stand werden die neuesten Einträge übersprungen, sodass man
+    // ältere lesen kann (Runde 50, Autorwunsch "Chronik scrollbar").
     const passend = this.chronikEintraege.filter((e2) => e2.kat === this.chronikTab);
+    const sichtbar = Math.max(1, Math.floor((h - 58) / 16)); // grobe Zeilenkapazität
+    this.chronikMaxScroll = Math.max(0, passend.length - sichtbar);
+    this.chronikScroll = Phaser.Math.Clamp(this.chronikScroll, 0, this.chronikMaxScroll);
     if (!passend.length) {
       c.add(this.add.text(10, h - 26, 'Noch nichts verzeichnet.', { fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c', fontStyle: 'italic' }));
     }
     let unten = h - 24;
-    for (let i = passend.length - 1; i >= 0 && unten > 34; i--) {
+    for (let i = passend.length - 1 - this.chronikScroll; i >= 0 && unten > 34; i--) {
       const e2 = passend[i];
-      const zeile = this.add.text(10, 0, `Tag ${e2.tag} · ${e2.text}`, {
-        fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8', wordWrap: { width: w - 26 },
+      // Tag-Ereignisse ("Tag N bricht an") tragen den Tag schon im Text - kein
+      // doppeltes "Tag N · Tag N ..." (Runde 50).
+      const zeilenText = e2.gelb ? `◆ ${e2.text}` : `Tag ${e2.tag} · ${e2.text}`;
+      const zeile = this.add.text(10, 0, zeilenText, {
+        fontFamily: 'serif', fontSize: '12px', color: e2.gelb ? '#f0e08a' : '#d8cfb8', wordWrap: { width: w - 26 },
       });
       unten -= zeile.height + 4;
       zeile.setY(unten);
@@ -4819,6 +4854,13 @@ export class WorldScene extends CombatScene {
         break;
       }
       c.add(zeile);
+    }
+    // Scroll-Hinweise: oben "mehr" (ältere da), unten "neuer" (zurück nach unten)
+    if (this.chronikScroll < this.chronikMaxScroll) {
+      c.add(this.add.text(w - 14, 30, '▲', { fontFamily: 'serif', fontSize: '12px', color: '#8a7a5a' }).setOrigin(1, 0.5));
+    }
+    if (this.chronikScroll > 0) {
+      c.add(this.add.text(w - 14, h - 12, '▼', { fontFamily: 'serif', fontSize: '12px', color: '#c9a227' }).setOrigin(1, 0.5));
     }
     // Größen-Griff unten rechts (Skalieren wie bei WoW)
     const eck = this.add.text(w - 4, h - 4, '◢', { fontFamily: 'serif', fontSize: '14px', color: '#8a7a5a' })
@@ -4844,8 +4886,8 @@ export class WorldScene extends CombatScene {
   }
 
   override logMsg(text: string, cls?: string): void {
-    this.chronik(cls === 'gold' || cls === 'magic' ? 'ereignis' : 'ereignis', text);
-    const colors: Record<string, string> = { gold: '#c9a227', bad: '#d96b5a', magic: '#8aa6e8' };
+    this.chronik('ereignis', text, cls === 'tag');
+    const colors: Record<string, string> = { gold: '#c9a227', bad: '#d96b5a', magic: '#8aa6e8', tag: '#f0e08a' };
     const off = getSettings().ui.log;
     // Meldungen ins obere Viertel (Runde 40, Autorwunsch): überschnitten sich
     // unten mit den Dialograhmen. Neueste oben, ältere rutschen nach unten weg -
@@ -5413,7 +5455,7 @@ export class WorldScene extends CombatScene {
     if (this.tageszeit >= 1) {
       this.tageszeit = 0;
       this.tag++;
-      this.logMsg(`Tag ${this.tag} bricht an.`, '');
+      this.logMsg(`Tag ${this.tag} bricht an.`, 'tag');
       this.wuerfleWetter();
     }
   }
