@@ -1063,6 +1063,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
     if (cls === 'wucht' && ev.type === 'light') {
       this.overheadAttack(ev, ang);
+      // Eigene, deutlich längere Erholzeit (Runde 47): langsames Ausholen
+      this.combat.recoverTotal = WEAPON_MOVESETS.wucht.recoverS;
+      this.combat.recoverT = WEAPON_MOVESETS.wucht.recoverS;
       return;
     }
     if (cls === 'axt' && ev.type === 'light' && ev.isFinisher) {
@@ -1186,6 +1189,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         e.stossWeg(Math.cos(ka) * KNOCKBACK.hammer, Math.sin(ka) * KNOCKBACK.hammer, KNOCKBACK.hammerStunS);
         hit = true;
       }
+    }
+    // Der Hammer zertrümmert Fässer/Kisten/Knochenhaufen im Umkreis (Autorbug
+    // R47: "warum kann man mit dem Hammer keine Fässer kaputt machen?")
+    for (const hb of [...this.hittables]) {
+      if (Math.hypot(hb.x - cx, hb.y - cy) < aoe + hb.r) hb.onHit(ang);
     }
     this.shake(hit ? 8 : 4);
     if (hit) this.applyHitstop(HITSTOP_MS.finisher);
@@ -1349,6 +1357,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   protected killEnemy(e: Enemy): void {
     this.enemies = this.enemies.filter((x) => x !== e);
+    if (e.spawnRef) e.spawnRef.tot = true; // bleibt tot beim Wiederbetreten (Runde 47)
     // Gore-Todessequenz (Runde 20, überarbeitet 34): die Figur zerfällt
     // langsam, ALLE Partikel fallen blutrot auseinander (Skelette weiß),
     // dazu Lichtblitz + Blutnebel. Länger, passend zu den Todeslauten.

@@ -162,13 +162,22 @@ export class SoundProvider {
   private musikName = '';
 
   playMusic(name: string, opts: { loop?: boolean; onComplete?: () => void } = {}): void {
-    if (this.musikName === name && this.musik?.isPlaying) return;
+    // Schon DIESES Stück angefordert? Dann nichts tun - auch wenn es gerade noch
+    // lädt/dekodiert (isPlaying kurz false). Autorbug "Musik-Bug": vorher lieferte
+    // aktuelleMusik() in diesem Lade-Fenster '' zurück, worauf die Pro-Frame-Logik
+    // (Nacht-/Gebietsmusik) ein ZWEITES Stück startete -> doppelte Musik.
+    if (this.musikName === name) return;
     this.stopMusic();
     if (!this.scene.cache.audio.exists(`snd_${name}`)) return;
     const s = getSettings();
     this.musik = this.scene.sound.add(`snd_${name}`, { loop: opts.loop ?? false, volume: s.volMusik / 100 });
     this.musikName = name;
-    if (opts.onComplete) this.musik.once('complete', opts.onComplete);
+    // Wenn ein (nicht geloopter) Titel ausläuft, den Kanal freigeben, damit
+    // aktuelleMusik() wieder '' meldet und ein neues Stück starten kann.
+    this.musik.once('complete', () => {
+      if (this.musikName === name) { this.musikName = ''; this.musik = null; }
+      opts.onComplete?.();
+    });
     this.musik.play();
   }
 
@@ -180,7 +189,10 @@ export class SoundProvider {
   }
 
   aktuelleMusik(): string {
-    return this.musik?.isPlaying ? this.musikName : '';
+    // Das ANGEFORDERTE Stück (auch während es noch lädt) - nicht erst wenn
+    // isPlaying true ist; sonst entsteht im Lade-Fenster Doppelmusik. Beim
+    // Auslaufen/Stoppen wird musikName geleert, dann meldet es korrekt ''.
+    return this.musikName;
   }
 
   private beep(st: SynthStep, vol: number, pan = 0): void {

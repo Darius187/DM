@@ -1725,7 +1725,9 @@ export class WorldScene extends CombatScene {
       this.logMsg('Totenstill - du hast hier aufgeräumt. Hier bleibt es ruhig.', '');
     }
     for (const sp of a.geleert ? [] : a.enemySpawns) {
+      if (sp.tot) continue; // schon erschlagen (Runde 47) - kommt nicht zurück
       const e = this.spawnEnemy(sp.type, a.depth + tiefenBonus, sp.x, sp.y, sp.elite);
+      e.spawnRef = sp;      // beim Tod als 'tot' merken, damit er nicht respawnt
       if (sp.champion) {
         e.champion = true;
         e.name = sp.champion;

@@ -104,6 +104,9 @@ export class Enemy {
   stun = 0;
   slowT = 0;
   rootT = 0;   // Fesselpfeil (Runde 47): festgewurzelt, kann sich nicht bewegen
+  spawnRef?: { tot?: boolean }; // Verweis auf die Spawn-Definition (Runde 47):
+  //   wird beim Tod als 'tot' markiert, damit der Gegner beim Wiederbetreten
+  //   der Ebene NICHT erneut erscheint (Autorbug "alle Monster wieder da").
   brennT = 0;        // Brand-Restzeit (Sekunden) - Feuerregen-DoT (Runde 41)
   brennDps = 0;      // Schaden pro Sekunde, solange brennT > 0
   brennTick = 0;     // Takt bis zum nächsten Brand-Schaden

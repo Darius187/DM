@@ -12,7 +12,7 @@ import type { InnenraumDef, InnenMoebel } from '../data/innenraeume';
 export interface Pos { x: number; y: number }
 
 export interface BreakableSpawn { kind: BreakableKind; x: number; y: number; ambush: boolean }
-export interface EnemySpawn { type: EnemyTypeId; x: number; y: number; elite: boolean; champion?: string }
+export interface EnemySpawn { type: EnemyTypeId; x: number; y: number; elite: boolean; champion?: string; tot?: boolean }
 export interface SpecialMarker { id: string; x: number; y: number; raum: string }
 
 export interface NpcSpawn {
@@ -540,11 +540,13 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
 
   // Kein-Spawn-Radius um BEIDE Treppen (Runde 42): gewöhnliche Gegner zu nah am
   // Auf-/Abgang werden verworfen, damit man nach dem Abstieg ankommen kann.
-  // Minibosse/Champions (sp.champion) bleiben - sie BEWACHEN die Treppen bewusst.
+  // Der ABSTIEGS-Eingang (upPos) bleibt KOMPLETT frei - auch von Champions
+  // (Autorbug R47: "laufe in Ebene 1 und da stehen 2 Elite-Gegner, keine
+  // Chance"). Champions dürfen weiter den ABGANG (downPos) bewachen.
   const r2 = CRYPT_GEN.keinSpawnRadius * CRYPT_GEN.keinSpawnRadius;
   const nah = (x: number, y: number, p?: Pos) => !!p && (x - p.x) ** 2 + (y - p.y) ** 2 < r2;
   a.enemySpawns = a.enemySpawns.filter((sp) =>
-    !!sp.champion || (!nah(sp.x, sp.y, a.upPos) && !nah(sp.x, sp.y, a.downPos)));
+    !nah(sp.x, sp.y, a.upPos) && (!!sp.champion || !nah(sp.x, sp.y, a.downPos)));
 
   return a;
 }

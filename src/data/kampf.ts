@@ -80,7 +80,11 @@ export const WEAPON_MOVESETS = {
   // Hellebarde (Runde 44): präziser STICH statt Schwung - schmaler Trefferkegel
   // (arc 0,35 -> 0,20), dafür mehr Reichweite (96 -> 116). Spürbarer Stoß-Schub.
   stange:  { comboLength: 1, thrust: true, range: 116, arc: 0.20, knockback: 18, speedMult: 0.95 },
-  wucht:   { comboLength: 1, overhead: true, aoeRadius: 40, postureDmgMult: 2.0, speedMult: 0.7, miniShake: true },
+  // Hammer/Streitkolben (Runde 47): SCHWER und langsam. recoverS 0,82 s -> man
+  // holt deutlich aus, kein schnelles Dauer-Hämmern mehr (Autorkritik "schlägt
+  // zu schnell, fast unbesiegbar"). Die Wucht/der Rückstoß bleibt, nur die
+  // Kadenz sinkt - so erholen sich die Gegner zwischen den Schlägen wieder.
+  wucht:   { comboLength: 1, overhead: true, aoeRadius: 40, postureDmgMult: 2.0, speedMult: 0.7, recoverS: 0.82, miniShake: true },
   // Runde 27/40: Bogen-Flugtempo auf Feuerball-Niveau gebracht (Autorwunsch:
   // "Schussgeschwindigkeit ungefähr wie der Feuerball" = 390)
   bogen:   { drawTimeMaxS: 0.95, dmgMultFull: 1.7, projSpeed: 390, speedMult: 1.0 },
