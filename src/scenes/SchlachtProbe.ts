@@ -136,7 +136,7 @@ export class SchlachtProbe extends Phaser.Scene {
       sprite, ring, team, typ, figur: d.figur, tint: d.tint, heiler: d.heiler, x, y,
       hp: d.hp, maxhp: d.hp, dmg: d.dmg, reich: d.reich, speed: d.speed, rank: d.rank,
       atkCd: 0, dir: 0, step: 0, stepT: 0, flash: 0, tot: false, ausgewaehlt: false,
-      stance: 'aggressiv', xp: 0, stufe: 1, aufstiegFx: 0, dmgMult: 1, speedMult: 1,
+      stance: 'verteidigen', xp: 0, stufe: 1, aufstiegFx: 0, dmgMult: 1, speedMult: 1,
       gruppeNr: 0, grp: null, off: null, ziel: null, fokus: null,
     };
     this.provider.applyFigure(sprite, d.figur, 0, 0);
