@@ -5833,8 +5833,15 @@ export class WorldScene extends CombatScene {
       if (d > 4) {
         const a = Math.atan2(t.targetY - t.curY, t.targetX - t.curX);
         const spd = t.type === 'huhn' ? 28 : t.type === 'hund' ? 60 : 22;
-        t.curX += Math.cos(a) * spd * dt;
-        t.curY += Math.sin(a) * spd * dt;
+        // Kollision (Autorbug Runde 51 "Tiere laufen über Wasser/Bäume bis zum
+        // Kartenrand und verschwinden"): das normale Umherlaufen prüfte NICHTS.
+        // Jetzt achsenweise gegen feste Kacheln (Wasser/Bäume/Wände/Kartenrand)
+        // sperren - Zäune dürfen sie weiter überqueren. Bei Block: neues Ziel.
+        const nx = t.curX + Math.cos(a) * spd * dt, ny = t.curY + Math.sin(a) * spd * dt;
+        let blockiert = false;
+        if (!this.solidFuerTier(nx, t.curY)) t.curX = nx; else blockiert = true;
+        if (!this.solidFuerTier(t.curX, ny)) t.curY = ny; else blockiert = true;
+        if (blockiert) t.pauseT = 0;   // festgelaufen -> sofort neues Ziel würfeln
         t.dir = Math.cos(a) < 0 ? 1 : 2;
         t.stepT += dt;
         if (t.stepT > 0.16) {
@@ -5842,6 +5849,9 @@ export class WorldScene extends CombatScene {
           t.step = (t.step + 1) % 4;
         }
       }
+      // Sicherheitsnetz: nie aus der Karte heraus (Runde 51)
+      t.curX = Phaser.Math.Clamp(t.curX, 16, this.area.w * TILE - 16);
+      t.curY = Phaser.Math.Clamp(t.curY, 16, this.area.h * TILE - 16);
       this.provider.applyFigure(t.sprite, t.type, t.dir, t.step);
       t.sprite.setPosition(t.curX, t.curY).setDepth(t.curY);
     }

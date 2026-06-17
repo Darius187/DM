@@ -54,14 +54,14 @@ describe('XP-Kurve (Referenz)', () => {
 describe('Fertigkeits-Schulen (Learning by doing)', () => {
   it('Stufen kommen bei den konfigurierten Schwellen', () => {
     expect(schoolLevelForUses(0)).toBe(0);
-    expect(schoolLevelForUses(20)).toBe(1);
-    expect(schoolLevelForUses(80)).toBe(3);
-    expect(schoolLevelForUses(500)).toBe(9);
+    expect(schoolLevelForUses(45)).toBe(1);
+    expect(schoolLevelForUses(210)).toBe(3);
+    expect(schoolLevelForUses(1950)).toBe(9);
     expect(schoolLevelForUses(9999)).toBe(9);
   });
 
   it('addSchoolUse meldet Stufenaufstieg und neue Fähigkeiten', () => {
-    const r = addSchoolUse({ uses: 79, level: 2 });
+    const r = addSchoolUse({ uses: 209, level: 2 });
     expect(r.state.level).toBe(3);
     expect(r.leveledTo).toBe(3);
     expect(r.newAbilities).toContain('rundumschlag');

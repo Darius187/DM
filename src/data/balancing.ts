@@ -79,8 +79,10 @@ export const LORE_XP = {
 
 // Fertigkeiten-Schulen (Masterprompt Teil 6): Steigerung durch Benutzung
 export const SCHOOLS = {
-  // Benutzungen bis Stufe n: gerundet steigende Kurve, leicht änderbar
-  usesPerLevel: [0, 20, 45, 80, 125, 180, 245, 320, 405, 500],
+  // Benutzungen bis Stufe n (Runde 51, Autorwunsch "geht zu schnell - Stufe 6
+  // schon in Krypta 2"): deutlich steilere Kurve (~4x), gilt für alle drei
+  // Schulen. Leicht änderbar.
+  usesPerLevel: [0, 45, 110, 210, 350, 540, 780, 1080, 1460, 1950],
   maxLevel: 9,
   // Passive Boni je Schulstufe
   nahkampfDmgPerLevel: 0.02,    // +2% Nahkampfschaden je Stufe
