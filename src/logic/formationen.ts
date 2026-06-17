@@ -85,8 +85,10 @@ export function linienSlots(raenge: number[], laenge: number, S = 30): Slot[] {
   const n = raenge.length;
   if (n === 0) return [];
   const span = Math.max(laenge, (n - 1) * 22);
+  // Saubere 2-Reihen-Linie: Front (Schild/Nahkampf, Rang 0/1) auf der Linie,
+  // Fernkampf/Heiler (Rang >=2) eine Reihe dahinter. Lateral gleichmäßig.
   return raenge.map((rg, i) => ({
-    f: (1 - rg) * S,
+    f: (rg <= 1 ? 0.5 : -0.5) * S,
     l: n === 1 ? 0 : (i / (n - 1) - 0.5) * span,
   }));
 }
