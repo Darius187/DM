@@ -99,6 +99,8 @@ export interface AreaData {
   hausPlaetze?: Array<{ x0: number; y0: number; x1: number; y1: number; id: string }>;
   innen?: boolean;                       // Innenraum: Holzboden unter Möbeln, warm
   innenHaus?: string;                    // welches Haus (für den Rückweg)
+  bodenName?: string;                    // erzwingt den Bodengrund unter Objekten
+                                         // (Kirche: Stein statt Gras, Runde 51)
 }
 
 interface Room { x: number; y: number; w: number; h: number; cx: number; cy: number }
@@ -724,7 +726,7 @@ export function buildKirchenschiff(rng: Rng): AreaData {
   const map = blank(w, h, T.WALL);
   const a: AreaData = {
     id: 'kirchenschiff', name: 'Kirche St. Marien - Das Schiff', dark: false, depth: 0,
-    theme: CRYPT_THEMES[4],
+    theme: CRYPT_THEMES[4], bodenName: 'krypta_boden', // Steinboden unter den Bänken (kein Gras, Runde 51)
     w, h, map, spawn: { x: 6.5 * TILE, y: 21.5 * TILE },
     torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
     breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],

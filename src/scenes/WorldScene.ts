@@ -1338,7 +1338,11 @@ export class WorldScene extends CombatScene {
       // musik_boss ebenso (Runde 41): wer durchs Portal wieder runter zum
       // Bossraum und dann TIEFER ging (crypt6+, dunkel), hörte sonst die
       // Bossmusik in Endlosschleife - sie wurde nie durch die Kryptamusik ersetzt.
-      const wechselbar = !aktuell || aktuell.startsWith('musik_dorf') || aktuell.startsWith('musik_nacht') || aktuell.startsWith('musik_wald') || aktuell.startsWith('musik_krypta') || aktuell.startsWith('musik_boss');
+      // musik_intro/musik_kirche (Runde 51): die Eröffnungs- und Kirchenmusik
+      // dröhnten sonst in JEDES folgende Gebiet weiter und überlagerten Ambiente
+      // und Prolog (Autorbericht "Sounds überlappen sich beim Übergang").
+      const transient = aktuell.startsWith('musik_intro') || aktuell.startsWith('musik_kirche');
+      const wechselbar = !aktuell || transient || aktuell.startsWith('musik_dorf') || aktuell.startsWith('musik_nacht') || aktuell.startsWith('musik_wald') || aktuell.startsWith('musik_krypta') || aktuell.startsWith('musik_boss');
       if (wechselbar) {
         const nachts = this.tageszeit > TAG.nachtAb || this.tageszeit < TAG.morgenAb;
         const loopName = a.dark && id !== 'boss' ? 'musik_krypta'
@@ -1349,6 +1353,10 @@ export class WorldScene extends CombatScene {
           this.spieleDorfMusik();
         } else if (loopName && loopName !== 'musik_dorf' && this.sfx.has(loopName) && aktuell !== loopName) {
           this.sfx.playMusic(loopName, { loop: true });
+        } else if (!loopName && transient) {
+          // Gebiet ohne eigene Musik (z. B. Kirche ohne musik_kirche): die
+          // dröhnende Eröffnungsmusik beenden statt sie weiterlaufen zu lassen.
+          this.sfx.stopMusic();
         }
       }
     }
@@ -1640,7 +1648,8 @@ export class WorldScene extends CombatScene {
       return;
     }
     if (WorldScene.STANDING.has(id)) {
-      const groundName = a.innen ? 'holzboden' : a.dark ? 'krypta_boden' : 'gras';
+      // bodenName erzwingt den Untergrund (Kirche: Stein statt Gras, Runde 51)
+      const groundName = a.bodenName ?? (a.innen ? 'holzboden' : a.dark ? 'krypta_boden' : 'gras');
       tag(this.add.image(tx * TILE + 16, ty * TILE + 16, this.provider.tileKey(groundName, variant, a.depth, a.theme)).setDepth(-10));
       // Dichter Wald: Bäume mit vielen Baum-Nachbarn nutzen die
       // wald-Grafiken (assets/tiles/wald1.png ...), freie Bäume baum*
@@ -4002,7 +4011,7 @@ export class WorldScene extends CombatScene {
       return {
         text: `Wendeltreppe hinab zu Ebene 1 - ${ik} zum Hinabsteigen`,
         action: () => {
-          if (!this.flags.prologGesehen) this.starteProlog('crypt1', 'Treppenabstieg', { weiter: 'LangerGang' });
+          if (!this.flags.prologGesehen) this.starteProlog('crypt1', 'Treppenabstieg', { schmal: true, weiter: 'LangerGang' });
           else this.goArea('crypt1');
         },
       };
@@ -4023,7 +4032,7 @@ export class WorldScene extends CombatScene {
           // Erster Abstieg unter die Kirche = der Angst-Prolog "Ebene 1"
           // (Kammer -> Schwelle), danach Rückkehr ins Dorf. Später führt
           // dieselbe Treppe normal in die Krypta.
-          if (id === 'kirchenschiff' && !this.flags.prologGesehen) this.starteProlog('crypt1', 'Treppenabstieg', { weiter: 'LangerGang' });
+          if (id === 'kirchenschiff' && !this.flags.prologGesehen) this.starteProlog('crypt1', 'Treppenabstieg', { schmal: true, weiter: 'LangerGang' });
           else if (id === 'kirchenschiff') this.goArea('crypt1');
           // Letzter Abstieg vor dem Boss: direkt in die Boss-Arena - ihr
           // Vorhof IST der Blutstrom (man watet mit der echten Waffe hindurch,
