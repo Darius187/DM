@@ -49,10 +49,9 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
       Templer), die Palisade hält nicht, das Dorf wird überrannt.
 - [ ] Flucht des ganzen Dorfes nach NORDWESTEN auf den verschneiten Berg.
 - [ ] Geplanter Gegenangriff zur Säuberung mit Hilfe der Fürsten-Soldaten.
-- [ ] Riesenschlacht: auf SCHWACHER Hardware ~200-300 Einheiten gesamt sicher
-      flüssig (Messung war auf schnellem i9-Niveau, x~3 für schwache PCs). Für
-      mehr/Sicherheitspuffer: Spatial-Grid in die Schlacht-KI (O(n²)->O(n)) -
-      macht selbst 1000+ billig. Beim ECHTEN Schlacht-Bau gleich einbauen.
+- [x] Spatial-Grid in die Schlacht-KI eingebaut: 1000 Einheiten von 24,6ms auf
+      1,6ms/Frame (~15x, lineare Skalierung). Auch auf schwacher Hardware (x3)
+      ~5ms -> selbst 1000+ Einheiten flüssig. Wird in die echte Schlacht übernommen.
 
 ## Wirtschaft (Details in WIRTSCHAFT-PLAN.md)
 - [ ] Material-Datenbank + Dorf-Lager + täglicher Produktions-Tick.

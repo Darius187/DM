@@ -211,9 +211,49 @@ export class SchlachtProbe extends Phaser.Scene {
   update(_t: number, delta: number): void {
     const dt = Math.min(0.05, delta / 1000);
     this.fxg.clear();
+    this.baueGrid(); // Spatial-Grid je Frame: macht Nachbarsuche O(n) statt O(n²)
+    this.berechneSchwerpunkte(); // Heeres-Mittelpunkte: ferne Einheiten rücken dorthin vor
     for (const u of this.units) if (!u.tot) this.updateUnit(u, dt);
     this.zeichneOverlay();
     if (!this.vorbei && this.schlachtLaeuft) this.pruefeEnde();
+  }
+
+  // --- Spatial-Grid (Runde 51): statt jede Einheit gegen ALLE zu prüfen
+  // (O(n²)), werden die Einheiten in Raster-Zellen einsortiert; Nachbarsuche
+  // und Trennung schauen nur in die umliegenden Zellen. So bleiben auch große
+  // Schlachten (Tausende Einheiten) auf schwacher Hardware billig.
+  private readonly ZELL = 80;
+  private grid = new Map<number, Unit[]>();
+  private zk(x: number, y: number): number { return Math.floor(x / this.ZELL) * 100000 + Math.floor(y / this.ZELL); }
+  private baueGrid(): void {
+    this.grid.clear();
+    for (const u of this.units) {
+      if (u.tot) continue;
+      const k = this.zk(u.x, u.y);
+      let a = this.grid.get(k); if (!a) { a = []; this.grid.set(k, a); }
+      a.push(u);
+    }
+  }
+  // Einheiten in den Zellen im Umkreis von 'ringe' Zellen um (x,y).
+  private nachbarn(x: number, y: number, ringe: number, out: Unit[]): Unit[] {
+    out.length = 0;
+    const cx = Math.floor(x / this.ZELL), cy = Math.floor(y / this.ZELL);
+    for (let dy = -ringe; dy <= ringe; dy++) {
+      for (let dx = -ringe; dx <= ringe; dx++) {
+        const a = this.grid.get((cx + dx) * 100000 + (cy + dy));
+        if (a) for (const u of a) out.push(u);
+      }
+    }
+    return out;
+  }
+  private _puffer: Unit[] = [];
+  private schwerpunkt: Record<'spieler' | 'feind', { x: number; y: number } | null> = { spieler: null, feind: null };
+  private berechneSchwerpunkte(): void {
+    for (const team of ['spieler', 'feind'] as const) {
+      let sx = 0, sy = 0, n = 0;
+      for (const u of this.units) if (!u.tot && u.team === team) { sx += u.x; sy += u.y; n++; }
+      this.schwerpunkt[team] = n ? { x: sx / n, y: sy / n } : null;
+    }
   }
 
   private updateUnit(u: Unit, dt: number): void {
@@ -229,6 +269,10 @@ export class SchlachtProbe extends Phaser.Scene {
     } else if (feind) {
       if (dFeind <= u.reich) { this.angriff(u, feind); }
       else if (u.team === 'feind' || u.slot === null) bewegtZu = { x: feind.x, y: feind.y };
+    } else if (!u.slot && (u.team === 'feind' ? this.schlachtLaeuft : true)) {
+      // kein Feind in der Nähe: zum gegnerischen Heeres-Schwerpunkt vorrücken
+      const ziel = this.schwerpunkt[u.team === 'spieler' ? 'feind' : 'spieler'];
+      if (ziel) bewegtZu = ziel;
     }
     if (bewegtZu) this.laufe(u, bewegtZu, dt);
     else { u.step = 0; }
@@ -245,9 +289,11 @@ export class SchlachtProbe extends Phaser.Scene {
   }
 
   private naechsterFeind(u: Unit): Unit | null {
-    let best: Unit | null = null, bd = u.team === 'feind' ? 9999 : (u.art === 'bogen' ? 320 : 260);
     if (u.team === 'feind' && !this.schlachtLaeuft) return null; // Untote warten auf ANGRIFF!
-    for (const o of this.units) {
+    let best: Unit | null = null, bd = u.art === 'bogen' ? 320 : 260;
+    // nur Zellen im Aufklärungs-Umkreis durchsuchen (statt aller Einheiten)
+    const ringe = Math.ceil(bd / this.ZELL);
+    for (const o of this.nachbarn(u.x, u.y, ringe, this._puffer)) {
       if (o.tot || o.team === u.team) continue;
       const d = Math.hypot(o.x - u.x, o.y - u.y);
       if (d < bd) { bd = d; best = o; }
@@ -264,12 +310,14 @@ export class SchlachtProbe extends Phaser.Scene {
   }
 
   private trenne(u: Unit): void {
-    for (const o of this.units) {
+    // nur Einheiten in den 3x3 Nachbarzellen (18px Trennradius < Zellengröße)
+    for (const o of this.nachbarn(u.x, u.y, 1, this._puffer2)) {
       if (o === u || o.tot) continue;
       const dx = u.x - o.x, dy = u.y - o.y, d = Math.hypot(dx, dy);
       if (d > 0.1 && d < 18) { const p = (18 - d) / 2; u.x += (dx / d) * p; u.y += (dy / d) * p; }
     }
   }
+  private _puffer2: Unit[] = [];
 
   private angriff(u: Unit, ziel: Unit): void {
     if (u.atkCd > 0) return;
