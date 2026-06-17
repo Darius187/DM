@@ -1610,8 +1610,12 @@ export class WorldScene extends CombatScene {
       const t = a.map[ny]?.[nx];
       return t === T.PATH || t === T.HDOOR || t === T.CDOOR || t === T.TOR;
     };
+    // 8-Bit-Maske: 4 Kanten (N/O/S/W) + 4 Diagonalen (NO/SO/SW/NW). Die
+    // Diagonalen füllen die Ecken, damit breite Wegflächen NICHT als Gitter
+    // erscheinen (Autorbug R48 "Gitterwege").
     const wegMaske = (id === T.PATH)
       ? (istWeg(tx, ty - 1) ? 1 : 0) | (istWeg(tx + 1, ty) ? 2 : 0) | (istWeg(tx, ty + 1) ? 4 : 0) | (istWeg(tx - 1, ty) ? 8 : 0)
+        | (istWeg(tx + 1, ty - 1) ? 16 : 0) | (istWeg(tx + 1, ty + 1) ? 32 : 0) | (istWeg(tx - 1, ty + 1) ? 64 : 0) | (istWeg(tx - 1, ty - 1) ? 128 : 0)
       : 0;
     const variant = id === T.WATER ? 0 : id === T.PATH ? wegMaske : planV !== undefined ? planV - 1 : ((tx * 73856093) ^ (ty * 19349663)) % 7;
     const tag = (img: Phaser.GameObjects.Image): Phaser.GameObjects.Image => {

@@ -56,7 +56,9 @@ function grasBase(ctx: Ctx, n: number): void {
   if (n === 6) { ctx.fillStyle = 'rgba(96,90,80,0.55)'; ctx.beginPath(); ctx.arc(18, 20, 2.5, 0, 6.283); ctx.fill(); }
 }
 
-// Ist Punkt (x,y) Teil des Erdwegs für diese Verbindungsmaske? (Runde 45)
+// Ist Punkt (x,y) Teil des Erdwegs für diese 8-Bit-Verbindungsmaske? (R45/48)
+// Kanten N=1,O=2,S=4,W=8; Diagonalen NO=16,SO=32,SW=64,NW=128. Die Diagonalen
+// füllen die Ecken, damit breite Wegflächen voll Erde sind (kein Gitter).
 function istWegErde(mask: number, x: number, y: number): boolean {
   const C = 16, BW = 8;
   if (Math.hypot(x - C, y - C) <= BW + 1.5) return true;      // Nabe
@@ -64,6 +66,11 @@ function istWegErde(mask: number, x: number, y: number): boolean {
   if ((mask & 4) && y >= C && Math.abs(x - C) <= BW) return true; // Süd
   if ((mask & 8) && x <= C && Math.abs(y - C) <= BW) return true; // West
   if ((mask & 2) && x >= C && Math.abs(y - C) <= BW) return true; // Ost
+  // Ecken: gefüllt, wenn beide angrenzenden Kanten UND die Diagonale Weg sind
+  if ((mask & 1) && (mask & 2) && (mask & 16) && x >= C && y <= C) return true; // NO
+  if ((mask & 2) && (mask & 4) && (mask & 32) && x >= C && y >= C) return true; // SO
+  if ((mask & 4) && (mask & 8) && (mask & 64) && x <= C && y >= C) return true; // SW
+  if ((mask & 8) && (mask & 1) && (mask & 128) && x <= C && y <= C) return true; // NW
   return false;
 }
 
@@ -78,15 +85,23 @@ function wegKachel(ctx: Ctx, mask: number): void {
   if (mask & 4) ctx.fillRect(C - BW, C, BW * 2, TILE - C);             // Süd
   if (mask & 8) ctx.fillRect(0, C - BW, C, BW * 2);                    // West
   if (mask & 2) ctx.fillRect(C, C - BW, TILE - C, BW * 2);             // Ost
+  // Ecken füllen, wenn beide Kanten UND die Diagonale Weg sind -> breite
+  // Wegflächen werden VOLL Erde statt Gitter (Autorbug R48).
+  if ((mask & 1) && (mask & 2) && (mask & 16)) ctx.fillRect(C, 0, TILE - C, C);  // NO
+  if ((mask & 2) && (mask & 4) && (mask & 32)) ctx.fillRect(C, C, TILE - C, TILE - C); // SO
+  if ((mask & 4) && (mask & 8) && (mask & 64)) ctx.fillRect(0, C, C, TILE - C);  // SW
+  if ((mask & 8) && (mask & 1) && (mask & 128)) ctx.fillRect(0, 0, C, C);        // NW
   // Erdstruktur (dunkle Schollen, helle Kiesel) - nur auf der Erde
   ctx.fillStyle = dirtD;
   for (let i = 0; i < 14; i++) { const x = (i * 7 + 3) % TILE, y = (i * 11 + 5) % TILE; if (istWegErde(mask, x, y)) ctx.fillRect(x, y, 2, 1); }
   ctx.fillStyle = dirtL;
   for (let i = 0; i < 10; i++) { const x = (i * 13 + 6) % TILE, y = (i * 17 + 2) % TILE; if (istWegErde(mask, x, y)) ctx.fillRect(x, y, 1, 1); }
-  // Karrenspuren auf durchgehenden Geraden
+  // Karrenspuren NUR auf echten Korridoren (eine Achse durch), NICHT auf
+  // breiten Plätzen/Kreuzungen - sonst entsteht wieder ein Spuren-Gitter (R48).
   ctx.strokeStyle = 'rgba(0,0,0,0.14)'; ctx.lineWidth = 2;
-  if ((mask & 1) && (mask & 4)) { for (const rx of [C - 4, C + 4]) { ctx.beginPath(); ctx.moveTo(rx, 0); ctx.lineTo(rx, TILE); ctx.stroke(); } }
-  if ((mask & 2) && (mask & 8)) { for (const ry of [C - 4, C + 4]) { ctx.beginPath(); ctx.moveTo(0, ry); ctx.lineTo(TILE, ry); ctx.stroke(); } }
+  const vert = (mask & 1) && (mask & 4), horiz = (mask & 2) && (mask & 8);
+  if (vert && !horiz) { for (const rx of [C - 4, C + 4]) { ctx.beginPath(); ctx.moveTo(rx, 0); ctx.lineTo(rx, TILE); ctx.stroke(); } }
+  if (horiz && !vert) { for (const ry of [C - 4, C + 4]) { ctx.beginPath(); ctx.moveTo(0, ry); ctx.lineTo(TILE, ry); ctx.stroke(); } }
   // Grasfederung: ein paar Halme ragen über die Bandränder (bricht harte Kanten)
   ctx.strokeStyle = '#46682f'; ctx.lineWidth = 1;
   for (let i = 0; i < 22; i++) {
