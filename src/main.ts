@@ -17,6 +17,7 @@ import { PlattenPfad } from './scenes/PlattenPfad';
 import { Geheimwand } from './scenes/Geheimwand';
 import { SchlachtProbe } from './scenes/SchlachtProbe';
 import { DungeonProbe } from './scenes/DungeonProbe';
+import { DungeonSpielScene } from './scenes/DungeonSpielScene';
 import { AnhoeheProbe } from './scenes/AnhoeheProbe';
 import { ReitProbe } from './scenes/ReitProbe';
 import { TUNING } from './logic/tuning';
@@ -33,7 +34,7 @@ const game = new Phaser.Game({
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, TitleScene, WorldScene, DebugArenaScene, UIScene, SettingsScene, KammerDerFinsternis, DieSchwelle, BlutstromGang, TreppenProbe, NebelProbe, Treppenabstieg, LangerGang, DieStelen, PlattenPfad, Geheimwand, SchlachtProbe, DungeonProbe, AnhoeheProbe, ReitProbe],
+  scene: [BootScene, TitleScene, WorldScene, DebugArenaScene, UIScene, SettingsScene, KammerDerFinsternis, DieSchwelle, BlutstromGang, TreppenProbe, NebelProbe, Treppenabstieg, LangerGang, DieStelen, PlattenPfad, Geheimwand, SchlachtProbe, DungeonProbe, DungeonSpielScene, AnhoeheProbe, ReitProbe],
 });
 
 // Rechtsklick global ohne Browser-Kontextmenü ("Speichern unter") - die

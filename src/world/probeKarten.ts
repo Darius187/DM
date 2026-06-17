@@ -1,0 +1,71 @@
+// Vereinheitlichte Karten-Erzeugung für die DUNGEON-PROBE (ÜBERSICHT/BEGEHEN)
+// UND die spielbare Variante (DungeonSpiel). Jeder Generator wird auf eine
+// kleine ProbeKarte abgebildet: grid + solid() (für Kollision) + farbe() (für
+// die Minikarte). So testen Ansehen, Begehen und Spielen alle dieselbe Quelle.
+
+import { baueLogischenDungeon, type DRaum, type Zelle } from './logischerDungeon';
+import { baueHoehle } from './hoehlenDungeon';
+import { baueVerbundeneRaeume } from './verbundeneRaeume';
+import { buildCrypt } from './areagen';
+import { seededRng } from '../logic/rng';
+import { T, SOLID } from './tiles';
+
+export type DungeonVersion = 1 | 3 | 4 | 5;
+
+export interface ProbeKarte {
+  name: string;
+  w: number; h: number;
+  grid: number[][];
+  solid: (t: number) => boolean;
+  farbe: (t: number) => number;
+  raeume?: DRaum[];
+}
+
+const FARBE_V3: Record<Zelle, number> = {
+  0: 0x14110c, 1: 0x4a443a, 2: 0x8a5a2a, 3: 0xc9a227, 4: 0x6ad06a, 5: 0xd05a4a, 6: 0x05060a, 7: 0x6a1818, 8: 0xff4848,
+};
+
+function farbeV1(t: number): number {
+  if (t === T.STAIR) return 0xd05a4a;
+  if (t === T.STAIRUP || t === T.WENDEL) return 0x6ad06a;
+  if (t === T.CDOOR || t === T.HDOOR || t === T.ZELLENTOR) return 0x8a5a2a;
+  if (t === T.WATER || t === T.ABYSS) return 0x05060a;
+  if (t === T.BLOOD) return 0x6a1818;
+  if (SOLID.has(t)) return 0x14110c;
+  return 0x4a443a;
+}
+
+export function erzeugeKarte(version: DungeonVersion): ProbeKarte {
+  if (version === 1) {
+    const a = buildCrypt(1, seededRng(Math.floor(Math.random() * 1e9)));
+    return { name: 'V1 - Krypta (aktuell im Spiel)', w: a.w, h: a.h, grid: a.map, solid: (t) => SOLID.has(t), farbe: farbeV1 };
+  }
+  if (version === 3) {
+    const d = baueLogischenDungeon(Math.random);
+    return {
+      name: 'V3 - Geteilte Halle (logisch)', w: d.w, h: d.h, grid: d.grid as number[][], raeume: d.raeume,
+      solid: (t) => t === 0 || t === 3 || t === 6, farbe: (t) => FARBE_V3[t as Zelle] ?? 0x4a443a,
+    };
+  }
+  if (version === 4) {
+    const d = baueHoehle(Math.random);
+    const farben: Record<number, number> = { 0: 0x14110c, 1: 0x39322a, 2: 0x8a5a2a, 3: 0x5a6076 };
+    return { name: `V4 - Höhle mit ${d.raeume} begehbaren Räumen`, w: d.w, h: d.h, grid: d.grid, solid: (t) => t === 0, farbe: (t) => farben[t] ?? 0x39322a };
+  }
+  const d = baueVerbundeneRaeume(Math.random);
+  const farben: Record<number, number> = { 0: 0x14110c, 1: 0x4a443a, 2: 0x5a6076 };
+  return { name: `V5 - Verbundene Räume (${d.raeume}) + Füllräume`, w: d.w, h: d.h, grid: d.grid, solid: (t) => t === 0, farbe: (t) => farben[t] ?? 0x4a443a };
+}
+
+// Nächste begehbare Kachel von der Mitte aus (Ringsuche) - Startpunkt.
+export function findeStartKachel(k: ProbeKarte): { x: number; y: number } {
+  const cx = Math.floor(k.w / 2), cy = Math.floor(k.h / 2);
+  for (let r = 0; r < Math.max(k.w, k.h); r++) {
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const x = cx + dx, y = cy + dy;
+      if (x < 1 || y < 1 || x >= k.w - 1 || y >= k.h - 1) continue;
+      if (!k.solid(k.grid[y][x])) return { x, y };
+    }
+  }
+  return { x: cx, y: cy };
+}

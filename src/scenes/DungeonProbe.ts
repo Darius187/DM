@@ -14,25 +14,7 @@
 // klickbar (vermeidet die "tote Knöpfe bei gescrollter Kamera"-Falle, Regel 9.4).
 
 import Phaser from 'phaser';
-import { baueLogischenDungeon, type DRaum, type Zelle } from '../world/logischerDungeon';
-import { baueHoehle } from '../world/hoehlenDungeon';
-import { baueVerbundeneRaeume } from '../world/verbundeneRaeume';
-import { buildCrypt } from '../world/areagen';
-import { seededRng } from '../logic/rng';
-import { T, SOLID } from '../world/tiles';
-
-interface ProbeKarte {
-  name: string;
-  w: number; h: number;
-  grid: number[][];
-  solid: (t: number) => boolean;
-  farbe: (t: number) => number;
-  raeume?: DRaum[];
-}
-
-const FARBE_V3: Record<Zelle, number> = {
-  0: 0x14110c, 1: 0x4a443a, 2: 0x8a5a2a, 3: 0xc9a227, 4: 0x6ad06a, 5: 0xd05a4a, 6: 0x05060a, 7: 0x6a1818, 8: 0xff4848,
-};
+import { erzeugeKarte, findeStartKachel, type ProbeKarte, type DungeonVersion } from '../world/probeKarten';
 
 const WALK_TILE = 40; // Kachelgröße im Begehen-Modus (ohne Kamera-Zoom)
 
@@ -42,7 +24,7 @@ export class DungeonProbe extends Phaser.Scene {
   private uiLayer!: Phaser.GameObjects.Container;
   private spieler!: Phaser.GameObjects.Container;
   private karte!: ProbeKarte;
-  private version: 1 | 3 | 4 | 5 = 5;
+  private version: DungeonVersion = 5;
   private modus: 'uebersicht' | 'begehen' = 'uebersicht';
   private px = 0; private py = 0; // Spielerposition (Weltpixel) im Begehen-Modus
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -73,64 +55,10 @@ export class DungeonProbe extends Phaser.Scene {
     this.generiere();
   }
 
-  // --- Generatoren ----------------------------------------------------------
+  // --- Generatoren (aus dem gemeinsamen Modul) ------------------------------
   private generiere(): void {
-    this.karte = this.version === 5 ? this.karteV5() : this.version === 4 ? this.karteV4() : this.version === 3 ? this.karteV3() : this.karteV1();
+    this.karte = erzeugeKarte(this.version);
     if (this.modus === 'begehen') this.betrete(); else this.zeigeUebersicht();
-  }
-
-  private karteV5(): ProbeKarte {
-    const d = baueVerbundeneRaeume(Math.random);
-    // 0 Wand · 1 Gang · 2 Raumboden (deutlich abgesetzt)
-    const farben: Record<number, number> = { 0: 0x14110c, 1: 0x4a443a, 2: 0x5a6076 };
-    return {
-      name: `V5 - Verbundene Räume (${d.raeume}) + Füllräume`,
-      w: d.w, h: d.h, grid: d.grid,
-      solid: (t) => t === 0,
-      farbe: (t) => farben[t] ?? 0x4a443a,
-    };
-  }
-
-  private karteV4(): ProbeKarte {
-    const d = baueHoehle(Math.random);
-    // 0 Fels · 1 Höhlenboden · 2 Tür · 3 Raumboden (deutlich abgesetzt = "Raum")
-    const farben: Record<number, number> = { 0: 0x14110c, 1: 0x39322a, 2: 0x8a5a2a, 3: 0x5a6076 };
-    return {
-      name: `V4 - Höhle mit ${d.raeume} begehbaren Räumen`,
-      w: d.w, h: d.h, grid: d.grid,
-      solid: (t) => t === 0,
-      farbe: (t) => farben[t] ?? 0x39322a,
-    };
-  }
-
-  private karteV3(): ProbeKarte {
-    const d = baueLogischenDungeon(Math.random);
-    return {
-      name: 'V3 - Geteilte Halle (logisch)',
-      w: d.w, h: d.h, grid: d.grid as number[][], raeume: d.raeume,
-      solid: (t) => t === 0 || t === 3 || t === 6,         // Wand, Requisit, Abgrund
-      farbe: (t) => FARBE_V3[t as Zelle] ?? 0x4a443a,
-    };
-  }
-
-  private karteV1(): ProbeKarte {
-    const a = buildCrypt(1, seededRng(Math.floor(Math.random() * 1e9)));
-    return {
-      name: 'V1 - Krypta (aktuell im Spiel)',
-      w: a.w, h: a.h, grid: a.map,
-      solid: (t) => SOLID.has(t),
-      farbe: (t) => this.farbeV1(t),
-    };
-  }
-
-  private farbeV1(t: number): number {
-    if (t === T.STAIR) return 0xd05a4a;
-    if (t === T.STAIRUP || t === T.WENDEL) return 0x6ad06a;
-    if (t === T.CDOOR || t === T.HDOOR || t === T.ZELLENTOR) return 0x8a5a2a;
-    if (t === T.WATER || t === T.ABYSS) return 0x05060a;
-    if (t === T.BLOOD) return 0x6a1818;
-    if (SOLID.has(t)) return 0x14110c;
-    return 0x4a443a;
   }
 
   // --- Übersicht (ganze Karte einpassen) ------------------------------------
@@ -166,25 +94,12 @@ export class DungeonProbe extends Phaser.Scene {
   private betrete(): void {
     this.modus = 'begehen';
     this.labelLayer.removeAll(true);
-    const start = this.findeStart(this.karte);
+    const start = findeStartKachel(this.karte);
     this.px = start.x * WALK_TILE + WALK_TILE / 2;
     this.py = start.y * WALK_TILE + WALK_TILE / 2;
     this.spieler.setVisible(true);
     this.zeichneBegehen();
     this.hinweis.setText(`${this.karte.name}  -  BEGEHEN. Pfeile/WASD = laufen, ESC/ÜBERSICHT zurück.`);
-  }
-
-  // nächste begehbare Kachel von der Mitte aus (Ringsuche)
-  private findeStart(k: ProbeKarte): { x: number; y: number } {
-    const cx = Math.floor(k.w / 2), cy = Math.floor(k.h / 2);
-    for (let r = 0; r < Math.max(k.w, k.h); r++) {
-      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
-        const x = cx + dx, y = cy + dy;
-        if (x < 1 || y < 1 || x >= k.w - 1 || y >= k.h - 1) continue;
-        if (!k.solid(k.grid[y][x])) return { x, y };
-      }
-    }
-    return { x: cx, y: cy };
   }
 
   // zeichnet den sichtbaren Ausschnitt um den Spieler (Karte scrollt, Kamera fest)
@@ -226,12 +141,13 @@ export class DungeonProbe extends Phaser.Scene {
       this.uiLayer.add(t);
     };
     knopf(20, 'NEU', () => this.generiere());
-    knopf(86, 'BEGEHEN / ÜBERSICHT', () => { if (this.modus === 'uebersicht') this.betrete(); else this.zeigeUebersicht(); });
-    knopf(300, 'V1', () => { this.version = 1; this.generiere(); });
-    knopf(346, 'V3', () => { this.version = 3; this.generiere(); });
-    knopf(392, 'V4', () => { this.version = 4; this.generiere(); });
-    knopf(438, 'V5', () => { this.version = 5; this.generiere(); });
-    knopf(490, 'MENÜ', () => this.scene.start('Title'));
+    knopf(78, 'BEGEHEN/ÜBERSICHT', () => { if (this.modus === 'uebersicht') this.betrete(); else this.zeigeUebersicht(); });
+    knopf(266, 'SPIELEN', () => this.scene.start('DungeonSpiel', { version: this.version }));
+    knopf(348, 'V1', () => { this.version = 1; this.generiere(); });
+    knopf(394, 'V3', () => { this.version = 3; this.generiere(); });
+    knopf(440, 'V4', () => { this.version = 4; this.generiere(); });
+    knopf(486, 'V5', () => { this.version = 5; this.generiere(); });
+    knopf(538, 'MENÜ', () => this.scene.start('Title'));
     this.uiLayer.add(this.add.text(this.scale.width / 2, 22, 'DUNGEON-PROBE - Generatoren testen (ansehen ODER begehen)', {
       fontFamily: 'serif', fontSize: '18px', color: '#d8cfb8', stroke: '#000', strokeThickness: 3,
     }).setOrigin(0.5));
