@@ -77,3 +77,6 @@
         Notiz, seltene Truhe, ein gefangenes Wesen). Sie ist NICHT baulich vom Rest abgetrennt.
         Falls du einen klar abgegrenzten Trakt willst (eigener Gang -> mehrere Zellen ->
         Instrumentenraum), ist das ein größerer Layout-Schritt - sag, ob ich das aufsetzen soll.
+
+13. Neue Eröffnung statt der Reitszene (du wolltest dir etwas überlegen): Ich habe die Reitszene/das Pferd ENTFERNT - das Spiel startet jetzt schlicht im Wald, der Held läuft selbst nach Ravensmoor (Titel + Geschichtszeilen bleiben). Für die RICHTIGE neue Eröffnung brauche ich dein Konzept: Soll der Held direkt IM Dorf starten? Wer schickt ihn wohin (welcher NPC, welcher erste Auftrag)? Wie soll er "ein wenig Gold verdienen" - welche erste Aufgabe (Botengang, Holz/Kräuter sammeln und verkaufen, einem Bauern helfen)? Sag mir den groben Ablauf, dann baue ich ihn.
+14. Hof-Pferde (Deko am Bauern-Gatter): Du wolltest Pferde "ganz klar weglassen". Die REIT-Pferde sind weg. Es stehen aber noch zwei Deko-Pferde am Gatter (reine Vierbeiner-Grafik wie Kuh/Schwein, kein Reiter). Sollen die auch raus, oder dürfen sie als Hoftiere bleiben?
