@@ -6,10 +6,12 @@
 // an den WÄNDEN (nie im Gang), Sonderstücke (Abgrund) nur in Sackgassen, nie auf
 // dem Hauptweg. Reiner Datengenerator (Phaser-frei) -> im Test sichtbar gemacht.
 
-export type Zelle = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+export type Zelle = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 // 0 Wand · 1 Boden · 2 Tür · 3 Requisit · 4 Treppe auf · 5 Treppe ab · 6 Abgrund
+// · 7 Blut · 8 Elite-Marke
 export type RaumTyp = 'haupthalle' | 'halle' | 'kammer';
-export interface DRaum { x: number; y: number; w: number; h: number; cx: number; cy: number; typ: RaumTyp; grad: number; }
+export type RaumInhalt = 'blut' | 'knochen' | 'folter';
+export interface DRaum { x: number; y: number; w: number; h: number; cx: number; cy: number; typ: RaumTyp; grad: number; inhalt?: RaumInhalt; elite?: boolean; }
 export interface DungeonResult { w: number; h: number; grid: Zelle[][]; raeume: DRaum[]; }
 
 type RNG = () => number;
@@ -47,6 +49,13 @@ export function baueLogischenDungeon(rng: RNG): DungeonResult {
   const groesste = [...echte].sort((a, b) => b.w * b.h - a.w * a.h)[0];
   groesste.typ = 'haupthalle';
   for (const rm of echte) if (rm !== groesste && rm.w * rm.h >= 80) rm.typ = 'halle';
+  // Elite-Themenräume (Autorwunsch): klar getrennte Sonderräume - Blutkammer,
+  // Beinkammer, Folterkammer - jeder mit einem Elite. Der Spieler kann selbst
+  // entscheiden, ob er sie betritt oder erst die kleinen Gegner aufräumt.
+  const themen: RaumInhalt[] = ['blut', 'knochen', 'folter'];
+  const themKand = echte.filter((r) => r.typ !== 'haupthalle' && r.w >= 6 && r.h >= 6);
+  mische(themKand, rng);
+  for (let i = 0; i < Math.min(themen.length, themKand.length); i++) { themKand[i].inhalt = themen[i]; themKand[i].elite = true; }
 
   // 3) Verbindungs-Graph über benachbarte Zellen, Spannbaum + ~28% Extra-Schleifen.
   const kanten: Array<[number, number]> = [];
@@ -58,10 +67,13 @@ export function baueLogischenDungeon(rng: RNG): DungeonResult {
   mische(kanten, rng);
   const parent = raeume.map((_, i) => i);
   const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  // Offenes Layout (Autorwunsch "wie Diablo 1 - man kann überall hinlaufen, aber
+  // die Räume bleiben getrennt"): NEBEN dem Spannbaum werden die allermeisten
+  // Nachbar-Räume zusätzlich verbunden -> mehrere Wege, kein erzwungener Pfad.
   const benutzt: Array<[number, number]> = [];
   for (const [a, b] of kanten) {
     if (find(a) !== find(b)) { parent[find(a)] = find(b); benutzt.push([a, b]); }
-    else if (rng() < 0.28) benutzt.push([a, b]);
+    else if (rng() < 0.82) benutzt.push([a, b]);
   }
   for (const [a, b] of benutzt) {
     grabeGang(grid, raeume[a]!, raeume[b]!, rng);
@@ -90,9 +102,12 @@ export function baueLogischenDungeon(rng: RNG): DungeonResult {
   // 4) Türen: Raumkanten, die an einen Gang stoßen, werden Türöffnungen.
   for (const rm of echte) setzeTueren(grid, rm);
 
-  // 5) Treppen: die zwei am weitesten auseinander liegenden Räume.
-  let auf = echte[0], ab = echte[0], fd = -1;
-  for (const a of echte) for (const b of echte) {
+  // 5) Treppen: die zwei am weitesten auseinander liegenden NORMALEN Räume
+  //    (keine Elite-/Themenräume - dort steigt man nicht ab).
+  const treppKand = echte.filter((r) => !r.inhalt);
+  const pool = treppKand.length >= 2 ? treppKand : echte;
+  let auf = pool[0], ab = pool[0], fd = -1;
+  for (const a of pool) for (const b of pool) {
     const d = Math.hypot(a.cx - b.cx, a.cy - b.cy);
     if (d > fd) { fd = d; auf = a; ab = b; }
   }
@@ -102,16 +117,28 @@ export function baueLogischenDungeon(rng: RNG): DungeonResult {
   for (const rm of echte) requisitenAnWaende(grid, rm, rng);
 
   // 7) Abgrund-Sonderstück NUR in einer Sackgasse (grad 1), abseits der Türen -
-  //    so versperrt es nie den Hauptweg.
-  const sackgassen = echte.filter((r) => r.grad <= 1 && r !== auf && r !== ab && r.w >= 7 && r.h >= 7);
+  //    so versperrt es nie den Hauptweg. Themenräume bleiben frei.
+  const sackgassen = echte.filter((r) => r.grad <= 1 && r !== auf && r !== ab && !r.inhalt && r.w >= 7 && r.h >= 7);
   if (sackgassen.length) {
     const s = sackgassen[ri(rng, 0, sackgassen.length - 1)];
-    // In eine ECKE (abseits der Mitte und der Türen), damit nie der Weg blockiert.
     for (let y = s.y + 1; y < s.y + 3; y++) {
       for (let x = s.x + 1; x < s.x + 3; x++) {
         if (grid[y][x] === 1 && !nebenTuer(grid, x, y)) grid[y][x] = 6;
       }
     }
+  }
+
+  // 8) Themenräume ausmalen: Blutkammer bekommt Blut-Lachen, jeder Elite-Raum
+  //    eine Elite-Marke in der Mitte (auf Boden/Blut, nicht auf Tür/Requisit).
+  for (const rm of echte) {
+    if (!rm.inhalt) continue;
+    if (rm.inhalt === 'blut') {
+      for (let k = 0; k < 9; k++) {
+        const x = ri(rng, rm.x + 1, rm.x + rm.w - 2), y = ri(rng, rm.y + 1, rm.y + rm.h - 2);
+        if (grid[y][x] === 1) grid[y][x] = 7;
+      }
+    }
+    if (grid[rm.cy][rm.cx] === 1 || grid[rm.cy][rm.cx] === 7) grid[rm.cy][rm.cx] = 8;
   }
   return { w: W, h: H, grid, raeume: echte };
 }

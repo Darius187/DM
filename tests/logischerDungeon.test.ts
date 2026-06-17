@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { baueLogischenDungeon } from '../src/world/logischerDungeon';
 import { seededRng } from '../src/logic/rng';
 
-// Begehbar = Boden/Tür/Requisit/Treppe (nicht Wand=0, nicht Abgrund=6).
-const begehbar = (v: number): boolean => v === 1 || v === 2 || v === 3 || v === 4 || v === 5;
+// Begehbar = Boden/Tür/Requisit/Treppe/Blut/Elite (nicht Wand=0, nicht Abgrund=6).
+const begehbar = (v: number): boolean => v === 1 || v === 2 || v === 3 || v === 4 || v === 5 || v === 7 || v === 8;
 
 function erreichbar(d: ReturnType<typeof baueLogischenDungeon>, sx: number, sy: number): boolean[][] {
   const seen = Array.from({ length: d.h }, () => new Array<boolean>(d.w).fill(false));

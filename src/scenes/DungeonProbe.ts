@@ -15,6 +15,8 @@ const FARBE: Record<Zelle, number> = {
   4: 0x6ad06a, // Treppe auf
   5: 0xd05a4a, // Treppe ab
   6: 0x05060a, // Abgrund
+  7: 0x6a1818, // Blut
+  8: 0xff4848, // Elite-Marke
 };
 
 export class DungeonProbe extends Phaser.Scene {
@@ -48,7 +50,7 @@ export class DungeonProbe extends Phaser.Scene {
       fontFamily: 'serif', fontSize: '18px', color: '#d8cfb8', stroke: '#000', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(50);
     // Legende
-    const leg: Array<[number, string]> = [[1, 'Boden'], [0, 'Wand'], [2, 'Tür'], [3, 'Requisit'], [4, 'Treppe auf'], [5, 'Treppe ab'], [6, 'Abgrund']];
+    const leg: Array<[number, string]> = [[1, 'Boden'], [2, 'Tür'], [3, 'Requisit'], [4, 'Treppe auf'], [5, 'Treppe ab'], [6, 'Abgrund'], [7, 'Blut'], [8, 'Elite']];
     let lx = 430;
     for (const [z, name] of leg) {
       this.add.rectangle(lx, y, 16, 16, FARBE[z as Zelle]).setOrigin(0, 0.5).setDepth(50).setStrokeStyle(1, 0x000000);
@@ -78,12 +80,13 @@ export class DungeonProbe extends Phaser.Scene {
         this.gfx.fillRect(ox + x * z, oy + y * z, z - 1, z - 1);
       }
     }
-    // Raumtyp-Beschriftung mittig im Raum
+    // Raumtyp-Beschriftung mittig im Raum (Themen-/Eliteräume hervorgehoben)
+    const themName: Record<string, string> = { blut: 'BLUTKAMMER (Elite)', knochen: 'BEINKAMMER (Elite)', folter: 'FOLTERKAMMER (Elite)' };
     for (const rm of d.raeume) {
-      const txt = rm.typ === 'haupthalle' ? 'HAUPTHALLE' : rm.typ === 'halle' ? 'Halle' : 'Kammer';
-      const t = this.add.text(ox + rm.cx * z, oy + rm.cy * z, txt, {
-        fontFamily: 'serif', fontSize: rm.typ === 'haupthalle' ? '13px' : '11px',
-        color: rm.typ === 'haupthalle' ? '#f0e0a0' : '#cdbf9d', stroke: '#000', strokeThickness: 2,
+      const txt = rm.inhalt ? themName[rm.inhalt] : rm.typ === 'haupthalle' ? 'HAUPTHALLE' : rm.typ === 'halle' ? 'Halle' : 'Kammer';
+      const t = this.add.text(ox + rm.cx * z, oy + (rm.y + 1) * z, txt, {
+        fontFamily: 'serif', fontSize: rm.inhalt || rm.typ === 'haupthalle' ? '12px' : '11px',
+        color: rm.inhalt ? '#ff8a7a' : rm.typ === 'haupthalle' ? '#f0e0a0' : '#cdbf9d', stroke: '#000', strokeThickness: 2,
       }).setOrigin(0.5);
       this.labelLayer.add(t);
     }
