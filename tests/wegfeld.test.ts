@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Wegfeld } from '../src/world/Wegfeld';
+import { Wegfeld, findePfad } from '../src/world/Wegfeld';
 
 // 5x5-Gitter mit senkrechter Wand in Spalte 2 (Reihen 0-3); Reihe 4 = Lücke.
 // Ziel oben rechts (4,0), Gegner oben links (0,0): der direkte Weg ist durch die
@@ -31,5 +31,17 @@ describe('Wegfeld (Flussfeld-Wegfindung)', () => {
     const wf = new Wegfeld(5, 5);
     wf.berechne(2, 2, () => true);
     expect(wf.bestesNachbarfeld(2, 2)).toBeNull();
+  });
+
+  it('A*-Pfad führt um die Wand herum (NPC-Wegfindung)', () => {
+    // gleiche Wand wie oben: Spalte 2, Reihen 0-3; Lücke bei (2,4)
+    const pfad = findePfad(5, 5, begehbar, 0, 0, 4, 0);
+    expect(pfad).not.toBeNull();
+    // der Pfad MUSS durch die Lücke unten (Reihe 4) laufen, nicht durch die Wand
+    expect(pfad!.some(([, ty]) => ty === 4)).toBe(true);
+    // keine Kachel im Pfad liegt in der Wand
+    expect(pfad!.every(([tx, ty]) => begehbar(tx, ty))).toBe(true);
+    // Endpunkt ist das Ziel
+    expect(pfad![pfad!.length - 1]).toEqual([4, 0]);
   });
 });

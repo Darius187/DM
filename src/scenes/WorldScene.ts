@@ -29,6 +29,7 @@ import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, FLYOVER, tileNameAt } from '../world/tiles';
 import { TILE } from '../gfx/fallbackArt';
+import { findePfad } from '../world/Wegfeld';
 import { WASSER_FRAMES } from '../gfx/tileArt';
 import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64, drawSchlucht, drawKristall } from '../gfx/detailArt';
 import { DialogUI, fixUiScroll } from '../ui/dialog';
@@ -74,6 +75,8 @@ interface NpcEntity extends NpcSpawn {
   atkCd?: number;     // Schlag-Abklingzeit des kämpfenden Bewohners
   flashT?: number;    // kurzes Aufblitzen bei Treffer
   verwundet?: boolean; // niedergeschlagen: liegt am Boden, bis der Held ihn heilt (Runde 46)
+  // A*-Wegfindung (Runde 50): Pfad zum aktuellen Ziel + Cache-Verwaltung
+  pfad?: Array<{ x: number; y: number }>; pfadZx?: number; pfadZy?: number; pfadT?: number;
 }
 
 interface Kadaver { x: number; y: number; g: Phaser.GameObjects.Graphics; t: number; ph: number }
@@ -1196,6 +1199,30 @@ export class WorldScene extends CombatScene {
   // Gittergröße fürs Flussfeld der Wegfindung (Runde 50)
   protected override feldGroesse(): { w: number; h: number } | null {
     return this.area ? { w: this.area.w, h: this.area.h } : null;
+  }
+
+  // Heading eines Bewohners zu seinem Ziel - per A*-Pfad um Hindernisse herum
+  // (Runde 50, Autorbug "Bewohner laufen genauso doof"). Pfad wird nur bei
+  // Zielwechsel/Timeout neu gerechnet, sonst folgt der NPC den Wegpunkten.
+  private npcRichtung(n: NpcEntity, zx: number, zy: number, dt: number): number {
+    const direkt = Math.atan2(zy - n.curY, zx - n.curX);
+    if (Math.hypot(zx - n.curX, zy - n.curY) < TILE * 1.6) { n.pfad = undefined; return direkt; }
+    n.pfadT = (n.pfadT ?? 0) - dt;
+    const zielWeg = Math.abs((n.pfadZx ?? -1e9) - zx) > TILE || Math.abs((n.pfadZy ?? -1e9) - zy) > TILE;
+    if (!n.pfad || n.pfadT <= 0 || zielWeg) {
+      n.pfadT = 0.7 + Math.random() * 0.5;
+      n.pfadZx = zx; n.pfadZy = zy;
+      const roh = this.area
+        ? findePfad(this.area.w, this.area.h, (tx, ty) => this.begehbarFuerWeg(tx, ty),
+            Math.floor(n.curX / TILE), Math.floor(n.curY / TILE), Math.floor(zx / TILE), Math.floor(zy / TILE))
+        : null;
+      n.pfad = roh ? roh.map(([tx, ty]) => ({ x: tx * TILE + 16, y: ty * TILE + 16 })) : undefined;
+    }
+    if (n.pfad && n.pfad.length) {
+      while (n.pfad.length && Math.hypot(n.pfad[0].x - n.curX, n.pfad[0].y - n.curY) < TILE * 0.6) n.pfad.shift();
+      if (n.pfad.length) return Math.atan2(n.pfad[0].y - n.curY, n.pfad[0].x - n.curX);
+    }
+    return direkt;
   }
 
   private getArea(id: string): AreaData {
@@ -5479,7 +5506,9 @@ export class WorldScene extends CombatScene {
         if (n.hp <= 0) { n.verwundet = true; n.hp = 0; this.fx.burst(n.curX, n.curY, 0x7a1010, 14, 110); this.logMsg(`${n.name} ist verwundet gefallen - heile ihn, sonst fällt er aus!`, 'bad'); continue; }
       }
       if (d > 4 && !(kampf && d < 30)) {
-        const a = Math.atan2(ziel.y - n.curY, ziel.x - n.curX);
+        // Wegfindung (Runde 50): per A*-Pfad um Hindernisse herum statt stur
+        // gegen Zäune/Wände; nah dran direkt.
+        const a = this.npcRichtung(n, ziel.x, ziel.y, dt);
         // Runde 17: Bewohner laufen NICHT mehr durch Gebäude - sie
         // schieben sich achsenweise an Wänden entlang. Panik = schneller.
         const tempo = panik ? 100 : kampf ? KAEMPFER.tempo : 50;

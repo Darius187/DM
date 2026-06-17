@@ -70,3 +70,47 @@ export class Wegfeld {
     return this.dist[ty * this.w + tx] >= 0;
   }
 }
+
+// A*-Wegfindung für EINZELZIELE (Runde 50): NPCs/Bewohner haben je eigene Ziele
+// (Arbeit, Heim, Markt), daher kein gemeinsames Flussfeld - jeder rechnet selten
+// (bei Zielwechsel) seinen Pfad und folgt dann den Wegpunkten, statt gegen
+// Zäune/Wände zu rennen. Liefert die Kachelfolge ohne Start, oder null.
+export function findePfad(
+  w: number, h: number, begehbar: (tx: number, ty: number) => boolean,
+  sx: number, sy: number, zx: number, zy: number, maxKnoten = 4000,
+): Array<[number, number]> | null {
+  if (sx === zx && sy === zy) return [];
+  if (zx < 0 || zy < 0 || zx >= w || zy >= h || !begehbar(zx, zy)) return null;
+  const idx = (x: number, y: number) => y * w + x;
+  const g = new Float32Array(w * h).fill(Infinity);
+  const f = new Float32Array(w * h).fill(Infinity);
+  const von = new Int32Array(w * h).fill(-1);
+  const inOffen = new Uint8Array(w * h);
+  const heur = (x: number, y: number) => { const dx = Math.abs(x - zx), dy = Math.abs(y - zy); return (dx + dy) + (Math.SQRT2 - 2) * Math.min(dx, dy); };
+  const start = idx(sx, sy);
+  g[start] = 0; f[start] = heur(sx, sy);
+  const offen: number[] = [start]; inOffen[start] = 1;
+  let knoten = 0;
+  while (offen.length && knoten++ < maxKnoten) {
+    let bi = 0; for (let i = 1; i < offen.length; i++) if (f[offen[i]] < f[offen[bi]]) bi = i;
+    const cur = offen.splice(bi, 1)[0]; inOffen[cur] = 0;
+    const cx = cur % w, cy = (cur / w) | 0;
+    if (cx === zx && cy === zy) {
+      const pfad: Array<[number, number]> = [];
+      let c = cur; while (c !== start) { pfad.push([c % w, (c / w) | 0]); c = von[c]; }
+      pfad.reverse(); return pfad;
+    }
+    for (const [dx, dy] of NACHBARN) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h || !begehbar(nx, ny)) continue;
+      if (dx !== 0 && dy !== 0 && (!begehbar(cx + dx, cy) || !begehbar(cx, cy + dy))) continue;
+      const ni = idx(nx, ny);
+      const tg = g[cur] + (dx !== 0 && dy !== 0 ? Math.SQRT2 : 1);
+      if (tg < g[ni]) {
+        von[ni] = cur; g[ni] = tg; f[ni] = tg + heur(nx, ny);
+        if (!inOffen[ni]) { offen.push(ni); inOffen[ni] = 1; }
+      }
+    }
+  }
+  return null;
+}
