@@ -123,3 +123,15 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [x] Dorfbrunnen größer + Blut-bei-Einfall (verseucht, Blutlachen ringsum).
 - [x] Anhöhe-Demo (gefakte Höhe: Klippe/Schatten/Rampe/Schnee).
 - [x] Dungeon-Modell: geteilte Halle (keine Gänge, alles Raum, Türen).
+
+## Schlacht: Versorgung & Befestigung (Runde 51, Autorvision)
+- [x] Bau-Elemente in der Schlacht-Probe: Palisade (Hindernis/Engpass), Bogenturm
+      (schießt automatisch), Feldlazarett (heilt im Umkreis), Schmiede-Vorposten
+      (+Schaden), Banner (+Tempo). Platzierbar; Werte in BAU (SchlachtProbe).
+- [x] NACHSCHUB-Knopf: nach kurzer Marschzeit trifft eine Reserve am Rand ein
+      (Versorgungs-Idee) - derweil verteidigt man die Stellung.
+- [ ] GROSSE Vision (Hannibal/Alesia, Crossover): Feldzug über Etappen; pro
+      eroberte Etappe Stellung sichern (Palisaden/Posten); Versorgung muss aus
+      dem Dorf an die Front (Tross/Nachschublinie), Krieg kostet (Gold/Brot/
+      Barren/Kräuter) - die Dorfwirtschaft speist die Schlacht. Verluste = auf
+      Nachschub warten und derweil befestigen. Macro-Schicht, später ausbauen.

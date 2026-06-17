@@ -38,6 +38,21 @@ const TYP: Record<Typ, TypDef> = {
 const XP_PRO_STUFE = [0, 2, 5, 9, 14];   // kumulierte Kills für Stufe 1..5
 const STUFE_HP = 12, STUFE_DMG = 2.2;
 
+// Bau-Elemente (Runde 51, Autorwunsch "Versorgung/Nachschub/Befestigung an der
+// Front"): zwischen den Vorstößen sichert man die Stellung. Palisade kanalisiert
+// die Horde, Turm schießt, Lazarett heilt (-> Aufstieg lohnt), Schmiede/Banner
+// buffen. Alles spielerseitig. Werte hier leicht änderbar.
+type BauTyp = 'palisade' | 'turm' | 'lazarett' | 'schmiede' | 'banner';
+interface BauDef { r: number; farbe: number; name: string; cd?: number; dmg?: number; heal?: number; dmgMult?: number; speedMult?: number }
+const BAU: Record<BauTyp, BauDef> = {
+  palisade: { r: 16, farbe: 0x6a4a28, name: 'Palisade' },
+  turm:     { r: 210, farbe: 0x9aa0a8, name: 'Bogenturm', cd: 0.9, dmg: 11 },
+  lazarett: { r: 130, farbe: 0xd8e8d0, name: 'Feldlazarett', cd: 0.7, heal: 6 },
+  schmiede: { r: 120, farbe: 0xe0a050, name: 'Schmiede-Vorposten', dmgMult: 1.35 },
+  banner:   { r: 150, farbe: 0xd05050, name: 'Banner', speedMult: 1.3 },
+};
+interface Bau { typ: BauTyp; x: number; y: number; t: number }
+
 interface Gruppe { anker: { x: number; y: number }; facing: number; ziel: { x: number; y: number } | null }
 
 interface Unit {
@@ -46,6 +61,7 @@ interface Unit {
   x: number; y: number; hp: number; maxhp: number; dmg: number; reich: number; speed: number; rank: number;
   atkCd: number; dir: Dir; step: number; stepT: number; flash: number; tot: boolean; ausgewaehlt: boolean;
   stance: Stance; xp: number; stufe: number; aufstiegFx: number;
+  dmgMult: number; speedMult: number;
   gruppeNr: number; grp: Gruppe | null; off: Slot | null; ziel: { x: number; y: number } | null; fokus: Unit | null;
 }
 
@@ -65,6 +81,10 @@ export class SchlachtProbe extends Phaser.Scene {
   private linieStart: { x: number; y: number } | null = null;
   private linieNow: { x: number; y: number } | null = null;
   private marker: Array<{ x: number; y: number; t: number; feind: boolean }> = [];
+  private bauten: Bau[] = [];
+  private bauGfx!: Phaser.GameObjects.Graphics;
+  private platziere: BauTyp | null = null;
+  private nachschubT = 0;        // Restzeit bis angeforderter Nachschub eintrifft
   private schlachtLaeuft = false;
   private vorbei = false;
 
@@ -74,6 +94,9 @@ export class SchlachtProbe extends Phaser.Scene {
     this.units = [];
     this.boxStart = this.boxNow = this.linieStart = this.linieNow = null;
     this.marker = [];
+    this.bauten = [];
+    this.platziere = null;
+    this.nachschubT = 0;
     this.schlachtLaeuft = false;
     this.vorbei = false;
     this.grid.clear();
@@ -85,6 +108,7 @@ export class SchlachtProbe extends Phaser.Scene {
     this.zeichneWiese();
     this.gfx = this.add.graphics().setDepth(900);
     this.fxg = this.add.graphics().setDepth(880);
+    this.bauGfx = this.add.graphics().setDepth(2);   // Bauten am Boden, unter den Einheiten
     this.baueHeer();
     this.baueUI();
     this.bindeEingabe();
@@ -109,7 +133,7 @@ export class SchlachtProbe extends Phaser.Scene {
       sprite, ring, team, typ, figur: d.figur, tint: d.tint, heiler: d.heiler, x, y,
       hp: d.hp, maxhp: d.hp, dmg: d.dmg, reich: d.reich, speed: d.speed, rank: d.rank,
       atkCd: 0, dir: 0, step: 0, stepT: 0, flash: 0, tot: false, ausgewaehlt: false,
-      stance: 'aggressiv', xp: 0, stufe: 1, aufstiegFx: 0,
+      stance: 'aggressiv', xp: 0, stufe: 1, aufstiegFx: 0, dmgMult: 1, speedMult: 1,
       gruppeNr: 0, grp: null, off: null, ziel: null, fokus: null,
     };
     this.provider.applyFigure(sprite, d.figur, 0, 0);
@@ -144,13 +168,18 @@ export class SchlachtProbe extends Phaser.Scene {
     x += 14;
     const stances: Array<[string, Stance]> = [['AGGRESSIV', 'aggressiv'], ['VERTEIDIGEN', 'verteidigen'], ['HALTEN', 'halten']];
     for (const [lbl, s] of stances) { const t = this.knopf(x, y1, lbl, () => this.setzeStance(s)); x += t.width + 8; }
-    // zweite Reihe
+    // zweite Reihe: Bau-Menü (Befestigung an der Front) + Nachschub
     let x2 = 14; const y2 = FELD_H + 60;
-    x2 += this.knopf(x2, y2, 'ANGRIFF!', () => { this.schlachtLaeuft = true; this.setzeStatus(); }).width + 10;
+    x2 += this.add.text(x2, y2, 'BAU:', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' }).setOrigin(0, 0.5).setDepth(950).width + 8;
+    const baulist: Array<[string, BauTyp]> = [['PALISADE', 'palisade'], ['TURM', 'turm'], ['LAZARETT', 'lazarett'], ['SCHMIEDE', 'schmiede'], ['BANNER', 'banner']];
+    for (const [lbl, b] of baulist) { x2 += this.knopf(x2, y2, lbl, () => { this.platziere = this.platziere === b ? null : b; this.setzeStatus(); }).width + 6; }
+    x2 += 14;
+    x2 += this.knopf(x2, y2, 'NACHSCHUB', () => this.fordereNachschub()).width + 10;
     x2 += this.knopf(x2, y2, '+ EINHEITEN', () => this.mehrEinheiten()).width + 10;
+    x2 += this.knopf(x2, y2, 'ANGRIFF!', () => { this.schlachtLaeuft = true; this.setzeStatus(); }).width + 10;
     x2 += this.knopf(x2, y2, 'NEU', () => this.scene.restart()).width + 10;
     this.knopf(1206, y1, 'MENÜ', () => this.scene.start('Title'));
-    this.infoText = this.add.text(14, FELD_H + 86, '', { fontFamily: 'serif', fontSize: '12px', color: '#b8a880', wordWrap: { width: FELD_W - 28 } }).setDepth(950);
+    this.infoText = this.add.text(14, FELD_H + 90, '', { fontFamily: 'serif', fontSize: '12px', color: '#b8a880', wordWrap: { width: FELD_W - 28 } }).setDepth(950);
     this.statusText = this.add.text(this.scale.width / 2, 22, '', {
       fontFamily: 'serif', fontSize: '20px', color: '#f0e0a0', stroke: '#000', strokeThickness: 4,
     }).setOrigin(0.5).setDepth(950);
@@ -163,6 +192,10 @@ export class SchlachtProbe extends Phaser.Scene {
     this.statusText.setText(`Fürsten-Heer ${eigene}  vs  Untote ${feinde}`);
     const sel = this.gewaehlte();
     const stance = sel.length ? (sel.every((u) => u.stance === sel[0].stance) ? sel[0].stance : 'gemischt') : '-';
+    if (this.platziere) {
+      this.infoText.setText(`BAU-MODUS: ${BAU[this.platziere].name} platzieren - links auf das Feld klicken (mehrfach). Rechtsklick/Knopf erneut = abbrechen.`);
+      return;
+    }
     this.infoText.setText(
       `Rahmen ziehen = wählen (${sel.length}, Haltung: ${stance}). Formations-Knöpfe ordnen an, Haltungs-Knöpfe setzen das Kampfverhalten. `
       + `Rechtsklick auf Boden = Marsch (Formation hält) · Rechtsklick auf Gegner = Fokus-Angriff · rechte Maus ZIEHEN = eigene Linie. `
@@ -173,6 +206,10 @@ export class SchlachtProbe extends Phaser.Scene {
   private bindeEingabe(): void {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (p.y > FELD_H || this.vorbei) return;
+      if (this.platziere) {
+        if (p.rightButtonDown()) { this.platziere = null; this.setzeStatus(); return; }   // abbrechen
+        this.platziereBau(p.worldX, p.worldY); return;                                     // platzieren
+      }
       if (p.rightButtonDown()) { this.linieStart = { x: p.worldX, y: p.worldY }; this.linieNow = { x: p.worldX, y: p.worldY }; return; }
       this.boxStart = { x: p.worldX, y: p.worldY }; this.boxNow = { x: p.worldX, y: p.worldY };
     });
@@ -190,8 +227,28 @@ export class SchlachtProbe extends Phaser.Scene {
       if (!Number.isNaN(n) && n >= 1 && n <= 4) {
         if (ev.ctrlKey) { this.gruppeMerken(n); ev.preventDefault(); } else this.gruppeWaehlen(n);
       }
-      if (ev.key === 'Escape') this.scene.start('Title');
+      if (ev.key === 'Escape') { if (this.platziere) { this.platziere = null; this.setzeStatus(); } else this.scene.start('Title'); }
     });
+  }
+
+  private platziereBau(x: number, y: number): void {
+    if (this.bauten.length >= 60) return;
+    this.bauten.push({ typ: this.platziere!, x, y, t: 0 });
+    this.sfx.play('stein_hacken', 0.4);
+  }
+
+  // Nachschub anfordern: nach kurzer Marschzeit trifft eine frische Abteilung am
+  // linken Rand ein (Versorgung/Reserve) - derweil verteidigt man die Stellung.
+  private fordereNachschub(): void {
+    if (this.nachschubT > 0) return;
+    this.nachschubT = 6;
+    this.sfx.play('fertigkeit_neu', 0.5);
+  }
+
+  private nachschubTrifftEin(): void {
+    for (let i = 0; i < 4; i++) this.neueEinheit('spieler', i < 3 ? 'nahkampf' : 'bogen', 40, 250 + i * 36);
+    this.neueEinheit('spieler', 'heiler', 40, 420);
+    this.setzeStatus();
   }
 
   private rechtsBefehl(): void {
@@ -292,12 +349,71 @@ export class SchlachtProbe extends Phaser.Scene {
     const dt = Math.min(0.05, delta / 1000);
     this.fxg.clear();
     this.baueGrid();
+    this.wendeBautenAn(dt);
+    if (this.nachschubT > 0) { this.nachschubT -= dt; if (this.nachschubT <= 0) this.nachschubTrifftEin(); }
     this.aktualisiereGruppen(dt);
     for (const u of this.units) if (!u.tot) this.updateUnit(u, dt);
     for (const m of this.marker) m.t -= dt;
     this.marker = this.marker.filter((m) => m.t > 0);
+    this.zeichneBauten();
     this.zeichneOverlay();
     if (!this.vorbei && this.schlachtLaeuft) this.pruefeEnde();
+  }
+
+  // Wirkung der Bauten: Buffs setzen (Schmiede/Banner), heilen (Lazarett),
+  // schießen (Turm). Spielerseitig. Palisaden-Kollision läuft in trenne().
+  private wendeBautenAn(dt: number): void {
+    for (const u of this.units) if (!u.tot && u.team === 'spieler') { u.dmgMult = 1; u.speedMult = 1; }
+    for (const b of this.bauten) {
+      const def = BAU[b.typ];
+      b.t = Math.max(0, b.t - dt);
+      if (b.typ === 'schmiede' || b.typ === 'banner') {
+        for (const u of this.units) {
+          if (u.tot || u.team !== 'spieler') continue;
+          if (Math.hypot(u.x - b.x, u.y - b.y) > def.r) continue;
+          if (def.dmgMult) u.dmgMult = Math.max(u.dmgMult, def.dmgMult);
+          if (def.speedMult) u.speedMult = Math.max(u.speedMult, def.speedMult);
+        }
+      } else if (b.typ === 'lazarett' && b.t <= 0) {
+        let ziel: Unit | null = null, am = 0;
+        for (const u of this.units) { if (u.tot || u.team !== 'spieler' || u.hp >= u.maxhp) continue; const f = u.maxhp - u.hp; if (f > am && Math.hypot(u.x - b.x, u.y - b.y) <= def.r) { am = f; ziel = u; } }
+        if (ziel) { ziel.hp = Math.min(ziel.maxhp, ziel.hp + (def.heal ?? 0)); ziel.flash = 0.1; b.t = def.cd ?? 1; this.fxg.lineStyle(2, 0x9ad86a, 0.5); this.fxg.lineBetween(b.x, b.y, ziel.x, ziel.y); }
+      } else if (b.typ === 'turm' && b.t <= 0) {
+        let ziel: Unit | null = null, bd = def.r;
+        for (const e of this.units) { if (e.tot || e.team !== 'feind') continue; const d = Math.hypot(e.x - b.x, e.y - b.y); if (d < bd) { bd = d; ziel = e; } }
+        if (ziel) { ziel.hp -= def.dmg ?? 0; ziel.flash = 0.12; b.t = def.cd ?? 1; this.fxg.lineStyle(1.5, 0xe8e0c0, 0.85); this.fxg.lineBetween(b.x, b.y - 18, ziel.x, ziel.y - 6); this.sfx.play('pfeil_schuss', 0.25); if (ziel.hp <= 0) this.toeten(ziel); }
+      }
+    }
+  }
+
+  // Palisaden (und Türme) sind feste Hindernisse: schiebt Einheiten heraus -> Engpässe.
+  private palisadenStoss(u: Unit): void {
+    for (const b of this.bauten) {
+      if (b.typ !== 'palisade' && b.typ !== 'turm') continue;
+      const rad = (b.typ === 'turm' ? 18 : BAU.palisade.r) + 12;
+      const dx = u.x - b.x, dy = u.y - b.y, d = Math.hypot(dx, dy);
+      if (d > 0.1 && d < rad) { const p = rad - d; u.x += (dx / d) * p; u.y += (dy / d) * p; }
+    }
+  }
+
+  private zeichneBauten(): void {
+    const g = this.bauGfx; g.clear();
+    for (const b of this.bauten) {
+      const def = BAU[b.typ];
+      if (b.typ === 'palisade') { g.fillStyle(0x4a3418, 1); g.fillRect(b.x - 14, b.y - 8, 28, 16); g.lineStyle(2, 0x2a1e0c, 1); g.strokeRect(b.x - 14, b.y - 8, 28, 16); for (let i = -1; i <= 1; i++) { g.fillStyle(0x6a4a28, 1); g.fillRect(b.x + i * 9 - 2, b.y - 14, 4, 24); } continue; }
+      // Wirk-Radius dezent
+      g.fillStyle(def.farbe, 0.06); g.fillCircle(b.x, b.y, def.r);
+      g.lineStyle(1, def.farbe, 0.25); g.strokeCircle(b.x, b.y, def.r);
+      if (b.typ === 'turm') { g.fillStyle(0x6a6e76, 1); g.fillRect(b.x - 7, b.y - 22, 14, 30); g.fillStyle(0x9aa0a8, 1); g.fillRect(b.x - 9, b.y - 26, 18, 6); }
+      else if (b.typ === 'lazarett') { g.fillStyle(0xd8e8d0, 1); g.fillRect(b.x - 9, b.y - 9, 18, 18); g.fillStyle(0xc04040, 1); g.fillRect(b.x - 2, b.y - 6, 4, 12); g.fillRect(b.x - 6, b.y - 2, 12, 4); }
+      else if (b.typ === 'schmiede') { g.fillStyle(0x3a3a3e, 1); g.fillRect(b.x - 10, b.y - 4, 20, 10); g.fillStyle(0xe0a050, 1); g.fillCircle(b.x, b.y - 8, 4); }
+      else if (b.typ === 'banner') { g.lineStyle(3, 0x6a4a28, 1); g.lineBetween(b.x, b.y + 10, b.x, b.y - 22); g.fillStyle(0xd05050, 1); g.fillTriangle(b.x, b.y - 22, b.x, b.y - 6, b.x + 16, b.y - 14); }
+    }
+    // Platzierungs-Vorschau am Zeiger
+    if (this.platziere) {
+      const p = this.input.activePointer; const def = BAU[this.platziere];
+      this.bauGfx.lineStyle(2, def.farbe, 0.7); this.bauGfx.strokeCircle(p.worldX, p.worldY, this.platziere === 'palisade' ? 14 : def.r);
+    }
   }
 
   // Formations-Anker zum Ziel bewegen (Tempo der Langsamsten, auf Nachzügler warten)
@@ -356,6 +472,7 @@ export class SchlachtProbe extends Phaser.Scene {
 
     if (bewegtZu) this.laufe(u, bewegtZu, dt); else u.step = 0;
     this.trenne(u);
+    this.palisadenStoss(u);
     this.zeichneEinheit(u);
   }
 
@@ -420,7 +537,8 @@ export class SchlachtProbe extends Phaser.Scene {
 
   private laufe(u: Unit, ziel: { x: number; y: number }, dt: number): void {
     const a = Math.atan2(ziel.y - u.y, ziel.x - u.x);
-    u.x += Math.cos(a) * u.speed * dt; u.y += Math.sin(a) * u.speed * dt;
+    const spd = u.speed * u.speedMult;
+    u.x += Math.cos(a) * spd * dt; u.y += Math.sin(a) * spd * dt;
     u.x = Phaser.Math.Clamp(u.x, 16, FELD_W - 16); u.y = Phaser.Math.Clamp(u.y, 16, FELD_H - 16);
     u.dir = angleToDir(a);
     u.stepT += dt; if (u.stepT > 0.12) { u.stepT = 0; u.step = (u.step + 1) % 4; }
@@ -438,7 +556,7 @@ export class SchlachtProbe extends Phaser.Scene {
     if (u.atkCd > 0) return;
     u.atkCd = u.reich > 100 ? 1.0 : 0.7;
     u.dir = angleToDir(Math.atan2(ziel.y - u.y, ziel.x - u.x));
-    ziel.hp -= u.dmg; ziel.flash = 0.12;
+    ziel.hp -= u.dmg * u.dmgMult; ziel.flash = 0.12;
     if (u.reich > 100) { this.fxg.lineStyle(1.5, 0xe8e0c0, 0.8); this.fxg.lineBetween(u.x, u.y - 6, ziel.x, ziel.y - 6); this.sfx.play('pfeil_schuss', 0.28); }
     else this.sfx.play('treffer_fleisch', 0.28);
     if (ziel.hp <= 0) { this.gewinneXp(u); this.toeten(ziel); }
