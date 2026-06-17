@@ -804,6 +804,58 @@ export function verschiebeHaus(a: AreaData, hp: HausPlatz, tdx: number, tdy: num
 
 // --- Ravensmoor: ein echtes Dorf des 17. Jahrhunderts (Masterprompt 7.2) ---// Referenzdorf war 46x30 - dieses ist 92x60, entlang der alten Salzstraße.
 
+// Waldgürtel ringsum (Runde 51, Autorwunsch "Dorf in alle Richtungen vergrößern,
+// nahtlos, außen Wald -> Gefühl von Größe"). Erst moderat (22 Kacheln), nach
+// Bildraten-Test ggf. hochdrehen. WorldScene nutzt die Konstante für die
+// verschobenen Übergänge.
+export const DORF_WALDRAND = 22;
+
+// Eine fertige Karte ringsum mit Wald umgeben: das alte Gebiet wandert um m
+// Kacheln nach innen, der neue Rand wird begehbarer Wald (außen dichter, die
+// zwei äußersten Kacheln geschlossene Baumwand als Grenze). ALLE Koordinaten
+// verschieben sich mit (Pixel-Listen um m*TILE, Kachel-Felder um m). Die
+// West-Salzstraße wird durch den Wald bis an den Kartenrand freigelegt, damit
+// der Übergang in den Dunkelwald nahtlos bleibt.
+function umgebeMitWald(a: AreaData, m: number, rng: Rng): void {
+  const ow = a.w, oh = a.h;
+  const nw = ow + 2 * m, nh = oh + 2 * m;
+  const neu = blank(nw, nh, T.GRASS);
+  for (let y = 0; y < oh; y++) for (let x = 0; x < ow; x++) neu[y + m][x + m] = a.map[y][x];
+  // Waldgürtel füllen
+  for (let y = 0; y < nh; y++) {
+    for (let x = 0; x < nw; x++) {
+      if (x >= m && x < m + ow && y >= m && y < m + oh) continue; // altes Gebiet bleibt
+      const randAbstand = Math.min(x, y, nw - 1 - x, nh - 1 - y);
+      if (randAbstand <= 1) { neu[y][x] = T.TREE; continue; }      // geschlossene Außenwand
+      const dx = x < m ? (m - x) : x >= m + ow ? (x - (m + ow) + 1) : 0;
+      const dy = y < m ? (m - y) : y >= m + oh ? (y - (m + oh) + 1) : 0;
+      const tiefe = Math.max(dx, dy) / m; // 0 = am alten Rand, 1 = ganz außen
+      if (rng.random() < 0.20 + tiefe * 0.5) neu[y][x] = T.TREE;
+    }
+  }
+  a.map = neu; a.w = nw; a.h = nh;
+  // West-Salzstraße (lag bei y=30..31) durch den Wald bis x=0 freilegen
+  for (let x = 0; x < m + 2; x++) { neu[30 + m][x] = T.PATH; neu[31 + m][x] = T.PATH; }
+  // Koordinaten verschieben
+  const dpx = m * TILE;
+  const P = (p?: { x: number; y: number } | null): void => { if (p) { p.x += dpx; p.y += dpx; } };
+  const PL = (l?: Array<{ x: number; y: number }>): void => { if (l) for (const p of l) P(p); };
+  const RT = (r?: { x0: number; y0: number; x1: number; y1: number }): void => {
+    if (r) { r.x0 += m; r.y0 += m; r.x1 += m; r.y1 += m; }
+  };
+  P(a.spawn); P(a.upPos); P(a.downPos); P(a.cryptDoor); P(a.annaGrab);
+  PL(a.torches); PL(a.altars); PL(a.wells); PL(a.chests); PL(a.shrines); PL(a.books);
+  PL(a.notes); PL(a.folios); PL(a.gear); PL(a.ores); PL(a.rocks); PL(a.labels);
+  PL(a.kraeuter); PL(a.baeume); PL(a.chimneys); PL(a.herde); PL(a.kristalle); PL(a.schilder);
+  PL(a.breakables); PL(a.enemySpawns);
+  for (const n of a.npcs) { P(n); P(n.abend); P(n.mittag); }
+  for (const an of a.animals) { P(an); if (an.pen) { an.pen.x0 += dpx; an.pen.y0 += dpx; an.pen.x1 += dpx; an.pen.y1 += dpx; } }
+  for (const d of a.doors ?? []) { d.x += m; d.y += m; }
+  for (const hp of a.hausPlaetze ?? []) RT(hp);
+  RT(a.gehoeft);
+  for (const s of a.special) { s.x += m; s.y += m; }
+}
+
 export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): AreaData {
   const w = 92, h = 60;
   const map = blank(w, h, T.GRASS);
@@ -1174,6 +1226,9 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
     label(46.5, 2.8, 'Palisade');
   }
 
+  // Ravensmoor mit Wald umgeben (Runde 51): erst NACH allem Dorfaufbau, damit
+  // alle Koordinaten in einem Rutsch mitwandern.
+  umgebeMitWald(a, DORF_WALDRAND, rng);
   return a;
 }
 

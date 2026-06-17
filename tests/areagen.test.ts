@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildVillage, buildInterior, buildKirchenschiff, verschiebeHaus, type AreaData } from '../src/world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildVillage, buildInterior, buildKirchenschiff, verschiebeHaus, DORF_WALDRAND, type AreaData } from '../src/world/areagen';
 import { INNENRAEUME } from '../src/data/innenraeume';
 import { VOLK } from '../src/data/dialoge';
 import { SOLID, T } from '../src/world/tiles';
@@ -182,17 +182,20 @@ describe('Krypta-Generator: jeder Spezialraum erreichbar', () => {
   });
 
   it('Stadtmauer: Palisadenring geschlossen, Tore der Salzstraße bleiben offen', () => {
+    // Runde 51: Das Dorf (92x60) liegt jetzt mittig in einer von Wald
+    // umschlossenen Karte; der Palisadenring wandert um DORF_WALDRAND nach innen.
+    const R = DORF_WALDRAND;
     const a = buildVillage(seededRng(7), 0, 1);
     // Ring vorhanden (Stichproben oben/unten/links/rechts)
-    expect(a.map[2][20]).toBe(T.PALISADE);
-    expect(a.map[a.h - 3][20]).toBe(T.PALISADE);
-    expect(a.map[20][2]).toBe(T.PALISADE);
+    expect(a.map[2 + R][20 + R]).toBe(T.PALISADE);
+    expect(a.map[57 + R][20 + R]).toBe(T.PALISADE); // 57 = alte Höhe 60 - 3
+    expect(a.map[20 + R][2 + R]).toBe(T.PALISADE);
     // West- und Ost-Tor (Salzstraße) bleiben begehbar
-    expect(a.map[30][2]).toBe(T.PATH);
-    expect(a.map[30][a.w - 3]).toBe(T.PATH);
+    expect(a.map[30 + R][2 + R]).toBe(T.PATH);
+    expect(a.map[30 + R][89 + R]).toBe(T.PATH); // 89 = alte Breite 92 - 3
     // Ohne Mauer keine Palisade
     const b = buildVillage(seededRng(7), 0, 0);
-    expect(b.map[2][20]).not.toBe(T.PALISADE);
+    expect(b.map[2 + R][20 + R]).not.toBe(T.PALISADE);
   });
 
   it('Innenräume: Tür vorhanden, Möbel im Raum, Dorf-Türen zeigen auf echte Stuben', () => {

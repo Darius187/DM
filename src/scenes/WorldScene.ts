@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir } from '../world/Enemy';
-import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildInterior, verschiebeHaus, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
@@ -2805,11 +2805,14 @@ export class WorldScene extends CombatScene {
     this.flags.wurdeBelagert = true; // Runde 41 Fix: schaltet die Palisade beim Schmied frei (fehlte hier)
     this.letzterEinfallTag = this.tag;
     for (const n of this.npcEnts) { n.imHaus = false; n.hp = undefined; n.atkCd = 0; } // Kämpfer wieder frisch
+    // Einfall-Punkte am DORF-Rand (Runde 51: +Waldgürtel-Versatz, das Dorf liegt
+    // jetzt mittig in einer größeren, von Wald umschlossenen Karte).
+    const R = DORF_WALDRAND;
     const punkte = [
       { x: 3.5, y: 30.5 }, { x: 88, y: 30.5 }, { x: 20, y: 3.5 }, { x: 70, y: 3.5 },
       { x: 20, y: 56 }, { x: 70, y: 56 }, { x: 3.5, y: 15 }, { x: 88, y: 45 },
       { x: 46, y: 3.5 }, { x: 46, y: 56 }, { x: 3.5, y: 45 }, { x: 88, y: 15 },
-    ];
+    ].map((p) => ({ x: p.x + R, y: p.y + R }));
     const typen = ['skelett', 'pest', 'wolf', 'lebender_toter', 'schatten'] as const;
     // Räuber NAHE einem Tier/Bewohner einsetzen, damit sie sofort darüber
     // herfallen (das Vieh steht in Gattern am Dorfrand - vom fernen Kartenrand
@@ -2828,7 +2831,7 @@ export class WorldScene extends CombatScene {
         }
         return { x: z.x, y: z.y - 60 };
       }
-      return { x: 46 * TILE, y: 22 * TILE };
+      return { x: (46 + R) * TILE, y: (22 + R) * TILE };
     };
     for (let i = 0; i < 32; i++) {
       const raeuber = i % 2 === 0;
@@ -2839,7 +2842,7 @@ export class WorldScene extends CombatScene {
       // statt nur den Helden zu suchen - und sind flinker als die fliehende Beute.
       if (raeuber) { e.jagdZiel = { x: e.x, y: e.y }; e.speed *= 1.4; }
     }
-    const champ = this.spawnEnemy('schatten', EINFALL.tiefe + 2, 46 * TILE, 5 * TILE, true);
+    const champ = this.spawnEnemy('schatten', EINFALL.tiefe + 2, (46 + R) * TILE, (5 + R) * TILE, true);
     champ.champion = true;
     champ.name = 'Vorbote des Krieges';
     champ.maxhp = Math.round(champ.maxhp * 3);
@@ -4086,8 +4089,9 @@ export class WorldScene extends CombatScene {
   }
 
   private checkTriggers(): void {
-    // Zurück in den Dunkelwald: Westrand der Salzstraße (Runde 15)
-    if (this.area.id === 'village' && this.px < 1.6 * TILE && this.py > 29 * TILE && this.py < 32.5 * TILE) {
+    // Zurück in den Dunkelwald: Westrand der Salzstraße (Runde 15; Runde 51:
+    // die Straße läuft jetzt durch den Waldgürtel bis an den neuen Kartenrand).
+    if (this.area.id === 'village' && this.px < 1.6 * TILE && this.py > (29 + DORF_WALDRAND) * TILE && this.py < (32.5 + DORF_WALDRAND) * TILE) {
       const wald = this.getArea('wald');
       this.goArea('wald', { x: (wald.w - 3) * TILE, y: (wald.downPos?.y ?? 13 * TILE) });
       return;
@@ -4097,7 +4101,7 @@ export class WorldScene extends CombatScene {
       // blenden filmisch ein, während man weiterläuft
       const erstesMal = !this.flags.nAnkunft;
       this.flags.nAnkunft = true;
-      this.goArea('village', { x: 3 * TILE, y: 30.5 * TILE });
+      this.goArea('village', { x: 3 * TILE, y: (30.5 + DORF_WALDRAND) * TILE });
       if (erstesMal) {
         this.logMsg(MELDUNGEN.start, '');
         ERZAEHLER.ankunft.forEach((zeile, i) => {
