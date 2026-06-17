@@ -1699,14 +1699,22 @@ export class WorldScene extends CombatScene {
     // Wasser merken: die Varianten laufen als Animation durch (Runde 13)
     if (id === T.WATER) {
       this.wasserBilder.push({ img, variant });
-      // Tiefenwirkung (Runde 31, Vorbild): dunkler Saum an der Oberkante
-      // des Beckens - das Ufer wirft optisch einen Schatten ins Wasser
-      if (a.map[ty - 1]?.[tx] !== T.WATER) {
-        tag(this.add.rectangle(tx * TILE, ty * TILE, TILE, 7, 0x06121e, 0.5).setOrigin(0).setDepth(-9) as unknown as Phaser.GameObjects.Image);
-      }
-      if (a.map[ty + 1]?.[tx] !== T.WATER) {
-        tag(this.add.rectangle(tx * TILE, (ty + 1) * TILE - 4, TILE, 4, 0x9ab8d0, 0.18).setOrigin(0).setDepth(-9) as unknown as Phaser.GameObjects.Image);
-      }
+      // Ufer-Tiefe an ALLEN vier Seiten (Runde 51, Autorbug "Fluss geht nahtlos
+      // in Rasen über"): an jeder Land-Kante ein dunkler Schatten-Saum INNEN im
+      // Wasser (Ufer fällt ab) + eine helle Wasserlinie an der Kante - so liest
+      // sich die Tiefe. Vorher nur Ober-/Unterkante (Bach läuft aber senkrecht).
+      const bx = tx * TILE, by = ty * TILE;
+      const land = (nx: number, ny: number): boolean => a.map[ny]?.[nx] !== T.WATER;
+      const saum = (rx: number, ry: number, rw: number, rh: number): void => {
+        tag(this.add.rectangle(rx, ry, rw, rh, 0x06121e, 0.5).setOrigin(0).setDepth(-9) as unknown as Phaser.GameObjects.Image);
+      };
+      const linie = (rx: number, ry: number, rw: number, rh: number): void => {
+        tag(this.add.rectangle(rx, ry, rw, rh, 0x9ec4dc, 0.3).setOrigin(0).setDepth(-9) as unknown as Phaser.GameObjects.Image);
+      };
+      if (land(tx, ty - 1)) { saum(bx, by, TILE, 8); linie(bx, by, TILE, 2); }
+      if (land(tx, ty + 1)) { saum(bx, by + TILE - 8, TILE, 8); linie(bx, by + TILE - 2, TILE, 2); }
+      if (land(tx - 1, ty)) { saum(bx, by, 8, TILE); linie(bx, by, 2, TILE); }
+      if (land(tx + 1, ty)) { saum(bx + TILE - 8, by, 8, TILE); linie(bx + TILE - 2, by, 2, TILE); }
     }
     // Wege: die Karrenspuren der Grafik laufen senkrecht - waagerechte
     // Wegstücke werden gedreht, sonst sieht "nach rechts" aus wie
