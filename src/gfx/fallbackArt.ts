@@ -214,8 +214,13 @@ function drawHeldWeapon(ctx: CanvasRenderingContext2D, w: NonNullable<FigureSpec
   }
 }
 
-// Vierbeiner (Wolf, Ratte, Schwein, Kuh, Hund)
-export interface QuadSpec { body: string; head: string; size: number; tail?: boolean; ears?: boolean; spots?: string }
+// Vierbeiner (Wolf, Ratte, Schwein, Kuh, Hund, Pferd)
+// mane = Mähne (Pferd), horns = Hörner (Kuh), snout = helles Maul (Kuh),
+// longHead/longTail geben Pferd die längere Schnauze und den fließenden Schweif.
+export interface QuadSpec {
+  body: string; head: string; size: number; tail?: boolean; ears?: boolean; spots?: string;
+  mane?: string; horns?: string; snout?: string; longHead?: boolean; longTail?: boolean;
+}
 export function drawQuadruped(ctx: CanvasRenderingContext2D, q: QuadSpec, dir: Dir, frame: number): void {
   ctx.fillStyle = `rgba(0,0,0,${gfxConfig.shadowAlpha})`;
   ctx.beginPath();
@@ -248,13 +253,21 @@ function drawQuadrupedParts(ctx: CanvasRenderingContext2D, q: QuadSpec, dir: Dir
     p(ctx, bx + 3, by + bh, 1, legLen + legB, shade(q.body, -28));
     p(ctx, bx + bw - 4, by + bh, 1, legLen + legA, shade(q.body, -28));
   }
-  // Kopf
+  // Kopf - Pferd bekommt eine längere Schnauze (longHead), Kuh einen breiteren
+  const hw = q.longHead ? 4 : 3;
   const hx = bx + bw - 1, hy = by - 1;
-  p(ctx, hx, hy, 3, 3, q.head);
+  // Mähne (Pferd): dunkler Streifen am Nacken hinter dem Kopf und auf der Stirn
+  if (q.mane) { p(ctx, hx - 1, hy - 1, 1, 4, q.mane); p(ctx, hx, hy - 1, 1, 1, q.mane); }
+  p(ctx, hx, hy, hw, 3, q.head);
+  p(ctx, hx, hy, hw, 1, shade(q.head, 12)); // Lichtkante auf dem Kopf
   if (q.ears) { p(ctx, hx, hy - 1, 1, 1, q.head); p(ctx, hx + 2, hy - 1, 1, 1, q.head); }
-  p(ctx, hx + 2, hy + 1, 1, 1, '#1a0e08');
-  // Schwanz
-  if (q.tail) p(ctx, bx - 1, by, 1, 2, shade(q.body, -14));
+  // Hörner (Kuh): helle Stummel oben an den Kopfecken
+  if (q.horns) { p(ctx, hx, hy - 1, 1, 1, q.horns); p(ctx, hx + 2, hy - 1, 1, 1, q.horns); }
+  // helles Maul (Kuh) bzw. Nüstern vorn an der Schnauze
+  if (q.snout) p(ctx, hx + hw - 1, hy + 1, 1, 2, q.snout);
+  p(ctx, hx + 1, hy + 1, 1, 1, '#1a0e08'); // Auge
+  // Schwanz - Pferd hat einen langen, fließenden Schweif
+  if (q.tail) p(ctx, bx - 1, by - (q.longTail ? 1 : 0), 1, q.longTail ? 5 : 2, shade(q.body, -14));
   ctx.restore();
 }
 
@@ -341,10 +354,12 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   huhn:      { chicken: true },
   schwein:   { quad: { body: '#d8a8a0', head: '#cc9a90', size: 0.9, tail: true } },
   schaf:     { quad: { body: '#e8e2d4', head: '#3a3026', size: 0.9, tail: true, ears: true } },
-  kuh:       { quad: { body: '#e0d8c8', head: '#d0c8b8', size: 1.3, tail: true, ears: true, spots: '#3a3026' } },
+  // Kuh (Runde 51, Autorwunsch "mehr nach Kuh"): Hörner, helles Maul, Flecken
+  kuh:       { quad: { body: '#e8e0d2', head: '#d8d0c0', size: 1.3, tail: true, spots: '#3a3026', horns: '#efe7d0', snout: '#d0a8a0' } },
   hund:      { quad: { body: '#7a6244', head: '#6a5438', size: 0.8, tail: true, ears: true } },
   // size 1,35: mehr passt samt Umriss-Kontur nicht ins 32er-Raster
-  pferd:     { quad: { body: '#6a4a30', head: '#5a3e28', size: 1.35, tail: true, ears: true } },
+  // Pferd (Runde 51, Autorwunsch "besser zeichnen"): Mähne, lange Schnauze, Schweif
+  pferd:     { quad: { body: '#7a5230', head: '#6a4628', size: 1.35, tail: true, ears: true, mane: '#39271a', longHead: true, longTail: true } },
   // Lebender Toter (Runde 32): sieht aus wie ein Bewohner - nur die
   // glühend roten Augen verraten ihn
   lebender_toter: { tunic: '#6a6254', skin: '#cabfa8', hair: '#4a4036', legs: '#3e3a30', weapon: null },
