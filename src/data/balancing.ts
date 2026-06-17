@@ -177,5 +177,17 @@ export const BRAND_TICK_S = 0.5;
 // den lernbaren Fähigkeiten (ABILITIES), sind aber immer "bereit".
 export const ROLLEN_ZAUBER = ['gewitter', 'eisregen', 'feuerwand', 'feuerwalze', 'windstoss'] as const;
 
+// Zaubertexte, die als seltene Foliant-Schriftrollen (10 Anwendungen) in
+// Bücherregalen der Krypta liegen können (Runde 50, Autorwunsch "Bücher sind
+// seltene Rollen mit 10x"). Thematisch arkane Flächenzauber.
+export const BUCH_ZAUBER: ReadonlyArray<{ id: string; name: string }> = [
+  { id: 'gewitter', name: 'Gewitter' },
+  { id: 'eisregen', name: 'Eisregen' },
+  { id: 'feuerwand', name: 'Feuerwand' },
+  { id: 'feuerwalze', name: 'Feuerwalze' },
+  { id: 'windstoss', name: 'Windstoß' },
+  { id: 'heiligesLicht', name: 'Heiliges Licht' },
+];
+
 // Ende: Annehmen gibt +30 max. Leben (Referenz: 3 Elixiere a 10)
 export const RELIC_ACCEPT_ELIXIRS = 3;

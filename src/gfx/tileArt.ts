@@ -426,12 +426,43 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       for (const yy of [3, 15, 27]) { ctx.fillRect(3, yy, 1.6, 1.6); ctx.fillRect(TILE - 4, yy, 1.6, 1.6); }
       break;
     }
-    case 'regal': {
+    case 'regal': case 'regal_geleert': case 'regal_leer': {
+      // Bücherregal in drei Zuständen (Runde 50): voll / durchsucht / leer.
+      // Holzkorpus mit zwei Fächern; je nach Zustand stehen Bücher, ein paar
+      // Reste mit Lücken, oder nur Staub und ein Spinnennetz.
       ctx.fillStyle = '#2e2114'; ctx.fillRect(0, 0, TILE, TILE);
-      ctx.fillStyle = '#1a1108'; ctx.fillRect(2, 4, TILE - 4, 9); ctx.fillRect(2, 18, TILE - 4, 9);
-      const bc = ['#7a3030', '#3a5a7a', '#6a6a3a', '#5a3a6a', '#7a5a2a'];
-      for (let i = 0; i < 5; i++) { ctx.fillStyle = bc[(i + n) % 5]; ctx.fillRect(4 + i * 5, 5, 3.5, 7); }
-      for (let i = 0; i < 5; i++) { ctx.fillStyle = bc[(i + n + 2) % 5]; ctx.fillRect(4 + i * 5, 19, 3.5, 7); }
+      // Korpus-Rahmen + Maserung
+      ctx.fillStyle = '#3c2c18'; ctx.fillRect(1, 1, TILE - 2, 2); ctx.fillRect(1, 1, 2, TILE - 2); ctx.fillRect(TILE - 3, 1, 2, TILE - 2); ctx.fillRect(1, TILE - 3, TILE - 2, 2);
+      ctx.fillStyle = 'rgba(255,236,196,0.06)'; ctx.fillRect(2, 2, TILE - 4, 1);
+      // zwei Fachböden (dunkle Nischen)
+      ctx.fillStyle = '#160e06'; ctx.fillRect(3, 4, TILE - 6, 9); ctx.fillRect(3, 18, TILE - 6, 9);
+      ctx.fillStyle = '#231708'; ctx.fillRect(3, 12, TILE - 6, 1.5); ctx.fillRect(3, 26, TILE - 6, 1.5); // Bretter
+      if (name === 'regal') {
+        // VOLL: dicht stehende, farbige Buchrücken
+        const bc = ['#7a3030', '#3a5a7a', '#6a6a3a', '#5a3a6a', '#7a5a2a', '#46603a'];
+        for (let i = 0; i < 5; i++) { ctx.fillStyle = bc[(i + n) % 6]; ctx.fillRect(4 + i * 5, 5, 3.6, 7); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(4 + i * 5, 5, 3.6, 1); }
+        for (let i = 0; i < 5; i++) { ctx.fillStyle = bc[(i + n + 3) % 6]; ctx.fillRect(4 + i * 5, 19, 3.6, 7); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(4 + i * 5, 19, 3.6, 1); }
+      } else if (name === 'regal_geleert') {
+        // DURCHSUCHT: nur noch ein paar schief stehende/liegende Bücher, Lücken
+        const bc = ['#6a3030', '#3a4a6a', '#5a5a30'];
+        // oberes Fach: zwei aufrechte Reste links, Rest leer
+        ctx.fillStyle = bc[n % 3]; ctx.fillRect(4, 5, 3.4, 7);
+        ctx.fillStyle = bc[(n + 1) % 3]; ctx.fillRect(8, 6, 3, 6); // leicht gekippt wirkend (kürzer)
+        // ein liegendes Buch quer
+        ctx.fillStyle = bc[(n + 2) % 3]; ctx.fillRect(15, 10, 9, 2.4);
+        // unteres Fach: ein einzelnes Buch + umgekipptes
+        ctx.fillStyle = bc[(n + 1) % 3]; ctx.fillRect(22, 19, 3.4, 7);
+        ctx.fillStyle = bc[n % 3]; ctx.fillRect(5, 24, 8, 2.4);
+        // Staub
+        ctx.fillStyle = 'rgba(120,108,84,0.12)'; ctx.fillRect(3, 11, TILE - 6, 1.5); ctx.fillRect(3, 25, TILE - 6, 1.5);
+      } else {
+        // LEER: nackte Fächer, etwas Staub und ein Spinnennetz in der Ecke
+        ctx.fillStyle = 'rgba(120,108,84,0.10)'; ctx.fillRect(3, 11, TILE - 6, 1.5); ctx.fillRect(3, 25, TILE - 6, 1.5);
+        ctx.strokeStyle = 'rgba(200,196,180,0.18)'; ctx.lineWidth = 0.6;
+        ctx.beginPath(); ctx.moveTo(TILE - 4, 4); ctx.lineTo(TILE - 11, 4); ctx.moveTo(TILE - 4, 4); ctx.lineTo(TILE - 4, 11);
+        ctx.moveTo(TILE - 4, 4); ctx.lineTo(TILE - 9, 9); ctx.moveTo(TILE - 9, 4.5); ctx.lineTo(TILE - 4.5, 9); ctx.stroke();
+        ctx.lineWidth = 1;
+      }
       break;
     }
     case 'treppe_ab': case 'treppe_auf':
@@ -572,7 +603,7 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
 // die Y-Sortierung: der Boden liegt separat darunter (Masterprompt 5.1).
 export const STANDING_OBJECTS = new Set([
   'baum', 'fels', 'grabstein', 'brunnen', 'zaun', 'erzader', 'altar',
-  'regal', 'kerzenschrein', 'streckbank', 'streckbank_r', 'kaefig', 'palisade',
+  'regal', 'regal_geleert', 'regal_leer', 'kerzenschrein', 'streckbank', 'streckbank_r', 'kaefig', 'palisade',
   'bett', 'tisch', 'stuhl', 'kamin', 'tresen',
   'kerze', 'wandfackel', 'brennholz', 'kessel',
 ]);

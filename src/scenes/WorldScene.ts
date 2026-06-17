@@ -34,7 +34,7 @@ import { WASSER_FRAMES } from '../gfx/tileArt';
 import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64, drawSchlucht, drawKristall } from '../gfx/detailArt';
 import { DialogUI, fixUiScroll } from '../ui/dialog';
 import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, RELIKT, ENDEN, TOD, INTRO_FILM } from '../data/texte';
-import { ALTAR, BLOOD_WELL, CHEST, RELIC_ACCEPT_ELIXIRS, ABILITY_FX } from '../data/balancing';
+import { ALTAR, BLOOD_WELL, CHEST, RELIC_ACCEPT_ELIXIRS, ABILITY_FX, BUCH_ZAUBER } from '../data/balancing';
 import { BREAKABLES, BREAKABLE_LOOT, BEINHAUS, CHEST_VERFLUCHT, BOSS_KAMPF } from '../data/krypta';
 import { DEATH, SHRINE, PHYSIK, BREAKABLE_MASSE, PLAYER } from '../data/kampf';
 import { TEMPLERKLINGE, BOSS_GOLD } from '../data/items';
@@ -1738,6 +1738,15 @@ export class WorldScene extends CombatScene {
   }
 
   private loadAreaObjects(a: AreaData): void {
+    // Schon durchsuchte Regale VOR dem Zeichnen auf den "durchsucht"-Zustand
+    // setzen (Runde 50), damit sie auch nach Speichern/Laden leer aussehen.
+    for (const b of a.books) {
+      const key = `regal_${a.id}_${Math.round(b.x)}_${Math.round(b.y)}`;
+      if (this.flags[key]) {
+        const tx = Math.floor(b.x / TILE), ty = Math.floor(b.y / TILE);
+        if (a.map[ty]?.[tx] === T.SHELF) a.map[ty][tx] = T.SHELF_GELEERT;
+      }
+    }
     // Tiles als statische Bilder (Pseudo-3D, Masterprompt 5.1)
     for (let ty = 0; ty < a.h; ty++) {
       for (let tx = 0; tx < a.w; tx++) {
@@ -2567,14 +2576,15 @@ export class WorldScene extends CombatScene {
         return { text: `Opferaltar - ${ik} zum Beten`, action: () => this.useAltar(al) };
       }
     }
-    // Bücherregal - durchsuchte Regale melden sich leer (Runde 17)
+    // Bücherregal - durchsuchte Regale melden sich leer und sehen auch leer aus
+    // (Runde 50: Regal wechselt sichtbar auf den "durchsucht"-Zustand)
     for (const b of this.area.books) {
       if (near(b.x, b.y + 16, 52)) {
         const key = `regal_${this.area.id}_${Math.round(b.x)}_${Math.round(b.y)}`;
         if (this.flags[key]) {
           return { text: 'Bücherregal (durchsucht)', action: () => this.logMsg('Hier steht nichts Brauchbares mehr - nur Staub.', '') };
         }
-        return { text: `Bücher - ${ik} zum Stöbern`, action: () => { this.flags[key] = true; this.readBook(); } };
+        return { text: `Bücher - ${ik} zum Stöbern`, action: () => { this.flags[key] = true; this.leereRegal(b); this.readBook(); } };
       }
     }
     // Käfige aufbrechen (Folterkammer)
@@ -3124,16 +3134,28 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // Ein durchsuchtes Regal sichtbar leeren (Runde 50): T.SHELF -> T.SHELF_GELEERT
+  private leereRegal(b: { x: number; y: number }): void {
+    const tx = Math.floor(b.x / TILE), ty = Math.floor(b.y / TILE);
+    if (this.area.map[ty]?.[tx] === T.SHELF) {
+      this.area.map[ty][tx] = T.SHELF_GELEERT;
+      this.refreshTile(tx, ty);
+    }
+  }
+
   private readBook(): void {
     this.dialog.show('Bücherregal', [pick(this.rng, BUECHER)]);
-    // Stöbern lohnt sich gelegentlich (Feedback-Runde 2)
+    // Bücher SIND seltene Schriftrollen mit vielen Anwendungen (Runde 50,
+    // Autorwunsch): selten findet sich ein dicker Foliant voller Zaubertext -
+    // eine seltene Rolle mit 10 Anwendungen. Sonst etwas Kleingeld/nichts.
     const r = Math.random();
-    if (r < 0.15) {
+    if (r < 0.18) {
+      const skill = pick(this.rng, BUCH_ZAUBER);
+      this.p.inv.push({ kind: 'scroll', name: `Foliant: ${skill.name}`, rarity: 2, val: 0, boni: [], scrollSkill: skill.id, stack: 10 });
+      this.logMsg(`Ein seltener Zauberfoliant (${skill.name}, 10 Anwendungen) lag im Regal!`, 'magic');
+    } else if (r < 0.40) {
       this.pickups.add({ kind: 'gold', amt: ri(this.rng, 4, 14), x: this.px + 10, y: this.py + 10, bob: 0 });
       this.logMsg('Zwischen den Seiten: ein paar Münzen', 'gold');
-    } else if (r < 0.23) {
-      this.p.inv.push({ kind: 'scroll', name: 'Zauberrolle: Heiliges Licht', rarity: 1, val: 0, boni: [], scrollSkill: 'heiligesLicht', stack: 5 });
-      this.logMsg('Eine Zauberrolle lag im Regal!', 'magic');
     }
   }
 

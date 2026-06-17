@@ -24,11 +24,15 @@ export const T = {
   // Rechte Hälfte der Streckbank (Runde 50): die Folterbank steht über ZWEI
   // Kacheln, RACK = linke Hälfte, RACK_R = rechte Hälfte.
   RACK_R: 49,
+  // Bücherregal-Zustände (Runde 50): SHELF = voll, SHELF_GELEERT = durchsucht
+  // (ein paar Reste), SHELF_LEER = von vornherein leer (Deko-Abwechslung).
+  SHELF_GELEERT: 50, SHELF_LEER: 51,
 } as const;
 export type TileId = (typeof T)[keyof typeof T];
 
 export const SOLID = new Set<number>([
   T.HWALL, T.TREE, T.CWALL, T.WALL, T.GRAVE, T.WELL, T.ALTAR, T.SHELF,
+  T.SHELF_GELEERT, T.SHELF_LEER,
   T.SHRINE, T.ORE, T.ROCK, T.RACK, T.RACK_R, T.CAGE, T.WATER, T.FENCE, T.PALISADE, T.TOR,
   T.BETT, T.TISCH, T.KAMIN, T.TRESEN, T.BRENNHOLZ, T.KESSEL, T.CRACK,
   T.ABYSS, // bodenloser Schacht - wie Wasser unbegehbar (BRUECKE führt hinüber)
@@ -47,7 +51,8 @@ const NAME: Record<number, string> = {
   [T.GRASS]: 'gras', [T.PATH]: 'weg', [T.TREE]: 'baum', [T.CDOOR]: 'kirchentuer',
   [T.FLOOR]: 'krypta_boden', [T.STAIR]: 'treppe_ab', [T.STAIRUP]: 'treppe_auf',
   [T.GRAVE]: 'grabstein', [T.BURNT]: 'brandstelle', [T.WELL]: 'brunnen',
-  [T.ALTAR]: 'altar', [T.SHELF]: 'regal', [T.BONES]: 'knochen', [T.BLOOD]: 'blut',
+  [T.ALTAR]: 'altar', [T.SHELF]: 'regal', [T.SHELF_GELEERT]: 'regal_geleert', [T.SHELF_LEER]: 'regal_leer',
+  [T.BONES]: 'knochen', [T.BLOOD]: 'blut',
   [T.RUNE]: 'rune', [T.SHRINE]: 'kerzenschrein', [T.ORE]: 'erzader', [T.ROCK]: 'fels',
   [T.RACK]: 'streckbank', [T.RACK_R]: 'streckbank_r', [T.CAGE]: 'kaefig',
   [T.WATER]: 'wasser', [T.FIELD]: 'acker', [T.FENCE]: 'zaun', [T.PALISADE]: 'palisade',

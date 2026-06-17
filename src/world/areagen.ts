@@ -353,14 +353,20 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
     a.special.push({ id: 'altar', x: r.cx, y: r.cy, raum: 'Opferaltar' });
   }
 
-  // Bibliothek: Regalreihe, anklickbare Bücher, vergilbter Foliant
+  // Bibliothek: Regalreihe, anklickbare Bücher, vergilbter Foliant.
+  // Manche Regale stehen von vornherein LEER (Deko-Abwechslung), volle Regale
+  // bekommen einen durchsuchbaren Bücher-Eintrag (Runde 50).
   {
     const r = takeRoom();
     if (r) {
       for (let x = r.x; x < r.x + r.w; x++) {
         if (x % 2 === 0 && map[r.y][x] === T.FLOOR) {
-          map[r.y][x] = T.SHELF;
-          a.books.push({ x: x * TILE + 16, y: r.y * TILE + 16 });
+          if (rng.random() < 0.25) {
+            map[r.y][x] = T.SHELF_LEER; // leeres Regal, nichts zu holen
+          } else {
+            map[r.y][x] = T.SHELF;
+            a.books.push({ x: x * TILE + 16, y: r.y * TILE + 16 });
+          }
         }
       }
       a.folios.push({ x: r.cx * TILE + 16, y: (r.cy + 1) * TILE });
