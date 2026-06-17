@@ -115,9 +115,30 @@ function drawWeapon(ctx: CanvasRenderingContext2D, it: Item, rar: Rarity): void 
     ctx.beginPath(); ctx.moveTo(4, -20); ctx.lineTo(4, 20); ctx.stroke();
     rarityGem(ctx, -4, 0, 3, rar);
   } else if (cls === 'stab') {
-    ctx.fillStyle = m.griff; ctx.fillRect(-2.5, -10, 5, 34);
-    ctx.fillStyle = m.klinge; ctx.beginPath(); ctx.arc(0, -16, 7, 0, 6.283); ctx.fill();
-    rarityGem(ctx, 0, -16, 4.5, rar);
+    // Zauberstab (Runde 50: vorher ein 'Lutscher' - Stiel mit Kugel). Jetzt ein
+    // konischer Holzschaft mit Lederwicklung am Griff und einem in einer
+    // Krallen-Fassung leuchtenden Kristall, dessen Farbe die Seltenheit zeigt.
+    ctx.fillStyle = m.griff;
+    ctx.beginPath(); ctx.moveTo(-2.5, 24); ctx.lineTo(2.5, 24); ctx.lineTo(1.5, -8); ctx.lineTo(-1.5, -8); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = shade(m.griff, 16); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, 22); ctx.lineTo(0, -6); ctx.stroke();
+    // Lederwicklung am Griff
+    ctx.fillStyle = shade(m.klinge, -24);
+    for (let k = 0; k < 4; k++) ctx.fillRect(-3.5, 6 + k * 4, 7, 2.4);
+    // Krallen-Fassung (drei Zacken) hält den Kristall
+    ctx.strokeStyle = shade(m.klinge, 6); ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-1.5, -8); ctx.lineTo(-6, -15);
+    ctx.moveTo(1.5, -8); ctx.lineTo(6, -15);
+    ctx.moveTo(0, -9); ctx.lineTo(0, -16);
+    ctx.stroke();
+    // leuchtender Kristall (Raute), Farbe nach Seltenheit
+    const kristall = rar >= 3 ? '#f0a83a' : rar >= 2 ? '#b06ae8' : '#7ac0e8';
+    ctx.fillStyle = kristall;
+    ctx.beginPath(); ctx.moveTo(0, -28); ctx.lineTo(7, -18); ctx.lineTo(0, -8); ctx.lineTo(-7, -18); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.beginPath(); ctx.moveTo(0, -25); ctx.lineTo(4, -18); ctx.lineTo(0, -12); ctx.lineTo(-4, -18); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(-1.2, -20, 2.4, 2.4);
   }
 }
 

@@ -194,9 +194,15 @@ function drawHeldWeapon(ctx: CanvasRenderingContext2D, w: NonNullable<FigureSpec
       p(ctx, x, 5 + bob, 1, 5, '#6a5430');
       break;
     case 'stab':
-      p(ctx, x, 0 + bob, 1, 11, '#6a4a2a');       // langer Holzstab
-      p(ctx, x - 1, 0 + bob, 3, 2, '#56d0e0');    // leuchtender Kristall
-      p(ctx, x - 1, 0 + bob, 1, 1, '#c8f6ff');    // Glanzpunkt
+      // Zauberstab (Runde 50): Holzschaft mit Zierring und einem in zwei Krallen
+      // gefassten Rauten-Kristall statt eines flachen Klotzes ('Mops'-Optik).
+      p(ctx, x, 1 + bob, 1, 10, '#5a3c22');       // Holzschaft
+      p(ctx, x, 6 + bob, 1, 1, '#9a7a44');        // Zierring am Schaft
+      p(ctx, x - 1, 0 + bob, 1, 1, '#9a8a6a');    // linke Kralle
+      p(ctx, x + 1, 0 + bob, 1, 1, '#9a8a6a');    // rechte Kralle
+      p(ctx, x, -1 + bob, 1, 3, '#a85ce0');       // Kristall senkrecht
+      p(ctx, x - 1, 0 + bob, 3, 1, '#a85ce0');    // Kristall waagerecht
+      p(ctx, x, 0 + bob, 1, 1, '#e8c8ff');        // Glanzpunkt
       break;
     case 'bogen':
       ctx.strokeStyle = '#7a5c34';
