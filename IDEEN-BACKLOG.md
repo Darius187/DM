@@ -23,6 +23,13 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [x] Anhöhe-DEMO gebaut (Menü -> ANHÖHE-PROBE): gefakte Höhe (Klippe + Schatten
       + Rampe + Schnee-Plateau). Echte Berg-Level später daraus.
 - [ ] Schneegebiet im NORDWESTEN auf einem Berg - Rückzugsort des ganzen Dorfes.
+- [ ] Handlung (Etappen bis zum Kloster, siehe LORE-IDEEN.md 1b):
+      (a) Dorf zurückerobern -> Vorräte sammeln -> Aufbruch.
+      (b) Totes Dorf (Monster haben gewütet, alle Einwohner tot).
+      (c) Monster-Lager mit Kasernen (Reihenfolge b/c noch offen).
+      (d) weitere Etappen -> Kloster (Finale, Quelle des Feldzugs).
+      Warum: Kloster schickt Truppen Richtung Burg des Fürsten; Ravensmoor
+      liegt als Engpass im Weg -> wird zuerst eingenommen.
 
 ## Anfang / Quests
 - [ ] Anfangsquests vor dem Kirchen-Abstieg: Holzfäller-Lager säubern (wilde

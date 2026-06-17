@@ -14,6 +14,25 @@ Hier wird gesammelt und ergänzt. **Etabliert** = steht so im Spiel/Masterprompt
 - Nach dem Boss: der Krieg gegen die Lebenden beginnt, Gräber öffnen sich,
   Monster-Einfälle aufs Dorf. Ein "Fürst" zieht im Hintergrund die Fäden.
 
+## 1b. Handlung / WARUM das Ganze (Autor-Plan, Runde 51)
+Der rote Faden - warum das Dorf angegriffen wird und wohin die Reise geht:
+- Im **KLOSTER** braut sich etwas zusammen. Von dort führen die feindlichen
+  Truppen (die Untoten/Monster) einen **Eroberungsfeldzug** gegen das Land.
+- Erstes großes Ziel ist der **FÜRST** - seine **Burg**. Um dorthin zu gelangen,
+  müssen die Truppen **durch Ravensmoor** (strategischer Engpass an der
+  Salzstraße). DARUM wird das Dorf zuerst eingenommen - es liegt im Weg.
+- Der Held holt beim **Fürsten Verstärkung** (die Soldaten, die ihm übergeben
+  werden) und **nimmt das Dorf zurück**. Danach **sammelt man die Vorräte** und
+  bricht **Richtung Kloster** auf.
+- Der Weg zum Kloster geht über **mehrere Etappen**:
+  1. Ein **anderes Dorf**, in dem die Monster bereits gewütet haben - alle
+     Einwohner getötet (Geister-/Schlachtfeld-Stimmung).
+  2. Ein **Monster-LAGER** mit **Kasernen** und allem (vom Feind errichtet) -
+     Reihenfolge (vor/nach dem toten Dorf) noch offen.
+  3. ... weitere Etappen bis zum **Kloster (Finale)**.
+- Kurz: Kloster = Quelle/Kopf des Feldzugs. Dorf = Engpass auf dem Weg zur Burg.
+  Held = Schlachtenführer, der den Spieß umdreht und bis ins Kloster vordringt.
+
 ## 2. Weltstruktur (Idee - in Arbeit)
 Ziel: **Gefühl einer lebendigen, weitläufigen Welt**, nicht nur ein kleiner
 Abschnitt. Der Held läuft erst eine **lange Strecke durch den Wald** bis ins Dorf.
