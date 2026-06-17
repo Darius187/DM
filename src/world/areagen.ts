@@ -301,57 +301,64 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
     }
   }
 
-  // Folterkammer (Ebene 1 und 3): Streckbank, Käfige, aufgebrochener Käfig
+  // Folterkammer-TRAKT (Ebene 1, 3, 4) - Runde 50, Autorwunsch "Folterkammer als
+  // EIGENER Raumabschnitt mit Instrumenten + mehr Blut": ein abgegrenzter Trakt -
+  // oben der Instrumentenraum (Eiserne Jungfrau, 2-Kachel-Streckbank, Kohlebecken
+  // mit Glut), in der Mitte der quer durchlaufende Eingangsgang, darunter ein
+  // Zellenblock mit BEGEHBAREN Zellen (offene Zellentore). Passt der Trakt nicht
+  // (Kartenrand/Treppe), fällt es auf eine einzelne Folterkammer zurück.
   if (n === 1 || n === 3 || n === 4) {
     const r = takeRoom();
     if (r) {
-      // Streckbank über ZWEI Kacheln (Runde 50): linke + rechte Hälfte. Passt
-      // die rechte Hälfte nicht ins Zimmer, eine Kachel nach links rücken.
-      const rackX = r.cx + 1 <= r.x + r.w - 1 ? r.cx : r.cx - 1;
-      map[r.cy][rackX] = T.RACK;
-      map[r.cy][rackX + 1] = T.RACK_R;
-      // Begehbare Zelle (Runde 50, Autorwunsch "Türen/Zellen als begehbare
-      // Eingänge, kein Laden"): eine Gitterreihe (r.y+1) mit einem OFFENEN
-      // Zellentor in der Mitte trennt einen Zellenstreifen (r.y) vom Raum ab -
-      // man geht durch das Tor HINEIN, dahinter (in der Zelle) steht die Beute.
-      let zelleGebaut = false;
-      if (r.h >= 4 && r.w >= 4) {
-        const by = r.y + 1, gx = r.cx;
-        let ok = true;
-        for (const x of [r.cx - 1, r.cx, r.cx + 1]) if (map[r.y]?.[x] !== T.FLOOR || map[by]?.[x] !== T.FLOOR) ok = false;
-        if (ok) {
-          for (const x of [r.cx - 1, r.cx, r.cx + 1]) map[by][x] = (x === gx) ? T.ZELLENTOR : T.CAGE;
-          a.chests.push({ x: gx * TILE + 16, y: r.y * TILE + 16, open: false, selten: true });
-          zelleGebaut = true;
+      const X = r.cx - 3, E = r.cy; // Gang-Spalte = r.cx, Eingangsreihe = r.cy
+      const innerhalb = X >= 1 && X + 6 <= w - 2 && E - 4 >= 1 && E + 5 <= h - 2;
+      const treppeDrin = (start.cx >= X && start.cx <= X + 6 && start.cy >= E - 4 && start.cy <= E + 5)
+        || (far.cx >= X && far.cx <= X + 6 && far.cy >= E - 4 && far.cy <= E + 5);
+      if (innerhalb && !treppeDrin) {
+        // Eingangsgang quer durch den Trakt (verbindet ihn nach beiden Seiten)
+        carve(map, X, E, X + 6, E, T.FLOOR);
+        // Instrumentenraum oben (5x4): Eiserne Jungfrau, Streckbank (2 Kacheln),
+        // Kohlebecken mit warmem Glut-Licht, viel Blut
+        carve(map, X + 1, E - 4, X + 5, E - 1, T.FLOOR);
+        map[E - 3][X + 1] = T.IRONMAIDEN;
+        map[E - 3][X + 2] = T.RACK; map[E - 3][X + 3] = T.RACK_R;
+        map[E - 3][X + 5] = T.KOHLEBECKEN;
+        a.torches.push({ x: (X + 5) * TILE + 16, y: (E - 3) * TILE + 12, ph: rnd(rng, 0, 6.28) });
+        for (let i = 0; i < 8; i++) {
+          const bx = X + ri(rng, 1, 5), by = E - ri(rng, 1, 2);
+          if (map[by]?.[bx] === T.FLOOR) map[by][bx] = T.BLOOD;
         }
-      }
-      if (!zelleGebaut) {
+        // Zellenblock unten: schmaler Gefängnisgang (Spalte X+3) mit je zwei
+        // begehbaren Zellen links und rechts (offenes Zellentor als Eingang)
+        carve(map, X + 3, E + 1, X + 3, E + 5, T.FLOOR);
+        const zellen = [
+          { ix: X + 1, iy: E + 2, gx: X + 2 }, { ix: X + 5, iy: E + 2, gx: X + 4 },
+          { ix: X + 1, iy: E + 4, gx: X + 2 }, { ix: X + 5, iy: E + 4, gx: X + 4 },
+        ];
+        for (const z of zellen) { map[z.iy][z.ix] = T.FLOOR; map[z.iy][z.gx] = T.ZELLENTOR; }
+        // Beute in einer Zelle, ein gefangenes Wesen in einer anderen
+        a.chests.push({ x: zellen[0].ix * TILE + 16, y: zellen[0].iy * TILE + 16, open: false, selten: true });
+        if (a.scareBudget > 0) {
+          a.scareBudget--;
+          a.enemySpawns.push({ type: 'pest', x: zellen[3].ix * TILE + 16, y: zellen[3].iy * TILE + 16, elite: false });
+        }
+        a.notes.push({ x: (X + 3) * TILE + 16, y: (E - 1) * TILE + 8, idx: 4 });
+        a.special.push({ id: 'folterkammer', x: r.cx, y: E, raum: 'Folterkammer' });
+      } else {
+        // Fallback: einzelne Folterkammer im Raum r (zu nah am Rand/an der Treppe)
+        const rackX = r.cx + 1 <= r.x + r.w - 1 ? r.cx : r.cx - 1;
+        map[r.cy][rackX] = T.RACK; map[r.cy][rackX + 1] = T.RACK_R;
+        const jX = r.x + 1, jY = r.y + r.h - 1;
+        if (map[jY]?.[jX] === T.FLOOR) map[jY][jX] = T.IRONMAIDEN;
+        const bX = r.x + r.w - 2, bY = r.y + r.h - 1;
+        if (map[bY]?.[bX] === T.FLOOR) { map[bY][bX] = T.KOHLEBECKEN; a.torches.push({ x: bX * TILE + 16, y: bY * TILE + 12, ph: rnd(rng, 0, 6.28) }); }
+        for (const [cx, cy] of [[r.x + r.w - 1, r.y], [r.x, r.y + r.h - 1]] as Array<[number, number]>) if (map[cy]?.[cx] === T.FLOOR) map[cy][cx] = T.CAGE;
+        for (let i = 0; i < 8; i++) { const bx = r.cx + ri(rng, -3, 3), by = r.cy + ri(rng, -2, 2); if (map[by]?.[bx] === T.FLOOR) map[by][bx] = T.BLOOD; }
         a.chests.push({ x: (r.x + r.w - 2) * TILE + 16, y: (r.y + r.h - 2) * TILE + 16, open: false, selten: true });
+        a.notes.push({ x: (r.cx + 1) * TILE + 8, y: (r.cy + 1) * TILE + 8, idx: 4 });
+        if (a.scareBudget > 0) { a.scareBudget--; a.enemySpawns.push({ type: 'pest', x: r.x * TILE + 48, y: r.y * TILE + 48, elite: false }); }
+        a.special.push({ id: 'folterkammer', x: r.cx, y: r.cy, raum: 'Folterkammer' });
       }
-      // weitere Käfige als Deko in den übrigen Ecken
-      const cages: Array<[number, number]> = [[r.x + r.w - 1, r.y], [r.x, r.y + r.h - 1]];
-      for (const [cx, cy] of cages) if (map[cy][cx] === T.FLOOR) map[cy][cx] = T.CAGE;
-      // Folterinstrumente (Runde 50, Autorwunsch "Folterkammer mit Instrumenten +
-      // mehr Blut"): Eiserne Jungfrau an der einen, Kohlebecken (mit Glut-Licht)
-      // an der anderen Wand. Beide nur setzen, wo wirklich Boden frei ist.
-      const jungfrauX = r.x + 1, jungfrauY = r.y + r.h - 1;
-      if (map[jungfrauY]?.[jungfrauX] === T.FLOOR) map[jungfrauY][jungfrauX] = T.IRONMAIDEN;
-      const beckenX = r.x + r.w - 2, beckenY = r.y + r.h - 1;
-      if (map[beckenY]?.[beckenX] === T.FLOOR) {
-        map[beckenY][beckenX] = T.KOHLEBECKEN;
-        a.torches.push({ x: beckenX * TILE + 16, y: beckenY * TILE + 12, ph: rnd(rng, 0, 6.28) });
-      }
-      // mehr Blut in der Folterkammer (8 statt 4 Spritzer)
-      for (let i = 0; i < 8; i++) {
-        const bx = r.cx + ri(rng, -3, 3), by = r.cy + ri(rng, -2, 2);
-        if (map[by]?.[bx] === T.FLOOR) map[by][bx] = T.BLOOD;
-      }
-      a.notes.push({ x: (r.cx + 1) * TILE + 8, y: (r.cy + 1) * TILE + 8, idx: 4 });
-      if (a.scareBudget > 0) {
-        a.scareBudget--;
-        a.enemySpawns.push({ type: 'pest', x: r.x * TILE + 48, y: r.y * TILE + 48, elite: false });
-      }
-      a.special.push({ id: 'folterkammer', x: r.cx, y: r.cy, raum: 'Folterkammer' });
     }
   }
 
