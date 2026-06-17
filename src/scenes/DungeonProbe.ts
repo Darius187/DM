@@ -15,6 +15,7 @@
 
 import Phaser from 'phaser';
 import { baueLogischenDungeon, type DRaum, type Zelle } from '../world/logischerDungeon';
+import { baueHoehle } from '../world/hoehlenDungeon';
 import { buildCrypt } from '../world/areagen';
 import { seededRng } from '../logic/rng';
 import { T, SOLID } from '../world/tiles';
@@ -40,7 +41,7 @@ export class DungeonProbe extends Phaser.Scene {
   private uiLayer!: Phaser.GameObjects.Container;
   private spieler!: Phaser.GameObjects.Container;
   private karte!: ProbeKarte;
-  private version: 1 | 3 = 3;
+  private version: 1 | 3 | 4 = 4;
   private modus: 'uebersicht' | 'begehen' = 'uebersicht';
   private px = 0; private py = 0; // Spielerposition (Weltpixel) im Begehen-Modus
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -51,7 +52,7 @@ export class DungeonProbe extends Phaser.Scene {
 
   create(): void {
     // Szenen-Neustart nutzt DIESELBE Instanz: jedes Feld zurücksetzen (Regel 9).
-    this.version = 3;
+    this.version = 4;
     this.modus = 'uebersicht';
     this.cameras.main.setBackgroundColor('#0a0908');
     this.cameras.main.fadeIn(300, 0, 0, 0);
@@ -73,8 +74,20 @@ export class DungeonProbe extends Phaser.Scene {
 
   // --- Generatoren ----------------------------------------------------------
   private generiere(): void {
-    this.karte = this.version === 3 ? this.karteV3() : this.karteV1();
+    this.karte = this.version === 4 ? this.karteV4() : this.version === 3 ? this.karteV3() : this.karteV1();
     if (this.modus === 'begehen') this.betrete(); else this.zeigeUebersicht();
+  }
+
+  private karteV4(): ProbeKarte {
+    const d = baueHoehle(Math.random);
+    // 0 Fels · 1 Höhlenboden · 2 Tür · 3 Raumboden (deutlich abgesetzt = "Raum")
+    const farben: Record<number, number> = { 0: 0x14110c, 1: 0x39322a, 2: 0x8a5a2a, 3: 0x5a6076 };
+    return {
+      name: `V4 - Höhle mit ${d.raeume} begehbaren Räumen`,
+      w: d.w, h: d.h, grid: d.grid,
+      solid: (t) => t === 0,
+      farbe: (t) => farben[t] ?? 0x39322a,
+    };
   }
 
   private karteV3(): ProbeKarte {
@@ -201,9 +214,10 @@ export class DungeonProbe extends Phaser.Scene {
     };
     knopf(24, 'NEU WÜRFELN', () => this.generiere());
     knopf(168, 'BEGEHEN / ÜBERSICHT', () => { if (this.modus === 'uebersicht') this.betrete(); else this.zeigeUebersicht(); });
-    knopf(390, 'V1 Krypta', () => { this.version = 1; this.generiere(); });
-    knopf(500, 'V3 Hallen', () => { this.version = 3; this.generiere(); });
-    knopf(610, 'MENÜ', () => this.scene.start('Title'));
+    knopf(380, 'V1 Krypta', () => { this.version = 1; this.generiere(); });
+    knopf(486, 'V3 Hallen', () => { this.version = 3; this.generiere(); });
+    knopf(592, 'V4 Höhle', () => { this.version = 4; this.generiere(); });
+    knopf(700, 'MENÜ', () => this.scene.start('Title'));
     this.uiLayer.add(this.add.text(this.scale.width / 2, 22, 'DUNGEON-PROBE - Generatoren testen (ansehen ODER begehen)', {
       fontFamily: 'serif', fontSize: '18px', color: '#d8cfb8', stroke: '#000', strokeThickness: 3,
     }).setOrigin(0.5));

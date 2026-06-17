@@ -23,12 +23,15 @@ verbunden sind ("unterteilte Halle wie Diablo 1"), mit Haupthalle, Hallen,
 Kammern und Elite-Themenräumen (Blut/Bein/Folter). Vom Autor abgenommen und als
 **Version 3 gesichert** - Kandidat fürs **Kloster** (Finale).
 
-## V4 - Höhle mit begehbaren Räumen (ZIEL, noch zu bauen)
-Was der Autor eigentlich will: wie das organische Höhlen-Beispiel (dgnB), ABER
-in den Hohlräumen liegen noch echte, begehbare RÄUME (im Screenshot rot
-markiert; weitere nur mit Punkten angedeutet). Also: organische Kavernen +
-eingelassene rechteckige Räume, alles zu Fuß erreichbar.
-STATUS: noch zu bauen. Wenn fertig, kommt sie als V4 in die DUNGEON-PROBE.
+## V4 - Höhle mit begehbaren Räumen — GEBAUT
+`src/world/hoehlenDungeon.ts` (`baueHoehle`). Wie das organische Höhlen-Beispiel
+(dgnB): zellulärer Automat erzeugt eine Diablo-1-artige Kaverne; danach werden
+in die offenen Hohlräume eingelassene, begehbare RÄUME gesetzt (rechteckige
+Insel-Räume mit Wänden + EINER Tür, um die man herumläuft und durch die man
+hineingeht). Alles zu Fuß erreichbar (Reachability über 20 Läufe getestet,
+~9 Räume). In der DUNGEON-PROBE als "V4 Höhle" ansehbar UND begehbar.
+OFFEN: später in den echten Höhlen-/Minen-Generator übernehmen, Requisiten/
+Beute/Themen ergänzen.
 
 ---
 
