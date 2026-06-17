@@ -169,11 +169,6 @@ export class WorldScene extends CombatScene {
     // (sonst friert das Spiel nach Pause -> Hauptmenü -> Laden ein).
     this.areas.clear();
     this.flags = {};
-    this.reitIntro = false; // Reit-Eröffnung sauber zurücksetzen (Instanz-Reuse)
-    this.reitPferd?.destroy();
-    this.reitPferd = null;
-    this.reitSkipHint?.destroy();
-    this.reitSkipHint = null;
     this.bossDead = false;
     this.bossPhase = 0;
     this.bossRueckzug = null;
@@ -357,13 +352,14 @@ export class WorldScene extends CombatScene {
 
   // --- Intro-Film (Runde 12) -------------------------------------------------
 
-  private reitSkipHint: Phaser.GameObjects.Text | null = null;
-
+  // Eröffnung (Runde 51): die Reitszene (Held reitet auf dem Pferd durch den
+  // Wald) wurde auf Autorwunsch ENTFERNT - Pferd/Reiter sahen schlecht aus und
+  // der erzwungene Ritt in gerader Linie fühlte sich nicht gut an. Es bleibt nur
+  // der ruhige Titel-Einblender; der Held ist von Anfang an frei steuerbar und
+  // läuft selbst durch den Wald nach Ravensmoor.
   private startIntroFilm(): void {
     this.sfx.playMusic('musik_intro');
-    this.reitIntro = true; // der Held reitet PC-gesteuert durch den Wald
     const w = this.scale.width, h = this.scale.height;
-    // Titel groß, Ein- und Ausblenden wie im Film
     const titel = this.add.text(w / 2, h * 0.3, 'RAVENSMOOR', {
       fontFamily: 'serif', fontSize: '72px', color: '#d8cfb8', letterSpacing: 10,
       stroke: '#000000', strokeThickness: 8,
@@ -377,10 +373,9 @@ export class WorldScene extends CombatScene {
       targets: [titel, unter], alpha: 0, duration: 1600, delay: 5200, ease: 'Sine.In',
       onComplete: () => { titel.destroy(); unter.destroy(); },
     });
-    // Geschichte zeilenweise, während man läuft
+    // Geschichte zeilenweise, während man selbst durch den Wald läuft
     INTRO_FILM.forEach((zeile, i) => {
       this.time.delayedCall(7500 + i * 9500, () => {
-        // Position folgt dem DIALOGRAHMEN-Griff aus dem UI-Modus (Runde 20)
         const off = getSettings().ui.dialog;
         const t = this.add.text(w / 2 + off.x, h - 170 + off.y, zeile, {
           fontFamily: 'serif', fontSize: '19px', color: '#e0d4b4', fontStyle: 'italic',
@@ -395,29 +390,6 @@ export class WorldScene extends CombatScene {
         }
       });
     });
-    // Überspringen erlauben - nach kurzer Verzögerung, damit kein Startklick durchschlägt
-    this.time.delayedCall(2500, () => {
-      if (!this.reitIntro) return;
-      this.reitSkipHint = this.add.text(w - 20, h - 24, 'Klick: Vorspann überspringen', {
-        fontFamily: 'serif', fontSize: '13px', color: '#9a8a6a',
-      }).setOrigin(1, 1).setScrollFactor(0).setDepth(5900);
-      this.input.once('pointerdown', () => this.skipReitIntro());
-    });
-  }
-
-  // Vorspann überspringen: bis ans Waldende reiten, checkTriggers schaltet ins Dorf
-  private skipReitIntro(): void {
-    if (!this.reitIntro || this.area.id !== 'wald') return;
-    this.px = (this.area.w - 2.4) * TILE;
-  }
-
-  // Reit-Eröffnung beenden: Pferd und Hinweis entfernen, Steuerung freigeben
-  private endeReitIntro(): void {
-    this.reitIntro = false;
-    this.reitPferd?.destroy();
-    this.reitPferd = null;
-    this.reitSkipHint?.destroy();
-    this.reitSkipHint = null;
   }
 
   // --- Wetter und Stimmung (Runde 12) -----------------------------------------
@@ -4114,7 +4086,6 @@ export class WorldScene extends CombatScene {
     if (this.area.id === 'wald' && this.px > (this.area.w - 2.5) * TILE) {
       // Ankunft (Runde 20): KEIN blockierender Dialog mehr - die Zeilen
       // blenden filmisch ein, während man weiterläuft
-      if (this.reitIntro) this.endeReitIntro(); // Ritt am Waldrand beenden
       const erstesMal = !this.flags.nAnkunft;
       this.flags.nAnkunft = true;
       this.goArea('village', { x: 3 * TILE, y: 30.5 * TILE });

@@ -66,9 +66,6 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   playerSprite!: Phaser.GameObjects.Sprite;
   playerHitFlash = 0;
   playerDead = false;
-  // Reit-Eröffnung (Runde 34): der Held reitet PC-gesteuert durch den Wald
-  protected reitIntro = false;
-  protected reitPferd: Phaser.GameObjects.Sprite | null = null;
 
   enemies: Enemy[] = [];
   projectiles: Projectile[] = [];
@@ -2455,13 +2452,6 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   // Reit-Eröffnung: ruhiger, cineastischer Ritt nach rechts (ohne Kollision),
   // mit leichtem Wippen. Endet, wenn der Held den Waldrand erreicht (checkTriggers).
-  protected updateReitIntro(dt: number): void {
-    this.pdir = 0; // nach rechts
-    this.px += PLAYER.speed * 0.9 * dt;
-    this.pstepT += dt;
-    if (this.pstepT > 0.1) { this.pstepT = 0; this.pstep = (this.pstep + 1) % 4; }
-  }
-
   // Gegner auseinanderdrücken (geteilt von Normal- und Todes-Schleife)
   private separateEnemies(): void {
     const en = this.enemies;
@@ -2542,14 +2532,6 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.renderEntities();
       return dt;
     }
-    // Reit-Eröffnung: keine Eingabe, der Held reitet von selbst nach rechts
-    if (this.reitIntro) {
-      this.updateReitIntro(dt);
-      this.fx.update(dt);
-      this.renderEntities();
-      return dt;
-    }
-
     // Kampfzustand fortschreiben; gepufferte Angriffe feuern hier
     const step = stepCombat(this.combat, dt);
     if (step.attack) this.executeAttack(step.attack);
@@ -2972,22 +2954,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Tot: der Leichnam-Tween (beginDeathScene) hält die Pose - NICHT mehr über
     // zeichneHeld überschreiben. Die Gegner werden unten weiter gezeichnet.
     if (!this.playerDead) {
-      // Spieler (im Reit-Intro auf dem Pferd, sonst normal)
-      if (this.reitIntro) {
-        const bob = Math.sin(time * 7) * 1.5; // Wippen des Ritts
-        if (!this.reitPferd) this.reitPferd = this.add.sprite(this.px, this.py, '__DEFAULT');
-        this.reitPferd.setVisible(true).setPosition(this.px, this.py + 6 + bob).setScale(1.45).setDepth(this.py);
-        this.provider.applyFigure(this.reitPferd, 'pferd', angleToDir(this.pdir), this.pstep);
-        this.playerSprite.setPosition(this.px - 2, this.py - 15 + bob).setDepth(this.py + 1);
-        this.zeichneHeld(angleToDir(this.pdir), this.pstep);
-        this.playerSprite.clearTint();
-      } else {
-        this.reitPferd?.setVisible(false);
-        this.playerSprite.setPosition(this.px, this.py).setDepth(this.py);
-        const moving = this.keysDown['w'] || this.keysDown['a'] || this.keysDown['s'] || this.keysDown['d']
-          || this.keysDown['arrowup'] || this.keysDown['arrowdown'] || this.keysDown['arrowleft'] || this.keysDown['arrowright'];
-        this.zeichneHeld(angleToDir(this.pdir), moving ? this.pstep : 0);
-      }
+      // Spieler normal zeichnen (Reit-Eröffnung entfernt, Runde 51 - Autorwunsch)
+      this.playerSprite.setPosition(this.px, this.py).setDepth(this.py);
+      const moving = this.keysDown['w'] || this.keysDown['a'] || this.keysDown['s'] || this.keysDown['d']
+        || this.keysDown['arrowup'] || this.keysDown['arrowdown'] || this.keysDown['arrowleft'] || this.keysDown['arrowright'];
+      this.zeichneHeld(angleToDir(this.pdir), moving ? this.pstep : 0);
       if (this.playerHitFlash > 0) this.playerSprite.setTintFill(0xffffff);
       else this.playerSprite.clearTint();
     }
