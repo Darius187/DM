@@ -8,12 +8,17 @@ import { storage } from '../logic/gameStorage';
 import { getSettings } from '../logic/settings';
 
 export class TitleScene extends Phaser.Scene {
+  // Alle sichtbaren Elemente liegen in EINEM Container, damit das Layout bei
+  // jeder Größenänderung komplett neu aufgebaut werden kann (Risiko-Checkliste
+  // 9.5: ein fertiges Layout passt sich nicht von selbst an - das Hauptmenü ist
+  // die erlaubte Stelle für Resize-Neuaufbau).
+  private layout?: Phaser.GameObjects.Container;
+
   constructor() {
     super('Title');
   }
 
   create(): void {
-    const w = this.scale.width, h = this.scale.height;
     // Menü-Musik (Runde 12): läuft im Hauptmenü, endet beim Spielstart.
     // stopByKey statt get().stop(): jedes create() legte sonst eine NEUE
     // Instanz an und die alte spielte ins Spiel hinein (Runde 15)
@@ -31,35 +36,57 @@ export class TitleScene extends Phaser.Scene {
     };
     if (this.sound.locked) this.sound.once(Phaser.Sound.Events.UNLOCKED, starteMenueMusik);
     else starteMenueMusik();
+
+    // Bei jeder Fenster-/Canvas-Größenänderung das Menü NEU aufbauen - sonst
+    // sitzen Titel und Knöpfe bei einer anderen Größe verschoben/abgeschnitten
+    // (gemeldeter Fehler: Titelbild rechts, Knöpfe rechts abgeschnitten).
+    this.scale.on('resize', this.buildLayout, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.sound.off(Phaser.Sound.Events.UNLOCKED, starteMenueMusik);
       this.sound.stopByKey('snd_musik_menue');
+      this.scale.off('resize', this.buildLayout, this);
     });
 
+    this.buildLayout();
+  }
+
+  // Baut das gesamte Menü-Layout für die AKTUELLE Größe auf (Erstaufbau + Resize).
+  private buildLayout(): void {
+    this.layout?.destroy();
+    const w = this.scale.width, h = this.scale.height;
+    const c = this.add.container(0, 0);
+    this.layout = c;
+
+    // Hintergrund: Hot-Swap-Titelbild deckend skaliert, sonst Vektor-Fallback
     if (this.textures.exists('hs_ravensmoor-title')) {
       const img = this.add.image(w / 2, h / 2, 'hs_ravensmoor-title');
       const sc = Math.max(w / img.width, h / img.height);
       img.setScale(sc).setAlpha(0.55);
+      c.add(img);
     } else {
-      this.drawFallbackBackground(w, h);
+      c.add(this.drawFallbackBackground(w, h));
     }
-    this.add.rectangle(w / 2, h / 2, w, h, 0x080503, 0.45);
+    c.add(this.add.rectangle(w / 2, h / 2, w, h, 0x080503, 0.45));
 
-    this.add.text(w / 2, h * 0.2, TITEL.haupt, {
+    // Titel - skaliert herunter, falls er für schmale Fenster zu breit ist
+    const titel = this.add.text(w / 2, h * 0.16, TITEL.haupt, {
       fontFamily: 'serif', fontSize: '64px', color: '#d8cfb8', letterSpacing: 8,
       stroke: '#000000', strokeThickness: 6,
     }).setOrigin(0.5);
+    if (titel.width > w - 40) titel.setScale((w - 40) / titel.width);
+    c.add(titel);
+
     // Sichtbare Versionsnummer, damit alte Stände sofort auffallen
-    this.add.text(10, h - 10, 'Stand: Feedback-Runde 34 (14.06.2026)', {
+    c.add(this.add.text(10, h - 10, 'Stand: Runde 51 (17.06.2026)', {
       fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c',
-    }).setOrigin(0, 1);
-    this.add.text(w / 2, h * 0.2 + 52, TITEL.unter, {
+    }).setOrigin(0, 1));
+    c.add(this.add.text(w / 2, h * 0.16 + 46, TITEL.unter, {
       fontFamily: 'serif', fontSize: '18px', color: '#c9a227', letterSpacing: 4,
-    }).setOrigin(0.5);
-    this.add.text(w / 2, h * 0.38, TITEL.intro, {
+    }).setOrigin(0.5));
+    c.add(this.add.text(w / 2, h * 0.30, TITEL.intro, {
       fontFamily: 'serif', fontSize: '17px', color: '#a89878', fontStyle: 'italic',
       wordWrap: { width: Math.min(640, w - 60) }, align: 'center',
-    }).setOrigin(0.5, 0);
+    }).setOrigin(0.5, 0));
 
     // Dev-Werkzeug: ?start=crypt2 springt direkt in ein Gebiet (nur Dev-Build)
     const devStart = import.meta.env.DEV ? new URLSearchParams(location.search).get('start') ?? undefined : undefined;
@@ -74,10 +101,14 @@ export class TitleScene extends Phaser.Scene {
       ['ANHÖHE-PROBE', () => this.scene.start('AnhoeheProbe'), true],
       ['REIT-PROBE', () => this.scene.start('ReitProbe'), true],
     ];
-    let y = h * 0.62;
+    // Knopf-Abstand so wählen, dass ALLE Knöpfe in die Höhe passen (sonst lief
+    // die untere Reihe aus dem Bild) - der Bereich von 50% bis 96% der Höhe.
+    const top = h * 0.50, bottom = h * 0.96;
+    const step = Math.min(52, (bottom - top) / buttons.length);
+    let y = top + step / 2;
     for (const [label, fn, enabled] of buttons) {
-      this.makeButton(w / 2, y, label, fn, enabled);
-      y += 56;
+      this.makeButton(c, w / 2, y, label, fn, enabled, w);
+      y += step;
     }
   }
 
@@ -119,11 +150,13 @@ export class TitleScene extends Phaser.Scene {
     c.add(back);
   }
 
-  private makeButton(x: number, y: number, label: string, fn: () => void, enabled: boolean): void {
-    const bg = this.add.rectangle(x, y, 280, 44, 0x1c1410, 1).setStrokeStyle(1, 0x5a4a32);
+  private makeButton(c: Phaser.GameObjects.Container, x: number, y: number, label: string, fn: () => void, enabled: boolean, w: number): void {
+    const bw = Math.min(280, w - 40);
+    const bg = this.add.rectangle(x, y, bw, 40, 0x1c1410, 1).setStrokeStyle(1, 0x5a4a32);
     const txt = this.add.text(x, y, label, {
       fontFamily: 'serif', fontSize: '18px', color: enabled ? '#d8cfb8' : '#5a5246', letterSpacing: 3,
     }).setOrigin(0.5);
+    c.add(bg); c.add(txt);
     if (!enabled) { bg.setAlpha(0.5); return; }
     bg.setInteractive({ useHandCursor: true })
       .on('pointerover', () => { bg.setStrokeStyle(1, 0xc9a227); txt.setColor('#c9a227'); })
@@ -132,7 +165,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   // Atmosphärischer Fallback: Kirche im Nebel als Vektorszene
-  private drawFallbackBackground(w: number, h: number): void {
+  private drawFallbackBackground(w: number, h: number): Phaser.GameObjects.Graphics {
     const g = this.add.graphics();
     // Bleierner Himmel
     g.fillGradientStyle(0x14181e, 0x14181e, 0x0a0806, 0x0a0806, 1);
@@ -166,5 +199,6 @@ export class TitleScene extends Phaser.Scene {
       g.fillStyle(0xb4bec8, 0.05);
       g.fillEllipse(w * (0.15 + i * 0.18), base - 14 - (i % 2) * 26, 280, 60);
     }
+    return g;
   }
 }
