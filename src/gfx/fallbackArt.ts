@@ -315,6 +315,9 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   // Szene zusätzlich halbtransparent gerendert und gleitet (kein Hüpfen).
   schatten:  { tunic: '#0c0a14', skin: '#0a0812', hair: '#08060f', legs: '#070510', weapon: null, glow: '#1a1026', augen: '#e84860' },
   templer:   { tunic: '#6a6258', skin: '#8a8278', hair: '#3a3430', legs: '#4a443c', weapon: 'schwert', hat: '#56504a', scale: 1.5, ritter: true },
+  // Soldaten des Fürsten (Runde 51, Schlacht-Prototyp): Blau-Stahl, gepanzert
+  soldat:    { tunic: '#3a4a6a', skin: '#c8b090', hair: '#2a2018', legs: '#2a3242', hat: '#6a6d74', weapon: 'schwert', ritter: true },
+  bogensoldat: { tunic: '#3a4a6a', skin: '#c8b090', hair: '#2a2018', legs: '#2a3242', hat: '#5a6068', weapon: 'bogen' },
   wolf:      { quad: { body: '#4a4440', head: '#3c3834', size: 1, tail: true, ears: true } },
   ratte:     { quad: { body: '#5a4a3a', head: '#4c3e30', size: 0.6, tail: true } },
   heinrich:  { tunic: '#7a4a2a', skin: '#c8b090', hair: '#4a3a26', legs: '#3a2c1c' },
