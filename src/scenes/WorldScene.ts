@@ -24,7 +24,7 @@ import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDL
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER } from '../data/crafting';
-import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, WAREN_NAMEN } from '../data/wirtschaft';
+import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, goldSchmelzen, WAREN_NAMEN } from '../data/wirtschaft';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, tageszeitLabel } from '../data/welt';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
@@ -2615,7 +2615,7 @@ export class WorldScene extends CombatScene {
     for (const o of this.area.ores) {
       if (near(o.x, o.y + 16, 40)) {
         const name = goldAder ? 'Goldader' : 'Erzader';
-        return { text: this.p.tools.spitzhacke ? `${name} - ${ik} zum Abbauen` : `${name} - Spitzhacke nötig (Schmied)`, action: () => this.mine(o, goldAder ? 'gold' : 'eisen') };
+        return { text: this.p.tools.spitzhacke ? `${name} - ${ik} zum Abbauen` : `${name} - Spitzhacke nötig (Schmied)`, action: () => this.mine(o, goldAder ? 'golderz' : 'eisen') };
       }
     }
     for (const o of this.area.rocks) {
@@ -3317,6 +3317,7 @@ export class WorldScene extends CombatScene {
     this.verarbeite(VERARBEITUNG.backhaus.ein, VERARBEITUNG.backhaus.aus, VERARBEITUNG.backhaus.menge);
     this.verarbeite(VERARBEITUNG.muehle.ein, VERARBEITUNG.muehle.aus, VERARBEITUNG.muehle.menge);
     this.schmelze(VERARBEITUNG.schmelze.einEisen, VERARBEITUNG.schmelze.einKohle, VERARBEITUNG.schmelze.aus, VERARBEITUNG.schmelze.menge);
+    this.schmelzeGold();
     // 3) Abgabe an den Fürsten, wenn fällig.
     if (this.tag >= this.naechsteAbgabe) {
       this.leisteAbgabe();
@@ -3330,6 +3331,12 @@ export class WorldScene extends CombatScene {
     if (menge <= 0) return;
     this.dorfLager[ein] = (this.dorfLager[ein] ?? 0) - menge;
     this.dorfLager[aus] = (this.dorfLager[aus] ?? 0) + menge;
+  }
+
+  // Gold-Schmelze: Golderz aus der Goldhöhle -> Gold in die Dorfkasse (Krieg).
+  // Golderz ist kein Geld; der Schmied macht es im Tagestakt zu Gold.
+  private schmelzeGold(): void {
+    this.dorfkasse += goldSchmelzen(this.dorfLager);
   }
 
   // Schmelze: 2 Eisen + 1 Kohle -> 1 Barren, begrenzt durch Vorrat und Tagesleistung.
@@ -4040,20 +4047,20 @@ export class WorldScene extends CombatScene {
     });
   }
 
-  private mine(o: { x: number; y: number }, what: 'eisen' | 'stein' | 'gold'): void {
+  private mine(o: { x: number; y: number }, what: 'eisen' | 'stein' | 'golderz'): void {
     if (!this.p.tools.spitzhacke) {
       this.sfx.play('fehler');
       return;
     }
     this.sfx.play('stein_hacken');
-    this.fx.burst(o.x, o.y, what === 'gold' ? 0xf0c850 : 0x8a8e96, what === 'gold' ? 12 : 8, 120);
-    if (what === 'gold') {
-      // Goldader (Goldhöhle): liefert direkt Gold - der Stoff, mit dem das Dorf
-      // den Fürsten bezahlt (Krieg). Mehr Ausbeute als Erz/Fels.
-      const amt = ri(this.rng, 5, 12);
-      this.p.gold += amt;
-      this.sfx.play('muenzen');
-      this.logMsg(`+${amt} Gold aus der Goldader`, 'gold');
+    this.fx.burst(o.x, o.y, what === 'golderz' ? 0xf0c850 : 0x8a8e96, what === 'golderz' ? 12 : 8, 120);
+    if (what === 'golderz') {
+      // Held sichert, Bewohner schürfen (Autorentscheid Runde 51): der Held bricht
+      // nur EIN wenig Golderz heraus - und es ist KEIN Geld. Es wandert ins Dorf-
+      // Lager, wo die Schmelze über die Tage Gold daraus macht (Abgabe-Kreislauf).
+      const amt = ri(this.rng, 1, 2);
+      this.dorfLager['golderz'] = (this.dorfLager['golderz'] ?? 0) + amt;
+      this.logMsg(`+${amt} Golderz fürs Dorf - die Schmelze macht über die Tage Gold daraus`, 'gold');
     } else {
       const amt = ri(this.rng, 1, what === 'eisen' ? 2 : 3);
       this.p.materials[what] += amt;

@@ -22,9 +22,23 @@ export const VERARBEITUNG = {
   schmelze: { wer: 'schmied', einEisen: 2, einKohle: 1, aus: 'barren', menge: 2 }, // Schmied: Eisen+Kohle -> Barren
 } as const;
 
+// Gold-Schmelze (Runde 51, Autorentscheid "Held sichert, Bewohner schürfen"):
+// Golderz aus der Goldhöhle ist KEIN Geld - der Schmied schmilzt es im Tagestakt
+// zu GOLD in die Dorfkasse (damit zahlt das Dorf die Abgaben an den Fürsten).
+export const GOLD_SCHMELZE = { wer: 'schmied', ein: 'golderz', proErz: 10, menge: 4 } as const;
+
+// Schmilzt bis zu GOLD_SCHMELZE.menge Golderz aus dem Lager zu Gold ein, verringert
+// das Lager und gibt das erzeugte Gold (für die Dorfkasse) zurück. Pure -> testbar.
+export function goldSchmelzen(lager: Record<string, number>): number {
+  const menge = Math.min(GOLD_SCHMELZE.menge, lager['golderz'] ?? 0);
+  if (menge <= 0) return 0;
+  lager['golderz'] -= menge;
+  return menge * GOLD_SCHMELZE.proErz;
+}
+
 // Namen der Wirtschafts-Waren (für Anzeigen), die KEINE Roh-Materialien sind.
 export const WAREN_NAMEN: Record<string, string> = {
-  weizen: 'Weizen', mehl: 'Mehl', brot: 'Brot', barren: 'Eisenbarren',
+  weizen: 'Weizen', mehl: 'Mehl', brot: 'Brot', barren: 'Eisenbarren', golderz: 'Golderz',
 };
 
 // Start-Bestand des Dorf-Lagers (Spielstart).

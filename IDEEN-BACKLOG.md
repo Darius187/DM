@@ -18,8 +18,14 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
       Fischer-NPC am Ufer (evtl.).
 - [x] Pestgrube als Wald-Schauplatz (1635, verbrannte Erde + Grabhügel).
 - [~] Goldhöhle: spielbarer EINGANG im Wald (Höhlenmaul -> kleine Höhle mit
-      Goldadern, die GOLD geben, dünn bewacht, Truhe, Aufgang zurück). Das
-      große eigene Höhlen-Level (Gold für den Fürsten) kommt später daraus.
+      Goldadern, dünn bewacht, Truhe, Aufgang zurück). Das große eigene
+      Höhlen-Level (Gold für den Fürsten) kommt später daraus.
+- [~] Held sichert, Bewohner schürfen (Autorentscheid Runde 51): Goldader gibt
+      GOLDERZ ins Dorf-Lager (kein Sofort-Gold); die Schmelze macht über die
+      Tage Dorfkassen-Gold daraus (Abgabe-Kreislauf). OFFEN/nächster Schritt:
+      das "Sichern" als Mechanik - geräumte Stätten (Holzfäller-Lager,
+      Bergwerk, Goldhöhle) lassen die Arbeiter dort produzieren / steigern die
+      Tagesproduktion (verknüpft mit den Anfangsquests "Stätte säubern").
 - [ ] Kloster als Platzhalter im NORDOSTEN, weit weg (~Halbtagesreise) - dort der
       Showdown; von dort spawnen die Monster Richtung Dorf. Braucht erst die
       verbundene Welt-Struktur (mehrere Gebiete), dann als NO-Endgebiet.
