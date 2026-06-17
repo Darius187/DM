@@ -11,6 +11,7 @@ import { recalc, type PlayerState } from '../logic/playerState';
 import { calcStats, type Stats } from '../logic/progression';
 import { MELDUNGEN } from '../data/texte';
 import { SCHOOLS, ABILITIES, SPELLS } from '../data/balancing';
+import { WEAPON_HAND } from '../data/kampf';
 import { SKILL_ICONS, skillBeschreibung } from '../data/skills';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import type { SoundProvider } from '../gfx/SoundProvider';
@@ -26,8 +27,10 @@ const TYP_NAMEN: Record<string, string> = {
   potion: 'Trank', scroll: 'Zauberrolle', food: 'Proviant', material: 'Material', tool: 'Werkzeug',
 };
 const KLASSEN_NAMEN: Record<string, string> = {
-  schwert: 'Schwert', axt: 'Axt', stange: 'Stangenwaffe', wucht: 'Wuchtwaffe', bogen: 'Bogen', stab: 'Zauberstab',
+  schwert: 'Schwert', axt: 'Axt', stange: 'Stangenwaffe', wucht: 'Kriegshammer', kolben: 'Streitkolben', bogen: 'Bogen', stab: 'Zauberstab',
 };
+// Einhand/Zweihand-Hinweis für die Item-Anzeige (Runde 49)
+const handLabel = (cls?: string): string => WEAPON_HAND[cls ?? 'schwert'] === 'zwei' ? 'Zweihand' : 'Einhand';
 
 // Welche Inventar-Gegenstände sich auf die Aktionsleiste ziehen lassen und
 // welche Leisten-Aktion sie belegen (Runde 40). Schriftrollen waren der
@@ -478,7 +481,7 @@ export class UIPanels {
     c.add(this.scene.add.text(x0 + 40, y + 3, it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
       fontFamily: 'serif', fontSize: '13px', color: RARITY_COLORS[rar],
     }));
-    const typ = it.kind === 'weapon' ? KLASSEN_NAMEN[it.weaponClass ?? 'schwert'] : TYP_NAMEN[it.kind] ?? '';
+    const typ = it.kind === 'weapon' ? `${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} · ${handLabel(it.weaponClass)}` : TYP_NAMEN[it.kind] ?? '';
     const wert = it.kind === 'weapon' ? `${weaponDamageRange(it)} Schaden` : (it.kind === 'armor' || it.kind === 'schild') ? `${it.val + (it.upgrade ?? 0)} Rüstung` : '';
     const grund = this.scene.add.text(x0 + 40, y + 21, `${typ}${wert ? ' · ' + wert : ''}`, {
       fontFamily: 'serif', fontSize: '10.5px', color: '#9a8c6e',
@@ -601,7 +604,7 @@ export class UIPanels {
     this.hideTooltip();
     const p = this.getPlayer();
     const rar = (it.rarity ?? 0) as Rarity;
-    const typ = it.kind === 'weapon' ? `Waffe - ${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']}` : TYP_NAMEN[it.kind] ?? '';
+    const typ = it.kind === 'weapon' ? `Waffe - ${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} (${handLabel(it.weaponClass)})` : TYP_NAMEN[it.kind] ?? '';
     const lines: Array<[string, string]> = [
       [it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), RARITY_COLORS[rar]],
       [`${RARITY_NAMES[rar]}${typ ? ' · ' + typ : ''}`, '#8a7a5a'],

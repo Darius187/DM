@@ -14,7 +14,7 @@ import {
   newCombatState, inputLight, inputHeavy, inputRoll, inputBlockStart, inputBlockEnd,
   stepCombat, resolveIncoming, damageAfterArmor, blockedDamage, type CombatState, type AttackEvent,
 } from '../logic/combat';
-import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TIMESCALE, WEAPON_MOVESETS, GORE_WUCHT, KNOCKBACK, PHYSIK, PFEIL_PHYSIK } from '../data/kampf';
+import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TIMESCALE, WEAPON_MOVESETS, GORE_WUCHT, KNOCKBACK, WEAPON_HAND, NAHKAMPF, PHYSIK, PFEIL_PHYSIK } from '../data/kampf';
 import { ALTAR, SPELLS, SPELL_FX, SCHOOLS } from '../data/balancing';
 import { newPlayerState, recalc, weaponGem, aktiveWaffe, type PlayerState } from '../logic/playerState';
 import { addSchoolUse } from '../logic/progression';
@@ -956,10 +956,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   protected tryBlockStart(): void {
     const wc = this.weaponClass();
-    if (wc === 'bogen' || wc === 'stab') {
+    // Zweihand-Waffen lassen KEINEN Schild/Block zu (Runde 49): keine Hand frei.
+    if (WEAPON_HAND[wc] === 'zwei') {
       if (this.time.now > this.blockHinweisT) {
         this.blockHinweisT = this.time.now + 2000;
-        this.logMsg(wc === 'bogen' ? 'Mit dem Bogen blockst du nicht - weich aus (Rolle)!' : 'Mit dem Zauberstab blockst du nicht - weich aus (Rolle)!', 'bad');
+        const txt = wc === 'bogen' ? 'Mit dem Bogen blockst du nicht - weich aus (Rolle)!'
+          : wc === 'stab' ? 'Mit dem Zauberstab blockst du nicht - weich aus (Rolle)!'
+          : 'Zweihandwaffe - keine Hand für den Schild frei. Weich aus (Rolle)!';
+        this.logMsg(txt, 'bad');
       }
       return;
     }
@@ -1068,10 +1072,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.combat.recoverT = WEAPON_MOVESETS.wucht.recoverS;
       return;
     }
-    if (cls === 'axt' && ev.type === 'light' && ev.isFinisher) {
-      this.spinAttack(ev.dmgMult * 1.0);
-      return;
-    }
+    // Axt & Streitkolben (Runde 49): Einhand, schwingen wie das Schwert -
+    // kurze Reichweite, Axt schärfer (mehr Schaden), Kolben mit Hammer-lite-
+    // Stoß. Kein eigener 360°-Wirbel mehr (das ist die Fähigkeit Rundumschlag).
     this.meleeArcAttack(ev, ang);
   }
 
@@ -1114,8 +1117,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const fin = ev.isFinisher;
     const heavy = ev.type === 'heavy';
     const st = this.swingStyle();
+    // Klassen-Feinwerte (Runde 49): Axt/Kolben kürzer, Axt schärfer
+    const nk = NAHKAMPF[this.weaponClass()] ?? NAHKAMPF.schwert;
     // Reichweite/Schwung-Breite im F10 justierbar (Runde 22)
-    const range = (heavy ? HEAVY_ATTACK.range : (fin ? LIGHT_ATTACK.rangeFinisher : LIGHT_ATTACK.range)) * TUNING.spielerReichweite;
+    const range = (heavy ? HEAVY_ATTACK.range : (fin ? LIGHT_ATTACK.rangeFinisher : LIGHT_ATTACK.range)) * TUNING.spielerReichweite * nk.reich;
     const arc = (heavy ? HEAVY_ATTACK.arc : (fin ? LIGHT_ATTACK.arcFinisher : LIGHT_ATTACK.arc)) * TUNING.spielerSchwungBreite;
     const sweep = ev.comboIndex === 1 ? -1 : 1;
     // Der sichtbare Schwung folgt der eingestellten Reichweite (Runde 26:
@@ -1129,10 +1134,21 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
     this.playSwingSound(this.weaponClass(), fin || heavy);
     const kb = heavy ? HEAVY_ATTACK.knockback : (fin ? LIGHT_ATTACK.finisherKnockback : LIGHT_ATTACK.normalKnockback);
-    const hit = this.hitEnemiesInArc(ang, range, arc, ev.dmgMult, kb, heavy);
+    const hit = this.hitEnemiesInArc(ang, range, arc, ev.dmgMult * nk.dmg, kb, heavy);
     if (hit) {
       this.applyHitstop(heavy ? HITSTOP_MS.heavy : fin ? HITSTOP_MS.finisher : HITSTOP_MS.light);
       this.shake(fin || heavy ? 5 : 3);
+      // Streitkolben: "Hammer-lite" - kleiner Stoß + kurzes Taumeln (Runde 49)
+      if (nk.knockback > 0) {
+        for (const e of [...this.enemies]) {
+          let da = Math.atan2(e.y - this.py, e.x - this.px) - ang;
+          da = Math.atan2(Math.sin(da), Math.cos(da));
+          if (Math.hypot(e.x - this.px, e.y - this.py) < range + e.r && Math.abs(da) < arc) {
+            const a2 = Math.atan2(e.y - this.py, e.x - this.px);
+            e.stossWeg(Math.cos(a2) * nk.knockback, Math.sin(a2) * nk.knockback, nk.stunS);
+          }
+        }
+      }
     }
   }
 

@@ -10,7 +10,7 @@ export type Genus = 'm' | 'f' | 'n' | 'pl';
 export const WEAPONS: ReadonlyArray<readonly [string, number, WeaponClass, Genus]> = [
   ['Rostige Klinge', 5, 'schwert', 'f'],
   ['Kurzschwert', 8, 'schwert', 'n'],
-  ['Streitkolben', 11, 'wucht', 'm'],
+  ['Streitkolben', 11, 'kolben', 'm'],
   ['Langschwert', 14, 'schwert', 'n'],
   ['Streitaxt', 16, 'axt', 'f'],
   ['Reiterdegen', 18, 'schwert', 'm'],

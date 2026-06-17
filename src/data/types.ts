@@ -4,7 +4,9 @@
 
 export type Rarity = 0 | 1 | 2 | 3; // Gewöhnlich / Magisch / Selten / Episch
 
-export type WeaponClass = 'schwert' | 'axt' | 'stange' | 'wucht' | 'bogen' | 'stab';
+// Runde 49: 'kolben' = Einhand-Streitkolben (Hammer-lite), getrennt vom
+// Zweihand-'wucht' (Kriegshammer).
+export type WeaponClass = 'schwert' | 'axt' | 'stange' | 'wucht' | 'kolben' | 'bogen' | 'stab';
 
 export type ItemKind =
   | 'weapon' | 'armor' | 'ring' | 'gem' | 'schild'

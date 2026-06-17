@@ -98,6 +98,22 @@ export const WEAPON_MOVESETS = {
   stab:    { projSpeed: 390, dmgMult: 0.75, spellBonusFaktor: 0.5, zaubereiBonusJeStufe: 0.05, recoverS: 0.9 },
 } as const;
 
+// Ein- oder Zweihand (Runde 49): Zweihand-Waffen lassen KEINEN Schild/Block zu
+// (man hat keine Hand frei). Steht am Item dran.
+export const WEAPON_HAND: Record<string, 'ein' | 'zwei'> = {
+  schwert: 'ein', axt: 'ein', kolben: 'ein',
+  wucht: 'zwei', stange: 'zwei', bogen: 'zwei', stab: 'zwei',
+};
+
+// Nahkampf-Feinwerte je Einhand-Klasse (Runde 49): Reichweite/Schaden/Wucht.
+// Schwert = ausgewogen; Axt = kurz & scharf (mehr Schaden); Streitkolben =
+// kurz, mit kleinem "Hammer-lite"-Stoß und kurzem Taumeln.
+export const NAHKAMPF: Record<string, { reich: number; dmg: number; knockback: number; stunS: number }> = {
+  schwert: { reich: 1.0, dmg: 1.0, knockback: 0, stunS: 0 },
+  axt:     { reich: 0.82, dmg: 1.18, knockback: 0, stunS: 0 },
+  kolben:  { reich: 0.84, dmg: 1.04, knockback: 165, stunS: 0.2 },
+};
+
 // Gedeckter Schlag: Angriff aus dem Block heraus (Feedback-Runde 1) -
 // leicht abgeschwächt, da man hinter dem Schild gedeckt bleibt
 export const GUARDED_ATTACK = { dmgMult: 0.8, recoveryMult: 1.25 } as const;
