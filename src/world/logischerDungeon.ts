@@ -1,10 +1,10 @@
-// Logisch-stimmiger Dungeon-Generator (Runde 51, Autorwunsch: Test-Karte im Menü).
-// Statt zufällig überlappender Rechtecke (der jetzige Krypta-Generator) liegt
-// hier ein GITTER aus Zellen zugrunde: je Zelle EIN Raum (nicht überlappend),
-// die Räume werden über einen Spannbaum + ein paar Extra-Schleifen mit GÄNGEN
-// und TÜREN verbunden. Eine Haupthalle, Seitenhallen, Kammern. Requisiten stehen
-// an den WÄNDEN (nie im Gang), Sonderstücke (Abgrund) nur in Sackgassen, nie auf
-// dem Hauptweg. Reiner Datengenerator (Phaser-frei) -> im Test sichtbar gemacht.
+// Logischer Dungeon-Generator (Runde 51). NEUES Modell (Autorwunsch): KEINE
+// Korridore mehr - die ganze Fläche ist in RÄUME aufgeteilt, die sich Wände
+// teilen und über TÜREN verbunden sind ("eine unterteilte Halle wie Diablo 1").
+// Alles dazwischen IST Raum, die Räume liegen dicht beieinander und sind größer.
+// Manche Zellen verschmelzen zu größeren Räumen (Größen-Abwechslung). Spannbaum
+// + viele Extra-Türen -> man kann fast überall hinlaufen, aber die Räume bleiben
+// klar getrennt. Reiner Datengenerator (Phaser-frei).
 
 export type Zelle = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 // 0 Wand · 1 Boden · 2 Tür · 3 Requisit · 4 Treppe auf · 5 Treppe ab · 6 Abgrund
@@ -23,141 +23,116 @@ function mische<T>(arr: T[], rng: RNG): void {
 const COLS = 4, ROWS = 3;
 
 export function baueLogischenDungeon(rng: RNG): DungeonResult {
-  const W = 64, H = 44;
+  const W = 60, H = 44;
   const grid: Zelle[][] = Array.from({ length: H }, () => new Array<Zelle>(W).fill(0));
   const cellW = Math.floor(W / COLS), cellH = Math.floor(H / ROWS);
-  const raeume: Array<DRaum | null> = [];
-
-  // 1) EIN Raum je Zelle - durch die Zellengrenzen GARANTIERT nicht überlappend.
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      if (rng() < 0.12) { raeume.push(null); continue; } // ein paar Zellen bleiben leer
-      const m = 2, maxW = cellW - m * 2, maxH = cellH - m * 2;
-      const rw = Math.max(5, Math.floor(maxW * (0.6 + rng() * 0.4)));
-      const rh = Math.max(5, Math.floor(maxH * (0.6 + rng() * 0.4)));
-      const rx = c * cellW + m + ri(rng, 0, maxW - rw);
-      const ry = r * cellH + m + ri(rng, 0, maxH - rh);
-      for (let y = ry; y < ry + rh; y++) for (let x = rx; x < rx + rw; x++) grid[y][x] = 1;
-      raeume.push({ x: rx, y: ry, w: rw, h: rh, cx: rx + (rw >> 1), cy: ry + (rh >> 1), typ: 'kammer', grad: 0 });
-    }
-  }
   const idx = (r: number, c: number): number => r * COLS + c;
-  const echte = raeume.filter((x): x is DRaum => !!x);
-  if (echte.length < 2) return { w: W, h: H, grid, raeume: echte };
 
-  // 2) Raumtypen: größter = Haupthalle, große = Seitenhalle, Rest = Kammer.
-  const groesste = [...echte].sort((a, b) => b.w * b.h - a.w * a.h)[0];
+  // 1) Ganze Innenfläche = Boden.
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) grid[y][x] = 1;
+  // 2) Innere Wandlinien ziehen das Raster der Räume (gemeinsame Wände).
+  for (let c = 1; c < COLS; c++) for (let y = 1; y < H - 1; y++) grid[y][c * cellW] = 0;
+  for (let r = 1; r < ROWS; r++) for (let x = 1; x < W - 1; x++) grid[r * cellH][x] = 0;
+
+  // Innenraum-Grenzen einer Zelle (ohne die geteilten Wandlinien).
+  const bounds = (r: number, c: number) => ({
+    left: c === 0 ? 1 : c * cellW + 1,
+    right: c === COLS - 1 ? W - 2 : (c + 1) * cellW - 1,
+    top: r === 0 ? 1 : r * cellH + 1,
+    bottom: r === ROWS - 1 ? H - 2 : (r + 1) * cellH - 1,
+  });
+  // Die geteilten Wandtiles zwischen zwei benachbarten Zellen.
+  const wandTiles = (r: number, c: number, dir: 'rechts' | 'unten'): Array<[number, number]> => {
+    const b = bounds(r, c), t: Array<[number, number]> = [];
+    if (dir === 'rechts') { const x = (c + 1) * cellW; for (let y = b.top; y <= b.bottom; y++) t.push([x, y]); }
+    else { const y = (r + 1) * cellH; for (let x = b.left; x <= b.right; x++) t.push([x, y]); }
+    return t;
+  };
+
+  // 3) Verschmelzen (Dominos): manche Nachbarzellen werden EIN größerer Raum -
+  //    die Wand zwischen ihnen fällt ganz weg. Nur paarweise -> Räume bleiben
+  //    Rechtecke (Größen-Abwechslung, keine verschachtelten Formen).
+  const N = ROWS * COLS;
+  const parent = Array.from({ length: N }, (_, i) => i);
+  const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const verschmolzen = new Array<boolean>(N).fill(false);
+  const order = Array.from({ length: N }, (_, i) => i);
+  mische(order, rng);
+  for (const i of order) {
+    if (verschmolzen[i] || rng() > 0.34) continue;
+    const r = Math.floor(i / COLS), c = i % COLS;
+    const opt: Array<['rechts' | 'unten', number]> = [];
+    if (c + 1 < COLS && !verschmolzen[idx(r, c + 1)]) opt.push(['rechts', idx(r, c + 1)]);
+    if (r + 1 < ROWS && !verschmolzen[idx(r + 1, c)]) opt.push(['unten', idx(r + 1, c)]);
+    if (!opt.length) continue;
+    const [dir, j] = opt[Math.floor(rng() * opt.length)];
+    verschmolzen[i] = true; verschmolzen[j] = true; parent[find(i)] = find(j);
+    for (const [x, y] of wandTiles(r, c, dir)) grid[y][x] = 1; // Wand fällt ganz weg
+  }
+
+  // 4) Räume aus den Zellgruppen bilden (Begrenzungsrechteck je Gruppe).
+  const gruppen = new Map<number, number[]>();
+  for (let i = 0; i < N; i++) { const root = find(i); (gruppen.get(root) ?? gruppen.set(root, []).get(root)!).push(i); }
+  const raeume: DRaum[] = [];
+  const raumVon = new Map<number, DRaum>();
+  for (const zellen of gruppen.values()) {
+    let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+    for (const ci of zellen) {
+      const b = bounds(Math.floor(ci / COLS), ci % COLS);
+      minx = Math.min(minx, b.left); miny = Math.min(miny, b.top); maxx = Math.max(maxx, b.right); maxy = Math.max(maxy, b.bottom);
+    }
+    const rm: DRaum = { x: minx, y: miny, w: maxx - minx + 1, h: maxy - miny + 1, cx: (minx + maxx) >> 1, cy: (miny + maxy) >> 1, typ: 'kammer', grad: 0 };
+    raeume.push(rm); for (const ci of zellen) raumVon.set(ci, rm);
+  }
+
+  // 5) Türen zwischen benachbarten RÄUMEN: Spannbaum (alle verbunden) + viele
+  //    Extra-Türen -> offen begehbar, ohne Korridore.
+  type Kante = { a: number; b: number; r: number; c: number; dir: 'rechts' | 'unten' };
+  const kanten: Kante[] = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    if (c + 1 < COLS && find(idx(r, c)) !== find(idx(r, c + 1))) kanten.push({ a: find(idx(r, c)), b: find(idx(r, c + 1)), r, c, dir: 'rechts' });
+    if (r + 1 < ROWS && find(idx(r, c)) !== find(idx(r + 1, c))) kanten.push({ a: find(idx(r, c)), b: find(idx(r + 1, c)), r, c, dir: 'unten' });
+  }
+  mische(kanten, rng);
+  const rp = new Map<number, number>();
+  const rfind = (i: number): number => { let x = i; while (rp.get(x) !== x) { rp.set(x, rp.get(rp.get(x)!)!); x = rp.get(x)!; } return x; };
+  for (const g of gruppen.keys()) rp.set(g, g);
+  const tuer = (k: Kante): void => {
+    const tiles = wandTiles(k.r, k.c, k.dir);
+    const mid = tiles.length >> 1;
+    for (const t of [tiles[mid], tiles[Math.max(0, mid - 1)]]) if (t) grid[t[1]][t[0]] = 2;
+    raumVon.get(idx(k.r, k.c))!.grad++; raumVon.get(idx(k.dir === 'rechts' ? k.r : k.r + 1, k.dir === 'rechts' ? k.c + 1 : k.c))!.grad++;
+  };
+  for (const k of kanten) {
+    if (rfind(k.a) !== rfind(k.b)) { rp.set(rfind(k.a), rfind(k.b)); tuer(k); }
+    else if (rng() < 0.82) tuer(k);
+  }
+
+  // 6) Raumtypen + Elite-Themenräume.
+  const groesste = [...raeume].sort((a, b) => b.w * b.h - a.w * a.h)[0];
   groesste.typ = 'haupthalle';
-  for (const rm of echte) if (rm !== groesste && rm.w * rm.h >= 80) rm.typ = 'halle';
-  // Elite-Themenräume (Autorwunsch): klar getrennte Sonderräume - Blutkammer,
-  // Beinkammer, Folterkammer - jeder mit einem Elite. Der Spieler kann selbst
-  // entscheiden, ob er sie betritt oder erst die kleinen Gegner aufräumt.
+  for (const rm of raeume) if (rm !== groesste && rm.w * rm.h >= 180) rm.typ = 'halle';
   const themen: RaumInhalt[] = ['blut', 'knochen', 'folter'];
-  const themKand = echte.filter((r) => r.typ !== 'haupthalle' && r.w >= 6 && r.h >= 6);
+  const themKand = raeume.filter((r) => r.typ !== 'haupthalle' && r.w >= 7 && r.h >= 7);
   mische(themKand, rng);
   for (let i = 0; i < Math.min(themen.length, themKand.length); i++) { themKand[i].inhalt = themen[i]; themKand[i].elite = true; }
 
-  // 3) Verbindungs-Graph über benachbarte Zellen, Spannbaum + ~28% Extra-Schleifen.
-  const kanten: Array<[number, number]> = [];
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-    if (!raeume[idx(r, c)]) continue;
-    if (c + 1 < COLS && raeume[idx(r, c + 1)]) kanten.push([idx(r, c), idx(r, c + 1)]);
-    if (r + 1 < ROWS && raeume[idx(r + 1, c)]) kanten.push([idx(r, c), idx(r + 1, c)]);
-  }
-  mische(kanten, rng);
-  const parent = raeume.map((_, i) => i);
-  const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
-  // Offenes Layout (Autorwunsch "wie Diablo 1 - man kann überall hinlaufen, aber
-  // die Räume bleiben getrennt"): NEBEN dem Spannbaum werden die allermeisten
-  // Nachbar-Räume zusätzlich verbunden -> mehrere Wege, kein erzwungener Pfad.
-  const benutzt: Array<[number, number]> = [];
-  for (const [a, b] of kanten) {
-    if (find(a) !== find(b)) { parent[find(a)] = find(b); benutzt.push([a, b]); }
-    else if (rng() < 0.82) benutzt.push([a, b]);
-  }
-  for (const [a, b] of benutzt) {
-    grabeGang(grid, raeume[a]!, raeume[b]!, rng);
-    raeume[a]!.grad++; raeume[b]!.grad++;
-  }
-  // Voll-Verbindung sicherstellen: liegt ein Raum in einer leeren Zellen-Insel
-  // (keine Raum-Nachbarn), hängt ihn das hier an den nächstgelegenen Raum -
-  // so ist NIE ein Raum unerreichbar.
-  const idxs = raeume.map((r, i) => (r ? i : -1)).filter((i) => i >= 0);
-  let komp = new Set(idxs.map(find));
-  let schutz = 0;
-  while (komp.size > 1 && schutz++ < 50) {
-    let bi = -1, bj = -1, bd = Infinity;
-    for (const i of idxs) for (const j of idxs) {
-      if (find(i) === find(j)) continue;
-      const a = raeume[i]!, b = raeume[j]!, dd = Math.hypot(a.cx - b.cx, a.cy - b.cy);
-      if (dd < bd) { bd = dd; bi = i; bj = j; }
-    }
-    if (bi < 0) break;
-    grabeGang(grid, raeume[bi]!, raeume[bj]!, rng);
-    raeume[bi]!.grad++; raeume[bj]!.grad++;
-    parent[find(bi)] = find(bj);
-    komp = new Set(idxs.map(find));
-  }
-
-  // 4) Türen: Raumkanten, die an einen Gang stoßen, werden Türöffnungen.
-  for (const rm of echte) setzeTueren(grid, rm);
-
-  // 5) Treppen: die zwei am weitesten auseinander liegenden NORMALEN Räume
-  //    (keine Elite-/Themenräume - dort steigt man nicht ab).
-  const treppKand = echte.filter((r) => !r.inhalt);
-  const pool = treppKand.length >= 2 ? treppKand : echte;
+  // 7) Treppen in zwei weit entfernten NORMALEN Räumen.
+  const treppKand = raeume.filter((r) => !r.inhalt);
+  const pool = treppKand.length >= 2 ? treppKand : raeume;
   let auf = pool[0], ab = pool[0], fd = -1;
-  for (const a of pool) for (const b of pool) {
-    const d = Math.hypot(a.cx - b.cx, a.cy - b.cy);
-    if (d > fd) { fd = d; auf = a; ab = b; }
-  }
-  grid[auf.cy][auf.cx] = 4; grid[ab.cy][ab.cx] = 5;
+  for (const a of pool) for (const b of pool) { const d = Math.hypot(a.cx - b.cx, a.cy - b.cy); if (d > fd) { fd = d; auf = a; ab = b; } }
+  if (grid[auf.cy][auf.cx] === 1) grid[auf.cy][auf.cx] = 4;
+  if (grid[ab.cy][ab.cx] === 1) grid[ab.cy][ab.cx] = 5;
 
-  // 6) Requisiten an die Wände (nie im Gang, nicht neben Türen).
-  for (const rm of echte) requisitenAnWaende(grid, rm, rng);
-
-  // 7) Abgrund-Sonderstück NUR in einer Sackgasse (grad 1), abseits der Türen -
-  //    so versperrt es nie den Hauptweg. Themenräume bleiben frei.
-  const sackgassen = echte.filter((r) => r.grad <= 1 && r !== auf && r !== ab && !r.inhalt && r.w >= 7 && r.h >= 7);
-  if (sackgassen.length) {
-    const s = sackgassen[ri(rng, 0, sackgassen.length - 1)];
-    for (let y = s.y + 1; y < s.y + 3; y++) {
-      for (let x = s.x + 1; x < s.x + 3; x++) {
-        if (grid[y][x] === 1 && !nebenTuer(grid, x, y)) grid[y][x] = 6;
-      }
-    }
-  }
-
-  // 8) Themenräume ausmalen: Blutkammer bekommt Blut-Lachen, jeder Elite-Raum
-  //    eine Elite-Marke in der Mitte (auf Boden/Blut, nicht auf Tür/Requisit).
-  for (const rm of echte) {
+  // 8) Requisiten an die Wände, Themenräume ausmalen.
+  for (const rm of raeume) requisitenAnWaende(grid, rm, rng);
+  for (const rm of raeume) {
     if (!rm.inhalt) continue;
-    if (rm.inhalt === 'blut') {
-      for (let k = 0; k < 9; k++) {
-        const x = ri(rng, rm.x + 1, rm.x + rm.w - 2), y = ri(rng, rm.y + 1, rm.y + rm.h - 2);
-        if (grid[y][x] === 1) grid[y][x] = 7;
-      }
-    }
+    if (rm.inhalt === 'blut') for (let k = 0; k < 10; k++) { const x = ri(rng, rm.x + 1, rm.x + rm.w - 2), y = ri(rng, rm.y + 1, rm.y + rm.h - 2); if (grid[y][x] === 1) grid[y][x] = 7; }
     if (grid[rm.cy][rm.cx] === 1 || grid[rm.cy][rm.cx] === 7) grid[rm.cy][rm.cx] = 8;
   }
-  return { w: W, h: H, grid, raeume: echte };
-}
-
-// Gang von Raum A zu Raum B: L-förmig von Mitte zu Mitte, gräbt nur durch Wand.
-function grabeGang(grid: Zelle[][], A: DRaum, B: DRaum, rng: RNG): void {
-  let x = A.cx, y = A.cy;
-  const gx = (): void => { while (x !== B.cx) { if (grid[y][x] === 0) grid[y][x] = 1; x += Math.sign(B.cx - x); } };
-  const gy = (): void => { while (y !== B.cy) { if (grid[y][x] === 0) grid[y][x] = 1; y += Math.sign(B.cy - y); } };
-  if (rng() < 0.5) { gx(); gy(); } else { gy(); gx(); }
-}
-
-// Eine Raumkante wird zur Tür, wo direkt dahinter ein Gang liegt.
-function setzeTueren(grid: Zelle[][], rm: DRaum): void {
-  const tuer = (ix: number, iy: number, ox: number, oy: number): void => {
-    if (grid[iy]?.[ix] === 1 && grid[oy]?.[ox] === 1) grid[iy][ix] = 2;
-  };
-  for (let x = rm.x; x < rm.x + rm.w; x++) { tuer(x, rm.y, x, rm.y - 1); tuer(x, rm.y + rm.h - 1, x, rm.y + rm.h); }
-  for (let y = rm.y; y < rm.y + rm.h; y++) { tuer(rm.x, y, rm.x - 1, y); tuer(rm.x + rm.w - 1, y, rm.x + rm.w, y); }
+  return { w: W, h: H, grid, raeume };
 }
 
 function nebenTuer(grid: Zelle[][], x: number, y: number): boolean {
@@ -167,16 +142,16 @@ function nebenTuer(grid: Zelle[][], x: number, y: number): boolean {
 
 // Requisiten auf die innere Wandreihe stellen (an die Wand), nicht neben Türen.
 function requisitenAnWaende(grid: Zelle[][], rm: DRaum, rng: RNG): void {
-  if (rm.w < 5 || rm.h < 5) return;
+  if (rm.w < 6 || rm.h < 6) return;
   const kand: Array<[number, number]> = [];
   for (let x = rm.x + 1; x < rm.x + rm.w - 1; x++) { kand.push([x, rm.y]); kand.push([x, rm.y + rm.h - 1]); }
   for (let y = rm.y + 1; y < rm.y + rm.h - 1; y++) { kand.push([rm.x, y]); kand.push([rm.x + rm.w - 1, y]); }
   mische(kand, rng);
-  const ziel = rm.typ === 'haupthalle' ? 5 : rm.typ === 'halle' ? 3 : 2;
+  const ziel = rm.typ === 'haupthalle' ? 7 : rm.typ === 'halle' ? 4 : 2;
   let n = 0;
   for (const [x, y] of kand) {
     if (n >= ziel) break;
-    if (grid[y][x] !== 1 || nebenTuer(grid, x, y)) continue;
+    if (grid[y]?.[x] !== 1 || nebenTuer(grid, x, y)) continue;
     grid[y][x] = 3; n++;
   }
 }
