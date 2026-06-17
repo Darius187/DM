@@ -20,9 +20,8 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [ ] Kloster als Platzhalter im NORDOSTEN, weit weg (~Halbtagesreise) - dort der
       Showdown; von dort spawnen die Monster Richtung Dorf. Braucht erst die
       verbundene Welt-Struktur (mehrere Gebiete), dann als NO-Endgebiet.
-- [ ] Anhöhen / Bergaufstiege als gefakte Höhe (Klippen-Art, Rampen/Treppen,
-      Schnee oben) - Diablo/Dungeon-Siege-Stil, kein echtes 3D. (Autor will eine
-      DEMO sehen, wie das aussieht.)
+- [x] Anhöhe-DEMO gebaut (Menü -> ANHÖHE-PROBE): gefakte Höhe (Klippe + Schatten
+      + Rampe + Schnee-Plateau). Echte Berg-Level später daraus.
 - [ ] Schneegebiet im NORDWESTEN auf einem Berg - Rückzugsort des ganzen Dorfes.
 
 ## Anfang / Quests
@@ -52,7 +51,7 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [ ] Material-Datenbank + Dorf-Lager + täglicher Produktions-Tick.
 - [ ] Weizen->Mehl(Mühle)->Brot(Bäcker); Erz->Barren(Schmelze)->Schmied.
 - [ ] Händler-Bestände an das Lager koppeln (Kauf/Verkauf/Spende).
-- [ ] Brunnen hochskalieren + Blut-bei-Einfall (kein Wasser mehr).
+- [x] Brunnen größer + Blut-bei-Einfall (verseuchter Brunnen, Blut ringsum).
 
 ## Technik / Sonstiges
 - [~] Logischer Dungeon-Generator als TEST gebaut (Menü -> DUNGEON-PROBE). Noch
@@ -73,3 +72,6 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [x] Logischer Dungeon-Generator als Test-Karte (DUNGEON-PROBE).
 - [x] Generator offener (Diablo-1) + Elite-Themenräume (Blut/Bein/Folter).
 - [x] Fluss-Ufer mit Tiefe (Schatten-Saum + Wasserlinie an allen Seiten).
+- [x] Dorfbrunnen größer + Blut-bei-Einfall (verseucht, Blutlachen ringsum).
+- [x] Anhöhe-Demo (gefakte Höhe: Klippe/Schatten/Rampe/Schnee).
+- [x] Dungeon-Modell: geteilte Halle (keine Gänge, alles Raum, Türen).
