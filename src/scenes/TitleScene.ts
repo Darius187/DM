@@ -70,6 +70,7 @@ export class TitleScene extends Phaser.Scene {
       ['EINSTELLUNGEN', () => this.scene.start('Settings', { zurueck: 'Title' }), true],
       ['DEBUG-ARENA', () => this.scene.start('DebugArena'), true],
       ['SCHLACHT-PROBE', () => this.scene.start('SchlachtProbe'), true],
+      ['DUNGEON-PROBE', () => this.scene.start('DungeonProbe'), true],
     ];
     let y = h * 0.62;
     for (const [label, fn, enabled] of buttons) {
