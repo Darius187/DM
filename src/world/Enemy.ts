@@ -103,6 +103,7 @@ export class Enemy {
   windup = 0;
   stun = 0;
   slowT = 0;
+  rootT = 0;   // Fesselpfeil (Runde 47): festgewurzelt, kann sich nicht bewegen
   brennT = 0;        // Brand-Restzeit (Sekunden) - Feuerregen-DoT (Runde 41)
   brennDps = 0;      // Schaden pro Sekunde, solange brennT > 0
   brennTick = 0;     // Takt bis zum nächsten Brand-Schaden
@@ -271,6 +272,7 @@ export class Enemy {
     this.shootCd = Math.max(0, this.shootCd - dt);
     this.hitFlash = Math.max(0, this.hitFlash - dt);
     this.slowT = Math.max(0, this.slowT - dt);
+    this.rootT = Math.max(0, this.rootT - dt);
     this.markedT = Math.max(0, this.markedT - dt);
     this.banishedT = Math.max(0, this.banishedT - dt);
     this.wobble += dt * 4;
@@ -378,7 +380,7 @@ export class Enemy {
       host.begegnungsRuf(this);
     }
 
-    const slowF = this.slowT > 0 ? ENEMY_AI.slowFactorEis : 1;
+    const slowF = this.rootT > 0 ? 0 : this.slowT > 0 ? ENEMY_AI.slowFactorEis : 1;
     if (this.ranged && d < ENEMY_AI.rangedMaxShoot && d > ENEMY_AI.rangedMinShoot && this.hasLineOfSight(host)) {
       if (this.shootCd === 0) {
         this.shootCd = ENEMY_AI.rangedShootCd;

@@ -100,6 +100,11 @@ export const ABILITIES: ReadonlyArray<AbilityDef> = [
   { id: 'mehrfachschuss', school: 'bogen', unlock: 3, name: 'Mehrfachschuss', beschreibung: '3 Pfeile im Fächer' },
   { id: 'durchschlag', school: 'bogen', unlock: 6, name: 'Durchschlag', beschreibung: 'Pfeil durchdringt Gegner' },
   { id: 'markierterTod', school: 'bogen', unlock: 9, name: 'Markierter Tod', beschreibung: 'Markierter Gegner erhält +25% Schaden' },
+  // Vier neue Bogen-Fähigkeiten (Runde 47)
+  { id: 'hagel', school: 'bogen', unlock: 4, name: 'Hagel der Pfeile', beschreibung: 'Ort wählen: ein Pfeilhagel prasselt auf die Fläche' },
+  { id: 'splitterpfeil', school: 'bogen', unlock: 5, name: 'Splitterpfeil', beschreibung: 'Zerbirst beim Treffer in mehrere Splitter' },
+  { id: 'sprungpfeil', school: 'bogen', unlock: 7, name: 'Sprungpfeil', beschreibung: 'Springt vom Getroffenen auf weitere Gegner' },
+  { id: 'fesselpfeil', school: 'bogen', unlock: 8, name: 'Fesselpfeil', beschreibung: 'Wurzelt den Getroffenen fest (kann sich nicht bewegen)' },
 ];
 
 // Fähigkeitswerte der neuen Fertigkeiten (eigene Festlegung, leicht änderbar - DECISIONS.md)
@@ -140,6 +145,11 @@ export const ABILITY_FX = {
   mehrfachschuss: { arrows: 3, spread: 0.18, cd: 2.5 },
   durchschlag: { pierceCount: 99, dmgMult: 1.3, cd: 4 },
   markierterTod: { bonusDmgPct: 0.25, dauerS: 8, cd: 7 },
+  // Vier neue Bogen-Fähigkeiten (Runde 47)
+  hagel: { reichweite: 320, radius: 70, streuung: 60, einschlaege: 16, dauerS: 1.3, dmgBase: 6, dmgPerLevel: 1.0, cd: 7 },
+  splitterpfeil: { dmgMult: 1.1, splitter: 6, splitterDmgMult: 0.45, spread: 0.5, cd: 4 },
+  sprungpfeil: { dmgMult: 1.2, spruenge: 3, sprungRange: 230, cd: 5 },
+  fesselpfeil: { dmgMult: 1.0, wurzelS: 2.6, cd: 6 },
 } as const;
 
 // Takt des Brand-Schadens (Runde 41): alle BRAND_TICK_S Sekunden ein Tick.

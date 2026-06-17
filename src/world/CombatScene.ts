@@ -40,6 +40,7 @@ export interface Projectile {
   from: 'player' | 'enemy'; col: string; fire?: boolean; magie?: boolean; pierce?: boolean; arrow?: boolean;
   hitIds?: Set<number>; dead?: boolean;
   elem?: 'feuer' | 'eis' | 'schatten'; gemPower?: number; // Elementarpfeil (Runde 44)
+  split?: number; springt?: number; fessel?: boolean;     // Bogen-Fähigkeiten (Runde 47)
   // Pfeil-Wand-Physik (Runde 40, Physik-Test): steckt im Mauerwerk oder prallt ab
   steckt?: boolean; steckT?: number; praller?: number; steckAng?: number;
 }
@@ -877,7 +878,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // dann mit der Maus den Ort wählen, dann per Klick auslösen. Gilt für AoE-
   // Zauber am Boden (Feuerregen/Eisregen/Gewitter/Feuerwand) und Heilen.
   protected zielModus: string | null = null;
-  protected readonly bodenZauber = new Set(['feuerregen', 'eisregen', 'gewitter', 'feuerwand', 'heilen']);
+  protected readonly bodenZauber = new Set(['feuerregen', 'eisregen', 'gewitter', 'feuerwand', 'heilen', 'hagel']);
 
   // Verwundeten Helfer am Zielort heilen (Runde 46). Welt überschreibt es; hier
   // (Arena) gibt es keine Helfer -> false, dann heilt sich der Held selbst.
@@ -1556,7 +1557,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       case 's2': this.castSpell(1); break;
       case 's3': this.castSpell(2); break;
       case 'kettenblitz': case 'frostnova': case 'bannkreis':
-      case 'feuerregen': case 'aderlass': case 'lebenstausch': case 'heilen': this.useAbility(id); break;
+      case 'feuerregen': case 'aderlass': case 'lebenstausch': case 'heilen':
+      case 'hagel': case 'splitterpfeil': case 'sprungpfeil': case 'fesselpfeil': this.useAbility(id); break;
       // Waffen-Fähigkeiten auch auf Maustasten legbar (Runde 20)
       case 'waffe1': this.useAbility(this.weaponClass() === 'bogen' ? 'mehrfachschuss' : 'rundumschlag'); break;
       case 'waffe2': this.useAbility(this.weaponClass() === 'bogen' ? 'markierterTod' : 'sturmangriff'); break;
@@ -2091,6 +2093,69 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         this.sfx.play('pfeil_schuss');
         break;
       }
+      case 'hagel': {
+        // Pfeilhagel auf den Zielort (Bodenzauber-Modus, Runde 47)
+        const fx = ABILITY_FX.hagel;
+        this.p.abilityCds[id] = fx.cd;
+        const z = this.zielPunkt(fx.reichweite);
+        const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level;
+        for (let i = 0; i < fx.einschlaege; i++) {
+          const ex = z.x + (Math.random() - 0.5) * fx.streuung * 2;
+          const ey = z.y + (Math.random() - 0.5) * fx.streuung * 2;
+          const treffMs = (i + 1) * (fx.dauerS * 1000 / fx.einschlaege);
+          this.telegraphs.push({ x: ex, y: ey, r: 12, t: treffMs / 1000, maxT: fx.dauerS, dmg: 0, holy: true });
+          this.time.delayedCall(treffMs, () => {
+            this.fx.burst(ex, ey, 0xd8d0b8, 5, 110);
+            this.sfx.playAt('pfeil_einschlag', ex, ey, 0.35);
+            for (const e of [...this.enemies]) if (Math.hypot(e.x - ex, e.y - ey) < 26 + e.r) this.damageEnemy(e, Math.round(dmg * (0.85 + Math.random() * 0.3)), 0, 0, '#d8d0b8', false);
+          });
+        }
+        this.sfx.play('pfeil_schuss');
+        this.gainSchoolUse('bogen');
+        break;
+      }
+      case 'splitterpfeil': {
+        const fx = ABILITY_FX.splitterpfeil;
+        this.p.abilityCds[id] = fx.cd;
+        const ang = this.aimAngle(); this.pdir = ang;
+        const ms = WEAPON_MOVESETS.bogen;
+        this.projectiles.push({
+          x: this.px + Math.cos(ang) * 14, y: this.py + Math.sin(ang) * 14,
+          vx: Math.cos(ang) * ms.projSpeed, vy: Math.sin(ang) * ms.projSpeed,
+          r: 4, dmg: this.rollDamage(fx.dmgMult), from: 'player', col: '#e8d0a0', arrow: true, split: fx.splitter,
+        });
+        this.sfx.play('pfeil_schuss');
+        this.gainSchoolUse('bogen');
+        break;
+      }
+      case 'sprungpfeil': {
+        const fx = ABILITY_FX.sprungpfeil;
+        this.p.abilityCds[id] = fx.cd;
+        const ang = this.aimAngle(); this.pdir = ang;
+        const ms = WEAPON_MOVESETS.bogen;
+        this.projectiles.push({
+          x: this.px + Math.cos(ang) * 14, y: this.py + Math.sin(ang) * 14,
+          vx: Math.cos(ang) * ms.projSpeed, vy: Math.sin(ang) * ms.projSpeed,
+          r: 4, dmg: this.rollDamage(fx.dmgMult), from: 'player', col: '#a0e0c0', arrow: true, springt: fx.spruenge, hitIds: new Set<number>(),
+        });
+        this.sfx.play('pfeil_schuss');
+        this.gainSchoolUse('bogen');
+        break;
+      }
+      case 'fesselpfeil': {
+        const fx = ABILITY_FX.fesselpfeil;
+        this.p.abilityCds[id] = fx.cd;
+        const ang = this.aimAngle(); this.pdir = ang;
+        const ms = WEAPON_MOVESETS.bogen;
+        this.projectiles.push({
+          x: this.px + Math.cos(ang) * 14, y: this.py + Math.sin(ang) * 14,
+          vx: Math.cos(ang) * ms.projSpeed, vy: Math.sin(ang) * ms.projSpeed,
+          r: 4, dmg: this.rollDamage(fx.dmgMult), from: 'player', col: '#8a9ab0', arrow: true, fessel: true,
+        });
+        this.sfx.play('pfeil_schuss');
+        this.gainSchoolUse('bogen');
+        break;
+      }
       case 'markierterTod': {
         const fx = ABILITY_FX.markierterTod;
         // nächster Gegner am Zeiger wird markiert (+25% Schaden)
@@ -2596,6 +2661,43 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         if (o !== e && Math.hypot(pr.x - o.x, pr.y - o.y) < 46) this.damageEnemy(o, Math.round(pr.dmg * 0.5), 0, 0, null, false);
       }
     }
+    // Bogen-Fähigkeiten (Runde 47)
+    if (pr.fessel) {
+      e.rootT = Math.max(e.rootT, ABILITY_FX.fesselpfeil.wurzelS);
+      this.fx.burst(pr.x, pr.y, 0x6a7a8a, 12, 120);
+      this.fx.float(e.x, e.y - e.r - 16, 'GEFESSELT', '#9ab0c8');
+    }
+    if (pr.split) {
+      const fx = ABILITY_FX.splitterpfeil;
+      const ms = WEAPON_MOVESETS.bogen;
+      const base = Math.atan2(pr.vy, pr.vx);
+      for (let i = 0; i < pr.split; i++) {
+        const a = base + (i - (pr.split - 1) / 2) * fx.spread;
+        this.projectiles.push({
+          x: pr.x, y: pr.y, vx: Math.cos(a) * ms.projSpeed * 0.7, vy: Math.sin(a) * ms.projSpeed * 0.7,
+          r: 3, dmg: Math.round(pr.dmg * fx.splitterDmgMult), from: 'player', col: '#e8d0a0', arrow: true,
+        });
+      }
+      this.fx.burst(pr.x, pr.y, 0xe8d0a0, 10, 170);
+      this.sfx.playAt('pfeil_einschlag', pr.x, pr.y, 0.4);
+    }
+    if (pr.springt && pr.springt > 0) {
+      (pr.hitIds ??= new Set<number>()).add(e.id);
+      let next: Enemy | null = null, bd: number = ABILITY_FX.sprungpfeil.sprungRange;
+      for (const o of this.enemies) {
+        if (o.hp <= 0 || pr.hitIds.has(o.id)) continue;
+        const d = Math.hypot(o.x - pr.x, o.y - pr.y);
+        if (d < bd) { bd = d; next = o; }
+      }
+      if (next) {
+        const a = Math.atan2(next.y - pr.y, next.x - pr.x);
+        const ms = WEAPON_MOVESETS.bogen;
+        pr.vx = Math.cos(a) * ms.projSpeed; pr.vy = Math.sin(a) * ms.projSpeed;
+        pr.springt -= 1;
+        pr.dead = false; // weiterfliegen zum nächsten Ziel
+        this.fx.lightning([{ x: e.x, y: e.y }, { x: next.x, y: next.y }]);
+      }
+    }
   }
 
   protected blockAngleOk(sx: number, sy: number): boolean {
@@ -2646,7 +2748,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const d = Math.hypot(wx - this.px, wy - this.py) || 1;
     const f = d > reich ? reich / d : 1;
     const zx = this.px + (wx - this.px) * f, zy = this.py + (wy - this.py) * f;
-    const farbe = id === 'eisregen' ? 0x8ad0f0 : id === 'gewitter' ? 0xaee0ff : 0xf08a3a;
+    const farbe = id === 'eisregen' ? 0x8ad0f0 : id === 'gewitter' ? 0xaee0ff : id === 'hagel' ? 0xd8d0b8 : 0xf08a3a;
     const aoe = id === 'feuerwand' ? (fx.laenge ?? 120) / 2 : (fx.radius ?? 40) + (fx.streuung ?? 0);
     const puls = 0.55 + Math.sin(time * 6) * 0.2;
     g.lineStyle(1, farbe, 0.22); g.strokeCircle(this.px, this.py, reich);          // Reichweite
