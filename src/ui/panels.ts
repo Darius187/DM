@@ -10,7 +10,8 @@ import { itemStatLine, weaponDamageRange } from '../logic/loot';
 import { recalc, type PlayerState } from '../logic/playerState';
 import { calcStats, type Stats } from '../logic/progression';
 import { MELDUNGEN } from '../data/texte';
-import { SCHOOLS, ABILITIES } from '../data/balancing';
+import { SCHOOLS, ABILITIES, SPELLS } from '../data/balancing';
+import { SKILL_ICONS, skillBeschreibung } from '../data/skills';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import type { SoundProvider } from '../gfx/SoundProvider';
 import { fixUiScroll } from './dialog';
@@ -340,17 +341,24 @@ export class UIPanels {
       c.add(this.scene.add.rectangle(68, y + 36, w - 120, 8, 0x080604).setOrigin(0).setStrokeStyle(1, LINE));
       c.add(this.scene.add.rectangle(69, y + 37, (w - 122) * frac, 6, col).setOrigin(0));
       c.add(this.scene.add.text(w - 42, y + 33, nextAt === null ? 'Meister' : `${st.uses}/${nextAt}`, { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }).setOrigin(1, 0));
-      // Fähigkeiten der Schule als Chips (frei = farbig, gesperrt = grau)
+      // Fähigkeiten der Schule als Chips - MIT denselben Symbolen wie die
+      // Aktionsleiste (Runde 49). Zauberei zeigt zusätzlich die drei Zauber.
+      const eintraege: Array<{ id: string; name: string; unlock: number }> =
+        id === 'zauberei'
+          ? [...SPELLS.map((s) => ({ id: s.id, name: s.name, unlock: s.unlock })),
+             ...ABILITIES.filter((a2) => a2.school === id).map((a2) => ({ id: a2.id, name: a2.name, unlock: a2.unlock }))]
+          : ABILITIES.filter((a2) => a2.school === id).map((a2) => ({ id: a2.id, name: a2.name, unlock: a2.unlock }));
       let ax = 28;
       const ay = y + 56;
-      for (const a of ABILITIES.filter((a2) => a2.school === id)) {
-        const frei = st.level >= a.unlock;
-        const chip = this.scene.add.text(ax, ay, `${a.name} ·${a.unlock}`, {
+      for (const e of eintraege) {
+        const frei = st.level >= e.unlock;
+        const sym = SKILL_ICONS[e.id] ?? '•';
+        const chip = this.scene.add.text(ax, ay, `${sym} ${e.name} ·${e.unlock}`, {
           fontFamily: 'serif', fontSize: '11px', color: frei ? '#e8dcc0' : '#6a5f4c',
           backgroundColor: frei ? '#1c1408' : '#0c0906', padding: { x: 7, y: 3 },
         }).setInteractive({ useHandCursor: true });
         chip.setStroke(frei ? `#${col.toString(16).padStart(6, '0')}` : '#2a2018', frei ? 1 : 0);
-        chip.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTextTooltip(`${a.name} - ab ${label} Stufe ${a.unlock}`, a.beschreibung, ptr));
+        chip.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTextTooltip(`${sym} ${e.name} - ab ${label} Stufe ${e.unlock}`, skillBeschreibung(e.id), ptr));
         chip.on('pointerout', () => this.hideTooltip());
         c.add(chip);
         ax += chip.width + 8;

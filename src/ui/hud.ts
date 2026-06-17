@@ -4,6 +4,7 @@
 
 import Phaser from 'phaser';
 import { SPELLS, ABILITIES, ABILITY_FX } from '../data/balancing';
+import { skillBeschreibung, skillWirkungText } from '../data/skills';
 import { getSettings, saveSettings } from '../logic/settings';
 import { TUNING } from '../logic/tuning';
 import type { PlayerState } from '../logic/playerState';
@@ -18,6 +19,7 @@ interface SlotDef {
   aktion?: () => string;    // aktuelle Aktions-Kennung (fürs Tauschen)
   ico: () => string;
   name: () => string;
+  info?: () => [string, string]; // [Was es tut, Schaden/Wirkung] (Runde 49)
   desc: () => string;
   kosten: () => string;
   cdFrac: () => number;     // 0..1 Restanteil der Abklingzeit
@@ -145,6 +147,8 @@ export class Hud {
         farbe: () => eintrag()[3],
         kategorie: () => SLOT_KAT[echteId(aktId())] ?? 'item',
         name: () => `${eintrag()[2]} (${tasteName})`,
+        // Was der Skill tut + Schaden/Wirkung (Runde 49). Leer für Nicht-Skills.
+        info: () => [skillBeschreibung(echteId(aktId())), skillWirkungText(echteId(aktId()), p().level) ?? ''],
         desc: () => 'Rechtsklick: Belegung wählen · Ziehen auf einen anderen Slot: tauschen',
         kosten: () => {
           const i = spellIdx();
@@ -429,9 +433,14 @@ export class Hud {
     this.hideTooltip();
     const lines: Array<[string, string]> = [
       [`${s.name()}  [Taste ${s.key}]`, '#c9a227'],
-      [s.desc(), '#d8cfb8'],
-      [s.kosten(), '#8aa6e8'],
     ];
+    // Was der Skill tut + Schaden/Wirkung (Runde 49)
+    const info = s.info?.();
+    if (info?.[0]) lines.push([info[0], '#d8cfb8']);
+    if (info?.[1]) lines.push([info[1], '#e8b86a']);
+    const k = s.kosten();
+    if (k) lines.push([k, '#8aa6e8']);
+    lines.push([s.desc(), '#8a7a5a']);
     const lock = s.locked();
     if (lock) lines.push([`Gesperrt - ${lock}`, '#d96b5a']);
     const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(5250);
