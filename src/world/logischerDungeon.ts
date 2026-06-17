@@ -1,4 +1,7 @@
-// Logischer Dungeon-Generator (Runde 51). NEUES Modell (Autorwunsch): KEINE
+// Logischer Dungeon-Generator (Runde 51) === DUNGEON VERSION 3 ("geteilte Halle").
+// Vom Autor als Version 3 gesichert (Kandidat fürs Kloster). Taxonomie V1-V4 in
+// DUNGEON-VERSIONEN.md; in der DUNGEON-PROBE begehbar.
+// NEUES Modell (Autorwunsch): KEINE
 // Korridore mehr - die ganze Fläche ist in RÄUME aufgeteilt, die sich Wände
 // teilen und über TÜREN verbunden sind ("eine unterteilte Halle wie Diablo 1").
 // Alles dazwischen IST Raum, die Räume liegen dicht beieinander und sind größer.

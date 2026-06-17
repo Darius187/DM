@@ -84,8 +84,13 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [x] Brunnen größer + Blut-bei-Einfall (verseuchter Brunnen, Blut ringsum).
 
 ## Technik / Sonstiges
-- [~] Logischer Dungeon-Generator als TEST gebaut (Menü -> DUNGEON-PROBE). Noch
-      offen: in den echten Krypta-Generator übernehmen, wenn er gefällt.
+- [~] Dungeon-Generatoren versioniert (Autor-Taxonomie, DUNGEON-VERSIONEN.md):
+      V1 Krypta (aktuell, buildCrypt), V2 verbundene Kammern (Goldmine, noch zu
+      bauen), V3 geteilte Halle (logisch, GESICHERT, Kandidat Kloster), V4 Höhle
+      mit begehbaren Räumen (ZIEL, noch zu bauen). DUNGEON-PROBE kann jetzt
+      BEGEHEN (selbst hineinlaufen, Pfeile/WASD + Kollision) zum Gefühl-Testen,
+      Versions-Knöpfe V1/V3. OFFEN: V2 und V4 bauen, dann in die Probe aufnehmen;
+      gewählte Version in den echten Krypta-/Kloster-Generator übernehmen.
 - [ ] Später ggf. Kachel-Zeichenweise auf Tilemap-Layer umstellen (nur falls
       die Welt WIRKLICH riesig werden soll - eigener Schritt, nicht jetzt).
 - [ ] Veröffentlichung: itch.io (Demo öffentlich, Vollversion via Download-Keys
