@@ -42,3 +42,12 @@ gleich funktionieren. Im Begehen-Modus bleibt die Kamera fest und die Karte
 scrollt von Hand unter dem zentrierten Spieler durch - so bleibt die UI immer
 klickbar (Regel 9.4). Kollision: Wand/Abgrund/Requisit blocken, alles andere
 ist begehbar.
+
+## V5 - Verbundene Räume + Füllräume — GEBAUT
+`src/world/verbundeneRaeume.ts` (`baueVerbundeneRaeume`). Klassische RÄUME im
+Raster, über GÄNGE verbunden (Spannbaum + Schleifen) - UND die sonst leeren
+Zwischenflächen werden mit ZUSÄTZLICHEN Räumen gefüllt (jeder über einen kurzen
+Stollen angebunden), sodass kaum tote Fläche bleibt. ~22 Räume, alles über
+Gänge/Stollen erreichbar (Reachability über 25 Läufe getestet). In der
+DUNGEON-PROBE als "V5" ansehbar UND begehbar. Entspricht dem Autorwunsch
+"einzelne Räume über den Weg verbunden, aber zwischendrin auch noch Räume".
