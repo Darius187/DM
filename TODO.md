@@ -45,18 +45,16 @@
   eigene Phase, weil Tempo-/Reichweiten-Werte in Pixeln mitskaliert werden
   müssen. Lohnt, sobald die Sprite-Sätze des Autors final sind.
 
-- Runde 50, Art-Liste noch offen (eigene Runde, größere Struktureingriffe):
-  (a) Bücherregale mit Zuständen LEER/VOLL/GELEERT - das Regal merkt sich,
-      ob seine Bücher schon geplündert wurden, und zeigt danach leere Fächer.
-      Braucht Pro-Regal-Zustand in der Area + Speichern/Laden.
-  (b) Bücher = seltene Schriftrollen mit 10 Anwendungen (stack 10) statt
-      einfacher Lese-Folianten - Loot-/Item-Definition + Anbindung an die
-      vorhandenen Schriftrollen-Zauber.
-  (c) Türen/Zellen als BEGEHBARE Eingänge ohne Ladebildschirm (nahtloser
-      Übergang in Nebenkammern statt goArea). Berührt Kollision + Kamera +
-      Raumlayout - bewusst eigener Schritt.
-  Bereits erledigt in Runde 50: Blut nur in Sonderräumen, Käfig/Kerzenschrein/
-  Blut/Foliant-Optik überarbeitet, Streckbank über zwei Kacheln.
+- Runde 50, Art-Liste KOMPLETT abgearbeitet: Blut nur in Sonderräumen;
+  Käfig/Kerzenschrein/Blut/Foliant-Optik überarbeitet; Streckbank über zwei
+  Kacheln; Bücherregale mit Zuständen voll/durchsucht/leer (Zustand bleibt
+  über Speichern/Laden); Bücher = seltene 10x-Schriftrollen; begehbare Zelle
+  mit offenem Zellentor in der Folterkammer (kein Laden).
+  Offen/zur Klärung (siehe OFFENE-FRAGEN.md): ob "begehbare Türen/Zellen" auch
+  die normalen Krypta-Kammern/Türen meinte (aktuell als Folterkammer-Zelle
+  umgesetzt) und ob die Folterkammer als komplett EIGENER Raumabschnitt mit
+  Instrumenten + mehr Blut gewünscht ist (aktuell ein Sonderraum, nicht
+  abgetrennt).
 
 - Prolog: ab dem 3. Raum wiederholt sich der Spieler-/Bewegungs-/solid-/
   Lichtaufbau in KammerDerFinsternis/DieSchwelle/BlutstromGang (CLAUDE.md

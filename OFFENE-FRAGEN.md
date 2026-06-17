@@ -60,3 +60,17 @@
   - PRE-BOSS (einmalig, letzter Abstieg vor dem Boss, crypt5 -> Boss): Der Blutstrom-Gang. Begründung: das Briefing nennt ihn ausdrücklich "der Gang DIREKT vor der Boss-Arena".
   ZWISCHENLÖSUNG falls du es anders willst: (a) alle drei Räume als ein Block am Anfang, oder (b) der Eröffnungs-Prolog führt direkt in die Krypta (statt zurück ins Dorf). Beides ist ein Ein-Zeilen-Wechsel.
   OFFEN/Folgefrage: Soll der Prolog dann auch die Krypta-Nummerierung verschieben (Krypta = "Ebene 2-6" statt 1-5)? Aktuell NICHT verschoben (Krypta bleibt Ebene 1-5), weil das viele Stellen berührt - sag Bescheid, wenn die Krypta hochzählen soll.
+
+12. Art-Liste Runde 50 - zwei Lesarten, die ich plausibel gewählt habe (sag, falls anders gemeint):
+    (a) "Türen/Zellen als begehbare Eingänge, kein Laden": Ich habe es als ZELLE in der
+        Folterkammer umgesetzt - eine Gitterreihe mit einem offenen, begehbaren Zellentor,
+        durch das man in die Zelle hineingeht (kein Gebietswechsel), dahinter die Truhe.
+        ZWISCHENLÖSUNG falls du etwas anderes meintest: Falls es um die NORMALEN Krypta-
+        Kammern/Durchgänge ging (die sind ohnehin schon nahtlos, eine Karte ohne Laden) oder
+        um sichtbare Türblätter zwischen den Kammern - sag Bescheid, dann ergänze ich Türrahmen
+        an den Durchgängen.
+    (b) "Folterkammer als eigener Raumabschnitt mit Instrumenten + mehr Blut": Aktuell ist die
+        Folterkammer EIN Sonderraum (Streckbank über 2 Kacheln, Käfige, begehbare Zelle, Blut,
+        Notiz, seltene Truhe, ein gefangenes Wesen). Sie ist NICHT baulich vom Rest abgetrennt.
+        Falls du einen klar abgegrenzten Trakt willst (eigener Gang -> mehrere Zellen ->
+        Instrumentenraum), ist das ein größerer Layout-Schritt - sag, ob ich das aufsetzen soll.
