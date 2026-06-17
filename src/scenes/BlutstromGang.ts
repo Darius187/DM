@@ -51,6 +51,7 @@ export class BlutstromGang extends Phaser.Scene {
     this.provider = new SpriteProvider(this);
     this.sfx = new SoundProvider(this);
     this.cameras.main.setBackgroundColor('#060305');
+    this.cameras.main.fadeIn(400, 0, 0, 0); // nahtloser Übergang (Runde 51)
     for (const [x, y] of PLATTEN) this.plattenSet.add(`${x},${y}`);
     this.baueRaum();
     this.zeichnePlatten();

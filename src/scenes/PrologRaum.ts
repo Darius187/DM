@@ -45,6 +45,7 @@ export abstract class PrologRaum extends Phaser.Scene {
     this.provider = new SpriteProvider(this);
     this.sfx = new SoundProvider(this);
     this.cameras.main.setBackgroundColor('#070608');
+    this.cameras.main.fadeIn(400, 0, 0, 0); // nahtloser Übergang zwischen Prolog-Szenen (Runde 51)
     this.baueRaum();
     this.bauePlayer();
     this.lighting = new LightingManager(this, { radius: this.lichtRadius });

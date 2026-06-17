@@ -44,6 +44,7 @@ export class DieStelen extends Phaser.Scene {
     this.provider = new SpriteProvider(this);
     this.sfx = new SoundProvider(this);
     this.cameras.main.setBackgroundColor('#070608');
+    this.cameras.main.fadeIn(400, 0, 0, 0); // nahtloser Übergang (Runde 51)
     this.eingabe = []; this.geloest = false; this.zeigt = false;
     this.folge = Phaser.Utils.Array.Shuffle([0, 1, 2, 3]);
     this.baueRaum();

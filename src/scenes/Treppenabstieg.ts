@@ -43,6 +43,7 @@ export class Treppenabstieg extends Phaser.Scene {
     this.sfx = new SoundProvider(this);
     const W = this.scale.width, H = this.scale.height;
     this.cameras.main.setBackgroundColor('#07060a');
+    this.cameras.main.fadeIn(500, 0, 0, 0); // nahtloser Abstieg aus der Kirche (Runde 51)
     this.cx = W / 2;
     this.yNear = H - 40; this.yFar = H * 0.18;
     this.hwNear = this.schmal ? W * 0.16 : W * 0.34;  // schmal = enger Wendelschacht-Look
