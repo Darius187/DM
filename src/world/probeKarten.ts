@@ -4,13 +4,16 @@
 // die Minikarte). So testen Ansehen, Begehen und Spielen alle dieselbe Quelle.
 
 import { baueLogischenDungeon, type DRaum, type Zelle } from './logischerDungeon';
+import { baueKammernDungeon } from './dungeonKammern';
+import { baueGangDungeon } from './dungeonGaenge';
 import { baueHoehle } from './hoehlenDungeon';
 import { baueVerbundeneRaeume } from './verbundeneRaeume';
+import { baueBurg } from './burgDungeon';
 import { buildCrypt } from './areagen';
 import { seededRng } from '../logic/rng';
 import { T, SOLID } from './tiles';
 
-export type DungeonVersion = 1 | 3 | 4 | 5;
+export type DungeonVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export interface ProbeKarte {
   name: string;
@@ -46,6 +49,21 @@ export function erzeugeKarte(version: DungeonVersion): ProbeKarte {
       name: 'V3 - Geteilte Halle (logisch)', w: d.w, h: d.h, grid: d.grid as number[][], raeume: d.raeume,
       solid: (t) => t === 0 || t === 3 || t === 6, farbe: (t) => FARBE_V3[t as Zelle] ?? 0x4a443a,
     };
+  }
+  if (version === 2) {
+    const d = baueKammernDungeon(Math.random);   // wiederhergestellt (dgn2): Kammern + Gänge
+    return { name: 'V2 - Kammern + Gänge (Original)', w: d.w, h: d.h, grid: d.grid as number[][], raeume: d.raeume as unknown as DRaum[],
+      solid: (t) => t === 0 || t === 3 || t === 6, farbe: (t) => FARBE_V3[t as Zelle] ?? 0x4a443a };
+  }
+  if (version === 6) {
+    const d = baueGangDungeon(Math.random);       // wiederhergestellt (dgnB): offen + Elite-Themenräume
+    return { name: 'V6 - Offen + Elite-Themenräume', w: d.w, h: d.h, grid: d.grid as number[][], raeume: d.raeume as unknown as DRaum[],
+      solid: (t) => t === 0 || t === 3 || t === 6, farbe: (t) => FARBE_V3[t as Zelle] ?? 0x4a443a };
+  }
+  if (version === 7) {
+    const d = baueBurg(Math.random);              // NEU: echtes Verlies (BSP, dichte unregelmäßige Räume)
+    const farben: Record<number, number> = { 0: 0x14110c, 1: 0x8a5a2a, 2: 0x4a443a };
+    return { name: `V7 - Verlies/Burg (${d.raeume} Räume)`, w: d.w, h: d.h, grid: d.grid, solid: (t) => t === 0, farbe: (t) => farben[t] ?? 0x4a443a };
   }
   if (version === 4) {
     const d = baueHoehle(Math.random);

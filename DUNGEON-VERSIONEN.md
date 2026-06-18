@@ -50,3 +50,16 @@ verbunden - KEIN toter Fels dazwischen ("dicht gepackt, kaum Leerraum").
 Spannbaum + Schleifen garantieren, dass alles erreichbar ist; manche
 Nachbarräume verschmelzen zu größeren (Abwechslung). In der DUNGEON-PROBE als
 V5 ansehbar/begehbar/spielbar.
+
+## Wiederhergestellt + neu (Runde 51, Autorwunsch)
+- **V2 - Kammern + Gänge (Original, dgn2)**: `src/world/dungeonKammern.ts` aus der
+  Git-Historie (Commit dad6416) zurückgeholt. ACHTUNG: hat noch den alten
+  Konnektivitäts-Bug (manche Räume isoliert in ~40% der Läufe) - bewusst als
+  Basis "wie damals", zum Weiterarbeiten.
+- **V6 - Offen + Elite-Themenräume (dgnB)**: `src/world/dungeonGaenge.ts` aus
+  Commit 45bfa7b zurückgeholt (Haupthalle/Hallen/Kammern/Gänge + BLUTKAMMER/
+  FOLTERKAMMER/BEINKAMMER). Konnektivität meist ok, ~7/30 Läufe mit Inseln.
+- **V7 - Verlies/Burg (NEU)**: `src/world/burgDungeon.ts`. BSP: die ganze Fläche
+  ist Boden, durch DÜNNE 1-Kachel-Wände in unterschiedlich große Räume
+  zerschnitten, jede Wand mit Tür - echtes Verlies, KEIN Leerraum, unregelmäßig
+  (kein Raster). Voll erreichbar (25 Läufe getestet), dicht (>70% begehbar).

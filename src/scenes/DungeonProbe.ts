@@ -24,7 +24,7 @@ export class DungeonProbe extends Phaser.Scene {
   private uiLayer!: Phaser.GameObjects.Container;
   private spieler!: Phaser.GameObjects.Container;
   private karte!: ProbeKarte;
-  private version: DungeonVersion = 5;
+  private version: DungeonVersion = 7;
   private modus: 'uebersicht' | 'begehen' = 'uebersicht';
   private px = 0; private py = 0; // Spielerposition (Weltpixel) im Begehen-Modus
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -35,7 +35,7 @@ export class DungeonProbe extends Phaser.Scene {
 
   create(): void {
     // Szenen-Neustart nutzt DIESELBE Instanz: jedes Feld zurücksetzen (Regel 9).
-    this.version = 5;
+    this.version = 7;
     this.modus = 'uebersicht';
     this.cameras.main.setBackgroundColor('#0a0908');
     this.cameras.main.fadeIn(300, 0, 0, 0);
@@ -131,23 +131,22 @@ export class DungeonProbe extends Phaser.Scene {
   // --- UI -------------------------------------------------------------------
   private baueUI(): void {
     const y = this.scale.height - 34;
-    const knopf = (x: number, label: string, fn: () => void): void => {
+    const knopf = (x: number, label: string, fn: () => void): Phaser.GameObjects.Text => {
       const t = this.add.text(x, y, label, {
-        fontFamily: 'serif', fontSize: '16px', color: '#e8dcc0', backgroundColor: '#241c10', padding: { x: 12, y: 7 },
+        fontFamily: 'serif', fontSize: '15px', color: '#e8dcc0', backgroundColor: '#241c10', padding: { x: 10, y: 7 },
       }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
       t.on('pointerover', () => t.setBackgroundColor('#3a2e18'));
       t.on('pointerout', () => t.setBackgroundColor('#241c10'));
       t.on('pointerdown', () => fn());
       this.uiLayer.add(t);
+      return t;
     };
-    knopf(20, 'NEU', () => this.generiere());
-    knopf(78, 'BEGEHEN/ÜBERSICHT', () => { if (this.modus === 'uebersicht') this.betrete(); else this.zeigeUebersicht(); });
-    knopf(266, 'SPIELEN', () => this.scene.start('DungeonSpiel', { version: this.version }));
-    knopf(348, 'V1', () => { this.version = 1; this.generiere(); });
-    knopf(394, 'V3', () => { this.version = 3; this.generiere(); });
-    knopf(440, 'V4', () => { this.version = 4; this.generiere(); });
-    knopf(486, 'V5', () => { this.version = 5; this.generiere(); });
-    knopf(538, 'MENÜ', () => this.scene.start('Title'));
+    let bx = 16;
+    bx += knopf(bx, 'NEU', () => this.generiere()).width + 8;
+    bx += knopf(bx, 'BEGEHEN/ÜBERSICHT', () => { if (this.modus === 'uebersicht') this.betrete(); else this.zeigeUebersicht(); }).width + 8;
+    bx += knopf(bx, 'SPIELEN', () => this.scene.start('DungeonSpiel', { version: this.version })).width + 16;
+    for (const v of [1, 2, 3, 4, 5, 6, 7] as const) { bx += knopf(bx, `V${v}`, () => { this.version = v; this.generiere(); }).width + 3; }
+    knopf(bx + 10, 'MENÜ', () => this.scene.start('Title'));
     this.uiLayer.add(this.add.text(this.scale.width / 2, 22, 'DUNGEON-PROBE - Generatoren testen (ansehen ODER begehen)', {
       fontFamily: 'serif', fontSize: '18px', color: '#d8cfb8', stroke: '#000', strokeThickness: 3,
     }).setOrigin(0.5));
