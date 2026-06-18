@@ -63,3 +63,25 @@ V5 ansehbar/begehbar/spielbar.
   ist Boden, durch DÜNNE 1-Kachel-Wände in unterschiedlich große Räume
   zerschnitten, jede Wand mit Tür - echtes Verlies, KEIN Leerraum, unregelmäßig
   (kein Raster). Voll erreichbar (25 Läufe getestet), dicht (>70% begehbar).
+
+## Dungeon-EDITOR (Runde 53, Autorwunsch) - selbst zeichnen + als Code exportieren
+In der DUNGEON-PROBE gibt es jetzt neben ÜBERSICHT/BEGEHEN den Knopf **EDITOR**.
+Damit lässt sich für JEDE V-Version eine Vorlage von Hand zeichnen und mir als
+Code schicken, damit ich daraus einen prozeduralen Generator baue.
+
+Ablauf:
+1. Version wählen (V1-V7), EDITOR öffnen. Der Editor übernimmt die aktuell
+   generierte Karte als Ausgangsbild ("AUS GENERATOR") ODER eine zuvor
+   gespeicherte Vorlage.
+2. Mit den PINSELN malen: Wand, Raumboden, Tür, Gang, Leer/Fels. Pinselgröße
+   1-3. Werkzeuge: AUS GENERATOR (neu übernehmen), LEEREN, RAHMEN (Außenwand),
+   SPEICHERN/LADEN (pro Version, im Browser), BEGEHEN (die eigene Vorlage
+   ablaufen), EXPORT.
+3. **EXPORT** kopiert die Vorlage als lesbaren Code-Block (`VORLAGE_V<n>`) in die
+   Zwischenablage (Fallback: Browser-Konsole). Diesen Code im Chat einfügen und
+   mir schicken - daraus baue ich einen Generator, der solche Layouts erzeugt.
+
+Technik: `src/world/dungeonVorlage.ts` (rein, getestet) - Kachel-Codes
+(0 Leer/Fels · 1 Raumboden · 2 Wand · 3 Tür · 4 Gang), `vonKarte` (Generator ->
+Vorlage), `exportiere`/`parse` (verlustfreier Round-Trip). Pro Version unter
+`ravensmoor_dvorlage_v<n>` im localStorage gespeichert.
