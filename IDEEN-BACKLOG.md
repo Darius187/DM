@@ -16,13 +16,13 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [ ] Nahe Dörfer / Burg / Kloster (Finale im Kloster).
 - [x] Waldsee im Dunkelwald (Atmosphäre, Wasserfläche mit Grasufer). OFFEN:
       Fischer-NPC am Ufer (evtl.).
-- [x] Pestgrube als Wald-Schauplatz (1635, verbrannte Erde + Grabhügel).
+- [x] Pestgrube als Wald-Schauplatz (Pestzeit/1349, verbrannte Erde + Grabhügel).
 - [~] Goldhöhle: spielbarer EINGANG im Wald (Höhlenmaul -> kleine Höhle mit
       Goldadern, dünn bewacht, Truhe, Aufgang zurück). Das große eigene
       Höhlen-Level (Gold für den Fürsten) kommt später daraus.
 - [x] Held sichert, Bewohner schürfen (Autorentscheid Runde 51): Goldader gibt
       GOLDERZ ins Dorf-Lager (kein Sofort-Gold). Gold wird NICHT im Dorf
-      verarbeitet (Bergregal/Münzregal des Fürsten, 1635) - Golderz geht als
+      verarbeitet (Bergregal/Münzregal des Fürsten, 14. Jh.) - Golderz geht als
       Abgabe an den Fürsten (seine Münze prägt es). Gesicherte Goldhöhle
       (Wachen geräumt) -> die Knappen fördern täglich Golderz (sichern ->
       Produktion). OFFEN: dieselbe Sichern->Produktion-Logik für die noch zu

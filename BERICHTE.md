@@ -562,7 +562,7 @@ Alles mit tsc + 50 Tests grün und im Browser durchgespielt:
   Kamin), Gemeindehaus, Backhaus, Zimmerei, Mühle, Schmiede, Magdalenas
   Hütte und vier Wohnhäuser in der neuen Wohngasse. Haustür per E
   betreten, drinnen warmes Holz, Teppiche, Kaminfeuer mit Licht.
-- Neue Gebäude am Markt (wie im Dorf des 17. Jahrhunderts: Läden am
+- Neue Gebäude am Markt (wie im Dorf des 14. Jahrhunderts: Läden am
   Platz): Gemeindehaus (größtes Haus, Zuflucht bei Einfällen), Backhaus,
   Zimmerei mit Holzlager, dazu die Wohngasse mit vier Familienhäusern.
 - 13 neue Dorfbewohner mit Berufen und Tagesablauf: Schulze Bertram,

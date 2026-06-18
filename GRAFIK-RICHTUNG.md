@@ -15,7 +15,7 @@ dir das".)
 
 ## 2. Stil
 
-- Düster, handfest, 1635 (Pest/Krieg). Vorbild für das *Niveau* und die
+- Düster, handfest, 1349 (Schwarzer Tod/Pest, spätmittelalterlich). Vorbild für das *Niveau* und die
   *Machart*: **The Slormancer** (klare Form + starkes Licht + gedeckte
   Palette) - NICHT kopieren, eigener Stil. Das helle, fröhliche Vorbild
   (Sea of Stars) ist ausdrücklich NICHT die Richtung.

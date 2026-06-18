@@ -6,15 +6,15 @@ Fallback - es geht NIE etwas kaputt. Die Browser-Konsole (F12) listet bei
 jedem Start auf, was gefunden wurde und was noch auf Fallback läuft.
 
 Einheitlicher Stil-Vorschlag für alle ChatGPT-Bilder:
-"düsteres Ölgemälde, 17. Jahrhundert, Dreißigjähriger Krieg, dunkler
-neutraler Hintergrund, gedämpfte Farben, dramatisches Kerzenlicht"
+"düsteres Gemälde, 14. Jahrhundert, Schwarzer Tod / Pestzeit, spätmittelalterlich,
+dunkler neutraler Hintergrund, gedämpfte Farben, dramatisches Kerzenlicht"
 
 ## 1. Portraits - `assets/portraits/` (PNG, quadratisch, 512x512 empfohlen)
 
 Portraits werden NICHT freigestellt, sondern vom Spiel in einen Rahmen gesetzt.
 
 ChatGPT-Prompt-Vorlage:
-> Porträt im Stil eines düsteren Ölgemäldes des 17. Jahrhunderts,
+> Porträt im Stil eines düsteren Ölgemäldes des 14. Jahrhunderts,
 > Brustbild, Blick zum Betrachter, dunkler neutraler Hintergrund,
 > dramatisches Kerzenlicht: [BESCHREIBUNG]. Quadratisch, 512x512.
 
@@ -40,7 +40,7 @@ Einfarbiger Hintergrund ist okay - das Spiel stellt per Farbtoleranz frei
 das Bild, dasselbe Schwert kann gewöhnlich bis episch sein.
 
 ChatGPT-Prompt-Vorlage:
-> Einzelner Gegenstand im Stil eines düsteren Ölgemäldes des 17. Jahrhunderts,
+> Einzelner Gegenstand im Stil eines düsteren Ölgemäldes des 14. Jahrhunderts,
 > zentriert, komplett sichtbar, einfarbig dunkelgrauer Hintergrund,
 > kein Text: [GEGENSTAND]. Quadratisch, 512x512.
 
@@ -80,7 +80,7 @@ Verbrauchsgegenstände:
 ## 3. Titelbild - `assets/title/`
 
 - [ ] `ravensmoor-title.jpg` - Dorf mit Steinkirche im Nebel, bleierner
-      Himmel, 17. Jahrhundert, Ölgemälde-Stil, Querformat (z. B. 1920x1080)
+      Himmel, 14. Jahrhundert, Ölgemälde-Stil, Querformat (z. B. 1920x1080)
 
 ## 4. Sounds - `assets/sounds/` (CC0, .ogg oder .wav)
 

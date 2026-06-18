@@ -11,8 +11,9 @@ oder in der Referenzdatei.
 
 ## 1.1 Elevator Pitch
 
-Ein browserbasiertes 2D-Action-RPG im Deutschland des Jahres 1635 (Dreißigjähriger
-Krieg). Der Spieler erhält im Dunkelwald einen Auftrag seines Landherrn, nach dem
+Ein browserbasiertes 2D-Action-RPG im Deutschland des Jahres 1349 (Schwarzer Tod /
+Pestzeit, Heiliges Römisches Reich - rund um den Hundertjährigen Krieg, Langbogen
+und Armbrust statt Schießpulver). Der Spieler erhält im Dunkelwald einen Auftrag seines Landherrn, nach dem
 Dorf Ravensmoor zu sehen, aus dem beunruhigende Berichte kommen. Dort entfaltet
 sich eine Horrorgeschichte um eine Krypta unter der Dorfkirche, einen lebendig
 begrabenen Tempelritter und ein Relikt, das Unsterblichkeit verspricht - zu einem
@@ -226,7 +227,7 @@ Technische Behandlung der Bilder:
 PFLICHT in Phase 0: Eine Datei `ASSETS-LIESMICH.md` im Projektstamm erzeugen,
 die ALLE erwarteten Dateinamen als Checkliste auflistet, mit Bildgröße und
 einem fertigen ChatGPT-Prompt-Vorschlag pro Kategorie (einheitlicher Stil:
-"düsteres Ölgemälde, 17. Jahrhundert, dunkler neutraler Hintergrund"), damit
+"düsteres Gemälde, 14. Jahrhundert / Pestzeit, dunkler neutraler Hintergrund"), damit
 der Autor die Bilder Stück für Stück abarbeiten kann. Bei jedem Spielstart
 loggt das Spiel in der Konsole, welche Assets gefunden wurden und welche noch
 auf Fallback laufen.
@@ -404,7 +405,7 @@ Spiel selbst etwas umgebaut werden muss. Deshalb gilt von Anfang an:
 - Erster Ich-Erzähler-Text beim Waldrand (aus der Referenz: "Ich wusste nicht,
   was mich erwartete...").
 
-## 7.2 Gebiet 2: Ravensmoor - ein echtes Dorf des 17. Jahrhunderts (DEUTLICH GRÖSSER)
+## 7.2 Gebiet 2: Ravensmoor - ein echtes Dorf des 14. Jahrhunderts (DEUTLICH GRÖSSER)
 
 Mindestens dreimal so groß wie der Referenz-Prototyp. Aufbau entlang der alten
 Salzstraße, mit Wegen, Zäunen, Feldern, Bachlauf. Gebäude und Orte:

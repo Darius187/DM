@@ -7,7 +7,7 @@ Hier wird gesammelt und ergänzt. **Etabliert** = steht so im Spiel/Masterprompt
 ---
 
 ## 1. Setting (etabliert)
-- "Ravensmoor - Der Preis der Unsterblichkeit". 1635, Dreißigjähriger Krieg,
+- "Ravensmoor - Der Preis der Unsterblichkeit". 1349, Schwarzer Tod (Pestzeit),
   Pest, Grimdark. Düsteres Dorf an der alten Salzstraße.
 - Unter der Kirche St. Marien eine Krypta (5 Ebenen) -> Grab des Kreuzritters
   (Boss). Darunter eine alte Kultstätte, älter als das Kreuz.
@@ -111,7 +111,7 @@ bei Einfällen wird er **blutig** (kein Wasser mehr).
 Rahmen: Die Geschichte wird rückblickend aus den **Memoiren des Helden** erzählt
 (Ich-Form, Vergangenheit), wie ein Tagebuch nach dem Krieg. Beispielton (Autor):
 "Ich entschied mich, das Dorf zu evakuieren und zur letzten Zuflucht
-zurückzukehren ..." Passt perfekt zum Grimdark-1635-Ton und macht den Spieler
+zurückzukehren ..." Passt perfekt zum Grimdark-1349-Ton und macht den Spieler
 zum Chronisten der eigenen Geschichte.
 - Greift an: Eröffnung, Ankunft in Gebieten, Etappen-/Kapitelübergänge, große
   Wendepunkte. Die ERZAEHLER-Texte + der Chronik-Tab "Geschichte" sind die
