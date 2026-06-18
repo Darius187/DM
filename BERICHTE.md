@@ -937,3 +937,26 @@ OFFEN (mit dem Autor abzustimmen, in OFFENE-FRAGEN.md): Boss-Arena (BloodFlow
 also zur Arena, nicht zur kampffreien Ebene; Einbettung in den Hauptspielfluss
 (Reihenfolge, Uebergang Dorf->Ebene 1->Krypta, Tuer-Schalter zum Zurueck ins
 Dorf); echte Audio-Assets (aktuell stille/prozedurale Fallback-Haken).
+
+## Runde 52 - Quest-System, HUD-Alternativen, verschiebbare Fenster
+
+VERIFIZIERT (Logik/Build): tsc fehlerfrei, 132 Tests grün (10 neue Quest-Logbuch-Tests),
+Vite-Build ok.
+
+FERTIG:
+- Quest-Datenbank + Logbuch-Logik (datengetrieben, RPG/WoW-artig, aus den
+  bestehenden Story-Flags abgeleitet - keine Story-Inhalte erfunden).
+- Questlogbuch (AUFGABEN-Tab) hübsch als Karten: Kategorie-Akzent, Häkchen-Ziele,
+  Belohnung, "VERFOLGEN"-Schalter. Verfolgte Quest erscheint automatisch
+  (oberste Hauptquest) oder per Wahl.
+- Quest-Verfolger auf dem Hauptbildschirm: halbtransparentes, frei verschiebbares
+  Fenster mit aktuellem Ziel + Wohin-Hinweis. An/aus im F10-Kasten.
+- Drei umschaltbare Leben/Mana-Anzeigen (Kugeln rot/blau, WoW-Balken,
+  Kristall-Säulen), Umschalten im F10-Kasten, beide Anzeigen einzeln verschiebbar.
+- Alle Fenster verschiebbar (Handel, Lager, Dialog, Figur-Editor zusätzlich zu
+  Charakterfenster/Chronik/Dev-Kasten).
+
+NICHT live verifiziert (Dev-Server bricht in dieser Umgebung beim Laden ab):
+die tatsächliche Optik im Browser. Bitte prüfen: Quest-Verfolger-Aussehen und
+Verschieben, die drei Leben/Mana-Stile durchschalten, das Verschieben von
+Handel/Lager/Dialog.
