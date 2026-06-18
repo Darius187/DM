@@ -37,37 +37,39 @@ function tileErreichbar(a: AreaData, seen: boolean[][], tile: number): boolean {
   return false;
 }
 
-describe('Waldschauplätze (Runde 51): See + Pestgrube vorhanden und erreichbar', () => {
+describe('Startkarte Dunkelwald (Runde 53): schlicht und sauber', () => {
   for (let seed = 0; seed < 12; seed++) {
-    it(`Seed ${seed}: Waldsee-Wasser, Pestgrube und Labels`, () => {
+    it(`Seed ${seed}: kein See/Pestgrube/Köhler/Fischer/Höhle, Spawn erreichbar`, () => {
       const a = buildForest(seededRng(seed));
       const fx = Math.floor(a.spawn.x / 32), fy = Math.floor(a.spawn.y / 32);
       const seen = reachable(a, fx, fy);
 
-      // Waldsee: eine zusammenhängende Wasserfläche von einiger Größe
-      let wasser = 0;
-      for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) if (a.map[y][x] === T.WATER) wasser++;
-      expect(wasser, 'Waldsee-Wasserfläche').toBeGreaterThan(10);
+      // Schlichter Anfang: KEINE Seen, KEINE verbrannten/schwarzen Flecken
+      let wasser = 0, burnt = 0;
+      for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) {
+        if (a.map[y][x] === T.WATER) wasser++;
+        if (a.map[y][x] === T.BURNT) burnt++;
+      }
+      expect(wasser, 'kein See auf der Startkarte').toBe(0);
+      expect(burnt, 'keine verbrannten/schwarzen Flecken').toBe(0);
 
-      // Ufer am See ist zu Fuß erreichbar (ein Land-Nachbar des Wassers)
-      expect(tileErreichbar(a, seen, T.WATER), 'Seeufer erreichbar').toBe(true);
-
-      // Pestgrube: verbrannte Erde, erreichbar
-      let burnt = 0;
-      for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) if (a.map[y][x] === T.BURNT) burnt++;
-      expect(burnt, 'Pestgrube (verbrannte Erde)').toBeGreaterThan(4);
-      expect(tileErreichbar(a, seen, T.BURNT), 'Pestgrube erreichbar').toBe(true);
-
-      // Beschriftungen der Schauplätze
+      // Keine Schauplatz-Labels mehr
       const labels = a.labels.map((l) => l.t);
-      expect(labels).toContain('Waldsee');
-      expect(labels).toContain('Pestgrube');
+      expect(labels).not.toContain('Waldsee');
+      expect(labels).not.toContain('Pestgrube');
+      expect(labels).not.toContain('Kohlenmeiler');
+      expect(labels).not.toContain('Goldhöhle');
 
-      // Runde 53 (Autorwunsch): Fischer UND Goldhöhlen-Eingang wurden von der
-      // STARTKARTE entfernt - gehören nicht an den Anfang. Daher dürfen sie hier
-      // NICHT mehr auftauchen.
+      // Köhler, Fischer und Goldhöhlen-Eingang sind weg
+      expect(a.npcs.some((n) => n.id === 'koehler'), 'kein Köhler am Anfang').toBe(false);
+      expect(a.npcs.some((n) => n.id === 'waldfischer'), 'kein Fischer am Anfang').toBe(false);
       expect(a.special.some((s) => s.id === 'goldmine'), 'kein Goldhöhlen-Marker am Anfang').toBe(false);
-      expect(a.npcs.some((n) => n.id === 'waldfischer'), 'kein Waldfischer am Anfang').toBe(false);
+
+      // Der Pfad bleibt: der Spawn steht auf begehbarem Boden, einiges ist erreichbar
+      expect(SOLID.has(a.map[fy][fx]), 'Spawn auf Boden').toBe(false);
+      let begehbar = 0;
+      for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) if (seen[y][x]) begehbar++;
+      expect(begehbar, 'begehbare Fläche vorhanden').toBeGreaterThan(50);
     });
   }
 });

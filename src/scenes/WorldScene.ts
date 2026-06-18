@@ -4952,16 +4952,25 @@ export class WorldScene extends CombatScene {
     // ist daher entfernt.
     // Layout, Minimap und aufgedeckte Treppen BLEIBEN erhalten (Runde 5)
     // Auferstehung auf dem Friedhof neben der Kirche (Feedback-Runde 8):
-    // etwas Gutes wacht über Ravensmoor und schickt dich zurück
+    // etwas Gutes wacht über Ravensmoor und schickt dich zurück. (Runde 53:
+    // robuste Suche - IMMER eine freie Kachel im Kirch-/Friedhofsbereich finden,
+    // nie am Kartenrand landen, auch wenn man auf der Startkarte stirbt.)
     const village = this.getArea('village');
     let spawn: { x: number; y: number } | undefined;
-    for (const [tx, ty] of [[71, 14], [71, 13], [71, 15], [72, 17], [70, 17], [63, 18]] as const) {
-      if (!SOLID.has(village.map[ty][tx])) {
+    for (const [tx, ty] of [[71, 15], [71, 14], [70, 16], [72, 16], [69, 15], [71, 17], [68, 16], [73, 15]] as const) {
+      if (village.map[ty]?.[tx] !== undefined && !SOLID.has(village.map[ty][tx])) {
         spawn = { x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE };
         break;
       }
     }
-    this.goArea('village', spawn);
+    if (!spawn) {                                   // breitere Suche im Friedhofs-Kasten
+      for (let ty = 12; ty <= 22 && !spawn; ty++) {
+        for (let tx = 60; tx <= 78 && !spawn; tx++) {
+          if (village.map[ty]?.[tx] !== undefined && !SOLID.has(village.map[ty][tx])) spawn = { x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE };
+        }
+      }
+    }
+    this.goArea('village', spawn ?? { x: village.spawn.x, y: village.spawn.y });
     this.fx.burst(this.px, this.py, 0xf0e8c0, 26, 200);
     this.sfx.play('heiliges_licht');
     this.logMsg(TOD.erwachen, 'magic');

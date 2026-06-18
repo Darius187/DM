@@ -303,10 +303,10 @@ export function shade(hex: string, amt: number): string {
 
 // Figuren-Vorlagen für alle Sprite-Namen (Fallback-Kasten)
 export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken: true }> = {
-  // Held (Runde 52, Autorwunsch): anthrazitfarbener dunkler Ritter - "wie die
-  // schwarzen Ritter aus der Schlacht-Probe". KEINE Waffe in der Hand (geschlagen
-  // wird per Schwung-FX). Anthrazit-Wams/Dunkelstahl, kräftige Haut, größer als das Volk.
-  spieler:   { tunic: '#2f3338', skin: '#c0a888', hair: '#1a1816', legs: '#23262a', hat: '#3e4248', weapon: null, scale: 1.18 },
+  // Held (Runde 53, Autorwunsch): aussehen "wie der Hannes" (Pater Johannes),
+  // nur leicht abgewandelt - bekapuzter/berockter Wanderer, graumeliertes Haar,
+  // dunkelblaugraues Gewand. KEINE Waffe in der Hand (Schlag per Schwung-FX).
+  spieler:   { tunic: '#34343f', skin: '#c8b090', hair: '#6a6a6a', legs: '#2a2a32', robe: true, weapon: null, scale: 1.18 },
   pest:      { tunic: '#5a7a3a', skin: '#9aa87a', hair: '#46602e', legs: '#3a4a26', weapon: null, seuche: true },
   skelett:   { tunic: '#cfc4a8', skin: '#e0d8c0', hair: '#cfc4a8', legs: '#b8ae90', weapon: 'schwert', skeletal: true },
   schuetze:  { tunic: '#b8a888', skin: '#d0c8b0', hair: '#b8a888', legs: '#a09070', weapon: 'bogen', skeletal: true },
@@ -376,11 +376,14 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
 // Ritter"): waffenlos, heroisch, durchgehend dunkler Anthrazit-/Dunkelstahl-Ton,
 // der mit der Stufe heller/metallischer wird. stoff = dunkles Wams, leder =
 // dunkler Lederpanzer, kette = anthrazit-Kette, platte = Dunkelstahl-Platte.
+// Held je Rüstungsstufe (Runde 53, Autorwunsch "wie der Hannes"): durchgehend
+// der berockte Wanderer-Look von Pater Johannes (Robe, graumeliertes Haar), die
+// Rüstung wächst nur über den Gewand-Ton mit. Leicht änderbar in einer Datei.
 const SPIELER_STUFEN: Record<HeldTier, FigureSpec> = {
-  stoff:  { tunic: '#2f3338', skin: '#c0a888', hair: '#1a1816', legs: '#23262a', hat: '#3e4248', weapon: null, scale: 1.18 },
-  leder:  { tunic: '#35383d', skin: '#c0a888', hair: '#1a1816', legs: '#26292d', hat: '#474b51', weapon: null, scale: 1.18 },
-  kette:  { tunic: '#4a4e54', skin: '#c0a888', hair: '#1a1816', legs: '#36393e', hat: '#5e636a', weapon: null, scale: 1.2, ritter: true },
-  platte: { tunic: '#5c626a', skin: '#c0a888', hair: '#1a1816', legs: '#454a51', hat: '#70767e', weapon: null, scale: 1.22, ritter: true },
+  stoff:  { tunic: '#34343f', skin: '#c8b090', hair: '#6a6a6a', legs: '#2a2a32', robe: true, weapon: null, scale: 1.18 },
+  leder:  { tunic: '#3c3a40', skin: '#c8b090', hair: '#6e6e6e', legs: '#2c2a30', robe: true, weapon: null, scale: 1.18 },
+  kette:  { tunic: '#46484f', skin: '#c8b090', hair: '#7a7a7a', legs: '#34363c', robe: true, weapon: null, scale: 1.2 },
+  platte: { tunic: '#53565e', skin: '#c8b090', hair: '#8a8a8a', legs: '#3e4046', robe: true, weapon: null, scale: 1.22 },
 };
 for (const stufe of Object.keys(SPIELER_STUFEN) as HeldTier[]) {
   FIGURES[`spieler_${stufe}`] = SPIELER_STUFEN[stufe];

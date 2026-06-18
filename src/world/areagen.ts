@@ -130,27 +130,6 @@ function carveOval(map: number[][], x: number, y: number, rw: number, rh: number
   }
 }
 
-// Legt eine Waldlichtung abseits des Pfads an - auf der Seite mit mehr Platz,
-// damit der mäandernde Weg nie hineinläuft - und verbindet sie über einen
-// schmalen Stich (Spalte x) mit dem Weg. Gibt die Lichtungs-Maße zurück, der
-// Aufrufer füllt sie (Wasser, Grube ...). hb = halbe Breite, ho = Höhe.
-function waldLichtung(map: number[][], pfadY: number[], x: number, hb: number, ho: number):
-  { x0: number; y0: number; x1: number; y1: number; cx: number; cy: number } {
-  const h = map.length, w = map[0].length;
-  const py = pfadY[x] ?? Math.floor(h / 2);
-  const oben = py >= h - 1 - py;   // mehr Platz nach Norden?
-  const gap = 2;                    // Abstand zwischen Weg und Lichtung
-  let y0: number, y1: number;
-  if (oben) { y1 = Math.max(2, py - gap); y0 = Math.max(1, y1 - ho + 1); }
-  else { y0 = Math.min(h - 2, py + gap); y1 = Math.min(h - 2, y0 + ho - 1); }
-  const x0 = Math.max(1, x - hb), x1 = Math.min(w - 2, x + hb);
-  carve(map, x0, y0, x1, y1, T.GRASS);
-  // Stich vom Weg zur Lichtung (Bäume in der Spalte x roden)
-  const von = Math.min(py, oben ? y1 : y0), bis = Math.max(py, oben ? y1 : y0);
-  for (let yy = von; yy <= bis; yy++) if (map[yy]?.[x] === T.TREE) map[yy][x] = T.GRASS;
-  return { x0, y0, x1, y1, cx: Math.round((x0 + x1) / 2), cy: Math.round((y0 + y1) / 2) };
-}
-
 export function buildCrypt(n: number, rng: Rng): AreaData {
   // Endlose Tiefe (Feedback-Runde 6): ab Ebene 6 wiederholen sich die Themen,
   // die Gegner skalieren über die Tiefe aber weiter
@@ -1418,14 +1397,10 @@ export function buildForest(rng: Rng): AreaData {
   a.shrines.push({ x: cx * TILE + 16, y: (Math.max(3, lyMitte - 3)) * TILE + 16 });
   a.labels.push({ x: cx * TILE, y: (Math.max(3, lyMitte - 3)) * TILE, t: 'Lichtung' });
 
-  // Köhler-Lichtung (Runde 41, Autorwunsch "Köhler im Wald"): ein Kohlenmeiler,
-  // an dem der Köhler Holz zu Kohle brennt - hier kauft man Kohle günstiger.
-  const koX = 30, koLy = pfadY[koX] ?? 13, koVy = Math.min(h - 4, koLy + 5);
-  carve(map, koX - 3, koVy - 2, koX + 3, koVy + 2, T.GRASS);
-  for (let yy = Math.min(koLy, koVy); yy <= Math.max(koLy, koVy); yy++) if (map[yy]?.[koX] === T.TREE) map[yy][koX] = T.GRASS;
-  map[koVy][koX] = T.BURNT; map[koVy][koX + 1] = T.BURNT;   // der Meiler (verkohltes Erdreich)
-  a.labels.push({ x: koX * TILE, y: (koVy - 2) * TILE, t: 'Kohlenmeiler' });
-  a.npcs.push({ id: 'koehler', name: 'Köhler Anselm', x: (koX - 2) * TILE, y: koVy * TILE });
+  // (Runde 53, Autorwunsch) Köhler-Lichtung, Waldsee und Pestgrube von der
+  // STARTKARTE entfernt - der Anfang soll schlicht sein (Pfad + Wald + Wölfe),
+  // keine Schauplätze, kein See, keine verbrannten/schwarzen Flecken. Diese
+  // Schauplätze wandern in spätere Karten.
 
   // Zwei kleine Nebenlichtungen abseits des Pfads (Kräuter, Felsen)
   for (const lx of [18, 40, 64, 90, 112]) {
@@ -1448,29 +1423,6 @@ export function buildForest(rng: Rng): AreaData {
     const gx = ri(rng, 3, w - 4), gy = ri(rng, 3, h - 4);
     if (map[gy][gx] === T.TREE && rng.random() < 0.8) map[gy][gx] = T.GRASS;
   }
-
-  // --- Waldschauplätze (Runde 51, Autorwunsch "Waldschauplätze und See") -------
-  // Stiller Waldsee abseits des Pfads (auf der Seite mit mehr Platz, damit der
-  // mäandernde Weg nie hineinläuft): Wasserfläche mit Grasufer, schmaler Stich
-  // vom Weg. Die Ufer-Tiefe (Schatten-Saum + Wasserlinie) malt der WorldScene-
-  // Renderer automatisch an jeder Land-Kante.
-  const see = waldLichtung(map, pfadY, 82, 6, 7);
-  carveOval(map, see.x0 + 2, see.y0 + 1, (see.x1 - see.x0) - 3, (see.y1 - see.y0) - 1, T.WATER);
-  a.kraeuter.push({ x: see.x0 * TILE + 16, y: see.cy * TILE + 16 });
-  a.kraeuter.push({ x: see.x1 * TILE + 16, y: see.cy * TILE + 16 });
-  a.labels.push({ x: (see.cx - 1) * TILE, y: see.y0 * TILE, t: 'Waldsee' });
-  // (Runde 53, Autorwunsch) Der Waldfischer "Konrad" wurde von der STARTKARTE
-  // entfernt - das Fischer-Schauspiel gehört nicht ganz an den Anfang, sondern
-  // an einen späteren Schauplatz. Der stille Waldsee bleibt als Atmosphäre.
-
-  // Pestgrube (1635 - die Pest wütet): eine Massengrab-Lichtung, verbrannte
-  // Erde und drei Grabhügel. Reine Schauplatz-Atmosphäre.
-  const pg = waldLichtung(map, pfadY, 104, 4, 6);
-  carve(map, pg.cx - 2, pg.cy - 1, pg.cx + 2, pg.cy + 1, T.BURNT);
-  for (const [gx, gy] of [[pg.x0 + 1, pg.cy], [pg.x1 - 1, pg.cy - 1], [pg.cx, pg.y1]] as const) {
-    if (map[gy]?.[gx] === T.GRASS) map[gy][gx] = T.GRAVE;
-  }
-  a.labels.push({ x: (pg.cx - 1) * TILE, y: pg.y0 * TILE, t: 'Pestgrube' });
 
   // (Runde 53, Autorwunsch) Der Eingang zur GOLDHÖHLE wurde von der STARTKARTE
   // entfernt - die Mine gehört nicht an den Anfang, sondern in den späteren

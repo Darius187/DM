@@ -654,13 +654,16 @@ export class Hud {
     const orbsAn = stil === 0;
     this.hpImg.setVisible(orbsAn);
     this.mpImg.setVisible(orbsAn);
-    if (stil === 1) {            // WoW-Balken (horizontal)
-      const [hnx, hny] = this.zeichneBalken(g, hx, hy, hpFrac, true, -1);
-      const [mnx, mny] = this.zeichneBalken(g, mx, my, mpFrac, false, 1);
+    if (stil === 1) {            // WoW-Balken: OBEN LINKS, gestapelt (Autorwunsch R53)
+      const wx = Math.max(8, 16 + oh.x);           // linker Rand (mit orbHp verschiebbar)
+      const wyHp = Math.max(8, 26 + oh.y);
+      const wyMp = wyHp + 24;
+      const [hnx, hny] = this.zeichneBalken(g, wx, wyHp, hpFrac, true, 1);
+      const [mnx, mny] = this.zeichneBalken(g, wx, wyMp, mpFrac, false, 1);
       this.hpText.setPosition(hnx, hny).setText(hpVal);
       this.mpText.setPosition(mnx, mny).setText(mpVal);
-      this.potText.setPosition(hnx, hny + 18).setText(potT);
-      this.mpotText.setPosition(mnx, mny + 18).setText(mpotT);
+      this.potText.setPosition(hnx, hny - 14).setText(potT);
+      this.mpotText.setPosition(mnx, mny + 14).setText(mpotT);
     } else if (stil === 2) {     // Vertikale Kristall-Säulen (RPG)
       this.zeichneVertikal(g, hx, hy, hpFrac, true);
       this.zeichneVertikal(g, mx, my, mpFrac, false);
