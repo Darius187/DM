@@ -179,8 +179,16 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
     const d = Math.hypot(r.cx - start.cx, r.cy - start.cy);
     if (d > fd) { fd = d; far = r; }
   }
-  map[start.cy][start.cx] = T.STAIRUP;
-  map[far.cy][far.cx] = T.STAIR;
+  // Treppen als 1x4-Lauf (Runde 53, Autorwunsch "wie 4 Felder als Test"): die
+  // nahtlose Treppen-Kachel ergibt mit mehreren Feldern eine durchgehende Treppe.
+  // Nur dort verlängern, wo Boden ist (nicht in Wände schneiden).
+  const treppeLauf = (cx2: number, cy2: number, tile: number): void => {
+    const boden = map[cy2][cx2];
+    map[cy2][cx2] = tile;
+    for (let k = 1; k < 4; k++) { const yy = cy2 - k; if (map[yy]?.[cx2] === boden) map[yy][cx2] = tile; else break; }
+  };
+  treppeLauf(start.cx, start.cy, T.STAIRUP);
+  treppeLauf(far.cx, far.cy, T.STAIR);
   a.spawn = { x: (start.cx + 1) * TILE + 16, y: start.cy * TILE + 16 };
   a.upPos = { x: start.cx * TILE + 16, y: start.cy * TILE + 16 };
   a.downPos = { x: far.cx * TILE + 16, y: far.cy * TILE + 16 };

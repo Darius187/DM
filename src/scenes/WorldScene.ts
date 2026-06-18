@@ -165,6 +165,7 @@ export class WorldScene extends CombatScene {
   einrichtung = 0; // gewähltes Deko-Set (0 = keins)
   private npcEnts: NpcEntity[] = [];
   private animalEnts: AnimalEntity[] = [];
+  private _tierPrevX = 0; private _tierPrevY = 0;   // Spielerposition letzter Frame (für Tempo der Scheu-Flucht)
   private tag = 1;
   private tageszeit = 0.3; // 0..1, Start am Morgen
   private gefaellteBaeume = new Map<string, number>(); // Position -> Tag des Fällens
@@ -5893,6 +5894,12 @@ export class WorldScene extends CombatScene {
     // teilen sich oft dasselbe Mittags-/Abendziel (Taverne, Markt) und stapelten
     // sich. Sichtbare Nachbarn sanft auseinanderschieben - wie bei den Gegnern.
     this.trenneNpcs();
+    // Spieler-Tempo + Schwertschwung für die Scheu-Flucht der Tiere (R53).
+    const schwingt = this.combat.action === 'attack';
+    const pdx = this.px - this._tierPrevX, pdy = this.py - this._tierPrevY;
+    const pWeg = Math.hypot(pdx, pdy);
+    const pTempo = pWeg > 400 ? 0 : pWeg / Math.max(dt, 0.001);   // >400 = Gebietswechsel, ignorieren
+    this._tierPrevX = this.px; this._tierPrevY = this.py;
     // Tiere laufen in Gattern umher, mit Lauten
     for (const t of this.animalEnts) {
       t.pauseT -= dt;
@@ -5917,6 +5924,34 @@ export class WorldScene extends CombatScene {
           t.dir = Math.cos(a) < 0 ? 1 : 2;
           t.stepT += dt; if (t.stepT > 0.11) { t.stepT = 0; t.step = (t.step + 1) % 4; }
           if (t.soundT <= 0) { t.soundT = 1.4 + Math.random() * 2; if (Math.hypot(t.curX - this.px, t.curY - this.py) < 460) this.sfx.play(t.type, 0.6); }
+          this.provider.applyFigure(t.sprite, t.type, t.dir, t.step);
+          t.sprite.setPosition(t.curX, t.curY).setDepth(t.curY);
+          continue;
+        }
+      }
+      // Scheu (R53, Autorwunsch): Hühner & kleine Tiere weichen aus, wenn man
+      // ZU SCHNELL zu nah kommt oder mit dem Schwert fuchtelt - und auch NPCs,
+      // die ihnen zu nah kommen. Sie weichen nur AUS (bleiben im erweiterten
+      // Gehege), rennen nicht über die ganze Karte.
+      const scheu = t.type === 'huhn' || t.type === 'schaf' || t.type === 'hund';
+      if (scheu && !this.playerDead) {
+        const dP = Math.hypot(this.px - t.curX, this.py - t.curY);
+        let bedroher: { x: number; y: number } | null = null;
+        if (dP < (schwingt ? 150 : 92) && (schwingt || pTempo > 120)) bedroher = { x: this.px, y: this.py };
+        else for (const n of this.npcEnts) { if (Math.hypot(n.curX - t.curX, n.curY - t.curY) < 40) { bedroher = { x: n.curX, y: n.curY }; break; } }
+        if (bedroher) {
+          const a = Math.atan2(t.curY - bedroher.y, t.curX - bedroher.x);
+          const spd = t.type === 'huhn' ? 98 : 64;
+          const nx = t.curX + Math.cos(a) * spd * dt, ny = t.curY + Math.sin(a) * spd * dt;
+          if (!this.solidFuerTier(nx, t.curY)) t.curX = nx;
+          if (!this.solidFuerTier(t.curX, ny)) t.curY = ny;
+          const pg = t.pen ?? { x0: t.x - 44, y0: t.y - 30, x1: t.x + 44, y1: t.y + 30 };
+          t.curX = Phaser.Math.Clamp(t.curX, pg.x0 - 70, pg.x1 + 70);   // ausweichen, nicht davonrennen
+          t.curY = Phaser.Math.Clamp(t.curY, pg.y0 - 70, pg.y1 + 70);
+          t.dir = Math.cos(a) < 0 ? 1 : 2;
+          t.stepT += dt; if (t.stepT > 0.09) { t.stepT = 0; t.step = (t.step + 1) % 4; }
+          t.pauseT = 0.2;
+          if (t.type === 'huhn' && t.soundT <= 0) { t.soundT = 1.4 + Math.random() * 2; if (dP < 320) this.sfx.play('huhn', 0.5); }
           this.provider.applyFigure(t.sprite, t.type, t.dir, t.step);
           t.sprite.setPosition(t.curX, t.curY).setDepth(t.curY);
           continue;

@@ -46,8 +46,11 @@ export class Treppenabstieg extends Phaser.Scene {
     this.cameras.main.fadeIn(500, 0, 0, 0); // nahtloser Abstieg aus der Kirche (Runde 51)
     this.cx = W / 2;
     this.yNear = H - 40; this.yFar = H * 0.18;
-    this.hwNear = this.schmal ? W * 0.16 : W * 0.34;  // schmal = enger Wendelschacht-Look
-    this.hwFar = this.schmal ? W * 0.04 : W * 0.075;
+    // SCHMAL (Autorwunsch R53, mehrfach): nur etwa SPIELERBREITE + ein bisschen,
+    // NICHT bildschirmbreit. Feste Pixelbreite (nicht W-relativ), damit es auf
+    // breiten Fenstern nicht riesig wird. Der Held ist nah ~60px breit.
+    this.hwNear = this.schmal ? 44 : W * 0.34;   // schmal: 88px voll nah ≈ Spielerbreite + etwas
+    this.hwFar = this.schmal ? 14 : W * 0.075;
 
     this.zeichneTreppe();
     // Blut-Glühen unten (der ferne Blutstrom)
@@ -75,13 +78,18 @@ export class Treppenabstieg extends Phaser.Scene {
 
   private zeichneTreppe(): void {
     const g = this.add.graphics().setDepth(0);
-    const cx = this.cx, N = 18;
+    const cx = this.cx, N = 18, W = this.scale.width;
     const yOf = (i: number) => this.yNear - (this.yNear - this.yFar) * Math.pow(i / (N - 1), 0.9);
     const hwOf = (i: number) => this.hwNear - (this.hwNear - this.hwFar) * (i / (N - 1));
-    // Seitenschächte
+    // Seitenwände: füllen vom Bildrand bis zur schmalen Treppe - so liest sich
+    // die enge Treppe als Schacht im Fels (R53: Treppe schmal, Wände drumherum).
     g.fillStyle(0x14121a, 1);
-    g.fillPoints([{ x: cx - this.hwNear - 130, y: this.yNear + 40 }, { x: cx - this.hwNear, y: this.yNear }, { x: cx - this.hwFar, y: this.yFar }, { x: cx - this.hwFar - 44, y: this.yFar }], true);
-    g.fillPoints([{ x: cx + this.hwNear + 130, y: this.yNear + 40 }, { x: cx + this.hwNear, y: this.yNear }, { x: cx + this.hwFar, y: this.yFar }, { x: cx + this.hwFar + 44, y: this.yFar }], true);
+    g.fillPoints([{ x: 0, y: this.yNear + 40 }, { x: cx - this.hwNear, y: this.yNear }, { x: cx - this.hwFar, y: this.yFar }, { x: 0, y: this.yFar }], true);
+    g.fillPoints([{ x: W, y: this.yNear + 40 }, { x: cx + this.hwNear, y: this.yNear }, { x: cx + this.hwFar, y: this.yFar }, { x: W, y: this.yFar }], true);
+    // Lichtkante an der Felskante zur Treppe
+    g.fillStyle(0x2a2632, 1);
+    g.fillPoints([{ x: cx - this.hwNear, y: this.yNear }, { x: cx - this.hwNear - 4, y: this.yNear }, { x: cx - this.hwFar - 2, y: this.yFar }, { x: cx - this.hwFar, y: this.yFar }], true);
+    g.fillPoints([{ x: cx + this.hwNear, y: this.yNear }, { x: cx + this.hwNear + 4, y: this.yNear }, { x: cx + this.hwFar + 2, y: this.yFar }, { x: cx + this.hwFar, y: this.yFar }], true);
     for (let i = N - 1; i >= 0; i--) {
       const t = i / (N - 1), yTop = yOf(i), hw = hwOf(i);
       const yBot = i > 0 ? yOf(i - 1) : this.yNear + 30, hwBot = i > 0 ? hwOf(i - 1) : this.hwNear;
