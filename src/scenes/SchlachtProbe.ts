@@ -17,7 +17,7 @@ import { SpriteProvider } from '../gfx/SpriteProvider';
 import { SoundProvider } from '../gfx/SoundProvider';
 import { angleToDir } from '../world/Enemy';
 import { TILE, type Dir } from '../gfx/fallbackArt';
-import { formSlots, linienSlots, slotWelt, type Form, type Slot } from '../logic/formationen';
+import { formSlots, formSlotsSkaliert, linienSlots, slotWelt, type Form, type Slot } from '../logic/formationen';
 
 type Team = 'spieler' | 'feind';
 type Typ = 'schild' | 'nahkampf' | 'bogen' | 'heiler' | 'e_nah' | 'e_bogen';
@@ -81,6 +81,10 @@ export class SchlachtProbe extends Phaser.Scene {
   private boxNow: { x: number; y: number } | null = null;
   private linieStart: { x: number; y: number } | null = null;
   private linieNow: { x: number; y: number } | null = null;
+  // Aktuell gewählte Festformation (Runde 53): das gezogene Band dreht/skaliert
+  // GENAU diese Formation, statt sie durch eine freie Linie zu ersetzen.
+  private aktiveForm: Form = 'linie';
+  private formKnoepfe: Array<[Form, Phaser.GameObjects.Text]> = [];
   private marker: Array<{ x: number; y: number; t: number; feind: boolean }> = [];
   private bauten: Bau[] = [];
   private bauGfx!: Phaser.GameObjects.Graphics;
@@ -167,7 +171,9 @@ export class SchlachtProbe extends Phaser.Scene {
   private baueUI(): void {
     let x = 14; const y1 = FELD_H + 26;
     const forms: Array<[string, Form]> = [['LINIE', 'linie'], ['BLOCK', 'block'], ['KEIL', 'keil'], ['LOCKER', 'locker'], ['SCHUTZ', 'schutz']];
-    for (const [lbl, f] of forms) { const t = this.knopf(x, y1, lbl, () => this.formiere(f)); x += t.width + 8; }
+    this.formKnoepfe = [];
+    for (const [lbl, f] of forms) { const t = this.knopf(x, y1, lbl, () => this.formiere(f)); this.formKnoepfe.push([f, t]); x += t.width + 8; }
+    this.markiereForm();
     x += 14;
     const stances: Array<[string, Stance]> = [['AGGRESSIV', 'aggressiv'], ['VERTEIDIGEN', 'verteidigen'], ['HALTEN', 'halten']];
     for (const [lbl, s] of stances) { const t = this.knopf(x, y1, lbl, () => this.setzeStance(s)); x += t.width + 8; }
@@ -207,10 +213,11 @@ export class SchlachtProbe extends Phaser.Scene {
       this.infoText.setText(`BAU-MODUS: ${BAU[this.platziere].name} platzieren - links auf das Feld klicken (mehrfach). Rechtsklick/Knopf erneut = abbrechen.`);
       return;
     }
+    const formName: Record<Form, string> = { linie: 'Linie', block: 'Block', keil: 'Keil', locker: 'Locker', schutz: 'Schutz' };
     this.infoText.setText(
-      `Rahmen ziehen = wählen (${sel.length}, Haltung: ${stance}). Formations-Knöpfe ordnen an, Haltungs-Knöpfe setzen das Kampfverhalten. `
-      + `Rechtsklick auf Boden = Marsch (Formation hält) · Rechtsklick auf Gegner = Fokus-Angriff · rechte Maus ZIEHEN = eigene Linie. `
-      + `Strg+1/2 merken, 1/2 wählen. ANGRIFF! lässt die Untoten los.`);
+      `Rahmen ziehen = wählen (${sel.length}, Haltung: ${stance}). Aktive Formation: ${formName[this.aktiveForm]}. `
+      + `Rechte Maus ZIEHEN = diese Formation drehen (Linienrichtung) und größer/kleiner (Linienlänge) - die Form bleibt erhalten. `
+      + `Rechtsklick (ohne Ziehen) auf Boden = Marsch · auf Gegner = Fokus-Angriff. Strg+1/2 merken, 1/2 wählen. ANGRIFF! lässt die Untoten los.`);
   }
 
   // --- Eingabe --------------------------------------------------------------
@@ -264,7 +271,7 @@ export class SchlachtProbe extends Phaser.Scene {
 
   private rechtsBefehl(): void {
     const a = this.linieStart!, b = this.linieNow!;
-    if (Math.hypot(b.x - a.x, b.y - a.y) > 44) { this.ziehLinie(a, b); return; }   // ziehen = Linie
+    if (Math.hypot(b.x - a.x, b.y - a.y) > 44) { this.formiereEntlangLinie(a, b); return; }   // ziehen = aktive Formation drehen/skalieren
     const ef = this.feindBei(b.x, b.y);
     if (ef) { this.befehlFokus(ef); this.marker.push({ x: ef.x, y: ef.y, t: 0.7, feind: true }); }
     else { this.befehlMarsch(b); this.marker.push({ x: b.x, y: b.y, t: 0.7, feind: false }); }
@@ -329,11 +336,34 @@ export class SchlachtProbe extends Phaser.Scene {
 
   // --- Formations- und Bewegungsbefehle -------------------------------------
   private formiere(form: Form): void {
-    const sel = this.gewaehlte(); if (!sel.length) return;
+    this.aktiveForm = form;                 // ab jetzt dreht/skaliert das Ziehband DIESE Form
+    this.markiereForm();
+    const sel = this.gewaehlte(); if (!sel.length) { this.setzeStatus(); return; }
     const cx = sel.reduce((a, u) => a + u.x, 0) / sel.length, cy = sel.reduce((a, u) => a + u.y, 0) / sel.length;
     const grp: Gruppe = { anker: { x: cx, y: cy }, facing: this.zumFeind(cx, cy), ziel: null, manuell: false };
     const sortiert = [...sel].sort((a, b) => a.rank - b.rank);
     const slots = formSlots(sortiert.length, form, SPACING);
+    sortiert.forEach((u, i) => { u.grp = grp; u.off = slots[i]; u.ziel = null; u.fokus = null; });
+    this.sfx.play('klick', 0.6);
+  }
+
+  // hebt den aktiven Formations-Knopf golden hervor
+  private markiereForm(): void {
+    for (const [f, t] of this.formKnoepfe) t.setColor(f === this.aktiveForm ? '#f0d060' : '#e8dcc0');
+  }
+
+  // Ziehband dreht/skaliert die AKTIVE Festformation (Autorwunsch Runde 53):
+  // Linienrichtung = Blickrichtung, Länge = Größe; der Keil bleibt ein Keil usw.
+  // Bei 'linie' bleibt es die klassische Reihe entlang der gezogenen Strecke.
+  private formiereEntlangLinie(a: { x: number; y: number }, b: { x: number; y: number }): void {
+    if (this.aktiveForm === 'linie') { this.ziehLinie(a, b); return; }
+    const sel = this.gewaehlte(); if (!sel.length) return;
+    const facing = Math.atan2(b.y - a.y, b.x - a.x);
+    const laenge = Math.hypot(b.x - a.x, b.y - a.y);
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const sortiert = [...sel].sort((u, v) => u.rank - v.rank);   // Schild/Nahkampf zur Spitze
+    const slots = formSlotsSkaliert(sortiert.length, this.aktiveForm, laenge);
+    const grp: Gruppe = { anker: mid, facing, ziel: null, manuell: false };
     sortiert.forEach((u, i) => { u.grp = grp; u.off = slots[i]; u.ziel = null; u.fokus = null; });
     this.sfx.play('klick', 0.6);
   }
@@ -695,14 +725,27 @@ export class SchlachtProbe extends Phaser.Scene {
       if (sel.length) {
         const dir = Math.atan2(b.y - a.y, b.x - a.x), laenge = Math.hypot(b.x - a.x, b.y - a.y);
         const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-        let facing = dir + Math.PI / 2; const ec = this.heeresMitte('feind');
-        if (ec) { const toE = Math.atan2(ec.y - mid.y, ec.x - mid.x); if (Math.cos(facing - toE) < 0) facing = dir - Math.PI / 2; }
-        const sortiert = [...sel].sort((u, v) => ((u.x - a.x) * Math.cos(dir) + (u.y - a.y) * Math.sin(dir)) - ((v.x - a.x) * Math.cos(dir) + (v.y - a.y) * Math.sin(dir)));
-        const slots = linienSlots(sortiert.map((u) => u.rank), laenge, SPACING);
+        // Vorschau zeigt GENAU die aktive Formation (gedreht/skaliert), nicht
+        // mehr immer die freie Linie (Autorwunsch Runde 53).
+        let facing: number, slots: Slot[], sortiert: Unit[];
+        if (this.aktiveForm === 'linie') {
+          facing = dir + Math.PI / 2; const ec = this.heeresMitte('feind');
+          if (ec) { const toE = Math.atan2(ec.y - mid.y, ec.x - mid.x); if (Math.cos(facing - toE) < 0) facing = dir - Math.PI / 2; }
+          sortiert = [...sel].sort((u, v) => ((u.x - a.x) * Math.cos(dir) + (u.y - a.y) * Math.sin(dir)) - ((v.x - a.x) * Math.cos(dir) + (v.y - a.y) * Math.sin(dir)));
+          slots = linienSlots(sortiert.map((u) => u.rank), laenge, SPACING);
+        } else {
+          facing = dir;
+          sortiert = [...sel].sort((u, v) => u.rank - v.rank);
+          slots = formSlotsSkaliert(sortiert.length, this.aktiveForm, laenge);
+        }
         slots.forEach((s, i) => {
           const w = slotWelt(mid, facing, s); const bog = sortiert[i].rank >= 2;
           this.gfx.lineStyle(2, bog ? 0xf0d060 : 0x6ad0ff, 0.9); this.gfx.strokeCircle(w.x, w.y, 10);
         });
+        // Pfeilspitze in Blickrichtung (zeigt, wohin die Formation weist)
+        const tip = { x: mid.x + Math.cos(facing) * (laenge / 2 + 16), y: mid.y + Math.sin(facing) * (laenge / 2 + 16) };
+        this.gfx.fillStyle(0xf0d060, 0.9);
+        this.gfx.fillCircle(tip.x, tip.y, 4);
       }
     }
   }

@@ -98,3 +98,18 @@ export function slotWelt(anker: { x: number; y: number }, facing: number, s: Slo
   const cf = Math.cos(facing), sf = Math.sin(facing);
   return { x: anker.x + s.f * cf - s.l * sf, y: anker.y + s.f * sf + s.l * cf };
 }
+
+// Festformation entlang einer gezogenen Linie skalieren (Runde 53, Autorwunsch:
+// "Formation HALTEN, aber per gezogener Linie drehen UND größer/kleiner machen -
+// der Keil bleibt ein Keil, wird nur breiter/gedreht"). Der Abstand S wird so
+// gewählt, dass die Vorne-Hinten-Ausdehnung der Formation der Linienlänge
+// entspricht; da `reihe()` denselben Abstand quer benutzt, wächst die ganze
+// Formation gleichmäßig mit. Form (Anzahl + Vorzeichenmuster der Slots) bleibt.
+export function formSlotsSkaliert(n: number, form: Form, laenge: number, minS = 16, maxS = 90): Slot[] {
+  const basis = formSlots(n, form, 1);
+  let lo = Infinity, hi = -Infinity;
+  for (const s of basis) { lo = Math.min(lo, s.f); hi = Math.max(hi, s.f); }
+  const spanU = Math.max(1, hi - lo);               // Ausdehnung in S-Einheiten
+  const S = Math.max(minS, Math.min(maxS, laenge / spanU));
+  return formSlots(n, form, S);
+}
