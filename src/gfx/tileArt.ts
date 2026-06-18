@@ -465,13 +465,25 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       }
       break;
     }
-    case 'treppe_ab': case 'treppe_auf':
-      ctx.fillStyle = '#0a0805'; ctx.fillRect(0, 0, TILE, TILE);
-      ctx.strokeStyle = name === 'treppe_ab' ? '#c9a227' : '#8a9ab8';
-      ctx.strokeRect(3.5, 3.5, TILE - 7, TILE - 7);
-      ctx.fillStyle = '#4a4434';
-      for (let i = 1; i < 4; i++) ctx.fillRect(6, 3 + i * 6, TILE - 12, 2);
+    case 'treppe_ab': case 'treppe_auf': {
+      // Treppe von OBEN (Draufsicht, Runde 53, Autorwunsch): die Tritte als
+      // waagerechte Stufen, dazu seitliche Wangen/Geländer. Bewusst NAHTLOS in
+      // 8px-Bändern und an den Rändern - so liest sich auch ein 1x4-Lauf als EINE
+      // durchgehende Treppe. "ab" = Lichtkante unten (Stufen sinken nach Norden),
+      // "auf" = Lichtkante oben (Stufen steigen nach Norden). Farbe unterscheidet.
+      const ab = name === 'treppe_ab';
+      ctx.fillStyle = ab ? '#15120c' : '#1a1d22'; ctx.fillRect(0, 0, TILE, TILE);
+      const band = 8;
+      for (let y = 0; y < TILE; y += band) {
+        ctx.fillStyle = ab ? '#4a4434' : '#565d66'; ctx.fillRect(2, y + 1, TILE - 4, band - 2);   // Tritt
+        ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(2, ab ? y + band - 2 : y + 1, TILE - 4, 1); // Lichtkante
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(2, ab ? y : y + band - 1, TILE - 4, 1);   // Riser-Schatten
+      }
+      // seitliche Wangen/Geländer (laufen über mehrere Kacheln durch)
+      ctx.fillStyle = ab ? '#6a4a1a' : '#39424d'; ctx.fillRect(0, 0, 2, TILE); ctx.fillRect(TILE - 2, 0, 2, TILE);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(0, 0, 1, TILE); ctx.fillRect(TILE - 1, 0, 1, TILE);
       break;
+    }
     case 'wendeltreppe': {
       // Wendeltreppe von oben: runde, sich nach innen windende Stufen, dunkles
       // Zentrum (der Abstieg). (Runde 41)

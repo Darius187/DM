@@ -5918,8 +5918,11 @@ export class WorldScene extends CombatScene {
         const d = Math.hypot(t.curX - this.px, t.curY - this.py);
         if (d < 420) this.sfx.play(t.type, Math.max(0.1, 1 - d / 420) * 0.7);
       }
+      // Gehege (Gatter): das Tier bleibt KONTROLLIERT darin (Autorwunsch R53:
+      // "Tiere laufen unkontrolliert durch die Karte"). Ohne eigenes Gatter gilt
+      // ein enger Bereich um den Standplatz. Bei Panik (oben) zählt das nicht.
+      const pen = t.pen ?? { x0: t.x - 44, y0: t.y - 30, x1: t.x + 44, y1: t.y + 30 };
       if (t.pauseT <= 0) {
-        const pen = t.pen ?? { x0: t.x - 60, y0: t.y - 40, x1: t.x + 60, y1: t.y + 40 };
         t.targetX = pen.x0 + Math.random() * (pen.x1 - pen.x0);
         t.targetY = pen.y0 + Math.random() * (pen.y1 - pen.y0);
         t.pauseT = 2 + Math.random() * 4;
@@ -5944,9 +5947,10 @@ export class WorldScene extends CombatScene {
           t.step = (t.step + 1) % 4;
         }
       }
-      // Sicherheitsnetz: nie aus der Karte heraus (Runde 51)
-      t.curX = Phaser.Math.Clamp(t.curX, 16, this.area.w * TILE - 16);
-      t.curY = Phaser.Math.Clamp(t.curY, 16, this.area.h * TILE - 16);
+      // Sicherheitsnetz: IM Gehege bleiben UND auf der Karte (Runde 53) - so
+      // läuft kein Tier mehr quer über die Karte davon.
+      t.curX = Phaser.Math.Clamp(t.curX, Math.max(16, pen.x0), Math.min(this.area.w * TILE - 16, pen.x1));
+      t.curY = Phaser.Math.Clamp(t.curY, Math.max(16, pen.y0), Math.min(this.area.h * TILE - 16, pen.y1));
       this.provider.applyFigure(t.sprite, t.type, t.dir, t.step);
       t.sprite.setPosition(t.curX, t.curY).setDepth(t.curY);
     }
