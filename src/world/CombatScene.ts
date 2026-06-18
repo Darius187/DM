@@ -414,7 +414,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       merk = { ...merk, ...JSON.parse(localStorage.getItem('ravensmoor_devkasten') ?? '{}') };
     } catch { /* egal */ }
     const c = this.add.container(merk.x, merk.y).setScrollFactor(0).setDepth(6500);
-    const h = TUNING_ROWS.length * 29 + 96 + 186 + 78 + 156; // +78 Per-Typ, +116 Schalter (inkl. Unbesiegbar), +40 Sprung-Reihe
+    const h = TUNING_ROWS.length * 29 + 96 + 186 + 78 + 156 + 64; // +78 Per-Typ, +116 Schalter, +40 Sprung-Reihe, +64 HUD/Quest-Schalter
     // Bei kleinen Fenstern schrumpft der ganze Kasten, statt unten
     // abgeschnitten zu werden (Runde 29: Regler "nicht gefunden")
     c.setScale(Math.min(merk.s, Math.max(0.6, (this.scale.height - 60) / h)));
@@ -665,6 +665,37 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.logMsg('Bericht kopiert - einfach im Chat einfügen.', 'gold');
     });
     c.add(bericht);
+    // Leben/Mana-Anzeige umschalten (Runde 52, Autorwunsch "Alternativen wie
+    // WoW, im Dev-Menü an/aus zum Vergleichen") + Quest-Verfolger an/aus.
+    const hudNamen = ['Kugeln rot/blau', 'WoW-Balken', 'Kristall-Säulen'];
+    const hudLbl = () => `LEBEN/MANA: ${hudNamen[getSettings().hudStil] ?? 'Kugeln rot/blau'}`;
+    const hudBtn = this.add.text(12, y + 274, hudLbl(), {
+      fontFamily: 'serif', fontSize: '13px', color: '#c9a227', letterSpacing: 1,
+      backgroundColor: '#221808', padding: { x: 12, y: 5 },
+    }).setInteractive({ useHandCursor: true });
+    hudBtn.on('pointerdown', () => {
+      const s = getSettings();
+      s.hudStil = (s.hudStil + 1) % hudNamen.length;
+      saveSettings();
+      hudBtn.setText(hudLbl());
+      this.sfx.play('klick');
+      this.logMsg(`Leben/Mana-Anzeige: ${hudNamen[s.hudStil]} (Dev - zum Durchschalten erneut klicken).`, 'gold');
+    });
+    c.add(hudBtn);
+    const qtLbl = () => getSettings().questTrackerAn ? 'QUEST-VERFOLGER: AN' : 'QUEST-VERFOLGER: AUS';
+    const qtBtn = this.add.text(12, y + 304, qtLbl(), {
+      fontFamily: 'serif', fontSize: '13px', color: getSettings().questTrackerAn ? '#c9a227' : '#d8cfb8', letterSpacing: 1,
+      backgroundColor: '#221808', padding: { x: 12, y: 5 },
+    }).setInteractive({ useHandCursor: true });
+    qtBtn.on('pointerdown', () => {
+      const s = getSettings();
+      s.questTrackerAn = !s.questTrackerAn;
+      saveSettings();
+      qtBtn.setText(qtLbl()).setColor(s.questTrackerAn ? '#c9a227' : '#d8cfb8');
+      this.sfx.play('klick');
+      this.logMsg(s.questTrackerAn ? 'Quest-Verfolger eingeblendet.' : 'Quest-Verfolger ausgeblendet.', 'gold');
+    });
+    c.add(qtBtn);
     // Phaser-Falle: Kinder-Hitboxen ignorieren den Container-scrollFactor -
     // ohne diese Zeile war der Kasten bei gescrollter Kamera tot (Runde 15)
     fixUiScroll(c);

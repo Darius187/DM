@@ -366,6 +366,44 @@ export class Hud {
     g.strokeRoundedRect(x0, y0, size, size, r);
   }
 
+  // HUD-Stil 1 (Runde 52): WoW-artiger horizontaler Balken. Innenkante am Anker
+  // (cx,cy), wächst nach `seite` (-1 links / +1 rechts) nach außen. Leben grün
+  // (rot bei wenig), Mana blau. Gibt die Mitte für die Zahl zurück.
+  private zeichneBalken(g: Phaser.GameObjects.Graphics, cx: number, cy: number, frac: number, leben: boolean, seite: number): [number, number] {
+    const bw = 150, bh = 18, r = 4;
+    const x0 = seite < 0 ? cx - bw : cx;
+    const y0 = cy - bh / 2;
+    const f = Phaser.Math.Clamp(frac, 0, 1);
+    const fill = leben ? (f < 0.25 ? 0xc24a3a : 0x4aa83f) : 0x3a64d0;
+    g.fillStyle(0x000000, 0.4); g.fillRoundedRect(x0 + 1, y0 + 2, bw, bh, r);
+    g.fillStyle(0x0a0806, 0.95); g.fillRoundedRect(x0, y0, bw, bh, r);   // Rinne
+    if (f > 0) { g.fillStyle(fill, 1); g.fillRoundedRect(x0 + 2, y0 + 2, (bw - 4) * f, bh - 4, r - 2); }
+    g.fillStyle(0xffffff, 0.10); g.fillRoundedRect(x0 + 2, y0 + 2, bw - 4, (bh - 4) * 0.45, r - 2); // Glanz
+    g.lineStyle(2, 0x3a2f1c, 1); g.strokeRoundedRect(x0, y0, bw, bh, r);
+    g.lineStyle(1, leben ? 0x6e8a4a : 0x5a6e9a, 0.5); g.strokeRoundedRect(x0 + 1, y0 + 1, bw - 2, bh - 2, r - 1);
+    return [x0 + bw / 2, cy];
+  }
+
+  // HUD-Stil 2 (Runde 52): vertikale Kristall-Säule (RPG), füllt von unten.
+  private zeichneVertikal(g: Phaser.GameObjects.Graphics, cx: number, cy: number, frac: number, leben: boolean): void {
+    const cw = 30, ch = 92, r = 5;
+    const x0 = cx - cw / 2, y0 = cy - ch / 2;
+    const f = Phaser.Math.Clamp(frac, 0, 1);
+    const fill = leben ? 0xc23a32 : 0x3a64d0, glanz = leben ? 0xe87a64 : 0x6a90ee;
+    g.fillStyle(0x000000, 0.4); g.fillRoundedRect(x0 + 1, y0 + 2, cw, ch, r);
+    g.fillStyle(0x0a0806, 0.96); g.fillRoundedRect(x0, y0, cw, ch, r);   // Glas/Rinne
+    const fh = (ch - 6) * f;
+    if (f > 0) {
+      g.fillStyle(fill, 1); g.fillRoundedRect(x0 + 3, y0 + ch - 3 - fh, cw - 6, fh, r - 3);
+      g.fillStyle(glanz, 0.5); g.fillRect(x0 + 5, y0 + ch - 3 - fh, 4, fh); // Lichtkante
+    }
+    // Füllstands-Striche (Viertel)
+    g.lineStyle(1, 0x000000, 0.35);
+    for (let q = 1; q < 4; q++) { const yy = y0 + 3 + (ch - 6) * (q / 4); g.lineBetween(x0 + 3, yy, x0 + cw - 3, yy); }
+    g.lineStyle(2, 0x4a3a26, 1); g.strokeRoundedRect(x0, y0, cw, ch, r);
+    g.lineStyle(1, 0xc9a227, 0.3); g.strokeRoundedRect(x0 + 1.5, y0 + 1.5, cw - 3, ch - 3, r - 1);
+  }
+
   // --- Drag & Drop auf die Maus-Leiste (Runde 20) ------------------------------
 
   private dragGhost: Phaser.GameObjects.Text | null = null;
@@ -593,20 +631,10 @@ export class Hud {
     const kb = getSettings().kb;
     g.clear();
 
-    // Orbs flankieren die Aktionsleisten (Runde 40, Autorwunsch): Lebenskugel
-    // direkt links neben der Maus-Leiste, Manakugel direkt rechts neben der
-    // Tastenleiste. Anker folgt den ECHTEN Leistenkanten (slotX bezieht die
-    // Benutzer-Versätze mit ein), der gespeicherte orbHp/orbMp-Versatz erlaubt
-    // weiterhin freies Verschieben.
-    const orb = (img: Phaser.GameObjects.Image, x: number, y: number, frac: number) => {
-      img.setPosition(x, y);
-      g.fillStyle(0x120505, 1);
-      g.fillCircle(x, y, ORB_R);
-      const ch = Math.round(ORB_R * 2 * Phaser.Math.Clamp(frac, 0, 1));
-      img.setCrop(0, ORB_R * 2 - ch, ORB_R * 2, ch);
-      g.lineStyle(3, 0x3a2f24, 1);
-      g.strokeCircle(x, y, ORB_R);
-    };
+    // Leben/Mana-Anzeige (Runde 52, Autorwunsch "Alternativen wie WoW"): drei
+    // umschaltbare Stile (settings.hudStil), beide Anzeigen einzeln verschiebbar.
+    // Anker folgt den ECHTEN Leistenkanten (slotX bezieht die Benutzer-Versätze
+    // mit ein), der gespeicherte orbHp/orbMp-Versatz erlaubt freies Verschieben.
     const balkenLinks = this.slotX(KB_SLOTS) - 26;       // linke Kante der Maus-Leiste
     const balkenRechts = this.slotX(KB_SLOTS - 1) + 26;   // rechte Kante der Tastenleiste
     const orbY0 = h - 24 - ORB_R;
@@ -618,12 +646,44 @@ export class Hud {
     const hy = klemmY(orbY0 + oh.y);
     const mx = klemmX(balkenRechts + ORB_BALKEN_LUECKE + ORB_R + om.x);
     const my = klemmY(orbY0 + om.y);
-    orb(this.hpImg, hx, hy, p.hp / p.stats.maxhp);
-    orb(this.mpImg, mx, my, p.mana / p.stats.maxmana);
-    this.hpText.setPosition(hx, hy).setText(String(Math.max(0, Math.ceil(p.hp))));
-    this.mpText.setPosition(mx, my).setText(String(Math.ceil(p.mana)));
-    this.potText.setPosition(hx, hy + ORB_R + 12).setText(`${kb.pot.toUpperCase()} Trank x${p.pot}`);
-    this.mpotText.setPosition(mx, my + ORB_R + 12).setText(`${kb.mpot.toUpperCase()} Trank x${p.mpot}`);
+    const hpFrac = p.hp / p.stats.maxhp, mpFrac = p.mana / p.stats.maxmana;
+    const hpVal = String(Math.max(0, Math.ceil(p.hp))), mpVal = String(Math.ceil(p.mana));
+    const potT = `${kb.pot.toUpperCase()} Trank x${p.pot}`, mpotT = `${kb.mpot.toUpperCase()} Trank x${p.mpot}`;
+    const stil = getSettings().hudStil;
+    const orbsAn = stil === 0;
+    this.hpImg.setVisible(orbsAn);
+    this.mpImg.setVisible(orbsAn);
+    if (stil === 1) {            // WoW-Balken (horizontal)
+      const [hnx, hny] = this.zeichneBalken(g, hx, hy, hpFrac, true, -1);
+      const [mnx, mny] = this.zeichneBalken(g, mx, my, mpFrac, false, 1);
+      this.hpText.setPosition(hnx, hny).setText(hpVal);
+      this.mpText.setPosition(mnx, mny).setText(mpVal);
+      this.potText.setPosition(hnx, hny + 18).setText(potT);
+      this.mpotText.setPosition(mnx, mny + 18).setText(mpotT);
+    } else if (stil === 2) {     // Vertikale Kristall-Säulen (RPG)
+      this.zeichneVertikal(g, hx, hy, hpFrac, true);
+      this.zeichneVertikal(g, mx, my, mpFrac, false);
+      this.hpText.setPosition(hx, hy).setText(hpVal);
+      this.mpText.setPosition(mx, my).setText(mpVal);
+      this.potText.setPosition(hx, hy + 58).setText(potT);
+      this.mpotText.setPosition(mx, my + 58).setText(mpotT);
+    } else {                     // Kugeln rot/blau (Standard)
+      const orb = (img: Phaser.GameObjects.Image, x: number, y: number, frac: number) => {
+        img.setPosition(x, y);
+        g.fillStyle(0x120505, 1);
+        g.fillCircle(x, y, ORB_R);
+        const ch = Math.round(ORB_R * 2 * Phaser.Math.Clamp(frac, 0, 1));
+        img.setCrop(0, ORB_R * 2 - ch, ORB_R * 2, ch);
+        g.lineStyle(3, 0x3a2f24, 1);
+        g.strokeCircle(x, y, ORB_R);
+      };
+      orb(this.hpImg, hx, hy, hpFrac);
+      orb(this.mpImg, mx, my, mpFrac);
+      this.hpText.setPosition(hx, hy).setText(hpVal);
+      this.mpText.setPosition(mx, my).setText(mpVal);
+      this.potText.setPosition(hx, hy + ORB_R + 12).setText(potT);
+      this.mpotText.setPosition(mx, my + ORB_R + 12).setText(mpotT);
+    }
 
     // Zwei getrennte Paneele (Runde 20): Tastenleiste und Maus-Leiste
     const panel = (a: number, b: number) => {
