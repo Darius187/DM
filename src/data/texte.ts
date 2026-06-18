@@ -5,7 +5,7 @@
 export const TITEL = {
   haupt: 'RAVENSMOOR',
   unter: 'DER PREIS DER UNSTERBLICHKEIT',
-  intro: 'Anno Domini 1635. Der Krieg wütet seit siebzehn Jahren, die Pest hat das Land geleert, und die Schweden haben das Kirchensilber geraubt. Seitdem, so flüstern die Leute von Ravensmoor, ruhen die Toten unter der Kirche nicht mehr. Du wurdest entsandt, der Sache auf den Grund zu gehen.',
+  intro: 'Anno Domini 1349. Der Schwarze Tod wütet, die Pest hat das Land geleert, und in ihrer Not schafften die Mönche das Kirchensilber hinab in die Gruft. Seitdem, so flüstern die Leute von Ravensmoor, ruhen die Toten unter der Kirche nicht mehr. Du wurdest entsandt, der Sache auf den Grund zu gehen.',
 } as const;
 
 // Erzähler-Seiten mit Stimm-Schlüsseln (Runde 51): macht aus den Memoiren-Zeilen
@@ -34,11 +34,11 @@ export const ERZAEHLER = {
 
 // Lore-Notizen 1-3 aus der Referenz, 4-5 NEU (Folterkammer / Beinhaus-Schrein)
 export const NOTIZEN: ReadonlyArray<string> = [
-  '»...wir schafften das Silber in die Gruft, ehe die Schweden kamen. Doch Anna sagt, sie hört nachts Stimmen unter dem Boden. Ich habe ihr verboten, je wieder hinabzusteigen.« - Heinrich K., Anno 1632',
+  '»...wir schafften das Silber in die Gruft, ehe die Pest uns alle holte. Doch Anna sagt, sie hört nachts Stimmen unter dem Boden. Ich habe ihr verboten, je wieder hinabzusteigen.« - Heinrich K., Anno 1349',
   '»Das Beinhaus war voll, lange bevor die Pest kam. Wer hat all diese Toten hierher geschafft? Die Knochen sind angeordnet. Wie Zeichen.« - Bruder Anselm, Küster',
   '»Der Ritter sprach im Schlaf, heißt es. Auf Latein - und in einer Sprache aus dem Osten. Sie begruben ihn lebendig, doch das Flüstern hörte nie auf.« - aus dem Kirchenbuch von St. Marien',
   // NEU - Folterkammer (Masterprompt 7.3)
-  '»Wir sperrten die Veränderten hier unten ein, als die Pest kam. Gott vergebe uns - es waren Nachbarn, Gevattern, Kinder. Der Schmied schwor, einer habe noch gesprochen, als kein Atem mehr in ihm war.« - ohne Unterschrift, Anno 1631',
+  '»Wir sperrten die Veränderten hier unten ein, als die Pest kam. Gott vergebe uns - es waren Nachbarn, Gevattern, Kinder. Der Schmied schwor, einer habe noch gesprochen, als kein Atem mehr in ihm war.« - ohne Unterschrift, Anno 1349',
   // NEU - Beinhaus-Schrein (Masterprompt 7.3)
   '»Bruder Anselm hatte recht. Die Knochen sind kein Vorrat und kein Friedhof - sie sind eine Schrift. Wer sie zu lesen versteht, so heißt es, dem öffnet der Altar sein Innerstes. Ich habe nicht den Mut, es zu versuchen.« - Randnotiz im Kirchenbuch',
 ];
@@ -75,7 +75,7 @@ export const TOD = {
 // Intro-Film (Runde 12): Zeilen erscheinen nacheinander, während der
 // Held durch den Dunkelwald nach Osten läuft - wie ein Vorspann.
 export const INTRO_FILM: ReadonlyArray<string> = [
-  'Anno Domini 1635. Der Krieg frisst dieses Land seit siebzehn Jahren.',
+  'Anno Domini 1349. Der Schwarze Tod frisst dieses Land, Hof um Hof.',
   'Die Pest nahm, was die Söldner übrig ließen. Ganze Dörfer schweigen für immer.',
   'Aus meinen Aufzeichnungen: »Heute erreichte mich ein Brief mit dem Siegel des Amtmanns. Im Namen des Landesherrn: Geht nach Ravensmoor. Seht nach dem Rechten.«',
   '»Die Boten flüstern Ärgeres, als Worte fassen: Die Toten unter der Kirche... ruhen nicht mehr.«',
@@ -143,7 +143,7 @@ export const WALDRAND_TEXT = ERZAEHLER.ankunft;
 export const BUECHER: ReadonlyArray<string> = [
   '»Vermächtnisse der Gefallenen, Band III« - die Seiten sind vom Wasser gewellt. Ein Eintrag: "Dem Müller zwei Säcke Korn schuldig. Gott vergebe mir, mehr hinterlasse ich nicht."',
   '»Über die Heilkraft der Salze« - jemand hat an den Rand geschrieben: "Nichts davon hat geholfen. Nichts."',
-  'Ein Kirchenregister. Die Sterbeeinträge des Jahres 1631 füllen elf Seiten. Die letzte Zeile lautet nur: "Der Rest wurde nicht mehr gezählt."',
+  'Ein Kirchenregister. Die Sterbeeinträge des Jahres 1349 füllen elf Seiten. Die letzte Zeile lautet nur: "Der Rest wurde nicht mehr gezählt."',
   'Eine lateinische Abhandlung über das Heilige Land. Zwischen den Seiten liegt eine gepresste Blume, die hier nirgends wächst.',
   '»Predigten wider die Furcht« - das Buch ist fast neu. Es wurde offenbar nie zu Ende gelesen.',
   'Ein dünnes Heft ohne Titel. Auf jeder Seite steht derselbe Satz, hunderte Male: "Die Toten ruhen. Die Toten ruhen. Die Toten ruhen."',

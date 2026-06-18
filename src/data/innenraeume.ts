@@ -2,7 +2,7 @@
 // gebaut. Möbel als Tile-Namen, Bewohner mit Tagesrhythmus:
 // nurAbends = tagsüber bei der Arbeit, abends/nachts zu Hause.
 //
-// Vorbild: ein deutsches Dorf um 1635 - die Stube ist Herzstück des Hauses
+// Vorbild: ein deutsches Dorf um 1349 - die Stube ist Herzstück des Hauses
 // (Kamin, Tisch, Bett in einem Raum), Läden liegen am Marktplatz, Handwerk
 // wohnt über/neben der Werkstatt.
 

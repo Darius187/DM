@@ -2,7 +2,7 @@
 // runterskaliert"): Altar, Zaun, Acker/Felder, Folterbank, liegendes Skelett,
 // Felsbrocken, Wasser/Fluss. Jede Funktion zeichnet in eine 64x64-Zelle auf
 // transparentem Grund; tileArt rechnet sie sauber auf die 32px-Kachel herunter.
-// Düsterer 1635er Ton, gleiche Bildsprache wie die Breakables.
+// Düsterer 1349er Ton (Pestzeit), gleiche Bildsprache wie die Breakables.
 
 type Ctx = CanvasRenderingContext2D;
 

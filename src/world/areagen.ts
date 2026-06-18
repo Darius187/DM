@@ -1132,7 +1132,7 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   a.npcs.push({ id: 'kind1', name: 'Hannes', x: 52.5 * TILE, y: 15 * TILE, mittag: { x: 43.5 * TILE, y: 31 * TILE }, abend: { x: 46.5 * TILE, y: 42.5 * TILE } });
   a.npcs.push({ id: 'kind2', name: 'Lisbeth', x: 53.5 * TILE, y: 15 * TILE, mittag: { x: 47.5 * TILE, y: 33 * TILE }, abend: { x: 59.5 * TILE, y: 25.5 * TILE } });
 
-  // --- Runde 10: die Zünfte - eine Dorfwirtschaft wie um 1635 ---
+  // --- Runde 10: die Zünfte - eine Dorfwirtschaft wie um 1349 ---
 
   // 10a. Badehaus am Bach (Bader Severin: Behandlung gegen Gold)
   carve(map, 74, 22, 78, 26, T.HWALL);

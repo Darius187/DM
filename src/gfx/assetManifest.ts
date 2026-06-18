@@ -9,10 +9,10 @@ export const PORTRAITS = [
 
 export const ITEM_IMAGES = [
   'waffe_rostige-klinge', 'waffe_kurzschwert', 'waffe_streitkolben',
-  'waffe_langschwert', 'waffe_streitaxt', 'waffe_reiterdegen',
+  'waffe_langschwert', 'waffe_streitaxt', 'waffe_falchion',
   'waffe_hellebarde', 'waffe_kriegshammer', 'waffe_jagdbogen',
-  'waffe_kriegsbogen', 'ruestung_lumpen', 'ruestung_lederwams',
-  'ruestung_gambeson', 'ruestung_kettenhemd', 'ruestung_kuerass',
+  'waffe_armbrust', 'waffe_kriegsbogen', 'ruestung_lumpen', 'ruestung_lederwams',
+  'ruestung_gambeson', 'ruestung_kettenhemd', 'ruestung_plattenrock',
   'ring_knochenring', 'ring_siegelring', 'ring_silberring',
   'ring_eisenring', 'edelstein_feueropal', 'edelstein_frostsplitter',
   'edelstein_schattenperle', 'trank_heil', 'trank_mana',

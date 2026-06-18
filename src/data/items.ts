@@ -13,7 +13,7 @@ export const WEAPONS: ReadonlyArray<readonly [string, number, WeaponClass, Genus
   ['Streitkolben', 11, 'kolben', 'm'],
   ['Langschwert', 14, 'schwert', 'n'],
   ['Streitaxt', 16, 'axt', 'f'],
-  ['Reiterdegen', 18, 'schwert', 'm'],
+  ['Falchion', 18, 'schwert', 'n'],
   ['Hellebarde', 20, 'stange', 'f'],
   ['Kriegshammer', 22, 'wucht', 'm'],
 ];
@@ -21,6 +21,7 @@ export const WEAPONS: ReadonlyArray<readonly [string, number, WeaponClass, Genus
 // Bögen (Masterprompt 4.2) und Zauberstäbe (Wunsch des Autors, Feedback-Runde 1)
 export const BOWS: ReadonlyArray<readonly [string, number, WeaponClass, Genus]> = [
   ['Jagdbogen', 9, 'bogen', 'm'],
+  ['Armbrust', 14, 'bogen', 'f'],   // periodengetreu fürs 14. Jh. (kein Schießpulver)
   ['Kriegsbogen', 17, 'bogen', 'm'],
 ];
 export const STAVES: ReadonlyArray<readonly [string, number, WeaponClass, Genus]> = [
@@ -43,7 +44,7 @@ export const ARMORS: ReadonlyArray<readonly [string, number, Genus]> = [
   ['Lederwams', 3, 'n'],
   ['Gambeson', 5, 'm'],
   ['Kettenhemd', 8, 'n'],
-  ['Kürass', 11, 'm'],
+  ['Plattenrock', 11, 'm'],   // Plattenrock/Coat of plates - periodengetreu 14. Jh. (Kürass wäre zu früh)
 ];
 
 export const RINGS: ReadonlyArray<string> = ['Knochenring', 'Siegelring', 'Silberring', 'Eisenring'];

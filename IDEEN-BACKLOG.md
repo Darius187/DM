@@ -51,6 +51,19 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
 - [ ] Anfangsquests vor dem Kirchen-Abstieg: Holzfäller-Lager säubern (wilde
       Tiere), Bergwerk/Steinbruch säubern. Welt + Wirtschaft kennenlernen.
 
+## 1349 / Schwarzer Tod - Atmosphäre (Setting-Wechsel, Autorvision)
+- [ ] GEISSLERZÜGE: Prozessionen, die sich blutig durch die Gassen peitschen
+      (passt direkt zum Blut-Motiv) - als Welt-Ereignis im Dorf.
+- [ ] PESTKREUZE an Wegen/Türen, verriegelte/zugenagelte PESTHÄUSER (markiert,
+      betretbar mit Folgen), leere Höfe.
+- [ ] TOTENTANZ-Motive (Danse Macabre) als Wandbilder in Kirche und Krypta.
+- [ ] DORFKARTE als echtes PESTDORF: noch LEERER und versehrter ("zu gesund"-
+      Einwand gilt jetzt doppelt) - wenige Lebende, viele leere Häuser, Karren
+      mit Toten, Grabgruben.
+- [ ] Templer-Strang: offene Namensfrage (Tempelritter / untoter Priester /
+      neuer Name) - wird durch 1349 nur stärker (Orden 1312 zerschlagen ->
+      ein längst gefallener Kreuzritter, der wieder aufersteht).
+
 ## Die große Schlacht (Clou)
 - [ ] Stadt wird angegriffen, Goldlager + Goldschmelze in Gefahr.
 - [ ] Der Fürst schickt eine Armee Soldaten; sie treffen "gerade rechtzeitig"

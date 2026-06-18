@@ -22,7 +22,7 @@ export const VERARBEITUNG = {
   schmelze: { wer: 'schmied', einEisen: 2, einKohle: 1, aus: 'barren', menge: 2 }, // Schmied: Eisen+Kohle -> Barren
 } as const;
 
-// Gold gehört dem Fürsten (Bergregal/Münzregal, 1635): Gold zu schmelzen und zu
+// Gold gehört dem Fürsten (Bergregal/Münzregal, 14. Jh.): Gold zu schmelzen und zu
 // prägen war ein REGAL des Landesherrn - ein Dorf durfte das gar nicht. Golderz
 // aus der Goldhöhle wird also NICHT im Dorf verarbeitet, sondern als Abgabe an
 // den Fürsten geliefert (seine Münze prägt daraus Geld). Jeder Klumpen deckt

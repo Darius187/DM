@@ -1,4 +1,4 @@
-// Raben (Runde 45): thematisch perfekt für 1635 Pest/Krieg - die Aasvögel des
+// Raben (Runde 45): thematisch perfekt für 1349 Pest (Schwarzer Tod) - die Aasvögel des
 // Todes. Verhalten nach echten Raben: sie sitzen auf hohen Punkten (Baumkronen,
 // Dächer, Grabsteine), äugen umher, hüpfen am Boden und picken, fliegen bei
 // Annäherung auf (Warnruf) und gleiten/flattern zu einem neuen Platz; an Aas

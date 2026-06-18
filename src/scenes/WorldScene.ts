@@ -336,7 +336,7 @@ export class WorldScene extends CombatScene {
     // Dev-Werkzeug: ?ruestzeug=1 gibt Testausrüstung (nur Dev-Build)
     if (import.meta.env.DEV && new URLSearchParams(location.search).get('ruestzeug')) {
       const blade: Item = { ...TEMPLERKLINGE, boni: TEMPLERKLINGE.boni.map((b) => ({ ...b })), sock: null };
-      const armor: Item = { kind: 'armor', name: 'Kürass', rarity: 0, val: 11, boni: [] };
+      const armor: Item = { kind: 'armor', name: 'Plattenrock', rarity: 0, val: 11, boni: [] };
       this.p.inv.push(blade, armor);
       this.p.weapon = blade;
       this.p.armorIt = armor;

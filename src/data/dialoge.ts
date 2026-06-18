@@ -30,7 +30,7 @@ export const JOHANNES = {
 
 export const HEINRICH = {
   erstesMal: [
-    { text: 'Willkommen im Schwarzen Raben, Fremder. Verschlagenes Bier, aber das Einzige weit und breit. Seit die Schweden das Kirchensilber gestohlen haben, ruhen die Toten nicht mehr - das sage ich jedem, der es hören will.' },
+    { text: 'Willkommen im Schwarzen Raben, Fremder. Verschlagenes Bier, aber das Einzige weit und breit. Seit die Pest kam und das Kirchensilber in die Gruft geschafft wurde, ruhen die Toten nicht mehr - das sage ich jedem, der es hören will.' },
     { text: 'Meine Anna... sie suchte damals, als die Pest kam, Schutz in der Krypta. Was sie dort fand, war keine Rettung. Fragt nicht weiter.' },
   ],
   handel: {

@@ -1,6 +1,6 @@
 // Detailliertere Dorf-Grafik (Runde 40, Autorwunsch: Taverne + NPC im Stil des
 // Helden zeichnen). Erste Entwürfe - rein prozedural auf Canvas, damit sie wie
-// die übrige Grafik tunbar bleiben. Düsterer 1635er Ton.
+// die übrige Grafik tunbar bleiben. Düsterer 1349er Ton (Pestzeit).
 
 function poly(ctx: CanvasRenderingContext2D, pts: number[][], c: string): void {
   ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
