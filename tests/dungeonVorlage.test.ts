@@ -69,3 +69,25 @@ describe('Dungeon-Vorlagen (Editor-Export/Import)', () => {
     expect(parse('nur text, keine zeilen')).toBeNull();
   });
 });
+
+import { vorlageKarte } from '../src/world/probeKarten';
+
+describe('vorlageKarte (gezeichnete Vorlage spielbar/begehbar machen)', () => {
+  it('Wand (2) und Leer/Fels (0) sind solide, Boden/Tür/Gang begehbar', () => {
+    const k = vorlageKarte([[2, 0, 1, 3, 4]], 'Test');
+    expect(k.w).toBe(5);
+    expect(k.h).toBe(1);
+    expect(k.solid(2)).toBe(true);   // Wand
+    expect(k.solid(0)).toBe(true);   // Leer/Fels
+    expect(k.solid(1)).toBe(false);  // Raumboden
+    expect(k.solid(3)).toBe(false);  // Tür
+    expect(k.solid(4)).toBe(false);  // Gang
+  });
+
+  it('kopiert das Gitter (keine geteilte Referenz)', () => {
+    const grid = [[1, 2]];
+    const k = vorlageKarte(grid, 'Test');
+    grid[0][0] = 2;
+    expect(k.grid[0][0]).toBe(1);
+  });
+});

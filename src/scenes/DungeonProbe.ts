@@ -14,7 +14,7 @@
 // klickbar (vermeidet die "tote Knöpfe bei gescrollter Kamera"-Falle, Regel 9.4).
 
 import Phaser from 'phaser';
-import { erzeugeKarte, findeStartKachel, type ProbeKarte, type DungeonVersion } from '../world/probeKarten';
+import { erzeugeKarte, vorlageKarte, findeStartKachel, type ProbeKarte, type DungeonVersion } from '../world/probeKarten';
 import { leereVorlage, vonKarte, setzeRahmen, exportiere, parse, VORLAGE_FARBE, VORLAGE_NAME, type EditCode } from '../world/dungeonVorlage';
 
 const WALK_TILE = 40; // Kachelgröße im Begehen-Modus (ohne Kamera-Zoom)
@@ -213,21 +213,18 @@ export class DungeonProbe extends Phaser.Scene {
     x2 += wkn(x2, y2, 'RAHMEN', '#e8dcc0', () => { setzeRahmen(this.editGrid); this.zeichneEditor(); }).width + 6;
     x2 += wkn(x2, y2, 'SPEICHERN', '#6ad06a', () => this.editorSpeichern(false)).width + 6;
     x2 += wkn(x2, y2, 'LADEN', '#e8dcc0', () => this.editLadenOderGenerator()).width + 6;
-    x2 += wkn(x2, y2, 'BEGEHEN', '#9ad86a', () => { this.karte = this.vorlageAlsKarte(); this.betrete(); }).width + 6;
+    x2 += wkn(x2, y2, 'BEGEHEN', '#9ad86a', () => { this.karte = vorlageKarte(this.editGrid, `Editor-Vorlage V${this.version}`); this.betrete(); }).width + 6;
+    x2 += wkn(x2, y2, 'SPIELEN', '#f08a5a', () => this.spieleVorlage()).width + 6;
     x2 += wkn(x2, y2, 'EXPORT (Code kopieren)', '#f0d060', () => this.editorExport()).width + 6;
     this.editLayer.setVisible(false);
   }
 
-  // Gezeichnete Vorlage als begehbare Karte (Wand + Leer/Fels blocken, Boden/
-  // Tür/Gang begehbar) - zum eigenen Durchlaufen der selbst gezeichneten Vorlage.
-  private vorlageAlsKarte(): ProbeKarte {
-    const g = this.editGrid;
-    return {
-      name: `Editor-Vorlage V${this.version}`, w: g[0]?.length ?? 0, h: g.length,
-      grid: g.map((r) => [...r]),
-      solid: (t) => t === 2 || t === 0,
-      farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a,
-    };
+  // Die selbst gezeichnete Vorlage SOFORT spielen (mit Gegnern/Kampf, Autorwunsch
+  // Runde 53): speichern und die Spiel-Szene mit der Vorlage statt eines
+  // Generators starten.
+  private spieleVorlage(): void {
+    this.editorSpeichern(true);
+    this.scene.start('DungeonSpiel', { vorlage: this.editGrid.map((r) => [...r]), vorlageName: `Editor-Vorlage V${this.version}` });
   }
 
   private markiereEditorUI(): void {

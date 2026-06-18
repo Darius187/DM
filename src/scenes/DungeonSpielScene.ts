@@ -7,7 +7,7 @@
 import { CombatScene } from '../world/CombatScene';
 import type { Enemy } from '../world/Enemy';
 import { TILE } from '../gfx/fallbackArt';
-import { erzeugeKarte, findeStartKachel, type ProbeKarte, type DungeonVersion } from '../world/probeKarten';
+import { erzeugeKarte, vorlageKarte, findeStartKachel, type ProbeKarte, type DungeonVersion } from '../world/probeKarten';
 import type { EnemyTypeId } from '../data/types';
 import Phaser from 'phaser';
 
@@ -17,19 +17,24 @@ const SPAWN_KEYS: Record<string, EnemyTypeId> = {
 
 export class DungeonSpielScene extends CombatScene {
   private version: DungeonVersion = 5;
+  private vorlage: number[][] | null = null;   // selbst gezeichnete Editor-Vorlage (Runde 53)
+  private vorlageName = 'Editor-Vorlage';
   private karte!: ProbeKarte;
   private hudText!: Phaser.GameObjects.Text;
   private lastInfo = '';
 
   constructor() { super('DungeonSpiel'); }
 
-  init(data: { version?: DungeonVersion }): void {
+  init(data: { version?: DungeonVersion; vorlage?: number[][]; vorlageName?: string }): void {
     this.version = data.version ?? 5;
+    this.vorlage = data.vorlage ?? null;
+    this.vorlageName = data.vorlageName ?? 'Editor-Vorlage';
   }
 
   create(): void {
     this.cameras.main.setBackgroundColor('#0a0908');
-    this.karte = erzeugeKarte(this.version);
+    // Editor-Vorlage spielen, falls übergeben - sonst den gewählten Generator.
+    this.karte = this.vorlage ? vorlageKarte(this.vorlage, this.vorlageName) : erzeugeKarte(this.version);
     const start = findeStartKachel(this.karte);
     // WICHTIG: setupCombat erzeugt this.provider - MUSS vor zeichneDungeon laufen
     // (sonst Absturz: this.provider undefined beim Tile-Zeichnen).
@@ -56,7 +61,8 @@ export class DungeonSpielScene extends CombatScene {
       const typ = SPAWN_KEYS[k];
       if (typ) { const a = Math.random() * 6.283; this.spawnEnemy(typ, 1, this.px + Math.cos(a) * 180, this.py + Math.sin(a) * 180); }
       if (k === 'k') { for (const e of this.enemies) e.sprite?.destroy(); this.enemies = []; }
-      if (k === 'n') this.scene.restart({ version: this.version });
+      // N: Generator neu würfeln; bei einer Editor-Vorlage dieselbe Vorlage neu laden
+      if (k === 'n') this.scene.restart(this.vorlage ? { vorlage: this.vorlage, vorlageName: this.vorlageName } : { version: this.version });
       if (ev.key === 'Escape') this.scene.start('DungeonProbe');
     });
   }

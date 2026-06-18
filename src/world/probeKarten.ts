@@ -12,6 +12,7 @@ import { baueBurg } from './burgDungeon';
 import { buildCrypt } from './areagen';
 import { seededRng } from '../logic/rng';
 import { T, SOLID } from './tiles';
+import { VORLAGE_FARBE, type EditCode } from './dungeonVorlage';
 
 export type DungeonVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -73,6 +74,18 @@ export function erzeugeKarte(version: DungeonVersion): ProbeKarte {
   const d = baueVerbundeneRaeume(Math.random);
   const farben: Record<number, number> = { 0: 0x14110c, 1: 0x4a443a, 2: 0x5a6076 };
   return { name: `V5 - Verbundene Räume (${d.raeume}) + Füllräume`, w: d.w, h: d.h, grid: d.grid, solid: (t) => t === 0, farbe: (t) => farben[t] ?? 0x4a443a };
+}
+
+// Eine selbst gezeichnete Editor-Vorlage (Codes: 2 Wand, 0 Leer/Fels = solide;
+// 1 Boden, 3 Tür, 4 Gang = begehbar) als ProbeKarte - damit Begehen UND Spielen
+// die gezeichnete Vorlage identisch behandeln (Runde 53, Autorwunsch).
+export function vorlageKarte(grid: number[][], name = 'Editor-Vorlage'): ProbeKarte {
+  return {
+    name, w: grid[0]?.length ?? 0, h: grid.length,
+    grid: grid.map((r) => [...r]),
+    solid: (t) => t === 2 || t === 0,
+    farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a,
+  };
 }
 
 // Nächste begehbare Kachel von der Mitte aus (Ringsuche) - Startpunkt.
