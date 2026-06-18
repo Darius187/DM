@@ -1459,9 +1459,9 @@ export function buildForest(rng: Rng): AreaData {
   a.kraeuter.push({ x: see.x0 * TILE + 16, y: see.cy * TILE + 16 });
   a.kraeuter.push({ x: see.x1 * TILE + 16, y: see.cy * TILE + 16 });
   a.labels.push({ x: (see.cx - 1) * TILE, y: see.y0 * TILE, t: 'Waldsee' });
-  // Fischer am Westufer (Runde 51, Autorwunsch): angelt sichtbar (arbeit
-  // 'fischen'). Eigener Wald-NPC mit der Fischer-Figur; ansprechbar.
-  a.npcs.push({ id: 'waldfischer', name: 'Fischer Konrad', figur: 'fischer', arbeit: 'fischen', x: (see.x0 + 1) * TILE + 16, y: see.cy * TILE + 16 });
+  // (Runde 53, Autorwunsch) Der Waldfischer "Konrad" wurde von der STARTKARTE
+  // entfernt - das Fischer-Schauspiel gehört nicht ganz an den Anfang, sondern
+  // an einen späteren Schauplatz. Der stille Waldsee bleibt als Atmosphäre.
 
   // Pestgrube (1635 - die Pest wütet): eine Massengrab-Lichtung, verbrannte
   // Erde und drei Grabhügel. Reine Schauplatz-Atmosphäre.
@@ -1472,17 +1472,11 @@ export function buildForest(rng: Rng): AreaData {
   }
   a.labels.push({ x: (pg.cx - 1) * TILE, y: pg.y0 * TILE, t: 'Pestgrube' });
 
-  // Eingang zur Goldhöhle (Runde 51, Autorwunsch): eine Felsnische am Wegrand,
-  // in der ein dunkler Stollen in den Berg führt. Eine Treppe (STAIR) steigt zur
-  // Goldhöhle hinab; Felsbrocken rahmen das Höhlenmaul. Der Spezial-Marker merkt
-  // die Mündung als Rückkehrpunkt aus der Höhle.
-  const gh = waldLichtung(map, pfadY, 118, 4, 5);
-  map[gh.cy][gh.cx] = T.STAIR;
-  for (const [rx, ry] of [[gh.cx - 1, gh.cy - 1], [gh.cx + 1, gh.cy - 1], [gh.cx - 2, gh.cy], [gh.cx + 2, gh.cy]] as const) {
-    if (map[ry]?.[rx] === T.GRASS) map[ry][rx] = T.ROCK;   // Höhlenmaul-Rahmen (Deko, nicht abbaubar)
-  }
-  a.special.push({ id: 'goldmine', x: gh.cx * TILE + 16, y: (gh.cy + 1) * TILE + 16, raum: 'Goldhöhle' });
-  a.labels.push({ x: (gh.cx - 1) * TILE, y: gh.y0 * TILE, t: 'Goldhöhle' });
+  // (Runde 53, Autorwunsch) Der Eingang zur GOLDHÖHLE wurde von der STARTKARTE
+  // entfernt - die Mine gehört nicht an den Anfang, sondern in den späteren
+  // Ablauf (Minen-Befreiung im Heeres-/Nachschub-Strang). Die Goldhöhle-Fläche
+  // (buildGoldmine) existiert weiter, bekommt ihren Eingang aber an einem
+  // anderen Schauplatz, wenn der Minen-Strang gebaut wird.
 
   // Kein Landherr im Wald (Runde 14): der Auftrag kommt per Siegelbrief
   // des Amtmanns - niemand wartet unrealistisch zwischen den Bäumen.
