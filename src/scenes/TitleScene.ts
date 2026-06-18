@@ -99,6 +99,7 @@ export class TitleScene extends Phaser.Scene {
       ['DEBUG-ARENA', () => this.scene.start('DebugArena'), true],
       ['SCHLACHT-PROBE', () => this.scene.start('SchlachtProbe'), true],
       ['DUNGEON-PROBE', () => this.scene.start('DungeonProbe'), true],
+      ['STADTPLANER', () => this.scene.start('StadtProbe'), true],
       ['ANHÖHE-PROBE', () => this.scene.start('AnhoeheProbe'), true],
       ['REIT-PROBE', () => this.scene.start('ReitProbe'), true],
     ];

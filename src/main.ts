@@ -20,6 +20,7 @@ import { DungeonProbe } from './scenes/DungeonProbe';
 import { DungeonSpielScene } from './scenes/DungeonSpielScene';
 import { AnhoeheProbe } from './scenes/AnhoeheProbe';
 import { ReitProbe } from './scenes/ReitProbe';
+import { StadtProbe } from './scenes/StadtProbe';
 import { TUNING } from './logic/tuning';
 
 // Bildgröße (Runde 27): KEIN gestrecktes Canvas mehr (machte Schrift
@@ -34,7 +35,7 @@ const game = new Phaser.Game({
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, TitleScene, WorldScene, DebugArenaScene, UIScene, SettingsScene, KammerDerFinsternis, DieSchwelle, BlutstromGang, TreppenProbe, NebelProbe, Treppenabstieg, LangerGang, DieStelen, PlattenPfad, Geheimwand, SchlachtProbe, DungeonProbe, DungeonSpielScene, AnhoeheProbe, ReitProbe],
+  scene: [BootScene, TitleScene, WorldScene, DebugArenaScene, UIScene, SettingsScene, KammerDerFinsternis, DieSchwelle, BlutstromGang, TreppenProbe, NebelProbe, Treppenabstieg, LangerGang, DieStelen, PlattenPfad, Geheimwand, SchlachtProbe, DungeonProbe, DungeonSpielScene, AnhoeheProbe, ReitProbe, StadtProbe],
 });
 
 // Rechtsklick global ohne Browser-Kontextmenü ("Speichern unter") - die
