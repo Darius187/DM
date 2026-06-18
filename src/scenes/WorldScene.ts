@@ -291,6 +291,7 @@ export class WorldScene extends CombatScene {
     this.panels.getStatistikZeilen = () => this.statistikZeilen();
     this.panels.getKontakteZeilen = () => this.kontakteZeilen();
     this.panels.getKarte = () => this.getKarteInfo();
+    this.panels.getEbeneKarte = () => this.ebeneKarteInfo();
     this.panels.toggleKarteDev = () => { this.karteAufgedeckt = !this.karteAufgedeckt; };
     this.shop = new ShopUI(this, this.provider, this.sfx, () => this.p);
     this.shop.rabatt = () => this.wohlstand() * 0.05;
@@ -5667,6 +5668,30 @@ export class WorldScene extends CombatScene {
         g.fillCircle(wl.x, wl.y, 8);
       }
     }
+  }
+
+  // Aufgedeckte Karte der aktuellen Ebene fürs Charakterfenster (Runde 53):
+  // dasselbe Wissen wie die Minikarte oben rechts (this.seen) + Treppen.
+  private ebeneKarteInfo(): { name: string; w: number; h: number; zellen: Array<[number, number, number]>; spieler: [number, number] | null } | null {
+    if (!this.area.dark) return null;                 // nur in Krypten/Minen (wie die Minikarte)
+    const seen = this.seen.get(this.area.id);
+    if (!seen) return null;
+    const zellen: Array<[number, number, number]> = [];
+    for (let ty = 0; ty < this.area.h; ty++) {
+      for (let tx = 0; tx < this.area.w; tx++) {
+        if (!seen[ty][tx]) continue;
+        const v = this.area.map[ty][tx];
+        if (SOLID.has(v)) continue;
+        zellen.push([tx, ty, v === T.STAIR ? 1 : v === T.STAIRUP ? 2 : 0]); // 1 = hinab, 2 = hinauf
+      }
+    }
+    return { name: this.ebenenLabel(this.area.id), w: this.area.w, h: this.area.h, zellen, spieler: [Math.floor(this.px / TILE), Math.floor(this.py / TILE)] };
+  }
+
+  private ebenenLabel(id: string): string {
+    const m = id.match(/^crypt(\d+)$/);
+    if (m) return `Krypta - Ebene ${m[1]}`;
+    return ({ boss: 'Grab des Kreuzritters', goldmine: 'Goldmine', kirchenschiff: 'Kirchenschiff' } as Record<string, string>)[id] ?? id;
   }
 
   private renderMinimap(): void {

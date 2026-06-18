@@ -374,13 +374,14 @@ export class Hud {
     const x0 = seite < 0 ? cx - bw : cx;
     const y0 = cy - bh / 2;
     const f = Phaser.Math.Clamp(frac, 0, 1);
-    const fill = leben ? (f < 0.25 ? 0xc24a3a : 0x4aa83f) : 0x3a64d0;
+    // Leben ROT (Autorwunsch R53), bei wenig Leben dunkler; Mana blau.
+    const fill = leben ? (f < 0.25 ? 0x8a1f18 : 0xc0352c) : 0x3a64d0;
     g.fillStyle(0x000000, 0.4); g.fillRoundedRect(x0 + 1, y0 + 2, bw, bh, r);
     g.fillStyle(0x0a0806, 0.95); g.fillRoundedRect(x0, y0, bw, bh, r);   // Rinne
     if (f > 0) { g.fillStyle(fill, 1); g.fillRoundedRect(x0 + 2, y0 + 2, (bw - 4) * f, bh - 4, r - 2); }
     g.fillStyle(0xffffff, 0.10); g.fillRoundedRect(x0 + 2, y0 + 2, bw - 4, (bh - 4) * 0.45, r - 2); // Glanz
     g.lineStyle(2, 0x3a2f1c, 1); g.strokeRoundedRect(x0, y0, bw, bh, r);
-    g.lineStyle(1, leben ? 0x6e8a4a : 0x5a6e9a, 0.5); g.strokeRoundedRect(x0 + 1, y0 + 1, bw - 2, bh - 2, r - 1);
+    g.lineStyle(1, leben ? 0x8a4a3a : 0x5a6e9a, 0.5); g.strokeRoundedRect(x0 + 1, y0 + 1, bw - 2, bh - 2, r - 1);
     return [x0 + bw / 2, cy];
   }
 

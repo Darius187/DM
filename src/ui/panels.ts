@@ -66,7 +66,10 @@ export class UIPanels {
   // Karte des Fürstentums (Runde 51)
   getKarte: (() => { aufgedeckt: boolean; gebiete: Array<{ id: string; name: string; gx: number; gy: number; sichtbar: boolean; thumb: { w: number; h: number; farben: number[][] } | null }> }) | null = null;
   toggleKarteDev: (() => void) | null = null;
-  private hauptTab: 'held' | 'faehigkeiten' | 'aufgaben' | 'album' | 'statistik' | 'kontakte' | 'karte' = 'held';
+  // Aufgedeckte Karte der AKTUELLEN Ebene (Runde 53, Autorwunsch): zeigt das
+  // Erkundete samt Treppen (hinab/hinauf). null = keine (Dorf/Wald, nicht dunkel).
+  getEbeneKarte: (() => { name: string; w: number; h: number; zellen: Array<[number, number, number]>; spieler: [number, number] | null } | null) | null = null;
+  private hauptTab: 'held' | 'faehigkeiten' | 'aufgaben' | 'album' | 'statistik' | 'kontakte' | 'karte' | 'ebene' = 'held';
 
   // Fenster direkt auf einem Reiter öffnen (B = Album)
   openTab(tab: 'held' | 'album' | 'statistik'): void {
@@ -172,7 +175,7 @@ export class UIPanels {
     // Haupt-Reiter (Runde 38: eigene Tabs für Fähigkeiten und Aufgaben,
     // damit der Charakter-Tab nicht mehr überladen ist und nichts überlappt)
     const reiter: Array<[typeof this.hauptTab, string]> = [
-      ['held', 'CHARAKTER'], ['faehigkeiten', 'FÄHIGKEITEN'], ['karte', 'KARTE'], ['aufgaben', 'AUFGABEN'],
+      ['held', 'CHARAKTER'], ['faehigkeiten', 'FÄHIGKEITEN'], ['ebene', 'EBENE'], ['karte', 'KARTE'], ['aufgaben', 'AUFGABEN'],
       ['kontakte', 'KONTAKTE'], ['album', 'ALBUM'], ['statistik', 'STATISTIK'],
     ];
     let rx = 14;
@@ -203,6 +206,8 @@ export class UIPanels {
       this.buildSkillsTab(inhalt, w, h - 62);
     } else if (this.hauptTab === 'karte') {
       this.buildMapTab(inhalt, w, h - 62);
+    } else if (this.hauptTab === 'ebene') {
+      this.buildEbeneTab(inhalt, w, h - 62);
     } else if (this.hauptTab === 'aufgaben') {
       this.buildTasksTab(inhalt, w, h - 62);
     } else {
@@ -481,6 +486,56 @@ export class UIPanels {
       this.dragGhost = null;
       if (this.onAssignToSlot?.(ptr.x, ptr.y, aktionId)) this.sfx.play('klick');
     });
+  }
+
+  // --- Ebenen-Karte (Runde 53, Autorwunsch): die aufgedeckte Karte der
+  // AKTUELLEN Ebene, wie oben rechts, samt Treppen (hinab/hinauf), als Reiter.
+  private buildEbeneTab(c: Phaser.GameObjects.Container, w: number, h: number): void {
+    c.add(this.scene.add.text(16, 6, 'KARTE DIESER EBENE', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
+    const k = this.getEbeneKarte?.();
+    if (!k) {
+      c.add(this.scene.add.text(18, 40, 'Hier oben ist keine Ebenen-Karte - sie erscheint in den Krypten/Minen, sobald du sie erkundest.', { fontFamily: 'serif', fontSize: '12.5px', color: '#8a7a5a', wordWrap: { width: w - 36 } }));
+      return;
+    }
+    c.add(this.scene.add.text(w - 16, 10, k.name, { fontFamily: 'serif', fontSize: '12px', color: '#b0a384' }).setOrigin(1, 0));
+    // Legende
+    const legende: Array<[number, string]> = [[0x4a4236, 'Erkundet'], [0xc9a227, '▼ Treppe hinab'], [0x8a9ab8, '▲ Treppe hinauf'], [0xe04a3a, 'Du']];
+    let lx = 16;
+    for (const [col, txt] of legende) {
+      c.add(this.scene.add.rectangle(lx, 30, 10, 10, col).setOrigin(0, 0.5));
+      const t = this.scene.add.text(lx + 14, 30, txt, { fontFamily: 'serif', fontSize: '11px', color: '#c8b890' }).setOrigin(0, 0.5);
+      c.add(t);
+      lx += 14 + t.width + 16;
+    }
+    // Karte einpassen
+    const padT = 46, padB = 8;
+    const z = Math.max(2, Math.floor(Math.min((w - 32) / k.w, (h - padT - padB) / k.h)));
+    const ox = Math.floor((w - k.w * z) / 2);
+    const oy = padT + Math.floor((h - padT - padB - k.h * z) / 2);
+    const g = this.scene.add.graphics();
+    g.fillStyle(0x070605, 0.8); g.fillRect(ox - 4, oy - 4, k.w * z + 8, k.h * z + 8);
+    g.lineStyle(1, 0x3a2f24, 1); g.strokeRect(ox - 4, oy - 4, k.w * z + 8, k.h * z + 8);
+    const treppen: Array<[number, number, number]> = [];
+    for (const [tx, ty, art] of k.zellen) {
+      if (art === 0) { g.fillStyle(0x4a4236, 1); g.fillRect(ox + tx * z, oy + ty * z, z, z); }
+      else treppen.push([tx, ty, art]);
+    }
+    // Treppen zuletzt + hervorgehoben, damit sie auffallen
+    for (const [tx, ty, art] of treppen) {
+      g.fillStyle(art === 1 ? 0xc9a227 : 0x8a9ab8, 1);
+      g.fillRect(ox + tx * z - 1, oy + ty * z - 1, z + 2, z + 2);
+    }
+    c.add(g);
+    // Treppen-Pfeile (bei genug Platz)
+    if (z >= 6) for (const [tx, ty, art] of treppen) {
+      c.add(this.scene.add.text(ox + tx * z + z / 2, oy + ty * z + z / 2, art === 1 ? '▼' : '▲', {
+        fontFamily: 'serif', fontSize: `${Math.min(14, z + 2)}px`, color: '#1a1206',
+      }).setOrigin(0.5));
+    }
+    if (k.spieler) {
+      g.fillStyle(0xe04a3a, 1);
+      g.fillRect(ox + k.spieler[0] * z - 1, oy + k.spieler[1] * z - 1, z + 2, z + 2);
+    }
   }
 
   // --- Quest-Logbuch (Runde 52, Autorwunsch "hübsch, RPG/WoW-ähnlich") -------

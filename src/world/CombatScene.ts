@@ -413,11 +413,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     try {
       merk = { ...merk, ...JSON.parse(localStorage.getItem('ravensmoor_devkasten') ?? '{}') };
     } catch { /* egal */ }
-    const c = this.add.container(merk.x, merk.y).setScrollFactor(0).setDepth(6500);
-    const h = TUNING_ROWS.length * 29 + 96 + 186 + 78 + 156 + 64; // +78 Per-Typ, +116 Schalter, +40 Sprung-Reihe, +64 HUD/Quest-Schalter
-    // Bei kleinen Fenstern schrumpft der ganze Kasten, statt unten
-    // abgeschnitten zu werden (Runde 29: Regler "nicht gefunden")
-    c.setScale(Math.min(merk.s, Math.max(0.6, (this.scale.height - 60) / h)));
+    const c = this.add.container(0, 0).setScrollFactor(0).setDepth(6500);
+    // Rechteck statt hoher Streifen (R53, Autorwunsch): zwei Spalten. Höhe und
+    // Maßstab werden am Ende gesetzt, wenn beide Spalten gebaut sind.
+    const PANEL_W = 690;
     const merkSpeichern = () => {
       try {
         localStorage.setItem('ravensmoor_devkasten', JSON.stringify({ x: Math.round(c.x), y: Math.round(c.y), s: Math.round(c.scaleX * 100) / 100 }));
@@ -425,7 +424,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     };
     // Alle Fenster sind verschiebbar (Kodex-Regel, Runde 30): Kopf zieht,
     // A+/A- skalieren
-    const kopfGriff = this.add.rectangle(0, 0, 250, 24, 0xffffff, 0.04).setOrigin(0)
+    const kopfGriff = this.add.rectangle(0, 0, 600, 24, 0xffffff, 0.04).setOrigin(0)
       .setInteractive({ draggable: true, useHandCursor: true });
     let startZ: { x: number; y: number } | null = null;
     let startC = { x: 0, y: 0 };
@@ -446,12 +445,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       });
       return b3;
     };
-    const bg = this.add.rectangle(0, 0, 340, h, 0x171108, 0.97).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
+    const bg = this.add.rectangle(0, 0, PANEL_W, 200, 0x171108, 0.97).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
     bg.setInteractive();
     c.add(bg);
     c.add(kopfGriff);
-    c.add(skalKnopf(255, 'A-', -0.1));
-    c.add(skalKnopf(290, 'A+', 0.1));
+    c.add(skalKnopf(610, 'A-', -0.1));
+    c.add(skalKnopf(648, 'A+', 0.1));
     c.add(this.add.text(12, 8, 'ENTWICKLUNGSKASTEN (F10) ⠿', { fontFamily: 'serif', fontSize: '14px', color: '#c9a227', letterSpacing: 1 }));
     c.add(this.add.text(12, 26, 'Wirkt sofort auf NEU gespawnte Gegner.', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }));
     let y = 48;
@@ -528,166 +527,108 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       y += 26;
     });
     zeichneTypWerte();
-    y += 4;
-    const hausBtn = this.add.text(12, y + 34, 'HÄUSER JUSTIEREN', {
-      fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
-      backgroundColor: '#221808', padding: { x: 12, y: 5 },
-    }).setInteractive({ useHandCursor: true });
-    hausBtn.on('pointerdown', () => this.toggleHausEdit());
-    c.add(hausBtn);
-    // Dev-Sprünge und Zauber-Freischaltung (Runde 21): schneller testen
-    const zauberBtn = this.add.text(180, y + 34, TUNING.alleZauberFrei ? 'ZAUBER: ALLE FREI' : 'ZAUBER FREISCHALTEN', {
-      fontFamily: 'serif', fontSize: '13px', color: TUNING.alleZauberFrei ? '#c9a227' : '#d8cfb8', letterSpacing: 1,
-      backgroundColor: '#221808', padding: { x: 12, y: 5 },
-    }).setInteractive({ useHandCursor: true });
-    zauberBtn.on('pointerdown', () => {
-      TUNING.alleZauberFrei = !TUNING.alleZauberFrei;
-      zauberBtn.setText(TUNING.alleZauberFrei ? 'ZAUBER: ALLE FREI' : 'ZAUBER FREISCHALTEN')
-        .setColor(TUNING.alleZauberFrei ? '#c9a227' : '#d8cfb8');
-      this.sfx.play('klick');
-      this.logMsg(TUNING.alleZauberFrei ? 'Alle Zauber und Fähigkeiten freigeschaltet (Dev).' : 'Zauber-Sperren wieder aktiv.', 'gold');
-    });
-    c.add(zauberBtn);
-    // Dev-Teleport-Reihe (Runde 40): zu jeder Krypta-Ebene, zum Grab und in die
-    // Stadt - zum Testen des Brücken-Prototyps ab Ebene 4 (E4/E5 hervorgehoben).
-    // Eigene Sektion unten, damit nichts überlappt.
-    c.add(this.add.text(12, y + 230, 'SPRUNG (Brücken-Test ab E4):', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a', letterSpacing: 1 }));
-    const ziele: Array<[string, string]> = [
-      ['E1', 'crypt1'], ['E2', 'crypt2'], ['E3', 'crypt3'], ['E4', 'crypt4'], ['E5', 'crypt5'], ['GRAB', 'boss'], ['STADT', 'village'],
-    ];
-    let txi = 12;
-    for (const [lbl, id] of ziele) {
-      const hervor = id === 'crypt4' || id === 'crypt5';
-      const b = this.add.text(txi, y + 246, lbl, {
-        fontFamily: 'serif', fontSize: '12px', color: hervor ? '#c9a227' : '#d8cfb8',
-        backgroundColor: hervor ? '#2a2008' : '#221808', padding: { x: 6, y: 4 },
+    const colABottom = y + 8;
+
+    // === RECHTE SPALTE: Schalter, Sprünge, Werkzeuge =======================
+    const CB = 358;                    // x-Basis der rechten Spalte
+    // Trennlinie zwischen den Spalten
+    c.add(this.add.rectangle(CB - 16, 44, 1, colABottom - 40, 0x3a2f1c).setOrigin(0));
+    const schalter = (yy: number, lbl: string, color: string, bgCol: string, fn: () => void): Phaser.GameObjects.Text => {
+      const b = this.add.text(CB, yy, lbl, {
+        fontFamily: 'serif', fontSize: '13px', color, letterSpacing: 1, backgroundColor: bgCol, padding: { x: 12, y: 5 },
       }).setInteractive({ useHandCursor: true });
-      b.on('pointerdown', () => { this.devTeleport(id); this.sfx.play('klick'); });
+      b.on('pointerdown', fn);
       c.add(b);
-      txi += b.width + 4;
-    }
-    // Tageszeit + Nebel (Runde 30)
-    let dx2 = 12;
-    for (const [lbl, z] of [['TAG', 0.4], ['ABEND', 0.74], ['NACHT', 0.85]] as const) {
-      const b2 = this.add.text(dx2, y + 90, lbl, {
-        fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8', backgroundColor: '#221808', padding: { x: 9, y: 4 },
-      }).setInteractive({ useHandCursor: true });
-      b2.on('pointerdown', () => { this.devSetTageszeit(z); this.sfx.play('klick'); });
-      c.add(b2);
-      dx2 += b2.width + 8;
-    }
-    const nebelBtn = this.add.text(dx2, y + 90, 'NEBEL', {
-      fontFamily: 'serif', fontSize: '12px', color: '#9ab4cc', backgroundColor: '#221808', padding: { x: 9, y: 4 },
-    }).setInteractive({ useHandCursor: true });
-    nebelBtn.on('pointerdown', () => { this.devToggleNebel(); this.sfx.play('klick'); });
-    c.add(nebelBtn);
-    // Physik-Test (Runde 35): nicht live - Fässer/Kisten lassen sich schieben
-    const physikLbl = () => TUNING.physikTest ? 'PHYSIK-TEST: AN (Fässer/Kisten schieben)' : 'PHYSIK-TEST: AUS';
-    const physikBtn = this.add.text(12, y + 118, physikLbl(), {
-      fontFamily: 'serif', fontSize: '13px', color: TUNING.physikTest ? '#c9a227' : '#d8cfb8', letterSpacing: 1,
-      backgroundColor: '#221808', padding: { x: 12, y: 5 },
-    }).setInteractive({ useHandCursor: true });
-    physikBtn.on('pointerdown', () => {
-      TUNING.physikTest = !TUNING.physikTest;
-      physikBtn.setText(physikLbl()).setColor(TUNING.physikTest ? '#c9a227' : '#d8cfb8');
-      this.sfx.play('klick');
-      this.logMsg(TUNING.physikTest ? 'Physik-Test an: lauf in die Fässer/Kisten, um sie zu schieben.' : 'Physik-Test aus.', 'gold');
-    });
-    c.add(physikBtn);
-    // Gefallene (Runde 35): bewaffnete Gegner - greift erst bei NEUEN Spawns
-    const gefLbl = () => TUNING.gefallene ? 'GEFALLENE (bewaffnet): AN' : 'GEFALLENE (bewaffnet): AUS';
-    const gefBtn = this.add.text(12, y + 146, gefLbl(), {
-      fontFamily: 'serif', fontSize: '13px', color: TUNING.gefallene ? '#c9a227' : '#d8cfb8', letterSpacing: 1,
-      backgroundColor: '#221808', padding: { x: 12, y: 5 },
-    }).setInteractive({ useHandCursor: true });
-    gefBtn.on('pointerdown', () => {
-      TUNING.gefallene = !TUNING.gefallene;
-      gefBtn.setText(gefLbl()).setColor(TUNING.gefallene ? '#c9a227' : '#d8cfb8');
-      this.sfx.play('klick');
-      this.logMsg(TUNING.gefallene ? 'Gefallene an: neue Gegner tragen Waffen (Schwert/Axt/Hammer/Bogen/Stab/Schild).' : 'Gefallene aus.', 'gold');
-    });
-    c.add(gefBtn);
-    // Sicht-Begrenzung (Runde 40): draußen nur so weit sehen wie ein Mensch -
-    // der Regler "Dorf: Sichtweite" oben stellt die Weite ein, dieser Schalter
-    // schaltet die Begrenzung ganz an/aus.
-    const sichtLbl = () => TUNING.sichtBegrenzung ? 'SICHT-BEGRENZUNG: AN (Dorf/Wald)' : 'SICHT-BEGRENZUNG: AUS';
-    const sichtBtn = this.add.text(12, y + 174, sichtLbl(), {
-      fontFamily: 'serif', fontSize: '13px', color: TUNING.sichtBegrenzung ? '#c9a227' : '#d8cfb8', letterSpacing: 1,
-      backgroundColor: '#221808', padding: { x: 12, y: 5 },
-    }).setInteractive({ useHandCursor: true });
-    sichtBtn.on('pointerdown', () => {
-      TUNING.sichtBegrenzung = !TUNING.sichtBegrenzung;
-      sichtBtn.setText(sichtLbl()).setColor(TUNING.sichtBegrenzung ? '#c9a227' : '#d8cfb8');
-      this.sfx.play('klick');
-      this.logMsg(TUNING.sichtBegrenzung ? 'Sicht-Begrenzung an: draußen siehst du nur so weit wie ein Mensch.' : 'Sicht-Begrenzung aus: volle Sicht.', 'gold');
-    });
-    c.add(sichtBtn);
-    // Unbesiegbarkeit (Runde 40): zum Testen der neuen Ebenen
-    const unbLbl = () => TUNING.unbesiegbar ? 'UNBESIEGBAR: AN (kein Schaden)' : 'UNBESIEGBAR: AUS';
-    const unbBtn = this.add.text(12, y + 202, unbLbl(), {
-      fontFamily: 'serif', fontSize: '13px', color: TUNING.unbesiegbar ? '#c9a227' : '#d8cfb8', letterSpacing: 1,
-      backgroundColor: TUNING.unbesiegbar ? '#2a2008' : '#221808', padding: { x: 12, y: 5 },
-    }).setInteractive({ useHandCursor: true });
-    unbBtn.on('pointerdown', () => {
-      TUNING.unbesiegbar = !TUNING.unbesiegbar;
-      unbBtn.setText(unbLbl()).setColor(TUNING.unbesiegbar ? '#c9a227' : '#d8cfb8').setBackgroundColor(TUNING.unbesiegbar ? '#2a2008' : '#221808');
-      this.sfx.play('klick');
-      this.logMsg(TUNING.unbesiegbar ? 'Unbesiegbar an: du nimmst keinen Schaden (Dev).' : 'Unbesiegbar aus.', 'gold');
-    });
-    c.add(unbBtn);
-    const baukasten = this.add.text(220, y + 62, 'BAUKASTEN', {
-      fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
-      backgroundColor: '#221808', padding: { x: 12, y: 5 },
-    }).setInteractive({ useHandCursor: true });
-    baukasten.on('pointerdown', () => {
-      this.toggleBaukasten();
-      this.toggleDevPanel(); // Kasten schließen, der Baukasten hat sein eigenes Panel
-    });
-    c.add(baukasten);
-    const uiBtn = this.add.text(180, y + 6, this.uiEditMode ? 'UI FIXIEREN' : 'UI VERSCHIEBEN', {
-      fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
-      backgroundColor: '#221808', padding: { x: 12, y: 5 },
-    }).setInteractive({ useHandCursor: true });
-    uiBtn.on('pointerdown', () => {
-      this.toggleUiEdit();
-      uiBtn.setText(this.uiEditMode ? 'UI FIXIEREN' : 'UI VERSCHIEBEN');
-    });
-    c.add(uiBtn);
-    const bericht = this.add.text(12, y + 6, 'BERICHT KOPIEREN', {
-      fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1,
-      backgroundColor: '#221808', padding: { x: 12, y: 5 },
-    }).setInteractive({ useHandCursor: true });
-    bericht.on('pointerdown', () => {
+      return b;
+    };
+    let yB = 48;
+    // Bericht + UI verschieben (nebeneinander)
+    const bericht = schalter(yB, 'BERICHT KOPIEREN', '#d8cfb8', '#221808', () => {
       const text = `Tuning-Bericht Ravensmoor: ${JSON.stringify(TUNING)} (Tempo-Regler: ${getSettings().tempo}%) UI-Versatz: ${JSON.stringify(getSettings().ui)}`;
       navigator.clipboard?.writeText(text).catch(() => undefined);
       // eslint-disable-next-line no-console
       console.log(text);
       this.logMsg('Bericht kopiert - einfach im Chat einfügen.', 'gold');
     });
-    c.add(bericht);
-    // Leben/Mana-Anzeige umschalten (Runde 52, Autorwunsch "Alternativen wie
-    // WoW, im Dev-Menü an/aus zum Vergleichen") + Quest-Verfolger an/aus.
+    const uiBtn = this.add.text(CB + bericht.width + 10, yB, this.uiEditMode ? 'UI FIXIEREN' : 'UI VERSCHIEBEN', {
+      fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', letterSpacing: 1, backgroundColor: '#221808', padding: { x: 12, y: 5 },
+    }).setInteractive({ useHandCursor: true });
+    uiBtn.on('pointerdown', () => { this.toggleUiEdit(); uiBtn.setText(this.uiEditMode ? 'UI FIXIEREN' : 'UI VERSCHIEBEN'); });
+    c.add(uiBtn);
+    yB += 32;
+    // Häuser + Zauber + Baukasten
+    const hausBtn = schalter(yB, 'HÄUSER JUSTIEREN', '#d8cfb8', '#221808', () => this.toggleHausEdit());
+    const zauberBtn = this.add.text(CB + hausBtn.width + 10, yB, TUNING.alleZauberFrei ? 'ZAUBER: ALLE FREI' : 'ZAUBER FREISCHALTEN', {
+      fontFamily: 'serif', fontSize: '13px', color: TUNING.alleZauberFrei ? '#c9a227' : '#d8cfb8', letterSpacing: 1, backgroundColor: '#221808', padding: { x: 12, y: 5 },
+    }).setInteractive({ useHandCursor: true });
+    zauberBtn.on('pointerdown', () => {
+      TUNING.alleZauberFrei = !TUNING.alleZauberFrei;
+      zauberBtn.setText(TUNING.alleZauberFrei ? 'ZAUBER: ALLE FREI' : 'ZAUBER FREISCHALTEN').setColor(TUNING.alleZauberFrei ? '#c9a227' : '#d8cfb8');
+      this.sfx.play('klick');
+      this.logMsg(TUNING.alleZauberFrei ? 'Alle Zauber und Fähigkeiten freigeschaltet (Dev).' : 'Zauber-Sperren wieder aktiv.', 'gold');
+    });
+    c.add(zauberBtn);
+    yB += 32;
+    schalter(yB, 'BAUKASTEN', '#d8cfb8', '#221808', () => { this.toggleBaukasten(); this.toggleDevPanel(); });
+    yB += 36;
+    // Tageszeit + Nebel (eine Reihe)
+    let dx2 = CB;
+    for (const [lbl, z] of [['TAG', 0.4], ['ABEND', 0.74], ['NACHT', 0.85]] as const) {
+      const b2 = this.add.text(dx2, yB, lbl, { fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8', backgroundColor: '#221808', padding: { x: 9, y: 4 } }).setInteractive({ useHandCursor: true });
+      b2.on('pointerdown', () => { this.devSetTageszeit(z); this.sfx.play('klick'); });
+      c.add(b2);
+      dx2 += b2.width + 8;
+    }
+    const nebelBtn = this.add.text(dx2, yB, 'NEBEL', { fontFamily: 'serif', fontSize: '12px', color: '#9ab4cc', backgroundColor: '#221808', padding: { x: 9, y: 4 } }).setInteractive({ useHandCursor: true });
+    nebelBtn.on('pointerdown', () => { this.devToggleNebel(); this.sfx.play('klick'); });
+    c.add(nebelBtn);
+    yB += 34;
+    // Schalter-Stapel
+    const physikLbl = () => TUNING.physikTest ? 'PHYSIK-TEST: AN (Fässer/Kisten schieben)' : 'PHYSIK-TEST: AUS';
+    const physikBtn = schalter(yB, physikLbl(), TUNING.physikTest ? '#c9a227' : '#d8cfb8', '#221808', () => {
+      TUNING.physikTest = !TUNING.physikTest;
+      physikBtn.setText(physikLbl()).setColor(TUNING.physikTest ? '#c9a227' : '#d8cfb8');
+      this.sfx.play('klick');
+      this.logMsg(TUNING.physikTest ? 'Physik-Test an: lauf in die Fässer/Kisten, um sie zu schieben.' : 'Physik-Test aus.', 'gold');
+    });
+    yB += 28;
+    const gefLbl = () => TUNING.gefallene ? 'GEFALLENE (bewaffnet): AN' : 'GEFALLENE (bewaffnet): AUS';
+    const gefBtn = schalter(yB, gefLbl(), TUNING.gefallene ? '#c9a227' : '#d8cfb8', '#221808', () => {
+      TUNING.gefallene = !TUNING.gefallene;
+      gefBtn.setText(gefLbl()).setColor(TUNING.gefallene ? '#c9a227' : '#d8cfb8');
+      this.sfx.play('klick');
+      this.logMsg(TUNING.gefallene ? 'Gefallene an: neue Gegner tragen Waffen.' : 'Gefallene aus.', 'gold');
+    });
+    yB += 28;
+    const sichtLbl = () => TUNING.sichtBegrenzung ? 'SICHT-BEGRENZUNG: AN (Dorf/Wald)' : 'SICHT-BEGRENZUNG: AUS';
+    const sichtBtn = schalter(yB, sichtLbl(), TUNING.sichtBegrenzung ? '#c9a227' : '#d8cfb8', '#221808', () => {
+      TUNING.sichtBegrenzung = !TUNING.sichtBegrenzung;
+      sichtBtn.setText(sichtLbl()).setColor(TUNING.sichtBegrenzung ? '#c9a227' : '#d8cfb8');
+      this.sfx.play('klick');
+      this.logMsg(TUNING.sichtBegrenzung ? 'Sicht-Begrenzung an.' : 'Sicht-Begrenzung aus: volle Sicht.', 'gold');
+    });
+    yB += 28;
+    const unbLbl = () => TUNING.unbesiegbar ? 'UNBESIEGBAR: AN (kein Schaden)' : 'UNBESIEGBAR: AUS';
+    const unbBtn = schalter(yB, unbLbl(), TUNING.unbesiegbar ? '#c9a227' : '#d8cfb8', TUNING.unbesiegbar ? '#2a2008' : '#221808', () => {
+      TUNING.unbesiegbar = !TUNING.unbesiegbar;
+      unbBtn.setText(unbLbl()).setColor(TUNING.unbesiegbar ? '#c9a227' : '#d8cfb8').setBackgroundColor(TUNING.unbesiegbar ? '#2a2008' : '#221808');
+      this.sfx.play('klick');
+      this.logMsg(TUNING.unbesiegbar ? 'Unbesiegbar an (Dev).' : 'Unbesiegbar aus.', 'gold');
+    });
+    yB += 28;
     const hudNamen = ['Kugeln rot/blau', 'WoW-Balken', 'Kristall-Säulen'];
     const hudLbl = () => `LEBEN/MANA: ${hudNamen[getSettings().hudStil] ?? 'Kugeln rot/blau'}`;
-    const hudBtn = this.add.text(12, y + 274, hudLbl(), {
-      fontFamily: 'serif', fontSize: '13px', color: '#c9a227', letterSpacing: 1,
-      backgroundColor: '#221808', padding: { x: 12, y: 5 },
-    }).setInteractive({ useHandCursor: true });
-    hudBtn.on('pointerdown', () => {
+    const hudBtn = schalter(yB, hudLbl(), '#c9a227', '#221808', () => {
       const s = getSettings();
       s.hudStil = (s.hudStil + 1) % hudNamen.length;
       saveSettings();
       hudBtn.setText(hudLbl());
       this.sfx.play('klick');
-      this.logMsg(`Leben/Mana-Anzeige: ${hudNamen[s.hudStil]} (Dev - zum Durchschalten erneut klicken).`, 'gold');
+      this.logMsg(`Leben/Mana-Anzeige: ${hudNamen[s.hudStil]} (erneut klicken zum Durchschalten).`, 'gold');
     });
-    c.add(hudBtn);
+    yB += 28;
     const qtLbl = () => getSettings().questTrackerAn ? 'QUEST-VERFOLGER: AN' : 'QUEST-VERFOLGER: AUS';
-    const qtBtn = this.add.text(12, y + 304, qtLbl(), {
-      fontFamily: 'serif', fontSize: '13px', color: getSettings().questTrackerAn ? '#c9a227' : '#d8cfb8', letterSpacing: 1,
-      backgroundColor: '#221808', padding: { x: 12, y: 5 },
-    }).setInteractive({ useHandCursor: true });
-    qtBtn.on('pointerdown', () => {
+    const qtBtn = schalter(yB, qtLbl(), getSettings().questTrackerAn ? '#c9a227' : '#d8cfb8', '#221808', () => {
       const s = getSettings();
       s.questTrackerAn = !s.questTrackerAn;
       saveSettings();
@@ -695,7 +636,29 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.sfx.play('klick');
       this.logMsg(s.questTrackerAn ? 'Quest-Verfolger eingeblendet.' : 'Quest-Verfolger ausgeblendet.', 'gold');
     });
-    c.add(qtBtn);
+    yB += 34;
+    // Sprung-Reihe (Teleport)
+    c.add(this.add.text(CB, yB, 'SPRUNG (Brücken-Test ab E4):', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a', letterSpacing: 1 }));
+    yB += 18;
+    let txi = CB;
+    for (const [lbl, id] of [['E1', 'crypt1'], ['E2', 'crypt2'], ['E3', 'crypt3'], ['E4', 'crypt4'], ['E5', 'crypt5'], ['GRAB', 'boss'], ['STADT', 'village']] as Array<[string, string]>) {
+      const hervor = id === 'crypt4' || id === 'crypt5';
+      const b = this.add.text(txi, yB, lbl, { fontFamily: 'serif', fontSize: '12px', color: hervor ? '#c9a227' : '#d8cfb8', backgroundColor: hervor ? '#2a2008' : '#221808', padding: { x: 6, y: 4 } }).setInteractive({ useHandCursor: true });
+      b.on('pointerdown', () => { this.devTeleport(id); this.sfx.play('klick'); });
+      c.add(b);
+      txi += b.width + 4;
+    }
+    yB += 30;
+
+    // === Größe, Maßstab und Position (am Ende, da beide Spalten fertig) =====
+    const hNeu = Math.max(colABottom, yB) + 12;
+    bg.setSize(PANEL_W, hNeu).setStrokeStyle(1, 0x4a3a26);
+    c.setScale(Math.min(merk.s, Math.max(0.55, (this.scale.height - 40) / hNeu)));
+    const sc = c.scaleX;
+    // Position aus dem Speicher, aber IMMER auf den Bildschirm geklemmt, damit
+    // der Kopf greifbar bleibt (Autorwunsch R53: "kann ich nicht verschieben").
+    c.x = Math.max(0, Math.min(this.scale.width - PANEL_W * sc, merk.x));
+    c.y = Math.max(0, Math.min(this.scale.height - 30, merk.y));
     // Phaser-Falle: Kinder-Hitboxen ignorieren den Container-scrollFactor -
     // ohne diese Zeile war der Kasten bei gescrollter Kamera tot (Runde 15)
     fixUiScroll(c);

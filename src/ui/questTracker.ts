@@ -27,9 +27,10 @@ export class QuestTracker {
     private getSicht: () => QuestSicht | null,
   ) {}
 
-  // Standard-Verankerung: oben rechts, unter den Bildschirm-Meldungen.
+  // Standard-Verankerung: rechts, UNTER der Minikarte (R53: die Minikarte oben
+  // rechts überlappte sonst die Quest-Anzeige). Frei verschiebbar.
   private ankerX(): number { return this.scene.scale.width - PANEL_W - 16 + getSettings().ui.questTracker.x; }
-  private ankerY(): number { return 96 + getSettings().ui.questTracker.y; }
+  private ankerY(): number { return 200 + getSettings().ui.questTracker.y; }
 
   setSichtbar(b: boolean): void {
     this.sichtbar = b;
@@ -42,16 +43,18 @@ export class QuestTracker {
       return;
     }
     const s = this.getSicht();
-    // Signatur aus allem, was die Anzeige bestimmt - nur dann neu zeichnen.
-    const sig = s
-      ? `${s.def.id}|${s.fortschritt}/${s.gesamt}|${s.aktuellesZiel?.text ?? ''}|${this.ankerX()},${this.ankerY()}`
-      : 'leer';
-    if (sig === this.signatur) return;
-    this.signatur = sig;
-    this.container?.destroy();
-    this.container = null;
-    if (!s) return;
-    this.zeichne(s);
+    // Signatur OHNE Position (R53-Fix): nur bei INHALTS-Änderung neu zeichnen.
+    // Vorher steckte die Ankerposition mit drin -> beim Ziehen änderte sich der
+    // Anker, das Fenster wurde mitten im Ziehen neu gebaut und ließ sich nicht
+    // verschieben. Die Position folgt jetzt jeden Frame separat.
+    const sig = s ? `${s.def.id}|${s.fortschritt}/${s.gesamt}|${s.aktuellesZiel?.text ?? ''}|${s.aktuellesZiel?.wohin ?? ''}` : 'leer';
+    if (sig !== this.signatur) {
+      this.signatur = sig;
+      this.container?.destroy();
+      this.container = null;
+      if (s) this.zeichne(s);
+    }
+    if (this.container) this.container.setPosition(this.ankerX(), this.ankerY());
   }
 
   private zeichne(s: QuestSicht): void {
@@ -63,40 +66,45 @@ export class QuestTracker {
       const o = this.scene.add.text(x, y, t, style);
       texte.push(o); return o;
     };
+    // Kopfzeile: Kategorie links, Fortschritt rechts (eigene Zeile, y=7).
+    add(12, 7, KAT_LABEL[s.def.kategorie] ?? 'QUEST', { fontFamily: 'serif', fontSize: '10px', color: katFarbe, letterSpacing: 2 });
+    add(PANEL_W - 12, 7, `${s.fortschritt}/${s.gesamt}`, { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }).setOrigin(1, 0);
+    // Titel darunter (kein Überlappen mehr: yy folgt der echten Texthöhe).
     let yy = 24;
-    // Kategorie-Zeile + Fortschritt
-    add(12, 6, KAT_LABEL[s.def.kategorie] ?? 'QUEST', { fontFamily: 'serif', fontSize: '10px', color: katFarbe, letterSpacing: 2 });
-    add(PANEL_W - 12, 6, `${s.fortschritt}/${s.gesamt}`, { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }).setOrigin(1, 0);
-    // Quest-Titel
     const titel = add(12, yy, s.def.titel, { fontFamily: 'serif', fontSize: '14px', color: GOLD, fontStyle: 'bold', wordWrap: { width: PANEL_W - 24 } });
     yy += titel.height + 6;
-    // Aktuelles Ziel (das, wohin der Spieler muss)
+    // Aktuelles Ziel (wohin der Spieler muss); das Kästchen sitzt auf der echten
+    // Zielzeile, nicht mehr fest bei y=30 (das überlappte den Titel).
     const ziel = s.aktuellesZiel;
+    let zielBoxY = -1;
     if (ziel) {
-      const zt = add(20, yy, ziel.text, { fontFamily: 'serif', fontSize: '12px', color: BONE, wordWrap: { width: PANEL_W - 30 } });
-      // kleines offenes Kästchen vor dem Ziel
-      this.scene.add.existing(zt);
+      zielBoxY = yy;
+      const zt = add(22, yy, ziel.text, { fontFamily: 'serif', fontSize: '12px', color: BONE, wordWrap: { width: PANEL_W - 32 } });
       yy += zt.height + 4;
       if (ziel.wohin) {
-        const wt = add(20, yy, `→ ${ziel.wohin}`, { fontFamily: 'serif', fontSize: '11px', color: '#b89a4a', fontStyle: 'italic', wordWrap: { width: PANEL_W - 30 } });
+        const wt = add(22, yy, `→ ${ziel.wohin}`, { fontFamily: 'serif', fontSize: '11px', color: '#b89a4a', fontStyle: 'italic', wordWrap: { width: PANEL_W - 32 } });
         yy += wt.height + 2;
       }
     } else {
       yy += add(20, yy, 'Abgeschlossen.', { fontFamily: 'serif', fontSize: '12px', color: '#7aa06a' }).height + 4;
     }
     const hoehe = yy + 8;
-    // Hintergrund (halbtransparent) + goldener Akzentbalken links + Kopfgriff
+    // Hintergrund (halbtransparent) + goldener Akzentbalken links - zuerst, damit
+    // Texte/Griff darüber liegen.
     const g = this.scene.add.graphics();
     g.fillStyle(0x0c0905, 0.62); g.fillRoundedRect(0, 0, PANEL_W, hoehe, 7);
     g.lineStyle(1, 0x3a2f1c, 0.8); g.strokeRoundedRect(0, 0, PANEL_W, hoehe, 7);
     g.fillStyle(Phaser.Display.Color.HexStringToColor(katFarbe).color, 0.9); g.fillRoundedRect(0, 6, 3, hoehe - 12, 2);
+    if (zielBoxY >= 0) { g.lineStyle(1, 0x9a8a5a, 1); g.strokeRect(12, zielBoxY + 3, 6, 6); }
     c.add(g);
-    // Ziel-Kästchen (offenes Quadrat vor dem aktuellen Ziel)
-    if (ziel) { g.lineStyle(1, 0x9a8a5a, 1); g.strokeRect(12, 30, 5, 5); }
     for (const t of texte) c.add(t.setScrollFactor(0));
-    // Kopf-Griff zum Verschieben (Schirmkoordinaten-Delta, Kodex Regel 11)
+    // Kopf-Griff zum Verschieben (ganze Kopfzeile, Schirmkoordinaten-Delta).
+    // Position wird über den gespeicherten Versatz gesteuert; update() setzt sie
+    // jeden Frame - daher hier NUR den Versatz fortschreiben.
     const griff = this.scene.add.rectangle(0, 0, PANEL_W, 22, 0xffffff, 0.001).setOrigin(0)
       .setScrollFactor(0).setInteractive({ draggable: true, useHandCursor: true });
+    griff.on('pointerover', () => griff.setFillStyle(0xc9a227, 0.10));
+    griff.on('pointerout', () => griff.setFillStyle(0xffffff, 0.001));
     let startZ: { x: number; y: number } | null = null;
     let startOff = { x: 0, y: 0 };
     griff.on('dragstart', (p: Phaser.Input.Pointer) => { startZ = { x: p.x, y: p.y }; startOff = { ...getSettings().ui.questTracker }; });
@@ -107,7 +115,7 @@ export class QuestTracker {
       off.y = startOff.y + (p.y - startZ.y);
       c.setPosition(this.ankerX(), this.ankerY());
     });
-    griff.on('dragend', () => { startZ = null; saveSettings(); this.signatur = ''; });
+    griff.on('dragend', () => { startZ = null; saveSettings(); });
     c.add(griff);
   }
 
