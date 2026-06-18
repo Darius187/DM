@@ -29,8 +29,11 @@ export function baueBurg(rng: RNG): BurgResult {
 function teile(rng: RNG, grid: number[][], rect: Rect, tiefe: number, stat: { raeume: number }): void {
   const w = rect.x1 - rect.x0 + 1, h = rect.y1 - rect.y0 + 1;
   const kannV = w >= 2 * MIN + 1, kannH = h >= 2 * MIN + 1;
-  // Blatt = fertiger Raum (Fläche ist schon Boden)
-  if (tiefe <= 0 || (!kannV && !kannH) || (tiefe < 6 && rng() < 0.18)) { stat.raeume++; return; }
+  // Blatt = fertiger Raum (Fläche ist schon Boden). Die obersten DREI Ebenen
+  // (tiefe 7,6,5) teilen immer, solange möglich -> mindestens 8 Räume garantiert
+  // ("viele Räume", kein Zerfall in wenige Großräume). Erst ab tiefe 4 darf der
+  // Zufall früher abbrechen, was die Raumgrößen abwechslungsreich macht.
+  if (tiefe <= 0 || (!kannV && !kannH) || (tiefe < 5 && rng() < 0.18)) { stat.raeume++; return; }
   const vert = (kannV && kannH) ? (w > h ? true : rng() < 0.5) : kannV;
   if (vert) {
     const sx = rect.x0 + MIN + Math.floor(rng() * (w - 2 * MIN));   // Wandspalte

@@ -287,6 +287,9 @@ export class Hud {
         // Linksklick-Kandidat: löst beim Loslassen die Aktion aus, SOFERN nicht
         // gezogen wurde (Ziehen verschiebt/tauscht, Klick castet - Autorwunsch R40)
         this.klickSlot = i;
+        // Gedrückt-Optik (Runde 52): der Knopf sieht sofort "gedrückt" aus
+        this.gedruecktSlot = i;
+        this.gedruecktBis = this.scene.time.now + 140;
       });
       // Klick (ohne Ziehen) auf einen belegten Slot feuert die Aktion
       zone.on('pointerup', (ptr: Phaser.Input.Pointer) => {
@@ -302,6 +305,7 @@ export class Hud {
         if (ptr.rightButtonDown()) return;
         if (!s.aktion && !s.belegung) return;
         this.klickSlot = -1; // es wird gezogen, kein Klick
+        this.gedruecktSlot = -1; // Ziehen ist kein Druck
         this.hideTooltip();
         this.dragVon = i;
         this.dragGhost = this.scene.add.text(ptr.x, ptr.y, s.ico(), {
@@ -317,32 +321,48 @@ export class Hud {
   // Erhabener 3D-Knopf im WoW-Stil (Runde 50): dunkler Körper, Glas-Glanz auf
   // der oberen Hälfte, helle Glanzkante oben/links, Schattenkante unten/rechts
   // und ein kategoriefarbener Außenrahmen. Gesperrte Slots bleiben matt.
-  private zeichne3dKnopf(g: Phaser.GameObjects.Graphics, x: number, y: number, size: number, katFarbe: number, locked: boolean): void {
+  // pressed (Runde 52, Autorwunsch): beim Anklicken sieht der Knopf "gedrückt"
+  // aus - Kanten vertauscht (Licht unten/rechts), kein Schlagschatten, dunkler.
+  private zeichne3dKnopf(g: Phaser.GameObjects.Graphics, x: number, y: number, size: number, katFarbe: number, locked: boolean, pressed = false): void {
     const h = size / 2, r = 6;
     const x0 = x - h, y0 = y - h;
-    // Schlagschatten unter dem Knopf
-    g.fillStyle(0x000000, 0.45);
-    g.fillRoundedRect(x0 + 1, y0 + 3, size, size, r);
-    // Körper (dunkles Metall)
-    g.fillStyle(locked ? 0x140f0a : 0x1b140c, 0.98);
+    if (!pressed) {
+      // Schlagschatten unter dem erhabenen Knopf
+      g.fillStyle(0x000000, 0.45);
+      g.fillRoundedRect(x0 + 1, y0 + 3, size, size, r);
+    }
+    // Körper (dunkles Metall) - gedrückt deutlich dunkler/eingesunken
+    g.fillStyle(locked ? 0x140f0a : pressed ? 0x0d0905 : 0x1b140c, 0.98);
     g.fillRoundedRect(x0, y0, size, size, r);
     if (!locked) {
       // dezente Kategorie-Tönung + Glas-Glanz auf der oberen Hälfte
-      g.fillStyle(katFarbe, 0.12);
+      g.fillStyle(katFarbe, pressed ? 0.2 : 0.12);
       g.fillRoundedRect(x0 + 2, y0 + 2, size - 4, size - 4, r - 2);
-      g.fillStyle(0xffffff, 0.10);
-      g.fillRoundedRect(x0 + 3, y0 + 3, size - 6, size * 0.4, r - 3);
+      if (!pressed) {
+        g.fillStyle(0xffffff, 0.10);
+        g.fillRoundedRect(x0 + 3, y0 + 3, size - 6, size * 0.4, r - 3);
+      }
     }
-    // helle Glanzkante oben/links
-    g.lineStyle(2, locked ? 0x2a2218 : 0x6e5a36, locked ? 0.8 : 0.9);
-    g.lineBetween(x0 + 3, y0 + 2, x0 + size - 4, y0 + 2);
-    g.lineBetween(x0 + 2, y0 + 3, x0 + 2, y0 + size - 4);
-    // dunkle Schattenkante unten/rechts
-    g.lineStyle(2, 0x000000, 0.6);
-    g.lineBetween(x0 + 3, y0 + size - 2, x0 + size - 3, y0 + size - 2);
-    g.lineBetween(x0 + size - 2, y0 + 3, x0 + size - 2, y0 + size - 3);
-    // Außenrahmen in Kategoriefarbe
-    g.lineStyle(locked ? 1 : 2, locked ? 0x3a3228 : katFarbe, locked ? 1 : 0.95);
+    if (pressed) {
+      // Gedrückt: Lichtkante WANDERT nach unten/rechts, Schattenkante nach oben/links
+      g.lineStyle(2, 0x000000, 0.65);
+      g.lineBetween(x0 + 3, y0 + 2, x0 + size - 4, y0 + 2);
+      g.lineBetween(x0 + 2, y0 + 3, x0 + 2, y0 + size - 4);
+      g.lineStyle(2, locked ? 0x2a2218 : 0x6e5a36, 0.85);
+      g.lineBetween(x0 + 3, y0 + size - 2, x0 + size - 3, y0 + size - 2);
+      g.lineBetween(x0 + size - 2, y0 + 3, x0 + size - 2, y0 + size - 3);
+    } else {
+      // helle Glanzkante oben/links
+      g.lineStyle(2, locked ? 0x2a2218 : 0x6e5a36, locked ? 0.8 : 0.9);
+      g.lineBetween(x0 + 3, y0 + 2, x0 + size - 4, y0 + 2);
+      g.lineBetween(x0 + 2, y0 + 3, x0 + 2, y0 + size - 4);
+      // dunkle Schattenkante unten/rechts
+      g.lineStyle(2, 0x000000, 0.6);
+      g.lineBetween(x0 + 3, y0 + size - 2, x0 + size - 3, y0 + size - 2);
+      g.lineBetween(x0 + size - 2, y0 + 3, x0 + size - 2, y0 + size - 3);
+    }
+    // Außenrahmen in Kategoriefarbe (gedrückt heller, "leuchtet auf")
+    g.lineStyle(locked ? 1 : 2, locked ? 0x3a3228 : katFarbe, locked ? 1 : pressed ? 1 : 0.95);
     g.strokeRoundedRect(x0, y0, size, size, r);
   }
 
@@ -353,6 +373,8 @@ export class Hud {
   private popupGhost: Phaser.GameObjects.Text | null = null;
   private justDragged = false;
   private klickSlot = -1; // welcher Slot gerade als Linksklick-Kandidat gilt
+  private gedruecktSlot = -1; // welcher Slot gerade "gedrückt" gezeichnet wird
+  private gedruecktBis = 0;   // bis wann (scene.time.now) die Gedrückt-Optik gilt
 
   private endDrag(ptr: Phaser.Input.Pointer): void {
     const ghost = this.dragGhost;
@@ -625,8 +647,9 @@ export class Hud {
       // Kategorie-Färbung (Runde 36): Rahmen + dezenter Schimmer je nach
       // Kampf/Zauber/Bogen/Item - so unterscheidet man die Slots auf einen Blick
       const katFarbe = SLOT_KAT_FARBE[s.kategorie?.() ?? 'item'];
-      // 3D-Knopf im WoW-Stil (Runde 50, Autorwunsch)
-      this.zeichne3dKnopf(g, x, y, 42, katFarbe, locked);
+      // 3D-Knopf im WoW-Stil (Runde 50, Autorwunsch); gedrückt-Optik (Runde 52)
+      const pressed = !locked && this.gedruecktSlot === i && this.scene.time.now < this.gedruecktBis;
+      this.zeichne3dKnopf(g, x, y, 42, katFarbe, locked, pressed);
       const cd = s.cdFrac();
       if (cd > 0) {
         g.fillStyle(0x000000, 0.72);
@@ -635,7 +658,7 @@ export class Hud {
       const cdS = s.cdSek();
       this.slotTexts[i].setText(cdS > 0.5 ? String(Math.ceil(cdS)) : `${s.ico()}`)
         .setColor(cdS > 0.5 ? '#e0b53a' : (s.farbe?.() ?? '#d8cfb8'))
-        .setAlpha(locked ? 0.3 : 1).setPosition(x, y);
+        .setAlpha(locked ? 0.3 : 1).setPosition(x, pressed ? y + 1 : y); // gedrückt: Symbol sinkt mit
       // Tastenkürzel klein oben links
       g.fillStyle(0x000000, 0);
     }

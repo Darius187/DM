@@ -367,58 +367,115 @@ export class UIPanels {
   }
 
   // --- Fähigkeiten-Tab (Runde 38): die drei Schulen, je in Klassenfarbe ------
+  // Runde 52 (Autorwunsch "wie bei WoW"): die Fähigkeiten erscheinen als VOLLE
+  // Aktionsknöpfe (3D-Optik wie in der Leiste), nach Stufe von links nach rechts
+  // sortiert - und lassen sich von hier direkt in die Aktionsleiste ZIEHEN.
   private buildSkillsTab(c: Phaser.GameObjects.Container, w: number, _h: number): void {
     const p = this.getPlayer();
     c.add(this.scene.add.text(16, 6, 'FERTIGKEITEN', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
-    c.add(this.scene.add.text(16, 26, 'Steigen durch Benutzung - jede Schule schaltet mit der Stufe neue Fähigkeiten frei.', { fontFamily: 'serif', fontSize: '11.5px', color: '#8a7a5a' }));
+    c.add(this.scene.add.text(16, 26, 'Nach Stufe geordnet. Freigeschaltete Knöpfe lassen sich auf die Aktionsleiste ziehen.', { fontFamily: 'serif', fontSize: '11.5px', color: '#8a7a5a' }));
+    // Alle Vektorgrafik (Kacheln + Knöpfe) auf EINER Graphics-Ebene, die zuerst
+    // in den Container kommt - so liegen Symbole/Texte/Ziehflächen darüber.
+    const g = this.scene.add.graphics();
+    c.add(g);
     // Klassenfarben (Autorwunsch Runde 51): Krieger BLAU, Magier ROT, Bogen GRÜN.
     const schools: Array<['nahkampf' | 'zauberei' | 'bogen', string, string, number]> = [
       ['nahkampf', 'Krieger - Nahkampf', '⚔', 0x5a86e0],
       ['zauberei', 'Zauberer - Zauberei', '✦', 0xd0563a],
       ['bogen', 'Bogenschütze - Bogen', '➶', 0x5ac06a],
     ];
+    const BTN = 38, GAP = 10, NAME_W = 104, CELL_W = BTN + 6 + NAME_W + GAP, CELL_H = 46;
+    const startX = 24, areaW = w - 36;
+    const perRow = Math.max(1, Math.floor(areaW / CELL_W));
     let y = 54;
     for (const [id, label, ico, col] of schools) {
       const st = p.schools[id];
       const nextAt = st.level >= SCHOOLS.maxLevel ? null : SCHOOLS.usesPerLevel[st.level + 1];
       const prevAt = SCHOOLS.usesPerLevel[st.level] ?? 0;
       const frac = nextAt === null ? 1 : Phaser.Math.Clamp((st.uses - prevAt) / (nextAt - prevAt), 0, 1);
-      // Klassen-Kachel
-      c.add(this.scene.add.rectangle(14, y, w - 28, 120, 0x0e0a06, 0.7).setOrigin(0).setStrokeStyle(1, col));
-      c.add(this.scene.add.circle(40, y + 28, 17, 0x140f08).setStrokeStyle(2, col));
-      c.add(this.scene.add.text(40, y + 28, ico, { fontFamily: 'serif', fontSize: '20px', color: `#${col.toString(16).padStart(6, '0')}` }).setOrigin(0.5));
-      c.add(this.scene.add.text(68, y + 12, label, { fontFamily: 'serif', fontSize: '14px', color: '#e8dcc0', letterSpacing: 1 }));
-      c.add(this.scene.add.text(w - 42, y + 12, `Stufe ${st.level}`, { fontFamily: 'serif', fontSize: '14px', color: `#${col.toString(16).padStart(6, '0')}` }).setOrigin(1, 0));
-      // Fortschrittsbalken
-      c.add(this.scene.add.rectangle(68, y + 36, w - 120, 8, 0x080604).setOrigin(0).setStrokeStyle(1, LINE));
-      c.add(this.scene.add.rectangle(69, y + 37, (w - 122) * frac, 6, col).setOrigin(0));
-      c.add(this.scene.add.text(w - 42, y + 33, nextAt === null ? 'Meister' : `${st.uses}/${nextAt}`, { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }).setOrigin(1, 0));
-      // Fähigkeiten der Schule als Chips - MIT denselben Symbolen wie die
-      // Aktionsleiste (Runde 49). Zauberei zeigt zusätzlich die drei Zauber.
+      const colHex = `#${col.toString(16).padStart(6, '0')}`;
+      // Fähigkeiten der Schule. Zauberei zeigt zusätzlich die drei Zauber.
       const eintraege: Array<{ id: string; name: string; unlock: number }> = (
         id === 'zauberei'
           ? [...SPELLS.map((s) => ({ id: s.id, name: s.name, unlock: s.unlock })),
              ...ABILITIES.filter((a2) => a2.school === id).map((a2) => ({ id: a2.id, name: a2.name, unlock: a2.unlock }))]
           : ABILITIES.filter((a2) => a2.school === id).map((a2) => ({ id: a2.id, name: a2.name, unlock: a2.unlock }))
-      ).sort((a2, b2) => a2.unlock - b2.unlock); // nach Stufe sortiert (Runde 49)
-      let ax = 28;
-      const ay = y + 56;
-      for (const e of eintraege) {
+      ).sort((a2, b2) => a2.unlock - b2.unlock); // nach Stufe sortiert (links = früh)
+      const reihen = Math.max(1, Math.ceil(eintraege.length / perRow));
+      const kachelH = 50 + reihen * CELL_H + 8;
+      // Klassen-Kachel (in g gezeichnet)
+      g.fillStyle(0x0e0a06, 0.7); g.fillRoundedRect(14, y, w - 28, kachelH, 6);
+      g.lineStyle(1, col, 1); g.strokeRoundedRect(14, y, w - 28, kachelH, 6);
+      g.fillStyle(0x140f08, 1); g.fillCircle(40, y + 28, 17);
+      g.lineStyle(2, col, 1); g.strokeCircle(40, y + 28, 17);
+      c.add(this.scene.add.text(40, y + 28, ico, { fontFamily: 'serif', fontSize: '20px', color: colHex }).setOrigin(0.5));
+      c.add(this.scene.add.text(68, y + 12, label, { fontFamily: 'serif', fontSize: '14px', color: '#e8dcc0', letterSpacing: 1 }));
+      c.add(this.scene.add.text(w - 42, y + 12, `Stufe ${st.level}`, { fontFamily: 'serif', fontSize: '14px', color: colHex }).setOrigin(1, 0));
+      // Fortschrittsbalken
+      g.fillStyle(0x080604, 1); g.fillRect(68, y + 36, w - 120, 8);
+      g.lineStyle(1, LINE, 1); g.strokeRect(68, y + 36, w - 120, 8);
+      g.fillStyle(col, 1); g.fillRect(69, y + 37, (w - 122) * frac, 6);
+      c.add(this.scene.add.text(w - 42, y + 33, nextAt === null ? 'Meister' : `${st.uses}/${nextAt}`, { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }).setOrigin(1, 0));
+      // Volle Aktionsknöpfe, von links nach rechts nach Stufe (Runde 52)
+      const ay0 = y + 50;
+      eintraege.forEach((e, i) => {
         const frei = st.level >= e.unlock;
         const sym = SKILL_ICONS[e.id] ?? '•';
-        const chip = this.scene.add.text(ax, ay, `${sym} ${e.name} ·${e.unlock}`, {
-          fontFamily: 'serif', fontSize: '11px', color: frei ? '#e8dcc0' : '#6a5f4c',
-          backgroundColor: frei ? '#1c1408' : '#0c0906', padding: { x: 7, y: 3 },
-        }).setInteractive({ useHandCursor: true });
-        chip.setStroke(frei ? `#${col.toString(16).padStart(6, '0')}` : '#2a2018', frei ? 1 : 0);
-        chip.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTextTooltip(`${sym} ${e.name} - ab ${label} Stufe ${e.unlock}`, skillBeschreibung(e.id), ptr));
-        chip.on('pointerout', () => this.hideTooltip());
-        c.add(chip);
-        ax += chip.width + 8;
-        if (ax > w - 90) { ax = 28; }
-      }
-      y += 132;
+        const bx = startX + (i % perRow) * CELL_W;
+        const by = ay0 + Math.floor(i / perRow) * CELL_H;
+        this.zeichneSkillKnopf(g, bx, by, BTN, col, !frei);
+        c.add(this.scene.add.text(bx + BTN / 2, by + BTN / 2, sym, { fontFamily: 'serif', fontSize: '20px', color: frei ? colHex : '#5a5246' }).setOrigin(0.5).setAlpha(frei ? 1 : 0.5));
+        // Stufen-Plakette unten rechts am Knopf
+        c.add(this.scene.add.text(bx + BTN - 2, by + BTN - 1, `${e.unlock}`, { fontFamily: 'serif', fontSize: '10px', color: frei ? '#f0dca0' : '#6a5f4c', stroke: '#000', strokeThickness: 3 }).setOrigin(1));
+        // Name daneben
+        c.add(this.scene.add.text(bx + BTN + 6, by + BTN / 2, e.name, { fontFamily: 'serif', fontSize: '11px', color: frei ? '#e8dcc0' : '#6a5f4c', wordWrap: { width: NAME_W } }).setOrigin(0, 0.5));
+        // Zelle als interaktive Fläche: Tooltip + (wenn frei) ziehbar in die Leiste
+        const hit = this.scene.add.rectangle(bx, by, CELL_W - GAP, BTN, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: frei });
+        hit.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTextTooltip(`${sym} ${e.name} - ab ${label} Stufe ${e.unlock}`, skillBeschreibung(e.id) + (frei ? '\n\nAuf die Aktionsleiste ziehen, um sie zu belegen.' : ''), ptr));
+        hit.on('pointerout', () => this.hideTooltip());
+        if (frei && this.onAssignToSlot) this.macheSkillZiehbar(hit, e.id, sym, colHex);
+        c.add(hit);
+      });
+      y += kachelH + 12;
     }
+  }
+
+  // Voller Aktionsknopf im Fähigkeiten-Baum (Runde 52): 3D-Optik wie die
+  // Aktionsleiste. locked = noch nicht freigeschaltet -> matt.
+  private zeichneSkillKnopf(g: Phaser.GameObjects.Graphics, x: number, y: number, size: number, col: number, locked: boolean): void {
+    const r = 5;
+    g.fillStyle(0x000000, 0.4); g.fillRoundedRect(x + 1, y + 2, size, size, r);
+    g.fillStyle(locked ? 0x120d08 : 0x1b140c, 0.98); g.fillRoundedRect(x, y, size, size, r);
+    if (!locked) {
+      g.fillStyle(col, 0.14); g.fillRoundedRect(x + 2, y + 2, size - 4, size - 4, r - 2);
+      g.fillStyle(0xffffff, 0.08); g.fillRoundedRect(x + 3, y + 3, size - 6, size * 0.4, r - 3);
+    }
+    g.lineStyle(2, locked ? 0x2a2218 : 0x6e5a36, locked ? 0.7 : 0.9);
+    g.lineBetween(x + 3, y + 2, x + size - 4, y + 2); g.lineBetween(x + 2, y + 3, x + 2, y + size - 4);
+    g.lineStyle(2, 0x000000, 0.55);
+    g.lineBetween(x + 3, y + size - 2, x + size - 3, y + size - 2); g.lineBetween(x + size - 2, y + 3, x + size - 2, y + size - 3);
+    g.lineStyle(locked ? 1 : 2, locked ? 0x3a3228 : col, 1); g.strokeRoundedRect(x, y, size, size, r);
+  }
+
+  // Einen Fähigkeitsknopf auf die Aktionsleiste ziehbar machen (Runde 52):
+  // beim Loslassen über einem Slot wird die Fähigkeit dort belegt (onAssignToSlot
+  // -> Hud.belegeBeiPunkt, akzeptiert alle belegbaren Aktions-IDs).
+  private macheSkillZiehbar(hit: Phaser.GameObjects.Rectangle, aktionId: string, glyph: string, colHex: string): void {
+    this.scene.input.setDraggable(hit);
+    hit.on('dragstart', (ptr: Phaser.Input.Pointer) => {
+      if (ptr.rightButtonDown()) return;
+      this.hideTooltip();
+      this.dragGhost?.destroy();
+      this.dragGhost = this.scene.add.text(ptr.x, ptr.y, glyph, {
+        fontFamily: 'serif', fontSize: '24px', color: colHex, stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(6200);
+    });
+    hit.on('drag', (ptr: Phaser.Input.Pointer) => this.dragGhost?.setPosition(ptr.x, ptr.y));
+    hit.on('dragend', (ptr: Phaser.Input.Pointer) => {
+      this.dragGhost?.destroy();
+      this.dragGhost = null;
+      if (this.onAssignToSlot?.(ptr.x, ptr.y, aktionId)) this.sfx.play('klick');
+    });
   }
 
   // --- Aufgaben-Tab (Runde 38): das Tagebuch, sauber als Liste --------------
