@@ -15,6 +15,9 @@ import { LANDHERR } from '../data/dialoge';
 import storyJson from '../data/story.json';
 import { ShopUI } from '../ui/shop';
 import { Hud } from '../ui/hud';
+import { QuestTracker } from '../ui/questTracker';
+import { logbuch, verfolgteQuest, getVerfolgtWunsch } from '../logic/questLog';
+import type { QuestCtx } from '../data/quests';
 import { StashUI } from '../ui/stash';
 import { HeldEditor } from '../ui/heldEditor';
 import { heldTier } from '../data/helden';
@@ -168,6 +171,7 @@ export class WorldScene extends CombatScene {
   private baumSchlaege = new Map<string, number>();
   private msgTexts: Phaser.GameObjects.Text[] = [];
   private hud!: Hud;
+  private questTracker!: QuestTracker;
   private hudText!: Phaser.GameObjects.Text;
   private areaText!: Phaser.GameObjects.Text;
   private einfallText!: Phaser.GameObjects.Text;
@@ -277,6 +281,12 @@ export class WorldScene extends CombatScene {
     this.dialog = new DialogUI(this, this.provider);
     this.dialog.onPage = (sprecher, text) => this.chronik('geschichte', `${sprecher}: ${text}`);
     this.panels.getJournal = () => this.journalLines();
+    // Quest-Logbuch + Verfolger (Runde 52): das Logbuch liest den Spielzustand,
+    // der Verfolger zeigt die gewählte/automatische Quest auf dem Hauptbildschirm.
+    this.panels.getQuestLog = () => logbuch(this.questCtx());
+    this.panels.getVerfolgtId = () => verfolgteQuest(this.questCtx(), getVerfolgtWunsch())?.def.id ?? null;
+    this.questTracker?.destroy();
+    this.questTracker = new QuestTracker(this, () => verfolgteQuest(this.questCtx(), getVerfolgtWunsch()));
     this.panels.getAlbumZeilen = () => this.albumZeilen();
     this.panels.getStatistikZeilen = () => this.statistikZeilen();
     this.panels.getKontakteZeilen = () => this.kontakteZeilen();
@@ -4871,6 +4881,11 @@ export class WorldScene extends CombatScene {
     this.pauseMenu = c;
   }
 
+  // Spielzustand fürs Quest-System (Runde 52): Flags + abgeleitete Werte.
+  private questCtx(): QuestCtx {
+    return { flags: this.flags, hasKey: this.p.hasKey, bossDead: this.bossDead, level: this.p.level };
+  }
+
   // Aufgabenliste für das Charakterfenster (Feedback-Runde 1)
   private journalLines(): string[] {
     const f = this.flags;
@@ -5162,6 +5177,7 @@ export class WorldScene extends CombatScene {
     // (Runde 40: läuft weiter, ⌛ zeigt das Schleichen unter der Erde an)
     const zeit = this.area.dark ? `⌛ ${tageszeitLabel(this.tageszeit)}` : tageszeitLabel(this.tageszeit);
     this.hud.update(`STUFE ${this.p.level} · ${this.p.gold} GOLD · Tag ${this.tag} · ${zeit}`);
+    this.questTracker.update();
     this.hudText.setPosition(8, 8).setText('');
   }
 

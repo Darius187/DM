@@ -28,7 +28,12 @@ export interface Settings {
   tasten: { t1: string; t2: string; t3: string; t4: string; t5: string; t6: string; t9: string; t0: string; tr: string; tt: string };
   vorlesen: boolean;      // Dialogtexte per Sprachausgabe vorlesen
   // UI-Versatz (im Entwicklungskasten verschiebbar, Runde 11)
-  ui: { hotbar: { x: number; y: number }; mausleiste: { x: number; y: number }; dialog: { x: number; y: number }; log: { x: number; y: number }; orbHp: { x: number; y: number }; orbMp: { x: number; y: number }; fenster: { x: number; y: number } };
+  ui: { hotbar: { x: number; y: number }; mausleiste: { x: number; y: number }; dialog: { x: number; y: number }; log: { x: number; y: number }; orbHp: { x: number; y: number }; orbMp: { x: number; y: number }; fenster: { x: number; y: number }; questTracker: { x: number; y: number } };
+  // Quest-Verfolger auf dem Hauptbildschirm (Runde 52): an/aus, frei verschiebbar.
+  questTrackerAn: boolean;
+  // HUD-Stil für Leben/Mana (Runde 52, Autorwunsch "Alternativen wie WoW"):
+  // 0 = Kugeln rot/blau (bisher), 1 = WoW-Balken, 2 = Einheitenrahmen (Portrait).
+  hudStil: number;
   // Chronik als Chat-Fenster (Runde 29): frei verschieb- UND skalierbar;
   // y zählt vom UNTEREN Bildrand (Chat-Verankerung wie bei WoW)
   chronikBox: { x: number; y: number; w: number; h: number };
@@ -59,7 +64,9 @@ export const DEF_SETTINGS: Settings = {
   maus: { m1: 'angriff', m2: 'block', m3: 'leer', m4: 'pot', m5: 'leer' },
   tasten: { t1: 'leer', t2: 'leer', t3: 'leer', t4: 'leer', t5: 'leer', t6: 'leer', t9: 'leer', t0: 'leer', tr: 'waffe1', tt: 'waffe2' },
   vorlesen: false,
-  ui: { hotbar: { x: 0, y: 0 }, mausleiste: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 } },
+  ui: { hotbar: { x: 0, y: 0 }, mausleiste: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 }, questTracker: { x: 0, y: 0 } },
+  questTrackerAn: true,
+  hudStil: 0,
   chronikBox: { x: 4, y: -430, w: 340, h: 270 }, // Runde 43: bündig am LINKEN
   // Bildschirmrand, kompakter, knapp über der Lebenskugel/Leiste
   chronikAuto: true,
@@ -100,6 +107,7 @@ export function getSettings(): Settings {
         orbHp: { ...DEF_SETTINGS.ui.orbHp, ...(saved.ui?.orbHp ?? {}) },
         orbMp: { ...DEF_SETTINGS.ui.orbMp, ...(saved.ui?.orbMp ?? {}) },
         fenster: { ...DEF_SETTINGS.ui.fenster, ...(saved.ui?.fenster ?? {}) },
+        questTracker: { ...DEF_SETTINGS.ui.questTracker, ...(saved.ui?.questTracker ?? {}) },
       };
       // Layout-Migration (Runde 40): die Aktionsleisten sind jetzt EIN zentrierter
       // Block, die Orbs flankieren die Leisten, die Meldungen stehen oben und die

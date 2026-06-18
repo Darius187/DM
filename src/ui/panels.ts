@@ -13,6 +13,7 @@ import { MELDUNGEN } from '../data/texte';
 import { SCHOOLS, ABILITIES, SPELLS } from '../data/balancing';
 import { WEAPON_HAND } from '../data/kampf';
 import { SKILL_ICONS, skillBeschreibung } from '../data/skills';
+import { setVerfolgtWunsch, type QuestSicht } from '../logic/questLog';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import type { SoundProvider } from '../gfx/SoundProvider';
 import { fixUiScroll } from './dialog';
@@ -54,6 +55,10 @@ export class UIPanels {
   onAssignToSlot: ((x: number, y: number, aktionId: string) => boolean) | null = null;
   private dragGhost: Phaser.GameObjects.Text | null = null;
   getJournal: (() => string[]) | null = null;
+  // Quest-Logbuch (Runde 52): die Aufgaben kommen aus dem Quest-System; der
+  // Spieler kann hier die verfolgte Quest wählen (getVerfolgtId = aktuell verfolgt).
+  getQuestLog: (() => QuestSicht[]) | null = null;
+  getVerfolgtId: (() => string | null) | null = null;
   // Tab-Fenster (Runde 31): Album und Statistik wohnen mit im Fenster
   getAlbumZeilen: (() => Array<[string, string]>) | null = null;
   getStatistikZeilen: (() => Array<[string, string]>) | null = null;
@@ -478,27 +483,110 @@ export class UIPanels {
     });
   }
 
-  // --- Aufgaben-Tab (Runde 38): das Tagebuch, sauber als Liste --------------
+  // --- Quest-Logbuch (Runde 52, Autorwunsch "hübsch, RPG/WoW-ähnlich") -------
+  // Karten je Quest mit Kategorie-Akzent, Zielen (Häkchen), Belohnung und einem
+  // VERFOLGEN-Schalter, der die Quest auf den Hauptbildschirm (Quest-Verfolger)
+  // legt. Aktive Quests zuerst, abgeschlossene gedämpft darunter.
+  private readonly KAT_FARBE_HEX: Record<string, number> = { haupt: 0xe8c84a, neben: 0x9ab4cc, ereignis: 0xd96b5a };
+  private readonly KAT_LABEL: Record<string, string> = { haupt: 'HAUPTQUEST', neben: 'NEBENQUEST', ereignis: 'EREIGNIS' };
+
   private buildTasksTab(c: Phaser.GameObjects.Container, w: number, h: number): void {
-    c.add(this.scene.add.text(16, 6, 'AUFGABEN', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
-    const journal = this.getJournal?.() ?? [];
-    if (!journal.length) {
-      c.add(this.scene.add.text(18, 40, 'Noch keine offenen Aufgaben.', { fontFamily: 'serif', fontSize: '13px', color: '#8a7a5a' }));
-      return;
+    c.add(this.scene.add.text(16, 6, 'QUESTLOGBUCH', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
+    c.add(this.scene.add.text(w - 16, 10, 'Verfolgte Quest erscheint auf dem Hauptbildschirm', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }).setOrigin(1, 0));
+    const log = this.getQuestLog?.() ?? [];
+    const verfolgt = this.getVerfolgtId?.() ?? null;
+    // Alle Vektorgrafik (Karten) auf EINER Ebene zuerst, Texte/Knöpfe darüber.
+    const g = this.scene.add.graphics();
+    c.add(g);
+    const cardX = 14, cardW = w - 28;
+    let y = 34;
+    if (!log.length) {
+      c.add(this.scene.add.text(20, 44, 'Noch keine Aufgaben offen.', { fontFamily: 'serif', fontSize: '13px', color: '#8a7a5a' }));
     }
-    let y = 40;
-    for (const eintrag of journal) {
-      if (y > h - 20) break;
-      // "·" = Hauptaufgabe (goldener Punkt), "—" = eingerückter Hinweis
-      const unter = /^\s*—/.test(eintrag);
-      const txt = eintrag.replace(/^\s*[—·-]\s*/, '');
-      c.add(this.scene.add.circle(unter ? 36 : 22, y + 8, unter ? 2.5 : 4, unter ? 0x8a7a5a : 0xc9a227));
-      const t = this.scene.add.text(unter ? 48 : 34, y, txt, {
-        fontFamily: 'serif', fontSize: unter ? '12.5px' : '13.5px',
-        color: unter ? '#c8b890' : '#e8dcc0', wordWrap: { width: w - (unter ? 64 : 50) }, lineSpacing: 3,
+    for (const s of log) {
+      if (y > h - 40) break;
+      const aktiv = s.status === 'aktiv';
+      const katFarbe = this.KAT_FARBE_HEX[s.def.kategorie] ?? 0xc9a227;
+      const katHex = `#${katFarbe.toString(16).padStart(6, '0')}`;
+      const istVerfolgt = aktiv && verfolgt === s.def.id;
+      const innerX = cardX + 14;
+      const innerW = cardW - 26;
+      let yy = y + 8;
+      // Kopf: Kategorie + Fortschritt
+      c.add(this.scene.add.text(innerX, yy, this.KAT_LABEL[s.def.kategorie] ?? 'QUEST', { fontFamily: 'serif', fontSize: '10px', color: aktiv ? katHex : '#6a5f4c', letterSpacing: 2 }));
+      c.add(this.scene.add.text(cardX + cardW - 12, yy, `${s.fortschritt}/${s.gesamt}`, { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }).setOrigin(1, 0));
+      yy += 15;
+      // Titel
+      const titel = this.scene.add.text(innerX, yy, s.def.titel, { fontFamily: 'serif', fontSize: '15px', color: aktiv ? GOLD : '#8a7d62', wordWrap: { width: innerW - 100 } });
+      c.add(titel);
+      // VERFOLGEN-Schalter (nur aktive Quests)
+      if (aktiv) {
+        const lbl = istVerfolgt ? '✓ VERFOLGT' : 'VERFOLGEN';
+        const btn = this.scene.add.text(cardX + cardW - 12, yy + 1, lbl, {
+          fontFamily: 'serif', fontSize: '11px', letterSpacing: 1,
+          color: istVerfolgt ? '#1a1206' : '#d8cfb8',
+          backgroundColor: istVerfolgt ? katHex : '#221808', padding: { x: 8, y: 3 },
+        }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+        btn.on('pointerover', () => { if (!istVerfolgt) btn.setBackgroundColor('#3a2e14'); });
+        btn.on('pointerout', () => { if (!istVerfolgt) btn.setBackgroundColor('#221808'); });
+        btn.on('pointerdown', () => {
+          // erneutes Klicken der verfolgten Quest -> zurück auf Automatik
+          setVerfolgtWunsch(istVerfolgt ? '' : s.def.id);
+          this.sfx.play('klick');
+          this.build();
+        });
+        c.add(btn);
+      }
+      yy += titel.height + 4;
+      // Kurzbeschreibung
+      const kurz = this.scene.add.text(innerX, yy, s.def.kurz, { fontFamily: 'serif', fontSize: '11.5px', color: aktiv ? '#b0a384' : '#6a5f4c', fontStyle: 'italic', wordWrap: { width: innerW } });
+      c.add(kurz);
+      yy += kurz.height + 5;
+      // Ziele mit Häkchen
+      s.def.ziele.forEach((z, i) => {
+        const erfuellt = s.zielErfuellt[i];
+        const istAktuell = aktiv && s.aktuellesZiel === z;
+        const farbe = erfuellt ? '#7a9a64' : istAktuell ? '#f0e2b0' : aktiv ? '#c8bda0' : '#6a5f4c';
+        // Häkchen-Kästchen
+        g.lineStyle(1, erfuellt ? 0x7a9a64 : 0x9a8a5a, 1);
+        g.strokeRect(innerX, yy + 3, 8, 8);
+        if (erfuellt) { g.lineStyle(2, 0x7a9a64, 1); g.lineBetween(innerX + 1, yy + 7, innerX + 3, yy + 10); g.lineBetween(innerX + 3, yy + 10, innerX + 8, yy + 2); }
+        const zt = this.scene.add.text(innerX + 16, yy, z.text, { fontFamily: 'serif', fontSize: '12px', color: farbe, fontStyle: istAktuell ? 'bold' : 'normal', wordWrap: { width: innerW - 18 } });
+        c.add(zt);
+        yy += zt.height + 1;
+        if (istAktuell && z.wohin) {
+          const wt = this.scene.add.text(innerX + 16, yy, `→ ${z.wohin}`, { fontFamily: 'serif', fontSize: '11px', color: '#b89a4a', fontStyle: 'italic' });
+          c.add(wt);
+          yy += wt.height + 1;
+        }
       });
-      c.add(t);
-      y += Math.max(22, t.height + 8);
+      // Belohnung
+      if (aktiv && s.def.belohnung) {
+        const bt = this.scene.add.text(innerX, yy + 2, `Belohnung: ${s.def.belohnung}`, { fontFamily: 'serif', fontSize: '11px', color: '#c9a227' });
+        c.add(bt);
+        yy += bt.height + 3;
+      }
+      const cardH = yy - y + 6;
+      // Karte zeichnen (in g, hinter den Texten)
+      g.fillStyle(istVerfolgt ? 0x1a140a : 0x100b06, istVerfolgt ? 0.95 : 0.7);
+      g.fillRoundedRect(cardX, y, cardW, cardH, 6);
+      g.lineStyle(istVerfolgt ? 2 : 1, istVerfolgt ? katFarbe : 0x2f2618, istVerfolgt ? 0.9 : 1);
+      g.strokeRoundedRect(cardX, y, cardW, cardH, 6);
+      g.fillStyle(katFarbe, aktiv ? 0.9 : 0.4);
+      g.fillRoundedRect(cardX, y + 5, 3, cardH - 10, 2);
+      y += cardH + 10;
+    }
+    // Hinweise (Sammeln/Handwerk) als gedämpfter Fußtext (kamen aus dem alten Journal)
+    const tipps = (this.getJournal?.() ?? []).filter((e) => /^\s*—/.test(e)).map((e) => e.replace(/^\s*—\s*/, ''));
+    if (tipps.length && y < h - 30) {
+      c.add(this.scene.add.text(16, y + 2, 'HINWEISE', { fontFamily: 'serif', fontSize: '10px', color: '#6a5f4c', letterSpacing: 2 }));
+      y += 16;
+      for (const t of tipps) {
+        if (y > h - 16) break;
+        const tt = this.scene.add.text(20, y, `· ${t}`, { fontFamily: 'serif', fontSize: '11px', color: '#8a7d62', wordWrap: { width: w - 40 } });
+        c.add(tt);
+        y += tt.height + 3;
+      }
     }
   }
 
