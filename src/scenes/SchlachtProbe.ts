@@ -18,6 +18,7 @@ import { SoundProvider } from '../gfx/SoundProvider';
 import { angleToDir } from '../world/Enemy';
 import { TILE, type Dir } from '../gfx/fallbackArt';
 import { formSlots, formSlotsSkaliert, linienSlots, slotWelt, type Form, type Slot } from '../logic/formationen';
+import { willEngagieren as kiWillEngagieren } from '../logic/kampfKi';
 
 type Team = 'spieler' | 'feind';
 type Typ = 'schild' | 'nahkampf' | 'bogen' | 'heiler' | 'e_nah' | 'e_bogen';
@@ -399,9 +400,16 @@ export class SchlachtProbe extends Phaser.Scene {
     this.sfx.play('klick', 0.5);
   }
 
-  // Fokus-Angriff: alle Gewählten greifen GEZIELT diesen Gegner an (löst Marsch).
+  // Fokus-Angriff: alle Gewählten stürzen sich GEZIELT auf diesen Gegner - und
+  // bleiben danach im Getümmel und kämpfen weiter (Autorwunsch R53: NICHT zurück
+  // zur Formation laufen). Dazu lösen wir sie aus dem Verband; als lose Einheiten
+  // greifen sie nach dem Kill automatisch den nächsten Gegner an (updateUnit).
   private befehlFokus(ef: Unit): void {
-    for (const u of this.gewaehlte()) { u.fokus = ef; if (u.grp) u.grp.ziel = null; }
+    for (const u of this.gewaehlte()) {
+      if (u.grp) u.grp.ziel = null;
+      u.grp = null; u.off = null; u.ziel = null;
+      u.fokus = ef;
+    }
     this.sfx.play('klick', 0.5);
   }
 
@@ -539,14 +547,17 @@ export class SchlachtProbe extends Phaser.Scene {
     } else {
       if (u.fokus && u.fokus.tot) u.fokus = null;
       const feind = u.fokus ?? this.naechsterFeind(u);
-      if (feind && Math.hypot(feind.x - u.x, feind.y - u.y) <= u.reich) this.angriff(u, feind);
       const dF = feind ? Math.hypot(feind.x - u.x, feind.y - u.y) : Infinity;
+      if (feind && dF <= u.reich) this.angriff(u, feind);
+      // Verband noch auf dem Weg zur befohlenen Position? Dann erst in Formation
+      // hinmarschieren - gekämpft wird, SOBALD die Position erreicht ist (R53).
+      const marschiert = u.grp?.manuell === true;
       if (u.fokus && !u.fokus.tot && dF > u.reich) {
-        bewegtZu = { x: u.fokus.x, y: u.fokus.y };                    // Fokusbefehl: gezielt hinjagen (auch aus der Formation)
+        bewegtZu = { x: u.fokus.x, y: u.fokus.y };                    // Fokus: gezielt hinjagen
+      } else if (!marschiert && feind && dF > u.reich && this.willEngagieren(u, feind, dF, home)) {
+        bewegtZu = { x: feind.x, y: feind.y };                       // AUTO-ANGRIFF: auch aus der Formation in den Nahkampf stürzen (Autorwunsch R53)
       } else if (u.grp && u.off) {
-        bewegtZu = fernVonHome > 3 ? home : null;                    // IN Formation: IMMER den Slot halten - die GRUPPE rückt vor (lenkeAggressiveVerbaende), nicht der Einzelne
-      } else if (feind && dF > u.reich && this.willEngagieren(u, feind, dF, home)) {
-        bewegtZu = { x: feind.x, y: feind.y };                       // lose Einheit greift an
+        bewegtZu = fernVonHome > 3 ? home : null;                    // kein Gegner in Reichweite -> Slot halten (Marsch via Gruppe)
       } else if (!feind && u.team !== this.steuereTeam && this.schlachtLaeuft) {
         const m = this.heeresMitte(u.team === 'spieler' ? 'feind' : 'spieler');  // KI-Seite rückt zur Schlacht vor
         if (m) bewegtZu = m;
@@ -562,14 +573,18 @@ export class SchlachtProbe extends Phaser.Scene {
     this.zeichneEinheit(u);
   }
 
-  // Soll die Einheit zum Gegner vorrücken? Hängt an der Haltung + Leine zur Formation.
+  // Soll die Einheit zum Gegner vorrücken? Reine Entscheidung in kampfKi (getestet):
+  // Haltung + Leine zur Heimat/Position; Fokus greift immer an, die KI-Seite frei.
   private willEngagieren(u: Unit, feind: Unit, d: number, home: { x: number; y: number }): boolean {
-    if (u.fokus) return true;                                  // Fokusbefehl: immer
-    if (u.team !== this.steuereTeam) return this.schlachtLaeuft; // KI-Seite rennt frei
-    if (u.stance === 'halten') return false;                   // nie vom Slot weg
-    const sicht = u.stance === 'verteidigen' ? u.reich + 60 : 320;
-    const leine = u.stance === 'verteidigen' ? 80 : 210;       // wie weit darf der Gegner von der Heimat sein
-    return d <= sicht && Math.hypot(feind.x - home.x, feind.y - home.y) <= leine;
+    return kiWillEngagieren({
+      stance: u.stance,
+      istFokus: !!u.fokus,
+      eigeneSeite: u.team === this.steuereTeam,
+      schlachtLaeuft: this.schlachtLaeuft,
+      reich: u.reich,
+      dFeind: d,
+      dFeindVonHeimat: Math.hypot(feind.x - home.x, feind.y - home.y),
+    });
   }
 
   private heilerHandeln(u: Unit): void {
