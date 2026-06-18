@@ -43,11 +43,10 @@ scrollt von Hand unter dem zentrierten Spieler durch - so bleibt die UI immer
 klickbar (Regel 9.4). Kollision: Wand/Abgrund/Requisit blocken, alles andere
 ist begehbar.
 
-## V5 - Verbundene Räume + Füllräume — GEBAUT
-`src/world/verbundeneRaeume.ts` (`baueVerbundeneRaeume`). Klassische RÄUME im
-Raster, über GÄNGE verbunden (Spannbaum + Schleifen) - UND die sonst leeren
-Zwischenflächen werden mit ZUSÄTZLICHEN Räumen gefüllt (jeder über einen kurzen
-Stollen angebunden), sodass kaum tote Fläche bleibt. ~22 Räume, alles über
-Gänge/Stollen erreichbar (Reachability über 25 Läufe getestet). In der
-DUNGEON-PROBE als "V5" ansehbar UND begehbar. Entspricht dem Autorwunsch
-"einzelne Räume über den Weg verbunden, aber zwischendrin auch noch Räume".
+## V5 - Dicht gepackte Räume — GEBAUT (Autorklärung Runde 51)
+`src/world/verbundeneRaeume.ts` (`baueVerbundeneRaeume`). Die GANZE Fläche ist
+in Räume aufgeteilt (Raster), nur durch dünne Wände getrennt und über Türen
+verbunden - KEIN toter Fels dazwischen ("dicht gepackt, kaum Leerraum").
+Spannbaum + Schleifen garantieren, dass alles erreichbar ist; manche
+Nachbarräume verschmelzen zu größeren (Abwechslung). In der DUNGEON-PROBE als
+V5 ansehbar/begehbar/spielbar.
