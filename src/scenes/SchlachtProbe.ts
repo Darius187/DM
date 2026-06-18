@@ -53,7 +53,7 @@ const BAU: Record<BauTyp, BauDef> = {
 };
 interface Bau { typ: BauTyp; x: number; y: number; t: number }
 
-interface Gruppe { anker: { x: number; y: number }; facing: number; ziel: { x: number; y: number } | null }
+interface Gruppe { anker: { x: number; y: number }; facing: number; ziel: { x: number; y: number } | null; manuell: boolean }
 
 interface Unit {
   sprite: Phaser.GameObjects.Sprite; ring: Phaser.GameObjects.Arc;
@@ -180,7 +180,12 @@ export class SchlachtProbe extends Phaser.Scene {
     for (const [lbl, b] of baulist) { x2 += this.knopf(x2, y2, lbl, () => { this.platziere = this.platziere === b ? null : b; this.setzeStatus(); }).width + 6; }
     x2 += 14;
     x2 += this.knopf(x2, y2, 'NACHSCHUB', () => this.fordereNachschub()).width + 10;
-    x2 += this.knopf(x2, y2, '+ EINHEITEN', () => this.mehrEinheiten()).width + 10;
+    x2 += this.add.text(x2, y2, 'FÜRST', { fontFamily: 'serif', fontSize: '12px', color: '#6ad0ff' }).setOrigin(0, 0.5).setDepth(950).width + 4;
+    x2 += this.knopf(x2, y2, '+', () => this.addEinheiten('spieler', 4)).width + 3;
+    x2 += this.knopf(x2, y2, '-', () => this.entferneEinheiten('spieler', 4)).width + 10;
+    x2 += this.add.text(x2, y2, 'UNTOTE', { fontFamily: 'serif', fontSize: '12px', color: '#e05a4a' }).setOrigin(0, 0.5).setDepth(950).width + 4;
+    x2 += this.knopf(x2, y2, '+', () => this.addEinheiten('feind', 4)).width + 3;
+    x2 += this.knopf(x2, y2, '-', () => this.entferneEinheiten('feind', 4)).width + 10;
     x2 += this.knopf(x2, y2, 'ANGRIFF!', () => { this.schlachtLaeuft = true; this.setzeStatus(); }).width + 10;
     x2 += this.knopf(x2, y2, 'NEU', () => this.scene.restart()).width + 10;
     this.knopf(1206, y1, 'MENÜ', () => this.scene.start('Title'));
@@ -296,9 +301,23 @@ export class SchlachtProbe extends Phaser.Scene {
   }
   private setzeStance(s: Stance): void { for (const u of this.gewaehlte()) u.stance = s; this.setzeStatus(); this.sfx.play('klick', 0.5); }
 
-  private mehrEinheiten(): void {
-    for (let i = 0; i < 4; i++) this.neueEinheit('spieler', i < 2 ? 'nahkampf' : 'bogen', 120, 420 + i * 30);
-    for (let i = 0; i < 5; i++) this.neueEinheit('feind', 'e_nah', 1120, 420 + i * 30);
+  // Einheiten je Seite dazustellen/entfernen (Autorwunsch).
+  private addEinheiten(team: Team, n: number): void {
+    const x = team === 'spieler' ? 110 : 1170;
+    for (let i = 0; i < n; i++) {
+      const typ: Typ = team === 'spieler' ? (i % 3 === 2 ? 'bogen' : 'nahkampf') : (i % 3 === 2 ? 'e_bogen' : 'e_nah');
+      this.neueEinheit(team, typ, x, 200 + (i % 8) * 36 + (i >= 8 ? 30 : 0));
+    }
+    this.setzeStatus();
+  }
+  private entferneEinheiten(team: Team, n: number): void {
+    const lebende = this.units.filter((u) => u.team === team && !u.tot);
+    for (let i = 0; i < n && lebende.length; i++) {
+      const u = lebende.pop()!;
+      u.tot = true; u.ausgewaehlt = false; u.grp = null; u.off = null; u.ziel = null; u.fokus = null;
+      for (const o of this.units) if (o.fokus === u) o.fokus = null;
+      u.sprite.destroy(); u.ring.destroy();
+    }
     this.setzeStatus();
   }
 
@@ -312,7 +331,7 @@ export class SchlachtProbe extends Phaser.Scene {
   private formiere(form: Form): void {
     const sel = this.gewaehlte(); if (!sel.length) return;
     const cx = sel.reduce((a, u) => a + u.x, 0) / sel.length, cy = sel.reduce((a, u) => a + u.y, 0) / sel.length;
-    const grp: Gruppe = { anker: { x: cx, y: cy }, facing: this.zumFeind(cx, cy), ziel: null };
+    const grp: Gruppe = { anker: { x: cx, y: cy }, facing: this.zumFeind(cx, cy), ziel: null, manuell: false };
     const sortiert = [...sel].sort((a, b) => a.rank - b.rank);
     const slots = formSlots(sortiert.length, form, SPACING);
     sortiert.forEach((u, i) => { u.grp = grp; u.off = slots[i]; u.ziel = null; u.fokus = null; });
@@ -329,7 +348,7 @@ export class SchlachtProbe extends Phaser.Scene {
     const proj = (u: Unit) => (u.x - a.x) * Math.cos(dir) + (u.y - a.y) * Math.sin(dir);
     const sortiert = [...sel].sort((u, v) => proj(u) - proj(v));
     const slots = linienSlots(sortiert.map((u) => u.rank), laenge, SPACING);
-    const grp: Gruppe = { anker: mid, facing, ziel: null };
+    const grp: Gruppe = { anker: mid, facing, ziel: null, manuell: false };
     sortiert.forEach((u, i) => { u.grp = grp; u.off = slots[i]; u.ziel = null; u.fokus = null; });
     this.sfx.play('klick', 0.6);
   }
@@ -345,7 +364,7 @@ export class SchlachtProbe extends Phaser.Scene {
   private befehlMarsch(ziel: { x: number; y: number }): void {
     const sel = this.gewaehlte(); if (!sel.length) return;
     const cx = sel.reduce((a, u) => a + u.x, 0) / sel.length, cy = sel.reduce((a, u) => a + u.y, 0) / sel.length;
-    const grp: Gruppe = { anker: { x: cx, y: cy }, facing: 0, ziel };
+    const grp: Gruppe = { anker: { x: cx, y: cy }, facing: 0, ziel, manuell: true };
     sel.forEach((u) => { u.grp = grp; u.off = { f: u.x - cx, l: u.y - cy }; u.ziel = null; u.fokus = null; });
     this.sfx.play('klick', 0.5);
   }
@@ -363,6 +382,7 @@ export class SchlachtProbe extends Phaser.Scene {
     this.baueGrid();
     this.wendeBautenAn(dt);
     if (this.nachschubT > 0) { this.nachschubT -= dt; if (this.nachschubT <= 0) this.nachschubTrifftEin(); }
+    this.lenkeAggressiveVerbaende();
     this.aktualisiereGruppen(dt);
     for (const u of this.units) if (!u.tot) this.updateUnit(u, dt);
     for (const m of this.marker) m.t -= dt;
@@ -442,8 +462,28 @@ export class SchlachtProbe extends Phaser.Scene {
       const tempo = Math.min(...mit.map((u) => u.speed));
       const d = Math.hypot(g.ziel.x - g.anker.x, g.ziel.y - g.anker.y);
       const schritt = tempo * dt;
-      if (d <= schritt) { g.anker.x = g.ziel.x; g.anker.y = g.ziel.y; g.ziel = null; }
+      if (d <= schritt) { g.anker.x = g.ziel.x; g.anker.y = g.ziel.y; g.ziel = null; g.manuell = false; }
       else { g.anker.x += (g.ziel.x - g.anker.x) / d * schritt; g.anker.y += (g.ziel.y - g.anker.y) / d * schritt; }
+    }
+  }
+
+  // AGGRESSIV in Formation (Autorwunsch): ein aggressiver Verband RÜCKT als Block
+  // zum nächsten Gegner VOR (Anker bewegt sich), statt dass Einzelne ausbrechen
+  // und zurückgezogen werden. Bei Frontkontakt hält er und kämpft. Ein manueller
+  // Marschbefehl hat Vorrang, bis er angekommen ist.
+  private lenkeAggressiveVerbaende(): void {
+    const grps = new Set<Gruppe>();
+    for (const u of this.units) if (!u.tot && u.grp && u.team === this.steuereTeam) grps.add(u.grp);
+    for (const g of grps) {
+      if (g.manuell) continue;                                  // manueller Befehl läuft noch
+      const mit = this.units.filter((u) => !u.tot && u.grp === g);
+      if (!mit.length || !mit.some((u) => u.stance === 'aggressiv')) { continue; }
+      let ziel: Unit | null = null, bd = 1e9;
+      for (const e of this.units) { if (e.tot || e.team === mit[0].team) continue; const d = Math.hypot(e.x - g.anker.x, e.y - g.anker.y); if (d < bd) { bd = d; ziel = e; } }
+      if (!ziel) { g.ziel = null; continue; }
+      const kontakt = mit.some((u) => { const f = this.naechsterFeind(u); return !!f && Math.hypot(f.x - u.x, f.y - u.y) <= u.reich + 8; });
+      if (kontakt) g.ziel = null;                               // an der Linie stehen und kämpfen
+      else { g.ziel = { x: ziel.x, y: ziel.y }; g.facing = Math.atan2(ziel.y - g.anker.y, ziel.x - g.anker.x); }
     }
   }
 
@@ -472,11 +512,11 @@ export class SchlachtProbe extends Phaser.Scene {
       if (feind && Math.hypot(feind.x - u.x, feind.y - u.y) <= u.reich) this.angriff(u, feind);
       const dF = feind ? Math.hypot(feind.x - u.x, feind.y - u.y) : Infinity;
       if (u.fokus && !u.fokus.tot && dF > u.reich) {
-        bewegtZu = { x: u.fokus.x, y: u.fokus.y };                    // Fokusbefehl: gezielt hinjagen
-      } else if (u.grp && u.grp.ziel) {
-        bewegtZu = fernVonHome > 3 ? home : null;                    // aktiver Marsch/Rückzug: Formation halten (NICHT jagen)
+        bewegtZu = { x: u.fokus.x, y: u.fokus.y };                    // Fokusbefehl: gezielt hinjagen (auch aus der Formation)
+      } else if (u.grp && u.off) {
+        bewegtZu = fernVonHome > 3 ? home : null;                    // IN Formation: IMMER den Slot halten - die GRUPPE rückt vor (lenkeAggressiveVerbaende), nicht der Einzelne
       } else if (feind && dF > u.reich && this.willEngagieren(u, feind, dF, home)) {
-        bewegtZu = { x: feind.x, y: feind.y };                       // angreifen (mit Leine zur Heimat)
+        bewegtZu = { x: feind.x, y: feind.y };                       // lose Einheit greift an
       } else if (!feind && u.team !== this.steuereTeam && this.schlachtLaeuft) {
         const m = this.heeresMitte(u.team === 'spieler' ? 'feind' : 'spieler');  // KI-Seite rückt zur Schlacht vor
         if (m) bewegtZu = m;
@@ -626,6 +666,16 @@ export class SchlachtProbe extends Phaser.Scene {
 
   private zeichneOverlay(): void {
     this.gfx.clear();
+    // Fokus-Kontur: pulsierender Ring um jeden Gegner, der gerade gezielt
+    // angegriffen wird (so sieht man das markierte Ziel). Stirbt es, greifen die
+    // Einheiten wieder beliebig an (u.fokus wird in toeten gelöst).
+    const fokusZiele = new Set<Unit>();
+    for (const u of this.units) if (!u.tot && u.fokus && !u.fokus.tot) fokusZiele.add(u.fokus);
+    const puls = 0.55 + 0.45 * Math.sin(this.time.now * 0.012);
+    for (const z of fokusZiele) {
+      this.gfx.lineStyle(3, 0xff6a3a, puls); this.gfx.strokeCircle(z.x, z.y, 16);
+      this.gfx.lineStyle(1.5, 0xffd0a0, puls * 0.6); this.gfx.strokeCircle(z.x, z.y, 11);
+    }
     // Klick-Marker (RTS-Feedback)
     for (const m of this.marker) {
       const f = m.t / 0.7; const r = 6 + (1 - f) * 14;
