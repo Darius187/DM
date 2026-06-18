@@ -8,6 +8,7 @@ import { getHeldForm, getFormen, saveHeldForm, standardForm, getPresets, savePre
 import { drawHeld, HELD_CELL } from '../gfx/heldArt';
 import type { HeldTier } from '../data/helden';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
+import { macheFensterZiehbar } from './dialog';
 
 const GOLD = '#c9a227';
 const BONE = '#d8cfb8';
@@ -19,6 +20,7 @@ const TIER_NAMEN: Record<HeldTier, string> = { stoff: 'Stoff', leder: 'Leder', k
 export class HeldEditor {
   private open_ = false;
   private container: Phaser.GameObjects.Container | null = null;
+  private dim: Phaser.GameObjects.Rectangle | null = null;
   private canvas: HTMLCanvasElement | null = null;
   private vorschau: Phaser.GameObjects.Image | null = null;
   private dir = 0;              // Blickrichtung der Vorschau
@@ -79,19 +81,26 @@ export class HeldEditor {
     this.animTimer = null;
     this.container?.destroy();
     this.container = null;
+    this.dim?.destroy();
+    this.dim = null;
     this.vorschau = null;
   }
 
   private build(): void {
     this.container?.destroy();
+    this.dim?.destroy();
     const sw = this.scene.scale.width, sh = this.scene.scale.height;
     const w = 760, h = 664;
     const ox = (sw - w) / 2, oy = (sh - h) / 2;
+    // Abdunkler bleibt FEST bildschirmfüllend (nicht im verschiebbaren Fenster),
+    // sonst entstünden beim Verschieben unverdunkelte Ränder.
+    this.dim = this.scene.add.rectangle(0, 0, sw, sh, 0x000000, 0.55).setOrigin(0).setScrollFactor(0).setDepth(6299).setInteractive();
     const c = this.scene.add.container(ox, oy).setScrollFactor(0).setDepth(6300);
     this.container = c;
-    c.add(this.scene.add.rectangle(-ox, -oy, sw, sh, 0x000000, 0.55).setOrigin(0).setInteractive());
     c.add(this.scene.add.rectangle(0, 0, w, h, PANEL_BG, 0.98).setOrigin(0).setStrokeStyle(1, 0xc9a227));
-    c.add(this.scene.add.text(w / 2, 12, 'FIGUR-EDITOR', { fontFamily: 'serif', fontSize: '18px', color: GOLD, letterSpacing: 3 }).setOrigin(0.5, 0));
+    // Fenster verschiebbar (Runde 52): Kopfzeile zieht (Dev-Werkzeug, ohne Speicher)
+    macheFensterZiehbar(this.scene, c, w, { hoehe: 30 });
+    c.add(this.scene.add.text(w / 2, 12, 'FIGUR-EDITOR ⠿', { fontFamily: 'serif', fontSize: '18px', color: GOLD, letterSpacing: 3 }).setOrigin(0.5, 0));
     c.add(this.scene.add.text(w / 2, 36, `Du bearbeitest gerade die Stufe: ${TIER_NAMEN[this.tier()]}`, { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a', fontStyle: 'italic' }).setOrigin(0.5, 0));
 
     const f = getHeldForm(this.tier());

@@ -11,8 +11,8 @@ import { seededRng, type Rng } from '../logic/rng';
 import { HAENDLER_ROTATION } from '../data/shops';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import type { SoundProvider } from '../gfx/SoundProvider';
-import { fixUiScroll } from './dialog';
-import { getSettings } from '../logic/settings';
+import { fixUiScroll, macheFensterZiehbar } from './dialog';
+import { getSettings, saveSettings } from '../logic/settings';
 
 interface ShopOffer extends ShopOfferDef {
   item?: Item; // ausgerollte Ware bei gear-Angeboten
@@ -255,7 +255,11 @@ export class ShopUI {
     const bg = this.scene.add.rectangle(0, 0, w, h, 0x171108, 0.97).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
     bg.setInteractive();
     c.add(bg);
+    // Fenster verschiebbar (Runde 52): Kopf zieht, Versatz teilt sich ui.fenster
+    // mit Charakterfenster/Chronik (wie bisher beim Charakterfenster).
+    macheFensterZiehbar(this.scene, c, w - 20, { off: getSettings().ui.fenster, onSave: saveSettings });
     c.add(this.scene.add.text(16, 10, this.title, { fontFamily: 'serif', fontSize: '17px', color: '#c9a227', letterSpacing: 2 }));
+    c.add(this.scene.add.text(w - 14, 10, '⠿', { fontFamily: 'serif', fontSize: '13px', color: '#8a7a5a' }).setOrigin(1, 0));
 
     // Reiter
     let tabX = 16;

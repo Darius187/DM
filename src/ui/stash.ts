@@ -6,7 +6,8 @@ import { RARITY_COLORS } from '../data/items';
 import { itemStatLine } from '../logic/loot';
 import type { PlayerState } from '../logic/playerState';
 import type { SoundProvider } from '../gfx/SoundProvider';
-import { fixUiScroll } from './dialog';
+import { fixUiScroll, macheFensterZiehbar } from './dialog';
+import { getSettings, saveSettings } from '../logic/settings';
 
 export class StashUI {
   private container: Phaser.GameObjects.Container | null = null;
@@ -36,7 +37,8 @@ export class StashUI {
     const sw = this.scene.scale.width, sh = this.scene.scale.height;
     const w = Math.min(520, sw - 30);
     const h = Math.min(sh - 60, 480);
-    const c = this.scene.add.container((sw - w) / 2, (sh - h) / 2).setScrollFactor(0).setDepth(5150);
+    const off = getSettings().ui.fenster;
+    const c = this.scene.add.container((sw - w) / 2 + off.x, (sh - h) / 2 + off.y).setScrollFactor(0).setDepth(5150);
     this.container = c;
     const p = this.getPlayer();
     const lager = this.getLager();
@@ -44,7 +46,10 @@ export class StashUI {
     const bg = this.scene.add.rectangle(0, 0, w, h, 0x171108, 0.97).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
     bg.setInteractive();
     c.add(bg);
+    // Fenster verschiebbar (Runde 52), Versatz wie die anderen Fenster (ui.fenster)
+    macheFensterZiehbar(this.scene, c, w - 20, { off, onSave: saveSettings });
     c.add(this.scene.add.text(16, 10, 'LAGER-TRUHE', { fontFamily: 'serif', fontSize: '17px', color: '#c9a227', letterSpacing: 2 }));
+    c.add(this.scene.add.text(w - 14, 10, '⠿', { fontFamily: 'serif', fontSize: '13px', color: '#8a7a5a' }).setOrigin(1, 0));
     c.add(this.scene.add.text(16, 38, 'INVENTAR (klicken = einlagern)', { fontFamily: 'serif', fontSize: '12px', color: '#8a7a5a' }));
     c.add(this.scene.add.text(w / 2 + 8, 38, 'EINGELAGERT (klicken = nehmen)', { fontFamily: 'serif', fontSize: '12px', color: '#8a7a5a' }));
 

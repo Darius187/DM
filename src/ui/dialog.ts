@@ -3,7 +3,7 @@
 
 import Phaser from 'phaser';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
-import { getSettings } from '../logic/settings';
+import { getSettings, saveSettings } from '../logic/settings';
 
 // Sprachausgabe (Runde 11): liest Dialogtexte vor, wenn in den
 // Einstellungen aktiviert. Nutzt die Browser-Sprachausgabe (de-DE).
@@ -32,6 +32,40 @@ export function fixUiScroll(c: Phaser.GameObjects.Container): void {
   c.each((child: Phaser.GameObjects.GameObject) => {
     (child as Phaser.GameObjects.Components.ScrollFactor & Phaser.GameObjects.GameObject).setScrollFactor?.(0);
   });
+}
+
+// Macht ein Fenster verschiebbar (Kodex Regel 11, Runde 52: "ALLE Fenster sollen
+// sich verschieben lassen"). Legt einen Kopf-Streifen oben in den Container, der
+// das Fenster per SCHIRMKOORDINATEN-Delta zieht (nicht die lokalen drag-Werte -
+// die schaukeln sich in Containern auf, Regel 9.4). off (optional) sammelt den
+// Versatz dauerhaft; onSave wird beim Loslassen gerufen. Gibt den Griff zurück,
+// falls der Aufrufer ihn relativ zum Fenster positionieren will.
+export function macheFensterZiehbar(
+  scene: Phaser.Scene,
+  c: Phaser.GameObjects.Container,
+  breite: number,
+  opts: { hoehe?: number; off?: { x: number; y: number }; onSave?: () => void } = {},
+): Phaser.GameObjects.Rectangle {
+  const hoehe = opts.hoehe ?? 26;
+  const griff = scene.add.rectangle(0, 0, breite, hoehe, 0xffffff, 0.02).setOrigin(0)
+    .setScrollFactor(0).setInteractive({ draggable: true, useHandCursor: true });
+  griff.on('pointerover', () => griff.setFillStyle(0xc9a227, 0.08));
+  griff.on('pointerout', () => griff.setFillStyle(0xffffff, 0.02));
+  let startZ: { x: number; y: number } | null = null;
+  let startC = { x: 0, y: 0 };
+  griff.on('dragstart', (p: Phaser.Input.Pointer) => { startZ = { x: p.x, y: p.y }; startC = { x: c.x, y: c.y }; });
+  griff.on('drag', (p: Phaser.Input.Pointer) => {
+    if (!startZ) return;
+    c.x = startC.x + (p.x - startZ.x);
+    c.y = startC.y + (p.y - startZ.y);
+  });
+  griff.on('dragend', () => {
+    if (opts.off && startZ) { opts.off.x += c.x - startC.x; opts.off.y += c.y - startC.y; }
+    startZ = null;
+    opts.onSave?.();
+  });
+  c.add(griff);
+  return griff;
 }
 
 export interface DialogPageDef {
@@ -189,6 +223,9 @@ export class DialogUI {
     bg.setInteractive();
     c.add(gfx);
     c.add(bg);
+    // Dialogfenster verschiebbar (Runde 52): Kopfzeile (Sprechername) zieht,
+    // Versatz in ui.dialog. Knöpfe liegen darüber und bleiben klickbar.
+    macheFensterZiehbar(this.scene, c, w, { hoehe: 30, off: getSettings().ui.dialog, onSave: saveSettings });
     if (hasPortrait) {
       const frame = this.scene.add.rectangle(48, Math.min(56, h / 2), 72, 72, 0x0e0a06).setStrokeStyle(2, 0x5a4a32);
       c.add(frame);
