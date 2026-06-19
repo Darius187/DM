@@ -25,13 +25,16 @@ type Typ = 'schild' | 'nahkampf' | 'bogen' | 'heiler' | 'e_nah' | 'e_bogen';
 type Stance = 'aggressiv' | 'verteidigen' | 'halten';
 
 interface TypDef { hp: number; dmg: number; reich: number; speed: number; rank: number; figur: string; heiler: boolean; tint?: number }
+// Leben deutlich höher (Autorwunsch R53: "mehr Leben, ähnlich wie im Hauptspiel")
+// - die Einheiten halten länger durch, Gefechte werden taktischer statt sofort
+// vorbei. Schaden bleibt gleich -> Time-to-Kill steigt entsprechend.
 const TYP: Record<Typ, TypDef> = {
-  schild:   { hp: 130, dmg: 8,  reich: 30,  speed: 40, rank: 0, figur: 'soldat',      heiler: false, tint: 0xb8c4d2 },
-  nahkampf: { hp: 90,  dmg: 12, reich: 30,  speed: 58, rank: 1, figur: 'soldat',      heiler: false },
-  bogen:    { hp: 55,  dmg: 9,  reich: 210, speed: 60, rank: 2, figur: 'bogensoldat', heiler: false },
-  heiler:   { hp: 60,  dmg: 9,  reich: 150, speed: 54, rank: 3, figur: 'johannes',    heiler: true,  tint: 0xe8e0a0 },
-  e_nah:    { hp: 85,  dmg: 10, reich: 30,  speed: 54, rank: 1, figur: 'skelett',      heiler: false },
-  e_bogen:  { hp: 48,  dmg: 8,  reich: 200, speed: 54, rank: 2, figur: 'schuetze',     heiler: false },
+  schild:   { hp: 320, dmg: 8,  reich: 30,  speed: 40, rank: 0, figur: 'soldat',      heiler: false, tint: 0xb8c4d2 },
+  nahkampf: { hp: 220, dmg: 12, reich: 30,  speed: 58, rank: 1, figur: 'soldat',      heiler: false },
+  bogen:    { hp: 140, dmg: 9,  reich: 210, speed: 60, rank: 2, figur: 'bogensoldat', heiler: false },
+  heiler:   { hp: 150, dmg: 9,  reich: 150, speed: 54, rank: 3, figur: 'johannes',    heiler: true,  tint: 0xe8e0a0 },
+  e_nah:    { hp: 210, dmg: 10, reich: 30,  speed: 54, rank: 1, figur: 'skelett',      heiler: false },
+  e_bogen:  { hp: 120, dmg: 8,  reich: 200, speed: 54, rank: 2, figur: 'schuetze',     heiler: false },
 };
 
 // Aufstieg: je Kill +1 XP; bei diesen Schwellen Stufe hoch (max 5). Je Stufe
