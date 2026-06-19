@@ -163,13 +163,13 @@ export const ABILITY_FX = {
   // Physik-Test gleiten/prallen sie richtig, sonst nur ein kräftiger Schubs.
   windstoss: { mana: 0, dmgBase: 6, dmgPerLevel: 2, reichweite: 230, kraft: 60, cd: 0 },
   mehrfachschuss: { arrows: 3, spread: 0.18, cd: 2.5 },
-  durchschlag: { pierceCount: 99, dmgMult: 1.3, cd: 4 },
-  markierterTod: { bonusDmgPct: 0.25, dauerS: 8, cd: 7 },
-  // Vier neue Bogen-Fähigkeiten (Runde 47)
-  hagel: { reichweite: 320, radius: 70, streuung: 60, einschlaege: 16, dauerS: 1.3, dmgBase: 6, dmgPerLevel: 1.0, cd: 7 },
-  splitterpfeil: { dmgMult: 1.1, splitter: 6, splitterDmgMult: 0.45, spread: 0.5, cd: 4 },
-  sprungpfeil: { dmgMult: 1.2, spruenge: 3, sprungRange: 230, cd: 5 },
-  fesselpfeil: { dmgMult: 1.0, wurzelS: 2.6, cd: 6 },
+  durchschlag: { pierceCount: 99, dmgMult: 1.4, cd: 3.5 },
+  markierterTod: { bonusDmgPct: 0.25, dauerS: 8, cd: 5 },
+  // Vier neue Bogen-Fähigkeiten (Runde 47); Abklingzeiten gesenkt (Autorwunsch R53)
+  hagel: { reichweite: 320, radius: 70, streuung: 60, einschlaege: 16, dauerS: 1.3, dmgBase: 6, dmgPerLevel: 1.0, cd: 6 },
+  splitterpfeil: { dmgMult: 1.1, splitter: 6, splitterDmgMult: 0.45, spread: 0.5, cd: 3.5 },
+  sprungpfeil: { dmgMult: 1.2, spruenge: 3, sprungRange: 230, cd: 4 },
+  fesselpfeil: { dmgMult: 1.0, wurzelS: 2.6, cd: 5 },
 } as const;
 
 // Takt des Brand-Schadens (Runde 41): alle BRAND_TICK_S Sekunden ein Tick.

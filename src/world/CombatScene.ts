@@ -1618,6 +1618,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       case 'kettenblitz': case 'frostnova': case 'bannkreis':
       case 'feuerregen': case 'aderlass': case 'lebenstausch': case 'heilen':
       case 'hagel': case 'splitterpfeil': case 'sprungpfeil': case 'fesselpfeil':
+      // Direkt belegbar (Autorbug R53: markierterTod/mehrfachschuss/durchschlag
+      // liefen vorher NUR über R/T = waffe1/waffe2, direkt belegt taten sie nichts)
+      case 'mehrfachschuss': case 'markierterTod': case 'durchschlag':
       case 'wuchtschlag': case 'blutdurst': case 'kriegsschrei': case 'erschuetterung': this.useAbility(id); break;
       // Waffen-Fähigkeiten auch auf Maustasten legbar (Runde 20)
       case 'waffe1': this.useAbility(this.weaponClass() === 'bogen' ? 'mehrfachschuss' : 'rundumschlag'); break;
@@ -2270,6 +2273,22 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
           const ey = z.y + (Math.random() - 0.5) * fx.streuung * 2;
           const treffMs = (i + 1) * (fx.dauerS * 1000 / fx.einschlaege);
           this.telegraphs.push({ x: ex, y: ey, r: 12, t: treffMs / 1000, maxT: fx.dauerS, dmg: 0, holy: true });
+          // Pfeil HAGELT sichtbar von oben herab auf den Punkt (Autorwunsch R53):
+          // startet hoch über dem Ziel und fällt genau zum Einschlag ein.
+          const fallMs = 300;
+          this.time.delayedCall(Math.max(0, treffMs - fallMs), () => {
+            const g = this.add.graphics().setDepth(ey + 60);
+            const startY = ey - 110;
+            this.tweens.addCounter({ from: 0, to: 1, duration: fallMs, ease: 'Quad.in',
+              onUpdate: (tw) => {
+                const yy = startY + (ey - startY) * (tw.getValue() as number);
+                g.clear();
+                g.lineStyle(2, 0xe8e0c8, 0.95); g.lineBetween(ex, yy - 16, ex, yy);          // Schaft
+                g.fillStyle(0xe8e0c8, 1); g.fillTriangle(ex - 3, yy - 4, ex + 3, yy - 4, ex, yy + 3); // Spitze
+              },
+              onComplete: () => g.destroy(),
+            });
+          });
           this.time.delayedCall(treffMs, () => {
             this.fx.burst(ex, ey, 0xd8d0b8, 5, 110);
             this.sfx.playAt('pfeil_einschlag', ex, ey, 0.35);
@@ -2317,6 +2336,22 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
           x: this.px + Math.cos(ang) * 14, y: this.py + Math.sin(ang) * 14,
           vx: Math.cos(ang) * ms.projSpeed, vy: Math.sin(ang) * ms.projSpeed,
           r: 4, dmg: this.rollDamage(fx.dmgMult), from: 'player', col: '#8a9ab0', arrow: true, fessel: true,
+        });
+        this.sfx.play('pfeil_schuss');
+        this.gainSchoolUse('bogen');
+        break;
+      }
+      case 'durchschlag': {
+        // Durchschlag (Autorbug R53: hatte gar keine Wirkung): ein schneller
+        // Pfeil, der ALLE Gegner auf seiner Bahn durchdringt, mehr Schaden.
+        const fx = ABILITY_FX.durchschlag;
+        this.p.abilityCds[id] = fx.cd;
+        const ang = this.aimAngle(); this.pdir = ang;
+        const ms = WEAPON_MOVESETS.bogen;
+        this.projectiles.push({
+          x: this.px + Math.cos(ang) * 14, y: this.py + Math.sin(ang) * 14,
+          vx: Math.cos(ang) * ms.projSpeed * 1.25, vy: Math.sin(ang) * ms.projSpeed * 1.25,
+          r: 5, dmg: this.rollDamage(fx.dmgMult), from: 'player', col: '#f0e0a0', arrow: true, pierce: true,
         });
         this.sfx.play('pfeil_schuss');
         this.gainSchoolUse('bogen');

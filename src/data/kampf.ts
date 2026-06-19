@@ -87,7 +87,7 @@ export const WEAPON_MOVESETS = {
   wucht:   { comboLength: 1, overhead: true, aoeRadius: 40, postureDmgMult: 2.0, speedMult: 0.7, recoverS: 0.82, miniShake: true },
   // Runde 27/40: Bogen-Flugtempo auf Feuerball-Niveau gebracht (Autorwunsch:
   // "Schussgeschwindigkeit ungefähr wie der Feuerball" = 390)
-  bogen:   { drawTimeMaxS: 0.95, dmgMultFull: 1.7, projSpeed: 390, speedMult: 1.0 },
+  bogen:   { drawTimeMaxS: 0.95, dmgMultFull: 2.4, projSpeed: 390, speedMult: 1.0 },   // voll gespannt = sich lohnender (Autorwunsch R53: langer Zug muss mehr bringen als zwei Schnellschüsse)
   // Zauberstab: manafreies Arkangeschoss, skaliert mit der Zauberei-Schule,
   // und verstärkt gewirkte Zauber (halber Stabwert als Bonus). Flugtempo wie
   // der Feuerball (Runde 40), das Geschoss glüht und wirft Licht.
