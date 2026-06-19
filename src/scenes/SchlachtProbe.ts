@@ -99,7 +99,7 @@ export class SchlachtProbe extends Phaser.Scene {
   private aktiveForm: Form = 'linie';
   private formKnoepfe: Array<[Form, Phaser.GameObjects.Text]> = [];
   // Schwert-Wusch-Bögen beim Nahkampf (Runde 53, Autorwunsch)
-  private schwuenge: Array<{ x: number; y: number; ang: number; t: number; feind: boolean }> = [];
+  private schwuenge: Array<{ x: number; y: number; ang: number; t: number; feind: boolean; gross?: boolean }> = [];
   private lastKlickT = -999; private lastKlickTyp: Typ | null = null;   // Doppelklick-Erkennung
   private auswahlText!: Phaser.GameObjects.Text;                          // RTS-Auswahl-Übersicht
   private marker: Array<{ x: number; y: number; t: number; feind: boolean }> = [];
@@ -480,21 +480,36 @@ export class SchlachtProbe extends Phaser.Scene {
     this.auswahlText.setText([`AUSWAHL: ${sel.length} Einheiten`, ...zeilen, `Gesamt  ·  Leben ${Math.round(hp)}/${Math.round(max)}`].join('\n'));
   }
 
-  // Schwert-Wusch: ein heller Bogen, der kurz vor dem Krieger durchwischt
-  // (Runde 53, Autorwunsch) - silbrig für eigene, rötlich für Untote.
+  // Schwert-Wusch wie im Hauptspiel (R54, Autorwunsch "diese Schwert-Animation
+  // aus dem Hauptspiel"): zwei Lagen - ein weicher Schein darunter, scharfe
+  // Klinge darüber - der Bogen wischt mit dem Schlag durch (sweep) und wächst
+  // dabei nach außen, während er verblasst. Silbrig für eigene, rötlich für
+  // Untote. Riesen schlagen einen deutlich größeren, breiteren Bogen.
+  private static readonly SCHWUNG_LEBEN = 0.17;
   private zeichneSchwuenge(dt: number): void {
-    const g = this.fxg, sweep = 1.5, r = 20;
+    const g = this.fxg;
     for (const s of this.schwuenge) {
       s.t += dt;
-      const p = 1 - s.t / 0.16;
-      if (p <= 0) continue;
-      const a0 = s.ang - sweep / 2 + (1 - p) * sweep * 0.35;
-      g.lineStyle(3 * p + 1, s.feind ? 0xe07a6a : 0xcdd6ee, 0.85 * p);
-      g.beginPath(); g.arc(s.x, s.y, r, a0, a0 + sweep, false); g.strokePath();
-      g.lineStyle(1.4 * p + 0.4, 0xffffff, 0.7 * p);
-      g.beginPath(); g.arc(s.x, s.y, r, a0, a0 + sweep, false); g.strokePath();
+      const prog = s.t / SchlachtProbe.SCHWUNG_LEBEN;   // 0 -> 1
+      if (prog >= 1) continue;
+      const fade = 1 - prog;
+      const arc = s.gross ? 1.25 : 0.95;                 // Halbwinkel des Bogens
+      const r = (s.gross ? 40 : 20) + prog * (s.gross ? 22 : 13);  // wächst nach außen
+      const shift = prog * 0.55;                          // wischt mit dem Schlag durch
+      const a0 = s.ang - arc + shift, a1 = s.ang + arc + shift;
+      const haupt = s.feind ? 0xe07a6a : 0xdbe3f2;
+      const schein = s.feind ? 0xb83838 : 0x9fb0d8;
+      // Schein darunter
+      g.lineStyle((s.gross ? 9 : 5) * fade + 1, schein, 0.45 * fade);
+      g.beginPath(); g.arc(s.x, s.y, r, a0, a1, false); g.strokePath();
+      // scharfe Klinge
+      g.lineStyle((s.gross ? 5 : 3) * fade + 1, haupt, 0.9 * fade);
+      g.beginPath(); g.arc(s.x, s.y, r, a0, a1, false); g.strokePath();
+      // heller Kern
+      g.lineStyle((s.gross ? 2.4 : 1.4) * fade + 0.4, 0xffffff, 0.7 * fade);
+      g.beginPath(); g.arc(s.x, s.y, r, a0, a1, false); g.strokePath();
     }
-    this.schwuenge = this.schwuenge.filter((s) => s.t < 0.16);
+    this.schwuenge = this.schwuenge.filter((s) => s.t < SchlachtProbe.SCHWUNG_LEBEN);
   }
 
   // Wirkung der Bauten: Buffs setzen (Schmiede/Banner), heilen (Lazarett),
@@ -741,7 +756,8 @@ export class SchlachtProbe extends Phaser.Scene {
     if (u.reich > 100) { this.fxg.lineStyle(1.5, 0xe8e0c0, 0.8); this.fxg.lineBetween(u.x, u.y - 6, ziel.x, ziel.y - 6); this.sfx.play('pfeil_schuss', 0.28); }
     else {
       // Schwert-Wusch: ein heller Bogen vor dem Krieger in Schlagrichtung
-      this.schwuenge.push({ x: u.x, y: u.y - 4, ang: Math.atan2(ziel.y - u.y, ziel.x - u.x), t: 0, feind: u.team === 'feind' });
+      const gross = (TYP[u.typ].groesse ?? 1) >= 1.3;   // Elite/Riese schlagen einen größeren Bogen
+      this.schwuenge.push({ x: u.x, y: u.y - 4 * (TYP[u.typ].groesse ?? 1), ang: Math.atan2(ziel.y - u.y, ziel.x - u.x), t: 0, feind: u.team === 'feind', gross });
       this.sfx.play('treffer_fleisch', 0.28);
       // Riese/Troll (R54): schleudert das Ziel und nahe Gegner beiseite, wie der
       // Hammerschlag des Helden. Wuchtiger Klang, kein normaler Wusch reicht.
