@@ -1179,6 +1179,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   }
 
   private playSwingSound(cls: WeaponClass, fin: boolean): void {
+    // Jeder Nahkampf-Schwung zeigt die Schlagpose des Helden (R54, zentral hier,
+    // damit ALLE Schwünge - Normalhieb, Stoß, Rundumschlag, Wuchtschlag,
+    // Blutdurst - die Geste ausführen). Finisher/schwer etwas länger.
+    this.heldSchlagT = fin ? 0.3 : 0.2;
     // Schwung ohne Treffer: die swoosh-Dateien des Autors abwechselnd,
     // sonst die bisherigen Synth-Klänge
     if (cls === 'schwert' && this.sfx.playAbwechselnd('swoosh', 8)) return;
@@ -1200,8 +1204,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected meleeArcAttack(ev: AttackEvent, ang: number): void {
     const fin = ev.isFinisher;
     const heavy = ev.type === 'heavy';
-    this.pdir = ang;                         // Held blickt in Schlagrichtung
-    this.heldSchlagT = heavy ? 0.32 : 0.2;   // Schlagpose zeigen (R54)
+    this.pdir = ang;                         // Held blickt in Schlagrichtung (Schlagpose folgt in playSwingSound)
     const st = this.swingStyle();
     // Klassen-Feinwerte (Runde 49): Axt/Kolben kürzer, Axt schärfer
     const nk = NAHKAMPF[this.weaponClass()] ?? NAHKAMPF.schwert;
