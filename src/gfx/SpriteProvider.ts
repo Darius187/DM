@@ -5,7 +5,7 @@
 import Phaser from 'phaser';
 import gfxConfig from '../data/gfx.json';
 import { drawHumanoid, drawQuadruped, drawChicken, FIGURES, SPRITE, TILE, type Dir, type FigureSpec, type QuadSpec } from './fallbackArt';
-import { drawHeld, HELD_CELL, HELD_DIRS, HELD_FRAMES, SCHLAG_FRAME, drawHeldPortrait, type WaffenKlasse } from './heldArt';
+import { drawHeld, HELD_DIRS, HELD_FRAMES, HELD_FELD, HELD_MARGIN, SCHLAG_FRAME, drawHeldPortrait, type WaffenKlasse } from './heldArt';
 import { drawItemIcon, iconKey, ICON_SIZE } from './itemIcons';
 import { drawTileArt, drawObjectArt, drawBreakable } from './tileArt';
 import { DETAIL_NPCS } from './npcArt';
@@ -71,7 +71,7 @@ export class SpriteProvider {
   private heldAtlanten = new Map<string, { tier: HeldTier; waffe: WaffenKlasse | null }>();
 
   invalidateHeld(): void {
-    const C = HELD_CELL;
+    const FELD = HELD_FELD, M = HELD_MARGIN;
     for (const [key, { tier, waffe }] of this.heldAtlanten) {
       if (!this.tex.exists(key)) continue;
       const tex = this.tex.get(key) as Phaser.Textures.CanvasTexture;
@@ -81,8 +81,8 @@ export class SpriteProvider {
       for (let dir = 0; dir < HELD_DIRS; dir++) {
         for (let frame = 0; frame < HELD_FRAMES; frame++) {
           ctx.save();
-          ctx.translate(frame * C, dir * C);
-          ctx.beginPath(); ctx.rect(0, 0, C, C); ctx.clip();   // kein Überlaufen in die Nachbarzelle (R54)
+          ctx.translate(frame * FELD + M, dir * FELD + M);     // Figur mittig, Rand frei für den Schwung
+          ctx.beginPath(); ctx.rect(-M, -M, FELD, FELD); ctx.clip();   // nur diese Zelle (kein Überlauf)
           drawHeld(ctx, tier, dir, frame, waffe);
           ctx.restore();
         }
@@ -97,16 +97,16 @@ export class SpriteProvider {
   private ensureHeldFigure(tier: HeldTier, waffe: WaffenKlasse | null): string {
     const key = `held_${tier}_${waffe ?? 'leer'}`;
     if (this.tex.exists(key)) return key;
-    const C = HELD_CELL;
+    const FELD = HELD_FELD, M = HELD_MARGIN;
     const canvas = document.createElement('canvas');
-    canvas.width = C * HELD_FRAMES;
-    canvas.height = C * HELD_DIRS;
+    canvas.width = FELD * HELD_FRAMES;
+    canvas.height = FELD * HELD_DIRS;
     const ctx = canvas.getContext('2d')!;
     for (let dir = 0; dir < HELD_DIRS; dir++) {
       for (let frame = 0; frame < HELD_FRAMES; frame++) {
         ctx.save();
-        ctx.translate(frame * C, dir * C);
-        ctx.beginPath(); ctx.rect(0, 0, C, C); ctx.clip();   // kein Überlaufen in die Nachbarzelle (R54)
+        ctx.translate(frame * FELD + M, dir * FELD + M);       // Figur mittig, Rand frei für den Schwung
+        ctx.beginPath(); ctx.rect(-M, -M, FELD, FELD); ctx.clip();   // nur diese Zelle (kein Überlauf)
         drawHeld(ctx, tier, dir, frame, waffe);
         ctx.restore();
       }
@@ -114,7 +114,7 @@ export class SpriteProvider {
     const t = this.tex.addCanvas(key, canvas)!;
     for (let dir = 0; dir < HELD_DIRS; dir++) {
       for (let frame = 0; frame < HELD_FRAMES; frame++) {
-        t.add(`d${dir}f${frame}`, 0, frame * C, dir * C, C, C);
+        t.add(`d${dir}f${frame}`, 0, frame * FELD, dir * FELD, FELD, FELD);
       }
     }
     this.heldAtlanten.set(key, { tier, waffe });

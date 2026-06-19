@@ -11,7 +11,13 @@ import type { WeaponClass } from '../data/types';
 // Waffenklasse, die der Held in der Hand hält/schwingt (R54)
 export type WaffenKlasse = WeaponClass;
 
-export const HELD_CELL = 64; // Kantenlänge einer Figur-Zelle
+export const HELD_CELL = 64; // Kantenlänge der FIGUR (intern, Ursprung 0..64)
+// Rand um die Figur in jeder Atlas-Zelle (R54): Platz, damit der lange Schwung
+// + die lange Klinge NICHT abgeschnitten werden und NICHT ins Nachbar-Feld
+// laufen ("das Nachbarfeld nutzen"). Die Figur wird beim Backen um MARGIN
+// versetzt - Fußposition/Größe im Spiel bleiben dadurch unverändert.
+export const HELD_MARGIN = 20;
+export const HELD_FELD = HELD_CELL + 2 * HELD_MARGIN; // tatsächliche Zellengröße im Atlas
 
 interface Pal {
   hautH: string; haut: string; hautS: string;
@@ -349,37 +355,41 @@ function zeichneWaffe(ctx: CanvasRenderingContext2D, hx: number, hy: number, ang
   };
   const stahl = '#cfd6e0', stahlK = '#eef3f8', holz = '#5a4327', eisen = '#4a4e55';
   if (waffe === 'schwert') {
-    seg(P(-2.5), P(1), 3.6, holz);                     // Griff
-    seg(P(1, -3.8), P(1, 3.8), 1.7, stahlK);           // Parierstange
-    seg(P(1), P(19), 2.7, stahl); seg(P(1), P(19), 1.1, stahlK);   // lange Klinge + Licht
+    seg(P(-3), P(1), 3.8, holz);                       // Griff (Knauf hinter der Hand)
+    seg(P(1, -4.2), P(1, 4.2), 1.8, stahlK);           // Parierstange (Kreuz)
+    seg(P(1), P(23), 2.8, stahl); seg(P(1), P(22), 1.2, stahlK);   // lange Klinge + Licht
   } else if (waffe === 'stab') {
-    seg(P(-3), P(15), 2.4, holz);
-    ctx.fillStyle = '#8a6ad0'; const k = P(16); ctx.beginPath(); ctx.arc(k[0], k[1], 2.4, 0, 7); ctx.fill();
+    seg(P(-4), P(18), 2.5, holz);
+    ctx.fillStyle = '#8a6ad0'; const k = P(19); ctx.beginPath(); ctx.arc(k[0], k[1], 2.6, 0, 7); ctx.fill();
   } else if (waffe === 'stange') {
-    seg(P(-4), P(15), 2.2, holz);                      // Schaft
-    seg(P(14), P(18), 2.2, stahl); seg(P(14), P(18), 0.9, stahlK);  // Spitze
+    seg(P(-5), P(20), 2.3, holz);                      // langer Schaft
+    seg(P(19), P(24), 2.3, stahl); seg(P(19), P(24), 1, stahlK);  // Spitze
   } else {
     // axt / kolben / wucht: Stiel + schwerer Kopf nahe der Spitze
-    seg(P(-2), P(12), 3, holz);
-    const k = P(13);
+    seg(P(-3), P(16), 3.2, holz);
+    const k = P(17);
     if (waffe === 'axt') {
       ctx.fillStyle = stahl;
-      ctx.beginPath(); const a = P(11, 0), b = P(16, 4), c = P(15, 8), d = P(10, 4);
+      ctx.beginPath(); const a = P(15, 0), b = P(20, 5), c = P(19, 9), d = P(14, 5);
       ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.lineTo(d[0], d[1]); ctx.closePath(); ctx.fill();
     } else {
-      ctx.fillStyle = eisen; ctx.beginPath(); ctx.arc(k[0], k[1], waffe === 'wucht' ? 3.4 : 2.8, 0, 7); ctx.fill();
-      ctx.fillStyle = '#6a6e75'; ctx.beginPath(); ctx.arc(k[0] - 1, k[1] - 1, 1, 0, 7); ctx.fill();
+      ctx.fillStyle = eisen; ctx.beginPath(); ctx.arc(k[0], k[1], waffe === 'wucht' ? 3.8 : 3.2, 0, 7); ctx.fill();
+      ctx.fillStyle = '#6a6e75'; ctx.beginPath(); ctx.arc(k[0] - 1.2, k[1] - 1.2, 1.2, 0, 7); ctx.fill();
     }
   }
 }
 
-// Waffe in Ruhe (Gehen/Stehen): hängt nach unten an der aktiven Hand.
-function zeichneWaffeRuhend(ctx: CanvasRenderingContext2D, f: HeldForm, x: number, waffe: WaffenKlasse | null): void {
+// Waffe in Ruhe (Gehen/Stehen): hängt in der Hand, Klinge in Richtung restAng
+// (je Blickrichtung verschieden - rechtshändig, nicht gespiegelt). Knauf an der
+// Hand nahe am Körper, Spitze zeigt von ihm weg nach unten.
+function zeichneWaffeRuhend(ctx: CanvasRenderingContext2D, f: HeldForm, x: number, restAng: number, waffe: WaffenKlasse | null): void {
   if (!waffe || waffe === 'bogen') return;
-  zeichneWaffe(ctx, x, f.schulterY + f.armL + 1, Math.PI / 2 + 0.12, waffe);
+  zeichneWaffe(ctx, x, f.schulterY + f.armL + 1, restAng, waffe);
 }
 
-interface Schlag { ang: number; sweep: number; r: number; sense: number; face: number }
+// Eine Schlagpose: Klingenwinkel (Bildschirm), Winkel der VORIGEN Phase (für den
+// Schweif als echte Bewegungsspur), Reichweite Schulter->Hand, Ellenbogen-Seite.
+interface Schlag { ang: number; prevAng: number; r: number; bend: number }
 
 // 2-Knochen-IK (R54): findet den Ellenbogen, sodass Ober-/Unterarm (l1,l2) von
 // der Schulter (sx,sy) zur Hand (hx,hy) führen. bend (+/-1) bestimmt die Seite,
@@ -397,34 +407,31 @@ function ik2(sx: number, sy: number, hx: number, hy: number, l1: number, l2: num
   return { ex: sx + Math.cos(ea) * l1, ey: sy + Math.sin(ea) * l1, hx, hy };
 }
 
-// Klingen-Spur (R54, Autorwunsch "Nachziehen der Waffe"): ein blau-weißer Bogen,
-// den die Klingenspitze auf ihrem Weg zieht, hinter der aktuellen Schlagrichtung
-// her. Mehrere Lagen mit abnehmender Deckkraft ergeben den Schweif.
-function klingenSpur(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, handAng: number, sense: number): void {
-  const from = handAng - sense * 1.15;   // Schweif liegt HINTER der Bewegung
-  const a0 = Math.min(from, handAng), a1 = Math.max(from, handAng);
+// Klingen-Spur (R54, "Nachziehen der Waffe"): ein blau-weißer Bogen von der
+// vorigen zur aktuellen Klingenrichtung - die ECHTE Bewegungsspur zwischen den
+// Phasen. Mehrere Lagen mit abnehmender Deckkraft ergeben den Schweif.
+function klingenSpur(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, fromAng: number, toAng: number): void {
+  if (Math.abs(toAng - fromAng) < 0.06) return;
+  const a0 = Math.min(fromAng, toAng), a1 = Math.max(fromAng, toAng);
   for (let i = 0; i < 3; i++) {
     const t = i / 2;
-    ctx.strokeStyle = `rgba(${190 - i * 20},${224 - i * 10},255,${0.30 * (1 - t * 0.7)})`;
-    ctx.lineWidth = 4 - i * 1.2; ctx.lineCap = 'round';
+    ctx.strokeStyle = `rgba(${190 - i * 20},${224 - i * 10},255,${0.32 * (1 - t * 0.7)})`;
+    ctx.lineWidth = 5 - i * 1.4; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.ellipse(cx, cy, r - i * 1.4, (r - i * 1.4) * 0.85, 0, a0, a1); ctx.stroke();
   }
   ctx.lineWidth = 1;
 }
 
-// Schlagarm (R54, überarbeitet) mit natürlichem Ellenbogen (IK): die Hand fährt
-// auf dem Schwung-Bogen (Winkel + Reichweite je Phase: nah/ausholen ->
-// gestreckt/Treffer -> wieder gebeugt/Ausschwung), der Ellenbogen knickt zur
-// face-Seite (links/rechts gespiegelt). Klinge folgt dem Unterarm. Gibt Hand +
-// Klingenwinkel zurück, damit die Waffe daran hängt.
+// Schlagarm mit natürlichem Ellenbogen (IK): die Hand fährt auf dem Schwung-Bogen,
+// der Arm bleibt fast gestreckt (volle Reichweite, Ellenbogen nicht durchgedrückt),
+// die Klinge folgt dem Unterarm. Gibt Hand + Klingenwinkel zurück.
 function schlagArm(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, s: Schlag): { hx: number; hy: number; klinge: number } {
-  const sx = CX - 0.4, sy = f.schulterY + 2.5;
+  const sx = CX - 0.4, sy = f.schulterY + 3;
   const l1 = 6, l2 = 6;
-  const ha = s.ang + s.sweep;
-  const tx = sx + Math.cos(ha) * s.r, ty = sy + Math.sin(ha) * s.r * 0.9;
-  const k = ik2(sx, sy, tx, ty, l1, l2, s.face);
+  const tx = sx + Math.cos(s.ang) * s.r, ty = sy + Math.sin(s.ang) * s.r * 0.9;
+  const k = ik2(sx, sy, tx, ty, l1, l2, s.bend);
   const klinge = Math.atan2(k.hy - k.ey, k.hx - k.ex);   // Klinge in Verlängerung des Unterarms
-  klingenSpur(ctx, sx, sy, s.r + 9, ha, s.sense);        // Waffen-Schweif
+  klingenSpur(ctx, sx, sy, s.r + 12, s.prevAng, s.ang);  // Waffen-Schweif (vorige -> jetzige Richtung)
   ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = p.wams;
   ctx.lineWidth = f.armB + 0.8;
   ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(k.ex, k.ey); ctx.stroke();   // Oberarm
@@ -435,22 +442,17 @@ function schlagArm(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, s: Schlag
   return { hx: k.hx, hy: k.hy, klinge };
 }
 
-// Schlagarm + Waffe zeichnen; bei flip wird ALLES horizontal gespiegelt (R54,
-// Autorwunsch "linke Animation = Spiegel der rechten"). Der Schlag wird immer in
-// der KANONISCHEN (rechten) Form gezeichnet und für linke Richtungen gespiegelt -
-// so hält der Held die Waffe links exakt wie rechts, nur seitenverkehrt.
-function zeichneSchlag(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, s: Schlag, waffe: WaffenKlasse | null, flip: boolean): void {
-  ctx.save();
-  if (flip) { ctx.translate(2 * CX, 0); ctx.scale(-1, 1); }
+// Schlagarm + Waffe zeichnen (kein Spiegeln mehr - je Richtung eigene Choreografie).
+function zeichneSchlag(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, s: Schlag, waffe: WaffenKlasse | null): void {
   const h = schlagArm(ctx, p, f, s);
   zeichneWaffe(ctx, h.hx, h.hy, h.klinge, waffe);
-  ctx.restore();
 }
 
 // Den Helden in Seiten-/Diagonalansicht zeichnen. face = -1 links / +1 rechts.
 // kopfDir steuert den Kopf (1 links, 2 rechts, 3 Rücken bei Rück-Diagonalen).
-// schlag != null: Schlagpose (Winkel + Phasenversatz) statt Geh-Arm.
-function zeichneSeite(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, face: number, step: number, tier: HeldTier, kopfDir: Dir, schlag: Schlag | null, waffe: WaffenKlasse | null): void {
+// schlag != null: Schlagpose. schlagVorne = Arm/Waffe VOR dem Körper (sonst
+// dahinter -> Tiefenwirkung, die Klinge verschwindet teils hinter dem Rumpf).
+function zeichneSeite(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, face: number, step: number, tier: HeldTier, kopfDir: Dir, schlag: Schlag | null, schlagVorne: boolean, restAng: number, waffe: WaffenKlasse | null): void {
   const legSwing = step === 1 ? 1 : step === 3 ? -1 : 0;
   const stride = 3;
   const nearLeg = face * legSwing * stride;
@@ -461,40 +463,50 @@ function zeichneSeite(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, face: 
   const gitter = tier === 'kette' && f.kettenGitter > 0;
 
   seiteUmhang(ctx, p, f, face, flutter);                      // ganz hinten
-  if (schlag === null) seiteArm(ctx, p, f, farArm, true);     // ferner Arm (im Lauf)
+  seiteArm(ctx, p, f, farArm, true);                          // ferner (Off-Hand-)Arm
   seiteBein(ctx, p, f, farLeg, face, true);                   // fernes Bein
+  if (schlag && !schlagVorne) zeichneSchlag(ctx, p, f, schlag, waffe);   // Waffenarm HINTER dem Rumpf
   seiteRumpf(ctx, p, f, face, gitter);
   seiteBein(ctx, p, f, nearLeg, face, false);                 // nahes Bein
   seitePauldron(ctx, p, f, face);
   kopf(ctx, p, f, kopfDir);
-  if (schlag !== null) {
-    zeichneSchlag(ctx, p, f, schlag, waffe, face < 0);        // links = Spiegel der rechten Pose
+  if (schlag) {
+    if (schlagVorne) zeichneSchlag(ctx, p, f, schlag, waffe); // Waffenarm VOR dem Rumpf
   } else {
     seiteArm(ctx, p, f, nearArm, false);                      // naher Arm vorn
-    zeichneWaffeRuhend(ctx, f, CX + face * (f.tailleB + 1), waffe);
+    zeichneWaffeRuhend(ctx, f, CX + face * (f.tailleB + 1), restAng, waffe);
   }
 }
 
 // 8 Blickrichtungen (Autorwunsch R54 "Zwischenanimationen"):
 // 0=S(vorn) 1=SW 2=W(links) 3=NW 4=N(hinten) 5=NE 6=O(rechts) 7=SE
 export const HELD_DIRS = 8;
-// 0..3 Gehen, 4..6 = Schlag in DREI Phasen (Ausholen -> Treffer -> Ausschwung).
-// Drei Phasen reichen, damit der Schlag dem Swoosh folgt und trotzdem so schnell
-// bleibt wie er (~55-65ms je Phase, schneller als der Gehschritt).
-export const HELD_FRAMES = 7;
+// 0..3 Gehen, 4..7 = Schlag in VIER Phasen. Schnell wie der Swoosh (~50ms/Phase).
+export const HELD_FRAMES = 8;
 export const SCHLAG_FRAME = 4;       // erstes Schlag-Frame
-export const SCHLAG_PHASEN = 3;
-// Schwung je Phase: Winkelversatz UND Hand-Reichweite. Ausholen = Hand nah
-// (Arm gebeugt), Treffer = gestreckt, Ausschwung = wieder etwas gebeugt - das
-// gibt dem Schlag die natürliche Streckung durch den Treffer.
-const SCHLAG_SWEEP = [-1.05, 0.0, 0.95];
-const SCHLAG_REICH = [7, 10, 8.5];   // Hand näher am Körper -> Platz für die lange Klinge
-// Schwung-RICHTUNG je Blickrichtung (Autorwunsch R54): links/oben schwingt von
-// UNTEN nach OBEN, rechts/unten von OBEN nach UNTEN. sense kehrt den Bogen um.
-// dir: 0=S 1=SW 2=W 3=NW 4=N 5=NE 6=O 7=SE -> {W,NW,N,NE}=unten->oben.
-const SCHLAG_SENSE = [1, -1, 1, 1, 1, -1, 1, 1];
-// Bildschirm-Winkel der Schlagrichtung je Richtung (0=rechts, PI/2=unten)
-const STRIKE_ANG = [Math.PI / 2, 3 * Math.PI / 4, Math.PI, 5 * Math.PI / 4, -Math.PI / 2, 7 * Math.PI / 4, 0, Math.PI / 4];
+export const SCHLAG_PHASEN = 4;
+// Reichweite Schulter->Hand je Phase: Arm bleibt fast gestreckt (volle Reichweite),
+// holt minimal ein und streckt sich beim Treffer ganz aus.
+const SCHLAG_R = [10, 11, 11.2, 10.6];
+
+// Schlag-CHOREOGRAFIE je Blickrichtung (R54, nach der HEMA-Beschreibung des
+// Autors): RECHTSHÄNDIG, diagonale Hiebe, je Richtung EIGEN (nicht gespiegelt).
+// Winkel in Bildschirm-Radiant: 0=rechts, PI/2=unten, PI=links, -PI/2=oben.
+// swing = Klingenrichtung der 4 Phasen; rest = Ruhehaltung; bend = Ellenbogen-
+// seite; frontVon = ab welcher Phase der Waffenarm VOR dem Körper liegt (davor
+// dahinter -> die Klinge taucht hinter dem Rumpf durch).
+// dir: 0=S 1=SW 2=W 3=NW 4=N 5=NE 6=O 7=SE
+interface DirSchlag { rest: number; bend: number; frontVon: number; swing: number[] }
+const SCHLAG: DirSchlag[] = [
+  /*0 S  unten */ { rest: 1.45, bend:  1, frontVon: 1, swing: [-0.7, 0.4, 1.4, 2.2] },   // Mandritto: oben -> unten quer
+  /*1 SW       */ { rest: 2.35, bend: -1, frontVon: 1, swing: [2.0, 2.7, 3.3, 2.7] },
+  /*2 W  links */ { rest: 2.45, bend: -1, frontVon: 2, swing: [2.5, 3.2, 3.95, 3.25] },  // unten -> oben -> wieder runter
+  /*3 NW       */ { rest: 2.25, bend: -1, frontVon: 2, swing: [2.45, 3.05, 3.7, 4.3] },
+  /*4 N  oben  */ { rest: 0.85, bend:  1, frontVon: 3, swing: [0.9, 0.05, -0.7, -1.45] }, // von rechts unten über rechts nach oben
+  /*5 NE       */ { rest: 0.80, bend:  1, frontVon: 2, swing: [0.7, -0.05, -0.8, -1.4] },
+  /*6 O  rechts*/ { rest: 0.70, bend:  1, frontVon: 1, swing: [-0.95, -0.2, 0.6, 1.35] }, // oben -> unten
+  /*7 SE       */ { rest: 0.95, bend:  1, frontVon: 1, swing: [-0.8, 0.0, 0.85, 1.55] },
+];
 
 // Eine Figur in die aktuelle 64x64-Zelle zeichnen (Ursprung links oben).
 // dir: 0..7 (siehe oben), frame: 0..3 Gehen oder 4..6 Schlag-Phasen.
@@ -515,15 +527,12 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: num
   const step = attack ? 0 : frame % 4;   // 0 stehen, 1 links vor, 2 stehen, 3 rechts vor
   const bobUp = step === 1 || step === 3 ? -1.4 : 0;
   const sway = step === 1 ? 2 : step === 3 ? -2 : 0;
-  // Linke Richtungen werden als SPIEGEL der rechten gezeichnet (Autorwunsch):
-  // der Schlag wird in der rechten Partner-Richtung (drawDir) berechnet und beim
-  // Zeichnen horizontal gespiegelt. face spiegelt zusätzlich den Körper.
-  const istLinks = dir === 1 || dir === 2 || dir === 3;
-  const drawDir = istLinks ? (dir === 1 ? 7 : dir === 2 ? 6 : 5) : dir;
-  const sense = SCHLAG_SENSE[drawDir];
+  // Schlag-Choreografie der Richtung (rechtshändig, je Richtung eigen).
+  const ds = SCHLAG[dir];
   const schlag: Schlag | null = attack
-    ? { ang: STRIKE_ANG[drawDir], sweep: SCHLAG_SWEEP[phase] * sense, r: SCHLAG_REICH[phase], sense, face: 1 }
+    ? { ang: ds.swing[phase], prevAng: phase > 0 ? ds.swing[phase - 1] : ds.rest, r: SCHLAG_R[phase], bend: ds.bend }
     : null;
+  const schlagVorne = attack ? phase >= ds.frontVon : true;
 
   // Bodenschatten
   ell(ctx, CX, 58, 14, 3.4, 'rgba(0,0,0,0.32)');
@@ -546,7 +555,7 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: num
     // Kopf: reine Seite (W/O) -> Profil; Vorder-Diagonale (SW/SE) -> 3/4-Front-
     // gesicht (man läuft zum Betrachter); Rück-Diagonale (NW/NE) -> Haube.
     const kopfDir: Dir = (dir === 3 || dir === 5) ? 3 : (dir === 1 || dir === 7) ? 0 : (face < 0 ? 1 : 2);
-    zeichneSeite(ctx, p, f, face, step, tier, kopfDir, schlag, waffe);
+    zeichneSeite(ctx, p, f, face, step, tier, kopfDir, schlag, schlagVorne, ds.rest, waffe);
     ctx.restore();
     return;
   }
@@ -559,18 +568,19 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: num
   bein(ctx, p, f, CX - spreiz, lVor);
   bein(ctx, p, f, CX + spreiz, -lVor);
 
-  // hinterer Arm (gegenläufig), Rumpf, vorderer Arm - an den Schultern
+  // hinterer Arm (Off-Hand), dann ggf. Waffenarm HINTER dem Rumpf, dann Rumpf
   arm(ctx, p, f, CX - f.schulterB, -lVor);
+  if (schlag && !schlagVorne) zeichneSchlag(ctx, p, f, schlag, waffe);   // Klinge taucht hinter den Körper
   rumpf(ctx, p, f, tier === 'kette' && f.kettenGitter > 0);
   if (schlag === null) arm(ctx, p, f, CX + f.schulterB, lVor);
   pauldrons(ctx, p, f); // Schulterplatten über den Armansätzen
 
   kopf(ctx, p, f, dir === 4 ? 3 : 0);   // N -> Rücken-Haube, S -> Front
 
-  if (schlag !== null) {
-    zeichneSchlag(ctx, p, f, schlag, waffe, false);   // Front/Rücken: kein Spiegeln
+  if (schlag) {
+    if (schlagVorne) zeichneSchlag(ctx, p, f, schlag, waffe);   // Waffenarm VOR dem Rumpf
   } else {
-    zeichneWaffeRuhend(ctx, f, CX + f.schulterB, waffe);   // Waffe ruht an der Hand
+    zeichneWaffeRuhend(ctx, f, CX + f.schulterB, ds.rest, waffe);   // Waffe ruht an der Hand
   }
 
   ctx.restore();
