@@ -653,8 +653,11 @@ export class SchlachtProbe extends Phaser.Scene {
         bewegtZu = { x: feind.x, y: feind.y };                       // AUTO-ANGRIFF: auch aus der Formation in den Nahkampf stürzen (Autorwunsch R53)
       } else if (u.grp && u.off) {
         bewegtZu = fernVonHome > 3 ? home : null;                    // kein Gegner in Reichweite -> Slot halten (Marsch via Gruppe)
-      } else if (!feind && u.team !== this.steuereTeam && this.schlachtLaeuft) {
-        const m = this.heeresMitte(u.team === 'spieler' ? 'feind' : 'spieler');  // KI-Seite rückt zur Schlacht vor
+      } else if (!feind && this.schlachtLaeuft && (u.team !== this.steuereTeam || u.stance === 'aggressiv')) {
+        // Kein Gegner in Sicht: die KI-Seite UND lose (formationslose) aggressive
+        // Einheiten rücken zur feindlichen Heeresmitte vor, statt herumzustehen
+        // (Autorwunsch R54: "stehen nur rum, obwohl aggressiv").
+        const m = this.heeresMitte(u.team === 'spieler' ? 'feind' : 'spieler');
         if (m) bewegtZu = m;
       } else if (fernVonHome > 4) {
         bewegtZu = home;
@@ -721,7 +724,9 @@ export class SchlachtProbe extends Phaser.Scene {
 
   private naechsterFeind(u: Unit): Unit | null {
     if (u.team !== this.steuereTeam && !this.schlachtLaeuft) return null;  // KI-Seite wartet auf ANGRIFF
-    let best: Unit | null = null, bd = 340;
+    // Sichtweite passend zur aggressiven Sicht (R54), damit gerade Bogenschützen
+    // den Gegner früh genug "sehen" und in Schussreichweite vorrücken.
+    let best: Unit | null = null, bd = 440;
     const ringe = Math.ceil(bd / this.ZELL);
     for (const o of this.nachbarn(u.x, u.y, ringe, this._puffer2)) {
       if (o.tot || o.team === u.team) continue;

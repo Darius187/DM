@@ -16,17 +16,22 @@ export interface EngageParams {
   dFeindVonHeimat: number;   // Abstand Gegner -> Heimat/Slot der Einheit
 }
 
-// Reichweiten je Haltung. verteidigen: hält die Stellung, schlägt aber alles,
-// was nah an die eigene Position kommt (großzügiger als früher, damit die Truppe
-// wirklich kämpft). aggressiv: rückt weit vor. halten: rührt sich nie vom Slot.
-export const ENGAGE_SICHT = { verteidigen_extra: 100, aggressiv: 320 };
-export const ENGAGE_LEINE = { verteidigen: 130, aggressiv: 210 };
+// Reichweiten je Haltung.
+// - aggressiv: VERFOLGT FREI jeden Gegner in Sicht, OHNE Leine zur Heimat
+//   (Autorwunsch R54: "immer angreifen, wenn Feinde in der Nähe sind" - vorher
+//   klebten gerade die Bogenschützen an der Formation und rückten nie in
+//   Schussreichweite vor). Sicht großzügig, damit die ganze Linie reagiert.
+// - verteidigen: hält die Stellung, schlägt aber alles, was nah an die eigene
+//   Position kommt (Leine kurz).
+// - halten: rührt sich nie vom Slot.
+export const ENGAGE_SICHT = { verteidigen_extra: 100, aggressiv: 420 };
+export const ENGAGE_LEINE = { verteidigen: 130 };
 
 export function willEngagieren(p: EngageParams): boolean {
   if (p.istFokus) return true;                       // Fokusbefehl: immer angreifen
   if (!p.eigeneSeite) return p.schlachtLaeuft;       // KI-Seite rennt frei, sobald die Schlacht läuft
   if (p.stance === 'halten') return false;           // Stellung halten: nie vom Slot weg
-  const sicht = p.stance === 'verteidigen' ? p.reich + ENGAGE_SICHT.verteidigen_extra : ENGAGE_SICHT.aggressiv;
-  const leine = p.stance === 'verteidigen' ? ENGAGE_LEINE.verteidigen : ENGAGE_LEINE.aggressiv;
-  return p.dFeind <= sicht && p.dFeindVonHeimat <= leine;
+  if (p.stance === 'aggressiv') return p.dFeind <= ENGAGE_SICHT.aggressiv;  // keine Leine: verfolgt jeden Gegner in Sicht
+  // verteidigen: nur nah an der eigenen Stellung
+  return p.dFeind <= p.reich + ENGAGE_SICHT.verteidigen_extra && p.dFeindVonHeimat <= ENGAGE_LEINE.verteidigen;
 }

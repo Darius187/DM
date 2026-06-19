@@ -20,9 +20,16 @@ describe('Kampf-KI: willEngagieren', () => {
   });
 
   it('Haltung "aggressiv" rückt deutlich weiter vor als verteidigen', () => {
-    // Gegner 180 von der Heimat: verteidigen (Leine 130) nein, aggressiv (Leine 210) ja
+    // Gegner 180 von der Heimat: verteidigen (Leine 130) nein, aggressiv ohne Leine ja
     expect(willEngagieren(p({ stance: 'verteidigen', dFeind: 180, dFeindVonHeimat: 180 }))).toBe(false);
     expect(willEngagieren(p({ stance: 'aggressiv', dFeind: 180, dFeindVonHeimat: 180 }))).toBe(true);
+  });
+
+  it('Haltung "aggressiv" verfolgt OHNE Leine - auch Gegner weit weg von der Heimat (Bogenschützen-Bug R54)', () => {
+    // Gegner 60 entfernt, aber 900 von der Formationsheimat: trotzdem angreifen
+    expect(willEngagieren(p({ stance: 'aggressiv', dFeind: 60, dFeindVonHeimat: 900 }))).toBe(true);
+    // jenseits der Sicht (420) aber: nicht losrennen
+    expect(willEngagieren(p({ stance: 'aggressiv', dFeind: 500, dFeindVonHeimat: 500 }))).toBe(false);
   });
 
   it('KI-Seite (nicht eigene) greift an, sobald die Schlacht läuft - unabhängig von Haltung/Abstand', () => {
