@@ -89,6 +89,8 @@ export class SchlachtProbe extends Phaser.Scene {
   // GENAU diese Formation, statt sie durch eine freie Linie zu ersetzen.
   private aktiveForm: Form = 'linie';
   private formKnoepfe: Array<[Form, Phaser.GameObjects.Text]> = [];
+  // Schwert-Wusch-Bögen beim Nahkampf (Runde 53, Autorwunsch)
+  private schwuenge: Array<{ x: number; y: number; ang: number; t: number; feind: boolean }> = [];
   private marker: Array<{ x: number; y: number; t: number; feind: boolean }> = [];
   private bauten: Bau[] = [];
   private bauGfx!: Phaser.GameObjects.Graphics;
@@ -105,6 +107,7 @@ export class SchlachtProbe extends Phaser.Scene {
     this.boxStart = this.boxNow = this.linieStart = this.linieNow = null;
     this.marker = [];
     this.bauten = [];
+    this.schwuenge = [];
     this.platziere = null;
     this.nachschubT = 0;
     this.steuereTeam = 'spieler';
@@ -144,7 +147,7 @@ export class SchlachtProbe extends Phaser.Scene {
       sprite, ring, team, typ, figur: d.figur, tint: d.tint, heiler: d.heiler, x, y,
       hp: d.hp, maxhp: d.hp, dmg: d.dmg, reich: d.reich, speed: d.speed, rank: d.rank,
       atkCd: 0, dir: 0, step: 0, stepT: 0, flash: 0, tot: false, ausgewaehlt: false,
-      stance: 'verteidigen', xp: 0, stufe: 1, aufstiegFx: 0, dmgMult: 1, speedMult: 1,
+      stance: 'aggressiv', xp: 0, stufe: 1, aufstiegFx: 0, dmgMult: 1, speedMult: 1,   // Standard AGGRESSIV (Autorwunsch R53): greifen an, sobald Feinde in der Nähe sind
       gruppeNr: 0, grp: null, off: null, ziel: null, fokus: null,
     };
     this.provider.applyFigure(sprite, d.figur, 0, 0);
@@ -428,9 +431,27 @@ export class SchlachtProbe extends Phaser.Scene {
     for (const u of this.units) if (!u.tot) this.updateUnit(u, dt);
     for (const m of this.marker) m.t -= dt;
     this.marker = this.marker.filter((m) => m.t > 0);
+    this.zeichneSchwuenge(dt);
     this.zeichneBauten();
     this.zeichneOverlay();
     if (!this.vorbei && this.schlachtLaeuft) this.pruefeEnde();
+  }
+
+  // Schwert-Wusch: ein heller Bogen, der kurz vor dem Krieger durchwischt
+  // (Runde 53, Autorwunsch) - silbrig für eigene, rötlich für Untote.
+  private zeichneSchwuenge(dt: number): void {
+    const g = this.fxg, sweep = 1.5, r = 20;
+    for (const s of this.schwuenge) {
+      s.t += dt;
+      const p = 1 - s.t / 0.16;
+      if (p <= 0) continue;
+      const a0 = s.ang - sweep / 2 + (1 - p) * sweep * 0.35;
+      g.lineStyle(3 * p + 1, s.feind ? 0xe07a6a : 0xcdd6ee, 0.85 * p);
+      g.beginPath(); g.arc(s.x, s.y, r, a0, a0 + sweep, false); g.strokePath();
+      g.lineStyle(1.4 * p + 0.4, 0xffffff, 0.7 * p);
+      g.beginPath(); g.arc(s.x, s.y, r, a0, a0 + sweep, false); g.strokePath();
+    }
+    this.schwuenge = this.schwuenge.filter((s) => s.t < 0.16);
   }
 
   // Wirkung der Bauten: Buffs setzen (Schmiede/Banner), heilen (Lazarett),
@@ -662,7 +683,11 @@ export class SchlachtProbe extends Phaser.Scene {
     u.dir = angleToDir(Math.atan2(ziel.y - u.y, ziel.x - u.x));
     ziel.hp -= u.dmg * u.dmgMult; ziel.flash = 0.12;
     if (u.reich > 100) { this.fxg.lineStyle(1.5, 0xe8e0c0, 0.8); this.fxg.lineBetween(u.x, u.y - 6, ziel.x, ziel.y - 6); this.sfx.play('pfeil_schuss', 0.28); }
-    else this.sfx.play('treffer_fleisch', 0.28);
+    else {
+      // Schwert-Wusch: ein heller Bogen vor dem Krieger in Schlagrichtung
+      this.schwuenge.push({ x: u.x, y: u.y - 4, ang: Math.atan2(ziel.y - u.y, ziel.x - u.x), t: 0, feind: u.team === 'feind' });
+      this.sfx.play('treffer_fleisch', 0.28);
+    }
     if (ziel.hp <= 0) { this.gewinneXp(u); this.toeten(ziel); }
   }
 
