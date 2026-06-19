@@ -91,6 +91,8 @@ export class SchlachtProbe extends Phaser.Scene {
   private formKnoepfe: Array<[Form, Phaser.GameObjects.Text]> = [];
   // Schwert-Wusch-Bögen beim Nahkampf (Runde 53, Autorwunsch)
   private schwuenge: Array<{ x: number; y: number; ang: number; t: number; feind: boolean }> = [];
+  private lastKlickT = -999; private lastKlickTyp: Typ | null = null;   // Doppelklick-Erkennung
+  private auswahlText!: Phaser.GameObjects.Text;                          // RTS-Auswahl-Übersicht
   private marker: Array<{ x: number; y: number; t: number; feind: boolean }> = [];
   private bauten: Bau[] = [];
   private bauGfx!: Phaser.GameObjects.Graphics;
@@ -202,7 +204,9 @@ export class SchlachtProbe extends Phaser.Scene {
     x2 += this.knopf(x2, y2, 'ANGRIFF!', () => { this.schlachtLaeuft = true; this.setzeStatus(); }).width + 10;
     x2 += this.knopf(x2, y2, 'NEU', () => this.scene.restart()).width + 10;
     this.knopf(1206, y1, 'MENÜ', () => this.scene.start('Title'));
-    this.infoText = this.add.text(14, FELD_H + 90, '', { fontFamily: 'serif', fontSize: '12px', color: '#b8a880', wordWrap: { width: FELD_W - 28 } }).setDepth(950);
+    this.infoText = this.add.text(14, FELD_H + 90, '', { fontFamily: 'serif', fontSize: '12px', color: '#b8a880', wordWrap: { width: FELD_W - 360 } }).setDepth(950);
+    // RTS-Auswahl-Übersicht unten rechts (Runde 53): welche Einheiten gewählt sind + Leben
+    this.auswahlText = this.add.text(this.scale.width - 16, FELD_H + 8, '', { fontFamily: 'serif', fontSize: '12.5px', color: '#e8dcc0', align: 'right', lineSpacing: 2 }).setOrigin(1, 0).setDepth(950);
     this.statusText = this.add.text(this.scale.width / 2, 22, '', {
       fontFamily: 'serif', fontSize: '20px', color: '#f0e0a0', stroke: '#000', strokeThickness: 4,
     }).setOrigin(0.5).setDepth(950);
@@ -295,10 +299,17 @@ export class SchlachtProbe extends Phaser.Scene {
     const y0 = Math.min(this.boxStart!.y, this.boxNow!.y), y1 = Math.max(this.boxStart!.y, this.boxNow!.y);
     const klick = Math.hypot(x1 - x0, y1 - y0) < 6;
     if (klick) {
-      // Einzelklick = GENAU eine Einheit (die nächste), nicht die ganze Formation
+      // Einzelklick = GENAU eine Einheit; DOPPELKLICK = alle gleichen Typs (R53)
       let best: Unit | null = null, bd = 24;
       for (const u of this.units) { if (u.team !== this.steuereTeam || u.tot) continue; const d = Math.hypot(u.x - x0, u.y - y0); if (d < bd) { bd = d; best = u; } }
-      for (const u of this.units) if (u.team === this.steuereTeam) u.ausgewaehlt = u === best;
+      const jetzt = this.time.now;
+      const doppel = !!best && jetzt - this.lastKlickT < 320 && this.lastKlickTyp === best.typ;
+      this.lastKlickT = jetzt; this.lastKlickTyp = best?.typ ?? null;
+      if (doppel && best) {
+        for (const u of this.units) u.ausgewaehlt = u.team === this.steuereTeam && !u.tot && u.typ === best!.typ;
+      } else {
+        for (const u of this.units) if (u.team === this.steuereTeam) u.ausgewaehlt = u === best;
+      }
     } else {
       for (const u of this.units) { if (u.team !== this.steuereTeam || u.tot) continue; u.ausgewaehlt = u.x >= x0 && u.x <= x1 && u.y >= y0 && u.y <= y1; }
     }
@@ -434,7 +445,21 @@ export class SchlachtProbe extends Phaser.Scene {
     this.zeichneSchwuenge(dt);
     this.zeichneBauten();
     this.zeichneOverlay();
+    this.aktualisiereAuswahl();
     if (!this.vorbei && this.schlachtLaeuft) this.pruefeEnde();
+  }
+
+  // RTS-Übersicht (Runde 53, Autorwunsch): welche Einheiten gewählt sind, nach
+  // Typ gruppiert mit Leben - jeden Frame aktualisiert, damit das Leben lebt.
+  private aktualisiereAuswahl(): void {
+    const sel = this.gewaehlte();
+    if (!sel.length) { this.auswahlText.setText(''); return; }
+    const NAME: Record<Typ, string> = { schild: 'Schildträger', nahkampf: 'Krieger', bogen: 'Bogenschütze', heiler: 'Heiler', e_nah: 'Untoter', e_bogen: 'Untoter Schütze' };
+    const grp = new Map<Typ, { n: number; hp: number; max: number }>();
+    for (const u of sel) { const g = grp.get(u.typ) ?? { n: 0, hp: 0, max: 0 }; g.n++; g.hp += Math.max(0, u.hp); g.max += u.maxhp; grp.set(u.typ, g); }
+    const zeilen = [...grp.entries()].map(([t, g]) => `${g.n}x ${NAME[t]}  ·  Leben ${Math.round(g.hp)}/${Math.round(g.max)}`);
+    const hp = sel.reduce((a, u) => a + Math.max(0, u.hp), 0), max = sel.reduce((a, u) => a + u.maxhp, 0);
+    this.auswahlText.setText([`AUSWAHL: ${sel.length} Einheiten`, ...zeilen, `Gesamt  ·  Leben ${Math.round(hp)}/${Math.round(max)}`].join('\n'));
   }
 
   // Schwert-Wusch: ein heller Bogen, der kurz vor dem Krieger durchwischt
