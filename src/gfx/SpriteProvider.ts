@@ -5,7 +5,7 @@
 import Phaser from 'phaser';
 import gfxConfig from '../data/gfx.json';
 import { drawHumanoid, drawQuadruped, drawChicken, FIGURES, SPRITE, TILE, type Dir, type FigureSpec, type QuadSpec } from './fallbackArt';
-import { drawHeld, HELD_DIRS, HELD_FRAMES, HELD_FELD, HELD_MARGIN, SCHLAG_FRAME, drawHeldPortrait, type WaffenKlasse } from './heldArt';
+import { drawHeld, HELD_CELL, HELD_DIRS, HELD_FRAMES, HELD_FELD, HELD_MARGIN, SCHLAG_FRAME, type WaffenKlasse } from './heldArt';
 import { drawItemIcon, iconKey, ICON_SIZE } from './itemIcons';
 import { drawTileArt, drawObjectArt, drawBreakable } from './tileArt';
 import { DETAIL_NPCS } from './npcArt';
@@ -332,18 +332,36 @@ export class SpriteProvider {
   portraitKey(name: string, variante?: string): string | null {
     if (variante && this.tex.exists(`pt_${name}_${variante}`)) return `pt_${name}_${variante}`;
     if (this.tex.exists(`pt_${name}`)) return `pt_${name}`;
-    // Helden-Brustbild bei Bedarf prozedural erzeugen (Runde 43), wenn kein
-    // Asset vorliegt - so erscheint unser Held im Charakter- und Dialogfenster.
+    // Held-Portrait (R55, Autorwunsch "ersetz das lächerliche Bild"): statt der
+    // gemalten Brustfigur die ECHTE Spielfigur als Büste - so passt das Bild zum
+    // Helden im Spiel. Stufe kommt aus der Variante (sonst Standard Leder).
     if (name === 'spieler') {
-      const key = 'pt_spieler';
-      const S = 128;
-      const canvas = document.createElement('canvas');
-      canvas.width = S; canvas.height = S;
-      drawHeldPortrait(canvas.getContext('2d')!, S);
-      this.tex.addCanvas(key, canvas);
-      return key;
+      return this.heldPortraitKey(variante === 'ruestung2' ? 'platte' : 'leder');
     }
     return null;
+  }
+
+  // Büste der echten Helden-Figur (Front, ruhend) als Portrait - Kopf + Brust
+  // formatfüllend in einen warmen Rahmen. Je Rüstungsstufe gecacht.
+  heldPortraitKey(tier: HeldTier): string {
+    const key = `ptheld_${tier}`;
+    if (this.tex.exists(key)) return key;
+    const C = HELD_CELL;
+    const tmp = document.createElement('canvas');
+    tmp.width = C; tmp.height = C;
+    drawHeld(tmp.getContext('2d')!, tier, 0, 0, null);     // Front, Frame 0, ohne Waffe
+    const S = 96;
+    const cv = document.createElement('canvas');
+    cv.width = S; cv.height = S;
+    const ctx = cv.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
+    const bg = ctx.createRadialGradient(S / 2, S * 0.38, 6, S / 2, S * 0.5, S * 0.7);
+    bg.addColorStop(0, '#3a2f1c'); bg.addColorStop(1, '#140f08');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, S, S);
+    // Ausschnitt Kopf + Oberkörper (Quelle ~x13..51, y7..45) formatfüllend
+    ctx.drawImage(tmp, 13, 7, 38, 38, 2, 2, S - 4, S - 4);
+    this.tex.addCanvas(key, cv);
+    return key;
   }
 }
 

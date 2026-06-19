@@ -806,12 +806,17 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     return { text: `${name} - ${ik} zum ${verb}`, action: () => this.collectManualPickup(pk) };
   }
 
-  protected nearestManualPickup(): Pickup | null {
+  protected nearestManualPickup(radius = 34): Pickup | null {
+    // Den WIRKLICH nächsten Gegenstand wählen, nicht den ersten in der Liste -
+    // so lässt sich ein Haufen überlappender Beute von innen nach außen abräumen
+    // (Autorbug R55: bei überlappenden Truhen/Gegenständen blieb Beute liegen).
+    let best: Pickup | null = null, bd = radius;
     for (const pk of this.pickups.pickups) {
       if (AUTO_PICKUP.has(pk.kind)) continue;
-      if (Math.hypot(pk.x - this.px, pk.y - this.py) < 34) return pk;
+      const d = Math.hypot(pk.x - this.px, pk.y - this.py);
+      if (d < bd) { bd = d; best = pk; }
     }
-    return null;
+    return best;
   }
 
   protected collectManualPickup(pk: Pickup): void {
@@ -3108,10 +3113,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       } else if (moving) {
         step = this.pstep;
       } else {
-        // Stehen: Atem-Zyklus (R54) - Frame 2 = Einatmen (Brust hebt), Frame 0 =
-        // Ausatmen. Einatmen kürzer, Ausatmen länger, ~3,4s je Atemzug (etwas
-        // flotter, Autorwunsch "einen Tick schneller").
-        step = (this.time.now % 3400) < 1300 ? 2 : 0;
+        // Stehen: Atem-Zyklus - Frame 2 = Einatmen (Brust hebt), Frame 0 =
+        // Ausatmen. Einatmen kürzer, Ausatmen länger, ~2,9s je Atemzug (noch
+        // einen Tick flotter, Autorwunsch R55).
+        step = (this.time.now % 2900) < 1100 ? 2 : 0;
       }
       this.zeichneHeld(angleToDir8(this.pdir), step);
       if (this.playerHitFlash > 0) this.playerSprite.setTintFill(0xffffff);

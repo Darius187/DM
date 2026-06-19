@@ -2542,6 +2542,10 @@ export class WorldScene extends CombatScene {
     // Treppen und Kryptaeingang zuerst (liegen unter den Füßen)
     const st = this.stairHint();
     if (st) return st;
+    // Ein Gegenstand DIREKT unter den Füßen hat Vorrang vor Truhen/Schreinen/NPCs
+    // (Autorbug R55: bei einer Truhe überlappende Beute war nicht aufhebbar - die
+    // Truhe gewann immer). Nur ganz nah (man steht drauf), sonst zählt der Rest.
+    if (this.nearestManualPickup(24)) return super.interactHint();
     // Gehöft-Interaktionen (Lager, Bett, Kamin, Feld, Gartenschrein)
     const gh = this.gehoeftHint();
     if (gh) return gh;

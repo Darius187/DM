@@ -8,6 +8,7 @@ import type { Item, GemItem, Rarity } from '../data/types';
 import { RARITY_COLORS, RARITY_NAMES } from '../data/items';
 import { itemStatLine, weaponDamageRange } from '../logic/loot';
 import { recalc, type PlayerState } from '../logic/playerState';
+import { heldTier } from '../data/helden';
 import { calcStats, type Stats } from '../logic/progression';
 import { MELDUNGEN } from '../data/texte';
 import { SCHOOLS, ABILITIES, SPELLS } from '../data/balancing';
@@ -236,17 +237,12 @@ export class UIPanels {
 
   private buildCharacterSide(c: Phaser.GameObjects.Container, w: number, _h: number): void {
     const p = this.getPlayer();
-    const variante = p.armorIt && p.armorIt.val >= 8 ? 'ruestung2' : undefined;
-    const ptKey = this.provider.portraitKey('spieler', variante);
+    // Portrait = echte Spielfigur als Büste, je aktueller Rüstungsstufe (R55).
+    const ptKey = this.provider.heldPortraitKey(heldTier(p.armorIt ? p.armorIt.val : null));
     c.add(this.scene.add.rectangle(58, 60, 88, 88, 0x0e0a06).setStrokeStyle(2, 0x5a4a32));
-    if (ptKey) {
-      const img = this.scene.add.image(58, 60, ptKey);
-      img.setScale(82 / Math.max(img.width, img.height));
-      c.add(img);
-    } else {
-      const f = this.provider.figureFrame('spieler', 0, 0);
-      c.add(this.scene.add.image(58, 60, f.key, f.frame).setScale(2.2));
-    }
+    const img = this.scene.add.image(58, 60, ptKey);
+    img.setScale(84 / Math.max(img.width, img.height));
+    c.add(img);
     c.add(this.scene.add.text(58, 108, `Stufe ${p.level}`, { fontFamily: 'serif', fontSize: '13px', color: GOLD }).setOrigin(0.5, 0));
 
     const rarCol = (it: Item) => Phaser.Display.Color.HexStringToColor(RARITY_COLORS[(it.rarity ?? 0) as Rarity]).color;
