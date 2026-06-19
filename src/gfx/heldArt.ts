@@ -332,30 +332,54 @@ function seitePauldron(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, face:
   ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x - r + 1, f.schulterY - r * 0.6, r * 0.7, 1);
 }
 
-// Den Helden im Profil zeichnen (innerhalb von drawHeld nach translate/bob).
-function zeichneSeite(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, dir: Dir, step: number, tier: HeldTier): void {
-  const face = dir === 2 ? 1 : -1;                            // 2 = rechts, 1 = links
+// Schlagarm (R54): ein gestreckter Arm + Hand, der in Schlagrichtung greift -
+// die eigentliche Klinge ist der Swoosh-Effekt im Spiel, hier reicht die Geste.
+// ang ist der BILDSCHIRM-Winkel der Schlagrichtung (0 = rechts, PI/2 = unten).
+function schlagArm(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, ang: number): void {
+  const sx = CX, sy = f.schulterY + f.rumpfH * 0.3;
+  const len = f.armL + 7;
+  const ex = sx + Math.cos(ang) * len, ey = sy + Math.sin(ang) * len * 0.78;
+  ctx.strokeStyle = p.wams; ctx.lineWidth = f.armB + 1.2; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+  ctx.lineWidth = 1;
+  ell(ctx, ex, ey, f.armB / 2 + 0.7, f.armB / 2 + 0.7, f.farben.hand ?? shade(p.wams, -14));
+}
+
+// Den Helden in Seiten-/Diagonalansicht zeichnen. face = -1 links / +1 rechts.
+// kopfDir steuert den Kopf (1 links, 2 rechts, 3 Rücken bei Rück-Diagonalen).
+// strike != null: Schlagpose (Bildschirmwinkel) statt Geh-Arm.
+function zeichneSeite(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, face: number, step: number, tier: HeldTier, kopfDir: Dir, strike: number | null): void {
   const legSwing = step === 1 ? 1 : step === 3 ? -1 : 0;
-  const stride = 3;                                           // Schrittweite im Profil
+  const stride = 3;
   const nearLeg = face * legSwing * stride;
   const farLeg = -face * legSwing * stride;
-  const nearArm = -face * legSwing * 2.6;                     // Arm gegenläufig zum Bein
+  const nearArm = -face * legSwing * 2.6;
   const farArm = face * legSwing * 2.6;
   const flutter = legSwing * 2;
   const gitter = tier === 'kette' && f.kettenGitter > 0;
 
   seiteUmhang(ctx, p, f, face, flutter);                      // ganz hinten
-  seiteArm(ctx, p, f, farArm, true);                          // ferner Arm
+  if (strike === null) seiteArm(ctx, p, f, farArm, true);     // ferner Arm (im Lauf)
   seiteBein(ctx, p, f, farLeg, face, true);                   // fernes Bein
   seiteRumpf(ctx, p, f, face, gitter);
   seiteBein(ctx, p, f, nearLeg, face, false);                 // nahes Bein
   seitePauldron(ctx, p, f, face);
-  seiteArm(ctx, p, f, nearArm, false);                        // naher Arm vorn
-  kopf(ctx, p, f, dir);
+  kopf(ctx, p, f, kopfDir);
+  if (strike !== null) schlagArm(ctx, p, f, strike);          // Schlagarm zuletzt, vorn
+  else seiteArm(ctx, p, f, nearArm, false);                   // naher Arm vorn
 }
 
+// 8 Blickrichtungen (Autorwunsch R54 "Zwischenanimationen"):
+// 0=S(vorn) 1=SW 2=W(links) 3=NW 4=N(hinten) 5=NE 6=O(rechts) 7=SE
+export const HELD_DIRS = 8;
+export const HELD_FRAMES = 5;        // 0..3 Gehen, 4 = Schlag
+export const SCHLAG_FRAME = 4;
+// Bildschirm-Winkel der Schlagrichtung je Richtung (0=rechts, PI/2=unten)
+const STRIKE_ANG = [Math.PI / 2, 3 * Math.PI / 4, Math.PI, 5 * Math.PI / 4, -Math.PI / 2, 7 * Math.PI / 4, 0, Math.PI / 4];
+
 // Eine Figur in die aktuelle 64x64-Zelle zeichnen (Ursprung links oben).
-export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir, frame: number): void {
+// dir: 0..7 (siehe oben), frame: 0..3 Gehen oder 4 = Schlagpose.
+export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: number, frame: number): void {
   const f = getHeldForm(tier);
   // Palette: erst Farb-Überschreibungen je Teil, DANN Helligkeit auf ALLES
   // (Autorbug R40: Helligkeit ließ überschriebene Teile + Helm unberührt)
@@ -366,9 +390,11 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir
   if (fb.kapuze) { p.kap = fb.kapuze; p.kapH = shade(fb.kapuze, 18); p.kapS = shade(fb.kapuze, -22); }
   if (fb.beine) { p.bein = fb.beine; p.beinS = shade(fb.beine, -22); }   // Hose/Beine färbbar (Autorwunsch R53)
   if (f.ruestHell) p = tintPal(p, f.ruestHell);
-  const step = frame % 4;            // 0 stehen, 1 links vor, 2 stehen, 3 rechts vor
+  const attack = frame >= SCHLAG_FRAME;
+  const step = attack ? 0 : frame % 4;   // 0 stehen, 1 links vor, 2 stehen, 3 rechts vor
   const bobUp = step === 1 || step === 3 ? -1.4 : 0;
   const sway = step === 1 ? 2 : step === 3 ? -2 : 0;
+  const strike = attack ? STRIKE_ANG[dir] : null;
 
   // Bodenschatten
   ell(ctx, CX, 58, 14, 3.4, 'rgba(0,0,0,0.32)');
@@ -383,10 +409,15 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir
     ctx.shadowBlur = 4;
   }
 
-  // Seitenansicht (links/rechts): echtes Profil mit Geh-Zyklus, statt der
-  // Frontfigur (Autorwunsch R54). Front (0) und Rücken (3) bleiben wie gehabt.
-  if (dir === 1 || dir === 2) {
-    zeichneSeite(ctx, p, f, dir, step, tier);
+  // Seiten- UND Diagonalansichten als echtes Profil (Geh-Zyklus). face links/
+  // rechts; bei Rück-Diagonalen (NW/NE) zeigt der Kopf die Haube (Rücken).
+  // S (0) = Front, N (4) = Rücken bekommen die Frontsilhouette.
+  if (dir !== 0 && dir !== 4) {
+    const face = (dir === 1 || dir === 2 || dir === 3) ? -1 : 1;     // SW,W,NW links; NE,O,SE rechts
+    // Kopf: reine Seite (W/O) -> Profil; Vorder-Diagonale (SW/SE) -> 3/4-Front-
+    // gesicht (man läuft zum Betrachter); Rück-Diagonale (NW/NE) -> Haube.
+    const kopfDir: Dir = (dir === 3 || dir === 5) ? 3 : (dir === 1 || dir === 7) ? 0 : (face < 0 ? 1 : 2);
+    zeichneSeite(ctx, p, f, face, step, tier, kopfDir, strike);
     ctx.restore();
     return;
   }
@@ -402,10 +433,12 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir
   // hinterer Arm (gegenläufig), Rumpf, vorderer Arm - an den Schultern
   arm(ctx, p, f, CX - f.schulterB, -lVor);
   rumpf(ctx, p, f, tier === 'kette' && f.kettenGitter > 0);
-  arm(ctx, p, f, CX + f.schulterB, lVor);
+  if (strike === null) arm(ctx, p, f, CX + f.schulterB, lVor);
   pauldrons(ctx, p, f); // Schulterplatten über den Armansätzen
 
-  kopf(ctx, p, f, dir);
+  kopf(ctx, p, f, dir === 4 ? 3 : 0);   // N -> Rücken-Haube, S -> Front
+
+  if (strike !== null) schlagArm(ctx, p, f, strike);   // Schlagarm vorn
 
   ctx.restore();
 }

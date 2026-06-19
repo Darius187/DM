@@ -5,7 +5,7 @@
 import Phaser from 'phaser';
 import gfxConfig from '../data/gfx.json';
 import { drawHumanoid, drawQuadruped, drawChicken, FIGURES, SPRITE, TILE, type Dir, type FigureSpec, type QuadSpec } from './fallbackArt';
-import { drawHeld, HELD_CELL, drawHeldPortrait } from './heldArt';
+import { drawHeld, HELD_CELL, HELD_DIRS, HELD_FRAMES, drawHeldPortrait } from './heldArt';
 import { drawItemIcon, iconKey, ICON_SIZE } from './itemIcons';
 import { drawTileArt, drawObjectArt, drawBreakable } from './tileArt';
 import { DETAIL_NPCS } from './npcArt';
@@ -26,10 +26,11 @@ export class SpriteProvider {
 
   // Liefert Texturschlüssel+Frame für Figur `name`, Blickrichtung, Gehschritt.
   // Hot-Swap: Atlas `as_<name>` oder Einzelbilder `hs_<name>_<richtung>_<frame>`.
-  figureFrame(name: string, dir: Dir, step: number): { key: string; frame?: string } {
+  figureFrame(name: string, dir: number, step: number): { key: string; frame?: string } {
     const dirName = DIR_NAMES[dir];
     const frameNo = (step % gfxConfig.walkFrames) + 1;
     const versuch = (lookup: string): { key: string; frame?: string } | null => {
+      if (dirName === undefined) return null;   // 8-Richtungs-Held: Hot-Swap nutzt nur 4 (greift dann der Fallback)
       const single = `hs_${lookup}_${dirName}_${frameNo}`;
       if (this.tex.exists(single)) return { key: single };
       const atlas = `as_${lookup}`;
@@ -51,7 +52,9 @@ export class SpriteProvider {
     const held = /^spieler_(stoff|leder|kette|platte)$/.exec(name);
     if (held) {
       this.ensureHeldFigure(held[1] as HeldTier);
-      return { key: `held_${held[1]}`, frame: `d${dir}f${step % 4}` };
+      const fr = step >= HELD_FRAMES - 1 ? HELD_FRAMES - 1 : step % 4;   // 4 = Schlag, sonst Geh-Schritt
+      const d = ((dir % HELD_DIRS) + HELD_DIRS) % HELD_DIRS;
+      return { key: `held_${held[1]}`, frame: `d${d}f${fr}` };
     }
     this.ensureFallbackFigure(name);
     return { key: `fig_${name}`, frame: `d${dir}f${step % 4}` };
@@ -71,11 +74,11 @@ export class SpriteProvider {
       const canvas = tex.getSourceImage() as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (let dir = 0 as Dir; dir < 4; dir++) {
-        for (let frame = 0; frame < 4; frame++) {
+      for (let dir = 0; dir < HELD_DIRS; dir++) {
+        for (let frame = 0; frame < HELD_FRAMES; frame++) {
           ctx.save();
           ctx.translate(frame * C, dir * C);
-          drawHeld(ctx, tier, dir as Dir, frame);
+          drawHeld(ctx, tier, dir, frame);
           ctx.restore();
         }
       }
@@ -83,33 +86,34 @@ export class SpriteProvider {
     }
   }
 
-  // Detaillierte Helden-Figur (Runde 37): 64px-Zellen, 4 Richtungen x 4 Schritte
+  // Detaillierte Helden-Figur (Runde 37): 64px-Zellen, 8 Richtungen x 5 Frames
+  // (0..3 Gehen, 4 Schlag) - R54: Diagonalen + Schwertschlag in jede Richtung.
   private ensureHeldFigure(tier: HeldTier): void {
     const key = `held_${tier}`;
     if (this.tex.exists(key)) return;
     const C = HELD_CELL;
     const canvas = document.createElement('canvas');
-    canvas.width = C * 4;
-    canvas.height = C * 4;
+    canvas.width = C * HELD_FRAMES;
+    canvas.height = C * HELD_DIRS;
     const ctx = canvas.getContext('2d')!;
-    for (let dir = 0 as Dir; dir < 4; dir++) {
-      for (let frame = 0; frame < 4; frame++) {
+    for (let dir = 0; dir < HELD_DIRS; dir++) {
+      for (let frame = 0; frame < HELD_FRAMES; frame++) {
         ctx.save();
         ctx.translate(frame * C, dir * C);
-        drawHeld(ctx, tier, dir as Dir, frame);
+        drawHeld(ctx, tier, dir, frame);
         ctx.restore();
       }
     }
     const t = this.tex.addCanvas(key, canvas)!;
-    for (let dir = 0; dir < 4; dir++) {
-      for (let frame = 0; frame < 4; frame++) {
+    for (let dir = 0; dir < HELD_DIRS; dir++) {
+      for (let frame = 0; frame < HELD_FRAMES; frame++) {
         t.add(`d${dir}f${frame}`, 0, frame * C, dir * C, C, C);
       }
     }
   }
 
   // Sprite-Textur setzen (eigener Mini-Animator, einheitlich für beide Quellen)
-  applyFigure(sprite: Phaser.GameObjects.Sprite, name: string, dir: Dir, step: number): void {
+  applyFigure(sprite: Phaser.GameObjects.Sprite, name: string, dir: number, step: number): void {
     const f = this.figureFrame(name, dir, step);
     if (sprite.texture.key !== f.key || sprite.frame.name !== (f.frame ?? '__BASE')) {
       sprite.setTexture(f.key, f.frame);

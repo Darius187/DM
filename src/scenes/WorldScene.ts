@@ -3,7 +3,7 @@
 
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
-import { Enemy, angleToDir } from '../world/Enemy';
+import { Enemy, angleToDir, angleToDir8 } from '../world/Enemy';
 import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
@@ -302,7 +302,7 @@ export class WorldScene extends CombatScene {
     this.stash = new StashUI(this, this.sfx, () => this.p, () => this.lager);
     // Figur-Editor (Runde 40): Proportionen des Helden live einstellen
     this.heldEditor = new HeldEditor(this, this.provider, () => heldTier(this.p.armorIt ? this.p.armorIt.val : null));
-    this.heldEditor.onApply = () => this.zeichneHeld(angleToDir(this.pdir), this.pstep);
+    this.heldEditor.onApply = () => this.zeichneHeld(angleToDir8(this.pdir), this.pstep);
     this.worldGfx = this.add.graphics().setDepth(2450);
     // Blutspuren liegen UNTER den Figuren (Autorbug R45: lagen "vor" den
     // Einheiten). Boden = -10, Figuren = y (positiv); -5 liegt sauber dazwischen.

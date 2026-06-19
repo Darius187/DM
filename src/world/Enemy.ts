@@ -728,3 +728,11 @@ export function angleToDir(ang: number): Dir {
   if (a < 3.927) return 1;                // links
   return 3;                               // oben
 }
+
+// 8 Richtungen für den hochauflösenden Helden (R54): 0=S(unten) 1=SW 2=W(links)
+// 3=NW 4=N(oben) 5=NE 6=O(rechts) 7=SE. Bildschirm-Winkel: 0=rechts, PI/2=unten.
+export function angleToDir8(ang: number): number {
+  const a = Phaser.Math.Angle.Normalize(ang);
+  const oct = Math.round(a / (Math.PI / 4)) % 8;   // 0=O,1=SO,2=S,3=SW,4=W,5=NW,6=N,7=NO
+  return [6, 7, 0, 1, 2, 3, 4, 5][oct];
+}

@@ -5,12 +5,13 @@
 import Phaser from 'phaser';
 import { SpriteProvider } from '../gfx/SpriteProvider';
 import { SoundProvider } from '../gfx/SoundProvider';
-import { spielerFigur, TILE, type Dir } from '../gfx/fallbackArt';
+import { spielerFigur, TILE } from '../gfx/fallbackArt';
 import { Wegfeld } from './Wegfeld';
 import { getHeldForm } from '../data/heldForm';
 import { heldTier } from '../data/helden';
 import { EffectSystem } from './effects';
-import { Enemy, angleToDir, type EnemyHost } from './Enemy';
+import { Enemy, angleToDir8, type EnemyHost } from './Enemy';
+import { SCHLAG_FRAME } from '../gfx/heldArt';
 import {
   newCombatState, inputLight, inputHeavy, inputRoll, inputBlockStart, inputBlockEnd,
   stepCombat, resolveIncoming, damageAfterArmor, blockedDamage, type CombatState, type AttackEvent,
@@ -62,6 +63,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   py = 0;
   pdir = 0; // Blickwinkel (rad)
   pstep = 0;
+  protected heldSchlagT = 0;   // Restzeit der Schlagpose des Helden (R54)
   private pstepT = 0;
   private leechCarry = 0;   // gesammelte Lebensraub-Bruchteile (Runde 42)
   playerSprite!: Phaser.GameObjects.Sprite;
@@ -1198,6 +1200,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected meleeArcAttack(ev: AttackEvent, ang: number): void {
     const fin = ev.isFinisher;
     const heavy = ev.type === 'heavy';
+    this.pdir = ang;                         // Held blickt in Schlagrichtung
+    this.heldSchlagT = heavy ? 0.32 : 0.2;   // Schlagpose zeigen (R54)
     const st = this.swingStyle();
     // Klassen-Feinwerte (Runde 49): Axt/Kolben kürzer, Axt schärfer
     const nk = NAHKAMPF[this.weaponClass()] ?? NAHKAMPF.schwert;
@@ -2708,6 +2712,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
     // Spieler-Status
     this.playerHitFlash = Math.max(0, this.playerHitFlash - dt);
+    this.heldSchlagT = Math.max(0, this.heldSchlagT - dt);   // Schlagpose klingt ab (R54)
     // Zauberstab in der Hand: Mana fließt doppelt so schnell (Runde 16)
     const manaRegen = this.weaponClass() === 'stab' ? 4.4 : 2.2;
     this.p.mana = Math.min(this.p.stats.maxmana, this.p.mana + manaRegen * dt);
@@ -3045,7 +3050,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Held zeichnen (Runde 37): die animierte prozedurale Figur (4 Richtungen +
   // Gehschritt, Stil wie die anderen Figuren) - bzw. echte Hot-Swap-Sprites,
   // falls der Autor ein KI-Paket einschleust. Kein statischer Ritter mehr.
-  protected zeichneHeld(dir: Dir, step: number): void {
+  protected zeichneHeld(dir: number, step: number): void {
     this.provider.applyFigure(this.playerSprite, this.heldFigur(), dir, step);
     // 64px-Held kleiner darstellen; echte Hot-Swap-Sprites des Autors größer.
     // (Hier gesetzt, damit auch nach der Todes-Animation die Skala stimmt.)
@@ -3086,7 +3091,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.playerSprite.setPosition(this.px, this.py).setDepth(this.py);
       const moving = this.keysDown['w'] || this.keysDown['a'] || this.keysDown['s'] || this.keysDown['d']
         || this.keysDown['arrowup'] || this.keysDown['arrowdown'] || this.keysDown['arrowleft'] || this.keysDown['arrowright'];
-      this.zeichneHeld(angleToDir(this.pdir), moving ? this.pstep : 0);
+      // Schlagpose während des Schwungs (R54), sonst Geh-/Stand-Schritt - 8 Richtungen
+      const step = this.heldSchlagT > 0 ? SCHLAG_FRAME : (moving ? this.pstep : 0);
+      this.zeichneHeld(angleToDir8(this.pdir), step);
       if (this.playerHitFlash > 0) this.playerSprite.setTintFill(0xffffff);
       else this.playerSprite.clearTint();
     }
