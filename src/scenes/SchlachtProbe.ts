@@ -189,25 +189,33 @@ export class SchlachtProbe extends Phaser.Scene {
   }
 
   private baueUI(): void {
-    let x = 14; const y1 = FELD_H + 26;
-    const forms: Array<[string, Form]> = [['LINIE', 'linie'], ['BLOCK', 'block'], ['KEIL', 'keil'], ['LOCKER', 'locker'], ['SCHUTZ', 'schutz']];
+    // Reihe 1: Formationen (mit historischen, R54). Eigene Zeile, da es viele sind.
+    const y1 = FELD_H + 22;
+    let x = 14;
+    x += this.add.text(x, y1, 'FORMATION:', { fontFamily: 'serif', fontSize: '12px', color: '#c9a227' }).setOrigin(0, 0.5).setDepth(950).width + 8;
+    const forms: Array<[string, Form]> = [['LINIE', 'linie'], ['BLOCK', 'block'], ['KEIL', 'keil'], ['LOCKER', 'locker'], ['SCHUTZ', 'schutz'], ['SCHILTRON', 'schiltron'], ['FLÜGEL', 'bogenfluegel'], ['KOLONNE', 'kolonne']];
     this.formKnoepfe = [];
-    for (const [lbl, f] of forms) { const t = this.knopf(x, y1, lbl, () => this.formiere(f)); this.formKnoepfe.push([f, t]); x += t.width + 8; }
+    for (const [lbl, f] of forms) { const t = this.knopf(x, y1, lbl, () => this.formiere(f)); this.formKnoepfe.push([f, t]); x += t.width + 6; }
     this.markiereForm();
-    x += 14;
+
+    // Reihe 2: Haltung + Seitenwechsel + Befördern
+    const yb = FELD_H + 52;
+    let xb = 14;
+    xb += this.add.text(xb, yb, 'HALTUNG:', { fontFamily: 'serif', fontSize: '12px', color: '#c9a227' }).setOrigin(0, 0.5).setDepth(950).width + 8;
     const stances: Array<[string, Stance]> = [['AGGRESSIV', 'aggressiv'], ['VERTEIDIGEN', 'verteidigen'], ['HALTEN', 'halten']];
-    for (const [lbl, s] of stances) { const t = this.knopf(x, y1, lbl, () => this.setzeStance(s)); x += t.width + 8; }
-    x += 14;
-    this.seiteKnopf = this.knopf(x, y1, '', () => this.wechsleSeite());
-    x += this.seiteKnopf.width + 14;
+    for (const [lbl, s] of stances) { const t = this.knopf(xb, yb, lbl, () => this.setzeStance(s)); xb += t.width + 6; }
+    xb += 14;
+    this.seiteKnopf = this.knopf(xb, yb, '', () => this.wechsleSeite());
+    xb += this.seiteKnopf.width + 14;
     // Befördern (R54, Autorwunsch "ich will auswählen, was Elite/Riese ist"):
     // gewählte Einheiten zu Elite-Veteranen oder Riesen aufwerten. Riesen
     // schleudern Gegner beiseite (Helms-Klamm).
-    x += this.add.text(x, y1, 'BEFÖRDERN:', { fontFamily: 'serif', fontSize: '12px', color: '#f0d878' }).setOrigin(0, 0.5).setDepth(950).width + 6;
-    x += this.knopf(x, y1, '→ ELITE', () => this.befoerdere('elite')).width + 5;
-    x += this.knopf(x, y1, '→ RIESE', () => this.befoerdere('troll')).width + 5;
-    // zweite Reihe: Bau-Menü (Befestigung an der Front) + Nachschub
-    let x2 = 14; const y2 = FELD_H + 60;
+    xb += this.add.text(xb, yb, 'BEFÖRDERN:', { fontFamily: 'serif', fontSize: '12px', color: '#f0d878' }).setOrigin(0, 0.5).setDepth(950).width + 6;
+    xb += this.knopf(xb, yb, '→ ELITE', () => this.befoerdere('elite')).width + 5;
+    xb += this.knopf(xb, yb, '→ RIESE', () => this.befoerdere('troll')).width + 5;
+
+    // Reihe 3: Bau-Menü (Befestigung an der Front) + Nachschub
+    let x2 = 14; const y2 = FELD_H + 82;
     x2 += this.add.text(x2, y2, 'BAU:', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' }).setOrigin(0, 0.5).setDepth(950).width + 8;
     const baulist: Array<[string, BauTyp]> = [['PALISADE', 'palisade'], ['TURM', 'turm'], ['LAZARETT', 'lazarett'], ['SCHMIEDE', 'schmiede'], ['BANNER', 'banner']];
     for (const [lbl, b] of baulist) { x2 += this.knopf(x2, y2, lbl, () => { this.platziere = this.platziere === b ? null : b; this.setzeStatus(); }).width + 6; }
@@ -222,7 +230,7 @@ export class SchlachtProbe extends Phaser.Scene {
     x2 += this.knopf(x2, y2, 'ANGRIFF!', () => { this.schlachtLaeuft = true; this.setzeStatus(); }).width + 10;
     x2 += this.knopf(x2, y2, 'NEU', () => this.scene.restart()).width + 10;
     this.knopf(1206, y1, 'MENÜ', () => this.scene.start('Title'));
-    this.infoText = this.add.text(14, FELD_H + 90, '', { fontFamily: 'serif', fontSize: '12px', color: '#b8a880', wordWrap: { width: FELD_W - 360 } }).setDepth(950);
+    this.infoText = this.add.text(14, FELD_H + 108, '', { fontFamily: 'serif', fontSize: '12px', color: '#b8a880', wordWrap: { width: FELD_W - 360 } }).setDepth(950);
     // RTS-Auswahl-Übersicht unten rechts (Runde 53): welche Einheiten gewählt sind + Leben
     this.auswahlText = this.add.text(this.scale.width - 16, FELD_H + 8, '', { fontFamily: 'serif', fontSize: '12.5px', color: '#e8dcc0', align: 'right', lineSpacing: 2 }).setOrigin(1, 0).setDepth(950);
     this.statusText = this.add.text(this.scale.width / 2, 22, '', {
@@ -242,7 +250,7 @@ export class SchlachtProbe extends Phaser.Scene {
       this.infoText.setText(`BAU-MODUS: ${BAU[this.platziere].name} platzieren - links auf das Feld klicken (mehrfach). Rechtsklick/Knopf erneut = abbrechen.`);
       return;
     }
-    const formName: Record<Form, string> = { linie: 'Linie', block: 'Block', keil: 'Keil', locker: 'Locker', schutz: 'Schutz' };
+    const formName: Record<Form, string> = { linie: 'Linie', block: 'Block', keil: 'Keil', locker: 'Locker', schutz: 'Schutz', schiltron: 'Schiltron (Speer-Ring)', bogenfluegel: 'Bogenflügel', kolonne: 'Kolonne' };
     this.infoText.setText(
       `Rahmen ziehen = wählen (${sel.length}, Haltung: ${stance}). Aktive Formation: ${formName[this.aktiveForm]}. `
       + `Rechte Maus ZIEHEN = diese Formation drehen (Linienrichtung) und größer/kleiner (Linienlänge) - die Form bleibt erhalten. `

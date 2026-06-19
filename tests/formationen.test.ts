@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { formSlots, formSlotsSkaliert, linienSlots, slotWelt, type Form } from '../src/logic/formationen';
 
-const FORMEN: Form[] = ['linie', 'block', 'keil', 'locker', 'schutz'];
+const FORMEN: Form[] = ['linie', 'block', 'keil', 'locker', 'schutz', 'schiltron', 'bogenfluegel', 'kolonne'];
 
 describe('Formations-Slots (Runde 51)', () => {
   it('jede Formation liefert genau N Slots', () => {

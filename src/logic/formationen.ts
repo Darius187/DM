@@ -7,7 +7,13 @@
 // nach Rolle sortiert (Schild/Nahkampf vorne, Bogen/Heiler hinten) übergibt,
 // landen schwere Einheiten automatisch vorne bzw. außen.
 
-export type Form = 'linie' | 'block' | 'keil' | 'locker' | 'schutz';
+// Neben den Grundformen drei historische des 14. Jh. (Autorwunsch R54):
+// - schiltron: schottischer Speer-Ring/Igel gegen Reiterei (Bannockburn 1314) -
+//   Speere nach außen, Schützen/Anführer geschützt in der Mitte.
+// - bogenfluegel: englische Langbogen-Taktik (Crécy 1346, Azincourt) -
+//   Männer in der Mitte, Schützen schräg nach vorn auf den FLÜGELN (V).
+// - kolonne: tiefe, schmale Marschkolonne zum Durchstoßen/Durchqueren von Lücken.
+export type Form = 'linie' | 'block' | 'keil' | 'locker' | 'schutz' | 'schiltron' | 'bogenfluegel' | 'kolonne';
 
 // f = forward (zur Blickrichtung, vorne = positiv), l = lateral (quer)
 export interface Slot { f: number; l: number }
@@ -71,6 +77,54 @@ export function formSlots(n: number, form: Form, S = 30): Slot[] {
       }
       grid.sort((a, b) => (Math.abs(b.f) + Math.abs(b.l)) - (Math.abs(a.f) + Math.abs(a.l)));
       out.push(...grid);
+      break;
+    }
+    case 'schiltron': {
+      // Speer-Ring: Außenring zuerst (Nahkampf nach außen), Rest geschützt innen.
+      const innen = n > 10 ? Math.round(n * 0.22) : 0;
+      const aussen = Math.max(1, n - innen);
+      const radius = Math.max(S, (aussen * S) / (2 * Math.PI));
+      for (let i = 0; i < aussen; i++) {
+        const a = (i / aussen) * Math.PI * 2 - Math.PI / 2;   // vorne beginnen
+        out.push({ f: Math.cos(a) * radius, l: Math.sin(a) * radius });
+      }
+      const ir = radius * 0.5;
+      for (let i = 0; i < innen; i++) {
+        const a = (i / Math.max(1, innen)) * Math.PI * 2;
+        out.push({ f: innen > 1 ? Math.cos(a) * ir : 0, l: innen > 1 ? Math.sin(a) * ir : 0 });
+      }
+      break;
+    }
+    case 'bogenfluegel': {
+      // Mitte: Nahkampf-Block vorn; Flügel: Schützen schräg nach VORN/außen (V).
+      let zentrum = Math.max(1, Math.min(n, Math.round(n * 0.45)));
+      let fluegel = n - zentrum;
+      if (fluegel % 2 === 1) { zentrum++; fluegel--; }   // Flügel paarweise -> symmetrisch
+      const zc = Math.max(1, Math.round(Math.sqrt(zentrum)));
+      let rem = zentrum, r = 0;
+      while (rem > 0) { const c = Math.min(zc, rem); reihe(c, S * 0.5 - r * S); rem -= c; r++; }
+      const proSeite = Math.ceil(fluegel / 2);
+      let done = 0;
+      for (let k = 0; k < proSeite; k++) {
+        for (const side of [-1, 1] as const) {
+          if (done >= fluegel) break;
+          const off = k + 1;
+          out.push({ f: S * 0.8 + off * S * 0.6, l: side * (zc * S * 0.55 + off * S * 0.7) });
+          done++;
+        }
+      }
+      break;
+    }
+    case 'kolonne': {
+      // tiefe, schmale Marschkolonne (2 breit): Front zuerst (Nahkampf vorn).
+      const cols = n >= 6 ? 2 : 1;
+      const rows = Math.ceil(n / cols);
+      let rem = n;
+      for (let r = 0; r < rows; r++) {
+        const c = Math.min(cols, rem);
+        reihe(c, ((rows - 1) / 2 - r) * S);
+        rem -= c;
+      }
       break;
     }
   }
