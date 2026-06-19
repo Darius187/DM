@@ -71,7 +71,13 @@ export class StadtProbe extends Phaser.Scene {
   }
 
   private setze(x: number, y: number, w: number, h: number): void {
-    this.vorlage.marker.push({ typ: this.brush, x, y, w, h });
+    // Platzhalter (?): eigenen Text eintragen (Autorwunsch R53).
+    let label: string | undefined;
+    if (this.brush === 'platzhalter') {
+      const t = window.prompt('Platzhalter - was soll hier später hin? (frei eintragen)', '');
+      label = t && t.trim() ? t.trim() : '?';
+    }
+    this.vorlage.marker.push({ typ: this.brush, x, y, w, h, ...(label ? { label } : {}) });
   }
 
   private loescheBei(cx: number, cy: number): void {
@@ -104,9 +110,10 @@ export class StadtProbe extends Phaser.Scene {
       const mx = ox + m.x * z, my = oy + m.y * z, mw = m.w * z, mh = m.h * z;
       g.fillStyle(inf.farbe, inf.punkt ? 0.95 : 0.5); g.fillRect(mx, my, mw, mh);
       g.lineStyle(2, inf.farbe, 1); g.strokeRect(mx, my, mw, mh);
-      if (mw >= 28 || inf.punkt) {
+      if (mw >= 24 || inf.punkt || m.label) {
         this.labelLayer.add(this.add.text(mx + mw / 2, my + mh / 2, m.label ?? inf.name, {
           fontFamily: 'serif', fontSize: '11px', color: '#0c0a06', stroke: '#ffffff', strokeThickness: 2,
+          align: 'center', wordWrap: { width: Math.max(40, mw - 4) },
         }).setOrigin(0.5));
       }
     }

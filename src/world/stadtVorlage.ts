@@ -7,7 +7,7 @@
 export type MarkerTyp =
   | 'see' | 'holzlager' | 'marktplatz' | 'feld' | 'friedhof' | 'garten'
   | 'kirche' | 'taverne' | 'schmiede' | 'muehle' | 'haus' | 'laden' | 'stall'
-  | 'brunnen' | 'tor' | 'wegpunkt' | 'baum';
+  | 'brunnen' | 'tor' | 'wegpunkt' | 'baum' | 'platzhalter';
 
 export interface StadtMarker { typ: MarkerTyp; x: number; y: number; w: number; h: number; label?: string }
 
@@ -34,6 +34,9 @@ export const MARKER_INFO: Record<MarkerTyp, MarkerInfo> = {
   tor:        { name: 'Stadttor', farbe: 0x9aa0a8, punkt: true, stdW: 2, stdH: 1 },
   wegpunkt:   { name: 'Wegpunkt', farbe: 0xd8cfb8, punkt: true, stdW: 1, stdH: 1 },
   baum:       { name: 'Baum', farbe: 0x3a6a2a, punkt: true, stdW: 1, stdH: 1 },
+  // Eigener Platzhalter (Autorwunsch R53): Bereich ziehen + freien Text eintragen
+  // ("?" für etwas, das später noch reinkommt).
+  platzhalter: { name: 'Platzhalter (?)', farbe: 0xd060c0, stdW: 4, stdH: 3 },
 };
 
 export const MARKER_TYPEN = Object.keys(MARKER_INFO) as MarkerTyp[];
