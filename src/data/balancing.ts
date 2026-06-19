@@ -141,7 +141,7 @@ export const ABILITY_FX = {
   // Heilende Hand (Runde 46): Bodenziel. Hebt einen verwundeten Helfer im
   // Umkreis wieder auf (reviveFrac seiner Leben); ist keiner da, heilt es den
   // Helden (selbstHealPct). reichweite = wie weit man zielen kann.
-  heilen: { mana: 24, cd: 6, reichweite: 320, radius: 48, reviveFrac: 0.7, selbstHealPct: 0.35 },
+  heilen: { mana: 24, cd: 6, reichweite: 320, radius: 48, reviveFrac: 0.7, selbstHealPct: 0.35, heilDauerS: 2.5 },
   hinrichtung: { dmgMultVsStunned: 2.5, cd: 7 },
   kettenblitz: { mana: 16, dmgBase: 18, dmgPerLevel: 5, jumps: 3, jumpRange: 150, cd: 1.2 },
   // Frostnova: laengerer, klar spuerbarer Slow als Crowd-Control, oefter wirkbar

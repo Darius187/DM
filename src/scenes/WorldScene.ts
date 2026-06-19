@@ -79,6 +79,8 @@ interface NpcEntity extends NpcSpawn {
   atkCd?: number;     // Schlag-Abklingzeit des kämpfenden Bewohners
   flashT?: number;    // kurzes Aufblitzen bei Treffer
   verwundet?: boolean; // niedergeschlagen: liegt am Boden, bis der Held ihn heilt (Runde 46)
+  heilT?: number;       // Rest-Sekunden der göttlichen Heilung (Runde 53)
+  heilLicht?: Phaser.GameObjects.Graphics; // Lichtsäule während der Heilung
   // A*-Wegfindung (Runde 50): Pfad zum aktuellen Ziel + Cache-Verwaltung
   pfad?: Array<{ x: number; y: number }>; pfadZx?: number; pfadZy?: number; pfadT?: number;
 }
@@ -1605,6 +1607,7 @@ export class WorldScene extends CombatScene {
     for (const n of this.npcEnts) {
       n.sprite.destroy();
       n.label.destroy();
+      n.heilLicht?.destroy();
     }
     this.npcEnts = [];
     for (const an of this.animalEnts) an.sprite.destroy();
@@ -2976,21 +2979,40 @@ export class WorldScene extends CombatScene {
   // Heilende Hand am Zielort (Runde 46): hebt den nächsten verwundeten Helfer im
   // Umkreis wieder auf die Beine. Liefert true, wenn jemand geheilt wurde.
   protected override heileVerwundete(x: number, y: number, radius: number): boolean {
-    let best: NpcEntity | null = null, bd = radius;
+    // großzügiger suchen, damit ein Klick neben dem Verwundeten trotzdem trifft
+    let best: NpcEntity | null = null, bd = radius + 36;
     for (const n of this.npcEnts) {
       if (!n.verwundet) continue;
-      const d = Math.hypot(n.curX - x, n.curY - y);
+      const d = Math.hypot(n.curX - x, n.curY - y);   // (x,y) = Zielort
       if (d < bd) { bd = d; best = n; }
     }
     if (!best) return false;
-    best.verwundet = false;
-    best.hp = Math.round(KAEMPFER.hp * ABILITY_FX.heilen.reviveFrac);
-    best.atkCd = 0;
-    best.sprite.setScale(1, 1).clearTint();
-    this.fx.burst(best.curX, best.curY, 0x7ce08a, 20, 170);
-    this.sfx.playAt('heilung', best.curX, best.curY);
-    this.logMsg(`${best.name} ist wieder auf den Beinen - und kämpft weiter!`, 'gold');
+    if (best.heilT && best.heilT > 0) return true;               // schon in Heilung
+    // Göttliches Licht (Runde 53, Autorwunsch): senkt sich auf den Verwundeten,
+    // er richtet sich über ein paar Sekunden wieder auf. Die eigentliche Heilung
+    // läuft über heilT im Bewohner-Update (Lichtsäule + Aufrichten).
+    best.heilT = ABILITY_FX.heilen.heilDauerS;
+    best.heilLicht = this.add.graphics();
+    this.sfx.playAt('heiliges_licht', best.curX, best.curY);
+    this.logMsg(`Göttliches Licht senkt sich auf ${best.name} - gleich ist er wieder auf den Beinen.`, 'magic');
     return true;
+  }
+
+  // Göttliche Lichtsäule, die von oben auf den Verwundeten herabfällt (Runde 53):
+  // weicher Lichtkegel + Boden-Halo + herabrieselnde Funken. Folgt der Figur.
+  private zeichneHeilLicht(n: NpcEntity): void {
+    const g = n.heilLicht; if (!g) return;
+    const x = n.curX, y = n.curY, top = y - 120;
+    g.clear();
+    g.setDepth(y + 60);
+    g.fillStyle(0xf6e6a8, 0.12); g.fillPoints([{ x: x - 3, y: top }, { x: x + 3, y: top }, { x: x + 17, y: y + 4 }, { x: x - 17, y: y + 4 }], true);
+    g.fillStyle(0xfff2c0, 0.16); g.fillPoints([{ x: x - 2, y: top }, { x: x + 2, y: top }, { x: x + 9, y: y + 2 }, { x: x - 9, y: y + 2 }], true);
+    g.fillStyle(0xf0e0a0, 0.22); g.fillEllipse(x, y + 2, 32, 11);                 // Boden-Halo
+    g.fillStyle(0xfff4cc, 0.9);                                                    // herabrieselnde Funken
+    for (let i = 0; i < 5; i++) {
+      const ph = ((this.time.now / 620) + i * 0.21) % 1;
+      g.fillRect(x + Math.sin(i * 2.1 + this.time.now / 380) * 10, top + 8 + ph * 108, 1.6, 4);
+    }
   }
 
   // Chaos-Schicht des großen Einfalls (Runde 40): Räuber-Monster jagen das
@@ -5807,12 +5829,34 @@ export class WorldScene extends CombatScene {
       }
       n.sprite.setVisible(sichtbar);
       n.label.setVisible(sichtbar);
+      n.heilLicht?.setVisible(sichtbar);   // Lichtsäule nicht stehen lassen, wenn unsichtbar
       if (!sichtbar) continue;
       // Verwundet niedergeschlagen (Runde 46): liegt geduckt am Boden, kämpft
       // und flieht nicht - wartet darauf, dass der Held ihn heilt. Pulsierender
       // roter Schein signalisiert "hier kannst du helfen".
       if (n.verwundet) {
         this.provider.applyFigure(n.sprite, n.figur ?? n.id, 2, 0);
+        if (n.heilT && n.heilT > 0) {
+          // Göttliche Heilung läuft: Lichtsäule, langsames Aufrichten, goldener Schein
+          n.heilT -= dt;
+          const t = Phaser.Math.Clamp(1 - n.heilT / ABILITY_FX.heilen.heilDauerS, 0, 1);
+          n.sprite.setPosition(n.curX, n.curY + 6 - 6 * t).setDepth(n.curY).setScale(1, 0.55 + 0.45 * t);
+          const g = 0.6 + Math.sin(this.time.now / 110) * 0.3;
+          n.sprite.setTint(Phaser.Display.Color.GetColor(255, 232, Math.min(255, Math.round(150 + g * 90))));
+          n.label.setPosition(n.curX, n.curY - 14).setText(`${n.name} - wird geheilt …`).setColor('#f0e0a0');
+          this.zeichneHeilLicht(n);
+          if (n.heilT <= 0) {                                   // fertig: wieder auf den Beinen
+            n.verwundet = false; n.heilT = 0;
+            n.hp = Math.round(KAEMPFER.hp * ABILITY_FX.heilen.reviveFrac);
+            n.atkCd = 0;
+            n.sprite.setScale(1, 1).clearTint();
+            n.heilLicht?.destroy(); n.heilLicht = undefined;
+            this.fx.burst(n.curX, n.curY, 0xf0e8c0, 22, 200);
+            this.sfx.playAt('heilung', n.curX, n.curY);
+            this.logMsg(`${n.name} ist wieder auf den Beinen - und kämpft weiter!`, 'gold');
+          }
+          continue;
+        }
         n.sprite.setPosition(n.curX, n.curY + 6).setDepth(n.curY).setScale(1, 0.55);
         const puls = 0.4 + Math.sin(this.time.now / 220) * 0.25;
         n.sprite.setTint(Phaser.Display.Color.GetColor(180 + Math.round(puls * 60), 50, 50));
