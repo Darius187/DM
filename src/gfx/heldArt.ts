@@ -247,6 +247,103 @@ function kopf(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, dir: Dir): voi
   }
 }
 
+// --- Seitenansicht (Profil, Runde 54, Autorwunsch "Seitenansichten der Geh-
+// Animation") -------------------------------------------------------------
+// Bisher zeigte der Held beim Seitwärtsgehen die Frontfigur. Hier ein echtes
+// Profil: schmaler Rumpf, ein nahes + ein fernes (dunkleres) Bein/Arm, die
+// gegenläufig schwingen, Umhang weht nach HINTEN. face = Laufrichtung
+// (+1 rechts, -1 links).
+
+// Profil-Bein: Stiefelspitze zeigt in Laufrichtung. back dunkelt das ferne Bein.
+function seiteBein(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, xOff: number, face: number, back: boolean): void {
+  const top = f.schulterY + f.rumpfH - 2, len = f.beinL;
+  const bw = f.beinB + 0.6, x = CX + xOff, hw = bw / 2;
+  rr(ctx, x - hw, top, bw, len, 2.4, back ? shade(p.bein, -16) : p.bein);
+  if (!back) { ctx.fillStyle = p.beinS; ctx.fillRect(x - hw + bw * 0.55, top, hw * 0.7, len); } // Schattenkante hinten
+  // Stiefel: Ferse hinten, Spitze nach vorn (in face-Richtung)
+  const fy = top + len - 1, st = back ? shade(p.stiefel, -12) : p.stiefel;
+  poly(ctx, [[x - face * hw, fy], [x + face * hw, fy], [x + face * (hw + 3.2), fy + 4.6], [x - face * hw, fy + 4.6]], st);
+  ctx.fillStyle = '#000'; ctx.globalAlpha = 0.22; ctx.fillRect(x - hw - 0.4, fy + 3.8, bw + 3.4, 1); ctx.globalAlpha = 1;
+}
+
+// Profil-Arm: ein einzelner schwingender Arm mit Handschuh.
+function seiteArm(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, xOff: number, back: boolean): void {
+  const top = f.schulterY + 2, hw = f.armB / 2, x = CX + xOff;
+  rr(ctx, x - hw, top, f.armB, f.armL, 2.2, back ? shade(p.wams, -18) : p.wams);
+  const hand = f.farben.hand ?? shade(p.wams, -14);
+  ell(ctx, x, top + f.armL, hw + 0.3, hw + 0.3, back ? shade(hand, -12) : hand);
+}
+
+// Profil-Rumpf: schmaler als die Front, leicht nach vorn geneigt, mit Gürtel.
+function seiteRumpf(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, face: number, gitter: boolean): void {
+  const sy = f.schulterY, wy = sy + f.rumpfH;
+  const w = Math.max(f.tailleB + 1.5, f.schulterB * 0.6);     // deutlich schmaler im Profil
+  const lean = face * 1.4;                                     // Brust voran
+  const pts = [[CX - w + lean, sy], [CX + w + lean, sy], [CX + w * 0.88, wy], [CX - w * 0.88, wy]];
+  poly(ctx, pts, p.wams);
+  // vordere Kante heller (Brust), hintere dunkler (Rücken)
+  poly(ctx, [[CX + lean, sy], [CX + w + lean, sy], [CX + w * 0.88, wy], [CX, wy]], face > 0 ? p.wamsH : p.wamsS);
+  poly(ctx, [[CX - w + lean, sy], [CX + lean, sy], [CX, wy], [CX - w * 0.88, wy]], face > 0 ? p.wamsS : p.wamsH);
+  if (gitter) {
+    ctx.save();
+    ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < 4; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); ctx.clip();
+    for (let row = 0, yy = sy - 1; yy < wy; yy += 2, row++) {
+      const off = (row % 2) ? 1 : 0;
+      for (let xx = CX - w; xx < CX + w; xx += 2) {
+        ctx.fillStyle = 'rgba(222,230,240,0.55)'; ctx.fillRect(xx + off, yy, 1, 1);
+        ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(xx + off + 0.4, yy + 1, 1, 0.9);
+      }
+    }
+    ctx.restore();
+  }
+  // Gürtel
+  rr(ctx, CX - w * 0.88, wy - 1.5, w * 1.76, 3, 1, f.farben.guertel ?? '#3a2a18');
+  ctx.fillStyle = f.farben.schnalle ?? '#c9a23a'; ctx.fillRect(CX + lean * 0.5 - 1.2, wy - 1.2, 2.4, 2.4);
+}
+
+// Profil-Umhang: weht hinter dem Helden her (entgegen der Laufrichtung).
+function seiteUmhang(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, face: number, flutter: number): void {
+  const oy = f.schulterY - 1;
+  const len = (f.schulterY + f.rumpfH + f.beinL - 0.5 - oy) * f.capeLaenge;
+  const uy = oy + len, back = -face;                          // Saum zeigt nach hinten
+  const spread = (f.schulterB + 4) * f.capeBreite;
+  const tipX = CX + back * (spread + flutter);
+  poly(ctx, [[CX, oy], [CX + back * 2.5, oy], [tipX, uy - 12], [tipX + back * 2, uy], [CX + back * 2.5, uy]], p.umh);
+  poly(ctx, [[CX + back * 2.5, oy], [tipX, uy - 12], [tipX + back * 2, uy], [CX + back * 2.5, uy]], p.umhS);
+}
+
+// Profil-Schulterplatte (nur die nahe, sichtbare Seite).
+function seitePauldron(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, face: number): void {
+  if (f.schultern <= 0) return;
+  const gross = f.schultern >= 2, r = gross ? 5.6 : 3.9;
+  const x = CX + face * (Math.max(f.tailleB + 1.5, f.schulterB * 0.6) - 0.4);
+  ctx.fillStyle = f.farben.schulter ?? (p.metall ? shade('#9aa1aa', f.ruestHell) : shade(p.wams, 10));
+  ctx.beginPath(); ctx.ellipse(x, f.schulterY + 1.5, r, r * 0.9, 0, Math.PI, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x - r + 1, f.schulterY - r * 0.6, r * 0.7, 1);
+}
+
+// Den Helden im Profil zeichnen (innerhalb von drawHeld nach translate/bob).
+function zeichneSeite(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, dir: Dir, step: number, tier: HeldTier): void {
+  const face = dir === 2 ? 1 : -1;                            // 2 = rechts, 1 = links
+  const legSwing = step === 1 ? 1 : step === 3 ? -1 : 0;
+  const stride = 3;                                           // Schrittweite im Profil
+  const nearLeg = face * legSwing * stride;
+  const farLeg = -face * legSwing * stride;
+  const nearArm = -face * legSwing * 2.6;                     // Arm gegenläufig zum Bein
+  const farArm = face * legSwing * 2.6;
+  const flutter = legSwing * 2;
+  const gitter = tier === 'kette' && f.kettenGitter > 0;
+
+  seiteUmhang(ctx, p, f, face, flutter);                      // ganz hinten
+  seiteArm(ctx, p, f, farArm, true);                          // ferner Arm
+  seiteBein(ctx, p, f, farLeg, face, true);                   // fernes Bein
+  seiteRumpf(ctx, p, f, face, gitter);
+  seiteBein(ctx, p, f, nearLeg, face, false);                 // nahes Bein
+  seitePauldron(ctx, p, f, face);
+  seiteArm(ctx, p, f, nearArm, false);                        // naher Arm vorn
+  kopf(ctx, p, f, dir);
+}
+
 // Eine Figur in die aktuelle 64x64-Zelle zeichnen (Ursprung links oben).
 export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir, frame: number): void {
   const f = getHeldForm(tier);
@@ -274,6 +371,14 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir
   if (f.leuchten > 0) {
     ctx.shadowColor = 'rgba(246,210,96,0.95)';
     ctx.shadowBlur = 4;
+  }
+
+  // Seitenansicht (links/rechts): echtes Profil mit Geh-Zyklus, statt der
+  // Frontfigur (Autorwunsch R54). Front (0) und Rücken (3) bleiben wie gehabt.
+  if (dir === 1 || dir === 2) {
+    zeichneSeite(ctx, p, f, dir, step, tier);
+    ctx.restore();
+    return;
   }
 
   umhang(ctx, p, f, sway);
