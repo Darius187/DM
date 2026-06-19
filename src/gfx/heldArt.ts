@@ -460,7 +460,7 @@ function zeichneSchlag(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, s: Sc
 // kopfDir steuert den Kopf (1 links, 2 rechts, 3 Rücken bei Rück-Diagonalen).
 // schlag != null: Schlagpose. schlagVorne = Arm/Waffe VOR dem Körper (sonst
 // dahinter -> Tiefenwirkung, die Klinge verschwindet teils hinter dem Rumpf).
-function zeichneSeite(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, face: number, step: number, tier: HeldTier, kopfDir: Dir, schlag: Schlag | null, schlagVorne: boolean, restAng: number, waffe: WaffenKlasse | null): void {
+function zeichneSeite(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, face: number, step: number, tier: HeldTier, kopfDir: Dir, schlag: Schlag | null, schlagVorne: boolean, restAng: number, waffe: WaffenKlasse | null, atemHub = 0): void {
   const legSwing = step === 1 ? 1 : step === 3 ? -1 : 0;
   const stride = 3;
   const nearLeg = face * legSwing * stride;
@@ -469,21 +469,26 @@ function zeichneSeite(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, face: 
   const farArm = face * legSwing * 2.6;
   const flutter = legSwing * 2;
   const gitter = tier === 'kette' && f.kettenGitter > 0;
+  const hebe = (fn: () => void): void => { ctx.save(); ctx.translate(0, -atemHub); fn(); ctx.restore(); };
 
-  seiteUmhang(ctx, p, f, face, flutter);                      // ganz hinten
-  seiteArm(ctx, p, f, farArm, true);                          // ferner (Off-Hand-)Arm
-  seiteBein(ctx, p, f, farLeg, face, true);                   // fernes Bein
-  if (schlag && !schlagVorne) zeichneSchlag(ctx, p, f, schlag, waffe);   // Waffenarm HINTER dem Rumpf
-  seiteRumpf(ctx, p, f, face, gitter);
-  seiteBein(ctx, p, f, nearLeg, face, false);                 // nahes Bein
-  seitePauldron(ctx, p, f, face);
-  kopf(ctx, p, f, kopfDir);
-  if (schlag) {
-    if (schlagVorne) zeichneSchlag(ctx, p, f, schlag, waffe); // Waffenarm VOR dem Rumpf
-  } else {
-    seiteArm(ctx, p, f, nearArm, false);                      // naher Arm vorn
-    zeichneWaffeRuhend(ctx, f, CX + face * (f.tailleB + 1), restAng, waffe);
-  }
+  // Oberkörper (Cape/Arme/Rumpf/Kopf/Waffe) atmet mit; die Beine bleiben stehen.
+  hebe(() => { seiteUmhang(ctx, p, f, face, flutter); seiteArm(ctx, p, f, farArm, true); });   // hinten
+  seiteBein(ctx, p, f, farLeg, face, true);                   // fernes Bein (kein Atemhub)
+  hebe(() => {
+    if (schlag && !schlagVorne) zeichneSchlag(ctx, p, f, schlag, waffe);   // Waffenarm HINTER dem Rumpf
+    seiteRumpf(ctx, p, f, face, gitter);
+  });
+  seiteBein(ctx, p, f, nearLeg, face, false);                 // nahes Bein (kein Atemhub)
+  hebe(() => {
+    seitePauldron(ctx, p, f, face);
+    kopf(ctx, p, f, kopfDir);
+    if (schlag) {
+      if (schlagVorne) zeichneSchlag(ctx, p, f, schlag, waffe); // Waffenarm VOR dem Rumpf
+    } else {
+      seiteArm(ctx, p, f, nearArm, false);                      // naher Arm vorn
+      zeichneWaffeRuhend(ctx, f, CX + face * (f.tailleB + 1), restAng, waffe);
+    }
+  });
 }
 
 // 8 Blickrichtungen (Autorwunsch R54 "Zwischenanimationen"):
@@ -532,8 +537,15 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: num
   if (f.ruestHell) p = tintPal(p, f.ruestHell);
   const attack = frame >= SCHLAG_FRAME;
   const phase = attack ? Math.min(SCHLAG_PHASEN - 1, frame - SCHLAG_FRAME) : 0;
-  const step = attack ? 0 : frame % 4;   // 0 stehen, 1 links vor, 2 stehen, 3 rechts vor
-  const bobUp = step === 1 || step === 3 ? -1.4 : 0;
+  const step = attack ? 0 : frame % 4;   // 0 stehen(aus), 1 li vor, 2 stehen(ein-atmen), 3 re vor
+  // Gehen als umgekehrtes Pendel (R54, Biomechanik): tiefster Punkt in der
+  // Doppelstütze (Kontakt, Bein vor = Frame 1/3), höchster Punkt im Durchschwung
+  // (Frame 0/2). Dazu seitliches Schwanken zur Standbeinseite, einmal pro Schritt.
+  const bobUp = (step === 1 || step === 3) ? 0.9 : 0;
+  const swayX = step === 1 ? -1 : step === 3 ? 1 : 0;
+  // Atmung im Stehen (Frame 2 = Einatmen): Brustkorb + Schultern heben sich, der
+  // Oberkörper geht hoch - die Beine/Füße bleiben stehen. Nur ausserhalb des Schlags.
+  const atemHub = (!attack && step === 2) ? 1.4 : 0;
   const sway = step === 1 ? 2 : step === 3 ? -2 : 0;
   // Schlag-Choreografie der Richtung (rechtshändig, je Richtung eigen).
   const ds = SCHLAG[dir];
@@ -546,7 +558,7 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: num
   ell(ctx, CX, 58, 14, 3.4, 'rgba(0,0,0,0.32)');
 
   ctx.save();
-  ctx.translate(0, bobUp);
+  ctx.translate(swayX, bobUp);
 
   // Leuchtende KONTUR statt Halo (Autorwunsch R40): ein Schatten-Glühen um jede
   // Form lässt die Rüstung umrissen leuchten. Wird nach der Figur zurückgesetzt.
@@ -563,19 +575,22 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: num
     // Kopf: reine Seite (W/O) -> Profil; Vorder-Diagonale (SW/SE) -> 3/4-Front-
     // gesicht (man läuft zum Betrachter); Rück-Diagonale (NW/NE) -> Haube.
     const kopfDir: Dir = (dir === 3 || dir === 5) ? 3 : (dir === 1 || dir === 7) ? 0 : (face < 0 ? 1 : 2);
-    zeichneSeite(ctx, p, f, face, step, tier, kopfDir, schlag, schlagVorne, ds.rest, waffe);
+    zeichneSeite(ctx, p, f, face, step, tier, kopfDir, schlag, schlagVorne, ds.rest, waffe, atemHub);
     ctx.restore();
     return;
   }
 
-  umhang(ctx, p, f, sway);
+  // Cape hängt von den Schultern - hebt sich beim Einatmen mit (Oberkörper)
+  ctx.save(); ctx.translate(0, -atemHub); umhang(ctx, p, f, sway); ctx.restore();
 
-  // Beine mit Gehschritt - Spreizung an der Taille
+  // Beine mit Gehschritt - Spreizung an der Taille (Beine atmen NICHT mit)
   const lVor = step === 1 ? 1.5 : step === 3 ? -1.5 : 0;
   const spreiz = Math.max(2.4, f.tailleB * 0.65);
   bein(ctx, p, f, CX - spreiz, lVor);
   bein(ctx, p, f, CX + spreiz, -lVor);
 
+  // Oberkörper (Arme/Rumpf/Schultern/Kopf/Waffe) hebt sich beim Einatmen
+  ctx.save(); ctx.translate(0, -atemHub);
   // hinterer Arm (Off-Hand), dann ggf. Waffenarm HINTER dem Rumpf, dann Rumpf
   arm(ctx, p, f, CX - f.schulterB, -lVor);
   if (schlag && !schlagVorne) zeichneSchlag(ctx, p, f, schlag, waffe);   // Klinge taucht hinter den Körper
@@ -590,6 +605,7 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: num
   } else {
     zeichneWaffeRuhend(ctx, f, CX + f.schulterB, ds.rest, waffe);   // Waffe ruht an der Hand
   }
+  ctx.restore();   // Ende Oberkörper-Atemhub
 
   ctx.restore();
 }

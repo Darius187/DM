@@ -3105,7 +3105,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (this.heldSchlagT > 0) {
         const prog = 1 - this.heldSchlagT / Math.max(0.001, this.heldSchlagDauer);
         step = SCHLAG_FRAME + Math.min(SCHLAG_PHASEN - 1, Math.floor(prog * SCHLAG_PHASEN));
-      } else step = moving ? this.pstep : 0;
+      } else if (moving) {
+        step = this.pstep;
+      } else {
+        // Stehen: Atem-Zyklus (R54) - Frame 2 = Einatmen (Brust hebt), Frame 0 =
+        // Ausatmen. Einatmen kürzer, Ausatmen länger (~1:1.7), ~4,5s je Atemzug.
+        step = (this.time.now % 4500) < 1700 ? 2 : 0;
+      }
       this.zeichneHeld(angleToDir8(this.pdir), step);
       if (this.playerHitFlash > 0) this.playerSprite.setTintFill(0xffffff);
       else this.playerSprite.clearTint();
