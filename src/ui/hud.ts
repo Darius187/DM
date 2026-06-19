@@ -151,6 +151,10 @@ export class Hud {
       ['waffe1', '↻', 'Waffen-Fähigkeit I (je nach Waffe)', '#d8cfb8'], ['waffe2', '⇒', 'Waffen-Fähigkeit II (je nach Waffe)', '#d8cfb8'],
       // Gegenstand
       ['pot', '🧪', 'Heiltrank', '#e05a4a'], ['mpot', '⚗', 'Manatrank', '#5a7ae0'],
+      // Schriftrolle/Foliant aus dem Inventar belegbar (Autorbug R53: 'rolle'
+      // fehlte hier, darum ließen sich Rollen nicht auf die Leiste ziehen). Der
+      // Slot wirkt die OBERSTE Rolle/den Foliant im Inventar.
+      ['rolle', '📜', 'Schriftrolle/Foliant (oberste im Inventar)', '#c9a227'],
       ['stadtportal', '⌂', 'Stadtportal (nach Boss-Sieg)', '#8aa6e8'],
     ];
     // Waffen-Slots zeigen die Fähigkeit der AKTUELLEN Waffe
