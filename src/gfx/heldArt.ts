@@ -349,15 +349,15 @@ function zeichneWaffe(ctx: CanvasRenderingContext2D, hx: number, hy: number, ang
   };
   const stahl = '#cfd6e0', stahlK = '#eef3f8', holz = '#5a4327', eisen = '#4a4e55';
   if (waffe === 'schwert') {
-    seg(P(-2), P(1), 3.4, holz);                       // Griff
-    seg(P(1, -3.4), P(1, 3.4), 1.6, stahlK);           // Parierstange
-    seg(P(1), P(12), 2.6, stahl); seg(P(1), P(12), 1, stahlK);   // Klinge + Licht
+    seg(P(-2.5), P(1), 3.6, holz);                     // Griff
+    seg(P(1, -3.8), P(1, 3.8), 1.7, stahlK);           // Parierstange
+    seg(P(1), P(19), 2.7, stahl); seg(P(1), P(19), 1.1, stahlK);   // lange Klinge + Licht
   } else if (waffe === 'stab') {
-    seg(P(-3), P(12), 2.4, holz);
-    ctx.fillStyle = '#8a6ad0'; const k = P(13); ctx.beginPath(); ctx.arc(k[0], k[1], 2.4, 0, 7); ctx.fill();
+    seg(P(-3), P(15), 2.4, holz);
+    ctx.fillStyle = '#8a6ad0'; const k = P(16); ctx.beginPath(); ctx.arc(k[0], k[1], 2.4, 0, 7); ctx.fill();
   } else if (waffe === 'stange') {
-    seg(P(-4), P(13), 2.2, holz);                      // Schaft (gekürzt, passt in die Zelle)
-    seg(P(12), P(16), 2.2, stahl); seg(P(12), P(16), 0.9, stahlK);  // Spitze
+    seg(P(-4), P(15), 2.2, holz);                      // Schaft
+    seg(P(14), P(18), 2.2, stahl); seg(P(14), P(18), 0.9, stahlK);  // Spitze
   } else {
     // axt / kolben / wucht: Stiel + schwerer Kopf nahe der Spitze
     seg(P(-2), P(12), 3, holz);
@@ -435,6 +435,18 @@ function schlagArm(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, s: Schlag
   return { hx: k.hx, hy: k.hy, klinge };
 }
 
+// Schlagarm + Waffe zeichnen; bei flip wird ALLES horizontal gespiegelt (R54,
+// Autorwunsch "linke Animation = Spiegel der rechten"). Der Schlag wird immer in
+// der KANONISCHEN (rechten) Form gezeichnet und für linke Richtungen gespiegelt -
+// so hält der Held die Waffe links exakt wie rechts, nur seitenverkehrt.
+function zeichneSchlag(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, s: Schlag, waffe: WaffenKlasse | null, flip: boolean): void {
+  ctx.save();
+  if (flip) { ctx.translate(2 * CX, 0); ctx.scale(-1, 1); }
+  const h = schlagArm(ctx, p, f, s);
+  zeichneWaffe(ctx, h.hx, h.hy, h.klinge, waffe);
+  ctx.restore();
+}
+
 // Den Helden in Seiten-/Diagonalansicht zeichnen. face = -1 links / +1 rechts.
 // kopfDir steuert den Kopf (1 links, 2 rechts, 3 Rücken bei Rück-Diagonalen).
 // schlag != null: Schlagpose (Winkel + Phasenversatz) statt Geh-Arm.
@@ -456,8 +468,7 @@ function zeichneSeite(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, face: 
   seitePauldron(ctx, p, f, face);
   kopf(ctx, p, f, kopfDir);
   if (schlag !== null) {
-    const h = schlagArm(ctx, p, f, schlag);                   // Schlagarm zuletzt, vorn
-    zeichneWaffe(ctx, h.hx, h.hy, h.klinge, waffe);
+    zeichneSchlag(ctx, p, f, schlag, waffe, face < 0);        // links = Spiegel der rechten Pose
   } else {
     seiteArm(ctx, p, f, nearArm, false);                      // naher Arm vorn
     zeichneWaffeRuhend(ctx, f, CX + face * (f.tailleB + 1), waffe);
@@ -477,7 +488,7 @@ export const SCHLAG_PHASEN = 3;
 // (Arm gebeugt), Treffer = gestreckt, Ausschwung = wieder etwas gebeugt - das
 // gibt dem Schlag die natürliche Streckung durch den Treffer.
 const SCHLAG_SWEEP = [-1.05, 0.0, 0.95];
-const SCHLAG_REICH = [7.5, 11.4, 9.5];
+const SCHLAG_REICH = [7, 10, 8.5];   // Hand näher am Körper -> Platz für die lange Klinge
 // Schwung-RICHTUNG je Blickrichtung (Autorwunsch R54): links/oben schwingt von
 // UNTEN nach OBEN, rechts/unten von OBEN nach UNTEN. sense kehrt den Bogen um.
 // dir: 0=S 1=SW 2=W 3=NW 4=N 5=NE 6=O 7=SE -> {W,NW,N,NE}=unten->oben.
@@ -504,11 +515,14 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: num
   const step = attack ? 0 : frame % 4;   // 0 stehen, 1 links vor, 2 stehen, 3 rechts vor
   const bobUp = step === 1 || step === 3 ? -1.4 : 0;
   const sway = step === 1 ? 2 : step === 3 ? -2 : 0;
-  const sense = SCHLAG_SENSE[dir];
-  // face: Ellenbogen-Seite (links/rechts gespiegelt). Gleiche Logik wie die Figur.
-  const face = (dir === 1 || dir === 2 || dir === 3) ? -1 : 1;
+  // Linke Richtungen werden als SPIEGEL der rechten gezeichnet (Autorwunsch):
+  // der Schlag wird in der rechten Partner-Richtung (drawDir) berechnet und beim
+  // Zeichnen horizontal gespiegelt. face spiegelt zusätzlich den Körper.
+  const istLinks = dir === 1 || dir === 2 || dir === 3;
+  const drawDir = istLinks ? (dir === 1 ? 7 : dir === 2 ? 6 : 5) : dir;
+  const sense = SCHLAG_SENSE[drawDir];
   const schlag: Schlag | null = attack
-    ? { ang: STRIKE_ANG[dir], sweep: SCHLAG_SWEEP[phase] * sense, r: SCHLAG_REICH[phase], sense, face }
+    ? { ang: STRIKE_ANG[drawDir], sweep: SCHLAG_SWEEP[phase] * sense, r: SCHLAG_REICH[phase], sense, face: 1 }
     : null;
 
   // Bodenschatten
@@ -554,8 +568,7 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: num
   kopf(ctx, p, f, dir === 4 ? 3 : 0);   // N -> Rücken-Haube, S -> Front
 
   if (schlag !== null) {
-    const h = schlagArm(ctx, p, f, schlag);   // Schlagarm + Waffe vorn
-    zeichneWaffe(ctx, h.hx, h.hy, h.klinge, waffe);
+    zeichneSchlag(ctx, p, f, schlag, waffe, false);   // Front/Rücken: kein Spiegeln
   } else {
     zeichneWaffeRuhend(ctx, f, CX + f.schulterB, waffe);   // Waffe ruht an der Hand
   }
