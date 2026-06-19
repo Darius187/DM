@@ -11,7 +11,7 @@ import { getHeldForm } from '../data/heldForm';
 import { heldTier } from '../data/helden';
 import { EffectSystem } from './effects';
 import { Enemy, angleToDir8, type EnemyHost } from './Enemy';
-import { SCHLAG_FRAME } from '../gfx/heldArt';
+import { SCHLAG_FRAME, SCHLAG_PHASEN } from '../gfx/heldArt';
 import {
   newCombatState, inputLight, inputHeavy, inputRoll, inputBlockStart, inputBlockEnd,
   stepCombat, resolveIncoming, damageAfterArmor, blockedDamage, type CombatState, type AttackEvent,
@@ -63,7 +63,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   py = 0;
   pdir = 0; // Blickwinkel (rad)
   pstep = 0;
-  protected heldSchlagT = 0;   // Restzeit der Schlagpose des Helden (R54)
+  protected heldSchlagT = 0;       // Restzeit der Schlag-Animation des Helden (R54)
+  protected heldSchlagDauer = 0.2; // Gesamtdauer dieser Schlag-Animation (für die Phase)
   private pstepT = 0;
   private leechCarry = 0;   // gesammelte Lebensraub-Bruchteile (Runde 42)
   playerSprite!: Phaser.GameObjects.Sprite;
@@ -1179,10 +1180,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   }
 
   private playSwingSound(cls: WeaponClass, fin: boolean): void {
-    // Jeder Nahkampf-Schwung zeigt die Schlagpose des Helden (R54, zentral hier,
-    // damit ALLE Schwünge - Normalhieb, Stoß, Rundumschlag, Wuchtschlag,
-    // Blutdurst - die Geste ausführen). Finisher/schwer etwas länger.
-    this.heldSchlagT = fin ? 0.3 : 0.2;
+    // Jeder Nahkampf-Schwung zeigt die Schlag-ANIMATION des Helden (R54, zentral
+    // hier, damit ALLE Schwünge - Normalhieb, Stoß, Rundumschlag, Wuchtschlag,
+    // Blutdurst - sie ausführen). Finisher/schwer etwas länger. Die drei
+    // Schlagphasen werden in renderEntities über die Restzeit durchlaufen.
+    this.heldSchlagDauer = fin ? 0.3 : 0.2;
+    this.heldSchlagT = this.heldSchlagDauer;
     // Schwung ohne Treffer: die swoosh-Dateien des Autors abwechselnd,
     // sonst die bisherigen Synth-Klänge
     if (cls === 'schwert' && this.sfx.playAbwechselnd('swoosh', 8)) return;
@@ -3054,7 +3057,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Gehschritt, Stil wie die anderen Figuren) - bzw. echte Hot-Swap-Sprites,
   // falls der Autor ein KI-Paket einschleust. Kein statischer Ritter mehr.
   protected zeichneHeld(dir: number, step: number): void {
-    this.provider.applyFigure(this.playerSprite, this.heldFigur(), dir, step);
+    // Ausgerüstete Waffe wandert in die Hand und wird mitgeschwungen (R54).
+    this.provider.applyFigure(this.playerSprite, this.heldFigur(), dir, step, this.weaponClass());
     // 64px-Held kleiner darstellen; echte Hot-Swap-Sprites des Autors größer.
     // (Hier gesetzt, damit auch nach der Todes-Animation die Skala stimmt.)
     const tier = heldTier(this.p.armorIt ? this.p.armorIt.val : null);
@@ -3094,8 +3098,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.playerSprite.setPosition(this.px, this.py).setDepth(this.py);
       const moving = this.keysDown['w'] || this.keysDown['a'] || this.keysDown['s'] || this.keysDown['d']
         || this.keysDown['arrowup'] || this.keysDown['arrowdown'] || this.keysDown['arrowleft'] || this.keysDown['arrowright'];
-      // Schlagpose während des Schwungs (R54), sonst Geh-/Stand-Schritt - 8 Richtungen
-      const step = this.heldSchlagT > 0 ? SCHLAG_FRAME : (moving ? this.pstep : 0);
+      // Schlag-Animation während des Schwungs (R54): die drei Phasen
+      // (Ausholen/Treffer/Ausschwung) über die verstrichene Zeit durchlaufen -
+      // schnell wie der Swoosh. Sonst Geh-/Stand-Schritt. 8 Richtungen.
+      let step: number;
+      if (this.heldSchlagT > 0) {
+        const prog = 1 - this.heldSchlagT / Math.max(0.001, this.heldSchlagDauer);
+        step = SCHLAG_FRAME + Math.min(SCHLAG_PHASEN - 1, Math.floor(prog * SCHLAG_PHASEN));
+      } else step = moving ? this.pstep : 0;
       this.zeichneHeld(angleToDir8(this.pdir), step);
       if (this.playerHitFlash > 0) this.playerSprite.setTintFill(0xffffff);
       else this.playerSprite.clearTint();

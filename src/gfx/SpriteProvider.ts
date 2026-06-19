@@ -5,7 +5,7 @@
 import Phaser from 'phaser';
 import gfxConfig from '../data/gfx.json';
 import { drawHumanoid, drawQuadruped, drawChicken, FIGURES, SPRITE, TILE, type Dir, type FigureSpec, type QuadSpec } from './fallbackArt';
-import { drawHeld, HELD_CELL, HELD_DIRS, HELD_FRAMES, drawHeldPortrait } from './heldArt';
+import { drawHeld, HELD_CELL, HELD_DIRS, HELD_FRAMES, SCHLAG_FRAME, drawHeldPortrait, type WaffenKlasse } from './heldArt';
 import { drawItemIcon, iconKey, ICON_SIZE } from './itemIcons';
 import { drawTileArt, drawObjectArt, drawBreakable } from './tileArt';
 import { DETAIL_NPCS } from './npcArt';
@@ -26,7 +26,7 @@ export class SpriteProvider {
 
   // Liefert Texturschlüssel+Frame für Figur `name`, Blickrichtung, Gehschritt.
   // Hot-Swap: Atlas `as_<name>` oder Einzelbilder `hs_<name>_<richtung>_<frame>`.
-  figureFrame(name: string, dir: number, step: number): { key: string; frame?: string } {
+  figureFrame(name: string, dir: number, step: number, waffe: WaffenKlasse | null = null): { key: string; frame?: string } {
     const dirName = DIR_NAMES[dir];
     const frameNo = (step % gfxConfig.walkFrames) + 1;
     const versuch = (lookup: string): { key: string; frame?: string } | null => {
@@ -51,10 +51,11 @@ export class SpriteProvider {
     // Held in hoher Auflösung (Runde 37): eigene, detaillierte 64px-Figur
     const held = /^spieler_(stoff|leder|kette|platte)$/.exec(name);
     if (held) {
-      this.ensureHeldFigure(held[1] as HeldTier);
-      const fr = step >= HELD_FRAMES - 1 ? HELD_FRAMES - 1 : step % 4;   // 4 = Schlag, sonst Geh-Schritt
+      const tier = held[1] as HeldTier;
+      const key = this.ensureHeldFigure(tier, waffe);
+      const fr = step >= SCHLAG_FRAME ? Math.min(step, HELD_FRAMES - 1) : step % 4;   // 4..6 = Schlag-Phasen
       const d = ((dir % HELD_DIRS) + HELD_DIRS) % HELD_DIRS;
-      return { key: `held_${held[1]}`, frame: `d${d}f${fr}` };
+      return { key, frame: `d${d}f${fr}` };
     }
     this.ensureFallbackFigure(name);
     return { key: `fig_${name}`, frame: `d${dir}f${step % 4}` };
@@ -65,10 +66,13 @@ export class SpriteProvider {
   // auf eine null-glTexture zeigen -> Absturz beim Speichern). Stattdessen den
   // Canvas der bestehenden Textur überzeichnen und auffrischen - die Referenz
   // bleibt gültig, die Figur aktualisiert sich sofort.
+  // Welche Held-Atlanten existieren (Tier + Waffe), damit invalidateHeld nach
+  // einer Editor-Änderung ALLE neu zeichnet (R54: pro Waffe ein eigener Atlas).
+  private heldAtlanten = new Map<string, { tier: HeldTier; waffe: WaffenKlasse | null }>();
+
   invalidateHeld(): void {
     const C = HELD_CELL;
-    for (const tier of ['stoff', 'leder', 'kette', 'platte'] as HeldTier[]) {
-      const key = `held_${tier}`;
+    for (const [key, { tier, waffe }] of this.heldAtlanten) {
       if (!this.tex.exists(key)) continue;
       const tex = this.tex.get(key) as Phaser.Textures.CanvasTexture;
       const canvas = tex.getSourceImage() as HTMLCanvasElement;
@@ -78,7 +82,7 @@ export class SpriteProvider {
         for (let frame = 0; frame < HELD_FRAMES; frame++) {
           ctx.save();
           ctx.translate(frame * C, dir * C);
-          drawHeld(ctx, tier, dir, frame);
+          drawHeld(ctx, tier, dir, frame, waffe);
           ctx.restore();
         }
       }
@@ -86,11 +90,12 @@ export class SpriteProvider {
     }
   }
 
-  // Detaillierte Helden-Figur (Runde 37): 64px-Zellen, 8 Richtungen x 5 Frames
-  // (0..3 Gehen, 4 Schlag) - R54: Diagonalen + Schwertschlag in jede Richtung.
-  private ensureHeldFigure(tier: HeldTier): void {
-    const key = `held_${tier}`;
-    if (this.tex.exists(key)) return;
+  // Detaillierte Helden-Figur (Runde 37): 64px-Zellen, 8 Richtungen x 7 Frames
+  // (0..3 Gehen, 4..6 Schlag-Phasen) - R54: Diagonalen + Schwertschlag mit
+  // Ellenbogen + ausgerüsteter Waffe in der Hand. Je Waffe ein eigener Atlas.
+  private ensureHeldFigure(tier: HeldTier, waffe: WaffenKlasse | null): string {
+    const key = `held_${tier}_${waffe ?? 'leer'}`;
+    if (this.tex.exists(key)) return key;
     const C = HELD_CELL;
     const canvas = document.createElement('canvas');
     canvas.width = C * HELD_FRAMES;
@@ -100,7 +105,7 @@ export class SpriteProvider {
       for (let frame = 0; frame < HELD_FRAMES; frame++) {
         ctx.save();
         ctx.translate(frame * C, dir * C);
-        drawHeld(ctx, tier, dir, frame);
+        drawHeld(ctx, tier, dir, frame, waffe);
         ctx.restore();
       }
     }
@@ -110,11 +115,13 @@ export class SpriteProvider {
         t.add(`d${dir}f${frame}`, 0, frame * C, dir * C, C, C);
       }
     }
+    this.heldAtlanten.set(key, { tier, waffe });
+    return key;
   }
 
   // Sprite-Textur setzen (eigener Mini-Animator, einheitlich für beide Quellen)
-  applyFigure(sprite: Phaser.GameObjects.Sprite, name: string, dir: number, step: number): void {
-    const f = this.figureFrame(name, dir, step);
+  applyFigure(sprite: Phaser.GameObjects.Sprite, name: string, dir: number, step: number, waffe: WaffenKlasse | null = null): void {
+    const f = this.figureFrame(name, dir, step, waffe);
     if (sprite.texture.key !== f.key || sprite.frame.name !== (f.frame ?? '__BASE')) {
       sprite.setTexture(f.key, f.frame);
     }
