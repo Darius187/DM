@@ -351,13 +351,13 @@ function zeichneWaffe(ctx: CanvasRenderingContext2D, hx: number, hy: number, ang
   if (waffe === 'schwert') {
     seg(P(-2), P(1), 3.4, holz);                       // Griff
     seg(P(1, -4), P(1, 4), 1.6, stahlK);               // Parierstange
-    seg(P(1), P(17), 2.6, stahl); seg(P(1), P(17), 1, stahlK);   // Klinge + Licht
+    seg(P(1), P(14), 2.6, stahl); seg(P(1), P(14), 1, stahlK);   // Klinge + Licht
   } else if (waffe === 'stab') {
-    seg(P(-3), P(16), 2.4, holz);
-    ctx.fillStyle = '#8a6ad0'; const k = P(17); ctx.beginPath(); ctx.arc(k[0], k[1], 2.4, 0, 7); ctx.fill();
+    seg(P(-3), P(14), 2.4, holz);
+    ctx.fillStyle = '#8a6ad0'; const k = P(15); ctx.beginPath(); ctx.arc(k[0], k[1], 2.4, 0, 7); ctx.fill();
   } else if (waffe === 'stange') {
-    seg(P(-4), P(20), 2.2, holz);                      // langer Schaft
-    seg(P(19), P(24), 2.2, stahl); seg(P(19), P(24), 0.9, stahlK);  // Spitze
+    seg(P(-4), P(16), 2.2, holz);                      // langer Schaft (gekürzt, passt in die Zelle)
+    seg(P(15), P(19), 2.2, stahl); seg(P(15), P(19), 0.9, stahlK);  // Spitze
   } else {
     // axt / kolben / wucht: Stiel + schwerer Kopf nahe der Spitze
     seg(P(-2), P(12), 3, holz);
@@ -379,7 +379,23 @@ function zeichneWaffeRuhend(ctx: CanvasRenderingContext2D, f: HeldForm, x: numbe
   zeichneWaffe(ctx, x, f.schulterY + f.armL + 1, Math.PI / 2 + 0.12, waffe);
 }
 
-interface Schlag { ang: number; sweep: number }
+interface Schlag { ang: number; sweep: number; sense: number }
+
+// Klingen-Spur (R54, Autorwunsch "Nachziehen der Waffe"): ein blau-weißer Bogen,
+// den die Klingenspitze auf ihrem Weg zieht - vom Ellenbogen (ex,ey) auf dem
+// Radius der Klingenspitze, hinter der aktuellen Schlagrichtung her. Mehrere
+// Lagen mit abnehmender Deckkraft ergeben den Schweif.
+function klingenSpur(ctx: CanvasRenderingContext2D, ex: number, ey: number, r: number, handAng: number, sense: number): void {
+  const from = handAng - sense * 1.15;   // Schweif liegt HINTER der Bewegung
+  const a0 = Math.min(from, handAng), a1 = Math.max(from, handAng);
+  for (let i = 0; i < 3; i++) {
+    const t = i / 2;
+    ctx.strokeStyle = `rgba(${190 - i * 20},${224 - i * 10},255,${0.30 * (1 - t * 0.7)})`;
+    ctx.lineWidth = 4.5 - i * 1.3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.ellipse(ex, ey, r - i * 1.4, (r - i * 1.4) * 0.82, 0, a0, a1); ctx.stroke();
+  }
+  ctx.lineWidth = 1;
+}
 
 // Schlagarm (R54) mit ELLENBOGEN: Oberarm + Unterarm, die Hand schwingt durch
 // den Bogen (folgt dem Swoosh). ang = Bildschirm-Winkel der Schlagrichtung
@@ -387,7 +403,7 @@ interface Schlag { ang: number; sweep: number }
 // Gibt Handpunkt + Klingenwinkel zurück, damit die Waffe daran hängen kann.
 function schlagArm(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, s: Schlag): { hx: number; hy: number; klinge: number } {
   const sx = CX, sy = f.schulterY + f.rumpfH * 0.22;
-  const upper = f.armL * 0.6 + 2.5, fore = f.armL * 0.9 + 4;
+  const upper = f.armL * 0.6 + 2.5, fore = f.armL * 0.85 + 3.5;
   // Oberarm grob in Schlagrichtung, deutlich angehoben (Ellenbogen oben) -
   // damit die Hand klar über/vor dem Körper schwingt, nicht am Bein hängt.
   const upAng = s.ang - 0.65;
@@ -395,6 +411,7 @@ function schlagArm(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, s: Schlag
   // Unterarm + Hand schwingen durch den Bogen
   const handAng = s.ang + s.sweep;
   const hx = ex + Math.cos(handAng) * fore, hy = ey + Math.sin(handAng) * fore * 0.8;
+  klingenSpur(ctx, ex, ey, fore + 11, handAng, s.sense);   // Waffen-Schweif hinter der Klinge
   ctx.lineCap = 'round'; ctx.strokeStyle = p.wams;
   ctx.lineWidth = f.armB + 0.8;
   ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();   // Oberarm
@@ -446,6 +463,10 @@ export const SCHLAG_PHASEN = 3;
 // Schwung-Versatz je Phase: Hand holt weit aus (-), trifft (0), schwingt aus (+).
 // Breiter Bogen, damit die drei Phasen klar als Schwung lesbar sind.
 const SCHLAG_SWEEP = [-1.35, 0.0, 1.25];
+// Schwung-RICHTUNG je Blickrichtung (Autorwunsch R54): links/oben schwingt von
+// UNTEN nach OBEN, rechts/unten von OBEN nach UNTEN. sense kehrt den Bogen um.
+// dir: 0=S 1=SW 2=W 3=NW 4=N 5=NE 6=O 7=SE -> {W,NW,N,NE}=unten->oben.
+const SCHLAG_SENSE = [1, -1, 1, 1, 1, -1, 1, 1];
 // Bildschirm-Winkel der Schlagrichtung je Richtung (0=rechts, PI/2=unten)
 const STRIKE_ANG = [Math.PI / 2, 3 * Math.PI / 4, Math.PI, 5 * Math.PI / 4, -Math.PI / 2, 7 * Math.PI / 4, 0, Math.PI / 4];
 
@@ -468,7 +489,8 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: num
   const step = attack ? 0 : frame % 4;   // 0 stehen, 1 links vor, 2 stehen, 3 rechts vor
   const bobUp = step === 1 || step === 3 ? -1.4 : 0;
   const sway = step === 1 ? 2 : step === 3 ? -2 : 0;
-  const schlag: Schlag | null = attack ? { ang: STRIKE_ANG[dir], sweep: SCHLAG_SWEEP[phase] } : null;
+  const sense = SCHLAG_SENSE[dir];
+  const schlag: Schlag | null = attack ? { ang: STRIKE_ANG[dir], sweep: SCHLAG_SWEEP[phase] * sense, sense } : null;
 
   // Bodenschatten
   ell(ctx, CX, 58, 14, 3.4, 'rgba(0,0,0,0.32)');

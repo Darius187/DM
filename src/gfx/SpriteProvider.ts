@@ -82,6 +82,7 @@ export class SpriteProvider {
         for (let frame = 0; frame < HELD_FRAMES; frame++) {
           ctx.save();
           ctx.translate(frame * C, dir * C);
+          ctx.beginPath(); ctx.rect(0, 0, C, C); ctx.clip();   // kein Überlaufen in die Nachbarzelle (R54)
           drawHeld(ctx, tier, dir, frame, waffe);
           ctx.restore();
         }
@@ -105,6 +106,7 @@ export class SpriteProvider {
       for (let frame = 0; frame < HELD_FRAMES; frame++) {
         ctx.save();
         ctx.translate(frame * C, dir * C);
+        ctx.beginPath(); ctx.rect(0, 0, C, C); ctx.clip();   // kein Überlaufen in die Nachbarzelle (R54)
         drawHeld(ctx, tier, dir, frame, waffe);
         ctx.restore();
       }
