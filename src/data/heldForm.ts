@@ -100,15 +100,17 @@ function frisch(over: Partial<HeldForm> = {}): HeldForm {
   return { ...DEF_HELDFORM, ...over, farben: { ...(over.farben ?? {}) } };
 }
 
-// Sinnvolle Start-Looks je Stufe (die Stufen-Palette gibt die Grundfarbe,
-// hier nur die Form-Unterschiede): Kette zeigt das Gittermuster, Platte trägt
-// ein leicht gesenktes Visier - der Autor kann alles im Editor weiter tunen.
+// Standard nach den Figur-Editor-Screenshots des Autors (Runde 53): Kopf höher,
+// Schultern etwas breiter, schmaler Umhang; je Stufe eigene Größe/Gesichtsöffnung/
+// Visier. (Die Stufen-Grundfarben - Stoff dunkelrot, Leder braun, Kette/Platte
+// Stahl - liegen in heldArt.ts PALETTEN; hier nur die Proportionen.)
 function defaults(): HeldFormen {
+  const b = (over: Partial<HeldForm>): HeldForm => frisch({ kopfY: 18, schulterB: 11, capeBreite: 0.4, ...over });
   return {
-    stoff: frisch(),
-    leder: frisch({ gesichtOffen: 0.95 }),
-    kette: frisch({ kettenGitter: 1, gesichtOffen: 0.88, visier: 0.15 }),
-    platte: frisch({ visier: 0.35, gesichtOffen: 0.82 }),
+    stoff:  b({ skala: 0.8, gesichtOffen: 1.2, visier: 0.4 }),
+    leder:  b({ skala: 0.8, gesichtOffen: 1.2, visier: 0.5 }),
+    kette:  b({ skala: 0.6, gesichtOffen: 1.3, visier: 0.6, kettenGitter: 1 }),
+    platte: b({ skala: 0.6, gesichtOffen: 1.1, visier: 1 }),
   };
 }
 

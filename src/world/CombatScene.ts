@@ -2316,7 +2316,17 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
                 g.lineStyle(2, 0xe8e0c8, 0.95); g.lineBetween(ex, yy - 16, ex, yy);          // Schaft
                 g.fillStyle(0xe8e0c8, 1); g.fillTriangle(ex - 3, yy - 4, ex + 3, yy - 4, ex, yy + 3); // Spitze
               },
-              onComplete: () => g.destroy(),
+              onComplete: () => {
+                // Pfeil bleibt im Boden STECKEN und liegt eine Weile (Autorwunsch
+                // R53), dann blasst er aus - wie die echten Pfeile.
+                g.clear(); g.setDepth(ey);
+                const tilt = (Math.random() - 0.5) * 0.6, len = 12;
+                const dx = Math.sin(tilt) * len, dy = -Math.cos(tilt) * len;
+                g.fillStyle(0x000000, 0.22); g.fillEllipse(ex, ey + 1, 7, 2);                  // Bodenschatten
+                g.lineStyle(2, 0xcfc6ad, 1); g.lineBetween(ex, ey, ex + dx, ey + dy);          // Schaft schräg aus dem Boden
+                g.fillStyle(0xe8e0c8, 1); g.fillTriangle(ex + dx - 2.4, ey + dy + 1, ex + dx + 2.4, ey + dy + 1, ex + dx, ey + dy - 3.5); // Befiederung
+                this.tweens.add({ targets: g, alpha: 0, delay: 3800, duration: 1400, onComplete: () => g.destroy() });
+              },
             });
           });
           this.time.delayedCall(treffMs, () => {
