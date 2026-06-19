@@ -23,6 +23,7 @@ export interface FigureSpec {
   augen?: string;       // Augenfarbe (rot glühend bei Untoten, Runde 20)
   seuche?: boolean;     // Pest-Look: Beulen + Lumpen (Runde 40)
   ritter?: boolean;     // Templer-Politur: Schulterpanzer, Tabard-Kreuz, Helmvisier (Runde 41)
+  massig?: boolean;     // Hünen-/Troll-Look: breite Schultern, dicke Arme, Hauer (Runde 54)
 }
 
 export type Dir = 0 | 1 | 2 | 3; // unten, links, rechts, oben
@@ -133,13 +134,24 @@ function drawHumanoidParts(ctx: CanvasRenderingContext2D, f: FigureSpec, dir: Di
     ctx.fillStyle = '#3a3630'; ctx.fillRect(20, by, 3, 2);                // Schulterpanzer rechts
     ctx.fillStyle = '#5a544c'; ctx.fillRect(9, by, 3, 1); ctx.fillRect(20, by, 3, 1); // Lichtkante
   }
-  // Arme schwingen gegenläufig zu den Beinen
+  // Hünen-/Troll-Masse (Runde 54): wulstige Schultern + breiterer Brustkorb,
+  // damit Riesen nicht wie hochskalierte Soldaten aussehen.
+  if (f.massig) {
+    const my = (6 + bob) * PX;
+    ctx.fillStyle = shade(f.tunic, 12); ctx.fillRect(2 * PX, my, 3 * PX, 3 * PX);   // Schulterwulst links
+    ctx.fillStyle = shade(f.tunic, -16); ctx.fillRect(11 * PX, my, 3 * PX, 3 * PX); // Schulterwulst rechts
+    ctx.fillStyle = shade(f.tunic, -4); ctx.fillRect(4 * PX, my, 8 * PX, 4 * PX);   // breiterer Brustkorb
+  }
+  // Arme schwingen gegenläufig zu den Beinen (bei massig dicker und länger)
   const armCol = f.skeletal ? '#d8cfb0' : f.tunic;
-  p(ctx, 4, 7 + bob + legR, 1, 3, shade(armCol, -8));
-  p(ctx, 11, 7 + bob + legL, 1, 3, shade(armCol, -8));
+  const aw = f.massig ? 2 : 1, al = f.massig ? 4 : 3, ax = f.massig ? 3 : 4;
+  p(ctx, ax, 7 + bob + legR, aw, al, shade(armCol, -8));
+  p(ctx, 11, 7 + bob + legL, aw, al, shade(armCol, -8));
   // Kopf mit Wangenschatten
   p(ctx, 5, 2 + bob, 6, 4, f.skin);
   p(ctx, 10, 3 + bob, 1, 3, shade(f.skin, -18));
+  // Hauer/Stoßzähne unter den Augen (nur Front/Seite sichtbar)
+  if (f.massig && dir !== 3) { ctx.fillStyle = '#f0ece0'; ctx.fillRect(6 * PX, (5 + bob) * PX, 1 * PX, 1 * PX); ctx.fillRect(9 * PX, (5 + bob) * PX, 1 * PX, 1 * PX); }
   // Haar/Kapuze/Hut mit Glanzkante
   if (f.hat) {
     p(ctx, 4, 1 + bob, 8, 2, f.hat);
@@ -318,6 +330,11 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   // Soldaten des Fürsten (Runde 51, Schlacht-Prototyp): Blau-Stahl, gepanzert
   soldat:    { tunic: '#3a4a6a', skin: '#c8b090', hair: '#2a2018', legs: '#2a3242', hat: '#6a6d74', weapon: 'schwert', ritter: true },
   bogensoldat: { tunic: '#3a4a6a', skin: '#c8b090', hair: '#2a2018', legs: '#2a3242', hat: '#5a6068', weapon: 'bogen' },
+  // Riese/Troll (Runde 54, Helms-Klamm-Wunsch): hünenhaft, grünhäutig, Keule,
+  // Hauer. Wird in der Schlacht zusätzlich groß skaliert (groesse in TYP).
+  riese:     { tunic: '#5a4a30', skin: '#7a9a5a', hair: '#3a2a1a', legs: '#43381f', weapon: 'wucht', massig: true },
+  // Untoter Riese: fahl-grauer Hüne mit glimmenden Augen
+  untoter_riese: { tunic: '#8a8478', skin: '#9aa090', hair: '#6a6458', legs: '#6a6458', weapon: 'wucht', massig: true, skeletal: true, augen: '#e84860' },
   wolf:      { quad: { body: '#4a4440', head: '#3c3834', size: 1, tail: true, ears: true } },
   ratte:     { quad: { body: '#5a4a3a', head: '#4c3e30', size: 0.6, tail: true } },
   heinrich:  { tunic: '#7a4a2a', skin: '#c8b090', hair: '#4a3a26', legs: '#3a2c1c' },

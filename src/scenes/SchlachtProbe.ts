@@ -41,8 +41,8 @@ const TYP: Record<Typ, TypDef> = {
   e_bogen:  { hp: 120, dmg: 8,  reich: 200, speed: 54, rank: 2, figur: 'schuetze',     heiler: false },
   elite:    { hp: 560, dmg: 20, reich: 34,  speed: 52, rank: 0, figur: 'soldat',      heiler: false, tint: 0xf0d878, groesse: 1.35 },
   e_elite:  { hp: 540, dmg: 19, reich: 34,  speed: 50, rank: 0, figur: 'skelett',      heiler: false, tint: 0xc090d0, groesse: 1.35 },
-  troll:    { hp: 1600, dmg: 34, reich: 44, speed: 38, rank: 0, figur: 'soldat',      heiler: false, tint: 0x8fb46a, groesse: 2.5, knockback: true },
-  e_troll:  { hp: 1600, dmg: 34, reich: 44, speed: 38, rank: 0, figur: 'skelett',      heiler: false, tint: 0x9ad06a, groesse: 2.5, knockback: true },
+  troll:    { hp: 1600, dmg: 34, reich: 44, speed: 38, rank: 0, figur: 'riese',         heiler: false, groesse: 2.5, knockback: true },
+  e_troll:  { hp: 1600, dmg: 34, reich: 44, speed: 38, rank: 0, figur: 'untoter_riese', heiler: false, groesse: 2.5, knockback: true },
 };
 
 // Aufstieg: je Kill +1 XP; bei diesen Schwellen Stufe hoch (max 5). Je Stufe
