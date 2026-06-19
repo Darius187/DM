@@ -387,9 +387,15 @@ function zeichneWaffeRuhend(ctx: CanvasRenderingContext2D, f: HeldForm, x: numbe
   zeichneWaffe(ctx, x, f.schulterY + f.armL + 1, restAng, waffe);
 }
 
+// Spitzen-Abstand der Waffe von der Hand (für die Länge des Klingen-Schweifs -
+// wuchs mit der langen Klinge mit, R54). bogen wird nicht geschwungen.
+const WAFFEN_LAENGE: Record<string, number> = { schwert: 23, stange: 24, stab: 19, axt: 20, kolben: 20, wucht: 20, bogen: 0 };
+function waffenLaenge(w: WaffenKlasse | null): number { return w ? (WAFFEN_LAENGE[w] ?? 20) : 0; }
+
 // Eine Schlagpose: Klingenwinkel (Bildschirm), Winkel der VORIGEN Phase (für den
-// Schweif als echte Bewegungsspur), Reichweite Schulter->Hand, Ellenbogen-Seite.
-interface Schlag { ang: number; prevAng: number; r: number; bend: number }
+// Schweif als echte Bewegungsspur), Reichweite Schulter->Hand, Ellenbogen-Seite,
+// tipDist = Abstand der Klingenspitze von der Hand (Schweif-Länge).
+interface Schlag { ang: number; prevAng: number; r: number; bend: number; tipDist: number }
 
 // 2-Knochen-IK (R54): findet den Ellenbogen, sodass Ober-/Unterarm (l1,l2) von
 // der Schulter (sx,sy) zur Hand (hx,hy) führen. bend (+/-1) bestimmt die Seite,
@@ -409,15 +415,16 @@ function ik2(sx: number, sy: number, hx: number, hy: number, l1: number, l2: num
 
 // Klingen-Spur (R54, "Nachziehen der Waffe"): ein blau-weißer Bogen von der
 // vorigen zur aktuellen Klingenrichtung - die ECHTE Bewegungsspur zwischen den
-// Phasen. Mehrere Lagen mit abnehmender Deckkraft ergeben den Schweif.
-function klingenSpur(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, fromAng: number, toAng: number): void {
+// Phasen. r liegt an der Klingenspitze (mit der langen Klinge mitgewachsen).
+// breit = wie dick/prominent der Schweif ist (lange Klinge = kräftigerer Wisch).
+function klingenSpur(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, fromAng: number, toAng: number, breit = 1): void {
   if (Math.abs(toAng - fromAng) < 0.06) return;
   const a0 = Math.min(fromAng, toAng), a1 = Math.max(fromAng, toAng);
   for (let i = 0; i < 3; i++) {
     const t = i / 2;
-    ctx.strokeStyle = `rgba(${190 - i * 20},${224 - i * 10},255,${0.32 * (1 - t * 0.7)})`;
-    ctx.lineWidth = 5 - i * 1.4; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.ellipse(cx, cy, r - i * 1.4, (r - i * 1.4) * 0.85, 0, a0, a1); ctx.stroke();
+    ctx.strokeStyle = `rgba(${200 - i * 18},${228 - i * 9},255,${0.34 * (1 - t * 0.65)})`;
+    ctx.lineWidth = (6.5 - i * 1.7) * breit; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.ellipse(cx, cy, r - i * 1.6, (r - i * 1.6) * 0.85, 0, a0, a1); ctx.stroke();
   }
   ctx.lineWidth = 1;
 }
@@ -431,7 +438,8 @@ function schlagArm(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, s: Schlag
   const tx = sx + Math.cos(s.ang) * s.r, ty = sy + Math.sin(s.ang) * s.r * 0.9;
   const k = ik2(sx, sy, tx, ty, l1, l2, s.bend);
   const klinge = Math.atan2(k.hy - k.ey, k.hx - k.ex);   // Klinge in Verlängerung des Unterarms
-  klingenSpur(ctx, sx, sy, s.r + 12, s.prevAng, s.ang);  // Waffen-Schweif (vorige -> jetzige Richtung)
+  // Schweif an der Klingenspitze (wuchs mit der langen Klinge mit), kräftiger bei langen Waffen
+  klingenSpur(ctx, sx, sy, s.r + s.tipDist * 0.82, s.prevAng, s.ang, s.tipDist >= 22 ? 1.18 : 1);
   ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = p.wams;
   ctx.lineWidth = f.armB + 0.8;
   ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(k.ex, k.ey); ctx.stroke();   // Oberarm
@@ -530,7 +538,7 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: num
   // Schlag-Choreografie der Richtung (rechtshändig, je Richtung eigen).
   const ds = SCHLAG[dir];
   const schlag: Schlag | null = attack
-    ? { ang: ds.swing[phase], prevAng: phase > 0 ? ds.swing[phase - 1] : ds.rest, r: SCHLAG_R[phase], bend: ds.bend }
+    ? { ang: ds.swing[phase], prevAng: phase > 0 ? ds.swing[phase - 1] : ds.rest, r: SCHLAG_R[phase], bend: ds.bend, tipDist: waffenLaenge(waffe) }
     : null;
   const schlagVorne = attack ? phase >= ds.frontVon : true;
 
