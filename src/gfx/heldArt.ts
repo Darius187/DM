@@ -217,20 +217,30 @@ function kopf(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, dir: Dir): voi
 
   // Gesichtsöffnung: dunkler Rahmen + Haut, je Richtung leicht versetzt.
   // gesichtOffen skaliert die Öffnung (klein = mehr verdeckt).
-  const ox = dir === 1 ? -1.2 * s : dir === 2 ? 1.2 * s : 0;
+  // Seitenansicht (1/2): Gesicht stark zur Laufrichtung verschoben (Profil),
+  // damit nicht das Frontgesicht zu sehen ist (Autorbug R54: "schaut nach vorne
+  // mit beiden Augen, wenn er links/rechts läuft").
+  const seite = dir === 1 || dir === 2;
+  const face = dir === 1 ? -1 : 1;                          // Profil-Blickrichtung
+  const ox = seite ? face * 1.9 * s : 0;
   const go = f.gesichtOffen;
   const fcx = cx + ox, fcy = cy + 1;
-  const frx = (4 * s * 0.7 + r * 0.18) * go, fry = (4.6 * s * 0.7 + r * 0.2) * go;
+  const frx = (4 * s * 0.7 + r * 0.18) * go * (seite ? 0.78 : 1), fry = (4.6 * s * 0.7 + r * 0.2) * go;
   ctx.fillStyle = '#191310';
   ctx.beginPath(); ctx.ellipse(fcx, fcy, frx, fry, 0, 0, Math.PI * 2); ctx.fill();
-  ell(ctx, fcx, cy + 1.3, 3.3 * s * go, 3.9 * s * go, p.haut);
+  ell(ctx, fcx, cy + 1.3, 3.3 * s * go * (seite ? 0.8 : 1), 3.9 * s * go, p.haut);
   ell(ctx, fcx - 1 * s * go, cy - 0.2, 1.2 * s * go, 1.6 * s * go, p.hautH);
   ctx.fillStyle = p.hautS;
   ctx.beginPath(); ctx.ellipse(fcx + (dir === 2 ? -1.7 : 1.7) * s * go, cy + 1.7, 1.2 * s * go, 2.4 * s * go, 0, 0, Math.PI * 2); ctx.fill();
+  // Profil-Nase: ragt in Laufrichtung über die Gesichtsöffnung hinaus
+  if (seite && go > 0.4 && f.visier < 0.55) {
+    const nx = fcx + face * (frx + 0.3), ny = cy + 1.6;
+    poly(ctx, [[nx - face * 0.4 * s, ny - 1.5 * s], [nx + face * 1.7 * s, ny], [nx - face * 0.4 * s, ny + 1.5 * s]], p.haut);
+    ell(ctx, nx + face * 0.3 * s, ny - 0.3 * s, 0.7 * s, 0.9 * s, p.hautH);
+  }
   if (go > 0.45) {
     if (dir === 0) { auge(ctx, cx - 1.6 * s, cy + 0.8, s); auge(ctx, cx + 1.6 * s, cy + 0.8, s); }
-    if (dir === 1) { auge(ctx, cx - 2.2 * s, cy + 0.8, s); auge(ctx, cx + 0.2 * s, cy + 0.8, s); }
-    if (dir === 2) { auge(ctx, cx + 2.2 * s, cy + 0.8, s); auge(ctx, cx - 0.2 * s, cy + 0.8, s); }
+    else { auge(ctx, fcx + face * 0.7 * s, cy + 0.8, s); }   // Profil: nur EIN Auge, vorne
   }
   // Modulares Visier: senkt sich von oben über das Gesicht, lässt einen
   // Augenschlitz frei (Figur-Editor, Runde 40)
