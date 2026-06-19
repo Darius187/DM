@@ -858,7 +858,12 @@ export class SchlachtProbe extends Phaser.Scene {
   // --- Zeichnen -------------------------------------------------------------
   private zeichneEinheit(u: Unit): void {
     u.sprite.setPosition(u.x, u.y).setDepth(u.y);
-    u.ring.setPosition(u.x, u.y).setStrokeStyle(2, u.team === 'spieler' ? 0x6ad0ff : 0xe05a4a, u.ausgewaehlt ? 0.95 : 0.0);
+    // Auswahlring: Fernkämpfer (Rang >=2) golden, alle anderen in Team-Farbe -
+    // GLEICHE Farbkodierung wie die Formations-Vorschau (Autorfrage R54:
+    // "warum haben die Kreise in der Formation andere Farben?"). So heißt
+    // Gold überall "Schütze", Blau/Rot der eigene Nahkampf.
+    const ringFarbe = u.rank >= 2 ? 0xf0d060 : (u.team === 'spieler' ? 0x6ad0ff : 0xe05a4a);
+    u.ring.setPosition(u.x, u.y).setStrokeStyle(2, ringFarbe, u.ausgewaehlt ? 0.95 : 0.0);
     this.provider.applyFigure(u.sprite, u.figur, u.dir, u.step);
     if (u.aufstiegFx > 0) u.sprite.setTintFill(0xfff0a0);
     else if (u.flash > 0) u.sprite.setTintFill(0xffffff);
