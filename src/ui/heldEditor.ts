@@ -118,7 +118,7 @@ export class HeldEditor {
     this.vorschau = this.scene.add.image(120, 250, VORSCHAU_KEY).setOrigin(0.5).setScale(3.0);
     this.vorschau.setData('pixel', true);
     c.add(this.vorschau);
-    c.add(this.knopf(78, 392, '↻ drehen', 84, () => { this.dir = (this.dir + 1) % 4; this.zeichneVorschau(); }));
+    c.add(this.knopf(78, 392, '↻ drehen', 84, () => { this.dir = (this.dir + 1) % 8; this.zeichneVorschau(); }));   // alle 8 Richtungen (R54)
     c.add(this.scene.add.text(20, 420, 'RÜSTUNG BEARBEITEN', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a', letterSpacing: 1 }));
     const tiers: Array<[HeldTier, string]> = [['stoff', 'Stoff'], ['leder', 'Leder'], ['kette', 'Kette'], ['platte', 'Platte']];
     tiers.forEach(([t, lbl], i) => {
@@ -252,7 +252,7 @@ export class HeldEditor {
     if (!this.canvas) return;
     const ctx = this.canvas.getContext('2d')!;
     ctx.clearRect(0, 0, HELD_CELL, HELD_CELL);
-    drawHeld(ctx, this.tier(), this.dir as 0 | 1 | 2 | 3, this.animFrame);
+    drawHeld(ctx, this.tier(), this.dir, this.animFrame);
     if (this.scene.textures.exists(VORSCHAU_KEY)) (this.scene.textures.get(VORSCHAU_KEY) as Phaser.Textures.CanvasTexture).refresh();
   }
 }
