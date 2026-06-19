@@ -24,6 +24,7 @@ import { MELDUNGEN } from '../data/texte';
 import { getSettings, saveSettings, type Settings } from '../logic/settings';
 import { TUNING, TUNING_ROWS, neuerTypTuning } from '../logic/tuning';
 import { defaultRng, type Rng } from '../logic/rng';
+import { alleGegenstaende, gegenstandsAnzahl } from '../logic/kompendium';
 import { ELITE, ENEMIES, GEFALLENE_TYPEN, GEFALLENE_WAFFEN } from '../data/enemies';
 import type { EnemyTypeId, WeaponClass } from '../data/types';
 import { ABILITY_FX, ABILITIES, LORE_XP, ROLLEN_ZAUBER, XP, BRAND_TICK_S } from '../data/balancing';
@@ -403,6 +404,16 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
   }
 
+  // Dev-Kompendium (Runde 53): je ein Stück von jeder Item-Art ins Inventar,
+  // dazu Tränke - damit der Autor jede Waffe/Rüstung/Rolle/Foliant testen kann.
+  private gibAlleGegenstaende(): void {
+    for (const it of alleGegenstaende()) this.p.inv.push(it);
+    this.p.pot += 10; this.p.mpot += 10;
+    this.sfx.play('klick');
+    this.logMsg(`${gegenstandsAnzahl()} Test-Gegenstände ins Inventar gelegt (+10 Heil-/Manatränke). Inventar mit I öffnen.`, 'gold');
+    this.panels?.refresh?.();
+  }
+
   protected toggleDevPanel(): void {
     if (this.devPanel) {
       this.devPanel.destroy();
@@ -570,7 +581,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     c.add(zauberBtn);
     yB += 32;
     schalter(yB, 'BAUKASTEN', '#d8cfb8', '#221808', () => { this.toggleBaukasten(); this.toggleDevPanel(); });
-    yB += 36;
+    yB += 32;
+    // Kompendium (Runde 53): je ein Stück von allem ins Inventar zum Testen
+    schalter(yB, `ALLE GEGENSTÄNDE INS INVENTAR (${gegenstandsAnzahl()} Test-Items)`, '#9ad86a', '#221808', () => this.gibAlleGegenstaende());
+    yB += 32;
     // Tageszeit + Nebel (eine Reihe)
     let dx2 = CB;
     for (const [lbl, z] of [['TAG', 0.4], ['ABEND', 0.74], ['NACHT', 0.85]] as const) {
