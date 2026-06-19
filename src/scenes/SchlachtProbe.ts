@@ -609,7 +609,13 @@ export class SchlachtProbe extends Phaser.Scene {
       let ziel: Unit | null = null, bd = 1e9;
       for (const e of this.units) { if (e.tot || e.team === mit[0].team) continue; const d = Math.hypot(e.x - g.anker.x, e.y - g.anker.y); if (d < bd) { bd = d; ziel = e; } }
       if (!ziel) { g.ziel = null; continue; }
-      const kontakt = mit.some((u) => { const f = this.naechsterFeind(u); return !!f && Math.hypot(f.x - u.x, f.y - u.y) <= u.reich + 8; });
+      // Vorrücken, bis die FRONT (Nahkämpfer) Kontakt hat - Schützen schießen
+      // währenddessen über die Linie (sonst stoppt der Block schon auf 210px,
+      // und die Nahkämpfer kommen nie in Reichweite). Reine Schützen-Verbände
+      // stoppen auf ihrer Schussreichweite.
+      const front = mit.filter((u) => u.reich < 100);
+      const pruef = front.length ? front : mit;
+      const kontakt = pruef.some((u) => { const fe = this.naechsterFeind(u); return !!fe && Math.hypot(fe.x - u.x, fe.y - u.y) <= u.reich + 8; });
       if (kontakt) g.ziel = null;                               // an der Linie stehen und kämpfen
       else { g.ziel = { x: ziel.x, y: ziel.y }; g.facing = Math.atan2(ziel.y - g.anker.y, ziel.x - g.anker.x); }
     }
@@ -657,10 +663,13 @@ export class SchlachtProbe extends Phaser.Scene {
       const marschiert = u.grp?.manuell === true;
       if (u.fokus && !u.fokus.tot && dF > u.reich) {
         bewegtZu = { x: u.fokus.x, y: u.fokus.y };                    // Fokus: gezielt hinjagen
-      } else if (!marschiert && feind && dF > u.reich && this.willEngagieren(u, feind, dF, home)) {
-        bewegtZu = { x: feind.x, y: feind.y };                       // AUTO-ANGRIFF: auch aus der Formation in den Nahkampf stürzen (Autorwunsch R53)
+      } else if (!marschiert && !u.grp && feind && dF > u.reich && this.willEngagieren(u, feind, dF, home)) {
+        bewegtZu = { x: feind.x, y: feind.y };                       // LOSE Einheiten stürzen sich auf den Gegner (Formationen NICHT - die rücken als Block vor)
       } else if (u.grp && u.off) {
-        bewegtZu = fernVonHome > 3 ? home : null;                    // kein Gegner in Reichweite -> Slot halten (Marsch via Gruppe)
+        // In Formation: den (mit-vorrückenden) Slot halten und dort kämpfen,
+        // NICHT einzeln ausbrechen (Autorwunsch R54: "die Formation auch im
+        // Kampf einnehmen"). Der ganze Verband rückt über lenkeAggressiveVerbaende vor.
+        bewegtZu = fernVonHome > 3 ? home : null;
       } else if (!feind && this.schlachtLaeuft && (u.team !== this.steuereTeam || u.stance === 'aggressiv')) {
         // Kein Gegner in Sicht: die KI-Seite UND lose (formationslose) aggressive
         // Einheiten rücken zur feindlichen Heeresmitte vor, statt herumzustehen
