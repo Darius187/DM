@@ -257,6 +257,7 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: Dir
   if (fb.wams) { p.wams = fb.wams; p.wamsH = shade(fb.wams, 20); p.wamsS = shade(fb.wams, -24); }
   if (fb.cape) { p.umh = fb.cape; p.umhS = shade(fb.cape, -22); }
   if (fb.kapuze) { p.kap = fb.kapuze; p.kapH = shade(fb.kapuze, 18); p.kapS = shade(fb.kapuze, -22); }
+  if (fb.beine) { p.bein = fb.beine; p.beinS = shade(fb.beine, -22); }   // Hose/Beine färbbar (Autorwunsch R53)
   if (f.ruestHell) p = tintPal(p, f.ruestHell);
   const step = frame % 4;            // 0 stehen, 1 links vor, 2 stehen, 3 rechts vor
   const bobUp = step === 1 || step === 3 ? -1.4 : 0;

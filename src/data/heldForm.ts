@@ -31,7 +31,7 @@ export interface HeldForm {
   rost: number;         // Rost-Patina auf der Rüstung (0 sauber .. 1 verrostet)
   schmutz: number;      // Verschmutzung am unteren Rand (0 sauber .. 1 dreckig)
   // Farb-Überschreibungen je Teil (leer = Standardfarbe der Rüstungsstufe)
-  farben: { wams?: string; cape?: string; kapuze?: string; guertel?: string; schnalle?: string; hand?: string; schulter?: string; visier?: string };
+  farben: { wams?: string; cape?: string; kapuze?: string; guertel?: string; schnalle?: string; hand?: string; schulter?: string; visier?: string; beine?: string };
 }
 
 export const DEF_HELDFORM: HeldForm = {
@@ -73,10 +73,11 @@ export const HELDFORM_REGLER: Array<[HeldFormNum, string, number, number, number
 ];
 
 // Wählbare Farben je Teil (Name -> Hex) für den Farb-Picker im Editor
-export type FarbTeil = 'wams' | 'cape' | 'kapuze' | 'guertel' | 'schnalle' | 'hand' | 'schulter' | 'visier';
+export type FarbTeil = 'wams' | 'cape' | 'kapuze' | 'guertel' | 'schnalle' | 'hand' | 'schulter' | 'visier' | 'beine';
 export const FARB_TEILE: Array<[FarbTeil, string]> = [
   ['wams', 'Wams'], ['cape', 'Umhang'], ['kapuze', 'Kapuze/Helm'], ['guertel', 'Gürtel'],
   ['schnalle', 'Schnalle'], ['hand', 'Handschuhe'], ['schulter', 'Schulterplatten'], ['visier', 'Visier'],
+  ['beine', 'Hose/Beine'],
 ];
 // Erweiterte Palette (Runde 40, Autorwunsch "viel mehr Farben"): Rot-/Braun-/
 // Grün-/Blau-/Violett-/Grau-/Gold-Töne in je hell/mittel/dunkel.
@@ -162,3 +163,36 @@ export function deletePreset(name: string): void {
 export function saveHeldForm(): void {
   try { localStorage.setItem(KEY, JSON.stringify(getFormen())); } catch { /* gesperrt */ }
 }
+
+// Alle vier Stufen als lesbaren Code-Block exportieren (Runde 53, Autorwunsch:
+// "wie weißt du, welche Werte/Farben ich genommen habe?"). Der Autor kopiert das
+// und schickt es mir; ich übernehme es als neuen Standard in defaults().
+export function exportiereFormen(formen: HeldFormen): string {
+  const eineStufe = (tier: HeldTier): string => {
+    const { farben, ...zahlen } = formen[tier];
+    const z = Object.entries(zahlen).map(([k, v]) => `${k}: ${v}`).join(', ');
+    return `  ${tier}: { ${z}, farben: ${JSON.stringify(farben)} },`;
+  };
+  return [
+    '// HELD-FORMEN (Figur-Editor-Export) - bitte mir schicken, ich mache das zum Standard.',
+    'export const HELD_FORMEN_EXPORT = {',
+    ...(['stoff', 'leder', 'kette', 'platte'] as HeldTier[]).map(eineStufe),
+    '};',
+  ].join('\n');
+}
+
+// 10 fertige Figuren zur Auswahl (Runde 53, Autorwunsch): verschiedene Looks im
+// Geist der NPCs/des Spiels. Im Editor wählbar (auf die aktuelle Stufe anwenden),
+// dann "Übernehmen & Testen". Farben aus der Palette; Proportionen wie Standard.
+export const BUILTIN_FIGUREN: Array<{ name: string; form: HeldForm }> = [
+  { name: 'Roter Wanderer (Hannes)', form: frisch({ capeBreite: 0.4, visier: 0.4, gesichtOffen: 1.2, farben: { wams: '#7a2e28', kapuze: '#34343f', beine: '#2a2a32' } }) },
+  { name: 'Lederkundschafter', form: frisch({ gesichtOffen: 0.95, capeBreite: 0.5, farben: { wams: '#6a4326', kapuze: '#4a3826', beine: '#3a2a1a' } }) },
+  { name: 'Kettensöldner', form: frisch({ kettenGitter: 1, visier: 0.6, gesichtOffen: 0.9, farben: { wams: '#7a7d84', kapuze: '#6a6d74', beine: '#4a4e57' } }) },
+  { name: 'Plattenritter', form: frisch({ visier: 1, schultern: 2, gesichtOffen: 0.82, farben: { wams: '#9aa1a9', kapuze: '#bcc2ca', beine: '#565d68', schulter: '#9aa1a9' } }) },
+  { name: 'Pestarzt (dunkel)', form: frisch({ capeLaenge: 1.3, capeBreite: 0.6, gesichtOffen: 0.6, visier: 0.3, farben: { wams: '#1c1c22', kapuze: '#0e0e12', beine: '#16161a', cape: '#22222a' } }) },
+  { name: 'Grüner Jäger', form: frisch({ capeBreite: 0.6, gesichtOffen: 1.0, farben: { wams: '#3e7a4a', kapuze: '#22432e', beine: '#22432e', cape: '#2e5a38' } }) },
+  { name: 'Blauer Gelehrter', form: frisch({ gesichtOffen: 1.1, capeBreite: 0.5, farben: { wams: '#3a5a7a', kapuze: '#22384e', beine: '#2a2a32' } }) },
+  { name: 'Schwarzer Schurke', form: frisch({ gesichtOffen: 0.7, capeBreite: 0.7, capeLaenge: 1.1, farben: { wams: '#2a2a2e', kapuze: '#16161a', beine: '#1c1c20', cape: '#16161a' } }) },
+  { name: 'Goldener Kämpe', form: frisch({ leuchten: 1, schultern: 2, gesichtOffen: 0.85, farben: { wams: '#7a2e28', kapuze: '#52201c', beine: '#34223e', schulter: '#c9a227', guertel: '#c9a227', schnalle: '#e0c050' } }) },
+  { name: 'Grauer Veteran', form: frisch({ rost: 0.4, schmutz: 0.4, gesichtOffen: 1.0, farben: { wams: '#5a5e66', kapuze: '#2a2a2e', beine: '#2a2a2e' } }) },
+];

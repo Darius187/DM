@@ -4,7 +4,7 @@
 // die Werte im Browser ab und baut die Figur in der Welt neu auf.
 
 import Phaser from 'phaser';
-import { getHeldForm, getFormen, saveHeldForm, standardForm, getPresets, savePreset, deletePreset, HELDFORM_REGLER, FARB_TEILE, FARB_PALETTE, type HeldFormen, type FarbTeil } from '../data/heldForm';
+import { getHeldForm, getFormen, saveHeldForm, standardForm, getPresets, savePreset, deletePreset, exportiereFormen, BUILTIN_FIGUREN, HELDFORM_REGLER, FARB_TEILE, FARB_PALETTE, type HeldFormen, type FarbTeil } from '../data/heldForm';
 import { drawHeld, HELD_CELL } from '../gfx/heldArt';
 import type { HeldTier } from '../data/helden';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
@@ -30,6 +30,7 @@ export class HeldEditor {
   private animTimer: Phaser.Time.TimerEvent | null = null;
   private snapshot: HeldFormen | null = null; // alle Stufen beim Öffnen (für Verwerfen)
   private gespeichert = false;
+  private figurIdx = 0;                  // gewählte fertige Figur (Runde 53)
   onApply: (() => void) | null = null; // Welt-Held neu zeichnen
 
   // aktuell im Editor bearbeitete Stufe (Standard: die getragene)
@@ -125,6 +126,20 @@ export class HeldEditor {
         this.editTier = t; this.build();
       }, this.tier() === t ? GOLD : BONE));
     });
+    // Fertige Figuren wählen (Runde 53, Autorwunsch "10 Figuren zur Auswahl"):
+    // durchblättern, auf die aktuelle Stufe übernehmen, dann unten "ÜBERNEHMEN &
+    // TESTEN" macht sie zur Hauptfigur im laufenden Spiel.
+    c.add(this.scene.add.text(20, 496, 'FERTIGE FIGUREN', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a', letterSpacing: 1 }));
+    const figName = BUILTIN_FIGUREN[this.figurIdx]?.name ?? '-';
+    c.add(this.knopf(20, 512, '<', 24, () => { this.figurIdx = (this.figurIdx + BUILTIN_FIGUREN.length - 1) % BUILTIN_FIGUREN.length; this.build(); }));
+    c.add(this.scene.add.text(120, 523, `${this.figurIdx + 1}/${BUILTIN_FIGUREN.length}  ${figName}`, { fontFamily: 'serif', fontSize: '10px', color: BONE }).setOrigin(0.5));
+    c.add(this.knopf(196, 512, '>', 24, () => { this.figurIdx = (this.figurIdx + 1) % BUILTIN_FIGUREN.length; this.build(); }));
+    c.add(this.knopf(20, 540, 'Diese Figur übernehmen', 200, () => {
+      const fig = BUILTIN_FIGUREN[this.figurIdx]; if (!fig) return;
+      const z = getHeldForm(this.tier());
+      Object.assign(z, fig.form); z.farben = { ...fig.form.farben };
+      this.build();
+    }, GOLD));
 
     // --- Spalte 2: Zahlen-Regler ---
     const rx = 246;
@@ -196,22 +211,26 @@ export class HeldEditor {
     }
 
     // --- Knöpfe unten ---
-    const hinweis = this.scene.add.text(20, h - 42, '', { fontFamily: 'serif', fontSize: '11px', color: '#6ad06a' });
+    const hinweis = this.scene.add.text(20, h - 62, '', { fontFamily: 'serif', fontSize: '11px', color: '#6ad06a' });
     c.add(hinweis);
-    c.add(this.knopf(rx + 30, h - 40, 'SPEICHERN', 120, () => {
-      saveHeldForm();
-      this.provider.invalidateHeld();
-      this.onApply?.();
-      this.gespeichert = true;
-      hinweis.setText('✓ übernommen');
-    }, GOLD));
-    c.add(this.knopf(rx + 170, h - 40, 'ZURÜCKSETZEN', 130, () => {
+    const uebernehmen = (): void => { saveHeldForm(); this.provider.invalidateHeld(); this.onApply?.(); this.gespeichert = true; };
+    c.add(this.knopf(20, h - 40, 'EXPORT (Code)', 120, () => {
+      const code = exportiereFormen(getFormen());
+      let ok = false;
+      try { navigator.clipboard?.writeText(code); ok = true; } catch { /* egal */ }
+      // eslint-disable-next-line no-console
+      console.log(code);
+      hinweis.setText(ok ? '✓ Werte als Code kopiert - im Chat einfügen' : 'Code in der Konsole (F12)');
+    }));
+    c.add(this.knopf(148, h - 40, 'SPEICHERN', 108, () => { uebernehmen(); hinweis.setText('✓ übernommen'); }, GOLD));
+    c.add(this.knopf(264, h - 40, 'ÜBERNEHMEN & TESTEN', 168, () => { uebernehmen(); this.close(); }, GOLD));
+    c.add(this.knopf(440, h - 40, 'ZURÜCKSETZEN', 120, () => {
       const d = standardForm(this.tier());        // nur die bearbeitete Stufe
       const z = getHeldForm(this.tier());
       Object.assign(z, d); z.farben = { ...d.farben };
       this.build();
     }));
-    c.add(this.knopf(rx + 320, h - 40, 'SCHLIESSEN', 110, () => this.close()));
+    c.add(this.knopf(568, h - 40, 'SCHLIESSEN', 100, () => this.close()));
 
     this.zeichneVorschau();
   }
