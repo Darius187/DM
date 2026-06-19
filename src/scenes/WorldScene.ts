@@ -5702,6 +5702,13 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // Dev-Ressourcen (Runde 53): zusätzlich zum Spieler-Material auch das DORF-
+  // LAGER auffüllen, damit Wiederaufbau/Stadtmauer-Tests garantiert genug haben.
+  protected override devRessourcen(): void {
+    super.devRessourcen();
+    for (const k of Object.keys(this.dorfLager)) this.dorfLager[k] = Math.max(this.dorfLager[k] ?? 0, 999);
+  }
+
   // Aufgedeckte Karte der aktuellen Ebene fürs Charakterfenster (Runde 53):
   // dasselbe Wissen wie die Minikarte oben rechts (this.seen) + Treppen.
   private ebeneKarteInfo(): { name: string; w: number; h: number; zellen: Array<[number, number, number]>; spieler: [number, number] | null } | null {

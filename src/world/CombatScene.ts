@@ -404,6 +404,19 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
   }
 
+  // Dev: Ressourcen auffüllen (Runde 53, Autorwunsch "Steine/Ressourcen
+  // unendlich, um die Stadtmauer zu testen"). Füllt alle Materialien + Gold;
+  // WorldScene erweitert das ums Dorf-Lager.
+  protected devRessourcen(): void {
+    for (const k of Object.keys(this.p.materials) as Array<keyof PlayerState['materials']>) {
+      this.p.materials[k] = Math.max(this.p.materials[k], 999);
+    }
+    this.p.gold += 9999;
+    this.sfx.play('klick');
+    this.logMsg('Ressourcen aufgefüllt: alle Materialien auf 999, +9999 Gold (Dev).', 'gold');
+    this.panels?.refresh?.();
+  }
+
   // Dev-Kompendium (Runde 53): je ein Stück von jeder Item-Art ins Inventar,
   // dazu Tränke - damit der Autor jede Waffe/Rüstung/Rolle/Foliant testen kann.
   private gibAlleGegenstaende(): void {
@@ -584,6 +597,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     yB += 32;
     // Kompendium (Runde 53): je ein Stück von allem ins Inventar zum Testen
     schalter(yB, `ALLE GEGENSTÄNDE INS INVENTAR (${gegenstandsAnzahl()} Test-Items)`, '#9ad86a', '#221808', () => this.gibAlleGegenstaende());
+    yB += 32;
+    // Ressourcen auffüllen (Stadtmauer/Wiederaufbau testen)
+    schalter(yB, 'RESSOURCEN AUFFÜLLEN (+999 Material/Gold, Stadtmauer testen)', '#9ad86a', '#221808', () => this.devRessourcen());
     yB += 32;
     // Tageszeit + Nebel (eine Reihe)
     let dx2 = CB;
