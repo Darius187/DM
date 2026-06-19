@@ -21,13 +21,17 @@ import { formSlots, formSlotsSkaliert, linienSlots, slotWelt, type Form, type Sl
 import { willEngagieren as kiWillEngagieren } from '../logic/kampfKi';
 
 type Team = 'spieler' | 'feind';
-type Typ = 'schild' | 'nahkampf' | 'bogen' | 'heiler' | 'e_nah' | 'e_bogen';
+type Typ = 'schild' | 'nahkampf' | 'bogen' | 'heiler' | 'e_nah' | 'e_bogen' | 'elite' | 'e_elite' | 'troll' | 'e_troll';
 type Stance = 'aggressiv' | 'verteidigen' | 'halten';
 
-interface TypDef { hp: number; dmg: number; reich: number; speed: number; rank: number; figur: string; heiler: boolean; tint?: number }
+// groesse: Sprite-/Ring-Skalierung (Trolle/Riesen wirken massiv). knockback:
+// schleudert getroffene Gegner zur Seite (wie Hammerschlag des Helden, R54).
+interface TypDef { hp: number; dmg: number; reich: number; speed: number; rank: number; figur: string; heiler: boolean; tint?: number; groesse?: number; knockback?: boolean }
 // Leben deutlich höher (Autorwunsch R53: "mehr Leben, ähnlich wie im Hauptspiel")
 // - die Einheiten halten länger durch, Gefechte werden taktischer statt sofort
 // vorbei. Schaden bleibt gleich -> Time-to-Kill steigt entsprechend.
+// Elite (R54): zähe Veteranen, größer und stärker als die Linie. Trolle/Riesen
+// (Helms-Klamm-Wunsch): riesig, viel Leben, schleudern Gegner beiseite.
 const TYP: Record<Typ, TypDef> = {
   schild:   { hp: 320, dmg: 8,  reich: 30,  speed: 40, rank: 0, figur: 'soldat',      heiler: false, tint: 0xb8c4d2 },
   nahkampf: { hp: 220, dmg: 12, reich: 30,  speed: 58, rank: 1, figur: 'soldat',      heiler: false },
@@ -35,6 +39,10 @@ const TYP: Record<Typ, TypDef> = {
   heiler:   { hp: 150, dmg: 9,  reich: 150, speed: 54, rank: 3, figur: 'johannes',    heiler: true,  tint: 0xe8e0a0 },
   e_nah:    { hp: 210, dmg: 10, reich: 30,  speed: 54, rank: 1, figur: 'skelett',      heiler: false },
   e_bogen:  { hp: 120, dmg: 8,  reich: 200, speed: 54, rank: 2, figur: 'schuetze',     heiler: false },
+  elite:    { hp: 560, dmg: 20, reich: 34,  speed: 52, rank: 0, figur: 'soldat',      heiler: false, tint: 0xf0d878, groesse: 1.35 },
+  e_elite:  { hp: 540, dmg: 19, reich: 34,  speed: 50, rank: 0, figur: 'skelett',      heiler: false, tint: 0xc090d0, groesse: 1.35 },
+  troll:    { hp: 1600, dmg: 34, reich: 44, speed: 38, rank: 0, figur: 'soldat',      heiler: false, tint: 0x8fb46a, groesse: 2.5, knockback: true },
+  e_troll:  { hp: 1600, dmg: 34, reich: 44, speed: 38, rank: 0, figur: 'skelett',      heiler: false, tint: 0x9ad06a, groesse: 2.5, knockback: true },
 };
 
 // Aufstieg: je Kill +1 XP; bei diesen Schwellen Stufe hoch (max 5). Je Stufe
@@ -66,6 +74,7 @@ interface Unit {
   atkCd: number; dir: Dir; step: number; stepT: number; flash: number; tot: boolean; ausgewaehlt: boolean;
   stance: Stance; xp: number; stufe: number; aufstiegFx: number;
   dmgMult: number; speedMult: number;
+  kbX: number; kbY: number;   // Rückstoß-Geschwindigkeit (Riesen-Schleuder, R54)
   gruppeNr: number; grp: Gruppe | null; off: Slot | null; ziel: { x: number; y: number } | null; fokus: Unit | null;
 }
 
@@ -142,14 +151,16 @@ export class SchlachtProbe extends Phaser.Scene {
 
   private neueEinheit(team: Team, typ: Typ, x: number, y: number): Unit {
     const d = TYP[typ];
-    const sprite = this.add.sprite(x, y, '__DEFAULT').setDepth(y);
+    const groesse = d.groesse ?? 1;
+    const sprite = this.add.sprite(x, y, '__DEFAULT').setDepth(y).setScale(groesse);
     const farbe = team === 'spieler' ? 0x6ad0ff : 0xe05a4a;
-    const ring = this.add.circle(x, y, 13, farbe, 0).setDepth(1).setStrokeStyle(2, farbe, 0);
+    const ring = this.add.circle(x, y, 13 * groesse, farbe, 0).setDepth(1).setStrokeStyle(2, farbe, 0);
     const u: Unit = {
       sprite, ring, team, typ, figur: d.figur, tint: d.tint, heiler: d.heiler, x, y,
       hp: d.hp, maxhp: d.hp, dmg: d.dmg, reich: d.reich, speed: d.speed, rank: d.rank,
       atkCd: 0, dir: 0, step: 0, stepT: 0, flash: 0, tot: false, ausgewaehlt: false,
       stance: 'aggressiv', xp: 0, stufe: 1, aufstiegFx: 0, dmgMult: 1, speedMult: 1,   // Standard AGGRESSIV (Autorwunsch R53): greifen an, sobald Feinde in der Nähe sind
+      kbX: 0, kbY: 0,
       gruppeNr: 0, grp: null, off: null, ziel: null, fokus: null,
     };
     this.provider.applyFigure(sprite, d.figur, 0, 0);
@@ -188,6 +199,13 @@ export class SchlachtProbe extends Phaser.Scene {
     for (const [lbl, s] of stances) { const t = this.knopf(x, y1, lbl, () => this.setzeStance(s)); x += t.width + 8; }
     x += 14;
     this.seiteKnopf = this.knopf(x, y1, '', () => this.wechsleSeite());
+    x += this.seiteKnopf.width + 14;
+    // Befördern (R54, Autorwunsch "ich will auswählen, was Elite/Riese ist"):
+    // gewählte Einheiten zu Elite-Veteranen oder Riesen aufwerten. Riesen
+    // schleudern Gegner beiseite (Helms-Klamm).
+    x += this.add.text(x, y1, 'BEFÖRDERN:', { fontFamily: 'serif', fontSize: '12px', color: '#f0d878' }).setOrigin(0, 0.5).setDepth(950).width + 6;
+    x += this.knopf(x, y1, '→ ELITE', () => this.befoerdere('elite')).width + 5;
+    x += this.knopf(x, y1, '→ RIESE', () => this.befoerdere('troll')).width + 5;
     // zweite Reihe: Bau-Menü (Befestigung an der Front) + Nachschub
     let x2 = 14; const y2 = FELD_H + 60;
     x2 += this.add.text(x2, y2, 'BAU:', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' }).setOrigin(0, 0.5).setDepth(950).width + 8;
@@ -454,7 +472,7 @@ export class SchlachtProbe extends Phaser.Scene {
   private aktualisiereAuswahl(): void {
     const sel = this.gewaehlte();
     if (!sel.length) { this.auswahlText.setText(''); return; }
-    const NAME: Record<Typ, string> = { schild: 'Schildträger', nahkampf: 'Krieger', bogen: 'Bogenschütze', heiler: 'Heiler', e_nah: 'Untoter', e_bogen: 'Untoter Schütze' };
+    const NAME: Record<Typ, string> = { schild: 'Schildträger', nahkampf: 'Krieger', bogen: 'Bogenschütze', heiler: 'Heiler', e_nah: 'Untoter', e_bogen: 'Untoter Schütze', elite: 'Elite-Veteran', e_elite: 'Untoter Elite', troll: 'Riese', e_troll: 'Untoter Riese' };
     const grp = new Map<Typ, { n: number; hp: number; max: number }>();
     for (const u of sel) { const g = grp.get(u.typ) ?? { n: 0, hp: 0, max: 0 }; g.n++; g.hp += Math.max(0, u.hp); g.max += u.maxhp; grp.set(u.typ, g); }
     const zeilen = [...grp.entries()].map(([t, g]) => `${g.n}x ${NAME[t]}  ·  Leben ${Math.round(g.hp)}/${Math.round(g.max)}`);
@@ -586,6 +604,19 @@ export class SchlachtProbe extends Phaser.Scene {
     u.flash = Math.max(0, u.flash - dt);
     u.aufstiegFx = Math.max(0, u.aufstiegFx - dt);
 
+    // Rückstoß zuerst (Riesen-Schleuder, R54): solange die Einheit fliegt,
+    // wird sie geschoben und kann nicht steuern - danach klingt es ab.
+    if (Math.abs(u.kbX) > 1 || Math.abs(u.kbY) > 1) {
+      u.x = Phaser.Math.Clamp(u.x + u.kbX * dt, 16, FELD_W - 16);
+      u.y = Phaser.Math.Clamp(u.y + u.kbY * dt, 16, FELD_H - 16);
+      const decay = Math.exp(-9 * dt);
+      u.kbX *= decay; u.kbY *= decay;
+      u.step = 0;
+      this.trenne(u);
+      this.zeichneEinheit(u);
+      return;
+    }
+
     const home = this.heimat(u);
     const fernVonHome = Math.hypot(home.x - u.x, home.y - u.y);
     let bewegtZu: { x: number; y: number } | null = null;
@@ -712,8 +743,57 @@ export class SchlachtProbe extends Phaser.Scene {
       // Schwert-Wusch: ein heller Bogen vor dem Krieger in Schlagrichtung
       this.schwuenge.push({ x: u.x, y: u.y - 4, ang: Math.atan2(ziel.y - u.y, ziel.x - u.x), t: 0, feind: u.team === 'feind' });
       this.sfx.play('treffer_fleisch', 0.28);
+      // Riese/Troll (R54): schleudert das Ziel und nahe Gegner beiseite, wie der
+      // Hammerschlag des Helden. Wuchtiger Klang, kein normaler Wusch reicht.
+      if (TYP[u.typ].knockback) this.schleudere(u, ziel);
     }
     if (ziel.hp <= 0) { this.gewinneXp(u); this.toeten(ziel); }
+  }
+
+  // Riesen-Schleuder (R54, Helms-Klamm-Wunsch): der Riese wirft das getroffene
+  // Ziel und alle nahen Gegner radial von sich weg - analog zum Hammerschlag des
+  // Helden. Nur Gegner, nie eigene Reihen. Wuchtiger Aufprall-Klang.
+  private schleudere(u: Unit, ziel: Unit): void {
+    const KRAFT = 420, RADIUS = 80;
+    this.sfx.play('hammer_schlag', 0.5);
+    // Druckwelle als Sichtmarke (expandierender Ring in Team-Farbe)
+    this.marker.push({ x: u.x, y: u.y, t: 0.5, feind: u.team === 'feind' });
+    for (const o of this.nachbarn(u.x, u.y, 2, this._puffer)) {
+      if (o.tot || o.team === u.team || TYP[o.typ].knockback) continue;   // Riesen schleudern keine Riesen
+      const dx = o.x - u.x, dy = o.y - u.y, d = Math.hypot(dx, dy);
+      if (d > RADIUS) continue;
+      const ang = d > 0.1 ? Math.atan2(dy, dx) : Math.atan2(ziel.y - u.y, ziel.x - u.x);
+      const f = KRAFT * (0.5 + 0.5 * (1 - d / RADIUS));
+      o.kbX = Math.cos(ang) * f; o.kbY = Math.sin(ang) * f;
+      o.flash = 0.14;
+      this.tweens.add({ targets: o.sprite, angle: (Math.random() < 0.5 ? -1 : 1) * 60, duration: 200, yoyo: true });
+    }
+  }
+
+  // Befördern (R54): gewählte Einheiten zu Elite-Veteranen oder Riesen
+  // aufwerten - die richtige Variante je Team (eigen / untot). Leben-Verhältnis
+  // bleibt, Größe/Werte/Figur übernehmen die neuen Typ-Werte (gilt ab nächstem
+  // Frame in zeichneEinheit). Heiler bleiben Heiler.
+  private befoerdere(art: 'elite' | 'troll'): void {
+    const sel = this.gewaehlte().filter((u) => !u.tot && !u.heiler);
+    if (!sel.length) return;
+    for (const u of sel) {
+      const neu: Typ = u.team === 'spieler'
+        ? art
+        : (art === 'elite' ? 'e_elite' : 'e_troll');
+      const d = TYP[neu];
+      const ratio = u.maxhp > 0 ? u.hp / u.maxhp : 1;
+      u.typ = neu; u.figur = d.figur; u.tint = d.tint;
+      u.dmg = d.dmg; u.reich = d.reich; u.speed = d.speed; u.rank = d.rank;
+      u.maxhp = d.hp; u.hp = Math.max(1, Math.round(d.hp * ratio));
+      u.xp = 0; u.stufe = 1; u.aufstiegFx = 0.7;
+      const g = d.groesse ?? 1;
+      u.sprite.setScale(g);
+      u.ring.setRadius(13 * g);
+    }
+    this.sfx.play('fertigkeit_neu', 0.3);
+    this.setzeStatus();
+    this.aktualisiereAuswahl();
   }
 
   // Aufstieg: Kill gibt XP; bei Schwelle Stufe hoch (mehr Leben/Schaden, etwas Heilung).
