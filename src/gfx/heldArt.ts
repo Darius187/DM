@@ -463,8 +463,11 @@ function zeichneSchlag(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, s: Sc
 function zeichneSeite(ctx: CanvasRenderingContext2D, p: Pal, f: HeldForm, face: number, step: number, tier: HeldTier, kopfDir: Dir, schlag: Schlag | null, schlagVorne: boolean, restAng: number, waffe: WaffenKlasse | null, atemHub = 0): void {
   const legSwing = step === 1 ? 1 : step === 3 ? -1 : 0;
   const stride = 3;
-  const nearLeg = face * legSwing * stride;
-  const farLeg = -face * legSwing * stride;
+  // Beim Schlag: Ausfallschritt - vorderer Fuß (Richtung Gegner = face) weit vor,
+  // hinterer Fuß zurück = stabiler Stand, Hüfte/Schulter schieben nach vorn (HEMA).
+  const ausfall = schlag !== null;
+  const nearLeg = ausfall ? face * 6 : face * legSwing * stride;
+  const farLeg = ausfall ? -face * 4 : -face * legSwing * stride;
   const nearArm = -face * legSwing * 2.6;
   const farArm = face * legSwing * 2.6;
   const flutter = legSwing * 2;
@@ -583,11 +586,13 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: num
   // Cape hängt von den Schultern - hebt sich beim Einatmen mit (Oberkörper)
   ctx.save(); ctx.translate(0, -atemHub); umhang(ctx, p, f, sway); ctx.restore();
 
-  // Beine mit Gehschritt - Spreizung an der Taille (Beine atmen NICHT mit)
+  // Beine mit Gehschritt - Spreizung an der Taille (Beine atmen NICHT mit).
+  // Beim Schlag: breiter, fester Stand mit vorgesetztem (längerem) Führungsbein.
   const lVor = step === 1 ? 1.5 : step === 3 ? -1.5 : 0;
-  const spreiz = Math.max(2.4, f.tailleB * 0.65);
-  bein(ctx, p, f, CX - spreiz, lVor);
-  bein(ctx, p, f, CX + spreiz, -lVor);
+  const breit = schlag !== null;
+  const spreiz = Math.max(2.4, f.tailleB * 0.65) * (breit ? 1.55 : 1);
+  bein(ctx, p, f, CX - spreiz, breit ? 3 : lVor);            // Führungsbein vor (länger)
+  bein(ctx, p, f, CX + spreiz, breit ? -0.5 : -lVor);        // Standbein hinten
 
   // Oberkörper (Arme/Rumpf/Schultern/Kopf/Waffe) hebt sich beim Einatmen
   ctx.save(); ctx.translate(0, -atemHub);

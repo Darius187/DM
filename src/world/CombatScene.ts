@@ -3109,8 +3109,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         step = this.pstep;
       } else {
         // Stehen: Atem-Zyklus (R54) - Frame 2 = Einatmen (Brust hebt), Frame 0 =
-        // Ausatmen. Einatmen kürzer, Ausatmen länger (~1:1.7), ~4,5s je Atemzug.
-        step = (this.time.now % 4500) < 1700 ? 2 : 0;
+        // Ausatmen. Einatmen kürzer, Ausatmen länger, ~3,4s je Atemzug (etwas
+        // flotter, Autorwunsch "einen Tick schneller").
+        step = (this.time.now % 3400) < 1300 ? 2 : 0;
       }
       this.zeichneHeld(angleToDir8(this.pdir), step);
       if (this.playerHitFlash > 0) this.playerSprite.setTintFill(0xffffff);
