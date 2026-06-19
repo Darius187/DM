@@ -783,10 +783,12 @@ export class UIPanels {
     if (verbrauch && !rechts) { this.sfx.play('klick'); return; }
     if (it.kind === 'gem') {
       const gem = it as GemItem;
-      if (p.weapon?.sock) {
-        // Tausch: alter Stein kommt zurück ins Inventar (Feedback-Runde 2)
-        if (p.weapon.sock.gem) p.inv.push(p.weapon.sock.gem);
-        p.weapon.sock.gem = gem;
+      // In die Hauptwaffe ODER den Bogen fassen (Autorbug R53: Bögen ließen sich
+      // nicht sockeln, darum kein Test der Elementarpfeile möglich).
+      const ziel = p.weapon?.sock ? p.weapon : (p.bogen?.sock ? p.bogen : null);
+      if (ziel?.sock) {
+        if (ziel.sock.gem) p.inv.push(ziel.sock.gem);   // alter Stein zurück ins Inventar
+        ziel.sock.gem = gem;
         p.inv = p.inv.filter((x) => x !== it);
         this.sfx.play('edelstein_fassen');
       } else {

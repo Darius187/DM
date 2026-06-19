@@ -24,9 +24,9 @@ import { MELDUNGEN } from '../data/texte';
 import { getSettings, saveSettings, type Settings } from '../logic/settings';
 import { TUNING, TUNING_ROWS, neuerTypTuning } from '../logic/tuning';
 import { defaultRng, type Rng } from '../logic/rng';
-import { alleGegenstaende, gegenstandsAnzahl } from '../logic/kompendium';
+import { alleGegenstaende, gegenstandsAnzahl, kompendium } from '../logic/kompendium';
 import { ELITE, ENEMIES, GEFALLENE_TYPEN, GEFALLENE_WAFFEN } from '../data/enemies';
-import type { EnemyTypeId, WeaponClass } from '../data/types';
+import type { EnemyTypeId, WeaponClass, Item } from '../data/types';
 import { ABILITY_FX, ABILITIES, LORE_XP, ROLLEN_ZAUBER, XP, BRAND_TICK_S } from '../data/balancing';
 import { SKILL_ICONS } from '../data/skills';
 import { PickupSystem, AUTO_PICKUP, type Pickup } from './Pickups';
@@ -417,6 +417,63 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.panels?.refresh?.();
   }
 
+  // Einen Gegenstand aus der Liste ins Inventar legen (frische Kopie). Gesockelte
+  // Bögen heben die Bogen-Stufe auf das Elementarpfeil-Niveau, damit der Test
+  // (Feuer-/Frost-/Schattenpfeile) sofort funktioniert.
+  private holeItem(it: Item): void {
+    this.p.inv.push({ ...it, boni: [...it.boni], sock: it.sock ? { gem: it.sock.gem } : it.sock });
+    if (it.weaponClass === 'bogen' && it.sock?.gem) {
+      this.p.schools.bogen.level = Math.max(this.p.schools.bogen.level, ELEM_PFEIL.stufe);
+    }
+    this.sfx.play('klick');
+    this.logMsg(`"${it.name}" ins Inventar gelegt.`, 'gold');
+    this.panels?.refresh?.();
+  }
+
+  // Dev-Item-Fenster (Runde 53, Autorwunsch): scrollbare Liste ALLER Gegenstände
+  // (inkl. gesockelter Test-Bögen), einzeln anklickbar zum Holen.
+  protected itemListe: Phaser.GameObjects.Container | null = null;
+  private itemListeScroll = 0;
+  protected toggleItemListe(): void {
+    if (this.itemListe) { this.itemListe.destroy(); this.itemListe = null; return; }
+    const eintraege: Array<{ kat?: string; item?: Item }> = [];
+    for (const k of kompendium()) { eintraege.push({ kat: k.name }); for (const it of k.items) eintraege.push({ item: it }); }
+    const w = 560, sichtbar = 22, rowH = 19, maxScroll = Math.max(0, eintraege.length - sichtbar);
+    const h = 44 + sichtbar * rowH + 12;
+    const baue = (): void => {
+      this.itemListe?.destroy();
+      const c = this.add.container((this.scale.width - w) / 2, Math.max(16, (this.scale.height - h) / 2)).setScrollFactor(0).setDepth(6600);
+      this.itemListe = c;
+      const bg = this.add.rectangle(0, 0, w, h, 0x171108, 0.98).setOrigin(0).setStrokeStyle(1, 0x4a3a26); bg.setInteractive(); c.add(bg);
+      c.add(this.add.text(12, 8, 'GEGENSTAND-LISTE (Dev) - anklicken legt ins Inventar', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227', letterSpacing: 1 }));
+      const kbtn = (x: number, lbl: string, fn: () => void): void => {
+        const t = this.add.text(x, 8, lbl, { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', backgroundColor: '#221808', padding: { x: 7, y: 2 } }).setInteractive({ useHandCursor: true });
+        t.on('pointerdown', fn); c.add(t);
+      };
+      kbtn(w - 188, '▲', () => { this.itemListeScroll = Phaser.Math.Clamp(this.itemListeScroll - 9, 0, maxScroll); baue(); });
+      kbtn(w - 152, '▼', () => { this.itemListeScroll = Phaser.Math.Clamp(this.itemListeScroll + 9, 0, maxScroll); baue(); });
+      kbtn(w - 96, 'SCHLIESSEN', () => { this.itemListe?.destroy(); this.itemListe = null; });
+      const start = Phaser.Math.Clamp(this.itemListeScroll, 0, maxScroll);
+      const RAR = ['#cfc4a8', '#7aa0e0', '#e0b34a', '#c060d0'];
+      let y = 36;
+      for (let i = start; i < Math.min(eintraege.length, start + sichtbar); i++) {
+        const e = eintraege[i];
+        if (e.kat) { c.add(this.add.text(12, y, `— ${e.kat} —`, { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a', letterSpacing: 1 })); y += rowH; continue; }
+        const it = e.item!;
+        const col = RAR[it.rarity] ?? '#cfc4a8';
+        const label = it.name + (it.sock?.gem ? `  ◆ ${it.sock.gem.name}` : '');
+        const row = this.add.text(24, y, label, { fontFamily: 'serif', fontSize: '12px', color: col }).setInteractive({ useHandCursor: true });
+        row.on('pointerover', () => row.setColor('#ffffff'));
+        row.on('pointerout', () => row.setColor(col));
+        row.on('pointerdown', () => this.holeItem(it));
+        c.add(row); y += rowH;
+      }
+      c.add(this.add.text(12, h - 16, `${start + 1}-${Math.min(eintraege.length, start + sichtbar)} von ${eintraege.length}  ·  ▲/▼ blättern`, { fontFamily: 'serif', fontSize: '10px', color: '#6a5f4c' }));
+      fixUiScroll(c);
+    };
+    baue();
+  }
+
   // Dev-Kompendium (Runde 53): je ein Stück von jeder Item-Art ins Inventar,
   // dazu Tränke - damit der Autor jede Waffe/Rüstung/Rolle/Foliant testen kann.
   private gibAlleGegenstaende(): void {
@@ -597,6 +654,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     yB += 32;
     // Kompendium (Runde 53): je ein Stück von allem ins Inventar zum Testen
     schalter(yB, `ALLE GEGENSTÄNDE INS INVENTAR (${gegenstandsAnzahl()} Test-Items)`, '#9ad86a', '#221808', () => this.gibAlleGegenstaende());
+    yB += 32;
+    schalter(yB, 'GEGENSTAND-LISTE öffnen (einzeln holen, gesockelte Bögen)', '#9ad86a', '#221808', () => { this.toggleItemListe(); this.toggleDevPanel(); });
     yB += 32;
     // Ressourcen auffüllen (Stadtmauer/Wiederaufbau testen)
     schalter(yB, 'RESSOURCEN AUFFÜLLEN (+999 Material/Gold, Stadtmauer testen)', '#9ad86a', '#221808', () => this.devRessourcen());
