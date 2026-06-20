@@ -67,6 +67,15 @@ export class HeldEditor {
     });
   }
 
+  // Aktuelle Formen dauerhaft speichern, Atlanten neu backen und die Welt-Figur
+  // aktualisieren. Setzt gespeichert=true (kein Verwerfen beim Schließen mehr).
+  private speichereUndUebernehmen(): void {
+    saveHeldForm();
+    this.provider.invalidateHeld();
+    this.onApply?.();
+    this.gespeichert = true;
+  }
+
   close(): void {
     // Nicht gespeicherte Änderungen aller Stufen verwerfen (die Welt-Figur
     // wurde nur beim Speichern angefasst)
@@ -138,6 +147,7 @@ export class HeldEditor {
       const fig = BUILTIN_FIGUREN[this.figurIdx]; if (!fig) return;
       const z = getHeldForm(this.tier());
       Object.assign(z, fig.form); z.farben = { ...fig.form.farben };
+      this.speichereUndUebernehmen();   // sofort persistent + Welt-Figur aktualisieren (Autorbug R55)
       this.build();
     }, GOLD));
 
@@ -213,7 +223,7 @@ export class HeldEditor {
     // --- Knöpfe unten ---
     const hinweis = this.scene.add.text(20, h - 62, '', { fontFamily: 'serif', fontSize: '11px', color: '#6ad06a' });
     c.add(hinweis);
-    const uebernehmen = (): void => { saveHeldForm(); this.provider.invalidateHeld(); this.onApply?.(); this.gespeichert = true; };
+    const uebernehmen = (): void => this.speichereUndUebernehmen();
     c.add(this.knopf(20, h - 40, 'EXPORT (Code)', 120, () => {
       const code = exportiereFormen(getFormen());
       let ok = false;

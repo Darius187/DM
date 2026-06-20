@@ -72,6 +72,11 @@ export class SpriteProvider {
 
   invalidateHeld(): void {
     const FELD = HELD_FELD, M = HELD_MARGIN;
+    // Portrait-Büsten verwerfen, damit das Charaktermenü die geänderte Figur zeigt
+    // (Autorbug R55: "Figur übernehmen" wirkte im Portrait nicht).
+    for (const tier of ['stoff', 'leder', 'kette', 'platte'] as HeldTier[]) {
+      if (this.tex.exists(`ptheld_${tier}`)) this.tex.remove(`ptheld_${tier}`);
+    }
     for (const [key, { tier, waffe }] of this.heldAtlanten) {
       if (!this.tex.exists(key)) continue;
       const tex = this.tex.get(key) as Phaser.Textures.CanvasTexture;
