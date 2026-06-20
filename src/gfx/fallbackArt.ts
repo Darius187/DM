@@ -50,8 +50,17 @@ function withOutline(ctx: CanvasRenderingContext2D, draw: (c: CanvasRenderingCon
   sctx.globalCompositeOperation = 'source-in';
   sctx.fillStyle = 'rgba(8,6,4,0.85)';
   sctx.fillRect(0, 0, 32, 32);
-  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) ctx.drawImage(sil, dx, dy);
-  ctx.drawImage(off, 0, 0);
+  // Umriss + Figur ERST in ein eigenes 32x32-Bild legen (auf die Zelle begrenzt),
+  // dann EINMAL platzieren. So können die ±1px-Umriss-Versätze nicht über die
+  // Zellgrenze in die Nachbar-Frames des Atlas „bluten" (Autorbug R58: dunkle
+  // Flecken am rechten Rand mancher Gegner).
+  const comp = document.createElement('canvas');
+  comp.width = 32;
+  comp.height = 32;
+  const cctx = comp.getContext('2d')!;
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) cctx.drawImage(sil, dx, dy);
+  cctx.drawImage(off, 0, 0);
+  ctx.drawImage(comp, 0, 0);
 }
 
 // Zeichnet eine humanoide Figur in ein 32x32-Feld (Ursprung links oben).

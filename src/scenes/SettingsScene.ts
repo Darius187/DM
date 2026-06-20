@@ -71,6 +71,7 @@ export class SettingsScene extends Phaser.Scene {
     y = this.toggle(y, 'Blut & Überreste', () => s.blood, (v) => { s.blood = v; });
     y = this.slider(y, 'Leuchten / Bloom-Stärke (0 = aus)', () => s.bloom, (v) => { s.bloom = v; }, 0, 100);
     y = this.slider(y, 'Schatten / Licht-Stärke (0 = aus, spart Leistung)', () => s.schatten, (v) => { s.schatten = v; }, 0, 100);
+    y = this.toggle(y, 'Dungeon: echte Schatten (Raycaster) - aus = einfaches Licht, spart Leistung', () => s.licht.dungeonNeu, (v) => { s.licht.dungeonNeu = v; });
     y = this.toggle(y, 'Nebel des Krieges im Dunkelwald', () => s.fow, (v) => { s.fow = v; });
     y = this.toggle(y, 'Texte vorlesen (Sprachausgabe)', () => s.vorlesen, (v) => { s.vorlesen = v; });
     sect('HANDY');
