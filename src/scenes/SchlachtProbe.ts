@@ -90,6 +90,8 @@ export class SchlachtProbe extends Phaser.Scene {
   private infoText!: Phaser.GameObjects.Text;
   private statusText!: Phaser.GameObjects.Text;
   private seiteKnopf!: Phaser.GameObjects.Text;
+  private lebenWert!: Phaser.GameObjects.Text;
+  private hpMult = 1;     // globaler Leben-Multiplikator (Regler, R55)
   private boxStart: { x: number; y: number } | null = null;
   private boxNow: { x: number; y: number } | null = null;
   private linieStart: { x: number; y: number } | null = null;
@@ -155,9 +157,10 @@ export class SchlachtProbe extends Phaser.Scene {
     const sprite = this.add.sprite(x, y, '__DEFAULT').setDepth(y).setScale(groesse);
     const farbe = team === 'spieler' ? 0x6ad0ff : 0xe05a4a;
     const ring = this.add.circle(x, y, 13 * groesse, farbe, 0).setDepth(1).setStrokeStyle(2, farbe, 0);
+    const mhp = Math.round(d.hp * this.hpMult);   // Leben-Regler (R55)
     const u: Unit = {
       sprite, ring, team, typ, figur: d.figur, tint: d.tint, heiler: d.heiler, x, y,
-      hp: d.hp, maxhp: d.hp, dmg: d.dmg, reich: d.reich, speed: d.speed, rank: d.rank,
+      hp: mhp, maxhp: mhp, dmg: d.dmg, reich: d.reich, speed: d.speed, rank: d.rank,
       atkCd: 0, dir: 0, step: 0, stepT: 0, flash: 0, tot: false, ausgewaehlt: false,
       stance: 'aggressiv', xp: 0, stufe: 1, aufstiegFx: 0, dmgMult: 1, speedMult: 1,   // Standard AGGRESSIV (Autorwunsch R53): greifen an, sobald Feinde in der Nähe sind
       kbX: 0, kbY: 0,
@@ -175,6 +178,16 @@ export class SchlachtProbe extends Phaser.Scene {
     for (let i = 0; i < 2; i++) this.neueEinheit('spieler', 'heiler', 70, 300 + i * 50);
     for (let i = 0; i < 11; i++) this.neueEinheit('feind', 'e_nah', 1060 + (i % 2) * 28, 150 + i * 30);
     for (let i = 0; i < 4; i++) this.neueEinheit('feind', 'e_bogen', 1170, 230 + i * 46);
+  }
+
+  // Leben-Regler (R55, Autorwunsch): globalen Leben-Multiplikator stufen und
+  // sofort auf ALLE vorhandenen Einheiten anwenden (Verhältnis hp/maxhp bleibt).
+  private setHpMult(neu: number): void {
+    const clamped = Math.max(0.5, Math.min(5, Math.round(neu * 2) / 2));
+    const ratio = clamped / this.hpMult;
+    this.hpMult = clamped;
+    for (const u of this.units) { u.maxhp *= ratio; u.hp *= ratio; }
+    this.lebenWert?.setText(`x${this.hpMult.toFixed(1)}`);
   }
 
   // --- UI -------------------------------------------------------------------
@@ -212,7 +225,13 @@ export class SchlachtProbe extends Phaser.Scene {
     // schleudern Gegner beiseite (Helms-Klamm).
     xb += this.add.text(xb, yb, 'BEFÖRDERN:', { fontFamily: 'serif', fontSize: '12px', color: '#f0d878' }).setOrigin(0, 0.5).setDepth(950).width + 6;
     xb += this.knopf(xb, yb, '→ ELITE', () => this.befoerdere('elite')).width + 5;
-    xb += this.knopf(xb, yb, '→ RIESE', () => this.befoerdere('troll')).width + 5;
+    xb += this.knopf(xb, yb, '→ RIESE', () => this.befoerdere('troll')).width + 14;
+    // Leben-Regler (R55): Leben aller Einheiten stufenlos hoch/runter (Autorwunsch)
+    xb += this.add.text(xb, yb, 'LEBEN:', { fontFamily: 'serif', fontSize: '12px', color: '#9ad86a' }).setOrigin(0, 0.5).setDepth(950).width + 6;
+    xb += this.knopf(xb, yb, '-', () => this.setHpMult(this.hpMult - 0.5)).width + 4;
+    this.lebenWert = this.add.text(xb, yb, `x${this.hpMult.toFixed(1)}`, { fontFamily: 'serif', fontSize: '13px', color: '#e8dcc0' }).setOrigin(0, 0.5).setDepth(950);
+    xb += 40;
+    xb += this.knopf(xb, yb, '+', () => this.setHpMult(this.hpMult + 0.5)).width + 5;
 
     // Reihe 3: Bau-Menü (Befestigung an der Front) + Nachschub
     let x2 = 14; const y2 = FELD_H + 82;
