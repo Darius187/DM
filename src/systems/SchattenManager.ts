@@ -24,6 +24,7 @@ export interface Licht {
   raumFarbe?: number;   // Farbe des Raumlichts 0 (warm) .. 1 (kühl-weiß)
   glutRadius?: number;  // Streuung des warmen Flammenscheins 0 (eng) .. 1 (weit)
   schattenHell?: number; // Schatten-Aufhellung: hebt die Schatten DIESES Lichts an (Bounce), 0..~0.6
+  fade?: number;        // Ein-/Ausblend-Faktor 0..1 (sanfter Übergang statt hartem An/Aus), Standard 1
 }
 
 // Zwei Farben mischen (t 0..1) - für die Fackel-Farbtemperatur (rot..weißgelb).
@@ -173,6 +174,7 @@ export class SchattenManager {
 
     for (const L of aktiv) {
       const [lx, ly] = w2s(L.x, L.y); const rS = L.radius * z;
+      const fd = L.fade ?? 1;   // sanftes Ein-/Ausblenden (kein hartes An/Aus)
       if (L.art === 'sicht') {
         // weicher persönlicher Lichtradius / Effekt-Licht - reiner Reveal (kein Schattenwurf)
         this.brush.setAlpha(1).setScale((rS * 2) / SchattenManager.TEX); rt.erase(this.brush, lx, ly);
@@ -185,8 +187,8 @@ export class SchattenManager {
         // ABER: ein partielles Reveal, damit auch eine Glut-Fackel ihren Bereich erhellt
         // und so z.B. den Schatten eines Gegners von HINTEN auffüllt (Autorwunsch R57).
         const sHg = L.schattenHell ?? 0;
-        if (sHg > 0) { this.brush.setAlpha(Math.min(0.7, sHg * 0.9)).setScale((rS * 1.4) / SchattenManager.TEX); rt.erase(this.brush, lx, ly); this.brush.setAlpha(1); }
-        const fl = 1 + Math.sin(t * 8 + lx) * 0.06 + Math.sin(t * 19 + ly) * 0.04, hk = (L.staerke ?? 1) * this.helligkeit, ton = L.farbTon ?? 0.4;
+        if (sHg > 0) { this.brush.setAlpha(Math.min(0.7, sHg * 0.9) * fd).setScale((rS * 1.4) / SchattenManager.TEX); rt.erase(this.brush, lx, ly); this.brush.setAlpha(1); }
+        const fl = 1 + Math.sin(t * 8 + lx) * 0.06 + Math.sin(t * 19 + ly) * 0.04, hk = (L.staerke ?? 1) * this.helligkeit * fd, ton = L.farbTon ?? 0.4;
         const gR = 0.4 + (L.glutRadius ?? 0.6) * 0.85;   // Streuung des warmen Scheins (eng..weit)
         if (this.feuerNeu) {
           this.glow(lx, ly, rS * 0.78 * gR * fl, mischFarbe(0x6a1604, 0xb8702e, ton), 0.18 * hk); this.glow(lx, ly, rS * 0.42 * gR * fl, mischFarbe(0xd8641a, 0xf0b050, ton), 0.24 * hk); this.glow(lx, ly, rS * 0.22 * gR * fl, mischFarbe(0xff9030, 0xfff0c8, ton), 0.28 * hk);
@@ -218,14 +220,14 @@ export class SchattenManager {
       // angehoben (partielles Reveal über den ganzen Radius), bevor die Sichtform voll
       // freigestanzt wird - so sind Schatten/Gegner darin nicht pechschwarz (Autorwunsch R57).
       const sH = L.schattenHell ?? 0;
-      if (sH > 0) { this.brush.setAlpha(Math.min(0.92, sH)).setScale((rS * 2) / SchattenManager.TEX); rt.erase(this.brush, lx, ly); this.brush.setAlpha(1); }
+      if (sH > 0) { this.brush.setAlpha(Math.min(0.92, sH) * fd).setScale((rS * 2) / SchattenManager.TEX); rt.erase(this.brush, lx, ly); this.brush.setAlpha(1); }
       const groesse = (3 + weich * 13) * z;
       let polyC: { x: number; y: number }[] | null = null;
       for (const [ox, oy] of SchattenManager.RING) {
         const poly = sichtPolygon({ x: lx + ox * groesse, y: ly + oy * groesse }, segs, rS);
         if (poly.length < 3) continue;
         if (!polyC) polyC = poly;
-        this.maskG.clear(); this.maskG.fillStyle(0xffffff, 0.46); this.maskG.beginPath();
+        this.maskG.clear(); this.maskG.fillStyle(0xffffff, 0.46 * fd); this.maskG.beginPath();
         this.maskG.moveTo(poly[0].x, poly[0].y);
         for (let i = 1; i < poly.length; i++) this.maskG.lineTo(poly[i].x, poly[i].y);
         this.maskG.closePath(); this.maskG.fillPath();
@@ -238,12 +240,12 @@ export class SchattenManager {
       const raum = (L.raumLicht ?? 0) * this.helligkeit;
       if (raum > 0 && polyC) {
         const rf = mischFarbe(0xffcaa0, 0xffffff, L.raumFarbe ?? 0.6);
-        this.raumLichtPoly(lx, ly, rS, polyC, rf, Math.min(0.7, raum * 0.6));
+        this.raumLichtPoly(lx, ly, rS, polyC, rf, Math.min(0.7, raum * 0.6) * fd);
       }
       // dunkler Lichtabfall zum Rand (Falloff) + warmer Schein (Feuer ODER warm/farbig).
       const flick = 1 + Math.sin(t * 8 + lx) * 0.05 + Math.sin(t * 21 + ly) * 0.03;
-      this.falloff(lx, ly, rS, 0.28 + 0.26 * staerke);
-      const hk = (L.staerke ?? 1) * this.helligkeit, gR = 0.4 + (L.glutRadius ?? 0.6) * 0.85;   // Streuung des warmen Scheins
+      this.falloff(lx, ly, rS, (0.28 + 0.26 * staerke) * fd);
+      const hk = (L.staerke ?? 1) * this.helligkeit * fd, gR = 0.4 + (L.glutRadius ?? 0.6) * 0.85;   // Streuung des warmen Scheins
       if (L.farbe !== undefined) {   // warmer/ farbiger Schein OHNE Flamme (z.B. Held)
         this.glow(lx, ly, rS * 0.55 * gR, L.farbe, 0.20 * hk); this.glow(lx, ly, rS * 0.28 * gR, 0xffe6c0, 0.12 * hk);
       } else this.feuer(lx, ly, rS * gR, t, flick, hk, L.farbTon ?? 0.4);   // Fackel = konzentriertes Feuer + Flamme

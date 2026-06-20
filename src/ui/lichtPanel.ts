@@ -69,6 +69,7 @@ export class LichtPanel {
     this.toggle(() => `Fackel-Sichtprüfung: ${L().fackelSicht ? 'AN' : 'aus (durch Wände)'}`, () => { L().fackelSicht = !L().fackelSicht; });
     this.slider('Fackel-Sichttoleranz (um die Ecke)', 0, 100, () => L().fackelSichtTol, (v) => { L().fackelSichtTol = v; }, (v) => `${Math.round(v / 100 * 4)} Wände`);
     this.slider('Fackel-Aktiv-Distanz', 0, 100, () => L().fackelDistanz, (v) => { L().fackelDistanz = v; });
+    this.slider('Fackel-Überblendung (kein Blinken)', 0, 100, () => L().fackelBlende, (v) => { L().fackelBlende = v; });
     this.slider('Wand-Schatten-Weichheit', 0, 100, () => L().dungeonWeichheit, (v) => { L().dungeonWeichheit = v; });
     this.slider('Licht-Schärfe (gegen Schleier)', 0, 100, () => L().lichtSchaerfe, (v) => { L().lichtSchaerfe = v; });
     this.toggle(() => `Held-Licht (Sicht): ${L().heldLichtAn ? 'AN' : 'AUS'}`, () => { L().heldLichtAn = !L().heldLichtAn; });

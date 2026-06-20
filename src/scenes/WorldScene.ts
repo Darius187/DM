@@ -141,6 +141,7 @@ export class WorldScene extends CombatScene {
   private bodenGfx!: Phaser.GameObjects.Graphics;  // Blutspuren AUF dem Boden (unter den Figuren)
   private schatten?: SchattenManager;              // Tag-Schlagschatten von Gebäuden/NPCs (Runde 55)
   private schattenArea = '';                        // für welches Gebiet die Verdecker stehen
+  private fackelFade = new Map<object, number>();   // je Fackel ein Ein-/Ausblend-Stand 0..1 (kein hartes Aufblinken)
   private lichtPanel?: LichtPanel;                  // Licht-Werkbank (Taste L), live + persistent
   private lightRT!: Phaser.GameObjects.RenderTexture;
   private warmPool: Phaser.GameObjects.Image[] = [];
@@ -2439,17 +2440,32 @@ export class WorldScene extends CombatScene {
     // die Fackel um die Ecke in derselben Halle, aber nicht die zwei Räume weiter.
     const reich = 150 + (lic.fackelDistanz ?? 55) / 100 * 470;   // 150..620 Aktiv-Distanz
     const tol = Math.round((lic.fackelSichtTol ?? 30) / 100 * 4); // 0..4 Wände
-    const nahe = this.area.torches
-      .map((t) => ({ t, d: Math.hypot(t.x - this.px, t.y - this.py) }))
-      .filter((o) => o.d < reich && (!lic.fackelSicht || this.wandRunsZu(this.px, this.py, o.t.x, o.t.y) <= tol))
-      .sort((a, b) => a.d - b.d);
+    // Ein-/Ausblenden: jede Fackel fährt sanft hoch/runter statt hart an/aus
+    // (behebt das nervige Aufblinken beim Überqueren der Grenze/Sichtlinie).
+    const dt = Math.min(0.05, this.game.loop.delta / 1000);
+    const tau = (lic.fackelBlende ?? 40) <= 0 ? 0 : 0.04 + (lic.fackelBlende ?? 40) / 100 * 0.55;   // 0=sofort .. ~0.6s
+    const rate = tau <= 0 ? 1 : Math.min(1, dt / tau);
+    const lebend: { t: { x: number; y: number }; d: number; fade: number }[] = [];
+    for (const t of this.area.torches) {
+      const d = Math.hypot(t.x - this.px, t.y - this.py);
+      if (d > reich * 1.25) { this.fackelFade.delete(t); continue; }   // weit weg: gar nicht erst betrachten
+      const sichtbar = !lic.fackelSicht || this.wandRunsZu(this.px, this.py, t.x, t.y) <= tol;
+      const distFade = Phaser.Math.Clamp((reich - d) / Math.max(1, reich * 0.18), 0, 1);   // weicher Rand der Reichweite
+      const ziel = sichtbar && d < reich ? distFade : 0;
+      let f = this.fackelFade.get(t) ?? 0;
+      f += (ziel - f) * rate;
+      this.fackelFade.set(t, f);
+      if (f <= 0.015) { if (ziel <= 0) this.fackelFade.delete(t); continue; }
+      lebend.push({ t, d, fade: f });
+    }
+    lebend.sort((a, b) => a.d - b.d);
     // Wie viele Fackeln werfen Schatten? "Alle"-Schalter übersteuert den Regler.
-    const nSchatten = lic.alleFackelnSchatten ? nahe.length : Math.round((lic.schattenFackeln ?? 20) / 100 * 6);
+    const nSchatten = lic.alleFackelnSchatten ? lebend.length : Math.round((lic.schattenFackeln ?? 20) / 100 * 6);
     const ton = (lic.fackelFarbe ?? 45) / 100;
-    nahe.forEach((o, i) => {
+    lebend.forEach((o, i) => {
       const frac = Phaser.Math.Clamp(o.d / reich, 0, 1);   // nah=0 .. fern=1
       const schattenHell = schNah + (schFern - schNah) * frac;
-      lichter.push({ x: o.t.x, y: o.t.y - 4, art: i < nSchatten ? 'fackel' : 'glut', radius: 150 * fR, weich, staerke: fH, farbTon: ton, raumLicht, raumFarbe, glutRadius, schattenHell });
+      lichter.push({ x: o.t.x, y: o.t.y - 4, art: i < nSchatten ? 'fackel' : 'glut', radius: 150 * fR, weich, staerke: fH, farbTon: ton, raumLicht, raumFarbe, glutRadius, schattenHell, fade: o.fade });
     });
     // Effekt-Lichter: Feuerball orange, Zauber violett, Feuerzauber. Per Schalter
     // werfen auch sie echte Schatten ('fackel' mit Farbe = Raycasting ohne Flamme).
@@ -2515,6 +2531,7 @@ export class WorldScene extends CombatScene {
       this.schatten = new SchattenManager(this, { sonneTiefe: -7, rtTiefe: 3990 });
       this.schatten.setzeStatisch(staticOcc);
       this.schattenArea = this.area.id;
+      this.fackelFade.clear();   // Fackel-Überblendung gehört zum alten Gebiet
     }
   }
 
