@@ -1,8 +1,7 @@
-// Licht-Werkbank-Panel (Runde 55, Autorwunsch "Licht-Test 1:1 ins Hauptspiel mit
-// allen Reglern"): ein ein-/ausblendbares Bedienfeld, das ALLE Licht-/Schatten-
-// Regler direkt auf die persistenten Einstellungen (settings.licht + .schatten)
-// schreibt. So tunt der Autor Licht und Schatten LIVE im echten Spiel - und die
-// Werte bleiben erhalten. Wird von WorldScene und DebugArena gleichermaßen genutzt.
+// Licht-Werkbank-Panel (Runde 55): ein ein-/ausblendbares Bedienfeld, das ALLE
+// Licht-/Schatten-Regler direkt auf die persistenten Einstellungen schreibt - live
+// im Spiel + persistent. EINGABE per Hand-Treffer (kein Phaser-Interaktiv-Objekt
+// je Regler -> behebt die "Schalter geht nach Regler-Ziehen nicht mehr"-Bugs).
 
 import Phaser from 'phaser';
 import { getSettings, saveSettings } from '../logic/settings';
@@ -15,80 +14,108 @@ export const LICHT_VARIANTEN = [
   'Licht am Helden (alt)',
 ] as const;
 
-interface Regler { x: number; y: number; w: number; label: string; min: number; max: number; get: () => number; set: (v: number) => void; txt: Phaser.GameObjects.Text; anzeige?: (v: number) => string }
-// Optionaler Tageszeit-Regler (szenenspezifisch): liefert/setzt die Zeit 0..1 + Label
 export interface TageszeitHaken { get: () => number; set: (v: number) => void; label: (v: number) => string }
 
+interface Ctrl {
+  art: 'toggle' | 'slider';
+  x: number; y: number; w: number; h: number;   // Treffer-Rechteck (Schirm)
+  label: () => string; txt: Phaser.GameObjects.Text;
+  fn?: () => void;                                // Schalter
+  get?: () => number; set?: (v: number) => void; min?: number; max?: number; anzeige?: (v: number) => string; // Regler
+}
+
 export class LichtPanel {
-  private els: Phaser.GameObjects.GameObject[] = [];
+  private texts: Phaser.GameObjects.Text[] = [];
   private g: Phaser.GameObjects.Graphics;
-  private schalter: Array<{ txt: Phaser.GameObjects.Text; label: () => string }> = [];
-  private regler: Regler[] = [];
-  private zieh: Regler | null = null;
+  private ctrls: Ctrl[] = [];
+  private zieh: Ctrl | null = null;
   private sichtbar = false;
-  private d: number;   // Basis-Tiefe (ÜBER der Dunkelheit, sonst im Dungeon verdeckt)
+  private d: number;
+  private x0: number; private breite = 270;
+  private oben = 0; private unten = 0;
 
   constructor(private scene: Phaser.Scene, x0: number, y0: number, opts?: { tageszeit?: TageszeitHaken; tiefe?: number }) {
+    this.d = opts?.tiefe ?? 9000;
+    this.x0 = x0; this.oben = y0 - 26;
+    const titel = scene.add.text(x0 + 6, y0 - 24, 'LICHT-WERKBANK (Taste L)', { fontFamily: 'serif', fontSize: '13px', color: '#ffcf8a' }).setScrollFactor(0).setDepth(this.d + 2);
+    this.texts.push(titel);
+    this.g = scene.add.graphics().setScrollFactor(0).setDepth(this.d);
     const L = () => getSettings().licht;
-    this.d = opts?.tiefe ?? 9000;   // höher als lightRT (4000) und HUD - sonst unsichtbar im Dunkeln
-    const titel = scene.add.text(x0 + 8, y0 - 22, 'LICHT-WERKBANK (Taste L)', { fontFamily: 'serif', fontSize: '13px', color: '#ffcf8a', backgroundColor: '#000000cc', padding: { x: 6, y: 3 } }).setScrollFactor(0).setDepth(this.d + 2);
-    this.els.push(titel);
-    this.g = scene.add.graphics().setScrollFactor(0).setDepth(this.d); this.els.push(this.g);
-    let y = y0 + 8;
-    if (opts?.tageszeit) { const tz = opts.tageszeit; this.slider(x0 + 8, y, 250, 'Tageszeit', 0, 100, () => Math.round(tz.get() * 100), (v) => tz.set(v / 100), (v) => tz.label(v / 100)); y += 34; }
-    this.toggle(x0 + 8, y, () => `Sonne: ${L().sonneRaycast ? 'RAYCASTER' : 'Projektion'}`, () => { L().sonneRaycast = !L().sonneRaycast; }); y += 30;
-    this.slider(x0 + 8, y, 250, 'Sonnen-Kegel (Ferne)', 0, 100, () => L().sonneKegel, (v) => { L().sonneKegel = v; }); y += 34;
-    this.slider(x0 + 8, y, 250, 'Schatten-Stärke', 0, 100, () => getSettings().schatten, (v) => { getSettings().schatten = v; }); y += 34;
-    this.slider(x0 + 8, y, 250, 'Weichheit', 0, 100, () => L().weichheit, (v) => { L().weichheit = v; }); y += 34;
-    this.toggle(x0 + 8, y, () => `Dungeon-Licht: ${L().dungeonNeu ? 'NEU (Test)' : 'alt'}`, () => { L().dungeonNeu = !L().dungeonNeu; }); y += 30;
-    this.toggle(x0 + 8, y, () => `Variante (Dungeon): ${LICHT_VARIANTEN[L().variante]}`, () => { L().variante = (L().variante + 1) % LICHT_VARIANTEN.length; }); y += 30;
-    this.toggle(x0 + 8, y, () => `Held-Licht (Sicht): ${L().heldLichtAn ? 'AN' : 'AUS'}`, () => { L().heldLichtAn = !L().heldLichtAn; }); y += 30;
-    this.slider(x0 + 8, y, 250, 'Sichtradius', 40, 240, () => L().sichtRadius, (v) => { L().sichtRadius = v; }); y += 34;
-    this.toggle(x0 + 8, y, () => `Feuer-Stil: ${L().feuerNeu ? 'NEU' : 'alt'}`, () => { L().feuerNeu = !L().feuerNeu; }); y += 30;
+    let y = y0 + 4;
+    if (opts?.tageszeit) { const tz = opts.tageszeit; y = this.slider(y, 'Tageszeit', 0, 100, () => Math.round(tz.get() * 100), (v) => tz.set(v / 100), (v) => tz.label(v / 100)); }
+    y = this.toggle(y, () => `Sonne: ${L().sonneRaycast ? 'RAYCASTER' : 'Projektion'}`, () => { L().sonneRaycast = !L().sonneRaycast; });
+    y = this.slider(y, 'Sonnen-Kegel (Ferne)', 0, 100, () => L().sonneKegel, (v) => { L().sonneKegel = v; });
+    y = this.slider(y, 'Schatten-Stärke', 0, 100, () => getSettings().schatten, (v) => { getSettings().schatten = v; });
+    y = this.slider(y, 'Weichheit', 0, 100, () => L().weichheit, (v) => { L().weichheit = v; });
+    y = this.toggle(y, () => `Dungeon Wand-Schatten: ${L().dungeonNeu ? 'AN' : 'aus'}`, () => { L().dungeonNeu = !L().dungeonNeu; });
+    y = this.slider(y, 'Fackel-Helligkeit', 0, 100, () => L().fackelHelligkeit, (v) => { L().fackelHelligkeit = v; });
+    y = this.toggle(y, () => `Variante (Dungeon): ${LICHT_VARIANTEN[L().variante]}`, () => { L().variante = (L().variante + 1) % LICHT_VARIANTEN.length; });
+    y = this.toggle(y, () => `Held-Licht (Sicht): ${L().heldLichtAn ? 'AN' : 'AUS'}`, () => { L().heldLichtAn = !L().heldLichtAn; });
+    y = this.slider(y, 'Sichtradius', 40, 240, () => L().sichtRadius, (v) => { L().sichtRadius = v; });
+    y = this.toggle(y, () => `Feuer-Stil: ${L().feuerNeu ? 'NEU' : 'alt'}`, () => { L().feuerNeu = !L().feuerNeu; });
+    this.unten = y + 4;
 
+    scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.aufKlick(p));
     scene.input.on('pointermove', (p: Phaser.Input.Pointer) => { if (this.zieh && this.sichtbar) this.setzeAusX(this.zieh, p.x); });
     scene.input.on('pointerup', () => { this.zieh = null; });
     this.setVisible(false);
   }
 
-  private toggle(x: number, y: number, label: () => string, fn: () => void): void {
-    const t = this.scene.add.text(x, y, label(), { fontFamily: 'serif', fontSize: '13px', color: '#e6dcc4', backgroundColor: '#241c10', padding: { x: 7, y: 4 } }).setScrollFactor(0).setDepth(this.d + 1).setInteractive({ useHandCursor: true });
-    t.on('pointerover', () => { if (this.sichtbar) t.setBackgroundColor('#3a2e18'); });
-    t.on('pointerout', () => t.setBackgroundColor('#241c10'));
-    t.on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.sichtbar) return; p.event.stopPropagation(); fn(); saveSettings(); });
-    this.schalter.push({ txt: t, label }); this.els.push(t);
+  private toggle(y: number, label: () => string, fn: () => void): number {
+    const t = this.scene.add.text(this.x0 + 9, y + 5, label(), { fontFamily: 'serif', fontSize: '13px', color: '#e6dcc4' }).setScrollFactor(0).setDepth(this.d + 1);
+    this.texts.push(t);
+    this.ctrls.push({ art: 'toggle', x: this.x0, y, w: this.breite, h: 26, label, txt: t, fn });
+    return y + 30;
   }
 
-  private slider(x: number, y: number, w: number, label: string, min: number, max: number, get: () => number, set: (v: number) => void, anzeige?: (v: number) => string): void {
-    const txt = this.scene.add.text(x, y - 1, '', { fontFamily: 'serif', fontSize: '12px', color: '#cbbfa0', backgroundColor: '#00000080', padding: { x: 4, y: 1 } }).setScrollFactor(0).setDepth(this.d + 1);
-    const desc: Regler & { anzeige?: (v: number) => string } = { x, y: y + 18, w, label, min, max, get, set, txt, anzeige };
-    this.regler.push(desc); this.els.push(txt);
-    const zone = this.scene.add.zone(x, y + 8, w, 22).setOrigin(0, 0).setScrollFactor(0).setDepth(this.d + 3).setInteractive();
-    zone.on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.sichtbar) return; this.zieh = desc; this.setzeAusX(desc, p.x); });
-    this.els.push(zone);
+  private slider(y: number, label: string, min: number, max: number, get: () => number, set: (v: number) => void, anzeige?: (v: number) => string): number {
+    const t = this.scene.add.text(this.x0 + 9, y, '', { fontFamily: 'serif', fontSize: '12px', color: '#cbbfa0' }).setScrollFactor(0).setDepth(this.d + 1);
+    this.texts.push(t);
+    this.ctrls.push({ art: 'slider', x: this.x0 + 9, y: y + 18, w: this.breite - 18, h: 18, label: () => label, txt: t, get, set, min, max, anzeige });
+    return y + 34;
   }
 
-  private setzeAusX(d: Regler, px: number): void {
-    const f = Phaser.Math.Clamp((px - d.x) / d.w, 0, 1);
-    d.set(Math.round(d.min + f * (d.max - d.min))); saveSettings();
+  private aufKlick(p: Phaser.Input.Pointer): void {
+    if (!this.sichtbar) return;
+    for (const c of this.ctrls) {
+      const tr = (c.art === 'slider') ? (p.x >= c.x - 2 && p.x <= c.x + c.w + 2 && p.y >= c.y - 12 && p.y <= c.y + 12)
+        : (p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h);
+      if (!tr) continue;
+      if (c.art === 'toggle') { c.fn!(); saveSettings(); }
+      else { this.zieh = c; this.setzeAusX(c, p.x); }
+      return;
+    }
   }
 
-  setVisible(v: boolean): void { this.sichtbar = v; for (const e of this.els) (e as unknown as { setVisible(b: boolean): void }).setVisible(v); }
+  private setzeAusX(c: Ctrl, px: number): void {
+    const f = Phaser.Math.Clamp((px - c.x) / c.w, 0, 1);
+    c.set!(Math.round(c.min! + f * (c.max! - c.min!))); saveSettings();
+  }
+
+  // Ist der Punkt über dem Panel? (damit die Szene Kampf-Klicks dort überspringen kann)
+  trifft(x: number, y: number): boolean { return this.sichtbar && x >= this.x0 && x <= this.x0 + this.breite && y >= this.oben && y <= this.unten; }
+
+  setVisible(v: boolean): void { this.sichtbar = v; for (const e of this.texts) e.setVisible(v); this.g.setVisible(v); }
   umschalten(): void { this.setVisible(!this.sichtbar); }
   istSichtbar(): boolean { return this.sichtbar; }
 
-  // jeden Frame: Labels + Schieber aktualisieren (nur wenn sichtbar)
   update(): void {
     if (!this.sichtbar) return;
-    for (const s of this.schalter) { const n = s.label(); if (s.txt.text !== n) s.txt.setText(n); }
     const g = this.g; g.clear();
-    for (const d of this.regler) {
-      const f = (d.get() - d.min) / Math.max(1, d.max - d.min);
-      g.fillStyle(0x1a1410, 1).fillRoundedRect(d.x, d.y - 4, d.w, 8, 4);
-      g.fillStyle(0x9a6a2a, 1).fillRoundedRect(d.x, d.y - 4, d.w * f, 8, 4);
-      g.fillStyle(0xf0d8a0, 1).fillCircle(d.x + d.w * f, d.y, 7);
-      g.lineStyle(2, 0x2a2018, 1).strokeCircle(d.x + d.w * f, d.y, 7);
-      d.txt.setText(d.anzeige ? `${d.label}: ${d.anzeige(d.get())}` : `${d.label}: ${d.get()}`);
+    g.fillStyle(0x0a0806, 0.86).fillRect(this.x0, this.oben, this.breite, this.unten - this.oben);
+    g.lineStyle(1, 0x3a2e18, 1).strokeRect(this.x0, this.oben, this.breite, this.unten - this.oben);
+    for (const c of this.ctrls) {
+      if (c.art === 'toggle') {
+        g.fillStyle(0x241c10, 1).fillRoundedRect(c.x + 4, c.y + 2, c.w - 8, 22, 4);
+        const neu = c.label(); if (c.txt.text !== neu) c.txt.setText(neu);
+      } else {
+        const f = (c.get!() - c.min!) / Math.max(1, c.max! - c.min!);
+        g.fillStyle(0x1a1410, 1).fillRoundedRect(c.x, c.y - 4, c.w, 8, 4);
+        g.fillStyle(0x9a6a2a, 1).fillRoundedRect(c.x, c.y - 4, c.w * f, 8, 4);
+        g.fillStyle(0xf0d8a0, 1).fillCircle(c.x + c.w * f, c.y, 7);
+        g.lineStyle(2, 0x2a2018, 1).strokeCircle(c.x + c.w * f, c.y, 7);
+        c.txt.setText(c.anzeige ? `${c.label()}: ${c.anzeige(c.get!())}` : `${c.label()}: ${c.get!()}`);
+      }
     }
   }
 }

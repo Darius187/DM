@@ -236,6 +236,8 @@ export class DebugArenaScene extends CombatScene {
     this.add.ellipse(x, y - 1, 7, 4, 0x6a2a10).setDepth(y + 0.2);                              // Glut
   }
 
+  protected override zeigerAufUI(p: Phaser.Input.Pointer): boolean { return !!this.lichtPanel?.trifft(p.x, p.y); }
+
   // Dynamische Verdecker (Held + Gegner) je Frame - werfen auch Schatten.
   private dynamischeOccl(): Occluder[] {
     const d: Occluder[] = [{ x: this.px, y: this.py + 10, w: 16, h: 8, hoehe: 26 }];

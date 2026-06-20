@@ -231,6 +231,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       // Entwicklungskasten ...), schlägt der Held NICHT zu
       const uiTreffer = this.input.hitTestPointer(ptr) as Array<Phaser.GameObjects.GameObject & { scrollFactorX?: number }>;
       if (uiTreffer.some((o) => o.scrollFactorX === 0)) return;
+      if (this.zeigerAufUI(ptr)) return;   // Licht-Werkbank o.ä. (manuelles Hit-Testing)
       // Bodenzauber-Zielmodus (Runde 46): Linksklick wirkt am Cursor, jeder
       // andere Klick bricht ab. Kein Weltangriff währenddessen.
       if (this.zielModus) {
@@ -1139,6 +1140,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   // Hook: die Welt aktualisiert HUD/Leiste nach dem Waffenwechsel.
   protected onWaffeGewechselt(): void { /* von WorldScene überschrieben */ }
+
+  // Hook: liegt der Zeiger über einem manuell gezeichneten UI (Licht-Werkbank)?
+  // Dann KEIN Weltangriff (die Werkbank hat keine Phaser-Interaktiv-Objekte).
+  protected zeigerAufUI(_ptr: Phaser.Input.Pointer): boolean { return false; }
 
   // Dev-Umschalter (R55, Autorwunsch): zwischen der detaillierten Held-Figur und
   // der einfachen Kapuzen-/Roben-Figur (wie in der Anhöhe-Probe) wechseln, um die
