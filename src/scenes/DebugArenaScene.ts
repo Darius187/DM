@@ -39,7 +39,9 @@ export class DebugArenaScene extends CombatScene {
   private fackelRT!: Phaser.GameObjects.RenderTexture; // Fackel-Dunkelheit (Schirm)
   private fackelWedge!: Phaser.GameObjects.Graphics;   // Occlusion-Schatten der Fackel (Schirm)
   private lichtScratch?: Phaser.GameObjects.Image;     // Lichtblob zum Ausstanzen
-  private saeulen: Array<{ x: number; y: number; r: number }> = [];   // Test-Hindernisse
+  private warmLicht?: Phaser.GameObjects.Image;        // warmes Fackel-Glühen (orange)
+  private saeulen: Array<{ x: number; y: number; r: number; w: number; h: number }> = [];   // Säulen (Hindernis + Schattenwurf)
+  private truhen: Array<{ x: number; y: number; w: number; h: number }> = [];                // flache Objekte (Truhen)
 
   constructor() {
     super('DebugArena');
@@ -180,16 +182,23 @@ export class DebugArenaScene extends CombatScene {
 
   // --- Schatten-Prototyp -----------------------------------------------------
 
-  // Test-Hindernisse (Säulen) + Schatten-Layer + Fackel-Licht anlegen.
+  // Test-Hindernisse (Säulen + Truhe) + Schatten-Layer + Fackel-Licht anlegen.
   private baueSchattenTest(): void {
     const cx = (ARENA_W / 2) * TILE, cy = (ARENA_H / 2) * TILE;
     const stellen: Array<[number, number]> = [[-120, -90], [140, -60], [-60, 110], [170, 90], [40, -130]];
     for (const [dx, dy] of stellen) {
       const x = cx + dx, y = cy + dy;
       // schlichte Steinsäule als Hindernis (wirft Sonnen- UND Fackelschatten)
-      this.add.rectangle(x, y - 14, 16, 30, 0x6a6258).setDepth(y).setStrokeStyle(1, 0x3a352e);
+      this.add.rectangle(x, y - 16, 16, 34, 0x6a6258).setDepth(y).setStrokeStyle(1, 0x3a352e);
       this.add.ellipse(x, y, 18, 8, 0x4a463e).setDepth(y - 0.1);
-      this.saeulen.push({ x, y, r: 9 });
+      this.saeulen.push({ x, y, r: 9, w: 17, h: 34 });   // h = Höhe -> längerer Schatten
+    }
+    // eine flache Truhe (niedriges, breites Objekt -> kurzer breiter Schatten)
+    {
+      const x = cx - 150, y = cy + 30;
+      this.add.rectangle(x, y - 7, 24, 16, 0x6a4a28).setDepth(y).setStrokeStyle(1, 0x3a2a16);
+      this.add.rectangle(x, y - 12, 24, 6, 0x8a6638).setDepth(y);
+      this.truhen.push({ x, y, w: 26, h: 14 });
     }
     this.schattenGfx = this.add.graphics().setDepth(-9);   // Sonnenschatten auf dem Boden
     // weicher Lichtblob zum Ausstanzen der Fackel-Dunkelheit
@@ -204,38 +213,46 @@ export class DebugArenaScene extends CombatScene {
     this.lichtScratch = this.add.image(0, 0, 'arenaLicht').setVisible(false);
     this.fackelRT = this.add.renderTexture(0, 0, this.scale.width, this.scale.height).setOrigin(0, 0).setScrollFactor(0).setDepth(540).setVisible(false);
     this.fackelWedge = this.add.graphics().setScrollFactor(0).setDepth(541).setVisible(false);
+    // warmes Fackel-Glühen (orange, additiv über das Lichtloch) - kein weißes Licht
+    this.warmLicht = this.add.image(0, 0, 'arenaLicht').setScrollFactor(0).setDepth(542)
+      .setVisible(false).setBlendMode(Phaser.BlendModes.ADD).setTint(0xff8a32);
   }
 
-  // Sonnenstand -> Schattenrichtung + Länge. Mittags kurz + steil, morgens/abends
-  // lang + flach. Jede Figur/Säule wirft den Schatten (ein Oval auf dem Boden).
+  // Sonnenstand -> Schattenrichtung + Länge. WICHTIG (Autorbug R55): der Schatten
+  // fällt WEG vom Betrachter (nach oben/hinten = "hinter" das Objekt), nicht nach
+  // unten/vorn. Form richtet sich nach Breite UND Höhe des Objekts (Säule = lang
+  // + schmal, Truhe = kurz + breit) - kein "Stock"-Schatten mehr.
   private zeichneSonnenschatten(): void {
     const g = this.schattenGfx; if (!g) return;
     g.clear();
     if (this.fackelAn) return;   // im Dunkeln keine Sonne
     const hoch = Math.sin(this.sonnenWinkel * Math.PI);            // 0 Auf/Untergang .. 1 Mittag
-    const len = 8 + (1 - hoch) * 52;                               // lang in der Dämmerung
-    const wid = 5 + hoch * 2.5;
-    const ang = Math.PI / 2 + (this.sonnenWinkel - 0.5) * 2.3;     // morgens -> abends schwenkt der Schatten
-    const alpha = 0.34;
-    g.fillStyle(0x000000, alpha);
-    // Spieler
-    this.schattenOval(g, this.px, this.py + 15, len, wid, ang);
-    // Gegner
-    for (const e of this.enemies) if (e.sprite) this.schattenOval(g, e.x, e.y + 12, len * 0.9, wid, ang);
-    // Säulen (höher -> längerer Schatten)
-    for (const s of this.saeulen) this.schattenOval(g, s.x, s.y, len * 1.15, wid * 1.1, ang);
+    // Basisrichtung NACH HINTEN (oben, -PI/2); morgens nach hinten-links, abends
+    // nach hinten-rechts. So liegt der Schatten immer HINTER dem Objekt.
+    const ang = -Math.PI / 2 + (this.sonnenWinkel - 0.5) * 2.2;
+    const laenge = (h: number) => h * (0.45 + (1 - hoch) * 1.9);   // mittags kurz, Dämmerung lang
+    g.fillStyle(0x000000, 0.32);
+    this.schattenForm(g, this.px, this.py + 15, 15, laenge(26), ang);                 // Spieler
+    for (const e of this.enemies) if (e.sprite) this.schattenForm(g, e.x, e.y + 12, 14, laenge(22), ang);
+    for (const s of this.saeulen) this.schattenForm(g, s.x, s.y, s.w, laenge(s.h), ang);
+    for (const t of this.truhen) this.schattenForm(g, t.x, t.y, t.w, laenge(t.h), ang);
   }
 
-  private schattenOval(g: Phaser.GameObjects.Graphics, fx: number, fy: number, len: number, wid: number, ang: number): void {
-    const cos = Math.cos(ang), sin = Math.sin(ang);
-    const ecx = fx + cos * len * 0.5, ecy = fy + sin * len * 0.5;
-    const pts: Phaser.Math.Vector2[] = [];
-    for (let i = 0; i < 16; i++) {
-      const t = (i / 16) * Math.PI * 2;
-      const ex = Math.cos(t) * (len * 0.5), ey = Math.sin(t) * wid;
-      pts.push(new Phaser.Math.Vector2(ecx + ex * cos - ey * sin, ecy + ex * sin + ey * cos));
-    }
-    g.fillPoints(pts, true);
+  // Schattenform = leicht verjüngter, am Boden gestauchter Streifen vom Fuß des
+  // Objekts in Richtung ang, plus ein kleines Boden-Oval (Erdung). ow = Objekt-
+  // breite (Schattenbreite), len = Länge.
+  private schattenForm(g: Phaser.GameObjects.Graphics, bx: number, by: number, ow: number, len: number, ang: number): void {
+    const ca = Math.cos(ang), sa = Math.sin(ang) * 0.6;           // Bodenperspektive (y gestaucht)
+    const px = -Math.sin(ang), py = Math.cos(ang) * 0.6;          // Quer-Achse
+    const hw = ow * 0.5, tw = ow * 0.34;                          // Spitze etwas schmaler
+    const tx = bx + ca * len, ty = by + sa * len;
+    g.fillPoints([
+      new Phaser.Math.Vector2(bx + px * hw, by + py * hw),
+      new Phaser.Math.Vector2(tx + px * tw, ty + py * tw),
+      new Phaser.Math.Vector2(tx - px * tw, ty - py * tw),
+      new Phaser.Math.Vector2(bx - px * hw, by - py * hw),
+    ], true);
+    g.fillEllipse(bx, by, ow, ow * 0.5);                          // Erdung am Fuß
   }
 
   // Getragene Fackel: dunkler Raum mit warmem Lichtkreis um den Spieler; die
@@ -243,17 +260,20 @@ export class DebugArenaScene extends CombatScene {
   private aktualisiereFackel(): void {
     const rt = this.fackelRT, wg = this.fackelWedge;
     if (!rt || !wg || !this.lichtScratch) return;
-    if (!this.fackelAn) { rt.setVisible(false); wg.setVisible(false); return; }
+    if (!this.fackelAn) { rt.setVisible(false); wg.setVisible(false); this.warmLicht?.setVisible(false); return; }
     const cam = this.cameras.main, zm = cam.zoom;
     const w2s = (wx: number, wy: number): [number, number] => [(wx - cam.worldView.x) * zm, (wy - cam.worldView.y) * zm];
     const t = this.time.now / 1000;
     const flick = 1 + Math.sin(t * 8) * 0.05 + Math.sin(t * 21) * 0.03;
     const rad = 150 * flick;                                  // Lichtradius (Welt)
     rt.setVisible(true); rt.clear();
-    rt.fill(0x06040a, 0.9);                                   // Dunkelheit
+    rt.fill(0x0a0606, 0.9);                                   // Dunkelheit (leicht warm)
     const [lx, ly] = w2s(this.px, this.py - 6);
     this.lichtScratch.setScale((rad * 2 * zm) / 256);
     rt.erase(this.lichtScratch, lx, ly);                     // Lichtloch ausstanzen
+    // warmes Fackel-Glühen (orange) ÜBER das Lichtloch - macht aus dem weißen
+    // Loch echtes Fackellicht (Autorwunsch: "fackelgelbliches Licht").
+    this.warmLicht!.setVisible(true).setPosition(lx, ly).setScale((rad * 1.5 * zm) / 256).setAlpha(0.55 * flick);
     // Occlusion: hinter jeder Säule einen Schattenkeil verdunkeln (auf eigener Lage)
     wg.setVisible(true); wg.clear(); wg.fillStyle(0x06040a, 0.92);
     for (const s of this.saeulen) {
