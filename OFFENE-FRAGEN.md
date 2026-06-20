@@ -109,3 +109,16 @@
     dein Symptom weg ist. Falls die Wirkung (Verlangsamen/Brennen/Lebensraub) WIRKLICH nach
     ein paar Schüssen ausbleibt, sag mir bitte die genaue Situation (Stein im Bogen oder in
     der Hauptwaffe? nach Waffenwechsel? nach Treffer X?), dann grabe ich gezielt weiter.
+
+18. Grusel-Atmosphäre & Rüstungs-Look (Runde 55):
+    (a) "Held ändert sich bei Kettenhemd/Plattenrock nicht": In meinem Test ÄNDERT sich der
+        Detail-Held mit der Rüstung (Kette -> Platte deutlich heller/stählerner, in der GRUSEL-
+        SCHATTEN-Probe per RÜSTUNG-Knopf nachstellbar). FALLS du keinen Wechsel siehst: läuft
+        bei dir die EINFACHE Roben-Figur (F10-Umschalter)? Die ist bewusst EINE Robe und ändert
+        sich nicht mit der Rüstung. Sag mir, in welchem Bildschirm (einfache Figur? Detail-Viewer?
+        Charakter-Portrait?), dann fixe ich gezielt.
+    (b) Grusel live: aktuell kalter Tint auf Gegner per F10-Regler (0/33/66/100%) im echten Spiel.
+        Die volle Dunkelheit + Raycasting-Schatten (wie in der GRUSEL-SCHATTEN-Probe) live in die
+        WorldScene/DebugArena zu holen ist ein größerer Schritt (Verdecker aus den Tiles, Licht je
+        Szene). Sag Bescheid, ob dir der Tint-Regler erstmal reicht oder ob ich die volle
+        Schatten-Beleuchtung ins Live-Spiel einbauen soll.
