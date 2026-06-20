@@ -2400,6 +2400,7 @@ export class WorldScene extends CombatScene {
       this.schatten!.schaerfe = (lic.lichtSchaerfe ?? 55) / 100;
       this.schatten!.umgebung = (lic.umgebungslicht ?? 32) / 100 * 0.30;   // Grundhelligkeit (Wände/Gegner schwach sichtbar)
       this.schatten!.helligkeit = 0.4 + (lic.lichtHelligkeit ?? 50) / 100 * 1.2;   // Master-Helligkeit der Lichter
+      this.schatten!.sichtfeldStaerke = (lic.sichtfeldStaerke ?? 45) / 100;   // wie hart das Sichtfeld abdunkelt
       // Sichtfeld des Helden (optional): nur was er in der Sichtlinie hat, ist sichtbar.
       const fovR = 150 + (lic.sichtfeldRadius ?? 70) / 100 * 560;   // 150..710 Sichtweite
       const sicht = (lic.heldSichtfeld ?? true) ? { x: this.px, y: this.py - 6, radius: fovR } : undefined;
@@ -2445,13 +2446,19 @@ export class WorldScene extends CombatScene {
     const dt = Math.min(0.05, this.game.loop.delta / 1000);
     const tau = (lic.fackelBlende ?? 40) <= 0 ? 0 : 0.04 + (lic.fackelBlende ?? 40) / 100 * 0.55;   // 0=sofort .. ~0.6s
     const rate = tau <= 0 ? 1 : Math.min(1, dt / tau);
+    // Direkt sichtbare Fackeln (KEINE Wand dazwischen) leuchten weit - "was ich
+    // direkt sehe, leuchtet auch" (Autorwunsch R57). Die Aktiv-Distanz begrenzt nur
+    // noch die UM DIE ECKE liegenden Fackeln.
+    const direktReich = Math.max(reich, 750);
     const lebend: { t: { x: number; y: number }; d: number; fade: number }[] = [];
     for (const t of this.area.torches) {
       const d = Math.hypot(t.x - this.px, t.y - this.py);
-      if (d > reich * 1.25) { this.fackelFade.delete(t); continue; }   // weit weg: gar nicht erst betrachten
-      const sichtbar = !lic.fackelSicht || this.wandRunsZu(this.px, this.py, t.x, t.y) <= tol;
-      const distFade = Phaser.Math.Clamp((reich - d) / Math.max(1, reich * 0.18), 0, 1);   // weicher Rand der Reichweite
-      const ziel = sichtbar && d < reich ? distFade : 0;
+      if (d > direktReich * 1.2) { this.fackelFade.delete(t); continue; }   // weit weg: gar nicht erst betrachten
+      const runs = lic.fackelSicht ? this.wandRunsZu(this.px, this.py, t.x, t.y) : -1;
+      const sichtbar = !lic.fackelSicht || runs <= tol;
+      const rEff = lic.fackelSicht && runs === 0 ? direktReich : reich;   // direkte Sicht = große Reichweite
+      const distFade = Phaser.Math.Clamp((rEff - d) / Math.max(1, rEff * 0.32), 0, 1);   // langer weicher Distanz-Ausklang
+      const ziel = sichtbar && d < rEff ? distFade : 0;
       let f = this.fackelFade.get(t) ?? 0;
       f += (ziel - f) * rate;
       this.fackelFade.set(t, f);

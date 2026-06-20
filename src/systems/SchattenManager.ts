@@ -56,6 +56,7 @@ export class SchattenManager {
   schaerfe = 0.55;                                    // Licht-Schärfe: 1 = scharf, 0 = weicher Schleier (skaliert den Weichzeichner)
   umgebung = 0.1;                                     // Grundhelligkeit 0..~0.3: hebt die Dunkelheit an, damit Wände/Gegner schwach sichtbar bleiben
   helligkeit = 1;                                    // Licht-Helligkeit (Master): skaliert Raumlicht + Feuerschein
+  sichtfeldStaerke = 0.6;                            // wie stark das Sichtfeld abdunkelt (0 = weich/aus, 1 = harte Sichtlinie)
   private static readonly TEX = 512;                 // Kantenlänge der Licht-Texturen (Skalierung bezieht sich darauf)
   // Abtastpunkte der Flächenlichtquelle (Einheitskreis) - für echte weiche Schatten
   private static readonly RING: ReadonlyArray<readonly [number, number]> =
@@ -265,7 +266,7 @@ export class SchattenManager {
   private sichtfeld(sicht: { x: number; y: number; radius: number } | undefined, dynamisch: Occluder[], staerke: number, z: number, w2s: (x: number, y: number) => [number, number]): void {
     const fog = this.fogRT;
     if (!fog) return;
-    if (!sicht) { fog.setVisible(false); return; }
+    if (!sicht || this.sichtfeldStaerke <= 0.02) { fog.setVisible(false); return; }   // Sichtfeld aus -> Räume bleiben sichtbar
     const [hx, hy] = w2s(sicht.x, sicht.y); const rS = sicht.radius * z;
     const bb = rS;
     const segs: Segment[] = [
@@ -281,9 +282,9 @@ export class SchattenManager {
       }
     }
     fog.setVisible(true).clear();
-    // Außerhalb der Sichtlinie DIMMEN (nicht komplett schwarz): das helle Fackellicht
-    // aus Nebenräumen verschwindet, aber die Wandstruktur bleibt schwach erkennbar.
-    fog.fill(0x050407, Phaser.Math.Clamp((0.50 + 0.16 * staerke) - this.umgebung * 0.5, 0.3, 0.9));   // moderate Sichtfeld-Dämpfung
+    // Außerhalb der Sichtlinie DIMMEN - wie stark per Regler (sichtfeldStaerke). Niedrig =
+    // beleuchtete Räume bleiben sichtbar (weicher Übergang), hoch = harte Sichtlinie.
+    fog.fill(0x050407, Phaser.Math.Clamp(((0.55 + 0.16 * staerke) - this.umgebung * 0.5) * this.sichtfeldStaerke, 0.04, 0.92));
     const poly = sichtPolygon({ x: hx, y: hy }, segs, rS);
     if (poly.length >= 3) {
       this.maskG.clear(); this.maskG.fillStyle(0xffffff, 1); this.maskG.beginPath();

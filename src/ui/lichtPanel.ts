@@ -62,6 +62,7 @@ export class LichtPanel {
     this.slider('Schatten-Aufhellung NAH', 0, 100, () => L().schattenNah, (v) => { L().schattenNah = v; });
     this.slider('Schatten-Aufhellung FERN', 0, 100, () => L().schattenFern, (v) => { L().schattenFern = v; });
     this.toggle(() => `Held-Sichtfeld (nur Sichtlinie): ${L().heldSichtfeld ? 'AN' : 'aus'}`, () => { L().heldSichtfeld = !L().heldSichtfeld; });
+    this.slider('Sichtfeld-Stärke (0=Räume bleiben hell)', 0, 100, () => L().sichtfeldStaerke, (v) => { L().sichtfeldStaerke = v; });
     this.slider('Sichtfeld-Reichweite', 0, 100, () => L().sichtfeldRadius, (v) => { L().sichtfeldRadius = v; });
     this.slider('Schatten-Fackeln (Leistung!)', 0, 100, () => L().schattenFackeln, (v) => { L().schattenFackeln = v; }, (v) => `${Math.round(v / 100 * 6)} + Held`);
     this.toggle(() => `ALLE Fackeln werfen Schatten: ${L().alleFackelnSchatten ? 'AN' : 'aus'}`, () => { L().alleFackelnSchatten = !L().alleFackelnSchatten; });
