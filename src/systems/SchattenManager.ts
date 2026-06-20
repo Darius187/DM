@@ -17,7 +17,15 @@ export interface Occluder { x: number; y: number; w: number; h: number; hoehe?: 
 // Ein Licht im Dunkeln: 'fackel' = Feuer mit Schattenwurf (Raycasting),
 // 'sicht' = weicher Radius ohne Schatten, 'glut' = nur dezentes Glühen (kein Reveal).
 // farbe = Schein-Farbe für 'sicht' (z.B. Feuerball orange, Zauber violett); sonst neutral.
-export interface Licht { x: number; y: number; radius: number; art?: 'fackel' | 'sicht' | 'glut'; weich?: number; farbe?: number }
+export interface Licht { x: number; y: number; radius: number; art?: 'fackel' | 'sicht' | 'glut'; weich?: number; farbe?: number; staerke?: number; farbTon?: number }
+
+// Zwei Farben mischen (t 0..1) - für die Fackel-Farbtemperatur (rot..weißgelb).
+function mischFarbe(a: number, b: number, t: number): number {
+  const r = Math.round((a >> 16 & 255) + ((b >> 16 & 255) - (a >> 16 & 255)) * t);
+  const g = Math.round((a >> 8 & 255) + ((b >> 8 & 255) - (a >> 8 & 255)) * t);
+  const bl = Math.round((a & 255) + ((b & 255) - (a & 255)) * t);
+  return (r << 16) | (g << 8) | bl;
+}
 
 export class SchattenManager {
   private sonneGfx: Phaser.GameObjects.Graphics;     // Sonnenschatten am Boden (Welt)
@@ -152,12 +160,12 @@ export class SchattenManager {
       }
       if (L.art === 'glut') {
         // Fackel-Glut: warmes Glühen (kein Schattenwurf, kein Reveal -> günstig), folgt Feuer-Stil.
-        const fl = 1 + Math.sin(t * 8 + lx) * 0.06 + Math.sin(t * 19 + ly) * 0.04;
+        const fl = 1 + Math.sin(t * 8 + lx) * 0.06 + Math.sin(t * 19 + ly) * 0.04, hk = L.staerke ?? 1, ton = L.farbTon ?? 0.4;
         if (this.feuerNeu) {
-          this.glow(lx, ly, rS * 1.05 * fl, 0x7a2c0a, 0.18); this.glow(lx, ly, rS * 0.55 * fl, 0xd8641a, 0.24); this.glow(lx, ly, rS * 0.3 * fl, 0xffb24a, 0.28);
+          this.glow(lx, ly, rS * 1.05 * fl, mischFarbe(0x6a1604, 0xb8702e, ton), 0.18 * hk); this.glow(lx, ly, rS * 0.55 * fl, mischFarbe(0xd8641a, 0xf0b050, ton), 0.24 * hk); this.glow(lx, ly, rS * 0.3 * fl, mischFarbe(0xff9030, 0xfff0c8, ton), 0.28 * hk);
           this.flamme(lx, ly, t, fl);
         } else {
-          this.glow(lx, ly, rS * 1.3, 0xffc888, 0.22); this.glow(lx, ly, rS * 0.75, 0xfff0c8, 0.22);
+          this.glow(lx, ly, rS * 1.3, mischFarbe(0xff7028, 0xffe0b0, ton), 0.22 * hk); this.glow(lx, ly, rS * 0.75, mischFarbe(0xffb060, 0xfff8e8, ton), 0.22 * hk);
         }
         continue;
       }
@@ -184,26 +192,28 @@ export class SchattenManager {
       // dunkler Lichtabfall zum Rand (Falloff) + Schein (Feuer ODER warm/farbig)
       const flick = 1 + Math.sin(t * 8 + lx) * 0.05 + Math.sin(t * 21 + ly) * 0.03;
       this.falloff(lx, ly, rS, 0.45 + 0.4 * staerke);
+      const hk = L.staerke ?? 1;
       if (L.farbe !== undefined) {   // warmer/ farbiger Schein OHNE Flamme (z.B. Held)
-        this.glow(lx, ly, rS * 0.92, L.farbe, 0.20); this.glow(lx, ly, rS * 0.45, 0xffe6c0, 0.12);
-      } else this.feuer(lx, ly, rS, t, flick);   // Fackel = Feuer + Flamme (folgt feuerNeu)
+        this.glow(lx, ly, rS * 0.92, L.farbe, 0.20 * hk); this.glow(lx, ly, rS * 0.45, 0xffe6c0, 0.12 * hk);
+      } else this.feuer(lx, ly, rS, t, flick, hk, L.farbTon ?? 0.4);   // Fackel = Feuer + Flamme
     }
     if (this.blur) { const b = 1.5 + maxWeich * 3; this.blur.x = b; this.blur.y = b; }
     this.versteckeRest();
   }
 
-  // warmer Feuerschein + Flamme je nach Stil
-  private feuer(lx: number, ly: number, rS: number, t: number, flick: number): void {
+  // warmer Feuerschein + Flamme je nach Stil. hk = Helligkeit, ton = Farbtemperatur
+  // (0 tiefrot .. 1 weißgelb) - beides aus den Reglern.
+  private feuer(lx: number, ly: number, rS: number, t: number, flick: number, hk = 1, ton = 0.4): void {
     if (this.feuerNeu) {
-      // NEU: geschichtete Glut (rot -> orange -> gelb), lebhaftes Flackern
-      this.glow(lx, ly, rS * 1.05 * flick, 0x7a1e06, 0.20);   // tiefrot, weit
-      this.glow(lx, ly, rS * 0.66 * flick, 0xd8541a, 0.30);   // orange, mittig
-      this.glow(lx, ly, rS * 0.34 * flick, 0xffb24a, 0.40);   // hell, nah
+      // NEU: geschichtete Glut, Farben je nach Temperatur, lebhaftes Flackern
+      this.glow(lx, ly, rS * 1.05 * flick, mischFarbe(0x6a1604, 0xb8702e, ton), 0.20 * hk);   // weit
+      this.glow(lx, ly, rS * 0.66 * flick, mischFarbe(0xd8541a, 0xf0b050, ton), 0.30 * hk);   // mittig
+      this.glow(lx, ly, rS * 0.34 * flick, mischFarbe(0xff9030, 0xfff0c8, ton), 0.40 * hk);   // nah
       this.flamme(lx, ly, t, flick);
     } else {
-      // ALT: weicher, blasser, ruhiger Laternen-Schein - GRÖSSER, kühler, OHNE Flamme
-      this.glow(lx, ly, rS * 1.35, 0xffc888, 0.20);
-      this.glow(lx, ly, rS * 0.8, 0xfff0c8, 0.22);
+      // ALT: weicher, blasser, ruhiger Laternen-Schein - GRÖSSER, OHNE Flamme
+      this.glow(lx, ly, rS * 1.35, mischFarbe(0xff7028, 0xffe0b0, ton), 0.20 * hk);
+      this.glow(lx, ly, rS * 0.8, mischFarbe(0xffb060, 0xfff8e8, ton), 0.22 * hk);
     }
   }
 

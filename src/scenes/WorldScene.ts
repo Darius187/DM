@@ -2412,17 +2412,18 @@ export class WorldScene extends CombatScene {
   private dungeonLichter(lic: ReturnType<typeof getSettings>['licht']): Licht[] {
     const lichter: Licht[] = [];
     const weich = lic.dungeonWeichheit / 100, fR = 0.6 + (lic.fackelReichweite ?? 50) / 100;
-    // HELD wirft Schatten: 'fackel' mit warmer farbe (= warmer Schein OHNE Flamme)
+    const fH = (lic.fackelHelligkeit ?? 60) / 50;   // Fackel-Helligkeit (Regler), 1.0 = neutral
     // HELD = das eine Raycasting-Licht (wirft Schatten an den Wänden), warm, OHNE Flamme.
     if (lic.heldLichtAn) lichter.push({ x: this.px, y: this.py - 6, art: 'fackel', radius: lic.sichtRadius, weich, farbe: 0xc89a5a });
-    // Nahe Fackeln: warmes Glühen (folgt Feuer-Stil) + die NÄCHSTE wirft auch Schatten.
+    // Nahe Fackeln: nur die, die der Held auch WIRKLICH SIEHT (freie Sichtlinie - nicht
+    // durch Wände hindurch). Helligkeit per Regler, die nächsten werfen auch Schatten.
     const nahe = this.area.torches
       .map((t) => ({ t, d: Math.hypot(t.x - this.px, t.y - this.py) }))
-      .filter((o) => o.d < (235 + this.p.stats.licht) * 1.4)
+      .filter((o) => o.d < (235 + this.p.stats.licht) * 1.4 && this.sichtLinieFrei(this.px, this.py, o.t.x, o.t.y))
       .sort((a, b) => a.d - b.d);
-    // wie viele Fackeln zusätzlich zum Held Schatten werfen (Regler "Schatten-Fackeln")
     const nSchatten = Math.round((lic.schattenFackeln ?? 20) / 100 * 6);
-    nahe.forEach((o, i) => lichter.push({ x: o.t.x, y: o.t.y - 4, art: i < nSchatten ? 'fackel' : 'glut', radius: 130 * fR, weich }));
+    const ton = (lic.fackelFarbe ?? 45) / 100;
+    nahe.forEach((o, i) => lichter.push({ x: o.t.x, y: o.t.y - 4, art: i < nSchatten ? 'fackel' : 'glut', radius: 130 * fR, weich, staerke: fH, farbTon: ton }));
     // Effekt-Lichter: Feuerball orange, Zauber violett, Feuerzauber
     for (const pr of this.projectiles) {
       if (!pr.fire && !pr.magie) continue;
@@ -2430,6 +2431,17 @@ export class WorldScene extends CombatScene {
     }
     for (const fl of this.feuerLichter) lichter.push({ x: fl.x, y: fl.y - 4, art: 'sicht', radius: fl.r * 0.7, farbe: 0xe8842a });
     return lichter;
+  }
+
+  // Freie Sichtlinie zwischen zwei Weltpunkten? (keine SOLID-Wand dazwischen) -
+  // damit der Held keine Fackeln HINTER Wänden sieht.
+  private sichtLinieFrei(x1: number, y1: number, x2: number, y2: number): boolean {
+    const d = Math.hypot(x2 - x1, y2 - y1), n = Math.max(1, Math.ceil(d / (TILE * 0.5)));
+    for (let i = 1; i < n; i++) {
+      const x = x1 + (x2 - x1) * (i / n), y = y1 + (y2 - y1) * (i / n);
+      if (this.isSolidAt(x, y)) return false;
+    }
+    return true;
   }
 
   // Verdecker fürs Dungeon-Raycasting: nahe SOLID-Wände zu MAXIMALEN Rechtecken

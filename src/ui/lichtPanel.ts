@@ -60,7 +60,6 @@ export class LichtPanel {
     y = this.slider(y, 'Fackel-Reichweite', 0, 100, () => L().fackelReichweite, (v) => { L().fackelReichweite = v; });
     y = this.slider(y, 'Fackel-Farbe (rot..weiß)', 0, 100, () => L().fackelFarbe, (v) => { L().fackelFarbe = v; });
     y = this.toggle(y, () => `Feuer-Stil: ${L().feuerNeu ? 'NEU' : 'alt'}`, () => { L().feuerNeu = !L().feuerNeu; });
-    y = this.toggle(y, () => `Variante (nur Debug): ${LICHT_VARIANTEN[L().variante]}`, () => { L().variante = (L().variante + 1) % LICHT_VARIANTEN.length; });
     this.unten = y + 4;
 
     scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.aufKlick(p));
