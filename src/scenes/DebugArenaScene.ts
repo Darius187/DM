@@ -37,7 +37,7 @@ export class DebugArenaScene extends CombatScene {
   // jeden Frame. Bewegt sich die Sonne, ändert sich nur ein Winkel/eine Länge.
   private sonnenWinkel = 0.5;                 // 0..1 Tageslauf (0 Sonnenaufgang .. 1 Untergang)
   private sonneAuto = true;                   // Sonne wandert automatisch
-  private fackelAn = false;                   // Dungeon-Dunkel mit Lichtern (Taste X)
+  private fackelAn = true;                    // Dungeon-Dunkel mit Lichtern an (Taste X) - gleich sichtbar
   private schatten!: SchattenManager;         // geteilter Schatten-Manager (beide Modi)
   private statischeOccl: Occluder[] = [];     // Säulen/Truhen/Gebäude (werfen Schatten)
   private fackeln: Array<{ x: number; y: number }> = [];   // feste Wandfackeln

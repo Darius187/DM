@@ -14,8 +14,9 @@ import { rechteckSegmente, sichtPolygon, sonnenschatten, type Segment } from './
 // Verdecker: Grundriss (x,y = Fußpunkt-MITTE, w/h = Breite/Tiefe am Boden) plus
 // optische Höhe (bestimmt die Schattenlänge bei Sonne; Gebäude hoch, Figur klein).
 export interface Occluder { x: number; y: number; w: number; h: number; hoehe?: number }
-// Ein Licht im Dunkeln: 'fackel' = Feuer mit Schattenwurf, 'sicht' = weicher Radius.
-export interface Licht { x: number; y: number; radius: number; art?: 'fackel' | 'sicht'; weich?: number }
+// Ein Licht im Dunkeln: 'fackel' = Feuer mit Schattenwurf (Raycasting),
+// 'sicht' = weicher Radius ohne Schatten, 'glut' = nur dezentes Glühen (kein Reveal).
+export interface Licht { x: number; y: number; radius: number; art?: 'fackel' | 'sicht' | 'glut'; weich?: number }
 
 export class SchattenManager {
   private sonneGfx: Phaser.GameObjects.Graphics;     // Sonnenschatten am Boden (Welt)
@@ -99,8 +100,11 @@ export class SchattenManager {
     for (const o of dynamisch) for (const s of rechteckSegmente({ x: o.x - o.w / 2, y: o.y - o.h / 2, w: o.w, h: o.h })) {
       const [ax, ay] = w2s(s.ax, s.ay), [bx, by] = w2s(s.bx, s.by); segs.push({ ax, ay, bx, by });
     }
+    // Sonnenhöhe (Autorwunsch "Mittag = Sonne oben"): mittags steht die Sonne hoch
+    // -> Schatten verblassen fast ganz (overhead); morgens/abends tief -> lang+dunkel.
+    const hoch = Math.sin(Phaser.Math.Clamp(sonnenWinkel, 0, 1) * Math.PI);
     const rt = this.rt; rt.setVisible(true); rt.clear();
-    rt.fill(0x0b0d18, 0.46 * staerke);                                  // milder, kühler Schatten überall
+    rt.fill(0x0b0d18, 0.46 * staerke * (0.18 + 0.82 * (1 - hoch)));     // mittags kaum Schatten
     const groesse = (3 + (weich / 100) * 15) * z;                       // Sonnen-"Größe" = Penumbra
     for (const [ox, oy] of SchattenManager.RING) {
       const poly = sichtPolygon({ x: sx + ox * groesse, y: sy + oy * groesse }, segs, rS);
@@ -142,6 +146,15 @@ export class SchattenManager {
         // weicher persönlicher Lichtradius - reiner Reveal (kein Schattenwurf)
         this.brush.setScale((rS * 2) / 256); rt.erase(this.brush, lx, ly);
         this.glow(lx, ly, rS * 0.9, 0xbfae86, 0.10, 1);   // dezenter, kühl-neutraler Schein
+        continue;
+      }
+      if (L.art === 'glut') {
+        // Fackel-Glut im Dungeon: NUR dezentes warmes Glühen + kleine Flamme -
+        // KEIN Reveal, KEIN Schattenwurf, bleibt lokal und überstrahlt nichts.
+        const fl = 1 + Math.sin(t * 8 + lx) * 0.06 + Math.sin(t * 19 + ly) * 0.04;
+        this.glow(lx, ly, rS * 1.0 * fl, 0x7a2c0a, 0.13);
+        this.glow(lx, ly, rS * 0.5 * fl, 0xd8641a, 0.16);
+        this.flamme(lx, ly, t, fl);
         continue;
       }
       // FACKEL: Flächenlicht von 6 Abtastpunkten -> echte weiche Schatten

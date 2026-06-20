@@ -2391,7 +2391,7 @@ export class WorldScene extends CombatScene {
       if (!lic.dungeonNeu) { this.schatten?.aus(); return; }
       this.ensureSchatten([]);
       this.schatten!.feuerNeu = lic.feuerNeu;
-      this.schatten!.lichter(this.dungeonLichter(lic), this.dungeonVerdecker(), st);
+      this.schatten!.lichter(this.dungeonLichter(lic), [], st);   // billig: kein Wand-Raycasting
       return;
     }
     // DRAUSSEN: Tag-Schatten (Gebäude/NPCs), nur am Tag.
@@ -2414,30 +2414,18 @@ export class WorldScene extends CombatScene {
     }
   }
 
-  // Dungeon-Lichter: Held-Sichtradius + nahe Fackeln des Gebiets als Flammenlicht.
+  // Dungeon-Lichter (billig + lokal): Held-Sichtradius (weicher Reveal) + die NÄHE
+  // Fackeln nur als dezentes Glühen (kein Reveal, keine Map-weite Aufdeckung, kein
+  // Raycasting -> volle Bildrate). So strahlen die Fackeln nicht mehr alles über.
   private dungeonLichter(lic: ReturnType<typeof getSettings>['licht']): Licht[] {
     const lichter: Licht[] = [];
     if (lic.heldLichtAn) lichter.push({ x: this.px, y: this.py - 6, art: 'sicht', radius: lic.sichtRadius });
-    const weich = lic.weichheit / 100;
+    const reich = lic.sichtRadius * 1.25;   // Fackeln nur in/knapp an der Sichtweite zeigen
     for (const t of this.area.torches) {
-      if (Math.hypot(t.x - this.px, t.y - this.py) > 360) continue;   // nur nahe Fackeln (Leistung)
-      lichter.push({ x: t.x, y: t.y - 4, art: 'fackel', radius: 150, weich });
+      if (Math.hypot(t.x - this.px, t.y - this.py) > reich) continue;
+      lichter.push({ x: t.x, y: t.y - 4, art: 'glut', radius: 64 });
     }
     return lichter;
-  }
-
-  // Dungeon-Verdecker: nahe SOLID-Wandkacheln + Held + Gegner (werfen Schatten).
-  private dungeonVerdecker(): Occluder[] {
-    const occ = this.dynamischeOccluder();
-    const tx0 = Math.floor(this.px / TILE), ty0 = Math.floor(this.py / TILE), R = 8;
-    for (let ty = ty0 - R; ty <= ty0 + R; ty++) {
-      for (let tx = tx0 - R; tx <= tx0 + R; tx++) {
-        if (this.isSolidAt(tx * TILE + TILE / 2, ty * TILE + TILE / 2)) {
-          occ.push({ x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, w: TILE, h: TILE });
-        }
-      }
-    }
-    return occ;
   }
 
   // Gebäude-Grundrisse als statische Verdecker (Fußpunkt = Bild-Unterkante,
