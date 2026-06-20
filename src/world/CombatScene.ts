@@ -12,6 +12,7 @@ import { heldTier } from '../data/helden';
 import { EffectSystem } from './effects';
 import { Enemy, angleToDir, angleToDir8, type EnemyHost } from './Enemy';
 import { SCHLAG_FRAME, SCHLAG_PHASEN } from '../gfx/heldArt';
+import { drawSkelettDetail, drawPestDetail, drawLebenderToterDetail, drawBuergerDetail } from '../gfx/detailFiguren';
 import {
   newCombatState, inputLight, inputHeavy, inputRoll, inputBlockStart, inputBlockEnd,
   stepCombat, resolveIncoming, damageAfterArmor, blockedDamage, type CombatState, type AttackEvent,
@@ -328,6 +329,32 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
     this.albumPanel = c;
     this.sfx.play('klick');
+  }
+
+  // Detail-Figuren-Schau (R55): Beispiel-Gegner/NPCs im Held-Stil ansehen
+  private detailSchau: Phaser.GameObjects.Container | null = null;
+  protected toggleDetailFiguren(): void {
+    if (this.detailSchau) { this.detailSchau.destroy(); this.detailSchau = null; return; }
+    const figs: Array<[string, (c: CanvasRenderingContext2D) => void]> = [
+      ['Skelett', drawSkelettDetail], ['Pest-Opfer', drawPestDetail],
+      ['Lebender Toter', drawLebenderToterDetail], ['Stadtbürger', drawBuergerDetail],
+    ];
+    const W = this.scale.width, H = this.scale.height;
+    const c = this.add.container(0, 0).setScrollFactor(0).setDepth(5200);
+    const bg = this.add.rectangle(W / 2, H / 2, 600, 300, 0x120d08, 0.96).setStrokeStyle(2, 0x5a4a32).setInteractive();
+    bg.on('pointerdown', () => this.toggleDetailFiguren());   // Klick = schließen
+    c.add(bg);
+    c.add(this.add.text(W / 2, H / 2 - 128, 'DETAIL-FIGUREN im Held-Stil (Beispiele - noch nicht im Spiel)', { fontFamily: 'serif', fontSize: '15px', color: '#c9a227' }).setOrigin(0.5));
+    figs.forEach(([name, draw], i) => {
+      const key = `detailfig_${name}`;
+      if (!this.textures.exists(key)) { const cv = document.createElement('canvas'); cv.width = 64; cv.height = 64; draw(cv.getContext('2d')!); this.textures.addCanvas(key, cv); }
+      const x = W / 2 - 217 + i * 145, y = H / 2 - 6;
+      c.add(this.add.rectangle(x, y, 120, 150, 0x241c12).setStrokeStyle(1, 0x4a4030));
+      c.add(this.add.image(x, y - 8, key).setScale(1.85));
+      c.add(this.add.text(x, y + 60, name, { fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8' }).setOrigin(0.5));
+    });
+    c.add(this.add.text(W / 2, H / 2 + 128, 'Klick = schließen', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a' }).setOrigin(0.5));
+    this.detailSchau = c;
   }
 
   // --- Entwicklungskasten (F10) ----------------------------------------------
@@ -716,6 +743,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.sfx.play('klick');
       this.logMsg(this.heldEinfach ? 'Held: einfache Roben-Figur (Anhöhe-Stil).' : 'Held: detaillierte Figur mit Animation.', 'gold');
     });
+    yB += 28;
+    schalter(yB, 'DETAIL-FIGUREN ANSEHEN (Skelett/Pest/Untoter/Bürger)', '#9ad86a', '#221808', () => { this.toggleDevPanel(); this.toggleDetailFiguren(); });
     yB += 28;
     const hudNamen = ['Kugeln rot/blau', 'WoW-Balken', 'Kristall-Säulen'];
     const hudLbl = () => `LEBEN/MANA: ${hudNamen[getSettings().hudStil] ?? 'Kugeln rot/blau'}`;
