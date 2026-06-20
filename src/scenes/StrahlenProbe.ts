@@ -14,9 +14,9 @@ import { SpriteProvider } from '../gfx/SpriteProvider';
 import { getHeldForm } from '../data/heldForm';
 import type { HeldTier } from '../data/helden';
 import { angleToDir8 } from '../world/Enemy';
+import { rechteckSegmente, sichtPolygon, type Segment as Seg } from '../systems/schatten';
 
 interface Wall { x: number; y: number; w: number; h: number }
-interface Seg { ax: number; ay: number; bx: number; by: number }
 interface Figur {
   sprite: Phaser.GameObjects.Sprite; art: 'held' | 'skelett' | 'pest';
   x: number; y: number; dir: number; step: number; rH: number;  // rH = halbe Figurhöhe für den Schatten
@@ -145,11 +145,7 @@ export class StrahlenProbe extends Phaser.Scene {
       { ax: 0, ay: 0, bx: W, by: 0 }, { ax: W, ay: 0, bx: W, by: H },
       { ax: W, ay: H, bx: 0, by: H }, { ax: 0, ay: H, bx: 0, by: 0 },
     ];
-    for (const b of this.walls) {
-      const x2 = b.x + b.w, y2 = b.y + b.h;
-      segs.push({ ax: b.x, ay: b.y, bx: x2, by: b.y }, { ax: x2, ay: b.y, bx: x2, by: y2 },
-        { ax: x2, ay: y2, bx: b.x, by: y2 }, { ax: b.x, ay: y2, bx: b.x, by: b.y });
-    }
+    for (const b of this.walls) segs.push(...rechteckSegmente(b));
     return segs;
   }
 
@@ -313,29 +309,8 @@ export class StrahlenProbe extends Phaser.Scene {
     g.lineStyle(2, 0x2a2030, 1).strokeCircle(x + w * this.grusel, y, 9);
   }
 
-  // --- Raycasting (Sichtpolygon der Wände) ----------------------------------
+  // --- Raycasting (geteilte Schatten-Engine, src/systems/schatten.ts) --------
   private sichtPolygon(radius: number): Array<{ x: number; y: number }> {
-    const L = this.licht; const winkel: number[] = [];
-    for (const s of this.segs) for (const p of [[s.ax, s.ay], [s.bx, s.by]] as const) {
-      const a = Math.atan2(p[1] - L.y, p[0] - L.x); winkel.push(a - 0.0003, a, a + 0.0003);
-    }
-    const treffer: Array<{ a: number; x: number; y: number }> = [];
-    for (const a of winkel) {
-      const dx = Math.cos(a), dy = Math.sin(a); let best = radius;
-      for (const s of this.segs) { const t = this.strahlSeg(L.x, L.y, dx, dy, s); if (t !== null && t < best) best = t; }
-      treffer.push({ a, x: L.x + dx * best, y: L.y + dy * best });
-    }
-    treffer.sort((p, q) => p.a - q.a);
-    return treffer;
-  }
-
-  private strahlSeg(ox: number, oy: number, dx: number, dy: number, s: Seg): number | null {
-    const sdx = s.bx - s.ax, sdy = s.by - s.ay;
-    const denom = dx * sdy - dy * sdx;
-    if (Math.abs(denom) < 1e-9) return null;
-    const t1 = ((s.ax - ox) * sdy - (s.ay - oy) * sdx) / denom;
-    const t2 = ((s.ax - ox) * dy - (s.ay - oy) * dx) / denom;
-    if (t1 >= 0 && t2 >= 0 && t2 <= 1) return t1;
-    return null;
+    return sichtPolygon(this.licht, this.segs, radius);
   }
 }
