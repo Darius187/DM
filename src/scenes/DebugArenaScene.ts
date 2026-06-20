@@ -265,15 +265,14 @@ export class DebugArenaScene extends CombatScene {
     const w2s = (wx: number, wy: number): [number, number] => [(wx - cam.worldView.x) * zm, (wy - cam.worldView.y) * zm];
     const t = this.time.now / 1000;
     const flick = 1 + Math.sin(t * 8) * 0.05 + Math.sin(t * 21) * 0.03;
-    const rad = 150 * flick;                                  // Lichtradius (Welt)
+    const rad = 100 * flick;                                  // Lichtradius wie eine echte Wandfackel (Autorwunsch: dezenter)
     rt.setVisible(true); rt.clear();
-    rt.fill(0x0a0606, 0.9);                                   // Dunkelheit (leicht warm)
+    rt.fill(0x0a0707, 0.9);                                   // Dunkelheit (leicht warm)
     const [lx, ly] = w2s(this.px, this.py - 6);
     this.lichtScratch.setScale((rad * 2 * zm) / 256);
     rt.erase(this.lichtScratch, lx, ly);                     // Lichtloch ausstanzen
-    // warmes Fackel-Glühen (orange) ÜBER das Lichtloch - macht aus dem weißen
-    // Loch echtes Fackellicht (Autorwunsch: "fackelgelbliches Licht").
-    this.warmLicht!.setVisible(true).setPosition(lx, ly).setScale((rad * 1.5 * zm) / 256).setAlpha(0.55 * flick);
+    // warmes, dezentes Fackel-Glühen (orange) - kein greller weißer Kreis mehr
+    this.warmLicht!.setVisible(true).setPosition(lx, ly).setScale((rad * 1.15 * zm) / 256).setAlpha(0.3 * flick);
     // Occlusion: hinter jeder Säule einen Schattenkeil verdunkeln (auf eigener Lage)
     wg.setVisible(true); wg.clear(); wg.fillStyle(0x06040a, 0.92);
     for (const s of this.saeulen) {

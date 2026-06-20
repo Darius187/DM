@@ -10,7 +10,7 @@ import { Wegfeld } from './Wegfeld';
 import { getHeldForm } from '../data/heldForm';
 import { heldTier } from '../data/helden';
 import { EffectSystem } from './effects';
-import { Enemy, angleToDir8, type EnemyHost } from './Enemy';
+import { Enemy, angleToDir, angleToDir8, type EnemyHost } from './Enemy';
 import { SCHLAG_FRAME, SCHLAG_PHASEN } from '../gfx/heldArt';
 import {
   newCombatState, inputLight, inputHeavy, inputRoll, inputBlockStart, inputBlockEnd,
@@ -708,6 +708,15 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.logMsg(TUNING.unbesiegbar ? 'Unbesiegbar an (Dev).' : 'Unbesiegbar aus.', 'gold');
     });
     yB += 28;
+    // Figur-Stil umschalten (R55, Autorwunsch): Detail-Held <-> einfache Roben-Figur
+    const stilLbl = () => `HELDEN-FIGUR: ${this.heldEinfach ? 'einfach (Robe)' : 'Detail (mit Animation)'}`;
+    const stilBtn = schalter(yB, stilLbl(), '#c9a227', '#221808', () => {
+      this.heldEinfach = !this.heldEinfach;
+      stilBtn.setText(stilLbl());
+      this.sfx.play('klick');
+      this.logMsg(this.heldEinfach ? 'Held: einfache Roben-Figur (Anhöhe-Stil).' : 'Held: detaillierte Figur mit Animation.', 'gold');
+    });
+    yB += 28;
     const hudNamen = ['Kugeln rot/blau', 'WoW-Balken', 'Kristall-Säulen'];
     const hudLbl = () => `LEBEN/MANA: ${hudNamen[getSettings().hudStil] ?? 'Kugeln rot/blau'}`;
     const hudBtn = schalter(yB, hudLbl(), '#c9a227', '#221808', () => {
@@ -1088,10 +1097,16 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Hook: die Welt aktualisiert HUD/Leiste nach dem Waffenwechsel.
   protected onWaffeGewechselt(): void { /* von WorldScene überschrieben */ }
 
+  // Dev-Umschalter (R55, Autorwunsch): zwischen der detaillierten Held-Figur und
+  // der einfachen Kapuzen-/Roben-Figur (wie in der Anhöhe-Probe) wechseln, um die
+  // Stilrichtung im laufenden Spiel zu vergleichen. F10-Schalter.
+  heldEinfach = false;
+
   // Figurname des Helden - richtet sich nach getragener Ruestung und Waffe,
   // damit man die Ausruestung am Helden SIEHT (Feedback-Runde 32). Jede Stufe
   // ist ueber Hot-Swap durch ein eigenes Sprite-Paket ersetzbar.
   protected heldFigur(): string {
+    if (this.heldEinfach) return 'spieler';   // einfache Roben-Figur
     return spielerFigur(this.p.armorIt ? this.p.armorIt.val : null);
   }
 
@@ -3064,10 +3079,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected zeichneHeld(dir: number, step: number): void {
     // Ausgerüstete Waffe wandert in die Hand und wird mitgeschwungen (R54).
     this.provider.applyFigure(this.playerSprite, this.heldFigur(), dir, step, this.weaponClass());
-    // 64px-Held kleiner darstellen; echte Hot-Swap-Sprites des Autors größer.
-    // (Hier gesetzt, damit auch nach der Todes-Animation die Skala stimmt.)
+    // Einfache Roben-Figur (32px) passend vergrößern; sonst die 64px-Detail-Figur
+    // mit ihrer Stufen-Skala; echte Hot-Swap-Sprites des Autors größer.
     const tier = heldTier(this.p.armorIt ? this.p.armorIt.val : null);
-    this.playerSprite.setScale(this.textures.exists('hs_spieler_unten_1') ? 1.35 : getHeldForm(tier).skala);
+    this.playerSprite.setScale(this.heldEinfach ? 1.5 : (this.textures.exists('hs_spieler_unten_1') ? 1.35 : getHeldForm(tier).skala));
   }
 
   // Sprites und Overlay (Ringe, Balken, Telegraphen) zeichnen
@@ -3103,22 +3118,26 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.playerSprite.setPosition(this.px, this.py).setDepth(this.py);
       const moving = this.keysDown['w'] || this.keysDown['a'] || this.keysDown['s'] || this.keysDown['d']
         || this.keysDown['arrowup'] || this.keysDown['arrowdown'] || this.keysDown['arrowleft'] || this.keysDown['arrowright'];
-      // Schlag-Animation während des Schwungs (R54): die drei Phasen
-      // (Ausholen/Treffer/Ausschwung) über die verstrichene Zeit durchlaufen -
-      // schnell wie der Swoosh. Sonst Geh-/Stand-Schritt. 8 Richtungen.
-      let step: number;
-      if (this.heldSchlagT > 0) {
-        const prog = 1 - this.heldSchlagT / Math.max(0.001, this.heldSchlagDauer);
-        step = SCHLAG_FRAME + Math.min(SCHLAG_PHASEN - 1, Math.floor(prog * SCHLAG_PHASEN));
-      } else if (moving) {
-        step = this.pstep;
+      // Schlag-Animation während des Schwungs (R54): die Phasen über die Zeit
+      // durchlaufen - schnell wie der Swoosh. Sonst Geh-/Stand-Schritt (8 Richt.).
+      // Einfache Roben-Figur (Dev-Umschalter): 4 Richtungen, kein Schwung/Atmen.
+      let step: number, dir: number;
+      if (this.heldEinfach) {
+        dir = angleToDir(this.pdir);
+        step = moving ? this.pstep : 0;
       } else {
-        // Stehen: Atem-Zyklus - Frame 2 = Einatmen (Brust hebt), Frame 0 =
-        // Ausatmen. Einatmen kürzer, Ausatmen länger, ~2,9s je Atemzug (noch
-        // einen Tick flotter, Autorwunsch R55).
-        step = (this.time.now % 2900) < 1100 ? 2 : 0;
+        dir = angleToDir8(this.pdir);
+        if (this.heldSchlagT > 0) {
+          const prog = 1 - this.heldSchlagT / Math.max(0.001, this.heldSchlagDauer);
+          step = SCHLAG_FRAME + Math.min(SCHLAG_PHASEN - 1, Math.floor(prog * SCHLAG_PHASEN));
+        } else if (moving) {
+          step = this.pstep;
+        } else {
+          // Stehen: Atem-Zyklus - Frame 2 = Einatmen, Frame 0 = Ausatmen (~2,9s).
+          step = (this.time.now % 2900) < 1100 ? 2 : 0;
+        }
       }
-      this.zeichneHeld(angleToDir8(this.pdir), step);
+      this.zeichneHeld(dir, step);
       if (this.playerHitFlash > 0) this.playerSprite.setTintFill(0xffffff);
       else this.playerSprite.clearTint();
     }
