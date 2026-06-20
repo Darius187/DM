@@ -60,7 +60,7 @@ export class DebugArenaScene extends CombatScene {
       'DEBUG-ARENA  ·  F1-F7: Gegner spawnen (Pest/Skelett/Schütze/Schatten/Wolf/Ratte/Templer)',
       'F8: Dummy · F9: Elite an/aus · K: Gegner löschen · H: Hitboxen/Timings · G: Waffe wechseln · L: Schulen Stufe 9 · ESC: Menü',
       'WASD: Laufen · Klick: Angriff · Umschalt: schwer · Rechtsklick: Block · Leer: Rolle · R/T: Waffen-Fähigkeit · 4/5/6: Kettenblitz/Frostnova/Bannkreis',
-      'SCHATTEN-TEST  ·  X: Fackel tragen (Dungeon-Schatten an/aus)  ·  Z: Sonne wandern an/aus  ·  < > : Sonnenstand drehen',
+      'SCHATTEN-TEST  ·  X: Dungeon-Licht (feste Wandfackel) an/aus - der Held wirft selbst Schatten  ·  Z: Sonne wandern an/aus  ·  < > : Sonnenstand drehen',
     ].join('\n'), {
       fontFamily: 'serif', fontSize: '13px', color: '#c8b890', backgroundColor: '#000000aa', padding: { x: 8, y: 6 },
     }).setOrigin(0, 1).setScrollFactor(0).setDepth(700);
@@ -168,7 +168,8 @@ export class DebugArenaScene extends CombatScene {
     if (this.sonneAuto) this.sonnenWinkel = (this.sonnenWinkel + 0.00003 * delta) % 1;
     const st = getSettings().schatten / 100;   // Leistungs-/Stärke-Regler
     const dyn = this.dynamischeOccl();
-    if (this.fackelAn) this.schatten.fackel({ x: this.px, y: this.py - 6 }, 150, dyn, st);
+    // Licht steht fest im Raum (Wandfackel) - der Held wirft jetzt selbst Schatten.
+    if (this.fackelAn) this.schatten.fackel(this.fackelPos, 240, dyn, st);
     else this.schatten.sonne(this.sonnenWinkel, dyn, st);
     const std = Math.round(4 + this.sonnenWinkel * 16);   // ~4..20 Uhr
     this.hudText.setText([
@@ -207,9 +208,18 @@ export class DebugArenaScene extends CombatScene {
       this.add.rectangle(x, y - bh + 4, bw, 10, 0x6a5c48).setDepth(y);   // Dachkante
       this.statischeOccl.push({ x, y, w: bw, h: 16, hoehe: bh + 30 });
     }
+    // Feste Wandfackel als Lichtquelle (R55, Autorwunsch "Fackel beim Helden raus
+    // nehmen"): das Dungeon-Licht steht jetzt im Raum, NICHT am Helden - so wirft
+    // der Held selbst einen (weichen) Schatten, wenn er sich davor bewegt.
+    this.fackelPos = { x: cx, y: cy - 150 };
+    this.add.rectangle(this.fackelPos.x, this.fackelPos.y + 8, 8, 20, 0x4a3a2a).setDepth(this.fackelPos.y);   // Stab
+    this.add.ellipse(this.fackelPos.x, this.fackelPos.y - 4, 14, 10, 0xffb347).setDepth(this.fackelPos.y + 1); // Flamme
+    this.add.ellipse(this.fackelPos.x, this.fackelPos.y - 6, 7, 6, 0xfff0b0).setDepth(this.fackelPos.y + 1);
     this.schatten = new SchattenManager(this);
     this.schatten.setzeStatisch(this.statischeOccl);
   }
+
+  private fackelPos = { x: 0, y: 0 };   // feste Lichtquelle im Dungeon-Modus
 
   // Dynamische Verdecker (Held + Gegner) je Frame - werfen auch Schatten.
   private dynamischeOccl(): Occluder[] {
