@@ -54,6 +54,9 @@ export class LichtPanel {
     y = this.toggle(y, () => `Wand-Schatten: ${L().dungeonNeu ? 'AN' : 'aus'}`, () => { L().dungeonNeu = !L().dungeonNeu; });
     y = this.slider(y, 'Dungeon-Dunkelheit', 0, 100, () => getSettings().dungeonStaerke, (v) => { getSettings().dungeonStaerke = v; });
     y = this.slider(y, 'Schatten-Fackeln (Leistung!)', 0, 100, () => L().schattenFackeln, (v) => { L().schattenFackeln = v; }, (v) => `${Math.round(v / 100 * 6)} + Held`);
+    y = this.toggle(y, () => `ALLE Fackeln werfen Schatten: ${L().alleFackelnSchatten ? 'AN' : 'aus'}`, () => { L().alleFackelnSchatten = !L().alleFackelnSchatten; });
+    y = this.toggle(y, () => `Effekte werfen Schatten: ${L().effekteSchatten ? 'AN' : 'aus'}`, () => { L().effekteSchatten = !L().effekteSchatten; });
+    y = this.toggle(y, () => `Fackeln nur in Sichtlinie: ${L().fackelSicht ? 'AN' : 'aus'}`, () => { L().fackelSicht = !L().fackelSicht; });
     y = this.slider(y, 'Wand-Schatten-Weichheit', 0, 100, () => L().dungeonWeichheit, (v) => { L().dungeonWeichheit = v; });
     y = this.toggle(y, () => `Held-Licht (Sicht): ${L().heldLichtAn ? 'AN' : 'AUS'}`, () => { L().heldLichtAn = !L().heldLichtAn; });
     y = this.slider(y, 'Sichtradius', 40, 240, () => L().sichtRadius, (v) => { L().sichtRadius = v; });

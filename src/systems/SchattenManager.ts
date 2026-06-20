@@ -270,32 +270,45 @@ export class SchattenManager {
 
   private aufResize(): void { this.rt.setSize(this.scene.scale.width, this.scene.scale.height); }
 
-  // weicher weißer Pinsel (Reveal + getöntes Glühen)
-  private brushTextur(): string {
-    const key = 'schatten_brush';
+  // Smooth-Radial-Textur: VIELE Stützpunkte (kein Mach-Band-Knick mehr),
+  // 512px (sauber hochskalierbar), LINEAR gefiltert (pixelArt setzt sonst NEAREST
+  // -> blockige Stufen). kurve(t) liefert das Alpha 0..1 über dem Radius t 0..1.
+  // dither = winzige Alpha-Streuung gegen 8-Bit-Bänderung bei großen Lichtern.
+  private radialTextur(key: string, r: number, g: number, b: number, kurve: (t: number) => number, dither = 1): string {
     if (this.scene.textures.exists(key)) return key;
-    const S = 256, cv = document.createElement('canvas'); cv.width = cv.height = S;
+    const S = 512, cv = document.createElement('canvas'); cv.width = cv.height = S;
     const c = cv.getContext('2d')!;
-    const grd = c.createRadialGradient(S / 2, S / 2, S * 0.04, S / 2, S / 2, S / 2);
-    grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.5, 'rgba(255,255,255,0.62)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+    const grd = c.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+    const N = 64;   // 64 Stützpunkte folgen der weichen Kurve -> fließender Verlauf
+    for (let i = 0; i <= N; i++) {
+      const t = i / N, a = Math.max(0, Math.min(1, kurve(t)));
+      grd.addColorStop(t, `rgba(${r},${g},${b},${a.toFixed(4)})`);
+    }
     c.fillStyle = grd; c.fillRect(0, 0, S, S);
-    this.scene.textures.addCanvas(key, cv); return key;
+    if (dither > 0) {
+      const img = c.getImageData(0, 0, S, S), d = img.data;
+      for (let p = 3; p < d.length; p += 4) d[p] = Math.max(0, Math.min(255, d[p] + (Math.random() * 2 - 1) * dither));
+      c.putImageData(img, 0, 0);
+    }
+    this.scene.textures.addCanvas(key, cv);
+    this.scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    return key;
   }
 
-  // dunkler radialer Lichtabfall (transparente Mitte -> dunkler Rand)
+  // weicher weißer Pinsel (Reveal + getöntes Glühen): Raised-Cosine cos(t·π/2)²
+  // -> Steigung 0 an Mitte UND Rand, daher keine sichtbaren Kanten/Ringe.
+  private brushTextur(): string {
+    return this.radialTextur('schatten_brush', 255, 255, 255, (t) => Math.cos(t * Math.PI / 2) ** 2);
+  }
+
+  // dunkler radialer Lichtabfall (transparente Mitte -> sanft dunkler -> Rand wieder 0).
+  // Weiche Raised-Cosine-Glocke: KEIN dunkles Eck-Quadrat, KEIN harter Ring.
   private falloffTextur(): string {
-    const key = 'schatten_falloff';
-    if (this.scene.textures.exists(key)) return key;
-    const S = 256, cv = document.createElement('canvas'); cv.width = cv.height = S;
-    const c = cv.getContext('2d')!;
-    const grd = c.createRadialGradient(S / 2, S / 2, S * 0.05, S / 2, S / 2, S / 2);
-    // Abfall steigt zur Lichtkante an und fällt zum Rand WIEDER auf 0 zurück -
-    // so klemmt der Radial-Verlauf NICHT als dunkles Quadrat in den Bild-Ecken
-    // (Autorbug R55: "schwarzes Viereck um jedes Licht").
-    grd.addColorStop(0, 'rgba(7,5,9,0)'); grd.addColorStop(0.45, 'rgba(7,5,9,0.10)');
-    grd.addColorStop(0.72, 'rgba(6,4,8,0.55)'); grd.addColorStop(1, 'rgba(6,4,8,0)');
-    c.fillStyle = grd; c.fillRect(0, 0, S, S);
-    this.scene.textures.addCanvas(key, cv); return key;
+    const peak = 0.82;   // Maximum nahe der Lichtkante, danach zurück auf 0
+    return this.radialTextur('schatten_falloff', 6, 4, 8, (t) => {
+      const x = t < peak ? t / peak : (1 - t) / (1 - peak);   // 0..1..0
+      return 0.6 * (0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, x))));
+    });
   }
 
   destroy(): void {

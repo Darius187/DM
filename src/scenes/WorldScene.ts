@@ -2425,17 +2425,20 @@ export class WorldScene extends CombatScene {
     // durch Wände hindurch). Helligkeit per Regler, die nächsten werfen auch Schatten.
     const nahe = this.area.torches
       .map((t) => ({ t, d: Math.hypot(t.x - this.px, t.y - this.py) }))
-      .filter((o) => o.d < (235 + this.p.stats.licht) * 1.4 && this.sichtLinieFrei(this.px, this.py, o.t.x, o.t.y))
+      .filter((o) => o.d < (235 + this.p.stats.licht) * 1.4 && (!lic.fackelSicht || this.sichtLinieFrei(this.px, this.py, o.t.x, o.t.y)))
       .sort((a, b) => a.d - b.d);
-    const nSchatten = Math.round((lic.schattenFackeln ?? 20) / 100 * 6);
+    // Wie viele Fackeln werfen Schatten? "Alle"-Schalter übersteuert den Regler.
+    const nSchatten = lic.alleFackelnSchatten ? nahe.length : Math.round((lic.schattenFackeln ?? 20) / 100 * 6);
     const ton = (lic.fackelFarbe ?? 45) / 100;
     nahe.forEach((o, i) => lichter.push({ x: o.t.x, y: o.t.y - 4, art: i < nSchatten ? 'fackel' : 'glut', radius: 130 * fR, weich, staerke: fH, farbTon: ton }));
-    // Effekt-Lichter: Feuerball orange, Zauber violett, Feuerzauber
+    // Effekt-Lichter: Feuerball orange, Zauber violett, Feuerzauber. Per Schalter
+    // werfen auch sie echte Schatten ('fackel' mit Farbe = Raycasting ohne Flamme).
+    const effArt = lic.effekteSchatten ? 'fackel' : 'sicht';
     for (const pr of this.projectiles) {
       if (!pr.fire && !pr.magie) continue;
-      lichter.push({ x: pr.x, y: pr.y, art: 'sicht', radius: 72, farbe: pr.fire ? 0xe8842a : 0xb06ae8 });
+      lichter.push({ x: pr.x, y: pr.y, art: effArt, radius: 72, weich, farbe: pr.fire ? 0xe8842a : 0xb06ae8 });
     }
-    for (const fl of this.feuerLichter) lichter.push({ x: fl.x, y: fl.y - 4, art: 'sicht', radius: fl.r * 0.7, farbe: 0xe8842a });
+    for (const fl of this.feuerLichter) lichter.push({ x: fl.x, y: fl.y - 4, art: effArt, radius: fl.r * 0.7, weich, farbe: 0xe8842a });
     return lichter;
   }
 
