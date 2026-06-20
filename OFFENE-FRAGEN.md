@@ -98,3 +98,14 @@
         Blur, Performance-Regler) - das ist der groesste Atmosphaere-/Grusel-Hebel und nutzt den
         vorhandenen LightingManager. SFSS als WebGL-Upgrade fuers Endpolishing vorgemerkt.
         Sag Bescheid, ob ich die Live-Integration der Schatten jetzt angehen soll.
+
+17. Elementarpfeil-Bug "funktioniert am Anfang kurz, danach nicht mehr" (Runde 55):
+    Ich konnte KEINEN Logik-Fehler reproduzieren, der die Elementwirkung nach einiger
+    Zeit abschaltet - die Erkennung (gefasster Stein + Bogen-Stufe) wird pro Schuss frisch
+    geprüft, Pfeile werden nicht als Munition verbraucht. Der gefundene echte Mangel: der
+    fliegende Pfeil hatte im Flug KEINE Element-Optik (immer schlichter Holzpfeil), der
+    gesockelte Effekt war also unsichtbar. DAS ist jetzt behoben (Pfeil glüht durchgehend
+    farbig + Schweif; Frost blau, Feuer orange, Schatten violett). BITTE PRÜFEN: ob damit
+    dein Symptom weg ist. Falls die Wirkung (Verlangsamen/Brennen/Lebensraub) WIRKLICH nach
+    ein paar Schüssen ausbleibt, sag mir bitte die genaue Situation (Stein im Bogen oder in
+    der Hauptwaffe? nach Waffenwechsel? nach Treffer X?), dann grabe ich gezielt weiter.
