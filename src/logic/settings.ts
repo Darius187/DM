@@ -40,7 +40,8 @@ export interface Settings {
   chronikAuto: boolean;   // Chronik-Fenster beim Spielstart offen (Runde 36)
   bloom: number;          // Leucht-/Bloom-Stärke 0-100 (Runde 51: Regler, 0 = aus)
   grusel: number;         // Grusel-Atmosphäre: kalter, dunkler Tint auf Gegner 0-100 (Runde 55)
-  schatten: number;       // Schatten-/Licht-Stärke 0-100 (Runde 55: 0 = aus, Leistungsregler)
+  schatten: number;       // Schatten-/Licht-Stärke AUSSENWELT 0-100 (Runde 55: 0 = aus, Leistungsregler)
+  dungeonStaerke: number; // Schatten-/Dunkelheit-Stärke DUNGEON 0-100 (getrennt von der Aussenwelt, Runde 56)
   // Licht-Werkbank (Runde 55): alle Regler des Licht-Tests, live im Spiel + persistent
   licht: {
     variante: number;     // Dungeon-Lichtvariante 0-4 (Sichtradius/Wandfackel/Kombis/alt)
@@ -56,6 +57,7 @@ export interface Settings {
     fackelFarbe: number;      // Farbtemperatur der Fackeln 0 (tiefrot) .. 100 (weißgelb)
     dungeonWeichheit: number; // Weichheit der Dungeon-Wandschatten 0-100 (getrennt von Sonne)
     schattenFackeln: number;  // wie viele Fackeln zusätzlich zum Held Schatten werfen 0-100 -> 0..6 (Leistung!)
+    heldFarbe: number;        // Farbtemperatur des Held-Lichts 0 (tiefrot) .. 100 (kühl-weiß), Runde 56
   };
   audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
   zoomV: number;          // einmaliger Zoom-Standard (Runde 41: 130%)
@@ -90,8 +92,9 @@ export const DEF_SETTINGS: Settings = {
   chronikAuto: true,
   bloom: 0, // Runde 51 (Autorwunsch): Bloom standardmäßig AUS, war zu stark
   grusel: 0, // Runde 55: Grusel-Tint standardmäßig aus, per F10-Regler einstellbar
-  schatten: 70, // Runde 55: Schatten/Licht standardmäßig an (mittlere Stärke), Regler in Einstellungen
-  licht: { variante: 2, sichtRadius: 110, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: false, fackelHelligkeit: 60, fackelReichweite: 50, fackelFarbe: 45, dungeonWeichheit: 70, schattenFackeln: 20 },
+  schatten: 70, // Runde 55: Schatten/Licht (Aussenwelt) standardmäßig an (mittlere Stärke)
+  dungeonStaerke: 70, // Runde 56: Dungeon-Dunkelheit getrennt regelbar
+  licht: { variante: 2, sichtRadius: 110, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: false, fackelHelligkeit: 60, fackelReichweite: 50, fackelFarbe: 45, dungeonWeichheit: 70, schattenFackeln: 20, heldFarbe: 45 },
   audioV: 1,
   zoomV: 1,
   bloomV: 1,

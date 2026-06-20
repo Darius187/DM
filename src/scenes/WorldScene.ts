@@ -10,7 +10,7 @@ import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
 import { NebelFratzen } from '../systems/NebelFratzen';
 import { RabenSchwarm } from '../systems/Raben';
-import { SchattenManager, type Occluder, type Licht } from '../systems/SchattenManager';
+import { SchattenManager, mischFarbe, type Occluder, type Licht } from '../systems/SchattenManager';
 import { LichtPanel } from '../ui/lichtPanel';
 import { RABEN } from '../data/raben';
 import { LANDHERR } from '../data/dialoge';
@@ -2384,20 +2384,24 @@ export class WorldScene extends CombatScene {
   protected override zeigerAufUI(p: Phaser.Input.Pointer): boolean { return !!this.lichtPanel?.trifft(p.x, p.y); }
 
   private aktualisiereSchatten(): void {
-    const st = getSettings().schatten / 100;
-    const lic = getSettings().licht;
-    if (this.area.innen || st <= 0) { this.schatten?.aus(); return; }
+    const sets = getSettings();
+    const lic = sets.licht;
+    if (this.area.innen) { this.schatten?.aus(); return; }
     // DUNGEON mit Wand-Schatten: GENAU dieselbe Engine wie das Debug-Menü
     // (SchattenManager.lichter) - Fackeln werfen weiche Raycasting-Schatten,
     // der Held hat den warmen Sichtradius, Effekte (Feuerball/Zauber) leuchten mit.
+    // EIGENE Dunkelheit-Stärke (nicht die der Aussenwelt!).
     if (this.area.dark) {
-      if (!lic.dungeonNeu) { this.schatten?.aus(); return; }   // sonst altes lightRT-System
+      const dst = (sets.dungeonStaerke ?? 70) / 100;
+      if (!lic.dungeonNeu || dst <= 0) { this.schatten?.aus(); return; }   // sonst altes lightRT-System
       this.ensureSchatten([]);
       this.schatten!.feuerNeu = lic.feuerNeu;
-      this.schatten!.lichter(this.dungeonLichter(lic), this.dungeonVerdecker(), st);
+      this.schatten!.lichter(this.dungeonLichter(lic), this.dungeonVerdecker(), dst);
       return;
     }
-    // DRAUSSEN: Tag-Schatten (Gebäude/NPCs), nur am Tag.
+    // DRAUSSEN: Tag-Schatten (Gebäude/NPCs), nur am Tag - mit der Aussenwelt-Stärke.
+    const st = sets.schatten / 100;
+    if (st <= 0) { this.schatten?.aus(); return; }
     this.ensureSchatten(this.gebaeudeOccluder());
     const tag = this.tageszeit > TAG.morgenAb && this.tageszeit < TAG.nachtAb;
     if (!tag) { this.schatten!.aus(); return; }   // nachts/Dämmerung keine Sonne
@@ -2414,7 +2418,9 @@ export class WorldScene extends CombatScene {
     const weich = lic.dungeonWeichheit / 100, fR = 0.6 + (lic.fackelReichweite ?? 50) / 100;
     const fH = (lic.fackelHelligkeit ?? 60) / 50;   // Fackel-Helligkeit (Regler), 1.0 = neutral
     // HELD = das eine Raycasting-Licht (wirft Schatten an den Wänden), warm, OHNE Flamme.
-    if (lic.heldLichtAn) lichter.push({ x: this.px, y: this.py - 6, art: 'fackel', radius: lic.sichtRadius, weich, farbe: 0xc89a5a });
+    // Lichtfarbe per Regler: tiefrot (warm) .. kühl-weiß.
+    const heldFarbe = mischFarbe(0x8a3010, 0xfff2d8, (lic.heldFarbe ?? 45) / 100);
+    if (lic.heldLichtAn) lichter.push({ x: this.px, y: this.py - 6, art: 'fackel', radius: lic.sichtRadius, weich, farbe: heldFarbe });
     // Nahe Fackeln: nur die, die der Held auch WIRKLICH SIEHT (freie Sichtlinie - nicht
     // durch Wände hindurch). Helligkeit per Regler, die nächsten werfen auch Schatten.
     const nahe = this.area.torches
@@ -2436,9 +2442,16 @@ export class WorldScene extends CombatScene {
   // Freie Sichtlinie zwischen zwei Weltpunkten? (keine SOLID-Wand dazwischen) -
   // damit der Held keine Fackeln HINTER Wänden sieht.
   private sichtLinieFrei(x1: number, y1: number, x2: number, y2: number): boolean {
-    const d = Math.hypot(x2 - x1, y2 - y1), n = Math.max(1, Math.ceil(d / (TILE * 0.5)));
-    for (let i = 1; i < n; i++) {
-      const x = x1 + (x2 - x1) * (i / n), y = y1 + (y2 - y1) * (i / n);
+    const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy);
+    if (d < TILE) return true;
+    // Fackeln HÄNGEN an der Wand: der Endpunkt selbst liegt auf/neben einer SOLID-
+    // Kachel. Darum den Prüf-Endpunkt EINE Kachel vor die Fackel ziehen, sonst
+    // verdeckt die eigene Wand jede Fackel (Autorbug R56: "Fackel im selben Raum
+    // leuchtet nicht, wenn der Held nicht direkt hinschaut").
+    const ex = x2 - (dx / d) * TILE, ey = y2 - (dy / d) * TILE;
+    const dd = Math.hypot(ex - x1, ey - y1), n = Math.max(1, Math.ceil(dd / (TILE * 0.5)));
+    for (let i = 1; i <= n; i++) {
+      const x = x1 + (ex - x1) * (i / n), y = y1 + (ey - y1) * (i / n);
       if (this.isSolidAt(x, y)) return false;
     }
     return true;

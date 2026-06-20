@@ -20,7 +20,7 @@ export interface Occluder { x: number; y: number; w: number; h: number; hoehe?: 
 export interface Licht { x: number; y: number; radius: number; art?: 'fackel' | 'sicht' | 'glut'; weich?: number; farbe?: number; staerke?: number; farbTon?: number }
 
 // Zwei Farben mischen (t 0..1) - für die Fackel-Farbtemperatur (rot..weißgelb).
-function mischFarbe(a: number, b: number, t: number): number {
+export function mischFarbe(a: number, b: number, t: number): number {
   const r = Math.round((a >> 16 & 255) + ((b >> 16 & 255) - (a >> 16 & 255)) * t);
   const g = Math.round((a >> 8 & 255) + ((b >> 8 & 255) - (a >> 8 & 255)) * t);
   const bl = Math.round((a & 255) + ((b & 255) - (a & 255)) * t);
@@ -174,7 +174,7 @@ export class SchattenManager {
       const segs: Segment[] = [...rand, ...statS];
       for (const o of dynamisch) {
         const d = Math.hypot(o.x - L.x, o.y - L.y);
-        if (d < 16 || d > L.radius + 56) continue;   // Selbst-Verdeckung aus, nur nahe Verdecker (Leistung)
+        if (d < 22 || d > L.radius + 56) continue;   // Selbst-Verdeckung aus (Held wirft sonst Schatten auf SEIN eigenes Licht), nur nahe Verdecker (Leistung)
         for (const s of rechteckSegmente({ x: o.x - o.w / 2, y: o.y - o.h / 2, w: o.w, h: o.h })) {
           const [ax, ay] = w2s(s.ax, s.ay), [bx, by] = w2s(s.bx, s.by); segs.push({ ax, ay, bx, by });
         }
@@ -289,7 +289,11 @@ export class SchattenManager {
     const S = 256, cv = document.createElement('canvas'); cv.width = cv.height = S;
     const c = cv.getContext('2d')!;
     const grd = c.createRadialGradient(S / 2, S / 2, S * 0.05, S / 2, S / 2, S / 2);
-    grd.addColorStop(0, 'rgba(7,5,9,0)'); grd.addColorStop(0.6, 'rgba(7,5,9,0.10)'); grd.addColorStop(1, 'rgba(6,4,8,0.95)');
+    // Abfall steigt zur Lichtkante an und fällt zum Rand WIEDER auf 0 zurück -
+    // so klemmt der Radial-Verlauf NICHT als dunkles Quadrat in den Bild-Ecken
+    // (Autorbug R55: "schwarzes Viereck um jedes Licht").
+    grd.addColorStop(0, 'rgba(7,5,9,0)'); grd.addColorStop(0.45, 'rgba(7,5,9,0.10)');
+    grd.addColorStop(0.72, 'rgba(6,4,8,0.55)'); grd.addColorStop(1, 'rgba(6,4,8,0)');
     c.fillStyle = grd; c.fillRect(0, 0, S, S);
     this.scene.textures.addCanvas(key, cv); return key;
   }
