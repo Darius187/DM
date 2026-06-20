@@ -2417,20 +2417,26 @@ export class WorldScene extends CombatScene {
     const lichter: Licht[] = [];
     const weich = lic.dungeonWeichheit / 100, fR = 0.6 + (lic.fackelReichweite ?? 50) / 100;
     const fH = (lic.fackelHelligkeit ?? 60) / 50;   // Fackel-Helligkeit (Regler), 1.0 = neutral
-    // HELD = das eine Raycasting-Licht (wirft Schatten an den Wänden), warm, OHNE Flamme.
-    // Lichtfarbe per Regler: tiefrot (warm) .. kühl-weiß.
+    // HELD: Lichtfarbe per Regler (tiefrot..kühl-weiß). Wahlweise als Raycasting-Licht
+    // ('fackel', wirft Wandschatten) ODER nur als weicher Sichtradius ('sicht', kein
+    // Schattenwurf -> KEIN dunkler Schleier um den Helden). Auch als 'sicht' wirft er
+    // weiter Schatten VON den Fackeln, weil er Verdecker bleibt.
     const heldFarbe = mischFarbe(0x8a3010, 0xfff2d8, (lic.heldFarbe ?? 45) / 100);
-    if (lic.heldLichtAn) lichter.push({ x: this.px, y: this.py - 6, art: 'fackel', radius: lic.sichtRadius, weich, farbe: heldFarbe });
-    // Nahe Fackeln: nur die, die der Held auch WIRKLICH SIEHT (freie Sichtlinie - nicht
-    // durch Wände hindurch). Helligkeit per Regler, die nächsten werfen auch Schatten.
+    if (lic.heldLichtAn) lichter.push({ x: this.px, y: this.py - 6, art: lic.heldSchatten ? 'fackel' : 'sicht', radius: lic.sichtRadius, weich, farbe: heldFarbe });
+    // Nahe Fackeln: wie weit weg sie noch leuchten = Aktiv-Distanz-Regler. Die Sicht-
+    // Toleranz bestimmt, durch WIE VIELE Wände das Licht noch zählt: 0 = nur direkt
+    // sichtbar, 1 = um die Ecke (eine Wand dazwischen), höher = großzügiger. So leuchtet
+    // die Fackel um die Ecke in derselben Halle, aber nicht die zwei Räume weiter.
+    const reich = 150 + (lic.fackelDistanz ?? 55) / 100 * 470;   // 150..620 Aktiv-Distanz
+    const tol = Math.round((lic.fackelSichtTol ?? 30) / 100 * 4); // 0..4 Wände
     const nahe = this.area.torches
       .map((t) => ({ t, d: Math.hypot(t.x - this.px, t.y - this.py) }))
-      .filter((o) => o.d < (235 + this.p.stats.licht) * 1.4 && (!lic.fackelSicht || this.sichtLinieFrei(this.px, this.py, o.t.x, o.t.y)))
+      .filter((o) => o.d < reich && (!lic.fackelSicht || this.wandRunsZu(this.px, this.py, o.t.x, o.t.y) <= tol))
       .sort((a, b) => a.d - b.d);
     // Wie viele Fackeln werfen Schatten? "Alle"-Schalter übersteuert den Regler.
     const nSchatten = lic.alleFackelnSchatten ? nahe.length : Math.round((lic.schattenFackeln ?? 20) / 100 * 6);
     const ton = (lic.fackelFarbe ?? 45) / 100;
-    nahe.forEach((o, i) => lichter.push({ x: o.t.x, y: o.t.y - 4, art: i < nSchatten ? 'fackel' : 'glut', radius: 130 * fR, weich, staerke: fH, farbTon: ton }));
+    nahe.forEach((o, i) => lichter.push({ x: o.t.x, y: o.t.y - 4, art: i < nSchatten ? 'fackel' : 'glut', radius: 150 * fR, weich, staerke: fH, farbTon: ton }));
     // Effekt-Lichter: Feuerball orange, Zauber violett, Feuerzauber. Per Schalter
     // werfen auch sie echte Schatten ('fackel' mit Farbe = Raycasting ohne Flamme).
     const effArt = lic.effekteSchatten ? 'fackel' : 'sicht';
@@ -2442,22 +2448,24 @@ export class WorldScene extends CombatScene {
     return lichter;
   }
 
-  // Freie Sichtlinie zwischen zwei Weltpunkten? (keine SOLID-Wand dazwischen) -
-  // damit der Held keine Fackeln HINTER Wänden sieht.
-  private sichtLinieFrei(x1: number, y1: number, x2: number, y2: number): boolean {
+  // Wie viele GETRENNTE Wände liegen zwischen zwei Punkten? (zusammenhängende
+  // SOLID-Kacheln = EINE Wand). 0 = direkte Sicht, 1 = um die Ecke / eine Wand
+  // dazwischen, 2+ = durch mehrere Wände/Räume getrennt. Der Endpunkt wird eine
+  // Kachel vor das Ziel gezogen, damit die Wand, an der die Fackel HÄNGT, nicht
+  // mitzählt (sonst wäre jede Wandfackel schon "1 Wand entfernt").
+  private wandRunsZu(x1: number, y1: number, x2: number, y2: number): number {
     const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy);
-    if (d < TILE) return true;
-    // Fackeln HÄNGEN an der Wand: der Endpunkt selbst liegt auf/neben einer SOLID-
-    // Kachel. Darum den Prüf-Endpunkt EINE Kachel vor die Fackel ziehen, sonst
-    // verdeckt die eigene Wand jede Fackel (Autorbug R56: "Fackel im selben Raum
-    // leuchtet nicht, wenn der Held nicht direkt hinschaut").
+    if (d < TILE) return 0;
     const ex = x2 - (dx / d) * TILE, ey = y2 - (dy / d) * TILE;
     const dd = Math.hypot(ex - x1, ey - y1), n = Math.max(1, Math.ceil(dd / (TILE * 0.5)));
+    let prev = false, runs = 0;
     for (let i = 1; i <= n; i++) {
       const x = x1 + (ex - x1) * (i / n), y = y1 + (ey - y1) * (i / n);
-      if (this.isSolidAt(x, y)) return false;
+      const s = this.isSolidAt(x, y);
+      if (s && !prev) runs++;
+      prev = s;
     }
-    return true;
+    return runs;
   }
 
   // Verdecker fürs Dungeon-Raycasting: nahe SOLID-Wände zu MAXIMALEN Rechtecken

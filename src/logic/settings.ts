@@ -61,6 +61,9 @@ export interface Settings {
     alleFackelnSchatten: boolean; // ALLE sichtbaren Fackeln werfen Schatten (übersteuert schattenFackeln), Runde 56
     effekteSchatten: boolean;     // Effekt-Lichter (Feuerball/Zauber/Feuer) werfen auch Schatten, Runde 56
     fackelSicht: boolean;         // Fackeln nur bei freier Sichtlinie zählen (aus = auch durch Wände), Runde 56
+    heldSchatten: boolean;        // Held wirft Schatten (Raycast) ODER nur weicher Sichtradius (kein Schleier), Runde 56
+    fackelSichtTol: number;       // Sicht-Toleranz: durch wie viele Wände das Fackellicht noch zählt (0 = direkt, hoch = um die Ecke), Runde 56
+    fackelDistanz: number;        // Aktiv-Distanz: wie weit entfernt Fackeln noch leuchten 0-100, Runde 56
   };
   audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
   zoomV: number;          // einmaliger Zoom-Standard (Runde 41: 130%)
@@ -97,7 +100,7 @@ export const DEF_SETTINGS: Settings = {
   grusel: 0, // Runde 55: Grusel-Tint standardmäßig aus, per F10-Regler einstellbar
   schatten: 70, // Runde 55: Schatten/Licht (Aussenwelt) standardmäßig an (mittlere Stärke)
   dungeonStaerke: 70, // Runde 56: Dungeon-Dunkelheit getrennt regelbar
-  licht: { variante: 2, sichtRadius: 110, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: false, fackelHelligkeit: 60, fackelReichweite: 50, fackelFarbe: 45, dungeonWeichheit: 70, schattenFackeln: 20, heldFarbe: 45, alleFackelnSchatten: false, effekteSchatten: false, fackelSicht: true },
+  licht: { variante: 2, sichtRadius: 110, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: false, fackelHelligkeit: 60, fackelReichweite: 50, fackelFarbe: 45, dungeonWeichheit: 70, schattenFackeln: 20, heldFarbe: 45, alleFackelnSchatten: false, effekteSchatten: false, fackelSicht: true, heldSchatten: false, fackelSichtTol: 30, fackelDistanz: 55 },
   audioV: 1,
   zoomV: 1,
   bloomV: 1,

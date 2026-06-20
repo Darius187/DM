@@ -56,9 +56,12 @@ export class LichtPanel {
     y = this.slider(y, 'Schatten-Fackeln (Leistung!)', 0, 100, () => L().schattenFackeln, (v) => { L().schattenFackeln = v; }, (v) => `${Math.round(v / 100 * 6)} + Held`);
     y = this.toggle(y, () => `ALLE Fackeln werfen Schatten: ${L().alleFackelnSchatten ? 'AN' : 'aus'}`, () => { L().alleFackelnSchatten = !L().alleFackelnSchatten; });
     y = this.toggle(y, () => `Effekte werfen Schatten: ${L().effekteSchatten ? 'AN' : 'aus'}`, () => { L().effekteSchatten = !L().effekteSchatten; });
-    y = this.toggle(y, () => `Fackeln nur in Sichtlinie: ${L().fackelSicht ? 'AN' : 'aus'}`, () => { L().fackelSicht = !L().fackelSicht; });
+    y = this.toggle(y, () => `Fackel-Sichtprüfung: ${L().fackelSicht ? 'AN' : 'aus (durch Wände)'}`, () => { L().fackelSicht = !L().fackelSicht; });
+    y = this.slider(y, 'Fackel-Sichttoleranz (um die Ecke)', 0, 100, () => L().fackelSichtTol, (v) => { L().fackelSichtTol = v; }, (v) => `${Math.round(v / 100 * 4)} Wände`);
+    y = this.slider(y, 'Fackel-Aktiv-Distanz', 0, 100, () => L().fackelDistanz, (v) => { L().fackelDistanz = v; });
     y = this.slider(y, 'Wand-Schatten-Weichheit', 0, 100, () => L().dungeonWeichheit, (v) => { L().dungeonWeichheit = v; });
     y = this.toggle(y, () => `Held-Licht (Sicht): ${L().heldLichtAn ? 'AN' : 'AUS'}`, () => { L().heldLichtAn = !L().heldLichtAn; });
+    y = this.toggle(y, () => `Held wirft Schatten: ${L().heldSchatten ? 'AN' : 'aus (nur Sichtradius)'}`, () => { L().heldSchatten = !L().heldSchatten; });
     y = this.slider(y, 'Sichtradius', 40, 240, () => L().sichtRadius, (v) => { L().sichtRadius = v; });
     y = this.slider(y, 'Held-Licht-Farbe (rot..weiß)', 0, 100, () => L().heldFarbe, (v) => { L().heldFarbe = v; });
     y = this.slider(y, 'Fackel-Helligkeit', 0, 100, () => L().fackelHelligkeit, (v) => { L().fackelHelligkeit = v; });

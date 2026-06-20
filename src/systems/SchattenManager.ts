@@ -191,7 +191,9 @@ export class SchattenManager {
       }
       // dunkler Lichtabfall zum Rand (Falloff) + Schein (Feuer ODER warm/farbig)
       const flick = 1 + Math.sin(t * 8 + lx) * 0.05 + Math.sin(t * 21 + ly) * 0.03;
-      this.falloff(lx, ly, rS, 0.45 + 0.4 * staerke);
+      // Falloff bewusst dezent: bei VIELEN schattenwerfenden Lichtern überlagern
+      // sich die dunklen Ränder sonst zu einem Schleier über dem Helden (Autorbug R56).
+      this.falloff(lx, ly, rS, 0.28 + 0.26 * staerke);
       const hk = L.staerke ?? 1;
       if (L.farbe !== undefined) {   // warmer/ farbiger Schein OHNE Flamme (z.B. Held)
         this.glow(lx, ly, rS * 0.92, L.farbe, 0.20 * hk); this.glow(lx, ly, rS * 0.45, 0xffe6c0, 0.12 * hk);
@@ -307,7 +309,7 @@ export class SchattenManager {
     const peak = 0.82;   // Maximum nahe der Lichtkante, danach zurück auf 0
     return this.radialTextur('schatten_falloff', 6, 4, 8, (t) => {
       const x = t < peak ? t / peak : (1 - t) / (1 - peak);   // 0..1..0
-      return 0.6 * (0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, x))));
+      return 0.5 * (0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, x))));
     });
   }
 
