@@ -16,7 +16,8 @@ import { rechteckSegmente, sichtPolygon, sonnenschatten, type Segment } from './
 export interface Occluder { x: number; y: number; w: number; h: number; hoehe?: number }
 // Ein Licht im Dunkeln: 'fackel' = Feuer mit Schattenwurf (Raycasting),
 // 'sicht' = weicher Radius ohne Schatten, 'glut' = nur dezentes Glühen (kein Reveal).
-export interface Licht { x: number; y: number; radius: number; art?: 'fackel' | 'sicht' | 'glut'; weich?: number }
+// farbe = Schein-Farbe für 'sicht' (z.B. Feuerball orange, Zauber violett); sonst neutral.
+export interface Licht { x: number; y: number; radius: number; art?: 'fackel' | 'sicht' | 'glut'; weich?: number; farbe?: number }
 
 export class SchattenManager {
   private sonneGfx: Phaser.GameObjects.Graphics;     // Sonnenschatten am Boden (Welt)
@@ -143,9 +144,10 @@ export class SchattenManager {
     for (const L of aktiv) {
       const [lx, ly] = w2s(L.x, L.y); const rS = L.radius * z;
       if (L.art === 'sicht') {
-        // weicher persönlicher Lichtradius - reiner Reveal (kein Schattenwurf)
+        // weicher persönlicher Lichtradius / Effekt-Licht - reiner Reveal (kein Schattenwurf)
         this.brush.setScale((rS * 2) / 256); rt.erase(this.brush, lx, ly);
-        this.glow(lx, ly, rS * 0.9, 0xbfae86, 0.10, 1);   // dezenter, kühl-neutraler Schein
+        if (L.farbe !== undefined) { this.glow(lx, ly, rS * 0.95, L.farbe, 0.24); this.glow(lx, ly, rS * 0.45, 0xffffff, 0.12); }
+        else this.glow(lx, ly, rS * 0.9, 0xc89a5a, 0.14);   // warm-gelblicher Held-Schein
         continue;
       }
       if (L.art === 'glut') {
@@ -161,7 +163,8 @@ export class SchattenManager {
       const weich = L.weich ?? 0.7; maxWeich = Math.max(maxWeich, weich);
       const segs: Segment[] = [...rand, ...statS];
       for (const o of dynamisch) {
-        if (Math.hypot(o.x - L.x, o.y - L.y) < 16) continue;   // Emitter verdeckt sich nicht selbst
+        const d = Math.hypot(o.x - L.x, o.y - L.y);
+        if (d < 16 || d > L.radius + 56) continue;   // Selbst-Verdeckung aus, nur nahe Verdecker (Leistung)
         for (const s of rechteckSegmente({ x: o.x - o.w / 2, y: o.y - o.h / 2, w: o.w, h: o.h })) {
           const [ax, ay] = w2s(s.ax, s.ay), [bx, by] = w2s(s.bx, s.by); segs.push({ ax, ay, bx, by });
         }

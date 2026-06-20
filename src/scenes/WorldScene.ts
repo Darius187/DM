@@ -10,8 +10,7 @@ import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
 import { NebelFratzen } from '../systems/NebelFratzen';
 import { RabenSchwarm } from '../systems/Raben';
-import { SchattenManager, type Occluder } from '../systems/SchattenManager';
-import { sichtPolygon, rechteckSegmente, type Segment } from '../systems/schatten';
+import { SchattenManager, type Occluder, type Licht } from '../systems/SchattenManager';
 import { LichtPanel } from '../ui/lichtPanel';
 import { RABEN } from '../data/raben';
 import { LANDHERR } from '../data/dialoge';
@@ -2387,10 +2386,17 @@ export class WorldScene extends CombatScene {
   private aktualisiereSchatten(): void {
     const st = getSettings().schatten / 100;
     const lic = getSettings().licht;
-    // Dunkle Gebiete + Innenräume: das (alte) lightRT-System in renderLight() liefert
-    // Licht für ALLE Quellen (Held warm, Fackeln, Feuerball, Zauber, Pfeile...) und
-    // bekommt dort optional die Raycasting-Wandschatten dazu. Hier nur Tag-Schatten.
-    if (this.area.dark || this.area.innen || st <= 0) { this.schatten?.aus(); return; }
+    if (this.area.innen || st <= 0) { this.schatten?.aus(); return; }
+    // DUNGEON mit Wand-Schatten: GENAU dieselbe Engine wie das Debug-Menü
+    // (SchattenManager.lichter) - Fackeln werfen weiche Raycasting-Schatten,
+    // der Held hat den warmen Sichtradius, Effekte (Feuerball/Zauber) leuchten mit.
+    if (this.area.dark) {
+      if (!lic.dungeonNeu) { this.schatten?.aus(); return; }   // sonst altes lightRT-System
+      this.ensureSchatten([]);
+      this.schatten!.feuerNeu = lic.feuerNeu;
+      this.schatten!.lichter(this.dungeonLichter(lic), this.dungeonVerdecker(), st);
+      return;
+    }
     // DRAUSSEN: Tag-Schatten (Gebäude/NPCs), nur am Tag.
     this.ensureSchatten(this.gebaeudeOccluder());
     const tag = this.tageszeit > TAG.morgenAb && this.tageszeit < TAG.nachtAb;
@@ -2398,6 +2404,47 @@ export class WorldScene extends CombatScene {
     const winkel = Phaser.Math.Clamp((this.tageszeit - TAG.morgenAb) / Math.max(0.001, TAG.nachtAb - TAG.morgenAb), 0, 1);
     if (lic.sonneRaycast) this.schatten!.sonneRaycast(winkel, this.dynamischeOccluder(), st, lic.sonneKegel, lic.weichheit);
     else this.schatten!.sonne(winkel, this.dynamischeOccluder(), st);
+  }
+
+  // Dungeon-Lichter für die Debug-Engine: Held (warmer Sichtradius) + NÄCHSTE Fackeln
+  // (weiche Raycasting-Schatten) + Effekte (Feuerball/Zauber/Feuerzauber = farbiger Reveal).
+  private dungeonLichter(lic: ReturnType<typeof getSettings>['licht']): Licht[] {
+    const lichter: Licht[] = [];
+    if (lic.heldLichtAn) lichter.push({ x: this.px, y: this.py - 6, art: 'sicht', radius: lic.sichtRadius });
+    const weich = lic.dungeonWeichheit / 100, fR = 0.6 + (lic.fackelReichweite ?? 50) / 100;
+    // Fackeln nach Nähe sortieren - nur die 2 nächsten werfen Schatten (Leistung), Rest glüht.
+    const nahe = this.area.torches
+      .map((t) => ({ t, d: Math.hypot(t.x - this.px, t.y - this.py) }))
+      .filter((o) => o.d < (this.area.dark ? 235 + this.p.stats.licht : 360) * 1.35)
+      .sort((a, b) => a.d - b.d);
+    nahe.forEach((o, i) => lichter.push({ x: o.t.x, y: o.t.y - 4, art: i < 2 ? 'fackel' : 'glut', radius: 140 * fR, weich }));
+    // Effekt-Lichter (wie im alten System): Feuerball orange, Zauber violett, Feuerzauber
+    for (const pr of this.projectiles) {
+      if (!pr.fire && !pr.magie) continue;
+      lichter.push({ x: pr.x, y: pr.y, art: 'sicht', radius: 72, farbe: pr.fire ? 0xe8842a : 0xb06ae8 });
+    }
+    for (const fl of this.feuerLichter) lichter.push({ x: fl.x, y: fl.y - 4, art: 'sicht', radius: fl.r * 0.7, farbe: 0xe8842a });
+    return lichter;
+  }
+
+  // Verdecker fürs Dungeon-Raycasting: nahe SOLID-Wände zu wenigen Rechtecken
+  // zusammengefasst (Occluder mit MITTE x,y) + Held + Gegner.
+  private dungeonVerdecker(): Occluder[] {
+    const occ = this.dynamischeOccluder();
+    const tx0 = Math.floor(this.px / TILE), ty0 = Math.floor(this.py / TILE), R = 6;
+    for (let ty = ty0 - R; ty <= ty0 + R; ty++) {
+      let lauf = -1;
+      for (let tx = tx0 - R; tx <= tx0 + R + 1; tx++) {
+        const solid = tx <= tx0 + R && this.isSolidAt(tx * TILE + TILE / 2, ty * TILE + TILE / 2);
+        if (solid && lauf < 0) lauf = tx;
+        else if (!solid && lauf >= 0) {
+          const w = (tx - lauf) * TILE;
+          occ.push({ x: lauf * TILE + w / 2, y: ty * TILE + TILE / 2, w, h: TILE });
+          lauf = -1;
+        }
+      }
+    }
+    return occ;
   }
 
   // Manager je Gebiet (neu) aufbauen - rtTiefe knapp unter dem alten lightRT (4000)
@@ -5371,6 +5418,13 @@ export class WorldScene extends CombatScene {
   private renderLight(): void {
     const cam = this.cameras.main;
     this.renderFog();
+    // Dungeon-Wand-Schatten an: der SchattenManager (gleiche Engine wie Debug) liefert
+    // das gesamte Dungeon-Licht -> das alte lightRT-Overlay ausblenden (sonst doppelt).
+    if (this.area.dark && getSettings().licht.dungeonNeu && getSettings().schatten > 0) {
+      this.lightRT?.setVisible(false);
+      for (const im of this.warmPool) im.setVisible(false);
+      return;
+    }
     // Nebel des Krieges im Dunkelwald: Sichtkreis auch über Tage (einstellbar)
     const fow = !this.area.dark && this.area.id === 'wald' && getSettings().fow;
     // Innenräume (Runde 35): sanft abgedunkelte, WARME Stube - Kamin, Kerzen
@@ -5434,32 +5488,17 @@ export class WorldScene extends CombatScene {
     // roher scroll-Differenz, und die Lichtradien wachsen mit
     const zm = cam.zoom;
     const px = (this.px - cam.worldView.x) * zm, py = (this.py - cam.worldView.y) * zm;
-    // Dungeon-Wandschatten (Autorwunsch "Raycasting wie im Debug, stimmungsvoll"):
-    // das Held-Licht UND die nahen Fackeln werden von den Wänden geblockt - das
-    // Licht reicht nur in den Raum, nicht durch die Mauern. Alles andere (Feuerball,
-    // Zauber, Pfeile, ferne Fackeln) leuchtet weiter wie bisher (warm + billig).
-    const lic = getSettings().licht;
-    const wandSchatten = this.area.dark && lic.dungeonNeu && getSettings().schatten > 0;
-    const wandSegs = wandSchatten ? this.dungeonWandSegmente(cam, zm) : null;
-    const dWeich = (lic.dungeonWeichheit ?? 70) / 100;
-    if (this.lichtBlur) { const b = wandSchatten ? 1 + dWeich * 3 : 0; this.lichtBlur.x = b; this.lichtBlur.y = b; }
-    if (wandSegs) this.eraseSichtpolygon(px, py, playerRadius * zm, wandSegs, dWeich, zm, 4);   // Held weich (4 Abtastungen)
-    else this.eraseLight(px, py, playerRadius * zm);
+    this.eraseLight(px, py, playerRadius * zm);
     let warmIdx = 0;
     if (!fow && (this.area.dark || nachtFaktor > 0.3)) warmIdx = this.placeWarm(warmIdx, this.px, this.py, 160, 0.5);
-    const fH = (lic.fackelHelligkeit ?? 60) / 50;          // Fackel-Helligkeit (Regler), 1.0 = neutral
-    const fR = 0.5 + (lic.fackelReichweite ?? 50) / 100;   // Fackel-Reichweite, 1.0 = neutral
-    const fFarbe = this.fackelTint(lic.fackelFarbe ?? 45); // Farbtemperatur der Fackeln
     for (const t of (fow ? [] : this.area.torches)) {
       // Runde 29: ferne Fackeln deckten halbe Karten samt Gegnern auf -
       // sie leuchten nur noch nahe am eigenen Sichtkreis
-      if (this.area.dark && Math.hypot(t.x - this.px, t.y - this.py) > basisRadius * 1.35 * fR) continue;
+      if (this.area.dark && Math.hypot(t.x - this.px, t.y - this.py) > basisRadius * 1.35) continue;
       const sx = (t.x - cam.worldView.x) * zm, sy = (t.y - cam.worldView.y) * zm;
       if (sx < -160 || sy < -160 || sx > this.scale.width + 160 || sy > this.scale.height + 160) continue;
-      const tr = (95 + Math.sin(time * 7 + t.ph) * 10) * fR * zm;
-      if (wandSegs) this.eraseSichtpolygon(sx, sy - 4 * zm, tr, wandSegs, dWeich, zm, 1);   // Fackel einfach (Blur weicht ab)
-      else this.eraseLight(sx, sy - 4 * zm, tr);
-      warmIdx = this.placeWarm(warmIdx, t.x, t.y - 4, 70 * fR, 0.7 * Math.min(1.5, fH), this.area.dark ? fFarbe : (this.schlucht ? this.schluchtAkzent : undefined));
+      this.eraseLight(sx, sy - 4 * zm, (95 + Math.sin(time * 7 + t.ph) * 10) * zm);
+      warmIdx = this.placeWarm(warmIdx, t.x, t.y - 4, 70, 0.7, this.schlucht ? this.schluchtAkzent : undefined);
     }
     // Hausfenster im Dorf (Runde 35): abends leuchten die Fenster warm, nachts
     // erlischt ein Haus nach dem anderen, tagsüber sind alle dunkel.
@@ -5545,62 +5584,6 @@ export class WorldScene extends CombatScene {
     }
     this.lightScratch.setScale((radius * 2) / 256);
     this.lightRT.erase(this.lightScratch, x, y);
-  }
-
-  private sichtGfx: Phaser.GameObjects.Graphics | null = null;
-  private lichtBlur?: Phaser.FX.Blur;
-
-  // Held-/Fackel-Licht als FLÄCHENLICHT ausstanzen (Raycasting gegen die Wände):
-  // wie im Debug-Menü von MEHREREN Abtastpunkten -> echte WEICHE Schatten (Penumbra),
-  // kein harter Rand. weich 0..1 = Größe der Lichtquelle. Fallback = Kreis.
-  private eraseSichtpolygon(sx: number, sy: number, rS: number, segs: Segment[], weich: number, zm: number, n: number): void {
-    if (!this.sichtGfx) this.sichtGfx = this.add.graphics().setVisible(false);
-    const g = this.sichtGfx;
-    const groesse = (2 + weich * 14) * zm;   // Radius der Flächenlichtquelle (Weichheit)
-    const alpha = n === 1 ? 1 : 0.55;        // n>1 = Teil-Deckkraft -> Halbschatten-Verlauf
-    let gezeichnet = false;
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2, off = n === 1 ? 0 : groesse;
-      const poly = sichtPolygon({ x: sx + Math.cos(a) * off, y: sy + Math.sin(a) * off }, segs, rS);
-      if (poly.length < 3) continue;
-      gezeichnet = true;
-      g.clear(); g.fillStyle(0xffffff, alpha);
-      g.beginPath(); g.moveTo(poly[0].x, poly[0].y);
-      for (let j = 1; j < poly.length; j++) g.lineTo(poly[j].x, poly[j].y);
-      g.closePath(); g.fillPath();
-      this.lightRT.erase(g);
-    }
-    if (!gezeichnet) this.eraseLight(sx, sy, rS);
-  }
-
-  // Fackel-Farbtemperatur (Regler): 0 = tiefrot/orange, 50 = warmgelb, 100 = blass weißgelb.
-  private fackelTint(v: number): number {
-    const t = Phaser.Math.Clamp(v / 100, 0, 1);
-    const g = Math.round(0x5a + t * 0x96);   // 0x5a .. 0xf0
-    const b = Math.round(0x12 + t * 0xc0);   // 0x12 .. 0xd2
-    return (0xff << 16) | (g << 8) | b;
-  }
-
-  // Nahe SOLID-Wände zu wenigen Rechtecken zusammenfassen (horizontale Läufe) und
-  // als SCHIRM-Segmente liefern - wenige Kanten = schnelles Raycasting.
-  private dungeonWandSegmente(cam: Phaser.Cameras.Scene2D.Camera, zm: number): Segment[] {
-    const segs: Segment[] = [];
-    const tx0 = Math.floor(this.px / TILE), ty0 = Math.floor(this.py / TILE), R = 6;
-    const w2s = (wx: number, wy: number): [number, number] => [(wx - cam.worldView.x) * zm, (wy - cam.worldView.y) * zm];
-    const pushRect = (x0: number, y0: number, w: number, h: number): void => {
-      for (const s of rechteckSegmente({ x: x0, y: y0, w, h })) {
-        const [ax, ay] = w2s(s.ax, s.ay), [bx, by] = w2s(s.bx, s.by); segs.push({ ax, ay, bx, by });
-      }
-    };
-    for (let ty = ty0 - R; ty <= ty0 + R; ty++) {
-      let lauf = -1;
-      for (let tx = tx0 - R; tx <= tx0 + R + 1; tx++) {
-        const solid = tx <= tx0 + R && this.isSolidAt(tx * TILE + TILE / 2, ty * TILE + TILE / 2);
-        if (solid && lauf < 0) lauf = tx;
-        else if (!solid && lauf >= 0) { pushRect(lauf * TILE, ty * TILE, (tx - lauf) * TILE, TILE); lauf = -1; }
-      }
-    }
-    return segs;
   }
 
   // tint gesetzt = farbiges Magie-Licht (weißer Blob wird eingefärbt)
@@ -6324,8 +6307,6 @@ export class WorldScene extends CombatScene {
     this.lightRT?.destroy();
     this.lightRT = this.add.renderTexture(0, 0, this.scale.width, this.scale.height)
       .setOrigin(0).setScrollFactor(0).setDepth(4000);
-    // Weichzeichner für weiche Dungeon-Wandschatten (Stärke wird je Frame gesetzt; 0 = aus)
-    if (this.lightRT.postFX) this.lichtBlur = this.lightRT.postFX.addBlur(0, 0, 0, 1, 0xffffff, 4);
   }
 
   // Sanfte GPU-Nachbearbeitung der WELT-Kamera (Runde 40, Autorwunsch
