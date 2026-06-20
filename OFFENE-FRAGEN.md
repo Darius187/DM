@@ -142,3 +142,13 @@
     Weichheit. Sag mir, WELCHE Variante + welche Werte (Sichtradius, Weichheit, Feuer-Stil) sich am
     besten anfühlen (du vermutest: kleinerer Radius = gruseliger) - die übernehme ich dann fest in
     die echte Krypta. Stadtschatten sind jetzt weich + dezent; sag, ob die Stärke (0.42) passt.
+
+21. Licht-Werkbank live + Raycaster-Sonne (Runde 55): Im Hauptspiel öffnest du mit Taste L die
+    LICHT-WERKBANK und stellst ALLES live ein (persistent): Sonne Projektion/Raycaster, Sonnen-
+    Kegel (Ferne), Schatten-Stärke, Weichheit, Dungeon-Variante, Held-Sichtradius, Feuer-Stil.
+    Bitte teste und sag mir: (a) Welcher SONNEN-MODUS gefällt dir in der Stadt - die kurze
+    Projektion oder die langen Raycaster-Schlagschatten? Bei Raycaster sind die Schatten lang
+    (physikalisch korrekt für einen Punkt); soll ich die Länge begrenzen? (b) Welche Werte
+    (Stärke/Weichheit/Kegel) passen? Die übernehme ich dann als Standard. Hinweis: der Held-
+    Sichtradius/die Dungeon-Varianten wirken aktuell in der DebugArena voll; im Live-Dungeon läuft
+    noch das alte Licht - sag, ob ich das Dungeon-Licht auch auf die Werkbank umstellen soll.
