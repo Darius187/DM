@@ -312,7 +312,7 @@ export class WorldScene extends CombatScene {
     // Licht-Werkbank (R55): alle Licht-/Schatten-Regler live im Spiel (Taste L).
     // Tageszeit-Regler (Autorwunsch "Mittag/Uhrzeit testen"): setzt direkt die
     // Spielzeit, so lässt sich jeder Sonnenstand (auch Mittag = höchste Sonne) prüfen.
-    this.lichtPanel = new LichtPanel(this, this.scale.width - 322, 188, {
+    this.lichtPanel = new LichtPanel(this, this.scale.width - 300, 116, {
       tageszeit: { get: () => this.tageszeit, set: (v) => { this.tageszeit = v; }, label: (v) => tageszeitLabel(v) },
     });
     this.input.keyboard?.on('keydown-L', () => this.lichtPanel?.umschalten());
@@ -5438,24 +5438,28 @@ export class WorldScene extends CombatScene {
     // das Held-Licht UND die nahen Fackeln werden von den Wänden geblockt - das
     // Licht reicht nur in den Raum, nicht durch die Mauern. Alles andere (Feuerball,
     // Zauber, Pfeile, ferne Fackeln) leuchtet weiter wie bisher (warm + billig).
-    const wandSchatten = this.area.dark && getSettings().licht.dungeonNeu && getSettings().schatten > 0;
+    const lic = getSettings().licht;
+    const wandSchatten = this.area.dark && lic.dungeonNeu && getSettings().schatten > 0;
     const wandSegs = wandSchatten ? this.dungeonWandSegmente(cam, zm) : null;
-    if (this.lichtBlur) { const b = wandSchatten ? 2.5 : 0; this.lichtBlur.x = b; this.lichtBlur.y = b; }
-    if (wandSegs) this.eraseSichtpolygon(px, py, playerRadius * zm, wandSegs);
+    const dWeich = (lic.dungeonWeichheit ?? 70) / 100;
+    if (this.lichtBlur) { const b = wandSchatten ? 1 + dWeich * 3 : 0; this.lichtBlur.x = b; this.lichtBlur.y = b; }
+    if (wandSegs) this.eraseSichtpolygon(px, py, playerRadius * zm, wandSegs, dWeich, zm, 4);   // Held weich (4 Abtastungen)
     else this.eraseLight(px, py, playerRadius * zm);
     let warmIdx = 0;
     if (!fow && (this.area.dark || nachtFaktor > 0.3)) warmIdx = this.placeWarm(warmIdx, this.px, this.py, 160, 0.5);
-    const fH = (getSettings().licht.fackelHelligkeit ?? 60) / 50;   // Fackel-Helligkeit (Regler), 1.0 = neutral
+    const fH = (lic.fackelHelligkeit ?? 60) / 50;          // Fackel-Helligkeit (Regler), 1.0 = neutral
+    const fR = 0.5 + (lic.fackelReichweite ?? 50) / 100;   // Fackel-Reichweite, 1.0 = neutral
+    const fFarbe = this.fackelTint(lic.fackelFarbe ?? 45); // Farbtemperatur der Fackeln
     for (const t of (fow ? [] : this.area.torches)) {
       // Runde 29: ferne Fackeln deckten halbe Karten samt Gegnern auf -
       // sie leuchten nur noch nahe am eigenen Sichtkreis
-      if (this.area.dark && Math.hypot(t.x - this.px, t.y - this.py) > basisRadius * 1.35) continue;
+      if (this.area.dark && Math.hypot(t.x - this.px, t.y - this.py) > basisRadius * 1.35 * fR) continue;
       const sx = (t.x - cam.worldView.x) * zm, sy = (t.y - cam.worldView.y) * zm;
       if (sx < -160 || sy < -160 || sx > this.scale.width + 160 || sy > this.scale.height + 160) continue;
-      const tr = (95 + Math.sin(time * 7 + t.ph) * 10) * fH * zm;
-      if (wandSegs) this.eraseSichtpolygon(sx, sy - 4 * zm, tr, wandSegs);
+      const tr = (95 + Math.sin(time * 7 + t.ph) * 10) * fR * zm;
+      if (wandSegs) this.eraseSichtpolygon(sx, sy - 4 * zm, tr, wandSegs, dWeich, zm, 1);   // Fackel einfach (Blur weicht ab)
       else this.eraseLight(sx, sy - 4 * zm, tr);
-      warmIdx = this.placeWarm(warmIdx, t.x, t.y - 4, 70 * fH, 0.7 * Math.min(1.4, fH), this.schlucht ? this.schluchtAkzent : undefined);
+      warmIdx = this.placeWarm(warmIdx, t.x, t.y - 4, 70 * fR, 0.7 * Math.min(1.5, fH), this.area.dark ? fFarbe : (this.schlucht ? this.schluchtAkzent : undefined));
     }
     // Hausfenster im Dorf (Runde 35): abends leuchten die Fenster warm, nachts
     // erlischt ein Haus nach dem anderen, tagsüber sind alle dunkel.
@@ -5546,17 +5550,35 @@ export class WorldScene extends CombatScene {
   private sichtGfx: Phaser.GameObjects.Graphics | null = null;
   private lichtBlur?: Phaser.FX.Blur;
 
-  // Held-/Fackel-Licht als SICHTPOLYGON ausstanzen (Raycasting gegen die Wände) -
-  // so reicht das Licht nur in den Raum, nicht durch die Mauern. Fallback = Kreis.
-  private eraseSichtpolygon(sx: number, sy: number, rS: number, segs: Segment[]): void {
-    const poly = sichtPolygon({ x: sx, y: sy }, segs, rS);
-    if (poly.length < 3) { this.eraseLight(sx, sy, rS); return; }
+  // Held-/Fackel-Licht als FLÄCHENLICHT ausstanzen (Raycasting gegen die Wände):
+  // wie im Debug-Menü von MEHREREN Abtastpunkten -> echte WEICHE Schatten (Penumbra),
+  // kein harter Rand. weich 0..1 = Größe der Lichtquelle. Fallback = Kreis.
+  private eraseSichtpolygon(sx: number, sy: number, rS: number, segs: Segment[], weich: number, zm: number, n: number): void {
     if (!this.sichtGfx) this.sichtGfx = this.add.graphics().setVisible(false);
-    const g = this.sichtGfx; g.clear(); g.fillStyle(0xffffff, 1);
-    g.beginPath(); g.moveTo(poly[0].x, poly[0].y);
-    for (let i = 1; i < poly.length; i++) g.lineTo(poly[i].x, poly[i].y);
-    g.closePath(); g.fillPath();
-    this.lightRT.erase(g);
+    const g = this.sichtGfx;
+    const groesse = (2 + weich * 14) * zm;   // Radius der Flächenlichtquelle (Weichheit)
+    const alpha = n === 1 ? 1 : 0.55;        // n>1 = Teil-Deckkraft -> Halbschatten-Verlauf
+    let gezeichnet = false;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2, off = n === 1 ? 0 : groesse;
+      const poly = sichtPolygon({ x: sx + Math.cos(a) * off, y: sy + Math.sin(a) * off }, segs, rS);
+      if (poly.length < 3) continue;
+      gezeichnet = true;
+      g.clear(); g.fillStyle(0xffffff, alpha);
+      g.beginPath(); g.moveTo(poly[0].x, poly[0].y);
+      for (let j = 1; j < poly.length; j++) g.lineTo(poly[j].x, poly[j].y);
+      g.closePath(); g.fillPath();
+      this.lightRT.erase(g);
+    }
+    if (!gezeichnet) this.eraseLight(sx, sy, rS);
+  }
+
+  // Fackel-Farbtemperatur (Regler): 0 = tiefrot/orange, 50 = warmgelb, 100 = blass weißgelb.
+  private fackelTint(v: number): number {
+    const t = Phaser.Math.Clamp(v / 100, 0, 1);
+    const g = Math.round(0x5a + t * 0x96);   // 0x5a .. 0xf0
+    const b = Math.round(0x12 + t * 0xc0);   // 0x12 .. 0xd2
+    return (0xff << 16) | (g << 8) | b;
   }
 
   // Nahe SOLID-Wände zu wenigen Rechtecken zusammenfassen (horizontale Läufe) und

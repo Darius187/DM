@@ -224,7 +224,7 @@ export class DebugArenaScene extends CombatScene {
     this.schatten = new SchattenManager(this);
     this.schatten.setzeStatisch(this.statischeOccl);
     // Dieselbe Licht-Werkbank wie im Hauptspiel - in der Arena gleich offen.
-    this.lichtPanel = new LichtPanel(this, this.scale.width - 322, 92);
+    this.lichtPanel = new LichtPanel(this, this.scale.width - 300, 80);
     this.lichtPanel.setVisible(true);
   }
 

@@ -41,18 +41,25 @@ export class LichtPanel {
     this.texts.push(titel);
     this.g = scene.add.graphics().setScrollFactor(0).setDepth(this.d);
     const L = () => getSettings().licht;
-    let y = y0 + 4;
+    let y = y0 + 2;
+    // ===== AUSSENWELT (Sonne) =====
+    y = this.header(y, 'AUSSENWELT (Sonne / Tag)');
     if (opts?.tageszeit) { const tz = opts.tageszeit; y = this.slider(y, 'Tageszeit', 0, 100, () => Math.round(tz.get() * 100), (v) => tz.set(v / 100), (v) => tz.label(v / 100)); }
     y = this.toggle(y, () => `Sonne: ${L().sonneRaycast ? 'RAYCASTER' : 'Projektion'}`, () => { L().sonneRaycast = !L().sonneRaycast; });
-    y = this.slider(y, 'Sonnen-Kegel (Ferne)', 0, 100, () => L().sonneKegel, (v) => { L().sonneKegel = v; });
+    y = this.slider(y, 'Sonnen-Ferne (Kegel)', 0, 100, () => L().sonneKegel, (v) => { L().sonneKegel = v; });
     y = this.slider(y, 'Schatten-Stärke', 0, 100, () => getSettings().schatten, (v) => { getSettings().schatten = v; });
-    y = this.slider(y, 'Weichheit', 0, 100, () => L().weichheit, (v) => { L().weichheit = v; });
-    y = this.toggle(y, () => `Dungeon Wand-Schatten: ${L().dungeonNeu ? 'AN' : 'aus'}`, () => { L().dungeonNeu = !L().dungeonNeu; });
-    y = this.slider(y, 'Fackel-Helligkeit', 0, 100, () => L().fackelHelligkeit, (v) => { L().fackelHelligkeit = v; });
-    y = this.toggle(y, () => `Variante (Dungeon): ${LICHT_VARIANTEN[L().variante]}`, () => { L().variante = (L().variante + 1) % LICHT_VARIANTEN.length; });
+    y = this.slider(y, 'Sonnen-Weichheit', 0, 100, () => L().weichheit, (v) => { L().weichheit = v; });
+    // ===== DUNGEON =====
+    y = this.header(y, 'DUNGEON (Fackeln / Sicht)');
+    y = this.toggle(y, () => `Wand-Schatten: ${L().dungeonNeu ? 'AN' : 'aus'}`, () => { L().dungeonNeu = !L().dungeonNeu; });
+    y = this.slider(y, 'Wand-Schatten-Weichheit', 0, 100, () => L().dungeonWeichheit, (v) => { L().dungeonWeichheit = v; });
     y = this.toggle(y, () => `Held-Licht (Sicht): ${L().heldLichtAn ? 'AN' : 'AUS'}`, () => { L().heldLichtAn = !L().heldLichtAn; });
     y = this.slider(y, 'Sichtradius', 40, 240, () => L().sichtRadius, (v) => { L().sichtRadius = v; });
+    y = this.slider(y, 'Fackel-Helligkeit', 0, 100, () => L().fackelHelligkeit, (v) => { L().fackelHelligkeit = v; });
+    y = this.slider(y, 'Fackel-Reichweite', 0, 100, () => L().fackelReichweite, (v) => { L().fackelReichweite = v; });
+    y = this.slider(y, 'Fackel-Farbe (rot..weiß)', 0, 100, () => L().fackelFarbe, (v) => { L().fackelFarbe = v; });
     y = this.toggle(y, () => `Feuer-Stil: ${L().feuerNeu ? 'NEU' : 'alt'}`, () => { L().feuerNeu = !L().feuerNeu; });
+    y = this.toggle(y, () => `Variante (nur Debug): ${LICHT_VARIANTEN[L().variante]}`, () => { L().variante = (L().variante + 1) % LICHT_VARIANTEN.length; });
     this.unten = y + 4;
 
     scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.aufKlick(p));
@@ -61,18 +68,24 @@ export class LichtPanel {
     this.setVisible(false);
   }
 
-  private toggle(y: number, label: () => string, fn: () => void): number {
-    const t = this.scene.add.text(this.x0 + 9, y + 5, label(), { fontFamily: 'serif', fontSize: '13px', color: '#e6dcc4' }).setScrollFactor(0).setDepth(this.d + 1);
+  private header(y: number, text: string): number {
+    const t = this.scene.add.text(this.x0 + 8, y + 3, text, { fontFamily: 'serif', fontSize: '12px', color: '#ffcf8a', fontStyle: 'bold' }).setScrollFactor(0).setDepth(this.d + 1);
     this.texts.push(t);
-    this.ctrls.push({ art: 'toggle', x: this.x0, y, w: this.breite, h: 26, label, txt: t, fn });
-    return y + 30;
+    return y + 20;
+  }
+
+  private toggle(y: number, label: () => string, fn: () => void): number {
+    const t = this.scene.add.text(this.x0 + 9, y + 4, label(), { fontFamily: 'serif', fontSize: '12px', color: '#e6dcc4' }).setScrollFactor(0).setDepth(this.d + 1);
+    this.texts.push(t);
+    this.ctrls.push({ art: 'toggle', x: this.x0, y, w: this.breite, h: 23, label, txt: t, fn });
+    return y + 26;
   }
 
   private slider(y: number, label: string, min: number, max: number, get: () => number, set: (v: number) => void, anzeige?: (v: number) => string): number {
-    const t = this.scene.add.text(this.x0 + 9, y, '', { fontFamily: 'serif', fontSize: '12px', color: '#cbbfa0' }).setScrollFactor(0).setDepth(this.d + 1);
+    const t = this.scene.add.text(this.x0 + 9, y, '', { fontFamily: 'serif', fontSize: '11px', color: '#cbbfa0' }).setScrollFactor(0).setDepth(this.d + 1);
     this.texts.push(t);
-    this.ctrls.push({ art: 'slider', x: this.x0 + 9, y: y + 18, w: this.breite - 18, h: 18, label: () => label, txt: t, get, set, min, max, anzeige });
-    return y + 34;
+    this.ctrls.push({ art: 'slider', x: this.x0 + 9, y: y + 16, w: this.breite - 18, h: 16, label: () => label, txt: t, get, set, min, max, anzeige });
+    return y + 30;
   }
 
   private aufKlick(p: Phaser.Input.Pointer): void {
