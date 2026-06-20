@@ -111,8 +111,8 @@ export const DEF_SETTINGS: Settings = {
   bloom: 0, // Runde 51 (Autorwunsch): Bloom standardmäßig AUS, war zu stark
   grusel: 0, // Runde 55: Grusel-Tint standardmäßig aus, per F10-Regler einstellbar
   schatten: 70, // Runde 55: Schatten/Licht (Aussenwelt) standardmäßig an (mittlere Stärke)
-  dungeonStaerke: 70, // Runde 56: Dungeon-Dunkelheit getrennt regelbar
-  licht: { variante: 2, sichtRadius: 110, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: false, fackelHelligkeit: 60, fackelReichweite: 50, fackelFarbe: 45, dungeonWeichheit: 70, schattenFackeln: 20, heldFarbe: 45, alleFackelnSchatten: false, effekteSchatten: false, fackelSicht: true, heldSchatten: false, fackelSichtTol: 30, fackelDistanz: 55, fackelRaumLicht: 50, fackelRaumFarbe: 60, fackelGlutRadius: 45, lichtSchaerfe: 55, heldSichtfeld: true, sichtfeldRadius: 70, sichtfeldStaerke: 45, umgebungslicht: 32, lichtHelligkeit: 50, schattenNah: 30, schattenFern: 15, fackelBlende: 40 },
+  dungeonStaerke: 100, // Runde 58: vom Autor eingestellter Stand (Dungeon-Dunkelheit)
+  licht: { variante: 2, sichtRadius: 183, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: true, fackelHelligkeit: 23, fackelReichweite: 100, fackelFarbe: 31, dungeonWeichheit: 99, schattenFackeln: 100, heldFarbe: 18, alleFackelnSchatten: true, effekteSchatten: false, fackelSicht: true, heldSchatten: false, fackelSichtTol: 0, fackelDistanz: 100, fackelRaumLicht: 4, fackelRaumFarbe: 33, fackelGlutRadius: 0, lichtSchaerfe: 86, heldSichtfeld: true, sichtfeldRadius: 100, sichtfeldStaerke: 19, umgebungslicht: 0, lichtHelligkeit: 42, schattenNah: 0, schattenFern: 100, fackelBlende: 68 },
   audioV: 1,
   zoomV: 1,
   bloomV: 1,
