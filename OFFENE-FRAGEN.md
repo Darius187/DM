@@ -135,3 +135,10 @@
     (c) STÄRKE/LÄNGE/WEICHHEIT: aktuell harte Kanten (Projektion). Sag, ob dir die
         Schatten zu kräftig/zu lang/zu hart sind - alles in einer Datei (SchattenManager)
         justierbar; weiche Kanten (Blur) wären ein kleiner Zusatz.
+
+20. Licht/Schatten-Varianten zur Auswahl (Runde 55): Im DebugArena (Taste X = Dungeon-Dunkel,
+    Panel rechts) kannst du jetzt alle Varianten testen: Sichtradius am Helden (Regler+Schalter),
+    nur Wandfackel, Kombi, mehrere Fackeln, "Licht am Helden (alt)". Dazu Feuer-Stil neu/alt und
+    Weichheit. Sag mir, WELCHE Variante + welche Werte (Sichtradius, Weichheit, Feuer-Stil) sich am
+    besten anfühlen (du vermutest: kleinerer Radius = gruseliger) - die übernehme ich dann fest in
+    die echte Krypta. Stadtschatten sind jetzt weich + dezent; sag, ob die Stärke (0.42) passt.
