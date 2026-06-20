@@ -50,6 +50,7 @@ export interface Settings {
     weichheit: number;    // Schatten-Weichheit 0-100
     sonneRaycast: boolean;// Tag-Schatten: false = Projektion, true = Raycaster-Sonne
     sonneKegel: number;   // Größe/Ferne des Sonnen-Lichtkegels (Raycast) 0-100
+    dungeonNeu: boolean;  // Dungeon: neues Licht (Sichtradius + Fackel-Raycasting) statt altem System
   };
   audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
   zoomV: number;          // einmaliger Zoom-Standard (Runde 41: 130%)
@@ -85,7 +86,7 @@ export const DEF_SETTINGS: Settings = {
   bloom: 0, // Runde 51 (Autorwunsch): Bloom standardmäßig AUS, war zu stark
   grusel: 0, // Runde 55: Grusel-Tint standardmäßig aus, per F10-Regler einstellbar
   schatten: 70, // Runde 55: Schatten/Licht standardmäßig an (mittlere Stärke), Regler in Einstellungen
-  licht: { variante: 2, sichtRadius: 110, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60 },
+  licht: { variante: 2, sichtRadius: 110, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: false },
   audioV: 1,
   zoomV: 1,
   bloomV: 1,

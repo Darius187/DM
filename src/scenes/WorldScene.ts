@@ -10,7 +10,7 @@ import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
 import { NebelFratzen } from '../systems/NebelFratzen';
 import { RabenSchwarm } from '../systems/Raben';
-import { SchattenManager, type Occluder } from '../systems/SchattenManager';
+import { SchattenManager, type Occluder, type Licht } from '../systems/SchattenManager';
 import { LichtPanel } from '../ui/lichtPanel';
 import { RABEN } from '../data/raben';
 import { LANDHERR } from '../data/dialoge';
@@ -309,8 +309,11 @@ export class WorldScene extends CombatScene {
     this.heldEditor = new HeldEditor(this, this.provider, () => heldTier(this.p.armorIt ? this.p.armorIt.val : null));
     this.heldEditor.onApply = () => this.zeichneHeld(angleToDir8(this.pdir), this.pstep);
     // Licht-Werkbank (R55): alle Licht-/Schatten-Regler live im Spiel (Taste L).
-    // Etwas tiefer rechts, damit der Quest-Verfolger oben rechts klickbar bleibt.
-    this.lichtPanel = new LichtPanel(this, this.scale.width - 322, 188);
+    // Tageszeit-Regler (Autorwunsch "Mittag/Uhrzeit testen"): setzt direkt die
+    // Spielzeit, so lässt sich jeder Sonnenstand (auch Mittag = höchste Sonne) prüfen.
+    this.lichtPanel = new LichtPanel(this, this.scale.width - 322, 188, {
+      tageszeit: { get: () => this.tageszeit, set: (v) => { this.tageszeit = v; }, label: (v) => tageszeitLabel(v) },
+    });
     this.input.keyboard?.on('keydown-L', () => this.lichtPanel?.umschalten());
     this.worldGfx = this.add.graphics().setDepth(2450);
     // Blutspuren liegen UNTER den Figuren (Autorbug R45: lagen "vor" den
@@ -2380,24 +2383,61 @@ export class WorldScene extends CombatScene {
   // (settings.schatten) ein-/ausblendbar. In Innenräumen/Dunkelheit aus.
   private aktualisiereSchatten(): void {
     const st = getSettings().schatten / 100;
-    const draussen = !this.area.dark && !this.area.innen;
-    if (!draussen || st <= 0) { this.schatten?.aus(); return; }
-    // Manager je Gebiet neu aufbauen (frische Gebäude-Grundrisse, robust gegen
-    // den Objekt-Abbau in goArea/unloadAreaObjects).
+    const lic = getSettings().licht;
+    if (this.area.innen || st <= 0) { this.schatten?.aus(); return; }
+    // DUNGEON (dunkel): nur wenn der Werkbank-Schalter "Dungeon-Licht: NEU" an ist,
+    // sonst übernimmt das alte lightRT-System.
+    if (this.area.dark) {
+      if (!lic.dungeonNeu) { this.schatten?.aus(); return; }
+      this.ensureSchatten([]);
+      this.schatten!.feuerNeu = lic.feuerNeu;
+      this.schatten!.lichter(this.dungeonLichter(lic), this.dungeonVerdecker(), st);
+      return;
+    }
+    // DRAUSSEN: Tag-Schatten (Gebäude/NPCs), nur am Tag.
+    this.ensureSchatten(this.gebaeudeOccluder());
+    const tag = this.tageszeit > TAG.morgenAb && this.tageszeit < TAG.nachtAb;
+    if (!tag) { this.schatten!.aus(); return; }   // nachts/Dämmerung keine Sonne
+    const winkel = Phaser.Math.Clamp((this.tageszeit - TAG.morgenAb) / Math.max(0.001, TAG.nachtAb - TAG.morgenAb), 0, 1);
+    if (lic.sonneRaycast) this.schatten!.sonneRaycast(winkel, this.dynamischeOccluder(), st, lic.sonneKegel, lic.weichheit);
+    else this.schatten!.sonne(winkel, this.dynamischeOccluder(), st);
+  }
+
+  // Manager je Gebiet (neu) aufbauen - rtTiefe knapp unter dem alten lightRT (4000)
+  // und der Minikarte/HUD, damit die Dungeon-Dunkelheit die Welt deckt.
+  private ensureSchatten(staticOcc: Occluder[]): void {
     if (!this.schatten || this.schattenArea !== this.area.id) {
       this.schatten?.destroy();
-      this.schatten = new SchattenManager(this, { sonneTiefe: -7 });
-      this.schatten.setzeStatisch(this.gebaeudeOccluder());
+      this.schatten = new SchattenManager(this, { sonneTiefe: -7, rtTiefe: 3990 });
+      this.schatten.setzeStatisch(staticOcc);
       this.schattenArea = this.area.id;
     }
-    const tag = this.tageszeit > TAG.morgenAb && this.tageszeit < TAG.nachtAb;
-    if (!tag) { this.schatten.aus(); return; }   // nachts/Dämmerung keine Sonne
-    const winkel = Phaser.Math.Clamp((this.tageszeit - TAG.morgenAb) / Math.max(0.001, TAG.nachtAb - TAG.morgenAb), 0, 1);
-    const lic = getSettings().licht;
-    // Tag-Schatten wahlweise als Projektion (billig) ODER als Raycaster-Sonne
-    // (ein ferner riesiger Lichtpunkt wirft echte Schlagschatten - Autorwunsch R55).
-    if (lic.sonneRaycast) this.schatten.sonneRaycast(winkel, this.dynamischeOccluder(), st, lic.sonneKegel, lic.weichheit);
-    else this.schatten.sonne(winkel, this.dynamischeOccluder(), st);
+  }
+
+  // Dungeon-Lichter: Held-Sichtradius + nahe Fackeln des Gebiets als Flammenlicht.
+  private dungeonLichter(lic: ReturnType<typeof getSettings>['licht']): Licht[] {
+    const lichter: Licht[] = [];
+    if (lic.heldLichtAn) lichter.push({ x: this.px, y: this.py - 6, art: 'sicht', radius: lic.sichtRadius });
+    const weich = lic.weichheit / 100;
+    for (const t of this.area.torches) {
+      if (Math.hypot(t.x - this.px, t.y - this.py) > 360) continue;   // nur nahe Fackeln (Leistung)
+      lichter.push({ x: t.x, y: t.y - 4, art: 'fackel', radius: 150, weich });
+    }
+    return lichter;
+  }
+
+  // Dungeon-Verdecker: nahe SOLID-Wandkacheln + Held + Gegner (werfen Schatten).
+  private dungeonVerdecker(): Occluder[] {
+    const occ = this.dynamischeOccluder();
+    const tx0 = Math.floor(this.px / TILE), ty0 = Math.floor(this.py / TILE), R = 8;
+    for (let ty = ty0 - R; ty <= ty0 + R; ty++) {
+      for (let tx = tx0 - R; tx <= tx0 + R; tx++) {
+        if (this.isSolidAt(tx * TILE + TILE / 2, ty * TILE + TILE / 2)) {
+          occ.push({ x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, w: TILE, h: TILE });
+        }
+      }
+    }
+    return occ;
   }
 
   // Gebäude-Grundrisse als statische Verdecker (Fußpunkt = Bild-Unterkante,
@@ -5360,6 +5400,14 @@ export class WorldScene extends CombatScene {
   private renderLight(): void {
     const cam = this.cameras.main;
     this.renderFog();
+    // Dungeon-Test-Licht (R55): wenn die Licht-Werkbank den Dungeon übernimmt,
+    // das alte lightRT-Overlay komplett ausblenden (sonst doppelte Dunkelheit) -
+    // der SchattenManager liefert dann Sichtradius + Fackel-Raycasting.
+    if (this.area.dark && getSettings().licht.dungeonNeu && getSettings().schatten > 0) {
+      this.lightRT?.setVisible(false);
+      for (const im of this.warmPool) im.setVisible(false);
+      return;
+    }
     // Nebel des Krieges im Dunkelwald: Sichtkreis auch über Tage (einstellbar)
     const fow = !this.area.dark && this.area.id === 'wald' && getSettings().fow;
     // Innenräume (Runde 35): sanft abgedunkelte, WARME Stube - Kamin, Kerzen

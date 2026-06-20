@@ -15,7 +15,9 @@ export const LICHT_VARIANTEN = [
   'Licht am Helden (alt)',
 ] as const;
 
-interface Regler { x: number; y: number; w: number; label: string; min: number; max: number; get: () => number; set: (v: number) => void; txt: Phaser.GameObjects.Text }
+interface Regler { x: number; y: number; w: number; label: string; min: number; max: number; get: () => number; set: (v: number) => void; txt: Phaser.GameObjects.Text; anzeige?: (v: number) => string }
+// Optionaler Tageszeit-Regler (szenenspezifisch): liefert/setzt die Zeit 0..1 + Label
+export interface TageszeitHaken { get: () => number; set: (v: number) => void; label: (v: number) => string }
 
 export class LichtPanel {
   private els: Phaser.GameObjects.GameObject[] = [];
@@ -24,17 +26,21 @@ export class LichtPanel {
   private regler: Regler[] = [];
   private zieh: Regler | null = null;
   private sichtbar = false;
+  private d: number;   // Basis-Tiefe (ÜBER der Dunkelheit, sonst im Dungeon verdeckt)
 
-  constructor(private scene: Phaser.Scene, x0: number, y0: number) {
+  constructor(private scene: Phaser.Scene, x0: number, y0: number, opts?: { tageszeit?: TageszeitHaken; tiefe?: number }) {
     const L = () => getSettings().licht;
-    const titel = scene.add.text(x0 + 8, y0 - 22, 'LICHT-WERKBANK (Taste L)', { fontFamily: 'serif', fontSize: '13px', color: '#ffcf8a', backgroundColor: '#000000cc', padding: { x: 6, y: 3 } }).setScrollFactor(0).setDepth(2400);
+    this.d = opts?.tiefe ?? 9000;   // höher als lightRT (4000) und HUD - sonst unsichtbar im Dunkeln
+    const titel = scene.add.text(x0 + 8, y0 - 22, 'LICHT-WERKBANK (Taste L)', { fontFamily: 'serif', fontSize: '13px', color: '#ffcf8a', backgroundColor: '#000000cc', padding: { x: 6, y: 3 } }).setScrollFactor(0).setDepth(this.d + 2);
     this.els.push(titel);
-    this.g = scene.add.graphics().setScrollFactor(0).setDepth(2398); this.els.push(this.g);
+    this.g = scene.add.graphics().setScrollFactor(0).setDepth(this.d); this.els.push(this.g);
     let y = y0 + 8;
+    if (opts?.tageszeit) { const tz = opts.tageszeit; this.slider(x0 + 8, y, 250, 'Tageszeit', 0, 100, () => Math.round(tz.get() * 100), (v) => tz.set(v / 100), (v) => tz.label(v / 100)); y += 34; }
     this.toggle(x0 + 8, y, () => `Sonne: ${L().sonneRaycast ? 'RAYCASTER' : 'Projektion'}`, () => { L().sonneRaycast = !L().sonneRaycast; }); y += 30;
     this.slider(x0 + 8, y, 250, 'Sonnen-Kegel (Ferne)', 0, 100, () => L().sonneKegel, (v) => { L().sonneKegel = v; }); y += 34;
     this.slider(x0 + 8, y, 250, 'Schatten-Stärke', 0, 100, () => getSettings().schatten, (v) => { getSettings().schatten = v; }); y += 34;
     this.slider(x0 + 8, y, 250, 'Weichheit', 0, 100, () => L().weichheit, (v) => { L().weichheit = v; }); y += 34;
+    this.toggle(x0 + 8, y, () => `Dungeon-Licht: ${L().dungeonNeu ? 'NEU (Test)' : 'alt'}`, () => { L().dungeonNeu = !L().dungeonNeu; }); y += 30;
     this.toggle(x0 + 8, y, () => `Variante (Dungeon): ${LICHT_VARIANTEN[L().variante]}`, () => { L().variante = (L().variante + 1) % LICHT_VARIANTEN.length; }); y += 30;
     this.toggle(x0 + 8, y, () => `Held-Licht (Sicht): ${L().heldLichtAn ? 'AN' : 'AUS'}`, () => { L().heldLichtAn = !L().heldLichtAn; }); y += 30;
     this.slider(x0 + 8, y, 250, 'Sichtradius', 40, 240, () => L().sichtRadius, (v) => { L().sichtRadius = v; }); y += 34;
@@ -46,18 +52,18 @@ export class LichtPanel {
   }
 
   private toggle(x: number, y: number, label: () => string, fn: () => void): void {
-    const t = this.scene.add.text(x, y, label(), { fontFamily: 'serif', fontSize: '13px', color: '#e6dcc4', backgroundColor: '#241c10', padding: { x: 7, y: 4 } }).setScrollFactor(0).setDepth(2401).setInteractive({ useHandCursor: true });
+    const t = this.scene.add.text(x, y, label(), { fontFamily: 'serif', fontSize: '13px', color: '#e6dcc4', backgroundColor: '#241c10', padding: { x: 7, y: 4 } }).setScrollFactor(0).setDepth(this.d + 1).setInteractive({ useHandCursor: true });
     t.on('pointerover', () => { if (this.sichtbar) t.setBackgroundColor('#3a2e18'); });
     t.on('pointerout', () => t.setBackgroundColor('#241c10'));
     t.on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.sichtbar) return; p.event.stopPropagation(); fn(); saveSettings(); });
     this.schalter.push({ txt: t, label }); this.els.push(t);
   }
 
-  private slider(x: number, y: number, w: number, label: string, min: number, max: number, get: () => number, set: (v: number) => void): void {
-    const txt = this.scene.add.text(x, y - 1, '', { fontFamily: 'serif', fontSize: '12px', color: '#cbbfa0', backgroundColor: '#00000080', padding: { x: 4, y: 1 } }).setScrollFactor(0).setDepth(2401);
-    const desc: Regler = { x, y: y + 18, w, label, min, max, get, set, txt };
+  private slider(x: number, y: number, w: number, label: string, min: number, max: number, get: () => number, set: (v: number) => void, anzeige?: (v: number) => string): void {
+    const txt = this.scene.add.text(x, y - 1, '', { fontFamily: 'serif', fontSize: '12px', color: '#cbbfa0', backgroundColor: '#00000080', padding: { x: 4, y: 1 } }).setScrollFactor(0).setDepth(this.d + 1);
+    const desc: Regler & { anzeige?: (v: number) => string } = { x, y: y + 18, w, label, min, max, get, set, txt, anzeige };
     this.regler.push(desc); this.els.push(txt);
-    const zone = this.scene.add.zone(x, y + 8, w, 22).setOrigin(0, 0).setScrollFactor(0).setDepth(2402).setInteractive();
+    const zone = this.scene.add.zone(x, y + 8, w, 22).setOrigin(0, 0).setScrollFactor(0).setDepth(this.d + 3).setInteractive();
     zone.on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.sichtbar) return; this.zieh = desc; this.setzeAusX(desc, p.x); });
     this.els.push(zone);
   }
@@ -82,7 +88,7 @@ export class LichtPanel {
       g.fillStyle(0x9a6a2a, 1).fillRoundedRect(d.x, d.y - 4, d.w * f, 8, 4);
       g.fillStyle(0xf0d8a0, 1).fillCircle(d.x + d.w * f, d.y, 7);
       g.lineStyle(2, 0x2a2018, 1).strokeCircle(d.x + d.w * f, d.y, 7);
-      d.txt.setText(`${d.label}: ${d.get()}`);
+      d.txt.setText(d.anzeige ? `${d.label}: ${d.anzeige(d.get())}` : `${d.label}: ${d.get()}`);
     }
   }
 }
