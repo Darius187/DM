@@ -746,6 +746,20 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     yB += 28;
     schalter(yB, 'DETAIL-FIGUREN ANSEHEN (Skelett/Pest/Untoter/Bürger)', '#9ad86a', '#221808', () => { this.toggleDevPanel(); this.toggleDetailFiguren(); });
     yB += 28;
+    // Grusel-Atmosphäre live (R55, Autorwunsch "per Regler ins Spiel"): kalter,
+    // dunkler Tint auf alle Gegner - macht die NPCs ohne Neuzeichnen gruseliger.
+    const gruselStufen = [0, 33, 66, 100];
+    const gruselLbl = () => `GRUSEL-ATMOSPHÄRE (Gegner): ${getSettings().grusel}%`;
+    const gruselBtn = schalter(yB, gruselLbl(), '#c89ad0', '#221808', () => {
+      const s = getSettings();
+      const i = gruselStufen.indexOf(s.grusel);
+      s.grusel = gruselStufen[(i + 1) % gruselStufen.length];
+      saveSettings();
+      gruselBtn.setText(gruselLbl());
+      this.sfx.play('klick');
+      this.logMsg(`Grusel-Atmosphäre: ${s.grusel}% (kalter, dunkler Tint auf Gegner).`, 'gold');
+    });
+    yB += 28;
     const hudNamen = ['Kugeln rot/blau', 'WoW-Balken', 'Kristall-Säulen'];
     const hudLbl = () => `LEBEN/MANA: ${hudNamen[getSettings().hudStil] ?? 'Kugeln rot/blau'}`;
     const hudBtn = schalter(yB, hudLbl(), '#c9a227', '#221808', () => {
@@ -3149,6 +3163,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   protected renderEntities(): void {
     const time = this.time.now / 1000;
+    const gruselT = gruselTint();   // kalter Grusel-Tint auf Gegner (0 = aus)
     // Tot: der Leichnam-Tween (beginDeathScene) hält die Pose - NICHT mehr über
     // zeichneHeld überschreiben. Die Gegner werden unten weiter gezeichnet.
     if (!this.playerDead) {
@@ -3200,6 +3215,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (e.boss) e.sprite.setScale(1.5);
       else if (e.elite) e.sprite.setScale(1.25);
       if (e.hitFlash > 0) e.sprite.setTintFill(0xffffff);
+      else if (gruselT) e.sprite.setTint(gruselT);
       else e.sprite.clearTint();
     }
 
@@ -3403,6 +3419,18 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
 function cssCol(c: string): number {
   return c.startsWith('#') ? parseInt(c.slice(1), 16) : 0xffffff;
+}
+
+// Grusel-Atmosphäre (R55): kalter, dunkler Multiplikations-Tint für Gegner,
+// abhängig vom Regler (settings.grusel 0-100). 0 = aus (clearTint).
+function gruselTint(): number {
+  const k = getSettings().grusel / 100;
+  if (k <= 0) return 0;
+  const f = k * 0.8;   // bis 80% Richtung kaltes Dunkelblau-Grau
+  const r = Math.round(255 + (0x5a - 255) * f);
+  const g = Math.round(255 + (0x62 - 255) * f);
+  const b = Math.round(255 + (0x74 - 255) * f);
+  return (r << 16) | (g << 8) | b;
 }
 
 function rndOff(n: number): number {
