@@ -23,6 +23,7 @@ export interface Licht {
   raumLicht?: number;   // neutrales Raumlicht (Helligkeit Richtung weiß), 0 = aus
   raumFarbe?: number;   // Farbe des Raumlichts 0 (warm) .. 1 (kühl-weiß)
   glutRadius?: number;  // Streuung des warmen Flammenscheins 0 (eng) .. 1 (weit)
+  schattenHell?: number; // Schatten-Aufhellung: hebt die Schatten DIESES Lichts an (Bounce), 0..~0.6
 }
 
 // Zwei Farben mischen (t 0..1) - für die Fackel-Farbtemperatur (rot..weißgelb).
@@ -43,6 +44,7 @@ export class SchattenManager {
   private maskG: Phaser.GameObjects.Graphics;        // Sichtpolygon zum Ausstanzen
   private brush: Phaser.GameObjects.Image;           // weicher Pinsel (erase für 'sicht')
   private flammeG: Phaser.GameObjects.Graphics;      // gezeichnete Flammen (oben)
+  private raumG: Phaser.GameObjects.Graphics;        // additives Raumlicht, AUF DIE LICHTFORM begrenzt (kein Nebel)
   private falloffPool: Phaser.GameObjects.Image[] = []; private falloffN = 0;  // dunkler Lichtabfall
   private glowPool: Phaser.GameObjects.Image[] = []; private glowN = 0;        // warmer Feuerschein (additiv)
   private statisch: Occluder[] = [];
@@ -51,6 +53,7 @@ export class SchattenManager {
   feuerNeu = true;                                   // Feuer-Stil: true = neu (Glut/Flamme), false = alt
   schaerfe = 0.55;                                    // Licht-Schärfe: 1 = scharf, 0 = weicher Schleier (skaliert den Weichzeichner)
   umgebung = 0.1;                                     // Grundhelligkeit 0..~0.3: hebt die Dunkelheit an, damit Wände/Gegner schwach sichtbar bleiben
+  helligkeit = 1;                                    // Licht-Helligkeit (Master): skaliert Raumlicht + Feuerschein
   private static readonly TEX = 512;                 // Kantenlänge der Licht-Texturen (Skalierung bezieht sich darauf)
   // Abtastpunkte der Flächenlichtquelle (Einheitskreis) - für echte weiche Schatten
   private static readonly RING: ReadonlyArray<readonly [number, number]> =
@@ -72,6 +75,9 @@ export class SchattenManager {
     this.maskG = scene.add.graphics().setVisible(false);
     this.brush = scene.add.image(0, 0, this.brushTextur()).setVisible(false);
     this.flammeG = scene.add.graphics().setScrollFactor(0).setDepth(this.tiefe + 3).setVisible(false);
+    // Raumlicht ADDITIV, aber NUR innerhalb der Lichtform (Sichtpolygon) - dadurch
+    // werden Schatten/Wände NICHT mit aufgehellt -> kein Nebel-Eindruck (Autorwunsch R57).
+    this.raumG = scene.add.graphics().setScrollFactor(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(this.tiefe + 2).setVisible(false);
     scene.scale.on('resize', this.aufResize, this);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
   }
@@ -142,7 +148,7 @@ export class SchattenManager {
       rt.erase(this.maskG);
     }
     if (this.blur) { const b = 1.4 + (weich / 100) * 3; this.blur.x = b; this.blur.y = b; }
-    this.fogRT?.setVisible(false);
+    this.fogRT?.setVisible(false); this.raumG.setVisible(false).clear();
     this.flammeG.setVisible(false).clear(); this.versteckeRest();
   }
 
@@ -163,6 +169,7 @@ export class SchattenManager {
     // Wände/Gegner bleiben SCHWACH sichtbar statt komplett schwarz (Autorwunsch R57).
     rt.fill(0x070509, Phaser.Math.Clamp((0.70 + 0.20 * staerke) - this.umgebung, 0.35, 0.95));
     this.flammeG.setVisible(true).clear();
+    this.raumG.setVisible(true).clear();
     this.glowN = 0; this.falloffN = 0;
     const t = this.scene.time.now / 1000;
     let maxWeich = 0;
@@ -171,18 +178,15 @@ export class SchattenManager {
       const [lx, ly] = w2s(L.x, L.y); const rS = L.radius * z;
       if (L.art === 'sicht') {
         // weicher persönlicher Lichtradius / Effekt-Licht - reiner Reveal (kein Schattenwurf)
-        this.brush.setScale((rS * 2) / SchattenManager.TEX); rt.erase(this.brush, lx, ly);
-        this.raumFuellung(lx, ly, rS, L);   // neutrales Raumlicht (heller/weißer Raum)
+        this.brush.setAlpha(1).setScale((rS * 2) / SchattenManager.TEX); rt.erase(this.brush, lx, ly);
         if (L.farbe !== undefined) { this.glow(lx, ly, rS * 0.9, L.farbe, 0.18); this.glow(lx, ly, rS * 0.4, 0xffe6c0, 0.10); }
         else this.glow(lx, ly, rS * 0.85, 0xc89a5a, 0.12);   // warm-gelblicher Held-Schein
         continue;
       }
       if (L.art === 'glut') {
         // Fackel-Glut: warmes Glühen (kein Schattenwurf, kein Reveal -> günstig), folgt Feuer-Stil.
-        // Plus neutrales Raumlicht, damit auch eine ferne Fackel den Bereich aufhellt.
-        const fl = 1 + Math.sin(t * 8 + lx) * 0.06 + Math.sin(t * 19 + ly) * 0.04, hk = L.staerke ?? 1, ton = L.farbTon ?? 0.4;
+        const fl = 1 + Math.sin(t * 8 + lx) * 0.06 + Math.sin(t * 19 + ly) * 0.04, hk = (L.staerke ?? 1) * this.helligkeit, ton = L.farbTon ?? 0.4;
         const gR = 0.4 + (L.glutRadius ?? 0.6) * 0.85;   // Streuung des warmen Scheins (eng..weit)
-        this.raumFuellung(lx, ly, rS, L);
         if (this.feuerNeu) {
           this.glow(lx, ly, rS * 0.78 * gR * fl, mischFarbe(0x6a1604, 0xb8702e, ton), 0.18 * hk); this.glow(lx, ly, rS * 0.42 * gR * fl, mischFarbe(0xd8641a, 0xf0b050, ton), 0.24 * hk); this.glow(lx, ly, rS * 0.22 * gR * fl, mischFarbe(0xff9030, 0xfff0c8, ton), 0.28 * hk);
           this.flamme(lx, ly, t, fl);
@@ -209,21 +213,37 @@ export class SchattenManager {
           const [ax, ay] = w2s(s.ax, s.ay), [bx, by] = w2s(s.bx, s.by); segs.push({ ax, ay, bx, by });
         }
       }
+      // Schatten-Aufhellung (Bounce): die Schatten DIESES Lichts werden vorab leicht
+      // angehoben (partielles Reveal über den ganzen Radius), bevor die Sichtform voll
+      // freigestanzt wird - so sind Schatten/Gegner darin nicht pechschwarz (Autorwunsch R57).
+      const sH = L.schattenHell ?? 0;
+      if (sH > 0) { this.brush.setAlpha(Math.min(0.8, sH)).setScale((rS * 2) / SchattenManager.TEX); rt.erase(this.brush, lx, ly); this.brush.setAlpha(1); }
       const groesse = (3 + weich * 13) * z;
+      let polyC: { x: number; y: number }[] | null = null;
       for (const [ox, oy] of SchattenManager.RING) {
         const poly = sichtPolygon({ x: lx + ox * groesse, y: ly + oy * groesse }, segs, rS);
         if (poly.length < 3) continue;
+        if (!polyC) polyC = poly;
         this.maskG.clear(); this.maskG.fillStyle(0xffffff, 0.46); this.maskG.beginPath();
         this.maskG.moveTo(poly[0].x, poly[0].y);
         for (let i = 1; i < poly.length; i++) this.maskG.lineTo(poly[i].x, poly[i].y);
         this.maskG.closePath(); this.maskG.fillPath();
         rt.erase(this.maskG);
       }
-      // dunkler Lichtabfall zum Rand (Falloff) + neutrales Raumlicht + warmer Schein.
+      // Neutrales Raumlicht: ADDITIV, aber NUR auf die Lichtform (polyC) begrenzt ->
+      // hellt den beleuchteten Boden auf, OHNE Schatten/Wände aufzuhellen = kein Nebel.
+      const raum = (L.raumLicht ?? 0) * this.helligkeit;
+      if (raum > 0 && polyC) {
+        const rf = mischFarbe(0xffcaa0, 0xffffff, L.raumFarbe ?? 0.6);
+        this.raumG.fillStyle(rf, Math.min(0.6, raum * 0.5)); this.raumG.beginPath();
+        this.raumG.moveTo(polyC[0].x, polyC[0].y);
+        for (let i = 1; i < polyC.length; i++) this.raumG.lineTo(polyC[i].x, polyC[i].y);
+        this.raumG.closePath(); this.raumG.fillPath();
+      }
+      // dunkler Lichtabfall zum Rand (Falloff) + warmer Schein (Feuer ODER warm/farbig).
       const flick = 1 + Math.sin(t * 8 + lx) * 0.05 + Math.sin(t * 21 + ly) * 0.03;
       this.falloff(lx, ly, rS, 0.28 + 0.26 * staerke);
-      this.raumFuellung(lx, ly, rS, L);   // heller/weißer Raum (getrennt von der warmen Flamme)
-      const hk = L.staerke ?? 1, gR = 0.4 + (L.glutRadius ?? 0.6) * 0.85;   // Streuung des warmen Scheins
+      const hk = (L.staerke ?? 1) * this.helligkeit, gR = 0.4 + (L.glutRadius ?? 0.6) * 0.85;   // Streuung des warmen Scheins
       if (L.farbe !== undefined) {   // warmer/ farbiger Schein OHNE Flamme (z.B. Held)
         this.glow(lx, ly, rS * 0.55 * gR, L.farbe, 0.20 * hk); this.glow(lx, ly, rS * 0.28 * gR, 0xffe6c0, 0.12 * hk);
       } else this.feuer(lx, ly, rS * gR, t, flick, hk, L.farbTon ?? 0.4);   // Fackel = konzentriertes Feuer + Flamme
@@ -307,16 +327,6 @@ export class SchattenManager {
     g.fillEllipse(lx, ly - h * 0.35, w * 0.5, h * 0.4);
   }
 
-  // Neutrales Raumlicht: EIN breiter, weicher additiver Schein (Richtung weiß),
-  // der den Raum aufhellt, OHNE die warme Flammenfarbe zu übernehmen. Bewusst nur
-  // EINE Schicht -> hell, aber kein wabernder Schleier aus vielen Lagen.
-  private raumFuellung(lx: number, ly: number, rS: number, L: Licht): void {
-    const r = L.raumLicht ?? 0;
-    if (r <= 0) return;
-    const farbe = mischFarbe(0xffcaa0, 0xffffff, L.raumFarbe ?? 0.6);   // warm .. kühl-weiß
-    this.glow(lx, ly, rS * 0.95, farbe, 0.26 * r);
-  }
-
   // ----- Hilfen: Bild-Pools (Glühen additiv, Falloff dunkel) ----------------
   private glow(lx: number, ly: number, rS: number, farbe: number, alpha: number, soft = 1): void {
     while (this.glowPool.length <= this.glowN) {
@@ -342,7 +352,7 @@ export class SchattenManager {
   }
 
   private dunkelAus(): void {
-    this.rt.setVisible(false); this.fogRT?.setVisible(false); this.flammeG.setVisible(false).clear();
+    this.rt.setVisible(false); this.fogRT?.setVisible(false); this.flammeG.setVisible(false).clear(); this.raumG.setVisible(false).clear();
     for (const im of this.glowPool) im.setVisible(false);
     for (const im of this.falloffPool) im.setVisible(false);
     this.glowN = this.falloffN = 0;
@@ -395,7 +405,7 @@ export class SchattenManager {
 
   destroy(): void {
     this.scene.scale.off('resize', this.aufResize, this);
-    this.sonneGfx.destroy(); this.rt.destroy(); this.fogRT?.destroy(); this.maskG.destroy(); this.brush.destroy(); this.flammeG.destroy();
+    this.sonneGfx.destroy(); this.rt.destroy(); this.fogRT?.destroy(); this.maskG.destroy(); this.brush.destroy(); this.flammeG.destroy(); this.raumG.destroy();
     for (const im of this.glowPool) im.destroy();
     for (const im of this.falloffPool) im.destroy();
   }

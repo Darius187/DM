@@ -2398,6 +2398,7 @@ export class WorldScene extends CombatScene {
       this.schatten!.feuerNeu = lic.feuerNeu;
       this.schatten!.schaerfe = (lic.lichtSchaerfe ?? 55) / 100;
       this.schatten!.umgebung = (lic.umgebungslicht ?? 32) / 100 * 0.30;   // Grundhelligkeit (Wände/Gegner schwach sichtbar)
+      this.schatten!.helligkeit = 0.4 + (lic.lichtHelligkeit ?? 50) / 100 * 1.2;   // Master-Helligkeit der Lichter
       // Sichtfeld des Helden (optional): nur was er in der Sichtlinie hat, ist sichtbar.
       const fovR = 150 + (lic.sichtfeldRadius ?? 70) / 100 * 560;   // 150..710 Sichtweite
       const sicht = (lic.heldSichtfeld ?? true) ? { x: this.px, y: this.py - 6, radius: fovR } : undefined;
@@ -2429,7 +2430,9 @@ export class WorldScene extends CombatScene {
     const heldFarbe = mischFarbe(0x8a3010, 0xfff2d8, (lic.heldFarbe ?? 45) / 100);
     // Raumlicht-Parameter (heller/weißer Raum, getrennt von der warmen Flamme).
     const raumLicht = (lic.fackelRaumLicht ?? 50) / 100, raumFarbe = (lic.fackelRaumFarbe ?? 60) / 100, glutRadius = (lic.fackelGlutRadius ?? 45) / 100;
-    if (lic.heldLichtAn) lichter.push({ x: this.px, y: this.py - 6, art: lic.heldSchatten ? 'fackel' : 'sicht', radius: lic.sichtRadius, weich, farbe: heldFarbe, raumLicht, raumFarbe, glutRadius });
+    // Schatten-Aufhellung: NAHE Lichter (am Helden) vs FERNE - getrennt regelbar.
+    const schNah = (lic.schattenNah ?? 30) / 100 * 0.7, schFern = (lic.schattenFern ?? 15) / 100 * 0.7;
+    if (lic.heldLichtAn) lichter.push({ x: this.px, y: this.py - 6, art: lic.heldSchatten ? 'fackel' : 'sicht', radius: lic.sichtRadius, weich, farbe: heldFarbe, raumLicht, raumFarbe, glutRadius, schattenHell: schNah });
     // Nahe Fackeln: wie weit weg sie noch leuchten = Aktiv-Distanz-Regler. Die Sicht-
     // Toleranz bestimmt, durch WIE VIELE Wände das Licht noch zählt: 0 = nur direkt
     // sichtbar, 1 = um die Ecke (eine Wand dazwischen), höher = großzügiger. So leuchtet
@@ -2443,7 +2446,11 @@ export class WorldScene extends CombatScene {
     // Wie viele Fackeln werfen Schatten? "Alle"-Schalter übersteuert den Regler.
     const nSchatten = lic.alleFackelnSchatten ? nahe.length : Math.round((lic.schattenFackeln ?? 20) / 100 * 6);
     const ton = (lic.fackelFarbe ?? 45) / 100;
-    nahe.forEach((o, i) => lichter.push({ x: o.t.x, y: o.t.y - 4, art: i < nSchatten ? 'fackel' : 'glut', radius: 150 * fR, weich, staerke: fH, farbTon: ton, raumLicht, raumFarbe, glutRadius }));
+    nahe.forEach((o, i) => {
+      const frac = Phaser.Math.Clamp(o.d / reich, 0, 1);   // nah=0 .. fern=1
+      const schattenHell = schNah + (schFern - schNah) * frac;
+      lichter.push({ x: o.t.x, y: o.t.y - 4, art: i < nSchatten ? 'fackel' : 'glut', radius: 150 * fR, weich, staerke: fH, farbTon: ton, raumLicht, raumFarbe, glutRadius, schattenHell });
+    });
     // Effekt-Lichter: Feuerball orange, Zauber violett, Feuerzauber. Per Schalter
     // werfen auch sie echte Schatten ('fackel' mit Farbe = Raycasting ohne Flamme).
     const effArt = lic.effekteSchatten ? 'fackel' : 'sicht';

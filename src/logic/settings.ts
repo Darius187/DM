@@ -71,6 +71,9 @@ export interface Settings {
     heldSichtfeld: boolean;       // Sichtfeld-Maske: nur was in der Sichtlinie des Helden liegt ist sichtbar (kein Auf-Ploppen ganzer Räume), Runde 57
     sichtfeldRadius: number;      // wie weit der Held sieht (Sichtfeld-Reichweite) 0-100, Runde 57
     umgebungslicht: number;       // Grundhelligkeit 0-100: hebt die Dunkelheit an, damit Wände/Gegner schwach sichtbar bleiben, Runde 57
+    lichtHelligkeit: number;      // Licht-Helligkeit (Master) 0-100: skaliert das Raumlicht + den Feuerschein, Runde 57
+    schattenNah: number;          // Schatten-Aufhellung NAHER Lichter 0-100 (unmittelbare Schatten heller), Runde 57
+    schattenFern: number;         // Schatten-Aufhellung FERNER Lichter 0-100 (entfernte Schatten heller), Runde 57
   };
   audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
   zoomV: number;          // einmaliger Zoom-Standard (Runde 41: 130%)
@@ -107,7 +110,7 @@ export const DEF_SETTINGS: Settings = {
   grusel: 0, // Runde 55: Grusel-Tint standardmäßig aus, per F10-Regler einstellbar
   schatten: 70, // Runde 55: Schatten/Licht (Aussenwelt) standardmäßig an (mittlere Stärke)
   dungeonStaerke: 70, // Runde 56: Dungeon-Dunkelheit getrennt regelbar
-  licht: { variante: 2, sichtRadius: 110, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: false, fackelHelligkeit: 60, fackelReichweite: 50, fackelFarbe: 45, dungeonWeichheit: 70, schattenFackeln: 20, heldFarbe: 45, alleFackelnSchatten: false, effekteSchatten: false, fackelSicht: true, heldSchatten: false, fackelSichtTol: 30, fackelDistanz: 55, fackelRaumLicht: 50, fackelRaumFarbe: 60, fackelGlutRadius: 45, lichtSchaerfe: 55, heldSichtfeld: true, sichtfeldRadius: 70, umgebungslicht: 32 },
+  licht: { variante: 2, sichtRadius: 110, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: false, fackelHelligkeit: 60, fackelReichweite: 50, fackelFarbe: 45, dungeonWeichheit: 70, schattenFackeln: 20, heldFarbe: 45, alleFackelnSchatten: false, effekteSchatten: false, fackelSicht: true, heldSchatten: false, fackelSichtTol: 30, fackelDistanz: 55, fackelRaumLicht: 50, fackelRaumFarbe: 60, fackelGlutRadius: 45, lichtSchaerfe: 55, heldSichtfeld: true, sichtfeldRadius: 70, umgebungslicht: 32, lichtHelligkeit: 50, schattenNah: 30, schattenFern: 15 },
   audioV: 1,
   zoomV: 1,
   bloomV: 1,
