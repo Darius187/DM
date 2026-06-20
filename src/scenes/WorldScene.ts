@@ -10,6 +10,7 @@ import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
 import { NebelFratzen } from '../systems/NebelFratzen';
 import { RabenSchwarm } from '../systems/Raben';
+import { SchattenManager, type Occluder } from '../systems/SchattenManager';
 import { RABEN } from '../data/raben';
 import { LANDHERR } from '../data/dialoge';
 import storyJson from '../data/story.json';
@@ -137,6 +138,8 @@ export class WorldScene extends CombatScene {
   private breakableEnts: BreakableEntity[] = [];
   private worldGfx!: Phaser.GameObjects.Graphics; // Truhen, Brunnen, Fackeln
   private bodenGfx!: Phaser.GameObjects.Graphics;  // Blutspuren AUF dem Boden (unter den Figuren)
+  private schatten?: SchattenManager;              // Tag-Schlagschatten von Gebäuden/NPCs (Runde 55)
+  private schattenArea = '';                        // für welches Gebiet die Verdecker stehen
   private lightRT!: Phaser.GameObjects.RenderTexture;
   private warmPool: Phaser.GameObjects.Image[] = [];
   private minimapGfx!: Phaser.GameObjects.Graphics;
@@ -2363,6 +2366,47 @@ export class WorldScene extends CombatScene {
       this.nebelSprites.push(n);
     }
     this.logMsg('Nebel-Probe an (F10 -> NEBEL schaltet wieder aus).', 'gold');
+  }
+
+  // Tag-Schlagschatten (Runde 55, Autorwunsch "Gebäude/NPCs werfen Schatten"):
+  // im Freien projiziert der Schatten-Manager (Sonnenmodus) für jedes Gebäude und
+  // jede Figur einen parallelen Schatten - billig, nur am Tag, per Regler
+  // (settings.schatten) ein-/ausblendbar. In Innenräumen/Dunkelheit aus.
+  private aktualisiereSchatten(): void {
+    const st = getSettings().schatten / 100;
+    const draussen = !this.area.dark && !this.area.innen;
+    if (!draussen || st <= 0) { this.schatten?.aus(); return; }
+    // Manager je Gebiet neu aufbauen (frische Gebäude-Grundrisse, robust gegen
+    // den Objekt-Abbau in goArea/unloadAreaObjects).
+    if (!this.schatten || this.schattenArea !== this.area.id) {
+      this.schatten?.destroy();
+      this.schatten = new SchattenManager(this, { sonneTiefe: -7 });
+      this.schatten.setzeStatisch(this.gebaeudeOccluder());
+      this.schattenArea = this.area.id;
+    }
+    const tag = this.tageszeit > TAG.morgenAb && this.tageszeit < TAG.nachtAb;
+    if (!tag) { this.schatten.aus(); return; }   // nachts/Dämmerung keine Sonne
+    const winkel = Phaser.Math.Clamp((this.tageszeit - TAG.morgenAb) / Math.max(0.001, TAG.nachtAb - TAG.morgenAb), 0, 1);
+    this.schatten.sonne(winkel, this.dynamischeOccluder(), st);
+  }
+
+  // Gebäude-Grundrisse als statische Verdecker (Fußpunkt = Bild-Unterkante,
+  // Höhe = Bildhöhe -> langer Gebäudeschatten).
+  private gebaeudeOccluder(): Occluder[] {
+    const occ: Occluder[] = [];
+    for (const img of this.hausBilder) {
+      if (!img.active) continue;
+      occ.push({ x: img.x, y: img.y, w: img.displayWidth * 0.74, h: 14, hoehe: img.displayHeight * 0.7 });
+    }
+    return occ;
+  }
+
+  // Held + NPCs + Gegner als dynamische Verdecker (kurzer Figurschatten).
+  private dynamischeOccluder(): Occluder[] {
+    const d: Occluder[] = [{ x: this.px, y: this.py + 10, w: 14, h: 8, hoehe: 24 }];
+    for (const n of this.npcEnts) d.push({ x: n.x, y: n.y + 8, w: 13, h: 7, hoehe: 22 });
+    for (const e of this.enemies) if (e.hp > 0) d.push({ x: e.x, y: e.y + 8, w: 14, h: 7, hoehe: 22 });
+    return d;
   }
 
   // Stimmungs-Tönung (Runde 31, Wunsch nach dem bunten Vorbild): goldener
@@ -6263,6 +6307,7 @@ export class WorldScene extends CombatScene {
     this.renderHover();
     this.animiereWasser(dt);
     this.animiereHaeuser(dt);
+    this.aktualisiereSchatten();
     // Chronik weicht offenen Fenstern (Inventar/Charakter/Dialog), damit sich
     // die Schriften nicht überlagern - sie kommt danach von selbst zurück (R36)
     this.chronikFenster?.setVisible(!this.uiBlocked());

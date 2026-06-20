@@ -22,8 +22,9 @@ export class SchattenManager {
   private statisch: Occluder[] = [];
   private statSeg: Segment[] = [];                   // Wand-/Gebäudekanten (einmal gebacken)
 
-  constructor(private scene: Phaser.Scene, tiefe = 540) {
-    this.sonneGfx = scene.add.graphics().setDepth(-9);
+  constructor(private scene: Phaser.Scene, opts?: { rtTiefe?: number; sonneTiefe?: number }) {
+    const tiefe = opts?.rtTiefe ?? 540;
+    this.sonneGfx = scene.add.graphics().setDepth(opts?.sonneTiefe ?? -9);
     this.rt = scene.add.renderTexture(0, 0, scene.scale.width, scene.scale.height)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(tiefe).setVisible(false);
     this.maskG = scene.add.graphics().setVisible(false);
