@@ -122,3 +122,16 @@
         WorldScene/DebugArena zu holen ist ein größerer Schritt (Verdecker aus den Tiles, Licht je
         Szene). Sag Bescheid, ob dir der Tint-Regler erstmal reicht oder ob ich die volle
         Schatten-Beleuchtung ins Live-Spiel einbauen soll.
+
+19. Schatten live - Feinschliff & Reichweite (Runde 55):
+    Gebäude, NPCs, Gegner und Held werfen jetzt am Tag im Freien Schlagschatten
+    (Regler in den Einstellungen: "Schatten / Licht-Stärke"). Offene Punkte, an denen
+    ich nach deiner Sichtung weiterarbeite:
+    (a) BÄUME werfen noch keinen Schatten (nur Gebäude/Figuren) - leicht nachrüstbar,
+        sobald du sagst, dass die Stärke/Optik passt (sonst doppelte Arbeit).
+    (b) DUNGEON-FACKEL-SCHATTEN (Raycasting) ist in der DebugArena live und schön, aber
+        noch NICHT in den echten Krypta-Szenen verdrahtet - das ist der nächste Schritt,
+        sobald du den Tag-Schatten abgenommen hast.
+    (c) STÄRKE/LÄNGE/WEICHHEIT: aktuell harte Kanten (Projektion). Sag, ob dir die
+        Schatten zu kräftig/zu lang/zu hart sind - alles in einer Datei (SchattenManager)
+        justierbar; weiche Kanten (Blur) wären ein kleiner Zusatz.
