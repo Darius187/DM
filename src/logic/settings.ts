@@ -40,6 +40,7 @@ export interface Settings {
   chronikAuto: boolean;   // Chronik-Fenster beim Spielstart offen (Runde 36)
   bloom: number;          // Leucht-/Bloom-Stärke 0-100 (Runde 51: Regler, 0 = aus)
   grusel: number;         // Grusel-Atmosphäre: kalter, dunkler Tint auf Gegner 0-100 (Runde 55)
+  schatten: number;       // Schatten-/Licht-Stärke 0-100 (Runde 55: 0 = aus, Leistungsregler)
   audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
   zoomV: number;          // einmaliger Zoom-Standard (Runde 41: 130%)
   bloomV: number;         // einmaliger Bloom-Standard (Runde 51: standardmäßig aus)
@@ -73,6 +74,7 @@ export const DEF_SETTINGS: Settings = {
   chronikAuto: true,
   bloom: 0, // Runde 51 (Autorwunsch): Bloom standardmäßig AUS, war zu stark
   grusel: 0, // Runde 55: Grusel-Tint standardmäßig aus, per F10-Regler einstellbar
+  schatten: 70, // Runde 55: Schatten/Licht standardmäßig an (mittlere Stärke), Regler in Einstellungen
   audioV: 1,
   zoomV: 1,
   bloomV: 1,

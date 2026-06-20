@@ -9,6 +9,8 @@ import { LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, PLAYER } from '../data/kampf';
 import { recalc } from '../logic/playerState';
 import type { EnemyTypeId, WeaponClass } from '../data/types';
 import { WEAPONS, BOWS } from '../data/items';
+import { SchattenManager, type Occluder } from '../systems/SchattenManager';
+import { getSettings } from '../logic/settings';
 import Phaser from 'phaser';
 
 const ARENA_W = 30;
@@ -35,13 +37,8 @@ export class DebugArenaScene extends CombatScene {
   private sonnenWinkel = 0.5;                 // 0..1 Tageslauf (0 Sonnenaufgang .. 1 Untergang)
   private sonneAuto = true;                   // Sonne wandert automatisch
   private fackelAn = false;                   // getragene Fackel (Taste X)
-  private schattenGfx!: Phaser.GameObjects.Graphics;   // Sonnenschatten (Weltkoordinaten)
-  private fackelRT!: Phaser.GameObjects.RenderTexture; // Fackel-Dunkelheit (Schirm)
-  private fackelWedge!: Phaser.GameObjects.Graphics;   // Occlusion-Schatten der Fackel (Schirm)
-  private lichtScratch?: Phaser.GameObjects.Image;     // Lichtblob zum Ausstanzen
-  private warmLicht?: Phaser.GameObjects.Image;        // warmes Fackel-Glühen (orange)
-  private saeulen: Array<{ x: number; y: number; r: number; w: number; h: number }> = [];   // Säulen (Hindernis + Schattenwurf)
-  private truhen: Array<{ x: number; y: number; w: number; h: number }> = [];                // flache Objekte (Truhen)
+  private schatten!: SchattenManager;         // geteilter Schatten-Manager (beide Modi)
+  private statischeOccl: Occluder[] = [];     // Säulen/Truhen/Gebäude (werfen Schatten)
 
   constructor() {
     super('DebugArena');
@@ -167,10 +164,12 @@ export class DebugArenaScene extends CombatScene {
   update(_time: number, delta: number): void {
     this.updateCombat(delta / 1000);
     this.renderDebug();
-    // Schatten-Prototyp
+    // Schatten über den geteilten Manager: Fackel = Dungeon-Raycasting, sonst Sonne.
     if (this.sonneAuto) this.sonnenWinkel = (this.sonnenWinkel + 0.00003 * delta) % 1;
-    this.zeichneSonnenschatten();
-    this.aktualisiereFackel();
+    const st = getSettings().schatten / 100;   // Leistungs-/Stärke-Regler
+    const dyn = this.dynamischeOccl();
+    if (this.fackelAn) this.schatten.fackel({ x: this.px, y: this.py - 6 }, 150, dyn, st);
+    else this.schatten.sonne(this.sonnenWinkel, dyn, st);
     const std = Math.round(4 + this.sonnenWinkel * 16);   // ~4..20 Uhr
     this.hudText.setText([
       `Leben ${Math.max(0, Math.ceil(this.p.hp))}/${this.p.stats.maxhp}   Mana ${Math.ceil(this.p.mana)}/${this.p.stats.maxmana}`,
@@ -182,115 +181,41 @@ export class DebugArenaScene extends CombatScene {
 
   // --- Schatten-Prototyp -----------------------------------------------------
 
-  // Test-Hindernisse (Säulen + Truhe) + Schatten-Layer + Fackel-Licht anlegen.
+  // Test-Hindernisse (Säulen + Truhe + zwei Gebäude) + Schatten-Manager anlegen.
+  // Alle Objekte werfen über den Manager sowohl Sonnen- als auch Fackelschatten.
   private baueSchattenTest(): void {
     const cx = (ARENA_W / 2) * TILE, cy = (ARENA_H / 2) * TILE;
+    this.statischeOccl = [];
     const stellen: Array<[number, number]> = [[-120, -90], [140, -60], [-60, 110], [170, 90], [40, -130]];
     for (const [dx, dy] of stellen) {
       const x = cx + dx, y = cy + dy;
-      // schlichte Steinsäule als Hindernis (wirft Sonnen- UND Fackelschatten)
       this.add.rectangle(x, y - 16, 16, 34, 0x6a6258).setDepth(y).setStrokeStyle(1, 0x3a352e);
       this.add.ellipse(x, y, 18, 8, 0x4a463e).setDepth(y - 0.1);
-      this.saeulen.push({ x, y, r: 9, w: 17, h: 34 });   // h = Höhe -> längerer Schatten
+      this.statischeOccl.push({ x, y, w: 17, h: 9, hoehe: 34 });   // schmale, hohe Säule
     }
-    // eine flache Truhe (niedriges, breites Objekt -> kurzer breiter Schatten)
+    // flache Truhe (niedrig + breit -> kurzer breiter Schatten)
     {
       const x = cx - 150, y = cy + 30;
       this.add.rectangle(x, y - 7, 24, 16, 0x6a4a28).setDepth(y).setStrokeStyle(1, 0x3a2a16);
       this.add.rectangle(x, y - 12, 24, 6, 0x8a6638).setDepth(y);
-      this.truhen.push({ x, y, w: 26, h: 14 });
+      this.statischeOccl.push({ x, y, w: 26, h: 12, hoehe: 14 });
     }
-    this.schattenGfx = this.add.graphics().setDepth(-9);   // Sonnenschatten auf dem Boden
-    // weicher Lichtblob zum Ausstanzen der Fackel-Dunkelheit
-    if (!this.textures.exists('arenaLicht')) {
-      const S = 256, cv = document.createElement('canvas'); cv.width = S; cv.height = S;
-      const c = cv.getContext('2d')!;
-      const grd = c.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
-      grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.55, 'rgba(255,255,255,0.7)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
-      c.fillStyle = grd; c.fillRect(0, 0, S, S);
-      this.textures.addCanvas('arenaLicht', cv);
+    // zwei "Gebäude" (groß + hoch -> langer Gebäudeschatten, Autorwunsch)
+    for (const [dx, dy, bw, bh] of [[-230, -40, 70, 56], [230, -120, 80, 50]] as const) {
+      const x = cx + dx, y = cy + dy;
+      this.add.rectangle(x, y - bh / 2, bw, bh, 0x584c3e).setDepth(y).setStrokeStyle(2, 0x3a322a);
+      this.add.rectangle(x, y - bh + 4, bw, 10, 0x6a5c48).setDepth(y);   // Dachkante
+      this.statischeOccl.push({ x, y, w: bw, h: 16, hoehe: bh + 30 });
     }
-    this.lichtScratch = this.add.image(0, 0, 'arenaLicht').setVisible(false);
-    this.fackelRT = this.add.renderTexture(0, 0, this.scale.width, this.scale.height).setOrigin(0, 0).setScrollFactor(0).setDepth(540).setVisible(false);
-    this.fackelWedge = this.add.graphics().setScrollFactor(0).setDepth(541).setVisible(false);
-    // warmes Fackel-Glühen (orange, additiv über das Lichtloch) - kein weißes Licht
-    this.warmLicht = this.add.image(0, 0, 'arenaLicht').setScrollFactor(0).setDepth(542)
-      .setVisible(false).setBlendMode(Phaser.BlendModes.ADD).setTint(0xff8a32);
+    this.schatten = new SchattenManager(this);
+    this.schatten.setzeStatisch(this.statischeOccl);
   }
 
-  // Sonnenstand -> Schattenrichtung + Länge. WICHTIG (Autorbug R55): der Schatten
-  // fällt WEG vom Betrachter (nach oben/hinten = "hinter" das Objekt), nicht nach
-  // unten/vorn. Form richtet sich nach Breite UND Höhe des Objekts (Säule = lang
-  // + schmal, Truhe = kurz + breit) - kein "Stock"-Schatten mehr.
-  private zeichneSonnenschatten(): void {
-    const g = this.schattenGfx; if (!g) return;
-    g.clear();
-    if (this.fackelAn) return;   // im Dunkeln keine Sonne
-    const hoch = Math.sin(this.sonnenWinkel * Math.PI);            // 0 Auf/Untergang .. 1 Mittag
-    // Basisrichtung NACH HINTEN (oben, -PI/2); morgens nach hinten-links, abends
-    // nach hinten-rechts. So liegt der Schatten immer HINTER dem Objekt.
-    const ang = -Math.PI / 2 + (this.sonnenWinkel - 0.5) * 2.2;
-    const laenge = (h: number) => h * (0.45 + (1 - hoch) * 1.9);   // mittags kurz, Dämmerung lang
-    g.fillStyle(0x000000, 0.32);
-    this.schattenForm(g, this.px, this.py + 15, 15, laenge(26), ang);                 // Spieler
-    for (const e of this.enemies) if (e.sprite) this.schattenForm(g, e.x, e.y + 12, 14, laenge(22), ang);
-    for (const s of this.saeulen) this.schattenForm(g, s.x, s.y, s.w, laenge(s.h), ang);
-    for (const t of this.truhen) this.schattenForm(g, t.x, t.y, t.w, laenge(t.h), ang);
-  }
-
-  // Schattenform = leicht verjüngter, am Boden gestauchter Streifen vom Fuß des
-  // Objekts in Richtung ang, plus ein kleines Boden-Oval (Erdung). ow = Objekt-
-  // breite (Schattenbreite), len = Länge.
-  private schattenForm(g: Phaser.GameObjects.Graphics, bx: number, by: number, ow: number, len: number, ang: number): void {
-    const ca = Math.cos(ang), sa = Math.sin(ang) * 0.6;           // Bodenperspektive (y gestaucht)
-    const px = -Math.sin(ang), py = Math.cos(ang) * 0.6;          // Quer-Achse
-    const hw = ow * 0.5, tw = ow * 0.34;                          // Spitze etwas schmaler
-    const tx = bx + ca * len, ty = by + sa * len;
-    g.fillPoints([
-      new Phaser.Math.Vector2(bx + px * hw, by + py * hw),
-      new Phaser.Math.Vector2(tx + px * tw, ty + py * tw),
-      new Phaser.Math.Vector2(tx - px * tw, ty - py * tw),
-      new Phaser.Math.Vector2(bx - px * hw, by - py * hw),
-    ], true);
-    g.fillEllipse(bx, by, ow, ow * 0.5);                          // Erdung am Fuß
-  }
-
-  // Getragene Fackel: dunkler Raum mit warmem Lichtkreis um den Spieler; die
-  // Säulen werfen Schlagschatten (Occlusion) - das Licht kommt nicht hindurch.
-  private aktualisiereFackel(): void {
-    const rt = this.fackelRT, wg = this.fackelWedge;
-    if (!rt || !wg || !this.lichtScratch) return;
-    if (!this.fackelAn) { rt.setVisible(false); wg.setVisible(false); this.warmLicht?.setVisible(false); return; }
-    const cam = this.cameras.main, zm = cam.zoom;
-    const w2s = (wx: number, wy: number): [number, number] => [(wx - cam.worldView.x) * zm, (wy - cam.worldView.y) * zm];
-    const t = this.time.now / 1000;
-    const flick = 1 + Math.sin(t * 8) * 0.05 + Math.sin(t * 21) * 0.03;
-    const rad = 100 * flick;                                  // Lichtradius wie eine echte Wandfackel (Autorwunsch: dezenter)
-    rt.setVisible(true); rt.clear();
-    rt.fill(0x0a0707, 0.9);                                   // Dunkelheit (leicht warm)
-    const [lx, ly] = w2s(this.px, this.py - 6);
-    this.lichtScratch.setScale((rad * 2 * zm) / 256);
-    rt.erase(this.lichtScratch, lx, ly);                     // Lichtloch ausstanzen
-    // warmes, dezentes Fackel-Glühen (orange) - kein greller weißer Kreis mehr
-    this.warmLicht!.setVisible(true).setPosition(lx, ly).setScale((rad * 1.15 * zm) / 256).setAlpha(0.3 * flick);
-    // Occlusion: hinter jeder Säule einen Schattenkeil verdunkeln (auf eigener Lage)
-    wg.setVisible(true); wg.clear(); wg.fillStyle(0x06040a, 0.92);
-    for (const s of this.saeulen) {
-      const d = Math.hypot(s.x - this.px, s.y - this.py);
-      if (d > rad + s.r || d < s.r) continue;
-      const a = Math.atan2(s.y - this.py, s.x - this.px);
-      const perp = a + Math.PI / 2;
-      const far = (rad - d) + 90;                            // Keil bis zur Lichtgrenze
-      const [n1x, n1y] = w2s(s.x + Math.cos(perp) * s.r, s.y + Math.sin(perp) * s.r);
-      const [n2x, n2y] = w2s(s.x - Math.cos(perp) * s.r, s.y - Math.sin(perp) * s.r);
-      const spread = Math.asin(Math.min(0.99, s.r / d));
-      const [f1x, f1y] = w2s(s.x + Math.cos(perp) * s.r + Math.cos(a - spread) * far, s.y + Math.sin(perp) * s.r + Math.sin(a - spread) * far);
-      const [f2x, f2y] = w2s(s.x - Math.cos(perp) * s.r + Math.cos(a + spread) * far, s.y - Math.sin(perp) * s.r + Math.sin(a + spread) * far);
-      wg.fillPoints([
-        new Phaser.Math.Vector2(n1x, n1y), new Phaser.Math.Vector2(f1x, f1y),
-        new Phaser.Math.Vector2(f2x, f2y), new Phaser.Math.Vector2(n2x, n2y),
-      ], true);
-    }
+  // Dynamische Verdecker (Held + Gegner) je Frame - werfen auch Schatten.
+  private dynamischeOccl(): Occluder[] {
+    const d: Occluder[] = [{ x: this.px, y: this.py + 10, w: 16, h: 8, hoehe: 26 }];
+    for (const e of this.enemies) if (e.sprite) d.push({ x: e.x, y: e.y + 8, w: 15, h: 8, hoehe: 22 });
+    return d;
   }
 
   private renderDebug(): void {
