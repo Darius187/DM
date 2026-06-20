@@ -44,7 +44,8 @@ export class SchattenManager {
   private maskG: Phaser.GameObjects.Graphics;        // Sichtpolygon zum Ausstanzen
   private brush: Phaser.GameObjects.Image;           // weicher Pinsel (erase für 'sicht')
   private flammeG: Phaser.GameObjects.Graphics;      // gezeichnete Flammen (oben)
-  private raumG: Phaser.GameObjects.Graphics;        // additives Raumlicht, AUF DIE LICHTFORM begrenzt (kein Nebel)
+  // Raumlicht: radialer Verlauf (Bild) je Licht, per Polygon-Maske auf die Lichtform begrenzt
+  private raumPool: { g: Phaser.GameObjects.Graphics; img: Phaser.GameObjects.Image }[] = []; private raumN = 0;
   private falloffPool: Phaser.GameObjects.Image[] = []; private falloffN = 0;  // dunkler Lichtabfall
   private glowPool: Phaser.GameObjects.Image[] = []; private glowN = 0;        // warmer Feuerschein (additiv)
   private statisch: Occluder[] = [];
@@ -75,9 +76,6 @@ export class SchattenManager {
     this.maskG = scene.add.graphics().setVisible(false);
     this.brush = scene.add.image(0, 0, this.brushTextur()).setVisible(false);
     this.flammeG = scene.add.graphics().setScrollFactor(0).setDepth(this.tiefe + 3).setVisible(false);
-    // Raumlicht ADDITIV, aber NUR innerhalb der Lichtform (Sichtpolygon) - dadurch
-    // werden Schatten/Wände NICHT mit aufgehellt -> kein Nebel-Eindruck (Autorwunsch R57).
-    this.raumG = scene.add.graphics().setScrollFactor(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(this.tiefe + 2).setVisible(false);
     scene.scale.on('resize', this.aufResize, this);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
   }
@@ -148,7 +146,7 @@ export class SchattenManager {
       rt.erase(this.maskG);
     }
     if (this.blur) { const b = 1.4 + (weich / 100) * 3; this.blur.x = b; this.blur.y = b; }
-    this.fogRT?.setVisible(false); this.raumG.setVisible(false).clear();
+    this.fogRT?.setVisible(false); this.raumN = 0;
     this.flammeG.setVisible(false).clear(); this.versteckeRest();
   }
 
@@ -169,8 +167,7 @@ export class SchattenManager {
     // Wände/Gegner bleiben SCHWACH sichtbar statt komplett schwarz (Autorwunsch R57).
     rt.fill(0x070509, Phaser.Math.Clamp((0.70 + 0.20 * staerke) - this.umgebung, 0.35, 0.95));
     this.flammeG.setVisible(true).clear();
-    this.raumG.setVisible(true).clear();
-    this.glowN = 0; this.falloffN = 0;
+    this.glowN = 0; this.falloffN = 0; this.raumN = 0;
     const t = this.scene.time.now / 1000;
     let maxWeich = 0;
 
@@ -184,7 +181,11 @@ export class SchattenManager {
         continue;
       }
       if (L.art === 'glut') {
-        // Fackel-Glut: warmes Glühen (kein Schattenwurf, kein Reveal -> günstig), folgt Feuer-Stil.
+        // Fackel-Glut: warmes Glühen (kein Schattenwurf -> günstig), folgt Feuer-Stil.
+        // ABER: ein partielles Reveal, damit auch eine Glut-Fackel ihren Bereich erhellt
+        // und so z.B. den Schatten eines Gegners von HINTEN auffüllt (Autorwunsch R57).
+        const sHg = L.schattenHell ?? 0;
+        if (sHg > 0) { this.brush.setAlpha(Math.min(0.7, sHg * 0.9)).setScale((rS * 1.4) / SchattenManager.TEX); rt.erase(this.brush, lx, ly); this.brush.setAlpha(1); }
         const fl = 1 + Math.sin(t * 8 + lx) * 0.06 + Math.sin(t * 19 + ly) * 0.04, hk = (L.staerke ?? 1) * this.helligkeit, ton = L.farbTon ?? 0.4;
         const gR = 0.4 + (L.glutRadius ?? 0.6) * 0.85;   // Streuung des warmen Scheins (eng..weit)
         if (this.feuerNeu) {
@@ -217,7 +218,7 @@ export class SchattenManager {
       // angehoben (partielles Reveal über den ganzen Radius), bevor die Sichtform voll
       // freigestanzt wird - so sind Schatten/Gegner darin nicht pechschwarz (Autorwunsch R57).
       const sH = L.schattenHell ?? 0;
-      if (sH > 0) { this.brush.setAlpha(Math.min(0.8, sH)).setScale((rS * 2) / SchattenManager.TEX); rt.erase(this.brush, lx, ly); this.brush.setAlpha(1); }
+      if (sH > 0) { this.brush.setAlpha(Math.min(0.92, sH)).setScale((rS * 2) / SchattenManager.TEX); rt.erase(this.brush, lx, ly); this.brush.setAlpha(1); }
       const groesse = (3 + weich * 13) * z;
       let polyC: { x: number; y: number }[] | null = null;
       for (const [ox, oy] of SchattenManager.RING) {
@@ -230,15 +231,14 @@ export class SchattenManager {
         this.maskG.closePath(); this.maskG.fillPath();
         rt.erase(this.maskG);
       }
-      // Neutrales Raumlicht: ADDITIV, aber NUR auf die Lichtform (polyC) begrenzt ->
-      // hellt den beleuchteten Boden auf, OHNE Schatten/Wände aufzuhellen = kein Nebel.
+      // Neutrales Raumlicht: ein RADIALER Verlauf (hell am Licht, weich auslaufend) -
+      // aber per Maske auf die Lichtform (polyC) BEGRENZT. So gibt es saubere
+      // Schattierungen statt "ganz hell/ganz dunkel", und Schatten/Wände bleiben
+      // dunkel (kein Nebel) (Autorwunsch R57).
       const raum = (L.raumLicht ?? 0) * this.helligkeit;
       if (raum > 0 && polyC) {
         const rf = mischFarbe(0xffcaa0, 0xffffff, L.raumFarbe ?? 0.6);
-        this.raumG.fillStyle(rf, Math.min(0.6, raum * 0.5)); this.raumG.beginPath();
-        this.raumG.moveTo(polyC[0].x, polyC[0].y);
-        for (let i = 1; i < polyC.length; i++) this.raumG.lineTo(polyC[i].x, polyC[i].y);
-        this.raumG.closePath(); this.raumG.fillPath();
+        this.raumLichtPoly(lx, ly, rS, polyC, rf, Math.min(0.7, raum * 0.6));
       }
       // dunkler Lichtabfall zum Rand (Falloff) + warmer Schein (Feuer ODER warm/farbig).
       const flick = 1 + Math.sin(t * 8 + lx) * 0.05 + Math.sin(t * 21 + ly) * 0.03;
@@ -327,6 +327,24 @@ export class SchattenManager {
     g.fillEllipse(lx, ly - h * 0.35, w * 0.5, h * 0.4);
   }
 
+  // Raumlicht als RADIALER additiver Verlauf (Brush-Textur), per Polygon-Maske auf
+  // die Lichtform begrenzt -> weiche Schattierung, aber kein Aufhellen von Schatten/Wänden.
+  private raumLichtPoly(lx: number, ly: number, rS: number, poly: { x: number; y: number }[], farbe: number, alpha: number): void {
+    while (this.raumPool.length <= this.raumN) {
+      const g = this.scene.make.graphics({ x: 0, y: 0 }, false).setScrollFactor(0);
+      const img = this.scene.add.image(0, 0, this.brushTextur()).setScrollFactor(0)
+        .setBlendMode(Phaser.BlendModes.ADD).setDepth(this.tiefe + 2).setVisible(false);
+      img.setMask(g.createGeometryMask());
+      this.raumPool.push({ g, img });
+    }
+    const slot = this.raumPool[this.raumN++];
+    slot.g.clear(); slot.g.fillStyle(0xffffff, 1); slot.g.beginPath();
+    slot.g.moveTo(poly[0].x, poly[0].y);
+    for (let i = 1; i < poly.length; i++) slot.g.lineTo(poly[i].x, poly[i].y);
+    slot.g.closePath(); slot.g.fillPath();
+    slot.img.setVisible(true).setTint(farbe).setPosition(lx, ly).setScale((rS * 2) / SchattenManager.TEX).setAlpha(alpha);
+  }
+
   // ----- Hilfen: Bild-Pools (Glühen additiv, Falloff dunkel) ----------------
   private glow(lx: number, ly: number, rS: number, farbe: number, alpha: number, soft = 1): void {
     while (this.glowPool.length <= this.glowN) {
@@ -349,13 +367,15 @@ export class SchattenManager {
   private versteckeRest(): void {
     for (let i = this.glowN; i < this.glowPool.length; i++) this.glowPool[i].setVisible(false);
     for (let i = this.falloffN; i < this.falloffPool.length; i++) this.falloffPool[i].setVisible(false);
+    for (let i = this.raumN; i < this.raumPool.length; i++) this.raumPool[i].img.setVisible(false);
   }
 
   private dunkelAus(): void {
-    this.rt.setVisible(false); this.fogRT?.setVisible(false); this.flammeG.setVisible(false).clear(); this.raumG.setVisible(false).clear();
+    this.rt.setVisible(false); this.fogRT?.setVisible(false); this.flammeG.setVisible(false).clear();
     for (const im of this.glowPool) im.setVisible(false);
     for (const im of this.falloffPool) im.setVisible(false);
-    this.glowN = this.falloffN = 0;
+    for (const s of this.raumPool) s.img.setVisible(false);
+    this.glowN = this.falloffN = this.raumN = 0;
   }
 
   aus(): void { this.sonneGfx.clear(); if (this.sonneBlur) this.sonneBlur.x = this.sonneBlur.y = 0; this.dunkelAus(); }
@@ -405,7 +425,8 @@ export class SchattenManager {
 
   destroy(): void {
     this.scene.scale.off('resize', this.aufResize, this);
-    this.sonneGfx.destroy(); this.rt.destroy(); this.fogRT?.destroy(); this.maskG.destroy(); this.brush.destroy(); this.flammeG.destroy(); this.raumG.destroy();
+    this.sonneGfx.destroy(); this.rt.destroy(); this.fogRT?.destroy(); this.maskG.destroy(); this.brush.destroy(); this.flammeG.destroy();
+    for (const s of this.raumPool) { s.g.destroy(); s.img.destroy(); }
     for (const im of this.glowPool) im.destroy();
     for (const im of this.falloffPool) im.destroy();
   }

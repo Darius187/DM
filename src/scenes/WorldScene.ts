@@ -2430,8 +2430,8 @@ export class WorldScene extends CombatScene {
     const heldFarbe = mischFarbe(0x8a3010, 0xfff2d8, (lic.heldFarbe ?? 45) / 100);
     // Raumlicht-Parameter (heller/weißer Raum, getrennt von der warmen Flamme).
     const raumLicht = (lic.fackelRaumLicht ?? 50) / 100, raumFarbe = (lic.fackelRaumFarbe ?? 60) / 100, glutRadius = (lic.fackelGlutRadius ?? 45) / 100;
-    // Schatten-Aufhellung: NAHE Lichter (am Helden) vs FERNE - getrennt regelbar.
-    const schNah = (lic.schattenNah ?? 30) / 100 * 0.7, schFern = (lic.schattenFern ?? 15) / 100 * 0.7;
+    // Schatten-Aufhellung: NAHE Lichter (am Helden) vs FERNE - getrennt regelbar (stärkerer Effekt R57).
+    const schNah = (lic.schattenNah ?? 30) / 100, schFern = (lic.schattenFern ?? 15) / 100;
     if (lic.heldLichtAn) lichter.push({ x: this.px, y: this.py - 6, art: lic.heldSchatten ? 'fackel' : 'sicht', radius: lic.sichtRadius, weich, farbe: heldFarbe, raumLicht, raumFarbe, glutRadius, schattenHell: schNah });
     // Nahe Fackeln: wie weit weg sie noch leuchten = Aktiv-Distanz-Regler. Die Sicht-
     // Toleranz bestimmt, durch WIE VIELE Wände das Licht noch zählt: 0 = nur direkt
