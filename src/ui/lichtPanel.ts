@@ -57,6 +57,7 @@ export class LichtPanel {
     this.header('DUNGEON (Fackeln / Sicht)');
     this.toggle(() => `Wand-Schatten: ${L().dungeonNeu ? 'AN' : 'aus'}`, () => { L().dungeonNeu = !L().dungeonNeu; });
     this.slider('Dungeon-Dunkelheit', 0, 100, () => getSettings().dungeonStaerke, (v) => { getSettings().dungeonStaerke = v; });
+    this.slider('Umgebungslicht (Wände sichtbar)', 0, 100, () => L().umgebungslicht, (v) => { L().umgebungslicht = v; });
     this.toggle(() => `Held-Sichtfeld (nur Sichtlinie): ${L().heldSichtfeld ? 'AN' : 'aus'}`, () => { L().heldSichtfeld = !L().heldSichtfeld; });
     this.slider('Sichtfeld-Reichweite', 0, 100, () => L().sichtfeldRadius, (v) => { L().sichtfeldRadius = v; });
     this.slider('Schatten-Fackeln (Leistung!)', 0, 100, () => L().schattenFackeln, (v) => { L().schattenFackeln = v; }, (v) => `${Math.round(v / 100 * 6)} + Held`);

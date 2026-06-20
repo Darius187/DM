@@ -2397,6 +2397,7 @@ export class WorldScene extends CombatScene {
       this.ensureSchatten([]);
       this.schatten!.feuerNeu = lic.feuerNeu;
       this.schatten!.schaerfe = (lic.lichtSchaerfe ?? 55) / 100;
+      this.schatten!.umgebung = (lic.umgebungslicht ?? 32) / 100 * 0.30;   // Grundhelligkeit (Wände/Gegner schwach sichtbar)
       // Sichtfeld des Helden (optional): nur was er in der Sichtlinie hat, ist sichtbar.
       const fovR = 150 + (lic.sichtfeldRadius ?? 70) / 100 * 560;   // 150..710 Sichtweite
       const sicht = (lic.heldSichtfeld ?? true) ? { x: this.px, y: this.py - 6, radius: fovR } : undefined;

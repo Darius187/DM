@@ -50,6 +50,7 @@ export class SchattenManager {
   private tiefe: number;
   feuerNeu = true;                                   // Feuer-Stil: true = neu (Glut/Flamme), false = alt
   schaerfe = 0.55;                                    // Licht-Schärfe: 1 = scharf, 0 = weicher Schleier (skaliert den Weichzeichner)
+  umgebung = 0.1;                                     // Grundhelligkeit 0..~0.3: hebt die Dunkelheit an, damit Wände/Gegner schwach sichtbar bleiben
   private static readonly TEX = 512;                 // Kantenlänge der Licht-Texturen (Skalierung bezieht sich darauf)
   // Abtastpunkte der Flächenlichtquelle (Einheitskreis) - für echte weiche Schatten
   private static readonly RING: ReadonlyArray<readonly [number, number]> =
@@ -158,7 +159,9 @@ export class SchattenManager {
     const statS: Segment[] = this.statSeg.map((s) => { const [ax, ay] = w2s(s.ax, s.ay), [bx, by] = w2s(s.bx, s.by); return { ax, ay, bx, by }; });
 
     const rt = this.rt; rt.setVisible(true); rt.clear();
-    rt.fill(0x070509, 0.74 + 0.22 * staerke);
+    // Grunddunkelheit, aber durch die Grundhelligkeit (umgebung) angehoben -> unbeleuchtete
+    // Wände/Gegner bleiben SCHWACH sichtbar statt komplett schwarz (Autorwunsch R57).
+    rt.fill(0x070509, Phaser.Math.Clamp((0.70 + 0.20 * staerke) - this.umgebung, 0.35, 0.95));
     this.flammeG.setVisible(true).clear();
     this.glowN = 0; this.falloffN = 0;
     const t = this.scene.time.now / 1000;
@@ -228,7 +231,7 @@ export class SchattenManager {
     // Weichzeichner: weiche Schatten kommen v.a. aus der RING-Abtastung; der Blur
     // ist nur die Feinabstimmung. Schärfe-Regler 1 = scharf (kaum Blur, kein
     // Schleier), 0 = weich. So bleibt der Raum knackig, die Schatten trotzdem weich.
-    if (this.blur) { const b = (0.4 + maxWeich * 2.4) * (1 - 0.85 * this.schaerfe); this.blur.x = b; this.blur.y = b; }
+    if (this.blur) { const b = (0.3 + maxWeich * 1.8) * (1 - 0.9 * this.schaerfe); this.blur.x = b; this.blur.y = b; }
     this.sichtfeld(sicht, dynamisch, staerke, z, w2s);
     this.versteckeRest();
   }
@@ -256,7 +259,9 @@ export class SchattenManager {
       }
     }
     fog.setVisible(true).clear();
-    fog.fill(0x050407, 0.86 + 0.12 * staerke);   // alles außerhalb der Sichtlinie ist dunkel
+    // Außerhalb der Sichtlinie DIMMEN (nicht komplett schwarz): das helle Fackellicht
+    // aus Nebenräumen verschwindet, aber die Wandstruktur bleibt schwach erkennbar.
+    fog.fill(0x050407, Phaser.Math.Clamp((0.50 + 0.16 * staerke) - this.umgebung * 0.5, 0.3, 0.9));   // moderate Sichtfeld-Dämpfung
     const poly = sichtPolygon({ x: hx, y: hy }, segs, rS);
     if (poly.length >= 3) {
       this.maskG.clear(); this.maskG.fillStyle(0xffffff, 1); this.maskG.beginPath();
@@ -265,7 +270,7 @@ export class SchattenManager {
       this.maskG.closePath(); this.maskG.fillPath();
       fog.erase(this.maskG);   // Sichtlinie freistanzen
     }
-    if (this.fogBlur) { const b = 2.4 + (1 - this.schaerfe) * 4; this.fogBlur.x = b; this.fogBlur.y = b; }
+    if (this.fogBlur) { const b = 0.6 + (1 - this.schaerfe) * 2.2; this.fogBlur.x = b; this.fogBlur.y = b; }
   }
 
   // warmer Feuerschein + Flamme je nach Stil. hk = Helligkeit, ton = Farbtemperatur
