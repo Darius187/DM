@@ -11,6 +11,7 @@ import { BloodFlow } from '../systems/BloodFlow';
 import { NebelFratzen } from '../systems/NebelFratzen';
 import { RabenSchwarm } from '../systems/Raben';
 import { SchattenManager, type Occluder } from '../systems/SchattenManager';
+import { LichtPanel } from '../ui/lichtPanel';
 import { RABEN } from '../data/raben';
 import { LANDHERR } from '../data/dialoge';
 import storyJson from '../data/story.json';
@@ -140,6 +141,7 @@ export class WorldScene extends CombatScene {
   private bodenGfx!: Phaser.GameObjects.Graphics;  // Blutspuren AUF dem Boden (unter den Figuren)
   private schatten?: SchattenManager;              // Tag-Schlagschatten von Gebäuden/NPCs (Runde 55)
   private schattenArea = '';                        // für welches Gebiet die Verdecker stehen
+  private lichtPanel?: LichtPanel;                  // Licht-Werkbank (Taste L), live + persistent
   private lightRT!: Phaser.GameObjects.RenderTexture;
   private warmPool: Phaser.GameObjects.Image[] = [];
   private minimapGfx!: Phaser.GameObjects.Graphics;
@@ -306,6 +308,10 @@ export class WorldScene extends CombatScene {
     // Figur-Editor (Runde 40): Proportionen des Helden live einstellen
     this.heldEditor = new HeldEditor(this, this.provider, () => heldTier(this.p.armorIt ? this.p.armorIt.val : null));
     this.heldEditor.onApply = () => this.zeichneHeld(angleToDir8(this.pdir), this.pstep);
+    // Licht-Werkbank (R55): alle Licht-/Schatten-Regler live im Spiel (Taste L).
+    // Etwas tiefer rechts, damit der Quest-Verfolger oben rechts klickbar bleibt.
+    this.lichtPanel = new LichtPanel(this, this.scale.width - 322, 188);
+    this.input.keyboard?.on('keydown-L', () => this.lichtPanel?.umschalten());
     this.worldGfx = this.add.graphics().setDepth(2450);
     // Blutspuren liegen UNTER den Figuren (Autorbug R45: lagen "vor" den
     // Einheiten). Boden = -10, Figuren = y (positiv); -5 liegt sauber dazwischen.
@@ -2387,7 +2393,11 @@ export class WorldScene extends CombatScene {
     const tag = this.tageszeit > TAG.morgenAb && this.tageszeit < TAG.nachtAb;
     if (!tag) { this.schatten.aus(); return; }   // nachts/Dämmerung keine Sonne
     const winkel = Phaser.Math.Clamp((this.tageszeit - TAG.morgenAb) / Math.max(0.001, TAG.nachtAb - TAG.morgenAb), 0, 1);
-    this.schatten.sonne(winkel, this.dynamischeOccluder(), st);
+    const lic = getSettings().licht;
+    // Tag-Schatten wahlweise als Projektion (billig) ODER als Raycaster-Sonne
+    // (ein ferner riesiger Lichtpunkt wirft echte Schlagschatten - Autorwunsch R55).
+    if (lic.sonneRaycast) this.schatten.sonneRaycast(winkel, this.dynamischeOccluder(), st, lic.sonneKegel, lic.weichheit);
+    else this.schatten.sonne(winkel, this.dynamischeOccluder(), st);
   }
 
   // Gebäude-Grundrisse als statische Verdecker (Fußpunkt = Bild-Unterkante,
@@ -6308,6 +6318,7 @@ export class WorldScene extends CombatScene {
     this.animiereWasser(dt);
     this.animiereHaeuser(dt);
     this.aktualisiereSchatten();
+    this.lichtPanel?.update();
     // Chronik weicht offenen Fenstern (Inventar/Charakter/Dialog), damit sich
     // die Schriften nicht überlagern - sie kommt danach von selbst zurück (R36)
     this.chronikFenster?.setVisible(!this.uiBlocked());

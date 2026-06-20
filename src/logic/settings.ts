@@ -41,6 +41,16 @@ export interface Settings {
   bloom: number;          // Leucht-/Bloom-Stärke 0-100 (Runde 51: Regler, 0 = aus)
   grusel: number;         // Grusel-Atmosphäre: kalter, dunkler Tint auf Gegner 0-100 (Runde 55)
   schatten: number;       // Schatten-/Licht-Stärke 0-100 (Runde 55: 0 = aus, Leistungsregler)
+  // Licht-Werkbank (Runde 55): alle Regler des Licht-Tests, live im Spiel + persistent
+  licht: {
+    variante: number;     // Dungeon-Lichtvariante 0-4 (Sichtradius/Wandfackel/Kombis/alt)
+    sichtRadius: number;  // persönlicher Lichtradius des Helden (Sichtradius)
+    heldLichtAn: boolean; // Held-Sichtradius an/aus
+    feuerNeu: boolean;    // Feuer-Stil neu (Glut+Flamme) vs alt (schlichter Kreis)
+    weichheit: number;    // Schatten-Weichheit 0-100
+    sonneRaycast: boolean;// Tag-Schatten: false = Projektion, true = Raycaster-Sonne
+    sonneKegel: number;   // Größe/Ferne des Sonnen-Lichtkegels (Raycast) 0-100
+  };
   audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
   zoomV: number;          // einmaliger Zoom-Standard (Runde 41: 130%)
   bloomV: number;         // einmaliger Bloom-Standard (Runde 51: standardmäßig aus)
@@ -75,6 +85,7 @@ export const DEF_SETTINGS: Settings = {
   bloom: 0, // Runde 51 (Autorwunsch): Bloom standardmäßig AUS, war zu stark
   grusel: 0, // Runde 55: Grusel-Tint standardmäßig aus, per F10-Regler einstellbar
   schatten: 70, // Runde 55: Schatten/Licht standardmäßig an (mittlere Stärke), Regler in Einstellungen
+  licht: { variante: 2, sichtRadius: 110, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60 },
   audioV: 1,
   zoomV: 1,
   bloomV: 1,
@@ -100,6 +111,7 @@ export function getSettings(): Settings {
       const saved = JSON.parse(raw) as Partial<Settings>;
       Object.assign(current, saved);
       current.kb = { ...DEF_SETTINGS.kb, ...(saved.kb ?? {}) };
+      current.licht = { ...DEF_SETTINGS.licht, ...(saved.licht ?? {}) };
       current.maus = { ...DEF_SETTINGS.maus, ...(saved.maus ?? {}) };
       current.tasten = { ...DEF_SETTINGS.tasten, ...(saved.tasten ?? {}) };
       current.chronikBox = { ...DEF_SETTINGS.chronikBox, ...(saved.chronikBox ?? {}) };

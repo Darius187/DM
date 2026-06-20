@@ -78,6 +78,43 @@ export class SchattenManager {
     g.fillEllipse(o.x, o.y + o.h / 2, o.w * 0.82, Math.min(7, o.h));   // dezenter Kontaktschatten am Fuß
   }
 
+  // ===== TAG per RAYCASTER (Autorwunsch R55): die Sonne als EIN ferner, riesiger
+  // Punkt. Raycasting wirft echte, annähernd PARALLELE Schlagschatten hinter
+  // Gebäude/Figuren - die Welt bleibt hell, nur die Schattenkeile dunkeln ab.
+  // kegel 0..100 = Ferne der Sonne (klein = nah/radial, groß = fern/parallel).
+  sonneRaycast(sonnenWinkel: number, dynamisch: Occluder[], staerke: number, kegel: number, weich: number): void {
+    this.sonneGfx.clear(); if (this.sonneBlur) this.sonneBlur.x = this.sonneBlur.y = 0;
+    if (staerke <= 0) { this.dunkelAus(); return; }
+    const cam = this.scene.cameras.main, z = cam.zoom;
+    const w2s = (x: number, y: number): [number, number] => [(x - cam.worldView.x) * z, (y - cam.worldView.y) * z];
+    const W = this.scene.scale.width, H = this.scene.scale.height;
+    const ang = -Math.PI / 2 + (sonnenWinkel - 0.5) * 2.0;
+    const dir = { x: Math.cos(ang), y: Math.sin(ang) * 0.55 };           // Schattenrichtung
+    const D = Math.max(W, H) * (0.6 + (kegel / 100) * 3.2);              // Ferne der Sonne
+    const sx = W / 2 - dir.x * D, sy = H / 2 - dir.y * D;                // Sonne fern in -dir
+    const rS = D + Math.hypot(W, H) * 1.3;                              // riesiger Lichtkegel (deckt alles)
+    // NUR Objektkanten (KEIN Bildschirmrand - die ferne Sonne darf nicht am Rand hängen)
+    const segs: Segment[] = [];
+    for (const s of this.statSeg) { const [ax, ay] = w2s(s.ax, s.ay), [bx, by] = w2s(s.bx, s.by); segs.push({ ax, ay, bx, by }); }
+    for (const o of dynamisch) for (const s of rechteckSegmente({ x: o.x - o.w / 2, y: o.y - o.h / 2, w: o.w, h: o.h })) {
+      const [ax, ay] = w2s(s.ax, s.ay), [bx, by] = w2s(s.bx, s.by); segs.push({ ax, ay, bx, by });
+    }
+    const rt = this.rt; rt.setVisible(true); rt.clear();
+    rt.fill(0x0b0d18, 0.46 * staerke);                                  // milder, kühler Schatten überall
+    const groesse = (3 + (weich / 100) * 15) * z;                       // Sonnen-"Größe" = Penumbra
+    for (const [ox, oy] of SchattenManager.RING) {
+      const poly = sichtPolygon({ x: sx + ox * groesse, y: sy + oy * groesse }, segs, rS);
+      if (poly.length < 3) continue;
+      this.maskG.clear(); this.maskG.fillStyle(0xffffff, 0.5); this.maskG.beginPath();
+      this.maskG.moveTo(poly[0].x, poly[0].y);
+      for (let i = 1; i < poly.length; i++) this.maskG.lineTo(poly[i].x, poly[i].y);
+      this.maskG.closePath(); this.maskG.fillPath();
+      rt.erase(this.maskG);
+    }
+    if (this.blur) { const b = 1.4 + (weich / 100) * 3; this.blur.x = b; this.blur.y = b; }
+    this.flammeG.setVisible(false).clear(); this.versteckeRest();
+  }
+
   // ===== DUNGEON: mehrere Lichter (Fackeln + Sichtradius) ===================
   lichter(lichter: Licht[], dynamisch: Occluder[], staerke: number): void {
     this.sonneGfx.clear();
