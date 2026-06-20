@@ -102,7 +102,7 @@ export class TitleScene extends Phaser.Scene {
       ['STADTPLANER', () => this.scene.start('StadtProbe'), true],
       ['ANHÖHE-PROBE', () => this.scene.start('AnhoeheProbe'), true],
       ['REIT-PROBE', () => this.scene.start('ReitProbe'), true],
-      ['STRAHLEN-SCHATTEN', () => this.scene.start('StrahlenProbe'), true],
+      ['GRUSEL-SCHATTEN', () => this.scene.start('StrahlenProbe'), true],
     ];
     // Knopf-Abstand so wählen, dass ALLE Knöpfe in die Höhe passen (sonst lief
     // die untere Reihe aus dem Bild) - der Bereich von 50% bis 96% der Höhe.

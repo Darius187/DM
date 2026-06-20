@@ -107,10 +107,12 @@ function frisch(over: Partial<HeldForm> = {}): HeldForm {
 function defaults(): HeldFormen {
   const b = (over: Partial<HeldForm>): HeldForm => frisch({ kopfY: 18, schulterB: 11, capeBreite: 0.4, ...over });
   return {
-    stoff:  b({ skala: 0.8, gesichtOffen: 1.2, visier: 0.4 }),
-    leder:  b({ skala: 0.8, gesichtOffen: 1.2, visier: 0.5 }),
-    kette:  b({ skala: 0.6, gesichtOffen: 1.3, visier: 0.6, kettenGitter: 1 }),
-    platte: b({ skala: 0.6, gesichtOffen: 1.1, visier: 1 }),
+    // Gesamtgröße 0.9 für ALLE Stufen (Autor R55: "überall den Helden auf 0,9
+    // hochgestellt, bitte übernehmen") - vorher 0.8/0.6 je Stufe.
+    stoff:  b({ skala: 0.9, gesichtOffen: 1.2, visier: 0.4 }),
+    leder:  b({ skala: 0.9, gesichtOffen: 1.2, visier: 0.5 }),
+    kette:  b({ skala: 0.9, gesichtOffen: 1.3, visier: 0.6, kettenGitter: 1 }),
+    platte: b({ skala: 0.9, gesichtOffen: 1.1, visier: 1 }),
   };
 }
 
