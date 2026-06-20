@@ -2396,7 +2396,11 @@ export class WorldScene extends CombatScene {
       if (!lic.dungeonNeu || dst <= 0) { this.schatten?.aus(); return; }   // sonst altes lightRT-System
       this.ensureSchatten([]);
       this.schatten!.feuerNeu = lic.feuerNeu;
-      this.schatten!.lichter(this.dungeonLichter(lic), this.dungeonVerdecker(), dst);
+      this.schatten!.schaerfe = (lic.lichtSchaerfe ?? 55) / 100;
+      // Sichtfeld des Helden (optional): nur was er in der Sichtlinie hat, ist sichtbar.
+      const fovR = 150 + (lic.sichtfeldRadius ?? 70) / 100 * 560;   // 150..710 Sichtweite
+      const sicht = (lic.heldSichtfeld ?? true) ? { x: this.px, y: this.py - 6, radius: fovR } : undefined;
+      this.schatten!.lichter(this.dungeonLichter(lic), this.dungeonVerdecker(), dst, sicht);
       return;
     }
     // DRAUSSEN: Tag-Schatten (Gebäude/NPCs), nur am Tag - mit der Aussenwelt-Stärke.
@@ -2422,7 +2426,9 @@ export class WorldScene extends CombatScene {
     // Schattenwurf -> KEIN dunkler Schleier um den Helden). Auch als 'sicht' wirft er
     // weiter Schatten VON den Fackeln, weil er Verdecker bleibt.
     const heldFarbe = mischFarbe(0x8a3010, 0xfff2d8, (lic.heldFarbe ?? 45) / 100);
-    if (lic.heldLichtAn) lichter.push({ x: this.px, y: this.py - 6, art: lic.heldSchatten ? 'fackel' : 'sicht', radius: lic.sichtRadius, weich, farbe: heldFarbe });
+    // Raumlicht-Parameter (heller/weißer Raum, getrennt von der warmen Flamme).
+    const raumLicht = (lic.fackelRaumLicht ?? 50) / 100, raumFarbe = (lic.fackelRaumFarbe ?? 60) / 100, glutRadius = (lic.fackelGlutRadius ?? 45) / 100;
+    if (lic.heldLichtAn) lichter.push({ x: this.px, y: this.py - 6, art: lic.heldSchatten ? 'fackel' : 'sicht', radius: lic.sichtRadius, weich, farbe: heldFarbe, raumLicht, raumFarbe, glutRadius });
     // Nahe Fackeln: wie weit weg sie noch leuchten = Aktiv-Distanz-Regler. Die Sicht-
     // Toleranz bestimmt, durch WIE VIELE Wände das Licht noch zählt: 0 = nur direkt
     // sichtbar, 1 = um die Ecke (eine Wand dazwischen), höher = großzügiger. So leuchtet
@@ -2436,7 +2442,7 @@ export class WorldScene extends CombatScene {
     // Wie viele Fackeln werfen Schatten? "Alle"-Schalter übersteuert den Regler.
     const nSchatten = lic.alleFackelnSchatten ? nahe.length : Math.round((lic.schattenFackeln ?? 20) / 100 * 6);
     const ton = (lic.fackelFarbe ?? 45) / 100;
-    nahe.forEach((o, i) => lichter.push({ x: o.t.x, y: o.t.y - 4, art: i < nSchatten ? 'fackel' : 'glut', radius: 150 * fR, weich, staerke: fH, farbTon: ton }));
+    nahe.forEach((o, i) => lichter.push({ x: o.t.x, y: o.t.y - 4, art: i < nSchatten ? 'fackel' : 'glut', radius: 150 * fR, weich, staerke: fH, farbTon: ton, raumLicht, raumFarbe, glutRadius }));
     // Effekt-Lichter: Feuerball orange, Zauber violett, Feuerzauber. Per Schalter
     // werfen auch sie echte Schatten ('fackel' mit Farbe = Raycasting ohne Flamme).
     const effArt = lic.effekteSchatten ? 'fackel' : 'sicht';
@@ -2468,23 +2474,26 @@ export class WorldScene extends CombatScene {
     return runs;
   }
 
-  // Verdecker fürs Dungeon-Raycasting: nahe SOLID-Wände zu MAXIMALEN Rechtecken
-  // zusammengefasst (2D-Greedy) - dadurch KEINE einzelnen Kachel-Kästchen-Schatten
-  // mehr, sondern saubere Wandflächen. + Held/Gegner.
+  // Verdecker fürs Dungeon-Raycasting: SOLID-Wände im SICHTBAREN Bereich (Kamera-
+  // Ausschnitt + Rand) zu MAXIMALEN Rechtecken zusammengefasst (2D-Greedy) - dadurch
+  // KEINE einzelnen Kachel-Kästchen-Schatten, und Fackeln am Bildrand / knapp außerhalb
+  // werfen trotzdem korrekte Schatten (vorher nur 7 Kacheln um den Helden). + Held/Gegner.
   private dungeonVerdecker(): Occluder[] {
     const occ = this.dynamischeOccluder();
-    const tx0 = Math.floor(this.px / TILE), ty0 = Math.floor(this.py / TILE), R = 7, W = 2 * R + 1;
+    const v = this.cameras.main.worldView, M = 4;   // M = Rand in Kacheln (knapp außerhalb)
+    const tx0 = Math.floor(v.x / TILE) - M, ty0 = Math.floor(v.y / TILE) - M;
+    const cols = Math.ceil(v.width / TILE) + 2 * M, rows = Math.ceil(v.height / TILE) + 2 * M;
     const solid: boolean[][] = [], used: boolean[][] = [];
-    for (let j = 0; j < W; j++) {
+    for (let j = 0; j < rows; j++) {
       solid[j] = []; used[j] = [];
-      for (let i = 0; i < W; i++) { solid[j][i] = this.isSolidAt((tx0 - R + i) * TILE + TILE / 2, (ty0 - R + j) * TILE + TILE / 2); used[j][i] = false; }
+      for (let i = 0; i < cols; i++) { solid[j][i] = this.isSolidAt((tx0 + i) * TILE + TILE / 2, (ty0 + j) * TILE + TILE / 2); used[j][i] = false; }
     }
-    for (let j = 0; j < W; j++) for (let i = 0; i < W; i++) {
+    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
       if (!solid[j][i] || used[j][i]) continue;
-      let w = 1; while (i + w < W && solid[j][i + w] && !used[j][i + w]) w++;
-      let h = 1; for (; j + h < W; h++) { let ok = true; for (let k = 0; k < w; k++) if (!solid[j + h][i + k] || used[j + h][i + k]) { ok = false; break; } if (!ok) break; }
+      let w = 1; while (i + w < cols && solid[j][i + w] && !used[j][i + w]) w++;
+      let h = 1; for (; j + h < rows; h++) { let ok = true; for (let k = 0; k < w; k++) if (!solid[j + h][i + k] || used[j + h][i + k]) { ok = false; break; } if (!ok) break; }
       for (let a = 0; a < h; a++) for (let k = 0; k < w; k++) used[j + a][i + k] = true;
-      const x0 = (tx0 - R + i) * TILE, y0 = (ty0 - R + j) * TILE;
+      const x0 = (tx0 + i) * TILE, y0 = (ty0 + j) * TILE;
       occ.push({ x: x0 + w * TILE / 2, y: y0 + h * TILE / 2, w: w * TILE, h: h * TILE });
     }
     return occ;

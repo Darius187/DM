@@ -17,7 +17,13 @@ export interface Occluder { x: number; y: number; w: number; h: number; hoehe?: 
 // Ein Licht im Dunkeln: 'fackel' = Feuer mit Schattenwurf (Raycasting),
 // 'sicht' = weicher Radius ohne Schatten, 'glut' = nur dezentes Glühen (kein Reveal).
 // farbe = Schein-Farbe für 'sicht' (z.B. Feuerball orange, Zauber violett); sonst neutral.
-export interface Licht { x: number; y: number; radius: number; art?: 'fackel' | 'sicht' | 'glut'; weich?: number; farbe?: number; staerke?: number; farbTon?: number }
+export interface Licht {
+  x: number; y: number; radius: number; art?: 'fackel' | 'sicht' | 'glut';
+  weich?: number; farbe?: number; staerke?: number; farbTon?: number;
+  raumLicht?: number;   // neutrales Raumlicht (Helligkeit Richtung weiß), 0 = aus
+  raumFarbe?: number;   // Farbe des Raumlichts 0 (warm) .. 1 (kühl-weiß)
+  glutRadius?: number;  // Streuung des warmen Flammenscheins 0 (eng) .. 1 (weit)
+}
 
 // Zwei Farben mischen (t 0..1) - für die Fackel-Farbtemperatur (rot..weißgelb).
 export function mischFarbe(a: number, b: number, t: number): number {
@@ -32,6 +38,8 @@ export class SchattenManager {
   private sonneBlur?: Phaser.FX.Blur;                // Weichzeichner für Stadtschatten
   private rt: Phaser.GameObjects.RenderTexture;      // Dungeon-Dunkelheit (Schirm)
   private blur?: Phaser.FX.Blur;                     // Weichzeichner für Schattenkanten
+  private fogRT?: Phaser.GameObjects.RenderTexture;  // Held-Sichtfeld: deckt alles ab, was NICHT in Sichtlinie liegt
+  private fogBlur?: Phaser.FX.Blur;                  // weiche Sichtfeld-Kante
   private maskG: Phaser.GameObjects.Graphics;        // Sichtpolygon zum Ausstanzen
   private brush: Phaser.GameObjects.Image;           // weicher Pinsel (erase für 'sicht')
   private flammeG: Phaser.GameObjects.Graphics;      // gezeichnete Flammen (oben)
@@ -41,6 +49,8 @@ export class SchattenManager {
   private statSeg: Segment[] = [];                   // Wand-/Gebäudekanten (einmal gebacken)
   private tiefe: number;
   feuerNeu = true;                                   // Feuer-Stil: true = neu (Glut/Flamme), false = alt
+  schaerfe = 0.55;                                    // Licht-Schärfe: 1 = scharf, 0 = weicher Schleier (skaliert den Weichzeichner)
+  private static readonly TEX = 512;                 // Kantenlänge der Licht-Texturen (Skalierung bezieht sich darauf)
   // Abtastpunkte der Flächenlichtquelle (Einheitskreis) - für echte weiche Schatten
   private static readonly RING: ReadonlyArray<readonly [number, number]> =
     Array.from({ length: 6 }, (_, i) => { const a = (i / 6) * Math.PI * 2; return [Math.cos(a), Math.sin(a)] as const; });
@@ -52,6 +62,12 @@ export class SchattenManager {
     this.rt = scene.add.renderTexture(0, 0, scene.scale.width, scene.scale.height)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(this.tiefe).setVisible(false);
     if (this.rt.postFX) this.blur = this.rt.postFX.addBlur(0, 2, 2, 1, 0xffffff, 4);
+    // Sichtfeld-Maske LIEGT ÜBER allem Dungeon-Licht (tiefe+4) und blendet aus, was
+    // der Held nicht sehen kann - damit man nicht den GANZEN Nebenraum sieht, sobald
+    // eine Fackel darin angeht, sondern nur den Ausschnitt in seiner Sichtlinie.
+    this.fogRT = scene.add.renderTexture(0, 0, scene.scale.width, scene.scale.height)
+      .setOrigin(0, 0).setScrollFactor(0).setDepth(this.tiefe + 4).setVisible(false);
+    if (this.fogRT.postFX) this.fogBlur = this.fogRT.postFX.addBlur(0, 2, 2, 1, 0xffffff, 4);
     this.maskG = scene.add.graphics().setVisible(false);
     this.brush = scene.add.image(0, 0, this.brushTextur()).setVisible(false);
     this.flammeG = scene.add.graphics().setScrollFactor(0).setDepth(this.tiefe + 3).setVisible(false);
@@ -125,21 +141,20 @@ export class SchattenManager {
       rt.erase(this.maskG);
     }
     if (this.blur) { const b = 1.4 + (weich / 100) * 3; this.blur.x = b; this.blur.y = b; }
+    this.fogRT?.setVisible(false);
     this.flammeG.setVisible(false).clear(); this.versteckeRest();
   }
 
   // ===== DUNGEON: mehrere Lichter (Fackeln + Sichtradius) ===================
-  lichter(lichter: Licht[], dynamisch: Occluder[], staerke: number): void {
+  // sicht (optional) = Standpunkt des Helden: dann wird ALLES ausgeblendet, was
+  // außerhalb seiner Sichtlinie liegt (Sichtfeld). So sieht man eine Fackel im
+  // Nebenraum nur als Lichtausschnitt durch die Tür, nicht den ganzen Raum.
+  lichter(lichter: Licht[], dynamisch: Occluder[], staerke: number, sicht?: { x: number; y: number; radius: number }): void {
     this.sonneGfx.clear();
     const aktiv = staerke > 0 ? lichter : [];
     if (aktiv.length === 0) { this.dunkelAus(); return; }
     const cam = this.scene.cameras.main, z = cam.zoom;
     const w2s = (x: number, y: number): [number, number] => [(x - cam.worldView.x) * z, (y - cam.worldView.y) * z];
-    const W = this.scene.scale.width, H = this.scene.scale.height;
-    const rand: Segment[] = [
-      { ax: 0, ay: 0, bx: W, by: 0 }, { ax: W, ay: 0, bx: W, by: H },
-      { ax: W, ay: H, bx: 0, by: H }, { ax: 0, ay: H, bx: 0, by: 0 },
-    ];
     const statS: Segment[] = this.statSeg.map((s) => { const [ax, ay] = w2s(s.ax, s.ay), [bx, by] = w2s(s.bx, s.by); return { ax, ay, bx, by }; });
 
     const rt = this.rt; rt.setVisible(true); rt.clear();
@@ -153,25 +168,37 @@ export class SchattenManager {
       const [lx, ly] = w2s(L.x, L.y); const rS = L.radius * z;
       if (L.art === 'sicht') {
         // weicher persönlicher Lichtradius / Effekt-Licht - reiner Reveal (kein Schattenwurf)
-        this.brush.setScale((rS * 2) / 256); rt.erase(this.brush, lx, ly);
-        if (L.farbe !== undefined) { this.glow(lx, ly, rS * 0.95, L.farbe, 0.24); this.glow(lx, ly, rS * 0.45, 0xffffff, 0.12); }
-        else this.glow(lx, ly, rS * 0.9, 0xc89a5a, 0.14);   // warm-gelblicher Held-Schein
+        this.brush.setScale((rS * 2) / SchattenManager.TEX); rt.erase(this.brush, lx, ly);
+        this.raumFuellung(lx, ly, rS, L);   // neutrales Raumlicht (heller/weißer Raum)
+        if (L.farbe !== undefined) { this.glow(lx, ly, rS * 0.9, L.farbe, 0.18); this.glow(lx, ly, rS * 0.4, 0xffe6c0, 0.10); }
+        else this.glow(lx, ly, rS * 0.85, 0xc89a5a, 0.12);   // warm-gelblicher Held-Schein
         continue;
       }
       if (L.art === 'glut') {
         // Fackel-Glut: warmes Glühen (kein Schattenwurf, kein Reveal -> günstig), folgt Feuer-Stil.
+        // Plus neutrales Raumlicht, damit auch eine ferne Fackel den Bereich aufhellt.
         const fl = 1 + Math.sin(t * 8 + lx) * 0.06 + Math.sin(t * 19 + ly) * 0.04, hk = L.staerke ?? 1, ton = L.farbTon ?? 0.4;
+        const gR = 0.4 + (L.glutRadius ?? 0.6) * 0.85;   // Streuung des warmen Scheins (eng..weit)
+        this.raumFuellung(lx, ly, rS, L);
         if (this.feuerNeu) {
-          this.glow(lx, ly, rS * 1.05 * fl, mischFarbe(0x6a1604, 0xb8702e, ton), 0.18 * hk); this.glow(lx, ly, rS * 0.55 * fl, mischFarbe(0xd8641a, 0xf0b050, ton), 0.24 * hk); this.glow(lx, ly, rS * 0.3 * fl, mischFarbe(0xff9030, 0xfff0c8, ton), 0.28 * hk);
+          this.glow(lx, ly, rS * 0.78 * gR * fl, mischFarbe(0x6a1604, 0xb8702e, ton), 0.18 * hk); this.glow(lx, ly, rS * 0.42 * gR * fl, mischFarbe(0xd8641a, 0xf0b050, ton), 0.24 * hk); this.glow(lx, ly, rS * 0.22 * gR * fl, mischFarbe(0xff9030, 0xfff0c8, ton), 0.28 * hk);
           this.flamme(lx, ly, t, fl);
         } else {
-          this.glow(lx, ly, rS * 1.3, mischFarbe(0xff7028, 0xffe0b0, ton), 0.22 * hk); this.glow(lx, ly, rS * 0.75, mischFarbe(0xffb060, 0xfff8e8, ton), 0.22 * hk);
+          this.glow(lx, ly, rS * 0.95 * gR, mischFarbe(0xff7028, 0xffe0b0, ton), 0.22 * hk); this.glow(lx, ly, rS * 0.55 * gR, mischFarbe(0xffb060, 0xfff8e8, ton), 0.22 * hk);
         }
         continue;
       }
-      // FACKEL: Flächenlicht von 6 Abtastpunkten -> echte weiche Schatten
+      // FACKEL: Flächenlicht von 6 Abtastpunkten -> echte weiche Schatten.
+      // WICHTIG: die Strahlen werden von einer Box um das LICHT (Radius) begrenzt,
+      // NICHT vom Bildschirmrand - so projiziert auch eine Fackel AUSSERHALB des
+      // Bildes ihr Licht (+Schatten) noch in die Szene (Autorwunsch R57).
       const weich = L.weich ?? 0.7; maxWeich = Math.max(maxWeich, weich);
-      const segs: Segment[] = [...rand, ...statS];
+      const bb = rS;
+      const segs: Segment[] = [
+        { ax: lx - bb, ay: ly - bb, bx: lx + bb, by: ly - bb }, { ax: lx + bb, ay: ly - bb, bx: lx + bb, by: ly + bb },
+        { ax: lx + bb, ay: ly + bb, bx: lx - bb, by: ly + bb }, { ax: lx - bb, ay: ly + bb, bx: lx - bb, by: ly - bb },
+        ...statS,
+      ];
       for (const o of dynamisch) {
         const d = Math.hypot(o.x - L.x, o.y - L.y);
         if (d < 22 || d > L.radius + 56) continue;   // Selbst-Verdeckung aus (Held wirft sonst Schatten auf SEIN eigenes Licht), nur nahe Verdecker (Leistung)
@@ -189,18 +216,56 @@ export class SchattenManager {
         this.maskG.closePath(); this.maskG.fillPath();
         rt.erase(this.maskG);
       }
-      // dunkler Lichtabfall zum Rand (Falloff) + Schein (Feuer ODER warm/farbig)
+      // dunkler Lichtabfall zum Rand (Falloff) + neutrales Raumlicht + warmer Schein.
       const flick = 1 + Math.sin(t * 8 + lx) * 0.05 + Math.sin(t * 21 + ly) * 0.03;
-      // Falloff bewusst dezent: bei VIELEN schattenwerfenden Lichtern überlagern
-      // sich die dunklen Ränder sonst zu einem Schleier über dem Helden (Autorbug R56).
       this.falloff(lx, ly, rS, 0.28 + 0.26 * staerke);
-      const hk = L.staerke ?? 1;
+      this.raumFuellung(lx, ly, rS, L);   // heller/weißer Raum (getrennt von der warmen Flamme)
+      const hk = L.staerke ?? 1, gR = 0.4 + (L.glutRadius ?? 0.6) * 0.85;   // Streuung des warmen Scheins
       if (L.farbe !== undefined) {   // warmer/ farbiger Schein OHNE Flamme (z.B. Held)
-        this.glow(lx, ly, rS * 0.92, L.farbe, 0.20 * hk); this.glow(lx, ly, rS * 0.45, 0xffe6c0, 0.12 * hk);
-      } else this.feuer(lx, ly, rS, t, flick, hk, L.farbTon ?? 0.4);   // Fackel = Feuer + Flamme
+        this.glow(lx, ly, rS * 0.55 * gR, L.farbe, 0.20 * hk); this.glow(lx, ly, rS * 0.28 * gR, 0xffe6c0, 0.12 * hk);
+      } else this.feuer(lx, ly, rS * gR, t, flick, hk, L.farbTon ?? 0.4);   // Fackel = konzentriertes Feuer + Flamme
     }
-    if (this.blur) { const b = 1.5 + maxWeich * 3; this.blur.x = b; this.blur.y = b; }
+    // Weichzeichner: weiche Schatten kommen v.a. aus der RING-Abtastung; der Blur
+    // ist nur die Feinabstimmung. Schärfe-Regler 1 = scharf (kaum Blur, kein
+    // Schleier), 0 = weich. So bleibt der Raum knackig, die Schatten trotzdem weich.
+    if (this.blur) { const b = (0.4 + maxWeich * 2.4) * (1 - 0.85 * this.schaerfe); this.blur.x = b; this.blur.y = b; }
+    this.sichtfeld(sicht, dynamisch, staerke, z, w2s);
     this.versteckeRest();
+  }
+
+  // Held-Sichtfeld als oberste Maske: deckt alles ab, was NICHT in der Sichtlinie
+  // des Helden liegt. Dadurch sieht man Licht aus Nebenräumen nur als Ausschnitt
+  // durch Türen/Gänge - es ploppt nicht mehr der ganze Raum auf, sondern wächst
+  // weich, während man sich bewegt.
+  private sichtfeld(sicht: { x: number; y: number; radius: number } | undefined, dynamisch: Occluder[], staerke: number, z: number, w2s: (x: number, y: number) => [number, number]): void {
+    const fog = this.fogRT;
+    if (!fog) return;
+    if (!sicht) { fog.setVisible(false); return; }
+    const [hx, hy] = w2s(sicht.x, sicht.y); const rS = sicht.radius * z;
+    const bb = rS;
+    const segs: Segment[] = [
+      { ax: hx - bb, ay: hy - bb, bx: hx + bb, by: hy - bb }, { ax: hx + bb, ay: hy - bb, bx: hx + bb, by: hy + bb },
+      { ax: hx + bb, ay: hy + bb, bx: hx - bb, by: hy + bb }, { ax: hx - bb, ay: hy + bb, bx: hx - bb, by: hy - bb },
+      ...this.statSeg.map((s) => { const [ax, ay] = w2s(s.ax, s.ay), [bx, by] = w2s(s.bx, s.by); return { ax, ay, bx, by }; }),
+    ];
+    for (const o of dynamisch) {
+      const d = Math.hypot(o.x - sicht.x, o.y - sicht.y);
+      if (d < 22 || d > sicht.radius + 40) continue;   // eigener Körper verdeckt das eigene Sichtfeld nicht
+      for (const s of rechteckSegmente({ x: o.x - o.w / 2, y: o.y - o.h / 2, w: o.w, h: o.h })) {
+        const [ax, ay] = w2s(s.ax, s.ay), [bx, by] = w2s(s.bx, s.by); segs.push({ ax, ay, bx, by });
+      }
+    }
+    fog.setVisible(true).clear();
+    fog.fill(0x050407, 0.86 + 0.12 * staerke);   // alles außerhalb der Sichtlinie ist dunkel
+    const poly = sichtPolygon({ x: hx, y: hy }, segs, rS);
+    if (poly.length >= 3) {
+      this.maskG.clear(); this.maskG.fillStyle(0xffffff, 1); this.maskG.beginPath();
+      this.maskG.moveTo(poly[0].x, poly[0].y);
+      for (let i = 1; i < poly.length; i++) this.maskG.lineTo(poly[i].x, poly[i].y);
+      this.maskG.closePath(); this.maskG.fillPath();
+      fog.erase(this.maskG);   // Sichtlinie freistanzen
+    }
+    if (this.fogBlur) { const b = 2.4 + (1 - this.schaerfe) * 4; this.fogBlur.x = b; this.fogBlur.y = b; }
   }
 
   // warmer Feuerschein + Flamme je nach Stil. hk = Helligkeit, ton = Farbtemperatur
@@ -237,6 +302,16 @@ export class SchattenManager {
     g.fillEllipse(lx, ly - h * 0.35, w * 0.5, h * 0.4);
   }
 
+  // Neutrales Raumlicht: EIN breiter, weicher additiver Schein (Richtung weiß),
+  // der den Raum aufhellt, OHNE die warme Flammenfarbe zu übernehmen. Bewusst nur
+  // EINE Schicht -> hell, aber kein wabernder Schleier aus vielen Lagen.
+  private raumFuellung(lx: number, ly: number, rS: number, L: Licht): void {
+    const r = L.raumLicht ?? 0;
+    if (r <= 0) return;
+    const farbe = mischFarbe(0xffcaa0, 0xffffff, L.raumFarbe ?? 0.6);   // warm .. kühl-weiß
+    this.glow(lx, ly, rS * 0.95, farbe, 0.26 * r);
+  }
+
   // ----- Hilfen: Bild-Pools (Glühen additiv, Falloff dunkel) ----------------
   private glow(lx: number, ly: number, rS: number, farbe: number, alpha: number, soft = 1): void {
     while (this.glowPool.length <= this.glowN) {
@@ -244,7 +319,7 @@ export class SchattenManager {
         .setBlendMode(Phaser.BlendModes.ADD).setDepth(this.tiefe + 2).setVisible(false));
     }
     const im = this.glowPool[this.glowN++];
-    im.setVisible(true).setTint(farbe).setPosition(lx, ly).setScale((rS * 2 * soft) / 256).setAlpha(alpha);
+    im.setVisible(true).setTint(farbe).setPosition(lx, ly).setScale((rS * 2 * soft) / SchattenManager.TEX).setAlpha(alpha);
   }
 
   private falloff(lx: number, ly: number, rS: number, alpha: number): void {
@@ -253,7 +328,7 @@ export class SchattenManager {
         .setDepth(this.tiefe + 1).setVisible(false));
     }
     const im = this.falloffPool[this.falloffN++];
-    im.setVisible(true).setPosition(lx, ly).setScale((rS * 2.5) / 256).setAlpha(alpha);
+    im.setVisible(true).setPosition(lx, ly).setScale((rS * 2.5) / SchattenManager.TEX).setAlpha(alpha);
   }
 
   private versteckeRest(): void {
@@ -262,7 +337,7 @@ export class SchattenManager {
   }
 
   private dunkelAus(): void {
-    this.rt.setVisible(false); this.flammeG.setVisible(false).clear();
+    this.rt.setVisible(false); this.fogRT?.setVisible(false); this.flammeG.setVisible(false).clear();
     for (const im of this.glowPool) im.setVisible(false);
     for (const im of this.falloffPool) im.setVisible(false);
     this.glowN = this.falloffN = 0;
@@ -270,7 +345,7 @@ export class SchattenManager {
 
   aus(): void { this.sonneGfx.clear(); if (this.sonneBlur) this.sonneBlur.x = this.sonneBlur.y = 0; this.dunkelAus(); }
 
-  private aufResize(): void { this.rt.setSize(this.scene.scale.width, this.scene.scale.height); }
+  private aufResize(): void { const w = this.scene.scale.width, h = this.scene.scale.height; this.rt.setSize(w, h); this.fogRT?.setSize(w, h); }
 
   // Smooth-Radial-Textur: VIELE Stützpunkte (kein Mach-Band-Knick mehr),
   // 512px (sauber hochskalierbar), LINEAR gefiltert (pixelArt setzt sonst NEAREST
@@ -278,7 +353,7 @@ export class SchattenManager {
   // dither = winzige Alpha-Streuung gegen 8-Bit-Bänderung bei großen Lichtern.
   private radialTextur(key: string, r: number, g: number, b: number, kurve: (t: number) => number, dither = 1): string {
     if (this.scene.textures.exists(key)) return key;
-    const S = 512, cv = document.createElement('canvas'); cv.width = cv.height = S;
+    const S = SchattenManager.TEX, cv = document.createElement('canvas'); cv.width = cv.height = S;
     const c = cv.getContext('2d')!;
     const grd = c.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
     const N = 64;   // 64 Stützpunkte folgen der weichen Kurve -> fließender Verlauf
@@ -315,7 +390,7 @@ export class SchattenManager {
 
   destroy(): void {
     this.scene.scale.off('resize', this.aufResize, this);
-    this.sonneGfx.destroy(); this.rt.destroy(); this.maskG.destroy(); this.brush.destroy(); this.flammeG.destroy();
+    this.sonneGfx.destroy(); this.rt.destroy(); this.fogRT?.destroy(); this.maskG.destroy(); this.brush.destroy(); this.flammeG.destroy();
     for (const im of this.glowPool) im.destroy();
     for (const im of this.falloffPool) im.destroy();
   }
