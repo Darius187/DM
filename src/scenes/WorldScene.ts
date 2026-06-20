@@ -2406,19 +2406,22 @@ export class WorldScene extends CombatScene {
     else this.schatten!.sonne(winkel, this.dynamischeOccluder(), st);
   }
 
-  // Dungeon-Lichter für die Debug-Engine: Held (warmer Sichtradius) + NÄCHSTE Fackeln
-  // (weiche Raycasting-Schatten) + Effekte (Feuerball/Zauber/Feuerzauber = farbiger Reveal).
+  // Dungeon-Lichter für die Debug-Engine: HELD = warmes Raycasting-Licht (wirft
+  // Schatten an den Wänden!), NÄCHSTE Fackeln = Feuer-Raycasting (folgen Feuer-Stil),
+  // Effekte (Feuerball/Zauber/Feuerzauber) = farbiges Reveal.
   private dungeonLichter(lic: ReturnType<typeof getSettings>['licht']): Licht[] {
     const lichter: Licht[] = [];
-    if (lic.heldLichtAn) lichter.push({ x: this.px, y: this.py - 6, art: 'sicht', radius: lic.sichtRadius });
     const weich = lic.dungeonWeichheit / 100, fR = 0.6 + (lic.fackelReichweite ?? 50) / 100;
-    // Fackeln nach Nähe sortieren - nur die 2 nächsten werfen Schatten (Leistung), Rest glüht.
+    // HELD wirft Schatten: 'fackel' mit warmer farbe (= warmer Schein OHNE Flamme)
+    // HELD = das eine Raycasting-Licht (wirft Schatten an den Wänden), warm, OHNE Flamme.
+    if (lic.heldLichtAn) lichter.push({ x: this.px, y: this.py - 6, art: 'fackel', radius: lic.sichtRadius, weich, farbe: 0xc89a5a });
+    // Nahe Fackeln: warmes Glühen (folgt Feuer-Stil) + die NÄCHSTE wirft auch Schatten.
     const nahe = this.area.torches
       .map((t) => ({ t, d: Math.hypot(t.x - this.px, t.y - this.py) }))
-      .filter((o) => o.d < (this.area.dark ? 235 + this.p.stats.licht : 360) * 1.35)
+      .filter((o) => o.d < (235 + this.p.stats.licht) * 1.4)
       .sort((a, b) => a.d - b.d);
-    nahe.forEach((o, i) => lichter.push({ x: o.t.x, y: o.t.y - 4, art: i < 2 ? 'fackel' : 'glut', radius: 140 * fR, weich }));
-    // Effekt-Lichter (wie im alten System): Feuerball orange, Zauber violett, Feuerzauber
+    nahe.forEach((o) => lichter.push({ x: o.t.x, y: o.t.y - 4, art: 'glut', radius: 130 * fR, weich }));
+    // Effekt-Lichter: Feuerball orange, Zauber violett, Feuerzauber
     for (const pr of this.projectiles) {
       if (!pr.fire && !pr.magie) continue;
       lichter.push({ x: pr.x, y: pr.y, art: 'sicht', radius: 72, farbe: pr.fire ? 0xe8842a : 0xb06ae8 });
@@ -2427,22 +2430,24 @@ export class WorldScene extends CombatScene {
     return lichter;
   }
 
-  // Verdecker fürs Dungeon-Raycasting: nahe SOLID-Wände zu wenigen Rechtecken
-  // zusammengefasst (Occluder mit MITTE x,y) + Held + Gegner.
+  // Verdecker fürs Dungeon-Raycasting: nahe SOLID-Wände zu MAXIMALEN Rechtecken
+  // zusammengefasst (2D-Greedy) - dadurch KEINE einzelnen Kachel-Kästchen-Schatten
+  // mehr, sondern saubere Wandflächen. + Held/Gegner.
   private dungeonVerdecker(): Occluder[] {
     const occ = this.dynamischeOccluder();
-    const tx0 = Math.floor(this.px / TILE), ty0 = Math.floor(this.py / TILE), R = 6;
-    for (let ty = ty0 - R; ty <= ty0 + R; ty++) {
-      let lauf = -1;
-      for (let tx = tx0 - R; tx <= tx0 + R + 1; tx++) {
-        const solid = tx <= tx0 + R && this.isSolidAt(tx * TILE + TILE / 2, ty * TILE + TILE / 2);
-        if (solid && lauf < 0) lauf = tx;
-        else if (!solid && lauf >= 0) {
-          const w = (tx - lauf) * TILE;
-          occ.push({ x: lauf * TILE + w / 2, y: ty * TILE + TILE / 2, w, h: TILE });
-          lauf = -1;
-        }
-      }
+    const tx0 = Math.floor(this.px / TILE), ty0 = Math.floor(this.py / TILE), R = 7, W = 2 * R + 1;
+    const solid: boolean[][] = [], used: boolean[][] = [];
+    for (let j = 0; j < W; j++) {
+      solid[j] = []; used[j] = [];
+      for (let i = 0; i < W; i++) { solid[j][i] = this.isSolidAt((tx0 - R + i) * TILE + TILE / 2, (ty0 - R + j) * TILE + TILE / 2); used[j][i] = false; }
+    }
+    for (let j = 0; j < W; j++) for (let i = 0; i < W; i++) {
+      if (!solid[j][i] || used[j][i]) continue;
+      let w = 1; while (i + w < W && solid[j][i + w] && !used[j][i + w]) w++;
+      let h = 1; for (; j + h < W; h++) { let ok = true; for (let k = 0; k < w; k++) if (!solid[j + h][i + k] || used[j + h][i + k]) { ok = false; break; } if (!ok) break; }
+      for (let a = 0; a < h; a++) for (let k = 0; k < w; k++) used[j + a][i + k] = true;
+      const x0 = (tx0 - R + i) * TILE, y0 = (ty0 - R + j) * TILE;
+      occ.push({ x: x0 + w * TILE / 2, y: y0 + h * TILE / 2, w: w * TILE, h: h * TILE });
     }
     return occ;
   }

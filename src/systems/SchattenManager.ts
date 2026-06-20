@@ -151,12 +151,14 @@ export class SchattenManager {
         continue;
       }
       if (L.art === 'glut') {
-        // Fackel-Glut im Dungeon: NUR dezentes warmes Glühen + kleine Flamme -
-        // KEIN Reveal, KEIN Schattenwurf, bleibt lokal und überstrahlt nichts.
+        // Fackel-Glut: warmes Glühen (kein Schattenwurf, kein Reveal -> günstig), folgt Feuer-Stil.
         const fl = 1 + Math.sin(t * 8 + lx) * 0.06 + Math.sin(t * 19 + ly) * 0.04;
-        this.glow(lx, ly, rS * 1.0 * fl, 0x7a2c0a, 0.13);
-        this.glow(lx, ly, rS * 0.5 * fl, 0xd8641a, 0.16);
-        this.flamme(lx, ly, t, fl);
+        if (this.feuerNeu) {
+          this.glow(lx, ly, rS * 1.05 * fl, 0x7a2c0a, 0.18); this.glow(lx, ly, rS * 0.55 * fl, 0xd8641a, 0.24); this.glow(lx, ly, rS * 0.3 * fl, 0xffb24a, 0.28);
+          this.flamme(lx, ly, t, fl);
+        } else {
+          this.glow(lx, ly, rS * 1.3, 0xffc888, 0.22); this.glow(lx, ly, rS * 0.75, 0xfff0c8, 0.22);
+        }
         continue;
       }
       // FACKEL: Flächenlicht von 6 Abtastpunkten -> echte weiche Schatten
@@ -179,10 +181,12 @@ export class SchattenManager {
         this.maskG.closePath(); this.maskG.fillPath();
         rt.erase(this.maskG);
       }
-      // dunkler Lichtabfall zum Rand (Falloff) + Feuerschein + Flamme
+      // dunkler Lichtabfall zum Rand (Falloff) + Schein (Feuer ODER warm/farbig)
       const flick = 1 + Math.sin(t * 8 + lx) * 0.05 + Math.sin(t * 21 + ly) * 0.03;
       this.falloff(lx, ly, rS, 0.45 + 0.4 * staerke);
-      this.feuer(lx, ly, rS, t, flick);
+      if (L.farbe !== undefined) {   // warmer/ farbiger Schein OHNE Flamme (z.B. Held)
+        this.glow(lx, ly, rS * 0.92, L.farbe, 0.20); this.glow(lx, ly, rS * 0.45, 0xffe6c0, 0.12);
+      } else this.feuer(lx, ly, rS, t, flick);   // Fackel = Feuer + Flamme (folgt feuerNeu)
     }
     if (this.blur) { const b = 1.5 + maxWeich * 3; this.blur.x = b; this.blur.y = b; }
     this.versteckeRest();
@@ -197,9 +201,9 @@ export class SchattenManager {
       this.glow(lx, ly, rS * 0.34 * flick, 0xffb24a, 0.40);   // hell, nah
       this.flamme(lx, ly, t, flick);
     } else {
-      // ALT: ein schlichter warmer Kreis
-      this.glow(lx, ly, rS * 1.1, 0xff8a32, 0.28 * flick);
-      this.glow(lx, ly, rS * 0.5, 0xffd08a, 0.22 * flick);
+      // ALT: weicher, blasser, ruhiger Laternen-Schein - GRÖSSER, kühler, OHNE Flamme
+      this.glow(lx, ly, rS * 1.35, 0xffc888, 0.20);
+      this.glow(lx, ly, rS * 0.8, 0xfff0c8, 0.22);
     }
   }
 
