@@ -9,12 +9,23 @@ import { LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, PLAYER } from '../data/kampf';
 import { recalc } from '../logic/playerState';
 import type { EnemyTypeId, WeaponClass } from '../data/types';
 import { WEAPONS, BOWS } from '../data/items';
-import { SchattenManager, type Occluder } from '../systems/SchattenManager';
+import { SchattenManager, type Occluder, type Licht } from '../systems/SchattenManager';
 import { getSettings } from '../logic/settings';
 import Phaser from 'phaser';
 
 const ARENA_W = 30;
 const ARENA_H = 20;
+
+// Licht-Testvarianten (Autorwunsch R55: "mehrere Varianten per Regler testen")
+const LICHT_VARIANTEN = [
+  'Nur Sichtradius (Held)',
+  'Nur Wandfackel',
+  'Wandfackel + Sichtradius',
+  'Mehrere Fackeln + Sichtradius',
+  'Licht am Helden (alt)',
+] as const;
+
+interface LichtRegler { x: number; y: number; w: number; label: string; min: number; max: number; get: () => number; set: (v: number) => void; txt: Phaser.GameObjects.Text }
 
 // F-Tasten, damit Zauber (1-3) und Fähigkeiten (4-6) frei bleiben
 const SPAWN_KEYS: Record<string, EnemyTypeId> = {
@@ -36,9 +47,20 @@ export class DebugArenaScene extends CombatScene {
   // jeden Frame. Bewegt sich die Sonne, ändert sich nur ein Winkel/eine Länge.
   private sonnenWinkel = 0.5;                 // 0..1 Tageslauf (0 Sonnenaufgang .. 1 Untergang)
   private sonneAuto = true;                   // Sonne wandert automatisch
-  private fackelAn = false;                   // getragene Fackel (Taste X)
+  private fackelAn = false;                   // Dungeon-Dunkel mit Lichtern (Taste X)
   private schatten!: SchattenManager;         // geteilter Schatten-Manager (beide Modi)
   private statischeOccl: Occluder[] = [];     // Säulen/Truhen/Gebäude (werfen Schatten)
+  // Licht-Test (R55): Variante + Held-Sichtradius + Feuer-Stil + Weichheit
+  private fackeln: Array<{ x: number; y: number }> = [];   // feste Wandfackeln
+  private lichtVariante = 2;                   // Index in LICHT_VARIANTEN (Start: Wandfackel + Sicht)
+  private sichtRadius = 110;                   // persönlicher Lichtradius des Helden
+  private heldLichtAn = true;                  // Sichtradius an/aus
+  private feuerNeu = true;                     // Feuer-Stil neu/alt
+  private weichheit = 0.7;                     // Schatten-Weichheit 0..1
+  private lichtPanelG!: Phaser.GameObjects.Graphics;
+  private lichtRegler: LichtRegler[] = [];
+  private ziehRegler: LichtRegler | null = null;
+  private lichtSchalterListe: Array<{ txt: Phaser.GameObjects.Text; label: () => string }> = [];
 
   constructor() {
     super('DebugArena');
@@ -60,7 +82,7 @@ export class DebugArenaScene extends CombatScene {
       'DEBUG-ARENA  ·  F1-F7: Gegner spawnen (Pest/Skelett/Schütze/Schatten/Wolf/Ratte/Templer)',
       'F8: Dummy · F9: Elite an/aus · K: Gegner löschen · H: Hitboxen/Timings · G: Waffe wechseln · L: Schulen Stufe 9 · ESC: Menü',
       'WASD: Laufen · Klick: Angriff · Umschalt: schwer · Rechtsklick: Block · Leer: Rolle · R/T: Waffen-Fähigkeit · 4/5/6: Kettenblitz/Frostnova/Bannkreis',
-      'SCHATTEN-TEST  ·  X: Dungeon-Licht (feste Wandfackel) an/aus - der Held wirft selbst Schatten  ·  Z: Sonne wandern an/aus  ·  < > : Sonnenstand drehen',
+      'LICHT-TEST (Panel rechts): Variante/Sichtradius/Feuer-Stil/Weichheit  ·  X: Dungeon-Dunkel an/aus  ·  Z: Sonne wandern  ·  < > : Sonnenstand',
     ].join('\n'), {
       fontFamily: 'serif', fontSize: '13px', color: '#c8b890', backgroundColor: '#000000aa', padding: { x: 8, y: 6 },
     }).setOrigin(0, 1).setScrollFactor(0).setDepth(700);
@@ -168,9 +190,11 @@ export class DebugArenaScene extends CombatScene {
     if (this.sonneAuto) this.sonnenWinkel = (this.sonnenWinkel + 0.00003 * delta) % 1;
     const st = getSettings().schatten / 100;   // Leistungs-/Stärke-Regler
     const dyn = this.dynamischeOccl();
-    // Licht steht fest im Raum (Wandfackel) - der Held wirft jetzt selbst Schatten.
-    if (this.fackelAn) this.schatten.fackel(this.fackelPos, 240, dyn, st);
+    // Dungeon-Licht über die gewählte Variante (Sichtradius/Wandfackeln), sonst Sonne.
+    this.schatten.feuerNeu = this.feuerNeu;
+    if (this.fackelAn) this.schatten.lichter(this.baueLichter(), dyn, st);
     else this.schatten.sonne(this.sonnenWinkel, dyn, st);
+    this.zeichneLichtPanel();
     const std = Math.round(4 + this.sonnenWinkel * 16);   // ~4..20 Uhr
     this.hudText.setText([
       `Leben ${Math.max(0, Math.ceil(this.p.hp))}/${this.p.stats.maxhp}   Mana ${Math.ceil(this.p.mana)}/${this.p.stats.maxmana}`,
@@ -208,24 +232,100 @@ export class DebugArenaScene extends CombatScene {
       this.add.rectangle(x, y - bh + 4, bw, 10, 0x6a5c48).setDepth(y);   // Dachkante
       this.statischeOccl.push({ x, y, w: bw, h: 16, hoehe: bh + 30 });
     }
-    // Feste Wandfackel als Lichtquelle (R55, Autorwunsch "Fackel beim Helden raus
-    // nehmen"): das Dungeon-Licht steht jetzt im Raum, NICHT am Helden - so wirft
-    // der Held selbst einen (weichen) Schatten, wenn er sich davor bewegt.
-    this.fackelPos = { x: cx, y: cy - 150 };
-    this.add.rectangle(this.fackelPos.x, this.fackelPos.y + 8, 8, 20, 0x4a3a2a).setDepth(this.fackelPos.y);   // Stab
-    this.add.ellipse(this.fackelPos.x, this.fackelPos.y - 4, 14, 10, 0xffb347).setDepth(this.fackelPos.y + 1); // Flamme
-    this.add.ellipse(this.fackelPos.x, this.fackelPos.y - 6, 7, 6, 0xfff0b0).setDepth(this.fackelPos.y + 1);
+    // Feste Wandfackeln als Lichtquellen (R55): das Dungeon-Licht steht im Raum,
+    // NICHT am Helden - so wirft der Held selbst weiche Schatten. Die Flamme malt
+    // der Schatten-Manager animiert; hier nur der Halter (Stab + Korb).
+    this.fackeln = [{ x: cx, y: cy - 150 }, { x: cx - 200, y: cy + 70 }, { x: cx + 205, y: cy + 50 }];
+    for (const f of this.fackeln) this.zeichneFackelHalter(f.x, f.y);
     this.schatten = new SchattenManager(this);
     this.schatten.setzeStatisch(this.statischeOccl);
+    this.baueLichtPanel();
   }
 
-  private fackelPos = { x: 0, y: 0 };   // feste Lichtquelle im Dungeon-Modus
+  // Wandfackel-Halter (Stab + eiserner Korb); die Flamme sitzt am Punkt (x,y).
+  private zeichneFackelHalter(x: number, y: number): void {
+    this.add.rectangle(x, y + 13, 5, 22, 0x5a4228).setDepth(y).setStrokeStyle(1, 0x2e2014);  // Holzstab
+    this.add.rectangle(x, y + 4, 9, 4, 0x3a3a40).setDepth(y + 0.1);                            // Eisenband
+    this.add.ellipse(x, y, 12, 7, 0x2a221a).setDepth(y + 0.1);                                 // Korb/Glutbett
+    this.add.ellipse(x, y - 1, 7, 4, 0x6a2a10).setDepth(y + 0.2);                              // Glut
+  }
 
   // Dynamische Verdecker (Held + Gegner) je Frame - werfen auch Schatten.
   private dynamischeOccl(): Occluder[] {
     const d: Occluder[] = [{ x: this.px, y: this.py + 10, w: 16, h: 8, hoehe: 26 }];
     for (const e of this.enemies) if (e.sprite) d.push({ x: e.x, y: e.y + 8, w: 15, h: 8, hoehe: 22 });
     return d;
+  }
+
+  // Lichter der gewählten Variante zusammenstellen (Held-Sicht + Wandfackeln).
+  private baueLichter(): Licht[] {
+    const sicht: Licht = { x: this.px, y: this.py - 6, art: 'sicht', radius: this.sichtRadius };
+    const fackel = (i: number, r = 240): Licht => ({ x: this.fackeln[i].x, y: this.fackeln[i].y, art: 'fackel', radius: r, weich: this.weichheit });
+    const mitSicht = (arr: Licht[]): Licht[] => this.heldLichtAn ? [...arr, sicht] : arr;
+    switch (this.lichtVariante) {
+      case 0: return this.heldLichtAn ? [sicht] : [];                       // Nur Sichtradius
+      case 1: return [fackel(0)];                                           // Nur Wandfackel
+      case 2: return mitSicht([fackel(0)]);                                 // Wandfackel + Sicht
+      case 3: return mitSicht([fackel(0), fackel(1), fackel(2)]);           // Mehrere Fackeln + Sicht
+      case 4: return [{ x: this.px, y: this.py - 6, art: 'fackel', radius: Math.max(150, this.sichtRadius), weich: this.weichheit }]; // Licht am Helden (alt)
+      default: return mitSicht([fackel(0)]);
+    }
+  }
+
+  // --- Licht-Test-Bedienfeld (Regler + Schalter, Autorwunsch R55) -----------
+  private baueLichtPanel(): void {
+    const W = this.scale.width, x0 = W - 322, y0 = 86;
+    this.add.text(x0 + 8, y0 - 22, 'LICHT-TEST (Dungeon: X)', { fontFamily: 'serif', fontSize: '13px', color: '#ffcf8a', backgroundColor: '#000000aa', padding: { x: 6, y: 3 } }).setScrollFactor(0).setDepth(800);
+    this.lichtPanelG = this.add.graphics().setScrollFactor(0).setDepth(795);
+    this.lichtRegler = []; this.lichtSchalterListe = [];
+    let y = y0 + 8;
+    // Varianten-Wahl
+    this.lichtSchalter(x0 + 8, y, () => `Variante: ${LICHT_VARIANTEN[this.lichtVariante]}`, () => { this.lichtVariante = (this.lichtVariante + 1) % LICHT_VARIANTEN.length; }); y += 30;
+    this.lichtSchalter(x0 + 8, y, () => `Held-Licht (Sicht): ${this.heldLichtAn ? 'AN' : 'AUS'}`, () => { this.heldLichtAn = !this.heldLichtAn; }); y += 30;
+    this.lichtReglerNeu(x0 + 8, y, 240, 'Sichtradius', 40, 240, () => this.sichtRadius, (v) => { this.sichtRadius = v; }); y += 34;
+    this.lichtSchalter(x0 + 8, y, () => `Feuer-Stil: ${this.feuerNeu ? 'NEU' : 'alt'}`, () => { this.feuerNeu = !this.feuerNeu; }); y += 30;
+    this.lichtReglerNeu(x0 + 8, y, 240, 'Weichheit', 0, 100, () => Math.round(this.weichheit * 100), (v) => { this.weichheit = v / 100; }); y += 34;
+    this.lichtSchalter(x0 + 8, y, () => `Dungeon-Dunkel: ${this.fackelAn ? 'AN' : 'AUS'}`, () => { this.fackelAn = !this.fackelAn; }); y += 30;
+
+    // Ziehen der Regler global auswerten
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => { if (this.ziehRegler) this.setzeReglerAusX(this.ziehRegler, p.x); });
+    this.input.on('pointerup', () => { this.ziehRegler = null; });
+  }
+
+  private lichtSchalter(x: number, y: number, label: () => string, fn: () => void): Phaser.GameObjects.Text {
+    const t = this.add.text(x, y, label(), { fontFamily: 'serif', fontSize: '13px', color: '#e6dcc4', backgroundColor: '#241c10', padding: { x: 7, y: 4 } }).setScrollFactor(0).setDepth(801).setInteractive({ useHandCursor: true });
+    t.on('pointerover', () => t.setBackgroundColor('#3a2e18'));
+    t.on('pointerout', () => t.setBackgroundColor('#241c10'));
+    t.on('pointerdown', (p: Phaser.Input.Pointer) => { p.event.stopPropagation(); fn(); });
+    this.lichtSchalterListe.push({ txt: t, label });
+    return t;
+  }
+
+  private lichtReglerNeu(x: number, y: number, w: number, label: string, min: number, max: number, get: () => number, set: (v: number) => void): void {
+    const txt = this.add.text(x, y - 1, '', { fontFamily: 'serif', fontSize: '12px', color: '#cbbfa0', backgroundColor: '#00000080', padding: { x: 4, y: 1 } }).setScrollFactor(0).setDepth(801);
+    const desc: LichtRegler = { x, y: y + 18, w, label, min, max, get, set, txt };
+    this.lichtRegler.push(desc);
+    const zone = this.add.zone(x, y + 8, w, 22).setOrigin(0, 0).setScrollFactor(0).setDepth(802).setInteractive();
+    zone.on('pointerdown', (p: Phaser.Input.Pointer) => { this.ziehRegler = desc; this.setzeReglerAusX(desc, p.x); });
+  }
+
+  private setzeReglerAusX(d: LichtRegler, px: number): void {
+    const f = Phaser.Math.Clamp((px - d.x) / d.w, 0, 1);
+    d.set(Math.round(d.min + f * (d.max - d.min)));
+  }
+
+  private zeichneLichtPanel(): void {
+    const g = this.lichtPanelG; if (!g) return;
+    g.clear();
+    for (const s of this.lichtSchalterListe) { const neu = s.label(); if (s.txt.text !== neu) s.txt.setText(neu); }
+    for (const d of this.lichtRegler) {
+      const f = (d.get() - d.min) / Math.max(1, d.max - d.min);
+      g.fillStyle(0x1a1410, 1).fillRoundedRect(d.x, d.y - 4, d.w, 8, 4);
+      g.fillStyle(0x9a6a2a, 1).fillRoundedRect(d.x, d.y - 4, d.w * f, 8, 4);
+      g.fillStyle(0xf0d8a0, 1).fillCircle(d.x + d.w * f, d.y, 7);
+      g.lineStyle(2, 0x2a2018, 1).strokeCircle(d.x + d.w * f, d.y, 7);
+      d.txt.setText(`${d.label}: ${d.get()}`);
+    }
   }
 
   private renderDebug(): void {
