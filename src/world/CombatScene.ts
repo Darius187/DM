@@ -2922,6 +2922,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       const ox = pr.x, oy = pr.y; // letzte freie Stelle (vor dem Schritt)
       pr.x += pr.vx * dt;
       pr.y += pr.vy * dt;
+      // Elementarpfeil zieht einen leichten Schweif (R55): Frost helle Eissplitter,
+      // Feuer Glut, Schatten violette Funken - sparsam (jeder ~2. Frame), günstig.
+      if (pr.elem && Math.random() < 0.5) {
+        const c = pr.elem === 'eis' ? (Math.random() < 0.5 ? 0xaee0f0 : 0x8ad8f0)
+          : pr.elem === 'schatten' ? 0xc89aff : (Math.random() < 0.5 ? 0xf0902a : 0xe8641a);
+        this.fx.burst(pr.x - pr.vx * 0.008, pr.y - pr.vy * 0.008, c, 1, 16);
+      }
       if (this.projektilWand(pr.x, pr.y)) {
         // Pfeil-Wand-Physik nur im Physik-Test (Runde 40): stecken oder abprallen
         if (TUNING.physikTest && pr.arrow && this.pfeilTrifftWand(pr, ox, oy)) continue;
@@ -3111,7 +3118,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Einfache Roben-Figur (32px) passend vergrößern; sonst die 64px-Detail-Figur
     // mit ihrer Stufen-Skala; echte Hot-Swap-Sprites des Autors größer.
     const tier = heldTier(this.p.armorIt ? this.p.armorIt.val : null);
-    this.playerSprite.setScale(this.heldEinfach ? 1.5 : (this.textures.exists('hs_spieler_unten_1') ? 1.35 : getHeldForm(tier).skala));
+    // Einfache Roben-Figur: nur leicht groesser als ein normaler Gegner (32px-
+    // Figur, Gegner laufen bei 1.0) - 1.5 war "viel zu gross" (Autor R55).
+    this.playerSprite.setScale(this.heldEinfach ? 1.15 : (this.textures.exists('hs_spieler_unten_1') ? 1.35 : getHeldForm(tier).skala));
   }
 
   // Sprites und Overlay (Ringe, Balken, Telegraphen) zeichnen
@@ -3339,6 +3348,21 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
           g.lineStyle(2, 0xb8b09a, alpha);
           g.lineBetween(pr.x - ca * 9, pr.y - sa * 9, pr.x + ca * 3, pr.y + sa * 3);
           g.fillStyle(0x6a5a3a, alpha); g.fillCircle(pr.x - ca * 9, pr.y - sa * 9, 1.6);
+        } else if (pr.elem) {
+          // Elementarpfeil (R55, Autorwunsch): glüht durchgehend in seiner Farbe -
+          // Frost BLAU, Feuer orange, Schatten violett. Weicher Schein + helle
+          // Element-Spitze, damit der gesockelte Effekt im Flug klar sichtbar ist.
+          const hx = pr.x + ca * 7, hy = pr.y + sa * 7;
+          const tx = pr.x - ca * 8, ty = pr.y - sa * 8;
+          const flack = 1 + Math.sin(this.time.now / 40) * 0.18;
+          const halo = pr.elem === 'eis' ? 0x6ac8ec : pr.elem === 'schatten' ? 0xb06ae8 : 0xf0842a;
+          const kern = pr.elem === 'eis' ? 0xe2f6ff : pr.elem === 'schatten' ? 0xe6d0ff : 0xffe2a0;
+          g.fillStyle(halo, 0.16); g.fillCircle(pr.x, pr.y, (pr.r + 7) * flack);
+          g.fillStyle(halo, 0.34); g.fillCircle(pr.x, pr.y, (pr.r + 3) * flack);
+          g.lineStyle(2.2, halo, 0.95);                   // glühender Schaft
+          g.lineBetween(tx, ty, pr.x + ca * 2, pr.y + sa * 2);
+          g.fillStyle(kern, 1);                           // helle Element-Spitze
+          g.fillTriangle(hx, hy, pr.x + nx * 3, pr.y + ny * 3, pr.x - nx * 3, pr.y - ny * 3);
         } else {
           // Fliegender Pfeil mit echter SPITZE (Autorwunsch R40: keine Kugel)
           const hx = pr.x + ca * 7, hy = pr.y + sa * 7;   // Spitze vorne
