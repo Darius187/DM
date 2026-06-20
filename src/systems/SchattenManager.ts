@@ -21,12 +21,19 @@ export class SchattenManager {
   private falloff: Phaser.GameObjects.Image;         // weicher Lichtabfall
   private statisch: Occluder[] = [];
   private statSeg: Segment[] = [];                   // Wand-/Gebäudekanten (einmal gebacken)
+  private blur?: Phaser.FX.Blur;                     // GPU-Weichzeichner für weiche Schattenkanten
+  // Abtastpunkte der Flächenlichtquelle (Einheitskreis) - für echte weiche Schatten
+  private static readonly RING: ReadonlyArray<readonly [number, number]> =
+    Array.from({ length: 6 }, (_, i) => { const a = (i / 6) * Math.PI * 2; return [Math.cos(a), Math.sin(a)] as const; });
 
   constructor(private scene: Phaser.Scene, opts?: { rtTiefe?: number; sonneTiefe?: number }) {
     const tiefe = opts?.rtTiefe ?? 540;
     this.sonneGfx = scene.add.graphics().setDepth(opts?.sonneTiefe ?? -9);
     this.rt = scene.add.renderTexture(0, 0, scene.scale.width, scene.scale.height)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(tiefe).setVisible(false);
+    // GPU-Weichzeichner auf der Dunkelheit -> weiche Schattenverläufe (WebGL).
+    // Auf dem Canvas-Renderer fehlt postFX; dann bleiben die Kanten hart (Fallback).
+    if (this.rt.postFX) this.blur = this.rt.postFX.addBlur(0, 2, 2, 1, 0xffffff, 4);
     this.maskG = scene.add.graphics().setVisible(false);
     this.falloff = scene.add.image(0, 0, this.lichtTextur('schatten_falloff', true))
       .setScrollFactor(0).setDepth(tiefe + 1).setVisible(false);
@@ -70,7 +77,7 @@ export class SchattenManager {
   // DUNGEON: Punktlicht an lichtWelt, alles andere dunkel. Raycasting gegen die
   // Verdecker-Kanten -> scharfe Schatten hinter Wänden/Figuren. radius = Lichtweite
   // in Weltpixeln. dynamisch = NPCs/Gegner (werfen auch Schatten). staerke 0..1.
-  fackel(lichtWelt: { x: number; y: number }, radius: number, dynamisch: Occluder[], staerke: number): void {
+  fackel(lichtWelt: { x: number; y: number }, radius: number, dynamisch: Occluder[], staerke: number, weich = 0.7): void {
     this.sonneGfx.clear();
     if (staerke <= 0) { this.rt.setVisible(false); this.warm.setVisible(false); this.falloff.setVisible(false); return; }
     const cam = this.scene.cameras.main, z = cam.zoom;
@@ -89,17 +96,26 @@ export class SchattenManager {
     }
     const [lx, ly] = w2s(lichtWelt.x, lichtWelt.y);
     const rS = radius * z;
-    const poly = sichtPolygon({ x: lx, y: ly }, segs, rS);
 
     const rt = this.rt; rt.setVisible(true); rt.clear();
     rt.fill(0x070509, 0.72 + 0.24 * staerke);    // Dunkelheit (mit Regler tiefer)
-    if (poly.length >= 3) {
-      this.maskG.clear(); this.maskG.fillStyle(0xffffff, 1); this.maskG.beginPath();
+    // ECHTE WEICHE SCHATTEN (R55, Autorwunsch "weiche Überläufe sind muss"): die
+    // Fackel ist KEIN Punkt, sondern eine kleine FLÄCHENlichtquelle. Wir tasten sie
+    // von mehreren Punkten auf einer Scheibe ab und stanzen je ein Sichtpolygon mit
+    // Teil-Deckkraft aus. Wo ALLE Punkte hinsehen -> voll hell; wo nur einige ->
+    // Halbschatten-Verlauf (wird mit Abstand breiter = physikalisch korrekt). Der
+    // GPU-Weichzeichner glättet die Abtaststufen danach zu sauberen Überläufen.
+    const groesse = (3 + weich * 13) * z;        // Radius der Lichtquelle = Weichheit
+    for (const [ox, oy] of SchattenManager.RING) {
+      const poly = sichtPolygon({ x: lx + ox * groesse, y: ly + oy * groesse }, segs, rS);
+      if (poly.length < 3) continue;
+      this.maskG.clear(); this.maskG.fillStyle(0xffffff, 0.46); this.maskG.beginPath();
       this.maskG.moveTo(poly[0].x, poly[0].y);
       for (let i = 1; i < poly.length; i++) this.maskG.lineTo(poly[i].x, poly[i].y);
       this.maskG.closePath(); this.maskG.fillPath();
       rt.erase(this.maskG);
     }
+    if (this.blur) { const b = 1.5 + weich * 3; this.blur.x = b; this.blur.y = b; }
     const t = this.scene.time.now / 1000;
     const flick = 1 + Math.sin(t * 8) * 0.05 + Math.sin(t * 21) * 0.03;
     this.falloff.setVisible(true).setPosition(lx, ly).setScale((rS * 2.5) / 256).setAlpha(0.5 + 0.4 * staerke);
