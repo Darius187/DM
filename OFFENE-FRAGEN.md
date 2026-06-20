@@ -82,3 +82,19 @@
 14. Hof-Pferde (Deko am Bauern-Gatter): Du wolltest Pferde "ganz klar weglassen". Die REIT-Pferde sind weg. Es stehen aber noch zwei Deko-Pferde am Gatter (reine Vierbeiner-Grafik wie Kuh/Schwein, kein Reiter). Sollen die auch raus, oder dürfen sie als Hoftiere bleiben?
 
 15. Fischer am Waldsee (Runde 51, gebaut): Fischer "Konrad" sitzt am Westufer und angelt sichtbar (arbeit 'fischen'), ansprechbar. Seine zwei Dialogzeilen in dialoge.ts (VOLK.waldfischer) sind PLATZHALTER von mir - formulier sie gern um (Name + Text). Soll er auch Fisch VERKAUFEN (wie Nepomuk in der Dorf-Fischerhütte), oder nur Atmosphäre bleiben?
+
+16. Figur-Stil + Schatten-Technik (Runde 55):
+    (a) FIGUR-RICHTUNG offen - A: alle Charaktere im Held-Detailstil, oder B: den Helden auf das
+        Niveau der bestehenden Roben-Figuren vereinfachen. Dein Eindruck: die Detail-Beispiele
+        (Skelett/Buerger/Pest-Opfer/Lebender Toter, F10-Viewer) wirken eher comic als ernster
+        Grusel. ZWISCHENLOESUNG: Entscheidung geparkt, einfache Figuren laufen weiter; detaillierte
+        Charakter-Kunst/-Animation erst im finalen Polishing (gefahrlos dank modularem Rigg+Skin).
+        Sag A oder B, wenn du festlegen willst.
+    (b) SCHATTEN-TECHNIK (deine SFSS-Frage) - Slembcke "Super Fast Soft Shadows" ist die Top-
+        Referenz fuer weiche 2D-Schatten, aber reine WebGL/Shader-Technik (eigener Pipeline-Port
+        noetig, kein Canvas-Fallback). MEINE EMPFEHLUNG/ZWISCHENLOESUNG: zuerst die manuelle
+        Verdeckung aus der DebugArena in den Live-LightingManager holen (echte Schlagschatten von
+        Fackel/Sonne hinter Waenden/Objekten, dependency-frei, Canvas+WebGL, weiche Kanten per
+        Blur, Performance-Regler) - das ist der groesste Atmosphaere-/Grusel-Hebel und nutzt den
+        vorhandenen LightingManager. SFSS als WebGL-Upgrade fuers Endpolishing vorgemerkt.
+        Sag Bescheid, ob ich die Live-Integration der Schatten jetzt angehen soll.
