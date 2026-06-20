@@ -2420,7 +2420,9 @@ export class WorldScene extends CombatScene {
       .map((t) => ({ t, d: Math.hypot(t.x - this.px, t.y - this.py) }))
       .filter((o) => o.d < (235 + this.p.stats.licht) * 1.4)
       .sort((a, b) => a.d - b.d);
-    nahe.forEach((o) => lichter.push({ x: o.t.x, y: o.t.y - 4, art: 'glut', radius: 130 * fR, weich }));
+    // wie viele Fackeln zusätzlich zum Held Schatten werfen (Regler "Schatten-Fackeln")
+    const nSchatten = Math.round((lic.schattenFackeln ?? 20) / 100 * 6);
+    nahe.forEach((o, i) => lichter.push({ x: o.t.x, y: o.t.y - 4, art: i < nSchatten ? 'fackel' : 'glut', radius: 130 * fR, weich }));
     // Effekt-Lichter: Feuerball orange, Zauber violett, Feuerzauber
     for (const pr of this.projectiles) {
       if (!pr.fire && !pr.magie) continue;

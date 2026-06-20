@@ -55,6 +55,7 @@ export interface Settings {
     fackelReichweite: number; // Reichweite/Radius der Dungeon-Fackeln 0-100 (50 = neutral)
     fackelFarbe: number;      // Farbtemperatur der Fackeln 0 (tiefrot) .. 100 (weißgelb)
     dungeonWeichheit: number; // Weichheit der Dungeon-Wandschatten 0-100 (getrennt von Sonne)
+    schattenFackeln: number;  // wie viele Fackeln zusätzlich zum Held Schatten werfen 0-100 -> 0..6 (Leistung!)
   };
   audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
   zoomV: number;          // einmaliger Zoom-Standard (Runde 41: 130%)
@@ -90,7 +91,7 @@ export const DEF_SETTINGS: Settings = {
   bloom: 0, // Runde 51 (Autorwunsch): Bloom standardmäßig AUS, war zu stark
   grusel: 0, // Runde 55: Grusel-Tint standardmäßig aus, per F10-Regler einstellbar
   schatten: 70, // Runde 55: Schatten/Licht standardmäßig an (mittlere Stärke), Regler in Einstellungen
-  licht: { variante: 2, sichtRadius: 110, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: false, fackelHelligkeit: 60, fackelReichweite: 50, fackelFarbe: 45, dungeonWeichheit: 70 },
+  licht: { variante: 2, sichtRadius: 110, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: false, fackelHelligkeit: 60, fackelReichweite: 50, fackelFarbe: 45, dungeonWeichheit: 70, schattenFackeln: 20 },
   audioV: 1,
   zoomV: 1,
   bloomV: 1,

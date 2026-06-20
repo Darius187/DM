@@ -52,6 +52,7 @@ export class LichtPanel {
     // ===== DUNGEON =====
     y = this.header(y, 'DUNGEON (Fackeln / Sicht)');
     y = this.toggle(y, () => `Wand-Schatten: ${L().dungeonNeu ? 'AN' : 'aus'}`, () => { L().dungeonNeu = !L().dungeonNeu; });
+    y = this.slider(y, 'Schatten-Fackeln (Leistung!)', 0, 100, () => L().schattenFackeln, (v) => { L().schattenFackeln = v; }, (v) => `${Math.round(v / 100 * 6)} + Held`);
     y = this.slider(y, 'Wand-Schatten-Weichheit', 0, 100, () => L().dungeonWeichheit, (v) => { L().dungeonWeichheit = v; });
     y = this.toggle(y, () => `Held-Licht (Sicht): ${L().heldLichtAn ? 'AN' : 'AUS'}`, () => { L().heldLichtAn = !L().heldLichtAn; });
     y = this.slider(y, 'Sichtradius', 40, 240, () => L().sichtRadius, (v) => { L().sichtRadius = v; });
