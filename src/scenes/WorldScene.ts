@@ -1360,6 +1360,7 @@ export class WorldScene extends CombatScene {
     this.entklemmeSpieler(a);
     this.projectiles = [];
     this.telegraphs = [];
+    this.atomWalzen = [];
     this.decals = [];
     this.banishZones = [];
     // Etage oben immer mitzeigen (Runde 40, Autorwunsch "damit man immer weiß,

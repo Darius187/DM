@@ -11,7 +11,7 @@ export const SKILL_ICONS: Record<string, string> = {
   // Zauber (Zauberei-Schule, liegen in SPELLS)
   feuerball: '✦', heiligesLicht: '☩', heilung: '✚',
   // Zauberei-Fähigkeiten
-  kettenblitz: '⌁', frostnova: '❄', bannkreis: '◎', aderlass: '⚱', lebenstausch: '❤', heilen: '🤲', feuerregen: '☄',
+  kettenblitz: '⌁', frostnova: '❄', bannkreis: '◎', aderlass: '⚱', lebenstausch: '❤', heilen: '🤲', feuerregen: '☄', atomschlag: '☢',
   // Nahkampf
   wuchtschlag: '⤲', rundumschlag: '↻', blutdurst: '🩸', kriegsschrei: '⛉', sturmangriff: '⇒', erschuetterung: '⤓', hinrichtung: '☠',
   // Bogen

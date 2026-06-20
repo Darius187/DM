@@ -114,6 +114,8 @@ export const ABILITIES: ReadonlyArray<AbilityDef> = [
   { id: 'splitterpfeil', school: 'bogen', unlock: 5, name: 'Splitterpfeil', beschreibung: 'Zerbirst beim Treffer in mehrere Splitter' },
   { id: 'sprungpfeil', school: 'bogen', unlock: 7, name: 'Sprungpfeil', beschreibung: 'Springt vom Getroffenen auf weitere Gegner' },
   { id: 'fesselpfeil', school: 'bogen', unlock: 8, name: 'Fesselpfeil', beschreibung: 'Wurzelt den Getroffenen fest (kann sich nicht bewegen)' },
+  // Dev-Spaß (Runde 58): unlock 99 -> nur mit "alle Zauber frei" (Dev-Modus) wirkbar.
+  { id: 'atomschlag', school: 'zauberei', unlock: 99, name: 'Mobile Massenvernichtungseinheit', beschreibung: 'DEV: Atompilz - eine Feuerwalze mit grenzenlosem Schaden rast über die Karte' },
 ];
 
 // Fähigkeitswerte der neuen Fertigkeiten (eigene Festlegung, leicht änderbar - DECISIONS.md)
@@ -153,6 +155,9 @@ export const ABILITY_FX = {
   // Feuerregen (Runde 41): zuendet getroffene Gegner an - Brand-DoT ueber
   // brennDauerS Sekunden, pro Sekunde brennDpsMult x Treffer-Schaden.
   feuerregen: { mana: 40, dmgBase: 16, dmgPerLevel: 4, einschlaege: 6, radius: 50, streuung: 85, dauerS: 1.8, reichweite: 320, cd: 6, brennDauerS: 3, brennDpsMult: 0.45 },
+  // Atomschlag (Runde 58, Dev): die Feuerwalze wächst in sweepS Sekunden auf rmax
+  // und tötet alles, was sie erreicht. reichweite = wie weit man den Pilz setzt.
+  atomschlag: { mana: 0, cd: 10, reichweite: 260, rmax: 1200, sweepS: 2.8 },
   // Runde 36: vier besondere ROLLEN-Zauber (nur über Schriftrollen wirkbar,
   // daher mana/cd 0 - useScroll regelt das). Werte leicht änderbar.
   gewitter: { mana: 0, dmgBase: 24, dmgPerLevel: 5, einschlaege: 8, radius: 44, streuung: 120, dauerS: 1.5, reichweite: 360, cd: 0 },

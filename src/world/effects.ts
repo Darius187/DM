@@ -17,6 +17,8 @@ interface Aura { x: number; y: number; r: number; maxR: number; life: number; ma
 interface FireDrop { x: number; y: number; vy: number; life: number; len: number; flacker: number }
 // Stich-Lanze (Runde 44): gerader Stoß nach vorn (Hellebarde)
 interface Stoss { x: number; y: number; ang: number; len: number; life: number; maxLife: number; col: string }
+// Atompilz (Runde 58, Dev-Spaß): Blitz, aufsteigender Pilz, Boden-Feuerwalze
+interface Nuke { x: number; y: number; t: number; maxT: number; sweep: number; rmax: number }
 
 export class EffectSystem {
   private particles: Particle[] = [];
@@ -28,6 +30,7 @@ export class EffectSystem {
   private auras: Aura[] = [];
   private fireDrops: FireDrop[] = [];
   private stosse: Stoss[] = [];
+  private nukes: Nuke[] = [];
   private gfx: Phaser.GameObjects.Graphics;
 
   constructor(private scene: Phaser.Scene, depth = 2500) {
@@ -161,6 +164,14 @@ export class EffectSystem {
     if (this.fireDrops.length > 120) this.fireDrops.splice(0, this.fireDrops.length - 120);
   }
 
+  // Atompilz (Runde 58): grelle Detonation, langsam aufsteigender Pilz aus
+  // Glut+Rauch, dazu eine Boden-Feuerwalze (Schockring), die nach außen rast.
+  // sweep = wie lange die Walze nach rmax braucht; rmax = Reichweite (Karte).
+  atompilz(x: number, y: number, rmax = 1100, sweep = 2.8): void {
+    this.nukes.push({ x, y, t: 0, maxT: 5.5, sweep, rmax });
+    this.flash(x, y, 150, 0xfff6dc);
+  }
+
   float(x: number, y: number, txt: string, col: string): void {
     if (!getSettings().dmgNums && /^[0-9-]/.test(txt)) return;
     const obj = this.scene.add.text(x, y, txt, {
@@ -194,6 +205,21 @@ export class EffectSystem {
     this.swings = this.swings.filter((s) => s.life > 0);
     for (const s of this.stosse) s.life -= dt;
     this.stosse = this.stosse.filter((s) => s.life > 0);
+    for (const nk of this.nukes) {
+      nk.t += dt;
+      // Rauch quillt aus Stiel und Kappe (steigt auf)
+      const rise = Math.min(1, nk.t / 1.6);
+      const n = Math.random() < dt * 38 ? 2 : Math.random() < dt * 38 ? 1 : 0;
+      for (let i = 0; i < n; i++) {
+        const obenY = nk.y - 30 - rise * 170;
+        this.particles.push({
+          x: nk.x + (Math.random() * 60 - 30), y: obenY + (Math.random() * 40 - 20),
+          vx: Math.random() * 50 - 25, vy: -18 - Math.random() * 34,
+          life: 1.6 + Math.random() * 1.4, col: Math.random() < 0.5 ? 0x5a4438 : 0x9a3a1e, sz: 4 + Math.random() * 5,
+        });
+      }
+    }
+    this.nukes = this.nukes.filter((nk) => nk.t < nk.maxT);
     for (const f of this.floats) {
       f.obj.y -= 34 * dt;
       f.life -= dt;
@@ -279,6 +305,41 @@ export class EffectSystem {
     for (const pa of this.particles) {
       g.fillStyle(pa.col, Phaser.Math.Clamp(pa.life * 3, 0, 1));
       g.fillRect(pa.x - pa.sz / 2, pa.y - pa.sz / 2, pa.sz, pa.sz);
+    }
+    // Atompilz: Boden-Feuerwalze (Schockring) + aufsteigender Glut-/Rauchpilz
+    for (const nk of this.nukes) {
+      const t = nk.t, leben = Phaser.Math.Clamp(1 - t / nk.maxT, 0, 1);
+      // 1) Boden-Feuerwalze, die nach außen rast (kein Kreis-Telegraph, echtes Feuer)
+      const wf = Phaser.Math.Clamp(t / nk.sweep, 0, 1);
+      if (wf < 1) {
+        const r = wf * nk.rmax, a = (1 - wf);
+        g.fillStyle(0xf0902a, 0.08 * a); g.fillCircle(nk.x, nk.y, r);                              // glühender Hof innen
+        g.lineStyle(26 * (1 - wf) + 8, 0x6a1c08, 0.4 * a); g.strokeCircle(nk.x, nk.y, r + 10);     // dunkler Rauchsaum
+        g.lineStyle(18 * (1 - wf) + 5, 0xf06820, 0.8 * a); g.strokeCircle(nk.x, nk.y, r);          // Feuerring
+        g.lineStyle(9 * (1 - wf) + 3, 0xffc850, 0.9 * a); g.strokeCircle(nk.x, nk.y, r - 2);       // heller Kern
+        g.lineStyle(3, 0xfff4d0, 0.8 * a); g.strokeCircle(nk.x, nk.y, r - 5);                      // weiße Front
+      }
+      // 2) Erst-Detonation (greller Feuerball am Boden)
+      if (t < 0.5) {
+        const p = 1 - t / 0.5;
+        g.fillStyle(0xfff2c8, 0.9 * p); g.fillCircle(nk.x, nk.y, 30 + (1 - p) * 70);
+        g.fillStyle(0xf0902a, 0.6 * p); g.fillCircle(nk.x, nk.y, 50 + (1 - p) * 120);
+      }
+      // 3) Aufsteigender Pilz: Stiel + Glutkern + Kappe + Rauchschichten
+      const rise = Math.min(1, t / 1.6);
+      const stemTop = nk.y - 30 - rise * 170;
+      g.fillStyle(0x4a3528, 0.5 * leben); g.fillRect(nk.x - (10 + rise * 8), stemTop, 20 + rise * 16, nk.y - stemTop); // Rauchstiel
+      const coreY = nk.y - rise * 150, coreR = 16 + rise * 26;
+      g.fillStyle(0xc83a12, 0.7 * Phaser.Math.Clamp(1 - t / 3, 0, 1)); g.fillCircle(nk.x, coreY, coreR);            // Glutkern
+      g.fillStyle(0xf8b048, 0.8 * Phaser.Math.Clamp(1 - t / 2.4, 0, 1)); g.fillCircle(nk.x, coreY, coreR * 0.6);
+      g.fillStyle(0xfff0c0, 0.9 * Phaser.Math.Clamp(1 - t / 1.6, 0, 1)); g.fillCircle(nk.x, coreY, coreR * 0.28);
+      if (t > 0.6) {
+        const cp = Math.min(1, (t - 0.6) / 1.6), capR = 34 + cp * 64, capY = stemTop;
+        g.fillStyle(0x3e2c20, 0.5 * leben); g.fillEllipse(nk.x, capY + capR * 0.18, capR * 2.1, capR * 1.15);       // Rauchkappe dunkel
+        g.fillStyle(0x7a3a1e, 0.5 * Phaser.Math.Clamp(1 - t / 4, 0, 1)); g.fillEllipse(nk.x, capY, capR * 1.7, capR * 0.95);
+        g.fillStyle(0xc8682e, 0.45 * Phaser.Math.Clamp(1 - t / 3, 0, 1)); g.fillEllipse(nk.x, capY - capR * 0.18, capR * 1.1, capR * 0.7);
+        g.fillStyle(0xf0a040, 0.4 * Phaser.Math.Clamp(1 - t / 2.4, 0, 1)); g.fillEllipse(nk.x, capY - capR * 0.28, capR * 0.6, capR * 0.42);
+      }
     }
     for (const li of this.lightnings) {
       li.life -= dt;

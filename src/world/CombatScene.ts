@@ -1021,7 +1021,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // dann mit der Maus den Ort wählen, dann per Klick auslösen. Gilt für AoE-
   // Zauber am Boden (Feuerregen/Eisregen/Gewitter/Feuerwand) und Heilen.
   protected zielModus: string | null = null;
-  protected readonly bodenZauber = new Set(['feuerregen', 'eisregen', 'gewitter', 'feuerwand', 'heilen', 'hagel', 'bannkreis']);
+  protected readonly bodenZauber = new Set(['feuerregen', 'eisregen', 'gewitter', 'feuerwand', 'heilen', 'hagel', 'bannkreis', 'atomschlag']);
+  // Atomschlag-Walzen (Dev): wachsen über sweepS auf rmax und töten alles im Radius.
+  protected atomWalzen: Array<{ x: number; y: number; t: number; sweep: number; rmax: number; getroffen: Set<unknown> }> = [];
 
   // Verwundeten Helfer am Zielort heilen (Runde 46). Welt überschreibt es; hier
   // (Arena) gibt es keine Helfer -> false, dann heilt sich der Held selbst.
@@ -2076,6 +2078,23 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         this.gainSchoolUse('zauberei');
         break;
       }
+      case 'atomschlag': {
+        // DEV-Spaß: Atompilz am Zielort, danach eine Feuerwalze mit grenzenlosem
+        // Schaden, die über die Karte rast (Schaden in updateAtomWalzen).
+        const fx = ABILITY_FX.atomschlag;
+        this.p.abilityCds[id] = fx.cd;
+        const ptr = this.input.activePointer;
+        const { x: wx, y: wy } = this.weltPunkt(ptr);
+        const d = Math.hypot(wx - this.px, wy - this.py) || 1;
+        const f = d > fx.reichweite ? fx.reichweite / d : 1;
+        const zx = this.px + (wx - this.px) * f, zy = this.py + (wy - this.py) * f;
+        this.atomWalzen.push({ x: zx, y: zy, t: 0, sweep: fx.sweepS, rmax: fx.rmax, getroffen: new Set() });
+        this.fx.atompilz(zx, zy, fx.rmax, fx.sweepS);
+        this.cameras.main.flash(500, 255, 245, 215);
+        this.shake(12);
+        this.sfx.play('heiliges_licht', 1);
+        break;
+      }
       // --- Vier Rollen-Zauber (Runde 36): nur über Schriftrollen wirkbar ---
       case 'gewitter': {
         const fx = ABILITY_FX.gewitter;
@@ -2836,6 +2855,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
     this.updateProjectiles(dt);
     this.updateTelegraphs(dt);
+    this.updateAtomWalzen(dt);
     this.updateAutoPickups();
     this.pickups.update(dt);
     // Interaktions-Hinweis
@@ -3108,6 +3128,24 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     let diff = Math.atan2(sy - this.py, sx - this.px) - this.pdir;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
     return Math.abs(diff) < BLOCK.arcRad;
+  }
+
+  // Atomschlag-Feuerwalze: Radius wächst, alles darin stirbt (grenzenloser Schaden).
+  private updateAtomWalzen(dt: number): void {
+    if (!this.atomWalzen.length) return;
+    for (const w of this.atomWalzen) {
+      w.t += dt;
+      const r = Phaser.Math.Clamp(w.t / w.sweep, 0, 1) * w.rmax;
+      for (const e of this.enemies) {
+        if (e.hp <= 0 || w.getroffen.has(e)) continue;
+        if (Math.hypot(e.x - w.x, e.y - w.y) <= r + e.r) {
+          w.getroffen.add(e);
+          this.fx.feuerStoss(e.x, e.y, 1.3);
+          this.damageEnemy(e, 9_999_999, 0, 0, '#fff0c0', false);
+        }
+      }
+    }
+    this.atomWalzen = this.atomWalzen.filter((w) => w.t < w.sweep + 0.5);
   }
 
   private updateTelegraphs(dt: number): void {

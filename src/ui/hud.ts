@@ -38,7 +38,7 @@ const SLOT_KAT: Record<string, SlotKat> = {
   mehrfachschuss: 'bogen', markierterTod: 'bogen', hagel: 'bogen', splitterpfeil: 'bogen',
   durchschlag: 'bogen', sprungpfeil: 'bogen', fesselpfeil: 'bogen',
   s1: 'zauber', s2: 'zauber', s3: 'zauber', heilen: 'zauber', kettenblitz: 'zauber', frostnova: 'zauber',
-  bannkreis: 'zauber', feuerregen: 'zauber', aderlass: 'zauber', lebenstausch: 'zauber',
+  bannkreis: 'zauber', feuerregen: 'zauber', aderlass: 'zauber', lebenstausch: 'zauber', atomschlag: 'zauber',
   pot: 'item', mpot: 'item', rolle: 'item', stadtportal: 'item',
 };
 // Klassenfarben (Autorwunsch Runde 51): Krieger BLAU, Magier ROT, Bogen GRÜN.
@@ -142,6 +142,7 @@ export class Hud {
       ['kettenblitz', '⌁', 'Kettenblitz', '#9ae0f8'], ['frostnova', '❄', 'Frostnova', '#74aef0'], ['bannkreis', '◎', 'Bannkreis', '#d8b84a'],
       ['feuerregen', '☄', 'Feuerregen (auf den Zielort)', '#e85a3a'],
       ['aderlass', '⚱', 'Aderlass (Leben gegen Mana)', '#c04848'], ['lebenstausch', '❤', 'Lebenstausch (Mana gegen Leben)', '#e87a9a'],
+      ['atomschlag', '☢', 'Mobile Massenvernichtungseinheit (DEV, alle Zauber frei)', '#ffe000'],
       // Bogen (Bogenschütze)
       ['mehrfachschuss', '⫶', 'Mehrfachschuss', '#9ad86a'], ['hagel', '⇊', 'Hagel der Pfeile', '#8ac06a'],
       ['splitterpfeil', '✸', 'Splitterpfeil', '#9ad86a'], ['durchschlag', '➶', 'Durchschlag', '#8ac06a'],
