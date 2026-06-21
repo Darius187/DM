@@ -115,30 +115,44 @@ function baueSchwert(): THREE.Group {
   return sw;
 }
 
-// Prozedurale Animation: Atmen, Gehen (Beine/Arme gegenläufig), Überkopf-Hieb.
-export function animiereRitter(j: RitterJoints, t: number, moving: boolean, swingProg: number): void {
+// Prozedurale Animation: Atmen, Gehen (Beine/Arme gegenläufig) und vier
+// Schlagtechniken nach den bekannten Movesets (CombatScene):
+//  slash    = horizontaler Hieb (Schwert/Axt, meleeArcAttack)
+//  overhead = Überkopf-Schlag (Hammer, overheadAttack) - zweihändig
+//  thrust   = Stich/Ausfall (Stangenwaffe, thrustAttack)
+//  spin     = Wirbel/Rundumschlag (spinAttack) - Arme waagerecht, Körper dreht
+export type Technik = 'slash' | 'overhead' | 'thrust' | 'spin';
+
+export function animiereRitter(j: RitterJoints, t: number, moving: boolean, swingProg: number, technik: Technik = 'slash'): void {
   const atem = Math.sin(t * 2.2) * 0.012;
-  j.torso.position.y = 1.16 + atem;
-  j.torso.rotation.z = Math.sin(t * 1.5) * 0.01;
+  j.torso.position.set(0, 1.16 + atem, 0);
+  j.torso.rotation.set(0, 0, Math.sin(t * 1.5) * 0.01);
 
   const schwung = moving ? Math.sin(t * 9) * 0.62 : Math.sin(t * 2) * 0.05;
   j.hueftL.rotation.x = schwung;
   j.hueftR.rotation.x = -schwung;
-  j.armL.rotation.x = -schwung * 0.7;
-  j.armL.rotation.z = 0.06;
-
-  if (swingProg >= 0) {
-    // Überkopf-Hieb: rechter Arm von hinten-oben (-2.4) nach vorn-unten (+0.8)
-    const e = easeOutQuart(Math.min(1, swingProg));
-    j.armR.rotation.x = -2.4 + e * 3.2;
-    j.armR.rotation.z = -0.12;
-    // der Oberkörper beugt sich in den Schlag
-    j.torso.rotation.x = e * 0.28;
-  } else {
-    j.armR.rotation.x = -schwung * 0.7 + 0.18; // kampfbereit leicht vorgehalten
-    j.armR.rotation.z = -0.1;
-    j.torso.rotation.x = 0;
-  }
-
+  j.armL.rotation.set(-schwung * 0.7, 0, 0.06);
   j.umhang.rotation.x = -0.08 + (moving ? Math.sin(t * 9 + 1) * 0.13 : Math.sin(t * 1.4) * 0.03);
+
+  if (swingProg < 0) {
+    j.armR.rotation.set(-schwung * 0.7 + 0.18, 0, -0.1); // kampfbereit vorgehalten
+    return;
+  }
+  const p = Math.min(1, swingProg), e = easeOutQuart(p), bogen = Math.sin(p * Math.PI);
+  if (technik === 'overhead') {            // Hammer-Wucht: beidhändig von überkopf nach unten
+    j.armR.rotation.set(-2.5 + e * 3.3, 0, 0);
+    j.armL.rotation.set(-2.5 + e * 3.3, 0, -0.06);
+    j.torso.rotation.x = e * 0.3;
+  } else if (technik === 'thrust') {       // Stangen-Stich: Arm vor, Ausfallschritt
+    j.armR.rotation.set(-1.45, 0, -0.05);
+    j.torso.position.z = bogen * 0.16;
+    j.torso.rotation.x = bogen * 0.12;
+    j.hueftR.rotation.x = -0.45 * bogen;
+  } else if (technik === 'spin') {         // Wirbel: Arme waagerecht (Körperdrehung im Renderer)
+    j.armR.rotation.set(-1.5, 0, -1.18);
+    j.armL.rotation.set(-1.5, 0, 1.18);
+  } else {                                 // slash: horizontaler Hieb rechts -> links
+    j.armR.rotation.set(-0.35, 1.0 - e * 2.2, -0.3);
+    j.torso.rotation.y = 0.3 - e * 0.55;
+  }
 }

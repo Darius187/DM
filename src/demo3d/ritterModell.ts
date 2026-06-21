@@ -4,7 +4,7 @@
 // Held3DModell - so ist der Soldier-Platzhalter durch den echten Ritter ersetzt.
 
 import * as THREE from 'three';
-import { baueRitter, animiereRitter, type RitterJoints } from './ritterBau';
+import { baueRitter, animiereRitter, type RitterJoints, type Technik } from './ritterBau';
 
 export class RitterModell {
   readonly canvas: HTMLCanvasElement;
@@ -47,15 +47,17 @@ export class RitterModell {
     this.scene.add(gruppe);
   }
 
-  update(dt: number, facing: number, moving: boolean, swingProg: number): void {
+  update(dt: number, facing: number, moving: boolean, swingProg: number, technik: Technik = 'slash'): void {
     this.t += dt;
     const drehZiel = -facing - Math.PI / 2;
     let d = drehZiel - this.drehIst;
     while (d > Math.PI) d -= Math.PI * 2;
     while (d < -Math.PI) d += Math.PI * 2;
     this.drehIst += d * Math.min(1, dt * 12);
-    this.gruppe.rotation.y = this.drehIst;
-    animiereRitter(this.joints, this.t, moving, swingProg);
+    // Wirbel (Rundumschlag): die ganze Figur dreht sich einmal um sich selbst
+    const spin = technik === 'spin' && swingProg >= 0 ? Math.min(1, swingProg) * Math.PI * 2 : 0;
+    this.gruppe.rotation.y = this.drehIst + spin;
+    animiereRitter(this.joints, this.t, moving, swingProg, technik);
     this.renderer.render(this.scene, this.camera);
   }
 

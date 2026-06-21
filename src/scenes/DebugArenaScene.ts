@@ -13,6 +13,8 @@ import { SchattenManager, type Occluder, type Licht } from '../systems/SchattenM
 import { getSettings } from '../logic/settings';
 import { LichtPanel } from '../ui/lichtPanel';
 import { RitterModell } from '../demo3d/ritterModell';
+import { Held3DModell } from '../demo3d/held3dModel';
+import type { Technik } from '../demo3d/ritterBau';
 import Phaser from 'phaser';
 
 const ARENA_W = 30;
@@ -44,11 +46,14 @@ export class DebugArenaScene extends CombatScene {
   private fackeln: Array<{ x: number; y: number }> = [];   // feste Wandfackeln
   private lichtPanel!: LichtPanel;            // dieselbe Licht-Werkbank wie im Hauptspiel
 
-  // --- 3D-Held-Test (Runde 58): der prozedurale Ritter als Spielfigur --------
-  private held3d: RitterModell | null = null;
+  // --- 3D-Held-Test (Runde 58): beide Modelle testbar + Schlagtechniken ------
+  private ritter: RitterModell | null = null;     // prozeduraler Ritter
+  private soldat: Held3DModell | null = null;      // geriggtes Soldier-Modell
   private held3dTex: Phaser.Textures.CanvasTexture | null = null;
-  private held3dAn = true;                    // Taste J schaltet 2D/3D um
-  private static readonly H3D = 192;          // Größe der 3D-Render-Leinwand
+  private held3dModus: 'ritter' | 'soldat' | 'aus' = 'ritter'; // Taste M: Modell wechseln
+  private testTechnik: Technik | null = null;      // Taste B: Schlagtechnik durchtesten
+  private static readonly H3D = 192;
+  private static readonly TECHNIKEN: Technik[] = ['slash', 'overhead', 'thrust', 'spin'];
   private h3dZeit = 0; private h3dPx = 0; private h3dPy = 0;
 
   constructor() {
@@ -69,7 +74,7 @@ export class DebugArenaScene extends CombatScene {
     }).setScrollFactor(0).setDepth(700);
     this.add.text(12, this.scale.height - 12, [
       'DEBUG-ARENA  ·  F1-F7: Gegner spawnen (Pest/Skelett/Schütze/Schatten/Wolf/Ratte/Templer)',
-      'F8: Dummy · F9: Elite an/aus · K: Gegner löschen · H: Hitboxen/Timings · G: Waffe wechseln · L: Schulen Stufe 9 · J: 3D-Held an/aus · ESC: Menü',
+      'F8: Dummy · F9: Elite · K: Gegner löschen · H: Hitboxen · G: Waffe · L: Schulen 9 · M: Modell (Ritter/Soldat/2D) · B: Schlagtechnik testen · ESC: Menü',
       'WASD: Laufen · Klick: Angriff · Umschalt: schwer · Rechtsklick: Block · Leer: Rolle · R/T: Waffen-Fähigkeit · 4/5/6: Kettenblitz/Frostnova/Bannkreis',
       'LICHT-TEST (Panel rechts): Variante/Sichtradius/Feuer-Stil/Weichheit  ·  X: Dungeon-Dunkel an/aus  ·  Z: Sonne wandern  ·  < > : Sonnenstand',
     ].join('\n'), {
@@ -82,11 +87,12 @@ export class DebugArenaScene extends CombatScene {
     this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {
       if (ev.key.startsWith('F') && ev.key.length <= 3) ev.preventDefault();
     });
-    // 3D-Held: prozeduraler Ritter + Phaser-Textur, in die wir Frame für Frame kopieren
-    this.held3d = new RitterModell(DebugArenaScene.H3D);
+    // 3D-Held: beide Modelle bauen + eine Phaser-Textur, in die das aktive kopiert wird
     const S = DebugArenaScene.H3D;
+    this.ritter = new RitterModell(S);
+    this.soldat = new Held3DModell(S);
     this.held3dTex = (this.textures.exists('held3d') ? this.textures.get('held3d') : this.textures.createCanvas('held3d', S, S)) as Phaser.Textures.CanvasTexture ?? null;
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.held3d?.destroy(); this.held3d = null; });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.ritter?.destroy(); this.soldat?.destroy(); this.ritter = null; this.soldat = null; });
     // Dev-Hook für automatisierte Tests
     if (import.meta.env.DEV) {
       (window as unknown as { __arena?: DebugArenaScene }).__arena = this;
@@ -150,7 +156,20 @@ export class DebugArenaScene extends CombatScene {
       this.enemies = [];
     }
     if (k === 'h') this.showDebug = !this.showDebug;
-    if (k === 'j') { this.held3dAn = !this.held3dAn; this.logMsg(this.held3dAn ? '3D-Held AN' : '3D-Held aus (2D-Sprite)'); }
+    if (k === 'm') {
+      this.held3dModus = this.held3dModus === 'ritter' ? 'soldat' : this.held3dModus === 'soldat' ? 'aus' : 'ritter';
+      this.logMsg(`Modell: ${this.held3dModus === 'ritter' ? '3D-Ritter (prozedural)' : this.held3dModus === 'soldat' ? '3D-Soldat (geriggt)' : '2D-Sprite'}`);
+    }
+    if (k === 'b') {
+      // Schlagtechnik durchtesten: nächste Technik wählen UND sofort vorführen
+      const T = DebugArenaScene.TECHNIKEN;
+      const i = this.testTechnik ? (T.indexOf(this.testTechnik) + 1) % (T.length + 1) : 0;
+      this.testTechnik = i < T.length ? T[i] : null;
+      this.heldSchlagDauer = this.testTechnik === 'spin' ? 0.6 : this.testTechnik === 'overhead' ? 0.45 : 0.35;
+      this.heldSchlagT = this.heldSchlagDauer; // Vorführ-Schwung auslösen
+      const NAME: Record<Technik, string> = { slash: 'Hieb', overhead: 'Überkopf', thrust: 'Stich', spin: 'Wirbel' };
+      this.logMsg(this.testTechnik ? `Test-Technik: ${NAME[this.testTechnik]}` : 'Test-Technik aus (Technik nach Waffe)');
+    }
     if (k === 'g') this.cycleWeapon();
     if (k === 'x') { this.fackelAn = !this.fackelAn; this.logMsg(this.fackelAn ? 'Fackel AN (Dungeon-Schatten)' : 'Fackel aus'); }
     if (k === 'z') { this.sonneAuto = !this.sonneAuto; this.logMsg(this.sonneAuto ? 'Sonne wandert' : 'Sonne steht (Pfeil < > zum Drehen)'); }
@@ -178,11 +197,22 @@ export class DebugArenaScene extends CombatScene {
     if (cls === 'bogen' && this.p.arrows < 50) this.p.arrows = 50;
   }
 
-  // Helden-Render umlenken: ist 3D an UND das Modell geladen, rendern wir das
-  // animierte 3D-Modell in die 'held3d'-Textur und setzen sie als Helden-Sprite;
-  // sonst das normale 2D-Bild (Taste J schaltet um).
+  // Schlagtechnik des aktuellen Schwungs (Taste B übersteuert, sonst nach Waffe -
+  // an den bekannten Movesets orientiert: Stange = Stich, Hammer = Überkopf, sonst Hieb)
+  private aktuelleTechnik(): Technik {
+    if (this.testTechnik) return this.testTechnik;
+    const cls = this.weaponClass();
+    if (cls === 'stange') return 'thrust';
+    if (cls === 'wucht') return 'overhead';
+    return 'slash';
+  }
+
+  // Helden-Render umlenken: das aktive 3D-Modell (Ritter oder Soldat) wird in
+  // die 'held3d'-Textur gerendert und als Helden-Sprite gesetzt; im Modus 'aus'
+  // das normale 2D-Bild (Taste M wechselt das Modell).
   protected override zeichneHeld(dir: number, step: number): void {
-    if (!this.held3dAn || !this.held3d?.bereit || !this.held3dTex) {
+    const aktiv = this.held3dModus === 'ritter' ? this.ritter : this.held3dModus === 'soldat' ? this.soldat : null;
+    if (!aktiv || !aktiv.bereit || !this.held3dTex) {
       this.playerSprite.setOrigin(0.5, 0.5);
       super.zeichneHeld(dir, step);
       return;
@@ -192,15 +222,13 @@ export class DebugArenaScene extends CombatScene {
     this.h3dZeit = now;
     const moving = Math.hypot(this.px - this.h3dPx, this.py - this.h3dPy) > 0.4;
     this.h3dPx = this.px; this.h3dPy = this.py;
-    // Schlag-Fortschritt aus der ECHTEN Angriffszeit (heldSchlagT/Dauer) -> der
-    // 3D-Hieb läuft synchron zur Trefferprüfung gegen den Dummy.
+    // Schlag-Fortschritt aus der ECHTEN Angriffszeit -> synchron zur Trefferprüfung
     const swing = this.heldSchlagT > 0 ? 1 - this.heldSchlagT / Math.max(0.001, this.heldSchlagDauer) : -1;
-    this.held3d.update(dt, this.pdir, moving, swing);
-    // 3D-Leinwand in die Phaser-Textur kopieren
+    aktiv.update(dt, this.pdir, moving, swing, this.aktuelleTechnik());
     const ctx = this.held3dTex.getContext();
     const S = DebugArenaScene.H3D;
     ctx.clearRect(0, 0, S, S);
-    ctx.drawImage(this.held3d.canvas, 0, 0);
+    ctx.drawImage(aktiv.canvas, 0, 0);
     this.held3dTex.refresh();
     this.playerSprite.setTexture('held3d').setOrigin(0.5, 0.58).setScale(0.4).clearTint();
   }

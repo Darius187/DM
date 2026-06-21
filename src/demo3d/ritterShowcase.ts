@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { baueRitter, animiereRitter } from './ritterBau';
+import { baueRitter, animiereRitter, type Technik } from './ritterBau';
 
 const app = document.getElementById('app')!;
 const leiste = document.getElementById('leiste')!;
@@ -72,24 +72,30 @@ scene.add(ritter);
 
 // --- Animations-Steuerung ---
 let modus: 'idle' | 'walk' = 'idle';
-let swingT = -1; const SWING_DAUER = 0.55;
+let swingT = -1; let technik: Technik = 'slash';
+const SWING_DAUER: Record<Technik, number> = { slash: 0.45, overhead: 0.55, thrust: 0.4, spin: 0.7 };
 function knopf(label: string, fn: () => void, name: string): HTMLButtonElement {
   const b = document.createElement('button'); b.textContent = label; b.dataset.m = name; b.onclick = fn; leiste.appendChild(b); return b;
 }
 function markiere(name: string): void { for (const b of leiste.children) (b as HTMLElement).classList.toggle('an', (b as HTMLElement).dataset.m === name); }
 knopf('Stehen', () => { modus = 'idle'; markiere('idle'); }, 'idle');
 knopf('Gehen', () => { modus = 'walk'; markiere('walk'); }, 'walk');
-knopf('Schlagen', () => { swingT = 0; }, 'swing');
+const schlag = (tk: Technik, label: string): void => { knopf(label, () => { technik = tk; swingT = 0; }, 'sw_' + tk); };
+schlag('slash', 'Hieb'); schlag('overhead', 'Überkopf'); schlag('thrust', 'Stich'); schlag('spin', 'Wirbel');
 markiere('idle');
 
 const uhr = new THREE.Clock();
 function tick(): void {
   const dt = uhr.getDelta(); const t = uhr.elapsedTime;
   let swingProg = -1;
-  const hold = (window as unknown as { __swingHold?: number }).__swingHold;
+  const dauer = SWING_DAUER[technik];
+  const hold = (window as unknown as { __swingHold?: number; __technik?: Technik }).__swingHold;
+  const wt = (window as unknown as { __technik?: Technik }).__technik; if (wt) technik = wt;
   if (typeof hold === 'number' && hold >= 0) swingProg = hold;        // Screenshot-Pose einfrieren
-  else if (swingT >= 0) { swingT += dt; swingProg = swingT / SWING_DAUER; if (swingT >= SWING_DAUER) swingT = -1; }
-  animiereRitter(joints, t, modus === 'walk', swingProg);
+  else if (swingT >= 0) { swingT += dt; swingProg = swingT / dauer; if (swingT >= dauer) swingT = -1; }
+  // Wirbel: die ganze Figur dreht sich (sonst nur die Blickrichtung)
+  ritter.rotation.y = (technik === 'spin' && swingProg >= 0) ? Math.min(1, swingProg) * Math.PI * 2 : 0;
+  animiereRitter(joints, t, modus === 'walk', swingProg, technik);
   for (const f of fackeln) { const fl = 0.8 + Math.sin(t * 11 + f.ph) * 0.12 + (Math.random() - 0.5) * 0.18; f.licht.intensity = f.basis * fl; }
   controls.update();
   renderer.render(scene, camera);
