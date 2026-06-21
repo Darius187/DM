@@ -9,6 +9,7 @@ import Phaser from 'phaser';
 import { baueTruhe, animiereTruhe } from './truheBau';
 import { baueTuer, baueTor } from './tuerBau';
 import { baueBrunnen, baueAltar, baueFass } from './propsBau';
+import { baueGrabstein, baueKiste, baueKaefig, baueWandfackel, baueErzader, baueBuecherregal } from './props2Bau';
 
 type Bau = () => { gruppe: THREE.Group; animate: (o01: number, t: number) => void };
 export type Aktion = 'oeffnen' | 'zerschlagen' | 'tuer' | null;
@@ -22,6 +23,12 @@ export const KATALOG3D: TypDef[] = [
   { name: 'Altar', aktion: null, basis: 0.5, bau: () => baueAltar() },
   { name: 'Tür', aktion: 'tuer', basis: 0.72, bau: () => { const x = baueTuer(); return { gruppe: x.gruppe, animate: (o) => x.animate(o) }; } },
   { name: 'Tor', aktion: 'tuer', basis: 1.05, bau: () => { const x = baueTor(); return { gruppe: x.gruppe, animate: (o) => x.animate(o) }; } },
+  { name: 'Kiste', aktion: 'zerschlagen', basis: 0.36, bau: () => baueKiste() },
+  { name: 'Grabstein', aktion: null, basis: 0.42, bau: () => baueGrabstein() },
+  { name: 'Käfig', aktion: null, basis: 0.44, bau: () => baueKaefig() },
+  { name: 'Fackel', aktion: null, basis: 0.46, bau: () => baueWandfackel() },
+  { name: 'Erzader', aktion: null, basis: 0.4, bau: () => baueErzader() },
+  { name: 'Bücherregal', aktion: null, basis: 0.62, bau: () => baueBuecherregal() },
 ];
 
 interface Inst {

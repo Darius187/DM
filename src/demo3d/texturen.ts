@@ -69,3 +69,9 @@ export function tuchTextur(): THREE.Texture {
     for (let i = 0; i < 600; i++) { const g = 150 + Math.random() * 60; x.fillStyle = `rgba(${g},${g - 4},${g - 8},0.12)`; x.fillRect(Math.random() * S, Math.random() * S, 1.5, 1.5); }
   });
 }
+
+// Geteilte Material-Helfer (texturiert, von der Farbe getönt) - für alle Bauer.
+export const matHolz = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, map: holzTextur() });
+export const matEisen = (c = 0x2a2620, r = 0.5) => new THREE.MeshStandardMaterial({ color: c, metalness: 0.82, roughness: r, map: eisenTextur() });
+export const matStein = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.96, map: steinTextur() });
+export const matGold = () => new THREE.MeshStandardMaterial({ color: 0xc6a23a, metalness: 0.85, roughness: 0.3 });

@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { baueBuehne } from './buehne';
 import { baueTuer, baueTor } from './tuerBau';
 import { baueBrunnen, baueAltar, baueFass } from './propsBau';
+import { baueGrabstein, baueKiste, baueKaefig, baueWandfackel, baueErzader, baueBuecherregal } from './props2Bau';
 import { baueTruhe, animiereTruhe, setTruheFarbe, type TruheParts } from './truheBau';
 
 const app = document.getElementById('app')!;
@@ -19,6 +20,12 @@ interface Eintrag { name: string; bau: () => Objekt; blickY: number; dist: numbe
 const KATALOG: Eintrag[] = [
   { name: 'Tür', bau: () => { const x = baueTuer(); return { gruppe: x.gruppe, animate: (o) => x.animate(o) }; }, blickY: 1.1, dist: 4.2 },
   { name: 'Tor', bau: () => { const x = baueTor(); return { gruppe: x.gruppe, animate: (o) => x.animate(o) }; }, blickY: 1.8, dist: 7 },
+  { name: 'Kiste', bau: () => baueKiste(), blickY: 0.4, dist: 2.4 },
+  { name: 'Grabstein', bau: () => baueGrabstein(), blickY: 0.55, dist: 2.8 },
+  { name: 'Käfig', bau: () => baueKaefig(), blickY: 0.7, dist: 3.2 },
+  { name: 'Fackel', bau: () => baueWandfackel(), blickY: 1.0, dist: 3.0 },
+  { name: 'Erzader', bau: () => baueErzader(), blickY: 0.4, dist: 2.4 },
+  { name: 'Bücherregal', bau: () => baueBuecherregal(), blickY: 0.9, dist: 3.4 },
   { name: 'Brunnen', bau: () => baueBrunnen(), blickY: 1.3, dist: 4.6 },
   { name: 'Altar', bau: () => baueAltar(), blickY: 0.9, dist: 3.4 },
   { name: 'Fass', bau: () => baueFass(), blickY: 0.5, dist: 2.6 },
