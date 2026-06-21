@@ -4782,24 +4782,51 @@ export class WorldScene extends CombatScene {
       return;
     }
     if (e.champion && this.area.id === 'boss' && this.bossKampfSteht()) {
-      // Die Leibwache ist gefallen - jetzt erhebt sich der Tempelritter
+      // Die Leibwache ist gefallen - der Tempelritter erhebt sich INSZENIERT
+      // aus dem kochenden Blut (Runde 58, Autorwunsch "dramatischer Auftritt").
       this.pickups.add({ kind: 'gem', item: rollGem(this.rng, 4), x: e.x, y: e.y, bob: 0 });
-      this.logMsg('»Wer wagt es, meinen Wächter zu fällen?«', 'bad');
-      this.shake(8);
-      this.sfx.play('templer_stimme');
-      // Er erhebt sich im Vorhof, am Nordende der ersten Kammer
-      const boss = this.spawnEnemy('templer', this.flags.ngPlus ? 9 : 6, 16.5 * TILE, 40 * TILE);
-      boss.bossKammer = this.bossPhase; // Vorhof = 0
-
-      if (this.flags.ngPlus) {
-        boss.name = 'Der Schattenfürst';
-        boss.col = '#2a2440';
-        boss.maxhp = Math.round(boss.maxhp * 1.5);
-        boss.hp = boss.maxhp;
-        boss.dmg = Math.round(boss.dmg * 1.25);
-      }
-      this.fx.burst(boss.x, boss.y, 0xc03030, 30, 260);
       this.dropLoot(e);
+      const rx = 16.5 * TILE, ry = 40 * TILE; // Erhebungsort am Nordende des Vorhofs
+      this.logMsg('»Wer wagt es, meinen Wächter zu fällen?«', 'bad');
+      this.sfx.play('templer_stimme');
+      this.shake(9);
+      this.cameras.main.flash(260, 70, 4, 4); // dunkelroter Puls
+      // 1) Das Blut kocht und quillt am Erhebungsort hoch
+      this.fx.welle(rx, ry, 72, 0x8c1414);
+      this.fx.burst(rx, ry, 0x6a0e0e, 18, 120);
+      this.time.delayedCall(350, () => {
+        if (this.area.id !== 'boss') return;
+        this.fx.welle(rx, ry, 60, 0xb01818);
+        this.fx.burst(rx, ry, 0x8c1414, 22, 200);
+        this.shake(5);
+        this.sfx.play('templer_stimme', 0.7);
+      });
+      this.time.delayedCall(720, () => {
+        if (this.area.id !== 'boss') return;
+        this.fx.burst(rx, ry, 0xc03030, 16, 90); // eine bleiche Hand bricht zuerst hervor
+      });
+      // 2) Nach gut einer Sekunde ERHEBT er sich aus dem Blut
+      this.time.delayedCall(1100, () => {
+        if (this.area.id !== 'boss' || !this.bossKampfSteht()) return;
+        const boss = this.spawnEnemy('templer', this.flags.ngPlus ? 9 : 6, rx, ry);
+        boss.bossKammer = this.bossPhase; // Vorhof = 0
+        if (this.flags.ngPlus) {
+          boss.name = 'Der Schattenfürst';
+          boss.col = '#2a2440';
+          boss.maxhp = Math.round(boss.maxhp * 1.5);
+          boss.hp = boss.maxhp;
+          boss.dmg = Math.round(boss.dmg * 1.25);
+        }
+        this.fx.welle(boss.x, boss.y, 120, 0xc03030);
+        this.fx.burst(boss.x, boss.y, 0xc03030, 40, 300);
+        this.fx.burst(boss.x, boss.y, 0x6a0e0e, 24, 160);
+        this.cameras.main.flash(320, 90, 6, 6);
+        this.shake(14);
+        this.sfx.play('templer_stimme');
+        this.logMsg(this.flags.ngPlus
+          ? '»Der Schattenfürst erhebt sich aus dem Blut - dein Ende ist gekommen!«'
+          : '»Ich bin der Tempelritter. In diesem Grab endet deine Reise!«', 'bad');
+      });
       return;
     }
     if (e.champion) {
