@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { baueBuehne } from './buehne';
 import { baueTuer, baueTor } from './tuerBau';
+import { baueBrunnen, baueAltar, baueFass } from './propsBau';
 import { baueTruhe, animiereTruhe, setTruheFarbe, type TruheParts } from './truheBau';
 
 const app = document.getElementById('app')!;
@@ -18,6 +19,9 @@ interface Eintrag { name: string; bau: () => Objekt; blickY: number; dist: numbe
 const KATALOG: Eintrag[] = [
   { name: 'Tür', bau: () => { const x = baueTuer(); return { gruppe: x.gruppe, animate: (o) => x.animate(o) }; }, blickY: 1.1, dist: 4.2 },
   { name: 'Tor', bau: () => { const x = baueTor(); return { gruppe: x.gruppe, animate: (o) => x.animate(o) }; }, blickY: 1.8, dist: 7 },
+  { name: 'Brunnen', bau: () => baueBrunnen(), blickY: 1.3, dist: 4.6 },
+  { name: 'Altar', bau: () => baueAltar(), blickY: 0.9, dist: 3.4 },
+  { name: 'Fass', bau: () => baueFass(), blickY: 0.5, dist: 2.6 },
   {
     name: 'Truhe', blickY: 0.55, dist: 2.8,
     bau: () => { const t = baueTruhe(); (window as unknown as { __t?: TruheParts }).__t = t; return { gruppe: t.gruppe, animate: (o, z) => animiereTruhe(t, o, z) }; },
