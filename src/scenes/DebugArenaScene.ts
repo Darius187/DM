@@ -15,6 +15,7 @@ import { LichtPanel } from '../ui/lichtPanel';
 import { RitterModell } from '../demo3d/ritterModell';
 import { Held3DModell } from '../demo3d/held3dModel';
 import type { Technik } from '../demo3d/ritterBau';
+import { Objekt3DLager } from '../demo3d/objekt3dLager';
 import Phaser from 'phaser';
 
 const ARENA_W = 30;
@@ -56,6 +57,14 @@ export class DebugArenaScene extends CombatScene {
   private static readonly TECHNIKEN: Technik[] = ['slash', 'overhead', 'thrust', 'spin'];
   private h3dZeit = 0; private h3dPx = 0; private h3dPy = 0;
 
+  // --- 3D-Objekt-Baukasten (Setzen/Löschen platzierbarer 3D-Objekte) ---------
+  private lager: Objekt3DLager | null = null;
+  private bauTyp: string | null = null;     // gewählter Objekttyp (Setzmodus)
+  private loeschModus = false;
+  private bauScale = 0.8;                    // Skalierung der nächsten Platzierung
+  private bauMenu: HTMLDivElement | null = null;
+  private bauScaleLabel: HTMLSpanElement | null = null;
+
   constructor() {
     super('DebugArena');
   }
@@ -77,6 +86,7 @@ export class DebugArenaScene extends CombatScene {
       'F8: Dummy · F9: Elite · K: Gegner löschen · H: Hitboxen · G: Waffe · L: Schulen 9 · M: Modell (Ritter/Soldat/2D) · B: Schlagtechnik testen · ESC: Menü',
       'WASD: Laufen · Klick: Angriff · Umschalt: schwer · Rechtsklick: Block · Leer: Rolle · R/T: Waffen-Fähigkeit · 4/5/6: Kettenblitz/Frostnova/Bannkreis',
       'LICHT-TEST (Panel rechts): Variante/Sichtradius/Feuer-Stil/Weichheit  ·  X: Dungeon-Dunkel an/aus  ·  Z: Sonne wandern  ·  < > : Sonnenstand',
+      '3D-BAUKASTEN (Menü links, verschiebbar): Objekt wählen + auf den Boden klicken zum Setzen · Klick auf Truhe/Fass öffnet/zerschlägt · Löschen-Modus + Größe -/+',
     ].join('\n'), {
       fontFamily: 'serif', fontSize: '13px', color: '#c8b890', backgroundColor: '#000000aa', padding: { x: 8, y: 6 },
     }).setOrigin(0, 1).setScrollFactor(0).setDepth(700);
@@ -92,7 +102,14 @@ export class DebugArenaScene extends CombatScene {
     this.ritter = new RitterModell(S);
     this.soldat = new Held3DModell(S);
     this.held3dTex = (this.textures.exists('held3d') ? this.textures.get('held3d') : this.textures.createCanvas('held3d', S, S)) as Phaser.Textures.CanvasTexture ?? null;
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.ritter?.destroy(); this.soldat?.destroy(); this.ritter = null; this.soldat = null; });
+    // 3D-Objekt-Baukasten + Menü
+    this.lager = new Objekt3DLager(this);
+    this.baueBauMenu();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.ritter?.destroy(); this.soldat?.destroy(); this.ritter = null; this.soldat = null;
+      this.lager?.destroy(); this.lager = null;
+      this.bauMenu?.remove(); this.bauMenu = null;
+    });
     // Dev-Hook für automatisierte Tests
     if (import.meta.env.DEV) {
       (window as unknown as { __arena?: DebugArenaScene }).__arena = this;
@@ -207,6 +224,55 @@ export class DebugArenaScene extends CombatScene {
     return 'slash';
   }
 
+  // Weltklick im Bau-Modus: setzen / löschen / interagieren (sonst normaler Klick)
+  protected override bauKlick(ptr: Phaser.Input.Pointer): boolean {
+    if (!this.lager) return false;
+    const { x: wx, y: wy } = this.weltPunkt(ptr);
+    if (this.bauTyp) { this.lager.platziere(this.bauTyp, wx, wy, this.bauScale); return true; }
+    if (this.loeschModus) { this.lager.loescheBei(wx, wy); return true; }
+    return this.lager.interagiereBei(wx, wy);
+  }
+
+  // Verschiebbares DOM-Baumenü: Objekt wählen -> auf den Boden klicken zum
+  // Setzen; Löschen-Modus zum Entfernen; Größe -/+ vor dem Setzen.
+  private baueBauMenu(): void {
+    const p = document.createElement('div');
+    p.style.cssText = 'position:fixed;left:14px;top:120px;width:176px;background:#140f08ee;border:1px solid #4a3a24;border-radius:8px;font-family:Georgia,serif;color:#e8dcc0;font-size:12.5px;box-shadow:0 4px 16px #000a;z-index:50;user-select:none;';
+    const kopf = document.createElement('div');
+    kopf.textContent = '3D-BAUKASTEN  ⠿';
+    kopf.style.cssText = 'padding:7px 10px;background:#241a0c;border-bottom:1px solid #4a3a24;letter-spacing:2px;color:#e6c878;cursor:move;border-radius:8px 8px 0 0;';
+    p.appendChild(kopf);
+    const body = document.createElement('div'); body.style.cssText = 'padding:8px;display:flex;flex-direction:column;gap:5px;'; p.appendChild(body);
+    const btn = (label: string, fn: () => void, parent: HTMLElement = body): HTMLButtonElement => {
+      const b = document.createElement('button'); b.textContent = label;
+      b.style.cssText = 'font-family:inherit;font-size:12px;color:#e8dcc0;background:#1f1810;border:1px solid #4a3a24;border-radius:5px;padding:5px 8px;cursor:pointer;text-align:left;';
+      b.onclick = fn; parent.appendChild(b); return b;
+    };
+    const setzeAktiv = (aktiv: HTMLButtonElement | null): void => {
+      for (const c of Array.from(body.querySelectorAll('button'))) { (c as HTMLElement).style.borderColor = '#4a3a24'; (c as HTMLElement).style.background = '#1f1810'; }
+      if (aktiv) { aktiv.style.borderColor = '#f0d060'; aktiv.style.background = '#3a2a12'; }
+    };
+    for (const name of this.lager!.typen()) {
+      const b = btn('▦ ' + name, () => { this.bauTyp = name; this.loeschModus = false; setzeAktiv(b); });
+    }
+    const zeiger = btn('✋ Zeiger (klicken=öffnen)', () => { this.bauTyp = null; this.loeschModus = false; setzeAktiv(zeiger); });
+    const loeschen = btn('✕ Löschen-Modus', () => { this.bauTyp = null; this.loeschModus = true; setzeAktiv(loeschen); });
+    btn('⌦ Alle löschen', () => { this.lager?.alleLoeschen(); });
+    const skala = document.createElement('div'); skala.style.cssText = 'display:flex;gap:4px;align-items:center;margin-top:3px;'; body.appendChild(skala);
+    const upd = (): void => { if (this.bauScaleLabel) this.bauScaleLabel.textContent = 'Größe ' + this.bauScale.toFixed(2); };
+    btn('−', () => { this.bauScale = Math.max(0.15, +(this.bauScale - 0.1).toFixed(2)); upd(); }, skala);
+    this.bauScaleLabel = document.createElement('span'); this.bauScaleLabel.style.cssText = 'flex:1;text-align:center;'; skala.appendChild(this.bauScaleLabel); upd();
+    btn('+', () => { this.bauScale = Math.min(3, +(this.bauScale + 0.1).toFixed(2)); upd(); }, skala);
+
+    let drag = false, ox = 0, oy = 0;
+    kopf.addEventListener('mousedown', (e) => { drag = true; ox = e.clientX - p.offsetLeft; oy = e.clientY - p.offsetTop; e.preventDefault(); });
+    window.addEventListener('mousemove', (e) => { if (!drag || !this.bauMenu) return; p.style.left = (e.clientX - ox) + 'px'; p.style.top = (e.clientY - oy) + 'px'; });
+    window.addEventListener('mouseup', () => { drag = false; });
+
+    document.body.appendChild(p); this.bauMenu = p;
+    setzeAktiv(zeiger);
+  }
+
   // Helden-Render umlenken: das aktive 3D-Modell (Ritter oder Soldat) wird in
   // die 'held3d'-Textur gerendert und als Helden-Sprite gesetzt; im Modus 'aus'
   // das normale 2D-Bild (Taste M wechselt das Modell).
@@ -230,12 +296,13 @@ export class DebugArenaScene extends CombatScene {
     ctx.clearRect(0, 0, S, S);
     ctx.drawImage(aktiv.canvas, 0, 0);
     this.held3dTex.refresh();
-    this.playerSprite.setTexture('held3d').setOrigin(0.5, 0.58).setScale(0.4).clearTint();
+    this.playerSprite.setTexture('held3d').setOrigin(0.5, 0.6).setScale(0.28).clearTint();
   }
 
   update(_time: number, delta: number): void {
     this.updateCombat(delta / 1000);
     this.renderDebug();
+    this.lager?.update(delta / 1000);   // platzierte 3D-Objekte animieren (Truhe auf, Fass zerbricht)
     // Schatten über den geteilten Manager: Fackel = Dungeon-Raycasting, sonst Sonne.
     if (this.sonneAuto) this.sonnenWinkel = (this.sonnenWinkel + 0.00003 * delta) % 1;
     const st = getSettings().schatten / 100;   // Leistungs-/Stärke-Regler

@@ -232,6 +232,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       const uiTreffer = this.input.hitTestPointer(ptr) as Array<Phaser.GameObjects.GameObject & { scrollFactorX?: number }>;
       if (uiTreffer.some((o) => o.scrollFactorX === 0)) return;
       if (this.zeigerAufUI(ptr)) return;   // Licht-Werkbank o.ä. (manuelles Hit-Testing)
+      if (this.bauKlick(ptr)) return;      // 3D-Objekt-Baukasten (DebugArena): Setzen/Löschen/Interagieren
       // Bodenzauber-Zielmodus (Runde 46): Linksklick wirkt am Cursor, jeder
       // andere Klick bricht ab. Kein Weltangriff währenddessen.
       if (this.zielModus) {
@@ -841,6 +842,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected onGameKey(_k: string): void { /* optional */ }
   // Klick liegt auf einer UI-Fläche (Leiste, Menü) - Welt ignoriert ihn
   protected klickAufUi(_ptr: Phaser.Input.Pointer): boolean { return false; }
+  // Hook (DebugArena): 3D-Objekt-Baukasten fängt Weltklicks ab (Setzen/Löschen/
+  // Interagieren). Standardszenen tun nichts.
+  protected bauKlick(_ptr: Phaser.Input.Pointer): boolean { return false; }
   protected uiBlocked(): boolean { return this.panels?.blocked ?? false; }
 
   // --- Interaktion und Aufheben ---------------------------------------------
