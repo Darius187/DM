@@ -28,7 +28,7 @@ import { TUNING, TUNING_ROWS, neuerTypTuning } from '../logic/tuning';
 import { defaultRng, type Rng } from '../logic/rng';
 import { alleGegenstaende, gegenstandsAnzahl, kompendium } from '../logic/kompendium';
 import { ELITE, ENEMIES, GEFALLENE_TYPEN, GEFALLENE_WAFFEN } from '../data/enemies';
-import type { EnemyTypeId, WeaponClass, Item } from '../data/types';
+import type { EnemyTypeId, WeaponClass, Item, GemItem } from '../data/types';
 import { ABILITY_FX, ABILITIES, LORE_XP, ROLLEN_ZAUBER, XP, BRAND_TICK_S } from '../data/balancing';
 import { SKILL_ICONS } from '../data/skills';
 import { PickupSystem, AUTO_PICKUP, type Pickup } from './Pickups';
@@ -1203,6 +1203,29 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       pierce: this.p.schools.bogen.level >= 6,
     });
     this.sfx.play('pfeil_schuss');
+  }
+
+  // Sockel-Mod auf Pfeil-Fähigkeiten (Runde 58): ist ein Stein in der Waffe
+  // gefasst und der Held genug Bogen-erfahren (ELEM_PFEIL.stufe), wird der
+  // Fähigkeitspfeil elementar - er erbt Farbe, Glühen, +Schaden und den
+  // On-Hit-Effekt des Steins (Feuer brennt, Eis verlangsamt, Schatten heilt).
+  // Dieselbe Quelle wie der normale Elementarpfeil, nun für Mehrfachschuss & Co.
+  protected veredelPfeil(pr: Projectile): void {
+    const gem = this.aktiverPfeilStein();
+    if (!gem) return;
+    pr.dmg += gem.power;
+    pr.col = gem.col;
+    pr.r = Math.max(pr.r, 5);
+    pr.fire = gem.elem === 'feuer';
+    pr.magie = gem.elem !== 'feuer';
+    pr.elem = gem.elem;
+    pr.gemPower = gem.power;
+  }
+
+  // Der gefasste Stein, falls er Pfeil-Fähigkeiten verändern darf (sonst null).
+  protected aktiverPfeilStein(): GemItem | null {
+    const gem = weaponGem(this.p);
+    return gem && this.p.schools.bogen.level >= ELEM_PFEIL.stufe ? gem : null;
   }
 
   protected executeAttack(ev: AttackEvent): void {
@@ -2438,12 +2461,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         const half = (n - 1) / 2;
         for (let i = -half; i <= half; i++) {
           const a = ang + i * fx.spread;
-          this.projectiles.push({
+          const pr: Projectile = {
             x: this.px + Math.cos(a) * 14, y: this.py + Math.sin(a) * 14,
             vx: Math.cos(a) * ms.projSpeed, vy: Math.sin(a) * ms.projSpeed,
             r: 4, dmg: this.rollDamage(1.2), from: 'player', col: '#d8d0b8', arrow: true,
             pierce: this.p.schools.bogen.level >= 6,
-          });
+          };
+          this.projectiles.push(pr);
+          this.veredelPfeil(pr); // Sockel-Mod: elementare Fächerpfeile
         }
         this.sfx.play('pfeil_schuss');
         break;
@@ -2453,7 +2478,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         const fx = ABILITY_FX.hagel;
         this.p.abilityCds[id] = fx.cd;
         const z = this.zielPunkt(fx.reichweite);
-        const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level;
+        // Sockel-Mod (Runde 58): gefasster Stein -> elementarer Pfeilregen
+        // (mehr Schaden, getönte Pfeile, Brand/Verlangsamung/Lebensraub).
+        const stein = this.aktiverPfeilStein();
+        const pfeilCol = stein ? parseInt(stein.col.slice(1), 16) : 0xe8e0c8;
+        const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level + (stein ? stein.power : 0);
         for (let i = 0; i < fx.einschlaege; i++) {
           const ex = z.x + (Math.random() - 0.5) * fx.streuung * 2;
           const ey = z.y + (Math.random() - 0.5) * fx.streuung * 2;
@@ -2469,8 +2498,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
               onUpdate: (tw) => {
                 const yy = startY + (ey - startY) * (tw.getValue() as number);
                 g.clear();
-                g.lineStyle(2, 0xe8e0c8, 0.95); g.lineBetween(ex, yy - 16, ex, yy);          // Schaft
-                g.fillStyle(0xe8e0c8, 1); g.fillTriangle(ex - 3, yy - 4, ex + 3, yy - 4, ex, yy + 3); // Spitze
+                g.lineStyle(2, pfeilCol, 0.95); g.lineBetween(ex, yy - 16, ex, yy);          // Schaft
+                g.fillStyle(pfeilCol, 1); g.fillTriangle(ex - 3, yy - 4, ex + 3, yy - 4, ex, yy + 3); // Spitze
               },
               onComplete: () => {
                 // Pfeil bleibt im Boden STECKEN und liegt eine Weile (Autorwunsch
@@ -2479,16 +2508,24 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
                 const tilt = (Math.random() - 0.5) * 0.6, len = 12;
                 const dx = Math.sin(tilt) * len, dy = -Math.cos(tilt) * len;
                 g.fillStyle(0x000000, 0.22); g.fillEllipse(ex, ey + 1, 7, 2);                  // Bodenschatten
-                g.lineStyle(2, 0xcfc6ad, 1); g.lineBetween(ex, ey, ex + dx, ey + dy);          // Schaft schräg aus dem Boden
-                g.fillStyle(0xe8e0c8, 1); g.fillTriangle(ex + dx - 2.4, ey + dy + 1, ex + dx + 2.4, ey + dy + 1, ex + dx, ey + dy - 3.5); // Befiederung
+                g.lineStyle(2, pfeilCol, 1); g.lineBetween(ex, ey, ex + dx, ey + dy);          // Schaft schräg aus dem Boden
+                g.fillStyle(pfeilCol, 1); g.fillTriangle(ex + dx - 2.4, ey + dy + 1, ex + dx + 2.4, ey + dy + 1, ex + dx, ey + dy - 3.5); // Befiederung
                 this.tweens.add({ targets: g, alpha: 0, delay: 3800, duration: 1400, onComplete: () => g.destroy() });
               },
             });
           });
           this.time.delayedCall(treffMs, () => {
-            this.fx.burst(ex, ey, 0xd8d0b8, 5, 110);
+            this.fx.burst(ex, ey, pfeilCol, 5, 110);
             this.sfx.playAt('pfeil_einschlag', ex, ey, 0.35);
-            for (const e of [...this.enemies]) if (Math.hypot(e.x - ex, e.y - ey) < 26 + e.r) this.damageEnemy(e, Math.round(dmg * (0.85 + Math.random() * 0.3)), 0, 0, '#d8d0b8', false);
+            for (const e of [...this.enemies]) {
+              if (Math.hypot(e.x - ex, e.y - ey) >= 26 + e.r) continue;
+              const treffer = Math.round(dmg * (0.85 + Math.random() * 0.3));
+              this.damageEnemy(e, treffer, 0, 0, stein ? stein.col : '#d8d0b8', false);
+              // Sockel-Mod: derselbe On-Hit-Effekt wie ein Elementarpfeil
+              if (stein?.elem === 'feuer') { e.brennT = Math.max(e.brennT, ELEM_PFEIL.brennDauerS); e.brennDps = Math.max(e.brennDps, treffer * ELEM_PFEIL.brennDpsMult); }
+              else if (stein?.elem === 'eis') e.slowT = Math.max(e.slowT, ELEM_PFEIL.slowS);
+              else if (stein?.elem === 'schatten') this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + ELEM_PFEIL.leech);
+            }
           });
         }
         this.sfx.play('pfeil_schuss');
@@ -2500,11 +2537,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         this.p.abilityCds[id] = fx.cd;
         const ang = this.aimAngle(); this.pdir = ang;
         const ms = WEAPON_MOVESETS.bogen;
-        this.projectiles.push({
+        const pr: Projectile = {
           x: this.px + Math.cos(ang) * 14, y: this.py + Math.sin(ang) * 14,
           vx: Math.cos(ang) * ms.projSpeed, vy: Math.sin(ang) * ms.projSpeed,
           r: 4, dmg: this.rollDamage(fx.dmgMult), from: 'player', col: '#e8d0a0', arrow: true, split: fx.splitter,
-        });
+        };
+        this.projectiles.push(pr);
+        this.veredelPfeil(pr); // Sockel-Mod: auch die Splitter erben das Element
         this.sfx.play('pfeil_schuss');
         this.gainSchoolUse('bogen');
         break;
@@ -2514,11 +2553,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         this.p.abilityCds[id] = fx.cd;
         const ang = this.aimAngle(); this.pdir = ang;
         const ms = WEAPON_MOVESETS.bogen;
-        this.projectiles.push({
+        const pr: Projectile = {
           x: this.px + Math.cos(ang) * 14, y: this.py + Math.sin(ang) * 14,
           vx: Math.cos(ang) * ms.projSpeed, vy: Math.sin(ang) * ms.projSpeed,
           r: 4, dmg: this.rollDamage(fx.dmgMult), from: 'player', col: '#a0e0c0', arrow: true, springt: fx.spruenge, hitIds: new Set<number>(),
-        });
+        };
+        this.projectiles.push(pr);
+        this.veredelPfeil(pr);
         this.sfx.play('pfeil_schuss');
         this.gainSchoolUse('bogen');
         break;
@@ -2528,11 +2569,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         this.p.abilityCds[id] = fx.cd;
         const ang = this.aimAngle(); this.pdir = ang;
         const ms = WEAPON_MOVESETS.bogen;
-        this.projectiles.push({
+        const pr: Projectile = {
           x: this.px + Math.cos(ang) * 14, y: this.py + Math.sin(ang) * 14,
           vx: Math.cos(ang) * ms.projSpeed, vy: Math.sin(ang) * ms.projSpeed,
           r: 4, dmg: this.rollDamage(fx.dmgMult), from: 'player', col: '#8a9ab0', arrow: true, fessel: true,
-        });
+        };
+        this.projectiles.push(pr);
+        this.veredelPfeil(pr);
         this.sfx.play('pfeil_schuss');
         this.gainSchoolUse('bogen');
         break;
@@ -2544,11 +2587,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         this.p.abilityCds[id] = fx.cd;
         const ang = this.aimAngle(); this.pdir = ang;
         const ms = WEAPON_MOVESETS.bogen;
-        this.projectiles.push({
+        const pr: Projectile = {
           x: this.px + Math.cos(ang) * 14, y: this.py + Math.sin(ang) * 14,
           vx: Math.cos(ang) * ms.projSpeed * 1.25, vy: Math.sin(ang) * ms.projSpeed * 1.25,
           r: 5, dmg: this.rollDamage(fx.dmgMult), from: 'player', col: '#f0e0a0', arrow: true, pierce: true,
-        });
+        };
+        this.projectiles.push(pr);
+        this.veredelPfeil(pr);
         this.sfx.play('pfeil_schuss');
         this.gainSchoolUse('bogen');
         break;
