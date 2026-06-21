@@ -69,7 +69,7 @@ export class DebugArenaScene extends CombatScene {
     }).setScrollFactor(0).setDepth(700);
     this.add.text(12, this.scale.height - 12, [
       'DEBUG-ARENA  ·  F1-F7: Gegner spawnen (Pest/Skelett/Schütze/Schatten/Wolf/Ratte/Templer)',
-      'F8: Dummy · F9: Elite an/aus · K: Gegner löschen · H: Hitboxen/Timings · G: Waffe wechseln · L: Schulen Stufe 9 · ESC: Menü',
+      'F8: Dummy · F9: Elite an/aus · K: Gegner löschen · H: Hitboxen/Timings · G: Waffe wechseln · L: Schulen Stufe 9 · J: 3D-Held an/aus · ESC: Menü',
       'WASD: Laufen · Klick: Angriff · Umschalt: schwer · Rechtsklick: Block · Leer: Rolle · R/T: Waffen-Fähigkeit · 4/5/6: Kettenblitz/Frostnova/Bannkreis',
       'LICHT-TEST (Panel rechts): Variante/Sichtradius/Feuer-Stil/Weichheit  ·  X: Dungeon-Dunkel an/aus  ·  Z: Sonne wandern  ·  < > : Sonnenstand',
     ].join('\n'), {
@@ -192,7 +192,10 @@ export class DebugArenaScene extends CombatScene {
     this.h3dZeit = now;
     const moving = Math.hypot(this.px - this.h3dPx, this.py - this.h3dPy) > 0.4;
     this.h3dPx = this.px; this.h3dPy = this.py;
-    this.held3d.update(dt, this.pdir, moving);
+    // Schlag-Fortschritt aus der ECHTEN Angriffszeit (heldSchlagT/Dauer) -> der
+    // 3D-Hieb läuft synchron zur Trefferprüfung gegen den Dummy.
+    const swing = this.heldSchlagT > 0 ? 1 - this.heldSchlagT / Math.max(0.001, this.heldSchlagDauer) : -1;
+    this.held3d.update(dt, this.pdir, moving, swing);
     // 3D-Leinwand in die Phaser-Textur kopieren
     const ctx = this.held3dTex.getContext();
     const S = DebugArenaScene.H3D;
