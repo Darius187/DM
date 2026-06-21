@@ -2146,11 +2146,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         this.p.abilityCds[id] = fx.cd;
         const z = this.zielPunkt(fx.reichweite);
         const dmg = fx.dmgBase + fx.dmgPerLevel * this.p.level;
+        const fallS = 0.45; // wie lange ein Splitter sichtbar herabstürzt
         for (let i = 0; i < fx.einschlaege; i++) {
           const ex = z.x + (Math.random() - 0.5) * fx.streuung * 2;
           const ey = z.y + (Math.random() - 0.5) * fx.streuung * 2;
-          this.telegraphs.push({ x: ex, y: ey, r: fx.radius, t: (i + 1) * (fx.dauerS / fx.einschlaege), maxT: fx.dauerS, dmg: 0, holy: true });
-          this.time.delayedCall((i + 1) * (fx.dauerS * 1000 / fx.einschlaege), () => {
+          const treffMs = (i + 1) * (fx.dauerS * 1000 / fx.einschlaege);
+          // Kein Warnkreis (Autorwunsch R58): der herabstürzende Eissplitter ist die Ansage.
+          this.time.delayedCall(Math.max(0, treffMs - fallS * 1000), () => this.fx.eisDrop(ex, ey, fallS));
+          this.time.delayedCall(treffMs, () => {
             this.fx.burst(ex, ey, 0x9ad8f0, 14, 170);
             this.fx.burst(ex, ey, 0xffffff, 5, 90);
             this.shake(1);

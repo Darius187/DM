@@ -13,8 +13,9 @@ interface FloatText { obj: Phaser.GameObjects.Text; life: number }
 interface Lightning { points: Array<{ x: number; y: number }>; life: number }
 // Frost-Aura (Runde 40): blau leuchtender Stoßring, der nach außen wächst
 interface Aura { x: number; y: number; r: number; maxR: number; life: number; maxLife: number; col: number }
-// Fallende Flamme (Runde 40): Feuerregen - Streifen, der von oben einschlägt
-interface FireDrop { x: number; y: number; vy: number; life: number; len: number; flacker: number }
+// Fallende Flamme (Runde 40)/Eissplitter (Runde 58): Streifen, der von oben
+// einschlägt - eis=true zeichnet einen kalten, scharfen Splitter statt Feuer.
+interface FireDrop { x: number; y: number; vy: number; life: number; len: number; flacker: number; eis?: boolean }
 // Stich-Lanze (Runde 44): gerader Stoß nach vorn (Hellebarde)
 interface Stoss { x: number; y: number; ang: number; len: number; life: number; maxLife: number; col: string }
 // Atompilz (Runde 58, Dev-Spaß): Blitz, aufsteigender Pilz, Boden-Feuerwalze
@@ -185,6 +186,17 @@ export class EffectSystem {
     if (this.fireDrops.length > 120) this.fireDrops.splice(0, this.fireDrops.length - 120);
   }
 
+  // Fallender Eissplitter (Runde 58): wie flameDrop, aber ein kalter, scharfer
+  // Splitter - so sieht Eisregen nach echtem Hagel aus, nicht nach Kreisen.
+  eisDrop(x: number, groundY: number, fallS: number): void {
+    const hoehe = 150 + Math.random() * 40;
+    this.fireDrops.push({
+      x, y: groundY - hoehe, vy: hoehe / fallS, life: fallS,
+      len: 14 + Math.random() * 8, flacker: Math.random() * 6.283, eis: true,
+    });
+    if (this.fireDrops.length > 120) this.fireDrops.splice(0, this.fireDrops.length - 120);
+  }
+
   // Atompilz (Runde 58): grelle Detonation, langsam aufsteigender Pilz aus
   // Glut+Rauch, dazu eine Boden-Feuerwalze (Schockring), die nach außen rast.
   // sweep = wie lange die Walze nach rmax braucht; rmax = Reichweite (Karte).
@@ -303,9 +315,17 @@ export class EffectSystem {
       g.lineStyle(1.5, 0xffffff, 0.45 * p);
       g.strokeCircle(au.x, au.y, au.r * 0.66);
     }
-    // Feuerregen (Runde 40): stürzende Flammen mit hellem Kern und Schweif
+    // Feuerregen (Runde 40)/Eisregen (Runde 58): stürzende Streifen mit hellem
+    // Kern und Schweif - Feuer warm, Eis ein kalter, scharfer Splitter.
     for (const fd of this.fireDrops) {
       const wob = Math.sin(fd.flacker) * 1.5;
+      if (fd.eis) {
+        g.lineStyle(2.5, 0x6ab0e0, 0.45);                                   // kalter Schweif
+        g.beginPath(); g.moveTo(fd.x + wob, fd.y - fd.len); g.lineTo(fd.x, fd.y); g.strokePath();
+        g.fillStyle(0xaee0f8, 0.95); g.fillTriangle(fd.x - 2.4, fd.y - 5, fd.x + 2.4, fd.y - 5, fd.x, fd.y + 3); // scharfer Splitter
+        g.fillStyle(0xffffff, 0.95); g.fillCircle(fd.x, fd.y - 1, 1.5);     // heller Glanz
+        continue;
+      }
       g.fillStyle(0xc8401a, 0.4);
       g.fillCircle(fd.x + wob, fd.y - fd.len, 2);
       g.fillStyle(0xf0721e, 0.8);
