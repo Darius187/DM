@@ -44,6 +44,22 @@ const ZIEH_GLYPH: Record<string, string> = {
   scroll: '📜', potion: '🧪', mpotion: '⚗',
 };
 
+// Basis-Tooltip-Zeilen eines Gegenstands (Name in Raritätsfarbe, Typ, Werte,
+// Boni) - OHNE Spielervergleich. Geteilt vom Inventar UND der Bodenbeute
+// (Hover über liegende Gegenstände, Runde 58), damit beide identisch aussehen.
+export function itemTooltipLines(it: Item): Array<[string, string]> {
+  const rar = (it.rarity ?? 0) as Rarity;
+  const typ = it.kind === 'weapon' ? `Waffe - ${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} (${handLabel(it.weaponClass)})` : TYP_NAMEN[it.kind] ?? '';
+  const lines: Array<[string, string]> = [
+    [it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), RARITY_COLORS[rar]],
+    [`${RARITY_NAMES[rar]}${typ ? ' · ' + typ : ''}`, '#8a7a5a'],
+    [itemStatLine(it, false), BONE],
+  ];
+  // Bonus-Werte IMMER grün (Runde 29)
+  for (const b of it.boni) lines.push([`+ ${b.t.replace('#', String(b.v)).replace(/^\+/, '')}`, '#6ad06a']);
+  return lines;
+}
+
 export class UIPanels {
   private open_ = false;
   private container: Phaser.GameObjects.Container | null = null;
@@ -851,15 +867,7 @@ export class UIPanels {
   private showTooltip(it: Item, ptr: Phaser.Input.Pointer): void {
     this.hideTooltip();
     const p = this.getPlayer();
-    const rar = (it.rarity ?? 0) as Rarity;
-    const typ = it.kind === 'weapon' ? `Waffe - ${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} (${handLabel(it.weaponClass)})` : TYP_NAMEN[it.kind] ?? '';
-    const lines: Array<[string, string]> = [
-      [it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), RARITY_COLORS[rar]],
-      [`${RARITY_NAMES[rar]}${typ ? ' · ' + typ : ''}`, '#8a7a5a'],
-      [itemStatLine(it, false), BONE],
-    ];
-    // Bonus-Werte IMMER grün (Runde 29)
-    for (const b of it.boni) lines.push([`+ ${b.t.replace('#', String(b.v)).replace(/^\+/, '')}`, '#6ad06a']);
+    const lines = itemTooltipLines(it);
     // Vergleich: aktuelle Werte UND die, die man bekäme (Runde 41, Autorwunsch
     // "die Werte die man hat und daneben die die man bekommt - also beides").
     if ((it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'ring' || it.kind === 'schild')

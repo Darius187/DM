@@ -55,6 +55,7 @@ import { alsCanvas, stelleFrei, verarbeiteUpload, verkleinereCanvas } from '../g
 import { zoomFaktor } from '../logic/zoom';
 import type { Item } from '../data/types';
 import type { Pickup } from '../world/Pickups';
+import { itemTooltipLines } from '../ui/panels';
 import { ANNA_GRAB } from '../data/dialoge';
 
 export interface WorldParams { neu?: boolean; ladeSlot?: number; startArea?: string }
@@ -1120,6 +1121,16 @@ export class WorldScene extends CombatScene {
     }
     const ptr = this.input.activePointer;
     const { x: wx, y: wy } = this.weltPunkt(ptr);
+    // Bodenbeute liegt obenauf (bobbt): zuerst prüfen und mit einem echten
+    // Item-Tooltip (Name in Raritätsfarbe + Werte) anzeigen (Runde 58).
+    const beute = this.uiBlocked() ? null : this.hoverPickup(wx, wy);
+    if (beute) {
+      if (this.pickupTipFor !== beute) { this.buildPickupTip(beute); this.pickupTipFor = beute; }
+      this.positionPickupTip(ptr);
+      this.hoverText?.setVisible(false);
+      return;
+    }
+    this.hidePickupTip();
     let name: string | null = null;
     for (const e of this.enemies) {
       if (!e.versteckt && Math.hypot(e.x - wx, e.y - wy) < e.r + 10) { name = `${e.name} (Stufe ${e.depth})`; break; }
@@ -1167,6 +1178,75 @@ export class WorldScene extends CombatScene {
     } else {
       this.hoverText.setVisible(false);
     }
+  }
+
+  // Bodenbeute-Tooltip (Runde 58): zeigt beim Daraufzeigen, WAS am Boden liegt -
+  // bei Ausrüstung/Edelstein/Rolle der volle Item-Tooltip, sonst eine Zeile.
+  private pickupTip: Phaser.GameObjects.Container | null = null;
+  private pickupTipFor: Pickup | null = null;
+  private pickupTipW = 0;
+  private pickupTipH = 0;
+
+  // Liegender Gegenstand unter dem Zeiger (der nächste im Greifradius)
+  private hoverPickup(wx: number, wy: number): Pickup | null {
+    let best: Pickup | null = null;
+    let bestD = 16 * 16; // Hover-Radius²
+    for (const p of this.pickups.pickups) {
+      if (p.dead) continue;
+      const d = (p.x - wx) * (p.x - wx) + (p.y - wy) * (p.y - wy);
+      if (d < bestD) { bestD = d; best = p; }
+    }
+    return best;
+  }
+
+  // Tooltip-Zeilen für einen liegenden Gegenstand
+  private pickupTipLines(p: Pickup): Array<[string, string]> {
+    if (p.item && (p.kind === 'gear' || p.kind === 'gem' || p.kind === 'scroll' || p.kind === 'relic' || p.kind === 'material')) {
+      return itemTooltipLines(p.item);
+    }
+    const NAME: Record<string, string> = {
+      gold: `${p.amt ?? 0} Gold`, potion: 'Heiltrank', mpotion: 'Manatrank',
+      arrows: `${p.amt ?? 0} Pfeile`, folio: 'Foliant', note: 'Notiz',
+      medaillon: 'Medaillon', portal: 'Stadtportal',
+    };
+    const FARBE: Record<string, string> = {
+      gold: '#e8c84a', potion: '#e05a4a', mpotion: '#5a7ae0', arrows: '#c8a06a',
+      folio: '#d8c79c', portal: '#8aa6e8', medaillon: '#e8d8a0',
+    };
+    return [[NAME[p.kind] ?? p.kind, FARBE[p.kind] ?? '#e8dcc0']];
+  }
+
+  private buildPickupTip(p: Pickup): void {
+    this.hidePickupTip();
+    const c = this.add.container(0, 0).setScrollFactor(0).setDepth(4730);
+    let ty = 6;
+    const texts: Phaser.GameObjects.Text[] = [];
+    for (const [txt, col] of this.pickupTipLines(p)) {
+      const t = this.add.text(8, ty, txt, {
+        fontFamily: 'serif', fontSize: '12px', color: col, wordWrap: { width: 240 },
+      });
+      texts.push(t);
+      ty += t.height + 2;
+    }
+    this.pickupTipW = Math.max(...texts.map((t) => t.width)) + 16;
+    this.pickupTipH = ty + 4;
+    const bg = this.add.rectangle(0, 0, this.pickupTipW, this.pickupTipH, 0x0e0a06, 0.96)
+      .setOrigin(0).setStrokeStyle(1, 0x4a3a26);
+    c.add(bg);
+    for (const t of texts) c.add(t);
+    this.pickupTip = c;
+  }
+
+  private positionPickupTip(ptr: Phaser.Input.Pointer): void {
+    if (!this.pickupTip) return;
+    const px = ptr.x + 14 + this.pickupTipW > this.scale.width ? ptr.x - this.pickupTipW - 12 : ptr.x + 14;
+    this.pickupTip.setPosition(Math.max(6, px), Math.min(ptr.y + 14, this.scale.height - this.pickupTipH - 8));
+  }
+
+  private hidePickupTip(): void {
+    this.pickupTip?.destroy();
+    this.pickupTip = null;
+    this.pickupTipFor = null;
   }
 
   private ortsText: Phaser.GameObjects.Text | null = null;
