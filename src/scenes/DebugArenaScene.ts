@@ -258,6 +258,7 @@ export class DebugArenaScene extends CombatScene {
     const zeiger = btn('✋ Zeiger (klicken=öffnen)', () => { this.bauTyp = null; this.loeschModus = false; setzeAktiv(zeiger); });
     const loeschen = btn('✕ Löschen-Modus', () => { this.bauTyp = null; this.loeschModus = true; setzeAktiv(loeschen); });
     btn('⌦ Alle löschen', () => { this.lager?.alleLoeschen(); });
+    btn('🔥 WebGPU-Feuer öffnen', () => { window.open('/webgpu_fire.html', '_blank'); });
     const skala = document.createElement('div'); skala.style.cssText = 'display:flex;gap:4px;align-items:center;margin-top:3px;'; body.appendChild(skala);
     const upd = (): void => { if (this.bauScaleLabel) this.bauScaleLabel.textContent = 'Größe ' + this.bauScale.toFixed(2); };
     btn('−', () => { this.bauScale = Math.max(0.15, +(this.bauScale - 0.1).toFixed(2)); upd(); }, skala);
