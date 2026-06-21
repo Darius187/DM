@@ -12,7 +12,7 @@ import { WEAPONS, BOWS } from '../data/items';
 import { SchattenManager, type Occluder, type Licht } from '../systems/SchattenManager';
 import { getSettings } from '../logic/settings';
 import { LichtPanel } from '../ui/lichtPanel';
-import { Held3DModell } from '../demo3d/held3dModel';
+import { RitterModell } from '../demo3d/ritterModell';
 import Phaser from 'phaser';
 
 const ARENA_W = 30;
@@ -44,8 +44,8 @@ export class DebugArenaScene extends CombatScene {
   private fackeln: Array<{ x: number; y: number }> = [];   // feste Wandfackeln
   private lichtPanel!: LichtPanel;            // dieselbe Licht-Werkbank wie im Hauptspiel
 
-  // --- 3D-Held-Test (Runde 58): das animierte 3D-Modell als Spielfigur -------
-  private held3d: Held3DModell | null = null;
+  // --- 3D-Held-Test (Runde 58): der prozedurale Ritter als Spielfigur --------
+  private held3d: RitterModell | null = null;
   private held3dTex: Phaser.Textures.CanvasTexture | null = null;
   private held3dAn = true;                    // Taste J schaltet 2D/3D um
   private static readonly H3D = 192;          // Größe der 3D-Render-Leinwand
@@ -82,8 +82,8 @@ export class DebugArenaScene extends CombatScene {
     this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {
       if (ev.key.startsWith('F') && ev.key.length <= 3) ev.preventDefault();
     });
-    // 3D-Held: Modell-Renderer + Phaser-Textur, in die wir Frame für Frame kopieren
-    this.held3d = new Held3DModell(DebugArenaScene.H3D);
+    // 3D-Held: prozeduraler Ritter + Phaser-Textur, in die wir Frame für Frame kopieren
+    this.held3d = new RitterModell(DebugArenaScene.H3D);
     const S = DebugArenaScene.H3D;
     this.held3dTex = (this.textures.exists('held3d') ? this.textures.get('held3d') : this.textures.createCanvas('held3d', S, S)) as Phaser.Textures.CanvasTexture ?? null;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.held3d?.destroy(); this.held3d = null; });
