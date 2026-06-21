@@ -164,6 +164,16 @@ export const BOSS = {
   fanProjSpeed: 230,
   fanDmgMult: 0.7,
   meleeRange: 28,
+  // Phase III "Blutsäulen" (Runde 58): nur im Inneren Grab. Ein Ring Geysire
+  // um den Ritter + Geysire unter dem Helden, klar angesagter Telegraph-Schaden.
+  geysirCd: 4.5,            // Takt zwischen zwei Blutsäulen-Wellen
+  geysirRing: 6,           // Geysire im Ring um den Ritter
+  geysirRingR: 96,         // Radius des Rings
+  geysirAmHeld: 3,         // zusätzliche Geysire unter dem Helden (Bewegung erzwingen)
+  geysirStreuung: 120,     // Streuung der Held-Geysire
+  geysirRadius: 44,        // Wirkradius je Geysir
+  geysirTelegraphS: 0.9,   // Vorwarnzeit, bevor das Blut hochschießt
+  geysirDmgMult: 1.1,      // Schaden = Boss-Schaden x dies
 } as const;
 
 // "Hören vor Sehen": Gegner ab ~1,5-facher Sichtweite hörbar (Masterprompt 4.3)

@@ -4789,6 +4789,8 @@ export class WorldScene extends CombatScene {
       this.sfx.play('templer_stimme');
       // Er erhebt sich im Vorhof, am Nordende der ersten Kammer
       const boss = this.spawnEnemy('templer', this.flags.ngPlus ? 9 : 6, 16.5 * TILE, 40 * TILE);
+      boss.bossKammer = this.bossPhase; // Vorhof = 0
+
       if (this.flags.ngPlus) {
         boss.name = 'Der Schattenfürst';
         boss.col = '#2a2440';
@@ -6458,6 +6460,7 @@ export class WorldScene extends CombatScene {
       b2.maxhp = r.maxhp;
       b2.hp = Math.max(1, r.restHp);
       b2.dmg = r.dmg;
+      b2.bossKammer = this.bossPhase; // Halle = 1, Inneres Grab = 2 -> Phasen-Signatur
       this.fx.burst(b2.x, b2.y, 0xc03030, 30, 260);
       this.sfx.play('templer_stimme');
       this.logMsg(this.bossPhase === 1

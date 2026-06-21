@@ -88,6 +88,7 @@ export const INTRO_FILM: ReadonlyArray<string> = [
 export const BOSS_TEXTE = {
   beschwoerung: 'Erhebt euch! Dient mir erneut!',
   ausholen: 'Der Tempelritter holt aus!',
+  blutsaeulen: '»Das Blut steigt - ihr ertrinkt darin!«',
   gefallen: 'Der Tempelritter ist gefallen',
   name: 'DER TEMPELRITTER',
 } as const;

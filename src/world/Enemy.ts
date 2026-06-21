@@ -189,8 +189,13 @@ export class Enemy {
   private slamCd: number = BOSS.slamCd;
   private fanCd: number = BOSS.fanCd;
   private chargeCd = 4;
+  private geysirCd: number = BOSS.geysirCd;
   private phase3Aktiv = false;
   private summoned = [false, false];
+  // Welche Boss-Kammer (Runde 58): 0 = Vorhof, 1 = Halle, 2 = Inneres Grab.
+  // Wird von der Welt beim Erscheinen/Wiederaufstellen gesetzt; gibt jeder
+  // Kammer ihre eigene Phasen-Signatur (Salve ab Halle, Blutsäulen im Grab).
+  bossKammer = 0;
 
   sprite: Phaser.GameObjects.Sprite | null = null;
 
@@ -701,7 +706,8 @@ export class Enemy {
       host.logMsg(BOSS_TEXTE.ausholen, 'bad');
       host.playSound('telegraph');
     }
-    if (phase2 && this.fanCd === 0 && d < BOSS.fanRange) {
+    // Heilige Salve ab der Halle der Wächter (Kammer 1) oder ab Phase 2 (Runde 58)
+    if ((phase2 || this.bossKammer >= 1) && this.fanCd === 0 && d < BOSS.fanRange) {
       this.fanCd = phase3 ? 1.8 : BOSS.fanCd;
       const half = ((phase3 ? BOSS.fanCount + 2 : BOSS.fanCount) - 1) / 2;
       for (let i = -half; i <= half; i++) {
@@ -709,6 +715,27 @@ export class Enemy {
         host.spawnEnemyProjectile(this.x, this.y, Math.cos(a) * BOSS.fanProjSpeed, Math.sin(a) * BOSS.fanProjSpeed, Math.round(this.dmg * BOSS.fanDmgMult), '#a8e0c0');
       }
       host.playSound('templer_stimme');
+    }
+    // Phase III "Blutsäulen" (Runde 58): nur im Inneren Grab (letzte Kammer).
+    // Blut bricht aus dem Boden - ein Ring um den Ritter UND Geysire unter dem
+    // Helden zwingen zur Bewegung. Reiner, klar angesagter Telegraph-Schaden.
+    this.geysirCd = Math.max(0, this.geysirCd - dt);
+    if (this.bossKammer >= 2 && this.geysirCd === 0) {
+      this.geysirCd = BOSS.geysirCd;
+      host.logMsg(BOSS_TEXTE.blutsaeulen, 'bad');
+      host.playSound('templer_stimme');
+      const gDmg = Math.round(this.dmg * BOSS.geysirDmgMult);
+      for (let i = 0; i < BOSS.geysirRing; i++) {
+        const a = (i / BOSS.geysirRing) * Math.PI * 2 + Math.random() * 0.4;
+        const gx = this.x + Math.cos(a) * BOSS.geysirRingR, gy = this.y + Math.sin(a) * BOSS.geysirRingR;
+        host.addTelegraph(gx, gy, BOSS.geysirRadius, BOSS.geysirTelegraphS, gDmg);
+        host.burstFx(gx, gy, 0x8c1414, 8, 70);
+      }
+      for (let i = 0; i < BOSS.geysirAmHeld; i++) {
+        const gx = px + (Math.random() - 0.5) * BOSS.geysirStreuung, gy = py + (Math.random() - 0.5) * BOSS.geysirStreuung;
+        host.addTelegraph(gx, gy, BOSS.geysirRadius, BOSS.geysirTelegraphS, gDmg);
+        host.burstFx(gx, gy, 0x8c1414, 8, 70);
+      }
     }
   }
 
