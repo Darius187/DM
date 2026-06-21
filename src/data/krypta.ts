@@ -47,8 +47,10 @@ export const CRYPT_GEN = {
   // ankommen können, ohne sofort zerschnetzelt zu werden. ~5 Kacheln in Pixeln.
   keinSpawnRadius: 168,
   // Bossgrab (Runde 21): drei Kammern übereinander, der Ritter weicht
-  // bei 66%/33% Leben nach Norden zurück - der Held folgt ihm
-  bossW: 34, bossH: 58,
+  // bei 66%/33% Leben nach Norden zurück - der Held folgt ihm.
+  // Runde 58: bossH von 58 auf 80 erhöht - die unteren Reihen (y54-79) tragen
+  // den Anmarsch-Gang (Blutstrom + Brücke), die Kammern (y4-53) bleiben gleich.
+  bossW: 34, bossH: 80,
 } as const;
 
 // Bosskampf über drei Kammern (Runde 21): bei diesen Lebensanteilen

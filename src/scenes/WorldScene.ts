@@ -189,6 +189,10 @@ export class WorldScene extends CombatScene {
   private bossBlut: BloodFlow[] = [];           // Blut-Apokalypse im Bossraum (Runde 41)
   private bossBlutBoden: Phaser.GameObjects.Graphics | null = null;
   private bossLeichen: Array<{ g: Phaser.GameObjects.Graphics; x: number; y: number; ph: number }> = [];
+  // Scheue Schatten im Anmarsch-Gang (Runde 58): huschen am Rand, verschwinden
+  // bei Annäherung des Helden, flackern aus der Ferne wieder auf.
+  private bossSchemen: Array<{ x: number; y: number; ph: number; alpha: number }> = [];
+  private bossSchemenG: Phaser.GameObjects.Graphics | null = null;
   private bossTorZu = false;                     // Eingangstor hinter dem Helden versiegelt
   private bossNebel: NebelFratzen | null = null; // Fratzen-Nebel über dem Blutstrom (Runde 41)
   private raben: RabenSchwarm | null = null;     // Raben im Freien (Runde 45)
@@ -1617,26 +1621,33 @@ export class WorldScene extends CombatScene {
       this.bossBlut.push(new BloodFlow(this, { x, y, w, h, intensity, depth: -9, playSound: (k, v) => this.sfx.play(k, v) }));
     const g = this.add.graphics().setDepth(-10); // blutgetränkter Grund über alle Kammern
     g.fillStyle(0x3a0808, 0.32); g.fillRect(3 * T, 4 * T, 28 * T, 50 * T);
+    g.fillStyle(0x3a0808, 0.30); g.fillRect(12 * T, 53 * T, 10 * T, 27 * T); // Anmarsch-Gang
     this.bossBlutBoden = g;
     blut(16 * T + 16, 9 * T + 16, 7 * T, 5 * T, 'font');     // Becken am Grab
     blut(16 * T + 16, 27 * T + 16, 26 * T, 8 * T, 'river');  // Strom durch die Halle
     // Der breite BLUTSTROM im Vorhof (Eingang): hier watet man hindurch,
     // Tote treiben darin (Autorwunsch: 3-4x breit, ein echter Fluss).
     blut(16 * T + 16, 46 * T + 16, 27 * T, 13 * T, 'river');
+    // Der tiefe Blutstrom im Anmarsch-Gang (Runde 58): hier taucht er ZUERST auf,
+    // unbegehbar, nur die Brücke trägt hinüber.
+    blut(16.5 * T + 16, 65.5 * T + 16, 10 * T, 9 * T, 'river');
     this.baueSchwimmendeTote();
     for (const [tx, ty] of [[8, 33], [24, 32]] as Array<[number, number]>) blut(tx * T + 16, ty * T + 16, 110, 64, 'trickle');
-    for (const [tx, ty] of [[10, 12], [22, 13], [8, 20], [24, 20], [16, 40]] as Array<[number, number]>) blut(tx * T + 16, ty * T + 16, 70, 52, 'drip');
+    for (const [tx, ty] of [[10, 12], [22, 13], [8, 20], [24, 20], [16, 40], [13, 58], [20, 73]] as Array<[number, number]>) blut(tx * T + 16, ty * T + 16, 70, 52, 'drip');
     // Über dem ganzen Strom wabert der Fratzen-Nebel (Autorwunsch Runde 41):
-    // kaum sichtbare Gesichter steigen aus dem Blut, dichter über dem Vorhof.
-    this.bossNebel = new NebelFratzen(this, { x: 3 * T, y: 4 * T, w: 28 * T, h: 50 * T },
-      { anzahl: 13, depth: 1900, maxAlpha: 0.42 });
+    // kaum sichtbare Gesichter steigen aus dem Blut, dichter über Vorhof+Gang.
+    this.bossNebel = new NebelFratzen(this, { x: 3 * T, y: 4 * T, w: 28 * T, h: 75 * T },
+      { anzahl: 18, depth: 1900, maxAlpha: 0.42 });
+    this.baueSchemen();
   }
 
   // Tote/Untote treiben im Blutstrom des Vorhofs - bleiche Leiber, halb
   // versunken, sie heben und senken sich träge (Runde 41).
   private baueSchwimmendeTote(): void {
     const T = TILE;
-    for (const [tx, ty] of [[7, 48], [12, 50], [20, 49], [25, 47], [9, 44], [22, 45], [14, 47], [18, 51], [16, 42]] as Array<[number, number]>) {
+    for (const [tx, ty] of [[7, 48], [12, 50], [20, 49], [25, 47], [9, 44], [22, 45], [14, 47], [18, 51], [16, 42],
+      // im tiefen Strom des Anmarsch-Gangs treiben weitere Tote (Runde 58)
+      [13, 64], [20, 66], [14, 68], [19, 63], [13, 67]] as Array<[number, number]>) {
       const g = this.add.graphics().setDepth(-8.5);
       this.bossLeichen.push({ g, x: tx * T + 16, y: ty * T + 16, ph: Math.random() * 6.283 });
     }
@@ -1660,6 +1671,35 @@ export class WorldScene extends CombatScene {
       g.fillEllipse(cx - dy * 10, cy + dx * 10, 9, 4);
       // blutiger Saum, wo der Körper eintaucht
       g.fillStyle(0x5a0c0c, 0.55); g.fillEllipse(cx, cy + 3, 24, 7);
+    }
+  }
+
+  // Scheue Schatten am Rand des Anmarsch-Gangs aufstellen (Runde 58).
+  private baueSchemen(): void {
+    const T = TILE;
+    for (const [tx, ty] of [[12.5, 56.5], [20.5, 59], [12.5, 72], [20.5, 74], [13, 76]] as Array<[number, number]>) {
+      this.bossSchemen.push({ x: tx * T, y: ty * T, ph: Math.random() * 6.283, alpha: 0 });
+    }
+    this.bossSchemenG = this.add.graphics().setDepth(1850);
+  }
+
+  // Huschen am Rand: aus der Ferne flackert ein dunkler Umriss auf, kommt der
+  // Held näher (< ~90px), verschwindet er rasch - "scheue Schatten" (Runde 58).
+  private zeichneSchemen(time: number): void {
+    if (!this.bossSchemenG) return;
+    const g = this.bossSchemenG; g.clear();
+    const t = time / 1000;
+    for (const s of this.bossSchemen) {
+      const dist = Math.hypot(this.px - s.x, this.py - s.y);
+      const ziel = dist < 90 ? 0 : Phaser.Math.Clamp((dist - 90) / 130, 0, 1) * (0.26 + Math.sin(t * 1.5 + s.ph) * 0.12);
+      s.alpha += (ziel - s.alpha) * (dist < 90 ? 0.35 : 0.1); // nah: schnell weg
+      if (s.alpha < 0.02) continue;
+      const wob = Math.sin(t * 0.9 + s.ph) * 2.5;
+      g.fillStyle(0x05030a, s.alpha);
+      g.fillEllipse(s.x + wob, s.y, 13, 27);          // Rumpf
+      g.fillCircle(s.x + wob, s.y - 15, 5);           // Kopf
+      g.fillStyle(0x1a0e22, s.alpha * 0.55);
+      g.fillEllipse(s.x + wob, s.y + 13, 17, 6);      // Saum
     }
   }
 
@@ -1718,6 +1758,8 @@ export class WorldScene extends CombatScene {
     for (const o of this.bannerObs) o.destroy(); this.bannerObs = [];
     for (const l of this.bossLeichen) l.g.destroy();
     this.bossLeichen = [];
+    this.bossSchemen = [];
+    this.bossSchemenG?.destroy(); this.bossSchemenG = null;
     this.bossTorZu = false;
     for (const k of this.kadaver) k.g.destroy();
     this.kadaver = [];
@@ -1820,6 +1862,13 @@ export class WorldScene extends CombatScene {
       objImg.setDisplaySize(TILE * skala, TILE * skala);
       if (skala > 1.15) objImg.setOrigin(0.5, 0.7);
       objImg.setData('objTyp', objName === 'wald' ? 'baum' : objName);
+      return;
+    }
+    // Tiefer Blutstrom (Runde 58): dunkler Blutgrund tief unten, darüber tönt
+    // der BloodFlow (-9) den Strom lebendig. Eigener Render, keine Textur nötig.
+    if (id === T.BLUTSTROM) {
+      const boden = this.provider.tileKey('krypta_boden', variant, a.depth, a.theme);
+      tag(this.add.image(tx * TILE + 16, ty * TILE + 16, boden).setTint(0x2a0606).setDepth(-11));
       return;
     }
     const key = this.provider.tileKey(name, variant, a.depth, a.theme);
@@ -6610,6 +6659,7 @@ export class WorldScene extends CombatScene {
       this.updateBossKampf();
       for (const b of this.bossBlut) b.update(this.time.now, delta);
       this.zeichneSchwimmendeTote(this.time.now);
+      this.zeichneSchemen(this.time.now);
       // Das Tor fällt hinter dem Helden zu, sobald er den Blutstrom durchquert
       // hat und der Kampf steht - kein Zurück, bis der Templer fällt (Runde 41).
       if (!this.bossTorZu && this.bossKampfSteht() && this.py < 40 * TILE) {

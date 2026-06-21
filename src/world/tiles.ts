@@ -36,6 +36,10 @@ export const T = {
   // Verseuchter Dorfbrunnen (Runde 51): bei Monster-Einfällen quillt Blut aus
   // dem Brunnen - niemand bekommt mehr Wasser.
   WELL_BLUT: 55,
+  // Tiefer Blutstrom (Runde 58): unbegehbare Blut-Ader im Boss-Anmarschgang -
+  // wie Wasser/Abgrund nicht begehbar, Geschosse fliegen darüber, nur die
+  // Brücke (Grabplatten) trägt hinüber. Wird vom BloodFlow lebendig getönt.
+  BLUTSTROM: 56,
 } as const;
 export type TileId = (typeof T)[keyof typeof T];
 
@@ -46,13 +50,14 @@ export const SOLID = new Set<number>([
   T.BETT, T.TISCH, T.KAMIN, T.TRESEN, T.BRENNHOLZ, T.KESSEL, T.CRACK,
   T.ABYSS, // bodenloser Schacht - wie Wasser unbegehbar (BRUECKE führt hinüber)
   T.PILLAR, // Steinpfeiler
+  T.BLUTSTROM, // tiefer Blutstrom - unbegehbar, die Brücke führt hinüber
 ]);
 
 // Bodennahe Lücken, über die GESCHOSSE hinwegfliegen (Runde 41, Autorbug
 // "über den Fluss kann ich nicht laufen - richtig - aber auch nicht schießen"):
 // Wasser und Abgrund blocken zwar das Gehen, ein Pfeil/Feuerball fliegt aber
 // darüber. Wände/Bäume/Zäune/Palisaden blocken weiterhin.
-export const FLYOVER = new Set<number>([T.WATER, T.ABYSS]);
+export const FLYOVER = new Set<number>([T.WATER, T.ABYSS, T.BLUTSTROM]);
 
 // Tile-ID -> Name für den SpriteProvider (Hot-Swap-fähig).
 // HWALL/CWALL/WALL brauchen Kontext (Fassade vs. Dach), siehe tileNameAt.
@@ -72,7 +77,7 @@ const NAME: Record<number, string> = {
   [T.KERZE]: 'kerze', [T.WANDFACKEL]: 'wandfackel', [T.BRENNHOLZ]: 'brennholz', [T.KESSEL]: 'kessel',
   [T.CRACK]: 'mauerriss',
   [T.ABYSS]: 'abgrund', [T.BRIDGE]: 'bruecke', [T.PILLAR]: 'saeule',
-  [T.WENDEL]: 'wendeltreppe',
+  [T.WENDEL]: 'wendeltreppe', [T.BLUTSTROM]: 'blutstrom',
 };
 
 // Liefert den Tile-Namen unter Berücksichtigung von Fassade/Dach:

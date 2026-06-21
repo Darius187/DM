@@ -678,7 +678,7 @@ export function buildBoss(rng: Rng, bossDead: boolean): AreaData {
   const map = blank(w, h, T.WALL);
   const a: AreaData = {
     id: 'boss', name: 'Grab des Kreuzritters', dark: true, depth: 6, theme: CRYPT_THEMES[6],
-    w, h, map, spawn: { x: 16.5 * TILE, y: 50 * TILE },
+    w, h, map, spawn: { x: 16.5 * TILE, y: 76 * TILE }, // am Süd-Eingang des Anmarsch-Gangs
     torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
     breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
     ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
@@ -711,8 +711,26 @@ export function buildBoss(rng: Rng, bossDead: boolean): AreaData {
   for (const [tx, ty] of [[8, 43], [9, 43], [24, 43], [25, 43], [8, 23], [9, 23], [24, 23], [25, 23]]) {
     a.torches.push({ x: tx * TILE + 16, y: ty * TILE + 24, ph: rnd(rng, 0, 6.28) });
   }
-  map[53][16] = T.STAIRUP;
-  a.upPos = { x: 16.5 * TILE, y: 53 * TILE + 16 };
+  // --- Anmarsch-Gang (Runde 58, Autorwunsch): südlich vor dem Vorhof ein Gang,
+  // in dem der Blutstrom zum ersten Mal auftaucht - mittendrin ein tiefer,
+  // unbegehbarer Strom, über den nur eine Brücke aus Grabplatten trägt. Der
+  // Held läuft hindurch und steht OHNE Übergang in der Vorkammer (Vorhof).
+  carve(map, 12, 53, 21, 78, T.FLOOR);                 // der Gang (verbindet bei y53 mit dem Vorhof)
+  carve(map, 12, 62, 21, 69, T.BLUTSTROM);             // der tiefe Blutstrom quer durch den Gang
+  for (let by = 61; by <= 70; by++) { map[by][16] = T.BRIDGE; map[by][17] = T.BRIDGE; } // Brücke aus Grabplatten
+  // Blut-Spritzer und Knochen am Ufer des Stroms
+  for (let i = 0; i < 16; i++) {
+    const bx = ri(rng, 12, 21), by = ri(rng, 54, 77);
+    if (map[by][bx] === T.FLOOR) map[by][bx] = rng.random() < 0.5 ? T.BLOOD : T.BONES;
+  }
+  // Fackeln entlang des Gangs (an den Seitenwänden)
+  for (const gy of [56, 60, 72, 76]) {
+    a.torches.push({ x: 12 * TILE + 8, y: gy * TILE + 24, ph: rnd(rng, 0, 6.28) });
+    a.torches.push({ x: 21 * TILE + 24, y: gy * TILE + 24, ph: rnd(rng, 0, 6.28) });
+  }
+  // Eingang am Süden: hier kommt der Held herein (Treppe als Anschluss an Ebene 5)
+  map[78][16] = T.STAIRUP;
+  a.upPos = { x: 16 * TILE + 16, y: 78 * TILE + 16 };
   if (bossDead) {
     // Nach dem Sieg öffnet sich der Abstieg in die Endlose Tiefe
     map[3][16] = T.STAIR;
