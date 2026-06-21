@@ -3,14 +3,15 @@
 // und eine Lichtsäule in Raritätsfarbe - gekoppelt an das Truhe-Öffnen-Event.
 
 import * as THREE from 'three';
+import { holzTextur, eisenTextur } from './texturen';
 
 export interface TruheParts {
   gruppe: THREE.Group; deckel: THREE.Object3D;
   saeule: THREE.Mesh; glut: THREE.PointLight; muenzen: THREE.Object3D;
 }
 
-function holzMat(c: number): THREE.MeshStandardMaterial { return new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 }); }
-function metallMat(c: number, r = 0.45): THREE.MeshStandardMaterial { return new THREE.MeshStandardMaterial({ color: c, metalness: 0.85, roughness: r }); }
+function holzMat(c: number): THREE.MeshStandardMaterial { return new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, map: holzTextur() }); }
+function metallMat(c: number, r = 0.45): THREE.MeshStandardMaterial { return new THREE.MeshStandardMaterial({ color: c, metalness: 0.85, roughness: r, map: c > 0x808080 ? undefined : eisenTextur() }); }
 function box(w: number, h: number, d: number, mat: THREE.Material, x = 0, y = 0, z = 0): THREE.Mesh {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; return m;
 }

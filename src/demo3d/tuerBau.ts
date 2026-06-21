@@ -4,11 +4,12 @@
 // Torhaus, Zinnen und Fallgitter - für das Tor. Beide schwingen animiert auf.
 
 import * as THREE from 'three';
+import { holzTextur, eisenTextur, steinTextur } from './texturen';
 
-// ---- Material-Helfer ----
-const holz = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.86 });
-const eisen = (c = 0x26241f, r = 0.5) => new THREE.MeshStandardMaterial({ color: c, metalness: 0.82, roughness: r });
-const stein = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.96 });
+// ---- Material-Helfer (mit prozeduralen Texturen, von der Farbe getönt) ----
+const holz = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.86, map: holzTextur() });
+const eisen = (c = 0x26241f, r = 0.5) => new THREE.MeshStandardMaterial({ color: c, metalness: 0.82, roughness: r, map: eisenTextur() });
+const stein = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.96, map: steinTextur() });
 const messing = () => new THREE.MeshStandardMaterial({ color: 0x8a6a2e, metalness: 0.8, roughness: 0.35 });
 
 function box(w: number, h: number, d: number, mat: THREE.Material, x = 0, y = 0, z = 0): THREE.Mesh {

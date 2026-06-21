@@ -5,10 +5,11 @@
 // Heiligenlicht aufsteigen, Fass zerschlägt.
 
 import * as THREE from 'three';
+import { holzTextur, eisenTextur, steinTextur } from './texturen';
 
-const holz = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 });
-const eisen = (c = 0x2a2620, r = 0.5) => new THREE.MeshStandardMaterial({ color: c, metalness: 0.82, roughness: r });
-const stein = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.96 });
+const holz = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, map: holzTextur() });
+const eisen = (c = 0x2a2620, r = 0.5) => new THREE.MeshStandardMaterial({ color: c, metalness: 0.82, roughness: r, map: eisenTextur() });
+const stein = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.96, map: steinTextur() });
 const gold = () => new THREE.MeshStandardMaterial({ color: 0xc6a23a, metalness: 0.85, roughness: 0.3 });
 function box(w: number, h: number, d: number, m: THREE.Material, x = 0, y = 0, z = 0): THREE.Mesh {
   const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(x, y, z); me.castShadow = true; me.receiveShadow = true; return me;
