@@ -2635,10 +2635,27 @@ export class WorldScene extends CombatScene {
   }
 
   // Held + NPCs + Gegner als dynamische Verdecker (kurzer Figurschatten).
+  // Deckel für bewegte Schattenwerfer (Runde 58, Stadtkampf-Performance): der
+  // Sonnen-Raycast und die Dungeon-Lichter rechnen pro Verdecker - eine ganze
+  // Armee ließ die Schlacht einbrechen. Darum nur, was im Bild ist, und davon
+  // höchstens die kameranächsten N. Distante Schatten sieht ohnehin niemand.
+  private static readonly MAX_DYN_SCHATTEN = 40;
   private dynamischeOccluder(): Occluder[] {
     const d: Occluder[] = [{ x: this.px, y: this.py + 10, w: 14, h: 8, hoehe: 24 }];
-    for (const n of this.npcEnts) d.push({ x: n.x, y: n.y + 8, w: 13, h: 7, hoehe: 22 });
-    for (const e of this.enemies) if (e.hp > 0) d.push({ x: e.x, y: e.y + 8, w: 14, h: 7, hoehe: 22 });
+    const v = this.cameras.main.worldView, mx = 60; // Rand: Schatten reicht etwas über den Bildrand
+    const sicht: Occluder[] = [];
+    for (const n of this.npcEnts) {
+      if (n.x >= v.x - mx && n.x <= v.right + mx && n.y >= v.y - mx && n.y <= v.bottom + mx) sicht.push({ x: n.x, y: n.y + 8, w: 13, h: 7, hoehe: 22 });
+    }
+    for (const e of this.enemies) {
+      if (e.hp > 0 && e.x >= v.x - mx && e.x <= v.right + mx && e.y >= v.y - mx && e.y <= v.bottom + mx) sicht.push({ x: e.x, y: e.y + 8, w: 14, h: 7, hoehe: 22 });
+    }
+    if (sicht.length > WorldScene.MAX_DYN_SCHATTEN) {
+      const ccx = v.centerX, ccy = v.centerY;
+      sicht.sort((a, b) => ((a.x - ccx) ** 2 + (a.y - ccy) ** 2) - ((b.x - ccx) ** 2 + (b.y - ccy) ** 2));
+      sicht.length = WorldScene.MAX_DYN_SCHATTEN;
+    }
+    for (const o of sicht) d.push(o);
     return d;
   }
 

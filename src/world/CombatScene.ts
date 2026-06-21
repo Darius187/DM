@@ -2720,17 +2720,36 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   // Reit-Eröffnung: ruhiger, cineastischer Ritt nach rechts (ohne Kollision),
   // mit leichtem Wippen. Endet, wenn der Held den Waldrand erreicht (checkTriggers).
-  // Gegner auseinanderdrücken (geteilt von Normal- und Todes-Schleife)
+  // Gegner auseinanderdrücken (geteilt von Normal- und Todes-Schleife).
+  // Raster statt Alle-gegen-Alle (Runde 58, Stadtkampf-Performance): die alte
+  // N²-Schleife brach bei großen Schlachten ein. Jeder Gegner wird in eine
+  // 48px-Zelle einsortiert (>= größter Treffer-Durchmesser), danach prüfen wir
+  // nur die 3x3-Nachbarzellen - jedes Paar genau einmal (B.id > A.id).
+  private static readonly SEP_CELL = 48;
   private separateEnemies(): void {
     const en = this.enemies;
-    for (let i = 0; i < en.length; i++) {
-      for (let j = i + 1; j < en.length; j++) {
-        const A = en[i], B = en[j];
-        const d = Math.hypot(A.x - B.x, A.y - B.y), m = A.r + B.r;
-        if (d < m && d > 0.01) {
-          const a = Math.atan2(B.y - A.y, B.x - A.x), push = (m - d) / 2;
-          A.moveBody(this, -Math.cos(a) * push, -Math.sin(a) * push);
-          B.moveBody(this, Math.cos(a) * push, Math.sin(a) * push);
+    if (en.length < 2) return;
+    const CELL = CombatScene.SEP_CELL;
+    const grid = new Map<number, Enemy[]>();
+    const key = (cx: number, cy: number) => cx * 100000 + cy;
+    for (const e of en) {
+      const k = key(Math.floor(e.x / CELL), Math.floor(e.y / CELL));
+      const arr = grid.get(k);
+      if (arr) arr.push(e); else grid.set(k, [e]);
+    }
+    for (const A of en) {
+      const cx = Math.floor(A.x / CELL), cy = Math.floor(A.y / CELL);
+      for (let ox = -1; ox <= 1; ox++) for (let oy = -1; oy <= 1; oy++) {
+        const arr = grid.get(key(cx + ox, cy + oy));
+        if (!arr) continue;
+        for (const B of arr) {
+          if (B.id <= A.id) continue; // jedes Paar nur einmal
+          const d = Math.hypot(A.x - B.x, A.y - B.y), m = A.r + B.r;
+          if (d < m && d > 0.01) {
+            const a = Math.atan2(B.y - A.y, B.x - A.x), push = (m - d) / 2;
+            A.moveBody(this, -Math.cos(a) * push, -Math.sin(a) * push);
+            B.moveBody(this, Math.cos(a) * push, Math.sin(a) * push);
+          }
         }
       }
     }
