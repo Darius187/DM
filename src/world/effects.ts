@@ -19,6 +19,8 @@ interface FireDrop { x: number; y: number; vy: number; life: number; len: number
 interface Stoss { x: number; y: number; ang: number; len: number; life: number; maxLife: number; col: string }
 // Atompilz (Runde 58, Dev-Spaß): Blitz, aufsteigender Pilz, Boden-Feuerwalze
 interface Nuke { x: number; y: number; t: number; maxT: number; sweep: number; rmax: number }
+// Blitzschlag (Runde 58): dicker, greller Bolzen vom Himmel mit hellem Kern
+interface Bolt { x: number; groundY: number; segs: Array<{ x: number; y: number }>; life: number; maxLife: number }
 
 export class EffectSystem {
   private particles: Particle[] = [];
@@ -31,6 +33,7 @@ export class EffectSystem {
   private fireDrops: FireDrop[] = [];
   private stosse: Stoss[] = [];
   private nukes: Nuke[] = [];
+  private bolts: Bolt[] = [];
   private gfx: Phaser.GameObjects.Graphics;
 
   constructor(private scene: Phaser.Scene, depth = 2500) {
@@ -140,6 +143,24 @@ export class EffectSystem {
     this.lightnings.push({ points, life: 0.25 });
   }
 
+  // Blitzschlag (Runde 58, Autorwunsch): ein DICKER, greller Bolzen schlägt vom
+  // Himmel auf den Punkt - heller weißer Kern, blaues Glühen, greller Einschlag.
+  // Kein Kreis - der Blitz selbst ist die Ansage. groundY = Einschlaghöhe.
+  blitzschlag(x: number, groundY: number): void {
+    const hoehe = 250;
+    const stufen = 7;
+    const segs: Array<{ x: number; y: number }> = [{ x, y: groundY - hoehe }];
+    for (let i = 1; i < stufen; i++) {
+      const f = i / stufen;
+      segs.push({ x: x + (Math.random() - 0.5) * 40 * (1 - f * 0.6), y: groundY - hoehe + hoehe * f });
+    }
+    segs.push({ x, y: groundY });
+    this.bolts.push({ x, groundY, segs, life: 0.3, maxLife: 0.3 });
+    this.flash(x, groundY - 4, 64, 0xeaf4ff);          // greller Einschlag
+    this.burst(x, groundY, 0xffffff, 8, 150);
+    this.burst(x, groundY, 0xaed8ff, 14, 220);
+  }
+
   // Frost-Aura (Runde 40): ein blau glühender Stoßring wächst nach außen und
   // verblasst - so wirkt Frostnova wie eine Aura, nicht wie ein flacher Kreis.
   frostNova(x: number, y: number, maxR: number): void {
@@ -220,6 +241,8 @@ export class EffectSystem {
       }
     }
     this.nukes = this.nukes.filter((nk) => nk.t < nk.maxT);
+    for (const b of this.bolts) b.life -= dt;
+    this.bolts = this.bolts.filter((b) => b.life > 0);
     for (const f of this.floats) {
       f.obj.y -= 34 * dt;
       f.life -= dt;
@@ -340,6 +363,22 @@ export class EffectSystem {
         g.fillStyle(0xc8682e, 0.45 * Phaser.Math.Clamp(1 - t / 3, 0, 1)); g.fillEllipse(nk.x, capY - capR * 0.18, capR * 1.1, capR * 0.7);
         g.fillStyle(0xf0a040, 0.4 * Phaser.Math.Clamp(1 - t / 2.4, 0, 1)); g.fillEllipse(nk.x, capY - capR * 0.28, capR * 0.6, capR * 0.42);
       }
+    }
+    // Blitzschläge: dicker Bolzen in mehreren Schichten (Schein -> Kern), heller
+    // Einschlag-Glanz am Boden. Flackert über die Lebenszeit.
+    for (const b of this.bolts) {
+      const p = Phaser.Math.Clamp(b.life / b.maxLife, 0, 1);
+      const fl = 0.6 + Math.random() * 0.4; // Flackern
+      const lagen: Array<[number, number, number]> = [[13, 0x3a78d0, 0.28], [7, 0x9ad0ff, 0.6], [3, 0xffffff, 0.95]];
+      for (const [w, col, a] of lagen) {
+        g.lineStyle(w, col, a * p * fl);
+        g.beginPath();
+        g.moveTo(b.segs[0].x, b.segs[0].y);
+        for (let i = 1; i < b.segs.length; i++) g.lineTo(b.segs[i].x, b.segs[i].y);
+        g.strokePath();
+      }
+      g.fillStyle(0xffffff, 0.85 * p); g.fillCircle(b.x, b.groundY, 4 + 3 * p);
+      g.fillStyle(0xaed8ff, 0.5 * p); g.fillCircle(b.x, b.groundY, 14 * p + 4);
     }
     for (const li of this.lightnings) {
       li.life -= dt;

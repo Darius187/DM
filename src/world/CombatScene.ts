@@ -50,7 +50,7 @@ export interface Projectile {
   steckt?: boolean; steckT?: number; praller?: number; steckAng?: number;
 }
 
-export interface Telegraph { x: number; y: number; r: number; t: number; maxT: number; dmg: number; holy?: boolean; done?: boolean; art?: 'feuer' }
+export interface Telegraph { x: number; y: number; r: number; t: number; maxT: number; dmg: number; holy?: boolean; done?: boolean }
 
 export abstract class CombatScene extends Phaser.Scene implements EnemyHost, TouchHost {
   declare provider: SpriteProvider;
@@ -2078,9 +2078,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
           const ex = zx + (Math.random() - 0.5) * fx.streuung * 2;
           const ey = zy + (Math.random() - 0.5) * fx.streuung * 2;
           const treffMs = (i + 1) * (fx.dauerS * 1000 / fx.einschlaege);
-          // Glühender Boden-Warnring (Runde 40: feurig statt heiligem Gold)
-          this.telegraphs.push({ x: ex, y: ey, r: fx.radius, t: treffMs / 1000, maxT: fx.dauerS, dmg: 0, holy: true, art: 'feuer' });
-          // Flamme stürzt kurz vor dem Einschlag herab und landet im Ring
+          // Kein Warnkreis mehr (Autorwunsch R58): die herabstürzende Flamme
+          // ist die Ansage - das sieht nach echtem Feuerregen aus, nicht nach Kreisen.
           this.time.delayedCall(Math.max(0, treffMs - fallS * 1000), () => this.fx.flameDrop(ex, ey, fallS));
           this.time.delayedCall(treffMs, () => {
             this.fx.feuerStoss(ex, ey, 1.4);
@@ -2127,11 +2126,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         for (let i = 0; i < fx.einschlaege; i++) {
           const ex = z.x + (Math.random() - 0.5) * fx.streuung * 2;
           const ey = z.y + (Math.random() - 0.5) * fx.streuung * 2;
-          this.telegraphs.push({ x: ex, y: ey, r: fx.radius, t: (i + 1) * (fx.dauerS / fx.einschlaege), maxT: fx.dauerS, dmg: 0, holy: true });
           this.time.delayedCall((i + 1) * (fx.dauerS * 1000 / fx.einschlaege), () => {
-            this.fx.lightning([{ x: ex + (Math.random() - 0.5) * 22, y: ey - 230 }, { x: ex + (Math.random() - 0.5) * 14, y: ey - 110 }, { x: ex, y: ey }]);
-            this.fx.burst(ex, ey, 0xaee0ff, 16, 230);
-            this.fx.burst(ex, ey, 0xffffff, 6, 120);
+            // Echter, dicker, greller Blitz statt Warnkreis (Autorwunsch R58)
+            this.fx.blitzschlag(ex, ey);
+            this.cameras.main.flash(70, 80, 110, 160); // kurzer heller Schlag
             this.shake(3);
             this.sfx.play('block', 0.5);
             for (const e of [...this.enemies]) {
@@ -2487,7 +2485,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
           const ex = z.x + (Math.random() - 0.5) * fx.streuung * 2;
           const ey = z.y + (Math.random() - 0.5) * fx.streuung * 2;
           const treffMs = (i + 1) * (fx.dauerS * 1000 / fx.einschlaege);
-          this.telegraphs.push({ x: ex, y: ey, r: 12, t: treffMs / 1000, maxT: fx.dauerS, dmg: 0, holy: true });
+          // Kein Warnkreis (Autorwunsch R58): der herabhagelnde Pfeil ist die Ansage.
           // Pfeil HAGELT sichtbar von oben herab auf den Punkt (Autorwunsch R53):
           // startet hoch über dem Ziel und fällt genau zum Einschlag ein.
           const fallMs = 300;
@@ -3348,16 +3346,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     for (const tg of this.telegraphs) {
       const prog = 1 - Math.max(0, tg.t) / tg.maxT;
       if (tg.holy) {
-        if (tg.art === 'feuer') {
-          // glühender Ring, der sich zum Einschlag hin füllt (Runde 40)
-          g.lineStyle(2.5, 0xe8641a, 0.85);
-          g.strokeCircle(tg.x, tg.y, tg.r);
-          g.fillStyle(0xc8401a, 0.1 + prog * 0.28);
-          g.fillCircle(tg.x, tg.y, tg.r * prog);
-        } else {
-          g.lineStyle(3, 0xf0dc96, Math.max(0, tg.t * 4));
-          g.strokeCircle(tg.x, tg.y, tg.r);
-        }
+        g.lineStyle(3, 0xf0dc96, Math.max(0, tg.t * 4));
+        g.strokeCircle(tg.x, tg.y, tg.r);
         continue;
       }
       g.lineStyle(1.5, 0xc83c28, 0.8);
