@@ -12,6 +12,7 @@ import { WEAPONS, BOWS } from '../data/items';
 import { SchattenManager, type Occluder, type Licht } from '../systems/SchattenManager';
 import { getSettings } from '../logic/settings';
 import { LichtPanel } from '../ui/lichtPanel';
+import { Held3DModell } from '../demo3d/held3dModel';
 import Phaser from 'phaser';
 
 const ARENA_W = 30;
@@ -42,6 +43,13 @@ export class DebugArenaScene extends CombatScene {
   private statischeOccl: Occluder[] = [];     // Säulen/Truhen/Gebäude (werfen Schatten)
   private fackeln: Array<{ x: number; y: number }> = [];   // feste Wandfackeln
   private lichtPanel!: LichtPanel;            // dieselbe Licht-Werkbank wie im Hauptspiel
+
+  // --- 3D-Held-Test (Runde 58): das animierte 3D-Modell als Spielfigur -------
+  private held3d: Held3DModell | null = null;
+  private held3dTex: Phaser.Textures.CanvasTexture | null = null;
+  private held3dAn = true;                    // Taste J schaltet 2D/3D um
+  private static readonly H3D = 192;          // Größe der 3D-Render-Leinwand
+  private h3dZeit = 0; private h3dPx = 0; private h3dPy = 0;
 
   constructor() {
     super('DebugArena');
@@ -74,6 +82,11 @@ export class DebugArenaScene extends CombatScene {
     this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {
       if (ev.key.startsWith('F') && ev.key.length <= 3) ev.preventDefault();
     });
+    // 3D-Held: Modell-Renderer + Phaser-Textur, in die wir Frame für Frame kopieren
+    this.held3d = new Held3DModell(DebugArenaScene.H3D);
+    const S = DebugArenaScene.H3D;
+    this.held3dTex = (this.textures.exists('held3d') ? this.textures.get('held3d') : this.textures.createCanvas('held3d', S, S)) as Phaser.Textures.CanvasTexture ?? null;
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.held3d?.destroy(); this.held3d = null; });
     // Dev-Hook für automatisierte Tests
     if (import.meta.env.DEV) {
       (window as unknown as { __arena?: DebugArenaScene }).__arena = this;
@@ -137,6 +150,7 @@ export class DebugArenaScene extends CombatScene {
       this.enemies = [];
     }
     if (k === 'h') this.showDebug = !this.showDebug;
+    if (k === 'j') { this.held3dAn = !this.held3dAn; this.logMsg(this.held3dAn ? '3D-Held AN' : '3D-Held aus (2D-Sprite)'); }
     if (k === 'g') this.cycleWeapon();
     if (k === 'x') { this.fackelAn = !this.fackelAn; this.logMsg(this.fackelAn ? 'Fackel AN (Dungeon-Schatten)' : 'Fackel aus'); }
     if (k === 'z') { this.sonneAuto = !this.sonneAuto; this.logMsg(this.sonneAuto ? 'Sonne wandert' : 'Sonne steht (Pfeil < > zum Drehen)'); }
@@ -162,6 +176,30 @@ export class DebugArenaScene extends CombatScene {
     recalc(this.p);
     this.logMsg(`Waffe: ${name} (${cls})`);
     if (cls === 'bogen' && this.p.arrows < 50) this.p.arrows = 50;
+  }
+
+  // Helden-Render umlenken: ist 3D an UND das Modell geladen, rendern wir das
+  // animierte 3D-Modell in die 'held3d'-Textur und setzen sie als Helden-Sprite;
+  // sonst das normale 2D-Bild (Taste J schaltet um).
+  protected override zeichneHeld(dir: number, step: number): void {
+    if (!this.held3dAn || !this.held3d?.bereit || !this.held3dTex) {
+      this.playerSprite.setOrigin(0.5, 0.5);
+      super.zeichneHeld(dir, step);
+      return;
+    }
+    const now = this.time.now;
+    const dt = this.h3dZeit ? Math.min(0.05, (now - this.h3dZeit) / 1000) : 0.016;
+    this.h3dZeit = now;
+    const moving = Math.hypot(this.px - this.h3dPx, this.py - this.h3dPy) > 0.4;
+    this.h3dPx = this.px; this.h3dPy = this.py;
+    this.held3d.update(dt, this.pdir, moving);
+    // 3D-Leinwand in die Phaser-Textur kopieren
+    const ctx = this.held3dTex.getContext();
+    const S = DebugArenaScene.H3D;
+    ctx.clearRect(0, 0, S, S);
+    ctx.drawImage(this.held3d.canvas, 0, 0);
+    this.held3dTex.refresh();
+    this.playerSprite.setTexture('held3d').setOrigin(0.5, 0.58).setScale(0.4).clearTint();
   }
 
   update(_time: number, delta: number): void {
