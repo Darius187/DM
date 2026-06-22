@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ravensmoor · Dorf im Wald (Regen, Wind, Leben)</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #060a07; font-family: Georgia, 'Times New Roman', serif; }
+    #view { position: fixed; inset: 0; display: block; }
+    #hud { position: fixed; left: 16px; top: 12px; color: #e8dcc0; text-shadow: 0 2px 6px #000; pointer-events: none; max-width: 660px; }
+    #hud h1 { margin: 0; font-size: 16px; letter-spacing: 2px; color: #8fbf7a; font-weight: 600; }
+    #hud p { margin: 5px 0 0; font-size: 12px; color: #a4b294; line-height: 1.45; }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <div id="hud">
+    <h1>RAVENSMOOR · DORF IM WALD</h1>
+    <p>Alles zusammen, reines 2D-Canvas: Gras + Pfützen, Regen & Wind (Wetter),
+       Bäume die sich im Wind wiegen und im Sturm Blätter verlieren, Held (WASD,
+       F = Baum fällen) + Hühner + Dorfbewohner. Laufeffekte: Spritzer/Ringe im
+       Wasser, Gras-Rascheln auf der Wiese. R = Regen an/aus.</p>
+  </div>
+  <script type="module" src="/src/demo3d/dorfSim.ts"></script>
+</body>
+</html>
