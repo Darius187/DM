@@ -108,7 +108,7 @@ function frame(): void {
   }
   frameT += dt * 7; setzeHeld(hdir, moving ? (Math.floor(frameT) % 4) : 0);
 
-  const W = view.width, H = view.height, TSZ = TILE * Z, faceH = TSZ * 0.72;
+  const W = view.width, H = view.height, TSZ = TILE * Z, faceH = TSZ * 0.7;
   let camX = Math.max(W / 2 / Z, Math.min(MW * TILE - W / 2 / Z, hx));
   let camY = Math.max(H / 2 / Z, Math.min(MH * TILE - H / 2 / Z, hy));
   const sx = (wx: number): number => Math.round((wx - camX) * Z + W / 2);
@@ -133,6 +133,10 @@ function frame(): void {
   const ds: D[] = [];
   for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
     if (!istWand(tx, ty)) continue;
+    // Nur RAND-Wände zeichnen (an Boden grenzend) - tiefer Fels bleibt SCHWARZ.
+    let randwand = false;
+    for (let dy = -1; dy <= 1 && !randwand; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && !istWand(tx + dx, ty + dy)) { randwand = true; break; }
+    if (!randwand) continue;
     const k: Kanten = { n: istWand(tx, ty - 1), e: istWand(tx + 1, ty), s: istWand(tx, ty + 1), w: istWand(tx - 1, ty) };
     const v = ((tx * 73856093) ^ (ty * 19349663)) >>> 0;
     const X = sx(tx * TILE), Y = sy(ty * TILE);
