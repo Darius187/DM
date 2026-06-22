@@ -73,7 +73,7 @@ interface Pfuetze { cx: number; cy: number; L: number; B: number; ang: number; m
 function machePfuetze(cx: number, cy: number, L: number, B: number, ang: number): Pfuetze {
   const w = Math.ceil(L), h = Math.ceil(B);
   const m = document.createElement('canvas'); m.width = w; m.height = h; const mc = m.getContext('2d')!;
-  mc.filter = `blur(${Math.max(w, h) * 0.06}px)`; mc.fillStyle = '#fff';
+  mc.filter = `blur(${Math.max(w, h) * 0.022}px)`; mc.fillStyle = '#fff';   // klarere, leicht unregelmäßige Kante (kein Verlauf ins Nichts)
   const n = 3 + Math.floor(Math.random() * 3);
   for (let i = 0; i < n; i++) {                                     // Blobs entlang der langen Achse -> langgezogene Lache
     const ex = w * (0.16 + (i / n) * 0.68 + (Math.random() - 0.5) * 0.1), ey = h * (0.5 + (Math.random() - 0.5) * 0.32);
@@ -98,6 +98,27 @@ function pfuetzeUnter(x: number, y: number): Pfuetze | null {
 interface Tuft { x: number; y: number; ph: number; }
 const tufts: Tuft[] = [];
 
+// ---------- Wiesen-Bewuchs: locker gestreute Blümchen, Kräuter, Klee (gedämpfte Nachtfarben) ----------
+function macheBewuchsBilder(): HTMLCanvasElement[] {
+  const mk = (): [HTMLCanvasElement, CanvasRenderingContext2D] => { const c = document.createElement('canvas'); c.width = 18; c.height = 22; return [c, c.getContext('2d')!]; };
+  const out: HTMLCanvasElement[] = [];
+  for (const f of ['#aeb59b', '#8f86a6', '#a89a5c']) {                 // 3 Blümchen, gedämpfte Blütenfarben
+    const [c, g] = mk();
+    g.strokeStyle = '#3f4d28'; g.lineWidth = 1.3; g.beginPath(); g.moveTo(9, 21); g.lineTo(9, 9); g.stroke();
+    g.strokeStyle = '#46582f'; g.beginPath(); g.moveTo(9, 15); g.lineTo(6, 13); g.moveTo(9, 13); g.lineTo(12, 11); g.stroke();
+    g.fillStyle = f; for (let k = 0; k < 5; k++) { const a = k / 5 * 6.283; g.beginPath(); g.ellipse(9 + Math.cos(a) * 3, 7 + Math.sin(a) * 3, 1.9, 1.4, a, 0, 7); g.fill(); }
+    g.fillStyle = '#6a5a2a'; g.beginPath(); g.arc(9, 7, 1.4, 0, 7); g.fill(); out.push(c);
+  }
+  { const [c, g] = mk(); g.strokeStyle = '#4a5d2c'; g.lineWidth = 1.3;   // Kräuter-Büschel
+    for (let k = -2; k <= 2; k++) { g.beginPath(); g.moveTo(9, 21); g.quadraticCurveTo(9 + k * 2, 13, 9 + k * 4.5, 6 + Math.abs(k)); g.stroke(); } out.push(c); }
+  { const [c, g] = mk(); g.fillStyle = '#3e5226'; g.strokeStyle = '#3e5226'; g.lineWidth = 1.2;  // Klee
+    for (const [x1, y1] of [[7, 13], [11, 13], [9, 11]] as Array<[number, number]>) { g.beginPath(); g.moveTo(9, 21); g.lineTo(x1, y1); g.stroke(); g.beginPath(); g.arc(x1, y1 - 1, 2.4, 0, 7); g.fill(); } out.push(c); }
+  return out;
+}
+const bewuchsBilder = macheBewuchsBilder();
+interface Pflanze { x: number; y: number; typ: number; ph: number; }
+const bewuchs: Pflanze[] = [];
+
 // ---------- Bäume (ez-tree -> Backofen -> Sprite), zwei Stimmungen ----------
 interface Stimmung { dichte: number; blatt: number; rinde: number; groesse: number; sat: number; hell: number; }
 const WALD: Stimmung = { dichte: 1.0, blatt: 0x5d7a48, rinde: 0x5c5446, groesse: 1.0, sat: 76, hell: 76 };
@@ -118,10 +139,14 @@ function texturenBereit(o: THREE.Object3D): boolean {
   return ok;
 }
 const schlaf = (ms: number) => new Promise((r) => setTimeout(r, ms));
-function baueBaum(preset: string, seed: number, st: Stimmung): Tree {
+function baueBaum(preset: string, seed: number, st: Stimmung, dick = 1): Tree {
   const t = new Tree(); t.loadPreset(preset);
-  const o = t.options as unknown as { seed: number; leaves: { count: number; tint: number; size: number }; bark: { tint: number } };
-  o.seed = seed; o.leaves.count = Math.max(1, Math.round(o.leaves.count * st.dichte));
+  const o = t.options as unknown as { seed: number; leaves: { count: number; tint: number; size: number }; bark: { tint: number }; branch: { radius: Record<number, number>; length: Record<number, number> } };
+  o.seed = seed;
+  o.branch.radius[0] *= 1.7 * dick;                 // kräftigere Stämme (vorher wie junge Bäumchen)
+  o.branch.radius[1] *= 1 + (dick - 1) * 0.4;
+  o.branch.length[0] *= 1.05 + (dick - 1) * 0.18;   // dicke Bäume zugleich etwas höher
+  o.leaves.count = Math.max(1, Math.round(o.leaves.count * st.dichte));
   o.leaves.tint = st.blatt; o.leaves.size *= st.groesse; o.bark.tint = st.rinde; t.generate(); return t;
 }
 function backe(ofen: ReturnType<typeof macheBackofen>, t: Tree, st: Stimmung): HTMLCanvasElement {
@@ -185,6 +210,10 @@ addEventListener('keydown', (e) => {
   if (k === '3') { wetterZiel = 1; wetterTimer = 45; }       // Unwetter
 });
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+// Größen-Regler (live) für die Bäume
+let baumGroesse = 1;
+let pausiert = false;   // Screenshot-Hilfe: friert die Schleife ein (Software-WebGL ist sonst zu langsam fürs Capture)
+{ const reg = document.getElementById('groesse') as HTMLInputElement | null, val = document.getElementById('groesseVal'); if (reg) reg.addEventListener('input', () => { baumGroesse = parseFloat(reg.value); if (val) val.textContent = `${baumGroesse.toFixed(2)}×`; }); }
 
 function fälleNächsten(): void {
   const h = held(); let best: Baum | null = null, bd = 1e9;
@@ -229,12 +258,17 @@ function regenAufschlaege(dt: number): void {
 // ---------- Init ----------
 async function init(): Promise<void> {
   const ofen = macheBackofen(512);
-  const rezepte: Array<[string, number]> = [['Oak Large', 1], ['Oak Medium', 23], ['Ash Large', 7], ['Aspen Large', 3], ['Pine Large', 5], ['Aspen Medium', 90]];
+  // 1349-Mischwald (Eiche dominant - historisch stark genutzt; dazu Esche, Kiefer, Espe).
+  // Spalte 3 = Stammdicke: einige dicke alte Bäume, einige schlanke -> Vielfalt.
+  const SORTEN: Array<[string, number, number]> = [
+    ['Oak Large', 1, 1.9], ['Oak Large', 14, 1.4], ['Oak Medium', 23, 1.1], ['Oak Medium', 51, 1.65],
+    ['Ash Large', 7, 1.3], ['Ash Medium', 31, 1.0], ['Pine Large', 5, 1.5], ['Aspen Large', 3, 0.9],
+  ];
   const blattFarben = ['#46582f', '#5d7a48', '#6a7340', '#3f4d28'];
-  for (const [preset, seed] of rezepte) {
-    const tw = baueBaum(preset, seed, WALD);
+  for (const [preset, seed, dick] of SORTEN) {
+    const tw = baueBaum(preset, seed, WALD, dick);
     for (let i = 0; i < 160 && !texturenBereit(tw as unknown as THREE.Object3D); i++) await schlaf(40);
-    arten.push({ wald: backe(ofen, tw, WALD), blight: backe(ofen, baueBaum(preset, seed, BLIGHT), BLIGHT) });
+    arten.push({ wald: backe(ofen, tw, WALD), blight: backe(ofen, baueBaum(preset, seed, BLIGHT, dick), BLIGHT) });
   }
   // Held + Dorfbewohner + Hühner
   wesen.push({ art: 'held', tier: 'leder', x: WELT_W * 0.4, y: WELT_H * 0.62, dir: 0, frameT: 0, speed: 165, zx: 0, zy: 0, ruhe: 0, effT: 0, hackT: 0, bob: 0 });
@@ -259,13 +293,14 @@ async function init(): Promise<void> {
     if (Math.hypot(x - WELT_W * 0.4, y - WELT_H * 0.64) < 320) continue;       // Dorflichtung frei
     if (distPfad(x, y) < PFAD_BREITE * 0.7) continue;                          // nicht auf dem Pfad
     const blight = Math.hypot(x - krypta.x, y - krypta.y) < krypta.r * (0.55 + Math.random() * 0.6);
-    baeume.push({ art: Math.floor(Math.random() * arten.length), x, y, skala: 0.34 + Math.random() * 0.22, blight, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)] });
+    baeume.push({ art: Math.floor(Math.random() * arten.length), x, y, skala: 0.32 + Math.random() * 0.32, blight, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)] });
   }
   // Gras-Büschel
   for (let i = 0; i < 1100; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y)) continue; tufts.push({ x, y, ph: Math.random() * 7 }); }
+  for (let i = 0; i < 520; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y)) continue; bewuchs.push({ x, y, typ: Math.floor(Math.random() * bewuchsBilder.length), ph: Math.random() * 7 }); }  // locker gestreut
   bereit = true;
   (window as unknown as { __dorfBereit?: boolean; __demo?: unknown }).__dorfBereit = true;
-  (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten };
+  (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; } };
 }
 void init();
 
@@ -331,6 +366,7 @@ function aktualisiereWesen(w: Wesen, dt: number, now: number): void {
 // ---------- Schleife ----------
 let last = performance.now();
 function frame(now: number): void {
+  if (pausiert) return;
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   // dynamisches Wetter: Ziel ab und zu neu würfeln (mit Unwetter-Chance), sanft hinbewegen
   wetterTimer -= dt;
@@ -374,23 +410,29 @@ function frame(now: number): void {
     if (p.cx + rr < camX || p.cx - rr > camX + W || p.cy + rr < camY || p.cy - rr > camY + H) continue;
     pbx.setTransform(1, 0, 0, 1, 0, 0); pbx.clearRect(0, 0, pBuf.width, pBuf.height);
     const gg = pbx.createLinearGradient(0, 0, 0, p.B); gg.addColorStop(0, '#2c3b4b'); gg.addColorStop(0.5, '#18222d'); gg.addColorStop(1, '#070b10');
-    pbx.fillStyle = gg; pbx.fillRect(0, 0, p.L, p.B);
-    const wob = Math.sin(now / 700 + p.cx) * 1.4;
-    pbx.fillStyle = `rgba(140,162,190,${0.11 + (1 - Math.min(1, wetter)) * 0.08})`; pbx.fillRect(0, 0, p.L, p.B * 0.4 + wob);        // Himmel-Spiegelung (gedämpft)
-    pbx.fillStyle = 'rgba(190,206,228,0.16)'; pbx.fillRect(0, p.B * 0.32 + wob, p.L, 2);                                           // Horizont-Streifen
-    const gx = p.L * (0.4 + 0.2 * Math.sin(now / 1900 + p.cy)); const rg = pbx.createRadialGradient(gx, p.B * 0.3, 1, gx, p.B * 0.3, p.B * 0.55);
-    rg.addColorStop(0, 'rgba(220,232,248,0.4)'); rg.addColorStop(1, 'rgba(0,0,0,0)'); pbx.fillStyle = rg; pbx.fillRect(0, 0, p.L, p.B);   // Glanzpunkt
-    for (const r of ringe) {
-      if (r.pf !== p) continue; const f = r.t / r.leben, rad = 1 + r.rmax * f, a = (1 - f) * 0.5;
-      pbx.strokeStyle = `rgba(206,220,238,${a})`; pbx.lineWidth = 1.1; pbx.beginPath(); pbx.ellipse(r.lx, r.ly, rad, rad * 0.6, 0, 0, 7); pbx.stroke();
-      pbx.strokeStyle = `rgba(10,16,22,${a * 0.5})`; pbx.beginPath(); pbx.ellipse(r.lx, r.ly, rad + 1.3, (rad + 1.3) * 0.6, 0, 0, 7); pbx.stroke();
+    // dunkle, fast schwarze Grundfläche; KEINE Eigenleucht-Füllung
+    pbx.globalCompositeOperation = 'source-over'; pbx.fillStyle = '#0a0f14'; pbx.fillRect(0, 0, p.L, p.B);
+    // Senke: Mitte dunkler, Rand minimal heller (nasse Kante)
+    const sg = pbx.createRadialGradient(p.L / 2, p.B / 2, 1, p.L / 2, p.B / 2, Math.max(p.L, p.B) / 2);
+    sg.addColorStop(0, 'rgba(0,0,0,0.5)'); sg.addColorStop(0.72, 'rgba(0,0,0,0)'); sg.addColorStop(1, 'rgba(48,60,72,0.28)');
+    pbx.fillStyle = sg; pbx.fillRect(0, 0, p.L, p.B);
+    // Helligkeit NUR als gedämpfte Himmel-Spiegelung (oben), kein heller Fleck
+    const wob = Math.sin(now / 700 + p.cx) * 1.2;
+    const skg = pbx.createLinearGradient(0, wob, 0, p.B);
+    skg.addColorStop(0, 'rgba(72,88,108,0.22)'); skg.addColorStop(0.5, 'rgba(20,28,36,0.05)'); skg.addColorStop(1, 'rgba(0,0,0,0)');
+    pbx.fillStyle = skg; pbx.fillRect(0, 0, p.L, p.B);
+    for (const r of ringe) {                                   // Tropfen-Ringe = einzige feine Lichtkanten
+      if (r.pf !== p) continue; const f = r.t / r.leben, rad = 1 + r.rmax * f, a = (1 - f) * 0.4;
+      pbx.strokeStyle = `rgba(180,198,220,${a})`; pbx.lineWidth = 1; pbx.beginPath(); pbx.ellipse(r.lx, r.ly, rad, rad * 0.6, 0, 0, 7); pbx.stroke();
+      pbx.strokeStyle = `rgba(6,10,16,${a * 0.7})`; pbx.beginPath(); pbx.ellipse(r.lx, r.ly, rad + 1.3, (rad + 1.3) * 0.6, 0, 0, 7); pbx.stroke();
     }
     pbx.globalCompositeOperation = 'destination-in'; pbx.drawImage(p.maske, 0, 0); pbx.globalCompositeOperation = 'source-over';
     ctx.save(); ctx.translate(sx(p.cx), sy(p.cy)); ctx.rotate(p.ang);
-    ctx.globalAlpha = 0.6; ctx.drawImage(p.schlamm, -p.L * 1.3 / 2, -p.B * 1.55 / 2, p.L * 1.3, p.B * 1.55); ctx.globalAlpha = 1;     // nasser Schlammrand -> bettet in den Pfad ein
+    ctx.globalAlpha = 0.55; ctx.drawImage(p.schlamm, -p.L * 1.32 / 2, -p.B * 1.6 / 2, p.L * 1.32, p.B * 1.6); ctx.globalAlpha = 1;   // nasser Schlammrand -> in den Weg eingebettet
     const rows = 10, rh = p.B / rows;
-    for (let j = 0; j < rows; j++) { const off = Math.sin(now / 320 + j * 0.7 + p.cx * 0.01) * 1.1 * (j / rows); ctx.drawImage(pBuf, 0, j * rh, p.L, rh, -p.L / 2 + off, -p.B / 2 + j * rh, p.L, rh + 0.6); }   // Oberflächen-Wobble
-    ctx.restore();
+    ctx.globalAlpha = 0.78;                                    // leicht transparent -> Lehmboden scheint durch
+    for (let j = 0; j < rows; j++) { const off = Math.sin(now / 320 + j * 0.7 + p.cx * 0.01) * 1.1 * (j / rows); ctx.drawImage(pBuf, 0, j * rh, p.L, rh, -p.L / 2 + off, -p.B / 2 + j * rh, p.L, rh + 0.6); }
+    ctx.globalAlpha = 1; ctx.restore();
   }
 
   // 3) Blight-Mal + Krypta
@@ -406,8 +448,15 @@ function frame(now: number): void {
     ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + lean, gy - 7); ctx.moveTo(gx - 2, gy); ctx.lineTo(gx - 2 + lean * 0.8, gy - 5); ctx.moveTo(gx + 2, gy); ctx.lineTo(gx + 2 + lean * 1.1, gy - 6); ctx.stroke();
   }
 
+  // 4a) Wiesen-Bewuchs (locker gestreut, leichtes Wiegen)
+  if (bereit) for (const pf of bewuchs) {
+    if (pf.x < camX - 20 || pf.x > camX + W + 20 || pf.y < camY - 20 || pf.y > camY + H + 20) continue;
+    const bb = bewuchsBilder[pf.typ], sway = wd * 0.05 + Math.sin(now / 300 + pf.ph) * 0.03;
+    ctx.save(); ctx.translate(sx(pf.x), sy(pf.y)); ctx.rotate(sway); ctx.drawImage(bb, -bb.width / 2, -bb.height + 2); ctx.restore();
+  }
+
   // 4b) Stümpfe unter gefällten Bäumen
-  if (bereit) for (const b of baeume) if (b.fall) { const ss = b.skala * 0.9; ctx.drawImage(stumpfBild, sx(b.x) - stumpfBild.width * ss / 2, sy(b.y) - stumpfBild.height * ss / 2 + 2, stumpfBild.width * ss, stumpfBild.height * ss); }
+  if (bereit) for (const b of baeume) if (b.fall) { const ss = b.skala * baumGroesse * 0.95; ctx.drawImage(stumpfBild, sx(b.x) - stumpfBild.width * ss / 2, sy(b.y) - stumpfBild.height * ss / 2 + 2, stumpfBild.width * ss, stumpfBild.height * ss); }
 
   // 5) Bäume + Wesen, tiefensortiert
   if (bereit) {
@@ -417,7 +466,7 @@ function frame(now: number): void {
     for (const w of wesen) liste.push({ y: w.y, b: null, w });
     liste.sort((a, c) => a.y - c.y);
     for (const z of liste) {
-      if (z.b) { const b = z.b, bild = b.blight ? arten[b.art].blight : arten[b.art].wald, w = bild.width * b.skala, hh = bild.height * b.skala; if (b.fall) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); else zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * (b.blight ? 5 : 13) * (0.7 + b.skala * 0.6), b.ph, now); }
+      if (z.b) { const b = z.b, bild = b.blight ? arten[b.art].blight : arten[b.art].wald, sk = b.skala * baumGroesse, w = bild.width * sk, hh = bild.height * sk; if (b.fall) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); else zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * (b.blight ? 5 : 13) * (0.7 + sk * 0.6), b.ph, now); }
       else if (z.w) zeichneWesen(z.w);
     }
   } else { ctx.fillStyle = '#6a7a55'; ctx.font = '16px Georgia'; ctx.fillText('Dorf & Wald werden gebacken …', 24, H - 28); }
