@@ -39,10 +39,36 @@ function distSeg(px: number, py: number, ax: number, ay: number, bx: number, by:
 function distPfad(x: number, y: number): number { let d = 1e9; for (let i = 0; i < pfad.length - 1; i++) d = Math.min(d, distSeg(x, y, pfad[i].x, pfad[i].y, pfad[i + 1].x, pfad[i + 1].y)); return d; }
 const aufPfad = (x: number, y: number): boolean => distPfad(x, y) < PFAD_BREITE * 0.5;
 
+// Weg-Geometrie (einmal): mäandernde Mittellinie + variable Halbbreite + Deko (Flecken/Steine)
+interface PfadPunkt { x: number; y: number; nx: number; ny: number; hw: number; }
+const pfadMitte: PfadPunkt[] = [];
+interface Fleck { x: number; y: number; rx: number; ry: number; col: string; rot: number; }
+const pfadFlecken: Fleck[] = [], pfadSteine: Fleck[] = [];
+function bauePfadGeometrie(): void {
+  const nz = (s: number, f: number, ph: number): number => Math.sin(s * f + ph);
+  let s = 0;
+  for (let i = 0; i < pfad.length - 1; i++) {
+    const a = pfad[i], b = pfad[i + 1], dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+    for (let d = 0; d < len; d += 7, s += 7) {
+      const t = d / len, px = a.x + dx * t, py = a.y + dy * t;
+      const meander = nz(s, 0.012, 0) * 20 + nz(s, 0.031, 1.3) * 9;                 // seitliches Mäandern
+      const hw = Math.max(18, PFAD_BREITE * 0.5 * (0.8 + 0.28 * nz(s, 0.02, 2) + 0.13 * nz(s, 0.055, 4)) + (Math.abs(nz(s, 0.8, i)) * 6 - 3));  // Breite variiert + ausgefranst
+      pfadMitte.push({ x: px + nx * meander, y: py + ny * meander, nx, ny, hw });
+    }
+  }
+  for (let i = 0; i < pfadMitte.length; i++) {
+    const m = pfadMitte[i], r = Math.random;
+    if (i % 4 === 0) { const q = (r() - 0.5) * m.hw * 1.5; pfadFlecken.push({ x: m.x + m.nx * q, y: m.y + m.ny * q, rx: 9 + r() * 22, ry: 5 + r() * 11, col: r() < 0.5 ? 'rgba(16,11,6,0.5)' : 'rgba(80,66,46,0.36)', rot: r() * 3 }); }   // nass/trocken
+    if (r() < 0.05) { const q = (r() - 0.5) * m.hw * 1.2; pfadSteine.push({ x: m.x + m.nx * q, y: m.y + m.ny * q, rx: 2 + r() * 4, ry: 1.5 + r() * 2.4, col: '#56524a', rot: r() * 3 }); }
+  }
+}
+bauePfadGeometrie();
+
 // ---------- Wetter (dynamisch: klar -> Regen -> Unwetter; treibt Wind/Regen/Nebel) ----------
 let regenAn = true;
 let wetter = 0.5;                 // 0 klar .. 0.5 Regen .. 1 Sturm
 let wetterZiel = 0.5, wetterTimer = 6;
+let wetness = 0;                  // 0..1 Bodennässe: Regen füllt schnell, Verdunsten langsam -> Pfützen-Steuerung
 const WETTER_NAME = (): string => wetter < 0.15 ? 'klar' : wetter < 0.45 ? 'Nieselregen' : wetter < 0.78 ? 'Regen' : 'Unwetter';
 function wind(now: number): number {                       // mit Böen; Stärke steigt mit dem Wetter
   const t = now / 1000;
@@ -69,7 +95,7 @@ const grasMuster = ctx.createPattern(macheGras(), 'repeat');
 // Pfütze liegt AM Pfad entlang: Mittelpunkt (cx,cy), Länge L (in Pfadrichtung),
 // Breite B (quer, < Pfadbreite), Winkel ang. Maske + brauner Schlamm-Halo lokal
 // (lange Achse = x), damit sie sich in den Weg einbettet statt quer draufzuliegen.
-interface Pfuetze { cx: number; cy: number; L: number; B: number; ang: number; maske: HTMLCanvasElement; schlamm: HTMLCanvasElement; }
+interface Pfuetze { cx: number; cy: number; L: number; B: number; ang: number; maske: HTMLCanvasElement; schlamm: HTMLCanvasElement; schwelle: number; grow: number; shrink: number; current: number; }
 function machePfuetze(cx: number, cy: number, L: number, B: number, ang: number): Pfuetze {
   const w = Math.ceil(L), h = Math.ceil(B);
   const m = document.createElement('canvas'); m.width = w; m.height = h; const mc = m.getContext('2d')!;
@@ -81,7 +107,8 @@ function machePfuetze(cx: number, cy: number, L: number, B: number, ang: number)
   }
   const s = document.createElement('canvas'); s.width = w; s.height = h; const sc2 = s.getContext('2d')!;
   sc2.fillStyle = '#1a130b'; sc2.fillRect(0, 0, w, h); sc2.globalCompositeOperation = 'destination-in'; sc2.drawImage(m, 0, 0);   // Schlamm = Form in Braun
-  return { cx, cy, L: w, B: h, ang, maske: m, schlamm: s };
+  // wetness-Werte (gestaffelt) werden bei der Platzierung gesetzt; current startet trocken
+  return { cx, cy, L: w, B: h, ang, maske: m, schlamm: s, schwelle: 0.3, grow: 0.5, shrink: 0.15, current: 0 };
 }
 const pfuetzen: Pfuetze[] = [];
 const pBuf = document.createElement('canvas'); const pbx = pBuf.getContext('2d')!;
@@ -155,7 +182,10 @@ function backe(ofen: ReturnType<typeof macheBackofen>, t: Tree, st: Stimmung): H
   obj.scale.setScalar(2.4 / (Math.max(s.x, s.y, s.z) || 1));
   return nachbearbeite(ofen.backe(t as unknown as THREE.Group), st);
 }
-interface Fall { t: number; winkel: number; richtung: number; treffer: boolean; }
+// Fall-Physik (eigene Impuls-Physik wie der Spiel-Rückstoß, kein matter.js):
+// Schwerkraft-Drehmoment um den Stammfuß, beschleunigt mit der Neigung, federt am Boden nach.
+interface Fall { winkel: number; winkelV: number; gelandet: boolean; richtung: number; geerntet: boolean; }
+const FALL_G = 7.5, FALL_ZIEL = 1.46;   // Schwerkraft-Stärke; Ruhewinkel (liegend)
 interface Baum { art: number; x: number; y: number; skala: number; blight: boolean; ph: number; fall: Fall | null; blattFarbe: string; }
 const arten: Array<{ wald: HTMLCanvasElement; blight: HTMLCanvasElement }> = [];
 const baeume: Baum[] = [];
@@ -212,16 +242,26 @@ addEventListener('keydown', (e) => {
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 // Größen-Regler (live) für die Bäume
 let baumGroesse = 1;
+let pfadBreiteFaktor = 1;   // Regler: Weg-Breite (live)
+let holz = 0;           // gesammeltes Holz (1 je gefälltem + zerhacktem Baum)
 let pausiert = false;   // Screenshot-Hilfe: friert die Schleife ein (Software-WebGL ist sonst zu langsam fürs Capture)
 { const reg = document.getElementById('groesse') as HTMLInputElement | null, val = document.getElementById('groesseVal'); if (reg) reg.addEventListener('input', () => { baumGroesse = parseFloat(reg.value); if (val) val.textContent = `${baumGroesse.toFixed(2)}×`; }); }
+{ const reg = document.getElementById('wegbreite') as HTMLInputElement | null, val = document.getElementById('wegbreiteVal'); if (reg) reg.addEventListener('input', () => { pfadBreiteFaktor = parseFloat(reg.value); if (val) val.textContent = `${pfadBreiteFaktor.toFixed(2)}×`; }); }
 
 function fälleNächsten(): void {
-  const h = held(); let best: Baum | null = null, bd = 1e9;
+  const h = held();
+  // 1) liegenden, noch nicht geernteten Stamm in Reichweite -> zu Holz hacken (1 Holz/Baum)
+  let log: Baum | null = null, ld = 1e9;
+  for (const b of baeume) { if (b.fall && b.fall.gelandet && !b.fall.geerntet) { const d = Math.hypot(h.x - b.x, h.y - b.y); if (d < 150 && d < ld) { ld = d; log = b; } } }
+  if (log) { h.dir = richtungVon(log.x - h.x, log.y - h.y); h.hackT = 0.4; log.fall!.geerntet = true; holz++; for (let i = 0; i < 12; i++) spaene(log.x + log.fall!.richtung * 40, log.y, '#6a5238', -30, 1); return; }
+  // 2) sonst stehenden Baum fällen (kippt mit Schwung weg vom Helden)
+  let best: Baum | null = null, bd = 1e9;
   for (const b of baeume) { if (b.fall) continue; const d = Math.hypot(h.x - b.x, h.y - b.y); if (d < 130 && d < bd) { bd = d; best = b; } }
   if (!best) return;
   h.dir = richtungVon(best.x - h.x, best.y - h.y); h.hackT = 0.4;
-  best.fall = { t: 0, winkel: 0, richtung: best.x >= h.x ? 1 : -1, treffer: false };
-  for (let i = 0; i < 12; i++) spaene(best.x, best.y, '#6a5238', -40, 30);
+  const ri = best.x >= h.x ? 1 : -1;
+  best.fall = { winkel: 0.05 * ri, winkelV: 0.35 * ri, gelandet: false, richtung: ri, geerntet: false };
+  for (let i = 0; i < 10; i++) spaene(best.x, best.y, '#6a5238', -40, 1);   // Späne am Stammfuß
 }
 
 // ---------- Partikel (Späne, Blätter, Spritzer) ----------
@@ -232,6 +272,9 @@ function spaene(x: number, y: number, farbe: string, hoch: number, n: number): v
 }
 function blattFall(x: number, y: number, farbe: string): void {
   partikel.push({ x, y, vx: (Math.random() - 0.2) * 30, vy: 18 + Math.random() * 18, t: 0, leben: 2.2 + Math.random() * 1.5, farbe, g: 6, gr: 2 + Math.random() * 1.5 });
+}
+function staub(x: number, y: number, n: number): void {   // Aufprall-Staub: niedrig, breit, hellgrau-braun
+  for (let i = 0; i < n; i++) { const a = (Math.random() - 0.5) * Math.PI, s = 30 + Math.random() * 90; partikel.push({ x, y, vx: Math.cos(a) * s, vy: -Math.random() * 20, t: 0, leben: 0.5 + Math.random() * 0.5, farbe: Math.random() < 0.5 ? 'rgba(120,108,90,0.7)' : 'rgba(90,84,70,0.6)', g: 90, gr: 2 + Math.random() * 2.4 }); }
 }
 
 // ---------- Regen ----------
@@ -248,9 +291,9 @@ let regenAkk = 0;
 function regenAufschlaege(dt: number): void {
   if (!regenAn || wetter < 0.12) return;
   regenAkk += wetter * 75 * dt;                                    // Aufschläge übers ganze Bild
-  while (regenAkk >= 1) { regenAkk -= 1; const wx = camX + Math.random() * W, wy = camY + Math.random() * H; const pf = pfuetzeUnter(wx, wy); if (pf) { const lo = lokal(pf, wx, wy); tropfenRing(pf, lo.lx, lo.ly); } else bodenKrone(wx, wy); }
-  for (const p of pfuetzen) {                                      // jede sichtbare Pfütze "lebt" (Tropfen)
-    if (p.cx + p.L < camX || p.cx - p.L > camX + W || p.cy + p.L < camY || p.cy - p.L > camY + H) continue;
+  while (regenAkk >= 1) { regenAkk -= 1; const wx = camX + Math.random() * W, wy = camY + Math.random() * H; const pf = pfuetzeUnter(wx, wy); if (pf && pf.current > 0.25) { const lo = lokal(pf, wx, wy); tropfenRing(pf, lo.lx, lo.ly); } else bodenKrone(wx, wy); }
+  for (const p of pfuetzen) {                                      // jede aktive, sichtbare Pfütze "lebt" (Tropfen)
+    if (p.current < 0.25 || p.cx + p.L < camX || p.cx - p.L > camX + W || p.cy + p.L < camY || p.cy - p.L > camY + H) continue;
     if (Math.random() < wetter * 10 * dt) tropfenRing(p, p.L * (0.15 + Math.random() * 0.7), p.B * (0.2 + Math.random() * 0.6));
   }
 }
@@ -285,6 +328,8 @@ async function init(): Promise<void> {
     const cx = a.x + (b.x - a.x) * tt - Math.sin(ang) * quer, cy = a.y + (b.y - a.y) * tt + Math.cos(ang) * quer;
     const L = 95 + Math.random() * 120, B = 34 + Math.random() * 24;  // lang am Pfad, schmal quer (< Pfadbreite)
     const p = machePfuetze(cx, cy, L, B, ang);
+    p.schwelle = 0.12 + Math.random() * 0.5;            // gestaffelt: tiefe Senken zuerst, dann alle
+    p.grow = 0.4 + Math.random() * 0.4; p.shrink = 0.06 + Math.random() * 0.12;   // Verdunsten viel langsamer
     pfuetzen.push(p); pBuf.width = Math.max(pBuf.width, Math.ceil(L)); pBuf.height = Math.max(pBuf.height, Math.ceil(B));
   }
   // Bäume (Rand dicht, Dorfmitte frei)
@@ -300,7 +345,8 @@ async function init(): Promise<void> {
   for (let i = 0; i < 520; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y)) continue; bewuchs.push({ x, y, typ: Math.floor(Math.random() * bewuchsBilder.length), ph: Math.random() * 7 }); }  // locker gestreut
   bereit = true;
   (window as unknown as { __dorfBereit?: boolean; __demo?: unknown }).__dorfBereit = true;
-  (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; } };
+  (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; }, nass: (v: number) => { wetness = v; for (const p of pfuetzen) p.current = wetness > p.schwelle ? 1 : 0; },
+    selbsttest: (): string => { const b0 = baeume.find((t) => !t.fall); if (!b0) return 'kein Baum'; held().x = b0.x - 60; held().y = b0.y; fälleNächsten(); const g = baeume.find((t) => t.fall && !t.fall.gelandet); if (!g) return 'nichts gefallen'; g.fall!.gelandet = true; g.fall!.winkel = FALL_ZIEL * g.fall!.richtung; held().x = g.x - 60; held().y = g.y; const h0 = holz; fälleNächsten(); const s = `gefallen=ja geerntet=${g.fall!.geerntet} holz ${h0}->${holz}`; console.log('[selbsttest] ' + s); return s; } };
 }
 void init();
 
@@ -309,7 +355,7 @@ function neuesNpc(art: Art, tier: HeldTier, x: number, y: number): Wesen {
 }
 
 // ---------- Wind/Baum-Zeichnen ----------
-const STREIFEN = 18;
+const STREIFEN = 12;   // Wind-Biegungsstreifen je Baum (Performance; optisch kaum Unterschied)
 function zeichneImWind(bild: HTMLCanvasElement, bx: number, by: number, w: number, h: number, bend: number, ph: number, now: number): void {
   const Y0 = by - h * 0.64, spanne = h * 0.64, sliceH = h / STREIFEN, sH = bild.height / STREIFEN;
   for (let i = 0; i < STREIFEN; i++) {
@@ -319,7 +365,9 @@ function zeichneImWind(bild: HTMLCanvasElement, bx: number, by: number, w: numbe
   }
 }
 function zeichneGefällt(bild: HTMLCanvasElement, bx: number, by: number, w: number, h: number, f: Fall): void {
-  ctx.save(); ctx.translate(bx, by); ctx.rotate(f.winkel); ctx.scale(1, 1 - 0.16 * Math.abs(Math.sin(f.winkel))); ctx.drawImage(bild, -w / 2, -h * 0.64, w, h); ctx.restore();
+  const squash = f.gelandet ? 1 - Math.min(0.14, Math.abs(f.winkelV) * 0.06) : 1;   // Krone staucht beim Aufprall minimal
+  ctx.save(); ctx.translate(bx, by); ctx.rotate(f.winkel); ctx.scale(squash, (1 - 0.16 * Math.abs(Math.sin(f.winkel))) * squash);
+  ctx.drawImage(bild, -w / 2, -h * 0.64, w, h); ctx.restore();
 }
 
 // ---------- Kamera ----------
@@ -356,7 +404,7 @@ function aktualisiereWesen(w: Wesen, dt: number, now: number): void {
     if (w.effT <= 0) {
       w.effT = 0.12;
       const pf = pfuetzeUnter(w.x, w.y);
-      if (pf) { const lo = lokal(pf, w.x, w.y); ringe.push({ lx: lo.lx, ly: lo.ly, x: 0, y: 0, t: 0, leben: 0.8, rmax: 16, pf }); if (Math.random() < 0.6) spaene(w.x, w.y, 'rgba(170,190,210,0.8)', -30, 2); }
+      if (pf && pf.current > 0.25) { const lo = lokal(pf, w.x, w.y); ringe.push({ lx: lo.lx, ly: lo.ly, x: 0, y: 0, t: 0, leben: 0.8, rmax: 16, pf }); if (Math.random() < 0.6) spaene(w.x, w.y, 'rgba(170,190,210,0.8)', -30, 2); }
       else if (Math.random() < 0.5) spaene(w.x, w.y - 2, 'rgba(70,92,44,0.9)', -10, 1);    // Gras-Rascheln
     }
   } else { w.hackT > 0 ? (w.frameT = 2) : (w.bob = 0); }
@@ -372,6 +420,10 @@ function frame(now: number): void {
   wetterTimer -= dt;
   if (wetterTimer <= 0) { wetterTimer = 10 + Math.random() * 16; wetterZiel = Math.random() < 0.28 ? 0.85 + Math.random() * 0.25 : 0.15 + Math.random() * 0.5; }
   wetter += (wetterZiel - wetter) * Math.min(1, dt * 0.5);
+  // Bodennässe: Regen füllt schnell, ohne Regen verdunstet sie langsam -> Pfützen wachsen/schwinden
+  const regenInt = (regenAn && wetter > 0.12) ? wetter : 0;
+  wetness = Math.max(0, Math.min(1, wetness + (regenInt > 0 ? regenInt * 0.18 : -0.012) * dt));
+  for (const p of pfuetzen) { const ziel = wetness > p.schwelle ? 1 : 0, sp = (ziel > p.current ? p.grow : p.shrink) * dt; p.current += Math.max(-sp, Math.min(sp, ziel - p.current)); }
   const wd = wind(now);                                            // Wetter-Wind
 
   if (bereit) {
@@ -379,9 +431,24 @@ function frame(now: number): void {
     for (const w of wesen) aktualisiereWesen(w, dt, now);
     // Bäume fallen + Blätter im Sturm; im Unwetter knickt selten einer um
     for (const b of baeume) {
-      if (b.fall) { b.fall.t = Math.min(1, b.fall.t + dt / 0.85); const e = 1 - Math.pow(1 - b.fall.t, 3); b.fall.winkel = e * 1.5 * b.fall.richtung; if (!b.fall.treffer && b.fall.t > 0.82) { b.fall.treffer = true; spaene(b.x + b.fall.richtung * 60, b.y, b.blattFarbe, 10, 16); } continue; }
+      const f = b.fall;
+      if (f) {
+        const ri = f.richtung;
+        if (!f.gelandet) {                                          // Schwerkraft-Drehmoment, beschleunigt mit der Neigung
+          f.winkelV += ri * FALL_G * Math.sin(Math.abs(f.winkel) + 0.04) * dt;
+          f.winkel += f.winkelV * dt;
+          if (Math.abs(f.winkel) >= FALL_ZIEL) {                    // Aufprall: Staub + Blätter, Nachfedern
+            f.winkel = FALL_ZIEL * ri; f.winkelV *= -0.32; f.gelandet = true;
+            const tx = b.x + Math.sin(FALL_ZIEL) * 90 * b.skala * baumGroesse * ri;
+            staub(tx, b.y, 14); for (let i = 0; i < 14; i++) blattFall(tx + (Math.random() - 0.5) * 60, b.y - 10, b.blattFarbe);
+          }
+        } else {                                                    // liegt: federt gedämpft zur Ruhe (Gewicht)
+          f.winkelV += (FALL_ZIEL * ri - f.winkel) * 50 * dt; f.winkelV *= 0.80; f.winkel += f.winkelV * dt;
+        }
+        continue;
+      }
       if (!b.blight && Math.abs(wd) > 0.7 && Math.random() < dt * 1.6 * b.skala) blattFall(b.x + (Math.random() - 0.5) * 60 * b.skala, b.y - 90 * b.skala, b.blattFarbe);
-      if (wetter > 0.72 && wd > 1.35 && Math.random() < dt * 0.014 * b.skala) { b.fall = { t: 0, winkel: 0, richtung: 1, treffer: false }; spaene(b.x, b.y, b.blattFarbe, 0, 18); }
+      if (wetter > 0.72 && wd > 1.35 && Math.random() < dt * 0.014 * b.skala) { b.fall = { winkel: 0.05, winkelV: 0.4, gelandet: false, richtung: 1, geerntet: false }; }   // Sturm knickt ihn um
     }
   }
   // Partikel
@@ -396,17 +463,32 @@ function frame(now: number): void {
   // 1) Gras-Boden
   ctx.save(); ctx.translate(-camX, -camY); ctx.fillStyle = grasMuster ?? '#27331c'; ctx.fillRect(camX, camY, W, H); ctx.restore();
 
-  // 1b) Pfad (Erde) - hier laufen die Wesen und hier bilden sich die Pfützen
-  ctx.save(); ctx.translate(-camX, -camY); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(pfad[0].x, pfad[0].y); for (let i = 1; i < pfad.length; i++) ctx.lineTo(pfad[i].x, pfad[i].y);
-  ctx.strokeStyle = '#241d13'; ctx.lineWidth = PFAD_BREITE; ctx.stroke();
-  ctx.strokeStyle = '#3a3120'; ctx.lineWidth = PFAD_BREITE - 18; ctx.stroke();
-  ctx.restore();
+  // 1b) Pfad: mäanderndes Erdband mit unregelmäßigen Rändern, Spurrillen, nassen/trockenen
+  //     Flecken, Steinen und einem Saum aus zertretenem Gras (bricht die harte Kante)
+  if (pfadMitte.length) {
+    const f = pfadBreiteFaktor;
+    ctx.save(); ctx.translate(-camX, -camY); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    const poly = (): void => { ctx.beginPath(); for (let i = 0; i < pfadMitte.length; i++) { const m = pfadMitte[i]; const x = m.x + m.nx * m.hw * f, y = m.y + m.ny * m.hw * f; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } for (let i = pfadMitte.length - 1; i >= 0; i--) { const m = pfadMitte[i]; ctx.lineTo(m.x - m.nx * m.hw * f, m.y - m.ny * m.hw * f); } ctx.closePath(); };
+    poly(); ctx.fillStyle = '#332819'; ctx.fill();
+    for (const off of [-0.4, 0.4]) { ctx.beginPath(); for (let i = 0; i < pfadMitte.length; i++) { const m = pfadMitte[i]; const x = m.x + m.nx * m.hw * f * off, y = m.y + m.ny * m.hw * f * off; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.strokeStyle = 'rgba(16,11,6,0.45)'; ctx.lineWidth = 7; ctx.stroke(); }   // Spurrillen
+    ctx.save(); poly(); ctx.clip();
+    for (const fl of pfadFlecken) { ctx.fillStyle = fl.col; ctx.beginPath(); ctx.ellipse(fl.x, fl.y, fl.rx, fl.ry, fl.rot, 0, 7); ctx.fill(); }
+    for (const st of pfadSteine) { ctx.fillStyle = st.col; ctx.beginPath(); ctx.ellipse(st.x, st.y, st.rx, st.ry, st.rot, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(210,210,200,0.14)'; ctx.beginPath(); ctx.ellipse(st.x - st.rx * 0.3, st.y - st.ry * 0.3, st.rx * 0.5, st.ry * 0.5, st.rot, 0, 7); ctx.fill(); }
+    ctx.restore();
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < pfadMitte.length; i += 2) {
+      const m = pfadMitte[i];
+      for (const side of [-1, 1]) { const hs = Math.sin(i * 12.9 + side * 3.1) * 43758.5, r = hs - Math.floor(hs); if (r > 0.5) continue; const ex = m.x + m.nx * m.hw * f * side, ey = m.y + m.ny * m.hw * f * side, hgt = 4 + r * 8; ctx.strokeStyle = '#34421f'; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + side * 2 + wd * 2, ey - hgt); ctx.stroke(); }   // Saumgras
+      if (i % 6 === 0) { const hs = Math.sin(i * 7.7) * 43758.5, r = hs - Math.floor(hs); if (r < 0.25) { const q = (r * 8 - 1) * m.hw * f * 0.4, gx = m.x + m.nx * q, gy = m.y + m.ny * q; ctx.strokeStyle = '#3a4a22'; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + wd * 2, gy - 6); ctx.moveTo(gx - 2, gy); ctx.lineTo(gx - 2 + wd * 1.5, gy - 5); ctx.stroke(); } }   // durchwachsend
+    }
+    ctx.restore();
+  }
 
   // 2) Pfützen: schmale Wasserlachen AM Pfad entlang (gedreht), mit nassem Schlammrand
   //    der sie in den Weg einbettet; darin dunkler Spiegel, Himmelstreifen, Glanz, Tropfen-Ringe
   for (const p of pfuetzen) {
-    const rr = Math.max(p.L, p.B);
+    if (p.current < 0.02) continue;                                // trocken -> keine Pfütze
+    const cur = p.current, rr = Math.max(p.L, p.B);
     if (p.cx + rr < camX || p.cx - rr > camX + W || p.cy + rr < camY || p.cy - rr > camY + H) continue;
     pbx.setTransform(1, 0, 0, 1, 0, 0); pbx.clearRect(0, 0, pBuf.width, pBuf.height);
     const gg = pbx.createLinearGradient(0, 0, 0, p.B); gg.addColorStop(0, '#2c3b4b'); gg.addColorStop(0.5, '#18222d'); gg.addColorStop(1, '#070b10');
@@ -428,10 +510,11 @@ function frame(now: number): void {
     }
     pbx.globalCompositeOperation = 'destination-in'; pbx.drawImage(p.maske, 0, 0); pbx.globalCompositeOperation = 'source-over';
     ctx.save(); ctx.translate(sx(p.cx), sy(p.cy)); ctx.rotate(p.ang);
-    ctx.globalAlpha = 0.55; ctx.drawImage(p.schlamm, -p.L * 1.32 / 2, -p.B * 1.6 / 2, p.L * 1.32, p.B * 1.6); ctx.globalAlpha = 1;   // nasser Schlammrand -> in den Weg eingebettet
-    const rows = 10, rh = p.B / rows;
-    ctx.globalAlpha = 0.78;                                    // leicht transparent -> Lehmboden scheint durch
-    for (let j = 0; j < rows; j++) { const off = Math.sin(now / 320 + j * 0.7 + p.cx * 0.01) * 1.1 * (j / rows); ctx.drawImage(pBuf, 0, j * rh, p.L, rh, -p.L / 2 + off, -p.B / 2 + j * rh, p.L, rh + 0.6); }
+    const cl = p.L * cur, cb = p.B * cur;                          // wächst/schrumpft mit der Nässe
+    ctx.globalAlpha = 0.55 * cur; ctx.drawImage(p.schlamm, -cl * 1.32 / 2, -cb * 1.6 / 2, cl * 1.32, cb * 1.6);   // nasser Schlammrand
+    const rows = 10, rh = cb / rows;
+    ctx.globalAlpha = 0.78 * Math.min(1, cur * 1.4);              // leicht transparent -> Lehmboden scheint durch
+    for (let j = 0; j < rows; j++) { const off = Math.sin(now / 320 + j * 0.7 + p.cx * 0.01) * 1.1 * (j / rows); ctx.drawImage(pBuf, 0, j * p.B / rows, p.L, p.B / rows, -cl / 2 + off, -cb / 2 + j * rh, cl, rh + 0.6); }
     ctx.globalAlpha = 1; ctx.restore();
   }
 
@@ -455,8 +538,11 @@ function frame(now: number): void {
     ctx.save(); ctx.translate(sx(pf.x), sy(pf.y)); ctx.rotate(sway); ctx.drawImage(bb, -bb.width / 2, -bb.height + 2); ctx.restore();
   }
 
-  // 4b) Stümpfe unter gefällten Bäumen
-  if (bereit) for (const b of baeume) if (b.fall) { const ss = b.skala * baumGroesse * 0.95; ctx.drawImage(stumpfBild, sx(b.x) - stumpfBild.width * ss / 2, sy(b.y) - stumpfBild.height * ss / 2 + 2, stumpfBild.width * ss, stumpfBild.height * ss); }
+  // 4b) Schatten der fallenden Krone (wandert mit) + Stümpfe unter gefällten Bäumen
+  if (bereit) for (const b of baeume) if (b.fall) {
+    if (!b.fall.geerntet) { const tx = sx(b.x + Math.sin(b.fall.winkel) * 70 * b.skala * baumGroesse), r = 30 * b.skala * baumGroesse; ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(tx, sy(b.y) + 4, r, r * 0.4, 0, 0, 7); ctx.fill(); }
+    const ss = b.skala * baumGroesse * 0.95; ctx.drawImage(stumpfBild, sx(b.x) - stumpfBild.width * ss / 2, sy(b.y) - stumpfBild.height * ss / 2 + 2, stumpfBild.width * ss, stumpfBild.height * ss);
+  }
 
   // 5) Bäume + Wesen, tiefensortiert
   if (bereit) {
@@ -466,7 +552,7 @@ function frame(now: number): void {
     for (const w of wesen) liste.push({ y: w.y, b: null, w });
     liste.sort((a, c) => a.y - c.y);
     for (const z of liste) {
-      if (z.b) { const b = z.b, bild = b.blight ? arten[b.art].blight : arten[b.art].wald, sk = b.skala * baumGroesse, w = bild.width * sk, hh = bild.height * sk; if (b.fall) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); else zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * (b.blight ? 5 : 13) * (0.7 + sk * 0.6), b.ph, now); }
+      if (z.b) { const b = z.b, bild = b.blight ? arten[b.art].blight : arten[b.art].wald, sk = b.skala * baumGroesse, w = bild.width * sk, hh = bild.height * sk; if (b.fall) { if (!b.fall.geerntet) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); } else zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * (b.blight ? 5 : 13) * (0.7 + sk * 0.6), b.ph, now); }
       else if (z.w) zeichneWesen(z.w);
     }
   } else { ctx.fillStyle = '#6a7a55'; ctx.font = '16px Georgia'; ctx.fillText('Dorf & Wald werden gebacken …', 24, H - 28); }
@@ -507,7 +593,8 @@ function frame(now: number): void {
   const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.34, W / 2, H / 2, Math.max(W, H) * 0.74);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(2,4,3,${0.6 + wetter * 0.16})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = 'rgba(230,220,190,0.85)'; ctx.font = '13px Georgia'; ctx.textAlign = 'right';
-  ctx.fillText(`Wetter: ${WETTER_NAME()}   [1 klar · 2 Regen · 3 Unwetter]`, W - 16, 22); ctx.textAlign = 'left';
+  ctx.fillText(`Wetter: ${WETTER_NAME()}   ·   Nässe ${Math.round(wetness * 100)}%   [1·2·3]`, W - 16, 22);
+  ctx.fillText(`Holz: ${holz}   ·   F: Baum fällen / liegenden Stamm zerhacken`, W - 16, 40); ctx.textAlign = 'left';
 
   requestAnimationFrame(frame);
 }
