@@ -48,24 +48,19 @@ export function bauePalisade(): { gruppe: THREE.Group; animate: (o: number, t: n
 }
 
 // ================== ZAUN (Tiergatter) ==================
-// Leichter Holzzaun: zwei Pfosten an den Kachelrändern (teilen sich mit dem
-// Nachbarn), zwei Querlatten dazwischen. Für Schweine-/Schafgehege.
+// Leichter Holzzaun, GLEICHMÄSSIG (keine Cartoon-Verjüngung, kein Schräghang):
+// zwei Pfosten an den Kachelrändern (teilen sich mit dem Nachbarn), zwei gerade
+// Querlatten gleicher Dicke dazwischen. Im 3D-Raum werden Segmente um 90° gedreht
+// aneinandergesetzt -> echte vertikale UND horizontale Seiten + Ecken.
 export function baueZaun(): { gruppe: THREE.Group; animate: (o: number, t: number) => void } {
   const g = new THREE.Group();
   const pfostenM = matHolz(0x6a4a28), latteM = matHolz(0x7a5630);
-  const H = 0.95;
+  const H = 0.9;
   for (const px of [-0.5, 0.5]) {
-    const p = box(0.1, H, 0.1, pfostenM, px, H / 2, 0);
-    g.add(p);
-    // abgeschrägte Kappe
-    g.add(box(0.13, 0.06, 0.13, pfostenM, px, H + 0.02, 0));
+    g.add(box(0.12, H, 0.12, pfostenM, px, H / 2, 0));      // gerader, gleich dicker Pfosten
+    g.add(box(0.16, 0.07, 0.16, pfostenM, px, H + 0.02, 0)); // flache Kappe
   }
-  // zwei Querlatten, leicht durchhängend angedeutet (zwei Höhen)
-  for (const ly of [0.34, 0.7]) {
-    const latte = box(1.0, 0.07, 0.05, latteM, 0, ly, 0.02);
-    latte.rotation.z = (Math.random() - 0.5) * 0.03;
-    g.add(latte);
-  }
+  for (const ly of [0.34, 0.66]) g.add(box(1.0, 0.08, 0.06, latteM, 0, ly, 0)); // gerade, gleich dicke Latten
   g.traverse((o) => { if ((o as THREE.Mesh).isMesh) { o.castShadow = true; (o as THREE.Mesh).receiveShadow = true; } });
   return { gruppe: g, animate: NOOP };
 }

@@ -80,7 +80,6 @@ for (const to of area.torches) lichter.push({ wx: to.x * TILE + 16, wy: to.y * T
 let hx = area.spawn.x, hy = area.spawn.y;   // Welt-Pixel
 let hdir = 0;
 let frameT = 0;
-let zielTx = Math.floor(hx / TILE), zielTy = Math.floor(hy / TILE);
 
 const keys: Record<string, boolean> = {};
 addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
@@ -90,13 +89,6 @@ function frei(wx: number, wy: number): boolean {
   const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
   if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return false;
   return !SOLID.has(map[ty][tx]);
-}
-function neuesZiel(): void {
-  for (let n = 0; n < 40; n++) {
-    const tx = zielTx + Math.round((Math.random() - 0.5) * 10);
-    const ty = zielTy + Math.round((Math.random() - 0.5) * 10);
-    if (tx >= 0 && ty >= 0 && tx < MW && ty < MH && !SOLID.has(map[ty][tx])) { zielTx = tx; zielTy = ty; return; }
-  }
 }
 
 // ---------- View ----------
@@ -115,19 +107,14 @@ function bewege(dt: number): void {
   if (keys['s'] || keys['arrowdown']) my += 1;
   if (keys['a'] || keys['arrowleft']) mx -= 1;
   if (keys['d'] || keys['arrowright']) mx += 1;
-  let manuell = mx !== 0 || my !== 0;
-  if (!manuell) {
-    // Auto-Wander zum Zielfeld
-    const zx = zielTx * TILE + 16, zy = zielTy * TILE + 16;
-    const dx = zx - hx, dy = zy - hy, d = Math.hypot(dx, dy);
-    if (d < 6) neuesZiel(); else { mx = dx / d; my = dy / d; }
-  }
+  // Kein Selbstlaufen mehr (Autorwunsch "warum läuft die Figur selber"): die
+  // Figur steht still und bewegt sich NUR auf WASD/Pfeil.
   const len = Math.hypot(mx, my);
   const bewegt = len > 0.01;
   if (bewegt) {
     mx /= len; my /= len;
-    const spd = 96 * dt;
-    if (frei(hx + mx * spd, hy)) hx += mx * spd; else if (!manuell) neuesZiel();
+    const spd = 110 * dt;
+    if (frei(hx + mx * spd, hy)) hx += mx * spd;
     if (frei(hx, hy + my * spd)) hy += my * spd;
     // 8-Richtung aus Bildschirm-Vektor (0=S 1=SW 2=W 3=NW 4=N 5=NE 6=O 7=SE)
     const th = Math.atan2(my, mx);
@@ -217,5 +204,5 @@ frame();
 // Screenshot-Helfer: den Helden neben eine Erz-Ader stellen (sonst Zufall)
 (window as unknown as { __zeigeErz?: (i: number) => void }).__zeigeErz = (i = 0) => {
   const o = area.ores[i % Math.max(1, area.ores.length)]; if (!o) return;
-  hx = o.x; hy = o.y + TILE * 1.4; zielTx = Math.floor(hx / TILE); zielTy = Math.floor(hy / TILE);
+  hx = o.x; hy = o.y + TILE * 1.4;
 };
