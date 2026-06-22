@@ -7,6 +7,7 @@ import { baueBuehne } from './buehne';
 import { baueTuer, baueTor } from './tuerBau';
 import { baueBrunnen, baueAltar, baueFass } from './propsBau';
 import { baueGrabstein, baueKiste, baueKaefig, baueWandfackel, baueErzader, baueBuecherregal } from './props2Bau';
+import { bauePalisade, baueZaun, baueErz } from './props3Bau';
 import { baueTruhe, animiereTruhe, setTruheFarbe, type TruheParts } from './truheBau';
 
 const app = document.getElementById('app')!;
@@ -25,6 +26,11 @@ const KATALOG: Eintrag[] = [
   { name: 'Käfig', bau: () => baueKaefig(), blickY: 0.7, dist: 3.2 },
   { name: 'Fackel', bau: () => baueWandfackel(), blickY: 1.0, dist: 3.0 },
   { name: 'Erzader', bau: () => baueErzader(), blickY: 0.4, dist: 2.4 },
+  { name: 'Palisade', bau: () => bauePalisade(), blickY: 1.1, dist: 4.0 },
+  { name: 'Zaun', bau: () => baueZaun(), blickY: 0.5, dist: 2.8 },
+  { name: 'Erz · Gold', bau: () => baueErz('gold'), blickY: 0.4, dist: 2.4 },
+  { name: 'Erz · Kupfer', bau: () => baueErz('kupfer'), blickY: 0.4, dist: 2.4 },
+  { name: 'Erz · Kristall', bau: () => baueErz('kristall'), blickY: 0.4, dist: 2.4 },
   { name: 'Bücherregal', bau: () => baueBuecherregal(), blickY: 0.9, dist: 3.4 },
   { name: 'Brunnen', bau: () => baueBrunnen(), blickY: 1.3, dist: 4.6 },
   { name: 'Altar', bau: () => baueAltar(), blickY: 0.9, dist: 3.4 },

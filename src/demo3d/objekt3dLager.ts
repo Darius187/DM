@@ -10,6 +10,7 @@ import { baueTruhe, animiereTruhe } from './truheBau';
 import { baueTuer, baueTor } from './tuerBau';
 import { baueBrunnen, baueAltar, baueFass } from './propsBau';
 import { baueGrabstein, baueKiste, baueKaefig, baueWandfackel, baueErzader, baueBuecherregal } from './props2Bau';
+import { bauePalisade, baueZaun, baueErz } from './props3Bau';
 
 type Bau = () => { gruppe: THREE.Group; animate: (o01: number, t: number) => void };
 export type Aktion = 'oeffnen' | 'zerschlagen' | 'tuer' | null;
@@ -29,6 +30,13 @@ export const KATALOG3D: TypDef[] = [
   { name: 'Fackel', aktion: null, basis: 0.46, bau: () => baueWandfackel() },
   { name: 'Erzader', aktion: null, basis: 0.4, bau: () => baueErzader() },
   { name: 'Bücherregal', aktion: null, basis: 0.62, bau: () => baueBuecherregal() },
+  // Außen-Props (Runde 59): Wehrpalisade, Tiergatter-Zaun, Erz in Varianten.
+  // Größe über den Regler (Größe -/+) - so gibt es kleine wie große Adern.
+  { name: 'Palisade', aktion: null, basis: 0.5, bau: () => bauePalisade() },
+  { name: 'Zaun', aktion: null, basis: 0.44, bau: () => baueZaun() },
+  { name: 'Erz · Gold', aktion: null, basis: 0.4, bau: () => baueErz('gold') },
+  { name: 'Erz · Kupfer', aktion: null, basis: 0.4, bau: () => baueErz('kupfer') },
+  { name: 'Erz · Kristall', aktion: null, basis: 0.4, bau: () => baueErz('kristall') },
 ];
 
 interface Inst {

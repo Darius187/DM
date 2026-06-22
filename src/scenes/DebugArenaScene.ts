@@ -51,7 +51,7 @@ export class DebugArenaScene extends CombatScene {
   private ritter: RitterModell | null = null;     // prozeduraler Ritter
   private soldat: Held3DModell | null = null;      // geriggtes Soldier-Modell
   private held3dTex: Phaser.Textures.CanvasTexture | null = null;
-  private held3dModus: 'ritter' | 'soldat' | 'aus' = 'ritter'; // Taste M: Modell wechseln
+  private held3dModus: 'ritter' | 'soldat' | 'aus' = 'aus'; // Taste M: Modell wechseln (Standard: die alte 2D-Figur)
   private testTechnik: Technik | null = null;      // Taste B: Schlagtechnik durchtesten
   private static readonly H3D = 192;
   private static readonly TECHNIKEN: Technik[] = ['slash', 'overhead', 'thrust', 'spin'];
