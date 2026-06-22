@@ -146,7 +146,8 @@ export function baueBuecherregal(): { gruppe: THREE.Group; animate: (o: number, 
   g.add(box(0.06, H, D, holzD, -W / 2, H / 2, 0)); g.add(box(0.06, H, D, holzD, W / 2, H / 2, 0)); // Seitenwände
   g.add(box(W, 0.06, D, holzD, 0, H, 0)); g.add(box(W, 0.08, D, holzD, 0, 0.04, 0));               // oben/Sockel
   g.add(box(W, H, 0.03, holzD, 0, H / 2, -D / 2));                                                  // Rückwand
-  const buchFarben = [0x6a2222, 0x274a3a, 0x2a3a6a, 0x6a5a22, 0x4a2a5a, 0x5a3018, 0x3a4a26];
+  // gedeckte, alte Ledereinbände (Autorwunsch: nicht so bunt)
+  const buchFarben = [0x4a2420, 0x2c3a2e, 0x283344, 0x4a3a1e, 0x3a2a30, 0x412a18, 0x2e362a, 0x55473a];
   for (const by of [0.32, 0.74, 1.16]) {
     g.add(box(W - 0.1, 0.05, D - 0.04, holzM, 0, by - 0.05, 0)); // Brett
     let x = -W / 2 + 0.12;

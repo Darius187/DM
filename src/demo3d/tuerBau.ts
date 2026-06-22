@@ -71,7 +71,9 @@ export function baueTuer(): { gruppe: THREE.Group; animate: (offen01: number) =>
   fluegel.add(box(0.05, 0.08, 0.02, eisen(0x1a1814, 0.4), griffX, 0.74, dicke / 2 + 0.02)); // Schlüsselloch-Beschlag
 
   g.traverse((o) => { if ((o as THREE.Mesh).isMesh) { o.castShadow = true; (o as THREE.Mesh).receiveShadow = true; } });
-  return { gruppe: g, animate: (offen01: number) => { fluegel.rotation.y = -Math.max(0, Math.min(1, offen01)) * Math.PI * 0.62; } };
+  // Öffnet nach HINTEN (-z, vom Betrachter/Spieler weg), damit die Tür nicht
+  // gegen den Spieler schwingt (Autorwunsch).
+  return { gruppe: g, animate: (offen01: number) => { fluegel.rotation.y = Math.max(0, Math.min(1, offen01)) * Math.PI * 0.62; } };
 }
 
 // ================== TOR (großes Doppeltor mit Torhaus) ==================
@@ -128,8 +130,9 @@ export function baueTor(): { gruppe: THREE.Group; animate: (offen01: number) => 
     gruppe: g,
     animate: (offen01: number) => {
       const o = Math.max(0, Math.min(1, offen01));
-      links.rotation.y = o * 1.7;     // schwingen nach außen auf
+      links.rotation.y = o * 1.7;        // beide Flügel schwingen nach HINTEN auf
       rechts.rotation.y = -o * 1.7;
+      gitter.position.y = o * (oeffH + 0.3); // das Fallgitter hebt sich aus dem Durchgang
     },
   };
 }

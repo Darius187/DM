@@ -49,9 +49,12 @@ export function baueTruhe(): TruheParts {
 
   // ---- Lichtsäule (Beutestrahl) + Glut-Licht in Raritätsfarbe ----
   const saeuleMat = new THREE.MeshBasicMaterial({ color: 0xf0d060, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
-  const saeule = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.34, 1.7, 18, 1, true), saeuleMat);
-  saeule.position.set(0, 1.15, 0); g.add(saeule);
-  const glut = new THREE.PointLight(0xf0d060, 0, 2.4, 2); glut.position.set(0, 0.45, 0); g.add(glut);
+  // Beutestrahl kommt SCHMAL aus der offenen Truhe und flammt nach oben auf
+  // (Autorwunsch "Licht muss aus der Truhe heraus"): unten eng am Schloss,
+  // oben breit; Start an der Deckelkante.
+  const saeule = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.07, 1.45, 18, 1, true), saeuleMat);
+  saeule.position.set(0, 1.2, 0); g.add(saeule);
+  const glut = new THREE.PointLight(0xf0d060, 0, 2.6, 2); glut.position.set(0, 0.52, 0); g.add(glut);
 
   return { gruppe: g, deckel, saeule, glut, muenzen };
 }
