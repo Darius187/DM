@@ -10,46 +10,15 @@ import * as THREE from 'three';
 import { drawHeld, HELD_FELD } from '../gfx/heldArt';
 import { drawTileArt } from '../gfx/tileArt';
 import { TILE } from '../gfx/fallbackArt';
+import { macheBackofen } from './propBackofen';
 import { baueTruhe, animiereTruhe } from './truheBau';
 import { baueFass } from './propsBau';
 import { baueGrabstein } from './props2Bau';
 import { bauePalisade, baueZaun, baueErz } from './props3Bau';
 
 // ---------- 3D-Backofen: ein Prop -> ein Bild (Top-Down-Schrägblick) ----------
-const S = 256;
-const baker = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-baker.setSize(S, S);
-baker.setClearColor(0x000000, 0);
-baker.shadowMap.enabled = true; baker.shadowMap.type = THREE.PCFSoftShadowMap;
-baker.toneMapping = THREE.ACESFilmicToneMapping; baker.toneMappingExposure = 1.3;
-const bScene = new THREE.Scene();
-const bCam = new THREE.PerspectiveCamera(34, 1, 0.1, 60);
-const blick = new THREE.Vector3(0, 0.86, 0.56).normalize(); // gleicher Winkel wie im Spiel
-bScene.add(new THREE.HemisphereLight(0xcad0e8, 0x241a12, 1.35));
-const sonne = new THREE.DirectionalLight(0xfff2d8, 2.7);
-sonne.position.set(2.2, 6, 3.5); sonne.castShadow = true; sonne.shadow.mapSize.set(1024, 1024);
-const sc = sonne.shadow.camera as THREE.OrthographicCamera; sc.left = -4; sc.right = 4; sc.top = 4; sc.bottom = -4; sonne.shadow.bias = -0.0016;
-bScene.add(sonne);
-const warm = new THREE.DirectionalLight(0xff9a4a, 0.7); warm.position.set(-3, 2.5, -3); bScene.add(warm);
-const schattenBoden = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.ShadowMaterial({ opacity: 0.42 }));
-schattenBoden.rotation.x = -Math.PI / 2; schattenBoden.receiveShadow = true; bScene.add(schattenBoden);
-const halter = new THREE.Object3D(); bScene.add(halter);
-
-function backe(gruppe: THREE.Group): HTMLCanvasElement {
-  gruppe.traverse((o) => { if ((o as THREE.Mesh).isMesh) { o.castShadow = true; (o as THREE.Mesh).receiveShadow = true; } });
-  const box = new THREE.Box3().setFromObject(gruppe);
-  const center = box.getCenter(new THREE.Vector3());
-  const radius = box.getSize(new THREE.Vector3()).length() / 2;
-  const dist = radius / Math.sin((bCam.fov * Math.PI / 180) / 2) * 1.12;
-  halter.add(gruppe);
-  bCam.position.copy(center).addScaledVector(blick, dist);
-  bCam.lookAt(center);
-  baker.render(bScene, bCam);
-  halter.remove(gruppe);
-  const out = document.createElement('canvas'); out.width = S; out.height = S;
-  out.getContext('2d')!.drawImage(baker.domElement, 0, 0);
-  return out;
-}
+const ofen = macheBackofen(256);
+const backe = (g: THREE.Group): HTMLCanvasElement => ofen.backe(g);
 
 // ---------- Boden: echte Spiel-Kachel (krypta_boden), je Variante gecacht ----------
 const tileCache = new Map<number, HTMLCanvasElement>();
