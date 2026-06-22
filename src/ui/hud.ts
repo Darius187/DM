@@ -497,6 +497,20 @@ export class Hud {
     return 0;
   }
 
+  // Ist die Aktion schon gelernt/freigeschaltet? (für das Belegungs-Menü:
+  // noch nicht lernbare Zauber werden ausgegraut - Autorwunsch R60). Items,
+  // Waffen-Slots und Rollen sind nicht schul-gebunden -> immer verfügbar.
+  private istGelernt(id: string): boolean {
+    if (TUNING.alleZauberFrei) return true;
+    if (id === 'atomschlag') return true;                 // DEV: immer verfügbar
+    const p = this.getP();
+    const i = ['s1', 's2', 's3'].indexOf(id);
+    if (i >= 0) return p.level >= SPELLS[i].unlock;
+    const def = ABILITIES.find((a) => a.id === id);
+    if (!def) return true;                                // kein Schul-Skill
+    return p.schools[def.school].level >= def.unlock;
+  }
+
   // Action-Bar-Slot unter dem Zeiger (für Drag aus dem Belegungs-Menü).
   private slotUnter(ptr: Phaser.Input.Pointer): number {
     for (let i = 0; i < this.slots.length; i++) {
@@ -562,15 +576,18 @@ export class Hud {
       let zy = my + padT + hdrH;
       for (const [id, ico, name] of sp.eintr) {
         const lvl = this.skillLevel(id);
+        const gelernt = this.istGelernt(id);
+        const grau = '#5a5142';                                    // ausgegraut bis gelernt
+        const ruheFarbe = !gelernt ? grau : id === aktiv ? '#f0dca0' : katFarbe;
         const kurz = name.replace(/\s*\(.*\)$/, '');               // Klammer-Zusatz weg -> kompakt
         const eintrag = this.scene.add.text(cx + 4, zy, `${ico} ${kurz}${lvl ? `  ·${lvl}` : ''}`, {
           fontFamily: 'serif', fontSize: '12px',
-          color: id === aktiv ? '#f0dca0' : katFarbe,
+          color: ruheFarbe,
           backgroundColor: id === aktiv ? '#221808' : undefined,
           padding: { x: 4, y: 1 },
         }).setScrollFactor(0).setInteractive({ useHandCursor: true });
-        eintrag.on('pointerover', () => eintrag.setColor('#f8e8b8'));
-        eintrag.on('pointerout', () => eintrag.setColor(id === aktiv ? '#f0dca0' : katFarbe));
+        eintrag.on('pointerover', () => eintrag.setColor(gelernt ? '#f8e8b8' : '#7a6f58'));
+        eintrag.on('pointerout', () => eintrag.setColor(ruheFarbe));
         eintrag.on('pointerup', () => {
           if (this.justDragged || this.popupGhost) { this.justDragged = false; return; } // war ein Ziehen
           this.belege(feld, id); this.closeMenue();
