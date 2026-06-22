@@ -61,6 +61,7 @@ function setzeHeld(dir: number, frame: number): void {
   heldCtx.save(); heldCtx.translate(HM, HM); drawHeld(heldCtx, 'leder', dir, frame, 'schwert'); heldCtx.restore();
 }
 let hx = area.spawn.x, hy = area.spawn.y, hdir = 0, frameT = 0;
+let hellModus = false;   // Diagnose-Schalter: Dunkelheit/Raycaster aus (nur Wände sehen)
 const keys: Record<string, boolean> = {};
 addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
@@ -140,10 +141,11 @@ function frame(): void {
     ctx.drawImage(boden(v), sx(tx * TILE), sy(ty * TILE), Math.ceil(TSZ) + 1, Math.ceil(TSZ) + 1);
   }
 
-  // 2) Wände als ERHABENE BLÖCKE - NORD nach SÜD gezeichnet (Kappen decken die
-  //    Fronten dahinter ab), VOR den Sprites. Nur Rand-Wände (an Boden grenzend).
-  const WH = Math.round(TSZ * 0.85);   // Wandhöhe (~doppelt so hoch wie zuvor)
-  for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
+  // 2) Wände als DUNKLE, HOHE Ziegelfronten - NORD nach SÜD gezeichnet (südlichere
+  //    Fronten decken die nördlichen ab), VOR den Sprites. Nur Rand-Wände.
+  const WH = Math.round(TSZ * 1.0);   // Front-Höhe (Wandband ~2 Kacheln, deutlich höher)
+  const tyWandN = Math.max(0, ty0 - Math.ceil(WH / TSZ) - 1);   // auch Wände knapp über dem Bild (Front hängt herein)
+  for (let ty = tyWandN; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
     if (!istWand(tx, ty)) continue;
     let randwand = false;
     for (let dy = -1; dy <= 1 && !randwand; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && !istWand(tx + dx, ty + dy)) { randwand = true; break; }
@@ -177,8 +179,9 @@ function frame(): void {
     lichter.push({ x: s.x, y: s.y, r: TILE * 5 });
     if (lichter.length >= 5) break;
   }
+  if (hellModus) { requestAnimationFrame(frame); return; }   // Diagnose: Dunkelheit aus
   lctx.clearRect(0, 0, W, H);
-  lctx.fillStyle = 'rgba(7,6,12,0.84)'; lctx.fillRect(0, 0, W, H);   // Dunkelheit (kleine Grundhelligkeit)
+  lctx.fillStyle = 'rgba(8,7,13,0.78)'; lctx.fillRect(0, 0, W, H);   // Dunkelheit (kleine Grundhelligkeit)
   lctx.globalCompositeOperation = 'destination-out';
   for (const L of lichter) {
     const segs = wandSegmente(L.x, L.y, L.r);
@@ -190,7 +193,7 @@ function frame(): void {
     lctx.closePath(); lctx.clip();
     const gx = sx(L.x), gy = sy(L.y), rr = L.r * Z;
     const g = lctx.createRadialGradient(gx, gy, rr * 0.12, gx, gy, rr);
-    g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(0.55, 'rgba(0,0,0,0.86)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(0.5, 'rgba(0,0,0,0.82)'); g.addColorStop(1, 'rgba(0,0,0,0)');
     lctx.fillStyle = g; lctx.fillRect(0, 0, W, H);
     lctx.restore();
   }
@@ -213,6 +216,7 @@ function frame(): void {
 }
 frame();
 (window as unknown as { __wandBereit?: boolean; __setPos?: (x: number, y: number) => void }).__wandBereit = true;
+(window as unknown as { __hell?: (v: boolean) => void }).__hell = (val: boolean) => { hellModus = val; };
 (window as unknown as { __setPos?: (x: number, y: number) => void }).__setPos = (x: number, y: number) => { hx = x; hy = y; };
 // Screenshot-Helfer: den größten offenen Raum mit nördlicher Rückwand finden
 (window as unknown as { __guterPlatz?: () => void }).__guterPlatz = () => {
@@ -225,4 +229,12 @@ frame();
     if (score > bs) { bs = score; best = { tx, ty }; }
   }
   if (best) { hx = best.tx * TILE + 16; hy = best.ty * TILE + 16; }
+};
+// Screenshot-Helfer: direkt unter eine Nordwand stellen (Wand füllt den oberen Blick)
+(window as unknown as { __anWand?: () => void }).__anWand = () => {
+  for (let ty = 4; ty < MH - 2; ty++) for (let tx = 3; tx < MW - 3; tx++) {
+    if (istWand(tx, ty)) continue;
+    if (istWand(tx, ty - 1) && istWand(tx - 1, ty - 1) && istWand(tx + 1, ty - 1) &&  // durchgehende Nordwand
+        !istWand(tx, ty + 1) && !istWand(tx, ty + 2)) { hx = tx * TILE + 16; hy = (ty + 1) * TILE + 16; return; }
+  }
 };
