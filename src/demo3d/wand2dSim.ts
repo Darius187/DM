@@ -120,7 +120,7 @@ function frame(): void {
   }
   frameT += dt * 7; setzeHeld(hdir, moving ? (Math.floor(frameT) % 4) : 0);
 
-  const W = view.width, H = view.height, TSZ = TILE * Z, faceH = TSZ * 0.35;
+  const W = view.width, H = view.height, TSZ = TILE * Z;
   const camX = Math.max(W / 2 / Z, Math.min(MW * TILE - W / 2 / Z, hx));
   const camY = Math.max(H / 2 / Z, Math.min(MH * TILE - H / 2 / Z, hy));
   const sx = (wx: number): number => Math.round((wx - camX) * Z + W / 2);
@@ -140,9 +140,9 @@ function frame(): void {
     ctx.drawImage(boden(v), sx(tx * TILE), sy(ty * TILE), Math.ceil(TSZ) + 1, Math.ceil(TSZ) + 1);
   }
 
-  // 2) Tiefen-sortiert: nur RAND-Wände + Sprites (Truhe/Erz/Grab/Held)
-  type D = { y: number; draw: () => void };
-  const ds: D[] = [];
+  // 2) Wände als ERHABENE BLÖCKE - NORD nach SÜD gezeichnet (Kappen decken die
+  //    Fronten dahinter ab), VOR den Sprites. Nur Rand-Wände (an Boden grenzend).
+  const WH = Math.round(TSZ * 0.85);   // Wandhöhe (~doppelt so hoch wie zuvor)
   for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
     if (!istWand(tx, ty)) continue;
     let randwand = false;
@@ -150,9 +150,12 @@ function frame(): void {
     if (!randwand) continue;
     const k: Kanten = { n: istWand(tx, ty - 1), e: istWand(tx + 1, ty), s: istWand(tx, ty + 1), w: istWand(tx - 1, ty) };
     const v = ((tx * 73856093) ^ (ty * 19349663)) >>> 0;
-    const X = sx(tx * TILE), Y = sy(ty * TILE);
-    ds.push({ y: ty * TILE + TILE, draw: () => zeichneWandKachel(ctx, X, Y, Math.ceil(TSZ) + 1, faceH, k, v) });
+    zeichneWandKachel(ctx, sx(tx * TILE), sy(ty * TILE), Math.ceil(TSZ) + 1, WH, k, v);
   }
+
+  // 3) Sprites (Truhe/Erz/Grab/Held) tiefen-sortiert, ÜBER den Wänden
+  type D = { y: number; draw: () => void };
+  const ds: D[] = [];
   ctx.imageSmoothingEnabled = true;
   const spr = (bild: HTMLCanvasElement, wx: number, wy: number, faktor: number, ankerY = wy): void => {
     const w = TSZ * faktor, h = w, fx = sx(wx), fy = sy(wy);
@@ -175,7 +178,7 @@ function frame(): void {
     if (lichter.length >= 5) break;
   }
   lctx.clearRect(0, 0, W, H);
-  lctx.fillStyle = 'rgba(7,6,12,0.9)'; lctx.fillRect(0, 0, W, H);   // Dunkelheit (kleine Grundhelligkeit)
+  lctx.fillStyle = 'rgba(7,6,12,0.84)'; lctx.fillRect(0, 0, W, H);   // Dunkelheit (kleine Grundhelligkeit)
   lctx.globalCompositeOperation = 'destination-out';
   for (const L of lichter) {
     const segs = wandSegmente(L.x, L.y, L.r);
@@ -192,7 +195,7 @@ function frame(): void {
     lctx.restore();
   }
   lctx.globalCompositeOperation = 'source-over';
-  ctx.drawImage(licht, 0, 0);
+  ctx.save(); ctx.filter = 'blur(2.5px)'; ctx.drawImage(licht, 0, 0); ctx.restore();   // weiche Schattenkanten (wie der echte SchattenManager)
 
   // 4) warmer Feuerschein (additiv) an den Fackeln + Truhen
   ctx.globalCompositeOperation = 'lighter';
