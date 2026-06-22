@@ -39,12 +39,16 @@ function distSeg(px: number, py: number, ax: number, ay: number, bx: number, by:
 function distPfad(x: number, y: number): number { let d = 1e9; for (let i = 0; i < pfad.length - 1; i++) d = Math.min(d, distSeg(x, y, pfad[i].x, pfad[i].y, pfad[i + 1].x, pfad[i + 1].y)); return d; }
 const aufPfad = (x: number, y: number): boolean => distPfad(x, y) < PFAD_BREITE * 0.5;
 
-// ---------- Wetter ----------
+// ---------- Wetter (dynamisch: klar -> Regen -> Unwetter; treibt Wind/Regen/Nebel) ----------
 let regenAn = true;
-function wind(now: number): number {                       // -1..~1.3, mit Böen
+let wetter = 0.5;                 // 0 klar .. 0.5 Regen .. 1 Sturm
+let wetterZiel = 0.5, wetterTimer = 6;
+const WETTER_NAME = (): string => wetter < 0.15 ? 'klar' : wetter < 0.45 ? 'Nieselregen' : wetter < 0.78 ? 'Regen' : 'Unwetter';
+function wind(now: number): number {                       // mit Böen; Stärke steigt mit dem Wetter
   const t = now / 1000;
-  const grund = Math.sin(t * 0.27) * 0.6 + Math.sin(t * 0.13 + 1) * 0.3;
-  const boe = Math.pow(Math.max(0, Math.sin(t * 0.2 + 0.5)), 3) * 0.6;
+  const amp = 0.25 + wetter * 1.35;
+  const grund = (Math.sin(t * 0.27) * 0.6 + Math.sin(t * 0.13 + 1) * 0.3) * amp;
+  const boe = Math.pow(Math.max(0, Math.sin(t * 0.2 + 0.5)), 3) * (0.4 + wetter * 1.7);
   return grund + boe;
 }
 
@@ -164,7 +168,14 @@ const held = (): Wesen => wesen[0];
 const richtungVon = (dx: number, dy: number): number => [6, 7, 0, 1, 2, 3, 4, 5][((Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8)];
 
 const keys: Record<string, boolean> = {};
-addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; if (e.key.toLowerCase() === 'f' || e.key === ' ') fälleNächsten(); if (e.key.toLowerCase() === 'r') regenAn = !regenAn; });
+addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase(); keys[k] = true;
+  if (k === 'f' || e.key === ' ') fälleNächsten();
+  if (k === 'r') regenAn = !regenAn;
+  if (k === '1') { wetterZiel = 0.05; wetterTimer = 45; }    // klar
+  if (k === '2') { wetterZiel = 0.5; wetterTimer = 45; }     // Regen
+  if (k === '3') { wetterZiel = 1; wetterTimer = 45; }       // Unwetter
+});
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
 function fälleNächsten(): void {
@@ -193,10 +204,18 @@ const drops: Drop[] = [];
 const ringe: Ring[] = [];
 function neuerDrop(init = false): Drop { const z = Math.random(); return { x: Math.random() * (W + 300) - 150, y: init ? Math.random() * H : -30 - Math.random() * 60, z, vy: 650 + z * 950, len: 9 + z * 24 }; }
 for (let i = 0; i < 420; i++) drops.push(neuerDrop(true));
-function einschlagWelt(wx: number, wy: number, wucht: number): void {
-  const pf = pfuetzeUnter(wx, wy);
-  if (pf) ringe.push({ x: wx, y: wy, t: 0, leben: 1 + Math.random() * 0.5, rmax: (14 + Math.random() * 22) * wucht, pf });
-  else { ringe.push({ x: wx, y: wy, t: 0, leben: 0.3, rmax: 6 * wucht, pf: null }); if (Math.random() < 0.5) spaene(wx, wy, 'rgba(190,206,224,0.7)', -20, 2); }
+// KLEINE Tropfen-Ringe (Regen) auf dem Wasser - viel kleiner als die Schritt-Ringe
+function tropfenRing(pf: Pfuetze, wx: number, wy: number): void { ringe.push({ x: wx, y: wy, t: 0, leben: 0.6 + Math.random() * 0.3, rmax: 4 + Math.random() * 7, pf }); }
+function bodenKrone(wx: number, wy: number): void { ringe.push({ x: wx, y: wy, t: 0, leben: 0.26, rmax: 5, pf: null }); if (Math.random() < 0.3) spaene(wx, wy, 'rgba(190,206,224,0.7)', -16, 1); }
+let regenAkk = 0;
+function regenAufschlaege(dt: number): void {
+  if (!regenAn || wetter < 0.12) return;
+  regenAkk += wetter * 75 * dt;                                    // Aufschläge übers ganze Bild
+  while (regenAkk >= 1) { regenAkk -= 1; const wx = camX + Math.random() * W, wy = camY + Math.random() * H; const pf = pfuetzeUnter(wx, wy); pf ? tropfenRing(pf, wx, wy) : bodenKrone(wx, wy); }
+  for (const p of pfuetzen) {                                      // jede sichtbare Pfütze "lebt" (Tropfen)
+    if (p.x + p.w < camX || p.x > camX + W || p.y + p.h < camY || p.y > camY + H) continue;
+    if (Math.random() < wetter * 10 * dt) tropfenRing(p, p.x + p.w * (0.2 + Math.random() * 0.6), p.y + p.h * (0.2 + Math.random() * 0.6));
+  }
 }
 
 // ---------- Init ----------
@@ -302,14 +321,20 @@ function aktualisiereWesen(w: Wesen, dt: number, now: number): void {
 let last = performance.now();
 function frame(now: number): void {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  // dynamisches Wetter: Ziel ab und zu neu würfeln (mit Unwetter-Chance), sanft hinbewegen
+  wetterTimer -= dt;
+  if (wetterTimer <= 0) { wetterTimer = 10 + Math.random() * 16; wetterZiel = Math.random() < 0.28 ? 0.85 + Math.random() * 0.25 : 0.15 + Math.random() * 0.5; }
+  wetter += (wetterZiel - wetter) * Math.min(1, dt * 0.5);
   const wd = wind(now);                                            // Wetter-Wind
 
   if (bereit) {
+    regenAufschlaege(dt);
     for (const w of wesen) aktualisiereWesen(w, dt, now);
-    // Bäume fallen + Blätter im Sturm
+    // Bäume fallen + Blätter im Sturm; im Unwetter knickt selten einer um
     for (const b of baeume) {
       if (b.fall) { b.fall.t = Math.min(1, b.fall.t + dt / 0.85); const e = 1 - Math.pow(1 - b.fall.t, 3); b.fall.winkel = e * 1.5 * b.fall.richtung; if (!b.fall.treffer && b.fall.t > 0.82) { b.fall.treffer = true; spaene(b.x + b.fall.richtung * 60, b.y, b.blattFarbe, 10, 16); } continue; }
       if (!b.blight && Math.abs(wd) > 0.7 && Math.random() < dt * 1.6 * b.skala) blattFall(b.x + (Math.random() - 0.5) * 60 * b.skala, b.y - 90 * b.skala, b.blattFarbe);
+      if (wetter > 0.72 && wd > 1.35 && Math.random() < dt * 0.014 * b.skala) { b.fall = { t: 0, winkel: 0, richtung: 1, treffer: false }; spaene(b.x, b.y, b.blattFarbe, 0, 18); }
     }
   }
   // Partikel
@@ -331,15 +356,27 @@ function frame(now: number): void {
   ctx.strokeStyle = '#3a3120'; ctx.lineWidth = PFAD_BREITE - 18; ctx.stroke();
   ctx.restore();
 
-  // 2) Pfützen (Reflexion + Ringe)
+  // 2) Pfützen als WASSER (Wet-Material/Reflexions-Idee in 2D): dunkler Spiegel,
+  //    Himmel-Streifen, driftender Glanz, Tropfen-Ringe, Oberflächen-Wobble, nasser Rand
   for (const p of pfuetzen) {
     if (p.x + p.w < camX || p.x > camX + W || p.y + p.h < camY || p.y > camY + H) continue;
     pbx.setTransform(1, 0, 0, 1, 0, 0); pbx.clearRect(0, 0, pBuf.width, pBuf.height);
-    const gg = pbx.createLinearGradient(0, 0, 0, p.h); gg.addColorStop(0, '#243240'); gg.addColorStop(1, '#0a0e13'); pbx.fillStyle = gg; pbx.fillRect(0, 0, p.w, p.h);
-    pbx.fillStyle = 'rgba(120,140,168,0.12)'; pbx.fillRect(0, 0, p.w, p.h * 0.5);
-    for (const r of ringe) { if (r.pf !== p) continue; const f = r.t / r.leben, rad = 1 + r.rmax * f, a = (1 - f) * 0.5; pbx.strokeStyle = `rgba(190,206,224,${a})`; pbx.lineWidth = 1.3; pbx.beginPath(); pbx.ellipse(r.x - p.x, r.y - p.y, rad, rad * 0.5, 0, 0, 7); pbx.stroke(); }
+    const gg = pbx.createLinearGradient(0, 0, 0, p.h); gg.addColorStop(0, '#34465a'); gg.addColorStop(0.45, '#1b2733'); gg.addColorStop(1, '#070b10');
+    pbx.fillStyle = gg; pbx.fillRect(0, 0, p.w, p.h);
+    const wob = Math.sin(now / 700 + p.x) * 2;
+    pbx.fillStyle = `rgba(150,172,200,${0.14 + (1 - Math.min(1, wetter)) * 0.1})`; pbx.fillRect(0, 0, p.w, p.h * 0.42 + wob);       // Himmel-Spiegelung
+    pbx.fillStyle = 'rgba(200,216,236,0.22)'; pbx.fillRect(0, p.h * 0.3 + wob, p.w, 2.4);                                          // heller Horizont-Streifen
+    const gx = p.w * (0.4 + 0.22 * Math.sin(now / 1900 + p.y)); const rg = pbx.createRadialGradient(gx, p.h * 0.3, 1, gx, p.h * 0.3, p.h * 0.4);
+    rg.addColorStop(0, 'rgba(220,232,248,0.45)'); rg.addColorStop(1, 'rgba(0,0,0,0)'); pbx.fillStyle = rg; pbx.fillRect(0, 0, p.w, p.h);  // Glanzpunkt
+    for (const r of ringe) {
+      if (r.pf !== p) continue; const f = r.t / r.leben, rad = 1 + r.rmax * f, a = (1 - f) * 0.5;
+      pbx.strokeStyle = `rgba(206,220,238,${a})`; pbx.lineWidth = 1.2; pbx.beginPath(); pbx.ellipse(r.x - p.x, r.y - p.y, rad, rad * 0.5, 0, 0, 7); pbx.stroke();
+      pbx.strokeStyle = `rgba(10,16,22,${a * 0.55})`; pbx.beginPath(); pbx.ellipse(r.x - p.x, r.y - p.y, rad + 1.4, (rad + 1.4) * 0.5, 0, 0, 7); pbx.stroke();
+    }
     pbx.globalCompositeOperation = 'destination-in'; pbx.drawImage(p.maske, 0, 0); pbx.globalCompositeOperation = 'source-over';
-    ctx.drawImage(pBuf, 0, 0, p.w, p.h, sx(p.x), sy(p.y), p.w, p.h);
+    ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.12; ctx.drawImage(p.maske, sx(p.x) - 2, sy(p.y) - 2, p.w + 4, p.h + 4); ctx.restore();   // nasser Rand
+    const rows = 12, rh = p.h / rows;
+    for (let j = 0; j < rows; j++) { const off = Math.sin(now / 320 + j * 0.7 + p.x * 0.01) * 1.4 * (j / rows); ctx.drawImage(pBuf, 0, j * rh, p.w, rh, sx(p.x) + off, sy(p.y) + j * rh, p.w, rh + 0.6); }   // Oberflächen-Wobble
   }
 
   // 3) Blight-Mal + Krypta
@@ -378,22 +415,36 @@ function frame(now: number): void {
   for (const p of partikel) { ctx.globalAlpha = Math.max(0, 1 - p.t / p.leben); ctx.fillStyle = p.farbe; ctx.fillRect(sx(p.x), sy(p.y), p.gr, p.gr); }
   ctx.globalAlpha = 1;
 
-  // 7) Regen (über allem), mit Wind-Neigung
-  if (regenAn) {
-    const neig = 0.14 + wd * 0.12;
+  // 7) Regen-Streifen (über allem), Dichte/Neigung/Tempo nach Wetter
+  if (regenAn && wetter > 0.1) {
+    const neig = 0.10 + wd * 0.12, sicht = Math.min(1, wetter / 0.5), aMul = 0.4 + wetter * 0.9, tempo = 0.8 + wetter * 0.7;
     ctx.lineCap = 'round';
-    for (const d of drops) {
-      d.y += d.vy * dt; d.x += d.vy * dt * neig;
-      if (d.y > H) { einschlagWelt(d.x + camX, H - 2 + camY, 0.6 + d.z * 0.8); Object.assign(d, neuerDrop()); continue; }
-      ctx.strokeStyle = `rgba(200,214,230,${0.10 + d.z * 0.32})`; ctx.lineWidth = 0.6 + d.z * 1.3;
+    for (let di = 0; di < drops.length; di++) {
+      if (di > drops.length * sicht) break;                        // weniger Tropfen bei leichtem Regen
+      const d = drops[di];
+      d.y += d.vy * dt * tempo; d.x += d.vy * dt * neig;
+      if (d.y > H) { Object.assign(d, neuerDrop()); continue; }
+      ctx.strokeStyle = `rgba(200,214,230,${(0.10 + d.z * 0.32) * aMul})`; ctx.lineWidth = 0.6 + d.z * 1.3;
       ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.len * neig, d.y - d.len); ctx.stroke();
     }
   }
 
-  // 8) Wetter-Stimmung + Vignette
-  ctx.fillStyle = `rgba(10,16,20,${regenAn ? 0.3 : 0.12})`; ctx.fillRect(0, 0, W, H);
-  const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.74);
-  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(2,4,3,0.66)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  // 8) Wetter-Stimmung: nasser/dunkler Boden + Nebel-Dunst (FogExp2-Idee in 2D) + Vignette
+  ctx.fillStyle = `rgba(12,18,24,${0.1 + wetter * 0.28})`; ctx.fillRect(0, 0, W, H);
+  if (regenAn && wetter > 0.15) {
+    const fog = Math.min(0.42, (wetter - 0.1) * 0.55);
+    ctx.fillStyle = `rgba(150,166,186,${fog * 0.5})`; ctx.fillRect(0, 0, W, H);                 // gleichmäßiger Dunst
+    ctx.save(); ctx.globalAlpha = fog;
+    for (let i = 0; i < 4; i++) {                                                               // driftende Schwaden
+      const fx = ((now / 1000 * (8 + i * 5) + i * 400) % (W + 600)) - 300, fy = H * (0.18 + i * 0.22);
+      const fgr = ctx.createRadialGradient(fx, fy, 10, fx, fy, 320); fgr.addColorStop(0, 'rgba(170,184,202,0.5)'); fgr.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = fgr; ctx.fillRect(fx - 320, fy - 200, 640, 400);
+    }
+    ctx.restore();
+  }
+  const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.34, W / 2, H / 2, Math.max(W, H) * 0.74);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(2,4,3,${0.6 + wetter * 0.16})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(230,220,190,0.85)'; ctx.font = '13px Georgia'; ctx.textAlign = 'right';
+  ctx.fillText(`Wetter: ${WETTER_NAME()}   [1 klar · 2 Regen · 3 Unwetter]`, W - 16, 22); ctx.textAlign = 'left';
 
   requestAnimationFrame(frame);
 }
