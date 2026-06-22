@@ -721,13 +721,17 @@ export class Hud {
       this.zeichne3dKnopf(g, x, y, 42, katFarbe, locked, pressed);
       const cd = s.cdFrac();
       if (cd > 0) {
-        g.fillStyle(0x000000, 0.72);
+        // ganze Taste matt = "noch nicht aktiv" (Autorbug R60: Abklingen war nicht
+        // ausgegraut, nur der Schwung war zu sehen)
+        g.fillStyle(0x05030a, 0.5);
+        g.fillRoundedRect(x - 20, y - 20, 40, 40, 5);
+        g.fillStyle(0x000000, 0.72);            // ablaufender Abkling-Schwung darüber
         g.fillRoundedRect(x - 20, y - 20 + 40 * (1 - cd), 40, 40 * cd, 5);
       }
       const cdS = s.cdSek();
       this.slotTexts[i].setText(cdS > 0.5 ? String(Math.ceil(cdS)) : `${s.ico()}`)
         .setColor(cdS > 0.5 ? '#e0b53a' : (s.farbe?.() ?? '#d8cfb8'))
-        .setAlpha(locked ? 0.3 : 1).setPosition(x, pressed ? y + 1 : y); // gedrückt: Symbol sinkt mit
+        .setAlpha(locked ? 0.3 : cd > 0 ? 0.5 : 1).setPosition(x, pressed ? y + 1 : y); // gedrückt: Symbol sinkt mit; Abklingen = matt
       // Tastenkürzel klein oben links
       g.fillStyle(0x000000, 0);
     }

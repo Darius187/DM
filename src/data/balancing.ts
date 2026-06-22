@@ -157,7 +157,7 @@ export const ABILITY_FX = {
   feuerregen: { mana: 40, dmgBase: 16, dmgPerLevel: 4, einschlaege: 6, radius: 50, streuung: 85, dauerS: 1.8, reichweite: 320, cd: 6, brennDauerS: 3, brennDpsMult: 0.45 },
   // Atomschlag (Runde 58, Dev): die Feuerwalze wächst in sweepS Sekunden auf rmax
   // und tötet alles, was sie erreicht. reichweite = wie weit man den Pilz setzt.
-  atomschlag: { mana: 0, cd: 10, reichweite: 260, rmax: 1200, sweepS: 2.8 },
+  atomschlag: { mana: 0, cd: 0, reichweite: 260, rmax: 1200, sweepS: 2.8 }, // 0 Mana, 0 Abklingzeit (Autorwunsch)
   // Runde 36: vier besondere ROLLEN-Zauber (nur über Schriftrollen wirkbar,
   // daher mana/cd 0 - useScroll regelt das). Werte leicht änderbar.
   gewitter: { mana: 0, dmgBase: 24, dmgPerLevel: 5, einschlaege: 8, radius: 44, streuung: 120, dauerS: 1.5, reichweite: 360, cd: 0 },

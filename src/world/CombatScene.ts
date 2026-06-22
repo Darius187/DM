@@ -1813,6 +1813,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       case 's3': this.castSpell(2); break;
       case 'kettenblitz': case 'frostnova': case 'bannkreis':
       case 'feuerregen': case 'aderlass': case 'lebenstausch': case 'heilen':
+      case 'atomschlag': // DEV: Mobile Massenvernichtungseinheit (fehlte hier -> Slot tat nichts)
       case 'hagel': case 'splitterpfeil': case 'sprungpfeil': case 'fesselpfeil':
       // Direkt belegbar (Autorbug R53: markierterTod/mehrfachschuss/durchschlag
       // liefen vorher NUR über R/T = waffe1/waffe2, direkt belegt taten sie nichts)
@@ -1968,6 +1969,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected banishZones: Array<{ x: number; y: number; r: number; t: number }> = [];
 
   protected abilityReady(id: string): boolean {
+    // DEV-Massenvernichtung: immer wirkbar (ignoriert Schul-Stufe/unlock 99),
+    // nur die eigene Abklingzeit zählt - kostenlos, wie im HUD versprochen.
+    if (id === 'atomschlag') return (this.p.abilityCds[id] ?? 0) <= 0;
     const def = ABILITIES.find((a) => a.id === id);
     if (!def) {
       // Rollen-Zauber (Runde 36) sind nicht lernbar, aber per Schriftrolle
