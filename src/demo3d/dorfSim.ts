@@ -66,23 +66,31 @@ function macheGras(ts = 128): HTMLCanvasElement {
 }
 const grasMuster = ctx.createPattern(macheGras(), 'repeat');
 
-interface Pfuetze { x: number; y: number; w: number; h: number; maske: HTMLCanvasElement; }
-function machePfuetze(x: number, y: number, w: number, h: number): Pfuetze {
+// Pfütze liegt AM Pfad entlang: Mittelpunkt (cx,cy), Länge L (in Pfadrichtung),
+// Breite B (quer, < Pfadbreite), Winkel ang. Maske + brauner Schlamm-Halo lokal
+// (lange Achse = x), damit sie sich in den Weg einbettet statt quer draufzuliegen.
+interface Pfuetze { cx: number; cy: number; L: number; B: number; ang: number; maske: HTMLCanvasElement; schlamm: HTMLCanvasElement; }
+function machePfuetze(cx: number, cy: number, L: number, B: number, ang: number): Pfuetze {
+  const w = Math.ceil(L), h = Math.ceil(B);
   const m = document.createElement('canvas'); m.width = w; m.height = h; const mc = m.getContext('2d')!;
-  mc.filter = `blur(${Math.max(w, h) * 0.05}px)`; mc.fillStyle = '#fff';
-  for (let i = 0, n = 4 + Math.floor(Math.random() * 3); i < n; i++) {
-    mc.beginPath(); mc.ellipse(w * (0.32 + Math.random() * 0.36), h * (0.36 + Math.random() * 0.28), w * (0.16 + Math.random() * 0.18), h * (0.14 + Math.random() * 0.16), 0, 0, 7); mc.fill();
+  mc.filter = `blur(${Math.max(w, h) * 0.06}px)`; mc.fillStyle = '#fff';
+  const n = 3 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < n; i++) {                                     // Blobs entlang der langen Achse -> langgezogene Lache
+    const ex = w * (0.16 + (i / n) * 0.68 + (Math.random() - 0.5) * 0.1), ey = h * (0.5 + (Math.random() - 0.5) * 0.32);
+    mc.beginPath(); mc.ellipse(ex, ey, w * (0.1 + Math.random() * 0.08), h * (0.28 + Math.random() * 0.14), 0, 0, 7); mc.fill();
   }
-  return { x, y, w, h, maske: m };
+  const s = document.createElement('canvas'); s.width = w; s.height = h; const sc2 = s.getContext('2d')!;
+  sc2.fillStyle = '#1a130b'; sc2.fillRect(0, 0, w, h); sc2.globalCompositeOperation = 'destination-in'; sc2.drawImage(m, 0, 0);   // Schlamm = Form in Braun
+  return { cx, cy, L: w, B: h, ang, maske: m, schlamm: s };
 }
 const pfuetzen: Pfuetze[] = [];
 const pBuf = document.createElement('canvas'); const pbx = pBuf.getContext('2d')!;
+function lokal(p: Pfuetze, x: number, y: number): { lx: number; ly: number } {        // Weltpunkt -> lokale Maskenkoordinate
+  const dx = x - p.cx, dy = y - p.cy, c = Math.cos(p.ang), s = Math.sin(p.ang);
+  return { lx: dx * c + dy * s + p.L / 2, ly: -dx * s + dy * c + p.B / 2 };
+}
 function pfuetzeUnter(x: number, y: number): Pfuetze | null {
-  for (const p of pfuetzen) {
-    if (x < p.x || y < p.y || x > p.x + p.w || y > p.y + p.h) continue;
-    const nx = (x - p.x - p.w / 2) / (p.w * 0.42), ny = (y - p.y - p.h / 2) / (p.h * 0.42);
-    if (nx * nx + ny * ny <= 1) return p;
-  }
+  for (const p of pfuetzen) { const { lx, ly } = lokal(p, x, y); const nx = (lx - p.L / 2) / (p.L * 0.46), ny = (ly - p.B / 2) / (p.B * 0.46); if (nx * nx + ny * ny <= 1) return p; }
   return null;
 }
 
@@ -199,22 +207,22 @@ function blattFall(x: number, y: number, farbe: string): void {
 
 // ---------- Regen ----------
 interface Drop { x: number; y: number; z: number; vy: number; len: number; }
-interface Ring { x: number; y: number; t: number; leben: number; rmax: number; pf: Pfuetze | null; }
+interface Ring { lx: number; ly: number; x: number; y: number; t: number; leben: number; rmax: number; pf: Pfuetze | null; }
 const drops: Drop[] = [];
 const ringe: Ring[] = [];
 function neuerDrop(init = false): Drop { const z = Math.random(); return { x: Math.random() * (W + 300) - 150, y: init ? Math.random() * H : -30 - Math.random() * 60, z, vy: 650 + z * 950, len: 9 + z * 24 }; }
 for (let i = 0; i < 420; i++) drops.push(neuerDrop(true));
-// KLEINE Tropfen-Ringe (Regen) auf dem Wasser - viel kleiner als die Schritt-Ringe
-function tropfenRing(pf: Pfuetze, wx: number, wy: number): void { ringe.push({ x: wx, y: wy, t: 0, leben: 0.6 + Math.random() * 0.3, rmax: 4 + Math.random() * 7, pf }); }
-function bodenKrone(wx: number, wy: number): void { ringe.push({ x: wx, y: wy, t: 0, leben: 0.26, rmax: 5, pf: null }); if (Math.random() < 0.3) spaene(wx, wy, 'rgba(190,206,224,0.7)', -16, 1); }
+// KLEINE Tropfen-Ringe (Regen) auf dem Wasser - LOKALE Maskenkoordinaten, viel kleiner als die Schritt-Ringe
+function tropfenRing(pf: Pfuetze, lx: number, ly: number): void { ringe.push({ lx, ly, x: 0, y: 0, t: 0, leben: 0.6 + Math.random() * 0.3, rmax: 4 + Math.random() * 7, pf }); }
+function bodenKrone(wx: number, wy: number): void { ringe.push({ lx: 0, ly: 0, x: wx, y: wy, t: 0, leben: 0.26, rmax: 5, pf: null }); if (Math.random() < 0.3) spaene(wx, wy, 'rgba(190,206,224,0.7)', -16, 1); }
 let regenAkk = 0;
 function regenAufschlaege(dt: number): void {
   if (!regenAn || wetter < 0.12) return;
   regenAkk += wetter * 75 * dt;                                    // Aufschläge übers ganze Bild
-  while (regenAkk >= 1) { regenAkk -= 1; const wx = camX + Math.random() * W, wy = camY + Math.random() * H; const pf = pfuetzeUnter(wx, wy); pf ? tropfenRing(pf, wx, wy) : bodenKrone(wx, wy); }
+  while (regenAkk >= 1) { regenAkk -= 1; const wx = camX + Math.random() * W, wy = camY + Math.random() * H; const pf = pfuetzeUnter(wx, wy); if (pf) { const lo = lokal(pf, wx, wy); tropfenRing(pf, lo.lx, lo.ly); } else bodenKrone(wx, wy); }
   for (const p of pfuetzen) {                                      // jede sichtbare Pfütze "lebt" (Tropfen)
-    if (p.x + p.w < camX || p.x > camX + W || p.y + p.h < camY || p.y > camY + H) continue;
-    if (Math.random() < wetter * 10 * dt) tropfenRing(p, p.x + p.w * (0.2 + Math.random() * 0.6), p.y + p.h * (0.2 + Math.random() * 0.6));
+    if (p.cx + p.L < camX || p.cx - p.L > camX + W || p.cy + p.L < camY || p.cy - p.L > camY + H) continue;
+    if (Math.random() < wetter * 10 * dt) tropfenRing(p, p.L * (0.15 + Math.random() * 0.7), p.B * (0.2 + Math.random() * 0.6));
   }
 }
 
@@ -235,12 +243,15 @@ async function init(): Promise<void> {
   for (let i = 0; i < 6; i++) wesen.push(neuesNpc('huhn', 'stoff', WELT_W * 0.36 + Math.random() * 220, WELT_H * 0.6 + Math.random() * 160));
   // Pfützen
   pBuf.width = 1; pBuf.height = 1;
-  for (let i = 0; i < 12; i++) {                                    // Pfützen ENTLANG des Pfads
-    const si = Math.floor(Math.random() * (pfad.length - 1)), tt = Math.random();
-    const cx = pfad[si].x + (pfad[si + 1].x - pfad[si].x) * tt, cy = pfad[si].y + (pfad[si + 1].y - pfad[si].y) * tt;
-    const w = 80 + Math.random() * 95, h = w * (0.5 + Math.random() * 0.18);
-    const p = machePfuetze(cx - w / 2 + (Math.random() - 0.5) * 18, cy - h / 2 + (Math.random() - 0.5) * 12, w, h);
-    pfuetzen.push(p); pBuf.width = Math.max(pBuf.width, Math.ceil(w)); pBuf.height = Math.max(pBuf.height, Math.ceil(h));
+  for (let i = 0; i < 12; i++) {                                    // Lachen ENTLANG des Pfads (in Wegrichtung gedreht)
+    const si = Math.floor(Math.random() * (pfad.length - 1)), tt = 0.12 + Math.random() * 0.76;
+    const a = pfad[si], b = pfad[si + 1];
+    const ang = Math.atan2(b.y - a.y, b.x - a.x);
+    const quer = (Math.random() - 0.5) * PFAD_BREITE * 0.3;         // leicht aus der Mitte
+    const cx = a.x + (b.x - a.x) * tt - Math.sin(ang) * quer, cy = a.y + (b.y - a.y) * tt + Math.cos(ang) * quer;
+    const L = 95 + Math.random() * 120, B = 34 + Math.random() * 24;  // lang am Pfad, schmal quer (< Pfadbreite)
+    const p = machePfuetze(cx, cy, L, B, ang);
+    pfuetzen.push(p); pBuf.width = Math.max(pBuf.width, Math.ceil(L)); pBuf.height = Math.max(pBuf.height, Math.ceil(B));
   }
   // Bäume (Rand dicht, Dorfmitte frei)
   for (let i = 0; i < 150; i++) {
@@ -310,7 +321,7 @@ function aktualisiereWesen(w: Wesen, dt: number, now: number): void {
     if (w.effT <= 0) {
       w.effT = 0.12;
       const pf = pfuetzeUnter(w.x, w.y);
-      if (pf) { ringe.push({ x: w.x, y: w.y, t: 0, leben: 0.8, rmax: 16, pf }); if (Math.random() < 0.6) spaene(w.x, w.y, 'rgba(170,190,210,0.8)', -30, 2); }
+      if (pf) { const lo = lokal(pf, w.x, w.y); ringe.push({ lx: lo.lx, ly: lo.ly, x: 0, y: 0, t: 0, leben: 0.8, rmax: 16, pf }); if (Math.random() < 0.6) spaene(w.x, w.y, 'rgba(170,190,210,0.8)', -30, 2); }
       else if (Math.random() < 0.5) spaene(w.x, w.y - 2, 'rgba(70,92,44,0.9)', -10, 1);    // Gras-Rascheln
     }
   } else { w.hackT > 0 ? (w.frameT = 2) : (w.bob = 0); }
@@ -356,27 +367,30 @@ function frame(now: number): void {
   ctx.strokeStyle = '#3a3120'; ctx.lineWidth = PFAD_BREITE - 18; ctx.stroke();
   ctx.restore();
 
-  // 2) Pfützen als WASSER (Wet-Material/Reflexions-Idee in 2D): dunkler Spiegel,
-  //    Himmel-Streifen, driftender Glanz, Tropfen-Ringe, Oberflächen-Wobble, nasser Rand
+  // 2) Pfützen: schmale Wasserlachen AM Pfad entlang (gedreht), mit nassem Schlammrand
+  //    der sie in den Weg einbettet; darin dunkler Spiegel, Himmelstreifen, Glanz, Tropfen-Ringe
   for (const p of pfuetzen) {
-    if (p.x + p.w < camX || p.x > camX + W || p.y + p.h < camY || p.y > camY + H) continue;
+    const rr = Math.max(p.L, p.B);
+    if (p.cx + rr < camX || p.cx - rr > camX + W || p.cy + rr < camY || p.cy - rr > camY + H) continue;
     pbx.setTransform(1, 0, 0, 1, 0, 0); pbx.clearRect(0, 0, pBuf.width, pBuf.height);
-    const gg = pbx.createLinearGradient(0, 0, 0, p.h); gg.addColorStop(0, '#34465a'); gg.addColorStop(0.45, '#1b2733'); gg.addColorStop(1, '#070b10');
-    pbx.fillStyle = gg; pbx.fillRect(0, 0, p.w, p.h);
-    const wob = Math.sin(now / 700 + p.x) * 2;
-    pbx.fillStyle = `rgba(150,172,200,${0.14 + (1 - Math.min(1, wetter)) * 0.1})`; pbx.fillRect(0, 0, p.w, p.h * 0.42 + wob);       // Himmel-Spiegelung
-    pbx.fillStyle = 'rgba(200,216,236,0.22)'; pbx.fillRect(0, p.h * 0.3 + wob, p.w, 2.4);                                          // heller Horizont-Streifen
-    const gx = p.w * (0.4 + 0.22 * Math.sin(now / 1900 + p.y)); const rg = pbx.createRadialGradient(gx, p.h * 0.3, 1, gx, p.h * 0.3, p.h * 0.4);
-    rg.addColorStop(0, 'rgba(220,232,248,0.45)'); rg.addColorStop(1, 'rgba(0,0,0,0)'); pbx.fillStyle = rg; pbx.fillRect(0, 0, p.w, p.h);  // Glanzpunkt
+    const gg = pbx.createLinearGradient(0, 0, 0, p.B); gg.addColorStop(0, '#2c3b4b'); gg.addColorStop(0.5, '#18222d'); gg.addColorStop(1, '#070b10');
+    pbx.fillStyle = gg; pbx.fillRect(0, 0, p.L, p.B);
+    const wob = Math.sin(now / 700 + p.cx) * 1.4;
+    pbx.fillStyle = `rgba(140,162,190,${0.11 + (1 - Math.min(1, wetter)) * 0.08})`; pbx.fillRect(0, 0, p.L, p.B * 0.4 + wob);        // Himmel-Spiegelung (gedämpft)
+    pbx.fillStyle = 'rgba(190,206,228,0.16)'; pbx.fillRect(0, p.B * 0.32 + wob, p.L, 2);                                           // Horizont-Streifen
+    const gx = p.L * (0.4 + 0.2 * Math.sin(now / 1900 + p.cy)); const rg = pbx.createRadialGradient(gx, p.B * 0.3, 1, gx, p.B * 0.3, p.B * 0.55);
+    rg.addColorStop(0, 'rgba(220,232,248,0.4)'); rg.addColorStop(1, 'rgba(0,0,0,0)'); pbx.fillStyle = rg; pbx.fillRect(0, 0, p.L, p.B);   // Glanzpunkt
     for (const r of ringe) {
       if (r.pf !== p) continue; const f = r.t / r.leben, rad = 1 + r.rmax * f, a = (1 - f) * 0.5;
-      pbx.strokeStyle = `rgba(206,220,238,${a})`; pbx.lineWidth = 1.2; pbx.beginPath(); pbx.ellipse(r.x - p.x, r.y - p.y, rad, rad * 0.5, 0, 0, 7); pbx.stroke();
-      pbx.strokeStyle = `rgba(10,16,22,${a * 0.55})`; pbx.beginPath(); pbx.ellipse(r.x - p.x, r.y - p.y, rad + 1.4, (rad + 1.4) * 0.5, 0, 0, 7); pbx.stroke();
+      pbx.strokeStyle = `rgba(206,220,238,${a})`; pbx.lineWidth = 1.1; pbx.beginPath(); pbx.ellipse(r.lx, r.ly, rad, rad * 0.6, 0, 0, 7); pbx.stroke();
+      pbx.strokeStyle = `rgba(10,16,22,${a * 0.5})`; pbx.beginPath(); pbx.ellipse(r.lx, r.ly, rad + 1.3, (rad + 1.3) * 0.6, 0, 0, 7); pbx.stroke();
     }
     pbx.globalCompositeOperation = 'destination-in'; pbx.drawImage(p.maske, 0, 0); pbx.globalCompositeOperation = 'source-over';
-    ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.12; ctx.drawImage(p.maske, sx(p.x) - 2, sy(p.y) - 2, p.w + 4, p.h + 4); ctx.restore();   // nasser Rand
-    const rows = 12, rh = p.h / rows;
-    for (let j = 0; j < rows; j++) { const off = Math.sin(now / 320 + j * 0.7 + p.x * 0.01) * 1.4 * (j / rows); ctx.drawImage(pBuf, 0, j * rh, p.w, rh, sx(p.x) + off, sy(p.y) + j * rh, p.w, rh + 0.6); }   // Oberflächen-Wobble
+    ctx.save(); ctx.translate(sx(p.cx), sy(p.cy)); ctx.rotate(p.ang);
+    ctx.globalAlpha = 0.6; ctx.drawImage(p.schlamm, -p.L * 1.3 / 2, -p.B * 1.55 / 2, p.L * 1.3, p.B * 1.55); ctx.globalAlpha = 1;     // nasser Schlammrand -> bettet in den Pfad ein
+    const rows = 10, rh = p.B / rows;
+    for (let j = 0; j < rows; j++) { const off = Math.sin(now / 320 + j * 0.7 + p.cx * 0.01) * 1.1 * (j / rows); ctx.drawImage(pBuf, 0, j * rh, p.L, rh, -p.L / 2 + off, -p.B / 2 + j * rh, p.L, rh + 0.6); }   // Oberflächen-Wobble
+    ctx.restore();
   }
 
   // 3) Blight-Mal + Krypta
@@ -393,7 +407,7 @@ function frame(now: number): void {
   }
 
   // 4b) Stümpfe unter gefällten Bäumen
-  if (bereit) for (const b of baeume) if (b.fall) ctx.drawImage(stumpfBild, sx(b.x) - stumpfBild.width / 2, sy(b.y) - stumpfBild.height / 2 + 2);
+  if (bereit) for (const b of baeume) if (b.fall) { const ss = b.skala * 0.9; ctx.drawImage(stumpfBild, sx(b.x) - stumpfBild.width * ss / 2, sy(b.y) - stumpfBild.height * ss / 2 + 2, stumpfBild.width * ss, stumpfBild.height * ss); }
 
   // 5) Bäume + Wesen, tiefensortiert
   if (bereit) {
