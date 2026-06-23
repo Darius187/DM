@@ -188,7 +188,7 @@ function backe(ofen: ReturnType<typeof macheBackofen>, t: Tree, st: Stimmung): H
 // Schwerkraft-Drehmoment um den Stammfuß, beschleunigt mit der Neigung, federt am Boden nach.
 interface Fall { winkel: number; winkelV: number; gelandet: boolean; richtung: number; geerntet: boolean; }
 const FALL_G = 7.5, FALL_ZIEL = 1.46;   // Schwerkraft-Stärke; Ruhewinkel (liegend)
-interface Baum { art: number; x: number; y: number; skala: number; blight: boolean; ph: number; fall: Fall | null; blattFarbe: string; }
+interface Baum { art: number; x: number; y: number; skala: number; blight: boolean; ph: number; fall: Fall | null; blattFarbe: string; fade: number; }
 const arten: Array<{ wald: HTMLCanvasElement; blight: HTMLCanvasElement }> = [];
 const baeume: Baum[] = [];
 const krypta = { x: WELT_W * 0.74, y: WELT_H * 0.3, r: 520 };
@@ -225,6 +225,12 @@ const huhnBild = macheHuhn();
 // ---------- Held/Wesen ----------
 const figCv = document.createElement('canvas'); figCv.width = figCv.height = HELD_FELD;
 const figCtx = figCv.getContext('2d')!;
+// Occlusion: Röntgen-Silhouette des Helden (Offscreen, getönt) für "durchschimmern" hinter Occludern
+const silCv = document.createElement('canvas'); silCv.width = silCv.height = HELD_FELD;
+const silCtx = silCv.getContext('2d')!;
+function rechteckeUeberlappen(ax: number, ay: number, aw: number, ah: number, bx: number, by: number, bw: number, bh: number): boolean {
+  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+}
 const HM = (HELD_FELD - 64) / 2;
 type Art = 'held' | 'dorf' | 'huhn';
 interface Wesen { art: Art; tier: HeldTier; x: number; y: number; dir: number; frameT: number; speed: number; zx: number; zy: number; ruhe: number; effT: number; hackT: number; bob: number; }
@@ -349,7 +355,7 @@ async function init(): Promise<void> {
     if (baeume.some((t) => Math.hypot(t.x - x, t.y - y) < 50)) continue;        // Mindestabstand
     const blight = Math.hypot(x - krypta.x, y - krypta.y) < krypta.r * (0.55 + Math.random() * 0.6);
     const skala = d > 0.62 ? 0.46 + Math.random() * 0.26 : 0.3 + Math.random() * 0.26;
-    baeume.push({ art: Math.floor(Math.random() * arten.length), x, y, skala, blight, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)] });
+    baeume.push({ art: Math.floor(Math.random() * arten.length), x, y, skala, blight, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)], fade: 0 });
   }
   // Gras-Büschel
   for (let i = 0; i < 1100; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y)) continue; tufts.push({ x, y, ph: Math.random() * 7 }); }
@@ -357,6 +363,7 @@ async function init(): Promise<void> {
   bereit = true;
   (window as unknown as { __dorfBereit?: boolean; __demo?: unknown }).__dorfBereit = true;
   (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; }, nass: (v: number) => { wetness = v; for (const p of pfuetzen) p.current = wetness > p.schwelle ? 1 : 0; },
+    geheHinterBaum: () => { let best: Baum | null = null, bd = 1e9; for (const t of baeume) { if (t.fall || t.blight || t.skala < 0.42) continue; const d = Math.hypot(t.x - WELT_W * 0.5, t.y - WELT_H * 0.5); if (d < bd) { bd = d; best = t; } } if (best) { held().x = best.x; held().y = best.y - 35; } },
     selbsttest: (): string => { const b0 = baeume.find((t) => !t.fall); if (!b0) return 'kein Baum'; held().x = b0.x - 60; held().y = b0.y; fälleNächsten(); const g = baeume.find((t) => t.fall && !t.fall.gelandet); if (!g) return 'nichts gefallen'; g.fall!.gelandet = true; g.fall!.winkel = FALL_ZIEL * g.fall!.richtung; held().x = g.x - 60; held().y = g.y; const h0 = holz; fälleNächsten(); const s = `gefallen=ja geerntet=${g.fall!.geerntet} holz ${h0}->${holz}`; console.log('[selbsttest] ' + s); return s; } };
 }
 void init();
@@ -555,16 +562,33 @@ function frame(now: number): void {
     const ss = b.skala * baumGroesse * 0.95; ctx.drawImage(stumpfBild, sx(b.x) - stumpfBild.width * ss / 2, sy(b.y) - stumpfBild.height * ss / 2 + 2, stumpfBild.width * ss, stumpfBild.height * ss);
   }
 
-  // 5) Bäume + Wesen, tiefensortiert
+  // 5) Bäume + Wesen, tiefensortiert. Occlusion-Fade (A): Bäume VOR dem Helden, die
+  //    ihn überlappen, werden weich durchsichtig; danach Röntgen-Silhouette (B) als Garantie.
   if (bereit) {
+    const h0 = held(), hrx = sx(h0.x), hry = sy(h0.y);
+    const heldRX = hrx - 22, heldRY = hry - 46, heldRW = 44, heldRH = 60;     // sichtbarer Körper des Helden
+    let heldVerdeckt = false;
     interface Z { y: number; b: Baum | null; w: Wesen | null; }
     const liste: Z[] = [];
     for (const b of baeume) { if (b.x < camX - 360 || b.x > camX + W + 360 || b.y < camY - 600 || b.y > camY + H + 360) continue; liste.push({ y: b.y, b, w: null }); }
     for (const w of wesen) liste.push({ y: w.y, b: null, w });
     liste.sort((a, c) => a.y - c.y);
     for (const z of liste) {
-      if (z.b) { const b = z.b, bild = b.blight ? arten[b.art].blight : arten[b.art].wald, sk = b.skala * baumGroesse, w = bild.width * sk, hh = bild.height * sk; if (b.fall) { if (!b.fall.geerntet) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); } else zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * (b.blight ? 5 : 13) * (0.7 + sk * 0.6), b.ph, now); }
-      else if (z.w) zeichneWesen(z.w);
+      if (z.b) {
+        const b = z.b, bild = b.blight ? arten[b.art].blight : arten[b.art].wald, sk = b.skala * baumGroesse, w = bild.width * sk, hh = bild.height * sk;
+        const verdeckt = b.y > h0.y && rechteckeUeberlappen(sx(b.x) - w * 0.42, sy(b.y) - hh * 0.64, w * 0.84, hh * 0.72, heldRX, heldRY, heldRW, heldRH);
+        b.fade += ((verdeckt ? 1 : 0) - b.fade) * Math.min(1, dt * 9);        // weich faden (kein Poppen)
+        if (verdeckt && b.fade > 0.15) heldVerdeckt = true;
+        if (b.fade > 0.01) ctx.globalAlpha = 1 - b.fade * 0.7;                // Krone bis ~0.3 durchsichtig -> echter Held scheint durch
+        if (b.fall) { if (!b.fall.geerntet) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); } else zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * (b.blight ? 5 : 13) * (0.7 + sk * 0.6), b.ph, now);
+        ctx.globalAlpha = 1;
+      } else if (z.w) zeichneWesen(z.w);
+    }
+    if (heldVerdeckt) {                                                       // 5a) Held schimmert als Geist durch
+      figCtx.clearRect(0, 0, HELD_FELD, HELD_FELD); figCtx.save(); figCtx.translate(HM, HM); drawHeld(figCtx, h0.tier, h0.dir, h0.hackT > 0 ? 2 : Math.floor(h0.frameT) % 4, 'axt'); figCtx.restore();
+      silCtx.globalCompositeOperation = 'source-over'; silCtx.clearRect(0, 0, HELD_FELD, HELD_FELD); silCtx.drawImage(figCv, 0, 0);
+      silCtx.globalCompositeOperation = 'source-in'; silCtx.fillStyle = '#aecbe8'; silCtx.fillRect(0, 0, HELD_FELD, HELD_FELD); silCtx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.4; ctx.drawImage(silCv, sx(h0.x) - HELD_FELD / 2, sy(h0.y) - HELD_FELD / 2 - 12); ctx.globalAlpha = 1;   // dezenter Geist-Schimmer ÜBER dem durchscheinenden echten Held
     }
   } else { ctx.fillStyle = '#6a7a55'; ctx.font = '16px Georgia'; ctx.fillText('Dorf & Wald werden gebacken …', 24, H - 28); }
 
