@@ -234,6 +234,8 @@ const FALL_G = 5.2, FALL_ZIEL = 1.46;   // langsamerer/schwererer Fall; Ruhewink
 interface Baum { art: number; x: number; y: number; skala: number; blight: boolean; ph: number; fall: Fall | null; blattFarbe: string; fade: number; hp: number; maxHp: number; weg: boolean; }
 const arten: Array<{ wald: HTMLCanvasElement; blight: HTMLCanvasElement }> = [];
 const baeume: Baum[] = [];
+interface Fels { x: number; y: number; g: number; hp: number; maxHp: number; stufe: number; gestein: number; gegeben: number; entfernt: boolean; }
+const felsen: Fels[] = [];
 const krypta = { x: WELT_W * 0.74, y: WELT_H * 0.3, r: 520 };
 let bereit = false;
 
@@ -274,6 +276,31 @@ function macheHuhn(): HTMLCanvasElement {
   return c;
 }
 const huhnBild = macheHuhn();
+
+// ---------- Felsen (prozedural, 3 Größen) + Geröll-Stufen, Billboard im Spielwinkel ----------
+const STEIN = { hpProGroesse: 70, schaden: 30, steinProGroesse: 1.6 };   // Abbau-Balancing
+const FELS_R = [22, 34, 50];                                             // Radien je Größe
+function macheFels(R: number): HTMLCanvasElement {
+  const c = document.createElement('canvas'); c.width = c.height = R * 2 + 14; const g = c.getContext('2d')!;
+  const cx = c.width / 2, cy = c.height / 2 + R * 0.12, n = 7 + Math.floor(Math.random() * 3);
+  const pts: Array<[number, number]> = [];
+  for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, rr = R * (0.8 + Math.random() * 0.3); pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.82]); }
+  const poly = (off: number, sx2 = 1): void => { g.beginPath(); g.moveTo(pts[0][0] * 1, pts[0][1] + off); for (const p of pts) g.lineTo(cx + (p[0] - cx) * sx2, p[1] + off); g.closePath(); };
+  g.fillStyle = '#34343a'; poly(0); g.fill();                                   // dunkle Basis/Seite
+  g.fillStyle = '#54545c'; poly(-R * 0.16, 0.92); g.fill();                     // belichtete Oberseite (NW-Licht)
+  g.fillStyle = '#6a6a72'; poly(-R * 0.3, 0.7); g.fill();                       // Glanzkante oben
+  g.strokeStyle = 'rgba(18,18,22,0.5)'; g.lineWidth = 1.4;                       // Facetten/Kanten
+  for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(cx + (Math.random() - 0.5) * R, cy - R * 0.2); g.lineTo(cx + (Math.random() - 0.5) * R * 1.3, cy + R * 0.4); g.stroke(); }
+  g.fillStyle = 'rgba(54,74,42,0.5)'; for (let i = 0; i < 3; i++) { g.beginPath(); g.ellipse(cx + (Math.random() - 0.5) * R, cy - R * 0.25 + (Math.random() - 0.5) * R * 0.3, R * 0.25, R * 0.13, 0, 0, 7); g.fill(); }   // Moos oben
+  return c;
+}
+function macheGeroell(R: number): HTMLCanvasElement {
+  const c = document.createElement('canvas'); c.width = c.height = R * 2 + 14; const g = c.getContext('2d')!;
+  const cx = c.width / 2, cy = c.height / 2 + R * 0.2;
+  for (let k = 0; k < 6; k++) { const ox = (Math.random() - 0.5) * R * 1.4, oy = (Math.random() - 0.5) * R * 0.7, rr = R * (0.18 + Math.random() * 0.22); g.fillStyle = k % 2 ? '#3e3e44' : '#52525a'; g.beginPath(); g.ellipse(cx + ox, cy + oy, rr, rr * 0.7, 0, 0, 7); g.fill(); g.fillStyle = '#62626a'; g.beginPath(); g.ellipse(cx + ox - rr * 0.2, cy + oy - rr * 0.25, rr * 0.5, rr * 0.35, 0, 0, 7); g.fill(); }
+  return c;
+}
+const felsBild = FELS_R.map((r) => macheFels(r)), geroellBild = FELS_R.map((r) => macheGeroell(r));
 
 // ---------- Held/Wesen ----------
 const figCv = document.createElement('canvas'); figCv.width = figCv.height = HELD_FELD;
@@ -318,7 +345,7 @@ const richtungVon = (dx: number, dy: number): number => [6, 7, 0, 1, 2, 3, 4, 5]
 const keys: Record<string, boolean> = {};
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase(); keys[k] = true;
-  if (k === 'f' || e.key === ' ') fälleNächsten();
+  if (k === 'f' || e.key === ' ') aktionF();
   if (k === 'r') regenAn = !regenAn;
   if (k === '1') { wetterZiel = 0.05; wetterTimer = 45; }    // klar
   if (k === '2') { wetterZiel = 0.42; wetterTimer = 45; }    // Regen
@@ -330,6 +357,7 @@ addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 let baumGroesse = 1;
 let pfadBreiteFaktor = 1;   // Regler: Weg-Breite (live)
 let holz = 0;           // gesammeltes Holz (1 je gefälltem + zerhacktem Baum)
+let stein = 0;          // gesammelter Stein (aus Felsen, in Abbau-Stufen)
 let pausiert = false;   // Screenshot-Hilfe: friert die Schleife ein (Software-WebGL ist sonst zu langsam fürs Capture)
 { const reg = document.getElementById('groesse') as HTMLInputElement | null, val = document.getElementById('groesseVal'); if (reg) reg.addEventListener('input', () => { baumGroesse = parseFloat(reg.value); if (val) val.textContent = `${baumGroesse.toFixed(2)}×`; }); }
 { const reg = document.getElementById('wegbreite') as HTMLInputElement | null, val = document.getElementById('wegbreiteVal'); if (reg) reg.addEventListener('input', () => { pfadBreiteFaktor = parseFloat(reg.value); if (val) val.textContent = `${pfadBreiteFaktor.toFixed(2)}×`; }); }
@@ -344,6 +372,24 @@ function hackeStamm(b: Baum): void {                                   // liegen
   const sollAb = Math.floor((1 - Math.max(0, f.hackHp) / f.hackMax) * f.holzGesamt);
   while (f.holzAb < sollAb) { f.holzAb++; holz++; spaene(b.x + f.richtung * 50, b.y, '#9a6a38', -22, 4); }   // Holzscheit fällt ab
   if (f.hackHp <= 0) { while (f.holzAb < f.holzGesamt) { f.holzAb++; holz++; } b.weg = true; }               // Rest-Holz, Stamm aufgebraucht
+}
+function hackeFels(f: Fels): void {                                    // Stein in STUFEN abbauen, sichtbarer Zerfall
+  f.hp -= STEIN.schaden;
+  for (let i = 0; i < 4; i++) spaene(f.x, f.y - FELS_R[f.g] * 0.3, '#6a6a72', -30, 1);   // Stein-Splitter
+  const neueStufe = Math.min(3, Math.floor((1 - Math.max(0, f.hp) / f.maxHp) * 3) + (f.hp <= 0 ? 1 : 0));
+  if (neueStufe > f.stufe) {
+    f.stufe = neueStufe; for (let i = 0; i < 8; i++) spaene(f.x, f.y - FELS_R[f.g] * 0.3, '#8a8a92', -36, 1);   // Brocken bricht sichtbar
+    const sollGeg = Math.min(f.gestein, Math.ceil(f.stufe / 3 * f.gestein));
+    while (f.gegeben < sollGeg) { f.gegeben++; stein++; }
+  }
+  if (f.hp <= 0) { while (f.gegeben < f.gestein) { f.gegeben++; stein++; } f.entfernt = true; }   // aufgebraucht -> Geröll-Rest
+}
+function aktionF(): void {
+  const h = held();
+  let fe: Fels | null = null, fd = 1e9;
+  for (const f of felsen) { if (f.entfernt) continue; const d = Math.hypot(h.x - f.x, h.y - f.y); if (d < 70 + FELS_R[f.g] && d < fd) { fd = d; fe = f; } }
+  if (fe) { h.dir = richtungVon(fe.x - h.x, fe.y - h.y); h.hackT = 0.4; hackeFels(fe); return; }
+  fälleNächsten();
 }
 function fälleNächsten(): void {
   const h = held();
@@ -451,6 +497,18 @@ async function init(): Promise<void> {
     const maxHp = Math.max(40, Math.round(skala * FAELLEN.hpProGroesse));
     baeume.push({ art: Math.floor(Math.random() * arten.length), x, y, skala, blight, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)], fade: 0, hp: maxHp, maxHp, weg: false });
   }
+  // Felsen in CLUSTERN (Haufen verschiedener Größen), abseits Lichtung/Weg/See, nicht in Baumstämmen
+  for (let c = 0; c < 22; c++) {
+    let fx = 0, fy = 0, ok = false;
+    for (let t = 0; t < 20 && !ok; t++) { fx = 120 + Math.random() * (WELT_W - 240); fy = 120 + Math.random() * (WELT_H - 240); ok = Math.hypot(fx - lichtX, fy - lichtY) > 360 && distPfad(fx, fy) > PFAD_BREITE * 0.8 && !nahSee(fx, fy); }
+    if (!ok) continue;
+    for (let k = 0, n = 2 + Math.floor(Math.random() * 3); k < n; k++) {
+      const x = fx + (Math.random() - 0.5) * 90, y = fy + (Math.random() - 0.5) * 60, g = Math.floor(Math.random() * 3);
+      if (baeume.some((b) => Math.hypot(b.x - x, b.y - y) < 50) || felsen.some((f) => Math.hypot(f.x - x, f.y - y) < FELS_R[g])) continue;
+      const maxHp = Math.round((g + 1) * STEIN.hpProGroesse);
+      felsen.push({ x, y, g, hp: maxHp, maxHp, stufe: 0, gestein: Math.max(1, Math.round((g + 1) * STEIN.steinProGroesse)), gegeben: 0, entfernt: false });
+    }
+  }
   // Gras-Büschel
   for (let i = 0; i < 1300; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y)) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.65) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5 }); }   // dicht = spärlicher + kürzer
   for (let i = 0; i < 700; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y)) continue; const nahAnker = nahSee(x, y) || distPfad(x, y) < PFAD_BREITE * 1.3; if (!nahAnker && Math.random() < dichteNoise(x, y) * 0.85 + 0.35) continue; bewuchs.push({ x, y, typ: Math.floor(Math.random() * bewuchsBilder.length), ph: Math.random() * 7 }); }   // Blumen geclustert: bevorzugt an Wasserkante/Wegrand
@@ -459,6 +517,8 @@ async function init(): Promise<void> {
   (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; }, nass: (v: number) => { wetness = v; for (const p of pfuetzen) p.current = wetness > p.schwelle ? 1 : 0; },
     blitzAus: () => { blitz = 1; blitzNach = 0.1; },
     verdeckt: () => istVerdecktVomBaum(held().x, held().y),
+    zumFels: () => { const f = felsen.find((q) => !q.entfernt); if (f) { held().x = f.x - 55; held().y = f.y; } },
+    steinTest: (): string => { const f = felsen.find((q) => !q.entfernt); if (!f) return 'kein Fels'; held().x = f.x - 55; held().y = f.y; const s0 = stein; let n = 0; const stufen: number[] = []; while (!f.entfernt && n < 40) { aktionF(); stufen.push(f.stufe); n++; } return `groesse=${f.g} schlaege=${n} stein ${s0}->${stein} stufen=${[...new Set(stufen)].join('/')}`; },
     geheHinterBaum: () => { let best: Baum | null = null, bd = 1e9; for (const t of baeume) { if (t.fall || t.blight || t.skala < 0.42) continue; const d = Math.hypot(t.x - WELT_W * 0.5, t.y - WELT_H * 0.5); if (d < bd) { bd = d; best = t; } } if (best) { held().x = best.x; held().y = best.y - 35; } },
     selbsttest: (): string => { const b0 = baeume.find((t) => !t.fall && !t.weg); if (!b0) return 'kein Baum'; held().x = b0.x - 60; held().y = b0.y; let sl = 0; while (!b0.fall && sl < 30) { fälleNächsten(); sl++; } if (!b0.fall) return 'fiel nicht'; b0.fall.gelandet = true; b0.fall.winkel = FALL_ZIEL * b0.fall.richtung; held().x = b0.x - 60; held().y = b0.y; const h0 = holz; let hk = 0; while (!b0.weg && hk < 40) { fälleNächsten(); hk++; } const s = `schlaege=${sl} hacks=${hk} holz ${h0}->${holz} weg=${b0.weg}`; console.log('[selbsttest] ' + s); return s; } };
 }
@@ -491,6 +551,7 @@ const sy = (wy: number): number => Math.round(wy - camY);
 function frei(wx: number, wy: number): boolean {
   if (wx < 30 || wy < 30 || wx > WELT_W - 30 || wy > WELT_H - 30) return false;
   for (const b of baeume) { if (b.fall) continue; if (Math.hypot(wx - b.x, wy - b.y) < (10 + b.skala * 12) * baumGroesse) return false; }   // Stammfuß-Radius ~ Baumgröße
+  for (const f of felsen) { if (f.entfernt) continue; if (Math.hypot(wx - f.x, wy - f.y) < FELS_R[f.g] * (0.66 - f.stufe * 0.1)) return false; }   // Felsen solide (Radius schrumpft mit Abbau)
   return true;
 }
 
@@ -697,12 +758,14 @@ function frame(now: number): void {
   //    keine getönte Silhouette (Fallout-Look).
   if (bereit) {
     const h0 = held();
-    interface Z { y: number; b: Baum | null; w: Wesen | null; }
+    interface Z { y: number; b: Baum | null; w: Wesen | null; f: Fels | null; }
     const liste: Z[] = [];
-    for (const b of baeume) { if (b.x < camX - 360 || b.x > camX + W + 360 || b.y < camY - 600 || b.y > camY + H + 360) continue; liste.push({ y: b.y, b, w: null }); }
-    for (const w of wesen) liste.push({ y: w.y, b: null, w });
+    for (const b of baeume) { if (b.x < camX - 360 || b.x > camX + W + 360 || b.y < camY - 600 || b.y > camY + H + 360) continue; liste.push({ y: b.y, b, w: null, f: null }); }
+    for (const w of wesen) liste.push({ y: w.y, b: null, w, f: null });
+    for (const f of felsen) { if (f.x < camX - 100 || f.x > camX + W + 100 || f.y < camY - 100 || f.y > camY + H + 100) continue; liste.push({ y: f.y, b: null, w: null, f }); }
     liste.sort((a, c) => a.y - c.y);
     for (const z of liste) {
+      if (z.f) { zeichneFels(z.f); continue; }
       if (z.b) {
         const b = z.b, bild = b.blight ? arten[b.art].blight : arten[b.art].wald, sk = b.skala * baumGroesse, w = bild.width * sk, hh = bild.height * sk;
         if (!b.fall) kontaktSchatten(sx(b.x), sy(b.y), w * 0.4);              // erdet den Baum am Fuß
@@ -756,11 +819,22 @@ function frame(now: number): void {
   if (blitz > 0.01) { ctx.fillStyle = `rgba(222,230,248,${blitz * 0.55})`; ctx.fillRect(0, 0, W, H); }
   ctx.fillStyle = 'rgba(230,220,190,0.85)'; ctx.font = '13px Georgia'; ctx.textAlign = 'right';
   ctx.fillText(`Wetter: ${WETTER_NAME()}   ·   Nässe ${Math.round(wetness * 100)}%   [1 2 3 4]`, W - 16, 22);
-  ctx.fillText(`Holz: ${holz}   ·   F: Baum fällen / liegenden Stamm zerhacken`, W - 16, 40); ctx.textAlign = 'left';
+  ctx.fillText(`Holz: ${holz}   ·   Stein: ${stein}   ·   F: Baum fällen/hacken oder Fels abbauen`, W - 16, 40); ctx.textAlign = 'left';
 
   requestAnimationFrame(frame);
 }
 
+function zeichneFels(f: Fels): void {
+  const px = sx(f.x), py = sy(f.y), R = FELS_R[f.g];
+  kontaktSchatten(px, py, R * (f.stufe >= 2 ? 1.5 : 2.2));
+  if (f.entfernt || f.stufe >= 2) { const gb = geroellBild[f.g]; ctx.drawImage(gb, px - gb.width / 2, py - gb.height * 0.55); }   // Geröll-Rest
+  else {
+    const sc = f.stufe === 1 ? 0.82 : 1, b = felsBild[f.g], w = b.width * sc, hh = b.height * sc;
+    ctx.drawImage(b, px - w / 2, py - hh * 0.66, w, hh);
+    if (f.stufe === 1) { ctx.strokeStyle = 'rgba(12,12,16,0.6)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(px - R * 0.3, py - R * 0.55); ctx.lineTo(px + R * 0.08, py - R * 0.1); ctx.lineTo(px + R * 0.4, py - R * 0.45); ctx.stroke(); }   // sichtbare Risse
+  }
+  if (!f.entfernt && f.hp < f.maxHp) zeichneBalken(px, py - R - 10, f.hp / f.maxHp, '#b8b8c0');   // Abbau-Balken
+}
 function zeichneBalken(x: number, y: number, frac: number, col: string): void {   // kleiner Fortschrittsbalken (nur bei Beschädigung gezeigt)
   const bw = 30, bh = 4, f = Math.max(0, Math.min(1, frac));
   ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - bw / 2 - 1, y - 1, bw + 2, bh + 2);
