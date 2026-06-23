@@ -596,3 +596,11 @@
   * KEINE expliziten Kanten-Highlights (Autor-Warnung "Pfützen-Glühen") - Wärme kommt aus dem Tint, nicht aus Bloom.
   * REGEN->SONNE-Übergang emergent: weiche Achse + wetness verdunstet langsam -> kurz nach Regen sind Flächen noch nass und glänzen unter dem warmen Tint, bevor sie abtrocknen.
   * Verifiziert: sonnig = deutlich heller, warm, sattes Grün (vs. dunkel/blau bei Regen); dichter Wald golden belichtet. tsc grün.
+
+- Runde 63 (God Rays raus + Tageszeit-System als eigene Achse):
+  * GOD RAYS ersatzlos gestrichen (Autorwunsch). Optionaler Staub/Pollen-Ersatz bewusst weggelassen.
+  * TAGESZEIT (eigene Achse, unabhängig vom Wetter): tag = Stunde 0..24, zyklisch (TAG_LAENGE = 200 s/Zyklus, Regler Tag-Tempo 0..3×, Regler Tageszeit zum Scrubben). berechneLicht(tag) interpoliert Keyframes -> Multiply-Farbe (Helligkeit+Temperatur), Tag-Aufhellung (soft-light), warmer Hauch (overlay, golden hour), Vignette, Sonnenstand (hoehe) + Schattenrichtung (dir).
+  * WETTER MODULIERT obendrauf: Bewölkung (max(0,wetter)) zieht die Multiply-Farbe Richtung Grau + dämpft Helligkeit + unterdrückt gerichtete Schatten (diffus); klarer Himmel (max(0,-wetter)) hebt leicht. -> jede Tageszeit × jedes Wetter (Nacht+Sturm sehr dunkel, Mittag+Sonne hell, alles dazwischen).
+  * GERICHTETE SCHATTEN an die Tageszeit gekoppelt: kontaktSchatten nutzt globale schDX/schLang aus Sonnenstand (tief = lang+seitlich, mittags = kurz) und -richtung (morgens/abends andere Seite); Bewölkung/Nacht unterdrücken -> diffus/zentriert.
+  * Der frühere "sonnig"-Warm-Tint kommt jetzt aus der Tageszeit (warme Stunden), nicht mehr aus dem Wetter; sonne-Variable entfernt, klar8/bew8 in Schritt 8.
+  * HUD zeigt Uhrzeit + Tageszeit-Name. Verifiziert: Morgen warm-dim, Mittag hell neutral, Goldene Stunde gold, Nacht tiefblau, Nacht+Sturm sehr dunkel/grau/Regen. tsc grün.

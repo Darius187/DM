@@ -222,7 +222,6 @@ baueBergInhalt();
 // ---------- Wetter (dynamisch: klar -> Regen -> Unwetter; treibt Wind/Regen/Nebel) ----------
 let regenAn = true;
 let wetter = 0.5;                 // -1 sonnig .. 0 klar .. 0.5 Regen .. 1 Sturm (eine weiche Achse)
-let sonne = 0;                    // 0..1 Sonnen-Intensität = max(0, -wetter); treibt warmen Tint + Schatten + God Rays
 let wetterZiel = 0.5, wetterTimer = 6;
 let sturmFallTimer = 40 + Math.random() * 60;   // s bis zum nächsten möglichen Sturmbruch (global, selten)
 let wetness = 0;                  // 0..1 Bodennässe: Regen füllt schnell, Verdunsten langsam -> Pfützen-Steuerung
@@ -234,6 +233,42 @@ const donnerQueue: Array<{ t: number; laut: number }> = [];
 // Stufe-2/3-Ambience (loopbarer Regen/Sturm) wird analog über setzeWetterSound(stufe) angehängt.
 function spieleDonner(_laut: number): void { /* TODO Audio: new Audio(donnerSample[zufall]).play() mit Lautstärke _laut */ }
 const WETTER_NAME = (): string => t(wetter < -0.25 ? 'wetter.sonnig' : wetter < 0.15 ? 'wetter.klar' : wetter < 0.45 ? 'wetter.niesel' : wetter < 0.75 ? 'wetter.regen' : wetter < 0.9 ? 'wetter.unwetter' : 'wetter.gewitter');
+
+// ---------- Tageszeit (EIGENE Achse, unabhängig vom Wetter) ----------
+// tag = Stunde 0..24, zyklisch. Treibt Grund-Helligkeit + Farbtemperatur (über denselben
+// Tint wie das Wetter) + Sonnenstand (Schattenlänge/-richtung). Wetter MODULIERT obendrauf
+// (Wolken dämpfen Helligkeit, unterdrücken gerichtete Schatten). Jede Kombination möglich.
+let tag = 9;                 // Startzeit (Vormittag)
+let tagTempo = 1;            // Regler: Zeitraffer (0 = angehalten)
+const TAG_LAENGE = 200;      // Sekunden pro vollem 24h-Zyklus bei Tempo 1 (justierbar)
+let schDX = 0, schLang = 0;  // globale Schatten-Parameter (Richtung*Offset, Längen-Zuschlag) aus Tageszeit+Wetter
+const lerp = (a: number, b: number, t2: number): number => a + (b - a) * t2;
+// Keyframes je Stunde: mul = Multiply-Farbe (Helligkeit+Temperatur, <=1), lift = Tag-Aufhellung,
+// warm = goldener Overlay-Anteil, vig = Vignette-Stärke.
+const TAG_KEYS: Array<{ h: number; mul: [number, number, number]; lift: number; warm: number; vig: number }> = [
+  { h: 0, mul: [0.30, 0.36, 0.56], lift: 0.0, warm: 0.0, vig: 0.7 },     // Nacht
+  { h: 5, mul: [0.34, 0.38, 0.56], lift: 0.0, warm: 0.05, vig: 0.66 },   // Vor-Dämmerung
+  { h: 6.5, mul: [0.74, 0.55, 0.55], lift: 0.12, warm: 0.45, vig: 0.5 }, // Sonnenaufgang (rosa-gold)
+  { h: 9, mul: [0.93, 0.87, 0.77], lift: 0.34, warm: 0.2, vig: 0.42 },   // Morgen
+  { h: 12, mul: [1.0, 0.99, 0.94], lift: 0.5, warm: 0.05, vig: 0.36 },   // Mittag (hell, neutral)
+  { h: 15, mul: [1.0, 0.93, 0.79], lift: 0.42, warm: 0.2, vig: 0.4 },    // Nachmittag
+  { h: 17.5, mul: [1.0, 0.79, 0.52], lift: 0.3, warm: 0.55, vig: 0.46 }, // Goldene Stunde
+  { h: 19, mul: [0.82, 0.54, 0.44], lift: 0.12, warm: 0.5, vig: 0.54 },  // Sonnenuntergang
+  { h: 20.5, mul: [0.5, 0.46, 0.64], lift: 0.0, warm: 0.12, vig: 0.62 }, // Dämmerung (blau-violett)
+  { h: 22, mul: [0.30, 0.36, 0.56], lift: 0.0, warm: 0.0, vig: 0.7 },    // Nacht
+];
+function berechneLicht(h: number): { mul: [number, number, number]; lift: number; warm: number; vig: number; hoehe: number; dir: number } {
+  let i = 0; while (i < TAG_KEYS.length - 1 && TAG_KEYS[i + 1].h <= h) i++;
+  const a = TAG_KEYS[i], b = TAG_KEYS[Math.min(i + 1, TAG_KEYS.length - 1)];
+  const f = Math.max(0, Math.min(1, (h - a.h) / ((b.h - a.h) || 1)));
+  const hoehe = Math.max(0, Math.sin((h - 6) / 13 * Math.PI));   // Sonnenstand: 0 bei 6/19 Uhr, 1 mittags, 0 nachts
+  return {
+    mul: [lerp(a.mul[0], b.mul[0], f), lerp(a.mul[1], b.mul[1], f), lerp(a.mul[2], b.mul[2], f)],
+    lift: lerp(a.lift, b.lift, f), warm: lerp(a.warm, b.warm, f), vig: lerp(a.vig, b.vig, f),
+    hoehe, dir: Math.cos((h - 6) / 13 * Math.PI),   // Schattenrichtung: morgens eine Seite, abends andere
+  };
+}
+const TAGESZEIT_NAME = (h: number): string => h < 5 ? 'Nacht' : h < 6.5 ? 'Morgendämmerung' : h < 11 ? 'Morgen' : h < 14 ? 'Mittag' : h < 17 ? 'Nachmittag' : h < 18.5 ? 'Goldene Stunde' : h < 20 ? 'Abenddämmerung' : h < 22 ? 'Dämmerung' : 'Nacht';
 function wind(now: number): number {                       // Stärke steigt mit dem Wetter
   const t = now / 1000;
   const grund = (Math.sin(t * 0.27) * 0.6 + Math.sin(t * 0.13 + 1) * 0.3) * (0.25 + wetter * 0.5);   // sanftes Hin und Her bei wenig Wind
@@ -541,11 +576,9 @@ const schattenBild = (() => {
   g.fillStyle = rg; g.beginPath(); g.ellipse(32, 32, 30, 30, 0, 0, 7); g.fill(); return c;
 })();
 function kontaktSchatten(scx: number, scy: number, breite: number): void {   // weiche Ellipse am Fuß
-  if (sonne > 0.02) {   // SONNE: gerichteter, längerer Schlagschatten (einheitlich nach rechts-unten = Sonne links oben)
-    const dx = sonne * breite * 0.45, lang = 1 + sonne * 0.7;
-    ctx.globalAlpha = 1 - sonne * 0.12; ctx.drawImage(schattenBild, scx - breite / 2 + dx, scy - breite * 0.14, breite * lang, breite * 0.36); ctx.globalAlpha = 1; return;
-  }
-  ctx.drawImage(schattenBild, scx - breite / 2, scy - breite * 0.18, breite, breite * 0.36);
+  // Grundschatten erdet IMMER; Tageszeit/Wetter verschieben+verlängern ihn gerichtet (Sonnenstand).
+  const dx = schDX * breite, lang = 1 + schLang;
+  ctx.drawImage(schattenBild, scx - breite / 2 + dx, scy - breite * 0.18, breite * lang, breite * 0.36);
 }
 
 // ---------- Hühner-Sprite (prozedural) ----------
@@ -654,10 +687,13 @@ let pausiert = false;   // Screenshot-Hilfe: friert die Schleife ein (Software-W
 { const reg = document.getElementById('wegbreite') as HTMLInputElement | null, val = document.getElementById('wegbreiteVal'); if (reg) reg.addEventListener('input', () => { pfadBreiteFaktor = parseFloat(reg.value); if (val) val.textContent = `${pfadBreiteFaktor.toFixed(2)}×`; }); }
 { const reg = document.getElementById('falltempo') as HTMLInputElement | null, val = document.getElementById('falltempoVal'); if (reg) reg.addEventListener('input', () => { const v = parseFloat(reg.value); fallG = 5.2 * v; if (val) val.textContent = `${v.toFixed(2)}×`; }); }
 { const reg = document.getElementById('bewuchs') as HTMLInputElement | null, val = document.getElementById('bewuchsVal'); if (reg) reg.addEventListener('input', () => { bewuchsDichte = parseFloat(reg.value); if (val) val.textContent = `${bewuchsDichte.toFixed(2)}×`; }); }
+{ const reg = document.getElementById('tageszeit') as HTMLInputElement | null, val = document.getElementById('tageszeitVal'); if (reg) reg.addEventListener('input', () => { tag = parseFloat(reg.value); const hh = Math.floor(tag); if (val) val.textContent = `${hh}:${Math.floor((tag - hh) * 60).toString().padStart(2, '0')}`; }); }
+{ const reg = document.getElementById('tagtempo') as HTMLInputElement | null, val = document.getElementById('tagtempoVal'); if (reg) reg.addEventListener('input', () => { tagTempo = parseFloat(reg.value); if (val) val.textContent = `${tagTempo.toFixed(1)}×`; }); }
 // i18n: alle sichtbaren HTML-Texte aus der Sprachdatei setzen (statt im Markup fest verdrahtet)
 { const setTxt = (id: string, key: string): void => { const e = document.getElementById(id); if (e) e.textContent = t(key); };
   setTxt('titel', 'dorf.titel'); setTxt('beschreibung', 'dorf.hud');
-  setTxt('lblGroesse', 'regler.baumgroesse'); setTxt('lblWegbreite', 'regler.wegbreite'); setTxt('lblFalltempo', 'regler.falltempo'); setTxt('lblBewuchs', 'regler.bewuchs'); }
+  setTxt('lblGroesse', 'regler.baumgroesse'); setTxt('lblWegbreite', 'regler.wegbreite'); setTxt('lblFalltempo', 'regler.falltempo'); setTxt('lblBewuchs', 'regler.bewuchs');
+  setTxt('lblTageszeit', 'regler.tageszeit'); setTxt('lblTagtempo', 'regler.tagtempo'); }
 
 function starteFall(b: Baum, ri: number): void {
   b.fall = { winkel: 0.05 * ri, winkelV: 0.3 * ri, gelandet: false, richtung: ri,
@@ -884,11 +920,13 @@ async function init(): Promise<void> {
   }
   bereit = true;
   (window as unknown as { __dorfBereit?: boolean; __demo?: unknown }).__dorfBereit = true;
-  (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; }, nass: (v: number) => { wetness = v; for (const p of pfuetzen) p.current = wetness > p.schwelle ? 1 : 0; },
+  (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; }, weiter: () => { if (pausiert) { pausiert = false; last = performance.now(); requestAnimationFrame(frame); } }, nass: (v: number) => { wetness = v; for (const p of pfuetzen) p.current = wetness > p.schwelle ? 1 : 0; },
     blitzAus: () => { blitz = 1; blitzNach = 0.1; },
     sturm: () => { wetter = 1; wetterZiel = 1; wetterTimer = 90; },
     klar: () => { wetter = 0.04; wetterZiel = 0.04; wetterTimer = 120; },
-    sonnig: () => { wetter = -1; wetterZiel = -1; wetterTimer = 120; sonne = 1; },
+    sonnig: () => { wetter = -1; wetterZiel = -1; wetterTimer = 120; },
+    setTag: (h: number): void => { tag = ((h % 24) + 24) % 24; },
+    lichtInfo: (): string => { const L = berechneLicht(tag); return `tag=${tag.toFixed(1)} ${TAGESZEIT_NAME(tag)} hoehe=${L.hoehe.toFixed(2)} dir=${L.dir.toFixed(2)} schDX=${schDX.toFixed(2)} schLang=${schLang.toFixed(2)}`; },
     biomBei: (x: number, y: number): string => biomAt(x, y),
     dichteBei: (x: number, y: number): number => dichteNoise(x, y),
     zumBerg: (y = -40): void => { held().x = WELT_W * 0.5; held().y = y; },
@@ -1017,7 +1055,11 @@ function frame(now: number): void {
         : 0.1 + Math.random() * 0.5;                          // klar .. Regen
   }
   wetter += (wetterZiel - wetter) * Math.min(1, dt * 0.5);
-  sonne = Math.max(0, -wetter);                              // Sonnen-Intensität
+  // Tageszeit voranschreiten (eigene Achse) + gerichtete Schatten aus Sonnenstand & Bewölkung
+  tag = (tag + dt / TAG_LAENGE * 24 * tagTempo) % 24;
+  { const L = berechneLicht(tag), bew = Math.max(0, Math.min(1, wetter)), tagAuf = Math.min(1, L.hoehe / 0.1);
+    schDX = -L.dir * (0.18 + (1 - L.hoehe) * 0.4) * (1 - bew) * tagAuf;   // tief stehende Sonne -> langer, seitlicher Schatten; Wolken unterdrücken
+    schLang = (1 - L.hoehe) * 1.2 * (1 - bew) * tagAuf; }
   // GEWITTER (Stufe 4): bei wetter>0.85 zünden Blitze in zufälligen Abständen
   blitz = Math.max(0, blitz - dt * 14);                     // harter, schneller Abfall (kein weiches Abblenden)
   if (blitzNach > 0) { blitzNach -= dt; if (blitzNach <= 0) blitz = Math.max(blitz, 0.55); }   // zweiter, schwächerer Flash
@@ -1317,25 +1359,16 @@ function frame(now: number): void {
     }
   }
 
-  // 8) Wetter-Stimmung: dunkles Overlay nur bei Regen/Sturm; bei Sonne stattdessen warmer Tint
-  const mood = Math.max(0, 0.1 + wetter * 0.28);
-  if (mood > 0.001) { ctx.fillStyle = `rgba(12,18,24,${mood})`; ctx.fillRect(0, 0, W, H); }
-  if (sonne > 0.01) {
-    // SONNE - wichtigster Hebel: warmer Tint + Kontrast (overlay) + sanfte Aufhellung (soft-light)
-    ctx.save(); ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = sonne * 0.5;
-    const sg = ctx.createLinearGradient(0, 0, W * 0.5, H); sg.addColorStop(0, '#ffe7a6'); sg.addColorStop(1, '#ffce82');
-    ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H); ctx.restore();
-    ctx.save(); ctx.globalCompositeOperation = 'soft-light'; ctx.globalAlpha = sonne * 0.45; ctx.fillStyle = '#fff0d2'; ctx.fillRect(0, 0, W, H); ctx.restore();
-    // GOD RAYS: schräge warme Lichtschäfte, langsam driftend - sparsam
-    if (sonne > 0.3) {
-      ctx.save(); ctx.globalCompositeOperation = 'lighter'; const slant = W * 0.28;
-      for (let i = 0; i < 4; i++) {
-        const bx = (((now / 14000 + i * 0.31) % 1.5) - 0.25) * (W + slant), wdt = 48 + i * 22;
-        ctx.globalAlpha = (sonne - 0.3) / 0.7 * 0.05; ctx.fillStyle = '#fff2cc';
-        ctx.beginPath(); ctx.moveTo(bx, 0); ctx.lineTo(bx + wdt, 0); ctx.lineTo(bx + wdt - slant, H); ctx.lineTo(bx - slant, H); ctx.closePath(); ctx.fill();
-      }
-      ctx.restore();
-    }
+  // 8) LICHT: Tageszeit treibt Helligkeit + Farbtemperatur (Multiply-Ton + Tag-Aufhellung +
+  //    warmer Hauch zu Sonnenauf/-untergang); Wetter (Bewölkung) dämpft + vergraut obendrauf.
+  const L8 = berechneLicht(tag), bew8 = Math.max(0, Math.min(1, wetter)), klar8 = Math.max(0, -wetter);
+  { const dunkel = 1 - bew8 * 0.4;   // Multiply-Farbe: Tageszeit-Ton, von Wolken Richtung Grau + gedämpft
+    const mr = lerp(L8.mul[0], 0.5, bew8 * 0.55) * dunkel, mg = lerp(L8.mul[1], 0.52, bew8 * 0.55) * dunkel, mb = lerp(L8.mul[2], 0.56, bew8 * 0.45) * dunkel;
+    ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = `rgb(${Math.round(mr * 255)},${Math.round(mg * 255)},${Math.round(mb * 255)})`; ctx.fillRect(0, 0, W, H); ctx.restore();
+    const lift = Math.max(0, L8.lift * (1 - bew8 * 0.55) + klar8 * 0.06);   // Tag-Aufhellung, Wolken dämpfen, klarer Himmel hebt leicht
+    if (lift > 0.01) { ctx.save(); ctx.globalCompositeOperation = 'soft-light'; ctx.globalAlpha = Math.min(0.85, lift); ctx.fillStyle = '#fff3da'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+    const warm = L8.warm * (1 - bew8);   // goldener Hauch nur bei klarem Himmel
+    if (warm > 0.01) { ctx.save(); ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = Math.min(0.6, warm * 0.55); ctx.fillStyle = '#ffcf86'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
   }
   if (regenAn && wetter > 0.15) {
     const fog = Math.min(0.42, (wetter - 0.1) * 0.55);
@@ -1348,12 +1381,13 @@ function frame(now: number): void {
     ctx.restore();
   }
   const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.34, W / 2, H / 2, Math.max(W, H) * 0.74);
-  const vigA = Math.max(0.16, 0.6 + wetter * 0.3);   // bei Sonne (wetter negativ) deutlich schwächere Vignette -> heller
+  const vigA = Math.min(0.85, L8.vig + bew8 * 0.12);   // Vignette aus der Tageszeit (Nacht stärker), Regen verstärkt leicht
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(2,4,3,${vigA})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
   // 8a) BLITZ: harte, kurze Aufhellung der ganzen Szene (Doppel-Flash, kein weiches Abblenden)
   if (blitz > 0.01) { ctx.fillStyle = `rgba(222,230,248,${blitz * 0.55})`; ctx.fillRect(0, 0, W, H); }
   ctx.fillStyle = 'rgba(230,220,190,0.85)'; ctx.font = '13px Georgia'; ctx.textAlign = 'right';
-  ctx.fillText(t('hud.wetter', { wetter: WETTER_NAME(), nass: Math.round(wetness * 100) }), W - 16, 22);
+  const hh = Math.floor(tag), mm = Math.floor((tag - hh) * 60);
+  ctx.fillText(t('hud.wetter', { zeit: `${hh}:${mm.toString().padStart(2, '0')}`, tageszeit: TAGESZEIT_NAME(tag), wetter: WETTER_NAME(), nass: Math.round(wetness * 100) }), W - 16, 22);
   ctx.fillText(t('hud.vorrat', { holz, stein, gold: erzVorrat.gold, eisen: erzVorrat.eisen, kristall: erzVorrat.kristall }), W - 16, 40); ctx.textAlign = 'left';
 
   requestAnimationFrame(frame);

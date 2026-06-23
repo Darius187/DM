@@ -24,6 +24,8 @@ const de: Texte = {
   'regler.wegbreite': 'Weg-Breite',
   'regler.falltempo': 'Fall-Tempo',
   'regler.bewuchs': 'Bewuchs',
+  'regler.tageszeit': 'Tageszeit',
+  'regler.tagtempo': 'Tag-Tempo',
   // Wetterstufen
   'wetter.sonnig': 'sonnig',
   'wetter.klar': 'klar',
@@ -32,7 +34,7 @@ const de: Texte = {
   'wetter.unwetter': 'Unwetter',
   'wetter.gewitter': 'Gewitter',
   // HUD-Zeilen (mit Platzhaltern)
-  'hud.wetter': 'Wetter: {wetter}   ·   Nässe {nass}%   [1 2 3 4]',
+  'hud.wetter': '{zeit} {tageszeit}   ·   Wetter: {wetter}   ·   Nässe {nass}%   [1-5]',
   'hud.vorrat': 'Holz {holz} · Stein {stein} · Erz {gold}/{eisen}/{kristall} (Au/Fe/Kr) · F: nächstes Objekt abbauen',
 };
 
