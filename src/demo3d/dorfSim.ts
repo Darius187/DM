@@ -168,11 +168,13 @@ function texturenBereit(o: THREE.Object3D): boolean {
 const schlaf = (ms: number) => new Promise((r) => setTimeout(r, ms));
 function baueBaum(preset: string, seed: number, st: Stimmung, dick = 1): Tree {
   const t = new Tree(); t.loadPreset(preset);
-  const o = t.options as unknown as { seed: number; leaves: { count: number; tint: number; size: number }; bark: { tint: number }; branch: { radius: Record<number, number>; length: Record<number, number> } };
+  const o = t.options as unknown as { seed: number; leaves: { count: number; tint: number; size: number }; bark: { tint: number }; branch: { radius: Record<number, number>; length: Record<number, number>; gnarliness: Record<number, number>; force: { strength: number } } };
   o.seed = seed;
   o.branch.radius[0] *= 1.7 * dick;                 // kräftigere Stämme (vorher wie junge Bäumchen)
   o.branch.radius[1] *= 1 + (dick - 1) * 0.4;
   o.branch.length[0] *= 1.05 + (dick - 1) * 0.18;   // dicke Bäume zugleich etwas höher
+  o.branch.gnarliness[0] = 0.04; o.branch.gnarliness[1] *= 0.6;   // GERADER, aufrechter Stamm -> einheitlicher Look (kein Lehnen)
+  o.branch.force.strength = 0.02;                   // wächst zuverlässig nach oben
   o.leaves.count = Math.max(1, Math.round(o.leaves.count * st.dichte));
   o.leaves.tint = st.blatt; o.leaves.size *= st.groesse; o.bark.tint = st.rinde; t.generate(); return t;
 }
@@ -332,13 +334,22 @@ async function init(): Promise<void> {
     p.grow = 0.4 + Math.random() * 0.4; p.shrink = 0.06 + Math.random() * 0.12;   // Verdunsten viel langsamer
     pfuetzen.push(p); pBuf.width = Math.max(pBuf.width, Math.ceil(L)); pBuf.height = Math.max(pBuf.height, Math.ceil(B));
   }
-  // Bäume (Rand dicht, Dorfmitte frei)
-  for (let i = 0; i < 150; i++) {
-    const x = 100 + Math.random() * (WELT_W - 200), y = 100 + Math.random() * (WELT_H - 200);
-    if (Math.hypot(x - WELT_W * 0.4, y - WELT_H * 0.64) < 320) continue;       // Dorflichtung frei
+  // Bäume: Dichte über sanfte Noise-Zonen (dichter Wald <-> Lichtung/Waldrand),
+  // Mindestabstand (kein Überlappungs-Matsch), Größenklassen (dicht = große alte Bäume, Rand = Mischung)
+  const dichteNoise = (x: number, y: number): number => {
+    const n = Math.sin(x * 0.0017) * Math.cos(y * 0.0021) + 0.6 * Math.sin((x + y) * 0.0013 + 1.7) + 0.4 * Math.sin(x * 0.004 - y * 0.003 + 3);
+    return Math.max(0, Math.min(1, 0.5 + n / 4));
+  };
+  for (let versuche = 0; baeume.length < 200 && versuche < 4500; versuche++) {
+    const x = 90 + Math.random() * (WELT_W - 180), y = 90 + Math.random() * (WELT_H - 180);
+    if (Math.hypot(x - WELT_W * 0.4, y - WELT_H * 0.64) < 300) continue;       // Dorflichtung frei
     if (distPfad(x, y) < PFAD_BREITE * 0.7) continue;                          // nicht auf dem Pfad
+    const d = dichteNoise(x, y);
+    if (Math.random() > d * d) continue;                                        // dichte Zonen voll, Rand läuft spärlich aus
+    if (baeume.some((t) => Math.hypot(t.x - x, t.y - y) < 50)) continue;        // Mindestabstand
     const blight = Math.hypot(x - krypta.x, y - krypta.y) < krypta.r * (0.55 + Math.random() * 0.6);
-    baeume.push({ art: Math.floor(Math.random() * arten.length), x, y, skala: 0.32 + Math.random() * 0.32, blight, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)] });
+    const skala = d > 0.62 ? 0.46 + Math.random() * 0.26 : 0.3 + Math.random() * 0.26;
+    baeume.push({ art: Math.floor(Math.random() * arten.length), x, y, skala, blight, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)] });
   }
   // Gras-Büschel
   for (let i = 0; i < 1100; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y)) continue; tufts.push({ x, y, ph: Math.random() * 7 }); }
