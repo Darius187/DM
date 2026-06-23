@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import { Tree } from '@dgreenheck/ez-tree';
 import { macheBackofen } from './propBackofen';
+import { backeWasser } from './wasserBackofen';
 import { drawHeld, HELD_FELD } from '../gfx/heldArt';
 import type { HeldTier } from '../data/helden';
 import { t } from '../data/i18n';
@@ -469,6 +470,7 @@ const buesche: Busch[] = [];
 const krypta = { x: WELT_W * 0.74, y: WELT_H * 0.3, r: 520 };
 let bereit = false;
 let demoBaum: Baum | null = null;   // nur für die Reproduktions-Hooks (zeigFall/landeJetzt)
+const wasserFrames: HTMLCanvasElement[] = [];   // gebackene THREE.Water-Frames (Option 3) für den See
 
 // AXT-gefällter Stumpf (nicht Kettensäge): unregelmäßige/splittrige Schnittfläche,
 // Kerbschnitt + gesplitterter Bruch, Jahresringe; pro Variante leichte Form-Varianz.
@@ -713,6 +715,9 @@ function regenAufschlaege(dt: number): void {
 // ---------- Init ----------
 async function init(): Promise<void> {
   const ofen = macheBackofen(512);
+  // Option 3: echtes THREE.Water EINMAL backen (kachelt nicht, deshalb deckt EINE Textur
+  // den ganzen begrenzten See ab; Animation über Frame-Wechsel). Dunkle Nachtwasser-Töne.
+  try { for (const f of backeWasser({ frames: 16, res: 384, size: 11, distortion: 3.0, sonneHoehe: 79, wasserFarbe: 0x0a1622, sonneFarbe: 0x9fb6cc })) wasserFrames.push(f); } catch (e) { console.warn('Wasser-Backofen fehlgeschlagen, 2D-Fallback bleibt aktiv', e); }
   // 1349-Mischwald (Eiche dominant - historisch stark genutzt; dazu Esche, Kiefer, Espe).
   // Spalte 3 = Stammdicke: einige dicke alte Bäume, einige schlanke -> Vielfalt.
   const SORTEN: Array<[string, number, number]> = [
@@ -1070,7 +1075,14 @@ function frame(now: number): void {
     const wg = ctx.createRadialGradient(see.cx, see.cy, 12, see.cx, see.cy, Math.max(see.rx, see.ry));
     wg.addColorStop(0, '#070d12'); wg.addColorStop(0.68, '#0e1a24'); wg.addColorStop(1, '#22303a');   // Mitte tief/dunkel, Rand flacher/heller
     ctx.fillStyle = wg; ctx.fillRect(see.cx - see.rx * 1.3, see.cy - see.ry * 1.3, see.rx * 2.6, see.ry * 2.6);
-    for (let i = 0; i < 3; i++) { const yy = see.cy - see.ry * 0.32 + i * see.ry * 0.26 + Math.sin(now / 850 + i) * 4; ctx.fillStyle = 'rgba(130,150,176,0.06)'; ctx.fillRect(see.cx - see.rx, yy, see.rx * 2, 5 + i); }   // Himmel-Schlieren
+    // Option 3: gebackenes THREE.Water (reflektierende Wellen) über dem Tiefen-Verlauf, Frame-animiert
+    if (wasserFrames.length) {
+      const wf = wasserFrames[Math.floor(now / 95) % wasserFrames.length];
+      ctx.globalAlpha = 0.6; ctx.drawImage(wf, see.cx - see.rx, see.cy - see.ry, see.rx * 2, see.ry * 2); ctx.globalAlpha = 1;
+      const dg = ctx.createRadialGradient(see.cx, see.cy, 12, see.cx, see.cy, Math.max(see.rx, see.ry));   // Tiefe Mitte erhalten
+      dg.addColorStop(0, 'rgba(4,8,12,0.55)'); dg.addColorStop(0.7, 'rgba(6,12,18,0.12)'); dg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = dg; ctx.fillRect(see.cx - see.rx * 1.3, see.cy - see.ry * 1.3, see.rx * 2.6, see.ry * 2.6);
+    } else for (let i = 0; i < 3; i++) { const yy = see.cy - see.ry * 0.32 + i * see.ry * 0.26 + Math.sin(now / 850 + i) * 4; ctx.fillStyle = 'rgba(130,150,176,0.06)'; ctx.fillRect(see.cx - see.rx, yy, see.rx * 2, 5 + i); }   // Himmel-Schlieren (2D-Fallback)
     for (const r of seeRinge) { const f = r.t / r.leben, rad = 1 + r.rmax * f, a = (1 - f) * 0.4; ctx.strokeStyle = `rgba(180,198,220,${a})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(r.x, r.y, rad, rad * 0.55, 0, 0, 7); ctx.stroke(); }
     ctx.restore();
     for (const ro of seeRosen) { ctx.save(); ctx.translate(ro.x, ro.y); ctx.fillStyle = '#2c4626'; ctx.beginPath(); ctx.ellipse(0, 0, 9 * ro.s, 5.5 * ro.s, 0, 0.5, Math.PI * 2 + 0.2); ctx.fill(); ctx.fillStyle = '#37562f'; ctx.beginPath(); ctx.ellipse(-1, -1, 5 * ro.s, 3 * ro.s, 0, 0, 7); ctx.fill(); if (ro.bluete) { ctx.fillStyle = '#e8e0ea'; ctx.beginPath(); ctx.arc(2 * ro.s, -1, 2 * ro.s, 0, 7); ctx.fill(); } ctx.restore(); }   // Seerosen
