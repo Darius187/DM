@@ -97,12 +97,15 @@ const donnerQueue: Array<{ t: number; laut: number }> = [];
 // Stufe-2/3-Ambience (loopbarer Regen/Sturm) wird analog über setzeWetterSound(stufe) angehängt.
 function spieleDonner(_laut: number): void { /* TODO Audio: new Audio(donnerSample[zufall]).play() mit Lautstärke _laut */ }
 const WETTER_NAME = (): string => wetter < 0.15 ? 'klar' : wetter < 0.45 ? 'Nieselregen' : wetter < 0.75 ? 'Regen' : wetter < 0.9 ? 'Unwetter' : 'Gewitter';
-function wind(now: number): number {                       // mit Böen; Stärke steigt mit dem Wetter
+function wind(now: number): number {                       // Stärke steigt mit dem Wetter
   const t = now / 1000;
-  const amp = 0.25 + wetter * 1.35;
-  const grund = (Math.sin(t * 0.27) * 0.6 + Math.sin(t * 0.13 + 1) * 0.3) * amp;
-  const boe = Math.pow(Math.max(0, Math.sin(t * 0.2 + 0.5)), 3) * (0.4 + wetter * 1.7);
-  return grund + boe;
+  const grund = (Math.sin(t * 0.27) * 0.6 + Math.sin(t * 0.13 + 1) * 0.3) * (0.25 + wetter * 0.5);   // sanftes Hin und Her bei wenig Wind
+  const boe = Math.pow(Math.max(0, Math.sin(t * 0.2 + 0.5)), 3) * (0.3 + wetter * 0.8);                // einzelne Böen
+  // BUGFIX: im Sturm KONSTANT starker, gerichteter Wind (kreuzt nie 0) + schnelle Böen obendrauf,
+  // statt eines einmaligen Ausschlags der dann abklingt -> Bäume bleiben dauerhaft gebogen.
+  const sturm = Math.max(0, (wetter - 0.5) / 0.5);
+  const konstant = sturm * (1.0 + 0.45 * Math.sin(t * 1.2) + 0.3 * Math.sin(t * 0.6 + 2));
+  return grund + boe + konstant;
 }
 // Böen-WELLE: ortsabhängiger Faktor, damit eine Böe als Welle durch Gras/Bäume läuft
 // (sonst klappen alle Halme synchron wie eine Fläche). Wellenlänge ~1500px, läuft mit der Zeit.
@@ -230,7 +233,8 @@ function backe(ofen: ReturnType<typeof macheBackofen>, t: Tree, st: Stimmung): H
 // Fäll-/Hack-Balancing (gut justierbar): Schläge bis Fall / bis Stamm zerlegt, Holz je Größe
 const FAELLEN = { hpProGroesse: 80, schaden: 30, hackHpProGroesse: 210, holzProGroesse: 1.9 };
 interface Fall { winkel: number; winkelV: number; gelandet: boolean; richtung: number; hackHp: number; hackMax: number; holzGesamt: number; holzAb: number; }
-const FALL_G = 5.2, FALL_ZIEL = 1.46;   // langsamerer/schwererer Fall; Ruhewinkel (liegend)
+let fallG = 5.2;                        // Fall-Schwerkraft (per Regler: höher = schneller fallen)
+const FALL_ZIEL = 1.46;                 // Ruhewinkel (liegend)
 interface Baum { art: number; x: number; y: number; skala: number; blight: boolean; ph: number; fall: Fall | null; blattFarbe: string; fade: number; hp: number; maxHp: number; weg: boolean; }
 const arten: Array<{ wald: HTMLCanvasElement; blight: HTMLCanvasElement }> = [];
 const baeume: Baum[] = [];
@@ -364,6 +368,7 @@ let stein = 0;          // gesammelter Stein (aus Felsen, in Abbau-Stufen)
 let pausiert = false;   // Screenshot-Hilfe: friert die Schleife ein (Software-WebGL ist sonst zu langsam fürs Capture)
 { const reg = document.getElementById('groesse') as HTMLInputElement | null, val = document.getElementById('groesseVal'); if (reg) reg.addEventListener('input', () => { baumGroesse = parseFloat(reg.value); if (val) val.textContent = `${baumGroesse.toFixed(2)}×`; }); }
 { const reg = document.getElementById('wegbreite') as HTMLInputElement | null, val = document.getElementById('wegbreiteVal'); if (reg) reg.addEventListener('input', () => { pfadBreiteFaktor = parseFloat(reg.value); if (val) val.textContent = `${pfadBreiteFaktor.toFixed(2)}×`; }); }
+{ const reg = document.getElementById('falltempo') as HTMLInputElement | null, val = document.getElementById('falltempoVal'); if (reg) reg.addEventListener('input', () => { const v = parseFloat(reg.value); fallG = 5.2 * v; if (val) val.textContent = `${v.toFixed(2)}×`; }); }
 
 function starteFall(b: Baum, ri: number): void {
   b.fall = { winkel: 0.05 * ri, winkelV: 0.3 * ri, gelandet: false, richtung: ri,
@@ -387,12 +392,24 @@ function hackeFels(f: Fels): void {                                    // Stein 
   }
   if (f.hp <= 0) { while (f.gegeben < f.gestein) { f.gegeben++; stein++; } f.entfernt = true; }   // aufgebraucht -> Geröll-Rest
 }
+// Nächstes interagierbares Objekt JEDES Typs (Fels/liegender Stamm/stehender Baum) im Wirkradius.
+interface Ziel { typ: 'fels' | 'log' | 'baum'; fels?: Fels; baum?: Baum; x: number; y: number; }
+function zielObjekt(): Ziel | null {
+  const h = held(); let best: Ziel | null = null, bd = 1e9;
+  for (const f of felsen) { if (f.entfernt) continue; const d = Math.hypot(h.x - f.x, h.y - f.y) - FELS_R[f.g] * 0.5; if (d < 60 && d < bd) { bd = d; best = { typ: 'fels', fels: f, x: f.x, y: f.y }; } }
+  for (const b of baeume) {
+    if (b.weg) continue; const d = Math.hypot(h.x - b.x, h.y - b.y);
+    if (b.fall && b.fall.gelandet) { if (d < 130 && d < bd) { bd = d; best = { typ: 'log', baum: b, x: b.x, y: b.y }; } }
+    else if (!b.fall) { if (d < 120 && d < bd) { bd = d; best = { typ: 'baum', baum: b, x: b.x, y: b.y }; } }
+  }
+  return best;
+}
 function aktionF(): void {
-  const h = held();
-  let fe: Fels | null = null, fd = 1e9;
-  for (const f of felsen) { if (f.entfernt) continue; const d = Math.hypot(h.x - f.x, h.y - f.y); if (d < 70 + FELS_R[f.g] && d < fd) { fd = d; fe = f; } }
-  if (fe) { h.dir = richtungVon(fe.x - h.x, fe.y - h.y); h.hackT = 0.4; hackeFels(fe); return; }
-  fälleNächsten();
+  const h = held(), z = zielObjekt(); if (!z) return;
+  h.dir = richtungVon(z.x - h.x, z.y - h.y); h.hackT = 0.4;
+  if (z.typ === 'fels') hackeFels(z.fels!);
+  else if (z.typ === 'log') hackeStamm(z.baum!);
+  else { const b = z.baum!; b.hp -= FAELLEN.schaden; for (let i = 0; i < 4; i++) spaene(b.x, b.y, '#6a5238', -40, 1); if (b.hp <= 0) starteFall(b, b.x >= h.x ? 1 : -1); }
 }
 function fälleNächsten(): void {
   const h = held();
@@ -429,7 +446,7 @@ const drops: Drop[] = [];
 const ringe: Ring[] = [];
 const seeRinge: Array<{ x: number; y: number; t: number; leben: number; rmax: number }> = [];   // Regen-Ringe auf dem See
 function neuerDrop(init = false): Drop { const z = Math.random(); return { x: Math.random() * (W + 300) - 150, y: init ? Math.random() * H : -30 - Math.random() * 60, z, vy: 650 + z * 950, len: 9 + z * 24 }; }
-for (let i = 0; i < 420; i++) drops.push(neuerDrop(true));
+for (let i = 0; i < 620; i++) drops.push(neuerDrop(true));   // großer Pool; sichtbarer Anteil skaliert mit dem Wetter (Stufe 4 = dicht)
 // KLEINE Tropfen-Ringe (Regen) auf dem Wasser - LOKALE Maskenkoordinaten, viel kleiner als die Schritt-Ringe
 function tropfenRing(pf: Pfuetze, lx: number, ly: number): void { ringe.push({ lx, ly, x: 0, y: 0, t: 0, leben: 0.6 + Math.random() * 0.3, rmax: 4 + Math.random() * 7, pf }); }
 function bodenKrone(wx: number, wy: number): void { ringe.push({ lx: 0, ly: 0, x: wx, y: wy, t: 0, leben: 0.26, rmax: 5, pf: null }); if (Math.random() < 0.3) spaene(wx, wy, 'rgba(190,206,224,0.7)', -16, 1); }
@@ -636,7 +653,7 @@ function frame(now: number): void {
       if (f) {
         const ri = f.richtung;
         if (!f.gelandet) {                                          // Schwerkraft-Drehmoment, beschleunigt mit der Neigung
-          f.winkelV += ri * FALL_G * Math.sin(Math.abs(f.winkel) + 0.04) * dt;
+          f.winkelV += ri * fallG * Math.sin(Math.abs(f.winkel) + 0.04) * dt;
           f.winkel += f.winkelV * dt;
           if (Math.abs(f.winkel) >= FALL_ZIEL) {                    // Aufprall: Staub + Blätter, Nachfedern
             f.winkel = FALL_ZIEL * ri; f.winkelV *= -0.32; f.gelandet = true;
@@ -793,6 +810,9 @@ function frame(now: number): void {
         ctx.globalAlpha = 1;
       } else if (z.w) zeichneWesen(z.w);
     }
+    // 5a) Ziel-Highlight: dezenter pulsierender Ring am anvisierten Objekt (was F gerade treffen würde)
+    const z = zielObjekt();
+    if (z) { const px = sx(z.x), py = sy(z.y), r = z.typ === 'fels' ? FELS_R[z.fels!.g] + 4 : 24, pulse = 0.55 + 0.3 * Math.sin(now / 220); ctx.strokeStyle = `rgba(232,238,176,${0.5 * pulse})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(px, py + 2, r, r * 0.42, 0, 0, 7); ctx.stroke(); }
   } else { ctx.fillStyle = '#6a7a55'; ctx.font = '16px Georgia'; ctx.fillText('Dorf & Wald werden gebacken …', 24, H - 28); }
 
   // 5b) Aufschlag-Krönchen auf dem Boden (zweiter Effekt - wie auf den Kacheln, jetzt auf dem Gras)
