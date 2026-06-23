@@ -59,7 +59,8 @@ function bauePfadGeometrie(): void {
   for (let i = 0; i < pfadMitte.length; i++) {
     const m = pfadMitte[i], r = Math.random;
     if (i % 4 === 0) { const q = (r() - 0.5) * m.hw * 1.5; pfadFlecken.push({ x: m.x + m.nx * q, y: m.y + m.ny * q, rx: 9 + r() * 22, ry: 5 + r() * 11, col: r() < 0.5 ? 'rgba(16,11,6,0.5)' : 'rgba(80,66,46,0.36)', rot: r() * 3 }); }   // nass/trocken
-    if (r() < 0.05) { const q = (r() - 0.5) * m.hw * 1.2; pfadSteine.push({ x: m.x + m.nx * q, y: m.y + m.ny * q, rx: 2 + r() * 4, ry: 1.5 + r() * 2.4, col: '#56524a', rot: r() * 3 }); }
+    if (r() < 0.035) { const q = (r() - 0.5) * m.hw * 1.2, gx = m.x + m.nx * q, gy = m.y + m.ny * q;   // CLUSTER kleiner Steine (statt gleichförmig verstreut)
+      for (let k = 0, n = 2 + Math.floor(r() * 3); k < n; k++) pfadSteine.push({ x: gx + (r() - 0.5) * 16, y: gy + (r() - 0.5) * 10, rx: 2 + r() * 4, ry: 1.5 + r() * 2.4, col: r() < 0.5 ? '#56524a' : '#4c4840', rot: r() * 3 }); }
   }
 }
 bauePfadGeometrie();
@@ -219,16 +220,23 @@ const sst = (a: number, b: number, x: number): number => { const t = Math.max(0,
 // Biom-Boden-Karte (niedrig aufgelöst, weich hochskaliert): Boden-Tönung je Biom, sanft geblendet
 const moosCv = document.createElement('canvas'); moosCv.width = Math.ceil(WELT_W / 16); moosCv.height = Math.ceil(WELT_H / 16);
 { const m = moosCv.getContext('2d')!;
-  const WALD = [20, 32, 15], MOOR = [30, 26, 14], FELS = [60, 58, 52];   // Boden-Tönungen
+  // Waldboden = ERDIG/BRÄUNLICH (Laub, Nadeln, Erde) statt nur dunkles Grün -> wirkt wie Waldgrund,
+  // nicht wie schattiges Gras. Moor dunkelbraun, Fels grau.
+  const WALD = [31, 27, 15], MOOR = [28, 24, 13], FELS = [60, 58, 52];   // Boden-Tönungen
+  const hashCell = (xx: number, yy: number): number => { const v = Math.sin(xx * 12.9 + yy * 78.2) * 43758.5; return v - Math.floor(v); };
   for (let yy = 0; yy < moosCv.height; yy++) for (let xx = 0; xx < moosCv.width; xx++) {
     const x = xx * 16, y = yy * 16;
     const wMoor = sst(0.56, 0.74, moorNoise(x, y));
     const wFels = sst(0.56, 0.74, felsNoise(x, y)) * (1 - wMoor);
-    const wWald = sst(0.42, 0.6, dichteNoise(x, y)) * (1 - wMoor - wFels);   // Rest = Wiese (Grundgras)
+    // Waldboden hängt an DERSELBEN Dichte-Map wie die Bäume, mit ähnlichem Schwellenverlauf
+    // (Baum-Onset ~0.5) -> Boden und Bewuchs fahren GEMEINSAM hoch.
+    const wWald = sst(0.46, 0.7, dichteNoise(x, y)) * (1 - wMoor - wFels);   // Rest = Wiese (Grundgras)
     let r = 0, g = 0, b = 0, a = 0;
     const add = (c: number[], w: number): void => { a += w; r += c[0] * w; g += c[1] * w; b += c[2] * w; };
     add(MOOR, wMoor); add(FELS, wFels); add(WALD, wWald);
-    if (a > 0.02) { m.fillStyle = `rgba(${Math.round(r / a)},${Math.round(g / a)},${Math.round(b / a)},${Math.min(0.62, a * 0.62)})`; m.fillRect(xx, yy, 1, 1); }
+    // Tint im dichten Bereich DEUTLICH kräftiger (vorher zu schwach -> wirkte wie Wiese): bis ~0.9,
+    // mit leichter Fleckung, damit es nicht zu flach/gleichmäßig wird.
+    if (a > 0.02) { const al = Math.min(0.9, a * 0.92) * (0.86 + 0.28 * hashCell(xx, yy)); m.fillStyle = `rgba(${Math.round(r / a)},${Math.round(g / a)},${Math.round(b / a)},${Math.min(0.92, al)})`; m.fillRect(xx, yy, 1, 1); }
   }
 }
 
@@ -289,6 +297,39 @@ function macheBewuchsBilder(): HTMLCanvasElement[] {
 const bewuchsBilder = macheBewuchsBilder();
 interface Pflanze { x: number; y: number; typ: number; ph: number; r: number; }
 const bewuchs: Pflanze[] = [];
+
+// ---------- Waldboden-Detail: Falllaub-Flecken, Totholz/Äste, kahle Erde, Kies-Cluster ----------
+// Bricht den flachen Boden-Tint auf und macht aus "schattigem Gras" echten Waldgrund.
+function macheWaldDetailBilder(): HTMLCanvasElement[] {
+  const out: HTMLCanvasElement[] = [];
+  // 0: Falllaub-Fleck (gedämpfte Herbst/Nachtfarben)
+  { const c = document.createElement('canvas'); c.width = 34; c.height = 24; const g = c.getContext('2d')!;
+    const cols = ['#5a4424', '#6a5226', '#4a3a1e', '#3e4a24', '#523a1c'];
+    for (let i = 0; i < 16; i++) { g.fillStyle = cols[Math.floor(Math.random() * cols.length)]; g.globalAlpha = 0.85; const x = 4 + Math.random() * 26, y = 3 + Math.random() * 18, a = Math.random() * 6; g.save(); g.translate(x, y); g.rotate(a); g.beginPath(); g.ellipse(0, 0, 2.4 + Math.random() * 1.8, 1.3 + Math.random(), 0, 0, 7); g.fill(); g.restore(); }
+    out.push(c); }
+  // 1: Ast/Totholz (kleiner Zweig mit Kontaktschatten)
+  { const c = document.createElement('canvas'); c.width = 36; c.height = 20; const g = c.getContext('2d')!;
+    g.fillStyle = 'rgba(0,0,0,0.26)'; g.beginPath(); g.ellipse(18, 16, 13, 3, 0, 0, 7); g.fill();
+    g.strokeStyle = '#4a3826'; g.lineWidth = 3.4; g.lineCap = 'round'; g.beginPath(); g.moveTo(5, 13); g.quadraticCurveTo(18, 8, 31, 12); g.stroke();
+    g.strokeStyle = '#5e4830'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(13, 11); g.lineTo(9, 6); g.moveTo(22, 9); g.lineTo(27, 5); g.stroke();
+    g.strokeStyle = '#6e5638'; g.lineWidth = 0.9; g.beginPath(); g.moveTo(7, 12.5); g.quadraticCurveTo(18, 8, 30, 11.5); g.stroke();
+    out.push(c); }
+  // 2: kahle Erdstelle
+  { const c = document.createElement('canvas'); c.width = 30; c.height = 22; const g = c.getContext('2d')!;
+    g.fillStyle = '#2c2214'; g.beginPath(); for (let i = 0; i <= 10; i++) { const a = i / 10 * 6.283, rr = 1 - 0.22 * Math.random(); const x = 15 + Math.cos(a) * 12 * rr, y = 11 + Math.sin(a) * 8 * rr; i ? g.lineTo(x, y) : g.moveTo(x, y); } g.closePath(); g.fill();
+    g.fillStyle = 'rgba(60,48,30,0.5)'; for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(8 + Math.random() * 14, 6 + Math.random() * 10, 0.8 + Math.random(), 0, 7); g.fill(); }
+    out.push(c); }
+  // 3: Kies/Steinchen-Cluster (geclustert + Kontaktschatten - "kleine Steine" nicht mehr aufgesetzt)
+  { const c = document.createElement('canvas'); c.width = 28; c.height = 20; const g = c.getContext('2d')!;
+    g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(14, 14, 11, 4, 0, 0, 7); g.fill();
+    const cols = ['#5a554c', '#6a655c', '#48433c', '#736d62'];
+    for (let i = 0; i < 6; i++) { const x = 6 + Math.random() * 16, y = 8 + Math.random() * 7, rr = 1.8 + Math.random() * 2.4; g.fillStyle = cols[i % cols.length]; g.beginPath(); g.ellipse(x, y, rr, rr * 0.7, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(210,206,196,0.18)'; g.beginPath(); g.ellipse(x - rr * 0.25, y - rr * 0.3, rr * 0.45, rr * 0.3, 0, 0, 7); g.fill(); }
+    out.push(c); }
+  return out;
+}
+const waldDetailBilder = macheWaldDetailBilder();
+interface WaldDetail { x: number; y: number; typ: number; sk: number; }
+const waldDetail: WaldDetail[] = [];
 
 // ---------- Bäume (ez-tree -> Backofen -> Sprite), zwei Stimmungen ----------
 interface Stimmung { dichte: number; blatt: number; rinde: number; groesse: number; sat: number; hell: number; }
@@ -662,10 +703,10 @@ async function init(): Promise<void> {
   for (const f of felsen) anker.push({ x: f.x, y: f.y });
   for (let i = 0; i < pfadMitte.length; i += 6) anker.push({ x: pfadMitte[i].x, y: pfadMitte[i].y });
   const ankerNah = (x: number, y: number): number => { let dm = 1e9; for (const a of anker) { const dx = a.x - x, dy = a.y - y, d = dx * dx + dy * dy; if (d < dm) dm = d; } return Math.max(0, 1 - Math.sqrt(dm) / 160); };   // 0..1
-  // EBENE 1: kurzes Bodengras (dicht, überall außer Pfad/See) - kürzer im dichten Wald
-  for (let i = 0; i < 1500; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y)) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.55) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5, r: Math.random() }); }
-  // EBENE 2: hohes Gras (eigene Sprites) - geclustert an Ankern + Wiese/Wald, nicht überall
-  for (let i = 0; i < 900; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y)) continue; const biom = biomAt(x, y); if (biom === 'fels') continue; if (Math.random() > 0.18 + ankerNah(x, y) * 0.9) continue; hochgras.push({ x, y, ph: Math.random() * 7, h: 14 + Math.random() * 12, r: Math.random() }); }
+  // EBENE 1: kurzes Bodengras (dicht, überall außer Pfad/See) - im dichten Wald NOCH spärlicher (Waldgrund statt Wiese)
+  for (let i = 0; i < 1500; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y)) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.72) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5, r: Math.random() }); }
+  // EBENE 2: hohes Gras (eigene Sprites) - geclustert an Ankern + Wiese/Wald; im dichten Wald spärlicher
+  for (let i = 0; i < 900; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y)) continue; const d = dichteNoise(x, y), biom = biomAt(x, y); if (biom === 'fels') continue; if (biom === 'wald' && d > 0.6 && Math.random() < 0.6) continue; if (Math.random() > 0.18 + ankerNah(x, y) * 0.9) continue; hochgras.push({ x, y, ph: Math.random() * 7, h: 14 + Math.random() * 12, r: Math.random() }); }
   // EBENE 3: Blüten in FARB-GRUPPEN (je Cluster eine Farbe) an Ankern, nur Wiese/Wald
   for (let c = 0; c < 90; c++) {
     const ax = anker[Math.floor(Math.random() * anker.length)], cx = ax.x + (Math.random() - 0.5) * 120, cy = ax.y + (Math.random() - 0.5) * 90;
@@ -673,16 +714,32 @@ async function init(): Promise<void> {
     for (let k = 0, n = 3 + Math.floor(Math.random() * 6); k < n; k++) {
       const x = cx + (Math.random() - 0.5) * 70, y = cy + (Math.random() - 0.5) * 50, biom = biomAt(x, y);
       if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y) || biom === 'moor' || biom === 'fels') continue;
+      if (biom === 'wald' && dichteNoise(x, y) > 0.62 && Math.random() < 0.7) continue;   // im dichten Wald wenig Blüten
       bewuchs.push({ x, y, typ, ph: Math.random() * 7, r: Math.random() });
     }
   }
   for (let i = 0; i < 220; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y)) continue; const biom = biomAt(x, y); if (biom === 'moor' || biom === 'fels') continue; bewuchs.push({ x, y, typ: 4 + Math.floor(Math.random() * 2), ph: Math.random() * 7, r: Math.random() }); }   // Kräuter/Klee verstreut
+  // WALDBODEN-DETAIL: Falllaub/Totholz/kahle Erde/Kies - DICHTEGESTEUERT (viel im dichten Wald, kaum offen)
+  for (let i = 0; i < 1500; i++) {
+    const x = Math.random() * WELT_W, y = Math.random() * WELT_H;
+    if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y)) continue;
+    const d = dichteNoise(x, y), biom = biomAt(x, y);
+    if (biom === 'fels') continue;
+    if (Math.random() > 0.1 + d * 1.15) continue;                           // im dichten Wald viel, offen kaum
+    const rr = Math.random();
+    const typ = biom === 'moor' ? (rr < 0.6 ? 2 : 0) : rr < 0.5 ? 0 : rr < 0.78 ? 1 : rr < 0.92 ? 2 : 3;   // Laub > Totholz > Erde > Kies
+    waldDetail.push({ x, y, typ, sk: 0.8 + Math.random() * 0.6 });
+  }
+  // Kies-Cluster zusätzlich an den Felsen (geclustert + geerdet) - kleine Steine wirken nicht mehr aufgesetzt
+  for (const f of felsen) if (Math.random() < 0.7) { for (let k = 0, n = 1 + Math.floor(Math.random() * 3); k < n; k++) { const x = f.x + (Math.random() - 0.5) * 74, y = f.y + FELS_R[f.g] * 0.4 + (Math.random() - 0.5) * 30; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y)) continue; waldDetail.push({ x, y, typ: 3, sk: 0.7 + Math.random() * 0.7 }); } }
   bereit = true;
   (window as unknown as { __dorfBereit?: boolean; __demo?: unknown }).__dorfBereit = true;
   (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; }, nass: (v: number) => { wetness = v; for (const p of pfuetzen) p.current = wetness > p.schwelle ? 1 : 0; },
     blitzAus: () => { blitz = 1; blitzNach = 0.1; },
     sturm: () => { wetter = 1; wetterZiel = 1; wetterTimer = 90; },
     biomBei: (x: number, y: number): string => biomAt(x, y),
+    dichteBei: (x: number, y: number): number => dichteNoise(x, y),
+    dichterWald: (): { x: number; y: number } => { let bx = WELT_W / 2, by = WELT_H / 2, bd = -1; for (let y = 120; y < WELT_H - 120; y += 60) for (let x = 120; x < WELT_W - 120; x += 60) { if (aufPfad(x, y) || nahSee(x, y) || nahFluss(x, y)) continue; if (biomAt(x, y) !== 'wald') continue; const d = dichteNoise(x, y); if (d > bd) { bd = d; bx = x; by = y; } } return { x: bx, y: by }; },
     zurBruecke: (vorher = 80): void => { held().x = bruecke.cx - bruecke.ux * vorher; held().y = bruecke.cy - bruecke.uy * vorher; },
     brueckeInfo: (): string => `cx=${Math.round(bruecke.cx)} cy=${Math.round(bruecke.cy)} halbL=${Math.round(bruecke.halbL)} halbB=${Math.round(bruecke.halbB)} aufBruecke(C)=${aufBruecke(bruecke.cx, bruecke.cy)}`,
     verdeckt: () => istVerdecktVomBaum(held().x, held().y),
@@ -835,7 +892,8 @@ function frame(now: number): void {
     for (const off of [-0.4, 0.4]) { ctx.beginPath(); for (let i = 0; i < pfadMitte.length; i++) { const m = pfadMitte[i]; const x = m.x + m.nx * m.hw * f * off, y = m.y + m.ny * m.hw * f * off; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.strokeStyle = 'rgba(16,11,6,0.45)'; ctx.lineWidth = 7; ctx.stroke(); }   // Spurrillen
     ctx.save(); poly(); ctx.clip();
     for (const fl of pfadFlecken) { ctx.fillStyle = fl.col; ctx.beginPath(); ctx.ellipse(fl.x, fl.y, fl.rx, fl.ry, fl.rot, 0, 7); ctx.fill(); }
-    for (const st of pfadSteine) { ctx.fillStyle = st.col; ctx.beginPath(); ctx.ellipse(st.x, st.y, st.rx, st.ry, st.rot, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(210,210,200,0.14)'; ctx.beginPath(); ctx.ellipse(st.x - st.rx * 0.3, st.y - st.ry * 0.3, st.rx * 0.5, st.ry * 0.5, st.rot, 0, 7); ctx.fill(); }
+    for (const st of pfadSteine) { ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.ellipse(st.x + st.rx * 0.3, st.y + st.ry * 0.6, st.rx * 1.15, st.ry * 0.9, st.rot, 0, 7); ctx.fill();   // weicher Kontaktschatten (erdet die Steine)
+      ctx.fillStyle = st.col; ctx.beginPath(); ctx.ellipse(st.x, st.y, st.rx, st.ry, st.rot, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(210,210,200,0.14)'; ctx.beginPath(); ctx.ellipse(st.x - st.rx * 0.3, st.y - st.ry * 0.3, st.rx * 0.5, st.ry * 0.5, st.rot, 0, 7); ctx.fill(); }
     ctx.restore();
     ctx.lineWidth = 1.2;
     for (let i = 0; i < pfadMitte.length; i += 2) {
@@ -904,6 +962,13 @@ function frame(now: number): void {
 
   // 3) Blight-Mal + Krypta
   if (bereit) { const kx = sx(krypta.x), ky = sy(krypta.y); const bg = ctx.createRadialGradient(kx, ky, krypta.r * 0.1, kx, ky, krypta.r); bg.addColorStop(0, 'rgba(24,20,15,0.6)'); bg.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#15171c'; ctx.fillRect(kx - 30, ky - 16, 60, 34); }
+
+  // 3b) Waldboden-Detail (Falllaub, Totholz, kahle Erde, Kies) - unter dem Gras, erdet den Waldgrund
+  if (bereit) for (const wdt of waldDetail) {
+    if (wdt.x < camX - 30 || wdt.x > camX + W + 30 || wdt.y < camY - 30 || wdt.y > camY + H + 30) continue;
+    const img = waldDetailBilder[wdt.typ], w = img.width * wdt.sk, h = img.height * wdt.sk;
+    ctx.drawImage(img, sx(wdt.x) - w / 2, sy(wdt.y) - h * 0.6, w, h);
+  }
 
   // 4) Gras-Büschel (Wind + Wegbiegen vor Wesen)
   // EBENE 1: kurzes Bodengras

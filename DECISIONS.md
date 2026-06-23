@@ -529,3 +529,11 @@
   * TIEFENSORTIERUNG (Autorwunsch "Held läuft drüber"): Deck + HINTERES Geländer werden VOR den Wesen gezeichnet (liegen darunter/dahinter); das VORDERE Geländer kommt als eigener Eintrag (y = vordere Deckkante) in die Tiefensortierung -> Held läuft zwischen den Geländern, vorderes Geländer verdeckt ihn an der vorderen Kante. Verifiziert: Held steht auf dem Deck zwischen den Geländern.
   * KOLLISION: imFluss(x,y) blockiert in frei(), AUSSER aufBruecke(x,y) -> Fluss nur über die Brücke querbar. Fluss aus allen Platzierungen ausgenommen (Bäume/Felsen/Büsche/Bewuchs/Pfützen), analog zum See.
   * tsc grün; im Browser verifiziert (Held auf der Brücke, Fluss strömt darunter, Schaum an Steinen).
+
+- Runde 61 (Waldboden deutlicher absetzen - Autorfeedback "links wie Wiese mit Bäumen statt Waldboden"):
+  * BODEN FOLGT DER DICHTE: Waldboden-Tint hängt jetzt an DERSELBEN dichteNoise-Map wie die Bäume (Schwelle sst(0.46,0.7) ~ Baum-Onset 0.5) -> Boden und Bewuchs fahren GEMEINSAM hoch (vorher blieb der Boden Wiesengrün, während der Bewuchs schon dicht war).
+  * STÄRKER + BRÄUNLICH: Tint-Alpha im dichten Bereich 0.62 -> bis 0.9 (vorher zu schwach); Waldboden-Farbe von dunkelgrün [20,32,15] auf erdig-braun [31,27,15] (Laub/Nadeln/Erde) -> wirkt wie Waldgrund, nicht wie schattiges Gras. Leichte Fleckung (hashCell) gegen zu flachen Look.
+  * WALDBODEN-DETAIL-SPRITES (dichtegesteuert, ~viel im Wald, kaum offen): 4 gebackene Typen - Falllaub-Fleck, Totholz/Ast (mit Kontaktschatten), kahle Erdstelle, Kies-Cluster. Brechen den flachen Tint auf. Zusätzlich Kies-Cluster an den Felsen.
+  * GRAS/BLÜTEN IM DICHTEN WALD SPÄRLICHER: Bodengras-Skip d*0.55 -> d*0.72; hohes Gras im dichten Wald (d>0.6) zu 60% raus; Blüten im dichten Wald (d>0.62) zu 70% raus.
+  * KLEINE STEINE (Autorpunkt "gleichförmig/aufgesetzt"): Weg-Steine jetzt in CLUSTERN (2-4) statt gleichförmig verstreut + weicher Kontaktschatten -> geerdet wie die großen Felsen. Kies-Detail-Cluster ebenfalls mit Kontaktschatten.
+  * Verifiziert: dichter Wald (d=0.78) = brauner erdiger Waldgrund mit Laub/Erde-Flecken; offene Wiese (d=0.15) bleibt grün. tsc grün.
