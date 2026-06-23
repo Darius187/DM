@@ -225,6 +225,16 @@ function macheStumpf(r = 15): HTMLCanvasElement {
 }
 const stumpfBild = macheStumpf();
 
+// Weicher Kontaktschatten (einmal gebacken): erdet Objekte (Bäume/Felsen) am Fuß
+const schattenBild = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d')!;
+  const rg = g.createRadialGradient(32, 32, 2, 32, 32, 30); rg.addColorStop(0, 'rgba(0,0,0,0.5)'); rg.addColorStop(0.6, 'rgba(0,0,0,0.28)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = rg; g.beginPath(); g.ellipse(32, 32, 30, 30, 0, 0, 7); g.fill(); return c;
+})();
+function kontaktSchatten(scx: number, scy: number, breite: number): void {   // weiche Ellipse am Fuß
+  ctx.drawImage(schattenBild, scx - breite / 2, scy - breite * 0.18, breite, breite * 0.36);
+}
+
 // ---------- Hühner-Sprite (prozedural) ----------
 function macheHuhn(): HTMLCanvasElement {
   const c = document.createElement('canvas'); c.width = 30; c.height = 26; const g = c.getContext('2d')!;
@@ -369,9 +379,9 @@ async function init(): Promise<void> {
     if (distPfad(x, y) < PFAD_BREITE * 0.7) continue;                          // nicht auf dem Pfad
     const d = dichteNoise(x, y);
     if (Math.random() > d * d) continue;                                        // dichte Zonen voll, Rand läuft spärlich aus
-    if (baeume.some((t) => Math.hypot(t.x - x, t.y - y) < 50)) continue;        // Mindestabstand
+    if (baeume.some((t) => Math.hypot(t.x - x, t.y - y) < 78)) continue;        // Mindestabstand (größere Bäume)
     const blight = Math.hypot(x - krypta.x, y - krypta.y) < krypta.r * (0.55 + Math.random() * 0.6);
-    const skala = d > 0.62 ? 0.46 + Math.random() * 0.26 : 0.3 + Math.random() * 0.26;
+    const skala = d > 0.62 ? 0.98 + Math.random() * 0.55 : 0.64 + Math.random() * 0.5;   // ~2,1x größer (Bäume türmen über der Figur)
     baeume.push({ art: Math.floor(Math.random() * arten.length), x, y, skala, blight, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)], fade: 0 });
   }
   // Gras-Büschel
@@ -412,7 +422,7 @@ const sx = (wx: number): number => Math.round(wx - camX);
 const sy = (wy: number): number => Math.round(wy - camY);
 function frei(wx: number, wy: number): boolean {
   if (wx < 30 || wy < 30 || wx > WELT_W - 30 || wy > WELT_H - 30) return false;
-  for (const b of baeume) { if (b.fall) continue; if (Math.hypot(wx - b.x, wy - b.y) < 12 + b.skala * 22) return false; }
+  for (const b of baeume) { if (b.fall) continue; if (Math.hypot(wx - b.x, wy - b.y) < (10 + b.skala * 12) * baumGroesse) return false; }   // Stammfuß-Radius ~ Baumgröße
   return true;
 }
 
@@ -609,6 +619,7 @@ function frame(now: number): void {
     for (const z of liste) {
       if (z.b) {
         const b = z.b, bild = b.blight ? arten[b.art].blight : arten[b.art].wald, sk = b.skala * baumGroesse, w = bild.width * sk, hh = bild.height * sk;
+        if (!b.fall) kontaktSchatten(sx(b.x), sy(b.y), w * 0.4);              // erdet den Baum am Fuß
         // enger Test: deckt der obere Kronen-Teil den schmalen Helden-Bereich? -> nur der Baum direkt davor fadet
         const verdeckt = b.y > h0.y && rechteckeUeberlappen(sx(b.x) - w * 0.3, sy(b.y) - hh * 0.64, w * 0.6, hh * 0.55, tRX, tRY, tRW, tRH);
         b.fade += ((verdeckt ? 1 : 0) - b.fade) * Math.min(1, dt * 9);
