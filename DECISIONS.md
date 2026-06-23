@@ -521,3 +521,11 @@
   * BLÜTEN IN FARB-GRUPPEN (Autorwunsch): je Cluster EINE Farbe (gelb/rosa/weiß/lila), 90 Cluster mit 3-8 Blüten, nur Wiese/Wald. 6 gebackene Bewuchs-Sprites (4 Blütenfarben + Kraut + Klee).
   * DICHTE-REGLER (Autorwunsch "wieder einen Regler"): neuer Slider "Bewuchs" (0..1.4) -> bewuchsDichte. Jede Pflanze trägt ein festes r (0..1); beim Zeichnen `if (item.r > bewuchsDichte) continue;` -> Regler dünnt live aus/füllt auf, ohne Neuverteilung. Default 1.0.
   * Verifiziert im Browser (Crop um den Helden, Dichte 1.4): alle 3 Ebenen sichtbar - Bodengras flächig, hohe Gras-Büschel als hellere vertikale Cluster, rosa Blüten-Gruppe. tsc grün.
+
+- Runde 61 (Block B: Brücke über fließenden Fluss):
+  * FLUSS (fließendes Wasser): Polyline von oben quer über den Weg, mündet in den See (See deckt die Mündung). Wasser wie der See (dunkle Grundfarbe + tiefe dunkle Mitte als breiter Strich), ABER mit FLIESS-TEXTUR: ~170 scrollende Strähnen, die flussabwärts laufen (s += spd, mod flussLen) und entlang der lokalen Flussrichtung gezeichnet werden -> klar erkennbare Strömung. Ufer wie am See (nasser Schlammsaum + helle Schaum-Uferkante + Schilf mit Wind-Sway).
+  * STROMSCHNELLEN: Steine im Flussbett; an jedem Stein oszillierender weißer Schaum stromabwärts (5 Tupfen, Phase über die Zeit + seitliches Wackeln).
+  * BRÜCKE: liegt automatisch auf der Fluss-Weg-Kreuzung (Fluss-Sample mit min. Weg-Abstand), Deck folgt der WEG-Richtung, Spannweite = Flussbreite/sin(Winkel)+Ufer. Deck = Planken QUER zur Laufrichtung (uneben/versetzt, 5er-Palette, Fugen, Maserung, Astlöcher) + Pfeiler ins Wasser + Bordkanten. Zwei Geländer (Pfosten+Handlauf+Holm).
+  * TIEFENSORTIERUNG (Autorwunsch "Held läuft drüber"): Deck + HINTERES Geländer werden VOR den Wesen gezeichnet (liegen darunter/dahinter); das VORDERE Geländer kommt als eigener Eintrag (y = vordere Deckkante) in die Tiefensortierung -> Held läuft zwischen den Geländern, vorderes Geländer verdeckt ihn an der vorderen Kante. Verifiziert: Held steht auf dem Deck zwischen den Geländern.
+  * KOLLISION: imFluss(x,y) blockiert in frei(), AUSSER aufBruecke(x,y) -> Fluss nur über die Brücke querbar. Fluss aus allen Platzierungen ausgenommen (Bäume/Felsen/Büsche/Bewuchs/Pfützen), analog zum See.
+  * tsc grün; im Browser verifiziert (Held auf der Brücke, Fluss strömt darunter, Schaum an Steinen).

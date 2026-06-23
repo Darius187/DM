@@ -84,6 +84,73 @@ function baueSee(): void {
 }
 baueSee();
 
+// ---------- Fluss (fließendes Wasser) + Brücke ----------
+// Der Fluss strömt von oben quer über den Weg und mündet unten in den See. Wo er
+// den Weg kreuzt, liegt eine BRÜCKE (Held läuft drüber, tiefensortiert). Wasser
+// wie der See, aber MIT Fließ-Textur (scrollende Strähnen flussabwärts) + kleinen
+// Stromschnellen/Schaum an Flusssteinen. Ufer wie am See (Schlammsaum + Schilf).
+const flussPunkte: Array<{ x: number; y: number }> = [
+  { x: 740, y: 80 }, { x: 980, y: 470 }, { x: 1120, y: 820 }, { x: 1250, y: 1070 },
+  { x: 1460, y: 1290 }, { x: 1720, y: 1395 }, { x: 2010, y: 1410 },
+];
+interface FlussP { x: number; y: number; nx: number; ny: number; ux: number; uy: number; hw: number; s: number; }
+const flussMitte: FlussP[] = [];
+interface FlussStein { x: number; y: number; r: number; m: FlussP; }
+const flussSteine: FlussStein[] = [];
+const flussSchilf: Array<{ x: number; y: number; ph: number; h: number }> = [];
+const flussStreif: Array<{ s: number; off: number; len: number; spd: number; a: number }> = [];   // scrollende Fließ-Strähnen
+let flussLen = 0;
+function baueFluss(): void {
+  let s = 0;
+  for (let i = 0; i < flussPunkte.length - 1; i++) {
+    const a = flussPunkte[i], b = flussPunkte[i + 1], dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+    for (let d = 0; d < len; d += 9, s += 9) {
+      const t = d / len, px = a.x + dx * t, py = a.y + dy * t;
+      const breit = Math.min(1, (i + t) / (flussPunkte.length - 1));                              // mündungsnah breiter
+      const hw = 24 + 9 * Math.sin(s * 0.012 + 1) + 20 * breit;
+      flussMitte.push({ x: px, y: py, nx, ny, ux, uy, hw, s });
+    }
+  }
+  flussLen = s;
+  for (let i = 6; i < flussMitte.length - 6; i += 7) {                                            // Steine im Flussbett (Stromschnellen)
+    if (Math.random() < 0.55) { const m = flussMitte[i], q = (Math.random() - 0.5) * m.hw * 1.0; flussSteine.push({ x: m.x + m.nx * q, y: m.y + m.ny * q, r: 5 + Math.random() * 7, m }); }
+  }
+  for (let i = 0; i < flussMitte.length; i += 4) {                                                // Schilf an beiden Ufern
+    const m = flussMitte[i];
+    for (const side of [-1, 1]) if (Math.random() < 0.4) flussSchilf.push({ x: m.x + m.nx * (m.hw + 4) * side, y: m.y + m.ny * (m.hw + 4) * side, ph: Math.random() * 7, h: 14 + Math.random() * 14 });
+  }
+  for (let i = 0; i < 170; i++) flussStreif.push({ s: Math.random() * flussLen, off: (Math.random() - 0.5) * 1.5, len: 9 + Math.random() * 22, spd: 55 + Math.random() * 95, a: 0.05 + Math.random() * 0.11 });
+}
+baueFluss();
+function flussInfo(x: number, y: number): { d: number; hw: number } {   // Abstand zur Mittellinie + Halbbreite dort
+  let best = 1e9, bhw = 30;
+  for (const m of flussMitte) { const dx = x - m.x, dy = y - m.y, d = dx * dx + dy * dy; if (d < best) { best = d; bhw = m.hw; } }
+  return { d: Math.sqrt(best), hw: bhw };
+}
+const imFluss = (x: number, y: number): boolean => { const f = flussInfo(x, y); return f.d < f.hw; };
+const nahFluss = (x: number, y: number): boolean => { const f = flussInfo(x, y); return f.d < f.hw + 30; };
+function flussAt(s: number): FlussP { const i = Math.max(0, Math.min(flussMitte.length - 1, Math.round(s / flussLen * (flussMitte.length - 1)))); return flussMitte[i]; }
+
+// Brücke über die Fluss-Weg-Kreuzung: Deck folgt der WEG-Richtung, spannt über den Fluss.
+interface Bruecke { cx: number; cy: number; ux: number; uy: number; nx: number; ny: number; halbL: number; halbB: number; }
+let bruecke: Bruecke = { cx: 0, cy: 0, ux: 1, uy: 0, nx: 0, ny: 1, halbL: 1, halbB: 1 };
+function baueBruecke(): void {
+  let bi = 0, bd = 1e9;                                                                           // Kreuzung = Fluss-Sample am nächsten zum Weg
+  for (let i = 0; i < flussMitte.length; i++) { const d = distPfad(flussMitte[i].x, flussMitte[i].y); if (d < bd) { bd = d; bi = i; } }
+  const m = flussMitte[bi];
+  let pj = 0, pjd = 1e9;                                                                          // Richtung = Weg-Richtung am nächsten Wegpunkt
+  for (let i = 0; i < pfadMitte.length; i++) { const dx = pfadMitte[i].x - m.x, dy = pfadMitte[i].y - m.y, d = dx * dx + dy * dy; if (d < pjd) { pjd = d; pj = i; } }
+  const pa = pfadMitte[Math.max(0, pj - 2)], pb = pfadMitte[Math.min(pfadMitte.length - 1, pj + 2)];
+  let ux = pb.x - pa.x, uy = pb.y - pa.y; const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul;
+  const sinA = Math.max(0.42, Math.abs(ux * m.nx + uy * m.ny));                                   // Spannweite = Flussbreite / sin(Winkel) + Ufer
+  bruecke = { cx: m.x, cy: m.y, ux, uy, nx: -uy, ny: ux, halbL: m.hw / sinA + 48, halbB: PFAD_BREITE * 0.5 + 12 };
+}
+baueBruecke();
+function aufBruecke(x: number, y: number): boolean {
+  const dx = x - bruecke.cx, dy = y - bruecke.cy;
+  return Math.abs(dx * bruecke.ux + dy * bruecke.uy) < bruecke.halbL && Math.abs(dx * bruecke.nx + dy * bruecke.ny) < bruecke.halbB;
+}
+
 // ---------- Wetter (dynamisch: klar -> Regen -> Unwetter; treibt Wind/Regen/Nebel) ----------
 let regenAn = true;
 let wetter = 0.5;                 // 0 klar .. 0.5 Regen .. 1 Sturm
@@ -547,6 +614,7 @@ async function init(): Promise<void> {
     const ang = Math.atan2(b.y - a.y, b.x - a.x);
     const quer = (Math.random() - 0.5) * PFAD_BREITE * 0.3;         // leicht aus der Mitte
     const cx = a.x + (b.x - a.x) * tt - Math.sin(ang) * quer, cy = a.y + (b.y - a.y) * tt + Math.cos(ang) * quer;
+    if (aufBruecke(cx, cy) || imFluss(cx, cy)) continue;             // keine Pfütze auf der Brücke / im Fluss
     const L = 95 + Math.random() * 120, B = 34 + Math.random() * 24;  // lang am Pfad, schmal quer (< Pfadbreite)
     const p = machePfuetze(cx, cy, L, B, ang);
     p.schwelle = 0.12 + Math.random() * 0.5;            // gestaffelt: tiefe Senken zuerst, dann alle
@@ -558,7 +626,7 @@ async function init(): Promise<void> {
   const lichtX = WELT_W * 0.4, lichtY = WELT_H * 0.64;
   for (let versuche = 0; baeume.length < 230 && versuche < 7000; versuche++) {
     const x = 90 + Math.random() * (WELT_W - 180), y = 90 + Math.random() * (WELT_H - 180);
-    if (nahSee(x, y)) continue;                                                // nicht im/am See
+    if (nahSee(x, y) || nahFluss(x, y)) continue;                              // nicht im/am See oder Fluss
     const d = dichteNoise(x, y), biom = biomAt(x, y);
     // Bäume v.a. im WALD; Wiese/Moor spärlich, Fels fast keine
     const chance = biom === 'wald' ? d : biom === 'wiese' ? 0.16 : biom === 'moor' ? 0.18 : 0.05;
@@ -575,7 +643,7 @@ async function init(): Promise<void> {
   // Felsen in CLUSTERN (Haufen verschiedener Größen), abseits Lichtung/Weg/See, nicht in Baumstämmen
   for (let c = 0; c < 22; c++) {
     let fx = 0, fy = 0, ok = false;
-    for (let t = 0; t < 20 && !ok; t++) { fx = 120 + Math.random() * (WELT_W - 240); fy = 120 + Math.random() * (WELT_H - 240); ok = Math.hypot(fx - lichtX, fy - lichtY) > 360 && distPfad(fx, fy) > PFAD_BREITE * 0.8 && !nahSee(fx, fy) && (felsNoise(fx, fy) > 0.5 || Math.random() < 0.3); }   // Felsen v.a. im Fels-Biom
+    for (let t = 0; t < 20 && !ok; t++) { fx = 120 + Math.random() * (WELT_W - 240); fy = 120 + Math.random() * (WELT_H - 240); ok = Math.hypot(fx - lichtX, fy - lichtY) > 360 && distPfad(fx, fy) > PFAD_BREITE * 0.8 && !nahSee(fx, fy) && !nahFluss(fx, fy) && (felsNoise(fx, fy) > 0.5 || Math.random() < 0.3); }   // Felsen v.a. im Fels-Biom
     if (!ok) continue;
     for (let k = 0, n = 2 + Math.floor(Math.random() * 3); k < n; k++) {
       const x = fx + (Math.random() - 0.5) * 90, y = fy + (Math.random() - 0.5) * 60, g = Math.floor(Math.random() * 3);
@@ -586,8 +654,8 @@ async function init(): Promise<void> {
     }
   }
   // Büsche (begehbare Occluder): geclustert UM Felsen (Anker) + locker im Wald, nicht auf Lichtung/Weg/See
-  for (const f of felsen) { if (Math.random() > 0.6) continue; for (let k = 0, n = 1 + Math.floor(Math.random() * 2); k < n; k++) { const x = f.x + (Math.random() - 0.5) * 80, y = f.y + (Math.random() - 0.5) * 56; if (distPfad(x, y) < PFAD_BREITE * 0.7 || imSee(x, y)) continue; buesche.push({ x, y, skala: 0.42 + Math.random() * 0.28, typ: Math.floor(Math.random() * buschBilder.length), fade: 0 }); } }
-  for (let i = 0; i < 150; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (Math.hypot(x - lichtX, y - lichtY) < 320 || distPfad(x, y) < PFAD_BREITE * 0.8 || imSee(x, y)) continue; if (Math.random() > dichteNoise(x, y) * 0.8) continue; buesche.push({ x, y, skala: 0.38 + Math.random() * 0.32, typ: Math.floor(Math.random() * buschBilder.length), fade: 0 }); }
+  for (const f of felsen) { if (Math.random() > 0.6) continue; for (let k = 0, n = 1 + Math.floor(Math.random() * 2); k < n; k++) { const x = f.x + (Math.random() - 0.5) * 80, y = f.y + (Math.random() - 0.5) * 56; if (distPfad(x, y) < PFAD_BREITE * 0.7 || imSee(x, y) || nahFluss(x, y)) continue; buesche.push({ x, y, skala: 0.42 + Math.random() * 0.28, typ: Math.floor(Math.random() * buschBilder.length), fade: 0 }); } }
+  for (let i = 0; i < 150; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (Math.hypot(x - lichtX, y - lichtY) < 320 || distPfad(x, y) < PFAD_BREITE * 0.8 || imSee(x, y) || nahFluss(x, y)) continue; if (Math.random() > dichteNoise(x, y) * 0.8) continue; buesche.push({ x, y, skala: 0.38 + Math.random() * 0.32, typ: Math.floor(Math.random() * buschBilder.length), fade: 0 }); }
   // ANKER (für geclusterten Bewuchs): Wasserkante, Felsen, Wegrand -> dort dichter, sonst licht
   const anker: Array<{ x: number; y: number }> = [];
   for (const u of seeUfer) anker.push({ x: u.x, y: u.y });
@@ -595,26 +663,28 @@ async function init(): Promise<void> {
   for (let i = 0; i < pfadMitte.length; i += 6) anker.push({ x: pfadMitte[i].x, y: pfadMitte[i].y });
   const ankerNah = (x: number, y: number): number => { let dm = 1e9; for (const a of anker) { const dx = a.x - x, dy = a.y - y, d = dx * dx + dy * dy; if (d < dm) dm = d; } return Math.max(0, 1 - Math.sqrt(dm) / 160); };   // 0..1
   // EBENE 1: kurzes Bodengras (dicht, überall außer Pfad/See) - kürzer im dichten Wald
-  for (let i = 0; i < 1500; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y)) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.55) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5, r: Math.random() }); }
+  for (let i = 0; i < 1500; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y)) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.55) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5, r: Math.random() }); }
   // EBENE 2: hohes Gras (eigene Sprites) - geclustert an Ankern + Wiese/Wald, nicht überall
-  for (let i = 0; i < 900; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y)) continue; const biom = biomAt(x, y); if (biom === 'fels') continue; if (Math.random() > 0.18 + ankerNah(x, y) * 0.9) continue; hochgras.push({ x, y, ph: Math.random() * 7, h: 14 + Math.random() * 12, r: Math.random() }); }
+  for (let i = 0; i < 900; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y)) continue; const biom = biomAt(x, y); if (biom === 'fels') continue; if (Math.random() > 0.18 + ankerNah(x, y) * 0.9) continue; hochgras.push({ x, y, ph: Math.random() * 7, h: 14 + Math.random() * 12, r: Math.random() }); }
   // EBENE 3: Blüten in FARB-GRUPPEN (je Cluster eine Farbe) an Ankern, nur Wiese/Wald
   for (let c = 0; c < 90; c++) {
     const ax = anker[Math.floor(Math.random() * anker.length)], cx = ax.x + (Math.random() - 0.5) * 120, cy = ax.y + (Math.random() - 0.5) * 90;
     const typ = Math.floor(Math.random() * 4);   // eine Blütenfarbe pro Gruppe
     for (let k = 0, n = 3 + Math.floor(Math.random() * 6); k < n; k++) {
       const x = cx + (Math.random() - 0.5) * 70, y = cy + (Math.random() - 0.5) * 50, biom = biomAt(x, y);
-      if (aufPfad(x, y) || imSee(x, y) || biom === 'moor' || biom === 'fels') continue;
+      if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y) || biom === 'moor' || biom === 'fels') continue;
       bewuchs.push({ x, y, typ, ph: Math.random() * 7, r: Math.random() });
     }
   }
-  for (let i = 0; i < 220; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y)) continue; const biom = biomAt(x, y); if (biom === 'moor' || biom === 'fels') continue; bewuchs.push({ x, y, typ: 4 + Math.floor(Math.random() * 2), ph: Math.random() * 7, r: Math.random() }); }   // Kräuter/Klee verstreut
+  for (let i = 0; i < 220; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y)) continue; const biom = biomAt(x, y); if (biom === 'moor' || biom === 'fels') continue; bewuchs.push({ x, y, typ: 4 + Math.floor(Math.random() * 2), ph: Math.random() * 7, r: Math.random() }); }   // Kräuter/Klee verstreut
   bereit = true;
   (window as unknown as { __dorfBereit?: boolean; __demo?: unknown }).__dorfBereit = true;
   (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; }, nass: (v: number) => { wetness = v; for (const p of pfuetzen) p.current = wetness > p.schwelle ? 1 : 0; },
     blitzAus: () => { blitz = 1; blitzNach = 0.1; },
     sturm: () => { wetter = 1; wetterZiel = 1; wetterTimer = 90; },
     biomBei: (x: number, y: number): string => biomAt(x, y),
+    zurBruecke: (vorher = 80): void => { held().x = bruecke.cx - bruecke.ux * vorher; held().y = bruecke.cy - bruecke.uy * vorher; },
+    brueckeInfo: (): string => `cx=${Math.round(bruecke.cx)} cy=${Math.round(bruecke.cy)} halbL=${Math.round(bruecke.halbL)} halbB=${Math.round(bruecke.halbB)} aufBruecke(C)=${aufBruecke(bruecke.cx, bruecke.cy)}`,
     verdeckt: () => istVerdecktVomBaum(held().x, held().y),
     zumFels: () => { const f = felsen.find((q) => !q.entfernt); if (f) { held().x = f.x - 55; held().y = f.y; } },
     zumErz: () => { const f = felsen.find((q) => !q.entfernt && q.erz); if (f) { held().x = f.x - 55; held().y = f.y; } },
@@ -652,6 +722,7 @@ const sx = (wx: number): number => Math.round(wx - camX);
 const sy = (wy: number): number => Math.round(wy - camY);
 function frei(wx: number, wy: number): boolean {
   if (wx < 30 || wy < 30 || wx > WELT_W - 30 || wy > WELT_H - 30) return false;
+  if (imFluss(wx, wy) && !aufBruecke(wx, wy)) return false;   // Fluss nur über die Brücke querbar
   for (const b of baeume) { if (b.fall) continue; if (Math.hypot(wx - b.x, wy - b.y) < (10 + b.skala * 12) * baumGroesse) return false; }   // Stammfuß-Radius ~ Baumgröße
   for (const f of felsen) { if (f.entfernt) continue; if (Math.hypot(wx - f.x, wy - f.y) < FELS_R[f.g] * (0.66 - f.stufe * 0.1)) return false; }   // Felsen solide (Radius schrumpft mit Abbau)
   return true;
@@ -775,6 +846,9 @@ function frame(now: number): void {
     ctx.restore();
   }
 
+  // 1b2) Fluss (fließendes Wasser) über den Weg - VOR dem See gezeichnet (See deckt die Mündung)
+  if (bereit) zeichneFluss(now, wd);
+
   // 1c) See: dunkles Wasser (Tiefengradient) + nasser Schlammsaum + Himmel-Schlieren + Regen-Ringe
   //     + Schilf/Seerosen am Ufer (brechen die Wasser-Land-Grenze) + Dunst über dem Wasser
   if (Math.abs(see.cx - camX - W / 2) < W / 2 + see.rx + 80 && Math.abs(see.cy - camY - H / 2) < H / 2 + see.ry + 80) {
@@ -869,14 +943,20 @@ function frame(now: number): void {
   //    keine getönte Silhouette (Fallout-Look).
   if (bereit) {
     const h0 = held();
-    interface Z { y: number; b: Baum | null; w: Wesen | null; f: Fels | null; bu: Busch | null; }
+    // Brücken-Deck (+ hinteres Geländer) liegt UNTER den Wesen; das vordere Geländer
+    // kommt als eigener Eintrag in die Tiefensortierung (Held läuft "zwischen" den Geländern).
+    const brSicht = bruecke.cx > camX - 300 && bruecke.cx < camX + W + 300 && bruecke.cy > camY - 300 && bruecke.cy < camY + H + 300;
+    if (brSicht) zeichneBrueckeDeck(now);
+    interface Z { y: number; b: Baum | null; w: Wesen | null; f: Fels | null; bu: Busch | null; nr?: boolean; }
     const liste: Z[] = [];
     for (const b of baeume) { if (b.x < camX - 360 || b.x > camX + W + 360 || b.y < camY - 600 || b.y > camY + H + 360) continue; liste.push({ y: b.y, b, w: null, f: null, bu: null }); }
     for (const w of wesen) liste.push({ y: w.y, b: null, w, f: null, bu: null });
     for (const f of felsen) { if (f.x < camX - 100 || f.x > camX + W + 100 || f.y < camY - 100 || f.y > camY + H + 100) continue; liste.push({ y: f.y, b: null, w: null, f, bu: null }); }
     for (const bu of buesche) { if (bu.x < camX - 200 || bu.x > camX + W + 200 || bu.y < camY - 250 || bu.y > camY + H + 200) continue; liste.push({ y: bu.y, b: null, w: null, f: null, bu }); }
+    if (brSicht) { const ns = bruecke.ny >= 0 ? 1 : -1; liste.push({ y: bruecke.cy + ns * bruecke.ny * bruecke.halbB, b: null, w: null, f: null, bu: null, nr: true }); }   // vorderes Geländer tiefensortiert
     liste.sort((a, c) => a.y - c.y);
     for (const z of liste) {
+      if (z.nr) { zeichneGelaender(bruecke.ny >= 0 ? 1 : -1, now); continue; }   // vorderes Brücken-Geländer
       if (z.f) { zeichneFels(z.f); continue; }
       if (z.bu) { const bu = z.bu, img = buschBilder[bu.typ], w = img.width * bu.skala, hh = img.height * bu.skala; kontaktSchatten(sx(bu.x), sy(bu.y), w * 0.45); const vd = bu.y > h0.y && Math.abs(bu.x - h0.x) < w * 0.3 && bu.y - h0.y < hh * 0.5; bu.fade += ((vd ? 1 : 0) - bu.fade) * Math.min(1, dt * 9); if (bu.fade > 0.01) ctx.globalAlpha = 1 - bu.fade * 0.5; ctx.drawImage(img, sx(bu.x) - w / 2, sy(bu.y) - hh * 0.7, w, hh); ctx.globalAlpha = 1; continue; }
       if (z.b) {
@@ -938,6 +1018,79 @@ function frame(now: number): void {
   ctx.fillText(`Holz ${holz} · Stein ${stein} · Erz ${erzVorrat.gold}/${erzVorrat.eisen}/${erzVorrat.kristall} (Au/Fe/Kr) · F: nächstes Objekt abbauen`, W - 16, 40); ctx.textAlign = 'left';
 
   requestAnimationFrame(frame);
+}
+
+// ---------- Fluss zeichnen: Wasser + scrollende Fließ-Strähnen + Stromschnellen + Ufer ----------
+function zeichneFluss(now: number, wd: number): void {
+  // grobe Sichtprüfung: ist überhaupt ein Stück Fluss im Bild?
+  let sicht = false;
+  for (const m of flussMitte) { if (m.x > camX - 80 && m.x < camX + W + 80 && m.y > camY - 80 && m.y < camY + H + 80) { sicht = true; break; } }
+  if (!sicht) return;
+  // Strähnen flussabwärts bewegen
+  for (const st of flussStreif) { st.s += st.spd * Math.min(0.05, 1 / 60); if (st.s > flussLen) st.s -= flussLen; }
+  ctx.save(); ctx.translate(-camX, -camY);
+  const ufer = (extra: number): void => {
+    ctx.beginPath();
+    for (let i = 0; i < flussMitte.length; i++) { const m = flussMitte[i], x = m.x + m.nx * (m.hw + extra), y = m.y + m.ny * (m.hw + extra); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    for (let i = flussMitte.length - 1; i >= 0; i--) { const m = flussMitte[i]; ctx.lineTo(m.x - m.nx * (m.hw + extra), m.y - m.ny * (m.hw + extra)); }
+    ctx.closePath();
+  };
+  ufer(9); ctx.fillStyle = 'rgba(24,20,13,0.5)'; ctx.fill();                                    // nasser Schlammsaum
+  ufer(0); ctx.save(); ctx.clip();
+  ctx.fillStyle = '#0c1820'; ctx.fillRect(camX, camY, W, H);                                     // Wasser-Grundfarbe
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';                                                 // tiefe, dunkle Mitte
+  ctx.strokeStyle = 'rgba(2,8,12,0.5)'; ctx.lineWidth = 30; ctx.beginPath();
+  for (let i = 0; i < flussMitte.length; i++) { const m = flussMitte[i]; i ? ctx.lineTo(m.x, m.y) : ctx.moveTo(m.x, m.y); } ctx.stroke();
+  for (const st of flussStreif) {                                                               // scrollende Fließ-Strähnen
+    const m = flussAt(st.s), cx = m.x + m.nx * st.off * m.hw, cy = m.y + m.ny * st.off * m.hw;
+    ctx.strokeStyle = `rgba(150,172,196,${st.a})`; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - m.ux * st.len, cy - m.uy * st.len); ctx.stroke();
+  }
+  ctx.restore();
+  ufer(0); ctx.strokeStyle = 'rgba(150,168,188,0.16)'; ctx.lineWidth = 2; ctx.stroke();          // helle Uferkante (Schaumlinie)
+  for (const stn of flussSteine) {                                                              // Steine + Schaum (Stromschnellen)
+    ctx.fillStyle = '#33333a'; ctx.beginPath(); ctx.ellipse(stn.x, stn.y, stn.r, stn.r * 0.7, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#52525a'; ctx.beginPath(); ctx.ellipse(stn.x - stn.r * 0.2, stn.y - stn.r * 0.3, stn.r * 0.55, stn.r * 0.4, 0, 0, 7); ctx.fill();
+    const m = stn.m;
+    for (let k = 0; k < 5; k++) { const t = now / 150 + k * 1.2, dd = stn.r * 0.4 + k * 3.4, lat = Math.sin(t) * stn.r * 0.5, fx = stn.x + m.ux * dd + m.nx * lat, fy = stn.y + m.uy * dd + m.ny * lat, a = (1 - k / 5) * 0.6; ctx.fillStyle = `rgba(226,234,240,${a})`; ctx.beginPath(); ctx.ellipse(fx, fy, 3 - k * 0.3, 2 - k * 0.2, 0, 0, 7); ctx.fill(); }
+  }
+  for (const s of flussSchilf) {                                                                // Schilf an den Ufern (sway wie am See)
+    const bend = wd * 4 * boeWelle(s.x, s.y, now); ctx.strokeStyle = '#3a4a24'; ctx.lineWidth = 1.4;
+    for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(s.x + k * 2.5, s.y); ctx.quadraticCurveTo(s.x + k * 2.5 + bend * 0.5, s.y - s.h * 0.6, s.x + k * 2.5 + bend, s.y - s.h); ctx.stroke(); }
+    ctx.fillStyle = '#5a3c22'; ctx.fillRect(s.x + bend - 1.2, s.y - s.h, 2.4, 7);
+  }
+  ctx.restore();
+}
+
+// Ein Brücken-Geländer (Längsseite): Pfosten + Handlauf + unterer Holm, in Schirmkoordinaten.
+function zeichneGelaender(sign: number, _now: number): void {
+  const b = bruecke, railH = 17, ex = b.cx + b.nx * sign * b.halbB, ey = b.cy + b.ny * sign * b.halbB;
+  const n = Math.max(4, Math.round(b.halbL * 2 / 28));
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#241a10'; ctx.lineWidth = 3.4;                                              // Pfosten
+  for (let k = 0; k <= n; k++) { const t = -b.halbL + b.halbL * 2 * (k / n), wx = ex + b.ux * t, wy = ey + b.uy * t; ctx.beginPath(); ctx.moveTo(sx(wx), sy(wy)); ctx.lineTo(sx(wx), sy(wy) - railH); ctx.stroke(); }
+  const holm = (hoehe: number, col: string, lw: number): void => { ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); for (let k = 0; k <= n; k++) { const t = -b.halbL + b.halbL * 2 * (k / n), wx = ex + b.ux * t, wy = ey + b.uy * t, px = sx(wx), py = sy(wy) - hoehe; k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke(); };
+  holm(railH * 0.5, 'rgba(40,30,18,0.8)', 2);                                                    // unterer Holm
+  holm(railH, '#3a2c18', 3.6);                                                                   // Handlauf
+}
+
+// Brücken-Deck: Pfeiler ins Wasser, Planken (quer zur Laufrichtung, uneben) + hinteres Geländer.
+function zeichneBrueckeDeck(now: number): void {
+  const b = bruecke, nearSign = b.ny >= 0 ? 1 : -1;
+  const nex = b.cx + b.nx * nearSign * b.halbB, ney = b.cy + b.ny * nearSign * b.halbB;
+  for (const t of [-b.halbL * 0.5, b.halbL * 0.5]) { const wx = nex + b.ux * t, wy = ney + b.uy * t; ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(sx(wx) - 4, sy(wy), 8, 18); ctx.fillStyle = '#1e150d'; ctx.fillRect(sx(wx) - 3, sy(wy) - 2, 6, 16); }   // Pfeiler
+  ctx.save(); ctx.translate(sx(b.cx), sy(b.cy)); ctx.rotate(Math.atan2(b.uy, b.ux));
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-b.halbL, -b.halbB + 6, b.halbL * 2, b.halbB * 2);   // Deck-Schatten ins Wasser
+  const plankW = 13, paletten = ['#5b4327', '#674e2f', '#503c23', '#614a2b', '#574025'];
+  for (let p = -b.halbL; p < b.halbL; p += plankW) {                                             // Planken quer zur Laufrichtung
+    const hs = Math.sin(p * 1.7) * 43758.5, r = hs - Math.floor(hs), wob = (r - 0.5) * 2;        // uneben: minimal versetzt
+    ctx.fillStyle = paletten[Math.floor(r * paletten.length)]; ctx.fillRect(p, -b.halbB + wob, plankW - 1.6, b.halbB * 2 - wob);   // 1.6px Spalt -> Fuge
+    ctx.strokeStyle = 'rgba(30,20,10,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(p + 2, -b.halbB + 4); ctx.lineTo(p + 2, b.halbB - 4); ctx.moveTo(p + plankW * 0.6, -b.halbB + 6); ctx.lineTo(p + plankW * 0.6, b.halbB - 6); ctx.stroke();   // Maserung
+    if (r < 0.3) { ctx.fillStyle = 'rgba(20,14,8,0.5)'; ctx.beginPath(); ctx.ellipse(p + plankW * 0.45, -b.halbB + r * b.halbB * 1.6, 1.6, 1.2, 0, 0, 7); ctx.fill(); }   // Astloch
+  }
+  ctx.fillStyle = '#3a2c18'; ctx.fillRect(-b.halbL, -b.halbB - 1, b.halbL * 2, 3); ctx.fillRect(-b.halbL, b.halbB - 2, b.halbL * 2, 3);   // Bordkanten (Geländerbasis)
+  ctx.restore();
+  zeichneGelaender(-nearSign, now);                                                             // hinteres Geländer (hinter den Wesen)
 }
 
 function zeichneFels(f: Fels): void {
