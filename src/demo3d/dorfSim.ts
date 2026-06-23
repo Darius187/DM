@@ -218,6 +218,7 @@ baueBergInhalt();
 let regenAn = true;
 let wetter = 0.5;                 // 0 klar .. 0.5 Regen .. 1 Sturm
 let wetterZiel = 0.5, wetterTimer = 6;
+let sturmFallTimer = 40 + Math.random() * 60;   // s bis zum nächsten möglichen Sturmbruch (global, selten)
 let wetness = 0;                  // 0..1 Bodennässe: Regen füllt schnell, Verdunsten langsam -> Pfützen-Steuerung
 // Gewitter (Stufe 4): harte Blitz-Aufhellung (Doppel-Flash) + Donner verzögert hinterher.
 // Logik: das Spiel zündet den Blitz, der Donner folgt nach 0.3..2 s (nah=laut, fern=leise/später).
@@ -467,6 +468,7 @@ const buschBilder: HTMLCanvasElement[] = [];
 const buesche: Busch[] = [];
 const krypta = { x: WELT_W * 0.74, y: WELT_H * 0.3, r: 520 };
 let bereit = false;
+let demoBaum: Baum | null = null;   // nur für die Reproduktions-Hooks (zeigFall/landeJetzt)
 
 // AXT-gefällter Stumpf (nicht Kettensäge): unregelmäßige/splittrige Schnittfläche,
 // Kerbschnitt + gesplitterter Bruch, Jahresringe; pro Variante leichte Form-Varianz.
@@ -841,6 +843,22 @@ async function init(): Promise<void> {
     zumBerg: (y = -40): void => { held().x = WELT_W * 0.5; held().y = y; },
     bergInfo: (): string => `NORD_Y=${NORD_Y} klippen=${bergKlippen.length} tannen=${bergBaeume.length} fels=${bergFelsen.length} niveau(mitte,-450)=${bergNiveau(WELT_W * 0.5, -450)} wall(mitte,klippe1)=${imBergWall(WELT_W * 0.5, bergKlippen[0].baseY)}`,
     screenOf: (x: number, y: number): { x: number; y: number } => ({ x: sx(x), y: sy(y) }),
+    zeigFall: (frac = 0.6): { x: number; y: number } => { demoBaum = baeume.find((t) => !t.fall && !t.weg && !t.blight && t.skala > 0.8) || baeume.find((t) => !t.fall && !t.weg) || null; if (!demoBaum) return { x: 0, y: 0 }; starteFall(demoBaum, 1); demoBaum.fall!.gelandet = false; demoBaum.fall!.winkel = FALL_ZIEL * frac; demoBaum.fall!.winkelV = 0; held().x = demoBaum.x - 30; held().y = demoBaum.y + 220; return { x: demoBaum.x, y: demoBaum.y }; },
+    landeJetzt: (): void => { if (demoBaum && demoBaum.fall) { demoBaum.fall.gelandet = true; demoBaum.fall.winkel = FALL_ZIEL; demoBaum.fall.winkelV = 0; } },
+    malVergleich: (): void => {
+      const sk = 0.62, art = arten[0], li = art.liege, w = li.width * sk, h = li.height * sk;
+      ctx.fillStyle = '#c8d2da'; ctx.fillRect(0, 0, W, 720);
+      const by = 360;
+      ctx.strokeStyle = 'rgba(40,60,40,0.5)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, by); ctx.lineTo(W, by); ctx.stroke();
+      const stufen = [0, 0.33, 0.66, 1];   // Fallfortschritt 0=aufrecht .. 1=flach
+      for (let i = 0; i < stufen.length; i++) {
+        const prog = stufen[i], bx = 150 + i * 260, kipp = -(FALL_ZIEL * (1 - prog)), breite = 0.9 + 0.1 * prog;
+        ctx.fillStyle = '#b06010'; ctx.beginPath(); ctx.arc(bx, by, 6, 0, 7); ctx.fill();
+        ctx.save(); ctx.translate(bx, by); ctx.scale(breite, 1); ctx.rotate(kipp); ctx.drawImage(li, -w * 0.2, -h * 0.52, w, h); ctx.restore();
+        ctx.fillStyle = '#333'; ctx.font = '13px Georgia'; ctx.fillText('prog ' + prog, bx - 24, 700);
+      }
+      ctx.fillStyle = '#006000'; ctx.font = '15px Georgia'; ctx.fillText('Fall mit Liege-Sprite: aufrecht -> flach (Stumpf=oranger Punkt, Boden=Linie)', 30, 60);
+    },
     malLiege: (): void => { ctx.fillStyle = '#33424e'; ctx.fillRect(0, 0, W, 420); for (let i = 0; i < arten.length; i++) { const st = arten[i].wald, li = arten[i].liege, c = i * 156 + 6; ctx.drawImage(st, c, 10, 150, 150); ctx.drawImage(li, c, 170, 150, 150); ctx.strokeStyle = '#8fbf7a'; ctx.strokeRect(c, 10, 150, 150); ctx.strokeRect(c, 170, 150, 150); } ctx.fillStyle = '#e8dcc0'; ctx.font = '13px Georgia'; ctx.fillText('oben: stehend   unten: gefällt (Liege-Sprite)', 8, 340); },
     zeigLiege: (blight = false): { x: number; y: number } => { const b = baeume.find((t) => !t.fall && !t.weg && t.blight === blight && t.skala > 0.7) || baeume.find((t) => !t.fall && !t.weg && t.blight === blight); if (!b) return { x: 0, y: 0 }; starteFall(b, 1); b.fall!.gelandet = true; b.fall!.winkel = FALL_ZIEL; b.fall!.winkelV = 0; held().x = b.x - 120; held().y = b.y + 50; return { x: b.x, y: b.y }; },
     zumMoor: (): { x: number; y: number; schilf: number; nebel: number } => { let bx = WELT_W / 2, by = WELT_H / 2, bd = -1; for (let y = 120; y < WELT_H - 120; y += 50) for (let x = 120; x < WELT_W - 120; x += 50) { if (aufPfad(x, y) || nahSee(x, y) || nahFluss(x, y) || biomAt(x, y) !== 'moor') continue; const d = moorNoise(x, y); if (d > bd) { bd = d; bx = x; by = y; } } held().x = bx; held().y = by; return { x: bx, y: by, schilf: moorSchilf.length, nebel: moorNebel.length }; },
@@ -872,17 +890,22 @@ function zeichneImWind(bild: HTMLCanvasElement, bx: number, by: number, w: numbe
     ctx.drawImage(bild, 0, i * sH, bild.width, sH, bx - w / 2 + off, destY, w, sliceH + 0.6);
   }
 }
-function zeichneGefällt(steh: HTMLCanvasElement, liege: HTMLCanvasElement, bx: number, by: number, sk: number, f: Fall): void {
-  if (!f.gelandet) {                                                  // FALLEND: Steh-Sprite rotieren (natürliche Fallbewegung)
-    const w = steh.width * sk, h = steh.height * sk;
-    ctx.save(); ctx.translate(bx, by); ctx.rotate(f.winkel); ctx.scale(1, 1 - 0.16 * Math.abs(Math.sin(f.winkel)));
-    ctx.drawImage(steh, -w / 2, -h * 0.64, w, h); ctx.restore();
-  } else {                                                            // GELEGT: echtes Liege-Sprite, Stammende am Stumpf, in Fallrichtung
-    const w = liege.width * sk, h = liege.height * sk, squash = 1 - Math.min(0.12, Math.abs(f.winkelV) * 0.05);   // minimaler Aufprall-Stauch
-    ctx.save(); ctx.translate(bx, by); ctx.scale(f.richtung, squash);   // richtung=-1 spiegelt für Linksfall
-    ctx.drawImage(liege, -w * 0.2, -h * 0.52, w, h);                  // Anker: Stammende nahe am Stumpf
-    ctx.restore();
-  }
+// Der Baum fällt, indem das LIEGE-Sprite um den Stammfuß von aufrecht (-FALL_ZIEL)
+// nach flach (0) kippt - dasselbe Sprite über den ganzen Fall, Endlage korrekt flach
+// am Boden. Kein rotiertes Steh-Sprite mehr (das wirkte schwebend/schräg - "nein").
+function zeichneGefällt(_steh: HTMLCanvasElement, liege: HTMLCanvasElement, bx: number, by: number, sk: number, f: Fall): void {
+  const w = liege.width * sk, h = liege.height * sk;
+  const prog = Math.min(1, Math.abs(f.winkel) / FALL_ZIEL);          // 0 = aufrecht .. 1 = flach
+  const kipp = -(FALL_ZIEL - Math.abs(f.winkel));                    // -FALL_ZIEL (aufrecht) -> 0 (flach)
+  const squash = f.gelandet ? 1 - Math.min(0.1, Math.abs(f.winkelV) * 0.05) : 1;   // minimaler Aufprall-Stauch
+  // beim Aufstehen wirkt das Liege-Sprite hochkant etwas schmaler -> leicht stauchen, je aufrechter
+  const breite = 0.9 + 0.1 * prog;
+  ctx.save();
+  ctx.translate(bx, by);
+  ctx.scale(f.richtung * breite, squash);                           // richtung=-1 spiegelt für Linksfall
+  ctx.rotate(kipp);
+  ctx.drawImage(liege, -w * 0.2, -h * 0.52, w, h);                  // Stammfuß am Stumpf -> Drehpunkt = Stammende
+  ctx.restore();
 }
 
 // ---------- Kamera ----------
@@ -979,7 +1002,20 @@ function frame(now: number): void {
         continue;
       }
       if (!b.blight && Math.abs(wd) > 0.7 && Math.random() < dt * 1.6 * b.skala) blattFall(b.x + (Math.random() - 0.5) * 60 * b.skala, b.y - 90 * b.skala, b.blattFarbe);
-      if (!b.weg && wetter > 0.72 && wd > 1.35 && Math.random() < dt * 0.014 * b.skala) starteFall(b, 1);   // Sturm knickt ihn um
+    }
+    // SELTENER STURMBRUCH (Autorwunsch "nicht reihenweise"): GLOBALER Timer statt pro-Baum-Wurf.
+    // Nur bei kräftigem Sturm fällt frühestens alle ~40-100 s EIN einzelner anfälliger Baum
+    // (morsche/tote bevorzugt, große etwas eher) - in zufällige Richtung.
+    if (wetter > 0.8 && wd > 1.4) {
+      sturmFallTimer -= dt;
+      if (sturmFallTimer <= 0) {
+        sturmFallTimer = 40 + Math.random() * 60;
+        let best: Baum | null = null, bestG = -1;
+        for (const b of baeume) { if (b.fall || b.weg || b.skala < 0.45) continue; const g = (b.blight ? 2.4 : 1) * (0.6 + b.skala) * Math.random(); if (g > bestG) { bestG = g; best = b; } }
+        if (best) starteFall(best, Math.random() < 0.5 ? 1 : -1);
+      }
+    } else if (wetter < 0.7) {
+      sturmFallTimer = Math.max(sturmFallTimer, 25 + Math.random() * 35);   // außerhalb des Sturms Vorlauf sichern
     }
   }
   // Partikel
