@@ -392,6 +392,12 @@ const waldDetailBilder = macheWaldDetailBilder();
 interface WaldDetail { x: number; y: number; typ: number; sk: number; }
 const waldDetail: WaldDetail[] = [];
 
+// ---------- Moor-Feinschliff: Schilf/Rohrkolben + bodennaher Nebel über dem Moorboden ----------
+interface MoorSchilf { x: number; y: number; ph: number; h: number; tot: boolean; }
+const moorSchilf: MoorSchilf[] = [];
+interface MoorNebel { x: number; y: number; r: number; ph: number; }
+const moorNebel: MoorNebel[] = [];
+
 // ---------- Bäume (ez-tree -> Backofen -> Sprite), zwei Stimmungen ----------
 interface Stimmung { dichte: number; blatt: number; rinde: number; groesse: number; sat: number; hell: number; }
 const WALD: Stimmung = { dichte: 1.0, blatt: 0x5d7a48, rinde: 0x5c5446, groesse: 1.0, sat: 76, hell: 76 };
@@ -796,6 +802,17 @@ async function init(): Promise<void> {
   }
   // Kies-Cluster zusätzlich an den Felsen (geclustert + geerdet) - kleine Steine wirken nicht mehr aufgesetzt
   for (const f of felsen) if (Math.random() < 0.7) { for (let k = 0, n = 1 + Math.floor(Math.random() * 3); k < n; k++) { const x = f.x + (Math.random() - 0.5) * 74, y = f.y + FELS_R[f.g] * 0.4 + (Math.random() - 0.5) * 30; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y)) continue; waldDetail.push({ x, y, typ: 3, sk: 0.7 + Math.random() * 0.7 }); } }
+  // MOOR-SCHILF: Rohrkolben/Schilf in CLUSTERN über dem Moorboden (tlw. totes/braunes Schilf)
+  for (let i = 0; i < 1100; i++) {
+    const x = Math.random() * WELT_W, y = Math.random() * WELT_H;
+    if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y) || biomAt(x, y) !== 'moor') continue;
+    for (let k = 0, n = 2 + Math.floor(Math.random() * 4); k < n; k++) moorSchilf.push({ x: x + (Math.random() - 0.5) * 34, y: y + (Math.random() - 0.5) * 22, ph: Math.random() * 7, h: 18 + Math.random() * 20, tot: Math.random() < 0.4 });
+  }
+  // MOOR-NEBEL: bodennahe Nebelschwaden, an Moor-Zentren verankert (Raster), driften leicht
+  for (let y = 80; y < WELT_H - 80; y += 95) for (let x = 80; x < WELT_W - 80; x += 95) {
+    if (biomAt(x, y) !== 'moor' || moorNoise(x, y) < 0.68) continue;
+    if (Math.random() < 0.78) moorNebel.push({ x: x + (Math.random() - 0.5) * 80, y: y + (Math.random() - 0.5) * 80, r: 120 + Math.random() * 140, ph: Math.random() * 7 });
+  }
   bereit = true;
   (window as unknown as { __dorfBereit?: boolean; __demo?: unknown }).__dorfBereit = true;
   (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; }, nass: (v: number) => { wetness = v; for (const p of pfuetzen) p.current = wetness > p.schwelle ? 1 : 0; },
@@ -806,6 +823,7 @@ async function init(): Promise<void> {
     dichteBei: (x: number, y: number): number => dichteNoise(x, y),
     zumBerg: (y = -40): void => { held().x = WELT_W * 0.5; held().y = y; },
     bergInfo: (): string => `NORD_Y=${NORD_Y} klippen=${bergKlippen.length} tannen=${bergBaeume.length} fels=${bergFelsen.length} niveau(mitte,-450)=${bergNiveau(WELT_W * 0.5, -450)} wall(mitte,klippe1)=${imBergWall(WELT_W * 0.5, bergKlippen[0].baseY)}`,
+    zumMoor: (): { x: number; y: number; schilf: number; nebel: number } => { let bx = WELT_W / 2, by = WELT_H / 2, bd = -1; for (let y = 120; y < WELT_H - 120; y += 50) for (let x = 120; x < WELT_W - 120; x += 50) { if (aufPfad(x, y) || nahSee(x, y) || nahFluss(x, y) || biomAt(x, y) !== 'moor') continue; const d = moorNoise(x, y); if (d > bd) { bd = d; bx = x; by = y; } } held().x = bx; held().y = by; return { x: bx, y: by, schilf: moorSchilf.length, nebel: moorNebel.length }; },
     dichterWald: (): { x: number; y: number } => { let bx = WELT_W / 2, by = WELT_H / 2, bd = -1; for (let y = 120; y < WELT_H - 120; y += 60) for (let x = 120; x < WELT_W - 120; x += 60) { if (aufPfad(x, y) || nahSee(x, y) || nahFluss(x, y)) continue; if (biomAt(x, y) !== 'wald') continue; const d = dichteNoise(x, y); if (d > bd) { bd = d; bx = x; by = y; } } return { x: bx, y: by }; },
     zurBruecke: (vorher = 80): void => { held().x = bruecke.cx - bruecke.ux * vorher; held().y = bruecke.cy - bruecke.uy * vorher; },
     brueckeInfo: (): string => `cx=${Math.round(bruecke.cx)} cy=${Math.round(bruecke.cy)} halbL=${Math.round(bruecke.halbL)} halbB=${Math.round(bruecke.halbB)} aufBruecke(C)=${aufBruecke(bruecke.cx, bruecke.cy)}`,
@@ -1066,6 +1084,24 @@ function frame(now: number): void {
     if (pf.r > bewuchsDichte || pf.x < camX - 20 || pf.x > camX + W + 20 || pf.y < camY - 20 || pf.y > camY + H + 20) continue;
     const bb = bewuchsBilder[pf.typ], sway = wd * 0.14 * boeWelle(pf.x, pf.y, now) + Math.sin(now / 300 + pf.ph) * 0.03;
     ctx.save(); ctx.translate(sx(pf.x), sy(pf.y)); ctx.rotate(sway); ctx.drawImage(bb, -bb.width / 2, -bb.height + 2); ctx.restore();
+  }
+  // EBENE 2b: Moor-Schilf/Rohrkolben (sway im Wind), tlw. totes braunes Schilf
+  if (bereit) for (const s of moorSchilf) {
+    if (s.x < camX - 20 || s.x > camX + W + 20 || s.y < camY - 30 || s.y > camY + H + 20) continue;
+    const bend = wd * 5 * boeWelle(s.x, s.y, now) + Math.sin(now / 230 + s.ph) * 1.5, gx = sx(s.x), gy = sy(s.y);
+    ctx.strokeStyle = s.tot ? '#6a5a32' : '#3f5226'; ctx.lineWidth = 1.4;
+    for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(gx + k * 2.4, gy); ctx.quadraticCurveTo(gx + k * 2.4 + bend * 0.5, gy - s.h * 0.6, gx + k * 2.4 + bend, gy - s.h); ctx.stroke(); }
+    ctx.fillStyle = s.tot ? '#7a5a30' : '#5a3c22'; ctx.fillRect(gx + bend - 1.3, gy - s.h, 2.6, 8);   // Rohrkolben-Kolben
+  }
+
+  // 4c) Moor-Nebel: bodennahe Schwaden über dem Moorboden (driften), Dinge ragen heraus
+  if (bereit) for (const n of moorNebel) {
+    if (n.x < camX - n.r || n.x > camX + W + n.r || n.y < camY - n.r || n.y > camY + H + n.r) continue;
+    const dx = Math.sin(now / 2600 + n.ph) * 22, dy = Math.cos(now / 3400 + n.ph * 1.3) * 10;
+    const a = 0.24 + 0.08 * Math.sin(now / 1900 + n.ph) + (regenAn ? wetter * 0.12 : 0);   // Moor immer dunstig, im Regen mehr
+    const fx = sx(n.x) + dx, fy = sy(n.y) + dy, fg = ctx.createRadialGradient(fx, fy, n.r * 0.1, fx, fy, n.r);
+    fg.addColorStop(0, `rgba(180,192,200,${Math.max(0, a)})`); fg.addColorStop(0.6, `rgba(178,190,198,${Math.max(0, a * 0.5)})`); fg.addColorStop(1, 'rgba(176,188,196,0)');
+    ctx.fillStyle = fg; ctx.beginPath(); ctx.ellipse(fx, fy, n.r, n.r * 0.6, 0, 0, 7); ctx.fill();
   }
 
   // 4b) Schatten der fallenden Krone (wandert mit) + Stümpfe unter gefällten Bäumen

@@ -545,3 +545,8 @@
   * INHALT: schnee-bestäubte Bergtannen (macheTanne, 3 Schneestufen, tiefensortiert mit dem Helden) v.a. unter der Baumgrenze; Geröll/Felsbrocken (oben verschneit). Über lvl>=3 kaum Bäume (Baumgrenze).
   * SCHNEE-WETTER: driftende Flocken, nur wenn der Berg im Bild ist (camY<0), nach oben dichter. Eigener Schirmkoordinaten-Pool.
   * Verifiziert: Gipfel = verschneiter Alpenhang mit Stufen/Klippen/Pässen, Schneetannen, Geröll, Schneefall; Fuß = natürlicher Übergang Wald->Vorberg. tsc grün.
+
+- Runde 61 (Moor-Feinschliff: Schilf + Nebel auf dem Moorboden - eigenständig aus der Warteschlange):
+  * MOOR-SCHILF: Rohrkolben/Schilf in Clustern (2-5) über dem Moorboden (biomAt==='moor'), ~40% totes/braunes Schilf; sway im Wind wie das See/Fluss-Schilf. Gezeichnet in der Vegetations-Ebene.
+  * MOOR-NEBEL: bodennahe Nebelschwaden, an Moor-Zentren verankert (Raster 95px, wo moorNoise>0.68), driften leicht (sin/cos über die Zeit), Alpha pulsiert (Basis 0.24, im Regen mehr). Gezeichnet NACH der Vegetation, VOR den Wesen -> tote Bäume/Schilf/Held ragen aus dem Dunst heraus. ~33 Schwaden.
+  * Verifiziert: Moor = tote Bäume + Schilf, die aus driftendem Bodennebel ragen - sumpfige, düstere Stimmung. tsc grün.
