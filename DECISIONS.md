@@ -556,3 +556,8 @@
   * BUGFIX beim Backen: backeLiege muss die Skalierung VOR dem Messen zurücksetzen (obj.scale=1), sonst misst Box3 die schon skalierte Größe -> doppelte Skalierung -> Baum 100 Einheiten -> vom Backofen (far=60) geclippt -> LEERES Sprite. (Per Sprite-Atlas gefunden und verifiziert.)
   * zeichneGefällt: FALLEND weiter das Steh-Sprite rotieren (natürliche Fallbewegung); GELEGT das Liege-Sprite, Stammende am Stumpf verankert, per scale(richtung,..) für Links-/Rechtsfall gespiegelt, minimaler Aufprall-Stauch.
   * Verifiziert: Sprite-Atlas zeigt für alle 8 Arten korrekte Liege-Sprites (Stamm + gestreckte Krone, Kiefer besonders deutlich). tsc grün.
+
+- Runde 61 (i18n-Vorbereitung - eigenständig, letzter Punkt der Warteschlange):
+  * NEUE Sprachdatei src/data/i18n.ts: zentrale Schlüssel->Text-Tabelle (Deutsch als Referenzsprache) + t(key, vars?) mit {platzhalter}-Ersetzung + setLocale/getLocale. BEWUSST ohne Bibliothek (Autorwunsch "noch keine Lib") - Struktur erlaubt später weitere Sprachen über EINE zusätzliche Tabelle. Spielertexte bleiben Deutsch (CLAUDE.md).
+  * Dorf-Demo umgestellt: alle sichtbaren Strings laufen über t() - Canvas-HUD (Wetter/Nässe/Vorrat mit Platzhaltern), Wetterstufen-Namen, Lade-Text; HTML-Texte (Titel, Beschreibung, Regler-Labels) werden beim Start aus t() gesetzt (dorf.html hat dafür ids/spans). Keine fest verdrahteten Strings mehr im Code/Markup.
+  * Muster für das echte Spiel vorbereitet: dort später texte.ts/dialoge.ts schrittweise auf t() umstellen. Verifiziert: alle Texte erscheinen korrekt aus der Sprachdatei. tsc grün.

@@ -16,6 +16,7 @@ import { Tree } from '@dgreenheck/ez-tree';
 import { macheBackofen } from './propBackofen';
 import { drawHeld, HELD_FELD } from '../gfx/heldArt';
 import type { HeldTier } from '../data/helden';
+import { t } from '../data/i18n';
 
 const view = document.getElementById('view') as HTMLCanvasElement;
 const ctx = view.getContext('2d')!;
@@ -225,7 +226,7 @@ const donnerQueue: Array<{ t: number; laut: number }> = [];
 // AUDIO-PLATZHALTER: hier kommt später das Donner-Sample rein (3-5 Varianten, je Blitz zufällig).
 // Stufe-2/3-Ambience (loopbarer Regen/Sturm) wird analog über setzeWetterSound(stufe) angehängt.
 function spieleDonner(_laut: number): void { /* TODO Audio: new Audio(donnerSample[zufall]).play() mit Lautstärke _laut */ }
-const WETTER_NAME = (): string => wetter < 0.15 ? 'klar' : wetter < 0.45 ? 'Nieselregen' : wetter < 0.75 ? 'Regen' : wetter < 0.9 ? 'Unwetter' : 'Gewitter';
+const WETTER_NAME = (): string => t(wetter < 0.15 ? 'wetter.klar' : wetter < 0.45 ? 'wetter.niesel' : wetter < 0.75 ? 'wetter.regen' : wetter < 0.9 ? 'wetter.unwetter' : 'wetter.gewitter');
 function wind(now: number): number {                       // Stärke steigt mit dem Wetter
   const t = now / 1000;
   const grund = (Math.sin(t * 0.27) * 0.6 + Math.sin(t * 0.13 + 1) * 0.3) * (0.25 + wetter * 0.5);   // sanftes Hin und Her bei wenig Wind
@@ -601,6 +602,10 @@ let pausiert = false;   // Screenshot-Hilfe: friert die Schleife ein (Software-W
 { const reg = document.getElementById('wegbreite') as HTMLInputElement | null, val = document.getElementById('wegbreiteVal'); if (reg) reg.addEventListener('input', () => { pfadBreiteFaktor = parseFloat(reg.value); if (val) val.textContent = `${pfadBreiteFaktor.toFixed(2)}×`; }); }
 { const reg = document.getElementById('falltempo') as HTMLInputElement | null, val = document.getElementById('falltempoVal'); if (reg) reg.addEventListener('input', () => { const v = parseFloat(reg.value); fallG = 5.2 * v; if (val) val.textContent = `${v.toFixed(2)}×`; }); }
 { const reg = document.getElementById('bewuchs') as HTMLInputElement | null, val = document.getElementById('bewuchsVal'); if (reg) reg.addEventListener('input', () => { bewuchsDichte = parseFloat(reg.value); if (val) val.textContent = `${bewuchsDichte.toFixed(2)}×`; }); }
+// i18n: alle sichtbaren HTML-Texte aus der Sprachdatei setzen (statt im Markup fest verdrahtet)
+{ const setTxt = (id: string, key: string): void => { const e = document.getElementById(id); if (e) e.textContent = t(key); };
+  setTxt('titel', 'dorf.titel'); setTxt('beschreibung', 'dorf.hud');
+  setTxt('lblGroesse', 'regler.baumgroesse'); setTxt('lblWegbreite', 'regler.wegbreite'); setTxt('lblFalltempo', 'regler.falltempo'); setTxt('lblBewuchs', 'regler.bewuchs'); }
 
 function starteFall(b: Baum, ri: number): void {
   b.fall = { winkel: 0.05 * ri, winkelV: 0.3 * ri, gelandet: false, richtung: ri,
@@ -1171,7 +1176,7 @@ function frame(now: number): void {
     // 5a) Ziel-Highlight: dezenter pulsierender Ring am anvisierten Objekt (was F gerade treffen würde)
     const z = zielObjekt();
     if (z) { const px = sx(z.x), py = sy(z.y), r = z.typ === 'fels' ? FELS_R[z.fels!.g] + 4 : 24, pulse = 0.55 + 0.3 * Math.sin(now / 220); ctx.strokeStyle = `rgba(232,238,176,${0.5 * pulse})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(px, py + 2, r, r * 0.42, 0, 0, 7); ctx.stroke(); }
-  } else { ctx.fillStyle = '#6a7a55'; ctx.font = '16px Georgia'; ctx.fillText('Dorf & Wald werden gebacken …', 24, H - 28); }
+  } else { ctx.fillStyle = '#6a7a55'; ctx.font = '16px Georgia'; ctx.fillText(t('dorf.laden'), 24, H - 28); }
 
   // 5b) Aufschlag-Krönchen auf dem Boden (zweiter Effekt - wie auf den Kacheln, jetzt auf dem Gras)
   for (const r of ringe) { if (r.pf) continue; const f = r.t / r.leben, rad = 1 + r.rmax * f; ctx.strokeStyle = `rgba(200,214,230,${(1 - f) * 0.5})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(sx(r.x), sy(r.y), rad, Math.PI, Math.PI * 2); ctx.stroke(); }
@@ -1224,8 +1229,8 @@ function frame(now: number): void {
   // 8a) BLITZ: harte, kurze Aufhellung der ganzen Szene (Doppel-Flash, kein weiches Abblenden)
   if (blitz > 0.01) { ctx.fillStyle = `rgba(222,230,248,${blitz * 0.55})`; ctx.fillRect(0, 0, W, H); }
   ctx.fillStyle = 'rgba(230,220,190,0.85)'; ctx.font = '13px Georgia'; ctx.textAlign = 'right';
-  ctx.fillText(`Wetter: ${WETTER_NAME()}   ·   Nässe ${Math.round(wetness * 100)}%   [1 2 3 4]`, W - 16, 22);
-  ctx.fillText(`Holz ${holz} · Stein ${stein} · Erz ${erzVorrat.gold}/${erzVorrat.eisen}/${erzVorrat.kristall} (Au/Fe/Kr) · F: nächstes Objekt abbauen`, W - 16, 40); ctx.textAlign = 'left';
+  ctx.fillText(t('hud.wetter', { wetter: WETTER_NAME(), nass: Math.round(wetness * 100) }), W - 16, 22);
+  ctx.fillText(t('hud.vorrat', { holz, stein, gold: erzVorrat.gold, eisen: erzVorrat.eisen, kristall: erzVorrat.kristall }), W - 16, 40); ctx.textAlign = 'left';
 
   requestAnimationFrame(frame);
 }
