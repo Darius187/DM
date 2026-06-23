@@ -187,11 +187,16 @@ function macheTanne(schnee: number): HTMLCanvasElement {
     const yTop = 6 + s * 13, yBot = yTop + 22, hw = 7 + s * 5.5;
     g.fillStyle = ['#23341f', '#1f2e1c', '#26381f', '#1c2a18'][s % 4];
     g.beginPath(); g.moveTo(cx, yTop); g.lineTo(cx - hw, yBot); g.lineTo(cx + hw, yBot); g.closePath(); g.fill();
-    if (schnee > 0) { g.fillStyle = `rgba(236,242,248,${0.7 * schnee})`; g.beginPath(); g.moveTo(cx, yTop + 1); g.lineTo(cx - hw * 0.5, yTop + 9); g.lineTo(cx + hw * 0.5, yTop + 9); g.closePath(); g.fill(); g.fillStyle = `rgba(236,242,248,${0.5 * schnee})`; g.fillRect(cx - hw, yBot - 3, hw * 2, 3); }   // Schnee auf den Zweigen
+    if (schnee > 0) {
+      g.fillStyle = `rgba(238,244,250,${Math.min(1, 0.9 * schnee)})`;   // große Schnee-Kappe auf der Krone
+      g.beginPath(); g.moveTo(cx, yTop); g.lineTo(cx - hw * 0.62, yTop + 12); g.lineTo(cx + hw * 0.62, yTop + 12); g.closePath(); g.fill();
+      g.fillStyle = `rgba(230,238,248,${0.62 * schnee})`;               // Schnee auf den Astspitzen (untere Astkante)
+      g.beginPath(); g.moveTo(cx - hw, yBot); g.lineTo(cx - hw * 0.5, yBot - 5); g.lineTo(cx, yBot - 2); g.lineTo(cx + hw * 0.5, yBot - 5); g.lineTo(cx + hw, yBot); g.closePath(); g.fill();
+    }
   }
   return c;
 }
-const tanneBilder = [macheTanne(0), macheTanne(0.5), macheTanne(1)];
+const tanneBilder = [macheTanne(0.4), macheTanne(0.7), macheTanne(1)];   // selbst die untersten Bergtannen leicht überzuckert (kalter Berg)
 interface BergBaum { x: number; y: number; typ: number; skala: number; }
 const bergBaeume: BergBaum[] = [];
 interface BergFels { x: number; y: number; r: number; schnee: number; }
@@ -1270,9 +1275,11 @@ function frame(now: number): void {
   for (const p of partikel) { ctx.globalAlpha = Math.max(0, 1 - p.t / p.leben); ctx.fillStyle = p.farbe; ctx.fillRect(sx(p.x), sy(p.y), p.gr, p.gr); }
   ctx.globalAlpha = 1;
 
-  // 7) Regen-Streifen (über allem), Dichte/Neigung/Tempo nach Wetter
-  if (regenAn && wetter > 0.1) {
-    const neig = 0.10 + wd * 0.12, sicht = Math.min(1, wetter / 0.5), aMul = 0.4 + wetter * 0.9, tempo = 0.8 + wetter * 0.7;
+  // 7) Regen-Streifen (über allem), Dichte/Neigung/Tempo nach Wetter.
+  //    Am Berg (camY<0) geht Regen in Schnee über -> Regen ausblenden, je höher desto weniger.
+  const bergAnteil = Math.max(0, Math.min(1, -camY / (H * 0.5)));
+  if (regenAn && wetter > 0.1 && bergAnteil < 0.98) {
+    const neig = 0.10 + wd * 0.12, sicht = Math.min(1, wetter / 0.5) * (1 - bergAnteil), aMul = (0.4 + wetter * 0.9) * (1 - bergAnteil), tempo = 0.8 + wetter * 0.7;
     ctx.lineCap = 'round';
     for (let di = 0; di < drops.length; di++) {
       if (di > drops.length * sicht) break;                        // weniger Tropfen bei leichtem Regen
@@ -1326,21 +1333,42 @@ function zeichneBerg(_now: number): void {
   ctx.save(); ctx.translate(-camX, -camY);
   const x0 = camX - 40, x1 = camX + W + 40, step = 22;
   const bandCol = ['#34402c', '#4a4a40', '#6b6a64', '#aeb4ba', '#e9eef4'];   // Fuß(Gras/Fels) -> Geröll -> Schnee
-  const faceCol = ['#222a1c', '#2e2e28', '#42423c', '#6a6e74', '#9fb0c0'];   // Klippen-Wandfarbe
-  for (let lvl = 0; lvl < BERG_NIV; lvl++) {                       // Fuß -> Gipfel: höhere Stufen überdecken die Klippe der tieferen
+  const faceCol = ['#1c241a', '#262620', '#3a3a34', '#5e636a', '#8a9aaa'];   // Klippen-Wandfläche (dunkler = Schattenseite)
+  const rimCol = ['rgba(120,138,96,0.55)', 'rgba(140,142,128,0.5)', 'rgba(170,174,170,0.55)', 'rgba(236,240,246,0.7)', 'rgba(255,255,255,0.8)'];   // belichtete Plateau-Oberkante
+  const kante = (k: BergKlippe, off: number): void => { ctx.beginPath(); for (let x = x0; x <= x1; x += step) { const y = klippeY(k, x) + off; x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } };
+  const band = (k: BergKlippe, von: number, bis: number): void => { ctx.beginPath(); for (let x = x0; x <= x1; x += step) { const y = klippeY(k, x) + von; x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } for (let x = x1; x >= x0; x -= step) ctx.lineTo(x, klippeY(k, x) + bis); ctx.closePath(); };
+  for (let lvl = 0; lvl < BERG_NIV; lvl++) {                       // Fuß -> Gipfel: höhere Stufen "stehen" über der tieferen
     const suedK = lvl === 0 ? null : bergKlippen[lvl - 1], nordK = lvl < bergKlippen.length ? bergKlippen[lvl] : null;
+    // 1) Plateau-Fläche (nördlich der eigenen Süd-Kante bis zur nächsten Kante)
     ctx.beginPath();
     for (let x = x0; x <= x1; x += step) { const y = nordK ? klippeY(nordK, x) : NORD_Y - 80; x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
     for (let x = x1; x >= x0; x -= step) { const y = suedK ? klippeY(suedK, x) : 0; ctx.lineTo(x, y); }
     ctx.closePath(); ctx.fillStyle = bandCol[lvl]; ctx.fill();
-    if (lvl >= 3) { for (let i = 0; i < 60; i++) { const hx = x0 + ((Math.sin(i * 12.9 + lvl) * 43758.5) % 1 + 1) % 1 * (x1 - x0); const ky = nordK ? klippeY(nordK, hx) : NORD_Y - 40; const sy2 = ky + (((Math.sin(i * 7.7) * 43758.5) % 1 + 1) % 1) * (suedK ? klippeY(suedK, hx) - ky : 80); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(hx, sy2, 2, 2); } }   // Schnee-Glitzer
-    if (suedK) {                                                  // Klippen-WAND an der Süd-Kante (die Stufe "steht" über der tieferen)
-      ctx.beginPath();
-      for (let x = x0; x <= x1; x += step) { const y = klippeY(suedK, x); x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
-      for (let x = x1; x >= x0; x -= step) ctx.lineTo(x, klippeY(suedK, x) + 16);
-      ctx.closePath(); ctx.fillStyle = faceCol[lvl]; ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 2; ctx.beginPath(); for (let x = x0; x <= x1; x += step) { const y = klippeY(suedK, x) + 16; x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } ctx.stroke();
-      for (const p of suedK.pass) { ctx.fillStyle = bandCol[lvl - 1]; ctx.fillRect(p.x - p.w / 2, klippeY(suedK, p.x) - 2, p.w, 20); ctx.strokeStyle = 'rgba(20,16,10,0.4)'; ctx.lineWidth = 1.5; ctx.strokeRect(p.x - p.w / 2, klippeY(suedK, p.x) - 2, p.w, 20); }   // begehbarer Pass
+    if (lvl >= 3) for (let i = 0; i < 70; i++) { const hr = ((Math.sin(i * 12.9 + lvl * 7) * 43758.5) % 1 + 1) % 1, vr = ((Math.sin(i * 7.7 + lvl) * 43758.5) % 1 + 1) % 1; const hx = x0 + hr * (x1 - x0), ky = nordK ? klippeY(nordK, hx) : NORD_Y - 40, sspan = suedK ? klippeY(suedK, hx) - ky : 80; ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(hx, ky + vr * sspan, 2, 2); }   // Schnee-Glitzer
+    // 2) Stufe = STAND über der tieferen Terrasse: Drop-Shadow + schattierte Wand + belichtete Oberkante
+    if (suedK) {
+      const riserH = 20 + lvl * 3;
+      // a) DROP-SHADOW der Stufe auf die tiefere Terrasse (weich, südlich der Wand) - stärkster Tiefen-Trick
+      band(suedK, riserH, riserH + 26); ctx.fillStyle = 'rgba(0,0,0,0.16)'; ctx.fill();
+      band(suedK, riserH, riserH + 12); ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fill();
+      // b) WANDFLÄCHE (dunkle Schattenseite), unten am Fuß zusätzlich abgedunkelt
+      band(suedK, 0, riserH); ctx.fillStyle = faceCol[lvl]; ctx.fill();
+      band(suedK, riserH * 0.5, riserH); ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fill();
+      // c) Striationen (senkrechte Felsrisse) für Textur
+      ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1;
+      for (let x = x0; x <= x1; x += step * 1.3) { const r = ((Math.sin(x * 1.7) * 43758.5) % 1 + 1) % 1; if (r < 0.45) continue; const y = klippeY(suedK, x); ctx.beginPath(); ctx.moveTo(x, y + 2); ctx.lineTo(x + (r - 0.5) * 5, y + riserH - 2); ctx.stroke(); }
+      // d) belichtete Oberkante des höheren Plateaus (heller Saum) -> Lichtrichtung von oben
+      kante(suedK, 0); ctx.strokeStyle = rimCol[lvl]; ctx.lineWidth = 2.4; ctx.stroke();
+      kante(suedK, 1.6); ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1; ctx.stroke();
+      // e) PÄSSE als begehbare RAMPE (Geröll-/Felssims), kein grauer Kasten
+      for (const p of suedK.pass) {
+        const py = klippeY(suedK, p.x), x0p = p.x - p.w / 2, x1p = p.x + p.w / 2;
+        const grd = ctx.createLinearGradient(0, py - 3, 0, py + riserH + 6); grd.addColorStop(0, bandCol[lvl]); grd.addColorStop(1, bandCol[Math.max(0, lvl - 1)]);
+        ctx.fillStyle = grd; ctx.beginPath(); ctx.moveTo(x0p, py + riserH + 5); ctx.lineTo(x0p + 10, py - 3); ctx.lineTo(x1p - 10, py - 3); ctx.lineTo(x1p, py + riserH + 5); ctx.closePath(); ctx.fill();
+        for (let s = 1; s <= 3; s++) { const sy = py + (riserH + 5) * (s / 4); ctx.strokeStyle = 'rgba(20,16,10,0.35)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(x0p + 6, sy); ctx.lineTo(x1p - 6, sy); ctx.stroke(); }   // Trittstufen
+        for (let i = 0; i < 10; i++) { const r1 = ((Math.sin(i * 91.7 + p.x) * 43758.5) % 1 + 1) % 1, r2 = ((Math.sin(i * 12.3 + p.x * 0.7) * 43758.5) % 1 + 1) % 1; const gx = x0p + 8 + r1 * (p.w - 16), gy = py + 2 + r2 * riserH; ctx.fillStyle = i % 2 ? 'rgba(40,40,38,0.5)' : 'rgba(120,120,116,0.4)'; ctx.beginPath(); ctx.arc(gx, gy, 1.2 + r1 * 1.4, 0, 7); ctx.fill(); }   // Geröll (deterministisch)
+        ctx.strokeStyle = rimCol[lvl]; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(x0p, py + riserH + 5); ctx.lineTo(x0p + 10, py - 3); ctx.moveTo(x1p, py + riserH + 5); ctx.lineTo(x1p - 10, py - 3); ctx.stroke();   // Rampen-Seitenkanten
+      }
     }
   }
   for (const bf of bergFelsen) {                                  // Geröll/Felsbrocken (oben verschneit)

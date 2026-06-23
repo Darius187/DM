@@ -578,3 +578,11 @@
   * wasserGlanz(): zeichnet die Textur in ZWEI Schichten mit leicht verschiedener Drift additiv ('lighter') in die aktuelle Clip-Maske -> Interferenz = bewegtes Licht. Weltverankert (ctx schon -cam verschoben), tempo-/richtungs-parametrierbar. Kachelbar -> 1:1 ins 2D-Spiel portierbar.
   * SEE: dunkler Tiefen-Verlauf bleibt dominant + dezente Himmel-Spiegelung + schmale vertikale MOND-BAHN + sanfter Schimmer (tempo 0.5). FLUSS: gleicher Schimmer flussabwärts (Richtung 0.6/0.85) zusätzlich zu den richtungs-folgenden Strähnen -> See und Fluss sehen nach demselben Wasser aus.
   * Verifiziert: See = ruhiges, dunkles, fein schimmerndes Nachtwasser mit Mond; Fluss = fließender Schimmer. tsc grün.
+
+- Runde 62 (Anhöhe liest sich flach - Autorfeedback "wie Höhenlinien-Karte"): Höhe deutlich sichtbarer gemacht (diskrete Stufen, wie vom Autor gewählt):
+  * ECHTE HANGKANTE/WAND je Stufe statt dünner Linie: schattierte Wandfläche (faceCol, am Fuß zusätzlich abgedunkelt) + senkrechte Felsrisse (Striationen) + belichtete Plateau-Oberkante (heller Saum, Lichtrichtung von oben). Wandhöhe steigt mit dem Level.
+  * DROP-SHADOW der höheren Stufe auf die tiefere Terrasse (zwei weiche Streifen südlich der Wand) - der vom Autor genannte stärkste Tiefen-Trick. Reihenfolge: tiefere Terrasse zuerst, dann Schatten + Wand der höheren Stufe darüber.
+  * PÄSSE als begehbare RAMPE (Geröll-/Felssims) statt grauer Platzhalter-Kästen: Trapez mit Verlauf (oben hell -> unten dunkel), Trittstufen-Linien, deterministisches Geröll, helle Seitenkanten.
+  * SCHNEE AUF DEN TANNEN-KRONEN: macheTanne mit größerer Schnee-Kappe + Schnee auf den Astspitzen; selbst die untersten Bergtannen leicht überzuckert (kalter Berg) -> keine "Sommerbäume im Schnee" mehr.
+  * SCHNEE STATT REGEN am Berg (niedrige Prio): Regen blendet aus, je höher die Kamera (bergAnteil über camY) -> oben fällt nur noch Schnee.
+  * Verifiziert: Stufen wirken als gestapelte Sims mit Wand+Schatten; Pass = Rampe mit Trittstufen/Geländer; Tannen mit Schneekronen; Schneefall oben. tsc grün. (Standbild - echtes Höhengefühl zeigt sich erst beim Hochlaufen.)
