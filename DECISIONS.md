@@ -617,3 +617,8 @@
   * BETRETBAR = DACH-AUSBLENDEN (Stardew-Variante; gewählt, weil die 2D-Canvas-Demo KEINE Innenraum-Szene/2.-Renderer hat - die Krypta/CombatScene laufen anders): huetteDach blendet Dach+Front weich aus, sobald der Held eintritt -> Innenraum sichtbar. INNEN reine Deko: Feuerstelle (warmes Licht), Pritschen, Lager-Kisten/Fass. KEINE Funktion (keine NPCs/Zähler/Kapazität).
   * BEWUSST NICHT (kommt separat): Flucht-System, NPC-Pathfinding, Beherbergungs-Logik, Überrannt-Auslöser, Phasen.
   * Verifiziert: Hütte = warmer Landmark im Schnee; Eintreten blendet das Dach aus -> Feuerstelle/Innenraum; Hang = echte Bäume/Felsen schneebestäubt, Serpentine, Biom-Gradient. tsc grün.
+
+- Runde 63 (Autorfeedback Baumstamm-Sichtbarkeit + Weg-Rand):
+  * FRAGE beantwortet: die Stamm-Sichtbarkeit kam von der EZ-TREE-PRESET-Wahl. Eichen/Esche = dichte, tief hängende Krone -> Stamm verdeckt; Aspe (#8) = höhere/lichtere Krone -> Stamm sichtbar. Der Autor mag den sichtbaren Stamm.
+  * FIX: branch.length[0] *1.05 -> *1.6 (längerer Stamm) -> die Krone sitzt bei ALLEN Arten höher, der Stamm ist sichtbar (Lollipop-Look, einheitlich). Per Sprite-Atlas verifiziert.
+  * WEG-RAND: Baum-Ausschluss am Weg von PFAD_BREITE*0.7 auf *1.5 erhöht (Stamm UND Kronen-Überhang) -> mind. eine Wegbreite links/rechts baumfrei. Gleiches am Berg-Serpentinen-Weg (BERG.pfadBreite*0.75 -> *1.5). Verifiziert.

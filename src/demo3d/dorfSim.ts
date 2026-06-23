@@ -484,7 +484,7 @@ function baueBaum(preset: string, seed: number, st: Stimmung, dick = 1): Tree {
   o.seed = seed;
   o.branch.radius[0] *= 1.7 * dick;                 // kräftigere Stämme (vorher wie junge Bäumchen)
   o.branch.radius[1] *= 1 + (dick - 1) * 0.4;
-  o.branch.length[0] *= 1.05 + (dick - 1) * 0.18;   // dicke Bäume zugleich etwas höher
+  o.branch.length[0] *= 1.6 + (dick - 1) * 0.15;    // längerer Stamm -> Krone sitzt höher, STAMM ist sichtbar (Autorwunsch)
   o.branch.gnarliness[0] = 0.04; o.branch.gnarliness[1] *= 0.6;   // GERADER, aufrechter Stamm -> einheitlicher Look (kein Lehnen)
   o.branch.force.strength = 0.02;                   // wächst zuverlässig nach oben
   o.leaves.count = Math.max(1, Math.round(o.leaves.count * st.dichte));
@@ -835,7 +835,7 @@ async function init(): Promise<void> {
     const skala = biom === 'wald' && d > 0.62 ? 1.0 + Math.random() * 0.6 : 0.6 + Math.random() * 0.5;
     const kroneN = y - 512 * skala * 0.42;                                       // wohin die Krone nordwärts reicht
     if (Math.hypot(x - lichtX, y - lichtY) < 330 || Math.hypot(x - lichtX, kroneN - lichtY) < 330) continue;   // Lichtung + Überhang frei
-    if (distPfad(x, y) < PFAD_BREITE * 0.7 || distPfad(x, kroneN) < PFAD_BREITE * 0.7) continue;               // Weg + Überhang frei
+    if (distPfad(x, y) < PFAD_BREITE * 1.5 || distPfad(x, kroneN) < PFAD_BREITE * 1.5) continue;               // mind. eine Wegbreite links/rechts baumfrei (Autorwunsch) + Kronen-Überhang
     if (baeume.some((t) => Math.hypot(t.x - x, t.y - y) < 80)) continue;        // Mindestabstand (große Bäume)
     const blight = biom === 'moor' || Math.hypot(x - krypta.x, y - krypta.y) < krypta.r * (0.55 + Math.random() * 0.6);   // Moor = tote Bäume
     const maxHp = Math.max(40, Math.round(skala * FAELLEN.hpProGroesse));
@@ -857,7 +857,7 @@ async function init(): Promise<void> {
   // BERGZONE (y<0): ECHTE Billboard-Bäume, zur Schneelinie ausdünnend + schneebestäubt
   for (let i = 0; i < BERG.baeume * 3 && baeume.filter((b) => b.y < 0).length < BERG.baeume; i++) {
     const x = 80 + Math.random() * (WELT_W - 160), y = NORD_Y + 50 + Math.random() * (BERG_H - 70);
-    if (imBergWall(x, y) || distBergPfad(x, y) < BERG.pfadBreite * 0.75 || beiHuette(x, y)) continue;
+    if (imBergWall(x, y) || distBergPfad(x, y) < BERG.pfadBreite * 1.5 || beiHuette(x, y)) continue;   // Serpentine: eine Wegbreite baumfrei
     const hoehe = bergHoehe(y);
     if (hoehe > BERG.baumGrenzeAb && Math.random() < (hoehe - BERG.baumGrenzeAb) / (1 - BERG.baumGrenzeAb) * 1.4) continue;   // Baumgrenze: nach oben ausdünnen
     if (baeume.some((b) => Math.hypot(b.x - x, b.y - y) < 72)) continue;
