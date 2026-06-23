@@ -285,17 +285,24 @@ const OFFSETS8: Array<[number, number]> = [[-1, -1], [0, -1], [1, -1], [-1, 0], 
 // Liegt der Weltpunkt (Wesen) ECHT unter Baum b? Enges Modell statt Bounding-Box:
 // schmaler STAMM (vom Fuß bis unter die Krone) ODER breiter KRONEN-KERN (oben, nicht bis zum Stamm).
 // Verhindert, dass die riesige Kronen-Box weit entfernte Wesen fälschlich "verdeckt".
+// FADE: nur der Baum DIREKT hinter dem Wesen (distanzbasiert, schmal) wird transparent.
 function unterBaum(wx: number, wy: number, b: Baum): boolean {
-  if (b.fall || b.weg || b.y <= wy) return false;          // nur ungefällte Bäume DAVOR
+  if (b.fall || b.weg || b.y <= wy) return false;
   const sk = b.skala * baumGroesse, bw = arten[b.art].wald.width * sk;
+  return Math.abs(wx - b.x) < 30 + bw * 0.04 && b.y - wy > 6 && b.y - wy < 170;
+}
+// OUTLINE: liegt das Wesen unter dem KRONEN-KERN (größerer Bereich)? Greift im dichten Wald.
+// Die freie Lichtung/der Weg sind per Kronen-Puffer baumfrei, daher hier keine Falsch-Treffer.
+function unterKrone(wx: number, wy: number, b: Baum): boolean {
+  if (b.fall || b.weg || b.y <= wy) return false;
+  const sk = b.skala * baumGroesse, bw = arten[b.art].wald.width * sk, hh = arten[b.art].wald.height * sk;
   const dx = Math.abs(wx - b.x), dn = b.y - wy;
-  // Wesen steht WIRKLICH nah/hinter dem Stamm (distanzbasiert) - nicht 200px unter einer riesigen Kronen-Box
-  return dx < 30 + bw * 0.04 && dn > 6 && dn < 170;
+  return dx < bw * 0.2 && dn > hh * 0.18 && dn < hh * 0.56;
 }
 function istVerdecktVomBaum(wx: number, wy: number): boolean {
   for (const b of baeume) {
-    if (b.x < camX - 200 || b.x > camX + W + 200 || b.y < camY - 200 || b.y > camY + H + 300) continue;
-    if (unterBaum(wx, wy, b)) return true;
+    if (b.x < camX - 360 || b.x > camX + W + 360 || b.y < camY - 200 || b.y > camY + H + 500) continue;
+    if (unterKrone(wx, wy, b)) return true;
   }
   return false;
 }
@@ -427,18 +434,20 @@ async function init(): Promise<void> {
     p.grow = 0.4 + Math.random() * 0.4; p.shrink = 0.06 + Math.random() * 0.12;   // Verdunsten viel langsamer
     pfuetzen.push(p); pBuf.width = Math.max(pBuf.width, Math.ceil(L)); pBuf.height = Math.max(pBuf.height, Math.ceil(B));
   }
-  // Bäume: Dichte über sanfte Noise-Zonen (dichter Wald <-> Lichtung/Waldrand),
-  // Mindestabstand (kein Überlappungs-Matsch), Größenklassen (dicht = große alte Bäume, Rand = Mischung)
-  for (let versuche = 0; baeume.length < 200 && versuche < 4500; versuche++) {
+  // Bäume: Dichte über Noise-Zonen; Lichtung/Weg samt KRONEN-ÜBERHANG freihalten (offener Himmel
+  // über NPCs -> keine Falsch-Outline), dafür dichter im Wald. Größenklassen, Mindestabstand.
+  const lichtX = WELT_W * 0.4, lichtY = WELT_H * 0.64;
+  for (let versuche = 0; baeume.length < 230 && versuche < 7000; versuche++) {
     const x = 90 + Math.random() * (WELT_W - 180), y = 90 + Math.random() * (WELT_H - 180);
-    if (Math.hypot(x - WELT_W * 0.4, y - WELT_H * 0.64) < 300) continue;       // Dorflichtung frei
-    if (distPfad(x, y) < PFAD_BREITE * 0.7) continue;                          // nicht auf dem Pfad
     if (nahSee(x, y)) continue;                                                // nicht im/am See
     const d = dichteNoise(x, y);
-    if (Math.random() > d * d) continue;                                        // dichte Zonen voll, Rand läuft spärlich aus
-    if (baeume.some((t) => Math.hypot(t.x - x, t.y - y) < 78)) continue;        // Mindestabstand (größere Bäume)
+    if (Math.random() > d * d) continue;                                        // dichte Zonen voll, Rand spärlich
+    const skala = d > 0.62 ? 1.0 + Math.random() * 0.6 : 0.66 + Math.random() * 0.5;
+    const kroneN = y - 512 * skala * 0.42;                                       // wohin die Krone nordwärts reicht
+    if (Math.hypot(x - lichtX, y - lichtY) < 330 || Math.hypot(x - lichtX, kroneN - lichtY) < 330) continue;   // Lichtung + Überhang frei
+    if (distPfad(x, y) < PFAD_BREITE * 0.7 || distPfad(x, kroneN) < PFAD_BREITE * 0.7) continue;               // Weg + Überhang frei
+    if (baeume.some((t) => Math.hypot(t.x - x, t.y - y) < 80)) continue;        // Mindestabstand (große Bäume)
     const blight = Math.hypot(x - krypta.x, y - krypta.y) < krypta.r * (0.55 + Math.random() * 0.6);
-    const skala = d > 0.62 ? 0.98 + Math.random() * 0.55 : 0.64 + Math.random() * 0.5;   // ~2,1x größer (Bäume türmen über der Figur)
     const maxHp = Math.max(40, Math.round(skala * FAELLEN.hpProGroesse));
     baeume.push({ art: Math.floor(Math.random() * arten.length), x, y, skala, blight, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)], fade: 0, hp: maxHp, maxHp, weg: false });
   }
@@ -449,6 +458,7 @@ async function init(): Promise<void> {
   (window as unknown as { __dorfBereit?: boolean; __demo?: unknown }).__dorfBereit = true;
   (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; }, nass: (v: number) => { wetness = v; for (const p of pfuetzen) p.current = wetness > p.schwelle ? 1 : 0; },
     blitzAus: () => { blitz = 1; blitzNach = 0.1; },
+    verdeckt: () => istVerdecktVomBaum(held().x, held().y),
     geheHinterBaum: () => { let best: Baum | null = null, bd = 1e9; for (const t of baeume) { if (t.fall || t.blight || t.skala < 0.42) continue; const d = Math.hypot(t.x - WELT_W * 0.5, t.y - WELT_H * 0.5); if (d < bd) { bd = d; best = t; } } if (best) { held().x = best.x; held().y = best.y - 35; } },
     selbsttest: (): string => { const b0 = baeume.find((t) => !t.fall && !t.weg); if (!b0) return 'kein Baum'; held().x = b0.x - 60; held().y = b0.y; let sl = 0; while (!b0.fall && sl < 30) { fälleNächsten(); sl++; } if (!b0.fall) return 'fiel nicht'; b0.fall.gelandet = true; b0.fall.winkel = FALL_ZIEL * b0.fall.richtung; held().x = b0.x - 60; held().y = b0.y; const h0 = holz; let hk = 0; while (!b0.weg && hk < 40) { fälleNächsten(); hk++; } const s = `schlaege=${sl} hacks=${hk} holz ${h0}->${holz} weg=${b0.weg}`; console.log('[selbsttest] ' + s); return s; } };
 }
