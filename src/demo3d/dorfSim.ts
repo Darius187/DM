@@ -92,6 +92,15 @@ function macheGras(ts = 128): HTMLCanvasElement {
 }
 const grasMuster = ctx.createPattern(macheGras(), 'repeat');
 
+// Wald-Dichte (sanfte Noise-Zonen): steuert Baum-Platzierung UND Moos/Gras am Boden
+function dichteNoise(x: number, y: number): number {
+  const n = Math.sin(x * 0.0017) * Math.cos(y * 0.0021) + 0.6 * Math.sin((x + y) * 0.0013 + 1.7) + 0.4 * Math.sin(x * 0.004 - y * 0.003 + 3);
+  return Math.max(0, Math.min(1, 0.5 + n / 4));
+}
+// Moos-Karte (niedrig aufgelöst, weich hochskaliert): dunkelgrüner Moosboden ~ Walddichte, weicher Übergang
+const moosCv = document.createElement('canvas'); moosCv.width = Math.ceil(WELT_W / 16); moosCv.height = Math.ceil(WELT_H / 16);
+{ const m = moosCv.getContext('2d')!; for (let yy = 0; yy < moosCv.height; yy++) for (let xx = 0; xx < moosCv.width; xx++) { const d = dichteNoise(xx * 16, yy * 16); if (d > 0.28) { m.fillStyle = `rgba(20,32,15,${(d - 0.28) * 0.62})`; m.fillRect(xx, yy, 1, 1); } } }
+
 // Pfütze liegt AM Pfad entlang: Mittelpunkt (cx,cy), Länge L (in Pfadrichtung),
 // Breite B (quer, < Pfadbreite), Winkel ang. Maske + brauner Schlamm-Halo lokal
 // (lange Achse = x), damit sie sich in den Weg einbettet statt quer draufzuliegen.
@@ -122,7 +131,7 @@ function pfuetzeUnter(x: number, y: number): Pfuetze | null {
 }
 
 // ---------- Gras-Büschel (wiegen im Wind, biegen vor Wesen weg) ----------
-interface Tuft { x: number; y: number; ph: number; }
+interface Tuft { x: number; y: number; ph: number; kurz: boolean; }
 const tufts: Tuft[] = [];
 
 // ---------- Wiesen-Bewuchs: locker gestreute Blümchen, Kräuter, Klee (gedämpfte Nachtfarben) ----------
@@ -342,10 +351,6 @@ async function init(): Promise<void> {
   }
   // Bäume: Dichte über sanfte Noise-Zonen (dichter Wald <-> Lichtung/Waldrand),
   // Mindestabstand (kein Überlappungs-Matsch), Größenklassen (dicht = große alte Bäume, Rand = Mischung)
-  const dichteNoise = (x: number, y: number): number => {
-    const n = Math.sin(x * 0.0017) * Math.cos(y * 0.0021) + 0.6 * Math.sin((x + y) * 0.0013 + 1.7) + 0.4 * Math.sin(x * 0.004 - y * 0.003 + 3);
-    return Math.max(0, Math.min(1, 0.5 + n / 4));
-  };
   for (let versuche = 0; baeume.length < 200 && versuche < 4500; versuche++) {
     const x = 90 + Math.random() * (WELT_W - 180), y = 90 + Math.random() * (WELT_H - 180);
     if (Math.hypot(x - WELT_W * 0.4, y - WELT_H * 0.64) < 300) continue;       // Dorflichtung frei
@@ -358,8 +363,8 @@ async function init(): Promise<void> {
     baeume.push({ art: Math.floor(Math.random() * arten.length), x, y, skala, blight, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)], fade: 0 });
   }
   // Gras-Büschel
-  for (let i = 0; i < 1100; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y)) continue; tufts.push({ x, y, ph: Math.random() * 7 }); }
-  for (let i = 0; i < 520; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y)) continue; bewuchs.push({ x, y, typ: Math.floor(Math.random() * bewuchsBilder.length), ph: Math.random() * 7 }); }  // locker gestreut
+  for (let i = 0; i < 1300; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y)) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.65) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5 }); }   // dicht = spärlicher + kürzer
+  for (let i = 0; i < 640; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y)) continue; if (Math.random() < dichteNoise(x, y) * 0.85) continue; bewuchs.push({ x, y, typ: Math.floor(Math.random() * bewuchsBilder.length), ph: Math.random() * 7 }); }   // Blumen v.a. an Lichtung/Rand
   bereit = true;
   (window as unknown as { __dorfBereit?: boolean; __demo?: unknown }).__dorfBereit = true;
   (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; }, nass: (v: number) => { wetness = v; for (const p of pfuetzen) p.current = wetness > p.schwelle ? 1 : 0; },
@@ -478,8 +483,9 @@ function frame(now: number): void {
   const h = bereit ? held() : { x: WELT_W / 2, y: WELT_H / 2 } as Wesen;
   camX = Math.max(0, Math.min(WELT_W - W, h.x - W / 2)); camY = Math.max(0, Math.min(WELT_H - H, h.y - H / 2));
 
-  // 1) Gras-Boden
+  // 1) Gras-Boden + Moosboden in dichten Wäldern (weicher Übergang über die Walddichte)
   ctx.save(); ctx.translate(-camX, -camY); ctx.fillStyle = grasMuster ?? '#27331c'; ctx.fillRect(camX, camY, W, H); ctx.restore();
+  ctx.drawImage(moosCv, camX / 16, camY / 16, Math.max(1, W / 16), Math.max(1, H / 16), 0, 0, W, H);   // Moos ~ Dichte
 
   // 1b) Pfad: mäanderndes Erdband mit unregelmäßigen Rändern, Spurrillen, nassen/trockenen
   //     Flecken, Steinen und einem Saum aus zertretenem Gras (bricht die harte Kante)
@@ -496,8 +502,8 @@ function frame(now: number): void {
     ctx.lineWidth = 1.2;
     for (let i = 0; i < pfadMitte.length; i += 2) {
       const m = pfadMitte[i];
-      for (const side of [-1, 1]) { const hs = Math.sin(i * 12.9 + side * 3.1) * 43758.5, r = hs - Math.floor(hs); if (r > 0.5) continue; const ex = m.x + m.nx * m.hw * f * side, ey = m.y + m.ny * m.hw * f * side, hgt = 4 + r * 8; ctx.strokeStyle = '#34421f'; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + side * 2 + wd * 2, ey - hgt); ctx.stroke(); }   // Saumgras
-      if (i % 6 === 0) { const hs = Math.sin(i * 7.7) * 43758.5, r = hs - Math.floor(hs); if (r < 0.25) { const q = (r * 8 - 1) * m.hw * f * 0.4, gx = m.x + m.nx * q, gy = m.y + m.ny * q; ctx.strokeStyle = '#3a4a22'; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + wd * 2, gy - 6); ctx.moveTo(gx - 2, gy); ctx.lineTo(gx - 2 + wd * 1.5, gy - 5); ctx.stroke(); } }   // durchwachsend
+      for (const side of [-1, 1]) { const hs = Math.sin(i * 12.9 + side * 3.1) * 43758.5, r = hs - Math.floor(hs); if (r > 0.5) continue; const ex = m.x + m.nx * m.hw * f * side, ey = m.y + m.ny * m.hw * f * side, hgt = 4 + r * 8; ctx.strokeStyle = '#34421f'; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + side * 2 + wd * 5, ey - hgt); ctx.stroke(); }   // Saumgras (Sturm-Wind)
+      if (i % 6 === 0) { const hs = Math.sin(i * 7.7) * 43758.5, r = hs - Math.floor(hs); if (r < 0.25) { const q = (r * 8 - 1) * m.hw * f * 0.4, gx = m.x + m.nx * q, gy = m.y + m.ny * q; ctx.strokeStyle = '#3a4a22'; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + wd * 5, gy - 6); ctx.moveTo(gx - 2, gy); ctx.lineTo(gx - 2 + wd * 4, gy - 5); ctx.stroke(); } }   // durchwachsend (Sturm-Wind)
     }
     ctx.restore();
   }
@@ -542,17 +548,18 @@ function frame(now: number): void {
   // 4) Gras-Büschel (Wind + Wegbiegen vor Wesen)
   if (bereit) for (const tf of tufts) {
     if (tf.x < camX - 10 || tf.x > camX + W + 10 || tf.y < camY - 10 || tf.y > camY + H + 10) continue;
-    let lean = wd * 3 + Math.sin(now / 240 + tf.ph) * 1.5;
-    for (const w of wesen) { const dx = tf.x - w.x, dy = tf.y - w.y; const d2 = dx * dx + dy * dy; if (d2 < 900) lean += (dx / (Math.sqrt(d2) || 1)) * (1 - d2 / 900) * 9; }
+    const hf = tf.kurz ? 0.6 : 1;                                          // kürzer im dichten Wald
+    let lean = wd * 6 + Math.sin(now / 240 + tf.ph) * 1.5;                 // SELBER Wind wie die Bäume -> synchron; im Sturm fast flach
+    for (const w of wesen) { const dx = tf.x - w.x, dy = tf.y - w.y; const d2 = dx * dx + dy * dy; if (d2 < 900) lean += (dx / (Math.sqrt(d2) || 1)) * (1 - d2 / 900) * 9; }   // Wegbiegen vor Wesen (nur Spitze)
     const gx = sx(tf.x), gy = sy(tf.y);
     ctx.strokeStyle = '#3c4d27'; ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + lean, gy - 7); ctx.moveTo(gx - 2, gy); ctx.lineTo(gx - 2 + lean * 0.8, gy - 5); ctx.moveTo(gx + 2, gy); ctx.lineTo(gx + 2 + lean * 1.1, gy - 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + lean, gy - 7 * hf); ctx.moveTo(gx - 2, gy); ctx.lineTo(gx - 2 + lean * 0.8, gy - 5 * hf); ctx.moveTo(gx + 2, gy); ctx.lineTo(gx + 2 + lean * 1.1, gy - 6 * hf); ctx.stroke();
   }
 
   // 4a) Wiesen-Bewuchs (locker gestreut, leichtes Wiegen)
   if (bereit) for (const pf of bewuchs) {
     if (pf.x < camX - 20 || pf.x > camX + W + 20 || pf.y < camY - 20 || pf.y > camY + H + 20) continue;
-    const bb = bewuchsBilder[pf.typ], sway = wd * 0.05 + Math.sin(now / 300 + pf.ph) * 0.03;
+    const bb = bewuchsBilder[pf.typ], sway = wd * 0.14 + Math.sin(now / 300 + pf.ph) * 0.03;   // im Sturm deutlich (synchron zum Wind)
     ctx.save(); ctx.translate(sx(pf.x), sy(pf.y)); ctx.rotate(sway); ctx.drawImage(bb, -bb.width / 2, -bb.height + 2); ctx.restore();
   }
 
