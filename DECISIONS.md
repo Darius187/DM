@@ -604,3 +604,16 @@
   * GERICHTETE SCHATTEN an die Tageszeit gekoppelt: kontaktSchatten nutzt globale schDX/schLang aus Sonnenstand (tief = lang+seitlich, mittags = kurz) und -richtung (morgens/abends andere Seite); Bewölkung/Nacht unterdrücken -> diffus/zentriert.
   * Der frühere "sonnig"-Warm-Tint kommt jetzt aus der Tageszeit (warme Stunden), nicht mehr aus dem Wetter; sonne-Variable entfernt, klar8/bew8 in Schritt 8.
   * HUD zeigt Uhrzeit + Tageszeit-Name. Verifiziert: Morgen warm-dim, Mittag hell neutral, Goldene Stunde gold, Nacht tiefblau, Nacht+Sturm sehr dunkel/grau/Regen. tsc grün.
+
+- Runde 63 (Bergzone komplett neu + Zufluchts-Station - Weg 1, Billboards, keine 2. Kamera):
+  * ARCHITEKTUR-Entscheidung: bleibt in dorfSim (Nordband y<0), KEINE separate HTML (würde den Code zerfasern). Justierbare Werte im BERG-Objekt oben.
+  * SERPENTINE: Switchback-Pässe (alternierende Seiten) + sichtbarer Serpentinen-Weg (bergPfad) zickzack Fuß->Gipfel, höhenabhängig Erde->festgetretener Schnee. Bewusst lang.
+  * KLIPPEN/RISER (aus Runde 62 beibehalten - vom Autor gelobt): schattierte Fels-Wände + Drop-Shadow der höheren auf die tiefere Stufe + belichtete Oberkante.
+  * BIOM-GRADIENT über die Höhe: Wald-Grün (Fuß) -> Fels-Grau (Vorberge) -> Schnee-Weiß (Gipfel), via bandCol + bergSchnee(y) (smoothstep).
+  * BÄUME = ECHTE Billboard-Bäume (in baeume mit schnee?-Flag, y<0): zur Baumgrenze (BERG.baumGrenzeAb) ausdünnend, mit dezenter Schneekrone (schneeAufKrone). KEINE flachen Tännchen mehr (macheTanne/bergBaeume gelöscht).
+  * FELSEN = ECHTE Fels-Sprites (in felsen mit schnee?-Flag) in Clustern + Schneehaube + Kontaktschatten. KEINE grauen Kugeln mehr (bergFelsen gelöscht).
+  * GIPFEL-BACKDROP: ferne, schneebedeckte Gipfel + Himmel-Verlauf oben, mit Parallaxe (langsamer als die Kamera).
+  * ZUFLUCHTS-STATION (Bauwerk, nur Bühne): größeres Berghaus auf einem Schnee-Plateau auf halber Höhe (wo der Weg sich verbreitert). Verschneites Giebeldach, Schornstein mit Rauch, WARM leuchtende Fenster+Tür (Kontrast zum kalten Schnee), Kontaktschatten. Wand solide (frei()), Süd-Tür + Innenraum begehbar.
+  * BETRETBAR = DACH-AUSBLENDEN (Stardew-Variante; gewählt, weil die 2D-Canvas-Demo KEINE Innenraum-Szene/2.-Renderer hat - die Krypta/CombatScene laufen anders): huetteDach blendet Dach+Front weich aus, sobald der Held eintritt -> Innenraum sichtbar. INNEN reine Deko: Feuerstelle (warmes Licht), Pritschen, Lager-Kisten/Fass. KEINE Funktion (keine NPCs/Zähler/Kapazität).
+  * BEWUSST NICHT (kommt separat): Flucht-System, NPC-Pathfinding, Beherbergungs-Logik, Überrannt-Auslöser, Phasen.
+  * Verifiziert: Hütte = warmer Landmark im Schnee; Eintreten blendet das Dach aus -> Feuerstelle/Innenraum; Hang = echte Bäume/Felsen schneebestäubt, Serpentine, Biom-Gradient. tsc grün.
