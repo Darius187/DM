@@ -282,22 +282,25 @@ const figCtx = figCv.getContext('2d')!;
 const umrissCv = document.createElement('canvas'); umrissCv.width = umrissCv.height = HELD_FELD;
 const umrissCtx = umrissCv.getContext('2d')!;
 const OFFSETS8: Array<[number, number]> = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
-// ist ein Wesen von einem Baum DAVOR verdeckt? (für die Outline, nur bei Bedarf gerechnet)
+// Liegt der Weltpunkt (Wesen) ECHT unter Baum b? Enges Modell statt Bounding-Box:
+// schmaler STAMM (vom Fuß bis unter die Krone) ODER breiter KRONEN-KERN (oben, nicht bis zum Stamm).
+// Verhindert, dass die riesige Kronen-Box weit entfernte Wesen fälschlich "verdeckt".
+function unterBaum(wx: number, wy: number, b: Baum): boolean {
+  if (b.fall || b.weg || b.y <= wy) return false;          // nur ungefällte Bäume DAVOR
+  const sk = b.skala * baumGroesse, bw = arten[b.art].wald.width * sk;
+  const dx = Math.abs(wx - b.x), dn = b.y - wy;
+  // Wesen steht WIRKLICH nah/hinter dem Stamm (distanzbasiert) - nicht 200px unter einer riesigen Kronen-Box
+  return dx < 30 + bw * 0.04 && dn > 6 && dn < 170;
+}
 function istVerdecktVomBaum(wx: number, wy: number): boolean {
-  const rx = sx(wx) - 11, ry = sy(wy) - 40, rw = 22, rh = 32;
   for (const b of baeume) {
-    if (b.fall || b.y <= wy) continue;
-    if (b.x < camX - 360 || b.x > camX + W + 360 || b.y < camY - 600 || b.y > camY + H + 360) continue;
-    const sk = b.skala * baumGroesse, bw = arten[b.art].wald.width * sk, hh = arten[b.art].wald.height * sk;
-    if (rechteckeUeberlappen(sx(b.x) - bw * 0.3, sy(b.y) - hh * 0.64, bw * 0.6, hh * 0.55, rx, ry, rw, rh)) return true;
+    if (b.x < camX - 200 || b.x > camX + W + 200 || b.y < camY - 200 || b.y > camY + H + 300) continue;
+    if (unterBaum(wx, wy, b)) return true;
   }
   return false;
 }
 // Occlusion (Fallout-Look): nur der Baum DIREKT vor dem Helden wird halbtransparent,
-// der echte Held scheint mit Details durch - keine getönte Silhouette.
-function rechteckeUeberlappen(ax: number, ay: number, aw: number, ah: number, bx: number, by: number, bw: number, bh: number): boolean {
-  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
-}
+// der echte Held scheint mit Details durch - keine getönte Silhouette. (Test: unterBaum)
 const HM = (HELD_FELD - 64) / 2;
 type Art = 'held' | 'dorf' | 'huhn';
 interface Wesen { art: Art; tier: HeldTier; x: number; y: number; dir: number; frameT: number; speed: number; zx: number; zy: number; ruhe: number; effT: number; hackT: number; bob: number; umriss: number; }
@@ -683,8 +686,7 @@ function frame(now: number): void {
   //    wird halbtransparent (enger Test um den Oberkörper) - der echte Held scheint durch,
   //    keine getönte Silhouette (Fallout-Look).
   if (bereit) {
-    const h0 = held(), hpx = sx(h0.x), hpy = sy(h0.y);
-    const tRX = hpx - 12, tRY = hpy - 42, tRW = 24, tRH = 34;                 // schmaler Bereich um Kopf/Oberkörper
+    const h0 = held();
     interface Z { y: number; b: Baum | null; w: Wesen | null; }
     const liste: Z[] = [];
     for (const b of baeume) { if (b.x < camX - 360 || b.x > camX + W + 360 || b.y < camY - 600 || b.y > camY + H + 360) continue; liste.push({ y: b.y, b, w: null }); }
@@ -695,7 +697,7 @@ function frame(now: number): void {
         const b = z.b, bild = b.blight ? arten[b.art].blight : arten[b.art].wald, sk = b.skala * baumGroesse, w = bild.width * sk, hh = bild.height * sk;
         if (!b.fall) kontaktSchatten(sx(b.x), sy(b.y), w * 0.4);              // erdet den Baum am Fuß
         // enger Test: deckt der obere Kronen-Teil den schmalen Helden-Bereich? -> nur der Baum direkt davor fadet
-        const verdeckt = b.y > h0.y && rechteckeUeberlappen(sx(b.x) - w * 0.3, sy(b.y) - hh * 0.64, w * 0.6, hh * 0.55, tRX, tRY, tRW, tRH);
+        const verdeckt = unterBaum(h0.x, h0.y, b);
         b.fade += ((verdeckt ? 1 : 0) - b.fade) * Math.min(1, dt * 9);
         if (b.fade > 0.01) ctx.globalAlpha = 1 - b.fade * 0.45;               // Krone nur bis ~0.55 (bleibt als Baum lesbar)
         if (b.fall) { if (!b.weg) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); } else { zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * sk * (b.blight ? 16 : 40) * boeWelle(b.x, b.y, now), b.ph, now); if (b.hp < b.maxHp) zeichneBalken(sx(b.x), sy(b.y) - 44, b.hp / b.maxHp, '#6ad06a'); }   // Biegung + Fäll-Balken am Stammfuß
@@ -773,7 +775,7 @@ function zeichneWesen(w: Wesen): void {
     umrissCtx.clearRect(0, 0, HELD_FELD, HELD_FELD);
     for (const [ox, oy] of OFFSETS8) umrissCtx.drawImage(figCv, ox * 2, oy * 2);
     umrissCtx.globalCompositeOperation = 'source-in'; umrissCtx.fillStyle = farbe; umrissCtx.fillRect(0, 0, HELD_FELD, HELD_FELD); umrissCtx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = w.umriss; ctx.drawImage(umrissCv, dx, dy); ctx.globalAlpha = 1;
+    ctx.globalAlpha = w.umriss * 0.7; ctx.drawImage(umrissCv, dx, dy); ctx.globalAlpha = 1;   // dezent, kein Leuchten
   }
   ctx.drawImage(figCv, dx, dy);
 }
