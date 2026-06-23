@@ -537,3 +537,11 @@
   * GRAS/BLÜTEN IM DICHTEN WALD SPÄRLICHER: Bodengras-Skip d*0.55 -> d*0.72; hohes Gras im dichten Wald (d>0.6) zu 60% raus; Blüten im dichten Wald (d>0.62) zu 70% raus.
   * KLEINE STEINE (Autorpunkt "gleichförmig/aufgesetzt"): Weg-Steine jetzt in CLUSTERN (2-4) statt gleichförmig verstreut + weicher Kontaktschatten -> geerdet wie die großen Felsen. Kies-Detail-Cluster ebenfalls mit Kontaktschatten.
   * Verifiziert: dichter Wald (d=0.78) = brauner erdiger Waldgrund mit Laub/Erde-Flecken; offene Wiese (d=0.15) bleibt grün. tsc grün.
+
+- Runde 61 (Anhöhe/Berg im Norden - Autorwunsch "im Norden geht es einen Berg hoch bis Schnee; erweitere die Karte"):
+  * KARTE NACH NORDEN ERWEITERT: Welt-y reicht jetzt von NORD_Y=-900 (Gipfel) bis WELT_H=1800 (Süd). Bestehender Inhalt (Wald/Dorf/See/Fluss) bleibt unverändert bei y>=0; der Berg liegt im neuen Band y<0. Kamera-Klemme nach oben auf NORD_Y, Bewegungsgrenze in frei() auf NORD_Y+30. (Negativ-y statt alles zu verschieben -> minimal-invasiv, keine Koordinaten-Umrechnung.)
+  * DISKRETE HÖHEN-LEVEL (Autorentscheidung Runde 60 "begehbar, diskrete Level"): BERG_NIV=5 Stufen. Je Stufengrenze eine wellige KLIPPE (klippeY) mit 1-2 PÄSSEN (Lücken). imBergWall() macht die Klippen SOLIDE (außer im Pass) -> man steigt im Zickzack durch die Pässe Stufe für Stufe hoch. bergNiveau() = Höhenstufe eines Punktes.
+  * RENDERING: gestufte Bänder von Fuß->Gipfel (höhere überdecken die Klippe der tieferen), Farbverlauf Gras/Fels -> Geröll -> Schnee (lvl0-1 grünlich, lvl2 grau, lvl3-4 weiß). Klippen-WAND (16px, dunkel) an jeder Süd-Kante -> 2.5D-Stufenlook; Pässe als begehbare Streifen sichtbar. Schnee-Glitzer auf den oberen Stufen.
+  * INHALT: schnee-bestäubte Bergtannen (macheTanne, 3 Schneestufen, tiefensortiert mit dem Helden) v.a. unter der Baumgrenze; Geröll/Felsbrocken (oben verschneit). Über lvl>=3 kaum Bäume (Baumgrenze).
+  * SCHNEE-WETTER: driftende Flocken, nur wenn der Berg im Bild ist (camY<0), nach oben dichter. Eigener Schirmkoordinaten-Pool.
+  * Verifiziert: Gipfel = verschneiter Alpenhang mit Stufen/Klippen/Pässen, Schneetannen, Geröll, Schneefall; Fuß = natürlicher Übergang Wald->Vorberg. tsc grün.

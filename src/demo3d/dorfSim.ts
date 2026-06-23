@@ -23,7 +23,11 @@ let W = 0, H = 0;
 function passeGroesse(): void { W = view.width = innerWidth; H = view.height = innerHeight; }
 passeGroesse(); addEventListener('resize', passeGroesse);
 
-const WELT_W = 2600, WELT_H = 1800;
+const WELT_W = 2600, WELT_H = 1800;   // WELT_H = südlicher Spielbereich (Wald/Dorf/See)
+// ANHÖHE (Autorwunsch): im NORDEN (y < 0) steigt ein Berg in diskreten Höhen-Stufen bis zum Schnee
+// an. Die Karte ist dafür nach Norden erweitert: Welt-y reicht von NORD_Y (Gipfel) bis WELT_H (Süd).
+const BERG_H = 900;                   // Höhe des Bergbandes nördlich des Waldes
+const NORD_Y = -BERG_H;               // oberster Welt-Rand (Gipfel)
 
 // ---------- Pfad (begehbar; HIER bilden sich die Pfützen; daneben Gras) ----------
 const PFAD_BREITE = 80;
@@ -151,6 +155,63 @@ function aufBruecke(x: number, y: number): boolean {
   const dx = x - bruecke.cx, dy = y - bruecke.cy;
   return Math.abs(dx * bruecke.ux + dy * bruecke.uy) < bruecke.halbL && Math.abs(dx * bruecke.nx + dy * bruecke.ny) < bruecke.halbB;
 }
+
+// ---------- Berg / Anhöhe (Norden, y < 0): diskrete Höhen-Level bis zum Schnee ----------
+// Jede KLIPPE (Stufe) ist eine wellige Querkante; dazwischen liegen PÄSSE (Lücken), durch
+// die man eine Stufe höher steigt. Oben Schnee. Begehbar: die Klippen sind solide, außer im Pass.
+const BERG_NIV = 5;                                  // Anzahl Höhen-Stufen (0 = Fuß .. 4 = Gipfel/Schnee)
+interface BergKlippe { baseY: number; pass: Array<{ x: number; w: number }>; }
+const bergKlippen: BergKlippe[] = [];
+function baueBerg(): void {
+  for (let i = 1; i < BERG_NIV; i++) {
+    const baseY = -(BERG_H / BERG_NIV) * i;          // Süd-Kante der i-ten erhöhten Stufe (i=1 unten .. 4 oben)
+    // 1-2 Pässe je Klippe, seitlich versetzt -> Zickzack-Aufstieg
+    const pass: Array<{ x: number; w: number }> = [{ x: 360 + (i % 2) * 1100 + i * 180, w: 130 }];
+    if (i % 2 === 1) pass.push({ x: 1900 - i * 130, w: 120 });
+    bergKlippen.push({ baseY, pass });
+  }
+}
+baueBerg();
+function klippeY(k: BergKlippe, x: number): number { return k.baseY + Math.sin(x * 0.0055 + k.baseY * 0.01) * 26 + Math.sin(x * 0.013 + 1) * 12; }
+function imPass(k: BergKlippe, x: number): boolean { for (const p of k.pass) if (Math.abs(x - p.x) < p.w / 2) return true; return false; }
+function imBergWall(x: number, y: number): boolean { for (const k of bergKlippen) if (Math.abs(y - klippeY(k, x)) < 9 && !imPass(k, x)) return true; return false; }
+function bergNiveau(x: number, y: number): number { let n = 0; for (const k of bergKlippen) if (y < klippeY(k, x)) n++; return n; }
+
+// Schnee-bestäubte Bergtanne (prozedural): dunkle Nadel-Dreiecke + Schneeauflage
+function macheTanne(schnee: number): HTMLCanvasElement {
+  const c = document.createElement('canvas'); c.width = 44; c.height = 72; const g = c.getContext('2d')!; const cx = 22;
+  g.fillStyle = 'rgba(0,0,0,0.26)'; g.beginPath(); g.ellipse(cx, 67, 14, 4, 0, 0, 7); g.fill();           // Kontaktschatten
+  g.fillStyle = '#3a2c1c'; g.fillRect(cx - 2.5, 52, 5, 14);                                                // Stamm
+  for (let s = 0; s < 4; s++) {
+    const yTop = 6 + s * 13, yBot = yTop + 22, hw = 7 + s * 5.5;
+    g.fillStyle = ['#23341f', '#1f2e1c', '#26381f', '#1c2a18'][s % 4];
+    g.beginPath(); g.moveTo(cx, yTop); g.lineTo(cx - hw, yBot); g.lineTo(cx + hw, yBot); g.closePath(); g.fill();
+    if (schnee > 0) { g.fillStyle = `rgba(236,242,248,${0.7 * schnee})`; g.beginPath(); g.moveTo(cx, yTop + 1); g.lineTo(cx - hw * 0.5, yTop + 9); g.lineTo(cx + hw * 0.5, yTop + 9); g.closePath(); g.fill(); g.fillStyle = `rgba(236,242,248,${0.5 * schnee})`; g.fillRect(cx - hw, yBot - 3, hw * 2, 3); }   // Schnee auf den Zweigen
+  }
+  return c;
+}
+const tanneBilder = [macheTanne(0), macheTanne(0.5), macheTanne(1)];
+interface BergBaum { x: number; y: number; typ: number; skala: number; }
+const bergBaeume: BergBaum[] = [];
+interface BergFels { x: number; y: number; r: number; schnee: number; }
+const bergFelsen: BergFels[] = [];
+function baueBergInhalt(): void {
+  for (let i = 0; i < 90; i++) {
+    const x = 80 + Math.random() * (WELT_W - 160), y = NORD_Y + 40 + Math.random() * (BERG_H - 80);
+    if (imBergWall(x, y)) continue;
+    const lvl = bergNiveau(x, y);
+    if (lvl >= 3 && Math.random() < 0.7) continue;                                                          // über der Baumgrenze kaum Bäume
+    const schnee = lvl >= 3 ? 2 : lvl === 2 ? 1 : 0;                                                        // Schnee-Auflage steigt mit der Höhe
+    bergBaeume.push({ x, y, typ: schnee, skala: 0.7 + Math.random() * 0.6 - lvl * 0.05 });
+  }
+  for (let i = 0; i < 70; i++) {
+    const x = 70 + Math.random() * (WELT_W - 140), y = NORD_Y + 30 + Math.random() * (BERG_H - 60);
+    if (imBergWall(x, y)) continue;
+    const lvl = bergNiveau(x, y);
+    bergFelsen.push({ x, y, r: 8 + Math.random() * 18, schnee: lvl >= 3 ? 1 : lvl === 2 ? 0.5 : 0 });      // Geröll/Felsbrocken, oben verschneit
+  }
+}
+baueBergInhalt();
 
 // ---------- Wetter (dynamisch: klar -> Regen -> Unwetter; treibt Wind/Regen/Nebel) ----------
 let regenAn = true;
@@ -602,6 +663,9 @@ const ringe: Ring[] = [];
 const seeRinge: Array<{ x: number; y: number; t: number; leben: number; rmax: number }> = [];   // Regen-Ringe auf dem See
 function neuerDrop(init = false): Drop { const z = Math.random(); return { x: Math.random() * (W + 300) - 150, y: init ? Math.random() * H : -30 - Math.random() * 60, z, vy: 650 + z * 950, len: 9 + z * 24 }; }
 for (let i = 0; i < 620; i++) drops.push(neuerDrop(true));   // großer Pool; sichtbarer Anteil skaliert mit dem Wetter (Stufe 4 = dicht)
+// Schneeflocken (nur am Berg sichtbar, oben dichter) - Schirmkoordinaten-Pool, wiederverwendet
+const flocken: Array<{ x: number; y: number; z: number; ph: number }> = [];
+for (let i = 0; i < 170; i++) flocken.push({ x: Math.random() * 1280, y: Math.random() * 720, z: Math.random(), ph: Math.random() * 7 });
 // KLEINE Tropfen-Ringe (Regen) auf dem Wasser - LOKALE Maskenkoordinaten, viel kleiner als die Schritt-Ringe
 function tropfenRing(pf: Pfuetze, lx: number, ly: number): void { ringe.push({ lx, ly, x: 0, y: 0, t: 0, leben: 0.6 + Math.random() * 0.3, rmax: 4 + Math.random() * 7, pf }); }
 function bodenKrone(wx: number, wy: number): void { ringe.push({ lx: 0, ly: 0, x: wx, y: wy, t: 0, leben: 0.26, rmax: 5, pf: null }); if (Math.random() < 0.3) spaene(wx, wy, 'rgba(190,206,224,0.7)', -16, 1); }
@@ -737,8 +801,11 @@ async function init(): Promise<void> {
   (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; }, nass: (v: number) => { wetness = v; for (const p of pfuetzen) p.current = wetness > p.schwelle ? 1 : 0; },
     blitzAus: () => { blitz = 1; blitzNach = 0.1; },
     sturm: () => { wetter = 1; wetterZiel = 1; wetterTimer = 90; },
+    klar: () => { wetter = 0.04; wetterZiel = 0.04; wetterTimer = 120; },
     biomBei: (x: number, y: number): string => biomAt(x, y),
     dichteBei: (x: number, y: number): number => dichteNoise(x, y),
+    zumBerg: (y = -40): void => { held().x = WELT_W * 0.5; held().y = y; },
+    bergInfo: (): string => `NORD_Y=${NORD_Y} klippen=${bergKlippen.length} tannen=${bergBaeume.length} fels=${bergFelsen.length} niveau(mitte,-450)=${bergNiveau(WELT_W * 0.5, -450)} wall(mitte,klippe1)=${imBergWall(WELT_W * 0.5, bergKlippen[0].baseY)}`,
     dichterWald: (): { x: number; y: number } => { let bx = WELT_W / 2, by = WELT_H / 2, bd = -1; for (let y = 120; y < WELT_H - 120; y += 60) for (let x = 120; x < WELT_W - 120; x += 60) { if (aufPfad(x, y) || nahSee(x, y) || nahFluss(x, y)) continue; if (biomAt(x, y) !== 'wald') continue; const d = dichteNoise(x, y); if (d > bd) { bd = d; bx = x; by = y; } } return { x: bx, y: by }; },
     zurBruecke: (vorher = 80): void => { held().x = bruecke.cx - bruecke.ux * vorher; held().y = bruecke.cy - bruecke.uy * vorher; },
     brueckeInfo: (): string => `cx=${Math.round(bruecke.cx)} cy=${Math.round(bruecke.cy)} halbL=${Math.round(bruecke.halbL)} halbB=${Math.round(bruecke.halbB)} aufBruecke(C)=${aufBruecke(bruecke.cx, bruecke.cy)}`,
@@ -778,7 +845,8 @@ let camX = 0, camY = 0;
 const sx = (wx: number): number => Math.round(wx - camX);
 const sy = (wy: number): number => Math.round(wy - camY);
 function frei(wx: number, wy: number): boolean {
-  if (wx < 30 || wy < 30 || wx > WELT_W - 30 || wy > WELT_H - 30) return false;
+  if (wx < 30 || wy < NORD_Y + 30 || wx > WELT_W - 30 || wy > WELT_H - 30) return false;
+  if (imBergWall(wx, wy)) return false;                       // Berg-Klippe solide (außer im Pass) -> Stufen-Aufstieg
   if (imFluss(wx, wy) && !aufBruecke(wx, wy)) return false;   // Fluss nur über die Brücke querbar
   for (const b of baeume) { if (b.fall) continue; if (Math.hypot(wx - b.x, wy - b.y) < (10 + b.skala * 12) * baumGroesse) return false; }   // Stammfuß-Radius ~ Baumgröße
   for (const f of felsen) { if (f.entfernt) continue; if (Math.hypot(wx - f.x, wy - f.y) < FELS_R[f.g] * (0.66 - f.stufe * 0.1)) return false; }   // Felsen solide (Radius schrumpft mit Abbau)
@@ -874,13 +942,17 @@ function frame(now: number): void {
   // Ringe
   for (let i = ringe.length - 1; i >= 0; i--) { ringe[i].t += dt; if (ringe[i].t > ringe[i].leben) ringe.splice(i, 1); }
 
-  // Kamera
+  // Kamera (Welt reicht nach Norden bis NORD_Y für den Berg)
   const h = bereit ? held() : { x: WELT_W / 2, y: WELT_H / 2 } as Wesen;
-  camX = Math.max(0, Math.min(WELT_W - W, h.x - W / 2)); camY = Math.max(0, Math.min(WELT_H - H, h.y - H / 2));
+  camX = Math.max(0, Math.min(WELT_W - W, h.x - W / 2)); camY = Math.max(NORD_Y, Math.min(WELT_H - H, h.y - H / 2));
 
   // 1) Gras-Boden + Moosboden in dichten Wäldern (weicher Übergang über die Walddichte)
   ctx.save(); ctx.translate(-camX, -camY); ctx.fillStyle = grasMuster ?? '#27331c'; ctx.fillRect(camX, camY, W, H); ctx.restore();
-  ctx.drawImage(moosCv, camX / 16, camY / 16, Math.max(1, W / 16), Math.max(1, H / 16), 0, 0, W, H);   // Moos ~ Dichte
+  // Moos-/Biom-Tint nur für den südlichen Teil (y>=0); der Berg im Norden hat eigene Tönung
+  { const y0 = Math.max(0, camY), dY = y0 - camY; if (H - dY > 0) ctx.drawImage(moosCv, camX / 16, y0 / 16, Math.max(1, W / 16), Math.max(1, (H - dY) / 16), 0, dY, W, H - dY); }
+
+  // 1a) Berg/Anhöhe im Norden (gestufte Höhen-Level bis zum Schnee)
+  if (bereit) zeichneBerg(now);
 
   // 1b) Pfad: mäanderndes Erdband mit unregelmäßigen Rändern, Spurrillen, nassen/trockenen
   //     Flecken, Steinen und einem Saum aus zertretenem Gras (bricht die harte Kante)
@@ -1012,18 +1084,20 @@ function frame(now: number): void {
     // kommt als eigener Eintrag in die Tiefensortierung (Held läuft "zwischen" den Geländern).
     const brSicht = bruecke.cx > camX - 300 && bruecke.cx < camX + W + 300 && bruecke.cy > camY - 300 && bruecke.cy < camY + H + 300;
     if (brSicht) zeichneBrueckeDeck(now);
-    interface Z { y: number; b: Baum | null; w: Wesen | null; f: Fels | null; bu: Busch | null; nr?: boolean; }
+    interface Z { y: number; b: Baum | null; w: Wesen | null; f: Fels | null; bu: Busch | null; nr?: boolean; bb?: BergBaum; }
     const liste: Z[] = [];
     for (const b of baeume) { if (b.x < camX - 360 || b.x > camX + W + 360 || b.y < camY - 600 || b.y > camY + H + 360) continue; liste.push({ y: b.y, b, w: null, f: null, bu: null }); }
     for (const w of wesen) liste.push({ y: w.y, b: null, w, f: null, bu: null });
     for (const f of felsen) { if (f.x < camX - 100 || f.x > camX + W + 100 || f.y < camY - 100 || f.y > camY + H + 100) continue; liste.push({ y: f.y, b: null, w: null, f, bu: null }); }
     for (const bu of buesche) { if (bu.x < camX - 200 || bu.x > camX + W + 200 || bu.y < camY - 250 || bu.y > camY + H + 200) continue; liste.push({ y: bu.y, b: null, w: null, f: null, bu }); }
+    if (camY < 60) for (const bbm of bergBaeume) { if (bbm.x < camX - 80 || bbm.x > camX + W + 80 || bbm.y < camY - 80 || bbm.y > camY + H + 80) continue; liste.push({ y: bbm.y, b: null, w: null, f: null, bu: null, bb: bbm }); }   // Bergtannen
     if (brSicht) { const ns = bruecke.ny >= 0 ? 1 : -1; liste.push({ y: bruecke.cy + ns * bruecke.ny * bruecke.halbB, b: null, w: null, f: null, bu: null, nr: true }); }   // vorderes Geländer tiefensortiert
     liste.sort((a, c) => a.y - c.y);
     for (const z of liste) {
       if (z.nr) { zeichneGelaender(bruecke.ny >= 0 ? 1 : -1, now); continue; }   // vorderes Brücken-Geländer
       if (z.f) { zeichneFels(z.f); continue; }
       if (z.bu) { const bu = z.bu, img = buschBilder[bu.typ], w = img.width * bu.skala, hh = img.height * bu.skala; kontaktSchatten(sx(bu.x), sy(bu.y), w * 0.45); const vd = bu.y > h0.y && Math.abs(bu.x - h0.x) < w * 0.3 && bu.y - h0.y < hh * 0.5; bu.fade += ((vd ? 1 : 0) - bu.fade) * Math.min(1, dt * 9); if (bu.fade > 0.01) ctx.globalAlpha = 1 - bu.fade * 0.5; ctx.drawImage(img, sx(bu.x) - w / 2, sy(bu.y) - hh * 0.7, w, hh); ctx.globalAlpha = 1; continue; }
+      if (z.bb) { const t = z.bb, img = tanneBilder[t.typ], w = img.width * t.skala, hh = img.height * t.skala; ctx.drawImage(img, sx(t.x) - w / 2, sy(t.y) - hh * 0.92, w, hh); continue; }   // Bergtanne
       if (z.b) {
         const b = z.b, bild = b.blight ? arten[b.art].blight : arten[b.art].wald, sk = b.skala * baumGroesse, w = bild.width * sk, hh = bild.height * sk;
         if (!b.fall) kontaktSchatten(sx(b.x), sy(b.y), w * 0.4);              // erdet den Baum am Fuß
@@ -1062,6 +1136,19 @@ function frame(now: number): void {
     }
   }
 
+  // 7b) Schnee am Berg: nur wenn der Berg (y<0) im Bild ist, je höher die Kamera desto dichter
+  if (camY < 0) {
+    const intens = Math.min(1, -camY / (BERG_H * 0.7));
+    for (let i = 0; i < flocken.length; i++) {
+      if (i > flocken.length * intens) break;
+      const f = flocken[i];
+      f.y += (16 + f.z * 30) * dt; f.x += (Math.sin(now / 700 + f.ph) * 8 + wd * 7) * dt;
+      if (f.y > H) { f.y = -4; f.x = Math.random() * W; }
+      if (f.x < 0) f.x += W; else if (f.x > W) f.x -= W;
+      ctx.fillStyle = `rgba(240,245,250,${0.45 + f.z * 0.4})`; ctx.beginPath(); ctx.arc(f.x, f.y, 1 + f.z * 1.6, 0, 7); ctx.fill();
+    }
+  }
+
   // 8) Wetter-Stimmung: nasser/dunkler Boden + Nebel-Dunst (FogExp2-Idee in 2D) + Vignette
   ctx.fillStyle = `rgba(12,18,24,${0.1 + wetter * 0.28})`; ctx.fillRect(0, 0, W, H);
   if (regenAn && wetter > 0.15) {
@@ -1083,6 +1170,39 @@ function frame(now: number): void {
   ctx.fillText(`Holz ${holz} · Stein ${stein} · Erz ${erzVorrat.gold}/${erzVorrat.eisen}/${erzVorrat.kristall} (Au/Fe/Kr) · F: nächstes Objekt abbauen`, W - 16, 40); ctx.textAlign = 'left';
 
   requestAnimationFrame(frame);
+}
+
+// ---------- Berg/Anhöhe zeichnen: gestufte Höhen-Level (Fels-Wände) bis zum Schnee ----------
+function zeichneBerg(_now: number): void {
+  if (camY > 60) return;                                          // Berg (y<0) nicht im Bild
+  ctx.save(); ctx.translate(-camX, -camY);
+  const x0 = camX - 40, x1 = camX + W + 40, step = 22;
+  const bandCol = ['#34402c', '#4a4a40', '#6b6a64', '#aeb4ba', '#e9eef4'];   // Fuß(Gras/Fels) -> Geröll -> Schnee
+  const faceCol = ['#222a1c', '#2e2e28', '#42423c', '#6a6e74', '#9fb0c0'];   // Klippen-Wandfarbe
+  for (let lvl = 0; lvl < BERG_NIV; lvl++) {                       // Fuß -> Gipfel: höhere Stufen überdecken die Klippe der tieferen
+    const suedK = lvl === 0 ? null : bergKlippen[lvl - 1], nordK = lvl < bergKlippen.length ? bergKlippen[lvl] : null;
+    ctx.beginPath();
+    for (let x = x0; x <= x1; x += step) { const y = nordK ? klippeY(nordK, x) : NORD_Y - 80; x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+    for (let x = x1; x >= x0; x -= step) { const y = suedK ? klippeY(suedK, x) : 0; ctx.lineTo(x, y); }
+    ctx.closePath(); ctx.fillStyle = bandCol[lvl]; ctx.fill();
+    if (lvl >= 3) { for (let i = 0; i < 60; i++) { const hx = x0 + ((Math.sin(i * 12.9 + lvl) * 43758.5) % 1 + 1) % 1 * (x1 - x0); const ky = nordK ? klippeY(nordK, hx) : NORD_Y - 40; const sy2 = ky + (((Math.sin(i * 7.7) * 43758.5) % 1 + 1) % 1) * (suedK ? klippeY(suedK, hx) - ky : 80); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(hx, sy2, 2, 2); } }   // Schnee-Glitzer
+    if (suedK) {                                                  // Klippen-WAND an der Süd-Kante (die Stufe "steht" über der tieferen)
+      ctx.beginPath();
+      for (let x = x0; x <= x1; x += step) { const y = klippeY(suedK, x); x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+      for (let x = x1; x >= x0; x -= step) ctx.lineTo(x, klippeY(suedK, x) + 16);
+      ctx.closePath(); ctx.fillStyle = faceCol[lvl]; ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 2; ctx.beginPath(); for (let x = x0; x <= x1; x += step) { const y = klippeY(suedK, x) + 16; x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } ctx.stroke();
+      for (const p of suedK.pass) { ctx.fillStyle = bandCol[lvl - 1]; ctx.fillRect(p.x - p.w / 2, klippeY(suedK, p.x) - 2, p.w, 20); ctx.strokeStyle = 'rgba(20,16,10,0.4)'; ctx.lineWidth = 1.5; ctx.strokeRect(p.x - p.w / 2, klippeY(suedK, p.x) - 2, p.w, 20); }   // begehbarer Pass
+    }
+  }
+  for (const bf of bergFelsen) {                                  // Geröll/Felsbrocken (oben verschneit)
+    if (bf.x < camX - 30 || bf.x > camX + W + 30 || bf.y < camY - 30 || bf.y > camY + H + 30) continue;
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(bf.x, bf.y + bf.r * 0.5, bf.r, bf.r * 0.4, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = bf.schnee > 0.7 ? '#cdd6dd' : '#56564e'; ctx.beginPath(); ctx.ellipse(bf.x, bf.y, bf.r, bf.r * 0.8, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = bf.schnee > 0.7 ? '#e9eef4' : '#6a6a62'; ctx.beginPath(); ctx.ellipse(bf.x - bf.r * 0.2, bf.y - bf.r * 0.3, bf.r * 0.6, bf.r * 0.5, 0, 0, 7); ctx.fill();
+    if (bf.schnee > 0 && bf.schnee <= 0.7) { ctx.fillStyle = 'rgba(233,238,244,0.7)'; ctx.beginPath(); ctx.ellipse(bf.x, bf.y - bf.r * 0.4, bf.r * 0.7, bf.r * 0.35, 0, 0, 7); ctx.fill(); }
+  }
+  ctx.restore();
 }
 
 // ---------- Fluss zeichnen: Wasser + scrollende Fließ-Strähnen + Stromschnellen + Ufer ----------
