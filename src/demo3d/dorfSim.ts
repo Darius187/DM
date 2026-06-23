@@ -69,13 +69,25 @@ let regenAn = true;
 let wetter = 0.5;                 // 0 klar .. 0.5 Regen .. 1 Sturm
 let wetterZiel = 0.5, wetterTimer = 6;
 let wetness = 0;                  // 0..1 Bodennässe: Regen füllt schnell, Verdunsten langsam -> Pfützen-Steuerung
-const WETTER_NAME = (): string => wetter < 0.15 ? 'klar' : wetter < 0.45 ? 'Nieselregen' : wetter < 0.78 ? 'Regen' : 'Unwetter';
+// Gewitter (Stufe 4): harte Blitz-Aufhellung (Doppel-Flash) + Donner verzögert hinterher.
+// Logik: das Spiel zündet den Blitz, der Donner folgt nach 0.3..2 s (nah=laut, fern=leise/später).
+let blitz = 0, blitzTimer = 5, blitzNach = 0;
+const donnerQueue: Array<{ t: number; laut: number }> = [];
+// AUDIO-PLATZHALTER: hier kommt später das Donner-Sample rein (3-5 Varianten, je Blitz zufällig).
+// Stufe-2/3-Ambience (loopbarer Regen/Sturm) wird analog über setzeWetterSound(stufe) angehängt.
+function spieleDonner(_laut: number): void { /* TODO Audio: new Audio(donnerSample[zufall]).play() mit Lautstärke _laut */ }
+const WETTER_NAME = (): string => wetter < 0.15 ? 'klar' : wetter < 0.45 ? 'Nieselregen' : wetter < 0.75 ? 'Regen' : wetter < 0.9 ? 'Unwetter' : 'Gewitter';
 function wind(now: number): number {                       // mit Böen; Stärke steigt mit dem Wetter
   const t = now / 1000;
   const amp = 0.25 + wetter * 1.35;
   const grund = (Math.sin(t * 0.27) * 0.6 + Math.sin(t * 0.13 + 1) * 0.3) * amp;
   const boe = Math.pow(Math.max(0, Math.sin(t * 0.2 + 0.5)), 3) * (0.4 + wetter * 1.7);
   return grund + boe;
+}
+// Böen-WELLE: ortsabhängiger Faktor, damit eine Böe als Welle durch Gras/Bäume läuft
+// (sonst klappen alle Halme synchron wie eine Fläche). Wellenlänge ~1500px, läuft mit der Zeit.
+function boeWelle(x: number, y: number, now: number): number {
+  return 0.62 + 0.38 * Math.sin(now * 0.0016 - x * 0.0042 - y * 0.0031);
 }
 
 // ---------- Boden: Gras + Pfützen ----------
@@ -252,8 +264,9 @@ addEventListener('keydown', (e) => {
   if (k === 'f' || e.key === ' ') fälleNächsten();
   if (k === 'r') regenAn = !regenAn;
   if (k === '1') { wetterZiel = 0.05; wetterTimer = 45; }    // klar
-  if (k === '2') { wetterZiel = 0.5; wetterTimer = 45; }     // Regen
-  if (k === '3') { wetterZiel = 1; wetterTimer = 45; }       // Unwetter
+  if (k === '2') { wetterZiel = 0.42; wetterTimer = 45; }    // Regen
+  if (k === '3') { wetterZiel = 0.78; wetterTimer = 45; }    // Unwetter
+  if (k === '4') { wetterZiel = 1; wetterTimer = 45; }       // Gewitter (Blitz + Donner)
 });
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 // Größen-Regler (live) für die Bäume
@@ -367,6 +380,7 @@ async function init(): Promise<void> {
   bereit = true;
   (window as unknown as { __dorfBereit?: boolean; __demo?: unknown }).__dorfBereit = true;
   (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; }, nass: (v: number) => { wetness = v; for (const p of pfuetzen) p.current = wetness > p.schwelle ? 1 : 0; },
+    blitzAus: () => { blitz = 1; blitzNach = 0.1; },
     geheHinterBaum: () => { let best: Baum | null = null, bd = 1e9; for (const t of baeume) { if (t.fall || t.blight || t.skala < 0.42) continue; const d = Math.hypot(t.x - WELT_W * 0.5, t.y - WELT_H * 0.5); if (d < bd) { bd = d; best = t; } } if (best) { held().x = best.x; held().y = best.y - 35; } },
     selbsttest: (): string => { const b0 = baeume.find((t) => !t.fall); if (!b0) return 'kein Baum'; held().x = b0.x - 60; held().y = b0.y; fälleNächsten(); const g = baeume.find((t) => t.fall && !t.fall.gelandet); if (!g) return 'nichts gefallen'; g.fall!.gelandet = true; g.fall!.winkel = FALL_ZIEL * g.fall!.richtung; held().x = g.x - 60; held().y = g.y; const h0 = holz; fälleNächsten(); const s = `gefallen=ja geerntet=${g.fall!.geerntet} holz ${h0}->${holz}`; console.log('[selbsttest] ' + s); return s; } };
 }
@@ -442,6 +456,19 @@ function frame(now: number): void {
   wetterTimer -= dt;
   if (wetterTimer <= 0) { wetterTimer = 10 + Math.random() * 16; wetterZiel = Math.random() < 0.28 ? 0.85 + Math.random() * 0.25 : 0.15 + Math.random() * 0.5; }
   wetter += (wetterZiel - wetter) * Math.min(1, dt * 0.5);
+  // GEWITTER (Stufe 4): bei wetter>0.85 zünden Blitze in zufälligen Abständen
+  blitz = Math.max(0, blitz - dt * 14);                     // harter, schneller Abfall (kein weiches Abblenden)
+  if (blitzNach > 0) { blitzNach -= dt; if (blitzNach <= 0) blitz = Math.max(blitz, 0.55); }   // zweiter, schwächerer Flash
+  if (wetter > 0.85 && regenAn) {
+    blitzTimer -= dt;
+    if (blitzTimer <= 0) {
+      blitzTimer = 4 + Math.random() * 9;
+      blitz = 1; blitzNach = 0.08 + Math.random() * 0.05;   // Doppel-Flash
+      const dist = 0.3 + Math.random() * 1.7;               // Donner-Verzögerung: nah..fern
+      donnerQueue.push({ t: dist, laut: 1 - (dist - 0.3) / 1.7 * 0.6 });
+    }
+  }
+  for (let i = donnerQueue.length - 1; i >= 0; i--) { donnerQueue[i].t -= dt; if (donnerQueue[i].t <= 0) { spieleDonner(donnerQueue[i].laut); donnerQueue.splice(i, 1); } }
   // Bodennässe: Regen füllt schnell, ohne Regen verdunstet sie langsam -> Pfützen wachsen/schwinden
   const regenInt = (regenAn && wetter > 0.12) ? wetter : 0;
   wetness = Math.max(0, Math.min(1, wetness + (regenInt > 0 ? regenInt * 0.18 : -0.012) * dt));
@@ -501,7 +528,7 @@ function frame(now: number): void {
     ctx.lineWidth = 1.2;
     for (let i = 0; i < pfadMitte.length; i += 2) {
       const m = pfadMitte[i];
-      for (const side of [-1, 1]) { const hs = Math.sin(i * 12.9 + side * 3.1) * 43758.5, r = hs - Math.floor(hs); if (r > 0.5) continue; const ex = m.x + m.nx * m.hw * f * side, ey = m.y + m.ny * m.hw * f * side, hgt = 4 + r * 8; ctx.strokeStyle = '#34421f'; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + side * 2 + wd * 5, ey - hgt); ctx.stroke(); }   // Saumgras (Sturm-Wind)
+      for (const side of [-1, 1]) { const hs = Math.sin(i * 12.9 + side * 3.1) * 43758.5, r = hs - Math.floor(hs); if (r > 0.5) continue; const ex = m.x + m.nx * m.hw * f * side, ey = m.y + m.ny * m.hw * f * side, hgt = 4 + r * 8; ctx.strokeStyle = '#34421f'; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + side * 2 + wd * 5 * boeWelle(m.x, m.y, now), ey - hgt); ctx.stroke(); }   // Saumgras (Sturm-Wind, Böen-Welle)
       if (i % 6 === 0) { const hs = Math.sin(i * 7.7) * 43758.5, r = hs - Math.floor(hs); if (r < 0.25) { const q = (r * 8 - 1) * m.hw * f * 0.4, gx = m.x + m.nx * q, gy = m.y + m.ny * q; ctx.strokeStyle = '#3a4a22'; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + wd * 5, gy - 6); ctx.moveTo(gx - 2, gy); ctx.lineTo(gx - 2 + wd * 4, gy - 5); ctx.stroke(); } }   // durchwachsend (Sturm-Wind)
     }
     ctx.restore();
@@ -548,7 +575,7 @@ function frame(now: number): void {
   if (bereit) for (const tf of tufts) {
     if (tf.x < camX - 10 || tf.x > camX + W + 10 || tf.y < camY - 10 || tf.y > camY + H + 10) continue;
     const hf = tf.kurz ? 0.6 : 1;                                          // kürzer im dichten Wald
-    let lean = wd * 6 + Math.sin(now / 240 + tf.ph) * 1.5;                 // SELBER Wind wie die Bäume -> synchron; im Sturm fast flach
+    let lean = wd * 6 * boeWelle(tf.x, tf.y, now) + Math.sin(now / 240 + tf.ph) * 1.5;   // SELBER Wind wie die Bäume + Böen-Welle (kein synchrones Flächen-Klappen)
     for (const w of wesen) { const dx = tf.x - w.x, dy = tf.y - w.y; const d2 = dx * dx + dy * dy; if (d2 < 900) lean += (dx / (Math.sqrt(d2) || 1)) * (1 - d2 / 900) * 9; }   // Wegbiegen vor Wesen (nur Spitze)
     const gx = sx(tf.x), gy = sy(tf.y);
     ctx.strokeStyle = '#3c4d27'; ctx.lineWidth = 1.4;
@@ -558,7 +585,7 @@ function frame(now: number): void {
   // 4a) Wiesen-Bewuchs (locker gestreut, leichtes Wiegen)
   if (bereit) for (const pf of bewuchs) {
     if (pf.x < camX - 20 || pf.x > camX + W + 20 || pf.y < camY - 20 || pf.y > camY + H + 20) continue;
-    const bb = bewuchsBilder[pf.typ], sway = wd * 0.14 + Math.sin(now / 300 + pf.ph) * 0.03;   // im Sturm deutlich (synchron zum Wind)
+    const bb = bewuchsBilder[pf.typ], sway = wd * 0.14 * boeWelle(pf.x, pf.y, now) + Math.sin(now / 300 + pf.ph) * 0.03;   // Böen-Welle
     ctx.save(); ctx.translate(sx(pf.x), sy(pf.y)); ctx.rotate(sway); ctx.drawImage(bb, -bb.width / 2, -bb.height + 2); ctx.restore();
   }
 
@@ -586,7 +613,7 @@ function frame(now: number): void {
         const verdeckt = b.y > h0.y && rechteckeUeberlappen(sx(b.x) - w * 0.3, sy(b.y) - hh * 0.64, w * 0.6, hh * 0.55, tRX, tRY, tRW, tRH);
         b.fade += ((verdeckt ? 1 : 0) - b.fade) * Math.min(1, dt * 9);
         if (b.fade > 0.01) ctx.globalAlpha = 1 - b.fade * 0.45;               // Krone nur bis ~0.55 (bleibt als Baum lesbar)
-        if (b.fall) { if (!b.fall.geerntet) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); } else zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * (b.blight ? 5 : 13) * (0.7 + sk * 0.6), b.ph, now);
+        if (b.fall) { if (!b.fall.geerntet) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); } else zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * (b.blight ? 5 : 13) * (0.7 + sk * 0.6) * boeWelle(b.x, b.y, now), b.ph, now);
         ctx.globalAlpha = 1;
       } else if (z.w) zeichneWesen(z.w);
     }
@@ -627,8 +654,10 @@ function frame(now: number): void {
   }
   const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.34, W / 2, H / 2, Math.max(W, H) * 0.74);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(2,4,3,${0.6 + wetter * 0.16})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  // 8a) BLITZ: harte, kurze Aufhellung der ganzen Szene (Doppel-Flash, kein weiches Abblenden)
+  if (blitz > 0.01) { ctx.fillStyle = `rgba(222,230,248,${blitz * 0.55})`; ctx.fillRect(0, 0, W, H); }
   ctx.fillStyle = 'rgba(230,220,190,0.85)'; ctx.font = '13px Georgia'; ctx.textAlign = 'right';
-  ctx.fillText(`Wetter: ${WETTER_NAME()}   ·   Nässe ${Math.round(wetness * 100)}%   [1·2·3]`, W - 16, 22);
+  ctx.fillText(`Wetter: ${WETTER_NAME()}   ·   Nässe ${Math.round(wetness * 100)}%   [1 2 3 4]`, W - 16, 22);
   ctx.fillText(`Holz: ${holz}   ·   F: Baum fällen / liegenden Stamm zerhacken`, W - 16, 40); ctx.textAlign = 'left';
 
   requestAnimationFrame(frame);
