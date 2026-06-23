@@ -590,6 +590,8 @@ async function init(): Promise<void> {
   (window as unknown as { __dorfBereit?: boolean; __demo?: unknown }).__dorfBereit = true;
   (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; }, nass: (v: number) => { wetness = v; for (const p of pfuetzen) p.current = wetness > p.schwelle ? 1 : 0; },
     blitzAus: () => { blitz = 1; blitzNach = 0.1; },
+    sturm: () => { wetter = 1; wetterZiel = 1; wetterTimer = 90; },
+    biomBei: (x: number, y: number): string => biomAt(x, y),
     verdeckt: () => istVerdecktVomBaum(held().x, held().y),
     zumFels: () => { const f = felsen.find((q) => !q.entfernt); if (f) { held().x = f.x - 55; held().y = f.y; } },
     zumErz: () => { const f = felsen.find((q) => !q.entfernt && q.erz); if (f) { held().x = f.x - 55; held().y = f.y; } },
