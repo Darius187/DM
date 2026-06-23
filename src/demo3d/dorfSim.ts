@@ -104,7 +104,8 @@ function wind(now: number): number {                       // Stärke steigt mit
   // BUGFIX: im Sturm KONSTANT starker, gerichteter Wind (kreuzt nie 0) + schnelle Böen obendrauf,
   // statt eines einmaligen Ausschlags der dann abklingt -> Bäume bleiben dauerhaft gebogen.
   const sturm = Math.max(0, (wetter - 0.5) / 0.5);
-  const konstant = sturm * (1.0 + 0.45 * Math.sin(t * 1.2) + 0.3 * Math.sin(t * 0.6 + 2));
+  // Im Sturm: starker Grundwind + KRÄFTIGE, schnelle Schwankung -> Bäume schwingen heftig hin und her
+  const konstant = sturm * (1.1 + 0.9 * Math.sin(t * 1.3) + 0.6 * Math.sin(t * 0.7 + 2) + 0.5 * Math.sin(t * 2.3 + 1));
   return grund + boe + konstant;
 }
 // Böen-WELLE: ortsabhängiger Faktor, damit eine Böe als Welle durch Gras/Bäume läuft
@@ -127,14 +128,42 @@ function macheGras(ts = 128): HTMLCanvasElement {
 }
 const grasMuster = ctx.createPattern(macheGras(), 'repeat');
 
-// Wald-Dichte (sanfte Noise-Zonen): steuert Baum-Platzierung UND Moos/Gras am Boden
-function dichteNoise(x: number, y: number): number {
+// ---------- BIOME (Noise-Karte): Wald / Wiese / Moor / Fels, jeweils eigener Boden + Bewuchs/Dichte ----------
+function dichteNoise(x: number, y: number): number {   // Wald-Dichte
   const n = Math.sin(x * 0.0017) * Math.cos(y * 0.0021) + 0.6 * Math.sin((x + y) * 0.0013 + 1.7) + 0.4 * Math.sin(x * 0.004 - y * 0.003 + 3);
   return Math.max(0, Math.min(1, 0.5 + n / 4));
 }
-// Moos-Karte (niedrig aufgelöst, weich hochskaliert): dunkelgrüner Moosboden ~ Walddichte, weicher Übergang
+function moorNoise(x: number, y: number): number {     // Moor-/Sumpf-Anteil
+  const n = Math.sin(x * 0.0011 + 2) * Math.cos(y * 0.0014 + 1) + 0.5 * Math.sin((x - y) * 0.0017 + 4);
+  return Math.max(0, Math.min(1, 0.5 + n / 3));
+}
+function felsNoise(x: number, y: number): number {     // Fels-/Berg-Anteil
+  const n = Math.sin(x * 0.0015 - 1) * Math.cos(y * 0.0012 + 3) + 0.5 * Math.sin((x + y) * 0.0019);
+  return Math.max(0, Math.min(1, 0.5 + n / 3));
+}
+type Biom = 'wiese' | 'wald' | 'moor' | 'fels';
+function biomAt(x: number, y: number): Biom {
+  if (moorNoise(x, y) > 0.66) return 'moor';
+  if (felsNoise(x, y) > 0.66) return 'fels';
+  if (dichteNoise(x, y) > 0.5) return 'wald';
+  return 'wiese';
+}
+const sst = (a: number, b: number, x: number): number => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+// Biom-Boden-Karte (niedrig aufgelöst, weich hochskaliert): Boden-Tönung je Biom, sanft geblendet
 const moosCv = document.createElement('canvas'); moosCv.width = Math.ceil(WELT_W / 16); moosCv.height = Math.ceil(WELT_H / 16);
-{ const m = moosCv.getContext('2d')!; for (let yy = 0; yy < moosCv.height; yy++) for (let xx = 0; xx < moosCv.width; xx++) { const d = dichteNoise(xx * 16, yy * 16); if (d > 0.28) { m.fillStyle = `rgba(20,32,15,${(d - 0.28) * 0.62})`; m.fillRect(xx, yy, 1, 1); } } }
+{ const m = moosCv.getContext('2d')!;
+  const WALD = [20, 32, 15], MOOR = [30, 26, 14], FELS = [60, 58, 52];   // Boden-Tönungen
+  for (let yy = 0; yy < moosCv.height; yy++) for (let xx = 0; xx < moosCv.width; xx++) {
+    const x = xx * 16, y = yy * 16;
+    const wMoor = sst(0.56, 0.74, moorNoise(x, y));
+    const wFels = sst(0.56, 0.74, felsNoise(x, y)) * (1 - wMoor);
+    const wWald = sst(0.42, 0.6, dichteNoise(x, y)) * (1 - wMoor - wFels);   // Rest = Wiese (Grundgras)
+    let r = 0, g = 0, b = 0, a = 0;
+    const add = (c: number[], w: number): void => { a += w; r += c[0] * w; g += c[1] * w; b += c[2] * w; };
+    add(MOOR, wMoor); add(FELS, wFels); add(WALD, wWald);
+    if (a > 0.02) { m.fillStyle = `rgba(${Math.round(r / a)},${Math.round(g / a)},${Math.round(b / a)},${Math.min(0.62, a * 0.62)})`; m.fillRect(xx, yy, 1, 1); }
+  }
+}
 
 // Pfütze liegt AM Pfad entlang: Mittelpunkt (cx,cy), Länge L (in Pfadrichtung),
 // Breite B (quer, < Pfadbreite), Winkel ang. Maske + brauner Schlamm-Halo lokal
@@ -525,21 +554,23 @@ async function init(): Promise<void> {
   for (let versuche = 0; baeume.length < 230 && versuche < 7000; versuche++) {
     const x = 90 + Math.random() * (WELT_W - 180), y = 90 + Math.random() * (WELT_H - 180);
     if (nahSee(x, y)) continue;                                                // nicht im/am See
-    const d = dichteNoise(x, y);
-    if (Math.random() > d * d) continue;                                        // dichte Zonen voll, Rand spärlich
-    const skala = d > 0.62 ? 1.0 + Math.random() * 0.6 : 0.66 + Math.random() * 0.5;
+    const d = dichteNoise(x, y), biom = biomAt(x, y);
+    // Bäume v.a. im WALD; Wiese/Moor spärlich, Fels fast keine
+    const chance = biom === 'wald' ? d : biom === 'wiese' ? 0.16 : biom === 'moor' ? 0.18 : 0.05;
+    if (Math.random() > chance) continue;
+    const skala = biom === 'wald' && d > 0.62 ? 1.0 + Math.random() * 0.6 : 0.6 + Math.random() * 0.5;
     const kroneN = y - 512 * skala * 0.42;                                       // wohin die Krone nordwärts reicht
     if (Math.hypot(x - lichtX, y - lichtY) < 330 || Math.hypot(x - lichtX, kroneN - lichtY) < 330) continue;   // Lichtung + Überhang frei
     if (distPfad(x, y) < PFAD_BREITE * 0.7 || distPfad(x, kroneN) < PFAD_BREITE * 0.7) continue;               // Weg + Überhang frei
     if (baeume.some((t) => Math.hypot(t.x - x, t.y - y) < 80)) continue;        // Mindestabstand (große Bäume)
-    const blight = Math.hypot(x - krypta.x, y - krypta.y) < krypta.r * (0.55 + Math.random() * 0.6);
+    const blight = biom === 'moor' || Math.hypot(x - krypta.x, y - krypta.y) < krypta.r * (0.55 + Math.random() * 0.6);   // Moor = tote Bäume
     const maxHp = Math.max(40, Math.round(skala * FAELLEN.hpProGroesse));
     baeume.push({ art: Math.floor(Math.random() * arten.length), x, y, skala, blight, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)], fade: 0, hp: maxHp, maxHp, weg: false });
   }
   // Felsen in CLUSTERN (Haufen verschiedener Größen), abseits Lichtung/Weg/See, nicht in Baumstämmen
   for (let c = 0; c < 22; c++) {
     let fx = 0, fy = 0, ok = false;
-    for (let t = 0; t < 20 && !ok; t++) { fx = 120 + Math.random() * (WELT_W - 240); fy = 120 + Math.random() * (WELT_H - 240); ok = Math.hypot(fx - lichtX, fy - lichtY) > 360 && distPfad(fx, fy) > PFAD_BREITE * 0.8 && !nahSee(fx, fy); }
+    for (let t = 0; t < 20 && !ok; t++) { fx = 120 + Math.random() * (WELT_W - 240); fy = 120 + Math.random() * (WELT_H - 240); ok = Math.hypot(fx - lichtX, fy - lichtY) > 360 && distPfad(fx, fy) > PFAD_BREITE * 0.8 && !nahSee(fx, fy) && (felsNoise(fx, fy) > 0.5 || Math.random() < 0.3); }   // Felsen v.a. im Fels-Biom
     if (!ok) continue;
     for (let k = 0, n = 2 + Math.floor(Math.random() * 3); k < n; k++) {
       const x = fx + (Math.random() - 0.5) * 90, y = fy + (Math.random() - 0.5) * 60, g = Math.floor(Math.random() * 3);
@@ -554,7 +585,7 @@ async function init(): Promise<void> {
   for (let i = 0; i < 150; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (Math.hypot(x - lichtX, y - lichtY) < 320 || distPfad(x, y) < PFAD_BREITE * 0.8 || imSee(x, y)) continue; if (Math.random() > dichteNoise(x, y) * 0.8) continue; buesche.push({ x, y, skala: 0.38 + Math.random() * 0.32, typ: Math.floor(Math.random() * buschBilder.length), fade: 0 }); }
   // Gras-Büschel
   for (let i = 0; i < 1300; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y)) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.65) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5 }); }   // dicht = spärlicher + kürzer
-  for (let i = 0; i < 700; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y)) continue; const nahAnker = nahSee(x, y) || distPfad(x, y) < PFAD_BREITE * 1.3; if (!nahAnker && Math.random() < dichteNoise(x, y) * 0.85 + 0.35) continue; bewuchs.push({ x, y, typ: Math.floor(Math.random() * bewuchsBilder.length), ph: Math.random() * 7 }); }   // Blumen geclustert: bevorzugt an Wasserkante/Wegrand
+  for (let i = 0; i < 700; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y)) continue; const biom = biomAt(x, y); if (biom === 'moor' || biom === 'fels') continue; const nahAnker = nahSee(x, y) || distPfad(x, y) < PFAD_BREITE * 1.3; if (!nahAnker && Math.random() < dichteNoise(x, y) * 0.85 + 0.35) continue; bewuchs.push({ x, y, typ: Math.floor(Math.random() * bewuchsBilder.length), ph: Math.random() * 7 }); }   // Blumen nur Wiese/Wald, geclustert an Ankern
   bereit = true;
   (window as unknown as { __dorfBereit?: boolean; __demo?: unknown }).__dorfBereit = true;
   (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; }, nass: (v: number) => { wetness = v; for (const p of pfuetzen) p.current = wetness > p.schwelle ? 1 : 0; },
@@ -796,8 +827,8 @@ function frame(now: number): void {
   // 4b) Schatten der fallenden Krone (wandert mit) + Stümpfe unter gefällten Bäumen
   if (bereit) for (const b of baeume) if (b.fall) {
     if (!b.weg) { const tx = sx(b.x + Math.sin(b.fall.winkel) * 70 * b.skala * baumGroesse), r = 30 * b.skala * baumGroesse; ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(tx, sy(b.y) + 4, r, r * 0.4, 0, 0, 7); ctx.fill(); }
-    const ss = b.skala * baumGroesse * 0.95, sb = stumpfBilder[(Math.abs(Math.round(b.x * 13 + b.y * 7))) % stumpfBilder.length];   // Variante per Position
-    ctx.save(); ctx.translate(sx(b.x), sy(b.y) + 2); ctx.rotate((b.x * 0.7 + b.y * 0.3) % (Math.PI * 2)); ctx.drawImage(sb, -sb.width * ss / 2, -sb.height * ss / 2, sb.width * ss, sb.height * ss); ctx.restore();
+    const ss = b.skala * baumGroesse * 0.95, sb = stumpfBilder[(Math.abs(Math.round(b.x * 13 + b.y * 7))) % stumpfBilder.length];   // Variante per Position (Aussehen variiert, KEINE Drehung -> bleibt aufrecht)
+    ctx.drawImage(sb, sx(b.x) - sb.width * ss / 2, sy(b.y) - sb.height * ss / 2 + 2, sb.width * ss, sb.height * ss);
   }
 
   // 5) Bäume + Wesen, tiefensortiert. Occlusion-Fade: NUR der Baum direkt vor dem Helden
@@ -822,7 +853,7 @@ function frame(now: number): void {
         const verdeckt = unterBaum(h0.x, h0.y, b);
         b.fade += ((verdeckt ? 1 : 0) - b.fade) * Math.min(1, dt * 9);
         if (b.fade > 0.01) ctx.globalAlpha = 1 - b.fade * 0.45;               // Krone nur bis ~0.55 (bleibt als Baum lesbar)
-        if (b.fall) { if (!b.weg) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); } else { zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * sk * (b.blight ? 16 : 40) * boeWelle(b.x, b.y, now), b.ph, now); if (b.hp < b.maxHp) zeichneBalken(sx(b.x), sy(b.y) - 44, b.hp / b.maxHp, '#6ad06a'); }   // Biegung + Fäll-Balken am Stammfuß
+        if (b.fall) { if (!b.weg) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); } else { zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * sk * (b.blight ? 30 : 78) * boeWelle(b.x, b.y, now), b.ph, now); if (b.hp < b.maxHp) zeichneBalken(sx(b.x), sy(b.y) - 44, b.hp / b.maxHp, '#6ad06a'); }   // Biegung im Sturm SEHR stark + Fäll-Balken
         if (b.fall && !b.weg && b.fall.hackHp < b.fall.hackMax) zeichneBalken(sx(b.x), sy(b.y) - 10, b.fall.hackHp / b.fall.hackMax, '#d2a23a');   // Hack-Balken am liegenden Stamm
         ctx.globalAlpha = 1;
       } else if (z.w) zeichneWesen(z.w);
