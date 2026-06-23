@@ -484,3 +484,10 @@
 - Runde 60 (Outline für verdeckte Wesen + stärkere Sturm-Biegung):
   * BÄUME BIEGEN STÄRKER: Biegungs-Multiplikator größenproportional (wd*sk*40, Blight*16) statt fix -> im Sturm deutlich sichtbares Biegen (vorher bei den großen Bäumen proportional zu schwach).
   * OUTLINE statt Geist-Silhouette: verdeckte Wesen bekommen eine dünne FARBCODIERTE Kontur (Held kühl-blau #bfe0ff, NPC neutral-gelb; Gegner später rot), Figur innen bleibt normal. Technik: figCv in 8 Richtungen +2px in umrissCv, source-in-Tint, unter die normale Figur. Nur bei Verdeckung gerechnet (istVerdecktVomBaum, gleicher Test wie Occluder-Fade), weich gefadet (w.umriss-Lerp). Hühner OHNE Outline (Autor-Geschmack: kleine Tiere wirken sonst unruhig). Verifiziert.
+
+- Runde 60 (HP-Fäll-/Hack-System statt Ein-Klick): Konstanten FAELLEN (hpProGroesse 80, schaden 30, hackHpProGroesse 210, holzProGroesse 1.9) - leicht justierbar.
+  * STEHENDER BAUM: hp/maxHp ~ Größe. Jeder F-Schlag -30, grüner Fortschrittsbalken am Stammfuß (nur wenn hp<maxHp). Erst hp<=0 -> starteFall.
+  * FALL langsamer/schwerer: FALL_G 7.5->5.2 (Rotation um den Fuß ~1.5s + Nachfedern).
+  * LIEGENDER STAMM: eigener, höherer hackHp (~Größe, deutlich länger als Fällen). Jeder F-Schlag -30; Holz fällt in ETAPPEN ab (Schwelle aus holzGesamt) mit Splitter-Partikeln; bei hackHp<=0 Rest-Holz + Stamm weg (b.weg, nur Stumpf bleibt). Gelber Hack-Balken.
+  * HOLZ je BAUMGRÖSSE: holzGesamt = max(1, round(skala*1.9)) -> kleine ~1, große ~2-3; größere brauchen mehr Schläge UND mehr Hacks. (Erklärt Holzfäller-NPC ~8-12 Holz/Tag.) Selbsttest grün: schlaege=3, hacks=8, holz 0->2, weg=true.
+  * OFFEN/Konzept (für echtes Spiel / Etappe 3): Stein/Erz/Gold-Knoten in mehreren Abbau-Stufen mit sichtbarem Zerfall (voll -> Nuggets geleert -> Brocken bröckelt) - kommt mit den Felsen.

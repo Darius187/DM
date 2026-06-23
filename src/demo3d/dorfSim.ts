@@ -227,9 +227,11 @@ function backe(ofen: ReturnType<typeof macheBackofen>, t: Tree, st: Stimmung): H
 }
 // Fall-Physik (eigene Impuls-Physik wie der Spiel-Rückstoß, kein matter.js):
 // Schwerkraft-Drehmoment um den Stammfuß, beschleunigt mit der Neigung, federt am Boden nach.
-interface Fall { winkel: number; winkelV: number; gelandet: boolean; richtung: number; geerntet: boolean; }
-const FALL_G = 7.5, FALL_ZIEL = 1.46;   // Schwerkraft-Stärke; Ruhewinkel (liegend)
-interface Baum { art: number; x: number; y: number; skala: number; blight: boolean; ph: number; fall: Fall | null; blattFarbe: string; fade: number; }
+// Fäll-/Hack-Balancing (gut justierbar): Schläge bis Fall / bis Stamm zerlegt, Holz je Größe
+const FAELLEN = { hpProGroesse: 80, schaden: 30, hackHpProGroesse: 210, holzProGroesse: 1.9 };
+interface Fall { winkel: number; winkelV: number; gelandet: boolean; richtung: number; hackHp: number; hackMax: number; holzGesamt: number; holzAb: number; }
+const FALL_G = 5.2, FALL_ZIEL = 1.46;   // langsamerer/schwererer Fall; Ruhewinkel (liegend)
+interface Baum { art: number; x: number; y: number; skala: number; blight: boolean; ph: number; fall: Fall | null; blattFarbe: string; fade: number; hp: number; maxHp: number; weg: boolean; }
 const arten: Array<{ wald: HTMLCanvasElement; blight: HTMLCanvasElement }> = [];
 const baeume: Baum[] = [];
 const krypta = { x: WELT_W * 0.74, y: WELT_H * 0.3, r: 520 };
@@ -322,20 +324,30 @@ let pausiert = false;   // Screenshot-Hilfe: friert die Schleife ein (Software-W
 { const reg = document.getElementById('groesse') as HTMLInputElement | null, val = document.getElementById('groesseVal'); if (reg) reg.addEventListener('input', () => { baumGroesse = parseFloat(reg.value); if (val) val.textContent = `${baumGroesse.toFixed(2)}×`; }); }
 { const reg = document.getElementById('wegbreite') as HTMLInputElement | null, val = document.getElementById('wegbreiteVal'); if (reg) reg.addEventListener('input', () => { pfadBreiteFaktor = parseFloat(reg.value); if (val) val.textContent = `${pfadBreiteFaktor.toFixed(2)}×`; }); }
 
+function starteFall(b: Baum, ri: number): void {
+  b.fall = { winkel: 0.05 * ri, winkelV: 0.3 * ri, gelandet: false, richtung: ri,
+    hackHp: Math.round(b.skala * FAELLEN.hackHpProGroesse), hackMax: Math.round(b.skala * FAELLEN.hackHpProGroesse),
+    holzGesamt: Math.max(1, Math.round(b.skala * FAELLEN.holzProGroesse)), holzAb: 0 };
+}
+function hackeStamm(b: Baum): void {                                   // liegenden Stamm zerlegen -> Holz in Etappen
+  const f = b.fall!; f.hackHp -= FAELLEN.schaden; spaene(b.x + f.richtung * 40, b.y, '#6a5238', -30, 3);
+  const sollAb = Math.floor((1 - Math.max(0, f.hackHp) / f.hackMax) * f.holzGesamt);
+  while (f.holzAb < sollAb) { f.holzAb++; holz++; spaene(b.x + f.richtung * 50, b.y, '#9a6a38', -22, 4); }   // Holzscheit fällt ab
+  if (f.hackHp <= 0) { while (f.holzAb < f.holzGesamt) { f.holzAb++; holz++; } b.weg = true; }               // Rest-Holz, Stamm aufgebraucht
+}
 function fälleNächsten(): void {
   const h = held();
-  // 1) liegenden, noch nicht geernteten Stamm in Reichweite -> zu Holz hacken (1 Holz/Baum)
+  // 1) liegenden, noch nicht zerlegten Stamm in Reichweite -> hacken (Holz in Etappen)
   let log: Baum | null = null, ld = 1e9;
-  for (const b of baeume) { if (b.fall && b.fall.gelandet && !b.fall.geerntet) { const d = Math.hypot(h.x - b.x, h.y - b.y); if (d < 150 && d < ld) { ld = d; log = b; } } }
-  if (log) { h.dir = richtungVon(log.x - h.x, log.y - h.y); h.hackT = 0.4; log.fall!.geerntet = true; holz++; for (let i = 0; i < 12; i++) spaene(log.x + log.fall!.richtung * 40, log.y, '#6a5238', -30, 1); return; }
-  // 2) sonst stehenden Baum fällen (kippt mit Schwung weg vom Helden)
+  for (const b of baeume) { if (b.fall && b.fall.gelandet && !b.weg) { const d = Math.hypot(h.x - b.x, h.y - b.y); if (d < 150 && d < ld) { ld = d; log = b; } } }
+  if (log) { h.dir = richtungVon(log.x - h.x, log.y - h.y); h.hackT = 0.4; hackeStamm(log); return; }
+  // 2) sonst stehenden Baum SCHLAGEN (mehrere Schläge bis HP<=0, dann fällt er langsam)
   let best: Baum | null = null, bd = 1e9;
-  for (const b of baeume) { if (b.fall) continue; const d = Math.hypot(h.x - b.x, h.y - b.y); if (d < 130 && d < bd) { bd = d; best = b; } }
+  for (const b of baeume) { if (b.fall || b.weg) continue; const d = Math.hypot(h.x - b.x, h.y - b.y); if (d < 130 && d < bd) { bd = d; best = b; } }
   if (!best) return;
   h.dir = richtungVon(best.x - h.x, best.y - h.y); h.hackT = 0.4;
-  const ri = best.x >= h.x ? 1 : -1;
-  best.fall = { winkel: 0.05 * ri, winkelV: 0.35 * ri, gelandet: false, richtung: ri, geerntet: false };
-  for (let i = 0; i < 10; i++) spaene(best.x, best.y, '#6a5238', -40, 1);   // Späne am Stammfuß
+  best.hp -= FAELLEN.schaden; for (let i = 0; i < 4; i++) spaene(best.x, best.y, '#6a5238', -40, 1);   // Späne je Schlag
+  if (best.hp <= 0) starteFall(best, best.x >= h.x ? 1 : -1);
 }
 
 // ---------- Partikel (Späne, Blätter, Spritzer) ----------
@@ -424,7 +436,8 @@ async function init(): Promise<void> {
     if (baeume.some((t) => Math.hypot(t.x - x, t.y - y) < 78)) continue;        // Mindestabstand (größere Bäume)
     const blight = Math.hypot(x - krypta.x, y - krypta.y) < krypta.r * (0.55 + Math.random() * 0.6);
     const skala = d > 0.62 ? 0.98 + Math.random() * 0.55 : 0.64 + Math.random() * 0.5;   // ~2,1x größer (Bäume türmen über der Figur)
-    baeume.push({ art: Math.floor(Math.random() * arten.length), x, y, skala, blight, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)], fade: 0 });
+    const maxHp = Math.max(40, Math.round(skala * FAELLEN.hpProGroesse));
+    baeume.push({ art: Math.floor(Math.random() * arten.length), x, y, skala, blight, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)], fade: 0, hp: maxHp, maxHp, weg: false });
   }
   // Gras-Büschel
   for (let i = 0; i < 1300; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y)) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.65) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5 }); }   // dicht = spärlicher + kürzer
@@ -434,7 +447,7 @@ async function init(): Promise<void> {
   (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; }, nass: (v: number) => { wetness = v; for (const p of pfuetzen) p.current = wetness > p.schwelle ? 1 : 0; },
     blitzAus: () => { blitz = 1; blitzNach = 0.1; },
     geheHinterBaum: () => { let best: Baum | null = null, bd = 1e9; for (const t of baeume) { if (t.fall || t.blight || t.skala < 0.42) continue; const d = Math.hypot(t.x - WELT_W * 0.5, t.y - WELT_H * 0.5); if (d < bd) { bd = d; best = t; } } if (best) { held().x = best.x; held().y = best.y - 35; } },
-    selbsttest: (): string => { const b0 = baeume.find((t) => !t.fall); if (!b0) return 'kein Baum'; held().x = b0.x - 60; held().y = b0.y; fälleNächsten(); const g = baeume.find((t) => t.fall && !t.fall.gelandet); if (!g) return 'nichts gefallen'; g.fall!.gelandet = true; g.fall!.winkel = FALL_ZIEL * g.fall!.richtung; held().x = g.x - 60; held().y = g.y; const h0 = holz; fälleNächsten(); const s = `gefallen=ja geerntet=${g.fall!.geerntet} holz ${h0}->${holz}`; console.log('[selbsttest] ' + s); return s; } };
+    selbsttest: (): string => { const b0 = baeume.find((t) => !t.fall && !t.weg); if (!b0) return 'kein Baum'; held().x = b0.x - 60; held().y = b0.y; let sl = 0; while (!b0.fall && sl < 30) { fälleNächsten(); sl++; } if (!b0.fall) return 'fiel nicht'; b0.fall.gelandet = true; b0.fall.winkel = FALL_ZIEL * b0.fall.richtung; held().x = b0.x - 60; held().y = b0.y; const h0 = holz; let hk = 0; while (!b0.weg && hk < 40) { fälleNächsten(); hk++; } const s = `schlaege=${sl} hacks=${hk} holz ${h0}->${holz} weg=${b0.weg}`; console.log('[selbsttest] ' + s); return s; } };
 }
 void init();
 
@@ -549,7 +562,7 @@ function frame(now: number): void {
         continue;
       }
       if (!b.blight && Math.abs(wd) > 0.7 && Math.random() < dt * 1.6 * b.skala) blattFall(b.x + (Math.random() - 0.5) * 60 * b.skala, b.y - 90 * b.skala, b.blattFarbe);
-      if (wetter > 0.72 && wd > 1.35 && Math.random() < dt * 0.014 * b.skala) { b.fall = { winkel: 0.05, winkelV: 0.4, gelandet: false, richtung: 1, geerntet: false }; }   // Sturm knickt ihn um
+      if (!b.weg && wetter > 0.72 && wd > 1.35 && Math.random() < dt * 0.014 * b.skala) starteFall(b, 1);   // Sturm knickt ihn um
     }
   }
   // Partikel
@@ -662,7 +675,7 @@ function frame(now: number): void {
 
   // 4b) Schatten der fallenden Krone (wandert mit) + Stümpfe unter gefällten Bäumen
   if (bereit) for (const b of baeume) if (b.fall) {
-    if (!b.fall.geerntet) { const tx = sx(b.x + Math.sin(b.fall.winkel) * 70 * b.skala * baumGroesse), r = 30 * b.skala * baumGroesse; ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(tx, sy(b.y) + 4, r, r * 0.4, 0, 0, 7); ctx.fill(); }
+    if (!b.weg) { const tx = sx(b.x + Math.sin(b.fall.winkel) * 70 * b.skala * baumGroesse), r = 30 * b.skala * baumGroesse; ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(tx, sy(b.y) + 4, r, r * 0.4, 0, 0, 7); ctx.fill(); }
     const ss = b.skala * baumGroesse * 0.95; ctx.drawImage(stumpfBild, sx(b.x) - stumpfBild.width * ss / 2, sy(b.y) - stumpfBild.height * ss / 2 + 2, stumpfBild.width * ss, stumpfBild.height * ss);
   }
 
@@ -685,7 +698,8 @@ function frame(now: number): void {
         const verdeckt = b.y > h0.y && rechteckeUeberlappen(sx(b.x) - w * 0.3, sy(b.y) - hh * 0.64, w * 0.6, hh * 0.55, tRX, tRY, tRW, tRH);
         b.fade += ((verdeckt ? 1 : 0) - b.fade) * Math.min(1, dt * 9);
         if (b.fade > 0.01) ctx.globalAlpha = 1 - b.fade * 0.45;               // Krone nur bis ~0.55 (bleibt als Baum lesbar)
-        if (b.fall) { if (!b.fall.geerntet) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); } else zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * sk * (b.blight ? 16 : 40) * boeWelle(b.x, b.y, now), b.ph, now);   // Biegung größenproportional + im Sturm deutlich
+        if (b.fall) { if (!b.weg) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); } else { zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * sk * (b.blight ? 16 : 40) * boeWelle(b.x, b.y, now), b.ph, now); if (b.hp < b.maxHp) zeichneBalken(sx(b.x), sy(b.y) - 44, b.hp / b.maxHp, '#6ad06a'); }   // Biegung + Fäll-Balken am Stammfuß
+        if (b.fall && !b.weg && b.fall.hackHp < b.fall.hackMax) zeichneBalken(sx(b.x), sy(b.y) - 10, b.fall.hackHp / b.fall.hackMax, '#d2a23a');   // Hack-Balken am liegenden Stamm
         ctx.globalAlpha = 1;
       } else if (z.w) zeichneWesen(z.w);
     }
@@ -735,6 +749,12 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 
+function zeichneBalken(x: number, y: number, frac: number, col: string): void {   // kleiner Fortschrittsbalken (nur bei Beschädigung gezeigt)
+  const bw = 30, bh = 4, f = Math.max(0, Math.min(1, frac));
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - bw / 2 - 1, y - 1, bw + 2, bh + 2);
+  ctx.fillStyle = '#3a1410'; ctx.fillRect(x - bw / 2, y, bw, bh);
+  ctx.fillStyle = col; ctx.fillRect(x - bw / 2, y, bw * f, bh);
+}
 function zeichneWesen(w: Wesen): void {
   const px = sx(w.x), py = sy(w.y);
   if (w.art === 'huhn') {
