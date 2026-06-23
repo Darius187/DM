@@ -436,6 +436,18 @@ function backe(ofen: ReturnType<typeof macheBackofen>, t: Tree, st: Stimmung): H
   obj.scale.setScalar(2.4 / (Math.max(s.x, s.y, s.z) || 1));
   return nachbearbeite(ofen.backe(t as unknown as THREE.Group), st);
 }
+// P4: echtes LIEGE-Sprite - den Baum 3D um die Z-Achse umlegen (Stamm waagerecht nach +X,
+// Krone in Fallrichtung gestreckt) und so backen. Kein rotiertes Steh-Sprite mehr.
+function backeLiege(ofen: ReturnType<typeof macheBackofen>, t: Tree, st: Stimmung): HTMLCanvasElement {
+  const obj = t as unknown as THREE.Object3D;
+  obj.scale.setScalar(1); obj.updateMatrixWorld(true);          // Skalierung zurück, damit die Box die ROHgröße misst (sonst doppelte Skalierung -> leer)
+  const s = new THREE.Box3().setFromObject(obj).getSize(new THREE.Vector3());
+  obj.scale.setScalar(2.4 / (Math.max(s.x, s.y, s.z) || 1));
+  obj.rotation.z = -Math.PI / 2; obj.updateMatrixWorld(true);   // umlegen (Stamm waagerecht nach +X)
+  const cv = nachbearbeite(ofen.backe(t as unknown as THREE.Group), st);
+  obj.rotation.z = 0; obj.updateMatrixWorld(true);              // zurücksetzen (Standkopie unberührt)
+  return cv;
+}
 // Fall-Physik (eigene Impuls-Physik wie der Spiel-Rückstoß, kein matter.js):
 // Schwerkraft-Drehmoment um den Stammfuß, beschleunigt mit der Neigung, federt am Boden nach.
 // Fäll-/Hack-Balancing (gut justierbar): Schläge bis Fall / bis Stamm zerlegt, Holz je Größe
@@ -444,7 +456,7 @@ interface Fall { winkel: number; winkelV: number; gelandet: boolean; richtung: n
 let fallG = 5.2;                        // Fall-Schwerkraft (per Regler: höher = schneller fallen)
 const FALL_ZIEL = 1.46;                 // Ruhewinkel (liegend)
 interface Baum { art: number; x: number; y: number; skala: number; blight: boolean; ph: number; fall: Fall | null; blattFarbe: string; fade: number; hp: number; maxHp: number; weg: boolean; }
-const arten: Array<{ wald: HTMLCanvasElement; blight: HTMLCanvasElement }> = [];
+const arten: Array<{ wald: HTMLCanvasElement; blight: HTMLCanvasElement; liege: HTMLCanvasElement; liegeBlight: HTMLCanvasElement }> = [];
 const baeume: Baum[] = [];
 interface Fels { x: number; y: number; g: number; hp: number; maxHp: number; stufe: number; gestein: number; gegeben: number; entfernt: boolean; erz: string | null; }
 const felsen: Fels[] = [];
@@ -702,9 +714,9 @@ async function init(): Promise<void> {
   ];
   const blattFarben = ['#46582f', '#5d7a48', '#6a7340', '#3f4d28'];
   for (const [preset, seed, dick] of SORTEN) {
-    const tw = baueBaum(preset, seed, WALD, dick);
-    for (let i = 0; i < 160 && !texturenBereit(tw as unknown as THREE.Object3D); i++) await schlaf(40);
-    arten.push({ wald: backe(ofen, tw, WALD), blight: backe(ofen, baueBaum(preset, seed, BLIGHT, dick), BLIGHT) });
+    const tw = baueBaum(preset, seed, WALD, dick), tb = baueBaum(preset, seed, BLIGHT, dick);
+    for (let i = 0; i < 160 && !(texturenBereit(tw as unknown as THREE.Object3D) && texturenBereit(tb as unknown as THREE.Object3D)); i++) await schlaf(40);
+    arten.push({ wald: backe(ofen, tw, WALD), blight: backe(ofen, tb, BLIGHT), liege: backeLiege(ofen, tw, WALD), liegeBlight: backeLiege(ofen, tb, BLIGHT) });
   }
   // Büsche (ez-tree Bush-Presets), gebacken wie Bäume -> begehbare Occluder
   for (const [preset, seed] of [['Bush 1', 4], ['Bush 2', 11], ['Bush 3', 27]] as Array<[string, number]>) {
@@ -823,6 +835,9 @@ async function init(): Promise<void> {
     dichteBei: (x: number, y: number): number => dichteNoise(x, y),
     zumBerg: (y = -40): void => { held().x = WELT_W * 0.5; held().y = y; },
     bergInfo: (): string => `NORD_Y=${NORD_Y} klippen=${bergKlippen.length} tannen=${bergBaeume.length} fels=${bergFelsen.length} niveau(mitte,-450)=${bergNiveau(WELT_W * 0.5, -450)} wall(mitte,klippe1)=${imBergWall(WELT_W * 0.5, bergKlippen[0].baseY)}`,
+    screenOf: (x: number, y: number): { x: number; y: number } => ({ x: sx(x), y: sy(y) }),
+    malLiege: (): void => { ctx.fillStyle = '#33424e'; ctx.fillRect(0, 0, W, 420); for (let i = 0; i < arten.length; i++) { const st = arten[i].wald, li = arten[i].liege, c = i * 156 + 6; ctx.drawImage(st, c, 10, 150, 150); ctx.drawImage(li, c, 170, 150, 150); ctx.strokeStyle = '#8fbf7a'; ctx.strokeRect(c, 10, 150, 150); ctx.strokeRect(c, 170, 150, 150); } ctx.fillStyle = '#e8dcc0'; ctx.font = '13px Georgia'; ctx.fillText('oben: stehend   unten: gefällt (Liege-Sprite)', 8, 340); },
+    zeigLiege: (blight = false): { x: number; y: number } => { const b = baeume.find((t) => !t.fall && !t.weg && t.blight === blight && t.skala > 0.7) || baeume.find((t) => !t.fall && !t.weg && t.blight === blight); if (!b) return { x: 0, y: 0 }; starteFall(b, 1); b.fall!.gelandet = true; b.fall!.winkel = FALL_ZIEL; b.fall!.winkelV = 0; held().x = b.x - 120; held().y = b.y + 50; return { x: b.x, y: b.y }; },
     zumMoor: (): { x: number; y: number; schilf: number; nebel: number } => { let bx = WELT_W / 2, by = WELT_H / 2, bd = -1; for (let y = 120; y < WELT_H - 120; y += 50) for (let x = 120; x < WELT_W - 120; x += 50) { if (aufPfad(x, y) || nahSee(x, y) || nahFluss(x, y) || biomAt(x, y) !== 'moor') continue; const d = moorNoise(x, y); if (d > bd) { bd = d; bx = x; by = y; } } held().x = bx; held().y = by; return { x: bx, y: by, schilf: moorSchilf.length, nebel: moorNebel.length }; },
     dichterWald: (): { x: number; y: number } => { let bx = WELT_W / 2, by = WELT_H / 2, bd = -1; for (let y = 120; y < WELT_H - 120; y += 60) for (let x = 120; x < WELT_W - 120; x += 60) { if (aufPfad(x, y) || nahSee(x, y) || nahFluss(x, y)) continue; if (biomAt(x, y) !== 'wald') continue; const d = dichteNoise(x, y); if (d > bd) { bd = d; bx = x; by = y; } } return { x: bx, y: by }; },
     zurBruecke: (vorher = 80): void => { held().x = bruecke.cx - bruecke.ux * vorher; held().y = bruecke.cy - bruecke.uy * vorher; },
@@ -852,10 +867,17 @@ function zeichneImWind(bild: HTMLCanvasElement, bx: number, by: number, w: numbe
     ctx.drawImage(bild, 0, i * sH, bild.width, sH, bx - w / 2 + off, destY, w, sliceH + 0.6);
   }
 }
-function zeichneGefällt(bild: HTMLCanvasElement, bx: number, by: number, w: number, h: number, f: Fall): void {
-  const squash = f.gelandet ? 1 - Math.min(0.14, Math.abs(f.winkelV) * 0.06) : 1;   // Krone staucht beim Aufprall minimal
-  ctx.save(); ctx.translate(bx, by); ctx.rotate(f.winkel); ctx.scale(squash, (1 - 0.16 * Math.abs(Math.sin(f.winkel))) * squash);
-  ctx.drawImage(bild, -w / 2, -h * 0.64, w, h); ctx.restore();
+function zeichneGefällt(steh: HTMLCanvasElement, liege: HTMLCanvasElement, bx: number, by: number, sk: number, f: Fall): void {
+  if (!f.gelandet) {                                                  // FALLEND: Steh-Sprite rotieren (natürliche Fallbewegung)
+    const w = steh.width * sk, h = steh.height * sk;
+    ctx.save(); ctx.translate(bx, by); ctx.rotate(f.winkel); ctx.scale(1, 1 - 0.16 * Math.abs(Math.sin(f.winkel)));
+    ctx.drawImage(steh, -w / 2, -h * 0.64, w, h); ctx.restore();
+  } else {                                                            // GELEGT: echtes Liege-Sprite, Stammende am Stumpf, in Fallrichtung
+    const w = liege.width * sk, h = liege.height * sk, squash = 1 - Math.min(0.12, Math.abs(f.winkelV) * 0.05);   // minimaler Aufprall-Stauch
+    ctx.save(); ctx.translate(bx, by); ctx.scale(f.richtung, squash);   // richtung=-1 spiegelt für Linksfall
+    ctx.drawImage(liege, -w * 0.2, -h * 0.52, w, h);                  // Anker: Stammende nahe am Stumpf
+    ctx.restore();
+  }
 }
 
 // ---------- Kamera ----------
@@ -1141,7 +1163,7 @@ function frame(now: number): void {
         const verdeckt = unterBaum(h0.x, h0.y, b);
         b.fade += ((verdeckt ? 1 : 0) - b.fade) * Math.min(1, dt * 9);
         if (b.fade > 0.01) ctx.globalAlpha = 1 - b.fade * 0.45;               // Krone nur bis ~0.55 (bleibt als Baum lesbar)
-        if (b.fall) { if (!b.weg) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); } else { zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * sk * (b.blight ? 30 : 78) * boeWelle(b.x, b.y, now), b.ph, now); if (b.hp < b.maxHp) zeichneBalken(sx(b.x), sy(b.y) - 44, b.hp / b.maxHp, '#6ad06a'); }   // Biegung im Sturm SEHR stark + Fäll-Balken
+        if (b.fall) { if (!b.weg) zeichneGefällt(bild, b.blight ? arten[b.art].liegeBlight : arten[b.art].liege, sx(b.x), sy(b.y), sk, b.fall); } else { zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * sk * (b.blight ? 30 : 78) * boeWelle(b.x, b.y, now), b.ph, now); if (b.hp < b.maxHp) zeichneBalken(sx(b.x), sy(b.y) - 44, b.hp / b.maxHp, '#6ad06a'); }   // Biegung im Sturm SEHR stark + Fäll-Balken
         if (b.fall && !b.weg && b.fall.hackHp < b.fall.hackMax) zeichneBalken(sx(b.x), sy(b.y) - 10, b.fall.hackHp / b.fall.hackMax, '#d2a23a');   // Hack-Balken am liegenden Stamm
         ctx.globalAlpha = 1;
       } else if (z.w) zeichneWesen(z.w);

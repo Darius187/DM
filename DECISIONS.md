@@ -550,3 +550,9 @@
   * MOOR-SCHILF: Rohrkolben/Schilf in Clustern (2-5) über dem Moorboden (biomAt==='moor'), ~40% totes/braunes Schilf; sway im Wind wie das See/Fluss-Schilf. Gezeichnet in der Vegetations-Ebene.
   * MOOR-NEBEL: bodennahe Nebelschwaden, an Moor-Zentren verankert (Raster 95px, wo moorNoise>0.68), driften leicht (sin/cos über die Zeit), Alpha pulsiert (Basis 0.24, im Regen mehr). Gezeichnet NACH der Vegetation, VOR den Wesen -> tote Bäume/Schilf/Held ragen aus dem Dunst heraus. ~33 Schwaden.
   * Verifiziert: Moor = tote Bäume + Schilf, die aus driftendem Bodennebel ragen - sumpfige, düstere Stimmung. tsc grün.
+
+- Runde 61 (P4: gefällter Baum als echtes Liege-Sprite - eigenständig):
+  * BACKE-LIEGE: pro Baumart wird zusätzlich eine LIEGE-Variante gebacken - der 3D-Baum wird um die Z-Achse umgelegt (-90°, Stamm waagerecht nach +X, Krone in Fallrichtung gestreckt) und so durch den Backofen gerendert. Ergebnis: echtes Liege-Sprite (Stamm am Boden, abgeknickte Krone) statt rotiertem Steh-Sprite.
+  * BUGFIX beim Backen: backeLiege muss die Skalierung VOR dem Messen zurücksetzen (obj.scale=1), sonst misst Box3 die schon skalierte Größe -> doppelte Skalierung -> Baum 100 Einheiten -> vom Backofen (far=60) geclippt -> LEERES Sprite. (Per Sprite-Atlas gefunden und verifiziert.)
+  * zeichneGefällt: FALLEND weiter das Steh-Sprite rotieren (natürliche Fallbewegung); GELEGT das Liege-Sprite, Stammende am Stumpf verankert, per scale(richtung,..) für Links-/Rechtsfall gespiegelt, minimaler Aufprall-Stauch.
+  * Verifiziert: Sprite-Atlas zeigt für alle 8 Arten korrekte Liege-Sprites (Stamm + gestreckte Krone, Kiefer besonders deutlich). tsc grün.
