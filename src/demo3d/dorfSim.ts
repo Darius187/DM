@@ -137,6 +137,39 @@ const imFluss = (x: number, y: number): boolean => { const f = flussInfo(x, y); 
 const nahFluss = (x: number, y: number): boolean => { const f = flussInfo(x, y); return f.d < f.hw + 30; };
 function flussAt(s: number): FlussP { const i = Math.max(0, Math.min(flussMitte.length - 1, Math.round(s / flussLen * (flussMitte.length - 1)))); return flussMitte[i]; }
 
+// ---------- Bach (kristallklarer, flacher Waldbach) ----------
+// Eigene Wasser-Logik vom Fluss: SICHTBARES Kiesbett + dünner, klarer Wasser-Tint (man sieht
+// auf den Grund) + Licht-Kaustik, die flussabwärts läuft + Schaum an Steinen. Schmaler, flacher
+// Bach, der durch den Westwald mäandert und in den Fluss mündet. Begehbar (flach -> Spritzer).
+const bachPunkte: Array<{ x: number; y: number }> = [
+  { x: 380, y: 280 }, { x: 540, y: 540 }, { x: 700, y: 800 }, { x: 900, y: 880 }, { x: 1120, y: 842 },
+];
+interface BachP { x: number; y: number; nx: number; ny: number; ux: number; uy: number; hw: number; s: number; }
+const bachMitte: BachP[] = [];
+interface Kiesel { x: number; y: number; r: number; col: string; }
+const bachKiesel: Kiesel[] = [];
+interface BachStein { x: number; y: number; r: number; m: BachP; }
+const bachSteine: BachStein[] = [];
+const bachStreif: Array<{ s: number; off: number; len: number; spd: number; a: number }> = [];
+let bachLen = 0;
+function baueBach(): void {
+  let s = 0;
+  for (let i = 0; i < bachPunkte.length - 1; i++) {
+    const a = bachPunkte[i], b = bachPunkte[i + 1], dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+    for (let d = 0; d < len; d += 8, s += 8) { const t = d / len, px = a.x + dx * t, py = a.y + dy * t, hw = 15 + 5 * Math.sin(s * 0.02 + 1) + 4 * Math.sin(s * 0.05); bachMitte.push({ x: px, y: py, nx, ny, ux, uy, hw, s }); }
+  }
+  bachLen = s;
+  const kCols = ['#8a8270', '#9a917c', '#76705e', '#a59a82', '#6e6858'];
+  for (const m of bachMitte) if (Math.random() < 0.85) { const q = (Math.random() - 0.5) * 1.7; bachKiesel.push({ x: m.x + m.nx * q * m.hw, y: m.y + m.ny * q * m.hw, r: 1.6 + Math.random() * 3, col: kCols[Math.floor(Math.random() * kCols.length)] }); }   // Kiesbett (sichtbar durchs klare Wasser)
+  for (let i = 4; i < bachMitte.length - 4; i += 9) if (Math.random() < 0.6) { const m = bachMitte[i], q = (Math.random() - 0.5) * 0.7; bachSteine.push({ x: m.x + m.nx * q * m.hw, y: m.y + m.ny * q * m.hw, r: 3.5 + Math.random() * 4, m }); }   // ragende Steine -> Schaum
+  for (let i = 0; i < 90; i++) bachStreif.push({ s: Math.random() * bachLen, off: (Math.random() - 0.5) * 1.4, len: 7 + Math.random() * 14, spd: 70 + Math.random() * 80, a: 0.12 + Math.random() * 0.18 });
+}
+baueBach();
+function bachInfo(x: number, y: number): { d: number; hw: number } { let best = 1e9, bhw = 18; for (const m of bachMitte) { const dx = x - m.x, dy = y - m.y, d = dx * dx + dy * dy; if (d < best) { best = d; bhw = m.hw; } } return { d: Math.sqrt(best), hw: bhw }; }
+const imBach = (x: number, y: number): boolean => { const f = bachInfo(x, y); return f.d < f.hw; };
+const nahBach = (x: number, y: number): boolean => { const f = bachInfo(x, y); return f.d < f.hw + 22; };
+function bachAt(s: number): BachP { const i = Math.max(0, Math.min(bachMitte.length - 1, Math.round(s / bachLen * (bachMitte.length - 1)))); return bachMitte[i]; }
+
 // Brücke über die Fluss-Weg-Kreuzung: Deck folgt der WEG-Richtung, spannt über den Fluss.
 interface Bruecke { cx: number; cy: number; ux: number; uy: number; nx: number; ny: number; halbL: number; halbB: number; }
 let bruecke: Bruecke = { cx: 0, cy: 0, ux: 1, uy: 0, nx: 0, ny: 1, halbL: 1, halbB: 1 };
@@ -827,7 +860,7 @@ async function init(): Promise<void> {
   const lichtX = WELT_W * 0.4, lichtY = WELT_H * 0.64;
   for (let versuche = 0; baeume.length < 230 && versuche < 7000; versuche++) {
     const x = 90 + Math.random() * (WELT_W - 180), y = 90 + Math.random() * (WELT_H - 180);
-    if (nahSee(x, y) || nahFluss(x, y)) continue;                              // nicht im/am See oder Fluss
+    if (nahSee(x, y) || nahFluss(x, y) || nahBach(x, y)) continue;             // nicht im/am See, Fluss oder Bach
     const d = dichteNoise(x, y), biom = biomAt(x, y);
     // Bäume v.a. im WALD; Wiese/Moor spärlich, Fels fast keine
     const chance = biom === 'wald' ? d : biom === 'wiese' ? 0.16 : biom === 'moor' ? 0.18 : 0.05;
@@ -844,7 +877,7 @@ async function init(): Promise<void> {
   // Felsen in CLUSTERN (Haufen verschiedener Größen), abseits Lichtung/Weg/See, nicht in Baumstämmen
   for (let c = 0; c < 22; c++) {
     let fx = 0, fy = 0, ok = false;
-    for (let t = 0; t < 20 && !ok; t++) { fx = 120 + Math.random() * (WELT_W - 240); fy = 120 + Math.random() * (WELT_H - 240); ok = Math.hypot(fx - lichtX, fy - lichtY) > 360 && distPfad(fx, fy) > PFAD_BREITE * 0.8 && !nahSee(fx, fy) && !nahFluss(fx, fy) && (felsNoise(fx, fy) > 0.5 || Math.random() < 0.3); }   // Felsen v.a. im Fels-Biom
+    for (let t = 0; t < 20 && !ok; t++) { fx = 120 + Math.random() * (WELT_W - 240); fy = 120 + Math.random() * (WELT_H - 240); ok = Math.hypot(fx - lichtX, fy - lichtY) > 360 && distPfad(fx, fy) > PFAD_BREITE * 0.8 && !nahSee(fx, fy) && !nahFluss(fx, fy) && !nahBach(fx, fy) && (felsNoise(fx, fy) > 0.5 || Math.random() < 0.3); }   // Felsen v.a. im Fels-Biom
     if (!ok) continue;
     for (let k = 0, n = 2 + Math.floor(Math.random() * 3); k < n; k++) {
       const x = fx + (Math.random() - 0.5) * 90, y = fy + (Math.random() - 0.5) * 60, g = Math.floor(Math.random() * 3);
@@ -886,16 +919,16 @@ async function init(): Promise<void> {
   for (let i = 0; i < pfadMitte.length; i += 6) anker.push({ x: pfadMitte[i].x, y: pfadMitte[i].y });
   const ankerNah = (x: number, y: number): number => { let dm = 1e9; for (const a of anker) { const dx = a.x - x, dy = a.y - y, d = dx * dx + dy * dy; if (d < dm) dm = d; } return Math.max(0, 1 - Math.sqrt(dm) / 160); };   // 0..1
   // EBENE 1: kurzes Bodengras (dicht, überall außer Pfad/See) - im dichten Wald NOCH spärlicher (Waldgrund statt Wiese)
-  for (let i = 0; i < 1500; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y)) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.72) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5, r: Math.random() }); }
+  for (let i = 0; i < 1500; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y) || imBach(x, y)) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.72) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5, r: Math.random() }); }
   // EBENE 2: hohes Gras (eigene Sprites) - geclustert an Ankern + Wiese/Wald; im dichten Wald spärlicher
-  for (let i = 0; i < 900; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y)) continue; const d = dichteNoise(x, y), biom = biomAt(x, y); if (biom === 'fels') continue; if (biom === 'wald' && d > 0.6 && Math.random() < 0.6) continue; if (Math.random() > 0.18 + ankerNah(x, y) * 0.9) continue; hochgras.push({ x, y, ph: Math.random() * 7, h: 14 + Math.random() * 12, r: Math.random() }); }
+  for (let i = 0; i < 900; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y) || imBach(x, y)) continue; const d = dichteNoise(x, y), biom = biomAt(x, y); if (biom === 'fels') continue; if (biom === 'wald' && d > 0.6 && Math.random() < 0.6) continue; if (Math.random() > 0.18 + ankerNah(x, y) * 0.9) continue; hochgras.push({ x, y, ph: Math.random() * 7, h: 14 + Math.random() * 12, r: Math.random() }); }
   // EBENE 3: Blüten in FARB-GRUPPEN (je Cluster eine Farbe) an Ankern, nur Wiese/Wald
   for (let c = 0; c < 90; c++) {
     const ax = anker[Math.floor(Math.random() * anker.length)], cx = ax.x + (Math.random() - 0.5) * 120, cy = ax.y + (Math.random() - 0.5) * 90;
     const typ = Math.floor(Math.random() * 4);   // eine Blütenfarbe pro Gruppe
     for (let k = 0, n = 3 + Math.floor(Math.random() * 6); k < n; k++) {
       const x = cx + (Math.random() - 0.5) * 70, y = cy + (Math.random() - 0.5) * 50, biom = biomAt(x, y);
-      if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y) || biom === 'moor' || biom === 'fels') continue;
+      if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y) || imBach(x, y) || biom === 'moor' || biom === 'fels') continue;
       if (biom === 'wald' && dichteNoise(x, y) > 0.62 && Math.random() < 0.7) continue;   // im dichten Wald wenig Blüten
       bewuchs.push({ x, y, typ, ph: Math.random() * 7, r: Math.random() });
     }
@@ -960,6 +993,7 @@ async function init(): Promise<void> {
     },
     malLiege: (): void => { ctx.fillStyle = '#33424e'; ctx.fillRect(0, 0, W, 420); for (let i = 0; i < arten.length; i++) { const st = arten[i].wald, li = arten[i].liege, c = i * 156 + 6; ctx.drawImage(st, c, 10, 150, 150); ctx.drawImage(li, c, 170, 150, 150); ctx.strokeStyle = '#8fbf7a'; ctx.strokeRect(c, 10, 150, 150); ctx.strokeRect(c, 170, 150, 150); } ctx.fillStyle = '#e8dcc0'; ctx.font = '13px Georgia'; ctx.fillText('oben: stehend   unten: gefällt (Liege-Sprite)', 8, 340); },
     zeigLiege: (blight = false): { x: number; y: number } => { const b = baeume.find((t) => !t.fall && !t.weg && t.blight === blight && t.skala > 0.7) || baeume.find((t) => !t.fall && !t.weg && t.blight === blight); if (!b) return { x: 0, y: 0 }; starteFall(b, 1); b.fall!.gelandet = true; b.fall!.winkel = FALL_ZIEL; b.fall!.winkelV = 0; held().x = b.x - 120; held().y = b.y + 50; return { x: b.x, y: b.y }; },
+    zumBach: (): { x: number; y: number } => { const m = bachMitte[Math.floor(bachMitte.length * 0.4)]; held().x = m.x - 40; held().y = m.y + 20; return { x: m.x, y: m.y }; },
     zumMoor: (): { x: number; y: number; schilf: number; nebel: number } => { let bx = WELT_W / 2, by = WELT_H / 2, bd = -1; for (let y = 120; y < WELT_H - 120; y += 50) for (let x = 120; x < WELT_W - 120; x += 50) { if (aufPfad(x, y) || nahSee(x, y) || nahFluss(x, y) || biomAt(x, y) !== 'moor') continue; const d = moorNoise(x, y); if (d > bd) { bd = d; bx = x; by = y; } } held().x = bx; held().y = by; return { x: bx, y: by, schilf: moorSchilf.length, nebel: moorNebel.length }; },
     dichterWald: (): { x: number; y: number } => { let bx = WELT_W / 2, by = WELT_H / 2, bd = -1; for (let y = 120; y < WELT_H - 120; y += 60) for (let x = 120; x < WELT_W - 120; x += 60) { if (aufPfad(x, y) || nahSee(x, y) || nahFluss(x, y)) continue; if (biomAt(x, y) !== 'wald') continue; const d = dichteNoise(x, y); if (d > bd) { bd = d; bx = x; by = y; } } return { x: bx, y: by }; },
     zurBruecke: (vorher = 80): void => { held().x = bruecke.cx - bruecke.ux * vorher; held().y = bruecke.cy - bruecke.uy * vorher; },
@@ -1047,6 +1081,7 @@ function aktualisiereWesen(w: Wesen, dt: number, now: number): void {
       w.effT = 0.12;
       const pf = pfuetzeUnter(w.x, w.y);
       if (pf && pf.current > 0.25) { const lo = lokal(pf, w.x, w.y); ringe.push({ lx: lo.lx, ly: lo.ly, x: 0, y: 0, t: 0, leben: 0.8, rmax: 16, pf }); if (Math.random() < 0.6) spaene(w.x, w.y, 'rgba(170,190,210,0.8)', -30, 2); }
+      else if (imBach(w.x, w.y)) { bodenKrone(w.x, w.y); if (Math.random() < 0.7) spaene(w.x, w.y, 'rgba(210,235,235,0.85)', -34, 2); }   // durch den Bach waten -> Spritzer
       else if (Math.random() < 0.5) spaene(w.x, w.y - 2, 'rgba(70,92,44,0.9)', -10, 1);    // Gras-Rascheln
     }
   } else { w.hackT > 0 ? (w.frameT = 2) : (w.bob = 0); }
@@ -1170,6 +1205,7 @@ function frame(now: number): void {
   }
 
   // 1b2) Fluss (fließendes Wasser) über den Weg - VOR dem See gezeichnet (See deckt die Mündung)
+  if (bereit) zeichneBach(now);
   if (bereit) zeichneFluss(now, wd);
 
   // 1c) See: dunkles Wasser (Tiefengradient) + nasser Schlammsaum + Himmel-Schlieren + Regen-Ringe
@@ -1498,6 +1534,33 @@ function zeichneHuetteAussen(now: number): void {
   ctx.fillStyle = '#524232'; ctx.fillRect(cx + hb * 0.4, peak + 20, 15, 28); ctx.fillStyle = '#e8eef6'; ctx.fillRect(cx + hb * 0.4 - 2, peak + 18, 19, 5);   // Schornstein + Schneehaube
   ctx.globalAlpha = 1;
   for (let i = 0; i < 4; i++) { const t2 = now / 900 + i * 0.8, sy2 = peak + 18 - (t2 % 2) * 40, a = (1 - (t2 % 2) / 2) * 0.3 * (1 - huetteDach); ctx.fillStyle = `rgba(190,190,196,${a})`; ctx.beginPath(); ctx.arc(cx + hb * 0.47 + Math.sin(t2 * 2) * 6, sy2, 4 + (t2 % 2) * 4, 0, 7); ctx.fill(); }   // Rauch
+}
+
+// ---------- Bach zeichnen: KRISTALLKLAR - Kiesbett sichtbar + dünnes klares Wasser + Licht-Kaustik ----------
+function zeichneBach(now: number): void {
+  let sicht = false;
+  for (const m of bachMitte) { if (m.x > camX - 60 && m.x < camX + W + 60 && m.y > camY - 60 && m.y < camY + H + 60) { sicht = true; break; } }
+  if (!sicht) return;
+  for (const st of bachStreif) { st.s += st.spd / 60; if (st.s > bachLen) st.s -= bachLen; }
+  ctx.save(); ctx.translate(-camX, -camY);
+  const ufer = (extra: number): void => { ctx.beginPath(); for (let i = 0; i < bachMitte.length; i++) { const m = bachMitte[i], x = m.x + m.nx * (m.hw + extra), y = m.y + m.ny * (m.hw + extra); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } for (let i = bachMitte.length - 1; i >= 0; i--) { const m = bachMitte[i]; ctx.lineTo(m.x - m.nx * (m.hw + extra), m.y - m.ny * (m.hw + extra)); } ctx.closePath(); };
+  ufer(6); ctx.fillStyle = 'rgba(40,34,22,0.4)'; ctx.fill();                                       // nasser Kies-/Erd-Saum
+  ufer(0); ctx.save(); ctx.clip();
+  ctx.fillStyle = '#6f6a58'; ctx.fillRect(camX, camY, W, H);                                        // 1) KIESBETT-Grundton
+  for (const k of bachKiesel) { if (k.x < camX - 10 || k.x > camX + W + 10 || k.y < camY - 10 || k.y > camY + H + 10) continue; ctx.fillStyle = k.col; ctx.beginPath(); ctx.ellipse(k.x, k.y, k.r, k.r * 0.8, 0, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.ellipse(k.x - k.r * 0.25, k.y - k.r * 0.3, k.r * 0.5, k.r * 0.4, 0, 0, 7); ctx.fill(); }   // Kiesel
+  ctx.fillStyle = 'rgba(112,168,166,0.26)'; ctx.fillRect(camX, camY, W, H);                          // 2) KLARES Wasser (dünner Tint -> Bett scheint durch)
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(66,120,118,0.2)'; ctx.lineWidth = 13; ctx.beginPath(); for (let i = 0; i < bachMitte.length; i++) { const m = bachMitte[i]; i ? ctx.lineTo(m.x, m.y) : ctx.moveTo(m.x, m.y); } ctx.stroke();   // Mitte minimal tiefer
+  for (const st of bachStreif) { const m = bachAt(st.s), cx = m.x + m.nx * st.off * m.hw, cy = m.y + m.ny * st.off * m.hw; ctx.strokeStyle = `rgba(226,246,246,${st.a})`; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - m.ux * st.len, cy - m.uy * st.len); ctx.stroke(); }   // 3) Licht-Kaustik flussabwärts
+  ctx.restore();
+  ufer(0); ctx.strokeStyle = 'rgba(222,242,242,0.3)'; ctx.lineWidth = 1.6; ctx.stroke();             // helle Schaum-Uferkante
+  for (const stn of bachSteine) {                                                                   // 4) Steine + Schaum
+    if (stn.x < camX - 20 || stn.x > camX + W + 20 || stn.y < camY - 20 || stn.y > camY + H + 20) continue;
+    ctx.fillStyle = '#5a5546'; ctx.beginPath(); ctx.ellipse(stn.x, stn.y, stn.r, stn.r * 0.8, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#7c7662'; ctx.beginPath(); ctx.ellipse(stn.x - stn.r * 0.2, stn.y - stn.r * 0.3, stn.r * 0.5, stn.r * 0.4, 0, 0, 7); ctx.fill();
+    const m = stn.m;
+    for (let k = 0; k < 4; k++) { const tt = now / 130 + k * 1.2, dd = stn.r * 0.5 + k * 2.4, lat = Math.sin(tt) * stn.r * 0.5, fx = stn.x + m.ux * dd + m.nx * lat, fy = stn.y + m.uy * dd + m.ny * lat, a = (1 - k / 4) * 0.7; ctx.fillStyle = `rgba(236,246,246,${a})`; ctx.beginPath(); ctx.ellipse(fx, fy, 2.2 - k * 0.3, 1.6 - k * 0.2, 0, 0, 7); ctx.fill(); }
+  }
+  ctx.restore();
 }
 
 // ---------- Fluss zeichnen: Wasser + scrollende Fließ-Strähnen + Stromschnellen + Ufer ----------
