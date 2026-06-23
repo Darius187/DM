@@ -234,9 +234,8 @@ const huhnBild = macheHuhn();
 // ---------- Held/Wesen ----------
 const figCv = document.createElement('canvas'); figCv.width = figCv.height = HELD_FELD;
 const figCtx = figCv.getContext('2d')!;
-// Occlusion: Röntgen-Silhouette des Helden (Offscreen, getönt) für "durchschimmern" hinter Occludern
-const silCv = document.createElement('canvas'); silCv.width = silCv.height = HELD_FELD;
-const silCtx = silCv.getContext('2d')!;
+// Occlusion (Fallout-Look): nur der Baum DIREKT vor dem Helden wird halbtransparent,
+// der echte Held scheint mit Details durch - keine getönte Silhouette.
 function rechteckeUeberlappen(ax: number, ay: number, aw: number, ah: number, bx: number, by: number, bw: number, bh: number): boolean {
   return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
 }
@@ -569,12 +568,12 @@ function frame(now: number): void {
     const ss = b.skala * baumGroesse * 0.95; ctx.drawImage(stumpfBild, sx(b.x) - stumpfBild.width * ss / 2, sy(b.y) - stumpfBild.height * ss / 2 + 2, stumpfBild.width * ss, stumpfBild.height * ss);
   }
 
-  // 5) Bäume + Wesen, tiefensortiert. Occlusion-Fade (A): Bäume VOR dem Helden, die
-  //    ihn überlappen, werden weich durchsichtig; danach Röntgen-Silhouette (B) als Garantie.
+  // 5) Bäume + Wesen, tiefensortiert. Occlusion-Fade: NUR der Baum direkt vor dem Helden
+  //    wird halbtransparent (enger Test um den Oberkörper) - der echte Held scheint durch,
+  //    keine getönte Silhouette (Fallout-Look).
   if (bereit) {
-    const h0 = held(), hrx = sx(h0.x), hry = sy(h0.y);
-    const heldRX = hrx - 22, heldRY = hry - 46, heldRW = 44, heldRH = 60;     // sichtbarer Körper des Helden
-    let heldVerdeckt = false;
+    const h0 = held(), hpx = sx(h0.x), hpy = sy(h0.y);
+    const tRX = hpx - 12, tRY = hpy - 42, tRW = 24, tRH = 34;                 // schmaler Bereich um Kopf/Oberkörper
     interface Z { y: number; b: Baum | null; w: Wesen | null; }
     const liste: Z[] = [];
     for (const b of baeume) { if (b.x < camX - 360 || b.x > camX + W + 360 || b.y < camY - 600 || b.y > camY + H + 360) continue; liste.push({ y: b.y, b, w: null }); }
@@ -583,19 +582,13 @@ function frame(now: number): void {
     for (const z of liste) {
       if (z.b) {
         const b = z.b, bild = b.blight ? arten[b.art].blight : arten[b.art].wald, sk = b.skala * baumGroesse, w = bild.width * sk, hh = bild.height * sk;
-        const verdeckt = b.y > h0.y && rechteckeUeberlappen(sx(b.x) - w * 0.42, sy(b.y) - hh * 0.64, w * 0.84, hh * 0.72, heldRX, heldRY, heldRW, heldRH);
-        b.fade += ((verdeckt ? 1 : 0) - b.fade) * Math.min(1, dt * 9);        // weich faden (kein Poppen)
-        if (verdeckt && b.fade > 0.15) heldVerdeckt = true;
-        if (b.fade > 0.01) ctx.globalAlpha = 1 - b.fade * 0.7;                // Krone bis ~0.3 durchsichtig -> echter Held scheint durch
+        // enger Test: deckt der obere Kronen-Teil den schmalen Helden-Bereich? -> nur der Baum direkt davor fadet
+        const verdeckt = b.y > h0.y && rechteckeUeberlappen(sx(b.x) - w * 0.3, sy(b.y) - hh * 0.64, w * 0.6, hh * 0.55, tRX, tRY, tRW, tRH);
+        b.fade += ((verdeckt ? 1 : 0) - b.fade) * Math.min(1, dt * 9);
+        if (b.fade > 0.01) ctx.globalAlpha = 1 - b.fade * 0.45;               // Krone nur bis ~0.55 (bleibt als Baum lesbar)
         if (b.fall) { if (!b.fall.geerntet) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); } else zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * (b.blight ? 5 : 13) * (0.7 + sk * 0.6), b.ph, now);
         ctx.globalAlpha = 1;
       } else if (z.w) zeichneWesen(z.w);
-    }
-    if (heldVerdeckt) {                                                       // 5a) Held schimmert als Geist durch
-      figCtx.clearRect(0, 0, HELD_FELD, HELD_FELD); figCtx.save(); figCtx.translate(HM, HM); drawHeld(figCtx, h0.tier, h0.dir, h0.hackT > 0 ? 2 : Math.floor(h0.frameT) % 4, 'axt'); figCtx.restore();
-      silCtx.globalCompositeOperation = 'source-over'; silCtx.clearRect(0, 0, HELD_FELD, HELD_FELD); silCtx.drawImage(figCv, 0, 0);
-      silCtx.globalCompositeOperation = 'source-in'; silCtx.fillStyle = '#aecbe8'; silCtx.fillRect(0, 0, HELD_FELD, HELD_FELD); silCtx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.4; ctx.drawImage(silCv, sx(h0.x) - HELD_FELD / 2, sy(h0.y) - HELD_FELD / 2 - 12); ctx.globalAlpha = 1;   // dezenter Geist-Schimmer ÜBER dem durchscheinenden echten Held
     }
   } else { ctx.fillStyle = '#6a7a55'; ctx.font = '16px Georgia'; ctx.fillText('Dorf & Wald werden gebacken …', 24, H - 28); }
 
