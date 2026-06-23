@@ -64,6 +64,26 @@ function bauePfadGeometrie(): void {
 }
 bauePfadGeometrie();
 
+// ---------- See (fest platziert, statisch): große dunkle Wasserfläche, Fokus Uferintegration ----------
+const see = { cx: WELT_W * 0.8, cy: WELT_H * 0.79, rx: 360, ry: 232 };
+const seeUfer: Array<{ x: number; y: number }> = [];
+const seeSchilf: Array<{ x: number; y: number; ph: number; h: number }> = [];
+const seeRosen: Array<{ x: number; y: number; s: number; bluete: boolean }> = [];
+const imSee = (x: number, y: number): boolean => { const nx = (x - see.cx) / see.rx, ny = (y - see.cy) / see.ry; return nx * nx + ny * ny < 1; };
+const nahSee = (x: number, y: number): boolean => { const nx = (x - see.cx) / (see.rx + 40), ny = (y - see.cy) / (see.ry + 40); return nx * nx + ny * ny < 1; };
+function baueSee(): void {
+  const N = 46;
+  for (let i = 0; i < N; i++) {
+    const a = i / N * Math.PI * 2, rr = 0.82 + 0.16 * Math.sin(a * 3 + 1) + 0.1 * Math.sin(a * 7 + 2.3);   // unregelmäßige Uferlinie (kein harter Kreis)
+    seeUfer.push({ x: see.cx + Math.cos(a) * see.rx * rr, y: see.cy + Math.sin(a) * see.ry * rr });
+  }
+  for (const u of seeUfer) {
+    if (Math.random() < 0.55) { const n = 1 + Math.floor(Math.random() * 3); for (let k = 0; k < n; k++) seeSchilf.push({ x: u.x + (Math.random() - 0.5) * 40, y: u.y + (Math.random() - 0.5) * 24, ph: Math.random() * 7, h: 16 + Math.random() * 16 }); }   // Schilf-Cluster außen
+    if (Math.random() < 0.4) { const ix = see.cx + (u.x - see.cx) * 0.85, iy = see.cy + (u.y - see.cy) * 0.85; seeRosen.push({ x: ix + (Math.random() - 0.5) * 34, y: iy + (Math.random() - 0.5) * 20, s: 0.7 + Math.random() * 0.6, bluete: Math.random() < 0.4 }); }   // Seerosen innen am Rand
+  }
+}
+baueSee();
+
 // ---------- Wetter (dynamisch: klar -> Regen -> Unwetter; treibt Wind/Regen/Nebel) ----------
 let regenAn = true;
 let wetter = 0.5;                 // 0 klar .. 0.5 Regen .. 1 Sturm
@@ -321,6 +341,7 @@ interface Drop { x: number; y: number; z: number; vy: number; len: number; }
 interface Ring { lx: number; ly: number; x: number; y: number; t: number; leben: number; rmax: number; pf: Pfuetze | null; }
 const drops: Drop[] = [];
 const ringe: Ring[] = [];
+const seeRinge: Array<{ x: number; y: number; t: number; leben: number; rmax: number }> = [];   // Regen-Ringe auf dem See
 function neuerDrop(init = false): Drop { const z = Math.random(); return { x: Math.random() * (W + 300) - 150, y: init ? Math.random() * H : -30 - Math.random() * 60, z, vy: 650 + z * 950, len: 9 + z * 24 }; }
 for (let i = 0; i < 420; i++) drops.push(neuerDrop(true));
 // KLEINE Tropfen-Ringe (Regen) auf dem Wasser - LOKALE Maskenkoordinaten, viel kleiner als die Schritt-Ringe
@@ -335,6 +356,11 @@ function regenAufschlaege(dt: number): void {
     if (p.current < 0.25 || p.cx + p.L < camX || p.cx - p.L > camX + W || p.cy + p.L < camY || p.cy - p.L > camY + H) continue;
     if (Math.random() < wetter * 10 * dt) tropfenRing(p, p.L * (0.15 + Math.random() * 0.7), p.B * (0.2 + Math.random() * 0.6));
   }
+  // Regen-Ringe auf dem See (im Sichtfeld)
+  if (Math.abs(see.cx - camX - W / 2) < W / 2 + see.rx && Math.abs(see.cy - camY - H / 2) < H / 2 + see.ry) {
+    let n = wetter * 14 * dt; while (n-- > 0 || Math.random() < n + 1) { if (n < -1) break; const a = Math.random() * 7, rr = Math.sqrt(Math.random()); seeRinge.push({ x: see.cx + Math.cos(a) * see.rx * rr * 0.92, y: see.cy + Math.sin(a) * see.ry * rr * 0.92, t: 0, leben: 0.8 + Math.random() * 0.5, rmax: 5 + Math.random() * 9 }); }
+  }
+  for (let i = seeRinge.length - 1; i >= 0; i--) { seeRinge[i].t += dt; if (seeRinge[i].t > seeRinge[i].leben) seeRinge.splice(i, 1); }
 }
 
 // ---------- Init ----------
@@ -377,6 +403,7 @@ async function init(): Promise<void> {
     const x = 90 + Math.random() * (WELT_W - 180), y = 90 + Math.random() * (WELT_H - 180);
     if (Math.hypot(x - WELT_W * 0.4, y - WELT_H * 0.64) < 300) continue;       // Dorflichtung frei
     if (distPfad(x, y) < PFAD_BREITE * 0.7) continue;                          // nicht auf dem Pfad
+    if (nahSee(x, y)) continue;                                                // nicht im/am See
     const d = dichteNoise(x, y);
     if (Math.random() > d * d) continue;                                        // dichte Zonen voll, Rand läuft spärlich aus
     if (baeume.some((t) => Math.hypot(t.x - x, t.y - y) < 78)) continue;        // Mindestabstand (größere Bäume)
@@ -385,8 +412,8 @@ async function init(): Promise<void> {
     baeume.push({ art: Math.floor(Math.random() * arten.length), x, y, skala, blight, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)], fade: 0 });
   }
   // Gras-Büschel
-  for (let i = 0; i < 1300; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y)) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.65) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5 }); }   // dicht = spärlicher + kürzer
-  for (let i = 0; i < 640; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y)) continue; if (Math.random() < dichteNoise(x, y) * 0.85) continue; bewuchs.push({ x, y, typ: Math.floor(Math.random() * bewuchsBilder.length), ph: Math.random() * 7 }); }   // Blumen v.a. an Lichtung/Rand
+  for (let i = 0; i < 1300; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y)) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.65) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5 }); }   // dicht = spärlicher + kürzer
+  for (let i = 0; i < 700; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y)) continue; const nahAnker = nahSee(x, y) || distPfad(x, y) < PFAD_BREITE * 1.3; if (!nahAnker && Math.random() < dichteNoise(x, y) * 0.85 + 0.35) continue; bewuchs.push({ x, y, typ: Math.floor(Math.random() * bewuchsBilder.length), ph: Math.random() * 7 }); }   // Blumen geclustert: bevorzugt an Wasserkante/Wegrand
   bereit = true;
   (window as unknown as { __dorfBereit?: boolean; __demo?: unknown }).__dorfBereit = true;
   (window as unknown as { __demo?: unknown }).__demo = { setPos: (x: number, y: number) => { held().x = x; held().y = y; }, geheZuBaum: () => { const b = baeume.find((t) => !t.fall && Math.hypot(t.x - WELT_W * 0.4, t.y - WELT_H * 0.64) < 600); if (b) { held().x = b.x - 70; held().y = b.y + 10; } }, fälle: fälleNächsten, frieren: () => { pausiert = true; }, nass: (v: number) => { wetness = v; for (const p of pfuetzen) p.current = wetness > p.schwelle ? 1 : 0; },
@@ -541,6 +568,25 @@ function frame(now: number): void {
       for (const side of [-1, 1]) { const hs = Math.sin(i * 12.9 + side * 3.1) * 43758.5, r = hs - Math.floor(hs); if (r > 0.5) continue; const ex = m.x + m.nx * m.hw * f * side, ey = m.y + m.ny * m.hw * f * side, hgt = 4 + r * 8; ctx.strokeStyle = '#34421f'; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + side * 2 + wd * 5 * boeWelle(m.x, m.y, now), ey - hgt); ctx.stroke(); }   // Saumgras (Sturm-Wind, Böen-Welle)
       if (i % 6 === 0) { const hs = Math.sin(i * 7.7) * 43758.5, r = hs - Math.floor(hs); if (r < 0.25) { const q = (r * 8 - 1) * m.hw * f * 0.4, gx = m.x + m.nx * q, gy = m.y + m.ny * q; ctx.strokeStyle = '#3a4a22'; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + wd * 5, gy - 6); ctx.moveTo(gx - 2, gy); ctx.lineTo(gx - 2 + wd * 4, gy - 5); ctx.stroke(); } }   // durchwachsend (Sturm-Wind)
     }
+    ctx.restore();
+  }
+
+  // 1c) See: dunkles Wasser (Tiefengradient) + nasser Schlammsaum + Himmel-Schlieren + Regen-Ringe
+  //     + Schilf/Seerosen am Ufer (brechen die Wasser-Land-Grenze) + Dunst über dem Wasser
+  if (Math.abs(see.cx - camX - W / 2) < W / 2 + see.rx + 80 && Math.abs(see.cy - camY - H / 2) < H / 2 + see.ry + 80) {
+    ctx.save(); ctx.translate(-camX, -camY);
+    const ufer = (): void => { ctx.beginPath(); ctx.moveTo(seeUfer[0].x, seeUfer[0].y); for (let i = 1; i < seeUfer.length; i++) ctx.lineTo(seeUfer[i].x, seeUfer[i].y); ctx.closePath(); };
+    ctx.save(); ctx.translate(see.cx, see.cy); ctx.scale(1.1, 1.12); ctx.translate(-see.cx, -see.cy); ufer(); ctx.fillStyle = 'rgba(24,20,13,0.5)'; ctx.fill(); ctx.restore();   // nasser Schlammsaum
+    ufer(); ctx.save(); ctx.clip();
+    const wg = ctx.createRadialGradient(see.cx, see.cy, 12, see.cx, see.cy, Math.max(see.rx, see.ry));
+    wg.addColorStop(0, '#070d12'); wg.addColorStop(0.68, '#0e1a24'); wg.addColorStop(1, '#22303a');   // Mitte tief/dunkel, Rand flacher/heller
+    ctx.fillStyle = wg; ctx.fillRect(see.cx - see.rx * 1.3, see.cy - see.ry * 1.3, see.rx * 2.6, see.ry * 2.6);
+    for (let i = 0; i < 3; i++) { const yy = see.cy - see.ry * 0.32 + i * see.ry * 0.26 + Math.sin(now / 850 + i) * 4; ctx.fillStyle = 'rgba(130,150,176,0.06)'; ctx.fillRect(see.cx - see.rx, yy, see.rx * 2, 5 + i); }   // Himmel-Schlieren
+    for (const r of seeRinge) { const f = r.t / r.leben, rad = 1 + r.rmax * f, a = (1 - f) * 0.4; ctx.strokeStyle = `rgba(180,198,220,${a})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(r.x, r.y, rad, rad * 0.55, 0, 0, 7); ctx.stroke(); }
+    ctx.restore();
+    for (const ro of seeRosen) { ctx.save(); ctx.translate(ro.x, ro.y); ctx.fillStyle = '#2c4626'; ctx.beginPath(); ctx.ellipse(0, 0, 9 * ro.s, 5.5 * ro.s, 0, 0.5, Math.PI * 2 + 0.2); ctx.fill(); ctx.fillStyle = '#37562f'; ctx.beginPath(); ctx.ellipse(-1, -1, 5 * ro.s, 3 * ro.s, 0, 0, 7); ctx.fill(); if (ro.bluete) { ctx.fillStyle = '#e8e0ea'; ctx.beginPath(); ctx.arc(2 * ro.s, -1, 2 * ro.s, 0, 7); ctx.fill(); } ctx.restore(); }   // Seerosen
+    for (const s of seeSchilf) { const bend = wd * 4 * boeWelle(s.x, s.y, now); ctx.strokeStyle = '#3a4a24'; ctx.lineWidth = 1.4; for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(s.x + k * 2.5, s.y); ctx.quadraticCurveTo(s.x + k * 2.5 + bend * 0.5, s.y - s.h * 0.6, s.x + k * 2.5 + bend, s.y - s.h); ctx.stroke(); } ctx.fillStyle = '#5a3c22'; ctx.fillRect(s.x + bend - 1.2, s.y - s.h, 2.4, 7); }   // Schilf/Rohrkolben
+    ufer(); ctx.save(); ctx.clip(); ctx.fillStyle = `rgba(150,166,186,${0.06 + (regenAn ? wetter * 0.12 : 0.04)})`; ctx.fillRect(see.cx - see.rx, see.cy - see.ry, see.rx * 2, see.ry * 2); ctx.restore();   // Dunst über dem Wasser
     ctx.restore();
   }
 
