@@ -572,3 +572,9 @@
   * Top-Down hat wenig Fresnel -> erst mit Verlaufs-Himmel (THREE.Sky) zum Spiegeln + stärkeren Wellen-Normalen + Distortion werden die reflektierenden Wellen sichtbar. Über dem Tiefen-Verlauf gemischt (Alpha 0.6) + Mitte dunkel gehalten.
   * FLUSS bleibt beim eigens gebauten 2D-Flow: er windet sich, und die per-Sample-Strähnen folgen der Strömungsrichtung der Kurve - eine flache Three.js-Kachel könnte das nicht (und würde wegen Nicht-Kachelbarkeit Nähte zeigen). 2D-Fallback bleibt aktiv, falls der Backofen fehlschlägt.
   * Offen/Angebot an den Autor: falls er ÜBERALL (auch Fluss) konsistentes, schärferes Wasser will -> Option 1 (2D-Nachbau) wäre dann der portierbare Weg.
+
+- Runde 62 (Wasser Option 1 - Autor: "Wasser gefällt mir nicht, bitte Option 1"): THREE.Water (Option 3) wieder RAUS (wasserBackofen.ts gelöscht, kein Three.js fürs Wasser mehr). Stattdessen reiner 2D-Kaustik-Schimmer:
+  * macheWasserMuster(): kachelbare Wellen-Textur (Summe periodischer Sinus, höhere Frequenzen = feine Wellen), nur die KÄMME als dünne helle Linien (smoothstep 0.58..0.94) -> kein Flächen-Wash.
+  * wasserGlanz(): zeichnet die Textur in ZWEI Schichten mit leicht verschiedener Drift additiv ('lighter') in die aktuelle Clip-Maske -> Interferenz = bewegtes Licht. Weltverankert (ctx schon -cam verschoben), tempo-/richtungs-parametrierbar. Kachelbar -> 1:1 ins 2D-Spiel portierbar.
+  * SEE: dunkler Tiefen-Verlauf bleibt dominant + dezente Himmel-Spiegelung + schmale vertikale MOND-BAHN + sanfter Schimmer (tempo 0.5). FLUSS: gleicher Schimmer flussabwärts (Richtung 0.6/0.85) zusätzlich zu den richtungs-folgenden Strähnen -> See und Fluss sehen nach demselben Wasser aus.
+  * Verifiziert: See = ruhiges, dunkles, fein schimmerndes Nachtwasser mit Mond; Fluss = fließender Schimmer. tsc grün.

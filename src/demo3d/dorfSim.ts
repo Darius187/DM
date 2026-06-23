@@ -14,7 +14,6 @@
 import * as THREE from 'three';
 import { Tree } from '@dgreenheck/ez-tree';
 import { macheBackofen } from './propBackofen';
-import { backeWasser } from './wasserBackofen';
 import { drawHeld, HELD_FELD } from '../gfx/heldArt';
 import type { HeldTier } from '../data/helden';
 import { t } from '../data/i18n';
@@ -260,6 +259,45 @@ function macheGras(ts = 128): HTMLCanvasElement {
 }
 const grasMuster = ctx.createPattern(macheGras(), 'repeat');
 
+// ---------- Wasser-Oberfläche (Option 1, reines 2D): kachelbarer Kaustik-Schimmer ----------
+// Statt echtem Three.js: eine kachelbare Wellen-Textur (Summe periodischer Sinus -> wrappt),
+// die in ZWEI Schichten mit leicht verschiedener Drift additiv übereinander scrollt. Die
+// Interferenz ergibt bewegtes Licht auf dem Wasser. Weltverankert + kachelbar -> überträgt
+// sich sauber ins 2D-Spiel (Sprite + Scroll-Offset), Strömungsrichtung frei wählbar.
+function macheWasserMuster(n = 256): HTMLCanvasElement {
+  const c = document.createElement('canvas'); c.width = c.height = n; const g = c.getContext('2d')!;
+  const img = g.createImageData(n, n), d = img.data;
+  const wellen = [{ fx: 4, fy: 2, ph: 0 }, { fx: 2, fy: 4, ph: 1.7 }, { fx: 6, fy: 4, ph: 2.4 }, { fx: 4, fy: 6, ph: 0.6 }, { fx: 8, fy: 6, ph: 3.1 }, { fx: 6, fy: 9, ph: 1.1 }];   // höhere Frequenzen -> feinere Wellen
+  const TAU = Math.PI * 2;
+  const ss = (a: number, b: number, x: number): number => { const k = Math.max(0, Math.min(1, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const u = x / n, v = y / n; let h = 0; for (const w of wellen) h += Math.sin(TAU * (w.fx * u + w.fy * v) + w.ph);
+    const t = h / wellen.length * 0.5 + 0.5, cr = ss(0.58, 0.94, t);   // NUR die Kämme -> dünne, spärliche helle Wellenlinien (kein Flächen-Wash)
+    const i = (y * n + x) * 4; d[i] = 196; d[i + 1] = 220; d[i + 2] = 244; d[i + 3] = cr * 210;
+  }
+  g.putImageData(img, 0, 0); return c;
+}
+const wasserMuster = macheWasserMuster();
+let wasserPattern: CanvasPattern | null = null;
+// Zeichnet animierten Wasser-Glanz in die AKTUELL gesetzte Clip-Maske (Welt-Koordinaten,
+// ctx bereits um -cam verschoben). fx,fy = Strömungsrichtung (See ~0, Fluss = Fließrichtung).
+function wasserGlanz(x0: number, y0: number, w: number, h: number, fx: number, fy: number, now: number, stark: number, tempo = 1): void {
+  if (!wasserPattern) wasserPattern = ctx.createPattern(wasserMuster, 'repeat');
+  if (!wasserPattern) return;
+  const t = now / 1000 * tempo;
+  const lagen: Array<[number, number, number]> = [
+    [(8 + fx * 30) * t, (5 + fy * 30) * t, 0.32 * stark],
+    [(-6 - fx * 18) * t + 90, (-9 - fy * 18) * t, 0.22 * stark],
+  ];
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (const [ox0, oy0, a] of lagen) {
+    const ox = ox0 % 256, oy = oy0 % 256;
+    ctx.globalAlpha = a; ctx.save(); ctx.translate(ox, oy); ctx.fillStyle = wasserPattern;
+    ctx.fillRect(x0 - ox - 256, y0 - oy - 256, w + 512, h + 512); ctx.restore();
+  }
+  ctx.restore();
+}
+
 // ---------- BIOME (Noise-Karte): Wald / Wiese / Moor / Fels, jeweils eigener Boden + Bewuchs/Dichte ----------
 function dichteNoise(x: number, y: number): number {   // Wald-Dichte
   const n = Math.sin(x * 0.0017) * Math.cos(y * 0.0021) + 0.6 * Math.sin((x + y) * 0.0013 + 1.7) + 0.4 * Math.sin(x * 0.004 - y * 0.003 + 3);
@@ -470,7 +508,6 @@ const buesche: Busch[] = [];
 const krypta = { x: WELT_W * 0.74, y: WELT_H * 0.3, r: 520 };
 let bereit = false;
 let demoBaum: Baum | null = null;   // nur für die Reproduktions-Hooks (zeigFall/landeJetzt)
-const wasserFrames: HTMLCanvasElement[] = [];   // gebackene THREE.Water-Frames (Option 3) für den See
 
 // AXT-gefällter Stumpf (nicht Kettensäge): unregelmäßige/splittrige Schnittfläche,
 // Kerbschnitt + gesplitterter Bruch, Jahresringe; pro Variante leichte Form-Varianz.
@@ -715,9 +752,6 @@ function regenAufschlaege(dt: number): void {
 // ---------- Init ----------
 async function init(): Promise<void> {
   const ofen = macheBackofen(512);
-  // Option 3: echtes THREE.Water EINMAL backen (kachelt nicht, deshalb deckt EINE Textur
-  // den ganzen begrenzten See ab; Animation über Frame-Wechsel). Dunkle Nachtwasser-Töne.
-  try { for (const f of backeWasser({ frames: 16, res: 384, size: 11, distortion: 3.0, sonneHoehe: 79, wasserFarbe: 0x0a1622, sonneFarbe: 0x9fb6cc })) wasserFrames.push(f); } catch (e) { console.warn('Wasser-Backofen fehlgeschlagen, 2D-Fallback bleibt aktiv', e); }
   // 1349-Mischwald (Eiche dominant - historisch stark genutzt; dazu Esche, Kiefer, Espe).
   // Spalte 3 = Stammdicke: einige dicke alte Bäume, einige schlanke -> Vielfalt.
   const SORTEN: Array<[string, number, number]> = [
@@ -1075,14 +1109,17 @@ function frame(now: number): void {
     const wg = ctx.createRadialGradient(see.cx, see.cy, 12, see.cx, see.cy, Math.max(see.rx, see.ry));
     wg.addColorStop(0, '#070d12'); wg.addColorStop(0.68, '#0e1a24'); wg.addColorStop(1, '#22303a');   // Mitte tief/dunkel, Rand flacher/heller
     ctx.fillStyle = wg; ctx.fillRect(see.cx - see.rx * 1.3, see.cy - see.ry * 1.3, see.rx * 2.6, see.ry * 2.6);
-    // Option 3: gebackenes THREE.Water (reflektierende Wellen) über dem Tiefen-Verlauf, Frame-animiert
-    if (wasserFrames.length) {
-      const wf = wasserFrames[Math.floor(now / 95) % wasserFrames.length];
-      ctx.globalAlpha = 0.6; ctx.drawImage(wf, see.cx - see.rx, see.cy - see.ry, see.rx * 2, see.ry * 2); ctx.globalAlpha = 1;
-      const dg = ctx.createRadialGradient(see.cx, see.cy, 12, see.cx, see.cy, Math.max(see.rx, see.ry));   // Tiefe Mitte erhalten
-      dg.addColorStop(0, 'rgba(4,8,12,0.55)'); dg.addColorStop(0.7, 'rgba(6,12,18,0.12)'); dg.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = dg; ctx.fillRect(see.cx - see.rx * 1.3, see.cy - see.ry * 1.3, see.rx * 2.6, see.ry * 2.6);
-    } else for (let i = 0; i < 3; i++) { const yy = see.cy - see.ry * 0.32 + i * see.ry * 0.26 + Math.sin(now / 850 + i) * 4; ctx.fillStyle = 'rgba(130,150,176,0.06)'; ctx.fillRect(see.cx - see.rx, yy, see.rx * 2, 5 + i); }   // Himmel-Schlieren (2D-Fallback)
+    // Option 1 (2D): Wasser bleibt dunkel/tief; dezente Himmel-Spiegelung + schmale Mond-Bahn +
+    // bewegter Kaustik-Schimmer (die eigentliche "Three.js-Wasser"-Bewegung)
+    const rg = ctx.createLinearGradient(0, see.cy - see.ry, 0, see.cy + see.ry);
+    rg.addColorStop(0, 'rgba(92,114,144,0.1)'); rg.addColorStop(0.55, 'rgba(40,56,76,0.03)'); rg.addColorStop(1, 'rgba(10,16,22,0)');
+    ctx.fillStyle = rg; ctx.fillRect(see.cx - see.rx, see.cy - see.ry, see.rx * 2, see.ry * 2);
+    const mx = see.cx - see.rx * 0.3;                                                          // Mond-Bahn: schmale vertikale helle Spur
+    ctx.save(); ctx.beginPath(); ctx.ellipse(mx, see.cy - see.ry * 0.34, see.rx * 0.16, see.ry * 0.72, 0, 0, 7); ctx.clip();
+    const mb = ctx.createLinearGradient(0, see.cy - see.ry, 0, see.cy + see.ry * 0.3);
+    mb.addColorStop(0, 'rgba(184,202,226,0.2)'); mb.addColorStop(1, 'rgba(184,202,226,0)');
+    ctx.fillStyle = mb; ctx.fillRect(see.cx - see.rx, see.cy - see.ry, see.rx * 2, see.ry * 2); ctx.restore();
+    wasserGlanz(see.cx - see.rx, see.cy - see.ry, see.rx * 2, see.ry * 2, 0, 0, now, 1.15, 0.5);
     for (const r of seeRinge) { const f = r.t / r.leben, rad = 1 + r.rmax * f, a = (1 - f) * 0.4; ctx.strokeStyle = `rgba(180,198,220,${a})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(r.x, r.y, rad, rad * 0.55, 0, 0, 7); ctx.stroke(); }
     ctx.restore();
     for (const ro of seeRosen) { ctx.save(); ctx.translate(ro.x, ro.y); ctx.fillStyle = '#2c4626'; ctx.beginPath(); ctx.ellipse(0, 0, 9 * ro.s, 5.5 * ro.s, 0, 0.5, Math.PI * 2 + 0.2); ctx.fill(); ctx.fillStyle = '#37562f'; ctx.beginPath(); ctx.ellipse(-1, -1, 5 * ro.s, 3 * ro.s, 0, 0, 7); ctx.fill(); if (ro.bluete) { ctx.fillStyle = '#e8e0ea'; ctx.beginPath(); ctx.arc(2 * ro.s, -1, 2 * ro.s, 0, 7); ctx.fill(); } ctx.restore(); }   // Seerosen
@@ -1337,6 +1374,7 @@ function zeichneFluss(now: number, wd: number): void {
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';                                                 // tiefe, dunkle Mitte
   ctx.strokeStyle = 'rgba(2,8,12,0.5)'; ctx.lineWidth = 30; ctx.beginPath();
   for (let i = 0; i < flussMitte.length; i++) { const m = flussMitte[i]; i ? ctx.lineTo(m.x, m.y) : ctx.moveTo(m.x, m.y); } ctx.stroke();
+  wasserGlanz(camX, camY, W, H, 0.6, 0.85, now, 0.8);                                            // Kaustik-Schimmer flussabwärts (gleicher Look wie der See)
   for (const st of flussStreif) {                                                               // scrollende Fließ-Strähnen
     const m = flussAt(st.s), cx = m.x + m.nx * st.off * m.hw, cy = m.y + m.ny * st.off * m.hw;
     ctx.strokeStyle = `rgba(150,172,196,${st.a})`; ctx.lineWidth = 1.2;
