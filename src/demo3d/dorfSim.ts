@@ -238,23 +238,33 @@ const FALL_ZIEL = 1.46;                 // Ruhewinkel (liegend)
 interface Baum { art: number; x: number; y: number; skala: number; blight: boolean; ph: number; fall: Fall | null; blattFarbe: string; fade: number; hp: number; maxHp: number; weg: boolean; }
 const arten: Array<{ wald: HTMLCanvasElement; blight: HTMLCanvasElement }> = [];
 const baeume: Baum[] = [];
-interface Fels { x: number; y: number; g: number; hp: number; maxHp: number; stufe: number; gestein: number; gegeben: number; entfernt: boolean; }
+interface Fels { x: number; y: number; g: number; hp: number; maxHp: number; stufe: number; gestein: number; gegeben: number; entfernt: boolean; erz: string | null; }
 const felsen: Fels[] = [];
+const ERZ_FARBE: Record<string, string> = { gold: '#d8b24a', eisen: '#c08058', kristall: '#9ab0e8' };
 interface Busch { x: number; y: number; skala: number; typ: number; fade: number; }
 const buschBilder: HTMLCanvasElement[] = [];
 const buesche: Busch[] = [];
 const krypta = { x: WELT_W * 0.74, y: WELT_H * 0.3, r: 520 };
 let bereit = false;
 
+// AXT-gefällter Stumpf (nicht Kettensäge): unregelmäßige/splittrige Schnittfläche,
+// Kerbschnitt + gesplitterter Bruch, Jahresringe; pro Variante leichte Form-Varianz.
 function macheStumpf(r = 15): HTMLCanvasElement {
-  const c = document.createElement('canvas'); c.width = c.height = r * 2 + 10; const g = c.getContext('2d')!; const cx = c.width / 2, cy = c.height / 2;
-  g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(cx, cy + 5, r + 2, (r + 2) * 0.55, 0, 0, 7); g.fill();
-  g.fillStyle = '#3a2c1c'; g.beginPath(); g.ellipse(cx, cy + 3, r, r * 0.5, 0, 0, 7); g.fill();
-  g.fillStyle = '#7a6040'; g.beginPath(); g.ellipse(cx, cy, r, r * 0.5, 0, 0, 7); g.fill();
-  for (let rr = r - 2; rr > 2; rr -= 3) { g.strokeStyle = 'rgba(50,36,22,0.55)'; g.lineWidth = 1; g.beginPath(); g.ellipse(cx, cy, rr, rr * 0.5, 0, 0, 7); g.stroke(); }
+  const c = document.createElement('canvas'); c.width = c.height = r * 2 + 14; const g = c.getContext('2d')!; const cx = c.width / 2, cy = c.height / 2;
+  const n = 11, rad: number[] = []; for (let i = 0; i < n; i++) rad.push(r * (0.86 + Math.random() * 0.22));   // unregelmäßiger Umriss
+  const umriss = (off: number, sc = 1): void => { g.beginPath(); for (let i = 0; i <= n; i++) { const a = i / n * Math.PI * 2, rr = rad[i % n] * sc; const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr * 0.5 + off; i ? g.lineTo(x, y) : g.moveTo(x, y); } g.closePath(); };
+  g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(cx, cy + 6, r + 3, (r + 3) * 0.55, 0, 0, 7); g.fill();   // Schatten
+  g.fillStyle = '#3a2c1c'; umriss(4); g.fill();                                  // Rinde/Seite (dunkel, etwas tiefer)
+  g.fillStyle = '#7a6040'; umriss(0); g.fill();                                  // Schnittfläche (hell)
+  for (let rr = r - 2; rr > 2; rr -= 2.6) { g.strokeStyle = 'rgba(50,36,22,0.5)'; g.lineWidth = 1; g.beginPath(); g.ellipse(cx + (Math.random() - 0.5) * 2, cy + (Math.random() - 0.5) * 1.5, rr, rr * 0.5, 0, 0, 7); g.stroke(); }   // Jahresringe (leicht versetzt)
+  // Kerbschnitt (Keil aus dem Rand) + gesplitterter Bruch
+  const ka = Math.random() * Math.PI * 2;
+  g.fillStyle = '#5a4226'; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(ka - 0.3) * r, cy + Math.sin(ka - 0.3) * r * 0.5); g.lineTo(cx + Math.cos(ka + 0.3) * r, cy + Math.sin(ka + 0.3) * r * 0.5); g.closePath(); g.fill();
+  g.strokeStyle = '#9a7a4a'; g.lineWidth = 1.4;                                  // Splitter, die hochstehen
+  for (let i = 0; i < 4; i++) { const a = ka + (Math.random() - 0.5) * 1.2, bx = cx + Math.cos(a) * r * 0.7, by = cy + Math.sin(a) * r * 0.5 * 0.7; g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + (Math.random() - 0.5) * 4, by - 4 - Math.random() * 5); g.stroke(); }
   return c;
 }
-const stumpfBild = macheStumpf();
+const stumpfBilder = [macheStumpf(), macheStumpf(), macheStumpf(16), macheStumpf(14)];   // Varianten -> nicht alle gleich
 
 // Weicher Kontaktschatten (einmal gebacken): erdet Objekte (Bäume/Felsen) am Fuß
 const schattenBild = (() => {
@@ -365,6 +375,7 @@ let baumGroesse = 1;
 let pfadBreiteFaktor = 1;   // Regler: Weg-Breite (live)
 let holz = 0;           // gesammeltes Holz (1 je gefälltem + zerhacktem Baum)
 let stein = 0;          // gesammelter Stein (aus Felsen, in Abbau-Stufen)
+const erzVorrat: Record<string, number> = { gold: 0, eisen: 0, kristall: 0 };   // Erz nach Sorte
 let pausiert = false;   // Screenshot-Hilfe: friert die Schleife ein (Software-WebGL ist sonst zu langsam fürs Capture)
 { const reg = document.getElementById('groesse') as HTMLInputElement | null, val = document.getElementById('groesseVal'); if (reg) reg.addEventListener('input', () => { baumGroesse = parseFloat(reg.value); if (val) val.textContent = `${baumGroesse.toFixed(2)}×`; }); }
 { const reg = document.getElementById('wegbreite') as HTMLInputElement | null, val = document.getElementById('wegbreiteVal'); if (reg) reg.addEventListener('input', () => { pfadBreiteFaktor = parseFloat(reg.value); if (val) val.textContent = `${pfadBreiteFaktor.toFixed(2)}×`; }); }
@@ -381,16 +392,18 @@ function hackeStamm(b: Baum): void {                                   // liegen
   while (f.holzAb < sollAb) { f.holzAb++; holz++; spaene(b.x + f.richtung * 50, b.y, '#9a6a38', -22, 4); }   // Holzscheit fällt ab
   if (f.hackHp <= 0) { while (f.holzAb < f.holzGesamt) { f.holzAb++; holz++; } b.weg = true; }               // Rest-Holz, Stamm aufgebraucht
 }
-function hackeFels(f: Fels): void {                                    // Stein in STUFEN abbauen, sichtbarer Zerfall
+function hackeFels(f: Fels): void {                                    // Stein/Erz in STUFEN abbauen, sichtbarer Zerfall
+  const geben = (): void => { f.gegeben++; if (f.erz) erzVorrat[f.erz]++; else stein++; };
   f.hp -= STEIN.schaden;
-  for (let i = 0; i < 4; i++) spaene(f.x, f.y - FELS_R[f.g] * 0.3, '#6a6a72', -30, 1);   // Stein-Splitter
+  const splF = f.erz ? ERZ_FARBE[f.erz] : '#6a6a72';
+  for (let i = 0; i < 4; i++) spaene(f.x, f.y - FELS_R[f.g] * 0.3, splF, -30, 1);   // Splitter (Erzfarbe bei Erz)
   const neueStufe = Math.min(3, Math.floor((1 - Math.max(0, f.hp) / f.maxHp) * 3) + (f.hp <= 0 ? 1 : 0));
   if (neueStufe > f.stufe) {
-    f.stufe = neueStufe; for (let i = 0; i < 8; i++) spaene(f.x, f.y - FELS_R[f.g] * 0.3, '#8a8a92', -36, 1);   // Brocken bricht sichtbar
+    f.stufe = neueStufe; for (let i = 0; i < 8; i++) spaene(f.x, f.y - FELS_R[f.g] * 0.3, splF, -36, 1);   // Brocken bricht sichtbar
     const sollGeg = Math.min(f.gestein, Math.ceil(f.stufe / 3 * f.gestein));
-    while (f.gegeben < sollGeg) { f.gegeben++; stein++; }
+    while (f.gegeben < sollGeg) geben();
   }
-  if (f.hp <= 0) { while (f.gegeben < f.gestein) { f.gegeben++; stein++; } f.entfernt = true; }   // aufgebraucht -> Geröll-Rest
+  if (f.hp <= 0) { while (f.gegeben < f.gestein) geben(); f.entfernt = true; }   // aufgebraucht -> Geröll-Rest
 }
 // Nächstes interagierbares Objekt JEDES Typs (Fels/liegender Stamm/stehender Baum) im Wirkradius.
 interface Ziel { typ: 'fels' | 'log' | 'baum'; fels?: Fels; baum?: Baum; x: number; y: number; }
@@ -532,7 +545,8 @@ async function init(): Promise<void> {
       const x = fx + (Math.random() - 0.5) * 90, y = fy + (Math.random() - 0.5) * 60, g = Math.floor(Math.random() * 3);
       if (baeume.some((b) => Math.hypot(b.x - x, b.y - y) < 50) || felsen.some((f) => Math.hypot(f.x - x, f.y - y) < FELS_R[g])) continue;
       const maxHp = Math.round((g + 1) * STEIN.hpProGroesse);
-      felsen.push({ x, y, g, hp: maxHp, maxHp, stufe: 0, gestein: Math.max(1, Math.round((g + 1) * STEIN.steinProGroesse)), gegeben: 0, entfernt: false });
+      const erz = Math.random() < 0.3 ? (['gold', 'eisen', 'kristall'] as const)[Math.floor(Math.random() * 3)] : null;   // ~30% Erz-Knoten
+      felsen.push({ x, y, g, hp: maxHp, maxHp, stufe: 0, gestein: Math.max(1, Math.round((g + 1) * STEIN.steinProGroesse)), gegeben: 0, entfernt: false, erz });
     }
   }
   // Büsche (begehbare Occluder): geclustert UM Felsen (Anker) + locker im Wald, nicht auf Lichtung/Weg/See
@@ -547,6 +561,8 @@ async function init(): Promise<void> {
     blitzAus: () => { blitz = 1; blitzNach = 0.1; },
     verdeckt: () => istVerdecktVomBaum(held().x, held().y),
     zumFels: () => { const f = felsen.find((q) => !q.entfernt); if (f) { held().x = f.x - 55; held().y = f.y; } },
+    zumErz: () => { const f = felsen.find((q) => !q.entfernt && q.erz); if (f) { held().x = f.x - 55; held().y = f.y; } },
+    abbauAlles: (): string => { let n = 0; for (const f of [...felsen]) { if (f.entfernt) continue; held().x = f.x - 40; held().y = f.y; let k = 0; while (!f.entfernt && k < 40) { aktionF(); k++; } n++; } return `felsen=${n} stein=${stein} gold=${erzVorrat.gold} eisen=${erzVorrat.eisen} kristall=${erzVorrat.kristall}`; },
     stats: () => ({ baeume: baeume.length, felsen: felsen.length, buesche: buesche.length, buschBilder: buschBilder.length, buschLeer: buschBilder.filter((c) => { const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 8) n++; return n < 50; }).length }),
     steinTest: (): string => { const f = felsen.find((q) => !q.entfernt); if (!f) return 'kein Fels'; held().x = f.x - 55; held().y = f.y; const s0 = stein; let n = 0; const stufen: number[] = []; while (!f.entfernt && n < 40) { aktionF(); stufen.push(f.stufe); n++; } return `groesse=${f.g} schlaege=${n} stein ${s0}->${stein} stufen=${[...new Set(stufen)].join('/')}`; },
     geheHinterBaum: () => { let best: Baum | null = null, bd = 1e9; for (const t of baeume) { if (t.fall || t.blight || t.skala < 0.42) continue; const d = Math.hypot(t.x - WELT_W * 0.5, t.y - WELT_H * 0.5); if (d < bd) { bd = d; best = t; } } if (best) { held().x = best.x; held().y = best.y - 35; } },
@@ -780,7 +796,8 @@ function frame(now: number): void {
   // 4b) Schatten der fallenden Krone (wandert mit) + Stümpfe unter gefällten Bäumen
   if (bereit) for (const b of baeume) if (b.fall) {
     if (!b.weg) { const tx = sx(b.x + Math.sin(b.fall.winkel) * 70 * b.skala * baumGroesse), r = 30 * b.skala * baumGroesse; ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(tx, sy(b.y) + 4, r, r * 0.4, 0, 0, 7); ctx.fill(); }
-    const ss = b.skala * baumGroesse * 0.95; ctx.drawImage(stumpfBild, sx(b.x) - stumpfBild.width * ss / 2, sy(b.y) - stumpfBild.height * ss / 2 + 2, stumpfBild.width * ss, stumpfBild.height * ss);
+    const ss = b.skala * baumGroesse * 0.95, sb = stumpfBilder[(Math.abs(Math.round(b.x * 13 + b.y * 7))) % stumpfBilder.length];   // Variante per Position
+    ctx.save(); ctx.translate(sx(b.x), sy(b.y) + 2); ctx.rotate((b.x * 0.7 + b.y * 0.3) % (Math.PI * 2)); ctx.drawImage(sb, -sb.width * ss / 2, -sb.height * ss / 2, sb.width * ss, sb.height * ss); ctx.restore();
   }
 
   // 5) Bäume + Wesen, tiefensortiert. Occlusion-Fade: NUR der Baum direkt vor dem Helden
@@ -854,7 +871,7 @@ function frame(now: number): void {
   if (blitz > 0.01) { ctx.fillStyle = `rgba(222,230,248,${blitz * 0.55})`; ctx.fillRect(0, 0, W, H); }
   ctx.fillStyle = 'rgba(230,220,190,0.85)'; ctx.font = '13px Georgia'; ctx.textAlign = 'right';
   ctx.fillText(`Wetter: ${WETTER_NAME()}   ·   Nässe ${Math.round(wetness * 100)}%   [1 2 3 4]`, W - 16, 22);
-  ctx.fillText(`Holz: ${holz}   ·   Stein: ${stein}   ·   F: Baum fällen/hacken oder Fels abbauen`, W - 16, 40); ctx.textAlign = 'left';
+  ctx.fillText(`Holz ${holz} · Stein ${stein} · Erz ${erzVorrat.gold}/${erzVorrat.eisen}/${erzVorrat.kristall} (Au/Fe/Kr) · F: nächstes Objekt abbauen`, W - 16, 40); ctx.textAlign = 'left';
 
   requestAnimationFrame(frame);
 }
@@ -867,6 +884,10 @@ function zeichneFels(f: Fels): void {
     const sc = f.stufe === 1 ? 0.82 : 1, b = felsBild[f.g], w = b.width * sc, hh = b.height * sc;
     ctx.drawImage(b, px - w / 2, py - hh * 0.66, w, hh);
     if (f.stufe === 1) { ctx.strokeStyle = 'rgba(12,12,16,0.6)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(px - R * 0.3, py - R * 0.55); ctx.lineTo(px + R * 0.08, py - R * 0.1); ctx.lineTo(px + R * 0.4, py - R * 0.45); ctx.stroke(); }   // sichtbare Risse
+    if (f.erz) {                                                                  // Mineral-Adern/Einsprengsel (deterministisch, glitzern leicht)
+      const col = ERZ_FARBE[f.erz], hsh = (k: number): number => { const v = Math.sin(f.x * 12.9 + f.y * 7.7 + k * 3.1) * 43758.5; return v - Math.floor(v); };
+      for (let i = 0; i < 5 + f.g; i++) { const a = hsh(i) * 6.28, rr = R * (0.2 + hsh(i + 9) * 0.55), gx = px + Math.cos(a) * rr, gy = py - R * 0.4 + Math.sin(a) * rr * 0.5; const fl = 0.7 + 0.3 * Math.sin(performance.now() / 250 + i); ctx.fillStyle = col; ctx.globalAlpha = 0.55 * fl; ctx.beginPath(); ctx.arc(gx, gy, 1.6 + hsh(i + 3) * 1.6, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
+    }
   }
   if (!f.entfernt && f.hp < f.maxHp) zeichneBalken(px, py - R - 10, f.hp / f.maxHp, '#b8b8c0');   // Abbau-Balken
 }
