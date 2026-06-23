@@ -26,6 +26,8 @@ const de: Texte = {
   'regler.bewuchs': 'Bewuchs',
   'regler.tageszeit': 'Tageszeit',
   'regler.tagtempo': 'Tag-Tempo',
+  'regler.sturm': 'Sturm-Stärke',
+  'regler.sicht': 'Sicht-Fenster',
   // Wetterstufen
   'wetter.sonnig': 'sonnig',
   'wetter.klar': 'klar',

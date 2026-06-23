@@ -517,7 +517,7 @@ function baueBaum(preset: string, seed: number, st: Stimmung, dick = 1): Tree {
   o.seed = seed;
   o.branch.radius[0] *= 1.7 * dick;                 // kräftigere Stämme (vorher wie junge Bäumchen)
   o.branch.radius[1] *= 1 + (dick - 1) * 0.4;
-  o.branch.length[0] *= 1.6 + (dick - 1) * 0.15;    // längerer Stamm -> Krone sitzt höher, STAMM ist sichtbar (Autorwunsch)
+  o.branch.length[0] *= (preset.includes('Pine') ? 2.5 : 2.0) + (dick - 1) * 0.15;   // langer Stamm -> Krone hoch, STAMM sichtbar; Nadelbäume besonders hoch
   o.branch.gnarliness[0] = 0.04; o.branch.gnarliness[1] *= 0.6;   // GERADER, aufrechter Stamm -> einheitlicher Look (kein Lehnen)
   o.branch.force.strength = 0.02;                   // wächst zuverlässig nach oben
   o.leaves.count = Math.max(1, Math.round(o.leaves.count * st.dichte));
@@ -550,6 +550,7 @@ let fallG = 5.2;                        // Fall-Schwerkraft (per Regler: höher 
 const FALL_ZIEL = 1.46;                 // Ruhewinkel (liegend)
 interface Baum { art: number; x: number; y: number; skala: number; blight: boolean; ph: number; fall: Fall | null; blattFarbe: string; fade: number; hp: number; maxHp: number; weg: boolean; schnee?: number; }
 const arten: Array<{ wald: HTMLCanvasElement; blight: HTMLCanvasElement; liege: HTMLCanvasElement; liegeBlight: HTMLCanvasElement }> = [];
+const nadel: boolean[] = [];   // je Art: Nadelbaum (Fichte/Kiefer)? -> wachsen höher
 const baeume: Baum[] = [];
 interface Fels { x: number; y: number; g: number; hp: number; maxHp: number; stufe: number; gestein: number; gegeben: number; entfernt: boolean; erz: string | null; schnee?: number; }
 const felsen: Fels[] = [];
@@ -645,6 +646,22 @@ const felsBild = FELS_R.map((r) => macheFels(r)), geroellBild = FELS_R.map((r) =
 // ---------- Held/Wesen ----------
 const figCv = document.createElement('canvas'); figCv.width = figCv.height = HELD_FELD;
 const figCtx = figCv.getContext('2d')!;
+// Spieler-Sichtfenster (Autorwunsch): ein weiches, spielfigur-großes Fenster um den Helden,
+// in dem die VOR ihm stehenden Bäume durchsichtig werden -> Held immer erkennbar. Umriss bleibt.
+const sichtCv = document.createElement('canvas'); const sichtCtx = sichtCv.getContext('2d')!;
+let sichtDurchmesser = 124;   // Größe des Fensters (Spielfigur + Rand), per Regler justierbar
+function spielerReveal(px: number, py: number): { x: number; y: number } {
+  const D = sichtDurchmesser; sichtCv.width = D; sichtCv.height = D;
+  const sxp = Math.round(px - D / 2), syp = Math.round(py - D / 2);
+  sichtCtx.clearRect(0, 0, D, D);
+  sichtCtx.drawImage(view, sxp, syp, D, D, 0, 0, D, D);   // Held + Hintergrund (noch VOR den Front-Bäumen) sichern
+  sichtCtx.globalCompositeOperation = 'destination-in';   // weiches rundes Fenster (gefedert)
+  const g = sichtCtx.createRadialGradient(D / 2, D / 2, D * 0.27, D / 2, D / 2, D * 0.5);
+  g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  sichtCtx.fillStyle = g; sichtCtx.fillRect(0, 0, D, D);
+  sichtCtx.globalCompositeOperation = 'source-over';
+  return { x: sxp, y: syp };
+}
 // Outline für verdeckte Wesen (statt Geist-Silhouette): dünne, farbcodierte Kontur, Figur innen normal
 const umrissCv = document.createElement('canvas'); umrissCv.width = umrissCv.height = HELD_FELD;
 const umrissCtx = umrissCv.getContext('2d')!;
@@ -696,6 +713,7 @@ addEventListener('keydown', (e) => {
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 // Größen-Regler (live) für die Bäume
 let baumGroesse = 1;
+let sturmStaerke = 1.5;   // Regler: wie stark sich die Bäume im Sturm biegen (Autorwunsch "fetter Regler")
 let pfadBreiteFaktor = 1;   // Regler: Weg-Breite (live)
 let holz = 0;           // gesammeltes Holz (1 je gefälltem + zerhacktem Baum)
 let stein = 0;          // gesammelter Stein (aus Felsen, in Abbau-Stufen)
@@ -707,11 +725,13 @@ let pausiert = false;   // Screenshot-Hilfe: friert die Schleife ein (Software-W
 { const reg = document.getElementById('bewuchs') as HTMLInputElement | null, val = document.getElementById('bewuchsVal'); if (reg) reg.addEventListener('input', () => { bewuchsDichte = parseFloat(reg.value); if (val) val.textContent = `${bewuchsDichte.toFixed(2)}×`; }); }
 { const reg = document.getElementById('tageszeit') as HTMLInputElement | null, val = document.getElementById('tageszeitVal'); if (reg) reg.addEventListener('input', () => { tag = parseFloat(reg.value); const hh = Math.floor(tag); if (val) val.textContent = `${hh}:${Math.floor((tag - hh) * 60).toString().padStart(2, '0')}`; }); }
 { const reg = document.getElementById('tagtempo') as HTMLInputElement | null, val = document.getElementById('tagtempoVal'); if (reg) reg.addEventListener('input', () => { tagTempo = parseFloat(reg.value); if (val) val.textContent = `${tagTempo.toFixed(1)}×`; }); }
+{ const reg = document.getElementById('sturmregler') as HTMLInputElement | null, val = document.getElementById('sturmVal'); if (reg) reg.addEventListener('input', () => { sturmStaerke = parseFloat(reg.value); if (val) val.textContent = `${sturmStaerke.toFixed(1)}×`; }); }
+{ const reg = document.getElementById('sicht') as HTMLInputElement | null, val = document.getElementById('sichtVal'); if (reg) reg.addEventListener('input', () => { sichtDurchmesser = parseInt(reg.value, 10); if (val) val.textContent = `${sichtDurchmesser}`; }); }
 // i18n: alle sichtbaren HTML-Texte aus der Sprachdatei setzen (statt im Markup fest verdrahtet)
 { const setTxt = (id: string, key: string): void => { const e = document.getElementById(id); if (e) e.textContent = t(key); };
   setTxt('titel', 'dorf.titel'); setTxt('beschreibung', 'dorf.hud');
   setTxt('lblGroesse', 'regler.baumgroesse'); setTxt('lblWegbreite', 'regler.wegbreite'); setTxt('lblFalltempo', 'regler.falltempo'); setTxt('lblBewuchs', 'regler.bewuchs');
-  setTxt('lblTageszeit', 'regler.tageszeit'); setTxt('lblTagtempo', 'regler.tagtempo'); }
+  setTxt('lblTageszeit', 'regler.tageszeit'); setTxt('lblTagtempo', 'regler.tagtempo'); setTxt('lblSturm', 'regler.sturm'); setTxt('lblSicht', 'regler.sicht'); }
 
 function starteFall(b: Baum, ri: number): void {
   b.fall = { winkel: 0.05 * ri, winkelV: 0.3 * ri, gelandet: false, richtung: ri,
@@ -819,15 +839,19 @@ async function init(): Promise<void> {
   const ofen = macheBackofen(512);
   // 1349-Mischwald (Eiche dominant - historisch stark genutzt; dazu Esche, Kiefer, Espe).
   // Spalte 3 = Stammdicke: einige dicke alte Bäume, einige schlanke -> Vielfalt.
+  // Mehr NADELBÄUME (Fichte/Kiefer - beliebt, schnellwüchsig, zeigen den Stamm), weniger dichte Eichen.
   const SORTEN: Array<[string, number, number]> = [
-    ['Oak Large', 1, 1.9], ['Oak Large', 14, 1.4], ['Oak Medium', 23, 1.1], ['Oak Medium', 51, 1.65],
-    ['Ash Large', 7, 1.3], ['Ash Medium', 31, 1.0], ['Pine Large', 5, 1.5], ['Aspen Large', 3, 0.9],
+    ['Oak Large', 1, 1.9], ['Oak Medium', 23, 1.3],
+    ['Ash Large', 7, 1.3], ['Ash Medium', 31, 1.0],
+    ['Pine Large', 5, 1.6], ['Pine Large', 17, 1.3], ['Pine Large', 33, 1.1],
+    ['Aspen Large', 3, 0.95],
   ];
   const blattFarben = ['#46582f', '#5d7a48', '#6a7340', '#3f4d28'];
   for (const [preset, seed, dick] of SORTEN) {
     const tw = baueBaum(preset, seed, WALD, dick), tb = baueBaum(preset, seed, BLIGHT, dick);
     for (let i = 0; i < 160 && !(texturenBereit(tw as unknown as THREE.Object3D) && texturenBereit(tb as unknown as THREE.Object3D)); i++) await schlaf(40);
     arten.push({ wald: backe(ofen, tw, WALD), blight: backe(ofen, tb, BLIGHT), liege: backeLiege(ofen, tw, WALD), liegeBlight: backeLiege(ofen, tb, BLIGHT) });
+    nadel.push(preset.includes('Pine'));
   }
   // Büsche (ez-tree Bush-Presets), gebacken wie Bäume -> begehbare Occluder
   for (const [preset, seed] of [['Bush 1', 4], ['Bush 2', 11], ['Bush 3', 27]] as Array<[string, number]>) {
@@ -865,14 +889,16 @@ async function init(): Promise<void> {
     // Bäume v.a. im WALD; Wiese/Moor spärlich, Fels fast keine
     const chance = biom === 'wald' ? d : biom === 'wiese' ? 0.16 : biom === 'moor' ? 0.18 : 0.05;
     if (Math.random() > chance) continue;
-    const skala = biom === 'wald' && d > 0.62 ? 1.0 + Math.random() * 0.6 : 0.6 + Math.random() * 0.5;
+    const art = Math.floor(Math.random() * arten.length);
+    let skala = biom === 'wald' && d > 0.62 ? 1.0 + Math.random() * 0.6 : 0.6 + Math.random() * 0.5;
+    if (nadel[art]) skala = Math.min(2.0, skala * 1.45);                          // Nadelbäume spawnen deutlich höher
     const kroneN = y - 512 * skala * 0.42;                                       // wohin die Krone nordwärts reicht
     if (Math.hypot(x - lichtX, y - lichtY) < 330 || Math.hypot(x - lichtX, kroneN - lichtY) < 330) continue;   // Lichtung + Überhang frei
     if (distPfad(x, y) < PFAD_BREITE * 1.5 || distPfad(x, kroneN) < PFAD_BREITE * 1.5) continue;               // mind. eine Wegbreite links/rechts baumfrei (Autorwunsch) + Kronen-Überhang
     if (baeume.some((t) => Math.hypot(t.x - x, t.y - y) < 80)) continue;        // Mindestabstand (große Bäume)
     const blight = biom === 'moor' || Math.hypot(x - krypta.x, y - krypta.y) < krypta.r * (0.55 + Math.random() * 0.6);   // Moor = tote Bäume
     const maxHp = Math.max(40, Math.round(skala * FAELLEN.hpProGroesse));
-    baeume.push({ art: Math.floor(Math.random() * arten.length), x, y, skala, blight, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)], fade: 0, hp: maxHp, maxHp, weg: false });
+    baeume.push({ art, x, y, skala, blight, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)], fade: 0, hp: maxHp, maxHp, weg: false });
   }
   // Felsen in CLUSTERN (Haufen verschiedener Größen), abseits Lichtung/Weg/See, nicht in Baumstämmen
   for (let c = 0; c < 22; c++) {
@@ -1350,6 +1376,7 @@ function frame(now: number): void {
     if (brSicht) { const ns = bruecke.ny >= 0 ? 1 : -1; liste.push({ y: bruecke.cy + ns * bruecke.ny * bruecke.halbB, b: null, w: null, f: null, bu: null, nr: true }); }   // vorderes Geländer tiefensortiert
     if (camY < 60 && huette.x > camX - 260 && huette.x < camX + W + 260 && huette.y > camY - 240 && huette.y < camY + H + 240) liste.push({ y: huette.y, b: null, w: null, f: null, bu: null, hu: true });   // Zufluchts-Hütte (Außen, tiefensortiert)
     liste.sort((a, c) => a.y - c.y);
+    let spielerFenster: { x: number; y: number } | null = null;
     for (const z of liste) {
       if (z.nr) { zeichneGelaender(bruecke.ny >= 0 ? 1 : -1, now); continue; }   // vorderes Brücken-Geländer
       if (z.hu) { zeichneHuetteAussen(now); continue; }   // Zufluchts-Hütte (Außen)
@@ -1362,11 +1389,13 @@ function frame(now: number): void {
         const verdeckt = unterBaum(h0.x, h0.y, b);
         b.fade += ((verdeckt ? 1 : 0) - b.fade) * Math.min(1, dt * 9);
         if (b.fade > 0.01) ctx.globalAlpha = 1 - b.fade * 0.45;               // Krone nur bis ~0.55 (bleibt als Baum lesbar)
-        if (b.fall) { if (!b.weg) zeichneGefällt(bild, b.blight ? arten[b.art].liegeBlight : arten[b.art].liege, sx(b.x), sy(b.y), sk, b.fall); } else { zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * sk * (b.blight ? 30 : 78) * boeWelle(b.x, b.y, now), b.ph, now); if (b.schnee) schneeAufKrone(sx(b.x), sy(b.y), w, hh, b.schnee); if (b.hp < b.maxHp) zeichneBalken(sx(b.x), sy(b.y) - 44, b.hp / b.maxHp, '#6ad06a'); }   // Biegung im Sturm SEHR stark + Fäll-Balken
+        if (b.fall) { if (!b.weg) zeichneGefällt(bild, b.blight ? arten[b.art].liegeBlight : arten[b.art].liege, sx(b.x), sy(b.y), sk, b.fall); } else { zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * sk * (b.blight ? 30 : 78) * sturmStaerke * boeWelle(b.x, b.y, now), b.ph, now); if (b.schnee) schneeAufKrone(sx(b.x), sy(b.y), w, hh, b.schnee); if (b.hp < b.maxHp) zeichneBalken(sx(b.x), sy(b.y) - 44, b.hp / b.maxHp, '#6ad06a'); }   // Biegung im Sturm SEHR stark + Fäll-Balken
         if (b.fall && !b.weg && b.fall.hackHp < b.fall.hackMax) zeichneBalken(sx(b.x), sy(b.y) - 10, b.fall.hackHp / b.fall.hackMax, '#d2a23a');   // Hack-Balken am liegenden Stamm
         ctx.globalAlpha = 1;
-      } else if (z.w) zeichneWesen(z.w);
+      } else if (z.w) { zeichneWesen(z.w); if (z.w === h0) spielerFenster = spielerReveal(sx(h0.x), sy(h0.y) - 24); }
     }
+    // Sichtfenster zurück-komponieren: macht die nach dem Helden gezeichneten Front-Bäume im Fenster durchsichtig
+    if (spielerFenster) ctx.drawImage(sichtCv, spielerFenster.x, spielerFenster.y);
     // 5a) Ziel-Highlight: dezenter pulsierender Ring am anvisierten Objekt (was F gerade treffen würde)
     const z = zielObjekt();
     if (z) { const px = sx(z.x), py = sy(z.y), r = z.typ === 'fels' ? FELS_R[z.fels!.g] + 4 : 24, pulse = 0.55 + 0.3 * Math.sin(now / 220); ctx.strokeStyle = `rgba(232,238,176,${0.5 * pulse})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(px, py + 2, r, r * 0.42, 0, 0, 7); ctx.stroke(); }
