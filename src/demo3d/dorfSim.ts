@@ -276,6 +276,21 @@ const huhnBild = macheHuhn();
 // ---------- Held/Wesen ----------
 const figCv = document.createElement('canvas'); figCv.width = figCv.height = HELD_FELD;
 const figCtx = figCv.getContext('2d')!;
+// Outline für verdeckte Wesen (statt Geist-Silhouette): dünne, farbcodierte Kontur, Figur innen normal
+const umrissCv = document.createElement('canvas'); umrissCv.width = umrissCv.height = HELD_FELD;
+const umrissCtx = umrissCv.getContext('2d')!;
+const OFFSETS8: Array<[number, number]> = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
+// ist ein Wesen von einem Baum DAVOR verdeckt? (für die Outline, nur bei Bedarf gerechnet)
+function istVerdecktVomBaum(wx: number, wy: number): boolean {
+  const rx = sx(wx) - 11, ry = sy(wy) - 40, rw = 22, rh = 32;
+  for (const b of baeume) {
+    if (b.fall || b.y <= wy) continue;
+    if (b.x < camX - 360 || b.x > camX + W + 360 || b.y < camY - 600 || b.y > camY + H + 360) continue;
+    const sk = b.skala * baumGroesse, bw = arten[b.art].wald.width * sk, hh = arten[b.art].wald.height * sk;
+    if (rechteckeUeberlappen(sx(b.x) - bw * 0.3, sy(b.y) - hh * 0.64, bw * 0.6, hh * 0.55, rx, ry, rw, rh)) return true;
+  }
+  return false;
+}
 // Occlusion (Fallout-Look): nur der Baum DIREKT vor dem Helden wird halbtransparent,
 // der echte Held scheint mit Details durch - keine getönte Silhouette.
 function rechteckeUeberlappen(ax: number, ay: number, aw: number, ah: number, bx: number, by: number, bw: number, bh: number): boolean {
@@ -283,7 +298,7 @@ function rechteckeUeberlappen(ax: number, ay: number, aw: number, ah: number, bx
 }
 const HM = (HELD_FELD - 64) / 2;
 type Art = 'held' | 'dorf' | 'huhn';
-interface Wesen { art: Art; tier: HeldTier; x: number; y: number; dir: number; frameT: number; speed: number; zx: number; zy: number; ruhe: number; effT: number; hackT: number; bob: number; }
+interface Wesen { art: Art; tier: HeldTier; x: number; y: number; dir: number; frameT: number; speed: number; zx: number; zy: number; ruhe: number; effT: number; hackT: number; bob: number; umriss: number; }
 const wesen: Wesen[] = [];
 const held = (): Wesen => wesen[0];
 const richtungVon = (dx: number, dy: number): number => [6, 7, 0, 1, 2, 3, 4, 5][((Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8)];
@@ -379,7 +394,7 @@ async function init(): Promise<void> {
     arten.push({ wald: backe(ofen, tw, WALD), blight: backe(ofen, baueBaum(preset, seed, BLIGHT, dick), BLIGHT) });
   }
   // Held + Dorfbewohner + Hühner
-  wesen.push({ art: 'held', tier: 'leder', x: WELT_W * 0.4, y: WELT_H * 0.62, dir: 0, frameT: 0, speed: 165, zx: 0, zy: 0, ruhe: 0, effT: 0, hackT: 0, bob: 0 });
+  wesen.push({ art: 'held', tier: 'leder', x: WELT_W * 0.4, y: WELT_H * 0.62, dir: 0, frameT: 0, speed: 165, zx: 0, zy: 0, ruhe: 0, effT: 0, hackT: 0, bob: 0, umriss: 0 });
   const tiers: HeldTier[] = ['stoff', 'stoff', 'kette'];
   for (let i = 0; i < 3; i++) wesen.push(neuesNpc('dorf', tiers[i], WELT_W * (0.34 + i * 0.06), WELT_H * (0.66 + (i % 2) * 0.05)));
   for (let i = 0; i < 6; i++) wesen.push(neuesNpc('huhn', 'stoff', WELT_W * 0.36 + Math.random() * 220, WELT_H * 0.6 + Math.random() * 160));
@@ -424,7 +439,7 @@ async function init(): Promise<void> {
 void init();
 
 function neuesNpc(art: Art, tier: HeldTier, x: number, y: number): Wesen {
-  return { art, tier, x, y, dir: 2, frameT: Math.random() * 4, speed: art === 'huhn' ? 55 : 42, zx: x, zy: y, ruhe: Math.random() * 2, effT: 0, hackT: 0, bob: 0 };
+  return { art, tier, x, y, dir: 2, frameT: Math.random() * 4, speed: art === 'huhn' ? 55 : 42, zx: x, zy: y, ruhe: Math.random() * 2, effT: 0, hackT: 0, bob: 0, umriss: 0 };
 }
 
 // ---------- Wind/Baum-Zeichnen ----------
@@ -670,7 +685,7 @@ function frame(now: number): void {
         const verdeckt = b.y > h0.y && rechteckeUeberlappen(sx(b.x) - w * 0.3, sy(b.y) - hh * 0.64, w * 0.6, hh * 0.55, tRX, tRY, tRW, tRH);
         b.fade += ((verdeckt ? 1 : 0) - b.fade) * Math.min(1, dt * 9);
         if (b.fade > 0.01) ctx.globalAlpha = 1 - b.fade * 0.45;               // Krone nur bis ~0.55 (bleibt als Baum lesbar)
-        if (b.fall) { if (!b.fall.geerntet) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); } else zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * (b.blight ? 5 : 13) * (0.7 + sk * 0.6) * boeWelle(b.x, b.y, now), b.ph, now);
+        if (b.fall) { if (!b.fall.geerntet) zeichneGefällt(bild, sx(b.x), sy(b.y), w, hh, b.fall); } else zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * sk * (b.blight ? 16 : 40) * boeWelle(b.x, b.y, now), b.ph, now);   // Biegung größenproportional + im Sturm deutlich
         ctx.globalAlpha = 1;
       } else if (z.w) zeichneWesen(z.w);
     }
@@ -729,6 +744,17 @@ function zeichneWesen(w: Wesen): void {
   }
   figCtx.clearRect(0, 0, HELD_FELD, HELD_FELD);
   figCtx.save(); figCtx.translate(HM, HM); drawHeld(figCtx, w.tier, w.dir, w.hackT > 0 ? 2 : Math.floor(w.frameT) % 4, w.art === 'held' ? 'axt' : null); figCtx.restore();
-  ctx.drawImage(figCv, px - HELD_FELD / 2, py - HELD_FELD / 2 - 12);
+  const dx = px - HELD_FELD / 2, dy = py - HELD_FELD / 2 - 12;
+  // Outline NUR bei Verdeckung (farbcodiert), weich gefadet; Figur innen bleibt normal
+  const verdeckt = istVerdecktVomBaum(w.x, w.y);
+  w.umriss += ((verdeckt ? 1 : 0) - w.umriss) * 0.18;
+  if (w.umriss > 0.02) {
+    const farbe = w.art === 'held' ? '#bfe0ff' : '#e6d77a';            // Held kühl-blau, NPC neutral-gelb (Gegner später rot)
+    umrissCtx.clearRect(0, 0, HELD_FELD, HELD_FELD);
+    for (const [ox, oy] of OFFSETS8) umrissCtx.drawImage(figCv, ox * 2, oy * 2);
+    umrissCtx.globalCompositeOperation = 'source-in'; umrissCtx.fillStyle = farbe; umrissCtx.fillRect(0, 0, HELD_FELD, HELD_FELD); umrissCtx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = w.umriss; ctx.drawImage(umrissCv, dx, dy); ctx.globalAlpha = 1;
+  }
+  ctx.drawImage(figCv, dx, dy);
 }
 requestAnimationFrame(frame);
