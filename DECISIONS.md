@@ -586,3 +586,13 @@
   * SCHNEE AUF DEN TANNEN-KRONEN: macheTanne mit größerer Schnee-Kappe + Schnee auf den Astspitzen; selbst die untersten Bergtannen leicht überzuckert (kalter Berg) -> keine "Sommerbäume im Schnee" mehr.
   * SCHNEE STATT REGEN am Berg (niedrige Prio): Regen blendet aus, je höher die Kamera (bergAnteil über camY) -> oben fällt nur noch Schnee.
   * Verifiziert: Stufen wirken als gestapelte Sims mit Wand+Schatten; Pass = Rampe mit Trittstufen/Geländer; Tannen mit Schneekronen; Schneefall oben. tsc grün. (Standbild - echtes Höhengefühl zeigt sich erst beim Hochlaufen.)
+
+- Runde 62 (Sonnenschein als eigener Wetter-Zustand - Autorwunsch):
+  * ANTWORT auf die Autorfrage: die düstere Stimmung ist ein GLOBALER Tint (Overlay rgba(12,18,24, 0.1+wetter*0.28) + Vignette, skaliert mit wetter) auf eher dunkler Asset-Palette. Also war Sonne "fast geschenkt" - nur ein weiterer Zielwert auf derselben Achse.
+  * WETTER-ACHSE erweitert: wetter reicht jetzt von -1 (sonnig) über 0 (klar) bis 1 (Sturm); sonne = max(0,-wetter). Weich übergeblendet (kein harter Schalter). Tasten neu: 1 Sonne · 2 klar · 3 Regen · 4 Unwetter · 5 Gewitter. Zufalls-Wetter würfelt jetzt auch Sonne (~24%).
+  * WARMER TINT (wichtigster Hebel): bei Sonne dunkles Overlay weg, stattdessen warmer Gold-Verlauf per 'overlay' (Helligkeit+Kontrast+Wärme) + sanfte Aufhellung per 'soft-light'; Vignette deutlich schwächer. Grüns wirken satter/wärmer.
+  * GERICHTETE SCHATTEN: kontaktSchatten bei Sonne einheitlich nach rechts-unten versetzt + verlängert (= Sonne links oben). Zweitstärkster Sonnen-Trick.
+  * GOD RAYS: 4 schräge, warme, langsam driftende Lichtschäfte ('lighter', sehr niedrige Deckkraft) - sparsam.
+  * KEINE expliziten Kanten-Highlights (Autor-Warnung "Pfützen-Glühen") - Wärme kommt aus dem Tint, nicht aus Bloom.
+  * REGEN->SONNE-Übergang emergent: weiche Achse + wetness verdunstet langsam -> kurz nach Regen sind Flächen noch nass und glänzen unter dem warmen Tint, bevor sie abtrocknen.
+  * Verifiziert: sonnig = deutlich heller, warm, sattes Grün (vs. dunkel/blau bei Regen); dichter Wald golden belichtet. tsc grün.

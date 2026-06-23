@@ -221,7 +221,8 @@ baueBergInhalt();
 
 // ---------- Wetter (dynamisch: klar -> Regen -> Unwetter; treibt Wind/Regen/Nebel) ----------
 let regenAn = true;
-let wetter = 0.5;                 // 0 klar .. 0.5 Regen .. 1 Sturm
+let wetter = 0.5;                 // -1 sonnig .. 0 klar .. 0.5 Regen .. 1 Sturm (eine weiche Achse)
+let sonne = 0;                    // 0..1 Sonnen-Intensität = max(0, -wetter); treibt warmen Tint + Schatten + God Rays
 let wetterZiel = 0.5, wetterTimer = 6;
 let sturmFallTimer = 40 + Math.random() * 60;   // s bis zum nächsten möglichen Sturmbruch (global, selten)
 let wetness = 0;                  // 0..1 Bodennässe: Regen füllt schnell, Verdunsten langsam -> Pfützen-Steuerung
@@ -232,7 +233,7 @@ const donnerQueue: Array<{ t: number; laut: number }> = [];
 // AUDIO-PLATZHALTER: hier kommt später das Donner-Sample rein (3-5 Varianten, je Blitz zufällig).
 // Stufe-2/3-Ambience (loopbarer Regen/Sturm) wird analog über setzeWetterSound(stufe) angehängt.
 function spieleDonner(_laut: number): void { /* TODO Audio: new Audio(donnerSample[zufall]).play() mit Lautstärke _laut */ }
-const WETTER_NAME = (): string => t(wetter < 0.15 ? 'wetter.klar' : wetter < 0.45 ? 'wetter.niesel' : wetter < 0.75 ? 'wetter.regen' : wetter < 0.9 ? 'wetter.unwetter' : 'wetter.gewitter');
+const WETTER_NAME = (): string => t(wetter < -0.25 ? 'wetter.sonnig' : wetter < 0.15 ? 'wetter.klar' : wetter < 0.45 ? 'wetter.niesel' : wetter < 0.75 ? 'wetter.regen' : wetter < 0.9 ? 'wetter.unwetter' : 'wetter.gewitter');
 function wind(now: number): number {                       // Stärke steigt mit dem Wetter
   const t = now / 1000;
   const grund = (Math.sin(t * 0.27) * 0.6 + Math.sin(t * 0.13 + 1) * 0.3) * (0.25 + wetter * 0.5);   // sanftes Hin und Her bei wenig Wind
@@ -540,6 +541,10 @@ const schattenBild = (() => {
   g.fillStyle = rg; g.beginPath(); g.ellipse(32, 32, 30, 30, 0, 0, 7); g.fill(); return c;
 })();
 function kontaktSchatten(scx: number, scy: number, breite: number): void {   // weiche Ellipse am Fuß
+  if (sonne > 0.02) {   // SONNE: gerichteter, längerer Schlagschatten (einheitlich nach rechts-unten = Sonne links oben)
+    const dx = sonne * breite * 0.45, lang = 1 + sonne * 0.7;
+    ctx.globalAlpha = 1 - sonne * 0.12; ctx.drawImage(schattenBild, scx - breite / 2 + dx, scy - breite * 0.14, breite * lang, breite * 0.36); ctx.globalAlpha = 1; return;
+  }
   ctx.drawImage(schattenBild, scx - breite / 2, scy - breite * 0.18, breite, breite * 0.36);
 }
 
@@ -631,10 +636,11 @@ addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase(); keys[k] = true;
   if (k === 'f' || e.key === ' ') aktionF();
   if (k === 'r') regenAn = !regenAn;
-  if (k === '1') { wetterZiel = 0.05; wetterTimer = 45; }    // klar
-  if (k === '2') { wetterZiel = 0.42; wetterTimer = 45; }    // Regen
-  if (k === '3') { wetterZiel = 0.78; wetterTimer = 45; }    // Unwetter
-  if (k === '4') { wetterZiel = 1; wetterTimer = 45; }       // Gewitter (Blitz + Donner)
+  if (k === '1') { wetterZiel = -1; wetterTimer = 60; }      // sonnig (positives Gegenstück zum Regen)
+  if (k === '2') { wetterZiel = 0.05; wetterTimer = 45; }    // klar
+  if (k === '3') { wetterZiel = 0.42; wetterTimer = 45; }    // Regen
+  if (k === '4') { wetterZiel = 0.78; wetterTimer = 45; }    // Unwetter
+  if (k === '5') { wetterZiel = 1; wetterTimer = 45; }       // Gewitter (Blitz + Donner)
 });
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 // Größen-Regler (live) für die Bäume
@@ -882,6 +888,7 @@ async function init(): Promise<void> {
     blitzAus: () => { blitz = 1; blitzNach = 0.1; },
     sturm: () => { wetter = 1; wetterZiel = 1; wetterTimer = 90; },
     klar: () => { wetter = 0.04; wetterZiel = 0.04; wetterTimer = 120; },
+    sonnig: () => { wetter = -1; wetterZiel = -1; wetterTimer = 120; sonne = 1; },
     biomBei: (x: number, y: number): string => biomAt(x, y),
     dichteBei: (x: number, y: number): number => dichteNoise(x, y),
     zumBerg: (y = -40): void => { held().x = WELT_W * 0.5; held().y = y; },
@@ -1001,10 +1008,16 @@ let last = performance.now();
 function frame(now: number): void {
   if (pausiert) return;
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  // dynamisches Wetter: Ziel ab und zu neu würfeln (mit Unwetter-Chance), sanft hinbewegen
+  // dynamisches Wetter: Ziel ab und zu neu würfeln (Sonne <-> klar <-> Regen <-> Unwetter), sanft hinbewegen
   wetterTimer -= dt;
-  if (wetterTimer <= 0) { wetterTimer = 10 + Math.random() * 16; wetterZiel = Math.random() < 0.28 ? 0.85 + Math.random() * 0.25 : 0.15 + Math.random() * 0.5; }
+  if (wetterTimer <= 0) {
+    wetterTimer = 12 + Math.random() * 18; const r = Math.random();
+    wetterZiel = r < 0.22 ? 0.85 + Math.random() * 0.25      // Unwetter
+      : r < 0.46 ? -0.4 - Math.random() * 0.6                // sonnig (positives Gegenstück)
+        : 0.1 + Math.random() * 0.5;                          // klar .. Regen
+  }
   wetter += (wetterZiel - wetter) * Math.min(1, dt * 0.5);
+  sonne = Math.max(0, -wetter);                              // Sonnen-Intensität
   // GEWITTER (Stufe 4): bei wetter>0.85 zünden Blitze in zufälligen Abständen
   blitz = Math.max(0, blitz - dt * 14);                     // harter, schneller Abfall (kein weiches Abblenden)
   if (blitzNach > 0) { blitzNach -= dt; if (blitzNach <= 0) blitz = Math.max(blitz, 0.55); }   // zweiter, schwächerer Flash
@@ -1304,8 +1317,26 @@ function frame(now: number): void {
     }
   }
 
-  // 8) Wetter-Stimmung: nasser/dunkler Boden + Nebel-Dunst (FogExp2-Idee in 2D) + Vignette
-  ctx.fillStyle = `rgba(12,18,24,${0.1 + wetter * 0.28})`; ctx.fillRect(0, 0, W, H);
+  // 8) Wetter-Stimmung: dunkles Overlay nur bei Regen/Sturm; bei Sonne stattdessen warmer Tint
+  const mood = Math.max(0, 0.1 + wetter * 0.28);
+  if (mood > 0.001) { ctx.fillStyle = `rgba(12,18,24,${mood})`; ctx.fillRect(0, 0, W, H); }
+  if (sonne > 0.01) {
+    // SONNE - wichtigster Hebel: warmer Tint + Kontrast (overlay) + sanfte Aufhellung (soft-light)
+    ctx.save(); ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = sonne * 0.5;
+    const sg = ctx.createLinearGradient(0, 0, W * 0.5, H); sg.addColorStop(0, '#ffe7a6'); sg.addColorStop(1, '#ffce82');
+    ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H); ctx.restore();
+    ctx.save(); ctx.globalCompositeOperation = 'soft-light'; ctx.globalAlpha = sonne * 0.45; ctx.fillStyle = '#fff0d2'; ctx.fillRect(0, 0, W, H); ctx.restore();
+    // GOD RAYS: schräge warme Lichtschäfte, langsam driftend - sparsam
+    if (sonne > 0.3) {
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; const slant = W * 0.28;
+      for (let i = 0; i < 4; i++) {
+        const bx = (((now / 14000 + i * 0.31) % 1.5) - 0.25) * (W + slant), wdt = 48 + i * 22;
+        ctx.globalAlpha = (sonne - 0.3) / 0.7 * 0.05; ctx.fillStyle = '#fff2cc';
+        ctx.beginPath(); ctx.moveTo(bx, 0); ctx.lineTo(bx + wdt, 0); ctx.lineTo(bx + wdt - slant, H); ctx.lineTo(bx - slant, H); ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
   if (regenAn && wetter > 0.15) {
     const fog = Math.min(0.42, (wetter - 0.1) * 0.55);
     ctx.fillStyle = `rgba(150,166,186,${fog * 0.5})`; ctx.fillRect(0, 0, W, H);                 // gleichmäßiger Dunst
@@ -1317,7 +1348,8 @@ function frame(now: number): void {
     ctx.restore();
   }
   const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.34, W / 2, H / 2, Math.max(W, H) * 0.74);
-  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(2,4,3,${0.6 + wetter * 0.16})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  const vigA = Math.max(0.16, 0.6 + wetter * 0.3);   // bei Sonne (wetter negativ) deutlich schwächere Vignette -> heller
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(2,4,3,${vigA})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
   // 8a) BLITZ: harte, kurze Aufhellung der ganzen Szene (Doppel-Flash, kein weiches Abblenden)
   if (blitz > 0.01) { ctx.fillStyle = `rgba(222,230,248,${blitz * 0.55})`; ctx.fillRect(0, 0, W, H); }
   ctx.fillStyle = 'rgba(230,220,190,0.85)'; ctx.font = '13px Georgia'; ctx.textAlign = 'right';
