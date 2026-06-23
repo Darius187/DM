@@ -236,6 +236,9 @@ const arten: Array<{ wald: HTMLCanvasElement; blight: HTMLCanvasElement }> = [];
 const baeume: Baum[] = [];
 interface Fels { x: number; y: number; g: number; hp: number; maxHp: number; stufe: number; gestein: number; gegeben: number; entfernt: boolean; }
 const felsen: Fels[] = [];
+interface Busch { x: number; y: number; skala: number; typ: number; fade: number; }
+const buschBilder: HTMLCanvasElement[] = [];
+const buesche: Busch[] = [];
 const krypta = { x: WELT_W * 0.74, y: WELT_H * 0.3, r: 520 };
 let bereit = false;
 
@@ -461,6 +464,12 @@ async function init(): Promise<void> {
     for (let i = 0; i < 160 && !texturenBereit(tw as unknown as THREE.Object3D); i++) await schlaf(40);
     arten.push({ wald: backe(ofen, tw, WALD), blight: backe(ofen, baueBaum(preset, seed, BLIGHT, dick), BLIGHT) });
   }
+  // Büsche (ez-tree Bush-Presets), gebacken wie Bäume -> begehbare Occluder
+  for (const [preset, seed] of [['Bush 1', 4], ['Bush 2', 11], ['Bush 3', 27]] as Array<[string, number]>) {
+    const tb = baueBaum(preset, seed, WALD, 1);
+    for (let i = 0; i < 160 && !texturenBereit(tb as unknown as THREE.Object3D); i++) await schlaf(40);
+    buschBilder.push(backe(ofen, tb, WALD));
+  }
   // Held + Dorfbewohner + Hühner
   wesen.push({ art: 'held', tier: 'leder', x: WELT_W * 0.4, y: WELT_H * 0.62, dir: 0, frameT: 0, speed: 165, zx: 0, zy: 0, ruhe: 0, effT: 0, hackT: 0, bob: 0, umriss: 0 });
   const tiers: HeldTier[] = ['stoff', 'stoff', 'kette'];
@@ -509,6 +518,9 @@ async function init(): Promise<void> {
       felsen.push({ x, y, g, hp: maxHp, maxHp, stufe: 0, gestein: Math.max(1, Math.round((g + 1) * STEIN.steinProGroesse)), gegeben: 0, entfernt: false });
     }
   }
+  // Büsche (begehbare Occluder): geclustert UM Felsen (Anker) + locker im Wald, nicht auf Lichtung/Weg/See
+  for (const f of felsen) { if (Math.random() > 0.6) continue; for (let k = 0, n = 1 + Math.floor(Math.random() * 2); k < n; k++) { const x = f.x + (Math.random() - 0.5) * 80, y = f.y + (Math.random() - 0.5) * 56; if (distPfad(x, y) < PFAD_BREITE * 0.7 || imSee(x, y)) continue; buesche.push({ x, y, skala: 0.42 + Math.random() * 0.28, typ: Math.floor(Math.random() * buschBilder.length), fade: 0 }); } }
+  for (let i = 0; i < 150; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (Math.hypot(x - lichtX, y - lichtY) < 320 || distPfad(x, y) < PFAD_BREITE * 0.8 || imSee(x, y)) continue; if (Math.random() > dichteNoise(x, y) * 0.8) continue; buesche.push({ x, y, skala: 0.38 + Math.random() * 0.32, typ: Math.floor(Math.random() * buschBilder.length), fade: 0 }); }
   // Gras-Büschel
   for (let i = 0; i < 1300; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y)) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.65) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5 }); }   // dicht = spärlicher + kürzer
   for (let i = 0; i < 700; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y)) continue; const nahAnker = nahSee(x, y) || distPfad(x, y) < PFAD_BREITE * 1.3; if (!nahAnker && Math.random() < dichteNoise(x, y) * 0.85 + 0.35) continue; bewuchs.push({ x, y, typ: Math.floor(Math.random() * bewuchsBilder.length), ph: Math.random() * 7 }); }   // Blumen geclustert: bevorzugt an Wasserkante/Wegrand
@@ -518,6 +530,7 @@ async function init(): Promise<void> {
     blitzAus: () => { blitz = 1; blitzNach = 0.1; },
     verdeckt: () => istVerdecktVomBaum(held().x, held().y),
     zumFels: () => { const f = felsen.find((q) => !q.entfernt); if (f) { held().x = f.x - 55; held().y = f.y; } },
+    stats: () => ({ baeume: baeume.length, felsen: felsen.length, buesche: buesche.length, buschBilder: buschBilder.length, buschLeer: buschBilder.filter((c) => { const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 8) n++; return n < 50; }).length }),
     steinTest: (): string => { const f = felsen.find((q) => !q.entfernt); if (!f) return 'kein Fels'; held().x = f.x - 55; held().y = f.y; const s0 = stein; let n = 0; const stufen: number[] = []; while (!f.entfernt && n < 40) { aktionF(); stufen.push(f.stufe); n++; } return `groesse=${f.g} schlaege=${n} stein ${s0}->${stein} stufen=${[...new Set(stufen)].join('/')}`; },
     geheHinterBaum: () => { let best: Baum | null = null, bd = 1e9; for (const t of baeume) { if (t.fall || t.blight || t.skala < 0.42) continue; const d = Math.hypot(t.x - WELT_W * 0.5, t.y - WELT_H * 0.5); if (d < bd) { bd = d; best = t; } } if (best) { held().x = best.x; held().y = best.y - 35; } },
     selbsttest: (): string => { const b0 = baeume.find((t) => !t.fall && !t.weg); if (!b0) return 'kein Baum'; held().x = b0.x - 60; held().y = b0.y; let sl = 0; while (!b0.fall && sl < 30) { fälleNächsten(); sl++; } if (!b0.fall) return 'fiel nicht'; b0.fall.gelandet = true; b0.fall.winkel = FALL_ZIEL * b0.fall.richtung; held().x = b0.x - 60; held().y = b0.y; const h0 = holz; let hk = 0; while (!b0.weg && hk < 40) { fälleNächsten(); hk++; } const s = `schlaege=${sl} hacks=${hk} holz ${h0}->${holz} weg=${b0.weg}`; console.log('[selbsttest] ' + s); return s; } };
@@ -758,14 +771,16 @@ function frame(now: number): void {
   //    keine getönte Silhouette (Fallout-Look).
   if (bereit) {
     const h0 = held();
-    interface Z { y: number; b: Baum | null; w: Wesen | null; f: Fels | null; }
+    interface Z { y: number; b: Baum | null; w: Wesen | null; f: Fels | null; bu: Busch | null; }
     const liste: Z[] = [];
-    for (const b of baeume) { if (b.x < camX - 360 || b.x > camX + W + 360 || b.y < camY - 600 || b.y > camY + H + 360) continue; liste.push({ y: b.y, b, w: null, f: null }); }
-    for (const w of wesen) liste.push({ y: w.y, b: null, w, f: null });
-    for (const f of felsen) { if (f.x < camX - 100 || f.x > camX + W + 100 || f.y < camY - 100 || f.y > camY + H + 100) continue; liste.push({ y: f.y, b: null, w: null, f }); }
+    for (const b of baeume) { if (b.x < camX - 360 || b.x > camX + W + 360 || b.y < camY - 600 || b.y > camY + H + 360) continue; liste.push({ y: b.y, b, w: null, f: null, bu: null }); }
+    for (const w of wesen) liste.push({ y: w.y, b: null, w, f: null, bu: null });
+    for (const f of felsen) { if (f.x < camX - 100 || f.x > camX + W + 100 || f.y < camY - 100 || f.y > camY + H + 100) continue; liste.push({ y: f.y, b: null, w: null, f, bu: null }); }
+    for (const bu of buesche) { if (bu.x < camX - 200 || bu.x > camX + W + 200 || bu.y < camY - 250 || bu.y > camY + H + 200) continue; liste.push({ y: bu.y, b: null, w: null, f: null, bu }); }
     liste.sort((a, c) => a.y - c.y);
     for (const z of liste) {
       if (z.f) { zeichneFels(z.f); continue; }
+      if (z.bu) { const bu = z.bu, img = buschBilder[bu.typ], w = img.width * bu.skala, hh = img.height * bu.skala; kontaktSchatten(sx(bu.x), sy(bu.y), w * 0.45); const vd = bu.y > h0.y && Math.abs(bu.x - h0.x) < w * 0.3 && bu.y - h0.y < hh * 0.5; bu.fade += ((vd ? 1 : 0) - bu.fade) * Math.min(1, dt * 9); if (bu.fade > 0.01) ctx.globalAlpha = 1 - bu.fade * 0.5; ctx.drawImage(img, sx(bu.x) - w / 2, sy(bu.y) - hh * 0.7, w, hh); ctx.globalAlpha = 1; continue; }
       if (z.b) {
         const b = z.b, bild = b.blight ? arten[b.art].blight : arten[b.art].wald, sk = b.skala * baumGroesse, w = bild.width * sk, hh = bild.height * sk;
         if (!b.fall) kontaktSchatten(sx(b.x), sy(b.y), w * 0.4);              // erdet den Baum am Fuß
