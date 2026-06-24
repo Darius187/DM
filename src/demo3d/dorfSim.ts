@@ -174,8 +174,11 @@ function flussAt(s: number): FlussP { const i = Math.max(0, Math.min(flussMitte.
 // Eigene Wasser-Logik vom Fluss: SICHTBARES Kiesbett + dünner, klarer Wasser-Tint (man sieht
 // auf den Grund) + Licht-Kaustik, die flussabwärts läuft + Schaum an Steinen. Schmaler, flacher
 // Bach, der durch den Westwald mäandert und in den Fluss mündet. Begehbar (flach -> Spritzer).
+// Y-Gabelung (R69): der Bach krümmt sich am Ende nach Süd-Ost und mündet TANGENTIAL
+// auf die Fluss-Mittellinie (~1146,872) - er fließt in Fluss-Richtung ein (nicht quer
+// dagegen) -> nahtloser Y-Zusammenfluss statt "Bach endet an der Flussflanke".
 const bachPunkte: Array<{ x: number; y: number }> = [
-  { x: 380, y: 280 }, { x: 540, y: 540 }, { x: 700, y: 800 }, { x: 900, y: 880 }, { x: 1120, y: 842 },
+  { x: 380, y: 280 }, { x: 540, y: 540 }, { x: 700, y: 790 }, { x: 900, y: 824 }, { x: 1030, y: 846 }, { x: 1146, y: 872 },
 ];
 interface BachP { x: number; y: number; nx: number; ny: number; ux: number; uy: number; hw: number; s: number; }
 const bachMitte: BachP[] = [];
@@ -778,7 +781,7 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 // Größen-Regler (live) für die Bäume
-let baumGroesse = 1;
+let baumGroesse = 0.85;   // Empfehlung R69: etwas offener als 1.0 -> Startkarte bleibt lesbar, Wege/Wasser sichtbar, Bäume trotzdem stattlich
 let sturmStaerke = 1.5;   // Regler: wie stark sich die Bäume im Sturm biegen (Autorwunsch "fetter Regler")
 let pfadBreiteFaktor = 1;   // Regler: Weg-Breite (live)
 let holz = 0;           // gesammeltes Holz (1 je gefälltem + zerhacktem Baum)
