@@ -38,9 +38,9 @@ const PFAD_BREITE = 80;
 // natürlich mäandernd quer durch die Biome. Die Brücke setzt sich automatisch an die
 // Kreuzung mit dem Fluss.
 const pfad: Array<{ x: number; y: number }> = [
-  { x: 120, y: 1500 }, { x: 760, y: 1380 }, { x: 1480, y: 1440 }, { x: 2150, y: 1300 },
-  { x: 2820, y: 1380 }, { x: 3480, y: 1250 }, { x: WELT_W - 120, y: 1300 },
-];
+  { x: -40, y: 1500 }, { x: 700, y: 1380 }, { x: 1500, y: 1440 }, { x: 2200, y: 1300 },
+  { x: 2900, y: 1380 }, { x: 3600, y: 1280 }, { x: WELT_W + 40, y: 1350 },
+];   // RAND-zu-RAND: West-Kante (y=1500) -> Ost-Kante (y=1350, Richtung Stadt)
 function distSeg(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
   const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1;
   const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2));
@@ -76,7 +76,7 @@ function bauePfadGeometrie(): void {
 bauePfadGeometrie();
 
 // ---------- See (fest platziert, statisch): große dunkle Wasserfläche, Fokus Uferintegration ----------
-const see = { cx: WELT_W * 0.8, cy: WELT_H * 0.78, rx: 440, ry: 290 };   // See im SO; der Fluss mündet von Westen ein
+const see = { cx: 3100, cy: 2120, rx: 460, ry: 300 };   // See im SO; der Fluss fließt durch ihn (Nord rein, Süd raus zur Kante)
 const seeUfer: Array<{ x: number; y: number }> = [];
 const seeSchilf: Array<{ x: number; y: number; ph: number; h: number }> = [];
 const seeRosen: Array<{ x: number; y: number; s: number; bluete: boolean }> = [];
@@ -133,9 +133,9 @@ function wfZeichne(): void {
 // wie der See, aber MIT Fließ-Textur (scrollende Strähnen flussabwärts) + kleinen
 // Stromschnellen/Schaum an Flusssteinen. Ufer wie am See (Schlammsaum + Schilf).
 const flussPunkte: Array<{ x: number; y: number }> = [
-  { x: 1350, y: 60 }, { x: 1430, y: 600 }, { x: 1500, y: 1100 }, { x: 1540, y: 1500 },
-  { x: 1780, y: 1950 }, { x: 2380, y: 2150 }, { x: 3000, y: 2150 },
-];   // Fluss: Nord -> Süd über die Weg-Kreuzung (Brücke) und weiter SO in den See
+  { x: 1700, y: -40 }, { x: 1790, y: 520 }, { x: 1900, y: 1040 }, { x: 2010, y: 1480 },
+  { x: 2350, y: 1880 }, { x: 2820, y: 2080 }, { x: 3120, y: 2200 }, { x: 3320, y: WELT_H + 40 },
+];   // RAND-zu-RAND: Nord-Kante (x=1700) -> über Weg-Kreuzung (Brücke) -> durch den See -> Süd-Kante (x=3320)
 interface FlussP { x: number; y: number; nx: number; ny: number; ux: number; uy: number; hw: number; s: number; }
 const flussMitte: FlussP[] = [];
 interface FlussStein { x: number; y: number; r: number; m: FlussP; }
@@ -182,7 +182,7 @@ function flussAt(s: number): FlussP { const i = Math.max(0, Math.min(flussMitte.
 // auf die Fluss-Mittellinie (~1146,872) - er fließt in Fluss-Richtung ein (nicht quer
 // dagegen) -> nahtloser Y-Zusammenfluss statt "Bach endet an der Flussflanke".
 const bachPunkte: Array<{ x: number; y: number }> = [
-  { x: 380, y: 560 }, { x: 720, y: 690 }, { x: 1050, y: 770 }, { x: 1280, y: 810 }, { x: 1466, y: 858 },
+  { x: -40, y: 760 }, { x: 650, y: 840 }, { x: 1250, y: 900 }, { x: 1620, y: 862 }, { x: 1860, y: 900 },
 ];
 interface BachP { x: number; y: number; nx: number; ny: number; ux: number; uy: number; hw: number; s: number; }
 const bachMitte: BachP[] = [];
