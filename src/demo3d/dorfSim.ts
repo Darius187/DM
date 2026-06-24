@@ -146,7 +146,7 @@ const bachPunkte: Array<{ x: number; y: number }> = [
 ];
 interface BachP { x: number; y: number; nx: number; ny: number; ux: number; uy: number; hw: number; s: number; }
 const bachMitte: BachP[] = [];
-interface Kiesel { x: number; y: number; r: number; col: string; }
+interface Kiesel { x: number; y: number; r: number; col: string; s: number; nx: number; ny: number; }
 const bachKiesel: Kiesel[] = [];
 interface BachStein { x: number; y: number; r: number; m: BachP; }
 const bachSteine: BachStein[] = [];
@@ -160,7 +160,7 @@ function baueBach(): void {
   }
   bachLen = s;
   const kCols = ['#8a8270', '#9a917c', '#76705e', '#a59a82', '#6e6858'];
-  for (const m of bachMitte) if (Math.random() < 0.85) { const q = (Math.random() - 0.5) * 1.7; bachKiesel.push({ x: m.x + m.nx * q * m.hw, y: m.y + m.ny * q * m.hw, r: 1.6 + Math.random() * 3, col: kCols[Math.floor(Math.random() * kCols.length)] }); }   // Kiesbett (sichtbar durchs klare Wasser)
+  for (const m of bachMitte) if (Math.random() < 0.85) { const q = (Math.random() - 0.5) * 1.7; bachKiesel.push({ x: m.x + m.nx * q * m.hw, y: m.y + m.ny * q * m.hw, r: 1.6 + Math.random() * 3, col: kCols[Math.floor(Math.random() * kCols.length)], s: m.s, nx: m.nx, ny: m.ny }); }   // Kiesbett (sichtbar durchs klare Wasser; s/nx/ny für Refraktions-Wobble)
   for (let i = 4; i < bachMitte.length - 4; i += 9) if (Math.random() < 0.6) { const m = bachMitte[i], q = (Math.random() - 0.5) * 0.7; bachSteine.push({ x: m.x + m.nx * q * m.hw, y: m.y + m.ny * q * m.hw, r: 3.5 + Math.random() * 4, m }); }   // ragende Steine -> Schaum
   for (let i = 0; i < 90; i++) bachStreif.push({ s: Math.random() * bachLen, off: (Math.random() - 0.5) * 1.4, len: 7 + Math.random() * 14, spd: 70 + Math.random() * 80, a: 0.12 + Math.random() * 0.18 });
 }
@@ -1576,9 +1576,22 @@ function zeichneBach(now: number): void {
   ufer(6); ctx.fillStyle = 'rgba(40,34,22,0.4)'; ctx.fill();                                       // nasser Kies-/Erd-Saum
   ufer(0); ctx.save(); ctx.clip();
   ctx.fillStyle = '#6f6a58'; ctx.fillRect(camX, camY, W, H);                                        // 1) KIESBETT-Grundton
-  for (const k of bachKiesel) { if (k.x < camX - 10 || k.x > camX + W + 10 || k.y < camY - 10 || k.y > camY + H + 10) continue; ctx.fillStyle = k.col; ctx.beginPath(); ctx.ellipse(k.x, k.y, k.r, k.r * 0.8, 0, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.ellipse(k.x - k.r * 0.25, k.y - k.r * 0.3, k.r * 0.5, k.r * 0.4, 0, 0, 7); ctx.fill(); }   // Kiesel
+  // Kiesel mit REFRAKTIONS-WOBBLE: Wellen wandern flussabwärts (s - time) und verschieben das Bett quer -> Blick durch fließendes Wasser
+  for (const k of bachKiesel) {
+    if (k.x < camX - 10 || k.x > camX + W + 10 || k.y < camY - 10 || k.y > camY + H + 10) continue;
+    const w = Math.sin(k.s * 0.05 - now * 0.005) * 2.6 + Math.sin(k.s * 0.11 - now * 0.0085) * 1.3, ex = k.x + k.nx * w, ey = k.y + k.ny * w;
+    ctx.fillStyle = k.col; ctx.beginPath(); ctx.ellipse(ex, ey, k.r, k.r * 0.8, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.ellipse(ex - k.r * 0.25, ey - k.r * 0.3, k.r * 0.5, k.r * 0.4, 0, 0, 7); ctx.fill();
+  }
   ctx.fillStyle = 'rgba(112,168,166,0.26)'; ctx.fillRect(camX, camY, W, H);                          // 2) KLARES Wasser (dünner Tint -> Bett scheint durch)
   ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(66,120,118,0.2)'; ctx.lineWidth = 13; ctx.beginPath(); for (let i = 0; i < bachMitte.length; i++) { const m = bachMitte[i]; i ? ctx.lineTo(m.x, m.y) : ctx.moveTo(m.x, m.y); } ctx.stroke();   // Mitte minimal tiefer
+  // FLIESSENDE OBERFLÄCHENWELLEN: helle Quer-Kämme wandern flussabwärts (s*freq - time)
+  for (const m of bachMitte) {
+    const ph = Math.sin(m.s * 0.055 - now * 0.006);
+    if (ph > 0.35) { const a = (ph - 0.35) / 0.65 * 0.18; ctx.strokeStyle = `rgba(236,250,250,${a})`; ctx.lineWidth = 4.5; ctx.beginPath(); ctx.moveTo(m.x - m.nx * m.hw * 0.95, m.y - m.ny * m.hw * 0.95); ctx.lineTo(m.x + m.nx * m.hw * 0.95, m.y + m.ny * m.hw * 0.95); ctx.stroke(); }
+    const ph2 = Math.sin(m.s * 0.05 - now * 0.006 + 2.2);
+    if (ph2 < -0.5) { const a = (-ph2 - 0.5) / 0.5 * 0.12; ctx.strokeStyle = `rgba(30,70,70,${a})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(m.x - m.nx * m.hw * 0.9, m.y - m.ny * m.hw * 0.9); ctx.lineTo(m.x + m.nx * m.hw * 0.9, m.y + m.ny * m.hw * 0.9); ctx.stroke(); }   // dunkle Wellentäler
+  }
   for (const st of bachStreif) { const m = bachAt(st.s), cx = m.x + m.nx * st.off * m.hw, cy = m.y + m.ny * st.off * m.hw; ctx.strokeStyle = `rgba(226,246,246,${st.a})`; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - m.ux * st.len, cy - m.uy * st.len); ctx.stroke(); }   // 3) Licht-Kaustik flussabwärts
   ctx.restore();
   ufer(0); ctx.strokeStyle = 'rgba(222,242,242,0.3)'; ctx.lineWidth = 1.6; ctx.stroke();             // helle Schaum-Uferkante

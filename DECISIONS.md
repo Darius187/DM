@@ -630,3 +630,7 @@
   * Stamm-Sichtbarkeit kam von der Preset-Wahl. FIX: branch.length[0] weiter erhöht (Laub *2.0, Nadel *2.5) -> Krone sitzt bei ALLEN Arten hoch, Stamm sichtbar.
   * SORTEN neu gemischt: 2 dichte Eichen raus, 3 NADELBÄUME (Pine, versch. seeds) rein -> mehr Fichten/Kiefern (beliebt, schnellwüchsig). nadel[]-Flag je Art; Nadelbäume spawnen mit *1.45 Skala = deutlich höher.
 - Runde 64 (Sturm-Stärke-Regler - Autorwunsch "fetter Regler", Bäume biegen sich zu wenig): neue Konstante sturmStaerke (Default 1.5) multipliziert die Baum-Biegung; Regler "Sturm-Stärke" 0..4×. Default schon stärker als vorher.
+
+- Runde 64 (jquery.ripples geprüft + Bach FLIESSEND gemacht):
+  * jquery.ripples: NICHT geeignet (rippelt das background-image eines DOM-Elements, nicht maskierte/scrollende Canvas-Bereiche; braucht jQuery+WebGL; nicht in die Tiefensortierung einfügbar; überträgt sich nicht ins Phaser-Spiel; ist "stilles Wasser zum Anstupsen", kein fließender Bach). IDEE (Refraktion) übernommen, in 2D nachgebaut.
+  * BACH FLIESSEND (Autorwunsch): REFRAKTIONS-WOBBLE - Kiesel werden von flussabwärts wandernden Wellen (Phase = s - time) quer verschoben -> Blick durchs fließende Wasser. Plus FLIESSENDE OBERFLÄCHENWELLEN: helle Quer-Kämme + dunkle Täler wandern flussabwärts. Zusammen mit den Kaustik-Strähnen liest sich der Bach jetzt als fließendes Wasser.
