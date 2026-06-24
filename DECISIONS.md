@@ -1,5 +1,10 @@
 # DECISIONS - Protokoll aller Annahmen und Entscheidungen
 
+- Runde 68 (gefällter Baum: liegt neben dem Stumpf + Hack-Stufen, Autorkritik "die bäume liegen über dem abgesägten teil; ich will dass es so gefällt liegt wie auf dem referenzbild und beim hacken bild 4 -> bild 5"):
+  * STUMPF SICHTBAR: der gefällte Stamm rutscht beim Fallen vom Stumpf (gap = 26*sk*prog in Fallrichtung) -> der Stumpf mit Schnittfläche bleibt sichtbar NEBEN dem Holz statt darunter verdeckt.
+  * DREI HACK-STUFEN aus hackHp/hackMax: frisch (Liege-Sprite Stamm+Krone, frac>0.58) -> ENTRINDETER STAMM (sauberes prozedurales Rundholz mit Stirnholz/Jahresringen, Bild 4, frac 0.26..0.58) -> IN SCHEIBEN ZERLEGT (Reihe kurzer gekappter Stamm-Scheiben mit Stirnholz, Bild 5, frac<0.26) -> weg. Schwellen leicht änderbar im Code.
+  * Rundholz/Scheiben prozedural (lineCap-round-Kapseln + Stirnholz-Ellipse mit Ringen), Maße aus der Liege-Sprite-Breite abgeleitet -> skaliert mit der Baumgröße. Deterministischer Jitter der Scheiben per Positions-Seed (kein Flackern).
+  * Verifiziert per Flach-Panel (malHackStufen) UND in-world (entrindeter Stamm neben sichtbarem Stumpf). tsc grün.
 - Runde 67 (Wasser-Konturen raus + ineinander fließend, Autorkritik "du hast das wasser deutlich verschlechtert, eine kontur ums wasser, nichts fließt ineinander", Referenz madebyevan.com/webgl-water):
   * KONTUREN ENTFERNT: helle Schaum-Uferkanten (Bach rgba(222,242,242), Fluss rgba(150,168,188)), die helle Gras-Lippe der Böschung und ALLE harten inneren Wand-Linien (uferWand-Funktion gelöscht, See-Wand-Stroke, Mündungs-Rinnen-Stroke). Diese erzeugten den sichtbaren Saum/Kontur.
   * WEICHER UFERHANG: uferBoeschung neu = 9 sehr dünne, niedrig-alpha Schatten-Ringe (außen breit -> innen schmal), gestapelt zu einem glatten Schatten-Halo ohne Banding/Kontur. See-Böschung analog (8 gefederte Ringe statt 3 harter Bänder).

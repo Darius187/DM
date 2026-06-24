@@ -1087,7 +1087,23 @@ async function init(): Promise<void> {
       ctx.fillStyle = '#006000'; ctx.font = '15px Georgia'; ctx.fillText('Fall mit Liege-Sprite: aufrecht -> flach (Stumpf=oranger Punkt, Boden=Linie)', 30, 60);
     },
     malLiege: (): void => { ctx.fillStyle = '#33424e'; ctx.fillRect(0, 0, W, 420); for (let i = 0; i < arten.length; i++) { const st = arten[i].wald, li = arten[i].liege, c = i * 156 + 6; ctx.drawImage(st, c, 10, 150, 150); ctx.drawImage(li, c, 170, 150, 150); ctx.strokeStyle = '#8fbf7a'; ctx.strokeRect(c, 10, 150, 150); ctx.strokeRect(c, 170, 150, 150); } ctx.fillStyle = '#e8dcc0'; ctx.font = '13px Georgia'; ctx.fillText('oben: stehend   unten: gefällt (Liege-Sprite)', 8, 340); },
+    malHackStufen: (): void => {   // die 3 Hack-Stufen auf flachem Gras, isoliert zum Begutachten
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = '#54644a'; ctx.fillRect(0, 0, W, 560);
+      const li = arten[0].liege, sk = 0.8, w = li.width * sk, h = li.height * sk;
+      const R = Math.max(8, w * 0.055), L = Math.max(50, w * 0.5), baseY = 320, spots = [200, 600, 980];
+      const sb = stumpfBilder[0], ss = sk * 0.95;
+      for (const sxp of spots) ctx.drawImage(sb, sxp - sb.width * ss / 2, baseY - sb.height * ss / 2 + 2, sb.width * ss, sb.height * ss);
+      ctx.save(); ctx.translate(spots[0] + 26 * sk, baseY); ctx.drawImage(li, -w * 0.2, -h * 0.52, w, h); ctx.restore();   // frisch
+      zeichneEntrindet(spots[1], baseY, L, R, 1);
+      zeichneScheiben(spots[2], baseY, L, R, 1, 123);
+      ctx.fillStyle = '#e8dcc0'; ctx.font = '16px Georgia';
+      ctx.fillText('1. frisch gefällt (Stamm + Krone) - rutscht vom Stumpf', spots[0] - 120, 470);
+      ctx.fillText('2. entrindeter Stamm (Bild 4)', spots[1] - 90, 470);
+      ctx.fillText('3. in Scheiben zerlegt (Bild 5)', spots[2] - 90, 470);
+    },
     zeigLiege: (blight = false): { x: number; y: number } => { const b = baeume.find((t) => !t.fall && !t.weg && t.blight === blight && t.skala > 0.7) || baeume.find((t) => !t.fall && !t.weg && t.blight === blight); if (!b) return { x: 0, y: 0 }; starteFall(b, 1); b.fall!.gelandet = true; b.fall!.winkel = FALL_ZIEL; b.fall!.winkelV = 0; held().x = b.x - 120; held().y = b.y + 50; return { x: b.x, y: b.y }; },
+    hackTest: (frac = 1): { x: number; y: number } => { const b = baeume.find((t) => !t.fall && !t.weg && !t.blight && t.skala > 0.7) || baeume.find((t) => !t.fall && !t.weg); if (!b) return { x: 0, y: 0 }; starteFall(b, 1); b.fall!.gelandet = true; b.fall!.winkel = FALL_ZIEL; b.fall!.winkelV = 0; b.fall!.hackHp = Math.round(b.fall!.hackMax * frac); held().x = b.x - 130; held().y = b.y + 40; return { x: b.x, y: b.y }; },
     zumBach: (): { x: number; y: number } => { const m = bachMitte[Math.floor(bachMitte.length * 0.4)]; held().x = m.x - 40; held().y = m.y + 20; return { x: m.x, y: m.y }; },
     zumPferd: (): { x: number; y: number } => { held().x = pferdW.x - 34; held().y = pferdW.y; return { x: pferdW.x, y: pferdW.y }; },
     reit: (): void => reitToggle(),
@@ -1131,19 +1147,64 @@ function zeichneImWind(bild: HTMLCanvasElement, bx: number, by: number, w: numbe
 // Der Baum fällt, indem das LIEGE-Sprite um den Stammfuß von aufrecht (-FALL_ZIEL)
 // nach flach (0) kippt - dasselbe Sprite über den ganzen Fall, Endlage korrekt flach
 // am Boden. Kein rotiertes Steh-Sprite mehr (das wirkte schwebend/schräg - "nein").
-function zeichneGefällt(_steh: HTMLCanvasElement, liege: HTMLCanvasElement, bx: number, by: number, sk: number, f: Fall): void {
+// Gefällter Baum in DREI Hack-Stufen (Autorwunsch R67, nach Referenzbild-Abläufen):
+//  frisch (Stamm + Krone, wie "Baum gefällt - frisch") -> beim Hacken: ENTRINDETER STAMM
+//  (sauberes Rundholz, Bild 4) -> dann IN SCHEIBEN ZERLEGT (gekappte Stamm-Scheiben, Bild 5).
+// Der Stamm rutscht beim Fallen vom Stumpf (Gap) -> der Stumpf mit Schnittfläche bleibt sichtbar
+// NEBEN dem liegenden Holz, nicht darunter verdeckt.
+function zeichneGefällt(_steh: HTMLCanvasElement, liege: HTMLCanvasElement, bx: number, by: number, sk: number, f: Fall, seed: number): void {
+  const frac = f.gelandet ? Math.max(0, f.hackHp) / f.hackMax : 1;   // 1 = frisch .. 0 = zerlegt/weg
   const w = liege.width * sk, h = liege.height * sk;
-  const prog = Math.min(1, Math.abs(f.winkel) / FALL_ZIEL);          // 0 = aufrecht .. 1 = flach
-  const kipp = -(FALL_ZIEL - Math.abs(f.winkel));                    // -FALL_ZIEL (aufrecht) -> 0 (flach)
-  const squash = f.gelandet ? 1 - Math.min(0.1, Math.abs(f.winkelV) * 0.05) : 1;   // minimaler Aufprall-Stauch
-  // beim Aufstehen wirkt das Liege-Sprite hochkant etwas schmaler -> leicht stauchen, je aufrechter
-  const breite = 0.9 + 0.1 * prog;
+  if (frac > 0.58) {                                                  // FRISCH gefällt: Liege-Sprite (Stamm + Krone)
+    const prog = Math.min(1, Math.abs(f.winkel) / FALL_ZIEL);        // 0 = aufrecht .. 1 = flach
+    const kipp = -(FALL_ZIEL - Math.abs(f.winkel));
+    const squash = f.gelandet ? 1 - Math.min(0.1, Math.abs(f.winkelV) * 0.05) : 1;
+    const breite = 0.9 + 0.1 * prog;
+    const gap = 26 * sk * prog;                                       // rutscht vom Stumpf, je flacher desto weiter
+    ctx.save();
+    ctx.translate(bx + f.richtung * gap, by);
+    ctx.scale(f.richtung * breite, squash);                          // richtung=-1 spiegelt für Linksfall
+    ctx.rotate(kipp);
+    ctx.drawImage(liege, -w * 0.2, -h * 0.52, w, h);                 // Stammfuß am Drehpunkt
+    ctx.restore();
+    return;
+  }
+  const L = Math.max(40, w * 0.5), R = Math.max(6, w * 0.055), ri = f.richtung;
+  if (frac > 0.26) zeichneEntrindet(bx, by, L, R, ri);               // Bild 4: entrindeter Stamm
+  else zeichneScheiben(bx, by, L, R, ri, seed);                      // Bild 5: in Scheiben zerlegt
+}
+// Entrindeter Stamm: sauberes Rundholz ohne Krone/Äste, liegt neben dem Stumpf (Bild 4).
+function zeichneEntrindet(bx: number, by: number, L: number, R: number, ri: number): void {
+  const x0 = bx + ri * (R + 14), x1 = x0 + ri * L;                   // Butt knapp neben dem Stumpf -> Spitze
   ctx.save();
-  ctx.translate(bx, by);
-  ctx.scale(f.richtung * breite, squash);                           // richtung=-1 spiegelt für Linksfall
-  ctx.rotate(kipp);
-  ctx.drawImage(liege, -w * 0.2, -h * 0.52, w, h);                  // Stammfuß am Stumpf -> Drehpunkt = Stammende
+  ctx.lineCap = 'round';
+  ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse((x0 + x1) / 2, by + R * 0.85, Math.abs(x1 - x0) / 2 + R * 0.6, R * 0.7, 0, 0, 7); ctx.fill();
+  ctx.lineWidth = 2 * R; ctx.strokeStyle = '#8a6a44'; ctx.beginPath(); ctx.moveTo(x0, by); ctx.lineTo(x1, by); ctx.stroke();   // Rundholz-Körper
+  ctx.lineWidth = R * 0.7; ctx.strokeStyle = '#5f4630'; ctx.beginPath(); ctx.moveTo(x0, by + R * 0.5); ctx.lineTo(x1, by + R * 0.5); ctx.stroke();   // Bauchschatten unten
+  ctx.lineWidth = R * 0.7; ctx.strokeStyle = '#a8855a'; ctx.beginPath(); ctx.moveTo(x0 + ri * R, by - R * 0.5); ctx.lineTo(x1 - ri * R, by - R * 0.5); ctx.stroke();   // Lichtkante oben
+  ctx.strokeStyle = 'rgba(70,50,30,0.35)'; ctx.lineWidth = 1; for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(x0, by + k * R * 0.5); ctx.lineTo(x1, by + k * R * 0.5); ctx.stroke(); }   // Maserung längs
+  stirnHolz(x0, by, R);                                              // Stirnholz (Schnittfläche) am Butt
   ctx.restore();
+}
+// Stamm in Scheiben zerlegt: Reihe kurzer, gekappter Stamm-Scheiben mit Stirnholz (Bild 5).
+function zeichneScheiben(bx: number, by: number, L: number, R: number, ri: number, seed: number): void {
+  const rnd = (n: number): number => { const s = Math.sin(seed * 12.9898 + n * 78.233) * 43758.5453; return s - Math.floor(s); };
+  ctx.save(); ctx.lineCap = 'round';
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(bx + ri * (R + L * 0.42), by + R * 0.85, L * 0.5 + R, R * 0.8, 0, 0, 7); ctx.fill();
+  const n = 4;
+  for (let i = 0; i < n; i++) {
+    const cx = bx + ri * (R + 12 + i / n * L * 0.92), cy = by + (rnd(i) - 0.5) * R * 0.8, len = R * (0.9 + rnd(i + 9) * 0.5);
+    ctx.lineWidth = 2 * R; ctx.strokeStyle = '#8a6a44'; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + ri * len, cy); ctx.stroke();   // kurzer Zylinder (Seite)
+    ctx.lineWidth = R * 0.6; ctx.strokeStyle = '#5f4630'; ctx.beginPath(); ctx.moveTo(cx, cy + R * 0.5); ctx.lineTo(cx + ri * len, cy + R * 0.5); ctx.stroke();   // Schatten unten
+    stirnHolz(cx, cy, R);                                            // Stirnholz vorne
+  }
+  ctx.restore();
+}
+// Stirnholz (Schnittfläche mit Jahresringen) als stehende Ellipse bei (x,y).
+function stirnHolz(x: number, y: number, R: number): void {
+  ctx.fillStyle = '#b89968'; ctx.beginPath(); ctx.ellipse(x, y, R * 0.58, R * 0.96, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(120,92,56,0.7)'; ctx.lineWidth = 1;
+  for (let rr = R * 0.78; rr > 2; rr -= R * 0.27) { ctx.beginPath(); ctx.ellipse(x, y, rr * 0.58, rr, 0, 0, 7); ctx.stroke(); }
 }
 
 // ---------- Kamera ----------
@@ -1481,7 +1542,7 @@ function frame(now: number): void {
         const verdeckt = unterBaum(h0.x, h0.y, b);
         b.fade += ((verdeckt ? 1 : 0) - b.fade) * Math.min(1, dt * 9);
         if (b.fade > 0.01) ctx.globalAlpha = 1 - b.fade * 0.45;               // Krone nur bis ~0.55 (bleibt als Baum lesbar)
-        if (b.fall) { if (!b.weg) zeichneGefällt(bild, b.blight ? arten[b.art].liegeBlight : arten[b.art].liege, sx(b.x), sy(b.y), sk, b.fall); } else { zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * sk * (b.blight ? 30 : 78) * sturmStaerke * boeWelle(b.x, b.y, now), b.ph, now); if (b.schnee) schneeAufKrone(sx(b.x), sy(b.y), w, hh, b.schnee); if (b.hp < b.maxHp) zeichneBalken(sx(b.x), sy(b.y) - 44, b.hp / b.maxHp, '#6ad06a'); }   // Biegung im Sturm SEHR stark + Fäll-Balken
+        if (b.fall) { if (!b.weg) zeichneGefällt(bild, b.blight ? arten[b.art].liegeBlight : arten[b.art].liege, sx(b.x), sy(b.y), sk, b.fall, Math.round(b.x * 13 + b.y * 7)); } else { zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * sk * (b.blight ? 30 : 78) * sturmStaerke * boeWelle(b.x, b.y, now), b.ph, now); if (b.schnee) schneeAufKrone(sx(b.x), sy(b.y), w, hh, b.schnee); if (b.hp < b.maxHp) zeichneBalken(sx(b.x), sy(b.y) - 44, b.hp / b.maxHp, '#6ad06a'); }   // Biegung im Sturm SEHR stark + Fäll-Balken
         if (b.fall && !b.weg && b.fall.hackHp < b.fall.hackMax) zeichneBalken(sx(b.x), sy(b.y) - 10, b.fall.hackHp / b.fall.hackMax, '#d2a23a');   // Hack-Balken am liegenden Stamm
         ctx.globalAlpha = 1;
       } else if (z.w) { zeichneWesen(z.w); const spielerW = reitet ? pferdW : h0; if (z.w === spielerW) spielerFenster = spielerReveal(sx(spielerW.x), sy(spielerW.y) - (reitet ? 32 : 24)); }
