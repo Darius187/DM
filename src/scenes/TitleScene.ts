@@ -93,7 +93,7 @@ export class TitleScene extends Phaser.Scene {
     const devStart = import.meta.env.DEV ? new URLSearchParams(location.search).get('start') ?? undefined : undefined;
     const anySave = [0, 1, 2, 3].some((s) => hasSave(storage, s));
     const buttons: Array<[string, () => void, boolean]> = [
-      ['NEUES SPIEL', () => this.scene.start('World', { neu: true, startArea: devStart }), true],
+      ['NEUES SPIEL', () => devStart ? this.scene.start('World', { neu: true, startArea: devStart }) : this.scene.start('Anfangskarte', { neuesSpiel: true }), true],
       ['LADEN', () => this.showLoadMenu(), anySave],
       ['EINSTELLUNGEN', () => this.scene.start('Settings', { zurueck: 'Title' }), true],
       ['DEBUG-ARENA', () => this.scene.start('DebugArena'), true],

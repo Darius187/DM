@@ -15,12 +15,13 @@ export class AnfangskarteSzene extends Phaser.Scene {
   private figCtx!: CanvasRenderingContext2D;
   private heldSprite!: Phaser.GameObjects.Image;
   private uebergang = false;
+  private introMusik?: Phaser.Sound.BaseSound;
   private readonly texKey = 'anfWelt';
   private readonly heldKey = 'anfHeld';
 
   constructor() { super('Anfangskarte'); }
 
-  create(): void {
+  create(data?: { neuesSpiel?: boolean }): void {
     this.cameras.main.setBackgroundColor('#0a0806');
 
     // Offscreen-Canvas, auf dem dorfSim die ganze Welt rendert (eigene Schleife + Eingabe WASD).
@@ -46,9 +47,27 @@ export class AnfangskarteSzene extends Phaser.Scene {
     }).setScrollFactor(0).setDepth(1000);
 
     this.baueRegler();
+    if (data?.neuesSpiel) this.zeigeEroeffnung();   // Hauptspiel-Start: Eröffnung wie bisher (Musik + RAVENSMOOR + Quest)
     this.input.keyboard?.on('keydown-ESC', () => this.scene.start('Title'));
     this.scale.on('resize', this.passe, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.scale.off('resize', this.passe, this); this.reglerDiv?.remove(); pausiereWelt(); });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.scale.off('resize', this.passe, this); this.reglerDiv?.remove(); this.introMusik?.stop(); pausiereWelt(); });
+  }
+
+  // Eröffnung des Hauptspiels auf der NEUEN ersten Karte: Intro-Musik + RAVENSMOOR-Titel
+  // + erste Quest (übertragen von der bisherigen Wald-Eröffnung).
+  private zeigeEroeffnung(): void {
+    const w = this.scale.width, h = this.scale.height;
+    if (this.cache.audio.exists('snd_musik_intro')) { this.introMusik = this.sound.add('snd_musik_intro', { loop: true, volume: 0.5 }); this.introMusik.play(); }
+    const titel = this.add.text(w / 2, h * 0.3, 'RAVENSMOOR', { fontFamily: 'serif', fontSize: '72px', color: '#d8cfb8', stroke: '#000', strokeThickness: 8 }).setOrigin(0.5).setScrollFactor(0).setDepth(5900).setAlpha(0);
+    const unter = this.add.text(w / 2, h * 0.3 + 58, 'DER PREIS DER UNSTERBLICHKEIT', { fontFamily: 'serif', fontSize: '20px', color: '#c9a227', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5).setScrollFactor(0).setDepth(5900).setAlpha(0);
+    this.tweens.add({ targets: [titel, unter], alpha: 1, duration: 1800, ease: 'Sine.Out' });
+    this.tweens.add({ targets: [titel, unter], alpha: 0, duration: 1600, delay: 5200, ease: 'Sine.In', onComplete: () => { titel.destroy(); unter.destroy(); } });
+    // Quest als beständiges Auftrags-Band (kein zeitkritisches Reveal -> robust trotz Lade-Backen);
+    // verschwindet beim Verlassen der Karte mit der Szene.
+    this.add.text(w / 2, h - 56, 'Auftrag: Seht in Ravensmoor nach dem Rechten - der Weg führt nach Osten.', {
+      fontFamily: 'serif', fontSize: '18px', color: '#e0d4b4', fontStyle: 'italic', stroke: '#000', strokeThickness: 5,
+      align: 'center', wordWrap: { width: Math.min(760, w - 60) },
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(5900).setAlpha(0.92);
   }
 
   // Ostkante erreicht -> Übergang in die Stadt Ravensmoor (WorldScene "village").
