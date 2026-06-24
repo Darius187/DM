@@ -25,17 +25,21 @@ let W = 0, H = 0;
 function passeGroesse(): void { W = view.width = innerWidth; H = view.height = innerHeight; }
 passeGroesse(); addEventListener('resize', passeGroesse);
 
-const WELT_W = 2600, WELT_H = 1800;   // WELT_H = südlicher Spielbereich (Wald/Dorf/See)
-// ANHÖHE (Autorwunsch): im NORDEN (y < 0) steigt ein Berg in diskreten Höhen-Stufen bis zum Schnee
-// an. Die Karte ist dafür nach Norden erweitert: Welt-y reicht von NORD_Y (Gipfel) bis WELT_H (Süd).
-const BERG_H = 900;                   // Höhe des Bergbandes nördlich des Waldes
-const NORD_Y = -BERG_H;               // oberster Welt-Rand (Gipfel)
+const WELT_W = 4160, WELT_H = 2720;   // ANFANGSKARTE (R69): so groß wie die Stadtkarte (130x85 Tiles à 32px)
+// Schnee-Berg im Norden AUS (Autorwunsch "alle Biome außer Schneelandschaft"). Ohne Berg
+// beginnt die Welt bei y=0; West->Ost-Reise Richtung Stadt (Osten) durch Wald/Wiese/Moor/Fels.
+const BERG_AN = false;
+const BERG_H = 900;                   // (nur relevant wenn BERG_AN) Höhe des Bergbandes
+const NORD_Y = BERG_AN ? -BERG_H : 0; // oberster Welt-Rand
 
 // ---------- Pfad (begehbar; HIER bilden sich die Pfützen; daneben Gras) ----------
 const PFAD_BREITE = 80;
+// WEST -> OST: der Weg führt vom West-Rand (Start des Helden) Richtung Stadt im Osten,
+// natürlich mäandernd quer durch die Biome. Die Brücke setzt sich automatisch an die
+// Kreuzung mit dem Fluss.
 const pfad: Array<{ x: number; y: number }> = [
-  { x: 170, y: WELT_H * 0.92 }, { x: WELT_W * 0.3, y: WELT_H * 0.72 }, { x: WELT_W * 0.4, y: WELT_H * 0.62 },
-  { x: WELT_W * 0.54, y: WELT_H * 0.5 }, { x: WELT_W * 0.68, y: WELT_H * 0.36 }, { x: WELT_W * 0.8, y: WELT_H * 0.18 },
+  { x: 120, y: 1500 }, { x: 760, y: 1380 }, { x: 1480, y: 1440 }, { x: 2150, y: 1300 },
+  { x: 2820, y: 1380 }, { x: 3480, y: 1250 }, { x: WELT_W - 120, y: 1300 },
 ];
 function distSeg(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
   const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1;
@@ -72,7 +76,7 @@ function bauePfadGeometrie(): void {
 bauePfadGeometrie();
 
 // ---------- See (fest platziert, statisch): große dunkle Wasserfläche, Fokus Uferintegration ----------
-const see = { cx: WELT_W * 0.8, cy: WELT_H * 0.79, rx: 360, ry: 232 };
+const see = { cx: WELT_W * 0.8, cy: WELT_H * 0.78, rx: 440, ry: 290 };   // See im SO; der Fluss mündet von Westen ein
 const seeUfer: Array<{ x: number; y: number }> = [];
 const seeSchilf: Array<{ x: number; y: number; ph: number; h: number }> = [];
 const seeRosen: Array<{ x: number; y: number; s: number; bluete: boolean }> = [];
@@ -129,9 +133,9 @@ function wfZeichne(): void {
 // wie der See, aber MIT Fließ-Textur (scrollende Strähnen flussabwärts) + kleinen
 // Stromschnellen/Schaum an Flusssteinen. Ufer wie am See (Schlammsaum + Schilf).
 const flussPunkte: Array<{ x: number; y: number }> = [
-  { x: 740, y: 80 }, { x: 980, y: 470 }, { x: 1120, y: 820 }, { x: 1250, y: 1070 },
-  { x: 1460, y: 1290 }, { x: 1720, y: 1395 }, { x: 2010, y: 1410 },
-];
+  { x: 1350, y: 60 }, { x: 1430, y: 600 }, { x: 1500, y: 1100 }, { x: 1540, y: 1500 },
+  { x: 1780, y: 1950 }, { x: 2380, y: 2150 }, { x: 3000, y: 2150 },
+];   // Fluss: Nord -> Süd über die Weg-Kreuzung (Brücke) und weiter SO in den See
 interface FlussP { x: number; y: number; nx: number; ny: number; ux: number; uy: number; hw: number; s: number; }
 const flussMitte: FlussP[] = [];
 interface FlussStein { x: number; y: number; r: number; m: FlussP; }
@@ -178,7 +182,7 @@ function flussAt(s: number): FlussP { const i = Math.max(0, Math.min(flussMitte.
 // auf die Fluss-Mittellinie (~1146,872) - er fließt in Fluss-Richtung ein (nicht quer
 // dagegen) -> nahtloser Y-Zusammenfluss statt "Bach endet an der Flussflanke".
 const bachPunkte: Array<{ x: number; y: number }> = [
-  { x: 380, y: 280 }, { x: 540, y: 540 }, { x: 700, y: 790 }, { x: 900, y: 824 }, { x: 1030, y: 846 }, { x: 1146, y: 872 },
+  { x: 380, y: 560 }, { x: 720, y: 690 }, { x: 1050, y: 770 }, { x: 1280, y: 810 }, { x: 1466, y: 858 },
 ];
 interface BachP { x: number; y: number; nx: number; ny: number; ux: number; uy: number; hw: number; s: number; }
 const bachMitte: BachP[] = [];
@@ -247,6 +251,7 @@ const bergPfad: Array<{ x: number; y: number }> = [];
 // Zufluchts-Station: Plateau auf halber Höhe im Schnee, wo der Serpentinen-Weg sich verbreitert
 const huette = { x: WELT_W * 0.62, y: NORD_Y * 0.58, br: 178, hoch: 150 };
 function baueBerg(): void {
+  if (!BERG_AN) return;                               // kein Schnee-Berg in der Anfangskarte
   const seiten = [0.7, 0.3, 0.72, 0.28];             // alternierende Pass-Seiten -> SWITCHBACK (Serpentine)
   for (let i = 1; i < BERG_NIV; i++) {
     const baseY = -(BERG_H / BERG_NIV) * i, px = WELT_W * seiten[(i - 1) % seiten.length];
@@ -929,9 +934,9 @@ async function init(): Promise<void> {
     buschBilder.push(backe(ofen, tb, WALD));
   }
   // Held + Dorfbewohner + Hühner
-  wesen.push({ art: 'held', tier: 'leder', x: WELT_W * 0.4, y: WELT_H * 0.62, dir: 0, frameT: 0, speed: 165, zx: 0, zy: 0, ruhe: 0, effT: 0, hackT: 0, bob: 0, umriss: 0 });
-  // Reitbares Pferd: grast in der Lichtung neben dem Helden (E = aufsteigen). dir 2 = Profil nach links (schaut zum Helden).
-  pferdW = { art: 'pferd', tier: 'leder', x: WELT_W * 0.4 + 135, y: WELT_H * 0.62 + 18, dir: 2, frameT: 0, speed: 0, zx: 0, zy: 0, ruhe: 0, effT: 0, hackT: 0, bob: 0, umriss: 0 };
+  wesen.push({ art: 'held', tier: 'leder', x: 340, y: 1500, dir: 6, frameT: 0, speed: 165, zx: 0, zy: 0, ruhe: 0, effT: 0, hackT: 0, bob: 0, umriss: 0 });   // Start im WESTEN auf dem Weg
+  // Reitbares Pferd: grast in der West-Lichtung neben dem Helden (E = aufsteigen).
+  pferdW = { art: 'pferd', tier: 'leder', x: 470, y: 1515, dir: 2, frameT: 0, speed: 0, zx: 0, zy: 0, ruhe: 0, effT: 0, hackT: 0, bob: 0, umriss: 0 };
   wesen.push(pferdW);
   const tiers: HeldTier[] = ['stoff', 'stoff', 'kette'];
   for (let i = 0; i < 3; i++) wesen.push(neuesNpc('dorf', tiers[i], WELT_W * (0.34 + i * 0.06), WELT_H * (0.66 + (i % 2) * 0.05)));
@@ -986,7 +991,7 @@ async function init(): Promise<void> {
     }
   }
   // BERGZONE (y<0): ECHTE Billboard-Bäume, zur Schneelinie ausdünnend + schneebestäubt
-  for (let i = 0; i < BERG.baeume * 3 && baeume.filter((b) => b.y < 0).length < BERG.baeume; i++) {
+  if (BERG_AN) for (let i = 0; i < BERG.baeume * 3 && baeume.filter((b) => b.y < 0).length < BERG.baeume; i++) {
     const x = 80 + Math.random() * (WELT_W - 160), y = NORD_Y + 50 + Math.random() * (BERG_H - 70);
     if (imBergWall(x, y) || distBergPfad(x, y) < BERG.pfadBreite * 1.5 || beiHuette(x, y)) continue;   // Serpentine: eine Wegbreite baumfrei
     const hoehe = bergHoehe(y);
@@ -996,7 +1001,7 @@ async function init(): Promise<void> {
     baeume.push({ art: Math.floor(Math.random() * arten.length), x, y, skala, blight: false, ph: Math.random() * 7, fall: null, blattFarbe: blattFarben[Math.floor(Math.random() * blattFarben.length)], fade: 0, hp: maxHp, maxHp, weg: false, schnee: bergSchnee(y) });
   }
   // Berg-FELSEN in Clustern, mit Schneehaube oben (echte Fels-Sprites, kein graues Geröll)
-  for (let c = 0; c < BERG.felsen; c++) {
+  if (BERG_AN) for (let c = 0; c < BERG.felsen; c++) {
     let fx = 0, fy = 0, ok = false;
     for (let t = 0; t < 20 && !ok; t++) { fx = 120 + Math.random() * (WELT_W - 240); fy = NORD_Y + 40 + Math.random() * (BERG_H - 80); ok = !imBergWall(fx, fy) && distBergPfad(fx, fy) > BERG.pfadBreite * 0.6 && !beiHuette(fx, fy); }
     if (!ok) continue;
@@ -1298,8 +1303,8 @@ function frame(now: number): void {
   // Moos-/Biom-Tint nur für den südlichen Teil (y>=0); der Berg im Norden hat eigene Tönung
   { const y0 = Math.max(0, camY), dY = y0 - camY; if (H - dY > 0) ctx.drawImage(moosCv, camX / 16, y0 / 16, Math.max(1, W / 16), Math.max(1, (H - dY) / 16), 0, dY, W, H - dY); }
 
-  // 1a) Berg/Anhöhe im Norden (gestufte Höhen-Level bis zum Schnee)
-  if (bereit) zeichneBerg(now);
+  // 1a) Berg/Anhöhe im Norden (gestufte Höhen-Level bis zum Schnee) - in der Anfangskarte aus
+  if (bereit && BERG_AN) zeichneBerg(now);
 
   // 1b) Pfad: mäanderndes Erdband mit unregelmäßigen Rändern, Spurrillen, nassen/trockenen
   //     Flecken, Steinen und einem Saum aus zertretenem Gras (bricht die harte Kante)
@@ -1471,7 +1476,7 @@ function frame(now: number): void {
     for (const f of felsen) { if (f.x < camX - 100 || f.x > camX + W + 100 || f.y < camY - 100 || f.y > camY + H + 100) continue; liste.push({ y: f.y, b: null, w: null, f, bu: null }); }
     for (const bu of buesche) { if (bu.x < camX - 200 || bu.x > camX + W + 200 || bu.y < camY - 250 || bu.y > camY + H + 200) continue; liste.push({ y: bu.y, b: null, w: null, f: null, bu }); }
     if (brSicht) { const ns = bruecke.ny >= 0 ? 1 : -1; liste.push({ y: bruecke.cy + ns * bruecke.ny * bruecke.halbB, b: null, w: null, f: null, bu: null, nr: true }); }   // vorderes Geländer tiefensortiert
-    if (camY < 60 && huette.x > camX - 260 && huette.x < camX + W + 260 && huette.y > camY - 240 && huette.y < camY + H + 240) liste.push({ y: huette.y, b: null, w: null, f: null, bu: null, hu: true });   // Zufluchts-Hütte (Außen, tiefensortiert)
+    if (BERG_AN && camY < 60 && huette.x > camX - 260 && huette.x < camX + W + 260 && huette.y > camY - 240 && huette.y < camY + H + 240) liste.push({ y: huette.y, b: null, w: null, f: null, bu: null, hu: true });   // Zufluchts-Hütte (Außen, tiefensortiert)
     liste.sort((a, c) => a.y - c.y);
     let spielerFenster: { x: number; y: number } | null = null;
     for (const z of liste) {

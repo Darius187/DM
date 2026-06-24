@@ -5,5 +5,6 @@ dist/
 # Temporäre WIP-Gerüste (Pferd-Render-Probe, Runde 66) - werden nach Abschluss entfernt
 pferdtest.html
 scripts/_grab_tmp.mjs
+scripts/_grab_world.mjs
 src/gfx/_kandidat.ts
 src/gfx/_pferdprobe.ts
