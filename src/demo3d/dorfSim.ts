@@ -1920,4 +1920,18 @@ export function starteWelt(zielCanvas: HTMLCanvasElement): void {
   void init();
   requestAnimationFrame(frame);
 }
+// Regler-Werte von außen setzen (Dev-Konsole im Spiel statt der dorf.html-DOM-Slider).
+export function setRegler(key: string, v: number): void {
+  switch (key) {
+    case 'groesse': baumGroesse = v; break;
+    case 'wegbreite': pfadBreiteFaktor = v; break;
+    case 'falltempo': fallG = 5.2 * v; break;
+    case 'bewuchs': bewuchsDichte = v; break;
+    case 'tageszeit': tag = ((v % 24) + 24) % 24; break;
+    case 'tagtempo': tagTempo = v; break;
+    case 'sturm': sturmStaerke = v; break;
+    case 'sicht': sichtDurchmesser = v; break;
+  }
+}
+
 { const demoCanvas = document.getElementById('view') as HTMLCanvasElement | null; if (demoCanvas) starteWelt(demoCanvas); }

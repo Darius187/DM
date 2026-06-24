@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { starteWelt } from '../demo3d/dorfSim';
+import { starteWelt, setRegler } from '../demo3d/dorfSim';
 
 // ANFANGSKARTE (Hybrid-Port Stufe 1, Runde 69): Die komplette Canvas-Welt aus dorfSim
 // (Wetter, Tageszeit, Bäume + Fäll-Animation, Gras, Wasser/Fluss/Bach/See/Brücke, Moor,
@@ -9,6 +9,7 @@ import { starteWelt } from '../demo3d/dorfSim';
 export class AnfangskarteSzene extends Phaser.Scene {
   private weltCanvas!: HTMLCanvasElement;
   private weltBild!: Phaser.GameObjects.Image;
+  private reglerDiv?: HTMLDivElement;
   private readonly texKey = 'anfWelt';
 
   constructor() { super('Anfangskarte'); }
@@ -29,9 +30,33 @@ export class AnfangskarteSzene extends Phaser.Scene {
       fontFamily: 'serif', fontSize: '13px', color: '#cdd8c4', stroke: '#000', strokeThickness: 3,
     }).setScrollFactor(0).setDepth(1000);
 
+    this.baueRegler();
     this.input.keyboard?.on('keydown-ESC', () => this.scene.start('Title'));
     this.scale.on('resize', this.passe, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off('resize', this.passe, this));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.scale.off('resize', this.passe, this); this.reglerDiv?.remove(); });
+  }
+
+  // Dev-Konsole der Anfangskarte: alle Demo-Regler als DOM-Panel, live an dorfSim gekoppelt.
+  private baueRegler(): void {
+    const div = document.createElement('div');
+    div.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:50;background:rgba(8,14,10,0.62);padding:8px 10px;border-radius:6px;color:#cdd8c4;font:12px Georgia,serif;text-shadow:0 1px 2px #000;';
+    const slider: Array<[string, string, number, number, number, number]> = [
+      ['groesse', 'Baumgröße', 0.5, 2.2, 0.05, 0.85], ['wegbreite', 'Weg-Breite', 0.5, 1.8, 0.05, 1],
+      ['falltempo', 'Fall-Tempo', 0.12, 2, 0.02, 1], ['bewuchs', 'Bewuchs', 0, 1.4, 0.05, 1],
+      ['tageszeit', 'Tageszeit', 0, 24, 0.25, 9], ['tagtempo', 'Tag-Tempo', 0, 3, 0.1, 1],
+      ['sturm', 'Sturm-Stärke', 0, 4, 0.1, 1.5], ['sicht', 'Sicht-Fenster', 80, 220, 10, 124],
+    ];
+    for (const [key, label, min, max, step, val] of slider) {
+      const row = document.createElement('div'); row.style.margin = '3px 0';
+      const lab = document.createElement('span'); lab.textContent = label; lab.style.cssText = 'display:inline-block;width:94px;';
+      const inp = document.createElement('input'); inp.type = 'range'; inp.min = String(min); inp.max = String(max); inp.step = String(step); inp.value = String(val); inp.style.cssText = 'vertical-align:middle;width:130px;';
+      const out = document.createElement('span'); out.textContent = String(val); out.style.marginLeft = '6px';
+      inp.addEventListener('input', () => { setRegler(key, parseFloat(inp.value)); out.textContent = inp.value; });
+      setRegler(key, val);
+      row.append(lab, inp, out); div.append(row);
+    }
+    document.body.appendChild(div);
+    this.reglerDiv = div;
   }
 
   private passe(): void {
