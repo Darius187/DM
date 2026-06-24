@@ -6,6 +6,7 @@
 
 import Phaser from 'phaser';
 import { leereStadt, exportiereStadt, parseStadt, MARKER_INFO, MARKER_TYPEN, type MarkerTyp, type StadtVorlage } from '../world/stadtVorlage';
+import { WetterOverlay } from '../world/wetterOverlay';
 
 const SCHL = 'ravensmoor_stadtvorlage';
 const OBEN = 96; // obere Kante der Zeichenfläche (unter den Werkzeugleisten)
@@ -21,12 +22,16 @@ export class StadtProbe extends Phaser.Scene {
   private ziehen: { x0: number; y0: number } | null = null;
   private jetzt: { x1: number; y1: number } | null = null;
   private palette: Array<[MarkerTyp, Phaser.GameObjects.Text]> = [];
+  private wetter!: WetterOverlay;
 
   constructor() { super('StadtProbe'); }
+
+  update(_t: number, dt: number): void { this.wetter?.update(dt / 1000); }
 
   create(): void {
     this.cameras.main.setBackgroundColor('#0a0908');
     this.cameras.main.fadeIn(250, 0, 0, 0);
+    this.wetter = new WetterOverlay(this);   // Wetter spielweit: Regen + Tag/Nacht über der Stadtkarte (1-5, ,/.)
     this.gfx = this.add.graphics();
     this.labelLayer = this.add.container(0, 0).setDepth(10);
     this.uiLayer = this.add.container(0, 0).setDepth(50);
