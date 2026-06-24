@@ -24,7 +24,9 @@ function bein(ctx: Ctx, hipX: number, hipY: number, fuss: { x: number; y: number
   ctx.fillStyle = '#1a120a'; ctx.fillRect(fuss.x - 1.4, fuss.y - 1, 2.8, 2); // Huf
 }
 
-export function drawGalopp(ctx: Ctx, frame: number): void {
+// reiter=false zeichnet das Pferd OHNE Reiter (freies Pferd auf der Weide). Default
+// true (abwärtskompatibel zur ReitProbe + Vier-Richtungs-Pferd mit Reiter).
+export function drawGalopp(ctx: Ctx, frame: number, reiter = true): void {
   ctx.clearRect(0, 0, 64, 48);
   const FRAMES = 6;
   const c = (frame % FRAMES) / FRAMES;
@@ -65,14 +67,16 @@ export function drawGalopp(ctx: Ctx, frame: number): void {
   ctx.strokeStyle = mähne; ctx.lineWidth = 3.5;
   ctx.beginPath(); ctx.moveTo(44, by - 8); ctx.lineTo(52, by - 18); ctx.stroke();
 
-  // REITER (sitzt mittig, lehnt nach vorn, schwingt mit)
-  const rb = by - 9 + bob * 0.5;
-  ctx.fillStyle = '#3a2c1c'; ctx.fillRect(27, rb + 2, 3, 6); ctx.fillRect(33, rb + 2, 3, 6); // Beine am Pferd
-  ctx.fillStyle = '#6e2f2a'; ctx.beginPath(); ctx.moveTo(28, rb + 4); ctx.lineTo(37, rb - 2); ctx.lineTo(39, rb + 2); ctx.lineTo(31, rb + 8); ctx.closePath(); ctx.fill(); // Oberkörper (vorgebeugt)
-  ctx.fillStyle = '#d0a884'; ctx.beginPath(); ctx.arc(38, rb - 4, 3, 0, 6.283); ctx.fill(); // Kopf
-  ctx.fillStyle = '#39332c'; ctx.beginPath(); ctx.arc(38, rb - 5, 3, Math.PI, 0); ctx.fill(); // Hut/Haar
-  ctx.strokeStyle = '#d0a884'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(36, rb); ctx.lineTo(46, rb - 4); ctx.stroke(); // Arm zu den Zügeln
-  ctx.strokeStyle = '#2a2018'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(46, rb - 4); ctx.lineTo(55, by - 13); ctx.stroke(); // Zügel zum Kopf
+  // REITER (sitzt mittig, lehnt nach vorn, schwingt mit) - optional
+  if (reiter) {
+    const rb = by - 9 + bob * 0.5;
+    ctx.fillStyle = '#3a2c1c'; ctx.fillRect(27, rb + 2, 3, 6); ctx.fillRect(33, rb + 2, 3, 6); // Beine am Pferd
+    ctx.fillStyle = '#6e2f2a'; ctx.beginPath(); ctx.moveTo(28, rb + 4); ctx.lineTo(37, rb - 2); ctx.lineTo(39, rb + 2); ctx.lineTo(31, rb + 8); ctx.closePath(); ctx.fill(); // Oberkörper (vorgebeugt)
+    ctx.fillStyle = '#d0a884'; ctx.beginPath(); ctx.arc(38, rb - 4, 3, 0, 6.283); ctx.fill(); // Kopf
+    ctx.fillStyle = '#39332c'; ctx.beginPath(); ctx.arc(38, rb - 5, 3, Math.PI, 0); ctx.fill(); // Hut/Haar
+    ctx.strokeStyle = '#d0a884'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(36, rb); ctx.lineTo(46, rb - 4); ctx.stroke(); // Arm zu den Zügeln
+    ctx.strokeStyle = '#2a2018'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(46, rb - 4); ctx.lineTo(55, by - 13); ctx.stroke(); // Zügel zum Kopf
+  }
 
   // NAHE Beine (vor dem Körper, hell)
   bein(ctx, 20, by + 6, hinNah, koerper, 3.4);

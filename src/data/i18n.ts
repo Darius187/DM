@@ -16,8 +16,8 @@ const de: Texte = {
   'dorf.hud': 'Alles zusammen, reines 2D-Canvas: Gras + Pfad mit Wasser-Pfützen, '
     + 'dynamisches Wetter (klar / Regen / Unwetter) mit Wind, Dunst/Nebel, Tropfen-Ringen '
     + 'auf dem Wasser und im Sturm umknickenden Bäumen; im Norden ein begehbarer Berg bis '
-    + 'zum Schnee, ein Fluss mit Brücke und ein nebliges Moor. Held (WASD, F = abbauen/fällen) '
-    + '+ Hühner + Dorfbewohner. Tasten: 1 Sonne · 2 klar · 3 Regen · 4 Unwetter · 5 Gewitter (Blitz+Donner) · R Regen an/aus.',
+    + 'zum Schnee, ein Fluss mit Brücke und ein nebliges Moor. Held (WASD, F = abbauen/fällen, '
+    + 'E = auf-/absteigen beim Pferd) + Pferd + Hühner + Dorfbewohner. Tasten: 1 Sonne · 2 klar · 3 Regen · 4 Unwetter · 5 Gewitter (Blitz+Donner) · R Regen an/aus.',
   'dorf.laden': 'Dorf & Wald werden gebacken …',
   // Regler
   'regler.baumgroesse': 'Baumgröße',

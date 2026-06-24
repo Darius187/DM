@@ -15,6 +15,7 @@ import * as THREE from 'three';
 import { Tree } from '@dgreenheck/ez-tree';
 import { macheBackofen } from './propBackofen';
 import { drawHeld, HELD_FELD } from '../gfx/heldArt';
+import { drawPferd, PFERD_W, PFERD_H } from '../gfx/pferdArt';
 import type { HeldTier } from '../data/helden';
 import { t } from '../data/i18n';
 
@@ -725,16 +726,49 @@ function istVerdecktVomBaum(wx: number, wy: number): boolean {
 // Occlusion (Fallout-Look): nur der Baum DIREKT vor dem Helden wird halbtransparent,
 // der echte Held scheint mit Details durch - keine getönte Silhouette. (Test: unterBaum)
 const HM = (HELD_FELD - 64) / 2;
-type Art = 'held' | 'dorf' | 'huhn';
+type Art = 'held' | 'dorf' | 'huhn' | 'pferd';
 interface Wesen { art: Art; tier: HeldTier; x: number; y: number; dir: number; frameT: number; speed: number; zx: number; zy: number; ruhe: number; effT: number; hackT: number; bob: number; umriss: number; }
 const wesen: Wesen[] = [];
 const held = (): Wesen => wesen[0];
+
+// ---------- Pferd (reitbar, Runde 66) ----------
+// Eigenes Offscreen-Canvas (wie figCv beim Helden): drawPferd ruft clearRect, das
+// loescht nur dieses Canvas, nicht die Welt. Das Welt-Pferd ist ein eigenes Wesen.
+// PFERD_SK > 1: das Pferd wird groesser als der Held gerendert (ein berittenes Tier
+// ueberragt die Fussgaenger). Hoehere interne Aufloesung -> scharf statt verwaschen.
+const PFERD_SK = 1.5;
+const pferdCv = document.createElement('canvas'); pferdCv.width = Math.ceil(PFERD_W * PFERD_SK); pferdCv.height = Math.ceil(PFERD_H * PFERD_SK);
+const pferdCtx = pferdCv.getContext('2d')!;
+let reitet = false;          // sitzt der Held auf dem Pferd?
+let heldGeht = false;        // bewegt sich der Held/das Pferd gerade? (Galopp vs. Stand)
+const REIT_TEMPO = 2.0;      // Tempo-Faktor beim Reiten (Pferd schneller als zu Fuss)
+const REIT_DIST = 64;        // Reichweite zum Aufsteigen
+let pferdW!: Wesen;          // das Welt-Pferd (in init() erzeugt, nach dem Helden)
+// 8-Richtung des Helden -> 4 Pferde-Ansichten (wie der Held: Front/Ruecken/Profil).
+// dir: 0=S 1=SW 2=W 3=NW 4=N 5=NE 6=O 7=SE
+function pferdDir(d8: number): number {
+  if (d8 === 0) return 0;                                   // S  -> vorne
+  if (d8 === 4) return 1;                                   // N  -> hinten
+  return (d8 === 1 || d8 === 2 || d8 === 3) ? 2 : 3;        // West-Haelfte links, Ost-Haelfte rechts
+}
+// E = auf-/absteigen. Aufsteigen nur in Reichweite; Absteigen stellt das Pferd daneben.
+function reitToggle(): void {
+  if (!bereit) return;
+  const h = held();
+  if (reitet) {
+    reitet = false;
+    pferdW.x = h.x - 46; pferdW.y = h.y; pferdW.dir = 6;    // Pferd rechts neben dem Helden, schaut zu ihm
+  } else if (Math.hypot(pferdW.x - h.x, pferdW.y - h.y) < REIT_DIST) {
+    reitet = true;
+  }
+}
 const richtungVon = (dx: number, dy: number): number => [6, 7, 0, 1, 2, 3, 4, 5][((Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8)];
 
 const keys: Record<string, boolean> = {};
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase(); keys[k] = true;
   if (k === 'f' || e.key === ' ') aktionF();
+  if (k === 'e') reitToggle();
   if (k === 'r') regenAn = !regenAn;
   if (k === '1') { wetterZiel = -1; wetterTimer = 60; }      // sonnig (positives Gegenstück zum Regen)
   if (k === '2') { wetterZiel = 0.05; wetterTimer = 45; }    // klar
@@ -893,6 +927,9 @@ async function init(): Promise<void> {
   }
   // Held + Dorfbewohner + Hühner
   wesen.push({ art: 'held', tier: 'leder', x: WELT_W * 0.4, y: WELT_H * 0.62, dir: 0, frameT: 0, speed: 165, zx: 0, zy: 0, ruhe: 0, effT: 0, hackT: 0, bob: 0, umriss: 0 });
+  // Reitbares Pferd: grast in der Lichtung neben dem Helden (E = aufsteigen). dir 2 = Profil nach links (schaut zum Helden).
+  pferdW = { art: 'pferd', tier: 'leder', x: WELT_W * 0.4 + 135, y: WELT_H * 0.62 + 18, dir: 2, frameT: 0, speed: 0, zx: 0, zy: 0, ruhe: 0, effT: 0, hackT: 0, bob: 0, umriss: 0 };
+  wesen.push(pferdW);
   const tiers: HeldTier[] = ['stoff', 'stoff', 'kette'];
   for (let i = 0; i < 3; i++) wesen.push(neuesNpc('dorf', tiers[i], WELT_W * (0.34 + i * 0.06), WELT_H * (0.66 + (i % 2) * 0.05)));
   for (let i = 0; i < 6; i++) wesen.push(neuesNpc('huhn', 'stoff', WELT_W * 0.36 + Math.random() * 220, WELT_H * 0.6 + Math.random() * 160));
@@ -1052,6 +1089,12 @@ async function init(): Promise<void> {
     malLiege: (): void => { ctx.fillStyle = '#33424e'; ctx.fillRect(0, 0, W, 420); for (let i = 0; i < arten.length; i++) { const st = arten[i].wald, li = arten[i].liege, c = i * 156 + 6; ctx.drawImage(st, c, 10, 150, 150); ctx.drawImage(li, c, 170, 150, 150); ctx.strokeStyle = '#8fbf7a'; ctx.strokeRect(c, 10, 150, 150); ctx.strokeRect(c, 170, 150, 150); } ctx.fillStyle = '#e8dcc0'; ctx.font = '13px Georgia'; ctx.fillText('oben: stehend   unten: gefällt (Liege-Sprite)', 8, 340); },
     zeigLiege: (blight = false): { x: number; y: number } => { const b = baeume.find((t) => !t.fall && !t.weg && t.blight === blight && t.skala > 0.7) || baeume.find((t) => !t.fall && !t.weg && t.blight === blight); if (!b) return { x: 0, y: 0 }; starteFall(b, 1); b.fall!.gelandet = true; b.fall!.winkel = FALL_ZIEL; b.fall!.winkelV = 0; held().x = b.x - 120; held().y = b.y + 50; return { x: b.x, y: b.y }; },
     zumBach: (): { x: number; y: number } => { const m = bachMitte[Math.floor(bachMitte.length * 0.4)]; held().x = m.x - 40; held().y = m.y + 20; return { x: m.x, y: m.y }; },
+    zumPferd: (): { x: number; y: number } => { held().x = pferdW.x - 34; held().y = pferdW.y; return { x: pferdW.x, y: pferdW.y }; },
+    reit: (): void => reitToggle(),
+    aufsteigen: (): void => { const h = held(); pferdW.x = h.x; pferdW.y = h.y; reitet = true; },
+    absteigen: (): void => { if (reitet) reitToggle(); },
+    setDir: (d: number): void => { held().dir = ((d % 8) + 8) % 8; pferdW.dir = held().dir; },
+    reitInfo: (): string => `reitet=${reitet} pferd=(${Math.round(pferdW.x)},${Math.round(pferdW.y)}) held=(${Math.round(held().x)},${Math.round(held().y)}) dir8=${pferdW.dir}->p${pferdDir(pferdW.dir)} geht=${heldGeht}`,
     zumSee: (vor = 0): { x: number; y: number } => { held().x = see.cx; held().y = see.cy + vor; return { x: see.cx, y: see.cy }; },
     seeTropfen: (n = 5): void => { for (let i = 0; i < n; i++) wfStoer(see.cx + (Math.random() - 0.5) * see.rx, see.cy + (Math.random() - 0.5) * see.ry, -9); },
     zumMoor: (): { x: number; y: number; schilf: number; nebel: number } => { let bx = WELT_W / 2, by = WELT_H / 2, bd = -1; for (let y = 120; y < WELT_H - 120; y += 50) for (let x = 120; x < WELT_W - 120; x += 50) { if (aufPfad(x, y) || nahSee(x, y) || nahFluss(x, y) || biomAt(x, y) !== 'moor') continue; const d = moorNoise(x, y); if (d > bd) { bd = d; bx = x; by = y; } } held().x = bx; held().y = by; return { x: bx, y: by, schilf: moorSchilf.length, nebel: moorNebel.length }; },
@@ -1121,6 +1164,12 @@ function frei(wx: number, wy: number): boolean {
 // ---------- Wesen aktualisieren ----------
 function aktualisiereWesen(w: Wesen, dt: number, now: number): void {
   let dx = 0, dy = 0;
+  if (w.art === 'pferd') {
+    // Geritten: das Pferd haengt am Helden (der Held steuert per WASD). Ungeritten:
+    // es grast ruhig an seinem Platz (keine Bewegung).
+    if (reitet) { const h = held(); w.x = h.x; w.y = h.y; w.dir = h.dir; w.frameT = h.frameT; }
+    return;
+  }
   if (w.art === 'held') {
     if (keys['w'] || keys['arrowup']) dy -= 1; if (keys['s'] || keys['arrowdown']) dy += 1;
     if (keys['a'] || keys['arrowleft']) dx -= 1; if (keys['d'] || keys['arrowright']) dx += 1;
@@ -1131,8 +1180,9 @@ function aktualisiereWesen(w: Wesen, dt: number, now: number): void {
     }
   }
   const len = Math.hypot(dx, dy), geht = len > 0.01;
+  if (w.art === 'held') heldGeht = geht;                                          // treibt Galopp vs. Stand des Pferds
   if (geht) {
-    dx /= len || 1; dy /= len || 1; const spd = w.speed * dt;
+    dx /= len || 1; dy /= len || 1; const spd = w.speed * (w.art === 'held' && reitet ? REIT_TEMPO : 1) * dt;
     const nx = w.x + dx * spd, ny = w.y + dy * spd;
     if (w.art === 'huhn' || frei(nx, w.y)) w.x = nx; if (w.art === 'huhn' || frei(w.x, ny)) w.y = ny;
     w.dir = richtungVon(dx, dy); w.frameT += dt * (w.art === 'huhn' ? 12 : 7);
@@ -1434,7 +1484,7 @@ function frame(now: number): void {
         if (b.fall) { if (!b.weg) zeichneGefällt(bild, b.blight ? arten[b.art].liegeBlight : arten[b.art].liege, sx(b.x), sy(b.y), sk, b.fall); } else { zeichneImWind(bild, sx(b.x), sy(b.y), w, hh, wd * sk * (b.blight ? 30 : 78) * sturmStaerke * boeWelle(b.x, b.y, now), b.ph, now); if (b.schnee) schneeAufKrone(sx(b.x), sy(b.y), w, hh, b.schnee); if (b.hp < b.maxHp) zeichneBalken(sx(b.x), sy(b.y) - 44, b.hp / b.maxHp, '#6ad06a'); }   // Biegung im Sturm SEHR stark + Fäll-Balken
         if (b.fall && !b.weg && b.fall.hackHp < b.fall.hackMax) zeichneBalken(sx(b.x), sy(b.y) - 10, b.fall.hackHp / b.fall.hackMax, '#d2a23a');   // Hack-Balken am liegenden Stamm
         ctx.globalAlpha = 1;
-      } else if (z.w) { zeichneWesen(z.w); if (z.w === h0) spielerFenster = spielerReveal(sx(h0.x), sy(h0.y) - 24); }
+      } else if (z.w) { zeichneWesen(z.w); const spielerW = reitet ? pferdW : h0; if (z.w === spielerW) spielerFenster = spielerReveal(sx(spielerW.x), sy(spielerW.y) - (reitet ? 32 : 24)); }
     }
     // Sichtfenster zurück-komponieren: macht die nach dem Helden gezeichneten Front-Bäume im Fenster durchsichtig
     if (spielerFenster) ctx.drawImage(sichtCv, spielerFenster.x, spielerFenster.y);
@@ -1800,8 +1850,23 @@ function zeichneBalken(x: number, y: number, frac: number, col: string): void { 
   ctx.fillStyle = '#3a1410'; ctx.fillRect(x - bw / 2, y, bw, bh);
   ctx.fillStyle = col; ctx.fillRect(x - bw / 2, y, bw * f, bh);
 }
+// Pferd zeichnen: Offscreen rendern (clearRect schadet nur dem Offscreen), dann
+// am Fusspunkt einsetzen (Hufe = PFERD_H-3 auf der Bodenlinie py). Reiter + Galopp
+// nur beim Reiten; ungeritten steht das Pferd ruhig ohne Reiter.
+function zeichnePferd(w: Wesen, px: number, py: number): void {
+  kontaktSchatten(px, py, PFERD_W * PFERD_SK * 0.5);
+  pferdCtx.clearRect(0, 0, pferdCv.width, pferdCv.height);
+  const lauf = reitet ? heldGeht : false;
+  pferdCtx.save(); pferdCtx.scale(PFERD_SK, PFERD_SK);
+  drawPferd(pferdCtx, pferdDir(w.dir), Math.floor(w.frameT) % 6, reitet, lauf);
+  pferdCtx.restore();
+  // Fusspunkt: Hufe stehen bei (PFERD_H-3)*PFERD_SK -> dort py
+  ctx.drawImage(pferdCv, Math.round(px - pferdCv.width / 2), Math.round(py - (PFERD_H - 3) * PFERD_SK));
+}
 function zeichneWesen(w: Wesen): void {
   const px = sx(w.x), py = sy(w.y);
+  if (w.art === 'held' && reitet) return;        // beim Reiten zeichnet das Pferd den Reiter mit
+  if (w.art === 'pferd') { zeichnePferd(w, px, py); return; }
   if (w.art === 'huhn') {
     const flip = w.dir >= 3 && w.dir <= 5;                          // nach links schauen
     ctx.save(); ctx.translate(px, py - 6 - w.bob); if (flip) ctx.scale(-1, 1); ctx.drawImage(huhnBild, -huhnBild.width / 2, -huhnBild.height + 4); ctx.restore();
