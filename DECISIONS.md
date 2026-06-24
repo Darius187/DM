@@ -642,3 +642,10 @@
   * TIEFE/GRUBE (wie die Schnee-Stufen): neue Helfer uferBoeschung (außen flach ins Gras -> nach innen dunkler, 3 Bänder + belichtete Gras-Lippe) + uferWand (innerer Wand-Schatten im Clip). Auf SEE, FLUSS und BACH angewandt -> das Wasser liegt sichtbar VERTIEFT in einer Rinne, nicht flach auf dem Rasen.
   * STRÖMUNG/NEBENFLUSS: Bach mündet sichtbar in den Fluss (Schaum/Verwirbelung an der Mündung); Fluss mündet in den See (See deckt die Mündung). Bach-Refraktion (vorige Runde) bleibt.
   * Verifiziert: See in Grube + Wellenringe von Tropfen/Held; Fluss + Bach in vertiefter Rinne. tsc grün. (Wellen leben in Bewegung - Standbild zeigt einen Moment.)
+
+- Runde 64 (Wasser-Überarbeitung nach Autorfeedback "künstliche Ripples schrecklich, ein Effekt wandert nach oben, mehr Zwischenfarben"):
+  * KÜNSTLICHE RIPPLES RAUS: Bach-Querkämme (Oberflächenwellen) + Kiesel-Refraktions-Wobble entfernt -> ruhiger, klarer Bach. Fluss: wasserGlanz (die diagonale Kaustik, deren zweite Schicht AUFWÄRTS = gegen die Strömung driftete) entfernt; nur noch sanfte Fließ-Strähnen flussabwärts.
+  * RICHER TIEFEN-VERLAUF (volle Palette, viele Zwischenfarben): neue tiefeFarbe(d) (9 Anker grün->teal->blau->marineblau) + kanalTiefe() = verschachtelte Füllungen entlang des variabel-breiten Kanals (Rand flach/grünlich -> Mitte tief/blau). Fluss 16 Stufen, Bach 14 (klar, tiefeBachTint translucent), See radial 11 Stops. uferBoeschung von 3 auf 6 Bänder verfeinert.
+  * TIEFE SICHTBARER: See-Spiegelung + Schimmer (wasserGlanz 1.15->0.5) gedämpft, damit der Tiefen-Verlauf dominiert (Mitte dunkel).
+  * ÜBERGÄNGE: alle Wasser nutzen jetzt DIESELBE Tiefen-Palette -> Fluss/See passen farblich zusammen; Bach mündet mit Schaum in den Fluss, Fluss (vom See gedeckt) in den See.
+  * Verifiziert: ruhiger klarer Bach in der Rinne, Fluss mit sattem Tiefen-Verlauf ohne Upstream-Drift, See tief mit feinem Verlauf. tsc grün.

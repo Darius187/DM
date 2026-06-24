@@ -1281,20 +1281,20 @@ function frame(now: number): void {
     seeBank(1.17, 'rgba(36,32,20,0.3)'); seeBank(1.10, 'rgba(24,20,12,0.42)'); seeBank(1.04, 'rgba(10,8,5,0.5)');   // GRUBE: Böschung -> See liegt vertieft
     ufer(); ctx.save(); ctx.clip();
     const wg = ctx.createRadialGradient(see.cx, see.cy, 12, see.cx, see.cy, Math.max(see.rx, see.ry));
-    wg.addColorStop(0, '#070d12'); wg.addColorStop(0.68, '#0e1a24'); wg.addColorStop(1, '#22303a');   // Mitte tief/dunkel, Rand flacher/heller
+    for (let i = 0; i <= 11; i++) wg.addColorStop(i / 11, tiefeFarbe(1 - i / 11));   // Mitte tief -> Rand flach, viele Zwischenfarben (volle Palette)
     ctx.fillStyle = wg; ctx.fillRect(see.cx - see.rx * 1.3, see.cy - see.ry * 1.3, see.rx * 2.6, see.ry * 2.6);
     ufer(); ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 16; ctx.stroke();                          // innerer Wand-Schatten der Böschung (Tiefe)
     // Option 1 (2D): Wasser bleibt dunkel/tief; dezente Himmel-Spiegelung + schmale Mond-Bahn +
     // bewegter Kaustik-Schimmer (die eigentliche "Three.js-Wasser"-Bewegung)
     const rg = ctx.createLinearGradient(0, see.cy - see.ry, 0, see.cy + see.ry);
-    rg.addColorStop(0, 'rgba(92,114,144,0.1)'); rg.addColorStop(0.55, 'rgba(40,56,76,0.03)'); rg.addColorStop(1, 'rgba(10,16,22,0)');
+    rg.addColorStop(0, 'rgba(86,108,138,0.06)'); rg.addColorStop(0.55, 'rgba(40,56,76,0.02)'); rg.addColorStop(1, 'rgba(10,16,22,0)');   // dezenter -> Tiefe bleibt sichtbar
     ctx.fillStyle = rg; ctx.fillRect(see.cx - see.rx, see.cy - see.ry, see.rx * 2, see.ry * 2);
     const mx = see.cx - see.rx * 0.3;                                                          // Mond-Bahn: schmale vertikale helle Spur
     ctx.save(); ctx.beginPath(); ctx.ellipse(mx, see.cy - see.ry * 0.34, see.rx * 0.16, see.ry * 0.72, 0, 0, 7); ctx.clip();
     const mb = ctx.createLinearGradient(0, see.cy - see.ry, 0, see.cy + see.ry * 0.3);
-    mb.addColorStop(0, 'rgba(184,202,226,0.2)'); mb.addColorStop(1, 'rgba(184,202,226,0)');
+    mb.addColorStop(0, 'rgba(184,202,226,0.13)'); mb.addColorStop(1, 'rgba(184,202,226,0)');
     ctx.fillStyle = mb; ctx.fillRect(see.cx - see.rx, see.cy - see.ry, see.rx * 2, see.ry * 2); ctx.restore();
-    wasserGlanz(see.cx - see.rx, see.cy - see.ry, see.rx * 2, see.ry * 2, 0, 0, now, 1.15, 0.5);
+    wasserGlanz(see.cx - see.rx, see.cy - see.ry, see.rx * 2, see.ry * 2, 0, 0, now, 0.5, 0.5);   // Schimmer dezenter -> die Tiefe dominiert
     wfZeichne();                                                                              // ECHTE Wellen-Simulation (Ringe von Regen + watendem Helden)
     for (const r of seeRinge) { const f = r.t / r.leben, rad = 1 + r.rmax * f, a = (1 - f) * 0.4; ctx.strokeStyle = `rgba(180,198,220,${a})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(r.x, r.y, rad, rad * 0.55, 0, 0, 7); ctx.stroke(); }
     ctx.restore();
@@ -1607,17 +1607,27 @@ function zeichneHuetteAussen(now: number): void {
 }
 
 // ---------- Wasser-GRUBE (Tiefe simulieren wie die Schnee-Stufen): Böschung + Wand-Schatten ----------
-// uferBoeschung: außen flach ins Gras, nach innen dunkler -> das Gelände fällt in eine Rinne ab.
 // uferWand (im Clip): dunkler Saum am Innenrand = beschattete Unterwasser-Böschung. Zusammen liegt
 // das Wasser sichtbar VERTIEFT (in einer Grube), nicht flach auf dem Rasen.
 function uferBoeschung(pfad: (e: number) => void): void {
-  pfad(20); ctx.fillStyle = 'rgba(36,32,20,0.3)'; ctx.fill();
-  pfad(13); ctx.fillStyle = 'rgba(24,20,12,0.4)'; ctx.fill();
-  pfad(6); ctx.fillStyle = 'rgba(10,8,5,0.5)'; ctx.fill();
-  pfad(15); ctx.strokeStyle = 'rgba(120,134,96,0.18)'; ctx.lineWidth = 2; ctx.stroke();   // dünne belichtete Gras-Lippe oben
+  // viele Bänder von Gras (außen) bis Schatten-Lippe (innen) -> weicher, tiefer Hang (volle Palette)
+  const bank: Array<[number, string]> = [[24, 'rgba(58,68,42,0.32)'], [19, 'rgba(46,52,32,0.4)'], [15, 'rgba(36,40,24,0.46)'], [11, 'rgba(26,28,17,0.5)'], [7, 'rgba(16,16,10,0.54)'], [3, 'rgba(8,8,5,0.56)']];
+  for (const [e, c] of bank) { pfad(e); ctx.fillStyle = c; ctx.fill(); }
+  pfad(22); ctx.strokeStyle = 'rgba(126,140,100,0.2)'; ctx.lineWidth = 2; ctx.stroke();   // belichtete Gras-Lippe oben
 }
 function uferWand(pfad: (e: number) => void, breite = 13, alpha = 0.42): void {
   ctx.lineJoin = 'round'; ctx.strokeStyle = `rgba(0,0,0,${alpha})`; ctx.lineWidth = breite; pfad(0); ctx.stroke();   // halb außerhalb -> Clip lässt nur den Innensaum
+}
+// TIEFEN-Farbverlauf (volle Palette, viele Zwischenfarben): flach=grünlich (über dem Grund) -> tief=Marineblau.
+function tiefeFarbe(d: number): string {
+  const A = [[58, 72, 56], [40, 66, 60], [26, 60, 62], [18, 50, 58], [13, 40, 50], [9, 30, 40], [6, 20, 30], [4, 13, 21], [2, 8, 14]];
+  const t = Math.max(0, Math.min(1, d)) * (A.length - 1), i = Math.min(A.length - 2, Math.floor(t)), f = t - i, a = A[i], b = A[i + 1];
+  return `rgb(${Math.round(a[0] + (b[0] - a[0]) * f)},${Math.round(a[1] + (b[1] - a[1]) * f)},${Math.round(a[2] + (b[2] - a[2]) * f)})`;
+}
+function tiefeBachTint(d: number): string { return `rgba(${Math.round(132 - d * 80)},${Math.round(176 - d * 70)},${Math.round(170 - d * 50)},${0.08 + d * 0.34})`; }   // klarer Bach: flach fast klar, Mitte stärker getönt (Bett scheint durch)
+// Tiefen-Gradient als verschachtelte Füllungen entlang eines variabel-breiten Kanals (folgt der Kurve).
+function kanalTiefe(pfadFrac: (frac: number) => void, steps: number, tint: boolean): void {
+  for (let i = 0; i < steps; i++) { const d = i / (steps - 1); pfadFrac(1 - d * 0.94); ctx.fillStyle = tint ? tiefeBachTint(d) : tiefeFarbe(d); ctx.fill(); }
 }
 
 // ---------- Bach zeichnen: KRISTALLKLAR - Kiesbett sichtbar + dünnes klares Wasser + Licht-Kaustik ----------
@@ -1628,27 +1638,18 @@ function zeichneBach(now: number): void {
   for (const st of bachStreif) { st.s += st.spd / 60; if (st.s > bachLen) st.s -= bachLen; }
   ctx.save(); ctx.translate(-camX, -camY);
   const ufer = (extra: number): void => { ctx.beginPath(); for (let i = 0; i < bachMitte.length; i++) { const m = bachMitte[i], x = m.x + m.nx * (m.hw + extra), y = m.y + m.ny * (m.hw + extra); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } for (let i = bachMitte.length - 1; i >= 0; i--) { const m = bachMitte[i]; ctx.lineTo(m.x - m.nx * (m.hw + extra), m.y - m.ny * (m.hw + extra)); } ctx.closePath(); };
+  const bachKanal = (frac: number): void => { ctx.beginPath(); for (let i = 0; i < bachMitte.length; i++) { const m = bachMitte[i], x = m.x + m.nx * m.hw * frac, y = m.y + m.ny * m.hw * frac; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } for (let i = bachMitte.length - 1; i >= 0; i--) { const m = bachMitte[i]; ctx.lineTo(m.x - m.nx * m.hw * frac, m.y - m.ny * m.hw * frac); } ctx.closePath(); };
   uferBoeschung(ufer);                                                                             // GRUBE: Böschung -> Bach liegt in einer Rinne
   ufer(0); ctx.save(); ctx.clip();
   ctx.fillStyle = '#6f6a58'; ctx.fillRect(camX, camY, W, H);                                        // 1) KIESBETT-Grundton
-  // Kiesel mit REFRAKTIONS-WOBBLE: Wellen wandern flussabwärts (s - time) und verschieben das Bett quer -> Blick durch fließendes Wasser
-  for (const k of bachKiesel) {
+  for (const k of bachKiesel) {                                                                     // Kiesel (statisch - kein künstliches Wobbeln mehr)
     if (k.x < camX - 10 || k.x > camX + W + 10 || k.y < camY - 10 || k.y > camY + H + 10) continue;
-    const w = Math.sin(k.s * 0.05 - now * 0.005) * 2.6 + Math.sin(k.s * 0.11 - now * 0.0085) * 1.3, ex = k.x + k.nx * w, ey = k.y + k.ny * w;
-    ctx.fillStyle = k.col; ctx.beginPath(); ctx.ellipse(ex, ey, k.r, k.r * 0.8, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.ellipse(ex - k.r * 0.25, ey - k.r * 0.3, k.r * 0.5, k.r * 0.4, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = k.col; ctx.beginPath(); ctx.ellipse(k.x, k.y, k.r, k.r * 0.8, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.beginPath(); ctx.ellipse(k.x - k.r * 0.25, k.y - k.r * 0.3, k.r * 0.5, k.r * 0.4, 0, 0, 7); ctx.fill();
   }
-  ctx.fillStyle = 'rgba(112,168,166,0.26)'; ctx.fillRect(camX, camY, W, H);                          // 2) KLARES Wasser (dünner Tint -> Bett scheint durch)
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(66,120,118,0.2)'; ctx.lineWidth = 13; ctx.beginPath(); for (let i = 0; i < bachMitte.length; i++) { const m = bachMitte[i]; i ? ctx.lineTo(m.x, m.y) : ctx.moveTo(m.x, m.y); } ctx.stroke();   // Mitte minimal tiefer
-  // FLIESSENDE OBERFLÄCHENWELLEN: helle Quer-Kämme wandern flussabwärts (s*freq - time)
-  for (const m of bachMitte) {
-    const ph = Math.sin(m.s * 0.055 - now * 0.006);
-    if (ph > 0.35) { const a = (ph - 0.35) / 0.65 * 0.18; ctx.strokeStyle = `rgba(236,250,250,${a})`; ctx.lineWidth = 4.5; ctx.beginPath(); ctx.moveTo(m.x - m.nx * m.hw * 0.95, m.y - m.ny * m.hw * 0.95); ctx.lineTo(m.x + m.nx * m.hw * 0.95, m.y + m.ny * m.hw * 0.95); ctx.stroke(); }
-    const ph2 = Math.sin(m.s * 0.05 - now * 0.006 + 2.2);
-    if (ph2 < -0.5) { const a = (-ph2 - 0.5) / 0.5 * 0.12; ctx.strokeStyle = `rgba(30,70,70,${a})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(m.x - m.nx * m.hw * 0.9, m.y - m.ny * m.hw * 0.9); ctx.lineTo(m.x + m.nx * m.hw * 0.9, m.y + m.ny * m.hw * 0.9); ctx.stroke(); }   // dunkle Wellentäler
-  }
-  for (const st of bachStreif) { const m = bachAt(st.s), cx = m.x + m.nx * st.off * m.hw, cy = m.y + m.ny * st.off * m.hw; ctx.strokeStyle = `rgba(226,246,246,${st.a})`; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - m.ux * st.len, cy - m.uy * st.len); ctx.stroke(); }   // 3) Licht-Kaustik flussabwärts
-  uferWand(ufer, 8, 0.3);                                                                            // innerer Wand-Schatten (Tiefe), beim klaren Bach dezenter
+  kanalTiefe(bachKanal, 14, true);                                                                  // 2) KLARES Wasser mit Tiefen-Tint (Rand fast klar -> Mitte tiefer getönt, Bett scheint durch)
+  for (const st of bachStreif) { const m = bachAt(st.s), cx = m.x + m.nx * st.off * m.hw, cy = m.y + m.ny * st.off * m.hw; ctx.strokeStyle = `rgba(214,238,238,${st.a * 0.7})`; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - m.ux * st.len, cy - m.uy * st.len); ctx.stroke(); }   // 3) sanfte Licht-Kaustik flussabwärts (subtil)
+  uferWand(ufer, 8, 0.28);                                                                           // innerer Wand-Schatten (Tiefe), dezent
   ctx.restore();
   ufer(0); ctx.strokeStyle = 'rgba(222,242,242,0.3)'; ctx.lineWidth = 1.6; ctx.stroke();             // helle Schaum-Uferkante
   for (const stn of bachSteine) {                                                                   // 4) Steine + Schaum
@@ -1678,17 +1679,19 @@ function zeichneFluss(now: number, wd: number): void {
     for (let i = flussMitte.length - 1; i >= 0; i--) { const m = flussMitte[i]; ctx.lineTo(m.x - m.nx * (m.hw + extra), m.y - m.ny * (m.hw + extra)); }
     ctx.closePath();
   };
-  uferBoeschung(ufer);                                                                          // GRUBE: Böschung -> Fluss liegt vertieft (nicht auf dem Rasen)
+  const flussKanal = (frac: number): void => {   // Polygon bei Halbbreite*frac (folgt der variablen Breite) -> Tiefen-Verlauf
+    ctx.beginPath();
+    for (let i = 0; i < flussMitte.length; i++) { const m = flussMitte[i], x = m.x + m.nx * m.hw * frac, y = m.y + m.ny * m.hw * frac; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    for (let i = flussMitte.length - 1; i >= 0; i--) { const m = flussMitte[i]; ctx.lineTo(m.x - m.nx * m.hw * frac, m.y - m.ny * m.hw * frac); }
+    ctx.closePath();
+  };
+  uferBoeschung(ufer);                                                                          // GRUBE: Böschung -> Fluss liegt vertieft
   ufer(0); ctx.save(); ctx.clip();
-  ctx.fillStyle = '#0c1820'; ctx.fillRect(camX, camY, W, H);                                     // Wasser-Grundfarbe
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round';                                                 // tiefe, dunkle Mitte
-  ctx.strokeStyle = 'rgba(2,8,12,0.5)'; ctx.lineWidth = 30; ctx.beginPath();
-  for (let i = 0; i < flussMitte.length; i++) { const m = flussMitte[i]; i ? ctx.lineTo(m.x, m.y) : ctx.moveTo(m.x, m.y); } ctx.stroke();
-  uferWand(ufer, 14, 0.45);                                                                     // innerer Wand-Schatten der Böschung (Tiefe)
-  wasserGlanz(camX, camY, W, H, 0.6, 0.85, now, 0.8);                                            // Kaustik-Schimmer flussabwärts (gleicher Look wie der See)
-  for (const st of flussStreif) {                                                               // scrollende Fließ-Strähnen
+  kanalTiefe(flussKanal, 16, false);                                                            // RICHER TIEFEN-VERLAUF (Rand flach/grünlich -> Mitte tief/blau, viele Zwischenfarben)
+  uferWand(ufer, 14, 0.4);                                                                       // innerer Wand-Schatten
+  for (const st of flussStreif) {                                                               // sanfte Fließ-Strähnen NUR flussabwärts
     const m = flussAt(st.s), cx = m.x + m.nx * st.off * m.hw, cy = m.y + m.ny * st.off * m.hw;
-    ctx.strokeStyle = `rgba(150,172,196,${st.a})`; ctx.lineWidth = 1.2;
+    ctx.strokeStyle = `rgba(150,172,196,${st.a * 0.75})`; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - m.ux * st.len, cy - m.uy * st.len); ctx.stroke();
   }
   ctx.restore();
