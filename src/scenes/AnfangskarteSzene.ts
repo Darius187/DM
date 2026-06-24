@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { starteWelt, setRegler, setHybrid, heldSchirm } from '../demo3d/dorfSim';
+import { starteWelt, setRegler, setHybrid, heldSchirm, heldWelt, weltGrenze, pausiereWelt } from '../demo3d/dorfSim';
 import { drawHeld, HELD_FELD, HELD_MARGIN } from '../gfx/heldArt';
 
 // ANFANGSKARTE (Hybrid-Port Stufe 1, Runde 69): Die komplette Canvas-Welt aus dorfSim
@@ -14,6 +14,7 @@ export class AnfangskarteSzene extends Phaser.Scene {
   private figCanvas!: HTMLCanvasElement;
   private figCtx!: CanvasRenderingContext2D;
   private heldSprite!: Phaser.GameObjects.Image;
+  private uebergang = false;
   private readonly texKey = 'anfWelt';
   private readonly heldKey = 'anfHeld';
 
@@ -47,7 +48,18 @@ export class AnfangskarteSzene extends Phaser.Scene {
     this.baueRegler();
     this.input.keyboard?.on('keydown-ESC', () => this.scene.start('Title'));
     this.scale.on('resize', this.passe, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.scale.off('resize', this.passe, this); this.reglerDiv?.remove(); });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.scale.off('resize', this.passe, this); this.reglerDiv?.remove(); pausiereWelt(); });
+  }
+
+  // Ostkante erreicht -> Übergang in die Stadt Ravensmoor (WorldScene "village").
+  private pruefeUebergang(): void {
+    if (this.uebergang) return;
+    const hw = heldWelt(), g = weltGrenze();
+    if (hw.x > g.breite - 60) {
+      this.uebergang = true;
+      this.cameras.main.fadeOut(500, 0, 0, 0);
+      this.time.delayedCall(540, () => this.scene.start('World', { neu: true, startArea: 'village' }));
+    }
   }
 
   // Dev-Konsole der Anfangskarte: alle Demo-Regler als DOM-Panel, live an dorfSim gekoppelt.
@@ -96,5 +108,6 @@ export class AnfangskarteSzene extends Phaser.Scene {
     } else {
       this.heldSprite.setVisible(false);
     }
+    this.pruefeUebergang();
   }
 }

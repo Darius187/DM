@@ -1924,6 +1924,10 @@ export function starteWelt(zielCanvas: HTMLCanvasElement): void {
 }
 // Hybrid-Modus (Phaser-Szene zeichnet die Spielfigur). Bewegung/Kollision/Kamera bleiben in dorfSim.
 export function setHybrid(on: boolean): void { hybrid = on; }
+// Welt-Position des Helden + Kartengrenzen (für den Übergang an der Ostkante zur Stadt).
+export function heldWelt(): { x: number; y: number } { if (!bereit) return { x: 0, y: 0 }; const h = held(); return { x: h.x, y: h.y }; }
+export function weltGrenze(): { breite: number; hoehe: number } { return { breite: WELT_W, hoehe: WELT_H }; }
+export function pausiereWelt(): void { pausiert = true; }   // Schleife anhalten (Szene verlassen)
 // Bildschirm-Position + Pose des Helden (für das Phaser-Spieler-Sprite über dem Canvas-Boden).
 export function heldSchirm(): { x: number; y: number; dir: number; frame: number; reitet: boolean; bereit: boolean } {
   if (!bereit) return { x: 0, y: 0, dir: 0, frame: 0, reitet: false, bereit: false };
