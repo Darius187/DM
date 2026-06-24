@@ -1,60 +1,90 @@
 import Phaser from 'phaser';
-import { starteWelt, setRegler, heldSchirm, heldWelt, weltGrenze, pausiereWelt } from '../demo3d/dorfSim';
-import { drawHeld, HELD_FELD, HELD_MARGIN } from '../gfx/heldArt';
+import { CombatScene } from '../world/CombatScene';
+import type { Enemy } from '../world/Enemy';
+import { starteWelt, setRegler, setKamera, istSolide, weltGrenze, pausiereWelt } from '../demo3d/dorfSim';
 
-// ANFANGSKARTE (Hybrid-Port Stufe 1, Runde 69): Die komplette Canvas-Welt aus dorfSim
-// (Wetter, Tageszeit, Bäume + Fäll-Animation, Gras, Wasser/Fluss/Bach/See/Brücke, Moor,
-// Biome) läuft auf einem Offscreen-Canvas und wird hier als Phaser-Canvas-Textur gezeigt.
-// So ist die GANZE Welt mit allen Systemen im echten Spiel - in EINEM Schritt übertragen.
-// Stufe 2 (folgt): Tile-Figuren (Spieler/NPCs/Gegner) als Overlay + Kollisionsgitter.
-export class AnfangskarteSzene extends Phaser.Scene {
+// ANFANGSKARTE (Kampf-Hybrid, Runde 71): die Canvas-Welt (dorfSim: Terrain/Wasser/Bäume/
+// Wetter) ist der HINTERGRUND, darüber läuft das ECHTE Kampfsystem (CombatScene: Spieler +
+// Gegner). Keine Hühner/NPCs - dafür Wölfe (erst einer, gegen Osten bis zu drei). dorfSim
+// liefert nur Kollision (istSolide) + folgt der Spiel-Kamera (setKamera); der Spiel-Spieler
+// ersetzt den dorfSim-Held. Kampf/Spieler/Gegner kommen UNVERÄNDERT aus dem Hauptspiel.
+export class AnfangskarteSzene extends CombatScene {
   private weltCanvas!: HTMLCanvasElement;
   private weltBild!: Phaser.GameObjects.Image;
   private reglerDiv?: HTMLDivElement;
-  private figCanvas!: HTMLCanvasElement;
-  private figCtx!: CanvasRenderingContext2D;
-  private heldSprite!: Phaser.GameObjects.Image;
   private uebergang = false;
   private introMusik?: Phaser.Sound.BaseSound;
+  private woelfe = 0;
+  private readonly SPAWN_X = 340;
+  private readonly SPAWN_Y = 1500;
   private readonly texKey = 'anfWelt';
-  private readonly heldKey = 'anfHeld';
 
   constructor() { super('Anfangskarte'); }
+
+  // --- CombatScene-Pflichten: Kollision aus der Canvas-Welt, Tod/Loot ---
+  isSolidAt(x: number, y: number): boolean { return istSolide(x, y); }
+  protected onEnemyKilled(_e: Enemy): void { /* Beute/FX später - Kampfsystem unverändert */ }
+  protected onPlayerDeath(): void { this.introMusik?.stop(); this.scene.start('Title'); }
 
   create(data?: { neuesSpiel?: boolean }): void {
     this.cameras.main.setBackgroundColor('#0a0806');
 
-    // Offscreen-Canvas, auf dem dorfSim die ganze Welt rendert (eigene Schleife + Eingabe WASD).
-    // Hybrid: keine Hühner/NPCs, Held nicht im Canvas (die Szene legt Spieler + Gegner darüber).
+    // Canvas-Welt als Hintergrund: hybrid (keine Hühner/NPCs, kein dorfSim-Held) + externe Kamera.
     this.weltCanvas = document.createElement('canvas');
-    starteWelt(this.weltCanvas, { hybrid: true });
-
+    starteWelt(this.weltCanvas, { hybrid: true, externKamera: true });
     if (this.textures.exists(this.texKey)) this.textures.remove(this.texKey);
     this.textures.addCanvas(this.texKey, this.weltCanvas);
     this.weltBild = this.add.image(0, 0, this.texKey).setOrigin(0, 0).setScrollFactor(0).setDepth(-1000);
     this.passe();
 
-    // HYBRID: dorfSim bewegt den Helden (Kollision/Kamera), zeichnet ihn aber NICHT mehr.
-    // Die Spielfigur ist hier ein eigenes Phaser-Spielobjekt über dem Canvas-Boden.
-    this.figCanvas = document.createElement('canvas'); this.figCanvas.width = this.figCanvas.height = HELD_FELD;
-    this.figCtx = this.figCanvas.getContext('2d')!;
-    if (this.textures.exists(this.heldKey)) this.textures.remove(this.heldKey);
-    this.textures.addCanvas(this.heldKey, this.figCanvas);
-    this.heldSprite = this.add.image(0, 0, this.heldKey).setScrollFactor(0).setDepth(100).setVisible(false);
+    // Kampfsystem (Spieler) am West-Start + Kamera folgt dem Spieler.
+    this.setupCombat(this.SPAWN_X, this.SPAWN_Y);
+    const g = weltGrenze();
+    this.cameras.main.setBounds(0, 0, g.breite, g.hoehe);
+    this.cameras.main.startFollow(this.playerSprite, true, 0.16, 0.16);
 
-    this.add.text(12, 10, 'ANFANGSKARTE - Canvas-Welt im Spiel (WASD bewegen, F fällen, E Pferd, ESC zurück)', {
-      fontFamily: 'serif', fontSize: '13px', color: '#cdd8c4', stroke: '#000', strokeThickness: 3,
-    }).setScrollFactor(0).setDepth(1000);
+    // Erster Wolf gleich am Anfang (etwas vor dem Spieler).
+    this.spawnEnemy('wolf', 1, this.SPAWN_X + 380, this.SPAWN_Y - 30);
+    this.woelfe = 1;
 
+    if (data?.neuesSpiel) this.zeigeEroeffnung();
     this.baueRegler();
-    if (data?.neuesSpiel) this.zeigeEroeffnung();   // Hauptspiel-Start: Eröffnung wie bisher (Musik + RAVENSMOOR + Quest)
-    this.input.keyboard?.on('keydown-ESC', () => this.scene.start('Title'));
     this.scale.on('resize', this.passe, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.scale.off('resize', this.passe, this); this.reglerDiv?.remove(); this.introMusik?.stop(); pausiereWelt(); });
   }
 
-  // Eröffnung des Hauptspiels auf der NEUEN ersten Karte: Intro-Musik + RAVENSMOOR-Titel
-  // + erste Quest (übertragen von der bisherigen Wald-Eröffnung).
+  private passe(): void { if (this.weltBild) this.weltBild.setDisplaySize(this.scale.width, this.scale.height); }
+
+  // Mehr Wölfe je weiter östlich: 1 am Start, ab Mitte 2, gegen das Kartenende bis zu 3.
+  private pruefeWoelfe(): void {
+    const frac = this.px / weltGrenze().breite;   // 0 West .. 1 Ost
+    if (frac > 0.42 && this.woelfe < 2) { this.spawnEnemy('wolf', 1, this.px + 460, this.py - 120); this.woelfe = 2; }
+    if (frac > 0.7 && this.woelfe < 3) { this.spawnEnemy('wolf', 1, this.px + 480, this.py + 140); this.woelfe = 3; }
+  }
+
+  // Ostkante -> Übergang nach Ravensmoor (Stadt).
+  private pruefeUebergang(): void {
+    if (this.uebergang) return;
+    if (this.px > weltGrenze().breite - 60) {
+      this.uebergang = true;
+      this.introMusik?.stop();
+      this.cameras.main.fadeOut(500, 0, 0, 0);
+      this.time.delayedCall(540, () => this.scene.start('World', { neu: true, startArea: 'village' }));
+    }
+  }
+
+  update(_t: number, delta: number): void {
+    const dt = Math.min(0.05, delta / 1000);
+    this.updateCombat(dt);   // ECHTES Kampfsystem (Spieler-Bewegung/Angriff, Gegner-KI, Geschosse)
+    // Hintergrund-Welt der Spiel-Kamera folgen lassen, dann Textur auffrischen.
+    setKamera(Math.round(this.cameras.main.scrollX), Math.round(this.cameras.main.scrollY));
+    const tex = this.textures.get(this.texKey) as Phaser.Textures.CanvasTexture;
+    if (tex && tex.refresh) tex.refresh();
+    this.pruefeWoelfe();
+    this.pruefeUebergang();
+  }
+
+  // --- Eröffnung des Hauptspiels (Intro-Musik + RAVENSMOOR + erste Quest) ---
   private zeigeEroeffnung(): void {
     const w = this.scale.width, h = this.scale.height;
     if (this.cache.audio.exists('snd_musik_intro')) { this.introMusik = this.sound.add('snd_musik_intro', { loop: true, volume: 0.5 }); this.introMusik.play(); }
@@ -62,26 +92,13 @@ export class AnfangskarteSzene extends Phaser.Scene {
     const unter = this.add.text(w / 2, h * 0.3 + 58, 'DER PREIS DER UNSTERBLICHKEIT', { fontFamily: 'serif', fontSize: '20px', color: '#c9a227', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5).setScrollFactor(0).setDepth(5900).setAlpha(0);
     this.tweens.add({ targets: [titel, unter], alpha: 1, duration: 1800, ease: 'Sine.Out' });
     this.tweens.add({ targets: [titel, unter], alpha: 0, duration: 1600, delay: 5200, ease: 'Sine.In', onComplete: () => { titel.destroy(); unter.destroy(); } });
-    // Quest als beständiges Auftrags-Band (kein zeitkritisches Reveal -> robust trotz Lade-Backen);
-    // verschwindet beim Verlassen der Karte mit der Szene.
     this.add.text(w / 2, h - 56, 'Auftrag: Seht in Ravensmoor nach dem Rechten - der Weg führt nach Osten.', {
       fontFamily: 'serif', fontSize: '18px', color: '#e0d4b4', fontStyle: 'italic', stroke: '#000', strokeThickness: 5,
       align: 'center', wordWrap: { width: Math.min(760, w - 60) },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(5900).setAlpha(0.92);
   }
 
-  // Ostkante erreicht -> Übergang in die Stadt Ravensmoor (WorldScene "village").
-  private pruefeUebergang(): void {
-    if (this.uebergang) return;
-    const hw = heldWelt(), g = weltGrenze();
-    if (hw.x > g.breite - 60) {
-      this.uebergang = true;
-      this.cameras.main.fadeOut(500, 0, 0, 0);
-      this.time.delayedCall(540, () => this.scene.start('World', { neu: true, startArea: 'village' }));
-    }
-  }
-
-  // Dev-Konsole der Anfangskarte: alle Demo-Regler als DOM-Panel, live an dorfSim gekoppelt.
+  // --- Dev-Konsole: alle Welt-Regler als DOM-Panel, live an dorfSim gekoppelt ---
   private baueRegler(): void {
     const div = document.createElement('div');
     div.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:50;background:rgba(8,14,10,0.62);padding:8px 10px;border-radius:6px;color:#cdd8c4;font:12px Georgia,serif;text-shadow:0 1px 2px #000;';
@@ -102,31 +119,5 @@ export class AnfangskarteSzene extends Phaser.Scene {
     }
     document.body.appendChild(div);
     this.reglerDiv = div;
-  }
-
-  private passe(): void {
-    if (this.weltBild) this.weltBild.setDisplaySize(this.scale.width, this.scale.height);
-  }
-
-  update(): void {
-    // Live-Textur jeden Frame aus dem Canvas auffrischen (dorfSim zeichnet asynchron darauf).
-    const tex = this.textures.get(this.texKey) as Phaser.Textures.CanvasTexture;
-    if (tex && tex.refresh) tex.refresh();
-
-    // HYBRID-Spielfigur: an die dorfSim-Bildschirmposition + Pose setzen (beim Reiten zeichnet der Canvas).
-    const hs = heldSchirm();
-    if (hs.bereit && !hs.reitet) {
-      this.figCtx.setTransform(1, 0, 0, 1, 0, 0);
-      this.figCtx.clearRect(0, 0, HELD_FELD, HELD_FELD);
-      this.figCtx.save(); this.figCtx.translate(HELD_MARGIN, HELD_MARGIN);
-      drawHeld(this.figCtx, 'leder', hs.dir, hs.frame, 'axt');
-      this.figCtx.restore();
-      (this.textures.get(this.heldKey) as Phaser.Textures.CanvasTexture).refresh();
-      // dorfSim zeichnet figCv mittig bei (px, py-12) -> Sprite-Mittelpunkt dorthin
-      this.heldSprite.setPosition(hs.x, hs.y - 12).setVisible(true);
-    } else {
-      this.heldSprite.setVisible(false);
-    }
-    this.pruefeUebergang();
   }
 }

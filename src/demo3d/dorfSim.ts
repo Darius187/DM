@@ -751,6 +751,7 @@ const pferdCv = document.createElement('canvas'); pferdCv.width = Math.ceil(PFER
 const pferdCtx = pferdCv.getContext('2d')!;
 let reitet = false;          // sitzt der Held auf dem Pferd?
 let hybrid = false;          // Hybrid-Modus: den Helden NICHT im Canvas zeichnen - die Phaser-Szene legt das Spieler-Sprite darüber
+let externKamera = false;    // Kampf-Hybrid: Kamera wird von außen gesetzt (Spiel-Spieler), dorfSim-Held bewegt sich nicht
 let heldGeht = false;        // bewegt sich der Held/das Pferd gerade? (Galopp vs. Stand)
 const REIT_TEMPO = 2.0;      // Tempo-Faktor beim Reiten (Pferd schneller als zu Fuss)
 const REIT_DIST = 64;        // Reichweite zum Aufsteigen
@@ -778,6 +779,7 @@ const richtungVon = (dx: number, dy: number): number => [6, 7, 0, 1, 2, 3, 4, 5]
 const keys: Record<string, boolean> = {};
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase(); keys[k] = true;
+  if (externKamera) return;   // im Kampf-Hybrid steuert das Spiel die Tasten (Angriff/Rolle/Wetter), nicht dorfSim
   if (k === 'f' || e.key === ' ') aktionF();
   if (k === 'e') reitToggle();
   if (k === 'r') regenAn = !regenAn;
@@ -1186,8 +1188,10 @@ function aktualisiereWesen(w: Wesen, dt: number, now: number): void {
     return;
   }
   if (w.art === 'held') {
-    if (keys['w'] || keys['arrowup']) dy -= 1; if (keys['s'] || keys['arrowdown']) dy += 1;
-    if (keys['a'] || keys['arrowleft']) dx -= 1; if (keys['d'] || keys['arrowright']) dx += 1;
+    if (!externKamera) {   // im Kampf-Hybrid bewegt der Spiel-Spieler die Figur, nicht der dorfSim-Held
+      if (keys['w'] || keys['arrowup']) dy -= 1; if (keys['s'] || keys['arrowdown']) dy += 1;
+      if (keys['a'] || keys['arrowleft']) dx -= 1; if (keys['d'] || keys['arrowright']) dx += 1;
+    }
   } else {
     if (w.ruhe > 0) { w.ruhe -= dt; } else {
       dx = w.zx - w.x; dy = w.zy - w.y; const d = Math.hypot(dx, dy);
@@ -1301,7 +1305,7 @@ function frame(now: number): void {
 
   // Kamera (Welt reicht nach Norden bis NORD_Y für den Berg)
   const h = bereit ? held() : { x: WELT_W / 2, y: WELT_H / 2 } as Wesen;
-  camX = Math.max(0, Math.min(WELT_W - W, h.x - W / 2)); camY = Math.max(NORD_Y, Math.min(WELT_H - H, h.y - H / 2));
+  if (!externKamera) { camX = Math.max(0, Math.min(WELT_W - W, h.x - W / 2)); camY = Math.max(NORD_Y, Math.min(WELT_H - H, h.y - H / 2)); }   // im Kampf-Hybrid setzt die Szene camX/camY (setKamera)
 
   // 1) Gras-Boden + Moosboden in dichten Wäldern (weicher Übergang über die Walddichte)
   ctx.save(); ctx.translate(-camX, -camY); ctx.fillStyle = grasMuster ?? '#27331c'; ctx.fillRect(camX, camY, W, H); ctx.restore();
@@ -1914,8 +1918,9 @@ function zeichneWesen(w: Wesen): void {
 // ---------- Bootstrap: Welt auf einem Canvas starten ----------
 // Demo (dorf.html): automatisch auf #view. Phaser-Hybrid-Szene: ruft starteWelt(sceneCanvas)
 // selbst auf. So läuft DERSELBE Welt-Code (Wetter, Bäume, Fall-Animation, Gras, Wasser) überall.
-export function starteWelt(zielCanvas: HTMLCanvasElement, opts?: { hybrid?: boolean }): void {
+export function starteWelt(zielCanvas: HTMLCanvasElement, opts?: { hybrid?: boolean; externKamera?: boolean }): void {
   hybrid = opts?.hybrid ?? false;   // VOR init() setzen, damit Hühner/NPCs gar nicht erst spawnen + der Held nicht gezeichnet wird
+  externKamera = opts?.externKamera ?? false;
   view = zielCanvas;
   ctx = view.getContext('2d')!;
   (window as unknown as { __weltCanvas?: HTMLCanvasElement }).__weltCanvas = view;   // Test-Hook (Browser-Verifikation)
@@ -1931,6 +1936,11 @@ export function setHybrid(on: boolean): void { hybrid = on; }
 export function heldWelt(): { x: number; y: number } { if (!bereit) return { x: 0, y: 0 }; const h = held(); return { x: h.x, y: h.y }; }
 export function weltGrenze(): { breite: number; hoehe: number } { return { breite: WELT_W, hoehe: WELT_H }; }
 export function pausiereWelt(): void { pausiert = true; }   // Schleife anhalten (Szene verlassen)
+// Kampf-Hybrid: Kamera-Position (linke obere Ecke in Welt-Pixeln) von außen setzen + Kollision abfragen.
+export function setKamera(left: number, top: number): void { camX = Math.max(0, Math.min(WELT_W - W, left)); camY = Math.max(NORD_Y, Math.min(WELT_H - H, top)); }
+export function istSolide(x: number, y: number): boolean { return !frei(x, y); }
+export function weltCanvasBreite(): number { return W; }
+export function weltCanvasHoehe(): number { return H; }
 // Bildschirm-Position + Pose des Helden (für das Phaser-Spieler-Sprite über dem Canvas-Boden).
 export function heldSchirm(): { x: number; y: number; dir: number; frame: number; reitet: boolean; bereit: boolean } {
   if (!bereit) return { x: 0, y: 0, dir: 0, frame: 0, reitet: false, bereit: false };
