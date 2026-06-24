@@ -1042,11 +1042,13 @@ function neuesNpc(art: Art, tier: HeldTier, x: number, y: number): Wesen {
 // ---------- Wind/Baum-Zeichnen ----------
 const STREIFEN = 12;   // Wind-Biegungsstreifen je Baum (Performance; optisch kaum Unterschied)
 function zeichneImWind(bild: HTMLCanvasElement, bx: number, by: number, w: number, h: number, bend: number, ph: number, now: number): void {
+  const maxB = w * 1.0;
+  bend = Math.tanh(bend / maxB) * maxB;   // WEICH begrenzt: der Baum biegt sich stark, löst sich aber NICHT auf (Streifen bleiben verbunden)
   const Y0 = by - h * 0.64, spanne = h * 0.64, sliceH = h / STREIFEN, sH = bild.height / STREIFEN;
   for (let i = 0; i < STREIFEN; i++) {
     const destY = Y0 + i * sliceH, cy = destY + sliceH / 2, u = Math.max(0, (by - cy) / spanne);
     const off = bend * Math.pow(u, 1.5) + Math.sin(now / 130 + i * 0.7 + ph) * u * 1.4;
-    ctx.drawImage(bild, 0, i * sH, bild.width, sH, bx - w / 2 + off, destY, w, sliceH + 0.6);
+    ctx.drawImage(bild, 0, i * sH, bild.width, sH, bx - w / 2 + off, destY, w, sliceH + 1.2);
   }
 }
 // Der Baum fällt, indem das LIEGE-Sprite um den Stammfuß von aufrecht (-FALL_ZIEL)
