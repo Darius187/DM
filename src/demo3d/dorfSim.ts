@@ -942,8 +942,10 @@ async function init(): Promise<void> {
   pferdW = { art: 'pferd', tier: 'leder', x: 470, y: 1515, dir: 2, frameT: 0, speed: 0, zx: 0, zy: 0, ruhe: 0, effT: 0, hackT: 0, bob: 0, umriss: 0 };
   wesen.push(pferdW);
   const tiers: HeldTier[] = ['stoff', 'stoff', 'kette'];
-  for (let i = 0; i < 3; i++) wesen.push(neuesNpc('dorf', tiers[i], WELT_W * (0.34 + i * 0.06), WELT_H * (0.66 + (i % 2) * 0.05)));
-  for (let i = 0; i < 6; i++) wesen.push(neuesNpc('huhn', 'stoff', WELT_W * 0.36 + Math.random() * 220, WELT_H * 0.6 + Math.random() * 160));
+  if (!hybrid) {   // Anfangskarte (Hybrid): KEINE Hühner/Dorf-NPCs - hier gibt es nur den Spieler + (später) Gegner
+    for (let i = 0; i < 3; i++) wesen.push(neuesNpc('dorf', tiers[i], WELT_W * (0.34 + i * 0.06), WELT_H * (0.66 + (i % 2) * 0.05)));
+    for (let i = 0; i < 6; i++) wesen.push(neuesNpc('huhn', 'stoff', WELT_W * 0.36 + Math.random() * 220, WELT_H * 0.6 + Math.random() * 160));
+  }
   // Pfützen
   pBuf.width = 1; pBuf.height = 1;
   for (let i = 0; i < 12; i++) {                                    // Lachen ENTLANG des Pfads (in Wegrichtung gedreht)
@@ -1912,7 +1914,8 @@ function zeichneWesen(w: Wesen): void {
 // ---------- Bootstrap: Welt auf einem Canvas starten ----------
 // Demo (dorf.html): automatisch auf #view. Phaser-Hybrid-Szene: ruft starteWelt(sceneCanvas)
 // selbst auf. So läuft DERSELBE Welt-Code (Wetter, Bäume, Fall-Animation, Gras, Wasser) überall.
-export function starteWelt(zielCanvas: HTMLCanvasElement): void {
+export function starteWelt(zielCanvas: HTMLCanvasElement, opts?: { hybrid?: boolean }): void {
+  hybrid = opts?.hybrid ?? false;   // VOR init() setzen, damit Hühner/NPCs gar nicht erst spawnen + der Held nicht gezeichnet wird
   view = zielCanvas;
   ctx = view.getContext('2d')!;
   (window as unknown as { __weltCanvas?: HTMLCanvasElement }).__weltCanvas = view;   // Test-Hook (Browser-Verifikation)

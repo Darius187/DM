@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { starteWelt, setRegler, setHybrid, heldSchirm, heldWelt, weltGrenze, pausiereWelt } from '../demo3d/dorfSim';
+import { starteWelt, setRegler, heldSchirm, heldWelt, weltGrenze, pausiereWelt } from '../demo3d/dorfSim';
 import { drawHeld, HELD_FELD, HELD_MARGIN } from '../gfx/heldArt';
 
 // ANFANGSKARTE (Hybrid-Port Stufe 1, Runde 69): Die komplette Canvas-Welt aus dorfSim
@@ -25,8 +25,9 @@ export class AnfangskarteSzene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#0a0806');
 
     // Offscreen-Canvas, auf dem dorfSim die ganze Welt rendert (eigene Schleife + Eingabe WASD).
+    // Hybrid: keine Hühner/NPCs, Held nicht im Canvas (die Szene legt Spieler + Gegner darüber).
     this.weltCanvas = document.createElement('canvas');
-    starteWelt(this.weltCanvas);
+    starteWelt(this.weltCanvas, { hybrid: true });
 
     if (this.textures.exists(this.texKey)) this.textures.remove(this.texKey);
     this.textures.addCanvas(this.texKey, this.weltCanvas);
@@ -35,7 +36,6 @@ export class AnfangskarteSzene extends Phaser.Scene {
 
     // HYBRID: dorfSim bewegt den Helden (Kollision/Kamera), zeichnet ihn aber NICHT mehr.
     // Die Spielfigur ist hier ein eigenes Phaser-Spielobjekt über dem Canvas-Boden.
-    setHybrid(true);
     this.figCanvas = document.createElement('canvas'); this.figCanvas.width = this.figCanvas.height = HELD_FELD;
     this.figCtx = this.figCanvas.getContext('2d')!;
     if (this.textures.exists(this.heldKey)) this.textures.remove(this.heldKey);
