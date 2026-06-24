@@ -31,7 +31,7 @@ export class StadtProbe extends Phaser.Scene {
   create(): void {
     this.cameras.main.setBackgroundColor('#0a0908');
     this.cameras.main.fadeIn(250, 0, 0, 0);
-    this.wetter = new WetterOverlay(this);   // Wetter spielweit: Regen + Tag/Nacht über der Stadtkarte (1-5, ,/.)
+    this.wetter = new WetterOverlay(this, { selbstTick: true, tasten: true });   // Wetter über der Stadtkarte (1-5, ,/.)
     this.gfx = this.add.graphics();
     this.labelLayer = this.add.container(0, 0).setDepth(10);
     this.uiLayer = this.add.container(0, 0).setDepth(50);

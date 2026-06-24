@@ -10,6 +10,8 @@ import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
 import { NebelFratzen } from '../systems/NebelFratzen';
 import { RabenSchwarm } from '../systems/Raben';
+import { WetterOverlay } from '../world/wetterOverlay';
+import { wetter } from '../logic/wetter';
 import { SchattenManager, mischFarbe, type Occluder, type Licht } from '../systems/SchattenManager';
 import { LichtPanel } from '../ui/lichtPanel';
 import { RABEN } from '../data/raben';
@@ -241,8 +243,7 @@ export class WorldScene extends CombatScene {
     this.wasserBilder = [];
     this.hausBilder = [];
     this.hausEditAn = false;
-    this.regenGfx = null;
-    this.regenTropfen = [];
+    this.wetterOverlay = undefined;
     this.regnet = false;
     this.decals = [];
     this.warmPool = [];
@@ -1274,8 +1275,7 @@ export class WorldScene extends CombatScene {
   }
 
   private regnet = false;
-  private regenTropfen: Array<{ x: number; y: number; spd: number }> = [];
-  private regenGfx: Phaser.GameObjects.Graphics | null = null;
+  private wetterOverlay?: WetterOverlay;   // neues, einheitliches Wetter-Rendering (ersetzt das alte renderRegen)
   private gruselT = 10;
 
   private wuerfleWetter(): void {
@@ -1286,30 +1286,15 @@ export class WorldScene extends CombatScene {
     if (this.regnet) this.logMsg('Regen zieht über das Land, Nebel kriecht heran.', '');
   }
 
+  // MIGRIERT (R70): das alte 110-Tropfen-Rendering ist durch das EINHEITLICHE WetterOverlay
+  // (neues Wettersystem) ersetzt. Die Wetter-LOGIK bleibt: this.regnet (an Tage gekoppelt) +
+  // nur draußen. Hier wird nur die Stärke in den geteilten Zustand gespeist und gerendert.
+  // tagNacht=false -> Tag/Nacht-Beleuchtung + Schatten der WorldScene bleiben UNVERÄNDERT.
   private renderRegen(dt: number): void {
-    if (!this.regenGfx) {
-      this.regenGfx = this.add.graphics().setScrollFactor(0).setDepth(2680);
-    }
-    const g = this.regenGfx;
-    g.clear();
     const draussen = !this.area.dark && !this.area.innen;
-    if (!this.regnet || !draussen) return;
-    const w = this.scale.width, h = this.scale.height;
-    if (!this.regenTropfen.length) {
-      for (let i = 0; i < 110; i++) {
-        this.regenTropfen.push({ x: Math.random() * w, y: Math.random() * h, spd: 520 + Math.random() * 240 });
-      }
-    }
-    // leichte Verdunkelung + fallende Streifen
-    g.fillStyle(0x10141c, 0.12);
-    g.fillRect(0, 0, w, h);
-    g.lineStyle(1, 0x9ab4cc, 0.32);
-    for (const t of this.regenTropfen) {
-      t.y += t.spd * dt;
-      t.x -= 60 * dt;
-      if (t.y > h) { t.y = -12; t.x = Math.random() * (w + 80); }
-      g.lineBetween(t.x, t.y, t.x - 2.5, t.y + 11);
-    }
+    wetter.staerke = (this.regnet && draussen) ? 0.6 : 0.0;
+    if (!this.wetterOverlay) this.wetterOverlay = new WetterOverlay(this, { depth: 2680, tagNacht: false, tasten: false });
+    this.wetterOverlay.update(dt);
   }
 
   // --- Arealverwaltung -----------------------------------------------------
