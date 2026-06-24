@@ -6,5 +6,7 @@ dist/
 pferdtest.html
 scripts/_grab_tmp.mjs
 scripts/_grab_world.mjs
+scripts/_grab_tile.mjs
+scripts/_grab*.mjs
 src/gfx/_kandidat.ts
 src/gfx/_pferdprobe.ts
