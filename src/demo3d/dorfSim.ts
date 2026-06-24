@@ -19,11 +19,13 @@ import { drawPferd, PFERD_W, PFERD_H } from '../gfx/pferdArt';
 import type { HeldTier } from '../data/helden';
 import { t } from '../data/i18n';
 
-const view = document.getElementById('view') as HTMLCanvasElement;
-const ctx = view.getContext('2d')!;
+// EINBETTBAR (R69): view/ctx werden erst in starteWelt() gesetzt - so läuft die Welt sowohl in
+// dorf.html (#view) als auch eingebettet in einer Phaser-Hybrid-Szene auf einem beliebigen Canvas
+// (Canvas-Boden + Tile-Figuren darüber). Bootstrap am Dateiende.
+let view!: HTMLCanvasElement;
+let ctx!: CanvasRenderingContext2D;
 let W = 0, H = 0;
 function passeGroesse(): void { W = view.width = innerWidth; H = view.height = innerHeight; }
-passeGroesse(); addEventListener('resize', passeGroesse);
 
 const WELT_W = 4160, WELT_H = 2720;   // ANFANGSKARTE (R69): so groß wie die Stadtkarte (130x85 Tiles à 32px)
 // Schnee-Berg im Norden AUS (Autorwunsch "alle Biome außer Schneelandschaft"). Ohne Berg
@@ -350,7 +352,7 @@ function macheGras(ts = 128): HTMLCanvasElement {
   }
   return c;
 }
-const grasMuster = ctx.createPattern(macheGras(), 'repeat');
+let grasMuster: CanvasPattern | null = null;   // erst in starteWelt() erzeugt (ctx dann gesetzt)
 
 // ---------- Wasser-Oberfläche (Option 1, reines 2D): kachelbarer Kaustik-Schimmer ----------
 // Statt echtem Three.js: eine kachelbare Wellen-Textur (Summe periodischer Sinus -> wrappt),
@@ -1118,7 +1120,7 @@ async function init(): Promise<void> {
     geheHinterBaum: () => { let best: Baum | null = null, bd = 1e9; for (const t of baeume) { if (t.fall || t.blight || t.skala < 0.42) continue; const d = Math.hypot(t.x - WELT_W * 0.5, t.y - WELT_H * 0.5); if (d < bd) { bd = d; best = t; } } if (best) { held().x = best.x; held().y = best.y - 35; } },
     selbsttest: (): string => { const b0 = baeume.find((t) => !t.fall && !t.weg); if (!b0) return 'kein Baum'; held().x = b0.x - 60; held().y = b0.y; let sl = 0; while (!b0.fall && sl < 30) { fälleNächsten(); sl++; } if (!b0.fall) return 'fiel nicht'; b0.fall.gelandet = true; b0.fall.winkel = FALL_ZIEL * b0.fall.richtung; held().x = b0.x - 60; held().y = b0.y; const h0 = holz; let hk = 0; while (!b0.weg && hk < 40) { fälleNächsten(); hk++; } const s = `schlaege=${sl} hacks=${hk} holz ${h0}->${holz} weg=${b0.weg}`; console.log('[selbsttest] ' + s); return s; } };
 }
-void init();
+// init()/Schleifenstart erfolgen jetzt in starteWelt() (Dateiende) - einbettbar.
 
 function neuesNpc(art: Art, tier: HeldTier, x: number, y: number): Wesen {
   return { art, tier, x, y, dir: 2, frameT: Math.random() * 4, speed: art === 'huhn' ? 55 : 42, zx: x, zy: y, ruhe: Math.random() * 2, effT: 0, hackT: 0, bob: 0, umriss: 0 };
@@ -1904,4 +1906,17 @@ function zeichneWesen(w: Wesen): void {
   }
   ctx.drawImage(figCv, dx, dy);
 }
-requestAnimationFrame(frame);
+
+// ---------- Bootstrap: Welt auf einem Canvas starten ----------
+// Demo (dorf.html): automatisch auf #view. Phaser-Hybrid-Szene: ruft starteWelt(sceneCanvas)
+// selbst auf. So läuft DERSELBE Welt-Code (Wetter, Bäume, Fall-Animation, Gras, Wasser) überall.
+export function starteWelt(zielCanvas: HTMLCanvasElement): void {
+  view = zielCanvas;
+  ctx = view.getContext('2d')!;
+  grasMuster = ctx.createPattern(macheGras(), 'repeat');   // Muster brauchen ein gültiges ctx
+  passeGroesse();
+  addEventListener('resize', passeGroesse);
+  void init();
+  requestAnimationFrame(frame);
+}
+{ const demoCanvas = document.getElementById('view') as HTMLCanvasElement | null; if (demoCanvas) starteWelt(demoCanvas); }
