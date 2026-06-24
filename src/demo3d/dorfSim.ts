@@ -1913,6 +1913,7 @@ function zeichneWesen(w: Wesen): void {
 export function starteWelt(zielCanvas: HTMLCanvasElement): void {
   view = zielCanvas;
   ctx = view.getContext('2d')!;
+  (window as unknown as { __weltCanvas?: HTMLCanvasElement }).__weltCanvas = view;   // Test-Hook (Browser-Verifikation)
   grasMuster = ctx.createPattern(macheGras(), 'repeat');   // Muster brauchen ein gültiges ctx
   passeGroesse();
   addEventListener('resize', passeGroesse);

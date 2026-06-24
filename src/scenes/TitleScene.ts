@@ -103,6 +103,7 @@ export class TitleScene extends Phaser.Scene {
       ['ANHÖHE-PROBE', () => this.scene.start('AnhoeheProbe'), true],
       ['REIT-PROBE', () => this.scene.start('ReitProbe'), true],
       ['GRUSEL-SCHATTEN', () => this.scene.start('StrahlenProbe'), true],
+      ['ANFANGSKARTE', () => this.scene.start('Anfangskarte'), true],
       ['DORF IM WALD', () => { window.location.href = 'dorf.html'; }, true],
     ];
     // Knopf-Abstand so wählen, dass ALLE Knöpfe in die Höhe passen (sonst lief
