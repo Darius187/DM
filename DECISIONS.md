@@ -1,5 +1,10 @@
 # DECISIONS - Protokoll aller Annahmen und Entscheidungen
 
+- Runde 67 (Wasser-Konturen raus + ineinander fließend, Autorkritik "du hast das wasser deutlich verschlechtert, eine kontur ums wasser, nichts fließt ineinander", Referenz madebyevan.com/webgl-water):
+  * KONTUREN ENTFERNT: helle Schaum-Uferkanten (Bach rgba(222,242,242), Fluss rgba(150,168,188)), die helle Gras-Lippe der Böschung und ALLE harten inneren Wand-Linien (uferWand-Funktion gelöscht, See-Wand-Stroke, Mündungs-Rinnen-Stroke). Diese erzeugten den sichtbaren Saum/Kontur.
+  * WEICHER UFERHANG: uferBoeschung neu = 9 sehr dünne, niedrig-alpha Schatten-Ringe (außen breit -> innen schmal), gestapelt zu einem glatten Schatten-Halo ohne Banding/Kontur. See-Böschung analog (8 gefederte Ringe statt 3 harter Bänder).
+  * INEINANDER FLIESSEND: (a) Bach-Mündung vertieft sich jetzt (klar -> dunkel wie der Fluss) über die letzten ~11 Mittelpunkte per Längs-Gradient -> der klare Bach fließt sichtbar in den Fluss statt hell daneben zu enden. (b) Fluss->See nutzt weiter die Mündungs-Rinne (gleiche Tiefen-Palette), jetzt ohne harte Wand-Linie. Bach-Mündungs-Schaum stark reduziert (zarter Hauch statt heller Blobs).
+  * Tiefen-Verlauf (tiefeFarbe/kanalTiefe) bleibt, trägt jetzt allein die Tiefe; Ränder laufen weich aus. Verifiziert per Screenshots (Bach->Fluss, Fluss->See): keine Kontur mehr, Gewässer gehen ineinander über. tsc grün.
 - Phaser 3 (3.90) statt Phaser 4 gepinnt - der Masterprompt nennt ausdrücklich Phaser 3.
 - Dependencies: phaser (Spec), vite/typescript/vitest (Spec Teil 3.1). Keine weiteren.
 - CLAUDE.md im Repo war eine generische Vorlage; durch den hochgeladenen Arbeitskodex des Autors ersetzt.
