@@ -1,3 +1,9 @@
 node_modules/
 dist/
 .vite/
+
+# Temporäre WIP-Gerüste (Pferd-Render-Probe, Runde 66) - werden nach Abschluss entfernt
+pferdtest.html
+scripts/_grab_tmp.mjs
+src/gfx/_kandidat.ts
+src/gfx/_pferdprobe.ts
