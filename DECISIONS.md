@@ -649,3 +649,8 @@
   * TIEFE SICHTBARER: See-Spiegelung + Schimmer (wasserGlanz 1.15->0.5) gedämpft, damit der Tiefen-Verlauf dominiert (Mitte dunkel).
   * ÜBERGÄNGE: alle Wasser nutzen jetzt DIESELBE Tiefen-Palette -> Fluss/See passen farblich zusammen; Bach mündet mit Schaum in den Fluss, Fluss (vom See gedeckt) in den See.
   * Verifiziert: ruhiger klarer Bach in der Rinne, Fluss mit sattem Tiefen-Verlauf ohne Upstream-Drift, See tief mit feinem Verlauf. tsc grün.
+- Runde 65 (fließender Übergang Fluss -> See nach Autorfeedback "keine fließenden übergänge zwischen den flüssen und dem see"):
+  * PROBLEM reproduziert: Der See deckt das Fluss-Ende; dazwischen lag der braune See-Böschungs-Ring -> Fluss und See sahen wie zwei getrennte Gewässer mit Land dazwischen aus.
+  * FIX: neue zeichneMuendungSee() legt eine Mündungs-Rinne über genau diese Lücke. Sammelt die Fluss-Mittelpunkte im Eintritts-Korridor (See-Ellipse 0.13..1.36) und füllt sie mit kanalTiefe()/tiefeFarbe() - DERSELBEN Tiefen-Palette wie Fluss UND See. So taucht die tiefe Fluss-Rinne nahtlos in die See-Mitte ein; dezenter Wand-Schatten an den Flanken (Grube). Wird NACH dem See gezeichnet, überdeckt den braunen Ring nur am Eintritt.
+  * Schmale, tiefe Rinne (Delta-Weitung nur 1.32x) statt breitem Delta gewählt -> die dunkle Mitte verbindet Fluss-Tiefe mit See-Mitte, statt einen hellen Flach-Fleck zu erzeugen. Leicht änderbar (wAt-Faktor, r2-Schwellen).
+  * Verifiziert per Screenshot: Fluss fließt jetzt als durchgehende, tiefer werdende Rinne in den See (vorher Land dazwischen). tsc grün, 181 Tests grün.

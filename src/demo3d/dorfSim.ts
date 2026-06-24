@@ -1303,6 +1303,7 @@ function frame(now: number): void {
     ufer(); ctx.save(); ctx.clip(); ctx.fillStyle = `rgba(150,166,186,${0.06 + (regenAn ? wetter * 0.12 : 0.04)})`; ctx.fillRect(see.cx - see.rx, see.cy - see.ry, see.rx * 2, see.ry * 2); ctx.restore();   // Dunst über dem Wasser
     ctx.restore();
   }
+  if (bereit) zeichneMuendungSee();   // fließender Übergang Fluss -> See (über die braune Lücke)
 
   // 2) Pfützen: schmale Wasserlachen AM Pfad entlang (gedreht), mit nassem Schlammrand
   //    der sie in den Weg einbettet; darin dunkler Spiegel, Himmelstreifen, Glanz, Tropfen-Ringe
@@ -1707,6 +1708,38 @@ function zeichneFluss(now: number, wd: number): void {
     for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(s.x + k * 2.5, s.y); ctx.quadraticCurveTo(s.x + k * 2.5 + bend * 0.5, s.y - s.h * 0.6, s.x + k * 2.5 + bend, s.y - s.h); ctx.stroke(); }
     ctx.fillStyle = '#5a3c22'; ctx.fillRect(s.x + bend - 1.2, s.y - s.h, 2.4, 7);
   }
+  ctx.restore();
+}
+
+// ---------- Mündung Fluss -> See: fließender Übergang (schließt die braune Böschungs-Lücke) ----------
+// Der See deckt das Fluss-Ende, dazwischen lag ein brauner Böschungs-Ring -> kein Übergang.
+// Hier wird eine Mündungs-Rinne über genau diese Lücke gelegt: Wasser in DERSELBEN Tiefen-Palette
+// (tiefeFarbe) wie Fluss UND See, als Delta zum See hin weiter werdend. So fließt das Flusswasser
+// nahtlos ins Seewasser - die Rinne überdeckt den braunen Ring nur dort, wo der Fluss eintritt.
+function zeichneMuendungSee(): void {
+  // Fluss-Punkte im Eintritts-Korridor sammeln: vom Ufer (außen) bis ins mittlere Seewasser.
+  const pts: FlussP[] = [];
+  for (const m of flussMitte) {
+    const ex = (m.x - see.cx) / (see.rx * 1.36), ey = (m.y - see.cy) / (see.ry * 1.36), r2 = ex * ex + ey * ey;
+    if (r2 <= 1 && r2 >= 0.13) pts.push(m);   // vom Ufer bis tief ins Seewasser -> tiefe Rinne taucht in die See-Mitte ein
+  }
+  if (pts.length < 3) return;
+  let sicht = false;
+  for (const m of pts) { if (m.x > camX - 80 && m.x < camX + W + 80 && m.y > camY - 80 && m.y < camY + H + 80) { sicht = true; break; } }
+  if (!sicht) return;
+  const N = pts.length;
+  const wAt = (i: number): number => pts[i].hw * (1 + 0.32 * (i / (N - 1)));   // Delta: zum See hin nur leicht weiter (schmale, tiefe Rinne)
+  const rinne = (frac: number): void => {
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) { const m = pts[i], w = wAt(i) * frac, x = m.x + m.nx * w, y = m.y + m.ny * w; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    for (let i = N - 1; i >= 0; i--) { const m = pts[i], w = wAt(i) * frac; ctx.lineTo(m.x - m.nx * w, m.y - m.ny * w); }
+    ctx.closePath();
+  };
+  ctx.save(); ctx.translate(-camX, -camY);
+  rinne(1); ctx.save(); ctx.clip();
+  kanalTiefe(rinne, 16, false);                                                  // Wasser: gleiche Tiefen-Palette wie Fluss & See -> nahtlos
+  rinne(1); ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(0,0,0,0.32)'; ctx.lineWidth = 11; ctx.stroke();   // innerer Wand-Schatten (Clip zeigt nur den Innensaum) -> Grube
+  ctx.restore();
   ctx.restore();
 }
 
