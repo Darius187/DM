@@ -90,6 +90,38 @@ function baueSee(): void {
 }
 baueSee();
 
+// ---------- Wellenfeld-Simulation (2D-Höhenfeld) für den See: ECHTE, sich ausbreitende Ringe ----------
+// Klassischer Ripple-Algorithmus: jede Zelle mittelt ihre Höhe aus den Nachbarn minus ihrem
+// vorigen Wert, gedämpft. Störungen (Regen, watender Held) erzeugen Wellen, die real auslaufen.
+// Aus den Höhen-Gradienten wird ein Specular gezeichnet (Hänge Richtung Licht hell, Täler dunkel).
+const WF_RES = 7;                                            // px je Gitterzelle
+const wfX0 = see.cx - see.rx - 16, wfY0 = see.cy - see.ry - 16;
+const wfW = Math.ceil((see.rx * 2 + 32) / WF_RES), wfH = Math.ceil((see.ry * 2 + 32) / WF_RES);
+let wfA = new Float32Array(wfW * wfH), wfB = new Float32Array(wfW * wfH);
+function wfStep(): void {
+  for (let y = 1; y < wfH - 1; y++) { const r = y * wfW; for (let x = 1; x < wfW - 1; x++) { const i = r + x; wfB[i] = ((wfA[i - 1] + wfA[i + 1] + wfA[i - wfW] + wfA[i + wfW]) * 0.5 - wfB[i]) * 0.966; } }
+  const t = wfA; wfA = wfB; wfB = t;
+}
+function wfStoer(wx: number, wy: number, amp: number): void {
+  const gx = Math.round((wx - wfX0) / WF_RES), gy = Math.round((wy - wfY0) / WF_RES);
+  if (gx > 1 && gx < wfW - 2 && gy > 1 && gy < wfH - 2) wfA[gy * wfW + gx] += amp;
+}
+// Wellen rendern (im See-Clip aufrufen): Specular aus dem Höhen-Gradienten -> sichtbare Ringe.
+function wfZeichne(): void {
+  for (let y = 1; y < wfH - 1; y++) {
+    const wy = wfY0 + y * WF_RES; if (wy < camY - WF_RES || wy > camY + H + WF_RES) continue;
+    const r = y * wfW;
+    for (let x = 1; x < wfW - 1; x++) {
+      const wx = wfX0 + x * WF_RES; if (wx < camX - WF_RES || wx > camX + W + WF_RES) continue;
+      const i = r + x, lum = -((wfA[i + 1] - wfA[i - 1]) + (wfA[i + wfW] - wfA[i - wfW])) * 0.7;   // Licht von NW
+      if (lum > 0.22) ctx.fillStyle = `rgba(204,222,240,${Math.min(0.55, lum * 0.11)})`;
+      else if (lum < -0.22) ctx.fillStyle = `rgba(6,14,22,${Math.min(0.45, -lum * 0.09)})`;
+      else continue;
+      ctx.fillRect(wx, wy, WF_RES + 1, WF_RES + 1);
+    }
+  }
+}
+
 // ---------- Fluss (fließendes Wasser) + Brücke ----------
 // Der Fluss strömt von oben quer über den Weg und mündet unten in den See. Wo er
 // den Weg kreuzt, liegt eine BRÜCKE (Held läuft drüber, tiefensortiert). Wasser
@@ -829,7 +861,7 @@ function regenAufschlaege(dt: number): void {
   }
   // Regen-Ringe auf dem See (im Sichtfeld)
   if (Math.abs(see.cx - camX - W / 2) < W / 2 + see.rx && Math.abs(see.cy - camY - H / 2) < H / 2 + see.ry) {
-    let n = wetter * 14 * dt; while (n-- > 0 || Math.random() < n + 1) { if (n < -1) break; const a = Math.random() * 7, rr = Math.sqrt(Math.random()); seeRinge.push({ x: see.cx + Math.cos(a) * see.rx * rr * 0.92, y: see.cy + Math.sin(a) * see.ry * rr * 0.92, t: 0, leben: 0.8 + Math.random() * 0.5, rmax: 5 + Math.random() * 9 }); }
+    let n = wetter * 14 * dt; while (n-- > 0 || Math.random() < n + 1) { if (n < -1) break; const a = Math.random() * 7, rr = Math.sqrt(Math.random()), dx = see.cx + Math.cos(a) * see.rx * rr * 0.92, dy = see.cy + Math.sin(a) * see.ry * rr * 0.92; seeRinge.push({ x: dx, y: dy, t: 0, leben: 0.8 + Math.random() * 0.5, rmax: 5 + Math.random() * 9 }); wfStoer(dx, dy, -1.6); }   // Regentropfen stört auch das Wellenfeld
   }
   for (let i = seeRinge.length - 1; i >= 0; i--) { seeRinge[i].t += dt; if (seeRinge[i].t > seeRinge[i].leben) seeRinge.splice(i, 1); }
 }
@@ -1020,6 +1052,8 @@ async function init(): Promise<void> {
     malLiege: (): void => { ctx.fillStyle = '#33424e'; ctx.fillRect(0, 0, W, 420); for (let i = 0; i < arten.length; i++) { const st = arten[i].wald, li = arten[i].liege, c = i * 156 + 6; ctx.drawImage(st, c, 10, 150, 150); ctx.drawImage(li, c, 170, 150, 150); ctx.strokeStyle = '#8fbf7a'; ctx.strokeRect(c, 10, 150, 150); ctx.strokeRect(c, 170, 150, 150); } ctx.fillStyle = '#e8dcc0'; ctx.font = '13px Georgia'; ctx.fillText('oben: stehend   unten: gefällt (Liege-Sprite)', 8, 340); },
     zeigLiege: (blight = false): { x: number; y: number } => { const b = baeume.find((t) => !t.fall && !t.weg && t.blight === blight && t.skala > 0.7) || baeume.find((t) => !t.fall && !t.weg && t.blight === blight); if (!b) return { x: 0, y: 0 }; starteFall(b, 1); b.fall!.gelandet = true; b.fall!.winkel = FALL_ZIEL; b.fall!.winkelV = 0; held().x = b.x - 120; held().y = b.y + 50; return { x: b.x, y: b.y }; },
     zumBach: (): { x: number; y: number } => { const m = bachMitte[Math.floor(bachMitte.length * 0.4)]; held().x = m.x - 40; held().y = m.y + 20; return { x: m.x, y: m.y }; },
+    zumSee: (vor = 0): { x: number; y: number } => { held().x = see.cx; held().y = see.cy + vor; return { x: see.cx, y: see.cy }; },
+    seeTropfen: (n = 5): void => { for (let i = 0; i < n; i++) wfStoer(see.cx + (Math.random() - 0.5) * see.rx, see.cy + (Math.random() - 0.5) * see.ry, -9); },
     zumMoor: (): { x: number; y: number; schilf: number; nebel: number } => { let bx = WELT_W / 2, by = WELT_H / 2, bd = -1; for (let y = 120; y < WELT_H - 120; y += 50) for (let x = 120; x < WELT_W - 120; x += 50) { if (aufPfad(x, y) || nahSee(x, y) || nahFluss(x, y) || biomAt(x, y) !== 'moor') continue; const d = moorNoise(x, y); if (d > bd) { bd = d; bx = x; by = y; } } held().x = bx; held().y = by; return { x: bx, y: by, schilf: moorSchilf.length, nebel: moorNebel.length }; },
     dichterWald: (): { x: number; y: number } => { let bx = WELT_W / 2, by = WELT_H / 2, bd = -1; for (let y = 120; y < WELT_H - 120; y += 60) for (let x = 120; x < WELT_W - 120; x += 60) { if (aufPfad(x, y) || nahSee(x, y) || nahFluss(x, y)) continue; if (biomAt(x, y) !== 'wald') continue; const d = dichteNoise(x, y); if (d > bd) { bd = d; bx = x; by = y; } } return { x: bx, y: by }; },
     zurBruecke: (vorher = 80): void => { held().x = bruecke.cx - bruecke.ux * vorher; held().y = bruecke.cy - bruecke.uy * vorher; },
@@ -1158,6 +1192,8 @@ function frame(now: number): void {
     regenAufschlaege(dt);
     for (const w of wesen) aktualisiereWesen(w, dt, now);
     huetteDach += ((imHausInnen(held().x, held().y) ? 1 : 0) - huetteDach) * Math.min(1, dt * 6);   // Dach beim Betreten ausblenden
+    wfStep();                                                                                       // Wellenfeld (See) weiterrechnen
+    for (const wsn of wesen) if (wsn.art !== 'huhn' && imSee(wsn.x, wsn.y)) wfStoer(wsn.x, wsn.y, -2.4);   // watender Held/NPC erzeugt Wellen
     // Bäume fallen + Blätter im Sturm; im Unwetter knickt selten einer um
     for (const b of baeume) {
       const f = b.fall;
@@ -1241,11 +1277,13 @@ function frame(now: number): void {
   if (Math.abs(see.cx - camX - W / 2) < W / 2 + see.rx + 80 && Math.abs(see.cy - camY - H / 2) < H / 2 + see.ry + 80) {
     ctx.save(); ctx.translate(-camX, -camY);
     const ufer = (): void => { ctx.beginPath(); ctx.moveTo(seeUfer[0].x, seeUfer[0].y); for (let i = 1; i < seeUfer.length; i++) ctx.lineTo(seeUfer[i].x, seeUfer[i].y); ctx.closePath(); };
-    ctx.save(); ctx.translate(see.cx, see.cy); ctx.scale(1.1, 1.12); ctx.translate(-see.cx, -see.cy); ufer(); ctx.fillStyle = 'rgba(24,20,13,0.5)'; ctx.fill(); ctx.restore();   // nasser Schlammsaum
+    const seeBank = (s: number, c: string): void => { ctx.save(); ctx.translate(see.cx, see.cy); ctx.scale(s, s); ctx.translate(-see.cx, -see.cy); ufer(); ctx.fillStyle = c; ctx.fill(); ctx.restore(); };
+    seeBank(1.17, 'rgba(36,32,20,0.3)'); seeBank(1.10, 'rgba(24,20,12,0.42)'); seeBank(1.04, 'rgba(10,8,5,0.5)');   // GRUBE: Böschung -> See liegt vertieft
     ufer(); ctx.save(); ctx.clip();
     const wg = ctx.createRadialGradient(see.cx, see.cy, 12, see.cx, see.cy, Math.max(see.rx, see.ry));
     wg.addColorStop(0, '#070d12'); wg.addColorStop(0.68, '#0e1a24'); wg.addColorStop(1, '#22303a');   // Mitte tief/dunkel, Rand flacher/heller
     ctx.fillStyle = wg; ctx.fillRect(see.cx - see.rx * 1.3, see.cy - see.ry * 1.3, see.rx * 2.6, see.ry * 2.6);
+    ufer(); ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 16; ctx.stroke();                          // innerer Wand-Schatten der Böschung (Tiefe)
     // Option 1 (2D): Wasser bleibt dunkel/tief; dezente Himmel-Spiegelung + schmale Mond-Bahn +
     // bewegter Kaustik-Schimmer (die eigentliche "Three.js-Wasser"-Bewegung)
     const rg = ctx.createLinearGradient(0, see.cy - see.ry, 0, see.cy + see.ry);
@@ -1257,6 +1295,7 @@ function frame(now: number): void {
     mb.addColorStop(0, 'rgba(184,202,226,0.2)'); mb.addColorStop(1, 'rgba(184,202,226,0)');
     ctx.fillStyle = mb; ctx.fillRect(see.cx - see.rx, see.cy - see.ry, see.rx * 2, see.ry * 2); ctx.restore();
     wasserGlanz(see.cx - see.rx, see.cy - see.ry, see.rx * 2, see.ry * 2, 0, 0, now, 1.15, 0.5);
+    wfZeichne();                                                                              // ECHTE Wellen-Simulation (Ringe von Regen + watendem Helden)
     for (const r of seeRinge) { const f = r.t / r.leben, rad = 1 + r.rmax * f, a = (1 - f) * 0.4; ctx.strokeStyle = `rgba(180,198,220,${a})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(r.x, r.y, rad, rad * 0.55, 0, 0, 7); ctx.stroke(); }
     ctx.restore();
     for (const ro of seeRosen) { ctx.save(); ctx.translate(ro.x, ro.y); ctx.fillStyle = '#2c4626'; ctx.beginPath(); ctx.ellipse(0, 0, 9 * ro.s, 5.5 * ro.s, 0, 0.5, Math.PI * 2 + 0.2); ctx.fill(); ctx.fillStyle = '#37562f'; ctx.beginPath(); ctx.ellipse(-1, -1, 5 * ro.s, 3 * ro.s, 0, 0, 7); ctx.fill(); if (ro.bluete) { ctx.fillStyle = '#e8e0ea'; ctx.beginPath(); ctx.arc(2 * ro.s, -1, 2 * ro.s, 0, 7); ctx.fill(); } ctx.restore(); }   // Seerosen
@@ -1567,6 +1606,20 @@ function zeichneHuetteAussen(now: number): void {
   for (let i = 0; i < 4; i++) { const t2 = now / 900 + i * 0.8, sy2 = peak + 18 - (t2 % 2) * 40, a = (1 - (t2 % 2) / 2) * 0.3 * (1 - huetteDach); ctx.fillStyle = `rgba(190,190,196,${a})`; ctx.beginPath(); ctx.arc(cx + hb * 0.47 + Math.sin(t2 * 2) * 6, sy2, 4 + (t2 % 2) * 4, 0, 7); ctx.fill(); }   // Rauch
 }
 
+// ---------- Wasser-GRUBE (Tiefe simulieren wie die Schnee-Stufen): Böschung + Wand-Schatten ----------
+// uferBoeschung: außen flach ins Gras, nach innen dunkler -> das Gelände fällt in eine Rinne ab.
+// uferWand (im Clip): dunkler Saum am Innenrand = beschattete Unterwasser-Böschung. Zusammen liegt
+// das Wasser sichtbar VERTIEFT (in einer Grube), nicht flach auf dem Rasen.
+function uferBoeschung(pfad: (e: number) => void): void {
+  pfad(20); ctx.fillStyle = 'rgba(36,32,20,0.3)'; ctx.fill();
+  pfad(13); ctx.fillStyle = 'rgba(24,20,12,0.4)'; ctx.fill();
+  pfad(6); ctx.fillStyle = 'rgba(10,8,5,0.5)'; ctx.fill();
+  pfad(15); ctx.strokeStyle = 'rgba(120,134,96,0.18)'; ctx.lineWidth = 2; ctx.stroke();   // dünne belichtete Gras-Lippe oben
+}
+function uferWand(pfad: (e: number) => void, breite = 13, alpha = 0.42): void {
+  ctx.lineJoin = 'round'; ctx.strokeStyle = `rgba(0,0,0,${alpha})`; ctx.lineWidth = breite; pfad(0); ctx.stroke();   // halb außerhalb -> Clip lässt nur den Innensaum
+}
+
 // ---------- Bach zeichnen: KRISTALLKLAR - Kiesbett sichtbar + dünnes klares Wasser + Licht-Kaustik ----------
 function zeichneBach(now: number): void {
   let sicht = false;
@@ -1575,7 +1628,7 @@ function zeichneBach(now: number): void {
   for (const st of bachStreif) { st.s += st.spd / 60; if (st.s > bachLen) st.s -= bachLen; }
   ctx.save(); ctx.translate(-camX, -camY);
   const ufer = (extra: number): void => { ctx.beginPath(); for (let i = 0; i < bachMitte.length; i++) { const m = bachMitte[i], x = m.x + m.nx * (m.hw + extra), y = m.y + m.ny * (m.hw + extra); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } for (let i = bachMitte.length - 1; i >= 0; i--) { const m = bachMitte[i]; ctx.lineTo(m.x - m.nx * (m.hw + extra), m.y - m.ny * (m.hw + extra)); } ctx.closePath(); };
-  ufer(6); ctx.fillStyle = 'rgba(40,34,22,0.4)'; ctx.fill();                                       // nasser Kies-/Erd-Saum
+  uferBoeschung(ufer);                                                                             // GRUBE: Böschung -> Bach liegt in einer Rinne
   ufer(0); ctx.save(); ctx.clip();
   ctx.fillStyle = '#6f6a58'; ctx.fillRect(camX, camY, W, H);                                        // 1) KIESBETT-Grundton
   // Kiesel mit REFRAKTIONS-WOBBLE: Wellen wandern flussabwärts (s - time) und verschieben das Bett quer -> Blick durch fließendes Wasser
@@ -1595,6 +1648,7 @@ function zeichneBach(now: number): void {
     if (ph2 < -0.5) { const a = (-ph2 - 0.5) / 0.5 * 0.12; ctx.strokeStyle = `rgba(30,70,70,${a})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(m.x - m.nx * m.hw * 0.9, m.y - m.ny * m.hw * 0.9); ctx.lineTo(m.x + m.nx * m.hw * 0.9, m.y + m.ny * m.hw * 0.9); ctx.stroke(); }   // dunkle Wellentäler
   }
   for (const st of bachStreif) { const m = bachAt(st.s), cx = m.x + m.nx * st.off * m.hw, cy = m.y + m.ny * st.off * m.hw; ctx.strokeStyle = `rgba(226,246,246,${st.a})`; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - m.ux * st.len, cy - m.uy * st.len); ctx.stroke(); }   // 3) Licht-Kaustik flussabwärts
+  uferWand(ufer, 8, 0.3);                                                                            // innerer Wand-Schatten (Tiefe), beim klaren Bach dezenter
   ctx.restore();
   ufer(0); ctx.strokeStyle = 'rgba(222,242,242,0.3)'; ctx.lineWidth = 1.6; ctx.stroke();             // helle Schaum-Uferkante
   for (const stn of bachSteine) {                                                                   // 4) Steine + Schaum
@@ -1604,6 +1658,8 @@ function zeichneBach(now: number): void {
     const m = stn.m;
     for (let k = 0; k < 4; k++) { const tt = now / 130 + k * 1.2, dd = stn.r * 0.5 + k * 2.4, lat = Math.sin(tt) * stn.r * 0.5, fx = stn.x + m.ux * dd + m.nx * lat, fy = stn.y + m.uy * dd + m.ny * lat, a = (1 - k / 4) * 0.7; ctx.fillStyle = `rgba(236,246,246,${a})`; ctx.beginPath(); ctx.ellipse(fx, fy, 2.2 - k * 0.3, 1.6 - k * 0.2, 0, 0, 7); ctx.fill(); }
   }
+  const mu = bachMitte[bachMitte.length - 1];                                                        // MÜNDUNG: Schaum, wo der Bach in den Fluss läuft (Nebenfluss-Effekt)
+  if (mu.x > camX - 30 && mu.x < camX + W + 30 && mu.y > camY - 30 && mu.y < camY + H + 30) for (let k = 0; k < 7; k++) { const t2 = now / 150 + k * 0.9, dd = (k % 4) * 5, fx = mu.x + mu.ux * dd + Math.sin(t2 * 2 + k) * 7, fy = mu.y + mu.uy * dd + Math.cos(t2 + k) * 5; ctx.fillStyle = `rgba(238,248,248,${0.5 - (k % 4) * 0.08})`; ctx.beginPath(); ctx.ellipse(fx, fy, 3 - (k % 4) * 0.4, 2, 0, 0, 7); ctx.fill(); }
   ctx.restore();
 }
 
@@ -1622,12 +1678,13 @@ function zeichneFluss(now: number, wd: number): void {
     for (let i = flussMitte.length - 1; i >= 0; i--) { const m = flussMitte[i]; ctx.lineTo(m.x - m.nx * (m.hw + extra), m.y - m.ny * (m.hw + extra)); }
     ctx.closePath();
   };
-  ufer(9); ctx.fillStyle = 'rgba(24,20,13,0.5)'; ctx.fill();                                    // nasser Schlammsaum
+  uferBoeschung(ufer);                                                                          // GRUBE: Böschung -> Fluss liegt vertieft (nicht auf dem Rasen)
   ufer(0); ctx.save(); ctx.clip();
   ctx.fillStyle = '#0c1820'; ctx.fillRect(camX, camY, W, H);                                     // Wasser-Grundfarbe
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';                                                 // tiefe, dunkle Mitte
   ctx.strokeStyle = 'rgba(2,8,12,0.5)'; ctx.lineWidth = 30; ctx.beginPath();
   for (let i = 0; i < flussMitte.length; i++) { const m = flussMitte[i]; i ? ctx.lineTo(m.x, m.y) : ctx.moveTo(m.x, m.y); } ctx.stroke();
+  uferWand(ufer, 14, 0.45);                                                                     // innerer Wand-Schatten der Böschung (Tiefe)
   wasserGlanz(camX, camY, W, H, 0.6, 0.85, now, 0.8);                                            // Kaustik-Schimmer flussabwärts (gleicher Look wie der See)
   for (const st of flussStreif) {                                                               // scrollende Fließ-Strähnen
     const m = flussAt(st.s), cx = m.x + m.nx * st.off * m.hw, cy = m.y + m.ny * st.off * m.hw;
