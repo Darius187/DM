@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { starteWelt, setRegler } from '../demo3d/dorfSim';
+import { starteWelt, setRegler, setHybrid, heldSchirm } from '../demo3d/dorfSim';
+import { drawHeld, HELD_FELD, HELD_MARGIN } from '../gfx/heldArt';
 
 // ANFANGSKARTE (Hybrid-Port Stufe 1, Runde 69): Die komplette Canvas-Welt aus dorfSim
 // (Wetter, Tageszeit, Bäume + Fäll-Animation, Gras, Wasser/Fluss/Bach/See/Brücke, Moor,
@@ -10,7 +11,11 @@ export class AnfangskarteSzene extends Phaser.Scene {
   private weltCanvas!: HTMLCanvasElement;
   private weltBild!: Phaser.GameObjects.Image;
   private reglerDiv?: HTMLDivElement;
+  private figCanvas!: HTMLCanvasElement;
+  private figCtx!: CanvasRenderingContext2D;
+  private heldSprite!: Phaser.GameObjects.Image;
   private readonly texKey = 'anfWelt';
+  private readonly heldKey = 'anfHeld';
 
   constructor() { super('Anfangskarte'); }
 
@@ -25,6 +30,15 @@ export class AnfangskarteSzene extends Phaser.Scene {
     this.textures.addCanvas(this.texKey, this.weltCanvas);
     this.weltBild = this.add.image(0, 0, this.texKey).setOrigin(0, 0).setScrollFactor(0).setDepth(-1000);
     this.passe();
+
+    // HYBRID: dorfSim bewegt den Helden (Kollision/Kamera), zeichnet ihn aber NICHT mehr.
+    // Die Spielfigur ist hier ein eigenes Phaser-Spielobjekt über dem Canvas-Boden.
+    setHybrid(true);
+    this.figCanvas = document.createElement('canvas'); this.figCanvas.width = this.figCanvas.height = HELD_FELD;
+    this.figCtx = this.figCanvas.getContext('2d')!;
+    if (this.textures.exists(this.heldKey)) this.textures.remove(this.heldKey);
+    this.textures.addCanvas(this.heldKey, this.figCanvas);
+    this.heldSprite = this.add.image(0, 0, this.heldKey).setScrollFactor(0).setDepth(100).setVisible(false);
 
     this.add.text(12, 10, 'ANFANGSKARTE - Canvas-Welt im Spiel (WASD bewegen, F fällen, E Pferd, ESC zurück)', {
       fontFamily: 'serif', fontSize: '13px', color: '#cdd8c4', stroke: '#000', strokeThickness: 3,
@@ -67,5 +81,20 @@ export class AnfangskarteSzene extends Phaser.Scene {
     // Live-Textur jeden Frame aus dem Canvas auffrischen (dorfSim zeichnet asynchron darauf).
     const tex = this.textures.get(this.texKey) as Phaser.Textures.CanvasTexture;
     if (tex && tex.refresh) tex.refresh();
+
+    // HYBRID-Spielfigur: an die dorfSim-Bildschirmposition + Pose setzen (beim Reiten zeichnet der Canvas).
+    const hs = heldSchirm();
+    if (hs.bereit && !hs.reitet) {
+      this.figCtx.setTransform(1, 0, 0, 1, 0, 0);
+      this.figCtx.clearRect(0, 0, HELD_FELD, HELD_FELD);
+      this.figCtx.save(); this.figCtx.translate(HELD_MARGIN, HELD_MARGIN);
+      drawHeld(this.figCtx, 'leder', hs.dir, hs.frame, 'axt');
+      this.figCtx.restore();
+      (this.textures.get(this.heldKey) as Phaser.Textures.CanvasTexture).refresh();
+      // dorfSim zeichnet figCv mittig bei (px, py-12) -> Sprite-Mittelpunkt dorthin
+      this.heldSprite.setPosition(hs.x, hs.y - 12).setVisible(true);
+    } else {
+      this.heldSprite.setVisible(false);
+    }
   }
 }

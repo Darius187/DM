@@ -750,6 +750,7 @@ const PFERD_SK = 1.5;
 const pferdCv = document.createElement('canvas'); pferdCv.width = Math.ceil(PFERD_W * PFERD_SK); pferdCv.height = Math.ceil(PFERD_H * PFERD_SK);
 const pferdCtx = pferdCv.getContext('2d')!;
 let reitet = false;          // sitzt der Held auf dem Pferd?
+let hybrid = false;          // Hybrid-Modus: den Helden NICHT im Canvas zeichnen - die Phaser-Szene legt das Spieler-Sprite darüber
 let heldGeht = false;        // bewegt sich der Held/das Pferd gerade? (Galopp vs. Stand)
 const REIT_TEMPO = 2.0;      // Tempo-Faktor beim Reiten (Pferd schneller als zu Fuss)
 const REIT_DIST = 64;        // Reichweite zum Aufsteigen
@@ -1885,6 +1886,7 @@ function zeichnePferd(w: Wesen, px: number, py: number): void {
 function zeichneWesen(w: Wesen): void {
   const px = sx(w.x), py = sy(w.y);
   if (w.art === 'held' && reitet) return;        // beim Reiten zeichnet das Pferd den Reiter mit
+  if (w.art === 'held' && hybrid) return;        // Hybrid: die Phaser-Szene zeichnet den Helden als Spielobjekt
   if (w.art === 'pferd') { zeichnePferd(w, px, py); return; }
   if (w.art === 'huhn') {
     const flip = w.dir >= 3 && w.dir <= 5;                          // nach links schauen
@@ -1920,6 +1922,15 @@ export function starteWelt(zielCanvas: HTMLCanvasElement): void {
   void init();
   requestAnimationFrame(frame);
 }
+// Hybrid-Modus (Phaser-Szene zeichnet die Spielfigur). Bewegung/Kollision/Kamera bleiben in dorfSim.
+export function setHybrid(on: boolean): void { hybrid = on; }
+// Bildschirm-Position + Pose des Helden (für das Phaser-Spieler-Sprite über dem Canvas-Boden).
+export function heldSchirm(): { x: number; y: number; dir: number; frame: number; reitet: boolean; bereit: boolean } {
+  if (!bereit) return { x: 0, y: 0, dir: 0, frame: 0, reitet: false, bereit: false };
+  const h = held();
+  return { x: sx(h.x), y: sy(h.y), dir: h.dir, frame: h.hackT > 0 ? 2 : Math.floor(h.frameT) % 4, reitet, bereit: true };
+}
+
 // Regler-Werte von außen setzen (Dev-Konsole im Spiel statt der dorf.html-DOM-Slider).
 export function setRegler(key: string, v: number): void {
   switch (key) {
