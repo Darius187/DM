@@ -11,6 +11,7 @@ import { BloodFlow } from '../systems/BloodFlow';
 import { NebelFratzen } from '../systems/NebelFratzen';
 import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
+import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { wetter } from '../logic/wetter';
 import { SchattenManager, mischFarbe, type Occluder, type Licht } from '../systems/SchattenManager';
 import { LichtPanel } from '../ui/lichtPanel';
@@ -139,6 +140,7 @@ export class WorldScene extends CombatScene {
   relicChoice: string | null = null; // gelesen ab Phase 6 (Dorf-Dialoge) und beim Speichern
 
   private tileImages: Phaser.GameObjects.Image[] = [];
+  private fluessigkeitsShaders: Phaser.GameObjects.Shader[] = [];   // Liquid-Shader-Overlays (Wasser/Blut), Runde 71
   private breakableEnts: BreakableEntity[] = [];
   private worldGfx!: Phaser.GameObjects.Graphics; // Truhen, Brunnen, Fackeln
   private bodenGfx!: Phaser.GameObjects.Graphics;  // Blutspuren AUF dem Boden (unter den Figuren)
@@ -1420,6 +1422,7 @@ export class WorldScene extends CombatScene {
     if (FUERSTENTUM.some((g) => g.id === id)) this.flags[`besucht_${id}`] = true; // Karte: erforscht
     this.unloadAreaObjects();
     this.loadAreaObjects(a);
+    this.spawneFluessigkeitsShader(a);   // additiver Liquid-Overlay-Test (Runde 71)
     const s = spawnAt ?? a.spawn;
     this.px = s.x;
     this.py = s.y;
@@ -1713,9 +1716,46 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // Additiver Liquid-Shader-Overlay (Runde 71, Probe aus fluss.html): legt über
+  // zusammenhängende Wasser-/Blut-Flächen je ein Phaser-Shader-Quad (Boden-Tiefe).
+  // Die a.map-IDs bleiben (Kollision/Geschoss-Durchflug unverändert) - es werden
+  // nur die alten Flüssigkeits-Tile-Sprites in der Region entfernt (kein Doppel-
+  // Render). Komplett über FLUSS_SHADER abschaltbar.
+  private spawneFluessigkeitsShader(a: AreaData): void {
+    if (!FLUSS_SHADER.aktiv) return;
+    const auftraege: Array<{ id: number; preset: FluessigkeitPreset }> = [];
+    if (FLUSS_SHADER.wasser) auftraege.push({ id: T.WATER, preset: WASSER_PRESET });
+    if (FLUSS_SHADER.blut) auftraege.push({ id: T.BLUTSTROM, preset: BLUT_PRESET });
+    if (auftraege.length === 0) return;
+
+    for (const { id, preset } of auftraege) {
+      const regionen = findeFluessigkeitsRegionen(a.map, id, 2); // Einzelkacheln überspringen
+      for (const r of regionen) {
+        // Alte Flüssigkeits-Tile-Sprites (inkl. Ufer-Säume) der Region entfernen
+        const wegTags = new Set<string>();
+        for (let ty = r.y0; ty <= r.y1; ty++) {
+          for (let tx = r.x0; tx <= r.x1; tx++) {
+            if (a.map[ty]?.[tx] === id) wegTags.add(`${tx},${ty}`);
+          }
+        }
+        for (const img of this.tileImages) {
+          const tag = img.getData?.('kachel') as string | undefined;
+          if (tag && wegTags.has(tag)) img.destroy();
+        }
+        this.tileImages = this.tileImages.filter((img) => img.active);
+        // Shader-Quad über der Bounding-Box (Pixelkoordinaten, Welt-Raum)
+        const px = r.x0 * TILE, py = r.y0 * TILE;
+        const pw = (r.x1 - r.x0 + 1) * TILE, ph = (r.y1 - r.y0 + 1) * TILE;
+        this.fluessigkeitsShaders.push(spawneFluessigkeit(this, { x: px, y: py, w: pw, h: ph }, preset));
+      }
+    }
+  }
+
   private unloadAreaObjects(): void {
     for (const img of this.tileImages) img.destroy();
     this.tileImages = [];
+    for (const s of this.fluessigkeitsShaders) s.destroy();
+    this.fluessigkeitsShaders = [];
     this.wasserBilder = [];
     this.hausBilder = [];
     for (const b of this.breakableEnts) b.img.destroy();

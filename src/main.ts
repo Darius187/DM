@@ -24,6 +24,7 @@ import { StadtProbe } from './scenes/StadtProbe';
 import { StrahlenProbe } from './scenes/StrahlenProbe';
 import { AnfangskarteSzene } from './scenes/AnfangskarteSzene';
 import { TUNING } from './logic/tuning';
+import { FLUSS_SHADER } from './world/fluessigkeitsShader';
 
 // Bildgröße (Runde 27): KEIN gestrecktes Canvas mehr (machte Schrift
 // pixelig) - das Spiel rendert immer in voller Fensterauflösung, der
@@ -49,4 +50,6 @@ game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 if (import.meta.env.DEV) {
   (window as unknown as { __game?: Phaser.Game; __tuning?: typeof TUNING }).__game = game;
   (window as unknown as { __tuning?: typeof TUNING }).__tuning = TUNING;
+  // Liquid-Shader-Overlay live umschaltbar (Wasser/Blut) für die Verifikation
+  (window as unknown as { __fluss?: typeof FLUSS_SHADER }).__fluss = FLUSS_SHADER;
 }
