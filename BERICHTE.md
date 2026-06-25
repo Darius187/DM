@@ -960,3 +960,34 @@ NICHT live verifiziert (Dev-Server bricht in dieser Umgebung beim Laden ab):
 die tatsächliche Optik im Browser. Bitte prüfen: Quest-Verfolger-Aussehen und
 Verschieben, die drei Leben/Mana-Stile durchschalten, das Verschieben von
 Handel/Lager/Dialog.
+
+## Runde 71 - Flüssigkeits-Shader (Wasser + Blut) aus fluss.html portiert
+
+**Auftrag:** Den Fluss-Shader aus fluss.html als wiederverwendbaren Phaser-Shader-
+Overlay portieren - Test für Wasser und Blut. Additiv, ohne Boden-Renderer-Umbau,
+Kollision unangetastet.
+
+**Fertig und verifiziert:**
+- Neues Modul `src/world/fluessigkeitsShader.ts`: der Fragment-Shader 1:1 portiert
+  (Simplex-Noise, Zwei-Phasen-Höhenfeld, Brechung, Fresnel, Glanz, Schaum),
+  Maus-Interaktion raus. Zwei Paletten (Wasser blaugrün / Blut dunkelrot, zäh),
+  zwei Presets, prozedurales Flussbett als Phaser-Canvas-Textur.
+- `src/world/fluessigkeitsRegionen.ts`: zusammenhängende Wasser-/Blutflächen
+  finden (Flood-Fill). 5 Unit-Tests (u. a.: Brücke teilt den Bach in zwei
+  Regionen, damit das Quad die Brücke nicht zudeckt).
+- WorldScene: nur additive Hooks (1 Aufruf + Cleanup + 1 Methode), `loadAreaObjects`/
+  `zeichneKachel` unverändert. Die alten Wasser-Tile-Sprites der Region werden
+  entfernt (kein Doppel-Render), `a.map` bleibt (Kollision/Geschoss-Durchflug
+  unverändert - im Browser geprüft).
+- Im Spiel gesehen: Wasser fließt als 2-Kachel-Bach senkrecht durch Ravensmoor;
+  Blut als zwei Streifen im Bossraum-Gang, korrekt vom Krypta-Licht verdunkelt.
+  Übergänge village->boss->village (echter goArea-Pfad) fehlerfrei. tsc grün,
+  186 Tests grün.
+
+**Standard:** Wasser AN, Blut AUS (Bossraum-BloodFlow bleibt unangetastet) -
+beides per `FLUSS_SHADER` / `window.__fluss` (DEV) umschaltbar.
+
+**Offen:** FPS nur im Software-Renderer (SwiftShader) gemessen - nicht
+repräsentativ; auf echter GPU noch zu bestätigen. Bounding-Box je Fläche -> bei
+nicht-rechteckigen Wasserläufen deckt das Quad etwas Land mit (für Bach/Blutstrom
+exakt).
