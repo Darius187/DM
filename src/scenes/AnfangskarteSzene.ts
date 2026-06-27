@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import type { Enemy } from '../world/Enemy';
 import { starteWelt, setRegler, setKamera, istSolide, weltGrenze, pausiereWelt, flussBahn, bachBahn, seeBereich } from '../demo3d/dorfSim';
-import { WASSER_PRESET, SEE_PRESET, segmentiereBahn, spawneFlussSegment, spawneSee, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
+import { WASSER_PRESET, segmentiereBahn, baueWasserFeld, spawneWasserFeld, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 
 // ANFANGSKARTE (Kampf-Hybrid, Runde 71): die Canvas-Welt (dorfSim: Terrain/Wasser/Bäume/
 // Wetter) ist der HINTERGRUND, darüber läuft das ECHTE Kampfsystem (CombatScene: Spieler +
@@ -21,9 +21,8 @@ export class AnfangskarteSzene extends CombatScene {
   private readonly texKey = 'anfWelt';
   private readonly WASSER_TIEFE = -900;   // über dem Canvas-Boden (-1000), unter Spieler/Gegnern
   private wasserShader: Phaser.GameObjects.Shader[] = [];
-  // Veränderbare Kopien der Presets (Dev-Regler tunen sie live).
+  // Veränderbare Kopie des Presets (Dev-Regler tunen es live).
   private flussPreset: FluessigkeitPreset = { ...WASSER_PRESET };
-  private seePreset: FluessigkeitPreset = { ...SEE_PRESET };
 
   constructor() { super('Anfangskarte'); }
 
@@ -69,13 +68,15 @@ export class AnfangskarteSzene extends CombatScene {
   // Quads liegen in Welt-Koordinaten (wie der Spieler) und folgen so dem Canvas-
   // Boden; die Ränder blenden weich ein (alphaFade), Mitte ist das neue Wasser.
   private baueWasser(): void {
-    // Gröbere Segmente = weniger Shader-Quads (jedes Quad bindet die Pipeline neu,
-    // darum sparsam): ~350px Fluss, ~300px Bach hält die Zahl niedrig, folgt der
-    // Biegung aber noch sauber.
-    for (const seg of segmentiereBahn(flussBahn(), 350)) this.wasserShader.push(spawneFlussSegment(this, seg, this.flussPreset, this.WASSER_TIEFE));
-    for (const seg of segmentiereBahn(bachBahn(), 300)) this.wasserShader.push(spawneFlussSegment(this, seg, this.flussPreset, this.WASSER_TIEFE));
+    // EIN Wasser-Quad über der ganzen Welt, maskiert durchs Wasserfeld: der
+    // Shader nimmt die EXAKTE organische Fluss-/See-Form an (keine Rechteck-
+    // Streifen mehr) und liegt nur dort, wo wirklich Wasser ist. Feine Segmente
+    // sind hier billig (nur Rasterung, kein eigenes Quad) -> glatte Biegungen.
+    const g = weltGrenze();
+    const segmente = [...segmentiereBahn(flussBahn(), 90), ...segmentiereBahn(bachBahn(), 80)];
     const s = seeBereich();
-    this.wasserShader.push(spawneSee(this, s.cx, s.cy, s.rx * 2 * 1.08, s.ry * 2 * 1.08, this.seePreset, this.WASSER_TIEFE));
+    baueWasserFeld(this, 'anf_wasserfeld', segmente, [{ cx: s.cx, cy: s.cy, rx: s.rx, ry: s.ry }], g.breite, g.hoehe, 5);
+    this.wasserShader.push(spawneWasserFeld(this, 'anf_wasserfeld', g.breite, g.hoehe, this.flussPreset, this.WASSER_TIEFE, 13));
   }
 
   // Wasser-Regler (Dev): einen Uniform-Wert live auf alle Wasser-Shader setzen.

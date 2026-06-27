@@ -46,7 +46,8 @@ precision mediump float;
 
 uniform float time;
 uniform vec2  resolution;
-uniform sampler2D iChannel0;
+uniform sampler2D iChannel0;   // Flussbett (Kies/Sand)
+uniform sampler2D iChannel1;   // Wasserfeld: rg = Strömung, b = Maske (Feld-Modus)
 
 uniform float uFlowSpeed;
 uniform float uTurbulence;
@@ -60,6 +61,8 @@ uniform vec3  uColor;
 uniform float uEdgeFade;
 uniform float uShape;       // 0 = Fluss (Ufer links/rechts), 1 = See (ellipse, radial)
 uniform float uAlphaFade;   // 0 = deckend, 1 = Ränder transparent (in Untergrund blenden)
+uniform float uFeld;        // 0 = Geometrie-Modus, 1 = Maske/Strömung aus iChannel1
+uniform float uNoiseScale;  // Rausch-Frequenz im Feld-Modus (Welt-uv ist großflächig)
 
 varying vec2 fragCoord;
 
@@ -93,17 +96,16 @@ float snoise(vec2 v){
 float fbm4(vec2 p){ float s=0.0,a=0.5; for(int i=0;i<4;i++){ s+=a*snoise(p); p*=2.0; a*=0.5; } return s; }
 float fbm2(vec2 p){ float s=0.0,a=0.6; for(int i=0;i<2;i++){ s+=a*snoise(p); p*=2.2; a*=0.5; } return s; }
 
-// Strömungsrichtung, leicht durch Rauschen variiert -> Wirbel statt starrer Fluss
-vec2 flowDir(vec2 uv){
-  vec2 base = uFlowSign * vec2(0.0, 1.0);
+// Strömungsrichtung (base = Hauptrichtung), leicht durch Rauschen variiert
+vec2 flowDir(vec2 uv, vec2 base){
   float ang = snoise(uv*1.3 + time*0.04) * 0.45;
   float c = cos(ang), s = sin(ang);
   return mat2(c,-s,s,c) * base;
 }
 
 // Höhenfeld der Wasseroberfläche (Zwei-Phasen-Trick gegen sichtbares Wiederholen)
-float wh(vec2 uv){
-  vec2 dir = flowDir(uv);
+float wh(vec2 uv, vec2 base){
+  vec2 dir = flowDir(uv, base);
   float t = time * uFlowSpeed;
   float p0 = fract(t), p1 = fract(t+0.5);
   float w0 = 1.0-abs(2.0*p0-1.0), w1 = 1.0-abs(2.0*p1-1.0);
@@ -115,12 +117,11 @@ float wh(vec2 uv){
   return big*0.65 + fine*0.35*uTurbulence;
 }
 
-vec3 normalAt(vec2 uv){
-  float e = 1.6/resolution.y;
-  float hL = wh(uv-vec2(e,0.0));
-  float hR = wh(uv+vec2(e,0.0));
-  float hD = wh(uv-vec2(0.0,e));
-  float hU = wh(uv+vec2(0.0,e));
+vec3 normalAt(vec2 uv, vec2 base, float e){
+  float hL = wh(uv-vec2(e,0.0), base);
+  float hR = wh(uv+vec2(e,0.0), base);
+  float hD = wh(uv-vec2(0.0,e), base);
+  float hU = wh(uv+vec2(0.0,e), base);
   float gx = (hR-hL)/(2.0*e);
   float gy = (hU-hD)/(2.0*e);
   return normalize(vec3(-gx*NSCALE, -gy*NSCALE, 1.0));
@@ -128,54 +129,65 @@ vec3 normalAt(vec2 uv){
 
 void main(){
   vec2 uv = fragCoord / resolution.xy;
-  // Wie tief / wie viel Flüssigkeit quer (0 am trockenen Ufer, 1 in der Mitte).
-  // uEdgeFade=0 -> überall voll (Pfütze/Becken), =1 -> Ufer wie im Fluss.
-  // uShape=0 -> Fluss (Ufer links/rechts an uv.x), =1 -> ellipse (See, radial).
-  float river = smoothstep(0.05,0.22,uv.x) * smoothstep(0.05,0.22,1.0-uv.x);
-  float rad = length((uv-0.5)*2.0);
-  float ellipse = smoothstep(1.0, 0.55, rad);
-  float shape = mix(river, ellipse, uShape);
-  float depth = mix(1.0, shape, uEdgeFade);
-  vec3 n = normalAt(uv);
 
-  // Brechung des Flussbetts
-  vec2 refrUV = uv + n.xy * REFRACT * depth;
-  vec3 bed = texture2D(iChannel0, clamp(refrUV,0.0,1.0)).rgb * uAmbient;
+  // Form (Wassermaske), Strömungs-Basisrichtung, Rausch-uv und Schrittweite -
+  // je nach Modus. FELD-Modus (uFeld=1): Maske + Strömung kommen aus iChannel1
+  // (rasterisierte Fluss-/See-Form) -> der Shader nimmt EXAKT die organische
+  // Flussform an, statt rechteckiger Streifen.
+  float shape; vec2 base; vec2 nuv; float e; vec3 bed; float vig;
+  if (uFeld > 0.5) {
+    vec4 feld = texture2D(iChannel1, uv);
+    shape = smoothstep(0.12, 0.55, feld.b);              // weiche Wassermaske
+    vec2 fl = (feld.rg - 0.5) * 2.0;                      // -1..1 Strömungsrichtung
+    float fmag = length(fl);
+    base = (fmag > 0.05 ? normalize(fl) : vec2(0.0,1.0)) * clamp(fmag*1.5, 0.15, 1.0);  // See (fmag~0) ruhig
+    nuv = uv * uNoiseScale;
+    e = 0.012;
+    bed = mix(uDeep*0.45, texture2D(iChannel0, nuv*0.5).rgb*uAmbient, 0.12);  // tieferes, satteres Wasser
+    vig = 1.0;                                            // keine Welt-Vignette im Feld-Modus
+  } else {
+    float river = smoothstep(0.05,0.22,uv.x) * smoothstep(0.05,0.22,1.0-uv.x);
+    float rad = length((uv-0.5)*2.0);
+    float ellipse = smoothstep(1.0, 0.55, rad);
+    shape = mix(river, ellipse, uShape);
+    base = uFlowSign * vec2(0.0, 1.0);
+    nuv = uv; e = 1.6/resolution.y;
+    vec3 n0 = normalAt(uv, base, e);
+    bed = texture2D(iChannel0, clamp(uv + n0.xy*REFRACT, 0.0, 1.0)).rgb * uAmbient;
+    vec2 q = uv-0.5; vig = 1.0 - dot(q,q)*0.45;
+  }
+  float depth = mix(1.0, shape, uEdgeFade);
+  vec3 n = normalAt(nuv, base, e);
+  // Im Feld-Modus (großflächige Welt-uv) bleichen Himmel-Spiegelung + Schaum das
+  // ruhige Wasser sonst aus -> hier gedämpft, damit der See satt/tief bleibt.
+  float hl = (uFeld > 0.5) ? 0.3 : 1.0;
 
   // Flüssigkeitsfarbe: tiefer = mehr Eigenfarbe
   vec3 col = mix(bed, uDeep, depth*0.6);
 
   // Fresnel -> Himmelsspiegelung an flachen Winkeln
   float fres = pow(1.0 - clamp(n.z,0.0,1.0), 4.0);
-  col = mix(col, uSky, fres*0.4*depth);
+  col = mix(col, uSky, fres*0.4*depth*hl);
 
   // Glanzlicht (Sonne/Mond) + feines Funkeln
   vec3 V = vec3(0.0,0.0,1.0);
   vec3 L = normalize(vec3(uLight, 0.9));
   vec3 H = normalize(L+V);
   float sp = max(dot(n,H),0.0);
-  col += pow(sp,90.0)  * uSpec * depth * 0.9;
+  col += pow(sp,90.0)  * uSpec * depth * 0.9 * mix(1.0, hl, 0.5);
   col += pow(sp,340.0) * uSpec * depth * 1.6;
 
   // Schaum an steilen Kämmen
   float slope = length(n.xy);
   float foam = smoothstep(0.18,0.42,slope) * depth;
-  col = mix(col, vec3(0.90,0.94,0.95), foam*0.55*clamp(uTurbulence,0.0,1.4));
+  col = mix(col, vec3(0.90,0.94,0.95), foam*0.55*clamp(uTurbulence,0.0,1.4)*hl);
 
   // Ufer (depth~0) zeigen einfach das Bett
-  vec3 finalCol = mix(bed, col, depth);
+  vec3 finalCol = mix(bed, col, depth) * uColor * vig;
 
-  // Globale Einfärbung (Wasser=neutral, Blut=rötlich)
-  finalCol *= uColor;
-
-  // sanfte Vignette
-  vec2 q = uv-0.5; finalCol *= 1.0 - dot(q,q)*0.45;
-
-  // uAlphaFade=0 -> deckend (Tile-Ersatz), =1 -> Ränder blenden in den
-  // Untergrund (Canvas-Wasser) - so fügen sich geschwungene Flüsse/See
-  // weich ein statt als harte Rechtecke.
-  // Premultipliziertes Alpha (Phasers Standard-Blend ONE, ONE_MINUS_SRC_ALPHA).
-  // alpha=1 -> deckend (Tile-Fall unverändert); <1 -> sauberer Übergang.
+  // Premultipliziertes Alpha (Phasers Standard-Blend). uAlphaFade=0 -> deckend
+  // (Tile-Fall unverändert); =1 -> Maske wird Alpha -> exakte Wasserform, weiche
+  // Ränder blenden in den Untergrund.
   float alpha = mix(1.0, clamp(shape, 0.0, 1.0), uAlphaFade);
   gl_FragColor = vec4(finalCol * alpha, alpha);
 }
@@ -378,6 +390,8 @@ function getBaseShader(): Phaser.Display.BaseShader {
     uEdgeFade: { type: '1f', value: 1.0 },
     uShape: { type: '1f', value: 0.0 },
     uAlphaFade: { type: '1f', value: 0.0 },
+    uFeld: { type: '1f', value: 0.0 },
+    uNoiseScale: { type: '1f', value: 18.0 },
   };
   baseShader = new Phaser.Display.BaseShader('fluessigkeit', FRAG, undefined, uniforms);
   return baseShader;
@@ -391,6 +405,8 @@ export interface SpawnOpts {
   angleRad?: number;            // Rotation - für Fluss-Segmente entlang der Strömung
   shape?: number;               // 0 Fluss (Ufer l/r), 1 See (ellipse)
   alphaFade?: number;           // 0 deckend, 1 Ränder blenden in den Untergrund
+  feldKey?: string;             // Wasserfeld-Textur (iChannel1) -> Feld-Modus
+  noiseScale?: number;          // Rausch-Frequenz im Feld-Modus
 }
 
 /** Setzt alle Preset-Uniformen auf ein bestehendes Shader-Objekt (auch live, für Regler). */
@@ -410,13 +426,16 @@ export function wendeFluessigkeitPreset(sh: Phaser.GameObjects.Shader, preset: F
 /** Kern: ein Shader-Quad (x,y = Welt-Pixel) anlegen und konfigurieren. */
 export function macheFluessigkeitsShader(scene: Phaser.Scene, x: number, y: number, w: number, h: number, preset: FluessigkeitPreset, opts: SpawnOpts = {}): Phaser.GameObjects.Shader {
   const bettKey = baueFlussbett(scene, preset.bett);
-  const sh = scene.add.shader(getBaseShader(), x, y, w, h, [bettKey]);
+  const texturen = opts.feldKey ? [bettKey, opts.feldKey] : [bettKey];
+  const sh = scene.add.shader(getBaseShader(), x, y, w, h, texturen);
   const [ox, oy] = opts.origin ?? [0, 0];
   sh.setOrigin(ox, oy).setDepth(opts.depth ?? FLUSS_SHADER.tiefe);
   if (opts.angleRad) sh.setRotation(opts.angleRad);
   wendeFluessigkeitPreset(sh, preset);
   sh.setUniform('uShape.value', opts.shape ?? 0);
   sh.setUniform('uAlphaFade.value', opts.alphaFade ?? 0);
+  sh.setUniform('uFeld.value', opts.feldKey ? 1 : 0);
+  sh.setUniform('uNoiseScale.value', opts.noiseScale ?? 18);
   return sh;
 }
 
@@ -443,6 +462,58 @@ export function spawneFlussSegment(scene: Phaser.Scene, seg: FlussSegment, prese
 export function spawneSee(scene: Phaser.Scene, cx: number, cy: number, w: number, h: number, preset: FluessigkeitPreset, depth: number): Phaser.GameObjects.Shader {
   return macheFluessigkeitsShader(scene, cx, cy, w, h, preset, {
     origin: [0.5, 0.5], depth, alphaFade: 1, shape: 1,
+  });
+}
+
+export interface SeeEllipse { cx: number; cy: number; rx: number; ry: number; }
+
+/**
+ * Baut die Wasserfeld-Textur: rg = Strömungsrichtung (kodiert), b = Wassermaske.
+ * Rasterung der Fluss-/Bach-Segmente (gedrehte Rechtecke) + See-Ellipsen in
+ * niedriger Auflösung, weich gezeichnet (Canvas-Antialiasing + LINEAR-Filter +
+ * leichter Blur) -> der Shader nimmt damit die EXAKTE organische Wasserform an,
+ * statt rechteckiger Streifen. Eine Textur fürs ganze Gebiet.
+ */
+export function baueWasserFeld(scene: Phaser.Scene, key: string, segmente: FlussSegment[], seen: SeeEllipse[], worldW: number, worldH: number, aufloesung = 5): string {
+  if (scene.textures.exists(key)) scene.textures.remove(key);
+  const w = Math.max(2, Math.ceil(worldW / aufloesung)), h = Math.max(2, Math.ceil(worldH / aufloesung));
+  const tex = scene.textures.createCanvas(key, w, h);
+  if (!tex) return key;
+  const sc = 1 / aufloesung;
+  // Erst in ein Hilfs-Canvas zeichnen, dann leicht verwischt übernehmen (weiche Ufer)
+  const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
+  const x = tmp.getContext('2d')!;
+  x.fillStyle = 'rgb(128,128,0)'; x.fillRect(0, 0, w, h);   // Strömung 0, Maske 0
+  for (const s of segmente) {
+    const ux = -Math.sin(s.angleRad), uy = Math.cos(s.angleRad);   // stromabwärts
+    const r = Math.round((ux * 0.5 + 0.5) * 255), g = Math.round((uy * 0.5 + 0.5) * 255);
+    x.save();
+    x.translate(s.cx * sc, s.cy * sc);
+    x.rotate(s.angleRad);
+    x.fillStyle = `rgb(${r},${g},255)`;
+    x.fillRect(-s.breite * 0.5 * sc, -s.laenge * 0.5 * sc, s.breite * sc, s.laenge * sc);
+    x.restore();
+  }
+  for (const e of seen) {
+    x.fillStyle = 'rgb(128,128,255)';
+    x.beginPath();
+    x.ellipse(e.cx * sc, e.cy * sc, e.rx * sc, e.ry * sc, 0, 0, Math.PI * 2);
+    x.fill();
+  }
+  const dst = tex.context;
+  dst.clearRect(0, 0, w, h);
+  try { dst.filter = 'blur(1.2px)'; } catch { /* Canvas-Filter optional */ }
+  dst.drawImage(tmp, 0, 0);
+  dst.filter = 'none';
+  tex.refresh();
+  tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
+  return key;
+}
+
+/** Ein einziges Wasser-Quad über der ganzen Welt, maskiert durchs Wasserfeld. */
+export function spawneWasserFeld(scene: Phaser.Scene, feldKey: string, worldW: number, worldH: number, preset: FluessigkeitPreset, depth: number, noiseScale = 18): Phaser.GameObjects.Shader {
+  return macheFluessigkeitsShader(scene, 0, 0, worldW, worldH, preset, {
+    origin: [0, 0], depth, alphaFade: 1, feldKey, noiseScale,
   });
 }
 

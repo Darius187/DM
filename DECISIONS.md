@@ -693,3 +693,11 @@
   * SEGMENT-ANZAHL als Perf-Stellschraube: jedes Phaser-Shader-Quad bindet die Pipeline neu, darum grob segmentiert (Fluss ~350px, Bach ~300px -> ~18 Quads statt 31). Auf echter GPU zu bestätigen; die Hybrid-Karte war schon vorher schwer (Canvas-Vollbild-Upload je Frame).
   * "SPIELRAUM FÜR EINSTELLUNGEN": Dev-Panel um "Wasser (neu)" erweitert - Fließ-Tempo, Wirbel, Helligkeit, Wasser-Ton (live auf alle Wasser-Shader). Presets WASSER/SEE als veränderbare Kopien.
   * GRENZE: Headless-Screenshot der vielen WebGL-Shader nur mit langem Timeout (Software-WebGL langsam) - kein echter FPS-Wert. Look ist die faithful fluss.html-Optik; feinjustierbar über die Regler (der schmale Bach wirkt durch Schaum/Glanz recht spritzig).
+
+- Runde 71c (Anfangskarte-Wasser neu gebaut nach Autorfeedback "wie Klebeband in Streifen, man sieht das darunter, keine natürliche Flussform"):
+  * PROBLEM erkannt: die gedrehten Rechteck-Segmente (71b) lagen als harte Streifen auf der Landschaft, deckten die geschwungene Form nicht und das Canvas-Wasser schien daneben durch.
+  * NEU: EIN Wasser-Quad über der ganzen Welt, maskiert durch eine WASSERFELD-Textur (baueWasserFeld): rg = kodierte Strömungsrichtung, b = Wassermaske. Rasterung der Fluss-/Bach-Segmente (viele feine gedrehte Rechtecke - billig, nur Rasterung) + See-Ellipse, niedrige Auflösung + Blur + LINEAR -> weiche, EXAKTE organische Form. Der Shader nimmt damit die echte Flussform an (uFeld-Modus, Maske->Alpha), statt Streifen. Pro-Pixel-Strömung folgt dem Lauf; der See (Strömung~0) ist ruhig.
+  * Statt 18 Shader-Quads jetzt 1 (besser für Performance, ein Pipeline-Bind).
+  * FARBE/LOOK getunt: Feld-Bett satter/dunkler; Himmel-Spiegelung + Schaum im Feld-Modus gedämpft (hl=0.3), sonst bleichte das ruhige Wasser aus. Fluss/Bach lesen sich jetzt als tiefes, fließendes Wasser, das sich natürlich durch die Landschaft zieht.
+  * Tile-Modus (Dorf/Boss) bleibt UNVERÄNDERT (uFeld=0 -> alter Pfad, identisch).
+  * Verifiziert (Headless-WebGL): 1 Shader, organische Fluss-/Bach-/See-Form, weiche Ränder, kein Durchscheinen, 0 Fehler, tsc grün, 190 Tests grün. See-Mitte bei Regen noch etwas dunstig (Wetter über großer offener Fläche) - über Helligkeit-Regler justierbar.
