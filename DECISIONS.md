@@ -701,3 +701,8 @@
   * FARBE/LOOK getunt: Feld-Bett satter/dunkler; Himmel-Spiegelung + Schaum im Feld-Modus gedämpft (hl=0.3), sonst bleichte das ruhige Wasser aus. Fluss/Bach lesen sich jetzt als tiefes, fließendes Wasser, das sich natürlich durch die Landschaft zieht.
   * Tile-Modus (Dorf/Boss) bleibt UNVERÄNDERT (uFeld=0 -> alter Pfad, identisch).
   * Verifiziert (Headless-WebGL): 1 Shader, organische Fluss-/Bach-/See-Form, weiche Ränder, kein Durchscheinen, 0 Fehler, tsc grün, 190 Tests grün. See-Mitte bei Regen noch etwas dunstig (Wetter über großer offener Fläche) - über Helligkeit-Regler justierbar.
+
+- Runde 71d (Autorfeedback: Anfangskarte-Wasser "sieht schlecht aus, keine Referenz" + "der Held läuft auf dem Nebel"):
+  * WASSER-SHADER VON DER ANFANGSKARTE ENTFERNT (Rückbau): Strecken-/Feld-Overlay sah schlechter aus als das vorhandene Canvas-Wasser und deckte es zu. Anfangskarte zeigt wieder das organische dorfSim-Canvas-Wasser (Fluss liest sich gut). Der Liquid-Shader bleibt als Modul + im Tile-Spiel (Dorf/Boss) erhalten; auf der Anfangskarte erst wieder, wenn ein Referenzbild vorliegt.
+  * BUG GEFUNDEN+GEFIXT ("Held läuft auf dem Nebel"): frei() machte den FLUSS solide, aber NICHT den SEE - der Held konnte mitten in den See laufen, der bei Regen dunstig/blass ist -> sah aus, als liefe er auf Nebel/Wasser. Fix: `if (imSee) return false` in frei() (See = tiefes Wasser, unbegehbar wie der Fluss). Verifiziert: See-Mitte/Rand jetzt solide, Spawn + Land ringsum weiter begehbar.
+  * OFFEN: der See ist bei Regen blass (Canvas-Dunst übers Wasser, Runde 64/65) - kann auf Wunsch gedämpft werden; und ein Referenzbild für den gewünschten Fluss-/See-Look steht noch aus.

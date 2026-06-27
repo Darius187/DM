@@ -1173,6 +1173,7 @@ function frei(wx: number, wy: number): boolean {
   { const dx = wx - huette.x, dy = wy - huette.y;             // Hütten-Wand solide; Innenraum + Süd-Tür frei
     if (Math.abs(dx) < HAUS_HALBB && dy < 4 && dy > -HAUS_TIEFE) { const tuer = Math.abs(dx) < 22 && dy > -22; if (!imHausInnen(wx, wy) && !tuer) return false; } }
   if (imFluss(wx, wy) && !aufBruecke(wx, wy)) return false;   // Fluss nur über die Brücke querbar
+  if (imSee(wx, wy)) return false;                            // See ist tiefes Wasser - nicht begehbar (sonst "läuft auf dem Wasser")
   for (const b of baeume) { if (b.fall) continue; if (Math.hypot(wx - b.x, wy - b.y) < (10 + b.skala * 12) * baumGroesse) return false; }   // Stammfuß-Radius ~ Baumgröße
   for (const f of felsen) { if (f.entfernt) continue; if (Math.hypot(wx - f.x, wy - f.y) < FELS_R[f.g] * (0.66 - f.stufe * 0.1)) return false; }   // Felsen solide (Radius schrumpft mit Abbau)
   return true;
