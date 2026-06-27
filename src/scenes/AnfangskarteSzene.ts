@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import type { Enemy } from '../world/Enemy';
-import { starteWelt, setRegler, setKamera, istSolide, weltGrenze, pausiereWelt } from '../demo3d/dorfSim';
+import { starteWelt, setRegler, setKamera, istSolide, weltGrenze, pausiereWelt, flussBahn, bachBahn, seeBereich } from '../demo3d/dorfSim';
+import { WASSER_PRESET, SEE_PRESET, segmentiereBahn, spawneFlussSegment, spawneSee, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 
 // ANFANGSKARTE (Kampf-Hybrid, Runde 71): die Canvas-Welt (dorfSim: Terrain/Wasser/Bäume/
 // Wetter) ist der HINTERGRUND, darüber läuft das ECHTE Kampfsystem (CombatScene: Spieler +
@@ -18,6 +19,11 @@ export class AnfangskarteSzene extends CombatScene {
   private readonly SPAWN_X = 340;
   private readonly SPAWN_Y = 1500;
   private readonly texKey = 'anfWelt';
+  private readonly WASSER_TIEFE = -900;   // über dem Canvas-Boden (-1000), unter Spieler/Gegnern
+  private wasserShader: Phaser.GameObjects.Shader[] = [];
+  // Veränderbare Kopien der Presets (Dev-Regler tunen sie live).
+  private flussPreset: FluessigkeitPreset = { ...WASSER_PRESET };
+  private seePreset: FluessigkeitPreset = { ...SEE_PRESET };
 
   constructor() { super('Anfangskarte'); }
 
@@ -43,6 +49,9 @@ export class AnfangskarteSzene extends CombatScene {
     this.cameras.main.setBounds(0, 0, g.breite, g.hoehe);
     this.cameras.main.startFollow(this.playerSprite, true, 0.16, 0.16);
 
+    // Neues Wasser (Liquid-Shader) auf Flüsse, Bach und See legen.
+    this.baueWasser();
+
     // Erster Wolf gleich am Anfang (etwas vor dem Spieler).
     this.spawnEnemy('wolf', 1, this.SPAWN_X + 380, this.SPAWN_Y - 30);
     this.woelfe = 1;
@@ -50,10 +59,29 @@ export class AnfangskarteSzene extends CombatScene {
     if (data?.neuesSpiel) this.zeigeEroeffnung();
     this.baueRegler();
     this.scale.on('resize', this.passe, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.scale.off('resize', this.passe, this); this.reglerDiv?.remove(); this.introMusik?.stop(); pausiereWelt(); });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.scale.off('resize', this.passe, this); this.reglerDiv?.remove(); this.introMusik?.stop(); for (const s of this.wasserShader) s.destroy(); this.wasserShader = []; pausiereWelt(); });
   }
 
   private passe(): void { if (this.weltBild) this.weltBild.setDisplaySize(this.scale.width, this.scale.height); }
+
+  // Liquid-Shader auf die Wasser-Geometrie aus dorfSim legen: Fluss + Bach als
+  // gedrehte Segmente entlang der Strömung, der See als ruhige Ellipse. Die
+  // Quads liegen in Welt-Koordinaten (wie der Spieler) und folgen so dem Canvas-
+  // Boden; die Ränder blenden weich ein (alphaFade), Mitte ist das neue Wasser.
+  private baueWasser(): void {
+    // Gröbere Segmente = weniger Shader-Quads (jedes Quad bindet die Pipeline neu,
+    // darum sparsam): ~350px Fluss, ~300px Bach hält die Zahl niedrig, folgt der
+    // Biegung aber noch sauber.
+    for (const seg of segmentiereBahn(flussBahn(), 350)) this.wasserShader.push(spawneFlussSegment(this, seg, this.flussPreset, this.WASSER_TIEFE));
+    for (const seg of segmentiereBahn(bachBahn(), 300)) this.wasserShader.push(spawneFlussSegment(this, seg, this.flussPreset, this.WASSER_TIEFE));
+    const s = seeBereich();
+    this.wasserShader.push(spawneSee(this, s.cx, s.cy, s.rx * 2 * 1.08, s.ry * 2 * 1.08, this.seePreset, this.WASSER_TIEFE));
+  }
+
+  // Wasser-Regler (Dev): einen Uniform-Wert live auf alle Wasser-Shader setzen.
+  private setzeWasserUniform(key: string, v: number): void {
+    for (const sh of this.wasserShader) sh.setUniform(key + '.value', v);
+  }
 
   // Mehr Wölfe je weiter östlich: 1 am Start, ab Mitte 2, gegen das Kartenende bis zu 3.
   private pruefeWoelfe(): void {
@@ -98,25 +126,43 @@ export class AnfangskarteSzene extends CombatScene {
     }).setOrigin(0.5).setScrollFactor(0).setDepth(5900).setAlpha(0.92);
   }
 
-  // --- Dev-Konsole: alle Welt-Regler als DOM-Panel, live an dorfSim gekoppelt ---
+  // --- Dev-Konsole: alle Welt-Regler als DOM-Panel, live gekoppelt ---
   private baueRegler(): void {
     const div = document.createElement('div');
-    div.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:50;background:rgba(8,14,10,0.62);padding:8px 10px;border-radius:6px;color:#cdd8c4;font:12px Georgia,serif;text-shadow:0 1px 2px #000;';
-    const slider: Array<[string, string, number, number, number, number]> = [
+    div.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:50;background:rgba(8,14,10,0.62);padding:8px 10px;border-radius:6px;color:#cdd8c4;font:12px Georgia,serif;text-shadow:0 1px 2px #000;max-height:92vh;overflow:auto;';
+    // gemeinsamer Schieber-Bau; initApply=true schiebt den Startwert gleich durch
+    const addSlider = (label: string, min: number, max: number, step: number, val: number, onChange: (v: number) => void, initApply = true): void => {
+      const row = document.createElement('div'); row.style.margin = '3px 0';
+      const lab = document.createElement('span'); lab.textContent = label; lab.style.cssText = 'display:inline-block;width:94px;';
+      const inp = document.createElement('input'); inp.type = 'range'; inp.min = String(min); inp.max = String(max); inp.step = String(step); inp.value = String(val); inp.style.cssText = 'vertical-align:middle;width:130px;';
+      const out = document.createElement('span'); out.textContent = String(val); out.style.marginLeft = '6px';
+      inp.addEventListener('input', () => { onChange(parseFloat(inp.value)); out.textContent = inp.value; });
+      if (initApply) onChange(val);
+      row.append(lab, inp, out); div.append(row);
+    };
+    const weltSlider: Array<[string, string, number, number, number, number]> = [
       ['groesse', 'Baumgröße', 0.5, 2.2, 0.05, 0.85], ['wegbreite', 'Weg-Breite', 0.5, 1.8, 0.05, 1],
       ['falltempo', 'Fall-Tempo', 0.12, 2, 0.02, 1], ['bewuchs', 'Bewuchs', 0, 1.4, 0.05, 1],
       ['tageszeit', 'Tageszeit', 0, 24, 0.25, 9], ['tagtempo', 'Tag-Tempo', 0, 3, 0.1, 1],
       ['sturm', 'Sturm-Stärke', 0, 4, 0.1, 1.5], ['sicht', 'Sicht-Fenster', 80, 220, 10, 124],
     ];
-    for (const [key, label, min, max, step, val] of slider) {
-      const row = document.createElement('div'); row.style.margin = '3px 0';
-      const lab = document.createElement('span'); lab.textContent = label; lab.style.cssText = 'display:inline-block;width:94px;';
-      const inp = document.createElement('input'); inp.type = 'range'; inp.min = String(min); inp.max = String(max); inp.step = String(step); inp.value = String(val); inp.style.cssText = 'vertical-align:middle;width:130px;';
-      const out = document.createElement('span'); out.textContent = String(val); out.style.marginLeft = '6px';
-      inp.addEventListener('input', () => { setRegler(key, parseFloat(inp.value)); out.textContent = inp.value; });
-      setRegler(key, val);
-      row.append(lab, inp, out); div.append(row);
-    }
+    for (const [key, label, min, max, step, val] of weltSlider) addSlider(label, min, max, step, val, (v) => setRegler(key, v));
+
+    // --- Wasser (neuer Liquid-Shader): wirkt global auf Fluss, Bach UND See ---
+    const titel = document.createElement('div');
+    titel.textContent = 'Wasser (neu)';
+    titel.style.cssText = 'margin:7px 0 3px;padding-top:6px;border-top:1px solid rgba(150,200,230,0.3);color:#9ec4dc;';
+    div.append(titel);
+    // initApply=false: die Shader tragen ihre Preset-Werte schon vom Spawn (der See
+    // bleibt ruhig) - der Startwert würde sie sonst überschreiben.
+    addSlider('Fließ-Tempo', 0.02, 0.5, 0.01, this.flussPreset.flowSpeed, (v) => this.setzeWasserUniform('uFlowSpeed', v), false);
+    addSlider('Wirbel', 0, 1.4, 0.05, this.flussPreset.turbulence, (v) => this.setzeWasserUniform('uTurbulence', v), false);
+    addSlider('Helligkeit', 0.5, 1.4, 0.05, this.flussPreset.ambient, (v) => this.setzeWasserUniform('uAmbient', v), false);
+    // Ton: 0 = neutral, 1 = kühl/türkis (uColor multiplikativ)
+    addSlider('Wasser-Ton', 0, 1, 0.05, 0, (t) => {
+      for (const sh of this.wasserShader) sh.setUniform('uColor.value', { x: 1 - 0.22 * t, y: 1, z: 1 + 0.1 * t });
+    }, false);
+
     document.body.appendChild(div);
     this.reglerDiv = div;
   }

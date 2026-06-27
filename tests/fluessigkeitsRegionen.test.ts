@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findeFluessigkeitsRegionen } from '../src/world/fluessigkeitsRegionen';
+import { findeFluessigkeitsRegionen, segmentiereBahn } from '../src/world/fluessigkeitsRegionen';
 
 // Reine Logik: zusammenhängende Flächen einer Kachel-ID als Bounding-Boxen
 // finden (4-Nachbarschaft). Wird für den Liquid-Shader-Overlay gebraucht -
@@ -60,5 +60,37 @@ describe('findeFluessigkeitsRegionen', () => {
   it('liefert nichts, wenn die ID nicht vorkommt', () => {
     const map = [[L, L], [L, L]];
     expect(findeFluessigkeitsRegionen(map, W)).toHaveLength(0);
+  });
+});
+
+describe('segmentiereBahn', () => {
+  it('fasst eine gerade Bahn zu einem Segment zusammen und trifft Mitte/Breite', () => {
+    // Senkrecht nach unten, Halbbreite 20 -> Segment in der Mitte, Breite ~ hw*2*1.15
+    const pts = [
+      { x: 100, y: 0, hw: 20 }, { x: 100, y: 50, hw: 20 }, { x: 100, y: 100, hw: 20 },
+    ];
+    const segs = segmentiereBahn(pts, 200); // ein Segment (Bahn nur 100 lang)
+    expect(segs).toHaveLength(1);
+    expect(segs[0].cx).toBeCloseTo(100);
+    expect(segs[0].cy).toBeCloseTo(50);
+    expect(segs[0].breite).toBeCloseTo(20 * 2 * 1.15);
+    // Strömung senkrecht nach unten (0,1) -> keine Drehung
+    expect(segs[0].angleRad).toBeCloseTo(0);
+  });
+
+  it('teilt eine lange Bahn in mehrere Segmente nach zielLaenge', () => {
+    const pts = Array.from({ length: 11 }, (_, i) => ({ x: 0, y: i * 50, hw: 10 })); // 500 lang
+    expect(segmentiereBahn(pts, 150).length).toBeGreaterThanOrEqual(3);
+    expect(segmentiereBahn(pts, 600)).toHaveLength(1);
+  });
+
+  it('dreht ein nach rechts fließendes Segment um -90°', () => {
+    const pts = [{ x: 0, y: 0, hw: 10 }, { x: 100, y: 0, hw: 10 }];
+    const segs = segmentiereBahn(pts, 50);
+    expect(segs[0].angleRad).toBeCloseTo(-Math.PI / 2);
+  });
+
+  it('liefert nichts bei zu wenigen Punkten', () => {
+    expect(segmentiereBahn([{ x: 0, y: 0, hw: 5 }])).toHaveLength(0);
   });
 });

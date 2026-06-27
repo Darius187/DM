@@ -1941,6 +1941,14 @@ export function setKamera(left: number, top: number): void { camX = Math.max(0, 
 export function istSolide(x: number, y: number): boolean { return !frei(x, y); }
 export function weltCanvasBreite(): number { return W; }
 export function weltCanvasHoehe(): number { return H; }
+
+// Wasser-Geometrie (Welt-Pixel) für den Liquid-Shader-Overlay (R71): die
+// Mittellinien von Fluss/Bach (mit Strömungsrichtung ux,uy + Halbbreite hw)
+// und die See-Ellipse. So kann die Szene den Shader dem Lauf folgen lassen.
+export interface WasserBahnPunkt { x: number; y: number; ux: number; uy: number; hw: number; }
+export function flussBahn(): WasserBahnPunkt[] { return flussMitte.map((m) => ({ x: m.x, y: m.y, ux: m.ux, uy: m.uy, hw: m.hw })); }
+export function bachBahn(): WasserBahnPunkt[] { return bachMitte.map((m) => ({ x: m.x, y: m.y, ux: m.ux, uy: m.uy, hw: m.hw })); }
+export function seeBereich(): { cx: number; cy: number; rx: number; ry: number } { return { cx: see.cx, cy: see.cy, rx: see.rx, ry: see.ry }; }
 // Bildschirm-Position + Pose des Helden (für das Phaser-Spieler-Sprite über dem Canvas-Boden).
 export function heldSchirm(): { x: number; y: number; dir: number; frame: number; reitet: boolean; bereit: boolean } {
   if (!bereit) return { x: 0, y: 0, dir: 0, frame: 0, reitet: false, bereit: false };

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import { findeFluessigkeitsRegionen, type KachelRegion } from './fluessigkeitsRegionen';
+import { findeFluessigkeitsRegionen, segmentiereBahn, type KachelRegion, type FlussSegment } from './fluessigkeitsRegionen';
 
-export { findeFluessigkeitsRegionen, type KachelRegion };
+export { findeFluessigkeitsRegionen, segmentiereBahn, type KachelRegion, type FlussSegment };
 
 // =====================================================================
 //  FLÜSSIGKEITS-SHADER  (portiert aus fluss.html, Runde 71)
@@ -58,6 +58,8 @@ uniform vec2  uLight;
 uniform float uAmbient;
 uniform vec3  uColor;
 uniform float uEdgeFade;
+uniform float uShape;       // 0 = Fluss (Ufer links/rechts), 1 = See (ellipse, radial)
+uniform float uAlphaFade;   // 0 = deckend, 1 = Ränder transparent (in Untergrund blenden)
 
 varying vec2 fragCoord;
 
@@ -128,8 +130,12 @@ void main(){
   vec2 uv = fragCoord / resolution.xy;
   // Wie tief / wie viel Flüssigkeit quer (0 am trockenen Ufer, 1 in der Mitte).
   // uEdgeFade=0 -> überall voll (Pfütze/Becken), =1 -> Ufer wie im Fluss.
+  // uShape=0 -> Fluss (Ufer links/rechts an uv.x), =1 -> ellipse (See, radial).
   float river = smoothstep(0.05,0.22,uv.x) * smoothstep(0.05,0.22,1.0-uv.x);
-  float depth = mix(1.0, river, uEdgeFade);
+  float rad = length((uv-0.5)*2.0);
+  float ellipse = smoothstep(1.0, 0.55, rad);
+  float shape = mix(river, ellipse, uShape);
+  float depth = mix(1.0, shape, uEdgeFade);
   vec3 n = normalAt(uv);
 
   // Brechung des Flussbetts
@@ -165,7 +171,13 @@ void main(){
   // sanfte Vignette
   vec2 q = uv-0.5; finalCol *= 1.0 - dot(q,q)*0.45;
 
-  gl_FragColor = vec4(finalCol, 1.0);
+  // uAlphaFade=0 -> deckend (Tile-Ersatz), =1 -> Ränder blenden in den
+  // Untergrund (Canvas-Wasser) - so fügen sich geschwungene Flüsse/See
+  // weich ein statt als harte Rechtecke.
+  // Premultipliziertes Alpha (Phasers Standard-Blend ONE, ONE_MINUS_SRC_ALPHA).
+  // alpha=1 -> deckend (Tile-Fall unverändert); <1 -> sauberer Übergang.
+  float alpha = mix(1.0, clamp(shape, 0.0, 1.0), uAlphaFade);
+  gl_FragColor = vec4(finalCol * alpha, alpha);
 }
 `;
 
@@ -197,6 +209,21 @@ export const WASSER_PRESET: FluessigkeitPreset = {
   spec: [1.0, 0.97, 0.88],
   light: [0.25, 0.65],
   ambient: 1.05,
+  edgeFade: 1.0,
+};
+
+// Ruhiger See: langsamer und glatter als der Fluss (stehendes Gewässer).
+export const SEE_PRESET: FluessigkeitPreset = {
+  bett: 'wasser',
+  color: [1.0, 1.0, 1.0],
+  flowSpeed: 0.05,            // kaum Strömung
+  turbulence: 0.28,           // glatte Oberfläche
+  flowSign: 1.0,
+  deep: [0.07, 0.20, 0.26],   // etwas tiefer/dunkler als der Fluss
+  sky: [0.55, 0.75, 0.92],
+  spec: [1.0, 0.97, 0.88],
+  light: [0.25, 0.65],
+  ambient: 1.0,
   edgeFade: 1.0,
 };
 
@@ -349,6 +376,8 @@ function getBaseShader(): Phaser.Display.BaseShader {
     uAmbient: { type: '1f', value: 1.05 },
     uColor: { type: '3f', value: { x: 1.0, y: 1.0, z: 1.0 } },
     uEdgeFade: { type: '1f', value: 1.0 },
+    uShape: { type: '1f', value: 0.0 },
+    uAlphaFade: { type: '1f', value: 0.0 },
   };
   baseShader = new Phaser.Display.BaseShader('fluessigkeit', FRAG, undefined, uniforms);
   return baseShader;
@@ -356,15 +385,16 @@ function getBaseShader(): Phaser.Display.BaseShader {
 
 export interface PixelRegion { x: number; y: number; w: number; h: number; }
 
-/**
- * Erzeugt ein Shader-Objekt über der Region (Pixelkoordinaten, Welt-Raum).
- * Tiefe = FLUSS_SHADER.tiefe (über dem Grund, unter Spieler). Die Bett-Textur
- * der Palette wird bei Bedarf einmalig erzeugt.
- */
-export function spawneFluessigkeit(scene: Phaser.Scene, region: PixelRegion, preset: FluessigkeitPreset): Phaser.GameObjects.Shader {
-  const bettKey = baueFlussbett(scene, preset.bett);
-  const sh = scene.add.shader(getBaseShader(), region.x, region.y, region.w, region.h, [bettKey]);
-  sh.setOrigin(0, 0).setDepth(FLUSS_SHADER.tiefe);
+export interface SpawnOpts {
+  depth?: number;               // Render-Tiefe (Standard: FLUSS_SHADER.tiefe)
+  origin?: [number, number];    // Ursprung (Standard [0,0]; Segmente/See [0.5,0.5])
+  angleRad?: number;            // Rotation - für Fluss-Segmente entlang der Strömung
+  shape?: number;               // 0 Fluss (Ufer l/r), 1 See (ellipse)
+  alphaFade?: number;           // 0 deckend, 1 Ränder blenden in den Untergrund
+}
+
+/** Setzt alle Preset-Uniformen auf ein bestehendes Shader-Objekt (auch live, für Regler). */
+export function wendeFluessigkeitPreset(sh: Phaser.GameObjects.Shader, preset: FluessigkeitPreset): void {
   sh.setUniform('uFlowSpeed.value', preset.flowSpeed);
   sh.setUniform('uTurbulence.value', preset.turbulence);
   sh.setUniform('uFlowSign.value', preset.flowSign);
@@ -375,5 +405,44 @@ export function spawneFluessigkeit(scene: Phaser.Scene, region: PixelRegion, pre
   sh.setUniform('uAmbient.value', preset.ambient);
   sh.setUniform('uColor.value', { x: preset.color[0], y: preset.color[1], z: preset.color[2] });
   sh.setUniform('uEdgeFade.value', preset.edgeFade);
+}
+
+/** Kern: ein Shader-Quad (x,y = Welt-Pixel) anlegen und konfigurieren. */
+export function macheFluessigkeitsShader(scene: Phaser.Scene, x: number, y: number, w: number, h: number, preset: FluessigkeitPreset, opts: SpawnOpts = {}): Phaser.GameObjects.Shader {
+  const bettKey = baueFlussbett(scene, preset.bett);
+  const sh = scene.add.shader(getBaseShader(), x, y, w, h, [bettKey]);
+  const [ox, oy] = opts.origin ?? [0, 0];
+  sh.setOrigin(ox, oy).setDepth(opts.depth ?? FLUSS_SHADER.tiefe);
+  if (opts.angleRad) sh.setRotation(opts.angleRad);
+  wendeFluessigkeitPreset(sh, preset);
+  sh.setUniform('uShape.value', opts.shape ?? 0);
+  sh.setUniform('uAlphaFade.value', opts.alphaFade ?? 0);
   return sh;
 }
+
+/**
+ * Tile-Variante: deckendes Quad über einer achsenparallelen Region (Welt-Pixel),
+ * Tiefe FLUSS_SHADER.tiefe. Für WorldScene-Wasser/Blut-Kacheln.
+ */
+export function spawneFluessigkeit(scene: Phaser.Scene, region: PixelRegion, preset: FluessigkeitPreset): Phaser.GameObjects.Shader {
+  return macheFluessigkeitsShader(scene, region.x, region.y, region.w, region.h, preset, {});
+}
+
+/**
+ * Ein gedrehtes Fluss-Segment: das Quad zeigt mit seiner Höhe stromabwärts
+ * (angleRad), die Breite quer zum Fluss. Ränder blenden weich (alphaFade=1),
+ * damit geschwungene Läufe nahtlos aneinander- und in den Untergrund passen.
+ */
+export function spawneFlussSegment(scene: Phaser.Scene, seg: FlussSegment, preset: FluessigkeitPreset, depth: number): Phaser.GameObjects.Shader {
+  return macheFluessigkeitsShader(scene, seg.cx, seg.cy, seg.breite, seg.laenge, preset, {
+    origin: [0.5, 0.5], angleRad: seg.angleRad, depth, alphaFade: 1, shape: 0,
+  });
+}
+
+/** Ein ruhiger See: ellipse-geformtes Quad (radialer Abfall, weiche Ränder). */
+export function spawneSee(scene: Phaser.Scene, cx: number, cy: number, w: number, h: number, preset: FluessigkeitPreset, depth: number): Phaser.GameObjects.Shader {
+  return macheFluessigkeitsShader(scene, cx, cy, w, h, preset, {
+    origin: [0.5, 0.5], depth, alphaFade: 1, shape: 1,
+  });
+}
+

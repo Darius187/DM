@@ -6,6 +6,38 @@
 
 export interface KachelRegion { x0: number; y0: number; x1: number; y1: number; zellen: number; }
 
+export interface FlussSegment { cx: number; cy: number; breite: number; laenge: number; angleRad: number; }
+
+/**
+ * Zerlegt eine Mittellinie (Punkte mit Halbbreite hw) in gedrehte Quad-Segmente
+ * entlang der Strömung. Breite = Flussbreite, Länge mit leichtem Überlapp gegen
+ * Nähte an Biegungen. angleRad dreht die Quad-Höhe stromabwärts. Reine Geometrie.
+ */
+export function segmentiereBahn(pts: Array<{ x: number; y: number; hw: number }>, zielLaenge = 180): FlussSegment[] {
+  const segs: FlussSegment[] = [];
+  if (pts.length < 2) return segs;
+  let i0 = 0, acc = 0;
+  for (let i = 1; i < pts.length; i++) {
+    acc += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    const ende = i === pts.length - 1;
+    if (acc < zielLaenge && !ende) continue;
+    const a = pts[i0], b = pts[i];
+    const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+    if (len > 1) {
+      let hw = 0;
+      for (let k = i0; k <= i; k++) hw = Math.max(hw, pts[k].hw);
+      segs.push({
+        cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2,
+        breite: hw * 2 * 1.15,
+        laenge: len * 1.18,
+        angleRad: Math.atan2(-dx / len, dy / len),
+      });
+    }
+    i0 = i; acc = 0;
+  }
+  return segs;
+}
+
 export function findeFluessigkeitsRegionen(map: number[][], id: number, minZellen = 1): KachelRegion[] {
   const h = map.length, w = map[0]?.length ?? 0;
   const gesehen: boolean[][] = Array.from({ length: h }, () => new Array(w).fill(false));
