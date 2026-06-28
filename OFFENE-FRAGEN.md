@@ -152,3 +152,16 @@
     (Stärke/Weichheit/Kegel) passen? Die übernehme ich dann als Standard. Hinweis: der Held-
     Sichtradius/die Dungeon-Varianten wirken aktuell in der DebugArena voll; im Live-Dungeon läuft
     noch das alte Licht - sag, ob ich das Dungeon-Licht auch auf die Werkbank umstellen soll.
+
+22. Strassen-/Flüsse-Zeichnung für die neuen Karten (Runde 72): Für jede neue
+    Oberwelt-Karte brauche ich aus deiner UNTEREN Zeichnung die exakten
+    Kreuzungspunkte je Kante (blaue Linien = Flüsse/Bäche, dunkelrote = Wege,
+    blaue Ellipsen = Seen): an welcher Position (Pixel oder "oberes/mittleres/
+    unteres Drittel") kreuzt was welche Kante, und wie verläuft das Wasser
+    INNERHALB der Karte (Mündung in einen See? Verzweigung?).
+    Konkret für START (2,3) zuerst: Salzstrasse läuft West->Ost (Default
+    y≈1500 West, y≈1350 Ost). Offen: Wo betritt der Fluss die Karte, liegt
+    ein See darauf, und wo verlässt er sie wieder (Süd ist Weltkante)?
+    Zwischenlösung bis dahin: ich baue START-GELÄNDE + Salzstrasse + alle
+    Spielsysteme schon, das neue SDF-Wasser kommt mit deiner Wasser-Linienführung
+    dazu. Volle Raster-/Kanten-Übersicht: WELTKARTE-PLAN.md.
