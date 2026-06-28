@@ -6,6 +6,13 @@ Autors. Quelle der Wahrheit für das **Raster** (welche Karte liegt wo) und die
 (Wege/Flüsse/Bäche pro Kante) kommen aus der unteren Zeichnung des Autors und
 werden pro Karte bestätigt, bevor die Karte gebaut wird.
 
+Räumliche Vorlage: **`reference/weltkarte-skizze.png`** (vom Autor). Oben die Karten
+mit ihrer Bedeutung (deckt sich mit der Tabelle unten), unten dieselben Karten mit
+dem Verlauf: **braune Linien = Wege, blaue Linien = Flüsse/Bäche, blaue Ellipsen =
+Seen**. Die untere Karte ist die Vorlage für Wasser-/Wege-Verlauf und die Kanten-
+Kreuzungen in `src/data/kartenKanten.ts`. Wo die Skizze eine Kante nicht eindeutig
+hergibt, wird pro Karte beim Autor nachgefragt (OFFENE-FRAGEN.md).
+
 Konventionen: `gx` nach Osten (0 = West), `gy` nach Süden (0 = Nord). Eine Zelle =
 eine WorldScene-Area = 130×85 Kacheln (4160×2720 px), wie die bestehenden Karten.
 TILE = 32 px. Kanten spiegeln: Ost-Kante einer Karte = West-Kante des Nachbarn,
