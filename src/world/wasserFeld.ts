@@ -1,114 +1,95 @@
-// WASSERFELD (Phaser-frei, Runde 72): erzeugt aus der gezeichneten Gewässer-
-// Geometrie einer Karte (Flüsse/Bäche als Mittellinien mit Breite, Seen als
-// Ellipsen) ein Feld-Raster: pro Zelle die WASSERMASKE (weiche 0..1, tief=1,
-// Land=0) und die STRÖMUNGSRICHTUNG (Einheitsvektor stromabwärts, See=0).
+// WASSER-GEOMETRIE (Phaser-frei, Runde 72): die gezeichnete Gewässer-Geometrie
+// einer Karte - Flüsse/Bäche als Mittellinien (mit Halbbreite), Seen als
+// Ellipsen. Wird im Shader (wasser.ts) prozedural über Abstandsfunktionen (SDF)
+// + Smooth-Min (smin) zu nahtlosem Wasser verschmolzen (Technik aus
+// reference/fluss-bach.html). KEINE Masken-Textur -> nichts kann beim Sampling
+// fehlschlagen.
 //
-// Technik aus reference/fluss-bach.html: signierte Distanzfunktion (SDF) für
-// jedes Gewässer + Smooth-Min (smin) -> nahtlose Mündungen/Verzweigungen,
-// statt gedrehter Rechteck-Streifen (der "Klebeband"-Fehler aus Runde 71b).
-//
-// Reines Rechnen ohne Canvas/Phaser -> unit-testbar. Der Shader-Layer
-// (wasser.ts) gießt das Ergebnis nur noch in eine Textur.
+// Hier nur reine Daten + Umrechnung in die flachen Uniform-Arrays, die der
+// Shader erwartet. Reines Rechnen ohne Phaser -> unit-testbar.
 
-export interface BahnPunkt { x: number; y: number; hw: number; }   // hw = Halbbreite (px)
+export interface BahnPunkt { x: number; y: number; hw: number; }   // hw = Halbbreite (UV-Anteil)
 export interface WasserBahn { punkte: BahnPunkt[]; }               // Fluss/Bach: Mittellinie stromabwärts
 export interface SeeEllipse { cx: number; cy: number; rx: number; ry: number; }
 
 export interface WasserGeometrie {
   bahnen: WasserBahn[];
   seen: SeeEllipse[];
-  // Weiche Uferbreite in Welt-Pixeln (Übergang Wasser->Land). Kleiner = härter.
-  uferBand?: number;
-  // Verschmelzungs-Radius (smin) in Welt-Pixeln: wie weich Gewässer ineinanderlaufen.
-  verschmelzung?: number;
 }
 
-export interface FeldProbe { sd: number; fx: number; fy: number; }
+// Obergrenzen für die Shader-Uniform-Arrays (GLSL braucht feste Größen).
+export const MAX_SEG = 24;
+export const MAX_LAKE = 6;
 
+export interface WasserUniforms {
+  seg: Float32Array;    // MAX_SEG * 4: ax,ay,bx,by  (UV)
+  segW: Float32Array;   // MAX_SEG * 2: hwA,hwB
+  segN: number;
+  lake: Float32Array;   // MAX_LAKE * 4: cx,cy,rx,ry (UV)
+  lakeN: number;
+}
+
+/**
+ * Wandelt die Geometrie in flache Uniform-Arrays für den Shader. Bahnen werden
+ * in aufeinanderfolgende Segment-Paare zerlegt; auf MAX_SEG/MAX_LAKE begrenzt
+ * (überzählige werden verworfen - der Aufrufer sollte das Gewässer entsprechend
+ * grob halten). Padding mit 0.
+ */
+export function geometrieZuUniforms(geo: WasserGeometrie): WasserUniforms {
+  const seg = new Float32Array(MAX_SEG * 4);
+  const segW = new Float32Array(MAX_SEG * 2);
+  let segN = 0;
+  for (const bahn of geo.bahnen) {
+    for (let i = 1; i < bahn.punkte.length; i++) {
+      if (segN >= MAX_SEG) break;
+      const a = bahn.punkte[i - 1], b = bahn.punkte[i];
+      seg[segN * 4] = a.x; seg[segN * 4 + 1] = a.y; seg[segN * 4 + 2] = b.x; seg[segN * 4 + 3] = b.y;
+      segW[segN * 2] = a.hw; segW[segN * 2 + 1] = b.hw;
+      segN++;
+    }
+    if (segN >= MAX_SEG) break;
+  }
+  const lake = new Float32Array(MAX_LAKE * 4);
+  let lakeN = 0;
+  for (const e of geo.seen) {
+    if (lakeN >= MAX_LAKE) break;
+    lake[lakeN * 4] = e.cx; lake[lakeN * 4 + 1] = e.cy; lake[lakeN * 4 + 2] = e.rx; lake[lakeN * 4 + 3] = e.ry;
+    lakeN++;
+  }
+  return { seg, segW, segN, lake, lakeN };
+}
+
+// --- Reine Probe (für Tests / spätere KI-/Kollisions-Abfragen) ----------------
 function clamp01(v: number): number { return v < 0 ? 0 : v > 1 ? 1 : v; }
-
-function smoothstep(e0: number, e1: number, x: number): number {
-  const t = clamp01((x - e0) / (e1 - e0 || 1e-6));
-  return t * t * (3 - 2 * t);
-}
-
-// Smooth-Min wie in der Referenz (k = Verschmelzungs-Radius).
 function smin(a: number, b: number, k: number): number {
   const h = clamp01(0.5 + 0.5 * (b - a) / (k || 1e-6));
   return b * (1 - h) + a * h - k * h * (1 - h);
 }
-
-// Signierte Distanz zu EINEM Bahn-Segment (a->b) mit linear interpolierter
-// Halbbreite. Liefert zusätzlich die (nicht normierte) Stromabwärts-Tangente.
-interface SegTreffer { sd: number; tx: number; ty: number; }
-function segDistanz(px: number, py: number, a: BahnPunkt, b: BahnPunkt): SegTreffer {
-  const bax = b.x - a.x, bay = b.y - a.y;
-  const pax = px - a.x, pay = py - a.y;
+function segDist(px: number, py: number, a: BahnPunkt, b: BahnPunkt): number {
+  const bax = b.x - a.x, bay = b.y - a.y, pax = px - a.x, pay = py - a.y;
   const denom = bax * bax + bay * bay || 1e-6;
   let h = (pax * bax + pay * bay) / denom; h = h < 0 ? 0 : h > 1 ? 1 : h;
   const cx = a.x + bax * h, cy = a.y + bay * h;
   const hw = a.hw + (b.hw - a.hw) * h;
-  const sd = Math.hypot(px - cx, py - cy) - hw;
-  return { sd, tx: bax, ty: bay };
+  return Math.hypot(px - cx, py - cy) - hw;
 }
 
 /**
- * Probiert das Wasserfeld an einem Welt-Punkt: signierte Distanz (smin über alle
- * Gewässer; <0 = im Wasser) und die normierte Strömungsrichtung des NÄCHSTEN
- * fließenden Gewässers (Seen tragen keine Strömung).
+ * Signierte Distanz zum Wasser an einem Punkt (UV): <0 = im Wasser. Gleiche
+ * Logik wie der Shader (smin-Verschmelzung). Für Tests und spätere Abfragen.
  */
-export function probeWasserfeld(px: number, py: number, geo: WasserGeometrie): FeldProbe {
-  const k = geo.verschmelzung ?? 60;
-  let sd = 1e9;
-  // Strömung kommt vom Segment mit der kleinsten ROHEN Distanz (vor smin).
-  let nahRoh = 1e9, fx = 0, fy = 0;
+export function sdWasser(px: number, py: number, geo: WasserGeometrie, verschmelzung = 0.06): number {
+  let d = 1e9, erst = true;
   for (const bahn of geo.bahnen) {
     for (let i = 1; i < bahn.punkte.length; i++) {
-      const t = segDistanz(px, py, bahn.punkte[i - 1], bahn.punkte[i]);
-      sd = (sd >= 1e8) ? t.sd : smin(sd, t.sd, k);
-      if (t.sd < nahRoh) {
-        nahRoh = t.sd;
-        const len = Math.hypot(t.tx, t.ty) || 1e-6;
-        fx = t.tx / len; fy = t.ty / len;
-      }
+      const di = segDist(px, py, bahn.punkte[i - 1], bahn.punkte[i]);
+      d = erst ? di : smin(d, di, verschmelzung); erst = false;
     }
   }
   for (const e of geo.seen) {
-    const dd = Math.hypot((px - e.cx) / (e.rx || 1e-6), (py - e.cy) / (e.ry || 1e-6));
-    const sdSee = (dd - 1) * Math.min(e.rx, e.ry);
-    sd = (sd >= 1e8) ? sdSee : smin(sd, sdSee, k);
-    if (sdSee < nahRoh) { nahRoh = sdSee; fx = 0; fy = 0; }  // See ist ruhig
+    const q = Math.hypot((px - e.cx) / (e.rx || 1e-6), (py - e.cy) / (e.ry || 1e-6));
+    const dl = (q - 1) * Math.min(e.rx, e.ry);
+    d = erst ? dl : smin(d, dl, verschmelzung); erst = false;
   }
-  return { sd, fx, fy };
-}
-
-/**
- * Rasterisiert die Geometrie in ein RGBA-Feld (Uint8): r,g = Strömung kodiert
- * (-1..1 -> 0..255), b = weiche Wassermaske (0..255), a = 255. `scale` =
- * Welt-Pixel pro Feldzelle (5 = jede Zelle deckt 5x5 px). Pure Funktion -
- * der Aufrufer macht daraus eine Textur.
- */
-export function baueWasserfeldDaten(breite: number, hoehe: number, scale: number, geo: WasserGeometrie): Uint8ClampedArray {
-  const w = Math.max(2, Math.ceil(breite / scale));
-  const h = Math.max(2, Math.ceil(hoehe / scale));
-  const band = geo.uferBand ?? 38;
-  const data = new Uint8ClampedArray(w * h * 4);
-  for (let j = 0; j < h; j++) {
-    for (let i = 0; i < w; i++) {
-      const wx = (i + 0.5) * scale, wy = (j + 0.5) * scale;
-      const p = probeWasserfeld(wx, wy, geo);
-      // wet: +band (Land) -> 0, -band (tief) -> 1
-      const wet = smoothstep(band, -band, p.sd);
-      const o = (j * w + i) * 4;
-      data[o] = Math.round((p.fx * 0.5 + 0.5) * 255);
-      data[o + 1] = Math.round((p.fy * 0.5 + 0.5) * 255);
-      data[o + 2] = Math.round(wet * 255);
-      data[o + 3] = 255;
-    }
-  }
-  return data;
-}
-
-export function feldGroesse(breite: number, hoehe: number, scale: number): { w: number; h: number } {
-  return { w: Math.max(2, Math.ceil(breite / scale)), h: Math.max(2, Math.ceil(hoehe / scale)) };
+  return erst ? 1e9 : d;
 }

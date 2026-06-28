@@ -1,19 +1,21 @@
 import Phaser from 'phaser';
-import { baueWasserfeldDaten, feldGroesse, type WasserGeometrie } from './wasserFeld';
+import { geometrieZuUniforms, MAX_SEG, MAX_LAKE, type WasserGeometrie } from './wasserFeld';
 
 export type { WasserGeometrie, WasserBahn, SeeEllipse, BahnPunkt } from './wasserFeld';
 
 // =====================================================================
-//  WASSER (Runde 72) - komplett neuer Liquid-Shader, faithful portiert aus
-//  reference/fluss-bach.html. Anders als der alte fluessigkeitsShader:
-//   - prozedurales VORONOI-FLUSSBETT (Kiesel/Kies/Sand) wie in der Referenz
-//   - Zwei-Lagen-Oberfläche mit Wellenfeinheit (uWaveScale) + Zwei-Phasen-Trick
-//   - weiche Ufer: ALLE Effekte x Tiefe; Rand blendet transparent (Overlay)
-//   - Form + Strömung kommen aus EINEM gebackenen Wasserfeld (wasserFeld.ts) ->
-//     ein Layer pro Karte, exakte organische Form (kein Rechteck-Streifen).
+//  WASSER (Runde 72) - prozeduraler Liquid-Shader, faithful aus
+//  reference/fluss-bach.html (+ Autor-Übergabenotiz). KEINE Masken-Textur:
+//  die Wasserform entsteht im Shader über Abstandsfunktionen (SDF) + smin.
+//  Datengetrieben: der Flusslauf kommt als Segment-/See-Uniforms PRO KARTE
+//  (aus der gezeichneten Skizze), nicht als fest verdrahtete sdMain/sdBrook.
 //
-//  Phaser liefert automatisch: time (s), resolution (vec2 px), fragCoord (varying).
-//  iChannel0 = Wasserfeld (rg = Strömung, b = weiche Maske).
+//  u_layerMode: 0 = ganze Szene inkl. prozeduralem Gras (wie der Prototyp,
+//  zum Vergleichen); 1 = Land transparent, nur Wasser/Bett/Kiesel (Layer über
+//  dem echten Terrain, unter den Spielfiguren).
+//
+//  Phaser stellt time (s) und resolution (vec2 px) automatisch bereit,
+//  fragCoord ist Phasers Default-Varying.
 // =====================================================================
 
 const FRAG = `
@@ -22,324 +24,271 @@ precision highp float;
 #else
 precision mediump float;
 #endif
-// WASSER_DEBUG_FELD: zum Prüfen der Feld-Bindung den b-Kanal direkt ausgeben.
-
-uniform float time;
-uniform vec2  resolution;
-uniform sampler2D iChannel0;   // Wasserfeld: rg = Strömung, b = weiche Maske
-
-uniform float uFlowSpeed;
-uniform float uTurbulence;
-uniform float uFlowSign;
-uniform vec3  uDeep;
-uniform vec3  uSky;
-uniform vec3  uSpec;
-uniform vec2  uLight;
-uniform float uAmbient;
-uniform vec3  uColor;
-uniform vec3  uBedShallow;
-uniform vec3  uBedDeep;
-uniform float uTint;
-uniform float uTurbidity;
-uniform float uGloss;
-uniform float uBed;
-uniform float uSand;
-uniform float uWaveScale;
-uniform float uNscale;
-uniform float uRefract;
-uniform float uBedScale;
 
 varying vec2 fragCoord;
+uniform float time;
+uniform vec2  resolution;
 
-// ---- Simplex-Noise (Ashima Arts, public domain) ----
-vec3 mod289(vec3 x){ return x - floor(x*(1.0/289.0))*289.0; }
-vec2 mod289(vec2 x){ return x - floor(x*(1.0/289.0))*289.0; }
+uniform float u_speed, u_turb, u_wake, u_bed, u_refract, u_tint, u_shore;
+uniform float u_wavescale, u_nscale, u_gloss, u_turbidity, u_bank, u_emerge, u_sand;
+uniform float u_procDensity, u_procSize, u_flowDir, u_layerMode;
+uniform vec3  u_deep, u_sky, u_spec, u_bedShallow, u_bedDeep, u_stoneCol;
+uniform vec2  u_light;
+uniform float u_ambient;
+uniform vec3  u_points[8];          // Held-Störquellen: xy = UV, z = Alter 0..1 (z<0 = inaktiv)
+
+// Datengetriebener Flusslauf (aus der Karten-Skizze), UV-Koordinaten:
+uniform vec4  u_seg[${MAX_SEG}];    // ax,ay,bx,by
+uniform vec2  u_segW[${MAX_SEG}];   // hwA,hwB
+uniform float u_segN;
+uniform vec4  u_lake[${MAX_LAKE}];  // cx,cy,rx,ry
+uniform float u_lakeN;
+uniform float u_smink;              // Verschmelzungs-Radius (smin)
+
+float smin(float a,float b,float k){ float h=clamp(0.5+0.5*(b-a)/k,0.0,1.0); return mix(b,a,h)-k*h*(1.0-h); }
+float sdSegHw(vec2 p, vec2 a, vec2 b, float ra, float rb){ vec2 pa=p-a,ba=b-a; float h=clamp(dot(pa,ba)/dot(ba,ba),0.0,1.0); return length(pa-ba*h)-mix(ra,rb,h); }
+
+vec3 mod289(vec3 x){ return x-floor(x*(1.0/289.0))*289.0; }
+vec2 mod289(vec2 x){ return x-floor(x*(1.0/289.0))*289.0; }
 vec3 permute(vec3 x){ return mod289(((x*34.0)+1.0)*x); }
-float snoise(vec2 v){
-  const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
-  vec2 i  = floor(v + dot(v, C.yy));
-  vec2 x0 = v - i + dot(i, C.xx);
-  vec2 i1 = (x0.x > x0.y) ? vec2(1.0,0.0) : vec2(0.0,1.0);
-  vec4 x12 = x0.xyxy + C.xxzz; x12.xy -= i1;
-  i = mod289(i);
-  vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
-  vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
-  m = m*m; m = m*m;
-  vec3 x = 2.0 * fract(p * C.www) - 1.0;
-  vec3 h = abs(x) - 0.5;
-  vec3 ox = floor(x + 0.5);
-  vec3 a0 = x - ox;
-  m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
-  vec3 g; g.x = a0.x*x0.x + h.x*x0.y; g.yz = a0.yz*x12.xz + h.yz*x12.yw;
-  return 130.0 * dot(m, g);
-}
+float snoise(vec2 v){ const vec4 C=vec4(0.211324865405187,0.366025403784439,-0.577350269189626,0.024390243902439);
+  vec2 i=floor(v+dot(v,C.yy)); vec2 x0=v-i+dot(i,C.xx); vec2 i1=(x0.x>x0.y)?vec2(1.0,0.0):vec2(0.0,1.0);
+  vec4 x12=x0.xyxy+C.xxzz; x12.xy-=i1; i=mod289(i);
+  vec3 p=permute(permute(i.y+vec3(0.0,i1.y,1.0))+i.x+vec3(0.0,i1.x,1.0));
+  vec3 m=max(0.5-vec3(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),0.0); m=m*m; m=m*m;
+  vec3 x=2.0*fract(p*C.www)-1.0; vec3 h=abs(x)-0.5; vec3 ox=floor(x+0.5); vec3 a0=x-ox;
+  m*=1.79284291400159-0.85373472095314*(a0*a0+h*h); vec3 g; g.x=a0.x*x0.x+h.x*x0.y; g.yz=a0.yz*x12.xz+h.yz*x12.yw; return 130.0*dot(m,g); }
 float fbm4(vec2 p){ float s=0.0,a=0.5; for(int i=0;i<4;i++){ s+=a*snoise(p); p*=2.0; a*=0.5; } return s; }
 float fbm2(vec2 p){ float s=0.0,a=0.6; for(int i=0;i<2;i++){ s+=a*snoise(p); p*=2.2; a*=0.5; } return s; }
 
+// Wasser-Distanz aus den Segment-/See-Uniforms (smin = nahtlose Verschmelzung)
+float sdWater(vec2 p){
+  float d=1e9; bool erst=true;
+  for(int i=0;i<${MAX_SEG};i++){ if(float(i)>=u_segN) break; vec4 s=u_seg[i]; vec2 w=u_segW[i];
+    float di=sdSegHw(p,s.xy,s.zw,w.x,w.y); d = erst ? di : smin(d,di,u_smink); erst=false; }
+  for(int i=0;i<${MAX_LAKE};i++){ if(float(i)>=u_lakeN) break; vec4 L=u_lake[i];
+    vec2 q=(p-L.xy)/L.zw; float dl=(length(q)-1.0)*min(L.z,L.w); d = erst ? dl : smin(d,dl,u_smink); erst=false; }
+  d += fbm2(p*5.0)*0.006;
+  return d;
+}
+
+// Strömungsrichtung: Tangente des nächsten Segments (See = ruhig)
+vec2 flowDir(vec2 p){
+  float best=1e9; vec2 dir=vec2(0.0,1.0);
+  for(int i=0;i<${MAX_SEG};i++){ if(float(i)>=u_segN) break; vec4 s=u_seg[i];
+    vec2 pa=p-s.xy, ba=s.zw-s.xy; float h=clamp(dot(pa,ba)/dot(ba,ba),0.0,1.0);
+    float di=length(p-(s.xy+ba*h)); if(di<best){ best=di; dir=normalize(ba); } }
+  for(int i=0;i<${MAX_LAKE};i++){ if(float(i)>=u_lakeN) break; vec4 L=u_lake[i];
+    vec2 q=(p-L.xy)/L.zw; float dl=(length(q)-1.0)*min(L.z,L.w); if(dl<best){ best=dl; dir=vec2(0.0,0.0); } }
+  float ang=snoise(p*1.3+time*0.04)*0.4*u_turb; float c=cos(ang),s=sin(ang); return mat2(c,-s,s,c)*dir*u_flowDir;
+}
+
+float wh(vec2 p, vec2 dir, float spd){ float t=time*u_speed; float p0=fract(t),p1=fract(t+0.5); float w0=1.0-abs(2.0*p0-1.0),w1=1.0-abs(2.0*p1-1.0); float dist=0.55*spd;
+  float b0=fbm4(p*u_wavescale+dir*p0*dist); float b1=fbm4(p*u_wavescale+dir*p1*dist); float big=(b0*w0+b1*w1)/(w0+w1);
+  float fine=fbm2(p*u_wavescale*2.6+dir*(time*u_speed*2.2*spd)); return big*0.65 + fine*0.35*u_turb; }
+float inter(vec2 uv){ float aspect=resolution.x/resolution.y; float add=0.0;
+  for(int i=0;i<8;i++){ vec3 pt=u_points[i]; if(pt.z<0.0) continue; vec2 pos=pt.xy+vec2(0.0,-1.0)*pt.z*0.08; vec2 d=uv-pos; d.x*=aspect; float r=length(d);
+    float ring=sin(r*75.0-pt.z*30.0); float env=exp(-r*30.0)*(1.0-pt.z); add+=ring*env; } return add*u_wake; }
+vec3 normalAt(vec2 uv, vec2 dir, float spd){ float e=1.6/resolution.y;
+  float hL=wh(uv-vec2(e,0.0),dir,spd)+inter(uv-vec2(e,0.0)); float hR=wh(uv+vec2(e,0.0),dir,spd)+inter(uv+vec2(e,0.0));
+  float hD=wh(uv-vec2(0.0,e),dir,spd)+inter(uv-vec2(0.0,e)); float hU=wh(uv+vec2(0.0,e),dir,spd)+inter(uv+vec2(0.0,e));
+  float gx=(hR-hL)/(2.0*e); float gy=(hU-hD)/(2.0*e); return normalize(vec3(-gx*u_nscale,-gy*u_nscale,1.0)); }
+
 vec2 hash2(vec2 p){ p=vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))); return fract(sin(p)*43758.5453); }
+float hash11(float p){ return fract(sin(p*127.1)*43758.5453); }
+vec2 vor(vec2 p){ p+=0.35*vec2(fbm2(p*1.6),fbm2(p*1.6+7.3)); vec2 n=floor(p),f=fract(p); float f1=8.0,f2=8.0;
+  for(int j=-1;j<=1;j++){ for(int i=-1;i<=1;i++){ vec2 g=vec2(float(i),float(j)); vec2 o=hash2(n+g); float d=dot(g+o-f,g+o-f);
+    if(d<f1){ f2=f1; f1=d; } else if(d<f2){ f2=d; } } } return vec2(sqrt(f1),sqrt(f2)); }
 
-// Voronoi (F1,F2) wie in der Referenz - leicht durch fbm verzerrt
-vec2 vor(vec2 p){
-  p += 0.35*vec2(fbm2(p*1.6), fbm2(p*1.6+7.3));
-  vec2 n=floor(p), f=fract(p); float f1=8.0,f2=8.0;
-  for(int j=-1;j<=1;j++){ for(int i=-1;i<=1;i++){
-    vec2 g=vec2(float(i),float(j)); vec2 o=hash2(n+g); float d=dot(g+o-f,g+o-f);
-    if(d<f1){ f2=f1; f1=d; } else if(d<f2){ f2=d; }
-  } }
-  return vec2(sqrt(f1), sqrt(f2));
-}
+vec3 riverbed(vec2 p, float deepness){ vec3 base=mix(u_bedShallow,u_bedDeep,deepness);
+  vec2 vB=vor(p*7.5); float stoneB=smoothstep(0.34,0.04,vB.x); float fugeB=smoothstep(0.0,0.11,vB.y-vB.x);
+  base=mix(base, base*1.32, stoneB*0.45*u_bed); base*=mix(1.0, 0.62+0.38*fugeB, u_bed);
+  vec2 vL=vor(p*19.0); float kies=smoothstep(0.0,0.26,vL.x); base*=mix(1.0, 0.80+0.32*kies, u_bed);
+  float sandPatch=smoothstep(0.44,0.78,fbm4(p*6.0+30.0)*0.5+0.5); base=mix(base, base*1.18+vec3(0.05,0.043,0.022), sandPatch*u_sand*(1.0-deepness*0.55));
+  base*=0.9+0.2*fbm4(p*44.0)*u_bed; return base; }
+vec3 land(vec2 p){ float n=fbm4(p*7.0)*0.5+0.5; vec3 g=mix(vec3(0.13,0.19,0.09),vec3(0.22,0.28,0.13),n); g+=fbm4(p*30.0)*0.04;
+  float dirt=smoothstep(0.62,0.82, fbm4(p*5.0+10.0)*0.5+0.5); g=mix(g, vec3(0.19,0.15,0.10), dirt*0.30); return g; }
+vec3 landFull(vec2 p, float sd){ vec3 c=land(p); float bank=smoothstep(u_shore*3.0,-u_shore,sd)*u_bank; c=mix(c, mix(c,vec3(0.29,0.24,0.17),0.62), bank); return c; }
 
-// Flussbett: Voronoi-Steine + Fugen + Kies + Sandflecken (Referenz riverbed())
-vec3 riverbed(vec2 p, float deepness){
-  vec3 base = mix(uBedShallow, uBedDeep, deepness);
-  vec2 vB = vor(p*7.5); float stoneB=smoothstep(0.34,0.04,vB.x); float fugeB=smoothstep(0.0,0.11,vB.y-vB.x);
-  base = mix(base, base*1.32, stoneB*0.45*uBed); base *= mix(1.0, 0.62+0.38*fugeB, uBed);
-  vec2 vL = vor(p*19.0); float kies=smoothstep(0.0,0.26,vL.x); base *= mix(1.0, 0.80+0.32*kies, uBed);
-  float sandPatch = smoothstep(0.44,0.78, fbm4(p*6.0+30.0)*0.5+0.5);
-  base = mix(base, base*1.18+vec3(0.05,0.043,0.022), sandPatch*uSand*(1.0-deepness*0.55));
-  base *= 0.9 + 0.2*fbm4(p*44.0)*uBed;
-  return base;
-}
-
-// Strömungsrichtung: Feld-Basis + sanftes Mäandern (Turbulenz dreht leicht)
-vec2 flowDir(vec2 uv, vec2 base){
-  float ang = snoise(uv*uWaveScale*0.25 + time*0.04) * 0.4 * uTurbulence;
-  float c=cos(ang), s=sin(ang);
-  return mat2(c,-s,s,c) * base;
-}
-
-// Höhenfeld: große Welle (fbm4) + feine Welle (fbm2), Turbulenz nur Amplitude
-// der FEINEN Welle. Zwei-Phasen-Trick (Dreieck-Gewichte) gegen Wiederholung.
-float wh(vec2 uv, vec2 base, float spd){
-  vec2 dir = flowDir(uv, base);
-  float t = time*uFlowSpeed; float p0=fract(t), p1=fract(t+0.5);
-  float w0=1.0-abs(2.0*p0-1.0), w1=1.0-abs(2.0*p1-1.0); float dist=0.55*spd;
-  float b0 = fbm4(uv*uWaveScale + dir*p0*dist);
-  float b1 = fbm4(uv*uWaveScale + dir*p1*dist);
-  float big = (b0*w0 + b1*w1)/(w0+w1);
-  float fine = fbm2(uv*uWaveScale*2.6 + dir*(time*uFlowSpeed*2.2*spd));
-  return big*0.65 + fine*0.35*uTurbulence;
-}
-
-vec3 normalAt(vec2 uv, vec2 base, float spd){
-  float e = 1.6/resolution.y;
-  float hL=wh(uv-vec2(e,0.0),base,spd), hR=wh(uv+vec2(e,0.0),base,spd);
-  float hD=wh(uv-vec2(0.0,e),base,spd), hU=wh(uv+vec2(0.0,e),base,spd);
-  float gx=(hR-hL)/(2.0*e), gy=(hU-hD)/(2.0*e);
-  return normalize(vec3(-gx*uNscale, -gy*uNscale, 1.0));
-}
+void stoneInstance(vec2 uv, vec2 center, float aspect, float R, float seed, inout float maxH, inout vec3 sN, inout vec3 sCol, inout float sMask){
+  vec2 d=(uv-center); d.x*=aspect; if(length(d)>R*1.25) return;
+  float rot=hash11(seed)*6.2831; float c=cos(rot),si=sin(rot); vec2 dl=mat2(c,-si,si,c)*d;
+  float stretch=0.72+0.56*hash11(seed+3.1); dl=vec2(dl.x/stretch, dl.y*stretch);
+  float rr=length(dl)/R; float a=atan(dl.y,dl.x);
+  float wob=0.14*sin(a*4.0+seed*6.28)+0.08*sin(a*7.0+seed*3.0+1.7)+0.05*sin(a*11.0+seed*9.0); rr*=(1.0+wob);
+  if(rr>=1.0) return; float hfac=0.42+0.58*hash11(seed+5.7); float bumps=fbm2(uv*82.0+center*9.0+seed*15.0);
+  float h=sqrt(max(0.0,1.0-rr*rr))*hfac + bumps*0.04;
+  if(h>maxH){ maxH=h; float rl=length(d); vec2 rdir=(rl>0.0001)?d/rl:vec2(0.0);
+    sN=normalize(vec3(rdir*rr*1.4 + vec2(bumps*0.28,bumps*0.2), 1.0));
+    float cv=(hash11(seed+7.3)-0.5)*0.28; sCol=clamp(u_stoneCol*(1.0+cv)*(0.86+0.28*(bumps*0.5+0.5)),0.0,1.0);
+    sMask=smoothstep(1.0,0.84,rr); } }
+void procStones(vec2 uv, float aspect, float sd, inout float maxH, inout vec3 sN, inout vec3 sCol, inout float sMask){
+  if(u_procDensity<=0.0) return; float wz=smoothstep(u_shore*2.5,-u_shore,sd); if(wz<0.02) return;
+  float cs=u_procSize; vec2 gp=vec2(uv.x*aspect,uv.y)/cs; vec2 cf=floor(gp);
+  for(int j=-1;j<=1;j++){ for(int i=-1;i<=1;i++){ vec2 cc=cf+vec2(float(i),float(j)); vec2 rnd=hash2(cc);
+    if(rnd.x>u_procDensity) continue; float seed=fract(rnd.y*13.37)*10.0+0.21;
+    vec2 ctr=(cc+vec2(0.25+0.5*rnd.x,0.25+0.5*rnd.y))*cs; ctr=vec2(ctr.x/aspect,ctr.y);
+    float R=cs*(0.16+0.20*hash11(dot(cc,vec2(7.1,3.3)))); stoneInstance(uv,ctr,aspect,R,seed,maxH,sN,sCol,sMask); } } }
+float stoneField(vec2 uv, float aspect, float sd, out vec3 sCol, out vec3 sN, out float sMask){
+  float maxH=0.0; sCol=vec3(0.5); sN=vec3(0.0,0.0,1.0); sMask=0.0;
+  procStones(uv,aspect,sd,maxH,sN,sCol,sMask); return maxH; }
+vec3 stoneLit(vec3 sN, vec3 sCol){ vec3 L=normalize(vec3(u_light,0.8)); float lam=max(dot(sN,L),0.0)*0.76+0.24;
+  float spc=pow(max(dot(sN,normalize(L+vec3(0.0,0.0,1.0))),0.0),22.0)*0.16; return sCol*lam+spc; }
 
 void main(){
-  vec2 uv = fragCoord / resolution.xy;
-  vec4 fld = texture2D(iChannel0, uv);
-#ifdef WASSER_DEBUG_FELD
-  gl_FragColor = vec4(fld.b, fld.b, fld.b, 1.0); return;
-#endif
-  float wet = smoothstep(0.06, 0.5, fld.b);          // weiche Wassermaske
-  if (wet <= 0.002) { gl_FragColor = vec4(0.0); return; }  // Land: transparent
-  float deepness = smoothstep(0.42, 0.96, fld.b);    // tief in der Mitte
+  vec2 uv = fragCoord.xy / resolution;
+  float sd=sdWater(uv); float aspect=resolution.x/resolution.y;
+  float waterDepth=smoothstep(u_shore,-u_shore,sd); float deepness=smoothstep(0.0,-0.20,sd);
+  vec3 sCol,sN; float sMask; float sH=stoneField(uv,aspect,sd,sCol,sN,sMask);
+  float emerged=clamp(sH*(0.5+u_emerge) - deepness*0.55, 0.0, 1.0);
 
-  vec2 fl = (fld.rg - 0.5) * 2.0; float fmag = length(fl);
-  vec2 base = (fmag > 0.05 ? normalize(fl) : vec2(0.0,1.0)) * clamp(fmag*1.4, 0.12, 1.0) * uFlowSign;
+  if(waterDepth<0.003){
+    if(u_layerMode>0.5){ gl_FragColor=vec4(0.0); return; }              // Layer: Land transparent
+    vec3 c=landFull(uv,sd); c=mix(c, stoneLit(sN,sCol), sMask);
+    vec2 q0=uv-0.5; gl_FragColor=vec4(c*u_ambient*(1.0-dot(q0,q0)*0.35),1.0); return;
+  }
+  float localDepth=waterDepth*(1.0-emerged*0.95);
+  vec2 dir=flowDir(uv); float spd=mix(1.0,0.4,deepness); vec3 n=normalAt(uv,dir,spd);
+  vec2 refrUV=uv+n.xy*u_refract*localDepth; vec3 bed=riverbed(refrUV,deepness)*u_ambient;
+  bed=mix(bed, stoneLit(sN,sCol)*u_ambient, sMask);
+  vec3 col=mix(bed,u_deep, localDepth*mix(u_turbidity,1.0,deepness)*u_tint);
+  float fres=pow(1.0-clamp(n.z,0.0,1.0),4.0); col=mix(col,u_sky,fres*0.4*localDepth);
+  vec3 V=vec3(0.0,0.0,1.0),H=normalize(normalize(vec3(u_light,0.9))+V); float sp=max(dot(n,H),0.0);
+  col+=pow(sp,90.0)*u_spec*localDepth*0.9*u_gloss; col+=pow(sp,340.0)*u_spec*localDepth*1.6*u_gloss;
+  float slope=length(n.xy); float foam=smoothstep(0.18,0.42,slope)*localDepth; col=mix(col,vec3(0.90,0.94,0.95),foam*0.5*clamp(u_turb,0.0,1.0));
+  vec3 dryStone=stoneLit(sN,sCol)*1.08*u_ambient; col=mix(col, dryStone, sMask*emerged);
+  float waterline=sMask*smoothstep(0.0,0.32,emerged)*(1.0-smoothstep(0.32,0.62,emerged));
+  col=mix(col, vec3(0.92,0.95,0.96), clamp(waterline,0.0,1.0)*(0.16+0.34*u_turb));
 
-  float spd = mix(1.0, 0.4, deepness);               // tiefes Wasser fließt ruhiger
-  vec3 n = normalAt(uv, base, spd);
-
-  // Flussbett (mit Lichtbrechung), tieferes Wasser nimmt mehr Eigenfarbe an
-  vec2 rp = (uv + n.xy*uRefract*wet) * uBedScale;
-  vec3 bed = riverbed(rp, deepness) * uAmbient;
-  vec3 col = mix(bed, uDeep, wet * mix(uTurbidity, 1.0, deepness) * uTint);
-
-  // Fresnel -> Himmelsspiegelung an flachen Winkeln
-  float fres = pow(1.0 - clamp(n.z,0.0,1.0), 4.0);
-  col = mix(col, uSky, fres*0.4*wet);
-
-  // Glanzlicht (Sonne/Mond) + feines Funkeln
-  vec3 V = vec3(0.0,0.0,1.0);
-  vec3 L = normalize(vec3(uLight, 0.9));
-  vec3 H = normalize(L+V);
-  float sp = max(dot(n,H),0.0);
-  col += pow(sp,90.0)  * uSpec * wet * 0.9 * uGloss;
-  col += pow(sp,340.0) * uSpec * wet * 1.6 * uGloss;
-
-  // Schaum an steilen Kämmen (mit Turbulenz)
-  float slope = length(n.xy);
-  float foam = smoothstep(0.18,0.42,slope) * wet;
-  col = mix(col, vec3(0.90,0.94,0.95), foam*0.45*clamp(uTurbulence,0.0,1.0));
-
-  col *= uColor;
-  // Premultipliziertes Alpha (Phaser-Standard-Blend): Rand blendet weich in den
-  // Untergrund (Boden-Kacheln scheinen am Ufer durch).
-  float alpha = clamp(wet, 0.0, 1.0);
-  gl_FragColor = vec4(col*alpha, alpha);
+  if(u_layerMode>0.5){ gl_FragColor=vec4(col, waterDepth); return; }    // Layer: nur Wasser, Alpha am Ufer
+  vec3 finalCol=mix(landFull(uv,sd)*u_ambient, col, waterDepth);
+  vec2 q=uv-0.5; finalCol*=1.0-dot(q,q)*0.35; gl_FragColor=vec4(finalCol,1.0);
 }
 `;
 
 // ---------------------------------------------------------------------
-//  Presets - Werte aus der Referenz ("Tag"-Stimmung + Standard-Regler)
+//  Presets - voller Parametersatz (Werte aus der Referenz/Übergabenotiz)
 // ---------------------------------------------------------------------
 export interface WasserPreset {
-  color: [number, number, number];
-  flowSpeed: number;
-  turbulence: number;
-  flowSign: number;
-  deep: [number, number, number];
-  sky: [number, number, number];
-  spec: [number, number, number];
+  speed: number; turb: number; wake: number; bed: number; refract: number;
+  tint: number; shore: number; wavescale: number; nscale: number; gloss: number;
+  turbidity: number; bank: number; emerge: number; sand: number;
+  procDensity: number; procSize: number; flowDir: number; ambient: number;
+  deep: [number, number, number]; sky: [number, number, number]; spec: [number, number, number];
+  bedShallow: [number, number, number]; bedDeep: [number, number, number]; stoneCol: [number, number, number];
   light: [number, number];
-  ambient: number;
-  bedShallow: [number, number, number];
-  bedDeep: [number, number, number];
-  tint: number;
-  turbidity: number;
-  gloss: number;
-  bed: number;
-  sand: number;
 }
 
 export const WASSER: WasserPreset = {
-  color: [1.0, 1.0, 1.0],
-  flowSpeed: 0.13,
-  turbulence: 0.0,            // Referenz-Standard: ruhige große Welle (Turbulenz 0)
-  flowSign: 1.0,
-  deep: [0.08, 0.24, 0.27],
-  sky: [0.55, 0.75, 0.92],
-  spec: [1.0, 0.97, 0.88],
+  speed: 0.13, turb: 0.0, wake: 0.2, bed: 1.0, refract: 0.05,
+  tint: 0.65, shore: 0.05, wavescale: 5.0, nscale: 0.10, gloss: 0.40,
+  turbidity: 0.40, bank: 0.45, emerge: 0.4, sand: 0.5,
+  procDensity: 0.35, procSize: 0.05, flowDir: 1.0, ambient: 1.05,
+  deep: [0.08, 0.24, 0.27], sky: [0.55, 0.75, 0.92], spec: [1.0, 0.97, 0.88],
+  bedShallow: [0.40, 0.37, 0.30], bedDeep: [0.13, 0.16, 0.16], stoneCol: [0.345, 0.329, 0.298],
   light: [0.25, 0.65],
-  ambient: 1.05,
-  bedShallow: [0.40, 0.369, 0.298],   // #665e4c
-  bedDeep: [0.129, 0.161, 0.161],     // #212929
-  tint: 0.65,
-  turbidity: 0.4,
-  gloss: 0.4,
-  bed: 1.0,
-  sand: 0.5,
 };
 
-// Ruhiger See: kaum Strömung, etwas tiefer/dunkler, glatter.
-export const SEE: WasserPreset = {
-  ...WASSER,
-  flowSpeed: 0.05,
-  turbulence: 0.0,
-  deep: [0.07, 0.20, 0.26],
-  gloss: 0.5,
-};
-
-// Blutstrom: dunkelrot, zäh, langsam.
+// Blut: dunkelrot, zäh, langsam, trüber, weniger Glanz.
 export const BLUT: WasserPreset = {
   ...WASSER,
-  color: [1.0, 0.86, 0.86],
-  flowSpeed: 0.045,
-  turbulence: 0.0,
-  deep: [0.20, 0.015, 0.015],
-  sky: [0.35, 0.06, 0.06],
-  spec: [0.70, 0.20, 0.20],
-  light: [0.40, 0.50],
-  ambient: 0.62,
-  bedShallow: [0.227, 0.078, 0.078],
-  bedDeep: [0.110, 0.020, 0.020],
-  tint: 0.8,
-  turbidity: 0.6,
-  gloss: 0.35,
+  speed: 0.05, turb: 0.0, gloss: 0.30, tint: 0.85, turbidity: 0.7, sand: 0.15,
+  deep: [0.22, 0.02, 0.02], sky: [0.35, 0.06, 0.06], spec: [0.70, 0.20, 0.20],
+  bedShallow: [0.26, 0.10, 0.10], bedDeep: [0.10, 0.02, 0.02], stoneCol: [0.30, 0.16, 0.16],
+  light: [0.40, 0.50], ambient: 0.7,
 };
 
-// ---------------------------------------------------------------------
-//  Master-Stellschrauben + dev-tunbare Globale (Regler greifen hier zu)
-// ---------------------------------------------------------------------
+// Live-Regler (Dev): multiplikativ/überschreibend auf alle Wasser-Shader.
 export const WASSER_CFG = {
-  tiefe: -9,          // Render-Tiefe: über Boden (-10/-11), unter Spieler/Objekten
-  feldScale: 5,       // Welt-Pixel pro Feldzelle (Maske/Strömung-Auflösung)
-  bedProWelt: 90,     // uBedScale ≈ worldW / bedProWelt (Kiesel-Korngröße)
-  waveProWelt: 170,   // uWaveScale ≈ worldW / waveProWelt (Wellenfeinheit)
-  // Live-Regler (Dev): multiplikativ/überschreibend auf alle Wasser-Shader.
-  flowMul: 1.0,       // Fließ-Tempo-Faktor
-  turbAdd: 0.0,       // Wirbel zusätzlich
-  ambientMul: 1.0,    // Helligkeit-Faktor
+  tiefe: -9,            // Render-Tiefe: über Boden (-10/-11), unter Spieler/Objekten
+  smink: 0.07,          // smin-Verschmelzung der Gewässer (UV)
+  flowMul: 1.0, turbAdd: 0.0, ambientMul: 1.0,
 };
 
 let baseShader: Phaser.Display.BaseShader | null = null;
 function getBaseShader(): Phaser.Display.BaseShader {
   if (baseShader) return baseShader;
-  const u = {
-    uFlowSpeed: { type: '1f', value: 0.13 },
-    uTurbulence: { type: '1f', value: 0.0 },
-    uFlowSign: { type: '1f', value: 1.0 },
-    uDeep: { type: '3f', value: { x: 0.08, y: 0.24, z: 0.27 } },
-    uSky: { type: '3f', value: { x: 0.55, y: 0.75, z: 0.92 } },
-    uSpec: { type: '3f', value: { x: 1.0, y: 0.97, z: 0.88 } },
-    uLight: { type: '2f', value: { x: 0.25, y: 0.65 } },
-    uAmbient: { type: '1f', value: 1.05 },
-    uColor: { type: '3f', value: { x: 1.0, y: 1.0, z: 1.0 } },
-    uBedShallow: { type: '3f', value: { x: 0.4, y: 0.369, z: 0.298 } },
-    uBedDeep: { type: '3f', value: { x: 0.129, y: 0.161, z: 0.161 } },
-    uTint: { type: '1f', value: 0.65 },
-    uTurbidity: { type: '1f', value: 0.4 },
-    uGloss: { type: '1f', value: 0.4 },
-    uBed: { type: '1f', value: 1.0 },
-    uSand: { type: '1f', value: 0.5 },
-    uWaveScale: { type: '1f', value: 24.0 },
-    uNscale: { type: '1f', value: 0.1 },
-    uRefract: { type: '1f', value: 0.05 },
-    uBedScale: { type: '1f', value: 46.0 },
+  const f = (value: number) => ({ type: '1f', value });
+  const v3 = (x: number, y: number, z: number) => ({ type: '3f', value: { x, y, z } });
+  const u: Record<string, unknown> = {
+    u_speed: f(0.13), u_turb: f(0), u_wake: f(0.2), u_bed: f(1), u_refract: f(0.05),
+    u_tint: f(0.65), u_shore: f(0.05), u_wavescale: f(5), u_nscale: f(0.1), u_gloss: f(0.4),
+    u_turbidity: f(0.4), u_bank: f(0.45), u_emerge: f(0.4), u_sand: f(0.5),
+    u_procDensity: f(0.35), u_procSize: f(0.05), u_flowDir: f(1), u_layerMode: f(1), u_ambient: f(1.05),
+    u_deep: v3(0.08, 0.24, 0.27), u_sky: v3(0.55, 0.75, 0.92), u_spec: v3(1, 0.97, 0.88),
+    u_bedShallow: v3(0.4, 0.37, 0.3), u_bedDeep: v3(0.13, 0.16, 0.16), u_stoneCol: v3(0.345, 0.329, 0.298),
+    u_light: { type: '2f', value: { x: 0.25, y: 0.65 } },
+    u_points: { type: '3fv', value: new Float32Array(8 * 3).fill(-1) },
+    u_seg: { type: '4fv', value: new Float32Array(MAX_SEG * 4) },
+    u_segW: { type: '2fv', value: new Float32Array(MAX_SEG * 2) },
+    u_segN: f(0), u_lake: { type: '4fv', value: new Float32Array(MAX_LAKE * 4) }, u_lakeN: f(0),
+    u_smink: f(0.07),
   };
   baseShader = new Phaser.Display.BaseShader('wasser', FRAG, undefined, u);
   return baseShader;
 }
 
-function v3(c: [number, number, number]): { x: number; y: number; z: number } { return { x: c[0], y: c[1], z: c[2] }; }
+function setV3(sh: Phaser.GameObjects.Shader, key: string, c: [number, number, number]): void {
+  sh.setUniform(`${key}.value`, { x: c[0], y: c[1], z: c[2] });
+}
 
-/** Setzt alle Preset-Uniformen (auch live für Regler) auf ein Shader-Objekt. */
+/** Setzt den vollen Parametersatz eines Presets (auch live für Regler). */
 export function wendeWasserPreset(sh: Phaser.GameObjects.Shader, p: WasserPreset): void {
-  sh.setUniform('uFlowSpeed.value', p.flowSpeed * WASSER_CFG.flowMul);
-  sh.setUniform('uTurbulence.value', Math.max(0, p.turbulence + WASSER_CFG.turbAdd));
-  sh.setUniform('uFlowSign.value', p.flowSign);
-  sh.setUniform('uDeep.value', v3(p.deep));
-  sh.setUniform('uSky.value', v3(p.sky));
-  sh.setUniform('uSpec.value', v3(p.spec));
-  sh.setUniform('uLight.value', { x: p.light[0], y: p.light[1] });
-  sh.setUniform('uAmbient.value', p.ambient * WASSER_CFG.ambientMul);
-  sh.setUniform('uColor.value', v3(p.color));
-  sh.setUniform('uBedShallow.value', v3(p.bedShallow));
-  sh.setUniform('uBedDeep.value', v3(p.bedDeep));
-  sh.setUniform('uTint.value', p.tint);
-  sh.setUniform('uTurbidity.value', p.turbidity);
-  sh.setUniform('uGloss.value', p.gloss);
-  sh.setUniform('uBed.value', p.bed);
-  sh.setUniform('uSand.value', p.sand);
+  sh.setUniform('u_speed.value', p.speed * WASSER_CFG.flowMul);
+  sh.setUniform('u_turb.value', Math.max(0, p.turb + WASSER_CFG.turbAdd));
+  sh.setUniform('u_wake.value', p.wake);
+  sh.setUniform('u_bed.value', p.bed);
+  sh.setUniform('u_refract.value', p.refract);
+  sh.setUniform('u_tint.value', p.tint);
+  sh.setUniform('u_shore.value', p.shore);
+  sh.setUniform('u_wavescale.value', Math.max(2.5, p.wavescale));
+  sh.setUniform('u_nscale.value', p.nscale);
+  sh.setUniform('u_gloss.value', p.gloss);
+  sh.setUniform('u_turbidity.value', p.turbidity);
+  sh.setUniform('u_bank.value', p.bank);
+  sh.setUniform('u_emerge.value', p.emerge);
+  sh.setUniform('u_sand.value', p.sand);
+  sh.setUniform('u_procDensity.value', p.procDensity);
+  sh.setUniform('u_procSize.value', p.procSize);
+  sh.setUniform('u_flowDir.value', p.flowDir);
+  sh.setUniform('u_ambient.value', p.ambient * WASSER_CFG.ambientMul);
+  setV3(sh, 'u_deep', p.deep); setV3(sh, 'u_sky', p.sky); setV3(sh, 'u_spec', p.spec);
+  setV3(sh, 'u_bedShallow', p.bedShallow); setV3(sh, 'u_bedDeep', p.bedDeep); setV3(sh, 'u_stoneCol', p.stoneCol);
+  sh.setUniform('u_light.value', { x: p.light[0], y: p.light[1] });
 }
 
-/**
- * Backt das Wasserfeld einer Karte (Maske + Strömung) in eine Phaser-Textur.
- * Gibt den Texturschlüssel zurück. Niedrige Auflösung + LINEAR-Filter = weiche
- * organische Ufer (kein Pixel-Raster sichtbar).
- */
-export function baueWasserfeld(scene: Phaser.Scene, key: string, geo: WasserGeometrie, worldW: number, worldH: number, scale = WASSER_CFG.feldScale): string {
-  if (scene.textures.exists(key)) scene.textures.remove(key);
-  const { w, h } = feldGroesse(worldW, worldH, scale);
-  const tex = scene.textures.createCanvas(key, w, h);
-  if (!tex) return key;
-  const data = baueWasserfeldDaten(worldW, worldH, scale, geo);
-  const img = tex.context.createImageData(w, h);
-  img.data.set(data);
-  tex.context.putImageData(img, 0, 0);
-  tex.refresh();
-  tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
-  return key;
+/** Lädt den Flusslauf (Segmente/Seen) einer Karte in die Shader-Uniforms. */
+export function setzeGeometrie(sh: Phaser.GameObjects.Shader, geo: WasserGeometrie): void {
+  const u = geometrieZuUniforms(geo);
+  sh.setUniform('u_seg.value', u.seg);
+  sh.setUniform('u_segW.value', u.segW);
+  sh.setUniform('u_segN.value', u.segN);
+  sh.setUniform('u_lake.value', u.lake);
+  sh.setUniform('u_lakeN.value', u.lakeN);
+  sh.setUniform('u_smink.value', WASSER_CFG.smink);
 }
 
+/** Held-Störquellen (Wellen) setzen: bis zu 8 Punkte als [x,y,alter] in UV. */
+export function setzeHeldPunkte(sh: Phaser.GameObjects.Shader, punkte: Array<[number, number, number]>): void {
+  const arr = new Float32Array(8 * 3).fill(-1);
+  for (let i = 0; i < Math.min(8, punkte.length); i++) {
+    arr[i * 3] = punkte[i][0]; arr[i * 3 + 1] = punkte[i][1]; arr[i * 3 + 2] = punkte[i][2];
+  }
+  sh.setUniform('u_points.value', arr);
+}
+
+export interface SpawnWasserOpts { depth?: number; layerMode?: number; }
+
 /**
- * Spawnt EIN Wasser-Quad über die ganze Karte, maskiert durchs gebackene Feld.
- * worldW/worldH = Kartengröße in Welt-Pixeln. Liefert das Shader-Objekt
- * (für Live-Regler / Cleanup beim Area-Wechsel).
+ * Spawnt EIN Wasser-Quad (x=0,y=0, Größe worldW×worldH) mit dem prozeduralen
+ * Shader. geo = Flusslauf in UV (0..1) der Karte. layerMode 1 = Overlay (Land
+ * transparent), 0 = ganze Szene inkl. Gras (Prototyp-Vergleich).
  */
-export function spawneWasser(scene: Phaser.Scene, feldKey: string, worldW: number, worldH: number, preset: WasserPreset, depth = WASSER_CFG.tiefe): Phaser.GameObjects.Shader {
+export function spawneWasser(scene: Phaser.Scene, geo: WasserGeometrie, worldW: number, worldH: number, preset: WasserPreset, opts: SpawnWasserOpts = {}): Phaser.GameObjects.Shader {
   const sh = scene.add.shader(getBaseShader(), 0, 0, worldW, worldH);
-  // Feld als iChannel0 binden - CLAMP statt REPEAT (wir sampeln nur uv 0..1; ein
-  // NPOT-Feld + REPEAT liefert in WebGL1 eine unvollständige (schwarze) Textur).
-  sh.setSampler2D('iChannel0', feldKey, 0, { repeat: false, wrapS: 'clamp_to_edge', wrapT: 'clamp_to_edge', minFilter: 'linear', magFilter: 'linear' });
-  sh.setOrigin(0, 0).setDepth(depth);
+  sh.setOrigin(0, 0).setDepth(opts.depth ?? WASSER_CFG.tiefe);
   wendeWasserPreset(sh, preset);
-  sh.setUniform('uWaveScale.value', Math.max(6, worldW / WASSER_CFG.waveProWelt));
-  sh.setUniform('uBedScale.value', Math.max(12, worldW / WASSER_CFG.bedProWelt));
+  setzeGeometrie(sh, geo);
+  sh.setUniform('u_layerMode.value', opts.layerMode ?? 1);
   return sh;
 }

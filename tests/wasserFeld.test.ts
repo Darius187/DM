@@ -1,65 +1,52 @@
 import { describe, it, expect } from 'vitest';
-import { probeWasserfeld, baueWasserfeldDaten, feldGroesse, type WasserGeometrie } from '../src/world/wasserFeld';
+import { sdWasser, geometrieZuUniforms, MAX_SEG, type WasserGeometrie } from '../src/world/wasserFeld';
 
-// Reine Logik: aus Mittellinien/Seen ein Wasserfeld (Maske + Strömung) rechnen.
-// SDF + smin -> nahtlose Verschmelzung, statt Rechteck-Streifen.
+// Reine Logik: aus Mittellinien/Seen das Wasser per SDF + smin beschreiben und
+// in flache Uniform-Arrays für den Shader wandeln. Koordinaten in UV (0..1).
 
-describe('probeWasserfeld', () => {
+describe('sdWasser', () => {
   it('liefert negative Distanz IM Fluss, positive am Land', () => {
-    const geo: WasserGeometrie = { bahnen: [{ punkte: [{ x: 0, y: 0, hw: 20 }, { x: 0, y: 100, hw: 20 }] }], seen: [] };
-    expect(probeWasserfeld(0, 50, geo).sd).toBeLessThan(0);       // Mitte
-    expect(probeWasserfeld(200, 50, geo).sd).toBeGreaterThan(0);  // weit weg
+    const geo: WasserGeometrie = { bahnen: [{ punkte: [{ x: 0.5, y: 0, hw: 0.05 }, { x: 0.5, y: 1, hw: 0.05 }] }], seen: [] };
+    expect(sdWasser(0.5, 0.5, geo)).toBeLessThan(0);   // Mitte
+    expect(sdWasser(0.9, 0.5, geo)).toBeGreaterThan(0); // weit weg
   });
 
-  it('gibt die Strömungsrichtung stromabwärts (normiert) zurück', () => {
-    // Bahn läuft nach unten (+y) -> Strömung (0,1)
-    const geo: WasserGeometrie = { bahnen: [{ punkte: [{ x: 0, y: 0, hw: 10 }, { x: 0, y: 100, hw: 10 }] }], seen: [] };
-    const p = probeWasserfeld(0, 50, geo);
-    expect(p.fx).toBeCloseTo(0);
-    expect(p.fy).toBeCloseTo(1);
+  it('ein See ist innen Wasser', () => {
+    const geo: WasserGeometrie = { bahnen: [], seen: [{ cx: 0.5, cy: 0.5, rx: 0.2, ry: 0.15 }] };
+    expect(sdWasser(0.5, 0.5, geo)).toBeLessThan(0);
+    expect(sdWasser(0.5, 0.9, geo)).toBeGreaterThan(0);
   });
 
-  it('ein See trägt keine Strömung (fx=fy=0)', () => {
-    const geo: WasserGeometrie = { bahnen: [], seen: [{ cx: 0, cy: 0, rx: 100, ry: 60 }] };
-    const p = probeWasserfeld(0, 0, geo);
-    expect(p.sd).toBeLessThan(0);
-    expect(p.fx).toBe(0);
-    expect(p.fy).toBe(0);
-  });
-
-  it('verschmilzt Fluss und See nahtlos (smin: Distanz an der Naht <= Einzeldistanz)', () => {
-    const fluss: WasserGeometrie = { bahnen: [{ punkte: [{ x: 0, y: -200, hw: 15 }, { x: 0, y: 0, hw: 15 }] }], seen: [], verschmelzung: 60 };
-    const beide: WasserGeometrie = { ...fluss, seen: [{ cx: 0, cy: 40, rx: 80, ry: 60 }] };
-    // An einem Punkt zwischen Flussende und See ist die kombinierte Distanz
-    // kleiner (mehr "Wasser") als nur der Fluss allein.
-    const nur = probeWasserfeld(0, 15, fluss).sd;
-    const mit = probeWasserfeld(0, 15, beide).sd;
+  it('verschmilzt Fluss und See nahtlos (smin: Naht-Distanz <= Einzeldistanz)', () => {
+    const fluss: WasserGeometrie = { bahnen: [{ punkte: [{ x: 0.5, y: 0, hw: 0.04 }, { x: 0.5, y: 0.5, hw: 0.04 }] }], seen: [] };
+    const beide: WasserGeometrie = { ...fluss, seen: [{ cx: 0.5, cy: 0.62, rx: 0.18, ry: 0.14 }] };
+    const nur = sdWasser(0.5, 0.54, fluss, 0.08);
+    const mit = sdWasser(0.5, 0.54, beide, 0.08);
     expect(mit).toBeLessThanOrEqual(nur);
   });
 });
 
-describe('baueWasserfeldDaten', () => {
-  it('hat die richtige Größe und kodiert Wasser im b-Kanal', () => {
-    const geo: WasserGeometrie = { bahnen: [{ punkte: [{ x: 0, y: 0, hw: 40 }, { x: 200, y: 0, hw: 40 }] }], seen: [] };
-    const { w, h } = feldGroesse(200, 100, 5);
-    const data = baueWasserfeldDaten(200, 100, 5, geo);
-    expect(data.length).toBe(w * h * 4);
-    // Zelle auf der Bahn (x~100,y~0 -> i~20, j~0) ist nass (b hoch)
-    const i = Math.floor(100 / 5), j = 0;
-    const b = data[(j * w + i) * 4 + 2];
-    expect(b).toBeGreaterThan(180);
-    // Zelle weit weg unten ist trocken (b niedrig)
-    const i2 = Math.floor(100 / 5), j2 = h - 1;
-    const b2 = data[(j2 * w + i2) * 4 + 2];
-    expect(b2).toBeLessThan(60);
+describe('geometrieZuUniforms', () => {
+  it('zerlegt Bahnen in Segment-Paare und zählt Seen', () => {
+    const geo: WasserGeometrie = {
+      bahnen: [{ punkte: [{ x: 0, y: 0, hw: 0.05 }, { x: 0.2, y: 0.3, hw: 0.06 }, { x: 0.4, y: 0.5, hw: 0.05 }] }],
+      seen: [{ cx: 0.5, cy: 0.5, rx: 0.2, ry: 0.1 }],
+    };
+    const u = geometrieZuUniforms(geo);
+    expect(u.segN).toBe(2);                 // 3 Punkte -> 2 Segmente
+    expect(u.lakeN).toBe(1);
+    // erstes Segment: a=(0,0)->b=(0.2,0.3), hw a=0.05,b=0.06
+    expect(Array.from(u.seg.slice(0, 4))).toEqual([0, 0, 0.2 * 1, 0.3 * 1].map((v) => Math.fround(v)));
+    expect(u.segW[0]).toBeCloseTo(0.05);
+    expect(u.segW[1]).toBeCloseTo(0.06);
+    // See-Eintrag
+    expect(u.lake[2]).toBeCloseTo(0.2);     // rx
   });
 
-  it('kodiert die Strömung in r,g um 128 (Ruhe) bei reinem See', () => {
-    const geo: WasserGeometrie = { bahnen: [], seen: [{ cx: 100, cy: 50, rx: 60, ry: 40 }] };
-    const { w } = feldGroesse(200, 100, 5);
-    const data = baueWasserfeldDaten(200, 100, 5, geo);
-    const i = Math.floor(100 / 5), j = Math.floor(50 / 5);
-    expect(data[(j * w + i) * 4]).toBe(128);     // r = 0.5*255
-    expect(data[(j * w + i) * 4 + 1]).toBe(128); // g = 0.5*255
+  it('begrenzt auf MAX_SEG und liefert feste Array-Größen', () => {
+    const punkte = Array.from({ length: 100 }, (_, i) => ({ x: i / 100, y: 0, hw: 0.02 }));
+    const u = geometrieZuUniforms({ bahnen: [{ punkte }], seen: [] });
+    expect(u.segN).toBe(MAX_SEG);
+    expect(u.seg.length).toBe(MAX_SEG * 4);
   });
 });
