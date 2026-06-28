@@ -148,3 +148,29 @@ unten unter "Erledigt". Detail-Konzepte stehen in LORE-IDEEN.md / WIRTSCHAFT-PLA
       dem Dorf an die Front (Tross/Nachschublinie), Krieg kostet (Gold/Brot/
       Barren/Kräuter) - die Dorfwirtschaft speist die Schlacht. Verluste = auf
       Nachschub warten und derweil befestigen. Macro-Schicht, später ausbauen.
+
+## Oberwelt-Biome (Runde 72, Autor-Ideen für SPÄTER - nur Optik je Karte, flexibel, NICHTS davon jetzt bauen)
+Diese Biome zieht der Autor für die Oberwelt-Karten in Erwägung; pro Karte später
+gestalten. Es ist eine IDEENSAMMLUNG - alles kann sich noch ändern. Die MEISTEN
+sind reine Optik auf den vorhandenen Wegen/Flüssen (kein Eingriff ins Karten-Skelett).
+ACHTUNG bei den zwei mit (*): die betreffen den VERLAUF und werden schon beim
+Festzurren von FUERSTENTUM/kartenKanten mitgedacht, damit kein Nachbau nötig wird.
+
+Kriegsnarben:
+- [ ] Verbranntes Land: niedergebrannte Höfe, Asche, Krähen.
+- [ ] Knochenfeld / altes Schlachtfeld: rostige Rüstung, Knochen; Antagonist hebt nachts die Toten.
+- [ ] Pestdorf: vernagelte Häuser, Pestkreuze, Massengrab, Miasma.
+
+Volkshorror:
+- [ ] Moor mit Irrlichtern und Moorleichen: Nebel, saugender Schlamm verlangsamt.
+- [ ] Nebliger Hexenwald: Hexenhütte, Feenringe.
+- [ ] Galgenberg / Rabenstein an einer Wegkreuzung: Galgen, Raben (passt zu Ravensmoor).
+
+An Lore/Systeme gebunden:
+- [ ] Köhler-Tannenhochwald: rauchende Meiler, Holzkohle für die Schmiede, Brücke Wald->Schnee, Wölfe.
+- [ ] (*) Blutsicker / Blutmoor Richtung Kloster: Blut sickert aus dem Boden (nutzt den
+      vorhandenen Blut-Shader DRAUSSEN). VERLAUF-RELEVANT: ein blutiges Rinnsal könnte
+      in die Kloster-Karte laufen -> Kanten-Kreuzung bei FUERSTENTUM/kartenKanten mitdenken.
+- [ ] (*) Felsklamm mit Wasserfall: Engpass mit der gefakten-Höhe-Technik, Quelle speist
+      den Fluss, RTS-Verteidigung. VERLAUF-RELEVANT: ändert Geländeform UND woher das
+      Wasser kommt -> beim Festzurren des Wasser-Verlaufs/der Kanten mitdenken.
