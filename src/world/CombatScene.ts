@@ -202,7 +202,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (k === 'b') this.toggleAlbum();
       if (k === 'alt' && !ev.repeat) { ev.preventDefault(); this.wechsleWaffe(); } // Hauptwaffe <-> Bogen (Runde 41)
       if (k === 'h') this.toggleChronik();
-      if (k === 'f10') { ev.preventDefault(); this.toggleDevPanel(); }
+      if (k === 'f10') { ev.preventDefault(); this.oeffneDevKonsole(); }
       // Tastenleiste frei belegbar (Runde 26, "wie bei WoW"): jede Taste
       // führt aus, was der Spieler auf ihren Slot gelegt hat
       const slotTaste: Record<string, keyof Settings['tasten']> = {
@@ -360,6 +360,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   }
 
   // --- Entwicklungskasten (F10) ----------------------------------------------
+  // F10 öffnet standardmäßig den alten Kasten; die WorldScene überschreibt das mit
+  // der neuen Tab-Dev-Konsole (Autorwunsch Runde 72) und bietet den alten Kasten
+  // als Knopf darin an.
+  protected oeffneDevKonsole(): void { this.toggleDevPanel(); }
   private devPanel: Phaser.GameObjects.Container | null = null;
   // Gegnertyp-Auswahl im Entwicklungskasten (Runde 18)
   protected devTypIdx = 0;

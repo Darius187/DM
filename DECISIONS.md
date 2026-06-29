@@ -775,3 +775,10 @@
   * DEV-KONSOLE mit Tabs (WasserProbe): WASSER (voller Reglersatz + Wasser/Blut + Ansicht/Fließrichtung), WETTER (Regen -> Wirbel/Trübung + Tint), UHRZEIT (Stunde -> Tag/Dämmerung/Nacht-Tint), NÄSSE (kühler dunkler Schleier). Probe-Geometrie = START-Lauf.
   * VERIFIZIERT (Headless-WebGL): START mit durchgehendem Fluss + See, sichtbares Bett (trüb), Kollision, Held-Wellen aktiv (Trail=3), keine Bäume im Wasser, 0 Fehler, tsc grün, 195 Tests grün.
   * STOPP zum Zeigen (Autorwunsch "erst wenn die eine stimmt, weiter").
+
+- Runde 72i (Autor-Korrektur 2: Wasser live ins Spiel, F10-Tab-Konsole, durchgehender Fluss, START blank):
+  * WASSER LIVE IM SPIEL statt Testszene: WasserProbe-Szene ENTFERNT (main.ts/Titel bereinigt) - "wir haben genug Testszenen". Das neue Wasser läuft in der echten START-Area; getunt wird über die F10-Konsole.
+  * F10-DEV-KONSOLE mit Tabs (neues src/ui/devKonsole.ts, generisch, verschiebbar): WASSER (voller Reglersatz + Wasser/Blut + Fließrichtung), WETTER (Regen), UHRZEIT (Tageszeit), NÄSSE (Wasser-Dämpfung), ANFANG (dorfSim-Regler der Anfangskarte), KASTEN (alter Kampf-Kasten). F10 ruft jetzt oeffneDevKonsole() (überschreibbar; andere Szenen behalten den alten Kasten). Ab jetzt kommt alles Einstellbare hier rein.
+  * DURCHGEHENDER FLUSS (kein Gap): (a) flowDir bremst die Strömung FLIESSEND in den See ab (still-Faktor per smoothstep statt hartem 0) -> nahtloser Übergang, Tempo-Gefälle Fluss>See; (b) START-Geometrie: letzte Fluss-Stützstelle liegt IM See-Mittelpunkt (Überlapp), Verschmelzung (smin/carve) auf 0.08 angehoben -> Optik deckt Kollision. Verifiziert: Wasser durchgehend y0..y82, keine echte Lücke (maxGap=4 = Mäander-Versatz der Mittelspalte, visuell durchgehend).
+  * START BLANK (Autorwunsch "erstmal alles blanko"): baueOberweltGebiet hat ein blanko-Flag - kein Weg, keine Bäume, keine Gegner; nur Gras + Wasser + gebackener Boden. Verifiziert: tree=0, path=0, enemies=0. Inhalte kommen Stück für Stück aus der Anfangskarte.
+  * VERIFIZIERT (Headless-WebGL): F10-Konsole offen mit allen Tabs, START blank, durchgehendes Wasser mit sichtbarem Bett, 0 Fehler, tsc grün, Tests grün.

@@ -12,8 +12,10 @@ import { NebelFratzen } from '../systems/NebelFratzen';
 import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
-import { spawneWasser as spawneNeuesWasserShader, setzeHeldPunkte, WASSER as WASSER2, BLUT as BLUT2 } from '../world/wasser';
+import { spawneWasser as spawneNeuesWasserShader, setzeHeldPunkte, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
 import { sdWasser } from '../world/wasserFeld';
+import { setRegler as dorfSetRegler } from '../demo3d/dorfSim';
+import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
 import { KARTEN_KANTEN } from '../data/kartenKanten';
 import { wetter } from '../logic/wetter';
 import { SchattenManager, mischFarbe, type Occluder, type Licht } from '../systems/SchattenManager';
@@ -153,6 +155,9 @@ export class WorldScene extends CombatScene {
   private gebackenerBodenImg?: Phaser.GameObjects.Image;             // gebackener organischer Boden (Runde 72)
   private wasserTrail: Array<{ u: number; v: number; t: number }> = []; // Held-Wellen-Spur im Wasser
   private wasserTrailLetzte = 0;
+  private devKonsole?: DevKonsole;                  // F10-Tab-Konsole (Wasser/Wetter/Uhrzeit/Nässe/Anfangskarte)
+  private devWasserBlut = false;                    // Wasser-Tab: Wasser- oder Blut-Preset bearbeiten
+  private devAnfang: Record<string, number> = { groesse: 0.85, wegbreite: 1, falltempo: 1, bewuchs: 1, tageszeit: 9, tagtempo: 1, sturm: 1.5, sicht: 124 };
   private breakableEnts: BreakableEntity[] = [];
   private worldGfx!: Phaser.GameObjects.Graphics; // Truhen, Brunnen, Fackeln
   private bodenGfx!: Phaser.GameObjects.Graphics;  // Blutspuren AUF dem Boden (unter den Figuren)
@@ -403,6 +408,7 @@ export class WorldScene extends CombatScene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.sfx.stopLoops();
       this.sfx.stopMusic();
+      this.devKonsole?.destroy(); this.devKonsole = undefined;
     });
     // Dev-Werkzeug: Szene für automatisierte Browser-Tests erreichbar machen
     if (import.meta.env.DEV) {
@@ -1867,6 +1873,59 @@ export class WorldScene extends CombatScene {
     setzeHeldPunkte(sh, this.wasserTrail.map((p) => [p.u, p.v, (now - p.t) / LIFE] as [number, number, number]));
   }
 
+  // F10 öffnet die neue Tab-Dev-Konsole (Autorwunsch Runde 72: ab jetzt alles
+  // Einstellbare hier rein). Der alte Phaser-Kasten ist als Knopf im Tab KASTEN.
+  protected override oeffneDevKonsole(): void {
+    if (!this.devKonsole) this.devKonsole = new DevKonsole(this.baueDevTabs());
+    this.devKonsole.toggle();
+  }
+
+  private aktWasserPreset(): WasserPreset2 { return this.devWasserBlut ? BLUT2 : WASSER2; }
+  private wasserAnwenden(): void { if (this.wasser2Shader) wendeWasser2(this.wasser2Shader, this.aktWasserPreset()); }
+
+  private baueDevTabs(): DKTab[] {
+    const wasserControls = (): DKControl[] => {
+      const p = this.aktWasserPreset();
+      const num = p as unknown as Record<string, number>;
+      const col = p as unknown as Record<string, [number, number, number]>;
+      const cs: DKControl[] = [
+        { kind: 'button', label: () => `Preset: ${this.devWasserBlut ? 'Blut' : 'Wasser'} (umschalten)`, onClick: () => { this.devWasserBlut = !this.devWasserBlut; this.wasserAnwenden(); this.devKonsole?.refresh(); } },
+        { kind: 'button', label: () => `Fließrichtung: ${p.flowDir > 0 ? 'abwärts' : 'aufwärts'}`, onClick: () => { p.flowDir *= -1; this.wasserAnwenden(); } },
+      ];
+      if (!this.wasser2Shader) cs.push({ kind: 'note', text: 'Diese Karte hat (noch) kein neues Wasser - Werte gelten ab der nächsten Wasserkarte.' });
+      for (const r of WASSER_REGLER) cs.push({ kind: 'slider', label: r.label, min: r.min, max: r.max, step: r.step, fmt: (v) => v.toFixed(3), get: () => num[r.key as string], set: (v) => { num[r.key as string] = v; this.wasserAnwenden(); } });
+      for (const r of WASSER_FARBEN) cs.push({ kind: 'color', label: r.label, get: () => col[r.key as string], set: (c) => { col[r.key as string] = c; this.wasserAnwenden(); } });
+      return cs;
+    };
+    return [
+      { name: 'WASSER', controls: wasserControls },
+      { name: 'WETTER', controls: () => [
+        { kind: 'slider', label: 'Regen', min: 0, max: 1, step: 0.05, get: () => (this.regnet ? 1 : 0), set: (v) => { this.regnet = v > 0.05; WASSER2_CFG.turbAdd = v * 0.6; this.wasserAnwenden(); } },
+        { kind: 'note', text: 'Regen macht das Wasser unruhiger; das Wetter-Overlay folgt dem Tageswechsel.' },
+      ] },
+      { name: 'UHRZEIT', controls: () => [
+        { kind: 'slider', label: 'Tageszeit', min: 0, max: 1, step: 0.02, fmt: (v) => tageszeitLabel(v), get: () => this.tageszeit, set: (v) => this.devSetTageszeit(v) },
+      ] },
+      { name: 'NÄSSE', controls: () => [
+        { kind: 'slider', label: 'Nässe (Wasser dunkler)', min: 0, max: 1, step: 0.05, get: () => (1 - WASSER2_CFG.ambientMul) / 0.3, set: (v) => { WASSER2_CFG.ambientMul = 1 - v * 0.3; this.wasserAnwenden(); } },
+        { kind: 'note', text: 'Annäherung: dämpft die Wasser-Helligkeit. Voller Nässe-Effekt (nasser Boden) folgt.' },
+      ] },
+      { name: 'ANFANG', controls: () => {
+        const keys: Array<[string, string, number, number, number]> = [
+          ['groesse', 'Baumgröße', 0.5, 2.2, 0.05], ['wegbreite', 'Weg-Breite', 0.5, 1.8, 0.05], ['falltempo', 'Fall-Tempo', 0.12, 2, 0.02],
+          ['bewuchs', 'Bewuchs', 0, 1.4, 0.05], ['tageszeit', 'Tageszeit', 0, 24, 0.25], ['tagtempo', 'Tag-Tempo', 0, 3, 0.1],
+          ['sturm', 'Sturm', 0, 4, 0.1], ['sicht', 'Sicht', 80, 220, 10],
+        ];
+        const cs: DKControl[] = [{ kind: 'note', text: 'Anfangskarte-Regler (dorfSim) - greifen, wenn die Anfangskarte läuft.' }];
+        for (const [key, label, min, max, step] of keys) cs.push({ kind: 'slider', label, min, max, step, get: () => this.devAnfang[key], set: (v) => { this.devAnfang[key] = v; dorfSetRegler(key, v); } });
+        return cs;
+      } },
+      { name: 'KASTEN', controls: () => [
+        { kind: 'button', label: () => 'Alter Kampf-/Spiel-Kasten öffnen', onClick: () => this.toggleDevPanel() },
+      ] },
+    ];
+  }
+
   private spawneNeuesWasser(a: AreaData): void {
     if (!a.wasserLauf) return;
     this.wasserTrail = [];
@@ -2690,7 +2749,7 @@ export class WorldScene extends CombatScene {
   // im Freien projiziert der Schatten-Manager (Sonnenmodus) für jedes Gebäude und
   // jede Figur einen parallelen Schatten - billig, nur am Tag, per Regler
   // (settings.schatten) ein-/ausblendbar. In Innenräumen/Dunkelheit aus.
-  protected override zeigerAufUI(p: Phaser.Input.Pointer): boolean { return !!this.lichtPanel?.trifft(p.x, p.y); }
+  protected override zeigerAufUI(p: Phaser.Input.Pointer): boolean { return !!this.lichtPanel?.trifft(p.x, p.y) || !!this.devKonsole?.trifft(p.x, p.y); }
 
   private aktualisiereSchatten(): void {
     const sets = getSettings();

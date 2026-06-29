@@ -73,15 +73,19 @@ float sdWater(vec2 p){
   return d;
 }
 
-// Strömungsrichtung: Tangente des nächsten Segments (See = ruhig)
+// Strömungsrichtung: Tangente des nächsten Fluss-Segments. Der See bremst die
+// Strömung FLIESSEND ab (nicht abrupt auf 0) - so ist der Übergang Fluss->See
+// nahtlos und der See fließt nur stiller (Tempo-Gefälle Fluss > See).
 vec2 flowDir(vec2 p){
   float best=1e9; vec2 dir=vec2(0.0,1.0);
   for(int i=0;i<${MAX_SEG};i++){ if(float(i)>=u_segN) break; vec4 s=u_seg[i];
     vec2 pa=p-s.xy, ba=s.zw-s.xy; float h=clamp(dot(pa,ba)/dot(ba,ba),0.0,1.0);
     float di=length(p-(s.xy+ba*h)); if(di<best){ best=di; dir=normalize(ba); } }
+  float lakeNear=1e9;
   for(int i=0;i<${MAX_LAKE};i++){ if(float(i)>=u_lakeN) break; vec4 L=u_lake[i];
-    vec2 q=(p-L.xy)/L.zw; float dl=(length(q)-1.0)*min(L.z,L.w); if(dl<best){ best=dl; dir=vec2(0.0,0.0); } }
-  float ang=snoise(p*1.3+time*0.04)*0.4*u_turb; float c=cos(ang),s=sin(ang); return mat2(c,-s,s,c)*dir*u_flowDir;
+    vec2 q=(p-L.xy)/L.zw; float dl=(length(q)-1.0)*min(L.z,L.w); lakeNear=min(lakeNear,dl); }
+  float still = 1.0 - 0.82*(1.0 - smoothstep(0.0, 0.06, lakeNear));   // im See ~0.18, am Ufer fließend hoch
+  float ang=snoise(p*1.3+time*0.04)*0.4*u_turb; float c=cos(ang),s=sin(ang); return mat2(c,-s,s,c)*dir*u_flowDir*still;
 }
 
 float wh(vec2 p, vec2 dir, float spd){ float ws=u_wavescale*u_detailScale; float t=time*u_speed; float p0=fract(t),p1=fract(t+0.5); float w0=1.0-abs(2.0*p0-1.0),w1=1.0-abs(2.0*p1-1.0); float dist=0.55*spd;
@@ -199,10 +203,39 @@ export const BLUT: WasserPreset = {
   light: [0.40, 0.50], ambient: 0.7,
 };
 
+// Regler-Metadaten (geteilt von WasserProbe + F10-Dev-Konsole), voller Satz.
+export const WASSER_REGLER: Array<{ key: keyof WasserPreset; label: string; min: number; max: number; step: number }> = [
+  { key: 'speed', label: 'Fließ-Tempo', min: 0.02, max: 0.5, step: 0.01 },
+  { key: 'turb', label: 'Turbulenz/Wirbel', min: 0, max: 1, step: 0.02 },
+  { key: 'wake', label: 'Wellen um Held', min: 0, max: 0.6, step: 0.02 },
+  { key: 'wavescale', label: 'Wellenfeinheit', min: 2.5, max: 9, step: 0.5 },
+  { key: 'nscale', label: 'Wellen-Kippung', min: 0.02, max: 0.25, step: 0.01 },
+  { key: 'refract', label: 'Brechung', min: 0, max: 0.1, step: 0.005 },
+  { key: 'gloss', label: 'Glanz', min: 0, max: 1.5, step: 0.05 },
+  { key: 'tint', label: 'Farbintensität', min: 0.1, max: 1, step: 0.05 },
+  { key: 'turbidity', label: 'Trübung', min: 0, max: 1, step: 0.05 },
+  { key: 'shore', label: 'Uferbreite', min: 0.02, max: 0.12, step: 0.005 },
+  { key: 'bank', label: 'Nasser Uferstreifen', min: 0, max: 1, step: 0.05 },
+  { key: 'bed', label: 'Bett-Struktur', min: 0, max: 1.4, step: 0.05 },
+  { key: 'sand', label: 'Sand-Beimischung', min: 0, max: 1, step: 0.05 },
+  { key: 'emerge', label: 'Steine über Wasser', min: 0, max: 1.5, step: 0.1 },
+  { key: 'procDensity', label: 'Steindichte', min: 0, max: 0.7, step: 0.05 },
+  { key: 'procSize', label: 'Kieselgröße', min: 0.025, max: 0.11, step: 0.005 },
+  { key: 'ambient', label: 'Helligkeit', min: 0.4, max: 1.6, step: 0.05 },
+];
+export const WASSER_FARBEN: Array<{ key: keyof WasserPreset; label: string }> = [
+  { key: 'deep', label: 'Wasserfarbe (tief)' },
+  { key: 'sky', label: 'Spiegelung (Himmel)' },
+  { key: 'spec', label: 'Glanzlicht' },
+  { key: 'bedShallow', label: 'Bett hell (flach)' },
+  { key: 'bedDeep', label: 'Bett tief' },
+  { key: 'stoneCol', label: 'Steinfarbe' },
+];
+
 // Live-Regler (Dev): multiplikativ/überschreibend auf alle Wasser-Shader.
 export const WASSER_CFG = {
   tiefe: -9,            // Render-Tiefe: über Boden (-10/-11), unter Spieler/Objekten
-  smink: 0.07,          // smin-Verschmelzung der Gewässer (UV)
+  smink: 0.08,          // smin-Verschmelzung der Gewässer (UV) - = Carve-Wert (areagen) -> Optik deckt Kollision
   flowMul: 1.0, turbAdd: 0.0, ambientMul: 1.0,
 };
 

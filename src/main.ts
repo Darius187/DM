@@ -22,7 +22,6 @@ import { AnhoeheProbe } from './scenes/AnhoeheProbe';
 import { ReitProbe } from './scenes/ReitProbe';
 import { StadtProbe } from './scenes/StadtProbe';
 import { StrahlenProbe } from './scenes/StrahlenProbe';
-import { WasserProbe } from './scenes/WasserProbe';
 import { AnfangskarteSzene } from './scenes/AnfangskarteSzene';
 import { TUNING } from './logic/tuning';
 import { FLUSS_SHADER } from './world/fluessigkeitsShader';
@@ -39,7 +38,7 @@ const game = new Phaser.Game({
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, TitleScene, WorldScene, DebugArenaScene, UIScene, SettingsScene, KammerDerFinsternis, DieSchwelle, BlutstromGang, TreppenProbe, NebelProbe, Treppenabstieg, LangerGang, DieStelen, PlattenPfad, Geheimwand, SchlachtProbe, DungeonProbe, DungeonSpielScene, AnhoeheProbe, ReitProbe, StadtProbe, StrahlenProbe, WasserProbe, AnfangskarteSzene],
+  scene: [BootScene, TitleScene, WorldScene, DebugArenaScene, UIScene, SettingsScene, KammerDerFinsternis, DieSchwelle, BlutstromGang, TreppenProbe, NebelProbe, Treppenabstieg, LangerGang, DieStelen, PlattenPfad, Geheimwand, SchlachtProbe, DungeonProbe, DungeonSpielScene, AnhoeheProbe, ReitProbe, StadtProbe, StrahlenProbe, AnfangskarteSzene],
 });
 
 // Rechtsklick global ohne Browser-Kontextmenü ("Speichern unter") - die

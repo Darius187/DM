@@ -1510,12 +1510,13 @@ interface OberweltCfg {
   wolfXs: number[];                           // Wolf-Spawns entlang des Wegs (Tile-x)
   baumGruppen: number;                        // Dichte der verstreuten Baumgruppen (Wald = mehr)
   label?: { u: number; v: number; t: string }; // optionale Ortsmarke (z. B. See)
+  blanko?: boolean;                           // nur Gras + Wasser (kein Weg/Baum/Gegner) - Schritt-für-Schritt-Aufbau
 }
 
-// Gemeinsamer Oberwelt-Builder (Runde 72): Waldrand/Wiese, Salzstraße West->Ost,
-// Wasser-Lauf (neues Overlay, Kollision aus T.WATER aus derselben SDF), Wölfe,
-// Kräuter, Felsen, gebackener organischer Boden. Pro Karte nur die Geometrie +
-// ein paar Parameter ändern - so wachsen die Nachbarkarten günstig.
+// Gemeinsamer Oberwelt-Builder (Runde 72): Wiese, Wasser-Lauf (neues Overlay,
+// Kollision aus T.WATER aus DERSELBEN SDF), gebackener organischer Boden; optional
+// Salzstraße/Bäume/Wölfe/Kräuter/Felsen. blanko=true lässt all das weg (erst die
+// blanke Karte, Inhalte kommen Stück für Stück - Autorwunsch Runde 72).
 function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
   const w = 130, h = 85;
   const map = blank(w, h, T.GRASS);
@@ -1527,18 +1528,20 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
     ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
     npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
   };
-  const verschm = 0.06;
+  const verschm = 0.08;   // großzügige smin-Verschmelzung -> durchgehender Fluss, keine Lücken
 
-  // Dichter Baum-Gürtel an Nord- und Südrand, Mitte lichter (Wiese/Lichtung).
-  for (let x = 0; x < w; x++) {
-    const nordTiefe = 3 + Math.round(2 + 1.5 * Math.sin(x * 0.21 + 0.5) + rng.random());
-    const suedTiefe = 3 + Math.round(2 + 1.5 * Math.sin(x * 0.17 + 2.1) + rng.random());
-    for (let y = 0; y < nordTiefe; y++) map[y][x] = T.TREE;
-    for (let y = h - suedTiefe; y < h; y++) map[y][x] = T.TREE;
-  }
-  for (let i = 0; i < cfg.baumGruppen; i++) {
-    const cx = ri(rng, 4, w - 5), cy = ri(rng, 5, h - 6);
-    if (rng.random() < 0.55) { const r = ri(rng, 0, 1); carve(map, cx - r, cy - r, cx + r, cy + r, T.TREE); }
+  // Bäume nur, wenn NICHT blanko.
+  if (!cfg.blanko) {
+    for (let x = 0; x < w; x++) {
+      const nordTiefe = 3 + Math.round(2 + 1.5 * Math.sin(x * 0.21 + 0.5) + rng.random());
+      const suedTiefe = 3 + Math.round(2 + 1.5 * Math.sin(x * 0.17 + 2.1) + rng.random());
+      for (let y = 0; y < nordTiefe; y++) map[y][x] = T.TREE;
+      for (let y = h - suedTiefe; y < h; y++) map[y][x] = T.TREE;
+    }
+    for (let i = 0; i < cfg.baumGruppen; i++) {
+      const cx = ri(rng, 4, w - 5), cy = ri(rng, 5, h - 6);
+      if (rng.random() < 0.55) { const r = ri(rng, 0, 1); carve(map, cx - r, cy - r, cx + r, cy + r, T.TREE); }
+    }
   }
 
   // Wasser carven (T.WATER = SOLID): aus DERSELBEN SDF wie das Overlay.
@@ -1548,45 +1551,47 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
     }
   }
 
-  // Salzstraße West->Ost, weich mäandernd. Bäume weichen dem Weg; quert der Weg
-  // das Wasser, liegt dort eine Brücke (begehbar).
-  let py = Math.round(h * 0.5);
   const pfadY: number[] = [];
-  for (let x = 0; x < w; x++) {
-    py += Math.round(Math.sin(x * 0.13) * 0.7) + (x % 3 === 0 ? ri(rng, -1, 1) : 0);
-    py = Math.max(6, Math.min(h - 7, py));
-    pfadY[x] = py;
-    for (let dy = -1; dy <= 1; dy++) {
-      const yy = py + dy;
-      if (yy >= 0 && yy < h && map[yy][x] === T.TREE) map[yy][x] = T.GRASS;
+  let py = Math.round(h * 0.5);
+  if (!cfg.blanko) {
+    // Salzstraße West->Ost, weich mäandernd. Bäume weichen dem Weg; quert der Weg
+    // das Wasser, liegt dort eine Brücke (begehbar).
+    for (let x = 0; x < w; x++) {
+      py += Math.round(Math.sin(x * 0.13) * 0.7) + (x % 3 === 0 ? ri(rng, -1, 1) : 0);
+      py = Math.max(6, Math.min(h - 7, py));
+      pfadY[x] = py;
+      for (let dy = -1; dy <= 1; dy++) {
+        const yy = py + dy;
+        if (yy >= 0 && yy < h && map[yy][x] === T.TREE) map[yy][x] = T.GRASS;
+      }
+      for (const yy of [py, py + 1]) {
+        if (yy < 0 || yy >= h) continue;
+        map[yy][x] = (map[yy][x] === T.WATER) ? T.BRIDGE : T.PATH;
+      }
     }
-    for (const yy of [py, py + 1]) {
-      if (yy < 0 || yy >= h) continue;
-      map[yy][x] = (map[yy][x] === T.WATER) ? T.BRIDGE : T.PATH;
+    carve(map, 2, Math.round(h * 0.5) - 2, 8, Math.round(h * 0.5) + 2, T.GRASS);
+    carve(map, 3, pfadY[3] ?? Math.round(h * 0.5), 7, pfadY[7] ?? Math.round(h * 0.5), T.PATH);
+    for (const wx of cfg.wolfXs) a.enemySpawns.push({ type: 'wolf', x: wx * TILE, y: (pfadY[wx] ?? py) * TILE, elite: false });
+    for (let i = 0; i < 8; i++) {
+      const kx = ri(rng, 6, w - 7), ky = ri(rng, 4, h - 5);
+      if (map[ky][kx] === T.GRASS) a.kraeuter.push({ x: kx * TILE + 16, y: ky * TILE + 16 });
     }
+    for (let i = 0; i < 6; i++) {
+      const fx = ri(rng, 8, w - 9), fy = ri(rng, 6, h - 7);
+      if (map[fy][fx] === T.GRASS) { map[fy][fx] = T.ROCK; a.rocks.push({ x: fx * TILE + 16, y: fy * TILE + 16 }); }
+    }
+  } else {
+    // Blanke Karte: Spawn-Lichtung am Westrand sicher freihalten (kein Wasser dort)
+    carve(map, 2, Math.round(h * 0.5) - 2, 8, Math.round(h * 0.5) + 2, T.GRASS);
   }
 
-  // Lichtung im Westen frei räumen (Spawn steht sicher auf Gras/Weg)
-  carve(map, 2, Math.round(h * 0.5) - 2, 8, Math.round(h * 0.5) + 2, T.GRASS);
-  carve(map, 3, pfadY[3] ?? Math.round(h * 0.5), 7, pfadY[7] ?? Math.round(h * 0.5), T.PATH);
-  a.spawn = { x: 5 * TILE + 16, y: (pfadY[5] ?? Math.round(h * 0.5)) * TILE + 16 };
+  const sy = pfadY[5] ?? Math.round(h * 0.5);
+  a.spawn = { x: 5 * TILE + 16, y: sy * TILE + 16 };
   a.labels.push({ x: 5 * TILE, y: (Math.round(h * 0.5) - 3) * TILE, t: cfg.name });
   if (cfg.label) a.labels.push({ x: Math.round(cfg.label.u * w) * TILE, y: Math.round(cfg.label.v * h) * TILE, t: cfg.label.t });
 
-  for (const wx of cfg.wolfXs) a.enemySpawns.push({ type: 'wolf', x: wx * TILE, y: (pfadY[wx] ?? py) * TILE, elite: false });
-
-  // Kräuter am Waldrand + Felsen auf der Wiese
-  for (let i = 0; i < 8; i++) {
-    const kx = ri(rng, 6, w - 7), ky = ri(rng, 4, h - 5);
-    if (map[ky][kx] === T.GRASS) a.kraeuter.push({ x: kx * TILE + 16, y: ky * TILE + 16 });
-  }
-  for (let i = 0; i < 6; i++) {
-    const fx = ri(rng, 8, w - 9), fy = ri(rng, 6, h - 7);
-    if (map[fy][fx] === T.GRASS) { map[fy][fx] = T.ROCK; a.rocks.push({ x: fx * TILE + 16, y: fy * TILE + 16 }); }
-  }
-
-  a.upPos = { x: 1 * TILE + 16, y: (pfadY[1] ?? py) * TILE + 16 };       // West-Eingang (von der linken Nachbarkarte)
-  a.downPos = { x: (w - 2) * TILE + 16, y: (pfadY[w - 2] ?? py) * TILE + 16 }; // Ost-Ausgang
+  a.upPos = { x: 1 * TILE + 16, y: (pfadY[1] ?? Math.round(h * 0.5)) * TILE + 16 };
+  a.downPos = { x: (w - 2) * TILE + 16, y: (pfadY[w - 2] ?? Math.round(h * 0.5)) * TILE + 16 };
   a.wasserLauf = { geo: cfg.geo, blut: false };
   a.gebackenerBoden = true;
   return a;
@@ -1594,15 +1599,21 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
 
 export function buildStart(rng: Rng): AreaData {
   return baueOberweltGebiet(rng, {
-    id: 'start', name: 'Waldrand', wolfXs: [26, 60, 96, 120], baumGruppen: 90,
-    label: { u: 0.50, v: 0.88, t: 'Stiller See' },
+    id: 'start', name: 'Waldrand', wolfXs: [], baumGruppen: 0, blanko: true,
+    label: { u: 0.50, v: 0.90, t: 'Stiller See' },
     // Nach der Skizze (START-Zelle): EIN durchgehender Fluss von der Nordkante
-    // herab (leichter Mäander um die Mitte) in einen mittelgroßen See am Südrand.
+    // herab (leichter Mäander) DURCHGEHEND in den See am Südrand - die letzte
+    // Stützstelle liegt IM See-Mittelpunkt, damit kein Gap entsteht (smin
+    // verschmilzt nahtlos, Fluss läuft fließend in den See).
     geo: {
       bahnen: [
-        { punkte: [{ x: 0.50, y: -0.03, hw: 0.020 }, { x: 0.46, y: 0.22, hw: 0.021 }, { x: 0.50, y: 0.48, hw: 0.022 }, { x: 0.50, y: 0.74, hw: 0.024 }] },
+        { punkte: [
+          { x: 0.50, y: -0.03, hw: 0.020 }, { x: 0.46, y: 0.22, hw: 0.021 },
+          { x: 0.50, y: 0.48, hw: 0.022 }, { x: 0.50, y: 0.72, hw: 0.024 },
+          { x: 0.50, y: 0.90, hw: 0.026 },
+        ] },
       ],
-      seen: [{ cx: 0.50, cy: 0.88, rx: 0.11, ry: 0.06 }],
+      seen: [{ cx: 0.50, cy: 0.90, rx: 0.13, ry: 0.075 }],
     },
   });
 }
