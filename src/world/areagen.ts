@@ -50,6 +50,10 @@ export interface AreaData {
   // (0..1) der Karte. Der WorldScene-Renderer legt daraus EIN Wasser-Overlay
   // (wasser.ts), die Kollision kommt aus den T.WATER-Kacheln darunter.
   wasserLauf?: { geo: WasserGeometrie; blut?: boolean };
+  // Gebackener organischer Freiform-Boden (Runde 72): statt Kachel-Boden EIN
+  // gemaltes Bodenbild unter den Objekten (Tiefe -11). Kollision/Objekte bleiben
+  // aus dem Kachel-Raster. Gibt der Oberwelt den Canvas-Look ohne Per-Frame-Upload.
+  gebackenerBoden?: boolean;
   dark: boolean;
   depth: number;
   theme?: CryptTheme;
@@ -1595,5 +1599,6 @@ export function buildStart(rng: Rng): AreaData {
 
   a.downPos = { x: (w - 1) * TILE + 16, y: (pfadY[w - 2] ?? py) * TILE + 16 };
   a.wasserLauf = { geo, blut: false };
+  a.gebackenerBoden = true;   // organischer Canvas-Boden statt Kachel-Look
   return a;
 }

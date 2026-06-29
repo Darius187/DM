@@ -746,3 +746,10 @@
   * TitleScene: Menüpunkt "START-KARTE (neu)" zum Prüfen. NEUES SPIEL bleibt vorerst auf village (bis START final abgenommen).
   * VERIFIZIERT (Headless-WebGL): Area lädt (id start, 130x85), volles HUD/Quest/Chronik/Tag, Wasser-Overlay rendert mit weichen Ufern ins Gras, Wasser-Kacheln SOLIDE (isSolidAt=true), Spawn begehbar, Salzstraße-Brücke quert den Fluss (über dem Wasser), 0 Fehler, tsc grün, 195 Tests grün.
   * OFFEN/zu justieren (Autor-Abnahme): Wasser wirkt tagsüber etwas blass (Regler/Tageslicht - Werte feintunen); die mäandernde Brücke quert den Fluss als Treppenmuster (kosmetisch begradigbar); der genaue Fluss-/See-/Wege-Verlauf ist meine Lesart der Skizze - bitte bestätigen oder korrigieren.
+
+- Runde 72e (Gebackener organischer Boden für START - Hybrid-Look, Schritt 3 abgeschlossen):
+  * AreaData.gebackenerBoden? + WorldScene.bakeBoden(): malt EINMAL ein organisches Bodenbild (Wiese mit Farbspiel, Erd-/Trampelflecken, organischer Weg-Trail aus den PATH/BRIDGE-Kacheln) in ein Canvas (halbe Auflösung, LINEAR hochskaliert) und legt es auf Tiefe -11 unter die Objekte.
+  * zeichneKachel zeichnet bei gebackenem Boden KEINE Boden-/Wasserkacheln mehr (GRASS/PATH/FIELD/WATER übersprungen) und KEINEN Untergrund unter stehenden Objekten - das Bodenbild trägt die Optik. Kollision bleibt komplett aus a.map (SOLID unverändert). Ergebnis-Schichten: Logik-Raster (unsichtbar) < Bodenbild (-11) < Wasser-Overlay (-9) < Brücke (-8) < Objekte/Figuren (y-sortiert) < Wetter/Licht/HUD.
+  * NEBENEFFEKT (Perf): statt ~11000 Boden-Tile-Sprites nur noch ~1625 Objekt-Sprites in START -> der Kachel-Vollbild-Aufbau entfällt weitgehend (kein Per-Frame-Upload sowieso, jetzt auch viel weniger statische Sprites).
+  * VERIFIZIERT (Headless-WebGL): organischer Boden statt Kachelraster, Wasser-Overlay + Brücke darüber, weiche Ufer in die Wiese; 0 Fehler, tsc grün, 195 Tests grün.
+  * OFFEN/justierbar: Bodenbild ist prozedural-einfach (Wiese+Erde+Weg) - reicht für den Canvas-Look, kann später reicher werden (Biome-Optik, siehe IDEEN-BACKLOG). Wasser tagsüber noch etwas blass; Brücke als Treppenmuster.

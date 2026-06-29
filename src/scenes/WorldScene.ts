@@ -146,6 +146,7 @@ export class WorldScene extends CombatScene {
   private tileImages: Phaser.GameObjects.Image[] = [];
   private fluessigkeitsShaders: Phaser.GameObjects.Shader[] = [];   // Liquid-Shader-Overlays (Wasser/Blut), Runde 71
   private wasser2Shader?: Phaser.GameObjects.Shader;                 // neues prozedurales Wasser-Overlay pro Area (Runde 72)
+  private gebackenerBodenImg?: Phaser.GameObjects.Image;             // gebackener organischer Boden (Runde 72)
   private breakableEnts: BreakableEntity[] = [];
   private worldGfx!: Phaser.GameObjects.Graphics; // Truhen, Brunnen, Fackeln
   private bodenGfx!: Phaser.GameObjects.Graphics;  // Blutspuren AUF dem Boden (unter den Figuren)
@@ -1759,27 +1760,91 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // Gebackener organischer Boden (Runde 72): malt EINMAL ein Bodenbild (Wiese
+  // mit Farbspiel, Erd-/Trampelflecken, organischer Weg-Trail) in ein Canvas und
+  // legt es als Bild auf Tiefe -11 unter die Objekte. Halbe Auflösung + Hochskalieren
+  // (der organische Look verträgt die Weichheit) spart Speicher. Kollision/Objekte
+  // bleiben aus dem Kachel-Raster - hier wird NUR der Boden ersetzt.
+  private bakeBoden(a: AreaData): void {
+    const key = `boden_${a.id}`;
+    const SC = 2;                                   // halbe Auflösung
+    const bw = Math.ceil(a.w * TILE / SC), bh = Math.ceil(a.h * TILE / SC);
+    if (this.textures.exists(key)) this.textures.remove(key);
+    const cv = document.createElement('canvas'); cv.width = bw; cv.height = bh;
+    const c = cv.getContext('2d')!;
+    // Grund-Wiese
+    c.fillStyle = '#33421f'; c.fillRect(0, 0, bw, bh);
+    // großflächiges Farbspiel (helle/dunkle Wiesen-Schwaden)
+    for (let i = 0; i < 90; i++) {
+      const x = Math.random() * bw, y = Math.random() * bh, r = 80 + Math.random() * 260;
+      const g = c.createRadialGradient(x, y, 0, x, y, r);
+      const hell = Math.random() > 0.5;
+      g.addColorStop(0, hell ? 'rgba(80,104,46,0.16)' : 'rgba(28,40,18,0.18)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    // feine Gras-Tupfer
+    const tupfer = Math.min(9000, Math.round(bw * bh / 900));
+    for (let i = 0; i < tupfer; i++) {
+      const x = Math.random() * bw, y = Math.random() * bh, r = 1 + Math.random() * 3.4;
+      c.fillStyle = Math.random() > 0.5
+        ? `rgba(${60 + Math.random() * 50 | 0},${88 + Math.random() * 54 | 0},${36 + Math.random() * 30 | 0},0.5)`
+        : `rgba(${34 + Math.random() * 24 | 0},${50 + Math.random() * 24 | 0},${22 + Math.random() * 16 | 0},0.5)`;
+      c.beginPath(); c.ellipse(x, y, r, r * 0.7, Math.random() * 3, 0, Math.PI * 2); c.fill();
+    }
+    // Erd-/Trampelflecken auf der Wiese
+    for (let i = 0; i < 60; i++) {
+      const x = Math.random() * bw, y = Math.random() * bh, r = 14 + Math.random() * 60;
+      const g = c.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, 'rgba(86,68,40,0.30)'); g.addColorStop(1, 'rgba(86,68,40,0)');
+      c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    // Organischer Weg-Trail aus den T.PATH/T.BRIDGE-Kacheln (überlappende Erd-Kleckse)
+    const malWeg = (px: number, py: number, rad: number, col: string): void => {
+      const g = c.createRadialGradient(px, py, 0, px, py, rad);
+      g.addColorStop(0, col); g.addColorStop(0.7, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g; c.beginPath(); c.arc(px, py, rad, 0, Math.PI * 2); c.fill();
+    };
+    for (let ty = 0; ty < a.h; ty++) {
+      for (let tx = 0; tx < a.w; tx++) {
+        const id = a.map[ty][tx];
+        if (id !== T.PATH && id !== T.BRIDGE) continue;
+        const px = (tx + 0.5) * TILE / SC, py = (ty + 0.5) * TILE / SC;
+        malWeg(px, py, TILE / SC * 1.1, 'rgba(104,82,52,0.85)');
+        malWeg(px + (Math.random() - 0.5) * 6, py + (Math.random() - 0.5) * 6, TILE / SC * 0.6, 'rgba(120,98,64,0.6)');
+      }
+    }
+    const tex = this.textures.addCanvas(key, cv);
+    if (tex) tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    this.gebackenerBodenImg = this.add.image(0, 0, key).setOrigin(0, 0).setDepth(-11);
+    this.gebackenerBodenImg.setDisplaySize(a.w * TILE, a.h * TILE);
+  }
+
   // Neues prozedurales Wasser (Runde 72): EIN Overlay-Quad über der Karte, Form
   // aus a.wasserLauf.geo. Die T.WATER-Kacheln (Kollision) werden durch Gras
   // ersetzt, damit die weichen Ufer des Overlays in Gras statt in blaue Kacheln
   // blenden. Kollision bleibt (a.map-IDs unangetastet).
   private spawneNeuesWasser(a: AreaData): void {
     if (!a.wasserLauf) return;
-    const wasserTags = new Set<string>();
-    for (let ty = 0; ty < a.h; ty++) for (let tx = 0; tx < a.w; tx++) if (a.map[ty][tx] === T.WATER) wasserTags.add(`${tx},${ty}`);
-    for (const img of this.tileImages) {
-      const tag = img.getData?.('kachel') as string | undefined;
-      if (tag && wasserTags.has(tag)) img.destroy();
-    }
-    this.tileImages = this.tileImages.filter((img) => img.active);
-    this.wasserBilder = this.wasserBilder.filter((wb) => wb.img.active);
-    // Gras unter die (ehemaligen) Wasserkacheln
-    for (const tagStr of wasserTags) {
-      const [tx, ty] = tagStr.split(',').map(Number);
-      const v = ((tx * 73856093) ^ (ty * 19349663)) % 7;
-      const img = this.add.image(tx * TILE + 16, ty * TILE + 16, this.provider.tileKey('gras', v, a.depth, a.theme)).setDepth(-10);
-      img.setData('kachel', tagStr);
-      this.tileImages.push(img);
+    // Ohne gebackenen Boden: die blauen Wasserkacheln (inkl. Säume) entfernen und
+    // durch Gras ersetzen, damit die weichen Ufer des Overlays in Gras blenden.
+    // MIT gebackenem Boden zeichnet zeichneKachel die Wasserkacheln gar nicht erst.
+    if (!a.gebackenerBoden) {
+      const wasserTags = new Set<string>();
+      for (let ty = 0; ty < a.h; ty++) for (let tx = 0; tx < a.w; tx++) if (a.map[ty][tx] === T.WATER) wasserTags.add(`${tx},${ty}`);
+      for (const img of this.tileImages) {
+        const tag = img.getData?.('kachel') as string | undefined;
+        if (tag && wasserTags.has(tag)) img.destroy();
+      }
+      this.tileImages = this.tileImages.filter((img) => img.active);
+      this.wasserBilder = this.wasserBilder.filter((wb) => wb.img.active);
+      for (const tagStr of wasserTags) {
+        const [tx, ty] = tagStr.split(',').map(Number);
+        const v = ((tx * 73856093) ^ (ty * 19349663)) % 7;
+        const img = this.add.image(tx * TILE + 16, ty * TILE + 16, this.provider.tileKey('gras', v, a.depth, a.theme)).setDepth(-10);
+        img.setData('kachel', tagStr);
+        this.tileImages.push(img);
+      }
     }
     const preset = a.wasserLauf.blut ? BLUT2 : WASSER2;
     this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: FLUSS_SHADER.tiefe, layerMode: 1 });
@@ -1789,6 +1854,7 @@ export class WorldScene extends CombatScene {
     for (const img of this.tileImages) img.destroy();
     this.tileImages = [];
     this.wasser2Shader?.destroy(); this.wasser2Shader = undefined;
+    this.gebackenerBodenImg?.destroy(); this.gebackenerBodenImg = undefined;
     for (const s of this.fluessigkeitsShaders) s.destroy();
     this.fluessigkeitsShaders = [];
     this.wasserBilder = [];
@@ -1858,6 +1924,10 @@ export class WorldScene extends CombatScene {
   // und ohne Y-Sortierung)
   private zeichneKachel(a: AreaData, tx: number, ty: number): void {
     const id = a.map[ty][tx];
+    // Gebackener Boden (Runde 72): Boden- und Wasserkacheln werden NICHT als
+    // Sprite gezeichnet - das gemalte Bodenbild (-11) und das Wasser-Overlay (-9)
+    // übernehmen die Optik. Kollision bleibt aus a.map (SOLID unverändert).
+    if (a.gebackenerBoden && (id === T.GRASS || id === T.PATH || id === T.FIELD || id === T.WATER)) return;
     const name = tileNameAt(a.map, tx, ty);
     // Im Baukasten gewählte Variante schlägt den Positions-Hash
     const planV = this.planKachelAn(tx, ty)?.v;
@@ -1889,13 +1959,14 @@ export class WorldScene extends CombatScene {
     // Wand-Kacheln mehr - nur Gras darunter, Kollision bleibt
     const imHaus = this.hausSpriteAn && a.hausPlaetze?.find((hp) => tx >= hp.x0 && tx <= hp.x1 && ty >= hp.y0 && ty <= hp.y1);
     if (imHaus && (id === T.HWALL || id === T.HDOOR)) {
-      tag(this.add.image(tx * TILE + 16, ty * TILE + 16, this.provider.tileKey('gras', variant, a.depth, a.theme)).setDepth(-10));
+      if (!a.gebackenerBoden) tag(this.add.image(tx * TILE + 16, ty * TILE + 16, this.provider.tileKey('gras', variant, a.depth, a.theme)).setDepth(-10));
       return;
     }
     if (WorldScene.STANDING.has(id)) {
       // bodenName erzwingt den Untergrund (Kirche: Stein statt Gras, Runde 51)
       const groundName = a.bodenName ?? (a.innen ? 'holzboden' : a.dark ? 'krypta_boden' : 'gras');
-      tag(this.add.image(tx * TILE + 16, ty * TILE + 16, this.provider.tileKey(groundName, variant, a.depth, a.theme)).setDepth(-10));
+      // Bei gebackenem Boden trägt das Bodenbild den Untergrund - nur das Objekt zeichnen.
+      if (!a.gebackenerBoden) tag(this.add.image(tx * TILE + 16, ty * TILE + 16, this.provider.tileKey(groundName, variant, a.depth, a.theme)).setDepth(-10));
       // Dichter Wald: Bäume mit vielen Baum-Nachbarn nutzen die
       // wald-Grafiken (assets/tiles/wald1.png ...), freie Bäume baum*
       let objName = name;
@@ -1988,6 +2059,9 @@ export class WorldScene extends CombatScene {
         if (a.map[ty]?.[tx] === T.SHELF) a.map[ty][tx] = T.SHELF_GELEERT;
       }
     }
+    // Gebackener organischer Boden (Runde 72): EIN gemaltes Bodenbild unter die
+    // Objekte; die Boden-/Wasserkacheln zeichnet zeichneKachel dann nicht mehr.
+    if (a.gebackenerBoden) this.bakeBoden(a);
     // Tiles als statische Bilder (Pseudo-3D, Masterprompt 5.1)
     for (let ty = 0; ty < a.h; ty++) {
       for (let tx = 0; tx < a.w; tx++) {
