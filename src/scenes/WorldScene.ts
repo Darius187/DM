@@ -2019,7 +2019,7 @@ export class WorldScene extends CombatScene {
         // Untergrund-Textur (echte Lösung gegen den Saum) im ECHTEN Browser testen:
         { kind: 'button', label: () => `Untergrund-Textur (Boden): ${this.devGround ? 'AN' : 'aus'}`, onClick: () => { this.devGround = !this.devGround; this.wasser2Shader?.setUniform('u_useGround.value', this.devGround ? 1 : 0); this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `Boden Y-Spiegeln: ${this.devGroundFlip ? 'AN' : 'aus'}`, onClick: () => { this.devGroundFlip = !this.devGroundFlip; this.wasser2Shader?.setUniform('u_groundFlip.value', this.devGroundFlip ? 1 : 0); this.devKonsole?.refresh(); } },
-        { kind: 'note', text: 'Untergrund-Textur AN schalten: kommt der echte Boden durch (kein Schwarz), ist der Saum weg. Bei verschobenem/gespiegeltem Boden Y-Spiegeln umschalten.' },
+        { kind: 'note', text: 'Untergrund-Textur AN: kommt der echte Boden durch (kein Schwarz/Streifen), ist der Saum weg. Bei verschobenem/gespiegeltem Boden Y-Spiegeln umschalten. Default AUS (dunkler Rand).' },
         { kind: 'button', label: () => `FPS-Anzeige: ${this.perfAn ? 'AN' : 'aus'}`, onClick: () => { this.perfAn = !this.perfAn; this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `Wasser-Shader: ${this.wasser2Shader?.visible ? 'AN' : 'aus'} (FPS-Vergleich)`, onClick: () => { this.wasser2Shader?.setVisible(!this.wasser2Shader.visible); this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `dorfSim-Upload: ${this.perfDorfAus ? 'aus (eingefroren)' : 'AN'} (FPS-Vergleich)`, onClick: () => { this.perfDorfAus = !this.perfDorfAus; this.devKonsole?.refresh(); } },
