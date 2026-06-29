@@ -1888,6 +1888,13 @@ export class WorldScene extends CombatScene {
     }
     this.wasserTrail = this.wasserTrail.filter((p) => now - p.t < LIFE);
     setzeHeldPunkte(sh, this.wasserTrail.map((p) => [p.u, p.v, (now - p.t) / LIFE] as [number, number, number]));
+    // Regen + Sturm aufs Wasser: Tropfen-Kreise (u_rain) und etwas mehr Wirbel.
+    const draussen = !this.area.innen && !this.area.dark;
+    const rainAmt = (this.regnet && draussen) ? 0.6 : 0;
+    const sturm = this.devAnfang.sturm ?? 1.5;
+    const sturmTurb = Math.max(0, Math.min(0.3, (sturm - 1) / 3 * 0.3)) * (draussen ? 1 : 0);
+    sh.setUniform('u_rain.value', rainAmt);
+    sh.setUniform('u_turb.value', Math.min(1, this.aktWasserPreset().turb + WASSER2_CFG.turbAdd + rainAmt * 0.45 + sturmTurb));
   }
 
   // F10 öffnet die neue Tab-Dev-Konsole (Autorwunsch Runde 72: ab jetzt alles

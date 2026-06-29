@@ -35,6 +35,7 @@ uniform float u_procDensity, u_procSize, u_flowDir, u_layerMode;
 uniform float u_detailScale;   // skaliert Bett/Wellen/Kiesel auf Bildschirmgröße (große Karten)
 uniform float u_widthMul;      // Live-Flussbreite: skaliert die Segment-Halbbreiten (Bäche/Flüsse)
 uniform float u_overlayFeather;// Overlay: Breite der Alpha-Blende Land(Shader)->Gras(dorfSim) hinter dem Ufersaum
+uniform float u_rain;          // Regenstärke 0..1: Regentropfen-Kreise auf der Wasseroberfläche
 uniform vec3  u_lichtMul;      // Tag/Nacht-Tönung (aus dorfSim) - färbt das Wasser wie den Boden
 uniform vec3  u_deep, u_sky, u_spec, u_bedShallow, u_bedDeep, u_stoneCol;
 uniform vec2  u_light;
@@ -64,6 +65,7 @@ float snoise(vec2 v){ const vec4 C=vec4(0.211324865405187,0.366025403784439,-0.5
   m*=1.79284291400159-0.85373472095314*(a0*a0+h*h); vec3 g; g.x=a0.x*x0.x+h.x*x0.y; g.yz=a0.yz*x12.xz+h.yz*x12.yw; return 130.0*dot(m,g); }
 float fbm4(vec2 p){ float s=0.0,a=0.5; for(int i=0;i<4;i++){ s+=a*snoise(p); p*=2.0; a*=0.5; } return s; }
 float fbm2(vec2 p){ float s=0.0,a=0.6; for(int i=0;i<2;i++){ s+=a*snoise(p); p*=2.2; a*=0.5; } return s; }
+vec2 hash2(vec2 p);   // Vorwärtsdeklaration (Definition weiter unten) - für rainH/inter
 
 // Wasser-Distanz aus den Segment-/See-Uniforms (smin = nahtlose Verschmelzung)
 float sdWater(vec2 p){
@@ -97,9 +99,27 @@ float wh(vec2 p, vec2 dir, float spd){ float ws=u_wavescale*u_detailScale; float
 float inter(vec2 uv){ float aspect=resolution.x/resolution.y; float add=0.0;
   for(int i=0;i<8;i++){ vec3 pt=u_points[i]; if(pt.z<0.0) continue; vec2 pos=pt.xy+vec2(0.0,-1.0)*pt.z*0.08; vec2 d=uv-pos; d.x*=aspect; float r=length(d);
     float ring=sin(r*75.0-pt.z*30.0); float env=exp(-r*30.0)*(1.0-pt.z); add+=ring*env; } return add*u_wake; }
+// Regentropfen auf dem Wasser: in einem Zellraster verteilte, periodisch
+// aufploppende und auslaufende Ringe (Dichte/Stärke ~ u_rain). Liefert einen
+// Höhenbeitrag -> echte Kreise auf der Oberfläche (über die Normale).
+float rainH(vec2 uv){
+  if(u_rain<=0.001) return 0.0;
+  float aspect=resolution.x/resolution.y;
+  vec2 P=vec2(uv.x*aspect,uv.y)*18.0; vec2 cell=floor(P); float sum=0.0;
+  for(int j=-1;j<=1;j++){ for(int i=-1;i<=1;i++){
+    vec2 cc=cell+vec2(float(i),float(j)); vec2 h=hash2(cc);
+    if(h.x>u_rain) continue;
+    float period=0.6+h.y*0.8; float ph=fract(time/period + h.x*7.0);
+    vec2 ctr=cc+vec2(0.25+0.5*h.x, 0.25+0.5*fract(h.y*3.7));
+    float r=length(P-ctr); float rad=ph*0.8;
+    float ring=sin((r-rad)*44.0)*exp(-r*2.8)*(1.0-ph)*smoothstep(0.0,0.06,ph);
+    sum+=ring;
+  } }
+  return sum*0.7;
+}
 vec3 normalAt(vec2 uv, vec2 dir, float spd){ float e=1.6/resolution.y;
-  float hL=wh(uv-vec2(e,0.0),dir,spd)+inter(uv-vec2(e,0.0)); float hR=wh(uv+vec2(e,0.0),dir,spd)+inter(uv+vec2(e,0.0));
-  float hD=wh(uv-vec2(0.0,e),dir,spd)+inter(uv-vec2(0.0,e)); float hU=wh(uv+vec2(0.0,e),dir,spd)+inter(uv+vec2(0.0,e));
+  float hL=wh(uv-vec2(e,0.0),dir,spd)+inter(uv-vec2(e,0.0))+rainH(uv-vec2(e,0.0)); float hR=wh(uv+vec2(e,0.0),dir,spd)+inter(uv+vec2(e,0.0))+rainH(uv+vec2(e,0.0));
+  float hD=wh(uv-vec2(0.0,e),dir,spd)+inter(uv-vec2(0.0,e))+rainH(uv-vec2(0.0,e)); float hU=wh(uv+vec2(0.0,e),dir,spd)+inter(uv+vec2(0.0,e))+rainH(uv+vec2(0.0,e));
   float gx=(hR-hL)/(2.0*e); float gy=(hU-hD)/(2.0*e); return normalize(vec3(-gx*u_nscale,-gy*u_nscale,1.0)); }
 
 vec2 hash2(vec2 p){ p=vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))); return fract(sin(p)*43758.5453); }
@@ -186,6 +206,8 @@ void main(){
   // Held-Wellen sichtbar machen: die Störquellen (u_points) erzeugen helle Ringe
   // ums Wesen - wie der Maus-Effekt im Prototyp.
   float heroWake=inter(uv); col += vec3(0.85,0.92,1.0)*abs(heroWake)*0.35*localDepth;
+  // Regentropfen-Kreise sichtbar als feine helle Ringe auf der Oberfläche.
+  float rain=rainH(uv); col += vec3(0.82,0.88,0.96)*abs(rain)*0.28*localDepth;
   vec3 dryStone=stoneLit(sN,sCol)*1.08*u_ambient; col=mix(col, dryStone, sMask*emerged);
   float waterline=sMask*smoothstep(0.0,0.32,emerged)*(1.0-smoothstep(0.32,0.62,emerged));
   col=mix(col, vec3(0.92,0.95,0.96), clamp(waterline,0.0,1.0)*(0.16+0.34*u_turb));
@@ -280,7 +302,7 @@ function getBaseShader(): Phaser.Display.BaseShader {
     u_tint: f(0.65), u_shore: f(0.05), u_wavescale: f(5), u_nscale: f(0.1), u_gloss: f(0.4),
     u_turbidity: f(0.4), u_bank: f(0.45), u_emerge: f(0.4), u_sand: f(0.5),
     u_procDensity: f(0.35), u_procSize: f(0.05), u_flowDir: f(1), u_layerMode: f(1), u_ambient: f(1.05),
-    u_detailScale: f(1), u_widthMul: f(1), u_overlayFeather: f(0.03),
+    u_detailScale: f(1), u_widthMul: f(1), u_overlayFeather: f(0.03), u_rain: f(0),
     u_lichtMul: { type: '3f', value: { x: 1, y: 1, z: 1 } },
     u_deep: v3(0.08, 0.24, 0.27), u_sky: v3(0.55, 0.75, 0.92), u_spec: v3(1, 0.97, 0.88),
     u_bedShallow: v3(0.4, 0.37, 0.3), u_bedDeep: v3(0.13, 0.16, 0.16), u_stoneCol: v3(0.345, 0.329, 0.298),
