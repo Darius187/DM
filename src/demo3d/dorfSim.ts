@@ -752,6 +752,7 @@ const pferdCtx = pferdCv.getContext('2d')!;
 let reitet = false;          // sitzt der Held auf dem Pferd?
 let hybrid = false;          // Hybrid-Modus: den Helden NICHT im Canvas zeichnen - die Phaser-Szene legt das Spieler-Sprite darüber
 let externKamera = false;    // Kampf-Hybrid: Kamera wird von außen gesetzt (Spiel-Spieler), dorfSim-Held bewegt sich nicht
+let keinWasser = false;      // R72: dorfSims eigenes Wasser (Fluss/Bach/See) NICHT zeichnen und NICHT als Kollision werten - die WorldScene legt eigenes Wasser darüber (Vegetation meidet die Wasserzonen weiterhin)
 let heldGeht = false;        // bewegt sich der Held/das Pferd gerade? (Galopp vs. Stand)
 const REIT_TEMPO = 2.0;      // Tempo-Faktor beim Reiten (Pferd schneller als zu Fuss)
 const REIT_DIST = 64;        // Reichweite zum Aufsteigen
@@ -1172,8 +1173,8 @@ function frei(wx: number, wy: number): boolean {
   if (imBergWall(wx, wy)) return false;                       // Berg-Klippe solide (außer im Pass) -> Stufen-Aufstieg
   { const dx = wx - huette.x, dy = wy - huette.y;             // Hütten-Wand solide; Innenraum + Süd-Tür frei
     if (Math.abs(dx) < HAUS_HALBB && dy < 4 && dy > -HAUS_TIEFE) { const tuer = Math.abs(dx) < 22 && dy > -22; if (!imHausInnen(wx, wy) && !tuer) return false; } }
-  if (imFluss(wx, wy) && !aufBruecke(wx, wy)) return false;   // Fluss nur über die Brücke querbar
-  if (imSee(wx, wy)) return false;                            // See ist tiefes Wasser - nicht begehbar (sonst "läuft auf dem Wasser")
+  if (!keinWasser && imFluss(wx, wy) && !aufBruecke(wx, wy)) return false;   // Fluss nur über die Brücke querbar (bei keinWasser: WorldScene-Wasser regelt das)
+  if (!keinWasser && imSee(wx, wy)) return false;                            // See ist tiefes Wasser - nicht begehbar (sonst "läuft auf dem Wasser")
   for (const b of baeume) { if (b.fall) continue; if (Math.hypot(wx - b.x, wy - b.y) < (10 + b.skala * 12) * baumGroesse) return false; }   // Stammfuß-Radius ~ Baumgröße
   for (const f of felsen) { if (f.entfernt) continue; if (Math.hypot(wx - f.x, wy - f.y) < FELS_R[f.g] * (0.66 - f.stufe * 0.1)) return false; }   // Felsen solide (Radius schrumpft mit Abbau)
   return true;
@@ -1339,12 +1340,12 @@ function frame(now: number): void {
   }
 
   // 1b2) Fluss (fließendes Wasser) über den Weg - VOR dem See gezeichnet (See deckt die Mündung)
-  if (bereit) zeichneBach(now);
-  if (bereit) zeichneFluss(now, wd);
+  if (bereit && !keinWasser) zeichneBach(now);
+  if (bereit && !keinWasser) zeichneFluss(now, wd);
 
   // 1c) See: dunkles Wasser (Tiefengradient) + nasser Schlammsaum + Himmel-Schlieren + Regen-Ringe
   //     + Schilf/Seerosen am Ufer (brechen die Wasser-Land-Grenze) + Dunst über dem Wasser
-  if (Math.abs(see.cx - camX - W / 2) < W / 2 + see.rx + 80 && Math.abs(see.cy - camY - H / 2) < H / 2 + see.ry + 80) {
+  if (!keinWasser && Math.abs(see.cx - camX - W / 2) < W / 2 + see.rx + 80 && Math.abs(see.cy - camY - H / 2) < H / 2 + see.ry + 80) {
     ctx.save(); ctx.translate(-camX, -camY);
     const ufer = (): void => { ctx.beginPath(); ctx.moveTo(seeUfer[0].x, seeUfer[0].y); for (let i = 1; i < seeUfer.length; i++) ctx.lineTo(seeUfer[i].x, seeUfer[i].y); ctx.closePath(); };
     const seeBank = (s: number, c: string): void => { ctx.save(); ctx.translate(see.cx, see.cy); ctx.scale(s, s); ctx.translate(-see.cx, -see.cy); ufer(); ctx.fillStyle = c; ctx.fill(); ctx.restore(); };
@@ -1373,7 +1374,7 @@ function frame(now: number): void {
     ufer(); ctx.save(); ctx.clip(); ctx.fillStyle = `rgba(150,166,186,${0.06 + (regenAn ? wetter * 0.12 : 0.04)})`; ctx.fillRect(see.cx - see.rx, see.cy - see.ry, see.rx * 2, see.ry * 2); ctx.restore();   // Dunst über dem Wasser
     ctx.restore();
   }
-  if (bereit) zeichneMuendungSee();   // fließender Übergang Fluss -> See (über die braune Lücke)
+  if (bereit && !keinWasser) zeichneMuendungSee();   // fließender Übergang Fluss -> See (über die braune Lücke)
 
   // 2) Pfützen: schmale Wasserlachen AM Pfad entlang (gedreht), mit nassem Schlammrand
   //    der sie in den Weg einbettet; darin dunkler Spiegel, Himmelstreifen, Glanz, Tropfen-Ringe
@@ -1919,9 +1920,10 @@ function zeichneWesen(w: Wesen): void {
 // ---------- Bootstrap: Welt auf einem Canvas starten ----------
 // Demo (dorf.html): automatisch auf #view. Phaser-Hybrid-Szene: ruft starteWelt(sceneCanvas)
 // selbst auf. So läuft DERSELBE Welt-Code (Wetter, Bäume, Fall-Animation, Gras, Wasser) überall.
-export function starteWelt(zielCanvas: HTMLCanvasElement, opts?: { hybrid?: boolean; externKamera?: boolean }): void {
+export function starteWelt(zielCanvas: HTMLCanvasElement, opts?: { hybrid?: boolean; externKamera?: boolean; keinWasser?: boolean }): void {
   hybrid = opts?.hybrid ?? false;   // VOR init() setzen, damit Hühner/NPCs gar nicht erst spawnen + der Held nicht gezeichnet wird
   externKamera = opts?.externKamera ?? false;
+  keinWasser = opts?.keinWasser ?? false;   // R72: Wasser von der WorldScene übernehmen
   view = zielCanvas;
   ctx = view.getContext('2d')!;
   (window as unknown as { __weltCanvas?: HTMLCanvasElement }).__weltCanvas = view;   // Test-Hook (Browser-Verifikation)

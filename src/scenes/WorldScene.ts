@@ -14,7 +14,8 @@ import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeHeldPunkte, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
 import { sdWasser } from '../world/wasserFeld';
-import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause } from '../demo3d/dorfSim';
+import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, flussBahn as dorfFlussBahn, bachBahn as dorfBachBahn, seeBereich as dorfSeeBereich } from '../demo3d/dorfSim';
+import type { WasserGeometrie } from '../world/wasserFeld';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
 import { KARTEN_KANTEN } from '../data/kartenKanten';
 import { wetter } from '../logic/wetter';
@@ -1940,11 +1941,31 @@ export class WorldScene extends CombatScene {
     if (!a.dorfSimBoden) return;
     this.dorfAktiv = true;
     if (!this.dorfCanvas) this.dorfCanvas = document.createElement('canvas');
-    dorfStart(this.dorfCanvas, { hybrid: true, externKamera: true });
+    // dorfSim als Boden/Bäume/Wetter/Tag-Nacht - aber OHNE eigenes Wasser (keinWasser):
+    // unser Shader-Wasser kommt darüber, dorfSim meidet die Wasserzonen weiterhin (keine Bäume im Wasser).
+    dorfStart(this.dorfCanvas, { hybrid: true, externKamera: true, keinWasser: true });
     if (this.textures.exists(this.dorfTexKey)) this.textures.remove(this.dorfTexKey);
     this.textures.addCanvas(this.dorfTexKey, this.dorfCanvas);
     this.dorfBild = this.add.image(0, 0, this.dorfTexKey).setOrigin(0, 0).setScrollFactor(0).setDepth(-1000);
     this.dorfBild.setDisplaySize(this.scale.width, this.scale.height);
+    // Mein Shader-Wasser auf dorfSims (jetzt unsichtbare) Wasserzonen legen: dort
+    // stehen keine Bäume. Geometrie aus dorfSim auslesen, herunterabtasten
+    // (Uniform-Limit MAX_SEG) und in UV (0..1) der Karte wandeln.
+    const W = a.w * TILE, H = a.h * TILE;
+    type P = { x: number; y: number; hw: number };
+    const downs = (b: P[], n: number): P[] => {
+      if (b.length <= n) return b;
+      const out: P[] = []; const step = (b.length - 1) / (n - 1);
+      for (let i = 0; i < n; i++) out.push(b[Math.round(i * step)]);
+      return out;
+    };
+    const zuUV = (b: P[]): { punkte: Array<{ x: number; y: number; hw: number }> } => ({ punkte: b.map((p) => ({ x: p.x / W, y: p.y / H, hw: Math.max(0.004, p.hw / W) })) });
+    const see = dorfSeeBereich();
+    const geo: WasserGeometrie = {
+      bahnen: [zuUV(downs(dorfFlussBahn(), 12)), zuUV(downs(dorfBachBahn(), 8))],
+      seen: [{ cx: see.cx / W, cy: see.cy / H, rx: see.rx / W, ry: see.ry / H }],
+    };
+    a.wasserLauf = { geo, begehbar: true };   // spawneNeuesWasser (gleich danach) legt den Shader darüber
   }
 
   // Pro Frame: Kamera an dorfSim, Textur auffrischen, Bild auf Fenstergröße.
@@ -1962,7 +1983,7 @@ export class WorldScene extends CombatScene {
     // Ohne gebackenen Boden: die blauen Wasserkacheln (inkl. Säume) entfernen und
     // durch Gras ersetzen, damit die weichen Ufer des Overlays in Gras blenden.
     // MIT gebackenem Boden zeichnet zeichneKachel die Wasserkacheln gar nicht erst.
-    if (!a.gebackenerBoden) {
+    if (!a.gebackenerBoden && !a.dorfSimBoden) {
       const wasserTags = new Set<string>();
       for (let ty = 0; ty < a.h; ty++) for (let tx = 0; tx < a.w; tx++) if (a.map[ty][tx] === T.WATER) wasserTags.add(`${tx},${ty}`);
       for (const img of this.tileImages) {
