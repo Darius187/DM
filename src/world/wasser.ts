@@ -37,6 +37,14 @@ uniform float u_widthMul;      // Live-Flussbreite: skaliert die Segment-Halbbre
 uniform float u_overlayFeather;// Overlay: Breite der Alpha-Blende Land(Shader)->Gras(dorfSim) hinter dem Ufersaum
 uniform float u_rain;          // Regenstärke 0..1: Regentropfen-Kreise auf der Wasseroberfläche
 uniform float u_edgeTint;      // fester (tiefen-unabhängiger) Wasserfarb-Sockel am Ufer -> kein heller Saum
+// Untergrund-Textur (R72k): der ECHT gerenderte dorfSim-Boden. Damit rendert das
+// Overlay den Übergang Boden->Wasser DECKEND (kein Alpha-Blending über unbekanntem
+// Boden -> kein heller Saum). u_scroll/u_view = Kamera-Versatz/Sichtgröße (Pixel),
+// um vom Welt-Fragment auf die Bildschirm-UV des Boden-Canvas zu kommen.
+uniform sampler2D iChannel0;
+uniform vec2 u_scroll;
+uniform vec2 u_view;
+uniform float u_useGround;     // 1 = Boden-Textur nutzen (deckend), 0 = altes Alpha-Overlay
 uniform vec3  u_lichtMul;      // Tag/Nacht-Tönung (aus dorfSim) - färbt das Wasser wie den Boden
 uniform vec3  u_deep, u_sky, u_spec, u_bedShallow, u_bedDeep, u_stoneCol;
 uniform vec2  u_light;
@@ -175,10 +183,23 @@ void main(){
   vec3 sCol,sN; float sMask; float sH=stoneField(uv,aspect,sd,sCol,sN,sMask);
   float emerged=clamp(sH*(0.5+u_emerge) - deepness*0.55, 0.0, 1.0);
 
+  // Echten dorfSim-Boden an dieser Stelle holen (Overlay mit Untergrund-Textur):
+  // Welt-Fragment -> Bildschirm-UV des Boden-Canvas. So rendern wir DECKEND.
+  vec3 ground = vec3(0.0); bool hasGround = (u_layerMode>0.5 && u_useGround>0.5);
+  if(hasGround){
+    vec2 sUV = (fragCoord.xy - u_scroll) / u_view;
+    ground = texture2D(iChannel0, vec2(sUV.x, 1.0 - sUV.y)).rgb;
+  }
+  // Feuchter, dunklerer Ufersaum auf dem ECHTEN Boden (nass-Sand-Verlauf, blendet
+  // sich in den echten Boden -> kein fremdfarbiger Saum).
+  float bankWet = smoothstep(u_shore*3.0, 0.0, sd) * u_bank * 0.55;
+  vec3 wetGround = mix(ground, ground*vec3(0.62,0.60,0.52), bankWet);
+
   if(waterDepth<0.003){
-    // Overlay-LAND: transparent (dorfSim-Gras bleibt). Übergang macht die
-    // schmale Alpha-Kante des Wassers unten.
-    if(u_layerMode>0.5){ gl_FragColor=vec4(0.0); return; }
+    if(u_layerMode>0.5){
+      if(hasGround){ gl_FragColor=vec4(wetGround, 1.0); return; }   // deckend: echter Boden + feuchter Saum
+      gl_FragColor=vec4(0.0); return;                               // Fallback (altes Alpha-Overlay)
+    }
     // Vollszene (layerMode 0, Prototyp-Look): Shader zeichnet Gras + Ufersaum.
     vec3 c=landFull(uv,sd); c=mix(c, stoneLit(sN,sCol), sMask);
     vec2 q0=uv-0.5; gl_FragColor=vec4(c*u_ambient*(1.0-dot(q0,q0)*0.35),1.0); return;
@@ -218,9 +239,19 @@ void main(){
   col=mix(col, vec3(0.92,0.95,0.96), clamp(waterline,0.0,1.0)*(0.16+0.34*u_turb)*edgeFade);
 
   col *= u_lichtMul;   // Tag/Nacht-Tönung aus dorfSim (nahtlose Einbettung ins Canvas-Licht)
-  // Overlay: volles Wasser, Alpha deckt schnell (smoothstep bis -u_shore*0.5) ->
-  // schmale weiche Kante statt breitem halbtransparentem (milchigem) Saum.
-  if(u_layerMode>0.5){ gl_FragColor=vec4(col, smoothstep(u_shore, -u_shore*0.5, sd)); return; }
+  if(u_layerMode>0.5){
+    // DECKEND über dem echten Boden: feuchter Boden -> Wasser im selben Mix
+    // (waterDepth). KEIN Alpha-Blending über unbekanntem Boden -> KEIN heller
+    // Saum (genau wie der Prototyp, der auch alles deckend rendert).
+    if(hasGround){ gl_FragColor=vec4(mix(wetGround, col, waterDepth), 1.0); return; }
+    // Fallback (Alpha-Overlay) mit PREMULTIPLIZIERTEM Rand: die Wasserfarbe läuft
+    // zur Uferlinie hin nach SCHWARZ aus (Autor-Beobachtung: schwarzes Wasser ->
+    // neutrale, durchsichtige Kante). So entsteht beim Alpha-Ausblenden KEIN
+    // heller Saum mehr - egal wie hell die Wasserfarbe sonst ist.
+    float aEdge = smoothstep(u_shore, -u_shore*0.5, sd);
+    col *= smoothstep(u_shore*0.6, -u_shore*0.8, sd);
+    gl_FragColor=vec4(col, aEdge); return;
+  }
   // Vollszene: Land+Wasser im selben Mix (Prototyp-Look).
   vec3 finalCol=mix(landFull(uv,sd)*u_ambient*u_lichtMul, col, waterDepth);
   vec2 q=uv-0.5; finalCol*=1.0-dot(q,q)*0.35;
@@ -310,6 +341,7 @@ function getBaseShader(): Phaser.Display.BaseShader {
     u_turbidity: f(0.4), u_bank: f(0.45), u_emerge: f(0.4), u_sand: f(0.5),
     u_procDensity: f(0.35), u_procSize: f(0.05), u_flowDir: f(1), u_layerMode: f(1), u_ambient: f(1.05),
     u_detailScale: f(1), u_widthMul: f(1), u_overlayFeather: f(0.03), u_rain: f(0), u_edgeTint: f(0.7),
+    u_scroll: { type: '2f', value: { x: 0, y: 0 } }, u_view: { type: '2f', value: { x: 1280, y: 720 } }, u_useGround: f(0),
     u_lichtMul: { type: '3f', value: { x: 1, y: 1, z: 1 } },
     u_deep: v3(0.08, 0.24, 0.27), u_sky: v3(0.55, 0.75, 0.92), u_spec: v3(1, 0.97, 0.88),
     u_bedShallow: v3(0.4, 0.37, 0.3), u_bedDeep: v3(0.13, 0.16, 0.16), u_stoneCol: v3(0.345, 0.329, 0.298),

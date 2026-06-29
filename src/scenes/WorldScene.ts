@@ -2085,6 +2085,10 @@ export class WorldScene extends CombatScene {
     // Nahtloser Merge: dorfSims aktuelles Tag/Nacht-Licht aufs Wasser legen, damit
     // der Shader vom selben Licht gefärbt wird wie der Canvas-Boden (kein Seam).
     if (this.wasser2Shader) {
+      // Untergrund-Textur (deckendes Overlay): Kamera-Versatz + Sichtgröße, damit
+      // der Shader vom Welt-Fragment auf die Bildschirm-UV des Boden-Canvas kommt.
+      this.wasser2Shader.setUniform('u_scroll.value', { x: this.cameras.main.scrollX, y: this.cameras.main.scrollY });
+      this.wasser2Shader.setUniform('u_view.value', { x: this.scale.width, y: this.scale.height });
       const L = dorfLicht();
       // Tönung mit Sockel: nimmt Tag/Nacht-Färbung an, dunkelt aber nicht bis zur
       // Unsichtbarkeit (Wasser bleibt auch dämmrig/nachts lesbar).
@@ -2123,6 +2127,15 @@ export class WorldScene extends CombatScene {
       this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: -11, layerMode: 0 });
     } else {
       this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: FLUSS_SHADER.tiefe, layerMode: 1 });
+      // DECKENDES Overlay über dem ECHTEN Boden: den dorfSim-Canvas als
+      // Untergrund-Textur binden -> Übergang Boden->Wasser ohne Alpha-Saum.
+      // (Untergrund-Textur-Pfad vorbereitet, aber noch nicht aktiv: Phaser-Sampler-
+      // Bindung muss erst sauber sitzen. Solange läuft der premultiplizierte
+      // Rand-Fix, der den hellen Saum unabhängig vom Boden vermeidet.)
+      if (a.dorfSimBoden && this.textures.exists(this.dorfTexKey)) {
+        this.wasser2Shader.setUniform('u_useGround.value', 0);
+        this.wasser2Shader.setUniform('u_view.value', { x: this.scale.width, y: this.scale.height });
+      }
     }
     // Per-Strang/See-Regler auf 1.0 vorbelegen (Anzahl aus der Geometrie) und anwenden.
     this.wasserBahnMul = a.wasserLauf.geo.bahnen.map(() => 1);
