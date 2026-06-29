@@ -192,11 +192,11 @@ export interface WasserPreset {
 
 export const WASSER: WasserPreset = {
   speed: 0.13, turb: 0.0, wake: 0.3, bed: 1.0, refract: 0.05,
-  tint: 0.82, shore: 0.05, wavescale: 5.0, nscale: 0.10, gloss: 0.30,
-  turbidity: 0.6, bank: 0.45, emerge: 0.4, sand: 0.5,
-  procDensity: 0.35, procSize: 0.05, flowDir: 1.0, ambient: 0.9,
-  deep: [0.05, 0.14, 0.17], sky: [0.45, 0.60, 0.74], spec: [0.9, 0.92, 0.86],
-  bedShallow: [0.34, 0.31, 0.25], bedDeep: [0.10, 0.13, 0.13], stoneCol: [0.30, 0.29, 0.26],
+  tint: 0.7, shore: 0.05, wavescale: 5.0, nscale: 0.10, gloss: 0.35,
+  turbidity: 0.5, bank: 0.45, emerge: 0.4, sand: 0.5,
+  procDensity: 0.35, procSize: 0.05, flowDir: 1.0, ambient: 1.0,
+  deep: [0.07, 0.19, 0.24], sky: [0.5, 0.66, 0.82], spec: [0.95, 0.95, 0.9],
+  bedShallow: [0.40, 0.37, 0.30], bedDeep: [0.13, 0.16, 0.16], stoneCol: [0.345, 0.329, 0.298],
   light: [0.25, 0.65],
 };
 

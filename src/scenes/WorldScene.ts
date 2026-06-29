@@ -14,8 +14,7 @@ import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeHeldPunkte, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
 import { sdWasser } from '../world/wasserFeld';
-import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, flussBahn as dorfFlussBahn, bachBahn as dorfBachBahn, seeBereich as dorfSeeBereich, aktuellesLicht as dorfLicht } from '../demo3d/dorfSim';
-import type { WasserGeometrie } from '../world/wasserFeld';
+import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht } from '../demo3d/dorfSim';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
 import { KARTEN_KANTEN } from '../data/kartenKanten';
 import { wetter } from '../logic/wetter';
@@ -1459,6 +1458,11 @@ export class WorldScene extends CombatScene {
     // Kachel (z. B. im Kirchenaltar), auf die nächste freie schieben -
     // sonst steckt der Held unlösbar fest
     this.entklemmeSpieler(a);
+    // Kamera SOFORT hart auf den Helden zentrieren (sonst startet sie mit der
+    // Verfolgung erst zu lerpen und der Held kann beim Laden unter dem Bildrand
+    // liegen - dorfSim-Hintergrund füllte den Schirm, der Held war off-screen).
+    this.playerSprite?.setPosition(this.px, this.py);
+    this.cameras.main.centerOn(this.px, this.py);
     this.projectiles = [];
     this.telegraphs = [];
     this.atomWalzen = [];
@@ -1948,24 +1952,8 @@ export class WorldScene extends CombatScene {
     this.textures.addCanvas(this.dorfTexKey, this.dorfCanvas);
     this.dorfBild = this.add.image(0, 0, this.dorfTexKey).setOrigin(0, 0).setScrollFactor(0).setDepth(-1000);
     this.dorfBild.setDisplaySize(this.scale.width, this.scale.height);
-    // Mein Shader-Wasser auf dorfSims (jetzt unsichtbare) Wasserzonen legen: dort
-    // stehen keine Bäume. Geometrie aus dorfSim auslesen, herunterabtasten
-    // (Uniform-Limit MAX_SEG) und in UV (0..1) der Karte wandeln.
-    const W = a.w * TILE, H = a.h * TILE;
-    type P = { x: number; y: number; hw: number };
-    const downs = (b: P[], n: number): P[] => {
-      if (b.length <= n) return b;
-      const out: P[] = []; const step = (b.length - 1) / (n - 1);
-      for (let i = 0; i < n; i++) out.push(b[Math.round(i * step)]);
-      return out;
-    };
-    const zuUV = (b: P[]): { punkte: Array<{ x: number; y: number; hw: number }> } => ({ punkte: b.map((p) => ({ x: p.x / W, y: p.y / H, hw: Math.max(0.004, p.hw / W) })) });
-    const see = dorfSeeBereich();
-    const geo: WasserGeometrie = {
-      bahnen: [zuUV(downs(dorfFlussBahn(), 12)), zuUV(downs(dorfBachBahn(), 8))],
-      seen: [{ cx: see.cx / W, cy: see.cy / H, rx: see.rx / W, ry: see.ry / H }],
-    };
-    a.wasserLauf = { geo, begehbar: true };   // spawneNeuesWasser (gleich danach) legt den Shader darüber
+    // Das Shader-Wasser kommt aus a.wasserLauf (buildStart -> Skizzen-Layout mit
+    // Gabelung/Bach/See); spawneNeuesWasser (gleich danach in goArea) legt es darüber.
   }
 
   // Pro Frame: Kamera an dorfSim, Textur auffrischen, Bild auf Fenstergröße.
@@ -1979,7 +1967,9 @@ export class WorldScene extends CombatScene {
     // der Shader vom selben Licht gefärbt wird wie der Canvas-Boden (kein Seam).
     if (this.wasser2Shader) {
       const L = dorfLicht();
-      const t = (i: number): number => Math.max(0, Math.min(1.25, L.mul[i] + L.lift * 0.45));
+      // Tönung mit Sockel: nimmt Tag/Nacht-Färbung an, dunkelt aber nicht bis zur
+      // Unsichtbarkeit (Wasser bleibt auch dämmrig/nachts lesbar).
+      const t = (i: number): number => Math.max(0, Math.min(1.2, 0.4 + 0.65 * (L.mul[i] + L.lift * 0.35)));
       this.wasser2Shader.setUniform('u_lichtMul.value', { x: t(0), y: t(1), z: t(2) });
     }
   }

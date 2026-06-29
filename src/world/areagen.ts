@@ -1626,6 +1626,21 @@ export function buildStart(_rng: Rng): AreaData {
     npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
     dorfSimBoden: true,
   };
+  // Wasser-Lauf nach der START-Zelle der Skizze (UV 0..1, y nach unten): Fluss tritt
+  // OBEN RECHTS ein, GABELT sich, läuft in einen mittelgroßen See unten-Mitte; dazu
+  // ein BACH-Zufluss von der Westkante in denselben See. Alles durchgehend (smin).
+  // Mein Shader-Wasser; dorfSim malt nur Boden/Bäume/Wetter (keinWasser).
+  a.wasserLauf = {
+    begehbar: true,
+    geo: {
+      bahnen: [
+        { punkte: [{ x: 0.72, y: -0.03, hw: 0.014 }, { x: 0.66, y: 0.18, hw: 0.015 }, { x: 0.58, y: 0.40, hw: 0.016 }, { x: 0.55, y: 0.62, hw: 0.017 }, { x: 0.53, y: 0.85, hw: 0.018 }] },
+        { punkte: [{ x: 0.58, y: 0.40, hw: 0.012 }, { x: 0.49, y: 0.56, hw: 0.012 }, { x: 0.43, y: 0.74, hw: 0.013 }, { x: 0.41, y: 0.92, hw: 0.012 }] },
+        { punkte: [{ x: -0.03, y: 0.80, hw: 0.010 }, { x: 0.20, y: 0.84, hw: 0.011 }, { x: 0.43, y: 0.87, hw: 0.012 }] },
+      ],
+      seen: [{ cx: 0.50, cy: 0.89, rx: 0.11, ry: 0.05 }],
+    },
+  };
   return a;
 }
 

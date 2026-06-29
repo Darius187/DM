@@ -809,3 +809,9 @@
   * WASSER-Preset dunkler/trüber getunt (deep dunkler, ambient 0.9, tint 0.82, turbidity 0.6, gloss 0.3, wake 0.3) für satteres, integriertes Wasser.
   * VERIFIZIERT (Headless): u_lichtMul greift (=Morgenlicht des Spiel-dorfSim), 0 Fehler, tsc grün. Held sichtbar, See begehbar (Tempo 0.16).
   * EHRLICH OFFEN: das GL-Wasser über dem 2D-dorfSim-Canvas wirkt am GROSSEN See noch flach/blass (ihm fehlen dorfSims Lift/Warm/Vignette/Dunst; aktuell noch dorfSims große See-Geometrie). Verbesserung erwartet durch: kleinere See-Geometrie nach Skizze, optional lift/vignette auch aufs Wasser, weiteres Tuning. Schmaler Fluss liest sich bereits besser. Nächste Schritte: Verlauf nach Skizze (Fluss/Gabelung/Bach/See/Weg), dann Bäume/Biome an die Ränder.
+
+- Runde 72n (Spieler-Fix + Fluss nach Skizze + sichtbares Wasser):
+  * SPIELER-FIX: goArea zentriert die Kamera nach dem Spawn SOFORT hart auf den Helden (centerOn) + setzt playerSprite-Position. Vorher lerpte die Verfolgung und der Held lag beim Laden unter dem Bildrand (dorfSim-Hintergrund füllte den Schirm -> "kein Spieler sichtbar"). Jetzt vertikal zentriert/sichtbar.
+  * FLUSS NACH SKIZZE: buildStart liefert a.wasserLauf.geo = Skizzen-Layout (Fluss oben rechts -> GABELUNG -> See unten-Mitte + BACH-Zufluss von West), segN=9 verifiziert. setupDorfSim nutzt diese Geometrie (nicht mehr dorfSims). dorfSim-Bahn-Importe entfernt.
+  * WASSER SICHTBAR: Preset war zu dunkel getunt -> unsichtbar. Zurück auf klar sichtbar (tint 0.7, turbidity 0.5, ambient 1.0, deep [0.07,0.19,0.24]). Licht-Kopplung mit Sockel (0.4 + 0.65*licht) -> tönt Tag/Nacht, bleibt aber dämmrig lesbar. Feinabstimmung macht der Autor live in F10 -> WASSER.
+  * tsc grün, 0 Fehler. HINWEIS (Prozess): zu viele Screenshots im Chat -> "Request too large"; Bilder ab jetzt nur per SendUserFile an den Autor, nicht selbst laden.
