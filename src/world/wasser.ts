@@ -208,20 +208,12 @@ void main(){
   vec2 dir=flowDir(uv); float spd=mix(1.0,0.4,deepness); vec3 n=normalAt(uv,dir,spd);
   vec2 refrUV=uv+n.xy*u_refract*localDepth; vec3 bed=riverbed(refrUV*u_detailScale,deepness)*u_ambient;
   bed=mix(bed, stoneLit(sN,sCol)*u_ambient, sMask);
-  // WICHTIG (Diagnose Design-Chat): der Wasserfarb-Anteil darf NICHT mit der
-  // lokalen Tiefe gegen Null laufen, sonst scheint am Ufer das HELLE Bett durch
-  // und wird beim Alpha-Ausblenden zum hellen Saum. Darum ein TIEFEN-UNABHÄNGIGER
-  // fester Sockel u_edgeTint: schon das flache Ufer-Wasser ist dunkel
-  // wassergefärbt -> dunkles Wasser blendet nach transparent aus = weicher
-  // dunkler Rand wie an echten Ufern, KEIN heller Saum.
-  // Rand-Ausblendfaktor: 0 am Ufer .. 1 im tieferen Wasser.
+  // Rand-Ausblendfaktor (0 am Ufer .. 1 tiefer) - bleibt NUR für die hellen
+  // Effekte (gegen die Effekt-Kante), bricht die Prototyp-Äquivalenz nicht.
   float edgeFade=smoothstep(0.0, u_shore*2.5, -sd);
+  // EXAKT wie der Prototyp - KEIN fester Sockel mehr. Am flachen Ufer ist
+  // waterDepth (= Alpha) klein -> Bett kaum eingemischt, Boden scheint durch.
   float tintAmt = localDepth*mix(u_turbidity,1.0,deepness)*u_tint;
-  // Am ÄUSSERSTEN Ufer fast nur dunkles u_deep (kein helles Bett mehr), erst
-  // weiter innen das Bett (u_edgeTint). So zeigt der Rand keine helle Zwischen-
-  // farbe -> er blendet DUNKEL nach transparent aus (Boden scheint durch), kein
-  // heller Saum.
-  tintAmt = max(tintAmt, mix(0.95, u_edgeTint, edgeFade));
   vec3 col=mix(bed,u_deep, clamp(tintAmt,0.0,1.0));
   // JEDER AUFHELLENDE Term (Himmelspiegelung, Glanz, Schaum, Stein-Wasserlinie)
   // wird zum flachen Ufer hin ausgeblendet - sonst flammen sie an der Uferkante
@@ -244,13 +236,10 @@ void main(){
     // (waterDepth). KEIN Alpha-Blending über unbekanntem Boden -> KEIN heller
     // Saum (genau wie der Prototyp, der auch alles deckend rendert).
     if(hasGround){ gl_FragColor=vec4(mix(wetGround, col, waterDepth), 1.0); return; }
-    // Fallback (Alpha-Overlay) mit PREMULTIPLIZIERTEM Rand: die Wasserfarbe läuft
-    // zur Uferlinie hin nach SCHWARZ aus (Autor-Beobachtung: schwarzes Wasser ->
-    // neutrale, durchsichtige Kante). So entsteht beim Alpha-Ausblenden KEIN
-    // heller Saum mehr - egal wie hell die Wasserfarbe sonst ist.
-    float aEdge = smoothstep(u_shore, -u_shore*0.5, sd);
-    col *= smoothstep(u_shore*0.6, -u_shore*0.8, sd);
-    gl_FragColor=vec4(col, aEdge); return;
+    // PROTOTYP-ÄQUIVALENT: Alpha = waterDepth (dieselbe Kurve, die im Vollbild den
+    // Land-Wasser-Mix steuert). Das Blenden ergibt mix(Boden, col, waterDepth) ==
+    // Prototyp mix(land, col, waterDepth). Kein Sockel, keine schnellere Kurve.
+    gl_FragColor=vec4(col, waterDepth); return;
   }
   // Vollszene: Land+Wasser im selben Mix (Prototyp-Look).
   vec3 finalCol=mix(landFull(uv,sd)*u_ambient*u_lichtMul, col, waterDepth);
