@@ -1950,7 +1950,13 @@ export class WorldScene extends CombatScene {
       }
     }
     const preset = a.wasserLauf.blut ? BLUT2 : WASSER2;
-    this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: FLUSS_SHADER.tiefe, layerMode: 1 });
+    // vollszene: EIN Shader rendert Land+Wasser (Canvas-Look, weiche Ufer) als BODEN
+    // (Tiefe -11, unter den Objekten). Sonst: Wasser-Overlay (Tiefe -9) über dem Boden.
+    if (a.wasserLauf.vollszene) {
+      this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: -11, layerMode: 0 });
+    } else {
+      this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: FLUSS_SHADER.tiefe, layerMode: 1 });
+    }
   }
 
   private unloadAreaObjects(): void {
@@ -2164,7 +2170,9 @@ export class WorldScene extends CombatScene {
     }
     // Gebackener organischer Boden (Runde 72): EIN gemaltes Bodenbild unter die
     // Objekte; die Boden-/Wasserkacheln zeichnet zeichneKachel dann nicht mehr.
-    if (a.gebackenerBoden) this.bakeBoden(a);
+    // Bei vollszene macht der Wasser-Shader selbst den Boden (Land+Wasser in einem,
+    // Canvas-Look mit weichen Ufern) - dann KEIN separates Bodenbild backen.
+    if (a.gebackenerBoden && !a.wasserLauf?.vollszene) this.bakeBoden(a);
     // Tiles als statische Bilder (Pseudo-3D, Masterprompt 5.1)
     for (let ty = 0; ty < a.h; ty++) {
       for (let tx = 0; tx < a.w; tx++) {
@@ -2563,7 +2571,18 @@ export class WorldScene extends CombatScene {
 
   protected override areaSpeedFactor(): number {
     // Krypta: bedächtig wie die Monster; Faktor über F10 verstellbar
-    return this.area?.dark ? TUNING.kryptaTempo : 1;
+    let f = this.area?.dark ? TUNING.kryptaTempo : 1;
+    // Begehbares Wasser (Runde 72): der Held watet hinein und wird zunehmend
+    // gebremst (kann nicht schwimmen) - bis er im tiefen Wasser fast steht.
+    // Verlangsamung aus DERSELBEN Geometrie wie Optik/Wellen.
+    const lauf = this.area?.wasserLauf;
+    if (lauf?.begehbar) {
+      const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
+      const sd = sdWasser(u, v, lauf.geo, 0.08);
+      const nass = Math.max(0, Math.min(1, (0.05 - sd) / 0.10));   // 0 am Ufer .. 1 tief
+      f *= 1 - nass * 0.93;                                         // tief -> ~7% Tempo (fast fest)
+    }
+    return f;
   }
 
   protected override klickAufUi(ptr: Phaser.Input.Pointer): boolean {

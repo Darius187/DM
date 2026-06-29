@@ -46,10 +46,11 @@ export interface AnimalSpawn {
 export interface AreaData {
   id: string;
   name: string;
-  // Neuer prozeduraler Wasser-Lauf (Runde 72): Fluss/See als Geometrie in UV
-  // (0..1) der Karte. Der WorldScene-Renderer legt daraus EIN Wasser-Overlay
-  // (wasser.ts), die Kollision kommt aus den T.WATER-Kacheln darunter.
-  wasserLauf?: { geo: WasserGeometrie; blut?: boolean };
+  // Neuer prozeduraler Wasser-Lauf (Runde 72): Fluss/See als Geometrie in UV (0..1).
+  // vollszene=true: EIN Shader rendert Land UND Wasser (Canvas-Look, weiche Ufer);
+  // begehbar=true: kein harter Block - der Spieler watet hinein und wird im Wasser
+  // zunehmend verlangsamt (kann nicht schwimmen). Sonst Kollision aus T.WATER.
+  wasserLauf?: { geo: WasserGeometrie; blut?: boolean; begehbar?: boolean; vollszene?: boolean };
   // Gebackener organischer Freiform-Boden (Runde 72): statt Kachel-Boden EIN
   // gemaltes Bodenbild unter den Objekten (Tiefe -11). Kollision/Objekte bleiben
   // aus dem Kachel-Raster. Gibt der Oberwelt den Canvas-Look ohne Per-Frame-Upload.
@@ -1511,6 +1512,8 @@ interface OberweltCfg {
   baumGruppen: number;                        // Dichte der verstreuten Baumgruppen (Wald = mehr)
   label?: { u: number; v: number; t: string }; // optionale Ortsmarke (z. B. See)
   blanko?: boolean;                           // nur Gras + Wasser (kein Weg/Baum/Gegner) - Schritt-für-Schritt-Aufbau
+  vollszene?: boolean;                        // Boden+Wasser aus EINEM Shader (Canvas-Look, weiche Ufer)
+  wasserSolide?: boolean;                     // true (Default): T.WATER hart; false: begehbar mit Verlangsamung
 }
 
 // Gemeinsamer Oberwelt-Builder (Runde 72): Wiese, Wasser-Lauf (neues Overlay,
@@ -1544,10 +1547,15 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
     }
   }
 
-  // Wasser carven (T.WATER = SOLID): aus DERSELBEN SDF wie das Overlay.
-  for (let ty = 0; ty < h; ty++) {
-    for (let tx = 0; tx < w; tx++) {
-      if (sdWasser((tx + 0.5) / w, (ty + 0.5) / h, cfg.geo, verschm) < 0) map[ty][tx] = T.WATER;
+  // Wasser carven (T.WATER = SOLID): aus DERSELBEN SDF wie das Overlay. Bei
+  // begehbarem Wasser (wasserSolide=false) NICHT carven - die Verlangsamung
+  // übernimmt areaSpeedFactor aus derselben Geometrie (Spieler watet hinein).
+  const solide = cfg.wasserSolide !== false;
+  if (solide) {
+    for (let ty = 0; ty < h; ty++) {
+      for (let tx = 0; tx < w; tx++) {
+        if (sdWasser((tx + 0.5) / w, (ty + 0.5) / h, cfg.geo, verschm) < 0) map[ty][tx] = T.WATER;
+      }
     }
   }
 
@@ -1592,7 +1600,7 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
 
   a.upPos = { x: 1 * TILE + 16, y: (pfadY[1] ?? Math.round(h * 0.5)) * TILE + 16 };
   a.downPos = { x: (w - 2) * TILE + 16, y: (pfadY[w - 2] ?? Math.round(h * 0.5)) * TILE + 16 };
-  a.wasserLauf = { geo: cfg.geo, blut: false };
+  a.wasserLauf = { geo: cfg.geo, blut: false, begehbar: !solide, vollszene: cfg.vollszene };
   a.gebackenerBoden = true;
   return a;
 }
@@ -1600,20 +1608,23 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
 export function buildStart(rng: Rng): AreaData {
   return baueOberweltGebiet(rng, {
     id: 'start', name: 'Waldrand', wolfXs: [], baumGruppen: 0, blanko: true,
-    label: { u: 0.50, v: 0.90, t: 'Stiller See' },
-    // Nach der Skizze (START-Zelle): EIN durchgehender Fluss von der Nordkante
-    // herab (leichter Mäander) DURCHGEHEND in den See am Südrand - die letzte
-    // Stützstelle liegt IM See-Mittelpunkt, damit kein Gap entsteht (smin
-    // verschmilzt nahtlos, Fluss läuft fließend in den See).
+    vollszene: true, wasserSolide: false,   // Canvas-Look (Boden+Wasser ein Shader), begehbares Wasser
+    label: { u: 0.57, v: 0.89, t: 'Stiller See' },
+    // Nach der START-Zelle der Skizze: Fluss tritt OBEN RECHTS ein, zieht DIAGONAL
+    // nach unten-links in einen flachen See unten-Mitte; ein Bach kommt entlang der
+    // Südkante von links in denselben See. Dünner als zuvor; alles durchgehend.
     geo: {
       bahnen: [
         { punkte: [
-          { x: 0.50, y: -0.03, hw: 0.020 }, { x: 0.46, y: 0.22, hw: 0.021 },
-          { x: 0.50, y: 0.48, hw: 0.022 }, { x: 0.50, y: 0.72, hw: 0.024 },
-          { x: 0.50, y: 0.90, hw: 0.026 },
+          { x: 0.72, y: -0.03, hw: 0.013 }, { x: 0.66, y: 0.18, hw: 0.014 },
+          { x: 0.58, y: 0.42, hw: 0.015 }, { x: 0.56, y: 0.66, hw: 0.016 },
+          { x: 0.57, y: 0.88, hw: 0.017 },
+        ] },
+        { punkte: [
+          { x: -0.03, y: 0.80, hw: 0.011 }, { x: 0.22, y: 0.84, hw: 0.012 }, { x: 0.46, y: 0.88, hw: 0.013 },
         ] },
       ],
-      seen: [{ cx: 0.50, cy: 0.90, rx: 0.13, ry: 0.075 }],
+      seen: [{ cx: 0.57, cy: 0.89, rx: 0.15, ry: 0.06 }],
     },
   });
 }
