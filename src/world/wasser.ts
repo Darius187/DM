@@ -36,7 +36,6 @@ uniform float u_detailScale;   // skaliert Bett/Wellen/Kiesel auf Bildschirmgrö
 uniform float u_widthMul;      // Live-Flussbreite: skaliert die Segment-Halbbreiten (Bäche/Flüsse)
 uniform float u_overlayFeather;// Overlay: Breite der Alpha-Blende Land(Shader)->Gras(dorfSim) hinter dem Ufersaum
 uniform float u_rain;          // Regenstärke 0..1: Regentropfen-Kreise auf der Wasseroberfläche
-uniform float u_edgeTint;      // fester (tiefen-unabhängiger) Wasserfarb-Sockel am Ufer -> kein heller Saum
 // Untergrund-Textur (R72k): der ECHT gerenderte dorfSim-Boden. Damit rendert das
 // Overlay den Übergang Boden->Wasser DECKEND (kein Alpha-Blending über unbekanntem
 // Boden -> kein heller Saum). u_scroll/u_view = Kamera-Versatz/Sichtgröße (Pixel),
@@ -237,12 +236,12 @@ void main(){
     // DECKEND über dem echten Boden: feuchter Boden -> Wasser im selben Mix
     // (waterDepth). KEIN Alpha-Blending über unbekanntem Boden -> KEIN heller
     // Saum (genau wie der Prototyp, der auch alles deckend rendert).
+    // ECHTE LÖSUNG: deckend über dem echten Boden, mix(Boden, Wasser, waterDepth)
+    // == Prototyp mix(land, col, waterDepth), nur mit dem echten dorfSim-Boden ->
+    // KEIN Alpha-über-Unbekannt, KEIN heller Saum.
     if(hasGround){ gl_FragColor=vec4(mix(wetGround, col, waterDepth), 1.0); return; }
-    // Fallback (Alpha-Overlay) mit PREMULTIPLIZIERTEM Rand: die Wasserfarbe läuft
-    // zur Uferlinie hin nach SCHWARZ aus (Autor-Befund: schwarzes Wasser ->
-    // neutrale, durchsichtige Kante) -> KEIN heller Saum, egal wie hell die Farbe.
-    col *= smoothstep(u_shore*0.6, -u_shore*0.8, sd);
-    gl_FragColor=vec4(col, smoothstep(u_shore, -u_shore*0.5, sd)); return;
+    // Fallback (Karten ohne Boden-Textur): Prototyp-äquivalentes Alpha-Overlay.
+    gl_FragColor=vec4(col, waterDepth); return;
   }
   // Vollszene: Land+Wasser im selben Mix (Prototyp-Look).
   vec3 finalCol=mix(landFull(uv,sd)*u_ambient*u_lichtMul, col, waterDepth);
@@ -319,7 +318,6 @@ export const WASSER_CFG = {
   flowMul: 1.0, turbAdd: 0.0, ambientMul: 1.0,
   widthMul: 1.0,        // Live-Flussbreite (Dev-Regler) - skaliert alle Fluss-/Bach-Breiten
   overlayFeather: 0.03, // Breite der weichen Außenblende (Shader-Land -> dorfSim-Gras) hinter dem Ufersaum
-  edgeTint: 0.7,        // fester Wasserfarb-Sockel am Ufer (gegen hellen Saum) - 0..1
 };
 
 let baseShader: Phaser.Display.BaseShader | null = null;
@@ -332,7 +330,7 @@ function getBaseShader(): Phaser.Display.BaseShader {
     u_tint: f(0.65), u_shore: f(0.05), u_wavescale: f(5), u_nscale: f(0.1), u_gloss: f(0.4),
     u_turbidity: f(0.4), u_bank: f(0.45), u_emerge: f(0.4), u_sand: f(0.5),
     u_procDensity: f(0.35), u_procSize: f(0.05), u_flowDir: f(1), u_layerMode: f(1), u_ambient: f(1.05),
-    u_detailScale: f(1), u_widthMul: f(1), u_overlayFeather: f(0.03), u_rain: f(0), u_edgeTint: f(0.7),
+    u_detailScale: f(1), u_widthMul: f(1), u_overlayFeather: f(0.03), u_rain: f(0),
     u_scroll: { type: '2f', value: { x: 0, y: 0 } }, u_view: { type: '2f', value: { x: 1280, y: 720 } }, u_useGround: f(0), u_groundFlip: f(1),
     u_lichtMul: { type: '3f', value: { x: 1, y: 1, z: 1 } },
     u_deep: v3(0.08, 0.24, 0.27), u_sky: v3(0.55, 0.75, 0.92), u_spec: v3(1, 0.97, 0.88),
@@ -374,7 +372,6 @@ export function wendeWasserPreset(sh: Phaser.GameObjects.Shader, p: WasserPreset
   sh.setUniform('u_ambient.value', p.ambient * WASSER_CFG.ambientMul);
   sh.setUniform('u_widthMul.value', WASSER_CFG.widthMul);
   sh.setUniform('u_overlayFeather.value', WASSER_CFG.overlayFeather);
-  sh.setUniform('u_edgeTint.value', WASSER_CFG.edgeTint);
   setV3(sh, 'u_deep', p.deep); setV3(sh, 'u_sky', p.sky); setV3(sh, 'u_spec', p.spec);
   setV3(sh, 'u_bedShallow', p.bedShallow); setV3(sh, 'u_bedDeep', p.bedDeep); setV3(sh, 'u_stoneCol', p.stoneCol);
   sh.setUniform('u_light.value', { x: p.light[0], y: p.light[1] });

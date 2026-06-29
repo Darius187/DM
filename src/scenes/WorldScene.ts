@@ -2137,10 +2137,11 @@ export class WorldScene extends CombatScene {
       const groundKey = a.dorfSimBoden && this.textures.exists(this.dorfTexKey) ? this.dorfTexKey : undefined;
       this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: FLUSS_SHADER.tiefe, layerMode: 1, groundKey });
       if (groundKey) {
-        // Untergrund-Textur-Pfad ist gebunden, aber noch DEAKTIVIERT (u_useGround=0):
-        // das Sampling sitzt im Headless noch nicht (Boden kommt schwarz/streifig).
-        // Solange trägt der premultiplizierte Rand-Fix. TODO: Sampler-Mapping fixen.
-        this.wasser2Shader.setUniform('u_useGround.value', 0);
+        // Untergrund-Textur AKTIV (im Browser bestätigt): der Shader sampelt den
+        // echten dorfSim-Boden und rendert den Übergang DECKEND -> kein heller Saum.
+        this.devGround = true;
+        this.wasser2Shader.setUniform('u_useGround.value', 1);
+        this.wasser2Shader.setUniform('u_groundFlip.value', this.devGroundFlip ? 1 : 0);
         this.wasser2Shader.setUniform('u_view.value', { x: this.scale.width, y: this.scale.height });
       }
     }
