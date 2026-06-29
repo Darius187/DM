@@ -821,3 +821,15 @@
   * FIX: (1) dorfBild bleibt auf der WELT-Kamera (Backdrop), in sortiereKameras ausgenommen (cameraFilter = UI-Kamera verstecken). (2) In dorfSim-Areas Welt-Zoom = 1 (sonst passt der bildschirmfeste Hintergrund nicht 1:1 zur gezoomten Welt). Verifiziert: dorfBildWillRender=true, view 1280x720, scroll [0,1140] (zentriert), Spieler willRender/inView.
   * NEUES SPIEL leitet jetzt auf die neue START-Karte (World startArea 'start') statt auf die alte Anfangskarte-Szene - kein falscher Einstieg mehr.
   * tsc grün, 0 Fehler.
+
+## Runde 73 - Flussbreite, weiches Ufer, Frei-Kamera
+- Fluss-Grundbreiten in buildStart halbiert (Hauptfluss hw 0.008-0.011,
+  Gabelung 0.007-0.008, Bach 0.005-0.007) - "dünner" wie gewünscht; Bach<Gabelung<Fluss.
+- u_widthMul (Default 1.0, Regler 0.3x-2.0x) skaliert alle Fluss-/Bachbreiten LIVE,
+  damit der Autor die Breite in einer Zeile/per Regler tunt. Liegt in WASSER_CFG.widthMul,
+  greift auch auf die Wat-Bremse (sdWasser bekam widthMul-Parameter).
+- Weicher Ufersaum im Overlay-Modus: feuchter Erdsaum (Alpha bis 0.7) über u_shore*4..u_shore*0.4,
+  blendet ins Gras - ersetzt den harten transparenten Schnitt. Optik bleibt über u_shore weich.
+- Frei-Kamera: Scroll-Tempo 700 px/s (durch Zoom geteilt), Mittelmaus-Ziehen 1:1.
+  Held-Bewegung via bewegungGesperrt()-Hook gesperrt, solange aktiv.
+- Doppelte Dev-Tabs WETTER+NÄSSE entfernt (Funktion steckt in ANFANG/dorfSim).
