@@ -34,6 +34,7 @@ uniform float u_wavescale, u_nscale, u_gloss, u_turbidity, u_bank, u_emerge, u_s
 uniform float u_procDensity, u_procSize, u_flowDir, u_layerMode;
 uniform float u_detailScale;   // skaliert Bett/Wellen/Kiesel auf Bildschirmgröße (große Karten)
 uniform float u_widthMul;      // Live-Flussbreite: skaliert die Segment-Halbbreiten (Bäche/Flüsse)
+uniform float u_overlayFeather;// Overlay: Breite der Alpha-Blende Land(Shader)->Gras(dorfSim) hinter dem Ufersaum
 uniform vec3  u_lichtMul;      // Tag/Nacht-Tönung (aus dorfSim) - färbt das Wasser wie den Boden
 uniform vec3  u_deep, u_sky, u_spec, u_bedShallow, u_bedDeep, u_stoneCol;
 uniform vec2  u_light;
@@ -154,19 +155,19 @@ void main(){
   float emerged=clamp(sH*(0.5+u_emerge) - deepness*0.55, 0.0, 1.0);
 
   if(waterDepth<0.003){
-    if(u_layerMode>0.5){
-      // Overlay: KEIN harter Schnitt am Ufer. Ein weicher, feuchter Ufersaum
-      // (nasse Erde) läuft über dem Canvas-Boden aus und blendet nahtlos ins
-      // Gras - so wirkt das Flussbett eingebettet, nicht aufgeklebt.
-      float bankA = smoothstep(u_shore*4.0, u_shore*0.4, sd) * u_bank;
-      if(bankA < 0.004){ gl_FragColor=vec4(0.0); return; }
-      vec3 wet = mix(vec3(0.26,0.22,0.15), vec3(0.16,0.13,0.09), smoothstep(u_shore*4.0, 0.0, sd));
-      float kies = smoothstep(0.5,0.0,vor(uv*u_detailScale*9.0).x);   // ein paar Uferkiesel
-      wet = mix(wet, wet*1.3, kies*0.4*u_bed);
-      gl_FragColor = vec4(wet*u_lichtMul, clamp(bankA,0.0,1.0)*0.7); return;
-    }
+    // LAND. Wie im Prototyp: landFull zeichnet Gras UND den sandigen Ufersaum
+    // (bank). Im Overlay wird genau dieser Saum mitgezeichnet (deckend) und
+    // erst WEITER DRAUSSEN per Alpha ins echte dorfSim-Gras geblendet - so ist
+    // der Land->Wasser-Übergang exakt der HTML-Übergang, nur die Außenkante
+    // (Gras auf Gras) ist eine weiche Alpha-Blende.
     vec3 c=landFull(uv,sd); c=mix(c, stoneLit(sN,sCol), sMask);
-    vec2 q0=uv-0.5; gl_FragColor=vec4(c*u_ambient*(1.0-dot(q0,q0)*0.35),1.0); return;
+    vec2 q0=uv-0.5; vec3 landCol=c*u_ambient*(1.0-dot(q0,q0)*0.35);
+    if(u_layerMode>0.5){
+      float a = 1.0 - smoothstep(u_shore*3.0, u_shore*3.0 + u_overlayFeather, sd);
+      if(a<0.004){ gl_FragColor=vec4(0.0); return; }
+      gl_FragColor=vec4(landCol*u_lichtMul, clamp(a,0.0,1.0)); return;
+    }
+    gl_FragColor=vec4(landCol,1.0); return;
   }
   float localDepth=waterDepth*(1.0-emerged*0.95);
   vec2 dir=flowDir(uv); float spd=mix(1.0,0.4,deepness); vec3 n=normalAt(uv,dir,spd);
@@ -177,14 +178,20 @@ void main(){
   vec3 V=vec3(0.0,0.0,1.0),H=normalize(normalize(vec3(u_light,0.9))+V); float sp=max(dot(n,H),0.0);
   col+=pow(sp,90.0)*u_spec*localDepth*0.9*u_gloss; col+=pow(sp,340.0)*u_spec*localDepth*1.6*u_gloss;
   float slope=length(n.xy); float foam=smoothstep(0.18,0.42,slope)*localDepth; col=mix(col,vec3(0.90,0.94,0.95),foam*0.5*clamp(u_turb,0.0,1.0));
+  // Held-Wellen sichtbar machen: die Störquellen (u_points) erzeugen helle Ringe
+  // ums Wesen - wie der Maus-Effekt im Prototyp.
+  float heroWake=inter(uv); col += vec3(0.85,0.92,1.0)*abs(heroWake)*0.35*localDepth;
   vec3 dryStone=stoneLit(sN,sCol)*1.08*u_ambient; col=mix(col, dryStone, sMask*emerged);
   float waterline=sMask*smoothstep(0.0,0.32,emerged)*(1.0-smoothstep(0.32,0.62,emerged));
   col=mix(col, vec3(0.92,0.95,0.96), clamp(waterline,0.0,1.0)*(0.16+0.34*u_turb));
 
   col *= u_lichtMul;   // Tag/Nacht-Tönung aus dorfSim (nahtlose Einbettung ins Canvas-Licht)
-  if(u_layerMode>0.5){ gl_FragColor=vec4(col, waterDepth); return; }    // Layer: nur Wasser, Alpha am Ufer
+  // HTML-Übergang: Land/Ufersaum und Wasser im SELBEN Mix verschmelzen.
   vec3 finalCol=mix(landFull(uv,sd)*u_ambient*u_lichtMul, col, waterDepth);
-  vec2 q=uv-0.5; finalCol*=1.0-dot(q,q)*0.35; gl_FragColor=vec4(finalCol,1.0);
+  vec2 q=uv-0.5; finalCol*=1.0-dot(q,q)*0.35;
+  // Im Overlay ist die Wasser+Ufer-Zone DECKEND (der Saum gehört zum Übergang);
+  // nur die Außenkante (Land->dorfSim-Gras) blendet weich (oben im Land-Zweig).
+  gl_FragColor=vec4(finalCol, 1.0);
 }
 `;
 
@@ -202,8 +209,8 @@ export interface WasserPreset {
 }
 
 export const WASSER: WasserPreset = {
-  speed: 0.13, turb: 0.0, wake: 0.3, bed: 1.0, refract: 0.05,
-  tint: 0.7, shore: 0.05, wavescale: 5.0, nscale: 0.10, gloss: 0.35,
+  speed: 0.13, turb: 0.0, wake: 0.5, bed: 1.0, refract: 0.05,
+  tint: 0.7, shore: 0.010, wavescale: 5.0, nscale: 0.10, gloss: 0.35,
   turbidity: 0.5, bank: 0.45, emerge: 0.4, sand: 0.5,
   procDensity: 0.35, procSize: 0.05, flowDir: 1.0, ambient: 1.0,
   deep: [0.07, 0.19, 0.24], sky: [0.5, 0.66, 0.82], spec: [0.95, 0.95, 0.9],
@@ -231,7 +238,7 @@ export const WASSER_REGLER: Array<{ key: keyof WasserPreset; label: string; min:
   { key: 'gloss', label: 'Glanz', min: 0, max: 1.5, step: 0.05 },
   { key: 'tint', label: 'Farbintensität', min: 0.1, max: 1, step: 0.05 },
   { key: 'turbidity', label: 'Trübung', min: 0, max: 1, step: 0.05 },
-  { key: 'shore', label: 'Uferbreite', min: 0.02, max: 0.12, step: 0.005 },
+  { key: 'shore', label: 'Uferbreite', min: 0.004, max: 0.06, step: 0.002 },
   { key: 'bank', label: 'Nasser Uferstreifen', min: 0, max: 1, step: 0.05 },
   { key: 'bed', label: 'Bett-Struktur', min: 0, max: 1.4, step: 0.05 },
   { key: 'sand', label: 'Sand-Beimischung', min: 0, max: 1, step: 0.05 },
@@ -255,6 +262,7 @@ export const WASSER_CFG = {
   smink: 0.08,          // smin-Verschmelzung der Gewässer (UV) - = Carve-Wert (areagen) -> Optik deckt Kollision
   flowMul: 1.0, turbAdd: 0.0, ambientMul: 1.0,
   widthMul: 1.0,        // Live-Flussbreite (Dev-Regler) - skaliert alle Fluss-/Bach-Breiten
+  overlayFeather: 0.03, // Breite der weichen Außenblende (Shader-Land -> dorfSim-Gras) hinter dem Ufersaum
 };
 
 let baseShader: Phaser.Display.BaseShader | null = null;
@@ -267,7 +275,7 @@ function getBaseShader(): Phaser.Display.BaseShader {
     u_tint: f(0.65), u_shore: f(0.05), u_wavescale: f(5), u_nscale: f(0.1), u_gloss: f(0.4),
     u_turbidity: f(0.4), u_bank: f(0.45), u_emerge: f(0.4), u_sand: f(0.5),
     u_procDensity: f(0.35), u_procSize: f(0.05), u_flowDir: f(1), u_layerMode: f(1), u_ambient: f(1.05),
-    u_detailScale: f(1), u_widthMul: f(1),
+    u_detailScale: f(1), u_widthMul: f(1), u_overlayFeather: f(0.03),
     u_lichtMul: { type: '3f', value: { x: 1, y: 1, z: 1 } },
     u_deep: v3(0.08, 0.24, 0.27), u_sky: v3(0.55, 0.75, 0.92), u_spec: v3(1, 0.97, 0.88),
     u_bedShallow: v3(0.4, 0.37, 0.3), u_bedDeep: v3(0.13, 0.16, 0.16), u_stoneCol: v3(0.345, 0.329, 0.298),
@@ -307,6 +315,7 @@ export function wendeWasserPreset(sh: Phaser.GameObjects.Shader, p: WasserPreset
   sh.setUniform('u_flowDir.value', p.flowDir);
   sh.setUniform('u_ambient.value', p.ambient * WASSER_CFG.ambientMul);
   sh.setUniform('u_widthMul.value', WASSER_CFG.widthMul);
+  sh.setUniform('u_overlayFeather.value', WASSER_CFG.overlayFeather);
   setV3(sh, 'u_deep', p.deep); setV3(sh, 'u_sky', p.sky); setV3(sh, 'u_spec', p.spec);
   setV3(sh, 'u_bedShallow', p.bedShallow); setV3(sh, 'u_bedDeep', p.bedDeep); setV3(sh, 'u_stoneCol', p.stoneCol);
   sh.setUniform('u_light.value', { x: p.light[0], y: p.light[1] });

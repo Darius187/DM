@@ -767,6 +767,11 @@ let reitet = false;          // sitzt der Held auf dem Pferd?
 let hybrid = false;          // Hybrid-Modus: den Helden NICHT im Canvas zeichnen - die Phaser-Szene legt das Spieler-Sprite darüber
 let externKamera = false;    // Kampf-Hybrid: Kamera wird von außen gesetzt (Spiel-Spieler), dorfSim-Held bewegt sich nicht
 let keinWasser = false;      // R72: dorfSims eigenes Wasser (Fluss/Bach/See) NICHT zeichnen und NICHT als Kollision werten - die WorldScene legt eigenes Wasser darüber (Vegetation meidet die Wasserzonen weiterhin)
+// R73: externes Wasser (Skizzen-Geometrie der WorldScene) - dorfSim zeichnet es
+// nicht, MEIDET es aber bei der Vegetation (Bäume/Büsche/Gras), sonst stünden
+// Bäume mitten im Shader-Fluss. Weltkoordinaten rein, true = Wasser/Ufer meiden.
+let externWasser: ((x: number, y: number) => boolean) | null = null;
+export function setExternWasser(fn: ((x: number, y: number) => boolean) | null): void { externWasser = fn; }
 let heldGeht = false;        // bewegt sich der Held/das Pferd gerade? (Galopp vs. Stand)
 const REIT_TEMPO = 2.0;      // Tempo-Faktor beim Reiten (Pferd schneller als zu Fuss)
 const REIT_DIST = 64;        // Reichweite zum Aufsteigen
@@ -984,6 +989,7 @@ async function init(): Promise<void> {
   for (let versuche = 0; baeume.length < 230 && versuche < 7000; versuche++) {
     const x = 90 + Math.random() * (WELT_W - 180), y = 90 + Math.random() * (WELT_H - 180);
     if (nahSee(x, y) || nahFluss(x, y) || nahBach(x, y)) continue;             // nicht im/am See, Fluss oder Bach
+    if (externWasser && externWasser(x, y)) continue;                          // nicht im/am externen (Shader-)Wasser
     const d = dichteNoise(x, y), biom = biomAt(x, y);
     // Bäume v.a. im WALD; Wiese/Moor spärlich, Fels fast keine
     const chance = biom === 'wald' ? d : biom === 'wiese' ? 0.16 : biom === 'moor' ? 0.18 : 0.05;
@@ -1035,8 +1041,8 @@ async function init(): Promise<void> {
     }
   }
   // Büsche (begehbare Occluder): geclustert UM Felsen (Anker) + locker im Wald, nicht auf Lichtung/Weg/See
-  for (const f of felsen) { if (Math.random() > 0.6) continue; for (let k = 0, n = 1 + Math.floor(Math.random() * 2); k < n; k++) { const x = f.x + (Math.random() - 0.5) * 80, y = f.y + (Math.random() - 0.5) * 56; if (distPfad(x, y) < PFAD_BREITE * 0.7 || imSee(x, y) || nahFluss(x, y)) continue; buesche.push({ x, y, skala: 0.42 + Math.random() * 0.28, typ: Math.floor(Math.random() * buschBilder.length), fade: 0 }); } }
-  for (let i = 0; i < 150; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (Math.hypot(x - lichtX, y - lichtY) < 320 || distPfad(x, y) < PFAD_BREITE * 0.8 || imSee(x, y) || nahFluss(x, y)) continue; if (Math.random() > dichteNoise(x, y) * 0.8) continue; buesche.push({ x, y, skala: 0.38 + Math.random() * 0.32, typ: Math.floor(Math.random() * buschBilder.length), fade: 0 }); }
+  for (const f of felsen) { if (Math.random() > 0.6) continue; for (let k = 0, n = 1 + Math.floor(Math.random() * 2); k < n; k++) { const x = f.x + (Math.random() - 0.5) * 80, y = f.y + (Math.random() - 0.5) * 56; if (distPfad(x, y) < PFAD_BREITE * 0.7 || imSee(x, y) || nahFluss(x, y) || (externWasser && externWasser(x, y))) continue; buesche.push({ x, y, skala: 0.42 + Math.random() * 0.28, typ: Math.floor(Math.random() * buschBilder.length), fade: 0 }); } }
+  for (let i = 0; i < 150; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (Math.hypot(x - lichtX, y - lichtY) < 320 || distPfad(x, y) < PFAD_BREITE * 0.8 || imSee(x, y) || nahFluss(x, y) || (externWasser && externWasser(x, y))) continue; if (Math.random() > dichteNoise(x, y) * 0.8) continue; buesche.push({ x, y, skala: 0.38 + Math.random() * 0.32, typ: Math.floor(Math.random() * buschBilder.length), fade: 0 }); }
   // ANKER (für geclusterten Bewuchs): Wasserkante, Felsen, Wegrand -> dort dichter, sonst licht
   const anker: Array<{ x: number; y: number }> = [];
   for (const u of seeUfer) anker.push({ x: u.x, y: u.y });
@@ -1044,9 +1050,9 @@ async function init(): Promise<void> {
   for (let i = 0; i < pfadMitte.length; i += 6) anker.push({ x: pfadMitte[i].x, y: pfadMitte[i].y });
   const ankerNah = (x: number, y: number): number => { let dm = 1e9; for (const a of anker) { const dx = a.x - x, dy = a.y - y, d = dx * dx + dy * dy; if (d < dm) dm = d; } return Math.max(0, 1 - Math.sqrt(dm) / 160); };   // 0..1
   // EBENE 1: kurzes Bodengras (dicht, überall außer Pfad/See) - im dichten Wald NOCH spärlicher (Waldgrund statt Wiese)
-  for (let i = 0; i < 1500; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y) || imBach(x, y)) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.72) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5, r: Math.random() }); }
+  for (let i = 0; i < 1500; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y) || imBach(x, y) || (externWasser && externWasser(x, y))) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.72) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5, r: Math.random() }); }
   // EBENE 2: hohes Gras (eigene Sprites) - geclustert an Ankern + Wiese/Wald; im dichten Wald spärlicher
-  for (let i = 0; i < 900; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y) || imBach(x, y)) continue; const d = dichteNoise(x, y), biom = biomAt(x, y); if (biom === 'fels') continue; if (biom === 'wald' && d > 0.6 && Math.random() < 0.6) continue; if (Math.random() > 0.18 + ankerNah(x, y) * 0.9) continue; hochgras.push({ x, y, ph: Math.random() * 7, h: 14 + Math.random() * 12, r: Math.random() }); }
+  for (let i = 0; i < 900; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y) || imBach(x, y) || (externWasser && externWasser(x, y))) continue; const d = dichteNoise(x, y), biom = biomAt(x, y); if (biom === 'fels') continue; if (biom === 'wald' && d > 0.6 && Math.random() < 0.6) continue; if (Math.random() > 0.18 + ankerNah(x, y) * 0.9) continue; hochgras.push({ x, y, ph: Math.random() * 7, h: 14 + Math.random() * 12, r: Math.random() }); }
   // EBENE 3: Blüten in FARB-GRUPPEN (je Cluster eine Farbe) an Ankern, nur Wiese/Wald
   for (let c = 0; c < 90; c++) {
     const ax = anker[Math.floor(Math.random() * anker.length)], cx = ax.x + (Math.random() - 0.5) * 120, cy = ax.y + (Math.random() - 0.5) * 90;

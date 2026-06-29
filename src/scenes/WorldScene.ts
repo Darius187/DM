@@ -14,7 +14,7 @@ import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeHeldPunkte, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
 import { sdWasser } from '../world/wasserFeld';
-import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht } from '../demo3d/dorfSim';
+import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser } from '../demo3d/dorfSim';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
 import { KARTEN_KANTEN } from '../data/kartenKanten';
 import { wetter } from '../logic/wetter';
@@ -1876,7 +1876,7 @@ export class WorldScene extends CombatScene {
     if (!sh || !lauf) return;
     const LIFE = 2.5, now = this.time.now / 1000;
     const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
-    const imWasser = sdWasser(u, v, lauf.geo, 0.06) < 0.05;
+    const imWasser = sdWasser(u, v, lauf.geo, WASSER2_CFG.smink, WASSER2_CFG.widthMul) < 0.02;
     if (imWasser && this.time.now - this.wasserTrailLetzte > 70) {
       this.wasserTrailLetzte = this.time.now;
       this.wasserTrail.push({ u, v, t: now });
@@ -1947,6 +1947,7 @@ export class WorldScene extends CombatScene {
         // Flussbreite live (skaliert ALLE Fluss-/Bachbreiten dieser Karte); wirkt
         // zugleich auf die Wat-Bremse (gleiche Geometrie wie Optik).
         { kind: 'slider', label: 'Flussbreite', min: 0.3, max: 2.0, step: 0.05, fmt: (v) => `${v.toFixed(2)}x`, get: () => WASSER2_CFG.widthMul, set: (v) => { WASSER2_CFG.widthMul = v; this.wasserAnwenden(); } },
+        { kind: 'slider', label: 'Übergang ins Gras', min: 0.005, max: 0.10, step: 0.005, fmt: (v) => v.toFixed(3), get: () => WASSER2_CFG.overlayFeather, set: (v) => { WASSER2_CFG.overlayFeather = v; this.wasserAnwenden(); } },
       ];
       if (!this.wasser2Shader) cs.push({ kind: 'note', text: 'Diese Karte hat (noch) kein neues Wasser - Werte gelten ab der nächsten Wasserkarte.' });
       for (const r of WASSER_REGLER) cs.push({ kind: 'slider', label: r.label, min: r.min, max: r.max, step: r.step, fmt: (v) => v.toFixed(3), get: () => num[r.key as string], set: (v) => { num[r.key as string] = v; this.wasserAnwenden(); } });
@@ -1958,9 +1959,6 @@ export class WorldScene extends CombatScene {
       { name: 'KAMERA', controls: () => [
         { kind: 'button', label: () => `Frei-Kamera: ${this.devFreiKam ? 'AN (WASD/Pfeile + Mittelmaus zieht)' : 'aus'}`, onClick: () => { this.setzeFreiKamera(!this.devFreiKam); this.devKonsole?.refresh(); } },
         { kind: 'note', text: 'Frei-Kamera entkoppelt vom Helden: WASD/Pfeile scrollen, Mittelmaus zieht die Karte. Basis für den späteren RTS-Modus.' },
-      ] },
-      { name: 'UHRZEIT', controls: () => [
-        { kind: 'slider', label: 'Tageszeit', min: 0, max: 1, step: 0.02, fmt: (v) => tageszeitLabel(v), get: () => this.tageszeit, set: (v) => this.devSetTageszeit(v) },
       ] },
       { name: 'ANFANG', controls: () => {
         const keys: Array<[string, string, number, number, number]> = [
@@ -1986,6 +1984,16 @@ export class WorldScene extends CombatScene {
     if (!a.dorfSimBoden) return;
     this.dorfAktiv = true;
     if (!this.dorfCanvas) this.dorfCanvas = document.createElement('canvas');
+    // VOR dem Start: dorfSim sagen, wo MEIN Shader-Wasser (Skizzen-Geometrie) liegt,
+    // damit Bäume/Büsche/Gras NICHT in den Fluss/See gesetzt werden. dorfSim-Welt
+    // (4160×2720) deckt sich 1:1 mit der Area (w*TILE × h*TILE) -> UV = x/Weltbreite.
+    const geo = a.wasserLauf?.geo;
+    if (geo) {
+      const wW = a.w * TILE, wH = a.h * TILE;
+      dorfSetExternWasser((x, y) => sdWasser(x / wW, y / wH, geo, WASSER2_CFG.smink, WASSER2_CFG.widthMul) < 0.02);
+    } else {
+      dorfSetExternWasser(null);
+    }
     // dorfSim als Boden/Bäume/Wetter/Tag-Nacht - aber OHNE eigenes Wasser (keinWasser):
     // unser Shader-Wasser kommt darüber, dorfSim meidet die Wasserzonen weiterhin (keine Bäume im Wasser).
     dorfStart(this.dorfCanvas, { hybrid: true, externKamera: true, keinWasser: true });
@@ -2010,7 +2018,7 @@ export class WorldScene extends CombatScene {
       const L = dorfLicht();
       // Tönung mit Sockel: nimmt Tag/Nacht-Färbung an, dunkelt aber nicht bis zur
       // Unsichtbarkeit (Wasser bleibt auch dämmrig/nachts lesbar).
-      const t = (i: number): number => Math.max(0, Math.min(1.2, 0.4 + 0.65 * (L.mul[i] + L.lift * 0.35)));
+      const t = (i: number): number => Math.max(0.12, Math.min(1.2, 0.12 + 0.95 * (L.mul[i] + L.lift * 0.3)));
       this.wasser2Shader.setUniform('u_lichtMul.value', { x: t(0), y: t(1), z: t(2) });
     }
   }
@@ -2672,8 +2680,8 @@ export class WorldScene extends CombatScene {
     const lauf = this.area?.wasserLauf;
     if (lauf?.begehbar) {
       const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
-      const sd = sdWasser(u, v, lauf.geo, 0.08, WASSER2_CFG.widthMul);
-      const nass = Math.max(0, Math.min(1, (0.05 - sd) / 0.10));   // 0 am Ufer .. 1 tief
+      const sd = sdWasser(u, v, lauf.geo, WASSER2_CFG.smink, WASSER2_CFG.widthMul);
+      const nass = Math.max(0, Math.min(1, (0.015 - sd) / 0.05));   // 0 am Ufer .. 1 tief
       f *= 1 - nass * 0.93;                                         // tief -> ~7% Tempo (fast fest)
     }
     return f;
