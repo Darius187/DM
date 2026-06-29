@@ -1636,9 +1636,12 @@ export function buildStart(_rng: Rng): AreaData {
       // Schmalere Grundbreiten (Autorwunsch "dünner"); Feintuning live über den
       // Regler "Flussbreite" (WASSER_CFG.widthMul). Bach < Gabelung < Hauptfluss.
       bahnen: [
-        { punkte: [{ x: 0.72, y: -0.03, hw: 0.008 }, { x: 0.66, y: 0.18, hw: 0.009 }, { x: 0.58, y: 0.40, hw: 0.010 }, { x: 0.55, y: 0.62, hw: 0.011 }, { x: 0.53, y: 0.85, hw: 0.011 }] },
-        { punkte: [{ x: 0.58, y: 0.40, hw: 0.007 }, { x: 0.49, y: 0.56, hw: 0.007 }, { x: 0.43, y: 0.74, hw: 0.008 }, { x: 0.41, y: 0.92, hw: 0.007 }] },
-        { punkte: [{ x: -0.03, y: 0.80, hw: 0.005 }, { x: 0.20, y: 0.84, hw: 0.006 }, { x: 0.43, y: 0.87, hw: 0.007 }] },
+        // Hauptfluss: genug Körper, damit echtes Tiefen-Blau entsteht (flach=grau).
+        { punkte: [{ x: 0.72, y: -0.03, hw: 0.013 }, { x: 0.66, y: 0.18, hw: 0.015 }, { x: 0.58, y: 0.40, hw: 0.016 }, { x: 0.55, y: 0.62, hw: 0.017 }, { x: 0.53, y: 0.85, hw: 0.016 }] },
+        // Gabelung: schmaler als der Hauptfluss.
+        { punkte: [{ x: 0.58, y: 0.40, hw: 0.010 }, { x: 0.49, y: 0.56, hw: 0.010 }, { x: 0.43, y: 0.74, hw: 0.011 }, { x: 0.41, y: 0.92, hw: 0.010 }] },
+        // Bach: bleibt ein dünner Lauf von der Westkante.
+        { punkte: [{ x: -0.03, y: 0.80, hw: 0.006 }, { x: 0.20, y: 0.84, hw: 0.007 }, { x: 0.43, y: 0.87, hw: 0.008 }] },
       ],
       seen: [{ cx: 0.50, cy: 0.89, rx: 0.11, ry: 0.05 }],
     },
