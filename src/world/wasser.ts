@@ -128,7 +128,11 @@ void stoneInstance(vec2 uv, vec2 center, float aspect, float R, float seed, inou
     float cv=(hash11(seed+7.3)-0.5)*0.28; sCol=clamp(u_stoneCol*(1.0+cv)*(0.86+0.28*(bumps*0.5+0.5)),0.0,1.0);
     sMask=smoothstep(1.0,0.84,rr); } }
 void procStones(vec2 uv, float aspect, float sd, inout float maxH, inout vec3 sN, inout vec3 sCol, inout float sMask){
-  if(u_procDensity<=0.0) return; float wz=smoothstep(u_shore*2.5,-u_shore,sd); if(wz<0.02) return;
+  if(u_procDensity<=0.0) return;
+  // Kiesel NUR im flachen Ufersaum: nahe der Uferlinie, und im TIEFEN ruhigen
+  // Wasser (See) ausgeblendet - dort sieht man keine Steine (Autorwunsch).
+  float wz = smoothstep(u_shore*1.5, -u_shore*0.3, sd) * (1.0 - smoothstep(-u_shore*0.3, -u_shore*1.3, sd));
+  if(wz<0.04) return;
   float cs=u_procSize/u_detailScale; vec2 gp=vec2(uv.x*aspect,uv.y)/cs; vec2 cf=floor(gp);
   for(int j=-1;j<=1;j++){ for(int i=-1;i<=1;i++){ vec2 cc=cf+vec2(float(i),float(j)); vec2 rnd=hash2(cc);
     if(rnd.x>u_procDensity) continue; float seed=fract(rnd.y*13.37)*10.0+0.21;
