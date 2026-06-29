@@ -45,6 +45,7 @@ uniform vec2 u_scroll;
 uniform vec2 u_view;
 uniform float u_useGround;     // 1 = Boden-Textur nutzen (deckend), 0 = altes Alpha-Overlay
 uniform float u_groundFlip;    // 1 = Boden-UV vertikal spiegeln (Canvas-Texturen sind oft geflippt)
+uniform float u_groundDebug;   // 1 = sUV als Farbe ausgeben (Mapping-Test)
 uniform vec3  u_lichtMul;      // Tag/Nacht-Tönung (aus dorfSim) - färbt das Wasser wie den Boden
 uniform vec3  u_deep, u_sky, u_spec, u_bedShallow, u_bedDeep, u_stoneCol;
 uniform vec2  u_light;
@@ -189,6 +190,9 @@ void main(){
   if(hasGround){
     vec2 sUV = (fragCoord.xy - u_scroll) / u_view;
     float gy = u_groundFlip>0.5 ? (1.0 - sUV.y) : sUV.y;
+    // DEBUG (Design-Chat-Test): sUV sichtbar machen - Rot=x links->rechts,
+    // Grün=y oben->unten, je EINMAL sauber über den Schirm = Mapping ok.
+    if(u_groundDebug>0.5){ gl_FragColor=vec4(fract(sUV.x), fract(gy), 0.0, 1.0); return; }
     ground = texture2D(iChannel0, vec2(sUV.x, gy)).rgb;
   }
   // Feuchter, dunklerer Ufersaum auf dem ECHTEN Boden (nass-Sand-Verlauf, blendet
@@ -332,7 +336,7 @@ function getBaseShader(): Phaser.Display.BaseShader {
     u_turbidity: f(0.4), u_bank: f(0.45), u_emerge: f(0.4), u_sand: f(0.5),
     u_procDensity: f(0.35), u_procSize: f(0.05), u_flowDir: f(1), u_layerMode: f(1), u_ambient: f(1.05),
     u_detailScale: f(1), u_widthMul: f(1), u_overlayFeather: f(0.03), u_rain: f(0),
-    u_scroll: { type: '2f', value: { x: 0, y: 0 } }, u_view: { type: '2f', value: { x: 1280, y: 720 } }, u_useGround: f(0), u_groundFlip: f(1),
+    u_scroll: { type: '2f', value: { x: 0, y: 0 } }, u_view: { type: '2f', value: { x: 1280, y: 720 } }, u_useGround: f(0), u_groundFlip: f(1), u_groundDebug: f(0),
     u_lichtMul: { type: '3f', value: { x: 1, y: 1, z: 1 } },
     u_deep: v3(0.08, 0.24, 0.27), u_sky: v3(0.55, 0.75, 0.92), u_spec: v3(1, 0.97, 0.88),
     u_bedShallow: v3(0.4, 0.37, 0.3), u_bedDeep: v3(0.13, 0.16, 0.16), u_stoneCol: v3(0.345, 0.329, 0.298),

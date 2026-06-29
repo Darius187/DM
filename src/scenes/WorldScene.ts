@@ -171,6 +171,7 @@ export class WorldScene extends CombatScene {
   private perfDorfAus = false;                        // Dev: dorfSim-Upload aussetzen (FPS-Vergleich)
   private devGround = false;                          // Dev: Untergrund-Textur (Boden in den Shader) - im Browser testen
   private devGroundFlip = true;                        // Dev: Boden-UV vertikal spiegeln (Canvas-Flip)
+  private devGroundDebug = false;                       // Dev: sUV-Mapping als Farbe sichtbar machen (Test)
   private freiKamZieh?: { x: number; y: number };    // Mittelmaus-Ziehen: letzte Zeigerposition
   private devAnfang: Record<string, number> = { groesse: 0.85, wegbreite: 1, falltempo: 1, bewuchs: 1, tageszeit: 9, tagtempo: 1, sturm: 1.5, sicht: 124 };
   private breakableEnts: BreakableEntity[] = [];
@@ -2019,7 +2020,8 @@ export class WorldScene extends CombatScene {
         // Untergrund-Textur (echte Lösung gegen den Saum) im ECHTEN Browser testen:
         { kind: 'button', label: () => `Untergrund-Textur (Boden): ${this.devGround ? 'AN' : 'aus'}`, onClick: () => { this.devGround = !this.devGround; this.wasser2Shader?.setUniform('u_useGround.value', this.devGround ? 1 : 0); this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `Boden Y-Spiegeln: ${this.devGroundFlip ? 'AN' : 'aus'}`, onClick: () => { this.devGroundFlip = !this.devGroundFlip; this.wasser2Shader?.setUniform('u_groundFlip.value', this.devGroundFlip ? 1 : 0); this.devKonsole?.refresh(); } },
-        { kind: 'note', text: 'Untergrund-Textur AN: kommt der echte Boden durch (kein Schwarz/Streifen), ist der Saum weg. Bei verschobenem/gespiegeltem Boden Y-Spiegeln umschalten. Default AUS (dunkler Rand).' },
+        { kind: 'button', label: () => `Boden-Debug (sUV-Test): ${this.devGroundDebug ? 'AN' : 'aus'}`, onClick: () => { this.devGroundDebug = !this.devGroundDebug; this.wasser2Shader?.setUniform('u_groundDebug.value', this.devGroundDebug ? 1 : 0); this.devKonsole?.refresh(); } },
+        { kind: 'note', text: 'Untergrund-Textur AN + Boden-Debug AN: ROT muss EINMAL links→rechts laufen, GRÜN EINMAL oben→unten. Läuft Grün eng/wiederholt = Y-Mapping kaputt. Default beides AUS (dunkler Rand).' },
         { kind: 'button', label: () => `FPS-Anzeige: ${this.perfAn ? 'AN' : 'aus'}`, onClick: () => { this.perfAn = !this.perfAn; this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `Wasser-Shader: ${this.wasser2Shader?.visible ? 'AN' : 'aus'} (FPS-Vergleich)`, onClick: () => { this.wasser2Shader?.setVisible(!this.wasser2Shader.visible); this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `dorfSim-Upload: ${this.perfDorfAus ? 'aus (eingefroren)' : 'AN'} (FPS-Vergleich)`, onClick: () => { this.perfDorfAus = !this.perfDorfAus; this.devKonsole?.refresh(); } },
@@ -2090,12 +2092,14 @@ export class WorldScene extends CombatScene {
     // Nahtloser Merge: dorfSims aktuelles Tag/Nacht-Licht aufs Wasser legen, damit
     // der Shader vom selben Licht gefärbt wird wie der Canvas-Boden (kein Seam).
     if (this.wasser2Shader) {
-      // Untergrund-Textur (deckendes Overlay): Kamera-Versatz + Boden-Canvas-Größe.
-      // WICHTIG: u_view MUSS die echte dorfSim-Canvas-Größe sein (dorfSim setzt sie
-      // auf innerWidth/innerHeight = Fenster), NICHT scale.width - sonst Tearing.
-      const cv = this.dorfCanvas;
-      this.wasser2Shader.setUniform('u_scroll.value', { x: this.cameras.main.scrollX, y: this.cameras.main.scrollY });
-      if (cv) this.wasser2Shader.setUniform('u_view.value', { x: cv.width, y: cv.height });
+      // Untergrund-Textur (deckendes Overlay): KONSISTENT aus cameras.main.worldView
+      // (Diagnose Design-Chat). worldView = exakt sichtbarer Welt-Ausschnitt in
+      // Welt-Pixeln, passend zu fragCoord -> sUV = (fragCoord - worldView.xy)/
+      // worldView.size landet sauber in [0,1] (kein Y-Kollaps mehr). dorfBild
+      // streckt den Canvas ohnehin auf genau diesen Ausschnitt.
+      const wv = this.cameras.main.worldView;
+      this.wasser2Shader.setUniform('u_scroll.value', { x: wv.x, y: wv.y });
+      this.wasser2Shader.setUniform('u_view.value', { x: wv.width, y: wv.height });
       const L = dorfLicht();
       // Tönung mit Sockel: nimmt Tag/Nacht-Färbung an, dunkelt aber nicht bis zur
       // Unsichtbarkeit (Wasser bleibt auch dämmrig/nachts lesbar).
