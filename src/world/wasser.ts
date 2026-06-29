@@ -236,10 +236,11 @@ void main(){
     // (waterDepth). KEIN Alpha-Blending über unbekanntem Boden -> KEIN heller
     // Saum (genau wie der Prototyp, der auch alles deckend rendert).
     if(hasGround){ gl_FragColor=vec4(mix(wetGround, col, waterDepth), 1.0); return; }
-    // PROTOTYP-ÄQUIVALENT: Alpha = waterDepth (dieselbe Kurve, die im Vollbild den
-    // Land-Wasser-Mix steuert). Das Blenden ergibt mix(Boden, col, waterDepth) ==
-    // Prototyp mix(land, col, waterDepth). Kein Sockel, keine schnellere Kurve.
-    gl_FragColor=vec4(col, waterDepth); return;
+    // Fallback (Alpha-Overlay) mit PREMULTIPLIZIERTEM Rand: die Wasserfarbe läuft
+    // zur Uferlinie hin nach SCHWARZ aus (Autor-Befund: schwarzes Wasser ->
+    // neutrale, durchsichtige Kante) -> KEIN heller Saum, egal wie hell die Farbe.
+    col *= smoothstep(u_shore*0.6, -u_shore*0.8, sd);
+    gl_FragColor=vec4(col, smoothstep(u_shore, -u_shore*0.5, sd)); return;
   }
   // Vollszene: Land+Wasser im selben Mix (Prototyp-Look).
   vec3 finalCol=mix(landFull(uv,sd)*u_ambient*u_lichtMul, col, waterDepth);
@@ -397,15 +398,20 @@ export function setzeHeldPunkte(sh: Phaser.GameObjects.Shader, punkte: Array<[nu
   sh.setUniform('u_points.value', arr);
 }
 
-export interface SpawnWasserOpts { depth?: number; layerMode?: number; }
+export interface SpawnWasserOpts { depth?: number; layerMode?: number; groundKey?: string; }
 
 /**
  * Spawnt EIN Wasser-Quad (x=0,y=0, Größe worldW×worldH) mit dem prozeduralen
  * Shader. geo = Flusslauf in UV (0..1) der Karte. layerMode 1 = Overlay (Land
- * transparent), 0 = ganze Szene inkl. Gras (Prototyp-Vergleich).
+ * transparent), 0 = ganze Szene inkl. Gras (Prototyp-Vergleich). groundKey =
+ * Textur-Schlüssel des echten Bodens (-> iChannel0, deckendes Rendering).
  */
 export function spawneWasser(scene: Phaser.Scene, geo: WasserGeometrie, worldW: number, worldH: number, preset: WasserPreset, opts: SpawnWasserOpts = {}): Phaser.GameObjects.Shader {
-  const sh = scene.add.shader(getBaseShader(), 0, 0, worldW, worldH);
+  // iChannel0 wird über das textures-Argument von add.shader gebunden (NICHT
+  // setSampler2D - das greift bei BaseShader-Shadern nicht zuverlässig).
+  const sh = opts.groundKey
+    ? scene.add.shader(getBaseShader(), 0, 0, worldW, worldH, [opts.groundKey])
+    : scene.add.shader(getBaseShader(), 0, 0, worldW, worldH);
   sh.setOrigin(0, 0).setDepth(opts.depth ?? WASSER_CFG.tiefe);
   wendeWasserPreset(sh, preset);
   setzeGeometrie(sh, geo);

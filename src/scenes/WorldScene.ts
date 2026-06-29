@@ -2125,13 +2125,15 @@ export class WorldScene extends CombatScene {
     if (a.wasserLauf.vollszene) {
       this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: -11, layerMode: 0 });
     } else {
-      this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: FLUSS_SHADER.tiefe, layerMode: 1 });
-      // DECKENDES Overlay über dem ECHTEN Boden: den dorfSim-Canvas als
-      // Untergrund-Textur binden -> Übergang Boden->Wasser ohne Alpha-Saum.
-      // (Untergrund-Textur-Pfad vorbereitet, aber noch nicht aktiv: Phaser-Sampler-
-      // Bindung muss erst sauber sitzen. Solange läuft der premultiplizierte
-      // Rand-Fix, der den hellen Saum unabhängig vom Boden vermeidet.)
-      if (a.dorfSimBoden && this.textures.exists(this.dorfTexKey)) {
+      // DECKENDES Overlay über dem ECHTEN Boden (dorfSim-Canvas als iChannel0):
+      // Übergang Boden->Wasser ohne Alpha-Saum (wie der Prototyp, deckend). Der
+      // Boden wird über das textures-Argument von add.shader gebunden.
+      const groundKey = a.dorfSimBoden && this.textures.exists(this.dorfTexKey) ? this.dorfTexKey : undefined;
+      this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: FLUSS_SHADER.tiefe, layerMode: 1, groundKey });
+      if (groundKey) {
+        // Untergrund-Textur-Pfad ist gebunden, aber noch DEAKTIVIERT (u_useGround=0):
+        // das Sampling sitzt im Headless noch nicht (Boden kommt schwarz/streifig).
+        // Solange trägt der premultiplizierte Rand-Fix. TODO: Sampler-Mapping fixen.
         this.wasser2Shader.setUniform('u_useGround.value', 0);
         this.wasser2Shader.setUniform('u_view.value', { x: this.scale.width, y: this.scale.height });
       }
