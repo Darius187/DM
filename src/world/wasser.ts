@@ -36,6 +36,7 @@ uniform float u_detailScale;   // skaliert Bett/Wellen/Kiesel auf Bildschirmgrö
 uniform float u_widthMul;      // Live-Flussbreite: skaliert die Segment-Halbbreiten (Bäche/Flüsse)
 uniform float u_overlayFeather;// Overlay: Breite der Alpha-Blende Land(Shader)->Gras(dorfSim) hinter dem Ufersaum
 uniform float u_rain;          // Regenstärke 0..1: Regentropfen-Kreise auf der Wasseroberfläche
+uniform float u_edgeTint;      // fester (tiefen-unabhängiger) Wasserfarb-Sockel am Ufer -> kein heller Saum
 uniform vec3  u_lichtMul;      // Tag/Nacht-Tönung (aus dorfSim) - färbt das Wasser wie den Boden
 uniform vec3  u_deep, u_sky, u_spec, u_bedShallow, u_bedDeep, u_stoneCol;
 uniform vec2  u_light;
@@ -186,14 +187,14 @@ void main(){
   vec2 dir=flowDir(uv); float spd=mix(1.0,0.4,deepness); vec3 n=normalAt(uv,dir,spd);
   vec2 refrUV=uv+n.xy*u_refract*localDepth; vec3 bed=riverbed(refrUV*u_detailScale,deepness)*u_ambient;
   bed=mix(bed, stoneLit(sN,sCol)*u_ambient, sMask);
-  // Auch das FLACHE Ufer-Wasser soll Wasserfarbe tragen (kein heller Bett-/Sand-
-  // streifen am Rand): kräftiger Wasserfarb-Sockel schon ab der Uferlinie, damit
-  // der Übergang blau ins Gras schmilzt statt über einen hellen Strand.
+  // WICHTIG (Diagnose Design-Chat): der Wasserfarb-Anteil darf NICHT mit der
+  // lokalen Tiefe gegen Null laufen, sonst scheint am Ufer das HELLE Bett durch
+  // und wird beim Alpha-Ausblenden zum hellen Saum. Darum ein TIEFEN-UNABHÄNGIGER
+  // fester Sockel u_edgeTint: schon das flache Ufer-Wasser ist dunkel
+  // wassergefärbt -> dunkles Wasser blendet nach transparent aus = weicher
+  // dunkler Rand wie an echten Ufern, KEIN heller Saum.
   float tintAmt = localDepth*mix(u_turbidity,1.0,deepness)*u_tint;
-  // Schon kurz hinter der Uferlinie VOLL blau (u_deep): so zeigt der Ufersaum
-  // KEIN helles Kiesbett (das gäbe den ungewollten hellen Strandstreifen) -
-  // das Bett sieht man erst im tieferen Wasser.
-  tintAmt = max(tintAmt, waterDepth*0.30);
+  tintAmt = max(tintAmt, u_edgeTint);
   vec3 col=mix(bed,u_deep, clamp(tintAmt,0.0,1.0));
   float fres=pow(1.0-clamp(n.z,0.0,1.0),4.0); col=mix(col,u_sky,fres*0.4*localDepth);
   vec3 V=vec3(0.0,0.0,1.0),H=normalize(normalize(vec3(u_light,0.9))+V); float sp=max(dot(n,H),0.0);
@@ -287,6 +288,7 @@ export const WASSER_CFG = {
   flowMul: 1.0, turbAdd: 0.0, ambientMul: 1.0,
   widthMul: 1.0,        // Live-Flussbreite (Dev-Regler) - skaliert alle Fluss-/Bach-Breiten
   overlayFeather: 0.03, // Breite der weichen Außenblende (Shader-Land -> dorfSim-Gras) hinter dem Ufersaum
+  edgeTint: 0.7,        // fester Wasserfarb-Sockel am Ufer (gegen hellen Saum) - 0..1
 };
 
 let baseShader: Phaser.Display.BaseShader | null = null;
@@ -299,7 +301,7 @@ function getBaseShader(): Phaser.Display.BaseShader {
     u_tint: f(0.65), u_shore: f(0.05), u_wavescale: f(5), u_nscale: f(0.1), u_gloss: f(0.4),
     u_turbidity: f(0.4), u_bank: f(0.45), u_emerge: f(0.4), u_sand: f(0.5),
     u_procDensity: f(0.35), u_procSize: f(0.05), u_flowDir: f(1), u_layerMode: f(1), u_ambient: f(1.05),
-    u_detailScale: f(1), u_widthMul: f(1), u_overlayFeather: f(0.03), u_rain: f(0),
+    u_detailScale: f(1), u_widthMul: f(1), u_overlayFeather: f(0.03), u_rain: f(0), u_edgeTint: f(0.7),
     u_lichtMul: { type: '3f', value: { x: 1, y: 1, z: 1 } },
     u_deep: v3(0.08, 0.24, 0.27), u_sky: v3(0.55, 0.75, 0.92), u_spec: v3(1, 0.97, 0.88),
     u_bedShallow: v3(0.4, 0.37, 0.3), u_bedDeep: v3(0.13, 0.16, 0.16), u_stoneCol: v3(0.345, 0.329, 0.298),
@@ -340,6 +342,7 @@ export function wendeWasserPreset(sh: Phaser.GameObjects.Shader, p: WasserPreset
   sh.setUniform('u_ambient.value', p.ambient * WASSER_CFG.ambientMul);
   sh.setUniform('u_widthMul.value', WASSER_CFG.widthMul);
   sh.setUniform('u_overlayFeather.value', WASSER_CFG.overlayFeather);
+  sh.setUniform('u_edgeTint.value', WASSER_CFG.edgeTint);
   setV3(sh, 'u_deep', p.deep); setV3(sh, 'u_sky', p.sky); setV3(sh, 'u_spec', p.spec);
   setV3(sh, 'u_bedShallow', p.bedShallow); setV3(sh, 'u_bedDeep', p.bedDeep); setV3(sh, 'u_stoneCol', p.stoneCol);
   sh.setUniform('u_light.value', { x: p.light[0], y: p.light[1] });

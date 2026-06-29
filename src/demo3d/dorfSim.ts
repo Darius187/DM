@@ -1596,10 +1596,15 @@ function frame(now: number): void {
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(2,4,3,${vigA})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
   // 8a) BLITZ: harte, kurze Aufhellung der ganzen Szene (Doppel-Flash, kein weiches Abblenden)
   if (blitz > 0.01) { ctx.fillStyle = `rgba(222,230,248,${blitz * 0.55})`; ctx.fillRect(0, 0, W, H); }
-  ctx.fillStyle = 'rgba(230,220,190,0.85)'; ctx.font = '13px Georgia'; ctx.textAlign = 'right';
-  const hh = Math.floor(tag), mm = Math.floor((tag - hh) * 60);
-  ctx.fillText(t('hud.wetter', { zeit: `${hh}:${mm.toString().padStart(2, '0')}`, tageszeit: TAGESZEIT_NAME(tag), wetter: WETTER_NAME(), nass: Math.round(wetness * 100) }), W - 16, 22);
-  ctx.fillText(t('hud.vorrat', { holz, stein, gold: erzVorrat.gold, eisen: erzVorrat.eisen, kristall: erzVorrat.kristall }), W - 16, 40); ctx.textAlign = 'left';
+  // Eigene dorfSim-HUD (Wetter/Vorrat) NUR im Standalone-Demo zeichnen. Im Hybrid
+  // (im Spiel) hat die WorldScene ihre eigene HUD - sonst klebt dorfSims Schrift
+  // auf dem Hintergrund-Canvas und wird vom Wasser-Layer verdeckt.
+  if (!hybrid) {
+    ctx.fillStyle = 'rgba(230,220,190,0.85)'; ctx.font = '13px Georgia'; ctx.textAlign = 'right';
+    const hh = Math.floor(tag), mm = Math.floor((tag - hh) * 60);
+    ctx.fillText(t('hud.wetter', { zeit: `${hh}:${mm.toString().padStart(2, '0')}`, tageszeit: TAGESZEIT_NAME(tag), wetter: WETTER_NAME(), nass: Math.round(wetness * 100) }), W - 16, 22);
+    ctx.fillText(t('hud.vorrat', { holz, stein, gold: erzVorrat.gold, eisen: erzVorrat.eisen, kristall: erzVorrat.kristall }), W - 16, 40); ctx.textAlign = 'left';
+  }
 
   requestAnimationFrame(frame);
 }

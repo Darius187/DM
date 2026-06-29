@@ -1969,6 +1969,7 @@ export class WorldScene extends CombatScene {
         { kind: 'button', label: () => `Fließrichtung: ${p.flowDir > 0 ? 'abwärts' : 'aufwärts'}`, onClick: () => { p.flowDir *= -1; this.wasserAnwenden(); } },
         // Flussbreite-MASTER (skaliert ALLE Stränge gemeinsam); darunter je Strang einzeln.
         { kind: 'slider', label: 'Flussbreite (alle)', min: 0.3, max: 2.0, step: 0.05, fmt: (v) => `${v.toFixed(2)}x`, get: () => WASSER2_CFG.widthMul, set: (v) => { WASSER2_CFG.widthMul = v; this.wasserAnwenden(); } },
+        { kind: 'slider', label: 'Ufer-Wasserfarbe (gegen hellen Saum)', min: 0, max: 1, step: 0.05, fmt: (v) => v.toFixed(2), get: () => WASSER2_CFG.edgeTint, set: (v) => { WASSER2_CFG.edgeTint = v; this.wasserAnwenden(); } },
       ];
       if (!this.wasser2Shader) cs.push({ kind: 'note', text: 'Diese Karte hat (noch) kein neues Wasser - Werte gelten ab der nächsten Wasserkarte.' });
       // Pro Strang (Bach/Fluss) ein eigener Breite-Regler, pro See Breite + Höhe.
