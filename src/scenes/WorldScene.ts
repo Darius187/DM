@@ -12,8 +12,8 @@ import { NebelFratzen } from '../systems/NebelFratzen';
 import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
-import { spawneWasser as spawneNeuesWasserShader, setzeHeldPunkte, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
-import { sdWasser } from '../world/wasserFeld';
+import { spawneWasser as spawneNeuesWasserShader, setzeHeldPunkte, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
+import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
 import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser } from '../demo3d/dorfSim';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
 import { KARTEN_KANTEN } from '../data/kartenKanten';
@@ -159,6 +159,9 @@ export class WorldScene extends CombatScene {
   private readonly dorfTexKey = 'dorfsim_boden';
   private wasserTrail: Array<{ u: number; v: number; t: number }> = []; // Held-Wellen-Spur im Wasser
   private wasserTrailLetzte = 0;
+  private wasserBahnMul: number[] = [];                       // Live-Breite je Strang (Bach/Fluss)
+  private wasserSeeMul: Array<{ rx: number; ry: number }> = []; // Live-Breite/Höhe je See
+  private skaliertesWasser?: WasserGeometrie;                 // Geometrie mit angewandten Reglern (Optik+Wat-Bremse)
   private devKonsole?: DevKonsole;                  // F10-Tab-Konsole (Wasser/Wetter/Uhrzeit/Nässe/Anfangskarte)
   private devWasserBlut = false;                    // Wasser-Tab: Wasser- oder Blut-Preset bearbeiten
   private devFreiKam = false;                        // Dev: Frei-Kamera (vom Helden entkoppelt, scrollbar) - Basis RTS
@@ -1876,7 +1879,8 @@ export class WorldScene extends CombatScene {
     if (!sh || !lauf) return;
     const LIFE = 2.5, now = this.time.now / 1000;
     const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
-    const imWasser = sdWasser(u, v, lauf.geo, WASSER2_CFG.smink, WASSER2_CFG.widthMul) < 0.02;
+    const geo = this.aktuelleWasserGeo() ?? lauf.geo;
+    const imWasser = sdWasser(u, v, geo, WASSER2_CFG.smink, WASSER2_CFG.widthMul) < 0.02;
     if (imWasser && this.time.now - this.wasserTrailLetzte > 70) {
       this.wasserTrailLetzte = this.time.now;
       this.wasserTrail.push({ u, v, t: now });
@@ -1944,12 +1948,24 @@ export class WorldScene extends CombatScene {
       const cs: DKControl[] = [
         { kind: 'button', label: () => `Preset: ${this.devWasserBlut ? 'Blut' : 'Wasser'} (umschalten)`, onClick: () => { this.devWasserBlut = !this.devWasserBlut; this.wasserAnwenden(); this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `Fließrichtung: ${p.flowDir > 0 ? 'abwärts' : 'aufwärts'}`, onClick: () => { p.flowDir *= -1; this.wasserAnwenden(); } },
-        // Flussbreite live (skaliert ALLE Fluss-/Bachbreiten dieser Karte); wirkt
-        // zugleich auf die Wat-Bremse (gleiche Geometrie wie Optik).
-        { kind: 'slider', label: 'Flussbreite', min: 0.3, max: 2.0, step: 0.05, fmt: (v) => `${v.toFixed(2)}x`, get: () => WASSER2_CFG.widthMul, set: (v) => { WASSER2_CFG.widthMul = v; this.wasserAnwenden(); } },
+        // Flussbreite-MASTER (skaliert ALLE Stränge gemeinsam); darunter je Strang einzeln.
+        { kind: 'slider', label: 'Flussbreite (alle)', min: 0.3, max: 2.0, step: 0.05, fmt: (v) => `${v.toFixed(2)}x`, get: () => WASSER2_CFG.widthMul, set: (v) => { WASSER2_CFG.widthMul = v; this.wasserAnwenden(); } },
         { kind: 'slider', label: 'Übergang ins Gras', min: 0.005, max: 0.10, step: 0.005, fmt: (v) => v.toFixed(3), get: () => WASSER2_CFG.overlayFeather, set: (v) => { WASSER2_CFG.overlayFeather = v; this.wasserAnwenden(); } },
       ];
       if (!this.wasser2Shader) cs.push({ kind: 'note', text: 'Diese Karte hat (noch) kein neues Wasser - Werte gelten ab der nächsten Wasserkarte.' });
+      // Pro Strang (Bach/Fluss) ein eigener Breite-Regler, pro See Breite + Höhe.
+      const geo = this.area?.wasserLauf?.geo;
+      if (geo) {
+        geo.bahnen.forEach((b, i) => {
+          if (this.wasserBahnMul[i] === undefined) this.wasserBahnMul[i] = 1;
+          cs.push({ kind: 'slider', label: `↳ ${b.name ?? `Strang ${i + 1}`} - Breite`, min: 0.2, max: 2.5, step: 0.05, fmt: (v) => `${v.toFixed(2)}x`, get: () => this.wasserBahnMul[i], set: (v) => { this.wasserBahnMul[i] = v; this.wendeWasserGeometrieAn(); } });
+        });
+        geo.seen.forEach((s, i) => {
+          if (!this.wasserSeeMul[i]) this.wasserSeeMul[i] = { rx: 1, ry: 1 };
+          cs.push({ kind: 'slider', label: `≈ ${s.name ?? `See ${i + 1}`} - Breite`, min: 0.2, max: 2.5, step: 0.05, fmt: (v) => `${v.toFixed(2)}x`, get: () => this.wasserSeeMul[i].rx, set: (v) => { this.wasserSeeMul[i].rx = v; this.wendeWasserGeometrieAn(); } });
+          cs.push({ kind: 'slider', label: `≈ ${s.name ?? `See ${i + 1}`} - Höhe`, min: 0.2, max: 2.5, step: 0.05, fmt: (v) => `${v.toFixed(2)}x`, get: () => this.wasserSeeMul[i].ry, set: (v) => { this.wasserSeeMul[i].ry = v; this.wendeWasserGeometrieAn(); } });
+        });
+      }
       for (const r of WASSER_REGLER) cs.push({ kind: 'slider', label: r.label, min: r.min, max: r.max, step: r.step, fmt: (v) => v.toFixed(3), get: () => num[r.key as string], set: (v) => { num[r.key as string] = v; this.wasserAnwenden(); } });
       for (const r of WASSER_FARBEN) cs.push({ kind: 'color', label: r.label, get: () => col[r.key as string], set: (c) => { col[r.key as string] = c; this.wasserAnwenden(); } });
       return cs;
@@ -2054,6 +2070,23 @@ export class WorldScene extends CombatScene {
     } else {
       this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: FLUSS_SHADER.tiefe, layerMode: 1 });
     }
+    // Per-Strang/See-Regler auf 1.0 vorbelegen (Anzahl aus der Geometrie) und anwenden.
+    this.wasserBahnMul = a.wasserLauf.geo.bahnen.map(() => 1);
+    this.wasserSeeMul = a.wasserLauf.geo.seen.map(() => ({ rx: 1, ry: 1 }));
+    this.wendeWasserGeometrieAn();
+  }
+
+  // Baut die Geometrie mit den Live-Reglern (je Bach/Fluss/See) und lädt sie in
+  // den Shader; dieselbe skalierte Geometrie nutzen auch Wat-Bremse + Held-Wellen.
+  private wendeWasserGeometrieAn(): void {
+    const lauf = this.area?.wasserLauf;
+    if (!lauf || !this.wasser2Shader) return;
+    this.skaliertesWasser = skaliereGeometrie(lauf.geo, this.wasserBahnMul, this.wasserSeeMul);
+    setzeWasserGeometrie(this.wasser2Shader, this.skaliertesWasser);
+  }
+
+  private aktuelleWasserGeo(): WasserGeometrie | undefined {
+    return this.skaliertesWasser ?? this.area?.wasserLauf?.geo;
   }
 
   private unloadAreaObjects(): void {
@@ -2680,7 +2713,7 @@ export class WorldScene extends CombatScene {
     const lauf = this.area?.wasserLauf;
     if (lauf?.begehbar) {
       const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
-      const sd = sdWasser(u, v, lauf.geo, WASSER2_CFG.smink, WASSER2_CFG.widthMul);
+      const sd = sdWasser(u, v, this.aktuelleWasserGeo() ?? lauf.geo, WASSER2_CFG.smink, WASSER2_CFG.widthMul);
       const nass = Math.max(0, Math.min(1, (0.015 - sd) / 0.05));   // 0 am Ufer .. 1 tief
       f *= 1 - nass * 0.93;                                         // tief -> ~7% Tempo (fast fest)
     }

@@ -9,8 +9,8 @@
 // Shader erwartet. Reines Rechnen ohne Phaser -> unit-testbar.
 
 export interface BahnPunkt { x: number; y: number; hw: number; }   // hw = Halbbreite (UV-Anteil)
-export interface WasserBahn { punkte: BahnPunkt[]; }               // Fluss/Bach: Mittellinie stromabwärts
-export interface SeeEllipse { cx: number; cy: number; rx: number; ry: number; }
+export interface WasserBahn { punkte: BahnPunkt[]; name?: string; } // Fluss/Bach: Mittellinie stromabwärts (name = Reglerbeschriftung)
+export interface SeeEllipse { cx: number; cy: number; rx: number; ry: number; name?: string; }
 
 export interface WasserGeometrie {
   bahnen: WasserBahn[];
@@ -57,6 +57,24 @@ export function geometrieZuUniforms(geo: WasserGeometrie): WasserUniforms {
     lakeN++;
   }
   return { seg, segW, segN, lake, lakeN };
+}
+
+/**
+ * Skaliert die Geometrie PRO STRANG/SEE: bahnMul[i] skaliert die Halbbreiten von
+ * Bahn i, seeMul[i] skaliert rx/ry von See i. Liefert eine NEUE Geometrie (Basis
+ * bleibt unverändert) - für Live-Regler je Bach/Fluss/See.
+ */
+export function skaliereGeometrie(geo: WasserGeometrie, bahnMul: number[], seeMul: Array<{ rx: number; ry: number }>): WasserGeometrie {
+  return {
+    bahnen: geo.bahnen.map((b, i) => ({
+      name: b.name,
+      punkte: b.punkte.map((p) => ({ x: p.x, y: p.y, hw: p.hw * (bahnMul[i] ?? 1) })),
+    })),
+    seen: geo.seen.map((s, i) => ({
+      name: s.name, cx: s.cx, cy: s.cy,
+      rx: s.rx * (seeMul[i]?.rx ?? 1), ry: s.ry * (seeMul[i]?.ry ?? 1),
+    })),
+  };
 }
 
 // --- Reine Probe (für Tests / spätere KI-/Kollisions-Abfragen) ----------------
