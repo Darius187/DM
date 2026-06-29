@@ -236,12 +236,13 @@ void main(){
     // DECKEND über dem echten Boden: feuchter Boden -> Wasser im selben Mix
     // (waterDepth). KEIN Alpha-Blending über unbekanntem Boden -> KEIN heller
     // Saum (genau wie der Prototyp, der auch alles deckend rendert).
-    // ECHTE LÖSUNG: deckend über dem echten Boden, mix(Boden, Wasser, waterDepth)
-    // == Prototyp mix(land, col, waterDepth), nur mit dem echten dorfSim-Boden ->
-    // KEIN Alpha-über-Unbekannt, KEIN heller Saum.
+    // ECHTE LÖSUNG (Boden-Textur AN): deckend über dem echten Boden,
+    // mix(Boden, Wasser, waterDepth) -> KEIN Alpha-über-Unbekannt, KEIN heller Saum.
     if(hasGround){ gl_FragColor=vec4(mix(wetGround, col, waterDepth), 1.0); return; }
-    // Fallback (Karten ohne Boden-Textur): Prototyp-äquivalentes Alpha-Overlay.
-    gl_FragColor=vec4(col, waterDepth); return;
+    // Default-Fallback: premultiplizierter dunkler Rand (Wasserfarbe läuft am Ufer
+    // nach Schwarz -> neutrale Kante, kein heller Saum).
+    col *= smoothstep(u_shore*0.6, -u_shore*0.8, sd);
+    gl_FragColor=vec4(col, smoothstep(u_shore, -u_shore*0.5, sd)); return;
   }
   // Vollszene: Land+Wasser im selben Mix (Prototyp-Look).
   vec3 finalCol=mix(landFull(uv,sd)*u_ambient*u_lichtMul, col, waterDepth);

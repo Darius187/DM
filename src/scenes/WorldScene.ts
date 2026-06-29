@@ -2090,10 +2090,12 @@ export class WorldScene extends CombatScene {
     // Nahtloser Merge: dorfSims aktuelles Tag/Nacht-Licht aufs Wasser legen, damit
     // der Shader vom selben Licht gefärbt wird wie der Canvas-Boden (kein Seam).
     if (this.wasser2Shader) {
-      // Untergrund-Textur (deckendes Overlay): Kamera-Versatz + Sichtgröße, damit
-      // der Shader vom Welt-Fragment auf die Bildschirm-UV des Boden-Canvas kommt.
+      // Untergrund-Textur (deckendes Overlay): Kamera-Versatz + Boden-Canvas-Größe.
+      // WICHTIG: u_view MUSS die echte dorfSim-Canvas-Größe sein (dorfSim setzt sie
+      // auf innerWidth/innerHeight = Fenster), NICHT scale.width - sonst Tearing.
+      const cv = this.dorfCanvas;
       this.wasser2Shader.setUniform('u_scroll.value', { x: this.cameras.main.scrollX, y: this.cameras.main.scrollY });
-      this.wasser2Shader.setUniform('u_view.value', { x: this.scale.width, y: this.scale.height });
+      if (cv) this.wasser2Shader.setUniform('u_view.value', { x: cv.width, y: cv.height });
       const L = dorfLicht();
       // Tönung mit Sockel: nimmt Tag/Nacht-Färbung an, dunkelt aber nicht bis zur
       // Unsichtbarkeit (Wasser bleibt auch dämmrig/nachts lesbar).
@@ -2137,12 +2139,11 @@ export class WorldScene extends CombatScene {
       const groundKey = a.dorfSimBoden && this.textures.exists(this.dorfTexKey) ? this.dorfTexKey : undefined;
       this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: FLUSS_SHADER.tiefe, layerMode: 1, groundKey });
       if (groundKey) {
-        // Untergrund-Textur AKTIV (im Browser bestätigt): der Shader sampelt den
-        // echten dorfSim-Boden und rendert den Übergang DECKEND -> kein heller Saum.
-        this.devGround = true;
-        this.wasser2Shader.setUniform('u_useGround.value', 1);
+        // Untergrund-Textur gebunden, aber Default AUS: das Sampling-Mapping
+        // (u_scroll/u_view) muss erst sauber sitzen (sonst Tearing/Streifen).
+        // Solange trägt der premultiplizierte dunkle Rand (kein heller Saum).
+        this.wasser2Shader.setUniform('u_useGround.value', this.devGround ? 1 : 0);
         this.wasser2Shader.setUniform('u_groundFlip.value', this.devGroundFlip ? 1 : 0);
-        this.wasser2Shader.setUniform('u_view.value', { x: this.scale.width, y: this.scale.height });
       }
     }
     // Per-Strang/See-Regler auf 1.0 vorbelegen (Anzahl aus der Geometrie) und anwenden.
