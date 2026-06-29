@@ -196,18 +196,22 @@ void main(){
   float tintAmt = localDepth*mix(u_turbidity,1.0,deepness)*u_tint;
   tintAmt = max(tintAmt, u_edgeTint);
   vec3 col=mix(bed,u_deep, clamp(tintAmt,0.0,1.0));
-  float fres=pow(1.0-clamp(n.z,0.0,1.0),4.0); col=mix(col,u_sky,fres*0.4*localDepth);
+  // Rand-Ausblendfaktor (Diagnose Design-Chat): JEDER AUFHELLENDE Term (Himmel-
+  // spiegelung, Glanz, Schaum, Stein-Wasserlinie) wird zum flachen Ufer hin
+  // ausgeblendet - dort flammen sie sonst auf (steile Normale) und bilden die
+  // weiße Uferkante. Die dunkle Wasserfarbe (col) und das Alpha bleiben.
+  float edgeFade=smoothstep(0.0, u_shore*2.5, -sd);   // 0 am Ufer .. 1 im tieferen Wasser
+  float fres=pow(1.0-clamp(n.z,0.0,1.0),4.0); col=mix(col,u_sky,fres*0.4*localDepth*edgeFade);
   vec3 V=vec3(0.0,0.0,1.0),H=normalize(normalize(vec3(u_light,0.9))+V); float sp=max(dot(n,H),0.0);
-  col+=pow(sp,90.0)*u_spec*localDepth*0.9*u_gloss; col+=pow(sp,340.0)*u_spec*localDepth*1.6*u_gloss;
-  float slope=length(n.xy); float foam=smoothstep(0.18,0.42,slope)*localDepth; col=mix(col,vec3(0.90,0.94,0.95),foam*0.5*clamp(u_turb,0.0,1.0));
-  // Held-Wellen sichtbar machen: die Störquellen (u_points) erzeugen helle Ringe
-  // ums Wesen - wie der Maus-Effekt im Prototyp.
+  col+=pow(sp,90.0)*u_spec*localDepth*0.9*u_gloss*edgeFade; col+=pow(sp,340.0)*u_spec*localDepth*1.6*u_gloss*edgeFade;
+  float slope=length(n.xy); float foam=smoothstep(0.18,0.42,slope)*localDepth; col=mix(col,vec3(0.90,0.94,0.95),foam*0.5*clamp(u_turb,0.0,1.0)*edgeFade);
+  // Held-Wellen + Regentropfen: bewusst OHNE edgeFade - die sollen man auch im
+  // flachen Ufer-Wasser sehen (Waten/Regen), bilden keine durchgehende Kante.
   float heroWake=inter(uv); col += vec3(0.85,0.92,1.0)*abs(heroWake)*0.35*localDepth;
-  // Regentropfen-Kreise sichtbar als feine helle Ringe auf der Oberfläche.
   float rain=rainH(uv); col += vec3(0.82,0.88,0.96)*abs(rain)*0.28*localDepth;
-  vec3 dryStone=stoneLit(sN,sCol)*1.08*u_ambient; col=mix(col, dryStone, sMask*emerged);
+  vec3 dryStone=stoneLit(sN,sCol)*1.08*u_ambient; col=mix(col, dryStone, sMask*emerged*edgeFade);
   float waterline=sMask*smoothstep(0.0,0.32,emerged)*(1.0-smoothstep(0.32,0.62,emerged));
-  col=mix(col, vec3(0.92,0.95,0.96), clamp(waterline,0.0,1.0)*(0.16+0.34*u_turb));
+  col=mix(col, vec3(0.92,0.95,0.96), clamp(waterline,0.0,1.0)*(0.16+0.34*u_turb)*edgeFade);
 
   col *= u_lichtMul;   // Tag/Nacht-Tönung aus dorfSim (nahtlose Einbettung ins Canvas-Licht)
   // Overlay: volles Wasser, Alpha deckt schnell (smoothstep bis -u_shore*0.5) ->
