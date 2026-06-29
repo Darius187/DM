@@ -1980,6 +1980,12 @@ export function heldSchirm(): { x: number; y: number; dir: number; frame: number
 }
 
 // Regler-Werte von außen setzen (Dev-Konsole im Spiel statt der dorf.html-DOM-Slider).
+// Aktuelle Regen-Intensität (0..1) - EINE Wahrheit fürs Wetter. Treibt in der
+// WorldScene die Wassertropfen (u_rain) und ersetzt das doppelte Eigen-Wetter.
+export function aktuellerRegen(): number {
+  return (regenAn && wetter > 0.12) ? Math.min(1, wetter) : 0;
+}
+
 export function setRegler(key: string, v: number): void {
   switch (key) {
     case 'groesse': baumGroesse = v; break;
@@ -1988,7 +1994,14 @@ export function setRegler(key: string, v: number): void {
     case 'bewuchs': bewuchsDichte = v; break;
     case 'tageszeit': tag = ((v % 24) + 24) % 24; break;
     case 'tagtempo': tagTempo = v; break;
-    case 'sturm': sturmStaerke = v; break;
+    // Sturm steuert jetzt das WETTER (Wind UND Regen) - 0 = trocken/klar, hoch = Unwetter.
+    // Festgesetzt (großer Timer), damit der Auto-Wetterwechsel ihn nicht überschreibt.
+    case 'sturm': {
+      sturmStaerke = v;
+      wetterZiel = Math.max(-1, Math.min(1, -0.5 + (v / 4) * 1.5));
+      wetter = wetterZiel; wetterTimer = 1e9;
+      break;
+    }
     case 'sicht': sichtDurchmesser = v; break;
   }
 }

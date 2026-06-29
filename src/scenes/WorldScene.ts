@@ -14,7 +14,7 @@ import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeHeldPunkte, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
-import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser } from '../demo3d/dorfSim';
+import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen } from '../demo3d/dorfSim';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
 import { KARTEN_KANTEN } from '../data/kartenKanten';
 import { wetter } from '../logic/wetter';
@@ -1322,7 +1322,15 @@ export class WorldScene extends CombatScene {
   // tagNacht=false -> Tag/Nacht-Beleuchtung + Schatten der WorldScene bleiben UNVERÄNDERT.
   private renderRegen(dt: number): void {
     const draussen = !this.area.dark && !this.area.innen;
-    wetter.staerke = (this.regnet && draussen) ? 0.6 : 0.0;
+    let staerke = (this.regnet && draussen) ? 0.6 : 0.0;
+    // Auf der dorfSim-Karte ist dorfSim die EINZIGE Wetter-Wahrheit (über den
+    // Sturm-Regler): kein zweites Eigen-Wetter mehr. Sturm 0 -> kein Regen.
+    if (this.area?.dorfSimBoden) {
+      const r = dorfRegen();
+      this.regnet = r > 0;
+      staerke = draussen ? r * 0.7 : 0;
+    }
+    wetter.staerke = staerke;
     if (!this.wetterOverlay) this.wetterOverlay = new WetterOverlay(this, { depth: 2680, tagNacht: false, tasten: false });
     this.wetterOverlay.update(dt);
   }
@@ -1886,15 +1894,19 @@ export class WorldScene extends CombatScene {
       this.wasserTrail.push({ u, v, t: now });
       if (this.wasserTrail.length > 8) this.wasserTrail.shift();
     }
-    this.wasserTrail = this.wasserTrail.filter((p) => now - p.t < LIFE);
-    setzeHeldPunkte(sh, this.wasserTrail.map((p) => [p.u, p.v, (now - p.t) / LIFE] as [number, number, number]));
-    // Regen + Sturm aufs Wasser: Tropfen-Kreise (u_rain) und etwas mehr Wirbel.
+    // Frischer Punkt GENAU an der aktuellen Heldposition (Slot 0, z=0), solange
+    // er im Wasser steht - so entsteht die Verdrängung DA, wo er steht, nicht
+    // versetzt. Dahinter die alternde Spur.
+    const punkte: Array<[number, number, number]> = [];
+    if (imWasser) punkte.push([u, v, 0]);
+    for (const p of this.wasserTrail) punkte.push([p.u, p.v, (now - p.t) / LIFE]);
+    setzeHeldPunkte(sh, punkte);
+    // Regen aufs Wasser: Tropfen-Kreise (u_rain) + etwas mehr Wirbel - aus DEM
+    // dorfSim-Wetter (Sturm-Regler), nicht aus einem zweiten Eigen-Wetter.
     const draussen = !this.area.innen && !this.area.dark;
-    const rainAmt = (this.regnet && draussen) ? 0.6 : 0;
-    const sturm = this.devAnfang.sturm ?? 1.5;
-    const sturmTurb = Math.max(0, Math.min(0.3, (sturm - 1) / 3 * 0.3)) * (draussen ? 1 : 0);
+    const rainAmt = draussen && this.area.dorfSimBoden ? dorfRegen() : (this.regnet && draussen ? 0.6 : 0);
     sh.setUniform('u_rain.value', rainAmt);
-    sh.setUniform('u_turb.value', Math.min(1, this.aktWasserPreset().turb + WASSER2_CFG.turbAdd + rainAmt * 0.45 + sturmTurb));
+    sh.setUniform('u_turb.value', Math.min(1, this.aktWasserPreset().turb + WASSER2_CFG.turbAdd + rainAmt * 0.5));
   }
 
   // F10 öffnet die neue Tab-Dev-Konsole (Autorwunsch Runde 72: ab jetzt alles
@@ -1957,7 +1969,6 @@ export class WorldScene extends CombatScene {
         { kind: 'button', label: () => `Fließrichtung: ${p.flowDir > 0 ? 'abwärts' : 'aufwärts'}`, onClick: () => { p.flowDir *= -1; this.wasserAnwenden(); } },
         // Flussbreite-MASTER (skaliert ALLE Stränge gemeinsam); darunter je Strang einzeln.
         { kind: 'slider', label: 'Flussbreite (alle)', min: 0.3, max: 2.0, step: 0.05, fmt: (v) => `${v.toFixed(2)}x`, get: () => WASSER2_CFG.widthMul, set: (v) => { WASSER2_CFG.widthMul = v; this.wasserAnwenden(); } },
-        { kind: 'slider', label: 'Übergang ins Gras', min: 0.005, max: 0.10, step: 0.005, fmt: (v) => v.toFixed(3), get: () => WASSER2_CFG.overlayFeather, set: (v) => { WASSER2_CFG.overlayFeather = v; this.wasserAnwenden(); } },
       ];
       if (!this.wasser2Shader) cs.push({ kind: 'note', text: 'Diese Karte hat (noch) kein neues Wasser - Werte gelten ab der nächsten Wasserkarte.' });
       // Pro Strang (Bach/Fluss) ein eigener Breite-Regler, pro See Breite + Höhe.
@@ -2020,6 +2031,9 @@ export class WorldScene extends CombatScene {
     // dorfSim als Boden/Bäume/Wetter/Tag-Nacht - aber OHNE eigenes Wasser (keinWasser):
     // unser Shader-Wasser kommt darüber, dorfSim meidet die Wasserzonen weiterhin (keine Bäume im Wasser).
     dorfStart(this.dorfCanvas, { hybrid: true, externKamera: true, keinWasser: true });
+    // Dev-Regler-Werte sofort anwenden, damit das Wetter deterministisch ist
+    // (Sturm-Default 1.5 -> trocken/klar; kein zufälliges Eigen-Wetter beim Start).
+    for (const k of Object.keys(this.devAnfang)) dorfSetRegler(k, this.devAnfang[k]);
     if (this.textures.exists(this.dorfTexKey)) this.textures.remove(this.dorfTexKey);
     this.textures.addCanvas(this.dorfTexKey, this.dorfCanvas);
     this.dorfBild = this.add.image(0, 0, this.dorfTexKey).setOrigin(0, 0).setScrollFactor(0).setDepth(-1000);

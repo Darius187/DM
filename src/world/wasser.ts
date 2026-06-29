@@ -97,7 +97,7 @@ float wh(vec2 p, vec2 dir, float spd){ float ws=u_wavescale*u_detailScale; float
   float b0=fbm4(p*ws+dir*p0*dist); float b1=fbm4(p*ws+dir*p1*dist); float big=(b0*w0+b1*w1)/(w0+w1);
   float fine=fbm2(p*ws*2.6+dir*(time*u_speed*2.2*spd)); return big*0.65 + fine*0.35*u_turb; }
 float inter(vec2 uv){ float aspect=resolution.x/resolution.y; float add=0.0;
-  for(int i=0;i<8;i++){ vec3 pt=u_points[i]; if(pt.z<0.0) continue; vec2 pos=pt.xy+vec2(0.0,-1.0)*pt.z*0.08; vec2 d=uv-pos; d.x*=aspect; float r=length(d);
+  for(int i=0;i<8;i++){ vec3 pt=u_points[i]; if(pt.z<0.0) continue; vec2 pos=pt.xy+vec2(0.0,-1.0)*pt.z*0.02; vec2 d=uv-pos; d.x*=aspect; float r=length(d);
     float ring=sin(r*75.0-pt.z*30.0); float env=exp(-r*30.0)*(1.0-pt.z); add+=ring*env; } return add*u_wake; }
 // Regentropfen auf dem Wasser: in einem Zellraster verteilte, periodisch
 // aufploppende und auslaufende Ringe (Dichte/Stärke ~ u_rain). Liefert einen
@@ -175,19 +175,16 @@ void main(){
   float emerged=clamp(sH*(0.5+u_emerge) - deepness*0.55, 0.0, 1.0);
 
   if(waterDepth<0.003){
-    // LAND. Wie im Prototyp: landFull zeichnet Gras UND den sandigen Ufersaum
-    // (bank). Im Overlay wird genau dieser Saum mitgezeichnet (deckend) und
-    // erst WEITER DRAUSSEN per Alpha ins echte dorfSim-Gras geblendet - so ist
-    // der Land->Wasser-Übergang exakt der HTML-Übergang, nur die Außenkante
-    // (Gras auf Gras) ist eine weiche Alpha-Blende.
-    vec3 c=landFull(uv,sd); c=mix(c, stoneLit(sN,sCol), sMask);
-    vec2 q0=uv-0.5; vec3 landCol=c*u_ambient*(1.0-dot(q0,q0)*0.35);
     if(u_layerMode>0.5){
-      float a = 1.0 - smoothstep(u_shore*3.0, u_shore*3.0 + u_overlayFeather, sd);
-      if(a<0.004){ gl_FragColor=vec4(0.0); return; }
-      gl_FragColor=vec4(landCol*u_lichtMul, clamp(a,0.0,1.0)); return;
+      // Overlay: KEIN Shader-Gras (das liefert dorfSim!). Nur ein SCHMALER,
+      // feuchter Sand-/Schlammrand direkt an der Wasserlinie - kein grüner Saum.
+      float rim = smoothstep(u_shore*2.0, 0.0, sd) * u_bank * 0.5;
+      if(rim<0.004){ gl_FragColor=vec4(0.0); return; }
+      gl_FragColor=vec4(vec3(0.20,0.17,0.12)*u_lichtMul, clamp(rim,0.0,1.0)); return;
     }
-    gl_FragColor=vec4(landCol,1.0); return;
+    // Vollszene (layerMode 0, Prototyp-Look): Shader zeichnet Gras + Ufersaum.
+    vec3 c=landFull(uv,sd); c=mix(c, stoneLit(sN,sCol), sMask);
+    vec2 q0=uv-0.5; gl_FragColor=vec4(c*u_ambient*(1.0-dot(q0,q0)*0.35),1.0); return;
   }
   float localDepth=waterDepth*(1.0-emerged*0.95);
   vec2 dir=flowDir(uv); float spd=mix(1.0,0.4,deepness); vec3 n=normalAt(uv,dir,spd);
@@ -213,11 +210,12 @@ void main(){
   col=mix(col, vec3(0.92,0.95,0.96), clamp(waterline,0.0,1.0)*(0.16+0.34*u_turb));
 
   col *= u_lichtMul;   // Tag/Nacht-Tönung aus dorfSim (nahtlose Einbettung ins Canvas-Licht)
-  // HTML-Übergang: Land/Ufersaum und Wasser im SELBEN Mix verschmelzen.
+  // Overlay: NUR Wasser, weicher Alpha am Ufer (waterDepth) -> blendet direkt ins
+  // dorfSim-Gras, ohne grünen Shader-Saum. Flaches Ufer zeigt das sandige Bett.
+  if(u_layerMode>0.5){ gl_FragColor=vec4(col, waterDepth); return; }
+  // Vollszene: Land+Wasser im selben Mix (Prototyp-Look).
   vec3 finalCol=mix(landFull(uv,sd)*u_ambient*u_lichtMul, col, waterDepth);
   vec2 q=uv-0.5; finalCol*=1.0-dot(q,q)*0.35;
-  // Im Overlay ist die Wasser+Ufer-Zone DECKEND (der Saum gehört zum Übergang);
-  // nur die Außenkante (Land->dorfSim-Gras) blendet weich (oben im Land-Zweig).
   gl_FragColor=vec4(finalCol, 1.0);
 }
 `;
