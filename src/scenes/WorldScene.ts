@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir, angleToDir8 } from '../world/Enemy';
-import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
@@ -12,6 +12,7 @@ import { NebelFratzen } from '../systems/NebelFratzen';
 import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
+import { spawneWasser as spawneNeuesWasserShader, WASSER as WASSER2, BLUT as BLUT2 } from '../world/wasser';
 import { wetter } from '../logic/wetter';
 import { SchattenManager, mischFarbe, type Occluder, type Licht } from '../systems/SchattenManager';
 import { LichtPanel } from '../ui/lichtPanel';
@@ -113,6 +114,9 @@ export interface FuerstentumGebiet { id: string; name: string; gx: number; gy: n
 export const FUERSTENTUM: ReadonlyArray<FuerstentumGebiet> = [
   { id: 'wald', name: 'Dunkelwald', gx: 0, gy: 0 },
   { id: 'village', name: 'Ravensmoor', gx: 1, gy: 0 },
+  // Neues Oberwelt-Raster (Runde 72): Zellen wandern hier rein, sobald ihr
+  // Builder existiert (Reihenfolge-Regel, WELTKARTE-PLAN.md). Start ist die erste.
+  { id: 'start', name: 'Waldrand', gx: 2, gy: 3 },
 ];
 
 // Eine Kachel auf eine Minikarten-Farbe abbilden.
@@ -141,6 +145,7 @@ export class WorldScene extends CombatScene {
 
   private tileImages: Phaser.GameObjects.Image[] = [];
   private fluessigkeitsShaders: Phaser.GameObjects.Shader[] = [];   // Liquid-Shader-Overlays (Wasser/Blut), Runde 71
+  private wasser2Shader?: Phaser.GameObjects.Shader;                 // neues prozedurales Wasser-Overlay pro Area (Runde 72)
   private breakableEnts: BreakableEntity[] = [];
   private worldGfx!: Phaser.GameObjects.Graphics; // Truhen, Brunnen, Fackeln
   private bodenGfx!: Phaser.GameObjects.Graphics;  // Blutspuren AUF dem Boden (unter den Figuren)
@@ -1357,6 +1362,7 @@ export class WorldScene extends CombatScene {
     }
     else if (id.startsWith('innen_')) a = buildInterior(INNENRAEUME[id.replace('innen_', '')]);
     else if (id === 'wald') a = buildForest(rng);
+    else if (id === 'start') a = buildStart(rng);
     else if (id === 'goldmine') a = buildGoldmine(rng);
     else a = buildCrypt(parseInt(id.replace('crypt', ''), 10), rng);
     this.areas.set(id, a);
@@ -1423,6 +1429,7 @@ export class WorldScene extends CombatScene {
     this.unloadAreaObjects();
     this.loadAreaObjects(a);
     this.spawneFluessigkeitsShader(a);   // additiver Liquid-Overlay-Test (Runde 71)
+    this.spawneNeuesWasser(a);           // neues prozedurales Wasser pro Area (Runde 72)
     const s = spawnAt ?? a.spawn;
     this.px = s.x;
     this.py = s.y;
@@ -1722,6 +1729,7 @@ export class WorldScene extends CombatScene {
   // nur die alten Flüssigkeits-Tile-Sprites in der Region entfernt (kein Doppel-
   // Render). Komplett über FLUSS_SHADER abschaltbar.
   private spawneFluessigkeitsShader(a: AreaData): void {
+    if (a.wasserLauf) return;   // Karte nutzt das neue prozedurale Wasser (spawneNeuesWasser)
     if (!FLUSS_SHADER.aktiv) return;
     const auftraege: Array<{ id: number; preset: FluessigkeitPreset }> = [];
     if (FLUSS_SHADER.wasser) auftraege.push({ id: T.WATER, preset: WASSER_PRESET });
@@ -1751,9 +1759,36 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // Neues prozedurales Wasser (Runde 72): EIN Overlay-Quad über der Karte, Form
+  // aus a.wasserLauf.geo. Die T.WATER-Kacheln (Kollision) werden durch Gras
+  // ersetzt, damit die weichen Ufer des Overlays in Gras statt in blaue Kacheln
+  // blenden. Kollision bleibt (a.map-IDs unangetastet).
+  private spawneNeuesWasser(a: AreaData): void {
+    if (!a.wasserLauf) return;
+    const wasserTags = new Set<string>();
+    for (let ty = 0; ty < a.h; ty++) for (let tx = 0; tx < a.w; tx++) if (a.map[ty][tx] === T.WATER) wasserTags.add(`${tx},${ty}`);
+    for (const img of this.tileImages) {
+      const tag = img.getData?.('kachel') as string | undefined;
+      if (tag && wasserTags.has(tag)) img.destroy();
+    }
+    this.tileImages = this.tileImages.filter((img) => img.active);
+    this.wasserBilder = this.wasserBilder.filter((wb) => wb.img.active);
+    // Gras unter die (ehemaligen) Wasserkacheln
+    for (const tagStr of wasserTags) {
+      const [tx, ty] = tagStr.split(',').map(Number);
+      const v = ((tx * 73856093) ^ (ty * 19349663)) % 7;
+      const img = this.add.image(tx * TILE + 16, ty * TILE + 16, this.provider.tileKey('gras', v, a.depth, a.theme)).setDepth(-10);
+      img.setData('kachel', tagStr);
+      this.tileImages.push(img);
+    }
+    const preset = a.wasserLauf.blut ? BLUT2 : WASSER2;
+    this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: FLUSS_SHADER.tiefe, layerMode: 1 });
+  }
+
   private unloadAreaObjects(): void {
     for (const img of this.tileImages) img.destroy();
     this.tileImages = [];
+    this.wasser2Shader?.destroy(); this.wasser2Shader = undefined;
     for (const s of this.fluessigkeitsShaders) s.destroy();
     this.fluessigkeitsShaders = [];
     this.wasserBilder = [];

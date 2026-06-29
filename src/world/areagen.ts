@@ -8,6 +8,7 @@ import type { EnemyTypeId } from '../data/types';
 import { rnd, ri, pick, type Rng } from '../logic/rng';
 import { TUNING } from '../logic/tuning';
 import type { InnenraumDef, InnenMoebel } from '../data/innenraeume';
+import { sdWasser, type WasserGeometrie } from './wasserFeld';
 
 export interface Pos { x: number; y: number }
 
@@ -45,6 +46,10 @@ export interface AnimalSpawn {
 export interface AreaData {
   id: string;
   name: string;
+  // Neuer prozeduraler Wasser-Lauf (Runde 72): Fluss/See als Geometrie in UV
+  // (0..1) der Karte. Der WorldScene-Renderer legt daraus EIN Wasser-Overlay
+  // (wasser.ts), die Kollision kommt aus den T.WATER-Kacheln darunter.
+  wasserLauf?: { geo: WasserGeometrie; blut?: boolean };
   dark: boolean;
   depth: number;
   theme?: CryptTheme;
@@ -1488,5 +1493,107 @@ export function buildForest(rng: Rng): AreaData {
   // Ostrand: Übergang nach Ravensmoor
   carve(map, w - 2, py - 1, w - 1, py + 1, T.PATH);
   a.downPos = { x: (w - 1) * TILE + 16, y: py * TILE + 16 };
+  return a;
+}
+
+// START-Area (2,3) - Runde 72, erste echte Oberwelt-Karte nach der gezeichneten
+// Skizze. Waldrand/Wiese mit der Salzstraße West->Ost und einem Fluss, der von
+// Norden in einen See läuft (neues prozedurales Wasser als Overlay, Kollision aus
+// T.WATER). Wölfe am Weg. Volle 130x85-Karte wie die anderen Oberwelt-Gebiete.
+export function buildStart(rng: Rng): AreaData {
+  const w = 130, h = 85;
+  const map = blank(w, h, T.GRASS);
+  const a: AreaData = {
+    id: 'start', name: 'Waldrand', dark: false, depth: 0,
+    w, h, map, spawn: { x: 5 * TILE, y: Math.round(h * 0.5) * TILE },
+    torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
+    breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
+    ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
+    npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
+  };
+
+  // Wasser-Geometrie aus der Skizze (UV 0..1, y nach unten): Fluss tritt im
+  // Norden ein, mäandert nach Südwest in einen See; kurzer Abfluss nach Süden.
+  const geo: WasserGeometrie = {
+    bahnen: [
+      { punkte: [{ x: 0.60, y: -0.03, hw: 0.028 }, { x: 0.56, y: 0.20, hw: 0.030 }, { x: 0.49, y: 0.40, hw: 0.032 }, { x: 0.42, y: 0.58, hw: 0.034 }] },
+      { punkte: [{ x: 0.38, y: 0.80, hw: 0.030 }, { x: 0.35, y: 0.95, hw: 0.028 }, { x: 0.33, y: 1.03, hw: 0.026 }] },
+    ],
+    seen: [
+      { cx: 0.38, cy: 0.70, rx: 0.16, ry: 0.12 },
+      { cx: 0.50, cy: 0.72, rx: 0.10, ry: 0.09 },
+    ],
+  };
+  const verschm = 0.06;
+
+  // Dichter Baum-Gürtel an Nord- und Südrand (Waldrand), Mitte als Wiese/Lichtung.
+  for (let x = 0; x < w; x++) {
+    const nordTiefe = 3 + Math.round(2 + 1.5 * Math.sin(x * 0.21 + 0.5) + rng.random());
+    const suedTiefe = 3 + Math.round(2 + 1.5 * Math.sin(x * 0.17 + 2.1) + rng.random());
+    for (let y = 0; y < nordTiefe; y++) map[y][x] = T.TREE;
+    for (let y = h - suedTiefe; y < h; y++) map[y][x] = T.TREE;
+  }
+  // Verstreute Baumgruppen auf der Wiese (lockerer Wald, navigierbar)
+  for (let i = 0; i < 90; i++) {
+    const cx = ri(rng, 4, w - 5), cy = ri(rng, 5, h - 6);
+    if (rng.random() < 0.55) { const r = ri(rng, 0, 1); carve(map, cx - r, cy - r, cx + r, cy + r, T.TREE); }
+  }
+
+  // Wasser carven (T.WATER = SOLID): aus DERSELBEN SDF wie das Overlay -> Optik
+  // und Kollision decken sich. Kernwasser (sd<0) ist solide; die weichen Ufer
+  // (sd<shore) zeichnet nur das Overlay über dem Gras.
+  for (let ty = 0; ty < h; ty++) {
+    for (let tx = 0; tx < w; tx++) {
+      const u = (tx + 0.5) / w, v = (ty + 0.5) / h;
+      if (sdWasser(u, v, geo, verschm) < 0) map[ty][tx] = T.WATER;
+    }
+  }
+
+  // Salzstraße West->Ost, weich mäandernd um die Kartenmitte. Bäume weichen dem
+  // Weg; quert der Weg das Wasser, liegt dort eine Brücke (begehbar).
+  let py = Math.round(h * 0.5);
+  const pfadY: number[] = [];
+  for (let x = 0; x < w; x++) {
+    py += Math.round(Math.sin(x * 0.13) * 0.7) + (x % 3 === 0 ? ri(rng, -1, 1) : 0);
+    py = Math.max(6, Math.min(h - 7, py));
+    pfadY[x] = py;
+    for (let dy = -1; dy <= 1; dy++) {
+      const yy = py + dy;
+      if (yy < 0 || yy >= h) continue;
+      // Grassaum neben dem Weg (lichtet den Wald)
+      if (map[yy][x] === T.TREE) map[yy][x] = T.GRASS;
+    }
+    // Wegkern (2 breit): über Wasser als Brücke
+    for (const yy of [py, py + 1]) {
+      if (yy < 0 || yy >= h) continue;
+      map[yy][x] = (map[yy][x] === T.WATER) ? T.BRIDGE : T.PATH;
+    }
+  }
+
+  // Startlichtung im Westen frei räumen (Spawn steht sicher auf Gras/Weg)
+  carve(map, 2, py - 0, 8, py + 0, T.GRASS);
+  carve(map, 2, Math.round(h * 0.5) - 2, 7, Math.round(h * 0.5) + 2, T.GRASS);
+  carve(map, 3, Math.round(h * 0.5), 7, Math.round(h * 0.5), T.PATH);
+  a.spawn = { x: 5 * TILE + 16, y: Math.round(h * 0.5) * TILE + 16 };
+  a.labels.push({ x: 5 * TILE, y: (Math.round(h * 0.5) - 3) * TILE, t: 'Waldrand' });
+  a.labels.push({ x: Math.round(0.38 * w) * TILE, y: Math.round(0.70 * h) * TILE, t: 'Stiller See' });
+
+  // Wölfe am Weg (einer am Start, mehr gegen Osten)
+  for (const wx of [26, 60, 96, 120]) {
+    a.enemySpawns.push({ type: 'wolf', x: wx * TILE, y: (pfadY[wx] ?? py) * TILE, elite: false });
+  }
+
+  // Kräuter am Waldrand + ein paar Felsen auf der Wiese
+  for (let i = 0; i < 8; i++) {
+    const kx = ri(rng, 6, w - 7), ky = ri(rng, 4, h - 5);
+    if (map[ky][kx] === T.GRASS) a.kraeuter.push({ x: kx * TILE + 16, y: ky * TILE + 16 });
+  }
+  for (let i = 0; i < 6; i++) {
+    const fx = ri(rng, 8, w - 9), fy = ri(rng, 6, h - 7);
+    if (map[fy][fx] === T.GRASS) { map[fy][fx] = T.ROCK; a.rocks.push({ x: fx * TILE + 16, y: fy * TILE + 16 }); }
+  }
+
+  a.downPos = { x: (w - 1) * TILE + 16, y: (pfadY[w - 2] ?? py) * TILE + 16 };
+  a.wasserLauf = { geo, blut: false };
   return a;
 }

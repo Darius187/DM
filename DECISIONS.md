@@ -737,3 +737,12 @@
   * WasserProbe: zwei Tabs (Wasser/Blut) mit dem VOLLEN Reglersatz (Autorwunsch "die ganzen regler in ein zweites tab, einmal für blut, einmal für wasser - wir unterscheiden evtl. Geschwindigkeit/Aussehen") + Ansicht-Umschalter (ganze Szene/Overlay) + Fließrichtung. Presets WASSER/BLUT als veränderbare Objekte.
   * VERIFIZIERT (Headless-WebGL, Screenshots): ganze Szene = Prototyp-Look (Gras, Kiesel-Streufeld, gravelliges Bett, Glanz); Overlay = Land transparent, nur Wasser/Ufer über dem Boden; Blut = dunkelroter Lauf. 0 Fehler, tsc grün, 195 Tests grün. FPS auf echter GPU noch offen.
   * MAX_SEG=24, MAX_LAKE=6 (Uniform-Array-Grenzen). Bahn-Punkte als UV (0..1) der Karte; y wird in der Geometrie gespiegelt (Phaser y-unten vs. Prototyp y-oben).
+
+- Runde 72d (START-Area gebaut - erste echte Oberwelt-Karte, Schritt 3):
+  * buildStart() in areagen.ts: echte AreaData (130x85) - Waldrand/Wiese, Salzstraße West->Ost, Fluss von Norden in einen See (+Abfluss Süd), Wölfe, Kräuter, Felsen. Wasser-Geometrie (UV) aus der Skizze; T.WATER wird aus DERSELBEN SDF (sdWasser) gecarvt -> Kollision deckt sich mit der Optik. Wo der Weg das Wasser quert: T.BRIDGE (begehbar).
+  * AreaData.wasserLauf? = { geo, blut } trägt die Gewässer-Geometrie pro Area.
+  * WorldScene: getArea kennt 'start'; spawneNeuesWasser() ersetzt die T.WATER-Kacheln durch Gras und legt EIN prozedurales Wasser-Overlay (wasser.ts, layerMode=1) über die Karte; spawneFluessigkeitsShader wird für Karten mit wasserLauf übersprungen ("ein Wasser pro Karte"). Cleanup in unloadAreaObjects.
+  * FUERSTENTUM: 'start' (gx2,gy3) ergänzt (Reihenfolge-Regel: Builder existiert). kartenKanten.ts: START_KANTEN mit den Kanten aus der Skizze (Weg W/O, Fluss Nord, Abfluss Süd) - für den späteren Nachbar-Anschluss.
+  * TitleScene: Menüpunkt "START-KARTE (neu)" zum Prüfen. NEUES SPIEL bleibt vorerst auf village (bis START final abgenommen).
+  * VERIFIZIERT (Headless-WebGL): Area lädt (id start, 130x85), volles HUD/Quest/Chronik/Tag, Wasser-Overlay rendert mit weichen Ufern ins Gras, Wasser-Kacheln SOLIDE (isSolidAt=true), Spawn begehbar, Salzstraße-Brücke quert den Fluss (über dem Wasser), 0 Fehler, tsc grün, 195 Tests grün.
+  * OFFEN/zu justieren (Autor-Abnahme): Wasser wirkt tagsüber etwas blass (Regler/Tageslicht - Werte feintunen); die mäandernde Brücke quert den Fluss als Treppenmuster (kosmetisch begradigbar); der genaue Fluss-/See-/Wege-Verlauf ist meine Lesart der Skizze - bitte bestätigen oder korrigieren.

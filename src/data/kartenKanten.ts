@@ -20,6 +20,23 @@ export interface KartenKanten {
   sued: KantenKreuzung[];
 }
 
+// ---- START (2,3) - Runde 72, nach der gezeichneten Skizze ----
+// Salzstraße West->Ost (Richtung Stadt), Fluss tritt im Norden ein und läuft in
+// einen See; kurzer Abfluss nach Süden (Weltkante). Nachbarn sind Wald-Zellen,
+// die noch nicht gebaut sind - die Kanten sind hier für den späteren Anschluss
+// festgehalten (gespiegelt zum Nachbarn). Positionen aus der Skizze, beim Bau der
+// Nachbarn ggf. mit dem Autor feinjustieren.
+export const START_KANTEN: KartenKanten = {
+  name: 'start',
+  breite: 4160,
+  hoehe: 2720,
+  nachbarn: { west: 'wald_w', ost: 'wald_o', nord: 'wald_n' },
+  west: [{ feature: 'weg', pos: 1360, breite: 64 }],
+  ost: [{ feature: 'weg', pos: 1400, breite: 64 }],
+  nord: [{ feature: 'fluss', pos: 2496, breite: 90 }],
+  sued: [{ feature: 'fluss', pos: 1376, breite: 80 }],   // Abfluss an der Süd-Weltkante
+};
+
 // ---- Anfangskarte (Startgebiet, westlich der Stadt Ravensmoor) ----
 export const ANFANGSKARTE: KartenKanten = {
   name: 'anfangskarte',

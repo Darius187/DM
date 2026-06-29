@@ -991,3 +991,9 @@ beides per `FLUSS_SHADER` / `window.__fluss` (DEV) umschaltbar.
 repräsentativ; auf echter GPU noch zu bestätigen. Bounding-Box je Fläche -> bei
 nicht-rechteckigen Wasserläufen deckt das Quad etwas Land mit (für Bach/Blutstrom
 exakt).
+
+## Runde 72 - Neues Wasser + erste Oberwelt-Karte (START)
+- Schritt 0-2: Referenzen abgelegt (fluss-bach.html, weltkarte-skizze.png); Wasser KOMPLETT NEU als prozeduraler Shader (faithful aus der Referenz/Autor-Übergabe), datengetrieben (Flusslauf als Geometrie pro Karte), kein Masken-Textur-Sampling. WasserProbe mit vollem Reglersatz in zwei Tabs (Wasser/Blut).
+- Schritt 3: START-Area (2,3) als echte WorldScene-Area gebaut (buildStart). Erbt HUD/ESC/Licht/Kampf/Fällen/Steine/Speichern automatisch. Neues Wasser als EIN Overlay pro Karte (weiche Ufer ins Gras), Kollision aus T.WATER (deckt sich mit der Optik), Salzstraße-Brücke über den Fluss. Erreichbar über Titel-Menü "START-KARTE (neu)"; NEUES SPIEL noch auf village.
+- Verifiziert headless (WebGL, 0 Fehler), tsc grün, 195 Tests grün. FPS auf echter GPU offen.
+- Offen für deine Abnahme: Wasser-Look-Feintuning (tagsüber blass), Brücken-Form (Treppenmuster), und ob mein Fluss-/See-/Wege-Verlauf der Skizze entspricht.
