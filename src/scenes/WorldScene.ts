@@ -14,7 +14,7 @@ import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeHeldPunkte, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
 import { sdWasser } from '../world/wasserFeld';
-import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, flussBahn as dorfFlussBahn, bachBahn as dorfBachBahn, seeBereich as dorfSeeBereich } from '../demo3d/dorfSim';
+import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, flussBahn as dorfFlussBahn, bachBahn as dorfBachBahn, seeBereich as dorfSeeBereich, aktuellesLicht as dorfLicht } from '../demo3d/dorfSim';
 import type { WasserGeometrie } from '../world/wasserFeld';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
 import { KARTEN_KANTEN } from '../data/kartenKanten';
@@ -1975,6 +1975,13 @@ export class WorldScene extends CombatScene {
     const tex = this.textures.get(this.dorfTexKey) as Phaser.Textures.CanvasTexture;
     if (tex && tex.refresh) tex.refresh();
     if (this.dorfBild) this.dorfBild.setDisplaySize(this.scale.width, this.scale.height);
+    // Nahtloser Merge: dorfSims aktuelles Tag/Nacht-Licht aufs Wasser legen, damit
+    // der Shader vom selben Licht gefärbt wird wie der Canvas-Boden (kein Seam).
+    if (this.wasser2Shader) {
+      const L = dorfLicht();
+      const t = (i: number): number => Math.max(0, Math.min(1.25, L.mul[i] + L.lift * 0.45));
+      this.wasser2Shader.setUniform('u_lichtMul.value', { x: t(0), y: t(1), z: t(2) });
+    }
   }
 
   private spawneNeuesWasser(a: AreaData): void {
@@ -5989,6 +5996,13 @@ export class WorldScene extends CombatScene {
 
   private renderLight(): void {
     const cam = this.cameras.main;
+    // dorfSim-Area: Tag/Nacht/Wetter/Nebel kommen komplett aus dem dorfSim-Canvas -
+    // KEIN zweites WorldScene-Licht darüber (sonst Doppel-Dimmung, Wasser-Seam).
+    if (this.area?.dorfSimBoden) {
+      this.lightRT?.setVisible(false);
+      for (const im of this.warmPool) im.setVisible(false);
+      return;
+    }
     this.renderFog();
     // Dungeon-Wand-Schatten an: der SchattenManager (gleiche Engine wie Debug) liefert
     // das gesamte Dungeon-Licht -> das alte lightRT-Overlay ausblenden (sonst doppelt).

@@ -33,6 +33,7 @@ uniform float u_speed, u_turb, u_wake, u_bed, u_refract, u_tint, u_shore;
 uniform float u_wavescale, u_nscale, u_gloss, u_turbidity, u_bank, u_emerge, u_sand;
 uniform float u_procDensity, u_procSize, u_flowDir, u_layerMode;
 uniform float u_detailScale;   // skaliert Bett/Wellen/Kiesel auf Bildschirmgröße (große Karten)
+uniform vec3  u_lichtMul;      // Tag/Nacht-Tönung (aus dorfSim) - färbt das Wasser wie den Boden
 uniform vec3  u_deep, u_sky, u_spec, u_bedShallow, u_bedDeep, u_stoneCol;
 uniform vec2  u_light;
 uniform float u_ambient;
@@ -169,8 +170,9 @@ void main(){
   float waterline=sMask*smoothstep(0.0,0.32,emerged)*(1.0-smoothstep(0.32,0.62,emerged));
   col=mix(col, vec3(0.92,0.95,0.96), clamp(waterline,0.0,1.0)*(0.16+0.34*u_turb));
 
+  col *= u_lichtMul;   // Tag/Nacht-Tönung aus dorfSim (nahtlose Einbettung ins Canvas-Licht)
   if(u_layerMode>0.5){ gl_FragColor=vec4(col, waterDepth); return; }    // Layer: nur Wasser, Alpha am Ufer
-  vec3 finalCol=mix(landFull(uv,sd)*u_ambient, col, waterDepth);
+  vec3 finalCol=mix(landFull(uv,sd)*u_ambient*u_lichtMul, col, waterDepth);
   vec2 q=uv-0.5; finalCol*=1.0-dot(q,q)*0.35; gl_FragColor=vec4(finalCol,1.0);
 }
 `;
@@ -189,12 +191,12 @@ export interface WasserPreset {
 }
 
 export const WASSER: WasserPreset = {
-  speed: 0.13, turb: 0.0, wake: 0.2, bed: 1.0, refract: 0.05,
-  tint: 0.65, shore: 0.05, wavescale: 5.0, nscale: 0.10, gloss: 0.40,
-  turbidity: 0.40, bank: 0.45, emerge: 0.4, sand: 0.5,
-  procDensity: 0.35, procSize: 0.05, flowDir: 1.0, ambient: 1.05,
-  deep: [0.08, 0.24, 0.27], sky: [0.55, 0.75, 0.92], spec: [1.0, 0.97, 0.88],
-  bedShallow: [0.40, 0.37, 0.30], bedDeep: [0.13, 0.16, 0.16], stoneCol: [0.345, 0.329, 0.298],
+  speed: 0.13, turb: 0.0, wake: 0.3, bed: 1.0, refract: 0.05,
+  tint: 0.82, shore: 0.05, wavescale: 5.0, nscale: 0.10, gloss: 0.30,
+  turbidity: 0.6, bank: 0.45, emerge: 0.4, sand: 0.5,
+  procDensity: 0.35, procSize: 0.05, flowDir: 1.0, ambient: 0.9,
+  deep: [0.05, 0.14, 0.17], sky: [0.45, 0.60, 0.74], spec: [0.9, 0.92, 0.86],
+  bedShallow: [0.34, 0.31, 0.25], bedDeep: [0.10, 0.13, 0.13], stoneCol: [0.30, 0.29, 0.26],
   light: [0.25, 0.65],
 };
 
@@ -254,6 +256,7 @@ function getBaseShader(): Phaser.Display.BaseShader {
     u_turbidity: f(0.4), u_bank: f(0.45), u_emerge: f(0.4), u_sand: f(0.5),
     u_procDensity: f(0.35), u_procSize: f(0.05), u_flowDir: f(1), u_layerMode: f(1), u_ambient: f(1.05),
     u_detailScale: f(1),
+    u_lichtMul: { type: '3f', value: { x: 1, y: 1, z: 1 } },
     u_deep: v3(0.08, 0.24, 0.27), u_sky: v3(0.55, 0.75, 0.92), u_spec: v3(1, 0.97, 0.88),
     u_bedShallow: v3(0.4, 0.37, 0.3), u_bedDeep: v3(0.13, 0.16, 0.16), u_stoneCol: v3(0.345, 0.329, 0.298),
     u_light: { type: '2f', value: { x: 0.25, y: 0.65 } },

@@ -323,6 +323,20 @@ function berechneLicht(h: number): { mul: [number, number, number]; lift: number
   };
 }
 const TAGESZEIT_NAME = (h: number): string => h < 5 ? 'Nacht' : h < 6.5 ? 'Morgendämmerung' : h < 11 ? 'Morgen' : h < 14 ? 'Mittag' : h < 17 ? 'Nachmittag' : h < 18.5 ? 'Goldene Stunde' : h < 20 ? 'Abenddämmerung' : h < 22 ? 'Dämmerung' : 'Nacht';
+
+// R72: das EFFEKTIVE aktuelle Licht (Tageszeit + Wetter), identisch zur Frame-
+// Tönung (Multiply mr/mg/mb + lift + warm + Vignette). Die WorldScene legt es auf
+// das neue Wasser, damit der Shader nahtlos vom selben Tag/Nacht-Licht gefärbt wird.
+export function aktuellesLicht(): { mul: [number, number, number]; lift: number; warm: number; vig: number } {
+  const L8 = berechneLicht(tag), bew8 = Math.max(0, Math.min(1, wetter)), klar8 = Math.max(0, -wetter);
+  const dunkel = 1 - bew8 * 0.4;
+  return {
+    mul: [lerp(L8.mul[0], 0.5, bew8 * 0.55) * dunkel, lerp(L8.mul[1], 0.52, bew8 * 0.55) * dunkel, lerp(L8.mul[2], 0.56, bew8 * 0.45) * dunkel],
+    lift: Math.max(0, L8.lift * (1 - bew8 * 0.55) + klar8 * 0.06),
+    warm: L8.warm * (1 - bew8),
+    vig: Math.min(0.85, L8.vig + bew8 * 0.12),
+  };
+}
 function wind(now: number): number {                       // Stärke steigt mit dem Wetter
   const t = now / 1000;
   const grund = (Math.sin(t * 0.27) * 0.6 + Math.sin(t * 0.13 + 1) * 0.3) * (0.25 + wetter * 0.5);   // sanftes Hin und Her bei wenig Wind
