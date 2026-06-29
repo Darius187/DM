@@ -2143,9 +2143,14 @@ export class WorldScene extends CombatScene {
       const groundKey = a.dorfSimBoden && this.textures.exists(this.dorfTexKey) ? this.dorfTexKey : undefined;
       this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: FLUSS_SHADER.tiefe, layerMode: 1, groundKey });
       if (groundKey) {
-        // Untergrund-Textur gebunden, aber Default AUS: das Sampling-Mapping
-        // (u_scroll/u_view) muss erst sauber sitzen (sonst Tearing/Streifen).
-        // Solange trägt der premultiplizierte dunkle Rand (kein heller Saum).
+        // iChannel0 EXPLIZIT binden (Design-Chat): nicht nur über das textures-Arg,
+        // sondern per setSampler2D an Einheit 1 + LINEAR-Filter, ohne Mipmap - der
+        // Standard-Fix gegen NPOT-/Bindungs-Streifen beim Sampeln einer 2. Textur.
+        try {
+          const quelle = this.textures.get(groundKey).source[0];
+          quelle.setFilter(Phaser.Textures.FilterMode.LINEAR);
+          (this.wasser2Shader as unknown as { setSampler2D?: (k: string, t: string, i: number) => void }).setSampler2D?.('iChannel0', groundKey, 1);
+        } catch { /* Phaser-Version ohne setSampler2D: textures-Arg trägt */ }
         this.wasser2Shader.setUniform('u_useGround.value', this.devGround ? 1 : 0);
         this.wasser2Shader.setUniform('u_groundFlip.value', this.devGroundFlip ? 1 : 0);
       }
