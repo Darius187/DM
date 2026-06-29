@@ -37,6 +37,25 @@ export const START_KANTEN: KartenKanten = {
   sued: [{ feature: 'fluss', pos: 1376, breite: 80 }],   // Abfluss an der Süd-Weltkante
 };
 
+// ---- Wald (3,3) zwischen START und STADT ----
+export const WALDO_KANTEN: KartenKanten = {
+  name: 'wald_o',
+  breite: 4160,
+  hoehe: 2720,
+  nachbarn: { west: 'start', ost: 'stadt', nord: 'wald_m' },
+  west: [{ feature: 'weg', pos: 1400, breite: 64 }],   // spiegelt START.ost
+  ost: [{ feature: 'weg', pos: 1400, breite: 64 }],    // führt weiter zur Stadt
+  nord: [{ feature: 'bach', pos: 2080, breite: 40 }],
+  sued: [{ feature: 'bach', pos: 2080, breite: 40 }],
+};
+
+// Registry: Karten-Id -> Kanten. Treibt die generische Rand-Überquerung
+// (begehbare Kartenränder) und den späteren Schnelllauf durch die Oberwelt.
+export const KARTEN_KANTEN: Record<string, KartenKanten> = {
+  start: START_KANTEN,
+  wald_o: WALDO_KANTEN,
+};
+
 // ---- Anfangskarte (Startgebiet, westlich der Stadt Ravensmoor) ----
 export const ANFANGSKARTE: KartenKanten = {
   name: 'anfangskarte',

@@ -753,3 +753,10 @@
   * NEBENEFFEKT (Perf): statt ~11000 Boden-Tile-Sprites nur noch ~1625 Objekt-Sprites in START -> der Kachel-Vollbild-Aufbau entfällt weitgehend (kein Per-Frame-Upload sowieso, jetzt auch viel weniger statische Sprites).
   * VERIFIZIERT (Headless-WebGL): organischer Boden statt Kachelraster, Wasser-Overlay + Brücke darüber, weiche Ufer in die Wiese; 0 Fehler, tsc grün, 195 Tests grün.
   * OFFEN/justierbar: Bodenbild ist prozedural-einfach (Wiese+Erde+Weg) - reicht für den Canvas-Look, kann später reicher werden (Biome-Optik, siehe IDEEN-BACKLOG). Wasser tagsüber noch etwas blass; Brücke als Treppenmuster.
+
+- Runde 72f (Zweite Oberwelt-Karte wald_o + begehbare Kartenränder - "weiter"):
+  * Gemeinsamer Oberwelt-Builder baueOberweltGebiet(cfg) aus buildStart extrahiert (DRY für viele Karten): Waldrand/Wiese + Salzstraße + Wasser-Lauf (Geometrie pro Karte) + Wölfe/Kräuter/Felsen + gebackener Boden. buildStart und buildWaldOst sind dünne Wrapper.
+  * buildWaldOst (wald_o, 3,3): dichterer Wald, schmaler Bach von Norden + kleiner Tümpel, Salzstraße durch. getArea/FUERSTENTUM/kartenKanten ergänzt.
+  * BEGEHBARE KARTENRÄNDER (checkKartenRand + KARTEN_KANTEN-Registry): läuft der Held an einen Rand, dessen Nachbar eine DEFINIERTE Oberwelt-Karte ist, wechselt er nahtlos und erscheint an der gespiegelten Kante. Nur Nachbarn in der Registry -> kein toter Übergang zu ungebauten Karten. Basis für den Weg START->Wald->Stadt und den späteren Schnelllauf.
+  * VERIFIZIERT (Headless): START<->wald_o in BEIDE Richtungen (Hin- und Rückweg, kein Bounce), wald_o lädt mit organischem Boden/Wasser/allen Systemen, 0 Fehler, tsc grün, 195 Tests grün.
+  * upPos/downPos der Oberwelt-Gebiete markieren West-Eingang/Ost-Ausgang.

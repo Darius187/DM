@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir, angleToDir8 } from '../world/Enemy';
-import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
@@ -13,6 +13,7 @@ import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, WASSER as WASSER2, BLUT as BLUT2 } from '../world/wasser';
+import { KARTEN_KANTEN } from '../data/kartenKanten';
 import { wetter } from '../logic/wetter';
 import { SchattenManager, mischFarbe, type Occluder, type Licht } from '../systems/SchattenManager';
 import { LichtPanel } from '../ui/lichtPanel';
@@ -117,6 +118,7 @@ export const FUERSTENTUM: ReadonlyArray<FuerstentumGebiet> = [
   // Neues Oberwelt-Raster (Runde 72): Zellen wandern hier rein, sobald ihr
   // Builder existiert (Reihenfolge-Regel, WELTKARTE-PLAN.md). Start ist die erste.
   { id: 'start', name: 'Waldrand', gx: 2, gy: 3 },
+  { id: 'wald_o', name: 'Dunkelwald', gx: 3, gy: 3 },
 ];
 
 // Eine Kachel auf eine Minikarten-Farbe abbilden.
@@ -1364,6 +1366,7 @@ export class WorldScene extends CombatScene {
     else if (id.startsWith('innen_')) a = buildInterior(INNENRAEUME[id.replace('innen_', '')]);
     else if (id === 'wald') a = buildForest(rng);
     else if (id === 'start') a = buildStart(rng);
+    else if (id === 'wald_o') a = buildWaldOst(rng);
     else if (id === 'goldmine') a = buildGoldmine(rng);
     else a = buildCrypt(parseInt(id.replace('crypt', ''), 10), rng);
     this.areas.set(id, a);
@@ -1824,6 +1827,23 @@ export class WorldScene extends CombatScene {
   // aus a.wasserLauf.geo. Die T.WATER-Kacheln (Kollision) werden durch Gras
   // ersetzt, damit die weichen Ufer des Overlays in Gras statt in blaue Kacheln
   // blenden. Kollision bleibt (a.map-IDs unangetastet).
+  // Begehbare Kartenränder (Runde 72): läuft der Held an einen Rand, dessen
+  // Nachbar eine DEFINIERTE Oberwelt-Karte ist (KARTEN_KANTEN), wechselt er
+  // nahtlos hinüber und erscheint an der gespiegelten Kante. Basis für den
+  // Weg START->Wald->Stadt und den späteren Schnelllauf.
+  private checkKartenRand(): void {
+    const k = KARTEN_KANTEN[this.area.id];
+    if (!k || this.uiBlocked()) return;
+    const wpx = this.area.w * TILE, hpx = this.area.h * TILE, m = TILE;
+    const erreichbar = (id?: string): id is string => !!id && !!KARTEN_KANTEN[id];
+    let ziel: string | undefined; let spawn: { x: number; y: number } | undefined;
+    if (this.px < m && erreichbar(k.nachbarn.west)) { ziel = k.nachbarn.west; spawn = { x: (this.getArea(ziel).w - 3) * TILE, y: this.py }; }
+    else if (this.px > wpx - m && erreichbar(k.nachbarn.ost)) { ziel = k.nachbarn.ost; spawn = { x: 3 * TILE, y: this.py }; }
+    else if (this.py < m && erreichbar(k.nachbarn.nord)) { ziel = k.nachbarn.nord; spawn = { x: this.px, y: (this.getArea(ziel).h - 3) * TILE }; }
+    else if (this.py > hpx - m && erreichbar(k.nachbarn.sued)) { ziel = k.nachbarn.sued; spawn = { x: this.px, y: 3 * TILE }; }
+    if (ziel && spawn) this.goArea(ziel, spawn);
+  }
+
   private spawneNeuesWasser(a: AreaData): void {
     if (!a.wasserLauf) return;
     // Ohne gebackenen Boden: die blauen Wasserkacheln (inkl. Säume) entfernen und
@@ -6768,6 +6788,7 @@ export class WorldScene extends CombatScene {
     // gleichmäßig verlangsamt. Die Uhr (advanceClock) bleibt davon unberührt.
     const kampfTempo = this.einfallAktiv ? TUNING.kryptaTempo : 1;
     this.updateCombat(dt * kampfTempo);
+    this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
     if (this.feuerLichter.length) {
       for (const fl of this.feuerLichter) fl.t -= dt;
       this.feuerLichter = this.feuerLichter.filter((fl) => fl.t > 0);
