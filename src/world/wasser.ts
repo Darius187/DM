@@ -173,7 +173,12 @@ void main(){
   vec2 dir=flowDir(uv); float spd=mix(1.0,0.4,deepness); vec3 n=normalAt(uv,dir,spd);
   vec2 refrUV=uv+n.xy*u_refract*localDepth; vec3 bed=riverbed(refrUV*u_detailScale,deepness)*u_ambient;
   bed=mix(bed, stoneLit(sN,sCol)*u_ambient, sMask);
-  vec3 col=mix(bed,u_deep, localDepth*mix(u_turbidity,1.0,deepness)*u_tint);
+  // Auch FLACHES (dünnes) Wasser soll nach Wasser aussehen, nicht nach grauem
+  // Bett: ein Sockel an Wasserfarbe abhängig von waterDepth, damit ein schmaler
+  // Fluss blau/türkis bleibt statt grau.
+  float tintAmt = localDepth*mix(u_turbidity,1.0,deepness)*u_tint;
+  tintAmt = max(tintAmt, waterDepth*0.24);
+  vec3 col=mix(bed,u_deep, clamp(tintAmt,0.0,1.0));
   float fres=pow(1.0-clamp(n.z,0.0,1.0),4.0); col=mix(col,u_sky,fres*0.4*localDepth);
   vec3 V=vec3(0.0,0.0,1.0),H=normalize(normalize(vec3(u_light,0.9))+V); float sp=max(dot(n,H),0.0);
   col+=pow(sp,90.0)*u_spec*localDepth*0.9*u_gloss; col+=pow(sp,340.0)*u_spec*localDepth*1.6*u_gloss;
@@ -210,8 +215,8 @@ export interface WasserPreset {
 
 export const WASSER: WasserPreset = {
   speed: 0.13, turb: 0.0, wake: 0.5, bed: 1.0, refract: 0.05,
-  tint: 0.7, shore: 0.010, wavescale: 5.0, nscale: 0.10, gloss: 0.35,
-  turbidity: 0.5, bank: 0.45, emerge: 0.4, sand: 0.5,
+  tint: 0.8, shore: 0.010, wavescale: 5.0, nscale: 0.10, gloss: 0.35,
+  turbidity: 0.6, bank: 0.45, emerge: 0.4, sand: 0.5,
   procDensity: 0.35, procSize: 0.05, flowDir: 1.0, ambient: 1.0,
   deep: [0.07, 0.19, 0.24], sky: [0.5, 0.66, 0.82], spec: [0.95, 0.95, 0.9],
   bedShallow: [0.40, 0.37, 0.30], bedDeep: [0.13, 0.16, 0.16], stoneCol: [0.345, 0.329, 0.298],
