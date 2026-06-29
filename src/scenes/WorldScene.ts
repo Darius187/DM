@@ -169,6 +169,8 @@ export class WorldScene extends CombatScene {
   private perfText?: Phaser.GameObjects.Text;
   private perfRefreshMs = 0;                          // geglättete Zeit für den dorfSim-Canvas-Upload (tex.refresh)
   private perfDorfAus = false;                        // Dev: dorfSim-Upload aussetzen (FPS-Vergleich)
+  private devGround = false;                          // Dev: Untergrund-Textur (Boden in den Shader) - im Browser testen
+  private devGroundFlip = true;                        // Dev: Boden-UV vertikal spiegeln (Canvas-Flip)
   private freiKamZieh?: { x: number; y: number };    // Mittelmaus-Ziehen: letzte Zeigerposition
   private devAnfang: Record<string, number> = { groesse: 0.85, wegbreite: 1, falltempo: 1, bewuchs: 1, tageszeit: 9, tagtempo: 1, sturm: 1.5, sicht: 124 };
   private breakableEnts: BreakableEntity[] = [];
@@ -2014,6 +2016,10 @@ export class WorldScene extends CombatScene {
         { kind: 'note', text: 'Frei-Kamera entkoppelt vom Helden: WASD/Pfeile scrollen, Mittelmaus zieht die Karte. Basis für den späteren RTS-Modus.' },
       ] },
       { name: 'MESSEN', controls: () => [
+        // Untergrund-Textur (echte Lösung gegen den Saum) im ECHTEN Browser testen:
+        { kind: 'button', label: () => `Untergrund-Textur (Boden): ${this.devGround ? 'AN' : 'aus'}`, onClick: () => { this.devGround = !this.devGround; this.wasser2Shader?.setUniform('u_useGround.value', this.devGround ? 1 : 0); this.devKonsole?.refresh(); } },
+        { kind: 'button', label: () => `Boden Y-Spiegeln: ${this.devGroundFlip ? 'AN' : 'aus'}`, onClick: () => { this.devGroundFlip = !this.devGroundFlip; this.wasser2Shader?.setUniform('u_groundFlip.value', this.devGroundFlip ? 1 : 0); this.devKonsole?.refresh(); } },
+        { kind: 'note', text: 'Untergrund-Textur AN schalten: kommt der echte Boden durch (kein Schwarz), ist der Saum weg. Bei verschobenem/gespiegeltem Boden Y-Spiegeln umschalten.' },
         { kind: 'button', label: () => `FPS-Anzeige: ${this.perfAn ? 'AN' : 'aus'}`, onClick: () => { this.perfAn = !this.perfAn; this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `Wasser-Shader: ${this.wasser2Shader?.visible ? 'AN' : 'aus'} (FPS-Vergleich)`, onClick: () => { this.wasser2Shader?.setVisible(!this.wasser2Shader.visible); this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `dorfSim-Upload: ${this.perfDorfAus ? 'aus (eingefroren)' : 'AN'} (FPS-Vergleich)`, onClick: () => { this.perfDorfAus = !this.perfDorfAus; this.devKonsole?.refresh(); } },
