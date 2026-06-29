@@ -14,7 +14,7 @@ import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeHeldPunkte, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
 import { sdWasser } from '../world/wasserFeld';
-import { setRegler as dorfSetRegler } from '../demo3d/dorfSim';
+import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause } from '../demo3d/dorfSim';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
 import { KARTEN_KANTEN } from '../data/kartenKanten';
 import { wetter } from '../logic/wetter';
@@ -153,6 +153,10 @@ export class WorldScene extends CombatScene {
   private fluessigkeitsShaders: Phaser.GameObjects.Shader[] = [];   // Liquid-Shader-Overlays (Wasser/Blut), Runde 71
   private wasser2Shader?: Phaser.GameObjects.Shader;                 // neues prozedurales Wasser-Overlay pro Area (Runde 72)
   private gebackenerBodenImg?: Phaser.GameObjects.Image;             // gebackener organischer Boden (Runde 72)
+  private dorfCanvas?: HTMLCanvasElement;                            // dorfSim-Hintergrund-Canvas (Anfangskarte-Look)
+  private dorfBild?: Phaser.GameObjects.Image;
+  private dorfAktiv = false;
+  private readonly dorfTexKey = 'dorfsim_boden';
   private wasserTrail: Array<{ u: number; v: number; t: number }> = []; // Held-Wellen-Spur im Wasser
   private wasserTrailLetzte = 0;
   private devKonsole?: DevKonsole;                  // F10-Tab-Konsole (Wasser/Wetter/Uhrzeit/Nässe/Anfangskarte)
@@ -409,6 +413,7 @@ export class WorldScene extends CombatScene {
       this.sfx.stopLoops();
       this.sfx.stopMusic();
       this.devKonsole?.destroy(); this.devKonsole = undefined;
+      if (this.dorfAktiv) { dorfPause(); this.dorfAktiv = false; }
     });
     // Dev-Werkzeug: Szene für automatisierte Browser-Tests erreichbar machen
     if (import.meta.env.DEV) {
@@ -1443,6 +1448,7 @@ export class WorldScene extends CombatScene {
     if (FUERSTENTUM.some((g) => g.id === id)) this.flags[`besucht_${id}`] = true; // Karte: erforscht
     this.unloadAreaObjects();
     this.loadAreaObjects(a);
+    this.setupDorfSim(a);                // dorfSim-Hintergrund (Anfangskarte-Look) für diese Area
     this.spawneFluessigkeitsShader(a);   // additiver Liquid-Overlay-Test (Runde 71)
     this.spawneNeuesWasser(a);           // neues prozedurales Wasser pro Area (Runde 72)
     const s = spawnAt ?? a.spawn;
@@ -1926,6 +1932,30 @@ export class WorldScene extends CombatScene {
     ];
   }
 
+  // dorfSim-Hintergrund (Runde 72j): die Area zeigt den Anfangskarte-Canvas
+  // (Boden/Bäume/Wetter/Tag-Nacht) als bildschirmfesten Hintergrund; die Kamera
+  // wird pro Frame an dorfSim weitergereicht (setKamera) und die Textur neu
+  // gezeichnet. Kollision kommt aus dorfSim (isSolidAt-Override).
+  private setupDorfSim(a: AreaData): void {
+    if (!a.dorfSimBoden) return;
+    this.dorfAktiv = true;
+    if (!this.dorfCanvas) this.dorfCanvas = document.createElement('canvas');
+    dorfStart(this.dorfCanvas, { hybrid: true, externKamera: true });
+    if (this.textures.exists(this.dorfTexKey)) this.textures.remove(this.dorfTexKey);
+    this.textures.addCanvas(this.dorfTexKey, this.dorfCanvas);
+    this.dorfBild = this.add.image(0, 0, this.dorfTexKey).setOrigin(0, 0).setScrollFactor(0).setDepth(-1000);
+    this.dorfBild.setDisplaySize(this.scale.width, this.scale.height);
+  }
+
+  // Pro Frame: Kamera an dorfSim, Textur auffrischen, Bild auf Fenstergröße.
+  private updateDorfSim(): void {
+    if (!this.dorfAktiv) return;
+    dorfSetKamera(Math.round(this.cameras.main.scrollX), Math.round(this.cameras.main.scrollY));
+    const tex = this.textures.get(this.dorfTexKey) as Phaser.Textures.CanvasTexture;
+    if (tex && tex.refresh) tex.refresh();
+    if (this.dorfBild) this.dorfBild.setDisplaySize(this.scale.width, this.scale.height);
+  }
+
   private spawneNeuesWasser(a: AreaData): void {
     if (!a.wasserLauf) return;
     this.wasserTrail = [];
@@ -1964,6 +1994,7 @@ export class WorldScene extends CombatScene {
     this.tileImages = [];
     this.wasser2Shader?.destroy(); this.wasser2Shader = undefined;
     this.gebackenerBodenImg?.destroy(); this.gebackenerBodenImg = undefined;
+    if (this.dorfAktiv) { dorfPause(); this.dorfBild?.destroy(); this.dorfBild = undefined; this.dorfAktiv = false; }
     for (const s of this.fluessigkeitsShaders) s.destroy();
     this.fluessigkeitsShaders = [];
     this.wasserBilder = [];
@@ -2172,11 +2203,14 @@ export class WorldScene extends CombatScene {
     // Objekte; die Boden-/Wasserkacheln zeichnet zeichneKachel dann nicht mehr.
     // Bei vollszene macht der Wasser-Shader selbst den Boden (Land+Wasser in einem,
     // Canvas-Look mit weichen Ufern) - dann KEIN separates Bodenbild backen.
-    if (a.gebackenerBoden && !a.wasserLauf?.vollszene) this.bakeBoden(a);
-    // Tiles als statische Bilder (Pseudo-3D, Masterprompt 5.1)
-    for (let ty = 0; ty < a.h; ty++) {
-      for (let tx = 0; tx < a.w; tx++) {
-        this.zeichneKachel(a, tx, ty);
+    if (a.gebackenerBoden && !a.wasserLauf?.vollszene && !a.dorfSimBoden) this.bakeBoden(a);
+    // Tiles als statische Bilder (Pseudo-3D, Masterprompt 5.1). Bei dorfSimBoden
+    // malt der dorfSim-Canvas alles - keine Kacheln.
+    if (!a.dorfSimBoden) {
+      for (let ty = 0; ty < a.h; ty++) {
+        for (let tx = 0; tx < a.w; tx++) {
+          this.zeichneKachel(a, tx, ty);
+        }
       }
     }
     // Zerstörbare Objekte
@@ -2526,6 +2560,7 @@ export class WorldScene extends CombatScene {
   }
 
   isSolidAt(x: number, y: number): boolean {
+    if (this.dorfAktiv) return dorfIstSolide(x, y);   // dorfSim-Area: Kollision aus dorfSim
     const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
     if (tx < 0 || ty < 0 || tx >= this.area.w || ty >= this.area.h) return true;
     return SOLID.has(this.area.map[ty][tx]);
@@ -6892,6 +6927,7 @@ export class WorldScene extends CombatScene {
     this.updateCombat(dt * kampfTempo);
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
     this.updateWasserHeld();  // Held-Wellen-Effekt im neuen Wasser
+    this.updateDorfSim();     // dorfSim-Hintergrund der Kamera nachführen
     if (this.feuerLichter.length) {
       for (const fl of this.feuerLichter) fl.t -= dt;
       this.feuerLichter = this.feuerLichter.filter((fl) => fl.t > 0);

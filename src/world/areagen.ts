@@ -55,6 +55,10 @@ export interface AreaData {
   // gemaltes Bodenbild unter den Objekten (Tiefe -11). Kollision/Objekte bleiben
   // aus dem Kachel-Raster. Gibt der Oberwelt den Canvas-Look ohne Per-Frame-Upload.
   gebackenerBoden?: boolean;
+  // dorfSim-Hintergrund (Runde 72): Boden/Bäume/Wetter/Tag-Nacht dieser Area malt
+  // der dorfSim-Canvas (Anfangskarte-Look), Kollision aus dorfSim; die WorldScene-
+  // Systeme (Kampf/HUD/Speichern) laufen darüber. Kacheln/Bake/Overlay entfallen.
+  dorfSimBoden?: boolean;
   dark: boolean;
   depth: number;
   theme?: CryptTheme;
@@ -1605,28 +1609,24 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
   return a;
 }
 
-export function buildStart(rng: Rng): AreaData {
-  return baueOberweltGebiet(rng, {
-    id: 'start', name: 'Waldrand', wolfXs: [], baumGruppen: 0, blanko: true,
-    vollszene: true, wasserSolide: false,   // Canvas-Look (Boden+Wasser ein Shader), begehbares Wasser
-    label: { u: 0.57, v: 0.89, t: 'Stiller See' },
-    // Nach der START-Zelle der Skizze: Fluss tritt OBEN RECHTS ein, zieht DIAGONAL
-    // nach unten-links in einen flachen See unten-Mitte; ein Bach kommt entlang der
-    // Südkante von links in denselben See. Dünner als zuvor; alles durchgehend.
-    geo: {
-      bahnen: [
-        { punkte: [
-          { x: 0.72, y: -0.03, hw: 0.013 }, { x: 0.66, y: 0.18, hw: 0.014 },
-          { x: 0.58, y: 0.42, hw: 0.015 }, { x: 0.56, y: 0.66, hw: 0.016 },
-          { x: 0.57, y: 0.88, hw: 0.017 },
-        ] },
-        { punkte: [
-          { x: -0.03, y: 0.80, hw: 0.011 }, { x: 0.22, y: 0.84, hw: 0.012 }, { x: 0.46, y: 0.88, hw: 0.013 },
-        ] },
-      ],
-      seen: [{ cx: 0.57, cy: 0.89, rx: 0.15, ry: 0.06 }],
-    },
-  });
+// START (2,3) - Runde 72j: der LOOK (Boden/Bäume/Wetter/Tag-Nacht) kommt vom
+// dorfSim-Canvas (Anfangskarte), die Spiel-Systeme (Kampf/HUD/Speichern) von der
+// WorldScene. Kollision aus dorfSim. Die Karte selbst ist nur ein leeres Gras-
+// Raster (begehbar) der richtigen Größe (130x85 = dorfSim WELT 4160x2720); alles
+// Sichtbare malt dorfSim. Wasser-Layout/Shader kommt im nächsten Schritt.
+export function buildStart(_rng: Rng): AreaData {
+  const w = 130, h = 85;
+  const map = blank(w, h, T.GRASS);
+  const a: AreaData = {
+    id: 'start', name: 'Waldrand', dark: false, depth: 0,
+    w, h, map, spawn: { x: 340, y: 1500 },   // dorfSim-sicherer Startplatz (West, am Weg)
+    torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
+    breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
+    ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
+    npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
+    dorfSimBoden: true,
+  };
+  return a;
 }
 
 // Wald (3,3) zwischen START und STADT: dichterer Wald, schmaler Bach von Norden,
