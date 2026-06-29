@@ -1595,13 +1595,14 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
 export function buildStart(rng: Rng): AreaData {
   return baueOberweltGebiet(rng, {
     id: 'start', name: 'Waldrand', wolfXs: [26, 60, 96, 120], baumGruppen: 90,
-    label: { u: 0.38, v: 0.70, t: 'Stiller See' },
+    label: { u: 0.50, v: 0.88, t: 'Stiller See' },
+    // Nach der Skizze (START-Zelle): EIN durchgehender Fluss von der Nordkante
+    // herab (leichter Mäander um die Mitte) in einen mittelgroßen See am Südrand.
     geo: {
       bahnen: [
-        { punkte: [{ x: 0.60, y: -0.03, hw: 0.028 }, { x: 0.56, y: 0.20, hw: 0.030 }, { x: 0.49, y: 0.40, hw: 0.032 }, { x: 0.42, y: 0.58, hw: 0.034 }] },
-        { punkte: [{ x: 0.38, y: 0.80, hw: 0.030 }, { x: 0.35, y: 0.95, hw: 0.028 }, { x: 0.33, y: 1.03, hw: 0.026 }] },
+        { punkte: [{ x: 0.50, y: -0.03, hw: 0.020 }, { x: 0.46, y: 0.22, hw: 0.021 }, { x: 0.50, y: 0.48, hw: 0.022 }, { x: 0.50, y: 0.74, hw: 0.024 }] },
       ],
-      seen: [{ cx: 0.38, cy: 0.70, rx: 0.16, ry: 0.12 }, { cx: 0.50, cy: 0.72, rx: 0.10, ry: 0.09 }],
+      seen: [{ cx: 0.50, cy: 0.88, rx: 0.11, ry: 0.06 }],
     },
   });
 }
@@ -1637,3 +1638,4 @@ export function buildStadtNatur(rng: Rng): AreaData {
     },
   });
 }
+

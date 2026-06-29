@@ -32,6 +32,7 @@ uniform vec2  resolution;
 uniform float u_speed, u_turb, u_wake, u_bed, u_refract, u_tint, u_shore;
 uniform float u_wavescale, u_nscale, u_gloss, u_turbidity, u_bank, u_emerge, u_sand;
 uniform float u_procDensity, u_procSize, u_flowDir, u_layerMode;
+uniform float u_detailScale;   // skaliert Bett/Wellen/Kiesel auf Bildschirmgröße (große Karten)
 uniform vec3  u_deep, u_sky, u_spec, u_bedShallow, u_bedDeep, u_stoneCol;
 uniform vec2  u_light;
 uniform float u_ambient;
@@ -83,9 +84,9 @@ vec2 flowDir(vec2 p){
   float ang=snoise(p*1.3+time*0.04)*0.4*u_turb; float c=cos(ang),s=sin(ang); return mat2(c,-s,s,c)*dir*u_flowDir;
 }
 
-float wh(vec2 p, vec2 dir, float spd){ float t=time*u_speed; float p0=fract(t),p1=fract(t+0.5); float w0=1.0-abs(2.0*p0-1.0),w1=1.0-abs(2.0*p1-1.0); float dist=0.55*spd;
-  float b0=fbm4(p*u_wavescale+dir*p0*dist); float b1=fbm4(p*u_wavescale+dir*p1*dist); float big=(b0*w0+b1*w1)/(w0+w1);
-  float fine=fbm2(p*u_wavescale*2.6+dir*(time*u_speed*2.2*spd)); return big*0.65 + fine*0.35*u_turb; }
+float wh(vec2 p, vec2 dir, float spd){ float ws=u_wavescale*u_detailScale; float t=time*u_speed; float p0=fract(t),p1=fract(t+0.5); float w0=1.0-abs(2.0*p0-1.0),w1=1.0-abs(2.0*p1-1.0); float dist=0.55*spd;
+  float b0=fbm4(p*ws+dir*p0*dist); float b1=fbm4(p*ws+dir*p1*dist); float big=(b0*w0+b1*w1)/(w0+w1);
+  float fine=fbm2(p*ws*2.6+dir*(time*u_speed*2.2*spd)); return big*0.65 + fine*0.35*u_turb; }
 float inter(vec2 uv){ float aspect=resolution.x/resolution.y; float add=0.0;
   for(int i=0;i<8;i++){ vec3 pt=u_points[i]; if(pt.z<0.0) continue; vec2 pos=pt.xy+vec2(0.0,-1.0)*pt.z*0.08; vec2 d=uv-pos; d.x*=aspect; float r=length(d);
     float ring=sin(r*75.0-pt.z*30.0); float env=exp(-r*30.0)*(1.0-pt.z); add+=ring*env; } return add*u_wake; }
@@ -124,7 +125,7 @@ void stoneInstance(vec2 uv, vec2 center, float aspect, float R, float seed, inou
     sMask=smoothstep(1.0,0.84,rr); } }
 void procStones(vec2 uv, float aspect, float sd, inout float maxH, inout vec3 sN, inout vec3 sCol, inout float sMask){
   if(u_procDensity<=0.0) return; float wz=smoothstep(u_shore*2.5,-u_shore,sd); if(wz<0.02) return;
-  float cs=u_procSize; vec2 gp=vec2(uv.x*aspect,uv.y)/cs; vec2 cf=floor(gp);
+  float cs=u_procSize/u_detailScale; vec2 gp=vec2(uv.x*aspect,uv.y)/cs; vec2 cf=floor(gp);
   for(int j=-1;j<=1;j++){ for(int i=-1;i<=1;i++){ vec2 cc=cf+vec2(float(i),float(j)); vec2 rnd=hash2(cc);
     if(rnd.x>u_procDensity) continue; float seed=fract(rnd.y*13.37)*10.0+0.21;
     vec2 ctr=(cc+vec2(0.25+0.5*rnd.x,0.25+0.5*rnd.y))*cs; ctr=vec2(ctr.x/aspect,ctr.y);
@@ -149,7 +150,7 @@ void main(){
   }
   float localDepth=waterDepth*(1.0-emerged*0.95);
   vec2 dir=flowDir(uv); float spd=mix(1.0,0.4,deepness); vec3 n=normalAt(uv,dir,spd);
-  vec2 refrUV=uv+n.xy*u_refract*localDepth; vec3 bed=riverbed(refrUV,deepness)*u_ambient;
+  vec2 refrUV=uv+n.xy*u_refract*localDepth; vec3 bed=riverbed(refrUV*u_detailScale,deepness)*u_ambient;
   bed=mix(bed, stoneLit(sN,sCol)*u_ambient, sMask);
   vec3 col=mix(bed,u_deep, localDepth*mix(u_turbidity,1.0,deepness)*u_tint);
   float fres=pow(1.0-clamp(n.z,0.0,1.0),4.0); col=mix(col,u_sky,fres*0.4*localDepth);
@@ -215,6 +216,7 @@ function getBaseShader(): Phaser.Display.BaseShader {
     u_tint: f(0.65), u_shore: f(0.05), u_wavescale: f(5), u_nscale: f(0.1), u_gloss: f(0.4),
     u_turbidity: f(0.4), u_bank: f(0.45), u_emerge: f(0.4), u_sand: f(0.5),
     u_procDensity: f(0.35), u_procSize: f(0.05), u_flowDir: f(1), u_layerMode: f(1), u_ambient: f(1.05),
+    u_detailScale: f(1),
     u_deep: v3(0.08, 0.24, 0.27), u_sky: v3(0.55, 0.75, 0.92), u_spec: v3(1, 0.97, 0.88),
     u_bedShallow: v3(0.4, 0.37, 0.3), u_bedDeep: v3(0.13, 0.16, 0.16), u_stoneCol: v3(0.345, 0.329, 0.298),
     u_light: { type: '2f', value: { x: 0.25, y: 0.65 } },
@@ -290,5 +292,8 @@ export function spawneWasser(scene: Phaser.Scene, geo: WasserGeometrie, worldW: 
   wendeWasserPreset(sh, preset);
   setzeGeometrie(sh, geo);
   sh.setUniform('u_layerMode.value', opts.layerMode ?? 1);
+  // Detail (Bett/Wellen/Kiesel) auf Bildschirmgröße halten: auf großen Karten ist
+  // die uv 0..1 über die ganze Karte gespannt -> sonst riesige, blasse Strukturen.
+  sh.setUniform('u_detailScale.value', Math.max(1, worldH / 720));
   return sh;
 }

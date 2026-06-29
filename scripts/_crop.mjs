@@ -1,0 +1,13 @@
+import { chromium as pwChromium } from 'playwright-core';
+import sparticuz from '@sparticuz/chromium';
+import { readFileSync } from 'node:fs';
+const [out, tx='0px', ty='0px', width='1386px', vw='800', vh='600'] = process.argv.slice(2);
+const b64 = readFileSync('/home/user/DM/reference/weltkarte-skizze.png').toString('base64');
+const execPath = await sparticuz.executablePath();
+const browser = await pwChromium.launch({ executablePath: execPath, args: sparticuz.args });
+const page = await browser.newPage({ viewport: { width: parseInt(vw,10), height: parseInt(vh,10) } });
+await page.setContent(`<body style="margin:0;background:#fff"><img src="data:image/png;base64,${b64}" style="width:${width};height:auto;display:block;transform-origin:0 0;transform:translate(${tx},${ty})"></body>`);
+await page.waitForTimeout(300);
+await page.screenshot({ path: out });
+await browser.close();
+console.log('crop ok ' + out);

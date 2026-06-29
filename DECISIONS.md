@@ -766,3 +766,12 @@
   * getArea 'stadt', FUERSTENTUM (4,3), kartenKanten STADT_KANTEN + Registry-Eintrag. wald_o.ost -> stadt nun erreichbar.
   * VERIFIZIERT (Headless): zu Fuß start -> wald_o -> stadt durchquert (begehbare Ränder, gespiegelte Kanten), Stadt lädt mit Wasser/Boden/allen Systemen, 0 Fehler, tsc grün, 195 Tests grün.
   * Damit steht der Kern-Weg der Oberwelt. Offene Punkte unverändert (Wasser-Ton blass, Brücke als Treppenmuster, Verläufe als Skizzen-Lesart - Abnahme/Feintuning durch den Autor).
+
+- Runde 72h (Autor-Korrektur: 3 Karten verworfen, EINE Area nach der Skizze + Wasser-Fixes):
+  * 3 Karten (burg/wald_w/wald_se) VERWORFEN (trafen die Zeichnung nicht). Fokus auf EINE saubere Area (START) nach der Skizze.
+  * SKIZZE GELESEN (START-Zelle aus reference/weltkarte-skizze.png herausgeschnitten/gezoomt via Chromium-Base64): EIN durchgehender Fluss von der Nordkante herab (leichter Mäander) in einen MITTELGROSSEN See am Südrand (kein Riesen-Blob), Straße quert. buildStart-Geometrie entsprechend ersetzt (eine Bahn + EIN See cx0.5/cy0.88/rx0.11/ry0.06).
+  * LOOK-FIX (blass -> trüb mit sichtbarem Bett): u_detailScale im Shader - Bett/Wellen/Kiesel werden auf BILDSCHIRMgröße skaliert (auf großen Karten war die uv 0..1 über die ganze Karte gespannt -> riesige, blasse Strukturen). detailScale = max(1, worldH/720). Dadurch ist Flachwasser klar mit sichtbarem Flussbett, "Tiefe" klebt nicht mehr am Maximum (kleiner See/schmaler Fluss -> deepness niedrig -> Bett sichtbar). Tuning-Werte sind die aus fluss-bach.html (Trübung 0.4, Tönung 0.65, Bett-Farben).
+  * WASSER = KOLLISION + HELD-EFFEKT aus DERSELBEN Geometrie: T.WATER wird aus sdWasser gecarvt (verifiziert seeSolide=true), Bäume spawnen NICHT im Wasser (baumImWasser=0 verifiziert). Held-Wellen (u_points) werden pro Frame mit der Spielerposition (UV) gefüttert, solange der Held im/am Wasser steht (updateWasserHeld) -> Wellen sichtbar, nur dort.
+  * DEV-KONSOLE mit Tabs (WasserProbe): WASSER (voller Reglersatz + Wasser/Blut + Ansicht/Fließrichtung), WETTER (Regen -> Wirbel/Trübung + Tint), UHRZEIT (Stunde -> Tag/Dämmerung/Nacht-Tint), NÄSSE (kühler dunkler Schleier). Probe-Geometrie = START-Lauf.
+  * VERIFIZIERT (Headless-WebGL): START mit durchgehendem Fluss + See, sichtbares Bett (trüb), Kollision, Held-Wellen aktiv (Trail=3), keine Bäume im Wasser, 0 Fehler, tsc grün, 195 Tests grün.
+  * STOPP zum Zeigen (Autorwunsch "erst wenn die eine stimmt, weiter").

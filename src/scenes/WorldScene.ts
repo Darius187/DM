@@ -12,7 +12,8 @@ import { NebelFratzen } from '../systems/NebelFratzen';
 import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
-import { spawneWasser as spawneNeuesWasserShader, WASSER as WASSER2, BLUT as BLUT2 } from '../world/wasser';
+import { spawneWasser as spawneNeuesWasserShader, setzeHeldPunkte, WASSER as WASSER2, BLUT as BLUT2 } from '../world/wasser';
+import { sdWasser } from '../world/wasserFeld';
 import { KARTEN_KANTEN } from '../data/kartenKanten';
 import { wetter } from '../logic/wetter';
 import { SchattenManager, mischFarbe, type Occluder, type Licht } from '../systems/SchattenManager';
@@ -150,6 +151,8 @@ export class WorldScene extends CombatScene {
   private fluessigkeitsShaders: Phaser.GameObjects.Shader[] = [];   // Liquid-Shader-Overlays (Wasser/Blut), Runde 71
   private wasser2Shader?: Phaser.GameObjects.Shader;                 // neues prozedurales Wasser-Overlay pro Area (Runde 72)
   private gebackenerBodenImg?: Phaser.GameObjects.Image;             // gebackener organischer Boden (Runde 72)
+  private wasserTrail: Array<{ u: number; v: number; t: number }> = []; // Held-Wellen-Spur im Wasser
+  private wasserTrailLetzte = 0;
   private breakableEnts: BreakableEntity[] = [];
   private worldGfx!: Phaser.GameObjects.Graphics; // Truhen, Brunnen, Fackeln
   private bodenGfx!: Phaser.GameObjects.Graphics;  // Blutspuren AUF dem Boden (unter den Figuren)
@@ -1846,8 +1849,27 @@ export class WorldScene extends CombatScene {
     if (ziel && spawn) this.goArea(ziel, spawn);
   }
 
+  // Held-Wellen im neuen Wasser (u_points): die Spielerposition (UV) wird als
+  // alternde Spur eingespeist, solange der Held IM/AM Wasser steht (sd < Ufer).
+  // So sind die Wellen sichtbar - und nur dort, nicht auf dem Land.
+  private updateWasserHeld(): void {
+    const sh = this.wasser2Shader, lauf = this.area.wasserLauf;
+    if (!sh || !lauf) return;
+    const LIFE = 2.5, now = this.time.now / 1000;
+    const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
+    const imWasser = sdWasser(u, v, lauf.geo, 0.06) < 0.05;
+    if (imWasser && this.time.now - this.wasserTrailLetzte > 70) {
+      this.wasserTrailLetzte = this.time.now;
+      this.wasserTrail.push({ u, v, t: now });
+      if (this.wasserTrail.length > 8) this.wasserTrail.shift();
+    }
+    this.wasserTrail = this.wasserTrail.filter((p) => now - p.t < LIFE);
+    setzeHeldPunkte(sh, this.wasserTrail.map((p) => [p.u, p.v, (now - p.t) / LIFE] as [number, number, number]));
+  }
+
   private spawneNeuesWasser(a: AreaData): void {
     if (!a.wasserLauf) return;
+    this.wasserTrail = [];
     // Ohne gebackenen Boden: die blauen Wasserkacheln (inkl. Säume) entfernen und
     // durch Gras ersetzen, damit die weichen Ufer des Overlays in Gras blenden.
     // MIT gebackenem Boden zeichnet zeichneKachel die Wasserkacheln gar nicht erst.
@@ -6791,6 +6813,7 @@ export class WorldScene extends CombatScene {
     const kampfTempo = this.einfallAktiv ? TUNING.kryptaTempo : 1;
     this.updateCombat(dt * kampfTempo);
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
+    this.updateWasserHeld();  // Held-Wellen-Effekt im neuen Wasser
     if (this.feuerLichter.length) {
       for (const fl of this.feuerLichter) fl.t -= dt;
       this.feuerLichter = this.feuerLichter.filter((fl) => fl.t > 0);
