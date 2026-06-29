@@ -174,3 +174,18 @@ An Lore/Systeme gebunden:
 - [ ] (*) Felsklamm mit Wasserfall: Engpass mit der gefakten-Höhe-Technik, Quelle speist
       den Fluss, RTS-Verteidigung. VERLAUF-RELEVANT: ändert Geländeform UND woher das
       Wasser kommt -> beim Festzurren des Wasser-Verlaufs/der Kanten mitdenken.
+
+## Oberwelt-Werkzeuge (Runde 72, Autorwunsch - für SPÄTER, aber fest eingeplant)
+- [ ] SCHNELLLAUF durch die Karten: wenn alle Oberwelt-Karten stehen, muss man
+      sich zügig durch alle bewegen können, um sie am Stück durchzusehen. Optionen:
+      (a) begehbare Kartenränder (Übergang zur Nachbarkarte via kartenKanten,
+      gespiegelte Position) - das ist ohnehin nötig für "Weg START->Wald->Stadt";
+      (b) Dev-Sprung/Übersichtskarte zum Anspringen jeder Area; (c) Tempo-Boost.
+      -> Mindestens (a) + (b) bauen, sobald mehrere Karten existieren.
+- [ ] KARTEN ZUR LAUFZEIT JUSTIERBAR/VERÄNDERBAR: wir werden "Tons of Material"
+      rein packen und vieles ändern. Die Oberwelt-Karten brauchen einen In-Engine-
+      Editor (analog StadtProbe-Planer): Objekte/Bäume/Steine/Wege/Wasser-Lauf
+      live setzen/verschieben/löschen, Werte (Wasser-Regler pro Karte, Boden-Optik)
+      einstellen und als Code/Daten exportieren - Position/Größe persistent.
+      Vorhandene Bausteine: StadtProbe-Planer, Wasser-Regler (wasser.ts), Hot-Swap-
+      Ordner für Assets. Darauf aufbauen.
