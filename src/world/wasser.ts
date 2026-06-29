@@ -175,13 +175,9 @@ void main(){
   float emerged=clamp(sH*(0.5+u_emerge) - deepness*0.55, 0.0, 1.0);
 
   if(waterDepth<0.003){
-    if(u_layerMode>0.5){
-      // Overlay: KEIN Shader-Gras (das liefert dorfSim!). Nur ein SCHMALER,
-      // feuchter Sand-/Schlammrand direkt an der Wasserlinie - kein grüner Saum.
-      float rim = smoothstep(u_shore*2.0, 0.0, sd) * u_bank * 0.5;
-      if(rim<0.004){ gl_FragColor=vec4(0.0); return; }
-      gl_FragColor=vec4(vec3(0.20,0.17,0.12)*u_lichtMul, clamp(rim,0.0,1.0)); return;
-    }
+    // Overlay-LAND: nichts - dorfSim-Gras bleibt. Der Übergang ist allein die
+    // weiche Alpha-Schattierung des Wassers (unten), kein heller/dunkler Streifen.
+    if(u_layerMode>0.5){ gl_FragColor=vec4(0.0); return; }
     // Vollszene (layerMode 0, Prototyp-Look): Shader zeichnet Gras + Ufersaum.
     vec3 c=landFull(uv,sd); c=mix(c, stoneLit(sN,sCol), sMask);
     vec2 q0=uv-0.5; gl_FragColor=vec4(c*u_ambient*(1.0-dot(q0,q0)*0.35),1.0); return;
@@ -190,11 +186,14 @@ void main(){
   vec2 dir=flowDir(uv); float spd=mix(1.0,0.4,deepness); vec3 n=normalAt(uv,dir,spd);
   vec2 refrUV=uv+n.xy*u_refract*localDepth; vec3 bed=riverbed(refrUV*u_detailScale,deepness)*u_ambient;
   bed=mix(bed, stoneLit(sN,sCol)*u_ambient, sMask);
-  // Auch FLACHES (dünnes) Wasser soll nach Wasser aussehen, nicht nach grauem
-  // Bett: ein Sockel an Wasserfarbe abhängig von waterDepth, damit ein schmaler
-  // Fluss blau/türkis bleibt statt grau.
+  // Auch das FLACHE Ufer-Wasser soll Wasserfarbe tragen (kein heller Bett-/Sand-
+  // streifen am Rand): kräftiger Wasserfarb-Sockel schon ab der Uferlinie, damit
+  // der Übergang blau ins Gras schmilzt statt über einen hellen Strand.
   float tintAmt = localDepth*mix(u_turbidity,1.0,deepness)*u_tint;
-  tintAmt = max(tintAmt, waterDepth*0.24);
+  // Schon kurz hinter der Uferlinie VOLL blau (u_deep): so zeigt der Ufersaum
+  // KEIN helles Kiesbett (das gäbe den ungewollten hellen Strandstreifen) -
+  // das Bett sieht man erst im tieferen Wasser.
+  tintAmt = max(tintAmt, smoothstep(0.0, 0.35, waterDepth));
   vec3 col=mix(bed,u_deep, clamp(tintAmt,0.0,1.0));
   float fres=pow(1.0-clamp(n.z,0.0,1.0),4.0); col=mix(col,u_sky,fres*0.4*localDepth);
   vec3 V=vec3(0.0,0.0,1.0),H=normalize(normalize(vec3(u_light,0.9))+V); float sp=max(dot(n,H),0.0);
@@ -210,9 +209,20 @@ void main(){
   col=mix(col, vec3(0.92,0.95,0.96), clamp(waterline,0.0,1.0)*(0.16+0.34*u_turb));
 
   col *= u_lichtMul;   // Tag/Nacht-Tönung aus dorfSim (nahtlose Einbettung ins Canvas-Licht)
-  // Overlay: NUR Wasser, weicher Alpha am Ufer (waterDepth) -> blendet direkt ins
-  // dorfSim-Gras, ohne grünen Shader-Saum. Flaches Ufer zeigt das sandige Bett.
-  if(u_layerMode>0.5){ gl_FragColor=vec4(col, waterDepth); return; }
+  // Overlay: REINE fließende Schattierung. Blaues Wasser (u_deep) mit dezentem
+  // Wellen-Glanz/Himmel, das über die weiche Alpha-Kante (waterDepth) ins
+  // dorfSim-Gras schmilzt. KEIN helles Kiesbett/Schaum/Sand am Ufer -> kein
+  // Streifen, nur eine durchgehende Schattierung Gras->Wasser.
+  if(u_layerMode>0.5){
+    float fres2=pow(1.0-clamp(n.z,0.0,1.0),4.0);
+    vec3 wcol=mix(u_deep, u_sky, fres2*0.35);
+    vec3 Hh=normalize(normalize(vec3(u_light,0.9))+vec3(0.0,0.0,1.0)); float sp2=max(dot(n,Hh),0.0);
+    wcol += pow(sp2,90.0)*u_spec*0.6*u_gloss;
+    wcol *= u_lichtMul;
+    wcol += vec3(0.85,0.92,1.0)*abs(inter(uv))*0.35;     // Held-Wellen
+    wcol += vec3(0.82,0.88,0.96)*abs(rainH(uv))*0.30;    // Regentropfen-Ringe
+    gl_FragColor=vec4(wcol, waterDepth); return;
+  }
   // Vollszene: Land+Wasser im selben Mix (Prototyp-Look).
   vec3 finalCol=mix(landFull(uv,sd)*u_ambient*u_lichtMul, col, waterDepth);
   vec2 q=uv-0.5; finalCol*=1.0-dot(q,q)*0.35;

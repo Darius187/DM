@@ -2024,7 +2024,9 @@ export class WorldScene extends CombatScene {
     const geo = a.wasserLauf?.geo;
     if (geo) {
       const wW = a.w * TILE, wH = a.h * TILE;
-      dorfSetExternWasser((x, y) => sdWasser(x / wW, y / wH, geo, WASSER2_CFG.smink, WASSER2_CFG.widthMul) < 0.02);
+      // Nur das WASSER selbst (knapp) freihalten - Gras/Büsche dürfen bis ans Ufer
+      // wachsen, sonst entsteht ein heller, kahler Erdring rund ums Wasser.
+      dorfSetExternWasser((x, y) => sdWasser(x / wW, y / wH, geo, WASSER2_CFG.smink, WASSER2_CFG.widthMul) < 0.004);
     } else {
       dorfSetExternWasser(null);
     }
