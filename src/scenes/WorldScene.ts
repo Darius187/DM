@@ -6920,7 +6920,9 @@ export class WorldScene extends CombatScene {
   // gezoomten Welt-Kamera. Läuft am Ende von update, damit auch frisch
   // erstellte Objekte vor dem Zeichnen einsortiert sind.
   private sortiereKameras(): void {
-    const z = zoomFaktor();
+    // dorfSim-Area: KEIN Welt-Zoom (sonst passt der bildschirmfeste dorfSim-
+    // Hintergrund nicht 1:1 zur gezoomten Welt -> alles verschoben/unsichtbar).
+    const z = this.area?.dorfSimBoden ? 1 : zoomFaktor();
     if (this.cameras.main.zoom !== z) this.cameras.main.setZoom(z);
     if (this.uiCam.width !== this.scale.width || this.uiCam.height !== this.scale.height) {
       this.uiCam.setSize(this.scale.width, this.scale.height);
@@ -6928,6 +6930,10 @@ export class WorldScene extends CombatScene {
     const versteckVorUi = this.cameras.main.id;
     const versteckVorWelt = this.uiCam.id;
     for (const obj of this.children.list) {
+      // Der dorfSim-Hintergrund (scrollFactor 0) MUSS auf der WELT-Kamera bleiben
+      // (Backdrop unter Spieler/Wasser), nicht auf der UI-Kamera - sonst läge er
+      // über allem und verdeckte Spieler/Wasser.
+      if (obj === this.dorfBild) { (obj as unknown as { cameraFilter: number }).cameraFilter = versteckVorWelt; continue; }
       const sf = (obj as unknown as { scrollFactorX?: number }).scrollFactorX;
       (obj as unknown as { cameraFilter: number }).cameraFilter = sf === 0 ? versteckVorUi : versteckVorWelt;
     }

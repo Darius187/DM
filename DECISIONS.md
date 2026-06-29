@@ -815,3 +815,9 @@
   * FLUSS NACH SKIZZE: buildStart liefert a.wasserLauf.geo = Skizzen-Layout (Fluss oben rechts -> GABELUNG -> See unten-Mitte + BACH-Zufluss von West), segN=9 verifiziert. setupDorfSim nutzt diese Geometrie (nicht mehr dorfSims). dorfSim-Bahn-Importe entfernt.
   * WASSER SICHTBAR: Preset war zu dunkel getunt -> unsichtbar. Zurück auf klar sichtbar (tint 0.7, turbidity 0.5, ambient 1.0, deep [0.07,0.19,0.24]). Licht-Kopplung mit Sockel (0.4 + 0.65*licht) -> tönt Tag/Nacht, bleibt aber dämmrig lesbar. Feinabstimmung macht der Autor live in F10 -> WASSER.
   * tsc grün, 0 Fehler. HINWEIS (Prozess): zu viele Screenshots im Chat -> "Request too large"; Bilder ab jetzt nur per SendUserFile an den Autor, nicht selbst laden.
+
+- Runde 72o (KERN-BUG gefunden: dorfSim-Hintergrund wurde nicht gerendert):
+  * sortiereKameras() steckt ALLE scrollFactor-0-Objekte in die UI-Kamera (die ÜBER der Welt liegt) und die Welt-Kamera ZOOMT (~1.3). Mein dorfSim-Hintergrund (scrollFactor 0) landete damit auf der UI-Kamera (verdeckte alles bzw. passte durch den Zoom nicht) -> dorfBildWillRender(welt)=false -> man sah weder dorfSim-Boden noch (richtig) Spieler/Wasser. DAS war "nichts geändert / kein Spieler / kein Wasser".
+  * FIX: (1) dorfBild bleibt auf der WELT-Kamera (Backdrop), in sortiereKameras ausgenommen (cameraFilter = UI-Kamera verstecken). (2) In dorfSim-Areas Welt-Zoom = 1 (sonst passt der bildschirmfeste Hintergrund nicht 1:1 zur gezoomten Welt). Verifiziert: dorfBildWillRender=true, view 1280x720, scroll [0,1140] (zentriert), Spieler willRender/inView.
+  * NEUES SPIEL leitet jetzt auf die neue START-Karte (World startArea 'start') statt auf die alte Anfangskarte-Szene - kein falscher Einstieg mehr.
+  * tsc grün, 0 Fehler.
