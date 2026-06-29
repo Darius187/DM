@@ -193,14 +193,18 @@ void main(){
   // fester Sockel u_edgeTint: schon das flache Ufer-Wasser ist dunkel
   // wassergefärbt -> dunkles Wasser blendet nach transparent aus = weicher
   // dunkler Rand wie an echten Ufern, KEIN heller Saum.
+  // Rand-Ausblendfaktor: 0 am Ufer .. 1 im tieferen Wasser.
+  float edgeFade=smoothstep(0.0, u_shore*2.5, -sd);
   float tintAmt = localDepth*mix(u_turbidity,1.0,deepness)*u_tint;
-  tintAmt = max(tintAmt, u_edgeTint);
+  // Am ÄUSSERSTEN Ufer fast nur dunkles u_deep (kein helles Bett mehr), erst
+  // weiter innen das Bett (u_edgeTint). So zeigt der Rand keine helle Zwischen-
+  // farbe -> er blendet DUNKEL nach transparent aus (Boden scheint durch), kein
+  // heller Saum.
+  tintAmt = max(tintAmt, mix(0.95, u_edgeTint, edgeFade));
   vec3 col=mix(bed,u_deep, clamp(tintAmt,0.0,1.0));
-  // Rand-Ausblendfaktor (Diagnose Design-Chat): JEDER AUFHELLENDE Term (Himmel-
-  // spiegelung, Glanz, Schaum, Stein-Wasserlinie) wird zum flachen Ufer hin
-  // ausgeblendet - dort flammen sie sonst auf (steile Normale) und bilden die
-  // weiße Uferkante. Die dunkle Wasserfarbe (col) und das Alpha bleiben.
-  float edgeFade=smoothstep(0.0, u_shore*2.5, -sd);   // 0 am Ufer .. 1 im tieferen Wasser
+  // JEDER AUFHELLENDE Term (Himmelspiegelung, Glanz, Schaum, Stein-Wasserlinie)
+  // wird zum flachen Ufer hin ausgeblendet - sonst flammen sie an der Uferkante
+  // auf. Die dunkle Grundfarbe (col) und das Alpha bleiben ungefadet.
   float fres=pow(1.0-clamp(n.z,0.0,1.0),4.0); col=mix(col,u_sky,fres*0.4*localDepth*edgeFade);
   vec3 V=vec3(0.0,0.0,1.0),H=normalize(normalize(vec3(u_light,0.9))+V); float sp=max(dot(n,H),0.0);
   col+=pow(sp,90.0)*u_spec*localDepth*0.9*u_gloss*edgeFade; col+=pow(sp,340.0)*u_spec*localDepth*1.6*u_gloss*edgeFade;

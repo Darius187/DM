@@ -165,6 +165,10 @@ export class WorldScene extends CombatScene {
   private devKonsole?: DevKonsole;                  // F10-Tab-Konsole (Wasser/Wetter/Uhrzeit/Nässe/Anfangskarte)
   private devWasserBlut = false;                    // Wasser-Tab: Wasser- oder Blut-Preset bearbeiten
   private devFreiKam = false;                        // Dev: Frei-Kamera (vom Helden entkoppelt, scrollbar) - Basis RTS
+  private perfAn = false;                             // Dev: FPS-/Mess-Anzeige (echte Messung im Browser)
+  private perfText?: Phaser.GameObjects.Text;
+  private perfRefreshMs = 0;                          // geglättete Zeit für den dorfSim-Canvas-Upload (tex.refresh)
+  private perfDorfAus = false;                        // Dev: dorfSim-Upload aussetzen (FPS-Vergleich)
   private freiKamZieh?: { x: number; y: number };    // Mittelmaus-Ziehen: letzte Zeigerposition
   private devAnfang: Record<string, number> = { groesse: 0.85, wegbreite: 1, falltempo: 1, bewuchs: 1, tageszeit: 9, tagtempo: 1, sturm: 1.5, sicht: 124 };
   private breakableEnts: BreakableEntity[] = [];
@@ -1934,6 +1938,21 @@ export class WorldScene extends CombatScene {
   // Held bewegt sich nicht, solange die Frei-Kamera läuft (Eingabe steuert die Kamera).
   protected override bewegungGesperrt(): boolean { return this.devFreiKam; }
 
+  // Dev-Mess-Anzeige: echte FPS + Zeit für den dorfSim-Canvas-Upload. Mit den
+  // MESSEN-Schaltern (Wasser/Upload aus) lässt sich im ECHTEN Browser per A/B
+  // sehen, was die Bildrate kostet - im Headless ist die FPS nicht aussagekräftig.
+  private updatePerfAnzeige(): void {
+    if (!this.perfAn) { this.perfText?.setVisible(false); return; }
+    if (!this.perfText) {
+      this.perfText = this.add.text(8, 8, '', { fontFamily: 'monospace', fontSize: '13px', color: '#9bff9b', backgroundColor: 'rgba(0,0,0,0.6)', padding: { x: 6, y: 4 } })
+        .setScrollFactor(0).setDepth(99999);
+    }
+    const fps = Math.round(this.game.loop.actualFps);
+    this.perfText.setVisible(true).setText(
+      `FPS ${fps}  |  dorfSim-Upload ${this.perfRefreshMs.toFixed(1)} ms  |  Wasser ${this.wasser2Shader?.visible ? 'AN' : 'aus'}  |  Upload ${this.perfDorfAus ? 'EINGEFROREN' : 'AN'}`,
+    );
+  }
+
   private updateFreiKamera(dt: number): void {
     if (!this.devFreiKam) return;
     const cam = this.cameras.main;
@@ -1995,6 +2014,12 @@ export class WorldScene extends CombatScene {
         { kind: 'button', label: () => `Frei-Kamera: ${this.devFreiKam ? 'AN (WASD/Pfeile + Mittelmaus zieht)' : 'aus'}`, onClick: () => { this.setzeFreiKamera(!this.devFreiKam); this.devKonsole?.refresh(); } },
         { kind: 'note', text: 'Frei-Kamera entkoppelt vom Helden: WASD/Pfeile scrollen, Mittelmaus zieht die Karte. Basis für den späteren RTS-Modus.' },
       ] },
+      { name: 'MESSEN', controls: () => [
+        { kind: 'button', label: () => `FPS-Anzeige: ${this.perfAn ? 'AN' : 'aus'}`, onClick: () => { this.perfAn = !this.perfAn; this.devKonsole?.refresh(); } },
+        { kind: 'button', label: () => `Wasser-Shader: ${this.wasser2Shader?.visible ? 'AN' : 'aus'} (FPS-Vergleich)`, onClick: () => { this.wasser2Shader?.setVisible(!this.wasser2Shader.visible); this.devKonsole?.refresh(); } },
+        { kind: 'button', label: () => `dorfSim-Upload: ${this.perfDorfAus ? 'aus (eingefroren)' : 'AN'} (FPS-Vergleich)`, onClick: () => { this.perfDorfAus = !this.perfDorfAus; this.devKonsole?.refresh(); } },
+        { kind: 'note', text: 'ECHTE Messung im Browser: FPS-Anzeige an, dann Wasser bzw. dorfSim-Upload aus/an schalten und die FPS vergleichen - so siehst du, was wirklich kostet, bevor wir optimieren.' },
+      ] },
       { name: 'ANFANG', controls: () => {
         const keys: Array<[string, string, number, number, number]> = [
           ['groesse', 'Baumgröße', 0.5, 2.2, 0.05], ['wegbreite', 'Weg-Breite', 0.5, 1.8, 0.05], ['falltempo', 'Fall-Tempo', 0.12, 2, 0.02],
@@ -2050,7 +2075,12 @@ export class WorldScene extends CombatScene {
     if (!this.dorfAktiv) return;
     dorfSetKamera(Math.round(this.cameras.main.scrollX), Math.round(this.cameras.main.scrollY));
     const tex = this.textures.get(this.dorfTexKey) as Phaser.Textures.CanvasTexture;
-    if (tex && tex.refresh) tex.refresh();
+    // Canvas-Upload (Hauptkosten-Verdacht): Zeit messen, optional aussetzen (Dev).
+    if (tex && tex.refresh && !this.perfDorfAus) {
+      const t0 = performance.now();
+      tex.refresh();
+      this.perfRefreshMs = this.perfRefreshMs * 0.9 + (performance.now() - t0) * 0.1;
+    }
     if (this.dorfBild) this.dorfBild.setDisplaySize(this.scale.width, this.scale.height);
     // Nahtloser Merge: dorfSims aktuelles Tag/Nacht-Licht aufs Wasser legen, damit
     // der Shader vom selben Licht gefärbt wird wie der Canvas-Boden (kein Seam).
@@ -7066,6 +7096,7 @@ export class WorldScene extends CombatScene {
     this.updateWasserHeld();  // Held-Wellen-Effekt im neuen Wasser
     this.updateFreiKamera(dt); // Dev-Frei-Kamera (entkoppelt vom Helden)
     this.updateDorfSim();     // dorfSim-Hintergrund der Kamera nachführen
+    this.updatePerfAnzeige();  // Dev-FPS-/Mess-Anzeige (echte Messung im Browser)
     if (this.feuerLichter.length) {
       for (const fl of this.feuerLichter) fl.t -= dt;
       this.feuerLichter = this.feuerLichter.filter((fl) => fl.t > 0);
