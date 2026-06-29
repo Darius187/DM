@@ -33,6 +33,7 @@ uniform float u_speed, u_turb, u_wake, u_bed, u_refract, u_tint, u_shore;
 uniform float u_wavescale, u_nscale, u_gloss, u_turbidity, u_bank, u_emerge, u_sand;
 uniform float u_procDensity, u_procSize, u_flowDir, u_layerMode;
 uniform float u_detailScale;   // skaliert Bett/Wellen/Kiesel auf Bildschirmgröße (große Karten)
+uniform float u_widthMul;      // Live-Flussbreite: skaliert die Segment-Halbbreiten (Bäche/Flüsse)
 uniform vec3  u_lichtMul;      // Tag/Nacht-Tönung (aus dorfSim) - färbt das Wasser wie den Boden
 uniform vec3  u_deep, u_sky, u_spec, u_bedShallow, u_bedDeep, u_stoneCol;
 uniform vec2  u_light;
@@ -67,7 +68,7 @@ float fbm2(vec2 p){ float s=0.0,a=0.6; for(int i=0;i<2;i++){ s+=a*snoise(p); p*=
 float sdWater(vec2 p){
   float d=1e9; bool erst=true;
   for(int i=0;i<${MAX_SEG};i++){ if(float(i)>=u_segN) break; vec4 s=u_seg[i]; vec2 w=u_segW[i];
-    float di=sdSegHw(p,s.xy,s.zw,w.x,w.y); d = erst ? di : smin(d,di,u_smink); erst=false; }
+    float di=sdSegHw(p,s.xy,s.zw,w.x*u_widthMul,w.y*u_widthMul); d = erst ? di : smin(d,di,u_smink); erst=false; }
   for(int i=0;i<${MAX_LAKE};i++){ if(float(i)>=u_lakeN) break; vec4 L=u_lake[i];
     vec2 q=(p-L.xy)/L.zw; float dl=(length(q)-1.0)*min(L.z,L.w); d = erst ? dl : smin(d,dl,u_smink); erst=false; }
   d += fbm2(p*5.0)*0.006;
@@ -153,7 +154,17 @@ void main(){
   float emerged=clamp(sH*(0.5+u_emerge) - deepness*0.55, 0.0, 1.0);
 
   if(waterDepth<0.003){
-    if(u_layerMode>0.5){ gl_FragColor=vec4(0.0); return; }              // Layer: Land transparent
+    if(u_layerMode>0.5){
+      // Overlay: KEIN harter Schnitt am Ufer. Ein weicher, feuchter Ufersaum
+      // (nasse Erde) läuft über dem Canvas-Boden aus und blendet nahtlos ins
+      // Gras - so wirkt das Flussbett eingebettet, nicht aufgeklebt.
+      float bankA = smoothstep(u_shore*4.0, u_shore*0.4, sd) * u_bank;
+      if(bankA < 0.004){ gl_FragColor=vec4(0.0); return; }
+      vec3 wet = mix(vec3(0.26,0.22,0.15), vec3(0.16,0.13,0.09), smoothstep(u_shore*4.0, 0.0, sd));
+      float kies = smoothstep(0.5,0.0,vor(uv*u_detailScale*9.0).x);   // ein paar Uferkiesel
+      wet = mix(wet, wet*1.3, kies*0.4*u_bed);
+      gl_FragColor = vec4(wet*u_lichtMul, clamp(bankA,0.0,1.0)*0.7); return;
+    }
     vec3 c=landFull(uv,sd); c=mix(c, stoneLit(sN,sCol), sMask);
     vec2 q0=uv-0.5; gl_FragColor=vec4(c*u_ambient*(1.0-dot(q0,q0)*0.35),1.0); return;
   }
@@ -243,6 +254,7 @@ export const WASSER_CFG = {
   tiefe: -9,            // Render-Tiefe: über Boden (-10/-11), unter Spieler/Objekten
   smink: 0.08,          // smin-Verschmelzung der Gewässer (UV) - = Carve-Wert (areagen) -> Optik deckt Kollision
   flowMul: 1.0, turbAdd: 0.0, ambientMul: 1.0,
+  widthMul: 1.0,        // Live-Flussbreite (Dev-Regler) - skaliert alle Fluss-/Bach-Breiten
 };
 
 let baseShader: Phaser.Display.BaseShader | null = null;
@@ -255,7 +267,7 @@ function getBaseShader(): Phaser.Display.BaseShader {
     u_tint: f(0.65), u_shore: f(0.05), u_wavescale: f(5), u_nscale: f(0.1), u_gloss: f(0.4),
     u_turbidity: f(0.4), u_bank: f(0.45), u_emerge: f(0.4), u_sand: f(0.5),
     u_procDensity: f(0.35), u_procSize: f(0.05), u_flowDir: f(1), u_layerMode: f(1), u_ambient: f(1.05),
-    u_detailScale: f(1),
+    u_detailScale: f(1), u_widthMul: f(1),
     u_lichtMul: { type: '3f', value: { x: 1, y: 1, z: 1 } },
     u_deep: v3(0.08, 0.24, 0.27), u_sky: v3(0.55, 0.75, 0.92), u_spec: v3(1, 0.97, 0.88),
     u_bedShallow: v3(0.4, 0.37, 0.3), u_bedDeep: v3(0.13, 0.16, 0.16), u_stoneCol: v3(0.345, 0.329, 0.298),
@@ -294,6 +306,7 @@ export function wendeWasserPreset(sh: Phaser.GameObjects.Shader, p: WasserPreset
   sh.setUniform('u_procSize.value', p.procSize);
   sh.setUniform('u_flowDir.value', p.flowDir);
   sh.setUniform('u_ambient.value', p.ambient * WASSER_CFG.ambientMul);
+  sh.setUniform('u_widthMul.value', WASSER_CFG.widthMul);
   setV3(sh, 'u_deep', p.deep); setV3(sh, 'u_sky', p.sky); setV3(sh, 'u_spec', p.spec);
   setV3(sh, 'u_bedShallow', p.bedShallow); setV3(sh, 'u_bedDeep', p.bedDeep); setV3(sh, 'u_stoneCol', p.stoneCol);
   sh.setUniform('u_light.value', { x: p.light[0], y: p.light[1] });

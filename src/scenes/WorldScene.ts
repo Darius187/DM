@@ -161,6 +161,8 @@ export class WorldScene extends CombatScene {
   private wasserTrailLetzte = 0;
   private devKonsole?: DevKonsole;                  // F10-Tab-Konsole (Wasser/Wetter/Uhrzeit/Nässe/Anfangskarte)
   private devWasserBlut = false;                    // Wasser-Tab: Wasser- oder Blut-Preset bearbeiten
+  private devFreiKam = false;                        // Dev: Frei-Kamera (vom Helden entkoppelt, scrollbar) - Basis RTS
+  private freiKamZieh?: { x: number; y: number };    // Mittelmaus-Ziehen: letzte Zeigerposition
   private devAnfang: Record<string, number> = { groesse: 0.85, wegbreite: 1, falltempo: 1, bewuchs: 1, tageszeit: 9, tagtempo: 1, sturm: 1.5, sicht: 124 };
   private breakableEnts: BreakableEntity[] = [];
   private worldGfx!: Phaser.GameObjects.Graphics; // Truhen, Brunnen, Fackeln
@@ -1891,6 +1893,46 @@ export class WorldScene extends CombatScene {
     this.devKonsole.toggle();
   }
 
+  // Frei-Kamera (Dev): entkoppelt die Kamera vom Helden, damit man frei durch die
+  // Karte scrollt (WASD/Pfeile + Mittelmaus-Ziehen). Held bleibt stehen (Bewegung
+  // gesperrt). Spätere Grundlage für den RTS-Modus.
+  private setzeFreiKamera(an: boolean): void {
+    this.devFreiKam = an;
+    this.freiKamZieh = undefined;
+    if (an) {
+      this.cameras.main.stopFollow();
+      this.logMsg('Frei-Kamera AN: WASD/Pfeile scrollen, Mittelmaus zieht. (KAMERA-Tab schaltet aus)', 'gold');
+    } else if (this.playerSprite) {
+      this.cameras.main.startFollow(this.playerSprite, true, 0.15, 0.15);
+      this.logMsg('Frei-Kamera aus - Kamera folgt wieder dem Helden.', '');
+    }
+  }
+
+  // Held bewegt sich nicht, solange die Frei-Kamera läuft (Eingabe steuert die Kamera).
+  protected override bewegungGesperrt(): boolean { return this.devFreiKam; }
+
+  private updateFreiKamera(dt: number): void {
+    if (!this.devFreiKam) return;
+    const cam = this.cameras.main;
+    let dx = 0, dy = 0;
+    if (this.keysDown['w'] || this.keysDown['arrowup']) dy -= 1;
+    if (this.keysDown['s'] || this.keysDown['arrowdown']) dy += 1;
+    if (this.keysDown['a'] || this.keysDown['arrowleft']) dx -= 1;
+    if (this.keysDown['d'] || this.keysDown['arrowright']) dx += 1;
+    if (dx || dy) {
+      const l = Math.hypot(dx, dy), spd = 700 / cam.zoom;
+      cam.setScroll(cam.scrollX + (dx / l) * spd * dt, cam.scrollY + (dy / l) * spd * dt);
+    }
+    // Mittelmaus-Ziehen: Karte unter dem Zeiger festhalten und mitnehmen.
+    const p = this.input.activePointer;
+    if (p.middleButtonDown()) {
+      if (this.freiKamZieh) cam.setScroll(cam.scrollX - (p.x - this.freiKamZieh.x) / cam.zoom, cam.scrollY - (p.y - this.freiKamZieh.y) / cam.zoom);
+      this.freiKamZieh = { x: p.x, y: p.y };
+    } else {
+      this.freiKamZieh = undefined;
+    }
+  }
+
   private aktWasserPreset(): WasserPreset2 { return this.devWasserBlut ? BLUT2 : WASSER2; }
   private wasserAnwenden(): void { if (this.wasser2Shader) wendeWasser2(this.wasser2Shader, this.aktWasserPreset()); }
 
@@ -1902,6 +1944,9 @@ export class WorldScene extends CombatScene {
       const cs: DKControl[] = [
         { kind: 'button', label: () => `Preset: ${this.devWasserBlut ? 'Blut' : 'Wasser'} (umschalten)`, onClick: () => { this.devWasserBlut = !this.devWasserBlut; this.wasserAnwenden(); this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `Fließrichtung: ${p.flowDir > 0 ? 'abwärts' : 'aufwärts'}`, onClick: () => { p.flowDir *= -1; this.wasserAnwenden(); } },
+        // Flussbreite live (skaliert ALLE Fluss-/Bachbreiten dieser Karte); wirkt
+        // zugleich auf die Wat-Bremse (gleiche Geometrie wie Optik).
+        { kind: 'slider', label: 'Flussbreite', min: 0.3, max: 2.0, step: 0.05, fmt: (v) => `${v.toFixed(2)}x`, get: () => WASSER2_CFG.widthMul, set: (v) => { WASSER2_CFG.widthMul = v; this.wasserAnwenden(); } },
       ];
       if (!this.wasser2Shader) cs.push({ kind: 'note', text: 'Diese Karte hat (noch) kein neues Wasser - Werte gelten ab der nächsten Wasserkarte.' });
       for (const r of WASSER_REGLER) cs.push({ kind: 'slider', label: r.label, min: r.min, max: r.max, step: r.step, fmt: (v) => v.toFixed(3), get: () => num[r.key as string], set: (v) => { num[r.key as string] = v; this.wasserAnwenden(); } });
@@ -1910,16 +1955,12 @@ export class WorldScene extends CombatScene {
     };
     return [
       { name: 'WASSER', controls: wasserControls },
-      { name: 'WETTER', controls: () => [
-        { kind: 'slider', label: 'Regen', min: 0, max: 1, step: 0.05, get: () => (this.regnet ? 1 : 0), set: (v) => { this.regnet = v > 0.05; WASSER2_CFG.turbAdd = v * 0.6; this.wasserAnwenden(); } },
-        { kind: 'note', text: 'Regen macht das Wasser unruhiger; das Wetter-Overlay folgt dem Tageswechsel.' },
+      { name: 'KAMERA', controls: () => [
+        { kind: 'button', label: () => `Frei-Kamera: ${this.devFreiKam ? 'AN (WASD/Pfeile + Mittelmaus zieht)' : 'aus'}`, onClick: () => { this.setzeFreiKamera(!this.devFreiKam); this.devKonsole?.refresh(); } },
+        { kind: 'note', text: 'Frei-Kamera entkoppelt vom Helden: WASD/Pfeile scrollen, Mittelmaus zieht die Karte. Basis für den späteren RTS-Modus.' },
       ] },
       { name: 'UHRZEIT', controls: () => [
         { kind: 'slider', label: 'Tageszeit', min: 0, max: 1, step: 0.02, fmt: (v) => tageszeitLabel(v), get: () => this.tageszeit, set: (v) => this.devSetTageszeit(v) },
-      ] },
-      { name: 'NÄSSE', controls: () => [
-        { kind: 'slider', label: 'Nässe (Wasser dunkler)', min: 0, max: 1, step: 0.05, get: () => (1 - WASSER2_CFG.ambientMul) / 0.3, set: (v) => { WASSER2_CFG.ambientMul = 1 - v * 0.3; this.wasserAnwenden(); } },
-        { kind: 'note', text: 'Annäherung: dämpft die Wasser-Helligkeit. Voller Nässe-Effekt (nasser Boden) folgt.' },
       ] },
       { name: 'ANFANG', controls: () => {
         const keys: Array<[string, string, number, number, number]> = [
@@ -2631,7 +2672,7 @@ export class WorldScene extends CombatScene {
     const lauf = this.area?.wasserLauf;
     if (lauf?.begehbar) {
       const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
-      const sd = sdWasser(u, v, lauf.geo, 0.08);
+      const sd = sdWasser(u, v, lauf.geo, 0.08, WASSER2_CFG.widthMul);
       const nass = Math.max(0, Math.min(1, (0.05 - sd) / 0.10));   // 0 am Ufer .. 1 tief
       f *= 1 - nass * 0.93;                                         // tief -> ~7% Tempo (fast fest)
     }
@@ -6958,6 +6999,7 @@ export class WorldScene extends CombatScene {
     this.updateCombat(dt * kampfTempo);
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
     this.updateWasserHeld();  // Held-Wellen-Effekt im neuen Wasser
+    this.updateFreiKamera(dt); // Dev-Frei-Kamera (entkoppelt vom Helden)
     this.updateDorfSim();     // dorfSim-Hintergrund der Kamera nachführen
     if (this.feuerLichter.length) {
       for (const fl of this.feuerLichter) fl.t -= dt;

@@ -1155,6 +1155,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Dann KEIN Weltangriff (die Werkbank hat keine Phaser-Interaktiv-Objekte).
   protected zeigerAufUI(_ptr: Phaser.Input.Pointer): boolean { return false; }
 
+  // Hook: ist die Held-Bewegung gesperrt? (z. B. Dev-Frei-Kamera in der WorldScene)
+  protected bewegungGesperrt(): boolean { return false; }
+
   // Dev-Umschalter (R55, Autorwunsch): zwischen der detaillierten Held-Figur und
   // der einfachen Kapuzen-/Roben-Figur (wie in der Anhöhe-Probe) wechseln, um die
   // Stilrichtung im laufenden Spiel zu vergleichen. F10-Schalter.
@@ -2840,13 +2843,16 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const attackHeld = this.mouseDown || (this.touch?.attackHeld && this.weaponClass() !== 'bogen');
     if (attackHeld && !this.uiBlocked() && !this.zielModus) this.tryLight();
 
-    // Bewegung (Tastatur + Touch-Joystick)
+    // Bewegung (Tastatur + Touch-Joystick). Die Frei-Kamera (Dev) sperrt die
+    // Held-Bewegung, weil dieselben Tasten dann die Kamera scrollen.
     let dx = 0, dy = 0;
-    if (this.keysDown['w'] || this.keysDown['arrowup']) dy -= 1;
-    if (this.keysDown['s'] || this.keysDown['arrowdown']) dy += 1;
-    if (this.keysDown['a'] || this.keysDown['arrowleft']) dx -= 1;
-    if (this.keysDown['d'] || this.keysDown['arrowright']) dx += 1;
-    if (this.touch) {
+    if (!this.bewegungGesperrt()) {
+      if (this.keysDown['w'] || this.keysDown['arrowup']) dy -= 1;
+      if (this.keysDown['s'] || this.keysDown['arrowdown']) dy += 1;
+      if (this.keysDown['a'] || this.keysDown['arrowleft']) dx -= 1;
+      if (this.keysDown['d'] || this.keysDown['arrowright']) dx += 1;
+    }
+    if (this.touch && !this.bewegungGesperrt()) {
       dx += this.touch.joyX;
       dy += this.touch.joyY;
     }

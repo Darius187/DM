@@ -65,12 +65,12 @@ function smin(a: number, b: number, k: number): number {
   const h = clamp01(0.5 + 0.5 * (b - a) / (k || 1e-6));
   return b * (1 - h) + a * h - k * h * (1 - h);
 }
-function segDist(px: number, py: number, a: BahnPunkt, b: BahnPunkt): number {
+function segDist(px: number, py: number, a: BahnPunkt, b: BahnPunkt, widthMul = 1): number {
   const bax = b.x - a.x, bay = b.y - a.y, pax = px - a.x, pay = py - a.y;
   const denom = bax * bax + bay * bay || 1e-6;
   let h = (pax * bax + pay * bay) / denom; h = h < 0 ? 0 : h > 1 ? 1 : h;
   const cx = a.x + bax * h, cy = a.y + bay * h;
-  const hw = a.hw + (b.hw - a.hw) * h;
+  const hw = (a.hw + (b.hw - a.hw) * h) * widthMul;
   return Math.hypot(px - cx, py - cy) - hw;
 }
 
@@ -78,11 +78,11 @@ function segDist(px: number, py: number, a: BahnPunkt, b: BahnPunkt): number {
  * Signierte Distanz zum Wasser an einem Punkt (UV): <0 = im Wasser. Gleiche
  * Logik wie der Shader (smin-Verschmelzung). Für Tests und spätere Abfragen.
  */
-export function sdWasser(px: number, py: number, geo: WasserGeometrie, verschmelzung = 0.06): number {
+export function sdWasser(px: number, py: number, geo: WasserGeometrie, verschmelzung = 0.06, widthMul = 1): number {
   let d = 1e9, erst = true;
   for (const bahn of geo.bahnen) {
     for (let i = 1; i < bahn.punkte.length; i++) {
-      const di = segDist(px, py, bahn.punkte[i - 1], bahn.punkte[i]);
+      const di = segDist(px, py, bahn.punkte[i - 1], bahn.punkte[i], widthMul);
       d = erst ? di : smin(d, di, verschmelzung); erst = false;
     }
   }
