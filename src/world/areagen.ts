@@ -1619,3 +1619,21 @@ export function buildWaldOst(rng: Rng): AreaData {
     },
   });
 }
+
+// STADT (4,3) - vorerst NEUTRALE Naturkarte (Autorbeschluss "Stadt neutral"):
+// offenes Tal/Wiese für die spätere Stadt (wenige Bäume = Platz), Mühlteich mit
+// Zufluss an der Westflanke, Salzstraße West->Ost. Gebäude/Kirche/Dungeon kommen
+// später per StadtProbe-Planer. Eigene id 'stadt' (die voll bebaute 'village'
+// bleibt unangetastet erhalten).
+export function buildStadtNatur(rng: Rng): AreaData {
+  return baueOberweltGebiet(rng, {
+    id: 'stadt', name: 'Ravensmoor', wolfXs: [40, 96], baumGruppen: 45,
+    label: { u: 0.22, v: 0.72, t: 'Mühlteich' },
+    geo: {
+      bahnen: [
+        { punkte: [{ x: 0.30, y: -0.03, hw: 0.024 }, { x: 0.27, y: 0.32, hw: 0.026 }, { x: 0.24, y: 0.58, hw: 0.028 }] },
+      ],
+      seen: [{ cx: 0.22, cy: 0.72, rx: 0.12, ry: 0.10 }],
+    },
+  });
+}

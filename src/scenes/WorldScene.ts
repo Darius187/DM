@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir, angleToDir8 } from '../world/Enemy';
-import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
@@ -119,6 +119,7 @@ export const FUERSTENTUM: ReadonlyArray<FuerstentumGebiet> = [
   // Builder existiert (Reihenfolge-Regel, WELTKARTE-PLAN.md). Start ist die erste.
   { id: 'start', name: 'Waldrand', gx: 2, gy: 3 },
   { id: 'wald_o', name: 'Dunkelwald', gx: 3, gy: 3 },
+  { id: 'stadt', name: 'Ravensmoor', gx: 4, gy: 3 },
 ];
 
 // Eine Kachel auf eine Minikarten-Farbe abbilden.
@@ -1367,6 +1368,7 @@ export class WorldScene extends CombatScene {
     else if (id === 'wald') a = buildForest(rng);
     else if (id === 'start') a = buildStart(rng);
     else if (id === 'wald_o') a = buildWaldOst(rng);
+    else if (id === 'stadt') a = buildStadtNatur(rng);
     else if (id === 'goldmine') a = buildGoldmine(rng);
     else a = buildCrypt(parseInt(id.replace('crypt', ''), 10), rng);
     this.areas.set(id, a);

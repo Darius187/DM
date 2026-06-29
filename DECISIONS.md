@@ -760,3 +760,9 @@
   * BEGEHBARE KARTENRÄNDER (checkKartenRand + KARTEN_KANTEN-Registry): läuft der Held an einen Rand, dessen Nachbar eine DEFINIERTE Oberwelt-Karte ist, wechselt er nahtlos und erscheint an der gespiegelten Kante. Nur Nachbarn in der Registry -> kein toter Übergang zu ungebauten Karten. Basis für den Weg START->Wald->Stadt und den späteren Schnelllauf.
   * VERIFIZIERT (Headless): START<->wald_o in BEIDE Richtungen (Hin- und Rückweg, kein Bounce), wald_o lädt mit organischem Boden/Wasser/allen Systemen, 0 Fehler, tsc grün, 195 Tests grün.
   * upPos/downPos der Oberwelt-Gebiete markieren West-Eingang/Ost-Ausgang.
+
+- Runde 72g (STADT-Naturkarte (4,3) + Kette START->Wald->Stadt begehbar - "weiter"):
+  * buildStadtNatur (id 'stadt', 4,3): NEUTRALE Naturkarte (Autorbeschluss "Stadt neutral") - offenes Tal/Wiese (wenig Bäume = Platz für die spätere Stadt), Mühlteich mit Zufluss, Salzstraße W->O. Gebäude/Kirche/Dungeon kommen später per StadtProbe-Planer. Eigene id 'stadt'; die voll bebaute 'village' bleibt unangetastet.
+  * getArea 'stadt', FUERSTENTUM (4,3), kartenKanten STADT_KANTEN + Registry-Eintrag. wald_o.ost -> stadt nun erreichbar.
+  * VERIFIZIERT (Headless): zu Fuß start -> wald_o -> stadt durchquert (begehbare Ränder, gespiegelte Kanten), Stadt lädt mit Wasser/Boden/allen Systemen, 0 Fehler, tsc grün, 195 Tests grün.
+  * Damit steht der Kern-Weg der Oberwelt. Offene Punkte unverändert (Wasser-Ton blass, Brücke als Treppenmuster, Verläufe als Skizzen-Lesart - Abnahme/Feintuning durch den Autor).

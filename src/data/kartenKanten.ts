@@ -49,11 +49,24 @@ export const WALDO_KANTEN: KartenKanten = {
   sued: [{ feature: 'bach', pos: 2080, breite: 40 }],
 };
 
+// ---- STADT (4,3) - vorerst neutrale Naturkarte ----
+export const STADT_KANTEN: KartenKanten = {
+  name: 'stadt',
+  breite: 4160,
+  hoehe: 2720,
+  nachbarn: { west: 'wald_o', ost: 'wald_se', nord: 'lager' },
+  west: [{ feature: 'weg', pos: 1400, breite: 64 }],   // spiegelt wald_o.ost
+  ost: [{ feature: 'weg', pos: 1400, breite: 64 }],
+  nord: [{ feature: 'bach', pos: 940, breite: 50 }],   // Zufluss zum Mühlteich
+  sued: [],
+};
+
 // Registry: Karten-Id -> Kanten. Treibt die generische Rand-Überquerung
 // (begehbare Kartenränder) und den späteren Schnelllauf durch die Oberwelt.
 export const KARTEN_KANTEN: Record<string, KartenKanten> = {
   start: START_KANTEN,
   wald_o: WALDO_KANTEN,
+  stadt: STADT_KANTEN,
 };
 
 // ---- Anfangskarte (Startgebiet, westlich der Stadt Ravensmoor) ----
