@@ -2076,7 +2076,7 @@ export class WorldScene extends CombatScene {
     // EIN Loop: Kamera setzen -> dorfSim-Frame JETZT zeichnen (synchron zur Welt/
     // zum Wasser, kein zweiter RAF-Loop) -> hochladen. Behebt Ruckler + Boden-/
     // Wasser-Versatz beim Bewegen.
-    dorfSetKamera(Math.round(this.cameras.main.scrollX), Math.round(this.cameras.main.scrollY));
+    dorfSetKamera(this.cameras.main.scrollX, this.cameras.main.scrollY);   // ohne Runden = exakt am Welt-Wasser gekoppelt
     dorfTick(performance.now());
     const tex = this.textures.get(this.dorfTexKey) as Phaser.Textures.CanvasTexture;
     // Canvas-Upload (Hauptkosten-Verdacht): Zeit messen, optional aussetzen (Dev).

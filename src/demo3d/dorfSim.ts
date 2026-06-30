@@ -1247,6 +1247,20 @@ function aktualisiereWesen(w: Wesen, dt: number, now: number): void {
 }
 
 // ---------- Schleife ----------
+// Tiefen-Sortierung (y-sort) der Zeichen-Objekte. WIEDERVERWENDETER Pool + Array,
+// damit pro Frame KEINE neuen Objekte/Arrays entstehen (sonst GC-Druck -> ~1s-
+// Hänger bei vielen Bäumen). zList.length=0 behält die Kapazität.
+interface Z { y: number; b: Baum | null; w: Wesen | null; f: Fels | null; bu: Busch | null; nr: boolean; hu: boolean; }
+const zPool: Z[] = [];
+const zList: Z[] = [];
+const zSort = (a: Z, c: Z): number => a.y - c.y;
+function zAdd(y: number, b: Baum | null, w: Wesen | null, f: Fels | null, bu: Busch | null, nr: boolean, hu: boolean): void {
+  const i = zList.length;
+  let z = zPool[i];
+  if (!z) { z = { y, b, w, f, bu, nr, hu }; zPool[i] = z; }
+  else { z.y = y; z.b = b; z.w = w; z.f = f; z.bu = bu; z.nr = nr; z.hu = hu; }
+  zList.push(z);
+}
 let last = performance.now();
 function frame(now: number): void {
   if (pausiert) return;
@@ -1505,17 +1519,16 @@ function frame(now: number): void {
     // kommt als eigener Eintrag in die Tiefensortierung (Held läuft "zwischen" den Geländern).
     const brSicht = bruecke.cx > camX - 300 && bruecke.cx < camX + W + 300 && bruecke.cy > camY - 300 && bruecke.cy < camY + H + 300;
     if (brSicht) zeichneBrueckeDeck(now);
-    interface Z { y: number; b: Baum | null; w: Wesen | null; f: Fels | null; bu: Busch | null; nr?: boolean; hu?: boolean; }
-    const liste: Z[] = [];
-    for (const b of baeume) { if (b.x < camX - 360 || b.x > camX + W + 360 || b.y < camY - 600 || b.y > camY + H + 360) continue; liste.push({ y: b.y, b, w: null, f: null, bu: null }); }
-    for (const w of wesen) liste.push({ y: w.y, b: null, w, f: null, bu: null });
-    for (const f of felsen) { if (f.x < camX - 100 || f.x > camX + W + 100 || f.y < camY - 100 || f.y > camY + H + 100) continue; liste.push({ y: f.y, b: null, w: null, f, bu: null }); }
-    for (const bu of buesche) { if (bu.x < camX - 200 || bu.x > camX + W + 200 || bu.y < camY - 250 || bu.y > camY + H + 200) continue; liste.push({ y: bu.y, b: null, w: null, f: null, bu }); }
-    if (brSicht) { const ns = bruecke.ny >= 0 ? 1 : -1; liste.push({ y: bruecke.cy + ns * bruecke.ny * bruecke.halbB, b: null, w: null, f: null, bu: null, nr: true }); }   // vorderes Geländer tiefensortiert
-    if (BERG_AN && camY < 60 && huette.x > camX - 260 && huette.x < camX + W + 260 && huette.y > camY - 240 && huette.y < camY + H + 240) liste.push({ y: huette.y, b: null, w: null, f: null, bu: null, hu: true });   // Zufluchts-Hütte (Außen, tiefensortiert)
-    liste.sort((a, c) => a.y - c.y);
+    zList.length = 0;   // Pool/Array wiederverwenden - keine Allokation pro Frame
+    for (const b of baeume) { if (b.x < camX - 360 || b.x > camX + W + 360 || b.y < camY - 600 || b.y > camY + H + 360) continue; zAdd(b.y, b, null, null, null, false, false); }
+    for (const w of wesen) zAdd(w.y, null, w, null, null, false, false);
+    for (const f of felsen) { if (f.x < camX - 100 || f.x > camX + W + 100 || f.y < camY - 100 || f.y > camY + H + 100) continue; zAdd(f.y, null, null, f, null, false, false); }
+    for (const bu of buesche) { if (bu.x < camX - 200 || bu.x > camX + W + 200 || bu.y < camY - 250 || bu.y > camY + H + 200) continue; zAdd(bu.y, null, null, null, bu, false, false); }
+    if (brSicht) { const ns = bruecke.ny >= 0 ? 1 : -1; zAdd(bruecke.cy + ns * bruecke.ny * bruecke.halbB, null, null, null, null, true, false); }   // vorderes Geländer tiefensortiert
+    if (BERG_AN && camY < 60 && huette.x > camX - 260 && huette.x < camX + W + 260 && huette.y > camY - 240 && huette.y < camY + H + 240) zAdd(huette.y, null, null, null, null, false, true);   // Zufluchts-Hütte (Außen, tiefensortiert)
+    zList.sort(zSort);
     let spielerFenster: { x: number; y: number } | null = null;
-    for (const z of liste) {
+    for (const z of zList) {
       if (z.nr) { zeichneGelaender(bruecke.ny >= 0 ? 1 : -1, now); continue; }   // vorderes Brücken-Geländer
       if (z.hu) { zeichneHuetteAussen(now); continue; }   // Zufluchts-Hütte (Außen)
       if (z.f) { zeichneFels(z.f); continue; }
