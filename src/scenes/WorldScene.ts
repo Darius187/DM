@@ -168,6 +168,7 @@ export class WorldScene extends CombatScene {
   private perfAn = false;                             // Dev: FPS-/Mess-Anzeige (echte Messung im Browser)
   private perfText?: Phaser.GameObjects.Text;
   private perfRefreshMs = 0;                          // geglättete Zeit für den dorfSim-Canvas-Upload (tex.refresh)
+  private perfTickMs = 0;                             // geglättete Zeit für das dorfSim-Neuzeichnen (dorfTick)
   private perfDorfAus = false;                        // Dev: dorfSim-Upload aussetzen (FPS-Vergleich)
   private freiKamZieh?: { x: number; y: number };    // Mittelmaus-Ziehen: letzte Zeigerposition
   private devAnfang: Record<string, number> = { groesse: 0.85, wegbreite: 1, falltempo: 1, bewuchs: 1, tageszeit: 9, tagtempo: 1, sturm: 1.5, sicht: 124 };
@@ -1949,7 +1950,7 @@ export class WorldScene extends CombatScene {
     }
     const fps = Math.round(this.game.loop.actualFps);
     this.perfText.setVisible(true).setText(
-      `FPS ${fps}  |  dorfSim-Upload ${this.perfRefreshMs.toFixed(1)} ms  |  Wasser ${this.wasser2Shader?.visible ? 'AN' : 'aus'}  |  Upload ${this.perfDorfAus ? 'EINGEFROREN' : 'AN'}`,
+      `FPS ${fps}  |  dorfSim-Render ${this.perfTickMs.toFixed(1)} ms  |  Upload ${this.perfRefreshMs.toFixed(1)} ms  |  Wasser ${this.wasser2Shader?.visible ? 'AN' : 'aus'}`,
     );
   }
 
@@ -2077,7 +2078,9 @@ export class WorldScene extends CombatScene {
     // zum Wasser, kein zweiter RAF-Loop) -> hochladen. Behebt Ruckler + Boden-/
     // Wasser-Versatz beim Bewegen.
     dorfSetKamera(this.cameras.main.scrollX, this.cameras.main.scrollY);   // ohne Runden = exakt am Welt-Wasser gekoppelt
-    dorfTick(performance.now());
+    const tTick = performance.now();
+    dorfTick(performance.now());           // dorfSim-Welt JETZT zeichnen
+    this.perfTickMs = this.perfTickMs * 0.9 + (performance.now() - tTick) * 0.1;
     const tex = this.textures.get(this.dorfTexKey) as Phaser.Textures.CanvasTexture;
     // Canvas-Upload (Hauptkosten-Verdacht): Zeit messen, optional aussetzen (Dev).
     if (tex && tex.refresh && !this.perfDorfAus) {
