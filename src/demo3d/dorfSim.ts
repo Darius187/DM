@@ -608,6 +608,28 @@ function backeLiege(ofen: ReturnType<typeof macheBackofen>, t: Tree, st: Stimmun
   obj.rotation.z = 0; obj.updateMatrixWorld(true);              // zurücksetzen (Standkopie unberührt)
   return cv;
 }
+// STANDALONE-EXPORT (Runde 73): backt NUR die stehenden WALD-Baum-Bitmaps und gibt
+// sie als Canvas-Array zurück - ohne die ganze dorfSim-Welt zu starten. Dient als
+// reversibler Übergangs-Look: der Engine-Pfad registriert diese Canvases als
+// obj_baum_*-/obj_wald_*-Texturen, bis die finalen ComfyUI-Assets da sind. Falls
+// dorfSim schon initialisiert wurde, werden die fertigen arten[].wald wiederverwendet.
+export async function baueBaumBitmaps(): Promise<HTMLCanvasElement[]> {
+  if (arten.length) return arten.map((a) => a.wald);
+  const ofen = macheBackofen(512);
+  const sorten: Array<[string, number, number]> = [
+    ['Oak Large', 1, 1.9], ['Oak Medium', 23, 1.3],
+    ['Ash Large', 7, 1.3], ['Ash Medium', 31, 1.0],
+    ['Pine Large', 5, 1.6], ['Pine Large', 17, 1.3], ['Pine Large', 33, 1.1],
+    ['Aspen Large', 3, 0.95],
+  ];
+  const out: HTMLCanvasElement[] = [];
+  for (const [preset, seed, dick] of sorten) {
+    const tw = baueBaum(preset, seed, WALD, dick);
+    for (let i = 0; i < 160 && !texturenBereit(tw as unknown as THREE.Object3D); i++) await schlaf(40);
+    out.push(backe(ofen, tw, WALD));
+  }
+  return out;
+}
 // Fall-Physik (eigene Impuls-Physik wie der Spiel-Rückstoß, kein matter.js):
 // Schwerkraft-Drehmoment um den Stammfuß, beschleunigt mit der Neigung, federt am Boden nach.
 // Fäll-/Hack-Balancing (gut justierbar): Schläge bis Fall / bis Stamm zerlegt, Holz je Größe
