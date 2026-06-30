@@ -1,15 +1,17 @@
 # TODO - Notizen für später (keine Nebenbei-Refactorings)
 
-- WICHTIG (Runde 73): start_engine bezieht die Baum-Optik per
-  baueBaumBitmaps() noch aus dorfSim (ez-tree -> 3D-Backofen). Das ist die
+- WICHTIG (Runde 73): die START-Karte (buildStart, NEUES SPIEL) ist auf den
+  Engine-Pfad gehoben. Ihre Baum-OPTIK kommt noch aus dorfSim (ez-tree ->
+  3D-Backofen) via gfx/baumBitmaps.ts (beim Boot registriert). Das ist die
   LETZTE Verbindung dieser Karte zu dorfSim - bewusst als reversibler
   Übergang. Sobald die finalen ComfyUI-Bäume da sind:
-  registriereBaumBitmaps() in WorldScene UND die Export-Funktion
-  baueBaumBitmaps() in dorfSim.ts wieder entfernen, obj_baum_*/obj_wald_*
-  aus den ComfyUI-Assets laden. Dann ist start_engine komplett dorfSim-frei.
-  Fest einplanen, sonst wird aus dem Übergang ein Dauerzustand.
-- OFFEN (Messung, nur am echten Gerät): FPS auf start_engine (RTX 4070 Ti)
-  und ob das Laufen ruckelfrei ist (kein dorfSim auf dieser Karte -> der
+  registriereBaumBitmaps()-Aufruf in BootScene UND das Modul
+  gfx/baumBitmaps.ts + die Export-Funktion baueBaumBitmaps() in dorfSim.ts
+  wieder entfernen, obj_baum_*/obj_wald_* aus den ComfyUI-Assets laden. Dann
+  ist die START-Karte komplett dorfSim-frei. Fest einplanen, sonst wird aus
+  dem Übergang ein Dauerzustand.
+- OFFEN (Messung, nur am echten Gerät): FPS auf der START-Karte (RTX 4070 Ti)
+  und ob das Laufen ruckelfrei ist (kein dorfSim auf dieser Karte mehr -> der
   ~1s-Haken sollte weg sein). Entscheidet über "produktionsreif".
 
 - BootScene erzeugt beim Start einige HEAD-Anfragen für fehlende
