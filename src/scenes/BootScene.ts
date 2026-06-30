@@ -7,6 +7,7 @@
 import Phaser from 'phaser';
 import { PORTRAITS, ITEM_IMAGES, SOUNDS, SPRITE_NAMES, TILE_NAMES, TILE_VARIANTS_MAX, TITLE_IMAGE, assetStatus, logAssetStatus } from '../gfx/assetManifest';
 import { queuePackSheets, composePackTextures } from '../gfx/PackLoader';
+import { registriereBaumBitmaps } from '../gfx/baumBitmaps';
 import gfxConfig from '../data/gfx.json';
 
 interface Candidate { key: string; url: string; art: 'image' | 'audio' | 'atlas'; atlasJson?: string; optional?: boolean }
@@ -126,7 +127,13 @@ export class BootScene extends Phaser.Scene {
     // Prolog-Direkteinstieg zum Testen: ?prolog=kammer startet die Angst-Ebene
     const prolog = new URLSearchParams(location.search).get('prolog');
     const ziel = prolog === 'platten' ? 'PlattenPfad' : prolog === 'geheim' ? 'Geheimwand' : prolog === 'stelen' ? 'DieStelen' : prolog === 'abstieg' ? 'Treppenabstieg' : prolog === 'nebel' ? 'NebelProbe' : prolog === 'treppe' ? 'TreppenProbe' : prolog === 'blutstrom' ? 'BlutstromGang' : prolog === 'schwelle' ? 'DieSchwelle' : prolog === 'kammer' || prolog === '1' ? 'KammerDerFinsternis' : 'Title';
-    void this.wendeEigeneTilesAn().then(() => this.scene.start(ziel));
+    // Gemalte 3D-Baum-Bitmaps (dorfSim) als obj_baum_*/obj_wald_* backen, BEVOR
+    // die erste Karte rendert. So zeigt der Engine-Pfad (start) sofort den
+    // malerischen Wald - kein Nachladen, keine prozedurale Notgrafik dazwischen.
+    // Schlägt das Backen fehl, geht es ohne (prozedurale Bäume) weiter.
+    void this.wendeEigeneTilesAn()
+      .then(() => registriereBaumBitmaps(this.textures).catch(() => {}))
+      .then(() => this.scene.start(ziel));
   }
 
   // Vom Autor im Baukasten hochgeladene Tile-Bilder (Browser-Speicher)
