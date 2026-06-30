@@ -169,8 +169,6 @@ export class WorldScene extends CombatScene {
   private perfText?: Phaser.GameObjects.Text;
   private perfRefreshMs = 0;                          // geglättete Zeit für den dorfSim-Canvas-Upload (tex.refresh)
   private perfDorfAus = false;                        // Dev: dorfSim-Upload aussetzen (FPS-Vergleich)
-  private devGround = false;                          // Dev: Untergrund-Textur (Boden in den Shader) - im Browser testen
-  private devGroundFlip = true;                        // Dev: Boden-UV vertikal spiegeln (Canvas-Flip)
   private freiKamZieh?: { x: number; y: number };    // Mittelmaus-Ziehen: letzte Zeigerposition
   private devAnfang: Record<string, number> = { groesse: 0.85, wegbreite: 1, falltempo: 1, bewuchs: 1, tageszeit: 9, tagtempo: 1, sturm: 1.5, sicht: 124 };
   private breakableEnts: BreakableEntity[] = [];
@@ -2136,23 +2134,8 @@ export class WorldScene extends CombatScene {
     if (a.wasserLauf.vollszene) {
       this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: -11, layerMode: 0 });
     } else {
-      // DECKENDES Overlay über dem ECHTEN Boden (dorfSim-Canvas als iChannel0):
-      // Übergang Boden->Wasser ohne Alpha-Saum (wie der Prototyp, deckend). Der
-      // Boden wird über das textures-Argument von add.shader gebunden.
-      const groundKey = a.dorfSimBoden && this.textures.exists(this.dorfTexKey) ? this.dorfTexKey : undefined;
-      this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: FLUSS_SHADER.tiefe, layerMode: 1, groundKey });
-      if (groundKey) {
-        // iChannel0 EXPLIZIT binden (Design-Chat): nicht nur über das textures-Arg,
-        // sondern per setSampler2D an Einheit 1 + LINEAR-Filter, ohne Mipmap - der
-        // Standard-Fix gegen NPOT-/Bindungs-Streifen beim Sampeln einer 2. Textur.
-        try {
-          const quelle = this.textures.get(groundKey).source[0];
-          quelle.setFilter(Phaser.Textures.FilterMode.LINEAR);
-          (this.wasser2Shader as unknown as { setSampler2D?: (k: string, t: string, i: number) => void }).setSampler2D?.('iChannel0', groundKey, 1);
-        } catch { /* Phaser-Version ohne setSampler2D: textures-Arg trägt */ }
-        this.wasser2Shader.setUniform('u_useGround.value', this.devGround ? 1 : 0);
-        this.wasser2Shader.setUniform('u_groundFlip.value', this.devGroundFlip ? 1 : 0);
-      }
+      // Wasser-Overlay über dem Boden, premultipliziert (kein heller Saum).
+      this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: FLUSS_SHADER.tiefe, layerMode: 1 });
     }
     // Per-Strang/See-Regler auf 1.0 vorbelegen (Anzahl aus der Geometrie) und anwenden.
     this.wasserBahnMul = a.wasserLauf.geo.bahnen.map(() => 1);
