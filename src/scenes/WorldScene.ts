@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir, angleToDir8 } from '../world/Enemy';
-import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildBlank, buildWaldOst, buildStadtNatur, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildBlank, buildStartEngine, buildWaldOst, buildStadtNatur, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
@@ -1400,6 +1400,7 @@ export class WorldScene extends CombatScene {
     else if (id === 'wald') a = buildForest(rng);
     else if (id === 'start') a = buildStart(rng);
     else if (id === 'blank') a = buildBlank(rng);   // Dev-Testfläche (normaler Kachel-/Sprite-Pfad, kein dorfSim)
+    else if (id === 'start_engine') a = buildStartEngine(rng);   // Pilot: Startkarte über Engine-Pfad (kein dorfSim)
     else if (id === 'wald_o') a = buildWaldOst(rng);
     else if (id === 'stadt') a = buildStadtNatur(rng);
     else if (id === 'goldmine') a = buildGoldmine(rng);
@@ -2017,6 +2018,7 @@ export class WorldScene extends CombatScene {
       ] },
       { name: 'MESSEN', controls: () => [
         { kind: 'button', label: () => 'Test-Fläche „blank" laden (ohne dorfSim)', onClick: () => { this.devKonsole?.toggle(); this.goArea('blank'); } },
+        { kind: 'button', label: () => 'Startkarte (Engine-Pfad) laden', onClick: () => { this.devKonsole?.toggle(); this.goArea('start_engine'); } },
         { kind: 'note', text: 'Normaler Kachel-/Sprite-Pfad: Spieler kann hinter Bäume laufen, Bäume verdecken das Wasser, Wasser liegt auf dem Gras.' },
         { kind: 'button', label: () => `FPS-Anzeige: ${this.perfAn ? 'AN' : 'aus'}`, onClick: () => { this.perfAn = !this.perfAn; this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `Wasser-Shader: ${this.wasser2Shader?.visible ? 'AN' : 'aus'} (FPS-Vergleich)`, onClick: () => { this.wasser2Shader?.setVisible(!this.wasser2Shader.visible); this.devKonsole?.refresh(); } },

@@ -1683,6 +1683,57 @@ export function buildBlank(_rng: Rng): AreaData {
   return a;
 }
 
+// PILOT (Phase 1): Startkarte über den NORMALEN Kachel-/Sprite-Pfad statt dorfSim.
+// Gleiche Größe + gleiche (gewundene) Wasser-Geometrie wie buildStart, aber OHNE
+// dorfSimBoden -> Bäume als echte T.TREE-Sprites (Y-Sortierung, verdecken Wasser,
+// Wasser als Premult-Overlay auf dem Gras). Bäume in Waldrand-Dichte (am Rand
+// dicht, zur Mitte/zum Wasser licht) - echte Dichte, um die Sortier-Performance
+// zu testen. buildStart selbst bleibt unangetastet (Pilot läuft parallel).
+export function buildStartEngine(rng: Rng): AreaData {
+  const w = 130, h = 85;
+  const map = blank(w, h, T.GRASS);
+  const a: AreaData = {
+    id: 'start_engine', name: 'Waldrand (Engine)', dark: false, depth: 0,
+    w, h, map, spawn: { x: 340, y: 1500 },
+    torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
+    breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
+    ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
+    npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
+  };
+  // Wasser-Geometrie 1:1 aus buildStart (Hauptfluss + Gabelung + Bach + See).
+  a.wasserLauf = {
+    begehbar: true,
+    geo: {
+      bahnen: [
+        { name: 'Hauptfluss', punkte: [{ x: 0.72, y: -0.03, hw: 0.013 }, { x: 0.66, y: 0.18, hw: 0.015 }, { x: 0.58, y: 0.40, hw: 0.016 }, { x: 0.55, y: 0.62, hw: 0.017 }, { x: 0.53, y: 0.85, hw: 0.016 }] },
+        { name: 'Gabelung', punkte: [{ x: 0.58, y: 0.40, hw: 0.010 }, { x: 0.49, y: 0.56, hw: 0.010 }, { x: 0.43, y: 0.74, hw: 0.011 }, { x: 0.41, y: 0.92, hw: 0.010 }] },
+        { name: 'Bach (West)', punkte: [{ x: -0.03, y: 0.80, hw: 0.006 }, { x: 0.20, y: 0.84, hw: 0.007 }, { x: 0.43, y: 0.87, hw: 0.008 }] },
+      ],
+      seen: [{ name: 'See', cx: 0.50, cy: 0.89, rx: 0.11, ry: 0.05 }],
+    },
+  };
+  // Bäume in Waldrand-Dichte: nahe am Kartenrand dicht, zur Mitte hin licht; das
+  // Wasser (UV-Bahnen + See, + Puffer) wird komplett gemieden.
+  const geo = a.wasserLauf.geo;
+  const randTiefe = 16;   // Tiefe (Kacheln), über die der Wald nach innen ausdünnt
+  for (let ty = 0; ty < h; ty++) {
+    for (let tx = 0; tx < w; tx++) {
+      if (map[ty][tx] !== T.GRASS) continue;
+      const u = (tx + 0.5) / w, v = (ty + 0.5) / h;
+      if (sdWasser(u, v, geo, 0.08) < 0.03) continue;   // im/nah am Wasser -> kein Baum
+      const randAbstand = Math.min(tx, w - 1 - tx, ty, h - 1 - ty);
+      const dichte = Math.max(0, 1 - randAbstand / randTiefe);   // 1 am Rand .. 0 ab randTiefe
+      // quadratischer Abfall -> echter Waldrand (dicht am Rand, schnell licht),
+      // realistische Menge (~ein paar Hundert) für den Sortier-/Sprite-Test.
+      if (rng.random() < dichte * dichte * 0.45) map[ty][tx] = T.TREE;
+    }
+  }
+  // Spawn-Umfeld baumfrei halten (sonst steckt der Held im Dickicht).
+  const sx = Math.floor(a.spawn.x / TILE), sy = Math.floor(a.spawn.y / TILE);
+  for (let ty = sy - 3; ty <= sy + 3; ty++) for (let tx = sx - 3; tx <= sx + 3; tx++) if (map[ty]?.[tx] === T.TREE) map[ty][tx] = T.GRASS;
+  return a;
+}
+
 // Wald (3,3) zwischen START und STADT: dichterer Wald, schmaler Bach von Norden,
 // kleiner Tümpel; die Salzstraße führt durch. Geometrie als Lesart der Skizze.
 export function buildWaldOst(rng: Rng): AreaData {
