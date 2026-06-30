@@ -1699,6 +1699,9 @@ export function buildStartEngine(rng: Rng): AreaData {
     breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
     ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
     npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
+    // Produktions-Konfig: Boden in EINE RenderTexture backen -> Anzeigeliste fällt
+    // von ~12K (Sprite je Kachel) auf ~900 (nur Baum-Sprites). Gleicher Look.
+    gebackenerBoden: true,
   };
   // Wasser-Geometrie 1:1 aus buildStart (Hauptfluss + Gabelung + Bach + See).
   a.wasserLauf = {
