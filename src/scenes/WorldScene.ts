@@ -1894,7 +1894,7 @@ export class WorldScene extends CombatScene {
     const LIFE = 2.5, now = this.time.now / 1000;
     const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
     const geo = this.aktuelleWasserGeo() ?? lauf.geo;
-    const imWasser = sdWasser(u, v, geo, WASSER2_CFG.smink, WASSER2_CFG.widthMul) < 0.02;
+    const imWasser = sdWasser(u, v, geo, lauf.smink ?? WASSER2_CFG.smink, WASSER2_CFG.widthMul) < 0.02;
     if (imWasser && this.time.now - this.wasserTrailLetzte > 70) {
       this.wasserTrailLetzte = this.time.now;
       this.wasserTrail.push({ u, v, t: now });
@@ -2017,8 +2017,6 @@ export class WorldScene extends CombatScene {
       ] },
       { name: 'MESSEN', controls: () => [
         { kind: 'button', label: () => 'Test-Fläche „blank" laden (ohne dorfSim)', onClick: () => { this.devKonsole?.toggle(); this.goArea('blank'); } },
-        { kind: 'button', label: () => 'Startkarte laden', onClick: () => { this.devKonsole?.toggle(); this.goArea('start'); } },
-        { kind: 'note', text: 'Startkarte (Engine-Pfad): Spieler kann hinter Bäume laufen, Bäume verdecken das Wasser, Wasser liegt auf dem Gras. Bäume = dorfSims gemalte 3D-Bitmaps (Übergangs-Look bis ComfyUI-Assets).' },
         { kind: 'button', label: () => `FPS-Anzeige: ${this.perfAn ? 'AN' : 'aus'}`, onClick: () => { this.perfAn = !this.perfAn; this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `Wasser-Shader: ${this.wasser2Shader?.visible ? 'AN' : 'aus'} (FPS-Vergleich)`, onClick: () => { this.wasser2Shader?.setVisible(!this.wasser2Shader.visible); this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `dorfSim-Upload: ${this.perfDorfAus ? 'aus (eingefroren)' : 'AN'} (FPS-Vergleich)`, onClick: () => { this.perfDorfAus = !this.perfDorfAus; this.devKonsole?.refresh(); } },
@@ -2057,7 +2055,7 @@ export class WorldScene extends CombatScene {
       // BÄUME/Büsche müssen klar AUSSERHALB der sichtbaren Wasserkante bleiben
       // (sonst malt das Wasser-Overlay über die im Boden-Canvas gebackenen Bäume).
       // Schwelle > sichtbare Kante (u_shore≈0.010) -> kein Baumstamm im Wasser.
-      dorfSetExternWasser((x, y) => sdWasser(x / wW, y / wH, geo, WASSER2_CFG.smink, WASSER2_CFG.widthMul) < 0.016);
+      dorfSetExternWasser((x, y) => sdWasser(x / wW, y / wH, geo, a.wasserLauf?.smink ?? WASSER2_CFG.smink, WASSER2_CFG.widthMul) < 0.016);
     } else {
       dorfSetExternWasser(null);
     }
@@ -2144,11 +2142,12 @@ export class WorldScene extends CombatScene {
     const preset = a.wasserLauf.blut ? BLUT2 : WASSER2;
     // vollszene: EIN Shader rendert Land+Wasser (Canvas-Look, weiche Ufer) als BODEN
     // (Tiefe -11, unter den Objekten). Sonst: Wasser-Overlay (Tiefe -9) über dem Boden.
+    const smink = a.wasserLauf.smink;
     if (a.wasserLauf.vollszene) {
-      this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: -11, layerMode: 0 });
+      this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: -11, layerMode: 0, smink });
     } else {
       // Wasser-Overlay über dem Boden, premultipliziert (kein heller Saum).
-      this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: FLUSS_SHADER.tiefe, layerMode: 1 });
+      this.wasser2Shader = spawneNeuesWasserShader(this, a.wasserLauf.geo, a.w * TILE, a.h * TILE, preset, { depth: FLUSS_SHADER.tiefe, layerMode: 1, smink });
     }
     // Per-Strang/See-Regler auf 1.0 vorbelegen (Anzahl aus der Geometrie) und anwenden.
     this.wasserBahnMul = a.wasserLauf.geo.bahnen.map(() => 1);
@@ -2162,7 +2161,7 @@ export class WorldScene extends CombatScene {
     const lauf = this.area?.wasserLauf;
     if (!lauf || !this.wasser2Shader) return;
     this.skaliertesWasser = skaliereGeometrie(lauf.geo, this.wasserBahnMul, this.wasserSeeMul);
-    setzeWasserGeometrie(this.wasser2Shader, this.skaliertesWasser);
+    setzeWasserGeometrie(this.wasser2Shader, this.skaliertesWasser, lauf.smink);
   }
 
   private aktuelleWasserGeo(): WasserGeometrie | undefined {
@@ -2793,7 +2792,7 @@ export class WorldScene extends CombatScene {
     const lauf = this.area?.wasserLauf;
     if (lauf?.begehbar) {
       const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
-      const sd = sdWasser(u, v, this.aktuelleWasserGeo() ?? lauf.geo, WASSER2_CFG.smink, WASSER2_CFG.widthMul);
+      const sd = sdWasser(u, v, this.aktuelleWasserGeo() ?? lauf.geo, lauf.smink ?? WASSER2_CFG.smink, WASSER2_CFG.widthMul);
       const nass = Math.max(0, Math.min(1, (0.015 - sd) / 0.05));   // 0 am Ufer .. 1 tief
       f *= 1 - nass * 0.93;                                         // tief -> ~7% Tempo (fast fest)
     }
