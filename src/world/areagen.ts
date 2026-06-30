@@ -1649,6 +1649,40 @@ export function buildStart(_rng: Rng): AreaData {
   return a;
 }
 
+// MINIMAL-TESTFLÄCHE (Dev): bewusst OHNE dorfSimBoden/gebackenerBoden - nutzt den
+// NORMALEN Kachel-/Sprite-Pfad der Engine. Damit lässt sich beweisen, dass die
+// vorhandenen Systeme das Tiefen-/Wasser-Problem von selbst lösen:
+//  - Spieler kann HINTER die Bäume laufen (Y-Sortierung der Baum-Sprites)
+//  - Bäume verdecken das Wasser (Baum-Sprite-Tiefe > Wasser-Overlay-Tiefe)
+//  - Wasser liegt auf dem Gras (Premult-Overlay, FLUSS_SHADER.tiefe, u_useGround=0)
+// Eine senkrechte Baumreihe in der Mitte KREUZT einen waagerechten Fluss.
+export function buildBlank(_rng: Rng): AreaData {
+  const w = 80, h = 60;
+  const map = blank(w, h, T.GRASS);
+  const cx = Math.floor(w / 2);                 // 40 - Mitte
+  for (let ty = 25; ty <= 30; ty++) map[ty][cx] = T.TREE;   // ~6 Bäume senkrecht, kreuzen den Fluss (y~0.5)
+  const a: AreaData = {
+    id: 'blank', name: 'Testfläche', dark: false, depth: 0,
+    w, h, map, spawn: { x: cx * TILE + 16, y: 42 * TILE + 16 },   // südlich der Bäume + des Flusses
+    torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
+    breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
+    ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
+    npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
+  };
+  // EIN waagerechter Fluss quer durch die Mitte (UV 0..1, y=0.5), begehbar. Liegt
+  // als Premult-Overlay auf dem Gras; KEINE T.WATER-Kacheln (rein Shader).
+  a.wasserLauf = {
+    begehbar: true,
+    geo: {
+      bahnen: [
+        { name: 'Testfluss', punkte: [{ x: -0.03, y: 0.5, hw: 0.035 }, { x: 0.5, y: 0.5, hw: 0.035 }, { x: 1.03, y: 0.5, hw: 0.035 }] },
+      ],
+      seen: [],
+    },
+  };
+  return a;
+}
+
 // Wald (3,3) zwischen START und STADT: dichterer Wald, schmaler Bach von Norden,
 // kleiner Tümpel; die Salzstraße führt durch. Geometrie als Lesart der Skizze.
 export function buildWaldOst(rng: Rng): AreaData {
