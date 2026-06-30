@@ -50,7 +50,10 @@ export interface AreaData {
   // vollszene=true: EIN Shader rendert Land UND Wasser (Canvas-Look, weiche Ufer);
   // begehbar=true: kein harter Block - der Spieler watet hinein und wird im Wasser
   // zunehmend verlangsamt (kann nicht schwimmen). Sonst Kollision aus T.WATER.
-  wasserLauf?: { geo: WasserGeometrie; blut?: boolean; begehbar?: boolean; vollszene?: boolean };
+  // smink: optionaler Verschmelzungs-Radius (smin) NUR für diese Karte. Klein =
+  // dünne, gewundene Läufe; groß = breite, verschmolzene Flächen. Fehlt er, gilt
+  // der globale WASSER_CFG-Wert. Optik (Shader) UND Kollision (sdWasser) nutzen ihn.
+  wasserLauf?: { geo: WasserGeometrie; blut?: boolean; begehbar?: boolean; vollszene?: boolean; smink?: number };
   // Gebackener organischer Freiform-Boden (Runde 72): statt Kachel-Boden EIN
   // gemaltes Bodenbild unter den Objekten (Tiefe -11). Kollision/Objekte bleiben
   // aus dem Kachel-Raster. Gibt der Oberwelt den Canvas-Look ohne Per-Frame-Upload.
@@ -1630,24 +1633,36 @@ export function buildStart(rng: Rng): AreaData {
     // je Kachel) auf ~900 (nur Baum-Sprites). Gleicher Look.
     gebackenerBoden: true,
   };
-  // Wasser-Lauf nach der START-Zelle der Skizze (UV 0..1, y nach unten): Fluss tritt
-  // OBEN RECHTS ein, GABELT sich, läuft in einen mittelgroßen See unten-Mitte; dazu
-  // ein BACH-Zufluss von der Westkante in denselben See. Alles durchgehend (smin).
-  // Mein Shader-Wasser; dorfSim malt nur Boden/Bäume/Wetter (keinWasser).
+  // Wasser-Lauf nach der START-Zelle von reference/ravenkarte.png (UV 0..1, y nach
+  // unten): Fluss tritt OBEN RECHTS ein, windet sich nach unten, GABELT sich und
+  // sammelt sich in zwei Seen unten; dazu ein BACH-Zufluss von der Westkante.
+  // Alles durchgehend (smin), die Seen mit organischem (nicht-elliptischem) Umriss.
   a.wasserLauf = {
     begehbar: true,
+    // Kleiner smin -> dünne, gewundene Läufe (bei 0.08 verschmelzen die Bögen zum
+    // Klotz - Autorbug "Fluss zu breit"). Optik UND Kollision nutzen denselben Wert.
+    smink: 0.02,
     geo: {
       // Schmalere Grundbreiten (Autorwunsch "dünner"); Feintuning live über den
       // Regler "Flussbreite" (WASSER_CFG.widthMul). Bach < Gabelung < Hauptfluss.
+      // WICHTIG: u_smink (0.08) verschmilzt nahe Läufe - Bögen/Gabelung müssen daher
+      // klar AUSEINANDERLAUFEN, sonst überbrückt smin die Lücke zu einem breiten
+      // Klotz (Autorbug "Fluss zu breit"). Darum: sanfte Mäander, Gabelung zieht
+      // deutlich nach Westen weg vom Hauptfluss.
       bahnen: [
-        // Hauptfluss: genug Körper, damit echtes Tiefen-Blau entsteht (flach=grau).
-        { name: 'Hauptfluss', punkte: [{ x: 0.72, y: -0.03, hw: 0.013 }, { x: 0.66, y: 0.18, hw: 0.015 }, { x: 0.58, y: 0.40, hw: 0.016 }, { x: 0.55, y: 0.62, hw: 0.017 }, { x: 0.53, y: 0.85, hw: 0.016 }] },
-        // Gabelung: schmaler als der Hauptfluss.
-        { name: 'Gabelung', punkte: [{ x: 0.58, y: 0.40, hw: 0.010 }, { x: 0.49, y: 0.56, hw: 0.010 }, { x: 0.43, y: 0.74, hw: 0.011 }, { x: 0.41, y: 0.92, hw: 0.010 }] },
-        // Bach: bleibt ein dünner Lauf von der Westkante.
-        { name: 'Bach (West)', punkte: [{ x: -0.03, y: 0.80, hw: 0.006 }, { x: 0.20, y: 0.84, hw: 0.007 }, { x: 0.43, y: 0.87, hw: 0.008 }] },
+        // Hauptfluss: tritt OBEN RECHTS ein, windet sanft (rechts-zentriert) nach
+        // unten in den großen See. Keine engen Falten (würden zu Klotz verschmelzen).
+        { name: 'Hauptfluss', punkte: [{ x: 0.74, y: -0.03, hw: 0.012 }, { x: 0.70, y: 0.13, hw: 0.014 }, { x: 0.63, y: 0.27, hw: 0.015 }, { x: 0.66, y: 0.42, hw: 0.015 }, { x: 0.60, y: 0.57, hw: 0.016 }, { x: 0.56, y: 0.71, hw: 0.016 }, { x: 0.52, y: 0.86, hw: 0.016 }] },
+        // Gabelung: zweigt bei y0.42 ab und zieht klar nach WESTEN zum Tümpel - so
+        // bleibt deutlich Abstand zum Hauptfluss (kein smin-Brückenschlag).
+        { name: 'Gabelung', punkte: [{ x: 0.66, y: 0.42, hw: 0.009 }, { x: 0.54, y: 0.53, hw: 0.010 }, { x: 0.44, y: 0.64, hw: 0.010 }, { x: 0.37, y: 0.78, hw: 0.010 }, { x: 0.33, y: 0.90, hw: 0.010 }] },
+        // Bach: dünner, leicht mäandernder Zulauf von der Westkante in den Tümpel.
+        { name: 'Bach (West)', punkte: [{ x: -0.03, y: 0.74, hw: 0.005 }, { x: 0.12, y: 0.80, hw: 0.006 }, { x: 0.24, y: 0.86, hw: 0.006 }, { x: 0.31, y: 0.90, hw: 0.008 }] },
       ],
-      seen: [{ name: 'See', cx: 0.50, cy: 0.89, rx: 0.11, ry: 0.05 }],
+      // Zwei NATÜRLICHE Seen unten (organischer Umriss kommt aus der SDF-Winkel-
+      // Verzerrung in wasser.ts/wasserFeld.ts - keine glatte Ellipse): großer See
+      // mittig (vom Hauptfluss gespeist), kleinerer Tümpel westlich (Gabelung+Bach).
+      seen: [{ name: 'See', cx: 0.52, cy: 0.90, rx: 0.11, ry: 0.05 }, { name: 'Tümpel', cx: 0.31, cy: 0.92, rx: 0.05, ry: 0.03 }],
     },
   };
   // Bäume in Waldrand-Dichte: nahe am Kartenrand dicht, zur Mitte hin licht; das
@@ -1658,7 +1673,9 @@ export function buildStart(rng: Rng): AreaData {
     for (let tx = 0; tx < w; tx++) {
       if (map[ty][tx] !== T.GRASS) continue;
       const u = (tx + 0.5) / w, v = (ty + 0.5) / h;
-      if (sdWasser(u, v, geo, 0.08) < 0.03) continue;   // im/nah am Wasser -> kein Baum
+      // gleicher smin wie das sichtbare Wasser (0.02) + 0.03 Puffer -> Bäume stehen
+      // NIE im Wasser, lassen aber keinen unnötig breiten kahlen Saum.
+      if (sdWasser(u, v, geo, 0.02) < 0.03) continue;
       const randAbstand = Math.min(tx, w - 1 - tx, ty, h - 1 - ty);
       const dichte = Math.max(0, 1 - randAbstand / randTiefe);   // 1 am Rand .. 0 ab randTiefe
       // quadratischer Abfall -> echter Waldrand (dicht am Rand, schnell licht).

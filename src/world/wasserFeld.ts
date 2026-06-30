@@ -105,8 +105,15 @@ export function sdWasser(px: number, py: number, geo: WasserGeometrie, verschmel
     }
   }
   for (const e of geo.seen) {
-    const q = Math.hypot((px - e.cx) / (e.rx || 1e-6), (py - e.cy) / (e.ry || 1e-6));
-    const dl = (q - 1) * Math.min(e.rx, e.ry);
+    // MUSS exakt zur Shader-SDF (wasser.ts sdWater) passen, sonst weicht die
+    // Lauf-/Baum-Kollision von der sichtbaren See-Form ab: gleiche Winkel-
+    // Verzerrung des Radius (organischer Umriss statt glatter Ellipse).
+    const rx = e.rx || 1e-6, ry = e.ry || 1e-6;
+    const ang = Math.atan2(py - e.cy, px - e.cx);
+    const seed = (e.cx * 7.13 + e.cy * 3.71) * 6.2831853;
+    const wob = 1 + 0.20 * Math.sin(3 * ang + seed) + 0.11 * Math.sin(5 * ang - seed * 1.7) + 0.06 * Math.sin(8 * ang + seed * 0.5);
+    const q = Math.hypot((px - e.cx) / (rx * wob), (py - e.cy) / (ry * wob));
+    const dl = (q - 1) * Math.min(rx, ry);
     d = erst ? dl : smin(d, dl, verschmelzung); erst = false;
   }
   return erst ? 1e9 : d;
