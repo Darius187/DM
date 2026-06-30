@@ -14,7 +14,7 @@ import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeHeldPunkte, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
-import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick } from '../demo3d/dorfSim';
+import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale } from '../demo3d/dorfSim';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
 import { KARTEN_KANTEN } from '../data/kartenKanten';
 import { wetter } from '../logic/wetter';
@@ -2060,6 +2060,10 @@ export class WorldScene extends CombatScene {
     // dorfSim als Boden/Bäume/Wetter/Tag-Nacht - aber OHNE eigenes Wasser (keinWasser):
     // unser Shader-Wasser kommt darüber, dorfSim meidet die Wasserzonen weiterhin (keine Bäume im Wasser).
     dorfStart(this.dorfCanvas, { hybrid: true, externKamera: true, keinWasser: true, externFrame: true });
+    // Boden in HALBER Auflösung zeichnen (4x weniger Pixel = ~4x billiger) und per
+    // dorfBild hochskalieren -> 60 FPS statt 45, Boden nur minimal weicher. Das
+    // Wasser (Welt-Shader) bleibt unangetastet.
+    dorfSetRenderScale(0.5);
     // Dev-Regler-Werte sofort anwenden, damit das Wetter deterministisch ist
     // (Sturm-Default 1.5 -> trocken/klar; kein zufälliges Eigen-Wetter beim Start).
     for (const k of Object.keys(this.devAnfang)) dorfSetRegler(k, this.devAnfang[k]);
@@ -2067,6 +2071,8 @@ export class WorldScene extends CombatScene {
     this.textures.addCanvas(this.dorfTexKey, this.dorfCanvas);
     this.dorfBild = this.add.image(0, 0, this.dorfTexKey).setOrigin(0, 0).setScrollFactor(0).setDepth(-1000);
     this.dorfBild.setDisplaySize(this.scale.width, this.scale.height);
+    // Halb-Auflösung weich hochskalieren (sonst blockig bei pixelArt/NEAREST).
+    this.textures.get(this.dorfTexKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
     // Das Shader-Wasser kommt aus a.wasserLauf (buildStart -> Skizzen-Layout mit
     // Gabelung/Bach/See); spawneNeuesWasser (gleich danach in goArea) legt es darüber.
   }

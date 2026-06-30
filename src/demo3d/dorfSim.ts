@@ -25,7 +25,17 @@ import { t } from '../data/i18n';
 let view!: HTMLCanvasElement;
 let ctx!: CanvasRenderingContext2D;
 let W = 0, H = 0;
-function passeGroesse(): void { W = view.width = innerWidth; H = view.height = innerHeight; }
+// renderScale: physische Canvas-Auflösung = logische Größe × renderScale. <1 =
+// günstiger zeichnen (4× weniger Pixel bei 0.5) und hochskalieren -> 60 FPS bei
+// minimal weicherem Boden. W/H bleiben die LOGISCHE (Welt-)Größe; nur der Canvas
+// ist kleiner und wird per Basis-Transform bedient.
+let renderScale = 1;
+export function setRenderScale(s: number): void { renderScale = Math.max(0.25, Math.min(1, s)); passeGroesse(); }
+function passeGroesse(): void {
+  W = innerWidth; H = innerHeight;
+  view.width = Math.max(1, Math.round(W * renderScale));
+  view.height = Math.max(1, Math.round(H * renderScale));
+}
 
 const WELT_W = 4160, WELT_H = 2720;   // ANFANGSKARTE (R69): so groß wie die Stadtkarte (130x85 Tiles à 32px)
 // Schnee-Berg im Norden AUS (Autorwunsch "alle Biome außer Schneelandschaft"). Ohne Berg
@@ -1348,6 +1358,11 @@ function frame(now: number): void {
   const h = bereit ? held() : { x: WELT_W / 2, y: WELT_H / 2 } as Wesen;
   if (!externKamera) { camX = Math.max(0, Math.min(WELT_W - W, h.x - W / 2)); camY = Math.max(NORD_Y, Math.min(WELT_H - H, h.y - H / 2)); }   // im Kampf-Hybrid setzt die Szene camX/camY (setKamera)
 
+  // Basis-Skalierung: alle Zeichen-Operationen nutzen LOGISCHE Größe (W,H), der
+  // Canvas ist aber nur W*renderScale × H*renderScale groß -> günstiger. Bei
+  // renderScale=1 ist das die Identität (kein Unterschied). save/restore behalten
+  // diese Basis bei (kein setTransform(1,...) auf dem Haupt-ctx).
+  ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
   // 1) Gras-Boden + Moosboden in dichten Wäldern (weicher Übergang über die Walddichte)
   ctx.save(); ctx.translate(-camX, -camY); ctx.fillStyle = grasMuster ?? '#27331c'; ctx.fillRect(camX, camY, W, H); ctx.restore();
   // Moos-/Biom-Tint nur für den südlichen Teil (y>=0); der Berg im Norden hat eigene Tönung
