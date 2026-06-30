@@ -83,7 +83,12 @@ float sdWater(vec2 p){
   for(int i=0;i<${MAX_SEG};i++){ if(float(i)>=u_segN) break; vec4 s=u_seg[i]; vec2 w=u_segW[i];
     float di=sdSegHw(p,s.xy,s.zw,w.x*u_widthMul,w.y*u_widthMul); d = erst ? di : smin(d,di,u_smink); erst=false; }
   for(int i=0;i<${MAX_LAKE};i++){ if(float(i)>=u_lakeN) break; vec4 L=u_lake[i];
-    vec2 q=(p-L.xy)/L.zw; float dl=(length(q)-1.0)*min(L.z,L.w); d = erst ? dl : smin(d,dl,u_smink); erst=false; }
+    // ORGANISCHER See: der Radius wird je Winkel mit Sinus-Oberwellen verzerrt
+    // (kein glatter Ellipsen-Klotz). Phase aus cx/cy -> jeder See sieht anders aus.
+    vec2 rel=p-L.xy; float ang=atan(rel.y,rel.x);
+    float seed=(L.x*7.13+L.y*3.71)*6.2831853;
+    float wob=1.0+0.20*sin(3.0*ang+seed)+0.11*sin(5.0*ang-seed*1.7)+0.06*sin(8.0*ang+seed*0.5);
+    vec2 q=rel/(L.zw*wob); float dl=(length(q)-1.0)*min(L.z,L.w); d = erst ? dl : smin(d,dl,u_smink); erst=false; }
   d += fbm2(p*5.0)*0.006;
   return d;
 }
@@ -178,7 +183,12 @@ vec3 stoneLit(vec3 sN, vec3 sCol){ vec3 L=normalize(vec3(u_light,0.8)); float la
   float spc=pow(max(dot(sN,normalize(L+vec3(0.0,0.0,1.0))),0.0),22.0)*0.16; return sCol*lam+spc; }
 
 void main(){
-  vec2 uv = fragCoord.xy / resolution;
+  // fragCoord.y ist hier y-AUF (Ursprung unten links). Die Geometrie (Flusslauf,
+  // Seen) und die Held-UV (px/py) sind aber y-AB (0 oben, 1 unten). Darum die
+  // y-Achse EINMAL spiegeln - sonst rendert das ganze Wasser senkrecht verkehrt
+  // (See oben statt unten) UND die Held-Wellen erscheinen auf der Gegenseite.
+  // Eine Korrektur an der Wurzel deckt Geometrie-Lage UND Held-Spiegelung ab.
+  vec2 uv = vec2(fragCoord.x, resolution.y - fragCoord.y) / resolution;
   float sd=sdWater(uv); float aspect=resolution.x/resolution.y;
   float waterDepth=smoothstep(u_shore,-u_shore,sd); float deepness=smoothstep(0.0,-0.20,sd);
   vec3 sCol,sN; float sMask; float sH=stoneField(uv,aspect,sd,sCol,sN,sMask);
@@ -378,15 +388,18 @@ export function wendeWasserPreset(sh: Phaser.GameObjects.Shader, p: WasserPreset
   sh.setUniform('u_light.value', { x: p.light[0], y: p.light[1] });
 }
 
-/** Lädt den Flusslauf (Segmente/Seen) einer Karte in die Shader-Uniforms. */
-export function setzeGeometrie(sh: Phaser.GameObjects.Shader, geo: WasserGeometrie): void {
+/** Lädt den Flusslauf (Segmente/Seen) einer Karte in die Shader-Uniforms. smink =
+ * Verschmelzungs-Radius DIESER Karte (fehlt er, gilt der globale WASSER_CFG-Wert).
+ * Wird hier mitgesetzt, weil setzeGeometrie bei JEDER Regler-Änderung neu läuft -
+ * sonst fiele der karteneigene smin auf den globalen zurück. */
+export function setzeGeometrie(sh: Phaser.GameObjects.Shader, geo: WasserGeometrie, smink = WASSER_CFG.smink): void {
   const u = geometrieZuUniforms(geo);
   sh.setUniform('u_seg.value', u.seg);
   sh.setUniform('u_segW.value', u.segW);
   sh.setUniform('u_segN.value', u.segN);
   sh.setUniform('u_lake.value', u.lake);
   sh.setUniform('u_lakeN.value', u.lakeN);
-  sh.setUniform('u_smink.value', WASSER_CFG.smink);
+  sh.setUniform('u_smink.value', smink);
 }
 
 /** Held-Störquellen (Wellen) setzen: bis zu 8 Punkte als [x,y,alter] in UV. */
@@ -398,7 +411,7 @@ export function setzeHeldPunkte(sh: Phaser.GameObjects.Shader, punkte: Array<[nu
   sh.setUniform('u_points.value', arr);
 }
 
-export interface SpawnWasserOpts { depth?: number; layerMode?: number; groundKey?: string; }
+export interface SpawnWasserOpts { depth?: number; layerMode?: number; groundKey?: string; smink?: number; }
 
 /**
  * Spawnt EIN Wasser-Quad (x=0,y=0, Größe worldW×worldH) mit dem prozeduralen
@@ -414,7 +427,7 @@ export function spawneWasser(scene: Phaser.Scene, geo: WasserGeometrie, worldW: 
     : scene.add.shader(getBaseShader(), 0, 0, worldW, worldH);
   sh.setOrigin(0, 0).setDepth(opts.depth ?? WASSER_CFG.tiefe);
   wendeWasserPreset(sh, preset);
-  setzeGeometrie(sh, geo);
+  setzeGeometrie(sh, geo, opts.smink);
   sh.setUniform('u_layerMode.value', opts.layerMode ?? 1);
   // Detail (Bett/Wellen/Kiesel) auf Bildschirmgröße halten: auf großen Karten ist
   // die uv 0..1 über die ganze Karte gespannt -> sonst riesige, blasse Strukturen.
