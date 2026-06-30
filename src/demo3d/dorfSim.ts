@@ -767,6 +767,11 @@ let reitet = false;          // sitzt der Held auf dem Pferd?
 let hybrid = false;          // Hybrid-Modus: den Helden NICHT im Canvas zeichnen - die Phaser-Szene legt das Spieler-Sprite darüber
 let externKamera = false;    // Kampf-Hybrid: Kamera wird von außen gesetzt (Spiel-Spieler), dorfSim-Held bewegt sich nicht
 let keinWasser = false;      // R72: dorfSims eigenes Wasser (Fluss/Bach/See) NICHT zeichnen und NICHT als Kollision werten - die WorldScene legt eigenes Wasser darüber (Vegetation meidet die Wasserzonen weiterhin)
+// R73: externFrame - im Hybrid treibt die Phaser-Szene den Frame (EIN Loop,
+// synchron zur Kamera/zum Wasser). Sonst läuft dorfSims eigener requestAnimation-
+// Frame-Loop ZUSÄTZLICH zu Phaser -> Ruckler + Versatz (Boden vs. Welt-Wasser).
+let externFrame = false;
+export function tick(now: number): void { frame(now); }   // von der Szene pro Phaser-Frame aufgerufen
 // R73: externes Wasser (Skizzen-Geometrie der WorldScene) - dorfSim zeichnet es
 // nicht, MEIDET es aber bei der Vegetation (Bäume/Büsche/Gras), sonst stünden
 // Bäume mitten im Shader-Fluss. Weltkoordinaten rein, true = Wasser/Ufer meiden.
@@ -1606,7 +1611,7 @@ function frame(now: number): void {
     ctx.fillText(t('hud.vorrat', { holz, stein, gold: erzVorrat.gold, eisen: erzVorrat.eisen, kristall: erzVorrat.kristall }), W - 16, 40); ctx.textAlign = 'left';
   }
 
-  requestAnimationFrame(frame);
+  if (!externFrame) requestAnimationFrame(frame);   // im externFrame-Modus treibt die Phaser-Szene den Frame
 }
 
 // ---------- Berg/Anhöhe zeichnen: gestufte Höhen-Level (Fels-Wände) bis zum Schnee ----------
@@ -1945,10 +1950,11 @@ function zeichneWesen(w: Wesen): void {
 // ---------- Bootstrap: Welt auf einem Canvas starten ----------
 // Demo (dorf.html): automatisch auf #view. Phaser-Hybrid-Szene: ruft starteWelt(sceneCanvas)
 // selbst auf. So läuft DERSELBE Welt-Code (Wetter, Bäume, Fall-Animation, Gras, Wasser) überall.
-export function starteWelt(zielCanvas: HTMLCanvasElement, opts?: { hybrid?: boolean; externKamera?: boolean; keinWasser?: boolean }): void {
+export function starteWelt(zielCanvas: HTMLCanvasElement, opts?: { hybrid?: boolean; externKamera?: boolean; keinWasser?: boolean; externFrame?: boolean }): void {
   hybrid = opts?.hybrid ?? false;   // VOR init() setzen, damit Hühner/NPCs gar nicht erst spawnen + der Held nicht gezeichnet wird
   externKamera = opts?.externKamera ?? false;
   keinWasser = opts?.keinWasser ?? false;   // R72: Wasser von der WorldScene übernehmen
+  externFrame = opts?.externFrame ?? false; // R73: Frame von der Phaser-Szene getrieben (ein Loop)
   view = zielCanvas;
   ctx = view.getContext('2d')!;
   (window as unknown as { __weltCanvas?: HTMLCanvasElement }).__weltCanvas = view;   // Test-Hook (Browser-Verifikation)
@@ -1956,7 +1962,7 @@ export function starteWelt(zielCanvas: HTMLCanvasElement, opts?: { hybrid?: bool
   passeGroesse();
   addEventListener('resize', passeGroesse);
   void init();
-  requestAnimationFrame(frame);
+  if (!externFrame) requestAnimationFrame(frame);   // sonst treibt die Szene den Frame via tick()
 }
 // Hybrid-Modus (Phaser-Szene zeichnet die Spielfigur). Bewegung/Kollision/Kamera bleiben in dorfSim.
 export function setHybrid(on: boolean): void { hybrid = on; }

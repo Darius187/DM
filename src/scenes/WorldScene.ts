@@ -14,7 +14,7 @@ import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeHeldPunkte, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
-import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen } from '../demo3d/dorfSim';
+import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick } from '../demo3d/dorfSim';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
 import { KARTEN_KANTEN } from '../data/kartenKanten';
 import { wetter } from '../logic/wetter';
@@ -2051,15 +2051,16 @@ export class WorldScene extends CombatScene {
     const geo = a.wasserLauf?.geo;
     if (geo) {
       const wW = a.w * TILE, wH = a.h * TILE;
-      // Nur das WASSER selbst (knapp) freihalten - Gras/Büsche dürfen bis ans Ufer
-      // wachsen, sonst entsteht ein heller, kahler Erdring rund ums Wasser.
-      dorfSetExternWasser((x, y) => sdWasser(x / wW, y / wH, geo, WASSER2_CFG.smink, WASSER2_CFG.widthMul) < 0.004);
+      // BÄUME/Büsche müssen klar AUSSERHALB der sichtbaren Wasserkante bleiben
+      // (sonst malt das Wasser-Overlay über die im Boden-Canvas gebackenen Bäume).
+      // Schwelle > sichtbare Kante (u_shore≈0.010) -> kein Baumstamm im Wasser.
+      dorfSetExternWasser((x, y) => sdWasser(x / wW, y / wH, geo, WASSER2_CFG.smink, WASSER2_CFG.widthMul) < 0.016);
     } else {
       dorfSetExternWasser(null);
     }
     // dorfSim als Boden/Bäume/Wetter/Tag-Nacht - aber OHNE eigenes Wasser (keinWasser):
     // unser Shader-Wasser kommt darüber, dorfSim meidet die Wasserzonen weiterhin (keine Bäume im Wasser).
-    dorfStart(this.dorfCanvas, { hybrid: true, externKamera: true, keinWasser: true });
+    dorfStart(this.dorfCanvas, { hybrid: true, externKamera: true, keinWasser: true, externFrame: true });
     // Dev-Regler-Werte sofort anwenden, damit das Wetter deterministisch ist
     // (Sturm-Default 1.5 -> trocken/klar; kein zufälliges Eigen-Wetter beim Start).
     for (const k of Object.keys(this.devAnfang)) dorfSetRegler(k, this.devAnfang[k]);
@@ -2074,7 +2075,11 @@ export class WorldScene extends CombatScene {
   // Pro Frame: Kamera an dorfSim, Textur auffrischen, Bild auf Fenstergröße.
   private updateDorfSim(): void {
     if (!this.dorfAktiv) return;
+    // EIN Loop: Kamera setzen -> dorfSim-Frame JETZT zeichnen (synchron zur Welt/
+    // zum Wasser, kein zweiter RAF-Loop) -> hochladen. Behebt Ruckler + Boden-/
+    // Wasser-Versatz beim Bewegen.
     dorfSetKamera(Math.round(this.cameras.main.scrollX), Math.round(this.cameras.main.scrollY));
+    dorfTick(performance.now());
     const tex = this.textures.get(this.dorfTexKey) as Phaser.Textures.CanvasTexture;
     // Canvas-Upload (Hauptkosten-Verdacht): Zeit messen, optional aussetzen (Dev).
     if (tex && tex.refresh && !this.perfDorfAus) {
