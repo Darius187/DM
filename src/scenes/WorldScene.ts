@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir, angleToDir8 } from '../world/Enemy';
-import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildBlank, buildStartEngine, buildWaldOst, buildStadtNatur, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildBlank, buildWaldOst, buildStadtNatur, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
@@ -14,7 +14,7 @@ import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeHeldPunkte, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
-import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale, baueBaumBitmaps as dorfBaumBitmaps } from '../demo3d/dorfSim';
+import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale } from '../demo3d/dorfSim';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
 import { KARTEN_KANTEN } from '../data/kartenKanten';
 import { wetter } from '../logic/wetter';
@@ -153,7 +153,6 @@ export class WorldScene extends CombatScene {
   private fluessigkeitsShaders: Phaser.GameObjects.Shader[] = [];   // Liquid-Shader-Overlays (Wasser/Blut), Runde 71
   private wasser2Shader?: Phaser.GameObjects.Shader;                 // neues prozedurales Wasser-Overlay pro Area (Runde 72)
   private gebackenerBodenImg?: Phaser.GameObjects.Image;             // gebackener organischer Boden (Runde 72)
-  private baumBitmapsBereit = false;                                 // dorfSims gemalte Baum-Bitmaps als obj_*-Texturen registriert? (Runde 73)
   private dorfCanvas?: HTMLCanvasElement;                            // dorfSim-Hintergrund-Canvas (Anfangskarte-Look)
   private dorfBild?: Phaser.GameObjects.Image;
   private dorfAktiv = false;
@@ -1401,7 +1400,6 @@ export class WorldScene extends CombatScene {
     else if (id === 'wald') a = buildForest(rng);
     else if (id === 'start') a = buildStart(rng);
     else if (id === 'blank') a = buildBlank(rng);   // Dev-Testfläche (normaler Kachel-/Sprite-Pfad, kein dorfSim)
-    else if (id === 'start_engine') a = buildStartEngine(rng);   // Pilot: Startkarte über Engine-Pfad (kein dorfSim)
     else if (id === 'wald_o') a = buildWaldOst(rng);
     else if (id === 'stadt') a = buildStadtNatur(rng);
     else if (id === 'goldmine') a = buildGoldmine(rng);
@@ -1811,26 +1809,6 @@ export class WorldScene extends CombatScene {
   // legt es als Bild auf Tiefe -11 unter die Objekte. Halbe Auflösung + Hochskalieren
   // (der organische Look verträgt die Weichheit) spart Speicher. Kollision/Objekte
   // bleiben aus dem Kachel-Raster - hier wird NUR der Boden ersetzt.
-  // Übergangs-Look (Runde 73): dorfSims gemalte 3D-Baum-Bitmaps einmal backen und
-  // als obj_baum_0_* / obj_wald_0_* registrieren. SpriteProvider.objectKey nimmt eine
-  // vorhandene Textur und zeichnet KEINE prozedurale Grafik mehr -> der Engine-Pfad
-  // bekommt denselben malerischen Wald wie dorfSim. Reversibel: sobald ComfyUI-Assets
-  // da sind, fällt diese Methode weg und objectKey malt wieder selbst.
-  private async registriereBaumBitmaps(): Promise<void> {
-    if (this.baumBitmapsBereit) return;
-    const bitmaps = await dorfBaumBitmaps();
-    if (!bitmaps.length) return;
-    // Variante 0..6 (siehe zeichneKachel-Hash) auf die gebackenen Sorten verteilen.
-    for (let v = 0; v < 7; v++) {
-      const cv = bitmaps[v % bitmaps.length];
-      for (const name of ['baum', 'wald']) {
-        const key = `obj_${name}_0_${v}`;
-        if (!this.textures.exists(key)) this.textures.addCanvas(key, cv);
-      }
-    }
-    this.baumBitmapsBereit = true;
-  }
-
   private bakeBoden(a: AreaData): void {
     const key = `boden_${a.id}`;
     const SC = 2;                                   // halbe Auflösung
@@ -2039,8 +2017,8 @@ export class WorldScene extends CombatScene {
       ] },
       { name: 'MESSEN', controls: () => [
         { kind: 'button', label: () => 'Test-Fläche „blank" laden (ohne dorfSim)', onClick: () => { this.devKonsole?.toggle(); this.goArea('blank'); } },
-        { kind: 'button', label: () => 'Startkarte (Engine-Pfad) laden', onClick: () => { this.devKonsole?.toggle(); void this.registriereBaumBitmaps().then(() => this.goArea('start_engine')); } },
-        { kind: 'note', text: 'Normaler Kachel-/Sprite-Pfad: Spieler kann hinter Bäume laufen, Bäume verdecken das Wasser, Wasser liegt auf dem Gras. Bäume = dorfSims gemalte 3D-Bitmaps (Übergangs-Look bis ComfyUI-Assets).' },
+        { kind: 'button', label: () => 'Startkarte laden', onClick: () => { this.devKonsole?.toggle(); this.goArea('start'); } },
+        { kind: 'note', text: 'Startkarte (Engine-Pfad): Spieler kann hinter Bäume laufen, Bäume verdecken das Wasser, Wasser liegt auf dem Gras. Bäume = dorfSims gemalte 3D-Bitmaps (Übergangs-Look bis ComfyUI-Assets).' },
         { kind: 'button', label: () => `FPS-Anzeige: ${this.perfAn ? 'AN' : 'aus'}`, onClick: () => { this.perfAn = !this.perfAn; this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `Wasser-Shader: ${this.wasser2Shader?.visible ? 'AN' : 'aus'} (FPS-Vergleich)`, onClick: () => { this.wasser2Shader?.setVisible(!this.wasser2Shader.visible); this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `dorfSim-Upload: ${this.perfDorfAus ? 'aus (eingefroren)' : 'AN'} (FPS-Vergleich)`, onClick: () => { this.perfDorfAus = !this.perfDorfAus; this.devKonsole?.refresh(); } },
