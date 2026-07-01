@@ -10,3 +10,6 @@ scripts/_grab_tile.mjs
 scripts/_grab*.mjs
 src/gfx/_kandidat.ts
 src/gfx/_pferdprobe.ts
+
+# Temporaere Workflow-/Debug-Artefakte (nicht committen)
+scratch_*
