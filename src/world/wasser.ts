@@ -125,7 +125,9 @@ float inter(vec2 uv){ float aspect=resolution.x/resolution.y; float add=0.0;
 float rainH(vec2 uv){
   if(u_rain<=0.001) return 0.0;
   float aspect=resolution.x/resolution.y;
-  vec2 P=vec2(uv.x*aspect,uv.y)*18.0; vec2 cell=floor(P); float sum=0.0;
+  // Zellraster MIT detailScale (Autorbug R77: feste 18er-Zellen = 230px-Riesen-
+  // ringe auf großen Karten - ein Tropfen lief über den ganzen See).
+  vec2 P=vec2(uv.x*aspect,uv.y)*18.0*u_detailScale; vec2 cell=floor(P); float sum=0.0;
   for(int j=-1;j<=1;j++){ for(int i=-1;i<=1;i++){
     vec2 cc=cell+vec2(float(i),float(j)); vec2 h=hash2(cc);
     if(h.x>u_rain) continue;

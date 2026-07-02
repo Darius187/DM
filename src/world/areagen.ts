@@ -1622,6 +1622,10 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
   a.downPos = { x: (w - 2) * TILE + 16, y: (pfadY[w - 2] ?? Math.round(h * 0.5)) * TILE + 16 };
   a.wasserLauf = { geo: cfg.geo, blut: false, begehbar: !solide, vollszene: cfg.vollszene };
   a.gebackenerBoden = true;
+  // AUFBAUPHASE (Autorwunsch R77): auch die neuen Oberweltkarten bleiben vorerst
+  // friedlich - der Autor besichtigt die Karten; Wölfe/Gegner kommen später
+  // gezielt zurück (wolfXs-Daten bleiben erhalten, nur der Spawn ist gesperrt).
+  a.friedlich = true;
   return a;
 }
 

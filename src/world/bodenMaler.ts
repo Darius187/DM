@@ -267,6 +267,67 @@ export function macheSchilfBild(seed: number): HTMLCanvasElement {
   return c;
 }
 
+// --- Wiesen-Bewuchs im "Dorf im Wald"-Stil (Autorwunsch R77: GENAU dieser
+// Look). 1:1-Port der dorfSim-Zeichnungen (macheBewuchsBilder + Gras-Striche),
+// nur in 2facher Auflösung gebacken (LINEAR-Anzeige) und als Sprites mit
+// Fuß-Anker - das Schwanken/Wegbiegen macht die WorldScene. ------------------
+
+// Blümchen (gelb/rosa/weiß/lila), Kräuter-Büschel, Klee - exakt dorfSim Z.502-518.
+export function macheBewuchsBilder(): HTMLCanvasElement[] {
+  const S = 3;   // 3x-Auflösung (Anzeige verkleinert -> knackige Striche)
+  const mk = (): [HTMLCanvasElement, CanvasRenderingContext2D] => {
+    const c = document.createElement('canvas'); c.width = 18 * S; c.height = 24 * S;
+    const g = c.getContext('2d')!; g.scale(S, S); return [c, g];
+  };
+  const out: HTMLCanvasElement[] = [];
+  for (const f of ['#b8a85a', '#b0808e', '#c4c6b2', '#9388ac']) {
+    const [c, g] = mk();
+    g.strokeStyle = '#3f4d28'; g.lineWidth = 1.3; g.beginPath(); g.moveTo(9, 21); g.lineTo(9, 9); g.stroke();
+    g.strokeStyle = '#46582f'; g.beginPath(); g.moveTo(9, 15); g.lineTo(6, 13); g.moveTo(9, 13); g.lineTo(12, 11); g.stroke();
+    g.fillStyle = f;
+    for (let k = 0; k < 5; k++) { const a = k / 5 * 6.283; g.beginPath(); g.ellipse(9 + Math.cos(a) * 3, 7 + Math.sin(a) * 3, 1.9, 1.4, a, 0, 7); g.fill(); }
+    g.fillStyle = '#6a5a2a'; g.beginPath(); g.arc(9, 7, 1.4, 0, 7); g.fill();
+    out.push(c);
+  }
+  { const [c, g] = mk(); g.strokeStyle = '#4a5d2c'; g.lineWidth = 1.3;   // Kräuter-Büschel
+    for (let k = -2; k <= 2; k++) { g.beginPath(); g.moveTo(9, 21); g.quadraticCurveTo(9 + k * 2, 13, 9 + k * 4.5, 6 + Math.abs(k)); g.stroke(); } out.push(c); }
+  { const [c, g] = mk(); g.fillStyle = '#3e5226'; g.strokeStyle = '#3e5226'; g.lineWidth = 1.2;  // Klee
+    for (const [x1, y1] of [[7, 13], [11, 13], [9, 11]] as Array<[number, number]>) { g.beginPath(); g.moveTo(9, 21); g.lineTo(x1, y1); g.stroke(); g.beginPath(); g.arc(x1, y1 - 1, 2.4, 0, 7); g.fill(); } out.push(c); }
+  return out;
+}
+
+// Gras-Büschel: kurzes Bodengras (3 Striche) und hohes Gras (7 gebogene Halme)
+// - exakt die dorfSim-Strichmuster (Z.1506-1523), statisch mit leichtem
+// Ruhe-Lean gebacken; Wind/Wegbiegen kommt zur Laufzeit über die Rotation.
+export function macheGrasBueschelBild(hoch: boolean, seed: number): HTMLCanvasElement {
+  const rnd = rngAus(seed);
+  const S = 3;   // 3x backen, klein anzeigen - sonst verschwimmen die feinen Striche
+  const c = document.createElement('canvas');
+  c.width = (hoch ? 30 : 16) * S; c.height = (hoch ? 32 : 12) * S;
+  const g = c.getContext('2d')!; g.scale(S, S);
+  const gx = c.width / (2 * S), gy = c.height / S - 1;
+  const lean = (rnd() - 0.5) * 3;
+  if (!hoch) {
+    g.strokeStyle = '#3c4d27'; g.lineWidth = 1.4;
+    g.beginPath();
+    g.moveTo(gx, gy); g.lineTo(gx + lean, gy - 7);
+    g.moveTo(gx - 2, gy); g.lineTo(gx - 2 + lean * 0.8, gy - 5);
+    g.moveTo(gx + 2, gy); g.lineTo(gx + 2 + lean * 1.1, gy - 6);
+    g.stroke();
+    return c;
+  }
+  const h = 18 + rnd() * 10;
+  for (let k = -3; k <= 3; k++) {
+    const u = 0.6 + Math.abs(k) * 0.1, bh = h * (1 - Math.abs(k) * 0.07);
+    g.strokeStyle = k % 2 ? '#43562b' : '#37481f'; g.lineWidth = 1.5;
+    g.beginPath();
+    g.moveTo(gx + k * 1.8, gy);
+    g.quadraticCurveTo(gx + k * 1.8 + lean * 0.5, gy - bh * 0.6, gx + k * 1.8 + lean * u, gy - bh);
+    g.stroke();
+  }
+  return c;
+}
+
 // --- Weg (Port aus dorfSim Z.64-88 + Z.1398-1416, statisch): mäandernde
 // Mittellinie mit ausgefranster Halbbreite -> Polygon-Band, Spurrillen, in die
 // Form geclippte Erdflecken + Steincluster, außen Saumgras. Der Mäander bleibt

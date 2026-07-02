@@ -13,7 +13,7 @@ import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
-import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn } from '../world/bodenMaler';
+import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheGrasBueschelBild } from '../world/bodenMaler';
 import { POI_BILDER } from '../world/poiBilder';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
 import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale } from '../demo3d/dorfSim';
@@ -1867,17 +1867,25 @@ export class WorldScene extends CombatScene {
       if (!b.img.active) continue;
       b.img.rotation = amp * (Math.sin(time * 0.0011 + b.phase) * 0.6 + Math.sin(time * 0.0027 + b.phase * 1.7) * 0.4);
     }
+    // WEGBIEGEN vor dem Helden (dorfSim-Verhalten, Autorwunsch R77): Gras und
+    // Schilf in Reichweite lehnen sich vom Helden weg - er "watet" durch.
+    const biege = (img: Phaser.GameObjects.Image, reichweite: number, staerke: number): number => {
+      const dx = img.x - this.px, dy = img.y - this.py;
+      const d2 = dx * dx + dy * dy, r2 = reichweite * reichweite;
+      if (d2 >= r2) return 0;
+      return (dx >= 0 ? 1 : -1) * (1 - d2 / r2) * staerke;
+    };
     // Schilf ist leicht - es schwankt deutlich stärker und etwas schneller.
     const ampS = amp * 3.2;
     for (const s of this.windSchilf) {
       if (!s.img.active) continue;
-      s.img.rotation = ampS * (Math.sin(time * 0.0016 + s.phase) * 0.6 + Math.sin(time * 0.0037 + s.phase * 1.7) * 0.4);
+      s.img.rotation = ampS * (Math.sin(time * 0.0016 + s.phase) * 0.6 + Math.sin(time * 0.0037 + s.phase * 1.7) * 0.4) + biege(s.img, 33, 0.5);
     }
     // Wiesengras/Blumen: zwischen Baum und Schilf, leicht flatterig.
     const ampG = amp * 2.1;
     for (const g of this.windGras) {
       if (!g.img.active) continue;
-      g.img.rotation = ampG * (Math.sin(time * 0.0019 + g.phase) * 0.6 + Math.sin(time * 0.0041 + g.phase * 1.7) * 0.4);
+      g.img.rotation = ampG * (Math.sin(time * 0.0019 + g.phase) * 0.6 + Math.sin(time * 0.0041 + g.phase * 1.7) * 0.4) + biege(g.img, 30, 0.6);
     }
   }
 
@@ -1953,6 +1961,22 @@ export class WorldScene extends CombatScene {
       p.cur += (ziel - p.cur) * Math.min(1, dt * (ziel > p.cur ? 1.1 : 0.18));
       p.img.setAlpha(0.92 * p.cur);
       p.img.setDisplaySize(p.bw * (0.7 + 0.3 * p.cur), p.bh * (0.7 + 0.3 * p.cur));
+      // DEZENTE Tropfen-Ringe auf gefüllten Pfützen bei Regen (dorfSim-Art,
+      // Autorwunsch R77): feine Lichtkante, die kurz aufläuft und vergeht.
+      if (this.regnet && p.cur > 0.5 && Math.random() < dt * (0.5 + this.wetterWert)) {
+        const key = 'regenring';
+        if (!this.textures.exists(key)) {
+          const c = document.createElement('canvas'); c.width = c.height = 32;
+          const g = c.getContext('2d')!;
+          g.strokeStyle = 'rgba(200,214,230,0.8)'; g.lineWidth = 1.6;
+          g.beginPath(); g.ellipse(16, 16, 13, 8, 0, 0, Math.PI * 2); g.stroke();
+          this.textures.addCanvas(key, c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+        }
+        const rx = p.img.x + (Math.random() - 0.5) * p.bw * 0.5;
+        const ry = p.img.y + (Math.random() - 0.5) * p.bh * 0.5;
+        const ring = this.add.image(rx, ry, key).setDepth(-8.4).setAlpha(0.3).setScale(0.15);
+        this.tweens.add({ targets: ring, scale: 0.55, alpha: 0, duration: 620, ease: 'Quad.easeOut', onComplete: () => ring.destroy() });
+      }
     }
   }
 
@@ -1994,36 +2018,53 @@ export class WorldScene extends CombatScene {
     }
   }
 
-  // Wiesengras + Blumen (Runde 76): die three.js-gebackenen Büschel in
-  // organischen FLECKEN über die offene Wiese streuen - nie im Wald (Baum-
-  // Dichte), nie auf Weg/Brücke, nicht am/im Wasser. Blumen deutlich seltener
-  // und in FARBGRUPPEN (gleiche Sorte wächst beieinander, wie in echt).
+  // Wiesen-Bewuchs im "Dorf im Wald"-Stil (Autorwunsch R77: GENAU dieser Look):
+  // kurzes Bodengras (häufig), hohes Gras (Büschel), Blümchen in FARBGRUPPEN
+  // (gelb/rosa/weiß/lila) plus verstreute Kräuter/Klee - die Original-dorfSim-
+  // Zeichnungen als gebackene Sprites, mit Wind + Wegbiegen vor dem Helden.
   private spawneWiesenBewuchs(a: AreaData): void {
-    if (!a.gebackenerBoden || a.dark || a.innen || !this.textures.exists('wiese_gras_0')) return;
+    if (!a.gebackenerBoden || a.dark || a.innen) return;
+    // Bitmaps lazy registrieren (dorfSim-Port aus bodenMaler)
+    if (!this.textures.exists('dorfbewuchs_0')) {
+      macheBewuchsBilder().forEach((cv, i) => this.textures.addCanvas(`dorfbewuchs_${i}`, cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR));
+      for (let v = 0; v < 3; v++) {
+        this.textures.addCanvas(`dorfgras_kurz_${v}`, macheGrasBueschelBild(false, 300 + v * 7))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+        this.textures.addCanvas(`dorfgras_hoch_${v}`, macheGrasBueschelBild(true, 400 + v * 11))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      }
+    }
     const dichte = baumDichteFn(a, TILE);
     const geo = a.wasserLauf?.geo, smink = a.wasserLauf?.smink ?? WASSER2_CFG.smink;
+    const setze = (key: string, x: number, y: number, skala: number, phase: number): void => {
+      const img = this.add.image(x, y, key).setDepth(y);
+      img.setOrigin(0.5, 0.96);   // Fuß-Anker: die Halme biegen um den Boden
+      img.setScale(skala);
+      this.tileImages.push(img);
+      this.windGras.push({ img, phase });
+    };
     for (let ty = 1; ty < a.h - 1; ty++) {
       for (let tx = 1; tx < a.w - 1; tx++) {
         if (a.map[ty][tx] !== T.GRASS) continue;
         const x = tx * TILE + 16, y = ty * TILE + 16;
-        if (dichte(x, y) > 0.15) continue;                       // offener Wiesenboden, kein Wald
+        if (dichte(x, y) > 0.2) continue;                        // offene Wiese (im Wald nur Moos)
         if (geo && sdWasser((tx + 0.5) / a.w, (ty + 0.5) / a.h, geo, smink) < 0.012) continue;
-        // Wiesen-Flecken: weiches Orts-Rauschen -> Büschel wachsen in Gruppen
-        const fleck = Math.sin(tx * 0.23 + ty * 0.41) + Math.sin(tx * 0.11 - ty * 0.17);
-        const hash = (((tx * 48271) ^ (ty * 65521)) >>> 3) % 1000 / 1000;
-        // Blumen-Inseln: eigenes, grobes Rauschen; die Sorte kommt aus der
-        // Insel-Position -> Farbgruppen statt Konfetti
+        const hash = ((((tx * 48271) ^ (ty * 65521)) >>> 3) % 1000) / 1000;
+        const jx = ((((tx * 40503) ^ (ty * 9277)) >>> 2) % 25) - 12, jy = ((((ty * 25931) ^ (tx * 6151)) >>> 2) % 25) - 12;
+        const phase = tx * 0.27 + ty * 0.13;
+        // Blumen-Inseln in FARBGRUPPEN (wie dorfSim: gleiche Sorte beieinander)
         const blumenFeld = Math.sin(tx * 0.06 + ty * 0.045) + Math.sin(tx * 0.031 - ty * 0.07);
-        const istBlume = blumenFeld > 1.15 && hash < 0.22;
-        if (!istBlume && (fleck < 0.25 || hash > 0.3)) continue;
-        const jx = (((tx * 40503) ^ (ty * 9277)) % 25) - 12, jy = (((ty * 25931) ^ (tx * 6151)) % 25) - 12;
-        const key = istBlume ? `wiese_blume_${Math.abs(Math.round(blumenFeld * 7)) % 3}` : `wiese_gras_${(tx + ty) % 4}`;
-        const img = this.add.image(x + jx, y + jy, key).setDepth(y + jy);
-        img.setOrigin(0.5, 0.9);
-        img.setScale(0.5 + hash * 0.45);
-        if (hash > 0.5) img.setFlipX(true);
-        this.tileImages.push(img);
-        this.windGras.push({ img, phase: tx * 0.27 + ty * 0.13 });
+        // ANZEIGEGRÖSSE = dorfSim-Original (Blume 18x24px, Gras 7-26px hoch):
+        // die Bitmaps sind 3x gebacken -> Skala ~1/3 zeigt sie in Originalgröße.
+        if (blumenFeld > 1.2 && hash < 0.3) {
+          setze(`dorfbewuchs_${Math.abs(Math.round(blumenFeld * 5)) % 4}`, x + jx, y + jy, 0.34 + hash * 0.08, phase);
+          continue;
+        }
+        // verstreute Kräuter/Klee (selten, überall auf der Wiese)
+        if (hash > 0.972) { setze(`dorfbewuchs_${hash > 0.986 ? 4 : 5}`, x + jx, y + jy, 0.34 + hash * 0.06, phase); continue; }
+        // Gras-Flecken: kurzes Bodengras häufig, hohes Gras als Büschel darin
+        const fleck = Math.sin(tx * 0.23 + ty * 0.41) + Math.sin(tx * 0.11 - ty * 0.17);
+        if (fleck < 0.1) continue;
+        if (hash < 0.4) setze(`dorfgras_kurz_${(tx + ty) % 3}`, x + jx, y + jy, 0.32 + hash * 0.1, phase);
+        else if (hash < 0.53) setze(`dorfgras_hoch_${(tx + ty) % 3}`, x + jx, y + jy, 0.3 + hash * 0.12, phase);
       }
     }
   }
@@ -2437,7 +2478,7 @@ export class WorldScene extends CombatScene {
       this.wasserBilder = this.wasserBilder.filter((wb) => wb.img.active);
       for (const tagStr of wasserTags) {
         const [tx, ty] = tagStr.split(',').map(Number);
-        const v = ((tx * 73856093) ^ (ty * 19349663)) % 7;
+        const v = ((((tx * 73856093) ^ (ty * 19349663)) % 7) + 7) % 7;
         const img = this.add.image(tx * TILE + 16, ty * TILE + 16, this.provider.tileKey('gras', v, a.depth, a.theme)).setDepth(-10);
         img.setData('kachel', tagStr);
         this.tileImages.push(img);
@@ -2580,7 +2621,9 @@ export class WorldScene extends CombatScene {
       ? (istWeg(tx, ty - 1) ? 1 : 0) | (istWeg(tx + 1, ty) ? 2 : 0) | (istWeg(tx, ty + 1) ? 4 : 0) | (istWeg(tx - 1, ty) ? 8 : 0)
         | (istWeg(tx + 1, ty - 1) ? 16 : 0) | (istWeg(tx + 1, ty + 1) ? 32 : 0) | (istWeg(tx - 1, ty + 1) ? 64 : 0) | (istWeg(tx - 1, ty - 1) ? 128 : 0)
       : 0;
-    const variant = id === T.WATER ? 0 : id === T.PATH ? wegMaske : planV !== undefined ? planV - 1 : ((tx * 73856093) ^ (ty * 19349663)) % 7;
+    // WICHTIG: (a^b)%7 kann NEGATIV sein (int32) - das mischte alte Pixel-Bäume
+    // zwischen die ez-Bäume, weil obj_baum_0_-3 nie existiert (Autorbug R77).
+    const variant = id === T.WATER ? 0 : id === T.PATH ? wegMaske : planV !== undefined ? planV - 1 : ((((tx * 73856093) ^ (ty * 19349663)) % 7) + 7) % 7;
     const tag = (img: Phaser.GameObjects.Image): Phaser.GameObjects.Image => {
       img.setData('kachel', `${tx},${ty}`);
       this.tileImages.push(img);
@@ -2635,7 +2678,7 @@ export class WorldScene extends CombatScene {
         // Große ez-tree-Bäume (R74/R76): die Bakes sind auf ihren Inhalt
         // zugeschnitten -> Höhe = TILE*skala, Breite nach ECHTEM Seiten-
         // verhältnis (kein Stauchen ins Quadrat), Fuß-Anker am Bildende.
-        const hash01 = (((tx * 73856093) ^ (ty * 19349663)) % 997) / 997;
+        const hash01 = (((((tx * 73856093) ^ (ty * 19349663)) % 997) + 997) % 997) / 997;
         skala = (this.devBaumSkala ?? a.baumSkala) * (0.65 + hash01 * 0.9);
         const quelle = this.textures.get(obj).getSourceImage();
         const aspekt = quelle.width / Math.max(1, quelle.height);
