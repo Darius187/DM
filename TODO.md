@@ -15,6 +15,10 @@
   Backofen (three.js) backen -> Sprites mit leichtem Schwank-Shader. ez-tree
   bringt zusätzlich ein (nicht exportiertes) Grass-Modul mit GLB-Assets mit.
 
+- WETTER-Feinschliff (R77 offen, Rest des dorfSim-Ports): Bewölkungs-TINT
+  (Tageslicht dämpfen bei Regen), Nässe-Dunkelboden, Wind-Böenwelle örtlich
+  (statt globaler Phase), Donner-Sound zum Blitz. Achse/Nebel/Blitz/Pfützen/
+  Sturm-Wind stehen bereits.
 - WICHTIG (Runde 73): die START-Karte (buildStart, NEUES SPIEL) ist auf den
   Engine-Pfad gehoben. Ihre Baum-OPTIK kommt noch aus dorfSim (ez-tree ->
   3D-Backofen) via gfx/baumBitmaps.ts (beim Boot registriert). Das ist die
