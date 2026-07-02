@@ -1671,17 +1671,20 @@ export function buildStart(rng: Rng): AreaData {
       seen: [{ name: 'See', cx: 0.64, cy: 0.85, rx: 0.16, ry: 0.08 }],
     },
   };
-  // SALZSTRASSE West->Ost (Skizze: dunkelrot, v 0.57 -> 0.78), bewusst FAST
-  // GERADE (Autorwunsch "Wege gerader"). 2 Kacheln breit; wo sie den Fluss
-  // kreuzt (~u 0.505), liegt eine BRÜCKE (T.BRIDGE) - begehbar, ungebremst.
+  // SALZSTRASSE West->Ost (Skizze: dunkelrot, v 0.57 -> 0.78). Ein Waldweg ist
+  // ÜBERWIEGEND GERADE mit wenigen, LANGEN, weichen Bögen (Autorkritik: kein
+  // Zick-Zack, keine Knicke) - darum eine Catmull-Rom-Spline durch wenige
+  // Stützpunkte statt linearer Segmente. 2 Kacheln breit; am Fluss die BRÜCKE.
   const geo = a.wasserLauf.geo;
-  const strasse: Array<[number, number]> = [[-0.02, 0.57], [0.18, 0.60], [0.40, 0.635], [0.56, 0.64], [0.68, 0.675], [0.85, 0.725], [1.02, 0.78]];
+  const strasse: Array<[number, number]> = [[-0.10, 0.565], [0.22, 0.61], [0.52, 0.64], [0.80, 0.70], [1.10, 0.79]];
   const strasseV = (u: number): number => {
-    for (let i = 1; i < strasse.length; i++) {
-      const [u0, v0] = strasse[i - 1], [u1, v1] = strasse[i];
-      if (u <= u1 || i === strasse.length - 1) return v0 + (v1 - v0) * Math.min(1, Math.max(0, (u - u0) / (u1 - u0)));
-    }
-    return strasse[strasse.length - 1][1];
+    // Segment finden, dann Catmull-Rom (zentripetal-vereinfacht, gleichmäßige u-Abstände)
+    let i = 1;
+    while (i < strasse.length - 1 && u > strasse[i][0]) i++;
+    const p0 = strasse[Math.max(0, i - 2)], p1 = strasse[i - 1], p2 = strasse[i], p3 = strasse[Math.min(strasse.length - 1, i + 1)];
+    const t = Math.min(1, Math.max(0, (u - p1[0]) / (p2[0] - p1[0])));
+    const t2 = t * t, t3 = t2 * t;
+    return 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
   };
   for (let tx = 0; tx < w; tx++) {
     const u = (tx + 0.5) / w;

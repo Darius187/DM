@@ -154,6 +154,9 @@ export class WorldScene extends CombatScene {
   private fluessigkeitsShaders: Phaser.GameObjects.Shader[] = [];   // Liquid-Shader-Overlays (Wasser/Blut), Runde 71
   private wasser2Shader?: Phaser.GameObjects.Shader;                 // neues prozedurales Wasser-Overlay pro Area (Runde 72)
   private gebackenerBodenImg?: Phaser.GameObjects.Image;             // gebackener organischer Boden (Runde 72)
+  // Bäume, die im Wind schwanken (Runde 74, nur Karten mit baumSkala): sanfte
+  // Fuß-verankerte Rotation, Böen-Phase aus der Position, stärker bei Regen.
+  private windBaeume: Array<{ img: Phaser.GameObjects.Image; phase: number }> = [];
   private dorfCanvas?: HTMLCanvasElement;                            // dorfSim-Hintergrund-Canvas (Anfangskarte-Look)
   private dorfBild?: Phaser.GameObjects.Image;
   private dorfAktiv = false;
@@ -1810,6 +1813,52 @@ export class WorldScene extends CombatScene {
   // stehen), Wald-Details und den Weg als dorfSim-Polygon-Band (Spurrillen,
   // Steine, Saumgras) - abgeleitet allein aus der Kachelkarte. Tiefe -11 unter
   // den Objekten; halbe Auflösung + LINEAR-Hochskalieren spart Speicher.
+  // Bäume schwanken im Wind (Port des dorfSim-Gefühls, Runde 74): sanfte
+  // Rotation um den Fuß-Anker, zwei überlagerte Wellen (Grundwind + Böe),
+  // Phase aus der Baumposition. Bei Regen/Sturm deutlich stärker - so
+  // "agieren" die Bäume mit dem Wetter. ~300 Rotationen/Frame sind billig.
+  private updateBaumWind(time: number): void {
+    if (!this.windBaeume.length) return;
+    const draussen = !this.area.innen && !this.area.dark;
+    const sturm = this.regnet && draussen ? 1 : 0;
+    const amp = 0.009 + sturm * 0.02;
+    for (const b of this.windBaeume) {
+      if (!b.img.active) continue;
+      b.img.rotation = amp * (Math.sin(time * 0.0011 + b.phase) * 0.6 + Math.sin(time * 0.0027 + b.phase * 1.7) * 0.4);
+    }
+  }
+
+  // Baum fällt ANIMIERT (dorfSim-Gefühl, Runde 74): beschleunigtes Kippen weg
+  // vom Helden (Schwerkraft-Drehmoment), kurzes Nachfedern am Boden, dann
+  // Stumpf + Holz. Nur auf Karten mit großen Bäumen (baumSkala).
+  private faelleBaumAnimiert(b: { x: number; y: number }, tx: number, ty: number): void {
+    const tag = `${tx},${ty}`;
+    const baum = this.tileImages.find((i) => i.active && i.getData?.('kachel') === tag && i.getData?.('objTyp') === 'baum');
+    const schatten = this.tileImages.find((i) => i.active && i.getData?.('kachel') === tag && i.texture.key === 'kontaktschatten');
+    if (!baum) { this.addStumpf(b.x, b.y); return; }   // Fallback: sofort (sollte nie greifen)
+    this.windBaeume = this.windBaeume.filter((w) => w.img !== baum);
+    this.addStumpf(b.x, b.y);                          // der Stumpf bleibt unter dem fallenden Stamm
+    schatten?.destroy();
+    const richtung = Math.sign(b.x - this.px) || 1;    // fällt vom Helden WEG
+    this.tweens.add({
+      targets: baum, rotation: richtung * 1.46, duration: 850, ease: 'Quad.easeIn',   // FALL_ZIEL wie dorfSim
+      onComplete: () => {
+        this.sfx.play('holz_hacken');
+        this.fx.burst(b.x + richtung * baum.displayHeight * 0.4, b.y, 0x4a5a30, 14, 150);
+        // Nachfedern, kurz liegen lassen, dann ausblenden
+        this.tweens.chain({
+          targets: baum,
+          tweens: [
+            { rotation: richtung * 1.34, duration: 130, ease: 'Quad.easeOut' },
+            { rotation: richtung * 1.46, duration: 110, ease: 'Quad.easeIn' },
+            { alpha: 0, duration: 400, delay: 500 },
+          ],
+          onComplete: () => baum.destroy(),
+        });
+      },
+    });
+  }
+
   // Weicher Kontaktschatten (einmal gebacken, Port aus dorfSim schattenBild):
   // erdet die großen Bäume am Fuß. Lazy als globale Textur registriert.
   private kontaktSchattenKey(): string {
@@ -2130,6 +2179,7 @@ export class WorldScene extends CombatScene {
   private unloadAreaObjects(): void {
     for (const img of this.tileImages) img.destroy();
     this.tileImages = [];
+    this.windBaeume = [];
     this.wasser2Shader?.destroy(); this.wasser2Shader = undefined;
     this.gebackenerBodenImg?.destroy(); this.gebackenerBodenImg = undefined;
     if (this.dorfAktiv) { dorfPause(); this.dorfBild?.destroy(); this.dorfBild = undefined; this.dorfAktiv = false; }
@@ -2279,6 +2329,9 @@ export class WorldScene extends CombatScene {
         const schatten = tag(this.add.image(tx * TILE + 16, ty * TILE + 18, this.kontaktSchattenKey()).setDepth(ty * TILE + 25));
         schatten.setDisplaySize(TILE * skala * 0.42, TILE * skala * 0.15);
         schatten.setAlpha(0.8);
+        // Lebendig wie in dorfSim: der Baum schwankt im Wind (Böen-Phase aus
+        // der Position, damit nicht alle synchron kippen).
+        this.windBaeume.push({ img: objImg, phase: tx * 0.19 + ty * 0.11 });
       } else if (skala > 1.15) objImg.setOrigin(0.5, 0.7);
       objImg.setDisplaySize(TILE * skala, TILE * skala);
       objImg.setData('objTyp', objName === 'wald' ? 'baum' : objName);
@@ -4068,8 +4121,14 @@ export class WorldScene extends CombatScene {
     this.baumSchlaege.delete(key);
     const tx = Math.floor(b.x / TILE), ty = Math.floor(b.y / TILE);
     this.area.map[ty][tx] = T.GRASS;
-    this.refreshTile(tx, ty);
-    this.addStumpf(b.x, b.y);
+    if (this.area.baumSkala) {
+      // Große Bäume (Runde 74): ECHTER Fall wie in dorfSim (kippen, aufschlagen,
+      // nachfedern) statt sofortigem Verschwinden. Stumpf setzt die Animation.
+      this.faelleBaumAnimiert(b, tx, ty);
+    } else {
+      this.refreshTile(tx, ty);
+      this.addStumpf(b.x, b.y);
+    }
     this.fx.burst(b.x, b.y, 0x1c3018, 16, 140);
     this.sfx.play('holz_hacken');
     const amt = ri(this.rng, GATHER.baumHolz.min, GATHER.baumHolz.max);
@@ -7098,6 +7157,7 @@ export class WorldScene extends CombatScene {
     this.updateCombat(dt * kampfTempo);
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
     this.updateWasserWetter();  // Regen-Ringe/Wirbel auf dem neuen Wasser
+    this.updateBaumWind(this.time.now);  // Bäume schwanken im Wind (Karten mit baumSkala)
     this.updateFreiKamera(dt); // Dev-Frei-Kamera (entkoppelt vom Helden)
     this.updateDorfSim();     // dorfSim-Hintergrund der Kamera nachführen
     this.updatePerfAnzeige();  // Dev-FPS-/Mess-Anzeige (echte Messung im Browser)

@@ -69,14 +69,23 @@ function macheMoosPattern(rnd: () => number): HTMLCanvasElement {
 // --- Weglinie aus der Kachelkarte: pro Spalte die Mitte der PATH/BRIDGE-Kacheln
 // (die Salzstraßen laufen West->Ost). Liefert Weltkoordinaten-Punkte. ----------
 function wegMittellinie(k: BodenKarte, TILE: number): Array<{ x: number; y: number }> {
-  const pts: Array<{ x: number; y: number }> = [];
+  const roh: Array<{ x: number; y: number }> = [];
   for (let tx = 0; tx < k.w; tx++) {
     let sum = 0, n = 0;
     for (let ty = 0; ty < k.h; ty++) {
       const id = k.map[ty][tx];
       if (id === T.PATH || id === T.BRIDGE) { sum += ty; n++; }
     }
-    if (n) pts.push({ x: tx * TILE + TILE / 2, y: (sum / n + 0.5) * TILE });
+    if (n) roh.push({ x: tx * TILE + TILE / 2, y: (sum / n + 0.5) * TILE });
+  }
+  // GLÄTTEN (Autorkritik "Zick-Zack"): die Kachelzentren springen in 32px-Stufen,
+  // wo die Wegzeile wechselt - ein gleitendes Mittel (+-4 Spalten) macht daraus
+  // die weiche, natürliche Linie, der auch das gemalte Band folgt.
+  const pts: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < roh.length; i++) {
+    let sum = 0, n = 0;
+    for (let j = Math.max(0, i - 4); j <= Math.min(roh.length - 1, i + 4); j++) { sum += roh[j].y; n++; }
+    pts.push({ x: roh[i].x, y: sum / n });
   }
   return pts;
 }
@@ -191,8 +200,10 @@ function maleWeg(ctx: CanvasRenderingContext2D, mitte: Array<{ x: number; y: num
   const pts: P[] = [];
   for (let i = 0; i < mitte.length; i++) {
     const m = mitte[i], s = m.x;
-    const meander = nz(s, 0.012, 0) * 10 + nz(s, 0.031, 1.3) * 5;      // klein halten (s.o.)
-    const hw = Math.max(20, 34 * (0.82 + 0.22 * nz(s, 0.02, 2) + 0.1 * nz(s, 0.055, 4)));
+    // NUR ein sehr langwelliger, kleiner Versatz (Autorkritik "Zick-Zack"):
+    // die Form kommt aus der geglätteten Mittellinie, nicht aus dem Rauschen.
+    const meander = nz(s, 0.004, 0) * 6;
+    const hw = Math.max(20, 34 * (0.85 + 0.18 * nz(s, 0.013, 2) + 0.06 * nz(s, 0.04, 4)));
     pts.push({ x: m.x, y: m.y + meander, hw });
   }
   const poly = (): void => {
