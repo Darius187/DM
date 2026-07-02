@@ -850,3 +850,14 @@
   >=80px Baum zu Baum, Wasser-Puffer); Größe per a.baumSkala (Start: 11
   Kacheln Basis, Streuung 0.65-1.55, Fuß-Anker 0.64, Kontaktschatten).
   Leicht änderbar in areagen.ts (eine Zahl).
+
+## Runde 75 - Wetter/Pfuetzen/Schilf/Stamm
+- Wetter als EINE kontinuierliche Achse (data/welt.ts WETTER) statt Tages-
+  Wuerfel; Stimmungs-Nieselregen (0.45) haelt bis zum ersten Dungeon-Besuch
+  (flags.nErsterDungeon) - Heavy-Rain-Stimmung, in einer Zeile aenderbar.
+- Pfuetzen: gebackene Einzel-Texturen laengs der Weg-Mittellinie, Dynamik nur
+  ueber Alpha/Groesse (kein Per-Frame-Canvas) - kein Upload-Ruckler.
+- Schilf-Cluster ueber Orts-Rauschen an der SDF-Wasserkante (Band -0.004..0.009),
+  deterministisch je Kachel; Autor-Abnahme des Looks offen ("teste das mal").
+- Gefaellter Stamm = das rotierte ez-tree-Original-Bitmap (Autorfreigabe);
+  Holz kommt erst beim Zerlegen (GATHER.stammSchlaege), nicht beim Faellen.

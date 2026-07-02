@@ -1,15 +1,8 @@
 # TODO - Notizen für später (keine Nebenbei-Refactorings)
 
-- NÄCHSTER SCHRITT (Runde 75, Autorauftrag "komplett richtig"): dorfSim-
-  WETTERSYSTEM + PFÜTZEN in den Engine-Pfad portieren. Blaupause (Scout):
-  Wetter-Achse/wetness dorfSim.ts Z.286-291/1327, Pfützen machePfuetze Z.468,
-  Platzierung AM Weg Z.1008-1022, Rendering Z.1455-1487. Plan: wetness-Achse
-  in WorldScene, Pfützen als gebackene Masken-Texturen am Weg, Wachsen/
-  Schwinden mit Nässe; Regen-Ringe später über den Wasser-Shader.
-- Fällen-Ausbau (Runde 74 begonnen): der gefällte Stamm blendet nach dem
-  Aufschlag aus - dorfSim hatte zusätzlich LIEGENDE Stamm-Bitmaps (backeLiege),
-  die man am Boden weiter zerlegt (hackHp -> mehr Holz). Beim Wetter-Port
-  mitnehmen; ein Fall-Tempo-Regler (dorfSim fallG) ist ebenfalls denkbar.
+- Erledigt R75: Wetter-Achse + Stimmungsregen (bis 1. Dungeon) + Pfützen am
+  Weg + Ufer-Schilf (Test, Autor-Abnahme offen) + liegender ez-tree-Stamm
+  (zerlegbar; die alte backeLiege-Zwischenzeichnung ist gestrichen).
 - Bewegtes GRAS + BLUMEN (three.js, Autor will besseren Look als die alten
   Canvas-Striche): Referenzen recherchiert - Codrops "Fluffiest Grass"
   (InstancedMesh + Wind-Shader) und github.com/CK42BB/procedural-grass-threejs
