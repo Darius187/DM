@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir, angleToDir8 } from '../world/Enemy';
-import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildBlank, buildWaldOst, buildStadtNatur, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
@@ -339,6 +339,8 @@ export class WorldScene extends CombatScene {
     this.panels.getStatistikZeilen = () => this.statistikZeilen();
     this.panels.getKontakteZeilen = () => this.kontakteZeilen();
     this.panels.getKarte = () => this.getKarteInfo();
+    // Großansicht (Runde 74): volle Kachel-Auflösung für die angeklickte Minimap.
+    this.panels.getGebietGross = (id) => this.gebietThumb(id, 200);
     this.panels.getEbeneKarte = () => this.ebeneKarteInfo();
     this.panels.toggleKarteDev = () => { this.karteAufgedeckt = !this.karteAufgedeckt; };
     this.shop = new ShopUI(this, this.provider, this.sfx, () => this.p);
@@ -1399,7 +1401,6 @@ export class WorldScene extends CombatScene {
     else if (id.startsWith('innen_')) a = buildInterior(INNENRAEUME[id.replace('innen_', '')]);
     else if (id === 'wald') a = buildForest(rng);
     else if (id === 'start') a = buildStart(rng);
-    else if (id === 'blank') a = buildBlank(rng);   // Dev-Testfläche (normaler Kachel-/Sprite-Pfad, kein dorfSim)
     else if (id === 'wald_o') a = buildWaldOst(rng);
     else if (id === 'stadt') a = buildStadtNatur(rng);
     else if (id === 'goldmine') a = buildGoldmine(rng);
@@ -1894,7 +1895,10 @@ export class WorldScene extends CombatScene {
     const LIFE = 2.5, now = this.time.now / 1000;
     const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
     const geo = this.aktuelleWasserGeo() ?? lauf.geo;
-    const imWasser = sdWasser(u, v, geo, lauf.smink ?? WASSER2_CFG.smink, WASSER2_CFG.widthMul) < 0.02;
+    // Auf Brücke/Weg steht der Held NICHT im Wasser -> keine Watewellen.
+    const kachel = this.area.map[Math.floor(this.py / TILE)]?.[Math.floor(this.px / TILE)];
+    const imWasser = kachel !== T.BRIDGE && kachel !== T.PATH
+      && sdWasser(u, v, geo, lauf.smink ?? WASSER2_CFG.smink, WASSER2_CFG.widthMul) < 0.02;
     if (imWasser && this.time.now - this.wasserTrailLetzte > 70) {
       this.wasserTrailLetzte = this.time.now;
       this.wasserTrail.push({ u, v, t: now });
@@ -2016,7 +2020,6 @@ export class WorldScene extends CombatScene {
         { kind: 'note', text: 'Frei-Kamera entkoppelt vom Helden: WASD/Pfeile scrollen, Mittelmaus zieht die Karte. Basis für den späteren RTS-Modus.' },
       ] },
       { name: 'MESSEN', controls: () => [
-        { kind: 'button', label: () => 'Test-Fläche „blank" laden (ohne dorfSim)', onClick: () => { this.devKonsole?.toggle(); this.goArea('blank'); } },
         { kind: 'button', label: () => `FPS-Anzeige: ${this.perfAn ? 'AN' : 'aus'}`, onClick: () => { this.perfAn = !this.perfAn; this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `Wasser-Shader: ${this.wasser2Shader?.visible ? 'AN' : 'aus'} (FPS-Vergleich)`, onClick: () => { this.wasser2Shader?.setVisible(!this.wasser2Shader.visible); this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `dorfSim-Upload: ${this.perfDorfAus ? 'aus (eingefroren)' : 'AN'} (FPS-Vergleich)`, onClick: () => { this.perfDorfAus = !this.perfDorfAus; this.devKonsole?.refresh(); } },
@@ -2791,10 +2794,17 @@ export class WorldScene extends CombatScene {
     // Verlangsamung aus DERSELBEN Geometrie wie Optik/Wellen.
     const lauf = this.area?.wasserLauf;
     if (lauf?.begehbar) {
-      const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
-      const sd = sdWasser(u, v, this.aktuelleWasserGeo() ?? lauf.geo, lauf.smink ?? WASSER2_CFG.smink, WASSER2_CFG.widthMul);
-      const nass = Math.max(0, Math.min(1, (0.015 - sd) / 0.05));   // 0 am Ufer .. 1 tief
-      f *= 1 - nass * 0.93;                                         // tief -> ~7% Tempo (fast fest)
+      // AUF Brücke/Weg gilt die Wat-Bremse NICHT (Autorbug "komme nicht über
+      // die Brücke"): die Bremse ist SDF-basiert und wusste nichts von der
+      // Kachel unter den Füßen - auf der Brücke stand der Held im "Wasser".
+      const htx = Math.floor(this.px / TILE), hty = Math.floor(this.py / TILE);
+      const kachel = this.area.map[hty]?.[htx];
+      if (kachel !== T.BRIDGE && kachel !== T.PATH) {
+        const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
+        const sd = sdWasser(u, v, this.aktuelleWasserGeo() ?? lauf.geo, lauf.smink ?? WASSER2_CFG.smink, WASSER2_CFG.widthMul);
+        const nass = Math.max(0, Math.min(1, (0.015 - sd) / 0.05));   // 0 am Ufer .. 1 tief
+        f *= 1 - nass * 0.93;                                         // tief -> ~7% Tempo (fast fest)
+      }
     }
     return f;
   }
@@ -2806,6 +2816,8 @@ export class WorldScene extends CombatScene {
   }
 
   protected override areaDark(): boolean { return this.area?.dark ?? false; }
+
+  protected override areaFriedlich(): boolean { return this.area?.friedlich ?? false; }
 
   // Dev-Sprung aus dem F10-Kasten (Runde 21, R40: zu jeder Krypta-Ebene)
   protected override devTeleport(ziel: string): void {
@@ -4194,10 +4206,10 @@ export class WorldScene extends CombatScene {
     };
   }
 
-  // Downscaled Minikarte eines Gebiets (Farb-Raster, max ~64 breit).
-  private gebietThumb(id: string): { w: number; h: number; farben: number[][] } {
+  // Downscaled Minikarte eines Gebiets (Farb-Raster, max ~maxB breit; die
+  // Großansicht im KARTE-Tab fordert mit hohem maxB die volle Auflösung an).
+  private gebietThumb(id: string, maxB = 64): { w: number; h: number; farben: number[][] } {
     const a = this.getArea(id);
-    const maxB = 64;
     const schritt = Math.max(1, Math.ceil(a.w / maxB));
     const tw = Math.ceil(a.w / schritt), th = Math.ceil(a.h / schritt);
     const farben: number[][] = Array.from({ length: th }, () => new Array<number>(tw).fill(0x14110c));

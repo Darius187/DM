@@ -922,6 +922,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   protected areaDepth(): number { return 1; }
   protected areaDark(): boolean { return false; }
+  // Friedliche Karte (Autorwunsch Runde 74): hier spawnt niemals ein Gegner.
+  // Die Welt überschreibt das aus dem Area-Flag; ein zentraler Guard in
+  // spawnEnemy neutralisiert damit ALLE Spawn-Pfade auf einmal.
+  protected areaFriedlich(): boolean { return false; }
   protected stepSound(): string { return 'schritte_stein'; }
   // Gebietsfaktor: Dorf flott, Krypta bedächtig (Feedback-Runde 3)
   protected areaSpeedFactor(): number { return 1; }
@@ -1808,6 +1812,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.provider.applyFigure(e.sprite, e.figur(), 0, 0);
     if (e.boss) e.sprite.setScale(1.5);
     else if (e.elite) e.sprite.setScale(1.25);
+    // Friedliche Karte: Gegner NICHT in die Welt nehmen (Sprite sofort weg,
+    // nicht in enemies -> keine KI, kein Kampf). Rückgabeobjekt bleibt gültig,
+    // damit Aufrufer (Namen setzen etc.) nicht brechen.
+    if (this.areaFriedlich()) { e.sprite.destroy(); e.hp = 0; return e; }
     this.enemies.push(e);
     return e;
   }
