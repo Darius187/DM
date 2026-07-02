@@ -6,6 +6,10 @@
   Platzierung AM Weg Z.1008-1022, Rendering Z.1455-1487. Plan: wetness-Achse
   in WorldScene, Pfützen als gebackene Masken-Texturen am Weg, Wachsen/
   Schwinden mit Nässe; Regen-Ringe später über den Wasser-Shader.
+- Fällen-Ausbau (Runde 74 begonnen): der gefällte Stamm blendet nach dem
+  Aufschlag aus - dorfSim hatte zusätzlich LIEGENDE Stamm-Bitmaps (backeLiege),
+  die man am Boden weiter zerlegt (hackHp -> mehr Holz). Beim Wetter-Port
+  mitnehmen; ein Fall-Tempo-Regler (dorfSim fallG) ist ebenfalls denkbar.
 - Bewegtes GRAS + BLUMEN (three.js, Autor will besseren Look als die alten
   Canvas-Striche): Referenzen recherchiert - Codrops "Fluffiest Grass"
   (InstancedMesh + Wind-Shader) und github.com/CK42BB/procedural-grass-threejs
