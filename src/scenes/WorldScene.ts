@@ -38,7 +38,7 @@ import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
 import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, VOLK, SMALLTALK, KONTAKT_ANGEBOT, type DlgPage } from '../data/dialoge';
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
-import { GATHER } from '../data/crafting';
+import { GATHER, HOLZ } from '../data/crafting';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, tageszeitLabel } from '../data/welt';
 import { TUNING } from '../logic/tuning';
@@ -173,7 +173,7 @@ export class WorldScene extends CombatScene {
   private pfuetzenTexKeys: string[] = [];
   // Gefällte, liegende Stämme (Runde 75): der ez-tree-Baum selbst bleibt liegen
   // und wird am Boden zerlegt (Holz) - keine separate Zwischenzeichnung.
-  private liegendeStaemme = new Map<string, { img: Phaser.GameObjects.Image; x: number; y: number; hits: number }>();
+  private liegendeStaemme = new Map<string, { img: Phaser.GameObjects.Image; x: number; y: number; hits: number; inhalt?: number }>();
   private dorfCanvas?: HTMLCanvasElement;                            // dorfSim-Hintergrund-Canvas (Anfangskarte-Look)
   private dorfBild?: Phaser.GameObjects.Image;
   private dorfAktiv = false;
@@ -1935,7 +1935,10 @@ export class WorldScene extends CombatScene {
             { rotation: richtung * 1.46, duration: 110, ease: 'Quad.easeIn' },
           ],
         });
-        this.liegendeStaemme.set(`${tx},${ty}`, { img: baum, x: b.x, y: b.y, hits: 0 });
+        // Holz-INHALT nach Baumgröße (HOLZ.baumInhalt): klein/mittel/groß
+        const skala = baum.displayHeight / TILE;
+        const inhalt = skala < 8 ? HOLZ.baumInhalt.klein : skala < 11.5 ? HOLZ.baumInhalt.mittel : HOLZ.baumInhalt.gross;
+        this.liegendeStaemme.set(`${tx},${ty}`, { img: baum, x: b.x, y: b.y, hits: 0, inhalt });
       },
     });
   }
@@ -2224,7 +2227,9 @@ export class WorldScene extends CombatScene {
     this.sfx.play('holz_hacken');
     this.fx.burst(st.x, st.y - 6, 0x6a5430, 6, 90);
     if (st.hits < GATHER.stammSchlaege) return;
-    const amt = ri(this.rng, GATHER.baumHolz.min, GATHER.baumHolz.max);
+    // Hastige Held-Ernte (Autor-Balance R79): der Held nimmt ~1/5 des Baum-
+    // Inhalts mit (mind. 1) - den vollen Inhalt holen später Holzfäller-NPCs.
+    const amt = Math.max(1, Math.round((st.inhalt ?? HOLZ.baumInhalt.mittel) * HOLZ.heldAnteil));
     this.pickups.add({
       kind: 'material', x: st.x, y: st.y + 8, bob: 0,
       item: { kind: 'material', name: 'Holz', rarity: 0, val: 0, boni: [], stack: amt },

@@ -20,6 +20,19 @@ export const GATHER = {
   krautSammeln: 1,        // Kräuter: einfach aufsammeln
 } as const;
 
+// HOLZ-WIRTSCHAFT (Runde 79, Autor-Balance): Baum -> Holz (Stämme) -> Bretter
+// (Sägewerk). GEBAUT wird in Brettern. Alles Regler, die Verhältnisse tragen:
+// Held erntet hastig (~1/5), Holzfäller-NPCs holen später den vollen Inhalt.
+export const HOLZ = {
+  baumInhalt: { klein: 3, mittel: 5, gross: 8 },   // was ein Baum ENTHÄLT (nach Größe)
+  heldAnteil: 0.2,        // hastige Held-Ernte (mind. 1 Holz) - "ich bin kein Holzfäller"
+  npcBaeumeProTag: 10,    // historisch ~8-12 mittlere Bäume je Holzfäller und Tag
+  bretterProHolz: 2,      // Sägewerk: 1 Holz -> 2 Bretter
+  holzKaufpreis: 1,       // Gold je Holz beim Händler (50 Holz ≈ 1,5 NPC-Tageslöhne)
+  npcTagelohn: 33,        // Gold je Holzfäller-Tag (Anker für den Kaufpreis)
+  bauKosten: { zaun: 2, palisadenSegment: 6 },     // BRETTER je Bau-Segment
+} as const;
+
 // Wiederaufbau des niedergebrannten Gehöfts in 3 Stufen
 export interface AufbauStufe {
   name: string;

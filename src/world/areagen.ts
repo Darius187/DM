@@ -1753,8 +1753,17 @@ export function buildStart(rng: Rng): AreaData {
     { art: 'galgen', x: 3860, y: wegY(3860 / W) - 90 },
     { art: 'meiler', x: 500, y: 520 },
   ];
+  // FELSEN + ERZADERN (Runde 79, Sammel-System angeschlossen): Felsbrocken
+  // (Stein, Spitzhacke) verstreut am Waldrand, Eisen-Adern im Nordosten nahe
+  // der Felszone. Gold bleibt der Goldhöhle vorbehalten.
+  a.rocks = [
+    { x: 900, y: 620 }, { x: 2600, y: 420 }, { x: 3400, y: 900 },
+    { x: 620, y: 2300 }, { x: 1750, y: 2450 }, { x: 3750, y: 1500 },
+    { x: 2950, y: 2350 }, { x: 1200, y: 380 },
+  ];
+  a.ores = [ { x: 3550, y: 520 }, { x: 3820, y: 760 }, { x: 480, y: 1900 } ];
   // Bäume um die POIs freiräumen (Meiler-Lichtung etwas größer)
-  for (const p of a.pois) {
+  for (const p of [...a.pois, ...a.rocks.map((r2) => ({ art: 'fels', x: r2.x, y: r2.y })), ...a.ores.map((o) => ({ art: 'erz', x: o.x, y: o.y }))]) {
     const ptx = Math.floor(p.x / TILE), pty = Math.floor(p.y / TILE);
     const r = p.art === 'meiler' ? 3 : 2;
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
