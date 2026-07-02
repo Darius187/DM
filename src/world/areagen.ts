@@ -1626,6 +1626,9 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
   // friedlich - der Autor besichtigt die Karten; Wölfe/Gegner kommen später
   // gezielt zurück (wolfXs-Daten bleiben erhalten, nur der Spawn ist gesperrt).
   a.friedlich = true;
+  // ez-Bäume ÜBERALL (Autorauftrag R78 "nur auf einer Karte"): auch die
+  // Oberwelt-Nachbarkarten zeichnen ihre Bäume groß aus den ez-tree-Bakes.
+  a.baumSkala = 9;
   return a;
 }
 

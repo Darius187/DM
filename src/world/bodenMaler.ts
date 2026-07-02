@@ -274,7 +274,7 @@ export function macheSchilfBild(seed: number): HTMLCanvasElement {
 
 // Blümchen (gelb/rosa/weiß/lila), Kräuter-Büschel, Klee - exakt dorfSim Z.502-518.
 export function macheBewuchsBilder(): HTMLCanvasElement[] {
-  const S = 3;   // 3x-Auflösung (Anzeige verkleinert -> knackige Striche)
+  const S = 1;   // 1:1 wie dorfSim (Anzeige unskaliert -> Striche bleiben fein statt zu Balken zu verschmelzen)
   const mk = (): [HTMLCanvasElement, CanvasRenderingContext2D] => {
     const c = document.createElement('canvas'); c.width = 18 * S; c.height = 24 * S;
     const g = c.getContext('2d')!; g.scale(S, S); return [c, g];
@@ -301,7 +301,7 @@ export function macheBewuchsBilder(): HTMLCanvasElement[] {
 // Ruhe-Lean gebacken; Wind/Wegbiegen kommt zur Laufzeit über die Rotation.
 export function macheGrasBueschelBild(hoch: boolean, seed: number): HTMLCanvasElement {
   const rnd = rngAus(seed);
-  const S = 3;   // 3x backen, klein anzeigen - sonst verschwimmen die feinen Striche
+  const S = 1;   // 1:1 wie dorfSim - beim Herunterskalieren verschmolzen die 7 Halme zu einem Block (Autorbug R78)
   const c = document.createElement('canvas');
   c.width = (hoch ? 30 : 16) * S; c.height = (hoch ? 32 : 12) * S;
   const g = c.getContext('2d')!; g.scale(S, S);

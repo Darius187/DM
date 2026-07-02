@@ -16,7 +16,7 @@ import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserG
 import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheGrasBueschelBild } from '../world/bodenMaler';
 import { POI_BILDER } from '../world/poiBilder';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
-import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale } from '../demo3d/dorfSim';
+import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale, berechneTagLicht } from '../demo3d/dorfSim';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
 import { KARTEN_KANTEN } from '../data/kartenKanten';
 import { wetter } from '../logic/wetter';
@@ -162,7 +162,12 @@ export class WorldScene extends CombatScene {
   private windSchilf: Array<{ img: Phaser.GameObjects.Image; phase: number }> = [];
   // Wiesengras + Blumen (Runde 76, three.js-gebacken): mittleres Schwanken.
   private windGras: Array<{ img: Phaser.GameObjects.Image; phase: number }> = [];
+  // Baum-Kontaktschatten (Runde 78): wandern und strecken sich mit dem
+  // SONNENSTAND (dorfSim schDX/schLang) - morgens/abends lang und seitlich,
+  // mittags kurz, Wolken unterdrücken die Richtung. Grundschatten bleibt immer.
+  private baumSchatten: Array<{ img: Phaser.GameObjects.Image; x0: number; breite: number }> = [];
   private devBaumSkala?: number;   // F10-Override der Baum-Grundgröße (Dev)
+  private devBewuchs = 1;          // F10-Bewuchs-Dichtefaktor (wirkt beim Kartenwechsel)
   // Pfützen am Weg (Runde 75): wachsen/schwinden mit der Boden-Nässe.
   private pfuetzen: Array<{ img: Phaser.GameObjects.Image; schwelle: number; cur: number; bw: number; bh: number }> = [];
   private pfuetzenTexKeys: string[] = [];
@@ -1863,6 +1868,21 @@ export class WorldScene extends CombatScene {
     if (!this.windBaeume.length && !this.windSchilf.length) return;
     const draussen = !this.area.innen && !this.area.dark;
     const amp = 0.009 + (draussen ? this.wetterWert : 0) * 0.022;   // Wind wächst mit dem Wetter
+    // SONNEN-SCHATTEN (dorfSim schDX/schLang 1:1): tief stehende Sonne -> langer,
+    // seitlicher Schatten; Wolken unterdrücken die Richtung; nachts nur der
+    // erdende Grundschatten (tagAuf blendet um Auf-/Untergang weich).
+    if (draussen && this.baumSchatten.length) {
+      const L = berechneTagLicht(this.tageszeit * 24);
+      const bew = Math.max(0, Math.min(1, this.wetterWert));
+      const tagAuf = Math.min(1, L.hoehe * 6);
+      const schDX = -L.dir * (0.18 + (1 - L.hoehe) * 0.4) * (1 - bew) * tagAuf;
+      const schLang = (1 - L.hoehe) * 1.2 * (1 - bew) * tagAuf;
+      for (const s of this.baumSchatten) {
+        if (!s.img.active) continue;
+        s.img.x = s.x0 + schDX * s.breite;
+        s.img.displayWidth = s.breite * (1 + schLang);
+      }
+    }
     for (const b of this.windBaeume) {
       if (!b.img.active) continue;
       b.img.rotation = amp * (Math.sin(time * 0.0011 + b.phase) * 0.6 + Math.sin(time * 0.0027 + b.phase * 1.7) * 0.4);
@@ -2055,16 +2075,16 @@ export class WorldScene extends CombatScene {
         // ANZEIGEGRÖSSE = dorfSim-Original (Blume 18x24px, Gras 7-26px hoch):
         // die Bitmaps sind 3x gebacken -> Skala ~1/3 zeigt sie in Originalgröße.
         if (blumenFeld > 1.2 && hash < 0.3) {
-          setze(`dorfbewuchs_${Math.abs(Math.round(blumenFeld * 5)) % 4}`, x + jx, y + jy, 0.34 + hash * 0.08, phase);
+          setze(`dorfbewuchs_${Math.abs(Math.round(blumenFeld * 5)) % 4}`, x + jx, y + jy, 1, phase);
           continue;
         }
         // verstreute Kräuter/Klee (selten, überall auf der Wiese)
-        if (hash > 0.972) { setze(`dorfbewuchs_${hash > 0.986 ? 4 : 5}`, x + jx, y + jy, 0.34 + hash * 0.06, phase); continue; }
+        if (hash > 0.972) { setze(`dorfbewuchs_${hash > 0.986 ? 4 : 5}`, x + jx, y + jy, 1, phase); continue; }
         // Gras-Flecken: kurzes Bodengras häufig, hohes Gras als Büschel darin
         const fleck = Math.sin(tx * 0.23 + ty * 0.41) + Math.sin(tx * 0.11 - ty * 0.17);
         if (fleck < 0.1) continue;
-        if (hash < 0.4) setze(`dorfgras_kurz_${(tx + ty) % 3}`, x + jx, y + jy, 0.32 + hash * 0.1, phase);
-        else if (hash < 0.53) setze(`dorfgras_hoch_${(tx + ty) % 3}`, x + jx, y + jy, 0.3 + hash * 0.12, phase);
+        if (hash < 0.4 * this.devBewuchs) setze(`dorfgras_kurz_${(tx + ty) % 3}`, x + jx, y + jy, 1, phase);
+        else if (hash < 0.4 * this.devBewuchs + 0.13 * this.devBewuchs) setze(`dorfgras_hoch_${(tx + ty) % 3}`, x + jx, y + jy, 1, phase);
       }
     }
   }
@@ -2374,8 +2394,16 @@ export class WorldScene extends CombatScene {
           ['bewuchs', 'Bewuchs', 0, 1.4, 0.05], ['tageszeit', 'Tageszeit', 0, 24, 0.25], ['tagtempo', 'Tag-Tempo', 0, 3, 0.1],
           ['sturm', 'Sturm', 0, 4, 0.1], ['sicht', 'Sicht', 80, 220, 10],
         ];
-        const cs: DKControl[] = [{ kind: 'note', text: 'Anfangskarte-Regler (dorfSim) - greifen, wenn die Anfangskarte läuft.' }];
-        for (const [key, label, min, max, step] of keys) cs.push({ kind: 'slider', label, min, max, step, get: () => this.devAnfang[key], set: (v) => { this.devAnfang[key] = v; dorfSetRegler(key, v); } });
+        const cs: DKControl[] = [{ kind: 'note', text: 'Regler wirken auf dorfSim UND (R78) auf der Engine-Karte: Tageszeit/Sturm sofort, Baumgröße/Bewuchs beim Kartenwechsel bzw. über WETTER->"Karte neu laden".' }];
+        for (const [key, label, min, max, step] of keys) cs.push({ kind: 'slider', label, min, max, step, get: () => this.devAnfang[key], set: (v) => {
+          this.devAnfang[key] = v; dorfSetRegler(key, v);
+          // R78 (Autorauftrag): dieselben Regler treiben jetzt auch den Engine-
+          // Pfad - Tageszeit (volle 24h-Lichtkurve) und Sturm sofort sichtbar.
+          if (key === 'tageszeit') this.tageszeit = ((v % 24) + 24) % 24 / 24;
+          if (key === 'sturm') { const w = Math.min(1, v / 4); this.wetterWert = w; this.wetterZiel = w; this.wetterTimer = 120; }
+          if (key === 'groesse') this.devBaumSkala = (v / 0.85) * 9;
+          if (key === 'bewuchs') this.devBewuchs = v;
+        } });
         return cs;
       } },
       { name: 'KASTEN', controls: () => [
@@ -2519,6 +2547,7 @@ export class WorldScene extends CombatScene {
     this.windBaeume = [];
     this.windSchilf = [];
     this.windGras = [];
+    this.baumSchatten = [];
     for (const p of this.pfuetzen) p.img.destroy();
     this.pfuetzen = [];
     for (const key of this.pfuetzenTexKeys) if (this.textures.exists(key)) this.textures.remove(key);
@@ -2688,6 +2717,7 @@ export class WorldScene extends CombatScene {
         const schatten = tag(this.add.image(tx * TILE + 16, ty * TILE + 18, this.kontaktSchattenKey()).setDepth(ty * TILE + 25));
         schatten.setDisplaySize(hoehe * aspekt * 0.5, hoehe * 0.12);
         schatten.setAlpha(0.8);
+        this.baumSchatten.push({ img: schatten, x0: tx * TILE + 16, breite: hoehe * aspekt * 0.5 });
         // Lebendig wie in dorfSim: der Baum schwankt im Wind (Böen-Phase aus
         // der Position, damit nicht alle synchron kippen).
         this.windBaeume.push({ img: objImg, phase: tx * 0.19 + ty * 0.11 });
@@ -3578,36 +3608,62 @@ export class WorldScene extends CombatScene {
     return d;
   }
 
-  // Stimmungs-Tönung (Runde 31, Wunsch nach dem bunten Vorbild): goldener
-  // Abend und kühler Morgen im Freien, violetter Hauch in der Krypta.
-  // Bildschirmfest, unter dem HUD. (Runde 41: Vignette ganz raus - der Autor
-  // fand das Gesamtbild dadurch zu düster, der Tag sah aus wie Dämmerung.)
+  // Tageszeiten-BELEUCHTUNG (Runde 78, Autorauftrag "das dorfSim-System
+  // verkabeln, nicht neu bauen"): draußen färbt jetzt EXAKT dorfSims
+  // TAG_KEYS-Pipeline das Bild - Multiply-Ton (Morgengrauen kühl, Sonnenauf-
+  // gang rosa-gold, Mittag neutral, GOLDENE STUNDE, Dämmerung blau-violett,
+  // Nacht dunkelblau) + Tag-Aufhellung + warmer Hauch; Bewölkung (Wetter-
+  // Achse) dämpft und vergraut wie in dorfSim. Krypta behält den violetten
+  // Hauch. Bildschirmfest, unter dem HUD.
   private stimmungRect: Phaser.GameObjects.Rectangle | null = null;
+  private lichtWarmRect: Phaser.GameObjects.Rectangle | null = null;
+  private tagLichtFX: Phaser.FX.ColorMatrix | null = null;
 
   private renderStimmung(): void {
     if (!this.stimmungRect) {
       this.stimmungRect = this.add.rectangle(0, 0, 10, 10, 0xffffff, 0)
         .setOrigin(0).setScrollFactor(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(4005);
+      this.lichtWarmRect = this.add.rectangle(0, 0, 10, 10, 0xffcf86, 0)
+        .setOrigin(0).setScrollFactor(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(4004);
+      // Nur die Haupt-Kamera tönt die Welt - die UI-Kamera würde die Vollbild-
+      // Ebenen sonst ein zweites Mal darüberlegen.
+      this.uiCam?.ignore([this.stimmungRect, this.lichtWarmRect]);
     }
-    this.stimmungRect.setSize(this.scale.width, this.scale.height);
-    let farbe = 0x000000;
-    let staerke = 0;
+    for (const r of [this.stimmungRect, this.lichtWarmRect!]) r.setSize(this.scale.width, this.scale.height);
+    const setzeMul = (r: number, g: number, b: number): void => {
+      this.tagLichtFX?.set([r, 0, 0, 0, 0, 0, g, 0, 0, 0, 0, 0, b, 0, 0, 0, 0, 0, 1, 0]);
+    };
     if (this.area.dark) {
-      farbe = 0x5a3aa8; // violetter Hauch in der Tiefe
-      staerke = 0.05;
-    } else if (!this.area.innen) {
-      const t = this.tageszeit;
-      if (t > TAG.abendAb && t < TAG.nachtAb) {
-        // goldener Abend: schwillt an und klingt zur Nacht hin ab
-        const f = 1 - Math.abs((t - (TAG.abendAb + TAG.nachtAb) / 2) / ((TAG.nachtAb - TAG.abendAb) / 2));
-        farbe = 0xe8943a;
-        staerke = 0.12 * f;
-      } else if (t < TAG.morgenAb) {
-        farbe = 0x4a66b8; // kühles Morgenblau
-        staerke = 0.07 * (1 - t / TAG.morgenAb);
-      }
+      setzeMul(1, 1, 1);                                       // neutral (Krypta hat eigenes Licht)
+      this.lichtWarmRect!.setFillStyle(0xffcf86, 0);
+      this.stimmungRect.setFillStyle(0x5a3aa8, 0.05);          // violetter Hauch in der Tiefe
+      return;
     }
-    this.stimmungRect.setFillStyle(farbe, staerke);
+    if (this.area.innen) {
+      setzeMul(1, 1, 1);
+      this.lichtWarmRect!.setFillStyle(0xffcf86, 0);
+      this.stimmungRect.setFillStyle(0x000000, 0);
+      return;
+    }
+    // DRAUSSEN: dorfSims aktuellesLicht()-Formel 1:1 (Tageszeit + Bewölkung) -
+    // Multiply über die Kamera-ColorMatrix, Aufhellung/Warm als ADD-Ebenen.
+    const L = berechneTagLicht(this.tageszeit * 24);
+    const bew = Math.max(0, Math.min(1, this.wetterWert));
+    const dunkel = 1 - bew * 0.4;
+    const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
+    const liftHell = 1 + Math.max(0, L.lift * (1 - bew * 0.55)) * 0.5;   // Lift in den Multiply gefaltet
+    setzeMul(
+      lerp(L.mul[0], 0.5, bew * 0.55) * dunkel * liftHell,
+      lerp(L.mul[1], 0.52, bew * 0.55) * dunkel * liftHell,
+      lerp(L.mul[2], 0.56, bew * 0.45) * dunkel * liftHell,
+    );
+    // dorfSims kräftige soft-light-AUFHELLUNG lässt sich mit ADD nicht nachbauen
+    // (deckt zu) - deshalb wird der Lift in die ColorMatrix GEFALTET (heller
+    // Multiply), nur der goldene Hauch bleibt als hauchdünnes ADD (R78).
+    const lift = Math.max(0, L.lift * (1 - bew * 0.55));
+    this.stimmungRect.setFillStyle(0xfff3da, Math.min(0.08, lift * 0.1));
+    const warm = L.warm * (1 - bew);
+    this.lichtWarmRect!.setFillStyle(0xffcf86, Math.min(0.12, warm * 0.16));
   }
 
   // Schritt-Klänge (Runde 31): spielen nur, wenn der Autor Dateien liefert
@@ -7486,6 +7542,10 @@ export class WorldScene extends CombatScene {
     this.bloomStaerke = b;
     const cam = this.cameras.main;
     cam.postFX.clear();
+    // Tageszeit-MULTIPLY als Kamera-ColorMatrix (Runde 78): das Blendmodus-
+    // Multiply gibt es im WebGL-Renderer für Formen nicht - die ColorMatrix
+    // multipliziert die Kanäle echt. Wird pro Frame in renderStimmung gesetzt.
+    this.tagLichtFX = cam.postFX.addColorMatrix();
     if (b <= 0) return; // 0 = aus
     // Regler 0-100 -> Bloom-Stärke 0..1,0 (vorher fest 1,1, Autorkritik "zu stark")
     cam.postFX.addBloom(0xffffff, 1, 1, 1.0, (b / 100) * 1.0, 6);

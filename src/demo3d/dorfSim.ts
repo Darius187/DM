@@ -321,6 +321,11 @@ const TAG_KEYS: Array<{ h: number; mul: [number, number, number]; lift: number; 
   { h: 20.5, mul: [0.5, 0.46, 0.64], lift: 0.0, warm: 0.12, vig: 0.62 }, // Dämmerung (blau-violett)
   { h: 22, mul: [0.30, 0.36, 0.56], lift: 0.0, warm: 0.0, vig: 0.7 },    // Nacht
 ];
+// R78: exportiert - der Engine-Pfad (WorldScene) nutzt DIESELBE Tageszeit-
+// Lichtkurve (TAG_KEYS) für seine Bildschirm-Tönung und die Sonnen-Schatten.
+export function berechneTagLicht(h: number): { mul: [number, number, number]; lift: number; warm: number; vig: number; hoehe: number; dir: number } {
+  return berechneLicht(h);
+}
 function berechneLicht(h: number): { mul: [number, number, number]; lift: number; warm: number; vig: number; hoehe: number; dir: number } {
   let i = 0; while (i < TAG_KEYS.length - 1 && TAG_KEYS[i + 1].h <= h) i++;
   const a = TAG_KEYS[i], b = TAG_KEYS[Math.min(i + 1, TAG_KEYS.length - 1)];
