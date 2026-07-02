@@ -10,6 +10,7 @@ export const MATERIAL_NAMES: Readonly<Record<MaterialId, string>> = {
 // Ressourcen-Abbau
 export const GATHER = {
   baumSchlaege: 3,        // Baum fällt nach 3 Schlägen
+  stammSchlaege: 3,       // liegenden Stamm zerlegen (dann Holz)
   baumHolz: { min: 2, max: 4 },
   baumRespawnTage: 1,     // respawnt nach Spielzeit
   felsSchlaege: 4,

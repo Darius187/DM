@@ -13,7 +13,7 @@ import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
-import { maleBoden } from '../world/bodenMaler';
+import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie } from '../world/bodenMaler';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
 import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale } from '../demo3d/dorfSim';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
@@ -39,7 +39,7 @@ import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, 
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER } from '../data/crafting';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
-import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, tageszeitLabel } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, tageszeitLabel } from '../data/welt';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, FLYOVER, tileNameAt } from '../world/tiles';
@@ -157,6 +157,14 @@ export class WorldScene extends CombatScene {
   // Bäume, die im Wind schwanken (Runde 74, nur Karten mit baumSkala): sanfte
   // Fuß-verankerte Rotation, Böen-Phase aus der Position, stärker bei Regen.
   private windBaeume: Array<{ img: Phaser.GameObjects.Image; phase: number }> = [];
+  // Ufer-Schilf (Runde 75, Test): schwankt stärker als die Bäume.
+  private windSchilf: Array<{ img: Phaser.GameObjects.Image; phase: number }> = [];
+  // Pfützen am Weg (Runde 75): wachsen/schwinden mit der Boden-Nässe.
+  private pfuetzen: Array<{ img: Phaser.GameObjects.Image; schwelle: number; cur: number; bw: number; bh: number }> = [];
+  private pfuetzenTexKeys: string[] = [];
+  // Gefällte, liegende Stämme (Runde 75): der ez-tree-Baum selbst bleibt liegen
+  // und wird am Boden zerlegt (Holz) - keine separate Zwischenzeichnung.
+  private liegendeStaemme = new Map<string, { img: Phaser.GameObjects.Image; x: number; y: number; hits: number }>();
   private dorfCanvas?: HTMLCanvasElement;                            // dorfSim-Hintergrund-Canvas (Anfangskarte-Look)
   private dorfBild?: Phaser.GameObjects.Image;
   private dorfAktiv = false;
@@ -1316,13 +1324,40 @@ export class WorldScene extends CombatScene {
   private regnet = false;
   private wetterOverlay?: WetterOverlay;   // neues, einheitliches Wetter-Rendering (ersetzt das alte renderRegen)
   private gruselT = 10;
+  // Wetter-Achse (Runde 75): kontinuierlich 0..1 statt Tages-Würfel. Bis zum
+  // ersten Dungeon-Besuch hält der Stimmungs-Nieselregen an (Autorwunsch,
+  // Heavy-Rain-Gefühl); danach übernimmt der freie Zyklus.
+  private wetterWert: number = WETTER.stimmungsRegen;   // Spielstart: es nieselt bereits
+  private wetterZiel: number = WETTER.stimmungsRegen;
+  private wetterTimer = 0;
+  private naesse = 0;                            // Boden-Nässe 0..1 - speist die Pfützen
 
   private wuerfleWetter(): void {
-    this.regnet = Math.random() < 0.35;
-    // Bodennebel: Tag 1 sowieso (gesetzt beim Start), danach verzieht er sich -
-    // kommt aber nach JEDEM Regen zurück (Autorwunsch R40, Atmosphäre).
-    this.nebelAktiv = this.regnet;
-    if (this.regnet) this.logMsg('Regen zieht über das Land, Nebel kriecht heran.', '');
+    // Runde 75: das Wetter läuft über die kontinuierliche Achse (updateWetter) -
+    // der Tageswechsel stößt nur ein frisches Wetterziel an.
+    this.wetterTimer = 0;
+  }
+
+  private updateWetter(dt: number): void {
+    if (!this.flags.nErsterDungeon) {
+      this.wetterZiel = WETTER.stimmungsRegen;   // Story-Regen bis zum ersten Dungeon
+    } else {
+      this.wetterTimer -= dt;
+      if (this.wetterTimer <= 0) {
+        this.wetterTimer = WETTER.zyklusMinS + Math.random() * (WETTER.zyklusMaxS - WETTER.zyklusMinS);
+        this.wetterZiel = Math.random() < WETTER.trockenChance ? 0 : 0.2 + Math.random() * 0.8;
+      }
+    }
+    this.wetterWert = Math.max(0, Math.min(1, this.wetterWert + (this.wetterZiel - this.wetterWert) * Math.min(1, dt * WETTER.wechselTempo)));
+    const regnetNeu = this.wetterWert > WETTER.regenAb;
+    if (regnetNeu && !this.regnet) {
+      // Bodennebel kommt nach JEDEM Regen zurück (Autorwunsch R40, Atmosphäre).
+      this.nebelAktiv = true;
+      this.logMsg('Regen zieht über das Land, Nebel kriecht heran.', '');
+    }
+    this.regnet = regnetNeu;
+    this.naesse = Math.max(0, Math.min(1, this.naesse + (regnetNeu ? this.wetterWert * WETTER.nassAuf : -WETTER.nassAb) * dt));
+    this.updatePfuetzen(dt);
   }
 
   // MIGRIERT (R70): das alte 110-Tropfen-Rendering ist durch das EINHEITLICHE WetterOverlay
@@ -1331,7 +1366,7 @@ export class WorldScene extends CombatScene {
   // tagNacht=false -> Tag/Nacht-Beleuchtung + Schatten der WorldScene bleiben UNVERÄNDERT.
   private renderRegen(dt: number): void {
     const draussen = !this.area.dark && !this.area.innen;
-    let staerke = (this.regnet && draussen) ? 0.6 : 0.0;
+    let staerke = draussen ? this.wetterWert * (this.regnet ? 1 : 0) : 0.0;   // Stärke aus der Wetter-Achse
     // Auf der dorfSim-Karte ist dorfSim die EINZIGE Wetter-Wahrheit (über den
     // Sturm-Regler): kein zweites Eigen-Wetter mehr. Sturm 0 -> kein Regen.
     if (this.area?.dorfSimBoden) {
@@ -1468,6 +1503,9 @@ export class WorldScene extends CombatScene {
     const a = this.getArea(id);
     this.area = a;
     if (FUERSTENTUM.some((g) => g.id === id)) this.flags[`besucht_${id}`] = true; // Karte: erforscht
+    // Erster Dungeon-Besuch beendet den Stimmungs-Dauerregen (Heavy-Rain-Gefühl,
+    // Autorwunsch R75): ab jetzt läuft draußen der freie Wetter-Zyklus.
+    if (a.dark && !this.flags.nErsterDungeon) this.flags.nErsterDungeon = true;
     this.unloadAreaObjects();
     this.loadAreaObjects(a);
     this.setupDorfSim(a);                // dorfSim-Hintergrund (Anfangskarte-Look) für diese Area
@@ -1818,13 +1856,18 @@ export class WorldScene extends CombatScene {
   // Phase aus der Baumposition. Bei Regen/Sturm deutlich stärker - so
   // "agieren" die Bäume mit dem Wetter. ~300 Rotationen/Frame sind billig.
   private updateBaumWind(time: number): void {
-    if (!this.windBaeume.length) return;
+    if (!this.windBaeume.length && !this.windSchilf.length) return;
     const draussen = !this.area.innen && !this.area.dark;
-    const sturm = this.regnet && draussen ? 1 : 0;
-    const amp = 0.009 + sturm * 0.02;
+    const amp = 0.009 + (draussen ? this.wetterWert : 0) * 0.022;   // Wind wächst mit dem Wetter
     for (const b of this.windBaeume) {
       if (!b.img.active) continue;
       b.img.rotation = amp * (Math.sin(time * 0.0011 + b.phase) * 0.6 + Math.sin(time * 0.0027 + b.phase * 1.7) * 0.4);
+    }
+    // Schilf ist leicht - es schwankt deutlich stärker und etwas schneller.
+    const ampS = amp * 3.2;
+    for (const s of this.windSchilf) {
+      if (!s.img.active) continue;
+      s.img.rotation = ampS * (Math.sin(time * 0.0016 + s.phase) * 0.6 + Math.sin(time * 0.0037 + s.phase * 1.7) * 0.4);
     }
   }
 
@@ -1845,18 +1888,120 @@ export class WorldScene extends CombatScene {
       onComplete: () => {
         this.sfx.play('holz_hacken');
         this.fx.burst(b.x + richtung * baum.displayHeight * 0.4, b.y, 0x4a5a30, 14, 150);
-        // Nachfedern, kurz liegen lassen, dann ausblenden
+        // Nachfedern - danach BLEIBT der Stamm liegen (Autorfreigabe R75: der
+        // ez-tree-Baum selbst, keine Zwischenzeichnung) und wird zerlegbar.
         this.tweens.chain({
           targets: baum,
           tweens: [
             { rotation: richtung * 1.34, duration: 130, ease: 'Quad.easeOut' },
             { rotation: richtung * 1.46, duration: 110, ease: 'Quad.easeIn' },
-            { alpha: 0, duration: 400, delay: 500 },
           ],
-          onComplete: () => baum.destroy(),
         });
+        this.liegendeStaemme.set(`${tx},${ty}`, { img: baum, x: b.x, y: b.y, hits: 0 });
       },
     });
+  }
+
+  // Pfützen am Weg (Runde 75, dorfSim-Port): 10-14 Lachen längs der Salzstraße,
+  // in Senken gestaffelt (schwelle) - sie füllen sich bei Regen über die
+  // Boden-Nässe und trocknen langsam wieder ab. Gebackene Einzel-Texturen.
+  private spawnePfuetzen(a: AreaData): void {
+    if (!a.gebackenerBoden || a.dark || a.innen) return;
+    const mitte = wegMittellinie(a, TILE);
+    if (mitte.length < 20) return;
+    const schritt = Math.floor(mitte.length / 12);
+    let n = 0;
+    for (let i = Math.floor(schritt / 2); i < mitte.length - 2 && n < 14; i += schritt) {
+      const m = mitte[i];
+      const hash = ((i * 2654435761) >>> 8) % 1000 / 1000;
+      const x = m.x, y = m.y + (hash - 0.5) * 20;
+      // nicht auf der Brücke / im Wasser
+      const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+      if (a.map[ty]?.[tx] === T.BRIDGE) continue;
+      if (a.wasserLauf && sdWasser(x / (a.w * TILE), y / (a.h * TILE), a.wasserLauf.geo, a.wasserLauf.smink ?? WASSER2_CFG.smink) < 0.02) continue;
+      const lang = 60 + hash * 90, quer = 22 + hash * 16;
+      const key = `pfuetze_${a.id}_${n}`;
+      if (!this.textures.exists(key)) {
+        this.textures.addCanvas(key, machePfuetzenBild(i * 31 + 7, lang, quer));
+        this.pfuetzenTexKeys.push(key);
+      }
+      // flach AUF dem Weg (Tiefe zwischen Wasser-Overlay -9 und Brücke -8)
+      const img = this.add.image(x, y, key).setDepth(-8.5).setAlpha(0);
+      const richtung = i + 2 < mitte.length ? Math.atan2(mitte[i + 2].y - m.y, mitte[i + 2].x - m.x) : 0;
+      img.setRotation(richtung);
+      this.tileImages.push(img);
+      this.pfuetzen.push({ img, schwelle: 0.15 + ((n * 0.37) % 0.6), cur: 0, bw: img.width, bh: img.height });
+      n++;
+    }
+  }
+
+  private updatePfuetzen(dt: number): void {
+    for (const p of this.pfuetzen) {
+      if (!p.img.active) continue;
+      const ziel = this.naesse > p.schwelle ? 1 : 0;
+      // füllt zügig, verdunstet deutlich langsamer (dorfSim-Verhalten)
+      p.cur += (ziel - p.cur) * Math.min(1, dt * (ziel > p.cur ? 1.1 : 0.18));
+      p.img.setAlpha(0.92 * p.cur);
+      p.img.setDisplaySize(p.bw * (0.7 + 0.3 * p.cur), p.bh * (0.7 + 0.3 * p.cur));
+    }
+  }
+
+  // Ufer-Schilf (Runde 75, Autor: "teste das mal - sehr organisch"): Büschel
+  // mit Rohrkolben in CLUSTERN entlang der Uferlinie (schmales SDF-Band),
+  // nie auf Weg/Brücke. Y-sortiert, schwankt stärker als die Bäume im Wind.
+  private spawneUferSchilf(a: AreaData): void {
+    if (!a.wasserLauf || !a.gebackenerBoden || a.dark) return;
+    const geo = a.wasserLauf.geo, smink = a.wasserLauf.smink ?? WASSER2_CFG.smink;
+    for (let v = 0; v < 4; v++) {
+      const key = `ufer_schilf_${v}`;
+      if (!this.textures.exists(key)) this.textures.addCanvas(key, macheSchilfBild(100 + v * 17));
+    }
+    for (let ty = 1; ty < a.h - 1; ty++) {
+      for (let tx = 1; tx < a.w - 1; tx++) {
+        const id = a.map[ty][tx];
+        if (id === T.PATH || id === T.BRIDGE || id === T.TREE) continue;
+        const u = (tx + 0.5) / a.w, vv = (ty + 0.5) / a.h;
+        const sd = sdWasser(u, vv, geo, smink);
+        if (sd < -0.004 || sd > 0.009) continue;    // schmales Band um die Wasserkante
+        // organische CLUSTER statt gleichmäßiger Kette: weiches Orts-Rauschen
+        const cluster = Math.sin(tx * 0.53 + ty * 0.91) + Math.sin(tx * 0.19 - ty * 0.33);
+        if (cluster < 0.35) continue;
+        const hash = (((tx * 73856093) ^ (ty * 83492791)) >>> 4) % 1000 / 1000;
+        const anzahl = hash > 0.6 ? 2 : 1;
+        for (let k = 0; k < anzahl; k++) {
+          const hx = (((tx + k * 7) * 40503) ^ (ty * 9277)) % 29 - 14;
+          const hy = (((ty + k * 3) * 25931) ^ (tx * 6151)) % 21 - 10;
+          const x = tx * TILE + 16 + hx, y = ty * TILE + 16 + hy;
+          const img = this.add.image(x, y, `ufer_schilf_${(tx + ty + k) % 4}`).setDepth(y);
+          img.setOrigin(0.5, 0.94);                  // Fuß-Anker (Schwanken)
+          const skala = 0.8 + hash * 0.7;
+          img.setScale(skala);
+          if (hash > 0.5) img.setFlipX(true);
+          this.tileImages.push(img);
+          this.windSchilf.push({ img, phase: tx * 0.31 + ty * 0.17 + k });
+        }
+      }
+    }
+  }
+
+  // Liegenden Stamm zerlegen (Runde 75, Autorfreigabe: der ez-tree-Baum SELBST
+  // bleibt liegen - keine Zwischenzeichnung - und wird am Boden zerhackt).
+  private zerlegeStamm(key: string): void {
+    const st = this.liegendeStaemme.get(key);
+    if (!st || !st.img.active) { this.liegendeStaemme.delete(key); return; }
+    if (!this.p.tools.axt) { this.sfx.play('fehler'); return; }
+    st.hits++;
+    this.sfx.play('holz_hacken');
+    this.fx.burst(st.x, st.y - 6, 0x6a5430, 6, 90);
+    if (st.hits < GATHER.stammSchlaege) return;
+    const amt = ri(this.rng, GATHER.baumHolz.min, GATHER.baumHolz.max);
+    this.pickups.add({
+      kind: 'material', x: st.x, y: st.y + 8, bob: 0,
+      item: { kind: 'material', name: 'Holz', rarity: 0, val: 0, boni: [], stack: amt },
+    });
+    const img = st.img;
+    this.liegendeStaemme.delete(key);
+    this.tweens.add({ targets: img, alpha: 0, duration: 280, onComplete: () => img.destroy() });
   }
 
   // Weicher Kontaktschatten (einmal gebacken, Port aus dorfSim schattenBild):
@@ -1920,7 +2065,7 @@ export class WorldScene extends CombatScene {
     const sh = this.wasser2Shader, lauf = this.area.wasserLauf;
     if (!sh || !lauf) return;
     const draussen = !this.area.innen && !this.area.dark;
-    const rainAmt = draussen && this.area.dorfSimBoden ? dorfRegen() : (this.regnet && draussen ? 0.6 : 0);
+    const rainAmt = draussen && this.area.dorfSimBoden ? dorfRegen() : (draussen && this.regnet ? this.wetterWert : 0);
     sh.setUniform('u_rain.value', rainAmt);
     sh.setUniform('u_turb.value', Math.min(1, this.aktWasserPreset().turb + WASSER2_CFG.turbAdd + rainAmt * 0.5));
   }
@@ -2180,6 +2325,12 @@ export class WorldScene extends CombatScene {
     for (const img of this.tileImages) img.destroy();
     this.tileImages = [];
     this.windBaeume = [];
+    this.windSchilf = [];
+    for (const p of this.pfuetzen) p.img.destroy();
+    this.pfuetzen = [];
+    for (const key of this.pfuetzenTexKeys) if (this.textures.exists(key)) this.textures.remove(key);
+    this.pfuetzenTexKeys = [];
+    this.liegendeStaemme.clear();
     this.wasser2Shader?.destroy(); this.wasser2Shader = undefined;
     this.gebackenerBodenImg?.destroy(); this.gebackenerBodenImg = undefined;
     if (this.dorfAktiv) { dorfPause(); this.dorfBild?.destroy(); this.dorfBild = undefined; this.dorfAktiv = false; }
@@ -2405,7 +2556,11 @@ export class WorldScene extends CombatScene {
     // Objekte; die Boden-/Wasserkacheln zeichnet zeichneKachel dann nicht mehr.
     // Bei vollszene macht der Wasser-Shader selbst den Boden (Land+Wasser in einem,
     // Canvas-Look mit weichen Ufern) - dann KEIN separates Bodenbild backen.
-    if (a.gebackenerBoden && !a.wasserLauf?.vollszene && !a.dorfSimBoden) this.bakeBoden(a);
+    if (a.gebackenerBoden && !a.wasserLauf?.vollszene && !a.dorfSimBoden) {
+      this.bakeBoden(a);
+      this.spawnePfuetzen(a);     // Pfützen am Weg (füllen sich mit der Nässe)
+      this.spawneUferSchilf(a);   // Schilf-Cluster an der Wasserkante (R75-Test)
+    }
     // Tiles als statische Bilder (Pseudo-3D, Masterprompt 5.1). Bei dorfSimBoden
     // malt der dorfSim-Canvas alles - keine Kacheln.
     if (!a.dorfSimBoden) {
@@ -3419,6 +3574,16 @@ export class WorldScene extends CombatScene {
         return { text: `${n.name} - ${ik} zum Reden`, action: () => this.talkTo(n.id) };
       }
     }
+    // Liegenden Stamm zerlegen (Runde 75): der gefällte ez-tree-Baum bleibt
+    // liegen und gibt erst beim Zerhacken sein Holz.
+    for (const [key, st] of this.liegendeStaemme) {
+      if (st.img.active && near(st.x, st.y, 80)) {
+        return {
+          text: this.p.tools.axt ? `Gefällter Stamm - ${ik} zum Zerlegen` : 'Gefällter Stamm - Holzaxt nötig (Schmied)',
+          action: () => this.zerlegeStamm(key),
+        };
+      }
+    }
     // Bäume fällen: JEDER angrenzende Baum ist hackbar (Feedback-Runde 3)
     {
       const tx4 = Math.floor(this.px / TILE), ty4 = Math.floor(this.py / TILE);
@@ -4131,11 +4296,15 @@ export class WorldScene extends CombatScene {
     }
     this.fx.burst(b.x, b.y, 0x1c3018, 16, 140);
     this.sfx.play('holz_hacken');
-    const amt = ri(this.rng, GATHER.baumHolz.min, GATHER.baumHolz.max);
-    this.pickups.add({
-      kind: 'material', x: b.x, y: b.y + 8, bob: 0,
-      item: { kind: 'material', name: 'Holz', rarity: 0, val: 0, boni: [], stack: amt },
-    });
+    // Auf baumSkala-Karten kommt das Holz erst beim ZERLEGEN des liegenden
+    // Stamms (zerlegeStamm) - nicht schon beim Fällen.
+    if (!this.area.baumSkala) {
+      const amt = ri(this.rng, GATHER.baumHolz.min, GATHER.baumHolz.max);
+      this.pickups.add({
+        kind: 'material', x: b.x, y: b.y + 8, bob: 0,
+        item: { kind: 'material', name: 'Holz', rarity: 0, val: 0, boni: [], stack: amt },
+      });
+    }
   }
 
   // --- NPC-Gespräche (Texte aus src/data/dialoge.ts) -------------------------
@@ -7156,8 +7325,9 @@ export class WorldScene extends CombatScene {
     const kampfTempo = this.einfallAktiv ? TUNING.kryptaTempo : 1;
     this.updateCombat(dt * kampfTempo);
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
+    this.updateWetter(dt);      // Wetter-Achse (Regen/Nässe, Stimmungsregen bis 1. Dungeon)
     this.updateWasserWetter();  // Regen-Ringe/Wirbel auf dem neuen Wasser
-    this.updateBaumWind(this.time.now);  // Bäume schwanken im Wind (Karten mit baumSkala)
+    this.updateBaumWind(this.time.now);  // Bäume/Schilf schwanken im Wind
     this.updateFreiKamera(dt); // Dev-Frei-Kamera (entkoppelt vom Helden)
     this.updateDorfSim();     // dorfSim-Hintergrund der Kamera nachführen
     this.updatePerfAnzeige();  // Dev-FPS-/Mess-Anzeige (echte Messung im Browser)

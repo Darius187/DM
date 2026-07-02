@@ -68,7 +68,7 @@ function macheMoosPattern(rnd: () => number): HTMLCanvasElement {
 
 // --- Weglinie aus der Kachelkarte: pro Spalte die Mitte der PATH/BRIDGE-Kacheln
 // (die Salzstraßen laufen West->Ost). Liefert Weltkoordinaten-Punkte. ----------
-function wegMittellinie(k: BodenKarte, TILE: number): Array<{ x: number; y: number }> {
+export function wegMittellinie(k: BodenKarte, TILE: number): Array<{ x: number; y: number }> {
   const roh: Array<{ x: number; y: number }> = [];
   for (let tx = 0; tx < k.w; tx++) {
     let sum = 0, n = 0;
@@ -186,6 +186,85 @@ export function maleBoden(ctx: CanvasRenderingContext2D, karte: BodenKarte, TILE
   // 5) Der WEG als dorfSim-Band
   const mitte = wegMittellinie(karte, TILE);
   if (mitte.length > 3) maleWeg(ctx, mitte, rnd);
+}
+
+// --- Pfütze (Port der dorfSim-Idee, statisch gebacken): unregelmäßige Lachen-
+// Form aus verschmolzenen Blobs, Schlammrand, dunkler Wasserkörper mit Senken-
+// Schattierung und gedämpfter Himmel-Spiegelung oben. Die DYNAMIK (wachsen/
+// schwinden mit der Nässe) macht die WorldScene über Alpha/Skalierung. --------
+export function machePfuetzenBild(seed: number, lang: number, quer: number): HTMLCanvasElement {
+  const rnd = rngAus(seed);
+  const c = document.createElement('canvas'); c.width = lang + 12; c.height = quer + 12;
+  const g = c.getContext('2d')!;
+  const cx = c.width / 2, cy = c.height / 2;
+  interface Blob { x: number; y: number; rx: number; ry: number }
+  const blobs: Blob[] = [];
+  const n = 3 + (rnd() * 3 | 0);
+  for (let i = 0; i < n; i++) {
+    const t = n === 1 ? 0.5 : i / (n - 1);
+    blobs.push({ x: cx + (t - 0.5) * lang * 0.72, y: cy + (rnd() - 0.5) * quer * 0.3, rx: lang * (0.16 + rnd() * 0.14), ry: quer * (0.3 + rnd() * 0.2) });
+  }
+  const form = (grow: number): void => {
+    g.beginPath();
+    for (const b of blobs) { g.moveTo(b.x + b.rx * grow, b.y); g.ellipse(b.x, b.y, b.rx * grow, b.ry * grow, 0, 0, Math.PI * 2); }
+  };
+  // nasser Schlammrand (etwas größer als der Wasserkörper)
+  g.fillStyle = 'rgba(26,19,11,0.6)'; form(1.25); g.fill();
+  // Wasserkörper
+  g.fillStyle = '#0d141a'; form(1); g.fill();
+  // Senke: Mitte dunkler, Rand minimal heller
+  g.save(); form(1); g.clip();
+  const rg = g.createRadialGradient(cx, cy, 2, cx, cy, lang * 0.5);
+  rg.addColorStop(0, 'rgba(0,0,0,0.35)'); rg.addColorStop(0.8, 'rgba(70,86,100,0.10)'); rg.addColorStop(1, 'rgba(120,140,160,0.16)');
+  g.fillStyle = rg; g.fillRect(0, 0, c.width, c.height);
+  // gedämpfte Himmel-Spiegelung in der oberen Hälfte
+  const lg = g.createLinearGradient(0, cy - quer * 0.5, 0, cy + quer * 0.1);
+  lg.addColorStop(0, 'rgba(150,172,198,0.34)'); lg.addColorStop(1, 'rgba(150,172,198,0)');
+  g.fillStyle = lg; g.fillRect(0, 0, c.width, cy + quer * 0.1);
+  g.restore();
+  return c;
+}
+
+// --- Schilf-Büschel (Ufer-Bewuchs, Runde 75 "teste das mal"): 5-9 gebogene
+// Halme, 1-3 davon mit braunem Rohrkolben, dazu breitere Blattgräser. Gebacken
+// als Sprite; das Schwanken macht die WorldScene (Fuß-Anker-Rotation). --------
+export function macheSchilfBild(seed: number): HTMLCanvasElement {
+  const rnd = rngAus(seed);
+  const c = document.createElement('canvas'); c.width = 44; c.height = 62;
+  const g = c.getContext('2d')!;
+  const fx = c.width / 2, fy = c.height - 4;
+  // weicher Fußschatten
+  g.fillStyle = 'rgba(0,0,0,0.28)';
+  g.beginPath(); g.ellipse(fx, fy, 12, 3.4, 0, 0, Math.PI * 2); g.fill();
+  const halme = 5 + (rnd() * 5 | 0);
+  const gruen = ['#2c4020', '#3a5228', '#31491f', '#456030'];
+  for (let i = 0; i < halme; i++) {
+    const bx = fx + (rnd() - 0.5) * 14;
+    const neig = (rnd() - 0.5) * 14;
+    const hoehe = 30 + rnd() * 24;
+    const kolben = rnd() < 0.3 && hoehe > 40;
+    g.strokeStyle = gruen[(rnd() * gruen.length) | 0];
+    g.lineWidth = 1.4 + rnd() * 0.8;
+    g.beginPath(); g.moveTo(bx, fy);
+    g.quadraticCurveTo(bx + neig * 0.3, fy - hoehe * 0.6, bx + neig, fy - hoehe);
+    g.stroke();
+    if (kolben) {   // Rohrkolben: brauner, runder Kolben nahe der Spitze + Spieß
+      const kx = bx + neig * 0.92, ky = fy - hoehe * 0.92;
+      g.strokeStyle = '#3a4a22'; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(kx, ky); g.lineTo(kx + neig * 0.12, ky - 7); g.stroke();
+      g.fillStyle = '#5a4226';
+      g.beginPath(); g.ellipse(kx, ky + 5, 2.1, 6, neig * 0.02, 0, Math.PI * 2); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.12)';
+      g.beginPath(); g.ellipse(kx - 0.7, ky + 3.4, 0.8, 3, 0, 0, Math.PI * 2); g.fill();
+    }
+  }
+  // 2-3 breite Blattgräser am Fuß
+  for (let i = 0, n = 2 + (rnd() * 2 | 0); i < n; i++) {
+    const bx = fx + (rnd() - 0.5) * 16, neig = (rnd() - 0.5) * 22, hoehe = 16 + rnd() * 14;
+    g.strokeStyle = 'rgba(70,96,48,0.8)'; g.lineWidth = 2.2;
+    g.beginPath(); g.moveTo(bx, fy); g.quadraticCurveTo(bx + neig * 0.4, fy - hoehe * 0.7, bx + neig, fy - hoehe); g.stroke();
+  }
+  return c;
 }
 
 // --- Weg (Port aus dorfSim Z.64-88 + Z.1398-1416, statisch): mäandernde

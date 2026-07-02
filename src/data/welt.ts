@@ -74,3 +74,17 @@ export const KOPFGELD = {
   eisen: 2,
   maxEbene: 5,
 } as const;
+
+// Wetter-Achse (Runde 75): kontinuierliches Wetter 0 (trocken) .. 1 (Sturm)
+// statt des täglichen Ja/Nein-Würfels. Speist Regen-Overlay, Wasser-Shader,
+// Baumwind, Boden-Nässe und Pfützen aus EINER Wahrheit.
+export const WETTER = {
+  // Stimmungs-Dauerregen (Autorwunsch, Heavy-Rain-Gefühl): vom Spielstart bis
+  // zum ersten Dungeon-Besuch nieselt es draußen ununterbrochen leicht.
+  stimmungsRegen: 0.45,
+  zyklusMinS: 25, zyklusMaxS: 70,   // Sekunden bis zum nächsten Wetterziel
+  trockenChance: 0.55,              // Anteil trockener Ziele im freien Zyklus
+  wechselTempo: 0.35,               // Annäherung ans Ziel (Anteil pro Sekunde)
+  regenAb: 0.15,                    // ab diesem Wert fällt sichtbarer Regen
+  nassAuf: 0.15, nassAb: 0.01,      // Nässe: füllt schnell, trocknet langsam
+} as const;
