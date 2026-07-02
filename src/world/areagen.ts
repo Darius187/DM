@@ -58,6 +58,9 @@ export interface AreaData {
   // gemaltes Bodenbild unter den Objekten (Tiefe -11). Kollision/Objekte bleiben
   // aus dem Kachel-Raster. Gibt der Oberwelt den Canvas-Look ohne Per-Frame-Upload.
   gebackenerBoden?: boolean;
+  // Friedliche Karte (Runde 74, Autorwunsch): hier spawnt NIEMALS ein Gegner -
+  // ein zentraler Guard in spawnEnemy neutralisiert alle Spawn-Pfade auf einmal.
+  friedlich?: boolean;
   // dorfSim-Hintergrund (Runde 72): Boden/Bäume/Wetter/Tag-Nacht dieser Area malt
   // der dorfSim-Canvas (Anfangskarte-Look), Kollision aus dorfSim; die WorldScene-
   // Systeme (Kampf/HUD/Speichern) laufen darüber. Kacheln/Bake/Overlay entfallen.
@@ -1569,10 +1572,12 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
   const pfadY: number[] = [];
   let py = Math.round(h * 0.5);
   if (!cfg.blanko) {
-    // Salzstraße West->Ost, weich mäandernd. Bäume weichen dem Weg; quert der Weg
-    // das Wasser, liegt dort eine Brücke (begehbar).
+    // Salzstraße West->Ost, nur noch LEICHT geschwungen (Autorwunsch Runde 74
+    // "Wege gerader"): Sinus-Amplitude halbiert (0.7->0.35, rundet meist zu 0)
+    // und das Zufalls-Zappeln von jeder 3. auf jede 6. Spalte gesenkt. Bäume
+    // weichen dem Weg; quert der Weg das Wasser, liegt dort eine Brücke.
     for (let x = 0; x < w; x++) {
-      py += Math.round(Math.sin(x * 0.13) * 0.7) + (x % 3 === 0 ? ri(rng, -1, 1) : 0);
+      py += Math.round(Math.sin(x * 0.13) * 0.35) + (x % 6 === 0 ? ri(rng, -1, 1) : 0);
       py = Math.max(6, Math.min(h - 7, py));
       pfadY[x] = py;
       for (let dy = -1; dy <= 1; dy++) {
@@ -1613,13 +1618,12 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
 }
 
 // START (2,3) - Runde 73: produktiv auf den NORMALEN Engine-Pfad gehoben (vorher
-// dorfSim-Canvas). Bäume sind echte T.TREE-Sprites (Y-sortiert -> verdecken das
-// Wasser, der Held kann dahinter laufen), der Boden wird in EINE RenderTexture
-// gebacken (gebackenerBoden), das Wasser liegt als Premult-Overlay auf dem Gras.
-// Baum-OPTIK kommt übergangsweise aus dorfSims gemalten 3D-Bitmaps (BootScene
-// registriert obj_baum_*/obj_wald_*), bis die finalen ComfyUI-Bäume da sind
-// (TODO.md). Tag-Nacht/Wetter/Licht macht jetzt die WorldScene selbst.
-export function buildStart(rng: Rng): AreaData {
+// dorfSim-Canvas). Der Boden wird in EINE RenderTexture gebacken
+// (gebackenerBoden), das Wasser liegt als Premult-Overlay auf dem Gras.
+// Tag-Nacht/Wetter/Licht macht die WorldScene selbst. Bewusst OHNE Bäume und
+// OHNE Gegner (friedlich): beides kommt in eigenen, vom Autor abgenommenen
+// Schritten dazu (Bäume: ez-tree/Canvas-Look).
+export function buildStart(_rng: Rng): AreaData {
   const w = 130, h = 85;
   const map = blank(w, h, T.GRASS);
   const a: AreaData = {
@@ -1629,96 +1633,68 @@ export function buildStart(rng: Rng): AreaData {
     breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
     ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
     npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
-    // Boden in EINE RenderTexture backen -> Anzeigeliste fällt von ~12K (Sprite
-    // je Kachel) auf ~900 (nur Baum-Sprites). Gleicher Look.
+    // Boden in EINE RenderTexture backen -> Anzeigeliste bleibt klein.
     gebackenerBoden: true,
+    // Keine Gegner auf der Startkarte (Autorwunsch) - zentraler spawnEnemy-Guard.
+    friedlich: true,
   };
-  // Wasser-Lauf nach der START-Zelle von reference/ravenkarte.png (UV 0..1, y nach
-  // unten): Fluss tritt OBEN RECHTS ein, windet sich nach unten, GABELT sich und
-  // sammelt sich in zwei Seen unten; dazu ein BACH-Zufluss von der Westkante.
-  // Alles durchgehend (smin), die Seen mit organischem (nicht-elliptischem) Umriss.
+  // Wasser-Lauf 1:1 nach der START-Zelle von reference/ravenkarte.png (UV 0..1,
+  // y nach unten; Lesart-Bild an den Autor geschickt): Fluss tritt OBEN (u~0.75)
+  // ein, läuft nach Südwesten, GABELT sich bei (0.64/0.28) - der Ost-Arm verlässt
+  // die Karte an der OSTKANTE (v~0.44), der Hauptlauf kreuzt die Salzstraße
+  // (Brücke) und mündet in den großen SEE unten (Mitte ~0.64/0.85, organischer
+  // Umriss aus der SDF-Winkel-Verzerrung). Dazu der BACH von der Westkante.
   a.wasserLauf = {
     begehbar: true,
     // Kleiner smin -> dünne, gewundene Läufe (bei 0.08 verschmelzen die Bögen zum
     // Klotz - Autorbug "Fluss zu breit"). Optik UND Kollision nutzen denselben Wert.
     smink: 0.02,
     geo: {
-      // Schmalere Grundbreiten (Autorwunsch "dünner"); Feintuning live über den
-      // Regler "Flussbreite" (WASSER_CFG.widthMul). Bach < Gabelung < Hauptfluss.
-      // WICHTIG: u_smink (0.08) verschmilzt nahe Läufe - Bögen/Gabelung müssen daher
-      // klar AUSEINANDERLAUFEN, sonst überbrückt smin die Lücke zu einem breiten
-      // Klotz (Autorbug "Fluss zu breit"). Darum: sanfte Mäander, Gabelung zieht
-      // deutlich nach Westen weg vom Hauptfluss.
       bahnen: [
-        // Hauptfluss: tritt OBEN RECHTS ein, windet sanft (rechts-zentriert) nach
-        // unten in den großen See. Keine engen Falten (würden zu Klotz verschmelzen).
-        { name: 'Hauptfluss', punkte: [{ x: 0.74, y: -0.03, hw: 0.012 }, { x: 0.70, y: 0.13, hw: 0.014 }, { x: 0.63, y: 0.27, hw: 0.015 }, { x: 0.66, y: 0.42, hw: 0.015 }, { x: 0.60, y: 0.57, hw: 0.016 }, { x: 0.56, y: 0.71, hw: 0.016 }, { x: 0.52, y: 0.86, hw: 0.016 }] },
-        // Gabelung: zweigt bei y0.42 ab und zieht klar nach WESTEN zum Tümpel - so
-        // bleibt deutlich Abstand zum Hauptfluss (kein smin-Brückenschlag).
-        { name: 'Gabelung', punkte: [{ x: 0.66, y: 0.42, hw: 0.009 }, { x: 0.54, y: 0.53, hw: 0.010 }, { x: 0.44, y: 0.64, hw: 0.010 }, { x: 0.37, y: 0.78, hw: 0.010 }, { x: 0.33, y: 0.90, hw: 0.010 }] },
-        // Bach: dünner, leicht mäandernder Zulauf von der Westkante in den Tümpel.
-        { name: 'Bach (West)', punkte: [{ x: -0.03, y: 0.74, hw: 0.005 }, { x: 0.12, y: 0.80, hw: 0.006 }, { x: 0.24, y: 0.86, hw: 0.006 }, { x: 0.31, y: 0.90, hw: 0.008 }] },
+        // Hauptfluss: von der Nordkante über die Gabelung, unter der Brücke
+        // hindurch in den See. Anschluss Nachbarkarte Nord: Austritt dort u~0.75.
+        { name: 'Hauptfluss', punkte: [{ x: 0.75, y: -0.03, hw: 0.012 }, { x: 0.70, y: 0.10, hw: 0.013 }, { x: 0.64, y: 0.28, hw: 0.014 }, { x: 0.57, y: 0.42, hw: 0.014 }, { x: 0.52, y: 0.55, hw: 0.015 }, { x: 0.505, y: 0.635, hw: 0.015 }, { x: 0.50, y: 0.72, hw: 0.015 }, { x: 0.55, y: 0.82, hw: 0.016 }] },
+        // Ost-Arm: zweigt an der Gabelung ab und verlässt die Karte nach OSTEN
+        // (Anschluss Nachbarkarte Ost: Eintritt dort v~0.44).
+        { name: 'Ost-Arm', punkte: [{ x: 0.64, y: 0.28, hw: 0.009 }, { x: 0.72, y: 0.295, hw: 0.010 }, { x: 0.79, y: 0.33, hw: 0.010 }, { x: 0.87, y: 0.40, hw: 0.011 }, { x: 1.03, y: 0.44, hw: 0.011 }] },
+        // Bach: dünner Zulauf von der Westkante, mündet von links in den See.
+        { name: 'Bach (West)', punkte: [{ x: -0.03, y: 0.82, hw: 0.006 }, { x: 0.15, y: 0.845, hw: 0.007 }, { x: 0.30, y: 0.865, hw: 0.007 }, { x: 0.47, y: 0.865, hw: 0.009 }] },
       ],
-      // Zwei NATÜRLICHE Seen unten (organischer Umriss kommt aus der SDF-Winkel-
-      // Verzerrung in wasser.ts/wasserFeld.ts - keine glatte Ellipse): großer See
-      // mittig (vom Hauptfluss gespeist), kleinerer Tümpel westlich (Gabelung+Bach).
-      seen: [{ name: 'See', cx: 0.52, cy: 0.90, rx: 0.11, ry: 0.05 }, { name: 'Tümpel', cx: 0.31, cy: 0.92, rx: 0.05, ry: 0.03 }],
+      // EIN großer See unten rechts-mittig (die Ellipse der Skizze ist nur das
+      // SYMBOL - der organische Umriss kommt aus der SDF-Winkel-Verzerrung).
+      seen: [{ name: 'See', cx: 0.64, cy: 0.85, rx: 0.16, ry: 0.08 }],
     },
   };
-  // Bäume in Waldrand-Dichte: nahe am Kartenrand dicht, zur Mitte hin licht; das
-  // Wasser (UV-Bahnen + See, + Puffer) wird komplett gemieden.
+  // SALZSTRASSE West->Ost (Skizze: dunkelrot, v 0.57 -> 0.78), bewusst FAST
+  // GERADE (Autorwunsch "Wege gerader"). 2 Kacheln breit; wo sie den Fluss
+  // kreuzt (~u 0.505), liegt eine BRÜCKE (T.BRIDGE) - begehbar, ungebremst.
   const geo = a.wasserLauf.geo;
-  const randTiefe = 16;   // Tiefe (Kacheln), über die der Wald nach innen ausdünnt
-  for (let ty = 0; ty < h; ty++) {
-    for (let tx = 0; tx < w; tx++) {
-      if (map[ty][tx] !== T.GRASS) continue;
-      const u = (tx + 0.5) / w, v = (ty + 0.5) / h;
-      // gleicher smin wie das sichtbare Wasser (0.02) + 0.03 Puffer -> Bäume stehen
-      // NIE im Wasser, lassen aber keinen unnötig breiten kahlen Saum.
-      if (sdWasser(u, v, geo, 0.02) < 0.03) continue;
-      const randAbstand = Math.min(tx, w - 1 - tx, ty, h - 1 - ty);
-      const dichte = Math.max(0, 1 - randAbstand / randTiefe);   // 1 am Rand .. 0 ab randTiefe
-      // quadratischer Abfall -> echter Waldrand (dicht am Rand, schnell licht).
-      if (rng.random() < dichte * dichte * 0.45) map[ty][tx] = T.TREE;
+  const strasse: Array<[number, number]> = [[-0.02, 0.57], [0.18, 0.60], [0.40, 0.635], [0.56, 0.64], [0.68, 0.675], [0.85, 0.725], [1.02, 0.78]];
+  const strasseV = (u: number): number => {
+    for (let i = 1; i < strasse.length; i++) {
+      const [u0, v0] = strasse[i - 1], [u1, v1] = strasse[i];
+      if (u <= u1 || i === strasse.length - 1) return v0 + (v1 - v0) * Math.min(1, Math.max(0, (u - u0) / (u1 - u0)));
+    }
+    return strasse[strasse.length - 1][1];
+  };
+  for (let tx = 0; tx < w; tx++) {
+    const u = (tx + 0.5) / w;
+    const tyWeg = Math.round(strasseV(u) * h - 0.5);
+    for (const dy of [0, 1]) {
+      const ty = tyWeg + dy;
+      if (ty < 0 || ty >= h) continue;
+      const v = (ty + 0.5) / h;
+      // Im/über dem Wasser wird der Weg zur Brücke (etwas über die sichtbare
+      // Wasserkante hinaus, u_shore=0.010, damit kein nasser Spalt bleibt).
+      map[ty][tx] = sdWasser(u, v, geo, 0.02) < 0.014 ? T.BRIDGE : T.PATH;
     }
   }
-  // Spawn-Umfeld baumfrei halten (sonst steckt der Held im Dickicht).
-  const sx = Math.floor(a.spawn.x / TILE), sy = Math.floor(a.spawn.y / TILE);
-  for (let ty = sy - 3; ty <= sy + 3; ty++) for (let tx = sx - 3; tx <= sx + 3; tx++) if (map[ty]?.[tx] === T.TREE) map[ty][tx] = T.GRASS;
-  return a;
-}
-
-// MINIMAL-TESTFLÄCHE (Dev): bewusst OHNE dorfSimBoden/gebackenerBoden - nutzt den
-// NORMALEN Kachel-/Sprite-Pfad der Engine. Damit lässt sich beweisen, dass die
-// vorhandenen Systeme das Tiefen-/Wasser-Problem von selbst lösen:
-//  - Spieler kann HINTER die Bäume laufen (Y-Sortierung der Baum-Sprites)
-//  - Bäume verdecken das Wasser (Baum-Sprite-Tiefe > Wasser-Overlay-Tiefe)
-//  - Wasser liegt auf dem Gras (Premult-Overlay, FLUSS_SHADER.tiefe, u_useGround=0)
-// Eine senkrechte Baumreihe in der Mitte KREUZT einen waagerechten Fluss.
-export function buildBlank(_rng: Rng): AreaData {
-  const w = 80, h = 60;
-  const map = blank(w, h, T.GRASS);
-  const cx = Math.floor(w / 2);                 // 40 - Mitte
-  for (let ty = 25; ty <= 30; ty++) map[ty][cx] = T.TREE;   // ~6 Bäume senkrecht, kreuzen den Fluss (y~0.5)
-  const a: AreaData = {
-    id: 'blank', name: 'Testfläche', dark: false, depth: 0,
-    w, h, map, spawn: { x: cx * TILE + 16, y: 42 * TILE + 16 },   // südlich der Bäume + des Flusses
-    torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
-    breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
-    ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
-    npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
-  };
-  // EIN waagerechter Fluss quer durch die Mitte (UV 0..1, y=0.5), begehbar. Liegt
-  // als Premult-Overlay auf dem Gras; KEINE T.WATER-Kacheln (rein Shader).
-  a.wasserLauf = {
-    begehbar: true,
-    geo: {
-      bahnen: [
-        { name: 'Testfluss', punkte: [{ x: -0.03, y: 0.5, hw: 0.035 }, { x: 0.5, y: 0.5, hw: 0.035 }, { x: 1.03, y: 0.5, hw: 0.035 }] },
-      ],
-      seen: [],
-    },
-  };
+  // Spawn im Westen AUF der Salzstraße (führt den Spieler die Straße entlang).
+  const spawnTx = 10;
+  a.spawn = { x: spawnTx * TILE + 16, y: Math.round(strasseV((spawnTx + 0.5) / w) * h - 0.5) * TILE + 16 };
+  // KEINE Bäume auf dieser Karte: die Bäume (ez-tree, Canvas-Look) kommen als
+  // eigener, vom Autor abgenommener nächster Schritt dazu - bis dahin bleibt
+  // der Waldrand bewusst leer statt mit Übergangs-Optik gefüllt.
   return a;
 }
 

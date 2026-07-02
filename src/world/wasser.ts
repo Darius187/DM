@@ -89,7 +89,12 @@ float sdWater(vec2 p){
     float seed=(L.x*7.13+L.y*3.71)*6.2831853;
     float wob=1.0+0.20*sin(3.0*ang+seed)+0.11*sin(5.0*ang-seed*1.7)+0.06*sin(8.0*ang+seed*0.5);
     vec2 q=rel/(L.zw*wob); float dl=(length(q)-1.0)*min(L.z,L.w); d = erst ? dl : smin(d,dl,u_smink); erst=false; }
-  d += fbm2(p*5.0)*0.006;
+  // Ufer-Rauschen KLEIN halten: bei 0.006 war die Störung so groß wie die halbe
+  // Breite dünner Bäche (hw 0.005-0.007) -> das Alpha brach längs periodisch ein
+  // und der Bach zerfiel optisch in Pfützen (Autorbug "Wasser nicht durchgehend").
+  // 0.0015 raut die Kante weiter an, bleibt aber << jeder Bachbreite. Der
+  // organische See-Umriss kommt aus wob (oben), nicht aus diesem Term.
+  d += fbm2(p*5.0)*0.0015;
   return d;
 }
 
