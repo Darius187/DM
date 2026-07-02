@@ -13,6 +13,7 @@ import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
+import { maleBoden } from '../world/bodenMaler';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
 import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale } from '../demo3d/dorfSim';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
@@ -1803,11 +1804,27 @@ export class WorldScene extends CombatScene {
     }
   }
 
-  // Gebackener organischer Boden (Runde 72): malt EINMAL ein Bodenbild (Wiese
-  // mit Farbspiel, Erd-/Trampelflecken, organischer Weg-Trail) in ein Canvas und
-  // legt es als Bild auf Tiefe -11 unter die Objekte. Halbe Auflösung + Hochskalieren
-  // (der organische Look verträgt die Weichheit) spart Speicher. Kollision/Objekte
-  // bleiben aus dem Kachel-Raster - hier wird NUR der Boden ersetzt.
+  // Gebackener organischer Boden (Runde 72, Runde 74 komplett auf den echten
+  // dorfSim-Look umgestellt): der Phaser-freie bodenMaler malt EINMAL Wiese
+  // (Gras-Struktur + Farbspiel), moosigen Waldboden (dort, wo Bäume dicht
+  // stehen), Wald-Details und den Weg als dorfSim-Polygon-Band (Spurrillen,
+  // Steine, Saumgras) - abgeleitet allein aus der Kachelkarte. Tiefe -11 unter
+  // den Objekten; halbe Auflösung + LINEAR-Hochskalieren spart Speicher.
+  // Weicher Kontaktschatten (einmal gebacken, Port aus dorfSim schattenBild):
+  // erdet die großen Bäume am Fuß. Lazy als globale Textur registriert.
+  private kontaktSchattenKey(): string {
+    const key = 'kontaktschatten';
+    if (!this.textures.exists(key)) {
+      const c = document.createElement('canvas'); c.width = c.height = 64;
+      const g = c.getContext('2d')!;
+      const rg = g.createRadialGradient(32, 32, 2, 32, 32, 30);
+      rg.addColorStop(0, 'rgba(0,0,0,0.5)'); rg.addColorStop(0.6, 'rgba(0,0,0,0.28)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = rg; g.beginPath(); g.ellipse(32, 32, 30, 30, 0, 0, Math.PI * 2); g.fill();
+      this.textures.addCanvas(key, c);
+    }
+    return key;
+  }
+
   private bakeBoden(a: AreaData): void {
     const key = `boden_${a.id}`;
     const SC = 2;                                   // halbe Auflösung
@@ -1815,48 +1832,10 @@ export class WorldScene extends CombatScene {
     if (this.textures.exists(key)) this.textures.remove(key);
     const cv = document.createElement('canvas'); cv.width = bw; cv.height = bh;
     const c = cv.getContext('2d')!;
-    // Grund-Wiese
-    c.fillStyle = '#33421f'; c.fillRect(0, 0, bw, bh);
-    // großflächiges Farbspiel (helle/dunkle Wiesen-Schwaden)
-    for (let i = 0; i < 90; i++) {
-      const x = Math.random() * bw, y = Math.random() * bh, r = 80 + Math.random() * 260;
-      const g = c.createRadialGradient(x, y, 0, x, y, r);
-      const hell = Math.random() > 0.5;
-      g.addColorStop(0, hell ? 'rgba(80,104,46,0.16)' : 'rgba(28,40,18,0.18)');
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
-    }
-    // feine Gras-Tupfer
-    const tupfer = Math.min(9000, Math.round(bw * bh / 900));
-    for (let i = 0; i < tupfer; i++) {
-      const x = Math.random() * bw, y = Math.random() * bh, r = 1 + Math.random() * 3.4;
-      c.fillStyle = Math.random() > 0.5
-        ? `rgba(${60 + Math.random() * 50 | 0},${88 + Math.random() * 54 | 0},${36 + Math.random() * 30 | 0},0.5)`
-        : `rgba(${34 + Math.random() * 24 | 0},${50 + Math.random() * 24 | 0},${22 + Math.random() * 16 | 0},0.5)`;
-      c.beginPath(); c.ellipse(x, y, r, r * 0.7, Math.random() * 3, 0, Math.PI * 2); c.fill();
-    }
-    // Erd-/Trampelflecken auf der Wiese
-    for (let i = 0; i < 60; i++) {
-      const x = Math.random() * bw, y = Math.random() * bh, r = 14 + Math.random() * 60;
-      const g = c.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, 'rgba(86,68,40,0.30)'); g.addColorStop(1, 'rgba(86,68,40,0)');
-      c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
-    }
-    // Organischer Weg-Trail aus den T.PATH/T.BRIDGE-Kacheln (überlappende Erd-Kleckse)
-    const malWeg = (px: number, py: number, rad: number, col: string): void => {
-      const g = c.createRadialGradient(px, py, 0, px, py, rad);
-      g.addColorStop(0, col); g.addColorStop(0.7, col); g.addColorStop(1, 'rgba(0,0,0,0)');
-      c.fillStyle = g; c.beginPath(); c.arc(px, py, rad, 0, Math.PI * 2); c.fill();
-    };
-    for (let ty = 0; ty < a.h; ty++) {
-      for (let tx = 0; tx < a.w; tx++) {
-        const id = a.map[ty][tx];
-        if (id !== T.PATH && id !== T.BRIDGE) continue;
-        const px = (tx + 0.5) * TILE / SC, py = (ty + 0.5) * TILE / SC;
-        malWeg(px, py, TILE / SC * 1.1, 'rgba(104,82,52,0.85)');
-        malWeg(px + (Math.random() - 0.5) * 6, py + (Math.random() - 0.5) * 6, TILE / SC * 0.6, 'rgba(120,98,64,0.6)');
-      }
-    }
+    c.scale(1 / SC, 1 / SC);                        // der Maler arbeitet in Welt-Pixeln
+    let seed = 7;
+    for (const ch of a.id) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    maleBoden(c, a, TILE, seed);
     const tex = this.textures.addCanvas(key, cv);
     if (tex) tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
     this.gebackenerBodenImg = this.add.image(0, 0, key).setOrigin(0, 0).setDepth(-11);
@@ -2288,9 +2267,20 @@ export class WorldScene extends CombatScene {
       const objImg = tag(this.add.image(tx * TILE + 16, ty * TILE + 16, obj).setDepth(ty * TILE + 26));
       // Größe je Objekttyp (Baukasten-Regler): displaySize macht die
       // Texturauflösung egal - Uploads dürfen größer sein als 32px
-      const skala = this.objektSkala(objName);
+      let skala = this.objektSkala(objName);
+      // Karten mit dorfSim-großen Bäumen (Runde 74, a.baumSkala): pro Baum eine
+      // deterministische Größen-Streuung (wie dorfSims skala 0.6..1.6), Fuß-Anker
+      // bei 0.64 (der gebackene Schattenteller liegt im Bitmap UNTER dem Stamm)
+      // und ein weicher Kontaktschatten, der den Baum am Boden erdet.
+      if (id === T.TREE && a.baumSkala) {
+        const hash01 = (((tx * 73856093) ^ (ty * 19349663)) % 997) / 997;
+        skala = a.baumSkala * (0.65 + hash01 * 0.9);
+        objImg.setOrigin(0.5, 0.64);
+        const schatten = tag(this.add.image(tx * TILE + 16, ty * TILE + 18, this.kontaktSchattenKey()).setDepth(ty * TILE + 25));
+        schatten.setDisplaySize(TILE * skala * 0.42, TILE * skala * 0.15);
+        schatten.setAlpha(0.8);
+      } else if (skala > 1.15) objImg.setOrigin(0.5, 0.7);
       objImg.setDisplaySize(TILE * skala, TILE * skala);
-      if (skala > 1.15) objImg.setOrigin(0.5, 0.7);
       objImg.setData('objTyp', objName === 'wald' ? 'baum' : objName);
       return;
     }

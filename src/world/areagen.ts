@@ -61,6 +61,10 @@ export interface AreaData {
   // Friedliche Karte (Runde 74, Autorwunsch): hier spawnt NIEMALS ein Gegner -
   // ein zentraler Guard in spawnEnemy neutralisiert alle Spawn-Pfade auf einmal.
   friedlich?: boolean;
+  // Baum-Grundgröße in Kacheln (Runde 74): Karten mit dorfSim-großen Bäumen
+  // (ez-tree-Bitmaps, ~8-17 Kacheln hoch, Fuß-Anker + Kontaktschatten) setzen
+  // das; fehlt es, gilt die alte kleine objektSkala (1.85).
+  baumSkala?: number;
   // dorfSim-Hintergrund (Runde 72): Boden/Bäume/Wetter/Tag-Nacht dieser Area malt
   // der dorfSim-Canvas (Anfangskarte-Look), Kollision aus dorfSim; die WorldScene-
   // Systeme (Kampf/HUD/Speichern) laufen darüber. Kacheln/Bake/Overlay entfallen.
@@ -1619,11 +1623,11 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
 
 // START (2,3) - Runde 73: produktiv auf den NORMALEN Engine-Pfad gehoben (vorher
 // dorfSim-Canvas). Der Boden wird in EINE RenderTexture gebacken
-// (gebackenerBoden), das Wasser liegt als Premult-Overlay auf dem Gras.
-// Tag-Nacht/Wetter/Licht macht die WorldScene selbst. Bewusst OHNE Bäume und
-// OHNE Gegner (friedlich): beides kommt in eigenen, vom Autor abgenommenen
-// Schritten dazu (Bäume: ez-tree/Canvas-Look).
-export function buildStart(_rng: Rng): AreaData {
+// (gebackenerBoden, bodenMaler: Wiese/Moos/Weg im dorfSim-Look), das Wasser
+// liegt als Premult-Overlay auf dem Gras. Tag-Nacht/Wetter/Licht macht die
+// WorldScene selbst. Bäume: ez-tree-Bitmaps in dorfSim-Größe (baumSkala).
+// OHNE Gegner (friedlich) - die kommen in einem eigenen Schritt.
+export function buildStart(rng: Rng): AreaData {
   const w = 130, h = 85;
   const map = blank(w, h, T.GRASS);
   const a: AreaData = {
@@ -1637,6 +1641,8 @@ export function buildStart(_rng: Rng): AreaData {
     gebackenerBoden: true,
     // Keine Gegner auf der Startkarte (Autorwunsch) - zentraler spawnEnemy-Guard.
     friedlich: true,
+    // Bäume in dorfSim-Größe (ez-tree-Bitmaps, Fuß-Anker, Kontaktschatten).
+    baumSkala: 11,
   };
   // Wasser-Lauf 1:1 nach der START-Zelle von reference/ravenkarte.png (UV 0..1,
   // y nach unten; Lesart-Bild an den Autor geschickt): Fluss tritt OBEN (u~0.75)
@@ -1692,9 +1698,32 @@ export function buildStart(_rng: Rng): AreaData {
   // Spawn im Westen AUF der Salzstraße (führt den Spieler die Straße entlang).
   const spawnTx = 10;
   a.spawn = { x: spawnTx * TILE + 16, y: Math.round(strasseV((spawnTx + 0.5) / w) * h - 0.5) * TILE + 16 };
-  // KEINE Bäume auf dieser Karte: die Bäume (ez-tree, Canvas-Look) kommen als
-  // eigener, vom Autor abgenommener nächster Schritt dazu - bis dahin bleibt
-  // der Waldrand bewusst leer statt mit Übergangs-Optik gefüllt.
+  // BÄUME (ez-tree-Bitmaps in dorfSim-Größe): Waldrand-Dichte (am Kartenrand
+  // dicht, zur Mitte licht) mit den dorfSim-Mindestabständen:
+  //  - >= 120px zum Weg, auch für die nach Norden ragende KRONE (dorfSim Z.1039)
+  //  - >= 80px Baum zu Baum (dorfSim Z.1040)
+  //  - Puffer zum Wasser (Bäume stehen NIEMALS im Wasser, Dauerregel)
+  const W = w * TILE, H = h * TILE;
+  const randTiefe = 16;
+  const gesetzt: Array<[number, number]> = [];
+  const wegDist = (x: number, y: number): number => Math.abs(y - strasseV(x / W) * H);   // Weg ist fast horizontal
+  for (let ty = 0; ty < h; ty++) {
+    for (let tx = 0; tx < w; tx++) {
+      if (map[ty][tx] !== T.GRASS) continue;
+      const u = (tx + 0.5) / w, v = (ty + 0.5) / h;
+      if (sdWasser(u, v, geo, 0.02) < 0.03) continue;
+      const x = tx * TILE + 16, y = ty * TILE + 16;
+      if (wegDist(x, y) < 120 || wegDist(x, y - 150) < 120) continue;   // Fuß UND Krone frei vom Weg
+      const randAbstand = Math.min(tx, w - 1 - tx, ty, h - 1 - ty);
+      const dichte = Math.max(0, 1 - randAbstand / randTiefe);
+      if (rng.random() >= dichte * dichte * 0.45) continue;
+      let frei = true;
+      for (const [gx, gy] of gesetzt) { if ((gx - x) * (gx - x) + (gy - y) * (gy - y) < 80 * 80) { frei = false; break; } }
+      if (!frei) continue;
+      map[ty][tx] = T.TREE;
+      gesetzt.push([x, y]);
+    }
+  }
   return a;
 }
 
