@@ -82,6 +82,10 @@ export class UIPanels {
   getKontakteZeilen: (() => Array<[string, string]>) | null = null;
   // Karte des Fürstentums (Runde 51)
   getKarte: (() => { aufgedeckt: boolean; gebiete: Array<{ id: string; name: string; gx: number; gy: number; sichtbar: boolean; thumb: { w: number; h: number; farben: number[][] } | null }> }) | null = null;
+  // Großansicht (Runde 74, Autorwunsch): liefert die Minimap eines Gebiets in
+  // voller Kachel-Auflösung - für die Klick-Vergrößerung im KARTE-Tab.
+  getGebietGross: ((id: string) => { w: number; h: number; farben: number[][] }) | null = null;
+  private karteGross: string | null = null;   // id des vergrößerten Gebiets (null = Raster)
   toggleKarteDev: (() => void) | null = null;
   // Aufgedeckte Karte der AKTUELLEN Ebene (Runde 53, Autorwunsch): zeigt das
   // Erkundete samt Treppen (hinab/hinauf). null = keine (Dorf/Wald, nicht dunkel).
@@ -346,11 +350,36 @@ export class UIPanels {
   }
 
   // --- Karten-Tab (Runde 51): das Fürstentum als Übersicht, Nebel des Krieges -
+  // Runde 74 (Autorwunsch): Klick auf eine Minimap öffnet sie als GROSSANSICHT
+  // in voller Kachel-Auflösung (Begutachten ohne Durchlaufen); Klick = zurück.
   private buildMapTab(c: Phaser.GameObjects.Container, w: number, h: number): void {
     c.add(this.scene.add.text(16, 6, 'KARTE - Das Fürstentum von Ravensmoor', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
-    c.add(this.scene.add.text(16, 26, 'Erforschte Gebiete der Oberwelt. Schwarz = noch unerforscht. Krypten liegen unter der Erde.', { fontFamily: 'serif', fontSize: '11.5px', color: '#8a7a5a' }));
     const info = this.getKarte?.();
     if (!info || !info.gebiete.length) { c.add(this.scene.add.text(16, 56, 'Keine Kartendaten.', { fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c' })); return; }
+    // GROSSANSICHT eines Gebiets (karteGross gesetzt und noch sichtbar)
+    const grossGeb = this.karteGross ? info.gebiete.find((g) => g.id === this.karteGross && g.sichtbar) : undefined;
+    if (grossGeb && this.getGebietGross) {
+      const th = this.getGebietGross(grossGeb.id);
+      c.add(this.scene.add.text(16, 26, `${grossGeb.name} - Klick auf die Karte führt zurück zur Übersicht.`, { fontFamily: 'serif', fontSize: '11.5px', color: '#8a7a5a' }));
+      const top = 48, availW = w - 32, availH = h - top - 10;
+      const cell = Math.max(1, Math.min(availW / th.w, availH / th.h));
+      const tx0 = 16 + (availW - th.w * cell) / 2, ty0 = top + (availH - th.h * cell) / 2;
+      const g = this.scene.add.graphics();
+      c.add(g);
+      for (let yy = 0; yy < th.h; yy++) {
+        for (let xx = 0; xx < th.w; xx++) {
+          g.fillStyle(th.farben[yy][xx], 1);
+          g.fillRect(Math.round(tx0 + xx * cell), Math.round(ty0 + yy * cell), Math.ceil(cell), Math.ceil(cell));
+        }
+      }
+      g.lineStyle(1, 0x6e5a36, 1); g.strokeRect(tx0, ty0, th.w * cell, th.h * cell);
+      const hit = this.scene.add.rectangle(tx0, ty0, th.w * cell, th.h * cell, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => { this.karteGross = null; this.build(); });
+      c.add(hit);
+      return;
+    }
+    this.karteGross = null;   // Gebiet nicht (mehr) sichtbar -> zurück zum Raster
+    c.add(this.scene.add.text(16, 26, 'Erforschte Gebiete der Oberwelt - KLICK auf eine Karte vergrößert sie. Schwarz = unerforscht. Krypten liegen unter der Erde.', { fontFamily: 'serif', fontSize: '11.5px', color: '#8a7a5a' }));
     // Dev-Aufdeck-Knopf (in der finalen Version entfernbar)
     const dev = this.scene.add.text(w - 16, 6, info.aufgedeckt ? 'AUFDECKEN: AN (Dev)' : 'ALLES AUFDECKEN (Dev)', {
       fontFamily: 'serif', fontSize: '11px', color: info.aufgedeckt ? '#9ad86a' : '#d0a0a0', backgroundColor: '#1c1408', padding: { x: 8, y: 4 },
@@ -379,6 +408,10 @@ export class UIPanels {
         }
         g.lineStyle(1, 0x6e5a36, 1); g.strokeRect(bx, by, boxW, boxH);
         c.add(this.scene.add.text(bx + boxW / 2, by + boxH - 14, geb.name, { fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5, 0));
+        // Klick -> Großansicht dieses Gebiets (Runde 74)
+        const hit = this.scene.add.rectangle(bx, by, boxW, boxH, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true });
+        hit.on('pointerdown', () => { this.karteGross = geb.id; this.build(); });
+        c.add(hit);
       } else {
         g.fillStyle(0x000000, 1); g.fillRect(bx, by, boxW, boxH);
         g.lineStyle(1, 0x2a2218, 1); g.strokeRect(bx, by, boxW, boxH);
