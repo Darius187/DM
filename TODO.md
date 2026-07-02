@@ -3,6 +3,11 @@
 - Erledigt R75: Wetter-Achse + Stimmungsregen (bis 1. Dungeon) + Pfützen am
   Weg + Ufer-Schilf (Test, Autor-Abnahme offen) + liegender ez-tree-Stamm
   (zerlegbar; die alte backeLiege-Zwischenzeichnung ist gestrichen).
+- POIs auf three.js umstellen (Runde 77, Autorwunsch "kommt viel besser
+  raus"): Galgen/Bildstock/Karren/Meiler als 3D-Modelle durch den Backofen
+  (richtiger Winkel automatisch) statt der 2D-Canvas-Bilder; auch die BRÜCKE
+  als 3D-Bake ist machbar (T.BRIDGE-Sprite ersetzen). Pipeline steht
+  (figurBackofen/propBackofen).
 - Bewegtes GRAS + BLUMEN (three.js, Autor will besseren Look als die alten
   Canvas-Striche): Referenzen recherchiert - Codrops "Fluffiest Grass"
   (InstancedMesh + Wind-Shader) und github.com/CK42BB/procedural-grass-threejs
