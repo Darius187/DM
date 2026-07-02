@@ -39,6 +39,7 @@ export interface Settings {
   chronikBox: { x: number; y: number; w: number; h: number };
   chronikAuto: boolean;   // Chronik-Fenster beim Spielstart offen (Runde 36)
   bloom: number;          // Leucht-/Bloom-Stärke 0-100 (Runde 51: Regler, 0 = aus)
+  figuren3d: boolean;     // TEST (Runde 77): Held als 3D-gebackener Atlas statt 2D-Zeichnung
   grusel: number;         // Grusel-Atmosphäre: kalter, dunkler Tint auf Gegner 0-100 (Runde 55)
   schatten: number;       // Schatten-/Licht-Stärke AUSSENWELT 0-100 (Runde 55: 0 = aus, Leistungsregler)
   dungeonStaerke: number; // Schatten-/Dunkelheit-Stärke DUNGEON 0-100 (getrennt von der Aussenwelt, Runde 56)
@@ -109,6 +110,7 @@ export const DEF_SETTINGS: Settings = {
   // Bildschirmrand, kompakter, knapp über der Lebenskugel/Leiste
   chronikAuto: true,
   bloom: 0, // Runde 51 (Autorwunsch): Bloom standardmäßig AUS, war zu stark
+  figuren3d: false, // 3D-Held-Test standardmäßig AUS (2D bleibt die Wahrheit)
   grusel: 100, // Runde 58 (Autorwunsch): Grusel-Atmosphäre standardmäßig voll an
   schatten: 70, // Runde 55: Schatten/Licht (Aussenwelt) standardmäßig an (mittlere Stärke)
   dungeonStaerke: 100, // Runde 58: vom Autor eingestellter Stand (Dungeon-Dunkelheit)

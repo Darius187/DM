@@ -3261,14 +3261,49 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Gehschritt, Stil wie die anderen Figuren) - bzw. echte Hot-Swap-Sprites,
   // falls der Autor ein KI-Paket einschleust. Kein statischer Ritter mehr.
   protected zeichneHeld(dir: number, step: number): void {
+    // 3D-Held-Test (Runde 77, Umschalt-Option): gebackener three.js-Atlas mit
+    // IDENTISCHEM Frame-Schema (d{dir}f{frame}) - dieselbe Geh-/Atem-/Schlag-
+    // Maschine treibt die 3D-Posen. Solange der Atlas noch backt (oder der
+    // Schalter aus ist), läuft unverändert die 2D-Zeichnung = sauberer Fallback.
+    if (getSettings().figuren3d && this.zeichneHeld3d(dir, step)) return;
     // Ausgerüstete Waffe wandert in die Hand und wird mitgeschwungen (R54).
     this.provider.applyFigure(this.playerSprite, this.heldFigur(), dir, step, this.weaponClass());
+    this.playerSprite.setOrigin(0.5, 0.5);   // Rückweg vom 3D-Modus (eigener Origin)
     // Einfache Roben-Figur (32px) passend vergrößern; sonst die 64px-Detail-Figur
     // mit ihrer Stufen-Skala; echte Hot-Swap-Sprites des Autors größer.
     const tier = heldTier(this.p.armorIt ? this.p.armorIt.val : null);
     // Einfache Roben-Figur: nur leicht groesser als ein normaler Gegner (32px-
     // Figur, Gegner laufen bei 1.0) - 1.5 war "viel zu gross" (Autor R55).
     this.playerSprite.setScale(this.heldEinfach ? 1.15 : (this.textures.exists('hs_spieler_unten_1') ? 1.35 : getHeldForm(tier).skala));
+  }
+
+  private held3dBacktGerade = false;
+  private zeichneHeld3d(dir: number, step: number): boolean {
+    const tier = heldTier(this.p.armorIt ? this.p.armorIt.val : null);
+    const waffe = this.weaponClass();
+    const key = `held3d_${tier}_${waffe ?? 'leer'}`;
+    if (!this.textures.exists(key)) {
+      // Atlas lazy backen (einmal je Stufe+Waffe); bis dahin 2D-Fallback.
+      if (!this.held3dBacktGerade) {
+        this.held3dBacktGerade = true;
+        void import('../demo3d/figurBackofen')
+          .then((m) => m.registriereHeld3dAtlas(this.textures, tier, waffe))
+          .catch(() => {})
+          .finally(() => { this.held3dBacktGerade = false; });
+      }
+      return false;
+    }
+    const d = ((dir % 8) + 8) % 8;
+    const fr = step >= 4 ? Math.min(step, 7) : step % 4;   // wie der 2D-Detailpfad (Schlag ab Frame 4)
+    const frame = `d${d}f${fr}`;
+    if (this.playerSprite.texture.key !== key || this.playerSprite.frame.name !== frame) {
+      this.playerSprite.setTexture(key, frame);
+    }
+    // Auf die Größe der 2D-Detailfigur bringen: Zielhöhe ~72px (Figur füllt die
+    // zugeschnittene Zelle fast ganz), Füße etwas unter der Sprite-Mitte.
+    this.playerSprite.setScale((72 * getHeldForm(tier).skala / 0.9) / Math.max(1, this.playerSprite.frame.height));
+    this.playerSprite.setOrigin(0.5, 0.62);
+    return true;
   }
 
   // Sprites und Overlay (Ringe, Balken, Telegraphen) zeichnen

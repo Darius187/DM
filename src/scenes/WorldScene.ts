@@ -2293,6 +2293,21 @@ export class WorldScene extends CombatScene {
       { name: 'KAMERA', controls: () => [
         { kind: 'button', label: () => `Frei-Kamera: ${this.devFreiKam ? 'AN (WASD/Pfeile + Mittelmaus zieht)' : 'aus'}`, onClick: () => { this.setzeFreiKamera(!this.devFreiKam); this.devKonsole?.refresh(); } },
         { kind: 'note', text: 'Frei-Kamera entkoppelt vom Helden: WASD/Pfeile scrollen, Mittelmaus zieht die Karte. Basis für den späteren RTS-Modus.' },
+        // KARTEN-DIREKTFLUG (Runde 77, Autorwunsch): fertige Karte wählen ->
+        // Karte lädt, Frei-Kamera geht AN und startet mittig - Begutachten
+        // ohne Durchlaufen. Der Held bleibt am Karten-Spawn stehen.
+        { kind: 'note', text: 'DIREKTFLUG: Karte laden und sofort frei drüberfliegen (Held wartet am Spawn).' },
+        ...FUERSTENTUM.map((g) => ({
+          kind: 'button' as const,
+          label: () => `Flug: ${g.name} (${g.id})`,
+          onClick: () => {
+            this.devKonsole?.toggle();
+            this.goArea(g.id);
+            this.setzeFreiKamera(true);
+            const cam = this.cameras.main;
+            cam.centerOn(this.area.w * TILE / 2, this.area.h * TILE / 2);
+          },
+        })),
       ] },
       { name: 'WETTER', controls: () => [
         { kind: 'note', text: 'Wetter-Achse (0 trocken .. 1 Sturm). Ab ~0.7 zündet der Blitz von selbst. Bis zum ersten Dungeon hält der Stimmungs-Nieselregen das Ziel fest.' },
@@ -2303,6 +2318,8 @@ export class WorldScene extends CombatScene {
         { kind: 'slider', label: 'Baumgröße (Kacheln, Karte lädt neu)', min: 5, max: 18, step: 0.5, get: () => this.devBaumSkala ?? this.area?.baumSkala ?? 11, set: (v) => { this.devBaumSkala = v; } },
         { kind: 'button', label: () => 'Baumgröße anwenden (Karte neu laden)', onClick: () => { this.devKonsole?.toggle(); this.goArea(this.area.id, { x: this.px, y: this.py }); } },
         { kind: 'button', label: () => 'Test: 3D-Pferd + Dorfbewohner (8 Ansichten)', onClick: () => { this.devKonsole?.toggle(); void this.zeigeFigurenTest(); } },
+        { kind: 'button', label: () => `3D-HELD (Test): ${getSettings().figuren3d ? 'AN' : 'aus (2D)'}`, onClick: () => { getSettings().figuren3d = !getSettings().figuren3d; saveSettings(); this.devKonsole?.refresh(); } },
+        { kind: 'note', text: '3D-Held: gebackener three.js-Atlas (8 Richtungen x Gehen/Atem/Schwerthieb), Rüstungsstufe + Waffe fließen ein. AUS = sofort zurück zur 2D-Zeichnung.' },
       ] },
       { name: 'MESSEN', controls: () => [
         { kind: 'button', label: () => `FPS-Anzeige: ${this.perfAn ? 'AN' : 'aus'}`, onClick: () => { this.perfAn = !this.perfAn; this.devKonsole?.refresh(); } },
