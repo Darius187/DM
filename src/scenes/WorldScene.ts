@@ -14,6 +14,7 @@ import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
 import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn } from '../world/bodenMaler';
+import { POI_BILDER } from '../world/poiBilder';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
 import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale } from '../demo3d/dorfSim';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
@@ -161,6 +162,7 @@ export class WorldScene extends CombatScene {
   private windSchilf: Array<{ img: Phaser.GameObjects.Image; phase: number }> = [];
   // Wiesengras + Blumen (Runde 76, three.js-gebacken): mittleres Schwanken.
   private windGras: Array<{ img: Phaser.GameObjects.Image; phase: number }> = [];
+  private devBaumSkala?: number;   // F10-Override der Baum-Grundgröße (Dev)
   // Pfützen am Weg (Runde 75): wachsen/schwinden mit der Boden-Nässe.
   private pfuetzen: Array<{ img: Phaser.GameObjects.Image; schwelle: number; cur: number; bw: number; bh: number }> = [];
   private pfuetzenTexKeys: string[] = [];
@@ -1930,7 +1932,7 @@ export class WorldScene extends CombatScene {
       const lang = 60 + hash * 90, quer = 22 + hash * 16;
       const key = `pfuetze_${a.id}_${n}`;
       if (!this.textures.exists(key)) {
-        this.textures.addCanvas(key, machePfuetzenBild(i * 31 + 7, lang, quer));
+        this.textures.addCanvas(key, machePfuetzenBild(i * 31 + 7, lang, quer))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
         this.pfuetzenTexKeys.push(key);
       }
       // flach AUF dem Weg (Tiefe zwischen Wasser-Overlay -9 und Brücke -8)
@@ -1962,7 +1964,7 @@ export class WorldScene extends CombatScene {
     const geo = a.wasserLauf.geo, smink = a.wasserLauf.smink ?? WASSER2_CFG.smink;
     for (let v = 0; v < 4; v++) {
       const key = `ufer_schilf_${v}`;
-      if (!this.textures.exists(key)) this.textures.addCanvas(key, macheSchilfBild(100 + v * 17));
+      if (!this.textures.exists(key)) this.textures.addCanvas(key, macheSchilfBild(100 + v * 17))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
     }
     for (let ty = 1; ty < a.h - 1; ty++) {
       for (let tx = 1; tx < a.w - 1; tx++) {
@@ -2026,6 +2028,63 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // POIs (Runde 76): die Wegzeichen der Karte als Y-sortierte Bilder. Texturen
+  // werden lazy aus world/poiBilder.ts gebacken (LINEAR - malerisch).
+  private spawnePois(a: AreaData): void {
+    if (!a.pois?.length) return;
+    const skalen: Record<string, number> = { bildstock: 1.2, wegweiser: 1.2, galgen: 1.6, suehnekreuz: 1.1, karren: 1.3, meiler: 1.4 };
+    for (const p of a.pois) {
+      const maler = POI_BILDER[p.art];
+      if (!maler) continue;
+      const key = `poi_${p.art}`;
+      if (!this.textures.exists(key)) this.textures.addCanvas(key, maler())?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      const img = this.add.image(p.x, p.y, key).setDepth(p.y);
+      img.setOrigin(0.5, 0.9);
+      img.setScale(skalen[p.art] ?? 1.2);
+      this.tileImages.push(img);
+    }
+  }
+
+  // Interaktion mit einem POI: kleine erzählende Momente; Einmal-Belohnungen
+  // laufen über flags (bleiben im Spielstand).
+  private nutzePoi(art: string): void {
+    const einmal = `poi_${art}_${this.area.id}`;
+    switch (art) {
+      case 'bildstock': {
+        const heil = Math.min(this.p.stats.maxhp - this.p.hp, 20);
+        if (heil > 0) this.p.hp += heil;
+        this.logMsg(heil > 0 ? `Du hältst kurz Andacht am Bildstock. (+${heil} Leben)` : 'Du hältst kurz Andacht am Bildstock.', 'gold');
+        this.sfx.play('klick');
+        break;
+      }
+      case 'wegweiser':
+        this.logMsg('Ein Rabe ist in den Balken gekerbt - das Zeichen Ravensmoors. Die Salzstraße führt ostwärts zur Stadt.', 'gold');
+        break;
+      case 'galgen':
+        this.logMsg('Der Galgen der Stadt. Die Schlinge ist leer - noch. Ravensmoor ist nicht mehr weit.', '');
+        break;
+      case 'suehnekreuz':
+        if (!this.flags[einmal]) {
+          this.flags[einmal] = true;
+          this.giveXp(15);
+          this.logMsg('Ein Sühnekreuz, halb versunken. Eingeritzt: "Hier fiel ein Bote des Fürsten." Niemand hat ihn je gefunden. (+15 Erfahrung)', 'gold');
+        } else this.logMsg('Das alte Sühnekreuz. Der Bote des Fürsten kam nie in Ravensmoor an.', '');
+        break;
+      case 'karren':
+        if (!this.flags[einmal]) {
+          this.flags[einmal] = true;
+          this.p.gold += 18;
+          this.p.materials.holz += 2;
+          this.logMsg('Der Karren wurde überfallen, die Fracht verstreut. Du findest 18 Gold und 2 Holz zwischen den Säcken.', 'gold');
+          this.sfx.play('gold');
+        } else this.logMsg('Der geplünderte Karren. Wer hier überfallen wurde, hatte weniger Glück als du.', '');
+        break;
+      case 'meiler':
+        this.logMsg('Ein Kohlenmeiler, noch warm - der Köhler kann nicht weit sein. Doch niemand antwortet.', '');
+        break;
+    }
+  }
+
   // Liegenden Stamm zerlegen (Runde 75, Autorfreigabe: der ez-tree-Baum SELBST
   // bleibt liegen - keine Zwischenzeichnung - und wird am Boden zerhackt).
   private zerlegeStamm(key: string): void {
@@ -2056,7 +2115,7 @@ export class WorldScene extends CombatScene {
       const rg = g.createRadialGradient(32, 32, 2, 32, 32, 30);
       rg.addColorStop(0, 'rgba(0,0,0,0.5)'); rg.addColorStop(0.6, 'rgba(0,0,0,0.28)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
       g.fillStyle = rg; g.beginPath(); g.ellipse(32, 32, 30, 30, 0, 0, Math.PI * 2); g.fill();
-      this.textures.addCanvas(key, c);
+      this.textures.addCanvas(key, c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
     }
     return key;
   }
@@ -2211,6 +2270,15 @@ export class WorldScene extends CombatScene {
       { name: 'KAMERA', controls: () => [
         { kind: 'button', label: () => `Frei-Kamera: ${this.devFreiKam ? 'AN (WASD/Pfeile + Mittelmaus zieht)' : 'aus'}`, onClick: () => { this.setzeFreiKamera(!this.devFreiKam); this.devKonsole?.refresh(); } },
         { kind: 'note', text: 'Frei-Kamera entkoppelt vom Helden: WASD/Pfeile scrollen, Mittelmaus zieht die Karte. Basis für den späteren RTS-Modus.' },
+      ] },
+      { name: 'WETTER', controls: () => [
+        { kind: 'note', text: 'Wetter-Achse (0 trocken .. 1 Sturm). Ab ~0.7 zündet der Blitz von selbst. Bis zum ersten Dungeon hält der Stimmungs-Nieselregen das Ziel fest.' },
+        { kind: 'slider', label: 'Wetter', min: 0, max: 1, step: 0.05, get: () => this.wetterWert, set: (v) => { this.wetterWert = v; this.wetterZiel = v; this.wetterTimer = 30; } },
+        { kind: 'slider', label: 'Boden-Nässe (Pfützen)', min: 0, max: 1, step: 0.05, get: () => this.naesse, set: (v) => { this.naesse = v; } },
+        { kind: 'button', label: () => `Stimmungsregen (bis 1. Dungeon): ${this.flags.nErsterDungeon ? 'AUS' : 'AN'}`, onClick: () => { this.flags.nErsterDungeon = !this.flags.nErsterDungeon; this.devKonsole?.refresh(); } },
+        { kind: 'button', label: () => 'Sturm mit Blitz SOFORT', onClick: () => { this.wetterWert = 1; this.wetterZiel = 1; this.wetterTimer = 60; this.naesse = Math.max(this.naesse, 0.8); } },
+        { kind: 'slider', label: 'Baumgröße (Kacheln, Karte lädt neu)', min: 5, max: 18, step: 0.5, get: () => this.devBaumSkala ?? this.area?.baumSkala ?? 11, set: (v) => { this.devBaumSkala = v; } },
+        { kind: 'button', label: () => 'Baumgröße anwenden (Karte neu laden)', onClick: () => { this.devKonsole?.toggle(); this.goArea(this.area.id, { x: this.px, y: this.py }); } },
       ] },
       { name: 'MESSEN', controls: () => [
         { kind: 'button', label: () => `FPS-Anzeige: ${this.perfAn ? 'AN' : 'aus'}`, onClick: () => { this.perfAn = !this.perfAn; this.devKonsole?.refresh(); } },
@@ -2507,7 +2575,13 @@ export class WorldScene extends CombatScene {
         }
         if (nachbarn >= 4) objName = 'wald';
       }
-      const obj = this.provider.objectKey(objName, variant, a.depth, a.theme);
+      // ez-tree ist auf baumSkala-Karten GESETZT (Dauerregel): der Hot-Swap-
+      // Pfad des Providers lieferte hier alte 32px-Pixelbäume (assets/tiles/
+      // baumN.png) und überschrieb die gebackenen ez-Bäume - DAS war der
+      // "das sind nicht die ez-Bäume"-Klotz-Look (Autorbug R76).
+      const obj = (id === T.TREE && a.baumSkala && this.textures.exists(`obj_baum_0_${variant % 7}`))
+        ? `obj_baum_0_${variant % 7}`
+        : this.provider.objectKey(objName, variant, a.depth, a.theme);
       const objImg = tag(this.add.image(tx * TILE + 16, ty * TILE + 16, obj).setDepth(ty * TILE + 26));
       // Größe je Objekttyp (Baukasten-Regler): displaySize macht die
       // Texturauflösung egal - Uploads dürfen größer sein als 32px
@@ -2517,16 +2591,26 @@ export class WorldScene extends CombatScene {
       // bei 0.64 (der gebackene Schattenteller liegt im Bitmap UNTER dem Stamm)
       // und ein weicher Kontaktschatten, der den Baum am Boden erdet.
       if (id === T.TREE && a.baumSkala) {
+        // Große ez-tree-Bäume (R74/R76): die Bakes sind auf ihren Inhalt
+        // zugeschnitten -> Höhe = TILE*skala, Breite nach ECHTEM Seiten-
+        // verhältnis (kein Stauchen ins Quadrat), Fuß-Anker am Bildende.
         const hash01 = (((tx * 73856093) ^ (ty * 19349663)) % 997) / 997;
-        skala = a.baumSkala * (0.65 + hash01 * 0.9);
-        objImg.setOrigin(0.5, 0.64);
+        skala = (this.devBaumSkala ?? a.baumSkala) * (0.65 + hash01 * 0.9);
+        const quelle = this.textures.get(obj).getSourceImage();
+        const aspekt = quelle.width / Math.max(1, quelle.height);
+        const hoehe = TILE * skala;
+        objImg.setOrigin(0.5, 0.96);
+        objImg.setDisplaySize(hoehe * aspekt, hoehe);
         const schatten = tag(this.add.image(tx * TILE + 16, ty * TILE + 18, this.kontaktSchattenKey()).setDepth(ty * TILE + 25));
-        schatten.setDisplaySize(TILE * skala * 0.42, TILE * skala * 0.15);
+        schatten.setDisplaySize(hoehe * aspekt * 0.5, hoehe * 0.12);
         schatten.setAlpha(0.8);
         // Lebendig wie in dorfSim: der Baum schwankt im Wind (Böen-Phase aus
         // der Position, damit nicht alle synchron kippen).
         this.windBaeume.push({ img: objImg, phase: tx * 0.19 + ty * 0.11 });
-      } else if (skala > 1.15) objImg.setOrigin(0.5, 0.7);
+        objImg.setData('objTyp', 'baum');
+        return;
+      }
+      if (skala > 1.15) objImg.setOrigin(0.5, 0.7);
       objImg.setDisplaySize(TILE * skala, TILE * skala);
       objImg.setData('objTyp', objName === 'wald' ? 'baum' : objName);
       return;
@@ -2605,6 +2689,7 @@ export class WorldScene extends CombatScene {
       this.spawneUferSchilf(a);     // Schilf-Cluster an der Wasserkante (R75-Test)
       this.spawneWiesenBewuchs(a);  // Wiesengras + Blumen (three.js-gebacken, R76)
     }
+    this.spawnePois(a);             // Wegzeichen/POIs (R76, Autorfreigabe)
     // Tiles als statische Bilder (Pseudo-3D, Masterprompt 5.1). Bei dorfSimBoden
     // malt der dorfSim-Canvas alles - keine Kacheln.
     if (!a.dorfSimBoden) {
@@ -3616,6 +3701,13 @@ export class WorldScene extends CombatScene {
     for (const n of this.npcEnts) {
       if (n.sprite.visible && near(n.curX, n.curY, 56)) {
         return { text: `${n.name} - ${ik} zum Reden`, action: () => this.talkTo(n.id) };
+      }
+    }
+    // POIs (Runde 76): erzählende Wegzeichen ansprechen
+    for (const p of this.area.pois ?? []) {
+      if (near(p.x, p.y, 56)) {
+        const namen: Record<string, string> = { bildstock: 'Bildstock', wegweiser: 'Wegweiser', galgen: 'Galgen', suehnekreuz: 'Sühnekreuz', karren: 'Verlassener Karren', meiler: 'Kohlenmeiler' };
+        return { text: `${namen[p.art] ?? p.art} - ${ik} zum Ansehen`, action: () => this.nutzePoi(p.art) };
       }
     }
     // Liegenden Stamm zerlegen (Runde 75): der gefällte ez-tree-Baum bleibt

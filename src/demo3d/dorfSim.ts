@@ -13,7 +13,7 @@
 
 import * as THREE from 'three';
 import { Tree } from '@dgreenheck/ez-tree';
-import { macheBackofen } from './propBackofen';
+import { macheBackofen, beschneideCanvas } from './propBackofen';
 import { drawHeld, HELD_FELD } from '../gfx/heldArt';
 import { drawPferd, PFERD_W, PFERD_H } from '../gfx/pferdArt';
 import type { HeldTier } from '../data/helden';
@@ -614,8 +614,14 @@ function backeLiege(ofen: ReturnType<typeof macheBackofen>, t: Tree, st: Stimmun
 // obj_baum_*-/obj_wald_*-Texturen, bis die finalen ComfyUI-Assets da sind. Falls
 // dorfSim schon initialisiert wurde, werden die fertigen arten[].wald wiederverwendet.
 export async function baueBaumBitmaps(): Promise<HTMLCanvasElement[]> {
-  if (arten.length) return arten.map((a) => a.wald);
-  const ofen = macheBackofen(512);
+  // OHNE Schattenteller backen (der Engine-Pfad zeichnet den Kontaktschatten
+  // selbst; eingebacken erschien er über dunklen Hintergründen als heller
+  // Fleck) und auf den sichtbaren Inhalt ZUSCHNEIDEN - sonst füllt der Baum
+  // nur ~40% der Leinwand und wird beim Verkleinern klötzig (Autorbug R76).
+  // Kein arten-Cache mehr: der enthielte die alten schattigen Bakes.
+  // 1024 statt 512: nach dem Zuschnitt bleibt ~450-500px Baum - das deckt die
+  // Anzeigegröße (bis ~450px Welt x Kamera-Zoom) ohne matschiges Hochskalieren.
+  const ofen = macheBackofen(1024, false);
   const sorten: Array<[string, number, number]> = [
     ['Oak Large', 1, 1.9], ['Oak Medium', 23, 1.3],
     ['Ash Large', 7, 1.3], ['Ash Medium', 31, 1.0],
@@ -626,7 +632,7 @@ export async function baueBaumBitmaps(): Promise<HTMLCanvasElement[]> {
   for (const [preset, seed, dick] of sorten) {
     const tw = baueBaum(preset, seed, WALD, dick);
     for (let i = 0; i < 160 && !texturenBereit(tw as unknown as THREE.Object3D); i++) await schlaf(40);
-    out.push(backe(ofen, tw, WALD));
+    out.push(beschneideCanvas(backe(ofen, tw, WALD)));
   }
   return out;
 }

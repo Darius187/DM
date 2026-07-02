@@ -8,7 +8,7 @@
 // Das Schwanken macht die WorldScene (Fuß-Anker-Rotation, Böen-Phase).
 
 import * as THREE from 'three';
-import { macheBackofen } from './propBackofen';
+import { macheBackofen, beschneideCanvas } from './propBackofen';
 
 function rngAus(seed: number): () => number {
   let a = seed >>> 0;
@@ -115,10 +115,11 @@ function baueBlume(seed: number, farbe: number): THREE.Group {
 /** Backt alle Wiesen-Bitmaps: 4 Gras-Büschel + je Blumenfarbe 1 Variante.
  * Synchron (keine Texturen zu laden), kleiner eigener Backofen. */
 export function baueWieseBitmaps(): { gras: HTMLCanvasElement[]; blumen: HTMLCanvasElement[] } {
-  const ofen = macheBackofen(128);
+  // Ohne Schattenteller + auf Inhalt zugeschnitten (siehe baueBaumBitmaps).
+  const ofen = macheBackofen(128, false);
   const gras: HTMLCanvasElement[] = [];
-  for (let v = 0; v < 4; v++) gras.push(ofen.backe(baueGrasBueschel(11 + v * 37) as unknown as THREE.Group));
+  for (let v = 0; v < 4; v++) gras.push(beschneideCanvas(ofen.backe(baueGrasBueschel(11 + v * 37) as unknown as THREE.Group)));
   const blumen: HTMLCanvasElement[] = [];
-  for (let v = 0; v < BLUMEN_FARBEN.length; v++) blumen.push(ofen.backe(baueBlume(101 + v * 53, v) as unknown as THREE.Group));
+  for (let v = 0; v < BLUMEN_FARBEN.length; v++) blumen.push(beschneideCanvas(ofen.backe(baueBlume(101 + v * 53, v) as unknown as THREE.Group)));
   return { gras, blumen };
 }

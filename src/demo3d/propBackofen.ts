@@ -11,7 +11,35 @@ export interface Backofen {
   groesse: number;
 }
 
-export function macheBackofen(groesse = 256): Backofen {
+// Beschneidet ein gebackenes Bild auf seinen sichtbaren Inhalt (Alpha-Bounding-
+// Box + Rand). Nötig für Sprites, die per displaySize skaliert werden: ohne
+// Zuschnitt füllt das Objekt nur einen Bruchteil der Leinwand und wird beim
+// Verkleinern unnötig stark heruntergefiltert (klötziger Look).
+export function beschneideCanvas(cv: HTMLCanvasElement, alphaMin = 20, rand = 4): HTMLCanvasElement {
+  const g = cv.getContext('2d')!;
+  const d = g.getImageData(0, 0, cv.width, cv.height).data;
+  let x0 = cv.width, y0 = cv.height, x1 = 0, y1 = 0;
+  for (let y = 0; y < cv.height; y++) {
+    for (let x = 0; x < cv.width; x++) {
+      if (d[(y * cv.width + x) * 4 + 3] > alphaMin) {
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+    }
+  }
+  if (x1 <= x0 || y1 <= y0) return cv;
+  x0 = Math.max(0, x0 - rand); y0 = Math.max(0, y0 - rand);
+  x1 = Math.min(cv.width - 1, x1 + rand); y1 = Math.min(cv.height - 1, y1 + rand);
+  const out = document.createElement('canvas');
+  out.width = x1 - x0 + 1; out.height = y1 - y0 + 1;
+  out.getContext('2d')!.drawImage(cv, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+  return out;
+}
+
+// mitSchatten=false: KEIN Schattenboden im Bake (für Engine-Sprites, die ihren
+// Kontaktschatten selbst zeichnen - der eingebackene graue Teller erschien
+// über dunklen Hintergründen als heller Fleck, Autorbug R76).
+export function macheBackofen(groesse = 256, mitSchatten = true): Backofen {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.setSize(groesse, groesse);
   renderer.setClearColor(0x000000, 0);
@@ -28,8 +56,10 @@ export function macheBackofen(groesse = 256): Backofen {
   const sc = sonne.shadow.camera as THREE.OrthographicCamera; sc.left = -4; sc.right = 4; sc.top = 4; sc.bottom = -4; sonne.shadow.bias = -0.0016;
   scene.add(sonne);
   const warm = new THREE.DirectionalLight(0xff9a4a, 0.7); warm.position.set(-3, 2.5, -3); scene.add(warm);
-  const schattenBoden = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.ShadowMaterial({ opacity: 0.42 }));
-  schattenBoden.rotation.x = -Math.PI / 2; schattenBoden.receiveShadow = true; scene.add(schattenBoden);
+  if (mitSchatten) {
+    const schattenBoden = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.ShadowMaterial({ opacity: 0.42 }));
+    schattenBoden.rotation.x = -Math.PI / 2; schattenBoden.receiveShadow = true; scene.add(schattenBoden);
+  }
   const halter = new THREE.Object3D(); scene.add(halter);
 
   return {

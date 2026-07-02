@@ -5,7 +5,7 @@
 // malerischen Wald wie dorfSim. Reversibel: sobald die finalen ComfyUI-Bäume da
 // sind, fällt dieser Aufruf weg (siehe TODO.md). Einmal pro Sitzung gebacken.
 
-import type Phaser from 'phaser';
+import Phaser from 'phaser';
 import { baueBaumBitmaps } from '../demo3d/dorfSim';
 
 let bereit = false;
@@ -20,7 +20,10 @@ export async function registriereBaumBitmaps(tex: Phaser.Textures.TextureManager
     const cv = bitmaps[v % bitmaps.length];
     for (const name of ['baum', 'wald']) {
       const key = `obj_${name}_0_${v}`;
-      if (!tex.exists(key)) tex.addCanvas(key, cv);
+      // WICHTIG (Autorbug R76 "das sind nicht die ez-Bäume"): das Spiel läuft
+      // mit pixelArt:true -> Texturen defaulten auf NEAREST und die malerischen
+      // 512px-Bakes wurden klötzig zerhackt. LINEAR gibt den dorfSim-Look zurück.
+      if (!tex.exists(key)) tex.addCanvas(key, cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
     }
   }
   bereit = true;

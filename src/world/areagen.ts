@@ -65,6 +65,10 @@ export interface AreaData {
   // (ez-tree-Bitmaps, ~8-17 Kacheln hoch, Fuß-Anker + Kontaktschatten) setzen
   // das; fehlt es, gilt die alte kleine objektSkala (1.85).
   baumSkala?: number;
+  // Wegzeichen/POIs der Zeit um 1300 (Runde 76): kleine erzählende Orte
+  // (bildstock, wegweiser, galgen, suehnekreuz, karren, meiler) - Bilder in
+  // world/poiBilder.ts, Interaktion in der WorldScene.
+  pois?: Array<{ art: string; x: number; y: number }>;
   // dorfSim-Hintergrund (Runde 72): Boden/Bäume/Wetter/Tag-Nacht dieser Area malt
   // der dorfSim-Canvas (Anfangskarte-Look), Kollision aus dorfSim; die WorldScene-
   // Systeme (Kampf/HUD/Speichern) laufen darüber. Kacheln/Bake/Overlay entfallen.
@@ -1642,7 +1646,9 @@ export function buildStart(rng: Rng): AreaData {
     // Keine Gegner auf der Startkarte (Autorwunsch) - zentraler spawnEnemy-Guard.
     friedlich: true,
     // Bäume in dorfSim-Größe (ez-tree-Bitmaps, Fuß-Anker, Kontaktschatten).
-    baumSkala: 11,
+    // 9 Kacheln Basis: die Bakes sind jetzt auf den Inhalt zugeschnitten
+    // (kein Leerrand mehr), gleicher sichtbarer Baum wie vorher mit 11.
+    baumSkala: 9,
   };
   // Wasser-Lauf 1:1 nach der START-Zelle von reference/ravenkarte.png (UV 0..1,
   // y nach unten; Lesart-Bild an den Autor geschickt): Fluss tritt OBEN (u~0.75)
@@ -1725,6 +1731,27 @@ export function buildStart(rng: Rng): AreaData {
       if (!frei) continue;
       map[ty][tx] = T.TREE;
       gesetzt.push([x, y]);
+    }
+  }
+  // POIs am Weg nach Ravensmoor (Runde 76, Autorfreigabe; historische Lesart
+  // um 1300 in OFFENE-FRAGEN.md): Bildstock an der Brücke, Raben-Wegweiser
+  // nahe dem Spawn, Galgenhügel vor der Ostkante (Richtung Stadt), Sühnekreuz
+  // abseits im Grünen, verunglückter Karren am Weg, Köhler-Meiler am Waldrand.
+  const wegY = (u: number): number => strasseV(u) * H;
+  a.pois = [
+    { art: 'wegweiser', x: 720, y: wegY(720 / W) - 52 },
+    { art: 'karren', x: 1250, y: wegY(1250 / W) + 6 },
+    { art: 'bildstock', x: 1980, y: wegY(1980 / W) - 56 },
+    { art: 'suehnekreuz', x: 1500, y: 1100 },
+    { art: 'galgen', x: 3860, y: wegY(3860 / W) - 90 },
+    { art: 'meiler', x: 500, y: 520 },
+  ];
+  // Bäume um die POIs freiräumen (Meiler-Lichtung etwas größer)
+  for (const p of a.pois) {
+    const ptx = Math.floor(p.x / TILE), pty = Math.floor(p.y / TILE);
+    const r = p.art === 'meiler' ? 3 : 2;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      if (map[pty + dy]?.[ptx + dx] === T.TREE) map[pty + dy][ptx + dx] = T.GRASS;
     }
   }
   return a;
