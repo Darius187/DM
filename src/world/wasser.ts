@@ -137,7 +137,9 @@ float rainH(vec2 uv){
     float ring=sin((r-rad)*44.0)*exp(-r*2.8)*(1.0-ph)*smoothstep(0.0,0.06,ph);
     sum+=ring;
   } }
-  return sum*0.7;
+  // DEUTLICH gedämpft (Autorbug R78 "Nieselregen verwässert den Fluss"):
+  // leichter Regen wirkt nur minimal (quadratische Kurve), Sturm spürbar.
+  return sum*0.7*(0.12+0.88*u_rain*u_rain);
 }
 vec3 normalAt(vec2 uv, vec2 dir, float spd){ float e=1.6/resolution.y;
   float hL=wh(uv-vec2(e,0.0),dir,spd)+inter(uv-vec2(e,0.0))+rainH(uv-vec2(e,0.0)); float hR=wh(uv+vec2(e,0.0),dir,spd)+inter(uv+vec2(e,0.0))+rainH(uv+vec2(e,0.0));
@@ -247,7 +249,7 @@ void main(){
   // Held-Wellen + Regentropfen: bewusst OHNE edgeFade - die sollen man auch im
   // flachen Ufer-Wasser sehen (Waten/Regen), bilden keine durchgehende Kante.
   float heroWake=inter(uv); col += vec3(0.85,0.92,1.0)*abs(heroWake)*0.35*localDepth;
-  float rain=rainH(uv); col += vec3(0.82,0.88,0.96)*abs(rain)*0.28*localDepth;
+  float rain=rainH(uv); col += vec3(0.82,0.88,0.96)*abs(rain)*0.18*localDepth;
   vec3 dryStone=stoneLit(sN,sCol)*1.08*u_ambient; col=mix(col, dryStone, sMask*emerged*edgeFade);
   float waterline=sMask*smoothstep(0.0,0.32,emerged)*(1.0-smoothstep(0.32,0.62,emerged));
   col=mix(col, vec3(0.92,0.95,0.96), clamp(waterline,0.0,1.0)*(0.16+0.34*u_turb)*edgeFade);

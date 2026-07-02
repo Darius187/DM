@@ -183,9 +183,71 @@ export function maleBoden(ctx: CanvasRenderingContext2D, karte: BodenKarte, TILE
     ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
 
+  // 4b) Herbst-Laub-Tupfer auf der offenen Wiese (dorfSim-Look, R78): kleine
+  // orange-braune Blättchen in lockeren Grüppchen.
+  for (let i = 0, n = Math.round((W * H) / 130000); i < n; i++) {
+    const x = rnd() * W, y = rnd() * H;
+    if (dichte(x, y) > 0.2) continue;
+    for (let b2 = 0, m = 2 + (rnd() * 4 | 0); b2 < m; b2++) {
+      ctx.fillStyle = `rgba(${150 + rnd() * 50 | 0},${86 + rnd() * 30 | 0},${30 + rnd() * 14 | 0},0.5)`;
+      ctx.beginPath(); ctx.ellipse(x + (rnd() - 0.5) * 26, y + (rnd() - 0.5) * 18, 2.4, 1.5, rnd() * 3, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
   // 5) Der WEG als dorfSim-Band
   const mitte = wegMittellinie(karte, TILE);
   if (mitte.length > 3) maleWeg(ctx, mitte, rnd);
+}
+
+// --- Brücke (1:1-Port aus dorfSim zeichneBrueckeDeck/zeichneGelaender, R78):
+// unebene Planken QUER zur Laufrichtung (5 Brauntöne, Fugen, Maserung, Ast-
+// löcher), Bordkanten, Geländer mit Pfosten/Handlauf/unterem Holm auf BEIDEN
+// Längsseiten, Deck-Schatten. Ein Bild je Brücke statt Kachel-Bretter. -------
+export function macheBrueckenBild(laenge: number, breite: number): HTMLCanvasElement {
+  const railH = 17, rand = 6;
+  const c = document.createElement('canvas');
+  c.width = laenge + rand * 2; c.height = breite + railH + rand * 2 + 6;
+  const g = c.getContext('2d')!;
+  const x0 = rand, deckY = railH + rand;   // Deck-Oberkante
+  // Deck-Schatten ins Wasser
+  g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(x0, deckY + 6, laenge, breite);
+  // Pfeiler an den Vierteln
+  for (const t of [0.25, 0.75]) {
+    const px = x0 + laenge * t;
+    g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(px - 4, deckY + breite - 2, 8, 18);
+    g.fillStyle = '#1e150d'; g.fillRect(px - 3, deckY + breite - 4, 6, 16);
+  }
+  // Planken quer zur Laufrichtung (uneben, mit Fuge/Maserung/Astloch)
+  const plankW = 13, paletten = ['#5b4327', '#674e2f', '#503c23', '#614a2b', '#574025'];
+  for (let p = 0; p < laenge; p += plankW) {
+    const hs = Math.sin(p * 1.7) * 43758.5, r = hs - Math.floor(hs), wob = (r - 0.5) * 2;
+    g.fillStyle = paletten[Math.floor(r * paletten.length)];
+    g.fillRect(x0 + p, deckY + wob, plankW - 1.6, breite - wob);
+    g.strokeStyle = 'rgba(30,20,10,0.35)'; g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(x0 + p + 2, deckY + 4); g.lineTo(x0 + p + 2, deckY + breite - 4);
+    g.moveTo(x0 + p + plankW * 0.6, deckY + 6); g.lineTo(x0 + p + plankW * 0.6, deckY + breite - 6);
+    g.stroke();
+    if (r < 0.3) { g.fillStyle = 'rgba(20,14,8,0.5)'; g.beginPath(); g.ellipse(x0 + p + plankW * 0.45, deckY + r * breite * 0.8 + 4, 1.6, 1.2, 0, 0, 7); g.fill(); }
+  }
+  // Bordkanten (Geländerbasis) oben + unten
+  g.fillStyle = '#3a2c18';
+  g.fillRect(x0, deckY - 1, laenge, 3);
+  g.fillRect(x0, deckY + breite - 2, laenge, 3);
+  // Geländer beidseitig: Pfosten + unterer Holm + Handlauf (hinteres oben ragt hoch)
+  const gelaender = (basisY: number): void => {
+    const n = Math.max(4, Math.round(laenge / 28));
+    g.lineCap = 'round';
+    g.strokeStyle = '#241a10'; g.lineWidth = 3.4;
+    for (let k = 0; k <= n; k++) { const wx = x0 + (laenge * k) / n; g.beginPath(); g.moveTo(wx, basisY); g.lineTo(wx, basisY - railH); g.stroke(); }
+    g.strokeStyle = 'rgba(40,30,18,0.8)'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(x0, basisY - railH * 0.5); g.lineTo(x0 + laenge, basisY - railH * 0.5); g.stroke();
+    g.strokeStyle = '#3a2c18'; g.lineWidth = 3.6;
+    g.beginPath(); g.moveTo(x0, basisY - railH); g.lineTo(x0 + laenge, basisY - railH); g.stroke();
+  };
+  gelaender(deckY);            // hinteres Geländer (oben)
+  gelaender(deckY + breite);   // vorderes Geländer (unten)
+  return c;
 }
 
 // --- Pfütze (Port der dorfSim-Idee, statisch gebacken): unregelmäßige Lachen-
@@ -209,9 +271,9 @@ export function machePfuetzenBild(seed: number, lang: number, quer: number): HTM
     for (const b of blobs) { g.moveTo(b.x + b.rx * grow, b.y); g.ellipse(b.x, b.y, b.rx * grow, b.ry * grow, 0, 0, Math.PI * 2); }
   };
   // nasser Schlammrand (etwas größer als der Wasserkörper)
-  g.fillStyle = 'rgba(26,19,11,0.6)'; form(1.25); g.fill();
-  // Wasserkörper
-  g.fillStyle = '#0d141a'; form(1); g.fill();
+  g.fillStyle = 'rgba(26,19,11,0.45)'; form(1.25); g.fill();
+  // Wasserkörper (heller/blauer als v1 - die fast schwarze Lache wirkte kaputt)
+  g.fillStyle = '#18242e'; form(1); g.fill();
   // Senke: Mitte dunkler, Rand minimal heller
   g.save(); form(1); g.clip();
   const rg = g.createRadialGradient(cx, cy, 2, cx, cy, lang * 0.5);

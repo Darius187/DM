@@ -13,7 +13,7 @@ import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
-import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheGrasBueschelBild } from '../world/bodenMaler';
+import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheGrasBueschelBild, macheBrueckenBild } from '../world/bodenMaler';
 import { POI_BILDER } from '../world/poiBilder';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
 import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale, berechneTagLicht } from '../demo3d/dorfSim';
@@ -1979,7 +1979,7 @@ export class WorldScene extends CombatScene {
       const ziel = this.naesse > p.schwelle ? 1 : 0;
       // füllt zügig, verdunstet deutlich langsamer (dorfSim-Verhalten)
       p.cur += (ziel - p.cur) * Math.min(1, dt * (ziel > p.cur ? 1.1 : 0.18));
-      p.img.setAlpha(0.92 * p.cur);
+      p.img.setAlpha(0.78 * p.cur);
       p.img.setDisplaySize(p.bw * (0.7 + 0.3 * p.cur), p.bh * (0.7 + 0.3 * p.cur));
       // DEZENTE Tropfen-Ringe auf gefüllten Pfützen bei Regen (dorfSim-Art,
       // Autorwunsch R77): feine Lichtkante, die kurz aufläuft und vergeht.
@@ -2085,6 +2085,74 @@ export class WorldScene extends CombatScene {
         if (fleck < 0.1) continue;
         if (hash < 0.4 * this.devBewuchs) setze(`dorfgras_kurz_${(tx + ty) % 3}`, x + jx, y + jy, 1, phase);
         else if (hash < 0.4 * this.devBewuchs + 0.13 * this.devBewuchs) setze(`dorfgras_hoch_${(tx + ty) % 3}`, x + jx, y + jy, 1, phase);
+      }
+    }
+  }
+
+  // NASS-SPRITZER (Runde 78, Autorwunsch): läuft der Held durch eine GEFÜLLTE
+  // Pfütze, spritzt Wasser (Tropfen + kleiner Ring); auf nassem RASEN gibt es
+  // einen dezenteren Tropfen-Effekt (durch nasses Gras waten).
+  private spritzerT = 0;
+  private spritzerPX = 0; private spritzerPY = 0;
+  private updateNassSpritzer(dt: number): void {
+    const draussen = !this.area?.innen && !this.area?.dark;
+    const bewegt = Math.hypot(this.px - this.spritzerPX, this.py - this.spritzerPY) > 1.2;
+    this.spritzerPX = this.px; this.spritzerPY = this.py;
+    this.spritzerT -= dt;
+    if (!draussen || !bewegt || this.spritzerT > 0) return;
+    // In einer gefüllten Pfütze? (Ellipsen-Test gegen die sichtbare Lache)
+    for (const p of this.pfuetzen) {
+      if (p.cur < 0.5 || !p.img.active) continue;
+      const dx = (this.px - p.img.x) / (p.img.displayWidth * 0.5), dy = (this.py - p.img.y) / (p.img.displayHeight * 0.5);
+      if (dx * dx + dy * dy < 1) {
+        this.spritzerT = 0.14;
+        this.fx.burst(this.px, this.py + 8, 0x9ab8cc, 5, 70);
+        if (this.textures.exists('regenring')) {
+          const ring = this.add.image(this.px, this.py + 8, 'regenring').setDepth(-8.3).setAlpha(0.4).setScale(0.2);
+          this.tweens.add({ targets: ring, scale: 0.7, alpha: 0, duration: 420, onComplete: () => ring.destroy() });
+        }
+        return;
+      }
+    }
+    // Nasser Rasen: dezente Tropfen hinter den Füßen
+    const kachel = this.area.map[Math.floor(this.py / TILE)]?.[Math.floor(this.px / TILE)];
+    if (this.naesse > 0.35 && kachel === T.GRASS) {
+      this.spritzerT = 0.22;
+      this.fx.burst(this.px, this.py + 8, 0x7a94a8, 2, 40);
+    }
+  }
+
+  // BRÜCKEN im dorfSim-Look (Runde 78, Autorbug "sieht schlecht aus"): statt
+  // Kachel-Brettern EIN gebackenes Bild je Brücke (Planken quer, Geländer,
+  // Pfeiler - 1:1-Port aus dorfSim). Kollision bleibt aus den T.BRIDGE-Kacheln.
+  private spawneBruecken(a: AreaData): void {
+    if (!a.gebackenerBoden) return;
+    const gesehen = new Set<string>();
+    let nr = 0;
+    for (let ty = 0; ty < a.h; ty++) {
+      for (let tx = 0; tx < a.w; tx++) {
+        if (a.map[ty][tx] !== T.BRIDGE || gesehen.has(`${tx},${ty}`)) continue;
+        // Bounding-Box der zusammenhängenden Brückenkacheln einsammeln
+        let x0 = tx, x1 = tx, y0 = ty, y1 = ty;
+        const stapel: Array<[number, number]> = [[tx, ty]];
+        gesehen.add(`${tx},${ty}`);
+        while (stapel.length) {
+          const [cx, cy] = stapel.pop()!;
+          x0 = Math.min(x0, cx); x1 = Math.max(x1, cx); y0 = Math.min(y0, cy); y1 = Math.max(y1, cy);
+          for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+            const nx = cx + dx, ny = cy + dy;
+            if (a.map[ny]?.[nx] === T.BRIDGE && !gesehen.has(`${nx},${ny}`)) { gesehen.add(`${nx},${ny}`); stapel.push([nx, ny]); }
+          }
+        }
+        const laenge = (x1 - x0 + 1) * TILE, breite = (y1 - y0 + 1) * TILE;
+        const key = `bruecke_${a.id}_${nr++}`;
+        if (!this.textures.exists(key)) {
+          this.textures.addCanvas(key, macheBrueckenBild(laenge, breite))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+          this.pfuetzenTexKeys.push(key);   // gleiche Aufräum-Liste (Texturen je Karte)
+        }
+        // Bild so legen, dass das DECK exakt die Kacheln deckt (railH+Rand oben)
+        const img = this.add.image(x0 * TILE - 6, y0 * TILE - 17 - 6, key).setOrigin(0, 0).setDepth(-8);
+        this.tileImages.push(img);
       }
     }
   }
@@ -2628,7 +2696,7 @@ export class WorldScene extends CombatScene {
     // Gebackener Boden (Runde 72): Boden- und Wasserkacheln werden NICHT als
     // Sprite gezeichnet - das gemalte Bodenbild (-11) und das Wasser-Overlay (-9)
     // übernehmen die Optik. Kollision bleibt aus a.map (SOLID unverändert).
-    if (a.gebackenerBoden && (id === T.GRASS || id === T.PATH || id === T.FIELD || id === T.WATER)) return;
+    if (a.gebackenerBoden && (id === T.GRASS || id === T.PATH || id === T.FIELD || id === T.WATER || id === T.BRIDGE)) return;   // Brücke = eigenes Komposit-Bild (R78)
     const name = tileNameAt(a.map, tx, ty);
     // Im Baukasten gewählte Variante schlägt den Positions-Hash
     const planV = this.planKachelAn(tx, ty)?.v;
@@ -2801,7 +2869,8 @@ export class WorldScene extends CombatScene {
       this.bakeBoden(a);
       this.spawnePfuetzen(a);       // Pfützen am Weg (füllen sich mit der Nässe)
       this.spawneUferSchilf(a);     // Schilf-Cluster an der Wasserkante (R75-Test)
-      this.spawneWiesenBewuchs(a);  // Wiesengras + Blumen (three.js-gebacken, R76)
+      this.spawneWiesenBewuchs(a);  // Wiesengras + Blumen (dorfSim-Stil, R77)
+      this.spawneBruecken(a);       // Brücken im dorfSim-Look (R78)
     }
     this.spawnePois(a);             // Wegzeichen/POIs (R76, Autorfreigabe)
     // Tiles als statische Bilder (Pseudo-3D, Masterprompt 5.1). Bei dorfSimBoden
@@ -7606,6 +7675,7 @@ export class WorldScene extends CombatScene {
     this.updateCombat(dt * kampfTempo);
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
     this.updateWetter(dt);      // Wetter-Achse (Regen/Nässe, Stimmungsregen bis 1. Dungeon)
+    this.updateNassSpritzer(dt);  // Spritzer in Pfützen + auf nassem Rasen (R78)
     this.updateWasserWetter();  // Regen-Ringe/Wirbel auf dem neuen Wasser
     this.updateBaumWind(this.time.now);  // Bäume/Schilf schwanken im Wind
     this.updateFreiKamera(dt); // Dev-Frei-Kamera (entkoppelt vom Helden)
