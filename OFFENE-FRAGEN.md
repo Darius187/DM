@@ -165,3 +165,28 @@
     Zwischenlösung bis dahin: ich baue START-GELÄNDE + Salzstrasse + alle
     Spielsysteme schon, das neue SDF-Wasser kommt mit deiner Wasser-Linienführung
     dazu. Volle Raster-/Kanten-Übersicht: WELTKARTE-PLAN.md.
+
+## Runde 76: POIs am Weg nach Ravensmoor + Wegmarkierung (Autorfrage "wie war das um 1300?")
+Historischer Befund (recherchiert): Um 1300 gab es KEINE beschrifteten
+Wegweiser oder Ortsschilder - kaum jemand konnte lesen; systematische
+Schilder kamen erst mit dem Postwesen des 18. Jahrhunderts (z.B. kursächsische
+Postdistanzsäulen ab 1721). Reisende orientierten sich an: LANDMARKEN
+(Kirchtürme!), BILDSTÖCKEN und WEGKREUZEN an Straßen/Pilgerwegen (zugleich
+Gebetsstationen und Warnzeichen an gefährlichen Stellen), Galgen vor der
+Stadt (= "Stadtgebiet beginnt"), Brücken/Furten, Gasthäusern - und sie
+fragten Menschen.
+Mein Vorschlag für die Startkarte (jeweils klein, alle mechanisch nutzbar):
+ 1. BILDSTOCK an der Brücke (statt Schriftschild): Heiligennische + Kerze -
+    authentisch UND als Rastpunkt/Speicherstein nutzbar. MEINE EMPFEHLUNG.
+ 2. Symbol-Wegweiser an der Gabelung: grober Holzpfahl mit eingekerbtem
+    RABEN (Ravensmoor-Zeichen) statt Text - so löste man es für Analphabeten.
+ 3. GALGENHÜGEL nahe der Ostkante Richtung Stadt - düster, historisch korrekt
+    als Zeichen der nahen Gerichtsbarkeit, passt zur Heavy-Rain-Stimmung.
+ 4. SÜHNEKREUZ abseits des Wegs - Anbindung an die Story (der Bote, der nie
+    zurückkam?): verwitterter Stein, untersuchbar, erste Lore-Notiz.
+ 5. Verlassener KARREN mit verstreuter Fracht am Wegrand (Überfall) -
+    erzählt die Gefahr, sanftes Loot-Tutorial.
+ 6. KÖHLER-MEILER im Waldrand - würde zugleich Frage 7 lösen (Köhler
+    verkauft Kohle statt der Schmied).
+Welche davon sollen rein? (Ich baue nach deiner Auswahl; ohne Antwort baue
+ich als Zwischenlösung Nr. 1 + 2, beide in einer Zeile entfernbar.)
