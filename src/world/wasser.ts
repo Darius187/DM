@@ -302,7 +302,6 @@ export const BLUT: WasserPreset = {
 export const WASSER_REGLER: Array<{ key: keyof WasserPreset; label: string; min: number; max: number; step: number }> = [
   { key: 'speed', label: 'Fließ-Tempo', min: 0.02, max: 0.5, step: 0.01 },
   { key: 'turb', label: 'Turbulenz/Wirbel', min: 0, max: 1, step: 0.02 },
-  { key: 'wake', label: 'Wellen um Held', min: 0, max: 0.6, step: 0.02 },
   { key: 'wavescale', label: 'Wellenfeinheit', min: 2.5, max: 9, step: 0.5 },
   { key: 'nscale', label: 'Wellen-Kippung', min: 0.02, max: 0.25, step: 0.01 },
   { key: 'refract', label: 'Brechung', min: 0, max: 0.1, step: 0.005 },
@@ -407,7 +406,10 @@ export function setzeGeometrie(sh: Phaser.GameObjects.Shader, geo: WasserGeometr
   sh.setUniform('u_smink.value', smink);
 }
 
-/** Held-Störquellen (Wellen) setzen: bis zu 8 Punkte als [x,y,alter] in UV. */
+/** Störquellen (Wellen) setzen: bis zu 8 Punkte als [x,y,alter] in UV.
+ * AKTUELL UNGENUTZT (Runde 74): der alte Held-Watewellen-Effekt ist raus
+ * (Autorwunsch, ein besserer kommt später). Der Haken bleibt, weil der
+ * künftige Effekt dieselben Störpunkte füttern kann. */
 export function setzeHeldPunkte(sh: Phaser.GameObjects.Shader, punkte: Array<[number, number, number]>): void {
   const arr = new Float32Array(8 * 3).fill(-1);
   for (let i = 0; i < Math.min(8, punkte.length); i++) {

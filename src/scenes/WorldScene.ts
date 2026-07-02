@@ -12,7 +12,7 @@ import { NebelFratzen } from '../systems/NebelFratzen';
 import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
-import { spawneWasser as spawneNeuesWasserShader, setzeHeldPunkte, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
+import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
 import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale } from '../demo3d/dorfSim';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
@@ -157,8 +157,6 @@ export class WorldScene extends CombatScene {
   private dorfBild?: Phaser.GameObjects.Image;
   private dorfAktiv = false;
   private readonly dorfTexKey = 'dorfsim_boden';
-  private wasserTrail: Array<{ u: number; v: number; t: number }> = []; // Held-Wellen-Spur im Wasser
-  private wasserTrailLetzte = 0;
   private wasserBahnMul: number[] = [];                       // Live-Breite je Strang (Bach/Fluss)
   private wasserSeeMul: Array<{ rx: number; ry: number }> = []; // Live-Breite/Höhe je See
   private skaliertesWasser?: WasserGeometrie;                 // Geometrie mit angewandten Reglern (Optik+Wat-Bremse)
@@ -1886,33 +1884,13 @@ export class WorldScene extends CombatScene {
     if (ziel && spawn) this.goArea(ziel, spawn);
   }
 
-  // Held-Wellen im neuen Wasser (u_points): die Spielerposition (UV) wird als
-  // alternde Spur eingespeist, solange der Held IM/AM Wasser steht (sd < Ufer).
-  // So sind die Wellen sichtbar - und nur dort, nicht auf dem Land.
-  private updateWasserHeld(): void {
+  // Wetter aufs Wasser: Regen-Tropfenkreise (u_rain) + mehr Wirbel bei Regen.
+  // Die Held-Watewellen (u_points) sind RAUS (Autorwunsch Runde 74, "sieht nicht
+  // gut aus") - der Shader-Haken setzeHeldPunkte/inter() bleibt für den späteren,
+  // besseren Effekt bestehen, wird aber nicht mehr gefüttert.
+  private updateWasserWetter(): void {
     const sh = this.wasser2Shader, lauf = this.area.wasserLauf;
     if (!sh || !lauf) return;
-    const LIFE = 2.5, now = this.time.now / 1000;
-    const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
-    const geo = this.aktuelleWasserGeo() ?? lauf.geo;
-    // Auf Brücke/Weg steht der Held NICHT im Wasser -> keine Watewellen.
-    const kachel = this.area.map[Math.floor(this.py / TILE)]?.[Math.floor(this.px / TILE)];
-    const imWasser = kachel !== T.BRIDGE && kachel !== T.PATH
-      && sdWasser(u, v, geo, lauf.smink ?? WASSER2_CFG.smink, WASSER2_CFG.widthMul) < 0.02;
-    if (imWasser && this.time.now - this.wasserTrailLetzte > 70) {
-      this.wasserTrailLetzte = this.time.now;
-      this.wasserTrail.push({ u, v, t: now });
-      if (this.wasserTrail.length > 8) this.wasserTrail.shift();
-    }
-    // Frischer Punkt GENAU an der aktuellen Heldposition (Slot 0, z=0), solange
-    // er im Wasser steht - so entsteht die Verdrängung DA, wo er steht, nicht
-    // versetzt. Dahinter die alternde Spur.
-    const punkte: Array<[number, number, number]> = [];
-    if (imWasser) punkte.push([u, v, 0]);
-    for (const p of this.wasserTrail) punkte.push([p.u, p.v, (now - p.t) / LIFE]);
-    setzeHeldPunkte(sh, punkte);
-    // Regen aufs Wasser: Tropfen-Kreise (u_rain) + etwas mehr Wirbel - aus DEM
-    // dorfSim-Wetter (Sturm-Regler), nicht aus einem zweiten Eigen-Wetter.
     const draussen = !this.area.innen && !this.area.dark;
     const rainAmt = draussen && this.area.dorfSimBoden ? dorfRegen() : (this.regnet && draussen ? 0.6 : 0);
     sh.setUniform('u_rain.value', rainAmt);
@@ -2121,7 +2099,6 @@ export class WorldScene extends CombatScene {
 
   private spawneNeuesWasser(a: AreaData): void {
     if (!a.wasserLauf) return;
-    this.wasserTrail = [];
     // Ohne gebackenen Boden: die blauen Wasserkacheln (inkl. Säume) entfernen und
     // durch Gras ersetzen, damit die weichen Ufer des Overlays in Gras blenden.
     // MIT gebackenem Boden zeichnet zeichneKachel die Wasserkacheln gar nicht erst.
@@ -7130,7 +7107,7 @@ export class WorldScene extends CombatScene {
     const kampfTempo = this.einfallAktiv ? TUNING.kryptaTempo : 1;
     this.updateCombat(dt * kampfTempo);
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
-    this.updateWasserHeld();  // Held-Wellen-Effekt im neuen Wasser
+    this.updateWasserWetter();  // Regen-Ringe/Wirbel auf dem neuen Wasser
     this.updateFreiKamera(dt); // Dev-Frei-Kamera (entkoppelt vom Helden)
     this.updateDorfSim();     // dorfSim-Hintergrund der Kamera nachführen
     this.updatePerfAnzeige();  // Dev-FPS-/Mess-Anzeige (echte Messung im Browser)
