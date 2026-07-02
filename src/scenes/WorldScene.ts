@@ -13,7 +13,7 @@ import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
-import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie } from '../world/bodenMaler';
+import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn } from '../world/bodenMaler';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
 import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale } from '../demo3d/dorfSim';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
@@ -159,6 +159,8 @@ export class WorldScene extends CombatScene {
   private windBaeume: Array<{ img: Phaser.GameObjects.Image; phase: number }> = [];
   // Ufer-Schilf (Runde 75, Test): schwankt stärker als die Bäume.
   private windSchilf: Array<{ img: Phaser.GameObjects.Image; phase: number }> = [];
+  // Wiesengras + Blumen (Runde 76, three.js-gebacken): mittleres Schwanken.
+  private windGras: Array<{ img: Phaser.GameObjects.Image; phase: number }> = [];
   // Pfützen am Weg (Runde 75): wachsen/schwinden mit der Boden-Nässe.
   private pfuetzen: Array<{ img: Phaser.GameObjects.Image; schwelle: number; cur: number; bw: number; bh: number }> = [];
   private pfuetzenTexKeys: string[] = [];
@@ -1869,6 +1871,12 @@ export class WorldScene extends CombatScene {
       if (!s.img.active) continue;
       s.img.rotation = ampS * (Math.sin(time * 0.0016 + s.phase) * 0.6 + Math.sin(time * 0.0037 + s.phase * 1.7) * 0.4);
     }
+    // Wiesengras/Blumen: zwischen Baum und Schilf, leicht flatterig.
+    const ampG = amp * 2.1;
+    for (const g of this.windGras) {
+      if (!g.img.active) continue;
+      g.img.rotation = ampG * (Math.sin(time * 0.0019 + g.phase) * 0.6 + Math.sin(time * 0.0041 + g.phase * 1.7) * 0.4);
+    }
   }
 
   // Baum fällt ANIMIERT (dorfSim-Gefühl, Runde 74): beschleunigtes Kippen weg
@@ -1980,6 +1988,40 @@ export class WorldScene extends CombatScene {
           this.tileImages.push(img);
           this.windSchilf.push({ img, phase: tx * 0.31 + ty * 0.17 + k });
         }
+      }
+    }
+  }
+
+  // Wiesengras + Blumen (Runde 76): die three.js-gebackenen Büschel in
+  // organischen FLECKEN über die offene Wiese streuen - nie im Wald (Baum-
+  // Dichte), nie auf Weg/Brücke, nicht am/im Wasser. Blumen deutlich seltener
+  // und in FARBGRUPPEN (gleiche Sorte wächst beieinander, wie in echt).
+  private spawneWiesenBewuchs(a: AreaData): void {
+    if (!a.gebackenerBoden || a.dark || a.innen || !this.textures.exists('wiese_gras_0')) return;
+    const dichte = baumDichteFn(a, TILE);
+    const geo = a.wasserLauf?.geo, smink = a.wasserLauf?.smink ?? WASSER2_CFG.smink;
+    for (let ty = 1; ty < a.h - 1; ty++) {
+      for (let tx = 1; tx < a.w - 1; tx++) {
+        if (a.map[ty][tx] !== T.GRASS) continue;
+        const x = tx * TILE + 16, y = ty * TILE + 16;
+        if (dichte(x, y) > 0.15) continue;                       // offener Wiesenboden, kein Wald
+        if (geo && sdWasser((tx + 0.5) / a.w, (ty + 0.5) / a.h, geo, smink) < 0.012) continue;
+        // Wiesen-Flecken: weiches Orts-Rauschen -> Büschel wachsen in Gruppen
+        const fleck = Math.sin(tx * 0.23 + ty * 0.41) + Math.sin(tx * 0.11 - ty * 0.17);
+        const hash = (((tx * 48271) ^ (ty * 65521)) >>> 3) % 1000 / 1000;
+        // Blumen-Inseln: eigenes, grobes Rauschen; die Sorte kommt aus der
+        // Insel-Position -> Farbgruppen statt Konfetti
+        const blumenFeld = Math.sin(tx * 0.06 + ty * 0.045) + Math.sin(tx * 0.031 - ty * 0.07);
+        const istBlume = blumenFeld > 1.15 && hash < 0.22;
+        if (!istBlume && (fleck < 0.25 || hash > 0.3)) continue;
+        const jx = (((tx * 40503) ^ (ty * 9277)) % 25) - 12, jy = (((ty * 25931) ^ (tx * 6151)) % 25) - 12;
+        const key = istBlume ? `wiese_blume_${Math.abs(Math.round(blumenFeld * 7)) % 3}` : `wiese_gras_${(tx + ty) % 4}`;
+        const img = this.add.image(x + jx, y + jy, key).setDepth(y + jy);
+        img.setOrigin(0.5, 0.9);
+        img.setScale(0.5 + hash * 0.45);
+        if (hash > 0.5) img.setFlipX(true);
+        this.tileImages.push(img);
+        this.windGras.push({ img, phase: tx * 0.27 + ty * 0.13 });
       }
     }
   }
@@ -2326,6 +2368,7 @@ export class WorldScene extends CombatScene {
     this.tileImages = [];
     this.windBaeume = [];
     this.windSchilf = [];
+    this.windGras = [];
     for (const p of this.pfuetzen) p.img.destroy();
     this.pfuetzen = [];
     for (const key of this.pfuetzenTexKeys) if (this.textures.exists(key)) this.textures.remove(key);
@@ -2558,8 +2601,9 @@ export class WorldScene extends CombatScene {
     // Canvas-Look mit weichen Ufern) - dann KEIN separates Bodenbild backen.
     if (a.gebackenerBoden && !a.wasserLauf?.vollszene && !a.dorfSimBoden) {
       this.bakeBoden(a);
-      this.spawnePfuetzen(a);     // Pfützen am Weg (füllen sich mit der Nässe)
-      this.spawneUferSchilf(a);   // Schilf-Cluster an der Wasserkante (R75-Test)
+      this.spawnePfuetzen(a);       // Pfützen am Weg (füllen sich mit der Nässe)
+      this.spawneUferSchilf(a);     // Schilf-Cluster an der Wasserkante (R75-Test)
+      this.spawneWiesenBewuchs(a);  // Wiesengras + Blumen (three.js-gebacken, R76)
     }
     // Tiles als statische Bilder (Pseudo-3D, Masterprompt 5.1). Bei dorfSimBoden
     // malt der dorfSim-Canvas alles - keine Kacheln.

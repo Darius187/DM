@@ -91,7 +91,7 @@ export function wegMittellinie(k: BodenKarte, TILE: number): Array<{ x: number; 
 }
 
 // --- Baum-/Walddichte 0..1 an einem Weltpunkt: Anteil T.TREE im Umkreis. ------
-function baumDichteFn(k: BodenKarte, TILE: number): (x: number, y: number) => number {
+export function baumDichteFn(k: BodenKarte, TILE: number): (x: number, y: number) => number {
   const R = 5;   // Kachel-Radius der Nachbarschaft
   return (x: number, y: number) => {
     const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);

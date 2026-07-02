@@ -8,6 +8,7 @@ import Phaser from 'phaser';
 import { PORTRAITS, ITEM_IMAGES, SOUNDS, SPRITE_NAMES, TILE_NAMES, TILE_VARIANTS_MAX, TITLE_IMAGE, assetStatus, logAssetStatus } from '../gfx/assetManifest';
 import { queuePackSheets, composePackTextures } from '../gfx/PackLoader';
 import { registriereBaumBitmaps } from '../gfx/baumBitmaps';
+import { registriereWieseBitmaps } from '../gfx/wieseBitmaps';
 import gfxConfig from '../data/gfx.json';
 
 interface Candidate { key: string; url: string; art: 'image' | 'audio' | 'atlas'; atlasJson?: string; optional?: boolean }
@@ -130,9 +131,11 @@ export class BootScene extends Phaser.Scene {
     // Gemalte 3D-Baum-Bitmaps (dorfSim) als obj_baum_*/obj_wald_* backen, BEVOR
     // die erste Karte rendert. So zeigt der Engine-Pfad (start) sofort den
     // malerischen Wald - kein Nachladen, keine prozedurale Notgrafik dazwischen.
-    // Schlägt das Backen fehl, geht es ohne (prozedurale Bäume) weiter.
+    // Dazu die Wiesen-Bitmaps (three.js-Gras/Blumen, Runde 76). Schlägt ein
+    // Backen fehl, geht es ohne weiter.
     void this.wendeEigeneTilesAn()
       .then(() => registriereBaumBitmaps(this.textures).catch(() => {}))
+      .then(() => { try { registriereWieseBitmaps(this.textures); } catch { /* ohne Wiese weiter */ } })
       .then(() => this.scene.start(ziel));
   }
 
