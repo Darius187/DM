@@ -1,5 +1,18 @@
 # TODO - Notizen für später (keine Nebenbei-Refactorings)
 
+- NÄCHSTER SCHRITT (Runde 75, Autorauftrag "komplett richtig"): dorfSim-
+  WETTERSYSTEM + PFÜTZEN in den Engine-Pfad portieren. Blaupause (Scout):
+  Wetter-Achse/wetness dorfSim.ts Z.286-291/1327, Pfützen machePfuetze Z.468,
+  Platzierung AM Weg Z.1008-1022, Rendering Z.1455-1487. Plan: wetness-Achse
+  in WorldScene, Pfützen als gebackene Masken-Texturen am Weg, Wachsen/
+  Schwinden mit Nässe; Regen-Ringe später über den Wasser-Shader.
+- Bewegtes GRAS + BLUMEN (three.js, Autor will besseren Look als die alten
+  Canvas-Striche): Referenzen recherchiert - Codrops "Fluffiest Grass"
+  (InstancedMesh + Wind-Shader) und github.com/CK42BB/procedural-grass-threejs
+  (Bezier-Halme, Böen-Wellen). Ansatz für unser 2D-Spiel: Halm-Büschel im
+  Backofen (three.js) backen -> Sprites mit leichtem Schwank-Shader. ez-tree
+  bringt zusätzlich ein (nicht exportiertes) Grass-Modul mit GLB-Assets mit.
+
 - WICHTIG (Runde 73): die START-Karte (buildStart, NEUES SPIEL) ist auf den
   Engine-Pfad gehoben. Ihre Baum-OPTIK kommt noch aus dorfSim (ez-tree ->
   3D-Backofen) via gfx/baumBitmaps.ts (beim Boot registriert). Das ist die

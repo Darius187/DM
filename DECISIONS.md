@@ -833,3 +833,20 @@
 - Frei-Kamera: Scroll-Tempo 700 px/s (durch Zoom geteilt), Mittelmaus-Ziehen 1:1.
   Held-Bewegung via bewegungGesperrt()-Hook gesperrt, solange aktiv.
 - Doppelte Dev-Tabs WETTER+NÄSSE entfernt (Funktion steckt in ANFANG/dorfSim).
+
+## Runde 74 - Boden/Bäume "gleich richtig" (Autorauftrag)
+- Held-Watewellen entfernt (Autor: "sieht nicht gut aus"); der Shader-Haken
+  setzeHeldPunkte/inter() bleibt für den geplanten besseren Effekt.
+- world/bodenMaler.ts: Boden-Bake im echten dorfSim-Look, komplett aus der
+  Kachelkarte abgeleitet (Weglinie aus PATH/BRIDGE-Spalten, Waldbiom aus
+  T.TREE-Dichte) - keine Zusatzdaten, gilt automatisch für jede Karte mit
+  gebackenem Boden. Deterministisch (mulberry32-Seed aus der Area-Id).
+- Waldboden ÜBERARBEITET statt blind portiert (Autorkritik "kaum Struktur"):
+  eigenes Moos-Pattern (Polster-Cluster + Nadel-/Laubstriche) analog zum
+  Gras-Tile, statt dorfSims flachem Braun-Tint.
+- Weg-Mäander im Bake bewusst klein (<= halbe Kachel), damit die begehbaren
+  PATH-Kacheln (Brems-Ausnahme) das sichtbare Band decken: Kollision = Optik.
+- Bäume: dorfSim-Regeln übernommen (>=120px Abstand zum Weg inkl. Krone,
+  >=80px Baum zu Baum, Wasser-Puffer); Größe per a.baumSkala (Start: 11
+  Kacheln Basis, Streuung 0.65-1.55, Fuß-Anker 0.64, Kontaktschatten).
+  Leicht änderbar in areagen.ts (eine Zahl).

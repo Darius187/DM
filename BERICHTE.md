@@ -997,3 +997,17 @@ exakt).
 - Schritt 3: START-Area (2,3) als echte WorldScene-Area gebaut (buildStart). Erbt HUD/ESC/Licht/Kampf/Fällen/Steine/Speichern automatisch. Neues Wasser als EIN Overlay pro Karte (weiche Ufer ins Gras), Kollision aus T.WATER (deckt sich mit der Optik), Salzstraße-Brücke über den Fluss. Erreichbar über Titel-Menü "START-KARTE (neu)"; NEUES SPIEL noch auf village.
 - Verifiziert headless (WebGL, 0 Fehler), tsc grün, 195 Tests grün. FPS auf echter GPU offen.
 - Offen für deine Abnahme: Wasser-Look-Feintuning (tagsüber blass), Brücken-Form (Treppenmuster), und ob mein Fluss-/See-/Wege-Verlauf der Skizze entspricht.
+
+## Runde 74 - Startkarte nach Vorlage + echter Boden/Bäume
+- START-Layout 1:1 nach reference/ravenkarte.png (Lesart-Bild an den Autor):
+  Fluss von Norden mit Ost-Abzweig, großer organischer See, Bach von Westen,
+  fast gerade Salzstraße mit Brücke (ungebremst begehbar, gemessen Faktor 1.0).
+- Nur noch EINE Karte (start_engine/blank + Test-Knöpfe entfernt), keine
+  Gegner (friedlich-Guard, hart getestet), Wege auf allen Oberweltkarten
+  gerader, KARTE-Tab mit Klick-Großansicht.
+- Boden-Bake jetzt im echten dorfSim-Look (bodenMaler: Wiese/Moos/Wegband),
+  Bäume als große ez-tree-Bitmaps mit dorfSim-Abständen und Kontaktschatten.
+  Held-Watewellen raus. Alles im Browser verifiziert, tsc + 195 Tests grün.
+- OFFEN: Wettersystem+Pfützen-Port (Blaupause liegt vor: dorfSim Z.468-1487),
+  bewegtes three.js-Gras/Blumen (Recherche: InstancedMesh-Halme mit Wind-
+  Shader, Codrops/CK42BB als Referenz -> über den Backofen als Sprites backen).
