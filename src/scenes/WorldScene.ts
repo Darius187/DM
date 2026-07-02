@@ -2105,6 +2105,29 @@ export class WorldScene extends CombatScene {
     this.tweens.add({ targets: img, alpha: 0, duration: 280, onComplete: () => img.destroy() });
   }
 
+  // Figuren-Test (Runde 77, Autor: "neue Tricks zeigen"): backt das schwarze
+  // 3D-Reitpferd und den Dorfbewohner in 8 Blickrichtungen und stellt beide
+  // Reihen vor den Helden. Reiner Schau-Test - verschwindet beim Kartenwechsel.
+  private async zeigeFigurenTest(): Promise<void> {
+    const { bauePferd, baueDorfbewohner, backeAnsichten } = await import('../demo3d/figurBackofen');
+    const sets: Array<[string, HTMLCanvasElement[], number]> = [
+      ['pferd', backeAnsichten(bauePferd), 96],
+      ['bewohner', backeAnsichten(baueDorfbewohner), 64],
+    ];
+    sets.forEach(([name, bilder, hoehe], reihe) => {
+      bilder.forEach((cv, i) => {
+        const key = `figtest_${name}_${i}`;
+        if (this.textures.exists(key)) this.textures.remove(key);
+        this.textures.addCanvas(key, cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+        const x = this.px - 4 * 116 + i * 116 + 58, y = this.py - 40 - reihe * 130;
+        const img = this.add.image(x, y, key).setDepth(y).setOrigin(0.5, 1);
+        img.setDisplaySize(hoehe * (cv.width / cv.height), hoehe);
+        this.tileImages.push(img);
+      });
+    });
+    this.logMsg('Figuren-Test: je 8 Ansichten (Süd, SO, O, NO, N, NW, W, SW) - weg beim Kartenwechsel.', 'gold');
+  }
+
   // Weicher Kontaktschatten (einmal gebacken, Port aus dorfSim schattenBild):
   // erdet die großen Bäume am Fuß. Lazy als globale Textur registriert.
   private kontaktSchattenKey(): string {
@@ -2279,6 +2302,7 @@ export class WorldScene extends CombatScene {
         { kind: 'button', label: () => 'Sturm mit Blitz SOFORT', onClick: () => { this.wetterWert = 1; this.wetterZiel = 1; this.wetterTimer = 60; this.naesse = Math.max(this.naesse, 0.8); } },
         { kind: 'slider', label: 'Baumgröße (Kacheln, Karte lädt neu)', min: 5, max: 18, step: 0.5, get: () => this.devBaumSkala ?? this.area?.baumSkala ?? 11, set: (v) => { this.devBaumSkala = v; } },
         { kind: 'button', label: () => 'Baumgröße anwenden (Karte neu laden)', onClick: () => { this.devKonsole?.toggle(); this.goArea(this.area.id, { x: this.px, y: this.py }); } },
+        { kind: 'button', label: () => 'Test: 3D-Pferd + Dorfbewohner (8 Ansichten)', onClick: () => { this.devKonsole?.toggle(); void this.zeigeFigurenTest(); } },
       ] },
       { name: 'MESSEN', controls: () => [
         { kind: 'button', label: () => `FPS-Anzeige: ${this.perfAn ? 'AN' : 'aus'}`, onClick: () => { this.perfAn = !this.perfAn; this.devKonsole?.refresh(); } },
