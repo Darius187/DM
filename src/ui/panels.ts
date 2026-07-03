@@ -14,6 +14,7 @@ import { MELDUNGEN } from '../data/texte';
 import { SCHOOLS, ABILITIES, SPELLS } from '../data/balancing';
 import { WEAPON_HAND } from '../data/kampf';
 import { SKILL_ICONS, skillBeschreibung } from '../data/skills';
+import { RTS_EINHEITEN, MORAL, RTS_RANG } from '../data/rts';
 import { setVerfolgtWunsch, type QuestSicht } from '../logic/questLog';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import type { SoundProvider } from '../gfx/SoundProvider';
@@ -90,7 +91,9 @@ export class UIPanels {
   // Aufgedeckte Karte der AKTUELLEN Ebene (Runde 53, Autorwunsch): zeigt das
   // Erkundete samt Treppen (hinab/hinauf). null = keine (Dorf/Wald, nicht dunkel).
   getEbeneKarte: (() => { name: string; w: number; h: number; zellen: Array<[number, number, number]>; spieler: [number, number] | null } | null) | null = null;
-  private hauptTab: 'held' | 'faehigkeiten' | 'aufgaben' | 'album' | 'statistik' | 'kontakte' | 'karte' | 'ebene' = 'held';
+  private hauptTab: 'held' | 'faehigkeiten' | 'aufgaben' | 'album' | 'statistik' | 'kontakte' | 'karte' | 'ebene' | 'heer' = 'held';
+  // R87: Umschalten in den RTS-Modus (WorldScene hängt sich hier ein)
+  onRtsModus?: () => void;
 
   // Fenster direkt auf einem Reiter öffnen (B = Album)
   openTab(tab: 'held' | 'album' | 'statistik'): void {
@@ -196,7 +199,7 @@ export class UIPanels {
     // Haupt-Reiter (Runde 38: eigene Tabs für Fähigkeiten und Aufgaben,
     // damit der Charakter-Tab nicht mehr überladen ist und nichts überlappt)
     const reiter: Array<[typeof this.hauptTab, string]> = [
-      ['held', 'CHARAKTER'], ['faehigkeiten', 'FÄHIGKEITEN'], ['ebene', 'EBENE'], ['karte', 'KARTE'], ['aufgaben', 'AUFGABEN'],
+      ['held', 'CHARAKTER'], ['faehigkeiten', 'FÄHIGKEITEN'], ['heer', 'HEER'], ['ebene', 'EBENE'], ['karte', 'KARTE'], ['aufgaben', 'AUFGABEN'],
       ['kontakte', 'KONTAKTE'], ['album', 'ALBUM'], ['statistik', 'STATISTIK'],
     ];
     let rx = 14;
@@ -219,7 +222,9 @@ export class UIPanels {
     c.add(this.scene.add.rectangle(0, 54, w, 1, LINE).setOrigin(0));
     const inhalt = this.scene.add.container(0, 56);
     c.add(inhalt);
-    if (this.hauptTab === 'held') {
+    if (this.hauptTab === 'heer') {
+      this.buildHeerTab(inhalt, w, h);
+    } else if (this.hauptTab === 'held') {
       inhalt.add(this.scene.add.rectangle(w * 0.46, 4, 1, h - 64, LINE).setOrigin(0));
       this.buildCharacterSide(inhalt, w * 0.46 - 10, h - 60);
       this.buildInventorySide(inhalt, w * 0.46 + 12, w - (w * 0.46 + 12) - 10, h - 62);
@@ -254,6 +259,30 @@ export class UIPanels {
   }
 
   // --- linke Seite: Charakter ------------------------------------------------
+
+  // HEER-Tab (R87, Autorauftrag "RTS-Hybrid"): Doktrin des Banners um 1300,
+  // Moral-Regeln und der Umschalter in den RTS-Modus (Schlachtfeld-Steuerung).
+  private buildHeerTab(c: Phaser.GameObjects.Container, w: number, _h: number): void {
+    c.add(this.scene.add.text(16, 6, 'DAS BANNER - Aufgebot um 1300', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
+    c.add(this.scene.add.text(16, 28, 'Ein Banneret führt Gleven, Fußvolk und Schützen unter seiner Standarte.\nSie ist Sammelpunkt und Moral-Anker - fällt das Banner, bricht der Haufen.', { fontFamily: 'serif', fontSize: '11px', color: '#9a8a6a', lineSpacing: 3 }));
+    let y = 84;
+    this.zierLinie(c, 12, y - 6, w - 24, 'EINHEITEN');
+    for (const e of RTS_EINHEITEN) {
+      c.add(this.scene.add.text(20, y, e.name, { fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0' }));
+      c.add(this.scene.add.text(w * 0.34, y, `${e.hp} LP · ${e.dmg} Schaden`, { fontFamily: 'serif', fontSize: '11px', color: BONE }));
+      c.add(this.scene.add.text(w * 0.56, y + 1, e.beschreibung, { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a', wordWrap: { width: w * 0.42 } }));
+      y += 26;
+    }
+    y += 10;
+    this.zierLinie(c, 12, y - 6, w - 24, 'MORAL & RANG');
+    c.add(this.scene.add.text(20, y, `Grundmut ${MORAL.basis} · Standarte +${MORAL.standarteBonus} · Banneret bei der Truppe +${MORAL.anfuehrerNahBonus} · Flucht unter ${MORAL.fluchtUnter}`, { fontFamily: 'serif', fontSize: '11px', color: BONE }));
+    c.add(this.scene.add.text(20, y + 18, `Einheiten steigen im Rang (je ${RTS_RANG.killsProRang} Gegner): +${Math.round(RTS_RANG.dmgJeRang * 100)}% Schaden, +${Math.round(RTS_RANG.hpJeRang * 100)}% Leben je Rang. Ausrüstung kommt indirekt über die Fürsten-Kiste.`, { fontFamily: 'serif', fontSize: '11px', color: BONE, wordWrap: { width: w - 40 } }));
+    y += 56;
+    const btn = this.scene.add.text(20, y, '⚔  RTS-MODUS: SCHLACHTFELD-STEUERUNG', { fontFamily: 'serif', fontSize: '13px', color: '#9ad86a', backgroundColor: '#221808', padding: { x: 10, y: 6 } }).setInteractive({ useHandCursor: true });
+    btn.on('pointerdown', () => { this.onRtsModus?.(); });
+    c.add(btn);
+    c.add(this.scene.add.text(20, y + 32, 'Frei-Kamera, Formations- und Bau-Leiste. Die großen Feldschlachten (500 gegen 500) folgen auf eigenen Karten - die Schlacht-Probe im Hauptmenü ist die Blaupause.', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a', wordWrap: { width: w - 40 } }));
+  }
 
   // Zier-Element (R87, Autor "klassisch RPG, hübsch"): Doppelrahmen mit
   // goldenen Eck-Nieten - für Portrait, Ausrüstungs-Slots und Sektionen.

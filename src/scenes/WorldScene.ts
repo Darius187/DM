@@ -40,6 +40,7 @@ import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDL
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER, HOLZ, ABBAU, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
+import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, type RtsFormation, type RtsBau } from '../data/rts';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { TUNING } from '../logic/tuning';
@@ -362,6 +363,7 @@ export class WorldScene extends CombatScene {
     this.panels.getStatistikZeilen = () => this.statistikZeilen();
     this.panels.getKontakteZeilen = () => this.kontakteZeilen();
     this.panels.getKarte = () => this.getKarteInfo();
+    this.panels.onRtsModus = () => { this.panels.closeAll(); this.toggleRtsModus(); };   // R87: HEER-Tab -> Schlachtfeld-Steuerung
     // Großansicht (Runde 74): volle Kachel-Auflösung für die angeklickte Minimap.
     this.panels.getGebietGross = (id) => this.gebietThumb(id, 200);
     this.panels.getEbeneKarte = () => this.ebeneKarteInfo();
@@ -2448,6 +2450,115 @@ export class WorldScene extends CombatScene {
     this.hittables.push(hit);
   }
 
+  // --- RTS-MODUS (R87, Autorauftrag "RTS-Hybrid"): Frei-Kamera + Leiste mit
+  // Formationen, Feldbauten und Moral. Die Einheiten-Befehle docken hier an,
+  // sobald die Schlacht-Karten kommen (Schlacht-Probe ist die Blaupause).
+  private rtsLeiste: Phaser.GameObjects.Container | null = null;
+  private rtsFormation: RtsFormation = 'linie';
+  private standartenAktiv: Array<{ x: number; y: number }> = [];
+
+  private toggleRtsModus(): void {
+    if (this.rtsLeiste) {
+      this.rtsLeiste.destroy();
+      this.rtsLeiste = null;
+      this.setzeFreiKamera(false);
+      this.logMsg('Schlachtfeld-Steuerung beendet.', '');
+      return;
+    }
+    if (this.area.dark || this.area.innen) { this.logMsg('Die Schlachtfeld-Steuerung braucht freien Himmel.', ''); return; }
+    this.setzeFreiKamera(true);
+    this.baueRtsLeiste();
+    this.logMsg('Schlachtfeld-Steuerung: WASD bewegt die Kamera, die Leiste unten baut und formiert.', 'gold');
+  }
+
+  private aktuelleMoral(): number {
+    let moral = MORAL.basis;
+    for (const st of this.standartenAktiv) {
+      if (Math.hypot(st.x - this.px, st.y - this.py) < MORAL.standarteRadius) moral += MORAL.standarteBonus;
+    }
+    moral += MORAL.anfuehrerNahBonus;   // der Banneret (Held) ist auf dem Feld
+    return Math.min(100, moral);
+  }
+
+  private baueRtsLeiste(): void {
+    this.rtsLeiste?.destroy();
+    const w = 640, h = 96;
+    const c = this.add.container((this.scale.width - w) / 2, this.scale.height - h - 6).setScrollFactor(0).setDepth(6400);
+    this.rtsLeiste = c;
+    const bg = this.add.rectangle(0, 0, w, h, 0x14100a, 0.94).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
+    bg.setInteractive(); c.add(bg);
+    c.add(this.add.text(10, 5, '⚔ BANNER', { fontFamily: 'serif', fontSize: '12px', color: '#c9a227', letterSpacing: 2 }));
+    c.add(this.add.text(110, 5, `Moral ${this.aktuelleMoral()}`, { fontFamily: 'serif', fontSize: '12px', color: this.aktuelleMoral() >= MORAL.basis ? '#9ad86a' : '#d86a5a' }));
+    const zu = this.add.text(w - 24, 4, '✕', { fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8' }).setInteractive({ useHandCursor: true });
+    zu.on('pointerdown', () => this.toggleRtsModus()); c.add(zu);
+    // Reihe 1: Formationen (Vorwahl - wirkt auf Kämpfer, sobald Einheiten im Feld stehen)
+    let x = 10;
+    c.add(this.add.text(x, 26, 'Formation:', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a' })); x += 74;
+    for (const f of RTS_FORMATIONEN) {
+      const aktiv = this.rtsFormation === f.id;
+      const t = this.add.text(x, 24, f.name, { fontFamily: 'serif', fontSize: '11px', color: aktiv ? '#c9a227' : '#d8cfb8', backgroundColor: aktiv ? '#221808' : '#100b06', padding: { x: 7, y: 3 } }).setInteractive({ useHandCursor: true });
+      t.on('pointerdown', () => { this.rtsFormation = f.id; this.sfx.play('klick'); this.baueRtsLeiste(); this.logMsg(`Formation: ${f.name} - ${f.hinweis}.`, ''); });
+      c.add(t); x += t.width + 6;
+    }
+    // Reihe 2: Feldbauten (gesperrte werden später freigeschaltet - Autorkonzept)
+    x = 10;
+    c.add(this.add.text(x, 54, 'Bauen:', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a' })); x += 74;
+    for (const b of RTS_BAUTEN) {
+      const kann = b.frei && Object.entries(b.kosten).every(([k, n]) => (this.p.materials[k as MaterialId] ?? 0) >= (n ?? 0));
+      const farbe = !b.frei ? '#5a5348' : kann ? '#9ad86a' : '#7a6a52';
+      const t = this.add.text(x, 52, b.name, { fontFamily: 'serif', fontSize: '11px', color: farbe, backgroundColor: '#100b06', padding: { x: 7, y: 3 } }).setInteractive({ useHandCursor: true });
+      t.on('pointerdown', () => this.rtsBaue(b));
+      c.add(t); x += t.width + 6;
+    }
+    c.add(this.add.text(10, 78, 'Einheiten-Befehle folgen mit den Schlacht-Karten (Blaupause: Schlacht-Probe).', { fontFamily: 'serif', fontSize: '9px', color: '#6a5f4c' }));
+    fixUiScroll(c);
+  }
+
+  private rtsBaue(b: RtsBau): void {
+    if (!b.frei) { this.logMsg(`${b.name}: wird später freigeschaltet.`, ''); return; }
+    const fehlt = Object.entries(b.kosten).some(([k, n]) => (this.p.materials[k as MaterialId] ?? 0) < (n ?? 0));
+    if (fehlt) { this.sfx.play('fehler'); this.logMsg(`Nicht genug Material für ${b.name}.`, ''); return; }
+    if (b.id === 'lagerfeuer') { this.baue('lagerfeuer'); this.baueRtsLeiste(); return; }
+    if (b.id === 'palisade') {
+      // Palisaden-Segment auf die Kachel vor dem Helden (vorhandene Grafik + Kollision über a.map)
+      const tx = Math.floor(this.px / TILE), ty = Math.floor((this.py + 26) / TILE);
+      const t = this.area.map[ty]?.[tx + 0];
+      if (t === undefined || SOLID.has(t) || t === T.WATER || t === T.BRIDGE || t === T.PATH) { this.sfx.play('fehler'); this.logMsg('Hier ist kein Platz für die Palisade.', ''); return; }
+      for (const [k, n] of Object.entries(b.kosten)) this.p.materials[k as MaterialId] -= n ?? 0;
+      this.area.map[ty][tx] = T.PALISADE;
+      this.refreshTile(tx, ty);
+      this.sfx.play('holz_hacken');
+      this.logMsg('Palisaden-Segment errichtet.', 'gold');
+    }
+    if (b.id === 'standarte') {
+      for (const [k, n] of Object.entries(b.kosten)) this.p.materials[k as MaterialId] -= n ?? 0;
+      this.spawneStandarte(this.px + 26, this.py);
+      this.sfx.play('holz_hacken');
+      this.logMsg(`Die Standarte steht - Moral im Umkreis +${MORAL.standarteBonus}.`, 'gold');
+    }
+    this.baueRtsLeiste();
+  }
+
+  // Banner-Standarte: Stange + wehender Wimpel (Canvas), Moral-Anker im Umkreis
+  private spawneStandarte(x: number, y: number): void {
+    if (!this.textures.exists('standarte_tex')) {
+      const cv = document.createElement('canvas'); cv.width = 26; cv.height = 46;
+      const g = cv.getContext('2d')!;
+      g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(6, 43, 7, 2.6, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#5a4630'; g.fillRect(4, 2, 3, 41);                       // Stange
+      g.fillStyle = '#8a6f3c'; g.beginPath(); g.arc(5.5, 2, 2.4, 0, Math.PI * 2); g.fill();   // Knauf
+      g.fillStyle = '#7a1f1f';                                                // Wimpel (Rabenrot)
+      g.beginPath(); g.moveTo(7, 4); g.lineTo(25, 8); g.lineTo(19, 13); g.lineTo(25, 18); g.lineTo(7, 21); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(7, 12, 15, 1);
+      g.fillStyle = '#e8dcc0'; g.beginPath(); g.arc(13, 12, 3, 0, Math.PI * 2); g.fill();     // Feldzeichen
+      this.textures.addCanvas('standarte_tex', cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+    const img = this.add.image(x, y, 'standarte_tex').setOrigin(0.5, 1).setDepth(y);
+    this.tileImages.push(img);
+    this.windGras.push({ img, phase: x * 0.02, amp: 0.05 });   // der Wimpel wiegt im Wind
+    this.standartenAktiv.push({ x, y });
+  }
+
   // Moornebel-Drift (R81): Schwaden wabern träge seitwärts, Alpha atmet leicht.
   private updateMoorNebel(time: number): void {
     for (const n of this.moorNebelListe) {
@@ -2991,6 +3102,7 @@ export class WorldScene extends CombatScene {
       } },
       { name: 'KASTEN', controls: () => [
         { kind: 'button', label: () => 'Alter Kampf-/Spiel-Kasten öffnen', onClick: () => this.toggleDevPanel() },
+        { kind: 'button', label: () => 'RTS-MODUS testen (Schlachtfeld-Steuerung)', onClick: () => { this.devKonsole?.toggle(); this.toggleRtsModus(); } },
       ] },
     ];
   }
@@ -3489,6 +3601,7 @@ export class WorldScene extends CombatScene {
     // Persönliche Lagerfeuer dieser Karte wieder aufbauen (R81, Baumenü)
     this.lagerfeuerAktiv = [];
     for (const lf of this.lagerfeuerProKarte[a.id] ?? []) this.spawneLagerfeuer(lf.x, lf.y);
+    this.standartenAktiv = [];   // R87: Standarten sind (noch) je Sitzung/Karte
     // Tiles als statische Bilder (Pseudo-3D, Masterprompt 5.1). Bei dorfSimBoden
     // malt der dorfSim-Canvas alles - keine Kacheln.
     if (!a.dorfSimBoden) {

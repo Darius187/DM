@@ -968,3 +968,13 @@
   Kies auf der Wiese. Holzfaellen verdoppelt (6 Schlaege faellen/zerlegen).
   Fall-Tempo-Standard 0.5. Chronik: dockt unten an (einmalige Migration nur
   fuer die Chronik), Minus-Knopf klappt auf die Kopfzeile zusammen.
+- R87 RTS-Fundament: data/rts.ts traegt die 1300er-Doktrin (Banner/Gleve,
+  Gewappnete, Spiesser, Armbruster, Bogenschuetzen, Feldscher), Formationen,
+  Feldbauten (gesperrte werden per Fortschritt freigeschaltet - Autorkonzept),
+  Moral (Basis 70, Standarte +10, Banneret nah +10, Flucht <25) und Rang
+  (je 3 Kills: +15% Schaden/+10% LP). HEER-Tab im Charakterfenster zeigt die
+  Doktrin + Umschalter; RTS-Modus = Frei-Kamera + Leiste (Formation-Vorwahl,
+  Lagerfeuer/Standarte/Palisade baubar). Einheiten-BEFEHLE folgen mit den
+  Schlacht-Karten - die Schlacht-Probe (962 Zeilen) ist die Blaupause.
+- Verbaende heilen sofort +30 (Taste V); Standarten sind je Sitzung (Save folgt
+  mit dem Schlacht-Ausbau). Blumen/Kraeuter geben beim Schneiden 1 Kraeuter.
