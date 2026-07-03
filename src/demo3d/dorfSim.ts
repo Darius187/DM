@@ -627,11 +627,15 @@ export async function baueBaumBitmaps(): Promise<HTMLCanvasElement[]> {
   // 1024 statt 512: nach dem Zuschnitt bleibt ~450-500px Baum - das deckt die
   // Anzeigegröße (bis ~450px Welt x Kamera-Zoom) ohne matschiges Hochskalieren.
   const ofen = macheBackofen(1024, false);
+  // R86 (Autor, mit Fotos): die 1.9er-Eiche hatte einen unnatürlich fetten
+  // Stamm, die Espe wirkte krüppelig - Stammdicke gezähmt bzw. Sorte durch
+  // eine zweite Esche ersetzt. (Nur der Engine-Bake; die Anfangskarte backt
+  // ihre eigene SORTEN-Liste und bleibt unverändert.)
   const sorten: Array<[string, number, number]> = [
-    ['Oak Large', 1, 1.9], ['Oak Medium', 23, 1.3],
+    ['Oak Large', 1, 1.3], ['Oak Medium', 23, 1.2],
     ['Ash Large', 7, 1.3], ['Ash Medium', 31, 1.0],
     ['Pine Large', 5, 1.6], ['Pine Large', 17, 1.3], ['Pine Large', 33, 1.1],
-    ['Aspen Large', 3, 0.95],
+    ['Ash Large', 19, 1.15],
   ];
   const out: HTMLCanvasElement[] = [];
   for (const [preset, seed, dick] of sorten) {

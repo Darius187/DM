@@ -956,3 +956,15 @@
 - Held-Glut liegt in der Tiefe UNTER der Figur (Boden glimmt, Figur wird
   nicht angestrahlt); Brueckengelaender = echte Barriere (Wasserkacheln an
   den Laengsseiten gesperrt, Set-Lookup in isSolidAt).
+- R86: Sonnen-Schatten gespiegelt (Autorwunsch, Sonne von der anderen Seite).
+  Held-Durchschein: Baeume, deren Krone den Helden verdeckt, faden weich auf
+  42% (dorfSim-Reveal-Idee als Alpha-Fade). Baum-Mindestabstand auf offener
+  Wiese 170px (Wald 100). Bake-Sorten: Oak Large Stammdicke 1.9->1.3, Aspen
+  durch zweite Esche ersetzt (nur Engine-Bake, Anfangskarte unveraendert).
+- Buesche: Fuss unten + 4px versenkt + Kontaktschatten, biegen vor dem Helden
+  weg (windGras) und bremsen beim Durchdraengen (55-90% je Naehe/Groesse).
+- Findlinge: 4. Felsgroesse (8 Schlaege, 10-16 Stein) + 6 Stueck verstreut;
+  Fels-Cluster 20 statt 14, auch vereinzelt ausserhalb des Fels-Bioms; mehr
+  Kies auf der Wiese. Holzfaellen verdoppelt (6 Schlaege faellen/zerlegen).
+  Fall-Tempo-Standard 0.5. Chronik: dockt unten an (einmalige Migration nur
+  fuer die Chronik), Minus-Knopf klappt auf die Kopfzeile zusammen.

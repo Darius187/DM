@@ -192,7 +192,7 @@ export class WorldScene extends CombatScene {
   private perfTickMs = 0;                             // geglättete Zeit für das dorfSim-Neuzeichnen (dorfTick)
   private perfDorfAus = false;                        // Dev: dorfSim-Upload aussetzen (FPS-Vergleich)
   private freiKamZieh?: { x: number; y: number };    // Mittelmaus-Ziehen: letzte Zeigerposition
-  private devAnfang: Record<string, number> = { groesse: 0.85, wegbreite: 1, falltempo: 1, bewuchs: 1, tageszeit: 9, tagtempo: 1, sturm: 1.5, sicht: 124 };
+  private devAnfang: Record<string, number> = { groesse: 0.85, wegbreite: 1, falltempo: 0.5, bewuchs: 1, tageszeit: 9, tagtempo: 1, sturm: 1.5, sicht: 124 };   // Fall-Tempo 0.5 = Autor-Standard (R86)
   private breakableEnts: BreakableEntity[] = [];
   private worldGfx!: Phaser.GameObjects.Graphics; // Truhen, Brunnen, Fackeln
   private bodenGfx!: Phaser.GameObjects.Graphics;  // Blutspuren AUF dem Boden (unter den Figuren)
@@ -1906,7 +1906,9 @@ export class WorldScene extends CombatScene {
       const bew = Math.max(0, Math.min(1, this.wetterWert));
       const tagAuf = Math.min(1, L.hoehe * 6);
       const alpha = Math.max(0, (0.10 + 0.20 * (1 - bew)) * tagAuf);
-      const rot = Math.PI - L.dir * (0.55 + (1 - L.hoehe) * 0.5);
+      // R86 (Autorwunsch): die Sonne scheint von der ANDEREN Seite - der
+      // Schatten fällt gespiegelt (morgens nach Osten, abends nach Westen).
+      const rot = Math.PI + L.dir * (0.55 + (1 - L.hoehe) * 0.5);
       const lenF = 0.55 + (1 - L.hoehe) * 0.95;
       for (const s of this.baumSchatten) {
         if (!s.img.active) continue;
@@ -1922,6 +1924,14 @@ export class WorldScene extends CombatScene {
       // im Gewitter biegt der konstante Sturmwind die Kronen sichtbar weit.
       b.img.rotation = wd * 0.10 * this.boeWelle(b.img.x, b.img.y, time)
         + 0.006 * Math.sin(time * 0.0011 + b.phase);
+      // R86 (Autor "im dichten Wald sieht man den Helden gar nicht mehr"):
+      // Bäume, deren Krone den Helden verdeckt (Baum steht VOR ihm), faden
+      // weich auf ~40% - der Held bleibt immer erkennbar (dorfSim-Reveal).
+      const verdeckt = b.img.y > this.py
+        && b.img.y - this.py < b.img.displayHeight * 0.9
+        && Math.abs(b.img.x - this.px) < b.img.displayWidth * 0.38;
+      const zielA = verdeckt ? 0.42 : 1;
+      if (Math.abs(b.img.alpha - zielA) > 0.01) b.img.setAlpha(b.img.alpha + (zielA - b.img.alpha) * 0.16);
     }
     // WEGBIEGEN vor dem Helden (dorfSim-Verhalten, Autorwunsch R77): Gras und
     // Schilf in Reichweite lehnen sich vom Helden weg - er "watet" durch.
@@ -2119,6 +2129,8 @@ export class WorldScene extends CombatScene {
   private moorNebelListe: Array<{ img: Phaser.GameObjects.Image; x0: number; ph: number }> = [];
   // R85: gesperrte Kacheln neben Brücken (Geländer-Barriere), je Karte neu befüllt
   private brueckenSperre = new Set<number>();
+  // R86: Busch-Positionen - Büsche geben nach, bremsen den Helden aber leicht
+  private buschListe: Array<{ x: number; y: number; r: number }> = [];
 
   // R81 (Anfangskarte-Parität): der Bewuchs wird wie in dorfSim ZUFÄLLIG über
   // die Welt gestreut (seeded) statt über das Kachelraster - dadurch wirkt der
@@ -2128,6 +2140,7 @@ export class WorldScene extends CombatScene {
   // Anzeige 1/3) - die alten WebGL-Linien konnten bei pixelArt kein AA.
   private spawneWiesenBewuchs(a: AreaData): void {
     this.moorNebelListe = [];
+    this.buschListe = [];
     if (!a.gebackenerBoden || a.dark || a.innen) return;
     if (!this.textures.exists('dorfbewuchs_0')) {
       macheBewuchsBilder().forEach((cv, i) => this.textures.addCanvas(`dorfbewuchs_${i}`, cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR));
@@ -2212,11 +2225,20 @@ export class WorldScene extends CombatScene {
         const key = `obj_busch_${Math.floor(rnd() * 3)}`;
         const quelle = this.textures.get(key).getSourceImage();
         const hoehe = 42 + rnd() * 42;
-        const img = this.add.image(x, y, key).setDepth(y).setOrigin(0.5, 0.94);
+        // R86 (Autor "Büsche hängen in der Luft"): Fuß-Anker GANZ unten, 4px in
+        // den Boden versenkt + eigener Kontaktschatten - der Busch wächst
+        // sichtbar aus dem Boden statt zu schweben.
+        const img = this.add.image(x, y + 4, key).setDepth(y).setOrigin(0.5, 1);
         img.setDisplaySize(hoehe * (quelle.width / Math.max(1, quelle.height)), hoehe);
         if (rnd() > 0.5) img.setFlipX(true);
+        const schatten = this.add.image(x, y + 4, this.kontaktSchattenKey()).setDepth(y - 1);
+        schatten.setDisplaySize(img.displayWidth * 0.6, hoehe * 0.16).setAlpha(0.55);
+        this.tileImages.push(schatten);
         this.tileImages.push(img);
-        this.windBaeume.push({ img, phase: x * 0.013 + y * 0.007 });
+        // Biegt vor dem Helden weg wie das Gras (windGras hat das Wegbiegen)
+        this.windGras.push({ img, phase: x * 0.013 + y * 0.007, amp: 0.08 });
+        // R86: der Busch gibt nach, bremst aber - je größer, desto zäher
+        this.buschListe.push({ x, y, r: 10 + hoehe * 0.14 });
         this.macheZerlegbar(img, 18, 1 + ((rnd() < 0.5) ? 1 : 0));   // R85: Busch gibt 1-2 Fasern
       }
     }
@@ -3291,9 +3313,9 @@ export class WorldScene extends CombatScene {
       if (id === T.ROCK || id === T.ORE) {
         const eintrag = (id === T.ROCK ? a.rocks : a.ores).find((r) => Math.floor(r.x / TILE) === tx && Math.floor(r.y / TILE) === ty);
         const stufe = eintrag?.stufe ?? 0;
-        const gFels = Math.max(0, Math.min(2, eintrag?.g ?? 1));
-        // Größen-Skala (R81, dorfSim FELS_R): klein/mittel/groß
-        const gSkala = [0.75, 1.0, 1.45][gFels];
+        const gFels = Math.max(0, Math.min(3, eintrag?.g ?? 1));
+        // Größen-Skala (R81/R86, dorfSim FELS_R): klein/mittel/groß/Findling
+        const gSkala = [0.75, 1.0, 1.45, 2.1][gFels];
         // R82 (Autor "Steine natürlicher"): auf gebackenen Karten die GEMALTEN
         // dorfSim-Felsen (Facetten, Mooskappen, eingebauter Kontaktschatten,
         // 2x-AA) statt der 32px-Kachelgrafik. Adern zeigen Erz-Einsprengsel.
@@ -3846,6 +3868,12 @@ export class WorldScene extends CombatScene {
   protected override areaSpeedFactor(): number {
     // Krypta: bedächtig wie die Monster; Faktor über F10 verstellbar
     let f = this.area?.dark ? TUNING.kryptaTempo : 1;
+    // R86 (Autor "der Busch sollte nachgeben"): Büsche blocken nicht, aber
+    // wer hindurchdrängt, wird gebremst - größere Büsche bremsen stärker.
+    for (const bu of this.buschListe) {
+      const d = Math.hypot(bu.x - this.px, bu.y - this.py);
+      if (d < bu.r) { f *= 0.55 + 0.35 * (d / bu.r); break; }
+    }
     // Begehbares Wasser (Runde 72): der Held watet hinein und wird zunehmend
     // gebremst (kann nicht schwimmen) - bis er im tiefen Wasser fast steht.
     // Verlangsamung aus DERSELBEN Geometrie wie Optik/Wellen.
@@ -6176,7 +6204,7 @@ export class WorldScene extends CombatScene {
     }
     // Größe (R81): kleine Felsen 3 Schläge, mittlere 4, große 6 - und
     // entsprechend mehr Stein. Erzadern bleiben bei den GATHER-Schlägen.
-    const groesse = ABBAU.felsGroessen[Math.max(0, Math.min(2, o.g ?? 1))];
+    const groesse = ABBAU.felsGroessen[Math.max(0, Math.min(3, o.g ?? 1))];
     const maxHp = what === 'stein' ? groesse.schlaege : GATHER.erzSchlaege;
     if (o.hp === undefined) {   // erster Schlag: Zustand anlegen
       const inh = what === 'stein' ? groesse.inhalt : what === 'eisen' ? ABBAU.erzInhalt : ABBAU.goldInhalt;
@@ -7148,10 +7176,14 @@ export class WorldScene extends CombatScene {
   private baueChronik(): void {
     this.chronikFenster?.destroy();
     const box = getSettings().chronikBox;
+    // R86 (Autorwunsch): Minus-Knopf klappt die Chronik auf die Kopfzeile
+    // zusammen - die UNTERKANTE bleibt dabei fest am Platz (Chat-Verankerung).
+    const mini = getSettings().chronikMini === true;
     const w = Math.max(260, Math.min(720, box.w));
-    const h = Math.max(160, Math.min(540, box.h));
+    const hVoll = Math.max(160, Math.min(540, box.h));
+    const h = mini ? 26 : hVoll;
     const x = Math.max(0, Math.min(this.scale.width - w, box.x));
-    const y = Math.max(0, Math.min(this.scale.height - h, this.scale.height + box.y));
+    const y = Math.max(0, Math.min(this.scale.height - h, this.scale.height + box.y + (mini ? hVoll - 26 : 0)));
     const c = this.add.container(x, y).setScrollFactor(0).setDepth(5200);
     this.chronikFenster = c;
     this.chronikW = w; this.chronikH = h;
@@ -7183,6 +7215,17 @@ export class WorldScene extends CombatScene {
     const titel = this.add.text(10, 6, '⠿ CHRONIK', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227', letterSpacing: 2 });
     macheZiehbar(titel);
     c.add(titel);
+    // Minus/Plus zum Ein-/Ausklappen (R86), LINKS neben dem Schließen-Kreuz
+    const miniBtn = this.add.text(w - 44, 4, mini ? '+' : '−', { fontFamily: 'serif', fontSize: '15px', color: '#c9a227' })
+      .setInteractive({ useHandCursor: true });
+    miniBtn.on('pointerdown', () => {
+      getSettings().chronikMini = !mini;
+      saveSettings();
+      this.baueChronik();
+      this.sfx.play('klick');
+    });
+    c.add(miniBtn);
+    if (mini) { fixUiScroll(c); return; }
     let tx = 110;
     const tabs: Array<[typeof this.chronikTab, string]> = [['ereignis', 'Ereignisse'], ['geschichte', 'Geschichte'], ['beute', 'Beute']];
     for (const [id, lbl] of tabs) {

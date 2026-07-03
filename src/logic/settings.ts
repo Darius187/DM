@@ -37,6 +37,8 @@ export interface Settings {
   // Chronik als Chat-Fenster (Runde 29): frei verschieb- UND skalierbar;
   // y zählt vom UNTEREN Bildrand (Chat-Verankerung wie bei WoW)
   chronikBox: { x: number; y: number; w: number; h: number };
+  chronikMini?: boolean;  // Chronik eingeklappt (nur Kopfzeile), R86
+  chronikV?: number;      // einmalig: Chronik an den UNTERSTEN Rand andocken (R86)
   chronikAuto: boolean;   // Chronik-Fenster beim Spielstart offen (Runde 36)
   bloom: number;          // Leucht-/Bloom-Stärke 0-100 (Runde 51: Regler, 0 = aus)
   figuren3d: boolean;     // TEST (Runde 77): Held als 3D-gebackener Atlas statt 2D-Zeichnung
@@ -113,9 +115,11 @@ export const DEF_SETTINGS: Settings = {
   ui: { hotbar: { x: 0, y: 0 }, mausleiste: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 }, questTracker: { x: 0, y: 0 } },
   questTrackerAn: true,
   hudStil: 0,
-  chronikBox: { x: 4, y: -430, w: 340, h: 270 }, // Runde 43: bündig am LINKEN
+  // R86 (Autorwunsch): von Anfang an GANZ UNTEN am Bildschirmrand angedockt
+  chronikBox: { x: 4, y: -270, w: 340, h: 270 }, // bündig am LINKEN
   // Bildschirmrand, kompakter, knapp über der Lebenskugel/Leiste
   chronikAuto: true,
+  chronikV: 1,
   bloom: 0, // Runde 51 (Autorwunsch): Bloom standardmäßig AUS, war zu stark
   figuren3d: false, // 3D-Held-Test standardmäßig AUS (2D bleibt die Wahrheit)
   grusel: 100, // Runde 58 (Autorwunsch): Grusel-Atmosphäre standardmäßig voll an
@@ -151,6 +155,12 @@ export function getSettings(): Settings {
       current.maus = { ...DEF_SETTINGS.maus, ...(saved.maus ?? {}) };
       current.tasten = { ...DEF_SETTINGS.tasten, ...(saved.tasten ?? {}) };
       current.chronikBox = { ...DEF_SETTINGS.chronikBox, ...(saved.chronikBox ?? {}) };
+      // R86: Chronik einmalig an den untersten Rand andocken (NUR die Chronik,
+      // andere UI-Versätze des Autors bleiben unangetastet)
+      if ((saved.chronikV ?? 0) < 1) {
+        current.chronikBox = { ...DEF_SETTINGS.chronikBox };
+        current.chronikV = 1;
+      }
       current.ui = {
         hotbar: { ...DEF_SETTINGS.ui.hotbar, ...(saved.ui?.hotbar ?? {}) },
         mausleiste: { ...DEF_SETTINGS.ui.mausleiste, ...(saved.ui?.mausleiste ?? {}) },

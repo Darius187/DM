@@ -190,7 +190,7 @@ export function maleBoden(ctx: CanvasRenderingContext2D, karte: BodenKarte, TILE
   }
   // Kies auch auf der offenen Wiese verstreut (R80, Anfangskarte-Look: kleine
   // Steingrüppchen liegen dort überall, nicht nur im Wald).
-  for (let i = 0, n = Math.round((W * H) / 260000); i < n; i++) {
+  for (let i = 0, n = Math.round((W * H) / 120000); i < n; i++) {   // R86: mehr Steingrüppchen
     const x = rnd() * W, y = rnd() * H;
     if (dichte(x, y) > 0.3) continue;
     maleKies(ctx, x, y, rnd);
@@ -553,7 +553,7 @@ export function macheMoorSchilfBild(seed: number, tot: boolean): HTMLCanvasEleme
 // portiert, 2x überabgetastet. g = Größe 0/1/2, erz sprenkelt Adern ein.
 export function macheFelsBild(g: number, seed: number, erz?: 'eisen' | 'gold'): HTMLCanvasElement {
   const S = 2, rnd = rngAus(seed);
-  const R = [13, 19, 29][Math.max(0, Math.min(2, g))];
+  const R = [13, 19, 29, 42][Math.max(0, Math.min(3, g))];   // g=3: FINDLING (R86)
   const c = document.createElement('canvas'); c.width = c.height = (R * 2 + 10) * S;
   const gx = c.getContext('2d')!; gx.scale(S, S);
   const cx = R + 5, cy = R + 5 + R * 0.12, n = 7 + Math.floor(rnd() * 3);

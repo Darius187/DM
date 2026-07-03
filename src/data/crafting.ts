@@ -11,8 +11,10 @@ export const MATERIAL_NAMES: Readonly<Record<MaterialId, string>> = {
 
 // Ressourcen-Abbau
 export const GATHER = {
-  baumSchlaege: 3,        // Baum fällt nach 3 Schlägen
-  stammSchlaege: 3,       // liegenden Stamm zerlegen (dann Holz)
+  // R86 (Autor 'Holzfällen sollte DEUTLICH langsamer gehen'): doppelt so
+  // viele Schläge wie früher - Holz beim Helden bleibt Handarbeit.
+  baumSchlaege: 6,        // Baum fällt nach 6 Schlägen
+  stammSchlaege: 6,       // liegenden Stamm zerlegen (dann Holz)
   baumHolz: { min: 2, max: 4 },
   baumRespawnTage: 1,     // respawnt nach Spielzeit
   felsSchlaege: 4,
@@ -33,6 +35,7 @@ export const ABBAU = {
     { schlaege: 3, inhalt: { min: 2, max: 3 } },   // klein
     { schlaege: 4, inhalt: { min: 3, max: 6 } },   // mittel
     { schlaege: 6, inhalt: { min: 6, max: 10 } },  // groß
+    { schlaege: 8, inhalt: { min: 10, max: 16 } }, // FINDLING (R86, 'größere Felsen gehören in die Landschaft')
   ],
   erzInhalt: { min: 2, max: 4 },    // Eisen GESAMT je Erzader
   goldInhalt: { min: 2, max: 3 },   // Golderz GESAMT je Goldader (wandert ins Dorf-Lager)

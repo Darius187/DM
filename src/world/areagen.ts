@@ -1745,8 +1745,11 @@ export function buildStart(rng: Rng): AreaData {
       const randDichte = Math.max(0, 1 - randAbstand / randTiefe);
       const chance = Math.max(biomChance * 0.35, randDichte * randDichte * 0.45);
       if (rng.random() >= chance) continue;
+      // R86 (Autor "Bäume stehen ineinander, obwohl kein Wald"): auf offener
+      // Wiese brauchen die dicken Stämme deutlich mehr Abstand als im Wald.
+      const minD = biom === 'wald' ? 100 : 170;
       let frei = true;
-      for (const [gx, gy] of gesetzt) { if ((gx - x) * (gx - x) + (gy - y) * (gy - y) < 100 * 100) { frei = false; break; } }
+      for (const [gx, gy] of gesetzt) { if ((gx - x) * (gx - x) + (gy - y) * (gy - y) < minD * minD) { frei = false; break; } }
       if (!frei) continue;
       map[ty][tx] = T.TREE;
       gesetzt.push([x, y]);
@@ -1777,11 +1780,12 @@ export function buildStart(rng: Rng): AreaData {
   a.ores = [ { x: 3550, y: 520 }, { x: 3820, y: 760 }, { x: 480, y: 1900 } ];
   // FELS-CLUSTER im Fels-Biom (R81, dorfSim Z.1057ff): Haufen aus 2-4 Brocken
   // verschiedener Größe, abseits von Weg und Wasser - dazu ~30% Erz-Knoten.
-  for (let c = 0; c < 14; c++) {
+  for (let c = 0; c < 20; c++) {
     let fx = 0, fy = 0, ok = false;
     for (let t = 0; t < 24 && !ok; t++) {
       fx = 160 + rng.random() * (W - 320); fy = 160 + rng.random() * (H - 320);
-      ok = felsNoise(fx, fy) > 0.6 && wegDist(fx, fy) > 120
+      // v.a. im Fels-Biom, aber wie in dorfSim auch VEREINZELT überall (R86)
+      ok = (felsNoise(fx, fy) > 0.6 || rng.random() < 0.3) && wegDist(fx, fy) > 120
         && sdWasser(fx / W, fy / H, geo, 0.02) > 0.03;
     }
     if (!ok) continue;
@@ -1797,6 +1801,20 @@ export function buildStart(rng: Rng): AreaData {
       const px = ptx * TILE + 16, py = pty * TILE + 16;
       if (rng.random() < 0.3) a.ores.push({ x: px, y: py });
       else a.rocks.push({ x: px, y: py, g });
+    }
+  }
+  // FINDLINGE (R86, Autor "größere Felsen gehören doch in eine Landschaft"):
+  // einzelne XL-Brocken (g=3, 8 Schläge, 10-16 Stein) verstreut im Gelände.
+  for (let c = 0; c < 6; c++) {
+    for (let t = 0; t < 20; t++) {
+      const fx = 200 + rng.random() * (W - 400), fy = 200 + rng.random() * (H - 400);
+      if (wegDist(fx, fy) > 150 && sdWasser(fx / W, fy / H, geo, 0.02) > 0.035) {
+        const ptx = Math.floor(fx / TILE), pty = Math.floor(fy / TILE);
+        if (map[pty]?.[ptx] !== T.GRASS) continue;
+        if (a.rocks.some((r2) => Math.hypot(r2.x - fx, r2.y - fy) < 90)) continue;
+        a.rocks.push({ x: ptx * TILE + 16, y: pty * TILE + 16, g: 3 });
+        break;
+      }
     }
   }
   // Bäume um die POIs freiräumen (Meiler-Lichtung etwas größer)
