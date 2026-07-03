@@ -95,8 +95,11 @@ export const KOPFGELD = {
 // Ja/Nein-Würfels. Speist Regen-Overlay, Wasser-Shader, Baumwind, Boden-Nässe
 // und Pfützen aus EINER Wahrheit. Sonnig (<0) hellt das Licht leicht auf.
 export const WETTER = {
-  // Stimmungs-Dauerregen (Autorwunsch, Heavy-Rain-Gefühl): vom Spielstart bis
-  // zum ersten Dungeon-Besuch nieselt es draußen ununterbrochen leicht.
+  // R80 (Autor: "tagsüber scheint die Sonne, dort ist es sonnig!"): das Spiel
+  // startet SONNIG wie die Anfangskarte. Der alte Stimmungs-Dauerregen bis zum
+  // ersten Dungeon ist per Schalter aus (F10 -> WETTER kann ihn zünden).
+  startWetter: -0.5,
+  stimmungsRegenAn: false,
   stimmungsRegen: 0.45,
   zyklusMinS: 25, zyklusMaxS: 70,   // Sekunden bis zum nächsten Wetterziel
   trockenChance: 0.55,              // Anteil trockener Ziele im freien Zyklus

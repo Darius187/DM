@@ -873,3 +873,17 @@
   Rest liegen - leicht nachruestbar, wenn der Autor den Rest behalten will).
 - Autorbug nebenbei gefunden: buildStart-Felsen standen NUR in der Liste, ohne
   Map-Kachel (unsichtbar, keine Kollision) - jetzt gesetzt + Regressionstest.
+- R80 Anfangskarte-Parität: Boden-Grün/Biom-Tint/Kies 1:1 aus dorfSim gemalt,
+  Lift-Aufhellung PIXEL-GEMESSEN gegen die echte Anfangskarte kalibriert
+  (kanalgewichtet warm, Wiese trifft Referenz auf +-3 je Kanal).
+- Feines Gras ist KEIN Sprite mehr: zeichneFeinGras malt dorfSims Strich-Gras
+  (kurz 3 Halme, hoch 5 luftige Halme) jeden Frame mit wind()/Böen-Welle und
+  Wegbiegen; die "Grabstein"-Bueschel-Bitmaps sind geloescht.
+- Spielstart SONNIG (startWetter -0.5): der Stimmungs-Dauerregen bis zum
+  1. Dungeon ist per Konstante AUS (WETTER.stimmungsRegenAn) - Autoransage
+  "tagsueber scheint die Sonne" schlaegt den alten Heavy-Rain-Wunsch; per
+  F10-Knopf "Stimmungs-Niesel FEST" jederzeit zurueckholbar.
+- Vignette aus dorfSim uebernommen (innen min(W,H)*0.34, aussen max(W,H)*0.74),
+  in echter Bildschirmgroesse gebacken statt gestrecktem Quadrat.
+- Pfuetzen "abgehakt" behoben: der Bild-Canvas war schmaler als die Blob-
+  Ellipsen (harte Schnittkante) - jetzt gross genug + dorfSim-Blur-Kante.

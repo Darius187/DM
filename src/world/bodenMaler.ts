@@ -26,45 +26,24 @@ function rngAus(seed: number): () => number {
 }
 
 // --- Wiesen-Pattern (Port aus dorfSim macheGras): Basis + kurze Halm-Striche ---
+// R80 (Autor: "das Grün war dort deutlich schöner"): Basis und Halm-Töne
+// EXAKT wie dorfSims macheGras - keine eigene Deutung mehr.
 function macheGrasPattern(rnd: () => number): HTMLCanvasElement {
   const c = document.createElement('canvas'); c.width = c.height = 128;
   const g = c.getContext('2d')!;
-  g.fillStyle = '#2e3b1d'; g.fillRect(0, 0, 128, 128);
-  const toene = ['rgba(58,76,40,0.6)', 'rgba(38,50,26,0.6)', 'rgba(74,94,50,0.45)'];
+  g.fillStyle = '#27331c'; g.fillRect(0, 0, 128, 128);
   for (let i = 0; i < 360; i++) {
-    const x = rnd() * 128, y = rnd() * 128, l = 2 + rnd() * 4, neig = (rnd() - 0.5) * 2.4;
-    g.strokeStyle = toene[(rnd() * 3) | 0]; g.lineWidth = 1;
-    g.beginPath(); g.moveTo(x, y); g.lineTo(x + neig, y - l); g.stroke();
+    const r = rnd();
+    g.strokeStyle = r < 0.5 ? 'rgba(54,72,38,0.6)' : r < 0.8 ? 'rgba(34,46,24,0.6)' : 'rgba(70,90,48,0.45)';
+    g.lineWidth = 1;
+    const x = rnd() * 128, y = rnd() * 128, hgt = 3 + rnd() * 6;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 3, y - hgt); g.stroke();
   }
   return c;
 }
 
-// --- Moos-Pattern (NEU, Autorwunsch "Waldboden moosig"): weiche Moospolster in
-// drei Grüntönen auf dunkler Walderde, dazwischen Nadel-/Laubstriche. Bewusst
-// eine ECHTE Struktur analog zum Gras-Tile - nicht nur ein Farb-Tint. ---------
-function macheMoosPattern(rnd: () => number): HTMLCanvasElement {
-  const c = document.createElement('canvas'); c.width = c.height = 128;
-  const g = c.getContext('2d')!;
-  g.fillStyle = '#241f12'; g.fillRect(0, 0, 128, 128);            // dunkle Walderde
-  // Moospolster: gehäufte weiche Kreise (Cluster wirken natürlicher als Streuung)
-  const moos = ['rgba(52,70,34,0.55)', 'rgba(64,84,40,0.45)', 'rgba(42,58,30,0.6)'];
-  for (let k = 0; k < 26; k++) {
-    const cx = rnd() * 128, cy = rnd() * 128, n = 3 + (rnd() * 5 | 0);
-    for (let i = 0; i < n; i++) {
-      const r = 2.5 + rnd() * 5;
-      g.fillStyle = moos[(rnd() * 3) | 0];
-      g.beginPath(); g.ellipse(cx + (rnd() - 0.5) * 16, cy + (rnd() - 0.5) * 12, r, r * (0.6 + rnd() * 0.3), rnd() * 3, 0, Math.PI * 2); g.fill();
-    }
-  }
-  // Nadeln/Laubstriche zwischen den Polstern
-  for (let i = 0; i < 130; i++) {
-    const x = rnd() * 128, y = rnd() * 128, a = rnd() * Math.PI, l = 2 + rnd() * 3;
-    g.strokeStyle = rnd() > 0.5 ? 'rgba(96,78,44,0.35)' : 'rgba(58,48,26,0.4)';
-    g.lineWidth = 1;
-    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
-  }
-  return c;
-}
+// (Das alte Moos-Pattern ist raus - R80: der Waldboden folgt jetzt 1:1 dem
+// dorfSim-Biom-Tint in maleBoden, der Autor will exakt den Anfangskarte-Look.)
 
 // --- Weglinie aus der Kachelkarte: pro Spalte die Mitte der PATH/BRIDGE-Kacheln
 // (die Salzstraßen laufen West->Ost). Liefert Weltkoordinaten-Punkte. ----------
@@ -107,6 +86,21 @@ export function baumDichteFn(k: BodenKarte, TILE: number): (x: number, y: number
   };
 }
 
+// Kies-Grüppchen wie dorfSims pfadSteine/waldDetail (R80): 2-4 kleine Steine
+// mit weichem Kontaktschatten und Lichtkante - so wirken sie geerdet.
+function maleKies(ctx: CanvasRenderingContext2D, x: number, y: number, rnd: () => number): void {
+  for (let k = 0, n = 2 + (rnd() * 3 | 0); k < n; k++) {
+    const sx2 = x + (rnd() - 0.5) * 16, sy2 = y + (rnd() - 0.5) * 10;
+    const rx = 2 + rnd() * 4, ry = 1.5 + rnd() * 2.4, rot = rnd() * 3;
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath(); ctx.ellipse(sx2 + rx * 0.3, sy2 + ry * 0.6, rx * 1.15, ry * 0.9, rot, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = rnd() < 0.5 ? '#56524a' : '#4c4840';
+    ctx.beginPath(); ctx.ellipse(sx2, sy2, rx, ry, rot, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(210,210,200,0.14)';
+    ctx.beginPath(); ctx.ellipse(sx2 - rx * 0.3, sy2 - ry * 0.3, rx * 0.5, ry * 0.5, rot, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
 /**
  * Malt den kompletten Boden (Wiese + Waldmoos + Weg) in den gegebenen Kontext.
  * ctx ist bereits so skaliert, dass in WELT-Pixeln gezeichnet wird (der Aufrufer
@@ -117,44 +111,38 @@ export function maleBoden(ctx: CanvasRenderingContext2D, karte: BodenKarte, TILE
   const W = karte.w * TILE, H = karte.h * TILE;
   const dichte = baumDichteFn(karte, TILE);
 
-  // 1) Wiese: Gras-Pattern über alles (Struktur), darüber großflächiges Farbspiel
+  // 1) Wiese: dorfSims Gras-Pattern über alles - OHNE das alte großflächige
+  // Farbspiel (R80, Autor: "das Grün war dort deutlich schöner"). Die Anfangs-
+  // karte lebt vom ruhigen, satten Grundton; die Abwechslung kommt aus dem
+  // Biom-Tint (Schritt 2) und den Details, nicht aus Farbwolken.
   const gras = macheGrasPattern(rnd);
   ctx.fillStyle = ctx.createPattern(gras, 'repeat')!;
   ctx.fillRect(0, 0, W, H);
-  for (let i = 0; i < 90; i++) {
-    const x = rnd() * W, y = rnd() * H, r = 160 + rnd() * 520;
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    const hell = rnd() > 0.5;
-    g.addColorStop(0, hell ? 'rgba(80,104,46,0.14)' : 'rgba(28,40,18,0.16)');
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
-  }
 
-  // 2) Waldbiom: wo Bäume dicht stehen, blendet das MOOS-Pattern über die Wiese
-  // (Zellraster mit weicher, dichteabhängiger Deckkraft - der Rand franst über
-  // die Zufalls-Schwelle aus statt hart zu kippen).
-  const moos = macheMoosPattern(rnd);
-  const moosPat = ctx.createPattern(moos, 'repeat')!;
-  const Z = TILE * 2;
-  for (let y = 0; y < H; y += Z) {
-    for (let x = 0; x < W; x += Z) {
-      const d = dichte(x + Z / 2, y + Z / 2);
-      if (d < 0.12) continue;
-      // WEICHER Übergang (Autorbug R79 "nicht flüssig"): statt harter Zellen
-      // ein überlappender runder Radial-Verlauf je Zelle.
-      ctx.save();
-      const gr = ctx.createRadialGradient(x + Z / 2, y + Z / 2, Z * 0.15, x + Z / 2, y + Z / 2, Z * 1.05);
-      gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.globalAlpha = Math.min(0.9, d * (0.75 + rnd() * 0.35));
-      ctx.beginPath(); ctx.arc(x + Z / 2, y + Z / 2, Z * 1.05, 0, Math.PI * 2); ctx.clip();
-      ctx.fillStyle = moosPat;
-      ctx.globalCompositeOperation = 'source-over';
-      // Verlauf als Maske: Pattern in einen weichen Kreis malen
-      ctx.fillRect(x - Z * 0.55, y - Z * 0.55, Z * 2.1, Z * 2.1);
-      ctx.restore();
+  // 2) Biom-Tint wie dorfSims moosCv (R80, 1:1-Port): eine NIEDRIG aufgelöste
+  // Tint-Karte (16-Weltpixel-Zellen), erdig-brauner Waldboden über der Baum-
+  // dichte, weich hochskaliert - so entstehen die fließenden Übergänge der
+  // Anfangskarte statt Zell-Kanten oder Farbwolken.
+  {
+    const WALD = [31, 27, 15];
+    const zelle = 16;
+    const tc = document.createElement('canvas');
+    tc.width = Math.ceil(W / zelle); tc.height = Math.ceil(H / zelle);
+    const m = tc.getContext('2d')!;
+    const sst = (a: number, b: number, x: number): number => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+    const hashCell = (xx: number, yy: number): number => { const v = Math.sin(xx * 12.9 + yy * 78.2) * 43758.5; return v - Math.floor(v); };
+    for (let yy = 0; yy < tc.height; yy++) {
+      for (let xx = 0; xx < tc.width; xx++) {
+        const w = sst(0.18, 0.6, dichte(xx * zelle + zelle / 2, yy * zelle + zelle / 2));
+        if (w < 0.02) continue;
+        const al = Math.min(0.9, w * 0.92) * (0.86 + 0.28 * hashCell(xx, yy));
+        m.fillStyle = `rgba(${WALD[0]},${WALD[1]},${WALD[2]},${Math.min(0.92, al)})`;
+        m.fillRect(xx, yy, 1, 1);
+      }
     }
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(tc, 0, 0, tc.width, tc.height, 0, 0, W, H);
   }
-  ctx.globalAlpha = 1;
 
   // 3) Wald-Details (Port aus dorfSim macheWaldDetailBilder, statisch gebacken):
   // Falllaub-Flecken, Totholz-Äste, kahle Erdstellen - nur im Waldbiom.
@@ -176,10 +164,19 @@ export function maleBoden(ctx: CanvasRenderingContext2D, karte: BodenKarte, TILE
       ctx.beginPath(); ctx.moveTo(x, y + 2); ctx.lineTo(x + Math.cos(a) * l, y + 2 + Math.sin(a) * l * 0.4); ctx.stroke();
       ctx.strokeStyle = '#4a3a24'; ctx.lineWidth = 4;
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l * 0.4); ctx.stroke();
-    } else {                   // kahle Erdstelle
+    } else if (art < 0.92) {   // kahle Erdstelle
       ctx.fillStyle = 'rgba(46,36,20,0.4)';
       ctx.beginPath(); ctx.ellipse(x, y, 12 + rnd() * 14, 8 + rnd() * 8, rnd() * 3, 0, Math.PI * 2); ctx.fill();
+    } else {                   // Kies-Cluster (dorfSim waldDetail Typ 3)
+      maleKies(ctx, x, y, rnd);
     }
+  }
+  // Kies auch auf der offenen Wiese verstreut (R80, Anfangskarte-Look: kleine
+  // Steingrüppchen liegen dort überall, nicht nur im Wald).
+  for (let i = 0, n = Math.round((W * H) / 260000); i < n; i++) {
+    const x = rnd() * W, y = rnd() * H;
+    if (dichte(x, y) > 0.3) continue;
+    maleKies(ctx, x, y, rnd);
   }
 
   // 4) Erd-/Trampelflecken auf der offenen Wiese (sparsam)
@@ -265,7 +262,11 @@ export function macheBrueckenBild(laenge: number, breite: number): HTMLCanvasEle
 // schwinden mit der Nässe) macht die WorldScene über Alpha/Skalierung. --------
 export function machePfuetzenBild(seed: number, lang: number, quer: number): HTMLCanvasElement {
   const rnd = rngAus(seed);
-  const c = document.createElement('canvas'); c.width = lang + 12; c.height = quer + 12;
+  // R80 (Autorbug "Pfützen abgehakt"): die Blob-Ellipsen reichen bis ~0.74*lang
+  // von der Mitte, der alte Canvas war aber nur lang/2+6 breit - der Rand hat
+  // die Lachen GERADE ABGESCHNITTEN. Jetzt ist der Canvas groß genug.
+  const c = document.createElement('canvas');
+  c.width = Math.ceil(lang * 1.55) + 8; c.height = Math.ceil(quer * 1.7) + 8;
   const g = c.getContext('2d')!;
   const cx = c.width / 2, cy = c.height / 2;
   interface Blob { x: number; y: number; rx: number; ry: number }
@@ -279,10 +280,13 @@ export function machePfuetzenBild(seed: number, lang: number, quer: number): HTM
     g.beginPath();
     for (const b of blobs) { g.moveTo(b.x + b.rx * grow, b.y); g.ellipse(b.x, b.y, b.rx * grow, b.ry * grow, 0, 0, Math.PI * 2); }
   };
-  // nasser Schlammrand (etwas größer als der Wasserkörper)
+  // nasser Schlammrand (etwas größer als der Wasserkörper), weich wie in
+  // dorfSims machePfuetze (leichter Blur statt harter Ellipsen-Kante)
+  g.filter = `blur(${Math.max(1, lang * 0.022)}px)`;
   g.fillStyle = 'rgba(26,19,11,0.45)'; form(1.25); g.fill();
   // Wasserkörper (heller/blauer als v1 - die fast schwarze Lache wirkte kaputt)
   g.fillStyle = '#18242e'; form(1); g.fill();
+  g.filter = 'none';
   // Senke: Mitte dunkler, Rand minimal heller
   g.save(); form(1); g.clip();
   const rg = g.createRadialGradient(cx, cy, 2, cx, cy, lang * 0.5);
@@ -367,37 +371,9 @@ export function macheBewuchsBilder(): HTMLCanvasElement[] {
   return out;
 }
 
-// Gras-Büschel: kurzes Bodengras (3 Striche) und hohes Gras (7 gebogene Halme)
-// - exakt die dorfSim-Strichmuster (Z.1506-1523), statisch mit leichtem
-// Ruhe-Lean gebacken; Wind/Wegbiegen kommt zur Laufzeit über die Rotation.
-export function macheGrasBueschelBild(hoch: boolean, seed: number): HTMLCanvasElement {
-  const rnd = rngAus(seed);
-  const S = 1;   // 1:1 wie dorfSim - beim Herunterskalieren verschmolzen die 7 Halme zu einem Block (Autorbug R78)
-  const c = document.createElement('canvas');
-  c.width = (hoch ? 30 : 16) * S; c.height = (hoch ? 32 : 12) * S;
-  const g = c.getContext('2d')!; g.scale(S, S);
-  const gx = c.width / (2 * S), gy = c.height / S - 1;
-  const lean = (rnd() - 0.5) * 3;
-  if (!hoch) {
-    g.strokeStyle = '#3c4d27'; g.lineWidth = 1.4;
-    g.beginPath();
-    g.moveTo(gx, gy); g.lineTo(gx + lean, gy - 7);
-    g.moveTo(gx - 2, gy); g.lineTo(gx - 2 + lean * 0.8, gy - 5);
-    g.moveTo(gx + 2, gy); g.lineTo(gx + 2 + lean * 1.1, gy - 6);
-    g.stroke();
-    return c;
-  }
-  const h = 18 + rnd() * 10;
-  for (let k = -3; k <= 3; k++) {
-    const u = 0.6 + Math.abs(k) * 0.1, bh = h * (1 - Math.abs(k) * 0.07);
-    g.strokeStyle = k % 2 ? '#43562b' : '#37481f'; g.lineWidth = 1.5;
-    g.beginPath();
-    g.moveTo(gx + k * 1.8, gy);
-    g.quadraticCurveTo(gx + k * 1.8 + lean * 0.5, gy - bh * 0.6, gx + k * 1.8 + lean * u, gy - bh);
-    g.stroke();
-  }
-  return c;
-}
+// (Die gebackenen Gras-Büschel-Sprites sind raus - R80, Autor: 'Grabsteine'.
+// Das feine Gras zeichnet die WorldScene jetzt jeden Frame als dorfSim-Striche
+// mit Wind-Neigung, siehe zeichneFeinGras.)
 
 // --- Weg (Port aus dorfSim Z.64-88 + Z.1398-1416, statisch): mäandernde
 // Mittellinie mit ausgefranster Halbbreite -> Polygon-Band, Spurrillen, in die

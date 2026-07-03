@@ -13,7 +13,7 @@ import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
-import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheGrasBueschelBild, macheBrueckenBild, macheGeroellBild, macheFelsRisseBild } from '../world/bodenMaler';
+import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheBrueckenBild, macheGeroellBild, macheFelsRisseBild } from '../world/bodenMaler';
 import { POI_BILDER } from '../world/poiBilder';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
 import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale, berechneTagLicht } from '../demo3d/dorfSim';
@@ -279,6 +279,7 @@ export class WorldScene extends CombatScene {
     this.portalEnts = [];
     this.nebelSprites = [];
     this.stimmungRect = null;
+    this.vignetteImg = null;   // Neustart: mit dem stimmungRect zusammen neu aufbauen
     this.tode = 0;
     this.relicChoice = null;
     this.pauseMenu = null;
@@ -298,6 +299,7 @@ export class WorldScene extends CombatScene {
     this.hausEditAn = false;
     this.wetterOverlay = undefined;
     this.regnet = false;
+    this.grasGfx = null;   // Szenen-Neustart: dieselbe Instanz, zerstörtes Graphics nie wiederverwenden
     this.decals = [];
     this.warmPool = [];
     this.fogGfx = null;
@@ -1337,8 +1339,8 @@ export class WorldScene extends CombatScene {
   // Wetter-Achse (Runde 75): kontinuierlich 0..1 statt Tages-Würfel. Bis zum
   // ersten Dungeon-Besuch hält der Stimmungs-Nieselregen an (Autorwunsch,
   // Heavy-Rain-Gefühl); danach übernimmt der freie Zyklus.
-  private wetterWert: number = WETTER.stimmungsRegen;   // Spielstart: es nieselt bereits
-  private wetterZiel: number = WETTER.stimmungsRegen;
+  private wetterWert: number = WETTER.startWetter;   // Spielstart: sonnig wie die Anfangskarte (R80)
+  private wetterZiel: number = WETTER.startWetter;
   private wetterTimer = 0;
   private naesse = 0;                            // Boden-Nässe 0..1 - speist die Pfützen
 
@@ -1357,8 +1359,8 @@ export class WorldScene extends CombatScene {
   private updateWetter(dt: number): void {
     this.wetterTimer -= dt;
     if (this.wetterTimer <= 0) {
-      if (!this.flags.nErsterDungeon) {
-        this.wetterZiel = WETTER.stimmungsRegen;   // Story-Regen bis zum ersten Dungeon
+      if (!this.flags.nErsterDungeon && WETTER.stimmungsRegenAn) {
+        this.wetterZiel = WETTER.stimmungsRegen;   // Story-Regen bis zum ersten Dungeon (per Schalter)
         this.wetterTimer = 20;
       } else {
         this.wetterTimer = WETTER.zyklusMinS + Math.random() * (WETTER.zyklusMaxS - WETTER.zyklusMinS);
@@ -1878,7 +1880,10 @@ export class WorldScene extends CombatScene {
   private updateBaumWind(time: number): void {
     if (!this.windBaeume.length && !this.windSchilf.length) return;
     const draussen = !this.area.innen && !this.area.dark;
-    const amp = 0.010 + (draussen ? Math.max(0, this.wetterWert) : 0) * 0.055;   // Sturm biegt die Bäume DEUTLICH (Autor R79); sonnig (<0) = Ruhe
+    // R80: dorfSims wind() 1:1 - Grundwind + einzelne Böen + konstanter Sturm-
+    // wind, dazu die orts-abhängige Böen-WELLE (läuft durch Gras und Bäume,
+    // statt dass alles synchron klappt). EINE Windgröße für alles.
+    const wd = draussen ? this.windStaerke(time) : 0;
     // SONNEN-SCHATTEN (dorfSim schDX/schLang 1:1): tief stehende Sonne -> langer,
     // seitlicher Schatten; Wolken unterdrücken die Richtung; nachts nur der
     // erdende Grundschatten (tagAuf blendet um Auf-/Untergang weich).
@@ -1896,7 +1901,9 @@ export class WorldScene extends CombatScene {
     }
     for (const b of this.windBaeume) {
       if (!b.img.active) continue;
-      b.img.rotation = amp * (Math.sin(time * 0.0011 + b.phase) * 0.6 + Math.sin(time * 0.0027 + b.phase * 1.7) * 0.4);
+      // dorfSim-Biegung: Wind * Böen-Welle, dazu ein leiser Eigen-Atem je Baum.
+      b.img.rotation = wd * 0.06 * this.boeWelle(b.img.x, b.img.y, time)
+        + 0.006 * Math.sin(time * 0.0011 + b.phase);
     }
     // WEGBIEGEN vor dem Helden (dorfSim-Verhalten, Autorwunsch R77): Gras und
     // Schilf in Reichweite lehnen sich vom Helden weg - er "watet" durch.
@@ -1906,18 +1913,37 @@ export class WorldScene extends CombatScene {
       if (d2 >= r2) return 0;
       return (dx >= 0 ? 1 : -1) * (1 - d2 / r2) * staerke;
     };
-    // Schilf ist leicht - es schwankt deutlich stärker und etwas schneller.
-    const ampS = amp * 3.2;
+    // Schilf ist leicht - es schwankt deutlich stärker (dorfSim bend = wd*4).
     for (const s of this.windSchilf) {
       if (!s.img.active) continue;
-      s.img.rotation = ampS * (Math.sin(time * 0.0016 + s.phase) * 0.6 + Math.sin(time * 0.0037 + s.phase * 1.7) * 0.4) + biege(s.img, 33, 0.5);
+      s.img.rotation = wd * 0.09 * this.boeWelle(s.img.x, s.img.y, time)
+        + 0.035 * Math.sin(time * 0.0043 + s.phase) + biege(s.img, 33, 0.5);
     }
-    // Wiesengras/Blumen: zwischen Baum und Schilf, leicht flatterig.
-    const ampG = amp * 2.1;
+    // Blüten/Kräuter-Sprites: dorfSims EBENE-3-Sway 1:1 (wd*0.14 + Eigen-Atem).
     for (const g of this.windGras) {
       if (!g.img.active) continue;
-      g.img.rotation = ampG * (Math.sin(time * 0.0019 + g.phase) * 0.6 + Math.sin(time * 0.0041 + g.phase * 1.7) * 0.4) + biege(g.img, 30, 0.6);
+      g.img.rotation = wd * 0.14 * this.boeWelle(g.img.x, g.img.y, time)
+        + 0.03 * Math.sin(time * 0.0033 + g.phase) + biege(g.img, 30, 0.6);
     }
+    // Feines Gras (Striche, jede Sekunde neu geneigt) - siehe zeichneFeinGras.
+    this.zeichneFeinGras(time, wd);
+  }
+
+  // dorfSim wind() 1:1 (R80): sanftes Hin und Her + einzelne Böen; im Sturm ein
+  // KONSTANT starker, gerichteter Wind mit schnellen Schwankungen obendrauf.
+  private windStaerke(timeMs: number): number {
+    const t = timeMs / 1000, w = this.wetterWert;
+    const grund = (Math.sin(t * 0.27) * 0.6 + Math.sin(t * 0.13 + 1) * 0.3) * (0.25 + w * 0.5);
+    const boe = Math.pow(Math.max(0, Math.sin(t * 0.2 + 0.5)), 3) * (0.3 + w * 0.8);
+    const sturm = Math.max(0, (w - 0.5) / 0.5);
+    const konstant = sturm * (1.1 + 0.9 * Math.sin(t * 1.3) + 0.6 * Math.sin(t * 0.7 + 2) + 0.5 * Math.sin(t * 2.3 + 1));
+    return grund + boe + konstant;
+  }
+
+  // Böen-WELLE (dorfSim 1:1): orts-abhängiger Faktor, damit eine Böe als Welle
+  // durch Gras und Bäume läuft (Wellenlänge ~1500px, wandert mit der Zeit).
+  private boeWelle(x: number, y: number, timeMs: number): number {
+    return 0.62 + 0.38 * Math.sin(timeMs * 0.0016 - x * 0.0042 - y * 0.0031);
   }
 
   // Baum fällt ANIMIERT (dorfSim-Gefühl, Runde 74): beschleunigtes Kippen weg
@@ -2056,15 +2082,22 @@ export class WorldScene extends CombatScene {
   // kurzes Bodengras (häufig), hohes Gras (Büschel), Blümchen in FARBGRUPPEN
   // (gelb/rosa/weiß/lila) plus verstreute Kräuter/Klee - die Original-dorfSim-
   // Zeichnungen als gebackene Sprites, mit Wind + Wegbiegen vor dem Helden.
+  // R80 (Autor: "keine Grabstein-Büschel mehr - richtiges feines Gras, das sich
+  // im Wind bewegt, überall"): das Gras sind KEINE gebackenen Sprites mehr,
+  // sondern Daten-Listen, die zeichneFeinGras jeden Frame als dorfSim-Striche
+  // mit Wind-Neigung zeichnet (EBENE 1 kurz + EBENE 2 hoch). Nur die Blüten/
+  // Kräuter bleiben Bitmap-Sprites (wie in dorfSim selbst).
+  private grasKurzListe: Array<{ x: number; y: number; ph: number; kurz: boolean; r: number }> = [];
+  private grasHochListe: Array<{ x: number; y: number; ph: number; h: number; r: number }> = [];
+  private grasGfx: Phaser.GameObjects.Graphics | null = null;
+
   private spawneWiesenBewuchs(a: AreaData): void {
+    this.grasKurzListe = [];
+    this.grasHochListe = [];
     if (!a.gebackenerBoden || a.dark || a.innen) return;
     // Bitmaps lazy registrieren (dorfSim-Port aus bodenMaler)
     if (!this.textures.exists('dorfbewuchs_0')) {
       macheBewuchsBilder().forEach((cv, i) => this.textures.addCanvas(`dorfbewuchs_${i}`, cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR));
-      for (let v = 0; v < 3; v++) {
-        this.textures.addCanvas(`dorfgras_kurz_${v}`, macheGrasBueschelBild(false, 300 + v * 7))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
-        this.textures.addCanvas(`dorfgras_hoch_${v}`, macheGrasBueschelBild(true, 400 + v * 11))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
-      }
     }
     const dichte = baumDichteFn(a, TILE);
     const geo = a.wasserLauf?.geo, smink = a.wasserLauf?.smink ?? WASSER2_CFG.smink;
@@ -2079,27 +2112,87 @@ export class WorldScene extends CombatScene {
       for (let tx = 1; tx < a.w - 1; tx++) {
         if (a.map[ty][tx] !== T.GRASS) continue;
         const x = tx * TILE + 16, y = ty * TILE + 16;
-        if (dichte(x, y) > 0.2) continue;                        // offene Wiese (im Wald nur Moos)
+        const d = dichte(x, y);
         if (geo && sdWasser((tx + 0.5) / a.w, (ty + 0.5) / a.h, geo, smink) < 0.012) continue;
         const hash = ((((tx * 48271) ^ (ty * 65521)) >>> 3) % 1000) / 1000;
         const jx = ((((tx * 40503) ^ (ty * 9277)) >>> 2) % 25) - 12, jy = ((((ty * 25931) ^ (tx * 6151)) >>> 2) % 25) - 12;
+        const jx2 = ((((tx * 15731) ^ (ty * 789221)) >>> 2) % 25) - 12, jy2 = ((((ty * 22483) ^ (tx * 337)) >>> 2) % 25) - 12;
         const phase = tx * 0.27 + ty * 0.13;
-        // Blumen-Inseln in FARBGRUPPEN (wie dorfSim: gleiche Sorte beieinander)
+        // Blumen-Inseln in FARBGRUPPEN nur auf offener Wiese (wie dorfSim)
         const blumenFeld = Math.sin(tx * 0.06 + ty * 0.045) + Math.sin(tx * 0.031 - ty * 0.07);
-        // ANZEIGEGRÖSSE = dorfSim-Original (Blume 18x24px, Gras 7-26px hoch):
-        // die Bitmaps sind 3x gebacken -> Skala ~1/3 zeigt sie in Originalgröße.
-        if (blumenFeld > 1.2 && hash < 0.3) {
+        if (d < 0.2 && blumenFeld > 1.2 && hash < 0.3) {
           setze(`dorfbewuchs_${Math.abs(Math.round(blumenFeld * 5)) % 4}`, x + jx, y + jy, 1, phase);
           continue;
         }
         // verstreute Kräuter/Klee (selten, überall auf der Wiese)
-        if (hash > 0.972) { setze(`dorfbewuchs_${hash > 0.986 ? 4 : 5}`, x + jx, y + jy, 1, phase); continue; }
-        // Gras-Flecken: kurzes Bodengras häufig, hohes Gras als Büschel darin
-        const fleck = Math.sin(tx * 0.23 + ty * 0.41) + Math.sin(tx * 0.11 - ty * 0.17);
-        if (fleck < -0.25) continue;   // dichter Rasen (Autor R79)
-        if (hash < 0.55 * this.devBewuchs) setze(`dorfgras_kurz_${(tx + ty) % 3}`, x + jx, y + jy, 1, phase);
-        else if (hash < 0.75 * this.devBewuchs) setze(`dorfgras_hoch_${(tx + ty) % 3}`, x + jx, y + jy, 1, phase);
+        if (d < 0.2 && hash > 0.972) { setze(`dorfbewuchs_${hash > 0.986 ? 4 : 5}`, x + jx, y + jy, 1, phase); continue; }
+        // Feines Gras (dorfSim EBENE 1): dicht ÜBERALL auf der Wiese (Autor R80:
+        // "richtiges feines Gras überall"), im dichten Wald spärlicher/kürzer.
+        if (hash < 0.85 * (1 - d * 0.72)) {
+          this.grasKurzListe.push({ x: x + jx, y: y + jy, ph: phase, kurz: d > 0.5, r: hash / 0.85 });
+          // zweiter Büschel je Kachel versetzt - der Rasen wird ein Teppich
+          if (hash < 0.5) this.grasKurzListe.push({ x: x + jx2, y: y + jy2, ph: phase + 2.3, kurz: d > 0.5, r: hash / 0.5 });
+        }
+        // Hohes Gras (dorfSim EBENE 2): sparsame, LUFTIGE Büschel - eng
+        // gebackene Halme lasen sich als "Grabsteine" (Autor R80).
+        const hash2 = ((((tx * 60493) ^ (ty * 19087)) >>> 3) % 1000) / 1000;
+        if (hash2 < (d > 0.5 ? 0.03 : 0.09)) {
+          this.grasHochListe.push({ x: x + jx2, y: y + jy2, ph: phase * 1.7, h: 12 + (hash2 * 900) % 9, r: hash2 / 0.09 });
+        }
       }
+    }
+  }
+
+  // Feines Gras JEDEN Frame zeichnen (dorfSim EBENE 1 + 2, 1:1): drei kurze
+  // Striche je Büschel bzw. 7 gebogene Halme, Neigung = Wind * Böen-Welle +
+  // Eigen-Atem + Wegbiegen vor dem Helden. Nur der Kamera-Ausschnitt.
+  private zeichneFeinGras(time: number, wd: number): void {
+    if (!this.grasKurzListe.length && !this.grasHochListe.length) { this.grasGfx?.clear(); return; }
+    if (!this.grasGfx) {
+      this.grasGfx = this.add.graphics().setDepth(-7.5);
+      this.uiCam?.ignore(this.grasGfx);
+    }
+    const g = this.grasGfx;
+    g.clear();
+    const view = this.cameras.main.worldView;
+    const x0 = view.x - 30, x1 = view.right + 30, y0 = view.y - 30, y1 = view.bottom + 30;
+    const dicht = this.devBewuchs;
+    // EBENE 1: kurzes Bodengras (3 Striche)
+    g.lineStyle(1.4, 0x3c4d27, 1);
+    g.beginPath();
+    for (const tf of this.grasKurzListe) {
+      if (tf.r > dicht || tf.x < x0 || tf.x > x1 || tf.y < y0 || tf.y > y1) continue;
+      const hf = tf.kurz ? 0.6 : 1;
+      let lean = wd * 6 * this.boeWelle(tf.x, tf.y, time) + Math.sin(time / 240 + tf.ph) * 1.5;
+      const dx = tf.x - this.px, dy = tf.y - this.py, d2 = dx * dx + dy * dy;
+      if (d2 < 900) lean += (dx / (Math.sqrt(d2) || 1)) * (1 - d2 / 900) * 9;
+      g.moveTo(tf.x, tf.y); g.lineTo(tf.x + lean, tf.y - 7 * hf);
+      g.moveTo(tf.x - 2, tf.y); g.lineTo(tf.x - 2 + lean * 0.8, tf.y - 5 * hf);
+      g.moveTo(tf.x + 2, tf.y); g.lineTo(tf.x + 2 + lean * 1.1, tf.y - 6 * hf);
+    }
+    g.strokePath();
+    // EBENE 2: hohes Gras - LUFTIG (Autor R80: die eng stehenden 7 Halme lasen
+    // sich als "Grabsteine"): 5 dünnere Halme, weiter auseinander, die Spitzen
+    // fächern deutlich auf, jede Höhe anders.
+    for (const ton of [0x43562b, 0x37481f]) {
+      g.lineStyle(1.1, ton, 0.95);
+      g.beginPath();
+      for (const hg of this.grasHochListe) {
+        if (hg.r > dicht || hg.x < x0 || hg.x > x1 || hg.y < y0 || hg.y > y1) continue;
+        let lean = wd * 11 * this.boeWelle(hg.x, hg.y, time) + Math.sin(time / 220 + hg.ph) * 2.5;
+        const dx = hg.x - this.px, dy = hg.y - this.py, d2 = dx * dx + dy * dy;
+        if (d2 < 1100) lean += (dx / (Math.sqrt(d2) || 1)) * (1 - d2 / 1100) * 12;
+        for (let k = -2; k <= 2; k++) {
+          if ((k % 2 === 0) !== (ton === 0x43562b)) continue;   // Ton-Wechsel wie dorfSim (k%2)
+          const u = 0.5 + Math.abs(k) * 0.22, bh = hg.h * (0.75 + Math.abs(Math.sin(hg.ph * 3.7 + k)) * 0.35);
+          const bx = hg.x + k * 2.6, by = hg.y;
+          // Quadratik-Kurve als zwei Segmente; Spitzen fächern über k auseinander
+          g.moveTo(bx, by);
+          g.lineTo(bx + lean * 0.5 * 0.75 + (lean * u + k * 1.4) * 0.25, by - bh * 0.65);
+          g.lineTo(bx + lean * u + k * 1.4, by - bh);
+        }
+      }
+      g.strokePath();
     }
   }
 
@@ -2493,7 +2586,7 @@ export class WorldScene extends CombatScene {
         } },
         { kind: 'slider', label: 'Boden-Nässe (Pfützen)', min: 0, max: 1, step: 0.05, get: () => this.naesse, set: (v) => { this.naesse = v; } },
         { kind: 'button', label: () => 'Wetter wieder AUTOMATIK (würfelt frei)', onClick: () => { this.wetterTimer = 0; } },
-        { kind: 'button', label: () => `Stimmungsregen (bis 1. Dungeon): ${this.flags.nErsterDungeon ? 'AUS' : 'AN'}`, onClick: () => { this.flags.nErsterDungeon = !this.flags.nErsterDungeon; this.wetterTimer = Math.min(this.wetterTimer, 0); this.devKonsole?.refresh(); } },
+        { kind: 'button', label: () => 'Stimmungs-Niesel FEST (Heavy-Rain-Gefühl)', onClick: () => { this.wetterWert = WETTER.stimmungsRegen; this.wetterZiel = WETTER.stimmungsRegen; this.wetterTimer = 1e9; this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => 'Gewitter SOFORT', onClick: () => { this.wetterWert = 1; this.wetterZiel = 1; this.wetterTimer = 1e9; this.naesse = Math.max(this.naesse, 0.8); this.devKonsole?.refresh(); } },
       ] },
       { name: 'MESSEN', controls: () => [
@@ -3759,6 +3852,7 @@ export class WorldScene extends CombatScene {
   private stimmungRect: Phaser.GameObjects.Rectangle | null = null;
   private lichtWarmRect: Phaser.GameObjects.Rectangle | null = null;
   private dunstRect: Phaser.GameObjects.Rectangle | null = null;
+  private vignetteImg: Phaser.GameObjects.Image | null = null;
   private tagLichtFX: Phaser.FX.ColorMatrix | null = null;
 
   private renderStimmung(): void {
@@ -3769,11 +3863,32 @@ export class WorldScene extends CombatScene {
         .setOrigin(0).setScrollFactor(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(4004);
       this.dunstRect = this.add.rectangle(0, 0, 10, 10, 0x96a6ba, 0)
         .setOrigin(0).setScrollFactor(0).setDepth(4006);
+      // VIGNETTE (R80, dorfSim-Licht 1:1): weiche Randabdunklung, Stärke folgt
+      // Tageszeit (nachts mehr) und Bewölkung - gehört fest zum Anfangskarte-Look.
+      this.vignetteImg = this.add.image(0, 0, '__WHITE')
+        .setOrigin(0).setScrollFactor(0).setDepth(4006).setAlpha(0);
       // Nur die Haupt-Kamera tönt die Welt - die UI-Kamera würde die Vollbild-
       // Ebenen sonst ein zweites Mal darüberlegen.
-      this.uiCam?.ignore([this.stimmungRect, this.lichtWarmRect, this.dunstRect]);
+      this.uiCam?.ignore([this.stimmungRect, this.lichtWarmRect, this.dunstRect, this.vignetteImg]);
     }
     for (const r of [this.stimmungRect, this.lichtWarmRect!, this.dunstRect!]) r.setSize(this.scale.width, this.scale.height);
+    // Vignette-Textur in ECHTER Bildschirmgröße mit dorfSims Radien (innen
+    // min(W,H)*0.34, außen max(W,H)*0.74) - ein gestrecktes Quadrat drückte
+    // oben/unten viel zu früh ins Dunkel.
+    {
+      const w = this.scale.width, h = this.scale.height, key = `vignette_${w}x${h}`;
+      if (this.vignetteImg && this.vignetteImg.texture.key !== key) {
+        if (!this.textures.exists(key)) {
+          const vc = document.createElement('canvas'); vc.width = w; vc.height = h;
+          const vg = vc.getContext('2d')!;
+          const grad = vg.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.34, w / 2, h / 2, Math.max(w, h) * 0.74);
+          grad.addColorStop(0, 'rgba(2,4,3,0)'); grad.addColorStop(1, 'rgba(2,4,3,1)');
+          vg.fillStyle = grad; vg.fillRect(0, 0, w, h);
+          this.textures.addCanvas(key, vc)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+        }
+        this.vignetteImg.setTexture(key).setDisplaySize(w, h);
+      }
+    }
     const setzeMul = (r: number, g: number, b: number): void => {
       this.tagLichtFX?.set([r, 0, 0, 0, 0, 0, g, 0, 0, 0, 0, 0, b, 0, 0, 0, 0, 0, 1, 0]);
     };
@@ -3781,12 +3896,14 @@ export class WorldScene extends CombatScene {
       setzeMul(1, 1, 1);                                       // neutral (Krypta hat eigenes Licht)
       this.lichtWarmRect!.setFillStyle(0xffcf86, 0);
       this.stimmungRect.setFillStyle(0x5a3aa8, 0.05);          // violetter Hauch in der Tiefe
+      this.vignetteImg?.setAlpha(0);
       return;
     }
     if (this.area.innen) {
       setzeMul(1, 1, 1);
       this.lichtWarmRect!.setFillStyle(0xffcf86, 0);
       this.stimmungRect.setFillStyle(0x000000, 0);
+      this.vignetteImg?.setAlpha(0);
       return;
     }
     // DRAUSSEN: dorfSims aktuellesLicht()-Formel 1:1 (Tageszeit + Bewölkung) -
@@ -3796,22 +3913,29 @@ export class WorldScene extends CombatScene {
     const klar = Math.max(0, -this.wetterWert);                 // R80: sonniges Wetter (<0) hellt auf (dorfSim klar8)
     const dunkel = 1 - bew * 0.4;
     const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
-    const liftHell = 1 + Math.max(0, L.lift * (1 - bew * 0.55) + klar * 0.06) * 0.9;   // kräftige Tag-Farben (Autor R79)
+    // Pixel-gemessen gegen die ECHTE Anfangskarte (R80): dorfSims soft-light
+    // mit dem warmen #fff3da hebt den Tag kräftig, aber KANALGEWICHTET - Rot
+    // voll, Grün fast voll, Blau kaum ("tagsüber scheint die Sonne", warm).
+    const liftBase = Math.max(0, L.lift * (1 - bew * 0.55) + klar * 0.06) * 1.6;
     setzeMul(
-      lerp(L.mul[0], 0.5, bew * 0.55) * dunkel * liftHell,
-      lerp(L.mul[1], 0.52, bew * 0.55) * dunkel * liftHell,
-      lerp(L.mul[2], 0.56, bew * 0.45) * dunkel * liftHell,
+      lerp(L.mul[0], 0.5, bew * 0.55) * dunkel * (1 + liftBase),
+      lerp(L.mul[1], 0.52, bew * 0.55) * dunkel * (1 + liftBase * 0.87),
+      lerp(L.mul[2], 0.56, bew * 0.45) * dunkel * (1 + liftBase * 0.35),
     );
     // dorfSims kräftige soft-light-AUFHELLUNG lässt sich mit ADD nicht nachbauen
     // (deckt zu) - deshalb wird der Lift in die ColorMatrix GEFALTET (heller
     // Multiply), nur der goldene Hauch bleibt als hauchdünnes ADD (R78).
+    // ADD hebt (anders als dorfSims soft-light) auch BLAU an -> wärmerer Ton
+    // und kleinere Deckkraft, sonst kippt die Wiese ins Kühle (Messung R80).
     const lift = Math.max(0, L.lift * (1 - bew * 0.55) + klar * 0.06);
-    this.stimmungRect.setFillStyle(0xfff3da, Math.min(0.08, lift * 0.1));
+    this.stimmungRect.setFillStyle(0xffe9b0, Math.min(0.06, lift * 0.08));
     const warm = L.warm * (1 - bew);
     this.lichtWarmRect!.setFillStyle(0xffcf86, Math.min(0.12, warm * 0.16));
     // Regen-DUNST (dorfSim Z.1645): bei Sturm wird die Sicht spürbar nebliger.
     const fog = this.regnet ? Math.min(0.42, (this.wetterWert - 0.1) * 0.55) * 0.55 : 0;
     this.dunstRect!.setFillStyle(0x96a6ba, Math.max(0, fog));
+    // Vignette aus der Tageszeit (Nacht stärker), Bewölkung verstärkt leicht (dorfSim 1:1)
+    this.vignetteImg?.setAlpha(Math.min(0.85, L.vig + bew * 0.12));
   }
 
   // Schritt-Klänge (Runde 31): spielen nur, wenn der Autor Dateien liefert
