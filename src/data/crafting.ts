@@ -42,8 +42,9 @@ export const GATHER = {
 export const HARVEST_CONFIG = {
   baum: {
     hits: 10,               // Schläge bis der Baum fällt
+    stammHits: 4,           // Schläge auf den LIEGENDEN Stamm bis das Holz kommt (R93)
     swingCooldownMs: 2200,  // Pause zwischen zwei Schlägen (10 x 2.2s ≈ 22s je Baum)
-    holzProBaum: 1,         // GANZE Zahl Holz je gefälltem Baum (keine Bruchteile)
+    holzProBaum: 1,         // GANZE Zahl Holz je zerlegtem Stamm (Holz kommt beim Zerlegen)
   },
   stein: {
     // je Felsgröße 0..3 (klein/mittel/groß/Findling): Schläge bis leer + Ausbeute

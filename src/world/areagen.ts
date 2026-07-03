@@ -173,6 +173,30 @@ function anWand(map: number[][], x: number, y: number): boolean {
   return map[y]?.[x] === T.FLOOR && map[y - 1]?.[x] === T.WALL;
 }
 
+// R93 (Autor "Baum steht auf dem Weg / Steine im Wasser - darf nicht sein"):
+// robuste Nachbearbeitung für ALLE Oberwelt-Karten.
+// (a) Bäume im Umkreis um Weg/Brücke roden, damit kein Stamm auf dem Weg steht.
+function raeumeBaeumeAmWeg(map: number[][], w: number, h: number, radius = 2): void {
+  const roden: Array<[number, number]> = [];
+  for (let ty = 0; ty < h; ty++) for (let tx = 0; tx < w; tx++) {
+    if (map[ty][tx] !== T.PATH && map[ty][tx] !== T.BRIDGE) continue;
+    for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
+      if (map[ty + dy]?.[tx + dx] === T.TREE) roden.push([tx + dx, ty + dy]);
+    }
+  }
+  for (const [x, y] of roden) map[y][x] = T.GRASS;
+}
+
+// (b) Loot-Steine/-Erz, die im Wasser liegen, entfernen (Kachel + Liste).
+function entferneWasserBeute(a: AreaData, map: number[][]): void {
+  const trocken = (p: { x: number; y: number }): boolean => {
+    const t = map[Math.floor(p.y / TILE)]?.[Math.floor(p.x / TILE)];
+    return t !== T.WATER && t !== undefined;
+  };
+  a.rocks = a.rocks.filter((r) => { if (trocken(r)) return true; const tx = Math.floor(r.x / TILE), ty = Math.floor(r.y / TILE); if (map[ty]?.[tx] === T.ROCK) map[ty][tx] = T.WATER; return false; });
+  a.ores = a.ores.filter((o) => { if (trocken(o)) return true; const tx = Math.floor(o.x / TILE), ty = Math.floor(o.y / TILE); if (map[ty]?.[tx] === T.ORE) map[ty][tx] = T.WATER; return false; });
+}
+
 export function buildCrypt(n: number, rng: Rng): AreaData {
   // Endlose Tiefe (Feedback-Runde 6): ab Ebene 6 wiederholen sich die Themen,
   // die Gegner skalieren über die Tiefe aber weiter
@@ -1537,6 +1561,9 @@ export function buildForest(rng: Rng): AreaData {
   // Ostrand: Übergang nach Ravensmoor
   carve(map, w - 2, py - 1, w - 1, py + 1, T.PATH);
   a.downPos = { x: (w - 1) * TILE + 16, y: py * TILE + 16 };
+  // R93: Baum-auf-Weg + Loot-Stein-im-Wasser robust nachbereinigen
+  raeumeBaeumeAmWeg(map, w, h);
+  entferneWasserBeute(a, map);
   return a;
 }
 
@@ -1650,6 +1677,9 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
   // ez-Bäume ÜBERALL (Autorauftrag R78 "nur auf einer Karte"): auch die
   // Oberwelt-Nachbarkarten zeichnen ihre Bäume groß aus den ez-tree-Bakes.
   a.baumSkala = 9;
+  // R93: Baum-auf-Weg + Loot-Stein-im-Wasser robust nachbereinigen
+  raeumeBaeumeAmWeg(map, w, h);
+  entferneWasserBeute(a, map);
   return a;
 }
 
@@ -1846,6 +1876,9 @@ export function buildStart(rng: Rng): AreaData {
   a.ores = a.ores.filter(anLand);
   for (const r2 of a.rocks) map[Math.floor(r2.y / TILE)][Math.floor(r2.x / TILE)] = T.ROCK;
   for (const o of a.ores) map[Math.floor(o.y / TILE)][Math.floor(o.x / TILE)] = T.ORE;
+  // R93: Baum-auf-Weg + Loot-Stein-im-Wasser robust nachbereinigen
+  raeumeBaeumeAmWeg(map, w, h);
+  entferneWasserBeute(a, map);
   return a;
 }
 

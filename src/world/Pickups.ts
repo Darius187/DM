@@ -46,12 +46,16 @@ export class PickupSystem {
   }
 
   add(p: Pickup): Pickup {
-    if (p.kind === 'gear' || p.kind === 'gem' || p.kind === 'scroll' || p.kind === 'relic' || p.kind === 'material') {
+    const matId = (p.item as (Item & { matId?: string }) | undefined)?.matId;
+    if (p.kind === 'gear' || p.kind === 'gem' || p.kind === 'scroll' || p.kind === 'relic' || (p.kind === 'material' && !matId)) {
       const it = p.item;
       if (it) {
         p.sprite = this.scene.add.image(p.x, p.y, this.provider.itemIcon(it)).setScale(0.42).setDepth(p.y);
       }
     }
+    // R93 (Autor "das Loot-Symbol soll nach Pflanze aussehen"): benannte
+    // Ressourcen (matId) werden als kleines Vektor-Symbol gezeichnet - Pflanzen/
+    // Fasern grün, Holz braun, Stein grau (siehe update()).
     this.pickups.push(p);
     return p;
   }
@@ -97,6 +101,37 @@ export class PickupSystem {
           g.fillStyle(0xf0d878, 1);
           g.fillRect(p.x - 1, sy - 2, 2, 2);
           break;
+        case 'material': {
+          const mid = (p.item as (Item & { matId?: string }) | undefined)?.matId;
+          if (!mid) break;   // altes Material mit Sprite: nichts zeichnen
+          if (mid === 'holz') {                       // Holzscheit (braun)
+            g.fillStyle(0x000000, 0.28); g.fillEllipse(p.x, sy + 4, 12, 3);
+            g.fillStyle(0x6a4a28, 1); g.fillRect(p.x - 6, sy - 2, 12, 5);
+            g.fillStyle(0x8a6a3e, 1); g.fillEllipse(p.x - 6, sy + 0.5, 3, 2.5); g.fillEllipse(p.x + 6, sy + 0.5, 3, 2.5);
+          } else if (mid === 'stein') {               // Steinbrocken (grau)
+            g.fillStyle(0x000000, 0.28); g.fillEllipse(p.x, sy + 4, 11, 3);
+            g.fillStyle(0x6a6a72, 1); g.fillCircle(p.x, sy, 5);
+            g.fillStyle(0x8a8a92, 1); g.fillCircle(p.x - 1.5, sy - 1.5, 2);
+          } else if (mid === 'eisen') {               // Erzklumpen (metallisch)
+            g.fillStyle(0x6a5c4a, 1); g.fillCircle(p.x, sy, 5);
+            g.fillStyle(0xc0a070, 1); g.fillCircle(p.x - 1, sy - 1, 1.6); g.fillCircle(p.x + 2, sy + 1, 1.2);
+          } else {                                    // Pflanze/Faser: grünes Pflänzchen
+            const gr = mid === 'fasern' ? 0x6a8a3a : 0x4c8a3a;
+            g.fillStyle(0x000000, 0.22); g.fillEllipse(p.x, sy + 4, 9, 2.5);
+            g.lineStyle(1.6, gr, 1);
+            g.beginPath();
+            g.moveTo(p.x, sy + 4); g.lineTo(p.x, sy - 5);
+            g.moveTo(p.x, sy - 1); g.lineTo(p.x - 4, sy - 4);
+            g.moveTo(p.x, sy - 1); g.lineTo(p.x + 4, sy - 4);
+            g.moveTo(p.x, sy - 4); g.lineTo(p.x - 3, sy - 7);
+            g.moveTo(p.x, sy - 4); g.lineTo(p.x + 3, sy - 7);
+            g.strokePath();
+          }
+          // grüner Schimmer als Aufhebe-Hinweis
+          const gcol = ['holz','stein','eisen'].includes(mid) ? 0xc9b06a : 0x8ad86a;
+          g.fillStyle(gcol, 0.14 + Math.sin(p.bob * 2) * 0.06); g.fillCircle(p.x, sy, 9);
+          break;
+        }
         case 'potion':
         case 'mpotion':
           g.fillStyle(0x2a1a10, 1);

@@ -2326,7 +2326,7 @@ export class WorldScene extends CombatScene {
     // BÜSCHE (ez-tree Bush 1-3, wie die Anfangskarte): v.a. im Wald, vereinzelt
     // auf der Wiese; schwanken wie die Bäume im Wind (windBaeume).
     if (this.textures.exists('obj_busch_0')) {
-      for (let i = 0, n = Math.round(W * H / 48000); i < n; i++) {
+      for (let i = 0, n = Math.round(W * H / 30000); i < n; i++) {   // R93: mehr Büsche
         const x = rnd() * W, y = rnd() * H;
         if (!frei(x, y)) continue;
         if (rnd() > dichteNoise(x, y) * 0.8 + 0.08) continue;
@@ -2347,7 +2347,7 @@ export class WorldScene extends CombatScene {
         this.windGras.push({ img, phase: x * 0.013 + y * 0.007, amp: 0.08 });
         // R86: der Busch gibt nach, bremst aber - je größer, desto zäher
         this.buschListe.push({ x, y, r: 10 + hoehe * 0.14 });
-        this.macheZerlegbar(img, 18, 1 + ((rnd() < 0.5) ? 1 : 0), 'fasern', true);   // R85/R91: 1-2 Fasern + Blätterwirbel
+        this.macheZerlegbar(img, 18, 1 + ((rnd() < 0.5) ? 1 : 0), 'fasern', true, true);   // R85/R91/R93: 1-2 Fasern als DROP + Blätterwirbel
       }
     }
     // MOOR: Schilf-/Rohrkolben-CLUSTER (tlw. tot/braun) + bodennaher NEBEL.
@@ -2530,12 +2530,20 @@ export class WorldScene extends CombatScene {
     }
   }
 
-  private macheZerlegbar(img: Phaser.GameObjects.Image, r: number, fasern: number, material: MaterialId = 'fasern', blaetter = false): void {
+  private macheZerlegbar(img: Phaser.GameObjects.Image, r: number, fasern: number, material: MaterialId = 'fasern', blaetter = false, alsDrop = false): void {
     const hit = { x: img.x, y: img.y - img.displayHeight * 0.3, r, onHit: (ang: number) => {
       this.hittables = this.hittables.filter((h) => h !== hit);
       if (!img.active) return;
       if (blaetter) this.blaetterWirbel(img.x, img.y - img.displayHeight * 0.5, img.displayWidth);
-      this.zerschnipple(img, ang, fasern, material);
+      const px = img.x, py = img.y;
+      if (alsDrop) {
+        // R93 (Autor "Busch soll Fasern NICHT sofort geben - wie bei Pflanzen"):
+        // die Beute fällt an die Position und wird durch Drüberlaufen gesammelt.
+        this.schnippselFx(img, ang);
+        this.pickups.add({ kind: 'material', x: px, y: py, bob: 0, item: { kind: 'material', name: MATERIAL_NAMES[material], rarity: 0, val: 0, boni: [], stack: fasern, matId: material } as unknown as Item });
+      } else {
+        this.zerschnipple(img, ang, fasern, material);
+      }
     } };
     this.hittables.push(hit);
   }
@@ -3045,14 +3053,19 @@ export class WorldScene extends CombatScene {
     const st = this.liegendeStaemme.get(key);
     if (!st || !st.img.active) { this.liegendeStaemme.delete(key); return; }
     if (!this.p.tools.axt) { this.sfx.play('fehler'); return; }
+    if (this.hackCdMs > 0) return;   // Schlag-Pause zuerst (kein Spam)
+    this.hackCdMs = HARVEST_CONFIG.baum.swingCooldownMs;
     st.hits++;
     this.sfx.play('holz_hacken');
     this.fx.burst(st.x, st.y - 6, 0x6a5430, 6, 90);
-    if (this.hackCdMs > 0) return;
-    this.hackCdMs = HARVEST_CONFIG.baum.swingCooldownMs;
-    if (st.hits < 3) return;   // ein paar Schläge, dann ist der Stamm weggeräumt
-    // R90: KEIN Extra-Holz - das eine Holz gab es beim Fällen. Der Stamm
-    // wird hier nur noch aus dem Weg geräumt (Deko).
+    this.setzeHackZiel(st.x, st.y - 20, st.hits, HARVEST_CONFIG.baum.stammHits);
+    if (st.hits < HARVEST_CONFIG.baum.stammHits) return;
+    // R93 (Autor): das Holz kommt ERST beim Zerlegen des liegenden Stamms -
+    // als Beute-Drop an der Stammposition (aufheben durch Drüberlaufen).
+    this.pickups.add({
+      kind: 'material', x: st.x, y: st.y + 6, bob: 0,
+      item: { kind: 'material', name: 'Holz', rarity: 0, val: 0, boni: [], stack: HARVEST_CONFIG.baum.holzProBaum, matId: 'holz' } as unknown as Item,
+    });
     const img = st.img;
     this.liegendeStaemme.delete(key);
     this.tweens.add({ targets: img, alpha: 0, duration: 280, onComplete: () => img.destroy() });
@@ -3916,6 +3929,7 @@ export class WorldScene extends CombatScene {
     this.standartenAktiv = [];   // R87: Standarten sind (noch) je Sitzung/Karte
     this.baustellen = [];        // R88: Baustellen je Karte (Container via tileImages weg)
     this.brichPlatzierungAb();
+    this.hackZiel = null; this.hackBalken = null;   // R93: Hack-Anzeige je Karte
     // Tiles als statische Bilder (Pseudo-3D, Masterprompt 5.1). Bei dorfSimBoden
     // malt der dorfSim-Canvas alles - keine Kacheln.
     if (!a.dorfSimBoden) {
@@ -5747,15 +5761,15 @@ export class WorldScene extends CombatScene {
     this.baumSchlaege.set(key, hits);
     this.sfx.play('holz_hacken');
     this.fx.burst(b.x, b.y - 8, 0x6a5430, 6, 90);
+    this.setzeHackZiel(b.x, b.y - 40, hits, HARVEST_CONFIG.baum.hits);   // Lebensbalken über dem Baum (R93)
     if (hits < HARVEST_CONFIG.baum.hits) return;
-    // Baum fällt
+    // Baum fällt - R93 (Autor): HIER kommt KEIN Holz. Erst der liegende Stamm
+    // gibt beim Zerlegen (zerlegeStamm) das Holz.
     this.gefaellteBaeume.set(key, this.tag);
     this.baumSchlaege.delete(key);
     const tx = Math.floor(b.x / TILE), ty = Math.floor(b.y / TILE);
     this.area.map[ty][tx] = T.GRASS;
     if (this.area.baumSkala) {
-      // Große Bäume (Runde 74): ECHTER Fall wie in dorfSim (kippen, aufschlagen,
-      // nachfedern) statt sofortigem Verschwinden. Stumpf setzt die Animation.
       this.faelleBaumAnimiert(b, tx, ty);
     } else {
       this.refreshTile(tx, ty);
@@ -5763,12 +5777,33 @@ export class WorldScene extends CombatScene {
     }
     this.fx.burst(b.x, b.y, 0x1c3018, 16, 140);
     this.sfx.play('holz_hacken');
-    // R90 (Autor): GENAU 1 Holz je gefälltem Baum (ganze Zahl), aus der Config.
-    // Der gefällte Stamm bleibt als Deko liegen; Zerlegen gibt kein Extra-Holz.
-    this.pickups.add({
-      kind: 'material', x: b.x, y: b.y + 8, bob: 0,
-      item: { kind: 'material', name: 'Holz', rarity: 0, val: 0, boni: [], stack: HARVEST_CONFIG.baum.holzProBaum },
-    });
+  }
+
+  // --- HACK-ANZEIGE (R93, Autor): Lebensbalken über dem Ziel (Baum/Stamm/Fels)
+  // + Schlag-Fortschritt (wann ist der nächste Schlag fertig). Erscheint beim
+  // Hacken und blendet nach kurzer Ruhe aus.
+  private hackZiel: { x: number; y: number; hits: number; max: number; swingMax: number; t: number } | null = null;
+  private hackBalken: Phaser.GameObjects.Graphics | null = null;
+
+  private setzeHackZiel(x: number, y: number, hits: number, max: number, swingMax: number = HARVEST_CONFIG.baum.swingCooldownMs): void {
+    this.hackZiel = { x, y, hits, max, swingMax, t: 1.8 };
+  }
+
+  private updateHackBalken(dt: number): void {
+    if (!this.hackBalken) { this.hackBalken = this.add.graphics().setDepth(9500); this.uiCam?.ignore(this.hackBalken); }
+    const g = this.hackBalken; g.clear();
+    if (!this.hackZiel) return;
+    this.hackZiel.t -= dt;
+    if (this.hackZiel.t <= 0) { this.hackZiel = null; return; }
+    const z = this.hackZiel, bw = 34;
+    // Lebensbalken des Ziels (verbleibende Schläge)
+    const rest = Math.max(0, 1 - z.hits / z.max);
+    g.fillStyle(0x000000, 0.6); g.fillRect(z.x - bw / 2 - 1, z.y - 1, bw + 2, 6);
+    g.fillStyle(0x6ab04a, 1); g.fillRect(z.x - bw / 2, z.y, bw * rest, 4);
+    // Schlag-Fortschritt (Ausholen -> nächster Schlag bereit)
+    const sw = 1 - Math.min(1, this.hackCdMs / z.swingMax);
+    g.fillStyle(0x000000, 0.6); g.fillRect(z.x - bw / 2 - 1, z.y + 7, bw + 2, 4);
+    g.fillStyle(sw >= 1 ? 0xf0d23a : 0xc98a3a, 1); g.fillRect(z.x - bw / 2, z.y + 8, bw * sw, 2);
   }
 
   // --- NPC-Gespräche (Texte aus src/data/dialoge.ts) -------------------------
@@ -6686,6 +6721,7 @@ export class WorldScene extends CombatScene {
         : ri(this.rng, ABBAU.goldInhalt.min, ABBAU.goldInhalt.max);
     }
     o.hp -= 1;
+    this.setzeHackZiel(o.x, o.y - 24, maxHp - o.hp, maxHp, this.hackCdMs);   // Fels-Lebensbalken (R93)
     this.sfx.play('stein_hacken');
     const farbe = what === 'golderz' ? 0xf0c850 : 0x8a8e96;
     this.fx.burst(o.x, o.y, farbe, 6, 110);
@@ -8923,6 +8959,7 @@ export class WorldScene extends CombatScene {
     this.updateBaustellen(dt);  // RTS-Platzierung + Bauzeit-Fortschritt (R88)
     this.updatePflanzenRespawn(dt); // Heilpflanzen wachsen nach (R89)
     if (this.hackCdMs > 0) this.hackCdMs = Math.max(0, this.hackCdMs - dt * 1000); // Schlag-Pause (R90)
+    this.updateHackBalken(dt);   // Lebensbalken + Schlag-Fortschritt (R93)
     this.updateNassSpritzer(dt);  // Spritzer in Pfützen + auf nassem Rasen (R78)
     this.updateRegenPlatschen(dt); // Regen plätschert im Gras (R79)
     this.updateWasserWetter();  // Regen-Ringe/Wirbel auf dem neuen Wasser

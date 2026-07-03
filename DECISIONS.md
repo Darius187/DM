@@ -1038,3 +1038,15 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Feldbau-Sprites (HP/Menü/Reparatur folgen mit dem RTS-Bau-Ausbau).
 - Links-Kanten-Offset: in Headless NICHT reproduzierbar, Kamera-Mathematik
   korrekt (Sprite exakt auf px/py, Bounds x=0, worldView geklemmt).
+
+## R93 - Ernte-Feinschliff, Loot-Symbole, Baum/Weg + Stein/Wasser
+- Holz kommt ERST beim Zerlegen des LIEGENDEN Stamms (4 Schläge), nicht beim
+  Fällen (Autor). Baum-Lebensbalken + Schlag-Fortschritt (updateHackBalken)
+  über dem Ziel beim Hacken; blendet nach Ruhe aus.
+- Busch gibt Fasern jetzt als DROP (aufheben), nicht sofort. Mehr Büsche.
+- Loot-Symbole (Pickups): benannte Ressourcen (matId) als Vektor - Pflanzen/
+  Fasern GRÜNES Pflänzchen, Holz Scheit, Stein Brocken, Erz Klumpen (Autor:
+  "soll nach Pflanze aussehen, grün").
+- Robuste Nachbereinigung ALLER Oberweltkarten: raeumeBaeumeAmWeg (kein Stamm
+  auf Weg/Brücke, Radius 2) + entferneWasserBeute (keine Loot-Steine/-Erz im
+  Wasser). Verifiziert: baumAmWeg=0, steinImWasser=0.
