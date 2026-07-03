@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir, angleToDir8 } from '../world/Enemy';
-import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn } from '../world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn, type Abbaubar } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
@@ -13,7 +13,7 @@ import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
-import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheGrasBueschelBild, macheBrueckenBild } from '../world/bodenMaler';
+import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheGrasBueschelBild, macheBrueckenBild, macheGeroellBild, macheFelsRisseBild } from '../world/bodenMaler';
 import { POI_BILDER } from '../world/poiBilder';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
 import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale, berechneTagLicht } from '../demo3d/dorfSim';
@@ -38,7 +38,7 @@ import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
 import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, VOLK, SMALLTALK, KONTAKT_ANGEBOT, type DlgPage } from '../data/dialoge';
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
-import { GATHER, HOLZ } from '../data/crafting';
+import { GATHER, HOLZ, ABBAU, abbauStufe, abbauSoll } from '../data/crafting';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { TUNING } from '../logic/tuning';
@@ -2841,6 +2841,26 @@ export class WorldScene extends CombatScene {
         objImg.setData('objTyp', 'baum');
         return;
       }
+      // 7DtD-Abbau-Optik (R80): angeschlagene Felsen/Adern zeigen ihren Zustand -
+      // Stufe 1 = kleiner + sichtbare Risse, Stufe 2 = Geröllhaufen (weiter abbaubar).
+      if (id === T.ROCK || id === T.ORE) {
+        const eintrag = (id === T.ROCK ? a.rocks : a.ores).find((r) => Math.floor(r.x / TILE) === tx && Math.floor(r.y / TILE) === ty);
+        const stufe = eintrag?.stufe ?? 0;
+        if (stufe >= 2) {
+          objImg.setTexture(this.abbauTexturKey('geroell', tx * 7 + ty));
+          objImg.setDisplaySize(TILE * 1.1, TILE * 0.85).setDepth(ty * TILE + 10);
+          objImg.setData('objTyp', objName);
+          return;
+        }
+        if (stufe === 1) {
+          const sk = skala * 0.82;
+          if (sk > 1.15) objImg.setOrigin(0.5, 0.7);
+          objImg.setDisplaySize(TILE * sk, TILE * sk);
+          tag(this.add.image(tx * TILE + 16, ty * TILE + 13, this.abbauTexturKey('risse')).setDepth(ty * TILE + 27).setDisplaySize(TILE * sk * 0.75, TILE * sk * 0.75));
+          objImg.setData('objTyp', objName);
+          return;
+        }
+      }
       if (skala > 1.15) objImg.setOrigin(0.5, 0.7);
       objImg.setDisplaySize(TILE * skala, TILE * skala);
       objImg.setData('objTyp', objName === 'wald' ? 'baum' : objName);
@@ -4070,16 +4090,18 @@ export class WorldScene extends CombatScene {
       }
     }
     // Erzader / Fels. In der Goldhöhle sind die Adern GOLD (geben Gold).
+    // R80 (7DtD-Abbau): der Hinweis zeigt den Zerfalls-Zustand mit an.
     const goldAder = this.area.id === 'goldmine';
+    const zustand = (o: Abbaubar): string => (o.stufe ?? 0) >= 2 ? ' (Geröll)' : (o.stufe ?? 0) === 1 ? ' (rissig)' : '';
     for (const o of this.area.ores) {
       if (near(o.x, o.y + 16, 40)) {
-        const name = goldAder ? 'Goldader' : 'Erzader';
+        const name = (goldAder ? 'Goldader' : 'Erzader') + zustand(o);
         return { text: this.p.tools.spitzhacke ? `${name} - ${ik} zum Abbauen` : `${name} - Spitzhacke nötig (Schmied)`, action: () => this.mine(o, goldAder ? 'golderz' : 'eisen') };
       }
     }
     for (const o of this.area.rocks) {
       if (near(o.x, o.y + 16, 40)) {
-        return { text: this.p.tools.spitzhacke ? `Felsbrocken - ${ik} zum Abbauen` : 'Felsbrocken - Spitzhacke nötig (Schmied)', action: () => this.mine(o, 'stein') };
+        return { text: this.p.tools.spitzhacke ? `Felsbrocken${zustand(o)} - ${ik} zum Abbauen` : 'Felsbrocken - Spitzhacke nötig (Schmied)', action: () => this.mine(o, 'stein') };
       }
     }
     return super.interactHint();
@@ -5592,31 +5614,67 @@ export class WorldScene extends CombatScene {
     });
   }
 
-  private mine(o: { x: number; y: number }, what: 'eisen' | 'stein' | 'golderz'): void {
+  // STUFEN-ABBAU (R80, Autorwunsch "wie 7 Days to Die"): Fels/Erz verschwinden
+  // nicht mehr mit EINEM Schlag - sie zerfallen sichtbar (ganz -> rissig ->
+  // Geröll -> weg) und zahlen bei jeder Stufe anteilig aus. Wer weiterhackt,
+  // holt den ganzen Inhalt heraus. Formeln aus der dorfSim-Referenz (hackeFels).
+  private mine(o: Abbaubar, what: 'eisen' | 'stein' | 'golderz'): void {
     if (!this.p.tools.spitzhacke) {
       this.sfx.play('fehler');
       return;
     }
-    this.sfx.play('stein_hacken');
-    this.fx.burst(o.x, o.y, what === 'golderz' ? 0xf0c850 : 0x8a8e96, what === 'golderz' ? 12 : 8, 120);
-    if (what === 'golderz') {
-      // Held sichert, Bewohner schürfen (Autorentscheid Runde 51): der Held bricht
-      // nur EIN wenig Golderz heraus - und es ist KEIN Geld. Es wandert ins Dorf-
-      // Lager, wo die Schmelze über die Tage Gold daraus macht (Abgabe-Kreislauf).
-      const amt = ri(this.rng, 1, 2);
-      this.dorfLager['golderz'] = (this.dorfLager['golderz'] ?? 0) + amt;
-      this.logMsg(`+${amt} Golderz fürs Dorf - die Schmelze macht über die Tage Gold daraus`, 'gold');
-    } else {
-      const amt = ri(this.rng, 1, what === 'eisen' ? 2 : 3);
-      this.p.materials[what] += amt;
-      this.logMsg(`+${amt} ${what === 'eisen' ? 'Eisen' : 'Stein'}`, '');
+    const maxHp = what === 'stein' ? GATHER.felsSchlaege : GATHER.erzSchlaege;
+    if (o.hp === undefined) {   // erster Schlag: Zustand anlegen
+      const inh = what === 'stein' ? ABBAU.felsInhalt : what === 'eisen' ? ABBAU.erzInhalt : ABBAU.goldInhalt;
+      o.hp = maxHp; o.stufe = 0; o.gegeben = 0;
+      o.inhalt = ri(this.rng, inh.min, inh.max);
     }
-    // Ader/Fels erschöpft: Tile freigeben
+    o.hp -= 1;
+    this.sfx.play('stein_hacken');
+    const farbe = what === 'golderz' ? 0xf0c850 : 0x8a8e96;
+    this.fx.burst(o.x, o.y, farbe, 6, 110);
     const tx = Math.floor(o.x / TILE), ty = Math.floor(o.y / TILE);
-    this.area.map[ty][tx] = T.FLOOR;
-    this.area.ores = this.area.ores.filter((x) => x !== o);
-    this.area.rocks = this.area.rocks.filter((x) => x !== o);
-    this.refreshTile(tx, ty);
+    const neu = abbauStufe(o.hp, maxHp);
+    if (neu > (o.stufe ?? 0)) {
+      o.stufe = neu;
+      this.fx.burst(o.x, o.y - 8, farbe, 14, 160);   // Brocken bricht sichtbar auseinander
+      if (neu < 3) this.refreshTile(tx, ty);         // neue Optik: rissig bzw. Geröll
+    }
+    // Anteilige Auszahlung bis zur erreichten Stufe; beim letzten Schlag der Rest
+    let dazu = 0;
+    const soll = o.hp <= 0 ? o.inhalt! : abbauSoll(o.stufe ?? 0, o.inhalt!);
+    while ((o.gegeben ?? 0) < soll) { o.gegeben = (o.gegeben ?? 0) + 1; dazu++; }
+    if (dazu > 0) {
+      if (what === 'golderz') {
+        // Held sichert, Bewohner schürfen (Autorentscheid Runde 51): Golderz ist
+        // KEIN Geld - es wandert ins Dorf-Lager, die Schmelze macht Gold daraus.
+        this.dorfLager['golderz'] = (this.dorfLager['golderz'] ?? 0) + dazu;
+        this.logMsg(`+${dazu} Golderz fürs Dorf - die Schmelze macht über die Tage Gold daraus`, 'gold');
+      } else {
+        this.p.materials[what] += dazu;
+        this.logMsg(`+${dazu} ${what === 'eisen' ? 'Eisen' : 'Stein'}`, '');
+      }
+    }
+    if (o.hp <= 0) {
+      // Aufgebraucht: Tile freigeben, Brocken aus der Welt nehmen
+      this.area.map[ty][tx] = T.FLOOR;
+      this.area.ores = this.area.ores.filter((x) => x !== o);
+      this.area.rocks = this.area.rocks.filter((x) => x !== o);
+      this.refreshTile(tx, ty);
+      this.logMsg(what === 'stein' ? 'Der Felsbrocken ist restlos zerlegt.' : 'Die Ader ist erschöpft.', '');
+    }
+  }
+
+  // Abbau-Bilder (R80, 7DtD-Stufen): Geröll in 4 Varianten + Riss-Überzug,
+  // lazy als Canvas-Textur registriert (LINEAR gegen die pixelArt-Falle).
+  private abbauTexturKey(art: 'geroell' | 'risse', seed = 0): string {
+    const key = art === 'geroell' ? `abbau_geroell_${((seed % 4) + 4) % 4}` : 'abbau_risse';
+    if (!this.textures.exists(key)) {
+      const cv = art === 'geroell' ? macheGeroellBild(7 + (((seed % 4) + 4) % 4) * 13) : macheFelsRisseBild();
+      this.textures.addCanvas(key, cv);
+      this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+    return key;
   }
 
   // Eine Kachel neu zeichnen (Baukasten, Treppen, Breschen, gefällte

@@ -20,6 +20,26 @@ export const GATHER = {
   krautSammeln: 1,        // Kräuter: einfach aufsammeln
 } as const;
 
+// STUFEN-ABBAU (R80, Autorwunsch "wie 7 Days to Die"): Fels/Erz verschwinden
+// nicht mehr mit einem Schlag, sondern zerfallen SICHTBAR in Stufen
+// (ganz -> rissig -> Geröll -> weg) und zahlen bei jeder Stufe anteilig aus.
+// Formeln 1:1 aus der "Dorf im Wald"-Referenz (dorfSim hackeFels).
+export const ABBAU = {
+  felsInhalt: { min: 3, max: 6 },   // Stein GESAMT je Felsbrocken (über alle Stufen)
+  erzInhalt: { min: 2, max: 4 },    // Eisen GESAMT je Erzader
+  goldInhalt: { min: 2, max: 3 },   // Golderz GESAMT je Goldader (wandert ins Dorf-Lager)
+} as const;
+
+// Zerfalls-Stufe aus Rest-Schlägen: 0 ganz, 1 rissig, 2 Geröll, 3 aufgebraucht.
+export function abbauStufe(hpRest: number, maxHp: number): number {
+  return Math.min(3, Math.floor((1 - Math.max(0, hpRest) / maxHp) * 3) + (hpRest <= 0 ? 1 : 0));
+}
+
+// Wie viel vom Gesamt-Inhalt bis zu dieser Stufe ausgezahlt sein soll.
+export function abbauSoll(stufe: number, inhalt: number): number {
+  return Math.min(inhalt, Math.ceil(stufe / 3 * inhalt));
+}
+
 // HOLZ-WIRTSCHAFT (Runde 79, Autor-Balance): Baum -> Holz (Stämme) -> Bretter
 // (Sägewerk). GEBAUT wird in Brettern. Alles Regler, die Verhältnisse tragen:
 // Held erntet hastig (~1/5), Holzfäller-NPCs holen später den vollen Inhalt.

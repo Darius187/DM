@@ -861,3 +861,15 @@
   deterministisch je Kachel; Autor-Abnahme des Looks offen ("teste das mal").
 - Gefaellter Stamm = das rotierte ez-tree-Original-Bitmap (Autorfreigabe);
   Holz kommt erst beim Zerlegen (GATHER.stammSchlaege), nicht beim Faellen.
+- R80 Wetter-Vereinheitlichung: EINE Achse -1..1 (dorfSim-System) fuer alle
+  Engine-Karten; alter WorldScene-Zyklus + Stimmungsregen laufen weiter, aber
+  nur noch ueber den Timer (Regler setzt FEST, Automatik-Knopf gibt frei).
+- Fensterlicht/Nachtkreis haengen an TAG.lichtAb (0.76 = ~18:15) bzw. am
+  Sonnenstand der dorfSim-Kurve - abendAb (13:12) bleibt REINER NPC-Feierabend.
+- Blitz zuendet ab Wetter ~0.8 (Gewitter, dorfSim-Schwelle), nicht mehr im Regen.
+- 7DtD-Abbau: Fels/Erz zerfallen in Stufen (ganz->rissig->Geroell->weg), zahlen
+  anteilig aus (ABBAU in crafting.ts: Fels 3-6 Stein, Erz 2-4 Eisen, Gold 2-3);
+  Geroell verschwindet nach dem letzten Schlag KOMPLETT (dorfSim laesst einen
+  Rest liegen - leicht nachruestbar, wenn der Autor den Rest behalten will).
+- Autorbug nebenbei gefunden: buildStart-Felsen standen NUR in der Liste, ohne
+  Map-Kachel (unsichtbar, keine Kollision) - jetzt gesetzt + Regressionstest.

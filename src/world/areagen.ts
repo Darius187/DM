@@ -11,6 +11,8 @@ import type { InnenraumDef, InnenMoebel } from '../data/innenraeume';
 import { sdWasser, type WasserGeometrie } from './wasserFeld';
 
 export interface Pos { x: number; y: number }
+// Abbaubarer Brocken (Fels/Erzader) mit Zerfalls-Zustand (R80, 7DtD-Abbau)
+export interface Abbaubar extends Pos { hp?: number; stufe?: number; inhalt?: number; gegeben?: number }
 
 export interface BreakableSpawn { kind: BreakableKind; x: number; y: number; ambush: boolean }
 export interface EnemySpawn { type: EnemyTypeId; x: number; y: number; elite: boolean; champion?: string; tot?: boolean }
@@ -93,8 +95,12 @@ export interface AreaData {
   notes: Array<Pos & { idx: number }>;
   folios: Pos[];
   gear: Pos[];
-  ores: Pos[];
-  rocks: Pos[];
+  // R80 (7-Days-to-Die-Abbau): Fels/Erz tragen einen Zerfalls-Zustand -
+  // hp = Rest-Schläge, stufe 0 ganz / 1 rissig / 2 Geröll, inhalt/gegeben =
+  // Gesamt-Ausbeute und schon ausgezahlter Anteil. mine() füllt die Felder
+  // beim ersten Schlag (undefined = unberührt).
+  ores: Abbaubar[];
+  rocks: Abbaubar[];
   special: SpecialMarker[];   // für Abnahme: jeder Spezialraum erreichbar
   annaGrab?: Pos;             // Medaillon-Position (Ebene 2)
   beinhausRaum?: { x0: number; y0: number; x1: number; y1: number; ausgeloest: boolean; altar: Pos };
@@ -1770,6 +1776,14 @@ export function buildStart(rng: Rng): AreaData {
       if (map[pty + dy]?.[ptx + dx] === T.TREE) map[pty + dy][ptx + dx] = T.GRASS;
     }
   }
+  // R80 (Autorbug "unsichtbare Felsen"): die Brocken standen nur in der Liste -
+  // OHNE Map-Kachel zeichnet zeichneKachel nichts und nichts kollidiert
+  // ("Auto ohne Räder"). Jetzt: Kachel setzen; was im Wasser läge, fliegt raus.
+  const anLand = (p: Pos): boolean => { const t = map[Math.floor(p.y / TILE)]?.[Math.floor(p.x / TILE)]; return t === T.GRASS || t === T.FLOOR; };
+  a.rocks = a.rocks.filter(anLand);
+  a.ores = a.ores.filter(anLand);
+  for (const r2 of a.rocks) map[Math.floor(r2.y / TILE)][Math.floor(r2.x / TILE)] = T.ROCK;
+  for (const o of a.ores) map[Math.floor(o.y / TILE)][Math.floor(o.x / TILE)] = T.ORE;
   return a;
 }
 

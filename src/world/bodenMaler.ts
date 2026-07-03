@@ -470,3 +470,32 @@ function maleWeg(ctx: CanvasRenderingContext2D, mitte: Array<{ x: number; y: num
     }
   }
 }
+
+// Geröll-Haufen (R80, 7DtD-Abbau Stufe 2): dorfSims macheGeroell 1:1 portiert -
+// ein paar unregelmäßige Brocken mit Lichtkante, deterministisch über seed.
+export function macheGeroellBild(seed: number, R = 13): HTMLCanvasElement {
+  const c = document.createElement('canvas'); c.width = c.height = R * 2 + 14;
+  const g = c.getContext('2d')!;
+  let s = seed; const rnd = (): number => { s = (s * 16807 + 11) % 2147483647; return (s % 10000) / 10000; };
+  const cx = c.width / 2, cy = c.height / 2 + R * 0.2;
+  for (let k = 0; k < 6; k++) {
+    const ox = (rnd() - 0.5) * R * 1.4, oy = (rnd() - 0.5) * R * 0.7, rr = R * (0.18 + rnd() * 0.22);
+    g.fillStyle = k % 2 ? '#3e3e44' : '#52525a';
+    g.beginPath(); g.ellipse(cx + ox, cy + oy, rr, rr * 0.7, 0, 0, 7); g.fill();
+    g.fillStyle = '#62626a';
+    g.beginPath(); g.ellipse(cx + ox - rr * 0.2, cy + oy - rr * 0.25, rr * 0.5, rr * 0.35, 0, 0, 7); g.fill();
+  }
+  return c;
+}
+
+// Riss-Überzug (R80, 7DtD-Abbau Stufe 1): der Strichzug aus dorfSims zeichneFels,
+// als eigenes Bild über den angeschlagenen Brocken gelegt.
+export function macheFelsRisseBild(R = 14): HTMLCanvasElement {
+  const c = document.createElement('canvas'); c.width = c.height = R * 2 + 4;
+  const g = c.getContext('2d')!;
+  const cx = c.width / 2, cy = c.height / 2;
+  g.strokeStyle = 'rgba(12,12,16,0.6)'; g.lineWidth = 1.6;
+  g.beginPath(); g.moveTo(cx - R * 0.3, cy - R * 0.55); g.lineTo(cx + R * 0.08, cy - R * 0.1); g.lineTo(cx + R * 0.4, cy - R * 0.45); g.stroke();
+  g.beginPath(); g.moveTo(cx + R * 0.05, cy - R * 0.08); g.lineTo(cx - R * 0.12, cy + R * 0.4); g.stroke();
+  return c;
+}

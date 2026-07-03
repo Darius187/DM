@@ -515,8 +515,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   private gibAlleGegenstaende(): void {
     for (const it of alleGegenstaende()) this.p.inv.push(it);
     this.p.pot += 10; this.p.mpot += 10;
+    // R80 (Autorwunsch): Holzaxt + Spitzhacke gehören zu "alle Gegenstände" -
+    // sonst steht der Tester vor Baum und Fels und kann nichts hacken.
+    this.p.tools.axt = true;
+    this.p.tools.spitzhacke = true;
     this.sfx.play('klick');
-    this.logMsg(`${gegenstandsAnzahl()} Test-Gegenstände ins Inventar gelegt (+10 Heil-/Manatränke). Inventar mit I öffnen.`, 'gold');
+    this.logMsg(`${gegenstandsAnzahl()} Test-Gegenstände ins Inventar gelegt (+10 Heil-/Manatränke, Holzaxt + Spitzhacke). Inventar mit I öffnen.`, 'gold');
     this.panels?.refresh?.();
   }
 
