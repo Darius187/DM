@@ -1026,3 +1026,15 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   KRONEN-LOCH via bildschirmfeste Masken-RenderTexture (weicher Pinsel am Held,
   invertAlpha) als BitmapMask NUR auf verdeckende Bäume (Krone überlappt Held +
   Y-sortiert davor). Kein Ganz-Baum-Faden mehr, keine Distanz-Auslösung.
+
+## R92 - Schilf gedämpft, Kronen-Loch nur dicht, RTS-Toggle + Feldbauten
+- Schilf: kleiner (Anzeige 34-48px statt 62-92), weniger (1-2/Kachel), Rispen
+  nur ~40% der Halme + gedämpft olivbraun -> fügt sich ins Bild.
+- Kronen-Loch erst ab 2 verdeckenden Kronen (dichter Wald), Stamm-Bereich bleibt
+  frei (Überlappung nur oben in der Krone) - kein Loch bei einem Baum daneben.
+- RTS-Leiste: Umschalter Truppen-Steuerung (Frei-Kamera) <-> Held selbst (WASD
+  kämpfen). Feldbauten alle baubar (Wachturm/Lazarett/Zelt) mit Kosten in
+  Relation zur Wirtschaft (Wachturm ~20 Holz = halber Tag Hacken); einfache
+  Feldbau-Sprites (HP/Menü/Reparatur folgen mit dem RTS-Bau-Ausbau).
+- Links-Kanten-Offset: in Headless NICHT reproduzierbar, Kamera-Mathematik
+  korrekt (Sprite exakt auf px/py, Bounds x=0, worldView geklemmt).

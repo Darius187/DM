@@ -2026,15 +2026,21 @@ export class WorldScene extends CombatScene {
     const cam = this.cameras.main, zm = cam.zoom;
     if (rt.width !== this.scale.width || rt.height !== this.scale.height) rt.setSize(this.scale.width, this.scale.height);
     // verdeckende Bäume finden: Krone überlappt den Helden UND Baum vor ihm.
+    // R92 (Autor "nicht bei EINEM Baum daneben - erst wenn es richtig dicht
+    // ist"): der Stamm-Bereich bleibt IMMER frei (Kronen-Überlappung nur im
+    // oberen Kronenteil, nicht am Fuß/Stamm), und das Loch entsteht erst, wenn
+    // MEHRERE Kronen den Helden gleichzeitig verdecken (dichter Wald).
     const front: Phaser.GameObjects.Image[] = [];
     for (const b of this.windBaeume) {
       const img = b.img; if (!img.active) continue;
-      const verdeckt = img.y > this.py                                  // Fuß unter dem Held = Y-sortiert VOR ihm
-        && img.y - this.py < img.displayHeight * 0.95                   // Held liegt im Kronen-Bereich (Höhe)
-        && Math.abs(img.x - this.px) < img.displayWidth * 0.42;         // Held horizontal unter der Krone
+      const dy = img.y - this.py;
+      const verdeckt = dy > img.displayHeight * 0.28                    // Held liegt UNTER der KRONE (nicht am Stamm)
+        && dy < img.displayHeight * 0.9
+        && Math.abs(img.x - this.px) < img.displayWidth * 0.34;         // enger: nur echte Kronen-Überlappung
       if (verdeckt) front.push(img);
     }
-    if (!front.length) { this.raeumeKronenMaske(); return; }
+    // erst ab 2 verdeckenden Kronen (dichter Wald) ein Loch stanzen
+    if (front.length < 2) { this.raeumeKronenMaske(); return; }
     // Maske füllen: die verdeckenden Bäume ausstanzen? Nein - invertAlpha: der
     // transparente Pinsel-Fleck am Helden erzeugt das Loch, der Rest bleibt sichtbar.
     const hx = (this.px - cam.worldView.x) * zm, hy = (this.py - 14 - cam.worldView.y) * zm;
@@ -2184,23 +2190,22 @@ export class WorldScene extends CombatScene {
         if (brueckeNah) continue;
         const u = (tx + 0.5) / a.w, vv = (ty + 0.5) / a.h;
         const sd = sdWasser(u, vv, geo, smink);
-        // R91: breiteres Ufer-Band, damit RÖHRICHT-BESTÄNDE statt Einzelhalme
-        // entstehen (Schilf wächst nie vereinzelt).
-        if (sd < -0.006 || sd > 0.018) continue;
+        // R92 (Autor "übertrieben - kleiner, weniger"): schmaleres Ufer-Band
+        // und moderatere Beete, damit sich das Schilf ins Bild einfügt.
+        if (sd < -0.004 || sd > 0.010) continue;
         const cluster = Math.sin(tx * 0.53 + ty * 0.91) + Math.sin(tx * 0.19 - ty * 0.33);
-        if (cluster < -0.1) continue;   // großzügiger -> dichtere, größere Beete
+        if (cluster < 0.35) continue;
         const hash = (((tx * 73856093) ^ (ty * 83492791)) >>> 4) % 1000 / 1000;
-        // R91: DICHTES Beet - 3-6 Halme je Kachel (Röhricht), leicht gestreut.
-        const anzahl = 3 + (hash * 4 | 0);
+        const anzahl = 1 + (hash * 2 | 0);   // 1-2 Halme je Kachel
         for (let k = 0; k < anzahl; k++) {
           const h2 = (((tx + k * 13) * 40503) ^ ((ty + k * 7) * 9277)) % 1000 / 1000;
           const hx = (h2 - 0.5) * 26, hy = (((ty + k * 3) * 25931) ^ (tx * 6151)) % 15 - 7;
           const x = tx * TILE + 16 + hx, y = ty * TILE + 16 + hy;
           const img = this.add.image(x, y, `roehricht_${(tx + ty + k) % 5}`).setDepth(y);
           img.setOrigin(0.5, 0.99);                  // Fuß-Anker (Schwanken um den Boden)
-          // HÖHE deutlich über dem Helden (~36px): Anzeige-Höhe 62..92px, damit
-          // er fast im Röhricht verschwindet. Leichte Höhenvariation je Halm.
-          const zielH = 62 + h2 * 30;
+          // R92: nur leicht höher als der Held (~36px) statt turmhoch -
+          // Anzeige-Höhe 34..48px, fügt sich ins Bild. Leichte Höhenvariation.
+          const zielH = 34 + h2 * 14;
           img.setScale(zielH / H_BAKE);
           if (h2 > 0.5) img.setFlipX(true);
           this.tileImages.push(img);
@@ -2614,7 +2619,7 @@ export class WorldScene extends CombatScene {
   private platziereModus: { id: string; kosten: Record<string, number>; bauzeitS: number } | null = null;
   private platzierGeist: Phaser.GameObjects.Container | null = null;
   private baustellen: Array<{ id: string; x: number; y: number; t: number; dauer: number; img: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics }> = [];
-  private readonly BAUZEIT: Record<string, number> = { lagerfeuer: 3, standarte: 2.5, palisade: 4 };
+  private readonly BAUZEIT: Record<string, number> = { lagerfeuer: 3, standarte: 2.5, palisade: 4, wachturm: 7, lazarett: 6, zelt: 4 };
 
   private toggleRtsModus(): void {
     if (this.rtsLeiste) {
@@ -2661,6 +2666,15 @@ export class WorldScene extends CombatScene {
     c.add(this.add.text(290, 5, `Moral ${this.aktuelleMoral()}`, { fontFamily: 'serif', fontSize: '12px', color: this.aktuelleMoral() >= MORAL.basis ? '#9ad86a' : '#d86a5a' }));
     const zu = this.add.text(w - 24, 4, '✕', { fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8' }).setInteractive({ useHandCursor: true });
     zu.on('pointerdown', () => this.toggleRtsModus()); c.add(zu);
+    // R92 (Autorwunsch): Umschalter Truppen-Steuerung <-> Held selbst steuern.
+    // "Held": Frei-Kamera aus -> WASD bewegt den Helden, er kämpft normal.
+    // "Truppen": Frei-Kamera an -> Kamera scrollt frei zum Befehlen/Bauen.
+    const heldMod = !this.devFreiKam;
+    const modBtn = this.add.text(400, 4, heldMod ? '⚑ Steuerung: HELD (WASD kämpfen)' : '⚑ Steuerung: TRUPPEN (Kamera frei)', {
+      fontFamily: 'serif', fontSize: '11px', color: '#c9a227', backgroundColor: '#221808', padding: { x: 6, y: 2 },
+    }).setInteractive({ useHandCursor: true });
+    modBtn.on('pointerdown', () => { this.setzeFreiKamera(!this.devFreiKam); this.sfx.play('klick'); this.baueRtsLeiste(); });
+    c.add(modBtn);
     // Reihe 1: Formationen (Vorwahl - wirkt auf Kämpfer, sobald Einheiten im Feld stehen)
     let x = 10;
     c.add(this.add.text(x, 26, 'Formation:', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a' })); x += 74;
@@ -2680,7 +2694,7 @@ export class WorldScene extends CombatScene {
       t.on('pointerdown', () => this.rtsBaue(b));
       c.add(t); x += t.width + 6;
     }
-    c.add(this.add.text(10, 78, 'Einheiten-Befehle folgen mit den Schlacht-Karten (Blaupause: Schlacht-Probe).', { fontFamily: 'serif', fontSize: '9px', color: '#6a5f4c' }));
+    c.add(this.add.text(10, 78, 'Bauwerk anklicken -> mit der Maus platzieren. Einheiten-Befehle folgen mit den Schlacht-Karten.', { fontFamily: 'serif', fontSize: '9px', color: '#6a5f4c' }));
     fixUiScroll(c);
   }
 
@@ -2799,9 +2813,45 @@ export class WorldScene extends CombatScene {
       const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
       this.area.map[ty][tx] = T.PALISADE;
       this.refreshTile(tx, ty);
-      this.logMsg('Palisaden-Segment steht.', 'gold');
+      this.logMsg('Palisade steht (3 m).', 'gold');
+    } else {
+      // R92: Wachturm/Lazarett/Zelt als Feldbau platzieren (das volle HP-/Menü-/
+      // Reparatur-System kommt mit dem RTS-Bau-Ausbau; hier steht das Bauwerk
+      // schon sichtbar und hat Material gekostet).
+      this.spawneFeldbau(id, x, y);
+      const b = RTS_BAUTEN.find((rb) => rb.id === id);
+      this.logMsg(`${b?.name ?? 'Feldbau'} errichtet.`, 'gold');
     }
     this.panels?.refresh?.();
+  }
+
+  // Einfacher Feldbau-Sprite (R92): Wachturm (Gerüst), Lazarett (Rotkreuz-Zelt),
+  // Zelt. Prozedural, y-sortiert. Lebenspunkte/Menü folgen im RTS-Bau-Ausbau.
+  private spawneFeldbau(id: string, x: number, y: number): void {
+    const key = `feldbau_${id}`;
+    if (!this.textures.exists(key)) {
+      const c = document.createElement('canvas'); c.width = 48; c.height = 56;
+      const g = c.getContext('2d')!;
+      g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(24, 52, 18, 5, 0, 0, Math.PI * 2); g.fill();
+      if (id === 'wachturm') {
+        g.strokeStyle = '#6a5030'; g.lineWidth = 3;
+        g.beginPath(); g.moveTo(12, 52); g.lineTo(18, 14); g.moveTo(36, 52); g.lineTo(30, 14); g.moveTo(14, 38); g.lineTo(34, 38); g.moveTo(15, 28); g.lineTo(33, 28); g.stroke();
+        g.fillStyle = '#7a5c34'; g.fillRect(14, 8, 20, 10);                 // Plattform
+        g.fillStyle = '#5a4426'; g.fillRect(13, 4, 22, 5);
+        g.fillStyle = '#3a2c18'; g.fillRect(16, -2, 16, 6);                 // Dach
+      } else if (id === 'lazarett') {
+        g.fillStyle = '#d8cfc0'; g.beginPath(); g.moveTo(24, 6); g.lineTo(44, 50); g.lineTo(4, 50); g.closePath(); g.fill();   // Zeltbahn
+        g.fillStyle = 'rgba(0,0,0,0.2)'; g.beginPath(); g.moveTo(24, 6); g.lineTo(24, 50); g.lineTo(4, 50); g.closePath(); g.fill();
+        g.fillStyle = '#b02a2a'; g.fillRect(21, 26, 6, 18); g.fillRect(15, 32, 18, 6);   // rotes Kreuz
+      } else {
+        g.fillStyle = '#8a7a52'; g.beginPath(); g.moveTo(24, 10); g.lineTo(42, 50); g.lineTo(6, 50); g.closePath(); g.fill();  // Zelt
+        g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.moveTo(24, 10); g.lineTo(24, 50); g.lineTo(6, 50); g.closePath(); g.fill();
+        g.fillStyle = '#3a2c18'; g.beginPath(); g.moveTo(20, 50); g.lineTo(24, 30); g.lineTo(28, 50); g.closePath(); g.fill();  // Eingang
+      }
+      this.textures.addCanvas(key, c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+    const img = this.add.image(x, y, key).setOrigin(0.5, 0.92).setDepth(y);
+    this.tileImages.push(img);
   }
 
   // Banner-Standarte: Stange + wehender Wimpel (Canvas), Moral-Anker im Umkreis

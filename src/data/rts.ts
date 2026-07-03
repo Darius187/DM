@@ -55,13 +55,19 @@ export interface RtsBau {
   frei: boolean;
   beschreibung: string;
 }
+// R92 (Autor "warum kann ich Wachturm nicht bauen? Kosten in Relation!"):
+// Alle Feldbauten sind im RTS-Modus baubar. Die Kosten stehen im Verhältnis
+// zur Wirtschaft (Held: ~1 Holz je Baum, ~22s Arbeit): ein Wachturm = ~20 Holz
+// entspricht einem halben Tag Holzhacken. Werte hier justierbar.
+// FREISCHALT-KONZEPT: 'stufe' = ab welchem Bau-Rang (siehe RTS_FREISCHALT).
+// Aktuell alle im RTS-Testmodus verfügbar; später an Kampf-Fortschritt gebunden.
 export const RTS_BAUTEN: ReadonlyArray<RtsBau> = [
   { id: 'lagerfeuer', name: 'Lagerfeuer', kosten: { holz: 3, stein: 1 }, frei: true, beschreibung: 'Wärme und Licht - Rastpunkt der Truppe' },
-  { id: 'standarte', name: 'Standarte', kosten: { holz: 2, fasern: 1 }, frei: true, beschreibung: 'Sammelpunkt des Banners - hebt die Moral im Umkreis' },
-  { id: 'palisade', name: 'Palisaden-Segment', kosten: { holz: 4 }, frei: true, beschreibung: 'Angespitzte Pfähle - sperrt eine Kachel' },
-  { id: 'wachturm', name: 'Wachturm', kosten: { holz: 8, stein: 4 }, frei: false, beschreibung: 'Weite Sicht und Schussfeld (Freischaltung folgt)' },
-  { id: 'lazarett', name: 'Lazarett-Zelt', kosten: { holz: 6, fasern: 4 }, frei: false, beschreibung: 'Der Feldscher verbindet hier Verwundete (Freischaltung folgt)' },
-  { id: 'zelt', name: 'Zelt', kosten: { holz: 4, fasern: 2 }, frei: false, beschreibung: 'Rast für die Truppe zwischen den Gefechten (Freischaltung folgt)' },
+  { id: 'standarte', name: 'Standarte', kosten: { holz: 4, fasern: 2 }, frei: true, beschreibung: 'Sammelpunkt des Banners - hebt die Moral im Umkreis' },
+  { id: 'palisade', name: 'Palisade', kosten: { holz: 5 }, frei: true, beschreibung: 'Angespitzte 3-m-Pfähle - sperrt eine Kachel (ziehbar)' },
+  { id: 'wachturm', name: 'Wachturm', kosten: { holz: 20, stein: 8 }, frei: true, beschreibung: 'Weite Sicht und Schussfeld - hält eine Stellung' },
+  { id: 'lazarett', name: 'Lazarett-Zelt', kosten: { holz: 14, fasern: 10, schafgarbe: 4 }, frei: true, beschreibung: 'Der Feldscher verbindet hier Verwundete' },
+  { id: 'zelt', name: 'Zelt', kosten: { holz: 10, fasern: 6 }, frei: true, beschreibung: 'Rast für die Truppe zwischen den Gefechten' },
 ];
 
 // Truppen-Moral (um 1300 entschied sie Schlachten öfter als das Schwert):
