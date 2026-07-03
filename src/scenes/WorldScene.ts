@@ -1225,6 +1225,19 @@ export class WorldScene extends CombatScene {
       }
     }
     if (!name) {
+      // R91 (Autorwunsch): Name der Heilpflanze beim Daraufzeigen. Die Pflanzen-
+      // Sprites tragen den Texturschlüssel pflanze_<id> (windGras) - der Name
+      // kommt aus data/pflanzen.ts.
+      for (const g of this.windGras) {
+        const key = g.img.active ? g.img.texture.key : '';
+        if (!key.startsWith('pflanze_')) continue;
+        if (Math.hypot(g.img.x - wx, g.img.y - g.img.displayHeight * 0.4 - wy) < 16) {
+          name = PFLANZEN_BY_ID[key.slice('pflanze_'.length)]?.name ?? null;
+          if (name) break;
+        }
+      }
+    }
+    if (!name) {
       for (const ch of this.area.chests) {
         if (!ch.open && Math.hypot(ch.x - wx, ch.y - wy) < 20) { name = ch.verflucht ? 'Verfluchte Truhe' : 'Truhe'; break; }
       }
@@ -2329,7 +2342,7 @@ export class WorldScene extends CombatScene {
         this.windGras.push({ img, phase: x * 0.013 + y * 0.007, amp: 0.08 });
         // R86: der Busch gibt nach, bremst aber - je größer, desto zäher
         this.buschListe.push({ x, y, r: 10 + hoehe * 0.14 });
-        this.macheZerlegbar(img, 18, 1 + ((rnd() < 0.5) ? 1 : 0));   // R85: Busch gibt 1-2 Fasern
+        this.macheZerlegbar(img, 18, 1 + ((rnd() < 0.5) ? 1 : 0), 'fasern', true);   // R85/R91: 1-2 Fasern + Blätterwirbel
       }
     }
     // MOOR: Schilf-/Rohrkolben-CLUSTER (tlw. tot/braun) + bodennaher NEBEL.
@@ -2512,12 +2525,37 @@ export class WorldScene extends CombatScene {
     }
   }
 
-  private macheZerlegbar(img: Phaser.GameObjects.Image, r: number, fasern: number, material: MaterialId = 'fasern'): void {
+  private macheZerlegbar(img: Phaser.GameObjects.Image, r: number, fasern: number, material: MaterialId = 'fasern', blaetter = false): void {
     const hit = { x: img.x, y: img.y - img.displayHeight * 0.3, r, onHit: (ang: number) => {
       this.hittables = this.hittables.filter((h) => h !== hit);
-      if (img.active) this.zerschnipple(img, ang, fasern, material);
+      if (!img.active) return;
+      if (blaetter) this.blaetterWirbel(img.x, img.y - img.displayHeight * 0.5, img.displayWidth);
+      this.zerschnipple(img, ang, fasern, material);
     } };
     this.hittables.push(hit);
+  }
+
+  // R91 (Autor "Busch zerfetzen wie bei Zelda"): beim Zerschlagen wirbeln viele
+  // kleine Blätter nach allen Seiten und segeln LANGSAM taumelnd zu Boden.
+  private blaetterWirbel(x: number, y: number, breite: number): void {
+    if (!this.textures.exists('blatt_partikel')) {
+      const c = document.createElement('canvas'); c.width = c.height = 12;
+      const g = c.getContext('2d')!;
+      g.fillStyle = '#3f5a28'; g.beginPath(); g.ellipse(6, 6, 5, 2.6, Math.PI / 5, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#2c4018'; g.lineWidth = 0.6; g.beginPath(); g.moveTo(2, 8); g.lineTo(10, 4); g.stroke();
+      this.textures.addCanvas('blatt_partikel', c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+    const toene = [0x3f5a28, 0x4c6a2c, 0x567038, 0x35491f, 0x6a7a3a];
+    const n = 14 + (Math.random() * 8 | 0);
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, dist = breite * (0.25 + Math.random() * 0.7);
+      const bl = this.add.image(x + (Math.random() - 0.5) * breite * 0.4, y, 'blatt_partikel')
+        .setDepth(y + 40).setTint(toene[i % toene.length]).setScale(0.5 + Math.random() * 0.6).setAlpha(0.95);
+      // 1) rausschleudern
+      this.tweens.add({ targets: bl, x: bl.x + Math.cos(a) * dist, y: bl.y + Math.sin(a) * dist * 0.5 - 8 - Math.random() * 14, duration: 260 + Math.random() * 160, ease: 'Quad.easeOut' });
+      // 2) langsam taumelnd fallen + verwehen
+      this.tweens.add({ targets: bl, y: bl.y + 30 + Math.random() * 40, rotation: (Math.random() - 0.5) * 8, alpha: 0, delay: 220 + Math.random() * 160, duration: 900 + Math.random() * 700, ease: 'Sine.easeIn', onComplete: () => bl.destroy() });
+    }
   }
 
   // R89 (Autor "Pflanzen-Ernte wie Holz: Schnitt -> Drop-Sprite -> Aufheben"):
