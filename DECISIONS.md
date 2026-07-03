@@ -937,3 +937,9 @@
   Streifen 90 Grad gedreht als Seitenkante. Hoehe als Regler (F10->LICHT,
   Default 2 Kacheln, baut live neu). Kollision unangetastet, alles hinter
   a.dark - Oberwelt pixelgleich geprueft.
+- R84b Krypta-Waende v2 (Autor "sieht schrecklich aus"): Streifen-Ansatz
+  verworfen. Neues System: WANDKRONE (Stein-Oberseite aus wallFace, 28%
+  abgedunkelt, Plattenfugen) auf JEDER raumberuehrenden Wandzelle - Raeume
+  sind horizontal+vertikal+Ecken sichtbar eingefasst; Sued-Stirnwaende als
+  DURCHGEHENDES Mauerwerk im Laeuferverband (gleiche Fugen-/Licht-Toene wie
+  die alte 10px-Stirn). Farben ausschliesslich aus dem CryptTheme.
