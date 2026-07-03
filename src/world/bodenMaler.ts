@@ -29,6 +29,8 @@ function rngAus(seed: number): () => number {
 // --- Wiesen-Pattern (Port aus dorfSim macheGras): Basis + kurze Halm-Striche ---
 // R80 (Autor: "das Grün war dort deutlich schöner"): Basis und Halm-Töne
 // EXAKT wie dorfSims macheGras - keine eigene Deutung mehr.
+export function macheGrasKachel(seed: number): HTMLCanvasElement { return macheGrasPattern(rngAus(seed)); }
+
 function macheGrasPattern(rnd: () => number): HTMLCanvasElement {
   const c = document.createElement('canvas'); c.width = c.height = 128;
   const g = c.getContext('2d')!;
@@ -107,18 +109,20 @@ function maleKies(ctx: CanvasRenderingContext2D, x: number, y: number, rnd: () =
  * ctx ist bereits so skaliert, dass in WELT-Pixeln gezeichnet wird (der Aufrufer
  * setzt ctx.scale für den Half-Res-Bake). Deterministisch über seed.
  */
-export function maleBoden(ctx: CanvasRenderingContext2D, karte: BodenKarte, TILE: number, seed = 1): void {
+export function maleBoden(ctx: CanvasRenderingContext2D, karte: BodenKarte, TILE: number, seed = 1, ohneBasis = false): void {
   const rnd = rngAus(seed);
   const W = karte.w * TILE, H = karte.h * TILE;
   const dichte = baumDichteFn(karte, TILE);
 
   // 1) Wiese: dorfSims Gras-Pattern über alles - OHNE das alte großflächige
-  // Farbspiel (R80, Autor: "das Grün war dort deutlich schöner"). Die Anfangs-
-  // karte lebt vom ruhigen, satten Grundton; die Abwechslung kommt aus dem
-  // Biom-Tint (Schritt 2) und den Details, nicht aus Farbwolken.
+  // Farbspiel (R80, Autor: "das Grün war dort deutlich schöner"). R83: bei
+  // ohneBasis lässt der Bake die Wiese TRANSPARENT - ein TileSprite in VOLLER
+  // Auflösung liegt darunter (Autor: "die Rasentextur war hochauflösender").
   const gras = macheGrasPattern(rnd);
-  ctx.fillStyle = ctx.createPattern(gras, 'repeat')!;
-  ctx.fillRect(0, 0, W, H);
+  if (!ohneBasis) {
+    ctx.fillStyle = ctx.createPattern(gras, 'repeat')!;
+    ctx.fillRect(0, 0, W, H);
+  }
 
   // 2) Biom-Tint wie dorfSims moosCv (R80/R81, 1:1-Port): eine NIEDRIG auf-
   // gelöste Tint-Karte (16-Weltpixel-Zellen), weich hochskaliert. Waldboden
@@ -152,19 +156,26 @@ export function maleBoden(ctx: CanvasRenderingContext2D, karte: BodenKarte, TILE
 
   // 3) Wald-Details (Port aus dorfSim macheWaldDetailBilder, statisch gebacken):
   // Falllaub-Flecken, Totholz-Äste, kahle Erdstellen - nur im Waldbiom.
-  const details = Math.round((W * H) / 90000);
+  const details = Math.round((W * H) / 70000);
   for (let i = 0; i < details; i++) {
     const x = rnd() * W, y = rnd() * H, d = dichte(x, y);
     if (d < 0.25 || rnd() > d) continue;
     const art = rnd();
-    if (art < 0.45) {          // Falllaub-Fleck
+    if (art < 0.28) {          // MOOS-Polster (R83: Waldboden klar anders als Wiese)
+      const moosToene = ['rgba(52,70,34,0.5)', 'rgba(64,84,40,0.4)', 'rgba(42,58,30,0.55)'];
+      for (let b = 0, m = 3 + (rnd() * 4 | 0); b < m; b++) {
+        ctx.fillStyle = moosToene[(rnd() * 3) | 0];
+        const r = 3.5 + rnd() * 6;
+        ctx.beginPath(); ctx.ellipse(x + (rnd() - 0.5) * 26, y + (rnd() - 0.5) * 18, r, r * (0.55 + rnd() * 0.3), rnd() * 3, 0, Math.PI * 2); ctx.fill();
+      }
+    } else if (art < 0.5) {    // Falllaub-Fleck
       ctx.fillStyle = 'rgba(88,66,34,0.28)';
       ctx.beginPath(); ctx.ellipse(x, y, 14 + rnd() * 18, 8 + rnd() * 10, rnd() * 3, 0, Math.PI * 2); ctx.fill();
       for (let b = 0; b < 6; b++) {
         ctx.fillStyle = `rgba(${96 + rnd() * 40 | 0},${70 + rnd() * 26 | 0},30,0.5)`;
         ctx.beginPath(); ctx.ellipse(x + (rnd() - 0.5) * 30, y + (rnd() - 0.5) * 18, 2.2, 1.4, rnd() * 3, 0, Math.PI * 2); ctx.fill();
       }
-    } else if (art < 0.72) {   // Totholz-Ast mit Kontaktschatten
+    } else if (art < 0.74) {   // Totholz-Ast mit Kontaktschatten
       const a = rnd() * Math.PI, l = 18 + rnd() * 26;
       ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 6;
       ctx.beginPath(); ctx.moveTo(x, y + 2); ctx.lineTo(x + Math.cos(a) * l, y + 2 + Math.sin(a) * l * 0.4); ctx.stroke();

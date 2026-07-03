@@ -13,7 +13,7 @@ import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
-import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheBrueckenBild, macheGeroellBild, macheFelsRisseBild, macheFeinGrasBild, macheMoorSchilfBild, macheFelsBild } from '../world/bodenMaler';
+import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheBrueckenBild, macheGeroellBild, macheFelsRisseBild, macheFeinGrasBild, macheMoorSchilfBild, macheFelsBild, macheGrasKachel } from '../world/bodenMaler';
 import { dichteNoise, moorNoise, biomAt } from '../world/biome';
 import { POI_BILDER } from '../world/poiBilder';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
@@ -166,7 +166,7 @@ export class WorldScene extends CombatScene {
   // Baum-Kontaktschatten (Runde 78): wandern und strecken sich mit dem
   // SONNENSTAND (dorfSim schDX/schLang) - morgens/abends lang und seitlich,
   // mittags kurz, Wolken unterdrücken die Richtung. Grundschatten bleibt immer.
-  private baumSchatten: Array<{ img: Phaser.GameObjects.Image; x0: number; breite: number }> = [];
+  private baumSchatten: Array<{ img: Phaser.GameObjects.Image; sx: number; sy: number; phase: number }> = [];
   private devBaumSkala?: number;   // F10-Override der Baum-Grundgröße (Dev)
   private devBewuchs = 1;          // F10-Bewuchs-Dichtefaktor (wirkt beim Kartenwechsel)
   private heldNass = 0;            // 0..1: wie tief der Held im Wasser steht (Versink-Optik)
@@ -1888,15 +1888,21 @@ export class WorldScene extends CombatScene {
     // seitlicher Schatten; Wolken unterdrücken die Richtung; nachts nur der
     // erdende Grundschatten (tagAuf blendet um Auf-/Untergang weich).
     if (draussen && this.baumSchatten.length) {
+      // 1:1-Schatten (R83): die Baum-Silhouette wird am Fuß gespiegelt (Rotation
+      // ~180 Grad), kippt mit dem Sonnenstand zur Seite (morgens nach Westen,
+      // abends nach Osten), wird bei tiefer Sonne LANG und verschwindet nachts.
+      // Wolken schwächen ihn ab; die Böen-Welle lässt ihn mit dem Baum schwanken.
       const L = berechneTagLicht(this.tageszeit * 24);
       const bew = Math.max(0, Math.min(1, this.wetterWert));
       const tagAuf = Math.min(1, L.hoehe * 6);
-      const schDX = -L.dir * (0.18 + (1 - L.hoehe) * 0.4) * (1 - bew) * tagAuf;
-      const schLang = (1 - L.hoehe) * 1.2 * (1 - bew) * tagAuf;
+      const alpha = Math.max(0, (0.10 + 0.20 * (1 - bew)) * tagAuf);
+      const rot = Math.PI - L.dir * (0.55 + (1 - L.hoehe) * 0.5);
+      const lenF = 0.55 + (1 - L.hoehe) * 0.95;
       for (const s of this.baumSchatten) {
         if (!s.img.active) continue;
-        s.img.x = s.x0 + schDX * s.breite;
-        s.img.displayWidth = s.breite * (1 + schLang);
+        s.img.setAlpha(alpha);
+        s.img.rotation = rot + wd * 0.05 * this.boeWelle(s.img.x, s.img.y, time);
+        s.img.setScale(s.sx, s.sy * lenF);
       }
     }
     for (const b of this.windBaeume) {
@@ -1958,11 +1964,13 @@ export class WorldScene extends CombatScene {
   private faelleBaumAnimiert(b: { x: number; y: number }, tx: number, ty: number): void {
     const tag = `${tx},${ty}`;
     const baum = this.tileImages.find((i) => i.active && i.getData?.('kachel') === tag && i.getData?.('objTyp') === 'baum');
-    const schatten = this.tileImages.find((i) => i.active && i.getData?.('kachel') === tag && i.texture.key === 'kontaktschatten');
+    // R83: jeder Baum hat ZWEI Schatten (1:1-Sonnenschatten + Fußschatten) -
+    // beide über das 'schatten'-Datum finden und mitnehmen.
+    const schatten = this.tileImages.filter((i) => i.active && i.getData?.('kachel') === tag && i.getData?.('schatten'));
     if (!baum) { this.addStumpf(b.x, b.y); return; }   // Fallback: sofort (sollte nie greifen)
     this.windBaeume = this.windBaeume.filter((w) => w.img !== baum);
     this.addStumpf(b.x, b.y);                          // der Stumpf bleibt unter dem fallenden Stamm
-    schatten?.destroy();
+    for (const s of schatten) { this.baumSchatten = this.baumSchatten.filter((e) => e.img !== s); s.destroy(); }
     const richtung = Math.sign(b.x - this.px) || 1;    // fällt vom Helden WEG
     this.tweens.add({
       targets: baum, rotation: richtung * 1.46, duration: 850 / Math.max(0.12, this.devAnfang.falltempo || 1), ease: 'Quad.easeIn',   // Fall-Tempo-Regler (R79)
@@ -2184,7 +2192,7 @@ export class WorldScene extends CombatScene {
     // BÜSCHE (ez-tree Bush 1-3, wie die Anfangskarte): v.a. im Wald, vereinzelt
     // auf der Wiese; schwanken wie die Bäume im Wind (windBaeume).
     if (this.textures.exists('obj_busch_0')) {
-      for (let i = 0, n = Math.round(W * H / 75000); i < n; i++) {
+      for (let i = 0, n = Math.round(W * H / 48000); i < n; i++) {
         const x = rnd() * W, y = rnd() * H;
         if (!frei(x, y)) continue;
         if (rnd() > dichteNoise(x, y) * 0.8 + 0.08) continue;
@@ -2565,7 +2573,15 @@ export class WorldScene extends CombatScene {
     c.scale(1 / SC, 1 / SC);                        // der Maler arbeitet in Welt-Pixeln
     let seed = 7;
     for (const ch of a.id) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
-    maleBoden(c, a, TILE, seed);
+    // R83 (Autor "die Rasentextur war hochauflösender"): die Wiesen-BASIS liegt
+    // als TileSprite in VOLLER Auflösung darunter (128er-Kachel wiederholt sich,
+    // kostet fast nichts); der Half-Res-Bake trägt nur noch Tint/Details/Weg.
+    if (!this.textures.exists('grasmuster_kachel')) {
+      this.textures.addCanvas('grasmuster_kachel', macheGrasKachel(1337))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+    const basis = this.add.tileSprite(0, 0, a.w * TILE, a.h * TILE, 'grasmuster_kachel').setOrigin(0, 0).setDepth(-11.5);
+    this.tileImages.push(basis as unknown as Phaser.GameObjects.Image);
+    maleBoden(c, a, TILE, seed, true);
     const tex = this.textures.addCanvas(key, cv);
     if (tex) tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
     this.gebackenerBodenImg = this.add.image(0, 0, key).setOrigin(0, 0).setDepth(-11);
@@ -3095,19 +3111,27 @@ export class WorldScene extends CombatScene {
         const quelle = this.textures.get(obj).getSourceImage();
         const aspekt = quelle.width / Math.max(1, quelle.height);
         const hoehe = TILE * skala;
-        objImg.setOrigin(0.5, 0.96);
+        // R83 (Autor "die Bäume schweben, waren tiefer im Boden"): Fuß-Anker
+        // ganz unten UND der Stamm steckt 8px im Boden - Gras/Boden überlappen
+        // die Stammbasis, nichts schwebt mehr.
+        const fx = tx * TILE + 16, fy = ty * TILE + 24;
+        objImg.setOrigin(0.5, 1);
+        objImg.setPosition(fx, fy);
         objImg.setDisplaySize(hoehe * aspekt, hoehe);
-        const schatten = tag(this.add.image(tx * TILE + 16, ty * TILE + 21, this.kontaktSchattenKey()).setDepth(ty * TILE + 25));
-        schatten.setDisplaySize(hoehe * aspekt * 0.58, hoehe * 0.15);
-        schatten.setAlpha(0.9);
-        this.baumSchatten.push({ img: schatten, x0: tx * TILE + 16, breite: hoehe * aspekt * 0.5 });
-        // R82 (Autor "der Stamm schwebt"): dorfSims Regel "der Grundschatten
-        // erdet IMMER" - ein kleiner, FESTER Fußschatten direkt am Stamm, der
-        // (anders als der Sonnenschatten) nie zur Seite wandert.
-        const fussY = ty * TILE + 16 + hoehe * 0.042;
-        const fuss = tag(this.add.image(tx * TILE + 16, fussY, this.kontaktSchattenKey()).setDepth(ty * TILE + 25.5));
-        fuss.setDisplaySize(hoehe * aspekt * 0.20, hoehe * 0.05);
-        fuss.setAlpha(0.62);
+        // 1:1-SCHATTEN (Autor R83, wie die Anfangskarte): DIESELBE Baum-Textur,
+        // dunkel getönt, am Fuß gespiegelt auf den Boden gelegt - Richtung und
+        // Länge stellt updateBaumWind nach dem Sonnenstand, er schwankt im Wind mit.
+        const schatten = tag(this.add.image(fx, fy - 2, obj).setDepth(-7.4));
+        schatten.setOrigin(0.5, 1);
+        schatten.setDisplaySize(hoehe * aspekt, hoehe);
+        schatten.setTint(0x0c140e).setAlpha(0);
+        schatten.setData('schatten', 1);
+        this.baumSchatten.push({ img: schatten, sx: schatten.scaleX, sy: schatten.scaleY, phase: tx * 0.19 + ty * 0.11 });
+        // fester Fußschatten (dorfSim: "der Grundschatten erdet IMMER")
+        const fuss = tag(this.add.image(fx, fy - 2, this.kontaktSchattenKey()).setDepth(ty * TILE + 25.5));
+        fuss.setDisplaySize(hoehe * aspekt * 0.24, hoehe * 0.06);
+        fuss.setAlpha(0.6);
+        fuss.setData('schatten', 1);
         // Lebendig wie in dorfSim: der Baum schwankt im Wind (Böen-Phase aus
         // der Position, damit nicht alle synchron kippen).
         this.windBaeume.push({ img: objImg, phase: tx * 0.19 + ty * 0.11 });
@@ -4122,11 +4146,20 @@ export class WorldScene extends CombatScene {
     // mit dem warmen #fff3da hebt den Tag kräftig, aber KANALGEWICHTET - Rot
     // voll, Grün fast voll, Blau kaum ("tagsüber scheint die Sonne", warm).
     const liftBase = Math.max(0, L.lift * (1 - bew * 0.55) + klar * 0.06) * 1.6;
+    // R83 (Autor "nachts ist der Held trotzdem dunkel, im Dungeon besser"):
+    // NACHTS hebt der Boden-Ton auf Dungeon-Niveau (blau, aber hell genug) -
+    // die eigentliche DUNKELHEIT trägt das Licht-Overlay (renderLight), das um
+    // Held/Feuer/Fenster Löcher bekommt. Im eigenen Lichtkreis ist die Figur
+    // dadurch klar und farbig sichtbar statt schwarz getönt.
+    const nachtF = 1 - Math.min(1, L.hoehe / 0.22);
     setzeMul(
-      lerp(L.mul[0], 0.5, bew * 0.55) * dunkel * (1 + liftBase),
-      lerp(L.mul[1], 0.52, bew * 0.55) * dunkel * (1 + liftBase * 0.87),
-      lerp(L.mul[2], 0.56, bew * 0.45) * dunkel * (1 + liftBase * 0.35),
+      Math.max(lerp(L.mul[0], 0.5, bew * 0.55) * dunkel * (1 + liftBase), 0.52 * nachtF),
+      Math.max(lerp(L.mul[1], 0.52, bew * 0.55) * dunkel * (1 + liftBase * 0.87), 0.54 * nachtF),
+      Math.max(lerp(L.mul[2], 0.56, bew * 0.45) * dunkel * (1 + liftBase * 0.35), 0.66 * nachtF),
     );
+    // R83 (Autor "Farben/Kontraste am Tag satter"): leichte Sättigungs-Anhebung
+    // bei Sonnenschein, von Wolken gedämpft, nachts aus.
+    this.tagLichtFX?.saturate(0.16 * Math.min(1, L.hoehe / 0.25) * (1 - bew * 0.8), true);
     // dorfSims kräftige soft-light-AUFHELLUNG lässt sich mit ADD nicht nachbauen
     // (deckt zu) - deshalb wird der Lift in die ColorMatrix GEFALTET (heller
     // Multiply), nur der goldene Hauch bleibt als hauchdünnes ADD (R78).
@@ -7255,10 +7288,13 @@ export class WorldScene extends CombatScene {
     // LATERNEN-Gefühl wie im Dungeon - ein enger, heller Kern direkt am Helden
     // (macht die Figur selbst sichtbar) plus der weite weiche Schein. Der
     // Glut-Regler skaliert beide (bei 100 deutlich über dem alten Maximum).
+    // R83: kein "Glühen" mehr (Autorkritik) - die Sichtbarkeit des Helden kommt
+    // jetzt aus dem hellen Nacht-Boden im Lichtkreis (renderStimmung), der
+    // warme Schein ist nur noch Stimmung. Regler wirkt weiter.
     if (!fow && (this.area.dark || nachtFaktor > 0.3)) {
-      const glut = (lic.nachtGlut ?? 50) / 70, farbe = lic.nachtGlutFarbe ?? 0xffcf86;
-      warmIdx = this.placeWarm(warmIdx, this.px, this.py, 160, Math.min(1, glut * 0.7), farbe);
-      warmIdx = this.placeWarm(warmIdx, this.px, this.py - 4, 55, Math.min(1, glut), farbe);
+      const glut = (lic.nachtGlut ?? 50) / 100, farbe = lic.nachtGlutFarbe ?? 0xffcf86;
+      warmIdx = this.placeWarm(warmIdx, this.px, this.py, 150, Math.min(0.6, glut * 0.55), farbe);
+      warmIdx = this.placeWarm(warmIdx, this.px, this.py - 4, 60, Math.min(0.5, glut * 0.5), farbe);
     }
     for (const t of (fow ? [] : this.area.torches)) {
       // Runde 29: ferne Fackeln deckten halbe Karten samt Gegnern auf -

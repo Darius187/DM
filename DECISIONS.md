@@ -917,3 +917,15 @@
 - Felsen: dorfSims gemalter Fels (Facetten/Moos/Kontaktschatten, 2x-AA) ersetzt
   die 32px-Kachelgrafik auf gebackenen Karten; Adern zeigen Erz-Einsprengsel
   (Eisen braun, Goldmine gold). Formationen: 3-5 Brocken eng beieinander.
+- R83 1:1-Baumschatten: die Baum-TEXTUR selbst wird dunkel getoent am Fuss
+  gespiegelt (Rotation ~180 Grad +/- Sonnenrichtung), Laenge waechst mit
+  tiefer Sonne, Wolken daempfen, Boeen-Welle laesst ihn mitschwanken.
+- Baeume 8px im Boden versenkt (Fuss-Anker 1.0) + fester Fussschatten.
+- Rasen-Basis als TileSprite in VOLLER Aufloesung (128er-Kachel), der
+  Half-Res-Bake traegt nur noch Tint/Details/Weg - Rasen wieder scharf.
+- Nacht-Licht nach Dungeon-Prinzip: der Farb-Multiplizierer faellt nachts
+  nur noch auf ~0.52-0.66 (blauer Ton), die Dunkelheit kommt vom Licht-
+  Overlay mit Loechern -> Held im eigenen Licht farbig sichtbar, das
+  Gluehen (ADD-Kern) ist zurueckgenommen.
+- Tag: leichte Saettigungs-Anhebung bei Sonne (ColorMatrix.saturate 0.16),
+  Wolken daempfen, nachts aus. Waldboden mit Moos-Polstern strukturiert.
