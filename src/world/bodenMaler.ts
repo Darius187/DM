@@ -11,6 +11,7 @@
 // Boden bei jedem Laden gleich aussieht (und der Bake testbar bleibt).
 
 import { T } from './tiles';
+import { moorNoise, felsNoise, sst } from './biome';
 
 export interface BodenKarte { w: number; h: number; map: number[][] }
 
@@ -119,24 +120,29 @@ export function maleBoden(ctx: CanvasRenderingContext2D, karte: BodenKarte, TILE
   ctx.fillStyle = ctx.createPattern(gras, 'repeat')!;
   ctx.fillRect(0, 0, W, H);
 
-  // 2) Biom-Tint wie dorfSims moosCv (R80, 1:1-Port): eine NIEDRIG aufgelöste
-  // Tint-Karte (16-Weltpixel-Zellen), erdig-brauner Waldboden über der Baum-
-  // dichte, weich hochskaliert - so entstehen die fließenden Übergänge der
-  // Anfangskarte statt Zell-Kanten oder Farbwolken.
+  // 2) Biom-Tint wie dorfSims moosCv (R80/R81, 1:1-Port): eine NIEDRIG auf-
+  // gelöste Tint-Karte (16-Weltpixel-Zellen), weich hochskaliert. Waldboden
+  // erdig-braun über der ECHTEN Baumdichte, MOOR dunkelbraun und FELS grau
+  // über dem dorfSim-Biom-Rauschen - die fließenden Übergänge der Anfangskarte.
   {
-    const WALD = [31, 27, 15];
+    const WALD = [31, 27, 15], MOOR = [28, 24, 13], FELS = [60, 58, 52];
     const zelle = 16;
     const tc = document.createElement('canvas');
     tc.width = Math.ceil(W / zelle); tc.height = Math.ceil(H / zelle);
     const m = tc.getContext('2d')!;
-    const sst = (a: number, b: number, x: number): number => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
     const hashCell = (xx: number, yy: number): number => { const v = Math.sin(xx * 12.9 + yy * 78.2) * 43758.5; return v - Math.floor(v); };
     for (let yy = 0; yy < tc.height; yy++) {
       for (let xx = 0; xx < tc.width; xx++) {
-        const w = sst(0.18, 0.6, dichte(xx * zelle + zelle / 2, yy * zelle + zelle / 2));
-        if (w < 0.02) continue;
-        const al = Math.min(0.9, w * 0.92) * (0.86 + 0.28 * hashCell(xx, yy));
-        m.fillStyle = `rgba(${WALD[0]},${WALD[1]},${WALD[2]},${Math.min(0.92, al)})`;
+        const x = xx * zelle + zelle / 2, y = yy * zelle + zelle / 2;
+        const wMoor = sst(0.56, 0.74, moorNoise(x, y));
+        const wFels = sst(0.56, 0.74, felsNoise(x, y)) * (1 - wMoor);
+        const wWald = sst(0.18, 0.6, dichte(x, y)) * (1 - wMoor - wFels);
+        let r = 0, g = 0, b = 0, a = 0;
+        const add = (c: number[], w: number): void => { a += w; r += c[0] * w; g += c[1] * w; b += c[2] * w; };
+        add(MOOR, wMoor); add(FELS, wFels); add(WALD, wWald);
+        if (a < 0.02) continue;
+        const al = Math.min(0.9, a * 0.92) * (0.86 + 0.28 * hashCell(xx, yy));
+        m.fillStyle = `rgba(${Math.round(r / a)},${Math.round(g / a)},${Math.round(b / a)},${Math.min(0.92, al)})`;
         m.fillRect(xx, yy, 1, 1);
       }
     }

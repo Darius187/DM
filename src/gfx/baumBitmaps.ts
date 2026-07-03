@@ -6,9 +6,23 @@
 // sind, fällt dieser Aufruf weg (siehe TODO.md). Einmal pro Sitzung gebacken.
 
 import Phaser from 'phaser';
-import { baueBaumBitmaps } from '../demo3d/dorfSim';
+import { baueBaumBitmaps, baueBuschBitmaps } from '../demo3d/dorfSim';
 
 let bereit = false;
+let bereitBusch = false;
+
+// R81: die ez-tree-BÜSCHE (Bush 1-3) der Anfangskarte als obj_busch_0..2.
+// Gleiche LINEAR-Falle wie bei den Bäumen (pixelArt:true).
+export async function registriereBuschBitmaps(tex: Phaser.Textures.TextureManager): Promise<void> {
+  if (bereitBusch && tex.exists('obj_busch_0')) return;
+  const bitmaps = await baueBuschBitmaps();
+  if (!bitmaps.length) return;
+  bitmaps.forEach((cv, i) => {
+    const key = `obj_busch_${i}`;
+    if (!tex.exists(key)) tex.addCanvas(key, cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+  });
+  bereitBusch = true;
+}
 
 // Variante 0..6 (siehe zeichneKachel-Positions-Hash) auf die gebackenen Sorten
 // verteilen. Idempotent: läuft pro Sitzung nur einmal wirklich durch.

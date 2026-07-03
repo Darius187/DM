@@ -9,6 +9,7 @@ import { rnd, ri, pick, type Rng } from '../logic/rng';
 import { TUNING } from '../logic/tuning';
 import type { InnenraumDef, InnenMoebel } from '../data/innenraeume';
 import { sdWasser, type WasserGeometrie } from './wasserFeld';
+import { dichteNoise, felsNoise, biomAt } from './biome';
 
 export interface Pos { x: number; y: number }
 // Abbaubarer Brocken (Fels/Erzader) mit Zerfalls-Zustand (R80, 7DtD-Abbau).
@@ -1721,11 +1722,12 @@ export function buildStart(rng: Rng): AreaData {
   // Spawn im Westen AUF der Salzstraße (führt den Spieler die Straße entlang).
   const spawnTx = 10;
   a.spawn = { x: spawnTx * TILE + 16, y: Math.round(strasseV((spawnTx + 0.5) / w) * h - 0.5) * TILE + 16 };
-  // BÄUME (ez-tree-Bitmaps in dorfSim-Größe): Waldrand-Dichte (am Kartenrand
-  // dicht, zur Mitte licht) mit den dorfSim-Mindestabständen:
-  //  - >= 120px zum Weg, auch für die nach Norden ragende KRONE (dorfSim Z.1039)
-  //  - >= 80px Baum zu Baum (dorfSim Z.1040)
-  //  - Puffer zum Wasser (Bäume stehen NIEMALS im Wasser, Dauerregel)
+  // BÄUME (ez-tree-Bitmaps in dorfSim-Größe), Verteilung wie die ANFANGSKARTE
+  // (R81, Autor "dort waren die Bäume besser verteilt"): die Chance kommt aus
+  // dem dorfSim-Biom-Rauschen (Wald dicht, Wiese licht, Moor spärlich, Fels
+  // fast leer) statt nur vom Kartenrand; der Rand bleibt als Waldwand dicht.
+  // Mindestabstände: >= 150px zum Weg (Fuß UND Krone), >= 100px Baum zu Baum,
+  // Puffer zum Wasser (Bäume stehen NIEMALS im Wasser, Dauerregel).
   const W = w * TILE, H = h * TILE;
   const randTiefe = 16;
   const gesetzt: Array<[number, number]> = [];
@@ -1737,9 +1739,12 @@ export function buildStart(rng: Rng): AreaData {
       if (sdWasser(u, v, geo, 0.02) < 0.03) continue;
       const x = tx * TILE + 16, y = ty * TILE + 16;
       if (wegDist(x, y) < 150 || wegDist(x, y - 150) < 150) continue;   // Fuß UND Krone frei vom Weg (R79: mehr Luft)
+      const d = dichteNoise(x, y), biom = biomAt(x, y);
+      const biomChance = biom === 'wald' ? d : biom === 'wiese' ? 0.16 : biom === 'moor' ? 0.18 : 0.05;
       const randAbstand = Math.min(tx, w - 1 - tx, ty, h - 1 - ty);
-      const dichte = Math.max(0, 1 - randAbstand / randTiefe);
-      if (rng.random() >= dichte * dichte * 0.45) continue;
+      const randDichte = Math.max(0, 1 - randAbstand / randTiefe);
+      const chance = Math.max(biomChance * 0.35, randDichte * randDichte * 0.45);
+      if (rng.random() >= chance) continue;
       let frei = true;
       for (const [gx, gy] of gesetzt) { if ((gx - x) * (gx - x) + (gy - y) * (gy - y) < 100 * 100) { frei = false; break; } }
       if (!frei) continue;
@@ -1770,6 +1775,27 @@ export function buildStart(rng: Rng): AreaData {
     { x: 2950, y: 2350, g: 1 }, { x: 1200, y: 380, g: 0 },
   ];
   a.ores = [ { x: 3550, y: 520 }, { x: 3820, y: 760 }, { x: 480, y: 1900 } ];
+  // FELS-CLUSTER im Fels-Biom (R81, dorfSim Z.1057ff): Haufen aus 2-4 Brocken
+  // verschiedener Größe, abseits von Weg und Wasser - dazu ~30% Erz-Knoten.
+  for (let c = 0; c < 14; c++) {
+    let fx = 0, fy = 0, ok = false;
+    for (let t = 0; t < 24 && !ok; t++) {
+      fx = 160 + rng.random() * (W - 320); fy = 160 + rng.random() * (H - 320);
+      ok = felsNoise(fx, fy) > 0.6 && wegDist(fx, fy) > 120
+        && sdWasser(fx / W, fy / H, geo, 0.02) > 0.03;
+    }
+    if (!ok) continue;
+    for (let k = 0, n = 2 + Math.floor(rng.random() * 3); k < n; k++) {
+      const x = fx + (rng.random() - 0.5) * 90, y = fy + (rng.random() - 0.5) * 60;
+      const ptx = Math.floor(x / TILE), pty = Math.floor(y / TILE);
+      if (map[pty]?.[ptx] !== T.GRASS) continue;
+      if (a.rocks.some((r2) => Math.hypot(r2.x - x, r2.y - y) < 48) || a.ores.some((o) => Math.hypot(o.x - x, o.y - y) < 48)) continue;
+      const g = Math.floor(rng.random() * 3);
+      const px = ptx * TILE + 16, py = pty * TILE + 16;
+      if (rng.random() < 0.3) a.ores.push({ x: px, y: py });
+      else a.rocks.push({ x: px, y: py, g });
+    }
+  }
   // Bäume um die POIs freiräumen (Meiler-Lichtung etwas größer)
   for (const p of [...a.pois, ...a.rocks.map((r2) => ({ art: 'fels', x: r2.x, y: r2.y })), ...a.ores.map((o) => ({ art: 'erz', x: o.x, y: o.y }))]) {
     const ptx = Math.floor(p.x / TILE), pty = Math.floor(p.y / TILE);

@@ -7,7 +7,7 @@
 import Phaser from 'phaser';
 import { PORTRAITS, ITEM_IMAGES, SOUNDS, SPRITE_NAMES, TILE_NAMES, TILE_VARIANTS_MAX, TITLE_IMAGE, assetStatus, logAssetStatus } from '../gfx/assetManifest';
 import { queuePackSheets, composePackTextures } from '../gfx/PackLoader';
-import { registriereBaumBitmaps } from '../gfx/baumBitmaps';
+import { registriereBaumBitmaps, registriereBuschBitmaps } from '../gfx/baumBitmaps';
 import gfxConfig from '../data/gfx.json';
 
 interface Candidate { key: string; url: string; art: 'image' | 'audio' | 'atlas'; atlasJson?: string; optional?: boolean }
@@ -133,6 +133,7 @@ export class BootScene extends Phaser.Scene {
     // Schlägt das Backen fehl, geht es ohne (prozedurale Bäume) weiter.
     void this.wendeEigeneTilesAn()
       .then(() => registriereBaumBitmaps(this.textures).catch(() => {}))
+      .then(() => registriereBuschBitmaps(this.textures).catch(() => {}))   // ez-tree-Büsche (R81)
       .then(() => this.scene.start(ziel));
   }
 

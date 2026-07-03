@@ -641,6 +641,18 @@ export async function baueBaumBitmaps(): Promise<HTMLCanvasElement[]> {
   }
   return out;
 }
+// STANDALONE-EXPORT (R81): die ez-tree-BÜSCHE (Bush 1-3) als beschnittene
+// Bitmaps für den Engine-Pfad - dieselben Büsche wie in der Anfangskarte.
+export async function baueBuschBitmaps(): Promise<HTMLCanvasElement[]> {
+  const ofen = macheBackofen(512, false);
+  const out: HTMLCanvasElement[] = [];
+  for (const [preset, seed] of [['Bush 1', 4], ['Bush 2', 11], ['Bush 3', 27]] as Array<[string, number]>) {
+    const tb = baueBaum(preset, seed, WALD, 1);
+    for (let i = 0; i < 160 && !texturenBereit(tb as unknown as THREE.Object3D); i++) await schlaf(40);
+    out.push(beschneideCanvas(backe(ofen, tb, WALD)));
+  }
+  return out;
+}
 // Fall-Physik (eigene Impuls-Physik wie der Spiel-Rückstoß, kein matter.js):
 // Schwerkraft-Drehmoment um den Stammfuß, beschleunigt mit der Neigung, federt am Boden nach.
 // Fäll-/Hack-Balancing (gut justierbar): Schläge bis Fall / bis Stamm zerlegt, Holz je Größe

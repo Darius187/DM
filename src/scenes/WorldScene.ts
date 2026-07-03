@@ -14,6 +14,7 @@ import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
 import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheBrueckenBild, macheGeroellBild, macheFelsRisseBild } from '../world/bodenMaler';
+import { dichteNoise, moorNoise, biomAt } from '../world/biome';
 import { POI_BILDER } from '../world/poiBilder';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
 import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale, berechneTagLicht } from '../demo3d/dorfSim';
@@ -1929,6 +1930,7 @@ export class WorldScene extends CombatScene {
     }
     // Feines Gras (Striche, jede Sekunde neu geneigt) - siehe zeichneFeinGras.
     this.zeichneFeinGras(time, wd);
+    this.updateMoorNebel(time);
   }
 
   // dorfSim wind() 1:1 (R80): sanftes Hin und Her + einzelne Böen; im Sturm ein
@@ -2098,57 +2100,143 @@ export class WorldScene extends CombatScene {
   // Kräuter bleiben Bitmap-Sprites (wie in dorfSim selbst).
   private grasKurzListe: Array<{ x: number; y: number; ph: number; kurz: boolean; r: number }> = [];
   private grasHochListe: Array<{ x: number; y: number; ph: number; h: number; r: number }> = [];
+  private moorSchilfListe: Array<{ x: number; y: number; ph: number; h: number; tot: boolean }> = [];
+  private moorNebelListe: Array<{ img: Phaser.GameObjects.Image; x0: number; ph: number }> = [];
   private grasGfx: Phaser.GameObjects.Graphics | null = null;
 
+  // R81 (Anfangskarte-Parität): der Bewuchs wird wie in dorfSim ZUFÄLLIG über
+  // die Welt gestreut (seeded) statt über das Kachelraster - dadurch wirkt der
+  // Rasen natürlich ("nicht überall gleich"). Dazu: Blüten-CLUSTER in Farb-
+  // gruppen, Kräuter/Klee, ez-tree-BÜSCHE, Moor-Schilf und Moornebel je Biom.
   private spawneWiesenBewuchs(a: AreaData): void {
     this.grasKurzListe = [];
     this.grasHochListe = [];
+    this.moorSchilfListe = [];
+    this.moorNebelListe = [];
     if (!a.gebackenerBoden || a.dark || a.innen) return;
-    // Bitmaps lazy registrieren (dorfSim-Port aus bodenMaler)
     if (!this.textures.exists('dorfbewuchs_0')) {
       macheBewuchsBilder().forEach((cv, i) => this.textures.addCanvas(`dorfbewuchs_${i}`, cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR));
     }
+    const W = a.w * TILE, H = a.h * TILE;
     const dichte = baumDichteFn(a, TILE);
     const geo = a.wasserLauf?.geo, smink = a.wasserLauf?.smink ?? WASSER2_CFG.smink;
-    const setze = (key: string, x: number, y: number, skala: number, phase: number): void => {
+    // Seed-Zufall je Karte (deterministisch, unabhängig vom Spiel-Rng)
+    let seed = 7;
+    for (const ch of a.id) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    const rnd = (): number => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    const frei = (x: number, y: number): boolean => {
+      if (x < TILE || y < TILE || x > W - TILE || y > H - TILE) return false;
+      if (a.map[Math.floor(y / TILE)]?.[Math.floor(x / TILE)] !== T.GRASS) return false;
+      if (geo && sdWasser(x / W, y / H, geo, smink) < 0.012) return false;
+      return true;
+    };
+    const setze = (key: string, x: number, y: number, skala: number, phase: number): Phaser.GameObjects.Image => {
       const img = this.add.image(x, y, key).setDepth(y);
       img.setOrigin(0.5, 0.96);   // Fuß-Anker: die Halme biegen um den Boden
       img.setScale(skala);
       this.tileImages.push(img);
       this.windGras.push({ img, phase });
+      return img;
     };
-    for (let ty = 1; ty < a.h - 1; ty++) {
-      for (let tx = 1; tx < a.w - 1; tx++) {
-        if (a.map[ty][tx] !== T.GRASS) continue;
-        const x = tx * TILE + 16, y = ty * TILE + 16;
-        const d = dichte(x, y);
-        if (geo && sdWasser((tx + 0.5) / a.w, (ty + 0.5) / a.h, geo, smink) < 0.012) continue;
-        const hash = ((((tx * 48271) ^ (ty * 65521)) >>> 3) % 1000) / 1000;
-        const jx = ((((tx * 40503) ^ (ty * 9277)) >>> 2) % 25) - 12, jy = ((((ty * 25931) ^ (tx * 6151)) >>> 2) % 25) - 12;
-        const jx2 = ((((tx * 15731) ^ (ty * 789221)) >>> 2) % 25) - 12, jy2 = ((((ty * 22483) ^ (tx * 337)) >>> 2) % 25) - 12;
-        const phase = tx * 0.27 + ty * 0.13;
-        // Blumen-Inseln in FARBGRUPPEN nur auf offener Wiese (wie dorfSim)
-        const blumenFeld = Math.sin(tx * 0.06 + ty * 0.045) + Math.sin(tx * 0.031 - ty * 0.07);
-        if (d < 0.2 && blumenFeld > 1.2 && hash < 0.3) {
-          setze(`dorfbewuchs_${Math.abs(Math.round(blumenFeld * 5)) % 4}`, x + jx, y + jy, 1, phase);
-          continue;
-        }
-        // verstreute Kräuter/Klee (selten, überall auf der Wiese)
-        if (d < 0.2 && hash > 0.972) { setze(`dorfbewuchs_${hash > 0.986 ? 4 : 5}`, x + jx, y + jy, 1, phase); continue; }
-        // Feines Gras (dorfSim EBENE 1): dicht ÜBERALL auf der Wiese (Autor R80:
-        // "richtiges feines Gras überall"), im dichten Wald spärlicher/kürzer.
-        if (hash < 0.85 * (1 - d * 0.72)) {
-          this.grasKurzListe.push({ x: x + jx, y: y + jy, ph: phase, kurz: d > 0.5, r: hash / 0.85 });
-          // zweiter Büschel je Kachel versetzt - der Rasen wird ein Teppich
-          if (hash < 0.5) this.grasKurzListe.push({ x: x + jx2, y: y + jy2, ph: phase + 2.3, kurz: d > 0.5, r: hash / 0.5 });
-        }
-        // Hohes Gras (dorfSim EBENE 2): sparsame, LUFTIGE Büschel - eng
-        // gebackene Halme lasen sich als "Grabsteine" (Autor R80).
-        const hash2 = ((((tx * 60493) ^ (ty * 19087)) >>> 3) % 1000) / 1000;
-        if (hash2 < (d > 0.5 ? 0.03 : 0.09)) {
-          this.grasHochListe.push({ x: x + jx2, y: y + jy2, ph: phase * 1.7, h: 12 + (hash2 * 900) % 9, r: hash2 / 0.09 });
-        }
+    // EBENE 1: kurzes Bodengras - dicht, im dichten Wald spärlicher (dorfSim)
+    for (let i = 0, n = Math.round(W * H / 2400); i < n; i++) {
+      const x = rnd() * W, y = rnd() * H;
+      if (!frei(x, y)) continue;
+      const d = dichte(x, y);
+      if (rnd() < d * 0.72) continue;
+      this.grasKurzListe.push({ x, y, ph: rnd() * 7, kurz: d > 0.5, r: rnd() });
+    }
+    // EBENE 2: hohes Gras - lockere, luftige Büschel (im Wald seltener)
+    for (let i = 0, n = Math.round(W * H / 11000); i < n; i++) {
+      const x = rnd() * W, y = rnd() * H;
+      if (!frei(x, y)) continue;
+      const d = dichte(x, y), biom = biomAt(x, y);
+      if (biom === 'fels') continue;
+      if (d > 0.6 && rnd() < 0.6) continue;
+      this.grasHochListe.push({ x, y, ph: rnd() * 7, h: 12 + rnd() * 9, r: rnd() });
+    }
+    // EBENE 3: Blüten in FARB-CLUSTERN (dorfSim: eine Sorte je Gruppe) - viele!
+    for (let c = 0, n = Math.round(W * H / 130000); c < n; c++) {
+      const cx = rnd() * W, cy = rnd() * H;
+      const typ = Math.floor(rnd() * 4);
+      for (let k = 0, m = 3 + Math.floor(rnd() * 6); k < m; k++) {
+        const x = cx + (rnd() - 0.5) * 120, y = cy + (rnd() - 0.5) * 80;
+        if (!frei(x, y)) continue;
+        const biom = biomAt(x, y);
+        if (biom === 'moor' || biom === 'fels') continue;
+        if (biom === 'wald' && dichte(x, y) > 0.62 && rnd() < 0.7) continue;
+        setze(`dorfbewuchs_${typ}`, x, y, 1, rnd() * 7);
       }
+    }
+    // Kräuter/Klee verstreut (dorfSim Z.1116)
+    for (let i = 0, n = Math.round(W * H / 52000); i < n; i++) {
+      const x = rnd() * W, y = rnd() * H;
+      if (!frei(x, y)) continue;
+      const biom = biomAt(x, y);
+      if (biom === 'moor' || biom === 'fels') continue;
+      setze(`dorfbewuchs_${4 + Math.floor(rnd() * 2)}`, x, y, 1, rnd() * 7);
+    }
+    // BÜSCHE (ez-tree Bush 1-3, wie die Anfangskarte): v.a. im Wald, vereinzelt
+    // auf der Wiese; schwanken wie die Bäume im Wind (windBaeume).
+    if (this.textures.exists('obj_busch_0')) {
+      for (let i = 0, n = Math.round(W * H / 75000); i < n; i++) {
+        const x = rnd() * W, y = rnd() * H;
+        if (!frei(x, y)) continue;
+        if (rnd() > dichteNoise(x, y) * 0.8 + 0.08) continue;
+        const key = `obj_busch_${Math.floor(rnd() * 3)}`;
+        const quelle = this.textures.get(key).getSourceImage();
+        const hoehe = 42 + rnd() * 42;
+        const img = this.add.image(x, y, key).setDepth(y).setOrigin(0.5, 0.94);
+        img.setDisplaySize(hoehe * (quelle.width / Math.max(1, quelle.height)), hoehe);
+        if (rnd() > 0.5) img.setFlipX(true);
+        this.tileImages.push(img);
+        this.windBaeume.push({ img, phase: x * 0.013 + y * 0.007 });
+      }
+    }
+    // MOOR: Schilf-/Rohrkolben-CLUSTER (tlw. tot/braun) + bodennaher NEBEL.
+    // Der Nebel ist bewusst WEICHER als in der Anfangskarte (Autor: "sah dort
+    // aus wie Schnee"): große, blaugraue Schwaden, die träge driften.
+    for (let i = 0, n = Math.round(W * H / 10000); i < n; i++) {
+      const x = rnd() * W, y = rnd() * H;
+      if (!frei(x, y) || biomAt(x, y) !== 'moor') continue;
+      for (let k = 0, m = 2 + Math.floor(rnd() * 4); k < m; k++) {
+        this.moorSchilfListe.push({ x: x + (rnd() - 0.5) * 34, y: y + (rnd() - 0.5) * 22, ph: rnd() * 7, h: 18 + rnd() * 20, tot: rnd() < 0.4 });
+      }
+    }
+    if (!this.textures.exists('moornebel_tex')) {
+      // WEICHE Wolke statt flacher Scheibe (Autorbug Anfangskarte "sah aus wie
+      // Schnee" + R81-Streifen): mehrere versetzte, große Radial-Blobs mit sehr
+      // niedriger Dichte - blaugrau, ausgefranster Rand, nirgends eine Kante.
+      const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+      const g = c.getContext('2d')!;
+      let s2 = 99;
+      const r2 = (): number => { s2 = (s2 * 1664525 + 1013904223) >>> 0; return s2 / 4294967296; };
+      for (let i = 0; i < 9; i++) {
+        const bx = 100 + r2() * 312, by = 90 + r2() * 76, br = 60 + r2() * 90;
+        const gr = g.createRadialGradient(bx, by, 4, bx, by, br);
+        gr.addColorStop(0, 'rgba(146,160,176,0.22)'); gr.addColorStop(1, 'rgba(146,160,176,0)');
+        g.fillStyle = gr; g.fillRect(bx - br, by - br, br * 2, br * 2);
+      }
+      this.textures.addCanvas('moornebel_tex', c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+    for (let gy = 140; gy < H - 140; gy += 210) {
+      for (let gx = 140; gx < W - 140; gx += 210) {
+        if (biomAt(gx, gy) !== 'moor' || moorNoise(gx, gy) < 0.7 || rnd() > 0.6) continue;
+        const x = gx + (rnd() - 0.5) * 130, y = gy + (rnd() - 0.5) * 130;
+        const img = this.add.image(x, y, 'moornebel_tex').setDepth(y + 60).setAlpha(0);
+        img.setDisplaySize(420 + rnd() * 260, 150 + rnd() * 80);
+        this.tileImages.push(img);
+        this.moorNebelListe.push({ img, x0: x, ph: rnd() * 7 });
+      }
+    }
+  }
+
+  // Moornebel-Drift (R81): Schwaden wabern träge seitwärts, Alpha atmet leicht.
+  private updateMoorNebel(time: number): void {
+    for (const n of this.moorNebelListe) {
+      if (!n.img.active) continue;
+      n.img.x = n.x0 + Math.sin(time * 0.00006 + n.ph) * 46;
+      n.img.setAlpha(0.42 + 0.16 * Math.sin(time * 0.00023 + n.ph * 2));
     }
   }
 
@@ -2156,7 +2244,7 @@ export class WorldScene extends CombatScene {
   // Striche je Büschel bzw. 7 gebogene Halme, Neigung = Wind * Böen-Welle +
   // Eigen-Atem + Wegbiegen vor dem Helden. Nur der Kamera-Ausschnitt.
   private zeichneFeinGras(time: number, wd: number): void {
-    if (!this.grasKurzListe.length && !this.grasHochListe.length) { this.grasGfx?.clear(); return; }
+    if (!this.grasKurzListe.length && !this.grasHochListe.length && !this.moorSchilfListe.length) { this.grasGfx?.clear(); return; }
     if (!this.grasGfx) {
       this.grasGfx = this.add.graphics().setDepth(-7.5);
       this.uiCam?.ignore(this.grasGfx);
@@ -2202,6 +2290,30 @@ export class WorldScene extends CombatScene {
         }
       }
       g.strokePath();
+    }
+    // EBENE 2b: MOOR-SCHILF/Rohrkolben (dorfSim 1:1): 3 gebogene Halme je
+    // Büschel, tlw. totes braunes Schilf, brauner Kolben an der Spitze.
+    if (this.moorSchilfListe.length) {
+      for (const tot of [false, true]) {
+        g.lineStyle(1.4, tot ? 0x6a5a32 : 0x3f5226, 1);
+        g.beginPath();
+        for (const s of this.moorSchilfListe) {
+          if (s.tot !== tot || s.x < x0 || s.x > x1 || s.y < y0 || s.y > y1) continue;
+          const bend = wd * 5 * this.boeWelle(s.x, s.y, time) + Math.sin(time / 230 + s.ph) * 1.5;
+          for (let k = -1; k <= 1; k++) {
+            g.moveTo(s.x + k * 2.4, s.y);
+            g.lineTo(s.x + k * 2.4 + bend * 0.6, s.y - s.h * 0.62);
+            g.lineTo(s.x + k * 2.4 + bend, s.y - s.h);
+          }
+        }
+        g.strokePath();
+      }
+      for (const s of this.moorSchilfListe) {   // Rohrkolben-Kolben
+        if (s.x < x0 || s.x > x1 || s.y < y0 || s.y > y1) continue;
+        const bend = wd * 5 * this.boeWelle(s.x, s.y, time) + Math.sin(time / 230 + s.ph) * 1.5;
+        g.fillStyle(s.tot ? 0x7a5a30 : 0x5a3c22, 1);
+        g.fillRect(s.x + bend - 1.3, s.y - s.h, 2.6, 8);
+      }
     }
   }
 
@@ -2940,7 +3052,9 @@ export class WorldScene extends CombatScene {
         // zugeschnitten -> Höhe = TILE*skala, Breite nach ECHTEM Seiten-
         // verhältnis (kein Stauchen ins Quadrat), Fuß-Anker am Bildende.
         const hash01 = (((((tx * 73856093) ^ (ty * 19349663)) % 997) + 997) % 997) / 997;
-        skala = (this.devBaumSkala ?? a.baumSkala) * (0.65 + hash01 * 0.9);
+        // R81 (Autor "die Größe der Bäume war dort einheitlicher"): engere
+        // Streuung 0.8..1.25 statt 0.65..1.55 - Varianz ja, Riesen/Zwerge nein.
+        skala = (this.devBaumSkala ?? a.baumSkala) * (0.8 + hash01 * 0.45);
         const quelle = this.textures.get(obj).getSourceImage();
         const aspekt = quelle.width / Math.max(1, quelle.height);
         const hoehe = TILE * skala;
