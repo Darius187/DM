@@ -1729,12 +1729,12 @@ export function buildStart(rng: Rng): AreaData {
       const u = (tx + 0.5) / w, v = (ty + 0.5) / h;
       if (sdWasser(u, v, geo, 0.02) < 0.03) continue;
       const x = tx * TILE + 16, y = ty * TILE + 16;
-      if (wegDist(x, y) < 120 || wegDist(x, y - 150) < 120) continue;   // Fuß UND Krone frei vom Weg
+      if (wegDist(x, y) < 150 || wegDist(x, y - 150) < 150) continue;   // Fuß UND Krone frei vom Weg (R79: mehr Luft)
       const randAbstand = Math.min(tx, w - 1 - tx, ty, h - 1 - ty);
       const dichte = Math.max(0, 1 - randAbstand / randTiefe);
       if (rng.random() >= dichte * dichte * 0.45) continue;
       let frei = true;
-      for (const [gx, gy] of gesetzt) { if ((gx - x) * (gx - x) + (gy - y) * (gy - y) < 80 * 80) { frei = false; break; } }
+      for (const [gx, gy] of gesetzt) { if ((gx - x) * (gx - x) + (gy - y) * (gy - y) < 100 * 100) { frei = false; break; } }
       if (!frei) continue;
       map[ty][tx] = T.TREE;
       gesetzt.push([x, y]);

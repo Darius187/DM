@@ -140,9 +140,18 @@ export function maleBoden(ctx: CanvasRenderingContext2D, karte: BodenKarte, TILE
     for (let x = 0; x < W; x += Z) {
       const d = dichte(x + Z / 2, y + Z / 2);
       if (d < 0.12) continue;
+      // WEICHER Übergang (Autorbug R79 "nicht flüssig"): statt harter Zellen
+      // ein überlappender runder Radial-Verlauf je Zelle.
+      ctx.save();
+      const gr = ctx.createRadialGradient(x + Z / 2, y + Z / 2, Z * 0.15, x + Z / 2, y + Z / 2, Z * 1.05);
+      gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.globalAlpha = Math.min(0.9, d * (0.75 + rnd() * 0.35));
+      ctx.beginPath(); ctx.arc(x + Z / 2, y + Z / 2, Z * 1.05, 0, Math.PI * 2); ctx.clip();
       ctx.fillStyle = moosPat;
-      ctx.fillRect(x, y, Z, Z);
+      ctx.globalCompositeOperation = 'source-over';
+      // Verlauf als Maske: Pattern in einen weichen Kreis malen
+      ctx.fillRect(x - Z * 0.55, y - Z * 0.55, Z * 2.1, Z * 2.1);
+      ctx.restore();
     }
   }
   ctx.globalAlpha = 1;

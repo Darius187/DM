@@ -168,6 +168,7 @@ export class WorldScene extends CombatScene {
   private baumSchatten: Array<{ img: Phaser.GameObjects.Image; x0: number; breite: number }> = [];
   private devBaumSkala?: number;   // F10-Override der Baum-Grundgröße (Dev)
   private devBewuchs = 1;          // F10-Bewuchs-Dichtefaktor (wirkt beim Kartenwechsel)
+  private heldNass = 0;            // 0..1: wie tief der Held im Wasser steht (Versink-Optik)
   // Pfützen am Weg (Runde 75): wachsen/schwinden mit der Boden-Nässe.
   private pfuetzen: Array<{ img: Phaser.GameObjects.Image; schwelle: number; cur: number; bw: number; bh: number }> = [];
   private pfuetzenTexKeys: string[] = [];
@@ -1375,7 +1376,7 @@ export class WorldScene extends CombatScene {
   // tagNacht=false -> Tag/Nacht-Beleuchtung + Schatten der WorldScene bleiben UNVERÄNDERT.
   private renderRegen(dt: number): void {
     const draussen = !this.area.dark && !this.area.innen;
-    let staerke = draussen ? this.wetterWert * (this.regnet ? 1 : 0) : 0.0;   // Stärke aus der Wetter-Achse
+    let staerke = draussen ? Math.min(1.2, this.wetterWert * 1.3) * (this.regnet ? 1 : 0) : 0.0;   // Sturm = dichter, schneller Regen
     // Auf der dorfSim-Karte ist dorfSim die EINZIGE Wetter-Wahrheit (über den
     // Sturm-Regler): kein zweites Eigen-Wetter mehr. Sturm 0 -> kein Regen.
     if (this.area?.dorfSimBoden) {
@@ -1867,7 +1868,7 @@ export class WorldScene extends CombatScene {
   private updateBaumWind(time: number): void {
     if (!this.windBaeume.length && !this.windSchilf.length) return;
     const draussen = !this.area.innen && !this.area.dark;
-    const amp = 0.009 + (draussen ? this.wetterWert : 0) * 0.022;   // Wind wächst mit dem Wetter
+    const amp = 0.010 + (draussen ? this.wetterWert : 0) * 0.055;   // Sturm biegt die Bäume DEUTLICH (Autor R79)
     // SONNEN-SCHATTEN (dorfSim schDX/schLang 1:1): tief stehende Sonne -> langer,
     // seitlicher Schatten; Wolken unterdrücken die Richtung; nachts nur der
     // erdende Grundschatten (tagAuf blendet um Auf-/Untergang weich).
@@ -1922,7 +1923,7 @@ export class WorldScene extends CombatScene {
     schatten?.destroy();
     const richtung = Math.sign(b.x - this.px) || 1;    // fällt vom Helden WEG
     this.tweens.add({
-      targets: baum, rotation: richtung * 1.46, duration: 850, ease: 'Quad.easeIn',   // FALL_ZIEL wie dorfSim
+      targets: baum, rotation: richtung * 1.46, duration: 850 / Math.max(0.12, this.devAnfang.falltempo || 1), ease: 'Quad.easeIn',   // Fall-Tempo-Regler (R79)
       onComplete: () => {
         this.sfx.play('holz_hacken');
         this.fx.burst(b.x + richtung * baum.displayHeight * 0.4, b.y, 0x4a5a30, 14, 150);
@@ -1986,7 +1987,7 @@ export class WorldScene extends CombatScene {
       p.img.setDisplaySize(p.bw * (0.7 + 0.3 * p.cur), p.bh * (0.7 + 0.3 * p.cur));
       // DEZENTE Tropfen-Ringe auf gefüllten Pfützen bei Regen (dorfSim-Art,
       // Autorwunsch R77): feine Lichtkante, die kurz aufläuft und vergeht.
-      if (this.regnet && p.cur > 0.5 && Math.random() < dt * (0.5 + this.wetterWert)) {
+      if (this.regnet && p.cur > 0.5 && Math.random() < dt * (2.2 + 4 * this.wetterWert)) {
         const key = 'regenring';
         if (!this.textures.exists(key)) {
           const c = document.createElement('canvas'); c.width = c.height = 32;
@@ -1997,8 +1998,8 @@ export class WorldScene extends CombatScene {
         }
         const rx = p.img.x + (Math.random() - 0.5) * p.bw * 0.5;
         const ry = p.img.y + (Math.random() - 0.5) * p.bh * 0.5;
-        const ring = this.add.image(rx, ry, key).setDepth(-8.4).setAlpha(0.3).setScale(0.15);
-        this.tweens.add({ targets: ring, scale: 0.55, alpha: 0, duration: 620, ease: 'Quad.easeOut', onComplete: () => ring.destroy() });
+        const ring = this.add.image(rx, ry, key).setDepth(-8.4).setAlpha(0.38).setScale(0.12 + Math.random() * 0.1);
+        this.tweens.add({ targets: ring, scale: 0.5 + Math.random() * 0.5, alpha: 0, duration: 700, ease: 'Quad.easeOut', onComplete: () => ring.destroy() });
       }
     }
   }
@@ -2085,9 +2086,9 @@ export class WorldScene extends CombatScene {
         if (hash > 0.972) { setze(`dorfbewuchs_${hash > 0.986 ? 4 : 5}`, x + jx, y + jy, 1, phase); continue; }
         // Gras-Flecken: kurzes Bodengras häufig, hohes Gras als Büschel darin
         const fleck = Math.sin(tx * 0.23 + ty * 0.41) + Math.sin(tx * 0.11 - ty * 0.17);
-        if (fleck < 0.1) continue;
-        if (hash < 0.4 * this.devBewuchs) setze(`dorfgras_kurz_${(tx + ty) % 3}`, x + jx, y + jy, 1, phase);
-        else if (hash < 0.4 * this.devBewuchs + 0.13 * this.devBewuchs) setze(`dorfgras_hoch_${(tx + ty) % 3}`, x + jx, y + jy, 1, phase);
+        if (fleck < -0.25) continue;   // dichter Rasen (Autor R79)
+        if (hash < 0.55 * this.devBewuchs) setze(`dorfgras_kurz_${(tx + ty) % 3}`, x + jx, y + jy, 1, phase);
+        else if (hash < 0.75 * this.devBewuchs) setze(`dorfgras_hoch_${(tx + ty) % 3}`, x + jx, y + jy, 1, phase);
       }
     }
   }
@@ -2108,11 +2109,13 @@ export class WorldScene extends CombatScene {
       if (p.cur < 0.5 || !p.img.active) continue;
       const dx = (this.px - p.img.x) / (p.img.displayWidth * 0.5), dy = (this.py - p.img.y) / (p.img.displayHeight * 0.5);
       if (dx * dx + dy * dy < 1) {
-        this.spritzerT = 0.14;
-        this.fx.burst(this.px, this.py + 8, 0x9ab8cc, 5, 70);
+        this.spritzerT = 0.1;
+        this.fx.burst(this.px, this.py + 8, 0x9ab8cc, 6, 80);
         if (this.textures.exists('regenring')) {
-          const ring = this.add.image(this.px, this.py + 8, 'regenring').setDepth(-8.3).setAlpha(0.4).setScale(0.2);
-          this.tweens.add({ targets: ring, scale: 0.7, alpha: 0, duration: 420, onComplete: () => ring.destroy() });
+          for (const [sc, dauer] of [[0.9, 520], [0.55, 380]] as const) {
+            const ring = this.add.image(this.px, this.py + 8, 'regenring').setDepth(-8.3).setAlpha(0.45).setScale(0.18);
+            this.tweens.add({ targets: ring, scale: sc, alpha: 0, duration: dauer, onComplete: () => ring.destroy() });
+          }
         }
         return;
       }
@@ -2123,6 +2126,20 @@ export class WorldScene extends CombatScene {
       this.spritzerT = 0.22;
       this.fx.burst(this.px, this.py + 8, 0x7a94a8, 2, 40);
     }
+  }
+
+  // Regen-EINSCHLÄGE im Gras (dorfSim-Stimmung, R79): winzige Spritzer im
+  // Sichtfenster, Dichte wächst mit dem Wetter.
+  private regenPlatschT = 0;
+  private updateRegenPlatschen(dt: number): void {
+    if (!this.regnet || this.area?.innen || this.area?.dark) return;
+    this.regenPlatschT -= dt;
+    if (this.regenPlatschT > 0) return;
+    this.regenPlatschT = 0.1 / (0.4 + this.wetterWert * 1.6);
+    const cam = this.cameras.main;
+    const rx = cam.scrollX + Math.random() * cam.width / cam.zoom;
+    const ry = cam.scrollY + Math.random() * cam.height / cam.zoom;
+    this.fx.burst(rx, ry, 0x8fa8bd, 2, 26);
   }
 
   // BRÜCKEN im dorfSim-Look (Runde 78, Autorbug "sieht schlecht aus"): statt
@@ -2326,6 +2343,15 @@ export class WorldScene extends CombatScene {
     const rainAmt = draussen && this.area.dorfSimBoden ? dorfRegen() : (draussen && this.regnet ? this.wetterWert : 0);
     sh.setUniform('u_rain.value', rainAmt);
     sh.setUniform('u_turb.value', Math.min(1, this.aktWasserPreset().turb + WASSER2_CFG.turbAdd + rainAmt * 0.5));
+    // VERSINKEN (Autorwunsch R79): steht der Held im Wasser, wird er unten
+    // beschnitten - er steht sichtbar IM Fluss statt darauf.
+    const fr = this.playerSprite?.frame;
+    if (fr) {
+      if (this.heldNass > 0.05) {
+        const cut = Math.min(0.42, this.heldNass * 0.5);
+        this.playerSprite.setCrop(0, 0, fr.realWidth, fr.realHeight * (1 - cut));
+      } else if (this.playerSprite.isCropped) this.playerSprite.setCrop();
+    }
   }
 
   // F10 öffnet die neue Tab-Dev-Konsole (Autorwunsch Runde 72: ab jetzt alles
@@ -2787,9 +2813,9 @@ export class WorldScene extends CombatScene {
         const hoehe = TILE * skala;
         objImg.setOrigin(0.5, 0.96);
         objImg.setDisplaySize(hoehe * aspekt, hoehe);
-        const schatten = tag(this.add.image(tx * TILE + 16, ty * TILE + 18, this.kontaktSchattenKey()).setDepth(ty * TILE + 25));
-        schatten.setDisplaySize(hoehe * aspekt * 0.5, hoehe * 0.12);
-        schatten.setAlpha(0.8);
+        const schatten = tag(this.add.image(tx * TILE + 16, ty * TILE + 21, this.kontaktSchattenKey()).setDepth(ty * TILE + 25));
+        schatten.setDisplaySize(hoehe * aspekt * 0.58, hoehe * 0.15);
+        schatten.setAlpha(0.9);
         this.baumSchatten.push({ img: schatten, x0: tx * TILE + 16, breite: hoehe * aspekt * 0.5 });
         // Lebendig wie in dorfSim: der Baum schwankt im Wind (Böen-Phase aus
         // der Position, damit nicht alle synchron kippen).
@@ -3290,14 +3316,15 @@ export class WorldScene extends CombatScene {
       // die Brücke"): die Bremse ist SDF-basiert und wusste nichts von der
       // Kachel unter den Füßen - auf der Brücke stand der Held im "Wasser".
       const htx = Math.floor(this.px / TILE), hty = Math.floor(this.py / TILE);
-      const kachel = this.area.map[hty]?.[htx];
-      if (kachel !== T.BRIDGE && kachel !== T.PATH) {
+      const wegNah = [0, -1, 1].some((d) => { const k = this.area.map[hty + d]?.[htx]; return k === T.BRIDGE || k === T.PATH; });
+      if (!wegNah) {
         const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
         const sd = sdWasser(u, v, this.aktuelleWasserGeo() ?? lauf.geo, lauf.smink ?? WASSER2_CFG.smink, WASSER2_CFG.widthMul);
         const nass = Math.max(0, Math.min(1, (0.015 - sd) / 0.05));   // 0 am Ufer .. 1 tief
+        this.heldNass = nass;
         f *= 1 - nass * 0.93;                                         // tief -> ~7% Tempo (fast fest)
-      }
-    }
+      } else this.heldNass = 0;
+    } else this.heldNass = 0;
     return f;
   }
 
@@ -3691,6 +3718,7 @@ export class WorldScene extends CombatScene {
   // Hauch. Bildschirmfest, unter dem HUD.
   private stimmungRect: Phaser.GameObjects.Rectangle | null = null;
   private lichtWarmRect: Phaser.GameObjects.Rectangle | null = null;
+  private dunstRect: Phaser.GameObjects.Rectangle | null = null;
   private tagLichtFX: Phaser.FX.ColorMatrix | null = null;
 
   private renderStimmung(): void {
@@ -3699,11 +3727,13 @@ export class WorldScene extends CombatScene {
         .setOrigin(0).setScrollFactor(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(4005);
       this.lichtWarmRect = this.add.rectangle(0, 0, 10, 10, 0xffcf86, 0)
         .setOrigin(0).setScrollFactor(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(4004);
+      this.dunstRect = this.add.rectangle(0, 0, 10, 10, 0x96a6ba, 0)
+        .setOrigin(0).setScrollFactor(0).setDepth(4006);
       // Nur die Haupt-Kamera tönt die Welt - die UI-Kamera würde die Vollbild-
       // Ebenen sonst ein zweites Mal darüberlegen.
-      this.uiCam?.ignore([this.stimmungRect, this.lichtWarmRect]);
+      this.uiCam?.ignore([this.stimmungRect, this.lichtWarmRect, this.dunstRect]);
     }
-    for (const r of [this.stimmungRect, this.lichtWarmRect!]) r.setSize(this.scale.width, this.scale.height);
+    for (const r of [this.stimmungRect, this.lichtWarmRect!, this.dunstRect!]) r.setSize(this.scale.width, this.scale.height);
     const setzeMul = (r: number, g: number, b: number): void => {
       this.tagLichtFX?.set([r, 0, 0, 0, 0, 0, g, 0, 0, 0, 0, 0, b, 0, 0, 0, 0, 0, 1, 0]);
     };
@@ -3725,7 +3755,7 @@ export class WorldScene extends CombatScene {
     const bew = Math.max(0, Math.min(1, this.wetterWert));
     const dunkel = 1 - bew * 0.4;
     const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
-    const liftHell = 1 + Math.max(0, L.lift * (1 - bew * 0.55)) * 0.5;   // Lift in den Multiply gefaltet
+    const liftHell = 1 + Math.max(0, L.lift * (1 - bew * 0.55)) * 0.9;   // kräftige Tag-Farben (Autor R79)
     setzeMul(
       lerp(L.mul[0], 0.5, bew * 0.55) * dunkel * liftHell,
       lerp(L.mul[1], 0.52, bew * 0.55) * dunkel * liftHell,
@@ -3738,6 +3768,9 @@ export class WorldScene extends CombatScene {
     this.stimmungRect.setFillStyle(0xfff3da, Math.min(0.08, lift * 0.1));
     const warm = L.warm * (1 - bew);
     this.lichtWarmRect!.setFillStyle(0xffcf86, Math.min(0.12, warm * 0.16));
+    // Regen-DUNST (dorfSim Z.1645): bei Sturm wird die Sicht spürbar nebliger.
+    const fog = this.regnet ? Math.min(0.42, (this.wetterWert - 0.1) * 0.55) * 0.55 : 0;
+    this.dunstRect!.setFillStyle(0x96a6ba, Math.max(0, fog));
   }
 
   // Schritt-Klänge (Runde 31): spielen nur, wenn der Autor Dateien liefert
@@ -7681,6 +7714,7 @@ export class WorldScene extends CombatScene {
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
     this.updateWetter(dt);      // Wetter-Achse (Regen/Nässe, Stimmungsregen bis 1. Dungeon)
     this.updateNassSpritzer(dt);  // Spritzer in Pfützen + auf nassem Rasen (R78)
+    this.updateRegenPlatschen(dt); // Regen plätschert im Gras (R79)
     this.updateWasserWetter();  // Regen-Ringe/Wirbel auf dem neuen Wasser
     this.updateBaumWind(this.time.now);  // Bäume/Schilf schwanken im Wind
     this.updateFreiKamera(dt); // Dev-Frei-Kamera (entkoppelt vom Helden)
