@@ -8,7 +8,7 @@ import { wetter, wetterTick, nachtDunkel, setWetterStaerke, setTageszeit } from 
 // WICHTIG: Beleuchtung/Schatten/Kampf/Spieler bleiben Sache der Szene - dieses Overlay
 // macht NUR das Wetter. In Szenen mit eigenem Licht (WorldScene) tagNacht=false setzen.
 
-export interface WetterOpts { depth?: number; tagNacht?: boolean; tasten?: boolean; selbstTick?: boolean; }
+export interface WetterOpts { depth?: number; tagNacht?: boolean; tasten?: boolean; selbstTick?: boolean; onBlitz?: () => void; }
 interface Tropfen { x: number; y: number; len: number; vy: number; }
 
 export class WetterOverlay {
@@ -22,11 +22,14 @@ export class WetterOverlay {
   private blitzTimer = 8 + Math.random() * 16;
   private readonly tagNacht: boolean;
   private readonly selbstTick: boolean;
+  private readonly onBlitz?: () => void;
+  private blitz2T = 0;   // zweiter Puls des Doppel-Blitzes
 
   constructor(private scene: Phaser.Scene, opts: WetterOpts = {}) {
     const depth = opts.depth ?? 8000;
     this.tagNacht = opts.tagNacht ?? true;
     this.selbstTick = opts.selbstTick ?? false;
+    this.onBlitz = opts.onBlitz;
     this.w = scene.scale.width; this.h = scene.scale.height;
     this.tint = scene.add.rectangle(0, 0, this.w, this.h, 0x0a1024, 0).setOrigin(0, 0).setScrollFactor(0).setDepth(depth);
     this.regenGfx = scene.add.graphics().setScrollFactor(0).setDepth(depth + 1);
@@ -70,11 +73,22 @@ export class WetterOverlay {
         this.regenGfx.lineBetween(t.x, t.y, t.x - 4 - drift * 0.05, t.y - t.len * lenF);
       }
     }
-    // Blitz: interner Timer bei GEWITTER (entkoppelt von der Zustands-Logik) + abklingen.
-    // R80: Schwelle angehoben - die WorldScene speist staerke = wetterWert*1.3, also
-    // zündet der Blitz erst ab Wetter ~0.8 (Gewitter, dorfSim-Referenz), nicht schon im Regen.
-    if (regen > 1.05) { this.blitzTimer -= dt; if (this.blitzTimer <= 0) { this.blitz = 1; this.blitzTimer = 6 + Math.random() * 16; } }
-    if (this.blitz > 0) this.blitz = Math.max(0, this.blitz - dt * 3.5);
-    this.blitzRect.setAlpha(this.blitz * 0.55);
+    // Blitz: interner Timer NUR auf der HÖCHSTEN Stufe (R85, Autor: "das
+    // Gewitter soll erst auf der höchsten Stufe getriggert werden"). Die
+    // WorldScene speist staerke = wetterWert*1.3 -> Schwelle 1.15 = Wetter
+    // ~0.89 (Gewitter). Doppel-Blitz wie die Anfangskarte: harter erster
+    // Schlag, kurz darauf ein zweiter Puls; der Donner-Haken feuert dazu.
+    if (regen > 1.15) {
+      this.blitzTimer -= dt;
+      if (this.blitzTimer <= 0) {
+        this.blitz = 1;
+        this.blitz2T = 0.14 + Math.random() * 0.1;   // zweiter Puls folgt
+        this.blitzTimer = 5 + Math.random() * 12;
+        this.onBlitz?.();
+      }
+    }
+    if (this.blitz2T > 0) { this.blitz2T -= dt; if (this.blitz2T <= 0) this.blitz = 0.85; }
+    if (this.blitz > 0) this.blitz = Math.max(0, this.blitz - dt * 4.5);
+    this.blitzRect.setAlpha(this.blitz * 0.6);
   }
 }

@@ -943,3 +943,16 @@
   sind horizontal+vertikal+Ecken sichtbar eingefasst; Sued-Stirnwaende als
   DURCHGEHENDES Mauerwerk im Laeuferverband (gleiche Fugen-/Licht-Toene wie
   die alte 10px-Stirn). Farben ausschliesslich aus dem CryptTheme.
+- R85 Fasern: neue Bau-Ressource (MaterialId 'fasern') aus Schilf (1) und
+  Bueschen (1-2) - Autor-Idee "Ressource fuers spaetere Bauen" umgesetzt,
+  Verwendung (Seile/Bindungen) folgt mit dem Baumenue-Ausbau.
+- Schilf/Buesche zerlegbar ueber das Hittable-System der Krypta-Kruege;
+  Zerschnipsel-Animation: drei Quer-Schnipsel (setCrop) fliegen in Schlag-
+  richtung auseinander, kippen und verwehen.
+- Gewitter: Blitz NUR auf hoechster Stufe (Schwelle 1.15 = Wetter ~0.89),
+  Doppel-Puls wie die Anfangskarte, onBlitz-Haken spielt Donner mit 0.35-1.5s
+  Verzoegerung, sobald assets/sounds/donner.mp3 geliefert ist.
+- Ufer-Schilf nachgemessen kniehoch (~22-31px, Bake 186px -> Skala /3*0.35-0.5).
+- Held-Glut liegt in der Tiefe UNTER der Figur (Boden glimmt, Figur wird
+  nicht angestrahlt); Brueckengelaender = echte Barriere (Wasserkacheln an
+  den Laengsseiten gesperrt, Set-Lookup in isSolidAt).

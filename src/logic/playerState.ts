@@ -55,7 +55,7 @@ export function newPlayerState(): PlayerState {
     flaskMax: FLASKS.start, flaskCount: FLASKS.start, flaskPowerUp: false,
     arrows: 0,
     schools: { nahkampf: { uses: 0, level: 0 }, zauberei: { uses: 0, level: 0 }, bogen: { uses: 0, level: 0 } },
-    materials: { holz: 0, stein: 0, eisen: 0, kraeuter: 0, kohle: 0, fell: 0, wolle: 0 },
+    materials: { holz: 0, stein: 0, eisen: 0, kraeuter: 0, kohle: 0, fell: 0, wolle: 0, fasern: 0 },
     tools: { axt: false, spitzhacke: false },
     buffT: 0, foodBuff: null, warmBuff: false, marked: false,
     spellCds: [0, 0, 0],

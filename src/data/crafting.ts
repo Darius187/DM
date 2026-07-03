@@ -1,10 +1,12 @@
 // Crafting, Ressourcen und Wiederaufbau (Masterprompt 7.4).
 
-export type MaterialId = 'holz' | 'stein' | 'eisen' | 'kraeuter' | 'kohle' | 'fell' | 'wolle';
+// 'fasern' (R85, Autor-Idee): Pflanzenfasern aus Schilf/Büschen - die spätere
+// Bau-Ressource für Bindungen/Seile (Zäune, Dächer). Werte leicht änderbar.
+export type MaterialId = 'holz' | 'stein' | 'eisen' | 'kraeuter' | 'kohle' | 'fell' | 'wolle' | 'fasern';
 
 export const MATERIAL_NAMES: Readonly<Record<MaterialId, string>> = {
   holz: 'Holz', stein: 'Stein', eisen: 'Eisen', kraeuter: 'Kräuter', kohle: 'Kohle',
-  fell: 'Fell', wolle: 'Wolle',
+  fell: 'Fell', wolle: 'Wolle', fasern: 'Fasern',
 };
 
 // Ressourcen-Abbau

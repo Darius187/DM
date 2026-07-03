@@ -281,6 +281,7 @@ export class WorldScene extends CombatScene {
     this.nebelSprites = [];
     this.stimmungRect = null;
     this.vignetteImg = null;   // Neustart: mit dem stimmungRect zusammen neu aufbauen
+    this.heldGlutImgs = null;
     this.tode = 0;
     this.relicChoice = null;
     this.pauseMenu = null;
@@ -1397,7 +1398,16 @@ export class WorldScene extends CombatScene {
       staerke = draussen ? r * 0.7 : 0;
     }
     wetter.staerke = staerke;
-    if (!this.wetterOverlay) this.wetterOverlay = new WetterOverlay(this, { depth: 2680, tagNacht: false, tasten: false });
+    if (!this.wetterOverlay) {
+      this.wetterOverlay = new WetterOverlay(this, {
+        depth: 2680, tagNacht: false, tasten: false,
+        // DONNER (R85): folgt dem Blitz mit Abstand (Entfernungs-Gefühl).
+        // Spielt, sobald der Autor assets/sounds/donner.mp3 liefert.
+        onBlitz: () => this.time.delayedCall(350 + Math.random() * 1200, () => {
+          if (this.sfx.has('donner')) this.sfx.play('donner');
+        }),
+      });
+    }
     this.wetterOverlay.update(dt);
   }
 
@@ -2089,13 +2099,14 @@ export class WorldScene extends CombatScene {
           const x = tx * TILE + 16 + hx, y = ty * TILE + 16 + hy;
           const img = this.add.image(x, y, `ufer_schilf_${(tx + ty + k) % 4}`).setDepth(y);
           img.setOrigin(0.5, 0.94);                  // Fuß-Anker (Schwanken)
-          // R82: Bake ist 3x überabgetastet -> Anzeige /3; insgesamt KLEINER
-          // als früher (Autor: "riesig im Vergleich zum Helden"), ~25-38px hoch.
-          const skala = (1.2 + hash * 0.6) / 3;
+          // R85 (Autor, mit Bild nachgemessen): kniehoch zum Helden (~22-31px).
+          // Der Bake ist 186px hoch -> Skala 0.117..0.167.
+          const skala = (0.35 + hash * 0.15) / 3;
           img.setScale(skala);
           if (hash > 0.5) img.setFlipX(true);
           this.tileImages.push(img);
           this.windSchilf.push({ img, phase: tx * 0.31 + ty * 0.17 + k });
+          this.macheZerlegbar(img, 16, 1);   // R85: mit dem Schwert schnippelbar
         }
       }
     }
@@ -2106,6 +2117,8 @@ export class WorldScene extends CombatScene {
   // (gelb/rosa/weiß/lila) plus verstreute Kräuter/Klee - die Original-dorfSim-
   // Zeichnungen als gebackene Sprites, mit Wind + Wegbiegen vor dem Helden.
   private moorNebelListe: Array<{ img: Phaser.GameObjects.Image; x0: number; ph: number }> = [];
+  // R85: gesperrte Kacheln neben Brücken (Geländer-Barriere), je Karte neu befüllt
+  private brueckenSperre = new Set<number>();
 
   // R81 (Anfangskarte-Parität): der Bewuchs wird wie in dorfSim ZUFÄLLIG über
   // die Welt gestreut (seeded) statt über das Kachelraster - dadurch wirkt der
@@ -2204,6 +2217,7 @@ export class WorldScene extends CombatScene {
         if (rnd() > 0.5) img.setFlipX(true);
         this.tileImages.push(img);
         this.windBaeume.push({ img, phase: x * 0.013 + y * 0.007 });
+        this.macheZerlegbar(img, 18, 1 + ((rnd() < 0.5) ? 1 : 0));   // R85: Busch gibt 1-2 Fasern
       }
     }
     // MOOR: Schilf-/Rohrkolben-CLUSTER (tlw. tot/braun) + bodennaher NEBEL.
@@ -2218,6 +2232,7 @@ export class WorldScene extends CombatScene {
         if (!frei(sx2, sy2)) continue;
         const img = setze(`moorschilf_${tot ? 'tot_' : ''}${(rnd() * 3) | 0}`, sx2, sy2, (0.8 + rnd() * 0.35) / 3, rnd() * 7, 0.18);
         if (rnd() > 0.5) img.setFlipX(true);
+        this.macheZerlegbar(img, 12, 1);   // R85: schnippelbar
       }
     }
     if (!this.textures.exists('moornebel_tex')) {
@@ -2352,6 +2367,49 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // R85 (Autor "mit dem Schwert zerlegbar, Animation vom Auseinanderfallen"):
+  // Schilf/Busch wird beim Treffer in drei Quer-Schnipsel geschnitten, die in
+  // Schlagrichtung auseinanderfliegen, kippen und verwehen. Gibt FASERN.
+  private zerschnipple(img: Phaser.GameObjects.Image, ang: number, fasern: number): void {
+    this.windSchilf = this.windSchilf.filter((e) => e.img !== img);
+    this.windGras = this.windGras.filter((e) => e.img !== img);
+    this.windBaeume = this.windBaeume.filter((e) => e.img !== img);
+    this.tileImages = this.tileImages.filter((i) => i !== img);
+    const dw = img.displayWidth, dh = img.displayHeight;
+    const dir = Math.cos(ang) >= 0 ? 1 : -1;
+    for (let i = 0; i < 3; i++) {
+      const p2 = this.add.image(img.x, img.y, img.texture.key).setDepth(img.depth + 1);
+      p2.setOrigin(img.originX, img.originY).setDisplaySize(dw, dh).setFlipX(img.flipX).setRotation(img.rotation);
+      p2.setCrop(0, (img.height / 3) * i, img.width, img.height / 3);
+      const oben = 2 - i;   // oberstes Drittel fliegt am weitesten
+      this.tweens.add({
+        targets: p2,
+        x: img.x + dir * (8 + oben * 14 + Math.random() * 10),
+        y: img.y + 6 + Math.random() * 8 - oben * 4,
+        rotation: img.rotation + dir * (0.5 + oben * 0.5 + Math.random() * 0.4),
+        alpha: 0,
+        duration: 380 + oben * 140,
+        ease: 'Quad.easeOut',
+        onComplete: () => p2.destroy(),
+      });
+    }
+    this.fx.burst(img.x, img.y - dh * 0.4, 0x4c6a2c, 8, 90);
+    img.destroy();
+    if (fasern > 0) {
+      this.p.materials.fasern = (this.p.materials.fasern ?? 0) + fasern;
+      this.logMsg(`+${fasern} Fasern`, '');
+    }
+  }
+
+  // Schilf/Busch als schlagbares Ziel anmelden (Hittable-System der Krüge)
+  private macheZerlegbar(img: Phaser.GameObjects.Image, r: number, fasern: number): void {
+    const hit = { x: img.x, y: img.y - img.displayHeight * 0.3, r, onHit: (ang: number) => {
+      this.hittables = this.hittables.filter((h) => h !== hit);
+      if (img.active) this.zerschnipple(img, ang, fasern);
+    } };
+    this.hittables.push(hit);
+  }
+
   // Moornebel-Drift (R81): Schwaden wabern träge seitwärts, Alpha atmet leicht.
   private updateMoorNebel(time: number): void {
     for (const n of this.moorNebelListe) {
@@ -2415,7 +2473,21 @@ export class WorldScene extends CombatScene {
   // Kachel-Brettern EIN gebackenes Bild je Brücke (Planken quer, Geländer,
   // Pfeiler - 1:1-Port aus dorfSim). Kollision bleibt aus den T.BRIDGE-Kacheln.
   private spawneBruecken(a: AreaData): void {
+    this.brueckenSperre.clear();
     if (!a.gebackenerBoden) return;
+    // R85 (Autor "man läuft durchs Geländer"): die Kacheln direkt NÖRDLICH und
+    // SÜDLICH jeder Brückenkachel sperren, sofern sie nicht selbst Brücke oder
+    // Weg sind - das Geländer an den Längsseiten ist damit eine echte Barriere.
+    for (let ty = 0; ty < a.h; ty++) {
+      for (let tx = 0; tx < a.w; tx++) {
+        if (a.map[ty][tx] !== T.BRIDGE) continue;
+        for (const dy of [-1, 1]) {
+          const nb = a.map[ty + dy]?.[tx];
+          if (nb === undefined || nb === T.BRIDGE || nb === T.PATH) continue;
+          this.brueckenSperre.add((ty + dy) * a.w + tx);
+        }
+      }
+    }
     const gesehen = new Set<string>();
     let nr = 0;
     for (let ty = 0; ty < a.h; ty++) {
@@ -3727,6 +3799,9 @@ export class WorldScene extends CombatScene {
     if (this.dorfAktiv) return dorfIstSolide(x, y);   // dorfSim-Area: Kollision aus dorfSim
     const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
     if (tx < 0 || ty < 0 || tx >= this.area.w || ty >= this.area.h) return true;
+    // R85 (Autor "man läuft durchs Geländer"): die Wasserkacheln direkt an den
+    // Brücken-Längsseiten sind gesperrt - das Geländer ist eine echte Barriere.
+    if (this.brueckenSperre.has(ty * this.area.w + tx)) return true;
     return SOLID.has(this.area.map[ty][tx]);
   }
 
@@ -4184,6 +4259,7 @@ export class WorldScene extends CombatScene {
   private lichtWarmRect: Phaser.GameObjects.Rectangle | null = null;
   private dunstRect: Phaser.GameObjects.Rectangle | null = null;
   private vignetteImg: Phaser.GameObjects.Image | null = null;
+  private heldGlutImgs: [Phaser.GameObjects.Image, Phaser.GameObjects.Image] | null = null;
   private tagLichtFX: Phaser.FX.ColorMatrix | null = null;
 
   private renderStimmung(): void {
@@ -6807,7 +6883,7 @@ export class WorldScene extends CombatScene {
     p.bogen = (s.bogenIdx ?? -1) >= 0 ? p.inv[s.bogenIdx!] ?? null : null;
     p.bogenAktiv = !!s.bogenAktiv && !!p.bogen;
     p.schools = s.schools;
-    p.materials = { holz: 0, stein: 0, eisen: 0, kraeuter: 0, kohle: 0, fell: 0, wolle: 0, ...s.materials };
+    p.materials = { holz: 0, stein: 0, eisen: 0, kraeuter: 0, kohle: 0, fell: 0, wolle: 0, fasern: 0, ...s.materials };
     p.tools = s.tools ?? { axt: false, spitzhacke: false };
     p.warmBuff = s.warmBuff ?? false;
     this.lager = data.lager ?? [];
@@ -7390,13 +7466,23 @@ export class WorldScene extends CombatScene {
     // LATERNEN-Gefühl wie im Dungeon - ein enger, heller Kern direkt am Helden
     // (macht die Figur selbst sichtbar) plus der weite weiche Schein. Der
     // Glut-Regler skaliert beide (bei 100 deutlich über dem alten Maximum).
-    // R83: kein "Glühen" mehr (Autorkritik) - die Sichtbarkeit des Helden kommt
-    // jetzt aus dem hellen Nacht-Boden im Lichtkreis (renderStimmung), der
-    // warme Schein ist nur noch Stimmung. Regler wirkt weiter.
-    if (!fow && (this.area.dark || nachtFaktor > 0.3)) {
-      const glut = (lic.nachtGlut ?? 50) / 100, farbe = lic.nachtGlutFarbe ?? 0xffcf86;
-      warmIdx = this.placeWarm(warmIdx, this.px, this.py, 150, Math.min(0.6, glut * 0.55), farbe);
-      warmIdx = this.placeWarm(warmIdx, this.px, this.py - 4, 60, Math.min(0.5, glut * 0.5), farbe);
+    // R85 (Autor "Glut um den Helden, aber die Figur nicht anstrahlen"): die
+    // Held-Glut liegt jetzt in der TIEFE KNAPP UNTER der Figur - der Boden
+    // rundum glimmt warm, der Held selbst wird davon nicht überstrahlt.
+    {
+      const an = !fow && (this.area.dark || nachtFaktor > 0.3);
+      if (!this.heldGlutImgs) {
+        const mk = (): Phaser.GameObjects.Image => this.add.image(0, 0, 'farbblob').setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
+        this.heldGlutImgs = [mk(), mk()];
+      }
+      const [g1, g2] = this.heldGlutImgs;
+      if (an) {
+        const glut = (lic.nachtGlut ?? 50) / 100, farbe = lic.nachtGlutFarbe ?? 0xffcf86;
+        g1.setVisible(true).setPosition(this.px, this.py + 4).setScale(300 / 128).setTint(farbe)
+          .setAlpha(Math.min(0.6, glut * 0.55)).setDepth(this.py - 0.5);
+        g2.setVisible(true).setPosition(this.px, this.py + 4).setScale(120 / 128).setTint(farbe)
+          .setAlpha(Math.min(0.5, glut * 0.5)).setDepth(this.py - 0.5);
+      } else { g1.setVisible(false); g2.setVisible(false); }
     }
     for (const t of (fow ? [] : this.area.torches)) {
       // Runde 29: ferne Fackeln deckten halbe Karten samt Gegnern auf -
