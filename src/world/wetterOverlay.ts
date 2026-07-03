@@ -61,8 +61,10 @@ export class WetterOverlay {
       const drift = 30 + regen * 60;
       for (let i = 0; i < n; i++) { const t = this.tropfen[i]; t.y += t.vy * dt; t.x += drift * dt; if (t.y > this.h) Object.assign(t, this.neu()); this.regenGfx.lineBetween(t.x, t.y, t.x - 7, t.y - t.len); }
     }
-    // Blitz: interner Timer bei Unwetter (entkoppelt von der Zustands-Logik) + abklingen.
-    if (regen > 0.7) { this.blitzTimer -= dt; if (this.blitzTimer <= 0) { this.blitz = 1; this.blitzTimer = 6 + Math.random() * 16; } }
+    // Blitz: interner Timer bei GEWITTER (entkoppelt von der Zustands-Logik) + abklingen.
+    // R80: Schwelle angehoben - die WorldScene speist staerke = wetterWert*1.3, also
+    // zündet der Blitz erst ab Wetter ~0.8 (Gewitter, dorfSim-Referenz), nicht schon im Regen.
+    if (regen > 1.05) { this.blitzTimer -= dt; if (this.blitzTimer <= 0) { this.blitz = 1; this.blitzTimer = 6 + Math.random() * 16; } }
     if (this.blitz > 0) this.blitz = Math.max(0, this.blitz - dt * 3.5);
     this.blitzRect.setAlpha(this.blitz * 0.55);
   }

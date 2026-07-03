@@ -40,7 +40,7 @@ import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, 
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER, HOLZ } from '../data/crafting';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
-import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, tageszeitLabel } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, FLYOVER, tileNameAt } from '../world/tiles';
@@ -1344,21 +1344,31 @@ export class WorldScene extends CombatScene {
 
   private wuerfleWetter(): void {
     // Runde 75: das Wetter läuft über die kontinuierliche Achse (updateWetter) -
-    // der Tageswechsel stößt nur ein frisches Wetterziel an.
-    this.wetterTimer = 0;
+    // der Tageswechsel stößt nur ein frisches Wetterziel an. FESTGESETZTES
+    // Wetter (Regler, Timer >= 1e8) bleibt auch über den Tageswechsel stehen.
+    if (this.wetterTimer < 1e8) this.wetterTimer = 0;
   }
 
+  // R80 (Autorbug "Regler geht von selbst wieder hoch"): das Ziel wird NUR noch
+  // gesetzt, wenn der Timer abgelaufen ist - vorher überschrieb der Stimmungs-
+  // regen JEDEN Frame das Ziel und machte den Wetter-Regler wirkungslos.
+  // Der Regler setzt das Wetter FEST (Timer 1e9), "Automatik" gibt es frei.
+  // Achse jetzt wie in der "Dorf im Wald"-Referenz: -1 sonnig .. 1 Gewitter.
   private updateWetter(dt: number): void {
-    if (!this.flags.nErsterDungeon) {
-      this.wetterZiel = WETTER.stimmungsRegen;   // Story-Regen bis zum ersten Dungeon
-    } else {
-      this.wetterTimer -= dt;
-      if (this.wetterTimer <= 0) {
+    this.wetterTimer -= dt;
+    if (this.wetterTimer <= 0) {
+      if (!this.flags.nErsterDungeon) {
+        this.wetterZiel = WETTER.stimmungsRegen;   // Story-Regen bis zum ersten Dungeon
+        this.wetterTimer = 20;
+      } else {
         this.wetterTimer = WETTER.zyklusMinS + Math.random() * (WETTER.zyklusMaxS - WETTER.zyklusMinS);
-        this.wetterZiel = Math.random() < WETTER.trockenChance ? 0 : 0.2 + Math.random() * 0.8;
+        const r = Math.random();
+        this.wetterZiel = r < 0.18 ? 0.85 + Math.random() * 0.15                 // Unwetter/Gewitter
+          : r < 0.18 + WETTER.trockenChance ? -1 + Math.random() * 1.1           // Sonnig .. Klar
+            : 0.15 + Math.random() * 0.55;                                       // Niesel .. Regen
       }
     }
-    this.wetterWert = Math.max(0, Math.min(1, this.wetterWert + (this.wetterZiel - this.wetterWert) * Math.min(1, dt * WETTER.wechselTempo)));
+    this.wetterWert = Math.max(-1, Math.min(1, this.wetterWert + (this.wetterZiel - this.wetterWert) * Math.min(1, dt * WETTER.wechselTempo)));
     const regnetNeu = this.wetterWert > WETTER.regenAb;
     if (regnetNeu && !this.regnet) {
       // Bodennebel kommt nach JEDEM Regen zurück (Autorwunsch R40, Atmosphäre).
@@ -1868,7 +1878,7 @@ export class WorldScene extends CombatScene {
   private updateBaumWind(time: number): void {
     if (!this.windBaeume.length && !this.windSchilf.length) return;
     const draussen = !this.area.innen && !this.area.dark;
-    const amp = 0.010 + (draussen ? this.wetterWert : 0) * 0.055;   // Sturm biegt die Bäume DEUTLICH (Autor R79)
+    const amp = 0.010 + (draussen ? Math.max(0, this.wetterWert) : 0) * 0.055;   // Sturm biegt die Bäume DEUTLICH (Autor R79); sonnig (<0) = Ruhe
     // SONNEN-SCHATTEN (dorfSim schDX/schLang 1:1): tief stehende Sonne -> langer,
     // seitlicher Schatten; Wolken unterdrücken die Richtung; nachts nur der
     // erdende Grundschatten (tagAuf blendet um Auf-/Untergang weich).
@@ -2469,17 +2479,22 @@ export class WorldScene extends CombatScene {
           },
         })),
       ] },
+      // R80 (Autorbug "2 Wetterregler, eigener Tag-Nacht-Rhythmus, total irre"):
+      // Zeit + Wetter wohnen NUR noch hier. Der Wetter-Regler setzt das Wetter
+      // FEST (kein Auto-Überschreiben mehr), "Automatik" gibt es wieder frei.
       { name: 'WETTER', controls: () => [
-        { kind: 'note', text: 'Wetter-Achse (0 trocken .. 1 Sturm). Ab ~0.7 zündet der Blitz von selbst. Bis zum ersten Dungeon hält der Stimmungs-Nieselregen das Ziel fest.' },
-        { kind: 'slider', label: 'Wetter', min: 0, max: 1, step: 0.05, get: () => this.wetterWert, set: (v) => { this.wetterWert = v; this.wetterZiel = v; this.wetterTimer = 30; } },
+        { kind: 'note', text: 'EINE Uhr, EIN Wetter (dorfSim-System, -1 sonnig .. 1 Gewitter). Der Regler setzt das Wetter FEST - "Automatik" würfelt wieder. Blitz zündet im Gewitter von selbst.' },
+        { kind: 'slider', label: 'Tageszeit', min: 0, max: 24, step: 0.25, fmt: (v) => { const hh = Math.floor(v), mm = Math.round((v - hh) * 60); return `${hh}:${String(mm).padStart(2, '0')}`; }, get: () => this.tageszeit * 24, set: (v) => { this.tageszeit = ((v % 24) + 24) % 24 / 24; this.devAnfang.tageszeit = v; dorfSetRegler('tageszeit', v); } },
+        { kind: 'slider', label: 'Tag-Tempo', min: 0, max: 3, step: 0.1, fmt: (v) => `${v.toFixed(1)}x`, get: () => this.devAnfang.tagtempo, set: (v) => { this.devAnfang.tagtempo = v; dorfSetRegler('tagtempo', v); } },
+        { kind: 'slider', label: 'Wetter', min: -1, max: 1, step: 0.05, fmt: (v) => wetterName(v), get: () => this.wetterWert, set: (v) => {
+          this.wetterWert = v; this.wetterZiel = v; this.wetterTimer = 1e9;   // festgesetzt - die Automatik fasst es nicht mehr an
+          const s4 = Math.max(0, Math.min(4, (v + 0.5) / 1.5 * 4));
+          this.devAnfang.sturm = s4; dorfSetRegler('sturm', s4);              // dorfSim-Karten hören auf denselben Regler
+        } },
         { kind: 'slider', label: 'Boden-Nässe (Pfützen)', min: 0, max: 1, step: 0.05, get: () => this.naesse, set: (v) => { this.naesse = v; } },
-        { kind: 'button', label: () => `Stimmungsregen (bis 1. Dungeon): ${this.flags.nErsterDungeon ? 'AUS' : 'AN'}`, onClick: () => { this.flags.nErsterDungeon = !this.flags.nErsterDungeon; this.devKonsole?.refresh(); } },
-        { kind: 'button', label: () => 'Sturm mit Blitz SOFORT', onClick: () => { this.wetterWert = 1; this.wetterZiel = 1; this.wetterTimer = 60; this.naesse = Math.max(this.naesse, 0.8); } },
-        { kind: 'slider', label: 'Baumgröße (Kacheln, Karte lädt neu)', min: 5, max: 18, step: 0.5, get: () => this.devBaumSkala ?? this.area?.baumSkala ?? 11, set: (v) => { this.devBaumSkala = v; } },
-        { kind: 'button', label: () => 'Baumgröße anwenden (Karte neu laden)', onClick: () => { this.devKonsole?.toggle(); this.goArea(this.area.id, { x: this.px, y: this.py }); } },
-        { kind: 'button', label: () => 'Test: 3D-Pferd + Dorfbewohner (8 Ansichten)', onClick: () => { this.devKonsole?.toggle(); void this.zeigeFigurenTest(); } },
-        { kind: 'button', label: () => `3D-HELD (Test): ${getSettings().figuren3d ? 'AN' : 'aus (2D)'}`, onClick: () => { getSettings().figuren3d = !getSettings().figuren3d; saveSettings(); this.devKonsole?.refresh(); } },
-        { kind: 'note', text: '3D-Held: gebackener three.js-Atlas (8 Richtungen x Gehen/Atem/Schwerthieb), Rüstungsstufe + Waffe fließen ein. AUS = sofort zurück zur 2D-Zeichnung.' },
+        { kind: 'button', label: () => 'Wetter wieder AUTOMATIK (würfelt frei)', onClick: () => { this.wetterTimer = 0; } },
+        { kind: 'button', label: () => `Stimmungsregen (bis 1. Dungeon): ${this.flags.nErsterDungeon ? 'AUS' : 'AN'}`, onClick: () => { this.flags.nErsterDungeon = !this.flags.nErsterDungeon; this.wetterTimer = Math.min(this.wetterTimer, 0); this.devKonsole?.refresh(); } },
+        { kind: 'button', label: () => 'Gewitter SOFORT', onClick: () => { this.wetterWert = 1; this.wetterZiel = 1; this.wetterTimer = 1e9; this.naesse = Math.max(this.naesse, 0.8); this.devKonsole?.refresh(); } },
       ] },
       { name: 'MESSEN', controls: () => [
         { kind: 'button', label: () => `FPS-Anzeige: ${this.perfAn ? 'AN' : 'aus'}`, onClick: () => { this.perfAn = !this.perfAn; this.devKonsole?.refresh(); } },
@@ -2487,22 +2502,25 @@ export class WorldScene extends CombatScene {
         { kind: 'button', label: () => `dorfSim-Upload: ${this.perfDorfAus ? 'aus (eingefroren)' : 'AN'} (FPS-Vergleich)`, onClick: () => { this.perfDorfAus = !this.perfDorfAus; this.devKonsole?.refresh(); } },
         { kind: 'note', text: 'ECHTE Messung im Browser: FPS-Anzeige an, dann Wasser bzw. dorfSim-Upload aus/an schalten und die FPS vergleichen - so siehst du, was wirklich kostet, bevor wir optimieren.' },
       ] },
+      // R80: Tageszeit/Tag-Tempo/Sturm sind in den WETTER-Tab gezogen (der Autor
+      // hatte ZWEI Wetterregler und "einen eigenen Tag-Nacht-Rhythmus" - jetzt
+      // gibt es je Sache genau EINEN Regler). Hier bleibt die Karten-Optik.
       { name: 'ANFANG', controls: () => {
         const keys: Array<[string, string, number, number, number]> = [
           ['groesse', 'Baumgröße', 0.5, 2.2, 0.05], ['wegbreite', 'Weg-Breite', 0.5, 1.8, 0.05], ['falltempo', 'Fall-Tempo', 0.12, 2, 0.02],
-          ['bewuchs', 'Bewuchs', 0, 1.4, 0.05], ['tageszeit', 'Tageszeit', 0, 24, 0.25], ['tagtempo', 'Tag-Tempo', 0, 3, 0.1],
-          ['sturm', 'Sturm', 0, 4, 0.1], ['sicht', 'Sicht', 80, 220, 10],
+          ['bewuchs', 'Bewuchs', 0, 1.4, 0.05], ['sicht', 'Sicht', 80, 220, 10],
         ];
-        const cs: DKControl[] = [{ kind: 'note', text: 'Regler wirken auf dorfSim UND (R78) auf der Engine-Karte: Tageszeit/Sturm sofort, Baumgröße/Bewuchs beim Kartenwechsel bzw. über WETTER->"Karte neu laden".' }];
+        const cs: DKControl[] = [{ kind: 'note', text: 'Karten-Optik (dorfSim UND Engine-Karte): Baumgröße/Bewuchs greifen beim Kartenwechsel bzw. über "Karte neu laden". Zeit + Wetter: siehe Tab WETTER.' }];
         for (const [key, label, min, max, step] of keys) cs.push({ kind: 'slider', label, min, max, step, get: () => this.devAnfang[key], set: (v) => {
           this.devAnfang[key] = v; dorfSetRegler(key, v);
-          // R78 (Autorauftrag): dieselben Regler treiben jetzt auch den Engine-
-          // Pfad - Tageszeit (volle 24h-Lichtkurve) und Sturm sofort sichtbar.
-          if (key === 'tageszeit') this.tageszeit = ((v % 24) + 24) % 24 / 24;
-          if (key === 'sturm') { const w = Math.min(1, v / 4); this.wetterWert = w; this.wetterZiel = w; this.wetterTimer = 120; }
           if (key === 'groesse') this.devBaumSkala = (v / 0.85) * 9;
           if (key === 'bewuchs') this.devBewuchs = v;
         } });
+        cs.push({ kind: 'slider', label: 'Baumgröße (Kacheln, Karte lädt neu)', min: 5, max: 18, step: 0.5, get: () => this.devBaumSkala ?? this.area?.baumSkala ?? 11, set: (v) => { this.devBaumSkala = v; } });
+        cs.push({ kind: 'button', label: () => 'Baumgröße anwenden (Karte neu laden)', onClick: () => { this.devKonsole?.toggle(); this.goArea(this.area.id, { x: this.px, y: this.py }); } });
+        cs.push({ kind: 'button', label: () => 'Test: 3D-Pferd + Dorfbewohner (8 Ansichten)', onClick: () => { this.devKonsole?.toggle(); void this.zeigeFigurenTest(); } });
+        cs.push({ kind: 'button', label: () => `3D-HELD (Test): ${getSettings().figuren3d ? 'AN' : 'aus (2D)'}`, onClick: () => { getSettings().figuren3d = !getSettings().figuren3d; saveSettings(); this.devKonsole?.refresh(); } });
+        cs.push({ kind: 'note', text: '3D-Held: gebackener three.js-Atlas (8 Richtungen x Gehen/Atem/Schwerthieb), Rüstungsstufe + Waffe fließen ein. AUS = sofort zurück zur 2D-Zeichnung.' });
         return cs;
       } },
       { name: 'KASTEN', controls: () => [
@@ -3126,8 +3144,10 @@ export class WorldScene extends CombatScene {
   // Fensterlicht-Stärke nach Tageszeit: tags AUS, abends an, nachts erlischt
   // jedes Haus zu seiner Schlafenszeit - tief in der Nacht alle dunkel.
   private fensterAlpha(t: number, schlaf: number): number {
-    if (t < TAG.abendAb) return 0;                              // Tag: aus
-    const ein = Math.min(1, (t - TAG.abendAb) / 0.04);          // abends einblenden
+    // R80: Fensterlicht erst kurz vor Sonnenuntergang (lichtAb = ca. 18:15 Uhr),
+    // nicht mehr ab dem NPC-Feierabend (abendAb = 13:12 Uhr, "Licht um 16 Uhr").
+    if (t < TAG.lichtAb) return 0;                              // Tag: aus
+    const ein = Math.min(1, (t - TAG.lichtAb) / 0.04);          // abends einblenden
     const aus = t < schlaf ? 1 : Math.max(0, 1 - (t - schlaf) / 0.04); // zur Schlafenszeit erlöschen
     return ein * aus;
   }
@@ -3753,9 +3773,10 @@ export class WorldScene extends CombatScene {
     // Multiply über die Kamera-ColorMatrix, Aufhellung/Warm als ADD-Ebenen.
     const L = berechneTagLicht(this.tageszeit * 24);
     const bew = Math.max(0, Math.min(1, this.wetterWert));
+    const klar = Math.max(0, -this.wetterWert);                 // R80: sonniges Wetter (<0) hellt auf (dorfSim klar8)
     const dunkel = 1 - bew * 0.4;
     const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
-    const liftHell = 1 + Math.max(0, L.lift * (1 - bew * 0.55)) * 0.9;   // kräftige Tag-Farben (Autor R79)
+    const liftHell = 1 + Math.max(0, L.lift * (1 - bew * 0.55) + klar * 0.06) * 0.9;   // kräftige Tag-Farben (Autor R79)
     setzeMul(
       lerp(L.mul[0], 0.5, bew * 0.55) * dunkel * liftHell,
       lerp(L.mul[1], 0.52, bew * 0.55) * dunkel * liftHell,
@@ -3764,7 +3785,7 @@ export class WorldScene extends CombatScene {
     // dorfSims kräftige soft-light-AUFHELLUNG lässt sich mit ADD nicht nachbauen
     // (deckt zu) - deshalb wird der Lift in die ColorMatrix GEFALTET (heller
     // Multiply), nur der goldene Hauch bleibt als hauchdünnes ADD (R78).
-    const lift = Math.max(0, L.lift * (1 - bew * 0.55));
+    const lift = Math.max(0, L.lift * (1 - bew * 0.55) + klar * 0.06);
     this.stimmungRect.setFillStyle(0xfff3da, Math.min(0.08, lift * 0.1));
     const warm = L.warm * (1 - bew);
     this.lichtWarmRect!.setFillStyle(0xffcf86, Math.min(0.12, warm * 0.16));
@@ -6642,10 +6663,16 @@ export class WorldScene extends CombatScene {
   }
 
   private renderHud(): void {
-    // Sonnen-/Mondstand: in der Krypta verrinnt die Zeit nur sehr langsam
-    // (Runde 40: läuft weiter, ⌛ zeigt das Schleichen unter der Erde an)
-    const zeit = this.area.dark ? `⌛ ${tageszeitLabel(this.tageszeit)}` : tageszeitLabel(this.tageszeit);
-    this.hud.update(`STUFE ${this.p.level} · ${this.p.gold} GOLD · Tag ${this.tag} · ${zeit}`);
+    // R80 (Autorwunsch, dorfSim-HUD): Uhrzeit + Tagesphase + Wetter + Nässe in
+    // EINER Zeile ("9:47 Morgen · Regen · Nässe 60%"). In der Krypta zeigt ⌛
+    // weiter das Verrinnen der Zeit unter der Erde an.
+    const h24 = this.tageszeit * 24;
+    const hh = Math.floor(h24), mm = Math.floor((h24 - hh) * 60);
+    const uhr = `${hh}:${String(mm).padStart(2, '0')} ${tagesphaseName(h24)}`;
+    const zeit = this.area.dark ? `⌛ ${uhr}` : uhr;
+    const draussen = !this.area.dark && !this.area.innen;
+    const wetterTxt = draussen ? ` · ${wetterName(this.wetterWert)}${this.naesse > 0.05 ? ` · Nässe ${Math.round(this.naesse * 100)}%` : ''}` : '';
+    this.hud.update(`STUFE ${this.p.level} · ${this.p.gold} GOLD · Tag ${this.tag} · ${zeit}${wetterTxt}`);
     this.questTracker.update();
     this.hudText.setPosition(8, 8).setText('');
   }
@@ -6727,12 +6754,9 @@ export class WorldScene extends CombatScene {
       g.fillStyle(0x08140a, 0.22);
       g.fillRect(0, 0, w, h);
     }
-    // Abenddämmerung färbt das Licht
-    if (this.tageszeit > TAG.abendAb) {
-      const evening = Math.min(1, (this.tageszeit - TAG.abendAb) / (1 - TAG.abendAb));
-      g.fillStyle(0x1a1428, 0.35 * evening);
-      g.fillRect(0, 0, w, h);
-    }
+    // R80: die alte "Abenddämmerung"-Tönung (ab abendAb = 13:12 Uhr!) ist raus -
+    // Sonnenuntergang/Dämmerung färbt jetzt allein die dorfSim-Lichtkurve in
+    // renderStimmung. Zwei Abendlichter übereinander = "um 16 Uhr wird's dunkel".
   }
 
   private renderLight(): void {
@@ -6786,9 +6810,12 @@ export class WorldScene extends CombatScene {
     // weit, nachts eng und dunkel; der Morgen graut langsam auf
     let nachtFaktor = 0;
     if (!this.area.dark) {
-      const t = this.tageszeit;
-      if (t < TAG.morgenAb) nachtFaktor = 1 - t / TAG.morgenAb;
-      else if (t > TAG.abendAb) nachtFaktor = Math.min(1, (t - TAG.abendAb) / (TAG.nachtAb - TAG.abendAb));
+      // R80 (Autorbug "um 16 Uhr geht das Licht an"): die Nacht folgt jetzt dem
+      // SONNENSTAND der dorfSim-Lichtkurve (dunkel ab ca. 18:30, hell ab ca. 6:30)
+      // statt dem NPC-Feierabend (abendAb = 13:12 Uhr), der den Sichtkreis
+      // schon am Nachmittag anknipste. EINE Licht-Wahrheit mit renderStimmung.
+      const hoehe = berechneTagLicht(this.tageszeit * 24).hoehe;
+      nachtFaktor = 1 - Math.min(1, hoehe / 0.22);
     }
     if (this.lightRT.width !== this.scale.width || this.lightRT.height !== this.scale.height) {
       this.erstelleLichtTextur();
@@ -7233,7 +7260,9 @@ export class WorldScene extends CombatScene {
   // Spieltag-Uhr (Runde 40 aus updateVillageLife herausgelöst): läuft auch
   // unter der Erde weiter, dort nur stark verlangsamt (TAG.dungeonFaktor).
   private advanceClock(dt: number): void {
-    this.tageszeit += dt / TAG.dauerS;
+    // R80 (Autorbug "Tag-Tempo auf 0 wirkt nicht"): der Regler skaliert jetzt
+    // wirklich die EINE Spieluhr (0 = Zeit steht, 1 = normal, 3 = Zeitraffer).
+    this.tageszeit += (dt * (this.devAnfang.tagtempo ?? 1)) / TAG.dauerS;
     if (this.tageszeit >= 1) {
       this.tageszeit = 0;
       this.tag++;

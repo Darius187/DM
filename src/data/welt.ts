@@ -2,9 +2,13 @@
 
 export const TAG = {
   dauerS: 600,          // ein Spieltag = 10 Minuten Echtzeit (nur über der Erde)
-  abendAb: 0.55,        // ab hier gelten die Abend-Positionen der NPCs
+  abendAb: 0.55,        // ab hier gelten die Abend-Positionen der NPCs (Tagesablauf, KEIN Licht!)
   nachtAb: 0.78,        // ab hier schlafen die Dorfbewohner in ihren Häusern
   morgenAb: 0.2,        // ab hier sind sie wieder auf den Beinen
+  // R80 (Autorbug "um 16 Uhr geht das Licht an"): SICHTBARES Licht (Fenster,
+  // Laternen) hängt NICHT mehr am NPC-Feierabend (abendAb = 13:12 Uhr), sondern
+  // an dieser eigenen Schwelle kurz vor Sonnenuntergang (0.76 = ca. 18:15 Uhr).
+  lichtAb: 0.76,
   haendlerWechselTage: 7,
   // Runde 41 (Autorwunsch): die Zeit läuft unter der Erde GENAUSO schnell wie
   // draußen - sonst kam, während man in der Krypta steckte, nie der nächste
@@ -19,6 +23,17 @@ export function tageszeitLabel(t: number): string {
   if (t < TAG.abendAb) return '☀ Mittag';
   if (t < TAG.nachtAb) return '☀ Abend';
   return '☾ Nacht';
+}
+
+// R80: Namen für die EINE Wetter-Achse (-1 sonnig .. 0 klar .. 0.5 Regen .. 1 Gewitter),
+// Schwellen 1:1 aus der "Dorf im Wald"-Referenz (dorfSim WETTER_NAME).
+export function wetterName(w: number): string {
+  return w < -0.25 ? 'Sonnig' : w < 0.15 ? 'Klar' : w < 0.45 ? 'Niesel' : w < 0.75 ? 'Regen' : w < 0.9 ? 'Unwetter' : 'Gewitter';
+}
+
+// R80: Tagesphase in Worten für die HUD-Zeile (dorfSim TAGESZEIT_NAME 1:1)
+export function tagesphaseName(h: number): string {
+  return h < 5 ? 'Nacht' : h < 6.5 ? 'Morgendämmerung' : h < 11 ? 'Morgen' : h < 14 ? 'Mittag' : h < 17 ? 'Nachmittag' : h < 18.5 ? 'Goldene Stunde' : h < 20 ? 'Abenddämmerung' : h < 22 ? 'Dämmerung' : 'Nacht';
 }
 
 // Bett/Rasten
@@ -75,9 +90,10 @@ export const KOPFGELD = {
   maxEbene: 5,
 } as const;
 
-// Wetter-Achse (Runde 75): kontinuierliches Wetter 0 (trocken) .. 1 (Sturm)
-// statt des täglichen Ja/Nein-Würfels. Speist Regen-Overlay, Wasser-Shader,
-// Baumwind, Boden-Nässe und Pfützen aus EINER Wahrheit.
+// Wetter-Achse (Runde 75, R80 auf das dorfSim-System erweitert): kontinuierlich
+// -1 (sonnig) .. 0 (klar) .. 0.5 (Regen) .. 1 (Gewitter) statt des täglichen
+// Ja/Nein-Würfels. Speist Regen-Overlay, Wasser-Shader, Baumwind, Boden-Nässe
+// und Pfützen aus EINER Wahrheit. Sonnig (<0) hellt das Licht leicht auf.
 export const WETTER = {
   // Stimmungs-Dauerregen (Autorwunsch, Heavy-Rain-Gefühl): vom Spielstart bis
   // zum ersten Dungeon-Besuch nieselt es draußen ununterbrochen leicht.
