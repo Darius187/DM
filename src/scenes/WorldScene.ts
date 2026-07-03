@@ -1908,9 +1908,11 @@ export class WorldScene extends CombatScene {
       const bew = Math.max(0, Math.min(1, this.wetterWert));
       const tagAuf = Math.min(1, L.hoehe * 6);
       const alpha = Math.max(0, (0.10 + 0.20 * (1 - bew)) * tagAuf);
-      // R86 (Autorwunsch): die Sonne scheint von der ANDEREN Seite - der
-      // Schatten fällt gespiegelt (morgens nach Osten, abends nach Westen).
-      const rot = Math.PI + L.dir * (0.55 + (1 - L.hoehe) * 0.5);
+      // R88 (Autorbild): R86 rückgängig - der Schatten ist jetzt eine echte
+      // REFLEXION (Sprite mit setFlipX gespiegelt, nicht punktgespiegelt): die
+      // Baum-Silhouette legt sich seitlich weg vom Licht, morgens nach Westen,
+      // abends nach Osten, mit tiefer Sonne lang. Kein "Kopfüber"-Klon mehr.
+      const rot = Math.PI - L.dir * (0.55 + (1 - L.hoehe) * 0.5);
       const lenF = 0.55 + (1 - L.hoehe) * 0.95;
       for (const s of this.baumSchatten) {
         if (!s.img.active) continue;
@@ -2345,27 +2347,10 @@ export class WorldScene extends CombatScene {
       this.panels?.refresh?.();
       return true;
     }
-    // Stellprüfung: erst vor dem Helden, sonst die Nachbarplätze - auf freiem
-    // Boden (kein Weg, kein Wasser, nichts Festes). Wer mitten auf der Straße
-    // steht, bekommt das Feuer daneben statt einer Fehlermeldung.
-    let x = 0, y = 0, platz = false;
-    for (const [dx, dy] of [[0, 22], [0, -28], [30, 0], [-30, 0], [30, 26], [-30, 26]]) {
-      const kx = this.px + dx, ky = this.py + dy;
-      const t = this.area.map[Math.floor(ky / TILE)]?.[Math.floor(kx / TILE)];
-      if (t === undefined || SOLID.has(t) || t === T.WATER || t === T.BRIDGE || t === T.PATH) continue;
-      x = kx; y = ky; platz = true; break;
-    }
-    if (!platz) {
-      this.sfx.play('fehler');
-      this.logMsg('Hier ist kein Platz - such dir freien Boden.', '');
-      return false;
-    }
-    for (const [k, n] of Object.entries(plan.kosten)) this.p.materials[k as MaterialId] -= n ?? 0;
-    (this.lagerfeuerProKarte[this.area.id] ??= []).push({ x, y });
-    this.spawneLagerfeuer(x, y);
-    this.sfx.play('holz_hacken');
-    this.logMsg('Lagerfeuer errichtet - hier heilst du langsam und hast Licht in der Nacht.', 'gold');
-    this.panels?.refresh?.();
+    // R88 (Autor "wie in einem RTS"): Platzierungs-Modus statt Sofortbau - der
+    // Geist folgt der Maus, Linksklick setzt die Baustelle, dann läuft die
+    // Bauzeit ab. Das Baumenü (N) und der RTS-Modus nutzen denselben Weg.
+    this.startePlatzierung(plan.id, plan.kosten as Record<string, number>);
     return true;
   }
 
@@ -2454,11 +2439,19 @@ export class WorldScene extends CombatScene {
   // Formationen, Feldbauten und Moral. Die Einheiten-Befehle docken hier an,
   // sobald die Schlacht-Karten kommen (Schlacht-Probe ist die Blaupause).
   private rtsLeiste: Phaser.GameObjects.Container | null = null;
+  private rtsLeistePos = { x: -1, y: 40 };   // gemerkte Leisten-Position (verschiebbar, R88)
   private rtsFormation: RtsFormation = 'linie';
   private standartenAktiv: Array<{ x: number; y: number }> = [];
+  // R88 (Autor "RTS wie AoE"): Platzierungs-Modus (Geist folgt der Maus) +
+  // Baustellen mit Bauzeit-Fortschritt statt Sofortbau.
+  private platziereModus: { id: string; kosten: Record<string, number>; bauzeitS: number } | null = null;
+  private platzierGeist: Phaser.GameObjects.Container | null = null;
+  private baustellen: Array<{ id: string; x: number; y: number; t: number; dauer: number; img: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics }> = [];
+  private readonly BAUZEIT: Record<string, number> = { lagerfeuer: 3, standarte: 2.5, palisade: 4 };
 
   private toggleRtsModus(): void {
     if (this.rtsLeiste) {
+      this.brichPlatzierungAb();
       this.rtsLeiste.destroy();
       this.rtsLeiste = null;
       this.setzeFreiKamera(false);
@@ -2468,7 +2461,7 @@ export class WorldScene extends CombatScene {
     if (this.area.dark || this.area.innen) { this.logMsg('Die Schlachtfeld-Steuerung braucht freien Himmel.', ''); return; }
     this.setzeFreiKamera(true);
     this.baueRtsLeiste();
-    this.logMsg('Schlachtfeld-Steuerung: WASD bewegt die Kamera, die Leiste unten baut und formiert.', 'gold');
+    this.logMsg('Schlachtfeld-Steuerung: WASD bewegt die Kamera. Bauwerk anklicken, dann mit der Maus platzieren (Rechtsklick bricht ab).', 'gold');
   }
 
   private aktuelleMoral(): number {
@@ -2483,12 +2476,22 @@ export class WorldScene extends CombatScene {
   private baueRtsLeiste(): void {
     this.rtsLeiste?.destroy();
     const w = 640, h = 96;
-    const c = this.add.container((this.scale.width - w) / 2, this.scale.height - h - 6).setScrollFactor(0).setDepth(6400);
+    // R88 (Autor "Kasten verdeckt die Actionbar, nicht verschiebbar"): die
+    // Leiste startet OBEN (weg von der Aktionsleiste am unteren Rand) und ist
+    // an der Kopfzeile frei verschiebbar - die Position bleibt gemerkt.
+    if (this.rtsLeistePos.x < 0) this.rtsLeistePos.x = (this.scale.width - w) / 2;
+    const c = this.add.container(this.rtsLeistePos.x, this.rtsLeistePos.y).setScrollFactor(0).setDepth(6400);
     this.rtsLeiste = c;
     const bg = this.add.rectangle(0, 0, w, h, 0x14100a, 0.94).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
     bg.setInteractive(); c.add(bg);
-    c.add(this.add.text(10, 5, '⚔ BANNER', { fontFamily: 'serif', fontSize: '12px', color: '#c9a227', letterSpacing: 2 }));
-    c.add(this.add.text(110, 5, `Moral ${this.aktuelleMoral()}`, { fontFamily: 'serif', fontSize: '12px', color: this.aktuelleMoral() >= MORAL.basis ? '#9ad86a' : '#d86a5a' }));
+    // Kopfzeile = Ziehgriff (Schirmkoordinaten-Delta ab dragstart, R88)
+    const kopf = this.add.rectangle(0, 0, w, 20, 0xffffff, 0.04).setOrigin(0).setInteractive({ draggable: true, useHandCursor: true });
+    let zStart: { x: number; y: number } | null = null; let pStart = { x: 0, y: 0 };
+    kopf.on('dragstart', (pz: Phaser.Input.Pointer) => { zStart = { x: pz.x, y: pz.y }; pStart = { x: c.x, y: c.y }; });
+    kopf.on('drag', (pz: Phaser.Input.Pointer) => { if (!zStart) return; c.x = Math.max(0, Math.min(this.scale.width - w, pStart.x + (pz.x - zStart.x))); c.y = Math.max(0, Math.min(this.scale.height - h, pStart.y + (pz.y - zStart.y))); this.rtsLeistePos = { x: c.x, y: c.y }; });
+    c.add(kopf);
+    c.add(this.add.text(10, 5, '⚔ BANNER  (Kopf zum Verschieben)', { fontFamily: 'serif', fontSize: '11px', color: '#c9a227', letterSpacing: 1 }));
+    c.add(this.add.text(290, 5, `Moral ${this.aktuelleMoral()}`, { fontFamily: 'serif', fontSize: '12px', color: this.aktuelleMoral() >= MORAL.basis ? '#9ad86a' : '#d86a5a' }));
     const zu = this.add.text(w - 24, 4, '✕', { fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8' }).setInteractive({ useHandCursor: true });
     zu.on('pointerdown', () => this.toggleRtsModus()); c.add(zu);
     // Reihe 1: Formationen (Vorwahl - wirkt auf Kämpfer, sobald Einheiten im Feld stehen)
@@ -2518,25 +2521,120 @@ export class WorldScene extends CombatScene {
     if (!b.frei) { this.logMsg(`${b.name}: wird später freigeschaltet.`, ''); return; }
     const fehlt = Object.entries(b.kosten).some(([k, n]) => (this.p.materials[k as MaterialId] ?? 0) < (n ?? 0));
     if (fehlt) { this.sfx.play('fehler'); this.logMsg(`Nicht genug Material für ${b.name}.`, ''); return; }
-    if (b.id === 'lagerfeuer') { this.baue('lagerfeuer'); this.baueRtsLeiste(); return; }
-    if (b.id === 'palisade') {
-      // Palisaden-Segment auf die Kachel vor dem Helden (vorhandene Grafik + Kollision über a.map)
-      const tx = Math.floor(this.px / TILE), ty = Math.floor((this.py + 26) / TILE);
-      const t = this.area.map[ty]?.[tx + 0];
-      if (t === undefined || SOLID.has(t) || t === T.WATER || t === T.BRIDGE || t === T.PATH) { this.sfx.play('fehler'); this.logMsg('Hier ist kein Platz für die Palisade.', ''); return; }
-      for (const [k, n] of Object.entries(b.kosten)) this.p.materials[k as MaterialId] -= n ?? 0;
+    // R88: nicht mehr sofort bauen - Platzierungs-Modus (Geist folgt der Maus).
+    this.startePlatzierung(b.id, b.kosten as Record<string, number>);
+  }
+
+  // --- PLATZIERUNG + BAUZEIT (R88, "RTS wie AoE/BAR"): Bauwerk anklicken ->
+  // ein Geist folgt der Maus -> Linksklick setzt die Baustelle -> ein
+  // Fortschrittsbalken läuft die Bauzeit ab -> dann steht das Bauwerk. ------
+  private startePlatzierung(id: string, kosten: Record<string, number>): void {
+    this.brichPlatzierungAb();
+    this.platziereModus = { id, kosten, bauzeitS: this.BAUZEIT[id] ?? 3 };
+    const name = (RTS_BAUTEN.find((b) => b.id === id)?.name) ?? (BAUMENU.find((b) => b.id === id)?.name) ?? id;
+    // Geist = halbtransparenter Fußabdruck + Beschriftung (folgt der Maus)
+    const g = this.add.container(0, 0).setDepth(6300);
+    const feld = this.add.rectangle(0, 0, 34, 34, 0x9ad86a, 0.28).setStrokeStyle(1, 0x9ad86a);
+    const txt = this.add.text(0, -28, name, { fontFamily: 'serif', fontSize: '11px', color: '#e8dfc8', backgroundColor: '#100b06cc', padding: { x: 4, y: 2 } }).setOrigin(0.5, 1);
+    g.add(feld); g.add(txt);
+    g.setData('feld', feld);
+    this.platzierGeist = g;
+    this.logMsg(`${name} platzieren: Linksklick setzt die Baustelle, Rechtsklick bricht ab.`, '');
+  }
+
+  private brichPlatzierungAb(): void {
+    this.platziereModus = null;
+    this.platzierGeist?.destroy();
+    this.platzierGeist = null;
+  }
+
+  // Kann an dieser Weltposition gebaut werden? (freier Boden, nicht Weg/Wasser)
+  private bauplatzFrei(wx: number, wy: number): boolean {
+    const t = this.area.map[Math.floor(wy / TILE)]?.[Math.floor(wx / TILE)];
+    return !(t === undefined || SOLID.has(t) || t === T.WATER || t === T.BRIDGE || t === T.PATH);
+  }
+
+  // Linksklick im Platzierungs-Modus (aus bauKlick) - true = Klick verbraucht.
+  private platzierKlick(ptr: Phaser.Input.Pointer): boolean {
+    if (!this.platziereModus) return false;
+    if (ptr.rightButtonDown()) { this.brichPlatzierungAb(); this.logMsg('Bau abgebrochen.', ''); return true; }
+    const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
+    const wx = Math.floor(wp.x / TILE) * TILE + 16, wy = Math.floor(wp.y / TILE) * TILE + 16;
+    if (!this.bauplatzFrei(wx, wy)) { this.sfx.play('fehler'); this.logMsg('Kein Platz - freien Boden wählen.', ''); return true; }
+    const mod = this.platziereModus;
+    const fehlt = Object.entries(mod.kosten).some(([k, n]) => (this.p.materials[k as MaterialId] ?? 0) < (n ?? 0));
+    if (fehlt) { this.sfx.play('fehler'); this.logMsg('Nicht mehr genug Material.', ''); this.brichPlatzierungAb(); return true; }
+    for (const [k, n] of Object.entries(mod.kosten)) this.p.materials[k as MaterialId] -= n ?? 0;
+    this.setzeBaustelle(mod.id, wx, wy, mod.bauzeitS);
+    this.sfx.play('holz_hacken');
+    this.brichPlatzierungAb();
+    this.baueRtsLeiste?.();   // Leiste (Material-Farben) auffrischen, falls im RTS
+    return true;
+  }
+
+  private setzeBaustelle(id: string, x: number, y: number, dauer: number): void {
+    if (!this.textures.exists('baustelle_tex')) {
+      const c = document.createElement('canvas'); c.width = 34; c.height = 30;
+      const g = c.getContext('2d')!;
+      g.fillStyle = 'rgba(0,0,0,0.28)'; g.beginPath(); g.ellipse(17, 24, 14, 5, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#8a6f3c'; g.lineWidth = 2; g.lineCap = 'round';           // Gerüst-Balken
+      g.beginPath(); g.moveTo(6, 26); g.lineTo(12, 8); g.moveTo(28, 26); g.lineTo(22, 8); g.moveTo(10, 16); g.lineTo(24, 16); g.stroke();
+      g.fillStyle = 'rgba(200,180,120,0.5)'; g.fillRect(9, 20, 16, 6);            // Materialstapel
+      this.textures.addCanvas('baustelle_tex', c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+    const img = this.add.image(x, y, 'baustelle_tex').setDepth(y - 4).setOrigin(0.5, 0.8);
+    this.tileImages.push(img);
+    const balken = this.add.graphics().setDepth(y + 20);
+    this.tileImages.push(balken as unknown as Phaser.GameObjects.Image);
+    this.baustellen.push({ id, x, y, t: 0, dauer, img, balken });
+  }
+
+  // Baustellen fortschreiten (aus dem Update-Takt); fertige -> echtes Bauwerk.
+  private updateBaustellen(dt: number): void {
+    if (this.platzierGeist && this.platziereModus) {
+      const ptr = this.input.activePointer;
+      const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
+      const gx = Math.floor(wp.x / TILE) * TILE + 16, gy = Math.floor(wp.y / TILE) * TILE + 16;
+      this.platzierGeist.setPosition(gx, gy);
+      const feld = this.platzierGeist.getData('feld') as Phaser.GameObjects.Rectangle;
+      const ok = this.bauplatzFrei(gx, gy);
+      feld.setFillStyle(ok ? 0x9ad86a : 0xd8402a, 0.28).setStrokeStyle(1, ok ? 0x9ad86a : 0xd8402a);
+    }
+    for (let i = this.baustellen.length - 1; i >= 0; i--) {
+      const b = this.baustellen[i];
+      if (!b.img.active) { this.baustellen.splice(i, 1); continue; }
+      b.t += dt;
+      const f = Math.min(1, b.t / b.dauer);
+      const zm = this.cameras.main.zoom, cam = this.cameras.main;
+      const sx = (b.x - cam.worldView.x) * zm, sy = (b.y - cam.worldView.y - 24) * zm;
+      b.balken.clear();
+      b.balken.fillStyle(0x000000, 0.6).fillRect(b.x - 15, b.y - 26, 30, 5);
+      b.balken.fillStyle(0x9ad86a, 1).fillRect(b.x - 14, b.y - 25, 28 * f, 3);
+      void sx; void sy;
+      if (f >= 1) {
+        b.img.destroy(); b.balken.destroy();
+        this.baustellen.splice(i, 1);
+        this.vollendeBau(b.id, b.x, b.y);
+      }
+    }
+  }
+
+  private vollendeBau(id: string, x: number, y: number): void {
+    this.sfx.play('klick');
+    if (id === 'lagerfeuer') {
+      (this.lagerfeuerProKarte[this.area.id] ??= []).push({ x, y });
+      this.spawneLagerfeuer(x, y);
+      this.logMsg('Lagerfeuer errichtet - hier heilst du und hast nachts Licht.', 'gold');
+    } else if (id === 'standarte') {
+      this.spawneStandarte(x, y);
+      this.logMsg(`Die Standarte weht - Moral im Umkreis +${MORAL.standarteBonus}.`, 'gold');
+    } else if (id === 'palisade') {
+      const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
       this.area.map[ty][tx] = T.PALISADE;
       this.refreshTile(tx, ty);
-      this.sfx.play('holz_hacken');
-      this.logMsg('Palisaden-Segment errichtet.', 'gold');
+      this.logMsg('Palisaden-Segment steht.', 'gold');
     }
-    if (b.id === 'standarte') {
-      for (const [k, n] of Object.entries(b.kosten)) this.p.materials[k as MaterialId] -= n ?? 0;
-      this.spawneStandarte(this.px + 26, this.py);
-      this.sfx.play('holz_hacken');
-      this.logMsg(`Die Standarte steht - Moral im Umkreis +${MORAL.standarteBonus}.`, 'gold');
-    }
-    this.baueRtsLeiste();
+    this.panels?.refresh?.();
   }
 
   // Banner-Standarte: Stange + wehender Wimpel (Canvas), Moral-Anker im Umkreis
@@ -3420,7 +3518,7 @@ export class WorldScene extends CombatScene {
         // dunkel getönt, am Fuß gespiegelt auf den Boden gelegt - Richtung und
         // Länge stellt updateBaumWind nach dem Sonnenstand, er schwankt im Wind mit.
         const schatten = tag(this.add.image(fx, fy - 2, obj).setDepth(-7.4));
-        schatten.setOrigin(0.5, 1);
+        schatten.setOrigin(0.5, 1).setFlipX(true);   // R88: echte Reflexion, keine Punktspiegelung
         schatten.setDisplaySize(hoehe * aspekt, hoehe);
         schatten.setTint(0x0c140e).setAlpha(0);
         schatten.setData('schatten', 1);
@@ -3602,6 +3700,8 @@ export class WorldScene extends CombatScene {
     this.lagerfeuerAktiv = [];
     for (const lf of this.lagerfeuerProKarte[a.id] ?? []) this.spawneLagerfeuer(lf.x, lf.y);
     this.standartenAktiv = [];   // R87: Standarten sind (noch) je Sitzung/Karte
+    this.baustellen = [];        // R88: Baustellen je Karte (Container via tileImages weg)
+    this.brichPlatzierungAb();
     // Tiles als statische Bilder (Pseudo-3D, Masterprompt 5.1). Bei dorfSimBoden
     // malt der dorfSim-Canvas alles - keine Kacheln.
     if (!a.dorfSimBoden) {
@@ -4035,6 +4135,12 @@ export class WorldScene extends CombatScene {
       } else this.heldNass = 0;
     } else this.heldNass = 0;
     return f;
+  }
+
+  // R88: im Platzierungs-Modus fängt der Weltklick die Bau-Platzierung ab
+  // (vor Angriff/Interaktion), damit die Maus das Bauwerk setzt.
+  protected override bauKlick(ptr: Phaser.Input.Pointer): boolean {
+    return this.platzierKlick(ptr);
   }
 
   protected override klickAufUi(ptr: Phaser.Input.Pointer): boolean {
@@ -8586,6 +8692,7 @@ export class WorldScene extends CombatScene {
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
     this.updateWetter(dt);      // Wetter-Achse (Regen/Nässe, Stimmungsregen bis 1. Dungeon)
     this.updateLagerfeuer(dt);  // eigenes Feuer heilt in der Nähe (R81, Baumenü)
+    this.updateBaustellen(dt);  // RTS-Platzierung + Bauzeit-Fortschritt (R88)
     this.updateNassSpritzer(dt);  // Spritzer in Pfützen + auf nassem Rasen (R78)
     this.updateRegenPlatschen(dt); // Regen plätschert im Gras (R79)
     this.updateWasserWetter();  // Regen-Ringe/Wirbel auf dem neuen Wasser

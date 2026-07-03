@@ -978,3 +978,10 @@
   Schlacht-Karten - die Schlacht-Probe (962 Zeilen) ist die Blaupause.
 - Verbaende heilen sofort +30 (Taste V); Standarten sind je Sitzung (Save folgt
   mit dem Schlacht-Ausbau). Blumen/Kraeuter geben beim Schneiden 1 Kraeuter.
+- R88 Fixes: (1) Baumschatten ist eine echte REFLEXION (Sprite setFlipX + Rotation
+  Math.PI - L.dir), R86-Punktspiegelung verworfen - legt sich seitlich weg vom
+  Licht. (2) RTS-Leiste startet OBEN (weg von der Aktionsleiste), Kopfzeile
+  verschiebbar, Position gemerkt. (3) Bauen ist RTS-artig: Bauwerk anklicken ->
+  Geist folgt der Maus -> Linksklick setzt Baustelle -> Bauzeit-Fortschritt
+  (Lagerfeuer 3s, Standarte 2.5s, Palisade 4s) -> dann steht es. Baumenü (N)
+  und RTS nutzen denselben Platzierungs-Pfad (bauKlick-Hook).
