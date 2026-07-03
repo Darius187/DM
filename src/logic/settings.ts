@@ -77,6 +77,12 @@ export interface Settings {
     schattenNah: number;          // Schatten-Aufhellung NAHER Lichter 0-100 (unmittelbare Schatten heller), Runde 57
     schattenFern: number;         // Schatten-Aufhellung FERNER Lichter 0-100 (entfernte Schatten heller), Runde 57
     fackelBlende: number;         // Fackel-Überblendung 0-100: 0 = hart an/aus, hoch = sanftes Ein-/Ausblenden (kein Aufblinken), Runde 57
+    // Held-Licht NACHTS draußen (R81, Autorwunsch "Helligkeit, Farbe und
+    // Sichtweite will ich regeln können"):
+    nachtDunkel?: number;         // wie finster die Nacht wird 0-100 (82 = bisheriges Stockfinster)
+    nachtSicht?: number;          // Held-Sichtradius nachts in px (Standard 240)
+    nachtGlut?: number;           // Stärke des warmen Scheins um den Helden 0-100
+    nachtGlutFarbe?: number;      // Farbe des Held-Scheins (Hex, Standard warmes 0xffcf86)
   };
   audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
   zoomV: number;          // einmaliger Zoom-Standard (Runde 41: 130%)
@@ -114,7 +120,7 @@ export const DEF_SETTINGS: Settings = {
   grusel: 100, // Runde 58 (Autorwunsch): Grusel-Atmosphäre standardmäßig voll an
   schatten: 70, // Runde 55: Schatten/Licht (Aussenwelt) standardmäßig an (mittlere Stärke)
   dungeonStaerke: 100, // Runde 58: vom Autor eingestellter Stand (Dungeon-Dunkelheit)
-  licht: { variante: 2, sichtRadius: 183, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: true, fackelHelligkeit: 23, fackelReichweite: 100, fackelFarbe: 31, dungeonWeichheit: 99, schattenFackeln: 100, heldFarbe: 18, alleFackelnSchatten: true, effekteSchatten: false, fackelSicht: true, heldSchatten: false, fackelSichtTol: 0, fackelDistanz: 100, fackelRaumLicht: 4, fackelRaumFarbe: 33, fackelGlutRadius: 0, lichtSchaerfe: 86, heldSichtfeld: true, sichtfeldRadius: 100, sichtfeldStaerke: 19, umgebungslicht: 0, lichtHelligkeit: 42, schattenNah: 0, schattenFern: 100, fackelBlende: 68 },
+  licht: { variante: 2, sichtRadius: 183, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: true, fackelHelligkeit: 23, fackelReichweite: 100, fackelFarbe: 31, dungeonWeichheit: 99, schattenFackeln: 100, heldFarbe: 18, alleFackelnSchatten: true, effekteSchatten: false, fackelSicht: true, heldSchatten: false, fackelSichtTol: 0, fackelDistanz: 100, fackelRaumLicht: 4, fackelRaumFarbe: 33, fackelGlutRadius: 0, lichtSchaerfe: 86, heldSichtfeld: true, sichtfeldRadius: 100, sichtfeldStaerke: 19, umgebungslicht: 0, lichtHelligkeit: 42, schattenNah: 0, schattenFern: 100, fackelBlende: 68, nachtDunkel: 82, nachtSicht: 240, nachtGlut: 50, nachtGlutFarbe: 0xffcf86 },
   audioV: 1,
   zoomV: 1,
   bloomV: 1,

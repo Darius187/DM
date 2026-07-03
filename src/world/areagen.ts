@@ -11,8 +11,9 @@ import type { InnenraumDef, InnenMoebel } from '../data/innenraeume';
 import { sdWasser, type WasserGeometrie } from './wasserFeld';
 
 export interface Pos { x: number; y: number }
-// Abbaubarer Brocken (Fels/Erzader) mit Zerfalls-Zustand (R80, 7DtD-Abbau)
-export interface Abbaubar extends Pos { hp?: number; stufe?: number; inhalt?: number; gegeben?: number }
+// Abbaubarer Brocken (Fels/Erzader) mit Zerfalls-Zustand (R80, 7DtD-Abbau).
+// g = Größe 0 klein / 1 mittel / 2 groß (R81): mehr Schläge, mehr Inhalt.
+export interface Abbaubar extends Pos { hp?: number; stufe?: number; inhalt?: number; gegeben?: number; g?: number }
 
 export interface BreakableSpawn { kind: BreakableKind; x: number; y: number; ambush: boolean }
 export interface EnemySpawn { type: EnemyTypeId; x: number; y: number; elite: boolean; champion?: string; tot?: boolean }
@@ -1762,10 +1763,11 @@ export function buildStart(rng: Rng): AreaData {
   // FELSEN + ERZADERN (Runde 79, Sammel-System angeschlossen): Felsbrocken
   // (Stein, Spitzhacke) verstreut am Waldrand, Eisen-Adern im Nordosten nahe
   // der Felszone. Gold bleibt der Goldhöhle vorbehalten.
+  // g = Größe (R81): klein/mittel/groß gemischt - große brauchen mehr Schläge
   a.rocks = [
-    { x: 900, y: 620 }, { x: 2600, y: 420 }, { x: 3400, y: 900 },
-    { x: 620, y: 2300 }, { x: 1750, y: 2450 }, { x: 3750, y: 1500 },
-    { x: 2950, y: 2350 }, { x: 1200, y: 380 },
+    { x: 900, y: 620, g: 1 }, { x: 2600, y: 420, g: 2 }, { x: 3400, y: 900, g: 0 },
+    { x: 620, y: 2300, g: 2 }, { x: 1750, y: 2450, g: 0 }, { x: 3750, y: 1500, g: 1 },
+    { x: 2950, y: 2350, g: 1 }, { x: 1200, y: 380, g: 0 },
   ];
   a.ores = [ { x: 3550, y: 520 }, { x: 3820, y: 760 }, { x: 480, y: 1900 } ];
   // Bäume um die POIs freiräumen (Meiler-Lichtung etwas größer)

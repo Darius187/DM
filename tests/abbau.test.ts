@@ -2,7 +2,7 @@
 // zahlen anteilig aus. Diese Tests sichern die reine Formel-Logik ab -
 // die Optik (Risse/Geröll) wird im Browser verifiziert.
 import { describe, expect, it } from 'vitest';
-import { GATHER, abbauStufe, abbauSoll } from '../src/data/crafting';
+import { GATHER, ABBAU, abbauStufe, abbauSoll } from '../src/data/crafting';
 
 // Einen kompletten Abbau simulieren (wie WorldScene.mine je Schlag)
 function simuliere(maxHp: number, inhalt: number): { stufen: number[]; zahlungen: number[] } {
@@ -39,6 +39,19 @@ describe('Stufen-Abbau (7DtD)', () => {
         expect(zahlungen.reduce((a, b) => a + b, 0)).toBe(inhalt);
         for (const z of zahlungen) expect(z).toBeGreaterThanOrEqual(0);
       }
+    }
+  });
+
+  it('Fels-Größen (R81): größer = mehr Schläge UND mehr Inhalt, alle Stufen erreichbar', () => {
+    for (let g = 0; g < ABBAU.felsGroessen.length; g++) {
+      const cfg = ABBAU.felsGroessen[g];
+      if (g > 0) {
+        expect(cfg.schlaege).toBeGreaterThan(ABBAU.felsGroessen[g - 1].schlaege);
+        expect(cfg.inhalt.min).toBeGreaterThanOrEqual(ABBAU.felsGroessen[g - 1].inhalt.min);
+      }
+      const { stufen, zahlungen } = simuliere(cfg.schlaege, cfg.inhalt.max);
+      expect(stufen[stufen.length - 1]).toBe(3);
+      expect(zahlungen.reduce((a, b) => a + b, 0)).toBe(cfg.inhalt.max);
     }
   });
 

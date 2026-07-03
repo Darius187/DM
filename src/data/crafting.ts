@@ -25,7 +25,13 @@ export const GATHER = {
 // (ganz -> rissig -> Geröll -> weg) und zahlen bei jeder Stufe anteilig aus.
 // Formeln 1:1 aus der "Dorf im Wald"-Referenz (dorfSim hackeFels).
 export const ABBAU = {
-  felsInhalt: { min: 3, max: 6 },   // Stein GESAMT je Felsbrocken (über alle Stufen)
+  // R81: Felsen kommen in DREI Größen (0 klein / 1 mittel / 2 groß) - größere
+  // brauchen mehr Schläge und enthalten mehr Stein (dorfSim hpProGroesse).
+  felsGroessen: [
+    { schlaege: 3, inhalt: { min: 2, max: 3 } },   // klein
+    { schlaege: 4, inhalt: { min: 3, max: 6 } },   // mittel
+    { schlaege: 6, inhalt: { min: 6, max: 10 } },  // groß
+  ],
   erzInhalt: { min: 2, max: 4 },    // Eisen GESAMT je Erzader
   goldInhalt: { min: 2, max: 3 },   // Golderz GESAMT je Goldader (wandert ins Dorf-Lager)
 } as const;

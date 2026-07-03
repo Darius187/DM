@@ -31,7 +31,9 @@ export class WetterOverlay {
     this.tint = scene.add.rectangle(0, 0, this.w, this.h, 0x0a1024, 0).setOrigin(0, 0).setScrollFactor(0).setDepth(depth);
     this.regenGfx = scene.add.graphics().setScrollFactor(0).setDepth(depth + 1);
     this.blitzRect = scene.add.rectangle(0, 0, this.w, this.h, 0xdfe7f2, 0).setOrigin(0, 0).setScrollFactor(0).setDepth(depth + 2);
-    for (let i = 0; i < 200; i++) this.tropfen.push(this.neu(true));
+    // R81 (Autor: "auf der letzten Stufe muss es RICHTIG schütten"): großer
+    // Pool - bei leichtem Regen fällt nur ein Bruchteil, im Gewitter alles.
+    for (let i = 0; i < 520; i++) this.tropfen.push(this.neu(true));
     scene.scale.on('resize', this.resize, this);
     if (opts.tasten && scene.input.keyboard) {
       const k = scene.input.keyboard;
@@ -53,13 +55,20 @@ export class WetterOverlay {
     // Verdunklung: Unwetter immer; Tag/Nacht nur wenn die Szene KEIN eigenes Licht hat.
     const dunkel = this.tagNacht ? nachtDunkel(wetter.tageszeit) : 0;
     this.tint.setAlpha(Math.min(0.85, dunkel + regen * 0.2));
-    // Regen
+    // Regen: Dichte wächst QUADRATISCH zur Stärke (Niesel = wenige Fäden,
+    // Gewitter = dichter Vorhang), Tropfen werden schneller, länger, schräger.
     this.regenGfx.clear();
     if (regen > 0.04) {
-      const n = Math.floor(this.tropfen.length * Math.min(1, regen * 1.4));
+      const dichte = Math.min(1, regen * regen * 0.9 + regen * 0.25);
+      const n = Math.floor(this.tropfen.length * dichte);
       this.regenGfx.lineStyle(1.4, 0xaccae8, 0.5 * Math.min(1, regen * 1.5));
-      const drift = 30 + regen * 60;
-      for (let i = 0; i < n; i++) { const t = this.tropfen[i]; t.y += t.vy * dt; t.x += drift * dt; if (t.y > this.h) Object.assign(t, this.neu()); this.regenGfx.lineBetween(t.x, t.y, t.x - 7, t.y - t.len); }
+      const drift = 30 + regen * 170, tempo = 0.8 + regen * 0.55, lenF = 1 + regen * 0.8;
+      for (let i = 0; i < n; i++) {
+        const t = this.tropfen[i];
+        t.y += t.vy * tempo * dt; t.x += drift * dt;
+        if (t.y > this.h) Object.assign(t, this.neu());
+        this.regenGfx.lineBetween(t.x, t.y, t.x - 4 - drift * 0.05, t.y - t.len * lenF);
+      }
     }
     // Blitz: interner Timer bei GEWITTER (entkoppelt von der Zustands-Logik) + abklingen.
     // R80: Schwelle angehoben - die WorldScene speist staerke = wetterWert*1.3, also

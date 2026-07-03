@@ -1902,7 +1902,9 @@ export class WorldScene extends CombatScene {
     for (const b of this.windBaeume) {
       if (!b.img.active) continue;
       // dorfSim-Biegung: Wind * Böen-Welle, dazu ein leiser Eigen-Atem je Baum.
-      b.img.rotation = wd * 0.06 * this.boeWelle(b.img.x, b.img.y, time)
+      // 0.10 (Autor R81 "die Bäume müssen im Sturm VIEL mehr schwanken"):
+      // im Gewitter biegt der konstante Sturmwind die Kronen sichtbar weit.
+      b.img.rotation = wd * 0.10 * this.boeWelle(b.img.x, b.img.y, time)
         + 0.006 * Math.sin(time * 0.0011 + b.phase);
     }
     // WEGBIEGEN vor dem Helden (dorfSim-Verhalten, Autorwunsch R77): Gras und
@@ -2054,6 +2056,13 @@ export class WorldScene extends CombatScene {
       for (let tx = 1; tx < a.w - 1; tx++) {
         const id = a.map[ty][tx];
         if (id === T.PATH || id === T.BRIDGE || id === T.TREE) continue;
+        // R81 (Autor "bei den Brücken bitte kein Schilf"): auch die NACHBARSCHAFT
+        // der Brücke bleibt frei - vorher wucherten Büschel an die Planken heran.
+        let brueckeNah = false;
+        for (let dy = -2; dy <= 2 && !brueckeNah; dy++) for (let dx = -2; dx <= 2; dx++) {
+          if (a.map[ty + dy]?.[tx + dx] === T.BRIDGE) { brueckeNah = true; break; }
+        }
+        if (brueckeNah) continue;
         const u = (tx + 0.5) / a.w, vv = (ty + 0.5) / a.h;
         const sd = sdWasser(u, vv, geo, smink);
         if (sd < -0.004 || sd > 0.009) continue;    // schmales Band um die Wasserkante
@@ -2589,6 +2598,19 @@ export class WorldScene extends CombatScene {
         { kind: 'button', label: () => 'Stimmungs-Niesel FEST (Heavy-Rain-Gefühl)', onClick: () => { this.wetterWert = WETTER.stimmungsRegen; this.wetterZiel = WETTER.stimmungsRegen; this.wetterTimer = 1e9; this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => 'Gewitter SOFORT', onClick: () => { this.wetterWert = 1; this.wetterZiel = 1; this.wetterTimer = 1e9; this.naesse = Math.max(this.naesse, 0.8); this.devKonsole?.refresh(); } },
       ] },
+      // R81 (Autorwunsch): Held-Licht in der Nacht frei regelbar - Dunkelheit,
+      // Sichtweite, Glut-Helligkeit und Glut-Farbe. Wirkt draußen nachts;
+      // die Krypta behält ihre eigene Licht-Werkbank (Einstellungen).
+      { name: 'LICHT', controls: () => {
+        const lic = getSettings().licht;
+        return [
+          { kind: 'note', text: 'Held-Licht NACHTS draußen. Tageszeit im WETTER-Tab auf 22 stellen, dann hier live regeln - alles wird gespeichert.' },
+          { kind: 'slider', label: 'Nacht-Dunkelheit', min: 40, max: 95, step: 1, get: () => lic.nachtDunkel ?? 82, set: (v) => { lic.nachtDunkel = v; saveSettings(); } },
+          { kind: 'slider', label: 'Sichtweite nachts (Radius)', min: 120, max: 640, step: 10, get: () => lic.nachtSicht ?? 240, set: (v) => { lic.nachtSicht = v; saveSettings(); } },
+          { kind: 'slider', label: 'Held-Glut Helligkeit', min: 0, max: 100, step: 2, get: () => lic.nachtGlut ?? 50, set: (v) => { lic.nachtGlut = v; saveSettings(); } },
+          { kind: 'color', label: 'Held-Glut Farbe', get: () => { const c = lic.nachtGlutFarbe ?? 0xffcf86; return [(c >> 16 & 255) / 255, (c >> 8 & 255) / 255, (c & 255) / 255] as [number, number, number]; }, set: (c) => { lic.nachtGlutFarbe = (Math.round(c[0] * 255) << 16) | (Math.round(c[1] * 255) << 8) | Math.round(c[2] * 255); saveSettings(); } },
+        ] as DKControl[];
+      } },
       { name: 'MESSEN', controls: () => [
         { kind: 'button', label: () => `FPS-Anzeige: ${this.perfAn ? 'AN' : 'aus'}`, onClick: () => { this.perfAn = !this.perfAn; this.devKonsole?.refresh(); } },
         { kind: 'button', label: () => `Wasser-Shader: ${this.wasser2Shader?.visible ? 'AN' : 'aus'} (FPS-Vergleich)`, onClick: () => { this.wasser2Shader?.setVisible(!this.wasser2Shader.visible); this.devKonsole?.refresh(); } },
@@ -2939,20 +2961,22 @@ export class WorldScene extends CombatScene {
       if (id === T.ROCK || id === T.ORE) {
         const eintrag = (id === T.ROCK ? a.rocks : a.ores).find((r) => Math.floor(r.x / TILE) === tx && Math.floor(r.y / TILE) === ty);
         const stufe = eintrag?.stufe ?? 0;
+        // Größen-Skala (R81, dorfSim FELS_R): klein/mittel/groß
+        const gSkala = [0.75, 1.0, 1.45][Math.max(0, Math.min(2, eintrag?.g ?? 1))];
         if (stufe >= 2) {
           objImg.setTexture(this.abbauTexturKey('geroell', tx * 7 + ty));
-          objImg.setDisplaySize(TILE * 1.1, TILE * 0.85).setDepth(ty * TILE + 10);
+          objImg.setDisplaySize(TILE * 1.1 * gSkala, TILE * 0.85 * gSkala).setDepth(ty * TILE + 10);
           objImg.setData('objTyp', objName);
           return;
         }
+        const sk = skala * gSkala * (stufe === 1 ? 0.82 : 1);
+        if (sk > 1.15) objImg.setOrigin(0.5, 0.7);
+        objImg.setDisplaySize(TILE * sk, TILE * sk);
+        objImg.setData('objTyp', objName);
         if (stufe === 1) {
-          const sk = skala * 0.82;
-          if (sk > 1.15) objImg.setOrigin(0.5, 0.7);
-          objImg.setDisplaySize(TILE * sk, TILE * sk);
           tag(this.add.image(tx * TILE + 16, ty * TILE + 13, this.abbauTexturKey('risse')).setDepth(ty * TILE + 27).setDisplaySize(TILE * sk * 0.75, TILE * sk * 0.75));
-          objImg.setData('objTyp', objName);
-          return;
         }
+        return;
       }
       if (skala > 1.15) objImg.setOrigin(0.5, 0.7);
       objImg.setDisplaySize(TILE * skala, TILE * skala);
@@ -5747,9 +5771,12 @@ export class WorldScene extends CombatScene {
       this.sfx.play('fehler');
       return;
     }
-    const maxHp = what === 'stein' ? GATHER.felsSchlaege : GATHER.erzSchlaege;
+    // Größe (R81): kleine Felsen 3 Schläge, mittlere 4, große 6 - und
+    // entsprechend mehr Stein. Erzadern bleiben bei den GATHER-Schlägen.
+    const groesse = ABBAU.felsGroessen[Math.max(0, Math.min(2, o.g ?? 1))];
+    const maxHp = what === 'stein' ? groesse.schlaege : GATHER.erzSchlaege;
     if (o.hp === undefined) {   // erster Schlag: Zustand anlegen
-      const inh = what === 'stein' ? ABBAU.felsInhalt : what === 'eisen' ? ABBAU.erzInhalt : ABBAU.goldInhalt;
+      const inh = what === 'stein' ? groesse.inhalt : what === 'eisen' ? ABBAU.erzInhalt : ABBAU.goldInhalt;
       o.hp = maxHp; o.stufe = 0; o.gegeben = 0;
       o.inhalt = ri(this.rng, inh.min, inh.max);
     }
@@ -7005,12 +7032,16 @@ export class WorldScene extends CombatScene {
     this.lightRT.setVisible(true);
     this.lightRT.clear();
     // Runde 41: Tag-Grundschleier sehr hell (Autorkritik "Stadt zu dunkel,
-    // Bloom macht's noch dunkler"). Tag ~0.04 (kaum Schleier), Nacht weiter dunkel.
-    const dunkelAlpha = this.area.dark ? 0.97 : Math.min(0.92, 0.04 + 0.82 * nachtFaktor + (fow ? 0.2 : 0));
+    // Bloom macht's noch dunkler"). Tag ~0.04 (kaum Schleier), Nacht per Regler
+    // (R81, Autor: "in der Nacht ist das Licht vom Helden stockfinster").
+    const lic = getSettings().licht;
+    const nachtMax = (lic.nachtDunkel ?? 82) / 100;
+    const nachtSicht = lic.nachtSicht ?? 240;
+    const dunkelAlpha = this.area.dark ? 0.97 : Math.min(0.92, 0.04 + nachtMax * nachtFaktor + (fow ? 0.2 : 0));
     this.lightRT.fill(0x020100, dunkelAlpha);
     const time = this.time.now / 1000;
     const flicker = 1 + Math.sin(time * 9) * 0.025 + Math.sin(time * 23) * 0.015;
-    let basisRadius = this.area.dark ? 235 + this.p.stats.licht : 640 - 400 * nachtFaktor + this.p.stats.licht;
+    let basisRadius = this.area.dark ? 235 + this.p.stats.licht : 640 - (640 - nachtSicht) * nachtFaktor + this.p.stats.licht;
     if (fow) basisRadius = Math.min(basisRadius, 330);
     // Sichtweite draußen begrenzen (Runde 40, Autorwunsch "so weit wie ein
     // Mensch sieht"): im Dorf/Wald auf sichtweiteDorf kappen; Nebel verkürzt
@@ -7026,7 +7057,7 @@ export class WorldScene extends CombatScene {
     const px = (this.px - cam.worldView.x) * zm, py = (this.py - cam.worldView.y) * zm;
     this.eraseLight(px, py, playerRadius * zm);
     let warmIdx = 0;
-    if (!fow && (this.area.dark || nachtFaktor > 0.3)) warmIdx = this.placeWarm(warmIdx, this.px, this.py, 160, 0.5);
+    if (!fow && (this.area.dark || nachtFaktor > 0.3)) warmIdx = this.placeWarm(warmIdx, this.px, this.py, 160, (lic.nachtGlut ?? 50) / 100, lic.nachtGlutFarbe ?? 0xffcf86);
     for (const t of (fow ? [] : this.area.torches)) {
       // Runde 29: ferne Fackeln deckten halbe Karten samt Gegnern auf -
       // sie leuchten nur noch nahe am eigenen Sichtkreis
