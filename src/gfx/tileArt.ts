@@ -471,17 +471,34 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       // 8px-Bändern und an den Rändern - so liest sich auch ein 1x4-Lauf als EINE
       // durchgehende Treppe. "ab" = Lichtkante unten (Stufen sinken nach Norden),
       // "auf" = Lichtkante oben (Stufen steigen nach Norden). Farbe unterscheidet.
+      // R87 (Autor "keine Leiter - eine ordentliche Treppe mit Tiefe"): breite
+      // STEIN-Stufen mit Trittfläche + dunkler Setzstufe, jeder Tritt hat einen
+      // eigenen Helligkeitsverlauf (vorne hell, hinten im Schatten) und die
+      // Wangen sind Mauerstein. Den Verlauf ÜBER den ganzen Lauf (unten immer
+      // dunkler = es geht hinab) legt zeichneKachel per Tint darüber.
       const ab = name === 'treppe_ab';
-      ctx.fillStyle = ab ? '#15120c' : '#1a1d22'; ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = '#0e0c08'; ctx.fillRect(0, 0, TILE, TILE);
       const band = 8;
+      const stein = ab ? [96, 88, 70] : [104, 110, 120];
       for (let y = 0; y < TILE; y += band) {
-        ctx.fillStyle = ab ? '#4a4434' : '#565d66'; ctx.fillRect(2, y + 1, TILE - 4, band - 2);   // Tritt
-        ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(2, ab ? y + band - 2 : y + 1, TILE - 4, 1); // Lichtkante
-        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(2, ab ? y : y + band - 1, TILE - 4, 1);   // Riser-Schatten
+        // Trittfläche mit Verlauf: vorne (Süden) hell, hinten dunkler
+        for (let i = 0; i < band - 2; i++) {
+          const f = ab ? 0.55 + 0.45 * (i / (band - 2)) : 1 - 0.45 * (i / (band - 2));
+          ctx.fillStyle = `rgb(${Math.round(stein[0] * f)},${Math.round(stein[1] * f)},${Math.round(stein[2] * f)})`;
+          ctx.fillRect(3, y + 1 + i, TILE - 6, 1);
+        }
+        ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(3, ab ? y : y + band - 1, TILE - 6, 1);          // Setzstufe (tiefer Schatten)
+        ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(3, ab ? y + band - 2 : y + 1, TILE - 6, 1); // Trittkante fängt Licht
+        // leichte Abnutzungs-Kerbe in der Trittmitte
+        ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(10 + (n % 3) * 3, y + 3, 8, 1);
       }
-      // seitliche Wangen/Geländer (laufen über mehrere Kacheln durch)
-      ctx.fillStyle = ab ? '#6a4a1a' : '#39424d'; ctx.fillRect(0, 0, 2, TILE); ctx.fillRect(TILE - 2, 0, 2, TILE);
-      ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(0, 0, 1, TILE); ctx.fillRect(TILE - 1, 0, 1, TILE);
+      // steinerne WANGEN mit Fugen (statt der dünnen "Leiter"-Holme)
+      for (const wx of [0, TILE - 3]) {
+        ctx.fillStyle = ab ? '#3a3226' : '#3c434e'; ctx.fillRect(wx, 0, 3, TILE);
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        for (let y = 5 + (n % 2) * 4; y < TILE; y += 11) ctx.fillRect(wx, y, 3, 1);
+        ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fillRect(wx + (wx === 0 ? 2 : 0), 0, 1, TILE);
+      }
       break;
     }
     case 'wendeltreppe': {

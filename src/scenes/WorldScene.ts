@@ -39,7 +39,7 @@ import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
 import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, VOLK, SMALLTALK, KONTAKT_ANGEBOT, type DlgPage } from '../data/dialoge';
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
-import { GATHER, HOLZ, ABBAU, BAUMENU, LAGERFEUER, abbauStufe, abbauSoll } from '../data/crafting';
+import { GATHER, HOLZ, ABBAU, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { TUNING } from '../logic/tuning';
@@ -2204,7 +2204,10 @@ export class WorldScene extends CombatScene {
         const biom = biomAt(x, y);
         if (biom === 'moor' || biom === 'fels') continue;
         if (biom === 'wald' && dichte(x, y) > 0.62 && rnd() < 0.7) continue;
-        setze(`dorfbewuchs_${typ}`, x, y, 1, rnd() * 7);
+        const blume = setze(`dorfbewuchs_${typ}`, x, y, 1, rnd() * 7);
+        // R87 (Autor "Blumen schneiden -> Zutat"): Blüten geben KRÄUTER -
+        // die Trank-Zutat bei Magdalena. Blumen-Farmen nebenbei.
+        this.macheZerlegbar(blume, 12, 1, 'kraeuter');
       }
     }
     // Kräuter/Klee verstreut (dorfSim Z.1116)
@@ -2213,7 +2216,8 @@ export class WorldScene extends CombatScene {
       if (!frei(x, y)) continue;
       const biom = biomAt(x, y);
       if (biom === 'moor' || biom === 'fels') continue;
-      setze(`dorfbewuchs_${4 + Math.floor(rnd() * 2)}`, x, y, 1, rnd() * 7);
+      const kraut = setze(`dorfbewuchs_${4 + Math.floor(rnd() * 2)}`, x, y, 1, rnd() * 7);
+      this.macheZerlegbar(kraut, 12, 1, 'kraeuter');   // R87: Kräuter/Klee schnippeln
     }
     // BÜSCHE (ez-tree Bush 1-3, wie die Anfangskarte): v.a. im Wald, vereinzelt
     // auf der Wiese; schwanken wie die Bäume im Wind (windBaeume).
@@ -2303,11 +2307,14 @@ export class WorldScene extends CombatScene {
     c.add(this.add.text(12, 7, 'BAUEN - eigenes Lager', { fontFamily: 'serif', fontSize: '14px', color: '#c9a227', letterSpacing: 1 }));
     const zu = this.add.text(w - 26, 6, '✕', { fontFamily: 'serif', fontSize: '15px', color: '#d8cfb8' }).setInteractive({ useHandCursor: true });
     zu.on('pointerdown', () => this.toggleBauMenu()); c.add(zu);
-    c.add(this.add.text(12, 30, `Vorrat: ${this.p.materials.holz} Holz · ${this.p.materials.stein} Stein   (Bäume/Felsen: E mit Axt/Spitzhacke)`, { fontFamily: 'serif', fontSize: '11px', color: '#9a8a6a' }));
+    const m = this.p.materials;
+    c.add(this.add.text(12, 30, `Vorrat: ${m.holz} Holz · ${m.stein} Stein · ${m.fasern ?? 0} Fasern · ${m.kraeuter} Kräuter · ${this.p.verbaende ?? 0} Verbände`, { fontFamily: 'serif', fontSize: '11px', color: '#9a8a6a' }));
+    const kostenText = (plan: BauPlan): string => Object.entries(plan.kosten).map(([k, n]) => `${n} ${MATERIAL_NAMES[k as MaterialId]}`).join(', ');
+    const kannBauen = (plan: BauPlan): boolean => Object.entries(plan.kosten).every(([k, n]) => (m[k as MaterialId] ?? 0) >= (n ?? 0));
     let y = 56;
     for (const plan of BAUMENU) {
-      const kann = this.p.materials.holz >= plan.holz && this.p.materials.stein >= plan.stein;
-      c.add(this.add.text(12, y, `${plan.name}  (${plan.holz} Holz${plan.stein ? `, ${plan.stein} Stein` : ''})`, { fontFamily: 'serif', fontSize: '13px', color: kann ? '#e8dfc8' : '#7a6a52' }));
+      const kann = kannBauen(plan);
+      c.add(this.add.text(12, y, `${plan.name}  (${kostenText(plan)})`, { fontFamily: 'serif', fontSize: '13px', color: kann ? '#e8dfc8' : '#7a6a52' }));
       c.add(this.add.text(12, y + 18, plan.beschreibung, { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a' }));
       const btn = this.add.text(w - 92, y + 6, 'BAUEN', { fontFamily: 'serif', fontSize: '12px', color: kann ? '#9ad86a' : '#5a5a4a', backgroundColor: '#221808', padding: { x: 8, y: 3 } }).setInteractive({ useHandCursor: true });
       btn.on('pointerdown', () => { if (this.baue(plan.id)) this.toggleBauMenu(); });
@@ -2321,10 +2328,20 @@ export class WorldScene extends CombatScene {
   private baue(planId: string): boolean {
     const plan = BAUMENU.find((p2) => p2.id === planId);
     if (!plan) return false;
-    if (this.p.materials.holz < plan.holz || this.p.materials.stein < plan.stein) {
+    const fehltEtwas = Object.entries(plan.kosten).some(([k, n]) => (this.p.materials[k as MaterialId] ?? 0) < (n ?? 0));
+    if (fehltEtwas) {
       this.sfx.play('fehler');
-      this.logMsg(`Nicht genug Material: ${plan.name} braucht ${plan.holz} Holz und ${plan.stein} Stein.`, '');
+      this.logMsg(`Nicht genug Material für ${plan.name} (${Object.entries(plan.kosten).map(([k, n]) => `${n} ${MATERIAL_NAMES[k as MaterialId]}`).join(', ')}).`, '');
       return false;
+    }
+    // Gegenstand-Pläne (R87): kein Platzieren - der Verband wandert in den Vorrat
+    if (plan.art === 'gegenstand') {
+      for (const [k, n] of Object.entries(plan.kosten)) this.p.materials[k as MaterialId] -= n ?? 0;
+      this.p.verbaende = (this.p.verbaende ?? 0) + 1;
+      this.sfx.play('klick');
+      this.logMsg('Leinenverband gewickelt - Taste V verbindet Wunden.', 'gold');
+      this.panels?.refresh?.();
+      return true;
     }
     // Stellprüfung: erst vor dem Helden, sonst die Nachbarplätze - auf freiem
     // Boden (kein Weg, kein Wasser, nichts Festes). Wer mitten auf der Straße
@@ -2341,8 +2358,7 @@ export class WorldScene extends CombatScene {
       this.logMsg('Hier ist kein Platz - such dir freien Boden.', '');
       return false;
     }
-    this.p.materials.holz -= plan.holz;
-    this.p.materials.stein -= plan.stein;
+    for (const [k, n] of Object.entries(plan.kosten)) this.p.materials[k as MaterialId] -= n ?? 0;
     (this.lagerfeuerProKarte[this.area.id] ??= []).push({ x, y });
     this.spawneLagerfeuer(x, y);
     this.sfx.play('holz_hacken');
@@ -2392,7 +2408,7 @@ export class WorldScene extends CombatScene {
   // R85 (Autor "mit dem Schwert zerlegbar, Animation vom Auseinanderfallen"):
   // Schilf/Busch wird beim Treffer in drei Quer-Schnipsel geschnitten, die in
   // Schlagrichtung auseinanderfliegen, kippen und verwehen. Gibt FASERN.
-  private zerschnipple(img: Phaser.GameObjects.Image, ang: number, fasern: number): void {
+  private zerschnipple(img: Phaser.GameObjects.Image, ang: number, fasern: number, material: MaterialId = 'fasern'): void {
     this.windSchilf = this.windSchilf.filter((e) => e.img !== img);
     this.windGras = this.windGras.filter((e) => e.img !== img);
     this.windBaeume = this.windBaeume.filter((e) => e.img !== img);
@@ -2418,16 +2434,16 @@ export class WorldScene extends CombatScene {
     this.fx.burst(img.x, img.y - dh * 0.4, 0x4c6a2c, 8, 90);
     img.destroy();
     if (fasern > 0) {
-      this.p.materials.fasern = (this.p.materials.fasern ?? 0) + fasern;
-      this.logMsg(`+${fasern} Fasern`, '');
+      this.p.materials[material] = (this.p.materials[material] ?? 0) + fasern;
+      this.logMsg(`+${fasern} ${MATERIAL_NAMES[material]}`, '');
     }
   }
 
   // Schilf/Busch als schlagbares Ziel anmelden (Hittable-System der Krüge)
-  private macheZerlegbar(img: Phaser.GameObjects.Image, r: number, fasern: number): void {
+  private macheZerlegbar(img: Phaser.GameObjects.Image, r: number, fasern: number, material: MaterialId = 'fasern'): void {
     const hit = { x: img.x, y: img.y - img.displayHeight * 0.3, r, onHit: (ang: number) => {
       this.hittables = this.hittables.filter((h) => h !== hit);
-      if (img.active) this.zerschnipple(img, ang, fasern);
+      if (img.active) this.zerschnipple(img, ang, fasern, material);
     } };
     this.hittables.push(hit);
   }
@@ -3390,6 +3406,19 @@ export class WorldScene extends CombatScene {
     }
     const key = this.provider.tileKey(name, variant, a.depth, a.theme);
     const img = tag(this.add.image(tx * TILE + 16, ty * TILE + 16, key).setDepth(-10));
+    // R87 (Autor "man muss SEHEN, dass es hinuntergeht"): der Treppenlauf wird
+    // zum Lauf-Ende hin (Norden) stufig dunkler (Abgang ins Loch) bzw. beim
+    // Aufgang heller - ein Tiefenverlauf über die ganze Kachel-Kette.
+    if (a.dark && (id === T.STAIR || id === T.STAIRUP)) {
+      let oben = 0, unten = 0;
+      while (a.map[ty - 1 - oben]?.[tx] === id) oben++;
+      while (a.map[ty + 1 + unten]?.[tx] === id) unten++;
+      const lauf = oben + unten + 1;
+      const f = lauf > 1 ? oben / (lauf - 1) : 0;   // 0 = Südende (Einstieg), 1 = Nordende
+      const hell = id === T.STAIR ? 1 - 0.55 * f : 0.7 + 0.35 * f;
+      const g2 = Math.max(0, Math.min(255, Math.round(255 * hell)));
+      img.setTint(Phaser.Display.Color.GetColor(g2, g2, g2));
+    }
     // Steg liegt ÜBER dem Schlucht-Tiefenbild (das bei -9 gezeichnet wird),
     // der Abgrund darunter (Runde 40)
     if (id === T.BRIDGE) img.setDepth(-8);
@@ -6850,6 +6879,8 @@ export class WorldScene extends CombatScene {
         ...equipIndices(p.inv, p.weapon, p.armorIt, p.ring, p.schildIt, p.bogen, p.bogenAktiv),
         schools: p.schools,
         materials: p.materials,
+        resist: p.resist,
+        verbaende: p.verbaende,
         tools: p.tools,
         warmBuff: p.warmBuff,
       },
@@ -6913,6 +6944,8 @@ export class WorldScene extends CombatScene {
     p.schools = s.schools;
     p.materials = { holz: 0, stein: 0, eisen: 0, kraeuter: 0, kohle: 0, fell: 0, wolle: 0, fasern: 0, ...s.materials };
     p.tools = s.tools ?? { axt: false, spitzhacke: false };
+    p.resist = s.resist ?? { feuer: 0, frost: 0, schatten: 0 };
+    p.verbaende = s.verbaende ?? 0;
     p.warmBuff = s.warmBuff ?? false;
     this.lager = data.lager ?? [];
     this.flags = data.welt.flags ?? {};
@@ -8544,5 +8577,19 @@ export class WorldScene extends CombatScene {
   protected override onGameKey(k: string): void {
     if (k === 'escape' || k === getSettings().kb.pause) this.togglePause();
     if (k === 'n') this.toggleBauMenu();   // persönliches Baumenü (R81)
+    if (k === 'v') this.nutzeVerband();    // Leinenverband anlegen (R87)
+  }
+
+  // R87: Verband anlegen - heilt sofort, verbraucht einen Verband aus dem Vorrat
+  private nutzeVerband(): void {
+    if (this.playerDead) return;
+    if ((this.p.verbaende ?? 0) <= 0) { this.logMsg('Kein Verband im Gepäck - im Baumenü (N) aus Fasern und Kräutern wickeln.', ''); return; }
+    if (this.p.hp >= this.p.stats.maxhp) { this.logMsg('Du bist unverletzt.', ''); return; }
+    this.p.verbaende -= 1;
+    this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + VERBAND.heilt);
+    this.fx.burst(this.px, this.py - 10, 0xe8dcc0, 10, 90);
+    this.sfx.play('heilung');
+    this.logMsg(`Wunden verbunden (+${VERBAND.heilt} Leben). Noch ${this.p.verbaende} Verbände.`, 'gold');
+    this.panels?.refresh?.();
   }
 }

@@ -166,6 +166,13 @@ function carveOval(map: number[][], x: number, y: number, rw: number, rh: number
   }
 }
 
+// R87 (Autor "Regale/Assets NIE mitten im Raum"): ein Wand-Asset (Regal,
+// Streckbank, Käfig ...) steht nur auf einer Bodenzelle mit DURCHGEZOGENER
+// Wand direkt dahinter - wie in einer echten Kammer.
+function anWand(map: number[][], x: number, y: number): boolean {
+  return map[y]?.[x] === T.FLOOR && map[y - 1]?.[x] === T.WALL;
+}
+
 export function buildCrypt(n: number, rng: Rng): AreaData {
   // Endlose Tiefe (Feedback-Runde 6): ab Ebene 6 wiederholen sich die Themen,
   // die Gegner skalieren über die Tiefe aber weiter
@@ -391,14 +398,18 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
         a.notes.push({ x: (X + 3) * TILE + 16, y: (E - 1) * TILE + 8, idx: 4 });
         a.special.push({ id: 'folterkammer', x: r.cx, y: E, raum: 'Folterkammer' });
       } else {
-        // Fallback: einzelne Folterkammer im Raum r (zu nah am Rand/an der Treppe)
-        const rackX = r.cx + 1 <= r.x + r.w - 1 ? r.cx : r.cx - 1;
-        map[r.cy][rackX] = T.RACK; map[r.cy][rackX + 1] = T.RACK_R;
+        // Fallback: einzelne Folterkammer im Raum r (zu nah am Rand/an der Treppe).
+        // R87: ALLE Möbel an die Wand - die Streckbank stand vorher mitten im Raum.
+        let rackX = -1;
+        for (let x = r.x; x < r.x + r.w - 1; x++) { if (anWand(map, x, r.y) && anWand(map, x + 1, r.y)) { rackX = x; break; } }
+        if (rackX >= 0) { map[r.y][rackX] = T.RACK; map[r.y][rackX + 1] = T.RACK_R; }
         const jX = r.x + 1, jY = r.y + r.h - 1;
-        if (map[jY]?.[jX] === T.FLOOR) map[jY][jX] = T.IRONMAIDEN;
+        if (map[jY]?.[jX] === T.FLOOR && map[jY + 1]?.[jX] === T.WALL) map[jY][jX] = T.IRONMAIDEN;
         const bX = r.x + r.w - 2, bY = r.y + r.h - 1;
-        if (map[bY]?.[bX] === T.FLOOR) { map[bY][bX] = T.KOHLEBECKEN; a.torches.push({ x: bX * TILE + 16, y: bY * TILE + 12, ph: rnd(rng, 0, 6.28) }); }
-        for (const [cx, cy] of [[r.x + r.w - 1, r.y], [r.x, r.y + r.h - 1]] as Array<[number, number]>) if (map[cy]?.[cx] === T.FLOOR) map[cy][cx] = T.CAGE;
+        if (map[bY]?.[bX] === T.FLOOR && map[bY + 1]?.[bX] === T.WALL) { map[bY][bX] = T.KOHLEBECKEN; a.torches.push({ x: bX * TILE + 16, y: bY * TILE + 12, ph: rnd(rng, 0, 6.28) }); }
+        for (const [cx, cy] of [[r.x + r.w - 1, r.y], [r.x, r.y + r.h - 1]] as Array<[number, number]>) {
+          if (map[cy]?.[cx] === T.FLOOR && (map[cy - 1]?.[cx] === T.WALL || map[cy + 1]?.[cx] === T.WALL)) map[cy][cx] = T.CAGE;
+        }
         for (let i = 0; i < 8; i++) { const bx = r.cx + ri(rng, -3, 3), by = r.cy + ri(rng, -2, 2); if (map[by]?.[bx] === T.FLOOR) map[by][bx] = T.BLOOD; }
         a.chests.push({ x: (r.x + r.w - 2) * TILE + 16, y: (r.y + r.h - 2) * TILE + 16, open: false, selten: true });
         a.notes.push({ x: (r.cx + 1) * TILE + 8, y: (r.cy + 1) * TILE + 8, idx: 4 });
@@ -442,7 +453,9 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
     const r = takeRoom();
     if (r) {
       for (let x = r.x; x < r.x + r.w; x++) {
-        if (x % 2 === 0 && map[r.y][x] === T.FLOOR) {
+        // R87: Regal NUR mit durchgezogener Wand dahinter (Räume überlappen
+        // sich - sonst stand die Bibliothek mitten im Nachbarraum).
+        if (x % 2 === 0 && anWand(map, x, r.y)) {
           if (rng.random() < 0.25) {
             map[r.y][x] = T.SHELF_LEER; // leeres Regal, nichts zu holen
           } else {

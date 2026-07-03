@@ -68,10 +68,20 @@ export const HOLZ = {
 // PERSÖNLICHES BAUMENÜ (R81, Autor: "falls man ein Lagerfeuer bauen möchte"):
 // kleine Bauten aus dem EIGENEN Material des Helden - deshalb lohnt das
 // mühsame Holz-Grinden neben den fleißigen NPC-Holzfällern.
-export interface BauPlan { id: string; name: string; holz: number; stein: number; beschreibung: string }
+export interface BauPlan {
+  id: string;
+  name: string;
+  kosten: Partial<Record<MaterialId, number>>;
+  beschreibung: string;
+  art: 'platzieren' | 'gegenstand';   // platzieren = steht in der Welt, gegenstand = wandert in den Vorrat
+}
 export const BAUMENU: ReadonlyArray<BauPlan> = [
-  { id: 'lagerfeuer', name: 'Lagerfeuer', holz: 3, stein: 1, beschreibung: 'Wärmt und leuchtet in der Nacht - am Feuer heilst du langsam' },
+  { id: 'lagerfeuer', name: 'Lagerfeuer', kosten: { holz: 3, stein: 1 }, art: 'platzieren', beschreibung: 'Wärmt und leuchtet in der Nacht - am Feuer heilst du langsam' },
+  // R87 (Autor "Verbände - gab es das damals?"): ja - Leinenbinden gehörten in
+  // jede Feldscher-Tasche. V legt einen Verband an (heilt sofort).
+  { id: 'verband', name: 'Leinenverband', kosten: { fasern: 2, kraeuter: 1 }, art: 'gegenstand', beschreibung: 'Aus Fasern und Kräutern gewickelt - Taste V verbindet Wunden (+30 Leben)' },
 ];
+export const VERBAND = { heilt: 30 } as const;
 export const LAGERFEUER = {
   heilRadius: 80,         // in diesem Umkreis heilt das Feuer (wie der Kamin)
   lichtRadius: 120,       // Sichtkreis des Feuers in der Nacht

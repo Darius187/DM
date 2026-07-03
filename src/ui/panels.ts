@@ -255,37 +255,61 @@ export class UIPanels {
 
   // --- linke Seite: Charakter ------------------------------------------------
 
+  // Zier-Element (R87, Autor "klassisch RPG, hübsch"): Doppelrahmen mit
+  // goldenen Eck-Nieten - für Portrait, Ausrüstungs-Slots und Sektionen.
+  private zierRahmen(c: Phaser.GameObjects.Container, bx: number, by: number, bw: number, bh: number, aktiv = false): void {
+    c.add(this.scene.add.rectangle(bx, by, bw, bh, 0x000000, 0).setOrigin(0).setStrokeStyle(1, 0x1a130a));
+    c.add(this.scene.add.rectangle(bx + 1, by + 1, bw - 2, bh - 2, 0x000000, 0).setOrigin(0).setStrokeStyle(1, aktiv ? 0xc9a227 : 0x6a5636));
+    for (const [ex, ey] of [[bx, by], [bx + bw - 3, by], [bx, by + bh - 3], [bx + bw - 3, by + bh - 3]] as const) {
+      c.add(this.scene.add.rectangle(ex, ey, 3, 3, aktiv ? 0xc9a227 : 0x8a6f3c).setOrigin(0));
+    }
+  }
+
+  // Trennlinie mit Mittel-Ornament (◆)
+  private zierLinie(c: Phaser.GameObjects.Container, x: number, y: number, breite: number, titel?: string): void {
+    c.add(this.scene.add.rectangle(x, y, breite, 1, 0x4a3a26).setOrigin(0));
+    c.add(this.scene.add.text(x + breite / 2, y - 5, '◆', { fontFamily: 'serif', fontSize: '9px', color: '#8a6f3c' }).setOrigin(0.5, 0));
+    if (titel) c.add(this.scene.add.text(x + 2, y - 16, titel, { fontFamily: 'serif', fontSize: '12px', color: GOLD, letterSpacing: 2 }));
+  }
+
   private buildCharacterSide(c: Phaser.GameObjects.Container, w: number, _h: number): void {
     const p = this.getPlayer();
-    // Portrait = echte Spielfigur als Büste, je aktueller Rüstungsstufe (R55).
+    // Portrait = echte Spielfigur als Büste, im Zierrahmen (R87)
     const ptKey = this.provider.heldPortraitKey(heldTier(p.armorIt ? p.armorIt.val : null));
-    c.add(this.scene.add.rectangle(58, 60, 88, 88, 0x0e0a06).setStrokeStyle(2, 0x5a4a32));
+    c.add(this.scene.add.rectangle(14, 16, 88, 88, 0x0e0a06).setOrigin(0));
     const img = this.scene.add.image(58, 60, ptKey);
-    img.setScale(84 / Math.max(img.width, img.height));
+    img.setScale(80 / Math.max(img.width, img.height));
     c.add(img);
-    c.add(this.scene.add.text(58, 108, `Stufe ${p.level}`, { fontFamily: 'serif', fontSize: '13px', color: GOLD }).setOrigin(0.5, 0));
+    this.zierRahmen(c, 12, 14, 92, 92, true);
+    c.add(this.scene.add.rectangle(12, 104, 92, 16, 0x1a130a).setOrigin(0).setStrokeStyle(1, 0x6a5636));
+    c.add(this.scene.add.text(58, 106, `Stufe ${p.level}`, { fontFamily: 'serif', fontSize: '12px', color: GOLD }).setOrigin(0.5, 0));
 
     const rarCol = (it: Item) => Phaser.Display.Color.HexStringToColor(RARITY_COLORS[(it.rarity ?? 0) as Rarity]).color;
-    const slotBoxMit = (it: Item | null, bx: number, by: number, bw: number, bh: number, aktiv: boolean, inaktiv: boolean) => {
-      const box = this.scene.add.rectangle(bx, by, bw, bh, 0x100b06).setOrigin(0)
-        .setStrokeStyle(aktiv ? 2 : 1, aktiv ? 0xc9a227 : (it ? rarCol(it) : LINE));
+    const slotBoxMit = (it: Item | null, bx: number, by: number, bw: number, bh: number, aktiv: boolean, inaktiv: boolean, leerLabel?: string) => {
+      const box = this.scene.add.rectangle(bx, by, bw, bh, it ? 0x140e07 : 0x0c0805).setOrigin(0);
       c.add(box);
       if (it) {
-        const ic = this.scene.add.image(bx + bw / 2, by + bh / 2, this.provider.itemIcon(it)).setScale(0.44);
-        if (inaktiv) ic.setAlpha(0.32);
+        // Seltenheits-Schimmer hinter dem Icon (R87: man soll sich freuen)
+        const glow = this.scene.add.circle(bx + bw / 2, by + bh / 2, Math.min(bw, bh) * 0.42, rarCol(it), 0.16);
+        c.add(glow);
+        const ic = this.scene.add.image(bx + bw / 2, by + bh / 2, this.provider.itemIcon(it)).setScale(0.56);
+        if (inaktiv) { ic.setAlpha(0.32); glow.setAlpha(0.05); }
         c.add(ic);
         box.setInteractive({ useHandCursor: true });
         box.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
         box.on('pointerout', () => this.hideTooltip());
         box.on('pointerdown', (ptr: Phaser.Input.Pointer) => this.clickItem(it, ptr.rightButtonDown()));
+      } else if (leerLabel) {
+        c.add(this.scene.add.text(bx + bw / 2, by + bh / 2, leerLabel, { fontFamily: 'serif', fontSize: '9px', color: '#4a3f30' }).setOrigin(0.5));
       }
+      this.zierRahmen(c, bx, by, bw, bh, aktiv);
       return box;
     };
 
     // Waffe und Bogen NEBENEINANDER (Runde 41, Autorwunsch): der Bogen steht
     // rechts neben der Hauptwaffe, per ALT umschaltbar; gefuehrte Waffe gold.
-    slotBoxMit(p.weapon, 116, 14, 38, 34, !p.bogenAktiv, false);
-    slotBoxMit(p.bogen, 158, 14, 38, 34, !!p.bogen && p.bogenAktiv, false);
+    slotBoxMit(p.weapon, 116, 14, 38, 34, !p.bogenAktiv, false, 'Waffe');
+    slotBoxMit(p.bogen, 158, 14, 38, 34, !!p.bogen && p.bogenAktiv, false, 'Bogen');
     c.add(this.scene.add.text(135, 50, 'Waffe', { fontFamily: 'serif', fontSize: '9px', color: !p.bogenAktiv ? GOLD : '#6a5f4c' }).setOrigin(0.5, 0));
     c.add(this.scene.add.text(177, 50, 'Bogen', { fontFamily: 'serif', fontSize: '9px', color: p.bogenAktiv ? GOLD : '#6a5f4c' }).setOrigin(0.5, 0));
     const akt = p.bogenAktiv && p.bogen ? p.bogen : p.weapon;
@@ -301,7 +325,7 @@ export class UIPanels {
     let sy = 62;
     const SH = 34, SP = 37;
     for (const { label, it, inaktiv } of rest) {
-      slotBoxMit(it, 116, sy, 38, SH, false, !!inaktiv);
+      slotBoxMit(it, 116, sy, 38, SH, false, !!inaktiv, label);
       if (it) {
         const zusatz = inaktiv ? '  (inaktiv)' : '';
         c.add(this.scene.add.text(160, sy + 9, it.name + zusatz, { fontFamily: 'serif', fontSize: '12px', color: inaktiv ? '#5a5348' : RARITY_COLORS[(it.rarity ?? 0) as Rarity], wordWrap: { width: w - 166 } }));
@@ -311,9 +335,9 @@ export class UIPanels {
       sy += SP;
     }
 
-    // WERTE: zwei saubere Spalten Label/Wert (Runde 38, übersichtlicher)
+    // WERTE: zwei saubere Spalten Label/Wert (Runde 38), Zierlinie (R87)
     let wy = 200;
-    c.add(this.scene.add.text(14, wy - 18, 'WERTE', { fontFamily: 'serif', fontSize: '12px', color: GOLD, letterSpacing: 2 }));
+    this.zierLinie(c, 12, wy - 6, w - 24, 'WERTE');
     c.add(this.scene.add.rectangle(12, wy - 4, w - 12, 78, 0x0e0a06, 0.6).setOrigin(0).setStrokeStyle(1, LINE));
     // Schaden als Spanne (Runde 40): ein Treffer würfelt zwischen min und max
     const dmgMin = Math.max(1, Math.round(p.stats.dmg * 0.85));
@@ -330,16 +354,31 @@ export class UIPanels {
       c.add(this.scene.add.text(x + spalte - 14, y, v, { fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0' }).setOrigin(1, 0));
     });
 
+    // RESISTENZEN (R87, Autorwunsch): Feuer / Frost / Schatten - die Werte
+    // kommen später aus Ringen, Rüstungen und Buffs (Monster ziehen nach).
+    let ry = wy + 88;
+    this.zierLinie(c, 12, ry - 6, w - 24, 'RESISTENZEN');
+    c.add(this.scene.add.rectangle(12, ry - 4, w - 12, 26, 0x0e0a06, 0.6).setOrigin(0).setStrokeStyle(1, LINE));
+    const res = p.resist ?? { feuer: 0, frost: 0, schatten: 0 };
+    const resDrittel = (w - 24) / 3;
+    ([['Feuer', res.feuer, 0xd8622a], ['Frost', res.frost, 0x6ab0d8], ['Schatten', res.schatten, 0x9a6ad8]] as Array<[string, number, number]>).forEach(([k, v, col], i) => {
+      const x = 20 + i * resDrittel;
+      c.add(this.scene.add.circle(x + 4, ry + 8, 4, col));
+      c.add(this.scene.add.text(x + 14, ry + 1, `${k}`, { fontFamily: 'serif', fontSize: '11px', color: BONE }));
+      c.add(this.scene.add.text(x + resDrittel - 16, ry + 1, `${v}%`, { fontFamily: 'serif', fontSize: '11px', color: '#e8dcc0' }).setOrigin(1, 0));
+    });
+
     // VORRAT: Gold/Flaschen + Rohstoffe als klare Reihen mit Farbpunkten
     const m = p.materials;
-    let vy = wy + 92;
-    c.add(this.scene.add.text(14, vy - 18, 'VORRAT', { fontFamily: 'serif', fontSize: '12px', color: GOLD, letterSpacing: 2 }));
-    c.add(this.scene.add.rectangle(12, vy - 4, w - 12, 96, 0x0e0a06, 0.6).setOrigin(0).setStrokeStyle(1, LINE));
+    let vy = ry + 42;
+    this.zierLinie(c, 12, vy - 6, w - 24, 'VORRAT');
+    c.add(this.scene.add.rectangle(12, vy - 4, w - 12, 120, 0x0e0a06, 0.6).setOrigin(0).setStrokeStyle(1, LINE));
     const vorrat: Array<[string, string, number]> = [
       ['Gold', String(p.gold), 0xe0b53a], ['Flaschen', `${p.flaskCount}/${p.flaskMax}`, 0xd8402a],
       ['Holz', String(m.holz), 0x8a6434], ['Stein', String(m.stein), 0x8a8e96],
       ['Eisen', String(m.eisen), 0xb8bcc4], ['Kräuter', String(m.kraeuter), 0x4a8a3a],
-      ['Kohle', String(m.kohle), 0x2a2a30],
+      ['Kohle', String(m.kohle), 0x2a2a30], ['Fasern', String(m.fasern ?? 0), 0x9aa06a],
+      ['Verbände', String(p.verbaende ?? 0), 0xd8cfb8],
     ];
     vorrat.forEach(([k, v, col], i) => {
       const x = 20 + (i % 2) * spalte, y = vy + 4 + ((i / 2) | 0) * 23;
