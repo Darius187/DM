@@ -311,9 +311,13 @@ export function machePfuetzenBild(seed: number, lang: number, quer: number): HTM
 // als Sprite; das Schwanken macht die WorldScene (Fuß-Anker-Rotation). --------
 export function macheSchilfBild(seed: number): HTMLCanvasElement {
   const rnd = rngAus(seed);
-  const c = document.createElement('canvas'); c.width = 44; c.height = 62;
+  // R82 ("niedrigauflösend"): 3x überabgetastet backen - die Anzeige skaliert
+  // auf 1/3 herunter, dadurch echtes Antialiasing statt Treppen-Halmen.
+  const S = 3;
+  const c = document.createElement('canvas'); c.width = 44 * S; c.height = 62 * S;
   const g = c.getContext('2d')!;
-  const fx = c.width / 2, fy = c.height - 4;
+  g.scale(S, S);
+  const fx = 22, fy = 58;
   // weicher Fußschatten
   g.fillStyle = 'rgba(0,0,0,0.28)';
   g.beginPath(); g.ellipse(fx, fy, 12, 3.4, 0, 0, Math.PI * 2); g.fill();
@@ -479,5 +483,56 @@ export function macheFelsRisseBild(R = 14): HTMLCanvasElement {
   g.strokeStyle = 'rgba(12,12,16,0.6)'; g.lineWidth = 1.6;
   g.beginPath(); g.moveTo(cx - R * 0.3, cy - R * 0.55); g.lineTo(cx + R * 0.08, cy - R * 0.1); g.lineTo(cx + R * 0.4, cy - R * 0.45); g.stroke();
   g.beginPath(); g.moveTo(cx + R * 0.05, cy - R * 0.08); g.lineTo(cx - R * 0.12, cy + R * 0.4); g.stroke();
+  return c;
+}
+
+// R82 (Autorbug "kein Antialiasing"): Gras als 3x-überabgetastete Canvas-Bilder
+// statt WebGL-Linien (die bei pixelArt kein AA können). Anzeige-Skala = 1/3.
+// kurz = 3 Striche (dorfSim EBENE 1), hoch = 5 luftig aufgefächerte Halme.
+export function macheFeinGrasBild(hoch: boolean, seed: number): HTMLCanvasElement {
+  const S = 3, rnd = rngAus(seed);
+  if (!hoch) {
+    const c = document.createElement('canvas'); c.width = 16 * S; c.height = 10 * S;
+    const g = c.getContext('2d')!; g.scale(S, S);
+    g.lineWidth = 1.3; g.lineCap = 'round'; g.strokeStyle = '#3c4d27';
+    for (const [dx, l, lean] of [[-2, 5, -0.9], [0, 7, 0.3], [2, 6, 1.1]] as Array<[number, number, number]>) {
+      g.beginPath(); g.moveTo(8 + dx, 10);
+      g.lineTo(8 + dx + lean + (rnd() - 0.5) * 1.4, 10 - l); g.stroke();
+    }
+    return c;
+  }
+  const c = document.createElement('canvas'); c.width = 28 * S; c.height = 24 * S;
+  const g = c.getContext('2d')!; g.scale(S, S);
+  g.lineWidth = 1.1; g.lineCap = 'round';
+  for (let k = -2; k <= 2; k++) {
+    g.strokeStyle = k % 2 ? '#43562b' : '#37481f';
+    const u = 0.5 + Math.abs(k) * 0.22;
+    const bh = (11 + rnd() * 8) * (0.75 + Math.abs(Math.sin((seed + k) * 3.7)) * 0.35);
+    const x0 = 14 + k * 2.6, tip = x0 + k * 1.4 + u * 1.3 + (rnd() - 0.5);
+    g.beginPath(); g.moveTo(x0, 24);
+    g.quadraticCurveTo(x0 + (tip - x0) * 0.35, 24 - bh * 0.62, tip, 24 - bh);
+    g.stroke();
+  }
+  return c;
+}
+
+// Moor-Schilf/Rohrkolben (R82): kleiner als vorher (Autor "riesig im Vergleich
+// zum Helden") und 3x überabgetastet - 3 gebogene Halme + brauner Kolben.
+export function macheMoorSchilfBild(seed: number, tot: boolean): HTMLCanvasElement {
+  const S = 3, rnd = rngAus(seed);
+  const h = 12 + rnd() * 7;
+  const c = document.createElement('canvas'); c.width = 14 * S; c.height = Math.ceil(h + 3) * S;
+  const g = c.getContext('2d')!; g.scale(S, S);
+  g.lineWidth = 1.15; g.lineCap = 'round';
+  g.strokeStyle = tot ? '#6a5a32' : '#3f5226';
+  const by = h + 3;
+  for (let k = -1; k <= 1; k++) {
+    const hh = h * (0.78 + rnd() * 0.24);
+    g.beginPath(); g.moveTo(7 + k * 2.2, by);
+    g.quadraticCurveTo(7 + k * 2.2 + 1.1, by - hh * 0.6, 7 + k * 2.2 + 1.9, by - hh);
+    g.stroke();
+  }
+  g.fillStyle = tot ? '#7a5a30' : '#5a3c22';
+  g.fillRect(7 + 0.9, by - h, 2, 5);   // Rohrkolben an der Spitze des Mittelhalms
   return c;
 }

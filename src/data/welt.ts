@@ -1,7 +1,9 @@
 // Welt-Rhythmus: Spieltag und Tagesabläufe (Masterprompt 7.2).
 
 export const TAG = {
-  dauerS: 600,          // ein Spieltag = 10 Minuten Echtzeit (nur über der Erde)
+  // R82 (Autor "die Tageszeiten kamen mir zu kurz vor"): ein Spieltag dauert
+  // jetzt 20 Echtminuten statt 10 - Morgen/goldene Stunde haben Zeit zu wirken.
+  dauerS: 1200,
   abendAb: 0.55,        // ab hier gelten die Abend-Positionen der NPCs (Tagesablauf, KEIN Licht!)
   nachtAb: 0.78,        // ab hier schlafen die Dorfbewohner in ihren Häusern
   morgenAb: 0.2,        // ab hier sind sie wieder auf den Beinen

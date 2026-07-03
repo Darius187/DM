@@ -900,3 +900,15 @@
   Anfangskarte -> gleiche Verteilung (Moor mittig am Fluss, Fels am Rand).
 - Moornebel bewusst WEICHER als die Anfangskarte (Autor: "sah aus wie
   Schnee"): grosse blaugraue Wolken-Textur, traege Drift, atmendes Alpha.
+- R82 Antialiasing: WebGL-Graphics kann bei pixelArt kein AA -> ALLE Graeser/
+  Schilfe sind jetzt 3x-ueberabgetastete Canvas-Bakes (Anzeige 1/3). Ufer-
+  Schilf auf ~25-38px verkleinert (war 50-93px, "riesig vs. Held").
+- Baeume/Buesche: Bakes werden progressiv auf ~2x Anzeigegroesse vorskaliert
+  (Canvas high-quality) - die GPU-Minification ohne Mipmaps zerhackte die
+  Aeste ("unnatuerliche Aestelung"). Presets sind unveraendert die der
+  Anfangskarte (identische SORTEN-Liste).
+- Spieltag 600 -> 1200 s (Autor: "Tageszeiten zu kurz"); eine Zeile in TAG.
+- Held-Laterne nachts: enger heller Kern + weiter Schein, Glut-Regler
+  skaliert /70 (Stellung 100 deutlich heller als das alte Maximum).
+- Bewuchs-Regler (ANFANG) skaliert jetzt die SPAWN-Dichte des Sprite-Grases
+  (greift beim Kartenwechsel).

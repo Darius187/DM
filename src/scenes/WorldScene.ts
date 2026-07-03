@@ -13,7 +13,7 @@ import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
-import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheBrueckenBild, macheGeroellBild, macheFelsRisseBild } from '../world/bodenMaler';
+import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheBrueckenBild, macheGeroellBild, macheFelsRisseBild, macheFeinGrasBild, macheMoorSchilfBild } from '../world/bodenMaler';
 import { dichteNoise, moorNoise, biomAt } from '../world/biome';
 import { POI_BILDER } from '../world/poiBilder';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
@@ -162,7 +162,7 @@ export class WorldScene extends CombatScene {
   // Ufer-Schilf (Runde 75, Test): schwankt stärker als die Bäume.
   private windSchilf: Array<{ img: Phaser.GameObjects.Image; phase: number }> = [];
   // Wiesengras + Blumen (Runde 76, three.js-gebacken): mittleres Schwanken.
-  private windGras: Array<{ img: Phaser.GameObjects.Image; phase: number }> = [];
+  private windGras: Array<{ img: Phaser.GameObjects.Image; phase: number; amp?: number }> = [];
   // Baum-Kontaktschatten (Runde 78): wandern und strecken sich mit dem
   // SONNENSTAND (dorfSim schDX/schLang) - morgens/abends lang und seitlich,
   // mittags kurz, Wolken unterdrücken die Richtung. Grundschatten bleibt immer.
@@ -300,7 +300,6 @@ export class WorldScene extends CombatScene {
     this.hausEditAn = false;
     this.wetterOverlay = undefined;
     this.regnet = false;
-    this.grasGfx = null;   // Szenen-Neustart: dieselbe Instanz, zerstörtes Graphics nie wiederverwenden
     this.decals = [];
     this.warmPool = [];
     this.fogGfx = null;
@@ -1922,14 +1921,17 @@ export class WorldScene extends CombatScene {
       s.img.rotation = wd * 0.09 * this.boeWelle(s.img.x, s.img.y, time)
         + 0.035 * Math.sin(time * 0.0043 + s.phase) + biege(s.img, 33, 0.5);
     }
-    // Blüten/Kräuter-Sprites: dorfSims EBENE-3-Sway 1:1 (wd*0.14 + Eigen-Atem).
+    // Gras/Blüten/Kräuter-Sprites (R82: alles AA-Bakes): Sway = Wind * Böen-
+    // Welle * Eigen-Amplitude (Blüten sanft 0.14, Kurzgras 0.22, Hochgras 0.28)
+    // + Eigen-Atem + Wegbiegen vor dem Helden. Nur der Kamera-Ausschnitt.
+    const view = this.cameras.main.worldView;
+    const gx0 = view.x - 40, gx1 = view.right + 40, gy0 = view.y - 40, gy1 = view.bottom + 40;
     for (const g of this.windGras) {
       if (!g.img.active) continue;
-      g.img.rotation = wd * 0.14 * this.boeWelle(g.img.x, g.img.y, time)
+      if (g.img.x < gx0 || g.img.x > gx1 || g.img.y < gy0 || g.img.y > gy1) continue;
+      g.img.rotation = wd * (g.amp ?? 0.14) * this.boeWelle(g.img.x, g.img.y, time)
         + 0.03 * Math.sin(time * 0.0033 + g.phase) + biege(g.img, 30, 0.6);
     }
-    // Feines Gras (Striche, jede Sekunde neu geneigt) - siehe zeichneFeinGras.
-    this.zeichneFeinGras(time, wd);
     this.updateMoorNebel(time);
   }
 
@@ -2079,7 +2081,9 @@ export class WorldScene extends CombatScene {
           const x = tx * TILE + 16 + hx, y = ty * TILE + 16 + hy;
           const img = this.add.image(x, y, `ufer_schilf_${(tx + ty + k) % 4}`).setDepth(y);
           img.setOrigin(0.5, 0.94);                  // Fuß-Anker (Schwanken)
-          const skala = 0.8 + hash * 0.7;
+          // R82: Bake ist 3x überabgetastet -> Anzeige /3; insgesamt KLEINER
+          // als früher (Autor: "riesig im Vergleich zum Helden"), ~25-38px hoch.
+          const skala = (1.2 + hash * 0.6) / 3;
           img.setScale(skala);
           if (hash > 0.5) img.setFlipX(true);
           this.tileImages.push(img);
@@ -2093,29 +2097,27 @@ export class WorldScene extends CombatScene {
   // kurzes Bodengras (häufig), hohes Gras (Büschel), Blümchen in FARBGRUPPEN
   // (gelb/rosa/weiß/lila) plus verstreute Kräuter/Klee - die Original-dorfSim-
   // Zeichnungen als gebackene Sprites, mit Wind + Wegbiegen vor dem Helden.
-  // R80 (Autor: "keine Grabstein-Büschel mehr - richtiges feines Gras, das sich
-  // im Wind bewegt, überall"): das Gras sind KEINE gebackenen Sprites mehr,
-  // sondern Daten-Listen, die zeichneFeinGras jeden Frame als dorfSim-Striche
-  // mit Wind-Neigung zeichnet (EBENE 1 kurz + EBENE 2 hoch). Nur die Blüten/
-  // Kräuter bleiben Bitmap-Sprites (wie in dorfSim selbst).
-  private grasKurzListe: Array<{ x: number; y: number; ph: number; kurz: boolean; r: number }> = [];
-  private grasHochListe: Array<{ x: number; y: number; ph: number; h: number; r: number }> = [];
-  private moorSchilfListe: Array<{ x: number; y: number; ph: number; h: number; tot: boolean }> = [];
   private moorNebelListe: Array<{ img: Phaser.GameObjects.Image; x0: number; ph: number }> = [];
-  private grasGfx: Phaser.GameObjects.Graphics | null = null;
 
   // R81 (Anfangskarte-Parität): der Bewuchs wird wie in dorfSim ZUFÄLLIG über
   // die Welt gestreut (seeded) statt über das Kachelraster - dadurch wirkt der
   // Rasen natürlich ("nicht überall gleich"). Dazu: Blüten-CLUSTER in Farb-
   // gruppen, Kräuter/Klee, ez-tree-BÜSCHE, Moor-Schilf und Moornebel je Biom.
+  // R82: alles sind 3x-überabgetastete Canvas-SPRITES (echtes Antialiasing,
+  // Anzeige 1/3) - die alten WebGL-Linien konnten bei pixelArt kein AA.
   private spawneWiesenBewuchs(a: AreaData): void {
-    this.grasKurzListe = [];
-    this.grasHochListe = [];
-    this.moorSchilfListe = [];
     this.moorNebelListe = [];
     if (!a.gebackenerBoden || a.dark || a.innen) return;
     if (!this.textures.exists('dorfbewuchs_0')) {
       macheBewuchsBilder().forEach((cv, i) => this.textures.addCanvas(`dorfbewuchs_${i}`, cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR));
+      for (let v = 0; v < 4; v++) {
+        this.textures.addCanvas(`feingras_kurz_${v}`, macheFeinGrasBild(false, 500 + v * 13))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+        this.textures.addCanvas(`feingras_hoch_${v}`, macheFeinGrasBild(true, 700 + v * 17))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      }
+      for (let v = 0; v < 3; v++) {
+        this.textures.addCanvas(`moorschilf_${v}`, macheMoorSchilfBild(900 + v * 7, false))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+        this.textures.addCanvas(`moorschilf_tot_${v}`, macheMoorSchilfBild(950 + v * 11, true))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      }
     }
     const W = a.w * TILE, H = a.h * TILE;
     const dichte = baumDichteFn(a, TILE);
@@ -2130,30 +2132,33 @@ export class WorldScene extends CombatScene {
       if (geo && sdWasser(x / W, y / H, geo, smink) < 0.012) return false;
       return true;
     };
-    const setze = (key: string, x: number, y: number, skala: number, phase: number): Phaser.GameObjects.Image => {
+    const setze = (key: string, x: number, y: number, skala: number, phase: number, amp?: number): Phaser.GameObjects.Image => {
       const img = this.add.image(x, y, key).setDepth(y);
       img.setOrigin(0.5, 0.96);   // Fuß-Anker: die Halme biegen um den Boden
       img.setScale(skala);
       this.tileImages.push(img);
-      this.windGras.push({ img, phase });
+      this.windGras.push({ img, phase, amp });
       return img;
     };
-    // EBENE 1: kurzes Bodengras - dicht, im dichten Wald spärlicher (dorfSim)
-    for (let i = 0, n = Math.round(W * H / 2400); i < n; i++) {
+    // EBENE 1: kurzes Bodengras - dicht, im dichten Wald spärlicher (dorfSim).
+    // Kürzer im Wald: Skala 0.75. Anzeige 1/3 der 3x-Bakes (AA).
+    for (let i = 0, n = Math.round(W * H / 3400 * this.devBewuchs); i < n; i++) {   // Bewuchs-Regler (ANFANG) skaliert die Dichte
       const x = rnd() * W, y = rnd() * H;
       if (!frei(x, y)) continue;
       const d = dichte(x, y);
       if (rnd() < d * 0.72) continue;
-      this.grasKurzListe.push({ x, y, ph: rnd() * 7, kurz: d > 0.5, r: rnd() });
+      const img = setze(`feingras_kurz_${(rnd() * 4) | 0}`, x, y, (d > 0.5 ? 0.75 : 1) / 3, rnd() * 7, 0.22);
+      if (rnd() > 0.5) img.setFlipX(true);
     }
     // EBENE 2: hohes Gras - lockere, luftige Büschel (im Wald seltener)
-    for (let i = 0, n = Math.round(W * H / 11000); i < n; i++) {
+    for (let i = 0, n = Math.round(W * H / 12000 * this.devBewuchs); i < n; i++) {
       const x = rnd() * W, y = rnd() * H;
       if (!frei(x, y)) continue;
       const d = dichte(x, y), biom = biomAt(x, y);
       if (biom === 'fels') continue;
       if (d > 0.6 && rnd() < 0.6) continue;
-      this.grasHochListe.push({ x, y, ph: rnd() * 7, h: 12 + rnd() * 9, r: rnd() });
+      const img = setze(`feingras_hoch_${(rnd() * 4) | 0}`, x, y, (0.85 + rnd() * 0.3) / 3, rnd() * 7, 0.28);
+      if (rnd() > 0.5) img.setFlipX(true);
     }
     // EBENE 3: Blüten in FARB-CLUSTERN (dorfSim: eine Sorte je Gruppe) - viele!
     for (let c = 0, n = Math.round(W * H / 130000); c < n; c++) {
@@ -2196,11 +2201,15 @@ export class WorldScene extends CombatScene {
     // MOOR: Schilf-/Rohrkolben-CLUSTER (tlw. tot/braun) + bodennaher NEBEL.
     // Der Nebel ist bewusst WEICHER als in der Anfangskarte (Autor: "sah dort
     // aus wie Schnee"): große, blaugraue Schwaden, die träge driften.
-    for (let i = 0, n = Math.round(W * H / 10000); i < n; i++) {
+    for (let i = 0, n = Math.round(W * H / 14000); i < n; i++) {
       const x = rnd() * W, y = rnd() * H;
       if (!frei(x, y) || biomAt(x, y) !== 'moor') continue;
       for (let k = 0, m = 2 + Math.floor(rnd() * 4); k < m; k++) {
-        this.moorSchilfListe.push({ x: x + (rnd() - 0.5) * 34, y: y + (rnd() - 0.5) * 22, ph: rnd() * 7, h: 18 + rnd() * 20, tot: rnd() < 0.4 });
+        const tot = rnd() < 0.35;
+        const sx2 = x + (rnd() - 0.5) * 34, sy2 = y + (rnd() - 0.5) * 22;
+        if (!frei(sx2, sy2)) continue;
+        const img = setze(`moorschilf_${tot ? 'tot_' : ''}${(rnd() * 3) | 0}`, sx2, sy2, (0.8 + rnd() * 0.35) / 3, rnd() * 7, 0.18);
+        if (rnd() > 0.5) img.setFlipX(true);
       }
     }
     if (!this.textures.exists('moornebel_tex')) {
@@ -2344,82 +2353,6 @@ export class WorldScene extends CombatScene {
     }
   }
 
-  // Feines Gras JEDEN Frame zeichnen (dorfSim EBENE 1 + 2, 1:1): drei kurze
-  // Striche je Büschel bzw. 7 gebogene Halme, Neigung = Wind * Böen-Welle +
-  // Eigen-Atem + Wegbiegen vor dem Helden. Nur der Kamera-Ausschnitt.
-  private zeichneFeinGras(time: number, wd: number): void {
-    if (!this.grasKurzListe.length && !this.grasHochListe.length && !this.moorSchilfListe.length) { this.grasGfx?.clear(); return; }
-    if (!this.grasGfx) {
-      this.grasGfx = this.add.graphics().setDepth(-7.5);
-      this.uiCam?.ignore(this.grasGfx);
-    }
-    const g = this.grasGfx;
-    g.clear();
-    const view = this.cameras.main.worldView;
-    const x0 = view.x - 30, x1 = view.right + 30, y0 = view.y - 30, y1 = view.bottom + 30;
-    const dicht = this.devBewuchs;
-    // EBENE 1: kurzes Bodengras (3 Striche)
-    g.lineStyle(1.4, 0x3c4d27, 1);
-    g.beginPath();
-    for (const tf of this.grasKurzListe) {
-      if (tf.r > dicht || tf.x < x0 || tf.x > x1 || tf.y < y0 || tf.y > y1) continue;
-      const hf = tf.kurz ? 0.6 : 1;
-      let lean = wd * 6 * this.boeWelle(tf.x, tf.y, time) + Math.sin(time / 240 + tf.ph) * 1.5;
-      const dx = tf.x - this.px, dy = tf.y - this.py, d2 = dx * dx + dy * dy;
-      if (d2 < 900) lean += (dx / (Math.sqrt(d2) || 1)) * (1 - d2 / 900) * 9;
-      g.moveTo(tf.x, tf.y); g.lineTo(tf.x + lean, tf.y - 7 * hf);
-      g.moveTo(tf.x - 2, tf.y); g.lineTo(tf.x - 2 + lean * 0.8, tf.y - 5 * hf);
-      g.moveTo(tf.x + 2, tf.y); g.lineTo(tf.x + 2 + lean * 1.1, tf.y - 6 * hf);
-    }
-    g.strokePath();
-    // EBENE 2: hohes Gras - LUFTIG (Autor R80: die eng stehenden 7 Halme lasen
-    // sich als "Grabsteine"): 5 dünnere Halme, weiter auseinander, die Spitzen
-    // fächern deutlich auf, jede Höhe anders.
-    for (const ton of [0x43562b, 0x37481f]) {
-      g.lineStyle(1.1, ton, 0.95);
-      g.beginPath();
-      for (const hg of this.grasHochListe) {
-        if (hg.r > dicht || hg.x < x0 || hg.x > x1 || hg.y < y0 || hg.y > y1) continue;
-        let lean = wd * 11 * this.boeWelle(hg.x, hg.y, time) + Math.sin(time / 220 + hg.ph) * 2.5;
-        const dx = hg.x - this.px, dy = hg.y - this.py, d2 = dx * dx + dy * dy;
-        if (d2 < 1100) lean += (dx / (Math.sqrt(d2) || 1)) * (1 - d2 / 1100) * 12;
-        for (let k = -2; k <= 2; k++) {
-          if ((k % 2 === 0) !== (ton === 0x43562b)) continue;   // Ton-Wechsel wie dorfSim (k%2)
-          const u = 0.5 + Math.abs(k) * 0.22, bh = hg.h * (0.75 + Math.abs(Math.sin(hg.ph * 3.7 + k)) * 0.35);
-          const bx = hg.x + k * 2.6, by = hg.y;
-          // Quadratik-Kurve als zwei Segmente; Spitzen fächern über k auseinander
-          g.moveTo(bx, by);
-          g.lineTo(bx + lean * 0.5 * 0.75 + (lean * u + k * 1.4) * 0.25, by - bh * 0.65);
-          g.lineTo(bx + lean * u + k * 1.4, by - bh);
-        }
-      }
-      g.strokePath();
-    }
-    // EBENE 2b: MOOR-SCHILF/Rohrkolben (dorfSim 1:1): 3 gebogene Halme je
-    // Büschel, tlw. totes braunes Schilf, brauner Kolben an der Spitze.
-    if (this.moorSchilfListe.length) {
-      for (const tot of [false, true]) {
-        g.lineStyle(1.4, tot ? 0x6a5a32 : 0x3f5226, 1);
-        g.beginPath();
-        for (const s of this.moorSchilfListe) {
-          if (s.tot !== tot || s.x < x0 || s.x > x1 || s.y < y0 || s.y > y1) continue;
-          const bend = wd * 5 * this.boeWelle(s.x, s.y, time) + Math.sin(time / 230 + s.ph) * 1.5;
-          for (let k = -1; k <= 1; k++) {
-            g.moveTo(s.x + k * 2.4, s.y);
-            g.lineTo(s.x + k * 2.4 + bend * 0.6, s.y - s.h * 0.62);
-            g.lineTo(s.x + k * 2.4 + bend, s.y - s.h);
-          }
-        }
-        g.strokePath();
-      }
-      for (const s of this.moorSchilfListe) {   // Rohrkolben-Kolben
-        if (s.x < x0 || s.x > x1 || s.y < y0 || s.y > y1) continue;
-        const bend = wd * 5 * this.boeWelle(s.x, s.y, time) + Math.sin(time / 230 + s.ph) * 1.5;
-        g.fillStyle(s.tot ? 0x7a5a30 : 0x5a3c22, 1);
-        g.fillRect(s.x + bend - 1.3, s.y - s.h, 2.6, 8);
-      }
-    }
-  }
 
   // NASS-SPRITZER (Runde 78, Autorwunsch): läuft der Held durch eine GEFÜLLTE
   // Pfütze, spritzt Wasser (Tropfen + kleiner Ring); auf nassem RASEN gibt es
@@ -7291,7 +7224,15 @@ export class WorldScene extends CombatScene {
     const px = (this.px - cam.worldView.x) * zm, py = (this.py - cam.worldView.y) * zm;
     this.eraseLight(px, py, playerRadius * zm);
     let warmIdx = 0;
-    if (!fow && (this.area.dark || nachtFaktor > 0.3)) warmIdx = this.placeWarm(warmIdx, this.px, this.py, 160, (lic.nachtGlut ?? 50) / 100, lic.nachtGlutFarbe ?? 0xffcf86);
+    // R82 (Autor "nachts sieht man den Helden kaum, im Dungeon ist das besser"):
+    // LATERNEN-Gefühl wie im Dungeon - ein enger, heller Kern direkt am Helden
+    // (macht die Figur selbst sichtbar) plus der weite weiche Schein. Der
+    // Glut-Regler skaliert beide (bei 100 deutlich über dem alten Maximum).
+    if (!fow && (this.area.dark || nachtFaktor > 0.3)) {
+      const glut = (lic.nachtGlut ?? 50) / 70, farbe = lic.nachtGlutFarbe ?? 0xffcf86;
+      warmIdx = this.placeWarm(warmIdx, this.px, this.py, 160, Math.min(1, glut * 0.7), farbe);
+      warmIdx = this.placeWarm(warmIdx, this.px, this.py - 4, 55, Math.min(1, glut), farbe);
+    }
     for (const t of (fow ? [] : this.area.torches)) {
       // Runde 29: ferne Fackeln deckten halbe Karten samt Gegnern auf -
       // sie leuchten nur noch nahe am eigenen Sichtkreis
