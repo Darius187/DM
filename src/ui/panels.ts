@@ -15,6 +15,8 @@ import { SCHOOLS, ABILITIES, SPELLS } from '../data/balancing';
 import { WEAPON_HAND } from '../data/kampf';
 import { SKILL_ICONS, skillBeschreibung } from '../data/skills';
 import { RTS_EINHEITEN, MORAL, RTS_RANG } from '../data/rts';
+import { PFLANZEN } from '../data/pflanzen';
+import type { MaterialId } from '../data/crafting';
 import { setVerfolgtWunsch, type QuestSicht } from '../logic/questLog';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import type { SoundProvider } from '../gfx/SoundProvider';
@@ -388,13 +390,13 @@ export class UIPanels {
     let ry = wy + 88;
     this.zierLinie(c, 12, ry - 6, w - 24, 'RESISTENZEN');
     c.add(this.scene.add.rectangle(12, ry - 4, w - 12, 26, 0x0e0a06, 0.6).setOrigin(0).setStrokeStyle(1, LINE));
-    const res = p.resist ?? { feuer: 0, frost: 0, schatten: 0 };
-    const resDrittel = (w - 24) / 3;
-    ([['Feuer', res.feuer, 0xd8622a], ['Frost', res.frost, 0x6ab0d8], ['Schatten', res.schatten, 0x9a6ad8]] as Array<[string, number, number]>).forEach(([k, v, col], i) => {
-      const x = 20 + i * resDrittel;
-      c.add(this.scene.add.circle(x + 4, ry + 8, 4, col));
-      c.add(this.scene.add.text(x + 14, ry + 1, `${k}`, { fontFamily: 'serif', fontSize: '11px', color: BONE }));
-      c.add(this.scene.add.text(x + resDrittel - 16, ry + 1, `${v}%`, { fontFamily: 'serif', fontSize: '11px', color: '#e8dcc0' }).setOrigin(1, 0));
+    const res = p.resist ?? { feuer: 0, frost: 0, schatten: 0, seuche: 0 };
+    const resViertel = (w - 24) / 4;
+    ([['Feuer', res.feuer, 0xd8622a], ['Frost', res.frost, 0x6ab0d8], ['Schatten', res.schatten, 0x9a6ad8], ['Seuche', res.seuche ?? 0, 0x6a9a4a]] as Array<[string, number, number]>).forEach(([k, v, col], i) => {
+      const x = 18 + i * resViertel;
+      c.add(this.scene.add.circle(x + 3, ry + 8, 4, col));
+      c.add(this.scene.add.text(x + 11, ry + 1, `${k}`, { fontFamily: 'serif', fontSize: '10px', color: BONE }));
+      c.add(this.scene.add.text(x + resViertel - 12, ry + 1, `${v}%`, { fontFamily: 'serif', fontSize: '10px', color: '#e8dcc0' }).setOrigin(1, 0));
     });
 
     // VORRAT: Gold/Flaschen + Rohstoffe als klare Reihen mit Farbpunkten
@@ -415,6 +417,20 @@ export class UIPanels {
       c.add(this.scene.add.text(x + 14, y, k, { fontFamily: 'serif', fontSize: '12px', color: BONE }));
       c.add(this.scene.add.text(x + spalte - 14, y, v, { fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0' }).setOrigin(1, 0));
     });
+    // KRÄUTER-BEUTEL (R89): gesammelte Heilpflanzen - nur was man dabei hat.
+    const pflanzen = PFLANZEN.filter((pf) => (m[pf.id as MaterialId] ?? 0) > 0);
+    let ky = vy + 4 + Math.ceil(vorrat.length / 2) * 23 + 12;
+    this.zierLinie(c, 12, ky - 6, w - 24, 'KRÄUTERBEUTEL');
+    if (!pflanzen.length) {
+      c.add(this.scene.add.text(20, ky + 2, 'Noch keine Kräuter gesammelt - Blumen und Kräuter mit dem Schwert schneiden.', { fontFamily: 'serif', fontSize: '10px', color: '#6a5f4c', wordWrap: { width: w - 40 } }));
+    } else {
+      pflanzen.forEach((pf, i) => {
+        const x = 20 + (i % 2) * spalte, y = ky + 4 + ((i / 2) | 0) * 20;
+        c.add(this.scene.add.circle(x + 4, y + 7, 4, Phaser.Display.Color.HexStringToColor(pf.palette.bluete).color));
+        c.add(this.scene.add.text(x + 14, y, pf.name, { fontFamily: 'serif', fontSize: '11px', color: BONE }));
+        c.add(this.scene.add.text(x + spalte - 14, y, String(m[pf.id as MaterialId] ?? 0), { fontFamily: 'serif', fontSize: '11px', color: '#e8dcc0' }).setOrigin(1, 0));
+      });
+    }
   }
 
   // --- Karten-Tab (Runde 51): das Fürstentum als Übersicht, Nebel des Krieges -

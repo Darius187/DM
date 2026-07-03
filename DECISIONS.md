@@ -985,3 +985,29 @@
   Geist folgt der Maus -> Linksklick setzt Baustelle -> Bauzeit-Fortschritt
   (Lagerfeuer 3s, Standarte 2.5s, Palisade 4s) -> dann steht es. Baumenü (N)
   und RTS nutzen denselben Platzierungs-Pfad (bauKlick-Hook).
+
+## R89 - Pflanzen-Ökosystem + Architektur-Regel
+ARCHITEKTUR-REGEL (Autor, verbindlich): DER HELD FARMT, DIE NPCs VEREDELN.
+Rohpflanzen sind reine Zutaten (Inventar-Ressourcen), sie geben NICHT direkt
+Buffs. Geplante NPC-Stationen (Folge-Task): Magdalena (Tränke/Sude/Salben),
+Schmied (Waffen/Rüstung/Waffengift/Palisadenholz), Wirt Heinrich (Eintopf-
+Buffs/Handel/Gerüchte->Quests), Pater Johannes (Weihwasser=Schatten/Seuche,
+Segen=Moral, weiht die Standarte), optional Kräuterhexe im Hexenwald (dunkle
+Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bringt.
+
+- data/pflanzen.ts: 14 benannte Heilpflanzen (Ids = MaterialIds), an Biome +
+  vier Achsen gebunden (Feuer/Frost/Schatten + SEUCHE als eigener Wert, bei der
+  Pest als Setting). Schnitt mit dem Schwert -> Drop-Sprite -> Aufheben (wie
+  Holz) -> Respawn nach 90s. Distinkte prozedurale Sprites (gfx/pflanzenArt.ts).
+- Seuche als 4. Resistenz-Achse (playerState.resist.seuche), im Charakterfenster.
+- Verband-Rezept auf Schafgarbe (Soldatenkraut) gemappt. Magdalenas generische
+  'kraeuter'-Rezepte bleiben vorerst (Klee/Kräuter-Deko liefert weiter kraeuter);
+  Migration auf benannte Pflanzen kommt mit der Magdalena-Station.
+- HEXENWALD als Biom-Typ angelegt (Bilsenkraut/Eisenhut/Alraune) - spawnt erst
+  mit dem späteren Gift-Biom, nicht auf START.
+- HISTORISCHE EHRLICHKEIT (Kompendium, Autorwunsch): Schafgarbe/Spitzwegerich
+  (Wundkraut), Johanniskraut (fuga daemonum), Pestwurz (echte Pestpflanze),
+  Bilsenkraut/Eisenhut (Gift/Hexe), Hauswurz (gegen Blitz/Feuer) sind belegt.
+  UNSICHER: Engelwurz-Pest-Legende (nicht sicher vor 1349), Alraune wächst nicht
+  in Deutschland (dt. "Alraune" oft Zaunrüben-Aberglaube) - NICHT als Fakt
+  behaupten. Quellen bei Bedarf gezielt nachschlagen.

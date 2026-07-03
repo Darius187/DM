@@ -2,11 +2,20 @@
 
 // 'fasern' (R85, Autor-Idee): Pflanzenfasern aus Schilf/Büschen - die spätere
 // Bau-Ressource für Bindungen/Seile (Zäune, Dächer). Werte leicht änderbar.
-export type MaterialId = 'holz' | 'stein' | 'eisen' | 'kraeuter' | 'kohle' | 'fell' | 'wolle' | 'fasern';
+// R89: die Pflanzen-Ids sind zugleich MaterialIds - benannte Zutaten mit
+// Stack, die wie Holz/Stein aufgehoben, verkauft und von Rezepten verbraucht werden.
+export type MaterialId = 'holz' | 'stein' | 'eisen' | 'kraeuter' | 'kohle' | 'fell' | 'wolle' | 'fasern'
+  | 'schafgarbe' | 'spitzwegerich' | 'ringelblume' | 'kamille' | 'beifuss' | 'johanniskraut' | 'hauswurz' | 'meisterwurz' | 'wacholder' | 'pestwurz' | 'engelwurz' | 'bilsenkraut' | 'eisenhut' | 'alraune';
 
 export const MATERIAL_NAMES: Readonly<Record<MaterialId, string>> = {
   holz: 'Holz', stein: 'Stein', eisen: 'Eisen', kraeuter: 'Kräuter', kohle: 'Kohle',
   fell: 'Fell', wolle: 'Wolle', fasern: 'Fasern',
+  // R89: benannte Heilpflanzen (Ids = data/pflanzen.ts)
+  schafgarbe: 'Schafgarbe', spitzwegerich: 'Spitzwegerich', ringelblume: 'Ringelblume',
+  kamille: 'Kamille', beifuss: 'Beifuß', johanniskraut: 'Johanniskraut',
+  hauswurz: 'Hauswurz', meisterwurz: 'Meisterwurz', wacholder: 'Wacholder',
+  pestwurz: 'Pestwurz', engelwurz: 'Engelwurz', bilsenkraut: 'Bilsenkraut',
+  eisenhut: 'Eisenhut', alraune: 'Alraune',
 };
 
 // Ressourcen-Abbau
@@ -79,7 +88,7 @@ export const BAUMENU: ReadonlyArray<BauPlan> = [
   { id: 'lagerfeuer', name: 'Lagerfeuer', kosten: { holz: 3, stein: 1 }, art: 'platzieren', beschreibung: 'Wärmt und leuchtet in der Nacht - am Feuer heilst du langsam' },
   // R87 (Autor "Verbände - gab es das damals?"): ja - Leinenbinden gehörten in
   // jede Feldscher-Tasche. V legt einen Verband an (heilt sofort).
-  { id: 'verband', name: 'Leinenverband', kosten: { fasern: 2, kraeuter: 1 }, art: 'gegenstand', beschreibung: 'Aus Fasern und Kräutern gewickelt - Taste V verbindet Wunden (+30 Leben)' },
+  { id: 'verband', name: 'Leinenverband', kosten: { fasern: 2, schafgarbe: 1 }, art: 'gegenstand', beschreibung: 'Leinen mit Schafgarbe (blutstillend) - Taste V verbindet Wunden (+30 Leben)' },
 ];
 export const VERBAND = { heilt: 30 } as const;
 export const LAGERFEUER = {

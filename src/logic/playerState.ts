@@ -33,7 +33,7 @@ export interface PlayerState {
   materials: Record<MaterialId, number>;
   tools: { axt: boolean; spitzhacke: boolean };
   // R87: Element-Resistenzen (0-100%) - werden später von Items/Buffs gespeist
-  resist: { feuer: number; frost: number; schatten: number };
+  resist: { feuer: number; frost: number; schatten: number; seuche: number };   // R89: Seuche als 4. Achse
   verbaende: number;      // Leinenverbände (Baumenü) - V verbindet Wunden
   buffT: number;          // Segen der Stärke (Altar)
   foodBuff: { hpRegen: number; restS: number } | null;
@@ -58,9 +58,11 @@ export function newPlayerState(): PlayerState {
     flaskMax: FLASKS.start, flaskCount: FLASKS.start, flaskPowerUp: false,
     arrows: 0,
     schools: { nahkampf: { uses: 0, level: 0 }, zauberei: { uses: 0, level: 0 }, bogen: { uses: 0, level: 0 } },
-    materials: { holz: 0, stein: 0, eisen: 0, kraeuter: 0, kohle: 0, fell: 0, wolle: 0, fasern: 0 },
+    materials: { holz: 0, stein: 0, eisen: 0, kraeuter: 0, kohle: 0, fell: 0, wolle: 0, fasern: 0,
+      schafgarbe: 0, spitzwegerich: 0, ringelblume: 0, kamille: 0, beifuss: 0, johanniskraut: 0,
+      hauswurz: 0, meisterwurz: 0, wacholder: 0, pestwurz: 0, engelwurz: 0, bilsenkraut: 0, eisenhut: 0, alraune: 0 },
     tools: { axt: false, spitzhacke: false },
-    resist: { feuer: 0, frost: 0, schatten: 0 },
+    resist: { feuer: 0, frost: 0, schatten: 0, seuche: 0 },
     verbaende: 0,
     buffT: 0, foodBuff: null, warmBuff: false, marked: false,
     spellCds: [0, 0, 0],

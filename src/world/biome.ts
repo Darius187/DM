@@ -17,7 +17,7 @@ export function felsNoise(x: number, y: number): number {     // Fels-/Berg-Ante
   return Math.max(0, Math.min(1, 0.5 + n / 3));
 }
 
-export type Biom = 'wiese' | 'wald' | 'moor' | 'fels';
+export type Biom = 'wiese' | 'wald' | 'moor' | 'fels' | 'hexenwald';   // hexenwald: spätere Gift-Biome (R89)
 
 export function biomAt(x: number, y: number): Biom {
   if (moorNoise(x, y) > 0.66) return 'moor';

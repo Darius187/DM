@@ -24,7 +24,7 @@ export interface SaveData {
     schools: Record<'nahkampf' | 'zauberei' | 'bogen', SchoolState>;
     materials: Record<string, number>;
     tools?: { axt: boolean; spitzhacke: boolean };
-    resist?: { feuer: number; frost: number; schatten: number };
+    resist?: { feuer: number; frost: number; schatten: number; seuche: number };
     verbaende?: number;
     warmBuff?: boolean;
   };

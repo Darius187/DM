@@ -15,6 +15,8 @@ import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, s
 import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
 import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheBrueckenBild, macheGeroellBild, macheFelsRisseBild, macheFeinGrasBild, macheMoorSchilfBild, macheFelsBild, macheGrasKachel } from '../world/bodenMaler';
 import { dichteNoise, moorNoise, biomAt } from '../world/biome';
+import { PFLANZEN_BY_ID, pflanzenFuerBiom, PFLANZEN_RESPAWN_S, type PflanzenDef } from '../data/pflanzen';
+import { machePflanzenBild } from '../gfx/pflanzenArt';
 import { POI_BILDER } from '../world/poiBilder';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
 import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale, berechneTagLicht } from '../demo3d/dorfSim';
@@ -57,7 +59,7 @@ import { BREAKABLES, BREAKABLE_LOOT, BEINHAUS, CHEST_VERFLUCHT, BOSS_KAMPF } fro
 import { DEATH, SHRINE, PHYSIK, BREAKABLE_MASSE, PLAYER } from '../data/kampf';
 import { TEMPLERKLINGE, BOSS_GOLD } from '../data/items';
 import { rollGear, rollGem } from '../logic/loot';
-import { recalc } from '../logic/playerState';
+import { recalc, newPlayerState } from '../logic/playerState';
 import { getSettings, saveSettings } from '../logic/settings';
 import { seededRng, pick, ri } from '../logic/rng';
 import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type SaveData } from '../logic/save';
@@ -2145,6 +2147,7 @@ export class WorldScene extends CombatScene {
   private spawneWiesenBewuchs(a: AreaData): void {
     this.moorNebelListe = [];
     this.buschListe = [];
+    this.pflanzenRespawn = [];   // R89: Pflanzen-Respawn je Karte
     if (!a.gebackenerBoden || a.dark || a.innen) return;
     if (!this.textures.exists('dorfbewuchs_0')) {
       macheBewuchsBilder().forEach((cv, i) => this.textures.addCanvas(`dorfbewuchs_${i}`, cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR));
@@ -2198,30 +2201,37 @@ export class WorldScene extends CombatScene {
       const img = setze(`feingras_hoch_${(rnd() * 4) | 0}`, x, y, (0.85 + rnd() * 0.3) / 3, rnd() * 7, 0.28);
       if (rnd() > 0.5) img.setFlipX(true);
     }
-    // EBENE 3: Blüten in FARB-CLUSTERN (dorfSim: eine Sorte je Gruppe) - viele!
-    for (let c = 0, n = Math.round(W * H / 130000); c < n; c++) {
+    // EBENE 3: BENANNTE HEILPFLANZEN in Clustern je Biom (R89, "der Held farmt").
+    // Jede Pflanze wächst nur in ihrem Biom (Tabelle in data/pflanzen.ts),
+    // wird mit dem Schwert geschnitten -> fällt als Beute -> wächst nach.
+    let pfSeed = 3;
+    const pfRnd = (): number => { pfSeed = (pfSeed * 1103515245 + 12345) >>> 0; return pfSeed / 4294967296; };
+    for (let c = 0, n = Math.round(W * H / 26000); c < n; c++) {
       const cx = rnd() * W, cy = rnd() * H;
-      const typ = Math.floor(rnd() * 4);
-      for (let k = 0, m = 3 + Math.floor(rnd() * 6); k < m; k++) {
-        const x = cx + (rnd() - 0.5) * 120, y = cy + (rnd() - 0.5) * 80;
+      const biom = biomAt(cx, cy);
+      const kandidaten = pflanzenFuerBiom(biom).filter((d) => !d.biome.includes('hexenwald') || biom === 'hexenwald');
+      if (!kandidaten.length) continue;
+      // eine Sorte je Cluster, gewichtet nach Seltenheit
+      const gesamt = kandidaten.reduce((s2, d) => s2 + d.selten, 0);
+      let pick2 = pfRnd() * gesamt, def = kandidaten[0];
+      for (const d of kandidaten) { pick2 -= d.selten; if (pick2 <= 0) { def = d; break; } }
+      if (def.dichteWald === 'licht' && dichte(cx, cy) > 0.62) continue;
+      if (def.dichteWald === 'dicht' && dichte(cx, cy) < 0.4) continue;
+      for (let k = 0, m = 2 + Math.floor(pfRnd() * 4); k < m; k++) {
+        const x = cx + (pfRnd() - 0.5) * 90, y = cy + (pfRnd() - 0.5) * 60;
         if (!frei(x, y)) continue;
-        const biom = biomAt(x, y);
-        if (biom === 'moor' || biom === 'fels') continue;
-        if (biom === 'wald' && dichte(x, y) > 0.62 && rnd() < 0.7) continue;
-        const blume = setze(`dorfbewuchs_${typ}`, x, y, 1, rnd() * 7);
-        // R87 (Autor "Blumen schneiden -> Zutat"): Blüten geben KRÄUTER -
-        // die Trank-Zutat bei Magdalena. Blumen-Farmen nebenbei.
-        this.macheZerlegbar(blume, 12, 1, 'kraeuter');
+        if (pfRnd() > def.selten) continue;   // Seltene wachsen dünner
+        this.setzePflanze(def, x, y, (pfSeed & 0xffff), x * 0.02 + y * 0.013);
       }
     }
-    // Kräuter/Klee verstreut (dorfSim Z.1116)
-    for (let i = 0, n = Math.round(W * H / 52000); i < n; i++) {
+    // Kräuter/Klee verstreut (dorfSim-Deko) - generische Kräuter für Magdalena
+    for (let i = 0, n = Math.round(W * H / 90000); i < n; i++) {
       const x = rnd() * W, y = rnd() * H;
       if (!frei(x, y)) continue;
       const biom = biomAt(x, y);
       if (biom === 'moor' || biom === 'fels') continue;
       const kraut = setze(`dorfbewuchs_${4 + Math.floor(rnd() * 2)}`, x, y, 1, rnd() * 7);
-      this.macheZerlegbar(kraut, 12, 1, 'kraeuter');   // R87: Kräuter/Klee schnippeln
+      this.macheZerlegbar(kraut, 12, 1, 'kraeuter');
     }
     // BÜSCHE (ez-tree Bush 1-3, wie die Anfangskarte): v.a. im Wald, vereinzelt
     // auf der Wiese; schwanken wie die Bäume im Wind (windBaeume).
@@ -2395,7 +2405,8 @@ export class WorldScene extends CombatScene {
   // R85 (Autor "mit dem Schwert zerlegbar, Animation vom Auseinanderfallen"):
   // Schilf/Busch wird beim Treffer in drei Quer-Schnipsel geschnitten, die in
   // Schlagrichtung auseinanderfliegen, kippen und verwehen. Gibt FASERN.
-  private zerschnipple(img: Phaser.GameObjects.Image, ang: number, fasern: number, material: MaterialId = 'fasern'): void {
+  // Reines Schnipsel-VISUAL (drei Quer-Stücke fliegen in Schlagrichtung weg).
+  private schnippselFx(img: Phaser.GameObjects.Image, ang: number): void {
     this.windSchilf = this.windSchilf.filter((e) => e.img !== img);
     this.windGras = this.windGras.filter((e) => e.img !== img);
     this.windBaeume = this.windBaeume.filter((e) => e.img !== img);
@@ -2406,33 +2417,79 @@ export class WorldScene extends CombatScene {
       const p2 = this.add.image(img.x, img.y, img.texture.key).setDepth(img.depth + 1);
       p2.setOrigin(img.originX, img.originY).setDisplaySize(dw, dh).setFlipX(img.flipX).setRotation(img.rotation);
       p2.setCrop(0, (img.height / 3) * i, img.width, img.height / 3);
-      const oben = 2 - i;   // oberstes Drittel fliegt am weitesten
+      const oben = 2 - i;
       this.tweens.add({
         targets: p2,
         x: img.x + dir * (8 + oben * 14 + Math.random() * 10),
         y: img.y + 6 + Math.random() * 8 - oben * 4,
         rotation: img.rotation + dir * (0.5 + oben * 0.5 + Math.random() * 0.4),
-        alpha: 0,
-        duration: 380 + oben * 140,
-        ease: 'Quad.easeOut',
+        alpha: 0, duration: 380 + oben * 140, ease: 'Quad.easeOut',
         onComplete: () => p2.destroy(),
       });
     }
     this.fx.burst(img.x, img.y - dh * 0.4, 0x4c6a2c, 8, 90);
     img.destroy();
+  }
+
+  // Schilf/Busch: Schnipsel + Fasern DIREKT ins Material (wie bisher).
+  private zerschnipple(img: Phaser.GameObjects.Image, ang: number, fasern: number, material: MaterialId = 'fasern'): void {
+    this.schnippselFx(img, ang);
     if (fasern > 0) {
       this.p.materials[material] = (this.p.materials[material] ?? 0) + fasern;
       this.logMsg(`+${fasern} ${MATERIAL_NAMES[material]}`, '');
     }
   }
 
-  // Schilf/Busch als schlagbares Ziel anmelden (Hittable-System der Krüge)
   private macheZerlegbar(img: Phaser.GameObjects.Image, r: number, fasern: number, material: MaterialId = 'fasern'): void {
     const hit = { x: img.x, y: img.y - img.displayHeight * 0.3, r, onHit: (ang: number) => {
       this.hittables = this.hittables.filter((h) => h !== hit);
       if (img.active) this.zerschnipple(img, ang, fasern, material);
     } };
     this.hittables.push(hit);
+  }
+
+  // R89 (Autor "Pflanzen-Ernte wie Holz: Schnitt -> Drop-Sprite -> Aufheben"):
+  // beim Schnitt fällt die benannte Pflanze als Beute an die Pflanzenposition
+  // (Pickup-System, drüberlaufen sammelt), danach wächst sie nach.
+  private pflanzenRespawn: Array<{ id: string; seed: number; x: number; y: number; t: number; scale: number; phase: number }> = [];
+
+  private machePflanzeErntbar(img: Phaser.GameObjects.Image, def: PflanzenDef, seed: number, scale: number, phase: number): void {
+    const hit = { x: img.x, y: img.y - img.displayHeight * 0.3, r: 13, onHit: (ang: number) => {
+      this.hittables = this.hittables.filter((h) => h !== hit);
+      if (!img.active) return;
+      const px = img.x, py = img.y;
+      const amt = ri(this.rng, def.ertrag[0], def.ertrag[1]);
+      this.schnippselFx(img, ang);
+      // Beute fällt an die Pflanzenposition (Material-Pickup, drüberlaufen sammelt)
+      this.pickups.add({ kind: 'material', item: { kind: 'material', name: def.name, rarity: 0, val: 0, boni: [], stack: amt, matId: def.id } as unknown as Item, x: px, y: py, bob: 0 });
+      this.pflanzenRespawn.push({ id: def.id, seed, x: px, y: py, t: PFLANZEN_RESPAWN_S, scale, phase });
+    } };
+    this.hittables.push(hit);
+  }
+
+  // Eine benannte Pflanze setzen (Sprite + erntbar); gibt das Bild zurück.
+  private setzePflanze(def: PflanzenDef, x: number, y: number, seed: number, phase: number): Phaser.GameObjects.Image {
+    const key = `pflanze_${def.id}`;
+    if (!this.textures.exists(key)) this.textures.addCanvas(key, machePflanzenBild(def, 100 + seed))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    const scale = 1 / 3;   // Bake ist 3x überabgetastet
+    const img = this.add.image(x, y, key).setOrigin(0.5, 0.98).setScale(scale).setDepth(y);
+    this.tileImages.push(img);
+    this.windGras.push({ img, phase, amp: 0.06 });   // wiegt leicht im Wind
+    this.machePflanzeErntbar(img, def, seed, scale, phase);
+    return img;
+  }
+
+  // Nachwachsen der geernteten Pflanzen (nachhaltiges Farmen, R89)
+  private updatePflanzenRespawn(dt: number): void {
+    for (let i = this.pflanzenRespawn.length - 1; i >= 0; i--) {
+      const r = this.pflanzenRespawn[i];
+      r.t -= dt;
+      if (r.t <= 0) {
+        const def = PFLANZEN_BY_ID[r.id];
+        if (def && this.area?.map[Math.floor(r.y / TILE)]?.[Math.floor(r.x / TILE)] === T.GRASS) this.setzePflanze(def, r.x, r.y, r.seed, r.phase);
+        this.pflanzenRespawn.splice(i, 1);
+      }
+    }
   }
 
   // --- RTS-MODUS (R87, Autorauftrag "RTS-Hybrid"): Frei-Kamera + Leiste mit
@@ -4756,12 +4813,19 @@ export class WorldScene extends CombatScene {
   }
 
   protected override onMaterialPickup(pk: Pickup): void {
-    const name = pk.item?.name ?? '';
-    if (name.includes('Holz')) this.p.materials.holz += pk.item?.stack ?? 1;
-    else if (name.includes('Eisen')) this.p.materials.eisen += pk.item?.stack ?? 1;
-    else if (name.includes('Stein')) this.p.materials.stein += pk.item?.stack ?? 1;
-    else if (name.includes('Kräuter')) this.p.materials.kraeuter += pk.item?.stack ?? 1;
-    else if (name.includes('Kohle')) this.p.materials.kohle += pk.item?.stack ?? 1;
+    const item = pk.item as (Item & { matId?: string }) | undefined;
+    const stack = item?.stack ?? 1;
+    // R89: benannte Pflanzen tragen ihre matId direkt (Schafgarbe, Pestwurz ...)
+    if (item?.matId && item.matId in this.p.materials) {
+      this.p.materials[item.matId as MaterialId] += stack;
+      return;
+    }
+    const name = item?.name ?? '';
+    if (name.includes('Holz')) this.p.materials.holz += stack;
+    else if (name.includes('Eisen')) this.p.materials.eisen += stack;
+    else if (name.includes('Stein')) this.p.materials.stein += stack;
+    else if (name.includes('Kräuter')) this.p.materials.kraeuter += stack;
+    else if (name.includes('Kohle')) this.p.materials.kohle += stack;
   }
 
   // --- Interaktionen -----------------------------------------------------------
@@ -7161,9 +7225,9 @@ export class WorldScene extends CombatScene {
     p.bogen = (s.bogenIdx ?? -1) >= 0 ? p.inv[s.bogenIdx!] ?? null : null;
     p.bogenAktiv = !!s.bogenAktiv && !!p.bogen;
     p.schools = s.schools;
-    p.materials = { holz: 0, stein: 0, eisen: 0, kraeuter: 0, kohle: 0, fell: 0, wolle: 0, fasern: 0, ...s.materials };
+    p.materials = { ...newPlayerState().materials, ...s.materials };   // R89: Pflanzen-Keys aus dem Default
     p.tools = s.tools ?? { axt: false, spitzhacke: false };
-    p.resist = s.resist ?? { feuer: 0, frost: 0, schatten: 0 };
+    p.resist = { feuer: 0, frost: 0, schatten: 0, seuche: 0, ...(s.resist ?? {}) };
     p.verbaende = s.verbaende ?? 0;
     p.warmBuff = s.warmBuff ?? false;
     this.lager = data.lager ?? [];
@@ -8693,6 +8757,7 @@ export class WorldScene extends CombatScene {
     this.updateWetter(dt);      // Wetter-Achse (Regen/Nässe, Stimmungsregen bis 1. Dungeon)
     this.updateLagerfeuer(dt);  // eigenes Feuer heilt in der Nähe (R81, Baumenü)
     this.updateBaustellen(dt);  // RTS-Platzierung + Bauzeit-Fortschritt (R88)
+    this.updatePflanzenRespawn(dt); // Heilpflanzen wachsen nach (R89)
     this.updateNassSpritzer(dt);  // Spritzer in Pfützen + auf nassem Rasen (R78)
     this.updateRegenPlatschen(dt); // Regen plätschert im Gras (R79)
     this.updateWasserWetter();  // Regen-Ringe/Wirbel auf dem neuen Wasser

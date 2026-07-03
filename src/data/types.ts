@@ -42,6 +42,7 @@ export interface Item {
   sock?: { gem: GemItem | null } | null;
   upgrade?: number; // Schmiede-Verbesserung +1 bis +3
   stack?: number;   // für stapelbare Gegenstände (Pfeile, Material)
+  matId?: string;   // R89: direkte Material-Id bei Ressourcen-Drops (Pflanzen)
   scrollSkill?: string; // bei Zauberrollen: welcher Zauber
   buff?: { hpRegen: number; dauerS: number }; // bei Lebensmitteln
 }
