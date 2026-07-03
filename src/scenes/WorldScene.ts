@@ -13,7 +13,7 @@ import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
-import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheBrueckenBild, macheGeroellBild, macheFelsRisseBild, macheFeinGrasBild, macheMoorSchilfBild } from '../world/bodenMaler';
+import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheBrueckenBild, macheGeroellBild, macheFelsRisseBild, macheFeinGrasBild, macheMoorSchilfBild, macheFelsBild } from '../world/bodenMaler';
 import { dichteNoise, moorNoise, biomAt } from '../world/biome';
 import { POI_BILDER } from '../world/poiBilder';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
@@ -3101,6 +3101,13 @@ export class WorldScene extends CombatScene {
         schatten.setDisplaySize(hoehe * aspekt * 0.58, hoehe * 0.15);
         schatten.setAlpha(0.9);
         this.baumSchatten.push({ img: schatten, x0: tx * TILE + 16, breite: hoehe * aspekt * 0.5 });
+        // R82 (Autor "der Stamm schwebt"): dorfSims Regel "der Grundschatten
+        // erdet IMMER" - ein kleiner, FESTER Fußschatten direkt am Stamm, der
+        // (anders als der Sonnenschatten) nie zur Seite wandert.
+        const fussY = ty * TILE + 16 + hoehe * 0.042;
+        const fuss = tag(this.add.image(tx * TILE + 16, fussY, this.kontaktSchattenKey()).setDepth(ty * TILE + 25.5));
+        fuss.setDisplaySize(hoehe * aspekt * 0.20, hoehe * 0.05);
+        fuss.setAlpha(0.62);
         // Lebendig wie in dorfSim: der Baum schwankt im Wind (Böen-Phase aus
         // der Position, damit nicht alle synchron kippen).
         this.windBaeume.push({ img: objImg, phase: tx * 0.19 + ty * 0.11 });
@@ -3112,8 +3119,28 @@ export class WorldScene extends CombatScene {
       if (id === T.ROCK || id === T.ORE) {
         const eintrag = (id === T.ROCK ? a.rocks : a.ores).find((r) => Math.floor(r.x / TILE) === tx && Math.floor(r.y / TILE) === ty);
         const stufe = eintrag?.stufe ?? 0;
+        const gFels = Math.max(0, Math.min(2, eintrag?.g ?? 1));
         // Größen-Skala (R81, dorfSim FELS_R): klein/mittel/groß
-        const gSkala = [0.75, 1.0, 1.45][Math.max(0, Math.min(2, eintrag?.g ?? 1))];
+        const gSkala = [0.75, 1.0, 1.45][gFels];
+        // R82 (Autor "Steine natürlicher"): auf gebackenen Karten die GEMALTEN
+        // dorfSim-Felsen (Facetten, Mooskappen, eingebauter Kontaktschatten,
+        // 2x-AA) statt der 32px-Kachelgrafik. Adern zeigen Erz-Einsprengsel.
+        if (a.gebackenerBoden && stufe < 2) {
+          const erz = id === T.ORE ? (a.id === 'goldmine' ? 'gold' as const : 'eisen' as const) : undefined;
+          const fkey = `fels_neu_${gFels}_${variant % 3}${erz ?? ''}`;
+          if (!this.textures.exists(fkey)) {
+            this.textures.addCanvas(fkey, macheFelsBild(gFels, 1300 + gFels * 97 + (variant % 3) * 31, erz))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+          }
+          objImg.setTexture(fkey);
+          const q = this.textures.get(fkey).getSourceImage();
+          const sk2 = (stufe === 1 ? 0.82 : 1) / 2;   // Bake ist 2x überabgetastet
+          objImg.setOrigin(0.5, 0.62).setDisplaySize(q.width * sk2, q.height * sk2);
+          objImg.setData('objTyp', objName);
+          if (stufe === 1) {
+            tag(this.add.image(tx * TILE + 16, ty * TILE + 13, this.abbauTexturKey('risse')).setDepth(ty * TILE + 27).setDisplaySize(q.width * sk2 * 0.6, q.height * sk2 * 0.6));
+          }
+          return;
+        }
         if (stufe >= 2) {
           objImg.setTexture(this.abbauTexturKey('geroell', tx * 7 + ty));
           objImg.setDisplaySize(TILE * 1.1 * gSkala, TILE * 0.85 * gSkala).setDepth(ty * TILE + 10);

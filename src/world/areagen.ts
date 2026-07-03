@@ -1785,8 +1785,11 @@ export function buildStart(rng: Rng): AreaData {
         && sdWasser(fx / W, fy / H, geo, 0.02) > 0.03;
     }
     if (!ok) continue;
-    for (let k = 0, n = 2 + Math.floor(rng.random() * 3); k < n; k++) {
-      const x = fx + (rng.random() - 0.5) * 90, y = fy + (rng.random() - 0.5) * 60;
+    // R82 (Autor "Felsformationen größer, natürlicher"): 3-5 Brocken ENG
+    // beieinander - die gemalten Felsen überlappen ihre Kacheln und lesen
+    // sich als zusammenhängende Formation statt verstreuter Einzelsteine.
+    for (let k = 0, n = 3 + Math.floor(rng.random() * 3); k < n; k++) {
+      const x = fx + (rng.random() - 0.5) * 110, y = fy + (rng.random() - 0.5) * 70;
       const ptx = Math.floor(x / TILE), pty = Math.floor(y / TILE);
       if (map[pty]?.[ptx] !== T.GRASS) continue;
       if (a.rocks.some((r2) => Math.hypot(r2.x - x, r2.y - y) < 48) || a.ores.some((o) => Math.hypot(o.x - x, o.y - y) < 48)) continue;

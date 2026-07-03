@@ -536,3 +536,49 @@ export function macheMoorSchilfBild(seed: number, tot: boolean): HTMLCanvasEleme
   g.fillRect(7 + 0.9, by - h, 2, 5);   // Rohrkolben an der Spitze des Mittelhalms
   return c;
 }
+
+// R82 (Autor "Felsen natürlicher, wie in der Natur"): dorfSims gemalter Fels
+// (unregelmäßiges Polygon, belichtete Oberseite, Facetten, Mooskappen) 1:1
+// portiert, 2x überabgetastet. g = Größe 0/1/2, erz sprenkelt Adern ein.
+export function macheFelsBild(g: number, seed: number, erz?: 'eisen' | 'gold'): HTMLCanvasElement {
+  const S = 2, rnd = rngAus(seed);
+  const R = [13, 19, 29][Math.max(0, Math.min(2, g))];
+  const c = document.createElement('canvas'); c.width = c.height = (R * 2 + 10) * S;
+  const gx = c.getContext('2d')!; gx.scale(S, S);
+  const cx = R + 5, cy = R + 5 + R * 0.12, n = 7 + Math.floor(rnd() * 3);
+  const pts: Array<[number, number]> = [];
+  for (let i = 0; i < n; i++) {
+    const a = i / n * Math.PI * 2, rr = R * (0.8 + rnd() * 0.3);
+    pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.82]);
+  }
+  const poly = (off: number, sx2 = 1): void => {
+    gx.beginPath(); gx.moveTo(pts[0][0], pts[0][1] + off);
+    for (const p of pts) gx.lineTo(cx + (p[0] - cx) * sx2, p[1] + off);
+    gx.closePath();
+  };
+  // weicher Kontaktschatten unter dem Brocken (erdet ihn)
+  gx.fillStyle = 'rgba(0,0,0,0.30)';
+  gx.beginPath(); gx.ellipse(cx, cy + R * 0.5, R * 1.05, R * 0.4, 0, 0, Math.PI * 2); gx.fill();
+  gx.fillStyle = '#34343a'; poly(0); gx.fill();                                   // dunkle Basis/Seite
+  gx.fillStyle = '#54545c'; poly(-R * 0.16, 0.92); gx.fill();                     // belichtete Oberseite (NW-Licht)
+  gx.fillStyle = '#6a6a72'; poly(-R * 0.3, 0.7); gx.fill();                       // Glanzkante oben
+  gx.strokeStyle = 'rgba(18,18,22,0.5)'; gx.lineWidth = 1.4;                      // Facetten/Kanten
+  for (let i = 0; i < 3; i++) {
+    gx.beginPath(); gx.moveTo(cx + (rnd() - 0.5) * R, cy - R * 0.2);
+    gx.lineTo(cx + (rnd() - 0.5) * R * 1.3, cy + R * 0.4); gx.stroke();
+  }
+  gx.fillStyle = 'rgba(54,74,42,0.5)';                                            // Moos oben
+  for (let i = 0; i < 3; i++) {
+    gx.beginPath(); gx.ellipse(cx + (rnd() - 0.5) * R, cy - R * 0.25 + (rnd() - 0.5) * R * 0.3, R * 0.25, R * 0.13, 0, 0, Math.PI * 2); gx.fill();
+  }
+  if (erz) {                                                                      // Mineral-Einsprengsel (dorfSim ERZ_FARBE)
+    gx.fillStyle = erz === 'gold' ? '#d8b24a' : '#c08058';
+    for (let i = 0; i < 5 + g; i++) {
+      const a = rnd() * 6.28, rr = R * (0.2 + rnd() * 0.55);
+      gx.globalAlpha = 0.65;
+      gx.beginPath(); gx.arc(cx + Math.cos(a) * rr, cy - R * 0.4 + Math.sin(a) * rr * 0.5, 1.4 + rnd() * 1.6, 0, Math.PI * 2); gx.fill();
+      gx.globalAlpha = 1;
+    }
+  }
+  return c;
+}

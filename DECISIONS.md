@@ -912,3 +912,8 @@
   skaliert /70 (Stellung 100 deutlich heller als das alte Maximum).
 - Bewuchs-Regler (ANFANG) skaliert jetzt die SPAWN-Dichte des Sprite-Grases
   (greift beim Kartenwechsel).
+- R82b Baum-Erdung: fester kleiner Fussschatten DIREKT am Stamm (dorfSim-Regel
+  "Grundschatten erdet immer"), getrennt vom wandernden Sonnenschatten.
+- Felsen: dorfSims gemalter Fels (Facetten/Moos/Kontaktschatten, 2x-AA) ersetzt
+  die 32px-Kachelgrafik auf gebackenen Karten; Adern zeigen Erz-Einsprengsel
+  (Eisen braun, Goldmine gold). Formationen: 3-5 Brocken eng beieinander.
