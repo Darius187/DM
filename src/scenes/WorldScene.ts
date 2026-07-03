@@ -2550,6 +2550,55 @@ export class WorldScene extends CombatScene {
 
   // Weicher Kontaktschatten (einmal gebacken, Port aus dorfSim schattenBild):
   // erdet die großen Bäume am Fuß. Lazy als globale Textur registriert.
+  // R84: hohe Krypta-Wand aus der VORHANDENEN Wand-Textur zusammengesetzt -
+  // der 10px-Mauerwerks-Streifen von krypta_wand_front wird von unten nach
+  // oben GESTAPELT (Kopien, kein Strecken), oben schließt die dunkle Deck-
+  // fläche derselben Kachel ab. Key trägt die Höhe (Regler baut live neu).
+  private hoheWandKey(variant: number, tiefe: number, theme: AreaData['theme'], hF: number): string {
+    const basis = this.provider.tileKey('krypta_wand_front', variant, tiefe, theme);
+    const key = `${basis}_hoch${Math.round(hF * 100)}`;
+    if (!this.textures.exists(key)) {
+      const q = this.textures.get(basis).getSourceImage() as HTMLCanvasElement;
+      const H = Math.round(TILE * hF);
+      const c = document.createElement('canvas'); c.width = TILE; c.height = H;
+      const g = c.getContext('2d')!;
+      for (let y = H; y > 0; y -= 10) g.drawImage(q, 0, TILE - 10, TILE, 10, 0, y - 10, TILE, 10);
+      g.drawImage(q, 0, 0, TILE, 3, 0, 0, TILE, 3);   // dunkle Oberkante (Deckfläche der Kachel)
+      this.textures.addCanvas(key, c);                 // NEAREST wie der Rest der Krypta
+    }
+    return key;
+  }
+
+  // R84: Seitenkante der Krypta-Wand - derselbe Mauerwerks-Streifen, um 90°
+  // gedreht (Anordnung der vorhandenen Textur, keine neue Grafik). Schließt
+  // Ost-/Westkanten und damit die Ecken der Räume.
+  private wandSeiteKey(variant: number, tiefe: number, theme: AreaData['theme']): string {
+    const basis = this.provider.tileKey('krypta_wand_front', variant, tiefe, theme);
+    const key = `${basis}_seite`;
+    if (!this.textures.exists(key)) {
+      const q = this.textures.get(basis).getSourceImage() as HTMLCanvasElement;
+      const c = document.createElement('canvas'); c.width = 10; c.height = TILE;
+      const g = c.getContext('2d')!;
+      g.save(); g.translate(5, TILE / 2); g.rotate(Math.PI / 2);
+      g.drawImage(q, 0, TILE - 10, TILE, 10, -TILE / 2, -5, TILE, 10);
+      g.restore();
+      this.textures.addCanvas(key, c);
+    }
+    return key;
+  }
+
+  // R84: alle Süd-Wände der aktuellen Krypta neu zeichnen (Wandhöhen-Regler)
+  private refreshKryptaWaende(): void {
+    if (!this.area?.dark) return;
+    for (let ty = 0; ty < this.area.h; ty++) {
+      for (let tx = 0; tx < this.area.w; tx++) {
+        if (this.area.map[ty][tx] !== T.WALL) continue;
+        const unten = this.area.map[ty + 1]?.[tx];
+        if (unten !== undefined && !SOLID.has(unten)) this.refreshTile(tx, ty);
+      }
+    }
+  }
+
   private kontaktSchattenKey(): string {
     const key = 'kontaktschatten';
     if (!this.textures.exists(key)) {
@@ -2774,6 +2823,7 @@ export class WorldScene extends CombatScene {
           { kind: 'slider', label: 'Sichtweite nachts (Radius)', min: 120, max: 640, step: 10, get: () => lic.nachtSicht ?? 240, set: (v) => { lic.nachtSicht = v; saveSettings(); } },
           { kind: 'slider', label: 'Held-Glut Helligkeit', min: 0, max: 100, step: 2, get: () => lic.nachtGlut ?? 50, set: (v) => { lic.nachtGlut = v; saveSettings(); } },
           { kind: 'color', label: 'Held-Glut Farbe', get: () => { const c = lic.nachtGlutFarbe ?? 0xffcf86; return [(c >> 16 & 255) / 255, (c >> 8 & 255) / 255, (c & 255) / 255] as [number, number, number]; }, set: (c) => { lic.nachtGlutFarbe = (Math.round(c[0] * 255) << 16) | (Math.round(c[1] * 255) << 8) | Math.round(c[2] * 255); saveSettings(); } },
+          { kind: 'slider', label: 'Krypta-Wandhöhe (Kacheln)', min: 1, max: 3, step: 0.25, fmt: (v) => `${v.toFixed(2)}x`, get: () => lic.wandHoehe ?? 2, set: (v) => { lic.wandHoehe = v; saveSettings(); this.refreshKryptaWaende(); } },
         ] as DKControl[];
       } },
       { name: 'MESSEN', controls: () => [
@@ -3192,6 +3242,17 @@ export class WorldScene extends CombatScene {
       tag(this.add.image(tx * TILE + 16, ty * TILE + 16, boden).setTint(0x2a0606).setDepth(-11));
       return;
     }
+    // HOHE KRYPTA-WÄNDE (R84, Autorauftrag): in dark-Areas bekommt jede nach
+    // Süden zeigende Wand (krypta_wand_front) einen HOHEN Wandkörper - die
+    // VORHANDENE Mauerwerks-Textur wird vertikal GESTAPELT (keine neue Grafik),
+    // Fuß-Anker an der Zellen-Unterkante, y-sortiert an der Basis: der Held
+    // verschwindet dahinter. Kollision unverändert (a.map + SOLID).
+    if (a.dark && id === T.WALL && name === 'krypta_wand_front') {
+      const hF = Math.max(1, getSettings().licht.wandHoehe ?? 2);
+      const hoch = tag(this.add.image(tx * TILE + 16, (ty + 1) * TILE, this.hoheWandKey(variant, a.depth, a.theme, hF)));
+      hoch.setOrigin(0.5, 1).setDepth((ty + 1) * TILE - 6);
+      return;
+    }
     const key = this.provider.tileKey(name, variant, a.depth, a.theme);
     const img = tag(this.add.image(tx * TILE + 16, ty * TILE + 16, key).setDepth(-10));
     // Steg liegt ÜBER dem Schlucht-Tiefenbild (das bei -9 gezeichnet wird),
@@ -3368,6 +3429,18 @@ export class WorldScene extends CombatScene {
           if (ty > 0 && !SOLID.has(a.map[ty - 1][tx])) kanten.lineBetween(x0, y0 + 1, x0 + TILE, y0 + 1);
           if (tx > 0 && !SOLID.has(a.map[ty][tx - 1])) kanten.lineBetween(x0 + 1, y0, x0 + 1, y0 + TILE);
           if (tx + 1 < a.w && !SOLID.has(a.map[ty][tx + 1])) kanten.lineBetween(x0 + TILE - 1, y0, x0 + TILE - 1, y0 + TILE);
+          // R84 (Autorauftrag "Räume schließen"): Ost-/Westkanten bekommen
+          // einen sichtbaren Mauerwerks-Streifen (die vorhandene Textur, 90°
+          // gedreht) - damit laufen die Wände an den Ecken sauber zusammen.
+          const vSeite = ((((tx * 73856093) ^ (ty * 19349663)) % 7) + 7) % 7;
+          if (tx > 0 && !SOLID.has(a.map[ty][tx - 1])) {
+            const st = this.add.image(x0 + 5, y0 + 16, this.wandSeiteKey(vSeite, a.depth, a.theme)).setDepth(-9.2);
+            st.setData('kachel', `${tx},${ty}`); this.tileImages.push(st);
+          }
+          if (tx + 1 < a.w && !SOLID.has(a.map[ty][tx + 1])) {
+            const st = this.add.image(x0 + TILE - 5, y0 + 16, this.wandSeiteKey(vSeite, a.depth, a.theme)).setFlipX(true).setDepth(-9.2);
+            st.setData('kachel', `${tx},${ty}`); this.tileImages.push(st);
+          }
         }
       }
       this.tileImages.push(kanten as unknown as Phaser.GameObjects.Image);

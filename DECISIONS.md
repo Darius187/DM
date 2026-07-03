@@ -929,3 +929,11 @@
   Gluehen (ADD-Kern) ist zurueckgenommen.
 - Tag: leichte Saettigungs-Anhebung bei Sonne (ColorMatrix.saturate 0.16),
   Wolken daempfen, nachts aus. Waldboden mit Moos-Polstern strukturiert.
+- R84 Krypta-Waende: Befund war Fall B (a.map ist vollstaendig wandgefuellt,
+  buildCrypt carved Raeume heraus - nur das ZEICHNEN zeigte seitlich nichts).
+  Sued-Waende: 10px-Mauerstreifen der VORHANDENEN krypta_wand_front-Textur
+  vertikal GESTAPELT (Kopien, kein Strecken), Fuss unten, y-sortiert an der
+  Basis (Held verschwindet dahinter). Ost/West-Kanten + Ecken: derselbe
+  Streifen 90 Grad gedreht als Seitenkante. Hoehe als Regler (F10->LICHT,
+  Default 2 Kacheln, baut live neu). Kollision unangetastet, alles hinter
+  a.dark - Oberwelt pixelgleich geprueft.
