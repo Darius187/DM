@@ -33,6 +33,38 @@ export const GATHER = {
   krautSammeln: 1,        // Kräuter: einfach aufsammeln
 } as const;
 
+// ============================================================================
+// HARVEST_CONFIG (R90): Tuning-Werte, HIER anpassen. Die EINZIGE Quelle für
+// die Ernte-Balance - keine verstreuten Zahlen mehr. Gefühlt konstant,
+// UNABHÄNGIG von der Tageslänge (swingCooldownMs statt Spieltakt).
+// KEINE Müdigkeit, KEIN abnehmender Ertrag - der Held darf den ganzen Tag hacken.
+// ============================================================================
+export const HARVEST_CONFIG = {
+  baum: {
+    hits: 10,               // Schläge bis der Baum fällt
+    swingCooldownMs: 2200,  // Pause zwischen zwei Schlägen (10 x 2.2s ≈ 22s je Baum)
+    holzProBaum: 1,         // GANZE Zahl Holz je gefälltem Baum (keine Bruchteile)
+  },
+  stein: {
+    // je Felsgröße 0..3 (klein/mittel/groß/Findling): Schläge bis leer + Ausbeute
+    hits: [8, 12, 18, 26],
+    swingCooldownMs: 1400,
+    steinProFels: [2, 4, 7, 12],
+  },
+  erz: {
+    hits: 14,
+    swingCooldownMs: 1400,
+    eisenProAder: 3,
+  },
+} as const;
+
+// NPC-HOLZFÄLLER (R90): VORBEREITETE, gekapselte Datenlogik - noch NICHT scharf
+// geschaltet. Aktivierung sobald STADT + Stadtlager existieren (dann nur noch
+// verdrahten). Würfelt abends einen Tagesertrag zwischen 25 und 75 Holz.
+export function npcHolzfaellerTagesertrag(rng: () => number): number {
+  return 25 + Math.floor(rng() * 51);   // 25..75 Holz
+}
+
 // STUFEN-ABBAU (R80, Autorwunsch "wie 7 Days to Die"): Fels/Erz verschwinden
 // nicht mehr mit einem Schlag, sondern zerfallen SICHTBAR in Stufen
 // (ganz -> rissig -> Geröll -> weg) und zahlen bei jeder Stufe anteilig aus.

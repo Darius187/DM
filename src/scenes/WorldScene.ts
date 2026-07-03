@@ -41,7 +41,7 @@ import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
 import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, VOLK, SMALLTALK, KONTAKT_ANGEBOT, type DlgPage } from '../data/dialoge';
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
-import { GATHER, HOLZ, ABBAU, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
+import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
 import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, type RtsFormation, type RtsBau } from '../data/rts';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
@@ -238,6 +238,7 @@ export class WorldScene extends CombatScene {
   private tageszeit = 0.3; // 0..1, Start am Morgen
   private gefaellteBaeume = new Map<string, number>(); // Position -> Tag des Fällens
   private baumSchlaege = new Map<string, number>();
+  private hackCdMs = 0;   // R90: Schlag-Pause (HARVEST_CONFIG) - gefühlt konstant, tageslängen-unabhängig
   private msgTexts: Phaser.GameObjects.Text[] = [];
   private hud!: Hud;
   private questTracker!: QuestTracker;
@@ -1930,15 +1931,11 @@ export class WorldScene extends CombatScene {
       // im Gewitter biegt der konstante Sturmwind die Kronen sichtbar weit.
       b.img.rotation = wd * 0.10 * this.boeWelle(b.img.x, b.img.y, time)
         + 0.006 * Math.sin(time * 0.0011 + b.phase);
-      // R86 (Autor "im dichten Wald sieht man den Helden gar nicht mehr"):
-      // Bäume, deren Krone den Helden verdeckt (Baum steht VOR ihm), faden
-      // weich auf ~40% - der Held bleibt immer erkennbar (dorfSim-Reveal).
-      const verdeckt = b.img.y > this.py
-        && b.img.y - this.py < b.img.displayHeight * 0.9
-        && Math.abs(b.img.x - this.px) < b.img.displayWidth * 0.38;
-      const zielA = verdeckt ? 0.42 : 1;
-      if (Math.abs(b.img.alpha - zielA) > 0.01) b.img.setAlpha(b.img.alpha + (zielA - b.img.alpha) * 0.16);
     }
+    // R90 (Autor): KEIN Ganz-Baum-Faden mehr bei Nähe. Stattdessen ein weiches
+    // rundes LOCH im Blätterdach genau um den Helden (updateKronenLoch), nur
+    // wo die Krone ihn WIRKLICH überlappt und vor ihm liegt.
+    this.updateKronenLoch();
     // WEGBIEGEN vor dem Helden (dorfSim-Verhalten, Autorwunsch R77): Gras und
     // Schilf in Reichweite lehnen sich vom Helden weg - er "watet" durch.
     const biege = (img: Phaser.GameObjects.Image, reichweite: number, staerke: number): number => {
@@ -1982,6 +1979,74 @@ export class WorldScene extends CombatScene {
   // durch Gras und Bäume läuft (Wellenlänge ~1500px, wandert mit der Zeit).
   private boeWelle(x: number, y: number, timeMs: number): number {
     return 0.62 + 0.38 * Math.sin(timeMs * 0.0016 - x * 0.0042 - y * 0.0031);
+  }
+
+  // --- SOFTES KRONEN-LOCH (R90, Option C): ein weiches, rundes Loch im
+  // Blätterdach genau um den Helden - NUR wo eine Krone ihn wirklich verdeckt
+  // (Y-sortiert vor ihm + Überlappung), nicht bei bloßer Nähe. Technik: eine
+  // bildschirmfeste Masken-RenderTexture (weiß mit weichem transparenten Fleck
+  // am Helden) wird als BitmapMask NUR auf die verdeckenden Bäume gelegt.
+  private kronenMaskRT: Phaser.GameObjects.RenderTexture | null = null;
+  private kronenMask: Phaser.Display.Masks.BitmapMask | null = null;
+  private kronenMaskiert = new Set<Phaser.GameObjects.Image>();
+
+  private ensureKronenMaske(): void {
+    if (this.kronenMaskRT) return;
+    // weicher Pinsel (radial: undurchsichtig innen -> transparent außen)
+    if (!this.textures.exists('kronenbrush')) {
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const g = c.getContext('2d')!;
+      const grad = g.createRadialGradient(64, 64, 6, 64, 64, 64);
+      grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.6, 'rgba(255,255,255,0.85)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
+      this.textures.addCanvas('kronenbrush', c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+    this.kronenMaskRT = this.add.renderTexture(0, 0, this.scale.width, this.scale.height).setOrigin(0, 0).setScrollFactor(0).setVisible(false);
+    this.kronenMask = this.kronenMaskRT.createBitmapMask();
+    this.kronenMask.invertAlpha = true;   // Loch = transparenter Fleck -> Baum dort AUSGESTANZT
+  }
+
+  private updateKronenLoch(): void {
+    if (this.area?.dark || this.area?.innen || !this.windBaeume.length) { this.raeumeKronenMaske(); return; }
+    this.ensureKronenMaske();
+    const rt = this.kronenMaskRT!, mask = this.kronenMask!;
+    const cam = this.cameras.main, zm = cam.zoom;
+    if (rt.width !== this.scale.width || rt.height !== this.scale.height) rt.setSize(this.scale.width, this.scale.height);
+    // verdeckende Bäume finden: Krone überlappt den Helden UND Baum vor ihm.
+    const front: Phaser.GameObjects.Image[] = [];
+    for (const b of this.windBaeume) {
+      const img = b.img; if (!img.active) continue;
+      const verdeckt = img.y > this.py                                  // Fuß unter dem Held = Y-sortiert VOR ihm
+        && img.y - this.py < img.displayHeight * 0.95                   // Held liegt im Kronen-Bereich (Höhe)
+        && Math.abs(img.x - this.px) < img.displayWidth * 0.42;         // Held horizontal unter der Krone
+      if (verdeckt) front.push(img);
+    }
+    if (!front.length) { this.raeumeKronenMaske(); return; }
+    // Maske füllen: die verdeckenden Bäume ausstanzen? Nein - invertAlpha: der
+    // transparente Pinsel-Fleck am Helden erzeugt das Loch, der Rest bleibt sichtbar.
+    const hx = (this.px - cam.worldView.x) * zm, hy = (this.py - 14 - cam.worldView.y) * zm;
+    const D = 150 * zm;   // Loch-Durchmesser folgt dem Helden
+    this.stempleBrush(rt, hx, hy, D);   // weicher Fleck an der Held-Position (= Loch dank invertAlpha)
+    // Maske auf die Front-Bäume legen, von den übrigen nehmen
+    const neu = new Set(front);
+    for (const img of front) { if (!this.kronenMaskiert.has(img)) img.setMask(mask); }
+    for (const img of this.kronenMaskiert) { if (!neu.has(img) && img.active) img.clearMask(); }
+    this.kronenMaskiert = neu;
+  }
+
+  // den weichen Pinsel in gewünschter Größe in die Masken-RT stempeln
+  private stempleBrush(rt: Phaser.GameObjects.RenderTexture, cx: number, cy: number, d: number): void {
+    if (!this._brushImg) { this._brushImg = this.add.image(0, 0, 'kronenbrush').setVisible(false); }
+    const bi = this._brushImg; bi.setDisplaySize(d, d).setPosition(cx, cy);
+    rt.clear();
+    rt.draw(bi, cx, cy);
+  }
+  private _brushImg: Phaser.GameObjects.Image | null = null;
+
+  private raeumeKronenMaske(): void {
+    if (!this.kronenMaskiert.size) return;
+    for (const img of this.kronenMaskiert) { if (img.active) img.clearMask(); }
+    this.kronenMaskiert.clear();
   }
 
   // Baum fällt ANIMIERT (dorfSim-Gefühl, Runde 74): beschleunigtes Kippen weg
@@ -2888,14 +2953,11 @@ export class WorldScene extends CombatScene {
     st.hits++;
     this.sfx.play('holz_hacken');
     this.fx.burst(st.x, st.y - 6, 0x6a5430, 6, 90);
-    if (st.hits < GATHER.stammSchlaege) return;
-    // Hastige Held-Ernte (Autor-Balance R79): der Held nimmt ~1/5 des Baum-
-    // Inhalts mit (mind. 1) - den vollen Inhalt holen später Holzfäller-NPCs.
-    const amt = Math.max(1, Math.round((st.inhalt ?? HOLZ.baumInhalt.mittel) * HOLZ.heldAnteil));
-    this.pickups.add({
-      kind: 'material', x: st.x, y: st.y + 8, bob: 0,
-      item: { kind: 'material', name: 'Holz', rarity: 0, val: 0, boni: [], stack: amt },
-    });
+    if (this.hackCdMs > 0) return;
+    this.hackCdMs = HARVEST_CONFIG.baum.swingCooldownMs;
+    if (st.hits < 3) return;   // ein paar Schläge, dann ist der Stamm weggeräumt
+    // R90: KEIN Extra-Holz - das eine Holz gab es beim Fällen. Der Stamm
+    // wird hier nur noch aus dem Weg geräumt (Deko).
     const img = st.img;
     this.liegendeStaemme.delete(key);
     this.tweens.add({ targets: img, alpha: 0, duration: 280, onComplete: () => img.destroy() });
@@ -5582,11 +5644,15 @@ export class WorldScene extends CombatScene {
       this.sfx.play('fehler');
       return;
     }
+    // R90: Schlag-Pause aus HARVEST_CONFIG - schnelles E-Drücken zählt NICHT
+    // mehrfach; jeder Schlag braucht seine Zeit (gefühlt konstante Arbeit).
+    if (this.hackCdMs > 0) return;
+    this.hackCdMs = HARVEST_CONFIG.baum.swingCooldownMs;
     const hits = (this.baumSchlaege.get(key) ?? 0) + 1;
     this.baumSchlaege.set(key, hits);
     this.sfx.play('holz_hacken');
     this.fx.burst(b.x, b.y - 8, 0x6a5430, 6, 90);
-    if (hits < GATHER.baumSchlaege) return;
+    if (hits < HARVEST_CONFIG.baum.hits) return;
     // Baum fällt
     this.gefaellteBaeume.set(key, this.tag);
     this.baumSchlaege.delete(key);
@@ -5602,15 +5668,12 @@ export class WorldScene extends CombatScene {
     }
     this.fx.burst(b.x, b.y, 0x1c3018, 16, 140);
     this.sfx.play('holz_hacken');
-    // Auf baumSkala-Karten kommt das Holz erst beim ZERLEGEN des liegenden
-    // Stamms (zerlegeStamm) - nicht schon beim Fällen.
-    if (!this.area.baumSkala) {
-      const amt = ri(this.rng, GATHER.baumHolz.min, GATHER.baumHolz.max);
-      this.pickups.add({
-        kind: 'material', x: b.x, y: b.y + 8, bob: 0,
-        item: { kind: 'material', name: 'Holz', rarity: 0, val: 0, boni: [], stack: amt },
-      });
-    }
+    // R90 (Autor): GENAU 1 Holz je gefälltem Baum (ganze Zahl), aus der Config.
+    // Der gefällte Stamm bleibt als Deko liegen; Zerlegen gibt kein Extra-Holz.
+    this.pickups.add({
+      kind: 'material', x: b.x, y: b.y + 8, bob: 0,
+      item: { kind: 'material', name: 'Holz', rarity: 0, val: 0, boni: [], stack: HARVEST_CONFIG.baum.holzProBaum },
+    });
   }
 
   // --- NPC-Gespräche (Texte aus src/data/dialoge.ts) -------------------------
@@ -6516,12 +6579,16 @@ export class WorldScene extends CombatScene {
     }
     // Größe (R81): kleine Felsen 3 Schläge, mittlere 4, große 6 - und
     // entsprechend mehr Stein. Erzadern bleiben bei den GATHER-Schlägen.
-    const groesse = ABBAU.felsGroessen[Math.max(0, Math.min(3, o.g ?? 1))];
-    const maxHp = what === 'stein' ? groesse.schlaege : GATHER.erzSchlaege;
+    // R90: Schlag-Pause + Schläge/Ausbeute aus HARVEST_CONFIG.
+    if (this.hackCdMs > 0) return;
+    const gIdx = Math.max(0, Math.min(3, o.g ?? 1));
+    const maxHp = what === 'stein' ? HARVEST_CONFIG.stein.hits[gIdx] : HARVEST_CONFIG.erz.hits;
+    this.hackCdMs = what === 'stein' ? HARVEST_CONFIG.stein.swingCooldownMs : HARVEST_CONFIG.erz.swingCooldownMs;
     if (o.hp === undefined) {   // erster Schlag: Zustand anlegen
-      const inh = what === 'stein' ? groesse.inhalt : what === 'eisen' ? ABBAU.erzInhalt : ABBAU.goldInhalt;
       o.hp = maxHp; o.stufe = 0; o.gegeben = 0;
-      o.inhalt = ri(this.rng, inh.min, inh.max);
+      o.inhalt = what === 'stein' ? HARVEST_CONFIG.stein.steinProFels[gIdx]
+        : what === 'eisen' ? HARVEST_CONFIG.erz.eisenProAder
+        : ri(this.rng, ABBAU.goldInhalt.min, ABBAU.goldInhalt.max);
     }
     o.hp -= 1;
     this.sfx.play('stein_hacken');
@@ -6550,8 +6617,10 @@ export class WorldScene extends CombatScene {
       }
     }
     if (o.hp <= 0) {
-      // Aufgebraucht: Tile freigeben, Brocken aus der Welt nehmen
-      this.area.map[ty][tx] = T.FLOOR;
+      // Aufgebraucht: Tile freigeben. R90-FIX (Autor "hässliches Viereck"): auf
+      // gebackenen Karten GRASS statt T.FLOOR - FLOOR zeichnete 'krypta_boden'
+      // (dunkles Steintile) als undurchsichtiges Quadrat auf den Rasen.
+      this.area.map[ty][tx] = this.area.gebackenerBoden ? T.GRASS : T.FLOOR;
       this.area.ores = this.area.ores.filter((x) => x !== o);
       this.area.rocks = this.area.rocks.filter((x) => x !== o);
       this.refreshTile(tx, ty);
@@ -8758,6 +8827,7 @@ export class WorldScene extends CombatScene {
     this.updateLagerfeuer(dt);  // eigenes Feuer heilt in der Nähe (R81, Baumenü)
     this.updateBaustellen(dt);  // RTS-Platzierung + Bauzeit-Fortschritt (R88)
     this.updatePflanzenRespawn(dt); // Heilpflanzen wachsen nach (R89)
+    if (this.hackCdMs > 0) this.hackCdMs = Math.max(0, this.hackCdMs - dt * 1000); // Schlag-Pause (R90)
     this.updateNassSpritzer(dt);  // Spritzer in Pfützen + auf nassem Rasen (R78)
     this.updateRegenPlatschen(dt); // Regen plätschert im Gras (R79)
     this.updateWasserWetter();  // Regen-Ringe/Wirbel auf dem neuen Wasser

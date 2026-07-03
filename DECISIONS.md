@@ -1011,3 +1011,18 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   UNSICHER: Engelwurz-Pest-Legende (nicht sicher vor 1349), Alraune wächst nicht
   in Deutschland (dt. "Alraune" oft Zaunrüben-Aberglaube) - NICHT als Fakt
   behaupten. Quellen bei Bedarf gezielt nachschlagen.
+
+## R90 - Ernte-Config, Fels-Fix, Kronen-Loch (Option C)
+- Fels-Viereck war KEIN Drop/Partikel/Debug-Rect: der geleerte Fels-Tile wurde
+  T.FLOOR (NAME='krypta_boden') -> dunkles Steintile-Sprite auf dem Rasen.
+  Fix: auf gebackenen Karten T.GRASS (Backboden zeigt durch, kein Sprite).
+- HARVEST_CONFIG (crafting.ts) = EINZIGE Ernte-Quelle. Held: 10 Schläge/Baum,
+  2200ms Pause -> ~22s, GENAU 1 Holz (ganze Zahl). Stein/Erz eigene Werte je
+  Größe. Swing-Cooldown (hackCdMs) macht die Arbeit tageslängen-UNABHÄNGIG;
+  KEINE Müdigkeit/kein abnehmender Ertrag. Voller Tag (1200s/22s) ~ 54 Holz.
+  NPC-Holzfäller npcHolzfaellerTagesertrag(rng)=25..75 angelegt, NICHT scharf
+  (Aktivierung sobald STADT+Stadtlager existieren).
+- Bäume = individuelle ez-tree-Sprites (NICHT gebacken) -> Option C machbar:
+  KRONEN-LOCH via bildschirmfeste Masken-RenderTexture (weicher Pinsel am Held,
+  invertAlpha) als BitmapMask NUR auf verdeckende Bäume (Krone überlappt Held +
+  Y-sortiert davor). Kein Ganz-Baum-Faden mehr, keine Distanz-Auslösung.
