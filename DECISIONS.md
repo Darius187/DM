@@ -887,3 +887,16 @@
   in echter Bildschirmgroesse gebacken statt gestrecktem Quadrat.
 - Pfuetzen "abgehakt" behoben: der Bild-Canvas war schmaler als die Blob-
   Ellipsen (harte Schnittkante) - jetzt gross genug + dorfSim-Blur-Kante.
+- R81 Holzlogik: NPC-Holzfaeller liefern taeglich npcBaeumeProTag*5 = 50 Holz
+  ins Dorflager, das Saegewerk verschneidet bis 25 Holz/Tag zu Brettern (1->2).
+  Alles Konstanten in HOLZ (crafting.ts), in einer Zeile aenderbar.
+- Persoenliches Baumenue auf Taste N (B war vom Album belegt): erster Bauplan
+  Lagerfeuer (3 Holz + 1 Stein) - heilt im Umkreis wie der Kamin, leuchtet
+  nachts, wird je Karte gespeichert. Steht der Held auf dem Weg, weicht der
+  Bauplatz automatisch auf freien Boden daneben aus.
+- Held-Licht-Regler leben in den gespeicherten Licht-Einstellungen
+  (nachtDunkel/nachtSicht/nachtGlut/nachtGlutFarbe), F10-Tab LICHT.
+- Biome auf START = dieselben dorfSim-Noise-Formeln und Weltmasse wie die
+  Anfangskarte -> gleiche Verteilung (Moor mittig am Fluss, Fels am Rand).
+- Moornebel bewusst WEICHER als die Anfangskarte (Autor: "sah aus wie
+  Schnee"): grosse blaugraue Wolken-Textur, traege Drift, atmendes Alpha.

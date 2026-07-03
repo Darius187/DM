@@ -39,7 +39,7 @@ import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
 import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, VOLK, SMALLTALK, KONTAKT_ANGEBOT, type DlgPage } from '../data/dialoge';
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
-import { GATHER, HOLZ, ABBAU, abbauStufe, abbauSoll } from '../data/crafting';
+import { GATHER, HOLZ, ABBAU, BAUMENU, LAGERFEUER, abbauStufe, abbauSoll } from '../data/crafting';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { TUNING } from '../logic/tuning';
@@ -49,7 +49,7 @@ import { TILE } from '../gfx/fallbackArt';
 import { findePfad } from '../world/Wegfeld';
 import { WASSER_FRAMES } from '../gfx/tileArt';
 import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64, drawSchlucht, drawKristall } from '../gfx/detailArt';
-import { DialogUI, fixUiScroll } from '../ui/dialog';
+import { DialogUI, fixUiScroll, macheFensterZiehbar } from '../ui/dialog';
 import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, RELIKT, ENDEN, TOD, INTRO_FILM, erzaehlerSeiten } from '../data/texte';
 import { ALTAR, BLOOD_WELL, CHEST, RELIC_ACCEPT_ELIXIRS, ABILITY_FX, BUCH_ZAUBER } from '../data/balancing';
 import { BREAKABLES, BREAKABLE_LOOT, BEINHAUS, CHEST_VERFLUCHT, BOSS_KAMPF } from '../data/krypta';
@@ -2231,6 +2231,110 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // --- PERSÖNLICHES BAUMENÜ (R81, Autorwunsch "Lagerfeuer bauen"): Taste N ----
+  // Der Held verbaut sein MÜHSAM gehacktes Holz - deshalb lohnt das Grinden
+  // neben den NPC-Holzfällern. Fenster nach UI-Regel 11: verschiebbar (Griff).
+  private lagerfeuerProKarte: Record<string, Array<{ x: number; y: number }>> = {};
+  private lagerfeuerAktiv: Array<{ x: number; y: number; ph: number }> = [];
+  private bauMenu: Phaser.GameObjects.Container | null = null;
+
+  private toggleBauMenu(): void {
+    if (this.bauMenu) { this.bauMenu.destroy(); this.bauMenu = null; return; }
+    if (this.area.dark || this.area.innen) { this.logMsg('Bauen geht nur unter freiem Himmel.', ''); return; }
+    const w = 440, h = 62 + BAUMENU.length * 56 + 12;
+    const c = this.add.container((this.scale.width - w) / 2, 140).setScrollFactor(0).setDepth(6500);
+    this.bauMenu = c;
+    const bg = this.add.rectangle(0, 0, w, h, 0x171108, 0.97).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
+    bg.setInteractive(); c.add(bg);
+    c.add(this.add.text(12, 7, 'BAUEN - eigenes Lager', { fontFamily: 'serif', fontSize: '14px', color: '#c9a227', letterSpacing: 1 }));
+    const zu = this.add.text(w - 26, 6, '✕', { fontFamily: 'serif', fontSize: '15px', color: '#d8cfb8' }).setInteractive({ useHandCursor: true });
+    zu.on('pointerdown', () => this.toggleBauMenu()); c.add(zu);
+    c.add(this.add.text(12, 30, `Vorrat: ${this.p.materials.holz} Holz · ${this.p.materials.stein} Stein   (Bäume/Felsen: E mit Axt/Spitzhacke)`, { fontFamily: 'serif', fontSize: '11px', color: '#9a8a6a' }));
+    let y = 56;
+    for (const plan of BAUMENU) {
+      const kann = this.p.materials.holz >= plan.holz && this.p.materials.stein >= plan.stein;
+      c.add(this.add.text(12, y, `${plan.name}  (${plan.holz} Holz${plan.stein ? `, ${plan.stein} Stein` : ''})`, { fontFamily: 'serif', fontSize: '13px', color: kann ? '#e8dfc8' : '#7a6a52' }));
+      c.add(this.add.text(12, y + 18, plan.beschreibung, { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a' }));
+      const btn = this.add.text(w - 92, y + 6, 'BAUEN', { fontFamily: 'serif', fontSize: '12px', color: kann ? '#9ad86a' : '#5a5a4a', backgroundColor: '#221808', padding: { x: 8, y: 3 } }).setInteractive({ useHandCursor: true });
+      btn.on('pointerdown', () => { if (this.baue(plan.id)) this.toggleBauMenu(); });
+      c.add(btn);
+      y += 56;
+    }
+    macheFensterZiehbar(this, c, w, { hoehe: 26 });
+    fixUiScroll(c);   // LETZTER Aufruf nach allen c.add (Risiko-Checkliste 4)
+  }
+
+  private baue(planId: string): boolean {
+    const plan = BAUMENU.find((p2) => p2.id === planId);
+    if (!plan) return false;
+    if (this.p.materials.holz < plan.holz || this.p.materials.stein < plan.stein) {
+      this.sfx.play('fehler');
+      this.logMsg(`Nicht genug Material: ${plan.name} braucht ${plan.holz} Holz und ${plan.stein} Stein.`, '');
+      return false;
+    }
+    // Stellprüfung: erst vor dem Helden, sonst die Nachbarplätze - auf freiem
+    // Boden (kein Weg, kein Wasser, nichts Festes). Wer mitten auf der Straße
+    // steht, bekommt das Feuer daneben statt einer Fehlermeldung.
+    let x = 0, y = 0, platz = false;
+    for (const [dx, dy] of [[0, 22], [0, -28], [30, 0], [-30, 0], [30, 26], [-30, 26]]) {
+      const kx = this.px + dx, ky = this.py + dy;
+      const t = this.area.map[Math.floor(ky / TILE)]?.[Math.floor(kx / TILE)];
+      if (t === undefined || SOLID.has(t) || t === T.WATER || t === T.BRIDGE || t === T.PATH) continue;
+      x = kx; y = ky; platz = true; break;
+    }
+    if (!platz) {
+      this.sfx.play('fehler');
+      this.logMsg('Hier ist kein Platz - such dir freien Boden.', '');
+      return false;
+    }
+    this.p.materials.holz -= plan.holz;
+    this.p.materials.stein -= plan.stein;
+    (this.lagerfeuerProKarte[this.area.id] ??= []).push({ x, y });
+    this.spawneLagerfeuer(x, y);
+    this.sfx.play('holz_hacken');
+    this.logMsg('Lagerfeuer errichtet - hier heilst du langsam und hast Licht in der Nacht.', 'gold');
+    this.panels?.refresh?.();
+    return true;
+  }
+
+  // Feuerstelle: Steinring + Scheite als Bild, die Flammen zeichnet der
+  // Fackel-Renderer (renderEffects) lebendig obendrauf, das Licht renderLight.
+  private spawneLagerfeuer(x: number, y: number): void {
+    if (!this.textures.exists('lagerfeuer_tex')) {
+      const c = document.createElement('canvas'); c.width = 44; c.height = 30;
+      const g = c.getContext('2d')!;
+      g.fillStyle = 'rgba(0,0,0,0.3)';
+      g.beginPath(); g.ellipse(22, 18, 18, 8, 0, 0, Math.PI * 2); g.fill();     // Kontaktschatten
+      g.fillStyle = '#241c12';
+      g.beginPath(); g.ellipse(22, 16, 12, 6, 0, 0, Math.PI * 2); g.fill();     // Asche-Mulde
+      g.strokeStyle = '#5a4630'; g.lineWidth = 3; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(14, 18); g.lineTo(30, 14); g.moveTo(15, 13); g.lineTo(29, 19); g.stroke();   // Scheite
+      for (let i = 0; i < 8; i++) {                                             // Steinring
+        const a = i / 8 * Math.PI * 2, sx2 = 22 + Math.cos(a) * 15, sy2 = 16 + Math.sin(a) * 7.5;
+        g.fillStyle = i % 2 ? '#56524a' : '#4c4840';
+        g.beginPath(); g.ellipse(sx2, sy2, 3.4, 2.4, a, 0, Math.PI * 2); g.fill();
+        g.fillStyle = 'rgba(210,210,200,0.18)';
+        g.beginPath(); g.ellipse(sx2 - 1, sy2 - 1, 1.5, 1, a, 0, Math.PI * 2); g.fill();
+      }
+      this.textures.addCanvas('lagerfeuer_tex', c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+    const img = this.add.image(x, y, 'lagerfeuer_tex').setDepth(y - 6).setOrigin(0.5, 0.6);
+    this.tileImages.push(img);
+    this.lagerfeuerAktiv.push({ x, y: y - 4, ph: Math.random() * 6.28 });
+  }
+
+  // Am eigenen Feuer heilt der Held langsam (wie am Kamin, R81)
+  private updateLagerfeuer(dt: number): void {
+    if (!this.lagerfeuerAktiv.length || this.playerDead) return;
+    for (const lf of this.lagerfeuerAktiv) {
+      const d = Math.hypot(lf.x - this.px, lf.y - this.py);
+      if (d < LAGERFEUER.heilRadius) {
+        this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + KAMIN_BUFF.hpRegenPerS * dt);
+        break;
+      }
+    }
+  }
+
   // Moornebel-Drift (R81): Schwaden wabern träge seitwärts, Alpha atmet leicht.
   private updateMoorNebel(time: number): void {
     for (const n of this.moorNebelListe) {
@@ -3173,6 +3277,9 @@ export class WorldScene extends CombatScene {
       this.spawneBruecken(a);       // Brücken im dorfSim-Look (R78)
     }
     this.spawnePois(a);             // Wegzeichen/POIs (R76, Autorfreigabe)
+    // Persönliche Lagerfeuer dieser Karte wieder aufbauen (R81, Baumenü)
+    this.lagerfeuerAktiv = [];
+    for (const lf of this.lagerfeuerProKarte[a.id] ?? []) this.spawneLagerfeuer(lf.x, lf.y);
     // Tiles als statische Bilder (Pseudo-3D, Masterprompt 5.1). Bei dorfSimBoden
     // malt der dorfSim-Canvas alles - keine Kacheln.
     if (!a.dorfSimBoden) {
@@ -5120,6 +5227,17 @@ export class WorldScene extends CombatScene {
     this.schmelze(VERARBEITUNG.schmelze.einEisen, VERARBEITUNG.schmelze.einKohle, VERARBEITUNG.schmelze.aus, VERARBEITUNG.schmelze.menge);
     // 2b) Gesicherte Goldhöhle: die Knappen fördern Golderz (sichern -> Produktion).
     if (this.flags.goldmineGesichert) this.dorfLager['golderz'] = (this.dorfLager['golderz'] ?? 0) + GOLDERZ_PRO_TAG;
+    // 2c) HOLZ-Wirtschaft (R81, Autor-Balance R79): die Dorf-Holzfäller schlagen
+    // ~10 mittlere Bäume am Tag (= 50 Holz ins Lager); das Sägewerk verschneidet
+    // einen Teil davon zu BRETTERN (1 Holz -> 2 Bretter) - gebaut wird in Brettern.
+    // Der Held erntet daneben nur hastige Bruchteile (HOLZ.heldAnteil) - genau
+    // das gewollte "mühsam, aber für ein Lagerfeuer reicht es".
+    this.dorfLager['holz'] = (this.dorfLager['holz'] ?? 0) + HOLZ.npcBaeumeProTag * HOLZ.baumInhalt.mittel;
+    const saege = Math.min(HOLZ.saegewerkProTag, this.dorfLager['holz'] ?? 0);
+    if (saege > 0) {
+      this.dorfLager['holz'] -= saege;
+      this.dorfLager['bretter'] = (this.dorfLager['bretter'] ?? 0) + saege * HOLZ.bretterProHolz;
+    }
     // 3) Abgabe an den Fürsten, wenn fällig.
     if (this.tag >= this.naechsteAbgabe) {
       this.leisteAbgabe();
@@ -6546,6 +6664,7 @@ export class WorldScene extends CombatScene {
         tag: this.tag,
         tageszeit: this.tageszeit,
         feld: this.feld,
+        lagerfeuer: this.lagerfeuerProKarte,
         haendlerSeed: this.areaSeed,
         aufbauBestellt: this.aufbauBestellt,
         einrichtung: this.einrichtung,
@@ -6605,6 +6724,7 @@ export class WorldScene extends CombatScene {
     this.einrichtung = data.welt.einrichtung ?? 0;
     this.tag = data.welt.tag ?? 1;
     this.tageszeit = data.welt.tageszeit ?? 0.3;
+    this.lagerfeuerProKarte = data.welt.lagerfeuer ?? {};
     this.feld = data.welt.feld ?? this.feld;
     this.kopfgeld = data.welt.kopfgeld ?? null;
     this.album = data.welt.album ?? { kills: {}, champions: [], unikate: [], notizen: [] };
@@ -7181,6 +7301,13 @@ export class WorldScene extends CombatScene {
       this.eraseLight(sx, sy - 4 * zm, (95 + Math.sin(time * 7 + t.ph) * 10) * zm);
       warmIdx = this.placeWarm(warmIdx, t.x, t.y - 4, 70, 0.7, this.schlucht ? this.schluchtAkzent : undefined);
     }
+    // Lagerfeuer (R81, Baumenü): eigener Sichtkreis + warmer Schein
+    for (const lf of (fow ? [] : this.lagerfeuerAktiv)) {
+      const sx = (lf.x - cam.worldView.x) * zm, sy = (lf.y - cam.worldView.y) * zm;
+      if (sx < -160 || sy < -160 || sx > this.scale.width + 160 || sy > this.scale.height + 160) continue;
+      this.eraseLight(sx, sy - 4 * zm, (LAGERFEUER.lichtRadius + Math.sin(time * 6 + lf.ph) * 10) * zm);
+      warmIdx = this.placeWarm(warmIdx, lf.x, lf.y - 4, 85, 0.7);
+    }
     // Hausfenster im Dorf (Runde 35): abends leuchten die Fenster warm, nachts
     // erlischt ein Haus nach dem anderen, tagsüber sind alle dunkel.
     if (this.area.id === 'village' && !fow) {
@@ -7434,6 +7561,14 @@ export class WorldScene extends CombatScene {
       g.fillEllipse(t.x, t.y - 4 + f * 0.3, 7, 11 + f * 2);
       g.fillStyle(flammKern, 1);
       g.fillEllipse(t.x, t.y - 3, 3.6, 6);
+    }
+    // Lagerfeuer (R81, Baumenü): breitere Doppel-Flamme ohne Fackelstab
+    for (const lf of this.lagerfeuerAktiv) {
+      const f = Math.sin(time * 8 + lf.ph) * 2;
+      g.fillStyle(flammAussen, 1);
+      g.fillEllipse(lf.x, lf.y - 7 + f * 0.3, 11, 15 + f * 2);
+      g.fillStyle(flammKern, 1);
+      g.fillEllipse(lf.x, lf.y - 5, 5.5, 8);
     }
     // Innen-Lichtquellen (Runde 35): lebendige Flammen über Kamin/Kerze/Fackel
     for (const hd of this.area.herde ?? []) {
@@ -8069,6 +8204,7 @@ export class WorldScene extends CombatScene {
     this.updateCombat(dt * kampfTempo);
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
     this.updateWetter(dt);      // Wetter-Achse (Regen/Nässe, Stimmungsregen bis 1. Dungeon)
+    this.updateLagerfeuer(dt);  // eigenes Feuer heilt in der Nähe (R81, Baumenü)
     this.updateNassSpritzer(dt);  // Spritzer in Pfützen + auf nassem Rasen (R78)
     this.updateRegenPlatschen(dt); // Regen plätschert im Gras (R79)
     this.updateWasserWetter();  // Regen-Ringe/Wirbel auf dem neuen Wasser
@@ -8172,5 +8308,6 @@ export class WorldScene extends CombatScene {
 
   protected override onGameKey(k: string): void {
     if (k === 'escape' || k === getSettings().kb.pause) this.togglePause();
+    if (k === 'n') this.toggleBauMenu();   // persönliches Baumenü (R81)
   }
 }

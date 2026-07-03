@@ -36,6 +36,8 @@ export interface SaveData {
     tag: number;
     tageszeit: number;
     feld: Array<{ saatId: string | null; tageGewachsen: number; gegossen: boolean }>;
+    // Persönliche Lagerfeuer je Karte (R81, Baumenü) - überleben Kartenwechsel und Laden
+    lagerfeuer?: Record<string, Array<{ x: number; y: number }>>;
     haendlerSeed: number;
     aufbauBestellt?: boolean;
     einrichtung?: number;

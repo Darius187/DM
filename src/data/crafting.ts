@@ -51,12 +51,25 @@ export function abbauSoll(stufe: number, inhalt: number): number {
 // Held erntet hastig (~1/5), Holzfäller-NPCs holen später den vollen Inhalt.
 export const HOLZ = {
   baumInhalt: { klein: 3, mittel: 5, gross: 8 },   // was ein Baum ENTHÄLT (nach Größe)
-  heldAnteil: 0.2,        // hastige Held-Ernte (mind. 1 Holz) - "ich bin kein Holzfäller"
+  heldAnteil: 0.2,        // hastige Held-Ernte (mind. 1 Holz) - "ich bin kein Holzfäler"
   npcBaeumeProTag: 10,    // historisch ~8-12 mittlere Bäume je Holzfäller und Tag
   bretterProHolz: 2,      // Sägewerk: 1 Holz -> 2 Bretter
+  saegewerkProTag: 25,    // wie viel Holz das Sägewerk am Tag verschneidet (R81)
   holzKaufpreis: 1,       // Gold je Holz beim Händler (50 Holz ≈ 1,5 NPC-Tageslöhne)
   npcTagelohn: 33,        // Gold je Holzfäller-Tag (Anker für den Kaufpreis)
   bauKosten: { zaun: 2, palisadenSegment: 6 },     // BRETTER je Bau-Segment
+} as const;
+
+// PERSÖNLICHES BAUMENÜ (R81, Autor: "falls man ein Lagerfeuer bauen möchte"):
+// kleine Bauten aus dem EIGENEN Material des Helden - deshalb lohnt das
+// mühsame Holz-Grinden neben den fleißigen NPC-Holzfällern.
+export interface BauPlan { id: string; name: string; holz: number; stein: number; beschreibung: string }
+export const BAUMENU: ReadonlyArray<BauPlan> = [
+  { id: 'lagerfeuer', name: 'Lagerfeuer', holz: 3, stein: 1, beschreibung: 'Wärmt und leuchtet in der Nacht - am Feuer heilst du langsam' },
+];
+export const LAGERFEUER = {
+  heilRadius: 80,         // in diesem Umkreis heilt das Feuer (wie der Kamin)
+  lichtRadius: 120,       // Sichtkreis des Feuers in der Nacht
 } as const;
 
 // Wiederaufbau des niedergebrannten Gehöfts in 3 Stufen
