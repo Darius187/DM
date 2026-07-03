@@ -593,3 +593,54 @@ export function macheFelsBild(g: number, seed: number, erz?: 'eisen' | 'gold'): 
   }
   return c;
 }
+
+// RÖHRICHT / UFER-SCHILF (R91, Autor: "Phragmites australis, 2-3 m hoch, höher
+// als der Held, mit federartigen Rispen"): hohe schmale Halme mit Blattscheiden
+// und einer WEDELIGEN RISPE oben (silbrig-weiß bis bräunlich-violett) - das
+// Erkennungsmerkmal. 3x überabgetastet; leichte Höhenvariation je Halm.
+// Logische Höhe 150px (Anzeige-Skala macht daraus >Heldhöhe).
+export function macheRoehrichtBild(seed: number): HTMLCanvasElement {
+  const rnd = rngAus(seed);
+  const S = 3, W = 40, H = 150;
+  const c = document.createElement('canvas'); c.width = W * S; c.height = H * S;
+  const g = c.getContext('2d')!; g.scale(S, S);
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  const fx = W / 2, fy = H - 2;
+  g.fillStyle = 'rgba(0,0,0,0.22)';
+  g.beginPath(); g.ellipse(fx, fy, 9, 2.6, 0, 0, Math.PI * 2); g.fill();
+  const halmToene = ['#4a6030', '#3f5528', '#567038', '#48602c'];
+  const rispenToene = ['#d8cdc0', '#c8b7a0', '#b89a86', '#a88a9a'];   // silbrig -> bräunlich-violett
+  const halme = 3 + (rnd() * 3 | 0);
+  for (let i = 0; i < halme; i++) {
+    const bx = fx + (rnd() - 0.5) * 12;
+    const hoehe = H * (0.62 + rnd() * 0.36);   // deutliche Höhenvariation
+    const neig = (rnd() - 0.5) * 16;
+    const topX = bx + neig, topY = fy - hoehe;
+    // Halm (Rohr): dünn, leicht gebogen, mit Knoten-Andeutung
+    g.strokeStyle = halmToene[(rnd() * halmToene.length) | 0];
+    g.lineWidth = 1.5 + rnd() * 0.9;
+    g.beginPath(); g.moveTo(bx, fy); g.quadraticCurveTo(bx + neig * 0.4, fy - hoehe * 0.55, topX, topY); g.stroke();
+    // schmale Blattscheiden entlang des Halms
+    g.lineWidth = 1.1;
+    for (let b = 0; b < 3; b++) {
+      const t = 0.28 + b * 0.22, y = fy - hoehe * t, x = bx + neig * t;
+      const side = b % 2 ? 1 : -1;
+      g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + side * 7, y - 6, x + side * 4, y - 16); g.stroke();
+    }
+    // WEDELIGE RISPE: viele feine Härchen, nach außen-unten hängend (Federbusch)
+    const rt = rispenToene[(rnd() * rispenToene.length) | 0];
+    g.strokeStyle = rt; g.lineWidth = 0.7;
+    const rlen = 10 + rnd() * 8;
+    for (let f = 0; f < 26; f++) {
+      const a = -Math.PI / 2 + (rnd() - 0.5) * 2.4;   // überwiegend nach oben, breit gefächert
+      const ll = rlen * (0.4 + rnd() * 0.6);
+      const ex = topX + Math.cos(a) * ll, ey = topY + Math.sin(a) * ll + 3;   // +3 = hängt leicht
+      g.globalAlpha = 0.55 + rnd() * 0.35;
+      g.beginPath(); g.moveTo(topX, topY); g.quadraticCurveTo(topX + Math.cos(a) * ll * 0.5, topY + Math.sin(a) * ll * 0.5 + 2, ex, ey); g.stroke();
+    }
+    g.globalAlpha = 1;
+    // Rispen-Kern (dichter Ansatz)
+    g.fillStyle = rt; g.beginPath(); g.ellipse(topX, topY + 1, 2, 4, 0, 0, Math.PI * 2); g.fill();
+  }
+  return c;
+}

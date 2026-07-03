@@ -13,7 +13,7 @@ import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
-import { maleBoden, machePfuetzenBild, macheSchilfBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheBrueckenBild, macheGeroellBild, macheFelsRisseBild, macheFeinGrasBild, macheMoorSchilfBild, macheFelsBild, macheGrasKachel } from '../world/bodenMaler';
+import { maleBoden, machePfuetzenBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheBrueckenBild, macheGeroellBild, macheFelsRisseBild, macheFeinGrasBild, macheMoorSchilfBild, macheFelsBild, macheGrasKachel, macheRoehrichtBild } from '../world/bodenMaler';
 import { dichteNoise, moorNoise, biomAt } from '../world/biome';
 import { PFLANZEN_BY_ID, pflanzenFuerBiom, PFLANZEN_RESPAWN_S, type PflanzenDef } from '../data/pflanzen';
 import { machePflanzenBild } from '../gfx/pflanzenArt';
@@ -2151,16 +2151,19 @@ export class WorldScene extends CombatScene {
   private spawneUferSchilf(a: AreaData): void {
     if (!a.wasserLauf || !a.gebackenerBoden || a.dark) return;
     const geo = a.wasserLauf.geo, smink = a.wasserLauf.smink ?? WASSER2_CFG.smink;
-    for (let v = 0; v < 4; v++) {
-      const key = `ufer_schilf_${v}`;
-      if (!this.textures.exists(key)) this.textures.addCanvas(key, macheSchilfBild(100 + v * 17))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    // R91 (Autor: "Phragmites, 2-3 m, höher als der Held, Federrispen"):
+    // HOHE Röhricht-Halme mit Rispen statt der niedrigen Büschel.
+    for (let v = 0; v < 5; v++) {
+      const key = `roehricht_${v}`;
+      if (!this.textures.exists(key)) this.textures.addCanvas(key, macheRoehrichtBild(200 + v * 23))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
     }
+    const H_BAKE = 150 * 3;   // Bake-Canvas-Höhe (logisch 150 x 3-fach)
     for (let ty = 1; ty < a.h - 1; ty++) {
       for (let tx = 1; tx < a.w - 1; tx++) {
         const id = a.map[ty][tx];
         if (id === T.PATH || id === T.BRIDGE || id === T.TREE) continue;
         // R81 (Autor "bei den Brücken bitte kein Schilf"): auch die NACHBARSCHAFT
-        // der Brücke bleibt frei - vorher wucherten Büschel an die Planken heran.
+        // der Brücke bleibt frei.
         let brueckeNah = false;
         for (let dy = -2; dy <= 2 && !brueckeNah; dy++) for (let dx = -2; dx <= 2; dx++) {
           if (a.map[ty + dy]?.[tx + dx] === T.BRIDGE) { brueckeNah = true; break; }
@@ -2168,26 +2171,30 @@ export class WorldScene extends CombatScene {
         if (brueckeNah) continue;
         const u = (tx + 0.5) / a.w, vv = (ty + 0.5) / a.h;
         const sd = sdWasser(u, vv, geo, smink);
-        if (sd < -0.004 || sd > 0.009) continue;    // schmales Band um die Wasserkante
-        // organische CLUSTER statt gleichmäßiger Kette: weiches Orts-Rauschen
+        // R91: breiteres Ufer-Band, damit RÖHRICHT-BESTÄNDE statt Einzelhalme
+        // entstehen (Schilf wächst nie vereinzelt).
+        if (sd < -0.006 || sd > 0.018) continue;
         const cluster = Math.sin(tx * 0.53 + ty * 0.91) + Math.sin(tx * 0.19 - ty * 0.33);
-        if (cluster < 0.35) continue;
+        if (cluster < -0.1) continue;   // großzügiger -> dichtere, größere Beete
         const hash = (((tx * 73856093) ^ (ty * 83492791)) >>> 4) % 1000 / 1000;
-        const anzahl = hash > 0.6 ? 2 : 1;
+        // R91: DICHTES Beet - 3-6 Halme je Kachel (Röhricht), leicht gestreut.
+        const anzahl = 3 + (hash * 4 | 0);
         for (let k = 0; k < anzahl; k++) {
-          const hx = (((tx + k * 7) * 40503) ^ (ty * 9277)) % 29 - 14;
-          const hy = (((ty + k * 3) * 25931) ^ (tx * 6151)) % 21 - 10;
+          const h2 = (((tx + k * 13) * 40503) ^ ((ty + k * 7) * 9277)) % 1000 / 1000;
+          const hx = (h2 - 0.5) * 26, hy = (((ty + k * 3) * 25931) ^ (tx * 6151)) % 15 - 7;
           const x = tx * TILE + 16 + hx, y = ty * TILE + 16 + hy;
-          const img = this.add.image(x, y, `ufer_schilf_${(tx + ty + k) % 4}`).setDepth(y);
-          img.setOrigin(0.5, 0.94);                  // Fuß-Anker (Schwanken)
-          // R85 (Autor, mit Bild nachgemessen): kniehoch zum Helden (~22-31px).
-          // Der Bake ist 186px hoch -> Skala 0.117..0.167.
-          const skala = (0.35 + hash * 0.15) / 3;
-          img.setScale(skala);
-          if (hash > 0.5) img.setFlipX(true);
+          const img = this.add.image(x, y, `roehricht_${(tx + ty + k) % 5}`).setDepth(y);
+          img.setOrigin(0.5, 0.99);                  // Fuß-Anker (Schwanken um den Boden)
+          // HÖHE deutlich über dem Helden (~36px): Anzeige-Höhe 62..92px, damit
+          // er fast im Röhricht verschwindet. Leichte Höhenvariation je Halm.
+          const zielH = 62 + h2 * 30;
+          img.setScale(zielH / H_BAKE);
+          if (h2 > 0.5) img.setFlipX(true);
           this.tileImages.push(img);
-          this.windSchilf.push({ img, phase: tx * 0.31 + ty * 0.17 + k });
-          this.macheZerlegbar(img, 16, 1);   // R85: mit dem Schwert schnippelbar
+          // schilf-typisches Wiegen; NACHBAR-Versatz über die Position (keine
+          // synchrone Fläche) - windSchilf schwankt stärker als Gras.
+          this.windSchilf.push({ img, phase: x * 0.05 + y * 0.03 + k * 0.7 });
+          this.macheZerlegbar(img, 16, 1);   // mit dem Schwert schnippelbar
         }
       }
     }
