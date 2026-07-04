@@ -1098,3 +1098,12 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - R97 Lager-Auren zentral in data/rts.ts (LAGER_EFFEKT), Radius 150: Feldaltar
   (Moral/Untotenschutz/Heilung), Feldküche (+30% Schaden), Brunnen (Moral),
   Zelt/Nachschub (Regen), Feldschmiede (Bau-Reparatur), Wartfeuer (Verstärkung).
+- R98 Projekt-Gedächtnis: Stand wird in DATEIEN geführt (CLAUDE.md §12 listet
+  Referenz- + Zustandsdateien). Ein Neustart soll allein aus der Doku möglich sein.
+- R98 reference/ravenkarte.png und reference/weltkarte-skizze.png sind BYTE-
+  identisch (md5 e48a9c32...) - dieselbe Autor-Skizze, verbindliche Oberwelt-Quelle.
+- R98 Diagnose Kanten-System: Oberwelt-Builder (areagen.ts) lesen kartenKanten.ts
+  NICHT; Wasser/Wege sind pro Karte hartcodierte UV-"Lesart der Skizze". Nachbarn
+  verbinden nicht (start Ost-Fluss v≈0.44 vs wald_o ohne West-Fluss). Prompt-1-
+  Bau-Phase (autoritative %-Tabelle, Übergabe-System, Referenzkarte, Rezept) ist
+  NICHT umgesetzt - Details in WELTKARTE-PLAN.md.

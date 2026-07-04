@@ -157,3 +157,48 @@ dass der Autor jedes Glied bestellt:
   Kopfzeile, Schirmkoordinaten-Delta) - neue Fenster ohne Griff gelten
   als unfertig. Größere Fenster zusätzlich skalierbar (Eckgriff oder
   A+/A-), Position und Größe werden gespeichert.
+
+## 12. Projekt-Gedächtnis - die DATEIEN sind das Gedächtnis, nicht der Chat
+
+Grundsatz (vom Autor, Runde 98): eine Session lebt nicht ewig; frühes
+Wissen fällt aus dem Kontext. Darum steht der verbindliche Stand in
+DATEIEN, nicht im Chatverlauf. Am Ende jeder größeren Runde den Stand
+rausschreiben, damit ein Neustart jederzeit gefahrlos ist.
+
+### Referenzdateien (verbindliche Quellen, liegen in reference/)
+- `reference/ravenkarte.png` = **verbindliche Oberwelt-Geometrie** (Autor-
+  Skizze). Obere Hälfte = strategische Bedeutung je Zelle (6×3-Raster),
+  untere Hälfte "Straßen und Flüsse" = Wege (dunkelrot), Flüsse/Bäche
+  (hellblau), Seen (blaue Ellipsen). **`weltkarte-skizze.png` ist BYTE-
+  IDENTISCH** (gleiche md5) - dieselbe Datei, nur anderer Name.
+- `reference/fluss-bach.html` = **kanonischer Wasser-Shader** (SDF + smin,
+  Zwei-Lagen-Oberfläche). Vorlage für alle Wasserflächen.
+- `reference/ravensmoor-v2.html` = frühe Gesamt-Vorschau.
+- `RAVENSMOOR-2D-MASTERPROMPT.md` = Spezifikation (WAS gebaut wird).
+
+### Zustandsdateien (hier steht, was gebaut/entschieden/offen ist)
+- `WELTKARTE-PLAN.md` - Oberwelt-Raster + Kanten-System-STAND (welche
+  Karten existieren, was am Rand-Übergang fehlt).
+- `DECISIONS.md` - getroffene Annahmen/Entscheidungen (chronologisch).
+- `OFFENE-FRAGEN.md` - echte Fragen an den Autor + Zwischenlösungen.
+- `BERICHTE.md` - Abnahmeberichte je Runde.
+- `TODO.md` - Backlog / bewusst zurückgestellte Arbeit.
+
+### Architektur-Prinzipien (Kurzreferenz)
+- Balancing-/Tuning-Werte leben in `src/data/*` (eine Datei ändern = Gefühl
+  tunen). Keine Magic Numbers im Code.
+- RTS-Schlacht (Runde 96/97): `src/logic/rtsBattle.ts` kapselt Einheiten,
+  Auswahl (Klick/Gummiband/Doppelklick/Shift), Befehle (Rechtsklick/Formation
+  mit Ghost), Turm-Besatzung und Lager-Auren. Einheiten-/Bau-/Effektwerte in
+  `src/data/rts.ts` (RTS_UNIT_TYP, RTS_BAUTEN, BAU_HP, TURM, LAGER_EFFEKT,
+  RTS_HELD). Held ist Sonder-Einheit über HeldRef-Callbacks aus WorldScene.
+  RTS-Modus: `toggleRtsModus()` in WorldScene (Frei-Kamera + Baumenü + Battle).
+- 3D-Props (Truhe, Wachturm, Zelte) werden in three.js gebaut
+  (`src/demo3d/*Bau.ts`) und über `src/demo3d/propBackofen.ts` zu Sprites
+  gebacken; Registrierung beim Boot (`src/gfx/*Bitmaps.ts`, Boot-Kette in
+  BootScene). Canvas-Zeichnungen sind der Fallback.
+- Held/Gegner Y-Sortierung: auf dem FUSSPUNKT (Sprite-Unterkante), Bäume auf
+  dem gemessenen Stammfuß - Hooks `spielerTiefe()/gegnerTiefe()` in WorldScene.
+- Oberweltkarten = WorldScene-Areas 130×85 Kacheln (4160×2720 px, TILE=32).
+  Kanten SOLLEN aus `src/data/kartenKanten.ts` kommen - **ist aber noch NICHT
+  in die Generierung (areagen.ts) verdrahtet**. Details/Stand: WELTKARTE-PLAN.md.

@@ -92,3 +92,55 @@ der Fluss die Karte wieder verlässt (Ost/West?), plus ob ein See auf dem Lauf l
   Amplitude der feinen Welle), Zwei-Phasen-Fliess-Trick, Voronoi-Flussbett, weiche Ufer
   (alle Effekte × depth), Wasser unter den Sprites.
 - Dev-Regler bleiben: Fliess-Tempo, Wirbel, Helligkeit, Wasser-Ton live auf alle Flächen.
+
+---
+
+## STAND des Kanten-Systems (Runde 98 - Diagnose, verbindlich für Neustart)
+
+**Kurzfassung: Das Rand-Übergabe-System ist NICHT fertig. Flüsse/Wege laufen an
+den Kartengrenzen NICHT durch.** Es existiert nur Vorarbeit. Eine frische Session
+muss das wissen, bevor sie weitere Karten baut.
+
+### Was existiert (Vorarbeit)
+- **3 Oberwelt-Hüllen gebaut**: `start` (2,3), `wald_o` (3,3), `stadt` (4,3) -
+  Builder `buildStart` / `buildWaldOst` / `buildStadtNatur` in
+  `src/world/areagen.ts`. In `FUERSTENTUM` (WorldScene) registriert.
+- **Wasser-Shader** vorhanden (SDF + smin, Linie von `reference/fluss-bach.html`).
+  Jede Hülle hat `a.wasserLauf.geo` = `bahnen` (Mittellinien + Halbbreite `hw`)
+  + `seen` (Ellipsen) in UV 0..1.
+- **`src/data/kartenKanten.ts`** = Teil-Tabelle mit 3 Zellen (start/wald_o/stadt),
+  Positionen in WELT-PIXELN. Wird in WorldScene NUR fürs **Rand-LAUFEN**
+  (Kartenwechsel, Z. ~3786) genutzt.
+
+### Der BUG (bestätigt, Runde 98)
+- Die **Builder LESEN die Tabelle NICHT** - `areagen.ts` hat keinen Bezug auf
+  `KARTEN_KANTEN`. Jede Karte ist eine GESCHLOSSENE Fläche mit **hartcodierter**
+  UV-Geometrie ("Lesart der Skizze" pro Builder).
+- **Nachbarn passen nicht zusammen**: `buildStart` schickt einen Ost-Arm-Fluss
+  bei v≈0.44 nach Osten; `buildWaldOst` hat an der WESTKANTE gar keinen Fluss
+  (sein Lauf geht Nord→Süd bei x≈0.50). Der Fluss hört an der Kante auf.
+- **Tabelle ⇄ Builder widersprechen sich**: `START.ost` sagt "weg pos 1400"
+  (v≈0.51), der Builder legt die Straße bei v≈0.79; einen Ost-Fluss führt die
+  Tabelle gar nicht.
+- Es gibt **KEINE** autoritative Tabelle in % der Kantenlänge, **KEINEN**
+  Tabellen-Leser in der Generierung, **KEIN** dokumentiertes Bau-Rezept.
+
+### Was für "Flüsse/Wege laufen durch" noch fehlt (Prompt-1-Bau-Phase, OFFEN)
+1. **Autoritative Tabelle** aus `reference/ravenkarte.png` (= weltkarte-skizze.png,
+   identisch) auslesen: pro Zelle, wo kreuzt welcher Fluss/Weg welche Kante, in
+   **% der Kantenlänge**, plus Seepositionen. Keine erfundenen Platzhalter -
+   Kreuzungspunkte dem Autor zur Bestätigung vorlegen.
+2. **Kanten-Übergabe-System**: Nachbarkanten lesen denselben Tabellenwert
+   (rechte Kante A = linke Kante B) und die BUILDER ziehen ihre Randgeometrie
+   daraus (nicht mehr hartcodiert).
+3. **EINE Referenzkarte** aus der Tabelle mit korrekt verbundenen Rändern
+   (kanonischer Wasser-Shader).
+4. **Rezept dokumentieren** "von Skizzen-Zelle zu verbundener Kartengeometrie".
+5. Erst DANACH die restlichen Hüllen (6×3-Raster oben) nach demselben Muster.
+   Schlacht-Karte wartet aufs RTS-System; Stadt/Kloster/Burg nur als Hülle.
+
+### Raster-Zuordnung Skizze → id (aus ravenkarte.png, obere Hälfte)
+Reihen gy 1..3 (gy0 = leer/Kloster-Zeile). Siehe Tabelle oben im Dokument.
+gx0..5 × gy: burg(0,3) · wald_w(1,3) · [hochland(2,1) wald_n(2,2) start(2,3)] ·
+[wald_nw(3,1) wald_m(3,2) wald_o(3,3)] · [wald_ne(4,1) lager(4,2) stadt(4,3)] ·
+[kloster(5,0) schlacht(5,1) stadt2(5,2) wald_se(5,3)].

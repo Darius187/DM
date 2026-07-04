@@ -213,3 +213,12 @@ ich als Zwischenlösung Nr. 1 + 2, beide in einer Zeile entfernbar.)
     erst Kämpfen/Bewegen/Formation beweisen" eingeordnet). Das Bausystem
     (platzieren/HP/reparieren/abbauen) steht jetzt - diese Bauten wären danach
     reine Dateneinträge. Sag Bescheid, welche als Nächstes.
+
+--- R98 (Oberwelt-Kanten, BLOCKER vor weiteren Karten) ---
+11. Bevor die restlichen Landschafts-Hüllen gebaut werden, muss die Prompt-1-
+    Bau-Phase nachgeholt werden (Flüsse/Wege laufen sonst nicht über die
+    Kartengrenzen durch): autoritative Tabelle in % aus ravenkarte.png,
+    Kanten-Übergabe-System das die Builder speisen, EINE Referenzkarte, Rezept.
+    Stand + Belege: WELTKARTE-PLAN.md ("STAND des Kanten-Systems"). Die
+    Kreuzungspunkte aus ravenkarte.png dem Autor je Kante zur Bestätigung
+    vorlegen (nichts erfinden). Frage: soll ich diese Phase als Nächstes bauen?
