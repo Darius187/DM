@@ -1587,17 +1587,18 @@ interface OberweltCfg {
 // Tabelle. Fluss-Stutzen von jeder Fluss-Kreuzung nach innen (smin verschmilzt
 // sie mit dem Hauptfluss; am Rand treffen sie den NACHBARWERT exakt -> Fluss
 // laeuft durch) + die Weg-Anker (West/Ost), an denen die Salzstrasse ein-/austritt.
-function randKanten(id: string): { flussStubs: WasserGeometrie['bahnen']; wegWestV: number | null; wegOstV: number | null } {
+interface RandKanten { flussStubs: WasserGeometrie['bahnen']; wegWestV: number | null; wegOstV: number | null; wegNordU: number | null; wegSuedU: number | null; }
+function randKanten(id: string): RandKanten {
   const k = OBERWELT_KANTEN[id];
-  if (!k) return { flussStubs: [], wegWestV: null, wegOstV: null };
+  if (!k) return { flussStubs: [], wegWestV: null, wegOstV: null, wegNordU: null, wegSuedU: null };
   const stubs: WasserGeometrie['bahnen'] = [];
   const stub = (ux: number, uy: number, tox: number, toy: number): void => { stubs.push({ punkte: [{ x: ux, y: uy, hw: 0.012 }, { x: (ux + tox) / 2, y: (uy + toy) / 2, hw: 0.013 }, { x: tox, y: toy, hw: 0.013 }] }); };
   for (const c of k.west) if (c.feature === 'fluss') stub(-0.03, c.pos / 100, 0.5, c.pos / 100);
   for (const c of k.ost) if (c.feature === 'fluss') stub(1.03, c.pos / 100, 0.5, c.pos / 100);
   for (const c of k.nord) if (c.feature === 'fluss') stub(c.pos / 100, -0.03, c.pos / 100, 0.5);
   for (const c of k.sued) if (c.feature === 'fluss') stub(c.pos / 100, 1.03, c.pos / 100, 0.5);
-  const westWeg = k.west.find((c) => c.feature === 'weg'), ostWeg = k.ost.find((c) => c.feature === 'weg');
-  return { flussStubs: stubs, wegWestV: westWeg ? westWeg.pos / 100 : null, wegOstV: ostWeg ? ostWeg.pos / 100 : null };
+  const w = (arr: typeof k.west) => { const f = arr.find((c) => c.feature === 'weg'); return f ? f.pos / 100 : null; };
+  return { flussStubs: stubs, wegWestV: w(k.west), wegOstV: w(k.ost), wegNordU: w(k.nord), wegSuedU: w(k.sued) };
 }
 
 // Gemeinsamer Oberwelt-Builder (Runde 72): Wiese, Wasser-Lauf (neues Overlay,
@@ -1649,28 +1650,31 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
 
   const pfadY: number[] = [];
   let py = Math.round(h * 0.5);
+  // R98: Wege ALLGEMEIN aus der Tabelle. Horizontale Strasse (West<->Ost) und/oder
+  // vertikale Strasse (Nord<->Sued), je nachdem wo die Tabelle Weg-Kreuzungen hat.
+  // Ohne Weg-Kreuzung KEINE Strasse (z.B. reine Wald-Fluss-Zelle). Anker = die
+  // Kreuzungswerte -> laeuft zum Nachbarn durch.
+  const hatHorz = rk.wegWestV != null || rk.wegOstV != null;
+  const hatVert = rk.wegNordU != null || rk.wegSuedU != null;
   if (!cfg.blanko) {
-    // R98: Salzstraße tritt an den WEG-Kreuzungen der Tabelle ein/aus (West-Anker
-    // -> Ost-Anker), damit sie zum Nachbarn durchläuft. Ohne Tabellenwert bleibt
-    // sie auf halber Höhe. Nur noch leicht geschwungen (Autorwunsch R74).
-    const startY = rk.wegWestV != null ? rk.wegWestV * h : h * 0.5;
-    const endY = rk.wegOstV != null ? rk.wegOstV * h : h * 0.5;
-    for (let x = 0; x < w; x++) {
-      const basis = startY + (endY - startY) * (x / (w - 1));
-      py = Math.round(basis + Math.sin(x * 0.13) * 0.6);
-      py = Math.max(6, Math.min(h - 7, py));
-      pfadY[x] = py;
-      for (let dy = -1; dy <= 1; dy++) {
-        const yy = py + dy;
-        if (yy >= 0 && yy < h && map[yy][x] === T.TREE) map[yy][x] = T.GRASS;
+    const setzeWeg = (x: number, y: number): void => { if (x < 0 || x >= w || y < 0 || y >= h) return; map[y][x] = (map[y][x] === T.WATER) ? T.BRIDGE : T.PATH; };
+    const baumWeg = (x: number, y: number): void => { for (let d = -1; d <= 1; d++) { if (map[y]?.[x + d] === T.TREE) map[y][x + d] = T.GRASS; if (map[y + d]?.[x] === T.TREE) map[y + d][x] = T.GRASS; } };
+    if (hatHorz) {
+      const startY = (rk.wegWestV ?? rk.wegOstV ?? 0.5) * h, endY = (rk.wegOstV ?? rk.wegWestV ?? 0.5) * h;
+      for (let x = 0; x < w; x++) {
+        py = Math.max(6, Math.min(h - 7, Math.round(startY + (endY - startY) * (x / (w - 1)) + Math.sin(x * 0.13) * 0.6)));
+        pfadY[x] = py; baumWeg(x, py); setzeWeg(x, py); setzeWeg(x, py + 1);
       }
-      for (const yy of [py, py + 1]) {
-        if (yy < 0 || yy >= h) continue;
-        map[yy][x] = (map[yy][x] === T.WATER) ? T.BRIDGE : T.PATH;
+    }
+    if (hatVert) {
+      const startX = (rk.wegNordU ?? rk.wegSuedU ?? 0.5) * w, endX = (rk.wegSuedU ?? rk.wegNordU ?? 0.5) * w;
+      for (let y = 0; y < h; y++) {
+        const px = Math.max(4, Math.min(w - 5, Math.round(startX + (endX - startX) * (y / (h - 1)) + Math.sin(y * 0.13) * 0.6)));
+        baumWeg(px, y); setzeWeg(px, y); setzeWeg(px + 1, y);
       }
     }
     carve(map, 2, Math.round(h * 0.5) - 2, 8, Math.round(h * 0.5) + 2, T.GRASS);
-    carve(map, 3, pfadY[3] ?? Math.round(h * 0.5), 7, pfadY[7] ?? Math.round(h * 0.5), T.PATH);
+    if (hatHorz) carve(map, 3, pfadY[3] ?? Math.round(h * 0.5), 7, pfadY[7] ?? Math.round(h * 0.5), T.PATH);
     for (const wx of cfg.wolfXs) a.enemySpawns.push({ type: 'wolf', x: wx * TILE, y: (pfadY[wx] ?? py) * TILE, elite: false });
     for (let i = 0; i < 8; i++) {
       const kx = ri(rng, 6, w - 7), ky = ri(rng, 4, h - 5);
@@ -1965,6 +1969,31 @@ export function buildWaldSuedOst(rng: Rng): AreaData {
     id: 'wald_se', name: 'Dunkelwald', wolfXs: [40, 90], baumGruppen: 185,
     // Fluss quer: West-Kante (stadt) 81.7% -> Ost-Kante (Weltrand) 74.3%; See rechts.
     geo: { bahnen: [{ punkte: [{ x: -0.03, y: 0.817, hw: 0.013 }, { x: 0.5, y: 0.78, hw: 0.014 }, { x: 1.03, y: 0.743, hw: 0.013 }] }], seen: [{ cx: 0.28, cy: 0.73, rx: 0.16, ry: 0.09 }] },
+  });
+}
+
+// R98 (Prompt-2 Schub 2): burg(0,3) + gy2-Anfang wald_n(2,2), wald_m(3,2).
+// Erste SENKRECHTE Naehte (Nord/Sued). NUR Huelle.
+export function buildBurg(rng: Rng): AreaData {
+  return baueOberweltGebiet(rng, {
+    id: 'burg', name: 'Fürstenburg', wolfXs: [40, 92], baumGruppen: 150,
+    // West-Bach (31.7%) muendet in einen kleinen Teich; Ost-Kante (85.7%) via Rand-Stutzen.
+    geo: { bahnen: [{ punkte: [{ x: -0.03, y: 0.317, hw: 0.011 }, { x: 0.30, y: 0.40, hw: 0.013 }] }], seen: [{ cx: 0.34, cy: 0.42, rx: 0.09, ry: 0.07 }] },
+  });
+}
+export function buildWaldNord(rng: Rng): AreaData {
+  return baueOberweltGebiet(rng, {
+    id: 'wald_n', name: 'Dunkelwald', wolfXs: [34, 74, 104], baumGruppen: 210,
+    // Fluss laeuft NORD (58.3%) -> SUED (72.9%, = start.nord) durch. Kein Weg.
+    geo: { bahnen: [{ punkte: [{ x: 0.583, y: -0.03, hw: 0.014 }, { x: 0.66, y: 0.5, hw: 0.015 }, { x: 0.729, y: 1.03, hw: 0.014 }] }], seen: [] },
+  });
+}
+export function buildWaldMitte(rng: Rng): AreaData {
+  return baueOberweltGebiet(rng, {
+    id: 'wald_m', name: 'Dunkelwald', wolfXs: [30, 70, 100], baumGruppen: 205,
+    // Fluss NORD (76.7%) -> SUED (55.3%, = wald_o.nord); Ost-Arm (47.1%) via Stutzen.
+    // Weg laeuft SENKRECHT: Nord 48.6% -> Sued 46.7% (= wald_o.nord Weg).
+    geo: { bahnen: [{ punkte: [{ x: 0.767, y: -0.03, hw: 0.013 }, { x: 0.62, y: 0.5, hw: 0.014 }, { x: 0.553, y: 1.03, hw: 0.013 }] }], seen: [] },
   });
 }
 
