@@ -3125,12 +3125,18 @@ export class WorldScene extends CombatScene {
   // Zelt. Prozedural, y-sortiert. Lebenspunkte/Menü folgen im RTS-Bau-Ausbau.
   private spawneFeldbau(id: string, x: number, y: number): Phaser.GameObjects.Image {
     const key = `feldbau_${id}`;
+    // R97: Wachturm/Zelte werden beim Boot als 3D-Sprites gebacken (lagerBitmaps).
+    // Fehlt das (Bake-Fehler), gemalter Canvas-Fallback.
     if (!this.textures.exists(key)) this.textures.addCanvas(key, this.macheFeldbauBild(id))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
-    // R96: der Wachturm RAGT über die Palisade (2 Kacheln) hinaus - er wird höher
-    // skaliert, damit ein Schütze oben die Mauer überblickt.
     const img = this.add.image(x, y, key).setOrigin(0.5, 0.94).setDepth(y);
-    if (id === 'wachturm') img.setDisplaySize(52, 104);      // ~3,5 Kacheln hoch, überragt die 2-Kachel-Palisade
-    else if (id === 'tor') img.setDisplaySize(40, 64);       // so hoch wie die Palisade
+    // Zielhöhe je Bau (massiver als vorher); Breite folgt dem echten Seitenverhältnis.
+    const zielH: Record<string, number> = { wachturm: 128, zelt: 82, lazarett: 82, tor: 64 };
+    const h = zielH[id];
+    if (h) {
+      const src = this.textures.get(key).getSourceImage();
+      const aspekt = src.width / Math.max(1, src.height);
+      img.setDisplaySize(h * aspekt, h);
+    }
     this.tileImages.push(img);
     return img;
   }
