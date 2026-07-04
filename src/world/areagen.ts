@@ -1669,17 +1669,26 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
   if (!cfg.blanko) {
     const setzeWeg = (x: number, y: number): void => { if (x < 0 || x >= w || y < 0 || y >= h) return; map[y][x] = (map[y][x] === T.WATER) ? T.BRIDGE : T.PATH; };
     const baumWeg = (x: number, y: number): void => { for (let d = -1; d <= 1; d++) { if (map[y]?.[x + d] === T.TREE) map[y][x + d] = T.GRASS; if (map[y + d]?.[x] === T.TREE) map[y + d][x] = T.GRASS; } };
+    // R98b: Strasse spannt nur bis zu den Kanten, die WIRKLICH einen Weg haben.
+    // Fehlt der Weg auf einer Seite (Nachbar ohne Strasse), laeuft sie nur bis zur
+    // Zellmitte (trifft dort die Querstrasse) - kein Stummel ins Leere.
     if (hatHorz) {
-      const startY = (rk.wegWestV ?? rk.wegOstV ?? 0.5) * h, endY = (rk.wegOstV ?? rk.wegWestV ?? 0.5) * h;
-      for (let x = 0; x < w; x++) {
-        py = Math.max(6, Math.min(h - 7, Math.round(startY + (endY - startY) * (x / (w - 1)) + Math.sin(x * 0.13) * 0.6)));
+      const cx = Math.round(w * 0.5);
+      const xVon = rk.wegWestV != null ? 0 : cx, xBis = rk.wegOstV != null ? w - 1 : cx;
+      const yVon = (rk.wegWestV ?? rk.wegOstV ?? 0.5) * h, yBis = (rk.wegOstV ?? rk.wegWestV ?? 0.5) * h;
+      const span = Math.max(1, xBis - xVon);
+      for (let x = Math.min(xVon, xBis); x <= Math.max(xVon, xBis); x++) {
+        py = Math.max(6, Math.min(h - 7, Math.round(yVon + (yBis - yVon) * ((x - xVon) / span) + Math.sin(x * 0.13) * 0.6)));
         pfadY[x] = py; baumWeg(x, py); setzeWeg(x, py); setzeWeg(x, py + 1);
       }
     }
     if (hatVert) {
-      const startX = (rk.wegNordU ?? rk.wegSuedU ?? 0.5) * w, endX = (rk.wegSuedU ?? rk.wegNordU ?? 0.5) * w;
-      for (let y = 0; y < h; y++) {
-        const px = Math.max(4, Math.min(w - 5, Math.round(startX + (endX - startX) * (y / (h - 1)) + Math.sin(y * 0.13) * 0.6)));
+      const cy = Math.round(h * 0.5);
+      const yVon = rk.wegNordU != null ? 0 : cy, yBis = rk.wegSuedU != null ? h - 1 : cy;
+      const xVon = (rk.wegNordU ?? rk.wegSuedU ?? 0.5) * w, xBis = (rk.wegSuedU ?? rk.wegNordU ?? 0.5) * w;
+      const span = Math.max(1, yBis - yVon);
+      for (let y = Math.min(yVon, yBis); y <= Math.max(yVon, yBis); y++) {
+        const px = Math.max(4, Math.min(w - 5, Math.round(xVon + (xBis - xVon) * ((y - yVon) / span) + Math.sin(y * 0.13) * 0.6)));
         baumWeg(px, y); setzeWeg(px, y); setzeWeg(px + 1, y);
       }
     }
