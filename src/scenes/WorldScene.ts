@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir, angleToDir8 } from '../world/Enemy';
-import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildWaldWest, buildWaldSuedOst, buildBurg, buildWaldNord, buildWaldMitte, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn, type Abbaubar } from '../world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildWaldWest, buildWaldSuedOst, buildBurg, buildWaldNord, buildWaldMitte, buildLager, buildStadt2, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn, type Abbaubar } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
@@ -136,6 +136,8 @@ export const FUERSTENTUM: ReadonlyArray<FuerstentumGebiet> = [
   { id: 'burg', name: 'Fürstenburg', gx: 0, gy: 3 },       // R98 Prompt-2 Schub 2
   { id: 'wald_n', name: 'Dunkelwald', gx: 2, gy: 2 },
   { id: 'wald_m', name: 'Dunkelwald', gx: 3, gy: 2 },
+  { id: 'lager', name: 'Monsterlager', gx: 4, gy: 2 },     // R98 Prompt-2 Schub 3 (gy2 komplett)
+  { id: 'stadt2', name: 'Verfallene Stadt', gx: 5, gy: 2 },
 ];
 
 // Eine Kachel auf eine Minikarten-Farbe abbilden.
@@ -1507,6 +1509,8 @@ export class WorldScene extends CombatScene {
     else if (id === 'burg') a = buildBurg(rng);
     else if (id === 'wald_n') a = buildWaldNord(rng);
     else if (id === 'wald_m') a = buildWaldMitte(rng);
+    else if (id === 'lager') a = buildLager(rng);
+    else if (id === 'stadt2') a = buildStadt2(rng);
     else if (id === 'goldmine') a = buildGoldmine(rng);
     else a = buildCrypt(parseInt(id.replace('crypt', ''), 10), rng);
     this.areas.set(id, a);

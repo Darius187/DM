@@ -1988,3 +1988,19 @@ export function buildWaldMitte(rng: Rng): AreaData {
   });
 }
 
+// R98 (Prompt-2 Schub 3): gy2 fertig - lager(4,2) mit grossem See, stadt2(5,2).
+// Wege/Fluss aus der Tabelle (waagerecht + senkrecht -> Kreuzungen). NUR Huelle.
+export function buildLager(rng: Rng): AreaData {
+  return baueOberweltGebiet(rng, {
+    id: 'lager', name: 'Monsterlager', wolfXs: [46, 100], baumGruppen: 110,
+    // Grosser See (Skizze) - vereinfacht; Fluss + Wege (Nord/Ost/Sued) aus der Tabelle.
+    geo: { bahnen: [], seen: [{ cx: 0.30, cy: 0.47, rx: 0.13, ry: 0.20 }] },
+  });
+}
+export function buildStadt2(rng: Rng): AreaData {
+  return baueOberweltGebiet(rng, {
+    id: 'stadt2', name: 'Verfallene Stadt', wolfXs: [44, 92], baumGruppen: 55,
+    geo: { bahnen: [], seen: [] },   // Wege-Kreuzung (alle vier Kanten) + Fluss aus der Tabelle
+  });
+}
+
