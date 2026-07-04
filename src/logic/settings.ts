@@ -38,6 +38,7 @@ export interface Settings {
   // y zählt vom UNTEREN Bildrand (Chat-Verankerung wie bei WoW)
   chronikBox: { x: number; y: number; w: number; h: number };
   chronikMini?: boolean;  // Chronik eingeklappt (nur Kopfzeile), R86
+  rtsLeistePos?: { x: number; y: number };  // RTS-Baumenü frei verschoben (R96, UI-Regel 11)
   chronikV?: number;      // einmalig: Chronik an den UNTERSTEN Rand andocken (R86)
   chronikAuto: boolean;   // Chronik-Fenster beim Spielstart offen (Runde 36)
   bloom: number;          // Leucht-/Bloom-Stärke 0-100 (Runde 51: Regler, 0 = aus)

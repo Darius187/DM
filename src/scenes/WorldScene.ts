@@ -42,7 +42,7 @@ import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDL
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
-import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, type RtsFormation, type RtsBau } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, RTS_HELD, type RtsFormation, type RtsBau } from '../data/rts';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, SCHILF_DICHTE, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { TUNING } from '../logic/tuning';
@@ -2695,12 +2695,28 @@ export class WorldScene extends CombatScene {
     this.rtsLeiste?.destroy();
     const S = this.rtsSkala;
     const w = Math.round(190 * S), h = Math.round(360 * S);
-    const px = this.scale.width - w - 8, py = this.scale.height - h - 8;   // rechts unten angedockt
+    // R96 (UI-Regel 11): frei verschiebbar - gespeicherte Position nutzen, sonst
+    // rechts unten andocken. In den Bildschirm klemmen, falls Fenster kleiner wurde.
+    const gespeichert = getSettings().rtsLeistePos;
+    const dockX = this.scale.width - w - 8, dockY = this.scale.height - h - 8;
+    const px = gespeichert ? Phaser.Math.Clamp(gespeichert.x, 0, Math.max(0, this.scale.width - w)) : dockX;
+    const py = gespeichert ? Phaser.Math.Clamp(gespeichert.y, 0, Math.max(0, this.scale.height - h)) : dockY;
     const c = this.add.container(px, py).setScrollFactor(0).setDepth(6400);
     this.rtsLeiste = c;
     const bg = this.add.rectangle(0, 0, w, h, 0x14100a, 0.95).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
     bg.setInteractive(); c.add(bg);
     const F = (s: number): number => Math.round(s * S);
+    // Kopfzeile als Ziehgriff (Schirmkoordinaten-Delta, UI-Regel 11)
+    const kopf = this.add.rectangle(0, 0, w, F(34), 0xffffff, 0.04).setOrigin(0).setInteractive({ draggable: true, useHandCursor: true });
+    let zStart: { x: number; y: number } | null = null; let zPos = { x: 0, y: 0 };
+    kopf.on('dragstart', (pz: Phaser.Input.Pointer) => { zStart = { x: pz.x, y: pz.y }; zPos = { x: c.x, y: c.y }; });
+    kopf.on('drag', (pz: Phaser.Input.Pointer) => {
+      if (!zStart) return;
+      c.x = Phaser.Math.Clamp(zPos.x + (pz.x - zStart.x), 0, Math.max(0, this.scale.width - w));
+      c.y = Phaser.Math.Clamp(zPos.y + (pz.y - zStart.y), 0, Math.max(0, this.scale.height - h));
+    });
+    kopf.on('dragend', () => { zStart = null; getSettings().rtsLeistePos = { x: Math.round(c.x), y: Math.round(c.y) }; saveSettings(); });
+    c.add(kopf);
     // Kopf: Titel, Moral, Skalieren, Schließen
     c.add(this.add.text(F(8), F(6), '⚔ BANNER', { fontFamily: 'serif', fontSize: `${F(12)}px`, color: '#c9a227', letterSpacing: 1 }));
     const moral = this.aktuelleMoral();
@@ -4703,20 +4719,24 @@ export class WorldScene extends CombatScene {
       g.lineStyle(1.5, 0x9ad86a, 0.9); g.strokeEllipse(this.px, this.py + 8, 26, 12);
       g.setDepth(this.py - 1);
     } else if (this.rtsWahlRing) { this.rtsWahlRing.clear(); }
-    if (!this.devFreiKam) { this.rtsMoveZiel = null; return; }
+    if (!this.devFreiKam) { this.rtsMoveZiel = null; this.rtsLaeuft = false; return; }
     // Marsch zum Ziel (Kollision: einfache Achsen-Gleiten)
+    this.rtsLaeuft = false;
     if (this.rtsMoveZiel) {
       const zx = this.rtsMoveZiel.x, zy = this.rtsMoveZiel.y;
       const d = Math.hypot(zx - this.px, zy - this.py);
       if (d < 8) { this.rtsMoveZiel = null; }
       else {
-        const tempo = PLAYER.speed * (getSettings().tempo / 100) * this.areaSpeedFactor() * dt;
+        // R96: bedächtiger als das ARPG-Tempo (Autor "läuft viel zu schnell").
+        const tempo = PLAYER.speed * RTS_HELD.tempoFaktor * (getSettings().tempo / 100) * this.areaSpeedFactor() * dt;
         const ux = (zx - this.px) / d, uy = (zy - this.py) / d;
         const r = 10;
         const nx = this.px + ux * tempo, ny = this.py + uy * tempo;
         if (!this.isSolidAt(nx - r, this.py - r) && !this.isSolidAt(nx + r, this.py + r) && !this.isSolidAt(nx + r, this.py - r) && !this.isSolidAt(nx - r, this.py + r)) this.px = nx;
         if (!this.isSolidAt(this.px - r, ny - r) && !this.isSolidAt(this.px + r, ny + r) && !this.isSolidAt(this.px + r, ny - r) && !this.isSolidAt(this.px - r, ny + r)) this.py = ny;
         this.pdir = Math.atan2(uy, ux);
+        this.rtsLaeuft = true;
+        this.laufSchritt(dt);   // Geh-Zyklus mitlaufen lassen -> saubere Lauf-Animation
       }
     }
     // Auto-Angriff auf den nächsten Gegner in Reichweite (Kampfkarten)

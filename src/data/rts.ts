@@ -70,6 +70,13 @@ export const RTS_BAUTEN: ReadonlyArray<RtsBau> = [
   { id: 'zelt', name: 'Zelt', kosten: { holz: 10, fasern: 6 }, frei: true, beschreibung: 'Rast für die Truppe zwischen den Gefechten' },
 ];
 
+// Held-Steuerung im RTS-Modus (R96, Autor "läuft viel zu schnell, Lauf-
+// Animation dadurch nicht gut"): der Marsch ist bedächtiger als das ARPG-Tempo,
+// damit der Geh-Zyklus sauber aussieht. Reiner Regler-Wert, hier justierbar.
+export const RTS_HELD = {
+  tempoFaktor: 0.55,   // Anteil des normalen Lauftempos beim Klick-Marsch
+} as const;
+
 // Feldbau-Lebenspunkte + Reparatur/Abbau (R94). Werte justierbar.
 export const BAU_HP: Record<string, number> = {
   lagerfeuer: 40, standarte: 60, palisade: 120, wachturm: 220, lazarett: 130, zelt: 90,

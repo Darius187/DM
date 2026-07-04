@@ -66,6 +66,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   pstep = 0;
   protected heldSchlagT = 0;       // Restzeit der Schlag-Animation des Helden (R54)
   protected heldSchlagDauer = 0.2; // Gesamtdauer dieser Schlag-Animation (für die Phase)
+  protected rtsLaeuft = false;     // R96: Held läuft im RTS-Modus (Klick-Bewegung) -> Lauf-Animation
   private pstepT = 0;
   private leechCarry = 0;   // gesammelte Lebensraub-Bruchteile (Runde 42)
   playerSprite!: Phaser.GameObjects.Sprite;
@@ -931,6 +932,17 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // spawnEnemy neutralisiert damit ALLE Spawn-Pfade auf einmal.
   protected areaFriedlich(): boolean { return false; }
   protected stepSound(): string { return 'schritte_stein'; }
+
+  // R96: den Geh-Zyklus (pstep) einen Takt weiterdrehen - für die RTS-Klick-
+  // Bewegung, die nicht durch die Tasten-Bewegung oben läuft.
+  protected laufSchritt(dt: number): void {
+    this.pstepT += dt;
+    if (this.pstepT > 0.13) {
+      this.pstepT = 0;
+      this.pstep = (this.pstep + 1) % 4;
+      if (this.pstep % 2 === 0) this.sfx.play(this.stepSound(), 0.5);
+    }
+  }
   // Gebietsfaktor: Dorf flott, Krypta bedächtig (Feedback-Runde 3)
   protected areaSpeedFactor(): number { return 1; }
   protected hideWithoutLos(): boolean { return false; }
@@ -3348,8 +3360,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     if (!this.playerDead) {
       // Spieler normal zeichnen (Reit-Eröffnung entfernt, Runde 51 - Autorwunsch)
       this.playerSprite.setPosition(this.px, this.py).setDepth(this.spielerTiefe());
-      const moving = this.keysDown['w'] || this.keysDown['a'] || this.keysDown['s'] || this.keysDown['d']
-        || this.keysDown['arrowup'] || this.keysDown['arrowdown'] || this.keysDown['arrowleft'] || this.keysDown['arrowright'];
+      // Im RTS-/Frei-Kamera-Modus bewegen WASD die KAMERA, nicht den Helden -
+      // die Lauf-Animation hängt dann an der echten Klick-Bewegung (rtsLaeuft).
+      const moving = this.bewegungGesperrt() ? this.rtsLaeuft
+        : (this.keysDown['w'] || this.keysDown['a'] || this.keysDown['s'] || this.keysDown['d']
+        || this.keysDown['arrowup'] || this.keysDown['arrowdown'] || this.keysDown['arrowleft'] || this.keysDown['arrowright']);
       // Schlag-Animation während des Schwungs (R54): die Phasen über die Zeit
       // durchlaufen - schnell wie der Swoosh. Sonst Geh-/Stand-Schritt (8 Richt.).
       // Einfache Roben-Figur (Dev-Umschalter): 4 Richtungen, kein Schwung/Atmen.
