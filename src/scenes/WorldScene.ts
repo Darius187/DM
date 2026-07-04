@@ -42,7 +42,7 @@ import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDL
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
-import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, RTS_HELD, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, RTS_HELD, RTS_UNIT_TYP, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
@@ -2653,7 +2653,9 @@ export class WorldScene extends CombatScene {
   // R96: Schlacht-Schicht (Einheiten, Auswahl, Befehle, Formationen) + Eingabe-
   // Lauscher, die nur im RTS-Modus aktiv sind.
   private rtsBattle: RtsBattle | null = null;
-  private rtsAngriffArmed = false;   // Taste A: nächster Befehl = Angriffsmarsch
+  private rtsAngriffArmed = false;   // Angriffsmarsch scharf (Menü-Knopf, R97)
+  private rtsSpawnTyp: RtsUnitTyp | null = null;   // R97: Einheit/Monster per Maus platzieren
+  private rtsSpawnGeist: Phaser.GameObjects.Container | null = null;
   private rtsPointerMove?: (p: Phaser.Input.Pointer) => void;
   private rtsPointerUp?: (p: Phaser.Input.Pointer) => void;
   private rtsKeyDown?: (ev: KeyboardEvent) => void;
@@ -2679,6 +2681,7 @@ export class WorldScene extends CombatScene {
       this.rtsLeiste = null;
       this.setzeFreiKamera(false);
       this.rtsHeldGewaehlt = false; this.rtsMoveZiel = null; this.rtsWahlRing?.clear();
+      this.brichRtsSpawnAb();
       this.entferneRtsLauscher();
       this.rtsBattle?.destroy(); this.rtsBattle = null;
       this.logMsg('Schlachtfeld-Steuerung beendet.', '');
@@ -2714,7 +2717,10 @@ export class WorldScene extends CombatScene {
   // Eingabe-Lauscher nur im RTS-Modus: Auswahl-Box, Befehls-/Formationslinie,
   // Tasten A (Angriffsmarsch) und H (Stellung halten).
   private baueRtsLauscher(): void {
-    this.rtsPointerMove = (p) => { if (this.rtsBattle && !this.platziereModus) { const wp = this.cameras.main.getWorldPoint(p.x, p.y); this.rtsBattle.mausBewegt(wp.x, wp.y); } };
+    this.rtsPointerMove = (p) => {
+      if (this.rtsSpawnGeist) this.rtsSpawnGeist.setPosition(p.x, p.y);
+      if (this.rtsBattle && !this.platziereModus && !this.rtsSpawnTyp) { const wp = this.cameras.main.getWorldPoint(p.x, p.y); this.rtsBattle.mausBewegt(wp.x, wp.y); }
+    };
     this.rtsPointerUp = (p) => {
       if (!this.rtsBattle || this.platziereModus) return;
       // Rechts-Ziehen als Angriffsmarsch, wenn A gedrückt wurde
@@ -2726,8 +2732,9 @@ export class WorldScene extends CombatScene {
     };
     this.rtsKeyDown = (ev) => {
       if (!this.rtsBattle) return;
+      // A bleibt Kamera (WASD, Autorwunsch R97) - Angriffsmarsch läuft über den
+      // Menü-Knopf. H = Stellung halten (kollisionsfrei).
       if (ev.key === 'h' || ev.key === 'H') { this.rtsBattle.stellungHalten(); }
-      if (ev.key === 'a' || ev.key === 'A') { this.rtsAngriffArmed = true; this.logMsg('Angriffsmarsch scharf - Ziel mit rechter Maus wählen.', ''); }
     };
     this.input.on('pointermove', this.rtsPointerMove);
     this.input.on('pointerup', this.rtsPointerUp);
@@ -2842,7 +2849,14 @@ export class WorldScene extends CombatScene {
         kn.on('pointerdown', () => { this.rtsBattle?.setStance(s); this.sfx.play('klick'); });
         c.add(kn); hx += kn.width + F(4);
       }
-      y += F(28);
+      y += F(26);
+      // Angriffsmarsch scharf schalten (A blieb der Kamera, R97): danach führt der
+      // nächste Rechts-Befehl den Angriffsmarsch aus.
+      const amBtn = this.add.rectangle(F(8), y, w - F(16), F(24), this.rtsAngriffArmed ? 0x2a1810 : 0x120d07, 0.9).setOrigin(0).setStrokeStyle(1, this.rtsAngriffArmed ? 0xd8804a : 0x3a2f1e).setInteractive({ useHandCursor: true });
+      amBtn.on('pointerdown', () => { this.rtsAngriffArmed = !this.rtsAngriffArmed; this.sfx.play('klick'); this.baueRtsLeiste(); this.logMsg(this.rtsAngriffArmed ? 'Angriffsmarsch scharf - Ziel mit rechter Maus wählen.' : 'Angriffsmarsch aus.', ''); });
+      c.add(amBtn);
+      c.add(this.add.text(F(14), y + F(5), this.rtsAngriffArmed ? '⚔ Angriffsmarsch: SCHARF' : '⚔ Angriffsmarsch (dann rechts)', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: this.rtsAngriffArmed ? '#e8a060' : '#b0a48a' }));
+      y += F(30);
       c.add(this.add.text(F(8), y, 'Formation (dann rechts ziehen)', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a', letterSpacing: 1 }));
       y += F(18);
       for (const f of RTS_FORMATIONEN) {
@@ -2859,27 +2873,28 @@ export class WorldScene extends CombatScene {
     fixUiScroll(c);
   }
 
-  // TEST-Tab (R96): eigene Truppen + Feind-Monster spawnen, um Schlacht und
-  // Formationen im echten Spiel zu erproben (wie in der Schlacht-Probe).
+  // TEST-Tab (R96/R97): Einheiten/Monster wählen und per MAUS auf die Karte
+  // setzen (Klick = spawnen, mehrfach; Rechtsklick beendet). Kein Auto-Spawn.
   private baueRtsTestTab(c: Phaser.GameObjects.Container, F: (s: number) => number, w: number, y0: number): void {
     let y = y0;
-    const knopf = (label: string, farbe: number, fn: () => void): void => {
-      const kn = this.add.rectangle(F(8), y, w - F(16), F(26), farbe, 0.9).setOrigin(0).setStrokeStyle(1, 0x4a3a26).setInteractive({ useHandCursor: true });
-      kn.on('pointerdown', () => { fn(); this.sfx.play('klick', 0.5); });
+    const knopf = (typ: RtsUnitTyp, farbe: number): void => {
+      const d = RTS_UNIT_TYP[typ];
+      const aktiv = this.rtsSpawnTyp === typ;
+      const kn = this.add.rectangle(F(8), y, w - F(16), F(24), aktiv ? 0x3a2a12 : farbe, 0.9).setOrigin(0).setStrokeStyle(1, aktiv ? 0xc9a227 : 0x4a3a26).setInteractive({ useHandCursor: true });
+      kn.on('pointerdown', () => { this.starteRtsSpawn(typ); this.sfx.play('klick', 0.5); this.baueRtsLeiste(); });
       c.add(kn);
-      c.add(this.add.text(F(14), y + F(5), label, { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#e8dfc8' }));
-      y += F(30);
+      c.add(this.add.text(F(13), y + F(5), (aktiv ? '▶ ' : '+ ') + d.name, { fontFamily: 'serif', fontSize: `${F(10)}px`, color: aktiv ? '#f0d060' : '#e8dfc8' }));
+      y += F(27);
     };
-    // Spawn-Punkt = Bildmitte in Weltkoordinaten
-    const mitte = () => this.cameras.main.getWorldPoint(this.scale.width / 2, this.scale.height / 2);
-    c.add(this.add.text(F(8), y, 'Eigene Truppen', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a', letterSpacing: 1 })); y += F(16);
-    knopf('+ Trupp (Schild/Nahkampf/Bogen)', 0x16220f, () => { const m = mitte(); this.rtsBattle?.spawnTrupp(['schild', 'nahkampf', 'nahkampf', 'nahkampf', 'bogen', 'bogen', 'heiler'] as RtsUnitTyp[], m.x - 120, m.y); });
-    knopf('+ Ritter (schnell, schwer)', 0x16220f, () => { const m = mitte(); this.rtsBattle?.spawnTrupp(['reiter', 'reiter', 'reiter'] as RtsUnitTyp[], m.x - 120, m.y + 80); });
-    c.add(this.add.text(F(8), y, 'Feind-Monster', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a', letterSpacing: 1 })); y += F(16);
-    knopf('+ Skelett-Horde', 0x221010, () => { const m = mitte(); this.rtsBattle?.spawnTrupp(['e_nah', 'e_nah', 'e_nah', 'e_nah', 'e_bogen', 'e_bogen'] as RtsUnitTyp[], m.x + 140, m.y); });
-    knopf('+ Untoter Ritter (Elite)', 0x221010, () => { const m = mitte(); this.rtsBattle?.spawnTrupp(['e_elite', 'e_elite'] as RtsUnitTyp[], m.x + 140, m.y + 80); });
+    c.add(this.add.text(F(8), y, 'Auf die Karte klicken zum Setzen', { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#6a5f4c' })); y += F(14);
+    c.add(this.add.text(F(8), y, 'Eigene Truppen', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a', letterSpacing: 1 })); y += F(15);
+    for (const t of ['schild', 'nahkampf', 'bogen', 'heiler', 'reiter'] as RtsUnitTyp[]) knopf(t, 0x16220f);
+    c.add(this.add.text(F(8), y, 'Feind-Monster', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a', letterSpacing: 1 })); y += F(15);
+    for (const t of ['e_nah', 'e_bogen', 'e_elite'] as RtsUnitTyp[]) knopf(t, 0x221010);
     const z = this.rtsBattle?.zaehlung() ?? { eigene: 0, feind: 0 };
-    c.add(this.add.text(F(8), y + F(2), `Eigene: ${z.eigene}   Feind: ${z.feind}`, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a' }));
+    const loesch = this.add.text(F(8), y + F(2), `Eigene ${z.eigene} · Feind ${z.feind}  [alle entfernen]`, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a' }).setInteractive({ useHandCursor: true });
+    loesch.on('pointerdown', () => { this.rtsBattle?.alleEntfernen(); this.brichRtsSpawnAb(); this.baueRtsLeiste(); });
+    c.add(loesch);
   }
 
   private rtsBaue(b: RtsBau): void {
@@ -4895,6 +4910,13 @@ export class WorldScene extends CombatScene {
     const f = this.feldbauUnter(wp.x, wp.y);
     if (f && !ptr.rightButtonDown()) { this.oeffneBauMenu(f); return true; }
     if (this.bauPopup) { this.schliesseBauMenu(); }
+    // R97: Spawn-Platzierung per Maus - Rechtsklick bricht ab, Linksklick setzt
+    // eine Einheit/ein Monster genau dorthin (mehrfach setzbar).
+    if (this.rtsSpawnTyp && this.rtsBattle) {
+      if (ptr.rightButtonDown()) { this.brichRtsSpawnAb(); return true; }
+      this.rtsBattle.spawn(this.rtsSpawnTyp, wp.x, wp.y);
+      return true;
+    }
     // R96: im TRUPPEN-Modus übernimmt die Schlacht-Schicht die Maus (Auswahl-Box
     // links, Befehls-/Formationslinie rechts). Held ist dort Sonder-Einheit.
     if (this.devFreiKam && this.rtsLeiste && this.rtsBattle) {
@@ -4902,6 +4924,25 @@ export class WorldScene extends CombatScene {
       return this.rtsBattle.mausRunter(wp.x, wp.y, ptr.rightButtonDown(), shift);
     }
     return false;
+  }
+
+  // R97: einen Spawn-Typ scharf schalten (Geist folgt der Maus); Klick setzt.
+  private starteRtsSpawn(typ: RtsUnitTyp): void {
+    this.brichRtsSpawnAb();
+    this.rtsSpawnTyp = typ;
+    const d = RTS_UNIT_TYP[typ];
+    const g = this.add.container(0, 0).setScrollFactor(0).setDepth(6300);
+    const feind = d.team === 'feind';
+    const ring = this.add.circle(0, 0, 12, feind ? 0xe05a4a : 0x6ad0ff, 0.25).setStrokeStyle(1.5, feind ? 0xe05a4a : 0x6ad0ff);
+    const txt = this.add.text(0, -22, d.name, { fontFamily: 'serif', fontSize: '11px', color: '#e8dfc8', backgroundColor: '#100b06cc', padding: { x: 4, y: 2 } }).setOrigin(0.5, 1);
+    g.add(ring); g.add(txt);
+    this.rtsSpawnGeist = g;
+    this.logMsg(`${d.name} platzieren: Linksklick setzt (mehrfach), Rechtsklick beendet.`, 'gold');
+  }
+
+  private brichRtsSpawnAb(): void {
+    this.rtsSpawnTyp = null;
+    this.rtsSpawnGeist?.destroy(); this.rtsSpawnGeist = null;
   }
 
   // Held im RTS-Modus zum Ziel laufen lassen + Gegner automatisch angreifen.
@@ -9551,7 +9592,11 @@ export class WorldScene extends CombatScene {
     this.updateHackBalken(dt);   // Lebensbalken + Schlag-Fortschritt (R93)
     this.updateBauBalken();      // Feldbau-Lebensbalken (R94)
     this.updateRtsHeld(dt);      // Einheitensteuerung im RTS-Modus (R94)
-    if (this.rtsBattle) { this.rtsBattle.update(dt); this.rtsBattle.zeichneOverlay(); }   // Schlacht-Schicht (R96)
+    if (this.rtsBattle) {
+      // R97: Schlachtführer (Held) tot -> Schlacht verloren, Truppe flieht.
+      if (this.playerDead && !this.rtsBattle.verloren) { this.rtsBattle.schlachtVerloren(); this.logMsg('SCHLACHT VERLOREN - der Schlachtführer ist gefallen, die Banner sinken.', 'bad'); }
+      this.rtsBattle.update(dt); this.rtsBattle.zeichneOverlay();
+    }
     this.updateNassSpritzer(dt);  // Spritzer in Pfützen + auf nassem Rasen (R78)
     this.updateRegenPlatschen(dt); // Regen plätschert im Gras (R79)
     this.updateWasserWetter();  // Regen-Ringe/Wirbel auf dem neuen Wasser

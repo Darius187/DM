@@ -103,6 +103,22 @@ export class RtsBattle {
     });
   }
 
+  alleEntfernen(): void {
+    for (const u of this.units) u.sprite.destroy();
+    this.units = [];
+    this.verloren = false;
+  }
+
+  // R97: fällt der Schlachtführer (Held), bricht die eigene Truppe und flieht.
+  verloren = false;
+  schlachtVerloren(): void {
+    if (this.verloren) return;
+    this.verloren = true;
+    for (const u of this.units) if (u.team === 'spieler') { u.grp = null; u.off = null; u.ziel = null; u.fokus = null; this.verlasseTurm(u); u.stance = 'halten'; u.gewaehlt = false; }
+    this.setHeldGewaehlt(false);
+    this.feedback('Der Schlachtführer ist gefallen - die Truppe bricht und flieht');
+  }
+
   private lebende(team: RtsTeam): RtsUnit[] { return this.units.filter((u) => !u.tot && u.team === team); }
   gewaehlte(): RtsUnit[] { return this.units.filter((u) => u.gewaehlt && !u.tot && u.team === 'spieler'); }
 
@@ -342,6 +358,15 @@ export class RtsBattle {
       u.step = 0;
       this.zeichneUnit(u);
       return;
+    }
+
+    // Nach dem Fall des Schlachtführers fliehen die eigenen Truppen (Rout):
+    // weg vom nächsten Feind, kein Angriff mehr.
+    if (this.verloren && u.team === 'spieler') {
+      const f = this.naechsterFeind(u);
+      if (f) { const dx = u.x - f.x, dy = u.y - f.y, d = Math.hypot(dx, dy) || 1; this.laufe(u, { x: u.x + dx / d * 60, y: u.y + dy / d * 60 }, dt); }
+      else u.step = 0;
+      this.trenne(u); this.zeichneUnit(u); return;
     }
 
     let bewegtZu: { x: number; y: number } | null = null;
