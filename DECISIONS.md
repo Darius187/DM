@@ -1128,3 +1128,9 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Block nachziehen, in TODO notiert.
 - R99d P16: RTS-Modus-Ende laesst die Schlacht WEITERLAUFEN (Truppen fuehren
   Befehle aus); aufgeraeumt wird beim Kartenwechsel / [alle entfernen].
+- R99e Assets: three.js-Bake-Pipeline (kein Live-3D in der Szene). NEU: Ortho-
+  KACHELOFEN (gfx/lagerBitmaps, Baum-Blickwinkel 0/0.86/0.56, 48x96, Bodenlinie
+  Zeile 88) fuer kachelbuendige Bakes (Palisade-Masken, Tor h/v auf/zu,
+  Baustelle); freistehende Props weiter ueber den Perspektiv-Backofen.
+  Lehre: cam.matrixWorldInverse VOR project() explizit fuellen (sonst leere Crops).
+  Renderer bevorzugen 3D-Keys, Canvas bleibt Fallback.

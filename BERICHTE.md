@@ -1057,3 +1057,25 @@ Alle im Browser verifiziert (tsc + 201 Tests grün, 0 Laufzeitfehler):
   Reparatur/Nachschub, alle platzier-/reparier-/abbaubar.
 - OFFEN (bewusst später): Erschöpfungs-/Wach-Wechsel-System und Ausrüstungs-
   Verteilung ans Heer (Dorf-Zeughaus + Feld-Nachschubzelt) - siehe TODO.
+
+## R99 - Autorbrief komplett (P1-18): Bau-System, ein Kampfsystem, Assets
+Alle 18 Punkte umgesetzt und im Browser/Tests verifiziert (225 gruen):
+- P1-4: Palisaden-Ecken geschlossen, lueckenlos, buendig; Tor = Rasterkachel.
+- P5/P11: Tor auf/zu per Menue, Durchlass nur fuer eigene Fraktion (verifiziert).
+- P6-10: three.js-Assets via Bake-Pipeline: Ortho-Kachelofen im Baum-Winkel;
+  3D-Palisade/Tor(h+v, auf/zu)/BAUSTELLE/Feldaltar/Feldkueche/Brunnen/
+  Feldschmiede/Wartfeuer; Turm/Zelte waren schon 3D. Canvas = Fallback.
+- P12-14: RTS-Kampf = DUNGEON-Kampf. Verbuendete sind echte Enemies (team
+  'spieler', Soldaten-Figur, Schild/Parade/Bogen), Feinde echte Monster;
+  EnemyHost-Proxy lenkt die Ziele, Schaden/Pfeile team-geroutet, alte Test-Sim
+  GELOESCHT. Wechselseitig verifiziert (Ally toetet Skelett, Feind 220->129,
+  Pfeile beidseitig, Feinde greifen den Helden an).
+- P15/16: Held per Box-Select gruppierbar; Moduswechsel nahtlos (Truppen
+  marschieren im Helden-Modus weiter, Wiedereinstieg findet dieselbe Schlacht).
+- P17: RTS-Wegfindung = Dungeon-Wegfeld (Flussfeld je Befehlsziel), Umweg-Test.
+- P18: Box-Select, Ringe, Ziel-Ping, Feind-Hover, Befehls-Sound, HP-Balken.
+- Extra-Fixes: Tor folgt der Wand-Ausrichtung, Palisaden-Bauzeit (Baustellen),
+  RTS-Blick folgt nicht mehr der Maus; Wasser/Wege ACHSENTREU auf allen Karten
+  (Bruecken 90 Grad, begehbar, Monsterlager-Mitte frei), stadt nach Autor-Vorlage.
+- OFFEN (TODO): Turm-Reichweitenbonus fuer Enemy-Schuetzen, Feldscher neu,
+  Tor-Fluegel-Animation als Frame-Folge, gy1-Huellen (wald_nw/ne, hochland, kloster).
