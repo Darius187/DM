@@ -88,6 +88,30 @@ export const BAU_REPARATUR = {
   balkenRotUnter: 0.35,  // Lebensbalken erscheint dauerhaft ab <35% (roter Bereich)
 } as const;
 
+// RTS-KAMPFEINHEITEN (R96, Autor "übernimm formationen.ts in die Spielwelt,
+// spawn NPCs und Monster zum Testen"): eigene Truppen + Feind-Monster als
+// steuerbare/kämpfende Einheiten im Welt-RTS. Werte aus der Schlacht-Probe
+// übernommen (dort schon abgestimmt), reine Regler.
+export type RtsTeam = 'spieler' | 'feind';
+export type RtsUnitTyp =
+  | 'schild' | 'nahkampf' | 'bogen' | 'heiler' | 'reiter'
+  | 'e_nah' | 'e_bogen' | 'e_elite';
+export interface RtsUnitDef {
+  name: string; team: RtsTeam; hp: number; dmg: number; reich: number;
+  speed: number; rank: number; figur: string; heiler: boolean; tint?: number; groesse?: number;
+}
+// rank staffelt in Formationen die Tiefe: 0 = Front (Schild), 3 = hinten (Heiler).
+export const RTS_UNIT_TYP: Record<RtsUnitTyp, RtsUnitDef> = {
+  schild:   { name: 'Schildträger', team: 'spieler', hp: 320, dmg: 8,  reich: 30,  speed: 46, rank: 0, figur: 'soldat',      heiler: false, tint: 0xb8c4d2 },
+  nahkampf: { name: 'Gewappneter',  team: 'spieler', hp: 220, dmg: 12, reich: 30,  speed: 62, rank: 1, figur: 'soldat',      heiler: false },
+  bogen:    { name: 'Bogenschütze', team: 'spieler', hp: 140, dmg: 9,  reich: 200, speed: 64, rank: 2, figur: 'bogensoldat', heiler: false },
+  heiler:   { name: 'Feldscher',    team: 'spieler', hp: 150, dmg: 9,  reich: 150, speed: 58, rank: 3, figur: 'johannes',    heiler: true,  tint: 0xe8e0a0 },
+  reiter:   { name: 'Ritter',       team: 'spieler', hp: 360, dmg: 20, reich: 34,  speed: 96, rank: 0, figur: 'soldat',      heiler: false, tint: 0xf0d878, groesse: 1.2 },
+  e_nah:    { name: 'Skelettkrieger',team: 'feind',  hp: 210, dmg: 10, reich: 30,  speed: 56, rank: 1, figur: 'skelett',     heiler: false },
+  e_bogen:  { name: 'Skelettschütze',team: 'feind',  hp: 120, dmg: 8,  reich: 190, speed: 56, rank: 2, figur: 'schuetze',    heiler: false },
+  e_elite:  { name: 'Untoter Ritter',team: 'feind',  hp: 540, dmg: 19, reich: 34,  speed: 52, rank: 0, figur: 'skelett',     heiler: false, tint: 0xc090d0, groesse: 1.35 },
+};
+
 // Truppen-Moral (um 1300 entschied sie Schlachten öfter als das Schwert):
 // Banner sichtbar + Anführer lebt = Mut; Verluste und gefallene Banner
 // drücken; unter der Fluchtschwelle löst sich der Haufen auf.

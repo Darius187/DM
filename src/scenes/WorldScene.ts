@@ -42,7 +42,9 @@ import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDL
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
-import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, RTS_HELD, type RtsFormation, type RtsBau } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, RTS_HELD, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
+import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
+import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, SCHILF_DICHTE, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { TUNING } from '../logic/tuning';
@@ -2648,6 +2650,15 @@ export class WorldScene extends CombatScene {
   private feldbauten: Array<{ id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null }> = [];
   private gewaehlterBau: { id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null } | null = null;
   private bauPopup: Phaser.GameObjects.Container | null = null;
+  // R96: Schlacht-Schicht (Einheiten, Auswahl, Befehle, Formationen) + Eingabe-
+  // Lauscher, die nur im RTS-Modus aktiv sind.
+  private rtsBattle: RtsBattle | null = null;
+  private rtsAngriffArmed = false;   // Taste A: nächster Befehl = Angriffsmarsch
+  private rtsPointerMove?: (p: Phaser.Input.Pointer) => void;
+  private rtsPointerUp?: (p: Phaser.Input.Pointer) => void;
+  private rtsKeyDown?: (ev: KeyboardEvent) => void;
+  // RTS-Formations-Ids der Leiste auf die Formations-Mathematik abbilden.
+  private static readonly RTS_FORM_MAP: Record<RtsFormation, Form> = { linie: 'linie', schildwall: 'schutz', keil: 'keil', plaenkler: 'locker' };
   // R94: Held als steuerbare Einheit im RTS-Modus (wählen, schicken, Auto-Angriff)
   private rtsHeldGewaehlt = false;
   private rtsMoveZiel: { x: number; y: number } | null = null;
@@ -2668,13 +2679,66 @@ export class WorldScene extends CombatScene {
       this.rtsLeiste = null;
       this.setzeFreiKamera(false);
       this.rtsHeldGewaehlt = false; this.rtsMoveZiel = null; this.rtsWahlRing?.clear();
+      this.entferneRtsLauscher();
+      this.rtsBattle?.destroy(); this.rtsBattle = null;
       this.logMsg('Schlachtfeld-Steuerung beendet.', '');
       return;
     }
     if (this.area.dark || this.area.innen) { this.logMsg('Die Schlachtfeld-Steuerung braucht freien Himmel.', ''); return; }
     this.setzeFreiKamera(true);
+    this.rtsBattle = new RtsBattle({
+      scene: this, provider: this.provider,
+      play: (k, v) => this.sfx.play(k, v),
+      isSolid: (x, y) => this.isSolidAt(x, y),
+    }, this.heldRef());
+    this.rtsBattle.onFeedback = (t) => this.logMsg(t + '.', '');
+    this.baueRtsLauscher();
     this.baueRtsLeiste();
-    this.logMsg('Schlachtfeld-Steuerung: WASD bewegt die Kamera. Bauwerk anklicken, dann mit der Maus platzieren (Rechtsklick bricht ab).', 'gold');
+    this.logMsg('Schlachtfeld-Steuerung: Linksklick/Ziehen wählt, Rechtsklick befiehlt, Rechts-Ziehen formiert. A = Angriffsmarsch, H = Stellung halten.', 'gold');
+  }
+
+  // Der Held als Sonder-Einheit für die Schlacht-Schicht.
+  private heldRef(): HeldRef {
+    return {
+      pos: () => ({ x: this.px, y: this.py }),
+      lebt: () => !this.playerDead,
+      schaden: (n) => this.hurtPlayer(Math.max(1, Math.round(n)), true),
+      naheKlick: (wx, wy) => Math.hypot(wx - this.px, wy - this.py) < 28,
+      setGewaehlt: (b) => { this.rtsHeldGewaehlt = b; },
+      befehlMarsch: (x, y) => { this.rtsMoveZiel = { x, y }; },
+      befehlAngriff: (x, y) => { this.rtsMoveZiel = { x, y }; },
+    };
+  }
+
+  // Eingabe-Lauscher nur im RTS-Modus: Auswahl-Box, Befehls-/Formationslinie,
+  // Tasten A (Angriffsmarsch) und H (Stellung halten).
+  private baueRtsLauscher(): void {
+    this.rtsPointerMove = (p) => { if (this.rtsBattle && !this.platziereModus) { const wp = this.cameras.main.getWorldPoint(p.x, p.y); this.rtsBattle.mausBewegt(wp.x, wp.y); } };
+    this.rtsPointerUp = (p) => {
+      if (!this.rtsBattle || this.platziereModus) return;
+      // Rechts-Ziehen als Angriffsmarsch, wenn A gedrückt wurde
+      if (this.rtsAngriffArmed && this.rtsBattle.linieStart && this.rtsBattle.linieNow) {
+        const wp = this.rtsBattle.linieNow; this.rtsBattle.linieStart = this.rtsBattle.linieNow = null;
+        this.rtsBattle.angriffsMarsch(wp.x, wp.y); this.rtsAngriffArmed = false; void p; return;
+      }
+      this.rtsBattle.mausHoch();
+    };
+    this.rtsKeyDown = (ev) => {
+      if (!this.rtsBattle) return;
+      if (ev.key === 'h' || ev.key === 'H') { this.rtsBattle.stellungHalten(); }
+      if (ev.key === 'a' || ev.key === 'A') { this.rtsAngriffArmed = true; this.logMsg('Angriffsmarsch scharf - Ziel mit rechter Maus wählen.', ''); }
+    };
+    this.input.on('pointermove', this.rtsPointerMove);
+    this.input.on('pointerup', this.rtsPointerUp);
+    this.input.keyboard?.on('keydown', this.rtsKeyDown);
+  }
+
+  private entferneRtsLauscher(): void {
+    if (this.rtsPointerMove) this.input.off('pointermove', this.rtsPointerMove);
+    if (this.rtsPointerUp) this.input.off('pointerup', this.rtsPointerUp);
+    if (this.rtsKeyDown) this.input.keyboard?.off('keydown', this.rtsKeyDown);
+    this.rtsPointerMove = this.rtsPointerUp = undefined; this.rtsKeyDown = undefined;
+    this.rtsAngriffArmed = false;
   }
 
   private aktuelleMoral(): number {
@@ -2686,7 +2750,7 @@ export class WorldScene extends CombatScene {
     return Math.min(100, moral);
   }
 
-  private rtsTab: 'befehle' | 'bauen' = 'bauen';
+  private rtsTab: 'befehle' | 'bauen' | 'test' = 'bauen';
   private rtsSkala = 1;   // Baumenü-Größe (Autor: skalierbar), 0.8..1.4
 
   // R94: VERTIKALE Seitenleiste rechts unten (Command-&-Conquer-Stil) mit Tabs
@@ -2729,7 +2793,7 @@ export class WorldScene extends CombatScene {
     aPlus.on('pointerdown', () => { this.rtsSkala = Math.min(1.4, this.rtsSkala + 0.1); this.baueRtsLeiste(); }); c.add(aPlus);
     // Tab-Reiter
     let ty2 = F(40);
-    const tabs: Array<[typeof this.rtsTab, string]> = [['bauen', 'BAUEN'], ['befehle', 'BEFEHLE']];
+    const tabs: Array<[typeof this.rtsTab, string]> = [['bauen', 'BAUEN'], ['befehle', 'BEFEHLE'], ['test', 'TEST']];
     let tx = F(8);
     for (const [id, lbl] of tabs) {
       const aktiv = this.rtsTab === id;
@@ -2766,20 +2830,55 @@ export class WorldScene extends CombatScene {
       schildBtn.on('pointerdown', () => { this.rtsSchildAktiv = !this.rtsSchildAktiv; this.sfx.play('klick'); this.baueRtsLeiste(); this.logMsg(this.rtsSchildAktiv ? 'Held hält den Schild oben.' : 'Held kämpft ohne Deckung.', ''); });
       c.add(schildBtn);
       c.add(this.add.text(F(14), y + F(6), this.rtsSchildAktiv ? '🛡 Schild: AN' : '🛡 Schild: AUS', { fontFamily: 'serif', fontSize: `${F(10)}px`, color: this.rtsSchildAktiv ? '#9ad86a' : '#b0a48a' }));
-      y += F(38);
-      c.add(this.add.text(F(8), y, 'Formation', { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#8a7a5a', letterSpacing: 1 }));
+      y += F(36);
+      // Haltung der Auswahl (aggressiv/verteidigen/halten)
+      c.add(this.add.text(F(8), y, 'Haltung', { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#8a7a5a', letterSpacing: 1 }));
+      y += F(16);
+      const haltungen: Array<['aggressiv' | 'verteidigen' | 'halten', string]> = [['aggressiv', 'Angriff'], ['verteidigen', 'Verteidigen'], ['halten', 'Halten']];
+      let hx = F(8);
+      for (const [s, lbl] of haltungen) {
+        const kn = this.add.text(hx, y, lbl, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#d8cfb8', backgroundColor: '#120d07', padding: { x: F(5), y: F(3) } }).setInteractive({ useHandCursor: true });
+        kn.on('pointerdown', () => { this.rtsBattle?.setStance(s); this.sfx.play('klick'); });
+        c.add(kn); hx += kn.width + F(4);
+      }
+      y += F(28);
+      c.add(this.add.text(F(8), y, 'Formation (dann rechts ziehen)', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a', letterSpacing: 1 }));
       y += F(18);
       for (const f of RTS_FORMATIONEN) {
         const aktiv = this.rtsFormation === f.id;
         const knopf = this.add.rectangle(F(8), y, w - F(16), F(26), aktiv ? 0x2a1e0a : 0x120d07, 0.9).setOrigin(0).setStrokeStyle(1, aktiv ? 0xc9a227 : 0x3a2f1e).setInteractive({ useHandCursor: true });
-        knopf.on('pointerdown', () => { this.rtsFormation = f.id; this.sfx.play('klick'); this.baueRtsLeiste(); this.logMsg(`Formation: ${f.name} - ${f.hinweis}.`, ''); });
+        knopf.on('pointerdown', () => { this.rtsFormation = f.id; this.rtsBattle?.setForm(WorldScene.RTS_FORM_MAP[f.id]); this.sfx.play('klick'); this.baueRtsLeiste(); this.logMsg(`Formation: ${f.name} - ${f.hinweis}.`, ''); });
         c.add(knopf);
         c.add(this.add.text(F(14), y + F(3), f.name, { fontFamily: 'serif', fontSize: `${F(11)}px`, color: aktiv ? '#c9a227' : '#d8cfb8' }));
         c.add(this.add.text(F(14), y + F(15), f.hinweis, { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#7a6a52' }));
         y += F(30);
       }
     }
+    if (this.rtsTab === 'test') this.baueRtsTestTab(c, F, w, y);
     fixUiScroll(c);
+  }
+
+  // TEST-Tab (R96): eigene Truppen + Feind-Monster spawnen, um Schlacht und
+  // Formationen im echten Spiel zu erproben (wie in der Schlacht-Probe).
+  private baueRtsTestTab(c: Phaser.GameObjects.Container, F: (s: number) => number, w: number, y0: number): void {
+    let y = y0;
+    const knopf = (label: string, farbe: number, fn: () => void): void => {
+      const kn = this.add.rectangle(F(8), y, w - F(16), F(26), farbe, 0.9).setOrigin(0).setStrokeStyle(1, 0x4a3a26).setInteractive({ useHandCursor: true });
+      kn.on('pointerdown', () => { fn(); this.sfx.play('klick', 0.5); });
+      c.add(kn);
+      c.add(this.add.text(F(14), y + F(5), label, { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#e8dfc8' }));
+      y += F(30);
+    };
+    // Spawn-Punkt = Bildmitte in Weltkoordinaten
+    const mitte = () => this.cameras.main.getWorldPoint(this.scale.width / 2, this.scale.height / 2);
+    c.add(this.add.text(F(8), y, 'Eigene Truppen', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a', letterSpacing: 1 })); y += F(16);
+    knopf('+ Trupp (Schild/Nahkampf/Bogen)', 0x16220f, () => { const m = mitte(); this.rtsBattle?.spawnTrupp(['schild', 'nahkampf', 'nahkampf', 'nahkampf', 'bogen', 'bogen', 'heiler'] as RtsUnitTyp[], m.x - 120, m.y); });
+    knopf('+ Ritter (schnell, schwer)', 0x16220f, () => { const m = mitte(); this.rtsBattle?.spawnTrupp(['reiter', 'reiter', 'reiter'] as RtsUnitTyp[], m.x - 120, m.y + 80); });
+    c.add(this.add.text(F(8), y, 'Feind-Monster', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a', letterSpacing: 1 })); y += F(16);
+    knopf('+ Skelett-Horde', 0x221010, () => { const m = mitte(); this.rtsBattle?.spawnTrupp(['e_nah', 'e_nah', 'e_nah', 'e_nah', 'e_bogen', 'e_bogen'] as RtsUnitTyp[], m.x + 140, m.y); });
+    knopf('+ Untoter Ritter (Elite)', 0x221010, () => { const m = mitte(); this.rtsBattle?.spawnTrupp(['e_elite', 'e_elite'] as RtsUnitTyp[], m.x + 140, m.y + 80); });
+    const z = this.rtsBattle?.zaehlung() ?? { eigene: 0, feind: 0 };
+    c.add(this.add.text(F(8), y + F(2), `Eigene: ${z.eigene}   Feind: ${z.feind}`, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a' }));
   }
 
   private rtsBaue(b: RtsBau): void {
@@ -4692,19 +4791,11 @@ export class WorldScene extends CombatScene {
     const f = this.feldbauUnter(wp.x, wp.y);
     if (f && !ptr.rightButtonDown()) { this.oeffneBauMenu(f); return true; }
     if (this.bauPopup) { this.schliesseBauMenu(); }
-    // R94: im TRUPPEN-Modus den Helden wählen / per Klick schicken.
-    if (this.devFreiKam && this.rtsLeiste) {
-      if (!ptr.rightButtonDown()) {
-        if (Math.hypot(wp.x - this.px, wp.y - this.py) < 26) {
-          this.rtsHeldGewaehlt = true; this.sfx.play('klick');
-          this.logMsg('Held gewählt - klicke auf den Boden, um ihn zu schicken.', '');
-          return true;
-        }
-        if (this.rtsHeldGewaehlt) { this.rtsMoveZiel = { x: wp.x, y: wp.y }; this.fx.burst(wp.x, wp.y, 0x9ad86a, 6, 60); return true; }
-      } else if (this.rtsHeldGewaehlt) {
-        // Rechtsklick = Marschbefehl (wie in einem RTS)
-        this.rtsMoveZiel = { x: wp.x, y: wp.y }; this.fx.burst(wp.x, wp.y, 0x9ad86a, 6, 60); return true;
-      }
+    // R96: im TRUPPEN-Modus übernimmt die Schlacht-Schicht die Maus (Auswahl-Box
+    // links, Befehls-/Formationslinie rechts). Held ist dort Sonder-Einheit.
+    if (this.devFreiKam && this.rtsLeiste && this.rtsBattle) {
+      const shift = !!(ptr.event as MouseEvent | undefined)?.shiftKey;
+      return this.rtsBattle.mausRunter(wp.x, wp.y, ptr.rightButtonDown(), shift);
     }
     return false;
   }
@@ -9356,6 +9447,7 @@ export class WorldScene extends CombatScene {
     this.updateHackBalken(dt);   // Lebensbalken + Schlag-Fortschritt (R93)
     this.updateBauBalken();      // Feldbau-Lebensbalken (R94)
     this.updateRtsHeld(dt);      // Einheitensteuerung im RTS-Modus (R94)
+    if (this.rtsBattle) { this.rtsBattle.update(dt); this.rtsBattle.zeichneOverlay(); }   // Schlacht-Schicht (R96)
     this.updateNassSpritzer(dt);  // Spritzer in Pfützen + auf nassem Rasen (R78)
     this.updateRegenPlatschen(dt); // Regen plätschert im Gras (R79)
     this.updateWasserWetter();  // Regen-Ringe/Wirbel auf dem neuen Wasser
