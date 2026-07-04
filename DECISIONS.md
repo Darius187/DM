@@ -1087,3 +1087,14 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Wachturm-Besatzung: Rechtsklick auf Turm = besetzen (TURM in data/rts.ts:
   Kapazität 2, +150 Reichweite Fern / +30 Nah, +35% Schaden). Andere Befehle
   lassen die Einheit absteigen.
+- R97 A-Taste bleibt Kamera (WASD): Angriffsmarsch als Menü-Knopf (scharf ->
+  nächster Rechts-Befehl), H = Halten.
+- R97 Spawn per Maus: TEST-Knopf schärft einen Typ, Geist folgt der Maus,
+  Linksklick setzt (mehrfach), Rechtsklick beendet. Kein Auto-Spawn.
+- R97 Held = Schlachtführer: sein Tod verliert die Schlacht, eigene Truppe flieht
+  (Moralbruch wie beim Fall des Banners um 1300).
+- R97 Turm/Zelte als three.js-Bakes (demo3d/lagerBau.ts + gfx/lagerBitmaps.ts,
+  Boot-Kette), Canvas bleibt Fallback. spawneFeldbau skaliert nach Seitenverhältnis.
+- R97 Lager-Auren zentral in data/rts.ts (LAGER_EFFEKT), Radius 150: Feldaltar
+  (Moral/Untotenschutz/Heilung), Feldküche (+30% Schaden), Brunnen (Moral),
+  Zelt/Nachschub (Regen), Feldschmiede (Bau-Reparatur), Wartfeuer (Verstärkung).

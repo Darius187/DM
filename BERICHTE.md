@@ -1044,3 +1044,16 @@ Alle im Browser verifiziert (tsc + 201 Tests grün, 0 Laufzeitfehler):
   +35% Schaden (trifft Feinde außer Boden-Reichweite; verifiziert).
 - OFFEN: die "später"-Lager-Bauten + Erschöpfung/Wach-Wechsel + Ausrüstungs-
   Verteilung (bewusst zurückgestellt, siehe OFFENE-FRAGEN 10 / TODO).
+
+## R97 - RTS-Feinschliff: Spawn/Maus, Schlachtführer, 3D-Bauten, Lager-Schicht
+Alle im Browser verifiziert (tsc + 201 Tests grün, 0 Laufzeitfehler):
+- Einheiten/Monster per Maus setzen (kein Auto-Spawn), A-Taste frei (WASD Kamera),
+  Angriffsmarsch als Knopf.
+- Held tot = Schlacht verloren (Truppe flieht).
+- Wachturm + Zelte als massive three.js-Bakes (Turm überragt die Palisade klar,
+  runde Feldzelte mit Kegeldach/Abspannung, Lazarett mit rotem Kreuz).
+- "Später"-Lager-Schicht umgesetzt: Feldaltar, Feldküche, Brunnen, Mannschafts-
+  /Nachschubzelt, Feldschmiede, Wartfeuer (Verstärkungswelle) - mit Auren/Moral/
+  Reparatur/Nachschub, alle platzier-/reparier-/abbaubar.
+- OFFEN (bewusst später): Erschöpfungs-/Wach-Wechsel-System und Ausrüstungs-
+  Verteilung ans Heer (Dorf-Zeughaus + Feld-Nachschubzelt) - siehe TODO.
