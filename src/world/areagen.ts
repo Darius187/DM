@@ -1592,23 +1592,30 @@ interface OberweltCfg {
 // sie mit dem Hauptfluss; am Rand treffen sie den NACHBARWERT exakt -> Fluss
 // laeuft durch) + die Weg-Anker (West/Ost), an denen die Salzstrasse ein-/austritt.
 interface RandKanten { flussBahnen: WasserGeometrie['bahnen']; wegWestV: number | null; wegOstV: number | null; wegNordU: number | null; wegSuedU: number | null; }
-// R98b (Autorkritik "die Ufer matchen nicht"): der Fluss an JEDER Kante kommt
-// NUR aus der Tabelle - Mitte = Tabellenwert, Uferbreite FEST (KANTEN_HW). Beide
-// Nachbarn erzeugen so an der geteilten Kante ein IDENTISCHES Band -> linkes UND
-// rechtes Ufer matchen. Die Bahnen laufen von jeder Kanten-Kreuzung ins Zellen-
-// zentrum (Hub) und bilden damit das verbundene Fluss-Netz der Zelle.
+// R99b (Autorregel "Wasser läuft vertikal/horizontal wie in der Zeichnung"):
+// Der Fluss an JEDER Kante kommt aus der Tabelle (Mitte = Tabellenwert, feste
+// Uferbreite KANTEN_HW -> Naehte matchen). Die Laeufe sind ACHSENTREU: von der
+// Kante gerade nach innen, dann EIN 90-Grad-Ellenbogen zum Ziel (See-Zentrum,
+// sonst Zellmitte) - keine Diagonalen, keine unmotivierten Richtungswechsel.
 const KANTEN_HW = 0.014;   // halbe Uferbreite an der Kante (UV) - fuer ALLE gleich
 const OW_SMIN = 0.05;      // EINHEITLICHER smin (Carve + Render) fuer ALLE Oberweltkarten,
                            // damit die Wasserbaender an den Naehten dieselbe Breite haben
-function randKanten(id: string): RandKanten {
+function randKanten(id: string, see?: { cx: number; cy: number }): RandKanten {
   const k = OBERWELT_KANTEN[id];
   if (!k) return { flussBahnen: [], wegWestV: null, wegOstV: null, wegNordU: null, wegSuedU: null };
+  const fl = (arr: typeof k.west) => arr.filter((c) => c.feature === 'fluss').map((c) => c.pos / 100);
+  const N = fl(k.nord), S = fl(k.sued), W = fl(k.west), E = fl(k.ost);
+  // Ziel des Netzes: See-Zentrum, sonst Mittelwerte der Kreuzungen (Achsen-Hub)
+  const zx = see ? see.cx : ([...N, ...S].length ? [...N, ...S].reduce((a, b) => a + b, 0) / [...N, ...S].length : 0.5);
+  const zy = see ? see.cy : ([...W, ...E].length ? [...W, ...E].reduce((a, b) => a + b, 0) / [...W, ...E].length : 0.5);
   const bahnen: WasserGeometrie['bahnen'] = [];
-  const conn = (ux: number, uy: number): void => { bahnen.push({ punkte: [{ x: ux, y: uy, hw: KANTEN_HW }, { x: (ux + 0.5) / 2, y: (uy + 0.5) / 2, hw: KANTEN_HW }, { x: 0.5, y: 0.5, hw: KANTEN_HW + 0.002 }] }); };
-  for (const c of k.west) if (c.feature === 'fluss') conn(-0.03, c.pos / 100);
-  for (const c of k.ost) if (c.feature === 'fluss') conn(1.03, c.pos / 100);
-  for (const c of k.nord) if (c.feature === 'fluss') conn(c.pos / 100, -0.03);
-  for (const c of k.sued) if (c.feature === 'fluss') conn(c.pos / 100, 1.03);
+  const HW = KANTEN_HW;
+  // senkrechter Einlauf (N/S): gerade bis zy, dann waagerecht zum Hub zx
+  for (const nx of N) bahnen.push({ punkte: Math.abs(nx - zx) < 0.02 ? [{ x: nx, y: -0.03, hw: HW }, { x: nx, y: zy, hw: HW }] : [{ x: nx, y: -0.03, hw: HW }, { x: nx, y: zy, hw: HW }, { x: zx, y: zy, hw: HW }] });
+  for (const sx of S) bahnen.push({ punkte: Math.abs(sx - zx) < 0.02 ? [{ x: sx, y: 1.03, hw: HW }, { x: sx, y: zy, hw: HW }] : [{ x: sx, y: 1.03, hw: HW }, { x: sx, y: zy, hw: HW }, { x: zx, y: zy, hw: HW }] });
+  // waagerechter Einlauf (W/E): gerade bis zx, dann senkrecht zum Hub zy
+  for (const wy of W) bahnen.push({ punkte: Math.abs(wy - zy) < 0.02 ? [{ x: -0.03, y: wy, hw: HW }, { x: zx, y: wy, hw: HW }] : [{ x: -0.03, y: wy, hw: HW }, { x: zx, y: wy, hw: HW }, { x: zx, y: zy, hw: HW }] });
+  for (const ey of E) bahnen.push({ punkte: Math.abs(ey - zy) < 0.02 ? [{ x: 1.03, y: ey, hw: HW }, { x: zx, y: ey, hw: HW }] : [{ x: 1.03, y: ey, hw: HW }, { x: zx, y: ey, hw: HW }, { x: zx, y: zy, hw: HW }] });
   const w = (arr: typeof k.west) => { const f = arr.find((c) => c.feature === 'weg'); return f ? f.pos / 100 : null; };
   return { flussBahnen: bahnen, wegWestV: w(k.west), wegOstV: w(k.ost), wegNordU: w(k.nord), wegSuedU: w(k.sued) };
 }
@@ -1645,7 +1652,7 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
   const verschm = OW_SMIN;   // einheitlicher smin (R98b: gleiche Uferbreite an den Naehten)
   // R98: Randgeometrie aus der Kanten-Tabelle einspeisen (Fluss-Stutzen an den
   // Kreuzungen; Weg-Anker fuer die Salzstrasse) -> Uebergaenge zum Nachbarn.
-  const rk = randKanten(cfg.id);
+  const rk = randKanten(cfg.id, cfg.geo.seen?.[0]);
   // Fluss aus der Tabelle (Kanten matchen); cfg.geo.bahnen fuer interne Laeufe.
   // randFluesseAuto=false: die Zelle fuehrt ihre Rand-Fluesse selbst (an den
   // Tabellen-Ankern, siehe kantenFlussAnker) - z.B. stadt nach Autor-Vorlage.
@@ -1689,41 +1696,44 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
   if (!cfg.blanko) {
     const setzeWeg = (x: number, y: number): void => { if (x < 0 || x >= w || y < 0 || y >= h) return; map[y][x] = (map[y][x] === T.WATER) ? T.BRIDGE : T.PATH; };
     const baumWeg = (x: number, y: number): void => { for (let d = -1; d <= 1; d++) { if (map[y]?.[x + d] === T.TREE) map[y][x + d] = T.GRASS; if (map[y + d]?.[x] === T.TREE) map[y + d][x] = T.GRASS; } };
-    // R98b: Strasse spannt nur bis zu den Kanten, die WIRKLICH einen Weg haben.
-    // Fehlt der Weg auf einer Seite (Nachbar ohne Strasse), laeuft sie nur bis zur
-    // Zellmitte (trifft dort die Querstrasse) - kein Stummel ins Leere.
+    // R99b (Autorregel "Wege verlaufen vertikal/horizontal wie in der Zeichnung"):
+    // Wege sind ACHSENTREUE Segmente mit EINEM 90-Grad-Ellenbogen. Der Ellenbogen
+    // wird auf eine WASSERFREIE Spalte/Zeile gelegt - Wege kreuzen Wasser nur auf
+    // geraden Stücken, dort entsteht die Brücke exakt quer, Ufer-zu-Ufer begehbar,
+    // und beide Brückenenden schließen an den Weg an (keine losen Enden).
+    const wasserInSpalte = (x: number, y0: number, y1: number): boolean => {
+      for (let y = Math.max(0, Math.min(y0, y1) - 2); y <= Math.min(h - 1, Math.max(y0, y1) + 3); y++) if (map[y][x] === T.WATER || map[y][x + 1] === T.WATER) return true;
+      return false;
+    };
+    const wasserInZeile = (y: number, x0: number, x1: number): boolean => {
+      for (let x = Math.max(0, Math.min(x0, x1) - 2); x <= Math.min(w - 1, Math.max(x0, x1) + 3); x++) if (map[y][x] === T.WATER || map[y + 1]?.[x] === T.WATER) return true;
+      return false;
+    };
+    const suchFrei = (start: number, max: number, pruef: (v: number) => boolean): number => {
+      for (let d = 0; d < max; d++) { for (const s of [1, -1]) { const v = start + s * d; if (v > 4 && v < max - 5 && !pruef(v)) return v; } }
+      return start;
+    };
+    const wegH = (xa: number, xb: number, y: number): void => { const yy = Math.max(6, Math.min(h - 7, Math.round(y))); for (let x = Math.round(Math.min(xa, xb)); x <= Math.round(Math.max(xa, xb)); x++) { pfadY[x] = yy; baumWeg(x, yy); setzeWeg(x, yy); setzeWeg(x, yy + 1); } };
+    const wegV = (ya: number, yb: number, x: number): void => { const xx = Math.max(4, Math.min(w - 5, Math.round(x))); for (let y = Math.round(Math.min(ya, yb)); y <= Math.round(Math.max(ya, yb)); y++) { baumWeg(xx, y); setzeWeg(xx, y); setzeWeg(xx + 1, y); } };
+    let jogX = Math.round(w * 0.5);
     if (hatHorz) {
-      const cx = Math.round(w * 0.5);
-      const xVon = rk.wegWestV != null ? 0 : cx, xBis = rk.wegOstV != null ? w - 1 : cx;
-      const yVon = (rk.wegWestV ?? rk.wegOstV ?? 0.5) * h, yBis = (rk.wegOstV ?? rk.wegWestV ?? 0.5) * h;
-      const span = Math.max(1, xBis - xVon);
-      // R98c (Autor "Brücken müssen 90° zum Wasser stehen"): über Wasser friert
-      // der Weg seine Höhe ein (kein diagonales Driften) -> die Brücke wird ein
-      // KURZER, GERADER Steg quer über den Fluss statt einer langen Schräge.
-      let landPy: number | null = null;
-      for (let x = Math.min(xVon, xBis); x <= Math.max(xVon, xBis); x++) {
-        let p = Math.max(6, Math.min(h - 7, Math.round(yVon + (yBis - yVon) * ((x - xVon) / span) + Math.sin(x * 0.13) * 0.6)));
-        const imWasser = map[p]?.[x] === T.WATER || map[p + 1]?.[x] === T.WATER;
-        if (imWasser && landPy != null) p = landPy; else landPy = p;
-        py = p;
-        pfadY[x] = py; baumWeg(x, py); setzeWeg(x, py); setzeWeg(x, py + 1);
-      }
+      const yW = (rk.wegWestV ?? rk.wegOstV ?? 0.5) * h, yE = (rk.wegOstV ?? rk.wegWestV ?? 0.5) * h;
+      // Ellenbogen auf wasserfreie Spalte legen (zwischen den beiden Hoehen)
+      jogX = suchFrei(Math.round(w * 0.5), w, (x) => wasserInSpalte(x, Math.round(yW), Math.round(yE)));
+      if (rk.wegWestV != null) wegH(0, jogX, yW);
+      if (rk.wegOstV != null) wegH(jogX, w - 1, yE);
+      if (rk.wegWestV != null && rk.wegOstV != null && Math.abs(yW - yE) > 1) wegV(Math.min(yW, yE), Math.max(yW, yE) + 1, jogX);
+      py = Math.round(rk.wegWestV != null ? yW : yE);
     }
     if (hatVert) {
-      const cy = Math.round(h * 0.5);
-      // R98c: endet die Nord-Süd-Strasse an der Ost-West-Strasse (kein Süd-Weg),
-      // läuft sie bis zur T-KREUZUNG mit der Salzstrasse (nicht nur zur Zellmitte).
-      const xVonU = (rk.wegNordU ?? rk.wegSuedU ?? 0.5) * w, xBisU = (rk.wegSuedU ?? rk.wegNordU ?? 0.5) * w;
-      const treffY = hatHorz ? (pfadY[Math.round(xBisU)] ?? pfadY[Math.round(xVonU)] ?? cy) + 1 : cy;
-      const yVon = rk.wegNordU != null ? 0 : treffY, yBis = rk.wegSuedU != null ? h - 1 : treffY;
-      const span = Math.max(1, yBis - yVon);
-      let landPx: number | null = null;
-      for (let y = Math.min(yVon, yBis); y <= Math.max(yVon, yBis); y++) {
-        let px = Math.max(4, Math.min(w - 5, Math.round(xVonU + (xBisU - xVonU) * ((y - yVon) / span) + Math.sin(y * 0.13) * 0.6)));
-        const imWasser = map[y]?.[px] === T.WATER || map[y]?.[px + 1] === T.WATER;
-        if (imWasser && landPx != null) px = landPx; else landPx = px;
-        baumWeg(px, y); setzeWeg(px, y); setzeWeg(px + 1, y);
-      }
+      const xN = (rk.wegNordU ?? rk.wegSuedU ?? 0.5) * w, xS = (rk.wegSuedU ?? rk.wegNordU ?? 0.5) * w;
+      const jogY = suchFrei(Math.round(h * 0.5), h, (y) => wasserInZeile(y, Math.round(xN), Math.round(xS)));
+      // ohne Sued-Anschluss endet die Strasse an der T-KREUZUNG mit der Salzstrasse
+      const yEnde = rk.wegSuedU != null ? h - 1 : (hatHorz ? (pfadY[Math.round(xN)] ?? jogY) + 1 : jogY);
+      const yStart = rk.wegNordU != null ? 0 : (hatHorz ? (pfadY[Math.round(xS)] ?? jogY) : jogY);
+      if (rk.wegNordU != null) wegV(yStart, rk.wegSuedU != null ? jogY : yEnde, xN);
+      if (rk.wegSuedU != null) wegV(rk.wegNordU != null ? jogY : yStart, h - 1, xS);
+      if (rk.wegNordU != null && rk.wegSuedU != null && Math.abs(xN - xS) > 1) wegH(Math.min(xN, xS), Math.max(xN, xS) + 1, jogY);
     }
     carve(map, 2, Math.round(h * 0.5) - 2, 8, Math.round(h * 0.5) + 2, T.GRASS);
     if (hatHorz) carve(map, 3, pfadY[3] ?? Math.round(h * 0.5), 7, pfadY[7] ?? Math.round(h * 0.5), T.PATH);
@@ -1797,59 +1807,40 @@ export function buildStart(rng: Rng): AreaData {
   // R98b: der Fluss an den KANTEN kommt aus der Tabelle (randKanten, feste
   // Uferbreite) - so matchen die Ufer mit den Nachbarn (Autorkritik). Dazu ein
   // interner Lauf vom Zentrum in den See (beruehrt die Raender NICHT).
+  // R99b (Autorregel "Wasser vertikal/horizontal"): auch START nutzt das
+  // ACHSENTREUE Tabellen-Netz (randKanten mit dem See als Hub) - Nordfluss
+  // senkrecht in den See, West-Bach/Ost-Arm waagerecht, keine Diagonalen.
+  const startSee = { name: 'See', cx: 0.64, cy: 0.85, rx: 0.16, ry: 0.08 };
   a.wasserLauf = {
     begehbar: true,
     smink: OW_SMIN,
-    geo: {
-      bahnen: [
-        ...randKanten('start').flussBahnen,
-        { name: 'Zum See', punkte: [{ x: 0.5, y: 0.5, hw: KANTEN_HW }, { x: 0.56, y: 0.68, hw: 0.015 }, { x: 0.62, y: 0.82, hw: 0.016 }] },
-      ],
-      // EIN großer See unten rechts-mittig (die Ellipse der Skizze ist nur das
-      // SYMBOL - der organische Umriss kommt aus der SDF-Winkel-Verzerrung).
-      seen: [{ name: 'See', cx: 0.64, cy: 0.85, rx: 0.16, ry: 0.08 }],
-    },
+    geo: { bahnen: randKanten('start', startSee).flussBahnen, seen: [startSee] },
   };
-  // SALZSTRASSE West->Ost (Skizze: dunkelrot, v 0.57 -> 0.78). Ein Waldweg ist
-  // ÜBERWIEGEND GERADE mit wenigen, LANGEN, weichen Bögen (Autorkritik: kein
-  // Zick-Zack, keine Knicke) - darum eine Catmull-Rom-Spline durch wenige
-  // Stützpunkte statt linearer Segmente. 2 Kacheln breit; am Fluss die BRÜCKE.
   const geo = a.wasserLauf.geo;
-  // R98: Wasser als T.WATER carven (wie baueOberweltGebiet) - vorher lag es nur
-  // im Shader-Overlay; jetzt kollidiert es konsistent und erscheint auf der
-  // Minikarte. Der Weg wird darüber zur Brücke gelegt.
+  // Wasser als T.WATER carven (Kollision + Minikarte aus derselben SDF)
   for (let ty = 0; ty < h; ty++) for (let tx = 0; tx < w; tx++) {
     if (sdWasser((tx + 0.5) / w, (ty + 0.5) / h, geo, OW_SMIN) < 0) map[ty][tx] = T.WATER;
   }
-  // R98: Ost-Austritt auf den Tabellenwert start.ost Weg 77% (=v0.77) gezogen,
-  // damit die Salzstrasse in wald_o.west durchläuft.
-  const strasse: Array<[number, number]> = [[-0.10, 0.565], [0.22, 0.61], [0.52, 0.64], [0.80, 0.71], [1.10, 0.77]];
-  const strasseV = (u: number): number => {
-    // Segment finden, dann Catmull-Rom (zentripetal-vereinfacht, gleichmäßige u-Abstände)
-    let i = 1;
-    while (i < strasse.length - 1 && u > strasse[i][0]) i++;
-    const p0 = strasse[Math.max(0, i - 2)], p1 = strasse[i - 1], p2 = strasse[i], p3 = strasse[Math.min(strasse.length - 1, i + 1)];
-    const t = Math.min(1, Math.max(0, (u - p1[0]) / (p2[0] - p1[0])));
-    const t2 = t * t, t3 = t2 * t;
-    return 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
+  // SALZSTRASSE achsentreu (R99b): waagerecht auf West-Hoehe (Tabelle 59.1%),
+  // EIN 90-Grad-Ellenbogen auf wasserfreier Spalte, waagerecht weiter auf
+  // Ost-Hoehe (77%). Wege kreuzen Wasser nur gerade -> Bruecke exakt quer.
+  const yWq = 0.591, yOq = 0.77;
+  const spaltFrei = (x: number): boolean => {
+    for (let y = Math.round(yWq * h) - 2; y <= Math.round(yOq * h) + 3; y++) if (map[y]?.[x] === T.WATER || map[y]?.[x + 1] === T.WATER) return false;
+    return true;
   };
-  // R98c (Autor "Brücken 90° zum Wasser"): über Wasser friert der Weg seine Höhe
-  // ein -> kurzer gerader Steg statt diagonaler Brücken-Schleppe.
-  let startLandTy: number | null = null;
+  let jogX = Math.round(w * 0.45);
+  for (let d = 0; d < w; d++) { const k1 = Math.round(w * 0.45) + d, k2 = Math.round(w * 0.45) - d; if (k1 < w - 5 && spaltFrei(k1)) { jogX = k1; break; } if (k2 > 4 && spaltFrei(k2)) { jogX = k2; break; } }
+  const strasseV = (u: number): number => (Math.round(u * w) <= jogX ? yWq : yOq);
+  const legeWegTile = (tx: number, ty: number): void => {
+    if (ty < 0 || ty >= h || tx < 0 || tx >= w) return;
+    map[ty][tx] = map[ty][tx] === T.WATER ? T.BRIDGE : T.PATH;
+  };
   for (let tx = 0; tx < w; tx++) {
-    const u = (tx + 0.5) / w;
-    let tyWeg = Math.round(strasseV(u) * h - 0.5);
-    const imWasser = sdWasser(u, (tyWeg + 0.5) / h, geo, OW_SMIN) < 0.014;
-    if (imWasser && startLandTy != null) tyWeg = startLandTy; else startLandTy = tyWeg;
-    for (const dy of [0, 1]) {
-      const ty = tyWeg + dy;
-      if (ty < 0 || ty >= h) continue;
-      const v = (ty + 0.5) / h;
-      // Im/über dem Wasser wird der Weg zur Brücke (etwas über die sichtbare
-      // Wasserkante hinaus, u_shore=0.010, damit kein nasser Spalt bleibt).
-      map[ty][tx] = sdWasser(u, v, geo, OW_SMIN) < 0.014 ? T.BRIDGE : T.PATH;
-    }
+    const tyWeg = Math.round(strasseV((tx + 0.5) / w) * h - 0.5);
+    legeWegTile(tx, tyWeg); legeWegTile(tx, tyWeg + 1);
   }
+  for (let ty = Math.round(yWq * h); ty <= Math.round(yOq * h) + 1; ty++) { legeWegTile(jogX, ty); legeWegTile(jogX + 1, ty); }
   // Spawn im Westen AUF der Salzstraße (führt den Spieler die Straße entlang).
   const spawnTx = 10;
   a.spawn = { x: spawnTx * TILE + 16, y: Math.round(strasseV((spawnTx + 0.5) / w) * h - 0.5) * TILE + 16 };
@@ -2000,12 +1991,13 @@ export function buildStadtNatur(rng: Rng): AreaData {
     randFluesseAuto: false,
     geo: {
       bahnen: [
-        // Nordfluss -> Ostseite hinunter -> in den See (Vorlage: leicht nach innen geneigt)
-        { punkte: [nord, { x: nord.x - 0.01, y: 0.22, hw: 0.013 }, { x: 0.80, y: 0.45, hw: 0.013 }, { x: 0.785, y: 0.62, hw: 0.013 }, { x: 0.78, y: 0.72, hw: 0.014 }] },
-        // Suedbach: vom See am Suedrand entlang zur Westkante
-        { punkte: [west, { x: 0.18, y: 0.825, hw: 0.011 }, { x: 0.42, y: 0.84, hw: 0.011 }, { x: 0.60, y: 0.83, hw: 0.012 }, { x: 0.70, y: 0.79, hw: 0.013 }] },
-        // Ost-Abfluss aus dem See
-        { punkte: [ost, { x: 0.94, y: 0.80, hw: 0.012 }, { x: 0.86, y: 0.775, hw: 0.013 }] },
+        // R99b: exakt SENKRECHT/WAAGERECHT wie die Zeichnung (keine Schraegen).
+        // Nordfluss: senkrecht die Ostseite hinunter in den See
+        { punkte: [nord, { x: nord.x, y: 0.74, hw: 0.014 }] },
+        // Suedbach: waagerecht vom See zur Westkante
+        { punkte: [west, { x: 0.74, y: west.y, hw: 0.012 }] },
+        // Ost-Abfluss: waagerecht aus dem See
+        { punkte: [ost, { x: 0.84, y: ost.y, hw: 0.012 }] },
       ],
       seen: [{ cx: 0.78, cy: 0.76, rx: 0.13, ry: 0.085 }],
     },
@@ -2058,8 +2050,9 @@ export function buildWaldMitte(rng: Rng): AreaData {
 export function buildLager(rng: Rng): AreaData {
   return baueOberweltGebiet(rng, {
     id: 'lager', name: 'Monsterlager', wolfXs: [46, 100], baumGruppen: 110,
-    // Grosser See (Skizze) - vereinfacht; Fluss + Wege (Nord/Ost/Sued) aus der Tabelle.
-    geo: { bahnen: [], seen: [{ cx: 0.30, cy: 0.47, rx: 0.13, ry: 0.20 }] },
+    // R99b (Autor: "See nur ganz links, Mitte frei/bebaubar fuer die kleine Stadt,
+    // Wasser kreuzt die Wege nicht"): kleiner See am linken Rand wie gezeichnet.
+    geo: { bahnen: [], seen: [{ cx: 0.15, cy: 0.45, rx: 0.10, ry: 0.15 }] },
   });
 }
 export function buildStadt2(rng: Rng): AreaData {
