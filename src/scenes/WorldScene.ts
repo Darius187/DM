@@ -2690,6 +2690,7 @@ export class WorldScene extends CombatScene {
       scene: this, provider: this.provider,
       play: (k, v) => this.sfx.play(k, v),
       isSolid: (x, y) => this.isSolidAt(x, y),
+      tuerme: () => this.feldbauten.filter((f) => f.id === 'wachturm').map((f) => ({ x: f.x, y: f.y })),
     }, this.heldRef());
     this.rtsBattle.onFeedback = (t) => this.logMsg(t + '.', '');
     this.baueRtsLauscher();

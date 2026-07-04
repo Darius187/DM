@@ -113,6 +113,19 @@ export const RTS_UNIT_TYP: Record<RtsUnitTyp, RtsUnitDef> = {
   e_elite:  { name: 'Untoter Ritter',team: 'feind',  hp: 540, dmg: 19, reich: 34,  speed: 52, rank: 0, figur: 'skelett',     heiler: false, tint: 0xc090d0, groesse: 1.35 },
 };
 
+// Wachturm-Besatzung (R96, Autor "ich muss jemanden befehligen auf den Turm zu
+// steigen - Bogenschütze hat oben höhere Reichweite/Sicht, massive Vorteile"):
+// eine Einheit auf dem Turm steht erhöht, schießt weiter und wird schwerer
+// getroffen. Der Reichweiten-Bonus ist für Fernkämpfer groß, für Nahkampf klein.
+export const TURM = {
+  kapazitaet: 2,          // wie viele Einheiten oben Platz haben
+  reichBonusFern: 150,    // Bogen/Armbrust: massiver Schussreichweite-Gewinn
+  reichBonusNah: 30,      // Nahkampf bringt oben wenig (Stoß nach unten)
+  dmgBonus: 1.35,         // erhöhte Stellung = härtere Treffer
+  hoeheOffset: 40,        // Pixel-Versatz nach oben auf die Plattform
+  andockRadius: 34,       // so nah muss der Befehl am Turm liegen
+} as const;
+
 // Truppen-Moral (um 1300 entschied sie Schlachten öfter als das Schwert):
 // Banner sichtbar + Anführer lebt = Mut; Verluste und gefallene Banner
 // drücken; unter der Fluchtschwelle löst sich der Haufen auf.

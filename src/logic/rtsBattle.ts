@@ -11,7 +11,7 @@
 import Phaser from 'phaser';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import { formSlots, formSlotsSkaliert, linienSlots, slotWelt, type Form, type Slot } from './formationen';
-import { RTS_UNIT_TYP, type RtsUnitTyp, type RtsTeam } from '../data/rts';
+import { RTS_UNIT_TYP, TURM, type RtsUnitTyp, type RtsTeam } from '../data/rts';
 
 export type Stance = 'aggressiv' | 'verteidigen' | 'halten';
 
@@ -20,10 +20,11 @@ interface Gruppe { anker: { x: number; y: number }; facing: number; ziel: { x: n
 export interface RtsUnit {
   sprite: Phaser.GameObjects.Sprite;
   team: RtsTeam; typ: RtsUnitTyp; figur: string; heiler: boolean; groesse: number; tint?: number;
-  x: number; y: number; hp: number; maxhp: number; dmg: number; reich: number; speed: number; rank: number;
+  x: number; y: number; hp: number; maxhp: number; dmg: number; reich: number; reichBasis: number; speed: number; rank: number;
   atkCd: number; dir: number; step: number; stepT: number; flash: number; tot: boolean; gewaehlt: boolean;
   stance: Stance;
   grp: Gruppe | null; off: Slot | null; ziel: { x: number; y: number } | null; fokus: RtsUnit | null;
+  turm: { x: number; y: number } | null;   // R96: besetzt diesen Wachturm (erhöht, mehr Reichweite)
 }
 
 // Der Held wird der Simulation als leichtes Ziel/Angreifer bekannt gemacht und
@@ -43,6 +44,7 @@ export interface RtsHost {
   provider: SpriteProvider;
   play(key: string, vol?: number): void;
   isSolid(x: number, y: number): boolean;
+  tuerme(): Array<{ x: number; y: number }>;   // Wachturm-Positionen (Besatzung)
 }
 
 export class RtsBattle {
@@ -84,9 +86,9 @@ export class RtsBattle {
     if (d.tint) sprite.setTint(d.tint);
     const u: RtsUnit = {
       sprite, team: d.team, typ, figur: d.figur, heiler: d.heiler, groesse, tint: d.tint,
-      x, y, hp: d.hp, maxhp: d.hp, dmg: d.dmg, reich: d.reich, speed: d.speed, rank: d.rank,
+      x, y, hp: d.hp, maxhp: d.hp, dmg: d.dmg, reich: d.reich, reichBasis: d.reich, speed: d.speed, rank: d.rank,
       atkCd: 0, dir: 0, step: 0, stepT: 0, flash: 0, tot: false, gewaehlt: false,
-      stance: 'aggressiv', grp: null, off: null, ziel: null, fokus: null,
+      stance: 'aggressiv', grp: null, off: null, ziel: null, fokus: null, turm: null,
     };
     this.units.push(u);
     return u;
@@ -170,9 +172,18 @@ export class RtsBattle {
     }
   }
 
+  private turmBei(x: number, y: number): { x: number; y: number } | null {
+    let best: { x: number; y: number } | null = null, bd: number = TURM.andockRadius;
+    for (const t of this.host.tuerme()) { const dd = Math.hypot(t.x - x, t.y - y); if (dd < bd) { bd = dd; best = t; } }
+    return best;
+  }
+
   private rechtsBefehl(): void {
     const a = this.linieStart!, b = this.linieNow!;
     if (Math.hypot(b.x - a.x, b.y - a.y) > 44) { this.formiereEntlangLinie(a, b); return; }
+    // Rechtsklick auf einen Wachturm = Besatzung beziehen (Autorwunsch R96).
+    const turm = this.turmBei(b.x, b.y);
+    if (turm) { this.befehlTurm(turm); return; }
     const ef = this.feindBei(b.x, b.y);
     if (ef) {
       this.befehlFokus(ef);
@@ -204,14 +215,14 @@ export class RtsBattle {
     const grp: Gruppe = { anker: { x: cx, y: cy }, facing: this.zumFeind(cx, cy), ziel: null, manuell: false, angriffsMarsch: false };
     const sortiert = [...sel].sort((a, b) => a.rank - b.rank);
     const slots = formSlots(sortiert.length, form, 30);
-    sortiert.forEach((u, i) => { u.grp = grp; u.off = slots[i]; u.ziel = null; u.fokus = null; });
+    sortiert.forEach((u, i) => { this.verlasseTurm(u); u.grp = grp; u.off = slots[i]; u.ziel = null; u.fokus = null; });
     this.host.play('klick', 0.6);
   }
 
   private formiereEntlangLinie(a: { x: number; y: number }, b: { x: number; y: number }): void {
     const sel = this.gewaehlte(); if (!sel.length) return;
     const grp = this.baueLinienGruppe(sel, a, b);
-    grp.zuweisung.forEach(({ u, slot }) => { u.grp = grp.gruppe; u.off = slot; u.ziel = null; u.fokus = null; });
+    grp.zuweisung.forEach(({ u, slot }) => { this.verlasseTurm(u); u.grp = grp.gruppe; u.off = slot; u.ziel = null; u.fokus = null; });
     this.host.play('klick', 0.6);
   }
 
@@ -241,13 +252,35 @@ export class RtsBattle {
     const sel = this.gewaehlte(); if (!sel.length) return;
     const cx = sel.reduce((a, u) => a + u.x, 0) / sel.length, cy = sel.reduce((a, u) => a + u.y, 0) / sel.length;
     const grp: Gruppe = { anker: { x: cx, y: cy }, facing: Math.atan2(ziel.y - cy, ziel.x - cx), ziel, manuell: true, angriffsMarsch: angriff };
-    sel.forEach((u) => { u.grp = grp; u.off = { f: u.x - cx, l: u.y - cy }; u.ziel = null; u.fokus = null; });
+    sel.forEach((u) => { this.verlasseTurm(u); u.grp = grp; u.off = { f: u.x - cx, l: u.y - cy }; u.ziel = null; u.fokus = null; });
     this.host.play('klick', 0.5);
   }
 
   private befehlFokus(ef: RtsUnit): void {
-    for (const u of this.gewaehlte()) { if (u.grp) u.grp.ziel = null; u.grp = null; u.off = null; u.ziel = null; u.fokus = ef; }
+    for (const u of this.gewaehlte()) { this.verlasseTurm(u); if (u.grp) u.grp.ziel = null; u.grp = null; u.off = null; u.ziel = null; u.fokus = ef; }
     this.host.play('klick', 0.5);
+  }
+
+  // Wachturm besetzen: die gewählten Einheiten steigen hoch (bis Kapazität).
+  // Fernkämpfer holen den großen Reichweiten-Bonus, Nahkampf nur wenig.
+  private befehlTurm(t: { x: number; y: number }): void {
+    const drin = this.units.filter((u) => u.turm && Math.hypot(u.turm.x - t.x, u.turm.y - t.y) < 4).length;
+    let frei = TURM.kapazitaet - drin;
+    // Fernkämpfer bevorzugt hochschicken (sie profitieren am meisten)
+    const sel = [...this.gewaehlte()].sort((a, b) => b.reichBasis - a.reichBasis);
+    let hoch = 0;
+    for (const u of sel) {
+      if (frei <= 0) break;
+      u.turm = { x: t.x, y: t.y }; u.grp = null; u.off = null; u.ziel = null; u.fokus = null;
+      u.reich = u.reichBasis + (u.reichBasis > 60 ? TURM.reichBonusFern : TURM.reichBonusNah);
+      frei--; hoch++;
+    }
+    if (hoch) { this.host.play('klick', 0.6); this.feedback(hoch === 1 ? 'Einheit bezieht den Wachturm - Reichweite steigt' : `${hoch} Einheiten beziehen den Wachturm`); }
+    else this.feedback('Der Wachturm ist voll besetzt');
+  }
+
+  private verlasseTurm(u: RtsUnit): void {
+    if (u.turm) { u.turm = null; u.reich = u.reichBasis; }
   }
 
   // --- Simulation -----------------------------------------------------------
@@ -301,6 +334,16 @@ export class RtsBattle {
     u.flash = Math.max(0, u.flash - dt);
     if (u.fokus && u.fokus.tot) u.fokus = null;
 
+    // Auf dem Wachturm: erhöht stehen, weit schießen, nicht laufen (R96).
+    if (u.turm) {
+      u.x = u.turm.x; u.y = u.turm.y - TURM.hoeheOffset;
+      const feind = this.naechsterFeind(u);
+      if (feind && Math.hypot(feind.x - u.x, feind.y - u.y) <= u.reich) this.angriff(u, feind, TURM.dmgBonus);
+      u.step = 0;
+      this.zeichneUnit(u);
+      return;
+    }
+
     let bewegtZu: { x: number; y: number } | null = null;
     const slot = this.slotWeltPos(u);
 
@@ -350,11 +393,11 @@ export class RtsBattle {
     }
   }
 
-  private angriff(u: RtsUnit, feind: RtsUnit): void {
+  private angriff(u: RtsUnit, feind: RtsUnit, mult = 1): void {
     u.dir = this.achtRichtung(Math.atan2(feind.y - u.y, feind.x - u.x));
     if (u.atkCd > 0) return;
     u.atkCd = u.reich > 60 ? 1.1 : 0.7;
-    feind.hp -= u.dmg; feind.flash = 0.12;
+    feind.hp -= u.dmg * mult; feind.flash = 0.12;
     if (u.reich > 60) { this.fxg.lineStyle(1.5, 0xf0e0a0, 0.8); this.fxg.lineBetween(u.x, u.y - 6, feind.x, feind.y - 6); this.host.play('pfeil_schuss', 0.25); }
     else { this.host.play('schwert_slice1', 0.25); }
     if (feind.hp <= 0) { feind.tot = true; feind.gewaehlt = false; for (const o of this.units) if (o.fokus === feind) o.fokus = null; }
@@ -401,7 +444,8 @@ export class RtsBattle {
   }
 
   private zeichneUnit(u: RtsUnit): void {
-    u.sprite.setPosition(u.x, u.y).setDepth(u.y + 12);
+    // Auf dem Turm über der Turmgrafik zeichnen (sonst nach Fußpunkt).
+    u.sprite.setPosition(u.x, u.y).setDepth(u.turm ? u.turm.y + 2 : u.y + 12);
     this.host.provider.applyFigure(u.sprite, u.figur, u.dir, u.step);
     if (u.flash > 0) u.sprite.setTintFill(0xffffff);
     else if (u.tint) u.sprite.setTint(u.tint);
