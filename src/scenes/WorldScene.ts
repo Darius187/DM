@@ -2708,6 +2708,11 @@ export class WorldScene extends CombatScene {
       play: (k, v) => this.sfx.play(k, v),
       isSolid: (x, y) => this.solidFuerHeld(x, y),   // eigene Truppen: offenes Tor passierbar (R99 P11)
       tuerme: () => this.feldbauten.filter((f) => f.id === 'wachturm').map((f) => ({ x: f.x, y: f.y })),
+      gitter: () => this.area ? { w: this.area.w, h: this.area.h } : null,
+      begehbar: (tx, ty, team) => {
+        const x = tx * TILE + 16, y = ty * TILE + 16;
+        return team === 'spieler' ? !this.solidFuerHeld(x, y) : !this.isSolidAt(x, y);
+      },
       lager: () => this.feldbauten.map((f) => ({ typ: f.id, x: f.x, y: f.y })),
     }, this.heldRef());
     this.rtsBattle.onFeedback = (t) => this.logMsg(t + '.', '');
@@ -3720,12 +3725,41 @@ export class WorldScene extends CombatScene {
   // reihe (gleiche Grundlinie/Höhe, schliesst lückenlos an die Arme links/rechts
   // an - kein Versatz). offen=true zeichnet aufgeschwungene Flügel + freien
   // Durchlass; der Zustand wird über das Klick-Menü geschaltet.
-  private torTexturKey(offen: boolean, maskNS: number): string {
-    const key = `tor_kachel_${offen ? 'auf' : 'zu'}_${maskNS}`;
+  private torTexturKey(offen: boolean, maskNS: number, senkrecht = false): string {
+    const key = `tor_kachel_${offen ? 'auf' : 'zu'}_${maskNS}_${senkrecht ? 'v' : 'h'}`;
     if (this.textures.exists(key)) return key;
     const W = 48, H = 96, boden = 88;
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const g = c.getContext('2d')!;
+    if (senkrecht) {
+      // SENKRECHTES Tor (Wand läuft N-S): Pfosten oben/unten auf dem Pfahl-
+      // Raster der senkrechten Wand, Flügel schwingen nach Ost/West auf.
+      g.fillStyle = 'rgba(0,0,0,0.26)'; g.beginPath(); g.ellipse(W / 2, boden - 20, 8, 26, 0, 0, Math.PI * 2); g.fill();
+      const posten = (fy: number): void => {
+        const grd = g.createLinearGradient(W / 2 - 5, 0, W / 2 + 5, 0); grd.addColorStop(0, '#3c2c17'); grd.addColorStop(0.45, '#6e5330'); grd.addColorStop(1, '#2f2313');
+        g.fillStyle = grd; g.fillRect(W / 2 - 5, fy - 46, 10, 46);
+        g.fillStyle = '#8a6a3c'; g.beginPath(); g.moveTo(W / 2 - 5, fy - 46); g.lineTo(W / 2, fy - 55); g.lineTo(W / 2 + 5, fy - 46); g.closePath(); g.fill();
+      };
+      // Wand-Stummel oben/unten (Anschluss an die senkrechte Pfahlsäule)
+      if (maskNS & 1) { g.fillStyle = '#5a4326'; g.fillRect(20, 0, 4, 26); g.fillRect(27, 0, 4, 22); }
+      if (maskNS & 4) { g.fillStyle = '#5a4326'; g.fillRect(20, boden - 8, 4, 8); g.fillRect(27, boden - 12, 4, 12); }
+      posten(46);            // oberer Torpfosten
+      posten(boden);         // unterer Torpfosten
+      if (offen) {
+        // Flügel zur Seite aufgeschwungen (Durchlass in der Mitte frei)
+        g.fillStyle = '#4a3a22';
+        g.save(); g.translate(W / 2 - 5, 50); g.transform(1, 0, -0.5, 1, 0, 0); g.fillRect(-10, 0, 10, 7); g.restore();
+        g.save(); g.translate(W / 2 + 5, 50); g.transform(1, 0, 0.5, 1, 0, 0); g.fillRect(0, 0, 10, 7); g.restore();
+      } else {
+        // geschlossen: Bretter-Tor füllt die Lücke zwischen den Pfosten
+        g.fillStyle = '#4a3a22'; g.fillRect(W / 2 - 7, 46, 14, boden - 46 - 44 + 40);
+        g.strokeStyle = 'rgba(30,22,12,0.6)'; g.lineWidth = 1;
+        for (let by = 50; by < boden - 6; by += 5) { g.beginPath(); g.moveTo(W / 2 - 6, by); g.lineTo(W / 2 + 6, by); g.stroke(); }
+        g.strokeStyle = '#2c2010'; g.lineWidth = 2; g.beginPath(); g.moveTo(W / 2 - 6, 50); g.lineTo(W / 2 + 6, 62); g.moveTo(W / 2 - 6, 68); g.lineTo(W / 2 + 6, 80); g.stroke();
+      }
+      this.textures.addCanvas(key, c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      return key;
+    }
     g.fillStyle = 'rgba(0,0,0,0.26)'; g.beginPath(); g.ellipse(W / 2, boden + 3, W * 0.46, 5, 0, 0, Math.PI * 2); g.fill();
     const pfosten = (cx: number): void => {
       const grd = g.createLinearGradient(cx - 4, 0, cx + 4, 0); grd.addColorStop(0, '#3c2c17'); grd.addColorStop(0.45, '#6e5330'); grd.addColorStop(1, '#2f2313');
@@ -3807,15 +3841,14 @@ export class WorldScene extends CombatScene {
     for (const [x, y] of felder) {
       if (kostenJe.some(([k, n]) => (this.p.materials[k as MaterialId] ?? 0) < (n ?? 0))) break;   // Material alle
       for (const [k, n] of kostenJe) this.p.materials[k as MaterialId] -= n ?? 0;
-      this.area.map[y][x] = T.PALISADE;
-      this.feldbauten.push({ id: 'palisade', x: x * TILE + 16, y: y * TILE + 16, tx: x, ty: y, hp: BAU_HP.palisade, maxHp: BAU_HP.palisade, balken: null });
+      // R99c (Autor "Palisaden brauchen einen Bau-Timer"): auch der Zug baut
+      // BAUSTELLEN (Bauzeit je Segment, leicht gestaffelt) statt sofort.
+      this.setzeBaustelle('palisade', x * TILE + 16, y * TILE + 16, (this.BAUZEIT.palisade ?? 4) + gebaut * 0.4);
       gebaut++;
     }
-    // betroffene + Nachbar-Kacheln neu zeichnen (Verbindungen/Ecken)
-    for (const [x, y] of felder) for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) this.refreshTile(x + dx, y + dy);
     this.palisadeZug.vorschau.destroy();
     this.palisadeZug = null;
-    if (gebaut > 0) { this.sfx.play('holz_hacken'); this.logMsg(`${gebaut} Palisaden-Segmente errichtet.`, 'gold'); this.brichPlatzierungAb(); this.baueRtsLeiste?.(); this.panels?.refresh?.(); }
+    if (gebaut > 0) { this.sfx.play('holz_hacken'); this.logMsg(`${gebaut} Palisaden-Baustellen abgesteckt.`, 'gold'); this.brichPlatzierungAb(); this.baueRtsLeiste?.(); this.panels?.refresh?.(); }
     void ptr;
   }
 
@@ -4332,7 +4365,12 @@ export class WorldScene extends CombatScene {
     if (a.gebackenerBoden && id === T.TOR) {
       const f = this.feldbauten.find((fb) => fb.tx === tx && fb.ty === ty && fb.id === 'tor');
       const maskNS = (istWand(a.map[ty - 1]?.[tx]) ? 1 : 0) | (istWand(a.map[ty + 1]?.[tx]) ? 4 : 0);
-      const key = this.torTexturKey(f?.offen === true, maskNS);
+      const maskEW = (istWand(a.map[ty]?.[tx + 1]) ? 1 : 0) | (istWand(a.map[ty]?.[tx - 1]) ? 2 : 0);
+      // R99c (Autor "in der vertikalen Palisade ist das Tor horizontal"): die
+      // AUSRICHTUNG folgt automatisch der Wand - N/S-Nachbarn ohne E/W-Nachbarn
+      // = senkrechtes Tor (Flügel schwingen zur Seite). Kein manuelles Drehen.
+      const senkrecht = maskNS !== 0 && maskEW === 0;
+      const key = this.torTexturKey(f?.offen === true, senkrecht ? maskNS : maskNS, senkrecht);
       const img = this.add.image(tx * TILE + 16, ty * TILE + TILE, key).setOrigin(0.5, 1).setDepth(ty * TILE + 26);
       img.setDisplaySize(TILE, TILE * 2);
       img.setData('kachel', `${tx},${ty}`);
@@ -5139,7 +5177,11 @@ export class WorldScene extends CombatScene {
       else {
         // R96: bedächtiger als das ARPG-Tempo (Autor "läuft viel zu schnell").
         const tempo = PLAYER.speed * RTS_HELD.tempoFaktor * (getSettings().tempo / 100) * this.areaSpeedFactor() * dt;
-        const ux = (zx - this.px) / d, uy = (zy - this.py) / d;
+        // R99c (P17): auch der Held folgt im RTS dem Wegfeld (Umwege statt Festhaken)
+        let sx = zx, sy = zy;
+        if (d > TILE * 1.3 && this.rtsBattle) { const wp = this.rtsBattle.wegPunkt('spieler', this.px, this.py, { x: zx, y: zy }); if (wp) { sx = wp.x; sy = wp.y; } }
+        const dl = Math.hypot(sx - this.px, sy - this.py) || 1;
+        const ux = (sx - this.px) / dl, uy = (sy - this.py) / dl;
         const r = 10;
         const nx = this.px + ux * tempo, ny = this.py + uy * tempo;
         if (!this.solidFuerHeld(nx - r, this.py - r) && !this.solidFuerHeld(nx + r, this.py + r) && !this.solidFuerHeld(nx + r, this.py - r) && !this.solidFuerHeld(nx - r, this.py + r)) this.px = nx;

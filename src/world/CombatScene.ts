@@ -2910,7 +2910,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         if (this.pstep % 2 === 0) this.sfx.play(this.stepSound(), 0.5);
       }
     }
-    if (this.combat.blocking) this.pdir = this.aimAngle();
+    // R99c (Autor: im RTS-Modus soll der Blick NICHT dem Mauszeiger folgen):
+    // Schild-Ausrichtung zur Maus nur, wenn der Spieler den Helden direkt steuert.
+    if (this.combat.blocking && !this.bewegungGesperrt()) this.pdir = this.aimAngle();
     if (this.bowDrawT >= 0) {
       this.bowDrawT += dt;
       this.pdir = this.aimAngle();

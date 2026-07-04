@@ -12,6 +12,9 @@ import Phaser from 'phaser';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import { formSlots, formSlotsSkaliert, linienSlots, slotWelt, type Form, type Slot } from './formationen';
 import { RTS_UNIT_TYP, TURM, LAGER_EFFEKT, type RtsUnitTyp, type RtsTeam } from '../data/rts';
+import { Wegfeld } from '../world/Wegfeld';
+
+const TILE = 32;
 
 export type Stance = 'aggressiv' | 'verteidigen' | 'halten';
 
@@ -47,6 +50,10 @@ export interface RtsHost {
   isSolid(x: number, y: number): boolean;
   tuerme(): Array<{ x: number; y: number }>;   // Wachturm-Positionen (Besatzung)
   lager(): Array<{ typ: string; x: number; y: number }>;   // Lager-Wirk-Bauten (Auren)
+  // R99c (P17, Wegfeld statt Luftlinie): Kachelgitter + Begehbarkeit je TEAM
+  // (eigene Truppen dürfen durchs offene Tor, Feinde nicht).
+  gitter(): { w: number; h: number } | null;
+  begehbar(tx: number, ty: number, team: RtsTeam): boolean;
 }
 
 export class RtsBattle {
@@ -305,6 +312,7 @@ export class RtsBattle {
   // --- Simulation -----------------------------------------------------------
   update(dt: number): void {
     this.fxg.clear();
+    this.raeumeWegfelder();
     this.wendeLagerAurenAn(dt);
     this.aktualisiereGruppen(dt);
     for (const u of this.units) if (!u.tot) this.updateUnit(u, dt);
@@ -462,11 +470,41 @@ export class RtsBattle {
     if (u.reich > 60) { this.fxg.lineStyle(1.5, 0xd06a4a, 0.8); this.fxg.lineBetween(u.x, u.y - 6, hp.x, hp.y - 6); }
   }
 
+  // R99c (P17): Wegfindung = DUNGEON-Verfahren (Wegfeld/Flussfeld aus
+  // src/world/Wegfeld.ts) statt Luftlinie. Ein BFS-Distanzfeld je BEFEHLSZIEL
+  // (Gruppen teilen sich das Ziel -> wenige Felder), Refresh alle 0,3 s wie im
+  // Dungeon. Einheiten laufen zur Nachbarkachel mit kleinster Distanz und
+  // umgehen so Palisaden/Wasser/Bäume, statt daran festzuhaken.
+  private wegfelder = new Map<string, { feld: Wegfeld; t: number }>();
+  wegPunkt(team: RtsTeam, vonX: number, vonY: number, ziel: { x: number; y: number }): { x: number; y: number } | null {
+    const g = this.host.gitter();
+    if (!g) return null;
+    const ztx = Math.max(0, Math.min(g.w - 1, Math.floor(ziel.x / TILE))), zty = Math.max(0, Math.min(g.h - 1, Math.floor(ziel.y / TILE)));
+    const key = `${team}:${ztx},${zty}`;
+    let e = this.wegfelder.get(key);
+    const now = this.host.scene.time.now;
+    if (!e || !e.feld.passt(g.w, g.h)) { e = { feld: new Wegfeld(g.w, g.h), t: -1e9 }; this.wegfelder.set(key, e); }
+    if (now - e.t > 300 || e.feld.zielTx !== ztx || e.feld.zielTy !== zty) {
+      e.t = now;
+      e.feld.berechne(ztx, zty, (tx, ty) => this.host.begehbar(tx, ty, team));
+    }
+    const nb = e.feld.bestesNachbarfeld(Math.floor(vonX / TILE), Math.floor(vonY / TILE));
+    return nb ? { x: nb.tx * TILE + TILE / 2, y: nb.ty * TILE + TILE / 2 } : null;
+  }
+  private raeumeWegfelder(): void {
+    const now = this.host.scene.time.now;
+    for (const [k, e] of this.wegfelder) if (now - e.t > 2000) this.wegfelder.delete(k);
+  }
+
   private laufe(u: RtsUnit, ziel: { x: number; y: number }, dt: number): void {
-    const dx = ziel.x - u.x, dy = ziel.y - u.y, d = Math.hypot(dx, dy);
+    const d = Math.hypot(ziel.x - u.x, ziel.y - u.y);
     if (d < 1) { u.step = 0; return; }
+    // Nahbereich direkt; sonst dem Flussfeld folgen (Umwege statt Festhaken)
+    let sx = ziel.x, sy = ziel.y;
+    if (d > TILE * 1.3) { const wp = this.wegPunkt(u.team, u.x, u.y, ziel); if (wp) { sx = wp.x; sy = wp.y; } }
+    const dx = sx - u.x, dy = sy - u.y, dl = Math.hypot(dx, dy) || 1;
     const sp = u.speed * dt;
-    const ux = dx / d, uy = dy / d;
+    const ux = dx / dl, uy = dy / dl;
     const nx = u.x + ux * sp, ny = u.y + uy * sp;
     const r = 8;
     if (!this.host.isSolid(nx, u.y + r) && !this.host.isSolid(nx, u.y - r)) u.x = nx;
