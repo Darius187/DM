@@ -10,6 +10,7 @@ import { TUNING } from '../logic/tuning';
 import type { InnenraumDef, InnenMoebel } from '../data/innenraeume';
 import { sdWasser, type WasserGeometrie } from './wasserFeld';
 import { dichteNoise, felsNoise, biomAt } from './biome';
+import { OBERWELT_KANTEN } from '../data/oberweltKanten';
 
 export interface Pos { x: number; y: number }
 // Abbaubarer Brocken (Fels/Erzader) mit Zerfalls-Zustand (R80, 7DtD-Abbau).
@@ -1582,6 +1583,23 @@ interface OberweltCfg {
   wasserSolide?: boolean;                     // true (Default): T.WATER hart; false: begehbar mit Verlangsamung
 }
 
+// R98 (Prompt-1 Uebergabe-System): Randgeometrie aus der autoritativen Kanten-
+// Tabelle. Fluss-Stutzen von jeder Fluss-Kreuzung nach innen (smin verschmilzt
+// sie mit dem Hauptfluss; am Rand treffen sie den NACHBARWERT exakt -> Fluss
+// laeuft durch) + die Weg-Anker (West/Ost), an denen die Salzstrasse ein-/austritt.
+function randKanten(id: string): { flussStubs: WasserGeometrie['bahnen']; wegWestV: number | null; wegOstV: number | null } {
+  const k = OBERWELT_KANTEN[id];
+  if (!k) return { flussStubs: [], wegWestV: null, wegOstV: null };
+  const stubs: WasserGeometrie['bahnen'] = [];
+  const stub = (ux: number, uy: number, tox: number, toy: number): void => { stubs.push({ punkte: [{ x: ux, y: uy, hw: 0.012 }, { x: (ux + tox) / 2, y: (uy + toy) / 2, hw: 0.013 }, { x: tox, y: toy, hw: 0.013 }] }); };
+  for (const c of k.west) if (c.feature === 'fluss') stub(-0.03, c.pos / 100, 0.5, c.pos / 100);
+  for (const c of k.ost) if (c.feature === 'fluss') stub(1.03, c.pos / 100, 0.5, c.pos / 100);
+  for (const c of k.nord) if (c.feature === 'fluss') stub(c.pos / 100, -0.03, c.pos / 100, 0.5);
+  for (const c of k.sued) if (c.feature === 'fluss') stub(c.pos / 100, 1.03, c.pos / 100, 0.5);
+  const westWeg = k.west.find((c) => c.feature === 'weg'), ostWeg = k.ost.find((c) => c.feature === 'weg');
+  return { flussStubs: stubs, wegWestV: westWeg ? westWeg.pos / 100 : null, wegOstV: ostWeg ? ostWeg.pos / 100 : null };
+}
+
 // Gemeinsamer Oberwelt-Builder (Runde 72): Wiese, Wasser-Lauf (neues Overlay,
 // Kollision aus T.WATER aus DERSELBEN SDF), gebackener organischer Boden; optional
 // Salzstraße/Bäume/Wölfe/Kräuter/Felsen. blanko=true lässt all das weg (erst die
@@ -1598,6 +1616,10 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
     npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
   };
   const verschm = 0.08;   // großzügige smin-Verschmelzung -> durchgehender Fluss, keine Lücken
+  // R98: Randgeometrie aus der Kanten-Tabelle einspeisen (Fluss-Stutzen an den
+  // Kreuzungen; Weg-Anker fuer die Salzstrasse) -> Uebergaenge zum Nachbarn.
+  const rk = randKanten(cfg.id);
+  const geo: WasserGeometrie = { bahnen: [...cfg.geo.bahnen, ...rk.flussStubs], seen: cfg.geo.seen };
 
   // Bäume nur, wenn NICHT blanko.
   if (!cfg.blanko) {
@@ -1620,7 +1642,7 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
   if (solide) {
     for (let ty = 0; ty < h; ty++) {
       for (let tx = 0; tx < w; tx++) {
-        if (sdWasser((tx + 0.5) / w, (ty + 0.5) / h, cfg.geo, verschm) < 0) map[ty][tx] = T.WATER;
+        if (sdWasser((tx + 0.5) / w, (ty + 0.5) / h, geo, verschm) < 0) map[ty][tx] = T.WATER;
       }
     }
   }
@@ -1628,12 +1650,14 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
   const pfadY: number[] = [];
   let py = Math.round(h * 0.5);
   if (!cfg.blanko) {
-    // Salzstraße West->Ost, nur noch LEICHT geschwungen (Autorwunsch Runde 74
-    // "Wege gerader"): Sinus-Amplitude halbiert (0.7->0.35, rundet meist zu 0)
-    // und das Zufalls-Zappeln von jeder 3. auf jede 6. Spalte gesenkt. Bäume
-    // weichen dem Weg; quert der Weg das Wasser, liegt dort eine Brücke.
+    // R98: Salzstraße tritt an den WEG-Kreuzungen der Tabelle ein/aus (West-Anker
+    // -> Ost-Anker), damit sie zum Nachbarn durchläuft. Ohne Tabellenwert bleibt
+    // sie auf halber Höhe. Nur noch leicht geschwungen (Autorwunsch R74).
+    const startY = rk.wegWestV != null ? rk.wegWestV * h : h * 0.5;
+    const endY = rk.wegOstV != null ? rk.wegOstV * h : h * 0.5;
     for (let x = 0; x < w; x++) {
-      py += Math.round(Math.sin(x * 0.13) * 0.35) + (x % 6 === 0 ? ri(rng, -1, 1) : 0);
+      const basis = startY + (endY - startY) * (x / (w - 1));
+      py = Math.round(basis + Math.sin(x * 0.13) * 0.6);
       py = Math.max(6, Math.min(h - 7, py));
       pfadY[x] = py;
       for (let dy = -1; dy <= 1; dy++) {
@@ -1668,7 +1692,7 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
 
   a.upPos = { x: 1 * TILE + 16, y: (pfadY[1] ?? Math.round(h * 0.5)) * TILE + 16 };
   a.downPos = { x: (w - 2) * TILE + 16, y: (pfadY[w - 2] ?? Math.round(h * 0.5)) * TILE + 16 };
-  a.wasserLauf = { geo: cfg.geo, blut: false, begehbar: !solide, vollszene: cfg.vollszene };
+  a.wasserLauf = { geo, blut: false, begehbar: !solide, vollszene: cfg.vollszene };
   a.gebackenerBoden = true;
   // AUFBAUPHASE (Autorwunsch R77): auch die neuen Oberweltkarten bleiben vorerst
   // friedlich - der Autor besichtigt die Karten; Wölfe/Gegner kommen später
@@ -1726,7 +1750,9 @@ export function buildStart(rng: Rng): AreaData {
         { name: 'Hauptfluss', punkte: [{ x: 0.75, y: -0.03, hw: 0.012 }, { x: 0.70, y: 0.10, hw: 0.013 }, { x: 0.64, y: 0.28, hw: 0.014 }, { x: 0.57, y: 0.42, hw: 0.014 }, { x: 0.52, y: 0.55, hw: 0.015 }, { x: 0.505, y: 0.635, hw: 0.015 }, { x: 0.50, y: 0.72, hw: 0.015 }, { x: 0.55, y: 0.82, hw: 0.016 }] },
         // Ost-Arm: zweigt an der Gabelung ab und verlässt die Karte nach OSTEN
         // (Anschluss Nachbarkarte Ost: Eintritt dort v~0.44).
-        { name: 'Ost-Arm', punkte: [{ x: 0.64, y: 0.28, hw: 0.009 }, { x: 0.72, y: 0.295, hw: 0.010 }, { x: 0.79, y: 0.33, hw: 0.010 }, { x: 0.87, y: 0.40, hw: 0.011 }, { x: 1.03, y: 0.44, hw: 0.011 }] },
+        // R98: Ost-Austritt exakt auf den Tabellenwert start.ost Fluss 47% (=v0.47),
+        // damit er in wald_o.west (liest dieselbe Tabelle) durchläuft.
+        { name: 'Ost-Arm', punkte: [{ x: 0.64, y: 0.28, hw: 0.009 }, { x: 0.72, y: 0.30, hw: 0.010 }, { x: 0.79, y: 0.35, hw: 0.010 }, { x: 0.87, y: 0.42, hw: 0.011 }, { x: 1.03, y: 0.47, hw: 0.011 }] },
         // Bach: dünner Zulauf von der Westkante, mündet von links in den See.
         { name: 'Bach (West)', punkte: [{ x: -0.03, y: 0.82, hw: 0.006 }, { x: 0.15, y: 0.845, hw: 0.007 }, { x: 0.30, y: 0.865, hw: 0.007 }, { x: 0.47, y: 0.865, hw: 0.009 }] },
       ],
@@ -1740,7 +1766,9 @@ export function buildStart(rng: Rng): AreaData {
   // Zick-Zack, keine Knicke) - darum eine Catmull-Rom-Spline durch wenige
   // Stützpunkte statt linearer Segmente. 2 Kacheln breit; am Fluss die BRÜCKE.
   const geo = a.wasserLauf.geo;
-  const strasse: Array<[number, number]> = [[-0.10, 0.565], [0.22, 0.61], [0.52, 0.64], [0.80, 0.70], [1.10, 0.79]];
+  // R98: Ost-Austritt auf den Tabellenwert start.ost Weg 77% (=v0.77) gezogen,
+  // damit die Salzstrasse in wald_o.west durchläuft.
+  const strasse: Array<[number, number]> = [[-0.10, 0.565], [0.22, 0.61], [0.52, 0.64], [0.80, 0.71], [1.10, 0.77]];
   const strasseV = (u: number): number => {
     // Segment finden, dann Catmull-Rom (zentripetal-vereinfacht, gleichmäßige u-Abstände)
     let i = 1;
