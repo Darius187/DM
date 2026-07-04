@@ -1587,18 +1587,26 @@ interface OberweltCfg {
 // Tabelle. Fluss-Stutzen von jeder Fluss-Kreuzung nach innen (smin verschmilzt
 // sie mit dem Hauptfluss; am Rand treffen sie den NACHBARWERT exakt -> Fluss
 // laeuft durch) + die Weg-Anker (West/Ost), an denen die Salzstrasse ein-/austritt.
-interface RandKanten { flussStubs: WasserGeometrie['bahnen']; wegWestV: number | null; wegOstV: number | null; wegNordU: number | null; wegSuedU: number | null; }
+interface RandKanten { flussBahnen: WasserGeometrie['bahnen']; wegWestV: number | null; wegOstV: number | null; wegNordU: number | null; wegSuedU: number | null; }
+// R98b (Autorkritik "die Ufer matchen nicht"): der Fluss an JEDER Kante kommt
+// NUR aus der Tabelle - Mitte = Tabellenwert, Uferbreite FEST (KANTEN_HW). Beide
+// Nachbarn erzeugen so an der geteilten Kante ein IDENTISCHES Band -> linkes UND
+// rechtes Ufer matchen. Die Bahnen laufen von jeder Kanten-Kreuzung ins Zellen-
+// zentrum (Hub) und bilden damit das verbundene Fluss-Netz der Zelle.
+const KANTEN_HW = 0.014;   // halbe Uferbreite an der Kante (UV) - fuer ALLE gleich
+const OW_SMIN = 0.05;      // EINHEITLICHER smin (Carve + Render) fuer ALLE Oberweltkarten,
+                           // damit die Wasserbaender an den Naehten dieselbe Breite haben
 function randKanten(id: string): RandKanten {
   const k = OBERWELT_KANTEN[id];
-  if (!k) return { flussStubs: [], wegWestV: null, wegOstV: null, wegNordU: null, wegSuedU: null };
-  const stubs: WasserGeometrie['bahnen'] = [];
-  const stub = (ux: number, uy: number, tox: number, toy: number): void => { stubs.push({ punkte: [{ x: ux, y: uy, hw: 0.012 }, { x: (ux + tox) / 2, y: (uy + toy) / 2, hw: 0.013 }, { x: tox, y: toy, hw: 0.013 }] }); };
-  for (const c of k.west) if (c.feature === 'fluss') stub(-0.03, c.pos / 100, 0.5, c.pos / 100);
-  for (const c of k.ost) if (c.feature === 'fluss') stub(1.03, c.pos / 100, 0.5, c.pos / 100);
-  for (const c of k.nord) if (c.feature === 'fluss') stub(c.pos / 100, -0.03, c.pos / 100, 0.5);
-  for (const c of k.sued) if (c.feature === 'fluss') stub(c.pos / 100, 1.03, c.pos / 100, 0.5);
+  if (!k) return { flussBahnen: [], wegWestV: null, wegOstV: null, wegNordU: null, wegSuedU: null };
+  const bahnen: WasserGeometrie['bahnen'] = [];
+  const conn = (ux: number, uy: number): void => { bahnen.push({ punkte: [{ x: ux, y: uy, hw: KANTEN_HW }, { x: (ux + 0.5) / 2, y: (uy + 0.5) / 2, hw: KANTEN_HW }, { x: 0.5, y: 0.5, hw: KANTEN_HW + 0.002 }] }); };
+  for (const c of k.west) if (c.feature === 'fluss') conn(-0.03, c.pos / 100);
+  for (const c of k.ost) if (c.feature === 'fluss') conn(1.03, c.pos / 100);
+  for (const c of k.nord) if (c.feature === 'fluss') conn(c.pos / 100, -0.03);
+  for (const c of k.sued) if (c.feature === 'fluss') conn(c.pos / 100, 1.03);
   const w = (arr: typeof k.west) => { const f = arr.find((c) => c.feature === 'weg'); return f ? f.pos / 100 : null; };
-  return { flussStubs: stubs, wegWestV: w(k.west), wegOstV: w(k.ost), wegNordU: w(k.nord), wegSuedU: w(k.sued) };
+  return { flussBahnen: bahnen, wegWestV: w(k.west), wegOstV: w(k.ost), wegNordU: w(k.nord), wegSuedU: w(k.sued) };
 }
 
 // Gemeinsamer Oberwelt-Builder (Runde 72): Wiese, Wasser-Lauf (neues Overlay,
@@ -1616,11 +1624,13 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
     ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
     npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
   };
-  const verschm = 0.08;   // großzügige smin-Verschmelzung -> durchgehender Fluss, keine Lücken
+  const verschm = OW_SMIN;   // einheitlicher smin (R98b: gleiche Uferbreite an den Naehten)
   // R98: Randgeometrie aus der Kanten-Tabelle einspeisen (Fluss-Stutzen an den
   // Kreuzungen; Weg-Anker fuer die Salzstrasse) -> Uebergaenge zum Nachbarn.
   const rk = randKanten(cfg.id);
-  const geo: WasserGeometrie = { bahnen: [...cfg.geo.bahnen, ...rk.flussStubs], seen: cfg.geo.seen };
+  // Fluss aus der Tabelle (Kanten matchen); cfg.geo.bahnen nur noch fuer OPTIONALE
+  // interne Detail-Laeufe, die die Raender NICHT beruehren.
+  const geo: WasserGeometrie = { bahnen: [...rk.flussBahnen, ...cfg.geo.bahnen], seen: cfg.geo.seen };
 
   // Bäume nur, wenn NICHT blanko.
   if (!cfg.blanko) {
@@ -1696,7 +1706,7 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
 
   a.upPos = { x: 1 * TILE + 16, y: (pfadY[1] ?? Math.round(h * 0.5)) * TILE + 16 };
   a.downPos = { x: (w - 2) * TILE + 16, y: (pfadY[w - 2] ?? Math.round(h * 0.5)) * TILE + 16 };
-  a.wasserLauf = { geo, blut: false, begehbar: !solide, vollszene: cfg.vollszene };
+  a.wasserLauf = { geo, blut: false, begehbar: !solide, vollszene: cfg.vollszene, smink: OW_SMIN };
   a.gebackenerBoden = true;
   // AUFBAUPHASE (Autorwunsch R77): auch die neuen Oberweltkarten bleiben vorerst
   // friedlich - der Autor besichtigt die Karten; Wölfe/Gegner kommen später
@@ -1742,23 +1752,16 @@ export function buildStart(rng: Rng): AreaData {
   // die Karte an der OSTKANTE (v~0.44), der Hauptlauf kreuzt die Salzstraße
   // (Brücke) und mündet in den großen SEE unten (Mitte ~0.64/0.85, organischer
   // Umriss aus der SDF-Winkel-Verzerrung). Dazu der BACH von der Westkante.
+  // R98b: der Fluss an den KANTEN kommt aus der Tabelle (randKanten, feste
+  // Uferbreite) - so matchen die Ufer mit den Nachbarn (Autorkritik). Dazu ein
+  // interner Lauf vom Zentrum in den See (beruehrt die Raender NICHT).
   a.wasserLauf = {
     begehbar: true,
-    // Kleiner smin -> dünne, gewundene Läufe (bei 0.08 verschmelzen die Bögen zum
-    // Klotz - Autorbug "Fluss zu breit"). Optik UND Kollision nutzen denselben Wert.
-    smink: 0.02,
+    smink: OW_SMIN,
     geo: {
       bahnen: [
-        // Hauptfluss: von der Nordkante über die Gabelung, unter der Brücke
-        // hindurch in den See. Anschluss Nachbarkarte Nord: Austritt dort u~0.75.
-        { name: 'Hauptfluss', punkte: [{ x: 0.75, y: -0.03, hw: 0.012 }, { x: 0.70, y: 0.10, hw: 0.013 }, { x: 0.64, y: 0.28, hw: 0.014 }, { x: 0.57, y: 0.42, hw: 0.014 }, { x: 0.52, y: 0.55, hw: 0.015 }, { x: 0.505, y: 0.635, hw: 0.015 }, { x: 0.50, y: 0.72, hw: 0.015 }, { x: 0.55, y: 0.82, hw: 0.016 }] },
-        // Ost-Arm: zweigt an der Gabelung ab und verlässt die Karte nach OSTEN
-        // (Anschluss Nachbarkarte Ost: Eintritt dort v~0.44).
-        // R98: Ost-Austritt exakt auf den Tabellenwert start.ost Fluss 47% (=v0.47),
-        // damit er in wald_o.west (liest dieselbe Tabelle) durchläuft.
-        { name: 'Ost-Arm', punkte: [{ x: 0.64, y: 0.28, hw: 0.009 }, { x: 0.72, y: 0.30, hw: 0.010 }, { x: 0.79, y: 0.35, hw: 0.010 }, { x: 0.87, y: 0.42, hw: 0.011 }, { x: 1.03, y: 0.47, hw: 0.011 }] },
-        // Bach: dünner Zulauf von der Westkante, mündet von links in den See.
-        { name: 'Bach (West)', punkte: [{ x: -0.03, y: 0.82, hw: 0.006 }, { x: 0.15, y: 0.845, hw: 0.007 }, { x: 0.30, y: 0.865, hw: 0.007 }, { x: 0.47, y: 0.865, hw: 0.009 }] },
+        ...randKanten('start').flussBahnen,
+        { name: 'Zum See', punkte: [{ x: 0.5, y: 0.5, hw: KANTEN_HW }, { x: 0.56, y: 0.68, hw: 0.015 }, { x: 0.62, y: 0.82, hw: 0.016 }] },
       ],
       // EIN großer See unten rechts-mittig (die Ellipse der Skizze ist nur das
       // SYMBOL - der organische Umriss kommt aus der SDF-Winkel-Verzerrung).
@@ -1774,7 +1777,7 @@ export function buildStart(rng: Rng): AreaData {
   // im Shader-Overlay; jetzt kollidiert es konsistent und erscheint auf der
   // Minikarte. Der Weg wird darüber zur Brücke gelegt.
   for (let ty = 0; ty < h; ty++) for (let tx = 0; tx < w; tx++) {
-    if (sdWasser((tx + 0.5) / w, (ty + 0.5) / h, geo, 0.06) < 0) map[ty][tx] = T.WATER;
+    if (sdWasser((tx + 0.5) / w, (ty + 0.5) / h, geo, OW_SMIN) < 0) map[ty][tx] = T.WATER;
   }
   // R98: Ost-Austritt auf den Tabellenwert start.ost Weg 77% (=v0.77) gezogen,
   // damit die Salzstrasse in wald_o.west durchläuft.
@@ -1797,7 +1800,7 @@ export function buildStart(rng: Rng): AreaData {
       const v = (ty + 0.5) / h;
       // Im/über dem Wasser wird der Weg zur Brücke (etwas über die sichtbare
       // Wasserkante hinaus, u_shore=0.010, damit kein nasser Spalt bleibt).
-      map[ty][tx] = sdWasser(u, v, geo, 0.02) < 0.014 ? T.BRIDGE : T.PATH;
+      map[ty][tx] = sdWasser(u, v, geo, OW_SMIN) < 0.014 ? T.BRIDGE : T.PATH;
     }
   }
   // Spawn im Westen AUF der Salzstraße (führt den Spieler die Straße entlang).
@@ -1817,7 +1820,7 @@ export function buildStart(rng: Rng): AreaData {
     for (let tx = 0; tx < w; tx++) {
       if (map[ty][tx] !== T.GRASS) continue;
       const u = (tx + 0.5) / w, v = (ty + 0.5) / h;
-      if (sdWasser(u, v, geo, 0.02) < 0.03) continue;
+      if (sdWasser(u, v, geo, OW_SMIN) < 0.03) continue;
       const x = tx * TILE + 16, y = ty * TILE + 16;
       if (wegDist(x, y) < 150 || wegDist(x, y - 150) < 150) continue;   // Fuß UND Krone frei vom Weg (R79: mehr Luft)
       const d = dichteNoise(x, y), biom = biomAt(x, y);
@@ -1867,7 +1870,7 @@ export function buildStart(rng: Rng): AreaData {
       fx = 160 + rng.random() * (W - 320); fy = 160 + rng.random() * (H - 320);
       // v.a. im Fels-Biom, aber wie in dorfSim auch VEREINZELT überall (R86)
       ok = (felsNoise(fx, fy) > 0.6 || rng.random() < 0.3) && wegDist(fx, fy) > 120
-        && sdWasser(fx / W, fy / H, geo, 0.02) > 0.03;
+        && sdWasser(fx / W, fy / H, geo, OW_SMIN) > 0.03;
     }
     if (!ok) continue;
     // R82 (Autor "Felsformationen größer, natürlicher"): 3-5 Brocken ENG
@@ -1889,7 +1892,7 @@ export function buildStart(rng: Rng): AreaData {
   for (let c = 0; c < 6; c++) {
     for (let t = 0; t < 20; t++) {
       const fx = 200 + rng.random() * (W - 400), fy = 200 + rng.random() * (H - 400);
-      if (wegDist(fx, fy) > 150 && sdWasser(fx / W, fy / H, geo, 0.02) > 0.035) {
+      if (wegDist(fx, fy) > 150 && sdWasser(fx / W, fy / H, geo, OW_SMIN) > 0.035) {
         const ptx = Math.floor(fx / TILE), pty = Math.floor(fy / TILE);
         if (map[pty]?.[ptx] !== T.GRASS) continue;
         if (a.rocks.some((r2) => Math.hypot(r2.x - fx, r2.y - fy) < 90)) continue;
@@ -1925,12 +1928,9 @@ export function buildStart(rng: Rng): AreaData {
 export function buildWaldOst(rng: Rng): AreaData {
   return baueOberweltGebiet(rng, {
     id: 'wald_o', name: 'Dunkelwald', wolfXs: [34, 72, 104], baumGruppen: 200,
-    geo: {
-      bahnen: [
-        { punkte: [{ x: 0.50, y: -0.03, hw: 0.016 }, { x: 0.46, y: 0.40, hw: 0.018 }, { x: 0.52, y: 0.80, hw: 0.018 }, { x: 0.50, y: 1.03, hw: 0.016 }] },
-      ],
-      seen: [{ cx: 0.63, cy: 0.46, rx: 0.07, ry: 0.06 }],
-    },
+    // R98b: Fluss kommt aus der Tabelle (randKanten) - Kanten matchen mit dem
+    // Nachbarn. Hier nur der See als interne Detail-Geometrie.
+    geo: { bahnen: [], seen: [{ cx: 0.63, cy: 0.46, rx: 0.07, ry: 0.06 }] },
   });
 }
 
@@ -1943,12 +1943,7 @@ export function buildStadtNatur(rng: Rng): AreaData {
   return baueOberweltGebiet(rng, {
     id: 'stadt', name: 'Ravensmoor', wolfXs: [40, 96], baumGruppen: 45,
     label: { u: 0.22, v: 0.72, t: 'Mühlteich' },
-    geo: {
-      bahnen: [
-        { punkte: [{ x: 0.30, y: -0.03, hw: 0.024 }, { x: 0.27, y: 0.32, hw: 0.026 }, { x: 0.24, y: 0.58, hw: 0.028 }] },
-      ],
-      seen: [{ cx: 0.22, cy: 0.72, rx: 0.12, ry: 0.10 }],
-    },
+    geo: { bahnen: [], seen: [{ cx: 0.22, cy: 0.72, rx: 0.12, ry: 0.10 }] },   // Fluss aus Tabelle; See = Mühlteich
   });
 }
 
@@ -1959,16 +1954,14 @@ export function buildStadtNatur(rng: Rng): AreaData {
 export function buildWaldWest(rng: Rng): AreaData {
   return baueOberweltGebiet(rng, {
     id: 'wald_w', name: 'Dunkelwald', wolfXs: [28, 66, 100], baumGruppen: 210,
-    // Bach quer durch: West-Kante fluss 85.7% -> Ost-Kante (start) fluss 78.7%.
-    geo: { bahnen: [{ punkte: [{ x: -0.03, y: 0.857, hw: 0.013 }, { x: 0.5, y: 0.82, hw: 0.014 }, { x: 1.03, y: 0.787, hw: 0.013 }] }], seen: [] },
+    geo: { bahnen: [], seen: [] },   // Fluss (West 85.7% <-> Ost 78.7%) kommt aus der Tabelle
   });
 }
 
 export function buildWaldSuedOst(rng: Rng): AreaData {
   return baueOberweltGebiet(rng, {
     id: 'wald_se', name: 'Dunkelwald', wolfXs: [40, 90], baumGruppen: 185,
-    // Fluss quer: West-Kante (stadt) 81.7% -> Ost-Kante (Weltrand) 74.3%; See rechts.
-    geo: { bahnen: [{ punkte: [{ x: -0.03, y: 0.817, hw: 0.013 }, { x: 0.5, y: 0.78, hw: 0.014 }, { x: 1.03, y: 0.743, hw: 0.013 }] }], seen: [{ cx: 0.28, cy: 0.73, rx: 0.16, ry: 0.09 }] },
+    geo: { bahnen: [], seen: [{ cx: 0.28, cy: 0.73, rx: 0.16, ry: 0.09 }] },   // Fluss aus Tabelle; See rechts
   });
 }
 
@@ -1977,23 +1970,21 @@ export function buildWaldSuedOst(rng: Rng): AreaData {
 export function buildBurg(rng: Rng): AreaData {
   return baueOberweltGebiet(rng, {
     id: 'burg', name: 'Fürstenburg', wolfXs: [40, 92], baumGruppen: 150,
-    // West-Bach (31.7%) muendet in einen kleinen Teich; Ost-Kante (85.7%) via Rand-Stutzen.
-    geo: { bahnen: [{ punkte: [{ x: -0.03, y: 0.317, hw: 0.011 }, { x: 0.30, y: 0.40, hw: 0.013 }] }], seen: [{ cx: 0.34, cy: 0.42, rx: 0.09, ry: 0.07 }] },
+    geo: { bahnen: [], seen: [{ cx: 0.34, cy: 0.42, rx: 0.09, ry: 0.07 }] },   // Fluss aus Tabelle; kleiner Teich
   });
 }
 export function buildWaldNord(rng: Rng): AreaData {
   return baueOberweltGebiet(rng, {
     id: 'wald_n', name: 'Dunkelwald', wolfXs: [34, 74, 104], baumGruppen: 210,
-    // Fluss laeuft NORD (58.3%) -> SUED (72.9%, = start.nord) durch. Kein Weg.
-    geo: { bahnen: [{ punkte: [{ x: 0.583, y: -0.03, hw: 0.014 }, { x: 0.66, y: 0.5, hw: 0.015 }, { x: 0.729, y: 1.03, hw: 0.014 }] }], seen: [] },
+    geo: { bahnen: [], seen: [] },   // Fluss NORD 58.3% <-> SUED 72.9% aus der Tabelle; kein Weg
   });
 }
 export function buildWaldMitte(rng: Rng): AreaData {
   return baueOberweltGebiet(rng, {
     id: 'wald_m', name: 'Dunkelwald', wolfXs: [30, 70, 100], baumGruppen: 205,
-    // Fluss NORD (76.7%) -> SUED (55.3%, = wald_o.nord); Ost-Arm (47.1%) via Stutzen.
-    // Weg laeuft SENKRECHT: Nord 48.6% -> Sued 46.7% (= wald_o.nord Weg).
-    geo: { bahnen: [{ punkte: [{ x: 0.767, y: -0.03, hw: 0.013 }, { x: 0.62, y: 0.5, hw: 0.014 }, { x: 0.553, y: 1.03, hw: 0.013 }] }], seen: [] },
+    // Fluss (Nord 76.7% / Ost 47.1% / Sued 55.3%) + senkrechter Weg (48.6%/46.7%)
+    // kommen aus der Tabelle.
+    geo: { bahnen: [], seen: [] },
   });
 }
 
