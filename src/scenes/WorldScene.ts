@@ -3450,33 +3450,63 @@ export class WorldScene extends CombatScene {
   // Rand (Eckstücke entstehen automatisch, wo waagerecht auf senkrecht trifft).
   private palisadeTexturKey(mask: number): string {
     const key = `palisade_hoch_${mask}`;
-    if (!this.textures.exists(key)) {
-      // logische Kachel 32 breit x 64 hoch (unten Boden, oben Pfahlspitzen)
-      const c = document.createElement('canvas'); c.width = 32; c.height = 64;
-      const g = c.getContext('2d')!;
-      const boden = 60;   // Standlinie im Bild (Fuß der Pfähle)
-      // Kontaktschatten
-      g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(16, boden + 2, 13, 3, 0, 0, Math.PI * 2); g.fill();
-      const pfahl = (px: number, hoch: number): void => {
-        const oben = boden - hoch;
-        g.fillStyle = '#5a4326'; g.fillRect(px - 2.4, oben, 4.8, hoch);            // Schaft
-        g.fillStyle = '#6e5330'; g.fillRect(px - 2.4, oben, 2, hoch);             // Lichtkante
-        g.fillStyle = '#3a2c18'; g.beginPath(); g.moveTo(px - 2.4, oben); g.lineTo(px, oben - 4); g.lineTo(px + 2.4, oben); g.closePath(); g.fill();   // Spitze
-      };
-      // Querriegel (verbindet die Pfähle) - Höhe ~34
-      const wandOben = boden - 40;
-      // horizontale Verbindung (O/W): Pfahlreihe über die volle Breite
-      const hor = (mask & 2) || (mask & 8);
-      const ver = (mask & 1) || (mask & 4);
-      g.fillStyle = 'rgba(52,40,22,0.9)';
-      if (hor) g.fillRect(0, wandOben + 8, 32, 4);         // Handlauf quer
-      if (ver) g.fillRect(14, wandOben, 4, 40);            // Handlauf senkrecht (schmaler Streifen)
-      // Pfähle setzen
-      if (hor) { for (let px = 4; px <= 28; px += 6) pfahl(px, 38 + ((px * 7) % 6)); }
-      if (ver) { for (let py = 0; py < 3; py++) pfahl(16, 34 + py * 2); }
-      if (!hor && !ver) { pfahl(10, 38); pfahl(16, 42); pfahl(22, 38); }   // Einzelpfosten
-      this.textures.addCanvas(key, c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    if (this.textures.exists(key)) return key;
+    // R96 (Autor "sieht geleckt aus - mehr Struktur; vertikal ist zentral; keine
+    // saubere Eckverbindung"): höher aufgelöst (48x96), Pfähle als RUNDHÖLZER mit
+    // Zylinder-Schattierung, Maserung, Astknoten und rauer Spitze. Vertikale Wand
+    // = doppelte, versetzte Pfahlreihe (Tiefe statt Mittellinie). Ecke = dicker
+    // Eckpfosten, an dem beide Arme sitzen.
+    const W = 48, H = 96, SC = 1.5;   // logisch 32x64 -> hier 1.5x
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d')!;
+    const boden = 88;                 // Standlinie (nahe Bildunterkante = Fuß-Anker)
+    const N = mask & 1, E = mask & 2, S = mask & 4, Wd = mask & 8;
+    const hor = !!(E || Wd), ver = !!(N || S);
+    const rng = (seed: number): number => { const x = Math.sin(seed * 12.9898) * 43758.5453; return x - Math.floor(x); };
+    // ein Rundholz-Pfahl: Fuß bei (cx,footY), Höhe h, Radius r
+    const pfahl = (cx: number, footY: number, h: number, r: number, seed: number): void => {
+      const oben = footY - h;
+      // Zylinder-Schattierung quer (Licht von links)
+      const grd = g.createLinearGradient(cx - r, 0, cx + r, 0);
+      grd.addColorStop(0, '#3c2c17'); grd.addColorStop(0.28, '#7a5c33'); grd.addColorStop(0.5, '#654a29'); grd.addColorStop(0.8, '#4a3720'); grd.addColorStop(1, '#2f2313');
+      g.fillStyle = grd; g.fillRect(cx - r, oben, r * 2, h);
+      // Maserung: ein paar dunkle Längsstreifen
+      g.strokeStyle = 'rgba(40,28,14,0.5)'; g.lineWidth = 0.6;
+      for (let k = 0; k < 3; k++) { const gx = cx - r + r * 0.5 + rng(seed + k) * r; g.beginPath(); g.moveTo(gx, oben + 2); g.lineTo(gx + (rng(seed + k * 2) - 0.5) * 1.5, footY - 1); g.stroke(); }
+      // Astknoten
+      if (rng(seed) > 0.55) { const ky = oben + 6 + rng(seed * 3) * (h - 12); g.fillStyle = 'rgba(45,32,16,0.8)'; g.beginPath(); g.ellipse(cx + (rng(seed) - 0.5) * r, ky, 1.4, 2.0, 0, 0, Math.PI * 2); g.fill(); }
+      // angespitzte, raue Spitze
+      g.fillStyle = '#8a6a3c'; g.beginPath(); g.moveTo(cx - r, oben + 1); g.lineTo(cx, oben - r * 1.7); g.lineTo(cx + r, oben + 1); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(45,32,16,0.55)'; g.beginPath(); g.moveTo(cx + r * 0.15, oben + 1); g.lineTo(cx, oben - r * 1.7); g.lineTo(cx + r, oben + 1); g.closePath(); g.fill();
+      // Fußschatten am Boden
+      g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.ellipse(cx, footY, r * 1.1, 1.6, 0, 0, Math.PI * 2); g.fill();
+    };
+    // Boden-Kontaktschatten der ganzen Wand
+    g.fillStyle = 'rgba(0,0,0,0.26)'; g.beginPath(); g.ellipse(W / 2, boden + 3, W * 0.44, 5, 0, 0, Math.PI * 2); g.fill();
+    const stakeH = 46 * SC / 1.5 * 1.0;   // ~46px Pfahlhöhe
+    // Querriegel (Flechtwerk-Andeutung) hinter den Pfählen
+    const riegel = (y: number, x0: number, x1: number): void => { g.fillStyle = 'rgba(58,42,22,0.85)'; g.fillRect(x0, y, x1 - x0, 3); g.fillStyle = 'rgba(90,68,38,0.5)'; g.fillRect(x0, y, x1 - x0, 1); };
+    const eck = hor && ver;
+    if (hor) {
+      riegel(boden - 30, 0, W); riegel(boden - 14, 0, W);
+      for (let px = 5; px <= W - 5; px += 7) pfahl(px, boden, stakeH + rng(px) * 6 - 3, 3.4, px);
     }
+    if (ver) {
+      // Wand nach N/S: zwei versetzte Reihen (vorne/hinten) geben Tiefe/Breite.
+      riegel(boden - 22, W / 2 - 9, W / 2 + 9);
+      for (let i = 0; i < 5; i++) {
+        const fy = boden - 4 + i * 4;               // nach hinten leicht höher/kleiner
+        const hh = stakeH - i * 3;
+        pfahl(W / 2 - 5, fy, hh, 3.2, 100 + i);     // hintere Reihe
+        pfahl(W / 2 + 5, fy - 2, hh, 3.2, 200 + i); // vordere Reihe (versetzt)
+      }
+    }
+    if (eck) {
+      // kräftiger Eckpfosten am Treffpunkt der Arme
+      pfahl(W / 2, boden, stakeH + 12, 5, 999);
+    }
+    if (!hor && !ver) { pfahl(W / 2 - 6, boden, stakeH, 3.4, 1); pfahl(W / 2, boden + 2, stakeH + 4, 3.6, 2); pfahl(W / 2 + 6, boden, stakeH, 3.4, 3); }
+    this.textures.addCanvas(key, c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
     return key;
   }
 
