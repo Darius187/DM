@@ -28,7 +28,12 @@
     "gx": 2,
     "gy": 1,
     "nord": [],
-    "ost": [],
+    "ost": [
+      {
+        "feature": "weg",
+        "pos": 83.5
+      }
+    ],
     "sued": [
       {
         "feature": "fluss",
@@ -42,7 +47,12 @@
     "id": "wald_nw",
     "gx": 3,
     "gy": 1,
-    "nord": [],
+    "nord": [
+      {
+        "feature": "fluss",
+        "pos": 75.6
+      }
+    ],
     "ost": [],
     "sued": [
       {
@@ -54,7 +64,12 @@
         "pos": 76.7
       }
     ],
-    "west": [],
+    "west": [
+      {
+        "feature": "weg",
+        "pos": 83.5
+      }
+    ],
     "seen": null
   },
   {
@@ -62,6 +77,10 @@
     "gx": 4,
     "gy": 1,
     "nord": [
+      {
+        "feature": "weg",
+        "pos": 44.4
+      },
       {
         "feature": "fluss",
         "pos": 74.2
@@ -72,6 +91,10 @@
       {
         "feature": "fluss",
         "pos": 17.8
+      },
+      {
+        "feature": "weg",
+        "pos": 49.4
       }
     ],
     "west": [],
@@ -166,9 +189,17 @@
       {
         "feature": "fluss",
         "pos": 17.8
+      },
+      {
+        "feature": "weg",
+        "pos": 49.4
       }
     ],
     "ost": [
+      {
+        "feature": "weg",
+        "pos": 39.5
+      },
       {
         "feature": "fluss",
         "pos": 61.8
@@ -211,7 +242,12 @@
         "pos": 76.8
       }
     ],
-    "ost": [],
+    "ost": [
+      {
+        "feature": "weg",
+        "pos": 42
+      }
+    ],
     "sued": [
       {
         "feature": "weg",
@@ -219,6 +255,10 @@
       }
     ],
     "west": [
+      {
+        "feature": "weg",
+        "pos": 39.5
+      },
       {
         "feature": "fluss",
         "pos": 61.8
@@ -290,6 +330,10 @@
     ],
     "ost": [
       {
+        "feature": "fluss",
+        "pos": 47
+      },
+      {
         "feature": "weg",
         "pos": 77
       }
@@ -323,12 +367,20 @@
     ],
     "ost": [
       {
+        "feature": "weg",
+        "pos": 53
+      },
+      {
         "feature": "fluss",
         "pos": 81.7
       }
     ],
     "sued": [],
     "west": [
+      {
+        "feature": "fluss",
+        "pos": 47
+      },
       {
         "feature": "weg",
         "pos": 77
@@ -362,6 +414,10 @@
     ],
     "sued": [],
     "west": [
+      {
+        "feature": "weg",
+        "pos": 53
+      },
       {
         "feature": "fluss",
         "pos": 81.7

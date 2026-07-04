@@ -37,27 +37,35 @@ const out = await page.evaluate(() => {
   for (const key in name) { const [gx, gy] = key.split(',').map(Number); zellen[name[key]] = { id: name[key], gx, gy, nord: [], ost: [], sued: [], west: [], seen: null }; }
   const cellAt = (gx, gy) => name[`${gx},${gy}`] ? zellen[name[`${gx},${gy}`]] : null;
 
-  // eine gerade Grenze EINMAL abtasten (senkrechtes Band ±BAND). Rückgabe:
-  // Kreuzungen als % entlang [from,to], gemergte Wobbel.
+  // eine gerade Grenze EINMAL abtasten (senkrechtes Band ±BAND). R98d-Fix:
+  // Fluss (blau) und Weg (rot) werden UNABHÄNGIG erfasst - eine Position darf
+  // BEIDES sein (Kreuzungspunkt), und dünne 1px-Treffer bleiben erhalten (kein
+  // Mindestlängen-Filter mehr). So gehen dünne Flüsse nicht mehr verloren und
+  // Fluss+Weg am selben Punkt werden beide gefunden.
   const BAND = 8;
   const scanBorder = (vertical, linePos, from, to) => {
-    const len = to - from; const raw = []; let cur = null, start = 0;
-    for (let t = 0; t <= len; t++) {
-      let cls = null;
-      for (let dp = -BAND; dp <= BAND && cls !== 'weg'; dp++) {
-        const x = vertical ? linePos + dp : from + t;
-        const y = vertical ? from + t : linePos + dp;
-        const [r, gg, b] = px(x, y);
-        if (isRed(r, gg, b)) cls = 'weg'; else if (!cls && isBlue(r, gg, b)) cls = 'fluss';
-      }
-      if (cls !== cur) { if (cur) raw.push({ feature: cur, a: start, b: t - 1 }); cur = cls; start = t; }
+    const len = to - from;
+    const hatBlau = new Array(len + 1).fill(false), hatRot = new Array(len + 1).fill(false);
+    for (let t = 0; t <= len; t++) for (let dp = -BAND; dp <= BAND; dp++) {
+      const x = vertical ? linePos + dp : from + t;
+      const y = vertical ? from + t : linePos + dp;
+      const [r, gg, b] = px(x, y);
+      if (isRed(r, gg, b)) hatRot[t] = true;
+      if (isBlue(r, gg, b)) hatBlau[t] = true;
     }
-    if (cur) raw.push({ feature: cur, a: start, b: len });
-    let cr = raw.filter((r) => r.b - r.a >= 1).map((r) => ({ feature: r.feature, pos: ((r.a + r.b) / 2) / len * 100, gew: r.b - r.a + 1 }));
-    cr.sort((p, q) => p.pos - q.pos);
+    // Läufe je Feature getrennt (1px erlaubt)
+    const laeufe = (arr, feature) => {
+      const out = []; let s = -1;
+      for (let t = 0; t <= len; t++) { if (arr[t] && s < 0) s = t; else if (!arr[t] && s >= 0) { out.push({ feature, a: s, b: t - 1 }); s = -1; } }
+      if (s >= 0) out.push({ feature, a: s, b: len });
+      return out;
+    };
+    let cr = [...laeufe(hatBlau, 'fluss'), ...laeufe(hatRot, 'weg')].map((r) => ({ feature: r.feature, pos: ((r.a + r.b) / 2) / len * 100, gew: r.b - r.a + 1 }));
+    // Wobbel-Merge je Feature getrennt (nahe Läufe derselben Sorte zusammenfassen)
+    cr.sort((p, q) => p.feature === q.feature ? p.pos - q.pos : p.feature.localeCompare(q.feature));
     const merged = [];
     for (const k of cr) { const last = merged[merged.length - 1]; if (last && last.feature === k.feature && k.pos - last.posMax <= 10) { const gw = last.gew + k.gew; last.pos = (last.pos * last.gew + k.pos * k.gew) / gw; last.gew = gw; last.posMax = k.pos; } else merged.push({ feature: k.feature, pos: k.pos, gew: k.gew, posMax: k.pos }); }
-    return merged.map((m) => ({ feature: m.feature, pos: +m.pos.toFixed(1) }));
+    return merged.map((m) => ({ feature: m.feature, pos: +m.pos.toFixed(1) })).sort((a, b) => a.pos - b.pos);
   };
 
   const marks = [];
