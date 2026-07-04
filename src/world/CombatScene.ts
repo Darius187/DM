@@ -43,6 +43,7 @@ import { NOTIZEN } from '../data/texte';
 export interface Projectile {
   x: number; y: number; vx: number; vy: number; r: number; dmg: number;
   from: 'player' | 'enemy'; col: string; fire?: boolean; magie?: boolean; pierce?: boolean; arrow?: boolean;
+  vonTeam?: 'spieler' | 'feind';   // R99d: verbuendete Schuetzen treffen FEINDE statt den Spieler
   hitIds?: Set<number>; dead?: boolean;
   elem?: 'feuer' | 'eis' | 'schatten'; gemPower?: number; // Elementarpfeil (Runde 44)
   split?: number; springt?: number; fessel?: boolean;     // Bogen-Fähigkeiten (Runde 47)
@@ -931,6 +932,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Die Welt überschreibt das aus dem Area-Flag; ein zentraler Guard in
   // spawnEnemy neutralisiert damit ALLE Spawn-Pfade auf einmal.
   protected areaFriedlich(): boolean { return false; }
+
+  // R99d (P12-14): Host je Gegner. Die Welt gibt VERBUENDETEN (team 'spieler')
+  // und Feinden mit Verbuendeten-Zielen einen Proxy, dessen "Spieler" das
+  // jeweilige Kampfziel ist - die Dungeon-KI laeuft unveraendert.
+  protected enemyHost(_e: Enemy): EnemyHost { return this; }
+  // Feind-Geschoss trifft einen Verbuendeten (nur die Welt hat welche).
+  protected trifftVerbuendeten(_a: Enemy, _dmg: number): void { /* Welt */ }
   protected stepSound(): string { return 'schritte_stein'; }
 
   // R96: den Geh-Zyklus (pstep) einen Takt weiterdrehen - für die RTS-Klick-
@@ -1069,7 +1077,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected naechsterGegner(maxD = 1e9): Enemy | null {
     let best: Enemy | null = null, bd = maxD;
     for (const e of this.enemies) {
-      if (e.hp <= 0 || e.versteckt) continue;
+      if (e.hp <= 0 || e.versteckt || e.team === 'spieler') continue;
       const d = Math.hypot(e.x - this.px, e.y - this.py);
       if (d < bd) { bd = d; best = e; }
     }
@@ -1506,6 +1514,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   }
 
   damageEnemy(e: Enemy, dmg: number, kx = 0, ky = 0, col?: string | null, melee = true): void {
+    if (e.team === 'spieler') return;   // R99d: Verbuendete nehmen keinen Spieler-Schaden
     // Ausweichen (Runde 20): flinke Gegner entgehen Nahkampfhieben ab und
     // zu mit einem Schritt zur Seite - Nahkampf wird ein Tanz
     // Nur TIERE (Wolf/Ratte) weichen noch seitlich aus - Monster stehen und
@@ -1749,8 +1758,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
   }
 
-  spawnEnemyProjectile(x: number, y: number, vx: number, vy: number, dmg: number, col: string, pfeil = false): void {
-    this.projectiles.push({ x, y, vx, vy, r: 4, dmg, from: 'enemy', col, arrow: pfeil });
+  spawnEnemyProjectile(x: number, y: number, vx: number, vy: number, dmg: number, col: string, pfeil = false, vonTeam: 'spieler' | 'feind' = 'feind'): void {
+    this.projectiles.push({ x, y, vx, vy, r: 4, dmg, from: 'enemy', col, arrow: pfeil, vonTeam });
     // Abschuss räumlich hörbar (Runde 45): Pfeil/Zauber von der Seite pannt mit
     this.sfx.playAt(pfeil ? 'pfeil_schuss' : 'feuerball', x, y, 0.45);
   }
@@ -1768,7 +1777,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.fx.burst(e.x, e.y, 0x6a6258, 20, 180);
   }
 
-  spawnEnemy(type: EnemyTypeId, depth: number, x: number, y: number, elite = false): Enemy {
+  spawnEnemy(type: EnemyTypeId, depth: number, x: number, y: number, elite = false, erzwinge = false): Enemy {
     // Entklemmen (Runde 26): Spawns in Wänden/Altären hingen unsichtbar
     // fest - auf die nächste freie Kachel ausweichen (Ringsuche)
     if (this.isSolidAt(x, y)) {
@@ -1837,7 +1846,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Friedliche Karte: Gegner NICHT in die Welt nehmen (Sprite sofort weg,
     // nicht in enemies -> keine KI, kein Kampf). Rückgabeobjekt bleibt gültig,
     // damit Aufrufer (Namen setzen etc.) nicht brechen.
-    if (this.areaFriedlich()) { e.sprite.destroy(); e.hp = 0; return e; }
+    if (this.areaFriedlich() && !erzwinge) { e.sprite.destroy(); e.hp = 0; return e; }
     this.enemies.push(e);
     return e;
   }
@@ -2840,7 +2849,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // liegt halbtransparent darüber). Spieler-Eingabe/Bewegung bleibt aus.
   protected updateTodesszene(dt: number): void {
     // Leiche = letzte Spielerposition (px/py bleiben beim Tod stehen)
-    for (const e of [...this.enemies]) e.update(this, dt);
+    for (const e of [...this.enemies]) e.update(this.enemyHost(e), dt);
     this.separateEnemies();
     this.updateProjectiles(dt);
     this.fx.update(dt);
@@ -2942,7 +2951,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Gegner: erst das Flussfeld vom Spieler aus aktualisieren (Wegfindung)
     this.updateWegfeld(dt);
     for (const e of [...this.enemies]) {
-      e.update(this, dt);
+      e.update(this.enemyHost(e), dt);
       if (this.playerDead) return dt;
       // Brand-DoT (Runde 41, Feuerregen): tickt Schaden, während es brennt
       if (e.brennT > 0 && e.hp > 0) {
@@ -3106,6 +3115,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         }
         if (pr.dead) continue;
         for (const e of [...this.enemies]) {
+          if (e.team === 'spieler') continue;   // R99d: kein Friendly Fire
           if (Math.hypot(pr.x - e.x, pr.y - e.y) < pr.r + e.r) {
             if (pr.hitIds?.has(e.id)) continue;
             if (pr.pierce) (pr.hitIds ??= new Set()).add(e.id);
@@ -3122,6 +3132,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
             break;
           }
         }
+      } else if (pr.vonTeam === 'spieler') {
+        // R99d: VERBUENDETEN-Geschoss trifft Feinde (gleiches Dungeon-Projektil)
+        for (const e of [...this.enemies]) {
+          if (e.team === 'spieler' || e.hp <= 0) continue;
+          if (Math.hypot(pr.x - e.x, pr.y - e.y) < pr.r + e.r) { pr.dead = true; this.damageEnemy(e, pr.dmg, 0, 0, null, false); break; }
+        }
       } else if (Math.hypot(pr.x - this.px, pr.y - this.py) < pr.r + PLAYER.radius) {
         pr.dead = true;
         const result = resolveIncoming(this.combat, this.blockAngleOk(pr.x, pr.y));
@@ -3133,6 +3149,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         } else {
           this.hurtPlayer(pr.dmg);
           if (this.playerDead) return;
+        }
+      } else {
+        // R99d: Feind-Geschoss kann auch VERBUENDETE treffen
+        for (const e of [...this.enemies]) {
+          if (e.team !== 'spieler' || e.hp <= 0) continue;
+          if (Math.hypot(pr.x - e.x, pr.y - e.y) < pr.r + e.r) { pr.dead = true; this.trifftVerbuendeten(e, pr.dmg); break; }
         }
       }
     }

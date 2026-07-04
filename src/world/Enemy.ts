@@ -163,6 +163,11 @@ export class Enemy {
   private umwegT = 0;
   // Bewaffnete Gefallene (Runde 35): sichtbare Waffen-Figur + Magie-Geschoss
   figurName?: string;
+  // R99d (P12-14): Fraktion. 'spieler' = VERBUENDETER RTS-Kaempfer - laeuft mit
+  // exakt derselben Dungeon-KI (Schild/Parade/Bogen), aber sein "Spieler"-Ziel
+  // ist ueber den Proxy-Host der naechste FEIND (WorldScene.enemyHost).
+  team: 'feind' | 'spieler' = 'feind';
+  fokusZiel: Enemy | null = null;   // Angriffsbefehl der RTS-Steuerung (Verbuendete)
   magie = false;
   // Sichtbarer Figurname (mit Waffe, falls "Gefallener"), sonst der Typ
   figur(): string { return this.figurName ?? this.type; }
@@ -270,6 +275,7 @@ export class Enemy {
 
   hasLineOfSight(host: EnemyHost): boolean {
     const steps = 14;
+    if (this.fokusZiel && this.fokusZiel.hp <= 0) this.fokusZiel = null;   // R99d: erledigtes Befehlsziel vergessen
     const px = host.playerX(), py = host.playerY();
     for (let i = 1; i < steps; i++) {
       const t = i / steps;

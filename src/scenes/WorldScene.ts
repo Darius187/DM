@@ -3,7 +3,7 @@
 
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
-import { Enemy, angleToDir, angleToDir8 } from '../world/Enemy';
+import { Enemy, angleToDir, angleToDir8, type EnemyHost } from '../world/Enemy';
 import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildWaldWest, buildWaldSuedOst, buildBurg, buildWaldNord, buildWaldMitte, buildLager, buildStadt2, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn, type Abbaubar } from '../world/areagen';
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
@@ -2697,8 +2697,19 @@ export class WorldScene extends CombatScene {
       this.rtsHeldGewaehlt = false; this.rtsMoveZiel = null; this.rtsWahlRing?.clear();
       this.brichRtsSpawnAb();
       this.entferneRtsLauscher();
-      this.rtsBattle?.destroy(); this.rtsBattle = null;
-      this.logMsg('Schlachtfeld-Steuerung beendet.', '');
+      // R99d (P16): NAHTLOSER Moduswechsel - die Truppen bleiben und fuehren
+      // ihre Befehle WEITER aus (rtsBattle lebt, nur UI/Auswahl gehen zu).
+      // Entfernt wird die Schlacht erst beim Kartenwechsel oder [alle entfernen].
+      if (this.rtsBattle) { for (const u of this.rtsBattle.units) u.gewaehlt = false; this.rtsBattle.zeichneOverlay(); }
+      this.logMsg('Zurueck zur Helden-Steuerung - die Truppen fuehren ihre Befehle weiter aus.', '');
+      return;
+    }
+    if (this.rtsBattle) {
+      // Wiedereinstieg in den RTS-Modus: bestehende Schlacht weiterfuehren (P16)
+      this.setzeFreiKamera(true);
+      this.baueRtsLauscher();
+      this.baueRtsLeiste();
+      this.logMsg('Schlachtfeld-Steuerung wieder aktiv.', 'gold');
       return;
     }
     if (this.area.dark || this.area.innen) { this.logMsg('Die Schlachtfeld-Steuerung braucht freien Himmel.', ''); return; }
@@ -2713,6 +2724,20 @@ export class WorldScene extends CombatScene {
         const x = tx * TILE + 16, y = ty * TILE + 16;
         return team === 'spieler' ? !this.solidFuerHeld(x, y) : !this.isSolidAt(x, y);
       },
+      // R99d: Dungeon-Kampf-Anbindung - Verbuendete + Feind-Monster sind ECHTE Enemies
+      spawnAlly: (typ, x, y) => this.spawnVerbuendeter(typ, x, y),
+      spawnFeind: (typ, x, y) => {
+        const map: Record<string, { t: string; elite: boolean; tiefe: number }> = {
+          e_nah: { t: 'skelett', elite: false, tiefe: 2 }, e_bogen: { t: 'schuetze', elite: false, tiefe: 2 }, e_elite: { t: 'templer', elite: true, tiefe: 3 },
+        };
+        const m = map[typ] ?? { t: 'skelett', elite: false, tiefe: 2 };
+        const e = this.spawnEnemy(m.t as never, m.tiefe, x, y, m.elite, true);
+        e.aggro = 5000;   // Schlacht-Test: sofort kampfbereit
+      },
+      feinde: () => this.enemies.filter((e) => e.team !== 'spieler' && e.hp > 0),
+      istAktiv: (e) => this.enemies.includes(e),
+      entferne: (e) => { e.sprite?.destroy(); this.enemies = this.enemies.filter((o) => o !== e); },
+      entferneAlleFeinde: () => { for (const e of this.enemies) if (e.team !== 'spieler') e.sprite?.destroy(); this.enemies = this.enemies.filter((e) => e.team === 'spieler'); },
       lager: () => this.feldbauten.map((f) => ({ typ: f.id, x: f.x, y: f.y })),
     }, this.heldRef());
     this.rtsBattle.onFeedback = (t) => this.logMsg(t + '.', '');
@@ -2739,7 +2764,7 @@ export class WorldScene extends CombatScene {
   private baueRtsLauscher(): void {
     this.rtsPointerMove = (p) => {
       if (this.rtsSpawnGeist) this.rtsSpawnGeist.setPosition(p.x, p.y);
-      if (this.rtsBattle && !this.platziereModus && !this.rtsSpawnTyp) { const wp = this.cameras.main.getWorldPoint(p.x, p.y); this.rtsBattle.mausBewegt(wp.x, wp.y); }
+      if (this.rtsBattle && !this.platziereModus && !this.rtsSpawnTyp) { const wp = this.cameras.main.getWorldPoint(p.x, p.y); this.rtsBattle.mausBewegt(wp.x, wp.y); this.rtsBattle.hover = { x: wp.x, y: wp.y }; }
     };
     this.rtsPointerUp = (p) => {
       if (!this.rtsBattle || this.platziereModus) return;
@@ -2938,7 +2963,7 @@ export class WorldScene extends CombatScene {
     };
     c.add(this.add.text(F(8), y, 'Auf die Karte klicken zum Setzen', { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#6a5f4c' })); y += F(14);
     c.add(this.add.text(F(8), y, 'Eigene Truppen', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a', letterSpacing: 1 })); y += F(15);
-    for (const t of ['schild', 'nahkampf', 'bogen', 'heiler', 'reiter'] as RtsUnitTyp[]) knopf(t, 0x16220f);
+    for (const t of ['schild', 'nahkampf', 'bogen', 'reiter'] as RtsUnitTyp[]) knopf(t, 0x16220f);
     c.add(this.add.text(F(8), y, 'Feind-Monster', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a', letterSpacing: 1 })); y += F(15);
     for (const t of ['e_nah', 'e_bogen', 'e_elite'] as RtsUnitTyp[]) knopf(t, 0x221010);
     const z = this.rtsBattle?.zaehlung() ?? { eigene: 0, feind: 0 };
@@ -4265,6 +4290,8 @@ export class WorldScene extends CombatScene {
     for (const b of this.breakableEnts) b.img.destroy();
     this.breakableEnts = [];
     this.hittables = [];
+    // R99d: Schlacht endet beim Kartenwechsel (Enemy-Refs gehoeren zur alten Karte)
+    if (this.rtsBattle) { this.rtsBattle.destroy(); this.rtsBattle = null; if (this.rtsLeiste) { this.rtsLeiste.destroy(); this.rtsLeiste = null; this.entferneRtsLauscher(); this.setzeFreiKamera(false); } }
     for (const e of this.enemies) e.sprite?.destroy();
     this.enemies = [];
     for (const n of this.npcEnts) {
@@ -5193,7 +5220,7 @@ export class WorldScene extends CombatScene {
     }
     // Auto-Angriff auf den nächsten Gegner in Reichweite (Kampfkarten)
     let ziel: Enemy | null = null, bd = 46;
-    for (const e of this.enemies) { if (e.hp <= 0) continue; const dd = Math.hypot(e.x - this.px, e.y - this.py); if (dd < bd) { bd = dd; ziel = e; } }
+    for (const e of this.enemies) { if (e.hp <= 0 || e.team === 'spieler') continue; const dd = Math.hypot(e.x - this.px, e.y - this.py); if (dd < bd) { bd = dd; ziel = e; } }
     if (!this.rtsMoveZiel && ziel && this.rtsAttackCd <= 0) {
       this.pdir = Math.atan2(ziel.y - this.py, ziel.x - this.px);
       this.tryBlockEnd();           // zum Zuschlagen kurz die Deckung senken
@@ -5233,6 +5260,122 @@ export class WorldScene extends CombatScene {
       if (f?.offen) return false;
     }
     return true;
+  }
+
+  // === R99d (P12-14): RTS-Kampf = DUNGEON-Kampf =============================
+  // Verbuendete sind ECHTE Enemy-Instanzen (team 'spieler') mit Soldaten-Figur:
+  // dieselbe KI (Schild/Parade/Bogen), dieselben Projektile, dieselbe Wegfindung.
+  // Ihr "Spieler"-Ziel ist ueber den Proxy-Host der naechste FEIND; Feinde
+  // zielen auf den naechsten von {Held, Verbuendete}.
+  private kampfZiele = new Map<Enemy, Enemy | 'held' | null>();
+  private kampfZieleFrame = -1;
+  private zielFuer(e: Enemy): Enemy | 'held' | null {
+    if (this.kampfZieleFrame !== this.game.loop.frame) {
+      this.kampfZieleFrame = this.game.loop.frame;
+      this.kampfZiele.clear();
+    }
+    const memo = this.kampfZiele.get(e);
+    if (memo !== undefined) return memo;
+    let ziel: Enemy | 'held' | null = null;
+    if (e.team === 'spieler') {
+      if (e.fokusZiel && e.fokusZiel.hp > 0) ziel = e.fokusZiel;
+      else {
+        let bd = 420;
+        for (const o of this.enemies) { if (o.team === 'spieler' || o.hp <= 0) continue; const d = Math.hypot(o.x - e.x, o.y - e.y); if (d < bd) { bd = d; ziel = o; } }
+      }
+    } else {
+      // Feind: naechster von {Held, Verbuendete}
+      ziel = this.playerDead ? null : 'held';
+      let bd = this.playerDead ? 1e9 : Math.hypot(this.px - e.x, this.py - e.y);
+      for (const o of this.enemies) { if (o.team !== 'spieler' || o.hp <= 0) continue; const d = Math.hypot(o.x - e.x, o.y - e.y); if (d < bd) { bd = d; ziel = o; } }
+    }
+    this.kampfZiele.set(e, ziel);
+    return ziel;
+  }
+
+  private kampfHostCache = new WeakMap<Enemy, EnemyHost>();
+  protected override enemyHost(e: Enemy): EnemyHost {
+    // Ohne Verbuendete verhalten sich Feinde exakt wie bisher (schneller Pfad).
+    if (e.team !== 'spieler' && !this.enemies.some((o) => o.team === 'spieler' && o.hp > 0)) return this;
+    let h = this.kampfHostCache.get(e);
+    if (h) return h;
+    const s = this;
+    h = {
+      isSolidAt: (x, y) => s.isSolidAt(x, y),
+      playerX: () => { const z = s.zielFuer(e); return z === 'held' ? s.px : z ? z.x : e.x; },
+      playerY: () => { const z = s.zielFuer(e); return z === 'held' ? s.py : z ? z.y : e.y; },
+      playerR: () => { const z = s.zielFuer(e); return z === 'held' ? 12 : 11; },
+      playerDir: () => { const z = s.zielFuer(e); return z === 'held' ? s.pdir : 0; },
+      playerTot: () => { const z = s.zielFuer(e); return z === 'held' ? s.playerDead : false; },
+      enemyMeleeHit: (en, dmg) => {
+        const z = s.zielFuer(en);
+        if (z === 'held') s.enemyMeleeHit(en, dmg);
+        else if (z) { if (en.team === 'spieler') s.damageEnemy(z, dmg, 0, 0, null, true); else s.trifftVerbuendeten(z, dmg); }
+      },
+      spawnEnemyProjectile: (x, y, vx, vy, dmg, col, pfeil) => s.spawnEnemyProjectile(x, y, vx, vy, dmg, col, pfeil, e.team === 'spieler' ? 'spieler' : 'feind'),
+      addTelegraph: (x, y, r, t, dmg) => s.addTelegraph(x, y, r, t, dmg),
+      summonAdds: (en, n) => { if (en.team !== 'spieler') s.summonAdds(en, n); },
+      logMsg: (t, c) => s.logMsg(t, c),
+      playSound: (n, v) => s.playSound(n, v),
+      burstFx: (x, y, col, n, spd) => s.burstFx(x, y, col, n, spd),
+      verbuendeteNahe: (en, radius) => { let n = 0; for (const o of s.enemies) { if (o !== en && o.team === en.team && o.hp > 0 && Math.hypot(o.x - en.x, o.y - en.y) < radius) n++; } return n; },
+      begegnungsRuf: (en) => { if (en.team !== 'spieler') s.begegnungsRuf(en); },
+      wegRichtung: (x, y) => {
+        const z = s.zielFuer(e);
+        if (z === 'held') return s.wegRichtung(x, y);
+        if (!z || !s.rtsBattle) return null;
+        const wp = s.rtsBattle.wegPunkt(e.team === 'spieler' ? 'spieler' : 'feind', x, y, { x: z.x, y: z.y });
+        return wp ? Math.atan2(wp.y - y, wp.x - x) : null;
+      },
+    };
+    this.kampfHostCache.set(e, h);
+    return h;
+  }
+
+  // Verbuendeten spawnen: echter Dungeon-Gegner mit Soldaten-Figur + RTS-Werten.
+  spawnVerbuendeter(rtsTyp: RtsUnitTyp, x: number, y: number): Enemy | null {
+    const d = RTS_UNIT_TYP[rtsTyp];
+    const map: Partial<Record<RtsUnitTyp, { typ: string; figur: string; schild: boolean }>> = {
+      schild: { typ: 'skelett', figur: 'soldat', schild: true },
+      nahkampf: { typ: 'skelett', figur: 'soldat', schild: false },
+      bogen: { typ: 'schuetze', figur: 'bogensoldat', schild: false },
+      reiter: { typ: 'skelett', figur: 'soldat', schild: true },
+    };
+    const m = map[rtsTyp];
+    if (!m) return null;
+    const e = this.spawnEnemy(m.typ as never, 2, x, y, false, true);
+    if (e.hp <= 0) return null;
+    e.team = 'spieler';
+    e.figurName = m.figur;
+    e.schild = m.schild;
+    e.name = d.name;
+    e.hp = e.maxhp = d.hp;
+    e.dmg = d.dmg;
+    e.speed = d.speed;
+    e.aggro = 5000;   // Verbuendete "sehen" ihr Ziel immer (Befehle steuern sie)
+    e.jagdZiel = { x, y };   // ohne Befehl: Stellung halten
+    return e;
+  }
+
+  // Feind-Geschoss/-Hieb trifft einen Verbuendeten: leichte Parade-Abbildung
+  // (Schild faengt frontal), sonst Schaden + Tod (kein Loot, eigene Truppe).
+  protected override trifftVerbuendeten(a: Enemy, dmg: number): void {
+    if (a.hp <= 0) return;
+    if (a.blockT > 0 || (a.schild && Math.random() < 0.4)) {
+      this.fx.float(a.x, a.y - a.r - 8, 'GEBLOCKT', '#aab4c0');
+      this.sfx.play('block', 0.4);
+      a.blockT = 0;
+      return;
+    }
+    a.hp -= dmg;
+    a.hitFlash = 0.12;
+    if (a.hp <= 0) {
+      this.fx.burst(a.x, a.y, 0xd0c8b0, 12, 160);
+      this.sfx.playAt('tod_universal1', a.x, a.y, 0.6);
+      a.sprite?.destroy();
+      this.enemies = this.enemies.filter((o) => o !== a);
+      this.logMsg(`${a.name} ist gefallen.`, 'bad');
+    }
   }
 
   protected override areaDark(): boolean { return this.area?.dark ?? false; }

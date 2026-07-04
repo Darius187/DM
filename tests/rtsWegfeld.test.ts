@@ -2,7 +2,7 @@
 // wegPunkt() führt um eine Wand HERUM (durch die Lücke) statt in die Wand
 // (vorher Luftlinie -> Festhaken). Fake-Host mit 20x10-Gitter.
 import { describe, it, expect } from 'vitest';
-import { RtsBattle, type RtsHost, type HeldRef } from '../src/logic/rtsBattle';
+import { RtsBattle, type RtsHost } from '../src/logic/rtsBattle';
 
 const W = 20, H = 10, TILE = 32;
 // Wand bei tx=10 über die volle Höhe, EINZIGE Lücke bei ty=8
@@ -19,10 +19,14 @@ function fakeHost(): RtsHost {
     lager: () => [],
     gitter: () => ({ w: W, h: H }),
     begehbar: (tx, ty) => tx >= 0 && ty >= 0 && tx < W && ty < H && !wand(tx, ty),
+    spawnAlly: () => null,
+    spawnFeind: () => {},
+    feinde: () => [],
+    istAktiv: () => false,
+    entferne: () => {},
+    entferneAlleFeinde: () => {},
   };
 }
-const fakeHeld: HeldRef = { pos: () => ({ x: -999, y: -999 }), lebt: () => true, schaden: () => {}, naheKlick: () => false, setGewaehlt: () => {}, befehlMarsch: () => {}, befehlAngriff: () => {} };
-
 describe('RTS-Wegfindung = Dungeon-Wegfeld (P17)', () => {
   // RtsBattle ohne Phaser-Graphics konstruieren: gfx/fxg brauchen scene.add -
   // wir umgehen den Konstruktor und testen wegPunkt direkt am Prototyp.
