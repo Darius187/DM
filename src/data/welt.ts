@@ -109,3 +109,9 @@ export const WETTER = {
   regenAb: 0.15,                    // ab diesem Wert fällt sichtbarer Regen
   nassAuf: 0.15, nassAb: 0.01,      // Nässe: füllt schnell, trocknet langsam
 } as const;
+
+// Ufer-Schilf-Dichte (R95, Autorwunsch "das neue Schilf ist sehr dezent, darf
+// schon mehr rein - mach mir einen Regler"): 1 = bisheriger Stand, höhere Werte
+// dichter (mehr Kacheln + mehr Halme je Kachel). Der F10-Regler (Tab ANFANG)
+// stellt es LIVE nach, dieser Wert ist der Startwert. Autor nennt den Zielwert.
+export const SCHILF_DICHTE = 1;

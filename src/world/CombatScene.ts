@@ -1159,6 +1159,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Hook: die Welt aktualisiert HUD/Leiste nach dem Waffenwechsel.
   protected onWaffeGewechselt(): void { /* von WorldScene überschrieben */ }
 
+  // Y-Sortier-Bezugspunkt (R95): standardmäßig die Sprite-Mitte (py). Die Welt
+  // überschreibt beide auf den FUSSPUNKT, damit Held/Gegner gegen Bäume (die auf
+  // ihrem Stammfuß sortieren) korrekt vorne/hinten liegen (Kopf frei vor dem Stamm).
+  protected spielerTiefe(): number { return this.py; }
+  protected gegnerTiefe(_spr: Phaser.GameObjects.Sprite, grundY: number): number { return grundY; }
+
   // Hook: liegt der Zeiger über einem manuell gezeichneten UI (Licht-Werkbank)?
   // Dann KEIN Weltangriff (die Werkbank hat keine Phaser-Interaktiv-Objekte).
   protected zeigerAufUI(_ptr: Phaser.Input.Pointer): boolean { return false; }
@@ -3341,7 +3347,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // zeichneHeld überschreiben. Die Gegner werden unten weiter gezeichnet.
     if (!this.playerDead) {
       // Spieler normal zeichnen (Reit-Eröffnung entfernt, Runde 51 - Autorwunsch)
-      this.playerSprite.setPosition(this.px, this.py).setDepth(this.py);
+      this.playerSprite.setPosition(this.px, this.py).setDepth(this.spielerTiefe());
       const moving = this.keysDown['w'] || this.keysDown['a'] || this.keysDown['s'] || this.keysDown['d']
         || this.keysDown['arrowup'] || this.keysDown['arrowdown'] || this.keysDown['arrowleft'] || this.keysDown['arrowright'];
       // Schlag-Animation während des Schwungs (R54): die Phasen über die Zeit
@@ -3381,7 +3387,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       // transparent.
       const istSchatten = e.type === 'schatten';
       const wob = istSchatten ? Math.sin(e.wobble * 0.6) * 2.5 : Math.sin(e.wobble) * 1.5;
-      e.sprite.setPosition(e.x, e.y + wob).setDepth(e.y);
+      e.sprite.setPosition(e.x, e.y + wob).setDepth(this.gegnerTiefe(e.sprite, e.y));
       this.provider.applyFigure(e.sprite, e.figur(), e.dir, istSchatten ? 0 : e.step);
       if (istSchatten) e.sprite.setAlpha(0.72);
       else if (e.sprite.alpha !== 1) e.sprite.setAlpha(1);

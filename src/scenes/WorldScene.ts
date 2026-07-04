@@ -44,7 +44,7 @@ import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
 import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, type RtsFormation, type RtsBau } from '../data/rts';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
-import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, SCHILF_DICHTE, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, FLYOVER, tileNameAt } from '../world/tiles';
@@ -163,7 +163,8 @@ export class WorldScene extends CombatScene {
   // Fuß-verankerte Rotation, Böen-Phase aus der Position, stärker bei Regen.
   private windBaeume: Array<{ img: Phaser.GameObjects.Image; phase: number }> = [];
   // Ufer-Schilf (Runde 75, Test): schwankt stärker als die Bäume.
-  private windSchilf: Array<{ img: Phaser.GameObjects.Image; phase: number }> = [];
+  private windSchilf: Array<{ img: Phaser.GameObjects.Image; phase: number; hit?: { x: number; y: number; r: number; onHit: (fromAngle: number) => void } }> = [];
+  private baumFussCache = new Map<string, number>();   // R95: gemessener Stammfuß-Anteil je Baum-Textur (Origin-Y)
   // Wiesengras + Blumen (Runde 76, three.js-gebacken): mittleres Schwanken.
   private windGras: Array<{ img: Phaser.GameObjects.Image; phase: number; amp?: number }> = [];
   // Baum-Kontaktschatten (Runde 78): wandern und strecken sich mit dem
@@ -172,6 +173,7 @@ export class WorldScene extends CombatScene {
   private baumSchatten: Array<{ img: Phaser.GameObjects.Image; sx: number; sy: number; phase: number }> = [];
   private devBaumSkala?: number;   // F10-Override der Baum-Grundgröße (Dev)
   private devBewuchs = 1;          // F10-Bewuchs-Dichtefaktor (wirkt beim Kartenwechsel)
+  private devSchilfDichte = SCHILF_DICHTE;   // F10-Regler Ufer-Schilf-Dichte (live, R95)
   private heldNass = 0;            // 0..1: wie tief der Held im Wasser steht (Versink-Optik)
   // Pfützen am Weg (Runde 75): wachsen/schwinden mit der Boden-Nässe.
   private pfuetzen: Array<{ img: Phaser.GameObjects.Image; schwelle: number; cur: number; bw: number; bh: number }> = [];
@@ -2193,13 +2195,16 @@ export class WorldScene extends CombatScene {
         if (brueckeNah) continue;
         const u = (tx + 0.5) / a.w, vv = (ty + 0.5) / a.h;
         const sd = sdWasser(u, vv, geo, smink);
-        // R92 (Autor "übertrieben - kleiner, weniger"): schmaleres Ufer-Band
-        // und moderatere Beete, damit sich das Schilf ins Bild einfügt.
-        if (sd < -0.004 || sd > 0.010) continue;
+        // R92 (Autor "übertrieben - kleiner, weniger"): schmaleres Ufer-Band.
+        // R95 (Autor "darf schon mehr rein"): devSchilfDichte weitet das Band,
+        // senkt die Cluster-Schwelle und erhöht die Halme je Kachel (Regler).
+        const d = this.devSchilfDichte;
+        if (d <= 0) return;
+        if (sd < -0.004 || sd > 0.010 * Math.max(0.5, d)) continue;
         const cluster = Math.sin(tx * 0.53 + ty * 0.91) + Math.sin(tx * 0.19 - ty * 0.33);
-        if (cluster < 0.35) continue;
+        if (cluster < 0.35 - (d - 1) * 0.5) continue;
         const hash = (((tx * 73856093) ^ (ty * 83492791)) >>> 4) % 1000 / 1000;
-        const anzahl = 1 + (hash * 2 | 0);   // 1-2 Halme je Kachel
+        const anzahl = Math.max(1, Math.round((1 + (hash * 2 | 0)) * d));   // Halme je Kachel (Dichte-Regler)
         for (let k = 0; k < anzahl; k++) {
           const h2 = (((tx + k * 13) * 40503) ^ ((ty + k * 7) * 9277)) % 1000 / 1000;
           const hx = (h2 - 0.5) * 26, hy = (((ty + k * 3) * 25931) ^ (tx * 6151)) % 15 - 7;
@@ -2214,11 +2219,23 @@ export class WorldScene extends CombatScene {
           this.tileImages.push(img);
           // schilf-typisches Wiegen; NACHBAR-Versatz über die Position (keine
           // synchrone Fläche) - windSchilf schwankt stärker als Gras.
-          this.windSchilf.push({ img, phase: x * 0.05 + y * 0.03 + k * 0.7 });
-          this.macheZerlegbar(img, 16, 1);   // mit dem Schwert schnippelbar
+          const hit = this.macheZerlegbar(img, 16, 1);   // mit dem Schwert schnippelbar
+          this.windSchilf.push({ img, phase: x * 0.05 + y * 0.03 + k * 0.7, hit });
         }
       }
     }
+  }
+
+  // R95: Ufer-Schilf LIVE neu setzen, wenn der Autor den Dichte-Regler dreht -
+  // ohne die ganze Karte neu zu laden. Alte Halme entfernen, dann neu streuen.
+  private respawneSchilf(): void {
+    const alteImgs = new Set(this.windSchilf.map((s) => s.img));
+    const alteHits = new Set(this.windSchilf.map((s) => s.hit).filter(Boolean));
+    for (const s of this.windSchilf) s.img.destroy();
+    this.tileImages = this.tileImages.filter((t) => !alteImgs.has(t));
+    this.hittables = this.hittables.filter((h) => !alteHits.has(h));
+    this.windSchilf = [];
+    this.spawneUferSchilf(this.area);
   }
 
   // Wiesen-Bewuchs im "Dorf im Wald"-Stil (Autorwunsch R77: GENAU dieser Look):
@@ -2533,7 +2550,7 @@ export class WorldScene extends CombatScene {
     }
   }
 
-  private macheZerlegbar(img: Phaser.GameObjects.Image, r: number, fasern: number, material: MaterialId = 'fasern', blaetter = false, alsDrop = false): void {
+  private macheZerlegbar(img: Phaser.GameObjects.Image, r: number, fasern: number, material: MaterialId = 'fasern', blaetter = false, alsDrop = false): { x: number; y: number; r: number; onHit: (fromAngle: number) => void } {
     const hit = { x: img.x, y: img.y - img.displayHeight * 0.3, r, onHit: (ang: number) => {
       this.hittables = this.hittables.filter((h) => h !== hit);
       if (!img.active) return;
@@ -2549,6 +2566,7 @@ export class WorldScene extends CombatScene {
       }
     } };
     this.hittables.push(hit);
+    return hit;
   }
 
   // R91 (Autor "Busch zerfetzen wie bei Zelda"): beim Zerschlagen wirbeln viele
@@ -3652,6 +3670,7 @@ export class WorldScene extends CombatScene {
           if (key === 'groesse') this.devBaumSkala = (v / 0.85) * 9;
           if (key === 'bewuchs') this.devBewuchs = v;
         } });
+        cs.push({ kind: 'slider', label: 'Ufer-Schilf-Dichte (live)', min: 0, max: 3, step: 0.1, fmt: (v) => `${v.toFixed(1)}x`, get: () => this.devSchilfDichte, set: (v) => { this.devSchilfDichte = v; this.respawneSchilf(); } });
         cs.push({ kind: 'slider', label: 'Baumgröße (Kacheln, Karte lädt neu)', min: 5, max: 18, step: 0.5, get: () => this.devBaumSkala ?? this.area?.baumSkala ?? 11, set: (v) => { this.devBaumSkala = v; } });
         cs.push({ kind: 'button', label: () => 'Baumgröße anwenden (Karte neu laden)', onClick: () => { this.devKonsole?.toggle(); this.goArea(this.area.id, { x: this.px, y: this.py }); } });
         cs.push({ kind: 'button', label: () => 'Test: 3D-Pferd + Dorfbewohner (8 Ansichten)', onClick: () => { this.devKonsole?.toggle(); void this.zeigeFigurenTest(); } });
@@ -3873,6 +3892,33 @@ export class WorldScene extends CombatScene {
     return this.stadtplan.kacheln.find((k) => k.x === tx && k.y === ty);
   }
 
+  // R95: Origin-Y = der GEMESSENE Stammfuß einer Baum-Textur (0..1). Der Bake
+  // hat unter dem Stamm oft einen dünnen Wurzel-/Schatten-Faden und 4px
+  // Zuschnitt-Rand; auf die Bitmap-Unterkante zu ankern ließ den Stamm schweben.
+  // Wir suchen die unterste Zeile, in der die STAMM-Spalte (mittlere ~18%) noch
+  // Deckung hat - dort steht der Baum auf dem Boden. Einmal je Textur gemessen.
+  private baumFussAnteil(key: string): number {
+    const cached = this.baumFussCache.get(key);
+    if (cached !== undefined) return cached;
+    let anteil = 1;
+    try {
+      const src = this.textures.get(key).getSourceImage() as HTMLCanvasElement;
+      const cw = src.width, ch = src.height;
+      const ctx = src.getContext ? src.getContext('2d') : null;
+      if (ctx) {
+        const d = ctx.getImageData(0, 0, cw, ch).data;
+        const x0 = Math.floor(cw * 0.41), x1 = Math.ceil(cw * 0.59);
+        for (let y = ch - 1; y >= 0; y--) {
+          let hit = false;
+          for (let x = x0; x <= x1; x++) { if (d[(y * cw + x) * 4 + 3] > 40) { hit = true; break; } }
+          if (hit) { anteil = (y + 1) / ch; break; }
+        }
+      }
+    } catch { anteil = 0.98; }   // CORS/kein Canvas-Kontext: konservativer Näherungswert
+    this.baumFussCache.set(key, anteil);
+    return anteil;
+  }
+
   // EINE Kachel komplett zeichnen - genutzt vom Dorfaufbau UND vom
   // Live-Malen des Baukastens (Runde 25: vorher hatte refreshTile einen
   // eigenen, halben Pfad - Objekte erschienen klein, ohne Boden darunter
@@ -3985,7 +4031,11 @@ export class WorldScene extends CombatScene {
         // ganz unten UND der Stamm steckt 8px im Boden - Gras/Boden überlappen
         // die Stammbasis, nichts schwebt mehr.
         const fx = tx * TILE + 16, fy = ty * TILE + 24;
-        objImg.setOrigin(0.5, 1);
+        // R95 (Autor "Bäume schweben leicht über dem Boden"): NICHT die Bitmap-
+        // Unterkante ankern - manche Bakes haben unter dem Stammfuß einen dünnen
+        // Wurzel-/Schatten-Faden + 4px Zuschnitt-Rand (baum_0_0: 18px). Der Anker
+        // sitzt auf dem GEMESSENEN Stammfuß, damit der Stamm auf dem Boden steht.
+        objImg.setOrigin(0.5, this.baumFussAnteil(obj));
         objImg.setPosition(fx, fy);
         objImg.setDisplaySize(hoehe * aspekt, hoehe);
         // 1:1-SCHATTEN (Autor R83, wie die Anfangskarte): DIESELBE Baum-Textur,
@@ -4688,6 +4738,17 @@ export class WorldScene extends CombatScene {
     // Baukasten/Haus-Justierung: die Maus baut, sie kämpft nicht
     if (this.baukastenPanel || this.hausEditAn) return true;
     return this.hud?.klickBlockiert(ptr) ?? false;
+  }
+
+  // R95 (Autor "Stamm verdeckt den Kopf, obwohl der Held davorsteht"): Held und
+  // Gegner sortieren auf ihrem FUSSPUNKT (Sprite-Unterkante), nicht auf der Mitte.
+  // Bäume sortieren auf ihrem Stammfuß - so liegt der Held VOR dem Stamm (Kopf
+  // frei), sobald seine Füße unter dem Stammfuß stehen, und dahinter, wenn nicht.
+  protected override spielerTiefe(): number {
+    return this.py + this.playerSprite.displayHeight * (1 - this.playerSprite.originY);
+  }
+  protected override gegnerTiefe(spr: Phaser.GameObjects.Sprite, grundY: number): number {
+    return grundY + spr.displayHeight * (1 - spr.originY);
   }
 
   protected override areaDark(): boolean { return this.area?.dark ?? false; }
