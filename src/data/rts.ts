@@ -65,7 +65,8 @@ export const RTS_BAUTEN: ReadonlyArray<RtsBau> = [
   { id: 'lagerfeuer', name: 'Lagerfeuer', kosten: { holz: 3, stein: 1 }, frei: true, beschreibung: 'Wärme und Licht - Rastpunkt der Truppe' },
   { id: 'standarte', name: 'Standarte', kosten: { holz: 4, fasern: 2 }, frei: true, beschreibung: 'Sammelpunkt des Banners - hebt die Moral im Umkreis' },
   { id: 'palisade', name: 'Palisade', kosten: { holz: 5 }, frei: true, beschreibung: 'Angespitzte 3-m-Pfähle - sperrt eine Kachel (ziehbar)' },
-  { id: 'wachturm', name: 'Wachturm', kosten: { holz: 20, stein: 8 }, frei: true, beschreibung: 'Weite Sicht und Schussfeld - hält eine Stellung' },
+  { id: 'wachturm', name: 'Wachturm', kosten: { holz: 20, stein: 8 }, frei: true, beschreibung: 'Weite Sicht und Schussfeld - Bogenschütze hoch = mehr Reichweite' },
+  { id: 'tor', name: 'Tor', kosten: { holz: 12 }, frei: true, beschreibung: 'Verschließbarer Durchlass in der Palisadenreihe' },
   { id: 'lazarett', name: 'Lazarett-Zelt', kosten: { holz: 14, fasern: 10, schafgarbe: 4 }, frei: true, beschreibung: 'Der Feldscher verbindet hier Verwundete' },
   { id: 'zelt', name: 'Zelt', kosten: { holz: 10, fasern: 6 }, frei: true, beschreibung: 'Rast für die Truppe zwischen den Gefechten' },
 ];
@@ -79,7 +80,7 @@ export const RTS_HELD = {
 
 // Feldbau-Lebenspunkte + Reparatur/Abbau (R94). Werte justierbar.
 export const BAU_HP: Record<string, number> = {
-  lagerfeuer: 40, standarte: 60, palisade: 120, wachturm: 220, lazarett: 130, zelt: 90,
+  lagerfeuer: 40, standarte: 60, palisade: 120, tor: 160, wachturm: 220, lazarett: 130, zelt: 90,
 };
 export const BAU_REPARATUR = {
   proAktionFrac: 0.34,   // je Reparatur ~1/3 der maxHP zurück

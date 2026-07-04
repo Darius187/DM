@@ -2670,7 +2670,7 @@ export class WorldScene extends CombatScene {
   private platziereModus: { id: string; kosten: Record<string, number>; bauzeitS: number } | null = null;
   private platzierGeist: Phaser.GameObjects.Container | null = null;
   private baustellen: Array<{ id: string; x: number; y: number; t: number; dauer: number; img: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics }> = [];
-  private readonly BAUZEIT: Record<string, number> = { lagerfeuer: 3, standarte: 2.5, palisade: 4, wachturm: 7, lazarett: 6, zelt: 4 };
+  private readonly BAUZEIT: Record<string, number> = { lagerfeuer: 3, standarte: 2.5, palisade: 4, tor: 5, wachturm: 7, lazarett: 6, zelt: 4 };
 
   private toggleRtsModus(): void {
     if (this.rtsLeiste) {
@@ -3109,30 +3109,103 @@ export class WorldScene extends CombatScene {
   // Zelt. Prozedural, y-sortiert. Lebenspunkte/Menü folgen im RTS-Bau-Ausbau.
   private spawneFeldbau(id: string, x: number, y: number): Phaser.GameObjects.Image {
     const key = `feldbau_${id}`;
-    if (!this.textures.exists(key)) {
-      const c = document.createElement('canvas'); c.width = 48; c.height = 56;
-      const g = c.getContext('2d')!;
-      g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(24, 52, 18, 5, 0, 0, Math.PI * 2); g.fill();
-      if (id === 'wachturm') {
-        g.strokeStyle = '#6a5030'; g.lineWidth = 3;
-        g.beginPath(); g.moveTo(12, 52); g.lineTo(18, 14); g.moveTo(36, 52); g.lineTo(30, 14); g.moveTo(14, 38); g.lineTo(34, 38); g.moveTo(15, 28); g.lineTo(33, 28); g.stroke();
-        g.fillStyle = '#7a5c34'; g.fillRect(14, 8, 20, 10);                 // Plattform
-        g.fillStyle = '#5a4426'; g.fillRect(13, 4, 22, 5);
-        g.fillStyle = '#3a2c18'; g.fillRect(16, -2, 16, 6);                 // Dach
-      } else if (id === 'lazarett') {
-        g.fillStyle = '#d8cfc0'; g.beginPath(); g.moveTo(24, 6); g.lineTo(44, 50); g.lineTo(4, 50); g.closePath(); g.fill();   // Zeltbahn
-        g.fillStyle = 'rgba(0,0,0,0.2)'; g.beginPath(); g.moveTo(24, 6); g.lineTo(24, 50); g.lineTo(4, 50); g.closePath(); g.fill();
-        g.fillStyle = '#b02a2a'; g.fillRect(21, 26, 6, 18); g.fillRect(15, 32, 18, 6);   // rotes Kreuz
-      } else {
-        g.fillStyle = '#8a7a52'; g.beginPath(); g.moveTo(24, 10); g.lineTo(42, 50); g.lineTo(6, 50); g.closePath(); g.fill();  // Zelt
-        g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.moveTo(24, 10); g.lineTo(24, 50); g.lineTo(6, 50); g.closePath(); g.fill();
-        g.fillStyle = '#3a2c18'; g.beginPath(); g.moveTo(20, 50); g.lineTo(24, 30); g.lineTo(28, 50); g.closePath(); g.fill();  // Eingang
-      }
-      this.textures.addCanvas(key, c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
-    }
-    const img = this.add.image(x, y, key).setOrigin(0.5, 0.92).setDepth(y);
+    if (!this.textures.exists(key)) this.textures.addCanvas(key, this.macheFeldbauBild(id))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    // R96: der Wachturm RAGT über die Palisade (2 Kacheln) hinaus - er wird höher
+    // skaliert, damit ein Schütze oben die Mauer überblickt.
+    const img = this.add.image(x, y, key).setOrigin(0.5, 0.94).setDepth(y);
+    if (id === 'wachturm') img.setDisplaySize(52, 104);      // ~3,5 Kacheln hoch, überragt die 2-Kachel-Palisade
+    else if (id === 'tor') img.setDisplaySize(40, 64);       // so hoch wie die Palisade
     this.tileImages.push(img);
     return img;
+  }
+
+  // R96 (Autor "Zelte schäbig, Turm zu klein, ich brauche ein Tor"): Feldbauten
+  // als gemalte Canvas-Bilder - historisch anmutende Zelte, ein hoher hölzerner
+  // Wachturm mit Plattform/Brüstung/Dach und ein Palisaden-Tor mit Torflügeln.
+  private macheFeldbauBild(id: string): HTMLCanvasElement {
+    if (id === 'wachturm') return this.macheWachturmBild();
+    if (id === 'tor') return this.macheTorBild();
+    if (id === 'lazarett') return this.macheZeltBild(true);
+    return this.macheZeltBild(false);
+  }
+
+  private macheWachturmBild(): HTMLCanvasElement {
+    const c = document.createElement('canvas'); c.width = 72; c.height = 150; const g = c.getContext('2d')!;
+    const cx = 36;
+    g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(cx, 145, 26, 6, 0, 0, Math.PI * 2); g.fill();
+    // vier gespreizte Beine (Rundholz-Schattierung)
+    const bein = (x0: number, x1: number): void => {
+      const grd = g.createLinearGradient(x1 - 3, 0, x1 + 3, 0); grd.addColorStop(0, '#3c2c17'); grd.addColorStop(0.5, '#6a5030'); grd.addColorStop(1, '#2f2313');
+      g.strokeStyle = grd; g.lineWidth = 5; g.beginPath(); g.moveTo(x0, 144); g.lineTo(x1, 60); g.stroke();
+    };
+    bein(10, 24); bein(62, 48); bein(24, 30); bein(48, 42);
+    // Kreuz-Verstrebungen
+    g.strokeStyle = '#5a4426'; g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(14, 118); g.lineTo(58, 118); g.moveTo(20, 92); g.lineTo(52, 92); g.stroke();
+    g.strokeStyle = 'rgba(58,44,24,0.7)'; g.lineWidth = 1.8;
+    g.beginPath(); g.moveTo(14, 118); g.lineTo(52, 92); g.moveTo(58, 118); g.lineTo(20, 92); g.stroke();
+    // Plattform + Brüstung
+    g.fillStyle = '#6a4f2c'; g.fillRect(16, 52, 40, 10);
+    g.fillStyle = '#7d5f38'; g.fillRect(16, 52, 40, 3);
+    g.fillStyle = '#5a4426'; for (let bx = 18; bx < 56; bx += 7) g.fillRect(bx, 40, 4, 14);   // Brüstungspfosten
+    g.fillStyle = '#6a5030'; g.fillRect(16, 40, 40, 3);
+    // Kegeldach
+    g.fillStyle = '#3a2c18'; g.beginPath(); g.moveTo(cx, 14); g.lineTo(58, 42); g.lineTo(14, 42); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.moveTo(cx, 14); g.lineTo(58, 42); g.lineTo(cx, 42); g.closePath(); g.fill();
+    g.fillStyle = '#7a1f1f'; g.fillRect(cx - 1, 6, 2, 10); g.beginPath(); g.moveTo(cx + 1, 6); g.lineTo(cx + 11, 9); g.lineTo(cx + 1, 12); g.closePath(); g.fill();  // Wimpel
+    return c;
+  }
+
+  private macheTorBild(): HTMLCanvasElement {
+    const c = document.createElement('canvas'); c.width = 60; c.height = 96; const g = c.getContext('2d')!;
+    const boden = 88;
+    g.fillStyle = 'rgba(0,0,0,0.28)'; g.beginPath(); g.ellipse(30, boden + 3, 26, 5, 0, 0, Math.PI * 2); g.fill();
+    const pfosten = (px: number): void => {
+      const grd = g.createLinearGradient(px - 6, 0, px + 6, 0); grd.addColorStop(0, '#3c2c17'); grd.addColorStop(0.45, '#6e5330'); grd.addColorStop(1, '#2f2313');
+      g.fillStyle = grd; g.fillRect(px - 6, 24, 12, boden - 24);
+      g.fillStyle = '#8a6a3c'; g.beginPath(); g.moveTo(px - 6, 24); g.lineTo(px, 15); g.lineTo(px + 6, 24); g.closePath(); g.fill();   // Spitze
+    };
+    pfosten(9); pfosten(51);
+    // Torbalken oben (Sturz)
+    g.fillStyle = '#5a4326'; g.fillRect(3, 26, 54, 8); g.fillStyle = '#6e5330'; g.fillRect(3, 26, 54, 2);
+    // zwei Torflügel (Bretter + Beschläge)
+    const fluegel = (x0: number, x1: number): void => {
+      g.fillStyle = '#4a3a22'; g.fillRect(x0, 36, x1 - x0, boden - 36);
+      g.strokeStyle = 'rgba(30,22,12,0.6)'; g.lineWidth = 1;
+      for (let bx = x0 + 4; bx < x1; bx += 5) { g.beginPath(); g.moveTo(bx, 38); g.lineTo(bx, boden - 2); g.stroke(); }
+      g.strokeStyle = '#2c2010'; g.lineWidth = 2; g.beginPath(); g.moveTo(x0, 44); g.lineTo(x1, 60); g.moveTo(x0, 70); g.lineTo(x1, 84); g.stroke();   // Diagonalstreben
+      g.fillStyle = '#2a2010'; g.beginPath(); g.arc((x0 + x1) / 2, 62, 2, 0, Math.PI * 2); g.fill();   // Ring
+    };
+    fluegel(15, 30); fluegel(30, 45);
+    return c;
+  }
+
+  // Historisch anmutende Feldzelte (First-/Firstgiebelzelt mit Streifenbahn,
+  // Zeltstange, Wimpel, Abspannseilen). lazarett = mit rotem Kreuz.
+  private macheZeltBild(lazarett: boolean): HTMLCanvasElement {
+    const c = document.createElement('canvas'); c.width = 72; c.height = 60; const g = c.getContext('2d')!;
+    const boden = 54, cx = 36;
+    g.fillStyle = 'rgba(0,0,0,0.26)'; g.beginPath(); g.ellipse(cx, boden + 2, 30, 5, 0, 0, Math.PI * 2); g.fill();
+    // Abspannseile + Heringe
+    g.strokeStyle = 'rgba(60,48,30,0.7)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(10, boden); g.lineTo(4, boden + 3); g.moveTo(62, boden); g.lineTo(68, boden + 3); g.stroke();
+    // Zeltkörper: First-/Giebelzelt, helle Leinenbahn mit Schattenseite
+    const stoff = lazarett ? '#e6ddca' : '#d8c69a';
+    const schatten = lazarett ? '#c3b89f' : '#b09873';
+    g.fillStyle = stoff; g.beginPath(); g.moveTo(cx, 8); g.lineTo(64, boden); g.lineTo(8, boden); g.closePath(); g.fill();
+    g.fillStyle = schatten; g.beginPath(); g.moveTo(cx, 8); g.lineTo(64, boden); g.lineTo(cx, boden); g.closePath(); g.fill();   // rechte Hälfte im Schatten
+    // Streifen (mittelalterliche Bahnen)
+    g.strokeStyle = lazarett ? 'rgba(150,140,120,0.35)' : 'rgba(120,60,40,0.35)'; g.lineWidth = 2;
+    for (let s = -3; s <= 3; s++) { const bx = cx + s * 8; g.beginPath(); g.moveTo(cx, 10); g.lineTo(bx * 0.5 + cx * 0.5 + (bx - cx) * 0.9, boden); g.stroke(); }
+    // Firstbalken + Zeltstange-Spitze mit Kugel
+    g.fillStyle = '#5a4630'; g.fillRect(cx - 1, 4, 2, 6);
+    g.fillStyle = '#8a6f3c'; g.beginPath(); g.arc(cx, 4, 2.2, 0, Math.PI * 2); g.fill();
+    // Eingang (aufgeschlagene Plane, dunkel)
+    g.fillStyle = 'rgba(40,30,18,0.85)'; g.beginPath(); g.moveTo(cx - 6, boden); g.lineTo(cx, boden - 20); g.lineTo(cx + 6, boden); g.closePath(); g.fill();
+    g.fillStyle = stoff; g.beginPath(); g.moveTo(cx - 6, boden); g.lineTo(cx - 9, boden - 12); g.lineTo(cx - 5, boden); g.closePath(); g.fill();   // zurückgeschlagene Plane
+    if (lazarett) { g.fillStyle = '#b02a2a'; g.fillRect(cx - 2 + 12, 22, 5, 16); g.fillRect(cx - 8 + 12, 28, 17, 5); }   // rotes Kreuz auf der Bahn
+    else { g.fillStyle = '#7a1f1f'; g.fillRect(cx - 1, -2, 2, 7); g.beginPath(); g.moveTo(cx + 1, -2); g.lineTo(cx + 9, 0); g.lineTo(cx + 1, 3); g.closePath(); g.fill(); }   // Wimpel auf dem Mannschaftszelt
+    return c;
   }
 
   // Banner-Standarte: Stange + wehender Wimpel (Canvas), Moral-Anker im Umkreis
