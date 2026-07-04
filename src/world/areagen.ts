@@ -1766,6 +1766,12 @@ export function buildStart(rng: Rng): AreaData {
   // Zick-Zack, keine Knicke) - darum eine Catmull-Rom-Spline durch wenige
   // Stützpunkte statt linearer Segmente. 2 Kacheln breit; am Fluss die BRÜCKE.
   const geo = a.wasserLauf.geo;
+  // R98: Wasser als T.WATER carven (wie baueOberweltGebiet) - vorher lag es nur
+  // im Shader-Overlay; jetzt kollidiert es konsistent und erscheint auf der
+  // Minikarte. Der Weg wird darüber zur Brücke gelegt.
+  for (let ty = 0; ty < h; ty++) for (let tx = 0; tx < w; tx++) {
+    if (sdWasser((tx + 0.5) / w, (ty + 0.5) / h, geo, 0.06) < 0) map[ty][tx] = T.WATER;
+  }
   // R98: Ost-Austritt auf den Tabellenwert start.ost Weg 77% (=v0.77) gezogen,
   // damit die Salzstrasse in wald_o.west durchläuft.
   const strasse: Array<[number, number]> = [[-0.10, 0.565], [0.22, 0.61], [0.52, 0.64], [0.80, 0.71], [1.10, 0.77]];

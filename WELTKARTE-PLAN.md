@@ -144,3 +144,45 @@ Reihen gy 1..3 (gy0 = leer/Kloster-Zeile). Siehe Tabelle oben im Dokument.
 gx0..5 × gy: burg(0,3) · wald_w(1,3) · [hochland(2,1) wald_n(2,2) start(2,3)] ·
 [wald_nw(3,1) wald_m(3,2) wald_o(3,3)] · [wald_ne(4,1) lager(4,2) stadt(4,3)] ·
 [kloster(5,0) schlacht(5,1) stadt2(5,2) wald_se(5,3)].
+
+---
+
+## REZEPT "von Skizzen-Zelle zu verbundener Kartengeometrie" (R98, Prompt-1 fertig)
+
+Das Uebergabe-System steht und ist an start<->wald_o bewiesen. So baut Opus die
+restlichen Huellen nach DEMSELBEN Muster:
+
+1. **Extraktion** (einmalig / bei Skizzen-Aenderung): `node scripts/_karte_extrakt.mjs`
+   liest `reference/ravenkarte.png` und schreibt `reference/ravenkarte-kanten-
+   tabelle.json` (+ Overlay). Jede Grenze wird EINMAL abgetastet (beide Nachbarn
+   = derselbe Wert); Fluss (blau) und Weg (rot) unabhaengig, auch am selben Punkt.
+   Kontrolle: `_karte_audit.mjs` (Zeilen-Zoom) / `_karte_zoom.mjs` (freier Zoom).
+2. **Autoritative Tabelle**: aus der JSON wird `src/data/oberweltKanten.ts`
+   (`OBERWELT_KANTEN`, Kreuzungen in % der Kantenlaenge) generiert. Invariante:
+   `A.ost == B.west`, `A.sued == B.nord` (Test `tests/oberweltKanten.test.ts`).
+   Helfer: `kantenPixel(id, w, h)` (% -> Weltpixel), `nachbarId(id, richtung)`.
+3. **Builder liest die Tabelle**: `baueOberweltGebiet` ruft `randKanten(id)` ->
+   Fluss-Stutzen von jeder Fluss-Kreuzung nach innen (smin verschmilzt mit dem
+   Hauptfluss) + Salzstrasse an den Weg-Kreuzungen (West- -> Ost-Anker). Ein
+   eigener Builder (wie `buildStart`) zieht seine Rand-Endpunkte exakt auf die
+   Tabellenwerte. -> Randgeometrie laeuft zum Nachbarn durch.
+4. **Verifizieren**: eine Verbindungs-Pruefung wie `tests/oberweltVerbindung.test.ts`
+   (Fluss+Weg queren die geteilte Kante auf gleicher Hoehe). Optik-Beleg:
+   `reference/ravenkarte-kante-naht-start-waldo.png` (Naht-Streifen).
+
+### Neue Huelle hinzufuegen (Checkliste)
+- Zelle steht schon in `OBERWELT_KANTEN` (aus der Extraktion). Fehlt sie, Skizze
+  pruefen / neu extrahieren.
+- Builder: entweder `baueOberweltGebiet` (liest die Tabelle automatisch) mit
+  cfg.id = Zellname, ODER eigener Builder, der die Rand-Endpunkte auf
+  `OBERWELT_KANTEN[id]` setzt.
+- In `getArea` (WorldScene) + `FUERSTENTUM` + Raster (oben) eintragen.
+- Verbindungs-Test mit dem/den Nachbarn ergaenzen.
+- NUR Huelle (Boden/Wasser/Baeume/Steine/verbundene Raender), KEIN Inhalt.
+  Schlacht-Karte wartet aufs RTS; Stadt/Kloster/Burg nur als Huelle.
+
+**STAND-UPDATE:** Der Kanten-Uebergang ist jetzt IN die Generierung verdrahtet
+(areagen liest OBERWELT_KANTEN). start (buildStart) und wald_o (buildWaldOst)
+verbinden sich an Fluss (47%) + Weg (77%). buildStart carvt jetzt auch T.WATER
+(Kollision/Minikarte konsistent). Die 3-Karten-Reihe start->wald_o->stadt ist die
+Referenz; die restlichen Huellen folgen dem Rezept oben.
