@@ -1067,3 +1067,23 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Pfähle automatisch aus den Nachbarn (N/E/S/W-Maske -> Ecken/Enden); Ziehen
   legt eine orthogonale L-Linie (erst waagerecht, dann senkrecht) mit sauberer
   Ecke. 3 m hohe Pfähle (Bake 32x64, gezeichnet auf TILE x 2*TILE).
+- RTS-Held-Tempo: tempoFaktor 0.55 (data/rts.ts RTS_HELD), Klick-Marsch
+  bedächtiger als ARPG; Lauf-Animation an rtsLaeuft gekoppelt.
+- RTS-Baumenü verschiebbar (Kopfzeile-Griff, Schirmkoordinaten-Delta), Position
+  in Settings.rtsLeistePos gespeichert.
+- RTS-Steuerung als eigenes Modul logic/rtsBattle.ts (aus SchlachtProbe/
+  formationen.ts portiert). Einheiten-Werte in data/rts.ts (RTS_UNIT_TYP).
+  Held ist Sonder-Einheit (Auswahl/Befehl über HeldRef-Callbacks in die Welt).
+- Formations-Abbildung Leisten-Id -> Formations-Mathematik: schildwall=schutz,
+  plaenkler=locker, linie=linie, keil=keil (RTS_FORM_MAP).
+- Taste A (Angriffsmarsch) überschneidet sich mit WASD-Kamera (A=links). Lösung:
+  A "schärft" den Angriffsmarsch, der nächste RECHTS-Zug/-Klick führt ihn aus;
+  die Kamera scrollt weiter. H (Stellung halten) ist frei von Konflikten.
+- Palisade: prozedurale Rundhölzer (Maserung/Knoten/Spitze), Vertikalwand als
+  doppelte versetzte Reihe, Ecke mit Eckpfosten. Werte in palisadeTexturKey.
+- Feldbauten neu gemalt (macheFeldbauBild): Wachturm 52x104 (ragt über die
+  2-Kachel-Palisade), Tor 40x64, Zelte als First-/Giebelzelte. Tor: data-Eintrag
+  in RTS_BAUTEN + BAU_HP.tor=160.
+- Wachturm-Besatzung: Rechtsklick auf Turm = besetzen (TURM in data/rts.ts:
+  Kapazität 2, +150 Reichweite Fern / +30 Nah, +35% Schaden). Andere Befehle
+  lassen die Einheit absteigen.

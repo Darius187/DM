@@ -1026,3 +1026,21 @@ FERTIG und im Browser verifiziert (tsc + 201 Tests grün, 0 Laufzeitfehler):
 - OFFEN: Eventuell zusätzliches manuelles Palisaden-Drehen/Diagonalen
   (siehe OFFENE-FRAGEN Nr. 7); Held-Marschtempo nur headless gemessen
   (rAF-Drossel), im echten Browser flüssig zu prüfen.
+
+## R96 - RTS-Ausbau (Steuerung, Einheiten, Bauten, Turm) + Bäume/Schilf (R95)
+Alle im Browser verifiziert (tsc + 201 Tests grün, 0 Laufzeitfehler):
+- R95: Ufer-Schilf-Dichteregler (live, F10-Tab ANFANG); Bäume schweben nicht mehr
+  (Anker auf gemessenem Stammfuß); Held/Gegner sortieren auf dem Fußpunkt -> der
+  Held steht mit freiem Kopf VOR dem Stamm, dahinter korrekt verdeckt.
+- Held im RTS bedächtiger (0.55x) mit sauberer Lauf-Animation.
+- C&C-Baumenü verschiebbar (Kopfzeile), Position gespeichert.
+- RTS-Steuerung wie in der Schlacht-Probe: Einheiten wählen (Klick/Gummiband/
+  Doppelklick/Shift), Rechtsklick-Befehle, Rechts-Ziehen = Formation mit Ghost-
+  Vorschau, A/H, Held als Sonder-Einheit. Feind-Klick gibt Feedback + Ziel-Marker.
+- TEST-Tab: eigene Truppen + Feind-Monster spawnen (Schlacht/Formationen testen).
+- Palisade mit Holzstruktur, doppelter Vertikalreihe, Eckpfosten. Baubares Tor.
+- Wachturm höher (ragt über die Palisade). Zelte historisch (First-/Giebelzelte).
+- Wachturm-Besatzung: Einheit hochbefehligen -> Bogenschütze +150 Reichweite,
+  +35% Schaden (trifft Feinde außer Boden-Reichweite; verifiziert).
+- OFFEN: die "später"-Lager-Bauten + Erschöpfung/Wach-Wechsel + Ausrüstungs-
+  Verteilung (bewusst zurückgestellt, siehe OFFENE-FRAGEN 10 / TODO).

@@ -95,3 +95,13 @@
   PrologRaum (Held, bewege, solid, Licht, hint/zeigeMeldung, Titel)
   herausziehen, alle drei migrieren, alle drei neu verifizieren. Bewusst
   als eigener Schritt (kein Nebenbei-Refactoring).
+
+## R96 - RTS "später"-Schicht (vom Autor als zweite Stufe eingeordnet)
+- Lager-Bauten als Dateneinträge auf dem stehenden Bausystem: Feldaltar (Moral+
+  Untotenresistenz-Aura), Mannschaftszelt (Ruhe -> Moral/Kraft), Kochstelle
+  (zeitlicher Buff), Brunnen/Wasserfass (Moral über lange Belagerung),
+  Feldschmiede (repariert Bauten/Ausrüstung), Wartfeuer/Signalfeuer (ruft
+  Verstärkungswelle), Nachschubzelt (Ausrüstung im Feld verteilen).
+- Erschöpfungs-/Wach-Wechsel-System (Einheiten-Moral/Ermüdung, Rotation).
+- Ausrüstung ans Heer verteilen: benannte Ausrüstungs-Items mit Werten (Vorarbeit
+  Opus), Zuweisung Einheit<-Slot im Dorf-Zeughaus + Feld-Nachschubzelt.

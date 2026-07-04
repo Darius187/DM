@@ -197,3 +197,19 @@ ich als Zwischenlösung Nr. 1 + 2, beide in einer Zeile entfernbar.)
     Enden von selbst) statt eines manuellen Dreh-Knopfes - beim Ziehen einer
     L-Linie entsteht die Ecke automatisch. Zwischenlösung aktiv. Reicht dir
     das, oder willst du zusätzlich freie Diagonalen / manuelles Drehen?
+
+--- R96 (RTS-Ausbau) ---
+ 8. Angriffsmarsch-Taste: Du wolltest A. A ist bei uns Kamera-links (WASD).
+    Zwischenlösung: A schärft den Angriffsmarsch, der nächste Rechts-Befehl
+    führt ihn aus. Reicht dir das, oder soll A fest umgelegt werden (z.B. auf
+    eine andere Taste)?
+ 9. Im RTS-TEST-Modus greifen die gespawnten Feind-Monster auch den Helden an
+    (zum Testen gewollt). Soll das so bleiben, oder im reinen Aufbau-Test der
+    Held unverwundbar sein?
+10. "Später"-Lager-Bauten aus deiner Nachricht (Feldaltar, Mannschaftszelt-
+    Ruhe-Buff, Kochstelle, Brunnen, Feldschmiede, Wartfeuer/Signalfeuer,
+    Nachschubzelt) sowie Erschöpfungs-/Wach-Wechsel und Ausrüstungs-Verteilung
+    ans Heer: bewusst NOCH NICHT gebaut (du hast sie selbst als "zweite Schicht,
+    erst Kämpfen/Bewegen/Formation beweisen" eingeordnet). Das Bausystem
+    (platzieren/HP/reparieren/abbauen) steht jetzt - diese Bauten wären danach
+    reine Dateneinträge. Sag Bescheid, welche als Nächstes.
