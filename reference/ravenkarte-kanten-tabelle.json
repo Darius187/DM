@@ -6,18 +6,18 @@
     "nord": [
       {
         "feature": "fluss",
-        "pos": 7.7
+        "pos": 9.6
       }
     ],
     "ost": [],
     "sued": [
       {
         "feature": "fluss",
-        "pos": 21.3
+        "pos": 22.6
       },
       {
         "feature": "weg",
-        "pos": 58.3
+        "pos": 57.9
       }
     ],
     "west": [],
@@ -32,7 +32,7 @@
     "sued": [
       {
         "feature": "fluss",
-        "pos": 58.7
+        "pos": 58.3
       }
     ],
     "west": [],
@@ -47,11 +47,11 @@
     "sued": [
       {
         "feature": "weg",
-        "pos": 48.5
+        "pos": 48.6
       },
       {
         "feature": "fluss",
-        "pos": 77.9
+        "pos": 76.7
       }
     ],
     "west": [],
@@ -64,14 +64,14 @@
     "nord": [
       {
         "feature": "fluss",
-        "pos": 75.3
+        "pos": 74.2
       }
     ],
     "ost": [],
     "sued": [
       {
         "feature": "fluss",
-        "pos": 16.3
+        "pos": 17.8
       }
     ],
     "west": [],
@@ -84,22 +84,22 @@
     "nord": [
       {
         "feature": "fluss",
-        "pos": 21.3
+        "pos": 22.6
       },
       {
         "feature": "weg",
-        "pos": 58.3
+        "pos": 57.9
       }
     ],
     "ost": [],
     "sued": [
       {
         "feature": "weg",
-        "pos": 58.6
+        "pos": 58.2
       },
       {
         "feature": "fluss",
-        "pos": 78.1
+        "pos": 76.8
       }
     ],
     "west": [],
@@ -112,14 +112,14 @@
     "nord": [
       {
         "feature": "fluss",
-        "pos": 58.7
+        "pos": 58.3
       }
     ],
     "ost": [],
     "sued": [
       {
         "feature": "fluss",
-        "pos": 74
+        "pos": 72.9
       }
     ],
     "west": [],
@@ -132,27 +132,27 @@
     "nord": [
       {
         "feature": "weg",
-        "pos": 48.5
+        "pos": 48.6
       },
       {
         "feature": "fluss",
-        "pos": 77.9
+        "pos": 76.7
       }
     ],
     "ost": [
       {
         "feature": "fluss",
-        "pos": 46.8
+        "pos": 47.1
       }
     ],
     "sued": [
       {
         "feature": "weg",
-        "pos": 46.5
+        "pos": 46.7
       },
       {
         "feature": "fluss",
-        "pos": 55.5
+        "pos": 55.3
       }
     ],
     "west": [],
@@ -165,29 +165,29 @@
     "nord": [
       {
         "feature": "fluss",
-        "pos": 16.3
+        "pos": 17.8
       }
     ],
     "ost": [
       {
         "feature": "fluss",
-        "pos": 62.6
+        "pos": 61.8
       }
     ],
     "sued": [
       {
         "feature": "weg",
-        "pos": 42.7
+        "pos": 43.1
       },
       {
         "feature": "fluss",
-        "pos": 83.4
+        "pos": 81.9
       }
     ],
     "west": [
       {
         "feature": "fluss",
-        "pos": 46.8
+        "pos": 47.1
       }
     ],
     "seen": {
@@ -204,11 +204,11 @@
     "nord": [
       {
         "feature": "weg",
-        "pos": 58.6
+        "pos": 58.2
       },
       {
         "feature": "fluss",
-        "pos": 78.1
+        "pos": 76.8
       }
     ],
     "ost": [],
@@ -221,7 +221,7 @@
     "west": [
       {
         "feature": "fluss",
-        "pos": 62.6
+        "pos": 61.8
       }
     ],
     "seen": null
@@ -234,18 +234,18 @@
     "ost": [
       {
         "feature": "weg",
-        "pos": 60.7
+        "pos": 60
       },
       {
         "feature": "fluss",
-        "pos": 88.3
+        "pos": 85.7
       }
     ],
     "sued": [],
     "west": [
       {
         "feature": "fluss",
-        "pos": 30.4
+        "pos": 31.7
       }
     ],
     "seen": null
@@ -258,22 +258,22 @@
     "ost": [
       {
         "feature": "weg",
-        "pos": 59.8
+        "pos": 59.1
       },
       {
         "feature": "fluss",
-        "pos": 80.8
+        "pos": 78.7
       }
     ],
     "sued": [],
     "west": [
       {
         "feature": "weg",
-        "pos": 60.7
+        "pos": 60
       },
       {
         "feature": "fluss",
-        "pos": 88.3
+        "pos": 85.7
       }
     ],
     "seen": null
@@ -285,24 +285,24 @@
     "nord": [
       {
         "feature": "fluss",
-        "pos": 74
+        "pos": 72.9
       }
     ],
     "ost": [
       {
         "feature": "weg",
-        "pos": 79
+        "pos": 77
       }
     ],
     "sued": [],
     "west": [
       {
         "feature": "weg",
-        "pos": 59.8
+        "pos": 59.1
       },
       {
         "feature": "fluss",
-        "pos": 80.8
+        "pos": 78.7
       }
     ],
     "seen": null
@@ -314,24 +314,24 @@
     "nord": [
       {
         "feature": "weg",
-        "pos": 46.5
+        "pos": 46.7
       },
       {
         "feature": "fluss",
-        "pos": 55.5
+        "pos": 55.3
       }
     ],
     "ost": [
       {
         "feature": "fluss",
-        "pos": 84.1
+        "pos": 81.7
       }
     ],
     "sued": [],
     "west": [
       {
         "feature": "weg",
-        "pos": 79
+        "pos": 77
       }
     ],
     "seen": null
@@ -343,28 +343,28 @@
     "nord": [
       {
         "feature": "weg",
-        "pos": 42.7
+        "pos": 43.1
       },
       {
         "feature": "fluss",
-        "pos": 83.4
+        "pos": 81.9
       }
     ],
     "ost": [
       {
         "feature": "weg",
-        "pos": 56.1
+        "pos": 55.7
       },
       {
         "feature": "fluss",
-        "pos": 84.1
+        "pos": 81.7
       }
     ],
     "sued": [],
     "west": [
       {
         "feature": "fluss",
-        "pos": 84.1
+        "pos": 81.7
       }
     ],
     "seen": null
@@ -382,22 +382,22 @@
     "ost": [
       {
         "feature": "weg",
-        "pos": 58.4
+        "pos": 57.8
       },
       {
         "feature": "fluss",
-        "pos": 76.2
+        "pos": 74.3
       }
     ],
     "sued": [],
     "west": [
       {
         "feature": "weg",
-        "pos": 56.1
+        "pos": 55.7
       },
       {
         "feature": "fluss",
-        "pos": 84.1
+        "pos": 81.7
       }
     ],
     "seen": {

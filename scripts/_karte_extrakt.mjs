@@ -66,7 +66,9 @@ const out = await page.evaluate(() => {
     const links = cellAt(i - 1, gy), rechts = cellAt(i, gy);
     if (!links && !rechts) continue;
     const [y0, y1] = rows[gy];
-    const cr = scanBorder(true, cols[i], y0 + 4, y1 - 4);
+    // R98c: VOLLE Kante messen (nicht eingerückt), sonst sind die %-Werte
+    // gegenüber der Zeichnung systematisch verschoben (Autorkritik).
+    const cr = scanBorder(true, cols[i], y0, y1);
     if (links) links.ost = cr;
     if (rechts) rechts.west = cr;
     for (const e of cr) marks.push({ x: cols[i], y: y0 + (y1 - y0) * e.pos / 100, feature: e.feature });
@@ -77,7 +79,7 @@ const out = await page.evaluate(() => {
     const oben = gyO != null ? cellAt(gx, gyO) : null, unten = gyU != null ? cellAt(gx, gyU) : null;
     if (!oben && !unten) continue;
     const x0 = cols[gx], x1 = cols[gx + 1];
-    const cr = scanBorder(false, y, x0 + 4, x1 - 4);
+    const cr = scanBorder(false, y, x0, x1);
     if (oben) oben.sued = cr;
     if (unten) unten.nord = cr;
     for (const e of cr) marks.push({ x: x0 + (x1 - x0) * e.pos / 100, y, feature: e.feature });
