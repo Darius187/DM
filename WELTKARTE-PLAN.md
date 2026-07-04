@@ -197,3 +197,13 @@ Referenz; die restlichen Huellen folgen dem Rezept oben.
 - OFFEN (naechste Schuebe, je 2-3): burg(0,3) links von wald_w; dann die
   Reihen gy2 (wald_n, wald_m, lager, stadt2) und gy1 (hochland, wald_nw,
   wald_ne, schlacht) + hochland/kloster. Schlacht-Karte NICHT (wartet aufs RTS).
+
+### VERBINDLICHE REGEL Wasser/Wege/Bruecken (R99b, vom Autor)
+- Wasser laeuft VERTIKAL oder HORIZONTAL (wie die Originalzeichnung), keine
+  Diagonalen, keine unmotivierten Richtungswechsel. Umsetzung: randKanten baut
+  achsentreue Laeufe (Kante -> gerade -> EIN 90-Grad-Ellenbogen -> See/Hub).
+- Wege ebenso achsentreu (EIN Ellenbogen, auf wasserfreier Spalte/Zeile).
+- Ueberschneidung Weg x Wasser NUR per begehbarer Bruecke: entsteht automatisch
+  quer ueber dem geraden Wasserband, Ufer-zu-Ufer, beide Enden angeschlossen.
+- Monsterlager: See NUR ganz links, Mitte frei/bebaubar (kleine Stadt geplant).
+- Gilt fuer ALLE Karten; bei neuen Huellen einhalten (Rezept oben nutzen).
