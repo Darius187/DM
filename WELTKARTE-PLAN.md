@@ -186,3 +186,14 @@ restlichen Huellen nach DEMSELBEN Muster:
 verbinden sich an Fluss (47%) + Weg (77%). buildStart carvt jetzt auch T.WATER
 (Kollision/Minikarte konsistent). Die 3-Karten-Reihe start->wald_o->stadt ist die
 Referenz; die restlichen Huellen folgen dem Rezept oben.
+
+### Bau-Fortschritt Huellen (R98, Prompt-2)
+- gy3-Reihe KOMPLETT durchgaengig: wald_w(1,3) | start(2,3) | wald_o(3,3) |
+  stadt(4,3) | wald_se(5,3). Alle vier Naehte tragen Fluss + Weg (Test
+  tests/oberweltVerbindung.test.ts, 8 gruen). Beleg wald_w<->start:
+  reference/ravenkarte-naht-waldw-start.png.
+- Neue Builder: buildWaldWest, buildWaldSuedOst (nutzen baueOberweltGebiet ->
+  lesen OBERWELT_KANTEN automatisch). In getArea + FUERSTENTUM registriert.
+- OFFEN (naechste Schuebe, je 2-3): burg(0,3) links von wald_w; dann die
+  Reihen gy2 (wald_n, wald_m, lager, stadt2) und gy1 (hochland, wald_nw,
+  wald_ne, schlacht) + hochland/kloster. Schlacht-Karte NICHT (wartet aufs RTS).

@@ -1948,3 +1948,23 @@ export function buildStadtNatur(rng: Rng): AreaData {
   });
 }
 
+// R98 (Prompt-2, gy3-Reihe komplettieren): wald_w (1,3) westlich von START,
+// wald_se (5,3) östlich von STADT. NUR Hülle. Der interne Fluss verbindet die
+// Fluss-Kreuzungen der Tabelle (West<->Ost); Weg + Rand-Stutzen kommen aus
+// baueOberweltGebiet (randKanten liest OBERWELT_KANTEN) -> Nähte laufen durch.
+export function buildWaldWest(rng: Rng): AreaData {
+  return baueOberweltGebiet(rng, {
+    id: 'wald_w', name: 'Dunkelwald', wolfXs: [28, 66, 100], baumGruppen: 210,
+    // Bach quer durch: West-Kante fluss 85.7% -> Ost-Kante (start) fluss 78.7%.
+    geo: { bahnen: [{ punkte: [{ x: -0.03, y: 0.857, hw: 0.013 }, { x: 0.5, y: 0.82, hw: 0.014 }, { x: 1.03, y: 0.787, hw: 0.013 }] }], seen: [] },
+  });
+}
+
+export function buildWaldSuedOst(rng: Rng): AreaData {
+  return baueOberweltGebiet(rng, {
+    id: 'wald_se', name: 'Dunkelwald', wolfXs: [40, 90], baumGruppen: 185,
+    // Fluss quer: West-Kante (stadt) 81.7% -> Ost-Kante (Weltrand) 74.3%; See rechts.
+    geo: { bahnen: [{ punkte: [{ x: -0.03, y: 0.817, hw: 0.013 }, { x: 0.5, y: 0.78, hw: 0.014 }, { x: 1.03, y: 0.743, hw: 0.013 }] }], seen: [{ cx: 0.28, cy: 0.73, rx: 0.16, ry: 0.09 }] },
+  });
+}
+

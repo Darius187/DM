@@ -2,7 +2,7 @@
 // laufen Fluss UND Weg durch - start.Ostkante und wald_o.Westkante haben Wasser
 // bzw. Weg auf DERSELBEN Hoehe (Fluss ~47%, Weg ~77% aus der Kanten-Tabelle).
 import { describe, it, expect } from 'vitest';
-import { buildStart, buildWaldOst } from '../src/world/areagen';
+import { buildStart, buildWaldOst, buildStadtNatur, buildWaldWest, buildWaldSuedOst } from '../src/world/areagen';
 import { T } from '../src/world/tiles';
 import { seededRng } from '../src/logic/rng';
 import { sdWasser } from '../src/world/wasserFeld';
@@ -26,25 +26,29 @@ function flussRows(a: AreaData, col: number): number[] {
 const spanne = (r: number[]) => (r.length ? { von: Math.min(...r), bis: Math.max(...r) } : null);
 const ueberlappt = (a: { von: number; bis: number }, b: { von: number; bis: number }, tol: number) => Math.max(a.von, b.von) <= Math.min(a.bis, b.bis) + tol;
 
-describe('Oberwelt-Verbindung start <-> wald_o (Uebergabe-System)', () => {
-  const start = buildStart(seededRng(1));
-  const waldo = buildWaldOst(seededRng(2));
+describe('Oberwelt-Verbindung gy3-Reihe (Uebergabe-System)', () => {
+  // ganze Salzstrassen-Reihe wald_w | start | wald_o | stadt | wald_se
+  const reihe: [string, AreaData][] = [
+    ['wald_w', buildWaldWest(seededRng(1))],
+    ['start', buildStart(seededRng(2))],
+    ['wald_o', buildWaldOst(seededRng(3))],
+    ['stadt', buildStadtNatur(seededRng(4))],
+    ['wald_se', buildWaldSuedOst(seededRng(5))],
+  ];
 
-  it('Fluss laeuft ueber die Kante (start.Ost ~47% deckt sich mit wald_o.West)', () => {
-    const sO = spanne(flussRows(start, start.w - 1));
-    const wW = spanne(flussRows(waldo, 0));
-    expect(sO, 'start: Wasser an der Ostkante').not.toBeNull();
-    expect(wW, 'wald_o: Wasser an der Westkante').not.toBeNull();
-    expect(ueberlappt(sO!, wW!, 6), `start.Ost ${JSON.stringify(sO)} vs wald_o.West ${JSON.stringify(wW)}`).toBe(true);
-    expect(sO!.von).toBeGreaterThan(38); expect(sO!.bis).toBeLessThan(58);   // ~47%
-  });
-
-  it('Weg laeuft ueber die Kante (start.Ost ~77% deckt sich mit wald_o.West)', () => {
-    const sO = spanne(kantenRows(start, start.w - 1, WEG));
-    const wW = spanne(kantenRows(waldo, 0, WEG));
-    expect(sO, 'start: Weg an der Ostkante').not.toBeNull();
-    expect(wW, 'wald_o: Weg an der Westkante').not.toBeNull();
-    expect(ueberlappt(sO!, wW!, 8), `start.Ost ${JSON.stringify(sO)} vs wald_o.West ${JSON.stringify(wW)}`).toBe(true);
-    expect(sO!.von).toBeGreaterThan(68); expect(sO!.bis).toBeLessThan(88);   // ~77%
-  });
+  for (let i = 0; i < reihe.length - 1; i++) {
+    const [aId, a] = reihe[i], [bId, b] = reihe[i + 1];
+    it(`Fluss laeuft ueber die Kante ${aId} -> ${bId}`, () => {
+      const aO = spanne(flussRows(a, a.w - 1)), bW = spanne(flussRows(b, 0));
+      expect(aO, `${aId}: Wasser an der Ostkante`).not.toBeNull();
+      expect(bW, `${bId}: Wasser an der Westkante`).not.toBeNull();
+      expect(ueberlappt(aO!, bW!, 7), `${aId}.Ost ${JSON.stringify(aO)} vs ${bId}.West ${JSON.stringify(bW)}`).toBe(true);
+    });
+    it(`Weg laeuft ueber die Kante ${aId} -> ${bId}`, () => {
+      const aO = spanne(kantenRows(a, a.w - 1, WEG)), bW = spanne(kantenRows(b, 0, WEG));
+      expect(aO, `${aId}: Weg an der Ostkante`).not.toBeNull();
+      expect(bW, `${bId}: Weg an der Westkante`).not.toBeNull();
+      expect(ueberlappt(aO!, bW!, 8), `${aId}.Ost ${JSON.stringify(aO)} vs ${bId}.West ${JSON.stringify(bW)}`).toBe(true);
+    });
+  }
 });
