@@ -1107,3 +1107,14 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   verbinden nicht (start Ost-Fluss v≈0.44 vs wald_o ohne West-Fluss). Prompt-1-
   Bau-Phase (autoritative %-Tabelle, Übergabe-System, Referenzkarte, Rezept) ist
   NICHT umgesetzt - Details in WELTKARTE-PLAN.md.
+- R98c Bruecken: der Weg friert ueber Wasser seine Hoehe/Spalte ein (kein
+  diagonales Driften) -> Bruecken sind kurze GERADE Stege quer ueber den Fluss
+  (Autor "90 Grad zum Wasser"). Gilt fuer baueOberweltGebiet UND buildStart.
+- R98c Nord-Sued-Strassen ohne Sued-Weg enden an der T-KREUZUNG mit der
+  Salzstrasse (nicht an der Zellmitte).
+- R98c stadt (Ravensmoor) nach AUTOR-VORLAGE neu: See unten rechts, Nordfluss
+  die Ostseite hinunter in den See, Suedbach vom See zur Westkante, Ost-Abfluss.
+  Eigener Wasser-Plan via randFluesseAuto=false + kantenFlussAnker (Tabellen-
+  Anker -> Ufer matchen weiter). Der erfundene "Muehlteich" links ist raus.
+- R98c Wald-Namen einzigartig (Autorwunsch): wald_w=Wolfsbruch, wald_o=
+  Finsterhain, wald_n=Nebelforst, wald_m=Kraehenwald, wald_se=Rabenhain.

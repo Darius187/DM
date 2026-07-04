@@ -129,13 +129,13 @@ export const FUERSTENTUM: ReadonlyArray<FuerstentumGebiet> = [
   // Neues Oberwelt-Raster (Runde 72): Zellen wandern hier rein, sobald ihr
   // Builder existiert (Reihenfolge-Regel, WELTKARTE-PLAN.md). Start ist die erste.
   { id: 'start', name: 'Waldrand', gx: 2, gy: 3 },
-  { id: 'wald_o', name: 'Dunkelwald', gx: 3, gy: 3 },
+  { id: 'wald_o', name: 'Finsterhain', gx: 3, gy: 3 },
   { id: 'stadt', name: 'Ravensmoor', gx: 4, gy: 3 },
-  { id: 'wald_w', name: 'Dunkelwald', gx: 1, gy: 3 },      // R98 Prompt-2: gy3-Reihe komplett
-  { id: 'wald_se', name: 'Dunkelwald', gx: 5, gy: 3 },
+  { id: 'wald_w', name: 'Wolfsbruch', gx: 1, gy: 3 },      // R98 Prompt-2: gy3-Reihe komplett
+  { id: 'wald_se', name: 'Rabenhain', gx: 5, gy: 3 },
   { id: 'burg', name: 'Fürstenburg', gx: 0, gy: 3 },       // R98 Prompt-2 Schub 2
-  { id: 'wald_n', name: 'Dunkelwald', gx: 2, gy: 2 },
-  { id: 'wald_m', name: 'Dunkelwald', gx: 3, gy: 2 },
+  { id: 'wald_n', name: 'Nebelforst', gx: 2, gy: 2 },
+  { id: 'wald_m', name: 'Krähenwald', gx: 3, gy: 2 },
   { id: 'lager', name: 'Monsterlager', gx: 4, gy: 2 },     // R98 Prompt-2 Schub 3 (gy2 komplett)
   { id: 'stadt2', name: 'Verfallene Stadt', gx: 5, gy: 2 },
 ];
