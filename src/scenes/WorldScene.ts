@@ -3037,7 +3037,9 @@ export class WorldScene extends CombatScene {
       g.fillStyle = 'rgba(200,180,120,0.5)'; g.fillRect(9, 20, 16, 6);            // Materialstapel
       this.textures.addCanvas('baustelle_tex', c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
     }
-    const img = this.add.image(x, y, 'baustelle_tex').setDepth(y - 4).setOrigin(0.5, 0.8);
+    const kb = this.textures.exists('baustelle3d') ? 'baustelle3d' : 'baustelle_tex';
+    const img = this.add.image(x, y + (kb === 'baustelle3d' ? 16 : 0), kb).setDepth(y - 4).setOrigin(0.5, kb === 'baustelle3d' ? 1 : 0.8);
+    if (kb === 'baustelle3d') img.setDisplaySize(40, 80);
     this.tileImages.push(img);
     const balken = this.add.graphics().setDepth(y + 20);
     this.tileImages.push(balken as unknown as Phaser.GameObjects.Image);
@@ -4397,7 +4399,8 @@ export class WorldScene extends CombatScene {
       // AUSRICHTUNG folgt automatisch der Wand - N/S-Nachbarn ohne E/W-Nachbarn
       // = senkrechtes Tor (Flügel schwingen zur Seite). Kein manuelles Drehen.
       const senkrecht = maskNS !== 0 && maskEW === 0;
-      const key = this.torTexturKey(f?.offen === true, senkrecht ? maskNS : maskNS, senkrecht);
+      const key3d = `tor3d_${f?.offen ? 'auf' : 'zu'}_${senkrecht ? `v_${maskNS}` : 'h'}`;
+      const key = this.textures.exists(key3d) ? key3d : this.torTexturKey(f?.offen === true, maskNS, senkrecht);
       const img = this.add.image(tx * TILE + 16, ty * TILE + TILE, key).setOrigin(0.5, 1).setDepth(ty * TILE + 26);
       img.setDisplaySize(TILE, TILE * 2);
       img.setData('kachel', `${tx},${ty}`);
@@ -4407,7 +4410,8 @@ export class WorldScene extends CombatScene {
     if (a.gebackenerBoden && id === T.PALISADE) {
       const mask = (istWand(a.map[ty - 1]?.[tx]) ? 1 : 0) | (istWand(a.map[ty]?.[tx + 1]) ? 2 : 0)
         | (istWand(a.map[ty + 1]?.[tx]) ? 4 : 0) | (istWand(a.map[ty]?.[tx - 1]) ? 8 : 0);
-      const key = this.palisadeTexturKey(mask);
+      // R99e: three.js-Bake bevorzugen (Kachelofen, Baum-Winkel); Canvas = Fallback
+      const key = this.textures.exists(`palisade3d_${mask}`) ? `palisade3d_${mask}` : this.palisadeTexturKey(mask);
       const hoehe = TILE * 2;   // ~3 m im Spielmaßstab (Fuß-Anker unten)
       const img = this.add.image(tx * TILE + 16, ty * TILE + TILE, key).setOrigin(0.5, 1).setDepth(ty * TILE + 26);
       img.setDisplaySize(TILE, hoehe);   // Breite = 1 Kachel, Höhe = 2 Kacheln

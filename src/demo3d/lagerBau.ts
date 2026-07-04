@@ -4,7 +4,7 @@
 // Modell steht auf y=0; die Kamera des Backofens blickt leicht von oben-vorn.
 
 import * as THREE from 'three';
-import { matHolz, matEisen, tuchTextur } from './texturen';
+import { matHolz, matEisen, matStein, matGold, tuchTextur } from './texturen';
 
 function box(w: number, h: number, d: number, mat: THREE.Material, x = 0, y = 0, z = 0, rot?: [number, number, number]): THREE.Mesh {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -118,5 +118,202 @@ export function baueZelt(lazarett: boolean): THREE.Group {
     s.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), boden.clone().sub(top).normalize());
     g.add(s);
   }
+  return g;
+}
+
+// ===========================================================================
+// R99e (Autorbrief P6-9): BAU-KACHELN + LAGER-PROPS als three.js-Modelle,
+// historisch 1300/1400, eine Stilsprache (Eichenholz, Schmiedeeisen, Leinen).
+// Die Kacheln (Palisade/Tor) werden im ORTHO-Kachelofen gebacken (gleicher
+// Blickwinkel wie die Baeume, aber linear -> Nachbarkacheln fluchten exakt).
+// Massstab: 1 Einheit = 1 Kachel (32px); Wandhoehe 1.5 (~3 m).
+// ===========================================================================
+
+function rundholz(cx: number, cz: number, h: number, r: number, mat: THREE.Material, lehn = 0): THREE.Group {
+  const g = new THREE.Group();
+  const schaft = zyl(r * 0.92, r, h, mat, 0, h / 2, 0, 9);
+  g.add(schaft);
+  const spitze = new THREE.Mesh(new THREE.ConeGeometry(r * 0.95, r * 3.2, 9), mat);
+  spitze.position.y = h + r * 1.5; spitze.castShadow = true; g.add(spitze);
+  g.position.set(cx, 0, cz);
+  g.rotation.z = lehn;
+  return g;
+}
+
+// Palisaden-Kachel nach Verbindungs-MASKE (1=N,2=E,4=S,8=W) - Pfahl-Raster
+// laeuft bis zur Kachelkante (Pitch 1/6), damit Nachbarn nahtlos anschliessen.
+export function bauePalisadenKachel(mask: number): THREE.Group {
+  const g = new THREE.Group();
+  const holz = matHolz(0x6a4c28), holzD = matHolz(0x503a1e);
+  const H = 1.5, R = 0.075;
+  const N = mask & 1, E = mask & 2, S = mask & 4, W = mask & 8;
+  const hor = !!(E || W), ver = !!(N || S);
+  const j = (k: number): number => ((k * 7919) % 13) / 13;   // deterministisches Zittern
+  const platz = (k: number): number => (k + 0.5) / 6 - 0.5;  // 6 Plaetze je Kachel
+  if (hor) {
+    for (let k = 0; k < 6; k++) {
+      const x = platz(k);
+      if ((x < -0.02 && !W) || (x > 0.02 && !E)) continue;
+      g.add(rundholz(x, 0.03 * Math.sin(k * 2.1), H + 0.1 * j(k) - 0.05, R, k % 2 ? holz : holzD, (j(k) - 0.5) * 0.05));
+    }
+    // Querriegel (zwei Lagen, angeschnuert)
+    for (const ry of [H * 0.42, H * 0.78]) {
+      const x0 = W ? -0.5 : -0.06, x1 = E ? 0.5 : 0.06;
+      const b = box(x1 - x0, 0.055, 0.05, holzD, (x0 + x1) / 2, ry, R + 0.03);
+      g.add(b);
+    }
+  }
+  if (ver) {
+    for (let k = 0; k < 6; k++) {
+      const z = platz(k);
+      if ((z < -0.02 && !N) || (z > 0.02 && !S)) continue;
+      g.add(rundholz(0.04 * Math.sin(k * 1.7), z, H + 0.1 * j(k + 6) - 0.05, R, k % 2 ? holz : holzD, (j(k + 6) - 0.5) * 0.05));
+    }
+    for (const ry of [H * 0.42, H * 0.78]) {
+      const z0 = N ? -0.5 : -0.06, z1 = S ? 0.5 : 0.06;
+      const b = box(0.05, 0.055, z1 - z0, holzD, R + 0.03, ry, (z0 + z1) / 2);
+      g.add(b);
+    }
+  }
+  if (hor && ver) g.add(rundholz(0, 0, H + 0.22, R * 1.5, holz));            // Eckpfosten
+  if (!hor && !ver) { g.add(rundholz(-0.12, 0.02, H - 0.06, R, holz)); g.add(rundholz(0, -0.02, H + 0.04, R * 1.1, holzD)); g.add(rundholz(0.12, 0.02, H - 0.06, R, holz)); }
+  return g;
+}
+
+// Tor-Kachel: Pfosten auf dem Pfahl-Raster, Sturz, zwei Bretter-Fluegel mit
+// Eisenband; offen = Fluegel aufgeschwungen. senkrecht = Wand laeuft N-S.
+export function baueTorKachel(offen: boolean, senkrecht: boolean, maskNS: number): THREE.Group {
+  const g = new THREE.Group();
+  const holz = matHolz(0x6a4c28), holzD = matHolz(0x4a3216), eisen = matEisen(0x2c2a28, 0.55);
+  const H = 1.5, R = 0.09;
+  const posten = (x: number, z: number): void => { g.add(rundholz(x, z, H + 0.18, R, holz)); };
+  const fluegel = (breite: number): THREE.Group => {
+    const f = new THREE.Group();
+    for (let i = 0; i < 4; i++) f.add(box(breite / 4 - 0.008, H * 0.82, 0.045, holzD, -breite / 2 + (i + 0.5) * breite / 4, H * 0.41, 0));
+    f.add(box(breite, 0.05, 0.05, eisen, 0, H * 0.62, 0.01));
+    f.add(box(breite, 0.05, 0.05, eisen, 0, H * 0.2, 0.01));
+    return f;
+  };
+  if (!senkrecht) {
+    posten(-5 / 12, 0); posten(5 / 12, 0);
+    g.add(box(1.0, 0.09, 0.11, holz, 0, H + 0.02, 0));   // Sturz ueber die volle Kachel
+    for (const s of [-1, 1] as const) {
+      const f = fluegel(0.34);
+      f.position.set(s * 5 / 12, 0, 0.02);
+      f.rotation.y = offen ? s * 1.25 : 0;
+      // Drehpunkt am Pfosten: Fluegel-Mesh zum Scharnier versetzen
+      f.children.forEach((c) => { (c as THREE.Mesh).position.x -= s * 0.245; });   // Innenkanten treffen sich mittig
+      g.add(f);
+    }
+  } else {
+    posten(0, -5 / 12); posten(0, 5 / 12);
+    g.add(box(0.11, 0.09, 1.0, holz, 0, H + 0.02, 0));
+    for (const s of [-1, 1] as const) {
+      const f = fluegel(0.34);
+      f.rotation.y = Math.PI / 2;
+      f.position.set(0.02, 0, s * 5 / 12);
+      f.children.forEach((c) => { (c as THREE.Mesh).position.x -= s * 0.245; });
+      if (offen) f.rotation.y = Math.PI / 2 - s * 1.25;
+      g.add(f);
+    }
+    // Wand-Stummel oben/unten, falls die Palisade weiterlaeuft
+    if (maskNS & 1) g.add(rundholz(0, -0.5 + 1 / 12, 1.4, 0.07, holz));
+    if (maskNS & 4) g.add(rundholz(0, 0.5 - 1 / 12, 1.4, 0.07, holz));
+  }
+  return g;
+}
+
+// BAUSTELLE (Autorwunsch: "das Asset waehrend etwas gebaut wird"): Geruest aus
+// Rundhoelzern mit Querstangen + Arbeitsbohle, Balkenstapel, Werkzeug.
+export function baueBaustelle(): THREE.Group {
+  const g = new THREE.Group();
+  const holz = matHolz(0x8a6a3c), holzD = matHolz(0x5a4326), eisen = matEisen(0x2c2a28, 0.5);
+  // vier Geruestpfosten, leicht schraeg
+  for (const [sx, sz] of [[-0.34, -0.3], [0.34, -0.3], [-0.34, 0.3], [0.34, 0.3]] as const) {
+    const p = zyl(0.035, 0.045, 1.1, holzD, sx, 0.55, sz, 7);
+    p.rotation.z = -sx * 0.12; p.rotation.x = sz * 0.12;
+    g.add(p);
+  }
+  // Querstangen (angebunden) + Arbeitsbohle
+  g.add(box(0.82, 0.05, 0.05, holz, 0, 0.92, -0.3));
+  g.add(box(0.82, 0.05, 0.05, holz, 0, 0.92, 0.3));
+  g.add(box(0.05, 0.05, 0.66, holz, -0.34, 0.6, 0));
+  g.add(box(0.78, 0.035, 0.22, holz, 0, 0.97, 0));       // Bohle oben
+  // Balkenstapel am Boden
+  for (let i = 0; i < 3; i++) g.add(zyl(0.05, 0.05, 0.7, holzD, -0.05 + i * 0.11, 0.05, 0.14).rotateZ(Math.PI / 2));
+  for (let i = 0; i < 2; i++) g.add(zyl(0.05, 0.05, 0.7, holzD, 0.0 + i * 0.11, 0.15, 0.14).rotateZ(Math.PI / 2));
+  // Zimmermanns-Bock + Axt
+  g.add(box(0.3, 0.05, 0.1, holz, 0.28, 0.22, -0.18));
+  g.add(box(0.04, 0.22, 0.04, holzD, 0.18, 0.11, -0.18));
+  g.add(box(0.04, 0.22, 0.04, holzD, 0.38, 0.11, -0.18));
+  const axt = box(0.03, 0.3, 0.03, holzD, -0.3, 0.15, -0.25); axt.rotation.z = 0.5; g.add(axt);
+  g.add(box(0.1, 0.07, 0.02, eisen, -0.36, 0.26, -0.25));
+  return g;
+}
+
+// --- Lager-Wirk-Bauten (P7/P8): fuenf kleine historische Props ---------------
+export function baueFeldaltar(): THREE.Group {
+  const g = new THREE.Group();
+  const stein = matStein(0x8a8078), gold = matGold(), tuch = new THREE.MeshStandardMaterial({ color: 0xe6ddca, roughness: 0.95, map: tuchTextur() });
+  g.add(box(0.62, 0.5, 0.42, stein, 0, 0.25, 0));
+  g.add(box(0.7, 0.07, 0.5, stein, 0, 0.54, 0));
+  g.add(box(0.5, 0.04, 0.36, tuch, 0, 0.585, 0));
+  g.add(box(0.05, 0.42, 0.05, gold, 0, 0.82, 0));         // Kreuz
+  g.add(box(0.26, 0.05, 0.05, gold, 0, 0.9, 0));
+  const kerze = zyl(0.03, 0.03, 0.12, tuch, 0.2, 0.66, 0.1); g.add(kerze);
+  return g;
+}
+export function baueKochstelle(): THREE.Group {
+  const g = new THREE.Group();
+  const holz = matHolz(0x5a4326), eisen = matEisen(0x26221e, 0.6);
+  for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; const p = zyl(0.025, 0.03, 0.9, holz, Math.cos(a) * 0.26, 0.42, Math.sin(a) * 0.26, 6); p.lookAt(0, 1.05, 0); p.rotateX(Math.PI / 2); g.add(p); }
+  const kessel = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8, 0, Math.PI * 2, Math.PI * 0.25, Math.PI * 0.6), eisen);
+  kessel.position.y = 0.5; kessel.castShadow = true; g.add(kessel);
+  const kette = zyl(0.012, 0.012, 0.3, eisen, 0, 0.78, 0, 5); g.add(kette);
+  // Feuerholz + Glut
+  for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI; const s = zyl(0.035, 0.035, 0.4, holz, 0, 0.04, 0, 6); s.rotation.z = Math.PI / 2; s.rotation.y = a; g.add(s); }
+  const glut = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), new THREE.MeshStandardMaterial({ color: 0xe07a2a, emissive: 0xd45a10, emissiveIntensity: 1.4 }));
+  glut.position.y = 0.08; g.add(glut);
+  return g;
+}
+export function baueBrunnen(): THREE.Group {
+  const g = new THREE.Group();
+  const stein = matStein(0x7a726a), holz = matHolz(0x5a4326), holzD = matHolz(0x4a3216);
+  const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.37, 0.3, 14, 1, true), stein);
+  ring.position.y = 0.15; ring.castShadow = true; ring.receiveShadow = true; g.add(ring);
+  const wasser = new THREE.Mesh(new THREE.CircleGeometry(0.3, 14), new THREE.MeshStandardMaterial({ color: 0x2a4a5e, roughness: 0.2, metalness: 0.1 }));
+  wasser.rotation.x = -Math.PI / 2; wasser.position.y = 0.22; g.add(wasser);
+  g.add(zyl(0.04, 0.045, 0.95, holz, -0.3, 0.475, 0, 7));
+  g.add(zyl(0.04, 0.045, 0.95, holz, 0.3, 0.475, 0, 7));
+  const dach = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.34, 4), holzD);
+  dach.position.y = 1.08; dach.rotation.y = Math.PI / 4; dach.castShadow = true; g.add(dach);
+  const welle = zyl(0.035, 0.035, 0.56, holzD, 0, 0.82, 0, 7); welle.rotation.z = Math.PI / 2; g.add(welle);
+  const eimer = box(0.12, 0.12, 0.12, holzD, 0, 0.5, 0); g.add(eimer);
+  return g;
+}
+export function baueFeldschmiede(): THREE.Group {
+  const g = new THREE.Group();
+  const stein = matStein(0x6a6058), eisen = matEisen(0x26221e, 0.5), holz = matHolz(0x5a4326);
+  g.add(box(0.5, 0.34, 0.4, stein, -0.12, 0.17, 0));                 // Esse
+  const glut = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), new THREE.MeshStandardMaterial({ color: 0xe07a2a, emissive: 0xc84a10, emissiveIntensity: 1.5 }));
+  glut.position.set(-0.12, 0.38, 0); g.add(glut);
+  g.add(zyl(0.06, 0.08, 0.3, holz, 0.3, 0.15, 0.08, 8));             // Amboss-Stock
+  g.add(box(0.3, 0.09, 0.12, eisen, 0.3, 0.36, 0.08));               // Amboss
+  g.add(box(0.09, 0.05, 0.1, eisen, 0.42, 0.43, 0.08));              // Horn
+  const hammer = box(0.03, 0.2, 0.03, holz, 0.14, 0.47, 0.12); hammer.rotation.z = 0.6; g.add(hammer);
+  g.add(box(0.09, 0.06, 0.04, eisen, 0.08, 0.55, 0.12));
+  return g;
+}
+export function baueWartfeuer(): THREE.Group {
+  const g = new THREE.Group();
+  const holz = matHolz(0x5a4326), holzD = matHolz(0x3a2c18);
+  // Holzstoss (Pyramide aus Rundhoelzern)
+  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI; const s = zyl(0.04, 0.05, 0.7, i % 2 ? holz : holzD, 0, 0.09 + (i % 3) * 0.07, 0, 6); s.rotation.z = Math.PI / 2 - 0.35; s.rotation.y = a; g.add(s); }
+  // Flamme (zweischichtig, emissiv)
+  const f1 = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.75, 8), new THREE.MeshStandardMaterial({ color: 0xe0651a, emissive: 0xe0500a, emissiveIntensity: 1.6, transparent: true, opacity: 0.92 }));
+  f1.position.y = 0.62; g.add(f1);
+  const f2 = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.45, 8), new THREE.MeshStandardMaterial({ color: 0xf0c030, emissive: 0xf0b020, emissiveIntensity: 2.0 }));
+  f2.position.y = 0.68; g.add(f2);
+  const licht = new THREE.PointLight(0xe08a30, 1.6, 3); licht.position.y = 0.7; g.add(licht);
   return g;
 }
