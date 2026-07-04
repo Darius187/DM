@@ -2661,8 +2661,8 @@ export class WorldScene extends CombatScene {
   // R94: EINHEITLICHE Feldbau-Registry mit Lebenspunkten. Jeder platzierte Bau
   // (Lagerfeuer/Standarte/Palisade/Wachturm/Lazarett/Zelt) landet hier - für
   // Klick-Menü (Reparieren/Abbauen) und die Lebensbalken.
-  private feldbauten: Array<{ id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null }> = [];
-  private gewaehlterBau: { id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null } | null = null;
+  private feldbauten: Array<{ id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null; offen?: boolean }> = [];
+  private gewaehlterBau: { id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null; offen?: boolean } | null = null;
   private bauPopup: Phaser.GameObjects.Container | null = null;
   // R96: Schlacht-Schicht (Einheiten, Auswahl, Befehle, Formationen) + Eingabe-
   // Lauscher, die nur im RTS-Modus aktiv sind.
@@ -2706,7 +2706,7 @@ export class WorldScene extends CombatScene {
     this.rtsBattle = new RtsBattle({
       scene: this, provider: this.provider,
       play: (k, v) => this.sfx.play(k, v),
-      isSolid: (x, y) => this.isSolidAt(x, y),
+      isSolid: (x, y) => this.solidFuerHeld(x, y),   // eigene Truppen: offenes Tor passierbar (R99 P11)
       tuerme: () => this.feldbauten.filter((f) => f.id === 'wachturm').map((f) => ({ x: f.x, y: f.y })),
       lager: () => this.feldbauten.map((f) => ({ typ: f.id, x: f.x, y: f.y })),
     }, this.heldRef());
@@ -3059,15 +3059,25 @@ export class WorldScene extends CombatScene {
     } else if (id === 'palisade') {
       tx = Math.floor(x / TILE); ty = Math.floor(y / TILE);
       this.area.map[ty][tx] = T.PALISADE;
-      this.refreshTile(tx, ty);
+      // R99 (P3): auch die NACHBARN neu zeichnen, damit Einzelbauten lückenlos
+      // andocken (deren Verbindungs-Maske ändert sich durch diese Kachel).
+      for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) this.refreshTile(tx + dx, ty + dy);
       this.logMsg('Palisade steht (3 m).', 'gold');
+    } else if (id === 'tor') {
+      // R99 (P4): das Tor ist eine RASTER-KACHEL in der Palisadenreihe - exakt
+      // auf Rasterposition, gleiche Grundlinie, schliesst lückenlos an.
+      tx = Math.floor(x / TILE); ty = Math.floor(y / TILE);
+      x = tx * TILE + 16; y = ty * TILE + 16;
+      this.area.map[ty][tx] = T.TOR;
+      for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) this.refreshTile(tx + dx, ty + dy);
+      this.logMsg('Tor steht (geschlossen) - öffnen/schließen über das Klick-Menü.', 'gold');
     } else {
       img = this.spawneFeldbau(id, x, y);
       const b = RTS_BAUTEN.find((rb) => rb.id === id);
       this.logMsg(`${b?.name ?? 'Feldbau'} errichtet.`, 'gold');
     }
     // R94: in die Feldbau-Registry (Lebenspunkte, Klick-Menü)
-    this.feldbauten.push({ id, x, y, tx, ty, hp: maxHp, maxHp, img, balken: null });
+    this.feldbauten.push({ id, x, y, tx, ty, hp: maxHp, maxHp, img, balken: null, offen: id === 'tor' ? false : undefined });
     this.panels?.refresh?.();
   }
 
@@ -3085,7 +3095,7 @@ export class WorldScene extends CombatScene {
   private oeffneBauMenu(f: (typeof this.feldbauten)[number]): void {
     this.gewaehlterBau = f;
     this.bauPopup?.destroy();
-    const w = 190, h = f.id === 'wartfeuer' ? 124 : 96;
+    const w = 190, h = (f.id === 'wartfeuer' || f.id === 'tor') ? 124 : 96;
     const cam = this.cameras.main, zm = cam.zoom;
     const sx = (f.x - cam.worldView.x) * zm, sy = (f.y - cam.worldView.y) * zm;
     const px = Math.max(6, Math.min(this.scale.width - w - 6, sx - w / 2));
@@ -3115,7 +3125,27 @@ export class WorldScene extends CombatScene {
       const vr = this.add.text(10, 92, bereit ? '🔥 Verstärkung rufen' : `Sammelt (${Math.ceil(this.wartfeuerCd)}s)`, { fontFamily: 'serif', fontSize: '12px', color: bereit ? '#f0c040' : '#8a7a5a', backgroundColor: '#2a1c08', padding: { x: 8, y: 4 } }).setInteractive({ useHandCursor: true });
       vr.on('pointerdown', () => { this.rufeVerstaerkung(f); this.schliesseBauMenu(); }); c.add(vr);
     }
+    // R99 (P11): das TOR wird AKTIV über das Menü geöffnet/geschlossen (nicht von
+    // selbst). Offen = Durchlass nur für Held/eigene Truppen; Gegner bleiben
+    // immer blockiert (deren Kollision liest die rohe SOLID-Kachel).
+    if (f.id === 'tor') {
+      const tg = this.add.text(10, 92, f.offen ? '🚪 Tor schließen' : '🚪 Tor öffnen', { fontFamily: 'serif', fontSize: '12px', color: '#f0d060', backgroundColor: '#2a1c08', padding: { x: 8, y: 4 } }).setInteractive({ useHandCursor: true });
+      tg.on('pointerdown', () => { this.schalteTor(f); this.schliesseBauMenu(); }); c.add(tg);
+    }
     fixUiScroll(c);
+  }
+
+  // R99 (P5): Tor auf/zu - Textur-Wechsel (aufgeschwungene Flügel) mit kurzem
+  // Schwenk-Tween als Öffnungs-Gefühl. Ehrlich: eine Andeutung, keine echte
+  // Flügel-Skelettanimation - kommt ggf. mit den three.js-Assets (P10).
+  private schalteTor(f: (typeof this.feldbauten)[number]): void {
+    if (f.tx === undefined || f.ty === undefined) return;
+    f.offen = !f.offen;
+    this.refreshTile(f.tx, f.ty);
+    const img = this.tileImages.find((i) => i.active && i.getData('kachel') === `${f.tx},${f.ty}`);
+    if (img) { img.setScale(img.scaleX, img.scaleY * 0.86); this.tweens.add({ targets: img, scaleY: img.scaleY / 0.86, duration: 160, ease: 'Back.easeOut' }); }
+    this.sfx.play(f.offen ? 'holz_hacken' : 'block', 0.4);
+    this.logMsg(f.offen ? 'Das Tor steht offen - eigene Truppen können passieren.' : 'Das Tor ist geschlossen.', '');
   }
 
   private schliesseBauMenu(): void {
@@ -3147,8 +3177,12 @@ export class WorldScene extends CombatScene {
 
   private entferneFeldbau(f: (typeof this.feldbauten)[number]): void {
     f.balken?.destroy();
-    if (f.tx !== undefined && f.ty !== undefined) {   // Palisade = Kachel
-      if (this.area.map[f.ty]?.[f.tx] === T.PALISADE) { this.area.map[f.ty][f.tx] = T.GRASS; this.refreshTile(f.tx, f.ty); }
+    if (f.tx !== undefined && f.ty !== undefined) {   // Palisade/Tor = Kachel
+      const t = this.area.map[f.ty]?.[f.tx];
+      if (t === T.PALISADE || t === T.TOR) {
+        this.area.map[f.ty][f.tx] = T.GRASS;
+        for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) this.refreshTile(f.tx + dx, f.ty + dy);
+      }
     } else if (f.img?.active) f.img.destroy();
     if (f.id === 'lagerfeuer') {
       this.lagerfeuerAktiv = this.lagerfeuerAktiv.filter((lf) => Math.hypot(lf.x - f.x, lf.y - f.y) > 8);
@@ -3181,7 +3215,7 @@ export class WorldScene extends CombatScene {
     if (!this.textures.exists(key)) this.textures.addCanvas(key, this.macheFeldbauBild(id))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
     const img = this.add.image(x, y, key).setOrigin(0.5, 0.94).setDepth(y);
     // Zielhöhe je Bau (massiver als vorher); Breite folgt dem echten Seitenverhältnis.
-    const zielH: Record<string, number> = { wachturm: 128, zelt: 82, lazarett: 82, tor: 64, nachschub: 78, feldaltar: 52, kochstelle: 50, brunnen: 58, feldschmiede: 52, wartfeuer: 54 };
+    const zielH: Record<string, number> = { wachturm: 140, zelt: 92, lazarett: 92, nachschub: 86, feldaltar: 56, kochstelle: 54, brunnen: 62, feldschmiede: 56, wartfeuer: 58 };
     const h = zielH[id];
     if (h) {
       const src = this.textures.get(key).getSourceImage();
@@ -3197,7 +3231,6 @@ export class WorldScene extends CombatScene {
   // Wachturm mit Plattform/Brüstung/Dach und ein Palisaden-Tor mit Torflügeln.
   private macheFeldbauBild(id: string): HTMLCanvasElement {
     if (id === 'wachturm') return this.macheWachturmBild();
-    if (id === 'tor') return this.macheTorBild();
     if (id === 'lazarett') return this.macheZeltBild(true);
     if (id === 'nachschub') return this.macheZeltBild(false);
     if (id === 'feldaltar' || id === 'kochstelle' || id === 'brunnen' || id === 'feldschmiede' || id === 'wartfeuer') return this.macheLagerBild(id);
@@ -3269,32 +3302,6 @@ export class WorldScene extends CombatScene {
     return c;
   }
 
-  private macheTorBild(): HTMLCanvasElement {
-    const c = document.createElement('canvas'); c.width = 60; c.height = 96; const g = c.getContext('2d')!;
-    const boden = 88;
-    g.fillStyle = 'rgba(0,0,0,0.28)'; g.beginPath(); g.ellipse(30, boden + 3, 26, 5, 0, 0, Math.PI * 2); g.fill();
-    const pfosten = (px: number): void => {
-      const grd = g.createLinearGradient(px - 6, 0, px + 6, 0); grd.addColorStop(0, '#3c2c17'); grd.addColorStop(0.45, '#6e5330'); grd.addColorStop(1, '#2f2313');
-      g.fillStyle = grd; g.fillRect(px - 6, 24, 12, boden - 24);
-      g.fillStyle = '#8a6a3c'; g.beginPath(); g.moveTo(px - 6, 24); g.lineTo(px, 15); g.lineTo(px + 6, 24); g.closePath(); g.fill();   // Spitze
-    };
-    pfosten(9); pfosten(51);
-    // Torbalken oben (Sturz)
-    g.fillStyle = '#5a4326'; g.fillRect(3, 26, 54, 8); g.fillStyle = '#6e5330'; g.fillRect(3, 26, 54, 2);
-    // zwei Torflügel (Bretter + Beschläge)
-    const fluegel = (x0: number, x1: number): void => {
-      g.fillStyle = '#4a3a22'; g.fillRect(x0, 36, x1 - x0, boden - 36);
-      g.strokeStyle = 'rgba(30,22,12,0.6)'; g.lineWidth = 1;
-      for (let bx = x0 + 4; bx < x1; bx += 5) { g.beginPath(); g.moveTo(bx, 38); g.lineTo(bx, boden - 2); g.stroke(); }
-      g.strokeStyle = '#2c2010'; g.lineWidth = 2; g.beginPath(); g.moveTo(x0, 44); g.lineTo(x1, 60); g.moveTo(x0, 70); g.lineTo(x1, 84); g.stroke();   // Diagonalstreben
-      g.fillStyle = '#2a2010'; g.beginPath(); g.arc((x0 + x1) / 2, 62, 2, 0, Math.PI * 2); g.fill();   // Ring
-    };
-    fluegel(15, 30); fluegel(30, 45);
-    return c;
-  }
-
-  // Historisch anmutende Feldzelte (First-/Firstgiebelzelt mit Streifenbahn,
-  // Zeltstange, Wimpel, Abspannseilen). lazarett = mit rotem Kreuz.
   private macheZeltBild(lazarett: boolean): HTMLCanvasElement {
     const c = document.createElement('canvas'); c.width = 72; c.height = 60; const g = c.getContext('2d')!;
     const boden = 54, cx = 36;
@@ -3634,6 +3641,10 @@ export class WorldScene extends CombatScene {
   // R94: hohe Palisade (Draufsicht mit Höhe), Form aus dem N/O/S/W-Muster.
   // Ein Wandstück mit angespitzten Pfählen; verbundene Seiten reichen bis zum
   // Rand (Eckstücke entstehen automatisch, wo waagerecht auf senkrecht trifft).
+  // R99 (Autorbrief P1-3): Arme laufen bis zur KACHELKANTE mit kantenfestem
+  // Raster (waagerecht Fuss-Abstand 8px auf 48, senkrecht 9.6px auf 48) - so
+  // schliessen Nachbarkacheln LUECKENLOS an, Ecken verbinden beide Richtungen
+  // (Eckpfosten), Einzelbau dockt an (Nachbar-refresh in vollendeBau).
   private palisadeTexturKey(mask: number): string {
     const key = `palisade_hoch_${mask}`;
     if (this.textures.exists(key)) return key;
@@ -3642,7 +3653,7 @@ export class WorldScene extends CombatScene {
     // Zylinder-Schattierung, Maserung, Astknoten und rauer Spitze. Vertikale Wand
     // = doppelte, versetzte Pfahlreihe (Tiefe statt Mittellinie). Ecke = dicker
     // Eckpfosten, an dem beide Arme sitzen.
-    const W = 48, H = 96, SC = 1.5;   // logisch 32x64 -> hier 1.5x
+    const W = 48, H = 96;   // logisch 32x64 -> hier 1.5x
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const g = c.getContext('2d')!;
     const boden = 88;                 // Standlinie (nahe Bildunterkante = Fuß-Anker)
@@ -3669,29 +3680,83 @@ export class WorldScene extends CombatScene {
     };
     // Boden-Kontaktschatten der ganzen Wand
     g.fillStyle = 'rgba(0,0,0,0.26)'; g.beginPath(); g.ellipse(W / 2, boden + 3, W * 0.44, 5, 0, 0, Math.PI * 2); g.fill();
-    const stakeH = 46 * SC / 1.5 * 1.0;   // ~46px Pfahlhöhe
+    const stakeH = 46;
     // Querriegel (Flechtwerk-Andeutung) hinter den Pfählen
     const riegel = (y: number, x0: number, x1: number): void => { g.fillStyle = 'rgba(58,42,22,0.85)'; g.fillRect(x0, y, x1 - x0, 3); g.fillStyle = 'rgba(90,68,38,0.5)'; g.fillRect(x0, y, x1 - x0, 1); };
     const eck = hor && ver;
-    if (hor) {
-      riegel(boden - 30, 0, W); riegel(boden - 14, 0, W);
-      for (let px = 5; px <= W - 5; px += 7) pfahl(px, boden, stakeH + rng(px) * 6 - 3, 3.4, px);
+    // Waagerechte Pfahl-Plätze: Fuß-Raster x = 4 + k*8 (Kachel-Pitch 8 auf 48 ->
+    // 44 + 8 = 52 = Nachbar-4, Muster läuft NAHTLOS weiter).
+    const HX = [4, 12, 20, 28, 36, 44];
+    if (Wd || E) {
+      const x0 = Wd ? 0 : W / 2 - 2, x1 = E ? W : W / 2 + 2;
+      riegel(boden - 30, x0, x1); riegel(boden - 14, x0, x1);
+      for (const px of HX) {
+        if ((px < W / 2 && !Wd) || (px > W / 2 && !E)) continue;
+        pfahl(px, boden, stakeH + rng(px) * 6 - 3, 3.4, px);
+      }
     }
-    if (ver) {
-      // Wand nach N/S: zwei versetzte Reihen (vorne/hinten) geben Tiefe/Breite.
-      riegel(boden - 22, W / 2 - 9, W / 2 + 9);
-      for (let i = 0; i < 5; i++) {
-        const fy = boden - 4 + i * 4;               // nach hinten leicht höher/kleiner
-        const hh = stakeH - i * 3;
-        pfahl(W / 2 - 5, fy, hh, 3.2, 100 + i);     // hintere Reihe
-        pfahl(W / 2 + 5, fy - 2, hh, 3.2, 200 + i); // vordere Reihe (versetzt)
+    // Senkrechte Pfahl-Säule: Fuß-Raster y = boden - k*9.6 (Kachel-Pitch 48 in
+    // Canvas = 32 Anzeige-px -> Nachbar oben/unten setzt exakt fort). Zwei leicht
+    // versetzte Spalten (x=20/28) geben der Wand Körper.
+    if (N || S) {
+      riegel(boden - 24, W / 2 - 8, W / 2 + 8);
+      for (let k = 0; k < 5; k++) {
+        const fy = boden - k * 9.6;
+        if ((k <= 2 && !S && !(k === 2 && N)) || (k >= 3 && !N)) continue;   // untere Hälfte = S-Arm, obere = N-Arm
+        pfahl(20, fy, stakeH, 3.2, 100 + k);
+        pfahl(28, fy - 4, stakeH, 3.2, 200 + k);
       }
     }
     if (eck) {
-      // kräftiger Eckpfosten am Treffpunkt der Arme
+      // kräftiger Eckpfosten am Treffpunkt der Arme (P1: geschlossene Ecke)
       pfahl(W / 2, boden, stakeH + 12, 5, 999);
     }
     if (!hor && !ver) { pfahl(W / 2 - 6, boden, stakeH, 3.4, 1); pfahl(W / 2, boden + 2, stakeH + 4, 3.6, 2); pfahl(W / 2 + 6, boden, stakeH, 3.4, 3); }
+    this.textures.addCanvas(key, c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    return key;
+  }
+
+  // R99 (Autorbrief P4/P5/P11): das TOR ist eine RASTER-KACHEL in der Palisaden-
+  // reihe (gleiche Grundlinie/Höhe, schliesst lückenlos an die Arme links/rechts
+  // an - kein Versatz). offen=true zeichnet aufgeschwungene Flügel + freien
+  // Durchlass; der Zustand wird über das Klick-Menü geschaltet.
+  private torTexturKey(offen: boolean, maskNS: number): string {
+    const key = `tor_kachel_${offen ? 'auf' : 'zu'}_${maskNS}`;
+    if (this.textures.exists(key)) return key;
+    const W = 48, H = 96, boden = 88;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d')!;
+    g.fillStyle = 'rgba(0,0,0,0.26)'; g.beginPath(); g.ellipse(W / 2, boden + 3, W * 0.46, 5, 0, 0, Math.PI * 2); g.fill();
+    const pfosten = (cx: number): void => {
+      const grd = g.createLinearGradient(cx - 4, 0, cx + 4, 0); grd.addColorStop(0, '#3c2c17'); grd.addColorStop(0.45, '#6e5330'); grd.addColorStop(1, '#2f2313');
+      g.fillStyle = grd; g.fillRect(cx - 4, boden - 58, 8, 58);
+      g.fillStyle = '#8a6a3c'; g.beginPath(); g.moveTo(cx - 4, boden - 58); g.lineTo(cx, boden - 66); g.lineTo(cx + 4, boden - 58); g.closePath(); g.fill();
+    };
+    // Torpfosten sitzen AUF dem Palisaden-Raster (x=4/44 = Pfahl-Plätze) ->
+    // die Nachbar-Arme schliessen exakt an.
+    pfosten(4); pfosten(44);
+    g.fillStyle = '#5a4326'; g.fillRect(0, boden - 56, W, 7);   // Sturz über die volle Kachel
+    g.fillStyle = '#6e5330'; g.fillRect(0, boden - 56, W, 2);
+    const fluegel = (x0: number, breite: number, schraeg: number): void => {
+      g.save(); g.translate(x0, boden - 48); g.transform(1, schraeg, 0, 1, 0, 0);
+      g.fillStyle = '#4a3a22'; g.fillRect(0, 0, breite, 48);
+      g.strokeStyle = 'rgba(30,22,12,0.6)'; g.lineWidth = 1;
+      for (let bx = 3; bx < breite; bx += 5) { g.beginPath(); g.moveTo(bx, 2); g.lineTo(bx, 46); g.stroke(); }
+      g.strokeStyle = '#2c2010'; g.lineWidth = 2; g.beginPath(); g.moveTo(1, 8); g.lineTo(breite - 1, 22); g.moveTo(1, 30); g.lineTo(breite - 1, 44); g.stroke();
+      g.restore();
+    };
+    if (offen) {
+      // aufgeschwungene Flügel: schmal + nach innen geschert, Durchlass frei
+      fluegel(5, 7, 0.55); g.save(); g.translate(W, 0); g.scale(-1, 1); fluegel(5, 7, 0.55); g.restore();
+    } else {
+      fluegel(8, 16, 0); fluegel(24, 16, 0);
+      g.fillStyle = '#2a2010'; g.beginPath(); g.arc(W / 2, boden - 24, 2.2, 0, Math.PI * 2); g.fill();   // Ring
+    }
+    // N/S-Anschluss-Stummel, falls die Palisade senkrecht weiterläuft
+    if (maskNS) {
+      g.fillStyle = '#5a4326';
+      for (let k = 0; k < 3; k++) { const fy = boden - k * 9.6; g.fillRect(20, fy - 30, 4, 30); g.fillRect(27, fy - 34, 4, 30); }
+    }
     this.textures.addCanvas(key, c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
     return key;
   }
@@ -4262,9 +4327,21 @@ export class WorldScene extends CombatScene {
     if (a.gebackenerBoden && (id === T.GRASS || id === T.PATH || id === T.FIELD || id === T.WATER || id === T.BRIDGE)) return;   // Brücke = eigenes Komposit-Bild (R78)
     // R94 (Autor "Palisade 3 m hoch + Eck-Elemente"): auf gebackenen Karten
     // eine HOHE, oben verbundene Palisade aus dem Nachbar-Muster (N/O/S/W).
+    // R99: Tor + Palisade verbinden sich gegenseitig (Tor zählt als Palisaden-Nachbar)
+    const istWand = (t: number | undefined): boolean => t === T.PALISADE || t === T.TOR;
+    if (a.gebackenerBoden && id === T.TOR) {
+      const f = this.feldbauten.find((fb) => fb.tx === tx && fb.ty === ty && fb.id === 'tor');
+      const maskNS = (istWand(a.map[ty - 1]?.[tx]) ? 1 : 0) | (istWand(a.map[ty + 1]?.[tx]) ? 4 : 0);
+      const key = this.torTexturKey(f?.offen === true, maskNS);
+      const img = this.add.image(tx * TILE + 16, ty * TILE + TILE, key).setOrigin(0.5, 1).setDepth(ty * TILE + 26);
+      img.setDisplaySize(TILE, TILE * 2);
+      img.setData('kachel', `${tx},${ty}`);
+      this.tileImages.push(img);
+      return;
+    }
     if (a.gebackenerBoden && id === T.PALISADE) {
-      const mask = (a.map[ty - 1]?.[tx] === T.PALISADE ? 1 : 0) | (a.map[ty]?.[tx + 1] === T.PALISADE ? 2 : 0)
-        | (a.map[ty + 1]?.[tx] === T.PALISADE ? 4 : 0) | (a.map[ty]?.[tx - 1] === T.PALISADE ? 8 : 0);
+      const mask = (istWand(a.map[ty - 1]?.[tx]) ? 1 : 0) | (istWand(a.map[ty]?.[tx + 1]) ? 2 : 0)
+        | (istWand(a.map[ty + 1]?.[tx]) ? 4 : 0) | (istWand(a.map[ty]?.[tx - 1]) ? 8 : 0);
       const key = this.palisadeTexturKey(mask);
       const hoehe = TILE * 2;   // ~3 m im Spielmaßstab (Fuß-Anker unten)
       const img = this.add.image(tx * TILE + 16, ty * TILE + TILE, key).setOrigin(0.5, 1).setDepth(ty * TILE + 26);
@@ -5065,8 +5142,8 @@ export class WorldScene extends CombatScene {
         const ux = (zx - this.px) / d, uy = (zy - this.py) / d;
         const r = 10;
         const nx = this.px + ux * tempo, ny = this.py + uy * tempo;
-        if (!this.isSolidAt(nx - r, this.py - r) && !this.isSolidAt(nx + r, this.py + r) && !this.isSolidAt(nx + r, this.py - r) && !this.isSolidAt(nx - r, this.py + r)) this.px = nx;
-        if (!this.isSolidAt(this.px - r, ny - r) && !this.isSolidAt(this.px + r, ny + r) && !this.isSolidAt(this.px + r, ny - r) && !this.isSolidAt(this.px - r, ny + r)) this.py = ny;
+        if (!this.solidFuerHeld(nx - r, this.py - r) && !this.solidFuerHeld(nx + r, this.py + r) && !this.solidFuerHeld(nx + r, this.py - r) && !this.solidFuerHeld(nx - r, this.py + r)) this.px = nx;
+        if (!this.solidFuerHeld(this.px - r, ny - r) && !this.solidFuerHeld(this.px + r, ny + r) && !this.solidFuerHeld(this.px + r, ny - r) && !this.solidFuerHeld(this.px - r, ny + r)) this.py = ny;
         this.pdir = Math.atan2(uy, ux);
         this.rtsLaeuft = true;
         this.laufSchritt(dt);   // Geh-Zyklus mitlaufen lassen -> saubere Lauf-Animation
@@ -5102,6 +5179,18 @@ export class WorldScene extends CombatScene {
   }
   protected override gegnerTiefe(spr: Phaser.GameObjects.Sprite, grundY: number): number {
     return grundY + spr.displayHeight * (1 - spr.originY);
+  }
+
+  // R99 (P11): OFFENES Tor ist für den Helden/eigene Truppen KEIN Hindernis -
+  // Gegner nutzen weiter das rohe isSolidAt (T.TOR bleibt SOLID) und prallen ab.
+  protected override solidFuerHeld(x: number, y: number): boolean {
+    if (!this.isSolidAt(x, y)) return false;
+    const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+    if (this.area?.map?.[ty]?.[tx] === T.TOR) {
+      const f = this.feldbauten.find((fb) => fb.id === 'tor' && fb.tx === tx && fb.ty === ty);
+      if (f?.offen) return false;
+    }
+    return true;
   }
 
   protected override areaDark(): boolean { return this.area?.dark ?? false; }

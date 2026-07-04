@@ -3041,14 +3041,19 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // kurz orange. In der Welt überschrieben (Lichtschicht), in der Arena No-Op.
   protected feuerlicht(_x: number, _y: number, _r: number, _dauerS: number): void { /* Welt */ }
 
+  // R99 (P11): Kollision aus HELD-Sicht. Standard = isSolidAt; die Welt lässt
+  // damit ein OFFENES Palisadentor für Held/eigene Truppen passierbar werden,
+  // während Gegner (rohes isSolidAt/Wegfeld) immer blockiert bleiben.
+  protected solidFuerHeld(x: number, y: number): boolean { return this.isSolidAt(x, y); }
+
   private movePlayer(dx: number, dy: number): void {
     const r = PLAYER.radius;
     const nx = this.px + dx;
-    if (!this.isSolidAt(nx - r, this.py - r) && !this.isSolidAt(nx + r, this.py - r)
-      && !this.isSolidAt(nx - r, this.py + r) && !this.isSolidAt(nx + r, this.py + r)) this.px = nx;
+    if (!this.solidFuerHeld(nx - r, this.py - r) && !this.solidFuerHeld(nx + r, this.py - r)
+      && !this.solidFuerHeld(nx - r, this.py + r) && !this.solidFuerHeld(nx + r, this.py + r)) this.px = nx;
     const ny = this.py + dy;
-    if (!this.isSolidAt(this.px - r, ny - r) && !this.isSolidAt(this.px + r, ny - r)
-      && !this.isSolidAt(this.px - r, ny + r) && !this.isSolidAt(this.px + r, ny + r)) this.py = ny;
+    if (!this.solidFuerHeld(this.px - r, ny - r) && !this.solidFuerHeld(this.px + r, ny - r)
+      && !this.solidFuerHeld(this.px - r, ny + r) && !this.solidFuerHeld(this.px + r, ny + r)) this.py = ny;
   }
 
   private updateProjectiles(dt: number): void {
