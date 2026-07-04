@@ -190,3 +190,10 @@ Mein Vorschlag für die Startkarte (jeweils klein, alle mechanisch nutzbar):
     verkauft Kohle statt der Schmied).
 Welche davon sollen rein? (Ich baue nach deiner Auswahl; ohne Antwort baue
 ich als Zwischenlösung Nr. 1 + 2, beide in einer Zeile entfernbar.)
+
+--- R94 (RTS-Block) ---
+ 7. Palisade "drehen": Du wolltest Eck-Elemente + Drehen. Ich habe es als
+    AUTO-Verbindung gelöst (Pfähle erkennen ihre Nachbarn und bilden Ecken/
+    Enden von selbst) statt eines manuellen Dreh-Knopfes - beim Ziehen einer
+    L-Linie entsteht die Ecke automatisch. Zwischenlösung aktiv. Reicht dir
+    das, oder willst du zusätzlich freie Diagonalen / manuelles Drehen?

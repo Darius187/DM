@@ -1011,3 +1011,18 @@ exakt).
 - OFFEN: Wettersystem+Pfützen-Port (Blaupause liegt vor: dorfSim Z.468-1487),
   bewegtes three.js-Gras/Blumen (Recherche: InstancedMesh-Halme mit Wind-
   Shader, Codrops/CK42BB als Referenz -> über den Backofen als Sprites backen).
+
+## R94 - RTS-Block: Baumenü, Einheitensteuerung, Gebäude-HP, Palisaden
+FERTIG und im Browser verifiziert (tsc + 201 Tests grün, 0 Laufzeitfehler):
+- Baumenü rechts unten als vertikale C&C-Leiste, Tabs BAUEN/BEFEHLE, A-/A+.
+- Held wählbar (Ring) + per Klick schickbar + Auto-Angriff; Schild-Toggle
+  AN/AUS (Held hält zwischen den Schlägen die Deckung).
+- Jedes Bauwerk hat jetzt Lebenspunkte: Klick öffnet Menü mit Balken,
+  Reparieren (+34% HP / -25% Kosten, geprüft: 50->124.8 HP, Holz 200->195)
+  und Abbauen (50% zurück, geprüft: Holz ->205, Registry 1->0). Balken nur
+  bei Auswahl bzw. dauerhaft im roten Bereich (<35%).
+- Palisaden ziehbar: 6-Segment-L-Linie mit sauberer Ecke gebaut, 3 m hohe
+  Pfähle, verbinden sich mit Nachbarn. (Screenshots im Scratchpad.)
+- OFFEN: Eventuell zusätzliches manuelles Palisaden-Drehen/Diagonalen
+  (siehe OFFENE-FRAGEN Nr. 7); Held-Marschtempo nur headless gemessen
+  (rAF-Drossel), im echten Browser flüssig zu prüfen.

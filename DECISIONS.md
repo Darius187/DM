@@ -1050,3 +1050,20 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Robuste Nachbereinigung ALLER Oberweltkarten: raeumeBaeumeAmWeg (kein Stamm
   auf Weg/Brücke, Radius 2) + entferneWasserBeute (keine Loot-Steine/-Erz im
   Wasser). Verifiziert: baumAmWeg=0, steinImWasser=0.
+- RTS-Baumenü als VERTIKALE Leiste rechts unten (C&C-Stil), zwei Tabs BAUEN/
+  BEFEHLE, A-/A+-Skala (rtsSkala 0.8..1.4). Werte in baueRtsLeiste(),
+  Skala-Grenzen dort leicht änderbar.
+- RTS-Einheitensteuerung läuft im FREI-KAMERA-Modus ("Truppen (Maus)"):
+  Held anklicken wählt (Ring), Klick auf Boden schickt ihn, Auto-Angriff auf
+  nächsten Gegner in 46px. Im HELD-Modus (WASD) ist die Maus aus - so
+  kollidieren die beiden Steuerungen nicht.
+- Schild-Toggle (rtsSchildAktiv, Standard AN): der gewählte Held hält
+  zwischen den Auto-Schlägen die Deckung oben (tryBlockStart), senkt sie zum
+  Zuschlagen. AUS = kämpft ohne Deckung. Toggle im BEFEHLE-Tab.
+- Feldbau-Lebenspunkte/Reparatur zentral in data/rts.ts (BAU_HP,
+  BAU_REPARATUR): Reparatur +34% HP für 25% Baukosten, Abbau gibt 50%
+  zurück, Balken dauerhaft ab <35% (balkenRotUnter). Eine Datei zum Tunen.
+- Palisade "drehen": statt manuellem Rechtsklick-Drehen VERBINDEN sich die
+  Pfähle automatisch aus den Nachbarn (N/E/S/W-Maske -> Ecken/Enden); Ziehen
+  legt eine orthogonale L-Linie (erst waagerecht, dann senkrecht) mit sauberer
+  Ecke. 3 m hohe Pfähle (Bake 32x64, gezeichnet auf TILE x 2*TILE).
