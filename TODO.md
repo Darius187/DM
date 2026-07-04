@@ -105,3 +105,7 @@
 - Erschöpfungs-/Wach-Wechsel-System (Einheiten-Moral/Ermüdung, Rotation).
 - Ausrüstung ans Heer verteilen: benannte Ausrüstungs-Items mit Werten (Vorarbeit
   Opus), Zuweisung Einheit<-Slot im Dorf-Zeughaus + Feld-Nachschubzelt.
+- R99d: Turm-Reichweiten-Bonus fuer Enemy-basierte Bogenschuetzen (Schuetzen-KI
+  Reichweite je Einheit anheben, wenn turm gesetzt).
+- R99d: Feldscher/Heiler-Einheit neu auf Dungeon-Basis (Heil-KI), war in der
+  alten Test-Sim und ist mit ihr entfernt.

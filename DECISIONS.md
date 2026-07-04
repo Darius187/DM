@@ -1118,3 +1118,13 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Anker -> Ufer matchen weiter). Der erfundene "Muehlteich" links ist raus.
 - R98c Wald-Namen einzigartig (Autorwunsch): wald_w=Wolfsbruch, wald_o=
   Finsterhain, wald_n=Nebelforst, wald_m=Kraehenwald, wald_se=Rabenhain.
+- R99d KAMPF-VEREINHEITLICHUNG (Brief P12-14): Verbuendete RTS-Kaempfer sind
+  echte Enemy-Instanzen (team 'spieler', Soldaten-Figur, RTS-Werte); Feinde
+  echte spawnEnemy-Monster. EnemyHost-PROXY lenkt das "Spieler"-Ziel je Fraktion
+  (WorldScene.enemyHost/zielFuer); Schaden/Projektile team-geroutet; Friendly-
+  Fire zentral gesperrt. rtsBattle = reine Kommando-Schicht (jagdZiel/fokusZiel),
+  alte Test-Kampfsim GELOESCHT. Turm-Reichweiten-Bonus wirkt derzeit NICHT auf
+  Enemy-Truppen (deren Bogen-KI hat eigene Reichweite) - im Asset/Feinschliff-
+  Block nachziehen, in TODO notiert.
+- R99d P16: RTS-Modus-Ende laesst die Schlacht WEITERLAUFEN (Truppen fuehren
+  Befehle aus); aufgeraeumt wird beim Kartenwechsel / [alle entfernen].
