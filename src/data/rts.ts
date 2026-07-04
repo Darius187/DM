@@ -70,6 +70,17 @@ export const RTS_BAUTEN: ReadonlyArray<RtsBau> = [
   { id: 'zelt', name: 'Zelt', kosten: { holz: 10, fasern: 6 }, frei: true, beschreibung: 'Rast für die Truppe zwischen den Gefechten' },
 ];
 
+// Feldbau-Lebenspunkte + Reparatur/Abbau (R94). Werte justierbar.
+export const BAU_HP: Record<string, number> = {
+  lagerfeuer: 40, standarte: 60, palisade: 120, wachturm: 220, lazarett: 130, zelt: 90,
+};
+export const BAU_REPARATUR = {
+  proAktionFrac: 0.34,   // je Reparatur ~1/3 der maxHP zurück
+  kostenFrac: 0.25,      // kostet ~1/4 der Baukosten je Reparatur
+  abbauRueckFrac: 0.5,   // Abbau gibt ~50% der Baukosten zurück
+  balkenRotUnter: 0.35,  // Lebensbalken erscheint dauerhaft ab <35% (roter Bereich)
+} as const;
+
 // Truppen-Moral (um 1300 entschied sie Schlachten öfter als das Schwert):
 // Banner sichtbar + Anführer lebt = Mut; Verluste und gefallene Banner
 // drücken; unter der Fluchtschwelle löst sich der Haufen auf.

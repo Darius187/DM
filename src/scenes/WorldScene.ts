@@ -42,7 +42,7 @@ import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDL
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
-import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, type RtsFormation, type RtsBau } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, type RtsFormation, type RtsBau } from '../data/rts';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { TUNING } from '../logic/tuning';
@@ -367,6 +367,9 @@ export class WorldScene extends CombatScene {
     this.panels.getKontakteZeilen = () => this.kontakteZeilen();
     this.panels.getKarte = () => this.getKarteInfo();
     this.panels.onRtsModus = () => { this.panels.closeAll(); this.toggleRtsModus(); };   // R87: HEER-Tab -> Schlachtfeld-Steuerung
+    // R94: Palisade-Ziehen (Maus bewegen/loslassen)
+    this.input.on('pointermove', (ptr: Phaser.Input.Pointer) => { if (this.palisadeZug) this.palisadeDragMove(ptr); });
+    this.input.on('pointerup', (ptr: Phaser.Input.Pointer) => { if (this.palisadeZug) this.palisadeDragEnd(ptr); });
     // Großansicht (Runde 74): volle Kachel-Auflösung für die angeklickte Minimap.
     this.panels.getGebietGross = (id) => this.gebietThumb(id, 200);
     this.panels.getEbeneKarte = () => this.ebeneKarteInfo();
@@ -2619,9 +2622,20 @@ export class WorldScene extends CombatScene {
   // Formationen, Feldbauten und Moral. Die Einheiten-Befehle docken hier an,
   // sobald die Schlacht-Karten kommen (Schlacht-Probe ist die Blaupause).
   private rtsLeiste: Phaser.GameObjects.Container | null = null;
-  private rtsLeistePos = { x: -1, y: 40 };   // gemerkte Leisten-Position (verschiebbar, R88)
   private rtsFormation: RtsFormation = 'linie';
   private standartenAktiv: Array<{ x: number; y: number }> = [];
+  // R94: EINHEITLICHE Feldbau-Registry mit Lebenspunkten. Jeder platzierte Bau
+  // (Lagerfeuer/Standarte/Palisade/Wachturm/Lazarett/Zelt) landet hier - für
+  // Klick-Menü (Reparieren/Abbauen) und die Lebensbalken.
+  private feldbauten: Array<{ id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null }> = [];
+  private gewaehlterBau: { id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null } | null = null;
+  private bauPopup: Phaser.GameObjects.Container | null = null;
+  // R94: Held als steuerbare Einheit im RTS-Modus (wählen, schicken, Auto-Angriff)
+  private rtsHeldGewaehlt = false;
+  private rtsMoveZiel: { x: number; y: number } | null = null;
+  private rtsSchildAktiv = true;   // kämpft mit Schild (Autor-Toggle)
+  private rtsAttackCd = 0;
+  private rtsWahlRing: Phaser.GameObjects.Graphics | null = null;
   // R88 (Autor "RTS wie AoE"): Platzierungs-Modus (Geist folgt der Maus) +
   // Baustellen mit Bauzeit-Fortschritt statt Sofortbau.
   private platziereModus: { id: string; kosten: Record<string, number>; bauzeitS: number } | null = null;
@@ -2635,6 +2649,7 @@ export class WorldScene extends CombatScene {
       this.rtsLeiste.destroy();
       this.rtsLeiste = null;
       this.setzeFreiKamera(false);
+      this.rtsHeldGewaehlt = false; this.rtsMoveZiel = null; this.rtsWahlRing?.clear();
       this.logMsg('Schlachtfeld-Steuerung beendet.', '');
       return;
     }
@@ -2653,56 +2668,83 @@ export class WorldScene extends CombatScene {
     return Math.min(100, moral);
   }
 
+  private rtsTab: 'befehle' | 'bauen' = 'bauen';
+  private rtsSkala = 1;   // Baumenü-Größe (Autor: skalierbar), 0.8..1.4
+
+  // R94: VERTIKALE Seitenleiste rechts unten (Command-&-Conquer-Stil) mit Tabs
+  // "Befehle" (Formationen/Steuerung) und "Bauen" (Feldbauten). Skalierbar.
   private baueRtsLeiste(): void {
     this.rtsLeiste?.destroy();
-    const w = 640, h = 96;
-    // R88 (Autor "Kasten verdeckt die Actionbar, nicht verschiebbar"): die
-    // Leiste startet OBEN (weg von der Aktionsleiste am unteren Rand) und ist
-    // an der Kopfzeile frei verschiebbar - die Position bleibt gemerkt.
-    if (this.rtsLeistePos.x < 0) this.rtsLeistePos.x = (this.scale.width - w) / 2;
-    const c = this.add.container(this.rtsLeistePos.x, this.rtsLeistePos.y).setScrollFactor(0).setDepth(6400);
+    const S = this.rtsSkala;
+    const w = Math.round(190 * S), h = Math.round(360 * S);
+    const px = this.scale.width - w - 8, py = this.scale.height - h - 8;   // rechts unten angedockt
+    const c = this.add.container(px, py).setScrollFactor(0).setDepth(6400);
     this.rtsLeiste = c;
-    const bg = this.add.rectangle(0, 0, w, h, 0x14100a, 0.94).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
+    const bg = this.add.rectangle(0, 0, w, h, 0x14100a, 0.95).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
     bg.setInteractive(); c.add(bg);
-    // Kopfzeile = Ziehgriff (Schirmkoordinaten-Delta ab dragstart, R88)
-    const kopf = this.add.rectangle(0, 0, w, 20, 0xffffff, 0.04).setOrigin(0).setInteractive({ draggable: true, useHandCursor: true });
-    let zStart: { x: number; y: number } | null = null; let pStart = { x: 0, y: 0 };
-    kopf.on('dragstart', (pz: Phaser.Input.Pointer) => { zStart = { x: pz.x, y: pz.y }; pStart = { x: c.x, y: c.y }; });
-    kopf.on('drag', (pz: Phaser.Input.Pointer) => { if (!zStart) return; c.x = Math.max(0, Math.min(this.scale.width - w, pStart.x + (pz.x - zStart.x))); c.y = Math.max(0, Math.min(this.scale.height - h, pStart.y + (pz.y - zStart.y))); this.rtsLeistePos = { x: c.x, y: c.y }; });
-    c.add(kopf);
-    c.add(this.add.text(10, 5, '⚔ BANNER  (Kopf zum Verschieben)', { fontFamily: 'serif', fontSize: '11px', color: '#c9a227', letterSpacing: 1 }));
-    c.add(this.add.text(290, 5, `Moral ${this.aktuelleMoral()}`, { fontFamily: 'serif', fontSize: '12px', color: this.aktuelleMoral() >= MORAL.basis ? '#9ad86a' : '#d86a5a' }));
-    const zu = this.add.text(w - 24, 4, '✕', { fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8' }).setInteractive({ useHandCursor: true });
+    const F = (s: number): number => Math.round(s * S);
+    // Kopf: Titel, Moral, Skalieren, Schließen
+    c.add(this.add.text(F(8), F(6), '⚔ BANNER', { fontFamily: 'serif', fontSize: `${F(12)}px`, color: '#c9a227', letterSpacing: 1 }));
+    const moral = this.aktuelleMoral();
+    c.add(this.add.text(F(8), F(22), `Moral ${moral}`, { fontFamily: 'serif', fontSize: `${F(11)}px`, color: moral >= MORAL.basis ? '#9ad86a' : '#d86a5a' }));
+    const zu = this.add.text(w - F(18), F(4), '✕', { fontFamily: 'serif', fontSize: `${F(13)}px`, color: '#d8cfb8' }).setInteractive({ useHandCursor: true });
     zu.on('pointerdown', () => this.toggleRtsModus()); c.add(zu);
-    // R92 (Autorwunsch): Umschalter Truppen-Steuerung <-> Held selbst steuern.
-    // "Held": Frei-Kamera aus -> WASD bewegt den Helden, er kämpft normal.
-    // "Truppen": Frei-Kamera an -> Kamera scrollt frei zum Befehlen/Bauen.
-    const heldMod = !this.devFreiKam;
-    const modBtn = this.add.text(400, 4, heldMod ? '⚑ Steuerung: HELD (WASD kämpfen)' : '⚑ Steuerung: TRUPPEN (Kamera frei)', {
-      fontFamily: 'serif', fontSize: '11px', color: '#c9a227', backgroundColor: '#221808', padding: { x: 6, y: 2 },
-    }).setInteractive({ useHandCursor: true });
-    modBtn.on('pointerdown', () => { this.setzeFreiKamera(!this.devFreiKam); this.sfx.play('klick'); this.baueRtsLeiste(); });
-    c.add(modBtn);
-    // Reihe 1: Formationen (Vorwahl - wirkt auf Kämpfer, sobald Einheiten im Feld stehen)
-    let x = 10;
-    c.add(this.add.text(x, 26, 'Formation:', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a' })); x += 74;
-    for (const f of RTS_FORMATIONEN) {
-      const aktiv = this.rtsFormation === f.id;
-      const t = this.add.text(x, 24, f.name, { fontFamily: 'serif', fontSize: '11px', color: aktiv ? '#c9a227' : '#d8cfb8', backgroundColor: aktiv ? '#221808' : '#100b06', padding: { x: 7, y: 3 } }).setInteractive({ useHandCursor: true });
-      t.on('pointerdown', () => { this.rtsFormation = f.id; this.sfx.play('klick'); this.baueRtsLeiste(); this.logMsg(`Formation: ${f.name} - ${f.hinweis}.`, ''); });
-      c.add(t); x += t.width + 6;
+    const aMinus = this.add.text(w - F(52), F(4), 'A-', { fontFamily: 'serif', fontSize: `${F(12)}px`, color: '#8a7a5a' }).setInteractive({ useHandCursor: true });
+    aMinus.on('pointerdown', () => { this.rtsSkala = Math.max(0.8, this.rtsSkala - 0.1); this.baueRtsLeiste(); }); c.add(aMinus);
+    const aPlus = this.add.text(w - F(36), F(4), 'A+', { fontFamily: 'serif', fontSize: `${F(12)}px`, color: '#8a7a5a' }).setInteractive({ useHandCursor: true });
+    aPlus.on('pointerdown', () => { this.rtsSkala = Math.min(1.4, this.rtsSkala + 0.1); this.baueRtsLeiste(); }); c.add(aPlus);
+    // Tab-Reiter
+    let ty2 = F(40);
+    const tabs: Array<[typeof this.rtsTab, string]> = [['bauen', 'BAUEN'], ['befehle', 'BEFEHLE']];
+    let tx = F(8);
+    for (const [id, lbl] of tabs) {
+      const aktiv = this.rtsTab === id;
+      const t = this.add.text(tx, ty2, lbl, { fontFamily: 'serif', fontSize: `${F(11)}px`, letterSpacing: 1, color: aktiv ? '#c9a227' : '#8a7a5a', backgroundColor: aktiv ? '#221808' : '#100b06', padding: { x: F(8), y: F(3) } }).setInteractive({ useHandCursor: true });
+      t.on('pointerdown', () => { this.rtsTab = id; this.sfx.play('klick'); this.baueRtsLeiste(); });
+      c.add(t); tx += t.width + F(4);
     }
-    // Reihe 2: Feldbauten (gesperrte werden später freigeschaltet - Autorkonzept)
-    x = 10;
-    c.add(this.add.text(x, 54, 'Bauen:', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a' })); x += 74;
-    for (const b of RTS_BAUTEN) {
-      const kann = b.frei && Object.entries(b.kosten).every(([k, n]) => (this.p.materials[k as MaterialId] ?? 0) >= (n ?? 0));
-      const farbe = !b.frei ? '#5a5348' : kann ? '#9ad86a' : '#7a6a52';
-      const t = this.add.text(x, 52, b.name, { fontFamily: 'serif', fontSize: '11px', color: farbe, backgroundColor: '#100b06', padding: { x: 7, y: 3 } }).setInteractive({ useHandCursor: true });
-      t.on('pointerdown', () => this.rtsBaue(b));
-      c.add(t); x += t.width + 6;
+    c.add(this.add.rectangle(F(6), ty2 + F(22), w - F(12), 1, 0x4a3a26).setOrigin(0));
+    let y = ty2 + F(34);
+    if (this.rtsTab === 'bauen') {
+      // Feldbauten UNTEREINANDER mit Kosten (C&C-artige Bau-Icons)
+      for (const b of RTS_BAUTEN) {
+        const kann = b.frei && Object.entries(b.kosten).every(([k, n]) => (this.p.materials[k as MaterialId] ?? 0) >= (n ?? 0));
+        const farbe = !b.frei ? '#5a5348' : kann ? '#e8dfc8' : '#7a6a52';
+        const knopf = this.add.rectangle(F(8), y, w - F(16), F(30), kann ? 0x1c1409 : 0x120d07, 0.9).setOrigin(0).setStrokeStyle(1, kann ? 0x5a4a2e : 0x3a2f1e).setInteractive({ useHandCursor: true });
+        knopf.on('pointerdown', () => this.rtsBaue(b));
+        c.add(knopf);
+        c.add(this.add.text(F(14), y + F(4), b.name, { fontFamily: 'serif', fontSize: `${F(11)}px`, color: farbe }));
+        const ktxt = Object.entries(b.kosten).map(([k, n]) => `${n}${MATERIAL_NAMES[k as MaterialId][0]}`).join(' ');
+        c.add(this.add.text(F(14), y + F(17), ktxt, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a' }));
+        y += F(34);
+      }
+      c.add(this.add.text(F(8), y + F(2), 'Bauwerk wählen -> mit der Maus\nplatzieren (Rechtsklick bricht ab).\nPalisade: ziehen für mehrere.', { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#6a5f4c', lineSpacing: 2 }));
+    } else {
+      // BEFEHLE: Steuerungs-Umschalter + Formationen
+      const heldMod = !this.devFreiKam;
+      const modBtn = this.add.rectangle(F(8), y, w - F(16), F(28), 0x221808, 0.95).setOrigin(0).setStrokeStyle(1, 0x6a5636).setInteractive({ useHandCursor: true });
+      modBtn.on('pointerdown', () => { this.setzeFreiKamera(!this.devFreiKam); this.sfx.play('klick'); this.baueRtsLeiste(); });
+      c.add(modBtn);
+      c.add(this.add.text(F(14), y + F(6), heldMod ? '⚑ Steuerung: HELD (WASD)' : '⚑ Steuerung: TRUPPEN (Maus)', { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#c9a227' }));
+      y += F(34);
+      // Schild-Toggle: der gewählte Held hält zwischen den Schlägen die Deckung
+      const schildBtn = this.add.rectangle(F(8), y, w - F(16), F(28), this.rtsSchildAktiv ? 0x1a2418 : 0x221808, 0.95).setOrigin(0).setStrokeStyle(1, this.rtsSchildAktiv ? 0x6a9a5a : 0x6a5636).setInteractive({ useHandCursor: true });
+      schildBtn.on('pointerdown', () => { this.rtsSchildAktiv = !this.rtsSchildAktiv; this.sfx.play('klick'); this.baueRtsLeiste(); this.logMsg(this.rtsSchildAktiv ? 'Held hält den Schild oben.' : 'Held kämpft ohne Deckung.', ''); });
+      c.add(schildBtn);
+      c.add(this.add.text(F(14), y + F(6), this.rtsSchildAktiv ? '🛡 Schild: AN' : '🛡 Schild: AUS', { fontFamily: 'serif', fontSize: `${F(10)}px`, color: this.rtsSchildAktiv ? '#9ad86a' : '#b0a48a' }));
+      y += F(38);
+      c.add(this.add.text(F(8), y, 'Formation', { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#8a7a5a', letterSpacing: 1 }));
+      y += F(18);
+      for (const f of RTS_FORMATIONEN) {
+        const aktiv = this.rtsFormation === f.id;
+        const knopf = this.add.rectangle(F(8), y, w - F(16), F(26), aktiv ? 0x2a1e0a : 0x120d07, 0.9).setOrigin(0).setStrokeStyle(1, aktiv ? 0xc9a227 : 0x3a2f1e).setInteractive({ useHandCursor: true });
+        knopf.on('pointerdown', () => { this.rtsFormation = f.id; this.sfx.play('klick'); this.baueRtsLeiste(); this.logMsg(`Formation: ${f.name} - ${f.hinweis}.`, ''); });
+        c.add(knopf);
+        c.add(this.add.text(F(14), y + F(3), f.name, { fontFamily: 'serif', fontSize: `${F(11)}px`, color: aktiv ? '#c9a227' : '#d8cfb8' }));
+        c.add(this.add.text(F(14), y + F(15), f.hinweis, { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#7a6a52' }));
+        y += F(30);
+      }
     }
-    c.add(this.add.text(10, 78, 'Bauwerk anklicken -> mit der Maus platzieren. Einheiten-Befehle folgen mit den Schlacht-Karten.', { fontFamily: 'serif', fontSize: '9px', color: '#6a5f4c' }));
     fixUiScroll(c);
   }
 
@@ -2810,32 +2852,129 @@ export class WorldScene extends CombatScene {
 
   private vollendeBau(id: string, x: number, y: number): void {
     this.sfx.play('klick');
+    const maxHp = BAU_HP[id] ?? 60;
+    let img: Phaser.GameObjects.Image | undefined;
+    let tx: number | undefined, ty: number | undefined;
     if (id === 'lagerfeuer') {
       (this.lagerfeuerProKarte[this.area.id] ??= []).push({ x, y });
       this.spawneLagerfeuer(x, y);
       this.logMsg('Lagerfeuer errichtet - hier heilst du und hast nachts Licht.', 'gold');
     } else if (id === 'standarte') {
-      this.spawneStandarte(x, y);
+      img = this.spawneStandarte(x, y);
       this.logMsg(`Die Standarte weht - Moral im Umkreis +${MORAL.standarteBonus}.`, 'gold');
     } else if (id === 'palisade') {
-      const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+      tx = Math.floor(x / TILE); ty = Math.floor(y / TILE);
       this.area.map[ty][tx] = T.PALISADE;
       this.refreshTile(tx, ty);
       this.logMsg('Palisade steht (3 m).', 'gold');
     } else {
-      // R92: Wachturm/Lazarett/Zelt als Feldbau platzieren (das volle HP-/Menü-/
-      // Reparatur-System kommt mit dem RTS-Bau-Ausbau; hier steht das Bauwerk
-      // schon sichtbar und hat Material gekostet).
-      this.spawneFeldbau(id, x, y);
+      img = this.spawneFeldbau(id, x, y);
       const b = RTS_BAUTEN.find((rb) => rb.id === id);
       this.logMsg(`${b?.name ?? 'Feldbau'} errichtet.`, 'gold');
     }
+    // R94: in die Feldbau-Registry (Lebenspunkte, Klick-Menü)
+    this.feldbauten.push({ id, x, y, tx, ty, hp: maxHp, maxHp, img, balken: null });
     this.panels?.refresh?.();
+  }
+
+  // --- FELDBAU-KLICK-MENÜ (R94): auf einen Bau klicken -> HP-Balken +
+  // Reparieren + Abbauen. Balken zeigt sich nur bei Auswahl ODER wenn die
+  // Lebensanzeige in den roten Bereich fällt. ------------------------------
+  private feldbauUnter(wx: number, wy: number): (typeof this.feldbauten)[number] | null {
+    for (const f of this.feldbauten) {
+      const r = f.tx !== undefined ? 18 : (f.img ? Math.max(18, f.img.displayWidth * 0.5) : 20);
+      if (Math.hypot(f.x - wx, f.y - wy) < r) return f;
+    }
+    return null;
+  }
+
+  private oeffneBauMenu(f: (typeof this.feldbauten)[number]): void {
+    this.gewaehlterBau = f;
+    this.bauPopup?.destroy();
+    const w = 190, h = 96;
+    const cam = this.cameras.main, zm = cam.zoom;
+    const sx = (f.x - cam.worldView.x) * zm, sy = (f.y - cam.worldView.y) * zm;
+    const px = Math.max(6, Math.min(this.scale.width - w - 6, sx - w / 2));
+    const py = Math.max(6, Math.min(this.scale.height - h - 6, sy - h - 30));
+    const c = this.add.container(px, py).setScrollFactor(0).setDepth(6600);
+    this.bauPopup = c;
+    const bg = this.add.rectangle(0, 0, w, h, 0x14100a, 0.96).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
+    bg.setInteractive(); c.add(bg);
+    const name = RTS_BAUTEN.find((b) => b.id === f.id)?.name ?? f.id;
+    c.add(this.add.text(10, 6, name, { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' }));
+    const zu = this.add.text(w - 20, 4, '✕', { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8' }).setInteractive({ useHandCursor: true });
+    zu.on('pointerdown', () => this.schliesseBauMenu()); c.add(zu);
+    // HP-Balken
+    const frac = f.hp / f.maxHp;
+    c.add(this.add.rectangle(10, 28, w - 20, 10, 0x000000, 0.6).setOrigin(0));
+    c.add(this.add.rectangle(11, 29, (w - 22) * frac, 8, frac < BAU_REPARATUR.balkenRotUnter ? 0xd8402a : 0x6ab04a).setOrigin(0));
+    c.add(this.add.text(10, 40, `${Math.ceil(f.hp)} / ${f.maxHp} LP`, { fontFamily: 'serif', fontSize: '10px', color: '#bcae90' }));
+    // Reparieren
+    const rep = this.add.text(10, 62, 'Reparieren', { fontFamily: 'serif', fontSize: '12px', color: '#9ad86a', backgroundColor: '#221808', padding: { x: 8, y: 4 } }).setInteractive({ useHandCursor: true });
+    rep.on('pointerdown', () => this.repariereBau(f)); c.add(rep);
+    // Abbauen
+    const ab = this.add.text(104, 62, 'Abbauen', { fontFamily: 'serif', fontSize: '12px', color: '#d8a06a', backgroundColor: '#221808', padding: { x: 8, y: 4 } }).setInteractive({ useHandCursor: true });
+    ab.on('pointerdown', () => this.baueBauAb(f)); c.add(ab);
+    fixUiScroll(c);
+  }
+
+  private schliesseBauMenu(): void {
+    this.bauPopup?.destroy(); this.bauPopup = null; this.gewaehlterBau = null;
+  }
+
+  private repariereBau(f: (typeof this.feldbauten)[number]): void {
+    if (f.hp >= f.maxHp) { this.logMsg('Ist unbeschädigt.', ''); return; }
+    const bau = RTS_BAUTEN.find((b) => b.id === f.id);
+    const kosten = Object.entries(bau?.kosten ?? {}).map(([k, n]) => [k, Math.max(1, Math.round((n ?? 0) * BAU_REPARATUR.kostenFrac))] as [string, number]);
+    if (kosten.some(([k, n]) => (this.p.materials[k as MaterialId] ?? 0) < n)) { this.sfx.play('fehler'); this.logMsg('Nicht genug Material zum Reparieren.', ''); return; }
+    for (const [k, n] of kosten) this.p.materials[k as MaterialId] -= n;
+    f.hp = Math.min(f.maxHp, f.hp + f.maxHp * BAU_REPARATUR.proAktionFrac);
+    this.sfx.play('holz_hacken');
+    this.fx.burst(f.x, f.y - 8, 0xc9b06a, 8, 90);
+    this.logMsg('Repariert.', 'gold');
+    this.oeffneBauMenu(f);   // Menü mit neuem HP-Stand
+  }
+
+  private baueBauAb(f: (typeof this.feldbauten)[number]): void {
+    const bau = RTS_BAUTEN.find((b) => b.id === f.id);
+    for (const [k, n] of Object.entries(bau?.kosten ?? {})) this.p.materials[k as MaterialId] += Math.max(0, Math.round((n ?? 0) * BAU_REPARATUR.abbauRueckFrac));
+    this.entferneFeldbau(f);
+    this.sfx.play('klick');
+    this.logMsg('Abgebaut - ein Teil des Materials kehrt zurück.', '');
+    this.schliesseBauMenu();
+    this.panels?.refresh?.();
+  }
+
+  private entferneFeldbau(f: (typeof this.feldbauten)[number]): void {
+    f.balken?.destroy();
+    if (f.tx !== undefined && f.ty !== undefined) {   // Palisade = Kachel
+      if (this.area.map[f.ty]?.[f.tx] === T.PALISADE) { this.area.map[f.ty][f.tx] = T.GRASS; this.refreshTile(f.tx, f.ty); }
+    } else if (f.img?.active) f.img.destroy();
+    if (f.id === 'lagerfeuer') {
+      this.lagerfeuerAktiv = this.lagerfeuerAktiv.filter((lf) => Math.hypot(lf.x - f.x, lf.y - f.y) > 8);
+      const arr = this.lagerfeuerProKarte[this.area.id]; if (arr) this.lagerfeuerProKarte[this.area.id] = arr.filter((lf) => Math.hypot(lf.x - f.x, lf.y - f.y) > 8);
+    }
+    if (f.id === 'standarte') this.standartenAktiv = this.standartenAktiv.filter((st) => Math.hypot(st.x - f.x, st.y - f.y) > 8);
+    this.feldbauten = this.feldbauten.filter((x) => x !== f);
+  }
+
+  // Dauer-Lebensbalken der beschädigten (roten) Bauten + Auswahl
+  private updateBauBalken(): void {
+    for (const f of this.feldbauten) {
+      const frac = f.hp / f.maxHp;
+      const zeigen = f === this.gewaehlterBau || frac < BAU_REPARATUR.balkenRotUnter;
+      if (!zeigen) { f.balken?.clear(); continue; }
+      if (!f.balken) { f.balken = this.add.graphics().setDepth(f.y + 60); this.uiCam?.ignore(f.balken); }
+      const g = f.balken; g.clear();
+      const bw = 30, by = f.y - (f.img ? f.img.displayHeight * 0.9 : 24);
+      g.fillStyle(0x000000, 0.6); g.fillRect(f.x - bw / 2 - 1, by - 1, bw + 2, 5);
+      g.fillStyle(frac < BAU_REPARATUR.balkenRotUnter ? 0xd8402a : 0x6ab04a, 1); g.fillRect(f.x - bw / 2, by, bw * frac, 3);
+    }
   }
 
   // Einfacher Feldbau-Sprite (R92): Wachturm (Gerüst), Lazarett (Rotkreuz-Zelt),
   // Zelt. Prozedural, y-sortiert. Lebenspunkte/Menü folgen im RTS-Bau-Ausbau.
-  private spawneFeldbau(id: string, x: number, y: number): void {
+  private spawneFeldbau(id: string, x: number, y: number): Phaser.GameObjects.Image {
     const key = `feldbau_${id}`;
     if (!this.textures.exists(key)) {
       const c = document.createElement('canvas'); c.width = 48; c.height = 56;
@@ -2860,10 +2999,11 @@ export class WorldScene extends CombatScene {
     }
     const img = this.add.image(x, y, key).setOrigin(0.5, 0.92).setDepth(y);
     this.tileImages.push(img);
+    return img;
   }
 
   // Banner-Standarte: Stange + wehender Wimpel (Canvas), Moral-Anker im Umkreis
-  private spawneStandarte(x: number, y: number): void {
+  private spawneStandarte(x: number, y: number): Phaser.GameObjects.Image {
     if (!this.textures.exists('standarte_tex')) {
       const cv = document.createElement('canvas'); cv.width = 26; cv.height = 46;
       const g = cv.getContext('2d')!;
@@ -2880,6 +3020,7 @@ export class WorldScene extends CombatScene {
     this.tileImages.push(img);
     this.windGras.push({ img, phase: x * 0.02, amp: 0.05 });   // der Wimpel wiegt im Wind
     this.standartenAktiv.push({ x, y });
+    return img;
   }
 
   // Moornebel-Drift (R81): Schwaden wabern träge seitwärts, Alpha atmet leicht.
@@ -3169,6 +3310,99 @@ export class WorldScene extends CombatScene {
         if (amRaum) this.refreshTile(tx, ty);
       }
     }
+  }
+
+  // R94: hohe Palisade (Draufsicht mit Höhe), Form aus dem N/O/S/W-Muster.
+  // Ein Wandstück mit angespitzten Pfählen; verbundene Seiten reichen bis zum
+  // Rand (Eckstücke entstehen automatisch, wo waagerecht auf senkrecht trifft).
+  private palisadeTexturKey(mask: number): string {
+    const key = `palisade_hoch_${mask}`;
+    if (!this.textures.exists(key)) {
+      // logische Kachel 32 breit x 64 hoch (unten Boden, oben Pfahlspitzen)
+      const c = document.createElement('canvas'); c.width = 32; c.height = 64;
+      const g = c.getContext('2d')!;
+      const boden = 60;   // Standlinie im Bild (Fuß der Pfähle)
+      // Kontaktschatten
+      g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(16, boden + 2, 13, 3, 0, 0, Math.PI * 2); g.fill();
+      const pfahl = (px: number, hoch: number): void => {
+        const oben = boden - hoch;
+        g.fillStyle = '#5a4326'; g.fillRect(px - 2.4, oben, 4.8, hoch);            // Schaft
+        g.fillStyle = '#6e5330'; g.fillRect(px - 2.4, oben, 2, hoch);             // Lichtkante
+        g.fillStyle = '#3a2c18'; g.beginPath(); g.moveTo(px - 2.4, oben); g.lineTo(px, oben - 4); g.lineTo(px + 2.4, oben); g.closePath(); g.fill();   // Spitze
+      };
+      // Querriegel (verbindet die Pfähle) - Höhe ~34
+      const wandOben = boden - 40;
+      // horizontale Verbindung (O/W): Pfahlreihe über die volle Breite
+      const hor = (mask & 2) || (mask & 8);
+      const ver = (mask & 1) || (mask & 4);
+      g.fillStyle = 'rgba(52,40,22,0.9)';
+      if (hor) g.fillRect(0, wandOben + 8, 32, 4);         // Handlauf quer
+      if (ver) g.fillRect(14, wandOben, 4, 40);            // Handlauf senkrecht (schmaler Streifen)
+      // Pfähle setzen
+      if (hor) { for (let px = 4; px <= 28; px += 6) pfahl(px, 38 + ((px * 7) % 6)); }
+      if (ver) { for (let py = 0; py < 3; py++) pfahl(16, 34 + py * 2); }
+      if (!hor && !ver) { pfahl(10, 38); pfahl(16, 42); pfahl(22, 38); }   // Einzelpfosten
+      this.textures.addCanvas(key, c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+    return key;
+  }
+
+  // --- PALISADE ZIEHEN (R94, Autor "mehrere Felder auf einmal"): im
+  // Palisaden-Platzierungsmodus Maus gedrückt halten und ziehen -> eine LINIE
+  // Palisade (orthogonal, mit Eck bei Richtungswechsel). Materialkosten je Feld.
+  private palisadeZug: { tx0: number; ty0: number; vorschau: Phaser.GameObjects.Graphics } | null = null;
+
+  private palisadeDragStart(ptr: Phaser.Input.Pointer): boolean {
+    if (this.platziereModus?.id !== 'palisade') return false;
+    const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
+    const g = this.add.graphics().setDepth(6350);
+    this.palisadeZug = { tx0: Math.floor(wp.x / TILE), ty0: Math.floor(wp.y / TILE), vorschau: g };
+    return true;
+  }
+
+  private palisadeLinie(tx0: number, ty0: number, tx1: number, ty1: number): Array<[number, number]> {
+    // orthogonale L-Linie (erst waagerecht, dann senkrecht) - ergibt saubere Ecken
+    const tiles: Array<[number, number]> = [];
+    const sx = Math.sign(tx1 - tx0), sy = Math.sign(ty1 - ty0);
+    for (let x = tx0; x !== tx1 + sx && sx !== 0; x += sx) tiles.push([x, ty0]);
+    if (sx === 0) tiles.push([tx0, ty0]);
+    for (let y = ty0 + sy; y !== ty1 + sy && sy !== 0; y += sy) tiles.push([tx1, y]);
+    return tiles;
+  }
+
+  private palisadeDragMove(ptr: Phaser.Input.Pointer): void {
+    if (!this.palisadeZug) return;
+    const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
+    const tx1 = Math.floor(wp.x / TILE), ty1 = Math.floor(wp.y / TILE);
+    const g = this.palisadeZug.vorschau; g.clear();
+    for (const [x, y] of this.palisadeLinie(this.palisadeZug.tx0, this.palisadeZug.ty0, tx1, ty1)) {
+      const ok = this.bauplatzFrei(x * TILE + 16, y * TILE + 16);
+      g.fillStyle(ok ? 0x9ad86a : 0xd8402a, 0.3); g.fillRect(x * TILE + 2, y * TILE + 2, TILE - 4, TILE - 4);
+    }
+  }
+
+  private palisadeDragEnd(ptr: Phaser.Input.Pointer): void {
+    if (!this.palisadeZug) return;
+    const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
+    const tx1 = Math.floor(wp.x / TILE), ty1 = Math.floor(wp.y / TILE);
+    const bau = RTS_BAUTEN.find((b) => b.id === 'palisade')!;
+    const kostenJe = Object.entries(bau.kosten) as Array<[string, number]>;
+    const felder = this.palisadeLinie(this.palisadeZug.tx0, this.palisadeZug.ty0, tx1, ty1)
+      .filter(([x, y]) => this.bauplatzFrei(x * TILE + 16, y * TILE + 16));
+    let gebaut = 0;
+    for (const [x, y] of felder) {
+      if (kostenJe.some(([k, n]) => (this.p.materials[k as MaterialId] ?? 0) < (n ?? 0))) break;   // Material alle
+      for (const [k, n] of kostenJe) this.p.materials[k as MaterialId] -= n ?? 0;
+      this.area.map[y][x] = T.PALISADE;
+      this.feldbauten.push({ id: 'palisade', x: x * TILE + 16, y: y * TILE + 16, tx: x, ty: y, hp: BAU_HP.palisade, maxHp: BAU_HP.palisade, balken: null });
+      gebaut++;
+    }
+    // betroffene + Nachbar-Kacheln neu zeichnen (Verbindungen/Ecken)
+    for (const [x, y] of felder) for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) this.refreshTile(x + dx, y + dy);
+    this.palisadeZug.vorschau.destroy();
+    this.palisadeZug = null;
+    if (gebaut > 0) { this.sfx.play('holz_hacken'); this.logMsg(`${gebaut} Palisaden-Segmente errichtet.`, 'gold'); this.brichPlatzierungAb(); this.baueRtsLeiste?.(); this.panels?.refresh?.(); }
+    void ptr;
   }
 
   private kontaktSchattenKey(): string {
@@ -3649,6 +3883,19 @@ export class WorldScene extends CombatScene {
     // Sprite gezeichnet - das gemalte Bodenbild (-11) und das Wasser-Overlay (-9)
     // übernehmen die Optik. Kollision bleibt aus a.map (SOLID unverändert).
     if (a.gebackenerBoden && (id === T.GRASS || id === T.PATH || id === T.FIELD || id === T.WATER || id === T.BRIDGE)) return;   // Brücke = eigenes Komposit-Bild (R78)
+    // R94 (Autor "Palisade 3 m hoch + Eck-Elemente"): auf gebackenen Karten
+    // eine HOHE, oben verbundene Palisade aus dem Nachbar-Muster (N/O/S/W).
+    if (a.gebackenerBoden && id === T.PALISADE) {
+      const mask = (a.map[ty - 1]?.[tx] === T.PALISADE ? 1 : 0) | (a.map[ty]?.[tx + 1] === T.PALISADE ? 2 : 0)
+        | (a.map[ty + 1]?.[tx] === T.PALISADE ? 4 : 0) | (a.map[ty]?.[tx - 1] === T.PALISADE ? 8 : 0);
+      const key = this.palisadeTexturKey(mask);
+      const hoehe = TILE * 2;   // ~3 m im Spielmaßstab (Fuß-Anker unten)
+      const img = this.add.image(tx * TILE + 16, ty * TILE + TILE, key).setOrigin(0.5, 1).setDepth(ty * TILE + 26);
+      img.setDisplaySize(TILE, hoehe);   // Breite = 1 Kachel, Höhe = 2 Kacheln
+      img.setData('kachel', `${tx},${ty}`);
+      this.tileImages.push(img);
+      return;
+    }
     const name = tileNameAt(a.map, tx, ty);
     // Im Baukasten gewählte Variante schlägt den Positions-Hash
     const planV = this.planKachelAn(tx, ty)?.v;
@@ -3930,6 +4177,7 @@ export class WorldScene extends CombatScene {
     this.baustellen = [];        // R88: Baustellen je Karte (Container via tileImages weg)
     this.brichPlatzierungAb();
     this.hackZiel = null; this.hackBalken = null;   // R93: Hack-Anzeige je Karte
+    this.feldbauten = []; this.schliesseBauMenu();   // R94: Feldbauten je Karte
     // Tiles als statische Bilder (Pseudo-3D, Masterprompt 5.1). Bei dorfSimBoden
     // malt der dorfSim-Canvas alles - keine Kacheln.
     if (!a.dorfSimBoden) {
@@ -4368,7 +4616,72 @@ export class WorldScene extends CombatScene {
   // R88: im Platzierungs-Modus fängt der Weltklick die Bau-Platzierung ab
   // (vor Angriff/Interaktion), damit die Maus das Bauwerk setzt.
   protected override bauKlick(ptr: Phaser.Input.Pointer): boolean {
-    return this.platzierKlick(ptr);
+    // R94: Palisade wird GEZOGEN (Maus halten) statt einzeln geklickt.
+    if (this.platziereModus?.id === 'palisade' && !ptr.rightButtonDown()) {
+      if (this.palisadeDragStart(ptr)) return true;
+    }
+    if (this.platzierKlick(ptr)) return true;
+    // R94: Klick auf einen Feldbau öffnet sein Menü (Reparieren/Abbauen).
+    const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
+    const f = this.feldbauUnter(wp.x, wp.y);
+    if (f && !ptr.rightButtonDown()) { this.oeffneBauMenu(f); return true; }
+    if (this.bauPopup) { this.schliesseBauMenu(); }
+    // R94: im TRUPPEN-Modus den Helden wählen / per Klick schicken.
+    if (this.devFreiKam && this.rtsLeiste) {
+      if (!ptr.rightButtonDown()) {
+        if (Math.hypot(wp.x - this.px, wp.y - this.py) < 26) {
+          this.rtsHeldGewaehlt = true; this.sfx.play('klick');
+          this.logMsg('Held gewählt - klicke auf den Boden, um ihn zu schicken.', '');
+          return true;
+        }
+        if (this.rtsHeldGewaehlt) { this.rtsMoveZiel = { x: wp.x, y: wp.y }; this.fx.burst(wp.x, wp.y, 0x9ad86a, 6, 60); return true; }
+      } else if (this.rtsHeldGewaehlt) {
+        // Rechtsklick = Marschbefehl (wie in einem RTS)
+        this.rtsMoveZiel = { x: wp.x, y: wp.y }; this.fx.burst(wp.x, wp.y, 0x9ad86a, 6, 60); return true;
+      }
+    }
+    return false;
+  }
+
+  // Held im RTS-Modus zum Ziel laufen lassen + Gegner automatisch angreifen.
+  private updateRtsHeld(dt: number): void {
+    if (this.rtsAttackCd > 0) this.rtsAttackCd -= dt;
+    // Auswahl-Ring
+    if (this.rtsHeldGewaehlt && this.devFreiKam) {
+      if (!this.rtsWahlRing) { this.rtsWahlRing = this.add.graphics().setDepth(this.py - 1); }
+      const g = this.rtsWahlRing; g.clear();
+      g.lineStyle(1.5, 0x9ad86a, 0.9); g.strokeEllipse(this.px, this.py + 8, 26, 12);
+      g.setDepth(this.py - 1);
+    } else if (this.rtsWahlRing) { this.rtsWahlRing.clear(); }
+    if (!this.devFreiKam) { this.rtsMoveZiel = null; return; }
+    // Marsch zum Ziel (Kollision: einfache Achsen-Gleiten)
+    if (this.rtsMoveZiel) {
+      const zx = this.rtsMoveZiel.x, zy = this.rtsMoveZiel.y;
+      const d = Math.hypot(zx - this.px, zy - this.py);
+      if (d < 8) { this.rtsMoveZiel = null; }
+      else {
+        const tempo = PLAYER.speed * (getSettings().tempo / 100) * this.areaSpeedFactor() * dt;
+        const ux = (zx - this.px) / d, uy = (zy - this.py) / d;
+        const r = 10;
+        const nx = this.px + ux * tempo, ny = this.py + uy * tempo;
+        if (!this.isSolidAt(nx - r, this.py - r) && !this.isSolidAt(nx + r, this.py + r) && !this.isSolidAt(nx + r, this.py - r) && !this.isSolidAt(nx - r, this.py + r)) this.px = nx;
+        if (!this.isSolidAt(this.px - r, ny - r) && !this.isSolidAt(this.px + r, ny + r) && !this.isSolidAt(this.px + r, ny - r) && !this.isSolidAt(this.px - r, ny + r)) this.py = ny;
+        this.pdir = Math.atan2(uy, ux);
+      }
+    }
+    // Auto-Angriff auf den nächsten Gegner in Reichweite (Kampfkarten)
+    let ziel: Enemy | null = null, bd = 46;
+    for (const e of this.enemies) { if (e.hp <= 0) continue; const dd = Math.hypot(e.x - this.px, e.y - this.py); if (dd < bd) { bd = dd; ziel = e; } }
+    if (!this.rtsMoveZiel && ziel && this.rtsAttackCd <= 0) {
+      this.pdir = Math.atan2(ziel.y - this.py, ziel.x - this.px);
+      this.tryBlockEnd();           // zum Zuschlagen kurz die Deckung senken
+      this.tryLight(); this.rtsAttackCd = 0.7;
+    } else if (this.rtsSchildAktiv && !this.combat.blocking && (ziel || this.rtsMoveZiel === null)) {
+      // Schild-Toggle AN: der Held hält zwischen den Schlägen die Deckung oben
+      this.tryBlockStart();
+    } else if (!this.rtsSchildAktiv && this.combat.blocking) {
+      this.tryBlockEnd();
+    }
   }
 
   protected override klickAufUi(ptr: Phaser.Input.Pointer): boolean {
@@ -8960,6 +9273,8 @@ export class WorldScene extends CombatScene {
     this.updatePflanzenRespawn(dt); // Heilpflanzen wachsen nach (R89)
     if (this.hackCdMs > 0) this.hackCdMs = Math.max(0, this.hackCdMs - dt * 1000); // Schlag-Pause (R90)
     this.updateHackBalken(dt);   // Lebensbalken + Schlag-Fortschritt (R93)
+    this.updateBauBalken();      // Feldbau-Lebensbalken (R94)
+    this.updateRtsHeld(dt);      // Einheitensteuerung im RTS-Modus (R94)
     this.updateNassSpritzer(dt);  // Spritzer in Pfützen + auf nassem Rasen (R78)
     this.updateRegenPlatschen(dt); // Regen plätschert im Gras (R79)
     this.updateWasserWetter();  // Regen-Ringe/Wirbel auf dem neuen Wasser
