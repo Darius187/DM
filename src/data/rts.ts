@@ -68,8 +68,31 @@ export const RTS_BAUTEN: ReadonlyArray<RtsBau> = [
   { id: 'wachturm', name: 'Wachturm', kosten: { holz: 20, stein: 8 }, frei: true, beschreibung: 'Weite Sicht und Schussfeld - Bogenschütze hoch = mehr Reichweite' },
   { id: 'tor', name: 'Tor', kosten: { holz: 12 }, frei: true, beschreibung: 'Verschließbarer Durchlass in der Palisadenreihe' },
   { id: 'lazarett', name: 'Lazarett-Zelt', kosten: { holz: 14, fasern: 10, schafgarbe: 4 }, frei: true, beschreibung: 'Der Feldscher verbindet hier Verwundete' },
-  { id: 'zelt', name: 'Zelt', kosten: { holz: 10, fasern: 6 }, frei: true, beschreibung: 'Rast für die Truppe zwischen den Gefechten' },
+  { id: 'zelt', name: 'Mannschaftszelt', kosten: { holz: 10, fasern: 6 }, frei: true, beschreibung: 'Rast: eigene Einheiten im Umkreis regenerieren langsam' },
+  // R97 "Lager zum Durchhalten": Aura-/Wirk-Bauten (Autorliste). Alle docken auf
+  // dem stehenden Bausystem (platzieren/HP/reparieren/abbauen) an.
+  { id: 'feldaltar', name: 'Feldaltar', kosten: { holz: 8, stein: 6 }, frei: true, beschreibung: 'Der Pater weiht ihn - Moral + Schutz gegen Untote im Umkreis' },
+  { id: 'kochstelle', name: 'Feldküche', kosten: { holz: 6, stein: 2 }, frei: true, beschreibung: 'Warme Mahlzeit - stärkt den Schaden der Truppe im Umkreis' },
+  { id: 'brunnen', name: 'Brunnen', kosten: { holz: 6, stein: 10 }, frei: true, beschreibung: 'Versorgung - hält die Moral über lange Belagerung oben' },
+  { id: 'feldschmiede', name: 'Feldschmiede', kosten: { holz: 10, stein: 8 }, frei: true, beschreibung: 'Der Schmied repariert nahe Bauwerke von selbst' },
+  { id: 'wartfeuer', name: 'Wartfeuer', kosten: { holz: 12 }, frei: true, beschreibung: 'Signalfeuer - ruft eine Verstärkungswelle (anklicken)' },
+  { id: 'nachschub', name: 'Nachschubzelt', kosten: { holz: 10, fasern: 8 }, frei: true, beschreibung: 'Versorgt nahe Einheiten - sie heilen schneller' },
 ];
+
+// Wirkung der Lager-Bauten (R97, "durchhalten bis Verstärkung"). Aura-Radius +
+// Effekt je Bau. Reine Regler.
+export const LAGER_EFFEKT = {
+  radius: 150,             // Wirkradius der Aura (px)
+  altarMoral: 12,          // Feldaltar: Moral-Bonus im Lager
+  altarUntotSchutz: 0.5,   // Schaden von Untoten (feind) im Altar-Umkreis * 0.5
+  altarHeal: 2,            // leichte Heilung/s
+  zeltRegen: 5,            // Mannschaftszelt: HP/s Regeneration
+  nachschubRegen: 8,       // Nachschubzelt: HP/s (stärker)
+  kochDmg: 1.3,            // Feldküche: Schaden * 1.3
+  brunnenMoral: 8,         // Brunnen: Moral-Bonus
+  schmiedeReparaturProS: 6,// Feldschmiede: HP/s an nahen Bauwerken
+  wartfeuerCd: 20,         // Wartfeuer: Sekunden bis wieder rufbar
+} as const;
 
 // Held-Steuerung im RTS-Modus (R96, Autor "läuft viel zu schnell, Lauf-
 // Animation dadurch nicht gut"): der Marsch ist bedächtiger als das ARPG-Tempo,
@@ -81,6 +104,7 @@ export const RTS_HELD = {
 // Feldbau-Lebenspunkte + Reparatur/Abbau (R94). Werte justierbar.
 export const BAU_HP: Record<string, number> = {
   lagerfeuer: 40, standarte: 60, palisade: 120, tor: 160, wachturm: 220, lazarett: 130, zelt: 90,
+  feldaltar: 90, kochstelle: 60, brunnen: 110, feldschmiede: 120, wartfeuer: 70, nachschub: 90,
 };
 export const BAU_REPARATUR = {
   proAktionFrac: 0.34,   // je Reparatur ~1/3 der maxHP zurück

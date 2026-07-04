@@ -42,7 +42,7 @@ import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDL
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
-import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, RTS_HELD, RTS_UNIT_TYP, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
@@ -2672,7 +2672,7 @@ export class WorldScene extends CombatScene {
   private platziereModus: { id: string; kosten: Record<string, number>; bauzeitS: number } | null = null;
   private platzierGeist: Phaser.GameObjects.Container | null = null;
   private baustellen: Array<{ id: string; x: number; y: number; t: number; dauer: number; img: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics }> = [];
-  private readonly BAUZEIT: Record<string, number> = { lagerfeuer: 3, standarte: 2.5, palisade: 4, tor: 5, wachturm: 7, lazarett: 6, zelt: 4 };
+  private readonly BAUZEIT: Record<string, number> = { lagerfeuer: 3, standarte: 2.5, palisade: 4, tor: 5, wachturm: 7, lazarett: 6, zelt: 4, feldaltar: 5, kochstelle: 3, brunnen: 5, feldschmiede: 5, wartfeuer: 4, nachschub: 4 };
 
   private toggleRtsModus(): void {
     if (this.rtsLeiste) {
@@ -2694,6 +2694,7 @@ export class WorldScene extends CombatScene {
       play: (k, v) => this.sfx.play(k, v),
       isSolid: (x, y) => this.isSolidAt(x, y),
       tuerme: () => this.feldbauten.filter((f) => f.id === 'wachturm').map((f) => ({ x: f.x, y: f.y })),
+      lager: () => this.feldbauten.map((f) => ({ typ: f.id, x: f.x, y: f.y })),
     }, this.heldRef());
     this.rtsBattle.onFeedback = (t) => this.logMsg(t + '.', '');
     this.baueRtsLauscher();
@@ -2749,12 +2750,42 @@ export class WorldScene extends CombatScene {
     this.rtsAngriffArmed = false;
   }
 
+  private wartfeuerCd = 0;
+  // R97: die Feldschmiede repariert beschädigte Bauwerke im Umkreis von selbst.
+  private wendeFeldschmiedeAn(dt: number): void {
+    const schmieden = this.feldbauten.filter((f) => f.id === 'feldschmiede');
+    if (!schmieden.length) return;
+    for (const s of schmieden) for (const f of this.feldbauten) {
+      if (f === s || f.hp >= f.maxHp) continue;
+      if (Math.hypot(f.x - s.x, f.y - s.y) > LAGER_EFFEKT.radius) continue;
+      f.hp = Math.min(f.maxHp, f.hp + LAGER_EFFEKT.schmiedeReparaturProS * dt);
+    }
+  }
+
+  // R97: das Wartfeuer (Signalfeuer) ruft eine Verstärkungswelle - eine frische
+  // Abteilung marschiert am Feuer auf (Autor: "Verstärkung anfordern als Bauhandlung").
+  private rufeVerstaerkung(f: (typeof this.feldbauten)[number]): void {
+    if (!this.rtsBattle) return;
+    if (this.wartfeuerCd > 0) { this.logMsg(`Verstärkung sammelt sich noch (${Math.ceil(this.wartfeuerCd)}s).`, ''); return; }
+    this.wartfeuerCd = LAGER_EFFEKT.wartfeuerCd;
+    const trupp: RtsUnitTyp[] = ['nahkampf', 'nahkampf', 'nahkampf', 'bogen', 'bogen', 'heiler'];
+    trupp.forEach((t, i) => this.rtsBattle!.spawn(t, f.x - 40 + (i % 3) * 26, f.y + 30 + Math.floor(i / 3) * 24));
+    this.sfx.play('fertigkeit_neu', 0.5);
+    this.logMsg('Das Signalfeuer lodert - eine Verstärkungswelle trifft ein!', 'gold');
+  }
+
   private aktuelleMoral(): number {
     let moral = MORAL.basis;
     for (const st of this.standartenAktiv) {
       if (Math.hypot(st.x - this.px, st.y - this.py) < MORAL.standarteRadius) moral += MORAL.standarteBonus;
     }
     moral += MORAL.anfuehrerNahBonus;   // der Banneret (Held) ist auf dem Feld
+    // R97: Feldaltar + Brunnen im Lager heben die Moral ("durchhalten").
+    for (const f of this.feldbauten) {
+      if (Math.hypot(f.x - this.px, f.y - this.py) > LAGER_EFFEKT.radius) continue;
+      if (f.id === 'feldaltar') moral += LAGER_EFFEKT.altarMoral;
+      else if (f.id === 'brunnen') moral += LAGER_EFFEKT.brunnenMoral;
+    }
     return Math.min(100, moral);
   }
 
@@ -3040,7 +3071,7 @@ export class WorldScene extends CombatScene {
   private oeffneBauMenu(f: (typeof this.feldbauten)[number]): void {
     this.gewaehlterBau = f;
     this.bauPopup?.destroy();
-    const w = 190, h = 96;
+    const w = 190, h = f.id === 'wartfeuer' ? 124 : 96;
     const cam = this.cameras.main, zm = cam.zoom;
     const sx = (f.x - cam.worldView.x) * zm, sy = (f.y - cam.worldView.y) * zm;
     const px = Math.max(6, Math.min(this.scale.width - w - 6, sx - w / 2));
@@ -3064,6 +3095,12 @@ export class WorldScene extends CombatScene {
     // Abbauen
     const ab = this.add.text(104, 62, 'Abbauen', { fontFamily: 'serif', fontSize: '12px', color: '#d8a06a', backgroundColor: '#221808', padding: { x: 8, y: 4 } }).setInteractive({ useHandCursor: true });
     ab.on('pointerdown', () => this.baueBauAb(f)); c.add(ab);
+    // R97: Wartfeuer ruft eine Verstärkungswelle.
+    if (f.id === 'wartfeuer') {
+      const bereit = this.wartfeuerCd <= 0;
+      const vr = this.add.text(10, 92, bereit ? '🔥 Verstärkung rufen' : `Sammelt (${Math.ceil(this.wartfeuerCd)}s)`, { fontFamily: 'serif', fontSize: '12px', color: bereit ? '#f0c040' : '#8a7a5a', backgroundColor: '#2a1c08', padding: { x: 8, y: 4 } }).setInteractive({ useHandCursor: true });
+      vr.on('pointerdown', () => { this.rufeVerstaerkung(f); this.schliesseBauMenu(); }); c.add(vr);
+    }
     fixUiScroll(c);
   }
 
@@ -3130,7 +3167,7 @@ export class WorldScene extends CombatScene {
     if (!this.textures.exists(key)) this.textures.addCanvas(key, this.macheFeldbauBild(id))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
     const img = this.add.image(x, y, key).setOrigin(0.5, 0.94).setDepth(y);
     // Zielhöhe je Bau (massiver als vorher); Breite folgt dem echten Seitenverhältnis.
-    const zielH: Record<string, number> = { wachturm: 128, zelt: 82, lazarett: 82, tor: 64 };
+    const zielH: Record<string, number> = { wachturm: 128, zelt: 82, lazarett: 82, tor: 64, nachschub: 78, feldaltar: 52, kochstelle: 50, brunnen: 58, feldschmiede: 52, wartfeuer: 54 };
     const h = zielH[id];
     if (h) {
       const src = this.textures.get(key).getSourceImage();
@@ -3148,7 +3185,47 @@ export class WorldScene extends CombatScene {
     if (id === 'wachturm') return this.macheWachturmBild();
     if (id === 'tor') return this.macheTorBild();
     if (id === 'lazarett') return this.macheZeltBild(true);
+    if (id === 'nachschub') return this.macheZeltBild(false);
+    if (id === 'feldaltar' || id === 'kochstelle' || id === 'brunnen' || id === 'feldschmiede' || id === 'wartfeuer') return this.macheLagerBild(id);
     return this.macheZeltBild(false);
+  }
+
+  // Einfache, aber saubere Canvas-Bilder für die Lager-Wirk-Bauten (R97).
+  private macheLagerBild(id: string): HTMLCanvasElement {
+    const c = document.createElement('canvas'); c.width = 56; c.height = 56; const g = c.getContext('2d')!;
+    const cx = 28, boden = 50;
+    g.fillStyle = 'rgba(0,0,0,0.28)'; g.beginPath(); g.ellipse(cx, boden + 2, 18, 5, 0, 0, Math.PI * 2); g.fill();
+    if (id === 'feldaltar') {
+      g.fillStyle = '#8a8078'; g.fillRect(cx - 14, 28, 28, 20);                          // Steinblock
+      g.fillStyle = '#9a9088'; g.fillRect(cx - 14, 28, 28, 4);
+      g.fillStyle = '#6a6058'; for (let i = -1; i <= 1; i++) g.fillRect(cx + i * 9 - 1, 30, 2, 18);
+      g.fillStyle = '#d8cfb0'; g.fillRect(cx - 10, 22, 20, 7);                            // Altartuch
+      g.fillStyle = '#c6a23a'; g.fillRect(cx - 1, 6, 2, 16); g.fillRect(cx - 5, 11, 10, 2);   // goldenes Kreuz
+    } else if (id === 'kochstelle') {
+      g.fillStyle = '#3a2c18'; for (let i = 0; i < 3; i++) { g.save(); g.translate(cx, 44); g.rotate((i - 1) * 0.5); g.fillRect(-1.2, -18, 2.4, 18); g.restore(); }  // Dreibein
+      g.fillStyle = '#2a2420'; g.beginPath(); g.ellipse(cx, 40, 11, 6, 0, 0, Math.PI * 2); g.fill();   // Kessel
+      g.fillStyle = '#3a332e'; g.beginPath(); g.ellipse(cx, 38, 11, 5, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#e07a2a'; for (let i = 0; i < 5; i++) { const a = i / 5 * 6.28; g.beginPath(); g.moveTo(cx, 48); g.lineTo(cx + Math.cos(a) * 5, 44 - Math.random() * 6); g.lineTo(cx + Math.cos(a) * 8, 48); g.fill(); }  // Flammen
+    } else if (id === 'brunnen') {
+      g.fillStyle = '#7a726a'; g.beginPath(); g.ellipse(cx, 44, 15, 7, 0, 0, Math.PI * 2); g.fill();   // Brunnenring
+      g.fillStyle = '#2a3a44'; g.beginPath(); g.ellipse(cx, 43, 10, 4.5, 0, 0, Math.PI * 2); g.fill();  // Wasser
+      g.fillStyle = '#5a4326'; g.fillRect(cx - 14, 14, 3, 30); g.fillRect(cx + 11, 14, 3, 30);          // Pfosten
+      g.fillStyle = '#4a3216'; g.beginPath(); g.moveTo(cx - 16, 16); g.lineTo(cx, 6); g.lineTo(cx + 16, 16); g.closePath(); g.fill();  // Dach
+      g.fillStyle = '#3a2c18'; g.fillRect(cx - 4, 20, 8, 6);                                            // Eimer
+    } else if (id === 'feldschmiede') {
+      g.fillStyle = '#6a6058'; g.fillRect(cx - 13, 34, 26, 14);                                          // Amboss-Sockel
+      g.fillStyle = '#2c2a28'; g.fillRect(cx - 10, 28, 20, 8); g.fillRect(cx + 6, 26, 8, 5);             // Amboss
+      g.fillStyle = '#8a7a52'; g.fillRect(cx - 16, 20, 6, 26);                                           // Pfosten
+      g.fillStyle = '#e07a2a'; g.beginPath(); g.ellipse(cx - 8, 40, 4, 3, 0, 0, Math.PI * 2); g.fill();  // Glut
+      g.fillStyle = '#9a9088'; g.fillRect(cx + 2, 18, 3, 14); g.fillRect(cx + 1, 16, 6, 4);              // Hammer
+    } else {  // wartfeuer - Signalfeuer auf Holzstoß
+      g.fillStyle = '#4a3216'; for (let i = -2; i <= 2; i++) g.fillRect(cx + i * 4 - 1.5, 34, 3, 14);
+      g.fillStyle = '#3a2810'; g.save(); g.translate(cx, 41); g.rotate(0.5); for (let i = -2; i <= 2; i++) g.fillRect(i * 4 - 1.5, -1.5, 3, 14); g.restore();
+      g.fillStyle = '#e0651a'; g.beginPath(); g.moveTo(cx - 9, 36); g.quadraticCurveTo(cx, 6, cx + 9, 36); g.closePath(); g.fill();     // große Flamme
+      g.fillStyle = '#f0c030'; g.beginPath(); g.moveTo(cx - 5, 34); g.quadraticCurveTo(cx, 14, cx + 5, 34); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(60,60,70,0.5)'; g.beginPath(); g.ellipse(cx + 2, 10, 6, 9, 0.3, 0, Math.PI * 2); g.fill();                    // Rauch
+    }
+    return c;
   }
 
   private macheWachturmBild(): HTMLCanvasElement {
@@ -9602,6 +9679,8 @@ export class WorldScene extends CombatScene {
       // R97: Schlachtführer (Held) tot -> Schlacht verloren, Truppe flieht.
       if (this.playerDead && !this.rtsBattle.verloren) { this.rtsBattle.schlachtVerloren(); this.logMsg('SCHLACHT VERLOREN - der Schlachtführer ist gefallen, die Banner sinken.', 'bad'); }
       this.rtsBattle.update(dt); this.rtsBattle.zeichneOverlay();
+      this.wendeFeldschmiedeAn(dt);
+      if (this.wartfeuerCd > 0) this.wartfeuerCd -= dt;
     }
     this.updateNassSpritzer(dt);  // Spritzer in Pfützen + auf nassem Rasen (R78)
     this.updateRegenPlatschen(dt); // Regen plätschert im Gras (R79)

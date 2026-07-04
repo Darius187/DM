@@ -11,7 +11,7 @@
 import Phaser from 'phaser';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import { formSlots, formSlotsSkaliert, linienSlots, slotWelt, type Form, type Slot } from './formationen';
-import { RTS_UNIT_TYP, TURM, type RtsUnitTyp, type RtsTeam } from '../data/rts';
+import { RTS_UNIT_TYP, TURM, LAGER_EFFEKT, type RtsUnitTyp, type RtsTeam } from '../data/rts';
 
 export type Stance = 'aggressiv' | 'verteidigen' | 'halten';
 
@@ -25,6 +25,7 @@ export interface RtsUnit {
   stance: Stance;
   grp: Gruppe | null; off: Slot | null; ziel: { x: number; y: number } | null; fokus: RtsUnit | null;
   turm: { x: number; y: number } | null;   // R96: besetzt diesen Wachturm (erhöht, mehr Reichweite)
+  buffDmg: number; buffSchutz: number;      // R97: Lager-Auren (Feldküche/Feldaltar), je Frame neu
 }
 
 // Der Held wird der Simulation als leichtes Ziel/Angreifer bekannt gemacht und
@@ -45,6 +46,7 @@ export interface RtsHost {
   play(key: string, vol?: number): void;
   isSolid(x: number, y: number): boolean;
   tuerme(): Array<{ x: number; y: number }>;   // Wachturm-Positionen (Besatzung)
+  lager(): Array<{ typ: string; x: number; y: number }>;   // Lager-Wirk-Bauten (Auren)
 }
 
 export class RtsBattle {
@@ -89,6 +91,7 @@ export class RtsBattle {
       x, y, hp: d.hp, maxhp: d.hp, dmg: d.dmg, reich: d.reich, reichBasis: d.reich, speed: d.speed, rank: d.rank,
       atkCd: 0, dir: 0, step: 0, stepT: 0, flash: 0, tot: false, gewaehlt: false,
       stance: 'aggressiv', grp: null, off: null, ziel: null, fokus: null, turm: null,
+      buffDmg: 1, buffSchutz: 1,
     };
     this.units.push(u);
     return u;
@@ -302,6 +305,7 @@ export class RtsBattle {
   // --- Simulation -----------------------------------------------------------
   update(dt: number): void {
     this.fxg.clear();
+    this.wendeLagerAurenAn(dt);
     this.aktualisiereGruppen(dt);
     for (const u of this.units) if (!u.tot) this.updateUnit(u, dt);
     for (const m of this.marker) m.t -= dt;
@@ -309,6 +313,28 @@ export class RtsBattle {
     // Tote entfernen
     for (const u of this.units) if (u.tot && u.sprite.active) { u.sprite.destroy(); }
     this.units = this.units.filter((u) => !u.tot);
+  }
+
+  // R97 "Lager zum Durchhalten": Auren der Wirk-Bauten auf eigene Einheiten im
+  // Umkreis - Regeneration (Zelt/Nachschub/Altar), Schadensbuff (Feldküche),
+  // Untoten-Schutz (Feldaltar). Buffs werden je Frame frisch berechnet.
+  private wendeLagerAurenAn(dt: number): void {
+    const bauten = this.host.lager();
+    const r2 = LAGER_EFFEKT.radius * LAGER_EFFEKT.radius;
+    for (const u of this.units) {
+      u.buffDmg = 1; u.buffSchutz = 1;
+      if (u.team !== 'spieler' || u.tot) continue;
+      let heal = 0;
+      for (const b of bauten) {
+        if ((u.x - b.x) ** 2 + (u.y - b.y) ** 2 > r2) continue;
+        if (b.typ === 'zelt') heal = Math.max(heal, LAGER_EFFEKT.zeltRegen);
+        else if (b.typ === 'nachschub') heal = Math.max(heal, LAGER_EFFEKT.nachschubRegen);
+        else if (b.typ === 'lazarett') heal = Math.max(heal, LAGER_EFFEKT.zeltRegen);
+        else if (b.typ === 'feldaltar') { heal = Math.max(heal, LAGER_EFFEKT.altarHeal); u.buffSchutz = Math.min(u.buffSchutz, LAGER_EFFEKT.altarUntotSchutz); }
+        else if (b.typ === 'kochstelle') u.buffDmg = Math.max(u.buffDmg, LAGER_EFFEKT.kochDmg);
+      }
+      if (heal > 0 && u.hp < u.maxhp) u.hp = Math.min(u.maxhp, u.hp + heal * dt);
+    }
   }
 
   private aktualisiereGruppen(dt: number): void {
@@ -422,7 +448,7 @@ export class RtsBattle {
     u.dir = this.achtRichtung(Math.atan2(feind.y - u.y, feind.x - u.x));
     if (u.atkCd > 0) return;
     u.atkCd = u.reich > 60 ? 1.1 : 0.7;
-    feind.hp -= u.dmg * mult; feind.flash = 0.12;
+    feind.hp -= u.dmg * mult * u.buffDmg * feind.buffSchutz; feind.flash = 0.12;
     if (u.reich > 60) { this.fxg.lineStyle(1.5, 0xf0e0a0, 0.8); this.fxg.lineBetween(u.x, u.y - 6, feind.x, feind.y - 6); this.host.play('pfeil_schuss', 0.25); }
     else { this.host.play('schwert_slice1', 0.25); }
     if (feind.hp <= 0) { feind.tot = true; feind.gewaehlt = false; for (const o of this.units) if (o.fokus === feind) o.fokus = null; }
