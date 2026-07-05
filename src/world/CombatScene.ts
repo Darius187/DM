@@ -1430,7 +1430,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.fx.welle(cx, cy, aoe + 18, 0xcdbf9d);
     let hit = false;
     for (const e of [...this.enemies]) {
-      if (Math.hypot(e.x - cx, e.y - cy) < aoe + e.r) {
+      if (Math.hypot(e.x - cx, e.y - cy) < aoe + e.r && this.sichtFreiMelee(e.x, e.y)) {
         this.damageEnemy(e, this.rollDamage(ev.dmgMult), 0, 0);
         // Brachialer Rückstoß weg vom Einschlag (Autorwunsch R44)
         const ka = Math.atan2(e.y - cy, e.x - cx);
@@ -1459,7 +1459,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     let hit = false;
     for (const e of [...this.enemies]) {
       const d = Math.hypot(e.x - this.px, e.y - this.py);
-      if (d < radius + e.r) {
+      if (d < radius + e.r && this.sichtFreiMelee(e.x, e.y)) {
         const a = Math.atan2(e.y - this.py, e.x - this.px);
         this.damageEnemy(e, this.rollDamage(dmgMult), 0, 0);
         // Rundumschlag/Axt schleudert alle Getroffenen nach außen (Runde 44)
@@ -1485,6 +1485,20 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     return Math.round(base * va);
   }
 
+  // R100e (Autor "Held erledigt Gegner direkt DURCH die Palisade"): Nahkampf
+  // trifft nur, wenn KEINE solide Wand zwischen Held und Ziel liegt. Bei sehr
+  // kurzer Distanz (angrenzend) gibt es keine Zwischenkachel -> trifft normal.
+  protected wandZwischen(ax: number, ay: number, bx: number, by: number): boolean {
+    const dx = bx - ax, dy = by - ay, dist = Math.hypot(dx, dy);
+    const steps = Math.ceil(dist / (TILE * 0.5));
+    for (let i = 1; i < steps; i++) {
+      const t = i / steps;
+      if (this.isSolidAt(ax + dx * t, ay + dy * t)) return true;
+    }
+    return false;
+  }
+  protected sichtFreiMelee(ex: number, ey: number): boolean { return !this.wandZwischen(this.px, this.py, ex, ey); }
+
   private hitEnemiesInArc(ang: number, range: number, arc: number, dmgMult: number, knockback: number, breaksPosture: boolean): boolean {
     let hitAny = false;
     const gem = weaponGem(this.p);
@@ -1502,6 +1516,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       let da = Math.atan2(e.y - this.py, e.x - this.px) - ang;
       da = Math.atan2(Math.sin(da), Math.cos(da));
       if (Math.abs(da) >= arc) continue;
+      if (!this.sichtFreiMelee(e.x, e.y)) continue;   // R100e: keine Treffer durch Waende/Palisaden
       const dmg = this.rollDamage(dmgMult) + (gem ? gem.power : 0);
       this.damageEnemy(e, dmg, Math.cos(ang) * knockback, Math.sin(ang) * knockback, gem?.col);
       if (gem) {
@@ -1719,6 +1734,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   enemyMeleeHit(e: Enemy, dmg: number): void {
     if (this.playerDead) return; // Leiche nimmt keinen Schaden mehr (Runde 35)
+    if (this.wandZwischen(e.x, e.y, this.px, this.py)) return;   // R100e: kein Nahkampf durch Waende/Palisaden
     const aTo = Math.atan2(e.y - this.py, e.x - this.px);
     let diff = aTo - this.pdir;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
