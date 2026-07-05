@@ -2849,6 +2849,7 @@ export class WorldScene extends CombatScene {
     const px = gespeichert ? Phaser.Math.Clamp(gespeichert.x, 0, Math.max(0, this.scale.width - w)) : dockX;
     const py = gespeichert ? Phaser.Math.Clamp(gespeichert.y, 0, Math.max(0, this.scale.height - h)) : dockY;
     const c = this.add.container(px, py).setScrollFactor(0).setDepth(6400);
+    c.setData('w', w); c.setData('h', h);   // R100: Bounds fuer den UI-Klick-Schutz
     this.rtsLeiste = c;
     const bg = this.add.rectangle(0, 0, w, h, 0x14100a, 0.95).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
     bg.setInteractive(); c.add(bg);
@@ -3006,7 +3007,10 @@ export class WorldScene extends CombatScene {
   // Kann an dieser Weltposition gebaut werden? (freier Boden, nicht Weg/Wasser)
   private bauplatzFrei(wx: number, wy: number): boolean {
     const t = this.area.map[Math.floor(wy / TILE)]?.[Math.floor(wx / TILE)];
-    return !(t === undefined || SOLID.has(t) || t === T.WATER || t === T.BRIDGE || t === T.PATH);
+    // R100 (Autor "auf einem Weg kann ich keine Palisade/Tor bauen"): Wege sind
+    // KEINE Bausperre mehr - man sperrt bewusst einen Durchgang. Nur Wasser,
+    // Bruecke und SOLIDE Kacheln (auch bestehende Palisade/Tor) bleiben gesperrt.
+    return !(t === undefined || SOLID.has(t) || t === T.WATER || t === T.BRIDGE);
   }
 
   // Linksklick im Platzierungs-Modus (aus bauKlick) - true = Klick verbraucht.
@@ -3133,6 +3137,7 @@ export class WorldScene extends CombatScene {
     const px = Math.max(6, Math.min(this.scale.width - w - 6, sx - w / 2));
     const py = Math.max(6, Math.min(this.scale.height - h - 6, sy - h - 30));
     const c = this.add.container(px, py).setScrollFactor(0).setDepth(6600);
+    c.setData('w', w); c.setData('h', h);   // R100: Bounds fuer den UI-Klick-Schutz
     this.bauPopup = c;
     const bg = this.add.rectangle(0, 0, w, h, 0x14100a, 0.96).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
     bg.setInteractive(); c.add(bg);
@@ -5222,11 +5227,25 @@ export class WorldScene extends CombatScene {
         this.laufSchritt(dt);   // Geh-Zyklus mitlaufen lassen -> saubere Lauf-Animation
       }
     }
-    // Auto-Angriff auf den nächsten Gegner in Reichweite (Kampfkarten)
-    let ziel: Enemy | null = null, bd = 46;
+    // R100 (Autor "Held folgt dem Gegner nicht, steht nur rum"): naechsten Gegner
+    // im AGGRO-Radius suchen; ist er ausser Schlagreichweite, LAEUFT der Held ihn
+    // an (kein manuelles Ziel noetig), sonst schlaegt er zu. Blick immer zum Gegner.
+    let ziel: Enemy | null = null, bd = 300;
     for (const e of this.enemies) { if (e.hp <= 0 || e.team === 'spieler') continue; const dd = Math.hypot(e.x - this.px, e.y - this.py); if (dd < bd) { bd = dd; ziel = e; } }
-    if (!this.rtsMoveZiel && ziel && this.rtsAttackCd <= 0) {
-      this.pdir = Math.atan2(ziel.y - this.py, ziel.x - this.px);
+    const schlagReich = 46;
+    if (ziel) this.pdir = Math.atan2(ziel.y - this.py, ziel.x - this.px);
+    if (!this.rtsMoveZiel && ziel && bd > schlagReich) {
+      // Anlaufen (Wegfeld, damit er nicht gegen Waende rennt)
+      const tempo = PLAYER.speed * RTS_HELD.tempoFaktor * (getSettings().tempo / 100) * this.areaSpeedFactor() * dt;
+      let sx = ziel.x, sy = ziel.y;
+      if (bd > TILE * 1.3 && this.rtsBattle) { const wp = this.rtsBattle.wegPunkt('spieler', this.px, this.py, { x: ziel.x, y: ziel.y }); if (wp) { sx = wp.x; sy = wp.y; } }
+      const dl = Math.hypot(sx - this.px, sy - this.py) || 1;
+      const ux = (sx - this.px) / dl, uy = (sy - this.py) / dl, r = 10;
+      const nx = this.px + ux * tempo, ny = this.py + uy * tempo;
+      if (!this.solidFuerHeld(nx - r, this.py - r) && !this.solidFuerHeld(nx + r, this.py + r) && !this.solidFuerHeld(nx + r, this.py - r) && !this.solidFuerHeld(nx - r, this.py + r)) this.px = nx;
+      if (!this.solidFuerHeld(this.px - r, ny - r) && !this.solidFuerHeld(this.px + r, ny + r) && !this.solidFuerHeld(this.px + r, ny - r) && !this.solidFuerHeld(this.px - r, ny + r)) this.py = ny;
+      this.rtsLaeuft = true; this.laufSchritt(dt);
+    } else if (!this.rtsMoveZiel && ziel && bd <= schlagReich && this.rtsAttackCd <= 0) {
       this.tryBlockEnd();           // zum Zuschlagen kurz die Deckung senken
       this.tryLight(); this.rtsAttackCd = 0.7;
     } else if (this.rtsSchildAktiv && !this.combat.blocking && (ziel || this.rtsMoveZiel === null)) {
@@ -5240,7 +5259,19 @@ export class WorldScene extends CombatScene {
   protected override klickAufUi(ptr: Phaser.Input.Pointer): boolean {
     // Baukasten/Haus-Justierung: die Maus baut, sie kämpft nicht
     if (this.baukastenPanel || this.hausEditAn) return true;
+    // R100 (Autor "Klick im Baumenü spawnt das Monster UNTER dem Menü - er klickt
+    // durch"): ein Klick, der auf der RTS-Leiste oder dem Bau-Popup landet, ist ein
+    // UI-Klick und darf NICHT als Weltklick (Spawn/Bau) durchgereicht werden.
+    if (this.zeigerAufPanel(this.rtsLeiste, ptr) || this.zeigerAufPanel(this.bauPopup, ptr)) return true;
     return this.hud?.klickBlockiert(ptr) ?? false;
+  }
+
+  // Liegt der Zeiger (Schirmkoordinaten) ueber dem UI-Container? Panels haben
+  // setScrollFactor(0) -> c.x/c.y sind bereits Schirmkoordinaten.
+  private zeigerAufPanel(c: Phaser.GameObjects.Container | null, ptr: Phaser.Input.Pointer): boolean {
+    if (!c || !c.active) return false;
+    const w = (c.getData('w') as number) ?? 200, hgt = (c.getData('h') as number) ?? 200;
+    return ptr.x >= c.x && ptr.x <= c.x + w && ptr.y >= c.y && ptr.y <= c.y + hgt;
   }
 
   // R95 (Autor "Stamm verdeckt den Kopf, obwohl der Held davorsteht"): Held und

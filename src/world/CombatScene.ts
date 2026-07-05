@@ -1092,9 +1092,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   }
 
   protected aimAngle(): number {
-    // Touch ODER Actionbar-Klick: Auto-Aim auf den nächsten Gegner
-    if (this.touch || this.barCastAim) {
-      const best = this.naechsterGegner(this.barCastAim ? 640 : 160);
+    // Touch, Actionbar-Klick ODER RTS-Modus (bewegungGesperrt): Auto-Aim auf den
+    // naechsten Gegner - der Held blickt/schlaegt Richtung Gegner, NICHT Maus
+    // (Autorkritik "Held schaut staendig zum Mauszeiger im RTS").
+    if (this.touch || this.barCastAim || this.bewegungGesperrt()) {
+      const best = this.naechsterGegner(this.barCastAim ? 640 : 320);
       if (best) return Math.atan2(best.y - this.py, best.x - this.px);
       return this.pdir;
     }
