@@ -2661,8 +2661,8 @@ export class WorldScene extends CombatScene {
   // R94: EINHEITLICHE Feldbau-Registry mit Lebenspunkten. Jeder platzierte Bau
   // (Lagerfeuer/Standarte/Palisade/Wachturm/Lazarett/Zelt) landet hier - für
   // Klick-Menü (Reparieren/Abbauen) und die Lebensbalken.
-  private feldbauten: Array<{ id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null; offen?: boolean }> = [];
-  private gewaehlterBau: { id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null; offen?: boolean } | null = null;
+  private feldbauten: Array<{ id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null; offen?: boolean; tx2?: number; ty2?: number; senk?: boolean }> = [];
+  private gewaehlterBau: { id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null; offen?: boolean; tx2?: number; ty2?: number; senk?: boolean } | null = null;
   private bauPopup: Phaser.GameObjects.Container | null = null;
   // R96: Schlacht-Schicht (Einheiten, Auswahl, Befehle, Formationen) + Eingabe-
   // Lauscher, die nur im RTS-Modus aktiv sind.
@@ -3110,13 +3110,26 @@ export class WorldScene extends CombatScene {
       for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) this.refreshTile(tx + dx, ty + dy);
       this.logMsg('Palisade steht (3 m).', 'gold');
     } else if (id === 'tor') {
-      // R99 (P4): das Tor ist eine RASTER-KACHEL in der Palisadenreihe - exakt
-      // auf Rasterposition, gleiche Grundlinie, schliesst lückenlos an.
+      // R100d (Autor "mach endlich ein Doppeltor, 2 Felder gross"): das Tor belegt
+      // ZWEI Kacheln entlang der Wand. Ausrichtung aus den Palisaden-Nachbarn:
+      // waagerechte Wand (E/W-Nachbarn) -> senk=false, 2 Felder E-W; senkrechte
+      // Wand (N/S) -> senk=true, 2 Felder N-S. Ein Feldbau deckt BEIDE Kacheln.
       tx = Math.floor(x / TILE); ty = Math.floor(y / TILE);
-      x = tx * TILE + 16; y = ty * TILE + 16;
-      this.area.map[ty][tx] = T.TOR;
-      for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) this.refreshTile(tx + dx, ty + dy);
-      this.logMsg('Tor steht (geschlossen) - öffnen/schließen über das Klick-Menü.', 'gold');
+      const istWand2 = (t: number | undefined): boolean => t === T.PALISADE || t === T.TOR;
+      const nsWand = istWand2(this.area.map[ty - 1]?.[tx]) || istWand2(this.area.map[ty + 1]?.[tx]);
+      const ewWand = istWand2(this.area.map[ty]?.[tx + 1]) || istWand2(this.area.map[ty]?.[tx - 1]);
+      const senk = nsWand && !ewWand;   // Wand laeuft N-S -> senkrechtes Tor
+      const kannBau = (cx: number, cy: number): boolean => this.bauplatzFrei(cx * TILE + 16, cy * TILE + 16);
+      let tx2 = tx, ty2 = ty;
+      if (senk) ty2 = kannBau(tx, ty + 1) ? ty + 1 : ty - 1;
+      else tx2 = kannBau(tx + 1, ty) ? tx + 1 : tx - 1;
+      const px = Math.min(tx, tx2), py = Math.min(ty, ty2), sx = Math.max(tx, tx2), sy = Math.max(ty, ty2);
+      this.area.map[py][px] = T.TOR; this.area.map[sy][sx] = T.TOR;
+      this.feldbauten.push({ id, x: px * TILE + 16, y: py * TILE + 16, tx: px, ty: py, tx2: sx, ty2: sy, senk, hp: maxHp, maxHp, balken: null, offen: false });
+      for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]]) { this.refreshTile(px + dx, py + dy); this.refreshTile(sx + dx, sy + dy); }
+      this.logMsg('Doppeltor steht (geschlossen, 2 Felder) - öffnen/schließen über das Klick-Menü.', 'gold');
+      this.panels?.refresh?.();
+      return;
     } else {
       img = this.spawneFeldbau(id, x, y);
       const b = RTS_BAUTEN.find((rb) => rb.id === id);
@@ -3134,6 +3147,8 @@ export class WorldScene extends CombatScene {
     for (const f of this.feldbauten) {
       const r = f.tx !== undefined ? 18 : (f.img ? Math.max(18, f.img.displayWidth * 0.5) : 20);
       if (Math.hypot(f.x - wx, f.y - wy) < r) return f;
+      // R100d: Doppeltor auch ueber die zweite Kachel anklickbar
+      if (f.tx2 !== undefined && f.ty2 !== undefined && Math.hypot((f.tx2 * TILE + 16) - wx, (f.ty2 * TILE + 16) - wy) < r) return f;
     }
     return null;
   }
@@ -3189,6 +3204,7 @@ export class WorldScene extends CombatScene {
     if (f.tx === undefined || f.ty === undefined) return;
     f.offen = !f.offen;
     this.refreshTile(f.tx, f.ty);
+    if (f.tx2 !== undefined && f.ty2 !== undefined) this.refreshTile(f.tx2, f.ty2);   // R100d: beide Kacheln
     const img = this.tileImages.find((i) => i.active && i.getData('kachel') === `${f.tx},${f.ty}`);
     if (img) { img.setScale(img.scaleX, img.scaleY * 0.86); this.tweens.add({ targets: img, scaleY: img.scaleY / 0.86, duration: 160, ease: 'Back.easeOut' }); }
     this.sfx.play(f.offen ? 'holz_hacken' : 'block', 0.4);
@@ -3228,7 +3244,8 @@ export class WorldScene extends CombatScene {
       const t = this.area.map[f.ty]?.[f.tx];
       if (t === T.PALISADE || t === T.TOR) {
         this.area.map[f.ty][f.tx] = T.GRASS;
-        for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) this.refreshTile(f.tx + dx, f.ty + dy);
+        if (f.tx2 !== undefined && f.ty2 !== undefined && this.area.map[f.ty2]?.[f.tx2] === T.TOR) this.area.map[f.ty2][f.tx2] = T.GRASS;   // R100d: Doppeltor 2. Kachel
+        for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) { this.refreshTile(f.tx + dx, f.ty + dy); if (f.tx2 !== undefined) this.refreshTile(f.tx2 + dx, f.ty2! + dy); }
       }
     } else if (f.img?.active) f.img.destroy();
     if (f.id === 'lagerfeuer') {
@@ -4409,19 +4426,24 @@ export class WorldScene extends CombatScene {
     // R99: Tor + Palisade verbinden sich gegenseitig (Tor zählt als Palisaden-Nachbar)
     const istWand = (t: number | undefined): boolean => t === T.PALISADE || t === T.TOR;
     if (a.gebackenerBoden && id === T.TOR) {
-      const f = this.feldbauten.find((fb) => fb.tx === tx && fb.ty === ty && fb.id === 'tor');
+      // R100d: das Doppeltor deckt ZWEI Kacheln. Nur das PRIMAER-Feld (tx/ty)
+      // zeichnet das breite Tor; die zweite Kachel (tx2/ty2) zeichnet nichts.
+      const f = this.feldbauten.find((fb) => fb.id === 'tor' && ((fb.tx === tx && fb.ty === ty) || (fb.tx2 === tx && fb.ty2 === ty)));
+      if (f && (f.tx2 === tx && f.ty2 === ty)) return;   // zweite Kachel: kein eigenes Bild
+      const senkrecht = f?.senk ?? (((istWand(a.map[ty - 1]?.[tx]) ? 1 : 0) | (istWand(a.map[ty + 1]?.[tx]) ? 4 : 0)) !== 0 && !(istWand(a.map[ty]?.[tx + 1]) || istWand(a.map[ty]?.[tx - 1])));
       const maskNS = (istWand(a.map[ty - 1]?.[tx]) ? 1 : 0) | (istWand(a.map[ty + 1]?.[tx]) ? 4 : 0);
-      const maskEW = (istWand(a.map[ty]?.[tx + 1]) ? 1 : 0) | (istWand(a.map[ty]?.[tx - 1]) ? 2 : 0);
-      // R99c (Autor "in der vertikalen Palisade ist das Tor horizontal"): die
-      // AUSRICHTUNG folgt automatisch der Wand - N/S-Nachbarn ohne E/W-Nachbarn
-      // = senkrechtes Tor (Flügel schwingen zur Seite). Kein manuelles Drehen.
-      const senkrecht = maskNS !== 0 && maskEW === 0;
       const key3d = `tor3d_${f?.offen ? 'auf' : 'zu'}_${senkrecht ? `v_${maskNS}` : 'h'}`;
       const key = this.textures.exists(key3d) ? key3d : this.torTexturKey(f?.offen === true, maskNS, senkrecht);
-      // R100: massives Tor (Bake 48x128) - Fuss-Anker unten, Hoehe 2.67 Kacheln
-      const torH = this.textures.exists(key3d) ? TILE * 2.67 : TILE * 2;
-      const img = this.add.image(tx * TILE + 16, ty * TILE + TILE, key).setOrigin(0.5, 1).setDepth(ty * TILE + 26);
-      img.setDisplaySize(TILE * 1.08, torH);
+      const bake = this.textures.exists(key3d);
+      // Doppeltor: das Bild spannt ueber BEIDE Kacheln (waagerecht doppelte Breite,
+      // senkrecht doppelte Hoehe). Fuss-Anker an der Vorderkante des unteren Feldes.
+      const doppel = f?.tx2 !== undefined;
+      const torH = bake ? TILE * 2.67 : TILE * 2;
+      let cx = tx * TILE + 16, fy = ty * TILE + TILE, bw = TILE * 1.08, bh = torH, dep = ty * TILE + 26;
+      if (doppel && !senkrecht) { cx = (tx + f!.tx2!) / 2 * TILE + 16; bw = TILE * 2.05; }
+      else if (doppel && senkrecht) { fy = (Math.max(ty, f!.ty2!)) * TILE + TILE; bh = torH + TILE; dep = Math.max(ty, f!.ty2!) * TILE + 26; }
+      const img = this.add.image(cx, fy, key).setOrigin(0.5, 1).setDepth(dep);
+      img.setDisplaySize(bw, bh);
       img.setData('kachel', `${tx},${ty}`);
       this.tileImages.push(img);
       return;
@@ -5414,7 +5436,8 @@ export class WorldScene extends CombatScene {
     if (!this.isSolidAt(x, y)) return false;
     const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
     if (this.area?.map?.[ty]?.[tx] === T.TOR) {
-      const f = this.feldbauten.find((fb) => fb.id === 'tor' && fb.tx === tx && fb.ty === ty);
+      // R100d: Tor-Feldbau ueber BEIDE Kacheln finden (Doppeltor)
+      const f = this.feldbauten.find((fb) => fb.id === 'tor' && ((fb.tx === tx && fb.ty === ty) || (fb.tx2 === tx && fb.ty2 === ty)));
       if (f?.offen) return false;
     }
     return true;
@@ -5459,7 +5482,9 @@ export class WorldScene extends CombatScene {
     if (h) return h;
     const s = this;
     h = {
-      isSolidAt: (x, y) => s.isSolidAt(x, y),
+      // R100d (Autor "NPCs kommen nicht durchs offene Tor"): Verbuendete nutzen die
+      // TEAM-Kollision (offenes Tor passierbar), Feinde die rohe (Tor bleibt Wand).
+      isSolidAt: (x, y) => e.team === 'spieler' ? s.solidFuerHeld(x, y) : s.isSolidAt(x, y),
       playerX: () => { const z = s.zielFuer(e); return z === 'held' ? s.px : z ? z.x : e.x; },
       playerY: () => { const z = s.zielFuer(e); return z === 'held' ? s.py : z ? z.y : e.y; },
       playerR: () => { const z = s.zielFuer(e); return z === 'held' ? 12 : 11; },
