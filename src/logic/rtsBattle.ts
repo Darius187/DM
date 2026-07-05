@@ -220,7 +220,14 @@ export class RtsBattle {
   }
 
   setForm(form: Form): void { this.aktiveForm = form; this.formiere(form); }
-  setStance(s: Stance): void { const g = this.gewaehlte(); for (const u of g) u.stance = s; if (g.length) this.feedback('Haltung: ' + s); }
+  setStance(s: Stance): void {
+    const g = this.gewaehlte();
+    // R100g (Autor "Haltung Angriff, aber NPCs greifen nicht an"): Angriff/Verteidigen
+    // machen die Einheit AKTIV (passiv aus) - sie sucht/reagiert dann selbst. Nur
+    // 'halten' laesst sie stehen.
+    for (const u of g) { u.stance = s; if (s !== 'halten') u.ref.passiv = false; }
+    if (g.length) this.feedback('Haltung: ' + s);
+  }
   angriffsMarsch(wx: number, wy: number): void { this.befehlMarsch({ x: wx, y: wy }, true); if (this.heldGewaehlt) this.held.befehlMarsch(wx, wy); this.marker.push({ x: wx, y: wy, t: 0.8, feind: true }); this.feedback('Angriffsmarsch'); }
   stellungHalten(): void { const g = this.gewaehlte(); for (const u of g) { u.stance = 'halten'; u.grp = null; u.off = null; u.fokusRef = null; u.ref.passiv = false; } if (g.length) this.feedback('Stellung halten'); }
 

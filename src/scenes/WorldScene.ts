@@ -5387,23 +5387,30 @@ export class WorldScene extends CombatScene {
   // sollen sie an die Wehrbauten"): Feind-Monster, die gerade NICHTS zu bekaempfen
   // haben, nagen an der naechsten Struktur. Kontinuierlich + langsam (BELAGERUNG),
   // damit Palisade/Tor Minuten standhalten.
-  // R100b: passive (frisch gesetzte) Einheiten wecken, sobald ein GEGNER nah ist
-  // - dann beginnt der Kampf von selbst, vorher stehen sie ruhig.
+  // R100g: passive (frisch gesetzte) Einheiten wecken. Weckgruende (Autorwunsch):
+  // (1) JEDER Schaden weckt sofort; (2) ein GEGNER in SICHTWEITE mit freier Sicht
+  // (nicht nur nah) weckt - so greifen Monster an, sobald man in Sicht ist, und
+  // Bogenschuetzen reagieren auf Ziele auf Distanz; (3) ALARM: wer wach ist, weckt
+  // Kameraden im Umkreis (Kette) - "sobald einer angegriffen wird, greifen alle an".
   private updateWachwerden(): void {
     if (!this.rtsBattle) return;
-    const wake = 120;
+    const sichtR = 300, alarmR = 180;
     for (const e of this.enemies) {
       if (!e.passiv || e.hp <= 0) continue;
-      // R100e (Autor "manche NPCs greifen nicht an wenn sie angegriffen werden"):
-      // JEDER Schaden weckt (auch Fernkampf ausserhalb des Weck-Radius).
-      if (e.hp < e.maxhp) { e.passiv = false; continue; }
-      const feindlich = e.team === 'spieler';   // Ally wacht bei Feind, Feind bei Held/Ally
-      if (!feindlich && !this.playerDead && Math.hypot(this.px - e.x, this.py - e.y) < wake) { e.passiv = false; continue; }
+      if (e.hp < e.maxhp) { e.passiv = false; continue; }   // getroffen
+      const feindlich = e.team === 'spieler';   // Ally: Gegner=Feind; Feind: Gegner=Held/Ally
+      if (!feindlich && !this.playerDead && Math.hypot(this.px - e.x, this.py - e.y) < sichtR && !this.wandZwischen(e.x, e.y, this.px, this.py)) { e.passiv = false; continue; }
       for (const o of this.enemies) {
-        if (o.hp <= 0 || o === e) continue;
+        if (o.hp <= 0 || o === e || o.passiv) continue;   // nur AKTIVE Gegner loesen aus
         const gegner = feindlich ? o.team !== 'spieler' : o.team === 'spieler';
-        if (gegner && Math.hypot(o.x - e.x, o.y - e.y) < wake) { e.passiv = false; break; }
+        if (gegner && Math.hypot(o.x - e.x, o.y - e.y) < sichtR && !this.wandZwischen(e.x, e.y, o.x, o.y)) { e.passiv = false; break; }
       }
+    }
+    // Alarm-Kette: ein wacher Kamerad in der Naehe weckt den Passiven mit
+    const wach = this.enemies.filter((e) => !e.passiv && e.hp > 0);
+    for (const e of this.enemies) {
+      if (!e.passiv || e.hp <= 0) continue;
+      for (const w of wach) if (w.team === e.team && Math.hypot(w.x - e.x, w.y - e.y) < alarmR) { e.passiv = false; break; }
     }
   }
 
@@ -5553,6 +5560,7 @@ export class WorldScene extends CombatScene {
   // (Schild faengt frontal), sonst Schaden + Tod (kein Loot, eigene Truppe).
   protected override trifftVerbuendeten(a: Enemy, dmg: number): void {
     if (a.hp <= 0) return;
+    a.passiv = false;   // R100g: getroffener Verbuendeter reagiert sofort (auch von Bogenschuetzen)
     if (a.blockT > 0 || (a.schild && Math.random() < 0.4)) {
       this.fx.float(a.x, a.y - a.r - 8, 'GEBLOCKT', '#aab4c0');
       this.sfx.play('block', 0.4);
