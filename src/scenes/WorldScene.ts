@@ -2732,7 +2732,8 @@ export class WorldScene extends CombatScene {
         };
         const m = map[typ] ?? { t: 'skelett', elite: false, tiefe: 2 };
         const e = this.spawnEnemy(m.t as never, m.tiefe, x, y, m.elite, true);
-        e.aggro = 5000;   // Schlacht-Test: sofort kampfbereit
+        e.aggro = 5000;
+        e.passiv = true;   // R100b: frisch gesetzt -> steht still, bis geweckt (Gegner nah/Schaden)
       },
       feinde: () => this.enemies.filter((e) => e.team !== 'spieler' && e.hp > 0),
       istAktiv: (e) => this.enemies.includes(e),
@@ -5175,6 +5176,10 @@ export class WorldScene extends CombatScene {
     // eine Einheit/ein Monster genau dorthin (mehrfach setzbar).
     if (this.rtsSpawnTyp && this.rtsBattle) {
       if (ptr.rightButtonDown()) { this.brichRtsSpawnAb(); return true; }
+      // R100b (Autor "sobald ich auf den Knopf klicke, spawnt sofort was unter dem
+      // Menue"): der KNOPF-Klick, der die Platzierung scharf schaltet, darf NICHT
+      // derselbe Klick sein, der setzt. 250ms-Sperre nach dem Scharfschalten.
+      if (this.time.now - this.rtsSpawnArmT < 250) return true;
       this.rtsBattle.spawn(this.rtsSpawnTyp, wp.x, wp.y);
       return true;
     }
@@ -5188,9 +5193,11 @@ export class WorldScene extends CombatScene {
   }
 
   // R97: einen Spawn-Typ scharf schalten (Geist folgt der Maus); Klick setzt.
+  private rtsSpawnArmT = -9999;   // R100b: Zeit des Scharfschaltens (Arm-Klick-Sperre)
   private starteRtsSpawn(typ: RtsUnitTyp): void {
     this.brichRtsSpawnAb();
     this.rtsSpawnTyp = typ;
+    this.rtsSpawnArmT = this.time.now;
     const d = RTS_UNIT_TYP[typ];
     const g = this.add.container(0, 0).setScrollFactor(0).setDepth(6300);
     const feind = d.team === 'feind';
@@ -5337,6 +5344,23 @@ export class WorldScene extends CombatScene {
   // sollen sie an die Wehrbauten"): Feind-Monster, die gerade NICHTS zu bekaempfen
   // haben, nagen an der naechsten Struktur. Kontinuierlich + langsam (BELAGERUNG),
   // damit Palisade/Tor Minuten standhalten.
+  // R100b: passive (frisch gesetzte) Einheiten wecken, sobald ein GEGNER nah ist
+  // - dann beginnt der Kampf von selbst, vorher stehen sie ruhig.
+  private updateWachwerden(): void {
+    if (!this.rtsBattle) return;
+    const wake = 120;
+    for (const e of this.enemies) {
+      if (!e.passiv || e.hp <= 0) continue;
+      const feindlich = e.team === 'spieler';   // Ally wacht bei Feind, Feind bei Held/Ally
+      if (!feindlich && !this.playerDead && Math.hypot(this.px - e.x, this.py - e.y) < wake) { e.passiv = false; continue; }
+      for (const o of this.enemies) {
+        if (o.hp <= 0 || o === e) continue;
+        const gegner = feindlich ? o.team !== 'spieler' : o.team === 'spieler';
+        if (gegner && Math.hypot(o.x - e.x, o.y - e.y) < wake) { e.passiv = false; break; }
+      }
+    }
+  }
+
   private updateBelagerung(dt: number): void {
     if (!this.rtsBattle) return;
     const strukturen = this.feldbauten.filter((f) => f.id === 'palisade' || f.id === 'tor' || f.id === 'wachturm');
@@ -5472,6 +5496,7 @@ export class WorldScene extends CombatScene {
     e.speed = d.speed;
     e.aggro = 5000;   // Verbuendete "sehen" ihr Ziel immer (Befehle steuern sie)
     e.jagdZiel = { x, y };   // ohne Befehl: Stellung halten
+    e.passiv = true;  // R100b: frisch gesetzt -> steht still, bis geweckt/befohlen
     return e;
   }
 
@@ -10081,6 +10106,7 @@ export class WorldScene extends CombatScene {
     this.updateHackBalken(dt);   // Lebensbalken + Schlag-Fortschritt (R93)
     this.updateBauBalken();      // Feldbau-Lebensbalken (R94)
     this.updateRtsHeld(dt);      // Einheitensteuerung im RTS-Modus (R94)
+    this.updateWachwerden();     // R100b: passive Einheiten wecken, wenn Gegner nah
     this.updateBelagerung(dt);   // R100: Monster nagen an Wehrbauten (Bunker)
     this.updateTurmBesatzung();  // R100: Turm-Insassen unsichtbar + Symbol
     if (this.rtsBattle) {

@@ -222,7 +222,7 @@ export class RtsBattle {
   setForm(form: Form): void { this.aktiveForm = form; this.formiere(form); }
   setStance(s: Stance): void { const g = this.gewaehlte(); for (const u of g) u.stance = s; if (g.length) this.feedback('Haltung: ' + s); }
   angriffsMarsch(wx: number, wy: number): void { this.befehlMarsch({ x: wx, y: wy }, true); if (this.heldGewaehlt) this.held.befehlMarsch(wx, wy); this.marker.push({ x: wx, y: wy, t: 0.8, feind: true }); this.feedback('Angriffsmarsch'); }
-  stellungHalten(): void { const g = this.gewaehlte(); for (const u of g) { u.stance = 'halten'; u.grp = null; u.off = null; u.fokusRef = null; } if (g.length) this.feedback('Stellung halten'); }
+  stellungHalten(): void { const g = this.gewaehlte(); for (const u of g) { u.stance = 'halten'; u.grp = null; u.off = null; u.fokusRef = null; u.ref.passiv = false; } if (g.length) this.feedback('Stellung halten'); }
 
   private feedback(t: string): void { this.onFeedback?.(t); }
 
@@ -239,14 +239,14 @@ export class RtsBattle {
     const grp: Gruppe = { anker: { x: cx, y: cy }, facing: this.zumFeind(cx, cy), ziel: null, manuell: false, angriffsMarsch: false };
     const sortiert = [...sel].sort((a, b) => a.rank - b.rank);
     const slots = formSlots(sortiert.length, form, 30);
-    sortiert.forEach((u, i) => { this.verlasseTurm(u); u.grp = grp; u.off = slots[i]; u.fokusRef = null; });
+    sortiert.forEach((u, i) => { this.verlasseTurm(u); u.grp = grp; u.off = slots[i]; u.fokusRef = null; u.ref.passiv = false; });
     this.host.play('klick', 0.6);
   }
 
   private formiereEntlangLinie(a: { x: number; y: number }, b: { x: number; y: number }): void {
     const sel = this.gewaehlte(); if (!sel.length) return;
     const grp = this.baueLinienGruppe(sel, a, b);
-    grp.zuweisung.forEach(({ u, slot }) => { this.verlasseTurm(u); u.grp = grp.gruppe; u.off = slot; u.fokusRef = null; });
+    grp.zuweisung.forEach(({ u, slot }) => { this.verlasseTurm(u); u.grp = grp.gruppe; u.off = slot; u.fokusRef = null; u.ref.passiv = false; });
     this.host.play('klick', 0.6);
   }
 
@@ -279,12 +279,12 @@ export class RtsBattle {
     const sel = this.gewaehlte(); if (!sel.length) return;
     const cx = sel.reduce((a, u) => a + u.x, 0) / sel.length, cy = sel.reduce((a, u) => a + u.y, 0) / sel.length;
     const grp: Gruppe = { anker: { x: cx, y: cy }, facing: Math.atan2(ziel.y - cy, ziel.x - cx), ziel, manuell: true, angriffsMarsch: angriff };
-    sel.forEach((u) => { this.verlasseTurm(u); u.grp = grp; u.off = { f: u.x - cx, l: u.y - cy }; u.fokusRef = null; });
+    sel.forEach((u) => { this.verlasseTurm(u); u.grp = grp; u.off = { f: u.x - cx, l: u.y - cy }; u.fokusRef = null; u.ref.passiv = false; });
     this.host.play('klick', 0.5);
   }
 
   private befehlFokus(ef: Enemy): void {
-    for (const u of this.gewaehlte()) { this.verlasseTurm(u); if (u.grp) u.grp.ziel = null; u.grp = null; u.off = null; u.fokusRef = ef; }
+    for (const u of this.gewaehlte()) { this.verlasseTurm(u); if (u.grp) u.grp.ziel = null; u.grp = null; u.off = null; u.fokusRef = ef; u.ref.passiv = false; }
   }
 
   private befehlTurm(t: { x: number; y: number }): void {
@@ -294,7 +294,7 @@ export class RtsBattle {
     let hoch = 0;
     for (const u of sel) {
       if (frei <= 0) break;
-      u.turm = { x: t.x, y: t.y }; u.grp = null; u.off = null; u.fokusRef = null;
+      u.turm = { x: t.x, y: t.y }; u.grp = null; u.off = null; u.fokusRef = null; u.ref.passiv = false;
       frei--; hoch++;
     }
     if (hoch) { this.host.play('klick', 0.6); this.feedback(hoch === 1 ? 'Einheit bezieht den Wachturm' : `${hoch} Einheiten beziehen den Wachturm`); }
@@ -322,6 +322,9 @@ export class RtsBattle {
     if (ref.hp <= 0 || !this.host.istAktiv(ref)) { u.tot = true; u.gewaehlt = false; return; }
     u.x = ref.x; u.y = ref.y; u.hp = ref.hp; u.maxhp = ref.maxhp;
     ref.dmg = Math.round(u.basisDmg * u.buffDmg);   // Feldküchen-Aura
+    // R100b: passive (frisch gesetzte) Einheit steht still - nicht steuern, bis
+    // sie geweckt (Gegner nah) oder befohlen wird (Befehle loeschen passiv).
+    if (ref.passiv) return;
     if (this.verloren) {
       // Rout: weg vom nächsten Feind
       const f = this.naechsterFeind(u);

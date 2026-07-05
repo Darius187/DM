@@ -169,6 +169,7 @@ export class Enemy {
   team: 'feind' | 'spieler' = 'feind';
   fokusZiel: Enemy | null = null;   // Angriffsbefehl der RTS-Steuerung (Verbuendete)
   imTurm = false;                    // R100: sitzt im Wachturm -> Sprite unsichtbar, schiesst von oben
+  passiv = false;                    // R100b: frisch gesetzt -> steht still, bis geweckt (Gegner nah/Schaden/Befehl)
   magie = false;
   // Sichtbarer Figurname (mit Waffe, falls "Gefallener"), sonst der Typ
   figur(): string { return this.figurName ?? this.type; }
@@ -181,6 +182,7 @@ export class Enemy {
 
   // bei Treffern zurückweichen (Feedback-Runde 2)
   onHurt(): void {
+    this.passiv = false;   // R100b: Schaden weckt eine passive Einheit
     if (this.boss) return;
     // Runde 35: beim Treffer nur noch SELTEN zurückzucken (vorher 0,7 für
     // flinke Typen - man konnte sie folgenlos abschnetzeln). Richtet sich
@@ -294,6 +296,11 @@ export class Enemy {
     this.markedT = Math.max(0, this.markedT - dt);
     this.banishedT = Math.max(0, this.banishedT - dt);
     this.wobble += dt * 4;
+
+    // R100b (Autor "warum stehen die nicht erstmal?"): frisch gesetzte Einheiten
+    // sind PASSIV - sie stehen ruhig an ihrem Platz, bis sie geweckt werden
+    // (Gegner kommt nah / Schaden / Befehl). Kein Loslaufen beim Spawn.
+    if (this.passiv) { this.step = 0; return; }
 
     const px = host.playerX(), py = host.playerY();
     const d = Math.hypot(px - this.x, py - this.y);
