@@ -372,10 +372,11 @@ export class RtsBattle {
       ref.jagdZiel = fd < 70 ? null : slot;   // am Slot: kämpfen wenn der Feind ansteht
       return;
     }
-    // lose Einheit nach Haltung
+    // lose Einheit nach Haltung (Autor Bug 2: Angriff soll den Angreifer VERFOLGEN,
+    // auch wenn er weiter weg ist - nicht ab 320px stehen bleiben):
     if (u.stance === 'halten') { ref.jagdZiel = fd < 48 ? null : { x: u.x, y: u.y }; return; }
-    const aggro = u.stance === 'aggressiv' ? 320 : 150;
-    ref.jagdZiel = fd < aggro ? null : { x: u.x, y: u.y };
+    if (u.stance === 'aggressiv') { ref.jagdZiel = f ? null : { x: u.x, y: u.y }; return; }   // verfolgt JEDEN Feind
+    ref.jagdZiel = fd < 220 ? null : { x: u.x, y: u.y };   // verteidigen: mittlere Reichweite, sonst Stellung
   }
 
   private naechsterFeind(u: RtsUnit): Enemy | null {
@@ -413,7 +414,12 @@ export class RtsBattle {
         const d = Math.hypot(g.ziel.x - g.anker.x, g.ziel.y - g.anker.y);
         if (d < 6) { g.ziel = null; }
         else {
-          const sp = 60 * dt;
+          // R100k (Autor "in geschlossener Formation sollten ALLE gleich schnell
+          // laufen"): das Formations-Tempo ist das der LANGSAMSTEN Einheit der
+          // Gruppe - so haelt der Verband zusammen statt zu zerreissen.
+          let minSp = Infinity;
+          for (const uu of this.units) if (!uu.tot && uu.grp === g) minSp = Math.min(minSp, uu.ref.speed);
+          const sp = (Number.isFinite(minSp) ? minSp : 60) * dt;
           g.anker.x += (g.ziel.x - g.anker.x) / d * sp;
           g.anker.y += (g.ziel.y - g.anker.y) / d * sp;
           g.facing = Math.atan2(g.ziel.y - g.anker.y, g.ziel.x - g.anker.x);

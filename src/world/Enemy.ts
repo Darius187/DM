@@ -352,10 +352,12 @@ export class Enemy {
     // Jagd auf Tier/Bewohner (Runde 40, großer Einfall): rennt stur zum Ziel,
     // statt den Spieler zu suchen. Das Reißen erledigt das Skript in der Szene.
     if (this.jagdZiel) {
-      const a2 = Math.atan2(this.jagdZiel.y - this.y, this.jagdZiel.x - this.x);
-      this.dir = angleToDir(a2);
-      this.laufe(host, a2, this.speed, dt);
-      this.advanceStep(dt);
+      const dzx = this.jagdZiel.x - this.x, dzy = this.jagdZiel.y - this.y, dz = Math.hypot(dzx, dzy);
+      if (dz > 3) {   // R100k (Autor "stehende NPCs haben Lauf-Animation"): nur laufen +
+        this.dir = angleToDir(Math.atan2(dzy, dzx));   // animieren, wenn WIRKLICH Weg zum Ziel ist
+        this.laufe(host, Math.atan2(dzy, dzx), this.speed, dt);
+        this.advanceStep(dt);
+      } else { this.step = 0; }   // am Ziel -> Stand, KEINE Lauf-Animation
       return;
     }
     if (this.boss) {
