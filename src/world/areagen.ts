@@ -1656,16 +1656,28 @@ function randWegLinien(id: string): Array<Array<{ x: number; y: number }>> {
   const k = OBERWELT_KANTEN[id];
   if (!k) return [];
   const W = kantenPunkt(k.west, 'w', 'weg'), E = kantenPunkt(k.ost, 'e', 'weg'), N = kantenPunkt(k.nord, 'n', 'weg'), S = kantenPunkt(k.sued, 's', 'weg');
-  const cr = [W, E, N, S].filter((p): p is { x: number; y: number } => !!p);
-  const v = 0.06 * idSign(id + 'weg');
+  const v = 0.05 * idSign(id + 'weg');   // sanfte Kurve, kein spitzer Bogen
   const linien: Array<Array<{ x: number; y: number }>> = [];
-  if (cr.length === 2) { linien.push(bogenPunkte(cr[0], cr[1], v, 24)); return linien; }
-  if (cr.length >= 3) {
-    const hub = { x: cr.reduce((s, c) => s + c.x, 0) / cr.length, y: cr.reduce((s, c) => s + c.y, 0) / cr.length };
-    for (const c of cr) linien.push(bogenPunkte(c, hub, v * 0.5, 16));
+  // R100f (Autor "der Weg hat so einen seltsamen Peak"): bei einem GEGENPAAR
+  // (W<->E oder N<->S) eine durchgehende, leicht geschwungene Strasse, an die
+  // die dritte/vierte Kreuzung als saubere T-SPUR einmuendet - kein Knoten-Peak.
+  if (W && E) {
+    linien.push(bogenPunkte(W, E, v, 28));
+    const yBei = (nx: number) => W.y + (E.y - W.y) * ((nx + 0.03) / 1.06);   // Strassenhoehe an x
+    if (N) linien.push(bogenPunkte(N, { x: N.x, y: yBei(N.x) }, v * 0.4, 14));
+    if (S) linien.push(bogenPunkte(S, { x: S.x, y: yBei(S.x) }, v * 0.4, 14));
     return linien;
   }
-  if (cr.length === 1) { const c = cr[0]; linien.push(bogenPunkte(c, { x: 0.5, y: 0.5 }, v, 20)); }   // Spur zur Siedlungsmitte
+  if (N && S) {
+    linien.push(bogenPunkte(N, S, v, 28));
+    const xBei = (ny: number) => N.x + (S.x - N.x) * ((ny + 0.03) / 1.06);
+    if (W) linien.push(bogenPunkte(W, { x: xBei(W.y), y: W.y }, v * 0.4, 14));
+    if (E) linien.push(bogenPunkte(E, { x: xBei(E.y), y: E.y }, v * 0.4, 14));
+    return linien;
+  }
+  const cr = [W, E, N, S].filter((p): p is { x: number; y: number } => !!p);
+  if (cr.length === 2) { linien.push(bogenPunkte(cr[0], cr[1], v, 24)); return linien; }   // 2 benachbarte Kanten -> Bogen
+  if (cr.length === 1) linien.push(bogenPunkte(cr[0], { x: 0.5, y: 0.5 }, v, 20));          // Spur zur Siedlungsmitte
   return linien;
 }
 
@@ -1737,25 +1749,38 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
   const pfadY: number[] = [];
   let py = Math.round(h * 0.5);
   if (!cfg.blanko) {
-    // R100: geschwungene Wege aus randWegLinien rastern (natuerlicher Verlauf,
-    // 2 Kacheln breit, dicht abgetastet -> keine Luecken/losen Enden). Wo der Weg
-    // Wasser kreuzt, wird die Kachel automatisch zur begehbaren Bruecke.
-    const setzeWeg = (x: number, y: number): void => { if (x < 0 || x >= w || y < 0 || y >= h) return; map[y][x] = (map[y][x] === T.WATER) ? T.BRIDGE : T.PATH; };
+    // R100f (Autor Option A): Wege als Land-Pfade rastern; eine BRUECKE entsteht
+    // NUR bei einer ECHTEN Querung - Land davor, Wasser dazwischen, Land dahinter.
+    // Beruehrt der Weg nur den Rand oder laeuft ins Wasser (kein Land dahinter):
+    // KEINE Bruecke, das Wasser bleibt. Die Bruecke ist EINE gerade Spanne vom
+    // Ufer zum Ufer (schmalste Direktverbindung), quer ueber den Fluss.
     const baumWeg = (x: number, y: number): void => { for (let d = -1; d <= 1; d++) { if (map[y]?.[x + d] === T.TREE) map[y][x + d] = T.GRASS; if (map[y + d]?.[x] === T.TREE) map[y + d][x] = T.GRASS; } };
+    const setzeLand = (x: number, y: number): void => { if (x < 0 || x >= w || y < 0 || y >= h) return; if (map[y][x] !== T.WATER) map[y][x] = T.PATH; };
+    const setzeBruecke = (x: number, y: number): void => { if (x < 0 || x >= w || y < 0 || y >= h) return; map[y][x] = T.BRIDGE; };
+    const istWasser = (x: number, y: number): boolean => map[y]?.[x] === T.WATER;
     const linien = randWegLinien(cfg.id);
     linien.forEach((linie, li) => {
+      // dichte, luechenlose Kachel-Liste der Linie
+      const tiles: Array<[number, number]> = [];
       let px = -1, py2 = -1;
       for (const p of linie) {
-        // bis zur Kante rastern (0..w-1 / 0..h-1), damit der Weg den Nachbarn erreicht
         const tx = Math.max(0, Math.min(w - 1, Math.round(p.x * w))), ty = Math.max(0, Math.min(h - 1, Math.round(p.y * h)));
-        const schritte = px < 0 ? 1 : Math.max(1, Math.round(Math.hypot(tx - px, ty - py2)));
-        for (let s = 1; s <= schritte; s++) {
-          const ix = px < 0 ? tx : Math.round(px + (tx - px) * s / schritte);
-          const iy = px < 0 ? ty : Math.round(py2 + (ty - py2) * s / schritte);
-          baumWeg(ix, iy); setzeWeg(ix, iy); setzeWeg(ix + 1, iy);
-          if (li === 0) pfadY[ix] = iy;
-        }
+        if (px < 0) tiles.push([tx, ty]);
+        else { const st = Math.max(1, Math.round(Math.hypot(tx - px, ty - py2))); for (let s = 1; s <= st; s++) { const ix = Math.round(px + (tx - px) * s / st), iy = Math.round(py2 + (ty - py2) * s / st); const l = tiles[tiles.length - 1]; if (!l || l[0] !== ix || l[1] !== iy) tiles.push([ix, iy]); } }
         px = tx; py2 = ty;
+      }
+      let i = 0;
+      while (i < tiles.length) {
+        const [x, y] = tiles[i];
+        if (!istWasser(x, y)) { baumWeg(x, y); setzeLand(x, y); setzeLand(x + 1, y); if (li === 0) pfadY[x] = y; i++; continue; }
+        let j = i; while (j < tiles.length && istWasser(tiles[j][0], tiles[j][1])) j++;
+        if (i > 0 && j < tiles.length) {   // ECHTE Querung: Land davor UND dahinter -> gerade Bruecke Ufer->Ufer
+          const [ax, ay] = tiles[i - 1], [bx, by] = tiles[j];
+          const st = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay)));
+          for (let s = 0; s <= st; s++) { const ix = Math.round(ax + (bx - ax) * s / st), iy = Math.round(ay + (by - ay) * s / st); setzeBruecke(ix, iy); setzeBruecke(ix + 1, iy); }
+        }
+        // sonst: nur Rand beruehrt / laeuft ins Wasser -> KEINE Bruecke (Wasser bleibt)
+        i = j;
       }
     });
     py = pfadY[Math.round(w * 0.5)] ?? Math.round(h * 0.5);
@@ -1853,14 +1878,28 @@ export function buildStart(rng: Rng): AreaData {
   const scx = smx - (sdy / slen) * 0.05, scy = smy + (sdx / slen) * 0.05;
   const stBez = (t: number): { x: number; y: number } => ({ x: (1 - t) * (1 - t) * stA.x + 2 * (1 - t) * t * scx + t * t * stB.x, y: (1 - t) * (1 - t) * stA.y + 2 * (1 - t) * t * scy + t * t * stB.y });
   const strasseV = (u: number): number => stBez(Math.min(1, Math.max(0, (u - stA.x) / (stB.x - stA.x)))).y;
-  const legeWegTile = (tx: number, ty: number): void => {
-    if (ty < 0 || ty >= h || tx < 0 || tx >= w) return;
-    map[ty][tx] = map[ty][tx] === T.WATER ? T.BRIDGE : T.PATH;
-  };
-  for (let i = 0; i <= 260; i++) {
-    const p = stBez(i / 260);
+  // R100f (Option A): erst die Weg-Kachelliste sammeln, dann NUR bei echter
+  // Querung (Land-Wasser-Land) EINE gerade Bruecke Ufer->Ufer; sonst kein Bruecke.
+  const wegTiles: Array<[number, number]> = [];
+  for (let i = 0; i <= 300; i++) {
+    const p = stBez(i / 300);
     const tx = Math.round(p.x * w), ty = Math.round(p.y * h - 0.5);
-    legeWegTile(tx, ty); legeWegTile(tx, ty + 1);
+    const l = wegTiles[wegTiles.length - 1]; if (!l || l[0] !== tx || l[1] !== ty) wegTiles.push([tx, ty]);
+  }
+  const istW = (x: number, y: number): boolean => map[y]?.[x] === T.WATER;
+  const setL = (x: number, y: number): void => { if (y >= 0 && y < h && x >= 0 && x < w && map[y][x] !== T.WATER) map[y][x] = T.PATH; };
+  const setB = (x: number, y: number): void => { if (y >= 0 && y < h && x >= 0 && x < w) map[y][x] = T.BRIDGE; };
+  let ii = 0;
+  while (ii < wegTiles.length) {
+    const [x, y] = wegTiles[ii];
+    if (!istW(x, y)) { setL(x, y); setL(x, y + 1); ii++; continue; }
+    let jj = ii; while (jj < wegTiles.length && istW(wegTiles[jj][0], wegTiles[jj][1])) jj++;
+    if (ii > 0 && jj < wegTiles.length) {   // echte Querung -> gerade Bruecke Ufer->Ufer
+      const [ax, ay] = wegTiles[ii - 1], [bx, by] = wegTiles[jj];
+      const st = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay)));
+      for (let s = 0; s <= st; s++) { const ix = Math.round(ax + (bx - ax) * s / st), iy = Math.round(ay + (by - ay) * s / st); setB(ix, iy); setB(ix, iy + 1); }
+    }
+    ii = jj;
   }
   // Spawn im Westen AUF der Salzstraße (führt den Spieler die Straße entlang).
   const spawnTx = 10;
@@ -2012,13 +2051,14 @@ export function buildStadtNatur(rng: Rng): AreaData {
     randFluesseAuto: false,
     geo: {
       bahnen: [
-        // R99b: exakt SENKRECHT/WAAGERECHT wie die Zeichnung (keine Schraegen).
-        // Nordfluss: senkrecht die Ostseite hinunter in den See
-        { punkte: [nord, { x: nord.x, y: 0.74, hw: 0.014 }] },
-        // Suedbach: waagerecht vom See zur Westkante
-        { punkte: [west, { x: 0.74, y: west.y, hw: 0.012 }] },
-        // Ost-Abfluss: waagerecht aus dem See
-        { punkte: [ost, { x: 0.84, y: ost.y, hw: 0.012 }] },
+        // R100f (Autor "Fluesse natuerlicher geschwungen wie in der Natur"):
+        // sanft maeandernd. Kanten-Anker (nord/west/ost) bleiben fix -> Naehte matchen.
+        // Nordfluss: schlaengelt die Ostseite hinunter in den See
+        { punkte: [nord, { x: nord.x - 0.02, y: 0.18, hw: 0.013 }, { x: nord.x + 0.02, y: 0.36, hw: 0.013 }, { x: nord.x - 0.02, y: 0.54, hw: 0.014 }, { x: 0.80, y: 0.68, hw: 0.015 }] },
+        // Suedbach: maeandert von der Westkante zum See
+        { punkte: [west, { x: 0.16, y: west.y - 0.03, hw: 0.011 }, { x: 0.34, y: west.y + 0.03, hw: 0.011 }, { x: 0.52, y: west.y - 0.02, hw: 0.012 }, { x: 0.68, y: 0.78, hw: 0.013 }] },
+        // Ost-Abfluss: schwingt aus dem See zur Ostkante
+        { punkte: [ost, { x: 0.93, y: ost.y - 0.02, hw: 0.012 }, { x: 0.85, y: 0.77, hw: 0.013 }] },
       ],
       seen: [{ cx: 0.78, cy: 0.76, rx: 0.13, ry: 0.085 }],
     },
