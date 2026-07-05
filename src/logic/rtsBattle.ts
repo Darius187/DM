@@ -333,12 +333,22 @@ export class RtsBattle {
       return;
     }
     if (u.turm) {
-      ref.jagdZiel = { x: u.turm.x, y: u.turm.y - TURM.hoeheOffset };
-      const f = this.naechsterFeind(u);
-      // oben angekommen: KI schießen lassen (Bogen-KI nutzt die eigene Reichweite)
-      if (Math.hypot(ref.x - u.turm.x, ref.y - (u.turm.y - TURM.hoeheOffset)) < 10 && f) ref.jagdZiel = null;
+      // R100c: zwei Phasen. 1) ANLAUFEN an den Turm-FUSS ueber das Wegfeld (von
+      // der erreichbaren Seite, auch an einer Palisaden-Ecke). 2) KLETTERN: nah
+      // genug -> auf die Plattform FIXIEREN (festPos), steht still + schiesst.
+      if (ref.festPos) return;
+      const fussD = Math.hypot(ref.x - u.turm.x, ref.y - u.turm.y);
+      if (fussD < 30) {
+        ref.jagdZiel = null;
+        ref.festPos = { x: u.turm.x, y: u.turm.y - TURM.hoeheOffset };
+        ref.turmReichF = TURM.reichF;
+      } else {
+        ref.jagdZiel = { x: u.turm.x, y: u.turm.y };
+      }
       return;
     }
+    // Turm verlassen: Fixierung loesen
+    if (ref.festPos) { ref.festPos = null; ref.turmReichF = 1; }
     if (u.fokusRef && u.fokusRef.hp > 0 && this.host.istAktiv(u.fokusRef)) {
       ref.fokusZiel = u.fokusRef;
       ref.jagdZiel = null;
@@ -436,9 +446,13 @@ export class RtsBattle {
   // --- Overlay (Ringe, HP, Marker, Box, Ghost) - P18-Feedback ----------------
   zeichneOverlay(): void {
     const g = this.gfx; g.clear();
+    // R100c: Haltungs-Farbe (Autor "man sieht nicht welche Haltung aktiv ist")
+    const stanceCol = (s: Stance): number => s === 'aggressiv' ? 0xd0603a : s === 'verteidigen' ? 0x4a8ad0 : 0x9a9a9a;
     for (const u of this.units) {
       if (u.tot) continue;
-      if (u.gewaehlt) { g.lineStyle(1.5, 0x9ad86a, 0.9); g.strokeEllipse(u.x, u.y + 9, 24, 11); }
+      // kleiner Haltungs-Punkt ueber JEDER Einheit (rot=Angriff, blau=Verteidigen, grau=Halten)
+      g.fillStyle(stanceCol(u.stance), 0.95); g.fillCircle(u.x, u.y - 30, 2.6);
+      if (u.gewaehlt) { g.lineStyle(1.5, stanceCol(u.stance), 0.95); g.strokeEllipse(u.x, u.y + 9, 24, 11); }
       if (u.hp < u.maxhp || u.gewaehlt) {
         const w = 22, frac = Math.max(0, u.hp / u.maxhp);
         g.fillStyle(0x000000, 0.5); g.fillRect(u.x - w / 2 - 1, u.y - 27, w + 2, 4);

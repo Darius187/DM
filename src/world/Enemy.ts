@@ -170,6 +170,8 @@ export class Enemy {
   fokusZiel: Enemy | null = null;   // Angriffsbefehl der RTS-Steuerung (Verbuendete)
   imTurm = false;                    // R100: sitzt im Wachturm -> Sprite unsichtbar, schiesst von oben
   passiv = false;                    // R100b: frisch gesetzt -> steht still, bis geweckt (Gegner nah/Schaden/Befehl)
+  festPos: { x: number; y: number } | null = null;   // R100c: fixierter Posten (Turmplattform) - steht still, schiesst von dort
+  turmReichF = 1;                    // R100c: Reichweiten-Faktor auf dem Turm (Fernkampf massiv)
   magie = false;
   // Sichtbarer Figurname (mit Waffe, falls "Gefallener"), sonst der Typ
   figur(): string { return this.figurName ?? this.type; }
@@ -301,6 +303,23 @@ export class Enemy {
     // sind PASSIV - sie stehen ruhig an ihrem Platz, bis sie geweckt werden
     // (Gegner kommt nah / Schaden / Befehl). Kein Loslaufen beim Spawn.
     if (this.passiv) { this.step = 0; return; }
+
+    // R100c (Autor "die wuseln im Turm hin und her, der Bogen schiesst nicht"):
+    // ein Turm-Insasse ist FIXIERT (festPos) - er steht bewegungslos oben und
+    // schiesst von dort (Fernkampf mit Turm-Reichweite). Kein Hin-und-Her mehr.
+    if (this.festPos) {
+      this.x = this.festPos.x; this.y = this.festPos.y;
+      this.step = 0;
+      const zx = host.playerX(), zy = host.playerY(), zd = Math.hypot(zx - this.x, zy - this.y);
+      this.dir = angleToDir(Math.atan2(zy - this.y, zx - this.x));
+      if (this.ranged && zd > 10 && zd < ENEMY_AI.rangedMaxShoot * this.turmReichF && this.shootCd === 0) {
+        this.shootCd = ENEMY_AI.rangedShootCd;
+        const a = Math.atan2(zy - this.y, zx - this.x) + (Math.random() * 0.12 - 0.06);
+        host.spawnEnemyProjectile(this.x, this.y - 6, Math.cos(a) * ENEMY_AI.rangedProjSpeed, Math.sin(a) * ENEMY_AI.rangedProjSpeed, this.dmg, this.magie ? '#b06ae8' : '#cfc4a8', !this.magie);
+        host.playSound(this.magie ? 'fireball1' : 'pfeil_schuss');
+      }
+      return;
+    }
 
     const px = host.playerX(), py = host.playerY();
     const d = Math.hypot(px - this.x, py - this.y);

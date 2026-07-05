@@ -53,13 +53,16 @@ export function baueWachturm(): THREE.Group {
   for (const sx of [-1, 1]) g.add(box(0.09, brH, S * 2.2, holz, sx * S * 1.05, platO + brH / 2, 0));
   // Zinnen-Andeutung: kleine Klötze oben
   for (let i = -2; i <= 2; i++) { g.add(box(0.16, 0.14, 0.1, holzD, i * S * 0.5, platO + brH, S * 1.05)); }
-  // Pyramidendach
-  const dach = new THREE.Mesh(new THREE.ConeGeometry(S * 1.9, 1.1, 4), matHolz(0x3a2c18));
-  dach.position.set(0, platO + brH + 0.55, 0); dach.rotation.y = Math.PI / 4; dach.castShadow = true; g.add(dach);
-  // Fahnenmast + Wimpel
-  g.add(zyl(0.02, 0.02, 0.6, holz, 0, platO + brH + 1.35, 0));
+  // Pyramidendach - R100c (Autor "sehe zu viel vom Dach, sollte steiler sein"):
+  // hoeher + schmaler = steile Spitze, aus dem Schraeg-Oben-Winkel weniger Dachflaeche.
+  const dachH = 2.1;
+  const dach = new THREE.Mesh(new THREE.ConeGeometry(S * 1.7, dachH, 4), matHolz(0x3a2c18));
+  dach.position.set(0, platO + brH + dachH / 2, 0); dach.rotation.y = Math.PI / 4; dach.castShadow = true; g.add(dach);
+  // Fahnenmast + Wimpel (auf der hoeheren Dachspitze)
+  const spitzeY = platO + brH + dachH;
+  g.add(zyl(0.02, 0.02, 0.55, holz, 0, spitzeY + 0.2, 0));
   const wimpel = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.16), new THREE.MeshStandardMaterial({ color: 0x7a1f1f, side: THREE.DoubleSide, roughness: 0.9 }));
-  wimpel.position.set(0.17, platO + brH + 1.5, 0); g.add(wimpel);
+  wimpel.position.set(0.17, spitzeY + 0.38, 0); g.add(wimpel);
   // Leiter an einer Seite
   const leitZ = S * 1.15;
   for (const sx of [-0.16, 0.16]) g.add(box(0.04, beinH, 0.04, holzD, sx, beinH / 2, leitZ));

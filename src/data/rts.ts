@@ -160,6 +160,7 @@ export const TURM = {
   dmgBonus: 1.35,         // erhöhte Stellung = härtere Treffer
   hoeheOffset: 40,        // Pixel-Versatz nach oben auf die Plattform
   andockRadius: 34,       // so nah muss der Befehl am Turm liegen
+  reichF: 1.55,           // R100c: Reichweiten-Faktor auf dem Turm (Fernkampf ~ +55%)
 } as const;
 
 // Truppen-Moral (um 1300 entschied sie Schlachten öfter als das Schwert):

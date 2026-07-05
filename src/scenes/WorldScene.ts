@@ -2925,8 +2925,10 @@ export class WorldScene extends CombatScene {
       const haltungen: Array<['aggressiv' | 'verteidigen' | 'halten', string]> = [['aggressiv', 'Angriff'], ['verteidigen', 'Verteidigen'], ['halten', 'Halten']];
       let hx = F(8);
       for (const [s, lbl] of haltungen) {
-        const kn = this.add.text(hx, y, lbl, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#d8cfb8', backgroundColor: '#120d07', padding: { x: F(5), y: F(3) } }).setInteractive({ useHandCursor: true });
-        kn.on('pointerdown', () => { this.rtsBattle?.setStance(s); this.sfx.play('klick'); });
+        // R100c: aktive Haltung hervorheben (Highlight = zuletzt gesetzte / Held-Haltung)
+        const aktiv = this.rtsAktHaltung === s;
+        const kn = this.add.text(hx, y, lbl, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: aktiv ? '#f0d060' : '#d8cfb8', backgroundColor: aktiv ? '#3a2a10' : '#120d07', padding: { x: F(5), y: F(3) } }).setInteractive({ useHandCursor: true });
+        kn.on('pointerdown', () => { this.setzeHaltung(s); this.sfx.play('klick'); this.baueRtsLeiste(); });
         c.add(kn); hx += kn.width + F(4);
       }
       y += F(26);
@@ -5193,6 +5195,17 @@ export class WorldScene extends CombatScene {
   }
 
   // R97: einen Spawn-Typ scharf schalten (Geist folgt der Maus); Klick setzt.
+  // R100c (Autor "Haltung wirkt nicht auf Held/NPCs, man sieht sie nicht"):
+  // Haltung auf die AUSWAHL (Truppen) UND den Helden anwenden + aktive Haltung merken.
+  private rtsHeldStance: 'aggressiv' | 'verteidigen' | 'halten' = 'verteidigen';
+  private rtsAktHaltung: 'aggressiv' | 'verteidigen' | 'halten' | null = null;
+  private setzeHaltung(s: 'aggressiv' | 'verteidigen' | 'halten'): void {
+    this.rtsBattle?.setStance(s);
+    if (this.rtsHeldGewaehlt || this.rtsBattle?.gewaehlte().length === 0) this.rtsHeldStance = s;
+    this.rtsAktHaltung = s;
+    this.logMsg(`Haltung: ${s === 'aggressiv' ? 'Angriff (verfolgt Gegner)' : s === 'verteidigen' ? 'Verteidigen (hält die Stellung, greift Nahes an)' : 'Halten (bleibt stehen)'}.`, 'gold');
+  }
+
   private rtsSpawnArmT = -9999;   // R100b: Zeit des Scharfschaltens (Arm-Klick-Sperre)
   private starteRtsSpawn(typ: RtsUnitTyp): void {
     this.brichRtsSpawnAb();
@@ -5250,11 +5263,15 @@ export class WorldScene extends CombatScene {
     // R100 (Autor "Held folgt dem Gegner nicht, steht nur rum"): naechsten Gegner
     // im AGGRO-Radius suchen; ist er ausser Schlagreichweite, LAEUFT der Held ihn
     // an (kein manuelles Ziel noetig), sonst schlaegt er zu. Blick immer zum Gegner.
-    let ziel: Enemy | null = null, bd = 300;
+    // R100c: Held-HALTUNG steuert, wie weit er Gegnern nachsetzt. Angriff = 300,
+    // Verteidigen = 140 (haelt die Stellung), Halten = 0 (bleibt stehen, schlaegt
+    // nur was direkt ansteht) -> "der Held rennt nicht mehr immer los".
+    const aggro = this.rtsHeldStance === 'aggressiv' ? 300 : this.rtsHeldStance === 'verteidigen' ? 140 : 52;
+    let ziel: Enemy | null = null, bd = aggro;
     for (const e of this.enemies) { if (e.hp <= 0 || e.team === 'spieler') continue; const dd = Math.hypot(e.x - this.px, e.y - this.py); if (dd < bd) { bd = dd; ziel = e; } }
     const schlagReich = 46;
     if (ziel) this.pdir = Math.atan2(ziel.y - this.py, ziel.x - this.px);
-    if (!this.rtsMoveZiel && ziel && bd > schlagReich) {
+    if (!this.rtsMoveZiel && ziel && bd > schlagReich && this.rtsHeldStance !== 'halten') {
       // Anlaufen (Wegfeld, damit er nicht gegen Waende rennt)
       const tempo = PLAYER.speed * RTS_HELD.tempoFaktor * (getSettings().tempo / 100) * this.areaSpeedFactor() * dt;
       let sx = ziel.x, sy = ziel.y;
@@ -5325,8 +5342,7 @@ export class WorldScene extends CombatScene {
         if (!u.turm || u.tot) continue;
         const f = tuerme.find((t) => Math.hypot(t.x - u.turm!.x, t.y - u.turm!.y) < 8);
         if (!f) continue;
-        const oben = Math.hypot(u.ref.x - u.turm.x, u.ref.y - (u.turm.y - TURM.hoeheOffset)) < 16;
-        if (oben) { u.ref.imTurm = true; zahl.set(f, (zahl.get(f) ?? 0) + 1); }
+        if (u.ref.festPos) { u.ref.imTurm = true; zahl.set(f, (zahl.get(f) ?? 0) + 1); }   // R100c: fixiert = im Turm
       }
     }
     for (const f of tuerme) {
