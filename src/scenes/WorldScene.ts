@@ -2727,11 +2727,16 @@ export class WorldScene extends CombatScene {
       // R99d: Dungeon-Kampf-Anbindung - Verbuendete + Feind-Monster sind ECHTE Enemies
       spawnAlly: (typ, x, y) => this.spawnVerbuendeter(typ, x, y),
       spawnFeind: (typ, x, y) => {
-        const map: Record<string, { t: string; elite: boolean; tiefe: number }> = {
-          e_nah: { t: 'skelett', elite: false, tiefe: 2 }, e_bogen: { t: 'schuetze', elite: false, tiefe: 2 }, e_elite: { t: 'templer', elite: true, tiefe: 3 },
+        // R100e (Autor "Untoter Ritter = Boss-Logik raeumt alle Gegner ab"):
+        // e_elite ist ein starkes ELITE-Skelett, KEIN Templer-BOSS mehr - so
+        // loest sein Tod nicht die Boss-Raeumung aus.
+        const map: Record<string, { t: string; elite: boolean; tiefe: number; name?: string }> = {
+          e_nah: { t: 'skelett', elite: false, tiefe: 2 }, e_bogen: { t: 'schuetze', elite: false, tiefe: 2 },
+          e_elite: { t: 'skelett', elite: true, tiefe: 4, name: 'Untoter Ritter' },
         };
         const m = map[typ] ?? { t: 'skelett', elite: false, tiefe: 2 };
         const e = this.spawnEnemy(m.t as never, m.tiefe, x, y, m.elite, true);
+        if (m.name) { e.name = m.name; e.hp = e.maxhp = Math.round(e.maxhp * 1.6); e.dmg = Math.round(e.dmg * 1.3); }
         e.aggro = 5000;
         e.passiv = true;   // R100b: frisch gesetzt -> steht still, bis geweckt (Gegner nah/Schaden)
       },
@@ -5389,6 +5394,9 @@ export class WorldScene extends CombatScene {
     const wake = 120;
     for (const e of this.enemies) {
       if (!e.passiv || e.hp <= 0) continue;
+      // R100e (Autor "manche NPCs greifen nicht an wenn sie angegriffen werden"):
+      // JEDER Schaden weckt (auch Fernkampf ausserhalb des Weck-Radius).
+      if (e.hp < e.maxhp) { e.passiv = false; continue; }
       const feindlich = e.team === 'spieler';   // Ally wacht bei Feind, Feind bei Held/Ally
       if (!feindlich && !this.playerDead && Math.hypot(this.px - e.x, this.py - e.y) < wake) { e.passiv = false; continue; }
       for (const o of this.enemies) {
@@ -8217,14 +8225,9 @@ export class WorldScene extends CombatScene {
         return;
       }
       this.bossDead = true;
-      // Ruhe zum Looten: die Beschworenen zerfallen mit ihrem Herrn
-      for (const add of [...this.enemies]) {
-        if (add !== e) {
-          add.sprite?.destroy();
-          this.fx.burst(add.x, add.y, 0x6a6258, 10, 120);
-        }
-      }
-      this.enemies = this.enemies.filter((x) => x === e);
+      // R100e (Autor "wenn der Boss stirbt, verschwinden ALLE Gegner - das will ich
+      // NICHT, weder im Dungeon noch hier"): die anderen Gegner bleiben stehen und
+      // muessen normal bezwungen werden. (Frueher zerfielen sie mit dem Boss.)
       this.logMsg(BOSS_TEXTE.gefallen, 'gold');
       const blade: Item = { ...TEMPLERKLINGE, boni: TEMPLERKLINGE.boni.map((b) => ({ ...b })), sock: null };
       this.pickups.add({ kind: 'gear', item: blade, x: e.x - 20, y: e.y, bob: 0 });
