@@ -1134,3 +1134,13 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Baustelle); freistehende Props weiter ueber den Perspektiv-Backofen.
   Lehre: cam.matrixWorldInverse VOR project() explizit fuellen (sonst leere Crops).
   Renderer bevorzugen 3D-Keys, Canvas bleibt Fallback.
+- R100 Wasser/Wege: Achsenzwang (R99b) zurueckgenommen. randKanten + randWegLinien
+  verbinden die Tabellen-Kreuzungen mit weichen Bezier-Boegen (deterministisch je
+  Karte). Monsterlager: randFluesseAuto=false (kein Rand-Fluss, nur See links).
+- R100 Bauten robust: BAU_HP Palisade 900 / Tor 1500 / Turm 1300; Belagerung
+  kontinuierlich mit BELAGERUNG.schadensFaktor -> Minuten Standzeit. Werte tunebar.
+- R100 Turm-Insassen: e.imTurm -> Sprite unsichtbar; Abzeichen "🏹 n/2" ueber dem Turm.
+- R100 Assets massiver: Palisaden-Logs R0.115/H1.85, Tor H2.05 mit Zinnen+Ring;
+  Kachelofen 48x128 (top=3.2); Anzeige 2.67 Kacheln hoch. Lager-Props kleiner.
+- R100 Held im RTS: aimAngle auto-zielt auf naechsten Gegner (bewegungGesperrt),
+  Held laeuft Gegner an. Bau auf Wegen erlaubt. UI-Klick-Schutz fuer RTS-Leiste/Popup.

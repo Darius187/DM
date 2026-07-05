@@ -109,3 +109,8 @@
   Reichweite je Einheit anheben, wenn turm gesetzt).
 - R99d: Feldscher/Heiler-Einheit neu auf Dungeon-Basis (Heil-KI), war in der
   alten Test-Sim und ist mit ihr entfernt.
+- R100 OFFEN: echtes 2-Kachel-breites Tor (Autor "vielleicht 2 Felder gross").
+  Aktuell 1 Kachel, aber massiv + doppeltoeffnend. 2-Kachel-Footprint braucht
+  Platzierung/Kollision/Durchlass ueber 2 Tiles.
+- R100 pruefen: "NPCs laufen wirr umher" - Idle-Verhalten der Verbuendeten/Feinde
+  ohne Ziel im Auge behalten (sollten halten statt jittern).
