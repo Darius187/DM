@@ -5394,23 +5394,30 @@ export class WorldScene extends CombatScene {
   // Kameraden im Umkreis (Kette) - "sobald einer angegriffen wird, greifen alle an".
   private updateWachwerden(): void {
     if (!this.rtsBattle) return;
-    const sichtR = 300, alarmR = 180;
+    const sichtR = 340;
+    // R100j (Autor "Monster stehen doof rum wenn ihre Freunde angegriffen werden,
+    // nur ein paar legen los - nimm die Dungeon-Logik"): TEAM-ALARM. Wurde IRGENDEINE
+    // Einheit eines Teams getroffen (hp<maxhp), wacht das GANZE Team auf und kaempft
+    // wie im Dungeon - kein Umkreis-Limit mehr. Dazu: Monster wecken, sobald der Held
+    // oder eine aktive gegnerische Einheit in SICHT ist.
+    let feindGetroffen = false, allyGetroffen = false;
+    for (const e of this.enemies) {
+      if (e.hp <= 0) continue;
+      if (e.hp < e.maxhp) { if (e.team === 'spieler') allyGetroffen = true; else feindGetroffen = true; }
+    }
     for (const e of this.enemies) {
       if (!e.passiv || e.hp <= 0) continue;
-      if (e.hp < e.maxhp) { e.passiv = false; continue; }   // getroffen
       const feindlich = e.team === 'spieler';   // Ally: Gegner=Feind; Feind: Gegner=Held/Ally
+      // getroffenes Team weckt KOMPLETT ("sobald einer angegriffen wird, greifen alle an")
+      if ((feindlich && allyGetroffen) || (!feindlich && feindGetroffen)) { e.passiv = false; continue; }
+      // Held in Sicht weckt Monster
       if (!feindlich && !this.playerDead && Math.hypot(this.px - e.x, this.py - e.y) < sichtR && !this.wandZwischen(e.x, e.y, this.px, this.py)) { e.passiv = false; continue; }
+      // aktiver Gegner in Sicht weckt
       for (const o of this.enemies) {
-        if (o.hp <= 0 || o === e || o.passiv) continue;   // nur AKTIVE Gegner loesen aus
+        if (o.hp <= 0 || o === e || o.passiv) continue;
         const gegner = feindlich ? o.team !== 'spieler' : o.team === 'spieler';
         if (gegner && Math.hypot(o.x - e.x, o.y - e.y) < sichtR && !this.wandZwischen(e.x, e.y, o.x, o.y)) { e.passiv = false; break; }
       }
-    }
-    // Alarm-Kette: ein wacher Kamerad in der Naehe weckt den Passiven mit
-    const wach = this.enemies.filter((e) => !e.passiv && e.hp > 0);
-    for (const e of this.enemies) {
-      if (!e.passiv || e.hp <= 0) continue;
-      for (const w of wach) if (w.team === e.team && Math.hypot(w.x - e.x, w.y - e.y) < alarmR) { e.passiv = false; break; }
     }
   }
 
@@ -5510,7 +5517,7 @@ export class WorldScene extends CombatScene {
         if (z === 'held') s.enemyMeleeHit(en, dmg);
         else if (z) { if (en.team === 'spieler') s.damageEnemy(z, dmg, 0, 0, null, true); else s.trifftVerbuendeten(z, dmg); }
       },
-      spawnEnemyProjectile: (x, y, vx, vy, dmg, col, pfeil) => s.spawnEnemyProjectile(x, y, vx, vy, dmg, col, pfeil, e.team === 'spieler' ? 'spieler' : 'feind'),
+      spawnEnemyProjectile: (x, y, vx, vy, dmg, col, pfeil, _vt, hoch) => s.spawnEnemyProjectile(x, y, vx, vy, dmg, col, pfeil, e.team === 'spieler' ? 'spieler' : 'feind', hoch),
       addTelegraph: (x, y, r, t, dmg) => s.addTelegraph(x, y, r, t, dmg),
       summonAdds: (en, n) => { if (en.team !== 'spieler') s.summonAdds(en, n); },
       logMsg: (t, c) => s.logMsg(t, c),

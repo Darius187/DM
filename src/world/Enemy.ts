@@ -19,7 +19,7 @@ export interface EnemyHost {
   playerDir(): number; // Blickrichtung des Spielers (rad) für die Flanken-KI
   playerTot(): boolean; // tot: Gegner scharen sich um die Leiche statt anzugreifen
   enemyMeleeHit(e: Enemy, dmg: number): void;
-  spawnEnemyProjectile(x: number, y: number, vx: number, vy: number, dmg: number, col: string, pfeil?: boolean): void;
+  spawnEnemyProjectile(x: number, y: number, vx: number, vy: number, dmg: number, col: string, pfeil?: boolean, vonTeam?: 'spieler' | 'feind', hoch?: boolean): void;
   addTelegraph(x: number, y: number, r: number, t: number, dmg: number): void;
   summonAdds(e: Enemy, n: number): void;
   logMsg(text: string, cls?: string): void;
@@ -315,7 +315,9 @@ export class Enemy {
       if (this.ranged && zd > 10 && zd < ENEMY_AI.rangedMaxShoot * this.turmReichF && this.shootCd === 0) {
         this.shootCd = ENEMY_AI.rangedShootCd;
         const a = Math.atan2(zy - this.y, zx - this.x) + (Math.random() * 0.12 - 0.06);
-        host.spawnEnemyProjectile(this.x, this.y - 6, Math.cos(a) * ENEMY_AI.rangedProjSpeed, Math.sin(a) * ENEMY_AI.rangedProjSpeed, this.dmg, this.magie ? '#b06ae8' : '#cfc4a8', !this.magie);
+        // R100j: Turm-Schuss ist ERHOEHT -> fliegt UEBER Palisaden/Waende (hoch=true),
+        // sonst prallten die Pfeile an der eigenen Mauer ab ("kommen nicht raus").
+        host.spawnEnemyProjectile(this.x, this.y - 6, Math.cos(a) * ENEMY_AI.rangedProjSpeed, Math.sin(a) * ENEMY_AI.rangedProjSpeed, this.dmg, this.magie ? '#b06ae8' : '#cfc4a8', !this.magie, this.team === 'spieler' ? 'spieler' : 'feind', true);
         host.playSound(this.magie ? 'fireball1' : 'pfeil_schuss');
       }
       return;

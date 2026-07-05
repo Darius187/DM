@@ -44,6 +44,7 @@ export interface Projectile {
   x: number; y: number; vx: number; vy: number; r: number; dmg: number;
   from: 'player' | 'enemy'; col: string; fire?: boolean; magie?: boolean; pierce?: boolean; arrow?: boolean;
   vonTeam?: 'spieler' | 'feind';   // R99d: verbuendete Schuetzen treffen FEINDE statt den Spieler
+  hoch?: boolean;                  // R100j: erhoehter Schuss (Turm) - fliegt UEBER Waende/Palisaden
   hitIds?: Set<number>; dead?: boolean;
   elem?: 'feuer' | 'eis' | 'schatten'; gemPower?: number; // Elementarpfeil (Runde 44)
   split?: number; springt?: number; fessel?: boolean;     // Bogen-Fähigkeiten (Runde 47)
@@ -1776,8 +1777,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
   }
 
-  spawnEnemyProjectile(x: number, y: number, vx: number, vy: number, dmg: number, col: string, pfeil = false, vonTeam: 'spieler' | 'feind' = 'feind'): void {
-    this.projectiles.push({ x, y, vx, vy, r: 4, dmg, from: 'enemy', col, arrow: pfeil, vonTeam });
+  spawnEnemyProjectile(x: number, y: number, vx: number, vy: number, dmg: number, col: string, pfeil = false, vonTeam: 'spieler' | 'feind' = 'feind', hoch = false): void {
+    this.projectiles.push({ x, y, vx, vy, r: 4, dmg, from: 'enemy', col, arrow: pfeil, vonTeam, hoch });
     // Abschuss räumlich hörbar (Runde 45): Pfeil/Zauber von der Seite pannt mit
     this.sfx.playAt(pfeil ? 'pfeil_schuss' : 'feuerball', x, y, 0.45);
   }
@@ -3115,7 +3116,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
           : pr.elem === 'schatten' ? 0xc89aff : (Math.random() < 0.5 ? 0xf0902a : 0xe8641a);
         this.fx.burst(pr.x - pr.vx * 0.008, pr.y - pr.vy * 0.008, c, 1, 16);
       }
-      if (this.projektilWand(pr.x, pr.y)) {
+      if (!pr.hoch && this.projektilWand(pr.x, pr.y)) {   // R100j: Turm-Schuss fliegt ueber Waende
         // Pfeil-Wand-Physik nur im Physik-Test (Runde 40): stecken oder abprallen
         if (TUNING.physikTest && pr.arrow && this.pfeilTrifftWand(pr, ox, oy)) continue;
         pr.dead = true;
