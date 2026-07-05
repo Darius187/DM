@@ -42,7 +42,7 @@ import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDL
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
-import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
@@ -2894,6 +2894,9 @@ export class WorldScene extends CombatScene {
         const farbe = !b.frei ? '#5a5348' : kann ? '#e8dfc8' : '#7a6a52';
         const knopf = this.add.rectangle(F(8), y, w - F(16), F(30), kann ? 0x1c1409 : 0x120d07, 0.9).setOrigin(0).setStrokeStyle(1, kann ? 0x5a4a2e : 0x3a2f1e).setInteractive({ useHandCursor: true });
         knopf.on('pointerdown', () => this.rtsBaue(b));
+        const hp = BAU_HP[b.id]; const tip = `${b.name}\n${b.beschreibung}${hp ? `\nLebenspunkte: ${hp}` : ''}`;
+        knopf.on('pointerover', () => this.zeigeBauTooltip(tip, c.x));
+        knopf.on('pointerout', () => this.versteckeBauTooltip());
         c.add(knopf);
         c.add(this.add.text(F(14), y + F(4), b.name, { fontFamily: 'serif', fontSize: `${F(11)}px`, color: farbe }));
         const ktxt = Object.entries(b.kosten).map(([k, n]) => `${n}${MATERIAL_NAMES[k as MaterialId][0]}`).join(' ');
@@ -2958,6 +2961,10 @@ export class WorldScene extends CombatScene {
       const aktiv = this.rtsSpawnTyp === typ;
       const kn = this.add.rectangle(F(8), y, w - F(16), F(24), aktiv ? 0x3a2a12 : farbe, 0.9).setOrigin(0).setStrokeStyle(1, aktiv ? 0xc9a227 : 0x4a3a26).setInteractive({ useHandCursor: true });
       kn.on('pointerdown', () => { this.starteRtsSpawn(typ); this.sfx.play('klick', 0.5); this.baueRtsLeiste(); });
+      const rolle = d.heiler ? 'Heilt Verwundete' : d.reich > 100 ? 'Fernkampf (Bogen)' : d.reich > 32 ? 'Reiter (schnell, stark)' : 'Nahkampf (Schild/Schwert)';
+      const tip = `${d.name}\n${rolle}\nLeben ${d.hp} · Schaden ${d.dmg} · Reichweite ${d.reich} · Tempo ${d.speed}\nKämpft mit der Dungeon-Technik.`;
+      kn.on('pointerover', () => this.zeigeBauTooltip(tip, c.x));
+      kn.on('pointerout', () => this.versteckeBauTooltip());
       c.add(kn);
       c.add(this.add.text(F(13), y + F(5), (aktiv ? '▶ ' : '+ ') + d.name, { fontFamily: 'serif', fontSize: `${F(10)}px`, color: aktiv ? '#f0d060' : '#e8dfc8' }));
       y += F(27);
@@ -3252,7 +3259,9 @@ export class WorldScene extends CombatScene {
     if (!this.textures.exists(key)) this.textures.addCanvas(key, this.macheFeldbauBild(id))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
     const img = this.add.image(x, y, key).setOrigin(0.5, 0.94).setDepth(y);
     // Zielhöhe je Bau (massiver als vorher); Breite folgt dem echten Seitenverhältnis.
-    const zielH: Record<string, number> = { wachturm: 140, zelt: 92, lazarett: 92, nachschub: 86, feldaltar: 56, kochstelle: 54, brunnen: 62, feldschmiede: 56, wartfeuer: 58 };
+    // R100 (Autor "Feldaltar sieht riesig aus, Groessenverhaeltnisse passen nicht"):
+    // Lager-Props auf stimmige, kleinere Groesse relativ zu Palisade/Turm.
+    const zielH: Record<string, number> = { wachturm: 150, zelt: 84, lazarett: 84, nachschub: 76, feldaltar: 40, kochstelle: 42, brunnen: 50, feldschmiede: 44, wartfeuer: 46 };
     const h = zielH[id];
     if (h) {
       const src = this.textures.get(key).getSourceImage();
@@ -4406,8 +4415,10 @@ export class WorldScene extends CombatScene {
       const senkrecht = maskNS !== 0 && maskEW === 0;
       const key3d = `tor3d_${f?.offen ? 'auf' : 'zu'}_${senkrecht ? `v_${maskNS}` : 'h'}`;
       const key = this.textures.exists(key3d) ? key3d : this.torTexturKey(f?.offen === true, maskNS, senkrecht);
+      // R100: massives Tor (Bake 48x128) - Fuss-Anker unten, Hoehe 2.67 Kacheln
+      const torH = this.textures.exists(key3d) ? TILE * 2.67 : TILE * 2;
       const img = this.add.image(tx * TILE + 16, ty * TILE + TILE, key).setOrigin(0.5, 1).setDepth(ty * TILE + 26);
-      img.setDisplaySize(TILE, TILE * 2);
+      img.setDisplaySize(TILE * 1.08, torH);
       img.setData('kachel', `${tx},${ty}`);
       this.tileImages.push(img);
       return;
@@ -4416,10 +4427,12 @@ export class WorldScene extends CombatScene {
       const mask = (istWand(a.map[ty - 1]?.[tx]) ? 1 : 0) | (istWand(a.map[ty]?.[tx + 1]) ? 2 : 0)
         | (istWand(a.map[ty + 1]?.[tx]) ? 4 : 0) | (istWand(a.map[ty]?.[tx - 1]) ? 8 : 0);
       // R99e: three.js-Bake bevorzugen (Kachelofen, Baum-Winkel); Canvas = Fallback
-      const key = this.textures.exists(`palisade3d_${mask}`) ? `palisade3d_${mask}` : this.palisadeTexturKey(mask);
-      const hoehe = TILE * 2;   // ~3 m im Spielmaßstab (Fuß-Anker unten)
+      const istBake = this.textures.exists(`palisade3d_${mask}`);
+      const key = istBake ? `palisade3d_${mask}` : this.palisadeTexturKey(mask);
+      // R100: massive Wehrpalisade (Bake 48x128) - Fuss-Anker unten, ~2.67 Kacheln hoch
+      const hoehe = istBake ? TILE * 2.67 : TILE * 2;
       const img = this.add.image(tx * TILE + 16, ty * TILE + TILE, key).setOrigin(0.5, 1).setDepth(ty * TILE + 26);
-      img.setDisplaySize(TILE, hoehe);   // Breite = 1 Kachel, Höhe = 2 Kacheln
+      img.setDisplaySize(TILE, hoehe);
       img.setData('kachel', `${tx},${ty}`);
       this.tileImages.push(img);
       return;
@@ -5272,6 +5285,76 @@ export class WorldScene extends CombatScene {
     if (!c || !c.active) return false;
     const w = (c.getData('w') as number) ?? 200, hgt = (c.getData('h') as number) ?? 200;
     return ptr.x >= c.x && ptr.x <= c.x + w && ptr.y >= c.y && ptr.y <= c.y + hgt;
+  }
+
+  // R100 (Autor "es gibt keine Tooltips, ich weiss nicht was die Assets koennen"):
+  // Erklaerungs-Tooltip LINKS neben der RTS-Leiste (Panel dockt rechts).
+  private bauTooltip: Phaser.GameObjects.Container | null = null;
+  private zeigeBauTooltip(text: string, panelX: number): void {
+    this.versteckeBauTooltip();
+    const p = this.input.activePointer;
+    const box = this.add.container(0, 0).setScrollFactor(0).setDepth(6800);
+    const t = this.add.text(8, 6, text, { fontFamily: 'serif', fontSize: '12px', color: '#ece3cc', lineSpacing: 3, wordWrap: { width: 230 } });
+    const bw = t.width + 16, bh = t.height + 12;
+    const bg = this.add.rectangle(0, 0, bw, bh, 0x0e0a05, 0.97).setOrigin(0).setStrokeStyle(1, 0x6a5636);
+    box.add(bg); box.add(t);
+    const bx = Phaser.Math.Clamp(panelX - bw - 10, 6, this.scale.width - bw - 6);
+    const by = Phaser.Math.Clamp(p.y - bh / 2, 6, this.scale.height - bh - 6);
+    box.setPosition(bx, by);
+    this.bauTooltip = box;
+  }
+  private versteckeBauTooltip(): void { this.bauTooltip?.destroy(); this.bauTooltip = null; }
+
+  // R100 (Autor "wenn ein NPC den Wachturm betritt, kein Feedback - man soll ihn
+  // NICHT sehen, er schiesst von drin, und der Turm ist mit Symbol markiert wie
+  // viele drin sind"): Insassen unsichtbar schalten + Anzahl-Abzeichen ueber dem Turm.
+  private turmBadges = new Map<object, Phaser.GameObjects.Text>();
+  private updateTurmBesatzung(): void {
+    for (const e of this.enemies) if (e.team === 'spieler') e.imTurm = false;
+    const tuerme = this.feldbauten.filter((f) => f.id === 'wachturm');
+    const zahl = new Map<object, number>();
+    if (this.rtsBattle) {
+      for (const u of this.rtsBattle.units) {
+        if (!u.turm || u.tot) continue;
+        const f = tuerme.find((t) => Math.hypot(t.x - u.turm!.x, t.y - u.turm!.y) < 8);
+        if (!f) continue;
+        const oben = Math.hypot(u.ref.x - u.turm.x, u.ref.y - (u.turm.y - TURM.hoeheOffset)) < 16;
+        if (oben) { u.ref.imTurm = true; zahl.set(f, (zahl.get(f) ?? 0) + 1); }
+      }
+    }
+    for (const f of tuerme) {
+      const n = zahl.get(f) ?? 0;
+      let b = this.turmBadges.get(f);
+      if (n > 0) {
+        if (!b) { b = this.add.text(0, 0, '', { fontFamily: 'serif', fontSize: '13px', color: '#f0d060', backgroundColor: '#100b06d0', padding: { x: 5, y: 2 } }).setOrigin(0.5, 1); this.turmBadges.set(f, b); }
+        b.setText(`🏹 ${n}/${TURM.kapazitaet}`).setPosition(f.x, f.y - 104).setVisible(true).setDepth(f.y + 400);
+      } else if (b) { b.setVisible(false); }
+    }
+    for (const [f, b] of this.turmBadges) if (!tuerme.includes(f as never)) { b.destroy(); this.turmBadges.delete(f); }
+  }
+
+  // R100 (Autor "die Monster greifen Palisaden/Tuerme NICHT an - beim Einbunkern
+  // sollen sie an die Wehrbauten"): Feind-Monster, die gerade NICHTS zu bekaempfen
+  // haben, nagen an der naechsten Struktur. Kontinuierlich + langsam (BELAGERUNG),
+  // damit Palisade/Tor Minuten standhalten.
+  private updateBelagerung(dt: number): void {
+    if (!this.rtsBattle) return;
+    const strukturen = this.feldbauten.filter((f) => f.id === 'palisade' || f.id === 'tor' || f.id === 'wachturm');
+    if (!strukturen.length) return;
+    for (const e of this.enemies) {
+      if (e.hp <= 0 || e.team === 'spieler') continue;
+      // Ist ein Gegner (Held/eigene Truppe) nah? Dann kaempfen, nicht belagern.
+      let kampfNah = !this.playerDead && Math.hypot(this.px - e.x, this.py - e.y) < BELAGERUNG.keinKampfRadius;
+      if (!kampfNah) for (const o of this.enemies) { if (o.team === 'spieler' && o.hp > 0 && Math.hypot(o.x - e.x, o.y - e.y) < BELAGERUNG.keinKampfRadius) { kampfNah = true; break; } }
+      if (kampfNah) continue;
+      let best: (typeof strukturen)[number] | null = null, bd = BELAGERUNG.radius + e.r;
+      for (const f of strukturen) { const d = Math.hypot(f.x - e.x, f.y - e.y); if (d < bd) { bd = d; best = f; } }
+      if (!best) continue;
+      e.dir = angleToDir(Math.atan2(best.y - e.y, best.x - e.x));
+      best.hp -= e.dmg * BELAGERUNG.schadensFaktor * dt;
+      if (Math.random() < dt * 3) this.fx.burst(best.x, best.y - 6, 0x8a6a3c, 2, 50);
+      if (best.hp <= 0) { this.logMsg(`${best.id === 'tor' ? 'Das Tor' : best.id === 'wachturm' ? 'Der Wachturm' : 'Die Palisade'} wurde eingerissen!`, 'bad'); this.sfx.playAt('holz_hacken', best.x, best.y, 0.7); this.entferneFeldbau(best); }
+    }
   }
 
   // R95 (Autor "Stamm verdeckt den Kopf, obwohl der Held davorsteht"): Held und
@@ -9998,6 +10081,8 @@ export class WorldScene extends CombatScene {
     this.updateHackBalken(dt);   // Lebensbalken + Schlag-Fortschritt (R93)
     this.updateBauBalken();      // Feldbau-Lebensbalken (R94)
     this.updateRtsHeld(dt);      // Einheitensteuerung im RTS-Modus (R94)
+    this.updateBelagerung(dt);   // R100: Monster nagen an Wehrbauten (Bunker)
+    this.updateTurmBesatzung();  // R100: Turm-Insassen unsichtbar + Symbol
     if (this.rtsBattle) {
       // R97: Schlachtführer (Held) tot -> Schlacht verloren, Truppe flieht.
       if (this.playerDead && !this.rtsBattle.verloren) { this.rtsBattle.schlachtVerloren(); this.logMsg('SCHLACHT VERLOREN - der Schlachtführer ist gefallen, die Banner sinken.', 'bad'); }

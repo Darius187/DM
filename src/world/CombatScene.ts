@@ -3423,7 +3423,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     for (const e of this.enemies) {
       if (!e.sprite) continue;
       // In der Krypta: ohne Sichtlinie kein Gegner sichtbar (Feedback-Runde 2)
-      const sichtbar = !this.hideWithoutLos() || e.hasLineOfSight(this);
+      const sichtbar = (!this.hideWithoutLos() || e.hasLineOfSight(this)) && !e.imTurm;   // R100: Turm-Insasse unsichtbar
       e.sprite.setVisible(sichtbar);
       e.versteckt = !sichtbar;
       if (!sichtbar) continue;

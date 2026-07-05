@@ -102,10 +102,22 @@ export const RTS_HELD = {
 } as const;
 
 // Feldbau-Lebenspunkte + Reparatur/Abbau (R94). Werte justierbar.
+// R100 (Autor "Palisaden/Tor sollen einige Minuten Belagerung standhalten - sehr
+// robust"): Wehrbauten deutlich zaeher. Zusammen mit der reduzierten Belagerungs-
+// Rate (BELAGERUNG.schadensFaktor) dauert das Einreissen einer Palisade durch ein
+// paar Monster ~1-2 Minuten. Werte hier tunen.
 export const BAU_HP: Record<string, number> = {
-  lagerfeuer: 40, standarte: 60, palisade: 120, tor: 160, wachturm: 220, lazarett: 130, zelt: 90,
+  lagerfeuer: 40, standarte: 60, palisade: 900, tor: 1500, wachturm: 1300, lazarett: 130, zelt: 90,
   feldaltar: 90, kochstelle: 60, brunnen: 110, feldschmiede: 120, wartfeuer: 70, nachschub: 90,
 };
+// Belagerung (R100): Monster nagen an Wehrbauten, wenn sie gerade NICHTS zu
+// bekaempfen haben (Bunker-Situation). Schaden = Monster-dmg * schadensFaktor pro
+// Sekunde (kontinuierlich) - klein, damit Holz lange haelt.
+export const BELAGERUNG = {
+  radius: 26,            // wie nah muss das Monster an die Struktur
+  schadensFaktor: 0.45,  // Anteil der Monster-dmg pro Sekunde gegen Holz
+  keinKampfRadius: 52,   // nur belagern, wenn kein Gegner (Held/Truppe) so nah ist
+} as const;
 export const BAU_REPARATUR = {
   proAktionFrac: 0.34,   // je Reparatur ~1/3 der maxHP zurück
   kostenFrac: 0.25,      // kostet ~1/4 der Baukosten je Reparatur

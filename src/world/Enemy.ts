@@ -168,6 +168,7 @@ export class Enemy {
   // ist ueber den Proxy-Host der naechste FEIND (WorldScene.enemyHost).
   team: 'feind' | 'spieler' = 'feind';
   fokusZiel: Enemy | null = null;   // Angriffsbefehl der RTS-Steuerung (Verbuendete)
+  imTurm = false;                    // R100: sitzt im Wachturm -> Sprite unsichtbar, schiesst von oben
   magie = false;
   // Sichtbarer Figurname (mit Waffe, falls "Gefallener"), sonst der Typ
   figur(): string { return this.figurName ?? this.type; }
@@ -487,8 +488,11 @@ export class Enemy {
       } else {
         // Annäherung: das Flussfeld führt um Hindernisse herum (Zäune, Wasser)
         // und über Brücken/Durchgänge - direkter Weg nur als Rückfall (Runde 50).
-        // Nah dran (Melee) zählt der direkte Winkel, dort ist das Kachelraster zu grob.
-        const wegAng = d > 70 ? host.wegRichtung(this.x, this.y) : null;
+        // R100 (Autor "Gegner rennen gegen Wände - aktiviere die beste KI"): das
+        // Flussfeld auch NAHE nutzen, WENN der direkte Weg blockiert ist (sonst
+        // laeuft er in die Wand). Nur bei freier Sicht + Melee zaehlt der direkte Winkel.
+        const direktFrei = !host.isSolidAt(this.x + Math.cos(ang) * (this.r + 12), this.y + Math.sin(ang) * (this.r + 12));
+        const wegAng = (d > 70 || !direktFrei) ? host.wegRichtung(this.x, this.y) : null;
         const fade = Math.min(1, Math.max(0, (d - 50) / 160));
         const basis = wegAng ?? ang;
         const fa = basis + this.flankAng * fade * (wegAng !== null ? 0.4 : 1);

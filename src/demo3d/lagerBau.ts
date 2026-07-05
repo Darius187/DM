@@ -145,7 +145,9 @@ function rundholz(cx: number, cz: number, h: number, r: number, mat: THREE.Mater
 export function bauePalisadenKachel(mask: number): THREE.Group {
   const g = new THREE.Group();
   const holz = matHolz(0x6a4c28), holzD = matHolz(0x503a1e);
-  const H = 1.5, R = 0.075;
+  // R100 (Autor "Palisaden sehen aus wie kleine Gartenzaeune"): dickere, hoehere
+  // Pfaehle -> massive Wehrpalisade statt Zaun. Pitch bleibt 1/6 (kantenfest).
+  const H = 1.85, R = 0.115;
   const N = mask & 1, E = mask & 2, S = mask & 4, W = mask & 8;
   const hor = !!(E || W), ver = !!(N || S);
   const j = (k: number): number => ((k * 7919) % 13) / 13;   // deterministisches Zittern
@@ -185,40 +187,51 @@ export function bauePalisadenKachel(mask: number): THREE.Group {
 export function baueTorKachel(offen: boolean, senkrecht: boolean, maskNS: number): THREE.Group {
   const g = new THREE.Group();
   const holz = matHolz(0x6a4c28), holzD = matHolz(0x4a3216), eisen = matEisen(0x2c2a28, 0.55);
-  const H = 1.5, R = 0.09;
-  const posten = (x: number, z: number): void => { g.add(rundholz(x, z, H + 0.18, R, holz)); };
+  // R100 (Autor "Tor sieht aus wie ein Gartentuerchen - muss STAERKER als Tor
+  // erkennbar sein, doppelt oeffnend, massiv"): dicke Torpfosten, hoher Sturz mit
+  // Zinnen, zwei breite Bretter-Tore mit Beschlaegen + Torring.
+  const H = 2.05, R = 0.145;
+  const posten = (x: number, z: number): void => {
+    g.add(rundholz(x, z, H + 0.28, R, holz));
+    g.add(box(R * 2.4, 0.14, R * 2.4, holzD, x, H + 0.28, z));   // Pfosten-Kappe
+  };
+  // ein Torfluegel: dichte Bretter + zwei waagerechte Eisenbaender + Diagonalstrebe
   const fluegel = (breite: number): THREE.Group => {
     const f = new THREE.Group();
-    for (let i = 0; i < 4; i++) f.add(box(breite / 4 - 0.008, H * 0.82, 0.045, holzD, -breite / 2 + (i + 0.5) * breite / 4, H * 0.41, 0));
-    f.add(box(breite, 0.05, 0.05, eisen, 0, H * 0.62, 0.01));
-    f.add(box(breite, 0.05, 0.05, eisen, 0, H * 0.2, 0.01));
+    const hoch = H * 0.9;
+    for (let i = 0; i < 5; i++) f.add(box(breite / 5 - 0.006, hoch, 0.06, i % 2 ? holz : holzD, -breite / 2 + (i + 0.5) * breite / 5, hoch / 2, 0));
+    for (const by of [hoch * 0.18, hoch * 0.82]) f.add(box(breite, 0.07, 0.07, eisen, 0, by, 0.02));
+    const diag = box(breite * 1.05, 0.05, 0.05, eisen, 0, hoch * 0.5, 0.03); diag.rotation.z = 0.5; f.add(diag);
     return f;
   };
+  const ring = (x: number, y: number, z: number): void => { const r = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.016, 6, 10), eisen); r.position.set(x, y, z + 0.05); g.add(r); };
   if (!senkrecht) {
-    posten(-5 / 12, 0); posten(5 / 12, 0);
-    g.add(box(1.0, 0.09, 0.11, holz, 0, H + 0.02, 0));   // Sturz ueber die volle Kachel
+    posten(-0.44, 0); posten(0.44, 0);
+    g.add(box(1.02, 0.16, 0.18, holz, 0, H + 0.08, 0));            // massiver Sturz
+    for (let i = 0; i < 4; i++) g.add(box(0.14, 0.16, 0.16, holzD, -0.36 + i * 0.24, H + 0.24, 0));   // Zinnen
     for (const s of [-1, 1] as const) {
-      const f = fluegel(0.34);
-      f.position.set(s * 5 / 12, 0, 0.02);
-      f.rotation.y = offen ? s * 1.25 : 0;
-      // Drehpunkt am Pfosten: Fluegel-Mesh zum Scharnier versetzen
-      f.children.forEach((c) => { (c as THREE.Mesh).position.x -= s * 0.245; });   // Innenkanten treffen sich mittig
+      const f = fluegel(0.42);
+      f.position.set(s * 0.44, 0, 0.05);
+      f.rotation.y = offen ? s * 1.3 : 0;
+      f.children.forEach((c) => { (c as THREE.Mesh).position.x -= s * 0.21; });   // Scharnier am Pfosten
       g.add(f);
+      if (!offen) ring(s * 0.09, H * 0.45, 0.06);
     }
   } else {
-    posten(0, -5 / 12); posten(0, 5 / 12);
-    g.add(box(0.11, 0.09, 1.0, holz, 0, H + 0.02, 0));
+    posten(0, -0.44); posten(0, 0.44);
+    g.add(box(0.18, 0.16, 1.02, holz, 0, H + 0.08, 0));
+    for (let i = 0; i < 4; i++) g.add(box(0.16, 0.16, 0.14, holzD, 0, -0.36 + i * 0.24, H + 0.24));
     for (const s of [-1, 1] as const) {
-      const f = fluegel(0.34);
+      const f = fluegel(0.42);
       f.rotation.y = Math.PI / 2;
-      f.position.set(0.02, 0, s * 5 / 12);
-      f.children.forEach((c) => { (c as THREE.Mesh).position.x -= s * 0.245; });
-      if (offen) f.rotation.y = Math.PI / 2 - s * 1.25;
+      f.position.set(0.05, 0, s * 0.44);
+      f.children.forEach((c) => { (c as THREE.Mesh).position.x -= s * 0.21; });
+      if (offen) f.rotation.y = Math.PI / 2 - s * 1.3;
       g.add(f);
+      if (!offen) ring(0.06, H * 0.45, s * 0.09);
     }
-    // Wand-Stummel oben/unten, falls die Palisade weiterlaeuft
-    if (maskNS & 1) g.add(rundholz(0, -0.5 + 1 / 12, 1.4, 0.07, holz));
-    if (maskNS & 4) g.add(rundholz(0, 0.5 - 1 / 12, 1.4, 0.07, holz));
+    if (maskNS & 1) g.add(rundholz(0, -0.5 + 1 / 12, 1.7, R, holz));
+    if (maskNS & 4) g.add(rundholz(0, 0.5 - 1 / 12, 1.7, R, holz));
   }
   return g;
 }

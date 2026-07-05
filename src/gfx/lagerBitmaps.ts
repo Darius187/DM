@@ -51,7 +51,7 @@ import { bauePalisadenKachel, baueTorKachel, baueBaustelle, baueFeldaltar, baueK
 interface KachelOfen { backe(gruppe: THREE_NS.Group): HTMLCanvasElement }
 
 function macheKachelOfen(): KachelOfen {
-  const AUS_W = 48, VOLL_H = 168;
+  const AUS_W = 48, VOLL_H = 168, AUS_H = 128, BODEN_ZEILE = 116;   // R100: hoeheres Fenster fuer massive Palisade/Tor
   const renderer = new THREE_NS.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.setSize(AUS_W, VOLL_H);
   renderer.setClearColor(0x000000, 0);
@@ -67,8 +67,9 @@ function macheKachelOfen(): KachelOfen {
   const schattenBoden = new THREE_NS.Mesh(new THREE_NS.PlaneGeometry(4, 4), new THREE_NS.ShadowMaterial({ opacity: 0.32 }));
   schattenBoden.rotation.x = -Math.PI / 2; schattenBoden.receiveShadow = true; scene.add(schattenBoden);
   // Ortho-Kamera entlang des BAUM-Blickvektors; Frustumbreite = GENAU 1 Kachel.
+  // top erhoeht (3.2), damit die massiven Tor-Zinnen nicht abgeschnitten werden.
   const blick = new THREE_NS.Vector3(0, 0.86, 0.56).normalize();
-  const cam = new THREE_NS.OrthographicCamera(-0.5, 0.5, 2.3, -1.2, 0.1, 40);
+  const cam = new THREE_NS.OrthographicCamera(-0.5, 0.5, 3.2, -1.2, 0.1, 40);
   cam.position.copy(blick.clone().multiplyScalar(12));
   cam.lookAt(0, 0, 0);
   cam.updateProjectionMatrix();
@@ -87,10 +88,10 @@ function macheKachelOfen(): KachelOfen {
       halter.add(gruppe);
       renderer.render(scene, cam);
       halter.remove(gruppe);
-      // 48x96-Kachel ausschneiden: Bodenlinie auf Zeile 88 legen
-      const out = document.createElement('canvas'); out.width = AUS_W; out.height = 96;
-      const top = Math.max(0, bodenZeile - 88);
-      out.getContext('2d')!.drawImage(renderer.domElement, 0, top, AUS_W, 96, 0, 0, AUS_W, 96);
+      // Kachel ausschneiden: Bodenlinie auf BODEN_ZEILE legen (Fuss-Anker unten)
+      const out = document.createElement('canvas'); out.width = AUS_W; out.height = AUS_H;
+      const top = Math.max(0, bodenZeile - BODEN_ZEILE);
+      out.getContext('2d')!.drawImage(renderer.domElement, 0, top, AUS_W, AUS_H, 0, 0, AUS_W, AUS_H);
       return out;
     },
   };
