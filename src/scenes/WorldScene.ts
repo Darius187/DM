@@ -5297,8 +5297,11 @@ export class WorldScene extends CombatScene {
     let ziel: Enemy | null = null, bd = aggro;
     for (const e of this.enemies) { if (e.hp <= 0 || e.team === 'spieler') continue; const dd = Math.hypot(e.x - this.px, e.y - this.py); if (dd < bd) { bd = dd; ziel = e; } }
     const schlagReich = 46;
+    // R100L (Autor "Held schlaegt laecherlich durch die Palisade"): nur zuschlagen,
+    // wenn KEINE Wand zwischen Held und Ziel liegt - sonst laeuft er drum herum.
+    const inSchlag = !!ziel && bd <= schlagReich && this.sichtFreiMelee(ziel.x, ziel.y);
     if (ziel) this.pdir = Math.atan2(ziel.y - this.py, ziel.x - this.px);
-    if (!this.rtsMoveZiel && ziel && bd > schlagReich && this.rtsHeldStance !== 'halten') {
+    if (!this.rtsMoveZiel && ziel && !inSchlag && this.rtsHeldStance !== 'halten') {
       // Anlaufen (Wegfeld, damit er nicht gegen Waende rennt)
       const tempo = PLAYER.speed * RTS_HELD.tempoFaktor * (getSettings().tempo / 100) * this.areaSpeedFactor() * dt;
       let sx = ziel.x, sy = ziel.y;
@@ -5309,7 +5312,7 @@ export class WorldScene extends CombatScene {
       if (!this.solidFuerHeld(nx - r, this.py - r) && !this.solidFuerHeld(nx + r, this.py + r) && !this.solidFuerHeld(nx + r, this.py - r) && !this.solidFuerHeld(nx - r, this.py + r)) this.px = nx;
       if (!this.solidFuerHeld(this.px - r, ny - r) && !this.solidFuerHeld(this.px + r, ny + r) && !this.solidFuerHeld(this.px + r, ny - r) && !this.solidFuerHeld(this.px - r, ny + r)) this.py = ny;
       this.rtsLaeuft = true; this.laufSchritt(dt);
-    } else if (!this.rtsMoveZiel && ziel && bd <= schlagReich && this.rtsAttackCd <= 0) {
+    } else if (!this.rtsMoveZiel && inSchlag && this.rtsAttackCd <= 0) {
       this.tryBlockEnd();           // zum Zuschlagen kurz die Deckung senken
       this.tryLight(); this.rtsAttackCd = 0.7;
     } else if (this.rtsSchildAktiv && !this.combat.blocking && (ziel || this.rtsMoveZiel === null)) {

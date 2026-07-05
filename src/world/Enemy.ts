@@ -516,19 +516,28 @@ export class Enemy {
         const ry = py + Math.sin(pd + Math.PI) * (host.playerR() + this.r + 6);
         this.laufe(host, Math.atan2(ry - this.y, rx - this.x), this.speed * slowF, dt);
       } else {
-        // Annäherung: das Flussfeld führt um Hindernisse herum (Zäune, Wasser)
-        // und über Brücken/Durchgänge - direkter Weg nur als Rückfall (Runde 50).
-        // R100 (Autor "Gegner rennen gegen Wände - aktiviere die beste KI"): das
-        // Flussfeld auch NAHE nutzen, WENN der direkte Weg blockiert ist (sonst
-        // laeuft er in die Wand). Nur bei freier Sicht + Melee zaehlt der direkte Winkel.
+        // Annäherung (R100L, Autor "Soldat jittert an der Wand statt ums Hindernis
+        // zu pfaden - er muss den Weg durchs offene Tor nehmen, sonst still halten"):
+        // NUR wenn er dran ist UND freie Sicht hat, zaehlt der direkte Winkel; sonst
+        // fuehrt IMMER das Flussfeld um Hindernisse/durch offene Tore. Findet das
+        // Feld KEINEN Weg (Wand ohne Durchlass), HAELT er still statt zu jittern.
         const direktFrei = !host.isSolidAt(this.x + Math.cos(ang) * (this.r + 12), this.y + Math.sin(ang) * (this.r + 12));
-        const wegAng = (d > 70 || !direktFrei) ? host.wegRichtung(this.x, this.y) : null;
-        const fade = Math.min(1, Math.max(0, (d - 50) / 160));
-        const basis = wegAng ?? ang;
-        const fa = basis + this.flankAng * fade * (wegAng !== null ? 0.4 : 1);
-        this.laufe(host, fa, this.speed * slowF, dt);
+        const nahMelee = d <= this.r + host.playerR() + 30;
+        if (nahMelee && direktFrei) {
+          this.laufe(host, ang + this.flankAng * 0.4, this.speed * slowF, dt);
+          this.advanceStep(dt);
+        } else {
+          const wegAng = host.wegRichtung(this.x, this.y);
+          if (wegAng === null && !direktFrei) {
+            this.step = 0;   // kein Weg zum Ziel -> still halten (kein Wand-Jitter)
+          } else {
+            const fade = Math.min(1, Math.max(0, (d - 50) / 160));
+            const basis = wegAng ?? ang;
+            this.laufe(host, basis + this.flankAng * fade * (wegAng !== null ? 0.4 : 1), this.speed * slowF, dt);
+            this.advanceStep(dt);
+          }
+        }
       }
-      this.advanceStep(dt);
     } else if (this.atkCd === 0) {
       this.choosePattern(host);
     }
