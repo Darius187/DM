@@ -16,60 +16,8 @@ function zyl(rt: number, rb: number, h: number, mat: THREE.Material, x = 0, y = 
   m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; return m;
 }
 
-// Wuchtiger hölzerner Wachturm: vier dicke Ständer, Streben, geschlossene
-// Bohlen-Brüstung, Plattform mit Dach und Leiter - überragt die Palisade klar.
-export function baueWachturm(): THREE.Group {
-  const g = new THREE.Group();
-  const holz = matHolz(0x6a4c28), holzD = matHolz(0x4a3216), eisen = matEisen(0x2c2a28, 0.5);
-  const S = 0.62;                 // halbe Grundbreite
-  const beinH = 2.6;              // Höhe bis zur Plattform
-  // vier Eckständer, oben leicht zusammenlaufend (Standfestigkeit)
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    const unten = new THREE.Vector3(sx * S, 0, sz * S);
-    const oben = new THREE.Vector3(sx * S * 0.72, beinH, sz * S * 0.72);
-    const mid = unten.clone().add(oben).multiplyScalar(0.5);
-    const laenge = unten.distanceTo(oben);
-    const bein = zyl(0.09, 0.11, laenge, holz, mid.x, mid.y, mid.z);
-    bein.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), oben.clone().sub(unten).normalize());
-    g.add(bein);
-  }
-  // Querbalken auf zwei Höhen + Diagonalstreben je Seite
-  for (const h of [beinH * 0.42, beinH * 0.78]) {
-    const b = S * (h < beinH * 0.5 ? 0.9 : 0.8);
-    g.add(box(b * 2, 0.09, 0.07, holzD, 0, h, b)); g.add(box(b * 2, 0.09, 0.07, holzD, 0, h, -b));
-    g.add(box(0.07, 0.09, b * 2, holzD, b, h, 0)); g.add(box(0.07, 0.09, b * 2, holzD, -b, h, 0));
-  }
-  for (const sz of [-1, 1]) {
-    const br = box(0.06, beinH * 0.5, 0.05, holzD, 0, beinH * 0.35, sz * S * 0.85, [0, 0, 0.5]);
-    g.add(br);
-  }
-  // Plattform (Bohlenboden)
-  const platO = beinH;
-  g.add(box(S * 2.2, 0.12, S * 2.2, holz, 0, platO, 0));
-  for (let i = -2; i <= 2; i++) g.add(box(S * 2.2, 0.13, 0.03, holzD, 0, platO + 0.01, i * S * 0.45));   // Bohlenfugen
-  // geschlossene Brüstung (Bohlenwand) rundum, Schießscharten-Höhe
-  const brH = 0.5;
-  for (const sz of [-1, 1]) g.add(box(S * 2.2, brH, 0.09, holz, 0, platO + brH / 2, sz * S * 1.05));
-  for (const sx of [-1, 1]) g.add(box(0.09, brH, S * 2.2, holz, sx * S * 1.05, platO + brH / 2, 0));
-  // Zinnen-Andeutung: kleine Klötze oben
-  for (let i = -2; i <= 2; i++) { g.add(box(0.16, 0.14, 0.1, holzD, i * S * 0.5, platO + brH, S * 1.05)); }
-  // Pyramidendach - R100c (Autor "sehe zu viel vom Dach, sollte steiler sein"):
-  // hoeher + schmaler = steile Spitze, aus dem Schraeg-Oben-Winkel weniger Dachflaeche.
-  const dachH = 2.1;
-  const dach = new THREE.Mesh(new THREE.ConeGeometry(S * 1.7, dachH, 4), matHolz(0x3a2c18));
-  dach.position.set(0, platO + brH + dachH / 2, 0); dach.rotation.y = Math.PI / 4; dach.castShadow = true; g.add(dach);
-  // Fahnenmast + Wimpel (auf der hoeheren Dachspitze)
-  const spitzeY = platO + brH + dachH;
-  g.add(zyl(0.02, 0.02, 0.55, holz, 0, spitzeY + 0.2, 0));
-  const wimpel = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.16), new THREE.MeshStandardMaterial({ color: 0x7a1f1f, side: THREE.DoubleSide, roughness: 0.9 }));
-  wimpel.position.set(0.17, spitzeY + 0.38, 0); g.add(wimpel);
-  // Leiter an einer Seite
-  const leitZ = S * 1.15;
-  for (const sx of [-0.16, 0.16]) g.add(box(0.04, beinH, 0.04, holzD, sx, beinH / 2, leitZ));
-  for (let i = 1; i < 6; i++) g.add(box(0.36, 0.03, 0.03, holzD, 0, i * (beinH / 6), leitZ));
-  void eisen;
-  return g;
-}
+// R101: der alte gemalte Wachturm ist entfallen - der Turm kommt jetzt aus
+// Codex' Modell (src/demo3d/codexTurm.ts, dort baueWachturm).
 
 // Rundes Feldherren-/Mannschaftszelt (Pavillon): Leinwand-Kegeldach auf
 // Zylinderwand, Mittelmast mit Knauf, aufgeschlagene Eingangsplane, Abspannseile.

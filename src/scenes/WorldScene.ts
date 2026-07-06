@@ -3003,9 +3003,12 @@ export class WorldScene extends CombatScene {
     this.brichPlatzierungAb();
     this.platziereModus = { id, kosten, bauzeitS: this.BAUZEIT[id] ?? 3 };
     const name = (RTS_BAUTEN.find((b) => b.id === id)?.name) ?? (BAUMENU.find((b) => b.id === id)?.name) ?? id;
-    // Geist = halbtransparenter Fußabdruck + Beschriftung (folgt der Maus)
+    // Geist = halbtransparenter Fußabdruck + Beschriftung (folgt der Maus).
+    // R101: Turm belegt 2x2 Kacheln -> Fussabdruck-Rechteck entsprechend gross.
+    const n = this.bauFussabdruck(id);
+    const seite = n * TILE + 2;
     const g = this.add.container(0, 0).setDepth(6300);
-    const feld = this.add.rectangle(0, 0, 34, 34, 0x9ad86a, 0.28).setStrokeStyle(1, 0x9ad86a);
+    const feld = this.add.rectangle(0, 0, seite, seite, 0x9ad86a, 0.28).setStrokeStyle(1, 0x9ad86a);
     const txt = this.add.text(0, -28, name, { fontFamily: 'serif', fontSize: '11px', color: '#e8dfc8', backgroundColor: '#100b06cc', padding: { x: 4, y: 2 } }).setOrigin(0.5, 1);
     g.add(feld); g.add(txt);
     g.setData('feld', feld);
@@ -3028,18 +3031,38 @@ export class WorldScene extends CombatScene {
     return !(t === undefined || SOLID.has(t) || t === T.WATER || t === T.BRIDGE);
   }
 
+  // R101: Bau-Fussabdruck in Kacheln (Kantenlaenge). Der Codex-Wachturm belegt
+  // 2x2 Kacheln ("den Turm in 4 Kacheln zeichnen"), alles andere 1x1.
+  private bauFussabdruck(id: string): number { return id === 'wachturm' ? 2 : 1; }
+
+  // Snappt den Zeiger auf den Fussabdruck-Block: tx/ty = obere-linke Kachel,
+  // cx/cy = Block-MITTE (bei 2x2 die gemeinsame Innenecke der vier Kacheln).
+  private bauSnap(wx: number, wy: number, id: string): { cx: number; cy: number; tx: number; ty: number; n: number } {
+    const n = this.bauFussabdruck(id);
+    const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
+    return { cx: (tx + n / 2) * TILE, cy: (ty + n / 2) * TILE, tx, ty, n };
+  }
+
+  // Ist der ganze n x n-Block ab (tx,ty) bebaubar?
+  private bauplatzFreiBlock(tx: number, ty: number, n: number): boolean {
+    for (let dy = 0; dy < n; dy++) for (let dx = 0; dx < n; dx++) {
+      if (!this.bauplatzFrei((tx + dx) * TILE + 16, (ty + dy) * TILE + 16)) return false;
+    }
+    return true;
+  }
+
   // Linksklick im Platzierungs-Modus (aus bauKlick) - true = Klick verbraucht.
   private platzierKlick(ptr: Phaser.Input.Pointer): boolean {
     if (!this.platziereModus) return false;
     if (ptr.rightButtonDown()) { this.brichPlatzierungAb(); this.logMsg('Bau abgebrochen.', ''); return true; }
     const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
-    const wx = Math.floor(wp.x / TILE) * TILE + 16, wy = Math.floor(wp.y / TILE) * TILE + 16;
-    if (!this.bauplatzFrei(wx, wy)) { this.sfx.play('fehler'); this.logMsg('Kein Platz - freien Boden wählen.', ''); return true; }
     const mod = this.platziereModus;
+    const snap = this.bauSnap(wp.x, wp.y, mod.id);
+    if (!this.bauplatzFreiBlock(snap.tx, snap.ty, snap.n)) { this.sfx.play('fehler'); this.logMsg(snap.n > 1 ? 'Kein Platz - der Turm braucht 4 freie Kacheln.' : 'Kein Platz - freien Boden wählen.', ''); return true; }
     const fehlt = Object.entries(mod.kosten).some(([k, n]) => (this.p.materials[k as MaterialId] ?? 0) < (n ?? 0));
     if (fehlt) { this.sfx.play('fehler'); this.logMsg('Nicht mehr genug Material.', ''); this.brichPlatzierungAb(); return true; }
     for (const [k, n] of Object.entries(mod.kosten)) this.p.materials[k as MaterialId] -= n ?? 0;
-    this.setzeBaustelle(mod.id, wx, wy, mod.bauzeitS);
+    this.setzeBaustelle(mod.id, snap.cx, snap.cy, mod.bauzeitS);
     this.sfx.play('holz_hacken');
     this.brichPlatzierungAb();
     this.baueRtsLeiste?.();   // Leiste (Material-Farben) auffrischen, falls im RTS
@@ -3056,6 +3079,14 @@ export class WorldScene extends CombatScene {
       g.fillStyle = 'rgba(200,180,120,0.5)'; g.fillRect(9, 20, 16, 6);            // Materialstapel
       this.textures.addCanvas('baustelle_tex', c)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
     }
+    // R101: 2x2-Bauten (Turm) markieren waehrend des Baus ihren 4-Kachel-Block,
+    // damit "beim Bauen 4 Kacheln angezeigt" werden - Umriss bleibt bis fertig.
+    const n = this.bauFussabdruck(id);
+    if (n > 1) {
+      const seite = n * TILE;
+      const grund = this.add.rectangle(x, y, seite, seite, 0x8a6f3c, 0.16).setStrokeStyle(1, 0xd8c090, 0.7).setDepth(y - 6);
+      this.tileImages.push(grund as unknown as Phaser.GameObjects.Image);
+    }
     const kb = this.textures.exists('baustelle3d') ? 'baustelle3d' : 'baustelle_tex';
     const img = this.add.image(x, y + (kb === 'baustelle3d' ? 16 : 0), kb).setDepth(y - 4).setOrigin(0.5, kb === 'baustelle3d' ? 1 : 0.8);
     if (kb === 'baustelle3d') img.setDisplaySize(40, 80);
@@ -3070,10 +3101,11 @@ export class WorldScene extends CombatScene {
     if (this.platzierGeist && this.platziereModus) {
       const ptr = this.input.activePointer;
       const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
-      const gx = Math.floor(wp.x / TILE) * TILE + 16, gy = Math.floor(wp.y / TILE) * TILE + 16;
-      this.platzierGeist.setPosition(gx, gy);
+      // R101: auf den Fussabdruck-Block schnappen (Turm = 2x2) und ALLE Kacheln pruefen
+      const snap = this.bauSnap(wp.x, wp.y, this.platziereModus.id);
+      this.platzierGeist.setPosition(snap.cx, snap.cy);
       const feld = this.platzierGeist.getData('feld') as Phaser.GameObjects.Rectangle;
-      const ok = this.bauplatzFrei(gx, gy);
+      const ok = this.bauplatzFreiBlock(snap.tx, snap.ty, snap.n);
       feld.setFillStyle(ok ? 0x9ad86a : 0xd8402a, 0.28).setStrokeStyle(1, ok ? 0x9ad86a : 0xd8402a);
     }
     for (let i = this.baustellen.length - 1; i >= 0; i--) {
@@ -3099,7 +3131,7 @@ export class WorldScene extends CombatScene {
     this.sfx.play('klick');
     const maxHp = BAU_HP[id] ?? 60;
     let img: Phaser.GameObjects.Image | undefined;
-    let tx: number | undefined, ty: number | undefined;
+    let tx: number | undefined, ty: number | undefined, tx2: number | undefined, ty2: number | undefined;
     if (id === 'lagerfeuer') {
       (this.lagerfeuerProKarte[this.area.id] ??= []).push({ x, y });
       this.spawneLagerfeuer(x, y);
@@ -3135,13 +3167,20 @@ export class WorldScene extends CombatScene {
       this.logMsg('Doppeltor steht (geschlossen, 2 Felder) - öffnen/schließen über das Klick-Menü.', 'gold');
       this.panels?.refresh?.();
       return;
+    } else if (id === 'wachturm') {
+      // R101: der Codex-Turm belegt 2x2 Kacheln. x,y = Block-MITTE (Innenecke),
+      // daraus die obere-linke Kachel ableiten und den 4-Kachel-Block vermerken.
+      tx = Math.round(x / TILE) - 1; ty = Math.round(y / TILE) - 1;
+      tx2 = tx + 1; ty2 = ty + 1;
+      img = this.spawneFeldbau(id, x, y);
+      this.logMsg('Wachturm errichtet (4 Kacheln) - Bogenschützen beziehen ihn per Klick.', 'gold');
     } else {
       img = this.spawneFeldbau(id, x, y);
       const b = RTS_BAUTEN.find((rb) => rb.id === id);
       this.logMsg(`${b?.name ?? 'Feldbau'} errichtet.`, 'gold');
     }
     // R94: in die Feldbau-Registry (Lebenspunkte, Klick-Menü)
-    this.feldbauten.push({ id, x, y, tx, ty, hp: maxHp, maxHp, img, balken: null, offen: id === 'tor' ? false : undefined });
+    this.feldbauten.push({ id, x, y, tx, ty, tx2, ty2, hp: maxHp, maxHp, img, balken: null, offen: id === 'tor' ? false : undefined });
     this.panels?.refresh?.();
   }
 
@@ -3150,7 +3189,8 @@ export class WorldScene extends CombatScene {
   // Lebensanzeige in den roten Bereich fällt. ------------------------------
   private feldbauUnter(wx: number, wy: number): (typeof this.feldbauten)[number] | null {
     for (const f of this.feldbauten) {
-      const r = f.tx !== undefined ? 18 : (f.img ? Math.max(18, f.img.displayWidth * 0.5) : 20);
+      // R101: Wachturm deckt 2x2 Kacheln - grosszuegiger Klickradius um die Block-Mitte.
+      const r = f.id === 'wachturm' ? 44 : (f.tx !== undefined ? 18 : (f.img ? Math.max(18, f.img.displayWidth * 0.5) : 20));
       if (Math.hypot(f.x - wx, f.y - wy) < r) return f;
       // R100d: Doppeltor auch ueber die zweite Kachel anklickbar
       if (f.tx2 !== undefined && f.ty2 !== undefined && Math.hypot((f.tx2 * TILE + 16) - wx, (f.ty2 * TILE + 16) - wy) < r) return f;
@@ -3245,14 +3285,18 @@ export class WorldScene extends CombatScene {
 
   private entferneFeldbau(f: (typeof this.feldbauten)[number]): void {
     f.balken?.destroy();
-    if (f.tx !== undefined && f.ty !== undefined) {   // Palisade/Tor = Kachel
+    // R101: Bild-Bauten (Turm, Zelte, Lager-Props) IMMER entfernen - der Wachturm
+    // hat jetzt tx/ty (2x2-Fussabdruck), veraendert aber KEINE Map-Kachel. Nur
+    // Palisade/Tor setzen ihre soliden Kacheln zurueck.
+    if (f.img?.active) f.img.destroy();
+    if ((f.id === 'palisade' || f.id === 'tor') && f.tx !== undefined && f.ty !== undefined) {
       const t = this.area.map[f.ty]?.[f.tx];
       if (t === T.PALISADE || t === T.TOR) {
         this.area.map[f.ty][f.tx] = T.GRASS;
         if (f.tx2 !== undefined && f.ty2 !== undefined && this.area.map[f.ty2]?.[f.tx2] === T.TOR) this.area.map[f.ty2][f.tx2] = T.GRASS;   // R100d: Doppeltor 2. Kachel
         for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) { this.refreshTile(f.tx + dx, f.ty + dy); if (f.tx2 !== undefined) this.refreshTile(f.tx2 + dx, f.ty2! + dy); }
       }
-    } else if (f.img?.active) f.img.destroy();
+    }
     if (f.id === 'lagerfeuer') {
       this.lagerfeuerAktiv = this.lagerfeuerAktiv.filter((lf) => Math.hypot(lf.x - f.x, lf.y - f.y) > 8);
       const arr = this.lagerfeuerProKarte[this.area.id]; if (arr) this.lagerfeuerProKarte[this.area.id] = arr.filter((lf) => Math.hypot(lf.x - f.x, lf.y - f.y) > 8);
@@ -3282,11 +3326,16 @@ export class WorldScene extends CombatScene {
     // R97: Wachturm/Zelte werden beim Boot als 3D-Sprites gebacken (lagerBitmaps).
     // Fehlt das (Bake-Fehler), gemalter Canvas-Fallback.
     if (!this.textures.exists(key)) this.textures.addCanvas(key, this.macheFeldbauBild(id))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const img = this.add.image(x, y, key).setOrigin(0.5, 0.94).setDepth(y);
+    // R101: der Codex-Turm sitzt mit seiner Fussmitte auf der Block-Mitte (x,y) -
+    // Origin hoeher (0.78) als bei 1-Kachel-Bauten, damit die vorderen Beine in den
+    // 2x2-Block reichen und nicht darueber hinaus; Tiefe an der Block-Vorderkante.
+    const turm = id === 'wachturm';
+    const img = this.add.image(x, y, key).setOrigin(0.5, turm ? 0.78 : 0.94).setDepth(turm ? y + 24 : y);
     // Zielhöhe je Bau (massiver als vorher); Breite folgt dem echten Seitenverhältnis.
     // R100 (Autor "Feldaltar sieht riesig aus, Groessenverhaeltnisse passen nicht"):
     // Lager-Props auf stimmige, kleinere Groesse relativ zu Palisade/Turm.
-    const zielH: Record<string, number> = { wachturm: 150, zelt: 84, lazarett: 84, nachschub: 76, feldaltar: 40, kochstelle: 42, brunnen: 50, feldschmiede: 44, wartfeuer: 46 };
+    // R101: Turm-Zielhoehe so, dass der Beinstand ~2 Kacheln (64px) breit wird.
+    const zielH: Record<string, number> = { wachturm: 132, zelt: 84, lazarett: 84, nachschub: 76, feldaltar: 40, kochstelle: 42, brunnen: 50, feldschmiede: 44, wartfeuer: 46 };
     const h = zielH[id];
     if (h) {
       const src = this.textures.get(key).getSourceImage();
