@@ -2722,7 +2722,7 @@ export class WorldScene extends CombatScene {
       gitter: () => this.area ? { w: this.area.w, h: this.area.h } : null,
       begehbar: (tx, ty, team) => {
         const x = tx * TILE + 16, y = ty * TILE + 16;
-        return team === 'spieler' ? !this.solidFuerHeld(x, y) : !this.isSolidAt(x, y);
+        return team === 'spieler' ? !this.solidFuerHeld(x, y) : !this.solidFuerFeind(x, y);   // R101c: Feind durchs offene Tor
       },
       // R99d: Dungeon-Kampf-Anbindung - Verbuendete + Feind-Monster sind ECHTE Enemies
       spawnAlly: (typ, x, y) => this.spawnVerbuendeter(typ, x, y),
@@ -3253,7 +3253,7 @@ export class WorldScene extends CombatScene {
     const img = this.tileImages.find((i) => i.active && i.getData('kachel') === `${f.tx},${f.ty}`);
     if (img) { img.setScale(img.scaleX, img.scaleY * 0.86); this.tweens.add({ targets: img, scaleY: img.scaleY / 0.86, duration: 160, ease: 'Back.easeOut' }); }
     this.sfx.play(f.offen ? 'holz_hacken' : 'block', 0.4);
-    this.logMsg(f.offen ? 'Das Tor steht offen - eigene Truppen können passieren.' : 'Das Tor ist geschlossen.', '');
+    this.logMsg(f.offen ? 'Das Tor steht offen - jetzt kommen auch Feinde herein!' : 'Das Tor ist geschlossen.', '');
   }
 
   private schliesseBauMenu(): void {
@@ -5561,17 +5561,30 @@ export class WorldScene extends CombatScene {
     return grundY + spr.displayHeight * (1 - spr.originY);
   }
 
-  // R99 (P11): OFFENES Tor ist für den Helden/eigene Truppen KEIN Hindernis -
-  // Gegner nutzen weiter das rohe isSolidAt (T.TOR bleibt SOLID) und prallen ab.
-  protected override solidFuerHeld(x: number, y: number): boolean {
-    if (!this.isSolidAt(x, y)) return false;
+  // Ist diese Kachel ein OFFENES Tor? Dann fuer JEDEN passierbar (Held, Truppe
+  // UND Monster). R100d: das Doppeltor deckt beide Kacheln (tx/ty + tx2/ty2).
+  private torOffenHier(x: number, y: number): boolean {
     const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
-    if (this.area?.map?.[ty]?.[tx] === T.TOR) {
-      // R100d: Tor-Feldbau ueber BEIDE Kacheln finden (Doppeltor)
-      const f = this.feldbauten.find((fb) => fb.id === 'tor' && ((fb.tx === tx && fb.ty === ty) || (fb.tx2 === tx && fb.ty2 === ty)));
-      if (f?.offen) return false;
-    }
-    return true;
+    if (this.area?.map?.[ty]?.[tx] !== T.TOR) return false;
+    const f = this.feldbauten.find((fb) => fb.id === 'tor' && ((fb.tx === tx && fb.ty === ty) || (fb.tx2 === tx && fb.ty2 === ty)));
+    return !!f?.offen;
+  }
+
+  // R99 (P11): OFFENES Tor ist für den Helden/eigene Truppen KEIN Hindernis.
+  protected override solidFuerHeld(x: number, y: number): boolean {
+    return this.isSolidAt(x, y) && !this.torOffenHier(x, y);
+  }
+
+  // R101c (Autor-Bug "bei offenem Tor kommen die Monster nicht rein"): ein OFFENES
+  // Tor ist jetzt auch fuer FEINDE kein Hindernis - sie stroemen durch. Sonst wie
+  // die rohe Kollision (geschlossenes Tor + Palisade + Wand bleiben Wand).
+  solidFuerFeind(x: number, y: number): boolean {
+    return this.isSolidAt(x, y) && !this.torOffenHier(x, y);
+  }
+
+  // R101c: Flussfeld zum Helden beachtet das offene Tor -> Monster pfaden hindurch.
+  protected override begehbarFuerWeg(tx: number, ty: number): boolean {
+    return !this.solidFuerFeind(tx * TILE + 16, ty * TILE + 16);
   }
 
   // === R99d (P12-14): RTS-Kampf = DUNGEON-Kampf =============================
@@ -5607,15 +5620,17 @@ export class WorldScene extends CombatScene {
 
   private kampfHostCache = new WeakMap<Enemy, EnemyHost>();
   protected override enemyHost(e: Enemy): EnemyHost {
-    // Ohne Verbuendete verhalten sich Feinde exakt wie bisher (schneller Pfad).
-    if (e.team !== 'spieler' && !this.enemies.some((o) => o.team === 'spieler' && o.hp > 0)) return this;
+    // Ohne Verbuendete verhalten sich Feinde exakt wie bisher (schneller Pfad) -
+    // ABER nur, wenn kein Tor existiert: sonst braucht auch der Feind die Tor-
+    // bewusste Kollision (offenes Tor passierbar), damit er reinkommt (R101c).
+    if (e.team !== 'spieler' && !this.enemies.some((o) => o.team === 'spieler' && o.hp > 0) && !this.feldbauten.some((f) => f.id === 'tor')) return this;
     let h = this.kampfHostCache.get(e);
     if (h) return h;
     const s = this;
     h = {
-      // R100d (Autor "NPCs kommen nicht durchs offene Tor"): Verbuendete nutzen die
-      // TEAM-Kollision (offenes Tor passierbar), Feinde die rohe (Tor bleibt Wand).
-      isSolidAt: (x, y) => e.team === 'spieler' ? s.solidFuerHeld(x, y) : s.isSolidAt(x, y),
+      // R100d/R101c: Verbuendete nutzen solidFuerHeld, Feinde solidFuerFeind -
+      // beide lassen ein OFFENES Tor passieren, ein geschlossenes bleibt Wand.
+      isSolidAt: (x, y) => e.team === 'spieler' ? s.solidFuerHeld(x, y) : s.solidFuerFeind(x, y),
       playerX: () => { const z = s.zielFuer(e); return z === 'held' ? s.px : z ? z.x : e.x; },
       playerY: () => { const z = s.zielFuer(e); return z === 'held' ? s.py : z ? z.y : e.y; },
       playerR: () => { const z = s.zielFuer(e); return z === 'held' ? 12 : 11; },
