@@ -114,3 +114,8 @@
   Platzierung/Kollision/Durchlass ueber 2 Tiles.
 - R100 pruefen: "NPCs laufen wirr umher" - Idle-Verhalten der Verbuendeten/Feinde
   ohne Ziel im Auge behalten (sollten halten statt jittern).
+- R102 Diablo-Dungeon (V8): Runtime-AUSLOESUNG der Ereignis-Marker bauen
+  (Hinterhalt: Tuer zu + Welle; Kaefig-Gefangener; Kerzen erloeschen;
+  Sarkophag oeffnet sich; Blutgang-Einfaerbung vor dem Boss) - Marker liegen
+  bereits als special-Eintraege im Level. Dazu: eigene Sprites fuer
+  Sarkophag/Grabplatte/Waffenstaender statt der Annaeherungs-Kacheln.

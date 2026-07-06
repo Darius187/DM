@@ -447,7 +447,10 @@ function macheRaum(rng: Rng, tiles: EditCode[][], id: number, rect: DiabloRect, 
   const blutExtra = t >= DIABLO_BLUT.abStufe
     ? Math.round(((t - DIABLO_BLUT.abStufe) / (1 - DIABLO_BLUT.abStufe)) * DIABLO_BLUT.maxZusatzProps) : 0;
   const propListe: string[] = [];
-  for (let i = 0; i < propZahl; i++) propListe.push(def.props[ri(rng, 0, def.props.length - 1)]);
+  // Bossarena: JEDES Pflicht-Prop genau einmal (Blutfont, Ritualkreis, Treppe ab) -
+  // zufaelliges Ziehen koennte die Abstiegs-Treppe verlieren (Kette kaputt).
+  if (rolle === 'bossarena') propListe.push(...def.props);
+  else for (let i = 0; i < propZahl; i++) propListe.push(def.props[ri(rng, 0, def.props.length - 1)]);
   for (let i = 0; i < blutExtra; i++) propListe.push('blut');
   for (const prop of propListe) {
     const platz = wandPlaetze.pop();

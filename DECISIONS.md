@@ -1,5 +1,18 @@
 # DECISIONS - Protokoll aller Annahmen und Entscheidungen
 
+- Runde 102 (Diablo-1-Dungeon-Generator, Autorauftrag komplett Phase 1-4):
+  * OUTPUT = EDITOR-Codes (dungeonVorlage 0-4), NICHT neues Format - Editor/Export/Probe unveraendert, generierte Karten im Editor bearbeitbar (Editor uebernimmt V8 jetzt 1:1 inkl. Tueren/Gaenge).
+  * Groesse "ca. 3x": 84x70 (=5880 Kacheln) vs. Krypta 44x44 (=1936). In DIABLO_GEN aenderbar.
+  * FUELL-RolLE "gewoelbe": die Rollen-Tabelle des Autors deckt ~10 Raeume, der Dungeon hat 18-28 - ueberzaehlige Raeume werden schlichtes Gewoelbe (wenig Props, mittlere Gegner). Leicht aenderbar (Gewichte in DIABLO_ROLLEN).
+  * BOSSARENA = unter den 3 graph-FERNSTEN Raeumen der GROESSTE (statt stur der fernste): "am weitesten weg" bleibt erfuellt, aber die Arena ist nie ein 5x5-Kaemmerchen. 2 grosse Raeume werden beim Platzieren garantiert.
+  * Bossarena-Props deterministisch je 1x (Blutfont, Ritualkreis, Treppe ab) statt zufaellig gezogen - sonst koennte die Abstiegs-Treppe fehlen (Kette kaputt, Regel 10).
+  * GEHEIMTUER im Live-Spiel = T.CRACK (Mauerriss, mit Angriffen aufbrechbar) - bestehende Mechanik statt neuer Tuer-Zustand. In der Probe/im Editor normale Tuer + geheim-Flag.
+  * Vault-Stollen duerfen fruehere Vaults NIE anritzen (Tabu-Pruefung) - sonst zweite Oeffnung; Wand-Kreuzung nur durch Haupt-Raum-Ringe (dort entsteht regulaer eine Tuer).
+  * gegner_boss im Live-Einsatz = Elite-Champion "Herr der Tiefe" (KEIN Templer-Boss: dessen Tod-Logik gehoert den Boss-Kammern; echte Boss-Inszenierung entscheidet der Autor).
+  * EINSATZ flexibel + Standard AUS: DIABLO_EINSATZ { ebenen: [], abEbene: null }. Hook an EINER Stelle (WorldScene holeArea, crypt-Zweig). Test: Probe V8 + F10-Knopf "Diablo-Dungeon betreten (Ebene 1, Test)". DEV-Haken window.__diabloEinsatz (Vite-import() im Test lieferte sonst eine ZWEITE Modul-Instanz - Falle dokumentiert).
+  * Ereignis-Marker (hinterhalt/kaefig/kerzen_aus/sarkophag/blutgang) werden generiert + im Live-Level als special-Eintraege sichtbar; die RUNTIME-AUSLOESUNG (Tuer zu, Welle, Licht aus, ...) ist bewusst ein EIGENER spaeterer Schritt (TODO).
+  * Prop-Marker -> vorhandene Kacheln als Annaeherung (Sarkophag=Grabstein, Grabplatte=Rune, Waffenstaender=leeres Regal, Kette=Gebeine); eigene Sprites je Rolle = spaeterer Asset-Schritt.
+
 - Runde 101e (Autor-Bug "Krieger findet den Weg um die lange Palisade nicht, laeuft nur hin und her"):
   * Ursache: MARSCH-Befehle (jagdZiel) benutzten die GREEDY-Nahausweichung (laufe), NICHT das globale Flussfeld. Greedy sieht nur ein paar Pixel voraus -> an einer langen Wand jittert die Einheit, statt aussen herumzufinden. Das Flussfeld (deckt die GANZE Karte, kein Reichweiten-Limit - in Wegfeld.ts geprueft) wurde bisher nur beim KAMPF-Anlauf genutzt.
   * Fix: neue Host-Abfrage wegRichtungZiel(x,y,zielX,zielY) = Flussfeld-Richtung zu einem BELIEBIGEN Ziel (ueber rtsBattle.wegPunkt(team,...)). jagdZiel- UND belagerungsZiel-Marsch folgen jetzt dem Flussfeld (um Waende herum), Fallback greedy nur wenn kein Feld/kein Weg. Basis-Host (Feind ohne Verbuendete/Tor) liefert null -> greedy (dort nur Kurzstrecken-Jagd).

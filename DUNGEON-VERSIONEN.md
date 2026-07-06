@@ -85,3 +85,22 @@ Technik: `src/world/dungeonVorlage.ts` (rein, getestet) - Kachel-Codes
 (0 Leer/Fels · 1 Raumboden · 2 Wand · 3 Tür · 4 Gang), `vonKarte` (Generator ->
 Vorlage), `exportiere`/`parse` (verlustfreier Round-Trip). Pro Version unter
 `ravensmoor_dvorlage_v<n>` im localStorage gespeichert.
+
+## V8 - Diablo-Räume + Vaults (R102) — GEBAUT, Kandidat für tiefe Ebenen
+`src/world/diabloDungeon.ts` (`baueDiabloDungeon`), Stellschrauben in
+`src/data/diabloDungeon.ts`. Klare Rechteck-Räume (Rejection Sampling, 18-28)
+mit kurzen L-Gängen (MST + 15-25% Schleifen), dazu 3-6 abgekapselte VAULTS
+(Sackgassen mit GENAU EINER Tür, 1-2 geheim = T.CRACK im Live-Spiel). Jeder
+Raum trägt eine ROLLE (Eingang, Kapelle, Folterkammer, Kerker, Krypta,
+Beinhaus, Schatzkammer im Vault, Skriptorium, Wachstube, Bossarena am
+graph-fernsten Punkt, Füller "Gewölbe") + Marker für Props/Gegner/Licht/
+Ereignisse (Hinterhalt, Käfig, Kerzen aus, Sarkophag, Blutgang vor dem Boss).
+~3x so groß wie die aktuelle Krypta (84x70 vs. 44x44). Ausgabe = EDITOR-Codes
+-> im Editor weiter bearbeitbar. 15 Property-Tests (Erreichbarkeit, Vault-
+Abkapselung, Rollen-Regeln, Round-Trip).
+
+LIVE-EINSATZ (flexibel, Standard AUS): `DIABLO_EINSATZ` in
+src/data/diabloDungeon.ts - `ebenen: [3]` oder `abEbene: 4`; die Umwandlung in
+eine echte Spiel-Ebene (Treppen, Fackeln, Truhen, Gegner, Geheimwand=Mauerriss)
+macht `src/world/diabloKrypta.ts`. Testen: DUNGEON-PROBE V8 (ansehen/begehen/
+spielen) ODER im Spiel F10 -> KASTEN -> "Diablo-Dungeon betreten (Ebene 1, Test)".

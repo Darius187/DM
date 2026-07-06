@@ -188,6 +188,7 @@ describe('Diablo-Dungeon: Rollen (Phase 2/3)', () => {
       expect(eingang.spawns.some((s) => s.typ === 'prop_treppe_auf')).toBe(true);
       const boss = d.rooms[d.bossRoomId];
       expect(boss.spawns.some((s) => s.typ === 'gegner_boss')).toBe(true);
+      expect(boss.spawns.some((s) => s.typ === 'prop_treppe_ab'), 'Abstieg fehlt in der Bossarena').toBe(true);
       for (const r of d.rooms) {
         for (const s of r.spawns) {
           if (s.typ === 'ereignis_blutgang') continue;   // liegt bewusst auf der Tuer

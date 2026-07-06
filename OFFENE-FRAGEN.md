@@ -222,3 +222,12 @@ ich als Zwischenlösung Nr. 1 + 2, beide in einer Zeile entfernbar.)
     Stand + Belege: WELTKARTE-PLAN.md ("STAND des Kanten-Systems"). Die
     Kreuzungspunkte aus ravenkarte.png dem Autor je Kante zur Bestätigung
     vorlegen (nichts erfinden). Frage: soll ich diese Phase als Nächstes bauen?
+23. Diablo-Dungeon (V8, R102) - WO soll er live laufen? Zwischenlösung: Schalter
+   DIABLO_EINSATZ in src/data/diabloDungeon.ts (ebenen: [3] oder abEbene: 4),
+   Standard AUS; testbar in der DUNGEON-PROBE (V8) und im Spiel über F10 ->
+   KASTEN -> "Diablo-Dungeon betreten". Sag mir "nutze ab Ebene X" / "Ebene X"
+   / "eigener Dungeon mit Eingang bei Y" - die Aktivierung ist eine Zeile.
+24. Diablo-Dungeon Boss: aktuell ein Elite-Champion "Herr der Tiefe"
+   (Zwischenlösung). Soll die Bossarena einen ECHTEN inszenierten Boss bekommen
+   (wie der Templer in den Boss-Kammern), und welchen?
+

@@ -5,6 +5,8 @@ import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir, angleToDir8, type EnemyHost } from '../world/Enemy';
 import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildWaldWest, buildWaldSuedOst, buildBurg, buildWaldNord, buildWaldMitte, buildLager, buildStadt2, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn, type Abbaubar } from '../world/areagen';
+import { diabloAktivFuer, buildDiabloKrypta } from '../world/diabloKrypta';
+import { DIABLO_EINSATZ } from '../data/diabloDungeon';
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
@@ -1512,7 +1514,11 @@ export class WorldScene extends CombatScene {
     else if (id === 'lager') a = buildLager(rng);
     else if (id === 'stadt2') a = buildStadt2(rng);
     else if (id === 'goldmine') a = buildGoldmine(rng);
-    else a = buildCrypt(parseInt(id.replace('crypt', ''), 10), rng);
+    else {
+      // R102: Diablo-Generator je Ebene per Konfig (DIABLO_EINSATZ, Standard AUS)
+      const nr = parseInt(id.replace('crypt', ''), 10);
+      a = diabloAktivFuer(nr) ? buildDiabloKrypta(nr, rng) : buildCrypt(nr, rng);
+    }
     this.areas.set(id, a);
     return a;
   }
@@ -4228,6 +4234,14 @@ export class WorldScene extends CombatScene {
       { name: 'KASTEN', controls: () => [
         { kind: 'button', label: () => 'Alter Kampf-/Spiel-Kasten öffnen', onClick: () => this.toggleDevPanel() },
         { kind: 'button', label: () => 'RTS-MODUS testen (Schlachtfeld-Steuerung)', onClick: () => { this.devKonsole?.toggle(); this.toggleRtsModus(); } },
+        // R102: Diablo-Dungeon LIVE testen - schaltet den neuen Generator fuer
+        // Ebene 1 an und springt hinein (nur Test; echter Einsatzort per Konfig).
+        { kind: 'button', label: () => `Diablo-Dungeon betreten (Ebene 1, Test)${diabloAktivFuer(1) ? ' · AN' : ''}`, onClick: () => {
+          if (!DIABLO_EINSATZ.ebenen.includes(1)) DIABLO_EINSATZ.ebenen.push(1);
+          this.areas.delete('crypt1');   // frisch generieren, falls schon gebaut
+          this.devKonsole?.toggle();
+          this.goArea('crypt1');
+        } },
       ] },
     ];
   }

@@ -55,7 +55,8 @@ export interface DiabloRollenDef {
 }
 
 export const DIABLO_ROLLEN: Record<DiabloRolle, DiabloRollenDef> = {
-  eingang:      { gewicht: 0, max: 1, props: ['treppe_auf'], propAnzahl: [1, 1], gegner: null, gegnerDichte: 0, licht: 'normal', lage: 'neutral' },
+  // eingang: die Treppe kommt als fester Mitte-Marker (macheRaum), keine Wand-Props
+  eingang:      { gewicht: 0, max: 1, props: [], propAnzahl: [0, 0], gegner: null, gegnerDichte: 0, licht: 'normal', lage: 'neutral' },
   kapelle:      { gewicht: 2, max: 1, props: ['altar', 'bank', 'kerze'], propAnzahl: [3, 5], gegner: 'pest', gegnerDichte: 1, licht: 'warm', lage: 'ruhig' },
   folterkammer: { gewicht: 3, max: 2, props: ['streckbank', 'kaefig', 'blut', 'kette'], propAnzahl: [3, 6], gegner: 'skelett', gegnerDichte: 2, licht: 'rot', lage: 'gefahr' },
   kerker:       { gewicht: 3, max: 2, props: ['zelle', 'kette', 'knochen'], propAnzahl: [3, 6], gegner: 'lebender_toter', gegnerDichte: 2, licht: 'dunkel', lage: 'neutral' },
