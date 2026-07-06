@@ -2869,6 +2869,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   wegBlockiert(x: number, y: number): boolean {
     return this.wegfeld !== null && this.wegRichtung(x, y) === null;
   }
+  // R101e: der Basis-Host (Feind ohne Verbuendete/Tor) hat kein Feld zu beliebigen
+  // Marsch-Zielen -> null (direkter Anlauf). Die Welt-Szene liefert es ueber den Proxy.
+  wegRichtungZiel(_x: number, _y: number, _zielX: number, _zielY: number): number | null { return null; }
   // R101: Szenen-Flussfeld sofort neu rechnen lassen (z.B. nach einer Bresche).
   protected wegfeldNeu(): void { this.wegfeldT = 0; }
 

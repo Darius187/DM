@@ -37,6 +37,11 @@ export interface EnemyHost {
   // true = die Einheit ist eingeschlossen -> STEHEN statt an der Wand zu jittern.
   // (Bei wegRichtung===null ohne Feld ist es nur "kein Feld" = offenes Gelaende.)
   wegBlockiert(x: number, y: number): boolean;
+  // R101e (Autor-Bug "Krieger findet den Weg um die lange Palisade nicht"):
+  // Flussfeld-Richtung zu einem BELIEBIGEN Ziel (Marsch-Befehl/Bresche), damit
+  // Einheiten ueber die GANZE Karte um Hindernisse herumfinden - nicht nur beim
+  // Kampf-Anlauf. null = kein Feld/kein Weg -> direkter Anlauf (greedy laufe).
+  wegRichtungZiel(x: number, y: number, zielX: number, zielY: number): number | null;
 }
 
 // Angriffsmuster je Gegnertyp (Masterprompt 4.3: 2-3 Muster, Telegraph 0,35-0,85 s)
@@ -364,8 +369,12 @@ export class Enemy {
     if (this.jagdZiel) {
       const dzx = this.jagdZiel.x - this.x, dzy = this.jagdZiel.y - this.y, dz = Math.hypot(dzx, dzy);
       if (dz > 3) {   // R100k (Autor "stehende NPCs haben Lauf-Animation"): nur laufen +
-        this.dir = angleToDir(Math.atan2(dzy, dzx));   // animieren, wenn WIRKLICH Weg zum Ziel ist
-        this.laufe(host, Math.atan2(dzy, dzx), this.speed, dt);
+        // R101e: Marsch folgt dem FLUSSFELD zum Ziel (um lange Waende herum, ganze
+        // Karte), nicht nur der Luftlinie - sonst jittert die Einheit an der Mauer.
+        const wa = host.wegRichtungZiel(this.x, this.y, this.jagdZiel.x, this.jagdZiel.y);
+        const ang = wa !== null ? wa : Math.atan2(dzy, dzx);
+        this.dir = angleToDir(ang);   // animieren, wenn WIRKLICH Weg zum Ziel ist
+        this.laufe(host, ang, this.speed, dt);
         this.advanceStep(dt);
       } else { this.step = 0; }   // am Ziel -> Stand, KEINE Lauf-Animation
       return;
@@ -376,7 +385,11 @@ export class Enemy {
     if (this.belagerungsZiel) {
       const bx = this.belagerungsZiel.x - this.x, by = this.belagerungsZiel.y - this.y, bd = Math.hypot(bx, by);
       this.dir = angleToDir(Math.atan2(by, bx));
-      if (bd > this.r + 24) { this.laufe(host, Math.atan2(by, bx), this.speed, dt); this.advanceStep(dt); }
+      if (bd > this.r + 24) {
+        // R101e: auch der Belagerer marschiert per Flussfeld um Waende zur Bresche.
+        const wa = host.wegRichtungZiel(this.x, this.y, this.belagerungsZiel.x, this.belagerungsZiel.y);
+        this.laufe(host, wa !== null ? wa : Math.atan2(by, bx), this.speed, dt); this.advanceStep(dt);
+      }
       else this.step = 0;   // an der Bresche: stehen (Belagerung schlaegt zu)
       return;
     }

@@ -1,5 +1,10 @@
 # DECISIONS - Protokoll aller Annahmen und Entscheidungen
 
+- Runde 101e (Autor-Bug "Krieger findet den Weg um die lange Palisade nicht, laeuft nur hin und her"):
+  * Ursache: MARSCH-Befehle (jagdZiel) benutzten die GREEDY-Nahausweichung (laufe), NICHT das globale Flussfeld. Greedy sieht nur ein paar Pixel voraus -> an einer langen Wand jittert die Einheit, statt aussen herumzufinden. Das Flussfeld (deckt die GANZE Karte, kein Reichweiten-Limit - in Wegfeld.ts geprueft) wurde bisher nur beim KAMPF-Anlauf genutzt.
+  * Fix: neue Host-Abfrage wegRichtungZiel(x,y,zielX,zielY) = Flussfeld-Richtung zu einem BELIEBIGEN Ziel (ueber rtsBattle.wegPunkt(team,...)). jagdZiel- UND belagerungsZiel-Marsch folgen jetzt dem Flussfeld (um Waende herum), Fallback greedy nur wenn kein Feld/kein Weg. Basis-Host (Feind ohne Verbuendete/Tor) liefert null -> greedy (dort nur Kurzstrecken-Jagd).
+  * Verifiziert: Verbuendeter rechts einer langen senkrechten Palisade, Marschziel links -> laeuft ums offene Wandende herum auf die linke Seite (vorher: Jitter an der Wand).
+
 - Runde 101d (Autor "ich will die Turm-Winkel im echten Spiel vergleichen"): drei
   baubare Wachturm-Varianten mit unterschiedlichem Kamera-BACKWINKEL - wachturm (57°,
   aktuell), wachturm_45 (45°), wachturm_40 (40°). Kleinerer Winkel = schraeger =

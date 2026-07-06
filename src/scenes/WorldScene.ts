@@ -5667,6 +5667,12 @@ export class WorldScene extends CombatScene {
         if (!z || !s.rtsBattle) return false;
         return s.rtsBattle.wegPunkt(e.team === 'spieler' ? 'spieler' : 'feind', x, y, { x: z.x, y: z.y }) === null;
       },
+      // R101e: Flussfeld-Richtung zu einem beliebigen Marsch-/Bresche-Ziel (ganze Karte).
+      wegRichtungZiel: (x, y, zx, zy) => {
+        if (!s.rtsBattle) return null;
+        const wp = s.rtsBattle.wegPunkt(e.team === 'spieler' ? 'spieler' : 'feind', x, y, { x: zx, y: zy });
+        return wp ? Math.atan2(wp.y - y, wp.x - x) : null;
+      },
     };
     this.kampfHostCache.set(e, h);
     return h;
