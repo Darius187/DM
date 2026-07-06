@@ -455,6 +455,9 @@ export class RtsBattle {
     const now = this.host.scene.time.now;
     for (const [k, e] of this.wegfelder) if (now - e.t > 2000) this.wegfelder.delete(k);
   }
+  // R101: Flussfelder sofort verwerfen (z.B. nach einer Bresche) - im naechsten
+  // Frame neu berechnet, damit Angreifer sofort durch die neue Luecke stroemen.
+  wegfelderNeu(): void { this.wegfelder.clear(); }
 
   // --- Overlay (Ringe, HP, Marker, Box, Ghost) - P18-Feedback ----------------
   zeichneOverlay(): void {

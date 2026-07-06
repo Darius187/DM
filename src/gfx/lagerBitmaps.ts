@@ -28,10 +28,10 @@ export async function registriereLagerBitmaps(tex: Phaser.Textures.TextureManage
   if (bereit && tex.exists('feldbau_wachturm')) return;
   const ofen = macheBackofen(640, false);   // ohne eingebackenen Schattenboden
   const items: Array<[string, () => THREE.Group]> = [
-    // R101: Codex-Turm im 3/4-Blick backen (azimuthDegrees 40 laut asset.json -
-    // genau die Ansicht, die der Autor gelobt hat: Rumpf/Bruestung/Streben sichtbar
-    // statt reiner Dachflaeche). Die Gruppen-Drehung wird vom Box3-Frame beachtet.
-    ['feldbau_wachturm', () => { const g = baueWachturm(); g.rotation.y = Math.PI * 40 / 180; return g; }],
+    // R101b (Autor "der Turm sollte von vorne erscheinen wie die Haeuser"): FRONT-
+    // Blick (0deg Yaw) statt 3/4 - eine Wand fluchtend zur Kamera, wie die uebrigen
+    // Gebaeude. Die 2x2-Grundflaeche liegt so achsparallel im Kachelblock.
+    ['feldbau_wachturm', () => baueWachturm()],
     ['feldbau_zelt', () => baueZelt(false)],
     ['feldbau_lazarett', () => baueZelt(true)],
   ];

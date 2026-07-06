@@ -32,6 +32,11 @@ export interface EnemyHost {
   // Flussfeld-Wegfindung (Runde 50): Richtung (rad) zum Spieler, die um
   // Hindernisse herum führt; null, wenn kein Feld vorliegt -> direkter Weg.
   wegRichtung(x: number, y: number): number | null;
+  // R101 (Autor "eingeschlossene Bogenschuetzen laufen wild statt still zu
+  // halten"): liegt ein Flussfeld zum Ziel vor, das von hier KEINEN Weg findet?
+  // true = die Einheit ist eingeschlossen -> STEHEN statt an der Wand zu jittern.
+  // (Bei wegRichtung===null ohne Feld ist es nur "kein Feld" = offenes Gelaende.)
+  wegBlockiert(x: number, y: number): boolean;
 }
 
 // Angriffsmuster je Gegnertyp (Masterprompt 4.3: 2-3 Muster, Telegraph 0,35-0,85 s)
@@ -148,6 +153,11 @@ export class Enemy {
   // Jagd-Ziel (Runde 40, großer Einfall): Position eines Tieres/Bewohners, dem
   // der Gegner hinterherrennt statt den Spieler zu suchen. null = normale KI.
   jagdZiel: { x: number; y: number } | null = null;
+  // R101 (Autor "Monster sollen die schwaechste Stelle gezielt angreifen"):
+  // Bresche-Ziel der Belagerungs-KI (Struktur-Mitte). Gesetzt/geloescht von
+  // WorldScene.updateBelagerung; der Monster marschiert dorthin und HAELT davor,
+  // damit die Belagerung ihn dort gebuendelt nagen laesst.
+  belagerungsZiel: { x: number; y: number } | null = null;
   // Einfall-Failsafe (Runde 41): erkennt im Gelände festsitzende Nachzügler
   fsT = 0; fsX?: number; fsY?: number;
   // Schildträger (Runde 11): blockt Treffer von vorn, weicht nicht zurück
@@ -360,6 +370,16 @@ export class Enemy {
       } else { this.step = 0; }   // am Ziel -> Stand, KEINE Lauf-Animation
       return;
     }
+    // R101 (Belagerung, Autor "die schwaechste Stelle gezielt angreifen"): ein
+    // zugewiesener Belagerer marschiert zur Bresche-Struktur und HAELT davor
+    // (updateBelagerung laesst ihn dort nagen). Fokus statt Streuung, kein Jitter.
+    if (this.belagerungsZiel) {
+      const bx = this.belagerungsZiel.x - this.x, by = this.belagerungsZiel.y - this.y, bd = Math.hypot(bx, by);
+      this.dir = angleToDir(Math.atan2(by, bx));
+      if (bd > this.r + 24) { this.laufe(host, Math.atan2(by, bx), this.speed, dt); this.advanceStep(dt); }
+      else this.step = 0;   // an der Bresche: stehen (Belagerung schlaegt zu)
+      return;
+    }
     if (this.boss) {
       this.bossAI(host, dt, d);
       return;
@@ -528,7 +548,11 @@ export class Enemy {
           this.advanceStep(dt);
         } else {
           const wegAng = host.wegRichtung(this.x, this.y);
-          if (wegAng === null && !direktFrei) {
+          // R101 (Autor "eingeschlossene Bogenschuetzen laufen wild"): kein Weg vom
+          // Flussfeld UND (eingeschlossen ODER Wand direkt davor) -> STEHEN. Der
+          // frueher noetige !direktFrei allein liess Einheiten an einer weiter
+          // entfernten Mauer entlangrutschen, obwohl es keinen Weg raus gab.
+          if (wegAng === null && (host.wegBlockiert(this.x, this.y) || !direktFrei)) {
             this.step = 0;   // kein Weg zum Ziel -> still halten (kein Wand-Jitter)
           } else {
             const fade = Math.min(1, Math.max(0, (d - 50) / 160));

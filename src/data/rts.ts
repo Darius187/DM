@@ -117,6 +117,17 @@ export const BELAGERUNG = {
   radius: 26,            // wie nah muss das Monster an die Struktur
   schadensFaktor: 0.45,  // Anteil der Monster-dmg pro Sekunde gegen Holz
   keinKampfRadius: 52,   // nur belagern, wenn kein Gegner (Held/Truppe) so nah ist
+  // R101 (Autor "Monster sollen gezielt die SCHWAECHSTE Stelle angreifen, nicht
+  // ueberall ein bisschen"): Bresche-Fokus. Die Belagerer suchen sich EINE
+  // schwaechste Struktur (niedrige HP + nah am Angreifer-Schwerpunkt) und haemmern
+  // sie gemeinsam ein. naeheGewicht = wie stark Naehe gegen HP zaehlt (Distanz in
+  // HP-Einheiten). maxProStelle = so viele duerfen an EINER Kachel schlagen, der
+  // Rest laeuft auf die naechste Nachbarstruktur (Fokus auf einen ABSCHNITT, nicht
+  // eine einzige Kachel). abschnittR = Suchradius fuer diese Nachbarstruktur.
+  naeheGewicht: 2.2,
+  maxProStelle: 2,       // so viele Belagerer je Struktur-Kachel, Rest auf Nachbarn
+  abschnittR: 100,       // Suchradius fuer die Nachbarstrukturen des Abschnitts
+  neuBewertenS: 0.5,     // Bresche-Ziel nur alle 0.5s neu waehlen (stabil)
 } as const;
 export const BAU_REPARATUR = {
   proAktionFrac: 0.34,   // je Reparatur ~1/3 der maxHP zurück

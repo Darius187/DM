@@ -5473,24 +5473,81 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // R101 (Autor "Monster sollen nicht ueberall ein bisschen an der Palisade nagen,
+  // sondern gezielt die schwaechste Stelle einreissen"): BRESCHE-FOKUS. Statt jeder
+  // Monster nagt am naechsten Stueck, bestimmt die Belagerung EINE Bresche-Struktur
+  // (schwaechste HP + naechste zum Angreifer-Schwerpunkt) und lotst die Belagerer
+  // gebuendelt dorthin. Ueberzaehlige gehen auf die Nachbarstruktur -> Fokus auf
+  // einen ABSCHNITT, nicht eine Kachel. Wer einen Weg zum Ziel hat (offenes Tor,
+  // aussen herum), belagert NICHT, sondern zieht normal durch.
+  private belagerungsZielRef: (typeof this.feldbauten)[number] | null = null;
+  private belagerungsNeuT = 0;
   private updateBelagerung(dt: number): void {
-    if (!this.rtsBattle) return;
+    if (!this.rtsBattle) { this.belagerungAus(); return; }
     const strukturen = this.feldbauten.filter((f) => f.id === 'palisade' || f.id === 'tor' || f.id === 'wachturm');
-    if (!strukturen.length) return;
+    if (!strukturen.length) { this.belagerungAus(); return; }
+    // 1) Belagerer sammeln: wache Feinde OHNE Nahkampf-Ziel UND ohne Weg zum Ziel.
+    const besieger: Enemy[] = [];
     for (const e of this.enemies) {
       if (e.hp <= 0 || e.team === 'spieler') continue;
-      // Ist ein Gegner (Held/eigene Truppe) nah? Dann kaempfen, nicht belagern.
+      if (e.passiv || e.jagdZiel) { e.belagerungsZiel = null; continue; }   // schlaeft/jagt Tier -> nicht belagern
       let kampfNah = !this.playerDead && Math.hypot(this.px - e.x, this.py - e.y) < BELAGERUNG.keinKampfRadius;
       if (!kampfNah) for (const o of this.enemies) { if (o.team === 'spieler' && o.hp > 0 && Math.hypot(o.x - e.x, o.y - e.y) < BELAGERUNG.keinKampfRadius) { kampfNah = true; break; } }
-      if (kampfNah) continue;
-      let best: (typeof strukturen)[number] | null = null, bd = BELAGERUNG.radius + e.r;
-      for (const f of strukturen) { const d = Math.hypot(f.x - e.x, f.y - e.y); if (d < bd) { bd = d; best = f; } }
-      if (!best) continue;
-      e.dir = angleToDir(Math.atan2(best.y - e.y, best.x - e.x));
-      best.hp -= e.dmg * BELAGERUNG.schadensFaktor * dt;
-      if (Math.random() < dt * 3) this.fx.burst(best.x, best.y - 6, 0x8a6a3c, 2, 50);
-      if (best.hp <= 0) { this.logMsg(`${best.id === 'tor' ? 'Das Tor' : best.id === 'wachturm' ? 'Der Wachturm' : 'Die Palisade'} wurde eingerissen!`, 'bad'); this.sfx.playAt('holz_hacken', best.x, best.y, 0.7); this.entferneFeldbau(best); }
+      if (kampfNah || this.hatWegZumZiel(e)) { e.belagerungsZiel = null; continue; }   // kaempft / hat Weg -> nicht belagern
+      besieger.push(e);
     }
+    if (!besieger.length) { this.belagerungsZielRef = null; return; }
+    // 2) Bresche-Ziel bestimmen (stabil, nur alle neuBewertenS neu).
+    this.belagerungsNeuT -= dt;
+    const gueltig = this.belagerungsZielRef && strukturen.includes(this.belagerungsZielRef) && this.belagerungsZielRef.hp > 0;
+    if (!gueltig || this.belagerungsNeuT <= 0) {
+      this.belagerungsNeuT = BELAGERUNG.neuBewertenS;
+      let cx = 0, cy = 0; for (const e of besieger) { cx += e.x; cy += e.y; } cx /= besieger.length; cy /= besieger.length;
+      let best: (typeof strukturen)[number] | null = null, bs = Infinity;
+      for (const f of strukturen) { const score = f.hp + Math.hypot(f.x - cx, f.y - cy) * BELAGERUNG.naeheGewicht; if (score < bs) { bs = score; best = f; } }
+      this.belagerungsZielRef = best;
+    }
+    const bresche = this.belagerungsZielRef;
+    if (!bresche) return;
+    // 3) Zuweisen: Bresche + ihre Nachbarn im Abschnitt sind die Kandidaten; jeder
+    //    fasst maxProStelle Belagerer. So verteilen sich die Angreifer auf einen
+    //    ABSCHNITT (2-3 Kacheln), statt sich auf EINER Kachel zu stauen (wo nur
+    //    1-2 herankaemen) - "nicht alle auf einer Stelle, aber gebuendelt".
+    const kandidaten = strukturen
+      .filter((f) => f === bresche || Math.hypot(f.x - bresche.x, f.y - bresche.y) < BELAGERUNG.abschnittR)
+      .sort((a, b) => Math.hypot(a.x - bresche.x, a.y - bresche.y) - Math.hypot(b.x - bresche.x, b.y - bresche.y));
+    besieger.sort((a, b) => Math.hypot(a.x - bresche.x, a.y - bresche.y) - Math.hypot(b.x - bresche.x, b.y - bresche.y));
+    const belegung = new Map<(typeof strukturen)[number], number>();
+    for (const e of besieger) {
+      const zielF = kandidaten.find((f) => (belegung.get(f) ?? 0) < BELAGERUNG.maxProStelle) ?? bresche;
+      belegung.set(zielF, (belegung.get(zielF) ?? 0) + 1);
+      e.belagerungsZiel = { x: zielF.x, y: zielF.y };
+      if (Math.hypot(zielF.x - e.x, zielF.y - e.y) < BELAGERUNG.radius + e.r) {
+        // dran: gezielt nagen
+        zielF.hp -= e.dmg * BELAGERUNG.schadensFaktor * dt;
+        if (Math.random() < dt * 3) this.fx.burst(zielF.x, zielF.y - 6, 0x8a6a3c, 2, 50);
+        if (zielF.hp <= 0) {
+          this.logMsg(`${zielF.id === 'tor' ? 'Das Tor' : zielF.id === 'wachturm' ? 'Der Wachturm' : 'Die Palisade'} wurde eingerissen!`, 'bad');
+          this.sfx.playAt('holz_hacken', zielF.x, zielF.y, 0.7);
+          this.entferneFeldbau(zielF);
+          if (this.belagerungsZielRef === zielF) this.belagerungsZielRef = null;
+          this.rtsBattle.wegfelderNeu();   // sofort neu pfaden -> Angreifer stroemen durch die Bresche
+          this.wegfeldNeu();               // Szenen-Feld (Held-Ziel) ebenfalls
+        }
+      }
+    }
+  }
+  private belagerungAus(): void {
+    this.belagerungsZielRef = null;
+    for (const e of this.enemies) if (e.team !== 'spieler') e.belagerungsZiel = null;
+  }
+  // Hat der Feind e einen begehbaren Weg zu seinem aktuellen Ziel? (dann nicht belagern,
+  // sondern normal durchziehen - offenes Tor, aussen herum). Kein Weg = eingeschlossen.
+  private hatWegZumZiel(e: Enemy): boolean {
+    const z = this.zielFuer(e);
+    if (z === 'held') return this.wegRichtung(e.x, e.y) !== null;
+    if (!z) return false;
+    return this.rtsBattle!.wegPunkt('feind', e.x, e.y, { x: z.x, y: z.y }) !== null;
   }
 
   // R95 (Autor "Stamm verdeckt den Kopf, obwohl der Held davorsteht"): Held und
@@ -5583,6 +5640,14 @@ export class WorldScene extends CombatScene {
         if (!z || !s.rtsBattle) return null;
         const wp = s.rtsBattle.wegPunkt(e.team === 'spieler' ? 'spieler' : 'feind', x, y, { x: z.x, y: z.y });
         return wp ? Math.atan2(wp.y - y, wp.x - x) : null;
+      },
+      // R101: eingeschlossen? Fuer Held-Ziel das Szenen-Feld, sonst das RTS-Feld
+      // zum aktuellen Enemy-Ziel. Kein Ziel / kein RTS -> nicht eingeschlossen.
+      wegBlockiert: (x, y) => {
+        const z = s.zielFuer(e);
+        if (z === 'held') return s.wegBlockiert(x, y);
+        if (!z || !s.rtsBattle) return false;
+        return s.rtsBattle.wegPunkt(e.team === 'spieler' ? 'spieler' : 'feind', x, y, { x: z.x, y: z.y }) === null;
       },
     };
     this.kampfHostCache.set(e, h);

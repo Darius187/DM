@@ -2863,6 +2863,15 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     return Math.atan2((nb.ty * TILE + 16) - y, (nb.tx * TILE + 16) - x);
   }
 
+  // R101: existiert ein Flussfeld zum Helden, das von (x,y) KEINEN Weg findet?
+  // -> die Einheit ist eingeschlossen (soll stehen). Ohne Feld (kein Gitter) =
+  // offenes Gelaende, kein Einschluss -> false.
+  wegBlockiert(x: number, y: number): boolean {
+    return this.wegfeld !== null && this.wegRichtung(x, y) === null;
+  }
+  // R101: Szenen-Flussfeld sofort neu rechnen lassen (z.B. nach einer Bresche).
+  protected wegfeldNeu(): void { this.wegfeldT = 0; }
+
   // Nach dem Spielertod läuft die Welt WEITER: die Gegner scharen sich um die
   // Leiche und fallen über sie her, während man zuschaut (das Gestorben-Fenster
   // liegt halbtransparent darüber). Spieler-Eingabe/Bewegung bleibt aus.
