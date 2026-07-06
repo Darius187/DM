@@ -104,6 +104,15 @@ export class DungeonProbe extends Phaser.Scene {
         color: rm.inhalt ? '#ff8a7a' : rm.typ === 'haupthalle' ? '#f0e0a0' : '#cdbf9d', stroke: '#000', strokeThickness: 2,
       }).setOrigin(0.5));
     }
+    // V8 (R102): Rollen-Etiketten - jeder Raum zeigt seinen Zweck (Kapelle,
+    // Folterkammer, SCHATZKAMMER im Vault, ...) direkt in der Uebersicht.
+    for (const rl of k.rollen ?? []) {
+      const gross = rl.label === rl.label.toUpperCase() || rl.label.includes('🔒');
+      this.labelLayer.add(this.add.text(ox + rl.cx * z, oy + rl.y * z, rl.label, {
+        fontFamily: 'serif', fontSize: gross ? '12px' : '10px',
+        color: rl.farbe, stroke: '#000', strokeThickness: 2,
+      }).setOrigin(0.5, 1));
+    }
     this.hinweis.setText(`${this.karte.name}  -  ÜBERSICHT. "BEGEHEN" zum Hineinlaufen.`);
   }
 
@@ -163,7 +172,11 @@ export class DungeonProbe extends Phaser.Scene {
   private editLadenOderGenerator(): void {
     let geladen: EditCode[][] | null = null;
     try { const raw = localStorage.getItem(this.vorlageKey()); if (raw) geladen = parse(raw); } catch { /* egal */ }
-    this.editGrid = geladen ?? vonKarte(this.karte.grid, this.karte.solid);
+    // V8 (R102): das Gitter traegt BEREITS Editor-Codes -> Tueren/Gaenge 1:1
+    // uebernehmen statt via vonKarte auf Wand/Boden plattzudruecken.
+    this.editGrid = geladen ?? (this.karte.editorCodes
+      ? this.karte.grid.map((r) => [...r] as EditCode[])
+      : vonKarte(this.karte.grid, this.karte.solid));
     this.markiereEditorUI();
     this.zeichneEditor();
     this.hinweis.setText(geladen ? `EDITOR V${this.version} - gespeicherte Vorlage geladen. Malen mit der Maus, EXPORT kopiert den Code.`
@@ -172,7 +185,9 @@ export class DungeonProbe extends Phaser.Scene {
 
   private editAusGenerator(): void {
     this.karte = erzeugeKarte(this.version);
-    this.editGrid = vonKarte(this.karte.grid, this.karte.solid);
+    this.editGrid = this.karte.editorCodes
+      ? this.karte.grid.map((r) => [...r] as EditCode[])
+      : vonKarte(this.karte.grid, this.karte.solid);
     this.zeichneEditor();
     this.hinweis.setText(`EDITOR V${this.version} - frische Generator-Vorlage. Jetzt von Hand anpassen.`);
   }
@@ -308,7 +323,7 @@ export class DungeonProbe extends Phaser.Scene {
     bx += knopf(bx, 'BEGEHEN/ÜBERSICHT', () => { if (this.modus === 'begehen') this.zeigeUebersicht(); else this.betrete(); }).width + 8;
     bx += knopf(bx, 'EDITOR', () => { if (this.modus === 'editor') this.zeigeUebersicht(); else this.betreteEditor(); }).width + 8;
     bx += knopf(bx, 'SPIELEN', () => this.scene.start('DungeonSpiel', { version: this.version })).width + 16;
-    for (const v of [1, 2, 3, 4, 5, 6, 7] as const) { bx += knopf(bx, `V${v}`, () => this.waehleVersion(v)).width + 3; }
+    for (const v of [1, 2, 3, 4, 5, 6, 7, 8] as const) { bx += knopf(bx, `V${v}`, () => this.waehleVersion(v)).width + 3; }
     knopf(bx + 10, 'MENÜ', () => this.scene.start('Title'));
     this.uiLayer.add(this.add.text(this.scale.width / 2, 22, 'DUNGEON-PROBE - ansehen · begehen · EDITOR (selbst zeichnen + als Code exportieren)', {
       fontFamily: 'serif', fontSize: '17px', color: '#d8cfb8', stroke: '#000', strokeThickness: 3,

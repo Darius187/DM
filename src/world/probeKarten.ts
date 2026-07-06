@@ -9,12 +9,14 @@ import { baueGangDungeon } from './dungeonGaenge';
 import { baueHoehle } from './hoehlenDungeon';
 import { baueVerbundeneRaeume } from './verbundeneRaeume';
 import { baueBurg } from './burgDungeon';
+import { baueDiabloDungeon } from './diabloDungeon';
+import type { DiabloRolle } from '../data/diabloDungeon';
 import { buildCrypt } from './areagen';
 import { seededRng } from '../logic/rng';
 import { T, SOLID } from './tiles';
 import { VORLAGE_FARBE, type EditCode } from './dungeonVorlage';
 
-export type DungeonVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type DungeonVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 export interface ProbeKarte {
   name: string;
@@ -23,6 +25,11 @@ export interface ProbeKarte {
   solid: (t: number) => boolean;
   farbe: (t: number) => number;
   raeume?: DRaum[];
+  // V8 (R102): Rollen-Etiketten fuer die Uebersicht ("die Folterkammer" statt
+  // "irgendein Raum") + editorCodes=true, wenn das Gitter BEREITS Editor-Codes
+  // traegt (der Editor uebernimmt dann Tueren/Gaenge 1:1 statt nur Wand/Boden).
+  rollen?: Array<{ cx: number; y: number; label: string; farbe: string }>;
+  editorCodes?: boolean;
 }
 
 const FARBE_V3: Record<Zelle, number> = {
@@ -39,7 +46,39 @@ function farbeV1(t: number): number {
   return 0x4a443a;
 }
 
+// V8 (R102): Anzeige-Etiketten je Rolle - GROSS = die festen/besonderen Rollen.
+const ROLLEN_LABEL: Record<DiabloRolle, { text: string; farbe: string }> = {
+  eingang: { text: 'EINGANG', farbe: '#6ad06a' },
+  bossarena: { text: 'BOSSARENA', farbe: '#ff4848' },
+  schatzkammer: { text: 'SCHATZKAMMER', farbe: '#f0c040' },
+  kapelle: { text: 'Kapelle', farbe: '#e8d8a0' },
+  folterkammer: { text: 'Folterkammer', farbe: '#ff8a7a' },
+  kerker: { text: 'Kerker', farbe: '#cdbf9d' },
+  krypta: { text: 'Krypta', farbe: '#9ab4cc' },
+  beinhaus: { text: 'Beinhaus', farbe: '#cdbf9d' },
+  skriptorium: { text: 'Skriptorium', farbe: '#e8d8a0' },
+  wachstube: { text: 'Wachstube', farbe: '#ff8a7a' },
+  gewoelbe: { text: 'Gewölbe', farbe: '#8a8070' },
+};
+
 export function erzeugeKarte(version: DungeonVersion): ProbeKarte {
+  if (version === 8) {
+    const d = baueDiabloDungeon(seededRng(Math.floor(Math.random() * 1e9)));
+    const vaults = d.rooms.filter((r) => r.istVault);
+    const geheime = vaults.filter((r) => r.tueren.some((t) => t.geheim)).length;
+    return {
+      name: `V8 - Diablo-Räume + Vaults (${d.rooms.length} Räume, ${vaults.length} Vaults, ${geheime} geheim)`,
+      w: d.w, h: d.h, grid: d.tiles as number[][],
+      solid: (t) => t === 0 || t === 2,
+      farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a,
+      rollen: d.rooms.map((r) => ({
+        cx: r.rect.x + (r.rect.w >> 1), y: r.rect.y,
+        label: ROLLEN_LABEL[r.rolle].text + (r.istVault ? (r.tueren.some((t) => t.geheim) ? ' 🔒' : ' (Vault)') : ''),
+        farbe: ROLLEN_LABEL[r.rolle].farbe,
+      })),
+      editorCodes: true,
+    };
+  }
   if (version === 1) {
     const a = buildCrypt(1, seededRng(Math.floor(Math.random() * 1e9)));
     return { name: 'V1 - Krypta (aktuell im Spiel)', w: a.w, h: a.h, grid: a.map, solid: (t) => SOLID.has(t), farbe: farbeV1 };
