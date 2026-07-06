@@ -39,7 +39,10 @@ export function beschneideCanvas(cv: HTMLCanvasElement, alphaMin = 20, rand = 4)
 // mitSchatten=false: KEIN Schattenboden im Bake (für Engine-Sprites, die ihren
 // Kontaktschatten selbst zeichnen - der eingebackene graue Teller erschien
 // über dunklen Hintergründen als heller Fleck, Autorbug R76).
-export function macheBackofen(groesse = 256, mitSchatten = true): Backofen {
+// elevGrad: optionaler Kamera-Hoehenwinkel in Grad. Ohne Angabe der bisherige
+// Blick (0, 0.86, 0.56) ~ 57° - so bleiben alle bestehenden Bakes unveraendert.
+// Kleinerer Winkel = schraeger (mehr Fassade sichtbar). R101d (Turm-Vergleich).
+export function macheBackofen(groesse = 256, mitSchatten = true, elevGrad?: number): Backofen {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.setSize(groesse, groesse);
   renderer.setClearColor(0x000000, 0);
@@ -48,7 +51,9 @@ export function macheBackofen(groesse = 256, mitSchatten = true): Backofen {
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 60);
-  const blick = new THREE.Vector3(0, 0.86, 0.56).normalize(); // gleicher Winkel wie im Spiel
+  const blick = (elevGrad !== undefined
+    ? new THREE.Vector3(0, Math.sin(elevGrad * Math.PI / 180), Math.cos(elevGrad * Math.PI / 180))
+    : new THREE.Vector3(0, 0.86, 0.56)).normalize(); // Standard ~57° wie im Spiel
 
   scene.add(new THREE.HemisphereLight(0xcad0e8, 0x241a12, 1.35));
   const sonne = new THREE.DirectionalLight(0xfff2d8, 2.7);

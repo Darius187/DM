@@ -1,5 +1,14 @@
 # DECISIONS - Protokoll aller Annahmen und Entscheidungen
 
+- Runde 101d (Autor "ich will die Turm-Winkel im echten Spiel vergleichen"): drei
+  baubare Wachturm-Varianten mit unterschiedlichem Kamera-BACKWINKEL - wachturm (57°,
+  aktuell), wachturm_45 (45°), wachturm_40 (40°). Kleinerer Winkel = schraeger =
+  mehr Fassade, weniger Dach. Gleiche Mechanik (2x2, Besatzung, Belagerung, HP), nur
+  das gebackene Sprite unterscheidet sich. macheBackofen bekam einen optionalen
+  elevGrad-Parameter (ohne Angabe unveraendert ~57°). Turm-Logik ueber Praedikat
+  istWachturm(id)=id.startsWith('wachturm') entkoppelt. VORLAEUFIG zum Vergleich -
+  sobald der Autor einen Winkel waehlt, fliegen die anderen beiden wieder raus.
+
 - Runde 101c (Autor-Bug "bei offenem Tor kommen die Monster nicht rein"):
   * Ursache: Feinde nutzten die ROHE Kollision/Wegfindung (isSolidAt), in der ein Tor IMMER solide ist - nur Held/Truppe bekamen ueber solidFuerHeld die Ausnahme "offenes Tor passierbar". Ein offenes Tor war also nur fuer eigene Einheiten offen (Alt-Design R99 P11 "Zugangskontrolle").
   * Neu: ein OFFENES Tor ist fuer JEDEN passierbar. Neuer Helfer torOffenHier(x,y) + solidFuerFeind(x,y) (= isSolidAt, aber offenes Tor frei). Verdrahtet in: Feind-Kollision (enemyHost-Proxy), Feind-Wegfeld (rtsBattle begehbar), Szenen-Wegfeld zum Helden (begehbarFuerWeg override). Der Feind-Schnellpfad (Host = this) wird uebersprungen, sobald ueberhaupt ein Tor existiert - sonst braeuchte der Feind die rohe Kollision und bliebe draussen.

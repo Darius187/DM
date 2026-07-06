@@ -65,7 +65,12 @@ export const RTS_BAUTEN: ReadonlyArray<RtsBau> = [
   { id: 'lagerfeuer', name: 'Lagerfeuer', kosten: { holz: 3, stein: 1 }, frei: true, beschreibung: 'Wärme und Licht - Rastpunkt der Truppe' },
   { id: 'standarte', name: 'Standarte', kosten: { holz: 4, fasern: 2 }, frei: true, beschreibung: 'Sammelpunkt des Banners - hebt die Moral im Umkreis' },
   { id: 'palisade', name: 'Palisade', kosten: { holz: 5 }, frei: true, beschreibung: 'Angespitzte 3-m-Pfähle - sperrt eine Kachel (ziehbar)' },
-  { id: 'wachturm', name: 'Wachturm', kosten: { holz: 20, stein: 8 }, frei: true, beschreibung: 'Weite Sicht und Schussfeld - Bogenschütze hoch = mehr Reichweite' },
+  // R101d (Autor-Vergleich): drei Wachturm-Varianten mit unterschiedlichem
+  // Kamera-Backwinkel - zum Vergleich im echten Spiel, welcher Blickwinkel besser
+  // wirkt. Gleiche Mechanik, nur das gebackene Sprite unterscheidet sich.
+  { id: 'wachturm', name: 'Wachturm 57° (aktuell)', kosten: { holz: 20, stein: 8 }, frei: true, beschreibung: 'Backwinkel 57° - jetziger Look (mehr Draufsicht/Dach)' },
+  { id: 'wachturm_45', name: 'Wachturm 45° (schräger)', kosten: { holz: 20, stein: 8 }, frei: true, beschreibung: 'Backwinkel 45° - Rumpf/Brüstung besser sichtbar' },
+  { id: 'wachturm_40', name: 'Wachturm 40° (am schrägsten)', kosten: { holz: 20, stein: 8 }, frei: true, beschreibung: 'Backwinkel 40° - fast Fassaden-Look, wenig Dach' },
   { id: 'tor', name: 'Tor', kosten: { holz: 12 }, frei: true, beschreibung: 'Verschließbarer Durchlass in der Palisadenreihe' },
   { id: 'lazarett', name: 'Lazarett-Zelt', kosten: { holz: 14, fasern: 10, schafgarbe: 4 }, frei: true, beschreibung: 'Der Feldscher verbindet hier Verwundete' },
   { id: 'zelt', name: 'Mannschaftszelt', kosten: { holz: 10, fasern: 6 }, frei: true, beschreibung: 'Rast: eigene Einheiten im Umkreis regenerieren langsam' },
@@ -107,7 +112,7 @@ export const RTS_HELD = {
 // Rate (BELAGERUNG.schadensFaktor) dauert das Einreissen einer Palisade durch ein
 // paar Monster ~1-2 Minuten. Werte hier tunen.
 export const BAU_HP: Record<string, number> = {
-  lagerfeuer: 40, standarte: 60, palisade: 900, tor: 1500, wachturm: 1300, lazarett: 130, zelt: 90,
+  lagerfeuer: 40, standarte: 60, palisade: 900, tor: 1500, wachturm: 1300, wachturm_45: 1300, wachturm_40: 1300, lazarett: 130, zelt: 90,
   feldaltar: 90, kochstelle: 60, brunnen: 110, feldschmiede: 120, wartfeuer: 70, nachschub: 90,
 };
 // Belagerung (R100): Monster nagen an Wehrbauten, wenn sie gerade NICHTS zu

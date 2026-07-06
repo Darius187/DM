@@ -28,16 +28,22 @@ export async function registriereLagerBitmaps(tex: Phaser.Textures.TextureManage
   if (bereit && tex.exists('feldbau_wachturm')) return;
   const ofen = macheBackofen(640, false);   // ohne eingebackenen Schattenboden
   const items: Array<[string, () => THREE.Group]> = [
-    // R101b (Autor "der Turm sollte von vorne erscheinen wie die Haeuser"): FRONT-
-    // Blick (0deg Yaw) statt 3/4 - eine Wand fluchtend zur Kamera, wie die uebrigen
-    // Gebaeude. Die 2x2-Grundflaeche liegt so achsparallel im Kachelblock.
-    ['feldbau_wachturm', () => baueWachturm()],
     ['feldbau_zelt', () => baueZelt(false)],
     ['feldbau_lazarett', () => baueZelt(true)],
   ];
   for (const [key, bau] of items) {
     if (tex.exists(key)) continue;
     const cv = skaliere(beschneideCanvas(ofen.backe(bau())), 320);
+    tex.addCanvas(key, cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+  }
+  // R101b/d: Wachturm FRONT (0deg Yaw, wie die Haeuser) - in DREI Kamera-Back-
+  // winkeln zum Vergleich (Autorwunsch, im Spiel baubar): 57° (aktuell), 45°, 40°.
+  // Jeder Winkel braucht einen eigenen Ofen (feste Kamera je Ofen).
+  const turmWinkel: Array<[string, number]> = [['feldbau_wachturm', 57], ['feldbau_wachturm_45', 45], ['feldbau_wachturm_40', 40]];
+  for (const [key, grad] of turmWinkel) {
+    if (tex.exists(key)) continue;
+    const to = macheBackofen(640, false, grad);
+    const cv = skaliere(beschneideCanvas(to.backe(baueWachturm())), 320);
     tex.addCanvas(key, cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
   }
   bereit = true;

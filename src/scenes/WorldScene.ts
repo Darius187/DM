@@ -2686,7 +2686,10 @@ export class WorldScene extends CombatScene {
   private platziereModus: { id: string; kosten: Record<string, number>; bauzeitS: number } | null = null;
   private platzierGeist: Phaser.GameObjects.Container | null = null;
   private baustellen: Array<{ id: string; x: number; y: number; t: number; dauer: number; img: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics }> = [];
-  private readonly BAUZEIT: Record<string, number> = { lagerfeuer: 3, standarte: 2.5, palisade: 4, tor: 5, wachturm: 7, lazarett: 6, zelt: 4, feldaltar: 5, kochstelle: 3, brunnen: 5, feldschmiede: 5, wartfeuer: 4, nachschub: 4 };
+  private readonly BAUZEIT: Record<string, number> = { lagerfeuer: 3, standarte: 2.5, palisade: 4, tor: 5, wachturm: 7, wachturm_45: 7, wachturm_40: 7, lazarett: 6, zelt: 4, feldaltar: 5, kochstelle: 3, brunnen: 5, feldschmiede: 5, wartfeuer: 4, nachschub: 4 };
+  // R101d: alle Wachturm-Varianten (wachturm, wachturm_45, wachturm_40) teilen die
+  // Turm-Mechanik (2x2, Besatzung, Belagerung) - nur das Sprite unterscheidet sich.
+  private istWachturm(id: string): boolean { return id.startsWith('wachturm'); }
 
   private toggleRtsModus(): void {
     if (this.rtsLeiste) {
@@ -2718,7 +2721,7 @@ export class WorldScene extends CombatScene {
       scene: this, provider: this.provider,
       play: (k, v) => this.sfx.play(k, v),
       isSolid: (x, y) => this.solidFuerHeld(x, y),   // eigene Truppen: offenes Tor passierbar (R99 P11)
-      tuerme: () => this.feldbauten.filter((f) => f.id === 'wachturm').map((f) => ({ x: f.x, y: f.y })),
+      tuerme: () => this.feldbauten.filter((f) => this.istWachturm(f.id)).map((f) => ({ x: f.x, y: f.y })),
       gitter: () => this.area ? { w: this.area.w, h: this.area.h } : null,
       begehbar: (tx, ty, team) => {
         const x = tx * TILE + 16, y = ty * TILE + 16;
@@ -3033,7 +3036,7 @@ export class WorldScene extends CombatScene {
 
   // R101: Bau-Fussabdruck in Kacheln (Kantenlaenge). Der Codex-Wachturm belegt
   // 2x2 Kacheln ("den Turm in 4 Kacheln zeichnen"), alles andere 1x1.
-  private bauFussabdruck(id: string): number { return id === 'wachturm' ? 2 : 1; }
+  private bauFussabdruck(id: string): number { return this.istWachturm(id) ? 2 : 1; }
 
   // Snappt den Zeiger auf den Fussabdruck-Block: tx/ty = obere-linke Kachel,
   // cx/cy = Block-MITTE (bei 2x2 die gemeinsame Innenecke der vier Kacheln).
@@ -3167,7 +3170,7 @@ export class WorldScene extends CombatScene {
       this.logMsg('Doppeltor steht (geschlossen, 2 Felder) - öffnen/schließen über das Klick-Menü.', 'gold');
       this.panels?.refresh?.();
       return;
-    } else if (id === 'wachturm') {
+    } else if (this.istWachturm(id)) {
       // R101: der Codex-Turm belegt 2x2 Kacheln. x,y = Block-MITTE (Innenecke),
       // daraus die obere-linke Kachel ableiten und den 4-Kachel-Block vermerken.
       tx = Math.round(x / TILE) - 1; ty = Math.round(y / TILE) - 1;
@@ -3190,7 +3193,7 @@ export class WorldScene extends CombatScene {
   private feldbauUnter(wx: number, wy: number): (typeof this.feldbauten)[number] | null {
     for (const f of this.feldbauten) {
       // R101: Wachturm deckt 2x2 Kacheln - grosszuegiger Klickradius um die Block-Mitte.
-      const r = f.id === 'wachturm' ? 44 : (f.tx !== undefined ? 18 : (f.img ? Math.max(18, f.img.displayWidth * 0.5) : 20));
+      const r = this.istWachturm(f.id) ? 44 : (f.tx !== undefined ? 18 : (f.img ? Math.max(18, f.img.displayWidth * 0.5) : 20));
       if (Math.hypot(f.x - wx, f.y - wy) < r) return f;
       // R100d: Doppeltor auch ueber die zweite Kachel anklickbar
       if (f.tx2 !== undefined && f.ty2 !== undefined && Math.hypot((f.tx2 * TILE + 16) - wx, (f.ty2 * TILE + 16) - wy) < r) return f;
@@ -3329,14 +3332,14 @@ export class WorldScene extends CombatScene {
     // R101: der Codex-Turm sitzt mit seiner Fussmitte auf der Block-Mitte (x,y) -
     // Origin hoeher (0.78) als bei 1-Kachel-Bauten, damit die vorderen Beine in den
     // 2x2-Block reichen und nicht darueber hinaus; Tiefe an der Block-Vorderkante.
-    const turm = id === 'wachturm';
+    const turm = this.istWachturm(id);
     const img = this.add.image(x, y, key).setOrigin(0.5, turm ? 0.78 : 0.94).setDepth(turm ? y + 24 : y);
     // Zielhöhe je Bau (massiver als vorher); Breite folgt dem echten Seitenverhältnis.
     // R100 (Autor "Feldaltar sieht riesig aus, Groessenverhaeltnisse passen nicht"):
     // Lager-Props auf stimmige, kleinere Groesse relativ zu Palisade/Turm.
     // R101: Turm-Zielhoehe so, dass der Beinstand ~2 Kacheln (64px) breit wird.
-    const zielH: Record<string, number> = { wachturm: 132, zelt: 84, lazarett: 84, nachschub: 76, feldaltar: 40, kochstelle: 42, brunnen: 50, feldschmiede: 44, wartfeuer: 46 };
-    const h = zielH[id];
+    const zielH: Record<string, number> = { zelt: 84, lazarett: 84, nachschub: 76, feldaltar: 40, kochstelle: 42, brunnen: 50, feldschmiede: 44, wartfeuer: 46 };
+    const h = turm ? 132 : zielH[id];
     if (h) {
       const src = this.textures.get(key).getSourceImage();
       const aspekt = src.width / Math.max(1, src.height);
@@ -3350,7 +3353,7 @@ export class WorldScene extends CombatScene {
   // als gemalte Canvas-Bilder - historisch anmutende Zelte, ein hoher hölzerner
   // Wachturm mit Plattform/Brüstung/Dach und ein Palisaden-Tor mit Torflügeln.
   private macheFeldbauBild(id: string): HTMLCanvasElement {
-    if (id === 'wachturm') return this.macheWachturmBild();
+    if (this.istWachturm(id)) return this.macheWachturmBild();
     if (id === 'lazarett') return this.macheZeltBild(true);
     if (id === 'nachschub') return this.macheZeltBild(false);
     if (id === 'feldaltar' || id === 'kochstelle' || id === 'brunnen' || id === 'feldschmiede' || id === 'wartfeuer') return this.macheLagerBild(id);
@@ -5414,7 +5417,7 @@ export class WorldScene extends CombatScene {
   private turmBadges = new Map<object, Phaser.GameObjects.Text>();
   private updateTurmBesatzung(): void {
     for (const e of this.enemies) if (e.team === 'spieler') e.imTurm = false;
-    const tuerme = this.feldbauten.filter((f) => f.id === 'wachturm');
+    const tuerme = this.feldbauten.filter((f) => this.istWachturm(f.id));
     const zahl = new Map<object, number>();
     if (this.rtsBattle) {
       for (const u of this.rtsBattle.units) {
@@ -5484,7 +5487,7 @@ export class WorldScene extends CombatScene {
   private belagerungsNeuT = 0;
   private updateBelagerung(dt: number): void {
     if (!this.rtsBattle) { this.belagerungAus(); return; }
-    const strukturen = this.feldbauten.filter((f) => f.id === 'palisade' || f.id === 'tor' || f.id === 'wachturm');
+    const strukturen = this.feldbauten.filter((f) => f.id === 'palisade' || f.id === 'tor' || this.istWachturm(f.id));
     if (!strukturen.length) { this.belagerungAus(); return; }
     // 1) Belagerer sammeln: wache Feinde OHNE Nahkampf-Ziel UND ohne Weg zum Ziel.
     const besieger: Enemy[] = [];
@@ -5527,7 +5530,7 @@ export class WorldScene extends CombatScene {
         zielF.hp -= e.dmg * BELAGERUNG.schadensFaktor * dt;
         if (Math.random() < dt * 3) this.fx.burst(zielF.x, zielF.y - 6, 0x8a6a3c, 2, 50);
         if (zielF.hp <= 0) {
-          this.logMsg(`${zielF.id === 'tor' ? 'Das Tor' : zielF.id === 'wachturm' ? 'Der Wachturm' : 'Die Palisade'} wurde eingerissen!`, 'bad');
+          this.logMsg(`${zielF.id === 'tor' ? 'Das Tor' : this.istWachturm(zielF.id) ? 'Der Wachturm' : 'Die Palisade'} wurde eingerissen!`, 'bad');
           this.sfx.playAt('holz_hacken', zielF.x, zielF.y, 0.7);
           this.entferneFeldbau(zielF);
           if (this.belagerungsZielRef === zielF) this.belagerungsZielRef = null;
