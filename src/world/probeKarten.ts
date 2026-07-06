@@ -9,8 +9,8 @@ import { baueGangDungeon } from './dungeonGaenge';
 import { baueHoehle } from './hoehlenDungeon';
 import { baueVerbundeneRaeume } from './verbundeneRaeume';
 import { baueBurg } from './burgDungeon';
-import { baueDiabloDungeon } from './diabloDungeon';
-import type { DiabloRolle } from '../data/diabloDungeon';
+import { baueKatakombenDungeon } from './katakombenDungeon';
+import type { KatakombenRolle } from '../data/katakombenDungeon';
 import { buildCrypt } from './areagen';
 import { seededRng } from '../logic/rng';
 import { T, SOLID } from './tiles';
@@ -47,7 +47,7 @@ function farbeV1(t: number): number {
 }
 
 // V8 (R102): Anzeige-Etiketten je Rolle - GROSS = die festen/besonderen Rollen.
-const ROLLEN_LABEL: Record<DiabloRolle, { text: string; farbe: string }> = {
+const ROLLEN_LABEL: Record<KatakombenRolle, { text: string; farbe: string }> = {
   eingang: { text: 'EINGANG', farbe: '#6ad06a' },
   bossarena: { text: 'BOSSARENA', farbe: '#ff4848' },
   schatzkammer: { text: 'SCHATZKAMMER', farbe: '#f0c040' },
@@ -63,11 +63,11 @@ const ROLLEN_LABEL: Record<DiabloRolle, { text: string; farbe: string }> = {
 
 export function erzeugeKarte(version: DungeonVersion): ProbeKarte {
   if (version === 8) {
-    const d = baueDiabloDungeon(seededRng(Math.floor(Math.random() * 1e9)));
+    const d = baueKatakombenDungeon(seededRng(Math.floor(Math.random() * 1e9)));
     const vaults = d.rooms.filter((r) => r.istVault);
     const geheime = vaults.filter((r) => r.tueren.some((t) => t.geheim)).length;
     return {
-      name: `V8 - Diablo-Räume + Vaults (${d.rooms.length} Räume, ${vaults.length} Vaults, ${geheime} geheim)`,
+      name: `V8 - Katakomben-Räume + Vaults (${d.rooms.length} Räume, ${vaults.length} Vaults, ${geheime} geheim)`,
       w: d.w, h: d.h, grid: d.tiles as number[][],
       solid: (t) => t === 0 || t === 2,
       farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a,

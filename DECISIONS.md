@@ -1,12 +1,12 @@
 # DECISIONS - Protokoll aller Annahmen und Entscheidungen
 
-- Runde 102b (Autor-Rueckmeldung zum Diablo-Dungeon V8):
+- Runde 102b (Autor-Rueckmeldung zum Katakomben-Dungeon V8):
   * GAENGE ZU ENG (Autor "1-Kachel-Gang, die 2x-Wandfassade ragt rein"): Gaenge sind jetzt IMMER 2 Kacheln breit (grabeGang zweite Spur immer, nur in Fels, nie Raum-/Vault-Waende). Verifiziert: 99% der Gang-Kacheln 2-breit, nur Tuerdurchgaenge auf 1. breiterGangChance entfernt.
   * RAEUME ZU LEER: mehr Wand-Props je Rolle (propAnzahl hoch) + begehbare Boden-Deko (deko: Blut/Runen). DEKO-BUDGET: hoechstens 50% des Rauminneren bekommt Marker, damit kleine Raeume trotz mehr Props begehbar bleiben (Props werden im Live-Level z.T. solide Moebel). Deko blockt nie (nur BLOOD/RUNE = begehbar).
   * Autor-Urteil: "nicht das was ich wollte aber wir nehmen das jetzt" - mit den vorhandenen Kacheln nicht schmuckhaft genug; eigene Deko-Sprites bleiben TODO.
   * VERWENDUNG bewusst OFFEN gelassen (Autor entscheidet Ort spaeter: Uebergang/Passage/evtl. erste Karte). In DUNGEON-VERSIONEN.md + OFFENE-FRAGEN 23 als "wenn der Autor nach dem Dungeon/der Passage fragt, ist V8 gemeint" verankert - GEDAECHTNIS liegt in den DATEIEN, nicht im Chat (CLAUDE.md 12).
 
-- Runde 102 (Diablo-1-Dungeon-Generator, Autorauftrag komplett Phase 1-4):
+- Runde 102 (Katakomben-Generator, Autorauftrag komplett Phase 1-4):
   * OUTPUT = EDITOR-Codes (dungeonVorlage 0-4), NICHT neues Format - Editor/Export/Probe unveraendert, generierte Karten im Editor bearbeitbar (Editor uebernimmt V8 jetzt 1:1 inkl. Tueren/Gaenge).
   * Groesse "ca. 3x": 84x70 (=5880 Kacheln) vs. Krypta 44x44 (=1936). In DIABLO_GEN aenderbar.
   * FUELL-RolLE "gewoelbe": die Rollen-Tabelle des Autors deckt ~10 Raeume, der Dungeon hat 18-28 - ueberzaehlige Raeume werden schlichtes Gewoelbe (wenig Props, mittlere Gegner). Leicht aenderbar (Gewichte in DIABLO_ROLLEN).
@@ -15,7 +15,7 @@
   * GEHEIMTUER im Live-Spiel = T.CRACK (Mauerriss, mit Angriffen aufbrechbar) - bestehende Mechanik statt neuer Tuer-Zustand. In der Probe/im Editor normale Tuer + geheim-Flag.
   * Vault-Stollen duerfen fruehere Vaults NIE anritzen (Tabu-Pruefung) - sonst zweite Oeffnung; Wand-Kreuzung nur durch Haupt-Raum-Ringe (dort entsteht regulaer eine Tuer).
   * gegner_boss im Live-Einsatz = Elite-Champion "Herr der Tiefe" (KEIN Templer-Boss: dessen Tod-Logik gehoert den Boss-Kammern; echte Boss-Inszenierung entscheidet der Autor).
-  * EINSATZ flexibel + Standard AUS: DIABLO_EINSATZ { ebenen: [], abEbene: null }. Hook an EINER Stelle (WorldScene holeArea, crypt-Zweig). Test: Probe V8 + F10-Knopf "Diablo-Dungeon betreten (Ebene 1, Test)". DEV-Haken window.__diabloEinsatz (Vite-import() im Test lieferte sonst eine ZWEITE Modul-Instanz - Falle dokumentiert).
+  * EINSATZ flexibel + Standard AUS: KATAKOMBEN_EINSATZ { ebenen: [], abEbene: null }. Hook an EINER Stelle (WorldScene holeArea, crypt-Zweig). Test: Probe V8 + F10-Knopf "Katakomben-Dungeon betreten (Ebene 1, Test)". DEV-Haken window.__katakombenEinsatz (Vite-import() im Test lieferte sonst eine ZWEITE Modul-Instanz - Falle dokumentiert).
   * Ereignis-Marker (hinterhalt/kaefig/kerzen_aus/sarkophag/blutgang) werden generiert + im Live-Level als special-Eintraege sichtbar; die RUNTIME-AUSLOESUNG (Tuer zu, Welle, Licht aus, ...) ist bewusst ein EIGENER spaeterer Schritt (TODO).
   * Prop-Marker -> vorhandene Kacheln als Annaeherung (Sarkophag=Grabstein, Grabplatte=Rune, Waffenstaender=leeres Regal, Kette=Gebeine); eigene Sprites je Rolle = spaeterer Asset-Schritt.
 

@@ -1,7 +1,7 @@
 // Anhöhe-Probe (Runde 51, Autorwunsch "zeig mir, wie gefakte Höhe aussieht").
 // Die Engine ist 2D-Draufsicht - "Höhe" wird gefaked: eine Klippe (Felswand) mit
 // SCHLAGSCHATTEN auf dem tieferen Boden, eine RAMPE hinauf und ein SCHNEE-Plateau
-// oben. Diablo/Dungeon-Siege-Stil. Der Held ist frei steuerbar (WASD), läuft die
+// oben. Dungeon-Siege-Stil. Der Held ist frei steuerbar (WASD), läuft die
 // Rampe hoch aufs Plateau - rein zum Anschauen, ob das Höhengefühl funktioniert.
 
 import Phaser from 'phaser';

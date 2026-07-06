@@ -1,4 +1,4 @@
-// Diablo-1-Dungeon-Generator (R102, Autorauftrag): klare RECHTECK-RAEUME mit
+// Katakomben-Generator (Raum+Gang+Vault-Verlies) (R102, Autorauftrag): klare RECHTECK-RAEUME mit
 // kurzen Gaengen (statt organischem Blob), plus abgekapselte VAULTS, die nur
 // ueber EINE Tuer erreichbar sind. Jeder Raum traegt eine ROLLE (Kapelle,
 // Folterkammer, Schatzkammer, ...). Reiner Datengenerator (Phaser-frei,
@@ -18,40 +18,40 @@ import type { Rng } from '../logic/rng';
 import { ri } from '../logic/rng';
 import type { EditCode } from './dungeonVorlage';
 import {
-  DIABLO_GEN, DIABLO_ROLLEN, DIABLO_GEGNER_ANZAHL, DIABLO_BLUT, DIABLO_EREIGNISSE,
-  type DiabloRolle,
-} from '../data/diabloDungeon';
+  KATAKOMBEN_GEN, KATAKOMBEN_ROLLEN, KATAKOMBEN_GEGNER_ANZAHL, KATAKOMBEN_BLUT, KATAKOMBEN_EREIGNISSE,
+  type KatakombenRolle,
+} from '../data/katakombenDungeon';
 
-export interface DiabloTuer { x: number; y: number; geheim: boolean }
-export interface DiabloSpawn { typ: string; x: number; y: number }
-export interface DiabloRect { x: number; y: number; w: number; h: number }
+export interface KatakombenTuer { x: number; y: number; geheim: boolean }
+export interface KatakombenSpawn { typ: string; x: number; y: number }
+export interface KatakombenRect { x: number; y: number; w: number; h: number }
 
-export interface DiabloRaum {
+export interface KatakombenRaum {
   id: number;
-  rect: DiabloRect;                 // AUSSEN-Rechteck inkl. eigenem Wandring
-  rolle: DiabloRolle;
+  rect: KatakombenRect;                 // AUSSEN-Rechteck inkl. eigenem Wandring
+  rolle: KatakombenRolle;
   istVault: boolean;
-  tueren: DiabloTuer[];
-  spawns: DiabloSpawn[];
+  tueren: KatakombenTuer[];
+  spawns: KatakombenSpawn[];
   distanz: number;                  // Graph-Schritte vom Eingang (Vault: Traeger+1)
   licht: string;                    // Licht-Stimmung (Marker)
   blutStufe: number;                // 0..1 Boss-Naehe (Blut-Progression)
 }
 
-export interface DiabloDungeonResult {
+export interface KatakombenDungeonResult {
   w: number; h: number;
   tiles: EditCode[][];
-  rooms: DiabloRaum[];
+  rooms: KatakombenRaum[];
   entranceRoomId: number;
   bossRoomId: number;
 }
 
 // ---------------------------------------------------------------------------
 // kleine Geometrie-Helfer
-const zentrum = (r: DiabloRect): { x: number; y: number } => ({ x: r.x + (r.w >> 1), y: r.y + (r.h >> 1) });
-const imInneren = (r: DiabloRect, x: number, y: number): boolean =>
+const zentrum = (r: KatakombenRect): { x: number; y: number } => ({ x: r.x + (r.w >> 1), y: r.y + (r.h >> 1) });
+const imInneren = (r: KatakombenRect, x: number, y: number): boolean =>
   x > r.x && y > r.y && x < r.x + r.w - 1 && y < r.y + r.h - 1;
-const aufRing = (r: DiabloRect, x: number, y: number): boolean =>
+const aufRing = (r: KatakombenRect, x: number, y: number): boolean =>
   x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h && !imInneren(r, x, y);
 
 const BEGEHBAR = new Set<number>([1, 3, 4]);
@@ -65,13 +65,13 @@ function mische<T>(rng: Rng, arr: T[]): T[] {
 }
 
 // ---------------------------------------------------------------------------
-export function baueDiabloDungeon(rng: Rng): DiabloDungeonResult {
-  const G = DIABLO_GEN;
+export function baueKatakombenDungeon(rng: Rng): KatakombenDungeonResult {
+  const G = KATAKOMBEN_GEN;
   const w = G.w, h = G.h;
   const tiles: EditCode[][] = Array.from({ length: h }, () => new Array<EditCode>(w).fill(0));
 
   // --- Schritt 1: Raeume platzieren (Rejection Sampling) ---------------------
-  const rects: DiabloRect[] = [];
+  const rects: KatakombenRect[] = [];
   const ziel = ri(rng, G.raumAnzahl[0], G.raumAnzahl[1]);
   for (let n = 0; n < ziel; n++) {
     // die ersten Raeume garantiert GROSS (Bossarena braucht Platz)
@@ -80,7 +80,7 @@ export function baueDiabloDungeon(rng: Rng): DiabloDungeonResult {
       const rw = gross ? G.raumW[1] : ri(rng, G.raumW[0], G.raumW[1]);
       const rh = gross ? G.raumH[1] : ri(rng, G.raumH[0], G.raumH[1]);
       const x = ri(rng, 1, w - rw - 2), y = ri(rng, 1, h - rh - 2);
-      const kand: DiabloRect = { x, y, w: rw, h: rh };
+      const kand: KatakombenRect = { x, y, w: rw, h: rh };
       if (rects.some((r) => ueberlappt(r, kand, G.puffer))) continue;
       rects.push(kand);
       break;
@@ -107,15 +107,15 @@ export function baueDiabloDungeon(rng: Rng): DiabloDungeonResult {
   for (const [a, b] of kanten) grabeGang(tiles, zentrum(rects[a]), zentrum(rects[b]), rng);
 
   // --- Schritt 4: Vaults (abgekapselt, genau EINE Tuer) -----------------------
-  const vaultRects: DiabloRect[] = [];
-  const vaultTueren: DiabloTuer[] = [];
+  const vaultRects: KatakombenRect[] = [];
+  const vaultTueren: KatakombenTuer[] = [];
   const vaultZiel = ri(rng, G.vaultAnzahl[0], G.vaultAnzahl[1]);
   let geheimRest = ri(rng, G.geheimVaults[0], G.geheimVaults[1]);
   for (let n = 0; n < vaultZiel; n++) {
     for (let v = 0; v < G.versucheProRaum * 2; v++) {
       const rw = ri(rng, G.vaultW[0], G.vaultW[1]), rh = ri(rng, G.vaultH[0], G.vaultH[1]);
       const x = ri(rng, 1, w - rw - 2), y = ri(rng, 1, h - rh - 2);
-      const kand: DiabloRect = { x, y, w: rw, h: rh };
+      const kand: KatakombenRect = { x, y, w: rw, h: rh };
       if (!vaultPlatzFrei(tiles, kand)) continue;
       // WICHTIG: der Stollen darf NIE einen frueheren Vault anritzen (der haette
       // sonst eine zweite Oeffnung) - Wand-Kreuzung nur durch HAUPT-Raum-Ringe.
@@ -144,14 +144,14 @@ export function baueDiabloDungeon(rng: Rng): DiabloDungeonResult {
   const maxDist = Math.max(1, ...dist.filter((d) => d >= 0));
 
   // --- Schritt 7: Rollen + Marker ---------------------------------------------
-  const rooms: DiabloRaum[] = [];
-  const rollenZaehler = new Map<DiabloRolle, number>();
-  const nimm = (rolle: DiabloRolle): void => { rollenZaehler.set(rolle, (rollenZaehler.get(rolle) ?? 0) + 1); };
+  const rooms: KatakombenRaum[] = [];
+  const rollenZaehler = new Map<KatakombenRolle, number>();
+  const nimm = (rolle: KatakombenRolle): void => { rollenZaehler.set(rolle, (rollenZaehler.get(rolle) ?? 0) + 1); };
 
   for (let i = 0; i < rects.length; i++) {
     const d = dist[i] < 0 ? 0 : dist[i];
     const t = d / maxDist;
-    let rolle: DiabloRolle;
+    let rolle: KatakombenRolle;
     if (i === eingangId) rolle = 'eingang';
     else if (i === bossId) rolle = 'bossarena';
     else rolle = wuerfleRolle(rng, t, rollenZaehler);
@@ -183,13 +183,13 @@ export function baueDiabloDungeon(rng: Rng): DiabloDungeonResult {
 
 // ---------------------------------------------------------------------------
 // Ueberlappung inkl. Fels-Puffer (Raeume duerfen sich nicht beruehren)
-function ueberlappt(a: DiabloRect, b: DiabloRect, puffer: number): boolean {
+function ueberlappt(a: KatakombenRect, b: KatakombenRect, puffer: number): boolean {
   return a.x - puffer < b.x + b.w && a.x + a.w + puffer > b.x
     && a.y - puffer < b.y + b.h && a.y + a.h + puffer > b.y;
 }
 
 // Raum eingraben: Ring = Wand, Innen = Raumboden
-function grabeRaum(tiles: EditCode[][], r: DiabloRect): void {
+function grabeRaum(tiles: EditCode[][], r: KatakombenRect): void {
   for (let y = r.y; y < r.y + r.h; y++) {
     for (let x = r.x; x < r.x + r.w; x++) {
       tiles[y][x] = imInneren(r, x, y) ? 1 : 2;
@@ -225,7 +225,7 @@ function grabeGang(tiles: EditCode[][], a: { x: number; y: number }, b: { x: num
 
 // Vault-Platz: das Rechteck selbst muss purer Fels sein; im Puffer drumherum
 // darf nichts BEGEHBARES liegen (Wand ist okay - wir schneiden in die Wandmasse).
-function vaultPlatzFrei(tiles: EditCode[][], r: DiabloRect): boolean {
+function vaultPlatzFrei(tiles: EditCode[][], r: KatakombenRect): boolean {
   for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) if (tiles[y][x] !== 0) return false;
   for (let y = r.y - 1; y <= r.y + r.h; y++) {
     for (let x = r.x - 1; x <= r.x + r.w; x++) {
@@ -240,7 +240,7 @@ interface Stollen { tuer: { x: number; y: number }; pfad: Array<{ x: number; y: 
 // Kuerzester gerader Stollen vom Vault-Ring zum Hauptnetz (Gang/Raumboden/Tuer).
 // hauptRects = Ringe, die gekreuzt werden DUERFEN (dort entsteht eine Tuer);
 // vaultRects = TABU (ein Vault darf nie eine zweite Oeffnung bekommen).
-function findeVaultStollen(tiles: EditCode[][], r: DiabloRect, maxLaenge: number, rng: Rng, hauptRects: DiabloRect[], vaultRects: DiabloRect[]): Stollen | null {
+function findeVaultStollen(tiles: EditCode[][], r: KatakombenRect, maxLaenge: number, rng: Rng, hauptRects: KatakombenRect[], vaultRects: KatakombenRect[]): Stollen | null {
   const inVault = (x: number, y: number): boolean =>
     vaultRects.some((v) => x >= v.x && y >= v.y && x < v.x + v.w && y < v.y + v.h);
   const richtungen: Array<{ dx: number; dy: number; seite: Array<{ x: number; y: number }> }> = [
@@ -271,12 +271,12 @@ function findeVaultStollen(tiles: EditCode[][], r: DiabloRect, maxLaenge: number
 }
 
 // Ring-Kacheln einer Seite OHNE die Ecken (Tuer in der Ecke waere kaputt)
-function reiheX(r: DiabloRect, y: number): Array<{ x: number; y: number }> {
+function reiheX(r: KatakombenRect, y: number): Array<{ x: number; y: number }> {
   const aus: Array<{ x: number; y: number }> = [];
   for (let x = r.x + 1; x < r.x + r.w - 1; x++) aus.push({ x, y });
   return aus;
 }
-function reiheY(r: DiabloRect, x: number): Array<{ x: number; y: number }> {
+function reiheY(r: KatakombenRect, x: number): Array<{ x: number; y: number }> {
   const aus: Array<{ x: number; y: number }> = [];
   for (let y = r.y + 1; y < r.y + r.h - 1; y++) aus.push({ x, y });
   return aus;
@@ -284,7 +284,7 @@ function reiheY(r: DiabloRect, x: number): Array<{ x: number; y: number }> {
 
 // Stollen graben: Fels -> Gang; kreuzt er den Wandring eines HAUPT-Raums,
 // wird DORT eine Tuer gesetzt (der Vault behaelt trotzdem nur seine eine Tuer).
-function grabeStollen(tiles: EditCode[][], hauptRects: DiabloRect[], s: Stollen): void {
+function grabeStollen(tiles: EditCode[][], hauptRects: KatakombenRect[], s: Stollen): void {
   for (const p of s.pfad) {
     const c = tiles[p.y][p.x];
     if (c === 2 && hauptRects.some((r) => aufRing(r, p.x, p.y))) tiles[p.y][p.x] = 3;
@@ -324,7 +324,7 @@ function repariereTueren(tiles: EditCode[][]): void {
 
 // ---------------------------------------------------------------------------
 // Prim-Spannbaum ueber die Raumzentren -> ALLE Raeume garantiert erreichbar.
-function spannbaum(rects: DiabloRect[]): Array<[number, number]> {
+function spannbaum(rects: KatakombenRect[]): Array<[number, number]> {
   const kanten: Array<[number, number]> = [];
   if (rects.length < 2) return kanten;
   const drin = new Set<number>([0]);
@@ -358,7 +358,7 @@ function graphDistanzen(adj: number[][], start: number): number[] {
 
 // Eingang: der Raum, dessen Zentrum dem Kartenrand am naechsten liegt (fuehlt
 // sich wie ein Zugang von aussen an).
-function waehleEingang(rects: DiabloRect[], w: number, h: number): number {
+function waehleEingang(rects: KatakombenRect[], w: number, h: number): number {
   let best = 0, bestD = Infinity;
   for (let i = 0; i < rects.length; i++) {
     const z = zentrum(rects[i]);
@@ -370,7 +370,7 @@ function waehleEingang(rects: DiabloRect[], w: number, h: number): number {
 
 // Boss: unter den 3 GRAPH-FERNSTEN Raeumen der groesste (die Arena braucht
 // Platz; "am weitesten weg" bleibt erfuellt - siehe DECISIONS R102).
-function waehleBoss(rects: DiabloRect[], dist: number[], eingangId: number): number {
+function waehleBoss(rects: KatakombenRect[], dist: number[], eingangId: number): number {
   const sortiert = rects.map((_, i) => i)
     .filter((i) => i !== eingangId && dist[i] >= 0)
     .sort((a, b) => dist[b] - dist[a]);
@@ -379,7 +379,7 @@ function waehleBoss(rects: DiabloRect[], dist: number[], eingangId: number): num
   return top[0] ?? (eingangId === 0 ? Math.min(1, rects.length - 1) : 0);
 }
 
-function naechsterRaum(rects: DiabloRect[], vault: DiabloRect): number {
+function naechsterRaum(rects: KatakombenRect[], vault: KatakombenRect): number {
   const zv = zentrum(vault);
   let best = 0, bestD = Infinity;
   for (let i = 0; i < rects.length; i++) {
@@ -393,9 +393,9 @@ function naechsterRaum(rects: DiabloRect[], vault: DiabloRect): number {
 // ---------------------------------------------------------------------------
 // Rollen wuerfeln: Grundgewicht x Staffelung (ruhig nahe Eingang, Gefahr
 // Richtung Boss), Obergrenzen respektieren; Fallback = schlichtes Gewoelbe.
-function wuerfleRolle(rng: Rng, t: number, zaehler: Map<DiabloRolle, number>): DiabloRolle {
-  const topf: Array<{ rolle: DiabloRolle; gewicht: number }> = [];
-  for (const [rolle, def] of Object.entries(DIABLO_ROLLEN) as Array<[DiabloRolle, typeof DIABLO_ROLLEN[DiabloRolle]]>) {
+function wuerfleRolle(rng: Rng, t: number, zaehler: Map<KatakombenRolle, number>): KatakombenRolle {
+  const topf: Array<{ rolle: KatakombenRolle; gewicht: number }> = [];
+  for (const [rolle, def] of Object.entries(KATAKOMBEN_ROLLEN) as Array<[KatakombenRolle, typeof KATAKOMBEN_ROLLEN[KatakombenRolle]]>) {
     if (def.gewicht <= 0) continue;
     if ((zaehler.get(rolle) ?? 0) >= def.max) continue;
     if (def.vaultBevorzugt) continue;              // Schatzkammer wandert in Vaults
@@ -407,17 +407,17 @@ function wuerfleRolle(rng: Rng, t: number, zaehler: Map<DiabloRolle, number>): D
 }
 
 // Vault-Rollen: Belohnung zuerst (Schatzkammer), dann Gefahr/Themen-Pool.
-function wuerfleVaultRolle(rng: Rng, zaehler: Map<DiabloRolle, number>): DiabloRolle {
-  const pool: Array<{ rolle: DiabloRolle; gewicht: number }> = [];
-  const schatz = DIABLO_ROLLEN.schatzkammer;
+function wuerfleVaultRolle(rng: Rng, zaehler: Map<KatakombenRolle, number>): KatakombenRolle {
+  const pool: Array<{ rolle: KatakombenRolle; gewicht: number }> = [];
+  const schatz = KATAKOMBEN_ROLLEN.schatzkammer;
   if ((zaehler.get('schatzkammer') ?? 0) < schatz.max) pool.push({ rolle: 'schatzkammer', gewicht: 6 });
   for (const rolle of ['folterkammer', 'krypta', 'beinhaus'] as const) {
-    if ((zaehler.get(rolle) ?? 0) < DIABLO_ROLLEN[rolle].max) pool.push({ rolle, gewicht: 2 });
+    if ((zaehler.get(rolle) ?? 0) < KATAKOMBEN_ROLLEN[rolle].max) pool.push({ rolle, gewicht: 2 });
   }
   return ziehe(rng, pool) ?? 'gewoelbe';
 }
 
-function ziehe(rng: Rng, topf: Array<{ rolle: DiabloRolle; gewicht: number }>): DiabloRolle | null {
+function ziehe(rng: Rng, topf: Array<{ rolle: KatakombenRolle; gewicht: number }>): KatakombenRolle | null {
   let summe = 0; for (const e of topf) summe += e.gewicht;
   if (summe <= 0) return null;
   let wurf = rng.random() * summe;
@@ -428,15 +428,15 @@ function ziehe(rng: Rng, topf: Array<{ rolle: DiabloRolle; gewicht: number }>): 
 // ---------------------------------------------------------------------------
 // Raum-Objekt bauen: Tueren vom Ring ablesen, Props an die Waende, Gegner in
 // die Mitte, Blut-Progression Richtung Boss.
-function macheRaum(rng: Rng, tiles: EditCode[][], id: number, rect: DiabloRect, rolle: DiabloRolle, istVault: boolean, distanz: number, t: number): DiabloRaum {
-  const def = DIABLO_ROLLEN[rolle];
-  const tueren: DiabloTuer[] = [];
+function macheRaum(rng: Rng, tiles: EditCode[][], id: number, rect: KatakombenRect, rolle: KatakombenRolle, istVault: boolean, distanz: number, t: number): KatakombenRaum {
+  const def = KATAKOMBEN_ROLLEN[rolle];
+  const tueren: KatakombenTuer[] = [];
   for (let y = rect.y; y < rect.y + rect.h; y++) {
     for (let x = rect.x; x < rect.x + rect.w; x++) {
       if (aufRing(rect, x, y) && tiles[y][x] === 3) tueren.push({ x, y, geheim: false });
     }
   }
-  const spawns: DiabloSpawn[] = [];
+  const spawns: KatakombenSpawn[] = [];
   const belegt = new Set<string>();
   const frei = (x: number, y: number): boolean => !belegt.has(`${x},${y}`)
     && !tueren.some((tr) => Math.abs(tr.x - x) + Math.abs(tr.y - y) <= 1);
@@ -451,8 +451,8 @@ function macheRaum(rng: Rng, tiles: EditCode[][], id: number, rect: DiabloRect, 
   const wandPlaetze = mische(rng, innenAmRing(rect).filter((p) => frei(p.x, p.y)));
   const propZahl = Math.min(ri(rng, def.propAnzahl[0], def.propAnzahl[1]), budget);
   // Blut-Progression (Phase 3): Richtung Boss zusaetzliche Blut-Marker
-  const blutExtra = t >= DIABLO_BLUT.abStufe
-    ? Math.round(((t - DIABLO_BLUT.abStufe) / (1 - DIABLO_BLUT.abStufe)) * DIABLO_BLUT.maxZusatzProps) : 0;
+  const blutExtra = t >= KATAKOMBEN_BLUT.abStufe
+    ? Math.round(((t - KATAKOMBEN_BLUT.abStufe) / (1 - KATAKOMBEN_BLUT.abStufe)) * KATAKOMBEN_BLUT.maxZusatzProps) : 0;
   const propListe: string[] = [];
   // Bossarena: JEDES Pflicht-Prop genau einmal (Blutfont, Ritualkreis, Treppe ab) -
   // zufaelliges Ziehen koennte die Abstiegs-Treppe verlieren (Kette kaputt).
@@ -490,7 +490,7 @@ function macheRaum(rng: Rng, tiles: EditCode[][], id: number, rect: DiabloRect, 
   if (def.gegner && rolle !== 'eingang') {
     const flaeche = (rect.w - 2) * (rect.h - 2);
     const skala = Math.max(0.6, Math.min(1.6, flaeche / 48));
-    const [gMin, gMax] = DIABLO_GEGNER_ANZAHL[def.gegnerDichte];
+    const [gMin, gMax] = KATAKOMBEN_GEGNER_ANZAHL[def.gegnerDichte];
     const anzahl = rolle === 'bossarena' ? 0 : Math.round(ri(rng, gMin, gMax) * skala);
     const innenPlaetze = mische(rng, alleInnen(rect).filter((p) => frei(p.x, p.y)));
     for (let i = 0; i < anzahl; i++) {
@@ -503,7 +503,7 @@ function macheRaum(rng: Rng, tiles: EditCode[][], id: number, rect: DiabloRect, 
   return { id, rect, rolle, istVault, tueren, spawns, distanz, licht: def.licht, blutStufe: t };
 }
 
-function innenAmRing(r: DiabloRect): Array<{ x: number; y: number }> {
+function innenAmRing(r: KatakombenRect): Array<{ x: number; y: number }> {
   const aus: Array<{ x: number; y: number }> = [];
   for (let y = r.y + 1; y < r.y + r.h - 1; y++) {
     for (let x = r.x + 1; x < r.x + r.w - 1; x++) {
@@ -513,15 +513,15 @@ function innenAmRing(r: DiabloRect): Array<{ x: number; y: number }> {
   }
   return aus;
 }
-function alleInnen(r: DiabloRect): Array<{ x: number; y: number }> {
+function alleInnen(r: KatakombenRect): Array<{ x: number; y: number }> {
   const aus: Array<{ x: number; y: number }> = [];
   for (let y = r.y + 1; y < r.y + r.h - 1; y++) for (let x = r.x + 1; x < r.x + r.w - 1; x++) aus.push({ x, y });
   return aus;
 }
 
 // Phase 4: Ereignis-Marker auf passende Rollen verteilen (Runtime loest aus).
-function verteileEreignisse(rng: Rng, rooms: DiabloRaum[]): void {
-  for (const [name, def] of Object.entries(DIABLO_EREIGNISSE)) {
+function verteileEreignisse(rng: Rng, rooms: KatakombenRaum[]): void {
+  for (const [name, def] of Object.entries(KATAKOMBEN_EREIGNISSE)) {
     let rest = def.max;
     for (const raum of mische(rng, [...rooms])) {
       if (rest <= 0) break;

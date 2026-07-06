@@ -86,9 +86,9 @@ Technik: `src/world/dungeonVorlage.ts` (rein, getestet) - Kachel-Codes
 Vorlage), `exportiere`/`parse` (verlustfreier Round-Trip). Pro Version unter
 `ravensmoor_dvorlage_v<n>` im localStorage gespeichert.
 
-## V8 - Diablo-Räume + Vaults (R102) — GEBAUT, Kandidat für tiefe Ebenen
-`src/world/diabloDungeon.ts` (`baueDiabloDungeon`), Stellschrauben in
-`src/data/diabloDungeon.ts`. Klare Rechteck-Räume (Rejection Sampling, 18-28)
+## V8 - Katakomben-Räume + Vaults (R102) — GEBAUT, Kandidat für tiefe Ebenen
+`src/world/katakombenDungeon.ts` (`baueKatakombenDungeon`), Stellschrauben in
+`src/data/katakombenDungeon.ts`. Klare Rechteck-Räume (Rejection Sampling, 18-28)
 mit kurzen L-Gängen (MST + 15-25% Schleifen), dazu 3-6 abgekapselte VAULTS
 (Sackgassen mit GENAU EINER Tür, 1-2 geheim = T.CRACK im Live-Spiel). Jeder
 Raum trägt eine ROLLE (Eingang, Kapelle, Folterkammer, Kerker, Krypta,
@@ -99,11 +99,11 @@ Ereignisse (Hinterhalt, Käfig, Kerzen aus, Sarkophag, Blutgang vor dem Boss).
 -> im Editor weiter bearbeitbar. 15 Property-Tests (Erreichbarkeit, Vault-
 Abkapselung, Rollen-Regeln, Round-Trip).
 
-LIVE-EINSATZ (flexibel, Standard AUS): `DIABLO_EINSATZ` in
-src/data/diabloDungeon.ts - `ebenen: [3]` oder `abEbene: 4`; die Umwandlung in
+LIVE-EINSATZ (flexibel, Standard AUS): `KATAKOMBEN_EINSATZ` in
+src/data/katakombenDungeon.ts - `ebenen: [3]` oder `abEbene: 4`; die Umwandlung in
 eine echte Spiel-Ebene (Treppen, Fackeln, Truhen, Gegner, Geheimwand=Mauerriss)
-macht `src/world/diabloKrypta.ts`. Testen: DUNGEON-PROBE V8 (ansehen/begehen/
-spielen) ODER im Spiel F10 -> KASTEN -> "Diablo-Dungeon betreten (Ebene 1, Test)".
+macht `src/world/katakombenKrypta.ts`. Testen: DUNGEON-PROBE V8 (ansehen/begehen/
+spielen) ODER im Spiel F10 -> KASTEN -> "Katakomben-Dungeon betreten (Ebene 1, Test)".
 
 ### V8 - R102b: Autor-Rueckmeldung eingearbeitet + VERWENDUNG (offen)
 Nach dem ersten Test (Autor): Gaenge waren zu eng (1 Kachel), die 2x-hohe
@@ -118,7 +118,7 @@ TODO), aber "wir nehmen das jetzt".
 "vielleicht als Uebergang irgendwo mal rein... vielleicht sogar als allererste
 Karte... sowas wie eine Passage." -> Wenn der Autor spaeter nach "dem Dungeon /
 der Passage / dem Uebergang / der ersten Karte, die du gemacht hast" fragt: DAS
-hier ist gemeint (V8, `baueDiabloDungeon`). Aktivierung = eine Zeile in
-`src/data/diabloDungeon.ts` (DIABLO_EINSATZ.ebenen / .abEbene) bzw. ein eigener
-Einstieg ueber `buildDiabloKrypta` an der gewuenschten Karte. Steht so auch in
+hier ist gemeint (V8, `baueKatakombenDungeon`). Aktivierung = eine Zeile in
+`src/data/katakombenDungeon.ts` (KATAKOMBEN_EINSATZ.ebenen / .abEbene) bzw. ein eigener
+Einstieg ueber `buildKatakombenKrypta` an der gewuenschten Karte. Steht so auch in
 OFFENE-FRAGEN (Frage 23).

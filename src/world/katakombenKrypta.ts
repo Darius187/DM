@@ -1,7 +1,7 @@
-// Diablo-Dungeon im ECHTEN Spiel (R102): wandelt das Generator-Ergebnis
+// Katakomben-Dungeon im ECHTEN Spiel (R102): wandelt das Generator-Ergebnis
 // (Editor-Codes + Raum-Rollen + Marker) in eine vollwertige Krypta-AreaData um -
 // Treppen, Spawnpunkt, Fackeln, Truhen, Gegner, Requisiten. Der Einsatzort ist
-// FLEXIBEL (DIABLO_EINSATZ in src/data/diabloDungeon.ts): einzelne Ebenen,
+// FLEXIBEL (KATAKOMBEN_EINSATZ in src/data/katakombenDungeon.ts): einzelne Ebenen,
 // "ab Ebene X" oder spaeter ein eigener Dungeon mit eigenem Eingang - der Autor
 // entscheidet; Standard ist AUS, dann laeuft buildCrypt wie bisher.
 //
@@ -12,24 +12,24 @@ import { T } from './tiles';
 import { TILE } from '../gfx/fallbackArt';
 import type { Rng } from '../logic/rng';
 import { rnd } from '../logic/rng';
-import { baueDiabloDungeon, type DiabloRaum } from './diabloDungeon';
-import { DIABLO_EINSATZ } from '../data/diabloDungeon';
+import { baueKatakombenDungeon, type KatakombenRaum } from './katakombenDungeon';
+import { KATAKOMBEN_EINSATZ } from '../data/katakombenDungeon';
 import { CRYPT_THEMES } from '../data/krypta';
 import { MAX_SCRIPTED_SCARES } from '../data/enemies';
 import type { EnemyTypeId } from '../data/types';
 import type { AreaData } from './areagen';
 
-// Laeuft der Diablo-Generator auf Krypta-Ebene n? (Konfig, Standard AUS)
-export function diabloAktivFuer(n: number): boolean {
-  if (DIABLO_EINSATZ.ebenen.includes(n)) return true;
-  return DIABLO_EINSATZ.abEbene !== null && n >= DIABLO_EINSATZ.abEbene;
+// Laeuft der Katakomben-Generator auf Krypta-Ebene n? (Konfig, Standard AUS)
+export function katakombenAktivFuer(n: number): boolean {
+  if (KATAKOMBEN_EINSATZ.ebenen.includes(n)) return true;
+  return KATAKOMBEN_EINSATZ.abEbene !== null && n >= KATAKOMBEN_EINSATZ.abEbene;
 }
 
 // DEV-Haken: DIESELBE Konfig-Instanz, die das Spiel benutzt, fuers Testen
 // erreichbar machen (ein dynamischer import() im Test kann durch Vite eine
 // ZWEITE Modul-Instanz bekommen - dann greift der Schalter nicht).
-declare global { interface Window { __diabloEinsatz?: typeof DIABLO_EINSATZ } }
-if (typeof window !== 'undefined' && import.meta.env?.DEV) window.__diabloEinsatz = DIABLO_EINSATZ;
+declare global { interface Window { __katakombenEinsatz?: typeof KATAKOMBEN_EINSATZ } }
+if (typeof window !== 'undefined' && import.meta.env?.DEV) window.__katakombenEinsatz = KATAKOMBEN_EINSATZ;
 
 // Prop-Marker -> vorhandene Spiel-Kacheln (Annaeherung mit dem, was es gibt;
 // eigene Sprites je Rolle sind ein spaeterer Asset-Schritt).
@@ -46,8 +46,8 @@ const PROP_TILE: Record<string, number> = {
 // Ebenen entscheidet der Autor spaeter - siehe OFFENE-FRAGEN).
 const GEGNER_TYP = new Set<string>(['pest', 'skelett', 'schuetze', 'schatten', 'wolf', 'ratte', 'lebender_toter']);
 
-export function buildDiabloKrypta(n: number, rng: Rng): AreaData {
-  const d = baueDiabloDungeon(rng);
+export function buildKatakombenKrypta(n: number, rng: Rng): AreaData {
+  const d = baueKatakombenDungeon(rng);
   const themaNr = n <= 5 ? n : ((n - 1) % 5) + 1;
   const th = CRYPT_THEMES[themaNr];
   const map: number[][] = Array.from({ length: d.h }, () => new Array<number>(d.w).fill(T.WALL));
@@ -96,13 +96,13 @@ function treppeLauf(map: number[][], cx: number, cy: number, tile: number): void
   for (let k = 1; k < 4; k++) { const yy = cy - k; if (map[yy]?.[cx] === boden) map[yy][cx] = tile; else break; }
 }
 
-function statteRaumAus(a: AreaData, alle: DiabloRaum[], raum: DiabloRaum, rng: Rng): void {
+function statteRaumAus(a: AreaData, alle: KatakombenRaum[], raum: KatakombenRaum, rng: Rng): void {
   const map = a.map;
   const px = (x: number): number => x * TILE + 16;
   for (const s of raum.spawns) {
     const [art, name] = [s.typ.slice(0, s.typ.indexOf('_')), s.typ.slice(s.typ.indexOf('_') + 1)];
     if (art === 'prop') {
-      if (name === 'treppe_auf' || name === 'treppe_ab') continue;   // macht buildDiabloKrypta
+      if (name === 'treppe_auf' || name === 'treppe_ab') continue;   // macht buildKatakombenKrypta
       if (name === 'altar') {
         map[s.y][s.x] = T.ALTAR;
         a.altars.push({ x: px(s.x), y: px(s.y), used: false });

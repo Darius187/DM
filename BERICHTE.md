@@ -1080,7 +1080,7 @@ Alle 18 Punkte umgesetzt und im Browser/Tests verifiziert (225 gruen):
 - OFFEN (TODO): Turm-Reichweitenbonus fuer Enemy-Schuetzen, Feldscher neu,
   Tor-Fluegel-Animation als Frame-Folge, gy1-Huellen (wald_nw/ne, hochland, kloster).
 
-## Runde 102 - Diablo-1-Dungeon-Generator (V8), alle 4 Phasen
+## Runde 102 - Katakomben-Generator (V8), alle 4 Phasen
 - KERN: Rechteck-Raeume (Rejection Sampling, 18-28, gemischte Groessen) + MST
   ueber Raumzentren (alles erreichbar) + 15-25% Schleifen + L-Gaenge mit Tueren
   am Wandring. VAULTS: 3-6 Sackgassen in der Wandmasse, GENAU EINE Tuer, 1-2
@@ -1095,6 +1095,6 @@ Alle 18 Punkte umgesetzt und im Browser/Tests verifiziert (225 gruen):
   Round-Trip); im Browser: DUNGEON-PROBE V8 (Uebersicht mit Rollen-Etiketten,
   BEGEHEN, SPIELEN mit echtem Helden) UND live als Krypta-Ebene (84x70,
   52 Gegner-Spawns, Treppen auf/ab, Fackeln, Truhen, Geheimwand als Mauerriss).
-- EINSATZ flexibel + Standard AUS (DIABLO_EINSATZ: ebenen[]/abEbene) - der
+- EINSATZ flexibel + Standard AUS (KATAKOMBEN_EINSATZ: ebenen[]/abEbene) - der
   Autor sagt spaeter, wo er laufen soll (siehe OFFENE-FRAGEN 23/24). Test im
-  Spiel: F10 -> KASTEN -> "Diablo-Dungeon betreten (Ebene 1, Test)".
+  Spiel: F10 -> KASTEN -> "Katakomben-Dungeon betreten (Ebene 1, Test)".

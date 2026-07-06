@@ -1,5 +1,5 @@
 // V4-Höhlengenerator (Runde 51, Autorwunsch) === DUNGEON VERSION 4.
-// Organische Höhle (Zellulärer Automat, Diablo-1-Look) MIT eingelassenen,
+// Organische Höhle (Zellulärer Automat, Verlies-Look) MIT eingelassenen,
 // BEGEHBAREN Räumen in den Hohlräumen (rot markierte Räume im Autor-Screenshot):
 // rechteckige Insel-Räume mit Wänden und einer Tür, um die man herumläuft und
 // in die man hineingeht. Alles zu Fuß erreichbar. Phaser-frei -> testbar; in der

@@ -3,7 +3,7 @@
 // DUNGEON-VERSIONEN.md; in der DUNGEON-PROBE begehbar.
 // NEUES Modell (Autorwunsch): KEINE
 // Korridore mehr - die ganze Fläche ist in RÄUME aufgeteilt, die sich Wände
-// teilen und über TÜREN verbunden sind ("eine unterteilte Halle wie Diablo 1").
+// teilen und über TÜREN verbunden sind ("eine unterteilte Halle wie ein klassisches Raum-Gang-Verlies").
 // Alles dazwischen IST Raum, die Räume liegen dicht beieinander und sind größer.
 // Manche Zellen verschmelzen zu größeren Räumen (Größen-Abwechslung). Spannbaum
 // + viele Extra-Türen -> man kann fast überall hinlaufen, aber die Räume bleiben

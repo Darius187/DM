@@ -1,18 +1,18 @@
-// Tests fuer den Diablo-1-Dungeon-Generator (R102): Eigenschaften, die fuer
+// Tests fuer den Katakomben-Generator (Raum+Gang+Vault-Verlies) (R102): Eigenschaften, die fuer
 // JEDE Auswuerfelung gelten muessen - Erreichbarkeit, Vault-Abkapselung,
 // Editor-Kompatibilitaet, Rollen-Regeln. Viele Seeds = Property-Tests.
 
 import { describe, it, expect } from 'vitest';
-import { baueDiabloDungeon, type DiabloDungeonResult, type DiabloRaum } from '../src/world/diabloDungeon';
+import { baueKatakombenDungeon, type KatakombenDungeonResult, type KatakombenRaum } from '../src/world/katakombenDungeon';
 import { seededRng } from '../src/logic/rng';
 import { exportiere, parse, type EditCode } from '../src/world/dungeonVorlage';
-import { DIABLO_GEN, DIABLO_ROLLEN, DIABLO_EREIGNISSE } from '../src/data/diabloDungeon';
+import { KATAKOMBEN_GEN, KATAKOMBEN_ROLLEN, KATAKOMBEN_EREIGNISSE } from '../src/data/katakombenDungeon';
 
 const SEEDS = [1, 7, 42, 99, 1234, 5678, 31337, 424242, 987654, 20260706];
-const ergebnisse: DiabloDungeonResult[] = SEEDS.map((s) => baueDiabloDungeon(seededRng(s)));
+const ergebnisse: KatakombenDungeonResult[] = SEEDS.map((s) => baueKatakombenDungeon(seededRng(s)));
 
 const BEGEHBAR = new Set([1, 3, 4]);
-const innen = (r: DiabloRaum): Array<[number, number]> => {
+const innen = (r: KatakombenRaum): Array<[number, number]> => {
   const aus: Array<[number, number]> = [];
   for (let y = r.rect.y + 1; y < r.rect.y + r.rect.h - 1; y++) {
     for (let x = r.rect.x + 1; x < r.rect.x + r.rect.w - 1; x++) aus.push([x, y]);
@@ -34,23 +34,23 @@ function flute(tiles: EditCode[][], sx: number, sy: number): Set<string> {
   }
   return gesehen;
 }
-const startVon = (d: DiabloDungeonResult): [number, number] => {
+const startVon = (d: KatakombenDungeonResult): [number, number] => {
   const e = d.rooms[d.entranceRoomId];
   return innen(e).find(([x, y]) => d.tiles[y][x] === 1)!;
 };
 
-describe('Diablo-Dungeon: Grundgeruest', () => {
+describe('Katakomben-Dungeon: Grundgeruest', () => {
   it('nutzt NUR die Editor-Kachelcodes 0-4 und die Konfig-Masse', () => {
     for (const d of ergebnisse) {
-      expect(d.w).toBe(DIABLO_GEN.w);
-      expect(d.h).toBe(DIABLO_GEN.h);
+      expect(d.w).toBe(KATAKOMBEN_GEN.w);
+      expect(d.h).toBe(KATAKOMBEN_GEN.h);
       for (const zeile of d.tiles) for (const c of zeile) expect([0, 1, 2, 3, 4]).toContain(c);
     }
   });
 
   it('ist deterministisch: gleicher Seed -> identisches Ergebnis', () => {
-    const a = baueDiabloDungeon(seededRng(42));
-    const b = baueDiabloDungeon(seededRng(42));
+    const a = baueKatakombenDungeon(seededRng(42));
+    const b = baueKatakombenDungeon(seededRng(42));
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
   });
 
@@ -59,9 +59,9 @@ describe('Diablo-Dungeon: Grundgeruest', () => {
       const haupt = d.rooms.filter((r) => !r.istVault);
       const vaults = d.rooms.filter((r) => r.istVault);
       expect(haupt.length).toBeGreaterThanOrEqual(14);
-      expect(haupt.length).toBeLessThanOrEqual(DIABLO_GEN.raumAnzahl[1]);
+      expect(haupt.length).toBeLessThanOrEqual(KATAKOMBEN_GEN.raumAnzahl[1]);
       expect(vaults.length).toBeGreaterThanOrEqual(2);
-      expect(vaults.length).toBeLessThanOrEqual(DIABLO_GEN.vaultAnzahl[1]);
+      expect(vaults.length).toBeLessThanOrEqual(KATAKOMBEN_GEN.vaultAnzahl[1]);
     }
   });
 
@@ -78,7 +78,7 @@ describe('Diablo-Dungeon: Grundgeruest', () => {
   });
 });
 
-describe('Diablo-Dungeon: Erreichbarkeit (kein toter Raum)', () => {
+describe('Katakomben-Dungeon: Erreichbarkeit (kein toter Raum)', () => {
   it('JEDER Raum (auch jeder Vault) ist vom Eingang aus begehbar', () => {
     for (const d of ergebnisse) {
       const [sx, sy] = startVon(d);
@@ -106,7 +106,7 @@ describe('Diablo-Dungeon: Erreichbarkeit (kein toter Raum)', () => {
   });
 });
 
-describe('Diablo-Dungeon: Vaults (Kernwunsch)', () => {
+describe('Katakomben-Dungeon: Vaults (Kernwunsch)', () => {
   it('jeder Vault hat GENAU EINE Tuer in seinem Ring', () => {
     for (const d of ergebnisse) {
       for (const v of d.rooms.filter((r) => r.istVault)) {
@@ -139,7 +139,7 @@ describe('Diablo-Dungeon: Vaults (Kernwunsch)', () => {
   });
 });
 
-describe('Diablo-Dungeon: Rollen (Phase 2/3)', () => {
+describe('Katakomben-Dungeon: Rollen (Phase 2/3)', () => {
   it('genau EIN Eingang und EINE Bossarena; Boss weit weg vom Eingang', () => {
     for (const d of ergebnisse) {
       const eingaenge = d.rooms.filter((r) => r.rolle === 'eingang');
@@ -159,7 +159,7 @@ describe('Diablo-Dungeon: Rollen (Phase 2/3)', () => {
       const zaehler = new Map<string, number>();
       for (const r of d.rooms) zaehler.set(r.rolle, (zaehler.get(r.rolle) ?? 0) + 1);
       for (const [rolle, n] of zaehler) {
-        expect(n, `Rolle ${rolle}`).toBeLessThanOrEqual(DIABLO_ROLLEN[rolle as keyof typeof DIABLO_ROLLEN].max);
+        expect(n, `Rolle ${rolle}`).toBeLessThanOrEqual(KATAKOMBEN_ROLLEN[rolle as keyof typeof KATAKOMBEN_ROLLEN].max);
       }
       for (const r of d.rooms.filter((x) => x.rolle === 'schatzkammer')) {
         expect(r.istVault, 'Schatzkammer muss im Vault liegen').toBe(true);
@@ -171,7 +171,7 @@ describe('Diablo-Dungeon: Rollen (Phase 2/3)', () => {
     let ruhigSumme = 0, ruhigN = 0, gefahrSumme = 0, gefahrN = 0;
     for (const d of ergebnisse) {
       for (const r of d.rooms) {
-        const lage = DIABLO_ROLLEN[r.rolle].lage;
+        const lage = KATAKOMBEN_ROLLEN[r.rolle].lage;
         if (lage === 'ruhig') { ruhigSumme += r.blutStufe; ruhigN++; }
         if (lage === 'gefahr' && r.rolle !== 'bossarena') { gefahrSumme += r.blutStufe; gefahrN++; }
       }
@@ -205,17 +205,17 @@ describe('Diablo-Dungeon: Rollen (Phase 2/3)', () => {
         for (const s of r.spawns.filter((x) => x.typ.startsWith('ereignis_'))) {
           const name = s.typ.replace('ereignis_', '');
           if (name === 'blutgang') continue;
-          expect(Object.keys(DIABLO_EREIGNISSE)).toContain(name);
-          expect(DIABLO_EREIGNISSE[name].rollen).toContain(r.rolle);
+          expect(Object.keys(KATAKOMBEN_EREIGNISSE)).toContain(name);
+          expect(KATAKOMBEN_EREIGNISSE[name].rollen).toContain(r.rolle);
           zaehler.set(name, (zaehler.get(name) ?? 0) + 1);
         }
       }
-      for (const [name, n] of zaehler) expect(n).toBeLessThanOrEqual(DIABLO_EREIGNISSE[name].max);
+      for (const [name, n] of zaehler) expect(n).toBeLessThanOrEqual(KATAKOMBEN_EREIGNISSE[name].max);
     }
   });
 });
 
-describe('Diablo-Dungeon: Editor-Kompatibilitaet', () => {
+describe('Katakomben-Dungeon: Editor-Kompatibilitaet', () => {
   it('Export -> Parse ist verlustfrei (Round-Trip mit dungeonVorlage)', () => {
     const d = ergebnisse[0];
     const code = exportiere(d.tiles, 8);

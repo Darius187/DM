@@ -67,7 +67,7 @@ export function baueGangDungeon(rng: RNG): DungeonResult {
   mische(kanten, rng);
   const parent = raeume.map((_, i) => i);
   const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
-  // Offenes Layout (Autorwunsch "wie Diablo 1 - man kann überall hinlaufen, aber
+  // Offenes Layout (Autorwunsch "wie in einem klassischen Verlies - man kann überall hinlaufen, aber
   // die Räume bleiben getrennt"): NEBEN dem Spannbaum werden die allermeisten
   // Nachbar-Räume zusätzlich verbunden -> mehrere Wege, kein erzwungener Pfad.
   const benutzt: Array<[number, number]> = [];
