@@ -38,6 +38,7 @@ const PROP_TILE: Record<string, number> = {
   zelle: T.ZELLENTOR, knochen: T.BONES, knochenhaufen: T.BONES, schaedelwand: T.BONES,
   sarkophag: T.GRAVE, grabplatte: T.RUNE, pult: T.TISCH, tisch: T.TISCH,
   waffenstaender: T.SHELF_LEER, regal: T.SHELF, lore: T.SHELF, schutt: T.BONES,
+  kohlebecken: T.KOHLEBECKEN,
 };
 
 // Gegner-Marker -> echte Gegner-Typen (boss = Elite-Champion, KEIN Templer-Boss:
@@ -123,6 +124,10 @@ function statteRaumAus(a: AreaData, alle: DiabloRaum[], raum: DiabloRaum, rng: R
         const tile = PROP_TILE[name];
         if (tile !== undefined && map[s.y][s.x] === T.FLOOR) map[s.y][s.x] = tile;
       }
+    } else if (art === 'deko') {
+      // R102b: begehbare Boden-Deko (blut/rune) - nur auf freien Boden, blockt nie.
+      const dt = name === 'rune' ? T.RUNE : name === 'blut' ? T.BLOOD : undefined;
+      if (dt !== undefined && map[s.y][s.x] === T.FLOOR) map[s.y][s.x] = dt;
     } else if (art === 'gegner') {
       if (name === 'boss') {
         a.enemySpawns.push({ type: 'skelett', x: px(s.x), y: px(s.y), elite: true, champion: 'Herr der Tiefe' });

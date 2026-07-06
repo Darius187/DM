@@ -222,7 +222,9 @@ ich als Zwischenlösung Nr. 1 + 2, beide in einer Zeile entfernbar.)
     Stand + Belege: WELTKARTE-PLAN.md ("STAND des Kanten-Systems"). Die
     Kreuzungspunkte aus ravenkarte.png dem Autor je Kante zur Bestätigung
     vorlegen (nichts erfinden). Frage: soll ich diese Phase als Nächstes bauen?
-23. Diablo-Dungeon (V8, R102) - WO soll er live laufen? Zwischenlösung: Schalter
+23. Diablo-Dungeon (V8, R102) - WO soll er live laufen? [R102b: Autor will es
+   irgendwo verwenden - "vielleicht als Uebergang / Passage / sogar erste Karte".
+   Ort noch offen. Gaenge auf 2 Kacheln verbreitert + mehr Deko eingebaut.] Zwischenlösung: Schalter
    DIABLO_EINSATZ in src/data/diabloDungeon.ts (ebenen: [3] oder abEbene: 4),
    Standard AUS; testbar in der DUNGEON-PROBE (V8) und im Spiel über F10 ->
    KASTEN -> "Diablo-Dungeon betreten". Sag mir "nutze ab Ebene X" / "Ebene X"

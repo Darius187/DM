@@ -104,3 +104,21 @@ src/data/diabloDungeon.ts - `ebenen: [3]` oder `abEbene: 4`; die Umwandlung in
 eine echte Spiel-Ebene (Treppen, Fackeln, Truhen, Gegner, Geheimwand=Mauerriss)
 macht `src/world/diabloKrypta.ts`. Testen: DUNGEON-PROBE V8 (ansehen/begehen/
 spielen) ODER im Spiel F10 -> KASTEN -> "Diablo-Dungeon betreten (Ebene 1, Test)".
+
+### V8 - R102b: Autor-Rueckmeldung eingearbeitet + VERWENDUNG (offen)
+Nach dem ersten Test (Autor): Gaenge waren zu eng (1 Kachel), die 2x-hohe
+Wandfassade ragte in den schmalen Gang -> Gaenge jetzt IMMER 2 Kacheln breit
+(verifiziert: 99% der Gang-Kacheln sind 2-breit, nur Tuerdurchgaenge necken auf 1).
+Raeume wirkten leer -> mehr Wand-Props je Rolle + begehbare Boden-Deko (Blut/Runen,
+mit Deko-Budget, damit kleine Raeume begehbar bleiben). Der Autor findet: mit den
+VORHANDENEN Kacheln nicht so schmuckhaft wie gewuenscht (eigene Deko-Sprites =
+TODO), aber "wir nehmen das jetzt".
+
+**VERWENDUNG NOCH OFFEN - der Autor entscheidet den Ort spaeter** (seine Worte):
+"vielleicht als Uebergang irgendwo mal rein... vielleicht sogar als allererste
+Karte... sowas wie eine Passage." -> Wenn der Autor spaeter nach "dem Dungeon /
+der Passage / dem Uebergang / der ersten Karte, die du gemacht hast" fragt: DAS
+hier ist gemeint (V8, `baueDiabloDungeon`). Aktivierung = eine Zeile in
+`src/data/diabloDungeon.ts` (DIABLO_EINSATZ.ebenen / .abEbene) bzw. ein eigener
+Einstieg ueber `buildDiabloKrypta` an der gewuenschten Karte. Steht so auch in
+OFFENE-FRAGEN (Frage 23).

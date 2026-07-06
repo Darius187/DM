@@ -26,7 +26,6 @@ export const DIABLO_GEN = {
   versucheProRaum: 20,
   extraKanten: [0.15, 0.25] as const, // Anteil zusaetzlicher Kanten (Schleifen) am MST
   extraKantenMaxDist: 30,            // nur nahe Raum-Paare bekommen Extra-Kanten
-  breiterGangChance: 0.35,           // Chance, dass ein Gang 2 Kacheln breit wird
   vaultAnzahl: [3, 6] as const,      // abgekapselte Sackgassen-Raeume
   vaultW: [5, 8] as const,
   vaultH: [5, 7] as const,
@@ -52,21 +51,27 @@ export interface DiabloRollenDef {
   licht: string;                     // Licht-Stimmung (Marker, Runtime interpretiert)
   lage: 'ruhig' | 'gefahr' | 'neutral'; // Staffelung: ruhig->Eingang, gefahr->Boss
   vaultBevorzugt?: boolean;          // Belohnungs-Rollen wandern in Vaults
+  // R102b (Autor "Raeume wirken leer"): begehbare BODEN-Deko (Blut/Runen/Staub),
+  // zusaetzlich zu den Wand-Props. [Marker, Anzahl-min, Anzahl-max]. Leer = keine.
+  deko?: readonly [string, number, number];
 }
 
+// R102b: mehr Wand-Props je Raum (Autor "Raeume total langweilig, da fehlen
+// interessante Assets") + Boden-Deko. Mit den vorhandenen Kacheln nicht so
+// schmuckhaft wie gewuenscht - eigene Deko-Sprites bleiben ein TODO.
 export const DIABLO_ROLLEN: Record<DiabloRolle, DiabloRollenDef> = {
   // eingang: die Treppe kommt als fester Mitte-Marker (macheRaum), keine Wand-Props
   eingang:      { gewicht: 0, max: 1, props: [], propAnzahl: [0, 0], gegner: null, gegnerDichte: 0, licht: 'normal', lage: 'neutral' },
-  kapelle:      { gewicht: 2, max: 1, props: ['altar', 'bank', 'kerze'], propAnzahl: [3, 5], gegner: 'pest', gegnerDichte: 1, licht: 'warm', lage: 'ruhig' },
-  folterkammer: { gewicht: 3, max: 2, props: ['streckbank', 'kaefig', 'blut', 'kette'], propAnzahl: [3, 6], gegner: 'skelett', gegnerDichte: 2, licht: 'rot', lage: 'gefahr' },
-  kerker:       { gewicht: 3, max: 2, props: ['zelle', 'kette', 'knochen'], propAnzahl: [3, 6], gegner: 'lebender_toter', gegnerDichte: 2, licht: 'dunkel', lage: 'neutral' },
-  krypta:       { gewicht: 3, max: 2, props: ['sarkophag', 'grabplatte'], propAnzahl: [3, 6], gegner: 'schatten', gegnerDichte: 2, licht: 'kalt', lage: 'neutral' },
-  beinhaus:     { gewicht: 2, max: 1, props: ['knochenhaufen', 'schaedelwand'], propAnzahl: [3, 6], gegner: 'skelett', gegnerDichte: 2, licht: 'dunkel', lage: 'neutral' },
-  schatzkammer: { gewicht: 2, max: 2, props: ['truhe', 'loot'], propAnzahl: [2, 4], gegner: 'schuetze', gegnerDichte: 1, licht: 'golden', lage: 'neutral', vaultBevorzugt: true },
-  skriptorium:  { gewicht: 2, max: 1, props: ['regal', 'pult', 'lore'], propAnzahl: [3, 5], gegner: null, gegnerDichte: 1, licht: 'kerzen', lage: 'ruhig' },
-  wachstube:    { gewicht: 3, max: 2, props: ['waffenstaender', 'tisch'], propAnzahl: [3, 5], gegner: 'skelett', gegnerDichte: 3, licht: 'fackel', lage: 'gefahr' },
-  bossarena:    { gewicht: 0, max: 1, props: ['blutfont', 'ritualkreis', 'treppe_ab'], propAnzahl: [3, 3], gegner: 'boss', gegnerDichte: 1, licht: 'finale', lage: 'gefahr' },
-  gewoelbe:     { gewicht: 4, max: 99, props: ['knochen', 'schutt'], propAnzahl: [0, 2], gegner: 'skelett', gegnerDichte: 2, licht: 'normal', lage: 'neutral' },
+  kapelle:      { gewicht: 2, max: 1, props: ['altar', 'bank', 'kerze', 'kerze', 'knochen'], propAnzahl: [5, 8], gegner: 'pest', gegnerDichte: 1, licht: 'warm', lage: 'ruhig', deko: ['rune', 2, 4] },
+  folterkammer: { gewicht: 3, max: 2, props: ['streckbank', 'kaefig', 'kette', 'knochen', 'kohlebecken'], propAnzahl: [5, 9], gegner: 'skelett', gegnerDichte: 2, licht: 'rot', lage: 'gefahr', deko: ['blut', 4, 8] },
+  kerker:       { gewicht: 3, max: 2, props: ['zelle', 'kette', 'knochen', 'kaefig'], propAnzahl: [5, 9], gegner: 'lebender_toter', gegnerDichte: 2, licht: 'dunkel', lage: 'neutral', deko: ['blut', 2, 4] },
+  krypta:       { gewicht: 3, max: 2, props: ['sarkophag', 'grabplatte', 'knochen', 'sarkophag'], propAnzahl: [5, 8], gegner: 'schatten', gegnerDichte: 2, licht: 'kalt', lage: 'neutral', deko: ['rune', 3, 5] },
+  beinhaus:     { gewicht: 2, max: 1, props: ['knochenhaufen', 'schaedelwand', 'knochen', 'schaedelwand'], propAnzahl: [6, 10], gegner: 'skelett', gegnerDichte: 2, licht: 'dunkel', lage: 'neutral', deko: ['blut', 2, 5] },
+  schatzkammer: { gewicht: 2, max: 2, props: ['truhe', 'loot', 'knochen'], propAnzahl: [3, 5], gegner: 'schuetze', gegnerDichte: 1, licht: 'golden', lage: 'neutral', vaultBevorzugt: true, deko: ['rune', 1, 3] },
+  skriptorium:  { gewicht: 2, max: 1, props: ['regal', 'pult', 'lore', 'regal', 'kerze'], propAnzahl: [5, 8], gegner: null, gegnerDichte: 1, licht: 'kerzen', lage: 'ruhig', deko: ['rune', 1, 3] },
+  wachstube:    { gewicht: 3, max: 2, props: ['waffenstaender', 'tisch', 'waffenstaender', 'kette'], propAnzahl: [5, 8], gegner: 'skelett', gegnerDichte: 3, licht: 'fackel', lage: 'gefahr', deko: ['blut', 1, 3] },
+  bossarena:    { gewicht: 0, max: 1, props: ['blutfont', 'ritualkreis', 'treppe_ab'], propAnzahl: [3, 3], gegner: 'boss', gegnerDichte: 1, licht: 'finale', lage: 'gefahr', deko: ['blut', 6, 12] },
+  gewoelbe:     { gewicht: 4, max: 99, props: ['knochen', 'schutt', 'knochen'], propAnzahl: [2, 5], gegner: 'skelett', gegnerDichte: 2, licht: 'normal', lage: 'neutral', deko: ['blut', 0, 3] },
 };
 
 // Gegner-Anzahl je Dichte-Stufe, skaliert grob mit der Raumflaeche.

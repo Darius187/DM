@@ -198,8 +198,11 @@ function grabeRaum(tiles: EditCode[][], r: DiabloRect): void {
 }
 
 // L-Gang zwischen zwei Zentren: Raumboden bleibt, Ring wird Tuer, Fels wird Gang.
+// R102b (Autor "Gaenge viel zu eng, die 2x-hohe Wandfassade ragt in den 1-Kachel-
+// Gang rein"): Gaenge sind jetzt IMMER 2 Kacheln breit (wie die alte Krypta) - so
+// bleibt neben der aufragenden Fassade eine freie Lauf-Kachel. Die zweite Spur
+// wird NUR in Fels gegraben (nie Raum-/Vault-Waende aufreissen).
 function grabeGang(tiles: EditCode[][], a: { x: number; y: number }, b: { x: number; y: number }, rng: Rng): void {
-  const breit = rng.random() < DIABLO_GEN.breiterGangChance;
   const erstHorizontal = rng.random() < 0.5;
   const pfad: Array<{ x: number; y: number; hor: boolean }> = [];
   if (erstHorizontal) {
@@ -212,12 +215,10 @@ function grabeGang(tiles: EditCode[][], a: { x: number; y: number }, b: { x: num
   pfad.push({ x: b.x, y: b.y, hor: erstHorizontal });
   for (const p of pfad) {
     const c = tiles[p.y][p.x];
-    if (c === 1 || c === 3) continue;          // Raumboden/Tuer bleibt
-    tiles[p.y][p.x] = c === 2 ? 3 : 4;         // Wandring -> Tuer, Fels -> Gang
-    if (breit) {
-      // verbreitern NUR in Fels (nie Waende/Tueren aufreissen)
-      const nx = p.hor ? p.x : p.x + 1, ny = p.hor ? p.y + 1 : p.y;
-      if (tiles[ny]?.[nx] === 0) tiles[ny][nx] = 4;
+    if (c !== 1 && c !== 3) tiles[p.y][p.x] = c === 2 ? 3 : 4;   // Ring->Tuer, Fels->Gang, Boden/Tuer bleibt
+    // zweite Spur: bevorzugt "unten/rechts", sonst "oben/links" - nur in Fels.
+    for (const [nx, ny] of (p.hor ? [[p.x, p.y + 1], [p.x, p.y - 1]] : [[p.x + 1, p.y], [p.x - 1, p.y]])) {
+      if (tiles[ny]?.[nx] === 0) { tiles[ny][nx] = 4; break; }
     }
   }
 }
@@ -440,9 +441,15 @@ function macheRaum(rng: Rng, tiles: EditCode[][], id: number, rect: DiabloRect, 
   const frei = (x: number, y: number): boolean => !belegt.has(`${x},${y}`)
     && !tueren.some((tr) => Math.abs(tr.x - x) + Math.abs(tr.y - y) <= 1);
 
+  // R102b: Deko-BUDGET - hoechstens die HAELFTE des Rauminneren bekommt Marker,
+  // damit kleine Raeume trotz mehr Props begehbar bleiben (Props werden im Live-
+  // Level z.T. zu soliden Moebeln). Rest bleibt freier Boden.
+  const innenFlaeche = (rect.w - 2) * (rect.h - 2);
+  let budget = Math.max(1, Math.floor(innenFlaeche * 0.5));
+
   // Props: an den Waenden entlang (nie vor einer Tuer)
   const wandPlaetze = mische(rng, innenAmRing(rect).filter((p) => frei(p.x, p.y)));
-  let propZahl = ri(rng, def.propAnzahl[0], def.propAnzahl[1]);
+  const propZahl = Math.min(ri(rng, def.propAnzahl[0], def.propAnzahl[1]), budget);
   // Blut-Progression (Phase 3): Richtung Boss zusaetzliche Blut-Marker
   const blutExtra = t >= DIABLO_BLUT.abStufe
     ? Math.round(((t - DIABLO_BLUT.abStufe) / (1 - DIABLO_BLUT.abStufe)) * DIABLO_BLUT.maxZusatzProps) : 0;
@@ -457,6 +464,22 @@ function macheRaum(rng: Rng, tiles: EditCode[][], id: number, rect: DiabloRect, 
     if (!platz) break;
     belegt.add(`${platz.x},${platz.y}`);
     spawns.push({ typ: `prop_${prop}`, x: platz.x, y: platz.y });
+    budget--;
+  }
+  // R102b: begehbare BODEN-Deko (Blut/Runen) locker uebers Rauminnere streuen -
+  // rein optisch (blockt nicht), damit die Raeume weniger leer wirken.
+  if (def.deko) {
+    const [dekoTyp, dMin, dMax] = def.deko;
+    // Deko ist begehbar (blut/rune), zaehlt aber mit ins Budget, damit ein Raum
+    // nicht komplett voll gestreut wird.
+    const dekoZahl = Math.min(ri(rng, dMin, dMax), Math.max(0, budget));
+    const bodenPlaetze = mische(rng, alleInnen(rect).filter((p) => frei(p.x, p.y)));
+    for (let i = 0; i < dekoZahl; i++) {
+      const platz = bodenPlaetze.pop();
+      if (!platz) break;
+      belegt.add(`${platz.x},${platz.y}`);
+      spawns.push({ typ: `deko_${dekoTyp}`, x: platz.x, y: platz.y });
+    }
   }
   // fixe Rollen-Marker in die Raummitte (Treppe/Blutfont)
   const z = zentrum(rect);

@@ -1,5 +1,11 @@
 # DECISIONS - Protokoll aller Annahmen und Entscheidungen
 
+- Runde 102b (Autor-Rueckmeldung zum Diablo-Dungeon V8):
+  * GAENGE ZU ENG (Autor "1-Kachel-Gang, die 2x-Wandfassade ragt rein"): Gaenge sind jetzt IMMER 2 Kacheln breit (grabeGang zweite Spur immer, nur in Fels, nie Raum-/Vault-Waende). Verifiziert: 99% der Gang-Kacheln 2-breit, nur Tuerdurchgaenge auf 1. breiterGangChance entfernt.
+  * RAEUME ZU LEER: mehr Wand-Props je Rolle (propAnzahl hoch) + begehbare Boden-Deko (deko: Blut/Runen). DEKO-BUDGET: hoechstens 50% des Rauminneren bekommt Marker, damit kleine Raeume trotz mehr Props begehbar bleiben (Props werden im Live-Level z.T. solide Moebel). Deko blockt nie (nur BLOOD/RUNE = begehbar).
+  * Autor-Urteil: "nicht das was ich wollte aber wir nehmen das jetzt" - mit den vorhandenen Kacheln nicht schmuckhaft genug; eigene Deko-Sprites bleiben TODO.
+  * VERWENDUNG bewusst OFFEN gelassen (Autor entscheidet Ort spaeter: Uebergang/Passage/evtl. erste Karte). In DUNGEON-VERSIONEN.md + OFFENE-FRAGEN 23 als "wenn der Autor nach dem Dungeon/der Passage fragt, ist V8 gemeint" verankert - GEDAECHTNIS liegt in den DATEIEN, nicht im Chat (CLAUDE.md 12).
+
 - Runde 102 (Diablo-1-Dungeon-Generator, Autorauftrag komplett Phase 1-4):
   * OUTPUT = EDITOR-Codes (dungeonVorlage 0-4), NICHT neues Format - Editor/Export/Probe unveraendert, generierte Karten im Editor bearbeitbar (Editor uebernimmt V8 jetzt 1:1 inkl. Tueren/Gaenge).
   * Groesse "ca. 3x": 84x70 (=5880 Kacheln) vs. Krypta 44x44 (=1936). In DIABLO_GEN aenderbar.
