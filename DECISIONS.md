@@ -1,5 +1,12 @@
 # DECISIONS - Protokoll aller Annahmen und Entscheidungen
 
+- Runde 104 (Dorf-Layout-Planung als Platzhalter-Boxen auf 'stadt', Autorauftrag):
+  * REINE Positionsplanung: beschriftete Platzhalter-Rechtecke (src/data/dorfplan.ts + Overlay in WorldScene.zeichneDorfplan), KEINE Sprites/NPCs/Kollision/Interaktion. Overlay nur in der 'stadt'-Area, Flag DORFPLAN_AN.
+  * Ziel-Area = 'stadt' (buildStadtNatur, "neue Ravensmoor-Dorf-Karte" mit dem bewusst angelegten Wasser), 130x85 Kacheln - NICHT 128x128 wie die Planungskarte. Positionen ans ECHTE Terrain angepasst (Salzstrasse-Spine E-W bei y~45, Nordstrasse T-Kreuz x~55, Ostfluss x~99, See unten-rechts), nicht roh aus 128x128 skaliert.
+  * TERRAIN-VORRANG (Autor-Praezisierung): landet ein Platzhalter auf Wasser/Baeumen -> erst den Platzhalter verschieben (+ notes), NICHT das Terrain. Das neue Wasser wird NICHT ungefragt umgebaut - bei Bedarf erst zeigen/fragen. Umgesetzt: Muehle B6 + Muellerhaus B7 an den echten Ostfluss statt an die gemalte Stelle; Loeschteich = nur Platzhalter-Box (kein echtes Wasser).
+  * Planungsbild lag den Uploads NICHT bei -> Layout aus Autor-Text + Angerdorf-Archetyp + Terrain abgeleitet (erster begehbarer Durchlauf). Exakte Positionen kommen mit dem Bild. Offen in OFFENE-FRAGEN 25.
+  * Ausgaenge passen nicht zur Oberwelt-Nachbarschaft (Wunsch Kloster/Burg/Marktort/Dunkelwald vs. aktuell lager/wald_se/start/nichts; Suedkante ohne Weg-Uebergang) - Platzhalter markieren nur den Wunsch; echte Verdrahtung offen (OFFENE-FRAGEN 26). Sued-Ausgang notgedrungen in der Wasser/Wald-Zone, geflaggt.
+
 - Runde 102b (Autor-Rueckmeldung zum Katakomben-Dungeon V8):
   * GAENGE ZU ENG (Autor "1-Kachel-Gang, die 2x-Wandfassade ragt rein"): Gaenge sind jetzt IMMER 2 Kacheln breit (grabeGang zweite Spur immer, nur in Fels, nie Raum-/Vault-Waende). Verifiziert: 99% der Gang-Kacheln 2-breit, nur Tuerdurchgaenge auf 1. breiterGangChance entfernt.
   * RAEUME ZU LEER: mehr Wand-Props je Rolle (propAnzahl hoch) + begehbare Boden-Deko (deko: Blut/Runen). DEKO-BUDGET: hoechstens 50% des Rauminneren bekommt Marker, damit kleine Raeume trotz mehr Props begehbar bleiben (Props werden im Live-Level z.T. solide Moebel). Deko blockt nie (nur BLOOD/RUNE = begehbar).

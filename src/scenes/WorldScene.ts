@@ -7,6 +7,7 @@ import { Enemy, angleToDir, angleToDir8, type EnemyHost } from '../world/Enemy';
 import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildWaldWest, buildWaldSuedOst, buildBurg, buildWaldNord, buildWaldMitte, buildLager, buildStadt2, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn, type Abbaubar } from '../world/areagen';
 import { katakombenAktivFuer, buildKatakombenKrypta } from '../world/katakombenKrypta';
 import { KATAKOMBEN_EINSATZ } from '../data/katakombenDungeon';
+import { DORFPLAN_BOXEN, DORFPLAN_AN, DORF_FARBE } from '../data/dorfplan';
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
@@ -1706,8 +1707,33 @@ export class WorldScene extends CombatScene {
       this.flags.intro = true;
       this.startIntroFilm();
     }
+    // R104: Dorf-Layout-Platzhalter (nur 'stadt', reine Positionsplanung)
+    this.zeichneDorfplan(a);
     // Autosave bei Gebietswechsel (Referenz-Verhalten)
     this.autosave();
+  }
+
+  // R104 (Autorauftrag): beschriftete Platzhalter-BOXEN aus dem Dorf-Layout-Plan
+  // zeichnen - reine Positionsplanung, KEINE Kollision/Interaktion/Sprites. Nur in
+  // der 'stadt'-Area und nur solange DORFPLAN_AN. Wird bei jedem Gebietswechsel neu
+  // aufgebaut (in anderen Gebieten leer).
+  private dorfplanLayer?: Phaser.GameObjects.Container;
+  private zeichneDorfplan(a: AreaData): void {
+    this.dorfplanLayer?.destroy();
+    this.dorfplanLayer = undefined;
+    if (!DORFPLAN_AN || a.id !== 'stadt') return;
+    const c = this.add.container(0, 0).setDepth(5000);
+    this.dorfplanLayer = c;
+    for (const b of DORFPLAN_BOXEN) {
+      const px = b.x * TILE, py = b.y * TILE, pw = b.breite * TILE, ph = b.hoehe * TILE;
+      const farbe = DORF_FARBE[b.typ];
+      const rect = this.add.rectangle(px + pw / 2, py + ph / 2, pw, ph, farbe, 0.22).setStrokeStyle(2, farbe, 0.95);
+      const txt = this.add.text(px + pw / 2, py + ph / 2, b.label, {
+        fontFamily: 'serif', fontSize: '13px', color: '#ffffff', stroke: '#000000', strokeThickness: 3, align: 'center',
+      }).setOrigin(0.5);
+      c.add(rect); c.add(txt);
+      this.uiCam?.ignore([rect, txt]);   // gehoert der Welt-Kamera, nicht der UI
+    }
   }
 
   // Den kampffreien Angst-Prolog (Ebene 0) starten: die WorldScene legt sich

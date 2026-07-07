@@ -232,4 +232,18 @@ ich als Zwischenlösung Nr. 1 + 2, beide in einer Zeile entfernbar.)
 24. Katakomben-Dungeon Boss: aktuell ein Elite-Champion "Herr der Tiefe"
    (Zwischenlösung). Soll die Bossarena einen ECHTEN inszenierten Boss bekommen
    (wie der Templer in den Boss-Kammern), und welchen?
+25. Dorf-Layout (R104): das beigefuegte Planungsbild lag den Uploads NICHT bei -
+   das Platzhalter-Layout ('stadt'-Area, src/data/dorfplan.ts) ist daher aus deiner
+   Text-Beschreibung + Angerdorf-Archetyp + echtem Terrain abgeleitet. Schick mir
+   das Bild, dann ruecke ich die exakten Positionen nach.
+26. Dorf-Ausgaenge passen NICHT zur aktuellen Oberwelt-Nachbarschaft: du willst
+   Nord->Kloster, Ost->Burg, Sued->Marktort, West->Dunkelwald; aktuell grenzt
+   'stadt' an lager(N), wald_se(O), start(W) und NICHTS(S). Die Suedkante hat gar
+   keinen Weg-Uebergang (Wasser/Wald). Die Platzhalter-Ausgangsboxen markieren nur
+   deinen Wunsch - die echte Overworld-Verdrahtung + ein Sued-Uebergang sind eigene
+   Schritte. Soll ich die Nachbarn umhaengen, und wo genau der Sued-Ausgang hin?
+27. Dorf-Form: die Planungskarte ist 128x128 (quadratisch), die Area 130x85
+   (breit). Ich habe den Anger E-W entlang der Salzstrasse gelegt (passt zur breiten
+   Form). Falls dein Plan den Anger N-S vorsieht, muss ich anders einpassen - sag
+   Bescheid, wenn das Bild da ist.
 
