@@ -462,7 +462,11 @@ export class Enemy {
     }
 
     const slowF = this.rootT > 0 ? 0 : this.slowT > 0 ? ENEMY_AI.slowFactorEis : 1;
-    if (this.ranged && d < ENEMY_AI.rangedMaxShoot && d > ENEMY_AI.rangedMinShoot && this.hasLineOfSight(host)) {
+    // R103 (Autor "Monster stehen an der Palisade neben dem Helden statt durchs
+    // Tor zu kommen"): freie SICHT zum Ziel? Ohne Sicht (Wand dazwischen) wird NICHT
+    // umkreist/angegriffen, sondern IMMER ums Hindernis gepfadet (durchs offene Tor).
+    const zielSicht = this.hasLineOfSight(host);
+    if (this.ranged && d < ENEMY_AI.rangedMaxShoot && d > ENEMY_AI.rangedMinShoot && zielSicht) {
       if (this.shootCd === 0) {
         this.shootCd = ENEMY_AI.rangedShootCd;
         const a = ang + (Math.random() * 0.12 - 0.06);
@@ -491,7 +495,19 @@ export class Enemy {
       const rw = ang + Math.PI + this.orbitDir * 0.7;
       this.moveBody(host, Math.cos(rw) * this.speed * 0.85 * slowF * dt, Math.sin(rw) * this.speed * 0.85 * slowF * dt);
       this.advanceStep(dt);
-    } else if (d > this.r + host.playerR() + 6 + 14 * ((TUNING.gegnerReichweite * this.reichweiteF) - 1)) {
+    } else if (!zielSicht || d > this.r + host.playerR() + 6 + 14 * ((TUNING.gegnerReichweite * this.reichweiteF) - 1)) {
+      // R103 (Autor "Monster stehen an der Palisade neben dem Helden statt durchs
+      // Tor zu kommen"): OHNE freie Sicht (Wand/Palisade dazwischen) folgt die
+      // Einheit AUSSCHLIESSLICH dem Flussfeld ums Hindernis (durchs offene Tor / durch
+      // die Bresche). Die lokale Umweg-/Umkreis-Heuristik wird uebersprungen - genau
+      // die liess Monster stur an der naechsten Wand entlangrutschen. Kein Weg = stehen.
+      if (!zielSicht) {
+        const wa = host.wegRichtung(this.x, this.y);
+        if (wa === null) { this.step = 0; return; }
+        this.laufe(host, wa, this.speed * slowF, dt);
+        this.advanceStep(dt);
+        return;
+      }
       // Festhäng-Erkennung (Runde 38/39): kam der Gegner in ~0,25 s trotz
       // Annäherung kaum vom Fleck (Regal/Ecke), schlägt er einen Bogen - und
       // zwar zur tatsächlich FREIEN Seite (sonst drückt er weiter ins Hindernis).
