@@ -1,5 +1,11 @@
 # DECISIONS - Protokoll aller Annahmen und Entscheidungen
 
+- Runde 104b (Dorf: quadratisch + Boxen 1:1 aus Planungskarte; Wasser-Vorschlag):
+  * GROESSE: 'stadt' jetzt QUADRATISCH 128x128 (Autor "Karte zu klein, groesser/quadratisch") - passt 1:1 zur 128x128-Planungskarte. Entkoppelt via OberweltCfg.w/h (Default 130x85 fuer alle anderen Areas). ACHTUNG: bricht die Naht zu den Oberwelt-Nachbarn - fuer die (halb-)eigenstaendige Dorfkarte ok, Overworld-Verdrahtung ist eh offen.
+  * FPS: im Headless nicht messbar (kein GPU, ~2 FPS konstant ueber alle Groessen -> Groesse ist NICHT der Dauer-Bottleneck). Architektur: Kacheln einmalig erzeugt + kamera-gecullt -> Groesse kostet v.a. Ladezeit/Speicher (128x128 ~16k Tile-Objekte vs 130x85 ~8.7k). 128x128 sicher; jenseits ~200x200 wird Ladezeit/Speicher zum Thema. DEV-Haken window.__stadtGroesse fuer weitere Tests.
+  * BOXEN 1:1 aus der Autor-Planungskarte uebernommen (dorfplan.ts, 128x128-Kacheln). Muehle B6 + Muellerhaus B7 am echten Ostfluss.
+  * WASSER-VORSCHLAG (NICHT umgesetzt, dem Autor gezeigt - Regel "Wasser nicht ungefragt umbauen"): Suedbach + See RAUS, nur der Ostfluss bleibt -> Sueden frei fuer Felder (wie in der Planungskarte, die keinen Suedfluss hat). Wartet auf Autor-Freigabe.
+
 - Runde 104 (Dorf-Layout-Planung als Platzhalter-Boxen auf 'stadt', Autorauftrag):
   * REINE Positionsplanung: beschriftete Platzhalter-Rechtecke (src/data/dorfplan.ts + Overlay in WorldScene.zeichneDorfplan), KEINE Sprites/NPCs/Kollision/Interaktion. Overlay nur in der 'stadt'-Area, Flag DORFPLAN_AN.
   * Ziel-Area = 'stadt' (buildStadtNatur, "neue Ravensmoor-Dorf-Karte" mit dem bewusst angelegten Wasser), 130x85 Kacheln - NICHT 128x128 wie die Planungskarte. Positionen ans ECHTE Terrain angepasst (Salzstrasse-Spine E-W bei y~45, Nordstrasse T-Kreuz x~55, Ostfluss x~99, See unten-rechts), nicht roh aus 128x128 skaliert.

@@ -1574,6 +1574,11 @@ export function buildForest(rng: Rng): AreaData {
 // T.WATER). Wölfe am Weg. Volle 130x85-Karte wie die anderen Oberwelt-Gebiete.
 interface OberweltCfg {
   id: string; name: string;
+  // R104: optionale eigene Kartengroesse (Kacheln). Ohne Angabe der Oberwelt-
+  // Standard 130x85. Wasser/Wege liegen in UV (0..1) und skalieren automatisch mit.
+  // ACHTUNG: eine abweichende Groesse bricht die Naht zu den Oberwelt-Nachbarn -
+  // nur fuer eine (halb-)eigenstaendige Karte wie das Dorf gedacht.
+  w?: number; h?: number;
   geo: WasserGeometrie;                       // Wasser-Lauf in UV (0..1)
   wolfXs: number[];                           // Wolf-Spawns entlang des Wegs (Tile-x)
   baumGruppen: number;                        // Dichte der verstreuten Baumgruppen (Wald = mehr)
@@ -1705,7 +1710,7 @@ function kantenFlussAnker(id: string, seite: 'west' | 'ost' | 'nord' | 'sued'): 
 // Salzstraße/Bäume/Wölfe/Kräuter/Felsen. blanko=true lässt all das weg (erst die
 // blanke Karte, Inhalte kommen Stück für Stück - Autorwunsch Runde 72).
 function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
-  const w = 130, h = 85;
+  const w = cfg.w ?? 130, h = cfg.h ?? 85;
   const map = blank(w, h, T.GRASS);
   const a: AreaData = {
     id: cfg.id, name: cfg.name, dark: false, depth: 0,
@@ -2023,8 +2028,16 @@ export function buildStadtNatur(rng: Rng): AreaData {
   const nord = kantenFlussAnker('stadt', 'nord')!;
   const west = kantenFlussAnker('stadt', 'west')!;
   const ost = kantenFlussAnker('stadt', 'ost')!;
+  // R104 DEV-Haken: window.__stadtGroesse = {w,h} erlaubt Groessen-Tests im Browser
+  // (FPS/Platz), ohne den Code zu aendern. Ohne Angabe der Standard 130x85.
+  const g = (typeof window !== 'undefined' ? (window as unknown as { __stadtGroesse?: { w: number; h: number } }).__stadtGroesse : null) ?? null;
   return baueOberweltGebiet(rng, {
     id: 'stadt', name: 'Ravensmoor', wolfXs: [40, 96], baumGruppen: 45,
+    // R104 (Autor "Karte zu klein, mach sie groesser/quadratisch"): Dorf jetzt
+    // QUADRATISCH 128x128 (passt 1:1 zur Planungskarte). ~16k Tile-Objekte statt
+    // ~8.7k - Kacheln werden einmalig erzeugt + kamera-gecullt, kostet also v.a.
+    // Ladezeit/Speicher, kaum Dauer-FPS. DEV-Haken __stadtGroesse ueberschreibt.
+    w: g?.w ?? 128, h: g?.h ?? 128,
     randFluesseAuto: false,
     geo: {
       bahnen: [
