@@ -1218,3 +1218,16 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   vom Test oberweltVerbindung geschuetzt) wird durch einen KURZEN Bach in der
   Suedwest-Ecke gehalten, der ebenfalls nach Sueden abfliesst - Naht bleibt, die
   Feldflaeche im zentralen Sueden ist frei. Alle Werte in areagen.buildStadtNatur.
+- R105 Dorf-Editor (Autorwunsch "Boxen beweglich, Baukasten fuer eigene Marker,
+  Berichtsfunktion mit Koordinaten, Felder/Wege/Baeume"): In-Game-Editor in der
+  'stadt'-Area. Taste [P] schaltet um (nur dort). Boxen frei ziehbar (kacheln-
+  gerastet, Schirmkoordinaten-Delta); Baukasten-Leiste (verschiebbar) setzt neue
+  Marker der Typen Wohnhaus/Gebaeude/POI/Ausgang/Feld/Weg/Baum+/Baum-, jeweils mit
+  Beschriftung (prompt). Gewaehlte Box: Groesse B/H +-, Umbenennen, Loeschen.
+  Bericht-Knopf oeffnet ein DOM-Overlay mit Klartext-Liste + kopierbarem TS-Block
+  (DORFPLAN_BOXEN) -> Autor kopiert ihn in den Chat, ich pflege ihn nach
+  src/data/dorfplan.ts zurueck (Datei bleibt das Gedaechtnis). Autor-Edits liegen
+  im Browser (localStorage 'ravensmoor.dorfplan.v1'), '↺ Saat' laedt das Datei-
+  Layout zurueck. Reine Logik (ID-Vergabe/Serialisierung/Bericht) in dorfplan.ts,
+  7 Vitest-Tests. Baum+/Baum- sind vorerst MARKER (kein Live-Terrain-Eingriff) -
+  echtes Baeume-Setzen/Entfernen backe ich spaeter aus dem Bericht in areagen.

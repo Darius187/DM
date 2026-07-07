@@ -1098,3 +1098,19 @@ Alle 18 Punkte umgesetzt und im Browser/Tests verifiziert (225 gruen):
 - EINSATZ flexibel + Standard AUS (KATAKOMBEN_EINSATZ: ebenen[]/abEbene) - der
   Autor sagt spaeter, wo er laufen soll (siehe OFFENE-FRAGEN 23/24). Test im
   Spiel: F10 -> KASTEN -> "Katakomben-Dungeon betreten (Ebene 1, Test)".
+
+## Runde 105 - Dorf-Editor (Boxen beweglich + Baukasten + Bericht)
+Fertig und im Browser verifiziert (Playwright-Smoke: Area erreicht, 31 Boxen,
+Editor an, Verschieben, Marker setzen 31->32, Bericht-DOM mit TS+Feld, 0 Fehler):
+- [P] in Ravensmoor ('stadt') oeffnet den Editor (Frei-Kamera, Held haelt still).
+- Boxen mit der Maus ziehen = verschieben (kachelgerastet); gewaehlte Box laesst
+  sich vergroessern/verkleinern, umbenennen, loeschen.
+- Baukasten setzt neue beschriftete Marker: Wohnhaus, Gebaeude, Ort/POI, Ausgang,
+  Feld, Weg, Baum+ (setzen), Baum- (entfernen-Markierung).
+- "Bericht" -> Fenster mit kopierbaren Koordinaten (Klartext + TS-Block). Der Autor
+  kopiert das und schickt es mir; ich pflege es nach src/data/dorfplan.ts.
+- Aenderungen ueberleben den Reload (Browser). "Saat" holt das Datei-Layout zurueck.
+- tsc sauber, 244 Vitest-Tests gruen, Vite-Build ok.
+OFFEN: Baum+/- sind Marker (noch kein echter Terrain-Eingriff); Felder/Wege noch
+ohne Grafik (Platzhalter). Beides bewusst - Grafik/Terrain kommt, sobald die
+Positionen stehen.

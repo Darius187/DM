@@ -7,7 +7,12 @@ import { Enemy, angleToDir, angleToDir8, type EnemyHost } from '../world/Enemy';
 import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildWaldWest, buildWaldSuedOst, buildBurg, buildWaldNord, buildWaldMitte, buildLager, buildStadt2, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn, type Abbaubar } from '../world/areagen';
 import { katakombenAktivFuer, buildKatakombenKrypta } from '../world/katakombenKrypta';
 import { KATAKOMBEN_EINSATZ } from '../data/katakombenDungeon';
-import { DORFPLAN_BOXEN, DORFPLAN_AN, DORF_FARBE } from '../data/dorfplan';
+import {
+  DORFPLAN_BOXEN, DORFPLAN_AN, DORF_FARBE, DORF_TYP_LABEL,
+  neueDorfBox, serialisiereDorfplan, dorfKurzbericht,
+  ladeDorfplan, speichereDorfplan, verwerfeDorfplan,
+  type DorfBox, type DorfTyp,
+} from '../data/dorfplan';
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
@@ -381,6 +386,8 @@ export class WorldScene extends CombatScene {
     this.panels.getKontakteZeilen = () => this.kontakteZeilen();
     this.panels.getKarte = () => this.getKarteInfo();
     this.panels.onRtsModus = () => { this.panels.closeAll(); this.toggleRtsModus(); };   // R87: HEER-Tab -> Schlachtfeld-Steuerung
+    // R105: Dorf-Editor - Karten-Klick platziert Marker / hebt Auswahl auf.
+    this.input.on('pointerdown', this.dorfEditPointer);
     // R94: Palisade-Ziehen (Maus bewegen/loslassen)
     this.input.on('pointermove', (ptr: Phaser.Input.Pointer) => { if (this.palisadeZug) this.palisadeDragMove(ptr); });
     this.input.on('pointerup', (ptr: Phaser.Input.Pointer) => { if (this.palisadeZug) this.palisadeDragEnd(ptr); });
@@ -402,6 +409,8 @@ export class WorldScene extends CombatScene {
       tageszeit: { get: () => this.tageszeit, set: (v) => { this.tageszeit = v; }, label: (v) => tageszeitLabel(v) },
     });
     this.input.keyboard?.on('keydown-L', () => this.lichtPanel?.umschalten());
+    // R105: Dorf-Editor (nur in der 'stadt'-Area). Taste P schaltet ihn um.
+    this.input.keyboard?.on('keydown-P', () => this.toggleDorfEditor());
     this.worldGfx = this.add.graphics().setDepth(2450);
     // Blutspuren liegen UNTER den Figuren (Autorbug R45: lagen "vor" den
     // Einheiten). Boden = -10, Figuren = y (positiv); -5 liegt sauber dazwischen.
@@ -1718,23 +1727,263 @@ export class WorldScene extends CombatScene {
   // der 'stadt'-Area und nur solange DORFPLAN_AN. Wird bei jedem Gebietswechsel neu
   // aufgebaut (in anderen Gebieten leer).
   private dorfplanLayer?: Phaser.GameObjects.Container;
+  private dorfBoxen: DorfBox[] = [];          // Arbeitskopie (localStorage ueberlagert die Saat)
+  private dorfEdit = false;                    // Editor-Modus an/aus (nur 'stadt')
+  private dorfPlaceTyp: DorfTyp | null = null; // aktiver Baukasten-Typ (Klick platziert)
+  private dorfSel: string | null = null;       // ausgewaehlte Box-ID
+  private dorfToolbar?: Phaser.GameObjects.Container;
+  private dorfDom?: HTMLDivElement;            // Bericht-Overlay (DOM, geraeteunabhaengig kopierbar)
+
   private zeichneDorfplan(a: AreaData): void {
     this.dorfplanLayer?.destroy();
     this.dorfplanLayer = undefined;
-    if (!DORFPLAN_AN || a.id !== 'stadt') return;
+    if (!DORFPLAN_AN || a.id !== 'stadt') {
+      // Beim Verlassen der Stadt den Editor sauber schliessen (Globales abmelden).
+      if (this.dorfEdit) this.toggleDorfEditor(true);
+      return;
+    }
+    // Arbeitskopie aus dem Browser laden (Autor-Edits), sonst die Datei-Saat.
+    this.dorfBoxen = ladeDorfplan(DORFPLAN_BOXEN);
+    this.dorfRender();
+  }
+
+  // Baut das Welt-Overlay aus this.dorfBoxen neu auf. Im Editor-Modus sind die
+  // Boxen anklick-/ziehbar (Schirmkoordinaten-Delta), sonst reine Anzeige.
+  private dorfRender(): void {
+    this.dorfplanLayer?.destroy();
     const c = this.add.container(0, 0).setDepth(5000);
     this.dorfplanLayer = c;
-    for (const b of DORFPLAN_BOXEN) {
+    for (const b of this.dorfBoxen) {
       const px = b.x * TILE, py = b.y * TILE, pw = b.breite * TILE, ph = b.hoehe * TILE;
       const farbe = DORF_FARBE[b.typ];
-      const rect = this.add.rectangle(px + pw / 2, py + ph / 2, pw, ph, farbe, 0.22).setStrokeStyle(2, farbe, 0.95);
-      const txt = this.add.text(px + pw / 2, py + ph / 2, b.label, {
+      const gewaehlt = this.dorfEdit && this.dorfSel === b.id;
+      const rect = this.add.rectangle(px + pw / 2, py + ph / 2, pw, ph, farbe, gewaehlt ? 0.34 : 0.22)
+        .setStrokeStyle(gewaehlt ? 4 : 2, gewaehlt ? 0xffffff : farbe, gewaehlt ? 1 : 0.95);
+      const beschr = b.typ === 'baumWeg' ? `✕ ${b.label}` : b.label;
+      const txt = this.add.text(px + pw / 2, py + ph / 2, beschr, {
         fontFamily: 'serif', fontSize: '13px', color: '#ffffff', stroke: '#000000', strokeThickness: 3, align: 'center',
       }).setOrigin(0.5);
       c.add(rect); c.add(txt);
       this.uiCam?.ignore([rect, txt]);   // gehoert der Welt-Kamera, nicht der UI
+      // Nur im AUSWAHL-Modus ziehbar; im Platzier-Modus gehoert der Klick der Karte.
+      if (this.dorfEdit && !this.dorfPlaceTyp) this.dorfMacheZiehbar(rect, b);
     }
   }
+
+  // Eine Box interaktiv machen: Klick waehlt, Ziehen verschiebt (kachelgerastet).
+  // Ziehen ueber Schirmkoordinaten-Delta / Kamera-Zoom (UI-Regel R11/R30, kein
+  // dragX-Aufschaukeln in Containern).
+  private dorfMacheZiehbar(rect: Phaser.GameObjects.Rectangle, b: DorfBox): void {
+    rect.setInteractive({ draggable: true, useHandCursor: true });
+    let start: { x: number; y: number } | null = null;
+    let bx0 = 0, by0 = 0;
+    rect.on('dragstart', (p: Phaser.Input.Pointer) => {
+      start = { x: p.x, y: p.y }; bx0 = b.x; by0 = b.y;
+      this.dorfSel = b.id; this.dorfPlaceTyp = null; this.dorfRender(); this.baueDorfToolbar();
+    });
+    rect.on('drag', (p: Phaser.Input.Pointer) => {
+      if (!start) return;
+      const zm = this.cameras.main.zoom;
+      const dx = Math.round((p.x - start.x) / zm / TILE);
+      const dy = Math.round((p.y - start.y) / zm / TILE);
+      b.x = Phaser.Math.Clamp(bx0 + dx, 0, 128 - b.breite);
+      b.y = Phaser.Math.Clamp(by0 + dy, 0, 128 - b.hoehe);
+      this.dorfRender();
+    });
+    rect.on('dragend', () => { start = null; speichereDorfplan(this.dorfBoxen); this.baueDorfToolbar(); });
+  }
+
+  // Editor umschalten (nur in 'stadt'). erzwungenAus=true schliesst nur.
+  private toggleDorfEditor(erzwungenAus = false): void {
+    if (this.area?.id !== 'stadt' || !DORFPLAN_AN) { if (this.dorfEdit) { this.dorfEdit = false; this.beendeDorfEditor(); } return; }
+    const neu = erzwungenAus ? false : !this.dorfEdit;
+    if (neu === this.dorfEdit) return;
+    this.dorfEdit = neu;
+    if (neu) {
+      this.setzeFreiKamera(true);   // frei schwenken (WASD/Mittelmaus), Held haelt still
+      this.baueDorfToolbar();
+      this.logMsg('Dorf-Editor AN: Box ziehen zum Verschieben, Baukasten setzt neue Marker. [P] beendet.', 'gold');
+    } else {
+      this.beendeDorfEditor();
+    }
+    this.dorfRender();
+  }
+
+  private beendeDorfEditor(): void {
+    this.dorfPlaceTyp = null; this.dorfSel = null;
+    this.dorfToolbar?.destroy(); this.dorfToolbar = undefined;
+    this.dorfDom?.remove(); this.dorfDom = undefined;
+    this.setzeFreiKamera(false);
+    speichereDorfplan(this.dorfBoxen);
+    this.dorfRender();
+    this.logMsg('Dorf-Editor aus. Deine Marker sind im Browser gespeichert.', '');
+  }
+
+  // Klick auf die Karte im Editor: aktiver Baukasten-Typ -> neuen Marker setzen.
+  // Liefert true, wenn der Klick verbraucht wurde (kein Weltklick durchreichen).
+  private dorfEditorKlick(worldX: number, worldY: number): boolean {
+    if (!this.dorfEdit) return false;
+    if (this.dorfPlaceTyp) {
+      const b = neueDorfBox(this.dorfPlaceTyp, worldX / TILE, worldY / TILE, this.dorfBoxen, 128);
+      const eingabe = typeof window !== 'undefined' ? window.prompt(`Beschriftung für ${b.id} (${DORF_TYP_LABEL[b.typ]}):`, b.label) : b.label;
+      if (eingabe === null) return true;   // abgebrochen -> nichts setzen
+      b.label = eingabe.trim() || b.id;
+      this.dorfBoxen.push(b); this.dorfSel = b.id;
+      speichereDorfplan(this.dorfBoxen); this.dorfRender(); this.baueDorfToolbar();
+      return true;
+    }
+    // ohne aktiven Typ: Klick ins Leere hebt die Auswahl auf
+    this.dorfSel = null; this.dorfRender(); this.baueDorfToolbar();
+    return true;
+  }
+
+  // Baukasten-Leiste: Typ-Knoepfe (setzen), Aktionen fuer die gewaehlte Box
+  // (Umbenennen/Groesse/Loeschen) und Bericht/Saat. Verschiebbar (UI-Regel 11).
+  private baueDorfToolbar(): void {
+    this.dorfToolbar?.destroy();
+    if (!this.dorfEdit) { this.dorfToolbar = undefined; return; }
+    const w = 208;
+    const c = this.add.container(8, 8).setScrollFactor(0).setDepth(6600);
+    this.dorfToolbar = c;
+    this.cameras.main.ignore(c);   // nur die UI-Kamera zeigt die Leiste
+    const add = <T extends Phaser.GameObjects.GameObject>(o: T): T => { c.add(o); return o; };
+    // Hintergrund (Hoehe am Ende gesetzt)
+    const bg = add(this.add.rectangle(0, 0, w, 10, 0x14100a, 0.96).setOrigin(0).setStrokeStyle(1, 0x4a3a26));
+    bg.setInteractive();
+    c.setData('w', w);
+    // Kopf = Ziehgriff (Schirmkoordinaten-Delta)
+    const kopf = add(this.add.rectangle(0, 0, w, 26, 0xffffff, 0.05).setOrigin(0).setInteractive({ draggable: true, useHandCursor: true }));
+    let zs: { x: number; y: number } | null = null; let zp = { x: 0, y: 0 };
+    kopf.on('dragstart', (p: Phaser.Input.Pointer) => { zs = { x: p.x, y: p.y }; zp = { x: c.x, y: c.y }; });
+    kopf.on('drag', (p: Phaser.Input.Pointer) => { if (!zs) return; c.x = Phaser.Math.Clamp(zp.x + (p.x - zs.x), 0, this.scale.width - w); c.y = Phaser.Math.Clamp(zp.y + (p.y - zs.y), 0, this.scale.height - 40); });
+    kopf.on('dragend', () => { zs = null; });
+    add(this.add.text(8, 6, '✎ DORF-EDITOR', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227', letterSpacing: 1 }));
+    const zu = add(this.add.text(w - 20, 4, '✕', { fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8' }).setInteractive({ useHandCursor: true }));
+    zu.on('pointerdown', () => this.toggleDorfEditor(true));
+    let y = 32;
+    // kleiner Knopf-Helfer
+    const knopf = (bx: number, bw: number, txt: string, aktiv: boolean, cb: () => void, farbe = '#e8dfc8'): number => {
+      const r = add(this.add.rectangle(bx, y, bw, 24, aktiv ? 0x2a1e0a : 0x1c1409, 0.95).setOrigin(0).setStrokeStyle(1, aktiv ? 0xc9a227 : 0x4a3a26).setInteractive({ useHandCursor: true }));
+      r.on('pointerdown', cb);
+      add(this.add.text(bx + bw / 2, y + 6, txt, { fontFamily: 'serif', fontSize: '11px', color: aktiv ? '#ffe08a' : farbe }).setOrigin(0.5, 0));
+      return bw;
+    };
+    add(this.add.text(8, y, 'Baukasten (Typ wählen, dann auf die Karte klicken):', { fontFamily: 'serif', fontSize: '9px', color: '#8a7a5a', wordWrap: { width: w - 16 } }));
+    y += 22;
+    // Typ-Knoepfe als 2er-Gitter
+    const typen: DorfTyp[] = ['wohnhaus', 'gebaeude', 'poi', 'ausgang', 'feld', 'weg', 'baum', 'baumWeg'];
+    for (let i = 0; i < typen.length; i += 2) {
+      knopf(8, 94, DORF_TYP_LABEL[typen[i]], this.dorfPlaceTyp === typen[i], () => { this.dorfPlaceTyp = this.dorfPlaceTyp === typen[i] ? null : typen[i]; this.dorfSel = null; this.baueDorfToolbar(); this.dorfRender(); });
+      if (typen[i + 1]) knopf(106, 94, DORF_TYP_LABEL[typen[i + 1]], this.dorfPlaceTyp === typen[i + 1], () => { this.dorfPlaceTyp = this.dorfPlaceTyp === typen[i + 1] ? null : typen[i + 1]; this.dorfSel = null; this.baueDorfToolbar(); this.dorfRender(); });
+      y += 28;
+    }
+    // Trennlinie
+    add(this.add.rectangle(6, y + 2, w - 12, 1, 0x4a3a26).setOrigin(0)); y += 8;
+    // Aktionen fuer die gewaehlte Box
+    const sel = this.dorfBoxen.find((b) => b.id === this.dorfSel);
+    if (sel) {
+      add(this.add.text(8, y, `Gewählt: ${sel.id} (${sel.breite}×${sel.hoehe})`, { fontFamily: 'serif', fontSize: '10px', color: '#c9a227', wordWrap: { width: w - 16 } })); y += 16;
+      knopf(8, 44, 'B −', false, () => this.dorfGroesse(sel, -1, 0));
+      knopf(56, 44, 'B +', false, () => this.dorfGroesse(sel, 1, 0));
+      knopf(112, 44, 'H −', false, () => this.dorfGroesse(sel, 0, -1));
+      knopf(160, 44, 'H +', false, () => this.dorfGroesse(sel, 0, 1)); y += 28;
+      knopf(8, 94, '✎ Umbenennen', false, () => this.dorfUmbenennen(sel));
+      knopf(106, 94, '🗑 Löschen', false, () => this.dorfLoeschen(sel), '#e0704a'); y += 28;
+      add(this.add.rectangle(6, y + 2, w - 12, 1, 0x4a3a26).setOrigin(0)); y += 8;
+    } else {
+      add(this.add.text(8, y, 'Box antippen = wählen & verschieben.', { fontFamily: 'serif', fontSize: '9px', color: '#6a5f4c', wordWrap: { width: w - 16 } })); y += 16;
+    }
+    // Global: Bericht + Saat
+    knopf(8, 94, '📋 Bericht', false, () => this.zeigeDorfBericht());
+    knopf(106, 94, '↺ Saat', false, () => this.dorfSaatLaden(), '#8a7a5a'); y += 30;
+    bg.height = y;
+    c.setData('h', y);   // Hoehe fuer den UI-Klick-Schutz (zeigerAufPanel)
+  }
+
+  private dorfGroesse(b: DorfBox, db: number, dh: number): void {
+    b.breite = Phaser.Math.Clamp(b.breite + db, 1, 128 - b.x);
+    b.hoehe = Phaser.Math.Clamp(b.hoehe + dh, 1, 128 - b.y);
+    speichereDorfplan(this.dorfBoxen); this.dorfRender(); this.baueDorfToolbar();
+  }
+
+  private dorfUmbenennen(b: DorfBox): void {
+    if (typeof window === 'undefined') return;
+    const neu = window.prompt(`Beschriftung für ${b.id}:`, b.label);
+    if (neu === null) return;
+    b.label = neu.trim() || b.id;
+    speichereDorfplan(this.dorfBoxen); this.dorfRender(); this.baueDorfToolbar();
+  }
+
+  private dorfLoeschen(b: DorfBox): void {
+    this.dorfBoxen = this.dorfBoxen.filter((x) => x !== b);
+    this.dorfSel = null;
+    speichereDorfplan(this.dorfBoxen); this.dorfRender(); this.baueDorfToolbar();
+  }
+
+  private dorfSaatLaden(): void {
+    if (typeof window !== 'undefined' && !window.confirm('Deine Editor-Marker verwerfen und das Auslieferungs-Layout (Datei) laden?')) return;
+    verwerfeDorfplan();
+    this.dorfBoxen = DORFPLAN_BOXEN.map((b) => ({ ...b }));
+    this.dorfSel = null; this.dorfPlaceTyp = null;
+    this.dorfRender(); this.baueDorfToolbar();
+    this.logMsg('Auslieferungs-Layout geladen.', '');
+  }
+
+  // Bericht als DOM-Overlay: kopierbarer TS-Block + Klartext-Liste. Geraeteunab-
+  // haengig (Web/Mobil): "Kopieren"-Knopf nutzt die Zwischenablage.
+  private zeigeDorfBericht(): void {
+    if (typeof document === 'undefined') return;
+    this.dorfDom?.remove();
+    const ts = serialisiereDorfplan(this.dorfBoxen);
+    const klartext = dorfKurzbericht(this.dorfBoxen);
+    const voll = `${klartext}\n\n// ---- Zum Zurueckpflegen in src/data/dorfplan.ts ----\n${ts}`;
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:99999;width:min(720px,92vw);max-height:82vh;display:flex;flex-direction:column;gap:8px;background:#14100a;border:1px solid #6a5636;border-radius:8px;padding:14px;box-shadow:0 8px 40px #000a;font-family:serif;color:#e8dfc8';
+    const kopf = document.createElement('div');
+    kopf.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
+    kopf.innerHTML = '<b style="color:#c9a227;letter-spacing:1px">📋 DORFPLAN-BERICHT</b>';
+    const ta = document.createElement('textarea');
+    ta.value = voll; ta.readOnly = true;
+    ta.style.cssText = 'width:100%;flex:1;min-height:320px;background:#0c0906;color:#cfc3a6;border:1px solid #4a3a26;border-radius:6px;padding:10px;font-family:monospace;font-size:12px;white-space:pre;overflow:auto';
+    const leiste = document.createElement('div');
+    leiste.style.cssText = 'display:flex;gap:8px;justify-content:flex-end';
+    const mkBtn = (label: string, bg: string): HTMLButtonElement => {
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.style.cssText = `background:${bg};color:#14100a;border:0;border-radius:6px;padding:8px 14px;font-family:serif;font-weight:bold;cursor:pointer`;
+      return b;
+    };
+    const kopieren = mkBtn('In Zwischenablage kopieren', '#c9a227');
+    kopieren.onclick = () => {
+      ta.select();
+      const ok = () => { kopieren.textContent = '✓ Kopiert - jetzt in den Chat einfügen'; };
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(voll).then(ok, () => { try { document.execCommand('copy'); ok(); } catch { /* ignore */ } });
+      else { try { document.execCommand('copy'); ok(); } catch { /* ignore */ } }
+    };
+    const schliessen = mkBtn('Schließen', '#8a7a5a');
+    schliessen.onclick = () => { box.remove(); this.dorfDom = undefined; };
+    leiste.append(kopieren, schliessen);
+    box.append(kopf, ta, leiste);
+    document.body.appendChild(box);
+    this.dorfDom = box;
+    // eslint-disable-next-line no-console
+    console.log(voll);   // zusaetzlich in der Konsole
+  }
+
+  // Globaler Karten-Klick im Editor: platziert (aktiver Typ) oder hebt die Auswahl
+  // auf. Klicks auf die Leiste bleiben aussen vor; Rechtsklick bricht den Typ ab.
+  private dorfEditPointer = (ptr: Phaser.Input.Pointer): void => {
+    if (!this.dorfEdit) return;   // im Editor ist der Kampf gesperrt -> auch auf Touch nutzbar
+    if (this.zeigerAufPanel(this.dorfToolbar ?? null, ptr)) return;   // Leiste = kein Weltklick
+    if (ptr.rightButtonDown()) { if (this.dorfPlaceTyp) { this.dorfPlaceTyp = null; this.baueDorfToolbar(); this.dorfRender(); } return; }
+    if (ptr.button !== 0) return;
+    const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
+    if (this.dorfPlaceTyp) { this.dorfEditorKlick(wp.x, wp.y); return; }
+    // Auswahl-Modus: nur ins Leere geklickt -> Auswahl aufheben (Box-Klick macht der Rect-Handler).
+    const tx = wp.x / TILE, ty = wp.y / TILE;
+    const treffer = this.dorfBoxen.some((b) => tx >= b.x && tx <= b.x + b.breite && ty >= b.y && ty <= b.y + b.hoehe);
+    if (!treffer && this.dorfSel) { this.dorfSel = null; this.dorfRender(); this.baueDorfToolbar(); }
+  };
 
   // Den kampffreien Angst-Prolog (Ebene 0) starten: die WorldScene legt sich
   // SCHLAFEND in den Hintergrund (voller Zustand bleibt erhalten), die Prolog-
@@ -5422,6 +5671,7 @@ export class WorldScene extends CombatScene {
     // durch"): ein Klick, der auf der RTS-Leiste oder dem Bau-Popup landet, ist ein
     // UI-Klick und darf NICHT als Weltklick (Spawn/Bau) durchgereicht werden.
     if (this.zeigerAufPanel(this.rtsLeiste, ptr) || this.zeigerAufPanel(this.bauPopup, ptr)) return true;
+    if (this.zeigerAufPanel(this.dorfToolbar ?? null, ptr)) return true;   // R105: Editor-Leiste
     return this.hud?.klickBlockiert(ptr) ?? false;
   }
 
@@ -6284,7 +6534,7 @@ export class WorldScene extends CombatScene {
     // Baukasten zählt als blockierend (Runde 40): beim Welt-Editieren darf der
     // Held NICHT zuschlagen/zaubern - jeder Mal-Klick löste sonst zugleich eine
     // Kampfaktion in der laufenden Welt aus (mögliche Absturzquelle beim "Weg malen").
-    return super.uiBlocked() || this.dialog?.open || this.shop?.open || this.stash?.open || !!this.deathOverlay || !!this.pauseMenu || !!this.heldEditor?.blocked || !!this.baukastenPanel;
+    return super.uiBlocked() || this.dialog?.open || this.shop?.open || this.stash?.open || !!this.deathOverlay || !!this.pauseMenu || !!this.heldEditor?.blocked || !!this.baukastenPanel || this.dorfEdit;
   }
 
   // --- Zerstörbare Objekte ---------------------------------------------------

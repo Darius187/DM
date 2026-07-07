@@ -3,14 +3,17 @@
 // NUR beschriftete Platzhalter-BOXEN - keine Gebaeude-Sprites, KEINE NPCs, KEINE
 // Interaktion, KEINE Kollision. Die echten Gebaeude kommen spaeter einzeln.
 //
+// R105: In-Game-Editor. DORFPLAN_BOXEN unten ist das AUSLIEFERUNGS-Layout (Saat).
+// Der Autor kann die Boxen im Spiel frei verschieben, neue Marker aus dem Baukasten
+// setzen/beschriften/loeschen und einen BERICHT erzeugen (kopierbare Koordinaten).
+// Seine Aenderungen liegen im Browser (localStorage) und ueberlagern die Saat; der
+// Bericht wird hierher zurueckgepflegt, damit die Datei das Gedaechtnis bleibt.
+//
 // Koordinaten in KACHELN (x,y = obere-linke Ecke; breite/hoehe in Kacheln), 0..127.
-// R104b: Positionen 1:1 aus der Autor-Planungskarte (128x128) uebernommen; die
-// Area ist jetzt ebenfalls QUADRATISCH 128x128, daher direktes Kachel-Mapping.
-// Terrain-VORRANG bleibt: die Muehle sitzt am ECHTEN Ostfluss; landet ein
-// Platzhalter auf Wasser/Baeumen, wird ZUERST der Platzhalter verschoben (Notiz),
-// das bestehende Wasser wird NICHT ungefragt umgebaut.
 
-export type DorfTyp = 'wohnhaus' | 'gebaeude' | 'poi' | 'ausgang';
+export type DorfTyp =
+  | 'wohnhaus' | 'gebaeude' | 'poi' | 'ausgang'
+  | 'feld' | 'weg' | 'baum' | 'baumWeg';   // R105: Felder/Wege/Baum setzen/entfernen
 
 export interface DorfBox {
   id: string;          // feste Referenz (N1..N7, S1..S6, B1..B8, POI-/Ausgangs-Namen)
@@ -28,7 +31,91 @@ export const DORF_FARBE: Record<DorfTyp, number> = {
   gebaeude: 0xd0a24a,   // gold  - B1-B8 Sonderbauten
   poi: 0x8ad06a,        // gruen - POIs
   ausgang: 0xd0603a,    // rot   - Ausgaenge
+  feld: 0xcbb85a,       // aehrengelb - Aecker/Felder
+  weg: 0x9a8a6a,        // lehmbraun  - Wege/Strassen
+  baum: 0x3f7a3a,       // dunkelgruen - Baum SETZEN
+  baumWeg: 0xb03030,    // rot        - Baum ENTFERNEN (Markierung)
 };
+
+// Anzeige-Namen fuer den Baukasten (deutsch, Spielertext).
+export const DORF_TYP_LABEL: Record<DorfTyp, string> = {
+  wohnhaus: 'Wohnhaus', gebaeude: 'Gebäude', poi: 'Ort/POI', ausgang: 'Ausgang',
+  feld: 'Feld', weg: 'Weg', baum: 'Baum +', baumWeg: 'Baum −',
+};
+
+// ID-Praefix + Standardgroesse (Kacheln) je Typ - fuer neue Marker aus dem Baukasten.
+const TYP_PREFIX: Record<DorfTyp, string> = {
+  wohnhaus: 'H', gebaeude: 'B', poi: 'P', ausgang: 'A',
+  feld: 'F', weg: 'W', baum: 'T', baumWeg: 'TX',
+};
+const TYP_GROESSE: Record<DorfTyp, { b: number; h: number }> = {
+  wohnhaus: { b: 6, h: 6 }, gebaeude: { b: 7, h: 6 }, poi: { b: 3, h: 3 }, ausgang: { b: 3, h: 3 },
+  feld: { b: 10, h: 8 }, weg: { b: 3, h: 8 }, baum: { b: 2, h: 2 }, baumWeg: { b: 2, h: 2 },
+};
+
+// Naechste freie ID fuer einen Typ (Praefix + fortlaufende Nummer, z.B. F1, F2...).
+export function neueDorfId(typ: DorfTyp, boxen: DorfBox[]): string {
+  const pre = TYP_PREFIX[typ];
+  let max = 0;
+  for (const b of boxen) {
+    const m = b.id.match(new RegExp(`^${pre}(\\d+)$`));
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  return `${pre}${max + 1}`;
+}
+
+// Neue Box mit Standardgroesse, an (x,y) zentriert und in die Karte geklemmt.
+export function neueDorfBox(typ: DorfTyp, mittigX: number, mittigY: number, boxen: DorfBox[], karte = 128): DorfBox {
+  const g = TYP_GROESSE[typ];
+  const x = Math.max(0, Math.min(karte - g.b, Math.round(mittigX - g.b / 2)));
+  const y = Math.max(0, Math.min(karte - g.h, Math.round(mittigY - g.h / 2)));
+  const id = neueDorfId(typ, boxen);
+  return { id, typ, x, y, breite: g.b, hoehe: g.h, label: id };
+}
+
+// Serialisiert die Boxen als TS-Array-Literal (Rumpf von DORFPLAN_BOXEN) - genau
+// im Datei-Stil, damit der Autor-Bericht 1:1 in diese Datei zurueckwandern kann.
+export function serialisiereDorfplan(boxen: DorfBox[]): string {
+  const esc = (s: string): string => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const zeile = (b: DorfBox): string => {
+    const notes = b.notes ? `, notes: '${esc(b.notes)}'` : '';
+    return `  { id: '${esc(b.id)}', typ: '${b.typ}', x: ${b.x}, y: ${b.y}, breite: ${b.breite}, hoehe: ${b.hoehe}, label: '${esc(b.label)}'${notes} },`;
+  };
+  return `export const DORFPLAN_BOXEN: DorfBox[] = [\n${boxen.map(zeile).join('\n')}\n];`;
+}
+
+// Kompakter Klartext-Bericht (fuer den Autor lesbar): eine Zeile je Box.
+export function dorfKurzbericht(boxen: DorfBox[]): string {
+  const kopf = `Dorfplan-Bericht - ${boxen.length} Marker (Kacheln, 0..127)`;
+  const zeilen = boxen.map((b) =>
+    `${b.id.padEnd(5)} ${b.typ.padEnd(8)} x${b.x} y${b.y}  ${b.breite}×${b.hoehe}  "${b.label}"${b.notes ? `  (${b.notes})` : ''}`,
+  );
+  return [kopf, ...zeilen].join('\n');
+}
+
+const LS_KEY = 'ravensmoor.dorfplan.v1';
+
+// Browser-Persistenz (im Test/SSR ohne localStorage: no-op). Autor-Edits ueberleben
+// so den Reload, bis der Bericht in diese Datei zurueckgepflegt ist.
+export function ladeDorfplan(saat: DorfBox[]): DorfBox[] {
+  try {
+    if (typeof localStorage === 'undefined') return saat.map((b) => ({ ...b }));
+    const roh = localStorage.getItem(LS_KEY);
+    if (!roh) return saat.map((b) => ({ ...b }));
+    const arr = JSON.parse(roh) as DorfBox[];
+    if (!Array.isArray(arr) || arr.length === 0) return saat.map((b) => ({ ...b }));
+    // grobe Schema-Pruefung, sonst Saat
+    return arr.filter((b) => b && typeof b.id === 'string' && typeof b.x === 'number' && typeof b.typ === 'string');
+  } catch { return saat.map((b) => ({ ...b })); }
+}
+
+export function speichereDorfplan(boxen: DorfBox[]): void {
+  try { if (typeof localStorage !== 'undefined') localStorage.setItem(LS_KEY, JSON.stringify(boxen)); } catch { /* ignore */ }
+}
+
+export function verwerfeDorfplan(): void {
+  try { if (typeof localStorage !== 'undefined') localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
+}
 
 export const DORFPLAN_BOXEN: DorfBox[] = [
   // --- ANGER-HERZ (POIs am Hauptweg, Mitte) ---------------------------------
