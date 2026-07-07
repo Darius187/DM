@@ -1209,3 +1209,12 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Kachelofen 48x128 (top=3.2); Anzeige 2.67 Kacheln hoch. Lager-Props kleiner.
 - R100 Held im RTS: aimAngle auto-zielt auf naechsten Gegner (bewegungGesperrt),
   Held laeuft Gegner an. Bau auf Wegen erlaubt. UI-Klick-Schutz fuer RTS-Leiste/Popup.
+- R104c Wasser Dorf ('stadt', Autorwunsch "Fluss vom See aus Richtung Sueden
+  umleiten, See als Muehlenweiher/Fischteich behalten"): Der fruehere West-
+  Suedbach QUER durch den Sueden entfaellt. Neu in buildStadtNatur:
+  See bleibt (cx0.78/cy0.76), Nordfluss speist ihn weiter (Muehlenweiher-Zufluss),
+  Ost-Abfluss haelt die Ost-Naht zu wald_se, ein neuer Sued-Abfluss laesst den See
+  nach SUEDEN aus der Karte laufen. Die West-Naht zu wald_o (Tabelle Fluss@81.7%,
+  vom Test oberweltVerbindung geschuetzt) wird durch einen KURZEN Bach in der
+  Suedwest-Ecke gehalten, der ebenfalls nach Sueden abfliesst - Naht bleibt, die
+  Feldflaeche im zentralen Sueden ist frei. Alle Werte in areagen.buildStadtNatur.

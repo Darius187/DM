@@ -2026,8 +2026,8 @@ export function buildWaldOst(rng: Rng): AreaData {
 // (beides aus der Tabelle). Hier kommt spaeter die Stadtkarte hinein.
 export function buildStadtNatur(rng: Rng): AreaData {
   const nord = kantenFlussAnker('stadt', 'nord')!;
-  const west = kantenFlussAnker('stadt', 'west')!;
   const ost = kantenFlussAnker('stadt', 'ost')!;
+  const west = kantenFlussAnker('stadt', 'west')!;
   // R104 DEV-Haken: window.__stadtGroesse = {w,h} erlaubt Groessen-Tests im Browser
   // (FPS/Platz), ohne den Code zu aendern. Ohne Angabe der Standard 130x85.
   const g = (typeof window !== 'undefined' ? (window as unknown as { __stadtGroesse?: { w: number; h: number } }).__stadtGroesse : null) ?? null;
@@ -2042,13 +2042,20 @@ export function buildStadtNatur(rng: Rng): AreaData {
     geo: {
       bahnen: [
         // R100f (Autor "Fluesse natuerlicher geschwungen wie in der Natur"):
-        // sanft maeandernd. Kanten-Anker (nord/west/ost) bleiben fix -> Naehte matchen.
-        // Nordfluss: schlaengelt die Ostseite hinunter in den See
+        // sanft maeandernd. Kanten-Anker (nord/ost) bleiben fix -> Naehte matchen.
+        // Nordfluss: schlaengelt die Ostseite hinunter in den See (Muehlenweiher-Zufluss)
         { punkte: [nord, { x: nord.x - 0.02, y: 0.18, hw: 0.013 }, { x: nord.x + 0.02, y: 0.36, hw: 0.013 }, { x: nord.x - 0.02, y: 0.54, hw: 0.014 }, { x: 0.80, y: 0.68, hw: 0.015 }] },
-        // Suedbach: maeandert von der Westkante zum See
-        { punkte: [west, { x: 0.16, y: west.y - 0.03, hw: 0.011 }, { x: 0.34, y: west.y + 0.03, hw: 0.011 }, { x: 0.52, y: west.y - 0.02, hw: 0.012 }, { x: 0.68, y: 0.78, hw: 0.013 }] },
-        // Ost-Abfluss: schwingt aus dem See zur Ostkante
+        // Ost-Abfluss: kurzer Lauf aus dem See zur Ostkante (Naht zu wald_se)
         { punkte: [ost, { x: 0.93, y: ost.y - 0.02, hw: 0.012 }, { x: 0.85, y: 0.77, hw: 0.013 }] },
+        // R104c (Autor "Fluss vom See aus Richtung Sueden umleiten"): der fruehere
+        // West-Suedbach quer durch den Sueden entfaellt; stattdessen fliesst der See
+        // nach SUEDEN aus der Karte. So bleibt die Suedhaelfte frei fuer Aecker; See
+        // bleibt als Muehlenweiher/Fischteich erhalten.
+        { punkte: [{ x: 0.79, y: 0.82, hw: 0.014 }, { x: 0.78, y: 0.92, hw: 0.013 }, { x: 0.77, y: 1.03, hw: KANTEN_HW }] },
+        // West-Naht zu wald_o (Tabelle: Fluss@81.7%): statt quer durch die Felder
+        // nur noch ein kurzer Bach in der SUEDWEST-Ecke, der ebenfalls nach Sueden
+        // abfliesst - haelt die Kartennaht, laesst die Feldflaeche frei (moortypisch).
+        { punkte: [west, { x: 0.05, y: 0.85, hw: 0.012 }, { x: 0.10, y: 0.95, hw: 0.011 }, { x: 0.12, y: 1.03, hw: KANTEN_HW }] },
       ],
       seen: [{ cx: 0.78, cy: 0.76, rx: 0.13, ry: 0.085 }],
     },
