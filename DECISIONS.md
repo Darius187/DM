@@ -1265,3 +1265,16 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   jeden Frame (kurze "FPS n"-Zeile, Dev-Kasten weiter ausfuehrlich). Vollbild-
   Schalter (scale.toggleFullscreen). FPS-LIMIT bewusst NICHT eingebaut (im
   Browser-RAF nicht ehrlich kappbar -> waere Placebo). Presets per Vitest getestet.
+- R108 Atmosphäre-Audio (Autorwunsch "Sound-Fanatiker: Hall, Entfernungsdämpfung,
+  räumlicher Klang - mit Reglern; Kopfkino"): neue Web-Audio-Effektkette
+  src/gfx/audioBus.ts (AudioBus) fuer POSITIONALE Klaenge: pro Klang Tiefpass
+  (Ferne dumpfer), Panner (Stereo ODER HRTF), Send in gemeinsamen Convolver-Hall
+  (prozedurale Impulsantwort, kein Sample). UI/Musik bleiben trocken (Phaser-Weg).
+  SoundProvider.spielePositional() routet playAt/playAtAbwechselnd durch den Bus,
+  liest die Regler je Klang (immer aktuell, keine Szenen-Plumbing) und faellt ohne
+  WebAudio auf den alten Stereo-Weg zurueck. Umgebung: WorldScene.goArea setzt
+  setzeUmgebung (innen 0.95 / dark 0.8 / offen 0.18) -> Hall stark im Dungeon.
+  audioRaum liefert zusaetzlich dist01 (0 nah .. 1 fern) fuer den Tiefpass. Neue
+  Settings: hall(45), distanzDaempfung(55), raumklang(false); Regler im TON-Reiter.
+  Verifiziert: Bus baut (bereit, ctx running), positionale Klaenge fehlerfrei -
+  KLANGQUALITAET muss der Autor am Geraet/Kopfhoerer pruefen (headless nicht hoerbar).

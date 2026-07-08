@@ -161,6 +161,11 @@ export class SettingsScene extends Phaser.Scene {
     y = this.slider(y, 'Effekte', () => s.volEffekte, (v) => { s.volEffekte = v; });
     y = this.slider(y, 'Atmosphäre (Umgebung)', () => s.volAtmosphaere, (v) => { s.volAtmosphaere = v; this.passeLaufendeAn(false, v); });
     y = this.slider(y, 'Musik', () => s.volMusik, (v) => { s.volMusik = v; this.passeLaufendeAn(true, v); });
+    y = this.sect(y, 'ATMOSPHÄRE (RÄUMLICHER KLANG)');
+    y = this.slider(y, 'Hall (Dungeon / Innenräume)', () => s.hall, (v) => { s.hall = v; });
+    y = this.slider(y, 'Entfernungs-Dämpfung (Ferne klingt dumpfer)', () => s.distanzDaempfung, (v) => { s.distanzDaempfung = v; });
+    y = this.toggle(y, 'Räumlicher Klang / HRTF (am besten mit Kopfhörer)', () => s.raumklang, (v) => { s.raumklang = v; });
+    y = this.hinweis(y, 'Wirkt auf Kampf-, Tier- und Umgebungsklänge. Zum Prüfen im Spiel bewegen.');
     return y;
   }
 

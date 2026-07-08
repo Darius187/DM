@@ -4,7 +4,8 @@
 
 import Phaser from 'phaser';
 import { getSettings } from '../logic/settings';
-import { raeumlichesAudio } from '../logic/audioRaum';
+import { raeumlichesAudio, type RaumKlang } from '../logic/audioRaum';
+import { AudioBus } from './audioBus';
 
 interface SynthStep { freq: number; dur: number; type: OscillatorType; vol: number; delay?: number }
 
@@ -65,13 +66,19 @@ const SYNTH: Record<string, SynthStep[]> = {
 export class SoundProvider {
   private ac: AudioContext | null = null;
   private loops = new Map<string, Phaser.Sound.BaseSound>();
+  // R108: Effektkette (Hall/Tiefpass/HRTF) für positionale Klänge.
+  private bus: AudioBus | null = null;
 
   constructor(private scene: Phaser.Scene) {
     // Beim Verlassen der Szene alle eigenen Loops/Musik stoppen (Runde 41):
     // sonst lief die Prolog-Atmosphäre (krypta_droehnen) nach dem Übergang zur
     // Boss-Arena weiter UND die Bossmusik dazu - es klang nach "doppelter Musik".
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.stopLoops(); this.stopMusic(); });
+    try { const b = new AudioBus(scene.sound); if (b.bereit) this.bus = b; } catch { this.bus = null; }
   }
+
+  // R108: Umgebung setzen (0 = offenes Feld, 1 = enger Steinraum) - steuert den Hall.
+  setzeUmgebung(basis: number): void { this.bus?.setUmgebung(basis); }
 
   // Effekt abspielen: Datei falls vorhanden, sonst Synthese. pan in [-1,1]
   // (links/rechts) - Stereo (Runde 45).
@@ -97,9 +104,27 @@ export class SoundProvider {
     const cam = this.scene.cameras?.main;
     if (!cam) { this.play(name, volMult); return; }
     const v = cam.worldView;
-    const { pan, vol } = raeumlichesAudio(v.centerX, v.centerY, v.width / 2, v.height / 2, x, y);
-    if (vol <= 0.02) return;
-    this.play(name, volMult * vol, pan);
+    const r = raeumlichesAudio(v.centerX, v.centerY, v.width / 2, v.height / 2, x, y);
+    if (r.vol <= 0.02) return;
+    this.spielePositional(name, r, volMult);
+  }
+
+  // R108: positionalen Klang durch die Effektkette schicken (Hall/Tiefpass/HRTF).
+  // Ohne Bus (kein WebAudio) auf den einfachen Stereo-Weg zurückfallen.
+  private spielePositional(name: string, r: RaumKlang, volMult: number): void {
+    if (name === 'block' && this.playAbwechselnd('block', 2, volMult, r.pan)) return;
+    const s = getSettings();
+    const vol = (s.volEffekte / 100) * volMult * r.vol;
+    if (vol <= 0.01) return;
+    if (this.bus) {
+      this.bus.setRegler(s.hall, s.distanzDaempfung, s.raumklang);
+      const buf = this.scene.cache.audio.exists(`snd_${name}`) ? this.scene.cache.audio.get(`snd_${name}`) : null;
+      if (buf instanceof AudioBuffer) { this.bus.spieleBuffer(buf, { vol, pan: r.pan, dist01: r.dist01 }); return; }
+      const steps = SYNTH[name];
+      if (steps) { this.bus.spieleSynth(steps, { vol, pan: r.pan, dist01: r.dist01 }); return; }
+      return;
+    }
+    this.play(name, volMult * r.vol, r.pan);
   }
 
   // Atmosphären-Loop starten/stoppen (eigener Lautstärkeregler)
@@ -139,9 +164,17 @@ export class SoundProvider {
     const cam = this.scene.cameras?.main;
     if (!cam) return this.playAbwechselnd(basis, anzahl, volMult);
     const v = cam.worldView;
-    const { pan, vol } = raeumlichesAudio(v.centerX, v.centerY, v.width / 2, v.height / 2, x, y);
-    if (vol <= 0.02) return true;
-    return this.playAbwechselnd(basis, anzahl, volMult * vol, pan);
+    const r = raeumlichesAudio(v.centerX, v.centerY, v.width / 2, v.height / 2, x, y);
+    if (r.vol <= 0.02) return true;
+    // vorhandene Variante wählen; ohne Bus den einfachen Weg, sonst durch die Kette.
+    const da: string[] = [];
+    for (let i = 1; i <= anzahl; i++) if (this.has(`${basis}${i}`)) da.push(`${basis}${i}`);
+    if (!da.length) return false;
+    const n = (this.wechselZaehler.get(basis) ?? 0) % da.length;
+    this.wechselZaehler.set(basis, n + 1);
+    if (this.bus) this.spielePositional(da[n], r, volMult);
+    else this.play(da[n], volMult * r.vol, r.pan);
+    return true;
   }
 
   stopLoop(name: string): void {

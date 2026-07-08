@@ -13,6 +13,11 @@ export interface Settings {
   volEffekte: number;     // 0-100
   volAtmosphaere: number; // 0-100
   volMusik: number;       // 0-100 (Musikstücke, Runde 17)
+  // R108 Atmosphäre-Audio (Autorwunsch "Sound-Fanatiker: Hall, Entfernungs-
+  // dämpfung, räumlicher Klang - alles mit Reglern"):
+  hall: number;           // 0-100 Hall-Stärke (bes. in Dungeons/Innenräumen)
+  distanzDaempfung: number; // 0-100 wie stark ferne Klänge dumpfer werden (Tiefpass)
+  raumklang: boolean;     // räumlicher Klang (HRTF, ideal mit Kopfhörer) statt nur Stereo-Pan
   bright: number;
   // Bildgröße in Prozent (Runde 21): 100 = wie bisher, größer = näher dran
   zoom: number;         // 70-140
@@ -104,6 +109,9 @@ export const DEF_SETTINGS: Settings = {
   volEffekte: 60,
   volAtmosphaere: 50,
   volMusik: 20, // Runde 40 (Autorwunsch): Musik leise im Hintergrund
+  hall: 45,             // Grund-Hall (voll wirksam erst in Innenräumen/Dungeon)
+  distanzDaempfung: 55, // ferne Klänge klingen dumpfer
+  raumklang: false,     // HRTF standardmäßig aus (nicht jeder hat Kopfhörer)
   bright: 100,
   zoom: 130, // Runde 41 (Autorwunsch): Spielwelt-Zoom standardmäßig 130%
   tempo: 90,

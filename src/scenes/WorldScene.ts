@@ -1722,6 +1722,8 @@ export class WorldScene extends CombatScene {
       this.flags.intro = true;
       this.startIntroFilm();
     }
+    // R108: Klang-Umgebung (Hall) - Innenräume/Dungeon hallen, offenes Land kaum.
+    this.sfx.setzeUmgebung(a.innen ? 0.95 : a.dark ? 0.8 : 0.18);
     // R104: Dorf-Layout-Platzhalter (nur 'stadt', reine Positionsplanung)
     this.zeichneDorfplan(a);
     // Autosave bei Gebietswechsel (Referenz-Verhalten)

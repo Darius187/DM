@@ -2,7 +2,7 @@
 // Abfall einer Klangquelle relativ zur Bildmitte (= Ort des Hörers/der Kamera).
 // Reine Logik ohne Phaser - so testbar. SoundProvider.playAt nutzt es.
 
-export interface RaumKlang { pan: number; vol: number }
+export interface RaumKlang { pan: number; vol: number; dist01: number }
 
 // hörerX/Y = Bildmitte (Kamera), halbBreite/halbHöhe = halbe sichtbare Welt,
 // quelleX/Y = Weltposition des Klangs. pan in [-1,1], vol in [0,1].
@@ -19,7 +19,10 @@ export function raeumlichesAudio(
   const dist = Math.hypot(dx, dy);
   const reichweite = Math.max(halbBreite, halbHoehe) * 1.5;
   const vol = clamp(1 - dist / reichweite, 0, 1);
-  return { pan, vol };
+  // dist01: 0 = direkt beim Hörer, 1 = am Rand der Hörweite (fuer Entfernungs-
+  // Tiefpass "ferne Klänge klingen dumpfer", Runde 108).
+  const dist01 = clamp(dist / reichweite, 0, 1);
+  return { pan, vol, dist01 };
 }
 
 function clamp(v: number, lo: number, hi: number): number {

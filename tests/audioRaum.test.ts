@@ -27,4 +27,11 @@ describe('raeumlichesAudio', () => {
     expect(nah).toBeGreaterThan(fern);
     expect(H(9000, 9000).vol).toBe(0);
   });
+
+  it('dist01: 0 in der Mitte, wächst mit der Entfernung, gekappt bei 1 (für den Entfernungs-Tiefpass)', () => {
+    expect(H(640, 360).dist01).toBeCloseTo(0);
+    expect(H(900, 360).dist01).toBeGreaterThan(0);
+    expect(H(900, 360).dist01).toBeLessThan(H(1200, 360).dist01);
+    expect(H(9000, 9000).dist01).toBe(1);
+  });
 });
