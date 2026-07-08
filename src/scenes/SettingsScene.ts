@@ -145,7 +145,7 @@ export class SettingsScene extends Phaser.Scene {
     y = this.sect(y, 'EFFEKTE & QUALITÄT');
     y = this.slider(y, 'Leuchten / Bloom (0 = aus)', () => s.bloom, (v) => this.grafikSet(() => { s.bloom = v; }), 0, 100);
     y = this.slider(y, 'Schatten / Licht Außenwelt (0 = aus)', () => s.schatten, (v) => this.grafikSet(() => { s.schatten = v; }), 0, 100);
-    y = this.toggle(y, 'Dungeon: echte Wandschatten (Raycaster, kostet Leistung)', () => s.licht.dungeonNeu, (v) => this.grafikSet(() => { s.licht.dungeonNeu = v; }));
+    y = this.toggle(y, 'Dungeon: echte Wandschatten (Raycaster)', () => s.licht.dungeonNeu, (v) => this.grafikSet(() => { s.licht.dungeonNeu = v; }));
     y = this.slider(y, 'Schattenwerfende Fackeln', () => s.licht.schattenFackeln, (v) => this.grafikSet(() => { s.licht.schattenFackeln = v; }), 0, 100);
     y = this.toggle(y, 'Wasser-Effekte (prozeduraler Shader, aus = flach)', () => s.wasserEffekte, (v) => this.grafikSet(() => { s.wasserEffekte = v; this.liveGrafik(); }));
     y = this.slider(y, 'Grusel-Atmosphäre', () => s.grusel, (v) => this.grafikSet(() => { s.grusel = v; }), 0, 100);
@@ -254,14 +254,16 @@ export class SettingsScene extends Phaser.Scene {
     }
   }
 
+  // Zwei-Zeilen-Regler (R107b, Autorbug "Regler laufen in die Schrift"): Label
+  // OBEN, Leiste DARUNTER - so kann kein noch so langer Text die Leiste treffen.
   private slider(y: number, label: string, get: () => number, set: (v: number) => void, min = 0, max = 100): number {
-    const x0 = this.colX, trackX = x0 + 330 - 90, trackW = 180, cy = y + 8;
+    const x0 = this.colX, trackX = x0 + 6, trackW = 300, cy = y + 26;
     const c = this.inhalt!;
     c.add(this.add.text(x0, y, label, { fontFamily: 'serif', fontSize: '15px', color: '#d8cfb8' }));
-    c.add(this.add.rectangle(x0 + 330, cy, trackW, 6, 0x3a2f24));
+    c.add(this.add.rectangle(trackX + trackW / 2, cy, trackW, 6, 0x3a2f24));
     const fill = this.add.rectangle(trackX, cy, 0, 6, 0xc9a227).setOrigin(0, 0.5);
     const knob = this.add.circle(trackX, cy, 9, 0xe8d28a).setStrokeStyle(2, 0x6a5430);
-    const val = this.add.text(x0 + 435, y, '', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' });
+    const val = this.add.text(trackX + trackW + 16, cy, '', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' }).setOrigin(0, 0.5);
     c.add(fill); c.add(knob); c.add(val);
     const refresh = () => {
       const f = Phaser.Math.Clamp((get() - min) / (max - min), 0, 1);
@@ -273,10 +275,10 @@ export class SettingsScene extends Phaser.Scene {
       set(Math.round((min + rel * (max - min)) / 5) * 5);
       refresh(); saveSettings();
     };
-    const hit = this.add.rectangle(x0 + 330, cy, trackW + 18, 28, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    const hit = this.add.rectangle(trackX + trackW / 2, cy, trackW + 18, 28, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
     hit.on('pointerdown', (p: Phaser.Input.Pointer) => { this.dragSlider = applyAt; applyAt(p.x); });
     c.add(hit);
-    return y + 32;
+    return y + 48;
   }
 
   // Umschalter, der einen Wert setzt (get/set auf Settings).
@@ -288,7 +290,7 @@ export class SettingsScene extends Phaser.Scene {
   private toggleTun(y: number, label: string, get: () => boolean, tun: () => void): number {
     const x0 = this.colX, c = this.inhalt!;
     c.add(this.add.text(x0, y, label, { fontFamily: 'serif', fontSize: '15px', color: '#d8cfb8' }));
-    const btn = this.add.text(x0 + 430, y, get() ? 'AN' : 'AUS', {
+    const btn = this.add.text(x0 + 540, y, get() ? 'AN' : 'AUS', {
       fontFamily: 'serif', fontSize: '14px', color: get() ? '#c9a227' : '#d8cfb8',
       backgroundColor: '#1c1410', padding: { x: 14, y: 4 },
     }).setInteractive({ useHandCursor: true });
