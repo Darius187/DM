@@ -1,22 +1,29 @@
-// ATMOSPHÄRE-AUDIO (R108, Autorwunsch "Sound-Fanatiker: Hall, Entfernungs-
-// dämpfung, räumlicher Klang - mit Reglern"). Eine Web-Audio-Effektkette für
-// POSITIONALE Klänge (Kampf, Pfeile, Tiere ...): pro Klang ein Tiefpass (ferne
-// Dinge klingen dumpfer), ein Panner (Stereo ODER HRTF für Kopfhörer) und ein
-// Send in einen gemeinsamen Hall (Convolver). Der Hall ist in Innenräumen/
-// Dungeons stark, draußen dezent. UI/Musik laufen bewusst NICHT hier durch
-// (bleiben trocken). Fällt sauber auf Stille zurück, wenn kein WebAudio da ist.
+// ATMOSPHÄRE-AUDIO v2 (R108/R109, Autor: "audiophil, hautnah dabei"). Effekt-
+// kette fuer POSITIONALE Klaenge. Lehren aus R108 ("klingt ploetzlich mono"):
+//  - Der Web-Audio-PannerNode (HRTF) mischt STEREO-Quellen spec-gemaess auf Mono
+//    herunter. Unsere Effekt-Dateien sind fast alle Stereo -> Breite war weg.
+//    Fix: Dual-Panner - linker/rechter Kanal laufen durch ZWEI HRTF-Panner,
+//    leicht links/rechts vom Pan-Punkt versetzt. Position UND Breite bleiben.
+//  - Nahkampf-Gegner stehen fast in der Bildmitte (Pan~0) -> alles klang mittig.
+//    Fix: Pan-Spreizung (Wurzel-Kurve) macht kleine Auslenkungen hoerbar.
+//  - Tiefpass dumpfte schon im Nahbereich. Fix: Totzone bis ~35% Distanz
+//    (nah = voll brillant), danach logarithmisch zu.
+//  - Hall wusch alles zu. Fix: Send haengt an der ENTFERNUNG (nah trocken,
+//    fern hallig) + kuerzere, dunklere Impulsantwort mit Vorverzoegerung.
+//  - NEU: Master-Kompressor (sanft) fuer Punch ohne Uebersteuern.
+// UI/Musik laufen bewusst NICHT hier durch (bleiben unbearbeitet).
 
-// Minimaler Synth-Schritt (deckt sich mit SoundProvider, ohne Import-Zyklus).
 export interface BusSynthStep { freq: number; dur: number; type: OscillatorType; vol: number; delay?: number }
 export interface KlangOrt { vol: number; pan: number; dist01: number }
 
 export class AudioBus {
   private ctx: AudioContext | null = null;
   private reverb: ConvolverNode | null = null;
-  private wet: GainNode | null = null;   // Hall-Anteil (an destination)
-  private hallBasis = 0.2;               // 0..1 aus der Umgebung (Dungeon hoch)
-  private hallRegler = 0.45;             // 0..1 aus den Einstellungen
-  private daempfung = 0.55;              // 0..1 Entfernungs-Tiefpass-Stärke
+  private wet: GainNode | null = null;        // Hall-Summe -> Master
+  private master: GainNode | null = null;     // Summenpunkt -> Kompressor -> destination
+  private hallBasis = 0.2;
+  private hallRegler = 0.45;
+  private daempfung = 0.55;
   private hrtf = false;
 
   constructor(sound: unknown) {
@@ -32,32 +39,53 @@ export class AudioBus {
 
   private baue(): void {
     const ctx = this.ctx!;
+    // Master: sanfter Kompressor "klebt" die Effekte zusammen (Punch, kein Clipping).
+    this.master = ctx.createGain();
+    this.master.gain.value = 0.95;
+    let ausgang: AudioNode = this.master;
+    if (typeof ctx.createDynamicsCompressor === 'function') {
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -16; comp.knee.value = 10; comp.ratio.value = 2.5;
+      comp.attack.value = 0.003; comp.release.value = 0.15;
+      this.master.connect(comp);
+      ausgang = comp;
+    }
+    ausgang.connect(ctx.destination);
+
     this.reverb = ctx.createConvolver();
-    this.reverb.buffer = this.impulsAntwort(2.2, 2.4);
+    this.reverb.buffer = this.impulsAntwort(1.6);
     this.wet = ctx.createGain();
     this.wet.gain.value = 0;
     this.reverb.connect(this.wet);
-    this.wet.connect(ctx.destination);
+    this.wet.connect(this.master);
     this.aktualisiereHall();
   }
 
-  // Prozedurale Impulsantwort (abklingendes Rauschen) - kein Sample nötig.
-  private impulsAntwort(dauer: number, abfall: number): AudioBuffer {
+  // Dunkler werdende, dekorrelierte Stereo-Impulsantwort mit ~18ms Vorverzoegerung
+  // (Direktklang bleibt klar, der Raum "antwortet" danach - hautnah statt Waschkueche).
+  private impulsAntwort(dauer: number): AudioBuffer {
     const ctx = this.ctx!;
-    const laenge = Math.max(1, Math.floor(ctx.sampleRate * dauer));
-    const buf = ctx.createBuffer(2, laenge, ctx.sampleRate);
+    const sr = ctx.sampleRate;
+    const vorlauf = Math.floor(sr * 0.018);
+    const laenge = Math.max(1, Math.floor(sr * dauer));
+    const buf = ctx.createBuffer(2, vorlauf + laenge, sr);
     for (let ch = 0; ch < 2; ch++) {
       const d = buf.getChannelData(ch);
+      let lp = 0;
       for (let i = 0; i < laenge; i++) {
-        const r = Math.sin(i * (12.9898 + ch * 3.1)) * 43758.5453;
+        const t = i / laenge;
+        const r = Math.sin((i + 1) * (12.9898 + ch * 7.13)) * 43758.5453;
         const noise = (r - Math.floor(r)) * 2 - 1;
-        d[i] = noise * Math.pow(1 - i / laenge, abfall);
+        // Ein-Pol-Tiefpass, der zum Ende hin weiter schliesst -> natuerlicher,
+        // dunkler Ausklang (Stein/Erde schluckt Hoehen) statt Blechdose.
+        const a = 0.55 - 0.45 * t;
+        lp += a * (noise - lp);
+        d[vorlauf + i] = lp * Math.exp(-4.2 * t);
       }
     }
     return buf;
   }
 
-  // Regler aus den Einstellungen (0..100 -> 0..1). Live pro Klang gesetzt.
   setRegler(hall: number, daempfung: number, hrtf: boolean): void {
     this.hallRegler = clamp01(hall / 100);
     this.daempfung = clamp01(daempfung / 100);
@@ -65,14 +93,14 @@ export class AudioBus {
     this.aktualisiereHall();
   }
 
-  // Umgebung: 0 = offenes Feld (kaum Hall), 1 = enger Steinraum (viel Hall).
+  // Umgebung: 0 = offenes Feld, 1 = enger Steinraum.
   setUmgebung(basis: number): void {
     this.hallBasis = clamp01(basis);
     this.aktualisiereHall();
   }
 
   private aktualisiereHall(): void {
-    if (this.wet) this.wet.gain.value = this.hallBasis * this.hallRegler * 0.9;
+    if (this.wet) this.wet.gain.value = this.hallBasis * this.hallRegler * 0.7;
   }
 
   spieleBuffer(buffer: AudioBuffer, o: KlangOrt): void {
@@ -81,7 +109,7 @@ export class AudioBus {
     try {
       const src = ctx.createBufferSource();
       src.buffer = buffer;
-      this.verbinde(src, o, o.vol);
+      this.verbinde(src, o, o.vol, buffer.numberOfChannels > 1);
       src.start();
     } catch { /* Audiokontext gesperrt */ }
   }
@@ -103,39 +131,61 @@ export class AudioBus {
         osc.connect(g); g.connect(eingang);
         osc.start(t0); osc.stop(t0 + st.dur);
       }
-      this.verbinde(eingang, o, 1);   // Lautstärke steckt schon in den Schritten
+      this.verbinde(eingang, o, 1, false);
     } catch { /* still */ }
   }
 
-  // Kette: Quelle -> Tiefpass(Entfernung) -> Panner(Stereo/HRTF) -> Gain
-  //        -> destination (trocken) UND -> Reverb (nasser Send).
-  private verbinde(quelle: AudioNode, o: KlangOrt, gain: number): void {
+  // Kette: Quelle -> Tiefpass(Distanz, mit Totzone) -> Panner (Stereo ODER
+  // Dual-HRTF) -> Gain -> Master; plus distanzabhaengiger Hall-Send.
+  private verbinde(quelle: AudioNode, o: KlangOrt, gain: number, stereo: boolean): void {
     const ctx = this.ctx!;
+    // Entfernungs-Tiefpass: bis 35% Distanz VOLL brillant, dann logarithmisch
+    // zu (log klingt gleichmaessig - linear wirkte sofort dumpf).
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    const offen = 20000, zu = 700;
-    lp.frequency.value = clamp(offen - (offen - zu) * o.dist01 * this.daempfung, zu, offen);
+    const d = Math.max(0, o.dist01 - 0.35) / 0.65;
+    lp.frequency.value = 20000 * Math.pow(700 / 20000, d * this.daempfung);
+    quelle.connect(lp);
 
-    let panner: AudioNode;
-    if (this.hrtf && typeof ctx.createPanner === 'function') {
-      const p = ctx.createPanner();
-      p.panningModel = 'HRTF';
-      p.distanceModel = 'linear';
-      // pan (-1..1) = links/rechts, leicht vor dem Hörer (z negativ).
-      if (p.positionX) { p.positionX.value = o.pan; p.positionY.value = 0; p.positionZ.value = -0.6; }
-      else p.setPosition(o.pan, 0, -0.6);
-      panner = p;
-    } else {
-      const sp = ctx.createStereoPanner();
-      sp.pan.value = clamp(o.pan, -1, 1);
-      panner = sp;
-    }
+    // Pan-Spreizung: Wurzel-Kurve hebt kleine Auslenkungen an (Nahkampf hoerbar
+    // links/rechts statt "alles mittig"), Extreme bleiben bei +-1.
+    const pan = Math.sign(o.pan) * Math.pow(Math.abs(o.pan), 0.6);
 
     const g = ctx.createGain();
     g.gain.value = Math.max(0, gain);
-    quelle.connect(lp); lp.connect(panner); panner.connect(g);
-    g.connect(ctx.destination);          // trockener Weg
-    if (this.reverb) g.connect(this.reverb);   // Hall-Send (Menge = this.wet)
+
+    if (this.hrtf && typeof ctx.createPanner === 'function') {
+      // Stereo-erhaltendes HRTF: je Kanal ein eigener Panner, leicht versetzt.
+      // (Ein einzelner PannerNode wuerde Stereo auf Mono herunterrechnen!)
+      const breite = stereo ? 0.35 : 0;
+      const splitter = stereo ? ctx.createChannelSplitter(2) : null;
+      if (splitter) lp.connect(splitter);
+      const seiten = stereo ? [-breite, breite] : [0];
+      seiten.forEach((versatz, i) => {
+        const p = ctx.createPanner();
+        p.panningModel = 'HRTF';
+        p.distanceModel = 'linear';
+        const x = clamp(pan + versatz, -1, 1);
+        if (p.positionX) { p.positionX.value = x; p.positionY.value = 0; p.positionZ.value = -0.55; }
+        else p.setPosition(x, 0, -0.55);
+        if (splitter) splitter.connect(p, i);
+        else lp.connect(p);
+        p.connect(g);
+      });
+    } else {
+      const sp = ctx.createStereoPanner();
+      sp.pan.value = clamp(pan, -1, 1);
+      lp.connect(sp); sp.connect(g);
+    }
+
+    const ziel = this.master ?? ctx.destination;
+    g.connect(ziel);
+    // Hall-Send: nah fast trocken (Direktheit = "hautnah"), fern hallig (Tiefe).
+    if (this.reverb) {
+      const send = ctx.createGain();
+      send.gain.value = 0.18 + 0.82 * o.dist01;
+      g.connect(send); send.connect(this.reverb);
+    }
   }
 }
 

@@ -1278,3 +1278,19 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Settings: hall(45), distanzDaempfung(55), raumklang(false); Regler im TON-Reiter.
   Verifiziert: Bus baut (bereit, ctx running), positionale Klaenge fehlerfrei -
   KLANGQUALITAET muss der Autor am Geraet/Kopfhoerer pruefen (headless nicht hoerbar).
+- R109 Audio-Kette v2 (Autor "klingt jetzt mono / audiophil, hautnah dabei"):
+  URSACHE gefunden: (a) Web-Audio-PannerNode (HRTF) mischt Stereo-Quellen
+  spec-gemaess auf MONO - unsere Effekte sind fast alle Stereo-MP3s; (b) im
+  Nahkampf ist Pan~0 (Gegner an Bildmitte) -> alles mittig; (c) Tiefpass
+  dumpfte ab Distanz 0. FIX in audioBus v2: Dual-HRTF-Panner (L/R-Kanal je
+  eigener Panner, +-0.35 versetzt -> Position UND Breite), Pan-Spreizung
+  (|p|^0.6 - kleine Auslenkung hoerbar), Tiefpass-Totzone bis 35% Distanz dann
+  logarithmisch, Hall-Send distanzabhaengig (nah trocken 0.18, fern 1.0),
+  dunklere IR (1.6s, Ein-Pol-LP schliesst zum Ende, 18ms Vorverzoegerung),
+  Master-DynamicsCompressor (-16dB/2.5:1). MESSBAR verifiziert (OfflineAudio-
+  Context-Rendering): Pan +-0.8 -> +-20dB; Nahkampf-Pan 0.15 -> 4.6dB (vorher
+  ~1dB); Stereo-Breite bleibt in beiden Modi erhalten.
+- R109 Sound-Assets analysiert (scripts/soundcheck.mjs, ab jetzt Pflicht bei
+  jeder Lieferung, in CLAUDE.md Abschnitt 13 verankert): alle 42 MP3/verlust-
+  behaftet, Detail in SOUND-INVENTAR.md Abschnitt D. Wunschformat an Autor:
+  WAV 48kHz/24bit als Quelle; kurze Effekte direkt WAV, langes als OGG q8+.

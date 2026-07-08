@@ -71,3 +71,16 @@ und legst sie unter diesen Schlüsseln in assets/sounds/ ab:
 (Weitere Story-Beats - totes Dorf, Lager, Kloster - bekommen denselben Mechanismus,
 sobald die Texte/Zeilen stehen; ich vergebe dann erz_<ort>_<n>-Schlüssel.)
 Der Text dieser Zeilen ist DEINER (Stimme des Autors) - ich vertone/erfinde nichts.
+
+## D) QUALITAETS-ANALYSE (R109, Autor "Sound ist wichtig, hochwertig")
+Pruefung mit `node scripts/soundcheck.mjs` (immer laufen lassen, wenn neue
+Sounds kommen - Pflicht seit R109):
+- Stand jetzt: ALLE 42 Dateien sind MP3 (verlustbehaftet). 41 Stereo, 1 mono
+  (tod_pest1). Mischung aus 44.1 und 48 kHz. Bitraten 128-320 kbit/s.
+- Schwachstellen: die Begegnungs-/Tod-Sounds und musik_krypta liegen nur bei
+  128 kbit/s (hoerbar bei Kopfhoerern); wolf.mp3 nur 24 kHz (dumpf).
+- WUNSCH-LIEFERFORMAT an den Autor: Quellen als WAV 48 kHz / 24 bit. Kurze
+  Effekte (<1-2 s) koennen direkt als WAV ins Spiel (Groesse egal), laengere
+  Atmos/Musik als OGG Vorbis q8+ oder MP3 >= 256 kbit/s.
+- Der Loader unterstuetzt .mp3/.ogg/.wav gleichermassen (Phaser decodiert alles
+  zu PCM); ersetzte Dateien einfach gleich benennen.

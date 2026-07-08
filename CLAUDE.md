@@ -202,3 +202,15 @@ rausschreiben, damit ein Neustart jederzeit gefahrlos ist.
 - Oberweltkarten = WorldScene-Areas 130×85 Kacheln (4160×2720 px, TILE=32).
   Kanten SOLLEN aus `src/data/kartenKanten.ts` kommen - **ist aber noch NICHT
   in die Generierung (areagen.ts) verdrahtet**. Details/Stand: WELTKARTE-PLAN.md.
+
+## 13. Sound-Qualität (seit Runde 109, vom Autor eingefordert)
+
+- Der Autor ist Sound-Fanatiker: Klang ist Spielgefühl. Jede NEUE Sound-Datei
+  wird sofort mit `node scripts/soundcheck.mjs` analysiert (Format, Abtastrate,
+  Kanäle, Bitrate) und das Ergebnis berichtet - inklusive Empfehlung, falls die
+  Qualität nicht reicht (Ziel-Quellformat: WAV 48 kHz / 24 bit).
+- Positionale Effekte laufen durch den AudioBus (Hall/Tiefpass/Panorama,
+  src/gfx/audioBus.ts). Merksatz aus R108: ein einzelner HRTF-PannerNode macht
+  Stereo-Quellen MONO - immer den Dual-Panner-Weg nehmen. Audio-Änderungen mit
+  der Offline-Render-Messung (Kanaltrennung in dB) verifizieren, nicht nach
+  Gefühl.
