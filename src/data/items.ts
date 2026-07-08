@@ -82,15 +82,27 @@ export const GEMS: ReadonlyArray<GemDef> = [
 // Edelstein-Stärke: ri(2,4) + Ebene (Referenz rollGem)
 export const GEM_POWER = { min: 2, max: 4 } as const;
 
-// Elementarpfeile (Runde 44, Autorwunsch): Ist im Bogen ein Edelstein gefasst
-// UND die Bogen-Schule mindestens 'stufe', verschießt er glühende Element-
-// Pfeile. Feuer entzündet (DoT), Eis verlangsamt, Schatten saugt Leben.
+// Elementarpfeile (Runde 44, Autorwunsch): Ist im Bogen ein Edelstein gefasst,
+// verschießt er glühende Element-Pfeile. Feuer entzündet (DoT), Eis verlangsamt,
+// Schatten saugt Leben.
 export const ELEM_PFEIL = {
-  stufe: 3,            // ab Bogen-Stufe 3 wirken gefasste Steine am Bogen
+  // R110 (Autor "gesockelte Steine sollten Schaden UND Effekt geben"): Steine
+  // wirken ab sofort OHNE Schulstufen-Sperre (war 3).
+  stufe: 0,
   brennDauerS: 2.6,    // Feuer: Brenndauer
   brennDpsMult: 0.4,   // Feuer: DoT pro Sekunde = Pfeilschaden * dies
   slowS: 1.8,          // Eis: Verlangsamung
   leech: 2,            // Schatten: Leben je Treffer
+} as const;
+
+// Gefasste Steine an NAHKAMPF-Waffen und dem Stab (R110, Autorwunsch "das gilt
+// für alle Waffen und alle Spezialeffekte"): On-Hit-Wirkung je Element. Etwas
+// zahmer als der Pfeil, weil Nahkampf öfter und mehrere Ziele trifft.
+export const ELEM_WAFFE = {
+  brennDauerS: 2.2,    // Feuer: Brenndauer je Treffer
+  brennDpsMult: 0.35,  // Feuer: DoT pro Sekunde = Trefferschaden * dies
+  slowS: 1.2,          // Eis: Verlangsamung
+  leech: 1,            // Schatten: Leben je Treffer
 } as const;
 
 // Raritätsfarben wie in der Referenz (CSS r0-r3)

@@ -1294,3 +1294,16 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   jeder Lieferung, in CLAUDE.md Abschnitt 13 verankert): alle 42 MP3/verlust-
   behaftet, Detail in SOUND-INVENTAR.md Abschnitt D. Wunschformat an Autor:
   WAV 48kHz/24bit als Quelle; kurze Effekte direkt WAV, langes als OGG q8+.
+- R110 Gesockelte Steine ueberall (Autorwunsch "Steine geben Schaden UND
+  sichtbaren Element-Effekt - bei allen Waffen und allen Spezialeffekten"):
+  (1) Schulstufen-Sperre entfernt: ELEM_PFEIL.stufe 3 -> 0 (Steine wirken
+  sofort, tunebar in items.ts). (2) Nahkampf: Feuer brannte nicht - jetzt
+  steinProc() zentral (Feuer=DoT, Eis=slow, Schatten=Lebensraub, Werte in
+  ELEM_WAFFE, reine Logik in logic/steinEffekte.ts mit Tests). (3) Nahkampf-
+  FAEHIGKEITEN (Rundumschlag, Sturmangriff, Wuchtschlag, Blutdurst,
+  Erschuetterung) geben jetzt Stein-Bonus-Schaden + Element-Wirkung + Element-
+  Farbton auf Welle/Burst. (4) Stab-Bolzen wird elementar (Farbe/Glueh-Flag/
+  On-Hit ueber die bestehende Projektil-Pipeline pr.elem). Pfeil-Faehigkeiten
+  liefen schon alle durch veredelPfeil (R58). Browser-verifiziert: Feueropal
+  -> Gegner brennt (2.2s/5dps), Eis -> slowT 1.2, Pfeil elementar ab Stufe 0,
+  Bolzen traegt Element. 254 Tests gruen.

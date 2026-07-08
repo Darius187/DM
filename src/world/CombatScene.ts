@@ -38,6 +38,7 @@ import { TouchControls, isTouchDevice, type TouchHost } from '../ui/touch';
 import { UIPanels } from '../ui/panels';
 import { rollGear, rollGem } from '../logic/loot';
 import { KILL_DROPS, LEECH_HEAL_PER_POINT, ELEM_PFEIL } from '../data/items';
+import { steinWirkung } from '../logic/steinEffekte';
 import { NOTIZEN } from '../data/texte';
 
 export interface Projectile {
@@ -1389,13 +1390,20 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected staffBolt(ev: AttackEvent, ang: number): void {
     const ms = WEAPON_MOVESETS.stab;
     const bonus = 1 + this.p.schools.zauberei.level * ms.zaubereiBonusJeStufe;
-    const dmg = Math.round(this.rollDamage(ms.dmgMult * ev.dmgMult) * bonus);
+    // R110: gefasster Stein macht die Arkankugel elementar - Farbe/Glühen des
+    // Steins + On-Hit-Wirkung (Brand/Frost/Lebensraub) über die Pfeil-Pipeline.
+    const gem = weaponGem(this.p);
+    const dmg = Math.round(this.rollDamage(ms.dmgMult * ev.dmgMult) * bonus) + (gem ? gem.power : 0);
     this.projectiles.push({
       x: this.px + Math.cos(ang) * 14, y: this.py + Math.sin(ang) * 14,
       vx: Math.cos(ang) * ms.projSpeed, vy: Math.sin(ang) * ms.projSpeed,
-      r: 4, dmg, from: 'player', col: '#b06ae8', magie: true, // glühende Arkankugel mit Licht (R40)
+      r: gem ? 5 : 4, dmg, from: 'player',
+      col: gem ? gem.col : '#b06ae8', // glühende Arkankugel mit Licht (R40)
+      magie: !gem || gem.elem !== 'feuer',
+      fire: gem?.elem === 'feuer',
+      elem: gem?.elem, gemPower: gem?.power,
     });
-    this.fx.burst(this.px + Math.cos(ang) * 18, this.py + Math.sin(ang) * 18, 0xb06ae8, 4, 80);
+    this.fx.burst(this.px + Math.cos(ang) * 18, this.py + Math.sin(ang) * 18, this.steinFarbe() ?? 0xb06ae8, 4, 80);
     this.sfx.play('schatten_fluestern', 0.8);
     this.gainSchoolUse('zauberei');
   }
@@ -1451,18 +1459,22 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Rundumschlag (Axt-Finisher und Nahkampf-Fähigkeit Stufe 3)
   protected spinAttack(dmgMult: number, radius: number = ABILITY_FX.rundumschlag.radius): void {
     const st = this.swingStyle();
+    const gem = weaponGem(this.p);
     // Voller 360°-Wirbel + ausbreitender Stoßring, damit der Rundumschlag
-    // sichtbar "räumt" (Autorwunsch R44: besser visualisiert)
+    // sichtbar "räumt" (Autorwunsch R44: besser visualisiert). R110: mit
+    // gefasstem Stein leuchtet der Ring im Element-Farbton.
     this.fx.addSwing(this.px, this.py, this.pdir, { fin: true, col: st.col, w: st.w + 2, glow: st.glow, arc: 6.28, radius: radius - 12 });
-    this.fx.welle(this.px, this.py, radius + 10, 0xe8dcc0);
-    this.fx.burst(this.px, this.py, 0xd8cfb8, 14, 200);
+    this.fx.welle(this.px, this.py, radius + 10, this.steinFarbe() ?? 0xe8dcc0);
+    this.fx.burst(this.px, this.py, this.steinFarbe() ?? 0xd8cfb8, 14, 200);
     this.playSwingSound('axt', true);
     let hit = false;
     for (const e of [...this.enemies]) {
       const d = Math.hypot(e.x - this.px, e.y - this.py);
       if (d < radius + e.r && this.sichtFreiMelee(e.x, e.y)) {
         const a = Math.atan2(e.y - this.py, e.x - this.px);
-        this.damageEnemy(e, this.rollDamage(dmgMult), 0, 0);
+        const dmg = this.rollDamage(dmgMult) + (gem ? gem.power : 0);
+        this.damageEnemy(e, dmg, 0, 0, gem?.col);
+        this.steinProc(e, dmg);   // R110: Element-Wirkung auch beim Rundumschlag
         // Rundumschlag/Axt schleudert alle Getroffenen nach außen (Runde 44)
         e.stossWeg(Math.cos(a) * KNOCKBACK.axt, Math.sin(a) * KNOCKBACK.axt, KNOCKBACK.axtStunS);
         hit = true;
@@ -1520,15 +1532,32 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (!this.sichtFreiMelee(e.x, e.y)) continue;   // R100e: keine Treffer durch Waende/Palisaden
       const dmg = this.rollDamage(dmgMult) + (gem ? gem.power : 0);
       this.damageEnemy(e, dmg, Math.cos(ang) * knockback, Math.sin(ang) * knockback, gem?.col);
-      if (gem) {
-        this.fx.burst(e.x, e.y, parseInt(gem.col.slice(1), 16), 6, 130);
-        if (gem.elem === 'eis') e.slowT = 1.2;
-        if (gem.elem === 'schatten') this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + 1);
-      }
+      this.steinProc(e, dmg);   // R110: Feuer brennt jetzt auch im Nahkampf
       if (breaksPosture && !e.boss) e.stun = Math.max(e.stun, HEAVY_ATTACK.postureStunS);
       hitAny = true;
     }
     return hitAny;
+  }
+
+  // R110 (Autor "Steine wirken bei ALLEN Waffen und ALLEN Spezialeffekten"):
+  // On-Hit-Wirkung des gefassten Steins fuer Nahkampf-/Stab-Treffer - Feuer
+  // entzuendet (DoT), Eis verlangsamt, Schatten heilt. Plus Element-Funken am
+  // Ziel, damit man den Stein SIEHT. Werte in ELEM_WAFFE (src/data/items.ts).
+  protected steinProc(e: Enemy, treffer: number): void {
+    const gem = weaponGem(this.p);
+    if (!gem || e.team === 'spieler') return;
+    const w = steinWirkung(gem.elem, treffer);
+    if (w.brennT > 0) { e.brennT = Math.max(e.brennT, w.brennT); e.brennDps = Math.max(e.brennDps, w.brennDps); }
+    if (w.slowS > 0) e.slowT = Math.max(e.slowT, w.slowS);
+    if (w.leech > 0) this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + w.leech);
+    this.fx.burst(e.x, e.y, parseInt(gem.col.slice(1), 16), 6, 130);
+  }
+
+  // Element-Farbton des gefassten Steins fuer Effekt-Grafiken (Wellen/Bursts der
+  // Faehigkeiten) - null, wenn kein Stein gefasst ist.
+  protected steinFarbe(): number | null {
+    const gem = weaponGem(this.p);
+    return gem ? parseInt(gem.col.slice(1), 16) : null;
   }
 
   damageEnemy(e: Enemy, dmg: number, kx = 0, ky = 0, col?: string | null, melee = true): void {
@@ -2342,7 +2371,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
             if (hitIds.has(e.id)) continue;
             if (Math.hypot(e.x - this.px, e.y - this.py) < e.r + PLAYER.radius + 8) {
               hitIds.add(e.id);
-              this.damageEnemy(e, this.rollDamage(fx.dmgMult), Math.cos(ang) * 14, Math.sin(ang) * 14);
+              const gem = weaponGem(this.p);
+              const dmg = this.rollDamage(fx.dmgMult) + (gem ? gem.power : 0);
+              this.damageEnemy(e, dmg, Math.cos(ang) * 14, Math.sin(ang) * 14, gem?.col);
+              this.steinProc(e, dmg);   // R110: Element-Wirkung auch beim Sturmangriff
             }
           }
         }
@@ -2370,7 +2402,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         }
         if (!ziel) { this.logMsg('Kein Ziel für den Wuchtschlag', 'bad'); return; }
         this.p.abilityCds[id] = fx.cd;
-        this.damageEnemy(ziel, this.rollDamage(fx.dmgMult), 0, 0, '#f0d090');
+        const wGem = weaponGem(this.p);
+        const wDmg = this.rollDamage(fx.dmgMult) + (wGem ? wGem.power : 0);
+        this.damageEnemy(ziel, wDmg, 0, 0, wGem?.col ?? '#f0d090');
+        this.steinProc(ziel, wDmg);   // R110: Element-Wirkung auch beim Wuchtschlag
         if (ziel.hp > 0) ziel.stossWeg(Math.cos(ang) * fx.knockback, Math.sin(ang) * fx.knockback, fx.stunS);
         this.fx.float(ziel.x, ziel.y - ziel.r - 20, 'WUCHT', '#f0d090');
         this.applyHitstop(HITSTOP_MS.finisher);
@@ -2390,7 +2425,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         let treffer = 0;
         for (const e of [...this.enemies]) {
           if (Math.hypot(e.x - this.px, e.y - this.py) < fx.radius + e.r) {
-            this.damageEnemy(e, this.rollDamage(fx.dmgMult), 0, 0, '#e85a6a');
+            const bGem = weaponGem(this.p);
+            const bDmg = this.rollDamage(fx.dmgMult) + (bGem ? bGem.power : 0);
+            this.damageEnemy(e, bDmg, 0, 0, '#e85a6a');
+            this.steinProc(e, bDmg);   // R110: Element-Wirkung auch beim Blutdurst
             treffer++;
           }
         }
@@ -2441,7 +2479,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
           const d = Math.hypot(e.x - this.px, e.y - this.py);
           if (d < fx.radius + e.r) {
             const a = Math.atan2(e.y - this.py, e.x - this.px);
-            this.damageEnemy(e, this.rollDamage(fx.dmgMult), 0, 0, '#e8d0a0');
+            const eGem = weaponGem(this.p);
+            const eDmg = this.rollDamage(fx.dmgMult) + (eGem ? eGem.power : 0);
+            this.damageEnemy(e, eDmg, 0, 0, eGem?.col ?? '#e8d0a0');
+            this.steinProc(e, eDmg);   // R110: Element-Wirkung auch bei der Erschütterung
             if (e.hp > 0 && !e.boss) e.stossWeg(Math.cos(a) * fx.knockback, Math.sin(a) * fx.knockback, fx.stunS);
             hit = true;
           }
