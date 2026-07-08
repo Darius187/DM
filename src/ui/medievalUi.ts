@@ -4,11 +4,13 @@
 // Bewusst OHNE Framework - nur document.createElement, damit es in jeder Szene
 // nutzbar ist und in der Alpha leicht umgebaut werden kann.
 import './medieval-ui.css';
+import { wendeMvTexturenAn } from './mvTexturen';
 
 // Wurzel-Overlay ueber dem Spiel-Canvas (einmalig, Kinder fangen selbst Klicks).
 export function mvWurzel(): HTMLDivElement {
   const vorhandene = document.getElementById('mv-root');
   if (vorhandene) return vorhandene as HTMLDivElement;
+  wendeMvTexturenAn();   // R106b: Codex-Texturen (falls eingetragen) aktivieren
   const el = document.createElement('div');
   el.id = 'mv-root';
   el.className = 'mv-root';

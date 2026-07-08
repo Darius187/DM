@@ -19,6 +19,12 @@
   --mv-gruen: #4e8b3b;
   --mv-gelb: #b8872c;
   --mv-schrift: Georgia, 'Times New Roman', serif;
+  /* R106b Codex-Andockstellen: Bild-Texturen. Standard 'none' = die CSS-Gradients
+     von unten bleiben sichtbar. Codex setzt sie über src/ui/mvTexturen.ts auf
+     echte Bilder (url(...)); sie werden per multiply über die Gradients gelegt. */
+  --mv-img-parchment: none;   /* Pergamentfläche der Panels */
+  --mv-img-wood: none;        /* Holz der Kopfzeile/Reiter */
+  --mv-img-button: none;      /* Knopf-Oberfläche */
 }
 
 /* Wurzel-Overlay ueber dem Canvas: selbst durchlaessig, Panels fangen Klicks. */
@@ -38,10 +44,13 @@
   pointer-events: auto;
   color: var(--mv-tinte);
   background:
+    var(--mv-img-parchment),
     radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.13), transparent 24%),
     radial-gradient(circle at 82% 84%, rgba(60, 30, 10, 0.20), transparent 30%),
     radial-gradient(circle at 40% 60%, rgba(120, 80, 30, 0.10), transparent 40%),
     linear-gradient(180deg, var(--mv-pergament-hell), var(--mv-pergament));
+  background-size: cover, auto, auto, auto, auto;
+  background-blend-mode: multiply, normal, normal, normal, normal;
   border: 3px solid var(--mv-holz);
   outline: 1px solid var(--mv-bronze);
   border-radius: 6px;
@@ -79,7 +88,9 @@
   gap: 8px;
   padding: 8px 12px;
   cursor: grab;
-  background: linear-gradient(180deg, var(--mv-holz-hell), var(--mv-holz));
+  background: var(--mv-img-wood), linear-gradient(180deg, var(--mv-holz-hell), var(--mv-holz));
+  background-size: cover, auto;
+  background-blend-mode: multiply, normal;
   border-bottom: 2px solid var(--mv-bronze);
   border-radius: 3px 3px 0 0;
   color: var(--mv-gold-hell);
@@ -108,7 +119,9 @@
 .mv-btn {
   display: inline-block;
   padding: 7px 14px;
-  background: linear-gradient(180deg, #d8bd82, #9e7440);
+  background: var(--mv-img-button), linear-gradient(180deg, #d8bd82, #9e7440);
+  background-size: cover, auto;
+  background-blend-mode: multiply, normal;
   border: 1px solid #5b3617;
   border-radius: 4px;
   box-shadow:
