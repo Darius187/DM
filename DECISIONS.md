@@ -1231,3 +1231,11 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Layout zurueck. Reine Logik (ID-Vergabe/Serialisierung/Bericht) in dorfplan.ts,
   7 Vitest-Tests. Baum+/Baum- sind vorerst MARKER (kein Live-Terrain-Eingriff) -
   echtes Baeume-Setzen/Entfernen backe ich spaeter aus dem Bericht in areagen.
+- R105b Dorf-Editor Ziehen/Groesse FIX (Autor "kann Felder nicht in der Groesse
+  ziehen und vorhandene nicht verschieben"): Ursache war die Zwei-Kamera-Falle -
+  Phasers Objekt-Drag traf die Welt-Boxen (uiCam.ignore) nicht zuverlaessig. Jetzt
+  manuelles Ziehen ueber den Welt-Punkt der Haupt-Kamera (dorfEditPointer/Move/Up,
+  wie im RTS): Box unter dem Zeiger waehlen + verschieben (kachelgerastet); weisser
+  Eck-Griff unten-rechts an der gewaehlten Box = Groesse ziehen (Greifzone 30 px,
+  sichtbar 18 px). Mittelmaus bleibt Kamera. Im Browser per echtem Maus-Drag
+  verifiziert (verschieben + Groesse).

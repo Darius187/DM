@@ -13,6 +13,10 @@ import {
   ladeDorfplan, speichereDorfplan, verwerfeDorfplan,
   type DorfBox, type DorfTyp,
 } from '../data/dorfplan';
+// R105b: Eck-Griff der gewaehlten Box - sichtbare Groesse und (grosszuegigere)
+// Greifzone (Welt-Pixel) fuer das Groesse-Ziehen.
+const DORF_GRIFF = 18;        // sichtbares Quadrat
+const DORF_GRIFF_ZONE = 30;   // fassbarer Radius um die untere-rechte Ecke
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
@@ -386,8 +390,10 @@ export class WorldScene extends CombatScene {
     this.panels.getKontakteZeilen = () => this.kontakteZeilen();
     this.panels.getKarte = () => this.getKarteInfo();
     this.panels.onRtsModus = () => { this.panels.closeAll(); this.toggleRtsModus(); };   // R87: HEER-Tab -> Schlachtfeld-Steuerung
-    // R105: Dorf-Editor - Karten-Klick platziert Marker / hebt Auswahl auf.
+    // R105: Dorf-Editor - Karten-Klick platziert/waehlt, Ziehen verschiebt/skaliert.
     this.input.on('pointerdown', this.dorfEditPointer);
+    this.input.on('pointermove', this.dorfEditMove);
+    this.input.on('pointerup', this.dorfEditUp);
     // R94: Palisade-Ziehen (Maus bewegen/loslassen)
     this.input.on('pointermove', (ptr: Phaser.Input.Pointer) => { if (this.palisadeZug) this.palisadeDragMove(ptr); });
     this.input.on('pointerup', (ptr: Phaser.Input.Pointer) => { if (this.palisadeZug) this.palisadeDragEnd(ptr); });
@@ -1733,6 +1739,8 @@ export class WorldScene extends CombatScene {
   private dorfSel: string | null = null;       // ausgewaehlte Box-ID
   private dorfToolbar?: Phaser.GameObjects.Container;
   private dorfDom?: HTMLDivElement;            // Bericht-Overlay (DOM, geraeteunabhaengig kopierbar)
+  // Manuelles Ziehen/Groesse-Aendern (Welt-Punkt der Haupt-Kamera).
+  private dorfDrag: { modus: 'move' | 'resize'; id: string; wx0: number; wy0: number; bx0: number; by0: number; bw0: number; bh0: number } | null = null;
 
   private zeichneDorfplan(a: AreaData): void {
     this.dorfplanLayer?.destroy();
@@ -1747,12 +1755,15 @@ export class WorldScene extends CombatScene {
     this.dorfRender();
   }
 
-  // Baut das Welt-Overlay aus this.dorfBoxen neu auf. Im Editor-Modus sind die
-  // Boxen anklick-/ziehbar (Schirmkoordinaten-Delta), sonst reine Anzeige.
+  // Baut das Welt-Overlay aus this.dorfBoxen neu auf. Reine Anzeige - das Ziehen/
+  // Groesse-Aendern laeuft NICHT ueber Phasers Objekt-Drag (bei zwei Kameras
+  // unzuverlaessig), sondern manuell ueber den Welt-Punkt der Haupt-Kamera
+  // (dorfEditPointer/Move/Up), genau wie im RTS-Modus.
   private dorfRender(): void {
     this.dorfplanLayer?.destroy();
     const c = this.add.container(0, 0).setDepth(5000);
     this.dorfplanLayer = c;
+    const ignorieren: Phaser.GameObjects.GameObject[] = [];
     for (const b of this.dorfBoxen) {
       const px = b.x * TILE, py = b.y * TILE, pw = b.breite * TILE, ph = b.hoehe * TILE;
       const farbe = DORF_FARBE[b.typ];
@@ -1763,34 +1774,31 @@ export class WorldScene extends CombatScene {
       const txt = this.add.text(px + pw / 2, py + ph / 2, beschr, {
         fontFamily: 'serif', fontSize: '13px', color: '#ffffff', stroke: '#000000', strokeThickness: 3, align: 'center',
       }).setOrigin(0.5);
-      c.add(rect); c.add(txt);
-      this.uiCam?.ignore([rect, txt]);   // gehoert der Welt-Kamera, nicht der UI
-      // Nur im AUSWAHL-Modus ziehbar; im Platzier-Modus gehoert der Klick der Karte.
-      if (this.dorfEdit && !this.dorfPlaceTyp) this.dorfMacheZiehbar(rect, b);
+      c.add(rect); c.add(txt); ignorieren.push(rect, txt);
+      // Eck-Griff (unten-rechts) fuer die gewaehlte Box: sichtbares Groesse-Ziehen.
+      if (gewaehlt) {
+        const gr = DORF_GRIFF;
+        const griff = this.add.rectangle(px + pw - gr / 2, py + ph - gr / 2, gr, gr, 0xffffff, 0.9).setStrokeStyle(2, 0x14100a);
+        c.add(griff); ignorieren.push(griff);
+      }
     }
+    this.uiCam?.ignore(ignorieren);   // gehoert der Welt-Kamera, nicht der UI
   }
 
-  // Eine Box interaktiv machen: Klick waehlt, Ziehen verschiebt (kachelgerastet).
-  // Ziehen ueber Schirmkoordinaten-Delta / Kamera-Zoom (UI-Regel R11/R30, kein
-  // dragX-Aufschaukeln in Containern).
-  private dorfMacheZiehbar(rect: Phaser.GameObjects.Rectangle, b: DorfBox): void {
-    rect.setInteractive({ draggable: true, useHandCursor: true });
-    let start: { x: number; y: number } | null = null;
-    let bx0 = 0, by0 = 0;
-    rect.on('dragstart', (p: Phaser.Input.Pointer) => {
-      start = { x: p.x, y: p.y }; bx0 = b.x; by0 = b.y;
-      this.dorfSel = b.id; this.dorfPlaceTyp = null; this.dorfRender(); this.baueDorfToolbar();
-    });
-    rect.on('drag', (p: Phaser.Input.Pointer) => {
-      if (!start) return;
-      const zm = this.cameras.main.zoom;
-      const dx = Math.round((p.x - start.x) / zm / TILE);
-      const dy = Math.round((p.y - start.y) / zm / TILE);
-      b.x = Phaser.Math.Clamp(bx0 + dx, 0, 128 - b.breite);
-      b.y = Phaser.Math.Clamp(by0 + dy, 0, 128 - b.hoehe);
-      this.dorfRender();
-    });
-    rect.on('dragend', () => { start = null; speichereDorfplan(this.dorfBoxen); this.baueDorfToolbar(); });
+  // Liefert die Box unter dem Welt-Punkt (oberste zuletzt gezeichnete zuerst) und
+  // ob der Punkt auf ihrem Eck-Griff (unten-rechts) sitzt.
+  private dorfBoxUnter(wx: number, wy: number): { box: DorfBox | null; amGriff: boolean } {
+    const sel = this.dorfBoxen.find((b) => b.id === this.dorfSel);
+    // zuerst der Griff der gewaehlten Box (auch knapp ausserhalb greifbar)
+    if (sel) {
+      const ex = (sel.x + sel.breite) * TILE, ey = (sel.y + sel.hoehe) * TILE;
+      if (Math.abs(wx - ex) <= DORF_GRIFF_ZONE && Math.abs(wy - ey) <= DORF_GRIFF_ZONE) return { box: sel, amGriff: true };
+    }
+    for (let i = this.dorfBoxen.length - 1; i >= 0; i--) {
+      const b = this.dorfBoxen[i];
+      if (wx >= b.x * TILE && wx <= (b.x + b.breite) * TILE && wy >= b.y * TILE && wy <= (b.y + b.hoehe) * TILE) return { box: b, amGriff: false };
+    }
+    return { box: null, amGriff: false };
   }
 
   // Editor umschalten (nur in 'stadt'). erzwungenAus=true schliesst nur.
@@ -1802,7 +1810,7 @@ export class WorldScene extends CombatScene {
     if (neu) {
       this.setzeFreiKamera(true);   // frei schwenken (WASD/Mittelmaus), Held haelt still
       this.baueDorfToolbar();
-      this.logMsg('Dorf-Editor AN: Box ziehen zum Verschieben, Baukasten setzt neue Marker. [P] beendet.', 'gold');
+      this.logMsg('Dorf-Editor AN: Box ziehen = verschieben, weißer Eck-Griff = Größe. Baukasten setzt neue Marker. [P] beendet.', 'gold');
     } else {
       this.beendeDorfEditor();
     }
@@ -1975,14 +1983,45 @@ export class WorldScene extends CombatScene {
   private dorfEditPointer = (ptr: Phaser.Input.Pointer): void => {
     if (!this.dorfEdit) return;   // im Editor ist der Kampf gesperrt -> auch auf Touch nutzbar
     if (this.zeigerAufPanel(this.dorfToolbar ?? null, ptr)) return;   // Leiste = kein Weltklick
+    if (ptr.middleButtonDown()) return;   // Mittelmaus = Kamera schwenken
     if (ptr.rightButtonDown()) { if (this.dorfPlaceTyp) { this.dorfPlaceTyp = null; this.baueDorfToolbar(); this.dorfRender(); } return; }
     if (ptr.button !== 0) return;
     const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
     if (this.dorfPlaceTyp) { this.dorfEditorKlick(wp.x, wp.y); return; }
-    // Auswahl-Modus: nur ins Leere geklickt -> Auswahl aufheben (Box-Klick macht der Rect-Handler).
-    const tx = wp.x / TILE, ty = wp.y / TILE;
-    const treffer = this.dorfBoxen.some((b) => tx >= b.x && tx <= b.x + b.breite && ty >= b.y && ty <= b.y + b.hoehe);
-    if (!treffer && this.dorfSel) { this.dorfSel = null; this.dorfRender(); this.baueDorfToolbar(); }
+    // Auswahl-Modus: Box unter dem Zeiger -> waehlen und Ziehen (Griff = Groesse) starten.
+    const { box, amGriff } = this.dorfBoxUnter(wp.x, wp.y);
+    if (box) {
+      this.dorfSel = box.id;
+      this.dorfDrag = { modus: amGriff ? 'resize' : 'move', id: box.id, wx0: wp.x, wy0: wp.y, bx0: box.x, by0: box.y, bw0: box.breite, bh0: box.hoehe };
+      this.dorfRender(); this.baueDorfToolbar();
+    } else if (this.dorfSel) {
+      this.dorfSel = null; this.dorfRender(); this.baueDorfToolbar();
+    }
+  };
+
+  // Ziehen (verschieben) oder Groesse aendern - kachelgerastet, in die Karte geklemmt.
+  private dorfEditMove = (ptr: Phaser.Input.Pointer): void => {
+    if (!this.dorfEdit || !this.dorfDrag || !ptr.isDown) return;
+    const d = this.dorfDrag;
+    const b = this.dorfBoxen.find((x) => x.id === d.id);
+    if (!b) { this.dorfDrag = null; return; }
+    const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
+    const dtx = Math.round((wp.x - d.wx0) / TILE), dty = Math.round((wp.y - d.wy0) / TILE);
+    if (d.modus === 'move') {
+      b.x = Phaser.Math.Clamp(d.bx0 + dtx, 0, 128 - b.breite);
+      b.y = Phaser.Math.Clamp(d.by0 + dty, 0, 128 - b.hoehe);
+    } else {
+      b.breite = Phaser.Math.Clamp(d.bw0 + dtx, 1, 128 - b.x);
+      b.hoehe = Phaser.Math.Clamp(d.bh0 + dty, 1, 128 - b.y);
+    }
+    this.dorfRender();
+  };
+
+  private dorfEditUp = (): void => {
+    if (!this.dorfDrag) return;
+    this.dorfDrag = null;
+    speichereDorfplan(this.dorfBoxen);
+    this.baueDorfToolbar();
   };
 
   // Den kampffreien Angst-Prolog (Ebene 0) starten: die WorldScene legt sich
