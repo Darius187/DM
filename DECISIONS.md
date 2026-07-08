@@ -1251,3 +1251,17 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   das DOM-Overlay ab) - die echte RTS-Leiste zieht ERST NACH Autor-Abnahme um
   (Alpha: bewusst kein Umbau der laufenden Spiel-UI in diesem Schritt).
   Ausdruecklich NICHT pixelgenau zum Mockup, sondern wiederverwendbarer Stil.
+- R107 Einstellungen kategorisiert + Leistungsregler (Autorwunsch "unterteile
+  wie ueblich: Grafik/Video/Sound/Tastaturbelegung + Performance-Regler fuer
+  verschiedene Systeme"): SettingsScene neu mit REITERN ANZEIGE / GRAFIK / TON /
+  STEUERUNG / ALLGEMEIN (Inhalt je Reiter in eigenem Container, Wechsel baut neu).
+  NEU: Leistungs-Voreinstellung Niedrig/Mittel/Hoch (settings.wendeGrafikVor-
+  einstellung, GRAFIK_PRESETS) buendelt die teuren Hebel: bloom, schatten (aussen),
+  licht.dungeonNeu (Raycaster), licht.schattenFackeln, wasserEffekte, blut,
+  wackeln, grusel. Handverstellung setzt grafikStufe=3 "Eigen". Neue Felder in
+  settings.ts: fpsAnzeige, wasserEffekte, grafikStufe. Verdrahtung in WorldScene:
+  wendeGrafikAn() (Wasser-Shader setVisible je wasserEffekte, sofort beim
+  Kartenaufbau + beim Zurueck aus den Einstellungen); FPS-Anzeige liest fpsAnzeige
+  jeden Frame (kurze "FPS n"-Zeile, Dev-Kasten weiter ausfuehrlich). Vollbild-
+  Schalter (scale.toggleFullscreen). FPS-LIMIT bewusst NICHT eingebaut (im
+  Browser-RAF nicht ehrlich kappbar -> waere Placebo). Presets per Vitest getestet.

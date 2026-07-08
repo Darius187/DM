@@ -27,6 +27,10 @@ export interface Settings {
   // Tastenleiste frei belegbar (Runde 26, "wie bei WoW"): Slot -> Aktion
   tasten: { t1: string; t2: string; t3: string; t4: string; t5: string; t6: string; t9: string; t0: string; tr: string; tt: string };
   vorlesen: boolean;      // Dialogtexte per Sprachausgabe vorlesen
+  // R107 Leistung/Video (Autorwunsch "kategorisiert + Performance-Regler"):
+  fpsAnzeige: boolean;    // kleine FPS-Anzeige im Spiel (Leistung prüfen)
+  wasserEffekte: boolean; // prozeduraler Wasser-Shader (aus = flaches Wasser, spart GPU)
+  grafikStufe: number;    // aktive Voreinstellung: 0 Niedrig, 1 Mittel, 2 Hoch, 3 Eigen
   // UI-Versatz (im Entwicklungskasten verschiebbar, Runde 11)
   ui: { hotbar: { x: number; y: number }; mausleiste: { x: number; y: number }; dialog: { x: number; y: number }; log: { x: number; y: number }; orbHp: { x: number; y: number }; orbMp: { x: number; y: number }; fenster: { x: number; y: number }; questTracker: { x: number; y: number } };
   // Quest-Verfolger auf dem Hauptbildschirm (Runde 52): an/aus, frei verschiebbar.
@@ -113,6 +117,9 @@ export const DEF_SETTINGS: Settings = {
   maus: { m1: 'angriff', m2: 'block', m3: 'leer', m4: 'pot', m5: 'leer' },
   tasten: { t1: 'leer', t2: 'leer', t3: 'leer', t4: 'leer', t5: 'leer', t6: 'leer', t9: 'leer', t0: 'leer', tr: 'waffe1', tt: 'waffe2' },
   vorlesen: false,
+  fpsAnzeige: false,
+  wasserEffekte: true,
+  grafikStufe: 3, // "Eigen" bis der Spieler eine Voreinstellung wählt
   ui: { hotbar: { x: 0, y: 0 }, mausleiste: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 }, questTracker: { x: 0, y: 0 } },
   questTrackerAn: true,
   hudStil: 0,
@@ -232,6 +239,36 @@ export function resetSettings(): void {
   current = structuredClone(DEF_SETTINGS);
   saveSettings();
 }
+
+// R107 Leistungs-Voreinstellungen: setzt die teuren Grafik-Hebel in einem Rutsch
+// (fuer schwache bis starke Systeme). "Eigen" (3) bleibt, sobald man von Hand
+// etwas aendert. Reine Logik auf dem uebergebenen Objekt (testbar, ohne Szene).
+export type GrafikStufe = 0 | 1 | 2;   // 0 Niedrig, 1 Mittel, 2 Hoch
+
+export function wendeGrafikVoreinstellung(s: Settings, stufe: GrafikStufe): void {
+  const P = GRAFIK_PRESETS[stufe];
+  s.bloom = P.bloom;
+  s.schatten = P.schatten;
+  s.grusel = P.grusel;
+  s.blood = P.blood;
+  s.shake = P.shake;
+  s.wasserEffekte = P.wasserEffekte;
+  s.licht.dungeonNeu = P.dungeonNeu;
+  s.licht.schattenFackeln = P.schattenFackeln;
+  s.grafikStufe = stufe;
+}
+
+export const GRAFIK_PRESETS: Record<GrafikStufe, {
+  bloom: number; schatten: number; grusel: number; blood: boolean; shake: boolean;
+  wasserEffekte: boolean; dungeonNeu: boolean; schattenFackeln: number;
+}> = {
+  // Niedrig: schwache Systeme / Handy - Effekte aus, flaches Wasser, keine Raycast-Schatten
+  0: { bloom: 0, schatten: 0, grusel: 40, blood: false, shake: false, wasserEffekte: false, dungeonNeu: false, schattenFackeln: 0 },
+  // Mittel: solide Mittelklasse - etwas Schatten, Wasser an, keine teuren Raycast-Fackeln
+  1: { bloom: 0, schatten: 45, grusel: 70, blood: true, shake: false, wasserEffekte: true, dungeonNeu: false, schattenFackeln: 30 },
+  // Hoch: starke Systeme - volle Atmosphäre
+  2: { bloom: 30, schatten: 70, grusel: 100, blood: true, shake: true, wasserEffekte: true, dungeonNeu: true, schattenFackeln: 100 },
+};
 
 export function keyLabel(k: string): string {
   if (k === ' ') return 'LEERTASTE';

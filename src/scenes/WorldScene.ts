@@ -4400,15 +4400,24 @@ export class WorldScene extends CombatScene {
   // MESSEN-Schaltern (Wasser/Upload aus) lässt sich im ECHTEN Browser per A/B
   // sehen, was die Bildrate kostet - im Headless ist die FPS nicht aussagekräftig.
   private updatePerfAnzeige(): void {
-    if (!this.perfAn) { this.perfText?.setVisible(false); return; }
+    // R107: FPS-Anzeige kommt aus den Einstellungen ODER aus dem Dev-Kasten.
+    const einfach = getSettings().fpsAnzeige;
+    if (!this.perfAn && !einfach) { this.perfText?.setVisible(false); return; }
     if (!this.perfText) {
       this.perfText = this.add.text(8, 8, '', { fontFamily: 'monospace', fontSize: '13px', color: '#9bff9b', backgroundColor: 'rgba(0,0,0,0.6)', padding: { x: 6, y: 4 } })
         .setScrollFactor(0).setDepth(99999);
     }
     const fps = Math.round(this.game.loop.actualFps);
-    this.perfText.setVisible(true).setText(
-      `FPS ${fps}  |  dorfSim-Render ${this.perfTickMs.toFixed(1)} ms  |  Upload ${this.perfRefreshMs.toFixed(1)} ms  |  Wasser ${this.wasser2Shader?.visible ? 'AN' : 'aus'}`,
-    );
+    // Dev-Kasten: ausfuehrliche Messung; sonst nur die schlichte FPS-Zahl.
+    this.perfText.setVisible(true).setText(this.perfAn
+      ? `FPS ${fps}  |  dorfSim-Render ${this.perfTickMs.toFixed(1)} ms  |  Upload ${this.perfRefreshMs.toFixed(1)} ms  |  Wasser ${this.wasser2Shader?.visible ? 'AN' : 'aus'}`
+      : `FPS ${fps}`);
+  }
+
+  // R107: Grafik-Einstellungen live anwenden (Wasser-Shader, FPS-Anzeige). Wird
+  // beim Kartenaufbau und beim Zurueckkehren aus den Einstellungen gerufen.
+  wendeGrafikAn(): void {
+    this.wasser2Shader?.setVisible(getSettings().wasserEffekte);
   }
 
   private updateFreiKamera(dt: number): void {
@@ -4674,6 +4683,7 @@ export class WorldScene extends CombatScene {
     this.wasserBahnMul = a.wasserLauf.geo.bahnen.map(() => 1);
     this.wasserSeeMul = a.wasserLauf.geo.seen.map(() => ({ rx: 1, ry: 1 }));
     this.wendeWasserGeometrieAn();
+    this.wendeGrafikAn();   // R107: Wasser-Effekte-Einstellung sofort beachten
   }
 
   // Baut die Geometrie mit den Live-Reglern (je Bach/Fluss/See) und lädt sie in
