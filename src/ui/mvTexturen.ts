@@ -12,9 +12,9 @@
 //   Fertig - Vite bündelt das Bild automatisch, es erscheint im Menü.
 
 // --- Import-Slots (auskommentiert lassen, bis das Bild existiert) -------------
-// import parchment from '../../assets/ui/parchment.png';
-// import wood from '../../assets/ui/wood.png';
-// import button from '../../assets/ui/button.png';
+import parchment from '../../assets/ui/parchment.png';
+import wood from '../../assets/ui/wood.png';
+import button from '../../assets/ui/button.png';
 
 interface MvTexturen {
   parchment?: string;   // Pergamentfläche der Panels        -> --mv-img-parchment
@@ -24,9 +24,9 @@ interface MvTexturen {
 
 // Codex trägt hier die importierten Bilder ein (Wert = import-Variable):
 const TEXTUREN: MvTexturen = {
-  // parchment,
-  // wood,
-  // button,
+  parchment,
+  wood,
+  button,
 };
 
 // Schreibt die vorhandenen Texturen in die CSS-Variablen (nur was gesetzt ist).
