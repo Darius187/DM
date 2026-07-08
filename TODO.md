@@ -119,3 +119,6 @@
   Sarkophag oeffnet sich; Blutgang-Einfaerbung vor dem Boss) - Marker liegen
   bereits als special-Eintraege im Level. Dazu: eigene Sprites fuer
   Sarkophag/Grabplatte/Waffenstaender statt der Annaeherungs-Kacheln.
+- [ ] R106: RTS-Leiste (BANNER) auf das Mittelalter-UI-System (medievalUi.ts)
+      umziehen, sobald der Autor die MENUE-PROBE abgenommen hat. Danach: Bau-
+      Popup, Tooltips, ggf. Chronik. Echte Icons (gebackene Sprites) statt Emoji.

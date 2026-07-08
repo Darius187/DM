@@ -1239,3 +1239,15 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Eck-Griff unten-rechts an der gewaehlten Box = Groesse ziehen (Greifzone 30 px,
   sichtbar 18 px). Mittelmaus bleibt Kamera. Im Browser per echtem Maus-Drag
   verifiziert (verschieben + Groesse).
+- R106 Mittelalter-UI-System (Autorauftrag, Mockup "Auswahl/Banner" im Stil
+  1300/1400): NEUE UI-Schicht als DOM/CSS-Overlay ueber dem Canvas (#game),
+  KEIN grosses Menue-Bild - Pergament/Holz/Bronze kommen komplett aus CSS
+  (Gradients/Pseudoelemente), Farben als CSS-Variablen (--mv-*) fuer spaeteres
+  Umstimmen in einer Datei. Bausteine in src/ui/medievalUi.ts: mvPanel (ziehbar,
+  UI-Regel 11), mvKnopf, mvTabs, mvBalken, mvStatReihe, mvTrenner, mvKarte
+  (waehlbar), mvSlots, mvAbzeichen, mvSchalter. Styles: src/ui/medieval-ui.css.
+  Erst ISOLIERTE interaktive Vorschau (TitleScene "MENUE-PROBE (UI)" -> UIProbe-
+  Szene, Demo-Daten wie im Mockup, Ereignis-Log zeigt echte Klicks, ESC raeumt
+  das DOM-Overlay ab) - die echte RTS-Leiste zieht ERST NACH Autor-Abnahme um
+  (Alpha: bewusst kein Umbau der laufenden Spiel-UI in diesem Schritt).
+  Ausdruecklich NICHT pixelgenau zum Mockup, sondern wiederverwendbarer Stil.

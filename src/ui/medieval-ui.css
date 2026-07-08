@@ -1,0 +1,307 @@
+/* MITTELALTER-UI (R106, Autorauftrag): wiederverwendbares DOM/CSS-Design-System
+   im Stil 1300/1400 - Pergament, dunkles Holz, Bronze/Gold-Akzente, Diablo-artige
+   Stimmung, aber gut lesbar. KEIN grosses Hintergrundbild: Flaechen/Raender/
+   Verzierungen kommen aus CSS (Gradients/Pseudoelemente), damit alles skalier-
+   und wartbar bleibt. Farben als Variablen -> Stil spaeter zentral aenderbar. */
+
+:root {
+  --mv-bg-dunkel: #21150c;
+  --mv-holz: #3a2413;
+  --mv-holz-hell: #4e3018;
+  --mv-bronze: #9a6429;
+  --mv-gold: #c79a4a;
+  --mv-gold-hell: #e0c17a;
+  --mv-pergament: #d8c398;
+  --mv-pergament-hell: #ead8ad;
+  --mv-tinte: #2a1a0e;
+  --mv-tinte-blass: #5d452c;
+  --mv-rot: #9a2f25;
+  --mv-gruen: #4e8b3b;
+  --mv-gelb: #b8872c;
+  --mv-schrift: Georgia, 'Times New Roman', serif;
+}
+
+/* Wurzel-Overlay ueber dem Canvas: selbst durchlaessig, Panels fangen Klicks. */
+.mv-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  font-family: var(--mv-schrift);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---------- Panel (Pergament in dunklem Holz-/Bronze-Rahmen) ---------- */
+.mv-panel {
+  position: absolute;
+  pointer-events: auto;
+  color: var(--mv-tinte);
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.13), transparent 24%),
+    radial-gradient(circle at 82% 84%, rgba(60, 30, 10, 0.20), transparent 30%),
+    radial-gradient(circle at 40% 60%, rgba(120, 80, 30, 0.10), transparent 40%),
+    linear-gradient(180deg, var(--mv-pergament-hell), var(--mv-pergament));
+  border: 3px solid var(--mv-holz);
+  outline: 1px solid var(--mv-bronze);
+  border-radius: 6px;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    inset 0 0 34px rgba(70, 35, 10, 0.35);
+}
+/* gealterte Innenlinie */
+.mv-panel::before {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border: 1px solid rgba(80, 45, 20, 0.45);
+  border-radius: 3px;
+  pointer-events: none;
+}
+/* Eck-Nieten */
+.mv-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle 3px at 10px 10px, var(--mv-gold) 0 3px, transparent 4px),
+    radial-gradient(circle 3px at calc(100% - 10px) 10px, var(--mv-gold) 0 3px, transparent 4px),
+    radial-gradient(circle 3px at 10px calc(100% - 10px), var(--mv-gold) 0 3px, transparent 4px),
+    radial-gradient(circle 3px at calc(100% - 10px) calc(100% - 10px), var(--mv-gold) 0 3px, transparent 4px);
+  opacity: 0.85;
+}
+
+/* Kopfzeile = Ziehgriff (UI-Regel 11: alle Fenster verschiebbar) */
+.mv-kopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: grab;
+  background: linear-gradient(180deg, var(--mv-holz-hell), var(--mv-holz));
+  border-bottom: 2px solid var(--mv-bronze);
+  border-radius: 3px 3px 0 0;
+  color: var(--mv-gold-hell);
+  letter-spacing: 0.14em;
+  font-variant: small-caps;
+  font-size: 17px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+.mv-kopf:active { cursor: grabbing; }
+.mv-kopf .mv-wappen { font-size: 15px; filter: drop-shadow(0 1px 1px #000); }
+.mv-kopf .mv-zu {
+  margin-left: auto;
+  cursor: pointer;
+  color: var(--mv-pergament);
+  font-size: 14px;
+  padding: 0 4px;
+  border: 1px solid rgba(199, 154, 74, 0.5);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.mv-kopf .mv-zu:hover { color: var(--mv-gold-hell); border-color: var(--mv-gold-hell); }
+
+.mv-inhalt { padding: 10px 12px 12px; position: relative; }
+
+/* ---------- Knoepfe ---------- */
+.mv-btn {
+  display: inline-block;
+  padding: 7px 14px;
+  background: linear-gradient(180deg, #d8bd82, #9e7440);
+  border: 1px solid #5b3617;
+  border-radius: 4px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 3px 7px rgba(0, 0, 0, 0.45);
+  color: #241408;
+  font-family: var(--mv-schrift);
+  font-size: 12px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: center;
+}
+.mv-btn:hover { filter: brightness(1.12); border-color: var(--mv-gold-hell); }
+.mv-btn:active { transform: translateY(1px); box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.35); }
+.mv-btn.mv-aus {
+  filter: grayscale(0.7) brightness(0.75);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.mv-btn.mv-primaer { background: linear-gradient(180deg, #e6cb8e, #b08034); }
+
+/* ---------- Tabs ---------- */
+.mv-tabs { display: flex; gap: 4px; padding: 6px 8px 0; }
+.mv-tab {
+  padding: 6px 16px;
+  background: linear-gradient(180deg, var(--mv-holz-hell), var(--mv-holz));
+  color: #b39a6d;
+  border: 1px solid var(--mv-bronze);
+  border-bottom: none;
+  border-radius: 5px 5px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.mv-tab:hover { color: var(--mv-gold-hell); }
+.mv-tab.mv-aktiv {
+  background: linear-gradient(180deg, var(--mv-pergament-hell), var(--mv-pergament));
+  color: var(--mv-tinte);
+  font-weight: bold;
+  text-shadow: none;
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* ---------- Werte-Balken (Leben/Moral/Staerke) ---------- */
+.mv-bar-zeile { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 2px; }
+.mv-bar-label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mv-tinte-blass); }
+.mv-bar-wert { margin-left: auto; font-size: 12px; color: var(--mv-tinte); }
+.mv-bar {
+  height: 11px;
+  background: #332719;
+  border: 1px solid #5b4225;
+  border-radius: 3px;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+}
+.mv-bar-fuellung {
+  height: 100%;
+  width: 50%;
+  background: linear-gradient(180deg, #b74735, #7f241d);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: width 0.25s ease;
+}
+.mv-bar-fuellung.mv-gruen { background: linear-gradient(180deg, #6fae52, #3f7331); }
+.mv-bar-fuellung.mv-gelb { background: linear-gradient(180deg, #d3a13f, #96691c); }
+
+/* ---------- Stat-Kacheln (ANGR/VERT/TEMPO) ---------- */
+.mv-statreihe { display: flex; gap: 8px; margin: 10px 0; }
+.mv-statkachel {
+  flex: 1;
+  text-align: center;
+  padding: 7px 4px 6px;
+  background: linear-gradient(180deg, rgba(255, 250, 235, 0.55), rgba(216, 195, 152, 0.25));
+  border: 1px solid rgba(90, 55, 25, 0.55);
+  border-radius: 4px;
+  box-shadow: inset 0 0 8px rgba(70, 35, 10, 0.18);
+}
+.mv-statkachel .mv-stat-label { font-size: 10px; letter-spacing: 0.14em; color: var(--mv-tinte-blass); text-transform: uppercase; }
+.mv-statkachel .mv-stat-wert { font-size: 20px; font-weight: bold; color: var(--mv-tinte); line-height: 1.15; }
+.mv-statkachel .mv-stat-symbol { font-size: 11px; opacity: 0.75; }
+
+/* ---------- Trennlinie mit Ornament ---------- */
+.mv-trenner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 8px;
+  color: var(--mv-bronze);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.mv-trenner::before, .mv-trenner::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--mv-bronze), transparent);
+}
+
+/* ---------- Einheiten-Karte ---------- */
+.mv-karte {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 9px;
+  margin: 5px 0;
+  background: linear-gradient(180deg, rgba(255, 250, 235, 0.5), rgba(216, 195, 152, 0.2));
+  border: 1px solid rgba(90, 55, 25, 0.5);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.mv-karte:hover { border-color: var(--mv-gold); background: linear-gradient(180deg, rgba(255, 250, 235, 0.7), rgba(216, 195, 152, 0.35)); }
+.mv-karte.mv-gewaehlt {
+  border: 2px solid var(--mv-gold);
+  box-shadow: 0 0 8px rgba(199, 154, 74, 0.55), inset 0 0 10px rgba(199, 154, 74, 0.18);
+  padding: 6px 8px;
+}
+.mv-karte .mv-karte-icon {
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  background: linear-gradient(180deg, #7c1f18, #55130e);
+  border: 1px solid var(--mv-bronze);
+  border-radius: 4px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+  flex: none;
+}
+.mv-karte .mv-karte-mitte { flex: 1; min-width: 0; }
+.mv-karte .mv-karte-name { font-size: 13px; font-weight: bold; font-variant: small-caps; letter-spacing: 0.06em; }
+.mv-karte .mv-karte-typ { font-size: 10px; color: var(--mv-tinte-blass); }
+.mv-karte .mv-karte-anzahl { font-size: 13px; font-weight: bold; color: var(--mv-tinte); flex: none; }
+.mv-karte .mv-bar { margin-top: 4px; height: 7px; }
+
+/* ---------- Ausruestungs-Slot ---------- */
+.mv-slots { display: flex; gap: 8px; }
+.mv-slot {
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.10), transparent 55%),
+    linear-gradient(180deg, #6d6154, #4a4038);
+  border: 2px solid #2e2117;
+  outline: 1px solid var(--mv-bronze);
+  border-radius: 4px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+}
+.mv-slot:hover { outline-color: var(--mv-gold-hell); }
+.mv-slot.mv-leer { opacity: 0.65; font-size: 13px; color: #a99; }
+
+/* ---------- Ressourcen-Abzeichen ---------- */
+.mv-abzeichen-reihe { display: flex; gap: 8px; }
+.mv-abzeichen {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 5px 8px;
+  background: linear-gradient(180deg, #2c1c0e, #21150c);
+  border: 1px solid var(--mv-bronze);
+  border-radius: 4px;
+  color: var(--mv-pergament);
+  font-size: 13px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+.mv-abzeichen .mv-muenze {
+  width: 16px; height: 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--mv-gold-hell), var(--mv-bronze));
+  color: #21150c;
+  font-size: 10px;
+  font-weight: bold;
+  border: 1px solid #5b3617;
+  flex: none;
+}
+
+/* ---------- Kleinkram ---------- */
+.mv-titelgross { font-size: 21px; font-variant: small-caps; letter-spacing: 0.05em; font-weight: bold; line-height: 1.15; }
+.mv-untertitel { font-size: 11px; color: var(--mv-tinte-blass); margin-top: 1px; }
+.mv-zeile { display: flex; gap: 8px; flex-wrap: wrap; }
+.mv-zeile .mv-btn { flex: 1; min-width: 84px; padding: 7px 6px; }
+.mv-fussnote { font-size: 10px; color: var(--mv-tinte-blass); font-style: italic; margin-top: 8px; }
+.mv-schalter-zeile {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 9px; margin: 5px 0;
+  background: linear-gradient(180deg, rgba(255, 250, 235, 0.5), rgba(216, 195, 152, 0.2));
+  border: 1px solid rgba(90, 55, 25, 0.5);
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.mv-schalter-zeile:hover { border-color: var(--mv-gold); }
+.mv-schalter-zeile .mv-schalter-status { margin-left: auto; font-weight: bold; letter-spacing: 0.1em; font-size: 11px; }
