@@ -1307,3 +1307,13 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   liefen schon alle durch veredelPfeil (R58). Browser-verifiziert: Feueropal
   -> Gegner brennt (2.2s/5dps), Eis -> slowT 1.2, Pfeil elementar ab Stufe 0,
   Bolzen traegt Element. 254 Tests gruen.
+- R112 Settings-Menue im Vorlage-Stil (Autor + Codex-Lieferung): Codex-Branch
+  codex/ui-texturen gemergt (parchment/wood/button.png + reference/menue-
+  vorlage-1300.png). Neues DOM-Menue src/ui/settingsMenue.ts nach der Vorlage:
+  Holzrahmen+Eisenecken, Leder-Buchreiter links (Ton rot/Bild gruen/Grafik
+  braun/Steuerung blau/Allgemein grau), Pergament-Banner+Siegel, Messing-Regler,
+  dunkle Wert-/Tastenknoepfe, STANDARD/ZURUECK+Siegelband. SettingsScene ist nur
+  noch Daten+Callbacks (Presets, Keybind-Capture, Live-Lautstaerke) und raeumt
+  das DOM bei SHUTDOWN ab. Browser-verifiziert inkl. RUECKWEG (auf-zu-auf),
+  Texturen aktiv, Preset+Regler schreiben localStorage. KEIN grosses Menuebild -
+  Vorlage-Optik aus CSS + kachelbaren Codex-Texturen.
