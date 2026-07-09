@@ -1366,6 +1366,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Der sichtbare Schwung folgt der eingestellten Reichweite (Runde 26:
     // vorher zeigte er bei runtergeregelter Reichweite zu viel)
     this.fx.addSwing(this.px, this.py, ang, { fin: fin || heavy, col: st.col, w: st.w + (heavy ? 2 : 0), glow: st.glow, sweep, arc, radius: range - 6 });
+    this.steinSchwungFunken(ang, range, arc);   // R114: Klinge brennt/friert/wabert
     if (st.spark || fin) {
       for (let i = 0; i < (fin ? 7 : 4); i++) {
         const a2 = ang + (Math.random() * 1.8 - 0.9);
@@ -1420,6 +1421,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const stArc = ms.arc * TUNING.spielerSchwungBreite;
     // Stich statt Schwung: gerade Lanze nach vorn + kleiner Ausfallschritt
     this.fx.stoss(this.px, this.py, ang, stRange, 'rgba(214,210,194,');
+    this.steinSchwungFunken(ang, stRange, 0.16);   // R114: brennender Stich
     this.movePlayer(Math.cos(ang) * 7, Math.sin(ang) * 7);
     this.playSwingSound('stange', false);
     const hit = this.hitEnemiesInArc(ang, stRange, stArc, ev.dmgMult, ms.knockback, false);
@@ -1470,6 +1472,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // sichtbar "räumt" (Autorwunsch R44: besser visualisiert). R110: mit
     // gefasstem Stein leuchtet der Ring im Element-Farbton.
     this.fx.addSwing(this.px, this.py, this.pdir, { fin: true, col: st.col, w: st.w + 2, glow: st.glow, arc: 6.28, radius: radius - 12 });
+    this.steinSchwungFunken(this.pdir, radius, Math.PI);   // R114: brennender Vollkreis
     this.fx.welle(this.px, this.py, radius + 10, this.steinFarbe() ?? 0xe8dcc0);
     this.fx.burst(this.px, this.py, this.steinFarbe() ?? 0xd8cfb8, 14, 200);
     this.playSwingSound('axt', true);
@@ -1543,6 +1546,24 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       hitAny = true;
     }
     return hitAny;
+  }
+
+  // R114 (Autor "beim Schlagen soll es brennen wie am Pfeil"): Element-Funken
+  // ENTLANG des Schwungbogens - dieselben Farben/Partikel wie der Pfeil-Schweif,
+  // zeitlich gestaffelt, damit die Klinge sichtbar "brennt" (bzw. friert/wabert).
+  protected steinSchwungFunken(ang: number, radius: number, arc: number): void {
+    const gem = weaponGem(this.p);
+    if (!gem) return;
+    const n = 10;
+    for (let i = 0; i < n; i++) {
+      const a = ang - arc + (2 * arc) * (i / (n - 1));
+      const r = radius * (0.5 + Math.random() * 0.45);
+      const x = this.px + Math.cos(a) * r, y = this.py + Math.sin(a) * r;
+      this.time.delayedCall(i * 14, () => {
+        this.fx.burst(x, y, elemFunkenFarbe(gem.elem), 2, 45);
+        if (gem.elem === 'feuer' && Math.random() < 0.5) this.fx.burst(x, y - 4, 0xffc040, 1, 30);
+      });
+    }
   }
 
   // R110 (Autor "Steine wirken bei ALLEN Waffen und ALLEN Spezialeffekten"):
@@ -2629,6 +2650,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
                 g.clear();
                 g.lineStyle(2, pfeilCol, 0.95); g.lineBetween(ex, yy - 16, ex, yy);          // Schaft
                 g.fillStyle(pfeilCol, 1); g.fillTriangle(ex - 3, yy - 4, ex + 3, yy - 4, ex, yy + 3); // Spitze
+                // R114 (Autor "beim Pfeilregen gluehen sie nur"): fallende Pfeile
+                // ziehen denselben Element-Schweif wie ein verschossener Einzelpfeil.
+                if (stein && Math.random() < 0.45) this.fx.burst(ex, yy - 10, elemFunkenFarbe(stein.elem), 1, 16);
               },
               onComplete: () => {
                 // Pfeil bleibt im Boden STECKEN und liegt eine Weile (Autorwunsch
@@ -2638,7 +2662,15 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
                 const dx = Math.sin(tilt) * len, dy = -Math.cos(tilt) * len;
                 g.fillStyle(0x000000, 0.22); g.fillEllipse(ex, ey + 1, 7, 2);                  // Bodenschatten
                 g.lineStyle(2, pfeilCol, 1); g.lineBetween(ex, ey, ex + dx, ey + dy);          // Schaft schräg aus dem Boden
-                g.fillStyle(pfeilCol, 1); g.fillTriangle(ex + dx - 2.4, ey + dy + 1, ex + dx + 2.4, ey + dy + 1, ex + dx, ey + dy - 3.5); // Befiederung
+                // R114 (Autorbug "Pfeile stecken verkehrt herum - Spitze nach oben"):
+                // die SPITZE steckt im Boden, oben sitzt die BEFIEDERUNG - zwei
+                // schraege Federstriche statt des Dreiecks (sah wie eine Spitze aus).
+                const fxo = ex + dx, fyo = ey + dy;
+                g.lineStyle(1.5, pfeilCol, 0.95);
+                g.lineBetween(fxo, fyo, fxo - 3.2, fyo + 3.6);
+                g.lineBetween(fxo, fyo, fxo + 3.2, fyo + 3.6);
+                g.lineBetween(fxo - dx * 0.22, fyo - dy * 0.22, fxo - 3.2 - dx * 0.22, fyo + 3.6 - dy * 0.22);
+                g.lineBetween(fxo - dx * 0.22, fyo - dy * 0.22, fxo + 3.2 - dx * 0.22, fyo + 3.6 - dy * 0.22);
                 this.tweens.add({ targets: g, alpha: 0, delay: 3800, duration: 1400, onComplete: () => g.destroy() });
               },
             });
@@ -3179,9 +3211,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       // Elementarpfeil zieht einen leichten Schweif (R55): Frost helle Eissplitter,
       // Feuer Glut, Schatten violette Funken - sparsam (jeder ~2. Frame), günstig.
       if (pr.elem && Math.random() < 0.5) {
-        const c = pr.elem === 'eis' ? (Math.random() < 0.5 ? 0xaee0f0 : 0x8ad8f0)
-          : pr.elem === 'schatten' ? 0xc89aff : (Math.random() < 0.5 ? 0xf0902a : 0xe8641a);
-        this.fx.burst(pr.x - pr.vx * 0.008, pr.y - pr.vy * 0.008, c, 1, 16);
+        this.fx.burst(pr.x - pr.vx * 0.008, pr.y - pr.vy * 0.008, elemFunkenFarbe(pr.elem), 1, 16);
       }
       if (!pr.hoch && this.projektilWand(pr.x, pr.y)) {   // R100j: Turm-Schuss fliegt ueber Waende
         // Pfeil-Wand-Physik nur im Physik-Test (Runde 40): stecken oder abprallen
@@ -3750,4 +3780,12 @@ function eliteLeuchtFarbe(e: Enemy): number {
     case 'Teilend': return 0x7ac84a;
     default: return 0xe0b53a; // Champion / unbenannt: Gold
   }
+}
+
+// R114: Funken-Farbe je Element - EINE Wahrheit fuer Pfeil-Schweif, Schwung-
+// Brennen und Pfeilregen (Feuer flackert zweifarbig, Eis glitzert, Schatten violett).
+function elemFunkenFarbe(elem: 'feuer' | 'eis' | 'schatten'): number {
+  if (elem === 'eis') return Math.random() < 0.5 ? 0xaee0f0 : 0x8ad8f0;
+  if (elem === 'schatten') return Math.random() < 0.5 ? 0xc89aff : 0xb06ae8;
+  return Math.random() < 0.5 ? 0xf0902a : 0xe8641a;
 }
