@@ -22,6 +22,9 @@ ganze Fläche ist in Räume aufgeteilt, die sich Wände teilen und über Türen
 verbunden sind ("unterteilte Halle wie Diablo 1"), mit Haupthalle, Hallen,
 Kammern und Elite-Themenräumen (Blut/Bein/Folter). Vom Autor abgenommen und als
 **Version 3 gesichert** - Kandidat fürs **Kloster** (Finale).
+R117 (Autor): Fläche 60x44 -> 84x70 (Kammern deutlich größer, "Räume in denen
+interessante Sachen passieren") und Tür-Durchgänge 4 Kacheln breit statt 2
+("1-2 ist mir zu schmal"). In der DUNGEON-PROBE (V3) ansehbar.
 
 ## V4 - Höhle mit begehbaren Räumen — GEBAUT
 `src/world/hoehlenDungeon.ts` (`baueHoehle`). Wie das organische Höhlen-Beispiel

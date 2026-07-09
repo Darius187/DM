@@ -26,7 +26,10 @@ function mische<T>(arr: T[], rng: RNG): void {
 const COLS = 4, ROWS = 3;
 
 export function baueLogischenDungeon(rng: RNG): DungeonResult {
-  const W = 60, H = 44;
+  // R117 (Autor "Uebergaenge zu schmal, Kammern zu klein"): Flaeche wie V8
+  // (84x70) -> 4x3-Zellen von ~21x23 statt 15x14; Kammern werden RAEUME, in
+  // denen etwas passieren kann. Tuer-Durchgaenge 4 Kacheln breit (war 2).
+  const W = 84, H = 70;
   const grid: Zelle[][] = Array.from({ length: H }, () => new Array<Zelle>(W).fill(0));
   const cellW = Math.floor(W / COLS), cellH = Math.floor(H / ROWS);
   const idx = (r: number, c: number): number => r * COLS + c;
@@ -103,7 +106,8 @@ export function baueLogischenDungeon(rng: RNG): DungeonResult {
   const tuer = (k: Kante): void => {
     const tiles = wandTiles(k.r, k.c, k.dir);
     const mid = tiles.length >> 1;
-    for (const t of [tiles[mid], tiles[Math.max(0, mid - 1)]]) if (t) grid[t[1]][t[0]] = 2;
+    // 4 Kacheln breiter Durchgang (R117) - nie zu schmal fuer Kampf/Begleiter.
+    for (const off of [-1, 0, 1, 2]) { const t = tiles[Math.min(tiles.length - 1, Math.max(0, mid + off))]; if (t) grid[t[1]][t[0]] = 2; }
     raumVon.get(idx(k.r, k.c))!.grad++; raumVon.get(idx(k.dir === 'rechts' ? k.r : k.r + 1, k.dir === 'rechts' ? k.c + 1 : k.c))!.grad++;
   };
   for (const k of kanten) {
