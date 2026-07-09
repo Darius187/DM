@@ -134,6 +134,11 @@ export function baueKatakombenDungeon(rng: Rng): KatakombenDungeonResult {
   // --- Schritt 5: Wand-Pass + Tuer-Reparatur ----------------------------------
   wandPass(tiles);
   repariereTueren(tiles);
+  // R111 (Autor "Waende ohne Tueren / seltsame Verengungen raus"): duenne
+  // Zwischenwaende (Boden auf BEIDEN Seiten, kein Durchgang) bekommen in der
+  // Mitte eine Tuer. Vault-Ringe sind tabu (bleiben bewusst verschlossen);
+  // durch den Fels-Puffer der Vaults kommen sie hier ohnehin nie vor.
+  durchbruchPass(tiles, vaultRects);
 
   // --- Schritt 6: Distanzen, Eingang, Boss ------------------------------------
   const adj: number[][] = rects.map(() => []);
@@ -219,6 +224,43 @@ function grabeGang(tiles: EditCode[][], a: { x: number; y: number }, b: { x: num
     // zweite Spur: bevorzugt "unten/rechts", sonst "oben/links" - nur in Fels.
     for (const [nx, ny] of (p.hor ? [[p.x, p.y + 1], [p.x, p.y - 1]] : [[p.x + 1, p.y], [p.x - 1, p.y]])) {
       if (tiles[ny]?.[nx] === 0) { tiles[ny][nx] = 4; break; }
+    }
+  }
+}
+
+// R111: duenne Zwischenwaende oeffnen. Eine Wandkachel ist "duenn", wenn direkt
+// gegenueberliegend Boden liegt (links+rechts ODER oben+unten). Laeufe laenger
+// als maxLauf bekommen mittig eine Tuer (Code 3) - laengs einer Wand sieht der
+// Spieler sonst Boden-Wand-Boden ohne jeden Durchgang ("seltsame Verengung").
+function durchbruchPass(tiles: EditCode[][], vaultRects: KatakombenRect[], maxLauf = 3): void {
+  const h = tiles.length, w = tiles[0].length;
+  const beg = (x: number, y: number): boolean => BEGEHBAR.has(tiles[y]?.[x] ?? 0);
+  const amVault = (x: number, y: number): boolean => vaultRects.some((r) => aufRing(r, x, y));
+  const oeffne = (x: number, y: number): void => { if (!amVault(x, y)) tiles[y][x] = 3; };
+  // horizontale Laeufe (Boden oben UND unten)
+  for (let y = 1; y < h - 1; y++) {
+    let start = -1;
+    for (let x = 1; x <= w - 1; x++) {
+      const duenn = x < w - 1 && tiles[y][x] === 2 && beg(x, y - 1) && beg(x, y + 1);
+      if (duenn && start < 0) start = x;
+      if (!duenn && start >= 0) {
+        const len = x - start;
+        if (len > maxLauf) oeffne(start + (len >> 1), y);
+        start = -1;
+      }
+    }
+  }
+  // vertikale Laeufe (Boden links UND rechts)
+  for (let x = 1; x < w - 1; x++) {
+    let start = -1;
+    for (let y = 1; y <= h - 1; y++) {
+      const duenn = y < h - 1 && tiles[y][x] === 2 && beg(x - 1, y) && beg(x + 1, y);
+      if (duenn && start < 0) start = y;
+      if (!duenn && start >= 0) {
+        const len = y - start;
+        if (len > maxLauf) oeffne(x, start + (len >> 1));
+        start = -1;
+      }
     }
   }
 }

@@ -8,7 +8,7 @@
 // GEHEIMTUEREN werden zu T.CRACK (Mauerriss): rendert als Wand und laesst sich
 // mit Angriffen aufbrechen - die bestehende Geheimkammer-Mechanik traegt das.
 
-import { T } from './tiles';
+import { T, SOLID } from './tiles';
 import { TILE } from '../gfx/fallbackArt';
 import type { Rng } from '../logic/rng';
 import { rnd } from '../logic/rng';
@@ -73,8 +73,10 @@ export function buildKatakombenKrypta(n: number, rng: Rng): AreaData {
     for (const tuer of raum.tueren) if (tuer.geheim) map[tuer.y][tuer.x] = T.CRACK;
   }
 
-  // Raeume ausstatten (Marker -> Kacheln/Listen/Gegner)
-  for (const raum of d.rooms) statteRaumAus(a, d.rooms, raum, rng);
+  // Raeume ausstatten (Marker -> Kacheln/Listen/Gegner). Alle Kacheln, die dabei
+  // SOLIDE werden (Moebel), werden gesammelt - fuers Sicherheitsnetz unten.
+  const solideProps: Array<{ x: number; y: number }> = [];
+  for (const raum of d.rooms) statteRaumAus(a, d.rooms, raum, rng, solideProps);
 
   // Treppen + Spawn (Muster wie buildCrypt: 1x4-Treppenlauf, Spawn daneben)
   const eingang = d.rooms[d.entranceRoomId];
@@ -87,7 +89,53 @@ export function buildKatakombenKrypta(n: number, rng: Rng): AreaData {
   a.upPos = { x: auf.x * TILE + 16, y: auf.y * TILE + 16 };
   a.downPos = { x: ab.x * TILE + 16, y: ab.y * TILE + 16 };
 
+  // R111 Sicherheitsnetz (Autorbug "Streckbank blockiert den Durchgang - man
+  // kommt nicht mehr weiter"): Flutfuellung vom Spawn; solide MOEBEL, die
+  // erreichbaren von unerreichbarem Boden trennen, werden wieder zu Boden.
+  // T.CRACK zaehlt als begehbar (aufbrechbar - Vaults bleiben verschlossen).
+  raeumeBlockadenWeg(map, Math.floor(a.spawn.x / TILE), Math.floor(a.spawn.y / TILE), solideProps);
+
   return a;
+}
+
+function raeumeBlockadenWeg(map: number[][], sx: number, sy: number, solideProps: Array<{ x: number; y: number }>): void {
+  const h = map.length, w = map[0].length;
+  const begehbar = (t: number): boolean => !SOLID.has(t) || t === T.CRACK;
+  const flut = (): boolean[][] => {
+    const seen: boolean[][] = Array.from({ length: h }, () => new Array<boolean>(w).fill(false));
+    const stack = [[sx, sy]];
+    seen[sy][sx] = true;
+    while (stack.length) {
+      const [x, y] = stack.pop()!;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || ny >= h || nx >= w || seen[ny][nx] || !begehbar(map[ny][nx])) continue;
+        seen[ny][nx] = true;
+        stack.push([nx, ny]);
+      }
+    }
+    return seen;
+  };
+  // hoechstens so viele Runden wie Props (jede Runde entfernt mind. eines)
+  for (let runde = 0; runde < solideProps.length + 1; runde++) {
+    const seen = flut();
+    let entfernt = false;
+    for (let i = solideProps.length - 1; i >= 0; i--) {
+      const p = solideProps[i];
+      let nebenErreicht = false, nebenUnerreicht = false;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = p.x + dx, ny = p.y + dy;
+        if (ny < 0 || nx < 0 || ny >= h || nx >= w || !begehbar(map[ny][nx])) continue;
+        if (seen[ny][nx]) nebenErreicht = true; else nebenUnerreicht = true;
+      }
+      if (nebenErreicht && nebenUnerreicht) {
+        map[p.y][p.x] = T.FLOOR;   // Moebel weg, Durchgang frei
+        solideProps.splice(i, 1);
+        entfernt = true;
+      }
+    }
+    if (!entfernt) break;
+  }
 }
 
 function treppeLauf(map: number[][], cx: number, cy: number, tile: number): void {
@@ -96,20 +144,33 @@ function treppeLauf(map: number[][], cx: number, cy: number, tile: number): void
   for (let k = 1; k < 4; k++) { const yy = cy - k; if (map[yy]?.[cx] === boden) map[yy][cx] = tile; else break; }
 }
 
-function statteRaumAus(a: AreaData, alle: KatakombenRaum[], raum: KatakombenRaum, rng: Rng): void {
+function statteRaumAus(a: AreaData, alle: KatakombenRaum[], raum: KatakombenRaum, rng: Rng, solideProps: Array<{ x: number; y: number }>): void {
   const map = a.map;
   const px = (x: number): number => x * TILE + 16;
+  // Merkt sich jede Kachel, die durch ein Prop SOLIDE wird (fuers Sicherheitsnetz).
+  const setze = (x: number, y: number, tile: number): void => {
+    map[y][x] = tile;
+    if (SOLID.has(tile)) solideProps.push({ x, y });
+  };
+  // R111: liegt die Kachel gefaehrlich nah an einer Tuer? (Streckbank-Haelfte 2
+  // war ungeprueft und stellte sich VOR Tueren - der Autor sass fest.)
+  const nahAnTuer = (x: number, y: number): boolean => raum.tueren.some((t) => Math.abs(t.x - x) + Math.abs(t.y - y) <= 1);
   for (const s of raum.spawns) {
     const [art, name] = [s.typ.slice(0, s.typ.indexOf('_')), s.typ.slice(s.typ.indexOf('_') + 1)];
     if (art === 'prop') {
       if (name === 'treppe_auf' || name === 'treppe_ab') continue;   // macht buildKatakombenKrypta
       if (name === 'altar') {
-        map[s.y][s.x] = T.ALTAR;
+        setze(s.x, s.y, T.ALTAR);
         a.altars.push({ x: px(s.x), y: px(s.y), used: false });
         a.torches.push({ x: px(s.x), y: s.y * TILE + 8, ph: rnd(rng, 0, 6.28) });
       } else if (name === 'streckbank') {
-        map[s.y][s.x] = T.RACK;
-        if (map[s.y][s.x + 1] === T.FLOOR) map[s.y][s.x + 1] = T.RACK_R; else map[s.y][s.x] = T.CAGE;
+        // Die zweite Haelfte nur, wenn sie frei ist UND keine Tuer verstellt.
+        if (map[s.y][s.x + 1] === T.FLOOR && !nahAnTuer(s.x + 1, s.y)) {
+          setze(s.x, s.y, T.RACK);
+          setze(s.x + 1, s.y, T.RACK_R);
+        } else {
+          setze(s.x, s.y, T.CAGE);
+        }
       } else if (name === 'truhe' || name === 'loot') {
         a.chests.push({ x: px(s.x), y: px(s.y), open: false, selten: raum.istVault || name === 'truhe' });
       } else if (name === 'blutfont') {
@@ -118,11 +179,11 @@ function statteRaumAus(a: AreaData, alle: KatakombenRaum[], raum: KatakombenRaum
       } else if (name === 'ritualkreis') {
         for (const [dx, dy] of [[0, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]]) if (map[s.y + dy]?.[s.x + dx] === T.FLOOR) map[s.y + dy][s.x + dx] = T.RUNE;
       } else if (name === 'regal') {
-        map[s.y][s.x] = T.SHELF;
+        setze(s.x, s.y, T.SHELF);
         a.books.push({ x: px(s.x), y: px(s.y) });
       } else {
         const tile = PROP_TILE[name];
-        if (tile !== undefined && map[s.y][s.x] === T.FLOOR) map[s.y][s.x] = tile;
+        if (tile !== undefined && map[s.y][s.x] === T.FLOOR) setze(s.x, s.y, tile);
       }
     } else if (art === 'deko') {
       // R102b: begehbare Boden-Deko (blut/rune) - nur auf freien Boden, blockt nie.
@@ -144,9 +205,11 @@ function statteRaumAus(a: AreaData, alle: KatakombenRaum[], raum: KatakombenRaum
   const z = { x: raum.rect.x + (raum.rect.w >> 1), y: raum.rect.y + (raum.rect.h >> 1) };
   const fackeln = raum.licht === 'warm' || raum.licht === 'fackel' || raum.licht === 'kerzen' || raum.licht === 'golden' ? 2
     : raum.licht === 'rot' || raum.licht === 'normal' ? 1 : 0;
+  // R111 (Autor "die Fackeln waren frueher AN den Waenden"): Fackeln haengen an
+  // der OBEREN Wandkachel des Raums (wie in der alten Krypta), nicht frei im Raum.
   for (let i = 0; i < fackeln; i++) {
     const fx = i === 0 ? raum.rect.x + 1 : raum.rect.x + raum.rect.w - 2;
-    a.torches.push({ x: px(fx), y: (raum.rect.y + 1) * TILE + 12, ph: rnd(rng, 0, 6.28) });
+    a.torches.push({ x: px(fx), y: raum.rect.y * TILE + 24, ph: rnd(rng, 0, 6.28) });
   }
   // Rollen-Etikett fuer Abnahme/Debug (special ist die Abnahme-Liste der Spezialraeume)
   if (raum.rolle !== 'gewoelbe') a.special.push({ id: `rolle_${raum.rolle}`, x: z.x, y: z.y, raum: raum.rolle });
