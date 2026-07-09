@@ -1369,3 +1369,13 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Tuer/Schaden) + oeffneDungeonTuer (Strang zu Boden, Tuerblatt-Aufschwing-
   Tween, tuer-Klang, refreshTile, wegfeldNeu, weckt angrenzende Raeume).
   Einsatz flexibel: V9_EINSATZ / window.__v9Einsatz / F10-Testknopf.
+- R121 Weg-Malen im Dorf-Editor (Autorwunsch "Feldweg selber zeichnen; die
+  Strasse in der Stadt ist anders"): Mal-Sektion in der Editor-Leiste -
+  FELDWEG (lehm) und STRASSE (gepflastert) als getrennte Pinsel, RADIERER,
+  Pinselgroesse 1-3, "Wege loeschen". Malen = halten & ziehen (dorfMale ueber
+  die Pointer-Handler, Vorrang vor Auswahl/Platzieren, Rechtsklick bricht ab).
+  Gemalte Kacheln: eigene Ebene (halbtransparent), localStorage
+  'ravensmoor.dorfwege.v1', im 📋-Bericht als kompakte ZEILEN-LAEUFE
+  (wegeZuLaeufen -> DORF_WEGE-Block, [xStart,xEnde,y] je Sorte) - der Autor
+  malt, schickt den Bericht, ich backe die Laeufe fest in die Generierung
+  (T.PATH/Pflaster) und leite mehr daraus ab. Logik + RLE getestet (9 Tests).

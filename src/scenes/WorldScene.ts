@@ -12,7 +12,8 @@ import {
   DORFPLAN_BOXEN, DORFPLAN_AN, DORF_FARBE, DORF_TYP_LABEL,
   neueDorfBox, serialisiereDorfplan, dorfKurzbericht,
   ladeDorfplan, speichereDorfplan, verwerfeDorfplan,
-  type DorfBox, type DorfTyp,
+  ladeWege, speichereWege, verwerfeWege, serialisiereWege, wegeZuLaeufen, WEG_FARBE,
+  type DorfBox, type DorfTyp, type WegTyp, type WegKarte,
 } from '../data/dorfplan';
 // R105b: Eck-Griff der gewaehlten Box - sichtbare Groesse und (grosszuegigere)
 // Greifzone (Welt-Pixel) fuer das Groesse-Ziehen.
@@ -1819,6 +1820,12 @@ export class WorldScene extends CombatScene {
   private dorfDom?: HTMLDivElement;            // Bericht-Overlay (DOM, geraeteunabhaengig kopierbar)
   // Manuelles Ziehen/Groesse-Aendern (Welt-Punkt der Haupt-Kamera).
   private dorfDrag: { modus: 'move' | 'resize'; id: string; wx0: number; wy0: number; bx0: number; by0: number; bw0: number; bh0: number } | null = null;
+  // R121 Weg-Malen: aktiver Pinsel (feld/strasse/radieren), Groesse, gemalte Kacheln.
+  private dorfMalTyp: WegTyp | 'radieren' | null = null;
+  private dorfPinsel = 2;
+  private dorfWege: WegKarte = new Map();
+  private dorfMaltGerade = false;
+  private dorfWegeGfx?: Phaser.GameObjects.Graphics;
 
   private zeichneDorfplan(a: AreaData): void {
     this.dorfplanLayer?.destroy();
@@ -1830,7 +1837,10 @@ export class WorldScene extends CombatScene {
     }
     // Arbeitskopie aus dem Browser laden (Autor-Edits), sonst die Datei-Saat.
     this.dorfBoxen = ladeDorfplan(DORFPLAN_BOXEN);
+    this.dorfWege = ladeWege();
+    this.dorfWegeGfx?.destroy(); this.dorfWegeGfx = undefined;
     this.dorfRender();
+    this.zeichneDorfWege();
   }
 
   // Baut das Welt-Overlay aus this.dorfBoxen neu auf. Reine Anzeige - das Ziehen/
@@ -1879,6 +1889,37 @@ export class WorldScene extends CombatScene {
     return { box: null, amGriff: false };
   }
 
+  // R121: Weg-Kacheln unter dem Pinsel setzen/radieren (Pinsel = Quadrat).
+  private dorfMale(wx: number, wy: number): void {
+    const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
+    const r = this.dorfPinsel;
+    for (let dy = 0; dy < r; dy++) {
+      for (let dx = 0; dx < r; dx++) {
+        const x = tx + dx - (r >> 1), y = ty + dy - (r >> 1);
+        if (x < 0 || y < 0 || x >= 128 || y >= 128) continue;
+        const key = `${x},${y}`;
+        if (this.dorfMalTyp === 'radieren') this.dorfWege.delete(key);
+        else if (this.dorfMalTyp) this.dorfWege.set(key, this.dorfMalTyp);
+      }
+    }
+    this.zeichneDorfWege();
+  }
+
+  // Gemalte Wege als eigene Ebene (unter den Boxen, ueber dem Boden).
+  private zeichneDorfWege(): void {
+    if (!this.dorfWegeGfx || !this.dorfWegeGfx.active) {
+      this.dorfWegeGfx = this.add.graphics().setDepth(4999);
+      this.uiCam?.ignore(this.dorfWegeGfx);
+    }
+    const g = this.dorfWegeGfx;
+    g.clear();
+    for (const [key, typ] of this.dorfWege) {
+      const [x, y] = key.split(',').map(Number);
+      g.fillStyle(WEG_FARBE[typ], typ === 'strasse' ? 0.55 : 0.45);
+      g.fillRect(x * TILE, y * TILE, TILE, TILE);
+    }
+  }
+
   // Editor umschalten (nur in 'stadt'). erzwungenAus=true schliesst nur.
   private toggleDorfEditor(erzwungenAus = false): void {
     if (this.area?.id !== 'stadt' || !DORFPLAN_AN) { if (this.dorfEdit) { this.dorfEdit = false; this.beendeDorfEditor(); } return; }
@@ -1897,6 +1938,8 @@ export class WorldScene extends CombatScene {
 
   private beendeDorfEditor(): void {
     this.dorfPlaceTyp = null; this.dorfSel = null;
+    this.dorfMalTyp = null; this.dorfMaltGerade = false;
+    speichereWege(this.dorfWege);
     this.dorfToolbar?.destroy(); this.dorfToolbar = undefined;
     this.dorfDom?.remove(); this.dorfDom = undefined;
     this.setzeFreiKamera(false);
@@ -1979,6 +2022,14 @@ export class WorldScene extends CombatScene {
     } else {
       add(this.add.text(8, y, 'Box antippen = wählen & verschieben.', { fontFamily: 'serif', fontSize: '9px', color: '#6a5f4c', wordWrap: { width: w - 16 } })); y += 16;
     }
+    // R121: MALEN (Feldweg/Strasse frei ziehen, Radierer, Pinselgroesse)
+    add(this.add.text(8, y, 'Malen (halten & ziehen):', { fontFamily: 'serif', fontSize: '9px', color: '#8a7a5a' })); y += 14;
+    knopf(8, 94, '🖌 Feldweg', this.dorfMalTyp === 'feld', () => { this.dorfMalTyp = this.dorfMalTyp === 'feld' ? null : 'feld'; this.dorfPlaceTyp = null; this.baueDorfToolbar(); });
+    knopf(106, 94, '🖌 Straße', this.dorfMalTyp === 'strasse', () => { this.dorfMalTyp = this.dorfMalTyp === 'strasse' ? null : 'strasse'; this.dorfPlaceTyp = null; this.baueDorfToolbar(); }); y += 28;
+    knopf(8, 94, '⌫ Radierer', this.dorfMalTyp === 'radieren', () => { this.dorfMalTyp = this.dorfMalTyp === 'radieren' ? null : 'radieren'; this.dorfPlaceTyp = null; this.baueDorfToolbar(); });
+    knopf(106, 44, `${this.dorfPinsel}px`, false, () => { this.dorfPinsel = this.dorfPinsel >= 3 ? 1 : this.dorfPinsel + 1; this.baueDorfToolbar(); });
+    knopf(154, 46, '🗑 Wege', false, () => { if (typeof window === 'undefined' || window.confirm('Alle gemalten Wege löschen?')) { this.dorfWege.clear(); verwerfeWege(); this.zeichneDorfWege(); } }, '#e0704a'); y += 28;
+    add(this.add.rectangle(6, y + 2, w - 12, 1, 0x4a3a26).setOrigin(0)); y += 8;
     // Global: Bericht + Saat
     knopf(8, 94, '📋 Bericht', false, () => this.zeigeDorfBericht());
     knopf(106, 94, '↺ Saat', false, () => this.dorfSaatLaden(), '#8a7a5a'); y += 30;
@@ -2022,7 +2073,12 @@ export class WorldScene extends CombatScene {
     this.dorfDom?.remove();
     const ts = serialisiereDorfplan(this.dorfBoxen);
     const klartext = dorfKurzbericht(this.dorfBoxen);
-    const voll = `${klartext}\n\n// ---- Zum Zurueckpflegen in src/data/dorfplan.ts ----\n${ts}`;
+    // R121: gemalte Wege (kompakte Zeilen-Laeufe) mit in den Bericht
+    const laeufe = wegeZuLaeufen(this.dorfWege);
+    const wegText = this.dorfWege.size
+      ? `\n\nGemalte Wege: ${this.dorfWege.size} Kacheln (Feldweg ${laeufe.feld.length} Läufe, Straße ${laeufe.strasse.length} Läufe)\n\n${serialisiereWege(this.dorfWege)}`
+      : '';
+    const voll = `${klartext}\n\n// ---- Zum Zurueckpflegen in src/data/dorfplan.ts ----\n${ts}${wegText}`;
     const box = document.createElement('div');
     box.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:99999;width:min(720px,92vw);max-height:82vh;display:flex;flex-direction:column;gap:8px;background:#14100a;border:1px solid #6a5636;border-radius:8px;padding:14px;box-shadow:0 8px 40px #000a;font-family:serif;color:#e8dfc8';
     const kopf = document.createElement('div');
@@ -2062,9 +2118,14 @@ export class WorldScene extends CombatScene {
     if (!this.dorfEdit) return;   // im Editor ist der Kampf gesperrt -> auch auf Touch nutzbar
     if (this.zeigerAufPanel(this.dorfToolbar ?? null, ptr)) return;   // Leiste = kein Weltklick
     if (ptr.middleButtonDown()) return;   // Mittelmaus = Kamera schwenken
-    if (ptr.rightButtonDown()) { if (this.dorfPlaceTyp) { this.dorfPlaceTyp = null; this.baueDorfToolbar(); this.dorfRender(); } return; }
+    if (ptr.rightButtonDown()) {
+      if (this.dorfPlaceTyp || this.dorfMalTyp) { this.dorfPlaceTyp = null; this.dorfMalTyp = null; this.baueDorfToolbar(); this.dorfRender(); }
+      return;
+    }
     if (ptr.button !== 0) return;
     const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
+    // R121: Mal-Modus hat Vorrang - Ziehen malt Weg-Kacheln
+    if (this.dorfMalTyp) { this.dorfMaltGerade = true; this.dorfMale(wp.x, wp.y); return; }
     if (this.dorfPlaceTyp) { this.dorfEditorKlick(wp.x, wp.y); return; }
     // Auswahl-Modus: Box unter dem Zeiger -> waehlen und Ziehen (Griff = Groesse) starten.
     const { box, amGriff } = this.dorfBoxUnter(wp.x, wp.y);
@@ -2079,6 +2140,11 @@ export class WorldScene extends CombatScene {
 
   // Ziehen (verschieben) oder Groesse aendern - kachelgerastet, in die Karte geklemmt.
   private dorfEditMove = (ptr: Phaser.Input.Pointer): void => {
+    if (this.dorfEdit && this.dorfMaltGerade && ptr.isDown && this.dorfMalTyp) {
+      const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
+      this.dorfMale(wp.x, wp.y);
+      return;
+    }
     if (!this.dorfEdit || !this.dorfDrag || !ptr.isDown) return;
     const d = this.dorfDrag;
     const b = this.dorfBoxen.find((x) => x.id === d.id);
@@ -2096,6 +2162,7 @@ export class WorldScene extends CombatScene {
   };
 
   private dorfEditUp = (): void => {
+    if (this.dorfMaltGerade) { this.dorfMaltGerade = false; speichereWege(this.dorfWege); }
     if (!this.dorfDrag) return;
     this.dorfDrag = null;
     speichereDorfplan(this.dorfBoxen);

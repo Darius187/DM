@@ -161,3 +161,67 @@ export const DORFPLAN_BOXEN: DorfBox[] = [
   { id: 'AusgangOst', typ: 'ausgang', x: 124, y: 58, breite: 3, hoehe: 6, label: 'Ost → Burg', notes: 'Ostausgang am Hauptweg (Bruecke ueber den Fluss). Overworld aktuell "wald_se".' },
   { id: 'AusgangSued', typ: 'ausgang', x: 55, y: 124, breite: 6, hoehe: 3, label: 'Süd → Marktort', notes: 'Suedausgang. Overworld-Nachbar + Weg-Uebergang muessen noch angelegt werden.' },
 ];
+
+// --- R121: WEG-MALEN (Autorwunsch "Feldweg selber zeichnen") -----------------
+// Der Autor malt im Dorf-Editor Feldwege und Strassen kachelweise; die Kacheln
+// landen im Bericht (kompakte Zeilen-Laeufe) und werden spaeter fest in die
+// Generierung gebacken. Zwei Sorten, weil die Stadt-Strasse anders aussieht.
+export type WegTyp = 'feld' | 'strasse';
+export type WegKarte = Map<string, WegTyp>;   // "x,y" -> Typ
+
+export const WEG_FARBE: Record<WegTyp, number> = {
+  feld: 0x9a7a4e,      // lehmiger Feldweg
+  strasse: 0x8a8a92,   // gepflasterte Strasse
+};
+
+const WEGE_KEY = 'ravensmoor.dorfwege.v1';
+
+export function ladeWege(): WegKarte {
+  try {
+    if (typeof localStorage === 'undefined') return new Map();
+    const roh = localStorage.getItem(WEGE_KEY);
+    if (!roh) return new Map();
+    const arr = JSON.parse(roh) as Array<[string, WegTyp]>;
+    return new Map(arr.filter((e) => Array.isArray(e) && typeof e[0] === 'string'));
+  } catch { return new Map(); }
+}
+
+export function speichereWege(wege: WegKarte): void {
+  try { if (typeof localStorage !== 'undefined') localStorage.setItem(WEGE_KEY, JSON.stringify([...wege])); } catch { /* gesperrt */ }
+}
+
+export function verwerfeWege(): void {
+  try { if (typeof localStorage !== 'undefined') localStorage.removeItem(WEGE_KEY); } catch { /* gesperrt */ }
+}
+
+// Kachel-Menge -> kompakte ZEILEN-LAEUFE [xStart, xEnde, y] je Typ (backbar +
+// kurzer Bericht statt hunderter Einzelkoordinaten).
+export function wegeZuLaeufen(wege: WegKarte): Record<WegTyp, Array<[number, number, number]>> {
+  const aus: Record<WegTyp, Array<[number, number, number]>> = { feld: [], strasse: [] };
+  const nachY = new Map<string, number[]>();   // "typ|y" -> xs
+  for (const [key, typ] of wege) {
+    const [x, y] = key.split(',').map(Number);
+    const k = `${typ}|${y}`;
+    (nachY.get(k) ?? nachY.set(k, []).get(k)!).push(x);
+  }
+  for (const [k, xs] of nachY) {
+    const [typ, yStr] = k.split('|');
+    const y = Number(yStr);
+    xs.sort((a, b) => a - b);
+    let start = xs[0], prev = xs[0];
+    for (let i = 1; i <= xs.length; i++) {
+      if (i < xs.length && xs[i] === prev + 1) { prev = xs[i]; continue; }
+      aus[typ as WegTyp].push([start, prev, y]);
+      if (i < xs.length) { start = xs[i]; prev = xs[i]; }
+    }
+  }
+  for (const typ of ['feld', 'strasse'] as WegTyp[]) aus[typ].sort((a, b) => a[2] - b[2] || a[0] - b[0]);
+  return aus;
+}
+
+// TS-Block fuer den Bericht (wird spaeter 1:1 in die Generierung gebacken).
+export function serialisiereWege(wege: WegKarte): string {
+  const l = wegeZuLaeufen(wege);
+  const z = (runs: Array<[number, number, number]>): string => runs.map(([a, b, y]) => `[${a},${b},${y}]`).join(', ');
+  return `// Gemalte Wege (Kachel-Laeufe [xStart,xEnde,y])\nexport const DORF_WEGE = {\n  feld: [${z(l.feld)}],\n  strasse: [${z(l.strasse)}],\n};`;
+}

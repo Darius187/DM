@@ -69,3 +69,26 @@ describe('Dorf-Editor Logik (R105)', () => {
     }
   });
 });
+
+describe('Weg-Malen (R121)', () => {
+  it('wegeZuLaeufen fasst zusammenhaengende Kacheln je Zeile zu Laeufen zusammen', async () => {
+    const { wegeZuLaeufen } = await import('../src/data/dorfplan');
+    const wege = new Map<string, 'feld' | 'strasse'>([
+      ['10,5', 'feld'], ['11,5', 'feld'], ['12,5', 'feld'],   // Lauf 10-12
+      ['14,5', 'feld'],                                        // einzeln
+      ['10,6', 'strasse'], ['11,6', 'strasse'],                // andere Sorte
+    ]);
+    const l = wegeZuLaeufen(wege);
+    expect(l.feld).toEqual([[10, 12, 5], [14, 14, 5]]);
+    expect(l.strasse).toEqual([[10, 11, 6]]);
+  });
+
+  it('serialisiereWege liefert einen backbaren TS-Block', async () => {
+    const { serialisiereWege } = await import('../src/data/dorfplan');
+    const wege = new Map<string, 'feld' | 'strasse'>([['3,2', 'feld'], ['4,2', 'feld']]);
+    const ts = serialisiereWege(wege);
+    expect(ts).toContain('DORF_WEGE');
+    expect(ts).toContain('feld: [[3,4,2]]');
+    expect(ts).toContain('strasse: []');
+  });
+});
