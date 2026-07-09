@@ -122,3 +122,26 @@ hier ist gemeint (V8, `baueKatakombenDungeon`). Aktivierung = eine Zeile in
 `src/data/katakombenDungeon.ts` (KATAKOMBEN_EINSATZ.ebenen / .abEbene) bzw. ein eigener
 Einstieg ueber `buildKatakombenKrypta` an der gewuenschten Karte. Steht so auch in
 OFFENE-FRAGEN (Frage 23).
+
+## V9 - GEPLANT (Autor R116): Gefuellte Kammern mit ECHTEN Tueren
+Autorwunsch (Karteneditor-Gespraech): "Stil wie V2, nur die Leerflaechen sind
+Raumboden, jede Kammer mit je 2 TUEREN mit den anderen Durchlaeufen verbunden,
+kaum Leerraum."
+- Generator: V2-Kammern als Ausgangspunkt, dann Fels->Raumboden auffuellen
+  (bzw. BSP wie V7), jede Kammer bekommt GENAU 2 Tueren zu Nachbarn
+  (Erreichbarkeits-Test wie V7, 25 Seeds).
+- ECHTE TUEREN (neu - bisher sind Dungeon-"Tueren" offene Durchgaenge):
+  1. Neue Kachel T.DTUER: SOLID + blockiert SICHT, solange geschlossen.
+     Der vorhandene Held-Sichtfeld-Raycaster (licht.heldSichtfeld) sorgt dann
+     AUTOMATISCH dafuer, dass man den Nachbarraum erst sieht, wenn die Tuer
+     offen ist - keine neue Sichtlogik noetig.
+  2. Oeffnen per E (tryInteract, wie Truhe/Haustuer): Aufschwing-Animation
+     nach dem Muster des RTS-TORS (das hat schon auf/zu in beide Richtungen,
+     three.js-gebacken) + Knarz-Klang (tuer.mp3 vorhanden, sonst Synth) -
+     danach Kachel begehbar, Sicht frei.
+  3. Monster je Raum bleiben passiv/verdeckt bis die Tuer faellt (die
+     Generatoren setzen Gegner schon PRO RAUM - nur der Aggro-Ausloeser
+     haengt kuenftig an der Tuer statt an der Distanz).
+- Praezedenzfaelle im Code: T.CRACK (Geheimtuer, aufbrechbar -> begehbar),
+  RTS-Tor (toggle offen/zu inkl. Kollision solidFuerHeld/Feind), T.HDOOR.
+STATUS: GEPLANT, noch nicht gebaut - naechster Dungeon-Schritt.

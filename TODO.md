@@ -122,3 +122,7 @@
 - [ ] R106: RTS-Leiste (BANNER) auf das Mittelalter-UI-System (medievalUi.ts)
       umziehen, sobald der Autor die MENUE-PROBE abgenommen hat. Danach: Bau-
       Popup, Tooltips, ggf. Chronik. Echte Icons (gebackene Sprites) statt Emoji.
+- [ ] V9-Dungeon (R116): V2-Stil komplett gefuellt (Leerflaeche = Raumboden),
+      je Kammer 2 Tueren; ECHTE Dungeon-Tueren (T.DTUER: solid + sichtblockend,
+      E oeffnet mit Aufschwing-Animation + Knarzen, Monster im Raum erwachen
+      beim Oeffnen). Spez in DUNGEON-VERSIONEN.md V9.
