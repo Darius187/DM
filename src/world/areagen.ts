@@ -18,8 +18,10 @@ export interface Pos { x: number; y: number }
 export interface Abbaubar extends Pos { hp?: number; stufe?: number; inhalt?: number; gegeben?: number; g?: number }
 
 export interface BreakableSpawn { kind: BreakableKind; x: number; y: number; ambush: boolean }
-export interface EnemySpawn { type: EnemyTypeId; x: number; y: number; elite: boolean; champion?: string; tot?: boolean }
+export interface EnemySpawn { type: EnemyTypeId; x: number; y: number; elite: boolean; champion?: string; tot?: boolean; schlaeft?: boolean }
 export interface SpecialMarker { id: string; x: number; y: number; raum: string }
+// R118 V9: Raum-Rechtecke (Kacheln) fuer das Monster-Erwachen beim Tuer-Oeffnen
+export interface V9RaumRect { x: number; y: number; w: number; h: number }
 
 export interface NpcSpawn {
   id: string;
@@ -125,6 +127,7 @@ export interface AreaData {
   // bis der Riss aufbricht - erst dann wird sie ausgehoben (kammer) und die
   // Truhe (chestX/chestY) erscheint. So ist sie vorher wirklich unsichtbar.
   cracks?: Array<{ tx: number; ty: number; hp: number; kammer: Array<[number, number]>; chestX: number; chestY: number }>;
+  v9Raeume?: V9RaumRect[];   // R118: Kammern des V9-Dungeons (Tuer weckt Raum-Monster)
   baeume: Pos[];              // fällbare Bäume (Holz)
   chimneys: Pos[];            // Schornsteinrauch
   herde?: Array<Pos & { ph: number; art: 'kamin' | 'kerze' | 'wandfackel' }>; // Innen-Lichtquellen (Runde 35)

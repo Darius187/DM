@@ -1361,3 +1361,11 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   an CODEX uebergeben (Regeln + zu erhaltende Anker in CODEX.md Abschnitt 6).
   Claude fasst hud.ts bis auf Weiteres nicht mehr an; Integration/Review der
   Codex-PRs weiterhin bei Claude.
+- R118 V9 GEBAUT (Autor "V9 bauen"): Generator v9Dungeon (BSP 84x70, MIN-Kante
+  10, Tueren 3 breit, Spannbaum+Grad-2 -> jeder Raum >=2 Tueren, 25-Seed-Tests)
+  + v9Krypta (Live: Treppen im entferntesten Raum, Wand-Fackeln, 2-6 SCHLAFENDE
+  Gegner je Raum via EnemySpawn.schlaeft, 30% Truhen) + T.DTUER=57 (SOLID ->
+  blockiert Weg UND Sichtfeld; Holztuer-Zeichnung) + Enemy.schlaeft (weckt nur
+  Tuer/Schaden) + oeffneDungeonTuer (Strang zu Boden, Tuerblatt-Aufschwing-
+  Tween, tuer-Klang, refreshTile, wegfeldNeu, weckt angrenzende Raeume).
+  Einsatz flexibel: V9_EINSATZ / window.__v9Einsatz / F10-Testknopf.

@@ -14,6 +14,13 @@ export const KATAKOMBEN_EINSATZ = {
   abEbene: null as number | null,
 };
 
+// R118: V9-Dungeon (gefuellte Kammern + echte Tueren) - gleiche Logik wie die
+// Katakomben: einzelne Krypta-Ebenen oder "ab Ebene X". Standard AUS.
+export const V9_EINSATZ = {
+  ebenen: [] as number[],
+  abEbene: null as number | null,
+};
+
 // --- GENERATOR-MASSE ----------------------------------------------------------
 // Aktuelle Krypta ist 44x44 (=1936 Kacheln). "Ca. 3x so gross" -> 84x70 (=5880).
 export const KATAKOMBEN_GEN = {

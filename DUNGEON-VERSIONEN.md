@@ -151,4 +151,11 @@ kaum Leerraum."
      haengt kuenftig an der Tuer statt an der Distanz).
 - Praezedenzfaelle im Code: T.CRACK (Geheimtuer, aufbrechbar -> begehbar),
   RTS-Tor (toggle offen/zu inkl. Kollision solidFuerHeld/Feind), T.HDOOR.
-STATUS: GEPLANT, noch nicht gebaut - naechster Dungeon-Schritt.
+STATUS: GEBAUT (R118). src/world/v9Dungeon.ts (Generator, 4 Tests/25 Seeds) +
+src/world/v9Krypta.ts (Live-Umwandlung: Treppen, Wand-Fackeln, schlafende
+Gegner je Raum, Truhen) + T.DTUER (solid+sichtblockend, Holztuer-Kachel) +
+WorldScene.oeffneDungeonTuer (E: Aufschwing-Animation, Knarzen, weckt die
+Monster der angrenzenden Raeume). Aktivierung wie Katakomben: V9_EINSATZ
+(data/katakombenDungeon.ts, Standard AUS) bzw. F10-ANFANG-Knopf
+"V9-Kammern betreten". Browser-verifiziert: 33 Raeume, 132 Tuerkacheln,
+80/80 Gegner schlafend, Tuer solid->offen, 2 Raum-Monster erwachen.

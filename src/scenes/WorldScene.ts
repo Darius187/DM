@@ -6,6 +6,7 @@ import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir, angleToDir8, type EnemyHost } from '../world/Enemy';
 import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildWaldWest, buildWaldSuedOst, buildBurg, buildWaldNord, buildWaldMitte, buildLager, buildStadt2, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn, type Abbaubar } from '../world/areagen';
 import { katakombenAktivFuer, buildKatakombenKrypta } from '../world/katakombenKrypta';
+import { v9AktivFuer, buildV9Krypta } from '../world/v9Krypta';
 import { KATAKOMBEN_EINSATZ } from '../data/katakombenDungeon';
 import {
   DORFPLAN_BOXEN, DORFPLAN_AN, DORF_FARBE, DORF_TYP_LABEL,
@@ -1605,7 +1606,7 @@ export class WorldScene extends CombatScene {
     else {
       // R102: Katakomben-Generator je Ebene per Konfig (KATAKOMBEN_EINSATZ, Standard AUS)
       const nr = parseInt(id.replace('crypt', ''), 10);
-      a = katakombenAktivFuer(nr) ? buildKatakombenKrypta(nr, rng) : buildCrypt(nr, rng);
+      a = v9AktivFuer(nr) ? buildV9Krypta(nr, rng) : katakombenAktivFuer(nr) ? buildKatakombenKrypta(nr, rng) : buildCrypt(nr, rng);
     }
     this.areas.set(id, a);
     return a;
@@ -4646,6 +4647,13 @@ export class WorldScene extends CombatScene {
         { kind: 'button', label: () => 'RTS-MODUS testen (Schlachtfeld-Steuerung)', onClick: () => { this.devKonsole?.toggle(); this.toggleRtsModus(); } },
         // R102: Katakomben-Dungeon LIVE testen - schaltet den neuen Generator fuer
         // Ebene 1 an und springt hinein (nur Test; echter Einsatzort per Konfig).
+        { kind: 'button', label: () => `V9-Kammern betreten (Ebene 1, Test - echte Tueren)${v9AktivFuer(1) ? ' · AN' : ''}`, onClick: () => {
+          const einsatz = (window as unknown as { __v9Einsatz?: { ebenen: number[] } }).__v9Einsatz;
+          if (einsatz && !einsatz.ebenen.includes(1)) einsatz.ebenen.push(1);
+          this.areas.delete('crypt1');
+          this.goArea('crypt1');
+          this.devKonsole?.refresh();
+        } },
         { kind: 'button', label: () => `Katakomben-Dungeon betreten (Ebene 1, Test)${katakombenAktivFuer(1) ? ' · AN' : ''}`, onClick: () => {
           if (!KATAKOMBEN_EINSATZ.ebenen.includes(1)) KATAKOMBEN_EINSATZ.ebenen.push(1);
           this.areas.delete('crypt1');   // frisch generieren, falls schon gebaut
@@ -5268,6 +5276,7 @@ export class WorldScene extends CombatScene {
       if (sp.tot) continue; // schon erschlagen (Runde 47) - kommt nicht zurück
       const e = this.spawnEnemy(sp.type, a.depth + tiefenBonus, sp.x, sp.y, sp.elite);
       e.spawnRef = sp;      // beim Tod als 'tot' merken, damit er nicht respawnt
+      if (sp.schlaeft) e.schlaeft = true;   // R118 V9: schlaeft bis die Raumtuer faellt
       if (sp.champion) {
         e.champion = true;
         e.name = sp.champion;
@@ -6681,6 +6690,61 @@ export class WorldScene extends CombatScene {
 
   // --- Zerstörbare Objekte ---------------------------------------------------
 
+  // --- R118 V9: echte Dungeon-Tueren ----------------------------------------
+  // Naechste geschlossene Tuer-Kachel in Reichweite (angrenzend, 4 Richtungen
+  // plus die Kachel unter dem Zeiger des Helden-Blicks).
+  private naechsteDungeonTuer(): { tx: number; ty: number } | null {
+    if (!this.area) return null;
+    const px = Math.floor(this.px / TILE), py = Math.floor(this.py / TILE);
+    for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+      const tx = px + dx, ty = py + dy;
+      if (this.area.map[ty]?.[tx] === T.DTUER) return { tx, ty };
+    }
+    return null;
+  }
+
+  // Tuer oeffnen: den GANZEN zusammenhaengenden Tuer-Strang (3 Kacheln) zu Boden
+  // machen, Aufschwing-Animation je Fluegel, Knarzen, und die SCHLAFENDEN
+  // Monster der angrenzenden Raeume wecken (Autor: "Monster erwachen beim
+  // Oeffnen - man sieht erst dann, was im Raum ist").
+  private oeffneDungeonTuer(tx: number, ty: number): void {
+    if (!this.area || this.area.map[ty]?.[tx] !== T.DTUER) return;
+    // Strang einsammeln (waagerecht ODER senkrecht zusammenhaengend)
+    const strang: Array<[number, number]> = [[tx, ty]];
+    for (const dir of [-1, 1]) {
+      for (let k = 1; k < 6; k++) { const x = tx + dir * k; if (this.area.map[ty]?.[x] === T.DTUER) strang.push([x, ty]); else break; }
+      for (let k = 1; k < 6; k++) { const y = ty + dir * k; if (this.area.map[y]?.[tx] === T.DTUER) strang.push([tx, y]); else break; }
+    }
+    for (const [x, y] of strang) {
+      // Aufschwing-Animation: das Tuerblatt kippt zur Seite und blasst aus
+      const key = this.provider.tileKey('dungeontuer', 0, this.area.depth, this.area.theme);
+      if (this.textures.exists(key)) {
+        const blatt = this.add.image(x * TILE + 16, y * TILE + 16, key).setDepth(y * TILE + 40);
+        this.uiCam?.ignore(blatt);
+        this.tweens.add({ targets: blatt, angle: 78, alpha: 0, scaleX: 0.35, x: blatt.x + 10, duration: 420, ease: 'Quad.Out', onComplete: () => blatt.destroy() });
+      }
+      this.area.map[y][x] = T.FLOOR;
+      this.refreshTile(x, y); this.refreshTile(x, y - 1);
+    }
+    this.sfx.play('tuer');
+    this.wegfeldNeu?.();
+    // Monster beider angrenzender Raeume wecken
+    const raeume = this.area.v9Raeume ?? [];
+    const beruehrt = raeume.filter((r) => strang.some(([x, y]) =>
+      x >= r.x - 1 && x <= r.x + r.w && y >= r.y - 1 && y <= r.y + r.h));
+    let geweckt = 0;
+    for (const e of this.enemies) {
+      if (!e.schlaeft) continue;
+      const ex = Math.floor(e.x / TILE), ey = Math.floor(e.y / TILE);
+      if (beruehrt.some((r) => ex >= r.x && ex < r.x + r.w && ey >= r.y && ey < r.y + r.h)) {
+        e.schlaeft = false;
+        geweckt++;
+      }
+    }
+    if (geweckt > 0) this.logMsg('Die Tür schwingt knarrend auf - dahinter regt sich etwas!', 'bad');
+    else this.logMsg('Die Tür schwingt knarrend auf.', '');
+  }
+
   // Mauerriss aufbrechen (Runde 40): jeder Treffer bröckelt, beim letzten
   // öffnet sich der Durchgang zur Geheimkammer.
   private hitCrack(c: NonNullable<AreaData['cracks']>[number], hit: { onHit: (a: number) => void }, ang: number): void {
@@ -6791,6 +6855,9 @@ export class WorldScene extends CombatScene {
     // Treppen und Kryptaeingang zuerst (liegen unter den Füßen)
     const st = this.stairHint();
     if (st) return st;
+    // R118 V9: geschlossene Dungeon-Tuer direkt vor dem Helden oeffnen
+    const tuer = this.naechsteDungeonTuer();
+    if (tuer) return { text: `Tür öffnen (${ik})`, action: () => this.oeffneDungeonTuer(tuer.tx, tuer.ty) };
     // Ein Gegenstand DIREKT unter den Füßen hat Vorrang vor Truhen/Schreinen/NPCs
     // (Autorbug R55: bei einer Truhe überlappende Beute war nicht aufhebbar - die
     // Truhe gewann immer). Nur ganz nah (man steht drauf), sonst zählt der Rest.
