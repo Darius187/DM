@@ -46,7 +46,7 @@ const SLOT_KAT_FARBE: Record<SlotKat, number> = {
   kampf: 0x5a86e0, zauber: 0xd0563a, bogen: 0x5ac06a, item: 0xb89a4a,
 };
 
-const ORB_R = 30;   // R115 (HUD-Uebergabe): kompakt, kaum groesser als ein Slot
+const ORB_R = 42;
 // Getrennte Leisten (Runde 20): Tastatur-Slots 1-6/9/0/R/T und Maus-Slots M1-M5
 const KB_SLOTS = 10;
 const MAUS_SLOTS = 5;
@@ -111,16 +111,13 @@ export class Hud {
     }).setOrigin(0.5).setScrollFactor(0).setDepth(4603);
     this.hpText = txt('15px');
     this.mpText = txt('15px');
-    // R115: "Q Trank"-Plakette wie die Vorlage (dunkle Tafel, helle Schrift)
-    this.potText = txt('12px', '#d8c8a0');
-    this.potText.setStyle({ backgroundColor: '#1e1509', padding: { x: 6, y: 2 } });
-    this.mpotText = txt('12px', '#d8c8a0');
-    this.mpotText.setStyle({ backgroundColor: '#1e1509', padding: { x: 6, y: 2 } });
+    this.potText = txt('12px', '#cdbf9d');
+    this.mpotText = txt('12px', '#cdbf9d');
     this.infoText = scene.add.text(0, 0, '', {
       fontFamily: 'serif', fontSize: '12px', color: '#bfa86f', letterSpacing: 1,
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(4603);
     this.mausInfo = scene.add.text(0, 0, '', {
-      fontFamily: 'serif', fontSize: '11px', color: '#c9a227', letterSpacing: 1,
+      fontFamily: 'serif', fontSize: '11px', color: '#bfa86f', letterSpacing: 1,
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(4603);
 
     // ALLE Slots sind frei belegbar (Runde 26, "wie bei WoW"): Rechtsklick
@@ -238,8 +235,7 @@ export class Hud {
       cv.width = size;
       cv.height = size;
       const ctx = cv.getContext('2d')!;
-      // R115: flacher Teller statt Glas-Orb - kleines mattes Glanzlicht oben
-      const g = ctx.createRadialGradient(size * 0.5, size * 0.38, 3, size / 2, size / 2, ORB_R);
+      const g = ctx.createRadialGradient(size * 0.35, size * 0.3, 4, size / 2, size / 2, ORB_R);
       g.addColorStop(0, c0);
       g.addColorStop(0.55, c1);
       g.addColorStop(1, c2);
@@ -249,8 +245,8 @@ export class Hud {
       ctx.fill();
       this.scene.textures.addCanvas(key, cv);
     };
-    make('orb_rot', '#c23527', '#8c1a1a', '#3d0b0b');
-    make('orb_blau', '#4a6ec0', '#2c4884', '#0e1830');
+    make('orb_rot', '#e04a3a', '#8c1a1a', '#470c0c');
+    make('orb_blau', '#6a8ad8', '#2c4884', '#101c3a');
   }
 
   private slotX(i: number): number {
@@ -678,18 +674,6 @@ export class Hud {
     const potT = `${kb.pot.toUpperCase()} Trank x${p.pot}`, mpotT = `${kb.mpot.toUpperCase()} Trank x${p.mpot}`;
     const stil = getSettings().hudStil;
     const orbsAn = stil === 0;
-    // R115 (HUD-Uebergabe, final-hud-extra-flat): EINE flache dunkle Holzleiste
-    // traegt Anzeigen, Maus-/Tastenleiste und Statuszeile - kein hoher Rahmen.
-    if (orbsAn) {
-      const px0 = Math.min(hx - ORB_R - 14, this.slotX(KB_SLOTS) - 34);
-      const px1 = Math.max(mx + ORB_R + 14, this.slotX(KB_SLOTS - 1) + 34);
-      g.fillStyle(0x150e07, 0.93);
-      g.fillRoundedRect(px0, h - 114, px1 - px0, 106, 6);
-      g.lineStyle(2, 0x0a0603, 1);
-      g.strokeRoundedRect(px0, h - 114, px1 - px0, 106, 6);
-      g.lineStyle(1, 0x8a6a34, 0.45);
-      g.strokeRoundedRect(px0 + 3, h - 111, px1 - px0 - 6, 100, 5);
-    }
     this.hpImg.setVisible(orbsAn);
     this.mpImg.setVisible(orbsAn);
     if (stil === 1) {            // WoW-Balken: OBEN LINKS, gestapelt (Autorwunsch R53)
@@ -716,11 +700,8 @@ export class Hud {
         g.fillCircle(x, y, ORB_R);
         const ch = Math.round(ORB_R * 2 * Phaser.Math.Clamp(frac, 0, 1));
         img.setCrop(0, ORB_R * 2 - ch, ORB_R * 2, ch);
-        // R115: Messingring in Eisenfassung (Vorlage), keine Labels/Embleme
-        g.lineStyle(3, 0x1c140c, 1);
-        g.strokeCircle(x, y, ORB_R + 4);
-        g.lineStyle(2.5, 0x8a6a34, 0.95);
-        g.strokeCircle(x, y, ORB_R + 1.5);
+        g.lineStyle(3, 0x3a2f24, 1);
+        g.strokeCircle(x, y, ORB_R);
       };
       orb(this.hpImg, hx, hy, hpFrac);
       orb(this.mpImg, mx, my, mpFrac);
