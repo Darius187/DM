@@ -4520,6 +4520,16 @@ export class WorldScene extends CombatScene {
       { name: 'LICHT', controls: () => {
         const lic = getSettings().licht;
         return [
+          // R111 (Autor "die Fackel-/Schatten-Regler finde ich nicht mehr"): die
+          // VOLLE Licht-Werkbank (alle ~30 Regler) liegt auf Taste L - hier der
+          // Knopf dazu + die wichtigsten Fackel-Regler direkt (gleiche Werte).
+          { kind: 'button', label: () => 'LICHT-WERKBANK öffnen/schließen (alle Regler, Taste L)', onClick: () => this.lichtPanel?.umschalten() },
+          { kind: 'note', text: 'Achtung: Die GRAFIK-Voreinstellungen (Einstellungen) setzen Fackel-Schatten mit um - Niedrig/Mittel reduziert sie.' },
+          { kind: 'slider', label: 'Fackel-Helligkeit (Flamme)', min: 0, max: 100, step: 1, get: () => lic.fackelHelligkeit, set: (v) => { lic.fackelHelligkeit = v; saveSettings(); } },
+          { kind: 'slider', label: 'Fackel-Reichweite', min: 0, max: 100, step: 1, get: () => lic.fackelReichweite, set: (v) => { lic.fackelReichweite = v; saveSettings(); } },
+          { kind: 'slider', label: 'Schatten-Fackeln (Leistung!)', min: 0, max: 100, step: 1, get: () => lic.schattenFackeln, set: (v) => { lic.schattenFackeln = v; saveSettings(); } },
+          { kind: 'button', label: () => `ALLE Fackeln werfen Schatten: ${lic.alleFackelnSchatten ? 'AN' : 'aus'}`, onClick: () => { lic.alleFackelnSchatten = !lic.alleFackelnSchatten; saveSettings(); this.devKonsole?.refresh(); } },
+          { kind: 'button', label: () => `Dungeon-Wandschatten (Raycaster): ${lic.dungeonNeu ? 'AN' : 'aus'}`, onClick: () => { lic.dungeonNeu = !lic.dungeonNeu; saveSettings(); this.devKonsole?.refresh(); } },
           { kind: 'note', text: 'Held-Licht NACHTS draußen. Tageszeit im WETTER-Tab auf 22 stellen, dann hier live regeln - alles wird gespeichert.' },
           { kind: 'slider', label: 'Nacht-Dunkelheit', min: 40, max: 95, step: 1, get: () => lic.nachtDunkel ?? 82, set: (v) => { lic.nachtDunkel = v; saveSettings(); } },
           { kind: 'slider', label: 'Sichtweite nachts (Radius)', min: 120, max: 640, step: 10, get: () => lic.nachtSicht ?? 240, set: (v) => { lic.nachtSicht = v; saveSettings(); } },

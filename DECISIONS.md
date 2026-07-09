@@ -1317,3 +1317,14 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   das DOM bei SHUTDOWN ab. Browser-verifiziert inkl. RUECKWEG (auf-zu-auf),
   Texturen aktiv, Preset+Regler schreiben localStorage. KEIN grosses Menuebild -
   Vorlage-Optik aus CSS + kachelbaren Codex-Texturen.
+- R111b Licht-Regler "verschwunden" aufgeklaert (Autor "Fackeln warfen mehr
+  Schatten, Regler weg/kaputt"): Die LICHT-WERKBANK (Taste L, ~30 Regler inkl.
+  aller Fackel-/Schattenwerte) existiert unveraendert - sie war nur nirgends
+  verlinkt. Der F10-LICHT-Tab hatte NUR Nacht-Regler. Jetzt: Knopf "Licht-
+  Werkbank oeffnen" im F10-LICHT-Tab + die wichtigsten Fackel-Regler dort
+  gespiegelt (gleiche Settings). WICHTIG als Hinweis dokumentiert: die GRAFIK-
+  Voreinstellungen (R107) setzen schattenFackeln/dungeonNeu mit um - "Niedrig/
+  Mittel" reduziert Fackelschatten; "Hoch" stellt sie wieder voll an. Das
+  erklaert den Eindruck "frueher mehr Schatten".
+- R111c Dev-Kompendium: gesockelte Schwerter/Aexte/Staebe (je Element, power 4)
+  neben den gesockelten Boegen - zum Sofort-Testen der R110-Element-Effekte.

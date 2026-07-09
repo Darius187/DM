@@ -17,12 +17,13 @@ const gem = (g: typeof GEMS[number]): GemItem => ({ kind: 'gem', name: g.name, r
 const rolle = (id: string, name: string): Item => ({ kind: 'scroll', name: `Zauberrolle: ${name}`, rarity: 0, val: 0, boni: [], scrollSkill: id, stack: 5 });
 const foliant = (id: string, name: string): Item => ({ kind: 'scroll', name: `Foliant: ${name}`, rarity: 2, val: 0, boni: [], scrollSkill: id, stack: 10 });
 const nahrung = (name: string, hpRegen: number, dauerS: number): Item => ({ kind: 'food', name, rarity: 0, val: 0, boni: [], buff: { hpRegen, dauerS } });
-// Fertig gesockelter Kriegsbogen je Edelstein - zum Testen der Elementarpfeile
-// (Feuer/Frost/Schatten): Bogen ausrüsten, mit X aktiv schalten, schießen.
-const gesockelterBogen = (g: typeof GEMS[number]): Item => ({
-  kind: 'weapon', name: `Kriegsbogen (${g.name})`, rarity: 3, val: 17, boni: [], weaponClass: 'bogen',
+// Fertig gesockelte Waffe je Edelstein - zum Testen der Element-Effekte
+// (R110: Steine wirken bei ALLEN Waffen und allen Spezialfaehigkeiten).
+const gesockelt = (name: string, val: number, cls: Item['weaponClass'], g: typeof GEMS[number]): Item => ({
+  kind: 'weapon', name: `${name} (${g.name})`, rarity: 3, val, boni: [], weaponClass: cls,
   sock: { gem: { kind: 'gem', name: g.name, rarity: 1, val: 0, boni: [], elem: g.elem, col: g.col, rgb: g.rgb, power: 4 } },
 });
+const gesockelterBogen = (g: typeof GEMS[number]): Item => gesockelt('Kriegsbogen', 17, 'bogen', g);
 
 // Die acht Zauberrollen (wie beim Händler). id = Zauber, der gewirkt wird.
 const ROLLEN: ReadonlyArray<readonly [string, string]> = [
@@ -41,6 +42,11 @@ export function kompendium(): KompendiumKategorie[] {
     { name: 'Ringe', items: RINGS.map((n) => ring(n)) },
     { name: 'Edelsteine', items: GEMS.map((g) => gem(g)) },
     { name: 'Gesockelte Bögen (Test)', items: GEMS.map((g) => gesockelterBogen(g)) },
+    // R111 (Autorwunsch "in der Liste gibt es keine gesockelten Schwerter"):
+    // je Element ein fertiges Schwert, eine Axt und ein Stab zum Sofort-Testen.
+    { name: 'Gesockelte Schwerter (Test)', items: GEMS.map((g) => gesockelt('Langschwert', 12, 'schwert', g)) },
+    { name: 'Gesockelte Äxte (Test)', items: GEMS.map((g) => gesockelt('Streitaxt', 13, 'axt', g)) },
+    { name: 'Gesockelte Stäbe (Test)', items: GEMS.map((g) => gesockelt('Eichenstab', 10, 'stab', g)) },
     { name: 'Zauberrollen', items: ROLLEN.map(([id, n]) => rolle(id, n)) },
     { name: 'Folianten/Bücher', items: BUCH_ZAUBER.map((b) => foliant(b.id, b.name)) },
     { name: 'Nahrung', items: [nahrung('Brot', 1, 40), nahrung('Trockenfleisch', 1.2, 40), nahrung('Wurst', 1.5, 45), nahrung('Speck', 2, 45)] },
