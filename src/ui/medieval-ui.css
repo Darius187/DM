@@ -332,14 +332,15 @@
 }
 .mv-rahmen {
   position: relative;
-  width: min(1180px, 94vw); height: min(760px, 92vh);
+  box-sizing: border-box;
+  /* Kinder sind absolut positioniert - padding entfaellt, Masse = Gesamtmasse */
+  width: min(1120px, 94vw); height: min(600px, 92vh);
   background: var(--mv-img-wood), linear-gradient(180deg, #4a3018, #35220f);
   background-size: 512px 128px, auto;
   background-blend-mode: multiply, normal;
   border: 3px solid #1c1109;
   border-radius: 10px;
   box-shadow: 0 24px 80px rgba(0,0,0,0.8), inset 0 0 0 2px rgba(199,154,74,0.25), inset 0 0 60px rgba(0,0,0,0.55);
-  padding: 26px 30px 66px 118px;
 }
 /* Eisen-Eckplatten */
 .mv-rahmen::before, .mv-rahmen::after,
@@ -357,8 +358,8 @@
 
 /* Titel-Banner mit Siegel */
 .mv-titelbanner {
-  position: absolute; top: 18px; left: 138px; right: 60px;
-  height: 62px;
+  position: absolute; top: 14px; left: 168px; right: 54px;
+  height: 50px;
   display: flex; align-items: center; justify-content: center;
   background:
     var(--mv-img-parchment),
@@ -367,12 +368,12 @@
   background-blend-mode: multiply, normal;
   border: 2px solid #6a4c26;
   box-shadow: 0 6px 18px rgba(0,0,0,0.5), inset 0 0 22px rgba(70,35,10,0.3);
-  font-size: 30px; letter-spacing: 0.35em; font-variant: small-caps;
+  font-size: 25px; letter-spacing: 0.32em; font-variant: small-caps;
   color: #2a1a0e; font-weight: bold;
 }
 .mv-titelbanner .mv-siegel {
   position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
-  width: 42px; height: 42px; border-radius: 50%;
+  width: 36px; height: 36px; border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #a03a2a, #6a1f16 65%, #571812);
   border: 2px solid #4a150f;
   box-shadow: 0 3px 8px rgba(0,0,0,0.55), inset 0 2px 5px rgba(255,255,255,0.18);
@@ -382,12 +383,12 @@
 
 /* Leder-Buchreiter links */
 .mv-buchtabs {
-  position: absolute; left: -10px; top: 108px;
-  display: flex; flex-direction: column; gap: 12px;
+  position: absolute; left: 8px; top: 84px;
+  display: flex; flex-direction: column; gap: 10px;
 }
 .mv-buchtab {
   display: flex; align-items: center; gap: 10px;
-  width: 176px; padding: 13px 12px 13px 16px;
+  width: 152px; padding: 10px 10px 10px 14px;
   border-radius: 6px 10px 10px 6px;
   border: 2px solid rgba(0,0,0,0.55);
   outline: 1px dashed rgba(230,210,170,0.35);
@@ -410,7 +411,7 @@
 
 /* Pergament-Inhaltsflaeche */
 .mv-pergamentflaeche {
-  position: absolute; top: 96px; left: 118px; right: 30px; bottom: 66px;
+  position: absolute; top: 76px; left: 168px; right: 26px; bottom: 56px;
   background:
     var(--mv-img-parchment),
     radial-gradient(circle at 30% 20%, rgba(255,255,255,0.10), transparent 40%),
@@ -420,17 +421,17 @@
   border: 2px solid #6a4c26;
   box-shadow: inset 0 0 34px rgba(70,35,10,0.35);
   color: var(--mv-tinte);
-  padding: 20px 28px;
+  padding: 12px 24px 14px;
   overflow-y: auto;
 }
-.mv-pergamentflaeche.mv-zweispaltig { column-count: 2; column-gap: 40px; }
+.mv-pergamentflaeche.mv-zweispaltig { column-count: 2; column-gap: 36px; }
 .mv-pergamentflaeche .mv-block { break-inside: avoid; margin-bottom: 8px; }
 
 /* Abschnitts-Kopf mit Linien (wie "— TON —") */
 .mv-abschnitt {
   display: flex; align-items: center; gap: 12px;
-  margin: 14px 0 10px;
-  font-size: 15px; letter-spacing: 0.22em; font-variant: small-caps; font-weight: bold;
+  margin: 8px 0 6px;
+  font-size: 14px; letter-spacing: 0.2em; font-variant: small-caps; font-weight: bold;
   color: #3a2818;
 }
 .mv-abschnitt::before, .mv-abschnitt::after {
@@ -439,11 +440,11 @@
 }
 
 /* Regler-Zeile: Icon | Label | Schiene mit Messingknopf | Wert */
-.mv-regler-zeile { display: flex; align-items: center; gap: 10px; margin: 9px 0; }
+.mv-regler-zeile { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
 .mv-regler-zeile .mv-regler-icon { width: 20px; text-align: center; font-size: 14px; opacity: 0.8; }
-.mv-regler-zeile .mv-regler-label { width: 200px; font-size: 14px; }
+.mv-regler-zeile .mv-regler-label { flex: 1; min-width: 130px; font-size: 13px; }
 .mv-regler {
-  position: relative; flex: 1; height: 22px; min-width: 130px;
+  position: relative; flex: 0 0 150px; height: 22px;
   cursor: pointer;
 }
 .mv-regler .mv-schiene {
@@ -464,14 +465,14 @@
   border: 1px solid #4a3416;
   box-shadow: 0 2px 4px rgba(0,0,0,0.55), inset 0 1px 1px rgba(255,255,255,0.5);
 }
-.mv-regler-zeile .mv-regler-wert { width: 48px; text-align: right; font-size: 13px; color: #3a2818; }
+.mv-regler-zeile .mv-regler-wert { width: 40px; text-align: right; font-size: 12px; color: #3a2818; }
 
 /* Wert-/Tasten-Knopf (dunkel, wie Dropdowns/Keybinds der Vorlage) */
-.mv-zeile-knopf { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
-.mv-zeile-knopf .mv-zeile-label { flex: 1; font-size: 14px; }
+.mv-zeile-knopf { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+.mv-zeile-knopf .mv-zeile-label { flex: 1; font-size: 13px; }
 .mv-wertknopf {
-  min-width: 150px; text-align: center;
-  padding: 7px 14px;
+  min-width: 118px; text-align: center;
+  padding: 5px 12px;
   background: linear-gradient(180deg, #3a332a, #241f18);
   border: 1px solid #14100a; border-radius: 4px;
   outline: 1px solid rgba(199,154,74,0.35); outline-offset: -3px;
@@ -483,12 +484,12 @@
 
 /* Untere Leder-Knoepfe (STANDARD gruen, ZURUECK rot) + Siegelband */
 .mv-fussleiste {
-  position: absolute; left: 118px; right: 30px; bottom: 12px;
-  display: flex; align-items: center; justify-content: center; gap: 46px;
+  position: absolute; left: 168px; right: 26px; bottom: 10px;
+  display: flex; align-items: center; justify-content: center; gap: 40px;
 }
 .mv-lederknopf {
-  min-width: 190px; text-align: center;
-  padding: 11px 26px;
+  min-width: 165px; text-align: center;
+  padding: 9px 22px;
   border-radius: 6px;
   border: 2px solid rgba(0,0,0,0.55);
   outline: 1px dashed rgba(230,210,170,0.4); outline-offset: -6px;

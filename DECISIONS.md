@@ -1345,3 +1345,13 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - R113b Backlog (Autor "fuer spaeter, wenn das Dorf steht"): Belagerungs-
   Vorlauf (3 Warnstufen: Raben sammeln, Tiere fliehen, Hornstoss) + Glocken/
   Tagesrhythmus/Nachtwaechter -> IDEEN-BACKLOG.md.
+- R112b Settings-Menue STRUKTURELL an die Vorlage (Autor "nicht nur Texturen
+  drueberlegen"): Rahmen kompakt (1120x600, box-sizing border-box - vorher
+  blaehten padding+border das Fenster auf Vollbreite), ALLE Reiter zweispaltig
+  (CSS columns, break-inside avoid), Regler mit KURZER fester Schiene (150px)
+  statt Vollbreite, engere Zeilenabstaende, Leder-Buchreiter sitzen AUF dem
+  Holzrahmen (nicht daneben schwebend), Banner/Knoepfe verkleinert. Kein
+  grosses Menuebild - weiterhin CSS + Codex-Texturen. menu-ui-template/
+  (Restyle-Brief + HUD-Handover + final-hud-extra-flat-reference-layout-1300)
+  liegt NUR auf dem Autor-PC, nicht im Repo -> HUD-Arbeit blockiert, bis die
+  Dateien gepusht sind (siehe OFFENE-FRAGEN).

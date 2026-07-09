@@ -247,3 +247,12 @@ ich als Zwischenlösung Nr. 1 + 2, beide in einer Zeile entfernbar.)
    Form). Falls dein Plan den Anger N-S vorsieht, muss ich anders einpassen - sag
    Bescheid, wenn das Bild da ist.
 
+
+## 28. menu-ui-template/ fehlt im Repo (R112b)
+Der Autor verweist fuer den HUD-Umbau auf C:\Obsidian\DM\menu-ui-template\
+(claude-code-handover-final-ui-1300.md, final-hud-extra-flat-reference-
+layout-1300.png, Asset-Boegen, Selbstcheck-Liste). Diese Dateien sind in
+KEINEM Branch des Repos. ZWISCHENLOESUNG: Settings-Restyle nach
+reference/menue-vorlage-1300.png + Chat-Anweisungen umgesetzt; die HUD-
+Uebergabe wartet, bis der Ordner gepusht ist (z.B. via Codex-Branch, wie
+bei reference/menue-vorlage-1300.png geschehen).

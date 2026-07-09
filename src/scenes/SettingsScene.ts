@@ -31,11 +31,11 @@ export class SettingsScene extends Phaser.Scene {
     this.menue?.zerstoere();
     this.menue = baueSettingsMenue({
       tabs: [
-        { id: 'ton', label: 'Ton', icon: '🔊', farbe: 'rot' },
-        { id: 'bild', label: 'Bild', icon: '🖥', farbe: 'gruen' },
-        { id: 'grafik', label: 'Grafik', icon: '✨', farbe: 'braun' },
+        { id: 'ton', label: 'Ton', icon: '🔊', farbe: 'rot', zweispaltig: true },
+        { id: 'bild', label: 'Bild', icon: '🖥', farbe: 'gruen', zweispaltig: true },
+        { id: 'grafik', label: 'Grafik', icon: '✨', farbe: 'braun', zweispaltig: true },
         { id: 'steuerung', label: 'Steuerung', icon: '⚔', farbe: 'blau', zweispaltig: true },
-        { id: 'allgemein', label: 'Allgemein', icon: '⚙', farbe: 'grau' },
+        { id: 'allgemein', label: 'Allgemein', icon: '⚙', farbe: 'grau', zweispaltig: true },
       ],
       inhalt: (tab) => { this.tab = tab; return this.zeilenFuer(tab); },
       onStandard: () => {
