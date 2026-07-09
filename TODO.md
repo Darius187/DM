@@ -126,3 +126,6 @@
       je Kammer 2 Tueren; ECHTE Dungeon-Tueren (T.DTUER: solid + sichtblockend,
       E oeffnet mit Aufschwing-Animation + Knarzen, Monster im Raum erwachen
       beim Oeffnen). Groesse wie V8/Katakomben (84x70). Spez in DUNGEON-VERSIONEN.md V9.
+- [ ] V9-Tueren huebscher oeffnen (Autor: "die loesen sich einfach auf"):
+      sichtbares Tuerblatt, das aufschwingt und OFFEN STEHEN BLEIBT (Sprite an
+      der Wand), statt Kipp-Tween + Ausblenden.

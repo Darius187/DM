@@ -323,7 +323,7 @@ export class DungeonProbe extends Phaser.Scene {
     bx += knopf(bx, 'BEGEHEN/ÜBERSICHT', () => { if (this.modus === 'begehen') this.zeigeUebersicht(); else this.betrete(); }).width + 8;
     bx += knopf(bx, 'EDITOR', () => { if (this.modus === 'editor') this.zeigeUebersicht(); else this.betreteEditor(); }).width + 8;
     bx += knopf(bx, 'SPIELEN', () => this.scene.start('DungeonSpiel', { version: this.version })).width + 16;
-    for (const v of [1, 2, 3, 4, 5, 6, 7, 8] as const) { bx += knopf(bx, `V${v}`, () => this.waehleVersion(v)).width + 3; }
+    for (const v of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const) { bx += knopf(bx, `V${v}`, () => this.waehleVersion(v)).width + 3; }
     knopf(bx + 10, 'MENÜ', () => this.scene.start('Title'));
     this.uiLayer.add(this.add.text(this.scale.width / 2, 22, 'DUNGEON-PROBE - ansehen · begehen · EDITOR (selbst zeichnen + als Code exportieren)', {
       fontFamily: 'serif', fontSize: '17px', color: '#d8cfb8', stroke: '#000', strokeThickness: 3,

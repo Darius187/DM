@@ -9,6 +9,8 @@ import { baueGangDungeon } from './dungeonGaenge';
 import { baueHoehle } from './hoehlenDungeon';
 import { baueVerbundeneRaeume } from './verbundeneRaeume';
 import { baueBurg } from './burgDungeon';
+import { baueV9 } from './v9Dungeon';
+import { baueV10 } from './v10Dungeon';
 import { baueKatakombenDungeon } from './katakombenDungeon';
 import type { KatakombenRolle } from '../data/katakombenDungeon';
 import { buildCrypt } from './areagen';
@@ -16,7 +18,7 @@ import { seededRng } from '../logic/rng';
 import { T, SOLID } from './tiles';
 import { VORLAGE_FARBE, type EditCode } from './dungeonVorlage';
 
-export type DungeonVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+export type DungeonVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 export interface ProbeKarte {
   name: string;
@@ -62,6 +64,26 @@ const ROLLEN_LABEL: Record<KatakombenRolle, { text: string; farbe: string }> = {
 };
 
 export function erzeugeKarte(version: DungeonVersion): ProbeKarte {
+  if (version === 9) {
+    // R118: gefuellte Kammern + ECHTE Tueren (im Spiel T.DTUER, hier Editor-Code 3)
+    const r = seededRng(Math.floor(Math.random() * 1e9));
+    const d = baueV9(() => r.random());
+    return {
+      name: `V9 - Kammern + echte Türen (${d.raeume.length} Räume, ${d.tueren.length} Türen)`,
+      w: d.w, h: d.h, grid: d.grid, solid: (t) => t === 0 || t === 2,
+      farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a, editorCodes: true,
+    };
+  }
+  if (version === 10) {
+    // R120: Autor-Vorlage-Gefuehl (Wandmassen, Gang-Stummel, verschachtelte Raeume)
+    const r = seededRng(Math.floor(Math.random() * 1e9));
+    const d = baueV10(() => r.random());
+    return {
+      name: `V10 - Vorlage-Stil: Wandmassen + Gang-Stummel (${d.raeume.length} Räume)`,
+      w: d.w, h: d.h, grid: d.grid, solid: (t) => t === 0 || t === 2,
+      farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a, editorCodes: true,
+    };
+  }
   if (version === 8) {
     const d = baueKatakombenDungeon(seededRng(Math.floor(Math.random() * 1e9)));
     const vaults = d.rooms.filter((r) => r.istVault);

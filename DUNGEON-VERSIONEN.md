@@ -162,3 +162,12 @@ Monster der angrenzenden Raeume). Aktivierung wie Katakomben: V9_EINSATZ
 (data/katakombenDungeon.ts, Standard AUS) bzw. F10-ANFANG-Knopf
 "V9-Kammern betreten". Browser-verifiziert: 33 Raeume, 132 Tuerkacheln,
 80/80 Gegner schlafend, Tuer solid->offen, 2 Raum-Monster erwachen.
+
+## V10 - GEBAUT (R120): Vorlage-Stil des Autors (Diablo-1-Raumgefuehl)
+Prozedural nach der Hand-Vorlage VORLAGE_V2 des Autors ("kommt meinem Diablo-1-
+Raumgefuehl am ehesten"): src/world/v10Dungeon.ts. Raeume Wand an Wand in
+MASSIVEN Wandmassen (Dicke 1-3), Durchbrueche 3 breit (Dicke 1 = TUER, dicker =
+GANG-Stummel wie die 'ooo'-Bloecke), VERSCHACHTELTE Innenraeume mit eigener
+Wand + Oeffnung. Groesse wie V8 (84x70). Boden-geprueftes Stanzen + Verbindungs-
+Sicherheitsnetz; 3 Tests (Codes/Dichte >55%, volle Erreichbarkeit 25 Seeds,
+Determinismus). In der DUNGEON-PROBE als V10 (V9 ebenfalls registriert).
