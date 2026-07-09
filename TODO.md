@@ -125,4 +125,4 @@
 - [ ] V9-Dungeon (R116): V2-Stil komplett gefuellt (Leerflaeche = Raumboden),
       je Kammer 2 Tueren; ECHTE Dungeon-Tueren (T.DTUER: solid + sichtblockend,
       E oeffnet mit Aufschwing-Animation + Knarzen, Monster im Raum erwachen
-      beim Oeffnen). Spez in DUNGEON-VERSIONEN.md V9.
+      beim Oeffnen). Groesse wie V8/Katakomben (84x70). Spez in DUNGEON-VERSIONEN.md V9.

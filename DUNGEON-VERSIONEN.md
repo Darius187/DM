@@ -127,6 +127,8 @@ OFFENE-FRAGEN (Frage 23).
 Autorwunsch (Karteneditor-Gespraech): "Stil wie V2, nur die Leerflaechen sind
 Raumboden, jede Kammer mit je 2 TUEREN mit den anderen Durchlaeufen verbunden,
 kaum Leerraum."
+- GROESSE wie V8/Katakomben: 84x70 Kacheln (Autor R116: "V9 soll so gross
+  sein wie V8") - also ein vollwertiges Level, keine Probe-Miniatur.
 - Generator: V2-Kammern als Ausgangspunkt, dann Fels->Raumboden auffuellen
   (bzw. BSP wie V7), jede Kammer bekommt GENAU 2 Tueren zu Nachbarn
   (Erreichbarkeits-Test wie V7, 25 Seeds).
