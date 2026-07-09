@@ -10,7 +10,9 @@ type RNG = () => number;
 // 0 Fels/Wand · 1 Höhlenboden · 2 Tür · 3 Raumboden
 export interface HoehleResult { w: number; h: number; grid: number[][]; raeume: number }
 
-const W = 72, H = 50;
+// R117 (Autor "V4 so gross wie V8"): Flaeche 84x70 wie die Katakomben -
+// die Kaverne bekommt mehr Hohlraeume, die Insel-Raeume verteilen sich weiter.
+const W = 84, H = 70;
 
 export function baueHoehle(rng: RNG): HoehleResult {
   let grid: number[][] = Array.from({ length: H }, () => new Array<number>(W).fill(0));
