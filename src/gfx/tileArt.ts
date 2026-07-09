@@ -338,6 +338,20 @@ export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptThem
       }
       break;
     }
+    case 'dungeontuer': {
+      // R118 V9: geschlossene Holztuer im Steinrahmen - Bretter senkrecht,
+      // zwei Eisenbaender, Ring-Griff. Solid + sichtblockend bis E sie oeffnet.
+      const wt2 = theme ?? { wallTop: '#0f0c08', wallFace: '#262017' } as CryptTheme;
+      ctx.fillStyle = wt2.wallTop; ctx.fillRect(0, 0, TILE, TILE);           // Steinrahmen
+      ctx.fillStyle = '#3a2916'; ctx.fillRect(3, 2, TILE - 6, TILE - 4);     // Tuerblatt
+      ctx.fillStyle = '#2c1f10';
+      for (let bx = 6; bx < TILE - 4; bx += 6) ctx.fillRect(bx, 3, 1, TILE - 6);   // Bretterfugen
+      ctx.fillStyle = '#181a1e'; ctx.fillRect(3, 8, TILE - 6, 3); ctx.fillRect(3, TILE - 12, TILE - 6, 3); // Eisenbaender
+      ctx.strokeStyle = '#0d0e11'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(TILE / 2 + 6, TILE / 2 + 2, 3, 0, 6.283); ctx.stroke();  // Ring-Griff
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(3, 2, 2, TILE - 4);   // Schattenkante
+      break;
+    }
     case 'mauerriss': {
       // Brüchige Wand (Front) mit deutlichen Rissen - lädt zum Aufbrechen ein
       const wt = theme ?? { wallTop: '#0f0c08', wallFace: '#262017' } as CryptTheme;

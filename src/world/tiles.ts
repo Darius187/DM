@@ -2,6 +2,7 @@
 // Schreine, Erzadern, Felsen, Folterkammer-Einrichtung, Acker, Wasser, Zaun.
 
 export const T = {
+  DTUER: 57,   // R118 V9: geschlossene Dungeon-Tuer (solid + sichtblockend, E oeffnet)
   HWALL: 0, GRASS: 1, PATH: 2, TREE: 3, CWALL: 5, CDOOR: 6, FLOOR: 7, STAIR: 8, WALL: 9,
   STAIRUP: 12, GRAVE: 13, BURNT: 14, WELL: 15,
   ALTAR: 16, SHELF: 17, BONES: 18, BLOOD: 19, RUNE: 21,
@@ -47,7 +48,7 @@ export const SOLID = new Set<number>([
   T.HWALL, T.TREE, T.CWALL, T.WALL, T.GRAVE, T.WELL, T.WELL_BLUT, T.ALTAR, T.SHELF,
   T.SHELF_GELEERT, T.SHELF_LEER,
   T.SHRINE, T.ORE, T.ROCK, T.RACK, T.RACK_R, T.CAGE, T.IRONMAIDEN, T.KOHLEBECKEN, T.WATER, T.FENCE, T.PALISADE, T.TOR,
-  T.BETT, T.TISCH, T.KAMIN, T.TRESEN, T.BRENNHOLZ, T.KESSEL, T.CRACK,
+  T.BETT, T.TISCH, T.KAMIN, T.TRESEN, T.BRENNHOLZ, T.KESSEL, T.CRACK, T.DTUER,
   T.ABYSS, // bodenloser Schacht - wie Wasser unbegehbar (BRUECKE führt hinüber)
   T.PILLAR, // Steinpfeiler
   T.BLUTSTROM, // tiefer Blutstrom - unbegehbar, die Brücke führt hinüber
@@ -75,7 +76,7 @@ const NAME: Record<number, string> = {
   [T.HOLZ]: 'holzboden', [T.BETT]: 'bett', [T.TISCH]: 'tisch', [T.STUHL]: 'stuhl',
   [T.KAMIN]: 'kamin', [T.TEPPICH]: 'teppich', [T.TRESEN]: 'tresen', [T.HDOOR]: 'haustuer',
   [T.KERZE]: 'kerze', [T.WANDFACKEL]: 'wandfackel', [T.BRENNHOLZ]: 'brennholz', [T.KESSEL]: 'kessel',
-  [T.CRACK]: 'mauerriss',
+  [T.CRACK]: 'mauerriss', [T.DTUER]: 'dungeontuer',
   [T.ABYSS]: 'abgrund', [T.BRIDGE]: 'bruecke', [T.PILLAR]: 'saeule',
   [T.WENDEL]: 'wendeltreppe', [T.BLUTSTROM]: 'blutstrom',
 };
