@@ -1355,3 +1355,16 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   (Restyle-Brief + HUD-Handover + final-hud-extra-flat-reference-layout-1300)
   liegt NUR auf dem Autor-PC, nicht im Repo -> HUD-Arbeit blockiert, bis die
   Dateien gepusht sind (siehe OFFENE-FRAGEN).
+- R115 HUD-Uebergabe Teil 1 (menu-ui-template/claude-code-handover-final-ui-
+  1300.md, massgeblich final-hud-extra-flat-reference-layout-1300.png):
+  HUD-Kugelstil zur FLACHEN Leiste umgebaut - EINE dunkle Holzplatte traegt
+  Anzeigen/Maus-/Tastenleiste/Statuszeile; Leben/Mana kompakt (R42->30, flacher
+  Teller, Messingring in Eisenfassung, nur Zahl - keine Labels/Embleme);
+  Q/F-Trank als dunkle Plaketten; MAUSTASTEN-Kopf in Gold. Texte kommen aus
+  dem CODE (kb-Settings, Statuszeile) - Bildschrift nur Optik-Vorlage (Autor-
+  Hinweis "Morgendaemmerung-Schreibfehler nicht uebernehmen"). Layout-Reihen-
+  folge exakt wie Spiel-HUD (Maus-Block LINKS vor Tastatur, HP links/MP rechts).
+  TEIL 2 OFFEN: Inventar/Charakter nach final-inventory-character-corrected
+  (3 Bereiche, Widerstaende Feuer/Kaelte/Schatten, KEIN Verkaufen, Kategorien
+  Waffen/Zauberstaebe/Aexte/Ruestung, Portrait Aldric) + Item-Icons aus den
+  Asset-Boegen croppen - naechste Runde.
