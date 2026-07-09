@@ -35,8 +35,11 @@ hineingeht). Alles zu Fuß erreichbar (Reachability über 20 Läufe getestet,
 ~9 Räume). In der DUNGEON-PROBE als "V4 Höhle" ansehbar UND begehbar.
 OFFEN: später in den echten Höhlen-/Minen-Generator übernehmen, Requisiten/
 Beute/Themen ergänzen.
-R117 (Autor): Fläche 72x50 -> 84x70 (wie V8/Katakomben) - Erreichbarkeits-
-Tests weiter grün.
+R117 (Autor): Fläche 72x50 -> 84x70 (wie V8/Katakomben).
+R119 (Autor): V4 = die MINE. Dort werden Erze, Gold, Stein, Eisen und Kupfer
+geschürft; der Held muss die Mine künftig BEFREIEN (Quest). Fläche 4x,
+länglich: 196x120. Autor überlegt noch 6x länglich (240x147) - eine Zeile in
+hoehlenDungeon.ts. Erreichbarkeits-Tests weiter grün.
 
 ---
 

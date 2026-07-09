@@ -256,3 +256,9 @@ KEINEM Branch des Repos. ZWISCHENLOESUNG: Settings-Restyle nach
 reference/menue-vorlage-1300.png + Chat-Anweisungen umgesetzt; die HUD-
 Uebergabe wartet, bis der Ordner gepusht ist (z.B. via Codex-Branch, wie
 bei reference/menue-vorlage-1300.png geschehen).
+
+
+## 29. V4-Mine: 4x oder 6x laenglich? (R119)
+4x laenglich (196x120) ist umgesetzt. Der Autor ueberlegt 6x laenglich
+(240x147). ZWISCHENLOESUNG: 4x aktiv; Umschalten = eine Zeile in
+src/world/hoehlenDungeon.ts (W/H). In der DUNGEON-PROBE (V4) begutachten.
