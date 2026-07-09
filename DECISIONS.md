@@ -1355,3 +1355,9 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   (Restyle-Brief + HUD-Handover + final-hud-extra-flat-reference-layout-1300)
   liegt NUR auf dem Autor-PC, nicht im Repo -> HUD-Arbeit blockiert, bis die
   Dateien gepusht sind (siehe OFFENE-FRAGEN).
+- R115b (Autor "die Leiste ist nicht was ich wollte - darf Codex uebernehmen?"):
+  Claudes flacher HUD-Umbau (R115) per git revert zurueckgenommen - der
+  vorherige Kugel-Stand ist wieder aktiv. Die HUD-Leiste (src/ui/hud.ts) ist
+  an CODEX uebergeben (Regeln + zu erhaltende Anker in CODEX.md Abschnitt 6).
+  Claude fasst hud.ts bis auf Weiteres nicht mehr an; Integration/Review der
+  Codex-PRs weiterhin bei Claude.
