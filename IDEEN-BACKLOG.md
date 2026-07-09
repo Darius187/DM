@@ -189,3 +189,11 @@ An Lore/Systeme gebunden:
       einstellen und als Code/Daten exportieren - Position/Größe persistent.
       Vorhandene Bausteine: StadtProbe-Planer, Wasser-Regler (wasser.ts), Hot-Swap-
       Ordner für Assets. Darauf aufbauen.
+
+## Atmosphäre (Autor-Auswahl R113, "wenn das Dorf steht")
+- [ ] Belagerungs-Vorlauf: 3 Warnstufen über Stunden vor dem Monster-Einfall
+      (Raben sammeln sich -> Tiere fliehen vom Waldrand -> Hornstoß). Spieler
+      sieht das Unheil kommen und kann Palisaden bauen.
+- [ ] Glocken + Tagesrhythmus + Nachtwächter: Kirchenglocke (Terz/Sext/Vesper),
+      NPC-Stundenplan (Messe/Arbeit/Bett), Sperrstunde, Nachtwächter mit
+      Laterne. Größter Authentizitäts-Sprung pro Aufwand.

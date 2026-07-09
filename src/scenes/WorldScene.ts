@@ -58,7 +58,8 @@ import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, BELAGERUNG, 
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
-import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, SCHILF_DICHTE, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { istMatsch, matschTempo, heldBlutAbbau, abdruckAlpha } from '../logic/spuren';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, FLYOVER, tileNameAt } from '../world/tiles';
@@ -1433,6 +1434,74 @@ export class WorldScene extends CombatScene {
     this.updatePfuetzen(dt);
   }
 
+  // --- R113: Moor-Nebel, Matsch, Spuren --------------------------------------
+  // Nach dem Regen dampft das Land: driftende Schwaden (ohne Fratzen), solange
+  // die Boden-Naesse hoch ist. Hysterese an/aus gegen Flackern.
+  private wetterNebel?: NebelFratzen;
+  private updateWetterNebel(): void {
+    const draussen = !!this.area && !this.area.dark && !this.area.innen;
+    if (!this.wetterNebel && draussen && !this.regnet && this.naesse >= MOOR_NEBEL.an) {
+      const anzahl = Math.min(MOOR_NEBEL.maxAnzahl, Math.max(6, Math.round(this.area.w * this.area.h * MOOR_NEBEL.proKachel)));
+      this.wetterNebel = new NebelFratzen(this, { x: 0, y: 0, w: this.area.w * TILE, h: this.area.h * TILE }, {
+        anzahl, gesichter: false, maxAlpha: MOOR_NEBEL.maxAlpha, depth: 2660,
+        ignoriere: (o) => this.uiCam?.ignore(o),
+      });
+      this.logMsg('Nebelschwaden ziehen über das Land.', '');
+    } else if (this.wetterNebel && (!draussen || this.naesse < MOOR_NEBEL.aus)) {
+      this.wetterNebel.destroy();
+      this.wetterNebel = undefined;
+    }
+  }
+
+  // Matsch: weicher Boden (Gras/Weg) draussen + genug Naesse -> zaeher Schritt.
+  private matschHier(): boolean {
+    if (!this.area || this.area.dark || this.area.innen) return false;
+    const k = this.area.map[Math.floor(this.py / TILE)]?.[Math.floor(this.px / TILE)];
+    return istMatsch(this.naesse, true, k === T.GRASS || k === T.PATH);
+  }
+
+  // Fussabdruecke (Matsch braun, Blut rot) + Blut am Helden abbauen.
+  private fussSpuren: Array<{ x: number; y: number; ang: number; t: number; blut: boolean }> = [];
+  private spurenGfx?: Phaser.GameObjects.Graphics;
+  private letzteSpur = { x: 0, y: 0 };
+  private spurFuss = 1;
+  private updateSpuren(dt: number): void {
+    for (const s of this.fussSpuren) s.t += dt;
+    while (this.fussSpuren.length && this.fussSpuren[0].t > SPUREN.lebenS) this.fussSpuren.shift();
+    const draussen = !!this.area && !this.area.dark && !this.area.innen;
+    this.heldBlut = heldBlutAbbau(this.heldBlut, dt, draussen && this.regnet, this.heldNass);
+    // Blutlache unter den Fuessen -> die naechsten Schritte faerben rot
+    const k = this.area?.map[Math.floor(this.py / TILE)]?.[Math.floor(this.px / TILE)];
+    if (k === T.BLOOD && getSettings().blood) this.blutSchrittRest = SPUREN.blutSchritte;
+    const d = Math.hypot(this.px - this.letzteSpur.x, this.py - this.letzteSpur.y);
+    if (d >= SPUREN.schrittWeite) {
+      const blut = this.blutSchrittRest > 0 && getSettings().blood;
+      if (blut || this.matschHier()) {
+        const ang = Math.atan2(this.py - this.letzteSpur.y, this.px - this.letzteSpur.x);
+        const quer = ang + Math.PI / 2, off = 3.5 * this.spurFuss;
+        this.fussSpuren.push({ x: this.px + Math.cos(quer) * off, y: this.py + 8 + Math.sin(quer) * off, ang, t: 0, blut });
+        if (this.fussSpuren.length > SPUREN.maxAbdruecke) this.fussSpuren.shift();
+        if (blut) this.blutSchrittRest--;
+        this.spurFuss *= -1;
+      }
+      this.letzteSpur = { x: this.px, y: this.py };
+    }
+    // zeichnen (unter den Figuren, ueber dem Boden)
+    if (!this.spurenGfx) { this.spurenGfx = this.add.graphics().setDepth(-4); this.uiCam?.ignore(this.spurenGfx); }
+    const g = this.spurenGfx;
+    g.clear();
+    for (const s of this.fussSpuren) {
+      const a = abdruckAlpha(s.t) * (s.blut ? 0.5 : 0.38);
+      if (a <= 0) continue;
+      g.fillStyle(s.blut ? 0x8a1410 : 0x2e2214, a);
+      g.save();
+      g.translateCanvas(s.x, s.y);
+      g.rotateCanvas(s.ang);
+      g.fillEllipse(0, 0, 7, 4);
+      g.restore();
+    }
+  }
+
   // MIGRIERT (R70): das alte 110-Tropfen-Rendering ist durch das EINHEITLICHE WetterOverlay
   // (neues Wettersystem) ersetzt. Die Wetter-LOGIK bleibt: this.regnet (an Tage gekoppelt) +
   // nur draußen. Hier wird nur die Stärke in den geteilten Zustand gespeist und gerendert.
@@ -1453,9 +1522,12 @@ export class WorldScene extends CombatScene {
         depth: 2680, tagNacht: false, tasten: false,
         // DONNER (R85): folgt dem Blitz mit Abstand (Entfernungs-Gefühl).
         // Spielt, sobald der Autor assets/sounds/donner.mp3 liefert.
-        onBlitz: () => this.time.delayedCall(350 + Math.random() * 1200, () => {
-          if (this.sfx.has('donner')) this.sfx.play('donner');
-        }),
+        // R113: Donner rollt IMMER (Synth-Grollen als Fallback, bis donner.mp3
+        // kommt); Lautstärke variiert mit der zufälligen "Entfernung".
+        onBlitz: () => {
+          const fern = Math.random();
+          this.time.delayedCall(350 + fern * 1800, () => this.sfx.play('donner', 1.2 - fern * 0.7));
+        },
       });
     }
     this.wetterOverlay.update(dt);
@@ -1724,6 +1796,9 @@ export class WorldScene extends CombatScene {
     }
     // R108: Klang-Umgebung (Hall) - Innenräume/Dungeon hallen, offenes Land kaum.
     this.sfx.setzeUmgebung(a.innen ? 0.95 : a.dark ? 0.8 : 0.18);
+    // R113: Spur-Anker auf die neue Position (sonst ein Quer-Abdruck über die Karte)
+    this.letzteSpur = { x: this.px, y: this.py };
+    this.blutSchrittRest = 0;
     // R104: Dorf-Layout-Platzhalter (nur 'stadt', reine Positionsplanung)
     this.zeichneDorfplan(a);
     // Autosave bei Gebietswechsel (Referenz-Verhalten)
@@ -4724,6 +4799,10 @@ export class WorldScene extends CombatScene {
     this.pfuetzenTexKeys = [];
     this.liegendeStaemme.clear();
     this.wasser2Shader?.destroy(); this.wasser2Shader = undefined;
+    // R113: Moor-Nebel + Fussspuren gehoeren zur alten Karte
+    this.wetterNebel?.destroy(); this.wetterNebel = undefined;
+    this.fussSpuren = [];
+    this.spurenGfx?.clear();
     this.gebackenerBodenImg?.destroy(); this.gebackenerBodenImg = undefined;
     if (this.dorfAktiv) { dorfPause(); this.dorfBild?.destroy(); this.dorfBild = undefined; this.dorfAktiv = false; }
     for (const s of this.fluessigkeitsShaders) s.destroy();
@@ -5557,12 +5636,14 @@ export class WorldScene extends CombatScene {
   }
 
   protected override stepSound(): string {
+    if (this.matschHier()) return 'schritte_matsch';   // R113: nasses Schmatzen
     return this.area?.dark ? 'schritte_stein' : 'schritte_gras';
   }
 
   protected override areaSpeedFactor(): number {
     // Krypta: bedächtig wie die Monster; Faktor über F10 verstellbar
     let f = this.area?.dark ? TUNING.kryptaTempo : 1;
+    f *= matschTempo(this.matschHier());   // R113: Matsch bremst
     // R86 (Autor "der Busch sollte nachgeben"): Büsche blocken nicht, aber
     // wer hindurchdrängt, wird gebremst - größere Büsche bremsen stärker.
     for (const bu of this.buschListe) {
@@ -10653,6 +10734,8 @@ export class WorldScene extends CombatScene {
     this.updateCombat(dt * kampfTempo);
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
     this.updateWetter(dt);      // Wetter-Achse (Regen/Nässe, Stimmungsregen bis 1. Dungeon)
+    this.updateWetterNebel();   // R113: Schwaden nach dem Regen
+    this.updateSpuren(dt);      // R113: Fussabdruecke + Blut am Helden
     this.updateLagerfeuer(dt);  // eigenes Feuer heilt in der Nähe (R81, Baumenü)
     this.updateBaustellen(dt);  // RTS-Platzierung + Bauzeit-Fortschritt (R88)
     this.updatePflanzenRespawn(dt); // Heilpflanzen wachsen nach (R89)

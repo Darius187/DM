@@ -39,6 +39,8 @@ import { UIPanels } from '../ui/panels';
 import { rollGear, rollGem } from '../logic/loot';
 import { KILL_DROPS, LEECH_HEAL_PER_POINT, ELEM_PFEIL } from '../data/items';
 import { steinWirkung } from '../logic/steinEffekte';
+import { blutTint } from '../logic/spuren';
+import { SPUREN } from '../data/welt';
 import { NOTIZEN } from '../data/texte';
 
 export interface Projectile {
@@ -385,6 +387,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // UI-Verschiebemodus (Runde 11): Leiste, Dialograhmen und Meldungs-Log
   // per Maus ziehen; die Versätze landen in den Einstellungen und im Bericht
   protected uiEditMode = false;
+  // R113 Spuren: Blut am Helden (0..1, faerbt die Figur; Regen/Wasser waescht)
+  // + wie viele der naechsten Schritte rote Abdruecke hinterlassen.
+  protected heldBlut = 0;
+  protected blutSchrittRest = 0;
   private uiHandles: Phaser.GameObjects.Container | null = null;
 
   private toggleUiEdit(): void {
@@ -1701,6 +1707,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Wucht der tötenden Waffe: Hammer schleudert die Teile weiter als ein
     // Schwert (Runde 35, Werte in kampf.ts).
     const wucht = GORE_WUCHT[this.weaponClass()] ?? 1;
+    // R113 Spuren: eine fleischige Nahkampf-Tötung aus der Nähe bespritzt den
+    // Helden - die Figur wird sichtbar blutig und hinterlässt rote Tritte,
+    // bis Regen oder Wasser es abwaschen. (Skelette/Schatten spritzen nicht.)
+    if (!knochen && e.type !== 'schatten' && getSettings().blood
+      && this.weaponClass() !== 'bogen' && Math.hypot(e.x - this.px, e.y - this.py) < 70) {
+      this.heldBlut = Math.min(1, this.heldBlut + SPUREN.blutProKill);
+      this.blutSchrittRest = Math.max(this.blutSchrittRest, SPUREN.blutSchritte);
+    }
     if (e.sprite && getSettings().blood) {
       const leiche = e.sprite;
       e.sprite = null;
@@ -3487,6 +3501,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       }
       this.zeichneHeld(dir, step);
       if (this.playerHitFlash > 0) this.playerSprite.setTintFill(0xffffff);
+      // R113: blutgetraenkter Held - dezenter Rot-Ton statt neutral
+      else if (this.heldBlut >= SPUREN.blutSchwelle && getSettings().blood) this.playerSprite.setTint(blutTint(this.heldBlut));
       else this.playerSprite.clearTint();
     }
 

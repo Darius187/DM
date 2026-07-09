@@ -6,7 +6,14 @@
 
 import Phaser from 'phaser';
 
-export interface FratzenOpts { anzahl?: number; depth?: number; maxAlpha?: number; ton?: number }
+export interface FratzenOpts {
+  anzahl?: number; depth?: number; maxAlpha?: number; ton?: number;
+  // R113: gesichter=false -> schlichte Moor-Schwaden (kein Horror-Gesicht),
+  // breiter gestreckt und mit weiterem Drift ("Schwaden ziehen uebers Moor").
+  gesichter?: boolean;
+  // R113: Kamera-Ausschluss je Bild (z.B. uiCam.ignore in der WorldScene).
+  ignoriere?: (o: Phaser.GameObjects.GameObject) => void;
+}
 
 export class NebelFratzen {
   private bilder: Phaser.GameObjects.Image[] = [];
@@ -16,17 +23,22 @@ export class NebelFratzen {
     const n = opts.anzahl ?? 8;
     const tiefe = opts.depth ?? 1900;
     const maxA = opts.maxAlpha ?? 0.26;
+    const gesicht = opts.gesichter !== false;
     for (let i = 0; i < n; i++) {
       const x = region.x + Math.random() * region.w;
       const y = region.y + Math.random() * region.h;
       const basis = maxA * (0.45 + Math.random() * 0.55);
-      const f = scene.add.image(x, y, 'nebel_fratze')
-        .setDepth(tiefe).setScale(1.5 + Math.random() * 1.4).setAngle((Math.random() - 0.5) * 18).setAlpha(basis);
+      const f = scene.add.image(x, y, gesicht ? 'nebel_fratze' : 'nebel_schwade')
+        .setDepth(tiefe).setAngle((Math.random() - 0.5) * 18).setAlpha(basis);
+      if (gesicht) f.setScale(1.5 + Math.random() * 1.4);
+      else f.setScale(2.2 + Math.random() * 2.2, 0.9 + Math.random() * 0.7);   // flache, breite Schwade
       if (opts.ton !== undefined) f.setTint(opts.ton);
+      opts.ignoriere?.(f);
       // Atmen: tritt hervor und zurück (nie ganz weg - Untergrenze wie im Prototyp)
       scene.tweens.add({ targets: f, alpha: basis * 0.55, duration: 2600 + Math.random() * 2800, yoyo: true, repeat: -1, ease: 'Sine.inOut', delay: Math.random() * 2600 });
-      // langsames Driften
-      scene.tweens.add({ targets: f, x: x + (Math.random() - 0.5) * 100, y: y + (Math.random() - 0.5) * 70, duration: 7000 + Math.random() * 5000, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      // langsames Driften - Schwaden ZIEHEN weiter (groessere Bahn) als Fratzen
+      const zug = gesicht ? 1 : 3.2;
+      scene.tweens.add({ targets: f, x: x + (Math.random() - 0.5) * 100 * zug, y: y + (Math.random() - 0.5) * 70 * (gesicht ? 1 : 1.6), duration: (7000 + Math.random() * 5000) * (gesicht ? 1 : 1.7), yoyo: true, repeat: -1, ease: 'Sine.inOut' });
       this.bilder.push(f);
     }
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
@@ -38,6 +50,15 @@ export class NebelFratzen {
 // Texturen: eine weiche Fratze, in NORMAL-Blend gerendert, damit die DUNKLEN
 // Augenhöhlen/der Mund sichtbar bleiben (unter SCREEN kämen nur die hellen Teile).
 function ensureTexturen(scene: Phaser.Scene): void {
+  // R113: schlichte Schwade (nur der weiche Nebelball, ohne Gesicht) fuer den Moor-Nebel.
+  if (!scene.textures.exists('nebel_schwade')) {
+    const S = 256, cv = document.createElement('canvas'); cv.width = S; cv.height = S;
+    const ctx = cv.getContext('2d')!;
+    const bg = ctx.createRadialGradient(S / 2, S / 2, 10, S / 2, S / 2, S / 2);
+    bg.addColorStop(0, 'rgba(168,176,186,0.38)'); bg.addColorStop(0.65, 'rgba(140,148,160,0.14)'); bg.addColorStop(1, 'rgba(120,128,140,0)');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, S, S);
+    scene.textures.addCanvas('nebel_schwade', cv);
+  }
   if (scene.textures.exists('nebel_fratze')) return;
   const S = 256, cv = document.createElement('canvas'); cv.width = S; cv.height = S;
   const ctx = cv.getContext('2d')!;

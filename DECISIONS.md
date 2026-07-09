@@ -1328,3 +1328,20 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   erklaert den Eindruck "frueher mehr Schatten".
 - R111c Dev-Kompendium: gesockelte Schwerter/Aexte/Staebe (je Element, power 4)
   neben den gesockelten Boegen - zum Sofort-Testen der R110-Element-Effekte.
+- R113 Wetter + Spuren (Autorauftrag): (1) DONNER rollt jetzt immer (Synth-
+  Grollen als Fallback bis donner.mp3 kommt; Blitz existierte schon im
+  WetterOverlay, Doppel-Flash). (2) MOOR-NEBEL: nach dem Regen (Naesse>=0.40,
+  Hysterese bis 0.22) ziehen gesichtslose Schwaden uebers Land (NebelFratzen
+  mit gesichter:false + neue nebel_schwade-Textur; Fratzen bleiben dem
+  Blutstrom vorbehalten). Feld heisst wetterNebel (moorNebel kollidierte mit
+  dem statischen R81-Nebel). (3) MATSCH: Naesse>=0.45 auf Gras/Weg draussen ->
+  Tempo x0.85 + schritte_matsch (Schmatz-Synth) + braune Fussabdruecke.
+  (4) SPUREN: Fussabdruecke (L/R versetzt, 26s Ausblenden, max 220) in Matsch
+  UND Blut (Blutlache betreten oder fleischiger Nahkampf-Kill aus der Naehe ->
+  8 rote Tritte). (5) BLUT AM HELDEN: heldBlut 0..1 (Tint der Figur ab 0.22),
+  trocknet kaum, Regen waescht, Waten waescht schnell (heldNass). KEIN NPC-
+  Kommentar (Autor: weggelassen). Werte in data/welt.ts (MATSCH/MOOR_NEBEL/
+  SPUREN), reine Logik in logic/spuren.ts (5 Tests). Browser-verifiziert.
+- R113b Backlog (Autor "fuer spaeter, wenn das Dorf steht"): Belagerungs-
+  Vorlauf (3 Warnstufen: Raben sammeln, Tiere fliehen, Hornstoss) + Glocken/
+  Tagesrhythmus/Nachtwaechter -> IDEEN-BACKLOG.md.

@@ -115,3 +115,33 @@ export const WETTER = {
 // dichter (mehr Kacheln + mehr Halme je Kachel). Der F10-Regler (Tab ANFANG)
 // stellt es LIVE nach, dieser Wert ist der Startwert. Autor nennt den Zielwert.
 export const SCHILF_DICHTE = 1;
+// --- R113: Matsch, Moor-Nebel, Spuren (Autorwunsch "Wetter ausbauen + Spuren") --
+// Matsch: nach laengerem Regen (Naesse) wird weicher Boden zaeh - langsamere
+// Schritte + Matsch-Schrittklang + Fussabdruecke. Nur draussen auf Gras/Weg.
+export const MATSCH = {
+  ab: 0.45,        // ab dieser Boden-Naesse (0..1) gilt weicher Boden als Matsch
+  tempo: 0.85,     // Tempofaktor des Helden im Matsch
+} as const;
+
+// Moor-Nebel: nach dem Regen dampft das Land - driftende Schwaden (ohne
+// Fratzen; die bleiben dem Blutstrom vorbehalten). Hysterese an/aus.
+export const MOOR_NEBEL = {
+  an: 0.40,        // Schwaden erscheinen ab dieser Naesse (wenn es NICHT regnet)
+  aus: 0.22,       // und verschwinden erst unter dieser (kein Flackern)
+  proKachel: 1 / 800, // Schwaden je Kachelflaeche (130x85 -> ~14)
+  maxAnzahl: 18,
+  maxAlpha: 0.34,
+} as const;
+
+// Spuren des Spielers: Fussabdruecke in Matsch/Blut + Blut am Helden.
+export const SPUREN = {
+  schrittWeite: 15,   // px gelaufene Strecke je Abdruck (L/R wechselnd)
+  lebenS: 26,         // so lange bleibt ein Abdruck sichtbar (blasst aus)
+  maxAbdruecke: 220,  // Obergrenze (aelteste verschwinden zuerst)
+  blutSchritte: 8,    // so viele rote Abdruecke nach Blutkontakt/Kill
+  blutProKill: 0.34,  // Blut am Helden je Nahkampf-Toetung (0..1, fleischig)
+  blutSchwelle: 0.22, // ab hier ist der Held sichtbar blutig (Tint)
+  abbauTrocken: 0.005,// Blut-Abbau je s (trocken - haelt lange)
+  abbauRegen: 0.06,   // ... im Regen draussen
+  abbauWasser: 0.55,  // ... beim Waten (Wasser waescht schnell)
+} as const;

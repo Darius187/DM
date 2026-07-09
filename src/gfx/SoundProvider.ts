@@ -30,6 +30,15 @@ const SYNTH: Record<string, SynthStep[]> = {
   templer_stimme: [{ freq: 60, dur: 0.6, type: 'sawtooth', vol: 0.04 }],
   schritte_gras: [{ freq: 160, dur: 0.03, type: 'triangle', vol: 0.015 }],
   schritte_stein: [{ freq: 200, dur: 0.03, type: 'square', vol: 0.015 }],
+  // R113 Matsch: nasses, doppeltes Schmatzen (tief + kurzer Nachzieher)
+  schritte_matsch: [{ freq: 95, dur: 0.05, type: 'triangle', vol: 0.028 }, { freq: 70, dur: 0.07, type: 'sawtooth', vol: 0.018, delay: 0.04 }],
+  // R113 Donner: tiefes, mehrstufiges Grollen (bis der Autor donner.mp3 liefert)
+  donner: [
+    { freq: 52, dur: 0.5, type: 'sawtooth', vol: 0.07 },
+    { freq: 38, dur: 0.9, type: 'sawtooth', vol: 0.06, delay: 0.12 },
+    { freq: 30, dur: 1.4, type: 'triangle', vol: 0.05, delay: 0.3 },
+    { freq: 46, dur: 0.6, type: 'sawtooth', vol: 0.03, delay: 0.9 },
+  ],
   tuer: [{ freq: 170, dur: 0.25, type: 'triangle', vol: 0.05 }],
   truhe: [{ freq: 300, dur: 0.12, type: 'triangle', vol: 0.06 }, { freq: 520, dur: 0.15, type: 'sine', vol: 0.05, delay: 0.1 }],
   muenzen: [{ freq: 880, dur: 0.05, type: 'sine', vol: 0.04 }],
