@@ -66,6 +66,11 @@ export function mausLeisteAnkerX(w: number): number {
 export function tastenLeisteMitteX(w: number): number {
   return mausLeisteAnkerX(w) + MAUS_SLOTS * SLOT_W + LEISTEN_LUECKE + (KB_SLOTS * SLOT_W) / 2;
 }
+// Alias fuer die Codex-Uebergabe: alte Nutzer von tastenLeisteMitteX bleiben
+// unveraendert, neue koennen den sprechenderen Namen verwenden.
+export function hotbarMitteX(w: number): number {
+  return tastenLeisteMitteX(w);
+}
 // Kugeln flankieren die Leisten (Runde 40, Autorwunsch): Lebenskugel direkt
 // links neben der Maus-Leiste, Manakugel direkt rechts neben der Tastenleiste.
 const ORB_BALKEN_LUECKE = 14; // Abstand Kugel <-> Leistenkante
@@ -111,8 +116,10 @@ export class Hud {
     }).setOrigin(0.5).setScrollFactor(0).setDepth(4603);
     this.hpText = txt('15px');
     this.mpText = txt('15px');
-    this.potText = txt('12px', '#cdbf9d');
-    this.mpotText = txt('12px', '#cdbf9d');
+    this.potText = txt('12px', '#d8c8a0');
+    this.potText.setStyle({ backgroundColor: '#1d150b', padding: { x: 6, y: 2 } });
+    this.mpotText = txt('12px', '#d8c8a0');
+    this.mpotText.setStyle({ backgroundColor: '#1d150b', padding: { x: 6, y: 2 } });
     this.infoText = scene.add.text(0, 0, '', {
       fontFamily: 'serif', fontSize: '12px', color: '#bfa86f', letterSpacing: 1,
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(4603);
@@ -235,7 +242,7 @@ export class Hud {
       cv.width = size;
       cv.height = size;
       const ctx = cv.getContext('2d')!;
-      const g = ctx.createRadialGradient(size * 0.35, size * 0.3, 4, size / 2, size / 2, ORB_R);
+      const g = ctx.createRadialGradient(size * 0.42, size * 0.34, 4, size / 2, size / 2, ORB_R);
       g.addColorStop(0, c0);
       g.addColorStop(0.55, c1);
       g.addColorStop(1, c2);
@@ -245,8 +252,8 @@ export class Hud {
       ctx.fill();
       this.scene.textures.addCanvas(key, cv);
     };
-    make('orb_rot', '#e04a3a', '#8c1a1a', '#470c0c');
-    make('orb_blau', '#6a8ad8', '#2c4884', '#101c3a');
+    make('orb_rot', '#c5362d', '#8c1a1a', '#3e0b0b');
+    make('orb_blau', '#4d74c8', '#2c4884', '#0f1934');
   }
 
   private slotX(i: number): number {
@@ -371,43 +378,44 @@ export class Hud {
     g.strokeRoundedRect(x0, y0, size, size, r);
   }
 
-  // HUD-Stil 1 (Runde 52): WoW-artiger horizontaler Balken. Innenkante am Anker
-  // (cx,cy), wächst nach `seite` (-1 links / +1 rechts) nach außen. Leben grün
-  // (rot bei wenig), Mana blau. Gibt die Mitte für die Zahl zurück.
-  private zeichneBalken(g: Phaser.GameObjects.Graphics, cx: number, cy: number, frac: number, leben: boolean, seite: number): [number, number] {
-    const bw = 150, bh = 18, r = 4;
-    const x0 = seite < 0 ? cx - bw : cx;
-    const y0 = cy - bh / 2;
-    const f = Phaser.Math.Clamp(frac, 0, 1);
-    // Leben ROT (Autorwunsch R53), bei wenig Leben dunkler; Mana blau.
-    const fill = leben ? (f < 0.25 ? 0x8a1f18 : 0xc0352c) : 0x3a64d0;
-    g.fillStyle(0x000000, 0.4); g.fillRoundedRect(x0 + 1, y0 + 2, bw, bh, r);
-    g.fillStyle(0x0a0806, 0.95); g.fillRoundedRect(x0, y0, bw, bh, r);   // Rinne
-    if (f > 0) { g.fillStyle(fill, 1); g.fillRoundedRect(x0 + 2, y0 + 2, (bw - 4) * f, bh - 4, r - 2); }
-    g.fillStyle(0xffffff, 0.10); g.fillRoundedRect(x0 + 2, y0 + 2, bw - 4, (bh - 4) * 0.45, r - 2); // Glanz
-    g.lineStyle(2, 0x3a2f1c, 1); g.strokeRoundedRect(x0, y0, bw, bh, r);
-    g.lineStyle(1, leben ? 0x8a4a3a : 0x5a6e9a, 0.5); g.strokeRoundedRect(x0 + 1, y0 + 1, bw - 2, bh - 2, r - 1);
-    return [x0 + bw / 2, cy];
+  // Codex HUD-Uebergabe: flache 1300/1400-Fassung fuer die bestehende Leiste.
+  // Wichtig: nur Optik, keine Geometrie - Slot-/Klick-Anker bleiben unveraendert.
+  private zeichneKompakteKugel(g: Phaser.GameObjects.Graphics, img: Phaser.GameObjects.Image, x: number, y: number, frac: number): void {
+    img.setPosition(x, y);
+    g.fillStyle(0x050302, 0.58);
+    g.fillCircle(x + 1, y + 2, ORB_R + 5);
+    g.fillStyle(0x0d0905, 0.98);
+    g.fillCircle(x, y, ORB_R + 1);
+    const ch = Math.round(ORB_R * 2 * Phaser.Math.Clamp(frac, 0, 1));
+    img.setCrop(0, ORB_R * 2 - ch, ORB_R * 2, ch);
+    g.lineStyle(3, 0x1b140c, 1);
+    g.strokeCircle(x, y, ORB_R + 4);
+    g.lineStyle(2, 0x8a6a34, 0.95);
+    g.strokeCircle(x, y, ORB_R + 1);
+    g.lineStyle(1, 0xe0c878, 0.28);
+    g.strokeCircle(x - 0.5, y - 0.5, ORB_R - 2);
   }
 
-  // HUD-Stil 2 (Runde 52): vertikale Kristall-Säule (RPG), füllt von unten.
-  private zeichneVertikal(g: Phaser.GameObjects.Graphics, cx: number, cy: number, frac: number, leben: boolean): void {
-    const cw = 30, ch = 92, r = 5;
-    const x0 = cx - cw / 2, y0 = cy - ch / 2;
+  private zeichneKompaktBalken(g: Phaser.GameObjects.Graphics, cx: number, cy: number, frac: number, leben: boolean): [number, number] {
+    const bw = 76, bh = 18, r = 5;
+    const x0 = cx - bw / 2, y0 = cy - bh / 2;
     const f = Phaser.Math.Clamp(frac, 0, 1);
-    const fill = leben ? 0xc23a32 : 0x3a64d0, glanz = leben ? 0xe87a64 : 0x6a90ee;
-    g.fillStyle(0x000000, 0.4); g.fillRoundedRect(x0 + 1, y0 + 2, cw, ch, r);
-    g.fillStyle(0x0a0806, 0.96); g.fillRoundedRect(x0, y0, cw, ch, r);   // Glas/Rinne
-    const fh = (ch - 6) * f;
+    const fill = leben ? (f < 0.25 ? 0x8a1f18 : 0xb7332c) : 0x315fc4;
+    g.fillStyle(0x050302, 0.7);
+    g.fillRoundedRect(x0 - 4, y0 - 4, bw + 8, bh + 8, r + 3);
+    g.fillStyle(0x0a0806, 0.96);
+    g.fillRoundedRect(x0, y0, bw, bh, r);
     if (f > 0) {
-      g.fillStyle(fill, 1); g.fillRoundedRect(x0 + 3, y0 + ch - 3 - fh, cw - 6, fh, r - 3);
-      g.fillStyle(glanz, 0.5); g.fillRect(x0 + 5, y0 + ch - 3 - fh, 4, fh); // Lichtkante
+      g.fillStyle(fill, 1);
+      g.fillRoundedRect(x0 + 2, y0 + 2, (bw - 4) * f, bh - 4, r - 2);
     }
-    // Füllstands-Striche (Viertel)
-    g.lineStyle(1, 0x000000, 0.35);
-    for (let q = 1; q < 4; q++) { const yy = y0 + 3 + (ch - 6) * (q / 4); g.lineBetween(x0 + 3, yy, x0 + cw - 3, yy); }
-    g.lineStyle(2, 0x4a3a26, 1); g.strokeRoundedRect(x0, y0, cw, ch, r);
-    g.lineStyle(1, 0xc9a227, 0.3); g.strokeRoundedRect(x0 + 1.5, y0 + 1.5, cw - 3, ch - 3, r - 1);
+    g.fillStyle(0xffffff, 0.1);
+    g.fillRoundedRect(x0 + 2, y0 + 2, bw - 4, 6, r - 2);
+    g.lineStyle(2, 0x1b140c, 1);
+    g.strokeRoundedRect(x0 - 2, y0 - 2, bw + 4, bh + 4, r + 2);
+    g.lineStyle(1, 0x8a6a34, 0.95);
+    g.strokeRoundedRect(x0, y0, bw, bh, r);
+    return [cx, cy];
   }
 
   // --- Drag & Drop auf die Maus-Leiste (Runde 20) ------------------------------
@@ -654,10 +662,9 @@ export class Hud {
     const kb = getSettings().kb;
     g.clear();
 
-    // Leben/Mana-Anzeige (Runde 52, Autorwunsch "Alternativen wie WoW"): drei
-    // umschaltbare Stile (settings.hudStil), beide Anzeigen einzeln verschiebbar.
-    // Anker folgt den ECHTEN Leistenkanten (slotX bezieht die Benutzer-Versätze
-    // mit ein), der gespeicherte orbHp/orbMp-Versatz erlaubt freies Verschieben.
+    // Codex HUD-Uebergabe: die Anzeigen bleiben Teil der flachen Leiste.
+    // Anker folgt weiter den ECHTEN Leistenkanten (slotX bezieht die Benutzer-
+    // Versätze mit ein), damit F10-Griffe, Drag und Klickschutz stabil bleiben.
     const balkenLinks = this.slotX(KB_SLOTS) - 26;       // linke Kante der Maus-Leiste
     const balkenRechts = this.slotX(KB_SLOTS - 1) + 26;   // rechte Kante der Tastenleiste
     const orbY0 = h - 24 - ORB_R;
@@ -673,38 +680,22 @@ export class Hud {
     const hpVal = String(Math.max(0, Math.ceil(p.hp))), mpVal = String(Math.ceil(p.mana));
     const potT = `${kb.pot.toUpperCase()} Trank x${p.pot}`, mpotT = `${kb.mpot.toUpperCase()} Trank x${p.mpot}`;
     const stil = getSettings().hudStil;
-    const orbsAn = stil === 0;
+    // Der alte Stil 2 waren hohe Kristall-Saeulen. Die Nutzerreferenz verbietet
+    // diese Hoehe; darum faellt er hier bewusst auf kompakte Kugeln zurueck.
+    const kompaktStil = stil === 1 ? 1 : 0;
+    const orbsAn = kompaktStil === 0;
     this.hpImg.setVisible(orbsAn);
     this.mpImg.setVisible(orbsAn);
-    if (stil === 1) {            // WoW-Balken: OBEN LINKS, gestapelt (Autorwunsch R53)
-      const wx = Math.max(8, 16 + oh.x);           // linker Rand (mit orbHp verschiebbar)
-      const wyHp = Math.max(8, 26 + oh.y);
-      const wyMp = wyHp + 24;
-      const [hnx, hny] = this.zeichneBalken(g, wx, wyHp, hpFrac, true, 1);
-      const [mnx, mny] = this.zeichneBalken(g, wx, wyMp, mpFrac, false, 1);
+    if (kompaktStil === 1) {     // kompakte Balken, aber am alten HUD-Anker
+      const [hnx, hny] = this.zeichneKompaktBalken(g, hx, hy, hpFrac, true);
+      const [mnx, mny] = this.zeichneKompaktBalken(g, mx, my, mpFrac, false);
       this.hpText.setPosition(hnx, hny).setText(hpVal);
       this.mpText.setPosition(mnx, mny).setText(mpVal);
-      this.potText.setPosition(hnx, hny - 14).setText(potT);
-      this.mpotText.setPosition(mnx, mny + 14).setText(mpotT);
-    } else if (stil === 2) {     // Vertikale Kristall-Säulen (RPG)
-      this.zeichneVertikal(g, hx, hy, hpFrac, true);
-      this.zeichneVertikal(g, mx, my, mpFrac, false);
-      this.hpText.setPosition(hx, hy).setText(hpVal);
-      this.mpText.setPosition(mx, my).setText(mpVal);
-      this.potText.setPosition(hx, hy + 58).setText(potT);
-      this.mpotText.setPosition(mx, my + 58).setText(mpotT);
-    } else {                     // Kugeln rot/blau (Standard)
-      const orb = (img: Phaser.GameObjects.Image, x: number, y: number, frac: number) => {
-        img.setPosition(x, y);
-        g.fillStyle(0x120505, 1);
-        g.fillCircle(x, y, ORB_R);
-        const ch = Math.round(ORB_R * 2 * Phaser.Math.Clamp(frac, 0, 1));
-        img.setCrop(0, ORB_R * 2 - ch, ORB_R * 2, ch);
-        g.lineStyle(3, 0x3a2f24, 1);
-        g.strokeCircle(x, y, ORB_R);
-      };
-      orb(this.hpImg, hx, hy, hpFrac);
-      orb(this.mpImg, mx, my, mpFrac);
+      this.potText.setPosition(hx, hy + ORB_R + 12).setText(potT);
+      this.mpotText.setPosition(mx, my + ORB_R + 12).setText(mpotT);
+    } else {                     // kompakte Kugeln rot/blau (Standard)
+      this.zeichneKompakteKugel(g, this.hpImg, hx, hy, hpFrac);
+      this.zeichneKompakteKugel(g, this.mpImg, mx, my, mpFrac);
       this.hpText.setPosition(hx, hy).setText(hpVal);
       this.mpText.setPosition(mx, my).setText(mpVal);
       this.potText.setPosition(hx, hy + ORB_R + 12).setText(potT);
@@ -715,11 +706,15 @@ export class Hud {
     const panel = (a: number, b: number) => {
       const px0 = this.slotX(a) - 26, px1 = this.slotX(b) + 26;
       const py0 = this.slotY(a) - 25;
-      g.fillStyle(0x0c0905, 0.92);
+      g.fillStyle(0x050302, 0.36);
+      g.fillRoundedRect(px0 + 2, py0 + 3, px1 - px0, 50, 8);
+      g.fillStyle(0x120c06, 0.94);
       g.fillRoundedRect(px0, py0, px1 - px0, 50, 8);
-      g.lineStyle(2, 0x3a2f1c, 1);
+      g.fillStyle(0xffffff, 0.05);
+      g.fillRoundedRect(px0 + 3, py0 + 3, px1 - px0 - 6, 15, 6);
+      g.lineStyle(2, 0x1b140c, 1);
       g.strokeRoundedRect(px0, py0, px1 - px0, 50, 8);
-      g.lineStyle(1, 0xc9a227, 0.35);
+      g.lineStyle(1, 0x9c7836, 0.48);
       g.strokeRoundedRect(px0 + 2, py0 + 2, px1 - px0 - 4, 46, 7);
     };
     panel(0, KB_SLOTS - 1);
@@ -755,6 +750,13 @@ export class Hud {
     // Statuszeile (Runde 37): nur noch Stufe/Gold/Tag/Zeit - sauber, mit
     // Abstand zur Leiste. Der frühere Slot-Hilfetext stand schon in den
     // Tooltips ("Rechtsklick: belegen, Ziehen: tauschen") und überlud die Zeile.
+    const statusW = Math.min(640, Math.max(420, KB_SLOTS * SLOT_W + 80));
+    const statusX = w / 2 + getSettings().ui.hotbar.x - statusW / 2;
+    const statusY = h - 36 + getSettings().ui.hotbar.y;
+    g.fillStyle(0x0c0804, 0.82);
+    g.fillRoundedRect(statusX, statusY - 3, statusW, 20, 3);
+    g.lineStyle(1, 0x8a6a34, 0.5);
+    g.strokeRoundedRect(statusX + 1, statusY - 2, statusW - 2, 18, 3);
     this.infoText.setPosition(w / 2 + getSettings().ui.hotbar.x, h - 33 + getSettings().ui.hotbar.y)
       .setText(extra);
     // Beschriftung ÜBER der Maus-Leiste, damit sie der Infozeile der
@@ -762,7 +764,7 @@ export class Hud {
     this.mausInfo.setPosition(
       (this.slotX(KB_SLOTS) + this.slotX(this.slots.length - 1)) / 2,
       h - 105 + getSettings().ui.mausleiste.y,
-    ).setText('MAUSTASTEN · Zauber hierher ziehen');
+    ).setText('MAUSTASTEN - Zauber hierher ziehen');
 
     // XP-Leiste
     const xw = Math.min(420, w * 0.42);
