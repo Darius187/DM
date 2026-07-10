@@ -56,7 +56,7 @@ import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDL
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
-import { hoehleTextur, hoehleKante, vorkommenTextur, KANTE_DICKE } from '../gfx/hoehlenArt';
+import { hoehleTextur, hoehleKante, hoeheFelsWand, vorkommenTextur, KANTE_DICKE } from '../gfx/hoehlenArt';
 import { HoehlenLeben } from '../gfx/hoehlenLeben';
 import { HausAtlas } from '../gfx/hausAtlas';
 import { MINE } from '../data/mine';
@@ -5095,10 +5095,22 @@ export class WorldScene extends CombatScene {
       && (a.hoehlenKammern?.some((k) => tx > k.x && tx < k.x + k.w - 1 && ty > k.y && ty < k.y + k.h - 1) ?? false);
     if (a.hoehlenOptik) {
       const istBrocken = id === T.ROCK && a.rocks.some((r) => Math.floor(r.x / TILE) === tx && Math.floor(r.y / TILE) === ty);
-      if (id === T.ROCK && !istBrocken) {
-        // massive Stollenwand: Supertextur-Ausschnitt nach Position
-        tag(this.add.image(tx * TILE + 16, ty * TILE + 16, hoehleTextur(this, 'wand', tx, ty)).setDepth(ty * TILE + 1));
-        return;
+      if ((id === T.ROCK && !istBrocken) || id === T.ORE) {
+        // massive Stollenwand: Supertextur-Ausschnitt nach Position. R127i
+        // (Autor "das Licht-System muss überall gleich sein"): nach Süden
+        // zeigende Wände bekommen den HOHEN Wandkörper wie die Krypta (R84) -
+        // Fuß-Anker unten, y-sortiert, Fackellicht fällt auf die Wandfläche.
+        const unten = a.map[ty + 1]?.[tx];
+        const front = unten !== undefined && !SOLID.has(unten);
+        if (front) {
+          const hF = Math.max(1, getSettings().licht.wandHoehe ?? 2);
+          tag(this.add.image(tx * TILE + 16, (ty + 1) * TILE, hoeheFelsWand(this, tx, ty, hF))
+            .setOrigin(0.5, 1).setDepth((ty + 1) * TILE - 6));
+        } else {
+          tag(this.add.image(tx * TILE + 16, ty * TILE + 16, hoehleTextur(this, 'wand', tx, ty)).setDepth(ty * TILE + 1));
+        }
+        // Erz fällt in den STANDING-Zweig durch (Vorkommen-Objekt, abbaubar).
+        if (id === T.ROCK) return;
       }
       if (id === T.FLOOR || id === T.STUHL) {
         tag(this.add.image(tx * TILE + 16, ty * TILE + 16, hoehleTextur(this, inKammer ? 'bohlen' : 'boden', tx, ty)).setDepth(-10));
@@ -5132,11 +5144,13 @@ export class WorldScene extends CombatScene {
       // Bei gebackenem Boden trägt das Bodenbild den Untergrund - nur das Objekt zeichnen.
       // R127f: in der Höhlen-Mine liegt unter Objekten der nahtlose Höhlengrund
       // (unter Erz-Vorkommen die Stollenwand, in Kammern die Bohlen).
-      if (!a.gebackenerBoden) {
+      if (!a.gebackenerBoden && !(a.hoehlenOptik && id === T.ORE)) {
+        // (Erz-Grund zeichnet in der Höhle schon der Wand-Zweig oben - flach
+        // oder als hoher Südwand-Körper, R127i.)
         const grundKey = a.hoehlenOptik
-          ? hoehleTextur(this, id === T.ORE ? 'wand' : inKammer ? 'bohlen' : 'boden', tx, ty)
+          ? hoehleTextur(this, inKammer ? 'bohlen' : 'boden', tx, ty)
           : this.provider.tileKey(groundName, variant, a.depth, a.theme);
-        tag(this.add.image(tx * TILE + 16, ty * TILE + 16, grundKey).setDepth(id === T.ORE && a.hoehlenOptik ? ty * TILE + 1 : -10));
+        tag(this.add.image(tx * TILE + 16, ty * TILE + 16, grundKey).setDepth(-10));
       }
       // Dichter Wald: Bäume mit vielen Baum-Nachbarn nutzen die
       // wald-Grafiken (assets/tiles/wald1.png ...), freie Bäume baum*
@@ -5230,7 +5244,8 @@ export class WorldScene extends CombatScene {
         if (a.hoehlenOptik && id === T.ORE && stufe < 2) {
           objImg.setTexture(vorkommenTextur(this, eintrag?.erz ?? 'eisen', variant));
           const skV = stufe === 1 ? 0.85 : 1;
-          objImg.setDisplaySize(TILE * skV, TILE * skV).setDepth(ty * TILE + 26);
+          // knapp UEBER dem hohen Suedwand-Koerper ((ty+1)*32-6), R127i
+          objImg.setDisplaySize(TILE * skV, TILE * skV).setDepth(ty * TILE + 28);
           objImg.setData('objTyp', objName);
           if (stufe === 1) {
             tag(this.add.image(tx * TILE + 16, ty * TILE + 13, this.abbauTexturKey('risse')).setDepth(ty * TILE + 27).setDisplaySize(TILE * 0.7, TILE * 0.7));

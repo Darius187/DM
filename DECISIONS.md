@@ -1590,3 +1590,18 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   assets/houses/README.md (Dateinamen, Frames, Anker, untrimmte-Layer-Empfehlung).
   tsc sauber, 285 Tests grün, im Browser: Platzhalter in Ravensmoor an N1,
   folgt der Box beim Verschieben (footX == Box-footX).
+- R127i Licht/Schatten 1:1 in der Hoehle (Autor: "das System muss ueberall
+  gleich sein, es ist nur eine andere Karte"): PRUEFUNG ergab - das Licht-
+  SYSTEM war bereits identisch (lightRT-Dunkelheit, Raycaster-Wandschatten
+  dungeonNeu, Fackel-Logik, Sichtfeld haengen alle nur am dark-Flag; die
+  Schattenwerfer kommen generisch aus isSolidAt, Minen-Fels wirft also schon
+  Schatten wie Krypta-Waende). Der EINE echte Unterschied: die hohen Wand-
+  koerper (R84) hingen am Kachelnamen krypta_wand_front - Minen-Fels (T.ROCK)
+  blieb flach, dadurch fiel Fackellicht anders. FIX: hoeheFelsWand in
+  hoehlenArt.ts - nach Sueden zeigende Fels- UND Erz-Kacheln der Mine bekommen
+  denselben hohen Wandkoerper (licht.wandHoehe Kacheln, Fuss-Anker unten,
+  Depth (ty+1)*TILE-6 wie die Krypta), gestapelt aus der nahtlosen Fels-
+  Supertextur (unterste Zeile = eigener Ausschnitt, darueber die Zeilen
+  darueber mod 8 -> horizontal und vertikal nahtlos). Erz-Vorkommen-Objekt
+  liegt knapp UEBER dem Wandkoerper (ty*32+28). tsc sauber, 285 Tests gruen,
+  im Browser: Heldenlicht + Felswaende ok, keine JS-Fehler.

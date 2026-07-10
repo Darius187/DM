@@ -312,6 +312,31 @@ function superTextur(art: 'wand' | 'boden' | 'bohlen'): HTMLCanvasElement {
   return cv;
 }
 
+// HOHER Fels-Wandkörper (R127i, Autor: "das Licht-System muss überall gleich
+// sein"): nach Süden zeigende Minenwände bekommen denselben hohen Wandkörper
+// wie die Krypta (R84, licht.wandHoehe Kacheln hoch) - nur eben aus der
+// nahtlosen Fels-Supertextur gestapelt. Unterste Zeile = der eigene Ausschnitt
+// der Kachel, darüber die Zeilen darüber (mod 8) -> die Felsfläche läuft
+// horizontal UND vertikal nahtlos weiter. Fuß-Anker unten, y-sortiert an der
+// Basis; das Fackellicht/der Raycaster behandeln sie wie Krypta-Wände.
+export function hoeheFelsWand(
+  scene: { textures: { exists: (k: string) => boolean; addCanvas: (k: string, c: HTMLCanvasElement) => void } },
+  tx: number, ty: number, hF: number,
+): string {
+  const sx = ((tx % SUPER) + SUPER) % SUPER, sy = ((ty % SUPER) + SUPER) % SUPER;
+  const key = `hoehle_wandhoch_${sx}_${sy}_${hF}`;
+  if (scene.textures.exists(key)) return key;
+  const cv = document.createElement('canvas'); cv.width = TILE; cv.height = hF * TILE;
+  const ctx = cv.getContext('2d')!;
+  const quelle = superTextur('wand');
+  for (let i = 0; i < hF; i++) {
+    const srcRow = (((sy - (hF - 1 - i)) % SUPER) + SUPER) % SUPER;
+    ctx.drawImage(quelle, sx * TILE, srcRow * TILE, TILE, TILE, 0, i * TILE, TILE, TILE);
+  }
+  scene.textures.addCanvas(key, cv);
+  return key;
+}
+
 // Kachel für Weltposition (tx, ty): Ausschnitt (tx%8, ty%8) der Supertextur;
 // Erz = Wand-Ausschnitt + Ader-Band. Lazy in den Szenen-Cache gebacken.
 export function hoehleTextur(
