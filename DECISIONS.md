@@ -1379,3 +1379,12 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   (wegeZuLaeufen -> DORF_WEGE-Block, [xStart,xEnde,y] je Sorte) - der Autor
   malt, schickt den Bericht, ich backe die Laeufe fest in die Generierung
   (T.PATH/Pflaster) und leite mehr daraus ab. Logik + RLE getestet (9 Tests).
+- R122 Codex-HUD gemergt (PR #2, codex/hud-leiste): NUR src/ui/hud.ts geaendert
+  (Regel eingehalten). HUD bleibt flach (Leben links, Maus-Block, Tastenblock,
+  Mana rechts), keine hohen Saeulen mehr - gespeicherter Stil 2 faellt auf
+  kompakte Kugeln zurueck; ruhigere Orbs, Messingkanten, Trank-Plaketten,
+  Statuszeile. hotbarMitteX als Alias ergaenzt (tastenLeisteMitteX bleibt).
+  Claude-Review: alle oeffentlichen Anker (orbHpAnkerX/orbMpAnkerX/
+  mausLeisteAnkerX/hotbarMitteX/tastenLeisteMitteX) + Hud-API (update,
+  belegeBeiPunkt, klickBlockiert) erhalten. tsc sauber, 271 Tests gruen
+  (Codex 262 auf aelterer Basis), im Browser flach + fehlerfrei verifiziert.
