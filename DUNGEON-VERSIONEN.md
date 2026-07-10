@@ -171,3 +171,14 @@ GANG-Stummel wie die 'ooo'-Bloecke), VERSCHACHTELTE Innenraeume mit eigener
 Wand + Oeffnung. Groesse wie V8 (84x70). Boden-geprueftes Stanzen + Verbindungs-
 Sicherheitsnetz; 3 Tests (Codes/Dichte >55%, volle Erreichbarkeit 25 Seeds,
 Determinismus). In der DUNGEON-PROBE als V10 (V9 ebenfalls registriert).
+
+## V11 - GEBAUT (R123): unregelmaessig - Hauptraeume + Zwischenraeume
+Autor: V10 war zu gleichmaessig; V11 ist der eigentliche Ansatz. ZWEI Schritte
+(src/world/v11Dungeon.ts): (1) Hauptraeume wie V2/Vorlage frei ins Fels streuen
+(Rejection Sampling, Fels-Puffer) und mit 3-Kachel-Passagen (MST + Schleifen)
+verbinden; (2) die Leerflaeche mit ZWISCHENRAEUMEN auffuellen, jeder ueber einen
+3er-Gang angeschlossen - zu 50% mit zweitem Gang auf anderer Seite (Durchgang =
+Eingang+Ausgang) statt Sackgasse. Ergebnis: unvorhersehbare Raeume, echter Fels-
+Leerraum bleibt. 4 Tests (Codes, volle Erreichbarkeit 25 Seeds, >8% Fels,
+Determinismus). In der DUNGEON-PROBE als V11. V10 bleibt als gleichmaessige
+Variation erhalten.
