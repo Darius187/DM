@@ -38,7 +38,35 @@ describe('V11-Dungeon (unregelmaessig + Zwischenraeume)', () => {
       const d = baueV11(rngVon(seed));
       let fels = 0;
       for (const row of d.grid) for (const c of row) if (c === 0) fels++;
-      expect(fels / (d.w * d.h), `Seed ${seed}`).toBeGreaterThan(0.08);
+      expect(fels / (d.w * d.h), `Seed ${seed}`).toBeGreaterThan(0.05);
+    }
+  });
+
+  // R125-Bugfix: die Uebergaenge waren nur 1 Kachel breit (der Verbreiterungs-
+  // Versatz lag laengs statt quer). Jetzt muessen die Gaenge 3-breit sein: KEINE
+  // Gang-Kachel darf eine 1-breite Engstelle sein (begehbar nur auf EINER Achse).
+  it('Gaenge sind 3 Kacheln breit (keine 1-breiten Engstellen)', () => {
+    const walk = (c: number) => c === 1 || c === 3 || c === 4;
+    for (const seed of SEEDS) {
+      const d = baueV11(rngVon(seed));
+      const g = d.grid;
+      let duenn = 0;
+      for (let y = 1; y < d.h - 1; y++) for (let x = 1; x < d.w - 1; x++) {
+        if (g[y][x] !== 4) continue;
+        const L = walk(g[y][x - 1]), R = walk(g[y][x + 1]), U = walk(g[y - 1][x]), D = walk(g[y + 1][x]);
+        if ((L && R && !U && !D) || (U && D && !L && !R)) duenn++;
+      }
+      expect(duenn, `Seed ${seed}: ${duenn} duenne Gang-Kacheln`).toBe(0);
+    }
+  });
+
+  it('fuellt schwarze Flaechen: viele Zwischenraeume, Fels < 45%', () => {
+    for (const seed of SEEDS.slice(0, 10)) {
+      const d = baueV11(rngVon(seed));
+      let fels = 0;
+      for (const row of d.grid) for (const c of row) if (c === 0) fels++;
+      expect(fels / (d.w * d.h), `Seed ${seed}`).toBeLessThan(0.45);
+      expect(d.raeume.filter((r) => r.fueller).length, `Seed ${seed}`).toBeGreaterThan(20);
     }
   });
 

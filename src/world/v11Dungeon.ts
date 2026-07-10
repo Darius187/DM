@@ -19,33 +19,30 @@ const PUFFER = 2;               // Fels zwischen Hauptraeumen
 const HAUPT = [7, 13] as const; // Ziel-Anzahl Hauptraeume
 const HW: [number, number] = [8, 18];    // Hauptraum-Breite/Hoehe (unregelmaessig)
 const HH: [number, number] = [7, 14];
-const FW: [number, number] = [5, 9];     // Zwischenraum-Groesse (kleiner, ueberraschend)
-const FH: [number, number] = [5, 8];
+// Zwischenraeume werden in Schritt 2 an die Loch-Groesse angepasst (Halbmass 2..4).
 
 export function baueV11(rng: RNG): V11Result {
   const grid: number[][] = Array.from({ length: H }, () => new Array<number>(W).fill(0));
   const raeume: V11Raum[] = [];
   const ri = (a: number, b: number): number => a + Math.floor(rng() * (b - a + 1));
 
-  const platziere = (bw: [number, number], bh: [number, number], fueller: boolean, versuche: number): number | null => {
+  // Hauptraum per Rejection Sampling ins Fels streuen (Fels-Puffer dazwischen).
+  const platziereHaupt = (bw: [number, number], bh: [number, number], versuche: number): void => {
     for (let v = 0; v < versuche; v++) {
       const w = ri(bw[0], bw[1]), h = ri(bh[0], bh[1]);
       const x = ri(2, W - w - 3), y = ri(2, H - h - 3);
       const kand: Rect = { x, y, w, h };
       if (raeume.some((r) => ueberlappt(r, kand, PUFFER))) continue;
-      // Fueller: NUR in reinen Fels setzen (keine Gaenge/Raeume anritzen)
-      if (fueller && !nurFels(grid, kand)) continue;
       const id = raeume.length;
-      raeume.push({ id, x, y, w, h, fueller });
+      raeume.push({ id, x, y, w, h, fueller: false });
       grabeRaum(grid, kand);
-      return id;
+      return;
     }
-    return null;
   };
 
   // --- Schritt 1: Hauptraeume + 3er-Passagen (MST + ein paar Schleifen) ------
   const zielHaupt = ri(HAUPT[0], HAUPT[1]);
-  for (let n = 0; n < zielHaupt; n++) platziere(HW, HH, false, 40);
+  for (let n = 0; n < zielHaupt; n++) platziereHaupt(HW, HH, 40);
   const haupt = [...raeume];
   const kanten = spannbaum(haupt);
   // ein paar Extra-Passagen fuer Schleifen (mehr Wege = weniger langweilig)
@@ -57,29 +54,81 @@ export function baueV11(rng: RNG): V11Result {
   }
   for (const [a, b] of kanten) grabeGang(grid, zentrum(haupt[a]), zentrum(haupt[b]), rng);
 
-  // --- Schritt 2: Leerflaeche mit Zwischenraeumen auffuellen -----------------
-  // So lange es grosse Fels-Luecken gibt, Raeume einsetzen und anschliessen.
+  // --- Schritt 2: schwarze Fels-Luecken GEZIELT mit Zwischenraeumen fuellen ----
+  // (R125, Autorwunsch): ueberall wo eine grosse dunkle Flaeche bleibt, kommt ein
+  // Raum rein. Wir suchen per Distanztransformation den Punkt, der am WEITESTEN
+  // von allem Begehbaren/Wand entfernt ist (= Mitte des groessten schwarzen
+  // Lochs), setzen dort einen passenden Zwischenraum und schliessen ihn an. So
+  // wandern die Raeume UM die Hauptraeume herum, bis kaum noch Schwarz uebrig ist.
+  // In WELLEN: jede Welle sortiert alle Fels-Kacheln nach Tiefe (Abstand zu
+  // allem Begehbaren/Wand) und setzt von tief nach flach Raeume rein - grosse in
+  // grosse Loecher, kleine 3x3-Kammern in die Naehte. Das Fuellen aendert die
+  // Tiefen, darum mehrere Wellen, bis nur noch duenne Naehte uebrig sind.
   let fueller = 0;
-  for (let runde = 0; runde < 60 && fueller < 22; runde++) {
-    const id = platziere(FW, FH, true, 30);
-    if (id === null) continue;
-    const r = raeume[id];
-    // Immer anschliessen: Gang von der Raummitte zum naechsten begehbaren Punkt
-    // (schafft die 1. Tuer). Zu 50% ein zweiter Gang auf der anderen Seite ->
-    // Durchgangsraum (Eingang UND Ausgang) statt Sackgasse.
-    const z = zentrum(r);
-    const ziel1 = naechsteBegehbar(grid, z.x, z.y, r);
-    if (!ziel1) { entferneRaum(grid, r); raeume.pop(); continue; }
-    grabeGang(grid, z, ziel1, rng);
-    fueller++;
-    if (rng() < 0.5) {
-      const ziel2 = naechsteBegehbar(grid, z.x, z.y, r, ziel1);
-      if (ziel2) grabeGang(grid, z, ziel2, rng);
+  for (let welle = 0; welle < 10 && fueller < 300; welle++) {
+    const zellen = felsNachTiefe(grid);
+    if (!zellen.length || zellen[0].d < 2) break;
+    for (const loch of zellen) {
+      if (loch.d < 2 || fueller >= 300) break;
+      if (grid[loch.y][loch.x] !== 0) continue;               // inzwischen verbaut
+      // Raum an die Loch-Tiefe anpassen; bei Bedarf schrumpfen, bis er passt.
+      for (let half = Math.min(4, loch.d - 1); half >= 1; half--) {
+        const rw = half * 2 + 1, rh = half * 2 + 1;
+        const rx = clamp(loch.x - half, 2, W - 2 - rw);
+        const ry = clamp(loch.y - half, 2, H - 2 - rh);
+        const kand: Rect = { x: rx, y: ry, w: rw, h: rh };
+        if (raeume.some((r) => ueberlappt(r, kand, 0)) || !nurFels(grid, kand)) continue;
+        const id = raeume.length;
+        raeume.push({ id, x: rx, y: ry, w: rw, h: rh, fueller: true });
+        grabeRaum(grid, kand);
+        const z = zentrum(kand);
+        const ziel1 = naechsteBegehbar(grid, z.x, z.y, kand);
+        if (!ziel1) { entferneRaum(grid, kand); raeume.pop(); break; }
+        grabeGang(grid, z, ziel1, rng);
+        fueller++;
+        // Zu 55% ein zweiter Gang -> Durchgangsraum statt Sackgasse.
+        if (rng() < 0.55) {
+          const ziel2 = naechsteBegehbar(grid, z.x, z.y, kand, ziel1);
+          if (ziel2) grabeGang(grid, z, ziel2, rng);
+        }
+        break;
+      }
     }
   }
 
   verbindeAlles(grid);
   return { w: W, h: H, grid, raeume };
+}
+
+function clamp(v: number, lo: number, hi: number): number { return v < lo ? lo : v > hi ? hi : v; }
+
+// Distanztransformation (BFS ab allen Nicht-Fels-Kacheln, Rand NICHT als Quelle,
+// damit auch Ecken/Raender gefuellt werden): liefert ALLE Fels-Kacheln nach
+// Tiefe (Abstand zu allem Begehbaren/Wand) absteigend sortiert. So werden erst
+// die groessten schwarzen Loecher gefuellt, dann die Naehte. Manhattan reicht.
+function felsNachTiefe(grid: number[][]): Array<{ x: number; y: number; d: number }> {
+  const h = grid.length, w = grid[0].length;
+  const dist: number[][] = Array.from({ length: h }, () => new Array<number>(w).fill(1e9));
+  const q: Array<[number, number]> = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (grid[y][x] !== 0) { dist[y][x] = 0; q.push([x, y]); }
+  }
+  let head = 0;
+  while (head < q.length) {
+    const [x, y] = q[head++]; const nd = dist[y][x] + 1;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+      if (grid[ny][nx] === 0 && nd < dist[ny][nx]) { dist[ny][nx] = nd; q.push([nx, ny]); }
+    }
+  }
+  const zellen: Array<{ x: number; y: number; d: number }> = [];
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    if (grid[y][x] === 0 && dist[y][x] < 1e9) zellen.push({ x, y, d: dist[y][x] });
+  }
+  // tief -> flach; deterministischer Tie-Break (kein Date/Random) fuer stabile Seeds
+  zellen.sort((a, b) => b.d - a.d || a.y - b.y || a.x - b.x);
+  return zellen;
 }
 
 // Raum eingraben: Innen Boden (1), Ring Wand (2).
@@ -93,20 +142,22 @@ function entferneRaum(grid: number[][], r: Rect): void {
 }
 
 // 3-Kachel-L-Gang zwischen zwei Punkten. Fels(0)->Gang(4), Raumwand(2)->Tuer(3),
-// Boden/Gang/Tuer bleiben. Die Breite kommt aus je einer Parallelspur.
+// Boden/Gang/Tuer bleiben. Die Breite entsteht durch je eine Parallelspur QUER
+// zur Laufrichtung (R125-Bugfix: die Spur lag vorher LAENGS -> Gaenge nur 1 breit).
 function grabeGang(grid: number[][], a: { x: number; y: number }, b: { x: number; y: number }, rng: RNG): void {
   const erstH = rng() < 0.5;
-  const setze = (x: number, y: number, quer: boolean): void => {
+  // horiz = der Lauf geht waagerecht -> Breite quer in Y; sonst quer in X.
+  const setze = (x: number, y: number, horiz: boolean): void => {
     for (let o = -(GANG >> 1); o <= (GANG >> 1); o++) {
-      const xx = quer ? x : x + o, yy = quer ? y + o : y;
+      const xx = horiz ? x : x + o, yy = horiz ? y + o : y;
       const c = grid[yy]?.[xx];
       if (c === undefined) continue;
       if (c === 0) grid[yy][xx] = 4;
       else if (c === 2) grid[yy][xx] = 3;
     }
   };
-  const hLauf = (y: number, x0: number, x1: number): void => { for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) setze(x, y, false); };
-  const vLauf = (x: number, y0: number, y1: number): void => { for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) setze(x, y, true); };
+  const hLauf = (y: number, x0: number, x1: number): void => { for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) setze(x, y, true); };
+  const vLauf = (x: number, y0: number, y1: number): void => { for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) setze(x, y, false); };
   if (erstH) { hLauf(a.y, a.x, b.x); vLauf(b.x, a.y, b.y); }
   else { vLauf(a.x, a.y, b.y); hLauf(b.y, a.x, b.x); }
 }

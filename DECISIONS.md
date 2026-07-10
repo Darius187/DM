@@ -1414,3 +1414,15 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   tastenLeisteMitteX) + Hud-API unveraendert. tsc sauber, 275 Tests gruen,
   im Browser verifiziert (beide Orbs, Slots, Plaketten, Statusleiste flach im
   1300er-Messingstil - wirkt wie hud-reference-final-extra-flat-1300.png).
+- R125 V11-Fix (Autor: "v11 voll verkackt - Uebergaenge 1 statt 3 breit, ueberall
+  schwarze ungefuellte Flaechen; Generator-Grundansatz lassen"): (1) grabeGang-Bug
+  - die Verbreiterungs-Spur lag LAENGS zur Laufrichtung statt QUER (setze-Flag
+  invertiert) -> Gaenge nur 1 breit. Jetzt 3-breit (Regressionstest: 0 duenne
+  1-breite Gang-Kacheln ueber 25 Seeds). (2) Fuell-Schritt von Rejection-Sampling
+  auf WELLEN mit Distanztransformation umgestellt (felsNachTiefe): je Welle alle
+  Fels-Kacheln nach Tiefe sortiert, von tief nach flach mit passend grossen
+  Raeumen gefuellt -> Raeume wandern um die Hauptraeume herum, Fels faellt von
+  ~65% auf ~31-36%. Rand nicht als Distanz-Quelle (Ecken werden gefuellt). Kein
+  Endlos-Spin mehr (frueher Single-deepest-cell-Ansatz haengte an unplatzierbaren
+  Rand-Zellen). tsc sauber, 277 Tests gruen, im Browser (Dungeon-Probe V11) dicht
+  + unregelmaessig + 3-breite Passagen verifiziert.

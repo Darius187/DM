@@ -177,8 +177,21 @@ Autor: V10 war zu gleichmaessig; V11 ist der eigentliche Ansatz. ZWEI Schritte
 (src/world/v11Dungeon.ts): (1) Hauptraeume wie V2/Vorlage frei ins Fels streuen
 (Rejection Sampling, Fels-Puffer) und mit 3-Kachel-Passagen (MST + Schleifen)
 verbinden; (2) die Leerflaeche mit ZWISCHENRAEUMEN auffuellen, jeder ueber einen
-3er-Gang angeschlossen - zu 50% mit zweitem Gang auf anderer Seite (Durchgang =
-Eingang+Ausgang) statt Sackgasse. Ergebnis: unvorhersehbare Raeume, echter Fels-
-Leerraum bleibt. 4 Tests (Codes, volle Erreichbarkeit 25 Seeds, >8% Fels,
-Determinismus). In der DUNGEON-PROBE als V11. V10 bleibt als gleichmaessige
-Variation erhalten.
+3er-Gang angeschlossen - zu 55% mit zweitem Gang auf anderer Seite (Durchgang =
+Eingang+Ausgang) statt Sackgasse.
+
+R125-FIX (Autor: "v11 voll verkackt - Uebergaenge nur 1 breit, ueberall schwarze
+ungefuellte Flaechen"): ZWEI Bugs behoben, Grundansatz unveraendert:
+1) grabeGang verbreiterte den Gang LAENGS statt QUER (setze-Flag invertiert) ->
+   Gaenge waren nur 1 Kachel breit. Jetzt echt 3-breit (Test: 0 duenne Kacheln).
+2) Fuell-Schritt neu: statt Rejection-Sampling jetzt WELLEN mit Distanz-
+   transformation (felsNachTiefe) - je Welle werden alle Fels-Kacheln nach Tiefe
+   (Abstand zu allem Begehbaren) sortiert und von tief nach flach mit Raeumen
+   gefuellt (grosse in grosse Loecher, kleine 3x3 in die Naehte). So wandern die
+   Raeume UM die Hauptraeume herum, bis kaum Schwarz bleibt. Fels ~31-36% (vorher
+   ~65%+), ~70-115 Zwischenraeume, sehr ungleichmaessig ("aber cool"). Rand zaehlt
+   NICHT als Distanz-Quelle, damit auch Ecken/Raender gefuellt werden.
+Ergebnis: dichter, unvorhersehbarer, 3-breite Passagen. 6 Tests (Codes, volle
+Erreichbarkeit 25 Seeds, >5% Fels-Rest, 3-breite Gaenge/keine Engstellen 25 Seeds,
+<45% Fels + >20 Zwischenraeume, Determinismus). In der DUNGEON-PROBE als V11, im
+Browser verifiziert. V10 bleibt als gleichmaessige Variation erhalten.
