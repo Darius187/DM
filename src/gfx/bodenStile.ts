@@ -230,18 +230,19 @@ export const BODEN_STILE: BodenStil[] = [
     if (r() < 0.5) riss(ctx, r, 0.16);
     abnutzung(ctx, r, 0.09); koernung(ctx, r, 0.06, 16);
   } },
-  // 12 - gesprenkelter Granit
+  // 12 - Granit (R127c, Autor "zu dominant, Muster nutzlos bei Wiederholung":
+  // deutlich weniger + schwaechere Sprenkel, KEIN Plattenrand mehr - dadurch
+  // gibt es keine sichtbare Kachel-Wiederholung, nur ruhiges Korn)
   { id: 'granit', name: 'Granit', zeichne(ctx, n) {
     const r = prng(n + 43);
     const g = 74 + (n % 5) * 2;
     fuege(ctx, `rgb(${g},${g - 2},${g - 4})`, 0, 0, TILE, TILE);
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 28; i++) {
       const w = r();
-      ctx.fillStyle = w < 0.45 ? 'rgba(30,28,26,0.5)' : w < 0.8 ? 'rgba(160,155,145,0.4)' : 'rgba(190,140,120,0.3)';
+      ctx.fillStyle = w < 0.5 ? 'rgba(30,28,26,0.22)' : w < 0.85 ? 'rgba(150,146,138,0.16)' : 'rgba(160,130,115,0.12)';
       ctx.fillRect(r() * TILE, r() * TILE, 1, 1);
     }
-    ctx.strokeStyle = 'rgba(15,13,11,0.4)'; ctx.strokeRect(0.5, 0.5, TILE - 1, TILE - 1);
-    abnutzung(ctx, r, 0.04);
+    koernung(ctx, r, 0.05, 12);
   } },
   // 13 - Flusskiesel in Moertel (Hof/Kueche)
   { id: 'flusskiesel', name: 'Flusskiesel', zeichne(ctx, n) {
@@ -290,7 +291,9 @@ export const BODEN_STILE: BodenStil[] = [
       for (let s = 0; s < 4; s++) { x += (r() - 0.5) * 14; y += (r() - 0.5) * 14; ctx.lineTo(x, y); }
       ctx.stroke();
     }
-    abnutzung(ctx, r, 0.08); koernung(ctx, r, 0.08, 24);
+    // R127c: KEINE Abnutzungs-Ellipse - das ovale Overlay wiederholte sich
+    // sichtbar je Kachel (Autor). Nur feines Korn.
+    koernung(ctx, r, 0.08, 24);
   } },
   // 16 - festgetretene dunkle Erde
   { id: 'erde', name: 'Erdboden', zeichne(ctx, n) {
@@ -302,7 +305,9 @@ export const BODEN_STILE: BodenStil[] = [
       ctx.fillStyle = `rgb(${c | 0},${(c - 10) | 0},${(c - 20) | 0})`;
       ctx.beginPath(); ctx.ellipse(r() * TILE, r() * TILE, 1 + r() * 2.2, 0.8 + r() * 1.6, r() * 3, 0, 6.283); ctx.fill();
     }
-    abnutzung(ctx, r, 0.07); koernung(ctx, r, 0.1, 26);
+    // R127c: keine Abnutzungs-Ellipse (wiederholte sich sichtbar; passt so
+    // auch besser zum Hoehlengrund der Mine)
+    koernung(ctx, r, 0.1, 26);
   } },
   // 17 - Steinplatten mit Moos in den Fugen (feuchte Gewoelbe)
   { id: 'moos', name: 'Moosstein', zeichne(ctx, n) {

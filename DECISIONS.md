@@ -1483,3 +1483,19 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   (Hinweis: nach Container-Reset war node_modules weg + Branch auf alten Stand
   detached - Branch sauber auf origin realigned, Deps neu installiert, R127b
   frisch aufgesetzt.)
+- R127c Nahtloses Gestein + Boden-Fixes (Autor: "Steine abgehackt wenn sich
+  das Muster wiederholt - muss geloest werden"): hoehlenArt.ts auf SUPERTEXTUR
+  umgebaut - Wand/Boden/Bohlen werden auf EINE 256x256-Flaeche (8x8 Kacheln)
+  MIT UMLAUF gezeichnet (jede Form an 9 Versatz-Positionen: was rechts raus-
+  laeuft, kommt links wieder rein), dann in 64 Einzelkacheln geschnitten und
+  in DungeonSpielScene NACH POSITION (tx%8, ty%8) verlegt. Ergebnis: Steine
+  laufen ueber Kachelgrenzen im Nachbarn weiter, nichts abgehackt, und die
+  8x8-Flaeche kachelt mit sich selbst nahtlos (im 6x6-Naht-Beweisbild ist kein
+  Raster erkennbar). Erzadern = Band UEBER dem nahtlosen Wand-Ausschnitt
+  (Richtung im Schachbrett -> Adern verbinden sich). Bohlen: durchlaufende
+  Bretter mit versetzten Stossfugen, Umlauf-Segment behaelt einen Ton.
+  hoehleTextur-Signatur: (scene, art, tx, ty) statt variant. AUSSERDEM:
+  Granit entschaerft (28 statt 60 Sprenkel, Alpha ~halbiert, Plattenrand WEG -
+  "zu dominant, nutzlos bei Wiederholung"); Lehm + Erde ohne Abnutzungs-
+  Ellipse (ovales Overlay wiederholte sich sichtbar; passt jetzt zur Hoehle).
+  tsc sauber, 283 Tests gruen, im Browser verifiziert (Naht-Beweis + V4 live).

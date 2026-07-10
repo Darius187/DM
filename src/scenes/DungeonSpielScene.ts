@@ -104,9 +104,11 @@ export class DungeonSpielScene extends CombatScene {
           // nur den Höhlenboden, die Kammern behalten ihre Holzbohlen).
           const art: HoehleArt | null = t === 4 ? 'erz_eisen' : t === 5 ? 'erz_kupfer' : t === 6 ? 'erz_gold'
             : wand ? 'wand' : (t === 2 || t === 3) ? 'bohlen' : null;
-          key = art ? hoehleTextur(this, art, variant)
+          // R127c: Höhlen-Kacheln werden NACH POSITION verlegt (Supertextur-
+          // Ausschnitt tx%8/ty%8) - Steine laufen über Kachelgrenzen weiter.
+          key = art ? hoehleTextur(this, art, tx, ty)
             : this.bodenStil ? bodenStilTextur(this, this.bodenStil, variant)
-            : hoehleTextur(this, 'boden', variant);
+            : hoehleTextur(this, 'boden', tx, ty);
         } else {
           // R124: gewaehlter Boden-Stil (sonst Standard-Krypta-Textur);
           // R127: Raum-Boden (Rolle/Thema) schlaegt beides.
