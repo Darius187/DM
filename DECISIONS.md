@@ -1397,3 +1397,20 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   BEGEHEN/SPIELEN gibt bodenStil an DungeonSpielScene weiter, die den Boden
   damit zeichnet (sonst Standard-Krypta). Alle Live-Generatoren (V1 buildCrypt,
   V8 Katakomben, V9 buildV9Krypta) SIND bereits in der Probe waehlbar (V1-V11).
+- R125 HUD-Assets (Codex PR #3, codex/hud-assets-1300) in src/ui/hud.ts
+  integriert (Autorwunsch "Integriere die HUD-Assets; Texte/Zahlen/Icons
+  dynamisch aus dem Code, keine AI-Schrift einbacken"). Nur hud.ts angefasst.
+  Geladen zur Laufzeit (ladeHudAssets -> scene.load.image + load.start,
+  COMPLETE-Hook), bis dahin bleibt die prozedurale Optik als Fallback
+  (assetsReady-Flag). Eingesetzt: hud-orb-life/mana-empty (Lebens-/Manakugel),
+  hud-slot-empty (Slot-Rahmen), hud-potion-label-blank (Trank-Plaketten),
+  hud-status-strip-blank (Statusleiste). Dynamisch drueber gezeichnet: Zahlen
+  (90/40), Icons/Tastensymbole, Q/F-Trank-Anzahl, Statuszeile. Orb-Fuellstand =
+  Bild unten anteilig zeigen (setCrop) + dunkle Basis + Bronzering auf gfxOver.
+  Slot-Kategoriefarbe (Kampf/Zauber/Bogen/Item, R36/R51) bleibt als duenner
+  Rand ueber dem Slot-Bild erhalten. Zweite Graphics-Ebene gfxOver (Depth 4602)
+  fuer alles ueber den Bild-Assets (Kategorierand, Abkling-Schleier, Orb-Ring);
+  Icons auf 4603. Anker (orbHpAnkerX/orbMpAnkerX/mausLeisteAnkerX/hotbarMitteX/
+  tastenLeisteMitteX) + Hud-API unveraendert. tsc sauber, 275 Tests gruen,
+  im Browser verifiziert (beide Orbs, Slots, Plaketten, Statusleiste flach im
+  1300er-Messingstil - wirkt wie hud-reference-final-extra-flat-1300.png).

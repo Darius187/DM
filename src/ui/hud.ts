@@ -3,6 +3,15 @@
 // Trank-Anzeige mit Q/F-Hinweis.
 
 import Phaser from 'phaser';
+// HUD-Assets von Codex (PR #3, assets/ui/hud/): leere Bauteile, auf die der
+// Code Zahlen/Icons/Texte DYNAMISCH zeichnet (keine eingebrannte AI-Schrift).
+// Vite bündelt die PNGs zu URLs; geladen werden sie zur Laufzeit in den Cache
+// (ladeHudAssets). Bis sie da sind, bleibt die prozedurale Optik als Fallback.
+import orbLifeUrl from '../../assets/ui/hud/hud-orb-life-empty-1300.png';
+import orbManaUrl from '../../assets/ui/hud/hud-orb-mana-empty-1300.png';
+import slotUrl from '../../assets/ui/hud/hud-slot-empty-1300.png';
+import potionUrl from '../../assets/ui/hud/hud-potion-label-blank-1300.png';
+import statusUrl from '../../assets/ui/hud/hud-status-strip-blank-1300.png';
 import { SPELLS, ABILITIES, ABILITY_FX } from '../data/balancing';
 import { skillBeschreibung, skillWirkungText } from '../data/skills';
 import { getSettings, saveSettings } from '../logic/settings';
@@ -83,8 +92,19 @@ export function orbMpAnkerX(w: number): number {
   return mausLeisteAnkerX(w) + MAUS_SLOTS * SLOT_W + LEISTEN_LUECKE + (KB_SLOTS - 1) * SLOT_W + 21 + 26 + ORB_BALKEN_LUECKE + ORB_R;
 }
 
+// Asset-Darstellungsgrößen (an die vorhandene Slot-/Orb-Geometrie angepasst,
+// damit Klick-Zonen und Anker unverändert bleiben).
+const SLOT_BILD = SLOT_W - 2;          // Slot-Bild etwas kleiner als das Raster
+const ORB_BILD_H = (ORB_R + 8) * 2;    // Orb-Bild-Höhe (Ring liegt auf ~ORB_R)
+
 export class Hud {
-  private gfx: Phaser.GameObjects.Graphics;
+  private gfx: Phaser.GameObjects.Graphics;      // Hintergrund (unter den Bild-Assets)
+  private gfxOver: Phaser.GameObjects.Graphics;  // Overlay (über den Bild-Assets)
+  private assetsReady = false;                    // Codex-Bilder geladen?
+  private slotImgs: Phaser.GameObjects.Image[] = [];
+  private potImg?: Phaser.GameObjects.Image;
+  private mpotImg?: Phaser.GameObjects.Image;
+  private statusImg?: Phaser.GameObjects.Image;
   private hpImg: Phaser.GameObjects.Image;
   private mpImg: Phaser.GameObjects.Image;
   private hpText: Phaser.GameObjects.Text;
@@ -108,6 +128,7 @@ export class Hud {
   ) {
     this.ensureOrbTextures();
     this.gfx = scene.add.graphics().setScrollFactor(0).setDepth(4600);
+    this.gfxOver = scene.add.graphics().setScrollFactor(0).setDepth(4602);
     const h = scene.scale.height;
     this.hpImg = scene.add.image(28 + ORB_R, h - 24 - ORB_R, 'orb_rot').setScrollFactor(0).setDepth(4601);
     this.mpImg = scene.add.image(scene.scale.width - 28 - ORB_R, h - 24 - ORB_R, 'orb_blau').setScrollFactor(0).setDepth(4601);
@@ -232,6 +253,44 @@ export class Hud {
     ];
     this.aktionen = AKTIONEN;
     this.buildSlotObjects();
+    this.ladeHudAssets();
+  }
+
+  // Codex-HUD-Assets (PR #3) zur Laufzeit laden. Schlägt das Laden fehl (z. B.
+  // headless), bleibt die prozedurale Optik. Bei Szenen-Neustart sind die
+  // Texturen schon im Cache -> sofort aktivieren.
+  private ladeHudAssets(): void {
+    const l = this.scene.load;
+    const paare: Array<[string, string]> = [
+      ['hud_orb_life', orbLifeUrl], ['hud_orb_mana', orbManaUrl],
+      ['hud_slot', slotUrl], ['hud_potion', potionUrl], ['hud_status', statusUrl],
+    ];
+    let fehlt = false;
+    for (const [k, url] of paare) if (!this.scene.textures.exists(k)) { l.image(k, url); fehlt = true; }
+    if (!fehlt) { this.aktiviereHudAssets(); return; }
+    l.once(Phaser.Loader.Events.COMPLETE, () => this.aktiviereHudAssets());
+    l.start();
+  }
+
+  // Bilder in den Cache -> Bild-Objekte anlegen und Orbs auf die Assets umstellen.
+  private aktiviereHudAssets(): void {
+    if (this.assetsReady) return;
+    for (const k of ['hud_orb_life', 'hud_orb_mana', 'hud_slot', 'hud_potion', 'hud_status']) {
+      if (!this.scene.textures.exists(k)) return; // Laden unvollständig -> Fallback bleibt
+    }
+    this.assetsReady = true;
+    this.hpImg.setTexture('hud_orb_life');
+    this.mpImg.setTexture('hud_orb_mana');
+    for (let i = 0; i < this.slots.length; i++) {
+      this.slotImgs.push(this.scene.add.image(0, 0, 'hud_slot')
+        .setScrollFactor(0).setDepth(4601).setDisplaySize(SLOT_BILD, SLOT_BILD).setVisible(false));
+    }
+    this.potImg = this.scene.add.image(0, 0, 'hud_potion').setScrollFactor(0).setDepth(4601).setVisible(false);
+    this.mpotImg = this.scene.add.image(0, 0, 'hud_potion').setScrollFactor(0).setDepth(4601).setVisible(false);
+    this.statusImg = this.scene.add.image(0, 0, 'hud_status').setScrollFactor(0).setDepth(4600).setVisible(false);
+    // Plaketten-Text sitzt jetzt auf dem Pergament-Bild: dunkle Schrift, kein Kasten.
+    this.potText.setColor('#2a1c0e').setStyle({ backgroundColor: 'rgba(0,0,0,0)' });
+    this.mpotText.setColor('#2a1c0e').setStyle({ backgroundColor: 'rgba(0,0,0,0)' });
   }
 
   private ensureOrbTextures(): void {
@@ -282,7 +341,7 @@ export class Hud {
       const x = this.slotX(i);
       const ico = this.scene.add.text(x, this.slotY(i), '', {
         fontFamily: 'serif', fontSize: '19px', color: '#d8cfb8',
-      }).setOrigin(0.5).setScrollFactor(0).setDepth(4602);
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(4603);
       this.slotTexts.push(ico);
       const zone = this.scene.add.zone(x, this.slotY(i), 42, 42).setOrigin(0.5).setScrollFactor(0).setInteractive();
       zone.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showSlotTooltip(s, ptr));
@@ -381,12 +440,25 @@ export class Hud {
   // Codex HUD-Uebergabe: flache 1300/1400-Fassung fuer die bestehende Leiste.
   // Wichtig: nur Optik, keine Geometrie - Slot-/Klick-Anker bleiben unveraendert.
   private zeichneKompakteKugel(g: Phaser.GameObjects.Graphics, img: Phaser.GameObjects.Image, x: number, y: number, frac: number): void {
+    const f = Phaser.Math.Clamp(frac, 0, 1);
+    if (this.assetsReady) {
+      // Codex-Orb-Bild (Ring + Glas gebacken). Fuellstand: unteren Anteil zeigen,
+      // darunter eine dunkle Basis fuer den geleerten oberen Teil. Der Ring bleibt
+      // ueber gfxOver immer sichtbar, auch bei niedrigem Stand.
+      const nw = img.width, nh = img.height;                 // Quelltextur-Maße
+      g.fillStyle(0x070403, 0.98);
+      g.fillCircle(x, y, ORB_R - 1);                          // dunkle Orb-Basis
+      const ch = Math.round(nh * f);
+      img.setDisplaySize(ORB_BILD_H * (nw / nh), ORB_BILD_H).setPosition(x, y)
+        .setCrop(0, nh - ch, nw, ch);
+      return;
+    }
     img.setPosition(x, y);
     g.fillStyle(0x050302, 0.58);
     g.fillCircle(x + 1, y + 2, ORB_R + 5);
     g.fillStyle(0x0d0905, 0.98);
     g.fillCircle(x, y, ORB_R + 1);
-    const ch = Math.round(ORB_R * 2 * Phaser.Math.Clamp(frac, 0, 1));
+    const ch = Math.round(ORB_R * 2 * f);
     img.setCrop(0, ORB_R * 2 - ch, ORB_R * 2, ch);
     g.lineStyle(3, 0x1b140c, 1);
     g.strokeCircle(x, y, ORB_R + 4);
@@ -394,6 +466,24 @@ export class Hud {
     g.strokeCircle(x, y, ORB_R + 1);
     g.lineStyle(1, 0xe0c878, 0.28);
     g.strokeCircle(x - 0.5, y - 0.5, ORB_R - 2);
+  }
+
+  // Bronze-Ring über dem Orb-Bild (auf gfxOver, damit er immer sichtbar bleibt).
+  private zeichneOrbRing(x: number, y: number): void {
+    const g = this.gfxOver;
+    g.lineStyle(3, 0x1b140c, 1);
+    g.strokeCircle(x, y, ORB_R + 3);
+    g.lineStyle(2, 0x8a6a34, 0.95);
+    g.strokeCircle(x, y, ORB_R + 1);
+  }
+
+  // Trank-Plakette: mit Asset das Pergament-Bild + dunkle Schrift darauf, sonst
+  // der alte dunkle Text-Kasten (Fallback). Text bleibt immer dynamisch (Q/F, Anzahl).
+  private setzePlakette(img: Phaser.GameObjects.Image | undefined, txt: Phaser.GameObjects.Text, x: number, y: number, s: string): void {
+    if (this.assetsReady && img) {
+      img.setPosition(x, y).setDisplaySize(96, 30).setVisible(true);
+    }
+    txt.setPosition(x, y).setText(s);
   }
 
   private zeichneKompaktBalken(g: Phaser.GameObjects.Graphics, cx: number, cy: number, frac: number, leben: boolean): [number, number] {
@@ -661,6 +751,7 @@ export class Hud {
     const w = this.scene.scale.width, h = this.scene.scale.height;
     const kb = getSettings().kb;
     g.clear();
+    this.gfxOver.clear();
 
     // Codex HUD-Uebergabe: die Anzeigen bleiben Teil der flachen Leiste.
     // Anker folgt weiter den ECHTEN Leistenkanten (slotX bezieht die Benutzer-
@@ -691,15 +782,16 @@ export class Hud {
       const [mnx, mny] = this.zeichneKompaktBalken(g, mx, my, mpFrac, false);
       this.hpText.setPosition(hnx, hny).setText(hpVal);
       this.mpText.setPosition(mnx, mny).setText(mpVal);
-      this.potText.setPosition(hx, hy + ORB_R + 12).setText(potT);
-      this.mpotText.setPosition(mx, my + ORB_R + 12).setText(mpotT);
+      this.setzePlakette(this.potImg, this.potText, hx, hy + ORB_R + 14, potT);
+      this.setzePlakette(this.mpotImg, this.mpotText, mx, my + ORB_R + 14, mpotT);
     } else {                     // kompakte Kugeln rot/blau (Standard)
       this.zeichneKompakteKugel(g, this.hpImg, hx, hy, hpFrac);
       this.zeichneKompakteKugel(g, this.mpImg, mx, my, mpFrac);
+      if (this.assetsReady) { this.zeichneOrbRing(hx, hy); this.zeichneOrbRing(mx, my); }
       this.hpText.setPosition(hx, hy).setText(hpVal);
       this.mpText.setPosition(mx, my).setText(mpVal);
-      this.potText.setPosition(hx, hy + ORB_R + 12).setText(potT);
-      this.mpotText.setPosition(mx, my + ORB_R + 12).setText(mpotT);
+      this.setzePlakette(this.potImg, this.potText, hx, hy + ORB_R + 14, potT);
+      this.setzePlakette(this.mpotImg, this.mpotText, mx, my + ORB_R + 14, mpotT);
     }
 
     // Zwei getrennte Paneele (Runde 20): Tastenleiste und Maus-Leiste
@@ -728,17 +820,31 @@ export class Hud {
       // Kategorie-Färbung (Runde 36): Rahmen + dezenter Schimmer je nach
       // Kampf/Zauber/Bogen/Item - so unterscheidet man die Slots auf einen Blick
       const katFarbe = SLOT_KAT_FARBE[s.kategorie?.() ?? 'item'];
-      // 3D-Knopf im WoW-Stil (Runde 50, Autorwunsch); gedrückt-Optik (Runde 52)
+      // gedrückt-Optik (Runde 52)
       const pressed = !locked && this.gedruecktSlot === i && this.scene.time.now < this.gedruecktBis;
-      this.zeichne3dKnopf(g, x, y, 42, katFarbe, locked, pressed);
+      if (this.assetsReady) {
+        // Codex-Slot-Bild als Rahmen; die Kategorie-Farbe (Kampf/Zauber/Bogen/Item,
+        // R36/R51) bleibt als dünner Rand darüber erhalten, damit man die Slots
+        // weiter auf einen Blick unterscheidet.
+        this.slotImgs[i].setPosition(x, pressed ? y + 1 : y).setDisplaySize(SLOT_BILD, SLOT_BILD)
+          .setVisible(true).setAlpha(locked ? 0.55 : 1);
+        const go = this.gfxOver;
+        go.lineStyle(2, locked ? 0x3a3228 : katFarbe, locked ? 0.8 : 0.9);
+        go.strokeRoundedRect(x - 21, y - 21, 42, 42, 6);
+        if (pressed) { go.fillStyle(0x000000, 0.28); go.fillRoundedRect(x - 20, y - 20, 40, 40, 5); }
+      } else {
+        // 3D-Knopf im WoW-Stil (Runde 50, Fallback ohne Assets)
+        this.zeichne3dKnopf(g, x, y, 42, katFarbe, locked, pressed);
+      }
       const cd = s.cdFrac();
       if (cd > 0) {
         // ganze Taste matt = "noch nicht aktiv" (Autorbug R60: Abklingen war nicht
-        // ausgegraut, nur der Schwung war zu sehen)
-        g.fillStyle(0x05030a, 0.5);
-        g.fillRoundedRect(x - 20, y - 20, 40, 40, 5);
-        g.fillStyle(0x000000, 0.72);            // ablaufender Abkling-Schwung darüber
-        g.fillRoundedRect(x - 20, y - 20 + 40 * (1 - cd), 40, 40 * cd, 5);
+        // ausgegraut, nur der Schwung war zu sehen) - über den Assets (gfxOver)
+        const go = this.assetsReady ? this.gfxOver : g;
+        go.fillStyle(0x05030a, 0.5);
+        go.fillRoundedRect(x - 20, y - 20, 40, 40, 5);
+        go.fillStyle(0x000000, 0.72);            // ablaufender Abkling-Schwung darüber
+        go.fillRoundedRect(x - 20, y - 20 + 40 * (1 - cd), 40, 40 * cd, 5);
       }
       const cdS = s.cdSek();
       this.slotTexts[i].setText(cdS > 0.5 ? String(Math.ceil(cdS)) : `${s.ico()}`)
@@ -753,10 +859,14 @@ export class Hud {
     const statusW = Math.min(640, Math.max(420, KB_SLOTS * SLOT_W + 80));
     const statusX = w / 2 + getSettings().ui.hotbar.x - statusW / 2;
     const statusY = h - 36 + getSettings().ui.hotbar.y;
-    g.fillStyle(0x0c0804, 0.82);
-    g.fillRoundedRect(statusX, statusY - 3, statusW, 20, 3);
-    g.lineStyle(1, 0x8a6a34, 0.5);
-    g.strokeRoundedRect(statusX + 1, statusY - 2, statusW - 2, 18, 3);
+    if (this.assetsReady && this.statusImg) {
+      this.statusImg.setPosition(statusX + statusW / 2, statusY + 7).setDisplaySize(statusW, 22).setVisible(true);
+    } else {
+      g.fillStyle(0x0c0804, 0.82);
+      g.fillRoundedRect(statusX, statusY - 3, statusW, 20, 3);
+      g.lineStyle(1, 0x8a6a34, 0.5);
+      g.strokeRoundedRect(statusX + 1, statusY - 2, statusW - 2, 18, 3);
+    }
     this.infoText.setPosition(w / 2 + getSettings().ui.hotbar.x, h - 33 + getSettings().ui.hotbar.y)
       .setText(extra);
     // Beschriftung ÜBER der Maus-Leiste, damit sie der Infozeile der
@@ -776,8 +886,13 @@ export class Hud {
 
   destroy(): void {
     this.gfx.destroy();
+    this.gfxOver.destroy();
     this.hpImg.destroy();
     this.mpImg.destroy();
+    for (const img of this.slotImgs) img.destroy();
+    this.potImg?.destroy();
+    this.mpotImg?.destroy();
+    this.statusImg?.destroy();
     for (const t of [this.hpText, this.mpText, this.potText, this.mpotText, this.infoText, this.mausInfo]) t.destroy();
     for (const t of this.slotTexts) t.destroy();
     for (const z of this.slotZones) z.destroy();
