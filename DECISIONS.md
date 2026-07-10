@@ -1388,3 +1388,12 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   mausLeisteAnkerX/hotbarMitteX/tastenLeisteMitteX) + Hud-API (update,
   belegeBeiPunkt, klickBlockiert) erhalten. tsc sauber, 271 Tests gruen
   (Codex 262 auf aelterer Basis), im Browser flach + fehlerfrei verifiziert.
+- R124 Boden-Stile (Autorwunsch "Variationen in Bodentexturen, 10 Beispiele +
+  zur Auswahl in der Probe, dann begehbar"): src/gfx/bodenStile.ts - 10
+  prozedurale 32x32-Boeden (Grabplatten, Schwarzer Schiefer, Kopfsteinpflaster,
+  Ziegel, Marmor, Moosstein, Sand, Erde, Blutstein, Gebein), lazy in den
+  Szenen-Cache gebacken (bodenStilTextur, je Variante 0-6). DUNGEON-PROBE:
+  Swatch-Reihe (10 echte Textur-Kaestchen, Klick waehlt, Rahmen markiert);
+  BEGEHEN/SPIELEN gibt bodenStil an DungeonSpielScene weiter, die den Boden
+  damit zeichnet (sonst Standard-Krypta). Alle Live-Generatoren (V1 buildCrypt,
+  V8 Katakomben, V9 buildV9Krypta) SIND bereits in der Probe waehlbar (V1-V11).

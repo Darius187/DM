@@ -8,6 +8,7 @@ import { CombatScene } from '../world/CombatScene';
 import type { Enemy } from '../world/Enemy';
 import { TILE } from '../gfx/fallbackArt';
 import { erzeugeKarte, vorlageKarte, findeStartKachel, type ProbeKarte, type DungeonVersion } from '../world/probeKarten';
+import { bodenStilTextur } from '../gfx/bodenStile';
 import type { EnemyTypeId } from '../data/types';
 import Phaser from 'phaser';
 
@@ -19,16 +20,18 @@ export class DungeonSpielScene extends CombatScene {
   private version: DungeonVersion = 5;
   private vorlage: number[][] | null = null;   // selbst gezeichnete Editor-Vorlage (Runde 53)
   private vorlageName = 'Editor-Vorlage';
+  private bodenStil: string | null = null;   // R124: gewaehlter Boden-Stil
   private karte!: ProbeKarte;
   private hudText!: Phaser.GameObjects.Text;
   private lastInfo = '';
 
   constructor() { super('DungeonSpiel'); }
 
-  init(data: { version?: DungeonVersion; vorlage?: number[][]; vorlageName?: string }): void {
+  init(data: { version?: DungeonVersion; vorlage?: number[][]; vorlageName?: string; bodenStil?: string }): void {
     this.version = data.version ?? 5;
     this.vorlage = data.vorlage ?? null;
     this.vorlageName = data.vorlageName ?? 'Editor-Vorlage';
+    this.bodenStil = data.bodenStil ?? null;
   }
 
   create(): void {
@@ -74,7 +77,10 @@ export class DungeonSpielScene extends CombatScene {
       for (let tx = 0; tx < k.w; tx++) {
         const wand = k.solid(k.grid[ty][tx]);
         const variant = ((tx * 73856093) ^ (ty * 19349663)) % 7;
-        const key = this.provider.tileKey(wand ? 'krypta_wand_front' : 'krypta_boden', variant);
+        // R124: gewaehlter Boden-Stil (sonst die Standard-Krypta-Textur).
+        const key = wand ? this.provider.tileKey('krypta_wand_front', variant)
+          : this.bodenStil ? bodenStilTextur(this, this.bodenStil, variant)
+          : this.provider.tileKey('krypta_boden', variant);
         this.add.image(tx * TILE + TILE / 2, ty * TILE + TILE / 2, key).setDepth(wand ? ty * TILE + 1 : -10);
       }
     }

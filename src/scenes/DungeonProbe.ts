@@ -15,6 +15,7 @@
 
 import Phaser from 'phaser';
 import { erzeugeKarte, vorlageKarte, findeStartKachel, type ProbeKarte, type DungeonVersion } from '../world/probeKarten';
+import { BODEN_STILE, bodenStilTextur } from '../gfx/bodenStile';
 import { leereVorlage, vonKarte, setzeRahmen, exportiere, parse, VORLAGE_FARBE, VORLAGE_NAME, type EditCode } from '../world/dungeonVorlage';
 
 const WALK_TILE = 40; // Kachelgröße im Begehen-Modus (ohne Kamera-Zoom)
@@ -28,6 +29,7 @@ export class DungeonProbe extends Phaser.Scene {
   private spieler!: Phaser.GameObjects.Container;
   private karte!: ProbeKarte;
   private version: DungeonVersion = 7;
+  private bodenStil = 'pflaster';   // R124: gewaehlter Boden-Stil (fuer BEGEHEN/SPIELEN)
   private modus: 'uebersicht' | 'begehen' | 'editor' = 'uebersicht';
   private px = 0; private py = 0; // Spielerposition (Weltpixel) im Begehen-Modus
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -239,7 +241,7 @@ export class DungeonProbe extends Phaser.Scene {
   // Generators starten.
   private spieleVorlage(): void {
     this.editorSpeichern(true);
-    this.scene.start('DungeonSpiel', { vorlage: this.editGrid.map((r) => [...r]), vorlageName: `Editor-Vorlage V${this.version}` });
+    this.scene.start('DungeonSpiel', { vorlage: this.editGrid.map((r) => [...r]), vorlageName: `Editor-Vorlage V${this.version}`, bodenStil: this.bodenStil });
   }
 
   private markiereEditorUI(): void {
@@ -322,9 +324,10 @@ export class DungeonProbe extends Phaser.Scene {
     bx += knopf(bx, 'NEU', () => this.neuWuerfeln()).width + 8;
     bx += knopf(bx, 'BEGEHEN/ÜBERSICHT', () => { if (this.modus === 'begehen') this.zeigeUebersicht(); else this.betrete(); }).width + 8;
     bx += knopf(bx, 'EDITOR', () => { if (this.modus === 'editor') this.zeigeUebersicht(); else this.betreteEditor(); }).width + 8;
-    bx += knopf(bx, 'SPIELEN', () => this.scene.start('DungeonSpiel', { version: this.version })).width + 16;
+    bx += knopf(bx, 'SPIELEN', () => this.scene.start('DungeonSpiel', { version: this.version, bodenStil: this.bodenStil })).width + 16;
     for (const v of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const) { bx += knopf(bx, `V${v}`, () => this.waehleVersion(v)).width + 3; }
     knopf(bx + 10, 'MENÜ', () => this.scene.start('Title'));
+    this.baueBodenAuswahl();
     this.uiLayer.add(this.add.text(this.scale.width / 2, 22, 'DUNGEON-PROBE - ansehen · begehen · EDITOR (selbst zeichnen + als Code exportieren)', {
       fontFamily: 'serif', fontSize: '17px', color: '#d8cfb8', stroke: '#000', strokeThickness: 3,
     }).setOrigin(0.5));
@@ -333,6 +336,26 @@ export class DungeonProbe extends Phaser.Scene {
     });
     this.uiLayer.add(this.hinweis);
     this.baueEditorWerkzeuge();
+  }
+
+  // R124: Boden-Stil-Auswahl - 10 echte Textur-Swatches; Klick waehlt, BEGEHEN/
+  // SPIELEN nutzt den Stil. Zeile ueber der Knopfleiste.
+  private bodenSwatches: Array<{ id: string; rahmen: Phaser.GameObjects.Rectangle }> = [];
+  private baueBodenAuswahl(): void {
+    const y = this.scale.height - 92;
+    this.uiLayer.add(this.add.text(16, y - 12, 'BODEN-STIL:', { fontFamily: 'serif', fontSize: '12px', color: '#c9a227' }));
+    let x = 110;
+    this.bodenSwatches = [];
+    BODEN_STILE.forEach((stil) => {
+      const key = bodenStilTextur(this, stil.id, 3);
+      const img = this.add.image(x, y, key).setDisplaySize(22, 22).setInteractive({ useHandCursor: true });
+      const rahmen = this.add.rectangle(x, y, 24, 24).setStrokeStyle(2, stil.id === this.bodenStil ? 0xc9a227 : 0x4a3a26);
+      img.on('pointerover', () => this.hinweis.setText(`Boden: ${stil.name}`));
+      img.on('pointerdown', () => { this.bodenStil = stil.id; for (const sw of this.bodenSwatches) sw.rahmen.setStrokeStyle(2, sw.id === stil.id ? 0xc9a227 : 0x4a3a26); this.hinweis.setText(`Boden gewählt: ${stil.name} - BEGEHEN/SPIELEN nutzt ihn.`); });
+      this.uiLayer.add(img); this.uiLayer.add(rahmen);
+      this.bodenSwatches.push({ id: stil.id, rahmen });
+      x += 30;
+    });
   }
 
   // NEU-Knopf: im Editor neue Generator-Vorlage, sonst neu würfeln/zeichnen.
