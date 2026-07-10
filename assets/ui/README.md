@@ -16,6 +16,12 @@ als Optik ueber die vorhandenen Flaechen gelegt (multiply-Blend).
 Optional spaeter (dann hier ergaenzen + in mvTexturen.ts einhaengen):
 frame-corner.png (Eck-Ornament), icon-*.png (Wappen/Icons), divider.png (Ornament-Linie).
 
+## HUD-Unterordner
+
+`hud/` enthaelt die separaten Bildvorlagen und leeren Bauteile fuer die flache
+Spiel-HUD-Leiste. Das ist kein Vollbild-Menue, sondern eine Claude-Code-Uebergabe
+fuer `src/ui/hud.ts`. Details stehen in `hud/README.md`.
+
 ## Regeln
 - Duestere, gealterte Optik 1300/1400 (Pergament vergilbt, Holz dunkel, Bronze/Gold).
 - Mittlere Helligkeit - die Farbe kommt aus den CSS-Gradients darunter (multiply).
