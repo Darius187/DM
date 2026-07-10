@@ -1499,3 +1499,17 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   "zu dominant, nutzlos bei Wiederholung"); Lehm + Erde ohne Abnutzungs-
   Ellipse (ovales Overlay wiederholte sich sichtbar; passt jetzt zur Hoehle).
   tsc sauber, 283 Tests gruen, im Browser verifiziert (Naht-Beweis + V4 live).
+- R127d Felsige Hoehlen-Kanten + mehr Adern (Autor: "Kanten der Vierecke
+  abrunden / aeussere Schicht uneben und felsig; Adern deutlich erhoehen"):
+  (1) hoehleKante in hoehlenArt.ts - an jeder Wand-Boden-Grenze liegt ein
+  gezackter Fels-Ueberlauf auf der Bodenkachel (dunkler Schattensaum mit
+  unregelmaessigem Profil + halb eingegrabene Geroellbrocken, Dicke 14px).
+  Profil = Summe PERIODISCHER Sinuswellen ueber 256px -> die 8 positions-
+  basierten Schnitte (tx%8 bzw. ty%8) laufen ueber Kachelgrenzen nahtlos
+  durch (gleiche Supertextur-Technik wie R127c). Verlegt in DungeonSpielScene
+  auf Hoehlenboden (Code 1) je Wandnachbar (oben/unten/links/rechts, Depth -9);
+  Kammer-Bohlen/Tueren bekommen KEINE Felskante (gebaute Raeume). Ecken mit
+  zwei Wandseiten ueberlappen sich -> wirkt zusaetzlich felsig. (2) MINE.ADERN
+  26 -> 64 (Test verschaerft: >40 Adern, >120 Erz-Kacheln). tsc sauber,
+  283 Tests gruen, Browser: Waende lesen sich als unregelmaessige Felsmassen,
+  Adern deutlich praesenter (HUD zeigt "64 Erzadern").

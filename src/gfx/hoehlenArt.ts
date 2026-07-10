@@ -178,6 +178,84 @@ function zeichneErzBand(ctx: Ctx, sx: number, sy: number, art: 'eisen' | 'kupfer
   }
 }
 
+// --- Felsige Wand-Kanten (R127d, Autor: "Kanten der Vierecke abrunden /
+// äussere Schicht uneben und felsig"). An jeder Wand-Boden-Grenze liegt ein
+// gezackter Fels-Ueberlauf auf der Bodenkachel: dunkler Schattensaum mit
+// unregelmaessigem Profil + halb eingegrabene Geroellbrocken. Das Profil ist
+// eine Summe PERIODISCHER Sinuswellen ueber 256 px -> die 8 Schnitte laufen
+// ueber Kachelgrenzen nahtlos durch und kacheln mit sich selbst.
+export const KANTE_DICKE = 14;
+export type KanteRichtung = 'oben' | 'unten' | 'links' | 'rechts';
+
+function kantenProfil(seed: number): (i: number) => number {
+  const r = prng(seed);
+  const p1 = r() * 6.283, p2 = r() * 6.283, p3 = r() * 6.283;
+  return (i: number) => {
+    const t = (i / SW) * 6.283;
+    const d = 5.5 + 2.4 * Math.sin(t * 3 + p1) + 1.7 * Math.sin(t * 7 + p2) + 1.2 * Math.sin(t * 13 + p3);
+    return Math.max(2.5, Math.min(KANTE_DICKE - 3, d));
+  };
+}
+
+function baueKanteSuper(richtung: KanteRichtung): HTMLCanvasElement {
+  const seed = { oben: 71, unten: 73, links: 79, rechts: 83 }[richtung];
+  const r = prng(seed + 500);
+  const horizontal = richtung === 'oben' || richtung === 'unten';
+  const cv = document.createElement('canvas');
+  cv.width = horizontal ? SW : KANTE_DICKE;
+  cv.height = horizontal ? KANTE_DICKE : SW;
+  const ctx = cv.getContext('2d')!;
+  const profil = kantenProfil(seed);
+  // gezackter Fels-Schattensaum, per-Pixel-Spalten von der Wandseite her
+  ctx.fillStyle = '#141110';
+  for (let i = 0; i < SW; i++) {
+    const d = profil(i) + (r() - 0.5) * 1.4;
+    if (richtung === 'oben') ctx.fillRect(i, 0, 1, d);
+    else if (richtung === 'unten') ctx.fillRect(i, KANTE_DICKE - d, 1, d);
+    else if (richtung === 'links') ctx.fillRect(0, i, d, 1);
+    else ctx.fillRect(KANTE_DICKE - d, i, d, 1);
+  }
+  // halb eingegrabene Geroellbrocken entlang des Profils (mit Umlauf laengs)
+  for (let s = 0; s < SUPER * 5; s++) {
+    const li = r() * SW;
+    const tiefe = profil(li) - 0.5 + (r() - 0.5) * 2;
+    const rad = 1.2 + r() * 2.2, quetsch = 0.6 + r() * 0.35, rot = r() * 3;
+    const grau = 42 + r() * 30;
+    ctx.fillStyle = `rgb(${(grau + 6) | 0},${grau | 0},${(grau - 5) | 0})`;
+    for (const versatz of [-SW, 0, SW]) {
+      const i = li + versatz;
+      if (i < -6 || i > SW + 6) continue;
+      const px = richtung === 'oben' || richtung === 'unten' ? i : (richtung === 'links' ? tiefe : KANTE_DICKE - tiefe);
+      const py = richtung === 'oben' ? tiefe : richtung === 'unten' ? KANTE_DICKE - tiefe : i;
+      ctx.beginPath(); ctx.ellipse(px, py, rad, rad * quetsch, rot, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 0.8; ctx.stroke();
+    }
+  }
+  return cv;
+}
+
+const kanteCache = new Map<string, HTMLCanvasElement>();
+// Kanten-Kachel fuer Weltposition: horizontal per tx%8, vertikal per ty%8.
+export function hoehleKante(
+  scene: { textures: { exists: (k: string) => boolean; addCanvas: (k: string, c: HTMLCanvasElement) => void } },
+  richtung: KanteRichtung, pos: number,
+): string {
+  const s = ((pos % SUPER) + SUPER) % SUPER;
+  const key = `hoehle_kante_${richtung}_${s}`;
+  if (scene.textures.exists(key)) return key;
+  let strip = kanteCache.get(richtung);
+  if (!strip) { strip = baueKanteSuper(richtung); kanteCache.set(richtung, strip); }
+  const horizontal = richtung === 'oben' || richtung === 'unten';
+  const cv = document.createElement('canvas');
+  cv.width = horizontal ? TILE : KANTE_DICKE;
+  cv.height = horizontal ? KANTE_DICKE : TILE;
+  const ctx = cv.getContext('2d')!;
+  if (horizontal) ctx.drawImage(strip, s * TILE, 0, TILE, KANTE_DICKE, 0, 0, TILE, KANTE_DICKE);
+  else ctx.drawImage(strip, 0, s * TILE, KANTE_DICKE, TILE, 0, 0, KANTE_DICKE, TILE);
+  scene.textures.addCanvas(key, cv);
+  return key;
+}
+
 // --- Supertextur-Cache (szenenunabhängig, einmal je Art gebacken) ------------
 const superCache = new Map<string, HTMLCanvasElement>();
 function superTextur(art: 'wand' | 'boden' | 'bohlen'): HTMLCanvasElement {

@@ -9,7 +9,7 @@ import type { Enemy } from '../world/Enemy';
 import { TILE } from '../gfx/fallbackArt';
 import { erzeugeKarte, vorlageKarte, findeStartKachel, type ProbeKarte, type DungeonVersion } from '../world/probeKarten';
 import { bodenStilTextur } from '../gfx/bodenStile';
-import { hoehleTextur, type HoehleArt } from '../gfx/hoehlenArt';
+import { hoehleTextur, hoehleKante, KANTE_DICKE, type HoehleArt } from '../gfx/hoehlenArt';
 import { HoehlenAtmosphaere } from '../gfx/hoehlenAtmosphaere';
 import type { EnemyTypeId } from '../data/types';
 import Phaser from 'phaser';
@@ -119,6 +119,19 @@ export class DungeonSpielScene extends CombatScene {
             : this.provider.tileKey('krypta_boden', variant);
         }
         this.add.image(tx * TILE + TILE / 2, ty * TILE + TILE / 2, key).setDepth(wand ? ty * TILE + 1 : -10);
+        // R127d: felsige Wand-Kanten - auf Höhlenboden (Code 1) liegt an jeder
+        // Wandgrenze ein gezackter Fels-Überlauf (uneben statt Viereck-Kante).
+        if (k.stil === 'hoehle' && t === 1) {
+          const wandBei = (dx: number, dy: number): boolean => {
+            const nt = k.grid[ty + dy]?.[tx + dx];
+            return nt !== undefined && k.solid(nt);
+          };
+          const cx = tx * TILE + TILE / 2, cy = ty * TILE + TILE / 2, h2 = KANTE_DICKE / 2;
+          if (wandBei(0, -1)) this.add.image(cx, ty * TILE + h2, hoehleKante(this, 'oben', tx)).setDepth(-9);
+          if (wandBei(0, 1)) this.add.image(cx, (ty + 1) * TILE - h2, hoehleKante(this, 'unten', tx)).setDepth(-9);
+          if (wandBei(-1, 0)) this.add.image(tx * TILE + h2, cy, hoehleKante(this, 'links', ty)).setDepth(-9);
+          if (wandBei(1, 0)) this.add.image((tx + 1) * TILE - h2, cy, hoehleKante(this, 'rechts', ty)).setDepth(-9);
+        }
       }
     }
   }

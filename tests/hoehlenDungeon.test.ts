@@ -53,8 +53,9 @@ describe('V4 Höhlengenerator (Runde 51): organische Höhle + begehbare Räume',
       expect(d.w).toBe(147); expect(d.h).toBe(90);
       let eisen = 0, kupfer = 0, gold = 0;
       for (const row of d.grid) for (const t of row) { if (t === 4) eisen++; if (t === 5) kupfer++; if (t === 6) gold++; }
-      expect(d.adern, `Lauf ${i}: genug Adern`).toBeGreaterThan(10);
-      expect(eisen + kupfer + gold, `Lauf ${i}: Erz-Kacheln`).toBeGreaterThan(30);
+      // R127d: Adern-Anzahl deutlich erhoeht (MINE.ADERN 26 -> 64)
+      expect(d.adern, `Lauf ${i}: genug Adern`).toBeGreaterThan(40);
+      expect(eisen + kupfer + gold, `Lauf ${i}: Erz-Kacheln`).toBeGreaterThan(120);
       if (eisen > 0 && kupfer > 0 && gold > 0) mitAllenErzen++;
     }
     expect(mitAllenErzen, 'meistens alle drei Erzarten').toBeGreaterThan(7);

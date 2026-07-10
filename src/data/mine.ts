@@ -12,7 +12,7 @@ export const MINE = {
 
   // Erzadern: liegen IN den Wänden entlang der begehbaren Kanten (wie eine
   // Goldader im Stollen). Eisen häufig, Kupfer mittel, Gold selten.
-  ADERN: 26,                    // Ziel-Anzahl Adern gesamt
+  ADERN: 64,                    // Ziel-Anzahl Adern gesamt (R127d: "deutlich erhöhen")
   ADER_LAENGE: [3, 9] as [number, number],   // Kacheln je Eisen-/Kupferader
   GOLD_LAENGE: [2, 5] as [number, number],   // Gold ist kürzer (kostbarer)
   ERZ_ANTEIL: { eisen: 0.45, kupfer: 0.35, gold: 0.2 } as Record<ErzArt, number>,
