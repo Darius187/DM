@@ -35,16 +35,16 @@ Damit wir uns NICHT in die Quere kommen, halte dich an diese Regeln.
 - `npm run dev` startet das Spiel lokal (Vite, http://localhost:5173).
 - `npx tsc --noEmit` (Typen), `npx vitest run` (Tests), `npx vite build` (Bundle).
 
-## 6. HUD-Leiste: gehoert jetzt CODEX (R115b, Autor-Entscheidung)
-- Die Spiel-HUD-Leiste (`src/ui/hud.ts`) darf Codex komplett umgestalten -
-  Claudes flacher Umbau (R115) wurde auf Autorwunsch REVERTIERT, Ausgangslage
-  ist wieder der Kugel-Stand davor.
-- Referenzen: `menu-ui-template/claude-code-handover-final-ui-1300.md` +
-  `final-hud-extra-flat-reference-layout-1300.png` (massgeblich).
+## 6. HUD-Leiste: Codex liefert nur Assets (R116, Autor-Entscheidung)
+- Die Spiel-HUD-Leiste (`src/ui/hud.ts`) integriert Claude Code.
+- Codex liefert dafuer nur Bildvorlagen und leere Bauteile unter
+  `assets/ui/hud/`.
+- Massgebliche Uebergabe: `assets/ui/hud/README.md`.
+- Massgebliche Zielvorlage: `assets/ui/hud/hud-reference-final-extra-flat-1300.png`.
 - REGELN dabei:
-  - NUR `src/ui/hud.ts` anfassen (plus neue Assets in `assets/ui/`).
-  - Oeffentliche Anker/Signaturen ERHALTEN (werden von aussen genutzt):
+  - Codex fasst `src/ui/hud.ts` fuer diese HUD-Uebergabe NICHT an.
+  - Claude zeichnet Texte, Zahlen, Tastenzuweisungen und Icons dynamisch aus dem Code.
+  - AI-Texte aus Referenzbildern NICHT abtippen oder einbacken.
+  - Oeffentliche Anker/Signaturen in `hud.ts` erhalten:
     `orbHpAnkerX`, `orbMpAnkerX`, `mausLeisteAnkerX`, `hotbarMitteX`,
     Klasse `Hud` mit `update(extra)`, `belegeBeiPunkt`, `klickBlockiert`.
-  - UI-Texte aus dem Code (Settings/kb), NICHT aus den AI-Bildern abtippen.
-  - `npx tsc --noEmit` + `npx vitest run` gruen; eigener Branch, PR an Claude.
