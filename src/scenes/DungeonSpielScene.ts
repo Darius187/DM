@@ -9,6 +9,8 @@ import type { Enemy } from '../world/Enemy';
 import { TILE } from '../gfx/fallbackArt';
 import { erzeugeKarte, vorlageKarte, findeStartKachel, type ProbeKarte, type DungeonVersion } from '../world/probeKarten';
 import { bodenStilTextur } from '../gfx/bodenStile';
+import { hoehleTextur, type HoehleArt } from '../gfx/hoehlenArt';
+import { HoehlenAtmosphaere } from '../gfx/hoehlenAtmosphaere';
 import type { EnemyTypeId } from '../data/types';
 import Phaser from 'phaser';
 
@@ -24,6 +26,7 @@ export class DungeonSpielScene extends CombatScene {
   private karte!: ProbeKarte;
   private hudText!: Phaser.GameObjects.Text;
   private lastInfo = '';
+  private atmo: HoehlenAtmosphaere | null = null;  // R126: nur in der V4-Höhle
 
   constructor() { super('DungeonSpiel'); }
 
@@ -46,17 +49,22 @@ export class DungeonSpielScene extends CombatScene {
     this.cameras.main.startFollow(this.playerSprite, true, 0.15, 0.15);
     this.cameras.main.setBounds(0, 0, this.karte.w * TILE, this.karte.h * TILE);
     this.spawneTesthorde(start);
+    // R126: Szenen-Neustart nutzt DIESELBE Instanz - Atmosphäre frisch aufbauen
+    this.atmo?.destroy();
+    this.atmo = this.karte.stil === 'hoehle'
+      ? new HoehlenAtmosphaere(this, this.karte, this.sfx, () => ({ x: this.px, y: this.py }))
+      : null;
 
     this.hudText = this.add.text(this.scale.width - 12, 12, '', {
       fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8', backgroundColor: '#000000aa', padding: { x: 8, y: 6 }, align: 'right',
-    }).setOrigin(1, 0).setScrollFactor(0).setDepth(700);
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(6000);
     this.add.text(12, this.scale.height - 12, [
       `SPIELBARER DUNGEON  ·  ${this.karte.name}`,
       'WASD: Laufen · Klick: Angriff · Umschalt: schwer · Rechtsklick: Block · Leer: Rolle · 4/5/6: Fähigkeiten',
       'F1-F7: Gegner spawnen · K: Gegner löschen · N: Neuer Dungeon · ESC: zurück zur Probe',
     ].join('\n'), {
       fontFamily: 'serif', fontSize: '13px', color: '#c8b890', backgroundColor: '#000000aa', padding: { x: 8, y: 6 },
-    }).setOrigin(0, 1).setScrollFactor(0).setDepth(700);
+    }).setOrigin(0, 1).setScrollFactor(0).setDepth(6000);
 
     this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {
       const k = ev.key.toLowerCase();
@@ -71,16 +79,29 @@ export class DungeonSpielScene extends CombatScene {
   }
 
   // Tiles aus dem Generator: solide -> Wand, sonst -> Boden (echte Krypta-Art).
+  // R126: die V4-Höhle bekommt eigene Stollen-Optik (Geröll, Erzadern, Bohlen).
   private zeichneDungeon(): void {
     const k = this.karte;
     for (let ty = 0; ty < k.h; ty++) {
       for (let tx = 0; tx < k.w; tx++) {
-        const wand = k.solid(k.grid[ty][tx]);
+        const t = k.grid[ty][tx];
+        const wand = k.solid(t);
         const variant = ((tx * 73856093) ^ (ty * 19349663)) % 7;
-        // R124: gewaehlter Boden-Stil (sonst die Standard-Krypta-Textur).
-        const key = wand ? this.provider.tileKey('krypta_wand_front', variant)
-          : this.bodenStil ? bodenStilTextur(this, this.bodenStil, variant)
-          : this.provider.tileKey('krypta_boden', variant);
+        let key: string;
+        if (k.stil === 'hoehle') {
+          // Erz > Wand > Kammer-Bohlen > Höhlenboden (wählbarer Stil ersetzt
+          // nur den Höhlenboden, die Kammern behalten ihre Holzbohlen).
+          const art: HoehleArt | null = t === 4 ? 'erz_eisen' : t === 5 ? 'erz_kupfer' : t === 6 ? 'erz_gold'
+            : wand ? 'wand' : (t === 2 || t === 3) ? 'bohlen' : null;
+          key = art ? hoehleTextur(this, art, variant)
+            : this.bodenStil ? bodenStilTextur(this, this.bodenStil, variant)
+            : hoehleTextur(this, 'boden', variant);
+        } else {
+          // R124: gewaehlter Boden-Stil (sonst die Standard-Krypta-Textur).
+          key = wand ? this.provider.tileKey('krypta_wand_front', variant)
+            : this.bodenStil ? bodenStilTextur(this, this.bodenStil, variant)
+            : this.provider.tileKey('krypta_boden', variant);
+        }
         this.add.image(tx * TILE + TILE / 2, ty * TILE + TILE / 2, key).setDepth(wand ? ty * TILE + 1 : -10);
       }
     }
@@ -120,6 +141,7 @@ export class DungeonSpielScene extends CombatScene {
 
   update(_time: number, delta: number): void {
     this.updateCombat(delta / 1000);
+    this.atmo?.update(delta / 1000);
     this.hudText.setText([
       `Leben ${Math.max(0, Math.ceil(this.p.hp))}/${this.p.stats.maxhp}   Mana ${Math.ceil(this.p.mana)}/${this.p.stats.maxmana}`,
       `Gegner: ${this.enemies.length}`,

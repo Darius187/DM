@@ -33,6 +33,9 @@ export interface ProbeKarte {
   // traegt (der Editor uebernimmt dann Tueren/Gaenge 1:1 statt nur Wand/Boden).
   rollen?: Array<{ cx: number; y: number; label: string; farbe: string }>;
   editorCodes?: boolean;
+  // R126: V4 ist die Mine/Höhle - DungeonSpiel schaltet dann auf Höhlen-Optik
+  // (Geröll-Wände, Erzadern, Höhlenlicht, Wassertropfen).
+  stil?: 'hoehle';
 }
 
 const FARBE_V3: Record<Zelle, number> = {
@@ -140,9 +143,14 @@ export function erzeugeKarte(version: DungeonVersion): ProbeKarte {
     return { name: `V7 - Verlies/Burg (${d.raeume} Räume)`, w: d.w, h: d.h, grid: d.grid, solid: (t) => t === 0, farbe: (t) => farben[t] ?? 0x4a443a };
   }
   if (version === 4) {
+    // R126: die MINE - Erzadern (4 Eisen, 5 Kupfer, 6 Gold) liegen als solide
+    // Wandkacheln an den Stollen-Kanten; DungeonSpiel rendert Höhlen-Optik.
     const d = baueHoehle(Math.random);
-    const farben: Record<number, number> = { 0: 0x14110c, 1: 0x39322a, 2: 0x8a5a2a, 3: 0x5a6076 };
-    return { name: `V4 - Höhle mit ${d.raeume} begehbaren Räumen`, w: d.w, h: d.h, grid: d.grid, solid: (t) => t === 0, farbe: (t) => farben[t] ?? 0x39322a };
+    const farben: Record<number, number> = { 0: 0x14110c, 1: 0x39322a, 2: 0x8a5a2a, 3: 0x5a6076, 4: 0x8a4a2e, 5: 0x3fa06a, 6: 0xc9a227 };
+    return {
+      name: `V4 - Mine/Höhle (${d.raeume} Kammern, ${d.adern} Erzadern)`, w: d.w, h: d.h, grid: d.grid,
+      solid: (t) => t === 0 || t >= 4, farbe: (t) => farben[t] ?? 0x39322a, stil: 'hoehle',
+    };
   }
   const d = baueVerbundeneRaeume(Math.random);
   const farben: Record<number, number> = { 0: 0x14110c, 1: 0x4a443a, 2: 0x5a6076 };

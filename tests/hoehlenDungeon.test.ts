@@ -44,4 +44,32 @@ describe('V4 Höhlengenerator (Runde 51): organische Höhle + begehbare Räume',
     }
     expect(mitRaeumen, 'meistens >=3 Räume').toBeGreaterThan(12);
   });
+
+  // R126: die Mine ist 25% kleiner (147x90) und mit Erzadern gefüllt.
+  it('147x90 und Erzadern vorhanden (Eisen/Kupfer/Gold in den Wänden)', () => {
+    let mitAllenErzen = 0;
+    for (let i = 0; i < 10; i++) {
+      const d = baueHoehle(Math.random);
+      expect(d.w).toBe(147); expect(d.h).toBe(90);
+      let eisen = 0, kupfer = 0, gold = 0;
+      for (const row of d.grid) for (const t of row) { if (t === 4) eisen++; if (t === 5) kupfer++; if (t === 6) gold++; }
+      expect(d.adern, `Lauf ${i}: genug Adern`).toBeGreaterThan(10);
+      expect(eisen + kupfer + gold, `Lauf ${i}: Erz-Kacheln`).toBeGreaterThan(30);
+      if (eisen > 0 && kupfer > 0 && gold > 0) mitAllenErzen++;
+    }
+    expect(mitAllenErzen, 'meistens alle drei Erzarten').toBeGreaterThan(7);
+  });
+
+  // Erz liegt IM Stollen sichtbar: jede Erz-Kachel grenzt an Höhlenboden.
+  it('jede Erz-Kachel liegt an der begehbaren Stollen-Kante', () => {
+    for (let i = 0; i < 10; i++) {
+      const d = baueHoehle(Math.random);
+      for (let y = 0; y < d.h; y++) for (let x = 0; x < d.w; x++) {
+        const t = d.grid[y][x];
+        if (t < 4) continue;
+        const anKante = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => d.grid[y + dy]?.[x + dx] === 1);
+        expect(anKante, `Lauf ${i}: Erz bei ${x},${y} ohne Stollen-Kontakt`).toBe(true);
+      }
+    }
+  });
 });

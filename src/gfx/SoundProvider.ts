@@ -39,6 +39,9 @@ const SYNTH: Record<string, SynthStep[]> = {
     { freq: 30, dur: 1.4, type: 'triangle', vol: 0.05, delay: 0.3 },
     { freq: 46, dur: 0.6, type: 'sawtooth', vol: 0.03, delay: 0.9 },
   ],
+  // R126 Höhle: einzelner Wassertropfen ("plip" - heller Anschlag, tieferer
+  // Nachklang; durch den AudioBus bekommt er Höhlen-Hall + Position)
+  wasser_tropfen: [{ freq: 1500, dur: 0.025, type: 'sine', vol: 0.05 }, { freq: 860, dur: 0.07, type: 'sine', vol: 0.035, delay: 0.025 }],
   tuer: [{ freq: 170, dur: 0.25, type: 'triangle', vol: 0.05 }],
   truhe: [{ freq: 300, dur: 0.12, type: 'triangle', vol: 0.06 }, { freq: 520, dur: 0.15, type: 'sine', vol: 0.05, delay: 0.1 }],
   muenzen: [{ freq: 880, dur: 0.05, type: 'sine', vol: 0.04 }],

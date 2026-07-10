@@ -1426,3 +1426,26 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Endlos-Spin mehr (frueher Single-deepest-cell-Ansatz haengte an unplatzierbaren
   Rand-Zellen). tsc sauber, 277 Tests gruen, im Browser (Dungeon-Probe V11) dicht
   + unregelmaessig + 3-breite Passagen verifiziert.
+- R126 V4 = echte HÖHLE/MINE (Autorwunsch + 4 Referenzfotos Stollen): 25%
+  kleiner (147x90 statt 196x120, linear je Achse - Annahme, leicht änderbar in
+  src/data/mine.ts). ERZADERN: Codes 4 Eisen / 5 Kupfer / 6 Gold als SOLIDE
+  Wandkacheln, per Zufallslauf entlang der Wand-Boden-Kante gewachsen (liegen
+  sichtbar im Stollen wie eine Goldader). Kupfer aufgenommen - historisch
+  korrekt fuer 1300/1400 (Kupferbergbau u.a. Rammelsberg/Falun; Malachit-gruene
+  Optik gewaehlt). Alle Werte in src/data/mine.ts (Adern-Anzahl, Laengen,
+  Anteile, Licht, Tropfen). Optik: src/gfx/hoehlenArt.ts (proz. Texturen:
+  Geroell-Wand aus eckigen Brocken, erdiger Hoehlenboden, Erzadern mit
+  Funken, Holzbohlen fuer Kammern). Atmosphaere: src/gfx/hoehlenAtmosphaere.ts
+  (Dunkelheit als RenderTexture + radierte Lichtkreise: Heldenlaterne warm +
+  flackernd, Grubenlampen an Wandkanten mit Mindestabstand; Wassertropfen mit
+  Fall-Animation + positionalem Synth-"plip" (wasser_tropfen, ueber AudioBus
+  mit Hoehlen-Hall setzeUmgebung 0.9); Pfuetzen; Gold-Glitzern). ZWEI im
+  Browser gefundene + gefixte Fehler: (a) Waende (Depth ty*32) lagen UEBER der
+  Dunkelheit (640) und dem Szenen-HUD (700) -> Dunkelheit auf 5000, Glows 4900,
+  HUD-Texte 6000; (b) RenderTexture.erase() achtet den Stempel-URSPRUNG
+  (Mitte) - Position = Lichtzentrum, nicht Ecke (alle Lichter sassen sonst um
+  ihren Radius nach oben-links versetzt). "Live": sofort spielbar in der
+  Dungeon-Probe (V4 -> SPIELEN, volle Atmosphaere); Oberwelt-Eingang der Mine
+  ist ein eigener Schritt (OFFENE-FRAGEN). tsc sauber, 279 Tests gruen
+  (4 Hoehlen-Tests: Groesse, Adern-Anzahl, Erz-an-Kante, Erreichbarkeit),
+  Browser-Screenshots: Stimmung wie Referenz (dunkel, warme Lichtinseln).

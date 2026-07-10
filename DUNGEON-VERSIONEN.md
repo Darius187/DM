@@ -172,6 +172,15 @@ Wand + Oeffnung. Groesse wie V8 (84x70). Boden-geprueftes Stanzen + Verbindungs-
 Sicherheitsnetz; 3 Tests (Codes/Dichte >55%, volle Erreichbarkeit 25 Seeds,
 Determinismus). In der DUNGEON-PROBE als V10 (V9 ebenfalls registriert).
 
+## V4-UPDATE (R126): echte HOEHLE/MINE mit Erzadern + Atmosphaere
+Autor (mit Referenzfotos): Boden/Waende/Licht "hoehlig", Wassertropfen, 25%
+kleiner, Erzadern wie im Stollen. Umsetzung: 147x90 (mine.ts), Erz-Codes
+4 Eisen / 5 Kupfer / 6 Gold (solide, per Zufallslauf an der Wand-Boden-Kante),
+Geroell-Texturen (hoehlenArt.ts), Dunkelheit+Heldenlaterne+Grubenlampen+
+Tropfen+Pfuetzen+Goldglitzern (hoehlenAtmosphaere.ts, Werte in mine.ts).
+In der Probe: V4 waehlen -> SPIELEN = volle Hoehle. Kupfer historisch ok
+(1300/1400, Malachit-Optik). Abbau-Mechanik noch offen (OFFENE-FRAGEN).
+
 ## V11 - GEBAUT (R123): unregelmaessig - Hauptraeume + Zwischenraeume
 Autor: V10 war zu gleichmaessig; V11 ist der eigentliche Ansatz. ZWEI Schritte
 (src/world/v11Dungeon.ts): (1) Hauptraeume wie V2/Vorlage frei ins Fels streuen
