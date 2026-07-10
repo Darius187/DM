@@ -114,10 +114,10 @@ export const BODEN_STILE: BodenStil[] = [
   // 5 - cremiger Marmor mit Aederung
   { id: 'marmor', name: 'Marmor', zeichne(ctx, n) {
     const r = prng(n + 4);
-    const g = 168 + (n % 5) * 3;
+    const g = 128 + (n % 5) * 3;
     fuege(ctx, `rgb(${g},${g - 4},${g - 12})`, 0, 0, TILE, TILE);
     for (let i = 0; i < 3; i++) {                             // weiche Wolken
-      ctx.fillStyle = `rgba(255,250,238,${0.06 + r() * 0.06})`;
+      ctx.fillStyle = `rgba(210,205,192,${0.05 + r() * 0.05})`;
       ctx.beginPath(); ctx.ellipse(r() * TILE, r() * TILE, 6 + r() * 9, 4 + r() * 6, r() * 3, 0, 6.283); ctx.fill();
     }
     for (let i = 0; i < 1 + Math.floor(r() * 2); i++) {       // feine graue Adern
@@ -135,7 +135,7 @@ export const BODEN_STILE: BodenStil[] = [
     const r = prng(n + 21);
     for (let gy = 0; gy < 2; gy++) for (let gx = 0; gx < 2; gx++) {
       const dunkel = (gx + gy + n) % 2 === 0;
-      const g = dunkel ? 38 + r() * 8 : 172 + r() * 12;
+      const g = dunkel ? 34 + r() * 6 : 132 + r() * 10;
       fuege(ctx, `rgb(${g | 0},${(g - 3) | 0},${(g - (dunkel ? 2 : 12)) | 0})`, gx * 16, gy * 16, 16, 16);
       // Marmor-Ader in jeder Platte
       ctx.strokeStyle = dunkel ? 'rgba(150,150,170,0.18)' : 'rgba(100,100,120,0.22)';
@@ -154,10 +154,10 @@ export const BODEN_STILE: BodenStil[] = [
     const r = prng(n + 23);
     for (let gy = 0; gy < 2; gy++) for (let gx = 0; gx < 2; gx++) {
       const ocker = (gx + gy + n) % 2 === 0;
-      const c = ocker ? [150 + r() * 16, 108 + r() * 10, 52] : [82 + r() * 10, 52, 36];
+      const c = ocker ? [124 + r() * 12, 96 + r() * 8, 58] : [72 + r() * 8, 50, 38];
       fuege(ctx, `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`, gx * 16, gy * 16, 16, 16);
       // Glasur-Glanzpunkt
-      ctx.fillStyle = 'rgba(255,240,200,0.10)';
+      ctx.fillStyle = 'rgba(225,215,190,0.06)';
       ctx.beginPath(); ctx.ellipse(gx * 16 + 5 + r() * 5, gy * 16 + 4 + r() * 4, 4, 2.4, -0.6, 0, 6.283); ctx.fill();
       // abgeplatzte Ecke (abgenutzte Glasur)
       if (r() < 0.3) { ctx.fillStyle = 'rgba(40,28,18,0.5)'; ctx.fillRect(gx * 16 + (r() < 0.5 ? 1 : 12), gy * 16 + (r() < 0.5 ? 1 : 12), 3, 3); }
@@ -171,9 +171,9 @@ export const BODEN_STILE: BodenStil[] = [
   { id: 'mosaik', name: 'Steinmosaik', zeichne(ctx, n) {
     const r = prng(n + 27);
     fuege(ctx, '#241f18', 0, 0, TILE, TILE);                  // Moertel
-    const paletten: Array<[number, number, number]> = [[168, 152, 122], [124, 116, 100], [96, 74, 56], [66, 84, 96], [140, 66, 50]];
+    const paletten: Array<[number, number, number]> = [[150, 138, 114], [120, 112, 98], [92, 74, 58], [70, 82, 90], [116, 66, 54]];
     for (let gy = 0; gy < 8; gy++) for (let gx = 0; gx < 8; gx++) {
-      const p = paletten[Math.floor(r() * (r() < 0.82 ? 3 : paletten.length))]; // meist beige/grau, selten farbig
+      const p = paletten[Math.floor(r() * (r() < 0.9 ? 3 : paletten.length))]; // fast nur beige/grau, sehr selten farbig
       const hell = 0.85 + r() * 0.3;
       ctx.fillStyle = `rgb(${(p[0] * hell) | 0},${(p[1] * hell) | 0},${(p[2] * hell) | 0})`;
       ctx.fillRect(gx * 4 + 0.5 + (r() - 0.5), gy * 4 + 0.5 + (r() - 0.5), 3, 3);
@@ -204,8 +204,8 @@ export const BODEN_STILE: BodenStil[] = [
   // 10 - warme Sandsteinplatten
   { id: 'sandstein', name: 'Sandsteinplatten', zeichne(ctx, n) {
     const r = prng(n + 37);
-    const g = 128 + (n % 6) * 3;
-    fuege(ctx, `rgb(${g},${g - 26},${g - 58})`, 0, 0, TILE, TILE);
+    const g = 114 + (n % 6) * 3;
+    fuege(ctx, `rgb(${g},${g - 24},${g - 52})`, 0, 0, TILE, TILE);
     // waagrechte Schichtung (Sediment)
     for (let y = 3 + r() * 4; y < TILE; y += 5 + r() * 4) {
       ctx.fillStyle = `rgba(${g - 30},${g - 52},${g - 78},${0.10 + r() * 0.08})`;
@@ -219,7 +219,7 @@ export const BODEN_STILE: BodenStil[] = [
   // 11 - heller, blank getretener Kalkstein
   { id: 'kalkstein', name: 'Kalkstein (abgetreten)', zeichne(ctx, n) {
     const r = prng(n + 41);
-    const g = 148 + (n % 5) * 3;
+    const g = 120 + (n % 5) * 3;
     fuege(ctx, `rgb(${g},${g - 5},${g - 16})`, 0, 0, TILE, TILE);
     for (let i = 0; i < 3; i++) {                             // Wasser-/Kalkraender
       ctx.fillStyle = `rgba(120,112,96,${0.05 + r() * 0.06})`;
@@ -327,8 +327,8 @@ export const BODEN_STILE: BodenStil[] = [
   // 18 - Sandboden mit weichen Verwehungen
   { id: 'sand', name: 'Sandboden', zeichne(ctx, n) {
     const r = prng(n + 5);
-    const g = 132 + (n % 6) * 3;
-    fuege(ctx, `rgb(${g},${g - 22},${g - 58})`, 0, 0, TILE, TILE);
+    const g = 112 + (n % 6) * 3;
+    fuege(ctx, `rgb(${g},${g - 20},${g - 48})`, 0, 0, TILE, TILE);
     for (let y = 4 + r() * 5; y < TILE; y += 7 + r() * 4) {
       ctx.fillStyle = `rgba(90,68,40,${0.08 + r() * 0.06})`;
       ctx.beginPath();
@@ -386,6 +386,23 @@ export const BODEN_STILE: BodenStil[] = [
 
 export const BODEN_STIL_IDS = BODEN_STILE.map((s) => s.id);
 
+// Globale Dämpfung (R127b, Autor: "zu hell/zu bunt - so farbig sind die in echt
+// nicht"). Entsättigt Richtung Grau und dunkelt leicht ab, damit alle Böden nach
+// echtem, staubigem Stein aussehen statt nach Buntmuster. EIN Regler je Wert.
+const SAETTIGUNG = 0.6;   // 1 = voll, 0 = grau -> 0.6 nimmt ~40% Farbe raus
+const HELLIGKEIT = 0.86;  // <1 dunkelt ab
+function daempfe(ctx: Ctx): void {
+  const img = ctx.getImageData(0, 0, TILE, TILE);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const lum = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
+    d[i] = (lum + (d[i] - lum) * SAETTIGUNG) * HELLIGKEIT;
+    d[i + 1] = (lum + (d[i + 1] - lum) * SAETTIGUNG) * HELLIGKEIT;
+    d[i + 2] = (lum + (d[i + 2] - lum) * SAETTIGUNG) * HELLIGKEIT;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
 // Lazy-Bake: eine Textur je (Stil, Variante 0..6) in den Szenen-Cache.
 export function bodenStilTextur(scene: { textures: { exists: (k: string) => boolean; addCanvas: (k: string, c: HTMLCanvasElement) => void } }, stilId: string, variant: number): string {
   const key = `boden_${stilId}_${variant}`;
@@ -394,6 +411,7 @@ export function bodenStilTextur(scene: { textures: { exists: (k: string) => bool
   const cv = document.createElement('canvas'); cv.width = TILE; cv.height = TILE;
   const ctx = cv.getContext('2d')!;
   stil.zeichne(ctx, variant);
+  daempfe(ctx);
   scene.textures.addCanvas(key, cv);
   return key;
 }

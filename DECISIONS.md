@@ -1470,3 +1470,16 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   faellt sauber auf Stil 1 zurueck (find ?? [0]). tsc sauber, 283 Tests gruen
   (4 neue: 20 Stile/IDs, V8-Rollen-Boeden, V3-Fliesen, V9/V11-Zufall), im
   Browser verifiziert (Swatch-Reihe 20, V8: Rosetten-Krypta + Blut-Folterkammer).
+- R127b Böden gedämpft (Autor: "zu hell/zu bunt - so farbig sind die in echt
+  nicht"): globaler Dämpfungs-Pass in bodenStilTextur (daempfe): entsättigt
+  Richtung Luminanz (SAETTIGUNG 0.6 = ~40% Farbe raus) + leicht abgedunkelt
+  (HELLIGKEIT 0.86) via getImageData/putImageData je Kachel. Zusätzlich die
+  hellsten Grundwerte gesenkt: Marmor 168->128, Schachbrett-Hellfeld 172->132,
+  Kalkstein 148->120, Sand 132->112, Sandstein 128->114; Kirchenfliesen-Ocker +
+  Mosaik-Palette entsättigt, farbige Mosaik-Steine seltener. Ein Regler
+  (SAETTIGUNG/HELLIGKEIT) tunt die gesamte Boden-Stimmung. REGEL (Autor): pro
+  Karte max. 2 verschiedene Bodenplatten (1 Basis + 1 Insel-Boden). tsc sauber,
+  283 Tests grün, im Browser: ruhiges Steingrau/-braun statt Buntmuster.
+  (Hinweis: nach Container-Reset war node_modules weg + Branch auf alten Stand
+  detached - Branch sauber auf origin realigned, Deps neu installiert, R127b
+  frisch aufgesetzt.)
