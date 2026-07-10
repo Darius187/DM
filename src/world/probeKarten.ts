@@ -36,6 +36,43 @@ export interface ProbeKarte {
   // R126: V4 ist die Mine/Höhle - DungeonSpiel schaltet dann auf Höhlen-Optik
   // (Geröll-Wände, Erzadern, Höhlenlicht, Wassertropfen).
   stil?: 'hoehle';
+  // R127 (Autorwunsch "verschiedene Böden für verschiedene Räume"): Kachel-
+  // Rechtecke mit eigenem Boden-Stil (z. B. Blut im Kerker, Gebein im
+  // Beinhaus). Nur begehbare Kacheln im Rechteck werden umgefärbt.
+  raumBoeden?: Array<{ x: number; y: number; w: number; h: number; stil: string }>;
+}
+
+// Raum-Rollen -> Boden-Stil (V8 Katakomben): so erzählt der Boden den Raum.
+const ROLLEN_BODEN: Partial<Record<KatakombenRolle, string>> = {
+  folterkammer: 'blut', beinhaus: 'gebein', kerker: 'lehm', kapelle: 'kirchenfliesen',
+  skriptorium: 'holzdielen', schatzkammer: 'mosaik', bossarena: 'schachbrett',
+  krypta: 'rosette', wachstube: 'flusskiesel',
+};
+
+// Themen-Räume (V3/V6, DRaum.inhalt) -> Boden-Stil.
+const INHALT_BODEN: Record<string, string> = { blut: 'blut', knochen: 'gebein', folter: 'blut' };
+
+// Themen-Räume (V3/V6): DRaum.inhalt bestimmt den Boden; die Haupthalle
+// bekommt Kirchenfliesen (V3 ist der Kloster-Kandidat).
+function themenRaumBoeden(raeume: DRaum[]): ProbeKarte['raumBoeden'] {
+  const out: NonNullable<ProbeKarte['raumBoeden']> = [];
+  for (const r of raeume) {
+    const stil = r.inhalt ? INHALT_BODEN[r.inhalt] : r.typ === 'haupthalle' ? 'kirchenfliesen' : null;
+    if (stil) out.push({ x: r.x, y: r.y, w: r.w, h: r.h, stil });
+  }
+  return out;
+}
+
+// Rollenlose Räume (V9/V10/V11): ein Teil bekommt zufällig einen Sonder-Boden.
+function zufallsRaumBoeden(raeume: Array<{ x: number; y: number; w: number; h: number }>): ProbeKarte['raumBoeden'] {
+  const pool = ['blut', 'gebein', 'moos', 'lehm', 'mosaik', 'holzdielen'];
+  const out: NonNullable<ProbeKarte['raumBoeden']> = [];
+  for (const r of raeume) {
+    if (Math.random() >= 0.3) continue;                       // ~30% der Räume
+    const stil = pool[Math.floor(Math.random() * pool.length)];
+    out.push({ x: r.x + 1, y: r.y + 1, w: r.w - 2, h: r.h - 2, stil });
+  }
+  return out;
 }
 
 const FARBE_V3: Record<Zelle, number> = {
@@ -76,6 +113,7 @@ export function erzeugeKarte(version: DungeonVersion): ProbeKarte {
       name: `V9 - Kammern + echte Türen (${d.raeume.length} Räume, ${d.tueren.length} Türen)`,
       w: d.w, h: d.h, grid: d.grid, solid: (t) => t === 0 || t === 2,
       farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a, editorCodes: true,
+      raumBoeden: zufallsRaumBoeden(d.raeume),
     };
   }
   if (version === 11) {
@@ -87,6 +125,7 @@ export function erzeugeKarte(version: DungeonVersion): ProbeKarte {
       name: `V11 - Hauptraeume + Zwischenraeume (${haupt} Haupt, ${fuell} Zwischen)`,
       w: d.w, h: d.h, grid: d.grid, solid: (t) => t === 0 || t === 2,
       farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a, editorCodes: true,
+      raumBoeden: zufallsRaumBoeden(d.raeume),
     };
   }
   if (version === 10) {
@@ -97,6 +136,7 @@ export function erzeugeKarte(version: DungeonVersion): ProbeKarte {
       name: `V10 - Vorlage-Stil: Wandmassen + Gang-Stummel (${d.raeume.length} Räume)`,
       w: d.w, h: d.h, grid: d.grid, solid: (t) => t === 0 || t === 2,
       farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a, editorCodes: true,
+      raumBoeden: zufallsRaumBoeden(d.raeume),
     };
   }
   if (version === 8) {
@@ -113,6 +153,12 @@ export function erzeugeKarte(version: DungeonVersion): ProbeKarte {
         label: ROLLEN_LABEL[r.rolle].text + (r.istVault ? (r.tueren.some((t) => t.geheim) ? ' 🔒' : ' (Vault)') : ''),
         farbe: ROLLEN_LABEL[r.rolle].farbe,
       })),
+      // R127: der Boden erzählt die Rolle (Blut in der Folterkammer, Gebein im
+      // Beinhaus, Fliesen in der Kapelle ...) - rect ist AUSSEN inkl. Wandring.
+      raumBoeden: d.rooms.flatMap((r) => {
+        const stil = ROLLEN_BODEN[r.rolle];
+        return stil ? [{ x: r.rect.x + 1, y: r.rect.y + 1, w: r.rect.w - 2, h: r.rect.h - 2, stil }] : [];
+      }),
       editorCodes: true,
     };
   }
@@ -125,6 +171,7 @@ export function erzeugeKarte(version: DungeonVersion): ProbeKarte {
     return {
       name: 'V3 - Geteilte Halle (logisch)', w: d.w, h: d.h, grid: d.grid as number[][], raeume: d.raeume,
       solid: (t) => t === 0 || t === 3 || t === 6, farbe: (t) => FARBE_V3[t as Zelle] ?? 0x4a443a,
+      raumBoeden: themenRaumBoeden(d.raeume),
     };
   }
   if (version === 2) {
@@ -135,7 +182,8 @@ export function erzeugeKarte(version: DungeonVersion): ProbeKarte {
   if (version === 6) {
     const d = baueGangDungeon(Math.random);       // wiederhergestellt (dgnB): offen + Elite-Themenräume
     return { name: 'V6 - Offen + Elite-Themenräume', w: d.w, h: d.h, grid: d.grid as number[][], raeume: d.raeume as unknown as DRaum[],
-      solid: (t) => t === 0 || t === 3 || t === 6, farbe: (t) => FARBE_V3[t as Zelle] ?? 0x4a443a };
+      solid: (t) => t === 0 || t === 3 || t === 6, farbe: (t) => FARBE_V3[t as Zelle] ?? 0x4a443a,
+      raumBoeden: themenRaumBoeden(d.raeume as unknown as DRaum[]) };
   }
   if (version === 7) {
     const d = baueBurg(Math.random);              // NEU: echtes Verlies (BSP, dichte unregelmäßige Räume)

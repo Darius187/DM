@@ -82,6 +82,17 @@ export class DungeonSpielScene extends CombatScene {
   // R126: die V4-Höhle bekommt eigene Stollen-Optik (Geröll, Erzadern, Bohlen).
   private zeichneDungeon(): void {
     const k = this.karte;
+    // R127: Raum-Böden (Blut im Kerker, Gebein im Beinhaus ...) als Lookup-Gitter
+    const raumStil: Array<Array<string | null>> | null = k.raumBoeden?.length
+      ? Array.from({ length: k.h }, () => new Array<string | null>(k.w).fill(null))
+      : null;
+    if (raumStil && k.raumBoeden) {
+      for (const z of k.raumBoeden) {
+        for (let y = Math.max(0, z.y); y < Math.min(k.h, z.y + z.h); y++) {
+          for (let x = Math.max(0, z.x); x < Math.min(k.w, z.x + z.w); x++) raumStil[y][x] = z.stil;
+        }
+      }
+    }
     for (let ty = 0; ty < k.h; ty++) {
       for (let tx = 0; tx < k.w; tx++) {
         const t = k.grid[ty][tx];
@@ -97,8 +108,11 @@ export class DungeonSpielScene extends CombatScene {
             : this.bodenStil ? bodenStilTextur(this, this.bodenStil, variant)
             : hoehleTextur(this, 'boden', variant);
         } else {
-          // R124: gewaehlter Boden-Stil (sonst die Standard-Krypta-Textur).
+          // R124: gewaehlter Boden-Stil (sonst Standard-Krypta-Textur);
+          // R127: Raum-Boden (Rolle/Thema) schlaegt beides.
+          const sonderStil = !wand ? raumStil?.[ty]?.[tx] : null;
           key = wand ? this.provider.tileKey('krypta_wand_front', variant)
+            : sonderStil ? bodenStilTextur(this, sonderStil, variant)
             : this.bodenStil ? bodenStilTextur(this, this.bodenStil, variant)
             : this.provider.tileKey('krypta_boden', variant);
         }

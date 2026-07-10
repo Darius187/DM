@@ -1449,3 +1449,24 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   ist ein eigener Schritt (OFFENE-FRAGEN). tsc sauber, 279 Tests gruen
   (4 Hoehlen-Tests: Groesse, Adern-Anzahl, Erz-an-Kante, Erreichbarkeit),
   Browser-Screenshots: Stimmung wie Referenz (dunkel, warme Lichtinseln).
+- R127 Boden-Stile 2.0 (Autor: "natuerlicher, Ziegel passt nicht, Kirchenboden/
+  Mosaik/Plattenboden..., verschiedene Boeden je Raum"): bodenStile.ts auf 20
+  Stile ausgebaut, alle mit gemeinsamen Natur-Bausteinen (Koernung, Trittspur-
+  Abnutzung, Risse): Steinplatten (Fugen versetzt statt mittig), Schiefer
+  (Schichtung), Kopfstein (Moertelbett + Lichtkante), Fischgraet-Ziegel (opus
+  spicatum, ERSETZT den alten Wand-Ziegel), Marmor (Wolken+Adern), Marmor-
+  Schachbrett, Kirchenfliesen (glasiert, zweifarbig, abgeplatzte Ecken),
+  Steinmosaik (Tesserae), Ornamentplatte (Rosette), Sandstein, Kalkstein
+  (abgetreten), Granit, Flusskiesel, Holzdielen (Maserung+Astloch), gestampfter
+  Lehm (Trockenrisse), Erde, Moosstein (Moos WAECHST AUS DEN FUGEN), Sand
+  (weiche Verwehungen), Blutboden (eingetrocknete Lache+Spritzer), Gebeinboden
+  (Knochen+Schaedel). RAUM-BOEDEN: ProbeKarte.raumBoeden (Rechteck+Stil);
+  V8 nach ROLLE (Folter=Blut, Beinhaus=Gebein, Kerker=Lehm, Kapelle=
+  Kirchenfliesen, Skriptorium=Holzdielen, Schatzkammer=Mosaik, Bossarena=
+  Schachbrett, Krypta=Rosette, Wachstube=Flusskiesel), V3/V6 nach Thema
+  (Blut/Knochen/Folter; Haupthalle=Kirchenfliesen, Kloster-Kandidat),
+  V9/V10/V11 zufaellig ~30% der Raeume aus einem Pool. Sonder-Boden schlaegt
+  den gewaehlten Stil, nur begehbare Kacheln. Gewaehlter 'ziegel' (entfernt)
+  faellt sauber auf Stil 1 zurueck (find ?? [0]). tsc sauber, 283 Tests gruen
+  (4 neue: 20 Stile/IDs, V8-Rollen-Boeden, V3-Fliesen, V9/V11-Zufall), im
+  Browser verifiziert (Swatch-Reihe 20, V8: Rosetten-Krypta + Blut-Folterkammer).
