@@ -57,6 +57,8 @@ import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, 
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
 import { hoehleTextur, hoehleKante, vorkommenTextur, KANTE_DICKE } from '../gfx/hoehlenArt';
+import { HoehlenLeben } from '../gfx/hoehlenLeben';
+import { MINE } from '../data/mine';
 import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
@@ -231,6 +233,7 @@ export class WorldScene extends CombatScene {
   private fackelFade = new Map<object, number>();   // je Fackel ein Ein-/Ausblend-Stand 0..1 (kein hartes Aufblinken)
   private lichtPanel?: LichtPanel;                  // Licht-Werkbank (Taste L), live + persistent
   private lightRT!: Phaser.GameObjects.RenderTexture;
+  private hoehlenLeben: HoehlenLeben | null = null;   // R127g: Tropfen/Glitzern in der Mine
   private warmPool: Phaser.GameObjects.Image[] = [];
   private minimapGfx!: Phaser.GameObjects.Graphics;
   private seen = new Map<string, boolean[][]>();
@@ -1798,7 +1801,22 @@ export class WorldScene extends CombatScene {
       this.startIntroFilm();
     }
     // R108: Klang-Umgebung (Hall) - Innenräume/Dungeon hallen, offenes Land kaum.
-    this.sfx.setzeUmgebung(a.innen ? 0.95 : a.dark ? 0.8 : 0.18);
+    // R127g: die Höhlen-Mine hallt stärker (enger Steinstollen).
+    this.sfx.setzeUmgebung(a.hoehlenOptik ? MINE.HALL : a.innen ? 0.95 : a.dark ? 0.8 : 0.18);
+    // R127g: LEBEN der Höhlen-Mine (Tropfen, Pfützen, Gold-Glitzern). Die
+    // Dunkelheit macht die lightRT (Heldenlaterne + Grubenfackeln) - hier nur
+    // die Atmosphäre. Bei jedem Gebietswechsel frisch, in anderen Gebieten aus.
+    this.hoehlenLeben?.destroy();
+    this.hoehlenLeben = null;
+    if (a.hoehlenOptik) {
+      const gold = a.ores.filter((o) => o.erz === 'gold').map((o) => ({ x: o.x, y: o.y }));
+      this.hoehlenLeben = new HoehlenLeben(this, this.sfx, {
+        tile: TILE, breite: a.w, hoehe: a.h, goldOrte: gold,
+        begehbar: (tx, ty) => { const t = a.map[ty]?.[tx]; return t !== undefined && !SOLID.has(t); },
+        held: () => ({ x: this.px, y: this.py }),
+        kamera: () => this.cameras.main.worldView,
+      });
+    }
     // R113: Spur-Anker auf die neue Position (sonst ein Quer-Abdruck über die Karte)
     this.letzteSpur = { x: this.px, y: this.py };
     this.blutSchrittRest = 0;
@@ -10928,6 +10946,7 @@ export class WorldScene extends CombatScene {
     this.updateWetter(dt);      // Wetter-Achse (Regen/Nässe, Stimmungsregen bis 1. Dungeon)
     this.updateWetterNebel();   // R113: Schwaden nach dem Regen
     this.updateSpuren(dt);      // R113: Fussabdruecke + Blut am Helden
+    this.hoehlenLeben?.update(dt);   // R127g: Tropfen/Pfützen/Gold-Glitzern (Mine)
     this.updateLagerfeuer(dt);  // eigenes Feuer heilt in der Nähe (R81, Baumenü)
     this.updateBaustellen(dt);  // RTS-Platzierung + Bauzeit-Fortschritt (R88)
     this.updatePflanzenRespawn(dt); // Heilpflanzen wachsen nach (R89)

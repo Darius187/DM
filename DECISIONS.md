@@ -1563,3 +1563,13 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Browser: Finsterhain -> Stollenmaul-Hint -> Goldhoehle (neue Optik sichtbar:
   nahtlose Waende, Bohlen-Kammer mit Tisch/Stuehlen/Fass, gruene Kupfer-
   Vorkommen) -> Rueckweg-Hint.
+- R127g Höhlen-Atmosphäre LIVE in der Goldmine (Autor: "da muss die Atmosphäre
+  wie im Dungeon rein, auch Tropfen"): neue Klasse src/gfx/hoehlenLeben.ts -
+  KEINE eigene Dunkelheit (die macht in der WorldScene die lightRT: Helden-
+  laterne + Grubenfackeln), nur das LEBEN: Wassertropfen (fallend + Aufprall-
+  Ring + positionaler "plip" wasser_tropfen über den AudioBus mit Höhlen-Hall,
+  nur nahe dem Helden <760px), stehende Pfützen (einmal gebacken), Gold-
+  Glitzern an sichtbaren Gold-Vorkommen. In WorldScene.goArea bei a.hoehlenOptik
+  angelegt (sonst zerstört), pro Frame update, Hall auf MINE.HALL (0.9) statt
+  0.8. Werte in src/data/mine.ts. tsc sauber, 285 Tests grün, im Browser:
+  Leben aktiv (24 Tropfstellen, 53 Gold-Vorkommen), keine JS-Fehler.
