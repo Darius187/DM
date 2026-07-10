@@ -58,6 +58,7 @@ import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
 import { hoehleTextur, hoehleKante, vorkommenTextur, KANTE_DICKE } from '../gfx/hoehlenArt';
 import { HoehlenLeben } from '../gfx/hoehlenLeben';
+import { HausAtlas } from '../gfx/hausAtlas';
 import { MINE } from '../data/mine';
 import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
@@ -234,6 +235,8 @@ export class WorldScene extends CombatScene {
   private lichtPanel?: LichtPanel;                  // Licht-Werkbank (Taste L), live + persistent
   private lightRT!: Phaser.GameObjects.RenderTexture;
   private hoehlenLeben: HoehlenLeben | null = null;   // R127g: Tropfen/Glitzern in der Mine
+  private hausZimmermann: HausAtlas | null = null;   // R127h: Atlas-Haus (haengt an Box N1)
+  private static readonly HAUS_HOST_BOX = 'N1';
   private warmPool: Phaser.GameObjects.Image[] = [];
   private minimapGfx!: Phaser.GameObjects.Graphics;
   private seen = new Map<string, boolean[][]>();
@@ -1852,12 +1855,22 @@ export class WorldScene extends CombatScene {
     if (!DORFPLAN_AN || a.id !== 'stadt') {
       // Beim Verlassen der Stadt den Editor sauber schliessen (Globales abmelden).
       if (this.dorfEdit) this.toggleDorfEditor(true);
+      this.hausZimmermann?.destroy(); this.hausZimmermann = null;
       return;
     }
     // Arbeitskopie aus dem Browser laden (Autor-Edits), sonst die Datei-Saat.
     this.dorfBoxen = ladeDorfplan(DORFPLAN_BOXEN);
     this.dorfWege = ladeWege();
     this.dorfWegeGfx?.destroy(); this.dorfWegeGfx = undefined;
+    // R127h: Zimmermannshaus an seine Host-Box haengen (Box ziehen = Haus mit).
+    this.hausZimmermann?.destroy(); this.hausZimmermann = null;
+    const host = this.dorfBoxen.find((b) => b.id === WorldScene.HAUS_HOST_BOX);
+    if (host) {
+      this.hausZimmermann = new HausAtlas(this, {
+        footX: (host.x + host.breite / 2) * TILE, footY: (host.y + host.hoehe) * TILE,
+        ignoriere: (o) => this.uiCam?.ignore(o),   // Haus nur auf der Welt-Kamera
+      });
+    }
     this.dorfRender();
     this.zeichneDorfWege();
   }
@@ -1890,6 +1903,9 @@ export class WorldScene extends CombatScene {
       }
     }
     this.uiCam?.ignore(ignorieren);   // gehoert der Welt-Kamera, nicht der UI
+    // R127h: Haus folgt seiner Box (auch live beim Ziehen).
+    const host = this.dorfBoxen.find((b) => b.id === WorldScene.HAUS_HOST_BOX);
+    if (host && this.hausZimmermann) this.hausZimmermann.setPosition((host.x + host.breite / 2) * TILE, (host.y + host.hoehe) * TILE);
   }
 
   // Liefert die Box unter dem Welt-Punkt (oberste zuletzt gezeichnete zuerst) und

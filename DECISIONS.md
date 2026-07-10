@@ -1573,3 +1573,20 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   angelegt (sonst zerstört), pro Frame update, Hall auf MINE.HALL (0.9) statt
   0.8. Werte in src/data/mine.ts. tsc sauber, 285 Tests grün, im Browser:
   Leben aktiv (24 Tropfstellen, 53 Gold-Vorkommen), keine JS-Fehler.
+- R127h Zimmermannshaus als ATLAS + verschiebbar in Ravensmoor (Autor-Handoff:
+  1 Atlas-PNG + 1 JSON statt 11 Layer). NEU: src/gfx/hausAtlas.ts (HausAtlas) -
+  lädt zur Laufzeit assets/houses/medieval_carpenter_house_atlas.png/.json
+  (Loader-Key haus_zimmermann), baut daraus Hauptsprite (Zustand), Vordergrund-
+  Occlusion, Bodenschatten und additive Fensterlicht-Maske. Alle Layer teilen
+  denselben Ursprung; Boden-Anker building_ground_rear = (916.5, 682.07) auf dem
+  1400er Canvas -> Weltposition = footprint - Anker*skala, y-sortiert am Anker.
+  Zustände (Tür zu/auf, Innenraum EG/OG) = reines Frame-Umschalten (setZustand).
+  FEHLT der Atlas (aktuell), zeigt HausAtlas einen prozeduralen Fachwerk-
+  PLATZHALTER (sichtbar + verschiebbar) - Spiel bleibt lauffähig; erkannt via
+  Frame-Check (Dev-Server liefert fehlende Datei als HTML/200). VERSCHIEBBAR:
+  das Haus hängt an der Dorf-Editor-Box N1 in 'stadt' (Ravensmoor) und folgt ihr
+  LIVE beim Ziehen (dorfRender -> setPosition). Kamera-Zuordnung über ignoriere-
+  Callback (nur Welt-Kamera, nicht UI). Andockstelle dokumentiert in
+  assets/houses/README.md (Dateinamen, Frames, Anker, untrimmte-Layer-Empfehlung).
+  tsc sauber, 285 Tests grün, im Browser: Platzhalter in Ravensmoor an N1,
+  folgt der Box beim Verschieben (footX == Box-footX).
