@@ -16,7 +16,8 @@ type RNG = () => number;
 
 // 0 Fels/Wand · 1 Höhlenboden · 2 Tür · 3 Raumboden · 4 Eisenader · 5 Kupferader · 6 Goldader
 export const HOEHLE_ERZ: Record<number, ErzArt> = { 4: 'eisen', 5: 'kupfer', 6: 'gold' };
-export interface HoehleResult { w: number; h: number; grid: number[][]; raeume: number; adern: number }
+export interface HoehleKammer { x: number; y: number; w: number; h: number }
+export interface HoehleResult { w: number; h: number; grid: number[][]; raeume: number; adern: number; kammern: HoehleKammer[] }
 
 const W = MINE.W, H = MINE.H;
 
@@ -42,6 +43,7 @@ export function baueHoehle(rng: RNG): HoehleResult {
   //    mit Wänden + EINER Tür hineingestellt - man läuft drumherum und durch die
   //    Tür hinein, die Höhle bleibt zusammenhängend.
   let raeume = 0;
+  const kammern: HoehleKammer[] = [];
   for (let versuch = 0; versuch < 140 && raeume < MINE.RAEUME; versuch++) {
     const rw = 5 + Math.floor(rng() * 4), rh = 4 + Math.floor(rng() * 3);
     const rx = 3 + Math.floor(rng() * (W - rw - 6)), ry = 3 + Math.floor(rng() * (H - rh - 6));
@@ -59,6 +61,7 @@ export function baueHoehle(rng: RNG): HoehleResult {
       }
     }
     grid[ry + rh - 1][rx + (rw >> 1)] = 2;   // Tür unten Mitte -> in die Höhle
+    kammern.push({ x: rx, y: ry, w: rw, h: rh });   // R127f: Rückzugsorte der Knappen
     raeume++;
   }
   // 5) ERZADERN (R126): entlang der Wand-Boden-Kante wachsen lassen - dort, wo
@@ -66,7 +69,7 @@ export function baueHoehle(rng: RNG): HoehleResult {
   //    über benachbarte Kanten-Wandkacheln (8er-Nachbarschaft = die Ader zieht
   //    sich schräg durchs Gestein wie auf den Referenzfotos).
   const adern = grabeErzAdern(grid, rng);
-  return { w: W, h: H, grid, raeume, adern };
+  return { w: W, h: H, grid, raeume, adern, kammern };
 }
 
 // Wandkachel, die an mindestens einen Höhlenboden (1) grenzt? (4er reicht,

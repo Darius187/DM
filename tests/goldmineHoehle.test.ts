@@ -33,13 +33,23 @@ describe('Goldhöhle = V4-Mine (live)', () => {
       expect(a.enemySpawns.length).toBe(12);
       expect(a.chests.length).toBe(2);
       expect(a.torches.length).toBeGreaterThan(4);
+      // R127f: Hoehlen-Optik live + Kammern der Knappen (Tisch/Bett/Fass) + Brocken
+      expect(a.hoehlenOptik).toBe(true);
+      expect(a.hoehlenKammern!.length).toBeGreaterThan(2);
+      let tische = 0, betten = 0;
+      for (const row of a.map) for (const t of row) { if (t === T.TISCH) tische++; if (t === T.BETT) betten++; }
+      expect(tische).toBeGreaterThan(0);
+      expect(betten).toBeGreaterThan(0);
+      expect(a.rocks.length).toBeGreaterThan(7);
+      expect(a.breakables.length).toBeGreaterThan(0);
     }
   });
 
   it('alles Begehbare hängt zusammen (Spawn erreicht jede Boden-Kachel)', () => {
     for (let lauf = 0; lauf < 5; lauf++) {
       const a = buildGoldmine(seededRng(lauf * 173 + 31));
-      const beg = (t: number): boolean => t === T.FLOOR || t === T.STAIRUP;
+      // Stuehle sind begehbar (nicht SOLID) - zaehlen im Spiel als Weg
+      const beg = (t: number): boolean => t === T.FLOOR || t === T.STAIRUP || t === T.STUHL;
       const sx = Math.floor(a.spawn.x / TILE), sy = Math.floor(a.spawn.y / TILE);
       const seen = Array.from({ length: a.h }, () => new Array<boolean>(a.w).fill(false));
       const stack: Array<[number, number]> = [[sx, sy]]; seen[sy][sx] = true;

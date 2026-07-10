@@ -142,63 +142,82 @@ function baueBohlenSuper(ctx: Ctx): void {
   }
 }
 
-// --- Erzader-Band über einem 32er-Ausschnitt ---------------------------------
-// R127e, gegen die Realität geprüft (Recherche):
-// GOLD kommt als GOLDQUARZGANG vor - der Gang ist zu 97-98% weiss-grauer QUARZ,
-//   das Gold sitzt nur als kleine metallisch-gelbe Sprenkel darin.
-// EISEN (Roteisenerz/Hämatit, das mittelalterliche Erz) = rotbraunes Band mit
-//   Rost-Hof und stahlgrauen Metallglanz-Punkten.
-// KUPFER (Kupferkies/Chalkopyrit) = messinggelbe Einsprengsel; oberflächennah
-//   zu GRÜNEM Malachit (selten blauem Azurit) verwittert - "die grüne Farbe
-//   zeigt das Kupfer an".
-function zeichneErzBand(ctx: Ctx, sx: number, sy: number, art: 'eisen' | 'kupfer' | 'gold'): void {
-  const r = prng(sx * 8 + sy + (art === 'gold' ? 401 : art === 'kupfer' ? 301 : 201));
-  // Richtung wechselt im Schachbrett - benachbarte Erz-Kacheln wirken wie
-  // EINE sich schlängelnde Ader. Mittellinie EINMAL würfeln, alle Striche
-  // laufen auf demselben Pfad (sonst franst das Band aus).
-  const senkrecht = (sx + sy) % 2 === 0;
-  const pfad: Array<[number, number]> = [];
-  let p = TILE / 2 + (r() - 0.5) * 6;
-  for (let t = -2; t <= TILE + 2; t += 4) {
-    p += (r() - 0.5) * 4;
-    pfad.push(senkrecht ? [p, t] : [t, p]);
-  }
-  const strich = (breite: number, farbe: string): void => {
-    ctx.strokeStyle = farbe; ctx.lineWidth = breite; ctx.lineCap = 'round';
-    ctx.beginPath();
-    pfad.forEach(([x, y], i) => { if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
-    ctx.stroke();
-  };
-  // Sprenkel entlang des Pfads (mit Quer-Streuung)
-  const sprenkel = (anz: number, farbe: string, groesse: number, streu: number): void => {
+// --- Erz-VORKOMMEN über einem 32er-Ausschnitt ---------------------------------
+// R127f (Autor: "statt der Adern sichtbare GROSSE Vorkommen"). Farbwelt bleibt
+// die recherchierte Realität (R127e): Gold sitzt in einer hellen QUARZ-Tasche
+// (Goldquarzgang) als sattes Nugget-Nest; Eisen = rotbraune Hämatit-Brocken
+// mit Rost-Hof und Stahlglanz; Kupfer = messinggelber Kupferkies mit grüner
+// Malachit-Kruste (selten blauer Azurit).
+function zeichneVorkommen(ctx: Ctx, seed: number, art: 'eisen' | 'kupfer' | 'gold'): void {
+  const r = prng(seed + (art === 'gold' ? 401 : art === 'kupfer' ? 301 : 201));
+  const cx = TILE / 2 + (r() - 0.5) * 6, cy = TILE / 2 + (r() - 0.5) * 6;
+  // eckiger Brocken (Polygon) an Position mit Radius zeichnen
+  const brocken = (bx: number, by: number, rad: number, farbe: string, kante = true): void => {
+    const ecken = 5 + Math.floor(r() * 2);
     ctx.fillStyle = farbe;
-    for (let i = 0; i < anz; i++) {
-      const [px, py] = pfad[Math.floor(r() * pfad.length)];
-      const qx = senkrecht ? (r() - 0.5) * streu : 0, qy = senkrecht ? 0 : (r() - 0.5) * streu;
-      ctx.fillRect(px + qx, py + qy, groesse + r() * groesse, groesse + r() * 0.8 * groesse);
+    ctx.beginPath();
+    for (let e = 0; e < ecken; e++) {
+      const a = (e / ecken) * 6.283 + r() * 0.5;
+      const rr = rad * (0.65 + r() * 0.45);
+      const px = bx + Math.cos(a) * rr, py = by + Math.sin(a) * rr;
+      if (e === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
     }
+    ctx.closePath(); ctx.fill();
+    if (kante) { ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 0.8; ctx.stroke(); }
+  };
+  // weicher Hof (Verwitterung/Gangart) hinter dem Nest
+  const hof = (farbe: string, rad: number): void => {
+    ctx.fillStyle = farbe;
+    ctx.beginPath(); ctx.ellipse(cx, cy, rad, rad * 0.85, r() * 3, 0, 6.283); ctx.fill();
   };
   if (art === 'gold') {
-    strich(7, 'rgba(120,115,105,0.25)');       // Übergangs-Saum ins Gestein
-    strich(5, 'rgba(205,200,190,0.92)');       // Quarzgang (weiss-grau)
-    strich(2.6, 'rgba(230,226,216,0.95)');     // heller Quarz-Kern
-    sprenkel(3, '#4a4a52', 1, 6);              // dunkle Sulfid-Einschlüsse
-    sprenkel(4, '#dfb43a', 1, 5);              // Gold: KLEINE Flitter
-    sprenkel(2, '#ffe27a', 1, 4);              // hellster Glanz
+    hof('rgba(205,200,188,0.85)', 12);                        // Quarz-Tasche (hell)
+    hof('rgba(228,224,214,0.9)', 8.5);
+    for (let i = 0; i < 4; i++) {                             // sattes Nugget-Nest
+      const bx = cx + (r() - 0.5) * 11, by = cy + (r() - 0.5) * 10;
+      brocken(bx, by, 2.6 + r() * 2.2, '#c9992a');
+      ctx.fillStyle = '#ffe27a';                              // Glanz-Facette oben links
+      ctx.fillRect(bx - 1.5, by - 1.5, 2, 1.4);
+    }
+    ctx.fillStyle = '#4a4a52';                                // Sulfid-Einschlüsse
+    for (let i = 0; i < 3; i++) ctx.fillRect(cx + (r() - 0.5) * 16, cy + (r() - 0.5) * 14, 1.2, 1.2);
   } else if (art === 'eisen') {
-    strich(8, 'rgba(96,50,30,0.30)');          // Oxidations-Hof (Rost)
-    strich(4.5, '#5e2c1c');                    // Hämatit-Band rotbraun
-    strich(2, '#7a4028');
-    sprenkel(4, '#8a8a92', 1, 5);              // stahlgrauer Metallglanz
-    sprenkel(3, '#a05a30', 1, 7);              // Rostflecken
+    hof('rgba(96,50,30,0.5)', 12);                            // Rost-Hof
+    for (let i = 0; i < 4; i++) {
+      const bx = cx + (r() - 0.5) * 12, by = cy + (r() - 0.5) * 11;
+      brocken(bx, by, 3 + r() * 2.4, i % 2 ? '#5e2c1c' : '#6e3a24');
+      ctx.fillStyle = '#9a9aa4';                              // Stahlglanz-Facette
+      ctx.fillRect(bx - 1.2, by - 1.4, 2, 1.2);
+    }
+    ctx.fillStyle = 'rgba(160,90,48,0.6)';                    // Rost-Läufer nach unten
+    ctx.fillRect(cx - 1, cy + 6, 2, 5 + r() * 4);
   } else {
-    strich(8, 'rgba(46,110,78,0.28)');         // Malachit-Hof (grüne Verwitterung)
-    strich(4.5, 'rgba(52,124,88,0.6)');        // grüner Saum
-    strich(2, '#2e6e4e');
-    sprenkel(5, '#b08a3a', 1, 5);              // Kupferkies: messinggelb
-    sprenkel(2, '#d8b24a', 1, 4);              // hellerer Messingglanz
-    if (r() < 0.5) sprenkel(1, '#3a5a9a', 1.4, 6); // selten Azurit (blau)
+    hof('rgba(46,110,78,0.5)', 12);                           // Malachit-Kruste
+    hof('rgba(63,143,95,0.45)', 8);
+    for (let i = 0; i < 4; i++) {
+      const bx = cx + (r() - 0.5) * 11, by = cy + (r() - 0.5) * 10;
+      brocken(bx, by, 2.6 + r() * 2.2, i % 2 ? '#a87c2e' : '#b8933a'); // Kupferkies messing
+      ctx.fillStyle = '#d8b24a';
+      ctx.fillRect(bx - 1.4, by - 1.4, 2, 1.2);
+    }
+    if (r() < 0.5) { ctx.fillStyle = '#3a5a9a'; ctx.fillRect(cx + (r() - 0.5) * 12, cy + (r() - 0.5) * 10, 2, 1.6); } // Azurit
   }
+}
+
+// Transparentes Vorkommen-OBJEKT (fuer die Live-Mine in der WorldScene: liegt
+// als abbaubares Objekt AUF der nahtlosen Stollenwand; die Abbau-Stufen
+// rissig/Geroell uebernimmt die bestehende 7DtD-Optik).
+export function vorkommenTextur(
+  scene: { textures: { exists: (k: string) => boolean; addCanvas: (k: string, c: HTMLCanvasElement) => void } },
+  erz: 'eisen' | 'kupfer' | 'gold', variant: number,
+): string {
+  const key = `hoehle_vorkommen_${erz}_${variant % 5}`;
+  if (scene.textures.exists(key)) return key;
+  const cv = document.createElement('canvas'); cv.width = TILE; cv.height = TILE;
+  const ctx = cv.getContext('2d')!;
+  zeichneVorkommen(ctx, 900 + (variant % 5) * 17, erz);
+  scene.textures.addCanvas(key, cv);
+  return key;
 }
 
 // --- Felsige Wand-Kanten (R127d, Autor: "Kanten der Vierecke abrunden /
@@ -306,9 +325,9 @@ export function hoehleTextur(
   const ctx = cv.getContext('2d')!;
   const quelle: 'wand' | 'boden' | 'bohlen' = art === 'boden' ? 'boden' : art === 'bohlen' ? 'bohlen' : 'wand';
   ctx.drawImage(superTextur(quelle), sx * TILE, sy * TILE, TILE, TILE, 0, 0, TILE, TILE);
-  if (art === 'erz_eisen') zeichneErzBand(ctx, sx, sy, 'eisen');
-  else if (art === 'erz_kupfer') zeichneErzBand(ctx, sx, sy, 'kupfer');
-  else if (art === 'erz_gold') zeichneErzBand(ctx, sx, sy, 'gold');
+  if (art === 'erz_eisen') zeichneVorkommen(ctx, sx * 8 + sy, 'eisen');
+  else if (art === 'erz_kupfer') zeichneVorkommen(ctx, sx * 8 + sy, 'kupfer');
+  else if (art === 'erz_gold') zeichneVorkommen(ctx, sx * 8 + sy, 'gold');
   scene.textures.addCanvas(key, cv);
   return key;
 }

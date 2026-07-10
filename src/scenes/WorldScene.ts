@@ -56,6 +56,7 @@ import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDL
 import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
+import { hoehleTextur, hoehleKante, vorkommenTextur, KANTE_DICKE } from '../gfx/hoehlenArt';
 import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
@@ -5052,6 +5053,38 @@ export class WorldScene extends CombatScene {
       this.tileImages.push(img);
       return img;
     };
+    // R127f: LIVE-Höhlenoptik der Goldmine (Autor: "packe das schöne Zeug
+    // live rein") - nahtlose Stollenwand/Höhlenboden/Bohlen aus hoehlenArt,
+    // felsige Wand-Kanten, Kammern der Knappen mit Bohlenboden. Abbaubare
+    // Objekte (Vorkommen, Felsbrocken, Möbel) laufen weiter durch STANDING.
+    const inKammer = a.hoehlenOptik === true
+      && (a.hoehlenKammern?.some((k) => tx > k.x && tx < k.x + k.w - 1 && ty > k.y && ty < k.y + k.h - 1) ?? false);
+    if (a.hoehlenOptik) {
+      const istBrocken = id === T.ROCK && a.rocks.some((r) => Math.floor(r.x / TILE) === tx && Math.floor(r.y / TILE) === ty);
+      if (id === T.ROCK && !istBrocken) {
+        // massive Stollenwand: Supertextur-Ausschnitt nach Position
+        tag(this.add.image(tx * TILE + 16, ty * TILE + 16, hoehleTextur(this, 'wand', tx, ty)).setDepth(ty * TILE + 1));
+        return;
+      }
+      if (id === T.FLOOR || id === T.STUHL) {
+        tag(this.add.image(tx * TILE + 16, ty * TILE + 16, hoehleTextur(this, inKammer ? 'bohlen' : 'boden', tx, ty)).setDepth(-10));
+        if (id === T.STUHL) {
+          tag(this.add.image(tx * TILE + 16, ty * TILE + 16, this.provider.tileKey('stuhl', variant, a.depth, a.theme)).setDepth(ty * TILE + 10));
+        } else if (!inKammer) {
+          // gezackter Fels-Überlauf an jeder Wandgrenze (wie in der Probe)
+          const wandBei = (dx: number, dy: number): boolean => {
+            const nt = a.map[ty + dy]?.[tx + dx];
+            return nt === T.ROCK || nt === T.ORE;
+          };
+          const kx = tx * TILE + 16, ky = ty * TILE + 16, h2 = KANTE_DICKE / 2;
+          if (wandBei(0, -1)) tag(this.add.image(kx, ty * TILE + h2, hoehleKante(this, 'oben', tx)).setDepth(-9));
+          if (wandBei(0, 1)) tag(this.add.image(kx, (ty + 1) * TILE - h2, hoehleKante(this, 'unten', tx)).setDepth(-9));
+          if (wandBei(-1, 0)) tag(this.add.image(tx * TILE + h2, ky, hoehleKante(this, 'links', ty)).setDepth(-9));
+          if (wandBei(1, 0)) tag(this.add.image((tx + 1) * TILE - h2, ky, hoehleKante(this, 'rechts', ty)).setDepth(-9));
+        }
+        return;
+      }
+    }
     // Haus-Sprites (Runde 18): Gebäude mit Gesamtbild zeichnen keine
     // Wand-Kacheln mehr - nur Gras darunter, Kollision bleibt
     const imHaus = this.hausSpriteAn && a.hausPlaetze?.find((hp) => tx >= hp.x0 && tx <= hp.x1 && ty >= hp.y0 && ty <= hp.y1);
@@ -5063,7 +5096,14 @@ export class WorldScene extends CombatScene {
       // bodenName erzwingt den Untergrund (Kirche: Stein statt Gras, Runde 51)
       const groundName = a.bodenName ?? (a.innen ? 'holzboden' : a.dark ? 'krypta_boden' : 'gras');
       // Bei gebackenem Boden trägt das Bodenbild den Untergrund - nur das Objekt zeichnen.
-      if (!a.gebackenerBoden) tag(this.add.image(tx * TILE + 16, ty * TILE + 16, this.provider.tileKey(groundName, variant, a.depth, a.theme)).setDepth(-10));
+      // R127f: in der Höhlen-Mine liegt unter Objekten der nahtlose Höhlengrund
+      // (unter Erz-Vorkommen die Stollenwand, in Kammern die Bohlen).
+      if (!a.gebackenerBoden) {
+        const grundKey = a.hoehlenOptik
+          ? hoehleTextur(this, id === T.ORE ? 'wand' : inKammer ? 'bohlen' : 'boden', tx, ty)
+          : this.provider.tileKey(groundName, variant, a.depth, a.theme);
+        tag(this.add.image(tx * TILE + 16, ty * TILE + 16, grundKey).setDepth(id === T.ORE && a.hoehlenOptik ? ty * TILE + 1 : -10));
+      }
       // Dichter Wald: Bäume mit vielen Baum-Nachbarn nutzen die
       // wald-Grafiken (assets/tiles/wald1.png ...), freie Bäume baum*
       let objName = name;
@@ -5150,6 +5190,19 @@ export class WorldScene extends CombatScene {
         // R82 (Autor "Steine natürlicher"): auf gebackenen Karten die GEMALTEN
         // dorfSim-Felsen (Facetten, Mooskappen, eingebauter Kontaktschatten,
         // 2x-AA) statt der 32px-Kachelgrafik. Adern zeigen Erz-Einsprengsel.
+        // R127f: grosses Erz-VORKOMMEN in der Höhlen-Mine (Autor: "sichtbare
+        // grosse Vorkommen statt Adern") - liegt auf der Stollenwand; die
+        // Abbau-Stufen rissig/Geröll übernehmen wie gehabt.
+        if (a.hoehlenOptik && id === T.ORE && stufe < 2) {
+          objImg.setTexture(vorkommenTextur(this, eintrag?.erz ?? 'eisen', variant));
+          const skV = stufe === 1 ? 0.85 : 1;
+          objImg.setDisplaySize(TILE * skV, TILE * skV).setDepth(ty * TILE + 26);
+          objImg.setData('objTyp', objName);
+          if (stufe === 1) {
+            tag(this.add.image(tx * TILE + 16, ty * TILE + 13, this.abbauTexturKey('risse')).setDepth(ty * TILE + 27).setDisplaySize(TILE * 0.7, TILE * 0.7));
+          }
+          return;
+        }
         if (a.gebackenerBoden && stufe < 2) {
           const erz = id === T.ORE ? (eintrag?.erz ?? (a.id === 'goldmine' ? 'gold' as const : 'eisen' as const)) : undefined;
           const fkey = `fels_neu_${gFels}_${variant % 3}${erz ?? ''}`;
@@ -8766,10 +8819,11 @@ export class WorldScene extends CombatScene {
         },
       };
     }
-    if (tid === T.STAIR && this.area.id === 'wald') {
-      // Höhlenmaul im Wald (Runde 51): hinab in die Goldhöhle.
+    if (tid === T.STAIR && this.area.id === 'wald_o') {
+      // R127f (Autor): das Stollenmaul liegt im Norden von Finsterhain -
+      // der letzten Karte vor Ravensmoor (verlassener Wachposten davor).
       return {
-        text: `Eingang zur Goldhöhle - ${ik} zum Hinabsteigen`,
+        text: `Stollenmaul - ${ik} hinab in die Goldhöhle`,
         action: () => { this.sfx.play('tuer'); this.goArea('goldmine'); },
       };
     }
@@ -8801,14 +8855,14 @@ export class WorldScene extends CombatScene {
       };
     }
     if (tid === T.STAIRUP && this.area.id === 'goldmine') {
-      // Aus der Goldhöhle zurück ans Höhlenmaul im Wald (Runde 51).
+      // R127f: aus der Goldhöhle zurück ans Stollenmaul in Finsterhain.
       return {
-        text: `Hinauf in den Dunkelwald - ${ik}`,
+        text: `Hinauf nach Finsterhain - ${ik}`,
         action: () => {
-          const wald = this.getArea('wald');
+          const wald = this.getArea('wald_o');
           const maul = wald.special.find((s) => s.id === 'goldmine');
           this.sfx.play('tuer');
-          this.goArea('wald', maul ? { x: maul.x, y: maul.y } : undefined);
+          this.goArea('wald_o', maul ? { x: maul.x, y: maul.y } : undefined);
         },
       };
     }

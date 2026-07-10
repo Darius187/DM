@@ -141,6 +141,10 @@ export interface AreaData {
   innen?: boolean;                       // Innenraum: Holzboden unter Möbeln, warm
   innenHaus?: string;                    // welches Haus (für den Rückweg)
   bodenName?: string;                    // erzwingt den Bodengrund unter Objekten
+  // R127f: Live-Hoehlenoptik der Goldmine (nahtloses Gestein/Boden/Kanten aus
+  // hoehlenArt) + Kammer-Rechtecke (Bohlenboden, Moebel der Knappen)
+  hoehlenOptik?: boolean;
+  hoehlenKammern?: Array<{ x: number; y: number; w: number; h: number }>;
                                          // (Kirche: Stein statt Gras, Runde 51)
 }
 
@@ -891,7 +895,9 @@ export function buildGoldmine(rng: Rng): AreaData {
     ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
     npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
   };
-  // Generator-Codes übertragen: 1/2/3 begehbar, 4/5/6 = Erzadern (abbaubar)
+  a.hoehlenOptik = true;                 // R127f: Probe-Gestein/Boden/Kanten live
+  a.hoehlenKammern = d.kammern;
+  // Generator-Codes übertragen: 1/2/3 begehbar, 4/5/6 = Erz-Vorkommen (abbaubar)
   const ERZ: Record<number, 'eisen' | 'kupfer' | 'gold'> = { 4: 'eisen', 5: 'kupfer', 6: 'gold' };
   const begehbar: Array<[number, number]> = [];
   for (let y = 0; y < h; y++) {
@@ -917,9 +923,47 @@ export function buildGoldmine(rng: Rng): AreaData {
     lampen.push([x, y]);
     a.torches.push({ x: x * TILE + 16, y: (y - 1) * TILE + 24, ph: rnd(rng, 0, 6.28) });
   }
+  // R127f: KAMMERN = Rueckzugsorte der Knappen - Bohlenboden (Optik),
+  // Tisch + Stuehle + Bett + Vorrats-Fass + Kerzenlicht. VOR den Spawns setzen,
+  // damit niemand auf einem Moebel steht.
+  a.herde = a.herde ?? [];
+  for (const k of d.kammern) {
+    // ACHTUNG: die Tür liegt in der Mittel-SPALTE der Kammer (Generator) -
+    // der Tisch darf dort NICHT stehen, sonst versiegelt er den Eingang
+    // (R127f-Fund: Kammer war komplett unerreichbar). Tisch eine Spalte
+    // links der Tür; Stühle links daneben und in der Türspalte (begehbar).
+    const tuerX = k.x + (k.w >> 1), cy = k.y + (k.h >> 1);
+    const cx = tuerX - 1;
+    if (map[cy]?.[cx] === T.FLOOR) map[cy][cx] = T.TISCH;
+    if (map[cy]?.[cx - 1] === T.FLOOR) map[cy][cx - 1] = T.STUHL;
+    if (map[cy]?.[cx + 1] === T.FLOOR) map[cy][cx + 1] = T.STUHL;
+    // Bett nur bei >=3 Innenzeilen (h>=5): in 2-zeiligen Kammern versiegelte
+    // Bett+Tisch sonst den linken Stuhl (R127f-Fund, Erreichbarkeits-Test).
+    if (k.h >= 5 && map[k.y + 1]?.[k.x + 1] === T.FLOOR) map[k.y + 1][k.x + 1] = T.BETT;
+    const fx = k.x + k.w - 2, fy = k.y + 1;
+    if (map[fy]?.[fx] === T.FLOOR) a.breakables.push({ kind: 'fass', x: fx * TILE + 16, y: fy * TILE + 16, ambush: false });
+    a.herde.push({ x: cx * TILE + 16, y: cy * TILE + 8, ph: rnd(rng, 0, 6.28), art: 'kerze' });
+  }
+  // R127f: Felsbrocken auf dem Hoehlenboden - GESTEIN ist abbaubar (Stein).
+  // Nur in offener Flaeche (>=6 freie Nachbarn), damit kein Gang verstopft.
+  let brocken = 0;
+  for (let versuch = 0; versuch < 400 && brocken < 14; versuch++) {
+    const [x, y] = begehbar[Math.floor(rng.random() * begehbar.length)];
+    if (map[y][x] !== T.FLOOR || d.grid[y][x] !== 1) continue;
+    if (Math.hypot(x - ein[0], y - ein[1]) < 8) continue;
+    let frei = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if ((dx || dy) && map[y + dy]?.[x + dx] === T.FLOOR) frei++;
+    }
+    if (frei < 6) continue;
+    map[y][x] = T.ROCK;
+    a.rocks.push({ x: x * TILE + 16, y: y * TILE + 16, g: Math.floor(rng.random() * 3) });
+    brocken++;
+  }
   // Besatzung: die Mine muss BEFREIT werden (letzter Gegner -> goldmineGesichert).
-  // Skelette + Ratten verteilt, 2 Eliten tief in der Höhle, alles fern vom Eingang.
-  const fern = begehbar.filter(([x, y]) => Math.hypot(x - ein[0], y - ein[1]) > 18);
+  // Skelette + Ratten verteilt, 2 Eliten tief in der Höhle, alles fern vom
+  // Eingang - und NUR auf freiem Boden (keine Moebel-/Brocken-Kacheln).
+  const fern = begehbar.filter(([x, y]) => map[y][x] === T.FLOOR && Math.hypot(x - ein[0], y - ein[1]) > 18);
   const nimm = (): [number, number] => fern.length ? fern.splice(Math.floor(rng.random() * fern.length), 1)[0] : begehbar[begehbar.length - 1];
   for (let i = 0; i < 12; i++) {
     const [x, y] = nimm();
@@ -930,9 +974,9 @@ export function buildGoldmine(rng: Rng): AreaData {
     const [x, y] = nimm();
     a.chests.push({ x: x * TILE + 16, y: y * TILE + 16, open: false });
   }
-  // Beschriftung an einer Goldader
+  // Beschriftung an einem Gold-Vorkommen
   const goldAder = a.ores.find((o) => o.erz === 'gold');
-  if (goldAder) a.labels.push({ x: goldAder.x, y: goldAder.y - TILE, t: 'Goldader' });
+  if (goldAder) a.labels.push({ x: goldAder.x, y: goldAder.y - TILE, t: 'Goldvorkommen' });
   return a;
 }
 
@@ -2024,12 +2068,64 @@ export function buildStart(rng: Rng): AreaData {
 // Wald (3,3) zwischen START und STADT: dichterer Wald, schmaler Bach von Norden,
 // kleiner Tümpel; die Salzstraße führt durch. Geometrie als Lesart der Skizze.
 export function buildWaldOst(rng: Rng): AreaData {
-  return baueOberweltGebiet(rng, {
+  const a = baueOberweltGebiet(rng, {
     id: 'wald_o', name: 'Finsterhain', wolfXs: [34, 72, 104], baumGruppen: 200,
     // R98b: Fluss kommt aus der Tabelle (randKanten) - Kanten matchen mit dem
     // Nachbarn. Hier nur der See als interne Detail-Geometrie.
     geo: { bahnen: [], seen: [{ cx: 0.63, cy: 0.46, rx: 0.07, ry: 0.06 }] },
   });
+  minenEingang(a, rng);
+  return a;
+}
+
+// R127f (Autor): der MINENEINGANG liegt im NORDEN von Finsterhain - der letzten
+// Karte vor Ravensmoor. Ein Felsmassiv mit Stollenmaul (T.STAIR -> Goldhoehle),
+// ein Weg fuehrt von der Salzstrasse hinauf, und davor liegt ein VERLASSENER
+// WACHPOSTEN (Platzhalter, Autor bessert spaeter nach): Zaun-Fragmente, kalte
+// Kohlebecken, zurueckgelassene Faesser/Kisten - ein wichtiger Platz, der
+// normalerweise bewacht wuerde, aber gerade niemandem gehoert.
+function minenEingang(a: AreaData, rng: Rng): void {
+  const mx = 47, my = 9;                        // Maul-Kachel (Nordwald, westlich vom Nordbach)
+  const strasseY = 44;                          // Salzstrasse (Kanten-Manifest: 1400px)
+  const raeumeFrei = (x0: number, y0: number, x1: number, y1: number): void => {
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      if (a.map[y]?.[x] === T.TREE) a.map[y][x] = T.GRASS;
+    }
+    // grosszuegig filtern: die grossen Baumkronen haengen sonst ueber den
+    // freigestellten Vorplatz (Kronenradius ~2 Kacheln)
+    a.baeume = a.baeume.filter((b) => {
+      const tx = Math.floor(b.x / TILE), ty = Math.floor(b.y / TILE);
+      return tx < x0 - 2 || tx > x1 + 2 || ty < y0 - 2 || ty > y1 + 2;
+    });
+  };
+  // Vorplatz + Wegkorridor freistellen
+  raeumeFrei(mx - 9, my - 4, mx + 9, my + 10);
+  raeumeFrei(mx - 2, my, mx + 2, strasseY);
+  // Felsmassiv mit Stollenmaul (gezackter Rand statt Rechteck)
+  for (let y = my - 2; y <= my + 1; y++) {
+    for (let x = mx - 4; x <= mx + 4; x++) {
+      const rand = Math.abs(x - mx) === 4 || y === my - 2;
+      if (rand && rng.random() < 0.35) continue;      // ausgefranste Kante
+      if (a.map[y]?.[x] !== undefined) a.map[y][x] = T.ROCK;
+    }
+  }
+  a.map[my + 1][mx] = T.STAIR;                  // das Maul (Interakt: hinab)
+  a.special.push({ id: 'goldmine', x: mx * TILE + 16, y: (my + 2) * TILE + 16, raum: 'Mineneingang' });
+  // Weg vom Maul zur Salzstrasse
+  for (let y = my + 2; y <= strasseY; y++) if (a.map[y]?.[mx] !== undefined) a.map[y][mx] = T.PATH;
+  // Verlassener Wachposten auf dem Vorplatz: Zaun-Fragmente mit Luecken,
+  // zwei kalte Kohlebecken am Weg, Vorraete die keiner mehr holt.
+  for (const [zx, zy] of [[mx - 5, my + 4], [mx - 4, my + 4], [mx - 3, my + 4], [mx + 3, my + 4], [mx + 4, my + 4], [mx + 5, my + 4],
+    [mx - 5, my + 5], [mx + 5, my + 5]] as const) {
+    if (a.map[zy]?.[zx] === T.GRASS && rng.random() < 0.8) a.map[zy][zx] = T.FENCE;
+  }
+  a.map[my + 5][mx - 2] = T.KOHLEBECKEN;
+  a.map[my + 5][mx + 2] = T.KOHLEBECKEN;
+  a.breakables.push({ kind: 'fass', x: (mx - 3) * TILE + 16, y: (my + 3) * TILE + 16, ambush: false });
+  a.breakables.push({ kind: 'kiste', x: (mx + 3) * TILE + 16, y: (my + 3) * TILE + 16, ambush: false });
+  a.breakables.push({ kind: 'fass', x: (mx + 4) * TILE + 16, y: (my + 6) * TILE + 16, ambush: false });
+  a.labels.push({ x: mx * TILE, y: (my - 3) * TILE, t: 'Mineneingang' });
+  a.labels.push({ x: mx * TILE, y: (my + 7) * TILE, t: 'Verlassener Wachposten' });
 }
 
 // STADT (4,3) - vorerst NEUTRALE Naturkarte (Autorbeschluss "Stadt neutral"):

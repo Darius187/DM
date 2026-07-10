@@ -1537,3 +1537,29 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   unveraendert alt) im Test uebersprungen; die Mechanik selbst ist verifiziert.
   OFFEN: Hoehlen-OPTIK (Supertexturen/Kanten/Licht/Tropfen) in WorldScene
   portieren - die Live-Mine nutzt noch die Standard-Fels-Optik.
+- R127f LIVE-Mine komplett (Autor: "packe das schoene Zeug live rein"):
+  (1) OPTIK: zeichneKachel rendert bei a.hoehlenOptik (Goldmine) das nahtlose
+  Probe-Gestein live - T.ROCK-Waende als Supertextur-Ausschnitte nach Position,
+  Hoehlenboden/Bohlen ebenso, gezackte Fels-Kanten an jeder Wandgrenze;
+  Untergrund unter Objekten positionsbasiert (unter Erz die Stollenwand).
+  (2) VORKOMMEN statt Adern (Autor: "Adern kacke, sichtbare grosse Vorkommen"):
+  zeichneVorkommen in hoehlenArt - Nugget-Nest in Quarz-Tasche (Gold),
+  Haematit-Brocken mit Rost-Hof (Eisen), Kupferkies mit Malachit-Kruste
+  (Kupfer); in der Live-Szene als abbaubares Objekt (vorkommenTextur) AUF der
+  Wand, Abbau-Stufen rissig/Geroell unveraendert. Probe nutzt dieselbe Optik.
+  (3) GESTEIN ABBAUBAR: 14 Felsbrocken auf dem Hoehlenboden (a.rocks, Groessen
+  0-2, nur in offener Flaeche >=6 freie Nachbarn - kein Gang verstopft).
+  (4) KAMMERN = Rueckzugsorte der Knappen: Bohlenboden, Tisch (NICHT in der
+  Tuerspalte - versiegelte sonst die Kammer, Test-Fund), Stuehle (begehbar),
+  Bett nur bei >=3 Innenzeilen (Versiegelungs-Fund #2), Vorrats-Fass,
+  Kerzenlicht (herde). Moebel/Brocken VOR den Spawns gesetzt.
+  (5) MINENEINGANG (Autor): im NORDEN von FINSTERHAIN (wald_o, letzte Karte
+  vor Ravensmoor) - Felsmassiv mit Stollenmaul (T.STAIR), Weg zur Salzstrasse,
+  davor VERLASSENER WACHPOSTEN als Platzhalter (Zaun-Fragmente, 2 kalte
+  Kohlebecken, zurueckgelassene Faesser/Kisten, Labels); Ruegkweg der Mine
+  fuehrt an dieses Maul (special 'goldmine' in wald_o). Alter Dunkelwald-
+  Verweis ersetzt (Eingang dort war seit R53 ohnehin entfernt). Autor bessert
+  die Eingangs-Optik spaeter nach. tsc sauber, 285 Tests gruen, E2E im
+  Browser: Finsterhain -> Stollenmaul-Hint -> Goldhoehle (neue Optik sichtbar:
+  nahtlose Waende, Bohlen-Kammer mit Tisch/Stuehlen/Fass, gruene Kupfer-
+  Vorkommen) -> Rueckweg-Hint.
