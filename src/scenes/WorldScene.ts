@@ -5151,7 +5151,7 @@ export class WorldScene extends CombatScene {
         // dorfSim-Felsen (Facetten, Mooskappen, eingebauter Kontaktschatten,
         // 2x-AA) statt der 32px-Kachelgrafik. Adern zeigen Erz-Einsprengsel.
         if (a.gebackenerBoden && stufe < 2) {
-          const erz = id === T.ORE ? (a.id === 'goldmine' ? 'gold' as const : 'eisen' as const) : undefined;
+          const erz = id === T.ORE ? (eintrag?.erz ?? (a.id === 'goldmine' ? 'gold' as const : 'eisen' as const)) : undefined;
           const fkey = `fels_neu_${gFels}_${variant % 3}${erz ?? ''}`;
           if (!this.textures.exists(fkey)) {
             this.textures.addCanvas(fkey, macheFelsBild(gFels, 1300 + gFels * 97 + (variant % 3) * 31, erz))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
@@ -7055,14 +7055,17 @@ export class WorldScene extends CombatScene {
         }
       }
     }
-    // Erzader / Fels. In der Goldhöhle sind die Adern GOLD (geben Gold).
+    // Erzader / Fels. R127e: jede Ader kennt ihren TYP (Eisen/Kupfer/Gold aus
+    // dem Minen-Generator); alte Karten ohne Typ fallen wie bisher auf
+    // Gold (Goldhöhle) bzw. Eisen zurück.
     // R80 (7DtD-Abbau): der Hinweis zeigt den Zerfalls-Zustand mit an.
-    const goldAder = this.area.id === 'goldmine';
     const zustand = (o: Abbaubar): string => (o.stufe ?? 0) >= 2 ? ' (Geröll)' : (o.stufe ?? 0) === 1 ? ' (rissig)' : '';
     for (const o of this.area.ores) {
       if (near(o.x, o.y + 16, 40)) {
-        const name = (goldAder ? 'Goldader' : 'Erzader') + zustand(o);
-        return { text: this.p.tools.spitzhacke ? `${name} - ${ik} zum Abbauen` : `${name} - Spitzhacke nötig (Schmied)`, action: () => this.mine(o, goldAder ? 'golderz' : 'eisen') };
+        const erz = o.erz ?? (this.area.id === 'goldmine' ? 'gold' : 'eisen');
+        const name = (erz === 'gold' ? 'Goldader' : erz === 'kupfer' ? 'Kupferader' : 'Eisenader') + zustand(o);
+        const ziel = erz === 'gold' ? 'golderz' as const : erz;
+        return { text: this.p.tools.spitzhacke ? `${name} - ${ik} zum Abbauen` : `${name} - Spitzhacke nötig (Schmied)`, action: () => this.mine(o, ziel) };
       }
     }
     for (const o of this.area.rocks) {
@@ -8617,7 +8620,7 @@ export class WorldScene extends CombatScene {
   // nicht mehr mit EINEM Schlag - sie zerfallen sichtbar (ganz -> rissig ->
   // Geröll -> weg) und zahlen bei jeder Stufe anteilig aus. Wer weiterhackt,
   // holt den ganzen Inhalt heraus. Formeln aus der dorfSim-Referenz (hackeFels).
-  private mine(o: Abbaubar, what: 'eisen' | 'stein' | 'golderz'): void {
+  private mine(o: Abbaubar, what: 'eisen' | 'kupfer' | 'stein' | 'golderz'): void {
     if (!this.p.tools.spitzhacke) {
       this.sfx.play('fehler');
       return;
@@ -8633,12 +8636,13 @@ export class WorldScene extends CombatScene {
       o.hp = maxHp; o.stufe = 0; o.gegeben = 0;
       o.inhalt = what === 'stein' ? HARVEST_CONFIG.stein.steinProFels[gIdx]
         : what === 'eisen' ? HARVEST_CONFIG.erz.eisenProAder
+        : what === 'kupfer' ? HARVEST_CONFIG.erz.kupferProAder
         : ri(this.rng, ABBAU.goldInhalt.min, ABBAU.goldInhalt.max);
     }
     o.hp -= 1;
     this.setzeHackZiel(o.x, o.y - 24, maxHp - o.hp, maxHp, this.hackCdMs);   // Fels-Lebensbalken (R93)
     this.sfx.play('stein_hacken');
-    const farbe = what === 'golderz' ? 0xf0c850 : 0x8a8e96;
+    const farbe = what === 'golderz' ? 0xf0c850 : what === 'kupfer' ? 0x3f8f5f : 0x8a8e96;
     this.fx.burst(o.x, o.y, farbe, 6, 110);
     const tx = Math.floor(o.x / TILE), ty = Math.floor(o.y / TILE);
     const neu = abbauStufe(o.hp, maxHp);
@@ -8659,7 +8663,7 @@ export class WorldScene extends CombatScene {
         this.logMsg(`+${dazu} Golderz fürs Dorf - die Schmelze macht über die Tage Gold daraus`, 'gold');
       } else {
         this.p.materials[what] += dazu;
-        this.logMsg(`+${dazu} ${what === 'eisen' ? 'Eisen' : 'Stein'}`, '');
+        this.logMsg(`+${dazu} ${what === 'eisen' ? 'Eisen' : what === 'kupfer' ? 'Kupfer' : 'Stein'}`, '');
       }
     }
     if (o.hp <= 0) {

@@ -262,12 +262,12 @@ bei reference/menue-vorlage-1300.png geschehen).
 4x laenglich (196x120) ist umgesetzt. Der Autor ueberlegt 6x laenglich
 (240x147). ZWISCHENLOESUNG: 4x aktiv; Umschalten = eine Zeile in
 src/world/hoehlenDungeon.ts (W/H). In der DUNGEON-PROBE (V4) begutachten.
-- R126 Mine "live": Ich habe die Hoehle SOFORT SPIELBAR in der Dungeon-Probe
-  geschaltet (V4 -> SPIELEN, mit Licht/Tropfen/Erzadern). Meintest du mit
-  "live gehen lassen" zusaetzlich einen ECHTEN Minen-Eingang in der Oberwelt
-  (wie Krypta/Katakomben)? Zwischenloesung: Probe-Modus; Oberwelt-Eingang
-  baue ich auf Zuruf ein (Frage: in welcher Karte/Zelle soll der Stollen-
-  Eingang liegen - Berg-Zelle der ravenkarte?).
-- R126 Erz-Abbau: Die Adern sind bisher OPTIK (solide Wand). Abbau-Mechanik
-  (Spitzhacke, Erz als Beute, Verarbeitung Schmiede) als naechster Schritt?
-  Zwischenloesung: noch kein Abbau; Werte/Codes liegen bereit (mine.ts, 4/5/6).
+- ERLEDIGT R127e: Mine ist LIVE (buildGoldmine = V4-Generator, Eingang wie
+  gehabt am Hoehlenmaul im Dunkelwald) und die Adern sind ABBAUBAR
+  (Eisen/Kupfer/Gold). NEUE Frage: Wofuer soll KUPFER verwendet werden
+  (Schmiede-Rezepte? Kessel? Muenzen)? Zwischenloesung: sammelbares Material
+  ohne Rezept.
+- R127e Optik der Live-Mine: WorldScene nutzt noch die Standard-Fels-Optik -
+  soll ich die Hoehlen-Optik (nahtloses Gestein, Fels-Kanten, Grubenlicht,
+  Tropfen) in die WorldScene portieren? Zwischenloesung: Layout+Abbau live,
+  Optik-Portierung als eigene Runde.

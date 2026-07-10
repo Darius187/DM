@@ -9,13 +9,14 @@ import { rnd, ri, pick, type Rng } from '../logic/rng';
 import { TUNING } from '../logic/tuning';
 import type { InnenraumDef, InnenMoebel } from '../data/innenraeume';
 import { sdWasser, type WasserGeometrie } from './wasserFeld';
+import { baueHoehle } from './hoehlenDungeon';
 import { dichteNoise, felsNoise, biomAt } from './biome';
 import { OBERWELT_KANTEN, type KantenKreuzung } from '../data/oberweltKanten';
 
 export interface Pos { x: number; y: number }
 // Abbaubarer Brocken (Fels/Erzader) mit Zerfalls-Zustand (R80, 7DtD-Abbau).
 // g = Größe 0 klein / 1 mittel / 2 groß (R81): mehr Schläge, mehr Inhalt.
-export interface Abbaubar extends Pos { hp?: number; stufe?: number; inhalt?: number; gegeben?: number; g?: number }
+export interface Abbaubar extends Pos { hp?: number; stufe?: number; inhalt?: number; gegeben?: number; g?: number; erz?: 'eisen' | 'kupfer' | 'gold' }
 
 export interface BreakableSpawn { kind: BreakableKind; x: number; y: number; ambush: boolean }
 export interface EnemySpawn { type: EnemyTypeId; x: number; y: number; elite: boolean; champion?: string; tot?: boolean; schlaeft?: boolean }
@@ -874,7 +875,13 @@ export function buildKirchenschiff(rng: Rng): AreaData {
 // über das Höhlenmaul betretbar, eine Treppe führt wieder hinauf. Die Goldmine
 // als großes eigenes Level kommt später - das hier ist der spielbare Eingang.
 export function buildGoldmine(rng: Rng): AreaData {
-  const w = 30, h = 20;
+  // R127e (Autorwunsch "die Karte gleich live nehmen"): die Goldhöhle nutzt
+  // jetzt den V4-HÖHLENGENERATOR (147x90, organische Kavernen + Stollen-
+  // Kammern + Erzadern Eisen/Kupfer/Gold aus src/data/mine.ts) statt des alten
+  // handgebauten 30x20-Layouts. Eingang/Rückweg (Höhlenmaul im Wald), Abbau
+  // und die Befreien-Quest (goldmineGesichert) bleiben unverändert verdrahtet.
+  const d = baueHoehle(() => rng.random());
+  const w = d.w, h = d.h;
   const map = blank(w, h, T.ROCK);
   const a: AreaData = {
     id: 'goldmine', name: 'Die Goldhöhle', dark: true, depth: 1, theme: CRYPT_THEMES[0],
@@ -884,40 +891,48 @@ export function buildGoldmine(rng: Rng): AreaData {
     ores: [], rocks: [], special: [], scareBudget: 0, labels: [],
     npcs: [], animals: [], kraeuter: [], baeume: [], chimneys: [],
   };
-  // Eingangskammer unten links (Rückweg in den Wald)
-  carveOval(map, 2, 12, 7, 6, T.FLOOR);
-  map[15][3] = T.STAIRUP;
-  a.upPos = { x: 3 * TILE + 16, y: 15 * TILE + 16 };
-  // Hauptstollen nach Osten + zwei Kavernen, alles verbunden
-  carve(map, 5, 14, 26, 15, T.FLOOR);                 // Stollen
-  carveOval(map, 9, 3, 9, 8, T.FLOOR);                // mittlere Kaverne
-  carveOval(map, 20, 4, 8, 9, T.FLOOR);               // östliche Kaverne (Goldsaal)
-  carve(map, 12, 9, 13, 15, T.FLOOR);                 // Stich: mittlere Kaverne -> Stollen
-  carve(map, 23, 11, 24, 15, T.FLOOR);                // Stich: Ost-Kaverne -> Stollen
-  // Goldadern in den Felswänden am Kavernenrand (mehr im Ost-Saal)
-  const rimOre = (x0: number, y0: number, x1: number, y1: number, max: number): void => {
-    let n = 0;
-    for (let y = y0; y <= y1 && n < max; y++) {
-      for (let x = x0; x <= x1 && n < max; x++) {
-        if (map[y]?.[x] !== T.ROCK) continue;
-        const amFloor = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => map[y + dy]?.[x + dx] === T.FLOOR);
-        if (amFloor && rng.random() < 0.5) { map[y][x] = T.ORE; a.ores.push({ x: x * TILE + 16, y: y * TILE + 16 }); n++; }
-      }
+  // Generator-Codes übertragen: 1/2/3 begehbar, 4/5/6 = Erzadern (abbaubar)
+  const ERZ: Record<number, 'eisen' | 'kupfer' | 'gold'> = { 4: 'eisen', 5: 'kupfer', 6: 'gold' };
+  const begehbar: Array<[number, number]> = [];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const code = d.grid[y][x];
+      if (code === 1 || code === 2 || code === 3) { map[y][x] = T.FLOOR; begehbar.push([x, y]); }
+      else if (code >= 4) { map[y][x] = T.ORE; a.ores.push({ x: x * TILE + 16, y: y * TILE + 16, erz: ERZ[code] }); }
     }
-  };
-  rimOre(18, 3, 28, 13, 7);   // Ost-Saal: die Hauptadern
-  rimOre(8, 2, 18, 11, 3);    // mittlere Kaverne: ein paar Adern
-  // Dünne Bewachung (Soldaten sind im Krieg abgezogen)
-  a.enemySpawns.push({ type: 'skelett', x: 13 * TILE, y: 6 * TILE, elite: false });
-  a.enemySpawns.push({ type: 'ratte', x: 23 * TILE, y: 8 * TILE, elite: false });
-  a.enemySpawns.push({ type: 'ratte', x: 16 * TILE, y: 14 * TILE, elite: false });
-  // Beute tief im Goldsaal
-  a.chests.push({ x: 25 * TILE + 16, y: 6 * TILE + 16, open: false });
-  // Gedämpftes Grubenlicht
-  for (const [tx, ty] of [[4, 13], [13, 7], [23, 8], [11, 14]] as const) {
-    a.torches.push({ x: tx * TILE + 16, y: ty * TILE, ph: rnd(rng, 0, 6.28) });
   }
-  a.labels.push({ x: 20 * TILE, y: 3 * TILE, t: 'Goldader' });
+  // Eingang: westlichste Höhlenboden-Kachel = Stollenmaul (Rückweg in den Wald)
+  let ein: [number, number] = begehbar[0];
+  for (const [x, y] of begehbar) if (d.grid[y][x] === 1 && x < ein[0]) ein = [x, y];
+  map[ein[1]][ein[0]] = T.STAIRUP;
+  a.upPos = { x: ein[0] * TILE + 16, y: ein[1] * TILE + 16 };
+  const daneben = [[1, 0], [0, 1], [0, -1], [-1, 0]].find(([dx, dy]) => map[ein[1] + dy]?.[ein[0] + dx] === T.FLOOR) ?? [1, 0];
+  a.spawn = { x: (ein[0] + daneben[0]) * TILE + 16, y: (ein[1] + daneben[1]) * TILE + 16 };
+  // Grubenlichter: sparsame Wandfackeln an der Stollen-Kante (Mindestabstand)
+  const lampen: Array<[number, number]> = [];
+  for (const [x, y] of begehbar) {
+    if (d.grid[y][x] !== 1 || map[y - 1]?.[x] === T.FLOOR) continue;
+    if (map[y - 1]?.[x] !== T.ROCK && map[y - 1]?.[x] !== T.ORE) continue;
+    if (lampen.some(([lx, ly]) => Math.hypot(lx - x, ly - y) < 13)) continue;
+    lampen.push([x, y]);
+    a.torches.push({ x: x * TILE + 16, y: (y - 1) * TILE + 24, ph: rnd(rng, 0, 6.28) });
+  }
+  // Besatzung: die Mine muss BEFREIT werden (letzter Gegner -> goldmineGesichert).
+  // Skelette + Ratten verteilt, 2 Eliten tief in der Höhle, alles fern vom Eingang.
+  const fern = begehbar.filter(([x, y]) => Math.hypot(x - ein[0], y - ein[1]) > 18);
+  const nimm = (): [number, number] => fern.length ? fern.splice(Math.floor(rng.random() * fern.length), 1)[0] : begehbar[begehbar.length - 1];
+  for (let i = 0; i < 12; i++) {
+    const [x, y] = nimm();
+    a.enemySpawns.push({ type: i % 3 === 2 ? 'ratte' : 'skelett', x: x * TILE + 16, y: y * TILE + 16, elite: i >= 10 });
+  }
+  // Beute: 2 Truhen tief in der Mine
+  for (let i = 0; i < 2; i++) {
+    const [x, y] = nimm();
+    a.chests.push({ x: x * TILE + 16, y: y * TILE + 16, open: false });
+  }
+  // Beschriftung an einer Goldader
+  const goldAder = a.ores.find((o) => o.erz === 'gold');
+  if (goldAder) a.labels.push({ x: goldAder.x, y: goldAder.y - TILE, t: 'Goldader' });
   return a;
 }
 

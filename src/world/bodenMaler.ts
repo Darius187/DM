@@ -551,7 +551,7 @@ export function macheMoorSchilfBild(seed: number, tot: boolean): HTMLCanvasEleme
 // R82 (Autor "Felsen natürlicher, wie in der Natur"): dorfSims gemalter Fels
 // (unregelmäßiges Polygon, belichtete Oberseite, Facetten, Mooskappen) 1:1
 // portiert, 2x überabgetastet. g = Größe 0/1/2, erz sprenkelt Adern ein.
-export function macheFelsBild(g: number, seed: number, erz?: 'eisen' | 'gold'): HTMLCanvasElement {
+export function macheFelsBild(g: number, seed: number, erz?: 'eisen' | 'kupfer' | 'gold'): HTMLCanvasElement {
   const S = 2, rnd = rngAus(seed);
   const R = [13, 19, 29, 42][Math.max(0, Math.min(3, g))];   // g=3: FINDLING (R86)
   const c = document.createElement('canvas'); c.width = c.height = (R * 2 + 10) * S;
@@ -583,7 +583,7 @@ export function macheFelsBild(g: number, seed: number, erz?: 'eisen' | 'gold'): 
     gx.beginPath(); gx.ellipse(cx + (rnd() - 0.5) * R, cy - R * 0.25 + (rnd() - 0.5) * R * 0.3, R * 0.25, R * 0.13, 0, 0, Math.PI * 2); gx.fill();
   }
   if (erz) {                                                                      // Mineral-Einsprengsel (dorfSim ERZ_FARBE)
-    gx.fillStyle = erz === 'gold' ? '#d8b24a' : '#c08058';
+    gx.fillStyle = erz === 'gold' ? '#d8b24a' : erz === 'kupfer' ? '#3f8f5f' : '#c08058';
     for (let i = 0; i < 5 + g; i++) {
       const a = rnd() * 6.28, rr = R * (0.2 + rnd() * 0.55);
       gx.globalAlpha = 0.65;

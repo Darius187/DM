@@ -143,38 +143,61 @@ function baueBohlenSuper(ctx: Ctx): void {
 }
 
 // --- Erzader-Band über einem 32er-Ausschnitt ---------------------------------
-// Farben: Eisen = rostiges Rotbraun, Kupfer = Malachitgrün mit Kupferglanz
-// (so sah Kupfererz um 1300 aus), Gold = sattes Gelb mit hellen Funken.
+// R127e, gegen die Realität geprüft (Recherche):
+// GOLD kommt als GOLDQUARZGANG vor - der Gang ist zu 97-98% weiss-grauer QUARZ,
+//   das Gold sitzt nur als kleine metallisch-gelbe Sprenkel darin.
+// EISEN (Roteisenerz/Hämatit, das mittelalterliche Erz) = rotbraunes Band mit
+//   Rost-Hof und stahlgrauen Metallglanz-Punkten.
+// KUPFER (Kupferkies/Chalkopyrit) = messinggelbe Einsprengsel; oberflächennah
+//   zu GRÜNEM Malachit (selten blauem Azurit) verwittert - "die grüne Farbe
+//   zeigt das Kupfer an".
 function zeichneErzBand(ctx: Ctx, sx: number, sy: number, art: 'eisen' | 'kupfer' | 'gold'): void {
   const r = prng(sx * 8 + sy + (art === 'gold' ? 401 : art === 'kupfer' ? 301 : 201));
-  const farben = {
-    eisen: { band: '#6e3a24', hell: '#a05a30', funke: '#c88a54' },
-    kupfer: { band: '#2e6e4e', hell: '#3fa06a', funke: '#e08a4a' },
-    gold: { band: '#8a6a14', hell: '#c9a227', funke: '#ffe27a' },
-  }[art];
   // Richtung wechselt im Schachbrett - benachbarte Erz-Kacheln wirken wie
-  // EINE sich schlängelnde Ader.
+  // EINE sich schlängelnde Ader. Mittellinie EINMAL würfeln, alle Striche
+  // laufen auf demselben Pfad (sonst franst das Band aus).
   const senkrecht = (sx + sy) % 2 === 0;
-  const bandLauf = (versatz: number, breite: number, farbe: string): void => {
+  const pfad: Array<[number, number]> = [];
+  let p = TILE / 2 + (r() - 0.5) * 6;
+  for (let t = -2; t <= TILE + 2; t += 4) {
+    p += (r() - 0.5) * 4;
+    pfad.push(senkrecht ? [p, t] : [t, p]);
+  }
+  const strich = (breite: number, farbe: string): void => {
     ctx.strokeStyle = farbe; ctx.lineWidth = breite; ctx.lineCap = 'round';
     ctx.beginPath();
-    let p = versatz + (r() - 0.5) * 6;
-    for (let t = -2; t <= TILE + 2; t += 5) {
-      p += (r() - 0.5) * 5;
-      const px = senkrecht ? p : t, py = senkrecht ? t : p;
-      if (t === -2) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    }
+    pfad.forEach(([x, y], i) => { if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
     ctx.stroke();
   };
-  bandLauf(TILE / 2, 4.5, farben.band);                        // dunkler Kern
-  bandLauf(TILE / 2, 2, farben.hell);                          // helle Mitte
-  if (r() < 0.6) bandLauf(TILE / 2 + (r() < 0.5 ? -7 : 7), 1.6, farben.band); // Nebenader
-  const funken = art === 'gold' ? 7 : 4;                       // Einschlüsse
-  for (let i = 0; i < funken; i++) {
-    const fx = senkrecht ? TILE / 2 + (r() - 0.5) * 10 : r() * TILE;
-    const fy = senkrecht ? r() * TILE : TILE / 2 + (r() - 0.5) * 10;
-    ctx.fillStyle = farben.funke;
-    ctx.fillRect(fx, fy, 1 + r() * 1.4, 1 + r() * 1.2);
+  // Sprenkel entlang des Pfads (mit Quer-Streuung)
+  const sprenkel = (anz: number, farbe: string, groesse: number, streu: number): void => {
+    ctx.fillStyle = farbe;
+    for (let i = 0; i < anz; i++) {
+      const [px, py] = pfad[Math.floor(r() * pfad.length)];
+      const qx = senkrecht ? (r() - 0.5) * streu : 0, qy = senkrecht ? 0 : (r() - 0.5) * streu;
+      ctx.fillRect(px + qx, py + qy, groesse + r() * groesse, groesse + r() * 0.8 * groesse);
+    }
+  };
+  if (art === 'gold') {
+    strich(7, 'rgba(120,115,105,0.25)');       // Übergangs-Saum ins Gestein
+    strich(5, 'rgba(205,200,190,0.92)');       // Quarzgang (weiss-grau)
+    strich(2.6, 'rgba(230,226,216,0.95)');     // heller Quarz-Kern
+    sprenkel(3, '#4a4a52', 1, 6);              // dunkle Sulfid-Einschlüsse
+    sprenkel(4, '#dfb43a', 1, 5);              // Gold: KLEINE Flitter
+    sprenkel(2, '#ffe27a', 1, 4);              // hellster Glanz
+  } else if (art === 'eisen') {
+    strich(8, 'rgba(96,50,30,0.30)');          // Oxidations-Hof (Rost)
+    strich(4.5, '#5e2c1c');                    // Hämatit-Band rotbraun
+    strich(2, '#7a4028');
+    sprenkel(4, '#8a8a92', 1, 5);              // stahlgrauer Metallglanz
+    sprenkel(3, '#a05a30', 1, 7);              // Rostflecken
+  } else {
+    strich(8, 'rgba(46,110,78,0.28)');         // Malachit-Hof (grüne Verwitterung)
+    strich(4.5, 'rgba(52,124,88,0.6)');        // grüner Saum
+    strich(2, '#2e6e4e');
+    sprenkel(5, '#b08a3a', 1, 5);              // Kupferkies: messinggelb
+    sprenkel(2, '#d8b24a', 1, 4);              // hellerer Messingglanz
+    if (r() < 0.5) sprenkel(1, '#3a5a9a', 1.4, 6); // selten Azurit (blau)
   }
 }
 

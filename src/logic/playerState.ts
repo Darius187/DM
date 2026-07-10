@@ -58,7 +58,7 @@ export function newPlayerState(): PlayerState {
     flaskMax: FLASKS.start, flaskCount: FLASKS.start, flaskPowerUp: false,
     arrows: 0,
     schools: { nahkampf: { uses: 0, level: 0 }, zauberei: { uses: 0, level: 0 }, bogen: { uses: 0, level: 0 } },
-    materials: { holz: 0, stein: 0, eisen: 0, kraeuter: 0, kohle: 0, fell: 0, wolle: 0, fasern: 0,
+    materials: { holz: 0, stein: 0, eisen: 0, kupfer: 0, kraeuter: 0, kohle: 0, fell: 0, wolle: 0, fasern: 0,
       schafgarbe: 0, spitzwegerich: 0, ringelblume: 0, kamille: 0, beifuss: 0, johanniskraut: 0,
       hauswurz: 0, meisterwurz: 0, wacholder: 0, pestwurz: 0, engelwurz: 0, bilsenkraut: 0, eisenhut: 0, alraune: 0 },
     tools: { axt: false, spitzhacke: false },

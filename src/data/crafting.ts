@@ -4,11 +4,11 @@
 // Bau-Ressource für Bindungen/Seile (Zäune, Dächer). Werte leicht änderbar.
 // R89: die Pflanzen-Ids sind zugleich MaterialIds - benannte Zutaten mit
 // Stack, die wie Holz/Stein aufgehoben, verkauft und von Rezepten verbraucht werden.
-export type MaterialId = 'holz' | 'stein' | 'eisen' | 'kraeuter' | 'kohle' | 'fell' | 'wolle' | 'fasern'
+export type MaterialId = 'holz' | 'stein' | 'eisen' | 'kupfer' | 'kraeuter' | 'kohle' | 'fell' | 'wolle' | 'fasern'
   | 'schafgarbe' | 'spitzwegerich' | 'ringelblume' | 'kamille' | 'beifuss' | 'johanniskraut' | 'hauswurz' | 'meisterwurz' | 'wacholder' | 'pestwurz' | 'engelwurz' | 'bilsenkraut' | 'eisenhut' | 'alraune';
 
 export const MATERIAL_NAMES: Readonly<Record<MaterialId, string>> = {
-  holz: 'Holz', stein: 'Stein', eisen: 'Eisen', kraeuter: 'Kräuter', kohle: 'Kohle',
+  holz: 'Holz', stein: 'Stein', eisen: 'Eisen', kupfer: 'Kupfer', kraeuter: 'Kräuter', kohle: 'Kohle',
   fell: 'Fell', wolle: 'Wolle', fasern: 'Fasern',
   // R89: benannte Heilpflanzen (Ids = data/pflanzen.ts)
   schafgarbe: 'Schafgarbe', spitzwegerich: 'Spitzwegerich', ringelblume: 'Ringelblume',
@@ -56,6 +56,7 @@ export const HARVEST_CONFIG = {
     hits: 14,
     swingCooldownMs: 1400,
     eisenProAder: 3,
+    kupferProAder: 3,   // R127e: Kupferadern in der Mine (Kupferkies/Malachit)
   },
 } as const;
 

@@ -1513,3 +1513,27 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   26 -> 64 (Test verschaerft: >40 Adern, >120 Erz-Kacheln). tsc sauber,
   283 Tests gruen, Browser: Waende lesen sich als unregelmaessige Felsmassen,
   Adern deutlich praesenter (HUD zeigt "64 Erzadern").
+- R127e Erzadern realistisch + abbaubar + MINE LIVE (Autor: "sind die wirklich
+  so? pruefe mit dem Internet, korrigiere Farben, mache sie abbaubar, nimm die
+  Karte gleich live"): RECHERCHE (Wikipedia Goldquarzgang u.a.): Gold kommt als
+  GOLDQUARZGANG vor - 97-98% weiss-grauer Quarz, Gold nur als kleine metallisch-
+  gelbe Sprenkel; Eisen um 1300 = Roteisenerz/Haematit (rotbraun, Rost-Hof,
+  stahlgrauer Glanz); Kupfer = Kupferkies (messinggelb), oberflaechennah zu
+  GRUENEM Malachit (selten blauem Azurit) verwittert. zeichneErzBand in
+  hoehlenArt.ts entsprechend umgebaut (eine gewuerfelte Mittellinie, alle
+  Striche/Sprenkel darauf). ABBAU: 'kupfer' als neues Material (MaterialId,
+  Name, kupferProAder 3; alte Saves sicher - materials wird mit Defaults
+  gemerged); Abbaubar.erz ('eisen'|'kupfer'|'gold') je Ader; interactHint
+  nennt Eisen-/Kupfer-/Goldader und mine() zahlt passend aus (Gold weiter ins
+  Dorf-Lager, Held sichert/Knappen schuerfen); macheFelsBild kennt Kupfer-
+  Einsprengsel (Malachitgruen). LIVE: buildGoldmine nutzt jetzt den V4-
+  Generator (147x90) statt des alten 30x20-Handlayouts - Eingang/Rueckweg
+  (Hoehlenmaul im Wald), Befreien-Quest (goldmineGesichert, 12 Besatzer,
+  2 Eliten), 2 Truhen tief drin, sparsame Grubenlichter; Erzadern aus dem
+  Generator als T.ORE mit Typ. 2 neue Tests (Groesse/Typen/Treppe/Spawn +
+  volle Erreichbarkeit inkl. Gegner/Truhen). E2E im Browser verifiziert:
+  Kupferader +3 Kupfer, Eisenader +3 Eisen, Goldader +2 Golderz (Dorf-Lager).
+  HINWEIS: Headless-Browser lief nur ~3-4 FPS -> Abbau-Cooldown (1,4s,
+  unveraendert alt) im Test uebersprungen; die Mechanik selbst ist verifiziert.
+  OFFEN: Hoehlen-OPTIK (Supertexturen/Kanten/Licht/Tropfen) in WorldScene
+  portieren - die Live-Mine nutzt noch die Standard-Fels-Optik.
