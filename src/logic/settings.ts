@@ -49,6 +49,7 @@ export interface Settings {
   chronikMini?: boolean;  // Chronik eingeklappt (nur Kopfzeile), R86
   rtsLeistePos?: { x: number; y: number };  // RTS-Baumenü frei verschoben (R96, UI-Regel 11)
   chronikV?: number;      // einmalig: Chronik an den UNTERSTEN Rand andocken (R86)
+  lichtV?: number;        // einmalig: weiches lightRT-Dungeonlicht als Standard (R128)
   chronikAuto: boolean;   // Chronik-Fenster beim Spielstart offen (Runde 36)
   bloom: number;          // Leucht-/Bloom-Stärke 0-100 (Runde 51: Regler, 0 = aus)
   figuren3d: boolean;     // TEST (Runde 77): Held als 3D-gebackener Atlas statt 2D-Zeichnung
@@ -136,12 +137,13 @@ export const DEF_SETTINGS: Settings = {
   // Bildschirmrand, kompakter, knapp über der Lebenskugel/Leiste
   chronikAuto: true,
   chronikV: 1,
+  lichtV: 1,
   bloom: 0, // Runde 51 (Autorwunsch): Bloom standardmäßig AUS, war zu stark
   figuren3d: false, // 3D-Held-Test standardmäßig AUS (2D bleibt die Wahrheit)
   grusel: 100, // Runde 58 (Autorwunsch): Grusel-Atmosphäre standardmäßig voll an
   schatten: 70, // Runde 55: Schatten/Licht (Aussenwelt) standardmäßig an (mittlere Stärke)
   dungeonStaerke: 100, // Runde 58: vom Autor eingestellter Stand (Dungeon-Dunkelheit)
-  licht: { variante: 2, sichtRadius: 183, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: true, fackelHelligkeit: 23, fackelReichweite: 100, fackelFarbe: 31, dungeonWeichheit: 99, schattenFackeln: 100, heldFarbe: 18, alleFackelnSchatten: true, effekteSchatten: false, fackelSicht: true, heldSchatten: false, fackelSichtTol: 0, fackelDistanz: 100, fackelRaumLicht: 4, fackelRaumFarbe: 33, fackelGlutRadius: 0, lichtSchaerfe: 86, heldSichtfeld: true, sichtfeldRadius: 100, sichtfeldStaerke: 19, umgebungslicht: 0, lichtHelligkeit: 42, schattenNah: 0, schattenFern: 100, fackelBlende: 68, nachtDunkel: 82, nachtSicht: 240, nachtGlut: 50, nachtGlutFarbe: 0xffcf86, wandHoehe: 2 },
+  licht: { variante: 2, sichtRadius: 183, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: false, fackelHelligkeit: 23, fackelReichweite: 100, fackelFarbe: 31, dungeonWeichheit: 99, schattenFackeln: 100, heldFarbe: 18, alleFackelnSchatten: true, effekteSchatten: false, fackelSicht: true, heldSchatten: false, fackelSichtTol: 0, fackelDistanz: 100, fackelRaumLicht: 4, fackelRaumFarbe: 33, fackelGlutRadius: 0, lichtSchaerfe: 86, heldSichtfeld: true, sichtfeldRadius: 100, sichtfeldStaerke: 19, umgebungslicht: 0, lichtHelligkeit: 42, schattenNah: 0, schattenFern: 100, fackelBlende: 68, nachtDunkel: 82, nachtSicht: 240, nachtGlut: 50, nachtGlutFarbe: 0xffcf86, wandHoehe: 2 },
   audioV: 1,
   zoomV: 1,
   bloomV: 1,
@@ -176,6 +178,15 @@ export function getSettings(): Settings {
       if ((saved.chronikV ?? 0) < 1) {
         current.chronikBox = { ...DEF_SETTINGS.chronikBox };
         current.chronikV = 1;
+      }
+      // R128 (Autor "das Fackellicht war vor dem Hochziehen der Wände perfekt -
+      // viel weicher und gleichmäßiger"): das weiche lightRT-Licht ist wieder
+      // der STANDARD, der Raycaster (dungeonNeu) bleibt als Option in der
+      // Licht-Werkbank. Einmalige Migration, damit auch gespeicherte Stände
+      // umspringen; wer den Raycaster will, schaltet ihn danach bewusst an.
+      if ((saved.lichtV ?? 0) < 1) {
+        current.licht.dungeonNeu = false;
+        current.lichtV = 1;
       }
       current.ui = {
         hotbar: { ...DEF_SETTINGS.ui.hotbar, ...(saved.ui?.hotbar ?? {}) },

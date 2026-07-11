@@ -1605,3 +1605,17 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   darueber mod 8 -> horizontal und vertikal nahtlos). Erz-Vorkommen-Objekt
   liegt knapp UEBER dem Wandkoerper (ty*32+28). tsc sauber, 285 Tests gruen,
   im Browser: Heldenlicht + Felswaende ok, keine JS-Fehler.
+- R128 Fackellicht-Regression behoben (Autor: "das Licht war perfekt vor dem
+  Hochziehen der Waende - viel weicher und gleichmaessiger; die Regler danach
+  haben es nie zurueckgebracht"): URSACHE gefunden - Commit 9fe7ded ersetzte
+  den eigenen weichen Dungeon-Licht-Weg (lightRT: weiche runde eraseLight-
+  Kreise + warme Glows) durch die SchattenManager-Raycaster-Engine und
+  schaltete sie per dungeonNeu=true zum STANDARD. In grossen offenen Raeumen
+  (Goldhoehle!) wirkt das Raycaster-Licht als riesiges hartes Polygon-Segel.
+  FIX: dungeonNeu-Default auf false (das alte weiche lightRT-Licht ist wieder
+  Standard, ueberall - Krypta UND Mine, ein System) + einmalige Migration
+  lichtV<1 -> dungeonNeu=false, damit auch der GESPEICHERTE Stand des Autors
+  umspringt (localStorage ueberlagert sonst den neuen Default). Der Raycaster
+  bleibt als bewusste Option in der Licht-Werkbank (Taste L, "Dungeon-
+  Wandschatten"). Verifiziert im Browser: Krypta E1 + Goldhoehle zeigen wieder
+  weiche warme Lichtkreise. tsc sauber, 285 Tests gruen.
