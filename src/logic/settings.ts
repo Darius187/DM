@@ -50,12 +50,15 @@ export interface Settings {
   rtsLeistePos?: { x: number; y: number };  // RTS-Baumenü frei verschoben (R96, UI-Regel 11)
   chronikV?: number;      // einmalig: Chronik an den UNTERSTEN Rand andocken (R86)
   lichtV?: number;        // einmalig: weiches lightRT-Dungeonlicht als Standard (R128)
+  nebelV?: number;        // einmalig: Kriegsnebel v2 abschalten (R131, Autor: "blinkt, weglassen")
   chronikAuto: boolean;   // Chronik-Fenster beim Spielstart offen (Runde 36)
   bloom: number;          // Leucht-/Bloom-Stärke 0-100 (Runde 51: Regler, 0 = aus)
   figuren3d: boolean;     // TEST (Runde 77): Held als 3D-gebackener Atlas statt 2D-Zeichnung
   grusel: number;         // Grusel-Atmosphäre: kalter, dunkler Tint auf Gegner 0-100 (Runde 55)
   schatten: number;       // Schatten-/Licht-Stärke AUSSENWELT 0-100 (Runde 55: 0 = aus, Leistungsregler)
-  dungeonStaerke: number; // Schatten-/Dunkelheit-Stärke DUNGEON 0-100 (getrennt von der Aussenwelt, Runde 56)
+  dungeonStaerke: number;  // Dungeon-Dunkelheit 0-150 (R131: >100 = alles jenseits der Sicht komplett schwarz)
+  kampfTexte?: boolean;    // R131: Schwebe-Kampftexte (Schaden/Pariert...) anzeigen
+  gegnerWindupRing?: boolean; // R131: roter Angriffs-Ring um Gegner vor dem Angriff
   // Licht-Werkbank (Runde 55): alle Regler des Licht-Tests, live im Spiel + persistent
   licht: {
     variante: number;     // Dungeon-Lichtvariante 0-4 (Sichtradius/Wandfackel/Kombis/alt)
@@ -102,6 +105,7 @@ export interface Settings {
     nebelErinnerungAn?: boolean;  // R130: Fallback-Erinnerung (Standard AUS - verdeckt bleibt verdeckt)
     kriegsnebelDraussen?: boolean; // R130: DEV-Test - Nebel auch in der Aussenwelt
     heldGlutUeberFigur?: boolean;  // R130-Fallback: Held-Schein wieder UEBER der Figur (alt)
+    heldEigenGlut?: boolean;       // R131: warmer Halo UM den Helden (aus = nur normal beleuchtet)
   };
   audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
   zoomV: number;          // einmaliger Zoom-Standard (Runde 41: 130%)
@@ -143,12 +147,15 @@ export const DEF_SETTINGS: Settings = {
   chronikAuto: true,
   chronikV: 1,
   lichtV: 1,
+  nebelV: 1,
   bloom: 0, // Runde 51 (Autorwunsch): Bloom standardmäßig AUS, war zu stark
   figuren3d: false, // 3D-Held-Test standardmäßig AUS (2D bleibt die Wahrheit)
   grusel: 100, // Runde 58 (Autorwunsch): Grusel-Atmosphäre standardmäßig voll an
   schatten: 70, // Runde 55: Schatten/Licht (Aussenwelt) standardmäßig an (mittlere Stärke)
-  dungeonStaerke: 100, // Runde 58: vom Autor eingestellter Stand (Dungeon-Dunkelheit)
-  licht: { variante: 2, sichtRadius: 183, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: false, fackelHelligkeit: 23, fackelReichweite: 100, fackelFarbe: 31, dungeonWeichheit: 99, schattenFackeln: 100, heldFarbe: 18, alleFackelnSchatten: true, effekteSchatten: false, fackelSicht: true, heldSchatten: false, fackelSichtTol: 0, fackelDistanz: 100, fackelRaumLicht: 4, fackelRaumFarbe: 33, fackelGlutRadius: 0, lichtSchaerfe: 86, heldSichtfeld: true, sichtfeldRadius: 100, sichtfeldStaerke: 19, umgebungslicht: 0, lichtHelligkeit: 42, schattenNah: 0, schattenFern: 100, fackelBlende: 68, nachtDunkel: 82, nachtSicht: 240, nachtGlut: 50, nachtGlutFarbe: 0xffcf86, wandHoehe: 2, kriegsnebel: true, nebelErinnerung: 45, nebelErinnerungAn: false, kriegsnebelDraussen: false, heldGlutUeberFigur: false },
+  dungeonStaerke: 100, // Runde 58 / R131: 0-150, 100 = fast schwarz, >118 komplett
+  kampfTexte: true,
+  gegnerWindupRing: false,   // R131 (Autor: rote Ringe weg)
+  licht: { variante: 2, sichtRadius: 183, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: false, fackelHelligkeit: 23, fackelReichweite: 100, fackelFarbe: 31, dungeonWeichheit: 99, schattenFackeln: 100, heldFarbe: 18, alleFackelnSchatten: true, effekteSchatten: false, fackelSicht: true, heldSchatten: false, fackelSichtTol: 0, fackelDistanz: 100, fackelRaumLicht: 4, fackelRaumFarbe: 33, fackelGlutRadius: 0, lichtSchaerfe: 86, heldSichtfeld: true, sichtfeldRadius: 100, sichtfeldStaerke: 19, umgebungslicht: 0, lichtHelligkeit: 42, schattenNah: 0, schattenFern: 100, fackelBlende: 68, nachtDunkel: 82, nachtSicht: 240, nachtGlut: 50, nachtGlutFarbe: 0xffcf86, wandHoehe: 2, kriegsnebel: false, nebelErinnerung: 45, nebelErinnerungAn: false, kriegsnebelDraussen: false, heldGlutUeberFigur: false, heldEigenGlut: false },
   audioV: 1,
   zoomV: 1,
   bloomV: 1,
@@ -192,6 +199,14 @@ export function getSettings(): Settings {
       if ((saved.lichtV ?? 0) < 1) {
         current.licht.dungeonNeu = false;
         current.lichtV = 1;
+      }
+      // R131 (Autor "der Kriegsnebel blinkt seltsam, nicht smooth - kann man
+      // weglassen"): den Nebel einmalig abschalten, auch bei Ständen, in denen
+      // er als alter Standard true gespeichert war. Was der Autor sucht, ist
+      // die starke Dungeon-Dunkelheit (Regler 0-150) - kein blinkender Nebel.
+      if ((saved.nebelV ?? 0) < 1) {
+        current.licht.kriegsnebel = false;
+        current.nebelV = 1;
       }
       current.ui = {
         hotbar: { ...DEF_SETTINGS.ui.hotbar, ...(saved.ui?.hotbar ?? {}) },

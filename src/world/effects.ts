@@ -205,7 +205,15 @@ export class EffectSystem {
     this.flash(x, y, 150, 0xfff6dc);
   }
 
+  // R131: Kampf-Ereignisse landen IMMER im Protokoll (Chronik-Kampf-Tab),
+  // unabhaengig davon ob die Schwebetexte sichtbar sind.
+  onKampf?: (txt: string, col: string) => void;
+
   float(x: number, y: number, txt: string, col: string): void {
+    this.onKampf?.(txt, col);
+    // R131 (Autor: "pariert und andere sachen abschaltbar"): Schwebetexte per
+    // Schalter aus; Zahlen zusaetzlich ueber dmgNums.
+    if (getSettings().kampfTexte === false) return;
     if (!getSettings().dmgNums && /^[0-9-]/.test(txt)) return;
     const obj = this.scene.add.text(x, y, txt, {
       fontFamily: 'serif', fontSize: '15px', color: col, stroke: '#000000', strokeThickness: 3, fontStyle: 'bold',

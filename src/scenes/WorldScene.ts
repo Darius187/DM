@@ -9705,8 +9705,8 @@ export class WorldScene extends CombatScene {
   // --- HUD und Meldungen ----------------------------------------------------------
 
   // Chronik (Runde 20): nachlesbar, was geschah - Taste H
-  private chronikEintraege: Array<{ kat: 'geschichte' | 'beute' | 'ereignis'; text: string; tag: number; gelb?: boolean }> = [];
-  private chronikTab: 'geschichte' | 'beute' | 'ereignis' = 'ereignis';
+  private chronikEintraege: Array<{ kat: 'geschichte' | 'beute' | 'ereignis' | 'kampf'; text: string; tag: number; gelb?: boolean }> = [];
+  private chronikTab: 'geschichte' | 'beute' | 'ereignis' | 'kampf' = 'ereignis';
   private chronikFenster: Phaser.GameObjects.Container | null = null;
   // Scroll-Stand der Chronik (Runde 50): wie viele neueste Einträge nach unten
   // hinausgeschoben sind. 0 = neueste sichtbar.
@@ -9728,9 +9728,11 @@ export class WorldScene extends CombatScene {
   };
 
   // gelb = Tag-Ereignis ("Tag N bricht an") wird in der Chronik hervorgehoben
-  protected override chronik(kat: 'geschichte' | 'beute' | 'ereignis', text: string, gelb = false): void {
+  protected override chronik(kat: 'geschichte' | 'beute' | 'ereignis' | 'kampf', text: string, gelb = false): void {
     const letzter = this.chronikEintraege[this.chronikEintraege.length - 1];
-    if (letzter && letzter.text === text) return; // keine Doppel-Einträge
+    // Kampf-Protokoll darf Wiederholungen zeigen (viele "5"/"PARIERT"); andere
+    // Tabs deduppen aufeinanderfolgende Doppel-Einträge.
+    if (kat !== 'kampf' && letzter && letzter.text === text) return;
     this.chronikEintraege.push({ kat, text, tag: this.tag, gelb });
     if (this.chronikEintraege.length > 240) this.chronikEintraege.shift();
     // Neue Zeile springt ans untere Ende (Chat-Verhalten)
@@ -9831,7 +9833,7 @@ export class WorldScene extends CombatScene {
     c.add(miniBtn);
     if (mini) { fixUiScroll(c); return; }
     let tx = 110;
-    const tabs: Array<[typeof this.chronikTab, string]> = [['ereignis', 'Ereignisse'], ['geschichte', 'Geschichte'], ['beute', 'Beute']];
+    const tabs: Array<[typeof this.chronikTab, string]> = [['ereignis', 'Ereignisse'], ['kampf', 'Kampf'], ['geschichte', 'Geschichte'], ['beute', 'Beute']];
     for (const [id, lbl] of tabs) {
       const t = this.add.text(tx, 5, lbl, {
         fontFamily: 'serif', fontSize: '12px', letterSpacing: 1,
@@ -10092,7 +10094,13 @@ export class WorldScene extends CombatScene {
     const lic = getSettings().licht;
     const nachtMax = (lic.nachtDunkel ?? 82) / 100;
     const nachtSicht = lic.nachtSicht ?? 240;
-    const dunkelAlpha = this.area.dark ? 0.97 : Math.min(0.92, 0.04 + nachtMax * nachtFaktor + (fow ? 0.2 : 0));
+    // R131 (Autor: "Dungeon-Dunkelheit auf 100/120 ist genau was ich suche -
+    // ausser Sichtweite alles schwarz"): dunkle Ebenen bekommen ihre Deckkraft
+    // aus dem Dungeon-Dunkelheit-Regler (0-150). 100 = 0.97, ab ~118 komplett.
+    const dStk = getSettings().dungeonStaerke ?? 100;
+    const dunkelAlpha = this.area.dark
+      ? Math.min(1, 0.80 + dStk / 100 * 0.17)
+      : Math.min(0.92, 0.04 + nachtMax * nachtFaktor + (fow ? 0.2 : 0));
     this.lightRT.fill(0x020100, dunkelAlpha);
     const time = this.time.now / 1000;
     const flicker = 1 + Math.sin(time * 9) * 0.025 + Math.sin(time * 23) * 0.015;
@@ -10126,7 +10134,10 @@ export class WorldScene extends CombatScene {
         this.heldGlutImgs = [mk(), mk()];
       }
       const [g1, g2] = this.heldGlutImgs;
-      if (an) {
+      // R131 (Autor "warum leuchtet der Held selber? schneide ihn aus dem
+      // Leuchten"): der warme Halo UM den Helden ist per Schalter (Standard aus)
+      // - dann wird er nur vom Sichtkreis normal beleuchtet, ohne Eigenglühen.
+      if (an && getSettings().licht.heldEigenGlut === true) {
         const glut = (lic.nachtGlut ?? 50) / 100, farbe = lic.nachtGlutFarbe ?? 0xffcf86;
         g1.setVisible(true).setPosition(this.px, this.py + 4).setScale(300 / 128).setTint(farbe)
           .setAlpha(Math.min(0.6, glut * 0.55)).setDepth(this.py - 0.5);

@@ -1682,3 +1682,27 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   E2E crypt2: Fackelbereich jenseits der Sichtweite sichtbar, hinter dem
   Helden wieder schwarz, weicher Saum. NAECHSTES PAKET: Minimap-Kartographie
   (nur Gesehenes, huebscher, zoombar, Diablo-Overlay-Schalter).
+
+## R131 - Kriegsnebel raus, Dungeon-Dunkelheit rauf, Kampf-Anzeige (Autor)
+- KRIEGSNEBEL v2 ABGESCHALTET (Autor: "blinkt seltsam, nicht smooth - kann man
+  weglassen/auslassen"). Default licht.kriegsnebel=false + einmalige Migration
+  nebelV, damit auch alte Staende (in denen der Nebel als frueherer Standard
+  true gespeichert war) den Nebel verlieren. Code + Schalter bleiben als Option.
+- DUNGEON-DUNKELHEIT ist die eigentliche Loesung (Autor: "auf 100/120 ist genau
+  was ich suche - ausser Sichtweite alles schwarz"). Regler jetzt 0-150 (war
+  0-100). Formel dunkelAlpha = min(1, 0.80 + dStk/100*0.17): 100=0.97, ab ~118
+  komplett schwarz. Leicht aenderbar in settings.ts / lichtPanel.ts.
+- ROTE RINGE UM MONSTER (Windup) per Schalter, Default AUS (Autor: "was bedeuten
+  die roten ringe? bitte weg"). settings.gegnerWindupRing, CombatScene gated.
+- HELD LEUCHTET SELBER: der warme Halo UM den Helden (heldGlutImgs) per Schalter
+  heldEigenGlut, Default AUS (Autor: "warum leuchtet der held selber? schneide
+  ihn aus dem leuchten, man sieht ihn ganz normal"). Der Sichtkreis (eraseLight)
+  bleibt - er ist die Laterne, nicht das Eigenglühen.
+- KAMPFTEXTE ("Pariert", Treffer, Schaden) abschaltbar in den SPIELEINSTELLUNGEN
+  (Reiter Allgemein, Abschnitt "Kampf-Anzeige"): settings.kampfTexte (Default an)
+  + settings.gegnerWindupRing (Default aus). effects.float() gated auf kampfTexte.
+- CHRONIK-REITER "KAMPF": jeder Kampftext geht zusaetzlich in die Chronik
+  (fx.onKampf -> chronik('kampf', txt)). Neuer Reiter zwischen Ereignisse und
+  Geschichte, Dedup fuer 'kampf' deaktiviert (gleiche Zahl darf mehrfach kommen).
+- tsc sauber, 293 Tests gruen, Hauptmenue bootet fehlerfrei (Playwright-Smoke,
+  keine JS-Fehler). NAECHSTES PAKET: RTS-Modus ohne Zeitlupe (#14).

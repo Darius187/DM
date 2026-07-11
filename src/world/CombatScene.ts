@@ -270,7 +270,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   }
 
   // Chronik-Hook (Runde 20): die Welt sammelt Geschichte/Beute/Ereignisse
-  protected chronik(_kat: 'geschichte' | 'beute' | 'ereignis', _text: string): void { /* Welt überschreibt */ }
+  protected chronik(_kat: 'geschichte' | 'beute' | 'ereignis' | 'kampf', _text: string): void { /* Welt überschreibt */ }
   protected toggleChronik(): void { /* Welt überschreibt */ }
 
   // --- Sammelalbum (Taste B, Feedback-Runde 6) --------------------------------
@@ -3641,7 +3641,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
           g.fillCircle(bx - Math.cos(sp.ang) * 7, by - Math.sin(sp.ang) * 7, 1.5);
         }
       }
-      if (e.windup > 0) {
+      // R131 (Autor: rote Angriffs-Ringe weg): nur zeichnen, wenn eingeschaltet.
+      if (e.windup > 0 && getSettings().gegnerWindupRing === true) {
         g.lineStyle(2.5, 0xe14632, 0.35 + 0.5 * Math.abs(Math.sin(time * 26)));
         g.strokeCircle(e.x, e.y, e.r + 5);
       }
