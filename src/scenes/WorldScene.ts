@@ -1032,6 +1032,51 @@ export class WorldScene extends CombatScene {
     if (tool?.art === 'kachel' || tool?.art === 'radierer') this.baukastenKlick(ptr);
   };
 
+  // R129/R130: Kriegsnebel-Pflege im Frame-Loop. Gilt in ALLEN dunklen Ebenen;
+  // licht.kriegsnebelDraussen (DEV-Konsole) schaltet ihn testweise auch in der
+  // Aussenwelt zu (Autor: "sobald es dunkler wird" - erstmal als Test-Schalter).
+  private updateKriegsnebel(): void {
+    const lic = getSettings().licht;
+    const soll = (lic.kriegsnebel ?? true) && (this.area.dark || lic.kriegsnebelDraussen === true);
+    if (!soll) { this.kriegsnebel?.setVisible(false); return; }
+    if (!this.kriegsnebel) {
+      const a = this.area;
+      let erkundet = this.nebelGedaechtnis.get(a.id);
+      if (!erkundet) { erkundet = new Set(); this.nebelGedaechtnis.set(a.id, erkundet); }
+      this.kriegsnebel = new KriegsnebelAnzeige(this, {
+        tile: TILE, breite: a.w, hoehe: a.h, erkundet,
+        istSolid: (tx, ty) => { const t = a.map[ty]?.[tx]; return t === undefined || SOLID.has(t); },
+        lichtQuellen: () => this.nebelLichtQuellen(),
+        // Fallback (Autor R130): Erinnerung ist AUS - verdeckt bleibt verdeckt.
+        // Der Werkbank-Schalter holt sie zurueck, falls der harte Modus nicht gefaellt.
+        erinnerungAn: () => getSettings().licht.nebelErinnerungAn === true,
+        erinnerungsAlpha: () => 1 - (getSettings().licht.nebelErinnerung ?? 45) / 100,
+        ignoriere: (o) => this.uiCam?.ignore(o),
+      });
+    }
+    this.kriegsnebel.setVisible(true);
+    this.kriegsnebel.update(this.px, this.py, 235 + this.p.stats.licht, this.cameras.main.worldView);
+  }
+
+  // Lichtquellen fuer die Sicht-Erweiterung (Autor: "Fackeln erhoehen den
+  // Sichtbereich innerhalb der Sichtlinie"): Fackeln, Lagerfeuer, Feuerzauber,
+  // gluehende Geschosse. Radien wie ihre Lichtkreise in renderStimmung.
+  // In Kachel-Koordinaten; nur Quellen nahe dem Helden (Perf).
+  private nebelLichtQuellen(): Array<{ tx: number; ty: number; radius: number }> {
+    const q: Array<{ tx: number; ty: number; radius: number }> = [];
+    const nah = 26 * TILE;
+    const rein = (x: number, y: number, radiusPx: number): void => {
+      if (Math.abs(x - this.px) > nah || Math.abs(y - this.py) > nah) return;
+      q.push({ tx: Math.floor(x / TILE), ty: Math.floor(y / TILE), radius: Math.max(2, Math.round(radiusPx / TILE)) });
+    };
+    for (const t of this.area.torches) rein(t.x, t.y, 95);
+    for (const lf of this.lagerfeuerAktiv) rein(lf.x, lf.y, LAGERFEUER.lichtRadius);
+    for (const fl of this.feuerLichter) rein(fl.x, fl.y, fl.r);
+    for (const pr of this.projectiles) if (pr.fire || pr.magie) rein(pr.x, pr.y, 70);
+    for (const hd of this.area.herde ?? []) rein(hd.x, hd.y, 46);
+    return q;
+  }
+
   private refreshTileMitNachbarn(tx: number, ty: number): void {
     this.refreshTile(tx, ty);
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
@@ -1824,20 +1869,10 @@ export class WorldScene extends CombatScene {
     // R127g: LEBEN der Höhlen-Mine (Tropfen, Pfützen, Gold-Glitzern). Die
     // Dunkelheit macht die lightRT (Heldenlaterne + Grubenfackeln) - hier nur
     // die Atmosphäre. Bei jedem Gebietswechsel frisch, in anderen Gebieten aus.
-    // R129: Kriegsnebel je dunkler Ebene - das Gedächtnis (erkundete Kacheln)
-    // überlebt den Ebenen-Wechsel in der Session (nebelGedaechtnis je Area-Id).
+    // R129/R130: Kriegsnebel - beim Ebenen-Wechsel abbauen; der Neuaufbau
+    // (auch fuer den DEV-Aussenwelt-Test) laeuft lazy in ensureKriegsnebel().
     this.kriegsnebel?.destroy();
     this.kriegsnebel = null;
-    if (a.dark) {
-      let erkundet = this.nebelGedaechtnis.get(a.id);
-      if (!erkundet) { erkundet = new Set(); this.nebelGedaechtnis.set(a.id, erkundet); }
-      this.kriegsnebel = new KriegsnebelAnzeige(this, {
-        tile: TILE, breite: a.w, hoehe: a.h, erkundet,
-        istSolid: (tx, ty) => { const t = a.map[ty]?.[tx]; return t === undefined || SOLID.has(t); },
-        erinnerungsAlpha: () => 1 - (getSettings().licht.nebelErinnerung ?? 45) / 100,
-        ignoriere: (o) => this.uiCam?.ignore(o),
-      });
-    }
     this.hoehlenLeben?.destroy();
     this.hoehlenLeben = null;
     if (a.hoehlenOptik) {
@@ -4731,6 +4766,9 @@ export class WorldScene extends CombatScene {
           // VOLLE Licht-Werkbank (alle ~30 Regler) liegt auf Taste L - hier der
           // Knopf dazu + die wichtigsten Fackel-Regler direkt (gleiche Werte).
           { kind: 'button', label: () => 'LICHT-WERKBANK öffnen/schließen (alle Regler, Taste L)', onClick: () => this.lichtPanel?.umschalten() },
+          // R130 (Autor): Kriegsnebel testweise auch in der Aussenwelt - Teil
+          // der Engine, also ueberall zuschaltbar (nachts sinnvoll, tags nicht).
+          { kind: 'button', label: () => `Kriegsnebel auch DRAUSSEN (Test): ${getSettings().licht.kriegsnebelDraussen ? 'AN' : 'aus'}`, onClick: () => { const L = getSettings().licht; L.kriegsnebelDraussen = !L.kriegsnebelDraussen; saveSettings(); this.devKonsole?.refresh(); } },
           { kind: 'note', text: 'Achtung: Die GRAFIK-Voreinstellungen (Einstellungen) setzen Fackel-Schatten mit um - Niedrig/Mittel reduziert sie.' },
           { kind: 'slider', label: 'Fackel-Helligkeit (Flamme)', min: 0, max: 100, step: 1, get: () => lic.fackelHelligkeit, set: (v) => { lic.fackelHelligkeit = v; saveSettings(); } },
           { kind: 'slider', label: 'Fackel-Reichweite', min: 0, max: 100, step: 1, get: () => lic.fackelReichweite, set: (v) => { lic.fackelReichweite = v; saveSettings(); } },
@@ -10015,7 +10053,10 @@ export class WorldScene extends CombatScene {
       const zmI = cam.zoom;
       const pxI = (this.px - cam.worldView.x) * zmI, pyI = (this.py - cam.worldView.y) * zmI;
       this.eraseLight(pxI, pyI, 150 * zmI);
-      let wi = this.placeWarm(0, this.px, this.py, 110, 0.16);
+      // R130: der Held-Schein geht vom Helden AUS (liegt knapp unter der
+      // Figur) statt sie zu ueberdecken - Fallback-Schalter stellt Alt wieder her.
+      const ueberFigur = getSettings().licht.heldGlutUeberFigur === true;
+      let wi = this.placeWarm(0, this.px, this.py, 110, 0.16, undefined, ueberFigur ? undefined : this.py - 0.5);
       for (const hd of this.area.herde ?? []) {
         const sx = (hd.x - cam.worldView.x) * zmI, sy = (hd.y - cam.worldView.y) * zmI;
         if (sx < -200 || sy < -200 || sx > this.scale.width + 200 || sy > this.scale.height + 200) continue;
@@ -10196,7 +10237,7 @@ export class WorldScene extends CombatScene {
   }
 
   // tint gesetzt = farbiges Magie-Licht (weißer Blob wird eingefärbt)
-  private placeWarm(idx: number, x: number, y: number, radius: number, alpha: number, tint?: number): number {
+  private placeWarm(idx: number, x: number, y: number, radius: number, alpha: number, tint?: number, tiefe?: number): number {
     while (this.warmPool.length <= idx) {
       const img = this.add.image(0, 0, 'warmblob').setBlendMode(Phaser.BlendModes.ADD).setDepth(4010);
       this.warmPool.push(img);
@@ -10204,6 +10245,9 @@ export class WorldScene extends CombatScene {
     const img = this.warmPool[idx];
     img.setTexture(tint ? 'farbblob' : 'warmblob');
     img.setTint(tint ?? 0xffffff);
+    // R130 (Autor "das Licht liegt ueber dem Helden und verdeckt ihn billig"):
+    // Aufrufer koennen den Schein UNTER die Figuren legen (Tiefe = Fusspunkt).
+    img.setDepth(tiefe ?? 4010);
     img.setVisible(true).setPosition(x, y).setScale((radius * 2) / 128).setAlpha(alpha);
     return idx + 1;
   }
@@ -11011,13 +11055,7 @@ export class WorldScene extends CombatScene {
     this.updateWetterNebel();   // R113: Schwaden nach dem Regen
     this.updateSpuren(dt);      // R113: Fussabdruecke + Blut am Helden
     this.hoehlenLeben?.update(dt);   // R127g: Tropfen/Pfützen/Gold-Glitzern (Mine)
-    // R129: Kriegsnebel (Schalter in der Licht-Werkbank). Sichtweite = dieselbe
-    // Basis wie der Lichtkreis in dunklen Ebenen (235 + Licht-Stat).
-    if (this.kriegsnebel) {
-      const an = getSettings().licht.kriegsnebel ?? true;
-      this.kriegsnebel.setVisible(an);
-      if (an) this.kriegsnebel.update(this.px, this.py, 235 + this.p.stats.licht, this.cameras.main.worldView);
-    }
+    this.updateKriegsnebel();   // R129/R130: echter Fog of War (Werkbank-Schalter)
     this.updateLagerfeuer(dt);  // eigenes Feuer heilt in der Nähe (R81, Baumenü)
     this.updateBaustellen(dt);  // RTS-Platzierung + Bauzeit-Fortschritt (R88)
     this.updatePflanzenRespawn(dt); // Heilpflanzen wachsen nach (R89)

@@ -1659,3 +1659,26 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Waenden. OFFEN (ehrlich): Gedaechtnis wird noch NICHT im Spielstand
   gespeichert (nur Session) und die Minimap zeigt weiter alles - beides als
   Folgeschritt, wenn der Autor den Nebel so abnimmt.
+- R130 Kriegsnebel v2 (Autor-Abnahme der Zusammenfassung, Punkt fuer Punkt):
+  (2) LICHT ERWEITERT DIE SICHT: berechneSicht prueft jetzt Basis-Sichtweite
+  ODER Beleuchtung durch eine Lichtquelle - immer INNERHALB der Sichtlinie
+  (nie durch Waende). Quellen aus WorldScene: Fackeln (r95), Lagerfeuer,
+  Feuerzauber, gluehende Geschosse, Kerzen-Herde - erweiterbar fuer alles
+  Kuenftige; Neuberechnung auch bei Quellen-Bewegung (Feuerball-Signatur).
+  (4) ERINNERUNG STANDARD AUS (verdeckt bleibt verdeckt - Orientierung ist
+  Aufgabe der Karte), aber als FALLBACK-Schalter nebelErinnerungAn + Staerke-
+  Regler in der Werkbank behalten (Autor: "falls es mir doch nicht gefaellt").
+  Das erkundet-Set wird weiter gepflegt - es speist die kommende Minimap-
+  Kartographie. (7a) WEICHE SICHTKANTE: Doppelsaum (sichtbare Randkachel 0.3,
+  verdeckte Kachel neben Sicht 0.7*basis) statt hartem Kachelschnitt.
+  (6) DEV-KONSOLE: "Kriegsnebel auch DRAUSSEN (Test)" (licht.kriegsnebelDraussen)
+  - ensureKriegsnebel baut den Nebel lazy im Update auf, damit der Schalter
+  sofort wirkt; Autor-Idee "draussen sobald es dunkler wird" notiert.
+  (7b) HELD-SCHEIN VOM HELDEN AUS: der warme Held-Glow (placeWarm idx 0) liegt
+  jetzt KNAPP UNTER der Figur (Tiefe py-0.5) statt darueber - der Held bleibt
+  in seinen Farben; placeWarm hat dafuer einen optionalen Tiefe-Parameter.
+  Fallback-Schalter heldGlutUeberFigur (Werkbank) stellt den alten Look her.
+  5 Kern-Tests (inkl. Licht-erweitert-Sicht + nie-durch-Waende), 293 gruen.
+  E2E crypt2: Fackelbereich jenseits der Sichtweite sichtbar, hinter dem
+  Helden wieder schwarz, weicher Saum. NAECHSTES PAKET: Minimap-Kartographie
+  (nur Gesehenes, huebscher, zoombar, Diablo-Overlay-Schalter).

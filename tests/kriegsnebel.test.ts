@@ -28,4 +28,23 @@ describe('Kriegsnebel-Sichtlinie', () => {
     const s = berechneSicht(karte(zeilen), 2, 2, 6);
     expect(s.has(sichtKey(4, 0))).toBe(true);   // Weg oben herum ist offen
   });
+
+  // R130 (Autor): Licht ERWEITERT die Sicht - innerhalb der Sichtlinie.
+  it('eine Fackel jenseits der Basis-Sichtweite macht ihre Umgebung sichtbar', () => {
+    const frei = karte(['....................', '....................', '....................', '....................', '....................']);
+    // Basis-Sichtweite 3, Fackel bei x=12 (Abstand 10) mit Radius 3
+    const ohne = berechneSicht(frei, 2, 2, 3);
+    expect(ohne.has(sichtKey(12, 2))).toBe(false);              // ohne Licht: zu weit
+    const mit = berechneSicht(frei, 2, 2, 3, [{ tx: 12, ty: 2, radius: 3 }]);
+    expect(mit.has(sichtKey(12, 2))).toBe(true);                // beleuchtet: sichtbar
+    expect(mit.has(sichtKey(14, 2))).toBe(true);                // im Fackelradius
+    expect(mit.has(sichtKey(18, 2))).toBe(false);               // ausserhalb des Lichts
+  });
+
+  it('Licht erweitert NIE durch Waende (Sichtlinie bleibt Pflicht)', () => {
+    // Wand zwischen Held und beleuchtetem Raum
+    const zeilen = ['....................', '....#...............', '....#...............', '....#...............', '....................'];
+    const s = berechneSicht(karte(zeilen), 2, 2, 3, [{ tx: 8, ty: 2, radius: 4 }]);
+    expect(s.has(sichtKey(8, 2))).toBe(false);   // beleuchtet, aber keine Sichtlinie
+  });
 });

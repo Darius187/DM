@@ -64,7 +64,9 @@ export class LichtPanel {
     this.toggle(() => `Wand-Schatten: ${L().dungeonNeu ? 'AN' : 'aus'}`, () => { L().dungeonNeu = !L().dungeonNeu; });
     // R129: echter Kriegsnebel (Sichtlinie + Erkundungs-Gedächtnis)
     this.toggle(() => `Kriegsnebel (Sichtlinie): ${(L().kriegsnebel ?? true) ? 'AN' : 'aus'}`, () => { L().kriegsnebel = !(L().kriegsnebel ?? true); });
-    this.slider('Nebel-Erinnerung (Erkundetes)', 0, 100, () => L().nebelErinnerung ?? 45, (v) => { L().nebelErinnerung = v; });
+    // R130: Standard = verdeckt bleibt verdeckt; Erinnerung nur als Fallback
+    this.toggle(() => `Nebel-Erinnerung (Fallback): ${(L().nebelErinnerungAn ?? false) ? 'AN' : 'aus'}`, () => { L().nebelErinnerungAn = !(L().nebelErinnerungAn ?? false); });
+    this.slider('Erinnerungs-Stärke', 0, 100, () => L().nebelErinnerung ?? 45, (v) => { L().nebelErinnerung = v; });
     this.slider('Dungeon-Dunkelheit', 0, 100, () => getSettings().dungeonStaerke, (v) => { getSettings().dungeonStaerke = v; });
     this.slider('Umgebungslicht (Wände sichtbar)', 0, 100, () => L().umgebungslicht, (v) => { L().umgebungslicht = v; });
     this.slider('Licht-Helligkeit (Master)', 0, 100, () => L().lichtHelligkeit, (v) => { L().lichtHelligkeit = v; });
@@ -84,6 +86,8 @@ export class LichtPanel {
     this.slider('Licht-Schärfe (gegen Schleier)', 0, 100, () => L().lichtSchaerfe, (v) => { L().lichtSchaerfe = v; });
     this.toggle(() => `Held-Licht (Sicht): ${L().heldLichtAn ? 'AN' : 'AUS'}`, () => { L().heldLichtAn = !L().heldLichtAn; });
     this.toggle(() => `Held wirft Schatten: ${L().heldSchatten ? 'AN' : 'aus (nur Sichtradius)'}`, () => { L().heldSchatten = !L().heldSchatten; });
+    // R130-Fallback: Held-Schein wieder ueber die Figur legen (alter Look)
+    this.toggle(() => `Held-Schein über Figur (alt): ${(L().heldGlutUeberFigur ?? false) ? 'AN' : 'aus'}`, () => { L().heldGlutUeberFigur = !(L().heldGlutUeberFigur ?? false); });
     this.slider('Sichtradius', 40, 240, () => L().sichtRadius, (v) => { L().sichtRadius = v; });
     this.slider('Held-Licht-Farbe (rot..weiß)', 0, 100, () => L().heldFarbe, (v) => { L().heldFarbe = v; });
     // ----- Fackel-Licht (Raum vs. Flamme) -----
