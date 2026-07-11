@@ -256,8 +256,12 @@ export async function ladeHausRuntime(basisPfad = 'houses', groesse = 768): Prom
     for (const m of mats) {
       const phys = m as THREE.MeshPhysicalMaterial;
       if (!phys) continue;
+      // Tinting NUR wenn das Material den Export-Fehler zeigt (fast weiss + keine
+      // Textur). So schaltet sich der Notbehelf bei einem sauberen Re-Export mit
+      // echten Farben/Texturen von selbst ab (Autor exportiert neu, R131c).
       const farbe = HAUS_MATERIAL_FARBEN[phys.name];
-      if (farbe !== undefined) phys.color.setHex(farbe);
+      const istWeiss = phys.color.r > 0.9 && phys.color.g > 0.9 && phys.color.b > 0.9;
+      if (farbe !== undefined && istWeiss && !phys.map) phys.color.setHex(farbe);
       if ((phys.transmission ?? 0) > 0) { phys.transparent = true; phys.depthWrite = false; }
     }
   });

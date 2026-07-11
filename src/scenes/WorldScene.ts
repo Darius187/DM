@@ -582,6 +582,13 @@ export class WorldScene extends CombatScene {
   // Haus-Sprites (Runde 18): an/aus + Justier-Offsets im Browser-Speicher
   hausSpriteAn = true;
   private hausBilder: Phaser.GameObjects.Image[] = [];
+  // Live-3D-Zimmermannshaus in Ravensmoor (R131c): eine three.js-Laufzeit rendert
+  // in eine Canvas-Textur, die als Welt-Sprite auf dem 'zimmerei'-Platz steht.
+  private haus3d: import('../demo3d/hausRuntime').HausRuntime | null = null;
+  private haus3dBild?: Phaser.GameObjects.Image;
+  private haus3dTex?: Phaser.Textures.CanvasTexture;
+  private haus3dLaedt = false;
+  private haus3dPlatz?: { x0: number; y0: number; x1: number; y1: number; id: string };
 
   hausJustierung(): Record<string, { dx: number; dy: number; skala?: number }> {
     try {
@@ -4862,6 +4869,7 @@ export class WorldScene extends CombatScene {
   }
 
   private unloadAreaObjects(): void {
+    this.raeumeHaus3d();   // R131c: 3D-Haus-Sprite gehoert zur alten Karte
     for (const img of this.tileImages) img.destroy();
     this.tileImages = [];
     this.windBaeume = [];
@@ -5423,6 +5431,10 @@ export class WorldScene extends CombatScene {
     if (this.hausSpriteAn && a.hausPlaetze) {
       const just = this.hausJustierung();
       a.hausPlaetze.forEach((hp) => {
+        // R131c: die Zimmerei bekommt das ECHTE drehbare 3D-Haus (Codex-GLB) statt
+        // des prozeduralen Fachwerk-Sprites. Kollision/Tuer stammen weiter aus den
+        // HWALL/HDOOR-Kacheln des Platzes - nur das Bild ist das Live-3D-Haus.
+        if (hp.id === 'zimmerei') { this.starteHaus3d(hp); return; }
         // IMMER das detaillierte prozedurale Fachwerkhaus (Runde 40: ersetzt die
         // schäbigen haus*.png mit weißem Rand). Eine im Baukasten je Haus
         // hochgeladene Grafik überschreibt es weiter unten via wendeHausBildAn.
@@ -5538,6 +5550,107 @@ export class WorldScene extends CombatScene {
     const ein = Math.min(1, (t - TAG.lichtAb) / 0.04);          // abends einblenden
     const aus = t < schlaf ? 1 : Math.max(0, 1 - (t - schlaf) / 0.04); // zur Schlafenszeit erlöschen
     return ein * aus;
+  }
+
+  // --- Live-3D-Zimmermannshaus in Ravensmoor (R131c) --------------------------
+  // Startet die three.js-Laufzeit (einmal) und stellt das Haus als Welt-Sprite auf
+  // den 'zimmerei'-Platz. Async: bis das GLB geladen ist, bleibt der Platz leer
+  // (Kollision/Tuer stehen ueber die HWALL/HDOOR-Kacheln bereits).
+  private starteHaus3d(hp: { x0: number; y0: number; x1: number; y1: number; id: string }): void {
+    this.haus3dPlatz = hp;
+    if (this.haus3d) { this.zeigeHaus3d(); return; }   // schon geladen -> nur neu einblenden
+    if (this.haus3dLaedt) return;
+    this.haus3dLaedt = true;
+    import('../demo3d/hausRuntime').then(({ ladeHausRuntime }) => ladeHausRuntime('houses', 640)).then((rt) => {
+      this.haus3d = rt;
+      this.haus3dLaedt = false;
+      if (this.area?.id === 'village' && this.haus3dPlatz) this.zeigeHaus3d();
+      else rt.dispose();   // Karte inzwischen verlassen
+    }).catch((e) => {
+      this.haus3dLaedt = false;
+      if (import.meta.env.DEV) console.warn('3D-Haus konnte nicht geladen werden:', e);
+      // Fallback: das prozedurale Fachwerkhaus fuer diesen Platz doch zeichnen.
+      if (this.area?.id === 'village' && this.haus3dPlatz) this.zeichneProzeduralesHaus(this.haus3dPlatz);
+    });
+  }
+
+  private haus3dParams(): NonNullable<import('../logic/settings').Settings['haus3d']> {
+    return getSettings().haus3d ?? { yaw: 210, elev: 52, azimut: 0, skala: 1, dx: 0, dy: 0 };
+  }
+
+  // Erzeugt/aktualisiert das Welt-Sprite aus der 3D-Leinwand.
+  private zeigeHaus3d(): void {
+    const hp = this.haus3dPlatz;
+    if (!this.haus3d || !hp) return;
+    const groesse = this.haus3d.canvas.width;
+    if (!this.haus3dTex) {
+      this.textures.remove('haus3dWelt');
+      this.haus3dTex = this.textures.createCanvas('haus3dWelt', groesse, groesse) ?? undefined;
+    }
+    const p = this.haus3dParams();
+    const breite = (hp.x1 - hp.x0 + 1) * TILE;
+    // Anker: Mitte-unten der Grundflaeche (wie die anderen Haeuser).
+    const ankerX = (hp.x0 + hp.x1 + 1) / 2 * TILE + p.dx;
+    const ankerY = (hp.y1 + 1) * TILE + 6 + p.dy;
+    if (!this.haus3dBild) {
+      this.haus3dBild = this.add.image(ankerX, ankerY, 'haus3dWelt').setOrigin(0.5, 0.86);
+      this.uiCam?.ignore(this.haus3dBild);
+      this.tileImages.push(this.haus3dBild);   // wird bei unloadAreaObjects mitentfernt
+    }
+    this.haus3dBild.setPosition(ankerX, ankerY).setVisible(true);
+    // Skala: die 3D-Leinwand traegt Rand um das Haus - daher grob 2.4x der
+    // Grundflaechenbreite als Startwert, per settings.haus3d.skala fein justierbar.
+    const basis = (breite * 2.4) / groesse;
+    this.haus3dBild.setScale(basis * p.skala);
+    this.haus3dBild.setDepth(hp.y1 * TILE + 16);
+    this.haus3dNeu = true;   // beim naechsten update() rendern
+  }
+
+  private haus3dNeu = true;
+
+  // Pro Frame: nur neu rendern, wenn sich etwas geaendert hat (Dirty-Flag in der
+  // Laufzeit); die Leinwand in die Phaser-Textur kopieren.
+  private updateHaus3d(): void {
+    if (!this.haus3d || !this.haus3dBild || !this.haus3dTex || !this.haus3dBild.visible) return;
+    if (!this.haus3dNeu) return;   // steht still -> kein erneutes Kopieren noetig
+    const p = this.haus3dParams();
+    this.haus3d.setState({
+      yaw: p.yaw, elevation: p.elev, azimuth: p.azimut, zoom: 1,
+      frontDoor: 0, workshopDoor: 0, roof: true, cutaway: false,
+    });
+    const cv = this.haus3d.render();
+    const ctx = this.haus3dTex.getContext();
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(cv, 0, 0);
+    this.haus3dTex.refresh();
+    this.haus3dNeu = false;
+  }
+
+  // DEV-Haken: Haus drehen/justieren und persistent speichern (drehbar+verschiebbar).
+  drehHaus3d(dGrad: number): void {
+    const p = this.haus3dParams();
+    p.yaw = (p.yaw + dGrad + 360) % 360;
+    getSettings().haus3d = p; saveSettings();
+    this.haus3dNeu = true;
+  }
+
+  private raeumeHaus3d(): void {
+    this.haus3dBild = undefined;   // Image steckt in tileImages -> dort zerstoert
+    this.haus3dNeu = true;
+    // Laufzeit + Textur behalten wir (Wiederbetreten des Dorfs ist billig); nur
+    // ausblenden. Der WebGL-Kontext bleibt so erhalten.
+  }
+
+  private zeichneProzeduralesHaus(hp: { x0: number; y0: number; x1: number; y1: number; id: string }): void {
+    const key = this.hausProcKey(hp);
+    const breite = (hp.x1 - hp.x0 + 1) * TILE;
+    const ankerX = (hp.x0 + hp.x1 + 1) / 2 * TILE;
+    const ankerY = (hp.y1 + 1) * TILE + 6;
+    const img = this.add.image(ankerX, ankerY, key).setOrigin(0.5, 1).setDepth(hp.y1 * TILE + 16);
+    img.setScale(breite / img.width);
+    this.uiCam?.ignore(img);
+    this.hausBilder.push(img);
+    this.tileImages.push(img);
   }
 
   // Prozedurales Fachwerkhaus-Sprite für eine Grundfläche (Runde 40): einmal
@@ -10867,6 +10980,7 @@ export class WorldScene extends CombatScene {
     const kampfTempo = (this.einfallAktiv || this.rtsBattle) ? TUNING.kryptaTempo : 1;
     this.updateCombat(dt * kampfTempo);
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
+    this.updateHaus3d();        // R131c: Live-3D-Zimmermannshaus in Ravensmoor auffrischen
     this.updateWetter(dt);      // Wetter-Achse (Regen/Nässe, Stimmungsregen bis 1. Dungeon)
     this.updateWetterNebel();   // R113: Schwaden nach dem Regen
     this.updateSpuren(dt);      // R113: Fussabdruecke + Blut am Helden
