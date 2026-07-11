@@ -423,7 +423,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     });
     c.add(reset);
     // Anker: Standardposition jedes UI-Teils; der Versatz ist die Differenz
-    const teile: Array<[keyof typeof ui, string, number, number]> = [
+    // lichtPanel wird eigenständig verschoben (LichtPanel), nicht über diese Griffe.
+    const teile: Array<[Exclude<keyof typeof ui, 'lichtPanel'>, string, number, number]> = [
       ['hotbar', 'TASTEN-LEISTE', tastenLeisteMitteX(w), h - 66],
       ['mausleiste', 'MAUS-LEISTE', mausLeisteAnkerX(w) + 115, h - 66],
       ['dialog', 'DIALOGRAHMEN', w / 2, h - 220],

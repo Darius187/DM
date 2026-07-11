@@ -40,10 +40,16 @@ export class LichtPanel {
   private scrollY = 0;
   private cy = 0;                  // Lauf-Inhalts-Y beim Aufbau
 
+  private ziehPanel: { px: number; py: number } | null = null;   // R128c: Fenster verschieben
+
   constructor(private scene: Phaser.Scene, x0: number, y0: number, opts?: { tageszeit?: TageszeitHaken; tiefe?: number }) {
     this.d = opts?.tiefe ?? 9000;
     this.x0 = x0; this.oben = y0 - 26; this.viewTop = y0 + 2;
-    this.titel = scene.add.text(x0 + 6, y0 - 24, 'LICHT-WERKBANK (Taste L)', { fontFamily: 'serif', fontSize: '13px', color: '#ffcf8a' }).setScrollFactor(0).setDepth(this.d + 2);
+    // R128c (Autorwunsch + UI-Regel 11): gespeicherte Verschiebe-Position, falls
+    // der Autor die Werkbank schon mal woandershin gezogen hat.
+    const gesp = getSettings().ui.lichtPanel;
+    if (gesp) { this.x0 = gesp.x; this.oben = gesp.y; this.viewTop = gesp.y + 28; }
+    this.titel = scene.add.text(this.x0 + 6, this.oben + 2, 'LICHT-WERKBANK (Taste L) - ⇕ Titel ziehen', { fontFamily: 'serif', fontSize: '13px', color: '#ffcf8a' }).setScrollFactor(0).setDepth(this.d + 2);
     this.g = scene.add.graphics().setScrollFactor(0).setDepth(this.d);
     const L = () => getSettings().licht;
     // ===== AUSSENWELT (Sonne) =====
@@ -89,8 +95,14 @@ export class LichtPanel {
     this.berechneView();
 
     scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.aufKlick(p));
-    scene.input.on('pointermove', (p: Phaser.Input.Pointer) => { if (this.zieh && this.sichtbar) this.setzeAusX(this.zieh, p.x); });
-    scene.input.on('pointerup', () => { this.zieh = null; });
+    scene.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (this.ziehPanel && this.sichtbar) { this.verschiebe(p.x - this.ziehPanel.px, p.y - this.ziehPanel.py); this.ziehPanel = { px: p.x, py: p.y }; return; }
+      if (this.zieh && this.sichtbar) this.setzeAusX(this.zieh, p.x);
+    });
+    scene.input.on('pointerup', () => {
+      if (this.ziehPanel) { getSettings().ui.lichtPanel = { x: Math.round(this.x0), y: Math.round(this.oben) }; saveSettings(); }
+      this.zieh = null; this.ziehPanel = null;
+    });
     scene.input.on('wheel', (p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
       if (!this.sichtbar || !this.trifft(p.x, p.y)) return;
       const max = Math.max(0, this.inhaltH - this.viewH);
@@ -136,6 +148,8 @@ export class LichtPanel {
 
   private aufKlick(p: Phaser.Input.Pointer): void {
     if (!this.sichtbar || !this.trifft(p.x, p.y)) return;
+    // R128c: Titelzeile [oben..viewTop] = Verschiebe-Griff (UI-Regel 11).
+    if (p.y >= this.oben && p.y < this.viewTop) { this.ziehPanel = { px: p.x, py: p.y }; return; }
     for (const c of this.ctrls) {
       if (!this.imBand(c.cy, c.h)) continue;
       const y = this.sy(c.cy);
@@ -146,6 +160,20 @@ export class LichtPanel {
       else { this.zieh = c; this.setzeAusX(c, p.x); }
       return;
     }
+  }
+
+  // R128c: das ganze Panel verschieben (Titelgriff). X der Kinder wandert mit;
+  // Y läuft über viewTop (sy) automatisch mit. Auf dem Schirm gehalten.
+  private verschiebe(dx: number, dy: number): void {
+    const sw = this.scene.scale.width, sh = this.scene.scale.height;
+    dx = Phaser.Math.Clamp(dx, 6 - this.x0, sw - 6 - (this.x0 + this.breite));
+    dy = Phaser.Math.Clamp(dy, 6 - this.oben, sh - 34 - this.oben);
+    if (!dx && !dy) return;
+    this.x0 += dx; this.oben += dy; this.viewTop += dy;
+    this.titel.x += dx; this.titel.y += dy;
+    for (const c of this.ctrls) c.cx += dx;
+    for (const e of this.scrollTexte) e.txt.x += dx;
+    this.berechneView();
   }
 
   private setzeAusX(c: Ctrl, px: number): void {

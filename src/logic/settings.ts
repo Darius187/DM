@@ -37,7 +37,7 @@ export interface Settings {
   wasserEffekte: boolean; // prozeduraler Wasser-Shader (aus = flaches Wasser, spart GPU)
   grafikStufe: number;    // aktive Voreinstellung: 0 Niedrig, 1 Mittel, 2 Hoch, 3 Eigen
   // UI-Versatz (im Entwicklungskasten verschiebbar, Runde 11)
-  ui: { hotbar: { x: number; y: number }; mausleiste: { x: number; y: number }; dialog: { x: number; y: number }; log: { x: number; y: number }; orbHp: { x: number; y: number }; orbMp: { x: number; y: number }; fenster: { x: number; y: number }; questTracker: { x: number; y: number } };
+  ui: { hotbar: { x: number; y: number }; mausleiste: { x: number; y: number }; dialog: { x: number; y: number }; log: { x: number; y: number }; orbHp: { x: number; y: number }; orbMp: { x: number; y: number }; fenster: { x: number; y: number }; questTracker: { x: number; y: number }; lichtPanel?: { x: number; y: number } };
   // Quest-Verfolger auf dem Hauptbildschirm (Runde 52): an/aus, frei verschiebbar.
   questTrackerAn: boolean;
   // HUD-Stil für Leben/Mana (Runde 52, Autorwunsch "Alternativen wie WoW"):
@@ -197,6 +197,7 @@ export function getSettings(): Settings {
         orbMp: { ...DEF_SETTINGS.ui.orbMp, ...(saved.ui?.orbMp ?? {}) },
         fenster: { ...DEF_SETTINGS.ui.fenster, ...(saved.ui?.fenster ?? {}) },
         questTracker: { ...DEF_SETTINGS.ui.questTracker, ...(saved.ui?.questTracker ?? {}) },
+        lichtPanel: saved.ui?.lichtPanel,   // R128c: gespeicherte Panel-Position (verschiebbar)
       };
       // Layout-Migration (Runde 40): die Aktionsleisten sind jetzt EIN zentrierter
       // Block, die Orbs flankieren die Leisten, die Meldungen stehen oben und die

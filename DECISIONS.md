@@ -1634,3 +1634,10 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Labels, EBENE-6-Anzeige, Endlos-Tiefe) dynamisch ueber ebeneFuerKlassik(5).
   3 neue Tests (Versatz + Grab-Ebene). E2E im Browser: Kette crypt1..crypt6
   mit korrekten Namen/Groessen/Tiefen verifiziert. 288 Tests gruen.
+- R128c Licht-Werkbank verschiebbar (Autor: "warum kann ich die Licht-Werkbank
+  nicht verschieben?" - Verstoss gegen UI-Regel 11): LichtPanel bekommt die
+  Titelzeile als Verschiebe-Griff (ziehPanel), Position wird in settings.ui.
+  lichtPanel {x,y} gespeichert und beim naechsten Start wiederhergestellt.
+  verschiebe() verschiebt x0/oben/viewTop + alle Regler-X + Titeltext, Y laeuft
+  ueber viewTop automatisch mit, auf dem Schirm geklemmt. tsc sauber, 288 Tests
+  gruen, im Browser: Panel per Titel gezogen (980/90 -> 580/270), gespeichert.
