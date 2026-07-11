@@ -60,7 +60,7 @@ import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abba
 import { hoehleTextur, hoehleKante, hoeheFelsWand, vorkommenTextur, KANTE_DICKE } from '../gfx/hoehlenArt';
 import { HoehlenLeben } from '../gfx/hoehlenLeben';
 import { KriegsnebelAnzeige, type SichtSet } from '../systems/kriegsnebel';
-import { HausAtlas } from '../gfx/hausAtlas';
+import { Haus3DWelt } from '../gfx/haus3dWelt';
 import { MINE } from '../data/mine';
 import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
@@ -239,7 +239,7 @@ export class WorldScene extends CombatScene {
   private hoehlenLeben: HoehlenLeben | null = null;   // R127g: Tropfen/Glitzern in der Mine
   private kriegsnebel: KriegsnebelAnzeige | null = null;   // R129: echter Fog of War (dunkle Ebenen)
   private nebelGedaechtnis = new Map<string, SichtSet>();  // erkundete Kacheln je Ebene (Session)
-  private hausZimmermann: HausAtlas | null = null;   // R127h: Atlas-Haus (haengt an Box N1)
+  private hausZimmermann: Haus3DWelt | null = null;   // R127h/R131c: Live-3D-Haus an Box N1
   private static readonly HAUS_HOST_BOX = 'N1';
   private warmPool: Phaser.GameObjects.Image[] = [];
   private minimapGfx!: Phaser.GameObjects.Graphics;
@@ -1926,12 +1926,14 @@ export class WorldScene extends CombatScene {
     this.dorfBoxen = ladeDorfplan(DORFPLAN_BOXEN);
     this.dorfWege = ladeWege();
     this.dorfWegeGfx?.destroy(); this.dorfWegeGfx = undefined;
-    // R127h: Zimmermannshaus an seine Host-Box haengen (Box ziehen = Haus mit).
+    // R127h/R131c: echtes drehbares 3D-Zimmermannshaus an seine Host-Box N1
+    // haengen (Box ziehen = Haus mit; drehbar ueber settings.haus3d).
     this.hausZimmermann?.destroy(); this.hausZimmermann = null;
     const host = this.dorfBoxen.find((b) => b.id === WorldScene.HAUS_HOST_BOX);
     if (host) {
-      this.hausZimmermann = new HausAtlas(this, {
+      this.hausZimmermann = new Haus3DWelt(this, {
         footX: (host.x + host.breite / 2) * TILE, footY: (host.y + host.hoehe) * TILE,
+        breiteKacheln: Math.max(8, host.breite),
         ignoriere: (o) => this.uiCam?.ignore(o),   // Haus nur auf der Welt-Kamera
       });
     }
@@ -11068,6 +11070,7 @@ export class WorldScene extends CombatScene {
     const kampfTempo = this.einfallAktiv ? TUNING.kryptaTempo : 1;
     this.updateCombat(dt * kampfTempo);
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
+    this.hausZimmermann?.update();   // R131c: Live-3D-Zimmermannshaus (N1) auffrischen
     this.updateWetter(dt);      // Wetter-Achse (Regen/Nässe, Stimmungsregen bis 1. Dungeon)
     this.updateWetterNebel();   // R113: Schwaden nach dem Regen
     this.updateSpuren(dt);      // R113: Fussabdruecke + Blut am Helden

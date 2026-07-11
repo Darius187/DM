@@ -1720,3 +1720,22 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   So bewegt sich der Held wie im Dungeon, aber Pfeile/Monster laufen normal.
 - tsc sauber, 293 Tests gruen. Im Browser: WorldScene bootet fehlerfrei; das
   RTS-Gefecht selbst nicht headless durchgespielt (Autor bitte im Spiel gegenfuehlen).
+
+## R131c - Echtes 3D-Zimmermannshaus in Ravensmoor N1 (Codex-GLB, Live-three.js)
+- Der Atlas-/Fachwerk-Platzhalter (HausAtlas) an Box N1 im NEUEN Ravensmoor
+  (stadt-Dorfplan) ist durch das ECHTE drehbare 3D-Haus ersetzt. Es haengt weiter
+  an Box N1 und folgt ihr beim Ziehen (verschiebbar), ist ueber settings.haus3d
+  drehbar/persistent (UI-Regel 11).
+- Rendering: src/demo3d/hausRuntime.ts laedt das GLB live mit three.js/GLTFLoader
+  und rendert mit Ortho-Orbit-Kamera in eine Leinwand; src/gfx/haus3dWelt.ts
+  blendet sie als Welt-Sprite ein (spiegelt die HausAtlas-Schnittstelle, damit der
+  Tausch minimal ist). Kein gebackenes PNG; Rotationsatlas nur Fallback.
+- Material-Farben: der GLB-Export lieferte 16/20 Materialien weiss ohne Texturen -
+  namensbasierte Farbtabelle in src/data/hausMaterial.ts ueberbrueckt das (dunkle
+  Eiche, Lehm-Gefach, Schindeln, Feldstein), schaltet sich bei einem sauberen
+  Re-Export mit echten Farben von selbst ab. Autor exportiert GLB neu (OFFENE-FRAGEN
+  auf dem codex-Branch).
+- HAUS-PROBE (Menue) zum Ansehen/Drehen (alle Steuerungen aus dem Manifest).
+- Verifiziert im Browser: stadt-Karte, Haus steht live-3D an N1, keine JS-Fehler.
+  tsc sauber, 293 Tests gruen. (Assets+Module vom Branch codex/rotatable-3d-
+  carpenter-house sauber uebernommen statt Konflikt-Merge.)

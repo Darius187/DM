@@ -104,6 +104,7 @@ export class TitleScene extends Phaser.Scene {
       ['REIT-PROBE', () => this.scene.start('ReitProbe'), true],
       ['GRUSEL-SCHATTEN', () => this.scene.start('StrahlenProbe'), true],
       ['MENÜ-PROBE (UI)', () => this.scene.start('UIProbe'), true],
+      ['HAUS-PROBE (3D)', () => this.scene.start('HausProbe'), true],
       ['ANFANGSKARTE', () => this.scene.start('Anfangskarte'), true],
       ['START-KARTE (neu)', () => this.scene.start('World', { neu: true, startArea: 'start' }), true],
       ['DORF IM WALD', () => { window.location.href = 'dorf.html'; }, true],

@@ -112,6 +112,9 @@ export interface Settings {
   bloomV: number;         // einmaliger Bloom-Standard (Runde 51: standardmäßig aus)
   uiLayoutV: number;      // Layout-Version: ältere UI-Versätze einmalig zurücksetzen
   barV: number;           // Leisten-Belegung: einmalig auf "leer bis auf Basics" setzen
+  // 3D-Zimmermannshaus in Ravensmoor (R131c): Drehung/Kamera/Skala/Versatz frei
+  // tunebar und persistent (drehbar + verschiebbar, UI-Regel 11).
+  haus3d?: { yaw: number; elev: number; azimut: number; skala: number; dx: number; dy: number };
   kb: KeyBindings;
 }
 
@@ -161,6 +164,7 @@ export const DEF_SETTINGS: Settings = {
   bloomV: 1,
   uiLayoutV: 4, // Runde 43: Chronik bündig links angedockt
   barV: 1,      // Runde 49: Leiste startet leer (Skills selbst belegen)
+  haus3d: { yaw: 210, elev: 52, azimut: 0, skala: 1, dx: 0, dy: 0 }, // 3D-Haus in Ravensmoor (N1)
   kb: {
     roll: ' ', interact: 'e', inv: 'i', charakter: 'c',
     pot: 'q', mpot: 'f', s1: '1', s2: '2', s3: '3',
