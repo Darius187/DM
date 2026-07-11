@@ -5886,8 +5886,11 @@ export class WorldScene extends CombatScene {
   }
 
   protected override areaSpeedFactor(): number {
-    // Krypta: bedächtig wie die Monster; Faktor über F10 verstellbar
-    let f = this.area?.dark ? TUNING.kryptaTempo : 1;
+    // Krypta: bedächtig wie die Monster; Faktor über F10 verstellbar.
+    // R131 (Autor "im RTS soll sich der Held wie im Dungeon bewegen, nicht in
+    // Zeitlupe"): im RTS-Gefecht läuft NUR das Helden-Tempo im Dungeon-Maß -
+    // dt/Geschosse/Monster bleiben in Echtzeit (keine globale Slow-Motion mehr).
+    let f = (this.area?.dark || this.rtsBattle) ? TUNING.kryptaTempo : 1;
     f *= matschTempo(this.matschHier());   // R113: Matsch bremst
     // R86 (Autor "der Busch sollte nachgeben"): Büsche blocken nicht, aber
     // wer hindurchdrängt, wird gebremst - größere Büsche bremsen stärker.
@@ -11056,10 +11059,13 @@ export class WorldScene extends CombatScene {
     // bedächtig wie in der Krypta (Runde 41, Autorwunsch); danach wieder normal.
     // Echte Slow-Motion über das Kampf-dt - so werden Held, Gegner UND Geschosse
     // gleichmäßig verlangsamt. Die Uhr (advanceClock) bleibt davon unberührt.
-    // R103 (Autor "im RTS bewegen sich alle viel zu schnell - bitte Dungeon-Tempo"):
-    // waehrend einer RTS-Schlacht laeuft der ganze Kampf (Held, Einheiten, Monster,
-    // Geschosse) im bedaechtigen Krypta-Tempo - wie ein Dungeon-Gefecht.
-    const kampfTempo = (this.einfallAktiv || this.rtsBattle) ? TUNING.kryptaTempo : 1;
+    // R131 (Autor "im RTS läuft alles wie in Zeitlupe, auch die Pfeile - das
+    // war nicht der Sinn, Held und Monster sollen sich wie in den Dungeons
+    // bewegen"): die RTS-Schlacht bekommt KEINE globale Slow-Motion mehr. Held,
+    // Monster und Geschosse laufen in Echtzeit (Dungeon-Tempo = normales dt); das
+    // bedächtige Helden-Gefühl liefert allein areaSpeedFactor(). Nur der große
+    // Stadt-Einfall (einfallAktiv) behält seine bewusste Slow-Motion.
+    const kampfTempo = this.einfallAktiv ? TUNING.kryptaTempo : 1;
     this.updateCombat(dt * kampfTempo);
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
     this.updateWetter(dt);      // Wetter-Achse (Regen/Nässe, Stimmungsregen bis 1. Dungeon)
@@ -11073,14 +11079,14 @@ export class WorldScene extends CombatScene {
     if (this.hackCdMs > 0) this.hackCdMs = Math.max(0, this.hackCdMs - dt * 1000); // Schlag-Pause (R90)
     this.updateHackBalken(dt);   // Lebensbalken + Schlag-Fortschritt (R93)
     this.updateBauBalken();      // Feldbau-Lebensbalken (R94)
-    this.updateRtsHeld(dt * kampfTempo);      // Einheitensteuerung im RTS-Modus (R94), Dungeon-Tempo (R103)
+    this.updateRtsHeld(dt * kampfTempo);      // Einheitensteuerung im RTS-Modus (R94); im RTS Echtzeit (R131, keine Slow-Motion)
     this.updateWachwerden();     // R100b: passive Einheiten wecken, wenn Gegner nah
     this.updateBelagerung(dt);   // R100: Monster nagen an Wehrbauten (Bunker)
     this.updateTurmBesatzung();  // R100: Turm-Insassen unsichtbar + Symbol
     if (this.rtsBattle) {
       // R97: Schlachtführer (Held) tot -> Schlacht verloren, Truppe flieht.
       if (this.playerDead && !this.rtsBattle.verloren) { this.rtsBattle.schlachtVerloren(); this.logMsg('SCHLACHT VERLOREN - der Schlachtführer ist gefallen, die Banner sinken.', 'bad'); }
-      this.rtsBattle.update(dt * kampfTempo); this.rtsBattle.zeichneOverlay();   // R103: Formations-Tempo = Dungeon-Tempo
+      this.rtsBattle.update(dt * kampfTempo); this.rtsBattle.zeichneOverlay();   // R131: Formationen in Echtzeit (keine Slow-Motion)
       this.wendeFeldschmiedeAn(dt);
       if (this.wartfeuerCd > 0) this.wartfeuerCd -= dt;
     }

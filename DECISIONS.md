@@ -1706,3 +1706,17 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Geschichte, Dedup fuer 'kampf' deaktiviert (gleiche Zahl darf mehrfach kommen).
 - tsc sauber, 293 Tests gruen, Hauptmenue bootet fehlerfrei (Playwright-Smoke,
   keine JS-Fehler). NAECHSTES PAKET: RTS-Modus ohne Zeitlupe (#14).
+
+## R131b - RTS-Modus ohne Slow-Motion (Autor)
+- Autor: "wenn ich den RTS-Modus anschalte läuft alles langsamer, alles wie in
+  Zeitlupe, auch die Pfeile - das war nicht der Sinn, Held und Monster sollen
+  sich wie in den Dungeons bewegen." R103 hatte die GANZE RTS-Schlacht per
+  globalem dt*kryptaTempo verlangsamt (Bullet-Time auf Held, Monster, Geschosse).
+- FIX: zwei getrennte Mechaniken sauber getrennt.
+  1. kampfTempo (globales dt) NICHT mehr fuer rtsBattle - nur noch fuer den
+     grossen Stadt-Einfall (einfallAktiv). RTS: Monster + Geschosse in Echtzeit.
+  2. areaSpeedFactor() gibt im RTS-Gefecht (this.rtsBattle) kryptaTempo zurueck -
+     nur das HELDEN-Tempo ist dungeon-bedaechtig, dt bleibt Echtzeit.
+  So bewegt sich der Held wie im Dungeon, aber Pfeile/Monster laufen normal.
+- tsc sauber, 293 Tests gruen. Im Browser: WorldScene bootet fehlerfrei; das
+  RTS-Gefecht selbst nicht headless durchgespielt (Autor bitte im Spiel gegenfuehlen).
