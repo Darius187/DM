@@ -118,6 +118,20 @@ export class Haus3DWelt {
     this.dirty = true;
   }
 
+  // Groesse aendern (settings.haus3d.skala) und persistent speichern.
+  skalieren(dSkala: number): void {
+    const p = this.params();
+    p.skala = Math.max(0.2, Math.min(4, +(p.skala + dSkala).toFixed(2)));
+    getSettings().haus3d = p; saveSettings();
+    this.neuEinpassen();
+  }
+
+  // Position/Groesse aus footX/footY + settings neu anwenden (nach Skala/Versatz).
+  neuEinpassen(): void {
+    this.setPosition(this.footX, this.footY);
+    this.dirty = true;
+  }
+
   destroy(): void {
     this.zerstoert = true;
     this.platzhalter?.destroy();

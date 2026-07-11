@@ -2119,6 +2119,20 @@ export class WorldScene extends CombatScene {
       knopf(160, 44, 'H +', false, () => this.dorfGroesse(sel, 0, 1)); y += 28;
       knopf(8, 94, '✎ Umbenennen', false, () => this.dorfUmbenennen(sel));
       knopf(106, 94, '🗑 Löschen', false, () => this.dorfLoeschen(sel), '#e0704a'); y += 28;
+      // R131c: Steuerung des 3D-Zimmermannshauses direkt an seiner Box N1 -
+      // Drehen + Größe live im Editor, wird in settings.haus3d gespeichert.
+      if (sel.id === WorldScene.HAUS_HOST_BOX && this.hausZimmermann) {
+        const hp = getSettings().haus3d;
+        add(this.add.text(8, y, `3D-Haus  ·  Drehung ${Math.round(hp?.yaw ?? 0)}°  ·  Größe ${(hp?.skala ?? 1).toFixed(2)}×`, { fontFamily: 'serif', fontSize: '10px', color: '#c9a227', wordWrap: { width: w - 16 } })); y += 16;
+        knopf(8, 44, '⟲ −15°', false, () => { this.hausZimmermann?.drehen(-15); this.baueDorfToolbar(); });
+        knopf(56, 44, '⟳ +15°', false, () => { this.hausZimmermann?.drehen(15); this.baueDorfToolbar(); });
+        knopf(112, 44, '⟲ −1°', false, () => { this.hausZimmermann?.drehen(-1); this.baueDorfToolbar(); });
+        knopf(160, 44, '⟳ +1°', false, () => { this.hausZimmermann?.drehen(1); this.baueDorfToolbar(); }); y += 28;
+        knopf(8, 44, 'Haus −', false, () => { this.hausZimmermann?.skalieren(-0.1); this.baueDorfToolbar(); });
+        knopf(56, 44, 'Haus +', false, () => { this.hausZimmermann?.skalieren(0.1); this.baueDorfToolbar(); });
+        knopf(112, 44, 'G −', false, () => { this.hausZimmermann?.skalieren(-0.02); this.baueDorfToolbar(); });
+        knopf(160, 44, 'G +', false, () => { this.hausZimmermann?.skalieren(0.02); this.baueDorfToolbar(); }); y += 28;
+      }
       add(this.add.rectangle(6, y + 2, w - 12, 1, 0x4a3a26).setOrigin(0)); y += 8;
     } else {
       add(this.add.text(8, y, 'Box antippen = wählen & verschieben.', { fontFamily: 'serif', fontSize: '9px', color: '#6a5f4c', wordWrap: { width: w - 16 } })); y += 16;
