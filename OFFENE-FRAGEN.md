@@ -262,3 +262,18 @@ bei reference/menue-vorlage-1300.png geschehen).
 4x laenglich (196x120) ist umgesetzt. Der Autor ueberlegt 6x laenglich
 (240x147). ZWISCHENLOESUNG: 4x aktiv; Umschalten = eine Zeile in
 src/world/hoehlenDungeon.ts (W/H). In der DUNGEON-PROBE (V4) begutachten.
+
+## 30. 3D-Haus-GLB: Material-Farben & Kollisions-Zentren fehlen im Export (R131c)
+Der gelieferte GLB (medieval_carpenter_house_3d_runtime.glb) hat KEINE Texturen und
+bei 16 von 20 Materialien die Grundfarbe = reines Weiss - das Haus wuerde sonst
+komplett weiss/ueberbelichtet rendern. Ausserdem sind alle collision_guides-Zentren
+in der Runtime-JSON auf 0 gesetzt (nur die Groessen stehen drin), und die
+COLLISION_/NAV_-Knoten liegen nicht im GLB.
+ZWISCHENLOESUNG (laeuft, sieht gut aus):
+ - Material-Farben nach Namen getintet (src/data/hausMaterial.ts, in einer Datei
+   aenderbar) - dunkle Eiche, Lehm-Gefach, Schindeln, Feldstein.
+ - Kollision = mitdrehender Grundriss-Footprint aus bounds_blender (kein per-Wand).
+FRAGE: Kannst du das GLB mit echten Material-Farben/Texturen UND echten
+collision_guide-Zentren neu exportieren (Codex)? Dann fallen Tinting + Footprint-
+Naeherung weg und wir bekommen exakte Wand-Kollisionen. Bis dahin bleibt die
+Zwischenloesung aktiv.

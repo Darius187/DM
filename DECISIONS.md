@@ -1388,3 +1388,31 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   mausLeisteAnkerX/hotbarMitteX/tastenLeisteMitteX) + Hud-API (update,
   belegeBeiPunkt, klickBlockiert) erhalten. tsc sauber, 271 Tests gruen
   (Codex 262 auf aelterer Basis), im Browser flach + fehlerfrei verifiziert.
+
+## R131c - Drehbares 3D-Zimmermannshaus live ins Spiel (Codex-GLB)
+- Primaerpfad wie im Manifest gefordert: three.js GLTFLoader rendert das GLB LIVE
+  in eine Leinwand, Phaser blendet sie als Textur ein (Muster wie propBackofen,
+  nur laufend). Kein gebackenes PNG als Endergebnis. Modul: src/demo3d/hausRuntime.ts.
+- Steuerung strikt nach medieval_carpenter_house_3d_runtime.json: Hausdrehung ueber
+  Wrapper-Group.rotation.y (stufenlos 0-360), Ortho-Kamera-Orbit (Hoehe 18-78°,
+  Azimut 0-360°, Zoom 0.55-2.4), Root-Pivot HOUSE_ROTATION_PIVOT, Tueren ueber die
+  beiden Hinge-Animationen, Dach/Cutaway datengetrieben ueber die glTF-extras
+  (roof_removable / cutaway_near_wall pro Knoten), transparente Fenster erhalten
+  (KHR_materials_transmission). Ansehen/Drehen in der neuen HAUS-PROBE (Menue).
+- MATERIAL-FARBEN (Bruecke fuer Export-Fehler): der GLB hat 20 Materialien, aber
+  KEINE Texturen und bei 16 die Grundfarbe = reines Weiss (auch OAK_HANDHEWN_DARK).
+  Das Haus rendert dadurch weiss. Loesung: namensbasierte Farbtabelle in
+  src/data/hausMaterial.ts (dunkle Eiche, Lehm-Gefach, Schindeln, Feldstein). Faithful
+  zu den Materialnamen, in EINER Datei tunebar. Materialien mit echter Farbe (Stroh,
+  Eisen, Hanf, Glas) bleiben unberuehrt. -> Frage an den Autor in OFFENE-FRAGEN.
+- KOLLISION: die collision_guides der Runtime-JSON haben alle Zentren = 0 (im Export
+  verloren) und liegen NICHT als Knoten im GLB. Darum dreht ein Grundriss-Footprint
+  aus bounds_blender mit dem Yaw (Manifest-Regel: X/Y um (0,0) rotieren). Reicht fuer
+  eine platzierte Kulisse, um die man herumlaeuft; per-Wand-Kollision braucht einen
+  Re-Export mit echten Zentren (OFFENE-FRAGEN).
+- Verifiziert im Browser (Playwright): Haus laedt, dreht stufenlos, Kamera/Zoom,
+  Tueren auf/zu, Dach weg (Innenansicht), Cutaway, Footprint dreht mit - keine
+  JS-Fehler. tsc sauber. Screenshots im Bericht.
+- BRANCH: codex/rotatable-3d-carpenter-house (Autor-Vorgabe). ACHTUNG: der frueher
+  auf claude/inspiring-planck angelegte Atlas-Platzhalter ("Zimmermannshaus (Atlas
+  fehlt)") liegt NICHT auf diesem Branch - hier gab es nichts zu entfernen.
