@@ -33,26 +33,26 @@
   },
   "bounds_blender": {
     "min": [
-      -6.1,
+      -4.81,
       -6.05145,
       -0.2024
     ],
     "max": [
-      7.5,
-      5.5,
+      6.44263,
+      4.82,
       9.7011
     ],
     "center": [
-      0.7,
-      -0.27572,
+      0.81631,
+      -0.61572,
       4.74935
     ],
     "size": [
-      13.6,
-      11.55145,
+      11.25263,
+      10.87145,
       9.90351
     ],
-    "bounding_radius": 10.20386
+    "bounding_radius": 9.25864
   },
   "interactions": {
     "front_door_node": "DOOR_FRONT_MAIN_HINGE",
@@ -1673,7 +1673,64 @@
   },
   "materials": {
     "windows_transparent": true,
-    "procedural_blender_materials_are_approximated_by_gltf_pbr": true,
-    "authoritative_high_detail_look": "Blender source and PNG renders"
+    "all_visible_materials_have_embedded_basecolor_textures": true,
+    "procedural_blender_materials_are_approximated_by_gltf_pbr": false,
+    "authoritative_high_detail_look": "this GLB and the textured Blender runtime source",
+    "runtime_tinting_allowed": false,
+    "external_texture_files_required": false,
+    "used_materials": [
+      "MAT_FIREWOOD_BARK",
+      "MAT_FIREWOOD_ENDGRAIN",
+      "MAT_FORGED_IRON",
+      "MAT_GLASS_DARK_HANDMADE",
+      "MAT_HEMP_ROPE",
+      "MAT_INTERIOR_LIME_PLASTER",
+      "MAT_LIME_CLAY_INFILL",
+      "MAT_LIME_CLAY_INFILL_REPAIRED",
+      "MAT_LIME_CLAY_INFILL_SMOKED",
+      "MAT_LIME_CLAY_INFILL_WARM",
+      "MAT_LIME_MORTAR",
+      "MAT_LOCAL_RUBBLE_STONE",
+      "MAT_LOCAL_RUBBLE_STONE_ALT",
+      "MAT_OAK_FRESH_CUT",
+      "MAT_OAK_HANDHEWN_DARK",
+      "MAT_OAK_HANDHEWN_MID",
+      "MAT_SHINGLE_WEATHERED_A",
+      "MAT_SHINGLE_WEATHERED_B",
+      "MAT_SHINGLE_WEATHERED_C",
+      "MAT_STRAW"
+    ],
+    "texture_count": 20
+  },
+  "renderer_recipe": {
+    "threejs_output_color_space": "SRGBColorSpace",
+    "tone_mapping": "ACESFilmicToneMapping",
+    "tone_mapping_exposure": 1.0,
+    "shadows": true,
+    "do_not_replace_materials_or_apply_name_based_tints": true
+  },
+  "walkable_interior": {
+    "enabled": true,
+    "ground_floor_nav": "NAV_GROUND_FLOOR_WALKABLE",
+    "upper_floor_nav": "NAV_UPPER_FLOOR_WALKABLE",
+    "workshop_nav": "NAV_WORKSHOP_WALKABLE",
+    "front_entry_nav": "NAV_ENTRY_WALKABLE",
+    "stairs_collision": "COLLISION_STAIR_RUN",
+    "stairs_upper_exit": "SPAWN_UPPER_STAIR_EXIT",
+    "front_entry_trigger": "TRIGGER_FRONT_DOOR_ENTER",
+    "front_exit_trigger": "TRIGGER_FRONT_DOOR_EXIT",
+    "collision_guides_are_json_only_not_visible_glb_meshes": true
+  },
+  "no_global_ground_plate": true,
+  "integration_contract": {
+    "load_with": "Three.js GLTFLoader",
+    "rotate": "rotate HOUSE_ROTATION_PIVOT around Three.js Y",
+    "collisions": "build physics from collision_guides and rotate around the same pivot",
+    "doors": "play exported actions or tween the named hinge nodes",
+    "forbidden": [
+      "PNG replacement",
+      "rotation atlas as primary",
+      "name-based material tinting"
+    ]
   }
 }
