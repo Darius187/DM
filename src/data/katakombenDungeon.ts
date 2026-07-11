@@ -10,7 +10,10 @@
 //   ebenen:  einzelne Krypta-Ebenen, z.B. [3] -> Ebene 3 nutzt den Generator
 //   abEbene: alle Ebenen ab dieser Tiefe, z.B. 4 -> Ebene 4,5,6,... (null = aus)
 export const KATAKOMBEN_EINSATZ = {
-  ebenen: [] as number[],
+  // R128b (Autor): die Katakomben sind FEST die neue Ebene 1. Die alte
+  // Krypta-E1 rückt dahinter auf Ebene 2, die klassische Kette eine Ebene
+  // tiefer (kryptaVersatzUnter) - es gibt jetzt eine Ebene mehr.
+  ebenen: [1] as number[],
   abEbene: null as number | null,
 };
 
@@ -20,6 +23,32 @@ export const V9_EINSATZ = {
   ebenen: [] as number[],
   abEbene: null as number | null,
 };
+
+// R128b: Eingeschobene Sonder-Ebenen (Katakomben/V9) schieben die KLASSISCHE
+// Krypta-Kette nach unten, statt sie zu ersetzen. versatzUnter(n) zählt die
+// Sonder-Ebenen unterhalb von n; die klassische Karte für Ebene n ist dann
+// buildCrypt(n - versatzUnter(n)). abEbene-Betrieb ist davon unberührt
+// (ab dort ist ohnehin ALLES Sonder-Generator).
+export function kryptaVersatzUnter(n: number): number {
+  const sonder = new Set([...KATAKOMBEN_EINSATZ.ebenen, ...V9_EINSATZ.ebenen]);
+  let v = 0;
+  for (const e of sonder) if (e < n) v++;
+  return v;
+}
+
+// Auf welcher ECHTEN Ebene liegt die klassische Krypta-Stufe k?
+// (z. B. klassisch 5 = Grab-Vorstufe -> mit Katakomben auf 1 liegt sie auf 6)
+export function ebeneFuerKlassik(k: number): number {
+  const sonder = new Set([...KATAKOMBEN_EINSATZ.ebenen, ...V9_EINSATZ.ebenen]);
+  let n = k;
+  for (let i = 0; i < 24; i++) {
+    let ziel = k;
+    for (const e of sonder) if (e <= n) ziel++;
+    if (ziel === n) return n;
+    n = ziel;
+  }
+  return n;
+}
 
 // --- GENERATOR-MASSE ----------------------------------------------------------
 // Aktuelle Krypta ist 44x44 (=1936 Kacheln). "Ca. 3x so gross" -> 84x70 (=5880).

@@ -6,6 +6,7 @@ import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir, angleToDir8, type EnemyHost } from '../world/Enemy';
 import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildWaldWest, buildWaldSuedOst, buildBurg, buildWaldNord, buildWaldMitte, buildLager, buildStadt2, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn, type Abbaubar } from '../world/areagen';
 import { katakombenAktivFuer, buildKatakombenKrypta } from '../world/katakombenKrypta';
+import { kryptaVersatzUnter, ebeneFuerKlassik } from '../data/katakombenDungeon';
 import { v9AktivFuer, buildV9Krypta } from '../world/v9Krypta';
 import { KATAKOMBEN_EINSATZ } from '../data/katakombenDungeon';
 import {
@@ -1612,9 +1613,20 @@ export class WorldScene extends CombatScene {
     else if (id === 'stadt2') a = buildStadt2(rng);
     else if (id === 'goldmine') a = buildGoldmine(rng);
     else {
-      // R102: Katakomben-Generator je Ebene per Konfig (KATAKOMBEN_EINSATZ, Standard AUS)
+      // R102: Katakomben-Generator je Ebene per Konfig (KATAKOMBEN_EINSATZ).
+      // R128b (Autor): Sonder-Ebenen ERSETZEN die klassische Krypta nicht mehr,
+      // sie schieben sie nach unten - die alte E1 liegt jetzt auf Ebene 2 usw.
       const nr = parseInt(id.replace('crypt', ''), 10);
-      a = v9AktivFuer(nr) ? buildV9Krypta(nr, rng) : katakombenAktivFuer(nr) ? buildKatakombenKrypta(nr, rng) : buildCrypt(nr, rng);
+      if (v9AktivFuer(nr)) a = buildV9Krypta(nr, rng);
+      else if (katakombenAktivFuer(nr)) a = buildKatakombenKrypta(nr, rng);
+      else {
+        const klassik = nr - kryptaVersatzUnter(nr);
+        a = buildCrypt(klassik, rng);
+        // Kette + Anzeige folgen der ECHTEN Ebene; der Inhalt bleibt 1:1 die
+        // klassische Karte (alte E1 unverändert, nur eine Ebene tiefer).
+        a.id = `crypt${nr}`;
+        a.depth = nr;
+      }
     }
     this.areas.set(id, a);
     return a;
@@ -1704,7 +1716,7 @@ export class WorldScene extends CombatScene {
     this.banishZones = [];
     // Etage oben immer mitzeigen (Runde 40, Autorwunsch "damit man immer weiß,
     // auf welcher Etage man ist"): Krypta-Ebenen tragen ihre Tiefe als EBENE n.
-    const ebeneText = a.id.startsWith('crypt') ? ` · EBENE ${a.depth}` : a.id === 'boss' ? ' · EBENE 6' : '';
+    const ebeneText = a.id.startsWith('crypt') ? ` · EBENE ${a.depth}` : a.id === 'boss' ? ` · EBENE ${ebeneFuerKlassik(5) + 1}` : '';
     this.areaText.setText(a.name.toUpperCase() + ebeneText);
     this.sfx.play('gebietswechsel');
     this.sfx.stopLoops();
@@ -8877,12 +8889,15 @@ export class WorldScene extends CombatScene {
       };
     }
     if (tid === T.STAIR) {
-      const indieTiefe = this.area.id === 'boss' || this.area.depth > 5;
+      // R128b: die Grab-Vorstufe ist KLASSISCH Ebene 5 - mit eingeschobenen
+      // Sonder-Ebenen (Katakomben auf 1) liegt sie eine Ebene tiefer.
+      const grab = ebeneFuerKlassik(5);
+      const indieTiefe = this.area.id === 'boss' || this.area.depth > grab;
       // Ziel-Etage immer benennen (Runde 40, Autorwunsch "bei der Treppe soll
       // immer das Level stehen")
       const idA = this.area.id;
       const zielAb = idA === 'kirchenschiff' ? 'Ebene 1'
-        : idA === 'crypt5' ? 'Grab des Kreuzritters'
+        : idA === `crypt${grab}` ? 'Grab des Kreuzritters'
         : indieTiefe ? `Endlose Tiefe, Ebene ${this.area.depth + 1}`
         : idA.startsWith('crypt') ? `Ebene ${parseInt(idA.replace('crypt', ''), 10) + 1}` : 'hinab';
       return {
@@ -8897,8 +8912,8 @@ export class WorldScene extends CombatScene {
           // Letzter Abstieg vor dem Boss: direkt in die Boss-Arena - ihr
           // Vorhof IST der Blutstrom (man watet mit der echten Waffe hindurch,
           // nahtlos, dann fällt das Tor hinter einem zu). Runde 41.
-          else if (id === 'crypt5') this.goArea('boss');
-          else if (id === 'boss') this.goArea('crypt6');
+          else if (id === `crypt${grab}`) this.goArea('boss');
+          else if (id === 'boss') this.goArea(`crypt${grab + 1}`);
           else if (id.startsWith('crypt')) this.goArea(`crypt${parseInt(id.replace('crypt', ''), 10) + 1}`);
         },
       };
@@ -8922,9 +8937,10 @@ export class WorldScene extends CombatScene {
       if (idU === 'boss' && this.bossTorZu && this.bossKampfSteht()) {
         return { text: 'Das Tor ist versiegelt - bis der Templer fällt.', action: () => { this.logMsg('Das Tor gibt nicht nach. Erst muss der Templer fallen.', 'bad'); this.sfx.play('fehler'); } };
       }
+      const grabAuf = ebeneFuerKlassik(5);   // R128b: Grab-Vorstufe dynamisch
       const zielAuf = idU === 'crypt1' ? 'Kirche St. Marien'
-        : idU === 'boss' ? 'Ebene 5'
-        : idU === 'crypt6' ? 'Grab des Kreuzritters'
+        : idU === 'boss' ? `Ebene ${grabAuf}`
+        : idU === `crypt${grabAuf + 1}` ? 'Grab des Kreuzritters'
         : idU.startsWith('crypt') ? `Ebene ${parseInt(idU.replace('crypt', ''), 10) - 1}` : 'hinauf';
       return {
         text: `Treppe hinauf zu ${zielAuf} - ${ik} zum Hinaufsteigen`,

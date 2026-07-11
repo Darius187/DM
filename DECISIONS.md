@@ -1619,3 +1619,18 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   bleibt als bewusste Option in der Licht-Werkbank (Taste L, "Dungeon-
   Wandschatten"). Verifiziert im Browser: Krypta E1 + Goldhoehle zeigen wieder
   weiche warme Lichtkreise. tsc sauber, 285 Tests gruen.
+- R128b Alte E1 wieder eingereiht (Autor: "du hast E1 ersetzt - lass es so,
+  aber pack die alte E1-Karte dahinter, dann gibt es mehr Ebenen"): URSACHE
+  der "neuen E1" gefunden - der F10-Testknopf "Katakomben-Dungeon betreten
+  (Ebene 1, Test)" schaltet KATAKOMBEN_EINSATZ.ebenen auf [1]; wer ihn drueckt,
+  bekommt fortan die Katakomben-Karte als crypt1 (Session/Spielstand). JETZT
+  OFFIZIELL: KATAKOMBEN_EINSATZ.ebenen = [1] fest (Katakomben = Ebene 1), und
+  Sonder-Ebenen ERSETZEN die klassische Kette nicht mehr, sondern SCHIEBEN sie
+  nach unten: kryptaVersatzUnter/ebeneFuerKlassik (data/katakombenDungeon.ts),
+  getArea baut crypt(n) als buildCrypt(n - versatz) mit id/depth = n. Ergebnis:
+  crypt1 = Katakomben-Gewoelbe (84x70), crypt2 = ALTE E1 (Krypta - Gruft,
+  44x44, Inhalt 1:1), crypt3 = Beinhaus, ..., Grab-Vorstufe (klassisch 5)
+  liegt auf Ebene 6 - alle Hardcodes (crypt5->boss, boss->crypt6, Treppen-
+  Labels, EBENE-6-Anzeige, Endlos-Tiefe) dynamisch ueber ebeneFuerKlassik(5).
+  3 neue Tests (Versatz + Grab-Ebene). E2E im Browser: Kette crypt1..crypt6
+  mit korrekten Namen/Groessen/Tiefen verifiziert. 288 Tests gruen.
