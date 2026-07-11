@@ -59,6 +59,7 @@ import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
 import { hoehleTextur, hoehleKante, hoeheFelsWand, vorkommenTextur, KANTE_DICKE } from '../gfx/hoehlenArt';
 import { HoehlenLeben } from '../gfx/hoehlenLeben';
+import { KriegsnebelAnzeige, type SichtSet } from '../systems/kriegsnebel';
 import { HausAtlas } from '../gfx/hausAtlas';
 import { MINE } from '../data/mine';
 import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
@@ -236,6 +237,8 @@ export class WorldScene extends CombatScene {
   private lichtPanel?: LichtPanel;                  // Licht-Werkbank (Taste L), live + persistent
   private lightRT!: Phaser.GameObjects.RenderTexture;
   private hoehlenLeben: HoehlenLeben | null = null;   // R127g: Tropfen/Glitzern in der Mine
+  private kriegsnebel: KriegsnebelAnzeige | null = null;   // R129: echter Fog of War (dunkle Ebenen)
+  private nebelGedaechtnis = new Map<string, SichtSet>();  // erkundete Kacheln je Ebene (Session)
   private hausZimmermann: HausAtlas | null = null;   // R127h: Atlas-Haus (haengt an Box N1)
   private static readonly HAUS_HOST_BOX = 'N1';
   private warmPool: Phaser.GameObjects.Image[] = [];
@@ -1821,6 +1824,20 @@ export class WorldScene extends CombatScene {
     // R127g: LEBEN der Höhlen-Mine (Tropfen, Pfützen, Gold-Glitzern). Die
     // Dunkelheit macht die lightRT (Heldenlaterne + Grubenfackeln) - hier nur
     // die Atmosphäre. Bei jedem Gebietswechsel frisch, in anderen Gebieten aus.
+    // R129: Kriegsnebel je dunkler Ebene - das Gedächtnis (erkundete Kacheln)
+    // überlebt den Ebenen-Wechsel in der Session (nebelGedaechtnis je Area-Id).
+    this.kriegsnebel?.destroy();
+    this.kriegsnebel = null;
+    if (a.dark) {
+      let erkundet = this.nebelGedaechtnis.get(a.id);
+      if (!erkundet) { erkundet = new Set(); this.nebelGedaechtnis.set(a.id, erkundet); }
+      this.kriegsnebel = new KriegsnebelAnzeige(this, {
+        tile: TILE, breite: a.w, hoehe: a.h, erkundet,
+        istSolid: (tx, ty) => { const t = a.map[ty]?.[tx]; return t === undefined || SOLID.has(t); },
+        erinnerungsAlpha: () => 1 - (getSettings().licht.nebelErinnerung ?? 45) / 100,
+        ignoriere: (o) => this.uiCam?.ignore(o),
+      });
+    }
     this.hoehlenLeben?.destroy();
     this.hoehlenLeben = null;
     if (a.hoehlenOptik) {
@@ -10994,6 +11011,13 @@ export class WorldScene extends CombatScene {
     this.updateWetterNebel();   // R113: Schwaden nach dem Regen
     this.updateSpuren(dt);      // R113: Fussabdruecke + Blut am Helden
     this.hoehlenLeben?.update(dt);   // R127g: Tropfen/Pfützen/Gold-Glitzern (Mine)
+    // R129: Kriegsnebel (Schalter in der Licht-Werkbank). Sichtweite = dieselbe
+    // Basis wie der Lichtkreis in dunklen Ebenen (235 + Licht-Stat).
+    if (this.kriegsnebel) {
+      const an = getSettings().licht.kriegsnebel ?? true;
+      this.kriegsnebel.setVisible(an);
+      if (an) this.kriegsnebel.update(this.px, this.py, 235 + this.p.stats.licht, this.cameras.main.worldView);
+    }
     this.updateLagerfeuer(dt);  // eigenes Feuer heilt in der Nähe (R81, Baumenü)
     this.updateBaustellen(dt);  // RTS-Platzierung + Bauzeit-Fortschritt (R88)
     this.updatePflanzenRespawn(dt); // Heilpflanzen wachsen nach (R89)

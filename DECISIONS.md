@@ -1641,3 +1641,21 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   verschiebe() verschiebt x0/oben/viewTop + alle Regler-X + Titeltext, Y laeuft
   ueber viewTop automatisch mit, auf dem Schirm geklemmt. tsc sauber, 288 Tests
   gruen, im Browser: Panel per Titel gezogen (980/90 -> 580/270), gespeichert.
+- R129 ECHTER KRIEGSNEBEL (Autor: "den gelben Bereich duerfte ich gar nicht
+  sehen - Sichtweite dimmt nur alles, kein echter Fog of War"): Diagnose
+  bestaetigt - das weiche Licht hat KEINE Sichtlinienpruefung (Fackeln decken
+  Raeume hinter Waenden auf) und KEIN Gedaechtnis (Sichtweite = globaler
+  Dimmer). NEU src/systems/kriegsnebel.ts: berechneSicht (reiner, getesteter
+  Kern - Bresenham-Strahl je Kachel, Waende selbst sichtbar, blocken dahinter)
+  + KriegsnebelAnzeige (Schleier UEBER dem weichen Licht, Depth 4050 ueber
+  lightRT 4000 und Warm-Glows 4010, unter HUD): nie gesehen = schwarz (auch
+  Fackel-Glows scheinen NICHT durch), gerade sichtbar = frei, erkundet =
+  gedaempfte Erinnerung (Regler nebelErinnerung, Default 45). Gedaechtnis je
+  Ebene in der Session (nebelGedaechtnis Map in WorldScene). Schalter
+  licht.kriegsnebel (Default AN) + Regler in der Licht-Werkbank; das weiche
+  Licht selbst ist unangetastet. Zeichnung nur im Kamera-Ausschnitt mit
+  Zeilen-Lauf-Zusammenfassung (Perf). 3 Kern-Tests. E2E im Browser (crypt2,
+  Autor-Szenario): Nebenraeume schwarz, Erinnerung gedimmt, Sicht folgt den
+  Waenden. OFFEN (ehrlich): Gedaechtnis wird noch NICHT im Spielstand
+  gespeichert (nur Session) und die Minimap zeigt weiter alles - beides als
+  Folgeschritt, wenn der Autor den Nebel so abnimmt.

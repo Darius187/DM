@@ -62,6 +62,9 @@ export class LichtPanel {
     // ===== DUNGEON =====
     this.header('DUNGEON (Fackeln / Sicht)');
     this.toggle(() => `Wand-Schatten: ${L().dungeonNeu ? 'AN' : 'aus'}`, () => { L().dungeonNeu = !L().dungeonNeu; });
+    // R129: echter Kriegsnebel (Sichtlinie + Erkundungs-Gedächtnis)
+    this.toggle(() => `Kriegsnebel (Sichtlinie): ${(L().kriegsnebel ?? true) ? 'AN' : 'aus'}`, () => { L().kriegsnebel = !(L().kriegsnebel ?? true); });
+    this.slider('Nebel-Erinnerung (Erkundetes)', 0, 100, () => L().nebelErinnerung ?? 45, (v) => { L().nebelErinnerung = v; });
     this.slider('Dungeon-Dunkelheit', 0, 100, () => getSettings().dungeonStaerke, (v) => { getSettings().dungeonStaerke = v; });
     this.slider('Umgebungslicht (Wände sichtbar)', 0, 100, () => L().umgebungslicht, (v) => { L().umgebungslicht = v; });
     this.slider('Licht-Helligkeit (Master)', 0, 100, () => L().lichtHelligkeit, (v) => { L().lichtHelligkeit = v; });
