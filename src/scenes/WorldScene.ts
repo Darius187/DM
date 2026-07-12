@@ -2556,7 +2556,11 @@ export class WorldScene extends CombatScene {
       // REFLEXION (Sprite mit setFlipX gespiegelt, nicht punktgespiegelt): die
       // Baum-Silhouette legt sich seitlich weg vom Licht, morgens nach Westen,
       // abends nach Osten, mit tiefer Sonne lang. Kein "Kopfüber"-Klon mehr.
-      const rot = Math.PI - L.dir * (0.55 + (1 - L.hoehe) * 0.5);
+      // R134 (Autor-Referenzbild): die Sonne scheint VON VORN - der Schatten
+      // faellt HINTER den Baum (nach Norden, Basis PI) und kippt mit dem
+      // Sonnenstand nur noch LEICHT zur Seite. Er bleibt beweglich (Boeen-
+      // Welle unten) und wird bei tiefer Sonne weiterhin lang.
+      const rot = Math.PI - L.dir * 0.18;
       const lenF = 0.55 + (1 - L.hoehe) * 0.95;
       for (const s of this.baumSchatten) {
         if (!s.img.active) continue;
@@ -2775,7 +2779,9 @@ export class WorldScene extends CombatScene {
       p.img.setDisplaySize(p.bw * (0.7 + 0.3 * p.cur), p.bh * (0.7 + 0.3 * p.cur));
       // DEZENTE Tropfen-Ringe auf gefüllten Pfützen bei Regen (dorfSim-Art,
       // Autorwunsch R77): feine Lichtkante, die kurz aufläuft und vergeht.
-      if (this.regnet && p.cur > 0.5 && Math.random() < dt * (2.2 + 4 * this.wetterWert)) {
+      // R134 (Autor "mehr Ringe beim Eintreffen der Regentropfen"): deutlich
+      // dichtere Tropfen-Ringe je Pfuetze, mit dem Wetter anschwellend.
+      if (this.regnet && p.cur > 0.5 && Math.random() < dt * (6 + 11 * this.wetterWert)) {
         const key = 'regenring';
         if (!this.textures.exists(key)) {
           const c = document.createElement('canvas'); c.width = c.height = 32;
@@ -2787,7 +2793,7 @@ export class WorldScene extends CombatScene {
         const rx = p.img.x + (Math.random() - 0.5) * p.bw * 0.5;
         const ry = p.img.y + (Math.random() - 0.5) * p.bh * 0.5;
         const ring = this.add.image(rx, ry, key).setDepth(-8.4).setAlpha(0.38).setScale(0.12 + Math.random() * 0.1);
-        this.tweens.add({ targets: ring, scale: 0.5 + Math.random() * 0.5, alpha: 0, duration: 700, ease: 'Quad.easeOut', onComplete: () => ring.destroy() });
+        this.tweens.add({ targets: ring, scale: 0.5 + Math.random() * 0.5, alpha: 0, duration: 500 + Math.random() * 400, ease: 'Quad.easeOut', onComplete: () => ring.destroy() });
       }
     }
   }
@@ -4105,12 +4111,20 @@ export class WorldScene extends CombatScene {
       if (p.cur < 0.5 || !p.img.active) continue;
       const dx = (this.px - p.img.x) / (p.img.displayWidth * 0.5), dy = (this.py - p.img.y) / (p.img.displayHeight * 0.5);
       if (dx * dx + dy * dy < 1) {
-        this.spritzerT = 0.1;
-        this.fx.burst(this.px, this.py + 8, 0x9ab8cc, 6, 80);
+        // R134 (Autor "beim Drueberlaufen mehr Ringe, wie natuerliches Laufen
+        // durch die Pfuetze"): jeder Schritt wirft eine SALVE gestaffelter
+        // Ringe um die Fuesse (leicht versetzt, unterschiedlich gross) plus
+        // Spritzer - dichterer Takt als vorher.
+        this.spritzerT = 0.07;
+        this.fx.burst(this.px, this.py + 8, 0x9ab8cc, 8, 90);
         if (this.textures.exists('regenring')) {
-          for (const [sc, dauer] of [[0.9, 520], [0.55, 380]] as const) {
-            const ring = this.add.image(this.px, this.py + 8, 'regenring').setDepth(-8.3).setAlpha(0.45).setScale(0.18);
-            this.tweens.add({ targets: ring, scale: sc, alpha: 0, duration: dauer, onComplete: () => ring.destroy() });
+          const salve: ReadonlyArray<readonly [number, number, number]> = [
+            [1.0, 620, 0], [0.7, 480, 60], [0.45, 380, 120], [0.3, 300, 180],
+          ];
+          for (const [sc, dauer, verzoegerung] of salve) {
+            const ox = (Math.random() - 0.5) * 10, oy = (Math.random() - 0.5) * 5;
+            const ring = this.add.image(this.px + ox, this.py + 8 + oy, 'regenring').setDepth(-8.3).setAlpha(0.5).setScale(0.14);
+            this.tweens.add({ targets: ring, scale: sc, alpha: 0, duration: dauer, delay: verzoegerung, ease: 'Quad.easeOut', onComplete: () => ring.destroy() });
           }
         }
         return;

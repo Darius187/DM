@@ -52,21 +52,56 @@ function grasBase(ctx: Ctx, n: number): void {
   for (let i = 0; i < 3; i++) { const x = (i * 11 + n * 7) % 30, y = (i * 19 + n * 5) % 30; ctx.beginPath(); ctx.ellipse(x, y, 4, 3, 0, 0, 6.283); ctx.fill(); }
   ctx.fillStyle = 'rgba(78,102,56,0.16)';
   for (let i = 0; i < 3; i++) { const x = (i * 17 + n * 13 + 9) % 30, y = (i * 23 + n * 9 + 7) % 30; ctx.beginPath(); ctx.ellipse(x, y, 4, 3, 0, 0, 6.283); ctx.fill(); }
-  // Grashalme in drei Grüntönen, leicht geneigt
-  const halme: Array<[string, number]> = [['#2c441f', 7], ['#496b32', 6], ['#5f8440', 4]];
+  // R134 (Autor "Gras feiner/schaerfer, mehr Variation - wie eine echte Wiese"):
+  // VIELE duenne Halme in vier Gruentoenen (0.8px, leicht gebogen) statt weniger
+  // dicker Striche - die Wiese wird dicht und lebendig, bleibt aber nahtlos.
+  const halme: Array<[string, number]> = [['#2c441f', 9], ['#446329', 8], ['#557a38', 7], ['#6d9448', 5]];
   for (const [col, anz] of halme) {
-    ctx.strokeStyle = col; ctx.lineWidth = 1;
+    ctx.strokeStyle = col; ctx.lineWidth = 0.8;
     for (let i = 0; i < anz; i++) {
-      const x = ((i * 13 + n * 7 + col.length * 5) % 30) + 1;
-      const y = ((i * 23 + n * 11) % 24) + 6;
-      const lean = ((i + n) % 3) - 1;
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + lean, y - 3 - (i % 2)); ctx.stroke();
+      const x = ((i * 13 + n * 7 + col.length * 5 + anz * 3) % 30) + 1;
+      const y = ((i * 23 + n * 11 + anz * 5) % 24) + 7;
+      const lean = (((i + n) % 5) - 2) * 0.8;
+      const h = 3.5 + ((i + n) % 3);
+      ctx.beginPath(); ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(x + lean * 0.4, y - h * 0.6, x + lean, y - h);   // gebogener Halm
+      ctx.stroke();
     }
   }
-  // gelegentlich Klee/Blüte oder Steinchen je Variante
-  if (n === 2) { ctx.fillStyle = '#c8b8d8'; ctx.fillRect(9, 9, 2, 2); ctx.fillStyle = '#d8cc88'; ctx.fillRect(22, 18, 2, 2); }
-  if (n === 4) { ctx.fillStyle = 'rgba(120,150,80,0.7)'; for (const [dx, dy] of [[0, -1], [-1, 1], [1, 1]]) { ctx.fillRect(14 + dx, 16 + dy, 2, 2); } }
-  if (n === 6) { ctx.fillStyle = 'rgba(96,90,80,0.55)'; ctx.beginPath(); ctx.arc(18, 20, 2.5, 0, 6.283); ctx.fill(); }
+  // R134: JEDE Variante bekommt ihr eigenes Wiesen-Detail (Blueten wie auf der
+  // Referenz-Wiese, Steinchen mit Lichtkante, trockene Aestchen) - schaerfer
+  // gezeichnet (Kern + Kontrastpunkt statt matschiger Flaeche).
+  const bluete = (x: number, y: number, farbe: string): void => {
+    ctx.fillStyle = farbe;
+    for (const [dx, dy] of [[0, -1], [-1, 0], [1, 0], [0, 1]]) ctx.fillRect(x + dx, y + dy, 1, 1);
+    ctx.fillStyle = '#e8d86a'; ctx.fillRect(x, y, 1, 1);   // Bluetenmitte
+  };
+  const stein = (x: number, y: number, r: number): void => {
+    ctx.fillStyle = '#6a655a'; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill();
+    ctx.fillStyle = '#8a857a'; ctx.fillRect(x - 1, y - r + 1, 2, 1);        // Lichtkante
+    ctx.fillStyle = 'rgba(20,28,14,0.5)'; ctx.fillRect(x - r + 1, y + r - 1, r * 2 - 1, 1); // Bodenschatten
+  };
+  const aestchen = (x: number, y: number): void => {
+    ctx.strokeStyle = '#5a4326'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 6, y + 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + 3, y + 1); ctx.lineTo(x + 4, y - 2); ctx.stroke();   // Astgabel
+    ctx.strokeStyle = '#7a5c38'; ctx.lineWidth = 0.6;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 6, y + 2); ctx.stroke();           // Lichtseite
+  };
+  if (n === 0) { stein(24, 22, 1.8); }
+  if (n === 1) { bluete(8, 10, '#d8c84a'); bluete(21, 22, '#d8c84a'); }        // Hahnenfuss-Gelb
+  if (n === 2) { bluete(9, 9, '#9a78c8'); bluete(22, 18, '#d8c84a'); }         // Storchschnabel-Lila
+  if (n === 3) { aestchen(12, 20); }
+  if (n === 4) {
+    ctx.fillStyle = 'rgba(120,150,80,0.85)';
+    for (const [dx, dy] of [[0, -1], [-1, 1], [1, 1]]) ctx.fillRect(14 + dx, 16 + dy, 2, 2);   // Klee
+    bluete(25, 8, '#e0e0d8');                                                   // Loewenzahn-Puste
+  }
+  if (n === 5) {
+    ctx.strokeStyle = '#9a8a52'; ctx.lineWidth = 0.8;                           // trockene Halme
+    for (const [x, y] of [[6, 24], [8, 25], [7, 23]]) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 1.5, y - 5); ctx.stroke(); }
+  }
+  if (n === 6) { stein(18, 20, 2.4); stein(22, 23, 1.2); }
 }
 
 // Ist Punkt (x,y) Teil des Erdwegs für diese 8-Bit-Verbindungsmaske? (R45/48)

@@ -371,14 +371,28 @@ function boeWelle(x: number, y: number, now: number): number {
 
 // ---------- Boden: Gras + Pfützen ----------
 function macheGras(ts = 128): HTMLCanvasElement {
+  // R134 (Autor "Gras feiner/schaerfer, wie eine echte Wiese"): VIELE duenne,
+  // leicht gebogene Halme in vier Tonstufen (inkl. hellerer Lichthalme) statt
+  // weniger dicker Striche, dazu winzige Tau-/Licht-Punkte. Deutlich mehr
+  // Zeichnung, bleibt aber kachelbar-neutral (keine grossen Formen).
   const c = document.createElement('canvas'); c.width = c.height = ts; const g = c.getContext('2d')!;
   g.fillStyle = '#27331c'; g.fillRect(0, 0, ts, ts);
-  for (let i = 0; i < 360; i++) {
+  for (let i = 0; i < 620; i++) {
     const r = Math.random();
-    g.strokeStyle = r < 0.5 ? 'rgba(54,72,38,0.6)' : r < 0.8 ? 'rgba(34,46,24,0.6)' : 'rgba(70,90,48,0.45)';
-    g.lineWidth = 1; const x = Math.random() * ts, y = Math.random() * ts, hgt = 3 + Math.random() * 6;
-    g.beginPath(); g.moveTo(x, y); g.lineTo(x + (Math.random() - 0.5) * 3, y - hgt); g.stroke();
+    g.strokeStyle = r < 0.38 ? 'rgba(54,72,38,0.7)' : r < 0.66 ? 'rgba(34,46,24,0.7)'
+      : r < 0.88 ? 'rgba(74,96,50,0.6)' : 'rgba(104,128,70,0.5)';
+    g.lineWidth = 0.7;
+    const x = Math.random() * ts, y = Math.random() * ts, hgt = 3.5 + Math.random() * 6.5;
+    const lean = (Math.random() - 0.5) * 3.5;
+    g.beginPath(); g.moveTo(x, y);
+    g.quadraticCurveTo(x + lean * 0.4, y - hgt * 0.6, x + lean, y - hgt);
+    g.stroke();
   }
+  // Tau-/Licht-Punkte: brechen die Flaeche auf, wirken wie Sonnenglitzer
+  g.fillStyle = 'rgba(150,175,105,0.35)';
+  for (let i = 0; i < 40; i++) g.fillRect(Math.random() * ts, Math.random() * ts, 1, 1);
+  g.fillStyle = 'rgba(16,24,10,0.4)';
+  for (let i = 0; i < 30; i++) g.fillRect(Math.random() * ts, Math.random() * ts, 1, 1);
   return c;
 }
 let grasMuster: CanvasPattern | null = null;   // erst in starteWelt() erzeugt (ctx dann gesetzt)
@@ -1114,7 +1128,8 @@ async function init(): Promise<void> {
   for (let i = 0; i < pfadMitte.length; i += 6) anker.push({ x: pfadMitte[i].x, y: pfadMitte[i].y });
   const ankerNah = (x: number, y: number): number => { let dm = 1e9; for (const a of anker) { const dx = a.x - x, dy = a.y - y, d = dx * dx + dy * dy; if (d < dm) dm = d; } return Math.max(0, 1 - Math.sqrt(dm) / 160); };   // 0..1
   // EBENE 1: kurzes Bodengras (dicht, überall außer Pfad/See) - im dichten Wald NOCH spärlicher (Waldgrund statt Wiese)
-  for (let i = 0; i < 1500; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y) || imBach(x, y) || (externWasser && externWasser(x, y))) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.72) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5, r: Math.random() }); }
+  // R134 (Autor "Wiese feiner/dichter"): fast doppelt so viele Bueschel
+  for (let i = 0; i < 2800; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y) || imBach(x, y) || (externWasser && externWasser(x, y))) continue; const d = dichteNoise(x, y); if (Math.random() < d * 0.72) continue; tufts.push({ x, y, ph: Math.random() * 7, kurz: d > 0.5, r: Math.random() }); }
   // EBENE 2: hohes Gras (eigene Sprites) - geclustert an Ankern + Wiese/Wald; im dichten Wald spärlicher
   for (let i = 0; i < 900; i++) { const x = Math.random() * WELT_W, y = Math.random() * WELT_H; if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y) || imBach(x, y) || (externWasser && externWasser(x, y))) continue; const d = dichteNoise(x, y), biom = biomAt(x, y); if (biom === 'fels') continue; if (biom === 'wald' && d > 0.6 && Math.random() < 0.6) continue; if (Math.random() > 0.18 + ankerNah(x, y) * 0.9) continue; hochgras.push({ x, y, ph: Math.random() * 7, h: 14 + Math.random() * 12, r: Math.random() }); }
   // EBENE 3: Blüten in FARB-GRUPPEN (je Cluster eine Farbe) an Ankern, nur Wiese/Wald
@@ -1135,7 +1150,7 @@ async function init(): Promise<void> {
     if (aufPfad(x, y) || imSee(x, y) || imFluss(x, y)) continue;
     const d = dichteNoise(x, y), biom = biomAt(x, y);
     if (biom === 'fels') continue;
-    if (Math.random() > 0.1 + d * 1.15) continue;                           // im dichten Wald viel, offen kaum
+    if (Math.random() > 0.28 + d * 1.05) continue;                          // R134: auch offene Wiese bekommt Stoecke/Steine, Wald bleibt dichter
     const rr = Math.random();
     const typ = biom === 'moor' ? (rr < 0.6 ? 2 : 0) : rr < 0.5 ? 0 : rr < 0.78 ? 1 : rr < 0.92 ? 2 : 3;   // Laub > Totholz > Erde > Kies
     waldDetail.push({ x, y, typ, sk: 0.8 + Math.random() * 0.6 });

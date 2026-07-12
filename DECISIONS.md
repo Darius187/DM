@@ -1944,3 +1944,24 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   id 'village' bleibt fuer alte Spielstaende, Inhalt wird nie mehr geaendert.
 - Ankunfts-Routing (nAnkunft) fuehrt jetzt ins NEUE Ravensmoor ('stadt').
 - Dauerregel als CLAUDE.md Punkt 14 verankert - gilt fuer jede Sitzung.
+
+## R134 - Wiese feiner, Pfuetzen-Ringe dichter, Baumschatten nach hinten (Autor)
+- GRAS (dorfSim-Boden der Oberwelt): Grundtextur mit 620 statt 360 Halmen,
+  duenner (0,7px), gebogen, vier Tonstufen inkl. hellerer Lichthalme + Tau-
+  Punkte; kurzes Bodengras fast verdoppelt (1500 -> 2800 Bueschel); Totholz/
+  Steine/Erdstellen erscheinen jetzt auch auf der OFFENEN Wiese (Grundchance
+  0,1 -> 0,28). Kachel-Gras (tileArt grasBase, fuer Nicht-Bake-Karten) ebenso
+  verfeinert: mehr duenne gebogene Halme, JEDE Variante mit eigenem Detail
+  (Blueten gelb/lila/weiss wie die Referenz-Wiese, Steinchen mit Lichtkante
+  und Bodenschatten, Astgabel, trockene Halme). Feintuning weiter ueber den
+  bestehenden 'Bewuchs'-Regler.
+- PFUETZEN: Regen-Tropfenringe je Pfuetze DEUTLICH dichter (Rate 2,2+4w ->
+  6+11w, variable Dauer). Held-Durchlauf wirft jetzt eine SALVE aus 4
+  gestaffelten, leicht versetzten Ringen + kraeftigerem Spritzer, Takt 0,1 ->
+  0,07 s - liest sich wie natuerliches Durchwaten.
+- BAUMSCHATTEN (Autor-Referenzfoto): Sonne von VORN -> Schatten faellt HINTER
+  den Baum (Basis PI), kippt mit dem Sonnenstand nur noch leicht (+-0,18 rad)
+  zur Seite statt weit nach West/Ost. Boeen-Schwanken + Laenge bei tiefer
+  Sonne bleiben. EHRLICH: Screenshot-Verifikation der Richtung gelang nicht
+  (kein Baum im Testausschnitt) - Codeaenderung ist eine Zeile, bitte im
+  Spiel gegenpruefen.
