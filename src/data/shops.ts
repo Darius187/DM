@@ -117,6 +117,17 @@ export const ANKAUF_FAKTOR = 0.4;
 // --- Runde 10: die Zünfte des Dorfes (jeder Beruf mit Nutzen) ---
 
 // Fischer Nepomuk: Fang vom Morgen
+// M7 Dorfwirtschaft: Baecker + Wirtin handeln mit Eigenproduktion (lagerWare)
+export const SHOP_BAECKER: ReadonlyArray<ShopOfferDef> = [
+  { kind: 'food', name: 'Frisches Brot', price: 8, inf: true, food: { hpRegen: 1, dauerS: 40 }, lagerWare: 'brot' },
+  { kind: 'food', name: 'Honigkuchen', price: 18, inf: true, food: { hpRegen: 2.2, dauerS: 45 }, lagerWare: 'honig' },
+];
+export const SHOP_WIRTIN: ReadonlyArray<ShopOfferDef> = [
+  { kind: 'food', name: 'Eintopf der Wirtin', price: 20, inf: true, food: { hpRegen: 2.4, dauerS: 50 } },
+  { kind: 'food', name: 'Brotzeit', price: 10, inf: true, food: { hpRegen: 1.2, dauerS: 40 }, lagerWare: 'brot' },
+  { kind: 'food', name: 'Becher Milch', price: 6, inf: true, food: { hpRegen: 0.8, dauerS: 30 }, lagerWare: 'milch' },
+];
+
 export const SHOP_FISCHER: ReadonlyArray<ShopOfferDef> = [
   { kind: 'food', name: 'Frischer Fisch', price: 8, inf: true, food: { hpRegen: 1.2, dauerS: 40 }, lagerWare: 'fisch' },
   { kind: 'food', name: 'Räucherfisch', price: 14, inf: true, food: { hpRegen: 1.8, dauerS: 45 } },

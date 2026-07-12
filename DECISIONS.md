@@ -1896,3 +1896,14 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Verfuegbarkeit (kein dynamisches Preissystem - Auftrag).
 - Browser-Beleg: Tag-1-Verzehr aus Vieh-Ertraegen; leere Speisekammer ->
   Hunger + Klatsch; Waffen-Angebot erscheint nur mit Lagerbestand.
+
+## Dorfwirtschaft M7 - Sprechen & Handeln fuer (fast) alle
+- KONTEXT-DIALOGE: Lage-Zeile mit Prioritaet Einfall > Knappheit > Abgabetag >
+  Regen (dorfLageZeile) - bei ALLEN Zunft-Dialogen eingeschoben und im
+  Dorfvolk-Smalltalk verdrahtet. Neue Pools SMALLTALK.knapp/.abgabe (je 3
+  Zeilen, 1349er-Ton). Bestehende Pools (Einfall/Boss/Regen/Nacht) blieben.
+- HANDEL NEU: Baecker (SHOP_BAECKER: Brot/Honigkuchen aus dem Lager), Wirtin
+  (SHOP_WIRTIN: Eintopf + Brotzeit/Milch aus dem Lager), Bauer Ott + Baeuerin
+  Hilde (Familie B, SHOP_BAUER2 mit Eiern/Milch, eigene Dialog-Defs BAUER3/4).
+  Bestehende Haendler (Schmied/Fischer/Imker/Magdalena/Heinrich) unveraendert.
+- Kinder, Witwe, Magd, Pater: weiterhin NUR Dialog (Auftrag).

@@ -258,7 +258,39 @@ export const VOLK: Readonly<Record<string, ReadonlyArray<string>>> = {
 // Smalltalk des Dorfvolks (Runde 14): jeder ist ansprechbar. Männer,
 // Frauen und Kinder reden verschieden; dazu Sätze zur Lage (Wetter,
 // Nacht, nach dem Boss, nach einem Einfall).
+// M7 Dorfwirtschaft: Familie B (Vieh) handelt mit Eiern/Milch/Fleisch
+export const BAUER3 = {
+  begruessung: [
+    { text: 'Ott. Das Vieh auf der Angerwiese ist meins. Eier, Milch, hin und wieder ein Stück Fleisch - wenn du was brauchst, sag es.' },
+  ],
+  handel: {
+    text: 'Frisch vom Stall - was das Vieh hergibt.',
+    choices: [{ label: 'Handel', action: 'shopBauer3' }, { label: 'Lebt wohl' }],
+  },
+} as const;
+export const BAUER4 = {
+  begruessung: [
+    { text: 'Hilde, dem Ott sein Weib. Die Schafe auf der Südweide sind meine Sorge. Milch und Eier haben wir meist übrig.' },
+  ],
+  handel: {
+    text: 'Was Stall und Weide hergeben.',
+    choices: [{ label: 'Handel', action: 'shopBauer4' }, { label: 'Lebt wohl' }],
+  },
+} as const;
+
 export const SMALLTALK = {
+  // M7 Dorfwirtschaft: Knappheit (Speisekammer reicht nicht) - Unmuts-Klatsch
+  knapp: [
+    'Kein Brot mehr beim Bäcker, sag ich dir. KEIN Brot. Und der Schulze schaut in sein Buch, als würd es davon voller.',
+    'Die Speisekammer ist so leer wie die Kirchenbänke bei der Frühmesse. Wenn der Winter kommt, gnade uns Gott.',
+    'Mein Magen knurrt lauter als die Hunde. Bring dem Dorf was zu essen, Fremder, und man wird dir die Füße küssen.',
+  ],
+  // M7: Abgabetag - der Fürst fordert, das Dorf stöhnt
+  abgabe: [
+    'Heute holt der Vogt die Abgabe. Was der Fürst nicht frisst, fressen seine Schreiber.',
+    'Abgabetag. Halte deinen Beutel fest und dein Maul geschlossen, wenn der Karren des Vogts rollt.',
+    'Erst die Ernte, dann die Abgabe, dann das Beten, dass was übrig bleibt. So geht das Jahr.',
+  ],
   maenner: [
     'Harte Zeiten. Aber harte Zeiten machen harte Hände.',
     'Der Boden ist schwer dies Jahr. Der Pflug auch. Und ich werde nicht jünger.',

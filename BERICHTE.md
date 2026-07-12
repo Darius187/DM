@@ -1178,3 +1178,10 @@ Schulzen. tsc + 311 Tests gruen.
 EHRLICHE LUECKE: "Brot" gibt es weiter auch bei Bauer B als Menue-Eintrag -
 gekoppelt ans Lager; Heinrichs Wirtshaus-Karte blieb unveraendert (Eintopf
 etc. sind Wirtshaus-Kueche, bewusst ungekoppelt).
+
+## Dorfwirtschaft M7: Sprechen & Handeln
+FERTIG + VERIFIZIERT (Browser): Knappheits-Zeile erscheint im Dialogkontext,
+Baecker-Angebote folgen dem Lagerbestand (ohne Brot nur Honigkuchen).
+tsc + 311 Tests gruen.
+EHRLICHE LUECKE: Kontexte sind gemeinsame Pools + Prioritaet, nicht 5
+individuelle Tabellen JE Bewohner (LITE; leicht erweiterbar in dialoge.ts).

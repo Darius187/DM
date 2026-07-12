@@ -53,8 +53,8 @@ import { HeldEditor } from '../ui/heldEditor';
 import { heldTier } from '../data/helden';
 import { drawWirtin, drawTaverne, drawHaus } from '../gfx/npcArt';
 import { AUFBAU_STUFEN, KAMIN_BUFF, SAATGUT } from '../data/crafting';
-import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, HAENDLER, VOLK, SMALLTALK, KONTAKT_ANGEBOT, type DlgPage } from '../data/dialoge';
-import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
+import { JOHANNES, HEINRICH, MAGDALENA, SCHMIED, MUELLER, BAUER1, BAUER2, BAUER3, BAUER4, HAENDLER, VOLK, SMALLTALK, KONTAKT_ANGEBOT, type DlgPage } from '../data/dialoge';
+import { SHOP_HEINRICH, SHOP_MAGDALENA, SHOP_SCHMIED, SHOP_BAUER1, SHOP_BAUER2, BETT_PREIS, SHOP_FISCHER, SHOP_IMKER, SHOP_WEBERIN, SHOP_GERBER, SHOP_HEBAMME, SHOP_SCHAEFER, SHOP_KOEHLER, SHOP_BAECKER, SHOP_WIRTIN, BADER_BEHANDLUNG, TAGWERKE, UNTERRICHT, type ShopOfferDef } from '../data/shops';
 import { MATERIAL_NAMES, type MaterialId } from '../data/crafting';
 import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abbauStufe, abbauSoll, type BauPlan } from '../data/crafting';
 import { hoehleTextur, hoehleKante, hoeheFelsWand, vorkommenTextur, KANTE_DICKE } from '../gfx/hoehlenArt';
@@ -8003,8 +8003,15 @@ export class WorldScene extends CombatScene {
       case 'haendler': this.talkHaendler(); break;
       case 'landherr': this.talkLandherr(); break;
       case 'schulze': this.talkSchulze(); break;
+      case 'bauer3':
+        this.talkSimple('Bauer Ott', 'bauer3', BAUER3, () => this.shop.openShop('bauer3', 'ANGERWIESE', SHOP_BAUER2, { ankauf: true }));
+        break;
+      case 'bauer4':
+        this.talkSimple('Bäuerin Hilde', 'bauer4', BAUER4, () => this.shop.openShop('bauer4', 'SCHAFWEIDE', SHOP_BAUER2, { ankauf: true }));
+        break;
       case 'bader': case 'kuefer': case 'weberin': case 'gerber':
       case 'hebamme': case 'kuester': case 'fischer': case 'imker': case 'schaefer': case 'koehler':
+      case 'baecker': case 'wirtin':
         this.talkZunft(id, npc.name);
         break;
       default: {
@@ -8019,6 +8026,8 @@ export class WorldScene extends CombatScene {
         // Lage-Spruch: Einfall > Boss > Regen > Nacht > Allgemeines
         const nacht = this.tageszeit > TAG.nachtAb || this.tageszeit < TAG.morgenAb;
         if (this.flags.wurdeBelagert && Math.random() < 0.4) zeilen.push(pick(this.rng, SMALLTALK.nachEinfall as unknown as string[]));
+        else if (this.dorfHunger && Math.random() < 0.6) zeilen.push(pick(this.rng, SMALLTALK.knapp as unknown as string[]));   // M7: Knappheit
+        else if (this.tag >= this.naechsteAbgabe - 1 && Math.random() < 0.5) zeilen.push(pick(this.rng, SMALLTALK.abgabe as unknown as string[]));   // M7: Abgabetag
         else if (this.bossDead && Math.random() < 0.4) zeilen.push(pick(this.rng, SMALLTALK.nachBoss as unknown as string[]));
         else if (this.regnet && Math.random() < 0.5) zeilen.push(pick(this.rng, SMALLTALK.regen as unknown as string[]));
         else if (nacht && Math.random() < 0.5) zeilen.push(pick(this.rng, SMALLTALK.nacht as unknown as string[]));
@@ -8428,8 +8437,20 @@ export class WorldScene extends CombatScene {
   // darf im Dorf arbeiten). Schlüssel = Beruf, Wert = Tag der Erledigung.
   private tagwerke: Record<string, number> = {};
 
+  // M7: Lage-Zeile fuer Dialoge - Prioritaet Einfall > Knappheit > Abgabetag > Regen
+  private dorfLageZeile(): string | null {
+    if (this.flags.wurdeBelagert && this.tag - this.letzterEinfallTag <= 1) return pick(this.rng, SMALLTALK.nachEinfall as unknown as string[]);
+    if (this.dorfHunger) return pick(this.rng, SMALLTALK.knapp as unknown as string[]);
+    if (this.tag >= this.naechsteAbgabe - 1) return pick(this.rng, SMALLTALK.abgabe as unknown as string[]);
+    if (this.regnet) return pick(this.rng, SMALLTALK.regen as unknown as string[]);
+    return null;
+  }
+
   private talkZunft(id: string, name: string): void {
     const zeilen = [...(VOLK[id] ?? ['Gott zum Gruße.'])];
+    // M7: alle Zunft-Leute kommentieren die LAGE (Einfall/Knappheit/Abgabe/Regen)
+    const lage = this.dorfLageZeile();
+    if (lage) zeilen.splice(Math.min(1, zeilen.length), 0, lage);
     const choices: Array<{ label: string; fn?: () => void }> = [];
     const shops: Record<string, [string, ReadonlyArray<ShopOfferDef>, boolean]> = {
       fischer: ['FISCHERHÜTTE', SHOP_FISCHER, false],
@@ -8439,6 +8460,9 @@ export class WorldScene extends CombatScene {
       hebamme: ['HEBAMME WALPURGA', SHOP_HEBAMME, false],
       schaefer: ['SCHAFWEIDE', SHOP_SCHAEFER, false],
       koehler: ['MEILER DES KÖHLERS', SHOP_KOEHLER, true],
+      // M7: Baecker + Wirtin handeln mit der Eigenproduktion des Dorfs
+      baecker: ['BACKHAUS', SHOP_BAECKER, false],
+      wirtin: ['KÜCHE DES SCHWARZEN RABEN', SHOP_WIRTIN, false],
     };
     const sh = shops[id];
     if (sh) choices.push({ label: 'Handel', fn: () => this.shop.openShop(id, sh[0], sh[1], { ankauf: sh[2] }) });
