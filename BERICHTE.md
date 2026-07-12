@@ -1185,3 +1185,41 @@ Baecker-Angebote folgen dem Lagerbestand (ohne Brot nur Honigkuchen).
 tsc + 311 Tests gruen.
 EHRLICHE LUECKE: Kontexte sind gemeinsame Pools + Prioritaet, nicht 5
 individuelle Tabellen JE Bewohner (LITE; leicht erweiterbar in dialoge.ts).
+
+## Dorfwirtschaft "Siedler lite" - M9 GESAMTBERICHT (alles im NEUEN Ravensmoor)
+WAS STEHT (alle Meilensteine M0-M8 + Umzug, je eigener Commit):
+- M0 Anker-Tagesplan mit Zeitversatz + Verschnaufpausen (dorfleben.ts)
+- M1 23er-Autor-Roster + Werkzeuge in der Hand + Kuester-Glocke
+- M2 Stationen (Amboss/Backofen/Holzstapel/Bienenkoerbe), Magd-Pendelweg,
+  Plausch-Zuwendung
+- M3 Warenkatalog + Gruppen-Kapazitaeten + Schulze-Ueberlaufverkauf +
+  VERWALTUNGSBUCH (verschiebbar)
+- M4 Ketten input-gegated + NPC-gebunden (Chronik meldet Ausfaelle),
+  Schmiede-Fertigung, Baustellen-Holzverbrauch, Zeughaus-Datenhaken
+- M5 Bauern-Felder (sichtbares Wachstum) + Vieh (Vermehrung/Schlachtung),
+  Einfall-Kopplung (Bestand/Felder)
+- M6 taeglicher Verzehr + Knappheits-LITE + Haendler an Eigenproduktion +
+  Spenden-Weg
+- M7 Kontext-Dialoge (Knappheit/Abgabetag) + Handel Baecker/Wirtin/Familie B
+- M8 questgeber + Kopf-Marker + Questlinien-Tabelle + Stahl-Quest real +
+  Tresen-Kopfgeld-Hook
+- UMZUG: alles an die Dorfplan-Boxen der stadt-Karte, begehbare 3D-Gebaeude
+  (Haus N1 + Schmiede B1) vom Codex-Branch geportet. Altes Dorf eingefroren.
+M9-MEHRTAGE-TEST (14 Tage, Browser): stabil - kein Dauerhunger (Vieh traegt),
+Huehner 5->6, Kasse 312->608 (Ueberlauf-Verkaeufe). Stoerfall Mueller:
+"Muehle steht still" + Erholung nach Heilung - beides belegt.
+ZAHLEN-DATEIEN (Autor justiert NUR hier): wirtschaft.ts, dorfOekonomie.ts,
+dorfVieh.ts, dorfleben.ts, questlinien.ts, shops.ts, dorfplan.ts.
+BALANCING-BEFUNDE fuer die Feinjustier-Runde:
+1. HOLZ faellt auf 0: Saegewerk (50/Tag) + Abgabe fressen es; Baustoffe-
+   Kapazitaet 260 laeuft mit Brettern voll -> Holz landet im Ueberlauf-
+   Verkauf. Stellschrauben: HOLZ.saegewerkProTag / KAPAZITAET.baustoffe.
+2. WEIZEN-Defizit: Felder ~3,2/Tag vs. Bedarf 5/Tag (Futter+Muehle) - Muehle
+   laeuft nicht taeglich voll. Gewollt LITE (Held-Hebel), justierbar ueber
+   FELD_REGELN.ertragKorn/reifeTage.
+EHRLICHE LUECKEN: Einfall zielt noch aufs alte Dorf (Umzug des Einfalls =
+eigener Schritt; Vieh-/Feld-Kopplung wirkt erst dann im neuen Dorf); Posen
+sind LITE (Stehen/Strecken/Zuwendung, keine eigenen Pose-Atlanten); Stahl-
+Quest-Fertigstellung (delayedCall) headless nicht abgewartet; Bewohner-Zahl
+fuer den Verzehr ist eine Daten-Konstante (24), nicht live gezaehlt;
+Kraeuter-Untertypen nur vorbereitet (KRAEUTER_ARTEN).
