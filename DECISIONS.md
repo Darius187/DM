@@ -1880,3 +1880,19 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Spielstand: welt.wirtschaft.felder/vieh (optional; alte Staende starten mit
   Standardwerten). Browser-Beleg: 6 Tage -> Ernte, Huehner 4->5, Ferkel +
   Schlachttag, Speisekammer-Ueberlauf griff beim Fleisch.
+
+## Dorfwirtschaft M6 - Verbrauch & Kreislauf
+- ESSEN (dorfOekonomie.ts): 24 Koepfe x 0,5 Portionen/Tag, Prioritaet
+  brot>fisch>eier>milch>fleisch>honig (essenTick pure + Test). Knappheit
+  LITE: dorfHunger-Flag -> Unmuts-Chronik ("Kein Brot mehr!"), Arbeits-Takt
+  x1,5 langsamer, Warnung im Verwaltungsbuch. KEIN Hungertod.
+- ABGABEN ziehen weiter aus demselben Lager (Zielkonflikt steht) - NEU: der
+  Held kann beim Schulzen MATERIAL SPENDEN (10 Holz / 5 Eisen / 5 Kohle aus
+  dem eigenen Beutel ins Dorflager; Spenden-Weg war Backlog).
+- HAENDLER AN DIE EIGENPRODUKTION GEKOPPELT (ShopOfferDef.lagerWare):
+  Schmied-Waffen/-Werkzeuge, Baecker-... (Bauer-)Brot, Milch, Honig, Eier,
+  Fischer-Fisch erscheinen NUR bei Dorf-Lagerbestand; der Kauf entnimmt
+  1 Stueck und der Erloes geht in die DORFKASSE. Feste Preise, schwankende
+  Verfuegbarkeit (kein dynamisches Preissystem - Auftrag).
+- Browser-Beleg: Tag-1-Verzehr aus Vieh-Ertraegen; leere Speisekammer ->
+  Hunger + Klatsch; Waffen-Angebot erscheint nur mit Lagerbestand.

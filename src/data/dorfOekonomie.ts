@@ -73,3 +73,26 @@ export function lagerEinlagern(lager: Record<string, number>, ware: string, meng
 
 // Anzeige-Name einer Ware (Fallback: Schluessel).
 export function wareName(w: string): string { return WAREN_ANZEIGE[w] ?? w; }
+
+// --- M6: taeglicher Verzehr der Bewohner ---------------------------------------
+// LITE: kein Hungertod - Knappheit bedeutet Unmuts-Klatsch, langsamere Arbeit
+// und eine Warnung im Verwaltungsbuch. Prioritaetenliste einfach und fest.
+export const ESSEN = {
+  koepfe: 24,             // Esser je Tag (Roster + Haendler)
+  bedarfJeKopf: 0.5,      // Einheiten Nahrung je Kopf und Tag
+  prioritaet: ['brot', 'fisch', 'eier', 'milch', 'fleisch', 'honig'],
+  arbeitsBremse: 1.5,     // Faktor auf den Arbeits-Takt bei Hunger (langsamer)
+} as const;
+
+// Isst den Tagesbedarf aus dem Lager (mutiert es) und meldet, was fehlte. Pure
+// im Sinne von: keine Seiteneffekte ausser dem uebergebenen Lager.
+export function essenTick(lager: Record<string, number>, koepfe = ESSEN.koepfe): { gegessen: Record<string, number>; fehlt: number } {
+  let bedarf = Math.ceil(koepfe * ESSEN.bedarfJeKopf);
+  const gegessen: Record<string, number> = {};
+  for (const w of ESSEN.prioritaet) {
+    if (bedarf <= 0) break;
+    const nimm = Math.min(bedarf, lager[w] ?? 0);
+    if (nimm > 0) { lager[w] = (lager[w] ?? 0) - nimm; gegessen[w] = nimm; bedarf -= nimm; }
+  }
+  return { gegessen, fehlt: bedarf };
+}

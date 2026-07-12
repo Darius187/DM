@@ -35,6 +35,9 @@ export class ShopUI {
   // Dorf-Lager (Runde 51): der Schmied schmiedet aus den Eisenbarren, die die
   // Dorf-Schmelze erzeugt - die liegen im Lager, nicht in der Heldentasche.
   lager: () => Record<string, number> = () => ({});
+  // M6 Dorfwirtschaft: Gold aus Verkaeufen von DORF-Waren (lagerWare) geht in
+  // die Dorfkasse - der Kreislauf schliesst sich.
+  dorfVerkauf: (gold: number) => void = () => {};
 
   private scroll = 0;
 
@@ -58,8 +61,17 @@ export class ShopUI {
     this.canSell = opts.ankauf ?? false;
     this.canForge = opts.schmieden ?? false;
     this.mode = 'kaufen';
-    if (!this.stocks.has(shopId)) {
-      this.stocks.set(shopId, offers.map((o) => this.rollOffer({ ...o })));
+    // M6: Angebote mit lagerWare haengen an der Eigenproduktion des Dorfs -
+    // ohne Bestand verschwinden sie aus der Auslage (Verfuegbarkeit schwankt,
+    // Preise bleiben fest). Bestand wird bei JEDEM Oeffnen neu geprueft.
+    const lager = this.lager();
+    const verfuegbar = offers.filter((o) => !o.lagerWare || (lager[o.lagerWare] ?? 0) > 0);
+    const alterBestand = this.stocks.get(shopId);
+    if (!alterBestand || offers.some((o) => o.lagerWare)) {
+      this.stocks.set(shopId, verfuegbar.map((o) => {
+        const alt = alterBestand?.find((a) => a.name === o.name && a.kind === o.kind && a.limit !== undefined);
+        return alt ?? this.rollOffer({ ...o });
+      }));
     }
     this.open = true;
     this.build();
@@ -137,6 +149,17 @@ export class ShopUI {
       return;
     }
     p.gold -= price;
+    // M6: Dorf-Ware? Dann 1 Stueck aus dem Dorf-Lager entnehmen und den Erloes
+    // der DORFKASSE gutschreiben (Haendler verkauft nur Eigenproduktion).
+    if (o.lagerWare) {
+      const lager = this.lager();
+      lager[o.lagerWare] = Math.max(0, (lager[o.lagerWare] ?? 0) - 1);
+      this.dorfVerkauf(price);
+      if (lager[o.lagerWare] <= 0) {
+        const bestand = this.stocks.get(this.shopId);
+        if (bestand) this.stocks.set(this.shopId, bestand.filter((x) => x !== o));
+      }
+    }
     switch (o.kind) {
       case 'potion': p.pot++; break;
       case 'mpotion': p.mpot++; break;

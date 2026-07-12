@@ -1,7 +1,7 @@
 // M3 Dorfwirtschaft: Warenkatalog, Kapazitaeten, Einlagern mit Ueberlauf
 import { describe, it, expect } from 'vitest';
 import {
-  lagerEinlagern, warenGruppe, gruppenFuellstand, wareName,
+  lagerEinlagern, warenGruppe, gruppenFuellstand, wareName, essenTick, ESSEN,
   WARENGRUPPEN, KAPAZITAET, VERKAUFSPREIS, WAREN_ANZEIGE,
 } from '../src/data/dorfOekonomie';
 
@@ -37,5 +37,20 @@ describe('Dorf-Oekonomie (M3)', () => {
     const r = lagerEinlagern(lager, 'holz', 20);
     expect(r).toEqual({ eingelagert: 20, ueberlauf: 0 });
     expect(lager.holz).toBe(20);
+  });
+
+  it('M6: die Bewohner essen nach Prioritaet, Knappheit wird gemeldet', () => {
+    const bedarf = Math.ceil(ESSEN.koepfe * ESSEN.bedarfJeKopf);
+    // satt: Brot zuerst, dann Fisch
+    const voll: Record<string, number> = { brot: bedarf - 2, fisch: 10 };
+    const satt = essenTick(voll);
+    expect(satt.fehlt).toBe(0);
+    expect(satt.gegessen.brot).toBe(bedarf - 2);
+    expect(satt.gegessen.fisch).toBe(2);
+    // knapp: es fehlt der Rest
+    const leer: Record<string, number> = { brot: 3 };
+    const knapp = essenTick(leer);
+    expect(knapp.fehlt).toBe(bedarf - 3);
+    expect(leer.brot).toBe(0);
   });
 });

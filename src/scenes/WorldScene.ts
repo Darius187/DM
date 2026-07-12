@@ -66,7 +66,7 @@ import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, BELAGERUNG, 
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE } from '../data/wirtschaft';
-import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand } from '../data/dorfOekonomie';
+import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
@@ -281,6 +281,7 @@ export class WorldScene extends CombatScene {
   private tageszeit = 0.3; // 0..1, Start am Morgen
   private glockePrevZeit?: number;   // M1: erkennt die Morgen-/Abendglocken-Schwelle
   private dorfBrunnenPos?: { x: number; y: number } | null;   // M2: Brunnen-Kachel (Magd-Pendelweg), je Karte gecacht
+  private dorfHunger = false;   // M6: Speisekammer reichte gestern nicht (Unmut, langsamere Arbeit)
   private gefaellteBaeume = new Map<string, number>(); // Position -> Tag des Fällens
   private baumSchlaege = new Map<string, number>();
   private hackCdMs = 0;   // R90: Schlag-Pause (HARVEST_CONFIG) - gefühlt konstant, tageslängen-unabhängig
@@ -426,6 +427,7 @@ export class WorldScene extends CombatScene {
     this.shop = new ShopUI(this, this.provider, this.sfx, () => this.p);
     this.shop.rabatt = () => this.wohlstand() * 0.05;
     this.shop.lager = () => this.dorfLager;   // Schmied schmiedet aus Dorf-Barren
+    this.shop.dorfVerkauf = (gold) => { this.dorfkasse += gold; };   // M6: Dorf-Waren-Erloes -> Dorfkasse
     this.stash = new StashUI(this, this.sfx, () => this.p, () => this.lager);
     // Figur-Editor (Runde 40): Proportionen des Helden live einstellen
     this.heldEditor = new HeldEditor(this, this.provider, () => heldTier(this.p.armorIt ? this.p.armorIt.val : null));
@@ -8170,6 +8172,18 @@ export class WorldScene extends CombatScene {
     for (const s of viehErg.geschlachtet) this.chronik('ereignis', `Schlachttag: ein ${s} kommt in die Speisekammer.`);
     if (!hirteDa) this.chronik('ereignis', 'Niemand versorgt heute das Vieh - Stall und Weide ruhen.');
     if (this.area?.id === 'village') this.zeichneFeldWachstum();
+    // 1d) M6: die Bewohner ESSEN aus dem Lager (Prioritätenliste). Knappheit
+    //     LITE: kein Hungertod - Unmut, langsamere Arbeit, Warnung im Buch.
+    const essen = essenTick(this.dorfLager);
+    for (const [w, n] of Object.entries(essen.gegessen)) {
+      this.lagerBerichtHeute.verbraucht[w] = (this.lagerBerichtHeute.verbraucht[w] ?? 0) + n;
+    }
+    const warHungrig = this.dorfHunger;
+    this.dorfHunger = essen.fehlt > 0;
+    if (this.dorfHunger) {
+      this.chronik('ereignis', `Die Speisekammer reicht nicht für alle (${essen.fehlt} Portionen fehlen) - am Brunnen wird gemurrt: "Kein Brot mehr!"`);
+      if (!warHungrig) this.logMsg('Das Dorf murrt: Die Vorräte reichen nicht für alle Mäuler.', 'bad');
+    }
     // 2) Verarbeitung (Phase 2). AKTUELL automatischer Platzhalter - läuft von
     //    selbst. ZIEL (Autorwunsch): die Bewohner Müller/Bäcker/Schmied arbeiten
     //    es sichtbar ab; dann gaten wir jede Stufe daran, ob der NPC lebt und im
@@ -8290,6 +8304,7 @@ export class WorldScene extends CombatScene {
       const n = this.npcEnts.find((x) => x.id === id);
       if (!n || n.verwundet) warnungen.push(`${name} fehlt - seine Arbeit ruht!`);
     }
+    if (this.dorfHunger) warnungen.push('Die Speisekammer reicht nicht - das Dorf murrt und arbeitet langsamer!');
     if (warnungen.length) { zeilen.push(''); zeilen.push('WARNUNGEN:'); for (const wtext of warnungen) zeilen.push(`  ! ${wtext}`); }
 
     const breite = 440;
@@ -8386,9 +8401,25 @@ export class WorldScene extends CombatScene {
       choices: [
         { label: 'Ins Verwaltungsbuch schauen', fn: () => this.zeigeVerwaltungsbuch() },
         { label: 'Für die Dorfkasse spenden (50 Gold)', fn: () => this.spendeDorfkasse(50) },
+        // M6: der Held füllt Lücken - Vorräte direkt ins Dorf-Lager spenden
+        ...([['holz', 10], ['eisen', 5], ['kohle', 5]] as const)
+          .filter(([m, n]) => (this.p.materials[m] ?? 0) >= n)
+          .map(([m, n]) => ({
+            label: `${n} ${wareName(m)} ins Dorflager spenden (habe ${this.p.materials[m]})`,
+            fn: () => this.spendeMaterial(m, n),
+          })),
         { label: 'Lebt wohl' },
       ],
     }]);
+  }
+
+  // M6: Material-Spende des Helden ins Dorf-Lager (fuellt Luecken der Ketten)
+  private spendeMaterial(m: 'holz' | 'eisen' | 'kohle', n: number): void {
+    if ((this.p.materials[m] ?? 0) < n) return;
+    this.p.materials[m] -= n;
+    this.lagerRein(m, n);
+    this.chronik('ereignis', `Du hast ${n} ${wareName(m)} ins Dorflager gespendet - der Schulze dankt.`);
+    this.sfx.play('muenzen');
   }
 
   // --- Die Zünfte (Runde 10): jeder Beruf hat einen Nutzen --------------------
@@ -11031,7 +11062,8 @@ export class WorldScene extends CombatScene {
         this.provider.applyFigure(n.sprite, n.figur ?? n.id, 0, Math.floor(this.time.now / 260) % 4);
         n.arbeitT = (n.arbeitT ?? Math.random() * 3) - dt;
         if (n.arbeitT <= 0) {
-          n.arbeitT = 2.4 + Math.random() * 2.2;
+          // M6: hungrige Bewohner arbeiten spuerbar langsamer (Knappheit LITE)
+          n.arbeitT = (2.4 + Math.random() * 2.2) * (this.dorfHunger ? ESSEN.arbeitsBremse : 1);
           this.arbeitsTakt(n);
         }
       } else if (phase === 'pause') {

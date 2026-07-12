@@ -1169,3 +1169,12 @@ FERTIG + VERIFIZIERT (Browser, 6 Wirtschaftstage): Ernte in der Chronik,
 Bestaende wachsen bis Deckel, Schlachttage liefern Fleisch, Kapazitaets-
 Ueberlauf verkauft automatisch. Feld-Overlay faerbt die Aecker (m5_feld.png).
 tsc + 310 Tests gruen. Einfall senkt Bestand + Feldwachstum real.
+
+## Dorfwirtschaft M6: Verbrauch & Kreislauf
+FERTIG + VERIFIZIERT (Browser): taeglicher Verzehr nach Prioritaet, Knappheit
+-> Unmut + langsamere Arbeit + Buch-Warnung, Haendler-Angebote haengen am
+Dorf-Lager (Kauf entnimmt Ware, Gold -> Dorfkasse), Spenden-Weg beim
+Schulzen. tsc + 311 Tests gruen.
+EHRLICHE LUECKE: "Brot" gibt es weiter auch bei Bauer B als Menue-Eintrag -
+gekoppelt ans Lager; Heinrichs Wirtshaus-Karte blieb unveraendert (Eintopf
+etc. sind Wirtshaus-Kueche, bewusst ungekoppelt).

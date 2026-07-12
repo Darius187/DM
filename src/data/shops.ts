@@ -15,6 +15,10 @@ export interface ShopOfferDef {
   materialId?: string;   // bei kind 'material'
   rezept?: { kraeuter: number; ergebnis: 'potion' | 'mpotion' }; // Magdalenas Rezepte
   seedId?: string;       // bei kind 'seed'
+  // M6 Dorfwirtschaft: das Angebot haengt am DORF-LAGER - nur verfuegbar,
+  // wenn die Ware dort liegt; der Kauf entnimmt 1 Stueck und das Gold geht
+  // in die DORFKASSE (Eigenproduktion -> Haendler-Kopplung, feste Preise).
+  lagerWare?: string;
 }
 
 export const SHOP_HEINRICH: ReadonlyArray<ShopOfferDef> = [
@@ -53,13 +57,13 @@ export const SHOP_MAGDALENA: ReadonlyArray<ShopOfferDef> = [
 ];
 
 export const SHOP_SCHMIED: ReadonlyArray<ShopOfferDef> = [
-  { kind: 'gear', gearKind: 'weapon', gearDepth: 2 },
-  { kind: 'gear', gearKind: 'weapon', gearDepth: 1 },
-  { kind: 'gear', gearKind: 'weapon', gearDepth: 3 },
+  { kind: 'gear', gearKind: 'weapon', gearDepth: 2, lagerWare: 'waffen' },
+  { kind: 'gear', gearKind: 'weapon', gearDepth: 1, lagerWare: 'waffen' },
+  { kind: 'gear', gearKind: 'weapon', gearDepth: 3, lagerWare: 'waffen' },
   { kind: 'gear', gearKind: 'armor', gearDepth: 2 },
   { kind: 'gear', gearKind: 'armor', gearDepth: 3 },
-  { kind: 'tool', name: 'Holzaxt', price: 40, toolId: 'axt', limit: 1 },
-  { kind: 'tool', name: 'Spitzhacke', price: 60, toolId: 'spitzhacke', limit: 1 },
+  { kind: 'tool', name: 'Holzaxt', price: 40, toolId: 'axt', limit: 1, lagerWare: 'werkzeuge' },
+  { kind: 'tool', name: 'Spitzhacke', price: 60, toolId: 'spitzhacke', limit: 1, lagerWare: 'werkzeuge' },
   // Kohle: kein Köhler-NPC in der Spezifikation - der Schmied führt sie mit
   { kind: 'material', name: 'Kohle', price: 12, inf: true, materialId: 'kohle' },
   { kind: 'material', name: 'Eisen', price: 18, inf: true, materialId: 'eisen' },
@@ -76,11 +80,12 @@ export const SHOP_BAUER1: ReadonlyArray<ShopOfferDef> = [
 ];
 
 export const SHOP_BAUER2: ReadonlyArray<ShopOfferDef> = [
-  { kind: 'food', name: 'Brot', price: 8, inf: true, food: { hpRegen: 1, dauerS: 40 } },
+  { kind: 'food', name: 'Brot', price: 8, inf: true, food: { hpRegen: 1, dauerS: 40 }, lagerWare: 'brot' },
   { kind: 'food', name: 'Käse', price: 12, inf: true, food: { hpRegen: 1.5, dauerS: 40 } },
-  { kind: 'food', name: 'Milch', price: 6, inf: true, food: { hpRegen: 0.8, dauerS: 30 } },
-  { kind: 'food', name: 'Honig', price: 16, inf: true, food: { hpRegen: 2, dauerS: 35 } },
+  { kind: 'food', name: 'Milch', price: 6, inf: true, food: { hpRegen: 0.8, dauerS: 30 }, lagerWare: 'milch' },
+  { kind: 'food', name: 'Honig', price: 16, inf: true, food: { hpRegen: 2, dauerS: 35 }, lagerWare: 'honig' },
   { kind: 'food', name: 'Eintopf', price: 22, inf: true, food: { hpRegen: 2.5, dauerS: 50 } },
+  { kind: 'food', name: 'Frische Eier', price: 4, inf: true, food: { hpRegen: 0.6, dauerS: 25 }, lagerWare: 'eier' },
 ];
 
 // Fahrender Händler: wechselndes Sortiment, Chance auf Episch (Masterprompt 7.2/7.5)
@@ -113,13 +118,13 @@ export const ANKAUF_FAKTOR = 0.4;
 
 // Fischer Nepomuk: Fang vom Morgen
 export const SHOP_FISCHER: ReadonlyArray<ShopOfferDef> = [
-  { kind: 'food', name: 'Frischer Fisch', price: 8, inf: true, food: { hpRegen: 1.2, dauerS: 40 } },
+  { kind: 'food', name: 'Frischer Fisch', price: 8, inf: true, food: { hpRegen: 1.2, dauerS: 40 }, lagerWare: 'fisch' },
   { kind: 'food', name: 'Räucherfisch', price: 14, inf: true, food: { hpRegen: 1.8, dauerS: 45 } },
 ];
 
 // Imker Anselm: Honig und Met
 export const SHOP_IMKER: ReadonlyArray<ShopOfferDef> = [
-  { kind: 'food', name: 'Honigwabe', price: 15, inf: true, food: { hpRegen: 2, dauerS: 35 } },
+  { kind: 'food', name: 'Honigwabe', price: 15, inf: true, food: { hpRegen: 2, dauerS: 35 }, lagerWare: 'honig' },
   { kind: 'food', name: 'Met', price: 24, inf: true, food: { hpRegen: 2.8, dauerS: 50 } },
 ];
 
