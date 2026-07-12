@@ -67,6 +67,7 @@ import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand } from '../data/dorfOekonomie';
+import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
@@ -5661,6 +5662,9 @@ export class WorldScene extends CombatScene {
       this.uiCam?.ignore(img);
       this.tileImages.push(img);
     }
+    // M5: Feld-Wachstum einfaerben (Bauern-Aecker)
+    this.feldGfx = undefined;   // altes Graphics wurde mit tileImages zerstoert
+    this.zeichneFeldWachstum();
     // Gefällte Bäume dieses Gebiets: Stümpfe zeigen, bis sie nachwachsen
     for (const key of this.gefaellteBaeume.keys()) {
       const [gebiet, sx, sy] = key.split('_');
@@ -7519,6 +7523,10 @@ export class WorldScene extends CombatScene {
     this.grosserEinfall = true;
     this.flags.wurdeBelagert = true; // Runde 41 Fix: schaltet die Palisade beim Schmied frei (fehlte hier)
     this.letzterEinfallTag = this.tag;
+    // M5: die Horde zertrampelt die Bauern-Felder - sie verlieren Wachstumstage
+    this.dorfFelder.forEach((f) => { f.wachstum = Math.max(0, f.wachstum - FELD_REGELN.einfallSchadenTage); });
+    if (this.area.id === 'village') this.zeichneFeldWachstum();
+    this.chronik('ereignis', 'Die Horde zertrampelt die Äcker - die Saat leidet.');
     for (const n of this.npcEnts) { n.imHaus = false; n.hp = undefined; n.atkCd = 0; } // Kämpfer wieder frisch
     // Einfall-Punkte am DORF-Rand (Runde 51: +Waldgürtel-Versatz, das Dorf liegt
     // jetzt mittig in einer größeren, von Wald umschlossenen Karte).
@@ -7696,6 +7704,10 @@ export class WorldScene extends CombatScene {
           tier.sprite.destroy();
           this.animalEnts.splice(this.animalEnts.indexOf(tier), 1);
           this.legeKadaver(tx, ty);
+          // M5: gerissenes Vieh senkt den BESTAND wirklich (Wirtschafts-Kopplung)
+          if (viehGerissen(this.dorfVieh, tier.type)) {
+            this.chronik('ereignis', `Die Bestien haben ein ${tier.type === 'huhn' ? 'Huhn' : tier.type === 'kuh' ? 'Rind' : 'Schwein'} gerissen - der Bestand schrumpft.`);
+          }
           e.jagdZiel = { x: tx, y: ty }; e.atkCd = Math.max(e.atkCd, 1.0);
         } else if (npc) {
           this.fx.burst(npc.curX, npc.curY, 0x7a1010, 8, 70);
@@ -8061,6 +8073,10 @@ export class WorldScene extends CombatScene {
   // Tagesbericht (gestern produziert/verbraucht) fuers Verwaltungsbuch.
   private lagerBerichtGestern: { produziert: Record<string, number>; verbraucht: Record<string, number> } = { produziert: {}, verbraucht: {} };
   private lagerBerichtHeute: { produziert: Record<string, number>; verbraucht: Record<string, number> } = { produziert: {}, verbraucht: {} };
+  // M5: Bauern-Felder (Familie A) + Viehbestaende (Familie B) - im Spielstand
+  private dorfFelder: FeldZustand[] = Array.from({ length: FELD_REGELN.anzahl }, () => ({ wachstum: 0 }));
+  private dorfVieh: ViehBestand = viehStart();
+  private feldGfx?: Phaser.GameObjects.Graphics;   // sichtbares Wachstum
 
   private lagerRein(ware: string, menge: number): void {
     if (menge <= 0) return;
@@ -8081,6 +8097,30 @@ export class WorldScene extends CombatScene {
       this.lagerBerichtHeute.verbraucht[ware] = (this.lagerBerichtHeute.verbraucht[ware] ?? 0) + raus;
     }
     return raus;
+  }
+
+  // M5: sichtbares Feld-Wachstum - die Bauern-Aecker faerben sich von brauner
+  // Saat ueber Gruen zum reifen Gold (ein Overlay je Feld, im Tagestakt neu).
+  private zeichneFeldWachstum(): void {
+    const felderRects = this.area.bauernFelder ?? [];
+    if (!felderRects.length) { this.feldGfx?.destroy(); this.feldGfx = undefined; return; }
+    if (!this.feldGfx || !this.feldGfx.scene) {
+      this.feldGfx = this.add.graphics().setDepth(-6);
+      this.uiCam?.ignore(this.feldGfx);
+      this.tileImages.push(this.feldGfx as unknown as Phaser.GameObjects.Image);
+    }
+    const g = this.feldGfx;
+    g.clear();
+    felderRects.forEach((r, i) => {
+      const w = this.dorfFelder[i]?.wachstum ?? 0;
+      const t = Math.min(1, w / FELD_REGELN.reifeTage);
+      // braun (frisch) -> gruen (waechst) -> gold (reif)
+      const farbe = t < 0.5
+        ? Phaser.Display.Color.Interpolate.ColorWithColor(new Phaser.Display.Color(90, 66, 40), new Phaser.Display.Color(90, 130, 50), 100, Math.round(t * 200))
+        : Phaser.Display.Color.Interpolate.ColorWithColor(new Phaser.Display.Color(90, 130, 50), new Phaser.Display.Color(190, 160, 60), 100, Math.round((t - 0.5) * 200));
+      g.fillStyle(Phaser.Display.Color.GetColor(farbe.r, farbe.g, farbe.b), 0.34);
+      g.fillRect(r.x0 * TILE, r.y0 * TILE, (r.x1 - r.x0 + 1) * TILE, (r.y1 - r.y0 + 1) * TILE);
+    });
   }
 
   // M4: Ist der Ketten-Bewohner arbeitsfähig? Er muss LEBEN (nicht verwundet)
@@ -8108,6 +8148,28 @@ export class WorldScene extends CombatScene {
       this.lagerRein(m, n ?? 0);
     }
     if (stockt.length) this.chronik('ereignis', `Heute ohne Nachschub: ${stockt.join(', ')} - die Leute dafür fehlen.`);
+    // 1b) M5 BAUERN-FELDER (Familie A): wachsen nur, wenn der Bauer arbeitet;
+    //     reife Felder werden geerntet -> Korn ins Lager, neu gesät.
+    this.dorfFelder.forEach((feld, i) => {
+      const bauer = i === 0 ? 'bauer1' : 'bauer2';
+      const erg = feldTick(feld, this.kettenNpcVerfuegbar(bauer));
+      if (erg.geerntet) {
+        this.lagerRein('weizen', erg.korn);
+        this.chronik('ereignis', `Die Ernte ist eingebracht - ${erg.korn} Korn vom ${i === 0 ? 'Nordwest' : 'Südost'}-Acker.`);
+      }
+    });
+    // 1c) M5 VIEH (Familie B): Eier/Milch täglich, Vermehrung bei Futter bis
+    //     zum Deckel, Schlachtungen -> Fleisch. Hirte/Bauer Ott versorgen.
+    const hirteDa = this.kettenNpcVerfuegbar('bauer3') || this.kettenNpcVerfuegbar('hirte');
+    const viehErg = viehTick(this.dorfVieh, this.dorfLager['weizen'] ?? 0, this.tag, hirteDa);
+    if (viehErg.kornVerbraucht > 0) this.lagerRaus('weizen', viehErg.kornVerbraucht);
+    this.lagerRein('eier', viehErg.eier);
+    this.lagerRein('milch', viehErg.milch);
+    this.lagerRein('fleisch', viehErg.fleisch);
+    for (const g of viehErg.geboren) this.chronik('ereignis', `Auf der Angerwiese ist ein ${g} zur Welt gekommen.`);
+    for (const s of viehErg.geschlachtet) this.chronik('ereignis', `Schlachttag: ein ${s} kommt in die Speisekammer.`);
+    if (!hirteDa) this.chronik('ereignis', 'Niemand versorgt heute das Vieh - Stall und Weide ruhen.');
+    if (this.area?.id === 'village') this.zeichneFeldWachstum();
     // 2) Verarbeitung (Phase 2). AKTUELL automatischer Platzhalter - läuft von
     //    selbst. ZIEL (Autorwunsch): die Bewohner Müller/Bäcker/Schmied arbeiten
     //    es sichtbar ab; dann gaten wir jede Stufe daran, ob der NPC lebt und im
@@ -9665,7 +9727,7 @@ export class WorldScene extends CombatScene {
         einfallZaehler: this.einfallZaehler,
         tagwerke: this.tagwerke,
         dorfkasse: this.dorfkasse,
-        wirtschaft: { lager: this.dorfLager, naechsteAbgabe: this.naechsteAbgabe, rueckstand: this.abgabeRueckstand, bericht: this.lagerBerichtGestern },
+        wirtschaft: { lager: this.dorfLager, naechsteAbgabe: this.naechsteAbgabe, rueckstand: this.abgabeRueckstand, bericht: this.lagerBerichtGestern, felder: this.dorfFelder, vieh: this.dorfVieh },
         breschen: this.breschen,
       },
     };
@@ -9731,6 +9793,8 @@ export class WorldScene extends CombatScene {
     this.naechsteAbgabe = wi?.naechsteAbgabe ?? ABGABE.intervallTage;
     this.abgabeRueckstand = wi?.rueckstand ?? 0;
     this.lagerBerichtGestern = wi?.bericht ?? { produziert: {}, verbraucht: {} };   // M3 (alte Staende: leer)
+    this.dorfFelder = wi?.felder ?? Array.from({ length: FELD_REGELN.anzahl }, () => ({ wachstum: 0 }));   // M5
+    this.dorfVieh = wi?.vieh ?? viehStart();   // M5 (alte Staende: Startbestand)
     this.breschen = data.welt.breschen ?? [];
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
     recalc(p);

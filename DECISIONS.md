@@ -1862,3 +1862,21 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Ausgefallene Stufen melden sich in der Chronik ("Die Muehle steht still...").
 - Browser-Beleg: Tick liefert Fisch/Honig/Wasser; Mueller verwundet ->
   Muehle still + Mehl sinkt weiter (Baecker verbraucht) - Kette spuerbar.
+
+## Dorfwirtschaft M5 - Bauernfelder + Vieh
+- NEU src/data/dorfVieh.ts: feldTick/viehTick/viehGerissen als PURE Funktionen
+  (11 Tests). Alle Raten/Deckel/Futter in FELD_REGELN/VIEH_REGELN.
+- FELDER: die zwei bestehenden Acker-Flaechen (NW Bauer Veit, SO Baeuerin
+  Grete) sind jetzt echte Bauern-Felder (AreaData.bauernFelder): wachsen nur,
+  wenn der Bauer arbeitet; Reife nach 5 Tagen -> 8 Korn ins Lager + Chronik;
+  SICHTBAR ueber ein Farb-Overlay (braun -> gruen -> gold). Weizen aus der
+  Tagesproduktion GESTRICHEN (kommt jetzt von den Feldern).
+- VIEH (Familie B): Eier/Milch taeglich, Vermehrung nur SATT (Korn-Futter)
+  und bis zum Deckel; Kuh ueber Deckel -> Schlachtung; Schwein-Schlachttag im
+  Wochenrhythmus bis zum Mindestbestand. Chronik meldet Geburten/Schlachtungen.
+  Hirte/Bauer Ott versorgen - fehlen beide, ruht der Stall.
+- EINFALL-KOPPLUNG: gerissenes Vieh senkt den BESTAND (Hook an der Kadaver-
+  Stelle) + grosser Einfall zertrampelt die Felder (-2 Wachstumstage).
+- Spielstand: welt.wirtschaft.felder/vieh (optional; alte Staende starten mit
+  Standardwerten). Browser-Beleg: 6 Tage -> Ernte, Huehner 4->5, Ferkel +
+  Schlachttag, Speisekammer-Ueberlauf griff beim Fleisch.

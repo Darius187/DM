@@ -13,13 +13,15 @@ import type { MaterialId } from './crafting';
 // Stein bleibt ohne Besitzer (Dorf-Tagelöhner), Weizen wandert mit M5 auf die
 // Bauern-Felder.
 export const TAGES_PRODUKTION: Partial<Record<MaterialId, number>> & Record<string, number> = {
-  holz: 4, stein: 2, kraeuter: 1, weizen: 3, fisch: 2, honig: 1, wasser: 4,
+  holz: 4, stein: 2, kraeuter: 1, fisch: 2, honig: 1, wasser: 4,
 };
 
 // M4: Wer erzeugt was? Fehlt der Bewohner (tot/verwundet/geflohen), stockt
 // GENAU seine Zeile - die Kette wird spürbar (Autor-Ziel).
+// M5: WEIZEN kommt nicht mehr "aus dem Nichts", sondern von den BAUERN-
+// FELDERN (dorfVieh.ts feldTick, Familie A) - darum hier gestrichen.
 export const PRODUZENTEN: Record<string, string> = {
-  holz: 'holzfaeller', kraeuter: 'magdalena', weizen: 'bauer1',
+  holz: 'holzfaeller', kraeuter: 'magdalena',
   fisch: 'fischer', honig: 'imker', wasser: 'magd',
 };
 

@@ -60,6 +60,10 @@ export interface SaveData {
     wirtschaft?: {
       lager: Record<string, number>; naechsteAbgabe: number; rueckstand: number;
       bericht?: { produziert: Record<string, number>; verbraucht: Record<string, number> };
+      // M5 Dorfwirtschaft: Bauern-Felder + Viehbestaende (optional, alte
+      // Staende starten mit den Standardwerten)
+      felder?: Array<{ wachstum: number }>;
+      vieh?: { huehner: number; kuehe: number; schweine: number; huhnT: number; kuhT: number; schweinT: number };
     };
     breschen?: Array<{ x: number; y: number }>;
   };

@@ -128,6 +128,9 @@ export interface AreaData {
   // M2 Dorfwirtschaft: sichtbare Arbeits-Stationen (Amboss, Backofen, Holz-
   // stapel, Bienenkoerbe) an den Arbeits-Ankern der Bewohner
   stationen?: Array<{ art: 'amboss' | 'backofen' | 'holzstapel' | 'bienenkorb'; x: number; y: number }>;
+  // M5 Dorfwirtschaft: die BAUERN-Felder (Familie A) - Kachel-Rechtecke, deren
+  // Wachstum die Szene einfaerbt und deren Ernte Korn ins Dorf-Lager bringt
+  bauernFelder?: Array<{ x0: number; y0: number; x1: number; y1: number }>;
   // Mauerrisse vor Geheimkammern (Runde 40): die Kammer bleibt massiver Fels,
   // bis der Riss aufbricht - erst dann wird sie ausgehoben (kammer) und die
   // Truhe (chestX/chestY) erscheint. So ist sie vorher wirklich unsichtbar.
@@ -1071,6 +1074,7 @@ function umgebeMitWald(a: AreaData, m: number, rng: Rng): void {
   for (const an of a.animals) { P(an); if (an.pen) { an.pen.x0 += dpx; an.pen.y0 += dpx; an.pen.x1 += dpx; an.pen.y1 += dpx; } }
   for (const d of a.doors ?? []) { d.x += m; d.y += m; }
   for (const hp of a.hausPlaetze ?? []) RT(hp);
+  for (const bf of a.bauernFelder ?? []) RT(bf);
   RT(a.gehoeft);
   for (const s of a.special) { s.x += m; s.y += m; }
 }
@@ -1219,6 +1223,8 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   a.animals.push({ type: 'schwein', x: 20 * TILE, y: 20 * TILE, pen: pen1 });
   a.animals.push({ type: 'huhn', x: 18 * TILE, y: 19.5 * TILE, pen: pen1 });
   carve(map, 25, 8, 30, 13, T.FIELD);
+  // M5: Bauern-Feld 1 (Nordwest, Bauer Veit)
+  (a.bauernFelder ??= []).push({ x0: 25, y0: 8, x1: 30, y1: 13 });
   // FAMILIE A (Autor-Roster M1, KORN): Bauer Veit + Baeuerin Grete + Kind Hannes
   a.npcs.push({ id: 'bauer1', name: 'Bauer Veit', x: 27 * TILE, y: 11 * TILE, abend: { x: 19 * TILE, y: 31.5 * TILE }, kaempfer: true, arbeit: 'feld' });
   // FAMILIE B (Autor-Roster M1, VIEH): Hirtenjunge Lenz hütet die Tiere des Hofs
@@ -1240,6 +1246,8 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   a.animals.push({ type: 'pferd', x: 72 * TILE, y: 45 * TILE, pen: pen2 });
   a.animals.push({ type: 'pferd', x: 68 * TILE, y: 48 * TILE, pen: pen2 });
   carve(map, 56, 53, 63, 56, T.FIELD);
+  // M5: Bauern-Feld 2 (Suedost, Baeuerin Grete)
+  (a.bauernFelder ??= []).push({ x0: 56, y0: 53, x1: 63, y1: 56 });
   // FAMILIE A: Baeuerin Grete am Sued-Kornfeld
   a.npcs.push({ id: 'bauer2', name: 'Bäuerin Grete', x: 59 * TILE, y: 54 * TILE, abend: { x: 60 * TILE, y: 50.5 * TILE }, arbeit: 'feld' });
   // FAMILIE B (Autor-Roster M1, VIEH): Bauer Ott am Vieh-Gatter des Hofs

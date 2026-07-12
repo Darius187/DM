@@ -1163,3 +1163,9 @@ ENTSCHEIDUNGEN: Abwesenheits-Naeherung (Dorf nicht geladen = alle arbeiten);
 Waffen/Werkzeuge abwechselnd je Tag; Erz/Kohle-Tagesproduktion gestrichen.
 EHRLICHE LUECKE: "ARBEITS-Phase" gilt je TAG (Tagestakt), nicht je Stunde -
 LITE-Auslegung des Auftrags.
+
+## Dorfwirtschaft M5: Bauernfelder + Vieh
+FERTIG + VERIFIZIERT (Browser, 6 Wirtschaftstage): Ernte in der Chronik,
+Bestaende wachsen bis Deckel, Schlachttage liefern Fleisch, Kapazitaets-
+Ueberlauf verkauft automatisch. Feld-Overlay faerbt die Aecker (m5_feld.png).
+tsc + 310 Tests gruen. Einfall senkt Bestand + Feldwachstum real.
