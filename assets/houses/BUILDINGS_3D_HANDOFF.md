@@ -32,6 +32,8 @@ the primary representation.
 - Runtime data: `butcher/medieval_butcher_house_3d_runtime.json`
 - Root pivot: `BUTCHER_HOUSE_ROTATION_PIVOT`
 - Doors: `DOOR_MAIN_HINGE`, `DOOR_ANNEX_HINGE`
+- The main entrance is on the front-right part of the timber house beside the
+  stone annex. Keep its steps and `TRIGGER_MAIN_DOOR` clear of market props.
 - Ten transparent windows use `MAT_BUTCHER_GLASS_TRANSPARENT`.
 - The JSON contains 14 collision/navigation guides plus exterior, ground-floor,
   upper-floor and annex spawns.
@@ -65,6 +67,8 @@ the primary representation.
 - Runtime data: `cooperage/medieval_cooperage_house_3d_runtime.json`
 - Root pivot: `COOPERAGE_HOUSE_ROTATION_PIVOT`
 - Door: `DOOR_COOPERAGE_MAIN_HINGE`
+- The framed main entrance and stone steps are centered in the front facade;
+  use `TRIGGER_COOPERAGE_MAIN` for entry.
 - Twelve transparent windows use `MAT_COOPERAGE_GLASS_TRANSPARENT`.
 - Fourteen detailed coopered barrels, an open assembly vat, separate staves,
   loose hoops, racks, benches, mallets and wall tools are part of the GLB.
