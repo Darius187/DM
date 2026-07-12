@@ -59,6 +59,22 @@ the primary representation.
   shingles laid individually on their roof planes.
 - The global ground plate/shadow is intentionally absent from the GLB.
 
+## Cooperage
+
+- Model: `cooperage/medieval_cooperage_house_3d_runtime.glb`
+- Runtime data: `cooperage/medieval_cooperage_house_3d_runtime.json`
+- Root pivot: `COOPERAGE_HOUSE_ROTATION_PIVOT`
+- Door: `DOOR_COOPERAGE_MAIN_HINGE`
+- Twelve transparent windows use `MAT_COOPERAGE_GLASS_TRANSPARENT`.
+- Fourteen detailed coopered barrels, an open assembly vat, separate staves,
+  loose hoops, racks, benches, mallets and wall tools are part of the GLB.
+- The JSON contains 16 collision/navigation/interaction guides and separate
+  exterior, ground-floor, upper-floor and workshop spawn points.
+- The house, upper floor and open barrel workshop are walkable.
+- The roof contains 647 house shingles and 362 workshop shingles laid
+  individually on their roof planes.
+- The global ground plate/shadow is intentionally absent from the GLB.
+
 ## Rendering
 
 - Load all assets with Three.js `GLTFLoader`.
