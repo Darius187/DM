@@ -1125,3 +1125,16 @@ ENTSCHEIDUNGEN: Anker-Auftrag aus Referenzen rekonstruiert (Datei fehlt im
 Repo); Pausen-/Mittagszeiten als Daten in src/data/dorfleben.ts.
 EHRLICHE LUECKE: Pausen-Pose ist vorerst simples Stehen/Strecken - echte
 Sitz-/Trink-Posen kommen mit den Rollen-Sprites (M1/M2).
+
+## Dorfwirtschaft M1: Bewohner-Roster + Sprites
+FERTIG + VERIFIZIERT: 23-Personen-Roster exakt nach Autor-Liste (Browser-
+Roster-Dump stimmt 1:1), Kuester-Glocke morgens/abends (Chronik-Zeile im
+Screenshot sichtbar), Werkzeuge je Rolle prozedural ueber FIGURES.
+Screenshots: m1_schmied.png (Schmied + neue Baeuerin Hilde + Glocken-Chronik),
+m1_brunnen.png. tsc + 299 Tests gruen.
+ENTSCHEIDUNGEN: Namen um 1349 ergaenzt (Agnes, Ruprecht, Ott, Hilde,
+Ottilie); gestrichene Zuenfte nur despawnt, Daten bleiben fuer die
+Hauptstadt; Glocke als Synth-Klang (echte WAV gewinnt per Hot-Swap).
+EHRLICHE LUECKEN: Rollenspezifische ARBEITS-Posen sind weiter Partikel+Takt
+(rollenspezifische Bewegungs-Posen kommen mit M2-Stationen); Werkzeuge sind
+bei 32px klein - Detailpruefung steht aus, Zeichencode ist simpel.

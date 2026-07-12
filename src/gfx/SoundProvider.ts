@@ -50,6 +50,12 @@ const SYNTH: Record<string, SynthStep[]> = {
   stein_hacken: [{ freq: 220, dur: 0.07, type: 'square', vol: 0.06 }],
   feuer_knistern: [{ freq: 90, dur: 0.15, type: 'sawtooth', vol: 0.02 }],
   muehle: [{ freq: 75, dur: 0.5, type: 'triangle', vol: 0.02 }],
+  // M1 Dorfwirtschaft: die Glocke von St. Marien (Kuester laeutet morgens/abends).
+  // Zwei tiefe Sinus-Schlaege mit Nachklang; echte Datei snd_kirchenglocke gewinnt.
+  kirchenglocke: [
+    { freq: 196, dur: 1.4, type: 'sine', vol: 0.07 }, { freq: 392, dur: 0.9, type: 'sine', vol: 0.03 },
+    { freq: 196, dur: 1.6, type: 'sine', vol: 0.07, delay: 1.7 }, { freq: 392, dur: 1.0, type: 'sine', vol: 0.03, delay: 1.7 },
+  ],
   schmiede_hammer: [{ freq: 520, dur: 0.1, type: 'square', vol: 0.05 }],
   huhn: [{ freq: 700, dur: 0.08, type: 'square', vol: 0.025 }, { freq: 900, dur: 0.06, type: 'square', vol: 0.02, delay: 0.1 }],
   schwein: [{ freq: 160, dur: 0.12, type: 'sawtooth', vol: 0.03 }],

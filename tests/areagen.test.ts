@@ -227,19 +227,28 @@ describe('Krypta-Generator: jeder Spezialraum erreichbar', () => {
     }
   });
 
-  it('Runde 10: alle Zünfte stehen im Dorf, sind ansprechbar, Schafe auf der Weide', () => {
+  it('M1 Dorfwirtschaft: das Autor-Roster steht im Dorf, alle ansprechbar', () => {
     const dorf = buildVillage(seededRng(5), 0, 0);
     const ids = dorf.npcs.map((n) => n.id);
-    for (const id of ['bader', 'kuefer', 'weberin', 'gerber', 'hebamme', 'kuester', 'fischer', 'imker', 'schaefer'] as const) {
+    // Das 23-Personen-Roster des Autors (Auftrag Dorfwirtschaft M1)
+    for (const id of ['schulze', 'johannes', 'kuester', 'heinrich', 'wirtin', 'schmied',
+      'mueller', 'baecker', 'zimmermann', 'holzfaeller', 'fischer', 'imker', 'magdalena',
+      'hebamme', 'magd', 'bauer1', 'bauer2', 'kind1', 'bauer3', 'bauer4', 'hirte',
+      'witwe', 'kind2'] as const) {
       expect(ids, `fehlt im Dorf: ${id}`).toContain(id);
-      expect(VOLK[id], `keine Dialogzeilen: ${id}`).toBeTruthy();
+    }
+    // Gestrichen (Autor: gehoeren in die Hauptstadt): keine Geisterzuenfte mehr
+    for (const id of ['bader', 'kuefer', 'weberin', 'gerber', 'schaefer', 'waescherin'] as const) {
+      expect(ids, `sollte gestrichen sein: ${id}`).not.toContain(id);
     }
     // Jeder Dorf-NPC ist ansprechbar: Sonderfaelle oder VOLK-Zeilen
     const sonder = new Set(['heinrich', 'magdalena', 'johannes', 'schmied', 'mueller', 'bauer1', 'bauer2', 'haendler', 'landherr']);
     for (const n of dorf.npcs) {
       expect(sonder.has(n.id) || !!VOLK[n.id], `stumm: ${n.id}`).toBe(true);
     }
+    // Schafweide bleibt (Familie B versorgt sie), Tiere vorhanden
     expect(dorf.animals.some((t) => t.type === 'schaf')).toBe(true);
+    expect(dorf.animals.some((t) => t.type === 'kuh')).toBe(true);
   });
 
   it('max. 2 Skript-Schreckmomente pro Ebene', () => {

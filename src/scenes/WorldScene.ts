@@ -274,6 +274,7 @@ export class WorldScene extends CombatScene {
   private _tierPrevX = 0; private _tierPrevY = 0;   // Spielerposition letzter Frame (für Tempo der Scheu-Flucht)
   private tag = 1;
   private tageszeit = 0.3; // 0..1, Start am Morgen
+  private glockePrevZeit?: number;   // M1: erkennt die Morgen-/Abendglocken-Schwelle
   private gefaellteBaeume = new Map<string, number>(); // Position -> Tag des Fällens
   private baumSchlaege = new Map<string, number>();
   private hackCdMs = 0;   // R90: Schlag-Pause (HARVEST_CONFIG) - gefühlt konstant, tageslängen-unabhängig
@@ -7341,6 +7342,11 @@ export class WorldScene extends CombatScene {
       case 'weben':
         this.fx.burst(n.curX + 6, n.curY, 0xd8cfb8, 3, 40);
         break;
+      case 'kochen':
+        // M1: die Wirtin in der Kueche - Dampf ueber dem Kessel
+        this.fx.smoke(n.curX + 4, n.curY - 12);
+        this.fx.burst(n.curX + 6, n.curY - 6, 0xd8d0b8, 3, 40);
+        break;
     }
   }
 
@@ -7348,9 +7354,9 @@ export class WorldScene extends CombatScene {
   private addFluechtlinge(): void {
     const leute: Array<[string, string, number, number]> = [
       ['frau1', 'Bäckersfrau Elsbeth', 4, 6], ['frau2', 'Margret', 6, 7],
-      ['witwe', 'Witwe Käthe', 9, 6], ['kind1', 'Hannes', 5, 8],
+      ['witwe', 'Witwe Ottilie', 9, 6], ['kind1', 'Hannes', 5, 8],
       ['kind2', 'Lisbeth', 8, 8], ['hebamme', 'Hebamme Walpurga', 11, 7],
-      ['waescherin', 'Wäscherin Ida', 12, 5],
+      ['magd', 'Magd Trine', 12, 5],
     ];
     for (const [figur, name, tx, ty] of leute) {
       const x = tx * TILE + 16, y = ty * TILE + 16;
@@ -10612,6 +10618,23 @@ export class WorldScene extends CombatScene {
 
   private updateVillageLife(dt: number): void {
     const abend = this.tageszeit > TAG.abendAb;
+    // M1 (Autor-Roster): der Kuester laeutet die Glocke von St. Marien morgens
+    // und abends - hoerbar im Dorf, mit Chronik-Zeile. Nur wenn er lebt/da ist.
+    if (this.area.id === 'village') {
+      const vorher = this.glockePrevZeit ?? this.tageszeit;
+      this.glockePrevZeit = this.tageszeit;
+      const kuesterDa = this.npcEnts.some((n) => n.id === 'kuester' && !n.verwundet);
+      if (kuesterDa) {
+        const kreuzt = (schwelle: number): boolean => vorher < schwelle && this.tageszeit >= schwelle;
+        if (kreuzt(TAG.morgenAb)) {
+          this.sfx.play('kirchenglocke', 0.8);
+          this.chronik('ereignis', 'Küster Benedikt läutet die Morgenglocke von St. Marien.');
+        } else if (kreuzt(TAG.abendAb)) {
+          this.sfx.play('kirchenglocke', 0.8);
+          this.chronik('ereignis', 'Die Abendglocke ruft die Bewohner von den Feldern heim.');
+        }
+      }
+    }
     // Einfall: nach dem Boss-Sieg greifen Monster-Trupps das Dorf an.
     // Der ERSTE kommt SOFORT beim nächsten Stadtbesuch (Runde 28: vorher
     // nur abends - wer tagsüber heimkam, erlebte nie etwas)

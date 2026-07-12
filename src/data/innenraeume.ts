@@ -45,7 +45,7 @@ export const INNENRAEUME: Readonly<Record<string, InnenraumDef>> = {
       M('tisch', 4, 8), M('stuhl', 5, 8), M('kerze', 8, 4),
     ],
     bewohner: [
-      { id: 'wirtin', name: 'Wirtin Mathilde', x: 4, y: 5 },
+      { id: 'wirtin', name: 'Wirtin Agnes', x: 4, y: 5 },
     ],
     faesser: [[16, 9], [1, 9]],
   },
@@ -194,7 +194,6 @@ export const INNENRAEUME: Readonly<Record<string, InnenraumDef>> = {
       M('tisch', 3, 3), M('regal', 1, 1), M('teppich', 5, 4), M('teppich', 5, 5),
     ],
     bewohner: [
-      { id: 'bader', name: 'Bader Severin', x: 4, y: 4, nurAbends: true },
     ],
     faesser: [[1, 6], [2, 6]],
   },
@@ -205,7 +204,6 @@ export const INNENRAEUME: Readonly<Record<string, InnenraumDef>> = {
     ],
     bewohner: [
       { id: 'frau2', name: 'Küfersfrau Barbe', x: 4, y: 5 },
-      { id: 'kuefer', name: 'Küfer Urban', x: 6, y: 5, nurAbends: true },
     ],
     faesser: [[1, 5], [1, 6], [2, 6], [9, 6]],
   },
@@ -216,7 +214,6 @@ export const INNENRAEUME: Readonly<Record<string, InnenraumDef>> = {
       M('bett', 8, 5), M('kamin', 8, 1), M('teppich', 4, 6), M('teppich', 5, 6),
     ],
     bewohner: [
-      { id: 'weberin', name: 'Weberin Adelheid', x: 5, y: 5, nurAbends: true },
     ],
   },
   gerberei: {
@@ -225,7 +222,6 @@ export const INNENRAEUME: Readonly<Record<string, InnenraumDef>> = {
       M('tisch', 4, 3), M('regal', 1, 1), M('regal', 8, 1), M('bett', 8, 5), M('kamin', 5, 1),
     ],
     bewohner: [
-      { id: 'gerber', name: 'Gerber Lorenz', x: 4, y: 5, nurAbends: true },
     ],
     faesser: [[1, 6], [2, 6]],
   },
@@ -279,7 +275,7 @@ export const INNENRAEUME: Readonly<Record<string, InnenraumDef>> = {
     ],
     bewohner: [
       { id: 'frau1', name: 'Alte Mutter Hanne', x: 4, y: 5 },
-      { id: 'waescherin', name: 'Wäscherin Ida', x: 6, y: 6, nurAbends: true },
+      { id: 'witwe', name: 'Witwe Ottilie', x: 6, y: 6, nurAbends: true },
     ],
   },
 };

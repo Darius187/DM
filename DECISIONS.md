@@ -1781,3 +1781,27 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - 6 neue Tests (tests/dorfleben.test.ts), 299 gesamt gruen. Browser: im
   Pausenfenster sind 6 Bewohner an der Station und 19 unterwegs (Versatz
   wirkt sichtbar - kein Stechuhr-Dorf).
+
+## Dorfwirtschaft M1 - Bewohner-Roster + Rollen-Sprites
+- ROSTER exakt nach Autor-Vorgabe (23 Bewohner + Fahrender Haendler):
+  NEU: Wirtin Agnes (Heinrichs Frau, Kueche, arbeit 'kochen'), Holzfaeller
+  Ruprecht (Waldrand SW), Bauer Ott + Baeuerin Hilde (FAMILIE B, VIEH:
+  Angerwiese + Schafweide), Witwe Ottilie (Klatsch am Brunnen).
+  GESTRICHEN (Autor: "gehoeren in die Hauptstadt"): Bader Severin, Kuefer
+  Urban, Weberin Adelheid, Gerber Lorenz, Schaefer Tobias + Waescherin Ida
+  (nicht im Roster; die Magd uebernimmt Wasser+Waesche). Ihre GEBAEUDE bleiben
+  als Kulisse; Dialog-/Shop-Daten bleiben fuer die Hauptstadt liegen.
+- Familien markiert: A = Veit + Grete + Hannes (KORN), B = Ott + Hilde +
+  Hirtenjunge Lenz (VIEH). Namen vereinheitlicht: Wirtin heisst ueberall
+  Agnes (vorher innen 'Mathilde'), Witwe ueberall Ottilie (vorher 'Kaethe').
+- KUESTER LAEUTET: Morgen- und Abendglocke (Schwellen morgenAb/abendAb) mit
+  Chronik-Zeile - nur wenn er lebt. Glocke als Synth im SoundProvider
+  ('kirchenglocke', 2 tiefe Sinus-Schlaege); eine echte Datei
+  snd_kirchenglocke gewinnt automatisch (Hot-Swap, Regel 13 beachtet).
+- WERKZEUGE in der Hand (prozedural, fallbackArt): hammer/sack/angel/eimer/
+  korb neu + zugewiesen (Schmied Hammer, Mueller Mehlsack, Fischer Angel,
+  Magd Eimer, Magdalena Kraeuterkorb, Holzfaeller/Zimmermann Axt). Alles
+  ueber FIGURES -> spaetere Sprite-Pakete ersetzen 1:1 (Hot-Swap).
+- Fluechtlings-Liste angepasst (Ottilie statt Kaethe, Magd statt Ida).
+- Roster-Test neu (tests/areagen.test.ts): prueft das 23er-Roster UND dass
+  die Gestrichenen wirklich fehlen. 299 Tests gruen.

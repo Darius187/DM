@@ -40,7 +40,8 @@ export interface NpcSpawn {
   // Innenräume: tagsüber bei der Arbeit, erst abends/nachts daheim
   nurAbends?: boolean;
   // Sichtbares Tagwerk (Runde 16): die Bewohner ARBEITEN an ihrem Platz
-  arbeit?: 'hacken' | 'schmieden' | 'fischen' | 'feld' | 'fuettern' | 'waschen' | 'backen' | 'weben';
+  // ('kochen' neu in M1 Dorfwirtschaft: die Wirtin in der Kueche)
+  arbeit?: 'hacken' | 'schmieden' | 'fischen' | 'feld' | 'fuettern' | 'waschen' | 'backen' | 'weben' | 'kochen';
 }
 
 export interface AnimalSpawn {
@@ -1142,6 +1143,8 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   label(17.5, 21.2, 'Zum Schwarzen Raben');
   a.chimneys.push({ x: 14 * TILE + 6, y: 22 * TILE + 2 });
   a.npcs.push({ id: 'heinrich', name: 'Heinrich Kramer', x: 17.5 * TILE, y: 29.5 * TILE, abend: { x: 17.5 * TILE, y: 29.5 * TILE }, kaempfer: true });
+  // M1 Dorfwirtschaft (Autor-Roster): die Wirtin - Heinrichs Frau, fuehrt die Kueche
+  a.npcs.push({ id: 'wirtin', name: 'Wirtin Agnes', x: 15.5 * TILE, y: 29.5 * TILE, abend: { x: 15.5 * TILE, y: 29.5 * TILE }, arbeit: 'kochen' });
   a.animals.push({ type: 'hund', x: 21 * TILE, y: 30 * TILE, pen: { x0: 12 * TILE, y0: 29 * TILE, x1: 26 * TILE, y1: 33 * TILE } });
 
   // 2. Kirche St. Marien mit Friedhof (Johannes), Tür = Kryptaeingang
@@ -1182,8 +1185,8 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   a.npcs.push({ id: 'mueller', name: 'Müller', x: 76.5 * TILE, y: 41 * TILE, abend: { x: 20 * TILE, y: 31 * TILE }, kaempfer: true });
   // Magd Trine hilft tagsüber an der Mühle, abends geht sie heim in die Gasse
   a.npcs.push({ id: 'magd', name: 'Magd Trine', x: 78 * TILE, y: 41 * TILE, abend: { x: 46.5 * TILE, y: 48.5 * TILE } });
-  // Wäscherin Ida am Steg über den Bach
-  a.npcs.push({ id: 'waescherin', name: 'Wäscherin Ida', x: 79 * TILE, y: 28.5 * TILE, abend: { x: 53.5 * TILE, y: 48.5 * TILE }, arbeit: 'waschen' });
+  // M1 (Autor-Roster): die Waescherin ist gestrichen - die Magd uebernimmt
+  // Wasser holen UND Waesche (Weg Brunnen <-> Muehle/Steg, sichtbar in M2).
 
   // 5. Schmiede (südlich der Straße)
   carve(map, 30, 38, 36, 42, T.HWALL);
@@ -1211,8 +1214,9 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   a.animals.push({ type: 'schwein', x: 20 * TILE, y: 20 * TILE, pen: pen1 });
   a.animals.push({ type: 'huhn', x: 18 * TILE, y: 19.5 * TILE, pen: pen1 });
   carve(map, 25, 8, 30, 13, T.FIELD);
+  // FAMILIE A (Autor-Roster M1, KORN): Bauer Veit + Baeuerin Grete + Kind Hannes
   a.npcs.push({ id: 'bauer1', name: 'Bauer Veit', x: 27 * TILE, y: 11 * TILE, abend: { x: 19 * TILE, y: 31.5 * TILE }, kaempfer: true, arbeit: 'feld' });
-  // Hirtenjunge Lenz hütet die Tiere des Hofs
+  // FAMILIE B (Autor-Roster M1, VIEH): Hirtenjunge Lenz hütet die Tiere des Hofs
   a.npcs.push({ id: 'hirte', name: 'Hirtenjunge Lenz', x: 19 * TILE, y: 19.5 * TILE, abend: { x: 46.5 * TILE, y: 48.5 * TILE }, arbeit: 'fuettern' });
 
   // 6b. Bauernhof 2 (Südosten): Kuh im Gatter, Acker
@@ -1231,7 +1235,10 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   a.animals.push({ type: 'pferd', x: 72 * TILE, y: 45 * TILE, pen: pen2 });
   a.animals.push({ type: 'pferd', x: 68 * TILE, y: 48 * TILE, pen: pen2 });
   carve(map, 56, 53, 63, 56, T.FIELD);
+  // FAMILIE A: Baeuerin Grete am Sued-Kornfeld
   a.npcs.push({ id: 'bauer2', name: 'Bäuerin Grete', x: 59 * TILE, y: 54 * TILE, abend: { x: 60 * TILE, y: 50.5 * TILE }, arbeit: 'feld' });
+  // FAMILIE B (Autor-Roster M1, VIEH): Bauer Ott am Vieh-Gatter des Hofs
+  a.npcs.push({ id: 'bauer3', name: 'Bauer Ott', x: 70 * TILE, y: 43.5 * TILE, mittag: { x: 60 * TILE, y: 50.5 * TILE }, abend: { x: 60 * TILE, y: 50.5 * TILE }, arbeit: 'fuettern' });
 
   // 7. Fahrender Händler am Marktplatz (Karren)
   a.npcs.push({ id: 'haendler', name: 'Fahrender Händler', x: 50.5 * TILE, y: 28 * TILE });
@@ -1294,13 +1301,14 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   carve(map, 76, 27, 77, 29, T.PATH);
   label(76.5, 21.2, 'Badehaus');
   a.chimneys.push({ x: 75 * TILE + 6, y: 22 * TILE + 2 });
-  a.npcs.push({ id: 'bader', name: 'Bader Severin', x: 76.5 * TILE, y: 28 * TILE, mittag: { x: 45 * TILE, y: 30 * TILE }, abend: { x: 76.5 * TILE, y: 27.5 * TILE } });
+  // M1 (Autor-Roster): Bader Severin gestrichen - gehoert in die Hauptstadt.
+  // Das Badehaus bleibt als Kulisse stehen.
 
   // 10b. Küferei im Westen (Küfer Urban: kauft Holz fürs Fassmachen)
   carve(map, 4, 34, 8, 37, T.HWALL);
   tuer(6, 37, 'kueferei');
   label(6.5, 33.2, 'Küferei');
-  a.npcs.push({ id: 'kuefer', name: 'Küfer Urban', x: 6.5 * TILE, y: 39 * TILE, mittag: { x: 17.5 * TILE, y: 30.5 * TILE }, abend: { x: 6.5 * TILE, y: 38.5 * TILE } });
+  // M1 (Autor-Roster): Kuefer Urban gestrichen - gehoert in die Hauptstadt.
   for (const [bx, by] of [[9, 36], [9, 37], [3, 38]] as const) {
     a.breakables.push({ kind: 'fass', x: bx * TILE + 16, y: by * TILE + 16, ambush: false });
   }
@@ -1309,13 +1317,13 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   carve(map, 24, 33, 28, 36, T.HWALL);
   tuer(26, 36, 'weberei');
   label(26.5, 32.2, 'Weberei');
-  a.npcs.push({ id: 'weberin', name: 'Weberin Adelheid', x: 26.5 * TILE, y: 38 * TILE, mittag: { x: 45.5 * TILE, y: 33 * TILE }, abend: { x: 26.5 * TILE, y: 37.5 * TILE }, arbeit: 'weben' });
+  // M1 (Autor-Roster): Weberin Adelheid gestrichen - gehoert in die Hauptstadt.
 
   // 10d. Gerberei am Bach, flussabwärts am Südrand (es stinkt eben)
   carve(map, 74, 52, 78, 55, T.HWALL);
   tuer(76, 55, 'gerberei');
   label(76.5, 51.2, 'Gerberei');
-  a.npcs.push({ id: 'gerber', name: 'Gerber Lorenz', x: 76.5 * TILE, y: 56.2 * TILE, abend: { x: 76.5 * TILE, y: 56 * TILE } });
+  // M1 (Autor-Roster): Gerber Lorenz gestrichen - gehoert in die Hauptstadt.
 
   // 10e. Haus der Hebamme in der Wohngasse
   carve(map, 57, 38, 61, 41, T.HWALL);
@@ -1359,7 +1367,14 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   a.animals.push({ type: 'schaf', x: 27 * TILE, y: 54 * TILE, pen: pen3 });
   a.animals.push({ type: 'schaf', x: 30 * TILE, y: 55 * TILE, pen: pen3 });
   a.animals.push({ type: 'schaf', x: 32 * TILE, y: 54 * TILE, pen: pen3 });
-  a.npcs.push({ id: 'schaefer', name: 'Schäfer Tobias', x: 29 * TILE, y: 51 * TILE, mittag: { x: 29 * TILE, y: 51 * TILE }, abend: { x: 17.5 * TILE, y: 30.5 * TILE }, arbeit: 'fuettern' });
+  // M1 (Autor-Roster): Schaefer Tobias gestrichen (Hauptstadt) - die Weide
+  // versorgt jetzt Baeuerin Hilde (FAMILIE B, VIEH: Angerwiese/Weide).
+  a.npcs.push({ id: 'bauer4', name: 'Bäuerin Hilde', x: 29 * TILE, y: 51 * TILE, mittag: { x: 45 * TILE, y: 30.5 * TILE }, abend: { x: 60 * TILE, y: 50.5 * TILE }, arbeit: 'fuettern' });
+
+  // M1 (Autor-Roster): Holzfaeller Ruprecht am Waldrand suedwestlich, abends im Wirtshaus
+  a.npcs.push({ id: 'holzfaeller', name: 'Holzfäller Ruprecht', x: 13 * TILE, y: 54 * TILE, mittag: { x: 17.5 * TILE, y: 30.5 * TILE }, abend: { x: 17.5 * TILE, y: 30.5 * TILE }, arbeit: 'hacken' });
+  // M1 (Autor-Roster): Witwe Ottilie - Klatsch am Brunnen, abends in der Wohngasse
+  a.npcs.push({ id: 'witwe', name: 'Witwe Ottilie', x: 45 * TILE, y: 30.5 * TILE, mittag: { x: 45 * TILE, y: 30.5 * TILE }, abend: { x: 53.5 * TILE, y: 48.5 * TILE } });
 
   // 8. Das niedergebrannte Gehöft (Wiederaufbau-Projekt, Phase 7)
   if (aufbauStufe === 0) {

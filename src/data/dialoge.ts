@@ -175,19 +175,28 @@ export const VOLK: Readonly<Record<string, ReadonlyArray<string>>> = {
     'Ich hüte die Schweine und die Hühner vom Veit. Nachts höre ich manchmal die Wölfe drüben im Dunkelwald - dann zähle ich die Tiere zweimal.',
   ],
   magd: [
-    'Trine, ich helfe an der Mühle. Säcke schleppen, Korn schütten - harte Arbeit, aber ehrliche. Die Witwe Käthe hat mich aufgenommen, Gott vergelte es ihr.',
+    'Trine, ich helfe an der Mühle. Säcke schleppen, Korn schütten - harte Arbeit, aber ehrliche. Die Witwe Ottilie hat mich aufgenommen, Gott vergelte es ihr.',
   ],
   waescherin: [
     'Ida. Ich wasche am Bach, solange das Licht reicht. Das Wasser ist eiskalt, aber es ist das einzige in Ravensmoor, das noch sauber ist.',
   ],
   wirtin: [
-    'Mathilde, die Wirtin. Setzt euch ans Feuer, der Abend ist rau. Der Heinrich handelt, ich führe die Stube - und über das Raunen unter der Kirche reden wir hier drinnen nicht.',
+    'Agnes, die Wirtin - dem Heinrich sein Weib. Setzt euch ans Feuer, der Abend ist rau. Er handelt, ich führe Küche und Stube - und über das Raunen unter der Kirche reden wir hier drinnen nicht.',
   ],
   kind1: [
     'Hast du das Schwert mal gezogen? Zeig mal! Mutter sagt, ich darf nicht zum Friedhof - aber du warst DRUNTER, stimmt das?',
   ],
   kind2: [
     'Ich hab eine tote Maus im Brunnen gesehen! Sag es nicht dem Schulzen. Willst du mein Geheimversteck sehen? Es ist hinter dem Backhaus.',
+  ],
+  holzfaeller: [
+    'Ruprecht. Ich schlage das Holz am Waldrand - näher ans Dickicht traut sich keiner mehr. Jeder Stamm geht ans Dorflager, der Zimmermann wartet schon.',
+  ],
+  bauer3: [
+    'Ott. Das Vieh auf der Angerwiese ist meins - die Kühe, die Hühner, die zwei Gäule. Wenn die Bestien wiederkommen, treib ich sie ins Gatter und stell mich davor.',
+  ],
+  bauer4: [
+    'Hilde, dem Ott sein Weib. Ich schau nach den Schafen auf der Südweide. Wolle und Milch halten das Dorf warm und satt - solange uns keiner die Tiere reißt.',
   ],
   frau1: [
     'Gott zum Gruße. Verzeiht die Unordnung - der Tag hat mehr Arbeit als Stunden.',
@@ -196,7 +205,7 @@ export const VOLK: Readonly<Record<string, ReadonlyArray<string>>> = {
     'Margret, die Frau vom Jakob. Er kommt abends mit Spänen im Haar heim und der Hannes hängt ihm am Bein. Gute Männer, beide.',
   ],
   witwe: [
-    'Käthe. Meinen Mann hat der Krieg geholt, das Haus ist geblieben. Jetzt wohnen Trine und der Lenz bei mir - allein wird einem die Stille zu laut.',
+    'Ottilie. Meinen Mann hat der Krieg geholt, das Haus ist geblieben. Jetzt wohnen Trine und der Lenz bei mir - und am Brunnen erfährt man, was das Dorf bewegt.',
   ],
   // Runde 10: die Zünfte - jede mit Nutzen für den Helden
   bader: [

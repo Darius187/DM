@@ -16,7 +16,10 @@ export interface FigureSpec {
   legs: string;         // Beine
   hat?: string;         // Hut/Helm (optional)
   robe?: boolean;       // Robe statt Beine (Priester, Magdalena)
-  weapon?: 'schwert' | 'axt' | 'stange' | 'wucht' | 'bogen' | 'keule' | 'stab' | null;
+  // M1 Dorfwirtschaft: auch WERKZEUGE in der Hand (Hammer, Mehlsack, Angel,
+  // Eimer, Kraeuterkorb) - jede Rolle traegt sichtbar ihr Handwerkszeug.
+  weapon?: 'schwert' | 'axt' | 'stange' | 'wucht' | 'bogen' | 'keule' | 'stab'
+    | 'hammer' | 'sack' | 'angel' | 'eimer' | 'korb' | null;
   scale?: number;       // Templer ist größer
   skeletal?: boolean;   // Skelett-Look (Schädel, Brustkorb)
   glow?: string;        // Schatten-Look (Umriss-Glühen)
@@ -232,6 +235,27 @@ function drawHeldWeapon(ctx: CanvasRenderingContext2D, w: NonNullable<FigureSpec
       ctx.arc((x + 0.5) * PX, (7 + bob) * PX, 5 * PX, -1.1, 1.1);
       ctx.stroke();
       break;
+    // --- Werkzeuge (M1 Dorfwirtschaft): jede Rolle traegt ihr Handwerkszeug ---
+    case 'hammer':
+      p(ctx, x, 5 + bob, 1, 5, '#6a5430');        // Stiel
+      p(ctx, x - 1, 4 + bob, 3, 2, '#8a8f96');    // Kopf
+      break;
+    case 'sack':
+      p(ctx, x - 1, 6 + bob, 3, 4, '#cfc4a8');    // Mehlsack
+      p(ctx, x, 5 + bob, 1, 1, '#8a7a5a');        // Zugband
+      break;
+    case 'angel':
+      p(ctx, x, 0 + bob, 1, 10, '#6a5430');       // Rute
+      p(ctx, x + 1, 0 + bob, 1, 5, '#d8d0c0');    // Schnur
+      break;
+    case 'eimer':
+      p(ctx, x - 1, 8 + bob, 3, 3, '#6a5430');    // Eimer
+      p(ctx, x - 1, 7 + bob, 3, 1, '#8a8f96');    // Buegel
+      break;
+    case 'korb':
+      p(ctx, x - 1, 7 + bob, 3, 3, '#9a7a44');    // Korb
+      p(ctx, x - 1, 6 + bob, 3, 1, '#4a6a3a');    // Kraeuter obenauf
+      break;
   }
 }
 
@@ -347,11 +371,11 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   wolf:      { quad: { body: '#4a4440', head: '#3c3834', size: 1, tail: true, ears: true } },
   ratte:     { quad: { body: '#5a4a3a', head: '#4c3e30', size: 0.6, tail: true } },
   heinrich:  { tunic: '#7a4a2a', skin: '#c8b090', hair: '#4a3a26', legs: '#3a2c1c' },
-  magdalena: { tunic: '#4a6a3a', skin: '#c8b090', hair: '#6a5a3a', legs: '#3a4a2a', robe: true },
+  magdalena: { tunic: '#4a6a3a', skin: '#c8b090', hair: '#6a5a3a', legs: '#3a4a2a', robe: true, weapon: 'korb' },
   johannes:  { tunic: '#3a3a44', skin: '#c8b090', hair: '#6a6a6a', legs: '#2a2a32', robe: true },
   landherr:  { tunic: '#5a2a3a', skin: '#c8b090', hair: '#3a3026', legs: '#2c2018', hat: '#2a1c10' },
-  schmied:   { tunic: '#4a3a30', skin: '#b89878', hair: '#241a10', legs: '#30241a' },
-  mueller:   { tunic: '#b8b0a0', skin: '#c8b090', hair: '#8a7a5a', legs: '#6a6052' },
+  schmied:   { tunic: '#4a3a30', skin: '#b89878', hair: '#241a10', legs: '#30241a', weapon: 'hammer' },
+  mueller:   { tunic: '#b8b0a0', skin: '#c8b090', hair: '#8a7a5a', legs: '#6a6052', weapon: 'sack' },
   bauer1:    { tunic: '#6a5a3a', skin: '#c8b090', hair: '#4a3a22', legs: '#46381f', hat: '#8a7448' },
   bauer2:    { tunic: '#5a6248', skin: '#c8b090', hair: '#3a3226', legs: '#3c4030', hat: '#8a7448' },
   haendler:  { tunic: '#8a4a6a', skin: '#c8a888', hair: '#2a2018', legs: '#3a2a3a', hat: '#5a3048' },
@@ -362,7 +386,7 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   zimmermann: { tunic: '#7a5c34', skin: '#b89878', hair: '#3a2c1a', legs: '#4a3a24', weapon: 'axt' },
   schneider:  { tunic: '#5a3a6a', skin: '#c8b090', hair: '#46362a', legs: '#3a2a44' },
   hirte:      { tunic: '#6a6244', skin: '#c8b090', hair: '#7a5c34', legs: '#46412e', hat: '#8a7448', scale: 0.85 },
-  magd:       { tunic: '#8a6a4a', skin: '#c8b090', hair: '#5c422a', legs: '#5c4830', robe: true },
+  magd:       { tunic: '#8a6a4a', skin: '#c8b090', hair: '#5c422a', legs: '#5c4830', robe: true, weapon: 'eimer' },
   waescherin: { tunic: '#7a8a9a', skin: '#c8b090', hair: '#8a7a5a', legs: '#4c5662', robe: true },
   wirtin:     { tunic: '#8a4a3a', skin: '#c8b090', hair: '#3a2c1a', legs: '#54302a', robe: true },
   frau1:      { tunic: '#6a7a4a', skin: '#c8b090', hair: '#6a5a3a', legs: '#46502e', robe: true },
@@ -377,9 +401,13 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   gerber:     { tunic: '#5c4a36', skin: '#b09070', hair: '#36281a', legs: '#423020' },
   hebamme:    { tunic: '#7a5a6a', skin: '#c8b090', hair: '#7a7268', legs: '#52404a', robe: true },
   kuester:    { tunic: '#44444e', skin: '#c8b090', hair: '#5a5048', legs: '#30303a', robe: true },
-  fischer:    { tunic: '#3a5a6a', skin: '#b89878', hair: '#46362a', legs: '#2c4250', hat: '#5a6a4a' },
+  fischer:    { tunic: '#3a5a6a', skin: '#b89878', hair: '#46362a', legs: '#2c4250', hat: '#5a6a4a', weapon: 'angel' },
   imker:      { tunic: '#9a8a52', skin: '#c8b090', hair: '#6a5a3a', legs: '#6a6038', hat: '#d8cfa0' },
   schaefer:   { tunic: '#7a7258', skin: '#b89878', hair: '#5a4a32', legs: '#54503c', hat: '#8a7448', weapon: 'stange' },
+  // M1 Dorfwirtschaft (Autor-Roster): Holzfaeller + Vieh-Bauernfamilie B
+  holzfaeller: { tunic: '#5c4a30', skin: '#b89878', hair: '#3a2c1a', legs: '#3c3020', weapon: 'axt' },
+  bauer3:     { tunic: '#6a4e36', skin: '#c8b090', hair: '#3c2e1c', legs: '#443622', hat: '#7a6438' },
+  bauer4:     { tunic: '#7a5a44', skin: '#cab294', hair: '#5c422a', legs: '#54402c', robe: true },
   huhn:      { chicken: true },
   schwein:   { quad: { body: '#d8a8a0', head: '#cc9a90', size: 0.9, tail: true } },
   schaf:     { quad: { body: '#e8e2d4', head: '#3a3026', size: 0.9, tail: true, ears: true } },
