@@ -1114,3 +1114,14 @@ Editor an, Verschieben, Marker setzen 31->32, Bericht-DOM mit TS+Feld, 0 Fehler)
 OFFEN: Baum+/- sind Marker (noch kein echter Terrain-Eingriff); Felder/Wege noch
 ohne Grafik (Platzhalter). Beides bewusst - Grafik/Terrain kommt, sobald die
 Positionen stehen.
+
+## Dorfwirtschaft "Siedler lite" - M0: Anker-System (Grundlage)
+FERTIG + VERIFIZIERT: Tagesplan je Bewohner (arbeit/pause/mittag/abend/schlaf)
+mit persoenlichem Zeitversatz (seeded) und Verschnaufpausen an der Station;
+Nachmittags-Arbeitsblock neu (abendAb 0.55->0.62). tsc + 299 Tests gruen.
+Browser-Check: Phasenwechsel + gemischte Zustaende im Pausenfenster (6 an
+Station / 19 unterwegs). Screenshots: m0_arbeit/mittag/abend (Scratchpad).
+ENTSCHEIDUNGEN: Anker-Auftrag aus Referenzen rekonstruiert (Datei fehlt im
+Repo); Pausen-/Mittagszeiten als Daten in src/data/dorfleben.ts.
+EHRLICHE LUECKE: Pausen-Pose ist vorerst simples Stehen/Strecken - echte
+Sitz-/Trink-Posen kommen mit den Rollen-Sprites (M1/M2).

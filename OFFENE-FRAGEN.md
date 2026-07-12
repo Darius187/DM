@@ -271,3 +271,9 @@ src/world/hoehlenDungeon.ts (W/H). In der DUNGEON-PROBE (V4) begutachten.
   soll ich die Hoehlen-Optik (nahtloses Gestein, Fels-Kanten, Grubenlicht,
   Tropfen) in die WorldScene portieren? Zwischenloesung: Layout+Abbau live,
   Optik-Portierung als eigene Runde.
+
+## 31. AUFTRAG-dorfleben-anker.md fehlt im Repo (M0 Dorfwirtschaft)
+Der neue Auftrag verweist auf ihn als Grundlage (Anker-System, Tagesplaene,
+Natuerlichkeit). ZWISCHENLOESUNG: Kern aus den Verweisen rekonstruiert und als
+M0 umgesetzt (src/data/dorfleben.ts). FRAGE: Bitte die Originaldatei liefern,
+falls dort mehr steht (z. B. besondere Anker je Figur) - wird dann nachgezogen.

@@ -4,7 +4,10 @@ export const TAG = {
   // R82 (Autor "die Tageszeiten kamen mir zu kurz vor"): ein Spieltag dauert
   // jetzt 20 Echtminuten statt 10 - Morgen/goldene Stunde haben Zeit zu wirken.
   dauerS: 1200,
-  abendAb: 0.55,        // ab hier gelten die Abend-Positionen der NPCs (Tagesablauf, KEIN Licht!)
+  // M0 Dorfleben (Auftrag Dorfwirtschaft): Feierabend spaeter (0.55 -> 0.62),
+  // damit es nach der Mittagsrunde einen NACHMITTAGS-Arbeitsblock gibt
+  // (Verschnaufer-Zeiten in src/data/dorfleben.ts).
+  abendAb: 0.62,        // ab hier gelten die Abend-Positionen der NPCs (Tagesablauf, KEIN Licht!)
   nachtAb: 0.78,        // ab hier schlafen die Dorfbewohner in ihren Häusern
   morgenAb: 0.2,        // ab hier sind sie wieder auf den Beinen
   // R80 (Autorbug "um 16 Uhr geht das Licht an"): SICHTBARES Licht (Fenster,

@@ -67,6 +67,7 @@ import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { istMatsch, matschTempo, heldBlutAbbau, abdruckAlpha } from '../logic/spuren';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
@@ -10686,9 +10687,12 @@ export class WorldScene extends CombatScene {
         n.label.setPosition(n.curX, n.curY - 14).setText(`${n.name} - verwundet (heilen!)`).setColor('#e86a5a');
         continue;
       }
-      // Tagesablauf: morgens Arbeit, mittags soziale Runde (Markt, Taverne,
-      // Nachbarn), abends heimwärts (Runde 10)
-      const mittagPhase = this.tageszeit >= 0.45 && this.tageszeit <= TAG.abendAb;
+      // Tagesablauf (M0 Anker-System, Auftrag Dorfwirtschaft): jeder Bewohner
+      // folgt seinem TAGESPLAN (arbeit/pause/mittag/abend/schlaf) mit eigenem,
+      // festen Zeitversatz - das Dorf bewegt sich natuerlich, nicht im Gleichtakt.
+      // Zeiten/Versaetze: src/data/dorfleben.ts. Kampf/Panik uebersteuern.
+      const phase = tagesZiel(this.tageszeit, npcZeitversatz(n.id));
+      const mittagPhase = phase === 'mittag';
       const panik = this.grosserEinfall && !n.kaempfer && !n.imHaus;
       // KÄMPFENDE Bewohner (Schmied & Co.) suchen sich beim Einfall einen Gegner
       // und gehen ihn an (Runde 41, Autorwunsch "der Schmied kann mitkämpfen").
@@ -10703,8 +10707,9 @@ export class WorldScene extends CombatScene {
       }
       const ziel = panik ? this.fluchtpunkt
         : kampfGegner ? { x: kampfGegner.x, y: kampfGegner.y }
-        : abend && n.abend ? n.abend
+        : phase === 'abend' && n.abend ? n.abend
         : mittagPhase && n.mittag ? n.mittag
+        : phase === 'pause' ? pausenPlatz(n.id, n.x, n.y)
         : { x: n.x, y: n.y };
       const d = Math.hypot(ziel.x - n.curX, ziel.y - n.curY);
       if (panik && d < 36) { n.imHaus = true; continue; } // im Gemeindehaus angekommen
@@ -10742,7 +10747,7 @@ export class WorldScene extends CombatScene {
           else n.umgehSeite = -seite; // Sackgasse: nächstes Mal andere Seite
         }
         this.provider.applyFigure(n.sprite, n.figur ?? n.id, angleToDir(a), Math.floor(this.time.now / 140) % 4);
-      } else if (n.arbeit && !abend && !mittagPhase) {
+      } else if (n.arbeit && phase === 'arbeit') {
         // Sichtbares Tagwerk (Runde 16): werkeln statt rumstehen
         this.provider.applyFigure(n.sprite, n.figur ?? n.id, 0, Math.floor(this.time.now / 260) % 4);
         n.arbeitT = (n.arbeitT ?? Math.random() * 3) - dt;
@@ -10750,6 +10755,10 @@ export class WorldScene extends CombatScene {
           n.arbeitT = 2.4 + Math.random() * 2.2;
           this.arbeitsTakt(n);
         }
+      } else if (phase === 'pause') {
+        // Verschnaufer an der Station (M0): ruhig stehen, gelegentlich strecken.
+        const streck = Math.floor(this.time.now / 900) % 4 === 0 ? 1 : 0;
+        this.provider.applyFigure(n.sprite, n.figur ?? n.id, 0, streck);
       } else {
         this.provider.applyFigure(n.sprite, n.figur ?? n.id, 0, 0);
       }

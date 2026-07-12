@@ -1761,3 +1761,23 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Verifiziert (Playwright, crypt1, Autor-Setup Dunkelheit 150 + Sichtfeld 19):
   Reichweite 100 -> Held gestochen klar im Fackellicht, weicher runder Abfall;
   Reichweite 18 -> runder Lichtkegel, KEINE Vierecke. tsc sauber, Tests gruen.
+
+## Dorfwirtschaft M0 - Anker-System (Grundlage, Auftrag "Siedler lite")
+- AUFTRAG-dorfleben-anker.md existiert NICHT im Repo (Autor-Referenz fehlt).
+  Entscheidung statt Rueckfrage (Arbeitsmodus: autonom): der Kern des Anker-
+  Auftrags ist im neuen Auftrag beschrieben (Anker-System, Tagesplaene,
+  Natuerlichkeit) -> daraus als M0 rekonstruiert. Falls die Originaldatei
+  auftaucht, wird nachgezogen (OFFENE-FRAGEN #31).
+- NEU src/data/dorfleben.ts: Tagesplan (schlaf/arbeit/pause/mittag/abend) mit
+  Vormittags- + Nachmittags-Verschnaufer (je ~30 s), Mittagsrunde 0.44-0.52,
+  persoenlicher Zeitversatz je Bewohner (seeded aus der id, +-0.016 Tag) -
+  KEIN Gleichtakt mehr. Pausenplatz = feste "eigene Ecke" neben der Station.
+- TAG.abendAb 0.55 -> 0.62 (welt.ts): vorher lief die Mittagsrunde direkt in
+  den Feierabend - jetzt gibt es den Nachmittags-Arbeitsblock. Fenster-/Licht-
+  Logik haengt an lichtAb (0.76) und ist unberuehrt.
+- updateVillageLife: Zielwahl laeuft ueber tagesZiel(); Kampf/Panik/Einfall
+  uebersteuern unveraendert. Pause = ruhig stehen + gelegentliches Strecken
+  (reichere Posen kommen in M1/M2).
+- 6 neue Tests (tests/dorfleben.test.ts), 299 gesamt gruen. Browser: im
+  Pausenfenster sind 6 Bewohner an der Station und 19 unterwegs (Versatz
+  wirkt sichtbar - kein Stechuhr-Dorf).
