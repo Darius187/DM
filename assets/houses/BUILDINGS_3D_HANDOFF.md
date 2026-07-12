@@ -51,6 +51,8 @@ the primary representation.
 - Doors: `DOOR_STABLE_MAIN_HINGE`, `DOOR_STALL_1_HINGE`,
   `DOOR_STALL_2_HINGE`, `DOOR_STALL_3_HINGE`,
   `DOOR_HAY_LOFT_LEFT_HINGE`, `DOOR_HAY_LOFT_RIGHT_HINGE`
+- The tall stable entrance is the far-left front door beside the three stall
+  boxes. Use `TRIGGER_STABLE_MAIN`; keep its framed steps unobstructed.
 - Five transparent windows use `MAT_STABLE_GLASS_TRANSPARENT`.
 - Three modeled horses, stall partitions, mangers, tack, hay, barrels, wheels
   and the open feed lean-to are part of the GLB.
