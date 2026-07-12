@@ -1,0 +1,500 @@
+{
+  "asset": "medieval_bakery_house_3d_runtime",
+  "asset_type": "rotatable walkable interactive 3D medieval bakery",
+  "model": "medieval_bakery_house_3d_runtime.glb",
+  "units": "meters",
+  "root_node": "BAKERY_HOUSE_ROTATION_PIVOT",
+  "coordinate_conversion": {
+    "blender": "X/Y ground, Z up",
+    "threejs": "X/Z ground, Y up",
+    "point_rule": "[x,y,z] -> [x,z,-y]"
+  },
+  "continuous_controls": {
+    "building_yaw_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 0
+    },
+    "uniform_scale": {
+      "min": 0.25,
+      "max": 4,
+      "default": 1
+    },
+    "camera_elevation_degrees": {
+      "min": 18,
+      "max": 78,
+      "default": 43
+    },
+    "camera_azimuth_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 36
+    },
+    "orthographic_zoom": {
+      "min": 0.55,
+      "max": 2.4,
+      "default": 1
+    }
+  },
+  "materials": {
+    "all_visible_materials_have_embedded_basecolor_textures": true,
+    "runtime_tinting_allowed": false,
+    "transparent_windows": true,
+    "texture_count": 21,
+    "used_materials": [
+      "MAT_BAKERY_AWNING_CLOTH",
+      "MAT_BAKERY_BAKED_BREAD",
+      "MAT_BAKERY_FLOUR_SACK",
+      "MAT_BAKERY_FORGED_IRON",
+      "MAT_BAKERY_GLASS_TRANSPARENT",
+      "MAT_BAKERY_HEMP_ROPE",
+      "MAT_BAKERY_MECHANISM_WOOD",
+      "MAT_BAKERY_MOSS_WEATHERING",
+      "MAT_BAKERY_OAK_DARK",
+      "MAT_BAKERY_OAK_MID",
+      "MAT_BAKERY_OVEN_CHAR",
+      "MAT_BAKERY_OVEN_FIRE",
+      "MAT_BAKERY_PACKED_EARTH",
+      "MAT_BAKERY_PLASTER_AGED",
+      "MAT_BAKERY_PLASTER_WORN",
+      "MAT_BAKERY_RAW_DOUGH",
+      "MAT_BAKERY_SHINGLE_A",
+      "MAT_BAKERY_SHINGLE_B",
+      "MAT_BAKERY_SHINGLE_C",
+      "MAT_BAKERY_STONE_DARK",
+      "MAT_BAKERY_STONE_WARM"
+    ]
+  },
+  "renderer_recipe": {
+    "output_color_space": "SRGBColorSpace",
+    "tone_mapping": "ACESFilmicToneMapping",
+    "exposure": 1.0,
+    "do_not_replace_materials": true
+  },
+  "doors": {
+    "front_left": {
+      "node": "DOOR_BAKERY_FRONT_LEFT_HINGE",
+      "closed_frame": 1,
+      "open_frame": 30,
+      "trigger": "TRIGGER_BAKERY_FRONT"
+    },
+    "front_right": {
+      "node": "DOOR_BAKERY_FRONT_RIGHT_HINGE",
+      "closed_frame": 1,
+      "open_frame": 30,
+      "trigger": "TRIGGER_BAKERY_FRONT"
+    },
+    "rear": {
+      "node": "DOOR_BAKERY_REAR_HINGE",
+      "closed_frame": 1,
+      "open_frame": 30,
+      "trigger": "TRIGGER_BAKERY_REAR"
+    }
+  },
+  "walkable_interior": {
+    "enabled": true,
+    "ground": "NAV_BAKERY_GROUND",
+    "upper": "NAV_BAKERY_UPPER",
+    "oven_annex": "NAV_OVEN_ANNEX",
+    "stall": "NAV_BREAD_STALL",
+    "stairs": "COLLISION_UPPER_STAIR"
+  },
+  "visibility_controls": {
+    "roof_property": "roof_removable",
+    "cutaway_property": "cutaway_near_wall",
+    "floor_property": "floor_level"
+  },
+  "node_groups": {
+    "transparent_windows": [
+      "WINDOW_FRONT_ATTIC_GLASS",
+      "WINDOW_FRONT_GROUND_GLASS",
+      "WINDOW_FRONT_UPPER_0_GLASS",
+      "WINDOW_FRONT_UPPER_1_GLASS",
+      "WINDOW_FRONT_UPPER_2_GLASS",
+      "WINDOW_LEFT_UPPER_GLASS",
+      "WINDOW_REAR_LEFT_GLASS",
+      "WINDOW_REAR_RIGHT_GLASS",
+      "WINDOW_RIGHT_UPPER_FRONT_GLASS",
+      "WINDOW_RIGHT_UPPER_REAR_GLASS"
+    ],
+    "oven_fire": [
+      "OVEN_FIRE_0",
+      "OVEN_FIRE_1",
+      "OVEN_FIRE_2",
+      "OVEN_FIRE_3",
+      "OVEN_FIRE_4"
+    ]
+  },
+  "animations": [
+    {
+      "name": "DOOR_BAKERY_FRONT_LEFT_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_BAKERY_FRONT_RIGHT_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_BAKERY_REAR_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    }
+  ],
+  "collision_guides": [
+    {
+      "name": "NAV_BAKERY_GROUND",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        0.2,
+        0.52
+      ],
+      "size_blender_xyz": [
+        6.8,
+        5.9,
+        0.06
+      ]
+    },
+    {
+      "name": "NAV_BAKERY_UPPER",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "UPPER",
+      "center_blender_xyz": [
+        0.0,
+        0.0,
+        3.14
+      ],
+      "size_blender_xyz": [
+        7.0,
+        6.3,
+        0.06
+      ]
+    },
+    {
+      "name": "NAV_BREAD_STALL",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        -2.4,
+        -4.6,
+        0.12
+      ],
+      "size_blender_xyz": [
+        2.29,
+        1.05,
+        0.06
+      ]
+    },
+    {
+      "name": "NAV_OVEN_ANNEX",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        5.105,
+        0.2,
+        0.2
+      ],
+      "size_blender_xyz": [
+        2.39,
+        4.6,
+        0.06
+      ]
+    },
+    {
+      "name": "COLLISION_UPPER_STAIR",
+      "kind": "walk",
+      "role": "stair_ramp",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -3.0,
+        1.75,
+        1.78
+      ],
+      "size_blender_xyz": [
+        1.0,
+        2.5,
+        2.7
+      ]
+    },
+    {
+      "name": "COLLISION_REAR_WALL",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        3.4,
+        1.7
+      ],
+      "size_blender_xyz": [
+        7.6,
+        0.3,
+        2.5
+      ]
+    },
+    {
+      "name": "COLLISION_LEFT_WALL",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -3.8,
+        0.0,
+        1.7
+      ],
+      "size_blender_xyz": [
+        0.3,
+        6.8,
+        2.5
+      ]
+    },
+    {
+      "name": "COLLISION_FRONT_LEFT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -2.2,
+        -3.4,
+        1.7
+      ],
+      "size_blender_xyz": [
+        3.1,
+        0.3,
+        2.5
+      ]
+    },
+    {
+      "name": "COLLISION_FRONT_RIGHT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        2.25,
+        -3.4,
+        1.7
+      ],
+      "size_blender_xyz": [
+        3.0,
+        0.3,
+        2.5
+      ]
+    },
+    {
+      "name": "COLLISION_BREAD_STALL",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        -2.4,
+        -4.57,
+        0.6
+      ],
+      "size_blender_xyz": [
+        2.44,
+        0.9,
+        1.15
+      ]
+    },
+    {
+      "name": "COLLISION_OVEN",
+      "kind": "block",
+      "role": "hot_oven",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        5.105,
+        -2.33,
+        1.05
+      ],
+      "size_blender_xyz": [
+        2.0,
+        1.6,
+        2.1
+      ]
+    },
+    {
+      "name": "COLLISION_DOUGH_TABLE",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -0.65,
+        0.55,
+        0.55
+      ],
+      "size_blender_xyz": [
+        2.3,
+        0.9,
+        1.1
+      ]
+    },
+    {
+      "name": "TRIGGER_BAKERY_FRONT",
+      "kind": "transition",
+      "role": "enter_bakery",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        -3.45,
+        1.36
+      ],
+      "size_blender_xyz": [
+        1.75,
+        1.0,
+        2.55
+      ]
+    },
+    {
+      "name": "TRIGGER_BAKERY_REAR",
+      "kind": "transition",
+      "role": "enter_bakery_rear",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -1.05,
+        3.45,
+        1.34
+      ],
+      "size_blender_xyz": [
+        1.25,
+        1.0,
+        2.5
+      ]
+    },
+    {
+      "name": "INTERACTION_OVEN",
+      "kind": "interaction",
+      "role": "bake_bread",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        5.105,
+        -2.83,
+        1.1
+      ],
+      "size_blender_xyz": [
+        2.1,
+        1.7,
+        2.0
+      ]
+    },
+    {
+      "name": "INTERACTION_DOUGH_TABLE",
+      "kind": "interaction",
+      "role": "prepare_dough",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -0.65,
+        0.55,
+        1.0
+      ],
+      "size_blender_xyz": [
+        2.5,
+        1.4,
+        1.8
+      ]
+    },
+    {
+      "name": "INTERACTION_BREAD_STALL",
+      "kind": "interaction",
+      "role": "buy_bread",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        -2.4,
+        -4.85,
+        0.85
+      ],
+      "size_blender_xyz": [
+        2.5,
+        1.4,
+        1.6
+      ]
+    }
+  ],
+  "markers": [
+    {
+      "name": "SPAWN_EXTERIOR_MAIN",
+      "role": "spawn_exterior",
+      "floor": "EXTERIOR",
+      "blender_xyz": [
+        0.0,
+        -4.3,
+        0.08
+      ]
+    },
+    {
+      "name": "SPAWN_INTERIOR_MAIN",
+      "role": "spawn_interior",
+      "floor": "GROUND",
+      "blender_xyz": [
+        0.0,
+        -2.7,
+        0.52
+      ]
+    },
+    {
+      "name": "SPAWN_UPPER_STAIRS",
+      "role": "spawn_upper",
+      "floor": "UPPER",
+      "blender_xyz": [
+        -3.0,
+        2.86,
+        3.18
+      ]
+    },
+    {
+      "name": "SPAWN_OVEN_ANNEX",
+      "role": "spawn_oven_annex",
+      "floor": "GROUND",
+      "blender_xyz": [
+        4.45,
+        0.4,
+        0.2
+      ]
+    },
+    {
+      "name": "SPAWN_BREAD_STALL",
+      "role": "spawn_bread_stall",
+      "floor": "EXTERIOR",
+      "blender_xyz": [
+        -1.55,
+        -4.45,
+        0.12
+      ]
+    }
+  ],
+  "counts": {
+    "runtime_objects": 2090,
+    "materials": 21,
+    "windows": 10,
+    "doors": 3,
+    "collisions": 17,
+    "main_roof_shingles": 648,
+    "annex_roof_shingles": 208,
+    "bread_objects": 92
+  },
+  "integration_contract": {
+    "load_with": "Three.js GLTFLoader",
+    "rotate": "BAKERY_HOUSE_ROTATION_PIVOT around Three.js Y",
+    "collisions": "build from JSON and transform with building",
+    "doors": "play named animations",
+    "interactions": "oven, dough table and bread stall from JSON",
+    "forbidden": [
+      "PNG replacement",
+      "material tinting",
+      "visible collision meshes",
+      "global ground plate"
+    ]
+  }
+}

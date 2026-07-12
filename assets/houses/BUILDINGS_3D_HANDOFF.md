@@ -103,6 +103,24 @@ the primary representation.
 - There is no global ground plate, terrain slab or model-owned river geometry
   in the GLB.
 
+## Bakery
+
+- Model: `bakery/medieval_bakery_house_3d_runtime.glb`
+- Runtime data: `bakery/medieval_bakery_house_3d_runtime.json`
+- Root pivot: `BAKERY_HOUSE_ROTATION_PIVOT`
+- Doors: `DOOR_BAKERY_FRONT_LEFT_HINGE`,
+  `DOOR_BAKERY_FRONT_RIGHT_HINGE`, `DOOR_BAKERY_REAR_HINGE`
+- The clear double-leaf main entrance is centered in the front stone facade;
+  use `TRIGGER_BAKERY_FRONT` and keep its steps unobstructed.
+- Ten transparent windows use `MAT_BAKERY_GLASS_TRANSPARENT`.
+- The stone bakehouse annex contains an arched oven, hearth, logs, five fire
+  meshes and bread. The main bake room contains dough tables and bread racks.
+- The JSON contains 17 navigation/collision/interaction guides for doors,
+  floors, stairs, oven, dough table and bread stall.
+- Ground floor, upper floor, oven annex and bread stall are walkable.
+- The roofs contain 648 main-house and 208 annex shingles laid individually.
+- There is no global ground plate or terrain slab in the GLB.
+
 ## Rendering
 
 - Load all assets with Three.js `GLTFLoader`.
