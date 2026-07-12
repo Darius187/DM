@@ -55,6 +55,21 @@ export const QUESTS: QuestDef[] = [
     ],
   },
   {
+    // M8 Dorfwirtschaft: "Stahl fuer Ravensmoor" (Schmied) - real verdrahtet
+    id: 'neben_stahl',
+    titel: 'Stahl für Ravensmoor',
+    kategorie: 'neben',
+    geber: 'Der Schmied',
+    kurz: 'Der Schmied braucht Erz, um die erste Waffe aus Ravensmoorer Stahl zu schmieden.',
+    aktiv: () => true,
+    fertig: (c) => f(c, 'stahlWaffe'),
+    belohnung: '40 Gold - und die erste Waffe im Verkauf des Schmieds',
+    ziele: [
+      { text: 'Bringe dem Schmied 5 Erz (aus Krypta-Beute oder vom Händler).', wohin: 'Schmiede in Ravensmoor', erfuellt: (c) => f(c, 'stahlErz') },
+      { text: 'Der Schmied schmiedet die erste Waffe.', erfuellt: (c) => f(c, 'stahlWaffe') },
+    ],
+  },
+  {
     id: 'neben_ratten',
     titel: 'Die Ratten der Mühle',
     kategorie: 'neben',

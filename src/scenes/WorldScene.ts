@@ -60,7 +60,7 @@ import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abba
 import { hoehleTextur, hoehleKante, hoeheFelsWand, vorkommenTextur, KANTE_DICKE } from '../gfx/hoehlenArt';
 import { HoehlenLeben } from '../gfx/hoehlenLeben';
 import { KriegsnebelAnzeige, type SichtSet } from '../systems/kriegsnebel';
-import { Haus3DWelt } from '../gfx/haus3dWelt';
+import { Gebaeude3DWelt, gebaeudeEinstellung } from '../gfx/gebaeude3dWelt';
 import { MINE } from '../data/mine';
 import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
@@ -71,6 +71,7 @@ import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZust
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
+import { STAHL_QUEST } from '../data/questlinien';
 import { istMatsch, matschTempo, heldBlutAbbau, abdruckAlpha } from '../logic/spuren';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
@@ -129,6 +130,8 @@ interface NpcEntity extends NpcSpawn {
   pfad?: Array<{ x: number; y: number }>; pfadZx?: number; pfadZy?: number; pfadT?: number;
   // M2 Dorfwirtschaft: Pendelweg der Magd (Brunnen <-> Muehle, Wasser holen)
   pendelAmBrunnen?: boolean; pendelT?: number;
+  // M8 Dorfwirtschaft: Kopf-Marker des Questgebers (! verfuegbar, ? abgabebereit)
+  questMarker?: Phaser.GameObjects.Text;
 }
 
 interface Kadaver { x: number; y: number; g: Phaser.GameObjects.Graphics; t: number; ph: number }
@@ -245,8 +248,12 @@ export class WorldScene extends CombatScene {
   private hoehlenLeben: HoehlenLeben | null = null;   // R127g: Tropfen/Glitzern in der Mine
   private kriegsnebel: KriegsnebelAnzeige | null = null;   // R129: echter Fog of War (dunkle Ebenen)
   private nebelGedaechtnis = new Map<string, SichtSet>();  // erkundete Kacheln je Ebene (Session)
-  private hausZimmermann: Haus3DWelt | null = null;   // R127h/R131c: Live-3D-Haus an Box N1
-  private static readonly HAUS_HOST_BOX = 'N1';
+  // R132/UMZUG: begehbare 3D-Gebaeude im NEUEN Ravensmoor (id -> Weltobjekt)
+  private gebaeude3d = new Map<string, Gebaeude3DWelt>();
+  private static readonly GEB3D_BOXEN = [
+    { box: 'N1', id: 'haus', url: 'houses/medieval_carpenter_house_3d_runtime.json', yaw: 210 },
+    { box: 'B1', id: 'schmiede', url: 'houses/forge/medieval_forge_3d_runtime.json', yaw: 0 },
+  ] as const;
   private warmPool: Phaser.GameObjects.Image[] = [];
   private minimapGfx!: Phaser.GameObjects.Graphics;
   private seen = new Map<string, boolean[][]>();
@@ -1929,23 +1936,25 @@ export class WorldScene extends CombatScene {
     if (!DORFPLAN_AN || a.id !== 'stadt') {
       // Beim Verlassen der Stadt den Editor sauber schliessen (Globales abmelden).
       if (this.dorfEdit) this.toggleDorfEditor(true);
-      this.hausZimmermann?.destroy(); this.hausZimmermann = null;
+      this.raeumeGebaeude3d();
       return;
     }
     // Arbeitskopie aus dem Browser laden (Autor-Edits), sonst die Datei-Saat.
     this.dorfBoxen = ladeDorfplan(DORFPLAN_BOXEN);
     this.dorfWege = ladeWege();
     this.dorfWegeGfx?.destroy(); this.dorfWegeGfx = undefined;
-    // R127h/R131c: echtes drehbares 3D-Zimmermannshaus an seine Host-Box N1
-    // haengen (Box ziehen = Haus mit; drehbar ueber settings.haus3d).
-    this.hausZimmermann?.destroy(); this.hausZimmermann = null;
-    const host = this.dorfBoxen.find((b) => b.id === WorldScene.HAUS_HOST_BOX);
-    if (host) {
-      this.hausZimmermann = new Haus3DWelt(this, {
-        footX: (host.x + host.breite / 2) * TILE, footY: (host.y + host.hoehe) * TILE,
-        breiteKacheln: Math.max(8, host.breite),
-        ignoriere: (o) => this.uiCam?.ignore(o),   // Haus nur auf der Welt-Kamera
-      });
+    // R132/UMZUG: die begehbaren 3D-Gebaeude an ihre Host-Boxen haengen
+    // (Haus = N1, Schmiede = B1; Box ziehen = Gebaeude mit).
+    this.raeumeGebaeude3d();
+    for (const def of WorldScene.GEB3D_BOXEN) {
+      const b = this.dorfBoxen.find((x) => x.id === def.box);
+      if (b) {
+        this.gebaeude3d.set(def.id, new Gebaeude3DWelt(this, {
+          id: def.id, jsonUrl: def.url, standardYaw: def.yaw,
+          footX: (b.x + b.breite / 2) * TILE, footY: (b.y + b.hoehe) * TILE - 10,
+          ignoriere: (o) => this.uiCam?.ignore(o),
+        }));
+      }
     }
     this.dorfRender();
     this.zeichneDorfWege();
@@ -1979,9 +1988,12 @@ export class WorldScene extends CombatScene {
       }
     }
     this.uiCam?.ignore(ignorieren);   // gehoert der Welt-Kamera, nicht der UI
-    // R127h: Haus folgt seiner Box (auch live beim Ziehen).
-    const host = this.dorfBoxen.find((b) => b.id === WorldScene.HAUS_HOST_BOX);
-    if (host && this.hausZimmermann) this.hausZimmermann.setPosition((host.x + host.breite / 2) * TILE, (host.y + host.hoehe) * TILE);
+    // R132: die 3D-Gebaeude folgen ihren Host-Boxen (auch live beim Ziehen).
+    for (const def of WorldScene.GEB3D_BOXEN) {
+      const b = this.dorfBoxen.find((x) => x.id === def.box);
+      const g = this.gebaeude3d.get(def.id);
+      if (b && g) g.setPosition((b.x + b.breite / 2) * TILE, (b.y + b.hoehe) * TILE - 10);
+    }
   }
 
   // Liefert die Box unter dem Welt-Punkt (oberste zuletzt gezeichnete zuerst) und
@@ -2129,19 +2141,24 @@ export class WorldScene extends CombatScene {
       knopf(160, 44, 'H +', false, () => this.dorfGroesse(sel, 0, 1)); y += 28;
       knopf(8, 94, '✎ Umbenennen', false, () => this.dorfUmbenennen(sel));
       knopf(106, 94, '🗑 Löschen', false, () => this.dorfLoeschen(sel), '#e0704a'); y += 28;
-      // R131c: Steuerung des 3D-Zimmermannshauses direkt an seiner Box N1 -
-      // Drehen + Größe live im Editor, wird in settings.haus3d gespeichert.
-      if (sel.id === WorldScene.HAUS_HOST_BOX && this.hausZimmermann) {
-        const hp = getSettings().haus3d;
-        add(this.add.text(8, y, `3D-Haus  ·  Drehung ${Math.round(hp?.yaw ?? 0)}°  ·  Größe ${(hp?.skala ?? 1).toFixed(2)}×`, { fontFamily: 'serif', fontSize: '10px', color: '#c9a227', wordWrap: { width: w - 16 } })); y += 16;
-        knopf(8, 44, '⟲ −15°', false, () => { this.hausZimmermann?.drehen(-15); this.baueDorfToolbar(); });
-        knopf(56, 44, '⟳ +15°', false, () => { this.hausZimmermann?.drehen(15); this.baueDorfToolbar(); });
-        knopf(112, 44, '⟲ −1°', false, () => { this.hausZimmermann?.drehen(-1); this.baueDorfToolbar(); });
-        knopf(160, 44, '⟳ +1°', false, () => { this.hausZimmermann?.drehen(1); this.baueDorfToolbar(); }); y += 28;
-        knopf(8, 44, 'Haus −', false, () => { this.hausZimmermann?.skalieren(-0.1); this.baueDorfToolbar(); });
-        knopf(56, 44, 'Haus +', false, () => { this.hausZimmermann?.skalieren(0.1); this.baueDorfToolbar(); });
-        knopf(112, 44, 'G −', false, () => { this.hausZimmermann?.skalieren(-0.02); this.baueDorfToolbar(); });
-        knopf(160, 44, 'G +', false, () => { this.hausZimmermann?.skalieren(0.02); this.baueDorfToolbar(); }); y += 28;
+      // R132: Steuerung der 3D-Gebaeude an ihren Boxen - Drehung je Gebaeude,
+      // EINHEITLICHE Groesse (ppm) fuer alle, persistent in settings.gebaeude3d.
+      const gebDef = WorldScene.GEB3D_BOXEN.find((d) => d.box === sel.id);
+      const geb = gebDef ? this.gebaeude3d.get(gebDef.id) : undefined;
+      if (gebDef && geb) {
+        const e = gebaeudeEinstellung(gebDef.id);
+        const ppm = getSettings().gebaeude3d?.ppm ?? 16;
+        add(this.add.text(8, y, `3D-Gebäude · Drehung ${Math.round(e.yaw)}° · Größe ${ppm.toFixed(1)} px/m (alle)`, { fontFamily: 'serif', fontSize: '10px', color: '#c9a227', wordWrap: { width: w - 16 } })); y += 16;
+        const dreh = (d: number): void => { geb.drehen(d); this.baueDorfToolbar(); };
+        const skal = (d: number): void => { Gebaeude3DWelt.skaliere(d); for (const g of this.gebaeude3d.values()) g.nachSkalierung(); this.baueDorfToolbar(); };
+        knopf(8, 44, '⟲ −15°', false, () => dreh(-15));
+        knopf(56, 44, '⟳ +15°', false, () => dreh(15));
+        knopf(112, 44, '⟲ −1°', false, () => dreh(-1));
+        knopf(160, 44, '⟳ +1°', false, () => dreh(1)); y += 28;
+        knopf(8, 44, 'Gr −1', false, () => skal(-1));
+        knopf(56, 44, 'Gr +1', false, () => skal(1));
+        knopf(112, 44, 'Gr −.2', false, () => skal(-0.2));
+        knopf(160, 44, 'Gr +.2', false, () => skal(0.2)); y += 28;
       }
       add(this.add.rectangle(6, y + 2, w - 12, 1, 0x4a3a26).setOrigin(0)); y += 8;
     } else {
@@ -5024,6 +5041,7 @@ export class WorldScene extends CombatScene {
       n.sprite.destroy();
       n.label.destroy();
       n.heilLicht?.destroy();
+      n.questMarker?.destroy();
     }
     this.npcEnts = [];
     for (const an of this.animalEnts) an.sprite.destroy();
@@ -6299,14 +6317,32 @@ export class WorldScene extends CombatScene {
 
   // R99 (P11): OFFENES Tor ist für den Helden/eigene Truppen KEIN Hindernis.
   protected override solidFuerHeld(x: number, y: number): boolean {
-    return this.isSolidAt(x, y) && !this.torOffenHier(x, y);
+    return (this.isSolidAt(x, y) && !this.torOffenHier(x, y)) || this.gebaeudeSolid(x, y, true);
+  }
+
+  // R132: Kollision der begehbaren 3D-Gebaeude (offene Tuer = Durchgang frei)
+  private gebaeudeSolid(x: number, y: number, fuerHeld: boolean): boolean {
+    for (const g of this.gebaeude3d.values()) if (g.istSolid(x, y, fuerHeld)) return true;
+    return false;
+  }
+
+  private raeumeGebaeude3d(): void {
+    for (const g of this.gebaeude3d.values()) g.destroy();
+    this.gebaeude3d.clear();
+  }
+
+  // R132: Figur steht auf Treppe/Obergeschoss sichtbar hoeher
+  protected override heldHoeheOffset(): number {
+    let o = 0;
+    for (const g of this.gebaeude3d.values()) o = Math.max(o, g.hoehenOffsetPx());
+    return o;
   }
 
   // R101c (Autor-Bug "bei offenem Tor kommen die Monster nicht rein"): ein OFFENES
   // Tor ist jetzt auch fuer FEINDE kein Hindernis - sie stroemen durch. Sonst wie
   // die rohe Kollision (geschlossenes Tor + Palisade + Wand bleiben Wand).
   solidFuerFeind(x: number, y: number): boolean {
-    return this.isSolidAt(x, y) && !this.torOffenHier(x, y);
+    return (this.isSolidAt(x, y) && !this.torOffenHier(x, y)) || this.gebaeudeSolid(x, y, false);
   }
 
   // R101c: Flussfeld zum Helden beachtet das offene Tor -> Monster pfaden hindurch.
@@ -7527,7 +7563,7 @@ export class WorldScene extends CombatScene {
     this.letzterEinfallTag = this.tag;
     // M5: die Horde zertrampelt die Bauern-Felder - sie verlieren Wachstumstage
     this.dorfFelder.forEach((f) => { f.wachstum = Math.max(0, f.wachstum - FELD_REGELN.einfallSchadenTage); });
-    if (this.area.id === 'village') this.zeichneFeldWachstum();
+    if (this.area?.bauernFelder?.length) this.zeichneFeldWachstum();
     this.chronik('ereignis', 'Die Horde zertrampelt die Äcker - die Saat leidet.');
     for (const n of this.npcEnts) { n.imHaus = false; n.hp = undefined; n.atkCd = 0; } // Kämpfer wieder frisch
     // Einfall-Punkte am DORF-Rand (Runde 51: +Waldgürtel-Versatz, das Dorf liegt
@@ -8138,7 +8174,8 @@ export class WorldScene extends CombatScene {
   // und darf nicht gerade vor einem Einfall fliehen. Ist das Dorf nicht die
   // geladene Karte, gelten alle als wohlauf (sie arbeiten "hinter den Kulissen").
   private kettenNpcVerfuegbar(id: string): boolean {
-    if (this.area?.id !== 'village') return true;
+    // UMZUG: die Dorfwirtschaft lebt im NEUEN Ravensmoor ('stadt')
+    if (this.area?.id !== 'stadt') return true;
     const n = this.npcEnts.find((x) => x.id === id);
     if (!n || n.verwundet) return false;
     if (this.einfallAktiv && !n.kaempfer) return false;
@@ -8180,7 +8217,7 @@ export class WorldScene extends CombatScene {
     for (const g of viehErg.geboren) this.chronik('ereignis', `Auf der Angerwiese ist ein ${g} zur Welt gekommen.`);
     for (const s of viehErg.geschlachtet) this.chronik('ereignis', `Schlachttag: ein ${s} kommt in die Speisekammer.`);
     if (!hirteDa) this.chronik('ereignis', 'Niemand versorgt heute das Vieh - Stall und Weide ruhen.');
-    if (this.area?.id === 'village') this.zeichneFeldWachstum();
+    if (this.area?.bauernFelder?.length) this.zeichneFeldWachstum();
     // 1d) M6: die Bewohner ESSEN aus dem Lager (Prioritätenliste). Knappheit
     //     LITE: kein Hungertod - Unmut, langsamere Arbeit, Warnung im Buch.
     const essen = essenTick(this.dorfLager);
@@ -8309,9 +8346,11 @@ export class WorldScene extends CombatScene {
     for (const [w, min] of Object.entries(WARN_SCHWELLE)) {
       if ((this.dorfLager[w] ?? 0) < min) warnungen.push(`${wareName(w)} geht aus!`);
     }
-    for (const [id, name] of [['mueller', 'Der Müller'], ['baecker', 'Der Bäcker'], ['schmied', 'Der Schmied']] as const) {
-      const n = this.npcEnts.find((x) => x.id === id);
-      if (!n || n.verwundet) warnungen.push(`${name} fehlt - seine Arbeit ruht!`);
+    if (this.area?.id === 'stadt') {
+      for (const [id, name] of [['mueller', 'Der Müller'], ['baecker', 'Der Bäcker'], ['schmied', 'Der Schmied']] as const) {
+        const n = this.npcEnts.find((x) => x.id === id);
+        if (!n || n.verwundet) warnungen.push(`${name} fehlt - seine Arbeit ruht!`);
+      }
     }
     if (this.dorfHunger) warnungen.push('Die Speisekammer reicht nicht - das Dorf murrt und arbeitet langsamer!');
     if (warnungen.length) { zeilen.push(''); zeilen.push('WARNUNGEN:'); for (const wtext of warnungen) zeilen.push(`  ! ${wtext}`); }
@@ -8617,6 +8656,8 @@ export class WorldScene extends CombatScene {
       choices: [
         { label: 'Handel', fn: () => this.shop.openShop('heinrich', 'ZUM SCHWARZEN RABEN', SHOP_HEINRICH, { ankauf: true }) },
         { label: `Bett mieten (${BETT_PREIS} Gold)`, fn: () => this.rentBed() },
+        // M8 "Gerüchte am Tresen": das Kopfgeld-System haengt jetzt am Wirt (Hook)
+        { label: 'Gerüchte am Tresen (Kopfgeld)', fn: () => this.readBrett() },
         { label: 'Lebt wohl' },
       ],
     });
@@ -8652,6 +8693,45 @@ export class WorldScene extends CombatScene {
     this.dialog.show('Magdalena', pages, 'magdalena');
   }
 
+  // M8: Marker-Symbol je Questgeber. '!' = Auftrag wartet, '?' = abgabebereit,
+  // null = nichts (Platzhalter-Linien aus questlinien.ts zeigen KEINEN Marker).
+  private questMarkerFuer(geber: string): string | null {
+    if (geber === 'stahl') {
+      if (this.flags.stahlWaffe || this.flags.stahlErz) return null;
+      return (this.p.materials.eisen ?? 0) >= STAHL_QUEST.erzBedarf ? '?' : '!';
+    }
+    if (geber === 'kopfgeld') {
+      return this.aktuellesKopfgeld().erledigt ? null : '!';
+    }
+    return null;
+  }
+
+  // M8: "Stahl für Ravensmoor" - der Held liefert Erz, der Schmied schmiedet
+  // SICHTBAR die erste Waffe (Funken-Salve am Amboss), sie wandert ins Lager.
+  private stahlQuestAbgeben(): void {
+    if ((this.p.materials.eisen ?? 0) < STAHL_QUEST.erzBedarf || this.flags.stahlErz) return;
+    this.p.materials.eisen -= STAHL_QUEST.erzBedarf;
+    this.flags.stahlErz = true;
+    this.chronik('geschichte', `Du hast dem Schmied ${STAHL_QUEST.erzBedarf} Erz gebracht - er macht sich sofort ans Werk.`);
+    const schmied = this.npcEnts.find((n) => n.id === 'schmied');
+    const sx = schmied?.curX ?? this.px, sy = schmied?.curY ?? this.py;
+    // Sichtbare Schmiede-Vorfuehrung: drei Hammer-Schlaege mit Funken
+    for (let i = 0; i < 3; i++) {
+      this.time.delayedCall(500 + i * 700, () => {
+        this.fx.burst(sx + 8, sy - 4, 0xf0a830, 10, 140);
+        this.sfx.playAt('schmiede_hammer', sx, sy, 0.8);
+      });
+    }
+    this.time.delayedCall(2600, () => {
+      this.flags.stahlWaffe = true;
+      this.lagerRein('waffen', 1);
+      this.p.gold += STAHL_QUEST.belohnungGold;
+      this.chronik('geschichte', `Die erste Waffe aus Ravensmoorer Stahl liegt beim Schmied im Verkauf. Lohn: ${STAHL_QUEST.belohnungGold} Gold.`);
+      this.logMsg('„Stahl für Ravensmoor": Die erste Waffe ist geschmiedet!', 'gold');
+      this.sfx.play('item_episch');
+    });
+  }
+
   private talkSchmied(): void {
     const pages: Array<string | { text: string; choices?: Array<{ label: string; fn?: () => void }> }> = [];
     if (!this.flags.schmied1) {
@@ -8663,6 +8743,12 @@ export class WorldScene extends CombatScene {
     const choices: Array<{ label: string; fn?: () => void }> = [
       { label: 'Handel', fn: () => this.shop.openShop('schmied', 'SCHMIEDE', SHOP_SCHMIED, { ankauf: true, schmieden: true }) },
     ];
+    // M8 Quest "Stahl für Ravensmoor": 5 Erz bringen -> erste Waffe (sichtbar)
+    if (!this.flags.stahlWaffe && !this.flags.stahlErz) {
+      choices.push(eisen >= STAHL_QUEST.erzBedarf
+        ? { label: `„Stahl für Ravensmoor": ${STAHL_QUEST.erzBedarf} Erz abliefern`, fn: () => this.stahlQuestAbgeben() }
+        : { label: `„Stahl für Ravensmoor": Erz beschaffen (${eisen}/${STAHL_QUEST.erzBedarf})` });
+    }
     // Eisen+Kohle für die Schmelze stiften: füttert die Dorf-Schmelze, die daraus
     // Eisenbarren macht - das Metall, aus dem der Schmied Waffen schmiedet.
     if (eisen >= 2 && kohle >= 1) choices.push({ label: 'Eisen & Kohle für die Schmelze stiften', fn: () => this.stifteSchmelze() });
@@ -10918,7 +11004,7 @@ export class WorldScene extends CombatScene {
     const abend = this.tageszeit > TAG.abendAb;
     // M1 (Autor-Roster): der Kuester laeutet die Glocke von St. Marien morgens
     // und abends - hoerbar im Dorf, mit Chronik-Zeile. Nur wenn er lebt/da ist.
-    if (this.area.id === 'village') {
+    if (this.area.id === 'stadt') {
       const vorher = this.glockePrevZeit ?? this.tageszeit;
       this.glockePrevZeit = this.tageszeit;
       const kuesterDa = this.npcEnts.some((n) => n.id === 'kuester' && !n.verwundet);
@@ -10975,6 +11061,19 @@ export class WorldScene extends CombatScene {
       n.sprite.setVisible(sichtbar);
       n.label.setVisible(sichtbar);
       n.heilLicht?.setVisible(sichtbar);   // Lichtsäule nicht stehen lassen, wenn unsichtbar
+      // M8: Quest-Marker ueber dem Kopf (! = Auftrag verfuegbar, ? = abgabebereit)
+      if (n.questgeber) {
+        const sym = sichtbar ? this.questMarkerFuer(n.questgeber) : null;
+        if (sym) {
+          if (!n.questMarker) {
+            n.questMarker = this.add.text(0, 0, sym, {
+              fontFamily: 'serif', fontSize: '18px', color: '#f0c040', stroke: '#000000', strokeThickness: 4,
+            }).setOrigin(0.5);
+            this.uiCam?.ignore(n.questMarker);
+          }
+          n.questMarker.setText(sym).setVisible(true).setPosition(n.curX, n.curY - 36).setDepth(n.curY + 1);
+        } else n.questMarker?.setVisible(false);
+      }
       if (!sichtbar) continue;
       // Verwundet niedergeschlagen (Runde 46): liegt geduckt am Boden, kämpft
       // und flieht nicht - wartet darauf, dass der Held ihn heilt. Pulsierender
@@ -11439,7 +11538,7 @@ export class WorldScene extends CombatScene {
     const kampfTempo = this.einfallAktiv ? TUNING.kryptaTempo : 1;
     this.updateCombat(dt * kampfTempo);
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
-    this.hausZimmermann?.update();   // R131c: Live-3D-Zimmermannshaus (N1) auffrischen
+    for (const g of this.gebaeude3d.values()) g.update(dt, this.px, this.py);   // R132: 3D-Gebaeude (Tueren/Innen/Ebene)
     this.updateWetter(dt);      // Wetter-Achse (Regen/Nässe, Stimmungsregen bis 1. Dungeon)
     this.updateWetterNebel();   // R113: Schwaden nach dem Regen
     this.updateSpuren(dt);      // R113: Fussabdruecke + Blut am Helden

@@ -42,6 +42,9 @@ export interface NpcSpawn {
   // Sichtbares Tagwerk (Runde 16): die Bewohner ARBEITEN an ihrem Platz
   // ('kochen' neu in M1 Dorfwirtschaft: die Wirtin in der Kueche)
   arbeit?: 'hacken' | 'schmieden' | 'fischen' | 'feld' | 'fuettern' | 'waschen' | 'backen' | 'weben' | 'kochen';
+  // M8 Dorfwirtschaft: technischer Quest-Hook - Schluessel der Questlinie
+  // (data/questlinien.ts); die Szene zeichnet den Kopf-Marker (!/?)
+  questgeber?: string;
 }
 
 export interface AnimalSpawn {
@@ -1149,7 +1152,7 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   tuer(17, 28, 'taverne');
   label(17.5, 21.2, 'Zum Schwarzen Raben');
   a.chimneys.push({ x: 14 * TILE + 6, y: 22 * TILE + 2 });
-  a.npcs.push({ id: 'heinrich', name: 'Heinrich Kramer', x: 17.5 * TILE, y: 29.5 * TILE, abend: { x: 17.5 * TILE, y: 29.5 * TILE }, kaempfer: true });
+  a.npcs.push({ id: 'heinrich', name: 'Heinrich Kramer', x: 17.5 * TILE, y: 29.5 * TILE, abend: { x: 17.5 * TILE, y: 29.5 * TILE }, kaempfer: true, questgeber: 'kopfgeld' });
   // M1 Dorfwirtschaft (Autor-Roster): die Wirtin - Heinrichs Frau, fuehrt die Kueche
   a.npcs.push({ id: 'wirtin', name: 'Wirtin Agnes', x: 15.5 * TILE, y: 29.5 * TILE, abend: { x: 15.5 * TILE, y: 29.5 * TILE }, arbeit: 'kochen' });
   a.animals.push({ type: 'hund', x: 21 * TILE, y: 30 * TILE, pen: { x0: 12 * TILE, y0: 29 * TILE, x1: 26 * TILE, y1: 33 * TILE } });
@@ -1202,7 +1205,7 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   tuer(32, 42, 'schmiede');
   label(33, 37.2, 'Schmiede');
   a.torches.push({ x: 34 * TILE, y: 43 * TILE, ph: rnd(rng, 0, 6.28) });
-  a.npcs.push({ id: 'schmied', name: 'Schmied', x: 33 * TILE, y: 44 * TILE, abend: { x: 16 * TILE, y: 31.5 * TILE }, kaempfer: true, arbeit: 'schmieden' });
+  a.npcs.push({ id: 'schmied', name: 'Schmied', x: 33 * TILE, y: 44 * TILE, abend: { x: 16 * TILE, y: 31.5 * TILE }, kaempfer: true, arbeit: 'schmieden', questgeber: 'stahl' });
   // M2: der Amboss - sichtbare Station des Schmieds (Funken schlagen hier)
   (a.stationen ??= []).push({ art: 'amboss', x: 34.2 * TILE, y: 44 * TILE });
 
@@ -2177,7 +2180,7 @@ export function buildStadtNatur(rng: Rng): AreaData {
   // R104 DEV-Haken: window.__stadtGroesse = {w,h} erlaubt Groessen-Tests im Browser
   // (FPS/Platz), ohne den Code zu aendern. Ohne Angabe der Standard 130x85.
   const g = (typeof window !== 'undefined' ? (window as unknown as { __stadtGroesse?: { w: number; h: number } }).__stadtGroesse : null) ?? null;
-  return baueOberweltGebiet(rng, {
+  const a = baueOberweltGebiet(rng, {
     id: 'stadt', name: 'Ravensmoor', wolfXs: [40, 96], baumGruppen: 45,
     // R104 (Autor "Karte zu klein, mach sie groesser/quadratisch"): Dorf jetzt
     // QUADRATISCH 128x128 (passt 1:1 zur Planungskarte). ~16k Tile-Objekte statt
@@ -2206,6 +2209,108 @@ export function buildStadtNatur(rng: Rng): AreaData {
       seen: [{ cx: 0.78, cy: 0.76, rx: 0.13, ry: 0.085 }],
     },
   });
+  bevoelkereStadt(a);
+  return a;
+}
+
+// UMZUG (Auftrag Dorfwirtschaft, Autor: "alles im NEUEN Ravensmoor, das alte
+// Dorf wird nicht mehr angeruehrt"): das komplette Bewohner-Roster, die
+// Arbeits-Stationen, Bauern-Felder, der Brunnen und das Vieh ziehen an die
+// DORFPLAN-Box-Anker der stadt-Karte (data/dorfplan.ts Saat; die 3D-Gebaeude
+// Haus=N1 und Schmiede=B1 haengen bereits an denselben Boxen).
+function bevoelkereStadt(a: AreaData): void {
+  const map = a.map;
+  // kleiner Helfer: Flaeche freiraeumen (Baeume/Felsen weg), damit Anker begehbar sind
+  const frei = (x0: number, y0: number, x1: number, y1: number): void => {
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      if (map[y]?.[x] !== undefined && map[y][x] !== T.WATER && map[y][x] !== T.PATH) map[y][x] = T.GRASS;
+    }
+  };
+  const N = (n: NpcSpawn): void => { a.npcs.push(n); };
+  const T32 = TILE;
+  // Anker aus der Dorfplan-Saat (Kacheln): Box-Mitte unten = Vorplatz
+  const WIRTSHAUS = { x: 43.5 * T32, y: 62 * T32 };
+
+  // Brunnen-Kachel an der Brunnen-Box (58,70,3x3) - Ziel des Magd-Pendelwegs
+  frei(57, 69, 61, 73);
+  map[71][59] = T.WELL;
+
+  // Amt & Kirche
+  frei(86, 76, 90, 79);
+  N({ id: 'schulze', name: 'Schulze Bertram', x: 88 * T32, y: 77.5 * T32, abend: { x: 88 * T32, y: 77.5 * T32 }, kaempfer: true });
+  frei(95, 49, 99, 52);
+  N({ id: 'johannes', name: 'Pater Johannes', x: 97 * T32, y: 50.5 * T32, abend: { x: 97 * T32, y: 50.5 * T32 } });
+  frei(94, 32, 99, 35);
+  N({ id: 'kuester', name: 'Küster Benedikt', x: 96.5 * T32, y: 33 * T32, mittag: { x: 97 * T32, y: 50 * T32 }, abend: { x: 96.5 * T32, y: 33 * T32 } });
+  // Wirtshaus (B2)
+  frei(41, 60, 46, 63);
+  N({ id: 'heinrich', name: 'Heinrich Kramer', x: 43.5 * T32, y: 61.5 * T32, abend: { x: 43.5 * T32, y: 61.5 * T32 }, kaempfer: true, questgeber: 'kopfgeld' });
+  N({ id: 'wirtin', name: 'Wirtin Agnes', x: 41.5 * T32, y: 61.5 * T32, abend: { x: 41.5 * T32, y: 61.5 * T32 }, arbeit: 'kochen' });
+  // Handwerk
+  frei(14, 62, 19, 65);
+  N({ id: 'schmied', name: 'Schmied', x: 16 * T32, y: 63.5 * T32, abend: WIRTSHAUS, kaempfer: true, arbeit: 'schmieden', questgeber: 'stahl' });
+  (a.stationen ??= []).push({ art: 'amboss', x: 17.5 * T32, y: 63.5 * T32 });
+  frei(108, 90, 113, 93);
+  N({ id: 'mueller', name: 'Müller', x: 110.5 * T32, y: 91.5 * T32, abend: { x: 106.5 * T32, y: 81.5 * T32 }, kaempfer: true });
+  frei(104, 80, 109, 83);
+  N({ id: 'magd', name: 'Magd Trine', x: 110 * T32, y: 92.5 * T32, abend: { x: 106.5 * T32, y: 81.5 * T32 } });
+  frei(75, 60, 79, 63);
+  N({ id: 'baecker', name: 'Bäcker Matthes', x: 77 * T32, y: 61.5 * T32, abend: { x: 77 * T32, y: 61.5 * T32 }, arbeit: 'backen' });
+  a.stationen.push({ art: 'backofen', x: 75.5 * T32, y: 61.5 * T32 });
+  frei(52, 82, 57, 85);
+  N({ id: 'zimmermann', name: 'Zimmermann Jakob', x: 54.5 * T32, y: 83.5 * T32, abend: WIRTSHAUS, kaempfer: true, arbeit: 'hacken' });
+  frei(7, 29, 11, 32);
+  N({ id: 'holzfaeller', name: 'Holzfäller Ruprecht', x: 8.5 * T32, y: 30.5 * T32, mittag: WIRTSHAUS, abend: WIRTSHAUS, arbeit: 'hacken' });
+  a.stationen.push({ art: 'holzstapel', x: 10 * T32, y: 30.9 * T32 });
+  frei(93, 95, 97, 98);
+  N({ id: 'fischer', name: 'Fischer Nepomuk', x: 95 * T32, y: 96.5 * T32, mittag: { x: 95 * T32, y: 96.5 * T32 }, abend: WIRTSHAUS, arbeit: 'fischen' });
+  frei(64, 88, 69, 92);
+  N({ id: 'imker', name: 'Imker Anselm', x: 66 * T32, y: 90 * T32, mittag: { x: 59.5 * T32, y: 65 * T32 }, abend: { x: 66 * T32, y: 90 * T32 } });
+  for (const [bx, by] of [[67.5, 89], [68.8, 89.6], [67.8, 91]] as const) {
+    a.stationen.push({ art: 'bienenkorb', x: bx * T32, y: by * T32 });
+  }
+  frei(18, 63, 23, 67);
+  N({ id: 'magdalena', name: 'Magdalena', x: 20 * T32, y: 65 * T32, abend: { x: 20 * T32, y: 65 * T32 } });
+  for (let i = 0; i < 5; i++) a.kraeuter.push({ x: (18.5 + (i % 3) * 1.4) * T32, y: (66.5 + Math.floor(i / 3)) * T32 });
+  // Heil & Haus
+  frei(59, 46, 64, 49);
+  N({ id: 'hebamme', name: 'Hebamme Walpurga', x: 60 * T32, y: 48.5 * T32, mittag: { x: 59.5 * T32, y: 71 * T32 }, abend: { x: 60 * T32, y: 48.5 * T32 } });
+  // Bauern-Familie A (KORN): zwei Felder im freien Sueden
+  frei(30, 91, 38, 97); carve(map, 30, 92, 37, 96, T.FIELD);
+  (a.bauernFelder ??= []).push({ x0: 30, y0: 92, x1: 37, y1: 96 });
+  N({ id: 'bauer1', name: 'Bauer Veit', x: 34 * T32, y: 91 * T32, abend: WIRTSHAUS, kaempfer: true, arbeit: 'feld' });
+  frei(56, 91, 65, 97); carve(map, 56, 92, 64, 96, T.FIELD);
+  a.bauernFelder.push({ x0: 56, y0: 92, x1: 64, y1: 96 });
+  N({ id: 'bauer2', name: 'Bäuerin Grete', x: 60 * T32, y: 91 * T32, abend: { x: 60 * T32, y: 48.5 * T32 }, arbeit: 'feld' });
+  // Familie B (VIEH): Gatter auf der Angerwiese oestlich + westlich der Linde
+  frei(47, 63, 57, 71);
+  for (let x = 48; x <= 56; x++) { map[64][x] = T.FENCE; map[70][x] = T.FENCE; }
+  for (let y = 64; y <= 70; y++) { map[y][48] = T.FENCE; map[y][56] = T.FENCE; }
+  map[64][52] = T.GRASS;   // Gatter-Oeffnung
+  const penB1 = { x0: 49 * T32, y0: 65 * T32, x1: 56 * T32, y1: 70 * T32 };
+  a.animals.push({ type: 'huhn', x: 50 * T32, y: 66 * T32, pen: penB1 });
+  a.animals.push({ type: 'huhn', x: 53 * T32, y: 68 * T32, pen: penB1 });
+  a.animals.push({ type: 'schwein', x: 51 * T32, y: 69 * T32, pen: penB1 });
+  a.animals.push({ type: 'schwein', x: 54 * T32, y: 66 * T32, pen: penB1 });
+  frei(66, 63, 76, 71);
+  for (let x = 67; x <= 75; x++) { map[64][x] = T.FENCE; map[70][x] = T.FENCE; }
+  for (let y = 64; y <= 70; y++) { map[y][67] = T.FENCE; map[y][75] = T.FENCE; }
+  map[64][71] = T.GRASS;
+  const penB2 = { x0: 68 * T32, y0: 65 * T32, x1: 75 * T32, y1: 70 * T32 };
+  a.animals.push({ type: 'kuh', x: 70 * T32, y: 67 * T32, pen: penB2 });
+  a.animals.push({ type: 'kuh', x: 73 * T32, y: 69 * T32, pen: penB2 });
+  a.animals.push({ type: 'schaf', x: 69 * T32, y: 69 * T32, pen: penB2 });
+  a.animals.push({ type: 'schaf', x: 74 * T32, y: 66 * T32, pen: penB2 });
+  N({ id: 'bauer3', name: 'Bauer Ott', x: 71 * T32, y: 63.5 * T32, mittag: { x: 59.5 * T32, y: 71 * T32 }, abend: WIRTSHAUS, arbeit: 'fuettern' });
+  N({ id: 'bauer4', name: 'Bäuerin Hilde', x: 52 * T32, y: 63.5 * T32, mittag: { x: 59.5 * T32, y: 71 * T32 }, abend: { x: 60 * T32, y: 48.5 * T32 }, arbeit: 'fuettern' });
+  N({ id: 'hirte', name: 'Hirtenjunge Lenz', x: 53.5 * T32, y: 66 * T32, abend: WIRTSHAUS, arbeit: 'fuettern' });
+  // Dorfvolk: Witwe am Brunnen, Kinder an der Linde, Haendler am Anger
+  N({ id: 'witwe', name: 'Witwe Ottilie', x: 59.5 * T32, y: 71.5 * T32, mittag: { x: 59.5 * T32, y: 71.5 * T32 }, abend: { x: 60 * T32, y: 48.5 * T32 } });
+  frei(58, 62, 65, 68);
+  N({ id: 'kind1', name: 'Hannes', x: 61 * T32, y: 65 * T32, mittag: { x: 61 * T32, y: 65 * T32 }, abend: WIRTSHAUS });
+  N({ id: 'kind2', name: 'Lisbeth', x: 62.5 * T32, y: 66 * T32, mittag: { x: 62.5 * T32, y: 66 * T32 }, abend: { x: 60 * T32, y: 48.5 * T32 } });
+  N({ id: 'haendler', name: 'Fahrender Händler', x: 59 * T32, y: 60 * T32 });
+  a.labels.push({ x: 59.5 * T32, y: 62.5 * T32, t: 'Anger' });
 }
 
 // R98 (Prompt-2, gy3-Reihe komplettieren): wald_w (1,3) westlich von START,

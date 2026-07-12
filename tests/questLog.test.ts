@@ -9,10 +9,10 @@ function ctx(flags: Record<string, boolean> = {}, extra: Partial<QuestCtx> = {})
 const haupt = QUESTS.find((q) => q.id === 'haupt_unsterblichkeit')!;
 
 describe('Quest-Logbuch', () => {
-  it('Spielstart: nur die Hauptquest ist aktiv, erstes Ziel = Landherr', () => {
+  it('Spielstart: Hauptquest + Stahl-Quest (M8, sofort frei) sind aktiv', () => {
     const c = ctx();
     const log = logbuch(c);
-    expect(log).toHaveLength(1);
+    expect(log).toHaveLength(2);   // Hauptquest + "Stahl fuer Ravensmoor" (M8)
     expect(log[0].def.id).toBe('haupt_unsterblichkeit');
     expect(log[0].status).toBe('aktiv');
     expect(log[0].aktuellesZiel?.text).toContain('Landherrn');
@@ -52,8 +52,9 @@ describe('Quest-Logbuch', () => {
   it('nach Abschluss der Hauptquest verfolgt die Automatik die nächste aktive Quest', () => {
     const c = ctx({ auftragErhalten: true, nAnkunft: true, muellerQuest: true, rattenAktiv: true }, { hasKey: true, bossDead: true });
     // Hauptquest abgeschlossen -> Ratten-Nebenquest wird verfolgt
-    expect(autoVerfolgt(c)).toBe('neben_ratten');
-    expect(verfolgteQuest(c, '')?.def.id).toBe('neben_ratten');
+    // M8: die sofort-freie Stahl-Quest steht in der Automatik VOR den Ratten
+    expect(autoVerfolgt(c)).toBe('neben_stahl');
+    expect(verfolgteQuest(c, '')?.def.id).toBe('neben_stahl');
   });
 
   it('eine vom Spieler gewählte aktive Quest wird respektiert, eine ungültige fällt auf Automatik zurück', () => {

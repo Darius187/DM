@@ -1194,6 +1194,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // überschreibt beide auf den FUSSPUNKT, damit Held/Gegner gegen Bäume (die auf
   // ihrem Stammfuß sortieren) korrekt vorne/hinten liegen (Kopf frei vor dem Stamm).
   protected spielerTiefe(): number { return this.py; }
+  // R132: Hoehenversatz der Figur (3D-Gebaeude: Treppe/Obergeschoss), 0 = Boden.
+  protected heldHoeheOffset(): number { return 0; }
   protected gegnerTiefe(_spr: Phaser.GameObjects.Sprite, grundY: number): number { return grundY; }
 
   // Hook: liegt der Zeiger über einem manuell gezeichneten UI (Licht-Werkbank)?
@@ -3505,7 +3507,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // zeichneHeld überschreiben. Die Gegner werden unten weiter gezeichnet.
     if (!this.playerDead) {
       // Spieler normal zeichnen (Reit-Eröffnung entfernt, Runde 51 - Autorwunsch)
-      this.playerSprite.setPosition(this.px, this.py).setDepth(this.spielerTiefe());
+      // heldHoeheOffset (R132): auf Treppe/Obergeschoss eines 3D-Gebaeudes steht
+      // die FIGUR sichtbar hoeher, die Lauf-/Tiefenlogik bleibt auf px/py.
+      this.playerSprite.setPosition(this.px, this.py - this.heldHoeheOffset()).setDepth(this.spielerTiefe());
       // Im RTS-/Frei-Kamera-Modus bewegen WASD die KAMERA, nicht den Helden -
       // die Lauf-Animation hängt dann an der echten Klick-Bewegung (rtsLaeuft).
       const moving = this.bewegungGesperrt() ? this.rtsLaeuft

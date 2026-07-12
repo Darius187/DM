@@ -1907,3 +1907,34 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Hilde (Familie B, SHOP_BAUER2 mit Eiern/Milch, eigene Dialog-Defs BAUER3/4).
   Bestehende Haendler (Schmied/Fischer/Imker/Magdalena/Heinrich) unveraendert.
 - Kinder, Witwe, Magd, Pater: weiterhin NUR Dialog (Auftrag).
+
+## Dorfwirtschaft UMZUG + M8 (Autor-Order: "ALLES im NEUEN Ravensmoor!")
+- AUTOR-ORDER mitten in M8: die gesamte Dorfwirtschaft gehoert ins NEUE
+  Ravensmoor (stadt-Karte mit den Dorfplan-Platzhaltern und den begehbaren
+  3D-Gebaeuden) - das ALTE Dorf (village) wird NICHT mehr angeruehrt
+  (eingefroren, M0-M7-Aenderungen dort bleiben harmlos liegen).
+- R132 VOM CODEX-BRANCH GEPORTET: gebaeude3d.ts + gebaeude3dWelt.ts +
+  HausProbe + neue GLBs (voll texturiert) + Settings gebaeude3d (Migration
+  von haus3d.yaw) + WorldScene-Hooks (Kollision/Hoehenversatz/Editor-Regler).
+  Haus3DWelt/hausRuntime/hausMaterial GELOESCHT (ersetzt). Haus haengt an N1,
+  Schmiede an B1 - begehbar, Tueren blocken/oeffnen, drinnen Dach weg.
+- bevoelkereStadt() (areagen): das komplette 23er-Roster + Haendler an den
+  DORFPLAN-Box-Ankern (Schmied B1+Amboss, Wirtshaus B2 Heinrich+Agnes,
+  Backhaus B3+Backofen, Kirche B4 Johannes, Friedhof Kuester, Fronhof B5
+  Schulze, Muehle B6 Mueller+Magd (Pendel zum neuen Brunnen), Baustelle
+  BrandHofstelle Zimmermann, Waldrand Holzfaeller+Holzstapel, See Fischer,
+  Sued-Imkerei+3 Koerbe, Westrand Magdalena+Kraeutergarten, N4 Hebamme,
+  2 SUED-AECKER Familie A, ANGERWIESE 2 Gatter mit 8 Tieren Familie B,
+  Brunnen-Kachel (T.WELL) an der Brunnen-Box, Witwe/Kinder/Haendler am Anger).
+- GATES umgestellt: kettenNpcVerfuegbar/Glocke -> 'stadt'; Feld-Overlay folgt
+  bauernFelder der geladenen Karte. OFFEN/EHRLICH: der EINFALL zielt weiter
+  aufs alte Dorf (Fluchtpunkte/Spawns dort) - Einfall im neuen Ravensmoor ist
+  ein eigener spaeterer Schritt; bis dahin wirkt die Vieh-/Feld-Kopplung nur,
+  wenn der Einfall dorthin umzieht.
+- M8 FERTIG: questgeber-Feld + Kopf-Marker (! verfuegbar / ? abgabebereit),
+  QUESTLINIEN-Tabelle (data/questlinien.ts, 11 Linien, 3 aktiv/8 Platzhalter),
+  Stahl-Quest real (5 Erz -> sichtbare Schmiede-Vorfuehrung -> Waffe ins
+  Lager + 40 Gold; Logbuch-Def neben_stahl), Tresen-Kopfgeld am Wirt-Dialog.
+  Browser-Beleg: Marker ! -> ? -> Abgabe (Erz 6->1, Chronik); Fertigstellung
+  ist ein delayedCall (headless-Drossel verhinderte das Abwarten).
+- questLog-Tests an die neue Wahrheit angepasst (Stahl-Quest sofort aktiv).
