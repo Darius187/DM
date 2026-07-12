@@ -45,6 +45,10 @@ export interface NpcSpawn {
   // M8 Dorfwirtschaft: technischer Quest-Hook - Schluessel der Questlinie
   // (data/questlinien.ts); die Szene zeichnet den Kopf-Marker (!/?)
   questgeber?: string;
+  // DORFWACHE (Autor: "das Dorf lagert Gold aus der Mine -> Waechter"): eine
+  // Patrouillenroute (Weltpixel-Wegpunkte). Der Waechter laeuft sie hin UND
+  // zurueck ab, TAG UND NACHT, und schlaegt beim Einfall zu (kaempfer).
+  patrouille?: Array<{ x: number; y: number }>;
 }
 
 export interface AnimalSpawn {
@@ -2313,6 +2317,20 @@ function bevoelkereStadt(a: AreaData): void {
   N({ id: 'kind2', name: 'Lisbeth', x: 62.5 * T32, y: 66 * T32, mittag: { x: 62.5 * T32, y: 66 * T32 }, abend: { x: 60 * T32, y: 48.5 * T32 } });
   N({ id: 'haendler', name: 'Fahrender Händler', x: 59 * T32, y: 60 * T32 });
   a.labels.push({ x: 59.5 * T32, y: 62.5 * T32, t: 'Anger' });
+
+  // DORFWACHE (Autor: "das Dorf lagert Goldvorraete aus der Mine -> Waechter"):
+  // drei Bewaffnete patrouillieren Tag UND Nacht und verteidigen beim Einfall.
+  const P = (x: number, y: number): { x: number; y: number } => ({ x: x * T32, y: y * T32 });
+  // 1) Wache am FRONHOF (dort liegt das Lager samt Golderz - der wichtigste Ort)
+  frei(78, 58, 96, 78);
+  N({ id: 'wache1', name: 'Torwächter Cunz', figur: 'wache', x: 84 * T32, y: 62 * T32, kaempfer: true,
+    patrouille: [P(80, 60), P(94, 60), P(94, 76), P(80, 76)] });
+  // 2) Wache auf dem ANGER (Dorfmitte, Brunnen, Wirtshaus) - Rundgang durchs Dorf
+  N({ id: 'wache2', name: 'Büttel Kilian', figur: 'wache', x: 59 * T32, y: 66 * T32, kaempfer: true,
+    patrouille: [P(43, 62), P(59, 66), P(59, 71), P(76, 62)] });
+  // 3) Wache an der SCHMIEDE/Westzufahrt (Dorfeingang von der Salzstrasse)
+  N({ id: 'wache3', name: 'Wächter Hagen', figur: 'wache', x: 20 * T32, y: 62 * T32, kaempfer: true,
+    patrouille: [P(14, 60), P(20, 66), P(34, 62), P(20, 58)] });
 }
 
 // R98 (Prompt-2, gy3-Reihe komplettieren): wald_w (1,3) westlich von START,

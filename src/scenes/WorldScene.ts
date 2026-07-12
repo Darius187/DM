@@ -130,6 +130,9 @@ interface NpcEntity extends NpcSpawn {
   pfad?: Array<{ x: number; y: number }>; pfadZx?: number; pfadZy?: number; pfadT?: number;
   // M2 Dorfwirtschaft: Pendelweg der Magd (Brunnen <-> Muehle, Wasser holen)
   pendelAmBrunnen?: boolean; pendelT?: number;
+  // DORFWACHE: aktueller Wegpunkt-Index + Laufrichtung (vor/zurueck), kurze
+  // Rast am Wegpunkt (patRast)
+  patIdx?: number; patRueck?: boolean; patRast?: number;
   // M8 Dorfwirtschaft: Kopf-Marker des Questgebers (! verfuegbar, ? abgabebereit)
   questMarker?: Phaser.GameObjects.Text;
 }
@@ -2556,11 +2559,13 @@ export class WorldScene extends CombatScene {
       // REFLEXION (Sprite mit setFlipX gespiegelt, nicht punktgespiegelt): die
       // Baum-Silhouette legt sich seitlich weg vom Licht, morgens nach Westen,
       // abends nach Osten, mit tiefer Sonne lang. Kein "Kopfüber"-Klon mehr.
-      // R134 (Autor-Referenzbild): die Sonne scheint VON VORN - der Schatten
-      // faellt HINTER den Baum (nach Norden, Basis PI) und kippt mit dem
-      // Sonnenstand nur noch LEICHT zur Seite. Er bleibt beweglich (Boeen-
-      // Welle unten) und wird bei tiefer Sonne weiterhin lang.
-      const rot = Math.PI - L.dir * 0.18;
+      // R134b (Autor-Referenzfoto, korrigiert): der Schatten faellt nach HINTEN
+      // (Sonne von vorn). Bei origin(0.5,1) legt Basis-Rotation 0 die Silhouette
+      // nach OBEN/HINTEN (PI hatte sie faelschlich nach vorn/unten gelegt). Der
+      // Sonnenstand kippt ihn zur Seite (morgens/abends stark, mittags fast
+      // senkrecht hinter den Stamm) und macht ihn bei tiefer Sonne lang - er
+      // lugt dann seitlich hinter dem Baum hervor. Bleibt windbewegt.
+      const rot = L.dir * (0.5 + (1 - L.hoehe) * 0.35);   // Seitenneigung: mittags fast senkrecht hinter den Stamm, tief schraeg
       const lenF = 0.55 + (1 - L.hoehe) * 0.95;
       for (const s of this.baumSchatten) {
         if (!s.img.active) continue;
@@ -11070,7 +11075,8 @@ export class WorldScene extends CombatScene {
       } else if (this.einfallAktiv) {
         sichtbar = n.kaempfer === true;
       } else {
-        sichtbar = !nacht;
+        // DORFWACHE: Waechter patrouillieren rund um die Uhr (auch nachts sichtbar)
+        sichtbar = n.patrouille ? true : !nacht;
       }
       n.sprite.setVisible(sichtbar);
       n.label.setVisible(sichtbar);
@@ -11139,8 +11145,27 @@ export class WorldScene extends CombatScene {
         n.atkCd = Math.max(0, (n.atkCd ?? 0) - dt);
         n.flashT = Math.max(0, (n.flashT ?? 0) - dt);
       }
+      // DORFWACHE: der Waechter laeuft seine Route ab (Wegpunkte hin UND zurueck)
+      // mit kurzer Rast am Punkt - uebersteuert den normalen Tagesplan, weicht
+      // aber Kampf/Panik. Das Dorf lagert Gold, also wird Tag und Nacht bewacht.
+      let patZiel: { x: number; y: number } | null = null;
+      if (n.patrouille && n.patrouille.length && !panik && !kampfGegner) {
+        n.patIdx ??= 0;
+        const wp = n.patrouille[Math.min(n.patIdx, n.patrouille.length - 1)];
+        patZiel = wp;
+        if (Math.hypot(wp.x - n.curX, wp.y - n.curY) < 16) {
+          n.patRast = (n.patRast ?? 1.2) - dt;
+          if (n.patRast <= 0) {
+            n.patRast = 0.8 + Math.random() * 0.8;
+            const letzte = n.patrouille.length - 1;
+            if (n.patRueck) { n.patIdx--; if (n.patIdx <= 0) { n.patIdx = 0; n.patRueck = false; } }
+            else { n.patIdx++; if (n.patIdx >= letzte) { n.patIdx = letzte; n.patRueck = true; } }
+          }
+        }
+      }
       let ziel = panik ? this.fluchtpunkt
         : kampfGegner ? { x: kampfGegner.x, y: kampfGegner.y }
+        : patZiel ? patZiel
         : phase === 'abend' && n.abend ? n.abend
         : mittagPhase && n.mittag ? n.mittag
         : phase === 'pause' ? pausenPlatz(n.id, n.x, n.y)

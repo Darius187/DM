@@ -189,6 +189,15 @@ export const VOLK: Readonly<Record<string, ReadonlyArray<string>>> = {
   kind2: [
     'Ich hab eine tote Maus im Brunnen gesehen! Sag es nicht dem Schulzen. Willst du mein Geheimversteck sehen? Es ist hinter dem Backhaus.',
   ],
+  wache1: [
+    'Cunz, Torwächter. Seit die Knappen das Golderz aus der Mine hierher schaffen, steht Tag und Nacht ein Mann am Tor. Der Fürst haette es gern sicher - und wir auch.',
+  ],
+  wache2: [
+    'Kilian, Büttel dieses Dorfes. Ich geh meine Runde ueber den Anger - Wirtshaus, Brunnen, Fronhof. Wer bei Nacht am Lager schleicht, kriegt es mit mir zu tun.',
+  ],
+  wache3: [
+    'Hagen. Ich halte die Westzufahrt, wo die Salzstrasse ins Dorf kommt. Ein gutes Auge und ein langer Spiess - mehr braucht ein Wächter nicht.',
+  ],
   holzfaeller: [
     'Ruprecht. Ich schlage das Holz am Waldrand - näher ans Dickicht traut sich keiner mehr. Jeder Stamm geht ans Dorflager, der Zimmermann wartet schon.',
   ],

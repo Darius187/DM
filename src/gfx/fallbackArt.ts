@@ -404,6 +404,9 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   fischer:    { tunic: '#3a5a6a', skin: '#b89878', hair: '#46362a', legs: '#2c4250', hat: '#5a6a4a', weapon: 'angel' },
   imker:      { tunic: '#9a8a52', skin: '#c8b090', hair: '#6a5a3a', legs: '#6a6038', hat: '#d8cfa0' },
   schaefer:   { tunic: '#7a7258', skin: '#b89878', hair: '#5a4a32', legs: '#54503c', hat: '#8a7448', weapon: 'stange' },
+  // DORFWACHE (Autor: Waechter fuers Gold-lagernde Dorf): Lederwams, Eisenhut
+  // (Kesselhut), Spiess - eine schlichte Miliz um 1349, kein Ritter.
+  wache: { tunic: '#5a4632', skin: '#c8b090', hair: '#3a2c1a', legs: '#43381f', hat: '#787f88', weapon: 'stange' },
   // M1 Dorfwirtschaft (Autor-Roster): Holzfaeller + Vieh-Bauernfamilie B
   holzfaeller: { tunic: '#5c4a30', skin: '#b89878', hair: '#3a2c1a', legs: '#3c3020', weapon: 'axt' },
   bauer3:     { tunic: '#6a4e36', skin: '#c8b090', hair: '#3c2e1c', legs: '#443622', hat: '#7a6438' },

@@ -1965,3 +1965,23 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Sonne bleiben. EHRLICH: Screenshot-Verifikation der Richtung gelang nicht
   (kein Baum im Testausschnitt) - Codeaenderung ist eine Zeile, bitte im
   Spiel gegenpruefen.
+
+## R134b - Baumschatten nach HINTEN (korrigiert) + DORFWACHE (Autor)
+- BAUMSCHATTEN: mein R134-Fix war falsch (nur Seitenneigung reduziert, Basis
+  blieb PI = nach vorn). Ursache: bei origin(0.5,1) legt Rotation PI die
+  Silhouette nach UNTEN/VORNE. KORREKTUR: Basis 0 -> Schatten nach OBEN/HINTEN
+  (Sonne von vorn). Sonnenstand kippt ihn zur Seite (rot = L.dir*(0.5+(1-hoehe)
+  *0.35)): mittags fast senkrecht hinter den Stamm, morgens/abends schraeg +
+  lang, Seite wechselt mit dem Tag. Bleibt windbewegt. GEOMETRISCH verifiziert
+  (Kronenspitze wy<0 in allen Tageszeiten, Seite wechselt) + visuell belegt.
+  Ehrlich: mein erster Anlauf war ungeprueft - daher diesmal reproduziert +
+  geometrisch UND visuell bestaetigt.
+- DORFWACHE (Autor: "das Dorf lagert Golderz aus der Mine -> Waechter"): NEU
+  NpcSpawn.patrouille (Wegpunkt-Route). 3 Waechter im NEUEN Ravensmoor:
+  Torwaechter Cunz (Fronhof B5 = Lager+Golderz), Buettel Kilian (Anger-Rundgang
+  Brunnen/Wirtshaus), Waechter Hagen (Westzufahrt/Schmiede). Sie laufen die
+  Route HIN und ZURUECK mit kurzer Rast (Logik verifiziert: 1->2->3R->2R->1R->0),
+  sind TAG UND NACHT sichtbar (patrouillieren rund um die Uhr) und sind
+  kaempfer -> verteidigen beim Einfall. Figur 'wache' (Lederwams, Eisenhut,
+  Spiess, Hot-Swap-faehig), ansprechbar (VOLK-Zeilen). Routen in areagen /
+  Figur in fallbackArt - leicht anpassbar.
