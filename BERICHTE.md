@@ -1146,3 +1146,10 @@ gemessen (Distanz sinkt), Stationen-Test gruen. tsc + 300 Tests gruen.
 EHRLICHE LUECKEN: Headless laeuft das Spiel mit ~1-2 fps (RAF-Drossel) -
 Bewegungs-Verifikation nur als Richtungs-Messung, nicht als fluessiger Lauf;
 Angel-Wippe ist Partikel-Takt (keine eigene Ruten-Animation).
+
+## Dorfwirtschaft M3: Lager & Verwaltung
+FERTIG + VERIFIZIERT: Warenkatalog + Gruppen-Kapazitaeten + Ueberlauf-Verkauf
+(Chronik-Beleg im Screenshot m3_buch.png), Verwaltungsbuch-Panel mit
+Bestaenden/Tagesbericht/Warnungen ("Wasser geht aus!", "Erz geht aus!").
+tsc + 304 Tests gruen. Spielstand: neues bericht-Feld optional (alte Staende
+kompatibel, ?? beim Lesen).

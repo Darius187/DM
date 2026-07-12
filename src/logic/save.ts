@@ -55,7 +55,12 @@ export interface SaveData {
     tagwerke?: Record<string, number>;
     dorfkasse?: number;
     // Wirtschaft Phase 1 (Runde 51): Dorf-Lager + Abgaben-Stand.
-    wirtschaft?: { lager: Record<string, number>; naechsteAbgabe: number; rueckstand: number };
+    // M3 Dorfwirtschaft: bericht = gestern produziert/verbraucht (Verwaltungs-
+    // buch); optional - alte Staende laden ohne (?? beim Lesen).
+    wirtschaft?: {
+      lager: Record<string, number>; naechsteAbgabe: number; rueckstand: number;
+      bericht?: { produziert: Record<string, number>; verbraucht: Record<string, number> };
+    };
     breschen?: Array<{ x: number; y: number }>;
   };
 }

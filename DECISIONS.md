@@ -1822,3 +1822,22 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Pausen: Verschnaufer (M0) + Mittagsrunde + Abend-Wirtshaus decken die
   M2-Anforderung ab.
 - Test: Stationen-Test in areagen.test.ts (Amboss nahe Schmied-Anker).
+
+## Dorfwirtschaft M3 - Lager & Verwaltung
+- NEU src/data/dorfOekonomie.ts: voller Warenkatalog (Korn/Mehl/Wasser/Brot/
+  Fisch/Fleisch/Eier/Milch/Honig/Kraeuter/Holz/Bretter/Stein/Erz/Kohle/
+  Eisenbarren/Waffen/Werkzeuge/Felle/Golderz; Gold = Dorfkasse). BESTEHENDE
+  Schluessel bleiben (weizen/eisen/barren) - nur die ANZEIGE sagt Korn/Erz
+  (Spielstand-Kompatibilitaet). Benannte Kraeuter als KRAEUTER_ARTEN vorbereitet.
+- KAPAZITAET je Warengruppe (Speisekammer/Kornboden/Baustoffe/Erzkeller/
+  Kammer); lagerEinlagern() ist pure + getestet. Ueberlauf verkauft der
+  Schulze automatisch an den Haendler (feste VERKAUFSPREISE, Gold ->
+  Dorfkasse, Chronik-Zeile) - im Browser belegt (+26 Gold fuer 13 Bretter).
+- Alle Lager-Zu-/Abgaenge laufen jetzt durch lagerRein/lagerRaus -> fuellt den
+  TAGESBERICHT (gestern erzeugt/verbraucht), gespeichert in
+  welt.wirtschaft.bericht (optional, alte Staende laden mit leerem Bericht).
+- VERWALTUNGSBUCH beim Schulzen (Dialog-Wahl): EIN Panel - Bestaende je
+  Gruppe mit Fuellstand, gestern erzeugt/verbraucht, Dorfkasse/Abgabe,
+  WARNUNGEN (Warenschwellen + "Mueller/Baecker/Schmied fehlt"). Verschiebbar
+  am Titel (UI-Regel 11).
+- 5 neue Tests (dorfOekonomie.test.ts), 304 gesamt gruen.

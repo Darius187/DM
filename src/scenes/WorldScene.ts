@@ -66,6 +66,7 @@ import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, BELAGERUNG, 
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
+import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand } from '../data/dorfOekonomie';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
@@ -8053,10 +8054,42 @@ export class WorldScene extends CombatScene {
     return { w: tw, h: th, farben };
   }
 
+  // --- M3: Lager mit Kapazitaet + Tagesbericht --------------------------------
+  // Alles, was ins Lager geht, laeuft durch lagerRein (Kapazitaet je Waren-
+  // gruppe; Ueberlauf verkauft der Schulze an den Haendler -> Dorfkasse +
+  // Chronik) - alles, was entnommen wird, durch lagerRaus. Beides fuellt den
+  // Tagesbericht (gestern produziert/verbraucht) fuers Verwaltungsbuch.
+  private lagerBerichtGestern: { produziert: Record<string, number>; verbraucht: Record<string, number> } = { produziert: {}, verbraucht: {} };
+  private lagerBerichtHeute: { produziert: Record<string, number>; verbraucht: Record<string, number> } = { produziert: {}, verbraucht: {} };
+
+  private lagerRein(ware: string, menge: number): void {
+    if (menge <= 0) return;
+    const { eingelagert, ueberlauf } = lagerEinlagern(this.dorfLager, ware, menge);
+    if (eingelagert > 0) this.lagerBerichtHeute.produziert[ware] = (this.lagerBerichtHeute.produziert[ware] ?? 0) + eingelagert;
+    if (ueberlauf > 0) {
+      const gold = ueberlauf * (VERKAUFSPREIS[ware] ?? 1);
+      this.dorfkasse += gold;
+      this.chronik('ereignis', `Das Lager quillt über - der Schulze verkauft ${ueberlauf} ${wareName(ware)} an den Händler (+${gold} Gold für die Dorfkasse).`);
+    }
+  }
+
+  private lagerRaus(ware: string, menge: number): number {
+    const hat = this.dorfLager[ware] ?? 0;
+    const raus = Math.min(hat, menge);
+    if (raus > 0) {
+      this.dorfLager[ware] = hat - raus;
+      this.lagerBerichtHeute.verbraucht[ware] = (this.lagerBerichtHeute.verbraucht[ware] ?? 0) + raus;
+    }
+    return raus;
+  }
+
   // Täglicher Wirtschafts-Tick (beim Tageswechsel aus sleep UND advanceClock).
   private wirtschaftsTick(): void {
+    // M3: Tagesbericht umblattern (heute -> gestern)
+    this.lagerBerichtGestern = this.lagerBerichtHeute;
+    this.lagerBerichtHeute = { produziert: {}, verbraucht: {} };
     // 1) Rohstoffe vom Dorf ins Lager.
-    for (const [m, n] of Object.entries(TAGES_PRODUKTION)) this.dorfLager[m] = (this.dorfLager[m] ?? 0) + (n ?? 0);
+    for (const [m, n] of Object.entries(TAGES_PRODUKTION)) this.lagerRein(m, n ?? 0);
     // 2) Verarbeitung (Phase 2). AKTUELL automatischer Platzhalter - läuft von
     //    selbst. ZIEL (Autorwunsch): die Bewohner Müller/Bäcker/Schmied arbeiten
     //    es sichtbar ab; dann gaten wir jede Stufe daran, ob der NPC lebt und im
@@ -8067,18 +8100,15 @@ export class WorldScene extends CombatScene {
     this.verarbeite(VERARBEITUNG.muehle.ein, VERARBEITUNG.muehle.aus, VERARBEITUNG.muehle.menge);
     this.schmelze(VERARBEITUNG.schmelze.einEisen, VERARBEITUNG.schmelze.einKohle, VERARBEITUNG.schmelze.aus, VERARBEITUNG.schmelze.menge);
     // 2b) Gesicherte Goldhöhle: die Knappen fördern Golderz (sichern -> Produktion).
-    if (this.flags.goldmineGesichert) this.dorfLager['golderz'] = (this.dorfLager['golderz'] ?? 0) + GOLDERZ_PRO_TAG;
+    if (this.flags.goldmineGesichert) this.lagerRein('golderz', GOLDERZ_PRO_TAG);
     // 2c) HOLZ-Wirtschaft (R81, Autor-Balance R79): die Dorf-Holzfäller schlagen
     // ~10 mittlere Bäume am Tag (= 50 Holz ins Lager); das Sägewerk verschneidet
     // einen Teil davon zu BRETTERN (1 Holz -> 2 Bretter) - gebaut wird in Brettern.
     // Der Held erntet daneben nur hastige Bruchteile (HOLZ.heldAnteil) - genau
     // das gewollte "mühsam, aber für ein Lagerfeuer reicht es".
-    this.dorfLager['holz'] = (this.dorfLager['holz'] ?? 0) + HOLZ.npcBaeumeProTag * HOLZ.baumInhalt.mittel;
-    const saege = Math.min(HOLZ.saegewerkProTag, this.dorfLager['holz'] ?? 0);
-    if (saege > 0) {
-      this.dorfLager['holz'] -= saege;
-      this.dorfLager['bretter'] = (this.dorfLager['bretter'] ?? 0) + saege * HOLZ.bretterProHolz;
-    }
+    this.lagerRein('holz', HOLZ.npcBaeumeProTag * HOLZ.baumInhalt.mittel);
+    const saege = this.lagerRaus('holz', HOLZ.saegewerkProTag);
+    if (saege > 0) this.lagerRein('bretter', saege * HOLZ.bretterProHolz);
     // 3) Abgabe an den Fürsten, wenn fällig.
     if (this.tag >= this.naechsteAbgabe) {
       this.leisteAbgabe();
@@ -8088,19 +8118,17 @@ export class WorldScene extends CombatScene {
 
   // Eine 1:1-Verarbeitungsstufe (Mühle/Backhaus): so viel wie Vorrat + Tagesleistung hergeben.
   private verarbeite(ein: string, aus: string, maxProTag: number): void {
-    const menge = Math.min(maxProTag, this.dorfLager[ein] ?? 0);
-    if (menge <= 0) return;
-    this.dorfLager[ein] = (this.dorfLager[ein] ?? 0) - menge;
-    this.dorfLager[aus] = (this.dorfLager[aus] ?? 0) + menge;
+    const menge = this.lagerRaus(ein, maxProTag);
+    if (menge > 0) this.lagerRein(aus, menge);
   }
 
   // Schmelze: 2 Eisen + 1 Kohle -> 1 Barren, begrenzt durch Vorrat und Tagesleistung.
   private schmelze(einEisen: number, einKohle: number, aus: string, maxProTag: number): void {
     let getan = 0;
     while (getan < maxProTag && (this.dorfLager['eisen'] ?? 0) >= einEisen && (this.dorfLager['kohle'] ?? 0) >= einKohle) {
-      this.dorfLager['eisen'] -= einEisen;
-      this.dorfLager['kohle'] -= einKohle;
-      this.dorfLager[aus] = (this.dorfLager[aus] ?? 0) + 1;
+      this.lagerRaus('eisen', einEisen);
+      this.lagerRaus('kohle', einKohle);
+      this.lagerRein(aus, 1);
       getan++;
     }
   }
@@ -8111,8 +8139,8 @@ export class WorldScene extends CombatScene {
   private leisteAbgabe(): void {
     let fehlt = false;
     for (const [m, n] of Object.entries(ABGABE.material)) {
-      const da = this.dorfLager[m] ?? 0;
-      if (da >= (n ?? 0)) this.dorfLager[m] = da - (n ?? 0); else { this.dorfLager[m] = 0; fehlt = true; }
+      const gegeben = this.lagerRaus(m, n ?? 0);
+      if (gegeben < (n ?? 0)) fehlt = true;
     }
     const vorErz = this.dorfLager['golderz'] ?? 0;
     const barSchuld = golderzFuerAbgabe(this.dorfLager, ABGABE.gold);
@@ -8125,6 +8153,61 @@ export class WorldScene extends CombatScene {
       const erzText = erzGegeben ? ` (davon ${erzGegeben} Golderz an die fürstliche Münze)` : '';
       this.logMsg(`Das Dorf hat seine Abgabe an den Fürsten geleistet${erzText}.`, 'tag');
     }
+  }
+
+  // --- M3: DAS VERWALTUNGSBUCH (ein Panel, kein Dashboard-Wildwuchs) ----------
+  // Bestaende je Warengruppe (mit Kapazitaet), gestern produziert/verbraucht,
+  // Warnungen. Verschiebbar am Titel (UI-Regel 11), X schliesst.
+  private verwaltungsPanel?: Phaser.GameObjects.Container;
+
+  private zeigeVerwaltungsbuch(): void {
+    this.verwaltungsPanel?.destroy();
+    const zeilen: string[] = [];
+    for (const [gruppe, waren] of Object.entries(WARENGRUPPEN)) {
+      const voll = gruppenFuellstand(this.dorfLager, gruppe);
+      const inhalt = waren.filter((x) => (this.dorfLager[x] ?? 0) > 0)
+        .map((x) => `${wareName(x)} ${this.dorfLager[x]}`).join(' · ');
+      zeilen.push(`${GRUPPEN_NAMEN[gruppe] ?? gruppe} (${voll}/${KAPAZITAET[gruppe]}):  ${inhalt || '—'}`.replace('—', '-'));
+    }
+    const fmt = (r: Record<string, number>): string => {
+      const t = Object.entries(r).filter(([, n]) => n > 0).map(([w, n]) => `${wareName(w)} ${n}`).join(' · ');
+      return t || 'nichts';
+    };
+    zeilen.push('');
+    zeilen.push(`Gestern erzeugt:    ${fmt(this.lagerBerichtGestern.produziert)}`);
+    zeilen.push(`Gestern verbraucht: ${fmt(this.lagerBerichtGestern.verbraucht)}`);
+    zeilen.push('');
+    zeilen.push(`Dorfkasse: ${this.dorfkasse} Gold · Nächste Abgabe: Tag ${this.naechsteAbgabe}${this.abgabeRueckstand ? ` · RÜCKSTAND ${this.abgabeRueckstand}!` : ''}`);
+    // Warnungen: knappe Waren + fehlende Ketten-Leute
+    const warnungen: string[] = [];
+    for (const [w, min] of Object.entries(WARN_SCHWELLE)) {
+      if ((this.dorfLager[w] ?? 0) < min) warnungen.push(`${wareName(w)} geht aus!`);
+    }
+    for (const [id, name] of [['mueller', 'Der Müller'], ['baecker', 'Der Bäcker'], ['schmied', 'Der Schmied']] as const) {
+      const n = this.npcEnts.find((x) => x.id === id);
+      if (!n || n.verwundet) warnungen.push(`${name} fehlt - seine Arbeit ruht!`);
+    }
+    if (warnungen.length) { zeilen.push(''); zeilen.push('WARNUNGEN:'); for (const wtext of warnungen) zeilen.push(`  ! ${wtext}`); }
+
+    const breite = 440;
+    const c = this.add.container(Math.round(this.scale.width / 2 - breite / 2), 90).setScrollFactor(0).setDepth(6600);
+    this.verwaltungsPanel = c;
+    this.cameras.main.ignore(c);   // nur die UI-Kamera zeigt das Buch
+    const inhaltTxt = this.add.text(12, 34, zeilen.join('\n'), {
+      fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8', lineSpacing: 5, wordWrap: { width: breite - 24 },
+    });
+    const hoehe = Math.max(120, inhaltTxt.height + 48);
+    const bg = this.add.rectangle(0, 0, breite, hoehe, 0x14100a, 0.96).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
+    const kopf = this.add.rectangle(0, 0, breite, 26, 0xffffff, 0.05).setOrigin(0).setInteractive({ draggable: true, useHandCursor: true });
+    const titel = this.add.text(10, 5, 'VERWALTUNGSBUCH VON RAVENSMOOR', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227', letterSpacing: 1 });
+    const zu = this.add.text(breite - 20, 4, '✕', { fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8' }).setInteractive({ useHandCursor: true });
+    zu.on('pointerdown', () => { c.destroy(); this.verwaltungsPanel = undefined; });
+    // Ziehen am Kopf (Schirmkoordinaten-Delta, UI-Regel 11)
+    let zs: { x: number; y: number } | null = null; let zp = { x: 0, y: 0 };
+    kopf.on('dragstart', (p: Phaser.Input.Pointer) => { zs = { x: p.x, y: p.y }; zp = { x: c.x, y: c.y }; });
+    kopf.on('drag', (p: Phaser.Input.Pointer) => { if (zs) c.setPosition(zp.x + (p.x - zs.x), zp.y + (p.y - zs.y)); });
+    kopf.on('dragend', () => { zs = null; });
+    c.add([bg, kopf, titel, zu, inhaltTxt]);
   }
 
   // Kurze Bestandsaufnahme der Vorratskammer für die Schulze-Anzeige.
@@ -8198,6 +8281,7 @@ export class WorldScene extends CombatScene {
     this.dialog.show('Schulze Bertram', [...zeilen, {
       text: `${letzte} Die Dorfkasse hält ${this.dorfkasse} Gold${this.wohlstand() ? ` - der Wohlstand drückt die Preise um ${this.wohlstand() * 5}%` : ''}.\nVorratskammer: ${this.lagerText()}. ${abg}`,
       choices: [
+        { label: 'Ins Verwaltungsbuch schauen', fn: () => this.zeigeVerwaltungsbuch() },
         { label: 'Für die Dorfkasse spenden (50 Gold)', fn: () => this.spendeDorfkasse(50) },
         { label: 'Lebt wohl' },
       ],
@@ -9529,7 +9613,7 @@ export class WorldScene extends CombatScene {
         einfallZaehler: this.einfallZaehler,
         tagwerke: this.tagwerke,
         dorfkasse: this.dorfkasse,
-        wirtschaft: { lager: this.dorfLager, naechsteAbgabe: this.naechsteAbgabe, rueckstand: this.abgabeRueckstand },
+        wirtschaft: { lager: this.dorfLager, naechsteAbgabe: this.naechsteAbgabe, rueckstand: this.abgabeRueckstand, bericht: this.lagerBerichtGestern },
         breschen: this.breschen,
       },
     };
@@ -9594,6 +9678,7 @@ export class WorldScene extends CombatScene {
     this.dorfLager = wi?.lager ?? { ...DORF_LAGER_START };
     this.naechsteAbgabe = wi?.naechsteAbgabe ?? ABGABE.intervallTage;
     this.abgabeRueckstand = wi?.rueckstand ?? 0;
+    this.lagerBerichtGestern = wi?.bericht ?? { produziert: {}, verbraucht: {} };   // M3 (alte Staende: leer)
     this.breschen = data.welt.breschen ?? [];
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
     recalc(p);
