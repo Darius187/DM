@@ -155,7 +155,7 @@ interface AnimalEntity extends AnimalSpawn {
 export interface FuerstentumGebiet { id: string; name: string; gx: number; gy: number }
 export const FUERSTENTUM: ReadonlyArray<FuerstentumGebiet> = [
   { id: 'wald', name: 'Dunkelwald', gx: 0, gy: 0 },
-  { id: 'village', name: 'Ravensmoor', gx: 1, gy: 0 },
+  { id: 'village', name: 'Shit (Archiv)', gx: 1, gy: 0 },   // ALTES Dorf - Archiv, nie anfassen (Autor)
   // Neues Oberwelt-Raster (Runde 72): Zellen wandern hier rein, sobald ihr
   // Builder existiert (Reihenfolge-Regel, WELTKARTE-PLAN.md). Start ist die erste.
   { id: 'start', name: 'Waldrand', gx: 2, gy: 3 },
@@ -500,7 +500,7 @@ export class WorldScene extends CombatScene {
       if (data) {
         this.applySave(data);
         // wie die Referenz: Erwachen in Ravensmoor (Krypta neu bevölkert)
-        this.goArea(this.flags.nAnkunft ? 'village' : 'wald');
+        this.goArea(this.flags.nAnkunft ? 'stadt' : 'wald');   // Ankunft = NEUES Ravensmoor (Autor-Order)
         this.logMsg(MELDUNGEN.geladen, 'gold');
       } else {
         this.goArea('wald');

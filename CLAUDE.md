@@ -214,3 +214,11 @@ rausschreiben, damit ein Neustart jederzeit gefahrlos ist.
   Stereo-Quellen MONO - immer den Dual-Panner-Weg nehmen. Audio-Änderungen mit
   der Offline-Render-Messung (Kanaltrennung in dB) verifizieren, nicht nach
   Gefühl.
+
+## 14. ARCHIV-Regel: das alte Dorf ist TOT (Autor-Order, unumstößlich)
+- Die Area `village` ("Shit (Archiv)") wird NIE WIEDER angefasst - kein
+  Feature, kein Fix, kein Inhalt. Sie existiert nur noch als Altlast.
+- ALLES Dorfleben/Wirtschaft/Quests/NPCs gehört ins NEUE Ravensmoor:
+  Area-id `stadt` (Dorfplan-Boxen + begehbare 3D-Gebäude, bevoelkereStadt
+  in areagen.ts). Wer hier etwas ins alte Dorf baut, verbrennt Tokens und
+  Autor-Geduld.

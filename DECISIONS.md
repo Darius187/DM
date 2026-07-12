@@ -1938,3 +1938,9 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Browser-Beleg: Marker ! -> ? -> Abgabe (Erz 6->1, Chronik); Fertigstellung
   ist ein delayedCall (headless-Drossel verhinderte das Abwarten).
 - questLog-Tests an die neue Wahrheit angepasst (Stahl-Quest sofort aktiv).
+
+## ARCHIV-Order (Autor): altes Dorf = "Shit (Archiv)", nie wieder anfassen
+- Anzeige-Name der village-Area auf "Shit (Archiv)" (Karte + Ortsname); die
+  id 'village' bleibt fuer alte Spielstaende, Inhalt wird nie mehr geaendert.
+- Ankunfts-Routing (nAnkunft) fuehrt jetzt ins NEUE Ravensmoor ('stadt').
+- Dauerregel als CLAUDE.md Punkt 14 verankert - gilt fuer jede Sitzung.

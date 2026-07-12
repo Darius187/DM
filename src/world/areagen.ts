@@ -1086,7 +1086,9 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   const w = 92, h = 60;
   const map = blank(w, h, T.GRASS);
   const a: AreaData = {
-    id: 'village', name: 'Ravensmoor', dark: false, depth: 0,
+    // ARCHIV (Autor-Order): das ALTE Dorf ist tot - NIE wieder anfassen.
+    // Alles Dorfleben lebt im NEUEN Ravensmoor (id 'stadt', bevoelkereStadt).
+    id: 'village', name: 'Shit (Archiv)', dark: false, depth: 0,
     w, h, map, spawn: { x: 46 * TILE, y: 34 * TILE },
     torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
     breakables: [], enemySpawns: [], notes: [], folios: [], gear: [],
