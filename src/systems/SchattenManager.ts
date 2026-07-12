@@ -44,10 +44,11 @@ export class SchattenManager {
   private fogBlur?: Phaser.FX.Blur;                  // weiche Sichtfeld-Kante
   private maskG: Phaser.GameObjects.Graphics;        // Sichtpolygon zum Ausstanzen
   private brush: Phaser.GameObjects.Image;           // weicher Pinsel (erase für 'sicht')
+  private stanzRT!: Phaser.GameObjects.RenderTexture; // R133: Kompositor der radialen Licht-Stanze
+  private invBrush!: Phaser.GameObjects.Image;        // R133: inverser Radialpinsel (Mitte 0 -> Rand 1)
   private flammeG: Phaser.GameObjects.Graphics;      // gezeichnete Flammen (oben)
   // Raumlicht: radialer Verlauf (Bild) je Licht, per Polygon-Maske auf die Lichtform begrenzt
   private raumPool: { g: Phaser.GameObjects.Graphics; img: Phaser.GameObjects.Image }[] = []; private raumN = 0;
-  private falloffPool: Phaser.GameObjects.Image[] = []; private falloffN = 0;  // dunkler Lichtabfall
   private glowPool: Phaser.GameObjects.Image[] = []; private glowN = 0;        // warmer Feuerschein (additiv)
   private statisch: Occluder[] = [];
   private statSeg: Segment[] = [];                   // Wand-/Gebäudekanten (einmal gebacken)
@@ -77,6 +78,13 @@ export class SchattenManager {
     if (this.fogRT.postFX) this.fogBlur = this.fogRT.postFX.addBlur(0, 2, 2, 1, 0xffffff, 4);
     this.maskG = scene.add.graphics().setVisible(false);
     this.brush = scene.add.image(0, 0, this.brushTextur()).setVisible(false);
+    // R133: Stanz-Textur fuer die radiale Licht-Stanze (Polygon x Radialverlauf).
+    // In ihr wird je Ring-Abtastung die Lichtform komponiert und dann aus der
+    // Dunkelheit gestanzt - weiches rundes Licht MIT Wandschatten, ohne
+    // Kastenkanten und ohne dunkle Deckscheiben (die den Schleier machten).
+    this.stanzRT = scene.add.renderTexture(0, 0, scene.scale.width, scene.scale.height)
+      .setOrigin(0, 0).setScrollFactor(0).setVisible(false);
+    this.invBrush = scene.add.image(0, 0, this.invBrushTextur()).setVisible(false);
     this.flammeG = scene.add.graphics().setScrollFactor(0).setDepth(this.tiefe + 3).setVisible(false);
     scene.scale.on('resize', this.aufResize, this);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
@@ -169,7 +177,7 @@ export class SchattenManager {
     // Wände/Gegner bleiben SCHWACH sichtbar statt komplett schwarz (Autorwunsch R57).
     rt.fill(0x070509, Phaser.Math.Clamp((0.70 + 0.20 * staerke) - this.umgebung, 0.35, 0.95));
     this.flammeG.setVisible(true).clear();
-    this.glowN = 0; this.falloffN = 0; this.raumN = 0;
+    this.glowN = 0; this.raumN = 0;
     const t = this.scene.time.now / 1000;
     let maxWeich = 0;
 
@@ -228,11 +236,23 @@ export class SchattenManager {
         const poly = sichtPolygon({ x: lx + ox * groesse, y: ly + oy * groesse }, segs, rS);
         if (poly.length < 3) continue;
         if (!polyC) polyC = poly;
-        this.maskG.clear(); this.maskG.fillStyle(0xffffff, 0.46 * fd); this.maskG.beginPath();
+        // R133 (Autor "Schleier ueber allem, Vierecke bei kleiner Reichweite"):
+        // Die Lichtform wird in der Stanz-Textur komponiert: Sichtlinien-Polygon
+        // MAL radialer Abfall (inverser Pinsel loescht zum Rand hin). Das ergibt
+        // ein weiches, RUNDES Licht wie beim geliebten lightRT - die Wandschatten
+        // bleiben, weil das Polygon die Form begrenzt. Frueher: flaches Polygon
+        // (harte Kastenkante) + dunkle Deckscheibe DARUEBER (= der Schleier).
+        const st = this.stanzRT;
+        st.clear();
+        this.maskG.clear(); this.maskG.fillStyle(0xffffff, 1); this.maskG.beginPath();
         this.maskG.moveTo(poly[0].x, poly[0].y);
         for (let i = 1; i < poly.length; i++) this.maskG.lineTo(poly[i].x, poly[i].y);
         this.maskG.closePath(); this.maskG.fillPath();
-        rt.erase(this.maskG);
+        st.draw(this.maskG);
+        this.invBrush.setScale((rS * 2) / SchattenManager.TEX);
+        st.erase(this.invBrush, lx, ly);
+        st.setAlpha(0.5 * fd);
+        rt.erase(st);
       }
       // Neutrales Raumlicht: ein RADIALER Verlauf (hell am Licht, weich auslaufend) -
       // aber per Maske auf die Lichtform (polyC) BEGRENZT. So gibt es saubere
@@ -243,9 +263,11 @@ export class SchattenManager {
         const rf = mischFarbe(0xffcaa0, 0xffffff, L.raumFarbe ?? 0.6);
         this.raumLichtPoly(lx, ly, rS, polyC, rf, Math.min(0.7, raum * 0.6) * fd);
       }
-      // dunkler Lichtabfall zum Rand (Falloff) + warmer Schein (Feuer ODER warm/farbig).
+      // Warmer Schein (Feuer ODER warm/farbig). Der fruehere dunkle "Falloff"-
+      // Deckel ueber dem Licht ist WEG (R133): er lag ueber Held und Raum und
+      // erzeugte den gemeldeten Schleier - der weiche Rand kommt jetzt aus der
+      // radialen Stanze selbst.
       const flick = 1 + Math.sin(t * 8 + lx) * 0.05 + Math.sin(t * 21 + ly) * 0.03;
-      this.falloff(lx, ly, rS, (0.28 + 0.26 * staerke) * fd);
       const hk = (L.staerke ?? 1) * this.helligkeit * fd, gR = 0.4 + (L.glutRadius ?? 0.6) * 0.85;   // Streuung des warmen Scheins
       if (L.farbe !== undefined) {   // warmer/ farbiger Schein OHNE Flamme (z.B. Held)
         this.glow(lx, ly, rS * 0.55 * gR, L.farbe, 0.20 * hk); this.glow(lx, ly, rS * 0.28 * gR, 0xffe6c0, 0.12 * hk);
@@ -358,32 +380,21 @@ export class SchattenManager {
     im.setVisible(true).setTint(farbe).setPosition(lx, ly).setScale((rS * 2 * soft) / SchattenManager.TEX).setAlpha(alpha);
   }
 
-  private falloff(lx: number, ly: number, rS: number, alpha: number): void {
-    while (this.falloffPool.length <= this.falloffN) {
-      this.falloffPool.push(this.scene.add.image(0, 0, this.falloffTextur()).setScrollFactor(0)
-        .setDepth(this.tiefe + 1).setVisible(false));
-    }
-    const im = this.falloffPool[this.falloffN++];
-    im.setVisible(true).setPosition(lx, ly).setScale((rS * 2.5) / SchattenManager.TEX).setAlpha(alpha);
-  }
-
   private versteckeRest(): void {
     for (let i = this.glowN; i < this.glowPool.length; i++) this.glowPool[i].setVisible(false);
-    for (let i = this.falloffN; i < this.falloffPool.length; i++) this.falloffPool[i].setVisible(false);
     for (let i = this.raumN; i < this.raumPool.length; i++) this.raumPool[i].img.setVisible(false);
   }
 
   private dunkelAus(): void {
     this.rt.setVisible(false); this.fogRT?.setVisible(false); this.flammeG.setVisible(false).clear();
     for (const im of this.glowPool) im.setVisible(false);
-    for (const im of this.falloffPool) im.setVisible(false);
     for (const s of this.raumPool) s.img.setVisible(false);
-    this.glowN = this.falloffN = this.raumN = 0;
+    this.glowN = this.raumN = 0;
   }
 
   aus(): void { this.sonneGfx.clear(); if (this.sonneBlur) this.sonneBlur.x = this.sonneBlur.y = 0; this.dunkelAus(); }
 
-  private aufResize(): void { const w = this.scene.scale.width, h = this.scene.scale.height; this.rt.setSize(w, h); this.fogRT?.setSize(w, h); }
+  private aufResize(): void { const w = this.scene.scale.width, h = this.scene.scale.height; this.rt.setSize(w, h); this.fogRT?.setSize(w, h); this.stanzRT?.setSize(w, h); }
 
   // Smooth-Radial-Textur: VIELE Stützpunkte (kein Mach-Band-Knick mehr),
   // 512px (sauber hochskalierbar), LINEAR gefiltert (pixelArt setzt sonst NEAREST
@@ -416,21 +427,17 @@ export class SchattenManager {
     return this.radialTextur('schatten_brush', 255, 255, 255, (t) => Math.cos(t * Math.PI / 2) ** 2);
   }
 
-  // dunkler radialer Lichtabfall (transparente Mitte -> sanft dunkler -> Rand wieder 0).
-  // Weiche Raised-Cosine-Glocke: KEIN dunkles Eck-Quadrat, KEIN harter Ring.
-  private falloffTextur(): string {
-    const peak = 0.82;   // Maximum nahe der Lichtkante, danach zurück auf 0
-    return this.radialTextur('schatten_falloff', 6, 4, 8, (t) => {
-      const x = t < peak ? t / peak : (1 - t) / (1 - peak);   // 0..1..0
-      return 0.5 * (0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, x))));
-    });
+  // R133: INVERSER Radialpinsel (Mitte 0 -> Rand 1) fuer die Licht-Stanze:
+  // loescht aus dem Sichtlinien-Polygon den Randbereich -> radial weiches Licht.
+  private invBrushTextur(): string {
+    return this.radialTextur('schatten_invbrush', 255, 255, 255, (t) => 1 - Math.cos(t * Math.PI / 2) ** 2);
   }
 
   destroy(): void {
     this.scene.scale.off('resize', this.aufResize, this);
     this.sonneGfx.destroy(); this.rt.destroy(); this.fogRT?.destroy(); this.maskG.destroy(); this.brush.destroy(); this.flammeG.destroy();
+    this.stanzRT?.destroy(); this.invBrush?.destroy();
     for (const s of this.raumPool) { s.g.destroy(); s.img.destroy(); }
     for (const im of this.glowPool) im.destroy();
-    for (const im of this.falloffPool) im.destroy();
   }
 }

@@ -1739,3 +1739,25 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Verifiziert im Browser: stadt-Karte, Haus steht live-3D an N1, keine JS-Fehler.
   tsc sauber, 293 Tests gruen. (Assets+Module vom Branch codex/rotatable-3d-
   carpenter-house sauber uebernommen statt Konflikt-Merge.)
+
+## R133 - Wand-Schatten-Schleier beseitigt (Autor: "Held wie hinter einem Schleier")
+- URSACHE GEFUNDEN: Der Raycaster-Pfad (Wand-Schatten AN) stanzte das Licht als
+  FLACHES Sichtlinien-Polygon aus der Dunkelheit (harte Kastenkante am Licht-
+  Radius) und legte zum Kaschieren je Fackel eine DUNKLE Deckscheibe ("Falloff",
+  Alpha 0,28+0,26*Staerke - bei Dunkelheit 150 = 0,67!) UEBER die Szene - auch
+  ueber den Helden. Mehrere Fackeln stapelten ihre Scheiben -> der gemeldete
+  Schleier. Grosse Reichweite = groessere Scheiben = schlimmer; kleine Reichweite
+  = weniger Schleier, aber sichtbare Vierecke (die Kastenkante). Exakt die
+  Autor-Beobachtung.
+- FIX: RADIALE LICHT-STANZE statt Flach-Stanze + Deckscheibe. Je Ring-Abtastung
+  wird die Lichtform in einer Stanz-Textur komponiert (Sichtlinien-Polygon MAL
+  weicher Radialverlauf via inversem Pinsel) und dann aus der Dunkelheit
+  gestanzt. Ergebnis: weiches, RUNDES Licht wie beim geliebten lightRT-Pfad,
+  Wandschatten bleiben (Polygon begrenzt die Form), und es liegt NICHTS
+  Dunkles mehr ueber Held/Boden. Deckscheiben (falloff-Pool/-Textur) komplett
+  entfernt.
+- Sichtfeld-Nebel (heldSichtfeld) und Grunddunkelheit bleiben unveraendert -
+  der Autor mag die Schatten, nur der Schleier war falsch.
+- Verifiziert (Playwright, crypt1, Autor-Setup Dunkelheit 150 + Sichtfeld 19):
+  Reichweite 100 -> Held gestochen klar im Fackellicht, weicher runder Abfall;
+  Reichweite 18 -> runder Lichtkegel, KEINE Vierecke. tsc sauber, Tests gruen.
