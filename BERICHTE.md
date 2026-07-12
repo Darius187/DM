@@ -1153,3 +1153,13 @@ FERTIG + VERIFIZIERT: Warenkatalog + Gruppen-Kapazitaeten + Ueberlauf-Verkauf
 Bestaenden/Tagesbericht/Warnungen ("Wasser geht aus!", "Erz geht aus!").
 tsc + 304 Tests gruen. Spielstand: neues bericht-Feld optional (alte Staende
 kompatibel, ?? beim Lesen).
+
+## Dorfwirtschaft M4: Produktionsketten input-gegated + NPC-gebunden
+FERTIG + VERIFIZIERT (Browser): normale Ticks fuellen Fisch/Honig/Wasser;
+Stoerfall Mueller-verwundet -> "Die Muehle steht still" in der Chronik,
+Mehl faellt von 3 auf 1 (Baecker backt weiter, bis nichts mehr da ist).
+tsc + 304 Tests gruen.
+ENTSCHEIDUNGEN: Abwesenheits-Naeherung (Dorf nicht geladen = alle arbeiten);
+Waffen/Werkzeuge abwechselnd je Tag; Erz/Kohle-Tagesproduktion gestrichen.
+EHRLICHE LUECKE: "ARBEITS-Phase" gilt je TAG (Tagestakt), nicht je Stunde -
+LITE-Auslegung des Auftrags.

@@ -65,7 +65,7 @@ import { MINE } from '../data/mine';
 import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
-import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
+import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand } from '../data/dorfOekonomie';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
@@ -8083,22 +8083,60 @@ export class WorldScene extends CombatScene {
     return raus;
   }
 
+  // M4: Ist der Ketten-Bewohner arbeitsfähig? Er muss LEBEN (nicht verwundet)
+  // und darf nicht gerade vor einem Einfall fliehen. Ist das Dorf nicht die
+  // geladene Karte, gelten alle als wohlauf (sie arbeiten "hinter den Kulissen").
+  private kettenNpcVerfuegbar(id: string): boolean {
+    if (this.area?.id !== 'village') return true;
+    const n = this.npcEnts.find((x) => x.id === id);
+    if (!n || n.verwundet) return false;
+    if (this.einfallAktiv && !n.kaempfer) return false;
+    return true;
+  }
+
   // Täglicher Wirtschafts-Tick (beim Tageswechsel aus sleep UND advanceClock).
   private wirtschaftsTick(): void {
     // M3: Tagesbericht umblattern (heute -> gestern)
     this.lagerBerichtGestern = this.lagerBerichtHeute;
     this.lagerBerichtHeute = { produziert: {}, verbraucht: {} };
-    // 1) Rohstoffe vom Dorf ins Lager.
-    for (const [m, n] of Object.entries(TAGES_PRODUKTION)) this.lagerRein(m, n ?? 0);
+    // 1) Rohstoffe vom Dorf ins Lager - M4: nur, wenn der jeweilige ERZEUGER
+    //    arbeitsfähig ist (PRODUZENTEN). Ausgefallene Zeilen kommen in die Chronik.
+    const stockt: string[] = [];
+    for (const [m, n] of Object.entries(TAGES_PRODUKTION)) {
+      const wer = PRODUZENTEN[m];
+      if (wer && !this.kettenNpcVerfuegbar(wer)) { stockt.push(wareName(m)); continue; }
+      this.lagerRein(m, n ?? 0);
+    }
+    if (stockt.length) this.chronik('ereignis', `Heute ohne Nachschub: ${stockt.join(', ')} - die Leute dafür fehlen.`);
     // 2) Verarbeitung (Phase 2). AKTUELL automatischer Platzhalter - läuft von
     //    selbst. ZIEL (Autorwunsch): die Bewohner Müller/Bäcker/Schmied arbeiten
     //    es sichtbar ab; dann gaten wir jede Stufe daran, ob der NPC lebt und im
     //    Dorf ist (im Einfall fliehen sie -> die Kette stockt). Reihenfolge:
     //    LETZTE Stufe zuerst, damit ein frisch erzeugtes Zwischenprodukt nicht
     //    am selben Tag weiterläuft -> die Kette braucht mehrere Tage.
-    this.verarbeite(VERARBEITUNG.backhaus.ein, VERARBEITUNG.backhaus.aus, VERARBEITUNG.backhaus.menge);
-    this.verarbeite(VERARBEITUNG.muehle.ein, VERARBEITUNG.muehle.aus, VERARBEITUNG.muehle.menge);
-    this.schmelze(VERARBEITUNG.schmelze.einEisen, VERARBEITUNG.schmelze.einKohle, VERARBEITUNG.schmelze.aus, VERARBEITUNG.schmelze.menge);
+    // M4: jede Stufe läuft NUR, wenn ihr Bewohner lebt/da ist (Autor-Ziel) UND
+    // die Inputs im Lager liegen. Brot braucht Mehl UND Wasser (Magd-Weg).
+    if (this.kettenNpcVerfuegbar(VERARBEITUNG.backhaus.wer)) {
+      const brotMax = Math.min(VERARBEITUNG.backhaus.menge, this.dorfLager['mehl'] ?? 0, Math.floor((this.dorfLager['wasser'] ?? 0) / VERARBEITUNG.backhaus.einWasser));
+      if (brotMax > 0) {
+        this.lagerRaus('mehl', brotMax);
+        this.lagerRaus('wasser', brotMax * VERARBEITUNG.backhaus.einWasser);
+        this.lagerRein('brot', brotMax);
+      }
+    } else this.chronik('ereignis', 'Das Backhaus bleibt kalt - der Bäcker fehlt.');
+    if (this.kettenNpcVerfuegbar(VERARBEITUNG.muehle.wer)) {
+      this.verarbeite(VERARBEITUNG.muehle.ein, VERARBEITUNG.muehle.aus, VERARBEITUNG.muehle.menge);
+    } else this.chronik('ereignis', 'Die Mühle steht still - der Müller fehlt.');
+    if (this.kettenNpcVerfuegbar(VERARBEITUNG.schmelze.wer)) {
+      this.schmelze(VERARBEITUNG.schmelze.einEisen, VERARBEITUNG.schmelze.einKohle, VERARBEITUNG.schmelze.aus, VERARBEITUNG.schmelze.menge);
+      // M4: aus Barren fertigt der Schmied Waffen/Werkzeuge (abwechselnd je Tag)
+      // in sein Verkaufsinventar (Lager; der Shop koppelt in M6 daran).
+      for (let i = 0; i < SCHMIEDE_FERTIGUNG.stueckProTag; i++) {
+        if ((this.dorfLager['barren'] ?? 0) < SCHMIEDE_FERTIGUNG.barrenProStueck) break;
+        this.lagerRaus('barren', SCHMIEDE_FERTIGUNG.barrenProStueck);
+        this.lagerRein(this.tag % 2 === 0 ? 'werkzeuge' : 'waffen', 1);
+      }
+    } else this.chronik('ereignis', 'Die Esse ist aus - der Schmied fehlt.');
     // 2b) Gesicherte Goldhöhle: die Knappen fördern Golderz (sichern -> Produktion).
     if (this.flags.goldmineGesichert) this.lagerRein('golderz', GOLDERZ_PRO_TAG);
     // 2c) HOLZ-Wirtschaft (R81, Autor-Balance R79): die Dorf-Holzfäller schlagen
@@ -8106,7 +8144,10 @@ export class WorldScene extends CombatScene {
     // einen Teil davon zu BRETTERN (1 Holz -> 2 Bretter) - gebaut wird in Brettern.
     // Der Held erntet daneben nur hastige Bruchteile (HOLZ.heldAnteil) - genau
     // das gewollte "mühsam, aber für ein Lagerfeuer reicht es".
-    this.lagerRein('holz', HOLZ.npcBaeumeProTag * HOLZ.baumInhalt.mittel);
+    // M4: auch das grosse Holzschlagen gehoert dem Holzfaeller
+    if (this.kettenNpcVerfuegbar('holzfaeller')) {
+      this.lagerRein('holz', HOLZ.npcBaeumeProTag * HOLZ.baumInhalt.mittel);
+    }
     const saege = this.lagerRaus('holz', HOLZ.saegewerkProTag);
     if (saege > 0) this.lagerRein('bretter', saege * HOLZ.bretterProHolz);
     // 3) Abgabe an den Fürsten, wenn fällig.
@@ -8885,12 +8926,23 @@ export class WorldScene extends CombatScene {
     for (const [key, tagGefaellt] of this.gefaellteBaeume) {
       if (this.tag - tagGefaellt >= GATHER.baumRespawnTage) this.gefaellteBaeume.delete(key);
     }
-    // Wiederaufbau: baut sich über eine Spielnacht (Masterprompt 7.4)
+    // Wiederaufbau: baut sich über eine Spielnacht (Masterprompt 7.4).
+    // M4: der ZIMMERMANN verbraucht dafür Holz aus dem Dorf-Lager - fehlt das
+    // Holz (oder der Zimmermann), stockt die Baustelle sichtbar.
     let gebaut: string | null = null;
     if (this.aufbauBestellt) {
-      this.aufbauBestellt = false;
-      gebaut = AUFBAU_STUFEN[this.aufbauStufe].name;
-      this.aufbauStufe++;
+      const zimmermannDa = this.kettenNpcVerfuegbar('zimmermann');
+      const holzDa = (this.dorfLager['holz'] ?? 0) >= AUFBAU_HOLZ_JE_STUFE;
+      if (zimmermannDa && holzDa) {
+        this.lagerRaus('holz', AUFBAU_HOLZ_JE_STUFE);
+        this.aufbauBestellt = false;
+        gebaut = AUFBAU_STUFEN[this.aufbauStufe].name;
+        this.aufbauStufe++;
+      } else {
+        this.chronik('ereignis', zimmermannDa
+          ? `Die Baustelle stockt - es fehlt Holz im Lager (${AUFBAU_HOLZ_JE_STUFE} nötig).`
+          : 'Die Baustelle stockt - der Zimmermann fehlt.');
+      }
     }
     // Stadtmauer: der Bau braucht mehrere Nächte (Feedback-Runde 8)
     if (this.stadtmauerRestNaechte > 0) {

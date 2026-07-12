@@ -5,10 +5,22 @@
 
 import type { MaterialId } from './crafting';
 
-// Tägliche Produktion des Dorfes ins Dorf-Lager (Holzfäller, Steinklopfer ...).
-// Weizen kommt über die Dorf-Felder (Bauer Veit/Grete), Gold später über die Mine.
-export const TAGES_PRODUKTION: Partial<Record<MaterialId, number>> & { weizen?: number } = {
-  holz: 4, stein: 2, eisen: 1, kraeuter: 1, kohle: 1, weizen: 3,
+// Tägliche Produktion des Dorfes ins Dorf-Lager. M4 (Auftrag Dorfwirtschaft):
+// jede Zeile gehört einem BEWOHNER (PRODUZENTEN unten) - fällt er aus
+// (verwundet, Einfall), stockt seine Produktion. EISEN/KOHLE sind GESTRICHEN:
+// die Quellen sind jetzt der Held (Krypta/Beute) und der Händler; die Haken
+// für später sind der Goldminen-Dungeon (V2) und das Köhler-Biom.
+// Stein bleibt ohne Besitzer (Dorf-Tagelöhner), Weizen wandert mit M5 auf die
+// Bauern-Felder.
+export const TAGES_PRODUKTION: Partial<Record<MaterialId, number>> & Record<string, number> = {
+  holz: 4, stein: 2, kraeuter: 1, weizen: 3, fisch: 2, honig: 1, wasser: 4,
+};
+
+// M4: Wer erzeugt was? Fehlt der Bewohner (tot/verwundet/geflohen), stockt
+// GENAU seine Zeile - die Kette wird spürbar (Autor-Ziel).
+export const PRODUZENTEN: Record<string, string> = {
+  holz: 'holzfaeller', kraeuter: 'magdalena', weizen: 'bauer1',
+  fisch: 'fischer', honig: 'imker', wasser: 'magd',
 };
 
 // Verarbeitung (Phase 2, Runde 51): Zwischenprodukte. AKTUELL PLATZHALTER -
@@ -17,10 +29,30 @@ export const TAGES_PRODUKTION: Partial<Record<MaterialId, number>> & { weizen?: 
 // der NPC lebt/anwesend ist (im Einfall fliehen sie -> keine Verarbeitung).
 // Reihenfolge im Tick: letzte Stufe zuerst -> die Kette braucht mehrere Tage.
 export const VERARBEITUNG = {
-  backhaus: { wer: 'baecker', ein: 'mehl', aus: 'brot', menge: 2 },     // Bäcker: Mehl -> Brot
+  // M4: Brot braucht Mehl UND Wasser (das Wasser holt die Magd vom Brunnen)
+  backhaus: { wer: 'baecker', ein: 'mehl', einWasser: 1, aus: 'brot', menge: 2 },  // Bäcker: Mehl+Wasser -> Brot
   muehle: { wer: 'mueller', ein: 'weizen', aus: 'mehl', menge: 3 },     // Müller: Weizen -> Mehl
   schmelze: { wer: 'schmied', einEisen: 2, einKohle: 1, aus: 'barren', menge: 2 }, // Schmied: Eisen+Kohle -> Barren
 } as const;
+
+// M4: der Schmied fertigt aus Barren WAFFEN und WERKZEUGE (abwechselnd je Tag,
+// gerade Tage = Werkzeuge). Sie landen im Lager ('waffen'/'werkzeuge') und
+// stehen dem Schmied-Handel zur Verfügung (M6 koppelt den Shop ans Lager).
+export const SCHMIEDE_FERTIGUNG = {
+  barrenProStueck: 1,   // 1 Barren -> 1 Stueck
+  stueckProTag: 1,
+} as const;
+
+// VORGRIFF (nur Daten-Haken, Auftrag M4): später rüsten die Lager-Waffen die
+// Miliz/RTS-Einheiten über das ZEUGHAUS aus. Noch NICHT verdrahtet.
+export const ZEUGHAUS_HAKEN = {
+  aktiv: false,
+  waffenJeMilizSoldat: 1,
+} as const;
+
+// M4: der Zimmermann verbraucht HOLZ an der Baustelle - je Wiederaufbau-Nacht
+// so viele Bretter/Holz aus dem Dorf-Lager. Fehlt es, stockt der Aufbau.
+export const AUFBAU_HOLZ_JE_STUFE = 10;
 
 // Gold gehört dem Fürsten (Bergregal/Münzregal, 14. Jh.): Gold zu schmelzen und zu
 // prägen war ein REGAL des Landesherrn - ein Dorf durfte das gar nicht. Golderz

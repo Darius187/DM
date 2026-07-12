@@ -1841,3 +1841,24 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   WARNUNGEN (Warenschwellen + "Mueller/Baecker/Schmied fehlt"). Verschiebbar
   am Titel (UI-Regel 11).
 - 5 neue Tests (dorfOekonomie.test.ts), 304 gesamt gruen.
+
+## Dorfwirtschaft M4 - Produktionsketten (input-gegated, NPC-gebunden)
+- JEDE Stufe laeuft nur noch, wenn ihr Bewohner ARBEITSFAEHIG ist
+  (kettenNpcVerfuegbar: lebt/nicht verwundet, flieht nicht vor dem Einfall;
+  ist das Dorf nicht geladen, gelten alle als wohlauf - Tagestakt-Naeherung,
+  ehrlich dokumentiert) UND die Inputs im Lager liegen.
+- PRODUZENTEN (wirtschaft.ts): holz=Holzfaeller, kraeuter=Magdalena,
+  weizen=Bauer Veit, fisch=Fischer, honig=Imker, wasser=Magd. EISEN/KOHLE aus
+  der Tagesproduktion GESTRICHEN (Quellen jetzt: Held + Haendler; Haken fuer
+  Goldmine-Dungeon und Koehler-Biom stehen im Kommentar). Stein bleibt ohne
+  Besitzer (Tageloehner).
+- BROT braucht jetzt Mehl UND Wasser (einWasser) - das Wasser bringt die Magd
+  (M2-Pendelweg liefert die Optik, die Tagesproduktion die Zahl).
+- SCHMIED fertigt aus Barren abwechselnd WAFFEN/WERKZEUGE (SCHMIEDE_FERTIGUNG)
+  ins Lager (= sein Verkaufsinventar; Shop-Kopplung folgt in M6).
+  ZEUGHAUS_HAKEN als reiner Datenhaken angelegt (Auftrag: nur vorsehen).
+- ZIMMERMANN verbraucht je Wiederaufbau-Nacht AUFBAU_HOLZ_JE_STUFE Holz aus
+  dem Lager; fehlt Holz oder der Zimmermann, stockt die Baustelle (Chronik).
+- Ausgefallene Stufen melden sich in der Chronik ("Die Muehle steht still...").
+- Browser-Beleg: Tick liefert Fisch/Honig/Wasser; Mueller verwundet ->
+  Muehle still + Mehl sinkt weiter (Baecker verbraucht) - Kette spuerbar.
