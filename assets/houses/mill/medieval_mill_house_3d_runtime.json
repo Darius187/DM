@@ -40,8 +40,8 @@
     "all_visible_materials_have_embedded_basecolor_textures": true,
     "runtime_tinting_allowed": false,
     "transparent_windows": true,
-    "transparent_water": true,
-    "texture_count": 19,
+    "contains_water_geometry": false,
+    "texture_count": 18,
     "used_materials": [
       "MAT_MILL_AWNING_CLOTH",
       "MAT_MILL_FLOUR_SACK",
@@ -60,8 +60,7 @@
       "MAT_MILL_SHINGLE_B",
       "MAT_MILL_SHINGLE_C",
       "MAT_MILL_STONE_DARK",
-      "MAT_MILL_STONE_WARM",
-      "MAT_MILL_WATER_TRANSPARENT"
+      "MAT_MILL_STONE_WARM"
     ]
   },
   "renderer_recipe": {
@@ -92,12 +91,19 @@
         1,
         120
       ],
-      "loop": true
-    },
-    "water": {
-      "node": "MILLRACE_WATER",
-      "uv_flow": "negative_y"
+      "loop": true,
+      "direction_control": "signed_animation_time_scale",
+      "with_river_flow_time_scale": 1.0,
+      "against_river_flow_time_scale": -1.0,
+      "paused_time_scale": 0.0,
+      "derive_sign_from_world_river_flow": true
     }
+  },
+  "world_alignment": {
+    "water_geometry_source": "Phaser world river",
+    "place_wheel_at_river_edge": true,
+    "model_contains_millrace_walls": false,
+    "model_contains_water": false
   },
   "walkable_interior": {
     "enabled": true,
@@ -124,8 +130,8 @@
       "WINDOW_RIGHT_UPPER_FRONT_GLASS",
       "WINDOW_RIGHT_UPPER_REAR_GLASS"
     ],
-    "water": [
-      "MILLRACE_WATER"
+    "water_wheel": [
+      "WATER_WHEEL_ROTATION_PIVOT"
     ]
   },
   "animations": [
@@ -313,22 +319,6 @@
       ]
     },
     {
-      "name": "COLLISION_MILLRACE",
-      "kind": "hazard",
-      "role": "running_water",
-      "floor": "EXTERIOR",
-      "center_blender_xyz": [
-        5.35,
-        0.15,
-        0.62
-      ],
-      "size_blender_xyz": [
-        2.2,
-        8.4,
-        1.2
-      ]
-    },
-    {
       "name": "COLLISION_MILLSTONE",
       "kind": "block",
       "role": "fixed_machinery",
@@ -407,22 +397,6 @@
         4.0,
         4.0
       ]
-    },
-    {
-      "name": "INTERACTION_SLUICE_GATE",
-      "kind": "interaction",
-      "role": "control_sluice",
-      "floor": "EXTERIOR",
-      "center_blender_xyz": [
-        5.35,
-        3.62,
-        1.42
-      ],
-      "size_blender_xyz": [
-        1.7,
-        1.0,
-        1.8
-      ]
     }
   ],
   "markers": [
@@ -478,11 +452,11 @@
     }
   ],
   "counts": {
-    "runtime_objects": 1901,
-    "materials": 19,
+    "runtime_objects": 1777,
+    "materials": 18,
     "windows": 10,
     "doors": 2,
-    "collisions": 17,
+    "collisions": 15,
     "main_roof_shingles": 697,
     "wheel_paddles": 18
   },
@@ -491,12 +465,14 @@
     "rotate": "MILL_HOUSE_ROTATION_PIVOT around Three.js Y",
     "collisions": "build from JSON and transform with building",
     "doors": "play named animations",
-    "water_wheel": "loop named animation independently of building yaw",
+    "water_wheel": "loop named animation independently of building yaw; set AnimationAction timeScale to +1 or -1 from river flow direction",
     "forbidden": [
       "PNG replacement",
       "material tinting",
       "visible collision meshes",
-      "global ground plate"
+      "global ground plate",
+      "model-owned river water",
+      "millrace walls"
     ]
   }
 }

@@ -91,15 +91,17 @@ the primary representation.
   milling deck. Use `TRIGGER_MILL_MAIN` and keep its steps unobstructed.
 - Ten transparent windows use `MAT_MILL_GLASS_TRANSPARENT`.
 - `WATER_WHEEL_ROTATION_PIVOT` has a loopable frame 1-120 animation with 18
-  paddles. Loop it independently while preserving building yaw and scale.
-- The local millrace and waterfall use `MAT_MILL_WATER_TRANSPARENT`; animate
-  their UV flow at runtime without replacing the embedded material.
-- The JSON contains 17 navigation/collision/interaction guides for doors,
-  floors, stairs, millstone, wheel, millrace and sluice gate.
+  paddles. Loop it independently while preserving building yaw and scale. Set
+  the animation action `timeScale` to `1` or `-1` from the signed world-river
+  flow direction; use `0` when the wheel should stop.
+- The GLB deliberately contains no water, millrace walls, waterfall or sluice.
+  Place the wheel directly at the existing Phaser-world river edge.
+- The JSON contains 15 navigation/collision/interaction guides for doors,
+  floors, stairs, millstone and wheel.
 - Ground floor, upper floor and covered milling deck are walkable.
 - The main roof contains 697 individual overlapping shingles.
-- The narrow masonry millrace is part of the building; there is no global
-  ground plate or terrain slab in the GLB.
+- There is no global ground plate, terrain slab or model-owned river geometry
+  in the GLB.
 
 ## Rendering
 
