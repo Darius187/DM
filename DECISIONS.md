@@ -1805,3 +1805,20 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Fluechtlings-Liste angepasst (Ottilie statt Kaethe, Magd statt Ida).
 - Roster-Test neu (tests/areagen.test.ts): prueft das 23er-Roster UND dass
   die Gestrichenen wirklich fehlen. 299 Tests gruen.
+
+## Dorfwirtschaft M2 - Arbeitsorte, sichtbare Arbeit, Pausen
+- NEU src/gfx/stationsArt.ts + AreaData.stationen: sichtbare Arbeits-Stationen
+  als prozedurale Props - Amboss (Schmied), Backofen (Baecker), Holzstapel
+  (Holzfaeller), 3 Bienenkoerbe (Imker, ersetzen die Krug-Platzhalter).
+  Hot-Swap: hs_station_<art> gewinnt. Muehle/Feld/Steg/Kraeuterbeet/Brunnen/
+  Baustelle existieren bereits als Karten-Elemente.
+- MAGD-PENDELWEG: Trine traegt in der Arbeitsphase sichtbar Wasser - sie
+  pendelt zwischen Muehle und der Brunnen-Kachel (T.WELL, aus der Karte
+  gesucht + gecacht) mit kurzem Verweilen an beiden Enden.
+- PLAUSCH: bei Mittagsrunde/Abend wenden sich beieinanderstehende Bewohner
+  dem naechsten Nachbarn zu (Blickrichtung) - Gruppen wirken im Gespraech.
+- Holzfaeller: gelegentlich faellt hoerbar ein Stamm (Synth 'baum_faellt' +
+  Spaene-Wolke). Wirtin-Kessel (kochen) kam mit M1.
+- Pausen: Verschnaufer (M0) + Mittagsrunde + Abend-Wirtshaus decken die
+  M2-Anforderung ab.
+- Test: Stationen-Test in areagen.test.ts (Amboss nahe Schmied-Anker).

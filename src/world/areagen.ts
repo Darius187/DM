@@ -125,6 +125,9 @@ export interface AreaData {
   // Leucht-Kristalle als Set-Piece an der Schlucht (Runde 40): glühen in der
   // Akzentfarbe und rahmen den Steg ein. Rein optisch (keine Kollision).
   kristalle?: Array<{ x: number; y: number }>;
+  // M2 Dorfwirtschaft: sichtbare Arbeits-Stationen (Amboss, Backofen, Holz-
+  // stapel, Bienenkoerbe) an den Arbeits-Ankern der Bewohner
+  stationen?: Array<{ art: 'amboss' | 'backofen' | 'holzstapel' | 'bienenkorb'; x: number; y: number }>;
   // Mauerrisse vor Geheimkammern (Runde 40): die Kammer bleibt massiver Fels,
   // bis der Riss aufbricht - erst dann wird sie ausgehoben (kammer) und die
   // Truhe (chestX/chestY) erscheint. So ist sie vorher wirklich unsichtbar.
@@ -1062,7 +1065,7 @@ function umgebeMitWald(a: AreaData, m: number, rng: Rng): void {
   P(a.spawn); P(a.upPos); P(a.downPos); P(a.cryptDoor); P(a.annaGrab);
   PL(a.torches); PL(a.altars); PL(a.wells); PL(a.chests); PL(a.shrines); PL(a.books);
   PL(a.notes); PL(a.folios); PL(a.gear); PL(a.ores); PL(a.rocks); PL(a.labels);
-  PL(a.kraeuter); PL(a.baeume); PL(a.chimneys); PL(a.herde); PL(a.kristalle); PL(a.schilder);
+  PL(a.kraeuter); PL(a.baeume); PL(a.chimneys); PL(a.herde); PL(a.kristalle); PL(a.schilder); PL(a.stationen);
   PL(a.breakables); PL(a.enemySpawns);
   for (const n of a.npcs) { P(n); P(n.abend); P(n.mittag); }
   for (const an of a.animals) { P(an); if (an.pen) { an.pen.x0 += dpx; an.pen.y0 += dpx; an.pen.x1 += dpx; an.pen.y1 += dpx; } }
@@ -1196,6 +1199,8 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   label(33, 37.2, 'Schmiede');
   a.torches.push({ x: 34 * TILE, y: 43 * TILE, ph: rnd(rng, 0, 6.28) });
   a.npcs.push({ id: 'schmied', name: 'Schmied', x: 33 * TILE, y: 44 * TILE, abend: { x: 16 * TILE, y: 31.5 * TILE }, kaempfer: true, arbeit: 'schmieden' });
+  // M2: der Amboss - sichtbare Station des Schmieds (Funken schlagen hier)
+  (a.stationen ??= []).push({ art: 'amboss', x: 34.2 * TILE, y: 44 * TILE });
 
   // 6a. Bauernhof 1 (Nordwesten): Schweine + Hühner im Gatter, Acker
   carve(map, 14, 8, 22, 13, T.HWALL);
@@ -1258,6 +1263,8 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   label(59.5, 18.2, 'Backhaus');
   a.chimneys.push({ x: 58 * TILE + 6, y: 19 * TILE + 2 });
   a.npcs.push({ id: 'baecker', name: 'Bäcker Matthes', x: 59.5 * TILE, y: 26 * TILE, abend: { x: 59.5 * TILE, y: 25.5 * TILE }, arbeit: 'backen' });
+  // M2: der Backofen vor dem Backhaus - Station des Baeckers (Ofenrauch)
+  (a.stationen ??= []).push({ art: 'backofen', x: 58.2 * TILE, y: 26 * TILE });
 
   // 7d. Zimmerei westlich der Straße - Werkstatt mit Holzlager
   carve(map, 25, 18, 30, 21, T.HWALL);
@@ -1352,9 +1359,9 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   carve(map, 84, 36, 87, 39, T.HWALL);
   tuer(85, 39, 'imkerei');
   label(85.5, 35.2, 'Imkerei');
-  // Bienenkörbe
+  // M2: ECHTE Bienenkoerbe als Station des Imkers (vorher Krug-Platzhalter)
   for (const [bx, by] of [[84, 42], [86, 42], [88, 41]] as const) {
-    a.breakables.push({ kind: 'krug', x: bx * TILE + 16, y: by * TILE + 16, ambush: false });
+    (a.stationen ??= []).push({ art: 'bienenkorb', x: bx * TILE + 16, y: by * TILE + 16 });
   }
   a.npcs.push({ id: 'imker', name: 'Imker Anselm', x: 85.5 * TILE, y: 41 * TILE, mittag: { x: 51 * TILE, y: 31 * TILE }, abend: { x: 85.5 * TILE, y: 40.5 * TILE } });
 
@@ -1373,6 +1380,8 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
 
   // M1 (Autor-Roster): Holzfaeller Ruprecht am Waldrand suedwestlich, abends im Wirtshaus
   a.npcs.push({ id: 'holzfaeller', name: 'Holzfäller Ruprecht', x: 13 * TILE, y: 54 * TILE, mittag: { x: 17.5 * TILE, y: 30.5 * TILE }, abend: { x: 17.5 * TILE, y: 30.5 * TILE }, arbeit: 'hacken' });
+  // M2: der Holzplatz - Station des Holzfaellers
+  (a.stationen ??= []).push({ art: 'holzstapel', x: 14.2 * TILE, y: 54.4 * TILE });
   // M1 (Autor-Roster): Witwe Ottilie - Klatsch am Brunnen, abends in der Wohngasse
   a.npcs.push({ id: 'witwe', name: 'Witwe Ottilie', x: 45 * TILE, y: 30.5 * TILE, mittag: { x: 45 * TILE, y: 30.5 * TILE }, abend: { x: 53.5 * TILE, y: 48.5 * TILE } });
 

@@ -251,6 +251,19 @@ describe('Krypta-Generator: jeder Spezialraum erreichbar', () => {
     expect(dorf.animals.some((t) => t.type === 'kuh')).toBe(true);
   });
 
+  it('M2 Dorfwirtschaft: Arbeits-Stationen stehen an den Ankern', () => {
+    const dorf = buildVillage(seededRng(5), 0, 0);
+    const arten = (dorf.stationen ?? []).map((s) => s.art);
+    expect(arten).toContain('amboss');
+    expect(arten).toContain('backofen');
+    expect(arten).toContain('holzstapel');
+    expect(arten.filter((a) => a === 'bienenkorb').length).toBeGreaterThanOrEqual(3);
+    // Amboss steht nahe am Schmied-Anker (Funken haben einen Ort)
+    const schmied = dorf.npcs.find((n) => n.id === 'schmied')!;
+    const amboss = (dorf.stationen ?? []).find((s) => s.art === 'amboss')!;
+    expect(Math.hypot(amboss.x - schmied.x, amboss.y - schmied.y)).toBeLessThan(64);
+  });
+
   it('max. 2 Skript-Schreckmomente pro Ebene', () => {
     for (let seed = 1; seed <= 30; seed++) {
       const a = buildCrypt(1, seededRng(seed));

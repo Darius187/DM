@@ -68,6 +68,7 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN } from '../data/wirtschaft';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
+import { zeichneStation } from '../gfx/stationsArt';
 import { istMatsch, matschTempo, heldBlutAbbau, abdruckAlpha } from '../logic/spuren';
 import { TUNING } from '../logic/tuning';
 import type { Dir } from '../gfx/fallbackArt';
@@ -124,6 +125,8 @@ interface NpcEntity extends NpcSpawn {
   heilLicht?: Phaser.GameObjects.Graphics; // Lichtsäule während der Heilung
   // A*-Wegfindung (Runde 50): Pfad zum aktuellen Ziel + Cache-Verwaltung
   pfad?: Array<{ x: number; y: number }>; pfadZx?: number; pfadZy?: number; pfadT?: number;
+  // M2 Dorfwirtschaft: Pendelweg der Magd (Brunnen <-> Muehle, Wasser holen)
+  pendelAmBrunnen?: boolean; pendelT?: number;
 }
 
 interface Kadaver { x: number; y: number; g: Phaser.GameObjects.Graphics; t: number; ph: number }
@@ -275,6 +278,7 @@ export class WorldScene extends CombatScene {
   private tag = 1;
   private tageszeit = 0.3; // 0..1, Start am Morgen
   private glockePrevZeit?: number;   // M1: erkennt die Morgen-/Abendglocken-Schwelle
+  private dorfBrunnenPos?: { x: number; y: number } | null;   // M2: Brunnen-Kachel (Magd-Pendelweg), je Karte gecacht
   private gefaellteBaeume = new Map<string, number>(); // Position -> Tag des Fällens
   private baumSchlaege = new Map<string, number>();
   private hackCdMs = 0;   // R90: Schlag-Pause (HARVEST_CONFIG) - gefühlt konstant, tageslängen-unabhängig
@@ -4982,6 +4986,7 @@ export class WorldScene extends CombatScene {
   }
 
   private unloadAreaObjects(): void {
+    this.dorfBrunnenPos = undefined;   // M2: Brunnen-Cache gehoert zur alten Karte
     for (const img of this.tileImages) img.destroy();
     this.tileImages = [];
     this.windBaeume = [];
@@ -5640,6 +5645,20 @@ export class WorldScene extends CombatScene {
         // Animations-Overlays (Runde 24): Mühlrad/Feuer + Nacht-Fenster
         this.bauHausOverlays(img, key);
       });
+    }
+    // M2 Dorfwirtschaft: sichtbare Arbeits-Stationen (Amboss, Backofen,
+    // Holzstapel, Bienenkoerbe) an den Arbeits-Ankern. Hot-Swap: eine echte
+    // Grafik hs_station_<art> gewinnt gegen das prozedurale Bild.
+    for (const st of a.stationen ?? []) {
+      const hs = `hs_station_${st.art}`;
+      let key = hs;
+      if (!this.textures.exists(hs)) {
+        key = `station_${st.art}`;
+        if (!this.textures.exists(key)) this.textures.addCanvas(key, zeichneStation(st.art));
+      }
+      const img = this.add.image(st.x, st.y, key).setOrigin(0.5, 0.9).setDepth(st.y - 2);
+      this.uiCam?.ignore(img);
+      this.tileImages.push(img);
     }
     // Gefällte Bäume dieses Gebiets: Stümpfe zeigen, bis sie nachwachsen
     for (const key of this.gefaellteBaeume.keys()) {
@@ -7318,6 +7337,11 @@ export class WorldScene extends CombatScene {
       case 'hacken':
         this.fx.burst(n.curX + 10, n.curY, 0x8a6a42, 5, 80);
         this.sfx.play('holz_hacken', vol);
+        // M2: hin und wieder faellt ein Stamm - dumpfer Schlag + Spaene-Wolke
+        if (Math.random() < 0.18) {
+          this.sfx.play('baum_faellt', vol);
+          this.fx.burst(n.curX + 16, n.curY + 4, 0x6a4e2a, 9, 120);
+        }
         break;
       case 'schmieden':
         this.fx.burst(n.curX + 8, n.curY - 4, 0xf0a830, 7, 120);
@@ -10616,6 +10640,24 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // M2: die Brunnen-Kachel des Dorfs (T.WELL, naechste zur Dorfmitte) - Ziel
+  // des Magd-Pendelwegs. Einmal je Karte gesucht, beim Kartenwechsel geleert.
+  private findeDorfBrunnen(): { x: number; y: number } | null {
+    if (this.dorfBrunnenPos !== undefined) return this.dorfBrunnenPos;
+    const a = this.area;
+    const mx = a.w / 2, my = a.h / 2;
+    let best: { x: number; y: number } | null = null, bd = Infinity;
+    for (let ty = 0; ty < a.h; ty++) {
+      for (let tx = 0; tx < a.w; tx++) {
+        if (a.map[ty][tx] !== T.WELL) continue;
+        const d = Math.hypot(tx - mx, ty - my);
+        if (d < bd) { bd = d; best = { x: tx * TILE + 16, y: (ty + 1) * TILE + 8 }; }
+      }
+    }
+    this.dorfBrunnenPos = best;
+    return best;
+  }
+
   private updateVillageLife(dt: number): void {
     const abend = this.tageszeit > TAG.abendAb;
     // M1 (Autor-Roster): der Kuester laeutet die Glocke von St. Marien morgens
@@ -10728,12 +10770,25 @@ export class WorldScene extends CombatScene {
         n.atkCd = Math.max(0, (n.atkCd ?? 0) - dt);
         n.flashT = Math.max(0, (n.flashT ?? 0) - dt);
       }
-      const ziel = panik ? this.fluchtpunkt
+      let ziel = panik ? this.fluchtpunkt
         : kampfGegner ? { x: kampfGegner.x, y: kampfGegner.y }
         : phase === 'abend' && n.abend ? n.abend
         : mittagPhase && n.mittag ? n.mittag
         : phase === 'pause' ? pausenPlatz(n.id, n.x, n.y)
         : { x: n.x, y: n.y };
+      // M2: die Magd holt SICHTBAR Wasser - Pendelweg Brunnen <-> Muehle mit
+      // kurzem Verweilen an beiden Enden (Eimer traegt sie ohnehin in der Hand).
+      if (n.id === 'magd' && phase === 'arbeit' && !panik && !kampfGegner) {
+        const brunnen = this.findeDorfBrunnen();
+        if (brunnen) {
+          const pZiel = n.pendelAmBrunnen ? brunnen : { x: n.x, y: n.y };
+          ziel = pZiel;
+          if (Math.hypot(pZiel.x - n.curX, pZiel.y - n.curY) < 42) {
+            n.pendelT = (n.pendelT ?? 3) - dt;
+            if (n.pendelT <= 0) { n.pendelAmBrunnen = !n.pendelAmBrunnen; n.pendelT = 3.5; }
+          }
+        }
+      }
       const d = Math.hypot(ziel.x - n.curX, ziel.y - n.curY);
       if (panik && d < 36) { n.imHaus = true; continue; } // im Gemeindehaus angekommen
       // Kämpfer schlägt zu, wenn der Gegner in Reichweite ist
@@ -10783,7 +10838,18 @@ export class WorldScene extends CombatScene {
         const streck = Math.floor(this.time.now / 900) % 4 === 0 ? 1 : 0;
         this.provider.applyFigure(n.sprite, n.figur ?? n.id, 0, streck);
       } else {
-        this.provider.applyFigure(n.sprite, n.figur ?? n.id, 0, 0);
+        // M2 PLAUSCH: wer bei der Mittagsrunde/abends beieinandersteht, wendet
+        // sich dem naechsten Nachbarn zu - Gruppen wirken wie im Gespraech.
+        let dir: Dir = 0;
+        if (mittagPhase || phase === 'abend') {
+          let bn = 52;
+          for (const o of this.npcEnts) {
+            if (o === n || !o.sprite.visible || o.verwundet) continue;
+            const dd = Math.hypot(o.curX - n.curX, o.curY - n.curY);
+            if (dd < bn) { bn = dd; dir = angleToDir(Math.atan2(o.curY - n.curY, o.curX - n.curX)); }
+          }
+        }
+        this.provider.applyFigure(n.sprite, n.figur ?? n.id, dir, 0);
       }
       n.sprite.setPosition(n.curX, n.curY).setDepth(n.curY);
       if ((n.flashT ?? 0) > 0) n.sprite.setTintFill(0xff7048); else n.sprite.clearTint();

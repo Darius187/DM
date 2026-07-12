@@ -47,6 +47,8 @@ const SYNTH: Record<string, SynthStep[]> = {
   muenzen: [{ freq: 880, dur: 0.05, type: 'sine', vol: 0.04 }],
   trank: [{ freq: 520, dur: 0.12, type: 'sine', vol: 0.06 }],
   holz_hacken: [{ freq: 150, dur: 0.09, type: 'square', vol: 0.06 }],
+  // M2 Dorfwirtschaft: dumpfer Schlag eines fallenden Stamms (Holzfaeller-Takt)
+  baum_faellt: [{ freq: 70, dur: 0.35, type: 'triangle', vol: 0.07 }, { freq: 55, dur: 0.25, type: 'sine', vol: 0.05, delay: 0.12 }],
   stein_hacken: [{ freq: 220, dur: 0.07, type: 'square', vol: 0.06 }],
   feuer_knistern: [{ freq: 90, dur: 0.15, type: 'sawtooth', vol: 0.02 }],
   muehle: [{ freq: 75, dur: 0.5, type: 'triangle', vol: 0.02 }],

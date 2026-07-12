@@ -1138,3 +1138,11 @@ Hauptstadt; Glocke als Synth-Klang (echte WAV gewinnt per Hot-Swap).
 EHRLICHE LUECKEN: Rollenspezifische ARBEITS-Posen sind weiter Partikel+Takt
 (rollenspezifische Bewegungs-Posen kommen mit M2-Stationen); Werkzeuge sind
 bei 32px klein - Detailpruefung steht aus, Zeichencode ist simpel.
+
+## Dorfwirtschaft M2: Arbeitsorte + sichtbare Arbeit + Pausen
+FERTIG + VERIFIZIERT: Stationen sichtbar (Screenshot m2_amboss.png: Amboss
+neben dem Schmied; m2_backofen.png), Magd-Pendel Richtung Brunnen im Browser
+gemessen (Distanz sinkt), Stationen-Test gruen. tsc + 300 Tests gruen.
+EHRLICHE LUECKEN: Headless laeuft das Spiel mit ~1-2 fps (RAF-Drossel) -
+Bewegungs-Verifikation nur als Richtungs-Messung, nicht als fluessiger Lauf;
+Angel-Wippe ist Partikel-Takt (keine eigene Ruten-Animation).
