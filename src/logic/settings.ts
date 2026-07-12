@@ -104,7 +104,11 @@ export interface Settings {
   barV: number;           // Leisten-Belegung: einmalig auf "leer bis auf Basics" setzen
   // 3D-Zimmermannshaus in Ravensmoor (R131c): Drehung/Kamera/Skala/Versatz frei
   // tunebar und persistent (drehbar + verschiebbar, UI-Regel 11). Eine Datei ändern.
-  haus3d?: { yaw: number; elev: number; azimut: number; skala: number; dx: number; dy: number };
+  haus3d?: { yaw: number; elev: number; azimut: number; skala: number; dx: number; dy: number }; // ALT (R131c), wird nach gebaeude3d migriert
+  // R132: 3D-Gebaeude (Zimmermannshaus, Schmiede) - EINE gemeinsame Groesse
+  // (ppm = Pixel je Meter, "einheitliche Groesse beider Gebaeude") und je
+  // Gebaeude eine Drehung. Im Dorf-Editor einstellbar, hier persistent.
+  gebaeude3d?: { ppm: number; drehung: Record<string, number> };
   kb: KeyBindings;
 }
 
@@ -150,7 +154,8 @@ export const DEF_SETTINGS: Settings = {
   bloomV: 1,
   uiLayoutV: 4, // Runde 43: Chronik bündig links angedockt
   barV: 1,      // Runde 49: Leiste startet leer (Skills selbst belegen)
-  haus3d: { yaw: 210, elev: 52, azimut: 0, skala: 1, dx: 0, dy: 0 }, // 3D-Haus in Ravensmoor
+  haus3d: { yaw: 210, elev: 52, azimut: 0, skala: 1, dx: 0, dy: 0 }, // ALT (Migration)
+  gebaeude3d: { ppm: 16, drehung: { haus: 210, schmiede: 0 } }, // R132: 3D-Gebaeude im Dorf
   kb: {
     roll: ' ', interact: 'e', inv: 'i', charakter: 'c',
     pot: 'q', mpot: 'f', s1: '1', s2: '2', s3: '3',
@@ -172,6 +177,12 @@ export function getSettings(): Settings {
       Object.assign(current, saved);
       current.kb = { ...DEF_SETTINGS.kb, ...(saved.kb ?? {}) };
       current.licht = { ...DEF_SETTINGS.licht, ...(saved.licht ?? {}) };
+      // R132: 3D-Gebaeude-Einstellungen absichern + alte haus3d-Drehung uebernehmen
+      current.gebaeude3d = {
+        ppm: saved.gebaeude3d?.ppm ?? DEF_SETTINGS.gebaeude3d!.ppm,
+        drehung: { ...DEF_SETTINGS.gebaeude3d!.drehung, ...(saved.gebaeude3d?.drehung ?? {}) },
+      };
+      if (!saved.gebaeude3d && saved.haus3d) current.gebaeude3d.drehung.haus = saved.haus3d.yaw;
       current.maus = { ...DEF_SETTINGS.maus, ...(saved.maus ?? {}) };
       current.tasten = { ...DEF_SETTINGS.tasten, ...(saved.tasten ?? {}) };
       current.chronikBox = { ...DEF_SETTINGS.chronikBox, ...(saved.chronikBox ?? {}) };

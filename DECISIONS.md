@@ -1416,3 +1416,50 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - BRANCH: codex/rotatable-3d-carpenter-house (Autor-Vorgabe). ACHTUNG: der frueher
   auf claude/inspiring-planck angelegte Atlas-Platzhalter ("Zimmermannshaus (Atlas
   fehlt)") liegt NICHT auf diesem Branch - hier gab es nichts zu entfernen.
+
+## R132 - Begehbare, voll texturierte 3D-Gebaeude (Haus + Schmiede, Codex 1e4b40a)
+- GEMEINSAME RUNTIME src/demo3d/gebaeude3d.ts fuer BEIDE Gebaeude: GLTFLoader,
+  SRGBColorSpace + ACESFilmicToneMapping + Exposure 1.0 (Handoff-Rezept),
+  Materialien/Texturen UNVERAENDERT aus dem GLB. Tinting KOMPLETT entfernt
+  (hausMaterial.ts + hausRuntime.ts geloescht - im Auftrag gefordert); die neuen
+  GLBs tragen 20/20 bzw. 26/26 Materialien MIT Texturen. Transmission-Fenster
+  (alphaMode BLEND) bleiben unberuehrt durchsichtig.
+- DREHUNG um die benannten Pivots (HOUSE_/FORGE_ROTATION_PIVOT um three.js-Y);
+  Kollisionszentren drehen mit demselben Yaw um (0,0) (JSON-Regel). Tueren ueber
+  die exportierten Hinge-Animationen (Frame 1-30; Schmiede-Doppeltuer = 2 Fluegel).
+  Dach/Cutaway/floor_level DATENGETRIEBEN aus den glTF-extras.
+- BEGEHBARKEIT: Plan-Belegungsgitter (0,1 m) je Ebene. SCHMIEDE 1:1 aus den
+  collision_guides/markers der JSON (echte Zentren). HAUS: die JSON traegt
+  WEITERHIN nur Null-Zentren (0/17 Guides, 0/4 Marker, wie beim ersten Export) ->
+  Kollisionen aus den GLB-Mesh-AABBs selbst (Original-Geometrie, keine
+  Schaetzung): Helden-Koerperzone 0,48-1,85 m (Eingangsstufen/Schwellen bleiben
+  begehbar), OG-Zone ueber dem OG-Boden, Innen-/OG-Flaechen aus den
+  interior_floor-Meshes, Treppe aus den STAIR-Meshes, Tueren aus den
+  Tuerblatt-AABBs der Hinge-Teilbaeume.
+- TUEREN: Annaeherung (<1,6 m) oeffnet weich, Entfernung schliesst. Zu = eigener
+  Block-Riegel in der Oeffnung, offen = frei. Die Oeffnung wird aus dem statischen
+  Gitter FREIGESTANZT (durchlaufende Fachwerk-Schwellen/Riegel und Diagonalstreben-
+  AABBs deckten sie sonst).
+- INNEN/EBENEN: Innen-Erkennung ueber die EG-Bodenflaeche (mit 0,5-m-Hysterese an
+  Schwellen). Innen: Dach + Cutaway-Waende aus, floor_level UPPER/ATTIC/ROOF weg
+  (EG-Sicht) bzw. ATTIC/ROOF (OG-Sicht); draussen alles wiederhergestellt.
+  Treppe: frei begehbar, Uebergang am oberen/unteren Ende (Ende mit OG-Boden =
+  oben), Figur steht auf Treppe/OG sichtbar HOEHER (heldHoeheOffset-Hook in
+  CombatScene, Versatz = OG-Hoehe * ppm * cos(Kamerahoehe)). OG-Kollision haelt
+  auf dem OG-Boden (Absturzkante blockt).
+- WELT: Haus haengt an Box N1, Schmiede an B1 (stadt-Dorfplan, folgen beim
+  Ziehen); Zimmerei-Platz im alten Dorf zeigt weiter das Haus (Kacheln
+  freigeraeumt, 3D-Kollision uebernimmt). Dorf-Editor: Drehung je Gebaeude
+  (+-15/+-1 Grad) + EINHEITLICHE Groesse (ppm, alle Gebaeude) - persistent in
+  settings.gebaeude3d (Migration von haus3d.yaw). Gegner nutzen die EG-Sicht
+  (offene Tuer = Durchgang).
+- VERIFIZIERT (Playwright, stadt): beide GLBs laden (10-13 s), echte Texturen
+  ohne Tinting, zu-Tuer blockiert / offene frei / Wand blockiert (Haus + Schmiede),
+  betreten -> ebene eg + Dach weg, Schmiede-Treppe -> og (Versatz 37 px, Kante
+  blockt) -> wieder eg, verlassen -> aussen + Dach zurueck. tsc sauber, 275 Tests
+  gruen. HINWEIS Playwright: evaluate() nie Phaser-Objekte zurueckgeben lassen
+  (ScenePlugin-Serialisierung sprengt den Transport) - Primitives zurueckgeben.
+- OFFEN: Haus-JSON-Export weiter mit Null-Zentren (Codex-Re-Export wuenschenswert,
+  aendert aber nichts Sichtbares - Mesh-Ableitung ist praezise); OG im HAUS hat
+  keinen eigenen Treppen-Test (gleiche Logik wie Schmiede); Feinde pathen nicht
+  aktiv INS Gebaeude (nur Kollision, keine Innen-KI).

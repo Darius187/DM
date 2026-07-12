@@ -63,6 +63,7 @@ import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_T
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { istMatsch, matschTempo, heldBlutAbbau, abdruckAlpha } from '../logic/spuren';
 import { TUNING } from '../logic/tuning';
+import { Gebaeude3DWelt, gebaeudeEinstellung } from '../gfx/gebaeude3dWelt';
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, FLYOVER, tileNameAt } from '../world/tiles';
 import { TILE } from '../gfx/fallbackArt';
@@ -584,11 +585,8 @@ export class WorldScene extends CombatScene {
   private hausBilder: Phaser.GameObjects.Image[] = [];
   // Live-3D-Zimmermannshaus in Ravensmoor (R131c): eine three.js-Laufzeit rendert
   // in eine Canvas-Textur, die als Welt-Sprite auf dem 'zimmerei'-Platz steht.
-  private haus3d: import('../demo3d/hausRuntime').HausRuntime | null = null;
-  private haus3dBild?: Phaser.GameObjects.Image;
-  private haus3dTex?: Phaser.Textures.CanvasTexture;
-  private haus3dLaedt = false;
-  private haus3dPlatz?: { x0: number; y0: number; x1: number; y1: number; id: string };
+  // R132: aktive 3D-Gebaeude (id -> Weltobjekt), begehbar + drehbar (Dorf-Editor)
+  private gebaeude3d = new Map<string, Gebaeude3DWelt>();
 
   hausJustierung(): Record<string, { dx: number; dy: number; skala?: number }> {
     try {
@@ -1846,6 +1844,11 @@ export class WorldScene extends CombatScene {
     this.dorfBoxen = ladeDorfplan(DORFPLAN_BOXEN);
     this.dorfWege = ladeWege();
     this.dorfWegeGfx?.destroy(); this.dorfWegeGfx = undefined;
+    // R132: 3D-Gebaeude an ihre Host-Boxen haengen (Haus=N1, Schmiede=B1).
+    for (const def of WorldScene.GEB3D_BOXEN) {
+      const b = this.dorfBoxen.find((x) => x.id === def.box);
+      if (b) this.starteGebaeude3d(def.id, def.url, (b.x + b.breite / 2) * TILE, (b.y + b.hoehe) * TILE - 10, def.yaw);
+    }
     this.dorfRender();
     this.zeichneDorfWege();
   }
@@ -1878,6 +1881,12 @@ export class WorldScene extends CombatScene {
       }
     }
     this.uiCam?.ignore(ignorieren);   // gehoert der Welt-Kamera, nicht der UI
+    // R132: 3D-Gebaeude folgen ihren Host-Boxen (auch live beim Ziehen im Editor).
+    for (const def of WorldScene.GEB3D_BOXEN) {
+      const b = this.dorfBoxen.find((x) => x.id === def.box);
+      const g = this.gebaeude3d.get(def.id);
+      if (b && g) g.setPosition((b.x + b.breite / 2) * TILE, (b.y + b.hoehe) * TILE - 10);
+    }
   }
 
   // Liefert die Box unter dem Welt-Punkt (oberste zuletzt gezeichnete zuerst) und
@@ -2025,6 +2034,25 @@ export class WorldScene extends CombatScene {
       knopf(160, 44, 'H +', false, () => this.dorfGroesse(sel, 0, 1)); y += 28;
       knopf(8, 94, '✎ Umbenennen', false, () => this.dorfUmbenennen(sel));
       knopf(106, 94, '🗑 Löschen', false, () => this.dorfLoeschen(sel), '#e0704a'); y += 28;
+      // R132: 3D-Gebaeude an dieser Box? Drehung (je Gebaeude) + EINHEITLICHE
+      // Groesse (ppm fuer alle 3D-Gebaeude) - live, persistent in settings.
+      const gebDef = WorldScene.GEB3D_BOXEN.find((d) => d.box === sel.id);
+      const geb = gebDef ? this.gebaeude3d.get(gebDef.id) : undefined;
+      if (gebDef && geb) {
+        const e = gebaeudeEinstellung(gebDef.id);
+        const ppm = getSettings().gebaeude3d?.ppm ?? 16;
+        add(this.add.text(8, y, `3D-Gebäude · Drehung ${Math.round(e.yaw)}° · Größe ${ppm.toFixed(1)} px/m (alle)`, { fontFamily: 'serif', fontSize: '10px', color: '#c9a227', wordWrap: { width: w - 16 } })); y += 16;
+        const dreh = (d: number): void => { geb.drehen(d); this.baueDorfToolbar(); };
+        const skal = (d: number): void => { Gebaeude3DWelt.skaliere(d); for (const g of this.gebaeude3d.values()) g.nachSkalierung(); this.baueDorfToolbar(); };
+        knopf(8, 44, '⟲ −15°', false, () => dreh(-15));
+        knopf(56, 44, '⟳ +15°', false, () => dreh(15));
+        knopf(112, 44, '⟲ −1°', false, () => dreh(-1));
+        knopf(160, 44, '⟳ +1°', false, () => dreh(1)); y += 28;
+        knopf(8, 44, 'Gr −1', false, () => skal(-1));
+        knopf(56, 44, 'Gr +1', false, () => skal(1));
+        knopf(112, 44, 'Gr −.2', false, () => skal(-0.2));
+        knopf(160, 44, 'Gr +.2', false, () => skal(0.2)); y += 28;
+      }
       add(this.add.rectangle(6, y + 2, w - 12, 1, 0x4a3a26).setOrigin(0)); y += 8;
     } else {
       add(this.add.text(8, y, 'Box antippen = wählen & verschieben.', { fontFamily: 'serif', fontSize: '9px', color: '#6a5f4c', wordWrap: { width: w - 16 } })); y += 16;
@@ -4869,7 +4897,7 @@ export class WorldScene extends CombatScene {
   }
 
   private unloadAreaObjects(): void {
-    this.raeumeHaus3d();   // R131c: 3D-Haus-Sprite gehoert zur alten Karte
+    this.raeumeGebaeude3d();   // R132: 3D-Gebaeude gehoeren zur alten Karte
     for (const img of this.tileImages) img.destroy();
     this.tileImages = [];
     this.windBaeume = [];
@@ -5431,10 +5459,17 @@ export class WorldScene extends CombatScene {
     if (this.hausSpriteAn && a.hausPlaetze) {
       const just = this.hausJustierung();
       a.hausPlaetze.forEach((hp) => {
-        // R131c: die Zimmerei bekommt das ECHTE drehbare 3D-Haus (Codex-GLB) statt
-        // des prozeduralen Fachwerk-Sprites. Kollision/Tuer stammen weiter aus den
-        // HWALL/HDOOR-Kacheln des Platzes - nur das Bild ist das Live-3D-Haus.
-        if (hp.id === 'zimmerei') { this.starteHaus3d(hp); return; }
+        // R132: die Zimmerei bekommt das ECHTE begehbare 3D-Haus (Codex-GLB).
+        // Die HWALL/HDOOR-Kacheln des Platzes werden freigeraeumt - Kollision,
+        // Tueren und Innenraum kommen aus dem 3D-Gebaeude selbst.
+        if (hp.id === 'zimmerei') {
+          for (let ty = hp.y0; ty <= hp.y1; ty++) for (let tx = hp.x0; tx <= hp.x1; tx++) {
+            if (a.map[ty][tx] === T.HWALL || a.map[ty][tx] === T.HDOOR) a.map[ty][tx] = T.GRASS;
+          }
+          this.starteGebaeude3d('haus', 'houses/medieval_carpenter_house_3d_runtime.json',
+            (hp.x0 + hp.x1 + 1) / 2 * TILE, (hp.y1 + 1) * TILE - 10, 210);
+          return;
+        }
         // IMMER das detaillierte prozedurale Fachwerkhaus (Runde 40: ersetzt die
         // schäbigen haus*.png mit weißem Rand). Eine im Baukasten je Haus
         // hochgeladene Grafik überschreibt es weiter unten via wendeHausBildAn.
@@ -5552,105 +5587,40 @@ export class WorldScene extends CombatScene {
     return ein * aus;
   }
 
-  // --- Live-3D-Zimmermannshaus in Ravensmoor (R131c) --------------------------
-  // Startet die three.js-Laufzeit (einmal) und stellt das Haus als Welt-Sprite auf
-  // den 'zimmerei'-Platz. Async: bis das GLB geladen ist, bleibt der Platz leer
-  // (Kollision/Tuer stehen ueber die HWALL/HDOOR-Kacheln bereits).
-  private starteHaus3d(hp: { x0: number; y0: number; x1: number; y1: number; id: string }): void {
-    this.haus3dPlatz = hp;
-    if (this.haus3d) { this.zeigeHaus3d(); return; }   // schon geladen -> nur neu einblenden
-    if (this.haus3dLaedt) return;
-    this.haus3dLaedt = true;
-    import('../demo3d/hausRuntime').then(({ ladeHausRuntime }) => ladeHausRuntime('houses', 640)).then((rt) => {
-      this.haus3d = rt;
-      this.haus3dLaedt = false;
-      if (this.area?.id === 'village' && this.haus3dPlatz) this.zeigeHaus3d();
-      else rt.dispose();   // Karte inzwischen verlassen
-    }).catch((e) => {
-      this.haus3dLaedt = false;
-      if (import.meta.env.DEV) console.warn('3D-Haus konnte nicht geladen werden:', e);
-      // Fallback: das prozedurale Fachwerkhaus fuer diesen Platz doch zeichnen.
-      if (this.area?.id === 'village' && this.haus3dPlatz) this.zeichneProzeduralesHaus(this.haus3dPlatz);
-    });
+  // --- 3D-Gebaeude (R132): Zimmermannshaus + Schmiede --------------------------
+  // Voll texturierte GLBs (Codex-Handoff), live gerendert und BEGEHBAR. Jedes
+  // Gebaeude haengt an seiner Host-Box im stadt-Dorfplan (Haus=N1, Schmiede=B1)
+  // bzw. am zimmerei-Platz im alten Dorf. Details: src/gfx/gebaeude3dWelt.ts.
+  private static readonly GEB3D_BOXEN = [
+    { box: 'N1', id: 'haus', url: 'houses/medieval_carpenter_house_3d_runtime.json', yaw: 210 },
+    { box: 'B1', id: 'schmiede', url: 'houses/forge/medieval_forge_3d_runtime.json', yaw: 0 },
+  ] as const;
+
+  private starteGebaeude3d(id: string, url: string, footX: number, footY: number, yaw: number): void {
+    this.gebaeude3d.get(id)?.destroy();
+    this.gebaeude3d.set(id, new Gebaeude3DWelt(this, {
+      id, jsonUrl: url, footX, footY, standardYaw: yaw,
+      ignoriere: (o) => this.uiCam?.ignore(o),
+    }));
   }
 
-  private haus3dParams(): NonNullable<import('../logic/settings').Settings['haus3d']> {
-    return getSettings().haus3d ?? { yaw: 210, elev: 52, azimut: 0, skala: 1, dx: 0, dy: 0 };
+  private raeumeGebaeude3d(): void {
+    for (const g of this.gebaeude3d.values()) g.destroy();
+    this.gebaeude3d.clear();
   }
 
-  // Erzeugt/aktualisiert das Welt-Sprite aus der 3D-Leinwand.
-  private zeigeHaus3d(): void {
-    const hp = this.haus3dPlatz;
-    if (!this.haus3d || !hp) return;
-    const groesse = this.haus3d.canvas.width;
-    if (!this.haus3dTex) {
-      this.textures.remove('haus3dWelt');
-      this.haus3dTex = this.textures.createCanvas('haus3dWelt', groesse, groesse) ?? undefined;
-    }
-    const p = this.haus3dParams();
-    const breite = (hp.x1 - hp.x0 + 1) * TILE;
-    // Anker: Mitte-unten der Grundflaeche (wie die anderen Haeuser).
-    const ankerX = (hp.x0 + hp.x1 + 1) / 2 * TILE + p.dx;
-    const ankerY = (hp.y1 + 1) * TILE + 6 + p.dy;
-    if (!this.haus3dBild) {
-      this.haus3dBild = this.add.image(ankerX, ankerY, 'haus3dWelt').setOrigin(0.5, 0.86);
-      this.uiCam?.ignore(this.haus3dBild);
-      this.tileImages.push(this.haus3dBild);   // wird bei unloadAreaObjects mitentfernt
-    }
-    this.haus3dBild.setPosition(ankerX, ankerY).setVisible(true);
-    // Skala: die 3D-Leinwand traegt Rand um das Haus - daher grob 2.4x der
-    // Grundflaechenbreite als Startwert, per settings.haus3d.skala fein justierbar.
-    const basis = (breite * 2.4) / groesse;
-    this.haus3dBild.setScale(basis * p.skala);
-    this.haus3dBild.setDepth(hp.y1 * TILE + 16);
-    this.haus3dNeu = true;   // beim naechsten update() rendern
+  // Kollision der 3D-Gebaeude (Held nutzt seine Ebene EG/OG, Feinde die EG-Sicht;
+  // offene Tueren geben den Durchgang frei, zu = blockiert).
+  private gebaeudeSolid(x: number, y: number, fuerHeld: boolean): boolean {
+    for (const g of this.gebaeude3d.values()) if (g.istSolid(x, y, fuerHeld)) return true;
+    return false;
   }
 
-  private haus3dNeu = true;
-
-  // Pro Frame: nur neu rendern, wenn sich etwas geaendert hat (Dirty-Flag in der
-  // Laufzeit); die Leinwand in die Phaser-Textur kopieren.
-  private updateHaus3d(): void {
-    if (!this.haus3d || !this.haus3dBild || !this.haus3dTex || !this.haus3dBild.visible) return;
-    if (!this.haus3dNeu) return;   // steht still -> kein erneutes Kopieren noetig
-    const p = this.haus3dParams();
-    this.haus3d.setState({
-      yaw: p.yaw, elevation: p.elev, azimuth: p.azimut, zoom: 1,
-      frontDoor: 0, workshopDoor: 0, roof: true, cutaway: false,
-    });
-    const cv = this.haus3d.render();
-    const ctx = this.haus3dTex.getContext();
-    ctx.clearRect(0, 0, cv.width, cv.height);
-    ctx.drawImage(cv, 0, 0);
-    this.haus3dTex.refresh();
-    this.haus3dNeu = false;
-  }
-
-  // DEV-Haken: Haus drehen/justieren und persistent speichern (drehbar+verschiebbar).
-  drehHaus3d(dGrad: number): void {
-    const p = this.haus3dParams();
-    p.yaw = (p.yaw + dGrad + 360) % 360;
-    getSettings().haus3d = p; saveSettings();
-    this.haus3dNeu = true;
-  }
-
-  private raeumeHaus3d(): void {
-    this.haus3dBild = undefined;   // Image steckt in tileImages -> dort zerstoert
-    this.haus3dNeu = true;
-    // Laufzeit + Textur behalten wir (Wiederbetreten des Dorfs ist billig); nur
-    // ausblenden. Der WebGL-Kontext bleibt so erhalten.
-  }
-
-  private zeichneProzeduralesHaus(hp: { x0: number; y0: number; x1: number; y1: number; id: string }): void {
-    const key = this.hausProcKey(hp);
-    const breite = (hp.x1 - hp.x0 + 1) * TILE;
-    const ankerX = (hp.x0 + hp.x1 + 1) / 2 * TILE;
-    const ankerY = (hp.y1 + 1) * TILE + 6;
-    const img = this.add.image(ankerX, ankerY, key).setOrigin(0.5, 1).setDepth(hp.y1 * TILE + 16);
-    img.setScale(breite / img.width);
-    this.uiCam?.ignore(img);
-    this.hausBilder.push(img);
-    this.tileImages.push(img);
+  // Held-Hoehenversatz (Obergeschoss/Treppe) fuer die Figur-Zeichnung.
+  protected override heldHoeheOffset(): number {
+    let o = 0;
+    for (const g of this.gebaeude3d.values()) o = Math.max(o, g.hoehenOffsetPx());
+    return o;
   }
 
   // Prozedurales Fachwerkhaus-Sprite für eine Grundfläche (Runde 40): einmal
@@ -6196,14 +6166,14 @@ export class WorldScene extends CombatScene {
 
   // R99 (P11): OFFENES Tor ist für den Helden/eigene Truppen KEIN Hindernis.
   protected override solidFuerHeld(x: number, y: number): boolean {
-    return this.isSolidAt(x, y) && !this.torOffenHier(x, y);
+    return (this.isSolidAt(x, y) && !this.torOffenHier(x, y)) || this.gebaeudeSolid(x, y, true);
   }
 
   // R101c (Autor-Bug "bei offenem Tor kommen die Monster nicht rein"): ein OFFENES
   // Tor ist jetzt auch fuer FEINDE kein Hindernis - sie stroemen durch. Sonst wie
   // die rohe Kollision (geschlossenes Tor + Palisade + Wand bleiben Wand).
   solidFuerFeind(x: number, y: number): boolean {
-    return this.isSolidAt(x, y) && !this.torOffenHier(x, y);
+    return (this.isSolidAt(x, y) && !this.torOffenHier(x, y)) || this.gebaeudeSolid(x, y, false);
   }
 
   // R101c: Flussfeld zum Helden beachtet das offene Tor -> Monster pfaden hindurch.
@@ -10980,7 +10950,7 @@ export class WorldScene extends CombatScene {
     const kampfTempo = (this.einfallAktiv || this.rtsBattle) ? TUNING.kryptaTempo : 1;
     this.updateCombat(dt * kampfTempo);
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
-    this.updateHaus3d();        // R131c: Live-3D-Zimmermannshaus in Ravensmoor auffrischen
+    for (const g of this.gebaeude3d.values()) g.update(dt, this.px, this.py);   // R132: 3D-Gebaeude (Tueren/Innen/Ebene)
     this.updateWetter(dt);      // Wetter-Achse (Regen/Nässe, Stimmungsregen bis 1. Dungeon)
     this.updateWetterNebel();   // R113: Schwaden nach dem Regen
     this.updateSpuren(dt);      // R113: Fussabdruecke + Blut am Helden
