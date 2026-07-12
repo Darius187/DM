@@ -26,12 +26,27 @@ the primary representation.
   transitions, forge interactions, removable roofs and cutaway controls.
 - The global ground plate/shadow is intentionally absent from the GLB.
 
+## Butcher house
+
+- Model: `butcher/medieval_butcher_house_3d_runtime.glb`
+- Runtime data: `butcher/medieval_butcher_house_3d_runtime.json`
+- Root pivot: `BUTCHER_HOUSE_ROTATION_PIVOT`
+- Doors: `DOOR_MAIN_HINGE`, `DOOR_ANNEX_HINGE`
+- Ten transparent windows use `MAT_BUTCHER_GLASS_TRANSPARENT`.
+- The JSON contains 14 collision/navigation guides plus exterior, ground-floor,
+  upper-floor and annex spawns.
+- The main building and stone smokehouse annex contain walkable interiors,
+  stairs, work furniture and butcher props.
+- The 610 main-roof and 275 annex-roof shingles lie individually on their roof
+  planes. Do not replace the roofs with a flat color or generated sprite.
+- The global ground plate/shadow is intentionally absent from the GLB.
+
 ## Rendering
 
-- Load both assets with Three.js `GLTFLoader`.
+- Load all assets with Three.js `GLTFLoader`.
 - Use `SRGBColorSpace` and `ACESFilmicToneMapping` with exposure `1.0`.
 - Keep the embedded GLB materials and textures unchanged.
-- Both glass materials use `alphaMode: BLEND` plus
+- All glass materials use `alphaMode: BLEND` plus
   `KHR_materials_transmission` and `KHR_materials_ior`.
 - Rotate the named root pivot around Three.js Y. Rotate collision centers by
   the same yaw using the coordinate rule documented in each runtime JSON.
