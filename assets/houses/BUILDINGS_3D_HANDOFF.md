@@ -41,6 +41,24 @@ the primary representation.
   planes. Do not replace the roofs with a flat color or generated sprite.
 - The global ground plate/shadow is intentionally absent from the GLB.
 
+## Horse stable
+
+- Model: `stable/medieval_stable_house_3d_runtime.glb`
+- Runtime data: `stable/medieval_stable_house_3d_runtime.json`
+- Root pivot: `STABLE_HOUSE_ROTATION_PIVOT`
+- Doors: `DOOR_STABLE_MAIN_HINGE`, `DOOR_STALL_1_HINGE`,
+  `DOOR_STALL_2_HINGE`, `DOOR_STALL_3_HINGE`,
+  `DOOR_HAY_LOFT_LEFT_HINGE`, `DOOR_HAY_LOFT_RIGHT_HINGE`
+- Five transparent windows use `MAT_STABLE_GLASS_TRANSPARENT`.
+- Three modeled horses, stall partitions, mangers, tack, hay, barrels, wheels
+  and the open feed lean-to are part of the GLB.
+- The JSON contains 18 collision/navigation guides and separate exterior,
+  stable-aisle, hay-loft and lean-to spawn points.
+- The stable aisle, individual boxes, hay loft and feed lean-to are walkable.
+- The roof contains 858 main shingles, 186 hay-gable shingles and 191 lean-to
+  shingles laid individually on their roof planes.
+- The global ground plate/shadow is intentionally absent from the GLB.
+
 ## Rendering
 
 - Load all assets with Three.js `GLTFLoader`.
@@ -52,4 +70,4 @@ the primary representation.
   the same yaw using the coordinate rule documented in each runtime JSON.
 - Door animations cover frames 1 through 30 and target the named hinge nodes.
 - Create physics/navigation from the JSON guides; the colored development
-  collision meshes are deliberately not part of either GLB.
+  collision meshes are deliberately not part of the runtime GLBs.
