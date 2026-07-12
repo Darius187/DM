@@ -81,6 +81,26 @@ the primary representation.
   individually on their roof planes.
 - The global ground plate/shadow is intentionally absent from the GLB.
 
+## Watermill
+
+- Model: `mill/medieval_mill_house_3d_runtime.glb`
+- Runtime data: `mill/medieval_mill_house_3d_runtime.json`
+- Root pivot: `MILL_HOUSE_ROTATION_PIVOT`
+- Doors: `DOOR_MILL_MAIN_HINGE`, `DOOR_MILL_REAR_HINGE`
+- The clear main entrance is in the front stone facade beside the covered
+  milling deck. Use `TRIGGER_MILL_MAIN` and keep its steps unobstructed.
+- Ten transparent windows use `MAT_MILL_GLASS_TRANSPARENT`.
+- `WATER_WHEEL_ROTATION_PIVOT` has a loopable frame 1-120 animation with 18
+  paddles. Loop it independently while preserving building yaw and scale.
+- The local millrace and waterfall use `MAT_MILL_WATER_TRANSPARENT`; animate
+  their UV flow at runtime without replacing the embedded material.
+- The JSON contains 17 navigation/collision/interaction guides for doors,
+  floors, stairs, millstone, wheel, millrace and sluice gate.
+- Ground floor, upper floor and covered milling deck are walkable.
+- The main roof contains 697 individual overlapping shingles.
+- The narrow masonry millrace is part of the building; there is no global
+  ground plate or terrain slab in the GLB.
+
 ## Rendering
 
 - Load all assets with Three.js `GLTFLoader`.
