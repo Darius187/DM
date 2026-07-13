@@ -257,7 +257,7 @@ export const RUESTUNGEN: ReadonlyArray<RuestungsProfil> = [
 // Auf hohem Schwierigkeitsgrad blendet man die UI-Hilfe aus und laesst nur
 // Animation und Ton - das ist die eleganteste Schwierigkeitsstufe, die es gibt.
 
-export type TelegraphForm =
+export type TelegraphFormRegel =
   | 'linie'       // Stich, Sturmangriff
   | 'kegel'       // Rundumschlag vorne
   | 'kreis'       // Erschuetterung, AoE um den Traeger
@@ -265,8 +265,8 @@ export type TelegraphForm =
   | 'ziel'        // gezielter Schuss
   | 'boden';      // Feuerregen, Bodenflaeche
 
-export interface Telegraph {
-  form: TelegraphForm;
+export interface TelegraphRegel {
+  form: TelegraphFormRegel;
   vorlaufMs: number;      // wie lange VORHER erkennbar - das ist das Reaktionsfenster
   unterbrechbar: boolean; // kann der Angriff abgebrochen werden?
   hinweis: string;        // was der Spieler SIEHT (keine UI, sondern Animation)
