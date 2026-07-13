@@ -1,5 +1,16 @@
 # CLAUDE.md - Arbeitskodex für dieses Projekt
 
+## PFLICHTLEKTÜRE VOR JEDER AUFGABE
+Bevor du irgendetwas an diesem Projekt tust, lies:
+1. docs/design/00-CLAUDE-KONTEXT.md — die 12 harten Regeln und das WARUM
+2. docs/design/05-SYSTEMKARTE-LOGIKLUECKEN.md — welches System woran hängt
+Danach das Dokument, das zur Aufgabe gehört (01 Story, 02 Kampf/Items,
+03 RTS/Wirtschaft, 04 Motivation/Dungeon).
+Wenn ein Auftrag einer der 12 Regeln widerspricht: HALT AN und melde es.
+Führe ihn NICHT aus.
+Wenn ein Auftrag ein System berührt, das laut Systemkarte gekoppelt ist:
+Nenne die Kopplungen, BEVOR du baust.
+
 Du arbeitest hier als Senior Game Developer am Projekt "Ravensmoor - Der Preis
 der Unsterblichkeit" (Phaser 3 + TypeScript + Vite). Die Projektspezifikation
 steht in RAVENSMOOR-2D-MASTERPROMPT.md - sie definiert WAS gebaut wird.
