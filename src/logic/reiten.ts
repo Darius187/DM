@@ -54,11 +54,18 @@ export function clipFrames(clip: ReitClip): number {
 
 // Tempo-abhaengige Hufkadenz je Gangart. Ausgelagert, damit auch die Uebergaenge
 // dieselbe Kurve benutzen koennen (sonst entsteht an der Naht ein Kadenzsprung).
+//
+// R135b (Autor: "beim Losreiten gleitet das Pferd, die Laufanimation startet nicht"):
+// Die Kadenz war viel zu niedrig fuer das schnelle Anfahren - der Boden zog ~9px pro
+// Beinbild unter dem Pferd durch (sichtbares Gleiten). Die Kurven sind jetzt deutlich
+// steiler und hoeher, damit die Beine mit dem Tempo Schritt halten. An den Grenzen
+// stetig gehalten (Schritt-Spitze = Trab-Boden), damit keine Naht springt.
+// Zum Feintunen: hier die Basiswerte/Steigungen aendern - hoeher = weniger Gleiten.
 export function gangFps(gang: ReitGangClip, v: number): number {
   if (gang === 'idle') return REIT_PFERD.animationFps.idle;
-  if (gang === 'walk') return Math.max(4.5, Math.min(10.5, 4.5 + v * 0.065));
-  if (gang === 'trot') return Math.max(10.5, Math.min(13.9, 10.5 + (v - REIT_PFERD.schrittGrenze) * 0.04));
-  return Math.max(13.9, Math.min(16, 13.9 + (v - REIT_PFERD.trabGrenze) * 0.021)); // gallop
+  if (gang === 'walk') return Math.max(8, Math.min(18, 8 + v * 0.109));                              // v 0..92 -> 8..18
+  if (gang === 'trot') return Math.max(18, Math.min(24, 18 + (v - REIT_PFERD.schrittGrenze) * 0.071)); // 92..176 -> 18..24
+  return Math.max(24, Math.min(28, 24 + (v - REIT_PFERD.trabGrenze) * 0.04));                        // 176..276 -> 24..28 (gallop)
 }
 
 export function clipFps(clip: ReitClip, tempo = 0): number {
