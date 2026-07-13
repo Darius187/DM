@@ -417,6 +417,119 @@ ohnehin nur zur Haelfte da.
 
 ---
 
+---
+
+## L17 - DER HELD MACHT DIE ARMEE UEBERFLUESSIG ❗ EXISTENZFRAGE
+
+**Beobachtung des Autors:** "In den ersten Tests hat sich der Held durch die Schlacht
+durchgeschnetzelt."
+
+**Das ist kein Balance-Detail. Wenn der Held allein eine Armee besiegt, ist die ARMEE
+DEKO - und Rekrutierung, Nachschub, Veteranen und Roster sind umsonst gebaut.**
+
+**Vermutliche HAUPTURSACHE: L7 (fehlende Angriffs-Slots).**
+Die Gegner stehen ineinander und nur 3 von 20 schlagen zu. Der Held ist nicht zu stark -
+**die Gegner koennen ihn nur nicht erreichen.** Der Angriffs-Slot-Fix macht ihn
+verwundbar, ohne einen einzigen Wert zu aendern.
+
+**Fuenf Massnahmen (Details: Dok 06 Teil H):**
+1. Feind-Truppen brauchen EIGENE, zaehere Werte (nicht Dungeon-Monster-Werte)
+2. **Angriffs-Slots (L7)** - der Held wird umzingelbar
+3. Moral bricht Einheiten, nicht der Held - er ist Katalysator, kein Vernichter
+4. Zwei Fronten: er kann nur an EINEM Ort sein (Geografie loest, was Zahlen nicht loesen)
+5. Zeit: eine Schlacht dauert Minuten. Er toetet 20, nicht 200.
+
+**NICHT tun:** Den Helden schwaechen (das ist der ARPG-Kern) oder Feinden HP geben,
+bis es weh tut (macht Kaempfe zaeh statt taktisch).
+
+---
+
+## L18 - DIE UNTOTEN HATTEN KEINE LOGISTIK
+
+**Das Problem:** Ohne Versorgungskette sind die Untoten eine NATURGEWALT. Und eine
+Naturgewalt kann man nicht besiegen, nur ueberleben. Es gibt nichts anzugreifen ausser
+der Horde selbst.
+
+**Die Loesung (Dok 06 Teil A): BLUT IST IHRE VERSORGUNG.**
+Untote essen nicht - **aber sie ZERFALLEN.** Blut erneuert sie. Blut kommt von Lebenden.
+
+**Was das koppelt:**
+- Blutlager im Feld = **die Konvois, die man ueberfaellt** (Sunzi: 20x Wert)
+- Zerstoerte Blutlager → die Horde verliert HP, Raenge, Spawn-Rate
+- Der Blutstrom im Kerker ist **keine Deko, sondern eine PRODUKTIONSANLAGE**
+- Untoten-Berufe (Herkunft!) = ihre Wirtschaft: Zimmermann baut, Fuhrmann faehrt,
+  Schmied flickt, Schinder hebt auf
+- **Der Comeback-Mechanismus:** Der Schwaechere gewinnt, indem er die Versorgungslinien
+  des Staerkeren zerschneidet
+
+**Und es beantwortet die Sauron-Frage: Wofuer baut er die Armee?**
+Fuer NACHSCHUB. Sie ueberfallen nicht aus Bosheit - **sie brauchen Blut.**
+Ein Feind, der dich hasst, ist verstehbar. Ein Feind, der dich VERARBEITET, nicht.
+
+---
+
+## L19 - BEERDIGEN ALS KLICK-ORGIE (behoben)
+
+**Das Problem (Autor):** "Bei 100 Gefallenen muss man ja 100 mal anklicken."
+**Berechtigt. Der Denkfehler war, es als Handlung IM GEFECHT zu bauen.**
+
+**Loesung:** Beerdigen ist eine **PHASE NACH DER SCHLACHT**, kein Klick.
+- **Feld gehalten** → Bergungs-Phase (EIN Vorgang): Tote beerdigt, Ausruestung geborgen,
+  Verwundete versorgt
+- **Abgezogen** → die Toten bleiben liegen → **der Schinder holt sie**
+
+**"Das Feld behalten" ist die ENTSCHEIDUNG, nicht das Klicken.**
+Einzige Klick-Ausnahme: der Veteran im Gefecht → Befehlshaber-Faehigkeit "Verwundete
+decken" (F5). Ein Mann, nicht hundert.
+
+**FOLGE FUER DAS ROSTER (Fable-Auftrag 1):** Der `gefallen`-Status bleibt Pflicht.
+Aber das BEERDIGEN gehoert in die Nachschlacht-Phase, nicht in den Kampf.
+
+---
+
+## L20 - WER ERWECKT DIE TOTEN? (war schwammig, jetzt geloest)
+
+**Vorher:** "Der Feind stellt sie wieder auf" - aber WER, WIE, WANN?
+
+**Jetzt: DER SCHINDER** (Abdecker - ein historisch "unehrlicher" Beruf, ein Mann, den
+die Gesellschaft schon zu Lebzeiten unter die Toten gerechnet hat).
+- **Selten** (1-2 je Schlacht)
+- **Langsam, schwach** im Kampf
+- Hebt nur auf, was **noch liegt** (nicht Geborgenes, nicht Beerdigtes)
+- Braucht **Zeit** je Leiche
+- Stellt die **Besten zuerst** auf (Veteranen)
+- **ER IST DAS PRIORITAETSZIEL** → Sunzi: Die Horde ist nicht der Feind, der BINDER ist es
+
+**Erste Begegnung im KERKER** (Lehrmoment ohne Erklaerdialog): Man erschlaegt zwanzig
+Skelette, sie stehen wieder auf, man erschlaegt sie nochmal - **dann sieht man den Mann
+im Hintergrund.**
+
+**FOLGE FUER DEN ROSTER-AUFTRAG:** Die Erhebung braucht einen SCHINDER auf dem Feld.
+Ohne Schinder keine Erhebung. Das ist eine Bedingung, kein Timer.
+
+---
+
+## L21 - FAEHNLEIN STATT EINZELSOLDATEN
+
+**Das Problem:** 100 Einzelsoldaten zu befehligen ist unbedienbar, und die Moral-Formel
+muesste 100x rechnen.
+
+**Loesung:** 5-6 **FAEHNLEIN** zu je ~20 Mann. Jedes mit Name, Banner, Bannertraeger,
+EINER Moral-Zahl, eigenem Rang und eigener Haltung.
+
+**Was das loest:**
+- Klick-Problem (6 statt 100)
+- Auren werden sinnvoll (der Bannertraeger traegt sie - das Banner wird ein ZIEL)
+- Verluste werden lesbar ("Das Faehnlein vom Osttor wankt")
+- Moral = EINE Zahl je Einheit (siehe K2)
+- Bannertraeger-Nachfolge: Faellt er, hebt der naechste das Banner auf - **aber es dauert.**
+  Solange: keine Aura, Moral sinkt.
+
+**FOLGE FUER DAS ROSTER:** Das Roster braucht eine **zweite Ebene**: Soldat → Faehnlein.
+Das MUSS beim Bau von Fable-Auftrag 1 mitgedacht werden, sonst teure Nacharbeit.
+
+---
+
 # TEIL C - DIE REIHENFOLGE, DIE KEINE LUECKEN LAESST
 
 Diese Reihenfolge ist NICHT nach "was ist am coolsten" sortiert, sondern nach

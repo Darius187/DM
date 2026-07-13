@@ -5,7 +5,7 @@ Bevor du irgendetwas an diesem Projekt tust, lies:
 1. docs/design/00-CLAUDE-KONTEXT.md — die 12 harten Regeln und das WARUM
 2. docs/design/05-SYSTEMKARTE-LOGIKLUECKEN.md — welches System woran hängt
 Danach das Dokument, das zur Aufgabe gehört (01 Story, 02 Kampf/Items,
-03 RTS/Wirtschaft, 04 Motivation/Dungeon).
+03 RTS/Wirtschaft, 04 Motivation/Dungeon, 06 Untote: Ökonomie/Hierarchie/Feldzug).
 Wenn ein Auftrag einer der 12 Regeln widerspricht: HALT AN und melde es.
 Führe ihn NICHT aus.
 Wenn ein Auftrag ein System berührt, das laut Systemkarte gekoppelt ist:
