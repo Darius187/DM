@@ -137,6 +137,13 @@ sondern ein Meister und seine **benannten Werkzeuge** - jedes ein tragischer Fal
 | **Die Aebtissin** | Sie wusste, was der Abt tat. Sie schwieg. | Kloster-Vorhof |
 | *(offen)* | ein gefallener Ritter des Grafen? | Akt 2b |
 
+**PFERDE-NOTIZ (ganz weit hinten, nichts darauf aufbauen):**
+Das Reittier funktioniert inzwischen. **Untote auf FAHLEN PFERDEN als Gegner-Gattung**
+waere die erzaehlerisch staerkste Nutzung - der fahle Reiter ist ein Bild, das jeder in
+dieser Zeit kannte. **Ein untoter Ritter zu Pferd waere der natuerliche Auftritt fuer
+einen der Schergen.**
+Aber: Das ist ein spaeter Bonus. Kein System darf darauf bauen (siehe Dok 00, Regel 5).
+
 **Jeder ist ein Spiegel des Helden in einer anderen Facette.**
 Und jeder war **einmal ein Mensch mit einem Grund.**
 
@@ -435,6 +442,24 @@ Er kann 20 toeten. Nicht 200. Eine Schlacht dauert Minuten, nicht Stunden.
 
 - **Den Helden schwaechen.** Er soll sich stark anfuehlen - das ist der ARPG-Kern.
 - **Feinden mehr HP geben, bis es weh tut.** Das macht Kaempfe zaeh, nicht taktisch.
+- **❗ KEINEN ZIEL-CAP fuer den Rundumschlag.** (Wurde vorgeschlagen, vom Autor abgelehnt.)
+  Ein Rundumschlag, der nur 4 von 10 Umstehenden trifft, ist eine LUEGE - das Spiel zeigt
+  eine Bewegung und rechnet eine andere. Der Spieler merkt das, auch wenn er es nicht
+  benennen kann.
+  **Die ehrliche Grenze des Helden sind FERNKAEMPFER:** Wer in eine Formation rennt,
+  waehrend zwanzig Bogenschuetzen zielen, ist tot. Kein kuenstliches Limit noetig.
+
+## H3. Warum Massnahme 1 zuerst kommt (Autor-Einsicht)
+
+**Die Testgegner auf der RTS-Karte haben vermutlich noch gar keine eigenen Werte.**
+Fuer die RTS-Karte wurden nie Gegnertypen definiert - dort stehen wahrscheinlich
+Dungeon-Skelette (25 HP). Dass der Held die wegschnetzelt, ist KEIN Bug, sondern richtig:
+**das sollen sie ja sein.**
+
+**Erst Massnahme 1 (eigene Feind-Truppen-Werte), dann neu bewerten.**
+Gut moeglich, dass sich das Balance-Problem danach von selbst erledigt hat und die
+Angriffs-Slots nur noch ein Bonus sind (den man aber trotzdem will - er ermoeglicht
+Einkreisung).
 
 **Der Held bleibt stark. Die ARMEE wird wichtig, weil sie Dinge kann, die er nicht kann:
 an zwei Orten sein, eine Linie halten, ein Feld besetzen, einen Konvoi eskortieren.**

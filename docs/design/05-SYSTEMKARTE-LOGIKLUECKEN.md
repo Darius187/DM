@@ -439,8 +439,34 @@ verwundbar, ohne einen einzigen Wert zu aendern.
 4. Zwei Fronten: er kann nur an EINEM Ort sein (Geografie loest, was Zahlen nicht loesen)
 5. Zeit: eine Schlacht dauert Minuten. Er toetet 20, nicht 200.
 
+**DIAGNOSE BESTAETIGT (Claude Code, Codeanalyse):**
+- Kein Attacker-Cap, keine Angriffs-Slots. Von 20 Gegnern erreichen ~6-8 die erste Reihe,
+  effektiv schlagen nur ~3-4 gleichzeitig zu.
+- **Gegner kollidieren GAR NICHT mit dem Helden** (Enemy.ts:278-286 prueft nur Waende) -
+  sie laufen durch ihn hindurch und stauen sich nur an sich selbst.
+- Separation (CombatScene.separateEnemies) drueckt Gegner nur voneinander weg, nie vom
+  Helden.
+- **Rohwerte sind AUSGEWOGEN:** Bei 3 Angreifern stirbt der Held in 2,6s. Bei 15 waere es
+  Sekundentod. **Er ueberlebt NUR, weil ihn niemand erreicht.**
+- Urteil: ~70% Reichweiten-/Stau-Problem, ~30% Held-Design-Hebel, ~0% Rohwerte.
+
+**❗ ZIEL-CAP FUER DEN HELDENSCHWUNG IST GESTRICHEN (Autor-Entscheidung):**
+Claude Code schlug vor, den Rundumschlag auf 3-4 Ziele zu begrenzen (er trifft aktuell
+unbegrenzt viele). **ABGELEHNT.** Ein Rundumschlag, der nur 4 von 10 Umstehenden trifft,
+ist eine LUEGE - das Spiel zeigt eine Bewegung und rechnet eine andere. Das merkt der
+Spieler, auch wenn er es nicht benennen kann. **Nicht bauen, nicht wieder vorschlagen.**
+Die natuerliche Grenze des Helden sind FERNKAEMPFER: Wer in eine Formation rennt, waehrend
+zwanzig Bogenschuetzen zielen, ist tot. Das ist der ehrliche Konter.
+
+**KORRIGIERTE REIHENFOLGE (Massnahme 1 zuerst, sie ist vermutlich die Ursache):**
+Die Testgegner auf der RTS-Karte haben vermutlich noch **Dungeon-Monster-Werte**
+(Skelett, 25 HP) - fuer die RTS-Karte wurden nie eigene Gegnertypen definiert.
+Ein SOLDAT in Formation ist etwas voellig anderes. **Erst die Feind-Truppen-Werte,
+dann die Angriffs-Slots, dann neu bewerten.** Gut moeglich, dass sich das Problem
+danach von selbst erledigt hat.
+
 **NICHT tun:** Den Helden schwaechen (das ist der ARPG-Kern) oder Feinden HP geben,
-bis es weh tut (macht Kaempfe zaeh statt taktisch).
+bis es weh tut (macht Kaempfe zaeh statt taktisch). Und keinen Ziel-Cap.
 
 ---
 

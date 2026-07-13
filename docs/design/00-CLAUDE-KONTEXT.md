@@ -48,14 +48,32 @@ eine BELOHNUNG fuer Wissen, keine STEUER auf Unwissen. Wer stur mit dem Langschw
 durchgeht, kommt durch - es dauert nur laenger.
 **FOLGE:** Resistenzen sind Multiplikatoren (0.5x), nie Immunitaeten (0x).
 
-### 5. KEINE REITER, KEINE BELAGERUNGSMASCHINEN (Stand jetzt)
-Die Pferde-Animation ist nicht gut genug. Schweres Geraet existiert nicht.
-**WARUM DAS WICHTIG IST:** Das gesamte Konter-System muss OHNE Kavallerie funktionieren.
-Baue nichts, das Reiter voraussetzt (Speerwall gegen Charge, Keil-Formation als
-Kavallerie-Werkzeug, "Reiter schlaegt Bogen"). Die Konter laufen ueber
-Schnitt/Stich/Wucht - siehe Dok 02.
-**Reiter sind spaeter geplant und docken sauber an - aber KEIN System darf auf sie
-angewiesen sein.**
+### 5. PFERDE: Reittier JA - Kavallerie als Truppengattung NEIN (Stand jetzt)
+**Was es GIBT:** Ein funktionierendes Reittier fuer den Helden (aus einem Blender-Asset,
+laeuft gut). Es dient dem schnellen Reisen zwischen Karten und Missionen. Ob der Held
+im KAMPF reitet, ist offen - das Pferd ist verwundbar.
+
+**Was es NICHT gibt und worauf KEIN System bauen darf:**
+- Kavallerie als eigene TRUPPENGATTUNG (20 Lanzenreiter, die in Formation chargen).
+  Das braucht Charge-Mechanik, Gruppen-Kollision, Aufprall-Logik - alles nicht vorhanden.
+- Schweres Geraet (Rammbock, Katapult, Trebuchet).
+
+**WARUM DAS WICHTIG IST:**
+Das Konter-System steht bewusst auf **SCHNITT / STICH / WUCHT** (siehe kampfarten.ts),
+NICHT auf dem klassischen AoE-Dreieck (Speer schlaegt Reiter...). So funktioniert es
+vollstaendig ohne Kavallerie - und Reiter koennen spaeter andocken, ohne dass irgendetwas
+umgebaut werden muss.
+
+**Reiten als Held ist etwas anderes als Kavallerie.** Ueber die Karte reiten ist
+Fortbewegung. Eine Reiterattacke ist ein Kampfsystem. Nicht verwechseln.
+
+**Geplant, aber GANZ WEIT HINTEN (nichts darauf aufbauen):**
+- **Untote auf fahlen Pferden als GEGNER-Gattung** ← die interessanteste Variante,
+  passt erzaehlerisch (der fahle Reiter ist ein Bild, das jeder in dieser Zeit kannte).
+  Ein untoter Ritter zu Pferd waere der natuerliche Auftritt fuer einen der Schergen.
+- Berittene Ritter des Grafen als SPAETE Verstaerkung (Bonus, kein Fundament).
+- Eigene Kavallerie fuer die Spielerarmee: sehr weit hinten, die Karte ist vermutlich
+  nicht dafuer ausgelegt.
 
 ### 6. Keine Armbrueste in der Heereszusammensetzung
 Design-Entscheidung des Autors. (In `RTS_EINHEITEN` steht noch ein `armbruster` - das
