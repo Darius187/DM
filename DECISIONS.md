@@ -1463,3 +1463,93 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   aendert aber nichts Sichtbares - Mesh-Ableitung ist praezise); OG im HAUS hat
   keinen eigenen Treppen-Test (gleiche Logik wie Schmiede); Feinde pathen nicht
   aktiv INS Gebaeude (nur Kollision, keine Innen-KI).
+
+## R133 - Reitbares Blender-Pferd live in Phaser
+- Das freigegebene Blender-Rig wird als transparente 8-Richtungs-Atlanten
+  gerendert, nicht als prozedurale Ersatzzeichnung: 288 Gangart-Frames plus 384
+  Wende-Frames. Zwei Atlanten halten beide Texturen unter 4096 px Kantenlaenge.
+- Gangarten: Idle, Schritt, Trab, Galopp und langsames Rueckwaertsgehen. Kleine,
+  mittlere und starke Wendung links/rechts haben je acht echte Bein-/Hals-/
+  Oberkoerper-Frames; keine eingefrorene Wendepose.
+- Steuerung: W beschleunigt stufenlos, S bremst und wechselt danach in den
+  Rueckwaertsgang, A/D lenken. Beritten lenkt gehaltene rechte Maus zum Cursor;
+  zu Fuss bleibt rechte Maus Blocken. Das maximale Drehtempo sinkt mit der
+  Geschwindigkeit, ein langsames Drehen auf der Stelle bleibt moeglich.
+- E steigt in Reichweite auf und wieder ab. Der vorhandene Hauptcharakter bleibt
+  eine getrennte Ebene am Sattel; das Pferd verdeckt den Unterkoerper. Berittener
+  Kampf bleibt fuer diesen ersten Live-Test gesperrt. Pferde folgen zwischen
+  offenen Oberweltkarten, bleiben aber vor Innenraeumen/Krypten zurueck.
+- Lizenzprovenienz liegt in assets/horse/ATTRIBUTION.md: Quaternius-Pferd CC0,
+  Fab-Sattel von Abhi Artist CC BY 4.0, Anpassungen benannt.
+- Verifiziert: Produktions-Build, 279 Tests, Browser-Auf-/Absitzen und Darstellung,
+  keine Browser-Fehler. Live-Ansicht: screenshots/reitpferd-live.png.
+- Nach erstem Live-Spielerfeedback verkleinert: Pferd 0,55 -> 0,43, Reiter und
+  Schatten proportional angepasst, Kollision 20 -> 17 px. Rechte Maus ist nun
+  der einfache 2D-Modus: Halten laesst das Pferd selbst zum Cursor laufen, nahe
+  am Ziel abbremsen und bei einem Ziel hinter ihm erst eindrehen. Die manuelle
+  W/S/A/D-Steuerung bleibt erhalten; Drehen reagiert bei Schritt/Stand schneller.
+- Nachkorrektur verifiziert: Browser ohne Fehler, Build sauber, 280 Tests gruen.
+
+## R134 - Pferde-Bodenkontakt, Gangwechsel und echte Sitzpose
+- Der Blender-Export richtet die Kamera nicht mehr pro Frame auf die bewegte
+  Mesh-Mitte aus. Die Zielhoehe bleibt fest am Boden; nur die authored Root-
+  Verschiebung der Wendemanöver wird horizontal nachgefuehrt. Die orthografische
+  Kamerahoehe wurde von 18 auf 10 Grad abgesenkt, passend zur flachen 2D-Welt.
+- Key/Fill/Rim sind jetzt kamera-relativ. Damit bleibt die Fellfarbe in allen
+  acht Richtungen und bei allen Aktionen konstant. Ein gemeinsames gedecktes
+  Braun-/Ravensmoor-Grading wird beim Packen identisch auf jeden Frame angewandt.
+- Schritt, Trab und Galopp behalten beim Clipwechsel ihre normalisierte
+  Schrittphase. Ein 160-ms-Doppel-Sprite-Crossfade verdeckt den verbleibenden
+  Posewechsel. Die Kadenz ist geschwindigkeitsabhaengig und an beiden
+  Gangartgrenzen stetig, damit die Hufe nicht sichtbar ueber den Boden rutschen.
+- Der stehende/croppte Held wurde ersetzt: vier echte Reitposen je Richtung mit
+  angewinkelten Beinen, Steigbuegelhaltung und Haenden an den Zuegeln. Blender
+  exportiert fuer alle 672 Frames den projizierten Sattelpunkt; der Reiter folgt
+  dadurch auch im Trab/Galopp dem Sattel statt neben oder hinter ihm zu schweben.
+- Verifiziert: beide Atlanten neu gerendert und gepackt, 672 Sattelpunkte geladen,
+  Live-Sichttest im Hauptspiel, Produktions-Build sauber, 42 Testdateien und 281
+  Tests gruen. Ergebnis: screenshots/reitpferd-live.png.
+
+## R135 - Echte Rig-Uebergaenge, 16 Perspektiven und Mausfahrt
+- Der Sprite-Crossfade aus R134 ist entfernt. Blender mischt fuer jeden Wechsel
+  sechs echte Skelettposen: Stand/Schritt, Schritt/Trab und Trab/Galopp jeweils
+  vorwaerts und rueckwaerts. Die Beinphasen wurden vermessen; insbesondere
+  Trab-Frame 2 schliesst an Galopp-Frame 5 an statt an denselben Frameindex.
+- Blender 5.1 braucht nach direkten Pose-Matrix-Schreibzugriffen ein explizites
+  Dependency-Graph-Update. Ohne dieses Update blieb eine alte Rig-Pose fuer ein
+  Bild aktiv, Pferd und Sattelpunkt sprangen seitlich. Der Export erzwingt nun
+  die Auswertung; alle 192 Uebergangs-Endpunkte pro Seite besitzen identische
+  Sattelpunkte zu ihrem Quell-/Zielbild.
+- Alle Gangarten, Wendemanöver und Uebergaenge sind in 16 Kamerawinkeln (22,5
+  Grad) gebacken. Das ist weiterhin ein Phaser-natives 2D-Atlas aus der echten
+  Blender-Geometrie, kein zur Laufzeit gerendertes GLB. Kontinuierliche 360 Grad
+  wuerden einen zusaetzlichen Three.js/WebGL-Renderer erfordern und nicht mehr
+  exakt zur flachen 2D-Figur passen.
+- Bei Fahrt bleibt die aktuelle Gangart aktiv; ein Maus-Lenkimpuls schaltet
+  nicht mehr auf einen langsamen Stand-Wendeclip. A/D nutzt die kleinen,
+  mittleren und starken Hals-/Rumpf-Wendemanöver nur beim Drehen auf der Stelle.
+  Pfeil links/rechts dreht nicht mehr; Pfeil hoch/runter bzw. W/S regelt das
+  Tempo, gehaltene rechte Maus gibt die Fahrtrichtung vor. Die Drehung reagiert
+  deutlich schneller.
+- Der Reiter behaelt eine unabhaengige, kontinuierliche Sitzphase. Seine grosse
+  Bewegung kommt aus den 1.920 Blender-Sattelpunkten, daher wird sie bei einem
+  Clipwechsel nicht mehr zurueckgesetzt oder seitlich versetzt.
+- Sechs Atlanten mit 128x96-Zellen halten jede Textur unter 4096 Pixeln und die
+  GPU-Belegung im Rahmen; die sichtbare Spielgroesse bleibt durch Skalierung
+  gleich. Verifiziert: Build sauber, 42 Testdateien/282 Tests, alle 13 Asset-URLs
+  HTTP 200 und keine Pferde-Asset-/Framefehler in der Browser-Konsole (nur die
+  bereits vorhandene Three.js-PCFSoftShadowMap-Deprecation). Animationsvorschau:
+  screenshots/reitpferd-uebergaenge.gif.
+
+## R136 - Pferde-Sprite darf nie auf Phasers __MISSING-Textur fallen
+- Der grellgruene N-Rahmen ist Phasers interne Fehltextur. Er erschien nach
+  einem Vite-Hot-Reload, wenn die neue Szenenlogik schon einen Trab-/Galopp- oder
+  Uebergangsatlas anforderte, den die laufende alte Boot-Sitzung noch nicht
+  geladen hatte.
+- Vor jedem Atlaswechsel werden Texture-Key und Frame explizit geprueft. Fehlt
+  das Ziel, bleibt der letzte gueltige Pferde-Frame sichtbar. War der Sprite
+  bereits __MISSING, wird er auf die passende Standrichtung zurueckgesetzt; ist
+  selbst diese nicht geladen, wird er verborgen statt als gruene Kachel gezeigt.
+- Verifiziert nach vollem Reload auf der Startkarte: Pferd sichtbar, Aufsitzen
+  sichtbar, keine neuen __MISSING-/Framewarnungen. Build sauber, 282 Tests gruen.
+  Screenshot: screenshots/reitpferd-fehltextur-behoben.png.

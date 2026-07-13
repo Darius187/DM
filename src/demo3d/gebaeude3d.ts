@@ -44,6 +44,7 @@ interface RohGuide {
 interface Manifest {
   model: string;
   root_node: string;
+  runtime_mode?: 'exterior_only' | 'walkable_interior';
   bounds_blender: { min: number[]; max: number[]; center: number[]; size: number[]; bounding_radius: number };
   continuous_controls: {
     camera_elevation_degrees: { min: number; max: number; default: number };
@@ -53,6 +54,7 @@ interface Manifest {
   interactions?: { front_door_node: string; workshop_door_node: string; roof_visibility_property: string; cutaway_visibility_property: string };
   doors?: Record<string, { node?: string; nodes?: string[]; trigger?: string }>;
   visibility_controls?: { main_roof_property?: string; lean_roof_property?: string; cutaway_property?: string; floor_property?: string };
+  walkable_interior?: { enabled?: boolean };
   collision_guides: RohGuide[];
   markers: { name: string; role: string; floor: string; blender_xyz: number[] }[];
 }
@@ -119,6 +121,7 @@ export class Gebaeude3D {
   private dirty = true;
   private letzterState = '';
   private zustand!: GebaeudeState;
+  readonly hatInnenraum: boolean;
 
   // Begehbarkeits-Modell (Plan-Koordinaten, Meter)
   blockEG!: PlanGitter;      // Waende/Moebel Erdgeschoss + Aussenbereich
@@ -134,6 +137,7 @@ export class Gebaeude3D {
   grenzen!: PlanRect;        // Plan-Bounds (fuer schnellen Fruehtest)
 
   constructor(private manifest: Manifest, gltfScene: THREE.Group, animationen: THREE.AnimationClip[], groesse: number) {
+    this.hatInnenraum = manifest.runtime_mode !== 'exterior_only' && manifest.walkable_interior?.enabled !== false;
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     this.renderer.setSize(groesse, groesse);
     this.renderer.setClearColor(0x000000, 0);
@@ -414,6 +418,7 @@ export class Gebaeude3D {
   }
 
   istInnen(x: number, y: number, weit = false): boolean {
+    if (!this.hatInnenraum) return false;
     return (weit ? this.innenEGWeit : this.innenEG).hat(x, y);
   }
 
@@ -467,7 +472,7 @@ export class Gebaeude3D {
     }
     this.mixer.update(0);
     // Sicht innen/aussen: Dach + Cutaway + floor_level datengetrieben.
-    const innen = s.innenEbene !== 'aussen';
+    const innen = this.hatInnenraum && s.innenEbene !== 'aussen';
     for (const o of this.dachKnoten) o.visible = !innen;
     for (const o of this.cutawayKnoten) o.visible = !innen;
     for (const [ebene, knoten] of this.ebenenKnoten) {

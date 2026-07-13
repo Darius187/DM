@@ -867,3 +867,10 @@ export function angleToDir8(ang: number): number {
   const oct = Math.round(a / (Math.PI / 4)) % 8;   // 0=O,1=SO,2=S,3=SW,4=W,5=NW,6=N,7=NO
   return [6, 7, 0, 1, 2, 3, 4, 5][oct];
 }
+
+// 16 gebackene Kamerawinkel des Blender-Pferds: d0=S, d4=W, d8=N,
+// d12=O. 22,5-Grad-Schritte vermeiden den sichtbaren 45-Grad-Perspektivsprung.
+export function angleToDir16(ang: number): number {
+  const a = Phaser.Math.Angle.Normalize(ang);
+  return (12 + Math.round(a / (Math.PI / 8))) % 16;
+}

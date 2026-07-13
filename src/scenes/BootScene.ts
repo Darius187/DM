@@ -10,8 +10,9 @@ import { queuePackSheets, composePackTextures } from '../gfx/PackLoader';
 import { registriereBaumBitmaps, registriereBuschBitmaps } from '../gfx/baumBitmaps';
 import { registriereLagerBitmaps, registriereBauKacheln } from '../gfx/lagerBitmaps';
 import gfxConfig from '../data/gfx.json';
+import { REIT_PFERD } from '../data/reiten';
 
-interface Candidate { key: string; url: string; art: 'image' | 'audio' | 'atlas'; atlasJson?: string; optional?: boolean }
+interface Candidate { key: string; url: string; art: 'image' | 'audio' | 'atlas' | 'json'; atlasJson?: string; optional?: boolean }
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -24,6 +25,13 @@ export class BootScene extends Phaser.Scene {
 
   private candidates(): Candidate[] {
     const c: Candidate[] = [];
+    c.push({ key: REIT_PFERD.atlasKey, url: REIT_PFERD.atlasBild, art: 'atlas', atlasJson: REIT_PFERD.atlasJson });
+    c.push({ key: REIT_PFERD.schnellAtlasKey, url: REIT_PFERD.schnellAtlasBild, art: 'atlas', atlasJson: REIT_PFERD.schnellAtlasJson });
+    c.push({ key: REIT_PFERD.wendeLinksAtlasKey, url: REIT_PFERD.wendeLinksAtlasBild, art: 'atlas', atlasJson: REIT_PFERD.wendeLinksAtlasJson });
+    c.push({ key: REIT_PFERD.wendeRechtsAtlasKey, url: REIT_PFERD.wendeRechtsAtlasBild, art: 'atlas', atlasJson: REIT_PFERD.wendeRechtsAtlasJson });
+    c.push({ key: REIT_PFERD.uebergangHochAtlasKey, url: REIT_PFERD.uebergangHochAtlasBild, art: 'atlas', atlasJson: REIT_PFERD.uebergangHochAtlasJson });
+    c.push({ key: REIT_PFERD.uebergangRunterAtlasKey, url: REIT_PFERD.uebergangRunterAtlasBild, art: 'atlas', atlasJson: REIT_PFERD.uebergangRunterAtlasJson });
+    c.push({ key: REIT_PFERD.sattelPunkteKey, url: REIT_PFERD.sattelPunkteJson, art: 'json' });
     for (const name of PORTRAITS) {
       c.push({ key: `pt_${name}`, url: `portraits/${name}.png`, art: 'image' });
       for (let v = 2; v <= 3; v++) {
@@ -91,6 +99,7 @@ export class BootScene extends Phaser.Scene {
       loadedKeys.add(f.key);
       if (f.art === 'audio') this.load.audio(f.key, f.url);
       else if (f.art === 'atlas' && f.atlasJson) this.load.atlas(f.key, f.url, f.atlasJson);
+      else if (f.art === 'json') this.load.json(f.key, f.url);
       else this.load.image(f.key, f.url);
     }
     // Pack-Sheets aus gfx-mapping.json (Phase 11, Grafik-Schicht)
@@ -110,7 +119,7 @@ export class BootScene extends Phaser.Scene {
     }
     assetStatus.length = 0;
     const track = (key: string, pfad: string) => {
-      assetStatus.push({ key, pfad, gefunden: this.textures.exists(key) || this.cache.audio.exists(key) });
+      assetStatus.push({ key, pfad, gefunden: this.textures.exists(key) || this.cache.audio.exists(key) || this.cache.json.exists(key) });
     };
     for (const n of PORTRAITS) track(`pt_${n}`, `assets/portraits/${n}.png`);
     for (const f of ITEM_IMAGES) track(`hs_item_${f}`, `assets/items/${f}.png`);
@@ -121,6 +130,13 @@ export class BootScene extends Phaser.Scene {
         if (this.textures.exists(`hs_tile_${n}_v${v}`)) track(`hs_tile_${n}_v${v}`, `assets/tiles/${n}${v}.png`);
       }
     }
+    track(REIT_PFERD.atlasKey, `assets/${REIT_PFERD.atlasBild}`);
+    track(REIT_PFERD.schnellAtlasKey, `assets/${REIT_PFERD.schnellAtlasBild}`);
+    track(REIT_PFERD.wendeLinksAtlasKey, `assets/${REIT_PFERD.wendeLinksAtlasBild}`);
+    track(REIT_PFERD.wendeRechtsAtlasKey, `assets/${REIT_PFERD.wendeRechtsAtlasBild}`);
+    track(REIT_PFERD.uebergangHochAtlasKey, `assets/${REIT_PFERD.uebergangHochAtlasBild}`);
+    track(REIT_PFERD.uebergangRunterAtlasKey, `assets/${REIT_PFERD.uebergangRunterAtlasBild}`);
+    track(REIT_PFERD.sattelPunkteKey, `assets/${REIT_PFERD.sattelPunkteJson}`);
     track(`hs_${TITLE_IMAGE}`, 'assets/title/ravensmoor-title.jpg');
     logAssetStatus();
     // Eigene Baukasten-Bilder (Runde 24) ÜBER die geladenen Texturen legen,

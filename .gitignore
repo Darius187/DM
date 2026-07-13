@@ -13,3 +13,5 @@ src/gfx/_pferdprobe.ts
 
 # Temporaere Workflow-/Debug-Artefakte (nicht committen)
 scratch_*
+.horse-frames/
+scripts/__pycache__/

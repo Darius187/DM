@@ -25,7 +25,7 @@ function bein(ctx: Ctx, hipX: number, hipY: number, fuss: { x: number; y: number
 }
 
 // reiter=false zeichnet das Pferd OHNE Reiter (freies Pferd auf der Weide). Default
-// true (abwärtskompatibel zur ReitProbe + Vier-Richtungs-Pferd mit Reiter).
+// true (abwärtskompatibel zum Vier-Richtungs-Pferd mit Reiter).
 export function drawGalopp(ctx: Ctx, frame: number, reiter = true): void {
   ctx.clearRect(0, 0, 64, 48);
   const FRAMES = 6;

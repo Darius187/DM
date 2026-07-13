@@ -3,7 +3,7 @@
 
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
-import { Enemy, angleToDir, angleToDir8, type EnemyHost } from '../world/Enemy';
+import { Enemy, angleToDir, angleToDir8, angleToDir16, type EnemyHost } from '../world/Enemy';
 import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildWaldWest, buildWaldSuedOst, buildBurg, buildWaldNord, buildWaldMitte, buildLager, buildStadt2, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn, type Abbaubar } from '../world/areagen';
 import { katakombenAktivFuer, buildKatakombenKrypta } from '../world/katakombenKrypta';
 import { v9AktivFuer, buildV9Krypta } from '../world/v9Krypta';
@@ -78,6 +78,8 @@ import { DEATH, SHRINE, PHYSIK, BREAKABLE_MASSE, PLAYER } from '../data/kampf';
 import { TEMPLERKLINGE, BOSS_GOLD } from '../data/items';
 import { rollGear, rollGem } from '../logic/loot';
 import { recalc, newPlayerState } from '../logic/playerState';
+import { REIT_PFERD, type ReitClip, type ReitGangClip, type ReitSattelPunkte } from '../data/reiten';
+import { clipFps, clipFrames, istReitGang, istReitUebergang, kuerzesterWinkel, mausLenkung, mausZielTempo, naechsterReitGang, naehereZahl, reitClip, reitUebergang, uebergangQuellFrame, uebergangZielFrame, uebertrageAnimationsPhase } from '../logic/reiten';
 import { getSettings, saveSettings } from '../logic/settings';
 import { seededRng, pick, ri } from '../logic/rng';
 import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type SaveData } from '../logic/save';
@@ -133,6 +135,14 @@ interface AnimalEntity extends AnimalSpawn {
   step: number;
   stepT: number;
   dir: Dir;
+}
+
+interface ReitPferdState {
+  areaId: string;
+  x: number;
+  y: number;
+  richtung: number;
+  tempo: number;
 }
 
 // Karte des Fürstentums (Runde 51, Autorwunsch): die OBERWELT-Gebiete mit ihrer
@@ -260,6 +270,18 @@ export class WorldScene extends CombatScene {
   einrichtung = 0; // gewähltes Deko-Set (0 = keins)
   private npcEnts: NpcEntity[] = [];
   private animalEnts: AnimalEntity[] = [];
+  private reitPferd: ReitPferdState | null = null;
+  private reitPferdSprite?: Phaser.GameObjects.Sprite;
+  private reitReiterSprite?: Phaser.GameObjects.Sprite;
+  private reitPferdSchatten?: Phaser.GameObjects.Ellipse;
+  private reitet = false;
+  private reitLenkung = 0;
+  private reitPivotPose = false;
+  private reitAnimT = 0;
+  private reitReiterAnimT = 0;
+  private reitLetzterClip: ReitClip = 'idle';
+  private reitUebergangZiel?: ReitGangClip;
+  private reitAtlasWarnungen = new Set<string>();
   private _tierPrevX = 0; private _tierPrevY = 0;   // Spielerposition letzter Frame (für Tempo der Scheu-Flucht)
   private tag = 1;
   private tageszeit = 0.3; // 0..1, Start am Morgen
@@ -341,6 +363,18 @@ export class WorldScene extends CombatScene {
     this.breakableEnts = [];
     this.npcEnts = [];
     this.animalEnts = [];
+    this.reitPferd = null;
+    this.reitPferdSprite = undefined;
+    this.reitReiterSprite = undefined;
+    this.reitPferdSchatten = undefined;
+    this.reitet = false;
+    this.reitLenkung = 0;
+    this.reitPivotPose = false;
+    this.reitAnimT = 0;
+    this.reitReiterAnimT = 0;
+    this.reitLetzterClip = 'idle';
+    this.reitUebergangZiel = undefined;
+    this.reitAtlasWarnungen.clear();
     this.gefaellteBaeume.clear();
     this.baumSchlaege.clear();
     this.lager = [];
@@ -1673,6 +1707,15 @@ export class WorldScene extends CombatScene {
       this.area.geleert = !this.enemies.some((e) => e.hp > 0);
     }
     const a = this.getArea(id);
+    const pferdKommtMit = this.reitet && !a.dark && !a.innen;
+    if (this.reitet && !pferdKommtMit) {
+      this.reitet = false;
+      this.reitPivotPose = false;
+      if (this.reitPferd) this.reitPferd.tempo = 0;
+      this.reitReiterSprite?.setVisible(false);
+      this.playerSprite.setCrop().setVisible(true);
+      this.logMsg('Das Pferd bleibt vor dem engen Zugang zurück.', '');
+    }
     this.area = a;
     if (FUERSTENTUM.some((g) => g.id === id)) this.flags[`besucht_${id}`] = true; // Karte: erforscht
     // Erster Dungeon-Besuch beendet den Stimmungs-Dauerregen (Heavy-Rain-Gefühl,
@@ -1690,6 +1733,15 @@ export class WorldScene extends CombatScene {
     // Kachel (z. B. im Kirchenaltar), auf die nächste freie schieben -
     // sonst steckt der Held unlösbar fest
     this.entklemmeSpieler(a);
+    if (pferdKommtMit && this.reitPferd) {
+      this.reitPferd.areaId = id;
+      this.reitPferd.x = this.px;
+      this.reitPferd.y = this.py;
+    } else if (!this.reitPferd && !a.dark && !a.innen) {
+      const stand = this.freierReitPunkt(this.px, this.py, REIT_PFERD.startAbstand);
+      this.reitPferd = { areaId: id, x: stand.x, y: stand.y, richtung: 0, tempo: 0 };
+    }
+    this.erstelleReitPferdGrafik();
     // Kamera SOFORT hart auf den Helden zentrieren (sonst startet sie mit der
     // Verfolgung erst zu lerpen und der Held kann beim Laden unter dem Bildrand
     // liegen - dorfSim-Hintergrund füllte den Schirm, der Held war off-screen).
@@ -4897,6 +4949,7 @@ export class WorldScene extends CombatScene {
   }
 
   private unloadAreaObjects(): void {
+    this.zerstoereReitPferdGrafik();
     this.raeumeGebaeude3d();   // R132: 3D-Gebaeude gehoeren zur alten Karte
     for (const img of this.tileImages) img.destroy();
     this.tileImages = [];
@@ -5741,6 +5794,278 @@ export class WorldScene extends CombatScene {
       ...t, sprite, curX: t.x, curY: t.y, targetX: t.x, targetY: t.y,
       pauseT: Math.random() * 2, soundT: 2 + Math.random() * 8, step: 0, stepT: 0, dir: 0,
     });
+  }
+
+  // --- Reitbares Blender-Pferd ---------------------------------------------
+
+  private freierReitPunkt(x: number, y: number, abstand: number, startWinkel = 0): { x: number; y: number } {
+    const kandidaten = [startWinkel, startWinkel + Math.PI, startWinkel + Math.PI / 2, startWinkel - Math.PI / 2, startWinkel + Math.PI / 4, startWinkel - Math.PI / 4];
+    for (const winkel of kandidaten) {
+      const px = x + Math.cos(winkel) * abstand;
+      const py = y + Math.sin(winkel) * abstand;
+      const r = REIT_PFERD.kollisionsRadius;
+      if (!this.solidFuerHeld(px - r, py - r) && !this.solidFuerHeld(px + r, py - r)
+        && !this.solidFuerHeld(px - r, py + r) && !this.solidFuerHeld(px + r, py + r)) return { x: px, y: py };
+    }
+    return { x, y };
+  }
+
+  private erstelleReitPferdGrafik(): void {
+    this.zerstoereReitPferdGrafik();
+    const pferd = this.reitPferd;
+    const startFrame = 'idle_d0_f0';
+    if (!pferd || pferd.areaId !== this.area.id || !this.reitFrameVorhanden(REIT_PFERD.atlasKey, startFrame)) return;
+    this.reitPferdSchatten = this.add.ellipse(
+      pferd.x, pferd.y + 1, REIT_PFERD.schattenBreite, REIT_PFERD.schattenHoehe, 0x080604, 0.32,
+    ).setDepth(pferd.y - 2);
+    this.reitPferdSprite = this.add.sprite(pferd.x, pferd.y, REIT_PFERD.atlasKey, startFrame)
+      .setOrigin(0.5, REIT_PFERD.fussOriginY)
+      .setScale(REIT_PFERD.darstellungSkala)
+      .setDepth(pferd.y);
+    this.reitReiterSprite = this.add.sprite(pferd.x, pferd.y, '__DEFAULT')
+      .setScale(REIT_PFERD.reiterSkala)
+      .setVisible(false);
+  }
+
+  private zerstoereReitPferdGrafik(): void {
+    this.reitPferdSprite?.destroy();
+    this.reitReiterSprite?.destroy();
+    this.reitPferdSchatten?.destroy();
+    this.reitPferdSprite = undefined;
+    this.reitReiterSprite = undefined;
+    this.reitPferdSchatten = undefined;
+  }
+
+  protected override reitsteuerungAktiv(): boolean {
+    return this.reitet;
+  }
+
+  protected override spielerExtraBlockiert(x: number, y: number, radius: number): boolean {
+    const pferd = this.reitPferd;
+    return !this.reitet && !!pferd && pferd.areaId === this.area.id
+      && Math.hypot(x - pferd.x, y - pferd.y) < radius + REIT_PFERD.kollisionsRadius;
+  }
+
+  protected override updateReitbewegung(dt: number): boolean {
+    const pferd = this.reitPferd;
+    if (!this.reitet || !pferd || pferd.areaId !== this.area.id) return false;
+
+    const vor = this.keysDown['w'] || this.keysDown['arrowup'];
+    const zurueck = this.keysDown['s'] || this.keysDown['arrowdown'];
+    // Pfeil links/rechts drehen das Pferd nicht mehr. Die Pfeile regeln nur das
+    // Tempo; die gehaltene rechte Maus gibt die Laufrichtung vor. A/D bleiben
+    // als bewusstes manuelles Zuegeln erhalten.
+    const links = this.keysDown['a'];
+    const rechts = this.keysDown['d'];
+    let lenkung = (rechts ? 1 : 0) - (links ? 1 : 0);
+
+    const ptr = this.input.activePointer;
+    const mausAktiv = ptr.rightButtonDown() && !this.klickAufUi(ptr) && !this.zeigerAufUI(ptr);
+    let mausDistanz = 0;
+    let mausWinkelDiff = 0;
+    if (mausAktiv) {
+      const ziel = this.weltPunkt(ptr);
+      const zielWinkel = Math.atan2(ziel.y - pferd.y, ziel.x - pferd.x);
+      mausWinkelDiff = kuerzesterWinkel(pferd.richtung, zielWinkel);
+      mausDistanz = Math.hypot(ziel.x - pferd.x, ziel.y - pferd.y);
+      lenkung = mausLenkung(pferd.richtung, zielWinkel);
+    }
+    this.reitLenkung = Math.abs(lenkung) < REIT_PFERD.lenkTotzone ? 0 : lenkung;
+    // Authored Hals-/Rumpf-Wendeposen nur beim bewusst manuellen Drehen auf
+    // der Stelle. Mausfahrt und gleichzeitiges Vorwaertsfahren bleiben in der
+    // Gangart und wechseln nur durch die 16 echten Kameraperspektiven.
+    this.reitPivotPose = !mausAktiv && !vor && !zurueck;
+
+    let zielTempo = 0;
+    if (vor && !zurueck) zielTempo = REIT_PFERD.hoechstTempo;
+    else if (zurueck && !vor) zielTempo = pferd.tempo > 4 ? 0 : -REIT_PFERD.rueckwaertsTempo;
+    else if (mausAktiv) {
+      // Ist der Cursor seitlich oder hinter dem Pferd, dreht es erst ein und
+      // laeuft nicht in die falsche Richtung los. Danach bestimmt die Distanz
+      // sanft das Tempo: nah = Schritt, weit = schneller Lauf.
+      zielTempo = mausZielTempo(mausDistanz, mausWinkelDiff);
+    }
+    const beschleunigt = Math.abs(zielTempo) > Math.abs(pferd.tempo);
+    const aenderung = beschleunigt ? REIT_PFERD.beschleunigung
+      : (vor || zurueck) ? REIT_PFERD.bremsung : REIT_PFERD.ausrollBremsung;
+    pferd.tempo = naehereZahl(pferd.tempo, zielTempo, aenderung * dt);
+
+    const tempoAnteil = Math.min(1, Math.abs(pferd.tempo) / REIT_PFERD.hoechstTempo);
+    const drehTempo = Phaser.Math.Linear(REIT_PFERD.drehTempoLangsam, REIT_PFERD.drehTempoSchnell, tempoAnteil);
+    const bewegungsFaktor = Phaser.Math.Linear(REIT_PFERD.standDrehFaktor, 1, tempoAnteil);
+    pferd.richtung = Phaser.Math.Angle.Wrap(pferd.richtung + this.reitLenkung * drehTempo * bewegungsFaktor * dt);
+
+    const altX = this.px, altY = this.py;
+    this.movePlayer(
+      Math.cos(pferd.richtung) * pferd.tempo * dt,
+      Math.sin(pferd.richtung) * pferd.tempo * dt,
+      REIT_PFERD.kollisionsRadius,
+    );
+    const sollWeg = Math.abs(pferd.tempo * dt);
+    const istWeg = Math.hypot(this.px - altX, this.py - altY);
+    if (sollWeg > 0.5 && istWeg < sollWeg * 0.25) pferd.tempo *= 0.35;
+    pferd.x = this.px;
+    pferd.y = this.py;
+    this.pdir = pferd.richtung;
+    return true;
+  }
+
+  private aktualisiereReitPferd(dt: number): void {
+    const pferd = this.reitPferd;
+    const sprite = this.reitPferdSprite;
+    if (!pferd || !sprite || pferd.areaId !== this.area.id) return;
+    const gewuenscht = this.reitet ? reitClip(pferd.tempo, this.reitPivotPose ? this.reitLenkung : 0) : 'idle';
+    let clip = this.reitLetzterClip;
+
+    if (istReitUebergang(clip)) {
+      this.reitAnimT += dt * clipFps(clip, pferd.tempo);
+      if (this.reitAnimT >= clipFrames(clip)) {
+        const fertig = clip;
+        clip = this.reitUebergangZiel ?? 'idle';
+        this.reitLetzterClip = clip;
+        this.reitAnimT = uebergangZielFrame(fertig);
+        this.reitUebergangZiel = undefined;
+      }
+    } else {
+      if (clip !== gewuenscht) {
+        if (istReitGang(clip) && istReitGang(gewuenscht)) {
+          // Immer nur EINE benachbarte Gangart auf einmal. Der Wechsel startet
+          // an der vermessenen Quell-Beinphase und spielt danach sechs in
+          // Blender geometrisch gemischte Rig-Posen ab - kein Sprite-Dissolve.
+          const naechster = naechsterReitGang(clip, gewuenscht);
+          const wechsel = reitUebergang(clip, naechster);
+          const quellFrame = Math.floor(this.reitAnimT) % clipFrames(clip);
+          if (wechsel && (clip === 'idle' || quellFrame === uebergangQuellFrame(wechsel))) {
+            clip = wechsel;
+            this.reitLetzterClip = wechsel;
+            this.reitUebergangZiel = naechster;
+            this.reitAnimT = 0;
+          }
+        } else {
+          // Rueckwaerts- und reine Standwendeposen sind keine Gangartleiter.
+          this.reitAnimT = uebertrageAnimationsPhase(this.reitAnimT, clip, gewuenscht);
+          clip = gewuenscht;
+          this.reitLetzterClip = clip;
+          this.reitUebergangZiel = undefined;
+        }
+      }
+      this.reitAnimT += dt * clipFps(clip, pferd.tempo);
+    }
+
+    const dir = angleToDir16(pferd.richtung);
+    const frame = Math.floor(this.reitAnimT) % clipFrames(clip);
+    const frameName = `${clip}_d${dir}_f${frame}`;
+    const atlasKey = this.reitAtlasKey(clip);
+    this.setzeReitFrameSicher(sprite, atlasKey, frameName, dir);
+    sprite.setPosition(pferd.x, pferd.y).setDepth(pferd.y + 0.1).setAlpha(1);
+    this.reitPferdSchatten?.setPosition(pferd.x, pferd.y + 1).setDepth(pferd.y - 2);
+
+    if (this.reitet) {
+      // Der normale stehende Held wird durch eine echte Sitzpose ersetzt. Der
+      // aus Blender projizierte Punkt folgt dem Sattel in JEDEM Pferde-Frame.
+      this.playerSprite.setVisible(false).setPosition(pferd.x, pferd.y);
+      const reiter = this.reitReiterSprite;
+      if (reiter) {
+        const punkte = this.cache.json.get(REIT_PFERD.sattelPunkteKey) as ReitSattelPunkte | undefined;
+        const punkt = punkte?.[frameName] ?? { x: REIT_PFERD.zellenBreite / 2, y: 33 };
+        const reiterX = pferd.x + (punkt.x - REIT_PFERD.zellenBreite / 2) * REIT_PFERD.darstellungSkala;
+        const reiterY = pferd.y + (punkt.y - REIT_PFERD.zellenHoehe * REIT_PFERD.fussOriginY) * REIT_PFERD.darstellungSkala;
+        // Eigene durchlaufende Reiterphase: sie wird bei keinem Clipwechsel
+        // zurueckgesetzt. Das Sattel-JSON liefert den grossen Hub, diese Phase
+        // nur die kleine Oberkoerper-Ausgleichsbewegung.
+        this.reitReiterAnimT += dt * Math.max(1.5, Math.min(7, Math.abs(pferd.tempo) / 32));
+        const reiterFrame = Math.floor(this.reitReiterAnimT) % 4;
+        const reiterDir = Math.round(dir / 2) % 8;
+        this.provider.applyReiter(reiter, heldTier(this.p.armorIt ? this.p.armorIt.val : null), reiterDir, reiterFrame);
+        reiter.setPosition(reiterX, reiterY).setScale(REIT_PFERD.reiterSkala).setDepth(pferd.y + 0.3).setVisible(true);
+      }
+    } else {
+      this.reitReiterSprite?.setVisible(false);
+      this.playerSprite.setVisible(true);
+    }
+  }
+
+  private reitAtlasKey(clip: ReitClip): string {
+    if (clip === 'trot' || clip === 'gallop') return REIT_PFERD.schnellAtlasKey;
+    if (clip.startsWith('turn_')) return clip.endsWith('_left')
+      ? REIT_PFERD.wendeLinksAtlasKey : REIT_PFERD.wendeRechtsAtlasKey;
+    if (istReitUebergang(clip)) return clip === 'idle_to_walk' || clip === 'walk_to_trot' || clip === 'trot_to_gallop'
+      ? REIT_PFERD.uebergangHochAtlasKey : REIT_PFERD.uebergangRunterAtlasKey;
+    return REIT_PFERD.atlasKey;
+  }
+
+  private reitFrameVorhanden(atlasKey: string, frameName: string): boolean {
+    return this.textures.exists(atlasKey) && this.textures.get(atlasKey).has(frameName);
+  }
+
+  /**
+   * Ein fehlender/noch nicht nachgeladener Atlas darf den Sprite nie auf
+   * Phasers grellgruene __MISSING-Textur umschalten. Das kam insbesondere nach
+   * einem Vite-Hot-Reload vor: die neue Szenenlogik war bereits aktiv, waehrend
+   * Boot die zusaetzlichen Pferdeatlanten in dieser Sitzung noch nicht kannte.
+   */
+  private setzeReitFrameSicher(
+    sprite: Phaser.GameObjects.Sprite,
+    atlasKey: string,
+    frameName: string,
+    dir: number,
+  ): void {
+    if (this.reitFrameVorhanden(atlasKey, frameName)) {
+      if (sprite.texture.key !== atlasKey || sprite.frame.name !== frameName) sprite.setTexture(atlasKey, frameName);
+      sprite.setVisible(true);
+      return;
+    }
+
+    const fehler = `${atlasKey}:${frameName}`;
+    if (!this.reitAtlasWarnungen.has(fehler)) {
+      this.reitAtlasWarnungen.add(fehler);
+      // Einmalige, konkrete Diagnose statt einer Phaser-Warnung in jedem Frame.
+      console.warn(`[Pferd] Atlas/Frame noch nicht verfuegbar: ${fehler}`);
+    }
+
+    // Einen bereits gueltigen Pferde-Frame stehen lassen. Falls Phaser den
+    // Sprite zuvor schon auf __MISSING gesetzt hatte, auf eine sichere
+    // Richtungs-Standpose zurueckwechseln; ist selbst die nicht geladen, wird
+    // der Sprite verborgen statt als gruene Debug-Kachel angezeigt.
+    if (sprite.texture.key !== '__MISSING') return;
+    const fallback = `idle_d${dir}_f0`;
+    if (this.reitFrameVorhanden(REIT_PFERD.atlasKey, fallback)) {
+      sprite.setTexture(REIT_PFERD.atlasKey, fallback).setVisible(true);
+    } else {
+      sprite.setVisible(false);
+    }
+  }
+
+  private steigeAuf(): void {
+    const pferd = this.reitPferd;
+    if (!pferd || pferd.areaId !== this.area.id) return;
+    this.reitet = true;
+    this.mouseDown = false;
+    pferd.tempo = 0;
+    this.px = pferd.x;
+    this.py = pferd.y;
+    this.pdir = pferd.richtung;
+    this.reitAnimT = 0;
+    this.reitReiterAnimT = 0;
+    this.reitLetzterClip = 'idle';
+    this.reitUebergangZiel = undefined;
+    this.playerSprite.setCrop().setVisible(false);
+    this.logMsg('Aufgesessen. Rechte Maus halten: zum Cursor reiten. Pfeil hoch/runter oder W/S: Tempo; A/D: manuell zuegeln; E: absitzen.', 'gold');
+  }
+
+  private steigeAb(): void {
+    const pferd = this.reitPferd;
+    if (!pferd) return;
+    pferd.tempo = 0;
+    const stand = this.freierReitPunkt(pferd.x, pferd.y, REIT_PFERD.absitzAbstand, pferd.richtung - Math.PI / 2);
+    this.reitet = false;
+    this.reitLenkung = 0;
+    this.reitPivotPose = false;
+    this.reitReiterSprite?.setVisible(false);
+    this.playerSprite.setCrop().setVisible(true);
+    this.px = stand.x;
+    this.py = stand.y;
+    this.logMsg('Abgesessen.', '');
   }
 
   // Baumstumpf an einer gefällten Position (bis der Baum nachwächst)
@@ -6999,6 +7324,11 @@ export class WorldScene extends CombatScene {
   protected override interactHint(): { text: string; action: () => void } | null {
     const ik = getSettings().kb.interact.toUpperCase();
     const near = (x: number, y: number, dist: number) => Math.hypot(x - this.px, y - this.py) < dist;
+    if (this.reitet) return { text: `Pferd - ${ik} zum Absitzen`, action: () => this.steigeAb() };
+    const reitPferd = this.reitPferd;
+    if (reitPferd && reitPferd.areaId === this.area.id && near(reitPferd.x, reitPferd.y, REIT_PFERD.aufsitzDistanz)) {
+      return { text: `Gesatteltes Pferd - ${ik} zum Aufsitzen`, action: () => this.steigeAuf() };
+    }
     // Offenes Portal-Paar hat Vorrang (Runde 28)
     const portal = this.portalAktion();
     if (portal) return portal;
@@ -10949,6 +11279,7 @@ export class WorldScene extends CombatScene {
     // Geschosse) im bedaechtigen Krypta-Tempo - wie ein Dungeon-Gefecht.
     const kampfTempo = (this.einfallAktiv || this.rtsBattle) ? TUNING.kryptaTempo : 1;
     this.updateCombat(dt * kampfTempo);
+    this.aktualisiereReitPferd(dt * kampfTempo);
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
     for (const g of this.gebaeude3d.values()) g.update(dt, this.px, this.py);   // R132: 3D-Gebaeude (Tueren/Innen/Ebene)
     this.updateWetter(dt);      // Wetter-Achse (Regen/Nässe, Stimmungsregen bis 1. Dungeon)
