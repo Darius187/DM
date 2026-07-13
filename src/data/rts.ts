@@ -11,6 +11,7 @@
 // Alle Werte sind Regler - der Autor stimmt die Schlacht später ab.
 
 import type { MaterialId } from './crafting';
+import type { Tag } from './kampfarten';
 
 export type RtsRolle = 'reiter' | 'gewappnet' | 'spiess' | 'armbrust' | 'bogen' | 'tross';
 
@@ -152,6 +153,14 @@ export type RtsUnitTyp =
 export interface RtsUnitDef {
   name: string; team: RtsTeam; hp: number; dmg: number; reich: number;
   speed: number; rank: number; figur: string; heiler: boolean; tint?: number; groesse?: number;
+  // R135c: Feld-Truppen sind KEINE Dungeon-Monster. Ruestung + Block + Tags machen
+  // sie zaeher, OHNE dem Helden Werte zu nehmen. schadensRed = Multiplikator auf
+  // erlittenen Schaden (Regel 4: nie unter 0.5, nie 0 = keine Immunitaet). schild =
+  // frontaler Block (vorhandene Enemy-Mechanik). tags speisen spaeter die Konter-
+  // Matrix (kampfarten.ts) - schon jetzt korrekt modelliert.
+  schadensRed?: number;
+  schild?: boolean;
+  tags?: readonly Tag[];
 }
 // rank staffelt in Formationen die Tiefe: 0 = Front (Schild), 3 = hinten (Heiler).
 export const RTS_UNIT_TYP: Record<RtsUnitTyp, RtsUnitDef> = {
@@ -160,9 +169,10 @@ export const RTS_UNIT_TYP: Record<RtsUnitTyp, RtsUnitDef> = {
   bogen:    { name: 'Bogenschütze', team: 'spieler', hp: 140, dmg: 9,  reich: 200, speed: 64, rank: 2, figur: 'bogensoldat', heiler: false },
   heiler:   { name: 'Feldscher',    team: 'spieler', hp: 150, dmg: 9,  reich: 150, speed: 58, rank: 3, figur: 'johannes',    heiler: true,  tint: 0xe8e0a0 },
   reiter:   { name: 'Ritter',       team: 'spieler', hp: 360, dmg: 20, reich: 34,  speed: 96, rank: 0, figur: 'soldat',      heiler: false, tint: 0xf0d878, groesse: 1.2 },
-  e_nah:    { name: 'Skelettkrieger',team: 'feind',  hp: 210, dmg: 10, reich: 30,  speed: 56, rank: 1, figur: 'skelett',     heiler: false },
-  e_bogen:  { name: 'Skelettschütze',team: 'feind',  hp: 120, dmg: 8,  reich: 190, speed: 56, rank: 2, figur: 'schuetze',    heiler: false },
-  e_elite:  { name: 'Untoter Ritter',team: 'feind',  hp: 540, dmg: 19, reich: 34,  speed: 52, rank: 0, figur: 'skelett',     heiler: false, tint: 0xc090d0, groesse: 1.35 },
+  // Feind-Truppen: eigene, deutlich zaehere Werte (nicht Dungeon-Skelette).
+  e_nah:    { name: 'Untoter Söldner', team: 'feind', hp: 210, dmg: 12, reich: 30,  speed: 56, rank: 1, figur: 'skelett',  heiler: false, schadensRed: 0.7,  schild: true,  tags: ['untot', 'knochen', 'gepanzert', 'schild'] },
+  e_bogen:  { name: 'Untoter Schütze', team: 'feind', hp: 120, dmg: 8,  reich: 190, speed: 56, rank: 2, figur: 'schuetze', heiler: false, schadensRed: 0.9,  schild: false, tags: ['untot', 'knochen', 'fernkampf'] },
+  e_elite:  { name: 'Untoter Ritter',  team: 'feind', hp: 540, dmg: 19, reich: 34,  speed: 52, rank: 0, figur: 'skelett',  heiler: false, tint: 0xc090d0, groesse: 1.35, schadensRed: 0.55, schild: true, tags: ['untot', 'knochen', 'gepanzert', 'schild', 'schwer', 'anfuehrer'] },
 };
 
 // Wachturm-Besatzung (R96, Autor "ich muss jemanden befehligen auf den Turm zu

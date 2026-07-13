@@ -167,6 +167,11 @@ export class Enemy {
   fsT = 0; fsX?: number; fsY?: number;
   // Schildträger (Runde 11): blockt Treffer von vorn, weicht nicht zurück
   schild = false;
+  // R135c: Ruestung der RTS-Feld-Truppen. Multiplikator auf erlittenen Schaden
+  // (1 = keine Ruestung/Dungeon-Standard, 0.55 = schwer gepanzerter Ritter). NIE
+  // 0 - das Schwert trifft immer (Regel 4). kampfTags speisen die Konter-Matrix.
+  schadensRed = 1;
+  kampfTags: readonly import('../data/kampfarten').Tag[] = [];
   // Kampfbewusst (Runde 38): Monster gehen kurz in Deckung und parieren statt
   // wegzuweichen - echter Schlagabtausch. Tiere (Wolf/Ratte) nicht.
   kampfbewusst = false;

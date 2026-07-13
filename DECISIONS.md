@@ -1985,3 +1985,13 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   kaempfer -> verteidigen beim Einfall. Figur 'wache' (Lederwams, Eisenhut,
   Spiess, Hot-Swap-faehig), ansprechbar (VOLK-Zeilen). Routen in areagen /
   Figur in fallbackArt - leicht anpassbar.
+
+## R135c - Feind-Truppen im RTS: eigene Werte statt Dungeon-Skelette (Schritt 1/3)
+- Diagnose bestaetigt: spawnFeind spawnte Dungeon-Skelette (Tiefe 2, ~32 HP), die
+  zaehen Soldatenwerte in RTS_UNIT_TYP (e_nah 210, e_elite 540) wurden umgangen.
+- Fix ohne zweite Tabelle (Dok 03 warnt vor Parallel-Tabellen): RtsUnitDef um
+  schadensRed (Ruestung, Multiplikator >=0.5 - Regel 4, nie 0), schild (Block,
+  vorhandene Enemy-Mechanik) und tags (kampfarten.ts, fuer spaetere Konter-Matrix)
+  erweitert; spawnFeind wendet diese echten Werte an. Enemy.schadensRed default 1
+  (Dungeon-Gegner unveraendert). Gemessen: Soeldner 4 -> 35 Hiebe bis Tod.
+- Held-Werte NICHT angefasst. Ziel-Cap fuer den Schwung GESTRICHEN (Autor R135c).

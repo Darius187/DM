@@ -1632,6 +1632,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       dmg = Math.round(dmg * ABILITY_FX.hinrichtung.dmgMultVsStunned);
       this.fx.float(e.x, e.y - e.r - 20, 'HINRICHTUNG', '#f0d878');
     }
+    // R135c: Ruestung der Feld-Truppen reduziert den Schaden (Regel 4: nie auf 0,
+    // mindestens 1 Schaden bleibt - das Schwert wirkt immer, es dauert nur laenger).
+    if (e.schadensRed < 1) dmg = Math.max(1, Math.round(dmg * e.schadensRed));
     e.hp -= dmg;
     e.hitFlash = 0.12;
     e.onHurt();

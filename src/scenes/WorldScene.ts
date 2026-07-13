@@ -3348,16 +3348,19 @@ export class WorldScene extends CombatScene {
       // R99d: Dungeon-Kampf-Anbindung - Verbuendete + Feind-Monster sind ECHTE Enemies
       spawnAlly: (typ, x, y) => this.spawnVerbuendeter(typ, x, y),
       spawnFeind: (typ, x, y) => {
-        // R100e (Autor "Untoter Ritter = Boss-Logik raeumt alle Gegner ab"):
-        // e_elite ist ein starkes ELITE-Skelett, KEIN Templer-BOSS mehr - so
-        // loest sein Tod nicht die Boss-Raeumung aus.
-        const map: Record<string, { t: string; elite: boolean; tiefe: number; name?: string }> = {
-          e_nah: { t: 'skelett', elite: false, tiefe: 2 }, e_bogen: { t: 'schuetze', elite: false, tiefe: 2 },
-          e_elite: { t: 'skelett', elite: true, tiefe: 4, name: 'Untoter Ritter' },
-        };
-        const m = map[typ] ?? { t: 'skelett', elite: false, tiefe: 2 };
-        const e = this.spawnEnemy(m.t as never, m.tiefe, x, y, m.elite, true);
-        if (m.name) { e.name = m.name; e.hp = e.maxhp = Math.round(e.maxhp * 1.6); e.dmg = Math.round(e.dmg * 1.3); }
+        // R135c: Feind-Truppen sind KEINE Dungeon-Skelette mehr. Der Basis-Gegner
+        // liefert nur Sprite + KI (figur); die Kampfwerte (zaehe HP, Ruestung,
+        // Block, Tags) kommen aus RTS_UNIT_TYP - eigene Werte, getrennt vom Dungeon.
+        // e_elite bleibt Elite-KI (Aura/Anfuehrer), aber KEIN Templer-BOSS (sein
+        // Tod loest keine Boss-Raeumung aus, R100e).
+        const d = RTS_UNIT_TYP[typ];
+        const e = this.spawnEnemy((d.figur ?? 'skelett') as never, 2, x, y, typ === 'e_elite', true);
+        e.name = d.name;
+        e.maxhp = d.hp; e.hp = d.hp;
+        e.dmg = d.dmg;
+        e.schild = d.schild ?? false;
+        e.schadensRed = d.schadensRed ?? 1;
+        e.kampfTags = d.tags ?? [];
         e.aggro = 5000;
         e.passiv = true;   // R100b: frisch gesetzt -> steht still, bis geweckt (Gegner nah/Schaden)
       },
