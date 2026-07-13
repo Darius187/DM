@@ -33,6 +33,17 @@ export const REIT_PFERD = {
   // tunebar: heller 0x9a7c60 -> dunkelbay 0x7a6450 -> dunkel 0x5c4c3c ->
   // fast schwarz 0x443a30. 0xffffff = Originalfarbe ohne Tint.
   farbTint: 0x5c4c3c,
+  // Hufspuren beim Laufen (Autor R135b). Kleine dunkle Abdruecke, die hinter dem
+  // Pferd liegen bleiben und langsam verblassen. Alles hier tunebar.
+  spurAbstandPx: 24,    // alle X zurueckgelegten Pixel ein neuer Abdruck
+  spurTempoMin: 18,     // erst ab diesem Tempo Spuren (im Stand keine)
+  spurLebenS: 7,        // Sekunden bis vollstaendig verblasst
+  spurBreite: 11,       // Abdruckgroesse
+  spurHoehe: 6,
+  spurAlpha: 0.42,      // Anfangs-Deckkraft
+  spurFarbe: 0x1b130c,  // dunkle, feuchte Erde (Abdruck druecktden Boden ein)
+  spurSeitVersatz: 7,   // seitlicher Versatz der linken/rechten Hufe
+  spurMax: 60,          // Obergrenze gleichzeitiger Abdruecke
   schattenBreite: 50,
   schattenHoehe: 14,
   startAbstand: 72,

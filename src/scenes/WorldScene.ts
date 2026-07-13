@@ -282,6 +282,9 @@ export class WorldScene extends CombatScene {
   private reitLetzterClip: ReitClip = 'idle';
   private reitUebergangZiel?: ReitGangClip;
   private reitAtlasWarnungen = new Set<string>();
+  private reitSpuren: { e: Phaser.GameObjects.Ellipse; leben: number }[] = [];
+  private reitSpurWeg = 0;      // zurueckgelegter Weg seit letzter Spur
+  private reitSpurSeite = 1;    // wechselt fuer linke/rechte Hufe
   private _tierPrevX = 0; private _tierPrevY = 0;   // Spielerposition letzter Frame (für Tempo der Scheu-Flucht)
   private tag = 1;
   private tageszeit = 0.3; // 0..1, Start am Morgen
@@ -375,6 +378,9 @@ export class WorldScene extends CombatScene {
     this.reitLetzterClip = 'idle';
     this.reitUebergangZiel = undefined;
     this.reitAtlasWarnungen.clear();
+    this.reitSpuren = [];
+    this.reitSpurWeg = 0;
+    this.reitSpurSeite = 1;
     this.gefaellteBaeume.clear();
     this.baumSchlaege.clear();
     this.lager = [];
@@ -5835,6 +5841,38 @@ export class WorldScene extends CombatScene {
     this.reitPferdSprite = undefined;
     this.reitReiterSprite = undefined;
     this.reitPferdSchatten = undefined;
+    for (const s of this.reitSpuren) s.e.destroy();
+    this.reitSpuren = [];
+    this.reitSpurWeg = 0;
+  }
+
+  // Hufspuren: hinter dem laufenden Pferd dunkle Abdruecke ablegen (wechselnd
+  // links/rechts) und langsam verblassen lassen. Nur beim Reiten und ab einem
+  // Mindesttempo. Werte in REIT_PFERD.spur*.
+  private aktualisiereReitSpuren(dt: number, pferd: ReitPferdState): void {
+    // Verblassen + aufraeumen (laeuft immer, auch nach dem Absitzen)
+    for (let i = this.reitSpuren.length - 1; i >= 0; i--) {
+      const s = this.reitSpuren[i];
+      s.leben -= dt;
+      if (s.leben <= 0) { s.e.destroy(); this.reitSpuren.splice(i, 1); continue; }
+      s.e.setAlpha(REIT_PFERD.spurAlpha * (s.leben / REIT_PFERD.spurLebenS));
+    }
+    if (!this.reitet || Math.abs(pferd.tempo) < REIT_PFERD.spurTempoMin) return;
+    this.reitSpurWeg += Math.abs(pferd.tempo) * dt;
+    if (this.reitSpurWeg < REIT_PFERD.spurAbstandPx) return;
+    this.reitSpurWeg = 0;
+    // seitlicher Versatz quer zur Laufrichtung, wechselnd fuer die Hufpaare
+    const quer = pferd.richtung + Math.PI / 2;
+    const off = this.reitSpurSeite * REIT_PFERD.spurSeitVersatz;
+    this.reitSpurSeite *= -1;
+    const sx = pferd.x + Math.cos(quer) * off;
+    const sy = pferd.y + Math.sin(quer) * off;
+    const e = this.add.ellipse(sx, sy, REIT_PFERD.spurBreite, REIT_PFERD.spurHoehe, REIT_PFERD.spurFarbe, REIT_PFERD.spurAlpha)
+      .setDepth(sy - 6);                      // knapp unter den Fuessen -> liegt am Boden
+    e.setRotation(pferd.richtung);
+    this.uiCam?.ignore(e);
+    this.reitSpuren.push({ e, leben: REIT_PFERD.spurLebenS });
+    if (this.reitSpuren.length > REIT_PFERD.spurMax) { const alt = this.reitSpuren.shift(); alt?.e.destroy(); }
   }
 
   protected override reitsteuerungAktiv(): boolean {
@@ -5960,6 +5998,7 @@ export class WorldScene extends CombatScene {
     this.setzeReitFrameSicher(sprite, atlasKey, frameName, dir);
     sprite.setPosition(pferd.x, pferd.y).setDepth(pferd.y + 0.1).setAlpha(1);
     this.reitPferdSchatten?.setPosition(pferd.x, pferd.y + 1).setDepth(pferd.y - 2);
+    this.aktualisiereReitSpuren(dt, pferd);
 
     if (this.reitet) {
       // Der normale stehende Held wird durch eine echte Sitzpose ersetzt. Der
