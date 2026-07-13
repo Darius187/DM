@@ -27,6 +27,12 @@ export const REIT_PFERD = {
   darstellungSkala: 0.645,
   fussOriginY: 0.9,
   reiterSkala: 0.72,
+  // Verdunkelung des Pferds als Phaser-Multiply-Tint (Autor R135: "dunkler,
+  // vielleicht schwarz, staerker zeichnen"). Dunkler = staerkere Silhouette,
+  // dadurch lesen sich die duennen Beine besser gegen den Boden. In EINER Zeile
+  // tunebar: heller 0x9a7c60 -> dunkelbay 0x7a6450 -> dunkel 0x5c4c3c ->
+  // fast schwarz 0x443a30. 0xffffff = Originalfarbe ohne Tint.
+  farbTint: 0x5c4c3c,
   schattenBreite: 50,
   schattenHoehe: 14,
   startAbstand: 72,

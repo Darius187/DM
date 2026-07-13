@@ -52,17 +52,31 @@ export function clipFrames(clip: ReitClip): number {
   return 8;
 }
 
+// Tempo-abhaengige Hufkadenz je Gangart. Ausgelagert, damit auch die Uebergaenge
+// dieselbe Kurve benutzen koennen (sonst entsteht an der Naht ein Kadenzsprung).
+export function gangFps(gang: ReitGangClip, v: number): number {
+  if (gang === 'idle') return REIT_PFERD.animationFps.idle;
+  if (gang === 'walk') return Math.max(4.5, Math.min(10.5, 4.5 + v * 0.065));
+  if (gang === 'trot') return Math.max(10.5, Math.min(13.9, 10.5 + (v - REIT_PFERD.schrittGrenze) * 0.04));
+  return Math.max(13.9, Math.min(16, 13.9 + (v - REIT_PFERD.trabGrenze) * 0.021)); // gallop
+}
+
 export function clipFps(clip: ReitClip, tempo = 0): number {
-  if (istReitUebergang(clip)) return 18;
-  if (clip === 'idle') return REIT_PFERD.animationFps.idle;
   const v = Math.abs(tempo);
-  // Kontinuierliche Hufkadenz an den Gangartgrenzen. Der alte feste Wert fiel
-  // beim Wechsel Schritt -> Trab abrupt zurueck und erzeugte sichtbares Rutschen.
-  if (clip === 'walk') return Math.max(4.5, Math.min(10.5, 4.5 + v * 0.065));
-  if (clip === 'trot') return Math.max(10.5, Math.min(13.9, 10.5 + (v - REIT_PFERD.schrittGrenze) * 0.04));
-  if (clip === 'gallop') return Math.max(13.9, Math.min(16, 13.9 + (v - REIT_PFERD.trabGrenze) * 0.021));
+  if (istReitUebergang(clip)) {
+    // Frueher lief JEDER Uebergang mit festen 18 fps und fiel danach abrupt auf
+    // die (bei Schritt ~6-8 fps) langsamere Gangart-Kadenz zurueck - das war das
+    // "Haengen beim Losreiten": Pferd wird schneller, Beine werden ploetzlich
+    // langsamer. Jetzt laeuft der Uebergang in der Kadenz der ZIELgangart. Weil
+    // die Gangart-Kurven an ihren Grenzen stetig sind (Schritt@92 ~ Trab@92), ist
+    // die Naht am Uebergang->Zielgangart exakt sprungfrei, und die Beine bewegen
+    // sich sofort im Tempo der Gangart, in die man wechselt.
+    const nach = clip.split('_to_')[1] as ReitGangClip;
+    return gangFps(nach, v);
+  }
+  if (clip === 'walk' || clip === 'trot' || clip === 'gallop' || clip === 'idle') return gangFps(clip, v);
   if (clip === 'back') return Math.max(5, Math.min(8, 4.8 + v * 0.067));
-  return Math.max(7, Math.min(11, 7 + v / REIT_PFERD.hoechstTempo * 4));
+  return Math.max(7, Math.min(11, 7 + v / REIT_PFERD.hoechstTempo * 4));   // Standwenden
 }
 
 export function uebertrageAnimationsPhase(animT: number, von: ReitClip, nach: ReitClip): number {

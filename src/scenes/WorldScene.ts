@@ -5821,6 +5821,7 @@ export class WorldScene extends CombatScene {
     this.reitPferdSprite = this.add.sprite(pferd.x, pferd.y, REIT_PFERD.atlasKey, startFrame)
       .setOrigin(0.5, REIT_PFERD.fussOriginY)
       .setScale(REIT_PFERD.darstellungSkala)
+      .setTint(REIT_PFERD.farbTint)   // Verdunkelung (bleibt ueber setTexture erhalten)
       .setDepth(pferd.y);
     this.reitReiterSprite = this.add.sprite(pferd.x, pferd.y, '__DEFAULT')
       .setScale(REIT_PFERD.reiterSkala)

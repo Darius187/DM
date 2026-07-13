@@ -53,6 +53,21 @@ describe('Reitsteuerung', () => {
     expect(istReitUebergang('trot_to_gallop')).toBe(true);
     expect(uebergangQuellFrame('trot_to_gallop')).toBe(2);
     expect(uebergangZielFrame('trot_to_gallop')).toBe(5);
-    expect(clipFps('trot_to_gallop', 200)).toBe(18);
+  });
+
+  it('spielt Uebergaenge in der Kadenz ZWISCHEN Quell- und Zielgangart (kein Sprung)', () => {
+    // Der Uebergang darf nicht schneller/langsamer laufen als beide Gangarten,
+    // sonst "haengt" die Animation an der Naht (Autor-Feedback Runde 135).
+    for (const [uebergang, von, nach, v] of [
+      ['idle_to_walk', 'idle', 'walk', 40],
+      ['walk_to_trot', 'walk', 'trot', 120],
+      ['trot_to_gallop', 'trot', 'gallop', 200],
+    ] as const) {
+      const u = clipFps(uebergang, v);
+      const lo = Math.min(clipFps(von, v), clipFps(nach, v));
+      const hi = Math.max(clipFps(von, v), clipFps(nach, v));
+      expect(u).toBeGreaterThanOrEqual(lo);
+      expect(u).toBeLessThanOrEqual(hi);
+    }
   });
 });
