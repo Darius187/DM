@@ -1995,3 +1995,14 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   erweitert; spawnFeind wendet diese echten Werte an. Enemy.schadensRed default 1
   (Dungeon-Gegner unveraendert). Gemessen: Soeldner 4 -> 35 Hiebe bis Tod.
 - Held-Werte NICHT angefasst. Ziel-Cap fuer den Schwung GESTRICHEN (Autor R135c).
+
+## R135d - Angriffs-Slots + Held-Kollision (Schritt 2+3, zusammen)
+- Schritt 2 (Slots): reine Logik src/logic/angriffsSlots.ts (weiseSlotsZu, getestet).
+  Nahkaempfer bekommen je Frame Ring-Plaetze um ihr Ziel (ANGRIFFSSLOTS in kampf.ts:
+  12 Plaetze, Ring ~34px, alle 0,3s neu). Enemy.slotWinkel steuert den Anmarsch auf
+  den Ring statt den Mittelpunkt. Fernkaempfer/Bosse/Jaeger/Verbuendete ohne Slot.
+- Schritt 3 (Kollision): CombatScene.druckeGegnerVomHelden() drueckt Gegner aus dem
+  Held-Radius (kein Stapeln auf seinem Punkt). Nur Gegner, Held bleibt beweglich.
+- Gemessen (15 Soeldner, ungeschuetzt stehend): gleichzeitige Angreifer 3-4 -> 12;
+  Held tot in 2,7s (vorher unverwundbar). Ziel "10-12 kreisen ein" erreicht.
+- Ziel-Cap fuer den Heldenschwung bleibt GESTRICHEN. HP-Werte (210/540) nicht angefasst.

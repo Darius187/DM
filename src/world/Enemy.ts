@@ -9,7 +9,7 @@ import type { Rng } from '../logic/rng';
 import { rnd, pick } from '../logic/rng';
 import type { Dir } from '../gfx/fallbackArt';
 import { TUNING } from '../logic/tuning';
-import { PHYSIK } from '../data/kampf';
+import { PHYSIK, ANGRIFFSSLOTS } from '../data/kampf';
 
 export interface EnemyHost {
   isSolidAt(x: number, y: number): boolean;
@@ -172,6 +172,9 @@ export class Enemy {
   // 0 - das Schwert trifft immer (Regel 4). kampfTags speisen die Konter-Matrix.
   schadensRed = 1;
   kampfTags: readonly import('../data/kampfarten').Tag[] = [];
+  // R135d Angriffs-Slot: der Winkel um das Ziel, auf dem dieser Angreifer stehen
+  // soll (von der Szene je Frame verteilt). null = kein Platz -> haelt zurueck.
+  slotWinkel: number | null = null;
   // Kampfbewusst (Runde 38): Monster gehen kurz in Deckung und parieren statt
   // wegzuweichen - echter Schlagabtausch. Tiere (Wolf/Ratte) nicht.
   kampfbewusst = false;
@@ -468,6 +471,17 @@ export class Enemy {
       host.begegnungsRuf(this);
     }
 
+    // R135d Angriffs-Slot: ein Nahkaempfer mit zugewiesenem Slot steuert seinen
+    // Platz auf dem Ring um den Helden an (steuerAng), statt den Mittelpunkt - so
+    // umzingeln sie ihn, statt sich auf einem Punkt zu stauen. Die Distanz-/Angriffs-
+    // pruefungen bleiben auf der ECHTEN Heldennaehe (d/ang). Fernkaempfer halten
+    // Abstand und bekommen keinen Slot.
+    let steuerAng = ang;
+    if (this.slotWinkel !== null && !this.ranged) {
+      const rad = host.playerR() + this.r + ANGRIFFSSLOTS.ringLuecke;
+      const sx = px + Math.cos(this.slotWinkel) * rad, sy = py + Math.sin(this.slotWinkel) * rad;
+      steuerAng = Math.atan2(sy - this.y, sx - this.x);
+    }
     const slowF = this.rootT > 0 ? 0 : this.slowT > 0 ? ENEMY_AI.slowFactorEis : 1;
     // R103 (Autor "Monster stehen an der Palisade neben dem Helden statt durchs
     // Tor zu kommen"): freie SICHT zum Ziel? Ohne Sicht (Wand dazwischen) wird NICHT
@@ -580,7 +594,9 @@ export class Enemy {
         const direktFrei = !host.isSolidAt(this.x + Math.cos(ang) * (this.r + 12), this.y + Math.sin(ang) * (this.r + 12));
         const nahMelee = d <= this.r + host.playerR() + 30;
         if (nahMelee && direktFrei) {
-          this.laufe(host, ang + this.flankAng * 0.4, this.speed * slowF, dt);
+          // Mit Slot: den zugewiesenen Ring-Platz ansteuern (umzingeln), sonst der
+          // alte leichte flankAng-Versatz.
+          this.laufe(host, this.slotWinkel !== null ? steuerAng : ang + this.flankAng * 0.4, this.speed * slowF, dt);
           this.advanceStep(dt);
         } else {
           const wegAng = host.wegRichtung(this.x, this.y);
@@ -592,8 +608,12 @@ export class Enemy {
             this.step = 0;   // kein Weg zum Ziel -> still halten (kein Wand-Jitter)
           } else {
             const fade = Math.min(1, Math.max(0, (d - 50) / 160));
-            const basis = wegAng ?? ang;
-            this.laufe(host, basis + this.flankAng * fade * (wegAng !== null ? 0.4 : 1), this.speed * slowF, dt);
+            // Bei freiem direktem Weg (kein Flussfeld noetig) steuert ein Slot-Traeger
+            // seinen Ring-Platz an; sonst folgt er dem Flussfeld ums Hindernis.
+            const hatSlot = this.slotWinkel !== null && wegAng === null;
+            const basis = wegAng ?? (this.slotWinkel !== null ? steuerAng : ang);
+            const jitter = hatSlot ? 0 : this.flankAng * fade * (wegAng !== null ? 0.4 : 1);
+            this.laufe(host, basis + jitter, this.speed * slowF, dt);
             this.advanceStep(dt);
           }
         }

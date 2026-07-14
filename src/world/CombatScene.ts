@@ -17,7 +17,8 @@ import {
   newCombatState, inputLight, inputHeavy, inputRoll, inputBlockStart, inputBlockEnd,
   stepCombat, resolveIncoming, damageAfterArmor, blockedDamage, type CombatState, type AttackEvent,
 } from '../logic/combat';
-import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TIMESCALE, WEAPON_MOVESETS, GORE_WUCHT, KNOCKBACK, WEAPON_HAND, NAHKAMPF, PHYSIK, PFEIL_PHYSIK } from '../data/kampf';
+import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TIMESCALE, WEAPON_MOVESETS, GORE_WUCHT, KNOCKBACK, WEAPON_HAND, NAHKAMPF, PHYSIK, PFEIL_PHYSIK, ANGRIFFSSLOTS } from '../data/kampf';
+import { weiseSlotsZu } from '../logic/angriffsSlots';
 import { ALTAR, SPELLS, SPELL_FX, SCHOOLS } from '../data/balancing';
 import { newPlayerState, recalc, weaponGem, aktiveWaffe, type PlayerState } from '../logic/playerState';
 import { addSchoolUse } from '../logic/progression';
@@ -2895,6 +2896,42 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // 48px-Zelle einsortiert (>= größter Treffer-Durchmesser), danach prüfen wir
   // nur die 3x3-Nachbarzellen - jedes Paar genau einmal (B.id > A.id).
   private static readonly SEP_CELL = 48;
+  // R135d Angriffs-Slots (Dok 05 L7): verteilt die Nahkaempfer, die den Helden
+  // angreifen wollen, auf Ring-Plaetze um ihn herum, statt dass alle denselben
+  // Punkt anrennen. Nur alle neuZuweisenS neu (kein Zappeln). Fernkaempfer, Bosse,
+  // Vieh-/Belagerungs-Jaeger und Verbuendete bekommen keinen Slot.
+  private slotZuweisT = 0;
+  private weiseAngriffsSlotsZu(dt: number): void {
+    this.slotZuweisT -= dt;
+    if (this.slotZuweisT > 0) return;
+    this.slotZuweisT = ANGRIFFSSLOTS.neuZuweisenS;
+    const antraege: { id: number; winkel: number }[] = [];
+    for (const e of this.enemies) {
+      e.slotWinkel = null;
+      if (e.hp <= 0 || e.team === 'spieler' || e.ranged || e.boss || e.versteckt || e.jagdZiel || e.belagerungsZiel) continue;
+      if (Math.hypot(this.px - e.x, this.py - e.y) > ANGRIFFSSLOTS.engagierRadius) continue;
+      antraege.push({ id: e.id, winkel: Math.atan2(e.y - this.py, e.x - this.px) });   // Winkel vom Helden aus
+    }
+    const map = weiseSlotsZu(antraege, ANGRIFFSSLOTS.anzahl);
+    for (const e of this.enemies) { const w = map.get(e.id); if (w !== undefined) e.slotWinkel = w; }
+  }
+
+  // R135d Held-Kollision (Dok 05 L17): Gegner koennen sich nicht auf dem Punkt des
+  // Helden stapeln - sie werden aus seinem Koerperradius gedrueckt und bilden einen
+  // Ring an seinem Rand. Nur Gegner, nicht Verbuendete. Der Held selbst wird nicht
+  // gebremst (er bleibt beweglich), nur die Gegner weichen ihm aus.
+  private druckeGegnerVomHelden(): void {
+    const hr = this.playerR();
+    for (const e of this.enemies) {
+      if (e.hp <= 0 || e.team === 'spieler' || e.versteckt) continue;
+      const dx = e.x - this.px, dy = e.y - this.py, d = Math.hypot(dx, dy), m = hr + e.r;
+      if (d < m && d > 0.01) {
+        const a = Math.atan2(dy, dx), push = m - d;
+        e.moveBody(this, Math.cos(a) * push, Math.sin(a) * push);
+      }
+    }
+  }
+
   private separateEnemies(): void {
     const en = this.enemies;
     if (en.length < 2) return;
@@ -3074,6 +3111,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
     // Gegner: erst das Flussfeld vom Spieler aus aktualisieren (Wegfindung)
     this.updateWegfeld(dt);
+    this.weiseAngriffsSlotsZu(dt);   // R135d: Nahkaempfer bekommen Ring-Plaetze um den Helden
     for (const e of [...this.enemies]) {
       e.update(this.enemyHost(e), dt);
       if (this.playerDead) return dt;
@@ -3090,6 +3128,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       }
     }
     this.separateEnemies();
+    this.druckeGegnerVomHelden();   // R135d: Gegner kollidieren mit dem Helden (kein Stapeln auf seinem Punkt)
 
     // Bannkreise: Untote in der Fläche werden geschwächt
     for (const z of this.banishZones) {

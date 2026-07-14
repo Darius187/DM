@@ -174,5 +174,15 @@ export const SHRINE = { healsFull: true, refillsFlasks: true, resetsEnemies: fal
 // Flaschensystem (Masterprompt 6.2)
 export const FLASKS = { start: 3, healPct: 0.45 } as const;
 
+// Angriffs-Slots (R135d, Dok 05 L7 / Dok 06 Teil H, Massnahme 2): Nahkaempfer
+// bekommen reservierte Plaetze auf einem Ring um ihr Ziel, statt alle denselben
+// Punkt anzustuermen. So kann der Held (oder jede Einheit) UMZINGELT werden.
+export const ANGRIFFSSLOTS = {
+  anzahl: 12,          // so viele Nahkaempfer koennen EIN Ziel gleichzeitig umringen
+  ringLuecke: 13,      // Slot-Radius = Zielradius + Angreiferradius + dies (~34 px = im Melee-Band)
+  engagierRadius: 210, // nur Nahkaempfer naeher als dies bekommen einen Slot
+  neuZuweisenS: 0.3,   // Slots nur alle 0,3 s neu verteilen (kein Zappeln, vgl. L8)
+} as const;
+
 // Debug-Flag: Debug-Ausgaben nur hinter diesem Schalter
 export const DEBUG = false;
