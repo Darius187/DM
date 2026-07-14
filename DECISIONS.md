@@ -2171,3 +2171,15 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Verifiziert nach vollem Reload auf der Startkarte: Pferd sichtbar, Aufsitzen
   sichtbar, keine neuen __MISSING-/Framewarnungen. Build sauber, 282 Tests gruen.
   Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
+
+## R136 - Kerker-Generator Schritt 1 (V12): Teilung + Raeume + Tueren
+- Neues Modul src/world/kerkerDungeon.ts (reine Logik, 7 Tests): rekursive
+  Flaechenteilung, 1-Kachel-Trennwaende, Tueren via randomisiertem Kruskal-
+  Spanning-Tree + extraTuerAnteil Schleifen, Flood-Fill-Pruefung mit Reparatur.
+- Output = EditCode-Gitter (dungeonVorlage.ts) -> Editor/AUS GENERATOR/Begehen/
+  Spielen schlucken es ohne Konvertierung (editorCodes:true), von Hand editierbar.
+- Als V12 in erzeugeKarte() + V-Knopf in DungeonProbe. Hoehlen-/Blob-Generator
+  (V4, hoehlenDungeon.ts) UNANGETASTET - zwei Werkzeuge, zwei Aufgaben.
+- Tuning in src/data/kerker.ts; stopChance 0.4 -> 0.5 nach Editor-Sichtpruefung
+  (mehr Saele, 187 -> ~165 Raeume). Spec-Rahmen 0.3-0.5 eingehalten.
+- HALT nach Schritt 1 (Autor-Abnahme im Editor) - Vaults/Setpieces/Rollen folgen.

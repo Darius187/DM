@@ -13,13 +13,14 @@ import { baueV9 } from './v9Dungeon';
 import { baueV10 } from './v10Dungeon';
 import { baueV11 } from './v11Dungeon';
 import { baueKatakombenDungeon } from './katakombenDungeon';
+import { baueKerker } from './kerkerDungeon';
 import type { KatakombenRolle } from '../data/katakombenDungeon';
 import { buildCrypt } from './areagen';
 import { seededRng } from '../logic/rng';
 import { T, SOLID } from './tiles';
 import { VORLAGE_FARBE, type EditCode } from './dungeonVorlage';
 
-export type DungeonVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
+export type DungeonVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 export interface ProbeKarte {
   name: string;
@@ -105,6 +106,20 @@ const ROLLEN_LABEL: Record<KatakombenRolle, { text: string; farbe: string }> = {
 };
 
 export function erzeugeKarte(version: DungeonVersion): ProbeKarte {
+  if (version === 12) {
+    // R136 (Fable-Sitzung, Kerker-Spec): rekursive Flaechenteilung - die Flaeche
+    // ist LUECKENLOS mit aneinandergrenzenden Raeumen gefuellt, Wand = duenne
+    // Trennlinie, Tueren per Spanning Tree (alle Raeume erreichbar) + Schleifen.
+    const r = seededRng(Math.floor(Math.random() * 1e9));
+    const d = baueKerker(() => r.random());
+    const tueren = d.grid.flat().filter((t) => t === 3).length;
+    return {
+      name: `V12 - KERKER: lueckenlose Flaechenteilung (${d.raeume.length} Räume, ${tueren} Türen)`,
+      w: d.w, h: d.h, grid: d.grid as number[][], solid: (t) => t === 0 || t === 2,
+      farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a, editorCodes: true,
+      raumBoeden: zufallsRaumBoeden(d.raeume),
+    };
+  }
   if (version === 9) {
     // R118: gefuellte Kammern + ECHTE Tueren (im Spiel T.DTUER, hier Editor-Code 3)
     const r = seededRng(Math.floor(Math.random() * 1e9));
