@@ -74,6 +74,17 @@ function tintPal(p: Pal, hell: number): Pal {
   };
 }
 
+function heldPalette(tier: HeldTier, f: HeldForm): Pal {
+  let p: Pal = { ...PALETTEN[tier] };
+  const fb = f.farben;
+  if (fb.wams) { p.wams = fb.wams; p.wamsH = shade(fb.wams, 20); p.wamsS = shade(fb.wams, -24); }
+  if (fb.cape) { p.umh = fb.cape; p.umhS = shade(fb.cape, -22); }
+  if (fb.kapuze) { p.kap = fb.kapuze; p.kapH = shade(fb.kapuze, 18); p.kapS = shade(fb.kapuze, -22); }
+  if (fb.beine) { p.bein = fb.beine; p.beinS = shade(fb.beine, -22); }
+  if (f.ruestHell) p = tintPal(p, f.ruestHell);
+  return p;
+}
+
 function poly(ctx: CanvasRenderingContext2D, pts: number[][], c: string): void {
   ctx.fillStyle = c;
   ctx.beginPath();
@@ -531,13 +542,7 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: num
   const f = getHeldForm(tier);
   // Palette: erst Farb-Überschreibungen je Teil, DANN Helligkeit auf ALLES
   // (Autorbug R40: Helligkeit ließ überschriebene Teile + Helm unberührt)
-  let p: Pal = { ...PALETTEN[tier] };
-  const fb = f.farben;
-  if (fb.wams) { p.wams = fb.wams; p.wamsH = shade(fb.wams, 20); p.wamsS = shade(fb.wams, -24); }
-  if (fb.cape) { p.umh = fb.cape; p.umhS = shade(fb.cape, -22); }
-  if (fb.kapuze) { p.kap = fb.kapuze; p.kapH = shade(fb.kapuze, 18); p.kapS = shade(fb.kapuze, -22); }
-  if (fb.beine) { p.bein = fb.beine; p.beinS = shade(fb.beine, -22); }   // Hose/Beine färbbar (Autorwunsch R53)
-  if (f.ruestHell) p = tintPal(p, f.ruestHell);
+  const p = heldPalette(tier, f);
   const attack = frame >= SCHLAG_FRAME;
   const phase = attack ? Math.min(SCHLAG_PHASEN - 1, frame - SCHLAG_FRAME) : 0;
   const step = attack ? 0 : frame % 4;   // 0 stehen(aus), 1 li vor, 2 stehen(ein-atmen), 3 re vor
@@ -612,6 +617,79 @@ export function drawHeld(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: num
   }
   ctx.restore();   // Ende Oberkörper-Atemhub
 
+  ctx.restore();
+}
+
+// Reitpose des echten Hauptcharakters. Anders als der normale Geh-Sprite hat
+// sie einen klaren Sitzpunkt, angewinkelte Beine in den Steigbuegeln und beide
+// Haende vor dem Koerper an den Zuegeln. Der Sitzpunkt liegt bei (32, 43).
+export const REITER_SITZ_Y = 43;
+export const REITER_FRAMES = 4;
+
+function reiterGlied(
+  ctx: CanvasRenderingContext2D,
+  a: [number, number], b: [number, number], c: [number, number],
+  breite: number, farbe: string, ende?: string,
+): void {
+  ctx.strokeStyle = farbe;
+  ctx.lineWidth = breite;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.stroke();
+  if (ende) {
+    ctx.strokeStyle = ende; ctx.lineWidth = breite + 0.8;
+    ctx.beginPath(); ctx.moveTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.stroke();
+  }
+  ctx.lineWidth = 1;
+}
+
+export function drawReiter(ctx: CanvasRenderingContext2D, tier: HeldTier, dir: number, frame: number): void {
+  const basis = getHeldForm(tier);
+  // Feste Reitproportionen, aber Farben, Kopf, Visier und Ruestungsdetails des
+  // aktuell ausgeruesteten Hauptcharakters bleiben erhalten.
+  const f: HeldForm = { ...basis, kopfY: 14.5, schulterY: 23, rumpfH: 17, capeLaenge: Math.min(0.72, basis.capeLaenge) };
+  const p = heldPalette(tier, f);
+  const d = ((dir % 8) + 8) % 8;
+  const seite = d !== 0 && d !== 4;
+  const face = (d === 1 || d === 2 || d === 3) ? -1 : 1;
+  const rhythmus = [0, 0.55, 0.15, -0.45][frame % REITER_FRAMES] ?? 0;
+  const lean = seite ? face * (1.2 + Math.max(0, rhythmus) * 0.35) : 0;
+  const hipY = REITER_SITZ_Y - 1;
+
+  ctx.save();
+  ctx.translate(lean, rhythmus);
+  if (f.leuchten > 0) { ctx.shadowColor = 'rgba(246,210,96,0.9)'; ctx.shadowBlur = 3; }
+
+  // Kurzer Umhang hinter dem Sattel; er endet oberhalb der Pferdeflanke.
+  const capeBack = seite ? -face * (4 + (frame % 2)) : 0;
+  poly(ctx, [[CX - 5, f.schulterY], [CX + 5, f.schulterY], [CX + 6 + capeBack, hipY + 5], [CX - 7 + capeBack, hipY + 5]], p.umhS);
+
+  if (seite) {
+    // Fernes Bein zuerst, danach nahes Bein: Huefte -> Knie vor dem Sattel ->
+    // Stiefel fast senkrecht im Steigbuegel.
+    reiterGlied(ctx, [CX - face * 1.8, hipY], [CX + face * 5.0, 48], [CX + face * 2.0, 57], f.beinB - 1.2, shade(p.bein, -18), shade(p.stiefel, -12));
+    reiterGlied(ctx, [CX + face * 1.0, hipY], [CX + face * 7.0, 47], [CX + face * 4.0, 57], f.beinB - 0.4, p.bein, p.stiefel);
+
+    // Ferner Arm liegt hinter dem Rumpf und greift ebenfalls nach vorn.
+    reiterGlied(ctx, [CX - face * 1.5, f.schulterY + 3], [CX + face * 4.5, 30], [CX + face * 9.5, 36], f.armB - 1, shade(p.wams, -16), f.farben.hand ?? shade(p.wams, -18));
+    seiteRumpf(ctx, p, f, face, tier === 'kette' && f.kettenGitter > 0);
+    reiterGlied(ctx, [CX + face * 2.0, f.schulterY + 3], [CX + face * 6.5, 30], [CX + face * 11.0, 36], f.armB, p.wams, f.farben.hand ?? shade(p.wams, -14));
+    seitePauldron(ctx, p, f, face);
+    const kopfDir: Dir = (d === 3 || d === 5) ? 3 : (d === 1 || d === 7) ? 0 : (face < 0 ? 1 : 2);
+    kopf(ctx, p, f, kopfDir);
+  } else {
+    // Front/Ruecken: Knie liegen ausserhalb des Sattels, beide Fuesse ziehen
+    // wieder nach innen. So ist die Sitzhaltung sofort lesbar.
+    reiterGlied(ctx, [CX - 3, hipY], [CX - 8, 49], [CX - 5, 57], f.beinB - 0.5, shade(p.bein, -14), shade(p.stiefel, -10));
+    reiterGlied(ctx, [CX + 3, hipY], [CX + 8, 49], [CX + 5, 57], f.beinB - 0.2, p.bein, p.stiefel);
+    poly(ctx, [[CX - 8, f.schulterY], [CX + 8, f.schulterY], [CX + 6, hipY + 1], [CX - 6, hipY + 1]], p.wams);
+    poly(ctx, [[CX, f.schulterY], [CX + 8, f.schulterY], [CX + 6, hipY + 1], [CX, hipY + 1]], p.wamsS);
+    const hand = f.farben.hand ?? shade(p.wams, -14);
+    reiterGlied(ctx, [CX - 7, f.schulterY + 3], [CX - 5, 31], [CX - 3, 36], f.armB, p.wams, hand);
+    reiterGlied(ctx, [CX + 7, f.schulterY + 3], [CX + 5, 31], [CX + 3, 36], f.armB, p.wams, hand);
+    pauldrons(ctx, p, f);
+    kopf(ctx, p, f, d === 4 ? 3 : 0);
+  }
   ctx.restore();
 }
 

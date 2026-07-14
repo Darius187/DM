@@ -1,8 +1,8 @@
 # HUD-Assets 1300/1400 fuer Claude Code
 
 Diese Dateien sind die verbindliche Bildvorlage fuer die flache Spiel-HUD-Leiste.
-Codex liefert hier nur Bildmaterial und Uebergabe. Claude Code integriert es in
-`src/ui/hud.ts`.
+Codex bindet die leeren Bauteile in `src/ui/hud.ts` ein. Claude Code prueft den
+fertigen Branch und fasst `src/ui/hud.ts` waehrenddessen nicht parallel an.
 
 ## Wichtigste Dateien
 
@@ -49,9 +49,11 @@ Tastaturleiste beginnt direkt rechts daneben. Die Leiste bleibt extra flach.
   die vertikalen Balken zu hoch.
 - Nicht die alte Canvas-Optik nur leicht umfärben.
 
-## Claude-Code-Einbau
+## Technischer Einbau
 
-- Nur `src/ui/hud.ts` fuer die Integration anfassen.
+- Die nutzbaren PNGs werden in `src/ui/hud.ts` importiert und als Phaser-Images
+  hinter den bestehenden dynamischen Texten und Klickzonen dargestellt.
+- Die bisherigen `Graphics`-Formen bleiben nur als Lade-Fallback erhalten.
 - Die oeffentlichen Anker/Signaturen erhalten:
   `orbHpAnkerX`, `orbMpAnkerX`, `mausLeisteAnkerX`, `hotbarMitteX`,
   Klasse `Hud` mit `update(extra)`, `belegeBeiPunkt`, `klickBlockiert`.

@@ -101,7 +101,6 @@ export class TitleScene extends Phaser.Scene {
       ['DUNGEON-PROBE', () => this.scene.start('DungeonProbe'), true],
       ['STADTPLANER', () => this.scene.start('StadtProbe'), true],
       ['ANHÖHE-PROBE', () => this.scene.start('AnhoeheProbe'), true],
-      ['REIT-PROBE', () => this.scene.start('ReitProbe'), true],
       ['GRUSEL-SCHATTEN', () => this.scene.start('StrahlenProbe'), true],
       ['MENÜ-PROBE (UI)', () => this.scene.start('UIProbe'), true],
       ['HAUS-PROBE (3D)', () => this.scene.start('HausProbe'), true],

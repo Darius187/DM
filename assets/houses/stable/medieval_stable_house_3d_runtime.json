@@ -1,0 +1,537 @@
+{
+  "asset": "medieval_stable_house_3d_runtime",
+  "asset_type": "rotatable walkable 3D medieval horse stable and hay loft",
+  "model": "medieval_stable_house_3d_runtime.glb",
+  "units": "meters",
+  "root_node": "STABLE_HOUSE_ROTATION_PIVOT",
+  "coordinate_conversion": {
+    "blender": "X/Y ground, Z up",
+    "threejs": "X/Z ground, Y up",
+    "point_rule": "[x,y,z] -> [x,z,-y]"
+  },
+  "continuous_controls": {
+    "building_yaw_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 0
+    },
+    "uniform_scale": {
+      "min": 0.25,
+      "max": 4,
+      "default": 1
+    },
+    "camera_elevation_degrees": {
+      "min": 18,
+      "max": 78,
+      "default": 43
+    },
+    "camera_azimuth_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 36
+    },
+    "orthographic_zoom": {
+      "min": 0.55,
+      "max": 2.4,
+      "default": 1
+    }
+  },
+  "materials": {
+    "all_visible_materials_have_embedded_basecolor_textures": true,
+    "runtime_tinting_allowed": false,
+    "transparent_windows": true,
+    "texture_count": 19,
+    "used_materials": [
+      "MAT_STABLE_AWNING_CLOTH",
+      "MAT_STABLE_DRY_HAY",
+      "MAT_STABLE_FORGED_IRON",
+      "MAT_STABLE_GLASS_TRANSPARENT",
+      "MAT_STABLE_HORSE_BAY",
+      "MAT_STABLE_HORSE_BLACK",
+      "MAT_STABLE_HORSE_CHESTNUT",
+      "MAT_STABLE_MOSS_WEATHERING",
+      "MAT_STABLE_OAK_DARK",
+      "MAT_STABLE_OAK_MID",
+      "MAT_STABLE_PACKED_EARTH",
+      "MAT_STABLE_PLASTER_AGED",
+      "MAT_STABLE_PLASTER_WORN",
+      "MAT_STABLE_SHINGLE_A",
+      "MAT_STABLE_SHINGLE_B",
+      "MAT_STABLE_SHINGLE_C",
+      "MAT_STABLE_STONE_DARK",
+      "MAT_STABLE_STONE_WARM",
+      "MAT_STABLE_WORN_LEATHER"
+    ]
+  },
+  "renderer_recipe": {
+    "output_color_space": "SRGBColorSpace",
+    "tone_mapping": "ACESFilmicToneMapping",
+    "exposure": 1.0,
+    "do_not_replace_materials": true
+  },
+  "doors": {
+    "DOOR_STABLE_MAIN_HINGE": {
+      "node": "DOOR_STABLE_MAIN_HINGE",
+      "closed_frame": 1,
+      "open_frame": 30
+    },
+    "DOOR_STALL_1_HINGE": {
+      "node": "DOOR_STALL_1_HINGE",
+      "closed_frame": 1,
+      "open_frame": 30
+    },
+    "DOOR_STALL_2_HINGE": {
+      "node": "DOOR_STALL_2_HINGE",
+      "closed_frame": 1,
+      "open_frame": 30
+    },
+    "DOOR_STALL_3_HINGE": {
+      "node": "DOOR_STALL_3_HINGE",
+      "closed_frame": 1,
+      "open_frame": 30
+    },
+    "DOOR_HAY_LOFT_LEFT_HINGE": {
+      "node": "DOOR_HAY_LOFT_LEFT_HINGE",
+      "closed_frame": 1,
+      "open_frame": 30
+    },
+    "DOOR_HAY_LOFT_RIGHT_HINGE": {
+      "node": "DOOR_HAY_LOFT_RIGHT_HINGE",
+      "closed_frame": 1,
+      "open_frame": 30
+    }
+  },
+  "walkable_interior": {
+    "enabled": true,
+    "ground": "NAV_STABLE_AISLE",
+    "loft": "NAV_HAY_LOFT",
+    "lean_to": "NAV_LEAN_TO",
+    "stairs": "COLLISION_LOFT_STAIR"
+  },
+  "visibility_controls": {
+    "roof_property": "roof_removable",
+    "cutaway_property": "cutaway_near_wall",
+    "floor_property": "floor_level"
+  },
+  "node_groups": {
+    "transparent_windows": [
+      "WINDOW_DORMER_GLASS",
+      "WINDOW_LEFT_GABLE_GLASS",
+      "WINDOW_REAR_LOFT_LEFT_GLASS",
+      "WINDOW_REAR_LOFT_RIGHT_GLASS",
+      "WINDOW_RIGHT_GABLE_GLASS"
+    ],
+    "horses": [
+      "HORSE_1",
+      "HORSE_2",
+      "HORSE_3"
+    ]
+  },
+  "animations": [
+    {
+      "name": "DOOR_HAY_LOFT_LEFT_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_HAY_LOFT_RIGHT_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_STABLE_MAIN_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_STALL_1_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_STALL_2_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_STALL_3_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    }
+  ],
+  "collision_guides": [
+    {
+      "name": "NAV_STABLE_AISLE",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        0.85,
+        0.5
+      ],
+      "size_blender_xyz": [
+        9.9,
+        4.5,
+        0.06
+      ]
+    },
+    {
+      "name": "NAV_HAY_LOFT",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "LOFT",
+      "center_blender_xyz": [
+        0.0,
+        0.0,
+        3.18
+      ],
+      "size_blender_xyz": [
+        10.2,
+        6.2,
+        0.06
+      ]
+    },
+    {
+      "name": "NAV_LEAN_TO",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        6.75,
+        0.25,
+        0.1
+      ],
+      "size_blender_xyz": [
+        2.8,
+        5.6,
+        0.06
+      ]
+    },
+    {
+      "name": "NAV_FRONT_APPROACH",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        0.0,
+        -4.12,
+        0.08
+      ],
+      "size_blender_xyz": [
+        10.4,
+        1.0,
+        0.06
+      ]
+    },
+    {
+      "name": "COLLISION_LOFT_STAIR",
+      "kind": "walk",
+      "role": "stair_ramp",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -4.45,
+        2.0,
+        1.75
+      ],
+      "size_blender_xyz": [
+        1.0,
+        2.35,
+        2.7
+      ]
+    },
+    {
+      "name": "COLLISION_REAR_WALL",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        3.4,
+        1.7
+      ],
+      "size_blender_xyz": [
+        10.8,
+        0.3,
+        2.55
+      ]
+    },
+    {
+      "name": "COLLISION_LEFT_WALL",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -5.4,
+        0.0,
+        1.7
+      ],
+      "size_blender_xyz": [
+        0.3,
+        6.8,
+        2.55
+      ]
+    },
+    {
+      "name": "COLLISION_RIGHT_WALL",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        5.4,
+        0.0,
+        1.7
+      ],
+      "size_blender_xyz": [
+        0.3,
+        6.8,
+        2.55
+      ]
+    },
+    {
+      "name": "COLLISION_FRONT_DOOR_SIDE",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -5.3,
+        -3.4,
+        1.55
+      ],
+      "size_blender_xyz": [
+        0.25,
+        0.3,
+        2.5
+      ]
+    },
+    {
+      "name": "COLLISION_STALL_PARTITION_0",
+      "kind": "block",
+      "role": "stall_partition",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -3.35,
+        -1.55,
+        1.3
+      ],
+      "size_blender_xyz": [
+        0.18,
+        3.25,
+        2.2
+      ]
+    },
+    {
+      "name": "COLLISION_STALL_PARTITION_1",
+      "kind": "block",
+      "role": "stall_partition",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -0.75,
+        -1.55,
+        1.3
+      ],
+      "size_blender_xyz": [
+        0.18,
+        3.25,
+        2.2
+      ]
+    },
+    {
+      "name": "COLLISION_STALL_PARTITION_2",
+      "kind": "block",
+      "role": "stall_partition",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        1.85,
+        -1.55,
+        1.3
+      ],
+      "size_blender_xyz": [
+        0.18,
+        3.25,
+        2.2
+      ]
+    },
+    {
+      "name": "COLLISION_HITCH_RAIL",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        -0.3,
+        -4.75,
+        0.62
+      ],
+      "size_blender_xyz": [
+        9.2,
+        0.25,
+        1.15
+      ]
+    },
+    {
+      "name": "TRIGGER_STABLE_MAIN",
+      "kind": "transition",
+      "role": "enter_stable",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -4.72,
+        -3.44,
+        1.35
+      ],
+      "size_blender_xyz": [
+        1.0,
+        1.0,
+        2.5
+      ]
+    },
+    {
+      "name": "TRIGGER_STALL_1",
+      "kind": "transition",
+      "role": "enter_stall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -2.4,
+        -3.45,
+        1.15
+      ],
+      "size_blender_xyz": [
+        1.35,
+        1.0,
+        2.1
+      ]
+    },
+    {
+      "name": "TRIGGER_STALL_2",
+      "kind": "transition",
+      "role": "enter_stall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.2,
+        -3.45,
+        1.15
+      ],
+      "size_blender_xyz": [
+        1.35,
+        1.0,
+        2.1
+      ]
+    },
+    {
+      "name": "TRIGGER_STALL_3",
+      "kind": "transition",
+      "role": "enter_stall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        2.8,
+        -3.45,
+        1.15
+      ],
+      "size_blender_xyz": [
+        1.35,
+        1.0,
+        2.1
+      ]
+    },
+    {
+      "name": "TRIGGER_HAY_LOFT_DOOR",
+      "kind": "interaction",
+      "role": "open_hay_loft",
+      "floor": "LOFT",
+      "center_blender_xyz": [
+        -3.835,
+        -3.9,
+        5.7
+      ],
+      "size_blender_xyz": [
+        1.6,
+        1.0,
+        1.8
+      ]
+    }
+  ],
+  "markers": [
+    {
+      "name": "SPAWN_EXTERIOR_MAIN",
+      "role": "spawn_exterior",
+      "floor": "EXTERIOR",
+      "blender_xyz": [
+        -4.72,
+        -4.2,
+        0.08
+      ]
+    },
+    {
+      "name": "SPAWN_INTERIOR_STABLE",
+      "role": "spawn_interior",
+      "floor": "GROUND",
+      "blender_xyz": [
+        -4.72,
+        -2.75,
+        0.5
+      ]
+    },
+    {
+      "name": "SPAWN_STABLE_AISLE",
+      "role": "spawn_aisle",
+      "floor": "GROUND",
+      "blender_xyz": [
+        0.0,
+        0.55,
+        0.5
+      ]
+    },
+    {
+      "name": "SPAWN_HAY_LOFT",
+      "role": "spawn_loft",
+      "floor": "LOFT",
+      "blender_xyz": [
+        -4.45,
+        2.85,
+        3.22
+      ]
+    },
+    {
+      "name": "SPAWN_LEAN_TO",
+      "role": "spawn_lean_to",
+      "floor": "GROUND",
+      "blender_xyz": [
+        6.55,
+        0.2,
+        0.1
+      ]
+    }
+  ],
+  "counts": {
+    "runtime_objects": 2063,
+    "materials": 19,
+    "windows": 5,
+    "doors": 6,
+    "collisions": 18,
+    "main_roof_shingles": 858,
+    "hay_gable_shingles": 186,
+    "lean_to_shingles": 191
+  },
+  "integration_contract": {
+    "load_with": "Three.js GLTFLoader",
+    "rotate": "STABLE_HOUSE_ROTATION_PIVOT around Three.js Y",
+    "collisions": "build from JSON and transform with building",
+    "doors": "play named animations",
+    "forbidden": [
+      "PNG replacement",
+      "material tinting",
+      "visible collision meshes"
+    ]
+  }
+}

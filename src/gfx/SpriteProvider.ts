@@ -5,7 +5,7 @@
 import Phaser from 'phaser';
 import gfxConfig from '../data/gfx.json';
 import { drawHumanoid, drawQuadruped, drawChicken, FIGURES, SPRITE, TILE, type Dir, type FigureSpec, type QuadSpec } from './fallbackArt';
-import { drawHeld, HELD_CELL, HELD_DIRS, HELD_FRAMES, HELD_FELD, HELD_MARGIN, SCHLAG_FRAME, type WaffenKlasse } from './heldArt';
+import { drawHeld, drawReiter, HELD_CELL, HELD_DIRS, HELD_FRAMES, HELD_FELD, HELD_MARGIN, REITER_FRAMES, REITER_SITZ_Y, SCHLAG_FRAME, type WaffenKlasse } from './heldArt';
 import { drawItemIcon, iconKey, ICON_SIZE } from './itemIcons';
 import { drawTileArt, drawObjectArt, drawBreakable } from './tileArt';
 import { DETAIL_NPCS } from './npcArt';
@@ -69,6 +69,7 @@ export class SpriteProvider {
   // Welche Held-Atlanten existieren (Tier + Waffe), damit invalidateHeld nach
   // einer Editor-Änderung ALLE neu zeichnet (R54: pro Waffe ein eigener Atlas).
   private heldAtlanten = new Map<string, { tier: HeldTier; waffe: WaffenKlasse | null }>();
+  private reiterAtlanten = new Map<string, HeldTier>();
 
   invalidateHeld(): void {
     const FELD = HELD_FELD, M = HELD_MARGIN;
@@ -91,6 +92,18 @@ export class SpriteProvider {
           drawHeld(ctx, tier, dir, frame, waffe);
           ctx.restore();
         }
+      }
+      tex.refresh();
+    }
+    for (const [key, tier] of this.reiterAtlanten) {
+      if (!this.tex.exists(key)) continue;
+      const tex = this.tex.get(key) as Phaser.Textures.CanvasTexture;
+      const canvas = tex.getSourceImage() as HTMLCanvasElement;
+      const ctx = canvas.getContext('2d')!;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let dir = 0; dir < HELD_DIRS; dir++) for (let frame = 0; frame < REITER_FRAMES; frame++) {
+        ctx.save(); ctx.translate(frame * HELD_FELD + HELD_MARGIN, dir * HELD_FELD + HELD_MARGIN);
+        drawReiter(ctx, tier, dir, frame); ctx.restore();
       }
       tex.refresh();
     }
@@ -124,6 +137,33 @@ export class SpriteProvider {
     }
     this.heldAtlanten.set(key, { tier, waffe });
     return key;
+  }
+
+  private ensureReiterFigure(tier: HeldTier): string {
+    const key = `reiter_${tier}`;
+    if (this.tex.exists(key)) return key;
+    const canvas = document.createElement('canvas');
+    canvas.width = HELD_FELD * REITER_FRAMES;
+    canvas.height = HELD_FELD * HELD_DIRS;
+    const ctx = canvas.getContext('2d')!;
+    for (let dir = 0; dir < HELD_DIRS; dir++) for (let frame = 0; frame < REITER_FRAMES; frame++) {
+      ctx.save(); ctx.translate(frame * HELD_FELD + HELD_MARGIN, dir * HELD_FELD + HELD_MARGIN);
+      drawReiter(ctx, tier, dir, frame); ctx.restore();
+    }
+    const texture = this.tex.addCanvas(key, canvas)!;
+    for (let dir = 0; dir < HELD_DIRS; dir++) for (let frame = 0; frame < REITER_FRAMES; frame++) {
+      texture.add(`d${dir}f${frame}`, 0, frame * HELD_FELD, dir * HELD_FELD, HELD_FELD, HELD_FELD);
+    }
+    this.reiterAtlanten.set(key, tier);
+    return key;
+  }
+
+  applyReiter(sprite: Phaser.GameObjects.Sprite, tier: HeldTier, dir: number, step: number): void {
+    const key = this.ensureReiterFigure(tier);
+    const frame = `d${((dir % HELD_DIRS) + HELD_DIRS) % HELD_DIRS}f${step % REITER_FRAMES}`;
+    if (sprite.texture.key !== key || sprite.frame.name !== frame) sprite.setTexture(key, frame);
+    // Der Sprite wird direkt auf den aus Blender projizierten Sattelpunkt gesetzt.
+    sprite.setOrigin(0.5, (HELD_MARGIN + REITER_SITZ_Y) / HELD_FELD);
   }
 
   // Sprite-Textur setzen (eigener Mini-Animator, einheitlich für beide Quellen)

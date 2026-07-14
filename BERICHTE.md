@@ -1223,3 +1223,75 @@ sind LITE (Stehen/Strecken/Zuwendung, keine eigenen Pose-Atlanten); Stahl-
 Quest-Fertigstellung (delayedCall) headless nicht abgewartet; Bewohner-Zahl
 fuer den Verzehr ist eine Daten-Konstante (24), nicht live gezaehlt;
 Kraeuter-Untertypen nur vorbereitet (KRAEUTER_ARTEN).
+## Runde 133 - Reitpferd live im Hauptspiel
+Fertig und direkt auf der Startkarte testbar:
+- Gesatteltes und gezÃ¤umtes Blender-Pferd steht beim Spieler. E = auf-/absitzen.
+- W/S regeln Vorwaerts-Tempo, Bremsen und langsames Rueckwaertsgehen; A/D lenken.
+- Rechte Maus halten = fein und stufenlos in Richtung Mauszeiger lenken. Die
+  Kampfbelegung der rechten Maus bleibt nach dem Absitzen unveraendert.
+- Schritt, Trab, Galopp und Rueckwaertsgang laufen als echte 8-Richtungs-
+  Animationen. Kleine/mittlere/starke Link-/Rechtswendungen haben ebenfalls je
+  8 Frames, damit Beine, Hals und Rumpf in der Kurve nicht einfrieren.
+- Der existierende Hauptcharakter sitzt als eigene Ebene am Sattel; kein fest in
+  das Pferdebild eingebrannter Fremdreiter. Groessere Pferdekollision und freier
+  Absitzpunkt sind aktiv.
+- Browser-Sichttest ohne Laufzeitfehler; Screenshot: screenshots/reitpferd-live.png.
+- `npm run build` sauber, 42 Testdateien / 279 Tests gruen.
+
+Nach dem ersten Live-Test nachgebessert:
+- Pferd, Reiter, Schatten und Kollision deutlich verkleinert; es belegt den
+  engen 2D-Weg nicht mehr optisch wie ein Grossgegner.
+- Einfacher Mausmodus: rechte Maustaste halten, das Pferd reitet zum Cursor,
+  bremst in Zielnaehe und dreht bei seitlichen/rueckwaertigen Zielen zuerst ein.
+- Langsames Drehen reagiert staerker; W/S/A/D und Rueckwaertsgang bleiben als
+  manuelle Steuerung erhalten. Browser fehlerfrei, Build sauber, 280 Tests gruen.
+
+## Runde 134 - Animationen geerdet und Reiter wirklich aufgesessen
+Nach dem direkten Spielerfeedback wurde nicht nur optisch nachjustiert, sondern
+die fehlerhafte Export-/Uebergangslogik korrigiert:
+- Feste Boden-Kamera statt Mitschwingen mit dem Pferderumpf; flachere 10-Grad-
+  Perspektive und mitdrehendes Studiolicht verhindern Schweben und Farbwechsel.
+- Einheitliches dunkleres Braun-Grading fuer alle 672 Pferde-Frames.
+- Schrittphase bleibt beim Wechsel zu Trab/Galopp erhalten; kurzer 160-ms-
+  Crossfade und stetige, tempoabhaengige Hufkadenz beseitigen den harten Sprung.
+- Eigene 8-Richtungs-Sitzfigur des Haupthelden mit gebeugten Knien/Steigbuegeln
+  und Zuegelarmen. Die Huefte folgt einem aus Blender exportierten Sattelpunkt
+  pro Frame; kein abgeschnittener Stand-Sprite mehr hinter dem Pferd.
+- Live im Hauptspiel sichtbar geprueft. `npm run build` erfolgreich; 42
+  Testdateien / 281 Tests gruen. Screenshot: screenshots/reitpferd-live.png.
+
+## Runde 135 - Harte Gangwechsel entfernt, 16 echte Blickrichtungen
+Die Ursache des Rueck-/Vorwaertssprungs lag in zwei Dingen: falsche Beinphasen
+beim Clipwechsel und ein Sprite-Crossfade, der zwei verschiedene Koerperposen
+uebereinander legte. Beides ist ersetzt:
+- Sechs echte Blender-Rig-Uebergaenge mit je sechs Zwischenposen. Stand ->
+  Schritt und Schritt -> Trab starten phasengleich; Trab -> Galopp verbindet die
+  vermessenen Frames 2 -> 5. Dieselben Uebergaenge existieren beim Abbremsen.
+- Ein gefundener Blender-5.1-Auswertungsfehler im Export ist behoben: nach jeder
+  gemischten Pose wird das Rig vollstaendig aktualisiert. Pferd und projizierter
+  Sattelpunkt springen dadurch nicht mehr einen Frame seitlich.
+- 16 statt 8 echte Blender-Kameraperspektiven (22,5 statt 45 Grad). Das Asset
+  bleibt bewusst ein 2D-Atlas fuer Phaser und die flache Hauptfigur; fuer frei
+  kontinuierliche 360 Grad waere ein separater Live-3D-Renderer noetig.
+- Mausfahrt behaelt Schritt/Trab/Galopp bei und wechselt beim Lenken nicht mehr
+  in langsame Stand-Wendeschritte. Rechte Maus halten = Zielrichtung; Pfeil
+  hoch/runter oder W/S = Tempo. Pfeil links/rechts dreht nicht; A/D bleibt als
+  schnelles manuelles Zuegeln mit Hals-/Rumpf-Wendeposen auf der Stelle.
+- Der Reiter folgt 1.920 Blender-Sattelpunkten und fuehrt seine kleine Sitzphase
+  clipuebergreifend weiter, statt bei jedem Gangwechsel sichtbar neu anzusetzen.
+- Ergebnis als Animationsvorschau: screenshots/reitpferd-uebergaenge.gif.
+  Produktions-Build sauber, 42 Testdateien / 282 Tests gruen; alle sechs Atlas-
+  Paare plus Sattel-JSON werden vom laufenden Server mit HTTP 200 ausgeliefert.
+  Keine Pferde-Asset-/Framefehler in der Browser-Konsole; sichtbar bleibt nur
+  die schon vorhandene Three.js-PCFSoftShadowMap-Deprecation.
+
+## Runde 136 - Gruenes N beseitigt
+Das gruene N war kein Richtungsmarker, sondern Phasers interne `__MISSING`-
+Textur. Nach einem Hot-Reload konnte die neue Pferdelogik bereits auf einen der
+neuen Teilatlanten wechseln, obwohl die alte laufende Boot-Sitzung ihn noch nicht
+geladen hatte. Jeder Framewechsel prueft nun Atlas und Frame vorab, behaelt bei
+einem fehlenden Ziel den letzten gueltigen Frame und repariert einen schon
+fehlgeschlagenen Sprite ueber die passende Standpose. Im schlechtesten Fall wird
+das Pferd verborgen statt als gruene Fehlerkachel gezeichnet. Nach vollem Reload
+live aufgesessen und geprueft: keine neuen Frame-/`__MISSING`-Warnungen; Build und
+alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.

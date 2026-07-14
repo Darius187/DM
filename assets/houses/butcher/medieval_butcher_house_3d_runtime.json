@@ -1,0 +1,413 @@
+{
+  "asset": "medieval_butcher_house_3d_runtime",
+  "asset_type": "rotatable walkable 3D medieval butcher house",
+  "model": "medieval_butcher_house_3d_runtime.glb",
+  "units": "meters",
+  "root_node": "BUTCHER_HOUSE_ROTATION_PIVOT",
+  "coordinate_conversion": {
+    "blender": "X/Y ground, Z up",
+    "threejs": "X/Z ground, Y up",
+    "point_rule": "[x,y,z] -> [x,z,-y]"
+  },
+  "continuous_controls": {
+    "building_yaw_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 0
+    },
+    "uniform_scale": {
+      "min": 0.25,
+      "max": 4,
+      "default": 1
+    },
+    "camera_elevation_degrees": {
+      "min": 18,
+      "max": 78,
+      "default": 43
+    },
+    "camera_azimuth_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 36
+    },
+    "orthographic_zoom": {
+      "min": 0.55,
+      "max": 2.4,
+      "default": 1
+    }
+  },
+  "materials": {
+    "all_visible_materials_have_embedded_basecolor_textures": true,
+    "runtime_tinting_allowed": false,
+    "transparent_windows": true,
+    "texture_count": 16,
+    "used_materials": [
+      "MAT_BUTCHER_AWNING_CLOTH",
+      "MAT_BUTCHER_CURED_MEAT",
+      "MAT_BUTCHER_FORGED_IRON",
+      "MAT_BUTCHER_GLASS_TRANSPARENT",
+      "MAT_BUTCHER_OAK_DARK",
+      "MAT_BUTCHER_OAK_MID",
+      "MAT_BUTCHER_PACKED_EARTH",
+      "MAT_BUTCHER_PLASTER_AGED",
+      "MAT_BUTCHER_PLASTER_WORN",
+      "MAT_BUTCHER_SHINGLE_A",
+      "MAT_BUTCHER_SHINGLE_B",
+      "MAT_BUTCHER_SHINGLE_C",
+      "MAT_BUTCHER_SMOKE",
+      "MAT_BUTCHER_SMOKED_MEAT",
+      "MAT_BUTCHER_STONE_DARK",
+      "MAT_BUTCHER_STONE_WARM"
+    ]
+  },
+  "renderer_recipe": {
+    "output_color_space": "SRGBColorSpace",
+    "tone_mapping": "ACESFilmicToneMapping",
+    "exposure": 1.0,
+    "do_not_replace_materials": true
+  },
+  "doors": {
+    "main": {
+      "node": "DOOR_MAIN_HINGE",
+      "closed_frame": 1,
+      "open_frame": 30,
+      "trigger": "TRIGGER_MAIN_DOOR"
+    },
+    "annex": {
+      "node": "DOOR_ANNEX_HINGE",
+      "closed_frame": 1,
+      "open_frame": 30,
+      "trigger": "TRIGGER_ANNEX_DOOR"
+    }
+  },
+  "walkable_interior": {
+    "enabled": true,
+    "ground": "NAV_GROUND_FLOOR",
+    "upper": "NAV_UPPER_FLOOR",
+    "annex": "NAV_ANNEX_WORKROOM",
+    "market": "NAV_MARKET_FRONT",
+    "stairs": "COLLISION_STAIR_RUN"
+  },
+  "visibility_controls": {
+    "roof_property": "roof_removable",
+    "cutaway_property": "cutaway_near_wall",
+    "floor_property": "floor_level"
+  },
+  "node_groups": {
+    "transparent_windows": [
+      "WINDOW_DORMER_GLASS",
+      "WINDOW_FRONT_SHOP_GLASS",
+      "WINDOW_FRONT_UPPER_0_GLASS",
+      "WINDOW_FRONT_UPPER_1_GLASS",
+      "WINDOW_FRONT_UPPER_2_GLASS",
+      "WINDOW_REAR_UPPER_LEFT_GLASS",
+      "WINDOW_REAR_UPPER_RIGHT_GLASS",
+      "WINDOW_RIGHT_ATTIC_GLASS",
+      "WINDOW_RIGHT_UPPER_FRONT_GLASS",
+      "WINDOW_RIGHT_UPPER_REAR_GLASS"
+    ]
+  },
+  "animations": [
+    {
+      "name": "DOOR_ANNEX_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_MAIN_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    }
+  ],
+  "collision_guides": [
+    {
+      "name": "NAV_GROUND_FLOOR",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        0.0,
+        0.55
+      ],
+      "size_blender_xyz": [
+        6.2,
+        7.2,
+        0.06
+      ]
+    },
+    {
+      "name": "NAV_UPPER_FLOOR",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "UPPER",
+      "center_blender_xyz": [
+        0.0,
+        0.0,
+        3.12
+      ],
+      "size_blender_xyz": [
+        6.5,
+        7.5,
+        0.06
+      ]
+    },
+    {
+      "name": "NAV_ANNEX_WORKROOM",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        4.85,
+        0.7,
+        0.22
+      ],
+      "size_blender_xyz": [
+        2.25,
+        5.45,
+        0.06
+      ]
+    },
+    {
+      "name": "NAV_MARKET_FRONT",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        -0.6,
+        -4.9,
+        0.12
+      ],
+      "size_blender_xyz": [
+        6.5,
+        1.4,
+        0.06
+      ]
+    },
+    {
+      "name": "COLLISION_STAIR_RUN",
+      "kind": "walk",
+      "role": "stair_ramp",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -2.45,
+        2.2,
+        1.8
+      ],
+      "size_blender_xyz": [
+        1.05,
+        2.9,
+        2.7
+      ]
+    },
+    {
+      "name": "COLLISION_REAR_WALL",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        4.0,
+        1.7
+      ],
+      "size_blender_xyz": [
+        7.0,
+        0.3,
+        2.5
+      ]
+    },
+    {
+      "name": "COLLISION_LEFT_WALL",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -3.5,
+        0.0,
+        1.7
+      ],
+      "size_blender_xyz": [
+        0.3,
+        8.0,
+        2.5
+      ]
+    },
+    {
+      "name": "COLLISION_FRONT_LEFT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -1.5,
+        -4.0,
+        1.7
+      ],
+      "size_blender_xyz": [
+        3.8,
+        0.3,
+        2.5
+      ]
+    },
+    {
+      "name": "COLLISION_FRONT_RIGHT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        2.65,
+        -4.0,
+        1.7
+      ],
+      "size_blender_xyz": [
+        1.7,
+        0.3,
+        2.5
+      ]
+    },
+    {
+      "name": "COLLISION_DISPLAY_TABLE",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        -1.7,
+        -5.0,
+        0.55
+      ],
+      "size_blender_xyz": [
+        2.7,
+        0.85,
+        1.1
+      ]
+    },
+    {
+      "name": "COLLISION_CHOPPING_STUMP",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        2.15,
+        -5.28,
+        0.5
+      ],
+      "size_blender_xyz": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "COLLISION_ANNEX_TABLE",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        4.85,
+        -2.97,
+        0.5
+      ],
+      "size_blender_xyz": [
+        1.9,
+        0.85,
+        1.0
+      ]
+    },
+    {
+      "name": "TRIGGER_MAIN_DOOR",
+      "kind": "transition",
+      "role": "enter_house",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        1.12,
+        -4.05,
+        1.35
+      ],
+      "size_blender_xyz": [
+        1.15,
+        1.0,
+        2.5
+      ]
+    },
+    {
+      "name": "TRIGGER_ANNEX_DOOR",
+      "kind": "transition",
+      "role": "enter_annex",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        5.2,
+        -2.4,
+        1.35
+      ],
+      "size_blender_xyz": [
+        1.15,
+        1.0,
+        2.5
+      ]
+    }
+  ],
+  "markers": [
+    {
+      "name": "SPAWN_EXTERIOR_MAIN",
+      "role": "spawn_exterior",
+      "floor": "EXTERIOR",
+      "blender_xyz": [
+        1.12,
+        -4.85,
+        0.08
+      ]
+    },
+    {
+      "name": "SPAWN_INTERIOR_MAIN",
+      "role": "spawn_interior",
+      "floor": "GROUND",
+      "blender_xyz": [
+        1.12,
+        -3.35,
+        0.55
+      ]
+    },
+    {
+      "name": "SPAWN_UPPER_STAIRS",
+      "role": "spawn_upper",
+      "floor": "UPPER",
+      "blender_xyz": [
+        -2.45,
+        3.55,
+        3.08
+      ]
+    },
+    {
+      "name": "SPAWN_ANNEX_INTERIOR",
+      "role": "spawn_annex",
+      "floor": "GROUND",
+      "blender_xyz": [
+        5.2,
+        -1.6,
+        0.2
+      ]
+    }
+  ],
+  "counts": {
+    "runtime_objects": 1927,
+    "materials": 16,
+    "windows": 10,
+    "collisions": 14,
+    "main_roof_shingles": 610,
+    "annex_roof_shingles": 275
+  },
+  "integration_contract": {
+    "load_with": "Three.js GLTFLoader",
+    "rotate": "BUTCHER_HOUSE_ROTATION_PIVOT around Three.js Y",
+    "collisions": "build from JSON and transform with building",
+    "doors": "play named animations",
+    "forbidden": [
+      "PNG replacement",
+      "material tinting",
+      "visible collision meshes"
+    ]
+  }
+}

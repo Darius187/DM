@@ -197,6 +197,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         if (k === b.inv || k === b.charakter || k === 'escape') this.panels.closeAll();
         return;
       }
+      // Beritten gehoeren Bewegungs- und Maustasten dem Pferd. Interaktion und
+      // Szenen-Tasten bleiben erreichbar; Kampfaktionen erst nach dem Absitzen.
+      if (this.reitsteuerungAktiv()) {
+        if (k === b.interact) this.tryInteract();
+        this.onGameKey(k);
+        return;
+      }
       if (k === b.roll) { ev.preventDefault(); this.tryRoll(); }
       if (k === b.heavy || k === 'shift') this.tryHeavy();
       if (k === b.inv) this.panels.toggleInventory();
@@ -240,6 +247,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (uiTreffer.some((o) => o.scrollFactorX === 0)) return;
       if (this.zeigerAufUI(ptr)) return;   // Licht-Werkbank o.ä. (manuelles Hit-Testing)
       if (this.bauKlick(ptr)) return;      // 3D-Objekt-Baukasten (DebugArena): Setzen/Löschen/Interagieren
+      if (this.reitsteuerungAktiv()) return;
       // Bodenzauber-Zielmodus (Runde 46): Linksklick wirkt am Cursor, jeder
       // andere Klick bricht ab. Kein Weltangriff währenddessen.
       if (this.zielModus) {
@@ -860,6 +868,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   // Unterklassen: zusätzliche Tasten (Interaktion, Inventar, Zauber)
   protected onGameKey(_k: string): void { /* optional */ }
+  protected reitsteuerungAktiv(): boolean { return false; }
+  protected updateReitbewegung(_dt: number): boolean { return false; }
+  protected spielerExtraBlockiert(_x: number, _y: number, _radius: number): boolean { return false; }
   // Klick liegt auf einer UI-Fläche (Leiste, Menü) - Welt ignoriert ihn
   protected klickAufUi(_ptr: Phaser.Input.Pointer): boolean { return false; }
   // Hook (DebugArena): 3D-Objekt-Baukasten fängt Weltklicks ab (Setzen/Löschen/
@@ -3056,14 +3067,15 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       dx += this.touch.joyX;
       dy += this.touch.joyY;
     }
-    if (this.combat.action === 'roll') {
+    const reitet = this.updateReitbewegung(dt);
+    if (!reitet && this.combat.action === 'roll') {
       this.movePlayer(this.rollVx * dt, this.rollVy * dt);
       this.rollLight -= dt;
       if (this.rollLight <= 0) {
         this.rollLight = 0.04;
         this.fx.burst(this.px, this.py + 8, 0x8a8276, 1, 40);
       }
-    } else if (dx || dy) {
+    } else if (!reitet && (dx || dy)) {
       const l = Math.hypot(dx, dy);
       const drawing = this.bowDrawT >= 0;
       const heavy = this.combat.action === 'heavyWindup';
@@ -3220,14 +3232,15 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // während Gegner (rohes isSolidAt/Wegfeld) immer blockiert bleiben.
   protected solidFuerHeld(x: number, y: number): boolean { return this.isSolidAt(x, y); }
 
-  private movePlayer(dx: number, dy: number): void {
-    const r = PLAYER.radius;
+  protected movePlayer(dx: number, dy: number, r: number = PLAYER.radius): void {
     const nx = this.px + dx;
     if (!this.solidFuerHeld(nx - r, this.py - r) && !this.solidFuerHeld(nx + r, this.py - r)
-      && !this.solidFuerHeld(nx - r, this.py + r) && !this.solidFuerHeld(nx + r, this.py + r)) this.px = nx;
+      && !this.solidFuerHeld(nx - r, this.py + r) && !this.solidFuerHeld(nx + r, this.py + r)
+      && !this.spielerExtraBlockiert(nx, this.py, r)) this.px = nx;
     const ny = this.py + dy;
     if (!this.solidFuerHeld(this.px - r, ny - r) && !this.solidFuerHeld(this.px + r, ny - r)
-      && !this.solidFuerHeld(this.px - r, ny + r) && !this.solidFuerHeld(this.px + r, ny + r)) this.py = ny;
+      && !this.solidFuerHeld(this.px - r, ny + r) && !this.solidFuerHeld(this.px + r, ny + r)
+      && !this.spielerExtraBlockiert(this.px, ny, r)) this.py = ny;
   }
 
   private updateProjectiles(dt: number): void {
@@ -3548,7 +3561,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Tot: der Leichnam-Tween (beginDeathScene) hält die Pose - NICHT mehr über
     // zeichneHeld überschreiben. Die Gegner werden unten weiter gezeichnet.
     if (!this.playerDead) {
-      // Spieler normal zeichnen (Reit-Eröffnung entfernt, Runde 51 - Autorwunsch)
+      // Spieler normal zeichnen (Reit-Eröffnung entfernt, Runde 51 - Autorwunsch).
       // heldHoeheOffset (R132): auf Treppe/Obergeschoss eines 3D-Gebaeudes steht
       // die FIGUR sichtbar hoeher, die Lauf-/Tiefenlogik bleibt auf px/py.
       this.playerSprite.setPosition(this.px, this.py - this.heldHoeheOffset()).setDepth(this.spielerTiefe());

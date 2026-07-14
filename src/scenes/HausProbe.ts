@@ -11,6 +11,7 @@ const RENDER_PX = 900;
 const GEBAEUDE = [
   { id: 'haus', name: 'Zimmermannshaus', url: 'houses/medieval_carpenter_house_3d_runtime.json' },
   { id: 'schmiede', name: 'Schmiede', url: 'houses/forge/medieval_forge_3d_runtime.json' },
+  { id: 'apotheke', name: 'Apotheke', url: 'houses/apothecary/medieval_apothecary_house_3d_runtime.json' },
 ];
 
 export class HausProbe extends Phaser.Scene {
@@ -117,7 +118,7 @@ export class HausProbe extends Phaser.Scene {
       const ziel = this.tuerZiele[t.key] ?? 0, alt = this.state.tueren[t.key] ?? 0;
       this.state.tueren[t.key] = alt + Math.sign(ziel - alt) * Math.min(Math.abs(ziel - alt), 2.5 * dt);
     }
-    this.state.innenEbene = this.innenModus;
+    this.state.innenEbene = g.hatInnenraum ? this.innenModus : 'aussen';
     g.setState({ ...this.state, tueren: { ...this.state.tueren } });
     if (g.istDirty) {
       const cv = g.render();
@@ -132,7 +133,9 @@ export class HausProbe extends Phaser.Scene {
       `HAUS-PROBE · ${def.name} (GLB live, Texturen unverändert)   [TAB] wechselt Gebäude`,
       `Drehung ${this.state.yaw.toFixed(0)}° (ziehen · Leertaste Auto ${this.autoDreh ? 'AN' : 'aus'}) · Kamera ${this.state.elevation.toFixed(0)}°/${this.state.azimuth.toFixed(0)}° (W/S · A/D) · Zoom ${this.state.zoom.toFixed(2)} (+/-)`,
       `Türen: ${tueren || '-'}`,
-      `Innenansicht: [R] Erdgeschoss ${this.innenModus === 'eg' ? 'AN' : 'aus'} · [C] Obergeschoss ${this.innenModus === 'og' ? 'AN' : 'aus'}`,
+      g.hatInnenraum
+        ? `Innenansicht: [R] Erdgeschoss ${this.innenModus === 'eg' ? 'AN' : 'aus'} · [C] Obergeschoss ${this.innenModus === 'og' ? 'AN' : 'aus'}`
+        : 'Außenmodell: Innenraum/Cutaway für stabile Kollision und Performance deaktiviert',
       '[ESC] zurück zum Menü',
     ].join('\n'));
   }

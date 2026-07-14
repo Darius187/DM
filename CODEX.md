@@ -14,6 +14,8 @@ Damit wir uns NICHT in die Quere kommen, halte dich an diese Regeln.
 ## 2. Getrennte Zustaendigkeit (damit nichts kollidiert)
 - DU (Codex): Bild-Texturen + Icons in `assets/ui/`, und NUR die Datei
   `src/ui/mvTexturen.ts` (dort haengst du die Bilder ein).
+- Ausnahme: Fuer die HUD-Leiste gilt die ausdrueckliche Freigabe in Abschnitt 6
+  fuer `src/ui/hud.ts`.
 - ICH (Claude): das UI-Gerüst (`src/ui/medieval-ui.css`, `src/ui/medievalUi.ts`),
   Spiel-Logik, Integration ins Spiel.
 - So fasst niemand die Dateien des anderen an -> keine Merge-Konflikte.
@@ -35,15 +37,16 @@ Damit wir uns NICHT in die Quere kommen, halte dich an diese Regeln.
 - `npm run dev` startet das Spiel lokal (Vite, http://localhost:5173).
 - `npx tsc --noEmit` (Typen), `npx vitest run` (Tests), `npx vite build` (Bundle).
 
-## 6. HUD-Leiste: Codex liefert nur Assets (R116, Autor-Entscheidung)
-- Die Spiel-HUD-Leiste (`src/ui/hud.ts`) integriert Claude Code.
-- Codex liefert dafuer nur Bildvorlagen und leere Bauteile unter
-  `assets/ui/hud/`.
+## 6. HUD-Leiste: Codex integriert die gelieferten Assets (Autor-Entscheidung)
+- Die Spiel-HUD-Leiste (`src/ui/hud.ts`) gehoert fuer diese Aenderung Codex.
+- Claude Code fasst `src/ui/hud.ts` nicht parallel an und prueft spaeter den PR.
+- Bildvorlagen und leere Bauteile liegen unter `assets/ui/hud/`.
 - Massgebliche Uebergabe: `assets/ui/hud/README.md`.
 - Massgebliche Zielvorlage: `assets/ui/hud/hud-reference-final-extra-flat-1300.png`.
 - REGELN dabei:
-  - Codex fasst `src/ui/hud.ts` fuer diese HUD-Uebergabe NICHT an.
-  - Claude zeichnet Texte, Zahlen, Tastenzuweisungen und Icons dynamisch aus dem Code.
+  - Codex bindet die PNG-Bauteile als Phaser-Images ein; kein Nachmalen der
+    gesamten Vorlage mit `Graphics`.
+  - Texte, Zahlen, Tastenzuweisungen und Icons bleiben dynamisch aus dem Code.
   - AI-Texte aus Referenzbildern NICHT abtippen oder einbacken.
   - Oeffentliche Anker/Signaturen in `hud.ts` erhalten:
     `orbHpAnkerX`, `orbMpAnkerX`, `mausLeisteAnkerX`, `hotbarMitteX`,

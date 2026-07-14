@@ -26,15 +26,110 @@ the primary representation.
   transitions, forge interactions, removable roofs and cutaway controls.
 - The global ground plate/shadow is intentionally absent from the GLB.
 
+## Butcher house
+
+- Model: `butcher/medieval_butcher_house_3d_runtime.glb`
+- Runtime data: `butcher/medieval_butcher_house_3d_runtime.json`
+- Root pivot: `BUTCHER_HOUSE_ROTATION_PIVOT`
+- Doors: `DOOR_MAIN_HINGE`, `DOOR_ANNEX_HINGE`
+- The main entrance is on the front-right part of the timber house beside the
+  stone annex. Keep its steps and `TRIGGER_MAIN_DOOR` clear of market props.
+- Ten transparent windows use `MAT_BUTCHER_GLASS_TRANSPARENT`.
+- The JSON contains 14 collision/navigation guides plus exterior, ground-floor,
+  upper-floor and annex spawns.
+- The main building and stone smokehouse annex contain walkable interiors,
+  stairs, work furniture and butcher props.
+- The 610 main-roof and 275 annex-roof shingles lie individually on their roof
+  planes. Do not replace the roofs with a flat color or generated sprite.
+- The global ground plate/shadow is intentionally absent from the GLB.
+
+## Horse stable
+
+- Model: `stable/medieval_stable_house_3d_runtime.glb`
+- Runtime data: `stable/medieval_stable_house_3d_runtime.json`
+- Root pivot: `STABLE_HOUSE_ROTATION_PIVOT`
+- Doors: `DOOR_STABLE_MAIN_HINGE`, `DOOR_STALL_1_HINGE`,
+  `DOOR_STALL_2_HINGE`, `DOOR_STALL_3_HINGE`,
+  `DOOR_HAY_LOFT_LEFT_HINGE`, `DOOR_HAY_LOFT_RIGHT_HINGE`
+- The tall stable entrance is the far-left front door beside the three stall
+  boxes. Use `TRIGGER_STABLE_MAIN`; keep its framed steps unobstructed.
+- Five transparent windows use `MAT_STABLE_GLASS_TRANSPARENT`.
+- Three modeled horses, stall partitions, mangers, tack, hay, barrels, wheels
+  and the open feed lean-to are part of the GLB.
+- The JSON contains 18 collision/navigation guides and separate exterior,
+  stable-aisle, hay-loft and lean-to spawn points.
+- The stable aisle, individual boxes, hay loft and feed lean-to are walkable.
+- The roof contains 858 main shingles, 186 hay-gable shingles and 191 lean-to
+  shingles laid individually on their roof planes.
+- The global ground plate/shadow is intentionally absent from the GLB.
+
+## Cooperage
+
+- Model: `cooperage/medieval_cooperage_house_3d_runtime.glb`
+- Runtime data: `cooperage/medieval_cooperage_house_3d_runtime.json`
+- Root pivot: `COOPERAGE_HOUSE_ROTATION_PIVOT`
+- Door: `DOOR_COOPERAGE_MAIN_HINGE`
+- The framed main entrance and stone steps are centered in the front facade;
+  use `TRIGGER_COOPERAGE_MAIN` for entry.
+- Twelve transparent windows use `MAT_COOPERAGE_GLASS_TRANSPARENT`.
+- Fourteen detailed coopered barrels, an open assembly vat, separate staves,
+  loose hoops, racks, benches, mallets and wall tools are part of the GLB.
+- The JSON contains 16 collision/navigation/interaction guides and separate
+  exterior, ground-floor, upper-floor and workshop spawn points.
+- The house, upper floor and open barrel workshop are walkable.
+- The roof contains 647 house shingles and 362 workshop shingles laid
+  individually on their roof planes.
+- The global ground plate/shadow is intentionally absent from the GLB.
+
+## Watermill
+
+- Model: `mill/medieval_mill_house_3d_runtime.glb`
+- Runtime data: `mill/medieval_mill_house_3d_runtime.json`
+- Root pivot: `MILL_HOUSE_ROTATION_PIVOT`
+- Doors: `DOOR_MILL_MAIN_HINGE`, `DOOR_MILL_REAR_HINGE`
+- The clear main entrance is in the front stone facade beside the covered
+  milling deck. Use `TRIGGER_MILL_MAIN` and keep its steps unobstructed.
+- Ten transparent windows use `MAT_MILL_GLASS_TRANSPARENT`.
+- `WATER_WHEEL_ROTATION_PIVOT` has a loopable frame 1-120 animation with 18
+  paddles. Loop it independently while preserving building yaw and scale. Set
+  the animation action `timeScale` to `1` or `-1` from the signed world-river
+  flow direction; use `0` when the wheel should stop.
+- The GLB deliberately contains no water, millrace walls, waterfall or sluice.
+  Place the wheel directly at the existing Phaser-world river edge.
+- The JSON contains 15 navigation/collision/interaction guides for doors,
+  floors, stairs, millstone and wheel.
+- Ground floor, upper floor and covered milling deck are walkable.
+- The main roof contains 697 individual overlapping shingles.
+- There is no global ground plate, terrain slab or model-owned river geometry
+  in the GLB.
+
+## Bakery
+
+- Model: `bakery/medieval_bakery_house_3d_runtime.glb`
+- Runtime data: `bakery/medieval_bakery_house_3d_runtime.json`
+- Root pivot: `BAKERY_HOUSE_ROTATION_PIVOT`
+- Doors: `DOOR_BAKERY_FRONT_LEFT_HINGE`,
+  `DOOR_BAKERY_FRONT_RIGHT_HINGE`, `DOOR_BAKERY_REAR_HINGE`
+- The clear double-leaf main entrance is centered in the front stone facade;
+  use `TRIGGER_BAKERY_FRONT` and keep its steps unobstructed.
+- Ten transparent windows use `MAT_BAKERY_GLASS_TRANSPARENT`.
+- The stone bakehouse annex contains an arched oven, hearth, logs, five fire
+  meshes and bread. The main bake room contains dough tables and bread racks.
+- The JSON contains 17 navigation/collision/interaction guides for doors,
+  floors, stairs, oven, dough table and bread stall.
+- Ground floor, upper floor, oven annex and bread stall are walkable.
+- The roofs contain 648 main-house and 208 annex shingles laid individually.
+- There is no global ground plate or terrain slab in the GLB.
+
 ## Rendering
 
-- Load both assets with Three.js `GLTFLoader`.
+- Load all assets with Three.js `GLTFLoader`.
 - Use `SRGBColorSpace` and `ACESFilmicToneMapping` with exposure `1.0`.
 - Keep the embedded GLB materials and textures unchanged.
-- Both glass materials use `alphaMode: BLEND` plus
+- All glass materials use `alphaMode: BLEND` plus
   `KHR_materials_transmission` and `KHR_materials_ior`.
 - Rotate the named root pivot around Three.js Y. Rotate collision centers by
   the same yaw using the coordinate rule documented in each runtime JSON.
 - Door animations cover frames 1 through 30 and target the named hinge nodes.
 - Create physics/navigation from the JSON guides; the colored development
-  collision meshes are deliberately not part of either GLB.
+  collision meshes are deliberately not part of the runtime GLBs.

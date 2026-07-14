@@ -113,9 +113,10 @@ export interface Settings {
   uiLayoutV: number;      // Layout-Version: ältere UI-Versätze einmalig zurücksetzen
   barV: number;           // Leisten-Belegung: einmalig auf "leer bis auf Basics" setzen
   // 3D-Zimmermannshaus in Ravensmoor (R131c): Drehung/Kamera/Skala/Versatz frei
-  // tunebar und persistent (drehbar + verschiebbar, UI-Regel 11).
-  haus3d?: { yaw: number; elev: number; azimut: number; skala: number; dx: number; dy: number }; // ALT (R131c), wird migriert
-  // R132: 3D-Gebaeude - EINE gemeinsame Groesse (ppm = Pixel je Meter) und je
+  // tunebar und persistent (drehbar + verschiebbar, UI-Regel 11). Eine Datei ändern.
+  haus3d?: { yaw: number; elev: number; azimut: number; skala: number; dx: number; dy: number }; // ALT (R131c), wird nach gebaeude3d migriert
+  // R132: 3D-Gebaeude (Zimmermannshaus, Schmiede) - EINE gemeinsame Groesse
+  // (ppm = Pixel je Meter, "einheitliche Groesse beider Gebaeude") und je
   // Gebaeude eine Drehung. Im Dorf-Editor einstellbar, hier persistent.
   gebaeude3d?: { ppm: number; drehung: Record<string, number> };
   kb: KeyBindings;
