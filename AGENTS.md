@@ -61,3 +61,7 @@ Uebergabe abstimmen.
 - **`docs/handoff/REITPFERD-UEBERARBEITUNG.md`** - Reitpferd Asset-Seite (Galopp-
   Clipping per breiterer Atlas-Zelle neu rendern, kraeftigere Beine). Claudes
   Code-Fixes (Kadenz, Tint, Spuren) bleiben.
+- **`docs/handoff/UI-UMBAU.md`** - das GESAMTE UI umbauen (HUD, Hauptmenue,
+  Einstellungen, Charakter, Inventar, Shop, Dialog). Enthaelt Architektur-
+  Landkarte, den Signatur-Vertrag (was erhalten bleiben MUSS) und die Zwei-
+  Kamera-Falle. In-Game-UI lebt in WorldScene, NICHT in UIScene.
