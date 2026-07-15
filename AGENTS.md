@@ -58,3 +58,6 @@ Uebergabe abstimmen.
 
 - **`docs/handoff/HAEUSER-IN-RAVENSMOOR.md`** - die gebauten 3D-Haeuser an ihre
   Platzhalter-Boxen im neuen Ravensmoor (Area `stadt`) setzen.
+- **`docs/handoff/REITPFERD-UEBERARBEITUNG.md`** - Reitpferd Asset-Seite (Galopp-
+  Clipping per breiterer Atlas-Zelle neu rendern, kraeftigere Beine). Claudes
+  Code-Fixes (Kadenz, Tint, Spuren) bleiben.
