@@ -1295,3 +1295,17 @@ fehlgeschlagenen Sprite ueber die passende Standpose. Im schlechtesten Fall wird
 das Pferd verborgen statt als gruene Fehlerkachel gezeichnet. Nach vollem Reload
 live aufgesessen und geprueft: keine neuen Frame-/`__MISSING`-Warnungen; Build und
 alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
+
+## Runde 137 - Reitpferd Live-Tuning und Uebergangsdiagnose
+- In der verschiebbaren F10-Dev-Konsole gibt es den Tab PFERD. Gesamtgroesse,
+  Breite/Hoehe, Bodenanker, Reitergroesse/-versatz, Sattel-Nachlauf,
+  Animations-Zeitlupe und Schatten lassen sich live einstellen.
+- Werte bleiben nur als lokales Dev-Tuning im Browser und koennen fuer die
+  feste Asset-Abnahme kopiert oder auf den bisherigen Standard zurueckgesetzt
+  werden. Claudes Tint, Hufspuren, Bewegung und Kadenzwerte blieben erhalten.
+- Atlasmessung: alle Clipnaehte sind pixelgenau, aber `walk_to_trot` veraendert
+  sich in seinen sechs Zwischenframes nur minimal (mittlere Bilddifferenz etwa
+  0,09 statt 0,8-1,0 bei den echten Uebergaengen). Das sichtbare Stocken ist
+  damit als Blender-/Assetproblem eingegrenzt.
+- Im Browser geprueft: F10-Tab, Live-Skalierung, Aufsitzen, Reiterversatz und
+  Ruecksetzen. TypeScript sauber, 53 Testdateien / 337 Tests gruen.

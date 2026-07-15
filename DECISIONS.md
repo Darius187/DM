@@ -2195,3 +2195,10 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Planungskarte = bewusst nur Geometrie + sparsame Fackeln, KEINE Gegner/Beute/
   Treppen. missionTiefe=3 + missionThema=1 (Gruft) sind PLATZHALTER in
   src/data/kerker.ts - je eine Zeile.
+
+## R137 - Reitpferd-Abnahme per lokalem Dev-Tuning
+- Groesse und Sitz werden vor dem naechsten Blender-Render im vorhandenen
+  F10-Fenster live abgestimmt. Die Testwerte liegen in `localStorage`, nicht im
+  Spielstand; erst der vom Autor kopierte Endwert wird spaeter fest uebernommen.
+- Breite/Hoehe sind reine Vergleichsregler fuer die Gesamtsilhouette. Eine
+  isolierte Beinkraeftigung bleibt Assetarbeit am Blender-Modell bzw. Render.

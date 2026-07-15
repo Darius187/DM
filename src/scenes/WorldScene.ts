@@ -91,6 +91,7 @@ import { rollGear, rollGem } from '../logic/loot';
 import { recalc, newPlayerState } from '../logic/playerState';
 import { REIT_PFERD, type ReitClip, type ReitGangClip, type ReitSattelPunkte } from '../data/reiten';
 import { clipFps, clipFrames, istReitGang, istReitUebergang, kuerzesterWinkel, mausLenkung, mausZielTempo, naechsterReitGang, naehereZahl, reitClip, reitUebergang, uebergangQuellFrame, uebergangZielFrame, uebertrageAnimationsPhase } from '../logic/reiten';
+import { ladeReitTuning, reitTuningExport, REIT_TUNING_STANDARD, speichereReitTuning, type ReitDarstellungTuning } from '../gfx/reitTuning';
 import { getSettings, saveSettings } from '../logic/settings';
 import { seededRng, pick, ri } from '../logic/rng';
 import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type SaveData } from '../logic/save';
@@ -308,6 +309,8 @@ export class WorldScene extends CombatScene {
   private reitSpuren: { e: Phaser.GameObjects.Ellipse; leben: number }[] = [];
   private reitSpurWeg = 0;      // zurueckgelegter Weg seit letzter Spur
   private reitSpurSeite = 1;    // wechselt fuer linke/rechte Hufe
+  private reitTuning: ReitDarstellungTuning = ladeReitTuning();
+  private reitReiterPos?: { x: number; y: number };
   private _tierPrevX = 0; private _tierPrevY = 0;   // Spielerposition letzter Frame (für Tempo der Scheu-Flucht)
   private tag = 1;
   private tageszeit = 0.3; // 0..1, Start am Morgen
@@ -408,6 +411,8 @@ export class WorldScene extends CombatScene {
     this.reitSpuren = [];
     this.reitSpurWeg = 0;
     this.reitSpurSeite = 1;
+    this.reitTuning = ladeReitTuning();
+    this.reitReiterPos = undefined;
     this.gefaellteBaeume.clear();
     this.baumSchlaege.clear();
     this.lager = [];
@@ -4811,6 +4816,69 @@ export class WorldScene extends CombatScene {
   private aktWasserPreset(): WasserPreset2 { return this.devWasserBlut ? BLUT2 : WASSER2; }
   private wasserAnwenden(): void { if (this.wasser2Shader) wendeWasser2(this.wasser2Shader, this.aktWasserPreset()); }
 
+  private setzeReitTuning(werte: Partial<ReitDarstellungTuning>): void {
+    this.reitTuning = { ...this.reitTuning, ...werte };
+    speichereReitTuning(this.reitTuning);
+    this.wendeReitTuningAn();
+  }
+
+  private wendeReitTuningAn(): void {
+    const t = this.reitTuning;
+    this.reitPferdSprite?.setOrigin(0.5, t.fussOriginY)
+      .setScale(t.pferdSkala * t.pferdBreite, t.pferdSkala * t.pferdHoehe);
+    this.reitReiterSprite?.setScale(t.reiterSkala);
+    this.reitPferdSchatten?.setDisplaySize(t.schattenBreite, t.schattenHoehe);
+  }
+
+  private reitDiagnoseText(): string {
+    const clip = this.reitLetzterClip;
+    const frame = Math.floor(this.reitAnimT) % clipFrames(clip);
+    const tempo = this.reitPferd?.tempo ?? 0;
+    return `${this.reitet ? 'aufgesessen' : 'abgesessen'} | ${clip} f${frame} | ${tempo.toFixed(0)} px/s | ${clipFps(clip, tempo).toFixed(1)} fps`;
+  }
+
+  private kopiereReitTuning(): void {
+    const text = `${reitTuningExport(this.reitTuning)}\n\nDiagnose: ${this.reitDiagnoseText()}`;
+    // Clipboard.writeText wird in eingebetteten Browsern trotz Klick oft still
+    // blockiert. Das temporaere Textfeld bleibt im direkten Klick-Event und
+    // funktioniert deshalb auch dort; notfalls zeigt prompt den Export an.
+    const feld = document.createElement('textarea');
+    feld.value = text;
+    feld.style.cssText = 'position:fixed;left:-9999px;top:0;';
+    document.body.appendChild(feld);
+    feld.select();
+    const kopiert = document.execCommand('copy');
+    feld.remove();
+    if (kopiert) this.logMsg('Pferd-Tuning kopiert. Werte im Chat einfuegen.', 'gold');
+    else window.prompt('Diese Werte kopieren und im Chat einfuegen:', text);
+  }
+
+  private baueReitTuningControls(): DKControl[] {
+    const set = <K extends keyof ReitDarstellungTuning>(key: K, value: ReitDarstellungTuning[K]): void => {
+      this.setzeReitTuning({ [key]: value } as Pick<ReitDarstellungTuning, K>);
+    };
+    return [
+      { kind: 'note', text: 'LIVE-VERGLEICH: erst aufsitzen, dann hier Groesse und Sitz pruefen. Die Werte bleiben nach einem Neuladen lokal erhalten.' },
+      { kind: 'button', label: () => `Status aktualisieren: ${this.reitDiagnoseText()}`, onClick: () => this.devKonsole?.refresh() },
+      { kind: 'slider', label: 'Pferd Gesamtgroesse', min: 0.45, max: 1.05, step: 0.005, fmt: (v) => `${v.toFixed(3)}x`, get: () => this.reitTuning.pferdSkala, set: (v) => set('pferdSkala', v) },
+      { kind: 'slider', label: 'Pferd Breite', min: 0.75, max: 1.3, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => this.reitTuning.pferdBreite, set: (v) => set('pferdBreite', v) },
+      { kind: 'slider', label: 'Pferd Hoehe', min: 0.75, max: 1.3, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => this.reitTuning.pferdHoehe, set: (v) => set('pferdHoehe', v) },
+      { kind: 'slider', label: 'Bodenanker', min: 0.78, max: 1, step: 0.005, get: () => this.reitTuning.fussOriginY, set: (v) => set('fussOriginY', v) },
+      { kind: 'note', text: 'Breite/Hoehe verformen zum Vergleichen das ganze Pferd. Wenn nur die Beine kraeftiger werden sollen, muss das danach im Blender-Modell bzw. Render korrigiert werden.' },
+      { kind: 'slider', label: 'Reiter Groesse', min: 0.5, max: 1.05, step: 0.005, fmt: (v) => `${v.toFixed(3)}x`, get: () => this.reitTuning.reiterSkala, set: (v) => set('reiterSkala', v) },
+      { kind: 'slider', label: 'Reiter links/rechts', min: -30, max: 30, step: 0.5, fmt: (v) => `${v.toFixed(1)} px`, get: () => this.reitTuning.reiterX, set: (v) => set('reiterX', v) },
+      { kind: 'slider', label: 'Reiter hoch/runter', min: -35, max: 35, step: 0.5, fmt: (v) => `${v.toFixed(1)} px`, get: () => this.reitTuning.reiterY, set: (v) => set('reiterY', v) },
+      { kind: 'slider', label: 'Sattel-Nachlauf', min: 0, max: 220, step: 5, fmt: (v) => `${v.toFixed(0)} ms`, get: () => this.reitTuning.sattelNachlaufMs, set: (v) => set('sattelNachlaufMs', v) },
+      { kind: 'slider', label: 'Animations-Zeitlupe', min: 0.2, max: 1.5, step: 0.05, fmt: (v) => `${v.toFixed(2)}x`, get: () => this.reitTuning.animationTempo, set: (v) => set('animationTempo', v) },
+      { kind: 'slider', label: 'Schatten Breite', min: 25, max: 100, step: 1, fmt: (v) => `${v.toFixed(0)} px`, get: () => this.reitTuning.schattenBreite, set: (v) => set('schattenBreite', v) },
+      { kind: 'slider', label: 'Schatten Hoehe', min: 6, max: 35, step: 1, fmt: (v) => `${v.toFixed(0)} px`, get: () => this.reitTuning.schattenHoehe, set: (v) => set('schattenHoehe', v) },
+      { kind: 'button', label: () => 'Vergleich: 12% groesser', onClick: () => { this.setzeReitTuning({ pferdSkala: 0.72, pferdBreite: 1, pferdHoehe: 1, reiterSkala: 0.75 }); this.devKonsole?.refresh(); } },
+      { kind: 'button', label: () => 'Vergleich: groesser und 6% breiter', onClick: () => { this.setzeReitTuning({ pferdSkala: 0.72, pferdBreite: 1.06, pferdHoehe: 1, reiterSkala: 0.75 }); this.devKonsole?.refresh(); } },
+      { kind: 'button', label: () => 'WERTE KOPIEREN fuer Codex', onClick: () => this.kopiereReitTuning() },
+      { kind: 'button', label: () => 'Auf aktuellen Spielstandard zuruecksetzen', onClick: () => { this.setzeReitTuning({ ...REIT_TUNING_STANDARD }); this.reitReiterPos = undefined; this.devKonsole?.refresh(); } },
+    ];
+  }
+
   private baueDevTabs(): DKTab[] {
     const wasserControls = (): DKControl[] => {
       const p = this.aktWasserPreset();
@@ -4869,6 +4937,7 @@ export class WorldScene extends CombatScene {
           },
         })),
       ] },
+      { name: 'PFERD', controls: () => this.baueReitTuningControls() },
       // R80 (Autorbug "2 Wetterregler, eigener Tag-Nacht-Rhythmus, total irre"):
       // Zeit + Wetter wohnen NUR noch hier. Der Wetter-Regler setzt das Wetter
       // FEST (kein Auto-Überschreiben mehr), "Automatik" gibt es wieder frei.
@@ -6047,16 +6116,20 @@ export class WorldScene extends CombatScene {
     const startFrame = 'idle_d0_f0';
     if (!pferd || pferd.areaId !== this.area.id || !this.reitFrameVorhanden(REIT_PFERD.atlasKey, startFrame)) return;
     this.reitPferdSchatten = this.add.ellipse(
-      pferd.x, pferd.y + 1, REIT_PFERD.schattenBreite, REIT_PFERD.schattenHoehe, 0x080604, 0.32,
+      pferd.x, pferd.y + 1, this.reitTuning.schattenBreite, this.reitTuning.schattenHoehe, 0x080604, 0.32,
     ).setDepth(pferd.y - 2);
     this.reitPferdSprite = this.add.sprite(pferd.x, pferd.y, REIT_PFERD.atlasKey, startFrame)
-      .setOrigin(0.5, REIT_PFERD.fussOriginY)
-      .setScale(REIT_PFERD.darstellungSkala)
+      .setOrigin(0.5, this.reitTuning.fussOriginY)
+      .setScale(
+        this.reitTuning.pferdSkala * this.reitTuning.pferdBreite,
+        this.reitTuning.pferdSkala * this.reitTuning.pferdHoehe,
+      )
       .setTint(REIT_PFERD.farbTint)   // Verdunkelung (bleibt ueber setTexture erhalten)
       .setDepth(pferd.y);
     this.reitReiterSprite = this.add.sprite(pferd.x, pferd.y, '__DEFAULT')
-      .setScale(REIT_PFERD.reiterSkala)
+      .setScale(this.reitTuning.reiterSkala)
       .setVisible(false);
+    this.reitReiterPos = undefined;
   }
 
   private zerstoereReitPferdGrafik(): void {
@@ -6066,6 +6139,7 @@ export class WorldScene extends CombatScene {
     this.reitPferdSprite = undefined;
     this.reitReiterSprite = undefined;
     this.reitPferdSchatten = undefined;
+    this.reitReiterPos = undefined;
     for (const s of this.reitSpuren) s.e.destroy();
     this.reitSpuren = [];
     this.reitSpurWeg = 0;
@@ -6182,7 +6256,7 @@ export class WorldScene extends CombatScene {
     let clip = this.reitLetzterClip;
 
     if (istReitUebergang(clip)) {
-      this.reitAnimT += dt * clipFps(clip, pferd.tempo);
+      this.reitAnimT += dt * clipFps(clip, pferd.tempo) * this.reitTuning.animationTempo;
       if (this.reitAnimT >= clipFrames(clip)) {
         const fertig = clip;
         clip = this.reitUebergangZiel ?? 'idle';
@@ -6213,7 +6287,7 @@ export class WorldScene extends CombatScene {
           this.reitUebergangZiel = undefined;
         }
       }
-      this.reitAnimT += dt * clipFps(clip, pferd.tempo);
+      this.reitAnimT += dt * clipFps(clip, pferd.tempo) * this.reitTuning.animationTempo;
     }
 
     const dir = angleToDir16(pferd.richtung);
@@ -6221,8 +6295,15 @@ export class WorldScene extends CombatScene {
     const frameName = `${clip}_d${dir}_f${frame}`;
     const atlasKey = this.reitAtlasKey(clip);
     this.setzeReitFrameSicher(sprite, atlasKey, frameName, dir);
-    sprite.setPosition(pferd.x, pferd.y).setDepth(pferd.y + 0.1).setAlpha(1);
-    this.reitPferdSchatten?.setPosition(pferd.x, pferd.y + 1).setDepth(pferd.y - 2);
+    const pferdSkalaX = this.reitTuning.pferdSkala * this.reitTuning.pferdBreite;
+    const pferdSkalaY = this.reitTuning.pferdSkala * this.reitTuning.pferdHoehe;
+    sprite.setPosition(pferd.x, pferd.y)
+      .setOrigin(0.5, this.reitTuning.fussOriginY)
+      .setScale(pferdSkalaX, pferdSkalaY)
+      .setDepth(pferd.y + 0.1).setAlpha(1);
+    this.reitPferdSchatten?.setPosition(pferd.x, pferd.y + 1)
+      .setDisplaySize(this.reitTuning.schattenBreite, this.reitTuning.schattenHoehe)
+      .setDepth(pferd.y - 2);
     this.aktualisiereReitSpuren(dt, pferd);
 
     if (this.reitet) {
@@ -6233,8 +6314,13 @@ export class WorldScene extends CombatScene {
       if (reiter) {
         const punkte = this.cache.json.get(REIT_PFERD.sattelPunkteKey) as ReitSattelPunkte | undefined;
         const punkt = punkte?.[frameName] ?? { x: REIT_PFERD.zellenBreite / 2, y: 33 };
-        const reiterX = pferd.x + (punkt.x - REIT_PFERD.zellenBreite / 2) * REIT_PFERD.darstellungSkala;
-        const reiterY = pferd.y + (punkt.y - REIT_PFERD.zellenHoehe * REIT_PFERD.fussOriginY) * REIT_PFERD.darstellungSkala;
+        const reiterZielX = pferd.x + (punkt.x - REIT_PFERD.zellenBreite / 2) * pferdSkalaX + this.reitTuning.reiterX;
+        const reiterZielY = pferd.y + (punkt.y - REIT_PFERD.zellenHoehe * this.reitTuning.fussOriginY) * pferdSkalaY + this.reitTuning.reiterY;
+        if (!this.reitReiterPos) this.reitReiterPos = { x: reiterZielX, y: reiterZielY };
+        const nachlaufS = this.reitTuning.sattelNachlaufMs / 1000;
+        const folge = nachlaufS <= 0 ? 1 : 1 - Math.exp(-dt / nachlaufS);
+        this.reitReiterPos.x = Phaser.Math.Linear(this.reitReiterPos.x, reiterZielX, folge);
+        this.reitReiterPos.y = Phaser.Math.Linear(this.reitReiterPos.y, reiterZielY, folge);
         // Eigene durchlaufende Reiterphase: sie wird bei keinem Clipwechsel
         // zurueckgesetzt. Das Sattel-JSON liefert den grossen Hub, diese Phase
         // nur die kleine Oberkoerper-Ausgleichsbewegung.
@@ -6242,7 +6328,8 @@ export class WorldScene extends CombatScene {
         const reiterFrame = Math.floor(this.reitReiterAnimT) % 4;
         const reiterDir = Math.round(dir / 2) % 8;
         this.provider.applyReiter(reiter, heldTier(this.p.armorIt ? this.p.armorIt.val : null), reiterDir, reiterFrame);
-        reiter.setPosition(reiterX, reiterY).setScale(REIT_PFERD.reiterSkala).setDepth(pferd.y + 0.3).setVisible(true);
+        reiter.setPosition(this.reitReiterPos.x, this.reitReiterPos.y)
+          .setScale(this.reitTuning.reiterSkala).setDepth(pferd.y + 0.3).setVisible(true);
       }
     } else {
       this.reitReiterSprite?.setVisible(false);
@@ -6314,6 +6401,7 @@ export class WorldScene extends CombatScene {
     this.reitReiterAnimT = 0;
     this.reitLetzterClip = 'idle';
     this.reitUebergangZiel = undefined;
+    this.reitReiterPos = undefined;
     this.playerSprite.setCrop().setVisible(false);
     this.logMsg('Aufgesessen. Rechte Maus halten: zum Cursor reiten. Pfeil hoch/runter oder W/S: Tempo; A/D: manuell zuegeln; E: absitzen.', 'gold');
   }
@@ -6326,6 +6414,7 @@ export class WorldScene extends CombatScene {
     this.reitet = false;
     this.reitLenkung = 0;
     this.reitPivotPose = false;
+    this.reitReiterPos = undefined;
     this.reitReiterSprite?.setVisible(false);
     this.playerSprite.setCrop().setVisible(true);
     this.px = stand.x;
