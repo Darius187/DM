@@ -11,6 +11,10 @@ Führe ihn NICHT aus.
 Wenn ein Auftrag ein System berührt, das laut Systemkarte gekoppelt ist:
 Nenne die Kopplungen, BEVOR du baust.
 
+Wenn Codex und Claude Code sich abwechseln: `AGENTS.md` (Wurzelverzeichnis) ist
+der verbindliche Zusammenarbeits-Vertrag (ein Branch, pull/push, Spuren) - gilt
+auch für dich.
+
 Du arbeitest hier als Senior Game Developer am Projekt "Ravensmoor - Der Preis
 der Unsterblichkeit" (Phaser 3 + TypeScript + Vite). Die Projektspezifikation
 steht in RAVENSMOOR-2D-MASTERPROMPT.md - sie definiert WAS gebaut wird.
