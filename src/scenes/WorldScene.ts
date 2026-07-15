@@ -60,6 +60,7 @@ import { GATHER, HOLZ, ABBAU, HARVEST_CONFIG, BAUMENU, LAGERFEUER, VERBAND, abba
 import { hoehleTextur, hoehleKante, hoeheFelsWand, vorkommenTextur, KANTE_DICKE } from '../gfx/hoehlenArt';
 import { HoehlenLeben } from '../gfx/hoehlenLeben';
 import { KriegsnebelAnzeige, type SichtSet } from '../systems/kriegsnebel';
+import { buildKerkerArea } from '../world/kerkerArea';
 import { MINE } from '../data/mine';
 import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
@@ -302,6 +303,8 @@ export class WorldScene extends CombatScene {
   private reitLetzterClip: ReitClip = 'idle';
   private reitUebergangZiel?: ReitGangClip;
   private reitAtlasWarnungen = new Set<string>();
+  // R136b: Wurf-Zaehler der Kerker-Planungskarte (Dev-Konsole > Maps > NEU wuerfeln)
+  private kerker12Wurf = 0;
   private reitSpuren: { e: Phaser.GameObjects.Ellipse; leben: number }[] = [];
   private reitSpurWeg = 0;      // zurueckgelegter Weg seit letzter Spur
   private reitSpurSeite = 1;    // wechselt fuer linke/rechte Hufe
@@ -401,6 +404,7 @@ export class WorldScene extends CombatScene {
     this.reitLetzterClip = 'idle';
     this.reitUebergangZiel = undefined;
     this.reitAtlasWarnungen.clear();
+    this.kerker12Wurf = 0;
     this.reitSpuren = [];
     this.reitSpurWeg = 0;
     this.reitSpurSeite = 1;
@@ -1705,6 +1709,9 @@ export class WorldScene extends CombatScene {
         if (j) verschiebeHaus(a, hp, Math.round(j.dx / TILE), Math.round(j.dy / TILE));
       }
     }
+    // R136b: Kerker-Planungskarte (V12) - KEIN Eingang auf einer Karte, nur
+    // ueber die Dev-Konsole (Maps-Tab) erreichbar. Wurf-Zaehler -> NEU wuerfeln.
+    else if (id === 'kerker12') a = buildKerkerArea(seededRng(this.areaSeed + 121212 + this.kerker12Wurf * 104729));
     else if (id.startsWith('innen_')) a = buildInterior(INNENRAEUME[id.replace('innen_', '')]);
     else if (id === 'wald') a = buildForest(rng);
     else if (id === 'start') a = buildStart(rng);
@@ -4834,6 +4841,14 @@ export class WorldScene extends CombatScene {
       return cs;
     };
     return [
+      // R136b (Autor): geplante Karten liegen HIER, bis sie zu einem neuen
+      // Dungeon verknuepft werden - KEIN Eingang auf einer Spielkarte.
+      { name: 'MAPS', controls: () => [
+        { kind: 'note', text: 'Geplante Karten (noch ohne Eingang im Spiel). Rein/raus nur hier.' },
+        { kind: 'button', label: () => 'Kerker (V12) betreten - Planungskarte der Sondermission', onClick: () => { this.devKonsole?.toggle(); this.goArea('kerker12'); } },
+        { kind: 'button', label: () => 'Kerker (V12) NEU würfeln + betreten', onClick: () => { this.kerker12Wurf++; this.areas.delete('kerker12'); this.devKonsole?.toggle(); this.goArea('kerker12'); } },
+        { kind: 'button', label: () => 'Zurück nach Ravensmoor (stadt)', onClick: () => { this.devKonsole?.toggle(); this.goArea('stadt'); } },
+      ] },
       { name: 'WASSER', controls: wasserControls },
       { name: 'KAMERA', controls: () => [
         { kind: 'button', label: () => `Frei-Kamera: ${this.devFreiKam ? 'AN (WASD/Pfeile + Mittelmaus zieht)' : 'aus'}`, onClick: () => { this.setzeFreiKamera(!this.devFreiKam); this.devKonsole?.refresh(); } },

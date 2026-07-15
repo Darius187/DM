@@ -11,4 +11,8 @@ export const KERKER_GEN = {
   laengsSeiteZufall: 0.2,// Chance, NICHT die laengere Seite zu teilen (etwas Unordnung)
   extraTuerAnteil: 0.2,  // zusaetzliche Tueren (Schleifen) als Anteil der uebrigen
                          //   Nachbarschaften (Spec: 15-25%)
+  // Live-Planungskarte (Dev-Konsole > Maps). PLATZHALTER, bis der Autor die
+  // Sondermission verortet - hier in einer Zeile umstellbar.
+  missionTiefe: 3,       // Gegner-/Beute-Tiefe der spaeteren Mission
+  missionThema: 1,       // CRYPT_THEMES-Nummer (1 = Gruft, neutraler Stein-Look)
 } as const;

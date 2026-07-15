@@ -2183,3 +2183,15 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Tuning in src/data/kerker.ts; stopChance 0.4 -> 0.5 nach Editor-Sichtpruefung
   (mehr Saele, 187 -> ~165 Raeume). Spec-Rahmen 0.3-0.5 eingehalten.
 - HALT nach Schritt 1 (Autor-Abnahme im Editor) - Vaults/Setpieces/Rollen folgen.
+
+## R136b - Kerker (V12) LIVE als Planungskarte + Insel-Boeden gestrichen
+- Autor: V12 gefaellt, aber (a) verschiedene Boeden je Raum wirken fremd ->
+  fuer V12 GESTRICHEN (ein durchgehender Boden; V4/Hoehle bleibt wie sie ist),
+  (b) die Dungeon-Probe ist nur Testumgebung -> V12 jetzt als ECHTE WorldScene-
+  Area 'kerker12' (Regel 7: HUD/Licht/Kampf/Tueren automatisch, T.DTUER echt).
+- KEIN Eingang auf einer Spielkarte: geplante Karten liegen in der Dev-Konsole
+  (F10) im neuen Tab MAPS (betreten / NEU wuerfeln / zurueck), bis der Autor sie
+  zu einem neuen Dungeon verknuepft (Sondermission, Ort noch offen).
+- Planungskarte = bewusst nur Geometrie + sparsame Fackeln, KEINE Gegner/Beute/
+  Treppen. missionTiefe=3 + missionThema=1 (Gruft) sind PLATZHALTER in
+  src/data/kerker.ts - je eine Zeile.

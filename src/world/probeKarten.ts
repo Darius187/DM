@@ -113,11 +113,12 @@ export function erzeugeKarte(version: DungeonVersion): ProbeKarte {
     const r = seededRng(Math.floor(Math.random() * 1e9));
     const d = baueKerker(() => r.random());
     const tueren = d.grid.flat().filter((t) => t === 3).length;
+    // R136b (Autor): KEINE verschiedenen Boeden je Raum bei V12 - die Insel-
+    // Optik wirkte fremd. EIN durchgehender Boden fuer die ganze Karte.
     return {
       name: `V12 - KERKER: lueckenlose Flaechenteilung (${d.raeume.length} Räume, ${tueren} Türen)`,
       w: d.w, h: d.h, grid: d.grid as number[][], solid: (t) => t === 0 || t === 2,
       farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a, editorCodes: true,
-      raumBoeden: zufallsRaumBoeden(d.raeume),
     };
   }
   if (version === 9) {
