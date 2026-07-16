@@ -5940,13 +5940,15 @@ export class WorldScene extends CombatScene {
     return ein * aus;
   }
 
-  // --- 3D-Gebaeude (R132): Zimmermannshaus + Schmiede --------------------------
+  // --- 3D-Gebaeude (R132): Gebaeude im neuen Ravensmoor ------------------------
   // Voll texturierte GLBs (Codex-Handoff), live gerendert und BEGEHBAR. Jedes
-  // Gebaeude haengt an seiner Host-Box im stadt-Dorfplan (Haus=N1, Schmiede=B1)
-  // bzw. am zimmerei-Platz im alten Dorf. Details: src/gfx/gebaeude3dWelt.ts.
+  // Gebaeude haengt an seiner Host-Box im stadt-Dorfplan.
+  // Details: src/gfx/gebaeude3dWelt.ts.
   private static readonly GEB3D_BOXEN = [
     { box: 'N1', id: 'haus', url: 'houses/medieval_carpenter_house_3d_runtime.json', yaw: 210 },
     { box: 'B1', id: 'schmiede', url: 'houses/forge/medieval_forge_3d_runtime.json', yaw: 0 },
+    { box: 'B3', id: 'baeckerei', url: 'houses/bakery/medieval_bakery_house_3d_runtime.json', yaw: 0 },
+    { box: 'B6', id: 'muehle', url: 'houses/mill/medieval_mill_house_3d_runtime.json', yaw: 180 },
   ] as const;
 
   private starteGebaeude3d(id: string, url: string, footX: number, footY: number, yaw: number): void {

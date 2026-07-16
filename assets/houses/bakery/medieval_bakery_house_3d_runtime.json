@@ -36,6 +36,13 @@
       "default": 1
     }
   },
+  "bounds_blender": {
+    "min": [-4.31339, -5.255, -0.01],
+    "max": [6.74291, 4.09, 9.3088],
+    "center": [1.21476, -0.5825, 4.6494],
+    "size": [11.0563, 9.345, 9.3188],
+    "bounding_radius": 8.12051
+  },
   "materials": {
     "all_visible_materials_have_embedded_basecolor_textures": true,
     "runtime_tinting_allowed": false,
