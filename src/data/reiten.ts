@@ -22,7 +22,7 @@ export const REIT_PFERD = {
   richtungen: 16,
   sattelPunkteKey: 'reit_pferd_sattelpunkte',
   sattelPunkteJson: 'horse/ravensmoor-horse-mounts.json',
-  zellenBreite: 128,
+  zellenBreite: 192,
   zellenHoehe: 96,
   darstellungSkala: 0.645,
   fussOriginY: 0.9,
@@ -35,12 +35,12 @@ export const REIT_PFERD = {
   farbTint: 0x5c4c3c,
   // Hufspuren beim Laufen (Autor R135b). Kleine dunkle Abdruecke, die hinter dem
   // Pferd liegen bleiben und langsam verblassen. Alles hier tunebar.
-  spurAbstandPx: 24,    // alle X zurueckgelegten Pixel ein neuer Abdruck
+  spurAbstandPx: 22,    // alle X zurueckgelegten Pixel ein neuer Abdruck
   spurTempoMin: 18,     // erst ab diesem Tempo Spuren (im Stand keine)
-  spurLebenS: 7,        // Sekunden bis vollstaendig verblasst
-  spurBreite: 11,       // Abdruckgroesse
-  spurHoehe: 6,
-  spurAlpha: 0.42,      // Anfangs-Deckkraft
+  spurLebenS: 8,        // Sekunden bis vollstaendig verblasst
+  spurBreite: 13,       // Abdruckgroesse
+  spurHoehe: 7,
+  spurAlpha: 0.58,      // trockenes Gras; Regen und Wege verstaerken dynamisch
   spurFarbe: 0x1b130c,  // dunkle, feuchte Erde (Abdruck druecktden Boden ein)
   spurSeitVersatz: 7,   // seitlicher Versatz der linken/rechten Hufe
   spurMax: 60,          // Obergrenze gleichzeitiger Abdruecke

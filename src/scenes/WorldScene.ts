@@ -306,7 +306,7 @@ export class WorldScene extends CombatScene {
   private reitAtlasWarnungen = new Set<string>();
   // R136b: Wurf-Zaehler der Kerker-Planungskarte (Dev-Konsole > Maps > NEU wuerfeln)
   private kerker12Wurf = 0;
-  private reitSpuren: { e: Phaser.GameObjects.Ellipse; leben: number }[] = [];
+  private reitSpuren: { e: Phaser.GameObjects.Ellipse; leben: number; alpha: number }[] = [];
   private reitSpurWeg = 0;      // zurueckgelegter Weg seit letzter Spur
   private reitSpurSeite = 1;    // wechselt fuer linke/rechte Hufe
   private reitTuning: ReitDarstellungTuning = ladeReitTuning();
@@ -6170,7 +6170,7 @@ export class WorldScene extends CombatScene {
       const s = this.reitSpuren[i];
       s.leben -= dt;
       if (s.leben <= 0) { s.e.destroy(); this.reitSpuren.splice(i, 1); continue; }
-      s.e.setAlpha(REIT_PFERD.spurAlpha * (s.leben / REIT_PFERD.spurLebenS));
+      s.e.setAlpha(s.alpha * (s.leben / REIT_PFERD.spurLebenS));
     }
     if (!this.reitet || Math.abs(pferd.tempo) < REIT_PFERD.spurTempoMin) return;
     this.reitSpurWeg += Math.abs(pferd.tempo) * dt;
@@ -6182,11 +6182,20 @@ export class WorldScene extends CombatScene {
     this.reitSpurSeite *= -1;
     const sx = pferd.x + Math.cos(quer) * off;
     const sy = pferd.y + Math.sin(quer) * off;
-    const e = this.add.ellipse(sx, sy, REIT_PFERD.spurBreite, REIT_PFERD.spurHoehe, REIT_PFERD.spurFarbe, REIT_PFERD.spurAlpha)
+    const tx = Math.floor(sx / TILE), ty = Math.floor(sy / TILE);
+    const aufWeg = this.area.map[ty]?.[tx] === T.PATH;
+    const regenFaktor = this.regnet ? 1.45 : 1 + Math.min(0.25, this.wetterWert * 0.25);
+    const wegFaktor = aufWeg ? 1.35 : 1;
+    const alpha = Math.min(0.92, REIT_PFERD.spurAlpha * regenFaktor * wegFaktor);
+    const groesse = (this.regnet ? 1.08 : 1) * (aufWeg ? 1.12 : 1);
+    const e = this.add.ellipse(
+      sx, sy, REIT_PFERD.spurBreite * groesse, REIT_PFERD.spurHoehe * groesse,
+      REIT_PFERD.spurFarbe, alpha,
+    )
       .setDepth(sy - 6);                      // knapp unter den Fuessen -> liegt am Boden
     e.setRotation(pferd.richtung);
     this.uiCam?.ignore(e);
-    this.reitSpuren.push({ e, leben: REIT_PFERD.spurLebenS });
+    this.reitSpuren.push({ e, leben: REIT_PFERD.spurLebenS, alpha });
     if (this.reitSpuren.length > REIT_PFERD.spurMax) { const alt = this.reitSpuren.shift(); alt?.e.destroy(); }
   }
 
