@@ -68,7 +68,7 @@ export class BootScene extends Phaser.Scene {
       }
       c.push({ key: `hs_haus${n}_nacht`, url: `tiles/haus${n}_nacht.png`, art: 'image', optional: true });
     }
-    c.push({ key: `hs_${TITLE_IMAGE}`, url: 'title/ravensmoor-title.jpg', art: 'image' });
+    c.push({ key: `hs_${TITLE_IMAGE}`, url: 'title/ravensmoor-title.png', art: 'image' });
     return c;
   }
 
@@ -137,7 +137,7 @@ export class BootScene extends Phaser.Scene {
     track(REIT_PFERD.uebergangHochAtlasKey, `assets/${REIT_PFERD.uebergangHochAtlasBild}`);
     track(REIT_PFERD.uebergangRunterAtlasKey, `assets/${REIT_PFERD.uebergangRunterAtlasBild}`);
     track(REIT_PFERD.sattelPunkteKey, `assets/${REIT_PFERD.sattelPunkteJson}`);
-    track(`hs_${TITLE_IMAGE}`, 'assets/title/ravensmoor-title.jpg');
+    track(`hs_${TITLE_IMAGE}`, 'assets/title/ravensmoor-title.png');
     logAssetStatus();
     // Eigene Baukasten-Bilder (Runde 24) ÜBER die geladenen Texturen legen,
     // erst dann ins Menü - sonst rendert das Dorf einmal mit alten Tiles

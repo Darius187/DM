@@ -14,6 +14,7 @@ export class TitleScene extends Phaser.Scene {
   // 9.5: ein fertiges Layout passt sich nicht von selbst an - das Hauptmenü ist
   // die erlaubte Stelle für Resize-Neuaufbau).
   private layout?: Phaser.GameObjects.Container;
+  private devOffen = false;
 
   constructor() {
     super('Title');
@@ -62,32 +63,38 @@ export class TitleScene extends Phaser.Scene {
     if (this.textures.exists('hs_ravensmoor-title')) {
       const img = this.add.image(w / 2, h / 2, 'hs_ravensmoor-title');
       const sc = Math.max(w / img.width, h / img.height);
-      img.setScale(sc).setAlpha(0.55);
+      img.setScale(sc);
       c.add(img);
     } else {
       c.add(this.drawFallbackBackground(w, h));
     }
-    c.add(this.add.rectangle(w / 2, h / 2, w, h, 0x080503, 0.45));
+    const schatten = this.add.graphics();
+    schatten.fillGradientStyle(0x090909, 0x090909, 0x11100e, 0x11100e, 0.82, 0.18, 0.78, 0.34);
+    schatten.fillRect(0, 0, w, h);
+    c.add(schatten);
+    c.add(this.add.rectangle(w / 2, h - 36, w, 72, 0x080706, 0.72));
 
-    // Titel - skaliert herunter, falls er für schmale Fenster zu breit ist
-    const titel = this.add.text(w / 2, h * 0.16, TITEL.haupt, {
-      fontFamily: 'serif', fontSize: '64px', color: '#d8cfb8', letterSpacing: 8,
-      stroke: '#000000', strokeThickness: 6,
-    }).setOrigin(0.5);
-    if (titel.width > w - 40) titel.setScale((w - 40) / titel.width);
+    const schmal = w < 760;
+    const links = schmal ? w / 2 : Math.max(52, w * 0.075);
+    const titel = this.add.text(links, h * 0.105, TITEL.haupt, {
+      fontFamily: 'serif', fontSize: schmal ? '48px' : '60px', color: '#e2d8c6', letterSpacing: 8,
+      stroke: '#18130f', strokeThickness: 5,
+    }).setOrigin(schmal ? 0.5 : 0, 0);
+    if (titel.width > w - 36) titel.setScale((w - 36) / titel.width);
     c.add(titel);
 
     // Sichtbare Versionsnummer, damit alte Stände sofort auffallen
     c.add(this.add.text(10, h - 10, `Version: Alpha · Runde ${SPIEL_VERSION} (17.06.2026)`, {
       fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c',
     }).setOrigin(0, 1));
-    c.add(this.add.text(w / 2, h * 0.16 + 46, TITEL.unter, {
-      fontFamily: 'serif', fontSize: '18px', color: '#c9a227', letterSpacing: 4,
-    }).setOrigin(0.5));
-    c.add(this.add.text(w / 2, h * 0.30, TITEL.intro, {
-      fontFamily: 'serif', fontSize: '17px', color: '#a89878', fontStyle: 'italic',
-      wordWrap: { width: Math.min(640, w - 60) }, align: 'center',
-    }).setOrigin(0.5, 0));
+    c.add(this.add.text(schmal ? w / 2 : links + 4, h * 0.105 + (schmal ? 55 : 69), TITEL.unter, {
+      fontFamily: 'serif', fontSize: schmal ? '14px' : '16px', color: '#c7a769', letterSpacing: 4,
+    }).setOrigin(schmal ? 0.5 : 0, 0));
+    c.add(this.add.text(schmal ? w / 2 : links + 4, h * 0.26, TITEL.intro, {
+      fontFamily: 'serif', fontSize: schmal ? '13px' : '15px', color: '#c8bba4', fontStyle: 'italic',
+      stroke: '#17130f', strokeThickness: 3,
+      wordWrap: { width: Math.min(schmal ? w - 70 : 430, w - 60) }, align: schmal ? 'center' : 'left',
+    }).setOrigin(schmal ? 0.5 : 0, 0));
 
     // Dev-Werkzeug: ?start=crypt2 springt direkt in ein Gebiet (nur Dev-Build)
     const devStart = import.meta.env.DEV ? new URLSearchParams(location.search).get('start') ?? undefined : undefined;
@@ -96,6 +103,9 @@ export class TitleScene extends Phaser.Scene {
       ['NEUES SPIEL', () => this.scene.start('World', { neu: true, startArea: devStart || 'start' }), true],
       ['LADEN', () => this.showLoadMenu(), anySave],
       ['EINSTELLUNGEN', () => this.scene.start('Settings', { zurueck: 'Title' }), true],
+      ['ENTWICKLUNG', () => { this.devOffen = !this.devOffen; this.buildLayout(); }, import.meta.env.DEV],
+    ];
+    const devButtons: Array<[string, () => void, boolean]> = [
       ['DEBUG-ARENA', () => this.scene.start('DebugArena'), true],
       ['SCHLACHT-PROBE', () => this.scene.start('SchlachtProbe'), true],
       ['DUNGEON-PROBE', () => this.scene.start('DungeonProbe'), true],
@@ -103,19 +113,30 @@ export class TitleScene extends Phaser.Scene {
       ['ANHÖHE-PROBE', () => this.scene.start('AnhoeheProbe'), true],
       ['GRUSEL-SCHATTEN', () => this.scene.start('StrahlenProbe'), true],
       ['MENÜ-PROBE (UI)', () => this.scene.start('UIProbe'), true],
-      ['HAUS-PROBE (3D)', () => this.scene.start('HausProbe'), true],
       ['ANFANGSKARTE', () => this.scene.start('Anfangskarte'), true],
       ['START-KARTE (neu)', () => this.scene.start('World', { neu: true, startArea: 'start' }), true],
       ['DORF IM WALD', () => { window.location.href = 'dorf.html'; }, true],
     ];
-    // Knopf-Abstand so wählen, dass ALLE Knöpfe in die Höhe passen (sonst lief
-    // die untere Reihe aus dem Bild) - der Bereich von 50% bis 96% der Höhe.
-    const top = h * 0.50, bottom = h * 0.96;
-    const step = Math.min(52, (bottom - top) / buttons.length);
-    let y = top + step / 2;
+    const menuX = schmal ? w / 2 : links + Math.min(150, (w - links) * 0.18);
+    let y = Math.max(h * 0.53, schmal ? 360 : 330);
     for (const [label, fn, enabled] of buttons) {
-      this.makeButton(c, w / 2, y, label, fn, enabled, w);
-      y += step;
+      this.makeButton(c, menuX, y, label, fn, enabled, w, label === 'NEUES SPIEL');
+      y += 47;
+    }
+    if (this.devOffen && import.meta.env.DEV) {
+      const panelW = Math.min(560, w - 34);
+      const panelX = schmal ? w / 2 : Math.min(w - panelW / 2 - 18, Math.max(w * 0.62, menuX + 310));
+      const panelY = Math.max(86, h / 2 - 120);
+      c.add(this.add.rectangle(panelX, panelY + 116, panelW, 270, 0x17110d, 0.94).setStrokeStyle(2, 0x6b5135));
+      c.add(this.add.text(panelX, panelY - 4, 'ENTWICKLUNGSWERKZEUGE', {
+        fontFamily: 'serif', fontSize: '13px', color: '#c9ae79', letterSpacing: 2,
+      }).setOrigin(0.5, 0));
+      const colW = panelW / 2;
+      devButtons.forEach(([label, fn, enabled], i) => {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        this.makeButton(c, panelX - panelW / 2 + colW * (col + 0.5), panelY + 32 + row * 38, label, fn, enabled, colW + 22, false, 31);
+      });
     }
   }
 
@@ -157,17 +178,29 @@ export class TitleScene extends Phaser.Scene {
     c.add(back);
   }
 
-  private makeButton(c: Phaser.GameObjects.Container, x: number, y: number, label: string, fn: () => void, enabled: boolean, w: number): void {
+  private makeButton(
+    c: Phaser.GameObjects.Container,
+    x: number,
+    y: number,
+    label: string,
+    fn: () => void,
+    enabled: boolean,
+    w: number,
+    primaer = false,
+    hoehe = 40,
+  ): void {
     const bw = Math.min(280, w - 40);
-    const bg = this.add.rectangle(x, y, bw, 40, 0x1c1410, 1).setStrokeStyle(1, 0x5a4a32);
+    const grund = primaer ? 0x5d2b22 : 0x211812;
+    const bg = this.add.rectangle(x, y, bw, hoehe, grund, 0.96).setStrokeStyle(2, primaer ? 0x9b6b43 : 0x5a4a32);
+    const innen = this.add.rectangle(x, y, bw - 6, hoehe - 6, 0x000000, 0).setStrokeStyle(1, 0xa8895c, 0.28);
     const txt = this.add.text(x, y, label, {
-      fontFamily: 'serif', fontSize: '18px', color: enabled ? '#d8cfb8' : '#5a5246', letterSpacing: 3,
+      fontFamily: 'serif', fontSize: hoehe < 36 ? '12px' : '16px', color: enabled ? '#ded2bd' : '#5a5246', letterSpacing: hoehe < 36 ? 1 : 3,
     }).setOrigin(0.5);
-    c.add(bg); c.add(txt);
-    if (!enabled) { bg.setAlpha(0.5); return; }
+    c.add(bg); c.add(innen); c.add(txt);
+    if (!enabled) { bg.setAlpha(0.45); innen.setAlpha(0.25); return; }
     bg.setInteractive({ useHandCursor: true })
-      .on('pointerover', () => { bg.setStrokeStyle(1, 0xc9a227); txt.setColor('#c9a227'); })
-      .on('pointerout', () => { bg.setStrokeStyle(1, 0x5a4a32); txt.setColor('#d8cfb8'); })
+      .on('pointerover', () => { bg.setStrokeStyle(2, 0xc5a16a); txt.setColor('#f2e4c8'); })
+      .on('pointerout', () => { bg.setStrokeStyle(2, primaer ? 0x9b6b43 : 0x5a4a32); txt.setColor('#ded2bd'); })
       .on('pointerdown', fn);
   }
 
