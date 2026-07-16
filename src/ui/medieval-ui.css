@@ -511,3 +511,215 @@
   color: #e8b9a8; font-size: 20px;
   flex: none;
 }
+
+/* R113: praezise, flexible Fassung nach der freigegebenen Vorlage. Die alten
+   Selektoren bleiben fuer UIProbe kompatibel; diese spaeteren Regeln gewinnen
+   nur innerhalb des Einstellungsmenues. */
+.mv-settings-wurzel {
+  overflow: hidden;
+  background: radial-gradient(ellipse at center, rgba(32, 27, 21, 0.9), rgba(7, 7, 7, 0.98));
+}
+.mv-settings-wurzel .mv-rahmen {
+  width: min(1010px, calc(100vw - 38px));
+  height: min(610px, calc(100vh - 32px));
+  min-height: 470px;
+  background: var(--mv-img-wood), linear-gradient(90deg, rgba(20, 13, 8, 0.3), transparent 18%, transparent 82%, rgba(20, 13, 8, 0.3)), #3a2516;
+  background-size: 512px 128px, auto, auto;
+  background-blend-mode: multiply, normal, normal;
+  border: 4px solid #17110d;
+  border-radius: 5px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.86), inset 0 0 0 2px #6b4b2f, inset 0 0 0 8px rgba(15, 9, 5, 0.52), inset 0 0 46px rgba(0, 0, 0, 0.48);
+  transition: transform 0.04s linear;
+}
+.mv-settings-wurzel .mv-rahmen::before,
+.mv-settings-wurzel .mv-rahmen::after,
+.mv-settings-wurzel .mv-rahmen .mv-ecke-l,
+.mv-settings-wurzel .mv-rahmen .mv-ecke-r {
+  z-index: 6;
+  width: 46px;
+  height: 46px;
+  box-sizing: border-box;
+  background: radial-gradient(circle at 9px 9px, #85827b 0 2px, #232424 3px, transparent 4px), radial-gradient(circle at calc(100% - 9px) calc(100% - 9px), #85827b 0 2px, #232424 3px, transparent 4px), linear-gradient(135deg, #555653, #252728 68%, #191a1a);
+  border: 2px solid #111211;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(210, 205, 190, 0.12), 0 3px 8px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+.mv-settings-wurzel .mv-rahmen::before { top: -9px; left: -9px; }
+.mv-settings-wurzel .mv-rahmen::after { top: -9px; right: -9px; }
+.mv-settings-wurzel .mv-rahmen .mv-ecke-l { bottom: -9px; left: -9px; }
+.mv-settings-wurzel .mv-rahmen .mv-ecke-r { right: -9px; bottom: -9px; }
+
+.mv-settings-wurzel .mv-titelbanner {
+  z-index: 4;
+  top: 14px;
+  left: 150px;
+  right: 140px;
+  height: 64px;
+  box-sizing: border-box;
+  cursor: grab;
+  background: var(--mv-img-parchment), linear-gradient(180deg, rgba(244, 231, 202, 0.82), rgba(199, 176, 136, 0.82));
+  background-size: cover, auto;
+  background-blend-mode: multiply, normal;
+  border: 2px solid #6c4c2e;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.55), inset 0 0 22px rgba(84, 50, 22, 0.22);
+  color: #241810;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-indent: 0.24em;
+}
+.mv-settings-wurzel .mv-titelbanner:active { cursor: grabbing; }
+.mv-settings-wurzel .mv-titelbanner .mv-siegel,
+.mv-settings-wurzel .mv-fussleiste .mv-siegel-band {
+  background: radial-gradient(circle at 36% 30%, rgba(205, 94, 72, 0.7), transparent 24%), radial-gradient(circle, #8b3025 0 49%, #501912 52% 62%, #b1734c 65% 69%, #3c1712 72%);
+  border: 2px solid #35120e;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.62), inset 0 1px 4px rgba(255, 223, 184, 0.2);
+  color: #d7a48b;
+  text-shadow: 0 1px 1px #3a0e0a;
+}
+.mv-settings-wurzel .mv-titelbanner .mv-siegel { width: 42px; height: 42px; font-size: 15px; }
+
+.mv-settings-wurzel .mv-buchtabs { z-index: 5; left: -14px; top: 83px; gap: 9px; }
+.mv-settings-wurzel .mv-buchtab {
+  position: relative;
+  box-sizing: border-box;
+  width: 166px;
+  min-height: 58px;
+  padding: 12px 13px 12px 23px;
+  border: 2px solid #24170f;
+  border-radius: 3px 7px 7px 3px;
+  outline-color: rgba(232, 215, 181, 0.36);
+  color: #ded1bb;
+  font-size: 15px;
+  letter-spacing: 0.09em;
+  filter: brightness(0.82) saturate(0.72);
+  transition: left 0.12s ease, filter 0.12s ease;
+}
+.mv-settings-wurzel .mv-buchtab::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  width: 5px;
+  height: 12px;
+  transform: translateY(-50%);
+  border-radius: 4px;
+  background: #77716a;
+  border: 1px solid #242322;
+}
+.mv-settings-wurzel .mv-buchtab:hover { filter: brightness(1); }
+.mv-settings-wurzel .mv-buchtab.mv-aktiv { left: 11px; transform: none; filter: brightness(1.08) saturate(0.9); }
+.mv-settings-wurzel .mv-buchtab .mv-buchtab-icon { width: 24px; overflow: hidden; filter: grayscale(0.35) sepia(0.2) drop-shadow(0 1px 1px #000); }
+
+.mv-settings-wurzel .mv-pergamentflaeche {
+  top: 88px;
+  left: 148px;
+  right: 34px;
+  bottom: 69px;
+  box-sizing: border-box;
+  padding: 18px 25px 16px;
+  background: var(--mv-img-parchment), radial-gradient(circle at 28% 18%, rgba(255, 255, 255, 0.12), transparent 33%), linear-gradient(180deg, rgba(231, 216, 184, 0.88), rgba(203, 183, 143, 0.9));
+  background-size: cover, auto, auto;
+  background-blend-mode: multiply, normal, normal;
+  border: 2px solid #684a2c;
+  box-shadow: inset 0 0 34px rgba(70, 42, 20, 0.28), 0 2px 8px rgba(0, 0, 0, 0.38);
+  scrollbar-color: #705132 #c4ac7f;
+  scrollbar-width: thin;
+}
+.mv-settings-wurzel .mv-pergamentflaeche.mv-zweispaltig { column-count: initial; column-gap: initial; }
+.mv-einstellungsraster {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 32px;
+  min-height: 100%;
+}
+.mv-einstellungsspalte + .mv-einstellungsspalte { border-left: 1px solid rgba(83, 58, 34, 0.48); padding-left: 28px; }
+.mv-einstellungsgruppe { margin: 0 0 14px; }
+.mv-settings-wurzel .mv-pergamentflaeche .mv-block { margin-bottom: 7px; }
+.mv-settings-wurzel .mv-abschnitt { min-height: 20px; margin: 1px 0 9px; font-size: 14px; font-weight: 600; letter-spacing: 0.18em; }
+
+.mv-settings-wurzel .mv-regler-zeile {
+  display: grid;
+  grid-template-columns: 20px minmax(110px, 1fr) minmax(110px, 150px) 38px;
+  align-items: center;
+  gap: 8px;
+  min-height: 25px;
+  margin: 3px 0;
+}
+.mv-settings-wurzel .mv-regler-zeile .mv-regler-label { min-width: 0; font-size: 12px; line-height: 1.15; }
+.mv-settings-wurzel .mv-regler { flex: initial; min-width: 0; }
+.mv-settings-wurzel .mv-regler .mv-schiene,
+.mv-settings-wurzel .mv-regler .mv-fuellung { height: 4px; border-radius: 1px; }
+.mv-settings-wurzel .mv-regler .mv-schiene { background: linear-gradient(180deg, #1f1c18, #39332b); }
+.mv-settings-wurzel .mv-regler .mv-fuellung { background: linear-gradient(180deg, #9b793e, #6c4e27); }
+.mv-settings-wurzel .mv-regler .mv-knopf { width: 16px; height: 16px; }
+.mv-settings-wurzel .mv-regler-zeile .mv-regler-wert { width: 38px; font-size: 11px; }
+
+.mv-settings-wurzel .mv-zeile-knopf {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 118px;
+  align-items: center;
+  gap: 10px;
+  min-height: 27px;
+  margin: 3px 0;
+}
+.mv-settings-wurzel .mv-zeile-knopf .mv-zeile-label { min-width: 0; font-size: 12px; line-height: 1.15; }
+.mv-settings-wurzel .mv-wertknopf {
+  box-sizing: border-box;
+  min-width: 118px;
+  padding: 5px 9px;
+  overflow: hidden;
+  background: var(--mv-img-button), linear-gradient(180deg, #35332e, #20201d);
+  background-size: cover, auto;
+  background-blend-mode: multiply, normal;
+  border-radius: 2px;
+  color: #e1d5bd;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mv-settings-wurzel .mv-fussnote { margin-top: 7px; color: #65533e; font-size: 10px; line-height: 1.35; }
+
+.mv-settings-wurzel .mv-fussleiste { z-index: 4; left: 148px; right: 34px; bottom: 12px; gap: 24px; }
+.mv-settings-wurzel .mv-lederknopf {
+  box-sizing: border-box;
+  min-width: 178px;
+  padding: 9px 22px;
+  border: 2px solid #21150f;
+  border-radius: 3px;
+  outline-color: rgba(230, 210, 170, 0.35);
+  color: #ded2bd;
+  font-size: 14px;
+  letter-spacing: 0.16em;
+}
+.mv-settings-wurzel .mv-fussleiste .mv-siegel-band { width: 48px; height: 48px; font-size: 0; }
+.mv-settings-wurzel .mv-fussleiste .mv-siegel-band::after { content: 'R'; font-size: 13px; }
+
+@media (max-width: 820px), (max-height: 520px) {
+  .mv-settings-wurzel .mv-rahmen { width: calc(100vw - 20px); height: calc(100vh - 18px); min-height: 0; }
+  .mv-settings-wurzel .mv-titelbanner { left: 118px; right: 28px; height: 50px; font-size: 22px; }
+  .mv-settings-wurzel .mv-buchtabs { top: 70px; }
+  .mv-settings-wurzel .mv-buchtab { width: 132px; min-height: 42px; padding: 8px 9px 8px 18px; font-size: 12px; }
+  .mv-settings-wurzel .mv-pergamentflaeche { top: 68px; left: 116px; right: 18px; bottom: 58px; padding: 12px 14px; }
+  .mv-einstellungsraster { gap: 16px; }
+  .mv-einstellungsspalte + .mv-einstellungsspalte { padding-left: 14px; }
+  .mv-settings-wurzel .mv-regler-zeile { grid-template-columns: 16px minmax(90px, 1fr) minmax(80px, 120px) 34px; gap: 5px; }
+  .mv-settings-wurzel .mv-fussleiste { left: 116px; right: 18px; bottom: 7px; gap: 14px; }
+  .mv-settings-wurzel .mv-lederknopf { min-width: 132px; padding: 7px 13px; font-size: 12px; }
+  .mv-settings-wurzel .mv-fussleiste .mv-siegel-band { width: 38px; height: 38px; }
+}
+
+@media (max-width: 650px) {
+  .mv-settings-wurzel .mv-buchtabs { left: -8px; gap: 5px; }
+  .mv-settings-wurzel .mv-buchtab { width: 104px; min-height: 38px; padding-left: 17px; }
+  .mv-settings-wurzel .mv-buchtab span:last-child { overflow: hidden; text-overflow: ellipsis; }
+  .mv-settings-wurzel .mv-buchtab .mv-buchtab-icon { display: none; }
+  .mv-settings-wurzel .mv-titelbanner { left: 91px; right: 14px; }
+  .mv-settings-wurzel .mv-pergamentflaeche { left: 90px; right: 10px; }
+  .mv-einstellungsraster { grid-template-columns: 1fr; }
+  .mv-einstellungsspalte + .mv-einstellungsspalte { border-left: 0; padding-left: 0; }
+  .mv-settings-wurzel .mv-fussleiste { left: 90px; right: 10px; }
+  .mv-settings-wurzel .mv-fussleiste .mv-siegel-band { display: none; }
+}

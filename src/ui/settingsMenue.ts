@@ -47,11 +47,37 @@ export function baueSettingsMenue(opts: SettingsMenueOpts): SettingsMenue {
   const banner = document.createElement('div');
   banner.className = 'mv-titelbanner';
   banner.textContent = 'Einstellungen';
+  banner.title = 'Fenster verschieben';
   const siegel = document.createElement('div');
   siegel.className = 'mv-siegel';
-  siegel.textContent = '❋';
+  siegel.textContent = 'R';
   banner.appendChild(siegel);
   rahmen.appendChild(banner);
+
+  // Auch das Vollbild-Menue folgt der Fenster-Regel: Das Titelband ist der
+  // Griff. Bildschirmkoordinaten verhindern das bekannte Aufschaukeln.
+  let ziehStart: { px: number; py: number; x: number; y: number } | null = null;
+  let rahmenX = 0;
+  let rahmenY = 0;
+  const setzeRahmenPosition = (): void => {
+    rahmen.style.transform = `translate(${rahmenX}px, ${rahmenY}px)`;
+  };
+  banner.addEventListener('pointerdown', (e) => {
+    if ((e.target as HTMLElement).closest('.mv-siegel')) return;
+    ziehStart = { px: e.clientX, py: e.clientY, x: rahmenX, y: rahmenY };
+    banner.setPointerCapture(e.pointerId);
+  });
+  banner.addEventListener('pointermove', (e) => {
+    if (!ziehStart) return;
+    const freiX = Math.max(0, (window.innerWidth - rahmen.offsetWidth) / 2);
+    const freiY = Math.max(0, (window.innerHeight - rahmen.offsetHeight) / 2);
+    rahmenX = Math.round(Math.max(-freiX, Math.min(freiX, ziehStart.x + e.clientX - ziehStart.px)));
+    rahmenY = Math.round(Math.max(-freiY, Math.min(freiY, ziehStart.y + e.clientY - ziehStart.py)));
+    setzeRahmenPosition();
+  });
+  const ziehEnde = (): void => { ziehStart = null; };
+  banner.addEventListener('pointerup', ziehEnde);
+  banner.addEventListener('pointercancel', ziehEnde);
 
   const tabsBox = document.createElement('div');
   tabsBox.className = 'mv-buchtabs';
@@ -88,7 +114,9 @@ export function baueSettingsMenue(opts: SettingsMenueOpts): SettingsMenue {
     flaeche.classList.toggle('mv-zweispaltig', !!def?.zweispaltig);
     flaeche.replaceChildren();
     tastenKnoepfe.clear();
-    for (const zeile of opts.inhalt(id)) flaeche.appendChild(baueZeile(zeile, opts, tastenKnoepfe));
+    const zeilen = opts.inhalt(id);
+    if (def?.zweispaltig) flaeche.appendChild(baueSpalten(zeilen, opts, tastenKnoepfe));
+    else for (const zeile of zeilen) flaeche.appendChild(baueZeile(zeile, opts, tastenKnoepfe));
   };
 
   for (const t of opts.tabs) {
@@ -107,6 +135,43 @@ export function baueSettingsMenue(opts: SettingsMenueOpts): SettingsMenue {
     tasteGesetzt: (id, label) => { const k = tastenKnoepfe.get(id); if (k) k.textContent = label; },
     zerstoere: () => wurzel.remove(),
   };
+}
+
+function baueSpalten(
+  zeilen: MenueZeile[],
+  opts: SettingsMenueOpts,
+  tastenKnoepfe: Map<string, HTMLDivElement>,
+): HTMLDivElement {
+  const raster = document.createElement('div');
+  raster.className = 'mv-einstellungsraster';
+  const links = document.createElement('div');
+  const rechts = document.createElement('div');
+  links.className = 'mv-einstellungsspalte';
+  rechts.className = 'mv-einstellungsspalte';
+
+  // Abschnitte bleiben zusammen. Die Gewichte bilden die sichtbare Hoehe der
+  // Zeilentypen ab und verteilen ganze Gruppen auf die kuerzere Spalte.
+  const gruppen: MenueZeile[][] = [];
+  for (const zeile of zeilen) {
+    if (zeile.art === 'abschnitt' || gruppen.length === 0) gruppen.push([]);
+    gruppen[gruppen.length - 1].push(zeile);
+  }
+  const gewicht = (gruppe: MenueZeile[]): number => gruppe.reduce((sum, zeile) => (
+    sum + (zeile.art === 'hinweis' ? 1.35 : zeile.art === 'abschnitt' ? 0.8 : 1)
+  ), 0);
+  let linksGewicht = 0;
+  let rechtsGewicht = 0;
+  gruppen.forEach((gruppe, index) => {
+    const ziel = index === 0 || linksGewicht <= rechtsGewicht ? links : rechts;
+    const block = document.createElement('section');
+    block.className = 'mv-einstellungsgruppe';
+    for (const zeile of gruppe) block.appendChild(baueZeile(zeile, opts, tastenKnoepfe));
+    ziel.appendChild(block);
+    if (ziel === links) linksGewicht += gewicht(gruppe);
+    else rechtsGewicht += gewicht(gruppe);
+  });
+  raster.append(links, rechts);
+  return raster;
 }
 
 function baueZeile(z: MenueZeile, opts: SettingsMenueOpts, tastenKnoepfe: Map<string, HTMLDivElement>): HTMLElement {
