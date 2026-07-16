@@ -21,11 +21,20 @@ import { setVerfolgtWunsch, type QuestSicht } from '../logic/questLog';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import type { SoundProvider } from '../gfx/SoundProvider';
 import { fixUiScroll } from './dialog';
+import portraitAldricUrl from '../../assets/ui/character/aldric-portrait-ohne-wappen-1300.png';
+import parchmentUrl from '../../assets/ui/parchment.png';
+import woodUrl from '../../assets/ui/wood.png';
 
 const PANEL_BG = 0x171108;
 const LINE = 0x4a3a26;
 const GOLD = '#c9a227';
 const BONE = '#d8cfb8';
+const INK = '#2b2118';
+const INK_SOFT = '#62503b';
+const UI_PARCHMENT = 'ui_1300_parchment';
+const UI_WOOD = 'ui_1300_wood';
+const UI_ALDRIC = 'ui_1300_aldric_portrait';
+const RARITY_INK = ['#2b2118', '#285778', '#583778', '#78317b'] as const;
 
 const TYP_NAMEN: Record<string, string> = {
   weapon: 'Waffe', armor: 'Rüstung', ring: 'Ring', gem: 'Edelstein', schild: 'Schild',
@@ -68,6 +77,8 @@ export class UIPanels {
   private container: Phaser.GameObjects.Container | null = null;
   private tooltip: Phaser.GameObjects.Container | null = null;
   private scroll = 0;
+  private selectedItem: Item | null = null;
+  private compareItem: Item | null = null;
   onChanged: (() => void) | null = null;
   onUseScroll: ((scrollSkill: string) => void) | null = null;
   // Inventar -> Aktionsleiste ziehen (Runde 40): legt eine Schriftrolle/einen
@@ -113,12 +124,28 @@ export class UIPanels {
     private sfx: SoundProvider,
     private getPlayer: () => PlayerState,
   ) {
+    this.ensurePanelAssets();
     // Maus-Rad blättert die Inventarliste
     scene.input.on('wheel', (_p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
       if (!this.open_) return;
       this.scroll = Math.max(0, this.scroll + (dy > 0 ? 1 : -1));
       this.build();
     });
+  }
+
+  private ensurePanelAssets(): void {
+    const assets = [
+      { key: UI_PARCHMENT, url: parchmentUrl },
+      { key: UI_WOOD, url: woodUrl },
+      { key: UI_ALDRIC, url: portraitAldricUrl },
+    ].filter(({ key }) => !this.scene.textures.exists(key));
+    if (!assets.length) return;
+    this.scene.load.once(Phaser.Loader.Events.COMPLETE, () => {
+      for (const { key } of assets) this.scene.textures.get(key)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      if (this.open_) this.build();
+    });
+    for (const { key, url } of assets) this.scene.load.image(key, url);
+    if (!this.scene.load.isLoading()) this.scene.load.start();
   }
 
   get blocked(): boolean {
@@ -158,14 +185,26 @@ export class UIPanels {
   private build(): void {
     this.container?.destroy();
     const sw = this.scene.scale.width, sh = this.scene.scale.height;
-    const w = Math.min(880, sw - 24);
-    const h = Math.min(sh - 36, 560);
+    const w = Math.min(1180, sw - 20);
+    const h = Math.min(sh - 24, 650);
     const off = getSettings().ui.fenster;
     const c = this.scene.add.container((sw - w) / 2 + off.x, (sh - h) / 2 + off.y).setScrollFactor(0).setDepth(5100);
     this.container = c;
-    const bg = this.scene.add.rectangle(0, 0, w, h, PANEL_BG, 0.97).setOrigin(0).setStrokeStyle(1, LINE);
+    c.add(this.scene.add.rectangle(4, 6, w, h, 0x000000, 0.48).setOrigin(0));
+    if (this.scene.textures.exists(UI_PARCHMENT)) {
+      c.add(this.scene.add.tileSprite(0, 0, w, h, UI_PARCHMENT).setOrigin(0).setTint(0xd6c39d));
+    } else {
+      c.add(this.scene.add.rectangle(0, 0, w, h, 0xc9b58c, 0.98).setOrigin(0));
+    }
+    if (this.scene.textures.exists(UI_WOOD)) {
+      c.add(this.scene.add.tileSprite(0, 0, w, 55, UI_WOOD).setOrigin(0).setTint(0x58432f));
+    } else {
+      c.add(this.scene.add.rectangle(0, 0, w, 55, 0x302016, 1).setOrigin(0));
+    }
+    const bg = this.scene.add.rectangle(0, 0, w, h, 0x000000, 0.001).setOrigin(0).setStrokeStyle(3, 0x21170f);
     bg.setInteractive();
     c.add(bg);
+    c.add(this.scene.add.rectangle(5, 5, w - 10, h - 10, 0x000000, 0).setOrigin(0).setStrokeStyle(1, 0x8a6840, 0.85));
     // Fenster direkt greifen (Runde 23, oft gewünscht): die obere Leiste
     // zieht das Fenster, der Versatz landet dauerhaft in den Einstellungen
     // (ui.fenster - gilt damit auch für Handel und Chronik)
@@ -195,21 +234,18 @@ export class UIPanels {
       saveSettings();
     });
     c.add(griff);
-    c.add(this.scene.add.text(w / 2, 8, '⠿ ziehen zum Verschieben', {
-      fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a',
-    }).setOrigin(0.5, 0));
     // Haupt-Reiter (Runde 38: eigene Tabs für Fähigkeiten und Aufgaben,
     // damit der Charakter-Tab nicht mehr überladen ist und nichts überlappt)
     const reiter: Array<[typeof this.hauptTab, string]> = [
-      ['held', 'CHARAKTER'], ['faehigkeiten', 'FÄHIGKEITEN'], ['heer', 'HEER'], ['ebene', 'EBENE'], ['karte', 'KARTE'], ['aufgaben', 'AUFGABEN'],
+      ['held', 'CHARAKTER'], ['faehigkeiten', 'FÄHIGKEITEN'], ['heer', 'HEER'], ['karte', 'KARTE'], ['aufgaben', 'AUFGABEN'],
       ['kontakte', 'KONTAKTE'], ['album', 'ALBUM'], ['statistik', 'STATISTIK'],
     ];
-    let rx = 14;
+    let rx = 18;
     for (const [id, lbl] of reiter) {
-      const t = this.scene.add.text(rx, 30, lbl, {
-        fontFamily: 'serif', fontSize: '12px', letterSpacing: 1,
-        color: this.hauptTab === id ? '#c9a227' : '#8a7a5a',
-        backgroundColor: this.hauptTab === id ? '#221808' : '#100b06', padding: { x: 9, y: 4 },
+      const t = this.scene.add.text(rx, 10, lbl, {
+        fontFamily: 'serif', fontSize: w < 930 ? '10px' : '11px', letterSpacing: 1,
+        color: this.hauptTab === id ? '#f0dfbd' : '#b9a98b',
+        backgroundColor: this.hauptTab === id ? '#6b2d24' : '#251a13', padding: { x: w < 930 ? 7 : 10, y: 8 },
       }).setInteractive({ useHandCursor: true });
       t.on('pointerdown', () => {
         this.hauptTab = id;
@@ -217,28 +253,39 @@ export class UIPanels {
         this.sfx.play('klick');
       });
       c.add(t);
-      rx += t.width + 7;
+      rx += t.width + 5;
     }
     // Trennlinie unter den Reitern - der Inhalt beginnt klar darunter (kein
     // Überlappen der Sektionstitel mehr, Autorkritik Runde 38)
-    c.add(this.scene.add.rectangle(0, 54, w, 1, LINE).setOrigin(0));
+    c.add(this.scene.add.rectangle(0, 54, w, 2, 0x21170f).setOrigin(0));
     const inhalt = this.scene.add.container(0, 56);
     c.add(inhalt);
     if (this.hauptTab === 'heer') {
+      inhalt.add(this.scene.add.rectangle(7, 5, w - 14, h - 70, PANEL_BG, 0.94).setOrigin(0));
       this.buildHeerTab(inhalt, w, h);
     } else if (this.hauptTab === 'held') {
-      inhalt.add(this.scene.add.rectangle(w * 0.46, 4, 1, h - 64, LINE).setOrigin(0));
-      this.buildCharacterSide(inhalt, w * 0.46 - 10, h - 60);
-      this.buildInventorySide(inhalt, w * 0.46 + 12, w - (w * 0.46 + 12) - 10, h - 62);
+      const linksW = Math.round(w * 0.35);
+      const mitteW = Math.round(w * 0.38);
+      const rechtsX = linksW + mitteW;
+      inhalt.add(this.scene.add.rectangle(linksW, 0, 1, h - 56, 0x71583b, 0.8).setOrigin(0));
+      inhalt.add(this.scene.add.rectangle(rechtsX, 0, 1, h - 56, 0x71583b, 0.8).setOrigin(0));
+      this.buildCharacterSide(inhalt, linksW, h - 56);
+      this.buildInventorySide(inhalt, linksW + 10, mitteW - 20, h - 62);
+      this.buildItemDetailSide(inhalt, rechtsX + 10, w - rechtsX - 20, h - 62);
     } else if (this.hauptTab === 'faehigkeiten') {
+      inhalt.add(this.scene.add.rectangle(7, 5, w - 14, h - 70, PANEL_BG, 0.94).setOrigin(0));
       this.buildSkillsTab(inhalt, w, h - 62);
     } else if (this.hauptTab === 'karte') {
+      inhalt.add(this.scene.add.rectangle(7, 5, w - 14, h - 70, PANEL_BG, 0.94).setOrigin(0));
       this.buildMapTab(inhalt, w, h - 62);
     } else if (this.hauptTab === 'ebene') {
+      inhalt.add(this.scene.add.rectangle(7, 5, w - 14, h - 70, PANEL_BG, 0.94).setOrigin(0));
       this.buildEbeneTab(inhalt, w, h - 62);
     } else if (this.hauptTab === 'aufgaben') {
+      inhalt.add(this.scene.add.rectangle(7, 5, w - 14, h - 70, PANEL_BG, 0.94).setOrigin(0));
       this.buildTasksTab(inhalt, w, h - 62);
     } else {
+      inhalt.add(this.scene.add.rectangle(7, 5, w - 14, h - 70, PANEL_BG, 0.94).setOrigin(0));
       const quelle = this.hauptTab === 'album' ? this.getAlbumZeilen
         : this.hauptTab === 'kontakte' ? this.getKontakteZeilen
         : this.getStatistikZeilen;
@@ -253,7 +300,7 @@ export class UIPanels {
     // Phaser-Falle: Kinder des Unter-Containers brauchen die Hitbox-Korrektur
     // SELBST, sonst tote Knöpfe bei gescrollter Kamera
     fixUiScroll(inhalt);
-    const closeBtn = this.scene.add.text(w - 10, 8, '✕', { fontFamily: 'serif', fontSize: '16px', color: BONE })
+    const closeBtn = this.scene.add.text(w - 10, 9, 'X', { fontFamily: 'serif', fontSize: '15px', color: '#d6bea0', backgroundColor: '#522218', padding: { x: 8, y: 5 } })
       .setOrigin(1, 0).setInteractive({ useHandCursor: true });
     closeBtn.on('pointerdown', () => this.closeAll());
     c.add(closeBtn);
@@ -297,23 +344,30 @@ export class UIPanels {
   }
 
   // Trennlinie mit Mittel-Ornament (◆)
-  private zierLinie(c: Phaser.GameObjects.Container, x: number, y: number, breite: number, titel?: string): void {
-    c.add(this.scene.add.rectangle(x, y, breite, 1, 0x4a3a26).setOrigin(0));
-    c.add(this.scene.add.text(x + breite / 2, y - 5, '◆', { fontFamily: 'serif', fontSize: '9px', color: '#8a6f3c' }).setOrigin(0.5, 0));
-    if (titel) c.add(this.scene.add.text(x + 2, y - 16, titel, { fontFamily: 'serif', fontSize: '12px', color: GOLD, letterSpacing: 2 }));
+  private zierLinie(c: Phaser.GameObjects.Container, x: number, y: number, breite: number, titel?: string, aufPergament = false): void {
+    c.add(this.scene.add.rectangle(x, y, breite, 1, aufPergament ? 0x806746 : 0x4a3a26).setOrigin(0));
+    c.add(this.scene.add.text(x + breite / 2, y - 5, '◆', { fontFamily: 'serif', fontSize: '9px', color: aufPergament ? INK_SOFT : '#8a6f3c' }).setOrigin(0.5, 0));
+    if (titel) c.add(this.scene.add.text(x + 2, y - 16, titel, { fontFamily: 'serif', fontSize: '12px', color: aufPergament ? INK_SOFT : GOLD, letterSpacing: 2 }));
   }
 
   private buildCharacterSide(c: Phaser.GameObjects.Container, w: number, _h: number): void {
     const p = this.getPlayer();
-    // Portrait = echte Spielfigur als Büste, im Zierrahmen (R87)
-    const ptKey = this.provider.heldPortraitKey(heldTier(p.armorIt ? p.armorIt.val : null));
-    c.add(this.scene.add.rectangle(14, 16, 88, 88, 0x0e0a06).setOrigin(0));
-    const img = this.scene.add.image(58, 60, ptKey);
-    img.setScale(80 / Math.max(img.width, img.height));
+    c.add(this.scene.add.text(w / 2, 9, 'AUSRUESTUNG', { fontFamily: 'serif', fontSize: '12px', color: INK_SOFT, letterSpacing: 2 }).setOrigin(0.5, 0));
+    c.add(this.scene.add.rectangle(14, 30, 104, 140, 0x17130f).setOrigin(0));
+    const ptKey = this.scene.textures.exists(UI_ALDRIC)
+      ? UI_ALDRIC
+      : this.provider.heldPortraitKey(heldTier(p.armorIt ? p.armorIt.val : null));
+    const img = this.scene.add.image(66, 100, ptKey);
+    if (ptKey === UI_ALDRIC) {
+      img.setCrop(80, 48, 864, 1160).setDisplaySize(100, 136);
+    } else {
+      img.setScale(96 / Math.max(img.width, img.height));
+    }
     c.add(img);
-    this.zierRahmen(c, 12, 14, 92, 92, true);
-    c.add(this.scene.add.rectangle(12, 104, 92, 16, 0x1a130a).setOrigin(0).setStrokeStyle(1, 0x6a5636));
-    c.add(this.scene.add.text(58, 106, `Stufe ${p.level}`, { fontFamily: 'serif', fontSize: '12px', color: GOLD }).setOrigin(0.5, 0));
+    this.zierRahmen(c, 12, 28, 108, 144, true);
+    c.add(this.scene.add.rectangle(12, 172, 108, 19, 0x2d2118).setOrigin(0).setStrokeStyle(1, 0x6a5636));
+    c.add(this.scene.add.text(66, 174, `STUFE ${p.level}`, { fontFamily: 'serif', fontSize: '11px', color: '#e2cfaa', letterSpacing: 1 }).setOrigin(0.5, 0));
+    c.add(this.scene.add.text(66, 194, 'Aldric von Weiden', { fontFamily: 'serif', fontSize: '10px', color: INK_SOFT }).setOrigin(0.5, 0));
 
     const rarCol = (it: Item) => Phaser.Display.Color.HexStringToColor(RARITY_COLORS[(it.rarity ?? 0) as Rarity]).color;
     const slotBoxMit = (it: Item | null, bx: number, by: number, bw: number, bh: number, aktiv: boolean, inaktiv: boolean, leerLabel?: string) => {
@@ -329,7 +383,16 @@ export class UIPanels {
         box.setInteractive({ useHandCursor: true });
         box.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
         box.on('pointerout', () => this.hideTooltip());
-        box.on('pointerdown', (ptr: Phaser.Input.Pointer) => this.clickItem(it, ptr.rightButtonDown()));
+        box.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
+          if (ptr.rightButtonDown()) this.clickItem(it, true);
+          else {
+            this.selectedItem = it;
+            this.compareItem = null;
+            this.hideTooltip();
+            this.build();
+            this.sfx.play('klick');
+          }
+        });
       } else if (leerLabel) {
         c.add(this.scene.add.text(bx + bw / 2, by + bh / 2, leerLabel, { fontFamily: 'serif', fontSize: '9px', color: '#4a3f30' }).setOrigin(0.5));
       }
@@ -339,13 +402,15 @@ export class UIPanels {
 
     // Waffe und Bogen NEBENEINANDER (Runde 41, Autorwunsch): der Bogen steht
     // rechts neben der Hauptwaffe, per ALT umschaltbar; gefuehrte Waffe gold.
-    slotBoxMit(p.weapon, 116, 14, 38, 34, !p.bogenAktiv, false, 'Waffe');
-    slotBoxMit(p.bogen, 158, 14, 38, 34, !!p.bogen && p.bogenAktiv, false, 'Bogen');
-    c.add(this.scene.add.text(135, 50, 'Waffe', { fontFamily: 'serif', fontSize: '9px', color: !p.bogenAktiv ? GOLD : '#6a5f4c' }).setOrigin(0.5, 0));
-    c.add(this.scene.add.text(177, 50, 'Bogen', { fontFamily: 'serif', fontSize: '9px', color: p.bogenAktiv ? GOLD : '#6a5f4c' }).setOrigin(0.5, 0));
+    slotBoxMit(p.weapon, 130, 30, 38, 38, !p.bogenAktiv, false, 'Waffe');
+    slotBoxMit(p.bogen, 174, 30, 38, 38, !!p.bogen && p.bogenAktiv, false, 'Bogen');
+    c.add(this.scene.add.text(149, 70, 'Waffe', { fontFamily: 'serif', fontSize: '9px', color: !p.bogenAktiv ? '#765420' : INK_SOFT }).setOrigin(0.5, 0));
+    c.add(this.scene.add.text(193, 70, 'Bogen', { fontFamily: 'serif', fontSize: '9px', color: p.bogenAktiv ? '#765420' : INK_SOFT }).setOrigin(0.5, 0));
     const akt = p.bogenAktiv && p.bogen ? p.bogen : p.weapon;
-    c.add(this.scene.add.text(206, 16, akt ? akt.name : '-', { fontFamily: 'serif', fontSize: '12px', color: akt ? RARITY_COLORS[(akt.rarity ?? 0) as Rarity] : '#6a5f4c', wordWrap: { width: w - 212 } }));
-    c.add(this.scene.add.text(206, 34, p.bogen ? 'ALT: Waffe / Bogen wechseln' : 'Bogen in den 2. Platz legbar', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }));
+    if (w >= 330) {
+      c.add(this.scene.add.text(220, 31, akt ? akt.name : '-', { fontFamily: 'serif', fontSize: '11px', color: akt ? RARITY_INK[(akt.rarity ?? 0) as Rarity] : INK_SOFT, wordWrap: { width: w - 226 } }));
+      c.add(this.scene.add.text(220, 50, p.bogen ? 'ALT: Waffe / Bogen' : 'Zweiter Platz: Bogen', { fontFamily: 'serif', fontSize: '9px', color: INK_SOFT }));
+    }
 
     // Restliche Ausrüstung als volle Reihen darunter
     const rest: Array<{ label: string; it: Item | null; inaktiv?: boolean }> = [
@@ -353,57 +418,57 @@ export class UIPanels {
       { label: 'Ring', it: p.ring },
       { label: 'Schild', it: p.schildIt, inaktiv: p.bogenAktiv && !!p.schildIt },
     ];
-    let sy = 62;
+    let sy = 84;
     const SH = 34, SP = 37;
     for (const { label, it, inaktiv } of rest) {
-      slotBoxMit(it, 116, sy, 38, SH, false, !!inaktiv, label);
+      slotBoxMit(it, 130, sy, 38, SH, false, !!inaktiv, label);
       if (it) {
         const zusatz = inaktiv ? '  (inaktiv)' : '';
-        c.add(this.scene.add.text(160, sy + 9, it.name + zusatz, { fontFamily: 'serif', fontSize: '12px', color: inaktiv ? '#5a5348' : RARITY_COLORS[(it.rarity ?? 0) as Rarity], wordWrap: { width: w - 166 } }));
+        c.add(this.scene.add.text(176, sy + 9, it.name + zusatz, { fontFamily: 'serif', fontSize: '11px', color: inaktiv ? INK_SOFT : RARITY_INK[(it.rarity ?? 0) as Rarity], wordWrap: { width: w - 182 } }));
       } else {
-        c.add(this.scene.add.text(160, sy + 9, `${label}: -`, { fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c' }));
+        c.add(this.scene.add.text(176, sy + 9, `${label}: -`, { fontFamily: 'serif', fontSize: '11px', color: INK_SOFT }));
       }
       sy += SP;
     }
 
     // WERTE: zwei saubere Spalten Label/Wert (Runde 38), Zierlinie (R87)
-    let wy = 200;
-    this.zierLinie(c, 12, wy - 6, w - 24, 'WERTE');
-    c.add(this.scene.add.rectangle(12, wy - 4, w - 12, 78, 0x0e0a06, 0.6).setOrigin(0).setStrokeStyle(1, LINE));
+    let wy = 226;
+    this.zierLinie(c, 12, wy - 6, w - 24, 'WERTE', true);
+    c.add(this.scene.add.rectangle(12, wy - 4, w - 24, 78, 0xf1e3c4, 0.18).setOrigin(0).setStrokeStyle(1, 0x8a6f4c, 0.65));
     // Schaden als Spanne (Runde 40): ein Treffer würfelt zwischen min und max
     const dmgMin = Math.max(1, Math.round(p.stats.dmg * 0.85));
     const dmgMax = Math.max(dmgMin, Math.round(p.stats.dmg * 1.2));
     const werte: Array<[string, string]> = [
       ['Schaden', `${dmgMin}-${dmgMax}`], ['Rüstung', String(p.stats.armor)],
-      ['Leben', `${Math.ceil(p.hp)}/${p.stats.maxhp}`], ['Mana', `${Math.ceil(p.mana)}/${p.stats.maxmana}`],
+      ['Trefferpunkte', `${Math.ceil(p.hp)}/${p.stats.maxhp}`], ['Mana', `${Math.ceil(p.mana)}/${p.stats.maxmana}`],
       ['Lebensraub', String(p.stats.leech)], ['Lichtradius', `+${p.stats.licht}`],
     ];
     const spalte = (w - 24) / 2;
     werte.forEach(([k, v], i) => {
       const x = 20 + (i % 2) * spalte, y = wy + 4 + ((i / 2) | 0) * 23;
-      c.add(this.scene.add.text(x, y, k, { fontFamily: 'serif', fontSize: '12px', color: BONE }));
-      c.add(this.scene.add.text(x + spalte - 14, y, v, { fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0' }).setOrigin(1, 0));
+      c.add(this.scene.add.text(x, y, k, { fontFamily: 'serif', fontSize: '11px', color: INK }));
+      c.add(this.scene.add.text(x + spalte - 14, y, v, { fontFamily: 'serif', fontSize: '11px', color: INK }).setOrigin(1, 0));
     });
 
     // RESISTENZEN (R87, Autorwunsch): Feuer / Frost / Schatten - die Werte
     // kommen später aus Ringen, Rüstungen und Buffs (Monster ziehen nach).
     let ry = wy + 88;
-    this.zierLinie(c, 12, ry - 6, w - 24, 'RESISTENZEN');
-    c.add(this.scene.add.rectangle(12, ry - 4, w - 12, 26, 0x0e0a06, 0.6).setOrigin(0).setStrokeStyle(1, LINE));
+    this.zierLinie(c, 12, ry - 6, w - 24, 'RESISTENZEN', true);
+    c.add(this.scene.add.rectangle(12, ry - 4, w - 24, 26, 0xf1e3c4, 0.18).setOrigin(0).setStrokeStyle(1, 0x8a6f4c, 0.65));
     const res = p.resist ?? { feuer: 0, frost: 0, schatten: 0, seuche: 0 };
-    const resViertel = (w - 24) / 4;
-    ([['Feuer', res.feuer, 0xd8622a], ['Frost', res.frost, 0x6ab0d8], ['Schatten', res.schatten, 0x9a6ad8], ['Seuche', res.seuche ?? 0, 0x6a9a4a]] as Array<[string, number, number]>).forEach(([k, v, col], i) => {
-      const x = 18 + i * resViertel;
+    const resDrittel = (w - 24) / 3;
+    ([['Feuer', res.feuer, 0xb64a28], ['Kälte', res.frost, 0x477b98], ['Schatten', res.schatten, 0x654f7e]] as Array<[string, number, number]>).forEach(([k, v, col], i) => {
+      const x = 18 + i * resDrittel;
       c.add(this.scene.add.circle(x + 3, ry + 8, 4, col));
-      c.add(this.scene.add.text(x + 11, ry + 1, `${k}`, { fontFamily: 'serif', fontSize: '10px', color: BONE }));
-      c.add(this.scene.add.text(x + resViertel - 12, ry + 1, `${v}%`, { fontFamily: 'serif', fontSize: '10px', color: '#e8dcc0' }).setOrigin(1, 0));
+      c.add(this.scene.add.text(x + 11, ry + 1, `${k}`, { fontFamily: 'serif', fontSize: '10px', color: INK }));
+      c.add(this.scene.add.text(x + resDrittel - 12, ry + 1, `${v}%`, { fontFamily: 'serif', fontSize: '10px', color: INK }).setOrigin(1, 0));
     });
 
     // VORRAT: Gold/Flaschen + Rohstoffe als klare Reihen mit Farbpunkten
     const m = p.materials;
     let vy = ry + 42;
-    this.zierLinie(c, 12, vy - 6, w - 24, 'VORRAT');
-    c.add(this.scene.add.rectangle(12, vy - 4, w - 12, 120, 0x0e0a06, 0.6).setOrigin(0).setStrokeStyle(1, LINE));
+    this.zierLinie(c, 12, vy - 6, w - 24, 'VORRAT', true);
+    c.add(this.scene.add.rectangle(12, vy - 4, w - 24, 120, 0xf1e3c4, 0.18).setOrigin(0).setStrokeStyle(1, 0x8a6f4c, 0.65));
     const vorrat: Array<[string, string, number]> = [
       ['Gold', String(p.gold), 0xe0b53a], ['Flaschen', `${p.flaskCount}/${p.flaskMax}`, 0xd8402a],
       ['Holz', String(m.holz), 0x8a6434], ['Stein', String(m.stein), 0x8a8e96],
@@ -414,21 +479,21 @@ export class UIPanels {
     vorrat.forEach(([k, v, col], i) => {
       const x = 20 + (i % 2) * spalte, y = vy + 4 + ((i / 2) | 0) * 23;
       c.add(this.scene.add.circle(x + 4, y + 8, 4, col));
-      c.add(this.scene.add.text(x + 14, y, k, { fontFamily: 'serif', fontSize: '12px', color: BONE }));
-      c.add(this.scene.add.text(x + spalte - 14, y, v, { fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0' }).setOrigin(1, 0));
+      c.add(this.scene.add.text(x + 14, y, k, { fontFamily: 'serif', fontSize: '11px', color: INK }));
+      c.add(this.scene.add.text(x + spalte - 14, y, v, { fontFamily: 'serif', fontSize: '11px', color: INK }).setOrigin(1, 0));
     });
     // KRÄUTER-BEUTEL (R89): gesammelte Heilpflanzen - nur was man dabei hat.
     const pflanzen = PFLANZEN.filter((pf) => (m[pf.id as MaterialId] ?? 0) > 0);
     let ky = vy + 4 + Math.ceil(vorrat.length / 2) * 23 + 12;
-    this.zierLinie(c, 12, ky - 6, w - 24, 'KRÄUTERBEUTEL');
+    this.zierLinie(c, 12, ky - 6, w - 24, 'KRÄUTERBEUTEL', true);
     if (!pflanzen.length) {
       c.add(this.scene.add.text(20, ky + 2, 'Noch keine Kräuter gesammelt - Blumen und Kräuter mit dem Schwert schneiden.', { fontFamily: 'serif', fontSize: '10px', color: '#6a5f4c', wordWrap: { width: w - 40 } }));
     } else {
       pflanzen.forEach((pf, i) => {
         const x = 20 + (i % 2) * spalte, y = ky + 4 + ((i / 2) | 0) * 20;
         c.add(this.scene.add.circle(x + 4, y + 7, 4, Phaser.Display.Color.HexStringToColor(pf.palette.bluete).color));
-        c.add(this.scene.add.text(x + 14, y, pf.name, { fontFamily: 'serif', fontSize: '11px', color: BONE }));
-        c.add(this.scene.add.text(x + spalte - 14, y, String(m[pf.id as MaterialId] ?? 0), { fontFamily: 'serif', fontSize: '11px', color: '#e8dcc0' }).setOrigin(1, 0));
+        c.add(this.scene.add.text(x + 14, y, pf.name, { fontFamily: 'serif', fontSize: '10px', color: INK }));
+        c.add(this.scene.add.text(x + spalte - 14, y, String(m[pf.id as MaterialId] ?? 0), { fontFamily: 'serif', fontSize: '10px', color: INK }).setOrigin(1, 0));
       });
     }
   }
@@ -776,23 +841,23 @@ export class UIPanels {
 
   // --- rechte Seite: Inventar mit Blättern -----------------------------------
 
-  private filter: 'alle' | 'weapon' | 'armor' | 'schild' | 'ring' | 'gem' | 'scroll' | 'rest' = 'alle';
+  private filter: 'alle' | 'weapon' | 'stab' | 'axt' | 'armor' | 'schild' | 'ring' | 'rest' = 'alle';
 
   private buildInventorySide(c: Phaser.GameObjects.Container, x0: number, w: number, h: number): void {
     const p = this.getPlayer();
-    c.add(this.scene.add.text(x0, 10, `INVENTAR (${p.inv.length})`, { fontFamily: 'serif', fontSize: '16px', color: GOLD, letterSpacing: 2 }));
-    c.add(this.scene.add.text(x0 + w, 14, 'Maus-Rad: blättern', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }).setOrigin(1, 0));
+    c.add(this.scene.add.text(x0 + 5, 10, 'RUCKSACK', { fontFamily: 'serif', fontSize: '17px', color: INK, letterSpacing: 2 }));
+    c.add(this.scene.add.text(x0 + w, 12, `${p.inv.length} Gegenstände  ·  ${p.gold} Gold`, { fontFamily: 'serif', fontSize: '9px', color: INK_SOFT }).setOrigin(1, 0));
     // Filter-Reiter (Feedback-Runde 2)
     const tabs: Array<[typeof this.filter, string]> = [
-      ['alle', 'ALLE'], ['weapon', 'WAFFEN'], ['armor', 'RÜSTUNG'], ['schild', 'SCHILDE'],
-      ['ring', 'RINGE'], ['gem', 'STEINE'], ['scroll', 'ROLLEN'], ['rest', 'SONST'],
+      ['alle', 'ALLE'], ['weapon', 'WAFFEN'], ['stab', 'ZAUBERSTÄBE'], ['axt', 'ÄXTE'],
+      ['armor', 'RÜSTUNG'], ['schild', 'SCHILDE'], ['ring', 'RINGE'], ['rest', 'SONSTIGES'],
     ];
     let tx2 = x0, ty2 = 34;
     for (const [id, lbl] of tabs) {
       const t = this.scene.add.text(tx2, ty2, lbl, {
         fontFamily: 'serif', fontSize: '11px', letterSpacing: 1,
-        color: this.filter === id ? GOLD : '#8a7a5a',
-        backgroundColor: this.filter === id ? '#221808' : undefined, padding: { x: 5, y: 2 },
+        color: this.filter === id ? '#efe2c6' : INK_SOFT,
+        backgroundColor: this.filter === id ? '#4a3925' : '#c6b184', padding: { x: 5, y: 3 },
       }).setInteractive({ useHandCursor: true });
       // Umbruch in eine zweite Reihe, wenn die Reiter sonst aus dem Menü ragen
       // (Bug Runde 39: "SONST" stand außerhalb)
@@ -812,10 +877,12 @@ export class UIPanels {
     // Rest nach Filter, beste zuerst (Seltenheit, dann Wert).
     // WAFFEN umfasst auch Pfeile (Autorwunsch Runde 39: Pfeil/Bogen sind Waffen).
     const inv = p.inv
-      .filter((it) => it !== p.weapon && it !== p.armorIt && it !== p.ring && it !== p.schildIt)
+      .filter((it) => it !== p.weapon && it !== p.bogen && it !== p.armorIt && it !== p.ring && it !== p.schildIt)
       .filter((it) => this.filter === 'alle' ? true
-        : this.filter === 'weapon' ? (it.kind === 'weapon' || it.kind === 'arrows')
-        : this.filter === 'rest' ? !['weapon', 'arrows', 'armor', 'schild', 'ring', 'gem', 'scroll'].includes(it.kind)
+        : this.filter === 'weapon' ? ((it.kind === 'weapon' && it.weaponClass !== 'stab' && it.weaponClass !== 'axt') || it.kind === 'arrows')
+        : this.filter === 'stab' ? it.kind === 'weapon' && it.weaponClass === 'stab'
+        : this.filter === 'axt' ? it.kind === 'weapon' && it.weaponClass === 'axt'
+        : this.filter === 'rest' ? !['weapon', 'arrows', 'armor', 'schild', 'ring'].includes(it.kind)
         : it.kind === this.filter)
       .sort((a, b) => {
         // Edelsteine tragen ihre Güte in power, nicht in val (Runde 28)
@@ -829,7 +896,7 @@ export class UIPanels {
     const maxScroll = Math.max(0, inv.length - visible);
     this.scroll = Math.min(this.scroll, maxScroll);
     if (inv.length === 0) {
-      c.add(this.scene.add.text(x0, listTop, MELDUNGEN.inventarLeer, { fontFamily: 'serif', fontSize: '13px', color: '#8a7a5a', fontStyle: 'italic' }));
+      c.add(this.scene.add.text(x0, listTop, MELDUNGEN.inventarLeer, { fontFamily: 'serif', fontSize: '13px', color: INK_SOFT, fontStyle: 'italic' }));
     }
     let y = listTop;
     for (const it of inv.slice(this.scroll, this.scroll + visible)) {
@@ -846,24 +913,120 @@ export class UIPanels {
     }
   }
 
+  private buildItemDetailSide(c: Phaser.GameObjects.Container, x0: number, w: number, h: number): void {
+    const p = this.getPlayer();
+    const vorhanden = [p.weapon, p.bogen, p.armorIt, p.schildIt, p.ring, ...p.inv]
+      .filter((it): it is Item => !!it);
+    if (!this.selectedItem || !vorhanden.includes(this.selectedItem)) this.selectedItem = vorhanden[0] ?? null;
+    const it = this.selectedItem;
+
+    c.add(this.scene.add.text(x0 + w / 2, 10, 'AUSGEWAEHLT', {
+      fontFamily: 'serif', fontSize: '12px', color: INK_SOFT, letterSpacing: 2,
+    }).setOrigin(0.5, 0));
+    this.zierLinie(c, x0 + 8, 31, w - 16, undefined, true);
+    if (!it) {
+      c.add(this.scene.add.text(x0 + w / 2, 72, 'Kein Gegenstand ausgewählt', {
+        fontFamily: 'serif', fontSize: '12px', color: INK_SOFT, fontStyle: 'italic',
+      }).setOrigin(0.5, 0));
+      return;
+    }
+
+    const rar = (it.rarity ?? 0) as Rarity;
+    const icon = this.scene.add.image(x0 + 56, 92, this.provider.itemIcon(it));
+    icon.setScale(Math.min(1.05, 78 / Math.max(icon.width, icon.height)));
+    c.add(icon);
+    c.add(this.scene.add.text(x0 + 108, 53, it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
+      fontFamily: 'serif', fontSize: '16px', color: RARITY_INK[rar], wordWrap: { width: Math.max(80, w - 116) },
+    }));
+    const typ = it.kind === 'weapon'
+      ? `${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} · ${handLabel(it.weaponClass)}`
+      : TYP_NAMEN[it.kind] ?? 'Gegenstand';
+    c.add(this.scene.add.text(x0 + 108, 88, typ, { fontFamily: 'serif', fontSize: '10px', color: INK_SOFT }));
+    c.add(this.scene.add.text(x0 + 108, 106, RARITY_NAMES[rar], { fontFamily: 'serif', fontSize: '10px', color: RARITY_INK[rar] }));
+
+    this.zierLinie(c, x0 + 8, 144, w - 16, 'WERTE', true);
+    c.add(this.scene.add.text(x0 + 14, 151, itemStatLine(it, false), {
+      fontFamily: 'serif', fontSize: '12px', color: INK, wordWrap: { width: w - 28 }, lineSpacing: 3,
+    }));
+
+    let y = 205;
+    if (it.boni.length || it.sock) {
+      this.zierLinie(c, x0 + 8, y - 7, w - 16, 'AFFIXE', true);
+      for (const bonus of it.boni) {
+        c.add(this.scene.add.text(x0 + 16, y, `◆  ${bonus.t.replace('#', String(bonus.v))}`, {
+          fontFamily: 'serif', fontSize: '10.5px', color: '#604185', wordWrap: { width: w - 32 },
+        }));
+        y += 21;
+      }
+      if (it.sock) {
+        const sockel = it.sock.gem ? `${it.sock.gem.name} (+${it.sock.gem.power})` : 'Leerer Sockel';
+        c.add(this.scene.add.text(x0 + 16, y, `◇  ${sockel}`, { fontFamily: 'serif', fontSize: '10.5px', color: INK_SOFT }));
+        y += 21;
+      }
+    }
+
+    const ausruestbar = ['weapon', 'armor', 'ring', 'schild'].includes(it.kind);
+    const angelegt = it === p.weapon || it === p.bogen || it === p.armorIt || it === p.ring || it === p.schildIt;
+    if (ausruestbar && this.compareItem === it) {
+      y = Math.max(y + 4, 268);
+      this.zierLinie(c, x0 + 8, y - 7, w - 16, 'VERGLEICH', true);
+      const neu = this.statsWith(it);
+      const werte: Array<[string, number, number]> = [
+        ['Schaden', p.stats.dmg, neu.dmg],
+        ['Rüstung', p.stats.armor, neu.armor],
+        ['Trefferpunkte', p.stats.maxhp, neu.maxhp],
+        ['Mana', p.stats.maxmana, neu.maxmana],
+      ];
+      for (const [name, alt, wert] of werte) {
+        const farbe = wert > alt ? '#3f7135' : wert < alt ? '#8b3027' : INK_SOFT;
+        c.add(this.scene.add.text(x0 + 16, y, `${name}: ${alt}  →  ${wert}`, { fontFamily: 'serif', fontSize: '10.5px', color: farbe }));
+        y += 19;
+      }
+    }
+
+    const button = (by: number, label: string, aktiv: boolean, farbe: number, fn: () => void): void => {
+      const bg = this.scene.add.rectangle(x0 + 18, by, w - 36, 31, aktiv ? farbe : 0x6c6458, aktiv ? 0.95 : 0.35)
+        .setOrigin(0).setStrokeStyle(1, aktiv ? 0x2a2117 : 0x554c40);
+      const text = this.scene.add.text(x0 + w / 2, by + 8, label, {
+        fontFamily: 'serif', fontSize: '11px', color: aktiv ? '#e9ddc5' : '#817769', letterSpacing: 1,
+      }).setOrigin(0.5, 0);
+      c.add(bg); c.add(text);
+      if (!aktiv) return;
+      bg.setInteractive({ useHandCursor: true });
+      bg.on('pointerover', () => bg.setFillStyle(Phaser.Display.Color.IntegerToColor(farbe).brighten(12).color, 1));
+      bg.on('pointerout', () => bg.setFillStyle(farbe, 0.95));
+      bg.on('pointerdown', fn);
+    };
+    const verbrauchbar = ['potion', 'mpotion', 'scroll', 'food'].includes(it.kind);
+    const basisY = h - 112;
+    button(basisY, verbrauchbar ? 'BENUTZEN' : 'AUSRUESTEN', (ausruestbar && !angelegt) || verbrauchbar, 0x435536, () => this.clickItem(it, verbrauchbar));
+    button(basisY + 37, 'ABLEGEN', angelegt, 0x493020, () => this.clickItem(it, false));
+    button(basisY + 74, this.compareItem === it ? 'VERGLEICH AUS' : 'VERGLEICHEN', ausruestbar, 0x283c4a, () => {
+      this.compareItem = this.compareItem === it ? null : it;
+      this.build();
+      this.sfx.play('klick');
+    });
+  }
+
   private buildItemRow(c: Phaser.GameObjects.Container, it: Item, x0: number, y: number, w: number): void {
     const p = this.getPlayer();
     const equipped = it === p.weapon || it === p.bogen || it === p.armorIt || it === p.ring || it === p.schildIt;
     const rar = (it.rarity ?? 0) as Rarity;
     const rarCol = Phaser.Display.Color.HexStringToColor(RARITY_COLORS[rar]).color;
-    const row = this.scene.add.rectangle(x0, y, w, 38, equipped ? 0xc9a227 : 0xffffff, equipped ? 0.07 : 0.02).setOrigin(0);
-    row.setStrokeStyle(1, rar >= 1 ? rarCol : 0x2a2218, rar >= 1 ? 0.6 : 1);
+    const selected = it === this.selectedItem;
+    const row = this.scene.add.rectangle(x0, y, w, 38, selected ? 0x8b642a : equipped ? 0xc9a227 : 0xffffff, selected ? 0.2 : equipped ? 0.09 : 0.07).setOrigin(0);
+    row.setStrokeStyle(selected ? 2 : 1, selected ? 0xa8782c : rar >= 1 ? rarCol : 0x796445, selected ? 1 : 0.65);
     row.setInteractive({ useHandCursor: true });
     c.add(row);
     if (rar >= 1) c.add(this.scene.add.rectangle(x0, y, 3, 38, rarCol).setOrigin(0));
     c.add(this.scene.add.image(x0 + 20, y + 19, this.provider.itemIcon(it)).setScale(0.42));
     c.add(this.scene.add.text(x0 + 40, y + 3, it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
-      fontFamily: 'serif', fontSize: '13px', color: RARITY_COLORS[rar],
+      fontFamily: 'serif', fontSize: '12px', color: RARITY_INK[rar],
     }));
     const typ = it.kind === 'weapon' ? `${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} · ${handLabel(it.weaponClass)}` : TYP_NAMEN[it.kind] ?? '';
     const wert = it.kind === 'weapon' ? `${weaponDamageRange(it)} Schaden` : (it.kind === 'armor' || it.kind === 'schild') ? `${it.val + (it.upgrade ?? 0)} Rüstung` : '';
     const grund = this.scene.add.text(x0 + 40, y + 21, `${typ}${wert ? ' · ' + wert : ''}`, {
-      fontFamily: 'serif', fontSize: '10.5px', color: '#9a8c6e',
+      fontFamily: 'serif', fontSize: '9.5px', color: INK_SOFT,
     });
     c.add(grund);
     if (it.boni.length) {
@@ -877,7 +1040,15 @@ export class UIPanels {
     }
     row.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
     row.on('pointerout', () => this.hideTooltip());
-    row.on('pointerdown', (ptr: Phaser.Input.Pointer) => this.clickItem(it, ptr.rightButtonDown()));
+    row.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
+      if (ptr.rightButtonDown()) this.clickItem(it, true);
+      else {
+        this.selectedItem = it;
+        this.hideTooltip();
+        this.build();
+        this.sfx.play('klick');
+      }
+    });
     // Schriftrollen/Tränke auf die Aktionsleiste ziehen (Runde 40)
     const slotAktion = SLOT_AKTION[it.kind];
     if (slotAktion && this.onAssignToSlot) this.macheZiehbar(row, it, slotAktion);
