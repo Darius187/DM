@@ -67,7 +67,7 @@ export class Gebaeude3DWelt {
       if (this.zerstoert) { g.dispose(); return; }
       this.gebaeude = g;
       for (const t of g.tueren) this.tuerAnteile[t.key] = 0;
-      this.scene.textures.remove(this.texKey);
+      if (this.scene.textures.exists(this.texKey)) this.scene.textures.remove(this.texKey);
       this.tex = this.scene.textures.createCanvas(this.texKey, g.canvas.width, g.canvas.height) ?? undefined;
       this.bild = this.scene.add.image(this.footX, this.footY, this.texKey);
       this.ignoriere(this.bild);
@@ -242,7 +242,7 @@ export class Gebaeude3DWelt {
   destroy(): void {
     this.zerstoert = true;
     this.bild?.destroy();
-    this.scene.textures.remove(this.texKey);
+    if (this.scene.textures.exists(this.texKey)) this.scene.textures.remove(this.texKey);
     this.gebaeude?.dispose();
     this.gebaeude = null;
   }

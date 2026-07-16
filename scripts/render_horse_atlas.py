@@ -20,7 +20,7 @@ from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Matrix, Vector
 
 
-CELL_W = 128
+CELL_W = 192
 CELL_H = 96
 DIRECTIONS = 16
 TARGET = Vector((0.615, 0.505, 0.82))
@@ -96,7 +96,10 @@ def configure_scene() -> tuple[bpy.types.Scene, bpy.types.Object, bpy.types.Obje
     scene.render.film_transparent = True
     scene.render.image_settings.color_depth = "8"
     camera.data.type = "ORTHO"
-    camera.data.ortho_scale = 2.42
+    # Blender interpretiert ortho_scale hier als sichtbare Bildbreite. Die
+    # proportionale Skalierung behaelt bei breiteren Zellen die alte vertikale
+    # Pferdegroesse, zeigt horizontal aber Schnauze und Schweif vollstaendig.
+    camera.data.ortho_scale = 2.42 * (CELL_W / 128)
 
     # The game supplies its own soft contact shadow.  The studio floor must not
     # become an opaque rectangle in the exported atlas.
@@ -262,10 +265,12 @@ def main() -> None:
         mounts.update(json.loads(mount_path.read_text(encoding="utf-8")))
     if not turns_only and not transitions_only:
         for clip, (action, frames) in LOOPS.items():
+            if only_clip and clip != only_clip:
+                continue
             for direction in range(DIRECTIONS):
                 for frame_index, frame in enumerate(frames):
                     render_pose(scene, armature, camera, out, clip, action, frame, direction, frame_index, mounts)
-    if not transitions_only:
+    if not transitions_only and not only_clip:
         for clip, (action, frames) in TURNS.items():
             for direction in range(DIRECTIONS):
                 for frame_index, frame in enumerate(frames):

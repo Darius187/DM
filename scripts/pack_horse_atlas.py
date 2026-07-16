@@ -10,7 +10,7 @@ from pathlib import Path
 from PIL import Image, ImageEnhance
 
 
-CELL_W = 128
+CELL_W = 192
 CELL_H = 96
 # 16 columns keep both dimensions below the widely supported 4096 WebGL
 # texture limit.  Eight columns would produce a 6048-pixel-tall atlas.
@@ -40,7 +40,11 @@ def pack(sources: list[Path], output_dir: Path, stem: str) -> None:
     frame_data: dict[str, dict[str, object]] = {}
     for index, source in enumerate(sources):
         image = grade(Image.open(source).convert("RGBA"))
-        if image.size != (CELL_W, CELL_H):
+        if image.size == (128, CELL_H):
+            padded = Image.new("RGBA", (CELL_W, CELL_H), (0, 0, 0, 0))
+            padded.alpha_composite(image, ((CELL_W - image.width) // 2, 0))
+            image = padded
+        elif image.size != (CELL_W, CELL_H):
             raise SystemExit(f"Unexpected frame size {image.size}: {source}")
         x = (index % COLUMNS) * CELL_W
         y = (index // COLUMNS) * CELL_H
@@ -106,8 +110,13 @@ def main() -> None:
     pack(transition_down, output_dir, "ravensmoor-horse-transitions-down")
     mount_source = frames_dir / "mount_points.json"
     if mount_source.exists():
+        mounts = json.loads(mount_source.read_text(encoding="utf-8"))
+        for stem, point in mounts.items():
+            frame_path = frames_dir / f"{stem}.png"
+            if frame_path.exists() and Image.open(frame_path).size == (128, CELL_H):
+                point["x"] = round(point["x"] + (CELL_W - 128) / 2, 3)
         (output_dir / "ravensmoor-horse-mounts.json").write_text(
-            mount_source.read_text(encoding="utf-8"), encoding="utf-8",
+            json.dumps(mounts, ensure_ascii=False, separators=(",", ":")), encoding="utf-8",
         )
 
 

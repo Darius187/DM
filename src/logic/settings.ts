@@ -110,6 +110,7 @@ export interface Settings {
   audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
   zoomV: number;          // einmaliger Zoom-Standard (Runde 41: 130%)
   bloomV: number;         // einmaliger Bloom-Standard (Runde 51: standardmäßig aus)
+  optikStandardV: number; // einmalig: 2D-Held als Standard + Grusel fest auf 100
   uiLayoutV: number;      // Layout-Version: ältere UI-Versätze einmalig zurücksetzen
   barV: number;           // Leisten-Belegung: einmalig auf "leer bis auf Basics" setzen
   // 3D-Zimmermannshaus in Ravensmoor (R131c): Drehung/Kamera/Skala/Versatz frei
@@ -147,10 +148,9 @@ export const DEF_SETTINGS: Settings = {
   grafikStufe: 3, // "Eigen" bis der Spieler eine Voreinstellung wählt
   ui: { hotbar: { x: 0, y: 0 }, mausleiste: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 }, questTracker: { x: 0, y: 0 } },
   questTrackerAn: true,
-  hudStil: 0,
+  hudStil: 1,
   // R86 (Autorwunsch): von Anfang an GANZ UNTEN am Bildschirmrand angedockt
-  chronikBox: { x: 4, y: -270, w: 340, h: 270 }, // bündig am LINKEN
-  // Bildschirmrand, kompakter, knapp über der Lebenskugel/Leiste
+  chronikBox: { x: 4, y: -380, w: 340, h: 270 }, // links, oberhalb des HUDs
   chronikAuto: true,
   chronikV: 1,
   lichtV: 2,
@@ -166,7 +166,8 @@ export const DEF_SETTINGS: Settings = {
   audioV: 1,
   zoomV: 1,
   bloomV: 1,
-  uiLayoutV: 4, // Runde 43: Chronik bündig links angedockt
+  optikStandardV: 1,
+  uiLayoutV: 5, // kompaktes Holz-HUD mit integrierten Ressourcenbalken
   barV: 1,      // Runde 49: Leiste startet leer (Skills selbst belegen)
   haus3d: { yaw: 210, elev: 52, azimut: 0, skala: 1, dx: 0, dy: 0 }, // ALT (Migration)
   gebaeude3d: { ppm: 16, drehung: { haus: 210, schmiede: 0 } }, // R132: 3D-Gebaeude im Dorf
@@ -200,6 +201,16 @@ export function getSettings(): Settings {
       current.maus = { ...DEF_SETTINGS.maus, ...(saved.maus ?? {}) };
       current.tasten = { ...DEF_SETTINGS.tasten, ...(saved.tasten ?? {}) };
       current.chronikBox = { ...DEF_SETTINGS.chronikBox, ...(saved.chronikBox ?? {}) };
+      // 2D bleibt die ausgelieferte Heldendarstellung. Der 3D-Test kann danach
+      // bewusst wieder eingeschaltet werden; alte Spielstaende starten einmalig
+      // auf dem verlaesslichen Standard. Grusel ist kein Benutzerregler mehr.
+      if ((saved.optikStandardV ?? 0) < DEF_SETTINGS.optikStandardV) {
+        current.figuren3d = false;
+        current.grusel = 100;
+        current.optikStandardV = DEF_SETTINGS.optikStandardV;
+        try { localStorage.setItem(KEY, JSON.stringify(current)); } catch { /* gesperrt */ }
+      }
+      current.grusel = 100;
       // R86: Chronik einmalig an den untersten Rand andocken (NUR die Chronik,
       // andere UI-Versätze des Autors bleiben unangetastet)
       if ((saved.chronikV ?? 0) < 1) {
@@ -254,6 +265,7 @@ export function getSettings(): Settings {
         current.ui.orbMp = { x: 0, y: 0 };
         current.ui.log = { x: 0, y: 0 };
         current.chronikBox = { ...DEF_SETTINGS.chronikBox };
+        current.hudStil = 1;
         current.uiLayoutV = DEF_SETTINGS.uiLayoutV;
         try { localStorage.setItem(KEY, JSON.stringify(current)); } catch { /* gesperrt */ }
       }
@@ -312,7 +324,7 @@ export function wendeGrafikVoreinstellung(s: Settings, stufe: GrafikStufe): void
   const P = GRAFIK_PRESETS[stufe];
   s.bloom = P.bloom;
   s.schatten = P.schatten;
-  s.grusel = P.grusel;
+  s.grusel = 100;
   s.blood = P.blood;
   s.shake = P.shake;
   s.wasserEffekte = P.wasserEffekte;
@@ -322,15 +334,15 @@ export function wendeGrafikVoreinstellung(s: Settings, stufe: GrafikStufe): void
 }
 
 export const GRAFIK_PRESETS: Record<GrafikStufe, {
-  bloom: number; schatten: number; grusel: number; blood: boolean; shake: boolean;
+  bloom: number; schatten: number; blood: boolean; shake: boolean;
   wasserEffekte: boolean; dungeonNeu: boolean; schattenFackeln: number;
 }> = {
   // Niedrig: schwache Systeme / Handy - Effekte aus, flaches Wasser, keine Raycast-Schatten
-  0: { bloom: 0, schatten: 0, grusel: 40, blood: false, shake: false, wasserEffekte: false, dungeonNeu: false, schattenFackeln: 0 },
+  0: { bloom: 0, schatten: 0, blood: false, shake: false, wasserEffekte: false, dungeonNeu: false, schattenFackeln: 0 },
   // Mittel: solide Mittelklasse - etwas Schatten, Wasser an, keine teuren Raycast-Fackeln
-  1: { bloom: 0, schatten: 45, grusel: 70, blood: true, shake: false, wasserEffekte: true, dungeonNeu: false, schattenFackeln: 30 },
+  1: { bloom: 0, schatten: 45, blood: true, shake: false, wasserEffekte: true, dungeonNeu: false, schattenFackeln: 30 },
   // Hoch: starke Systeme - volle Atmosphäre
-  2: { bloom: 30, schatten: 70, grusel: 100, blood: true, shake: true, wasserEffekte: true, dungeonNeu: true, schattenFackeln: 100 },
+  2: { bloom: 30, schatten: 70, blood: true, shake: true, wasserEffekte: true, dungeonNeu: true, schattenFackeln: 100 },
 };
 
 export function keyLabel(k: string): string {

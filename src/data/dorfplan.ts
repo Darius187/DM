@@ -140,16 +140,16 @@ export const DORFPLAN_BOXEN: DorfBox[] = [
 
   // --- WOHNHAEUSER NORD N1-N7 (Reihe noerdlich des Angers) -------------------
   { id: 'N1', typ: 'wohnhaus', x: 28, y: 42, breite: 6, hoehe: 6, label: 'N1' },
-  { id: 'N2', typ: 'wohnhaus', x: 37, y: 42, breite: 6, hoehe: 6, label: 'N2' },
-  { id: 'N3', typ: 'wohnhaus', x: 46, y: 42, breite: 6, hoehe: 6, label: 'N3' },
+  { id: 'N2', typ: 'wohnhaus', x: 37, y: 42, breite: 6, hoehe: 6, label: 'N2 Apotheke' },
+  { id: 'N3', typ: 'wohnhaus', x: 46, y: 42, breite: 6, hoehe: 6, label: 'N3 Küferei' },
   { id: 'N4', typ: 'wohnhaus', x: 57, y: 42, breite: 6, hoehe: 6, label: 'N4' },
   { id: 'N5', typ: 'wohnhaus', x: 68, y: 42, breite: 6, hoehe: 6, label: 'N5' },
   { id: 'N6', typ: 'wohnhaus', x: 77, y: 42, breite: 6, hoehe: 6, label: 'N6' },
   { id: 'N7', typ: 'wohnhaus', x: 86, y: 42, breite: 6, hoehe: 6, label: 'N7' },
 
   // --- WOHNHAEUSER SUED S1-S6 (Reihe suedlich des Angers) --------------------
-  { id: 'S1', typ: 'wohnhaus', x: 28, y: 78, breite: 6, hoehe: 6, label: 'S1' },
-  { id: 'S2', typ: 'wohnhaus', x: 37, y: 78, breite: 6, hoehe: 6, label: 'S2' },
+  { id: 'S1', typ: 'wohnhaus', x: 28, y: 78, breite: 6, hoehe: 6, label: 'S1 Fleischerei' },
+  { id: 'S2', typ: 'wohnhaus', x: 37, y: 78, breite: 6, hoehe: 6, label: 'S2 Stall' },
   { id: 'S3', typ: 'wohnhaus', x: 46, y: 78, breite: 6, hoehe: 6, label: 'S3', notes: 'Luecke bei x59-63 fuer die niedergebrannte Hofstelle.' },
   { id: 'S4', typ: 'wohnhaus', x: 64, y: 78, breite: 6, hoehe: 6, label: 'S4' },
   { id: 'S5', typ: 'wohnhaus', x: 73, y: 78, breite: 6, hoehe: 6, label: 'S5' },

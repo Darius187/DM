@@ -45,7 +45,7 @@ interface Manifest {
   model: string;
   root_node: string;
   runtime_mode?: 'exterior_only' | 'walkable_interior';
-  bounds_blender: { min: number[]; max: number[]; center: number[]; size: number[]; bounding_radius: number };
+  bounds_blender?: { min: number[]; max: number[]; center: number[]; size: number[]; bounding_radius: number };
   continuous_controls: {
     camera_elevation_degrees: { min: number; max: number; default: number };
     camera_azimuth_degrees: { min: number; max: number; default: number };
@@ -57,6 +57,41 @@ interface Manifest {
   walkable_interior?: { enabled?: boolean };
   collision_guides: RohGuide[];
   markers: { name: string; role: string; floor: string; blender_xyz: number[] }[];
+}
+
+interface RendererPoolEintrag {
+  renderer: THREE.WebGLRenderer;
+  nutzer: number;
+}
+
+// Eine Stadt kann viele begehbare GLB-Haeuser gleichzeitig enthalten. Eigene
+// WebGL-Kontexte pro Haus ueberschreiten schnell das Browser-Limit; gerendert
+// wird ohnehin nacheinander und sofort in die jeweilige Phaser-Textur kopiert.
+const rendererPool = new Map<number, RendererPoolEintrag>();
+
+function leiheRenderer(groesse: number): THREE.WebGLRenderer {
+  const vorhanden = rendererPool.get(groesse);
+  if (vorhanden) {
+    vorhanden.nutzer++;
+    return vorhanden.renderer;
+  }
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  renderer.setSize(groesse, groesse);
+  renderer.setClearColor(0x000000, 0);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  rendererPool.set(groesse, { renderer, nutzer: 1 });
+  return renderer;
+}
+
+function gibRendererFrei(groesse: number): void {
+  const eintrag = rendererPool.get(groesse);
+  if (!eintrag) return;
+  eintrag.nutzer--;
+  if (eintrag.nutzer > 0) return;
+  eintrag.renderer.dispose();
+  rendererPool.delete(groesse);
 }
 
 export interface GebaeudeState {
@@ -121,6 +156,8 @@ export class Gebaeude3D {
   private dirty = true;
   private letzterState = '';
   private zustand!: GebaeudeState;
+  private disposed = false;
+  private environment?: THREE.Texture;
   readonly hatInnenraum: boolean;
 
   // Begehbarkeits-Modell (Plan-Koordinaten, Meter)
@@ -136,15 +173,9 @@ export class Gebaeude3D {
   tueren: TuerDef[] = [];
   grenzen!: PlanRect;        // Plan-Bounds (fuer schnellen Fruehtest)
 
-  constructor(private manifest: Manifest, gltfScene: THREE.Group, animationen: THREE.AnimationClip[], groesse: number) {
+  constructor(private manifest: Manifest, gltfScene: THREE.Group, animationen: THREE.AnimationClip[], private groesse: number) {
     this.hatInnenraum = manifest.runtime_mode !== 'exterior_only' && manifest.walkable_interior?.enabled !== false;
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-    this.renderer.setSize(groesse, groesse);
-    this.renderer.setClearColor(0x000000, 0);
-    // Handoff-Rezept: SRGB + ACES + Exposure 1.0 - Materialien bleiben unberuehrt.
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0;
+    this.renderer = leiheRenderer(groesse);
     this.canvas = this.renderer.domElement;
 
     this.scene = new THREE.Scene();
@@ -153,7 +184,9 @@ export class Gebaeude3D {
     sonne.position.set(4, 8, 5);
     this.scene.add(sonne);
     const pmrem = new THREE.PMREMGenerator(this.renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();
+    this.scene.environment = this.environment;
     this.scene.environmentIntensity = 0.35;
 
     this.scene.add(gltfScene);
@@ -275,7 +308,12 @@ export class Gebaeude3D {
 
   // --- Begehbarkeit ------------------------------------------------------------
   private baueBegehbarkeit(gltfScene: THREE.Group): void {
-    const b = this.manifest.bounds_blender;
+    const box = new THREE.Box3().setFromObject(gltfScene);
+    const b = this.manifest.bounds_blender ?? {
+      min: [box.min.x, -box.max.z, box.min.y],
+      max: [box.max.x, -box.min.z, box.max.y],
+      center: [], size: [], bounding_radius: 0,
+    };
     const rand = 2;
     this.grenzen = { x0: b.min[0] - rand, y0: b.min[1] - rand, x1: b.max[0] + rand, y1: b.max[1] + rand };
     const mk = (): PlanGitter => new PlanGitter(this.grenzen.x0, this.grenzen.y0, this.grenzen.x1, this.grenzen.y1);
@@ -489,7 +527,12 @@ export class Gebaeude3D {
     return this.canvas;
   }
 
-  dispose(): void { this.renderer.dispose(); }
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.environment?.dispose();
+    gibRendererFrei(this.groesse);
+  }
 }
 
 // Laedt Manifest + GLB. jsonUrl relativ zu publicDir ('assets' -> '/houses/...').

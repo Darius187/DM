@@ -123,7 +123,6 @@ export class SettingsScene extends Phaser.Scene {
         { art: 'schalter', label: 'Dungeon: echte Wandschatten (Raycaster)', get: () => s.licht.dungeonNeu, tun: () => this.grafikSet(() => { s.licht.dungeonNeu = !s.licht.dungeonNeu; }) },
         { art: 'regler', label: 'Schattenwerfende Fackeln', icon: '🔥', min: 0, max: 100, get: () => s.licht.schattenFackeln, set: (v) => this.grafikSet(() => { s.licht.schattenFackeln = v; }) },
         { art: 'schalter', label: 'Wasser-Effekte (Shader)', get: () => s.wasserEffekte, tun: () => this.grafikSet(() => { s.wasserEffekte = !s.wasserEffekte; this.liveGrafik(); }) },
-        { art: 'regler', label: 'Grusel-Atmosphäre', icon: '💀', min: 0, max: 100, get: () => s.grusel, set: (v) => this.grafikSet(() => { s.grusel = v; }) },
         { art: 'schalter', label: 'Blut & Überreste', get: () => s.blood, tun: () => this.grafikSet(() => { s.blood = !s.blood; }) },
         { art: 'schalter', label: 'Bildschirmwackeln bei Treffern', get: () => s.shake, tun: () => this.grafikSet(() => { s.shake = !s.shake; }) },
         { art: 'schalter', label: 'Schadenszahlen', get: () => s.dmgNums, tun: () => this.grafikSet(() => { s.dmgNums = !s.dmgNums; }) },
