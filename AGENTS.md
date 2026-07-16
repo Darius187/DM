@@ -54,6 +54,12 @@ Uebergabe abstimmen.
   `codex/rotatable-3d-carpenter-house` ist eingemergt - **neue Arbeit vom
   integrierten Branch abzweigen, nicht vom alten Codex-Branch.**
 
+## Stehende Regeln (Autor)
+
+- **Jede neue Karte bekommt SOFORT einen Eintrag im Maps-Tab der Dev-Konsole**
+  (WorldScene > baueDevTabs > MAPS): Planungskarten sowieso, aber auch live
+  platzierte Karten (Schnellzugang ohne Hinlaufen). Autor-Order R138b.
+
 ## Offene Arbeitsauftraege fuer Codex
 
 - **`docs/handoff/HAEUSER-IN-RAVENSMOOR.md`** - die gebauten 3D-Haeuser an ihre

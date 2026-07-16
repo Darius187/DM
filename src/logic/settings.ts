@@ -153,7 +153,7 @@ export const DEF_SETTINGS: Settings = {
   // Bildschirmrand, kompakter, knapp über der Lebenskugel/Leiste
   chronikAuto: true,
   chronikV: 1,
-  lichtV: 1,
+  lichtV: 2,
   nebelV: 1,
   bloom: 0, // Runde 51 (Autorwunsch): Bloom standardmäßig AUS, war zu stark
   figuren3d: false, // 3D-Held-Test standardmäßig AUS (2D bleibt die Wahrheit)
@@ -162,7 +162,7 @@ export const DEF_SETTINGS: Settings = {
   dungeonStaerke: 100, // Runde 58 / R131: 0-150, 100 = fast schwarz, >118 komplett
   kampfTexte: true,
   gegnerWindupRing: false,   // R131 (Autor: rote Ringe weg)
-  licht: { variante: 2, sichtRadius: 183, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: false, fackelHelligkeit: 23, fackelReichweite: 100, fackelFarbe: 31, dungeonWeichheit: 99, schattenFackeln: 100, heldFarbe: 18, alleFackelnSchatten: true, effekteSchatten: false, fackelSicht: true, heldSchatten: false, fackelSichtTol: 0, fackelDistanz: 100, fackelRaumLicht: 4, fackelRaumFarbe: 33, fackelGlutRadius: 0, lichtSchaerfe: 86, heldSichtfeld: true, sichtfeldRadius: 100, sichtfeldStaerke: 19, umgebungslicht: 0, lichtHelligkeit: 42, schattenNah: 0, schattenFern: 100, fackelBlende: 68, nachtDunkel: 82, nachtSicht: 240, nachtGlut: 50, nachtGlutFarbe: 0xffcf86, wandHoehe: 2, kriegsnebel: false, nebelErinnerung: 45, nebelErinnerungAn: false, kriegsnebelDraussen: false, heldGlutUeberFigur: false, heldEigenGlut: false },
+  licht: { variante: 2, sichtRadius: 183, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: true, fackelHelligkeit: 23, fackelReichweite: 100, fackelFarbe: 31, dungeonWeichheit: 99, schattenFackeln: 100, heldFarbe: 18, alleFackelnSchatten: true, effekteSchatten: false, fackelSicht: true, heldSchatten: false, fackelSichtTol: 0, fackelDistanz: 100, fackelRaumLicht: 4, fackelRaumFarbe: 33, fackelGlutRadius: 0, lichtSchaerfe: 86, heldSichtfeld: true, sichtfeldRadius: 100, sichtfeldStaerke: 19, umgebungslicht: 0, lichtHelligkeit: 42, schattenNah: 0, schattenFern: 100, fackelBlende: 68, nachtDunkel: 82, nachtSicht: 240, nachtGlut: 50, nachtGlutFarbe: 0xffcf86, wandHoehe: 1.25, kriegsnebel: false, nebelErinnerung: 45, nebelErinnerungAn: false, kriegsnebelDraussen: false, heldGlutUeberFigur: false, heldEigenGlut: false },
   audioV: 1,
   zoomV: 1,
   bloomV: 1,
@@ -222,6 +222,14 @@ export function getSettings(): Settings {
       if ((saved.nebelV ?? 0) < 1) {
         current.licht.kriegsnebel = false;
         current.nebelV = 1;
+      }
+      // R138 (Autor-Order): Wandhoehe UEBERALL x1,25 als Standard und
+      // Wand-Schatten in JEDEM Dungeon AN. Einmalige Migration, damit auch
+      // gespeicherte Staende umspringen - danach frei regelbar.
+      if ((saved.lichtV ?? 0) < 2) {
+        current.licht.wandHoehe = 1.25;
+        current.licht.dungeonNeu = true;
+        current.lichtV = 2;
       }
       current.ui = {
         hotbar: { ...DEF_SETTINGS.ui.hotbar, ...(saved.ui?.hotbar ?? {}) },

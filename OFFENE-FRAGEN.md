@@ -292,3 +292,18 @@ FRAGE: Kannst du das GLB mit echten Material-Farben/Texturen UND echten
 collision_guide-Zentren neu exportieren (Codex)? Dann fallen Tinting + Footprint-
 Naeherung weg und wir bekommen exakte Wand-Kollisionen. Bis dahin bleibt die
 Zwischenloesung aktiv.
+
+## R138 - Respawn-Feinschliff (Zwischenloesung aktiv)
+Beim Tod auf einer OBERWELT-Karte erwacht der Held jetzt am EINGANG derselben
+Karte (Karten-Spawn, Westseite). Du sagtest "evtl. die map davor oder so" -
+Alternative waere die tatsaechlich zuvor besuchte Karte (merken wir uns beim
+Kartenwechsel). ZWISCHENLOESUNG: dieselbe Karte am Eingang - kein Rueckwurf
+quer durch die Welt, kein zusaetzlicher Zustand. Dungeon-Tod fuehrt nach
+Ravensmoor (stadt). Sag Bescheid, wenn du stattdessen die Vorgaenger-Karte
+willst - eine Zeile in src/logic/respawn.ts.
+
+## R138 - V9 vs. Katakomben: NICHT dasselbe
+Du vermutetest, beides sei das gleiche. Es sind ZWEI Generatoren:
+V9 = "Kammern + echte Tueren" (R118), Katakomben = "Raum+Gang+Vault-Verlies"
+(R102, mit Rollen wie Eingang/Boss/Gewoelbe). Beide liegen jetzt im Maps-Tab.
+FRAGE: beide behalten oder einen streichen?

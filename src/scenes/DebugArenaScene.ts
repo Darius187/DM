@@ -314,7 +314,7 @@ export class DebugArenaScene extends CombatScene {
     this.schatten.feuerNeu = lic.feuerNeu;
     if (this.fackelAn) this.schatten.lichter(this.baueLichter(), dyn, st);
     else if (lic.sonneRaycast) this.schatten.sonneRaycast(this.sonnenWinkel, dyn, st, lic.sonneKegel, lic.weichheit);
-    else this.schatten.sonne(this.sonnenWinkel, dyn, st);
+    else this.schatten.sonne(this.sonnenWinkel, dyn, st, lic.sonneKegel, lic.weichheit);
     this.lichtPanel.update();
     const std = Math.round(4 + this.sonnenWinkel * 16);   // ~4..20 Uhr
     this.hudText.setText([

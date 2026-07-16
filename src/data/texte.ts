@@ -68,8 +68,11 @@ export const RELIKT = {
 export const TOD = {
   titel: 'DU BIST GEFALLEN',
   text: (gold: number) => `Die Dunkelheit nimmt, was ihr gehört. ${gold} Gold verloren. Deine Habseligkeiten bleiben dir - Ravensmoor wartet.`,
-  knopf: 'AUF DEM FRIEDHOF ERWACHEN',
-  erwachen: 'Ein fahles Licht hebt dich aus der Finsternis - zwischen den Gräbern schlägst du die Augen auf. Du bist nicht allein.',
+  knopf: 'WIEDER ERWACHEN',
+  // R138: zwei Erwachens-Orte - Dungeons/Innenräume führen nach Ravensmoor
+  // (stadt), auf Oberwelt-Karten erwacht man am Eingang derselben Karte.
+  erwachenStadt: 'Ein fahles Licht hebt dich aus der Finsternis - in Ravensmoor schlägst du die Augen auf. Du bist nicht allein.',
+  erwachenKarte: 'Zerschunden kommst du wieder zu dir - am Rand der Karte, doch am Leben.',
 } as const;
 
 // Intro-Film (Runde 12): Zeilen erscheinen nacheinander, während der

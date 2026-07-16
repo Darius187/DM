@@ -82,6 +82,15 @@ export class Gebaeude3DWelt {
   get fehler(): boolean { return this.ladeFehler; }
   get heldEbene(): HeldEbene { return this.ebene; }
 
+  // R138: Grundriss-Naeherung als Sonnen-Verdecker - gleiche Formel wie die
+  // 2D-Hausbilder (Fusslinie wirft, Bildhoehe bestimmt die Schattenlaenge).
+  // null, solange das GLB noch laedt.
+  sonnenOccluder(): { x: number; y: number; w: number; h: number; hoehe: number } | null {
+    if (!this.bild) return null;
+    const b = this.bild.getBounds();
+    return { x: b.centerX, y: b.bottom - 10, w: b.width * 0.55, h: 14, hoehe: b.height * 0.72 };
+  }
+
   private ppm(): number { return getSettings().gebaeude3d?.ppm ?? 16; }
   private yaw(): number { return getSettings().gebaeude3d?.drehung[this.opts.id] ?? 0; }
 

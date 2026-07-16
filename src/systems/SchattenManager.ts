@@ -97,19 +97,23 @@ export class SchattenManager {
   }
 
   // ===== TAG: weiche Sonnen-Schlagschatten ==================================
-  sonne(sonnenWinkel: number, dynamisch: Occluder[], staerke: number): void {
+  // R138 (Autor: "Sonnen-Ferne/Weichheit testbar machen"): auch der
+  // Projektions-Modus hoert jetzt auf die Werkbank-Regler - kegel streckt die
+  // Schattenlaenge (ferne Sonne = lange Schatten), weich steuert den Weichzeichner.
+  sonne(sonnenWinkel: number, dynamisch: Occluder[], staerke: number, kegel = 60, weich = 70): void {
     this.dunkelAus();
     const g = this.sonneGfx; g.clear();
     if (staerke <= 0) { if (this.sonneBlur) this.sonneBlur.x = this.sonneBlur.y = 0; return; }
     const hoch = Math.sin(Phaser.Math.Clamp(sonnenWinkel, 0, 1) * Math.PI);   // 0 Dämmerung .. 1 Mittag
     const ang = -Math.PI / 2 + (sonnenWinkel - 0.5) * 2.0;                    // immer nach hinten/oben
     const dir = { x: Math.cos(ang), y: Math.sin(ang) * 0.55 };               // y gestaucht = Bodenperspektive
-    const laenge = (h: number) => h * (0.35 + (1 - hoch) * 1.5);             // mittags kurz, Dämmerung lang
+    const ferne = 0.5 + (kegel / 100) * 1.4;                                  // Sonnen-Ferne -> Schattenlaenge
+    const laenge = (h: number) => h * (0.35 + (1 - hoch) * 1.5) * ferne;      // mittags kurz, Dämmerung lang
     g.fillStyle(0x08080f, 0.42 * staerke);                                    // dunkel, leicht kühl - sichtbar
     for (const o of this.statisch) this.einSchatten(g, o, dir, laenge(o.hoehe ?? o.h));
     for (const o of dynamisch) this.einSchatten(g, o, dir, laenge(o.hoehe ?? o.h));
     // Weichzeichner: weiche Überläufe, aber nicht so stark dass die Schatten verschwinden
-    if (this.sonneBlur) { const b = 1.3 + (1 - hoch) * 1.1; this.sonneBlur.x = b; this.sonneBlur.y = b; }
+    if (this.sonneBlur) { const b = (0.4 + (weich / 100) * 2.2) * (1 + (1 - hoch) * 0.8); this.sonneBlur.x = b; this.sonneBlur.y = b; }
   }
 
   private einSchatten(g: Phaser.GameObjects.Graphics, o: Occluder, dir: { x: number; y: number }, len: number): void {

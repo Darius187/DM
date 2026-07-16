@@ -8,7 +8,6 @@ import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, bui
 import { katakombenAktivFuer, buildKatakombenKrypta } from '../world/katakombenKrypta';
 import { kryptaVersatzUnter, ebeneFuerKlassik } from '../data/katakombenDungeon';
 import { v9AktivFuer, buildV9Krypta } from '../world/v9Krypta';
-import { KATAKOMBEN_EINSATZ } from '../data/katakombenDungeon';
 import {
   DORFPLAN_BOXEN, DORFPLAN_AN, DORF_FARBE, DORF_TYP_LABEL,
   neueDorfBox, serialisiereDorfplan, dorfKurzbericht,
@@ -94,6 +93,7 @@ import { clipFps, clipFrames, istReitGang, istReitUebergang, kuerzesterWinkel, m
 import { ladeReitTuning, reitTuningExport, REIT_TUNING_STANDARD, speichereReitTuning, type ReitDarstellungTuning } from '../gfx/reitTuning';
 import { getSettings, saveSettings } from '../logic/settings';
 import { seededRng, pick, ri } from '../logic/rng';
+import { respawnZiel } from '../logic/respawn';
 import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type SaveData } from '../logic/save';
 import { storage } from '../logic/gameStorage';
 import { ladeStadtplan, speichereStadtplan, loescheStadtplan, wendePlanAn, setzeKachel, radiere, type Stadtplan, type PlanTier } from '../logic/stadtplan';
@@ -212,6 +212,7 @@ export class WorldScene extends CombatScene {
   private tileImages: Phaser.GameObjects.Image[] = [];
   private fluessigkeitsShaders: Phaser.GameObjects.Shader[] = [];   // Liquid-Shader-Overlays (Wasser/Blut), Runde 71
   private wasser2Shader?: Phaser.GameObjects.Shader;                 // neues prozedurales Wasser-Overlay pro Area (Runde 72)
+  private wasserFallbackImg?: Phaser.GameObjects.Image;              // flaches Ersatz-Wasser, wenn der Shader aus ist (R138)
   private gebackenerBodenImg?: Phaser.GameObjects.Image;             // gebackener organischer Boden (Runde 72)
   // Bäume, die im Wind schwanken (Runde 74, nur Karten mit baumSkala): sanfte
   // Fuß-verankerte Rotation, Böen-Phase aus der Position, stärker bei Regen.
@@ -257,6 +258,7 @@ export class WorldScene extends CombatScene {
   private bodenGfx!: Phaser.GameObjects.Graphics;  // Blutspuren AUF dem Boden (unter den Figuren)
   private schatten?: SchattenManager;              // Tag-Schlagschatten von Gebäuden/NPCs (Runde 55)
   private schattenArea = '';                        // für welches Gebiet die Verdecker stehen
+  private schattenStatN = -1;                       // R138: Anzahl statischer Verdecker (3D-GLB laedt nach)
   private fackelFade = new Map<object, number>();   // je Fackel ein Ein-/Ausblend-Stand 0..1 (kein hartes Aufblinken)
   private lichtPanel?: LichtPanel;                  // Licht-Werkbank (Taste L), live + persistent
   private lightRT!: Phaser.GameObjects.RenderTexture;
@@ -306,6 +308,11 @@ export class WorldScene extends CombatScene {
   private reitAtlasWarnungen = new Set<string>();
   // R136b: Wurf-Zaehler der Kerker-Planungskarte (Dev-Konsole > Maps > NEU wuerfeln)
   private kerker12Wurf = 0;
+  // R138: alle PLANUNGSKARTEN wohnen im Maps-Tab (Autor: "dort machen wir alle
+  // neuen Maps, die vorbereitet sind, aber noch keinen Eingang im Spiel haben").
+  private static readonly PLANUNGSKARTEN = new Set(['kerker12', 'v9', 'katakomben']);
+  private v9Wurf = 0;
+  private katakombenWurf = 0;
   private reitSpuren: { e: Phaser.GameObjects.Ellipse; leben: number }[] = [];
   private reitSpurWeg = 0;      // zurueckgelegter Weg seit letzter Spur
   private reitSpurSeite = 1;    // wechselt fuer linke/rechte Hufe
@@ -1717,6 +1724,11 @@ export class WorldScene extends CombatScene {
     // R136b: Kerker-Planungskarte (V12) - KEIN Eingang auf einer Karte, nur
     // ueber die Dev-Konsole (Maps-Tab) erreichbar. Wurf-Zaehler -> NEU wuerfeln.
     else if (id === 'kerker12') a = buildKerkerArea(seededRng(this.areaSeed + 121212 + this.kerker12Wurf * 104729));
+    // R138 (Autor): V9-Kammern + Katakomben-Gewoelbe ziehen als PLANUNGSKARTEN
+    // in den Maps-Tab um - mit EIGENEN Area-Ids, damit der Test die echte
+    // Krypta-Kette (crypt1..) nicht mehr umbaut wie die alten Kasten-Knoepfe.
+    else if (id === 'v9') { a = buildV9Krypta(1, seededRng(this.areaSeed + 900009 + this.v9Wurf * 104729)); a.id = 'v9'; }
+    else if (id === 'katakomben') { a = buildKatakombenKrypta(1, seededRng(this.areaSeed + 880088 + this.katakombenWurf * 104729)); a.id = 'katakomben'; }
     else if (id.startsWith('innen_')) a = buildInterior(INNENRAEUME[id.replace('innen_', '')]);
     else if (id === 'wald') a = buildForest(rng);
     else if (id === 'start') a = buildStart(rng);
@@ -4788,7 +4800,51 @@ export class WorldScene extends CombatScene {
   // R107: Grafik-Einstellungen live anwenden (Wasser-Shader, FPS-Anzeige). Wird
   // beim Kartenaufbau und beim Zurueckkehren aus den Einstellungen gerufen.
   wendeGrafikAn(): void {
-    this.wasser2Shader?.setVisible(getSettings().wasserEffekte);
+    const an = getSettings().wasserEffekte;
+    this.wasser2Shader?.setVisible(an);
+    // R138 (Autorbug "unsichtbare Wand, wo frueher ein Fluss war"): Shader aus
+    // hiess bisher GAR KEIN sichtbares Wasser - die T.WATER-Kollision blieb
+    // aber. Jetzt gilt das Versprechen der Einstellung ("aus = flaches
+    // Wasser"): ohne Shader zeigt ein flaches Ersatz-Bild dieselbe Wasserflaeche.
+    if (!an && this.area?.wasserLauf && !this.wasserFallbackImg) this.baueWasserFallback();
+    this.wasserFallbackImg?.setVisible(!an);
+  }
+
+  // Flaches Ersatz-Wasser aus DERSELBEN SDF wie Shader UND Kollision - Ufer
+  // etwas heller, Tiefe satter. Nur gebaut, wenn es gebraucht wird (Shader aus).
+  private baueWasserFallback(): void {
+    this.wasserFallbackImg?.destroy(); this.wasserFallbackImg = undefined;
+    const a = this.area, lauf = a?.wasserLauf;
+    if (!lauf) return;
+    const geo = this.aktuelleWasserGeo() ?? lauf.geo;
+    const smink = lauf.smink ?? WASSER2_CFG.smink;
+    const res = 4;                                     // 4 Abtastpunkte je Kachel (8 px)
+    const cw = a.w * res, ch = a.h * res;
+    const canvas = document.createElement('canvas');
+    canvas.width = cw; canvas.height = ch;
+    const ctx = canvas.getContext('2d')!;
+    const bild = ctx.createImageData(cw, ch);
+    const p = this.aktWasserPreset();                  // Wasser blau, Blutkarten rot
+    const tief = p.deep.map((c) => Math.round(c * 255));
+    const ufer = p.deep.map((c, i) => Math.round((c * 0.55 + p.sky[i] * 0.45) * 255));
+    for (let y = 0; y < ch; y++) {
+      for (let x = 0; x < cw; x++) {
+        const sd = sdWasser((x + 0.5) / cw, (y + 0.5) / ch, geo, smink, WASSER2_CFG.widthMul);
+        if (sd >= 0) continue;
+        const t = Math.min(1, -sd / 0.02);             // 0 am Ufer .. 1 in der Tiefe
+        const i = (y * cw + x) * 4;
+        bild.data[i] = Math.round(ufer[0] + (tief[0] - ufer[0]) * t);
+        bild.data[i + 1] = Math.round(ufer[1] + (tief[1] - ufer[1]) * t);
+        bild.data[i + 2] = Math.round(ufer[2] + (tief[2] - ufer[2]) * t);
+        bild.data[i + 3] = 235;
+      }
+    }
+    ctx.putImageData(bild, 0, 0);
+    const key = `wasser_flach_${a.id}`;
+    if (this.textures.exists(key)) this.textures.remove(key);
+    this.textures.addCanvas(key, canvas)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    this.wasserFallbackImg = this.add.image(0, 0, key).setOrigin(0, 0)
+      .setDisplaySize(a.w * TILE, a.h * TILE).setDepth(WASSER2_CFG.tiefe);
   }
 
   private updateFreiKamera(dt: number): void {
@@ -4814,7 +4870,10 @@ export class WorldScene extends CombatScene {
   }
 
   private aktWasserPreset(): WasserPreset2 { return this.devWasserBlut ? BLUT2 : WASSER2; }
-  private wasserAnwenden(): void { if (this.wasser2Shader) wendeWasser2(this.wasser2Shader, this.aktWasserPreset()); }
+  private wasserAnwenden(): void {
+    if (this.wasser2Shader) wendeWasser2(this.wasser2Shader, this.aktWasserPreset());
+    if (this.wasserFallbackImg) this.baueWasserFallback();   // R138: Breite/Preset auch im flachen Ersatz-Wasser
+  }
 
   private setzeReitTuning(werte: Partial<ReitDarstellungTuning>): void {
     this.reitTuning = { ...this.reitTuning, ...werte };
@@ -4909,14 +4968,30 @@ export class WorldScene extends CombatScene {
       return cs;
     };
     return [
-      // R136b (Autor): geplante Karten liegen HIER, bis sie zu einem neuen
-      // Dungeon verknuepft werden - KEIN Eingang auf einer Spielkarte.
-      { name: 'MAPS', controls: () => [
-        { kind: 'note', text: 'Geplante Karten (noch ohne Eingang im Spiel). Rein/raus nur hier.' },
-        { kind: 'button', label: () => 'Kerker (V12) betreten - Planungskarte der Sondermission', onClick: () => { this.devKonsole?.toggle(); this.goArea('kerker12'); } },
-        { kind: 'button', label: () => 'Kerker (V12) NEU würfeln + betreten', onClick: () => { this.kerker12Wurf++; this.areas.delete('kerker12'); this.devKonsole?.toggle(); this.goArea('kerker12'); } },
-        { kind: 'button', label: () => 'Zurück nach Ravensmoor (stadt)', onClick: () => { this.devKonsole?.toggle(); this.goArea('stadt'); } },
-      ] },
+      // R136b/R138 (Autor): ALLE geplanten Karten liegen HIER und sind sofort
+      // live betretbar, bis sie zu einem neuen Dungeon verknuepft werden -
+      // KEIN Eingang auf einer Spielkarte. V9 + Katakomben sind aus dem
+      // Kasten-Tab hierher umgezogen (eigene Area-Ids, crypt1 bleibt echt).
+      { name: 'MAPS', controls: () => {
+        const karten: Array<{ id: string; label: string; wurf: () => void }> = [
+          { id: 'kerker12', label: 'Kerker (V12) - Planungskarte der Sondermission', wurf: () => this.kerker12Wurf++ },
+          { id: 'v9', label: 'V9-Kammern (echte Türen, R118)', wurf: () => this.v9Wurf++ },
+          { id: 'katakomben', label: 'Katakomben-Gewölbe (Raum+Gang+Vault, R102)', wurf: () => this.katakombenWurf++ },
+        ];
+        const cs: DKControl[] = [
+          { kind: 'note', text: 'Geplante Karten (noch ohne Eingang im Spiel) - sofort live, rein/raus nur hier. Neue vorbereitete Maps kommen ebenfalls hierher.' },
+        ];
+        for (const k of karten) {
+          cs.push({ kind: 'button', label: () => `${k.label} betreten`, onClick: () => { this.devKonsole?.toggle(); this.goArea(k.id); } });
+          cs.push({ kind: 'button', label: () => `↳ NEU würfeln + betreten`, onClick: () => { k.wurf(); this.areas.delete(k.id); this.devKonsole?.toggle(); this.goArea(k.id); } });
+        }
+        // R138b (Autor): auch LIVE platzierte Karten sofort betretbar - ohne
+        // hinzulaufen. Gilt ab jetzt fuer ALLE neuen Karten (AGENTS.md-Regel).
+        cs.push({ kind: 'note', text: 'Live-Karten (im Spiel platziert) - Schnellzugang zum Testen:' });
+        cs.push({ kind: 'button', label: () => 'Höhle/Goldmine betreten (live, Eingang Finsterhain)', onClick: () => { this.devKonsole?.toggle(); this.goArea('goldmine'); } });
+        cs.push({ kind: 'button', label: () => 'Zurück nach Ravensmoor (stadt)', onClick: () => { this.devKonsole?.toggle(); this.goArea('stadt'); } });
+        return cs;
+      } },
       { name: 'WASSER', controls: wasserControls },
       { name: 'KAMERA', controls: () => [
         { kind: 'button', label: () => `Frei-Kamera: ${this.devFreiKam ? 'AN (WASD/Pfeile + Mittelmaus zieht)' : 'aus'}`, onClick: () => { this.setzeFreiKamera(!this.devFreiKam); this.devKonsole?.refresh(); } },
@@ -4979,7 +5054,7 @@ export class WorldScene extends CombatScene {
           { kind: 'slider', label: 'Sichtweite nachts (Radius)', min: 120, max: 640, step: 10, get: () => lic.nachtSicht ?? 240, set: (v) => { lic.nachtSicht = v; saveSettings(); } },
           { kind: 'slider', label: 'Held-Glut Helligkeit', min: 0, max: 100, step: 2, get: () => lic.nachtGlut ?? 50, set: (v) => { lic.nachtGlut = v; saveSettings(); } },
           { kind: 'color', label: 'Held-Glut Farbe', get: () => { const c = lic.nachtGlutFarbe ?? 0xffcf86; return [(c >> 16 & 255) / 255, (c >> 8 & 255) / 255, (c & 255) / 255] as [number, number, number]; }, set: (c) => { lic.nachtGlutFarbe = (Math.round(c[0] * 255) << 16) | (Math.round(c[1] * 255) << 8) | Math.round(c[2] * 255); saveSettings(); } },
-          { kind: 'slider', label: 'Krypta-Wandhöhe (Kacheln)', min: 1, max: 3, step: 0.25, fmt: (v) => `${v.toFixed(2)}x`, get: () => lic.wandHoehe ?? 2, set: (v) => { lic.wandHoehe = v; saveSettings(); this.refreshKryptaWaende(); } },
+          { kind: 'slider', label: 'Krypta-Wandhöhe (Kacheln)', min: 1, max: 3, step: 0.25, fmt: (v) => `${v.toFixed(2)}x`, get: () => lic.wandHoehe ?? 1.25, set: (v) => { lic.wandHoehe = v; saveSettings(); this.refreshKryptaWaende(); } },
         ] as DKControl[];
       } },
       { name: 'MESSEN', controls: () => [
@@ -5013,21 +5088,9 @@ export class WorldScene extends CombatScene {
       { name: 'KASTEN', controls: () => [
         { kind: 'button', label: () => 'Alter Kampf-/Spiel-Kasten öffnen', onClick: () => this.toggleDevPanel() },
         { kind: 'button', label: () => 'RTS-MODUS testen (Schlachtfeld-Steuerung)', onClick: () => { this.devKonsole?.toggle(); this.toggleRtsModus(); } },
-        // R102: Katakomben-Dungeon LIVE testen - schaltet den neuen Generator fuer
-        // Ebene 1 an und springt hinein (nur Test; echter Einsatzort per Konfig).
-        { kind: 'button', label: () => `V9-Kammern betreten (Ebene 1, Test - echte Tueren)${v9AktivFuer(1) ? ' · AN' : ''}`, onClick: () => {
-          const einsatz = (window as unknown as { __v9Einsatz?: { ebenen: number[] } }).__v9Einsatz;
-          if (einsatz && !einsatz.ebenen.includes(1)) einsatz.ebenen.push(1);
-          this.areas.delete('crypt1');
-          this.goArea('crypt1');
-          this.devKonsole?.refresh();
-        } },
-        { kind: 'button', label: () => `Katakomben-Dungeon betreten (Ebene 1, Test)${katakombenAktivFuer(1) ? ' · AN' : ''}`, onClick: () => {
-          if (!KATAKOMBEN_EINSATZ.ebenen.includes(1)) KATAKOMBEN_EINSATZ.ebenen.push(1);
-          this.areas.delete('crypt1');   // frisch generieren, falls schon gebaut
-          this.devKonsole?.toggle();
-          this.goArea('crypt1');
-        } },
+        // R138: V9 + Katakomben sind in den Maps-Tab umgezogen (eigene Areas,
+        // die crypt1-Kette bleibt unangetastet).
+        { kind: 'note', text: 'V9-Kammern + Katakomben-Gewölbe: siehe Tab MAPS.' },
       ] },
     ];
   }
@@ -5156,6 +5219,8 @@ export class WorldScene extends CombatScene {
     if (!lauf || !this.wasser2Shader) return;
     this.skaliertesWasser = skaliereGeometrie(lauf.geo, this.wasserBahnMul, this.wasserSeeMul);
     setzeWasserGeometrie(this.wasser2Shader, this.skaliertesWasser, lauf.smink);
+    // R138: das flache Ersatz-Wasser (Shader aus) folgt den Breite-Reglern mit.
+    if (this.wasserFallbackImg) this.baueWasserFallback();
   }
 
   private aktuelleWasserGeo(): WasserGeometrie | undefined {
@@ -5178,6 +5243,7 @@ export class WorldScene extends CombatScene {
     this.pfuetzenTexKeys = [];
     this.liegendeStaemme.clear();
     this.wasser2Shader?.destroy(); this.wasser2Shader = undefined;
+    this.wasserFallbackImg?.destroy(); this.wasserFallbackImg = undefined;   // R138: flaches Ersatz-Wasser gehoert zur alten Karte
     // R113: Moor-Nebel + Fussspuren gehoeren zur alten Karte
     this.wetterNebel?.destroy(); this.wetterNebel = undefined;
     this.fussSpuren = [];
@@ -5373,7 +5439,7 @@ export class WorldScene extends CombatScene {
         const unten = a.map[ty + 1]?.[tx];
         const front = unten !== undefined && !SOLID.has(unten);
         if (front) {
-          const hF = Math.max(1, getSettings().licht.wandHoehe ?? 2);
+          const hF = Math.max(1, getSettings().licht.wandHoehe ?? 1.25);
           tag(this.add.image(tx * TILE + 16, (ty + 1) * TILE, hoeheFelsWand(this, tx, ty, hF))
             .setOrigin(0.5, 1).setDepth((ty + 1) * TILE - 6));
         } else {
@@ -5572,7 +5638,7 @@ export class WorldScene extends CombatScene {
     // verschwindet dahinter. Kollision unverändert (a.map + SOLID).
     if (a.dark && id === T.WALL) {
       if (name === 'krypta_wand_front') {
-        const hF = Math.max(1, getSettings().licht.wandHoehe ?? 2);
+        const hF = Math.max(1, getSettings().licht.wandHoehe ?? 1.25);
         const hoch = tag(this.add.image(tx * TILE + 16, (ty + 1) * TILE, this.hoheWandKey(variant, a.depth, a.theme, hF)));
         hoch.setOrigin(0.5, 1).setDepth((ty + 1) * TILE - 6);
         return;
@@ -7208,12 +7274,16 @@ export class WorldScene extends CombatScene {
     // DRAUSSEN: Tag-Schatten (Gebäude/NPCs), nur am Tag - mit der Aussenwelt-Stärke.
     const st = sets.schatten / 100;
     if (st <= 0) { this.schatten?.aus(); return; }
-    this.ensureSchatten(this.gebaeudeOccluder());
+    const statisch = this.gebaeudeOccluder();
+    this.ensureSchatten(statisch);
+    // R138: 3D-Gebaeude laden ihr GLB asynchron - kommen ihre Verdecker nach,
+    // die statische Liste des Managers nachziehen (sonst bleibt sie leer).
+    if (statisch.length !== this.schattenStatN) { this.schatten!.setzeStatisch(statisch); this.schattenStatN = statisch.length; }
     const tag = this.tageszeit > TAG.morgenAb && this.tageszeit < TAG.nachtAb;
     if (!tag) { this.schatten!.aus(); return; }   // nachts/Dämmerung keine Sonne
     const winkel = Phaser.Math.Clamp((this.tageszeit - TAG.morgenAb) / Math.max(0.001, TAG.nachtAb - TAG.morgenAb), 0, 1);
     if (lic.sonneRaycast) this.schatten!.sonneRaycast(winkel, this.dynamischeOccluder(), st, lic.sonneKegel, lic.weichheit);
-    else this.schatten!.sonne(winkel, this.dynamischeOccluder(), st);
+    else this.schatten!.sonne(winkel, this.dynamischeOccluder(), st, lic.sonneKegel, lic.weichheit);
   }
 
   // Dungeon-Lichter für die Debug-Engine: HELD = warmes Raycasting-Licht (wirft
@@ -7335,6 +7405,7 @@ export class WorldScene extends CombatScene {
       this.schatten?.destroy();
       this.schatten = new SchattenManager(this, { sonneTiefe: -7, rtTiefe: 3990 });
       this.schatten.setzeStatisch(staticOcc);
+      this.schattenStatN = staticOcc.length;   // R138: Nachlade-Refresh-Zaehler mitziehen
       this.schattenArea = this.area.id;
       this.fackelFade.clear();   // Fackel-Überblendung gehört zum alten Gebiet
     }
@@ -7347,6 +7418,14 @@ export class WorldScene extends CombatScene {
     for (const img of this.hausBilder) {
       if (!img.active) continue;
       occ.push({ x: img.x, y: img.y, w: img.displayWidth * 0.74, h: 14, hoehe: img.displayHeight * 0.7 });
+    }
+    // R138: die begehbaren 3D-Gebaeude (neues Ravensmoor) werfen auch Sonnen-
+    // schatten - vorher hatte die neue Stadt NULL statische Verdecker und die
+    // Sonnen-Regler wirkten tot. null solange das GLB noch laedt (siehe Refresh
+    // in aktualisiereSchatten).
+    for (const g of this.gebaeude3d.values()) {
+      const o = g.sonnenOccluder();
+      if (o) occ.push(o);
     }
     return occ;
   }
@@ -9844,6 +9923,11 @@ export class WorldScene extends CombatScene {
         },
       };
     }
+    // R138: Planungskarten (Maps-Tab) haben Treppen OHNE Ziel - ehrlich sagen,
+    // statt kommentarlos nichts zu tun (oder in die echte Krypta zu fallen).
+    if ((tid === T.STAIR || tid === T.STAIRUP) && WorldScene.PLANUNGSKARTEN.has(this.area.id)) {
+      return { text: 'Treppe ohne Ziel (Planungskarte)', action: () => this.logMsg('Diese Treppe führt noch nirgendwohin - die Karte ist in Planung.', '') };
+    }
     if (tid === T.STAIR && this.area.id === 'wald_o') {
       // R127f (Autor): das Stollenmaul liegt im Norden von Finsterhain -
       // der letzten Karte vor Ravensmoor (verlassener Wachposten davor).
@@ -10589,29 +10673,22 @@ export class WorldScene extends CombatScene {
     // Gegner, das will ich nicht"). Der frühere Tod-Reset (alle geleert=false)
     // ist daher entfernt.
     // Layout, Minimap und aufgedeckte Treppen BLEIBEN erhalten (Runde 5)
-    // Auferstehung auf dem Friedhof neben der Kirche (Feedback-Runde 8):
-    // etwas Gutes wacht über Ravensmoor und schickt dich zurück. (Runde 53:
-    // robuste Suche - IMMER eine freie Kachel im Kirch-/Friedhofsbereich finden,
-    // nie am Kartenrand landen, auch wenn man auf der Startkarte stirbt.)
-    const village = this.getArea('village');
-    let spawn: { x: number; y: number } | undefined;
-    for (const [tx, ty] of [[71, 15], [71, 14], [70, 16], [72, 16], [69, 15], [71, 17], [68, 16], [73, 15]] as const) {
-      if (village.map[ty]?.[tx] !== undefined && !SOLID.has(village.map[ty][tx])) {
-        spawn = { x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE };
-        break;
-      }
+    // R138 (Autor: "nicht mehr im ALTEN Ravensmoor erwachen"): Dungeons/
+    // Innenraeume/Boss fuehren ins NEUE Ravensmoor (stadt) - etwas Gutes wacht
+    // ueber die Stadt. Auf Oberwelt-Karten erwacht man am Eingang DERSELBEN
+    // Karte (kein Rueckwurf quer durch die Welt). Regel: src/logic/respawn.ts;
+    // das echte Wiederbelebungs-System des Autors kommt spaeter.
+    const ziel = respawnZiel(this.area.id, !!this.area.dark);
+    if (ziel === 'stadt') {
+      const stadt = this.getArea(DEATH.respawnKarte);
+      this.goArea(DEATH.respawnKarte, { x: stadt.spawn.x, y: stadt.spawn.y });
+    } else {
+      const selbe = this.area;
+      this.goArea(selbe.id, { x: selbe.spawn.x, y: selbe.spawn.y });
     }
-    if (!spawn) {                                   // breitere Suche im Friedhofs-Kasten
-      for (let ty = 12; ty <= 22 && !spawn; ty++) {
-        for (let tx = 60; tx <= 78 && !spawn; tx++) {
-          if (village.map[ty]?.[tx] !== undefined && !SOLID.has(village.map[ty][tx])) spawn = { x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE };
-        }
-      }
-    }
-    this.goArea('village', spawn ?? { x: village.spawn.x, y: village.spawn.y });
     this.fx.burst(this.px, this.py, 0xf0e8c0, 26, 200);
     this.sfx.play('heiliges_licht');
-    this.logMsg(TOD.erwachen, 'magic');
+    this.logMsg(ziel === 'stadt' ? TOD.erwachenStadt : TOD.erwachenKarte, 'magic');
   }
 
   // --- HUD und Meldungen ----------------------------------------------------------

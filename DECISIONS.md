@@ -2202,3 +2202,33 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Spielstand; erst der vom Autor kopierte Endwert wird spaeter fest uebernommen.
 - Breite/Hoehe sind reine Vergleichsregler fuer die Gesamtsilhouette. Eine
   isolierte Beinkraeftigung bleibt Assetarbeit am Blender-Modell bzw. Render.
+
+## R138 - Unsichtbare Fluss-Waende, Maps-Tab, Standards, Respawn, Sonnen-Regler
+- URSACHE unsichtbare Waende: "Wasser-Effekte AUS" (Schalter/Leistungs-Preset
+  Niedrig) blendete den Wasser-Shader aus - bei gebackenem Boden zeichnete dann
+  NICHTS mehr das Wasser, die T.WATER-Kollision blieb (1400 SOLID-Kacheln allein
+  auf 'start'). Fix: flaches Ersatz-Wasser aus DERSELBEN SDF wie Shader und
+  Kollision (baueWasserFallback), sichtbar immer wenn der Shader aus ist. Das
+  Einstellungs-Versprechen "aus = flaches Wasser" stimmt jetzt.
+- Wandhoehe: Standard UEBERALL x1,25 (vorher 2), einmalige Migration lichtV=2
+  hebt auch gespeicherte Staende an - danach frei regelbar. V12 nutzt denselben
+  globalen Regler wie alle dark-Areas.
+- Wand-Schatten (licht.dungeonNeu): Standard AN in jedem Dungeon (Autor-Order,
+  kehrt die R128-Entscheidung "weiches lightRT als Standard" bewusst um).
+  Gleiche lichtV=2-Migration. ACHTUNG: Grafik-Presets Niedrig/Mittel schalten
+  ihn weiterhin AUS (Leistung) - nur wer sie waehlt.
+- Respawn nach Tod: NIE mehr ins alte Dorf (Archiv!). Dungeons/Innenraeume/
+  Boss/Kirchenschiff -> neues Ravensmoor (stadt, DEATH.respawnKarte);
+  Oberwelt-Karten -> Eingang DERSELBEN Karte. Regel: src/logic/respawn.ts
+  (+ Tests). Das echte Wiederbelebungs-System des Autors kommt spaeter.
+- Maps-Tab = Sammelstelle ALLER Planungskarten (kerker12, v9, katakomben) -
+  sofort live betretbar, kein Eingang im Spiel. V9/Katakomben haben jetzt
+  EIGENE Area-Ids statt (wie die alten Kasten-Knoepfe) crypt1 zu kapern -
+  die echte Krypta-Kette bleibt unberuehrt. Treppen in Planungskarten sagen
+  ehrlich "ohne Ziel". V9 (Kammern+echte Tueren, R118) und Katakomben
+  (Raum+Gang+Vault, R102) sind ZWEI verschiedene Generatoren.
+- Sonnen-Regler: die neue Stadt hatte NULL statische Sonnen-Verdecker (nur
+  alte 2D-hausBilder zaehlten) - jetzt werfen auch die begehbaren 3D-Gebaeude
+  Sonnenschatten (sonnenOccluder, laedt mit dem GLB nach). Der Projektions-
+  Modus hoert jetzt auf Sonnen-Ferne (Schattenlaenge) und Sonnen-Weichheit
+  (Blur) - vorher wirkte nur die Staerke. Standard bleibt Projektion.

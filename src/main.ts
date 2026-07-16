@@ -26,6 +26,7 @@ import { UIProbe } from './scenes/UIProbe';
 import { HausProbe } from './scenes/HausProbe';
 import { TUNING } from './logic/tuning';
 import { FLUSS_SHADER } from './world/fluessigkeitsShader';
+import { getSettings } from './logic/settings';
 
 // Bildgröße (Runde 27): KEIN gestrecktes Canvas mehr (machte Schrift
 // pixelig) - das Spiel rendert immer in voller Fensterauflösung, der
@@ -53,4 +54,7 @@ if (import.meta.env.DEV) {
   (window as unknown as { __tuning?: typeof TUNING }).__tuning = TUNING;
   // Liquid-Shader-Overlay live umschaltbar (Wasser/Blut) für die Verifikation
   (window as unknown as { __fluss?: typeof FLUSS_SHADER }).__fluss = FLUSS_SHADER;
+  // R138: DIESELBE Settings-Instanz wie das Spiel (ein Seiten-Import von
+  // settings.ts erwischt nach HMR-Invalidierung eine andere Instanz - ?t=).
+  (window as unknown as { __settings?: ReturnType<typeof getSettings> }).__settings = getSettings();
 }

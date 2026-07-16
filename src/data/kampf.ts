@@ -165,7 +165,9 @@ export const PHYSIK = {
 // Tod und Rasten (Masterprompt 4.4 - schlägt Referenz: dort 20% Goldverlust)
 export const DEATH = {
   goldLossPct: 0.15,    // 15% Goldverlust
-  // Erwachen in Ravensmoor (Taverne), Krypta-Ebenen werden neu bevölkert
+  // R138: Erwachen nach dem Tod in Dungeons/Innenraeumen fuehrt HIERHIN
+  // (neues Ravensmoor). Regel selbst: src/logic/respawn.ts.
+  respawnKarte: 'stadt',
 } as const;
 
 // Kerzenschreine: Rasten heilt voll, füllt Flaschen, setzt KEINE Gegner zurück
