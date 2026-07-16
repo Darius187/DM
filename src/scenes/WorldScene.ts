@@ -3194,7 +3194,7 @@ export class WorldScene extends CombatScene {
     // R88 (Autor "wie in einem RTS"): Platzierungs-Modus statt Sofortbau - der
     // Geist folgt der Maus, Linksklick setzt die Baustelle, dann läuft die
     // Bauzeit ab. Das Baumenü (N) und der RTS-Modus nutzen denselben Weg.
-    this.startePlatzierung(plan.id, plan.kosten as Record<string, number>);
+    this.startePlatzierung(plan.id, plan.kosten as Record<string, number>, 'held');
     return true;
   }
 
@@ -3369,8 +3369,8 @@ export class WorldScene extends CombatScene {
   // R94: EINHEITLICHE Feldbau-Registry mit Lebenspunkten. Jeder platzierte Bau
   // (Lagerfeuer/Standarte/Palisade/Wachturm/Lazarett/Zelt) landet hier - für
   // Klick-Menü (Reparieren/Abbauen) und die Lebensbalken.
-  private feldbauten: Array<{ id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null; offen?: boolean; tx2?: number; ty2?: number; senk?: boolean }> = [];
-  private gewaehlterBau: { id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null; offen?: boolean; tx2?: number; ty2?: number; senk?: boolean } | null = null;
+  private feldbauten: Array<{ id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null; offen?: boolean; tx2?: number; ty2?: number; senk?: boolean; quelle?: 'held' | 'dorf' }> = [];
+  private gewaehlterBau: { id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null; offen?: boolean; tx2?: number; ty2?: number; senk?: boolean; quelle?: 'held' | 'dorf' } | null = null;
   private bauPopup: Phaser.GameObjects.Container | null = null;
   // R96: Schlacht-Schicht (Einheiten, Auswahl, Befehle, Formationen) + Eingabe-
   // Lauscher, die nur im RTS-Modus aktiv sind.
@@ -3391,9 +3391,12 @@ export class WorldScene extends CombatScene {
   private rtsWahlRing: Phaser.GameObjects.Graphics | null = null;
   // R88 (Autor "RTS wie AoE"): Platzierungs-Modus (Geist folgt der Maus) +
   // Baustellen mit Bauzeit-Fortschritt statt Sofortbau.
-  private platziereModus: { id: string; kosten: Record<string, number>; bauzeitS: number } | null = null;
+  // R139 (Dok 03, 1.1): quelle = wer den Bau BEZAHLT. RTS-Bauten zahlt das
+  // DORF-LAGER ("viel abgebaut = viel baubar"), das persoenliche Baumenue
+  // (Taste N) zahlt der Held aus eigenem Vorrat ("Held farmt" ist Absicht).
+  private platziereModus: { id: string; kosten: Record<string, number>; bauzeitS: number; quelle: 'held' | 'dorf' } | null = null;
   private platzierGeist: Phaser.GameObjects.Container | null = null;
-  private baustellen: Array<{ id: string; x: number; y: number; t: number; dauer: number; img: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics }> = [];
+  private baustellen: Array<{ id: string; x: number; y: number; t: number; dauer: number; img: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics; quelle: 'held' | 'dorf' }> = [];
   private readonly BAUZEIT: Record<string, number> = { lagerfeuer: 3, standarte: 2.5, palisade: 4, tor: 5, wachturm: 7, wachturm_45: 7, wachturm_40: 7, lazarett: 6, zelt: 4, feldaltar: 5, kochstelle: 3, brunnen: 5, feldschmiede: 5, wartfeuer: 4, nachschub: 4 };
   // R101d: alle Wachturm-Varianten (wachturm, wachturm_45, wachturm_40) teilen die
   // Turm-Mechanik (2x2, Besatzung, Belagerung) - nur das Sprite unterscheidet sich.
@@ -3608,9 +3611,15 @@ export class WorldScene extends CombatScene {
     c.add(this.add.rectangle(F(6), ty2 + F(22), w - F(12), 1, 0x4a3a26).setOrigin(0));
     let y = ty2 + F(34);
     if (this.rtsTab === 'bauen') {
+      // R139: das DORF-LAGER zahlt - Bestand der Bau-Waren direkt anzeigen,
+      // sonst luegt die Farbcodierung gefuehlt (Dok 03, 1.1).
+      const bauWaren = ['holz', 'stein', 'fasern', 'schafgarbe'] as const;
+      const bestand = bauWaren.map((w2) => `${this.dorfLager[w2] ?? 0} ${MATERIAL_NAMES[w2 as MaterialId] ?? w2}`).join(' · ');
+      c.add(this.add.text(F(8), y, `Dorf-Lager: ${bestand}`, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#9a8a6a', wordWrap: { width: w - F(16) } }));
+      y += F(16);
       // Feldbauten UNTEREINANDER mit Kosten (C&C-artige Bau-Icons)
       for (const b of RTS_BAUTEN) {
-        const kann = b.frei && Object.entries(b.kosten).every(([k, n]) => (this.p.materials[k as MaterialId] ?? 0) >= (n ?? 0));
+        const kann = b.frei && !this.kostenFehlen('dorf', b.kosten as Record<string, number>);   // R139: das DORF-LAGER zahlt
         const farbe = !b.frei ? '#5a5348' : kann ? '#e8dfc8' : '#7a6a52';
         const knopf = this.add.rectangle(F(8), y, w - F(16), F(30), kann ? 0x1c1409 : 0x120d07, 0.9).setOrigin(0).setStrokeStyle(1, kann ? 0x5a4a2e : 0x3a2f1e).setInteractive({ useHandCursor: true });
         knopf.on('pointerdown', () => this.rtsBaue(b));
@@ -3704,18 +3713,44 @@ export class WorldScene extends CombatScene {
 
   private rtsBaue(b: RtsBau): void {
     if (!b.frei) { this.logMsg(`${b.name}: wird später freigeschaltet.`, ''); return; }
-    const fehlt = Object.entries(b.kosten).some(([k, n]) => (this.p.materials[k as MaterialId] ?? 0) < (n ?? 0));
-    if (fehlt) { this.sfx.play('fehler'); this.logMsg(`Nicht genug Material für ${b.name}.`, ''); return; }
+    // R139 (Dok 03, 1.1): RTS-Bauten zahlt das DORF-LAGER, nicht der Held.
+    if (this.kostenFehlen('dorf', b.kosten as Record<string, number>)) {
+      this.sfx.play('fehler');
+      this.logMsg(`Das Dorf-Lager hat nicht genug für ${b.name}.`, '');
+      return;
+    }
     // R88: nicht mehr sofort bauen - Platzierungs-Modus (Geist folgt der Maus).
-    this.startePlatzierung(b.id, b.kosten as Record<string, number>);
+    this.startePlatzierung(b.id, b.kosten as Record<string, number>, 'dorf');
+  }
+
+  // R139: die "Kasse" hinter einer Kosten-Quelle. Das Dorf-Lager ist der
+  // M3-Bestand (Record<string, number>) - fehlende Waren zaehlen als 0, das
+  // physische Lagergebaeude kommt spaeter nur als Kulisse dazu.
+  private kasse(q: 'held' | 'dorf'): Record<string, number> {
+    return q === 'dorf' ? this.dorfLager : (this.p.materials as unknown as Record<string, number>);
+  }
+
+  private kostenFehlen(q: 'held' | 'dorf', kosten: Record<string, number>): boolean {
+    const k = this.kasse(q);
+    return Object.entries(kosten).some(([w, n]) => (k[w] ?? 0) < (n ?? 0));
+  }
+
+  private bucheKosten(q: 'held' | 'dorf', kosten: Record<string, number>): void {
+    const k = this.kasse(q);
+    for (const [w, n] of Object.entries(kosten)) k[w] = (k[w] ?? 0) - (n ?? 0);
+  }
+
+  private erstatteKosten(q: 'held' | 'dorf', kosten: Record<string, number>, anteil: number): void {
+    const k = this.kasse(q);
+    for (const [w, n] of Object.entries(kosten)) k[w] = (k[w] ?? 0) + Math.max(0, Math.round((n ?? 0) * anteil));
   }
 
   // --- PLATZIERUNG + BAUZEIT (R88, "RTS wie AoE/BAR"): Bauwerk anklicken ->
   // ein Geist folgt der Maus -> Linksklick setzt die Baustelle -> ein
   // Fortschrittsbalken läuft die Bauzeit ab -> dann steht das Bauwerk. ------
-  private startePlatzierung(id: string, kosten: Record<string, number>): void {
+  private startePlatzierung(id: string, kosten: Record<string, number>, quelle: 'held' | 'dorf'): void {
     this.brichPlatzierungAb();
-    this.platziereModus = { id, kosten, bauzeitS: this.BAUZEIT[id] ?? 3 };
+    this.platziereModus = { id, kosten, bauzeitS: this.BAUZEIT[id] ?? 3, quelle };
     const name = (RTS_BAUTEN.find((b) => b.id === id)?.name) ?? (BAUMENU.find((b) => b.id === id)?.name) ?? id;
     // Geist = halbtransparenter Fußabdruck + Beschriftung (folgt der Maus).
     // R101: Turm belegt 2x2 Kacheln -> Fussabdruck-Rechteck entsprechend gross.
@@ -3773,17 +3808,20 @@ export class WorldScene extends CombatScene {
     const mod = this.platziereModus;
     const snap = this.bauSnap(wp.x, wp.y, mod.id);
     if (!this.bauplatzFreiBlock(snap.tx, snap.ty, snap.n)) { this.sfx.play('fehler'); this.logMsg(snap.n > 1 ? 'Kein Platz - der Turm braucht 4 freie Kacheln.' : 'Kein Platz - freien Boden wählen.', ''); return true; }
-    const fehlt = Object.entries(mod.kosten).some(([k, n]) => (this.p.materials[k as MaterialId] ?? 0) < (n ?? 0));
-    if (fehlt) { this.sfx.play('fehler'); this.logMsg('Nicht mehr genug Material.', ''); this.brichPlatzierungAb(); return true; }
-    for (const [k, n] of Object.entries(mod.kosten)) this.p.materials[k as MaterialId] -= n ?? 0;
-    this.setzeBaustelle(mod.id, snap.cx, snap.cy, mod.bauzeitS);
+    if (this.kostenFehlen(mod.quelle, mod.kosten)) {
+      this.sfx.play('fehler');
+      this.logMsg(mod.quelle === 'dorf' ? 'Das Dorf-Lager ist inzwischen zu leer.' : 'Nicht mehr genug Material.', '');
+      this.brichPlatzierungAb(); return true;
+    }
+    this.bucheKosten(mod.quelle, mod.kosten);
+    this.setzeBaustelle(mod.id, snap.cx, snap.cy, mod.bauzeitS, mod.quelle);
     this.sfx.play('holz_hacken');
     this.brichPlatzierungAb();
     this.baueRtsLeiste?.();   // Leiste (Material-Farben) auffrischen, falls im RTS
     return true;
   }
 
-  private setzeBaustelle(id: string, x: number, y: number, dauer: number): void {
+  private setzeBaustelle(id: string, x: number, y: number, dauer: number, quelle: 'held' | 'dorf'): void {
     if (!this.textures.exists('baustelle_tex')) {
       const c = document.createElement('canvas'); c.width = 34; c.height = 30;
       const g = c.getContext('2d')!;
@@ -3807,7 +3845,7 @@ export class WorldScene extends CombatScene {
     this.tileImages.push(img);
     const balken = this.add.graphics().setDepth(y + 20);
     this.tileImages.push(balken as unknown as Phaser.GameObjects.Image);
-    this.baustellen.push({ id, x, y, t: 0, dauer, img, balken });
+    this.baustellen.push({ id, x, y, t: 0, dauer, img, balken, quelle });
   }
 
   // Baustellen fortschreiten (aus dem Update-Takt); fertige -> echtes Bauwerk.
@@ -3836,12 +3874,12 @@ export class WorldScene extends CombatScene {
       if (f >= 1) {
         b.img.destroy(); b.balken.destroy();
         this.baustellen.splice(i, 1);
-        this.vollendeBau(b.id, b.x, b.y);
+        this.vollendeBau(b.id, b.x, b.y, b.quelle);
       }
     }
   }
 
-  private vollendeBau(id: string, x: number, y: number): void {
+  private vollendeBau(id: string, x: number, y: number, quelle: 'held' | 'dorf'): void {
     this.sfx.play('klick');
     const maxHp = BAU_HP[id] ?? 60;
     let img: Phaser.GameObjects.Image | undefined;
@@ -3876,7 +3914,7 @@ export class WorldScene extends CombatScene {
       else tx2 = kannBau(tx + 1, ty) ? tx + 1 : tx - 1;
       const px = Math.min(tx, tx2), py = Math.min(ty, ty2), sx = Math.max(tx, tx2), sy = Math.max(ty, ty2);
       this.area.map[py][px] = T.TOR; this.area.map[sy][sx] = T.TOR;
-      this.feldbauten.push({ id, x: px * TILE + 16, y: py * TILE + 16, tx: px, ty: py, tx2: sx, ty2: sy, senk, hp: maxHp, maxHp, balken: null, offen: false });
+      this.feldbauten.push({ id, x: px * TILE + 16, y: py * TILE + 16, tx: px, ty: py, tx2: sx, ty2: sy, senk, hp: maxHp, maxHp, balken: null, offen: false, quelle });
       for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]]) { this.refreshTile(px + dx, py + dy); this.refreshTile(sx + dx, sy + dy); }
       this.logMsg('Doppeltor steht (geschlossen, 2 Felder) - öffnen/schließen über das Klick-Menü.', 'gold');
       this.panels?.refresh?.();
@@ -3894,7 +3932,7 @@ export class WorldScene extends CombatScene {
       this.logMsg(`${b?.name ?? 'Feldbau'} errichtet.`, 'gold');
     }
     // R94: in die Feldbau-Registry (Lebenspunkte, Klick-Menü)
-    this.feldbauten.push({ id, x, y, tx, ty, tx2, ty2, hp: maxHp, maxHp, img, balken: null, offen: id === 'tor' ? false : undefined });
+    this.feldbauten.push({ id, x, y, tx, ty, tx2, ty2, hp: maxHp, maxHp, img, balken: null, offen: id === 'tor' ? false : undefined, quelle });
     this.panels?.refresh?.();
   }
 
@@ -3977,9 +4015,11 @@ export class WorldScene extends CombatScene {
   private repariereBau(f: (typeof this.feldbauten)[number]): void {
     if (f.hp >= f.maxHp) { this.logMsg('Ist unbeschädigt.', ''); return; }
     const bau = RTS_BAUTEN.find((b) => b.id === f.id);
-    const kosten = Object.entries(bau?.kosten ?? {}).map(([k, n]) => [k, Math.max(1, Math.round((n ?? 0) * BAU_REPARATUR.kostenFrac))] as [string, number]);
-    if (kosten.some(([k, n]) => (this.p.materials[k as MaterialId] ?? 0) < n)) { this.sfx.play('fehler'); this.logMsg('Nicht genug Material zum Reparieren.', ''); return; }
-    for (const [k, n] of kosten) this.p.materials[k as MaterialId] -= n;
+    // R139: dieselbe Kasse wie beim Bau (alte Feldbauten ohne Vermerk: RTS -> Dorf)
+    const quelle = f.quelle ?? (bau ? 'dorf' : 'held');
+    const kosten = Object.fromEntries(Object.entries(bau?.kosten ?? {}).map(([k, n]) => [k, Math.max(1, Math.round((n ?? 0) * BAU_REPARATUR.kostenFrac))]));
+    if (this.kostenFehlen(quelle, kosten)) { this.sfx.play('fehler'); this.logMsg(quelle === 'dorf' ? 'Das Dorf-Lager hat nicht genug zum Reparieren.' : 'Nicht genug Material zum Reparieren.', ''); return; }
+    this.bucheKosten(quelle, kosten);
     f.hp = Math.min(f.maxHp, f.hp + f.maxHp * BAU_REPARATUR.proAktionFrac);
     this.sfx.play('holz_hacken');
     this.fx.burst(f.x, f.y - 8, 0xc9b06a, 8, 90);
@@ -3989,7 +4029,8 @@ export class WorldScene extends CombatScene {
 
   private baueBauAb(f: (typeof this.feldbauten)[number]): void {
     const bau = RTS_BAUTEN.find((b) => b.id === f.id);
-    for (const [k, n] of Object.entries(bau?.kosten ?? {})) this.p.materials[k as MaterialId] += Math.max(0, Math.round((n ?? 0) * BAU_REPARATUR.abbauRueckFrac));
+    // R139: Rueckerstattung in dieselbe Kasse, aus der gebaut wurde.
+    this.erstatteKosten(f.quelle ?? (bau ? 'dorf' : 'held'), (bau?.kosten ?? {}) as Record<string, number>, BAU_REPARATUR.abbauRueckFrac);
     this.entferneFeldbau(f);
     this.sfx.play('klick');
     this.logMsg('Abgebaut - ein Teil des Materials kehrt zurück.', '');
@@ -4645,13 +4686,13 @@ export class WorldScene extends CombatScene {
   // --- PALISADE ZIEHEN (R94, Autor "mehrere Felder auf einmal"): im
   // Palisaden-Platzierungsmodus Maus gedrückt halten und ziehen -> eine LINIE
   // Palisade (orthogonal, mit Eck bei Richtungswechsel). Materialkosten je Feld.
-  private palisadeZug: { tx0: number; ty0: number; vorschau: Phaser.GameObjects.Graphics } | null = null;
+  private palisadeZug: { tx0: number; ty0: number; vorschau: Phaser.GameObjects.Graphics; quelle: 'held' | 'dorf' } | null = null;
 
   private palisadeDragStart(ptr: Phaser.Input.Pointer): boolean {
     if (this.platziereModus?.id !== 'palisade') return false;
     const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
     const g = this.add.graphics().setDepth(6350);
-    this.palisadeZug = { tx0: Math.floor(wp.x / TILE), ty0: Math.floor(wp.y / TILE), vorschau: g };
+    this.palisadeZug = { tx0: Math.floor(wp.x / TILE), ty0: Math.floor(wp.y / TILE), vorschau: g, quelle: this.platziereModus?.quelle ?? 'dorf' };
     return true;
   }
 
@@ -4681,16 +4722,16 @@ export class WorldScene extends CombatScene {
     const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
     const tx1 = Math.floor(wp.x / TILE), ty1 = Math.floor(wp.y / TILE);
     const bau = RTS_BAUTEN.find((b) => b.id === 'palisade')!;
-    const kostenJe = Object.entries(bau.kosten) as Array<[string, number]>;
     const felder = this.palisadeLinie(this.palisadeZug.tx0, this.palisadeZug.ty0, tx1, ty1)
       .filter(([x, y]) => this.bauplatzFrei(x * TILE + 16, y * TILE + 16));
     let gebaut = 0;
+    const quelle = this.palisadeZug.quelle;
     for (const [x, y] of felder) {
-      if (kostenJe.some(([k, n]) => (this.p.materials[k as MaterialId] ?? 0) < (n ?? 0))) break;   // Material alle
-      for (const [k, n] of kostenJe) this.p.materials[k as MaterialId] -= n ?? 0;
+      if (this.kostenFehlen(quelle, bau.kosten as Record<string, number>)) break;   // Kasse leer
+      this.bucheKosten(quelle, bau.kosten as Record<string, number>);
       // R99c (Autor "Palisaden brauchen einen Bau-Timer"): auch der Zug baut
       // BAUSTELLEN (Bauzeit je Segment, leicht gestaffelt) statt sofort.
-      this.setzeBaustelle('palisade', x * TILE + 16, y * TILE + 16, (this.BAUZEIT.palisade ?? 4) + gebaut * 0.4);
+      this.setzeBaustelle('palisade', x * TILE + 16, y * TILE + 16, (this.BAUZEIT.palisade ?? 4) + gebaut * 0.4, quelle);
       gebaut++;
     }
     this.palisadeZug.vorschau.destroy();
