@@ -1986,6 +1986,7 @@ export class WorldScene extends CombatScene {
   // der 'stadt'-Area und nur solange DORFPLAN_AN. Wird bei jedem Gebietswechsel neu
   // aufgebaut (in anderen Gebieten leer).
   private dorfplanLayer?: Phaser.GameObjects.Container;
+  private dorfplanEditLayer?: Phaser.GameObjects.Container;
   private dorfBoxen: DorfBox[] = [];          // Arbeitskopie (localStorage ueberlagert die Saat)
   private dorfEdit = false;                    // Editor-Modus an/aus (nur 'stadt')
   private dorfPlaceTyp: DorfTyp | null = null; // aktiver Baukasten-Typ (Klick platziert)
@@ -2004,6 +2005,8 @@ export class WorldScene extends CombatScene {
   private zeichneDorfplan(a: AreaData): void {
     this.dorfplanLayer?.destroy();
     this.dorfplanLayer = undefined;
+    this.dorfplanEditLayer?.destroy();
+    this.dorfplanEditLayer = undefined;
     if (!DORFPLAN_AN || a.id !== 'stadt') {
       // Beim Verlassen der Stadt den Editor sauber schliessen (Globales abmelden).
       if (this.dorfEdit) this.toggleDorfEditor(true);
@@ -2031,15 +2034,20 @@ export class WorldScene extends CombatScene {
   // (dorfEditPointer/Move/Up), genau wie im RTS-Modus.
   private dorfRender(): void {
     this.dorfplanLayer?.destroy();
-    const c = this.add.container(0, 0).setDepth(5000);
+    this.dorfplanEditLayer?.destroy();
+    // Die farbigen Flaechen liegen auf dem Boden. Nur der ausgewaehlte
+    // Editor-Griff liegt ueber der Welt, damit er trotz Haus anklickbar bleibt.
+    const c = this.add.container(0, 0).setDepth(-3);
+    const editC = this.add.container(0, 0).setDepth(5000);
     this.dorfplanLayer = c;
+    this.dorfplanEditLayer = editC;
     const ignorieren: Phaser.GameObjects.GameObject[] = [];
     for (const b of this.dorfBoxen) {
       const px = b.x * TILE, py = b.y * TILE, pw = b.breite * TILE, ph = b.hoehe * TILE;
       const farbe = DORF_FARBE[b.typ];
       const gewaehlt = this.dorfEdit && this.dorfSel === b.id;
-      const rect = this.add.rectangle(px + pw / 2, py + ph / 2, pw, ph, farbe, gewaehlt ? 0.34 : 0.22)
-        .setStrokeStyle(gewaehlt ? 4 : 2, gewaehlt ? 0xffffff : farbe, gewaehlt ? 1 : 0.95);
+      const rect = this.add.rectangle(px + pw / 2, py + ph / 2, pw, ph, farbe, gewaehlt ? 0.3 : 0.16)
+        .setStrokeStyle(gewaehlt ? 4 : 2, gewaehlt ? 0xffffff : farbe, gewaehlt ? 1 : 0.9);
       const beschr = b.typ === 'baumWeg' ? `✕ ${b.label}` : b.label;
       const txt = this.add.text(px + pw / 2, py + ph / 2, beschr, {
         fontFamily: 'serif', fontSize: '13px', color: '#ffffff', stroke: '#000000', strokeThickness: 3, align: 'center',
@@ -2049,7 +2057,9 @@ export class WorldScene extends CombatScene {
       if (gewaehlt) {
         const gr = DORF_GRIFF;
         const griff = this.add.rectangle(px + pw - gr / 2, py + ph - gr / 2, gr, gr, 0xffffff, 0.9).setStrokeStyle(2, 0x14100a);
-        c.add(griff); ignorieren.push(griff);
+        const auswahl = this.add.rectangle(px + pw / 2, py + ph / 2, pw, ph, farbe, 0)
+          .setStrokeStyle(3, 0xffffff, 0.92);
+        editC.add(auswahl); editC.add(griff); ignorieren.push(auswahl, griff);
       }
     }
     this.uiCam?.ignore(ignorieren);   // gehoert der Welt-Kamera, nicht der UI
@@ -2096,7 +2106,7 @@ export class WorldScene extends CombatScene {
   // Gemalte Wege als eigene Ebene (unter den Boxen, ueber dem Boden).
   private zeichneDorfWege(): void {
     if (!this.dorfWegeGfx || !this.dorfWegeGfx.active) {
-      this.dorfWegeGfx = this.add.graphics().setDepth(4999);
+      this.dorfWegeGfx = this.add.graphics().setDepth(-2);
       this.uiCam?.ignore(this.dorfWegeGfx);
     }
     const g = this.dorfWegeGfx;
@@ -5946,6 +5956,10 @@ export class WorldScene extends CombatScene {
   // Details: src/gfx/gebaeude3dWelt.ts.
   private static readonly GEB3D_BOXEN = [
     { box: 'N1', id: 'haus', url: 'houses/medieval_carpenter_house_3d_runtime.json', yaw: 210 },
+    { box: 'N2', id: 'apotheke', url: 'houses/apothecary/medieval_apothecary_house_3d_runtime.json', yaw: 180 },
+    { box: 'N3', id: 'kueferei', url: 'houses/cooperage/medieval_cooperage_house_3d_runtime.json', yaw: 180 },
+    { box: 'S1', id: 'fleischerei', url: 'houses/butcher/medieval_butcher_house_3d_runtime.json', yaw: 0 },
+    { box: 'S2', id: 'stall', url: 'houses/stable/medieval_stable_house_3d_runtime.json', yaw: 0 },
     { box: 'B1', id: 'schmiede', url: 'houses/forge/medieval_forge_3d_runtime.json', yaw: 0 },
     { box: 'B3', id: 'baeckerei', url: 'houses/bakery/medieval_bakery_house_3d_runtime.json', yaw: 0 },
     { box: 'B6', id: 'muehle', url: 'houses/mill/medieval_mill_house_3d_runtime.json', yaw: 180 },
