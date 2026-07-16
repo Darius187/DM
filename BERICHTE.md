@@ -1309,3 +1309,29 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   damit als Blender-/Assetproblem eingegrenzt.
 - Im Browser geprueft: F10-Tab, Live-Skalierung, Aufsitzen, Reiterversatz und
   Ruecksetzen. TypeScript sauber, 53 Testdateien / 337 Tests gruen.
+
+## Runde 138 - Codex-Haeuser (Baeckerei/Muehle) verifiziert
+- Codex-Commit 3dbac25 gezogen (Fast-forward). Baeckerei -> Box B3 (das
+  "Backhaus"-Feld), Muehle -> Box B6 (das "Muehle"-Feld am echten Ostfluss,
+  yaw 180 damit das Rad zum Wasser zeigt). Boxen und Gebaeude passen semantisch
+  zusammen, nicht willkuerlich gesetzt.
+- Diff ist minimal und sauber: 8 Zeilen in WorldScene.ts (GEB3D_BOXEN) plus je
+  ein bounds_blender-Block in beiden Runtime-JSONs. bounds_blender ist genau der
+  noetige Fix: gebaeude3d.ts liest ihn in baueBegehbarkeit() (Zeile 278) und
+  greift sofort auf b.min/b.max zu - ohne den Block waere das Gebaeude beim
+  Laden abgestuerzt. Damit sind beide Haeuser jetzt erst begehbar.
+- Assetpfade aufgeloest (publicDir 'assets'): GLB + JSON liegen, walkable_interior
+  und doors vorhanden. Aufrufkette bestaetigt: goArea('stadt') -> zeichneDorfplan
+  -> GEB3D_BOXEN-Schleife -> starteGebaeude3d, unabhaengig vom Ankunfts-Flag.
+- tsc sauber, 53 Testdateien / 337 Tests gruen. Hauptmenue nebenbei geprueft
+  (Codex-TitleScene): realistischer Abtei-Hintergrund, ruhige Marke, vier
+  Aktionen, Entwicklungsproben hinter ENTWICKLUNG - sitzt.
+- OFFEN/ehrlich: der Live-3D-Screenshot in der stadt liess sich headless NICHT
+  aufnehmen - Software-WebGL kann die vier schweren GLB-Modelle nicht schnell
+  genug bauen (Render blieb im Aufbau haengen). Verdrahtung ist statisch
+  vollstaendig bewiesen; die reine Optik im laufenden Spiel bleibt vom Autor
+  bzw. Codex am echten Geraet zu bestaetigen.
+- Befund fuer die restlichen Haeuser: apothecary hat bounds_blender, aber
+  butcher, cooperage und stable FEHLT er noch - vor dem Setzen ergaenzen, sonst
+  Absturz wie oben. Boettcherei (cooperage) gehoert laut Dok 01 ins ZWEITE Dorf,
+  nicht nach Ravensmoor.
