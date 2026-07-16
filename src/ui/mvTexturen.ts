@@ -15,11 +15,13 @@
 import parchment from '../../assets/ui/parchment.png';
 import wood from '../../assets/ui/wood.png';
 import button from '../../assets/ui/button.png';
+import settingsShell from '../../assets/ui/settings-shell-gpt2-1300.png';
 
 interface MvTexturen {
   parchment?: string;   // Pergamentfläche der Panels        -> --mv-img-parchment
   wood?: string;        // Holz der Kopfzeile/Reiter          -> --mv-img-wood
   button?: string;      // Knopf-Oberfläche                   -> --mv-img-button
+  settingsShell?: string; // Vollständige GPT-2-Schale       -> --mv-img-settings-shell
 }
 
 // Codex trägt hier die importierten Bilder ein (Wert = import-Variable):
@@ -27,6 +29,7 @@ const TEXTUREN: MvTexturen = {
   parchment,
   wood,
   button,
+  settingsShell,
 };
 
 // Schreibt die vorhandenen Texturen in die CSS-Variablen (nur was gesetzt ist).
@@ -37,4 +40,5 @@ export function wendeMvTexturenAn(): void {
   setze('--mv-img-parchment', TEXTUREN.parchment);
   setze('--mv-img-wood', TEXTUREN.wood);
   setze('--mv-img-button', TEXTUREN.button);
+  setze('--mv-img-settings-shell', TEXTUREN.settingsShell);
 }

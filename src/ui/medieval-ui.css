@@ -723,3 +723,196 @@
   .mv-settings-wurzel .mv-fussleiste { left: 90px; right: 10px; }
   .mv-settings-wurzel .mv-fussleiste .mv-siegel-band { display: none; }
 }
+
+/* GPT-2-Produktionsschale. Das Bild ist die verbindliche 1672x941-Geometrie;
+   alle dynamischen Bedienelemente liegen in denselben prozentualen Feldern. */
+.mv-settings-wurzel {
+  background: #080807;
+}
+.mv-settings-wurzel .mv-rahmen {
+  width: min(100vw, calc(100vh * 1.77683));
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 1672 / 941;
+  overflow: hidden;
+  background: var(--mv-img-settings-shell) center / 100% 100% no-repeat;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  container-type: size;
+}
+.mv-settings-wurzel .mv-rahmen::before,
+.mv-settings-wurzel .mv-rahmen::after,
+.mv-settings-wurzel .mv-rahmen .mv-ecke-l,
+.mv-settings-wurzel .mv-rahmen .mv-ecke-r {
+  display: none;
+}
+.mv-settings-wurzel .mv-titelbanner {
+  top: 5.1%;
+  left: 22%;
+  right: 22.35%;
+  height: 11.55%;
+  padding: 0 7%;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  color: #241a12;
+  font-size: clamp(21px, 2vw, 36px);
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+}
+.mv-settings-wurzel .mv-titelbanner .mv-siegel {
+  visibility: hidden;
+}
+.mv-settings-wurzel .mv-buchtabs {
+  left: 9.25%;
+  top: 13.75%;
+  bottom: 19.5%;
+  width: 12.55%;
+  display: grid;
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+  gap: 1.1%;
+}
+.mv-settings-wurzel .mv-buchtab {
+  left: 0;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  padding: 0 8%;
+  gap: 8%;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  box-shadow: none;
+  color: #d8cbb5;
+  font-size: clamp(10px, 0.9vw, 16px);
+  letter-spacing: 0.08em;
+  filter: brightness(0.84);
+}
+.mv-settings-wurzel .mv-buchtab::before {
+  display: none;
+}
+.mv-settings-wurzel .mv-buchtab.mv-aktiv {
+  left: 0;
+  filter: brightness(1.18);
+  color: #f1e5cf;
+  text-shadow: 0 1px 2px #000, 0 0 8px rgba(220, 188, 128, 0.25);
+}
+.mv-settings-wurzel .mv-buchtab .mv-buchtab-icon {
+  width: 15%;
+  min-width: 14px;
+  font-size: clamp(11px, 1.05vw, 18px);
+}
+.mv-settings-wurzel .mv-pergamentflaeche {
+  top: 17.05%;
+  left: 22.05%;
+  right: 13.35%;
+  bottom: 17.15%;
+  padding: 1.7% 2.2% 1.25%;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  scrollbar-color: #755536 rgba(117, 85, 54, 0.18);
+}
+.mv-settings-wurzel .mv-einstellungsraster {
+  gap: 5.4%;
+}
+.mv-settings-wurzel .mv-einstellungsspalte + .mv-einstellungsspalte {
+  border-left: 0;
+  padding-left: 5.4%;
+}
+.mv-settings-wurzel .mv-einstellungsgruppe {
+  margin-bottom: 2.2%;
+}
+.mv-settings-wurzel .mv-pergamentflaeche .mv-block {
+  margin-bottom: clamp(3px, 0.45cqh, 7px);
+}
+.mv-settings-wurzel .mv-abschnitt {
+  min-height: clamp(15px, 2.3cqh, 22px);
+  margin: 0 0 clamp(4px, 0.9cqh, 9px);
+  color: #34271c;
+  font-size: clamp(10px, 0.82vw, 14px);
+  letter-spacing: 0.16em;
+}
+.mv-settings-wurzel .mv-regler-zeile {
+  grid-template-columns: clamp(14px, 1.25vw, 20px) minmax(88px, 1fr) minmax(82px, 38%) clamp(30px, 2.3vw, 40px);
+  gap: clamp(4px, 0.48vw, 8px);
+  min-height: clamp(19px, 3.1cqh, 28px);
+  margin: 0;
+}
+.mv-settings-wurzel .mv-regler-zeile .mv-regler-label,
+.mv-settings-wurzel .mv-zeile-knopf .mv-zeile-label {
+  color: #30241a;
+  font-size: clamp(9px, 0.72vw, 13px);
+}
+.mv-settings-wurzel .mv-regler-icon {
+  font-size: clamp(10px, 0.82vw, 14px);
+}
+.mv-settings-wurzel .mv-regler {
+  height: clamp(16px, 2.25cqh, 22px);
+}
+.mv-settings-wurzel .mv-regler .mv-schiene,
+.mv-settings-wurzel .mv-regler .mv-fuellung {
+  top: 44%;
+  height: clamp(3px, 0.48cqh, 5px);
+}
+.mv-settings-wurzel .mv-regler .mv-knopf {
+  top: 50%;
+  width: clamp(12px, 1vw, 17px);
+  height: clamp(12px, 1vw, 17px);
+  transform: translateY(-50%);
+}
+.mv-settings-wurzel .mv-regler-zeile .mv-regler-wert {
+  font-size: clamp(9px, 0.68vw, 12px);
+}
+.mv-settings-wurzel .mv-zeile-knopf {
+  grid-template-columns: minmax(88px, 1fr) minmax(82px, 38%);
+  min-height: clamp(20px, 3.25cqh, 29px);
+  margin: 0;
+}
+.mv-settings-wurzel .mv-wertknopf {
+  min-width: 0;
+  padding: clamp(3px, 0.45cqh, 5px) 7px;
+  font-size: clamp(9px, 0.68vw, 12px);
+}
+.mv-settings-wurzel .mv-fussnote {
+  margin-top: clamp(3px, 0.55cqh, 7px);
+  font-size: clamp(8px, 0.58vw, 10px);
+}
+.mv-settings-wurzel .mv-fussleiste {
+  left: 29.75%;
+  right: 29.4%;
+  bottom: 6.65%;
+  height: 7.4%;
+  gap: 0;
+  justify-content: space-between;
+}
+.mv-settings-wurzel .mv-lederknopf {
+  width: 37.5%;
+  min-width: 0;
+  height: 100%;
+  padding: 0 4%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  box-shadow: none;
+  color: #e2d5bd;
+  font-size: clamp(10px, 0.86vw, 15px);
+  letter-spacing: 0.16em;
+}
+.mv-settings-wurzel .mv-lederknopf.mv-gruen,
+.mv-settings-wurzel .mv-lederknopf.mv-rot {
+  background: none;
+}
+.mv-settings-wurzel .mv-fussleiste .mv-siegel-band {
+  flex: 0 0 12%;
+  width: 12%;
+  height: 100%;
+  visibility: hidden;
+}
