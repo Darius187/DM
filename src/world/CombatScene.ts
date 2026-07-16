@@ -776,17 +776,6 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     yB += 28;
     schalter(yB, 'DETAIL-FIGUREN ANSEHEN (Skelett/Pest/Untoter/Bürger)', '#9ad86a', '#221808', () => { this.toggleDevPanel(); this.toggleDetailFiguren(); });
     yB += 28;
-    const hudNamen = ['Kugeln rot/blau', 'WoW-Balken', 'Kristall-Säulen'];
-    const hudLbl = () => `LEBEN/MANA: ${hudNamen[getSettings().hudStil] ?? 'Kugeln rot/blau'}`;
-    const hudBtn = schalter(yB, hudLbl(), '#c9a227', '#221808', () => {
-      const s = getSettings();
-      s.hudStil = (s.hudStil + 1) % hudNamen.length;
-      saveSettings();
-      hudBtn.setText(hudLbl());
-      this.sfx.play('klick');
-      this.logMsg(`Leben/Mana-Anzeige: ${hudNamen[s.hudStil]} (erneut klicken zum Durchschalten).`, 'gold');
-    });
-    yB += 28;
     const qtLbl = () => getSettings().questTrackerAn ? 'QUEST-VERFOLGER: AN' : 'QUEST-VERFOLGER: AUS';
     const qtBtn = schalter(yB, qtLbl(), getSettings().questTrackerAn ? '#c9a227' : '#d8cfb8', '#221808', () => {
       const s = getSettings();

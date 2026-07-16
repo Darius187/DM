@@ -148,10 +148,9 @@ export const DEF_SETTINGS: Settings = {
   grafikStufe: 3, // "Eigen" bis der Spieler eine Voreinstellung wählt
   ui: { hotbar: { x: 0, y: 0 }, mausleiste: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 }, questTracker: { x: 0, y: 0 } },
   questTrackerAn: true,
-  hudStil: 0,
+  hudStil: 1,
   // R86 (Autorwunsch): von Anfang an GANZ UNTEN am Bildschirmrand angedockt
-  chronikBox: { x: 4, y: -270, w: 340, h: 270 }, // bündig am LINKEN
-  // Bildschirmrand, kompakter, knapp über der Lebenskugel/Leiste
+  chronikBox: { x: 4, y: -380, w: 340, h: 270 }, // links, oberhalb des HUDs
   chronikAuto: true,
   chronikV: 1,
   lichtV: 1,
@@ -168,7 +167,7 @@ export const DEF_SETTINGS: Settings = {
   zoomV: 1,
   bloomV: 1,
   optikStandardV: 1,
-  uiLayoutV: 4, // Runde 43: Chronik bündig links angedockt
+  uiLayoutV: 5, // kompaktes Holz-HUD mit integrierten Ressourcenbalken
   barV: 1,      // Runde 49: Leiste startet leer (Skills selbst belegen)
   haus3d: { yaw: 210, elev: 52, azimut: 0, skala: 1, dx: 0, dy: 0 }, // ALT (Migration)
   gebaeude3d: { ppm: 16, drehung: { haus: 210, schmiede: 0 } }, // R132: 3D-Gebaeude im Dorf
@@ -258,6 +257,7 @@ export function getSettings(): Settings {
         current.ui.orbMp = { x: 0, y: 0 };
         current.ui.log = { x: 0, y: 0 };
         current.chronikBox = { ...DEF_SETTINGS.chronikBox };
+        current.hudStil = 1;
         current.uiLayoutV = DEF_SETTINGS.uiLayoutV;
         try { localStorage.setItem(KEY, JSON.stringify(current)); } catch { /* gesperrt */ }
       }
