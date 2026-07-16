@@ -776,20 +776,6 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     yB += 28;
     schalter(yB, 'DETAIL-FIGUREN ANSEHEN (Skelett/Pest/Untoter/Bürger)', '#9ad86a', '#221808', () => { this.toggleDevPanel(); this.toggleDetailFiguren(); });
     yB += 28;
-    // Grusel-Atmosphäre live (R55, Autorwunsch "per Regler ins Spiel"): kalter,
-    // dunkler Tint auf alle Gegner - macht die NPCs ohne Neuzeichnen gruseliger.
-    const gruselStufen = [0, 33, 66, 100];
-    const gruselLbl = () => `GRUSEL-ATMOSPHÄRE (Gegner): ${getSettings().grusel}%`;
-    const gruselBtn = schalter(yB, gruselLbl(), '#c89ad0', '#221808', () => {
-      const s = getSettings();
-      const i = gruselStufen.indexOf(s.grusel);
-      s.grusel = gruselStufen[(i + 1) % gruselStufen.length];
-      saveSettings();
-      gruselBtn.setText(gruselLbl());
-      this.sfx.play('klick');
-      this.logMsg(`Grusel-Atmosphäre: ${s.grusel}% (kalter, dunkler Tint auf Gegner).`, 'gold');
-    });
-    yB += 28;
     const hudNamen = ['Kugeln rot/blau', 'WoW-Balken', 'Kristall-Säulen'];
     const hudLbl = () => `LEBEN/MANA: ${hudNamen[getSettings().hudStil] ?? 'Kugeln rot/blau'}`;
     const hudBtn = schalter(yB, hudLbl(), '#c9a227', '#221808', () => {
