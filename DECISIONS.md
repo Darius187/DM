@@ -2232,3 +2232,19 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Sonnenschatten (sonnenOccluder, laedt mit dem GLB nach). Der Projektions-
   Modus hoert jetzt auf Sonnen-Ferne (Schattenlaenge) und Sonnen-Weichheit
   (Blur) - vorher wirkte nur die Staerke. Standard bleibt Projektion.
+
+## R138b - Boden/Wand-Werkbank + Live-Karten im Maps-Tab
+- Dev-Konsole (F10) hat einen neuen Tab STIL: 20 Boeden (BODEN_STILE aus R124,
+  bisher nur in der Dungeon-Probe) + 10 NEUE Waende (src/gfx/wandStile.ts:
+  Bruchstein, Sandstein-Quader, Feldstein, Backstein, Kalkputz, Fachwerk,
+  Holzbohlen, Schiefer, Granitquader, Beinhaus/Ossuar). Alles prozedural,
+  settingkonform 1349, real existierende Bauweisen. Klick laedt die Karte an
+  Ort und Stelle neu; NICHTS wird gespeichert (reines Testen). Wirkt auf
+  dunklen Karten; in der Hoehle wechselt nur der Boden (Fels-Stollenwand
+  bleibt natuerlich).
+- Maps-Tab zeigt jetzt auch LIVE-Karten (Goldmine-Schnellzugang). Stehende
+  Autor-Regel (auch in AGENTS.md): JEDE neue Karte bekommt sofort einen
+  Maps-Tab-Eintrag.
+- Dev-Hook window.__settings (main.ts): dieselbe Settings-Instanz wie das
+  Spiel fuer die Browser-Verifikation (Seiten-Import erwischte nach HMR eine
+  zweite Instanz).

@@ -307,3 +307,14 @@ Du vermutetest, beides sei das gleiche. Es sind ZWEI Generatoren:
 V9 = "Kammern + echte Tueren" (R118), Katakomben = "Raum+Gang+Vault-Verlies"
 (R102, mit Rollen wie Eingang/Boss/Gewoelbe). Beide liegen jetzt im Maps-Tab.
 FRAGE: beide behalten oder einen streichen?
+
+## R138b - Fluss-Sichtbarkeit MIT Shader (bei Tag)
+Beim Verifizieren fiel auf: der Fluss auf 'start' ist mit Shader AN morgens
+und sogar mittags bei Sonne kaum vom Boden zu unterscheiden (Beleg:
+screenshots/r138-fluss-mittag-shader-an.png - dieselbe Stelle zeigt mit
+FLACHEM Ersatz-Wasser ein klares Band: r138-flachwasser-statt-unsichtbarer-
+wand.png). Das duerfte MIT-Ursache deines "unsichtbare Wand"-Erlebnisses sein.
+FRAGE: Soll ich einen Sichtbarkeits-Pass am Wasser-Shader machen (staerkerer
+Ufersaum/Kontrast bei Tageslicht)? Ich fasse den kanonischen Shader-Look
+(reference/fluss-bach.html) nicht ohne dein Go an. ZWISCHENLOESUNG: keine -
+Werte lassen sich live im WASSER-Tab der Dev-Konsole testen.

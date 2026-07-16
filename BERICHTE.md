@@ -1335,3 +1335,37 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   butcher, cooperage und stable FEHLT er noch - vor dem Setzen ergaenzen, sonst
   Absturz wie oben. Boettcherei (cooperage) gehoert laut Dok 01 ins ZWEITE Dorf,
   nicht nach Ravensmoor.
+
+## Runde 138 - Fluss-Waende, Standards, Respawn, Maps-Tab, Stil-Werkbank
+- UNSICHTBARE FLUSS-WAENDE (Autorbug): reproduziert - "Wasser-Effekte aus"
+  (Schalter oder Leistungs-Preset Niedrig) blendete den Wasser-Shader aus,
+  und bei gebackenem Boden zeichnete dann NICHTS das Wasser; die SOLID-
+  Kollision blieb (1400 Kacheln allein auf der Startkarte). Fix: flaches
+  Ersatz-Wasser aus DERSELBEN SDF wie Kollision und Shader, automatisch
+  sichtbar sobald der Shader aus ist. Browser-verifiziert (Screenshot
+  r138-flachwasser-statt-unsichtbarer-wand.png).
+- Ehrlicher Nebenbefund: auch MIT Shader ist der Fluss bei Tag schwach
+  sichtbar (r138-fluss-mittag-shader-an.png) - als Frage notiert, kein
+  eigenmaechtiger Eingriff in den kanonischen Wasser-Look.
+- Wandhoehe-Standard x1,25 ueberall + Wand-Schatten AN in jedem Dungeon
+  (einmalige Migration; Grafik-Presets Niedrig/Mittel schalten Wand-Schatten
+  aus Leistungsgruenden weiter aus). Im Browser in kerker12 geprueft.
+- Respawn: Dungeon-/Innenraum-Tod -> neues Ravensmoor; Oberwelt-Tod ->
+  Eingang derselben Karte. NIE mehr altes Dorf. Regel als reine Logik mit
+  Tests (respawnZiel), im Browser beide Wege geprueft (stadt / start+amSpawn).
+- Maps-Tab = Sammelstelle: V12-Kerker, V9-Kammern, Katakomben-Gewoelbe (je
+  mit NEU wuerfeln) + Live-Karten-Schnellzugang (Goldmine). V9/Katakomben
+  haben eigene Area-Ids - die echte crypt1-Kette bleibt unberuehrt (geprueft).
+  Stehende Regel (AGENTS.md): jede neue Karte bekommt sofort ihren Eintrag.
+- Sonnen-Regler: 3D-Gebaeude werfen jetzt Sonnenschatten (vorher hatte die
+  neue Stadt NULL statische Verdecker); der Projektions-Modus hoert auf
+  Sonnen-Ferne und Sonnen-Weichheit (vorher nur Staerke). Schattenlaenge/
+  Weichheit im Browser als Vergleichs-Screenshots geprueft.
+- STIL-Werkbank (Dev-Konsole F10 > STIL): 20 Boeden (R124-Stile, jetzt live
+  im Spiel statt nur in der Probe) + 10 NEUE Waende (Bruchstein, Sandstein-
+  Quader, Feldstein, Backstein, Kalkputz, Fachwerk, Holzbohlen, Schiefer,
+  Granitquader, Beinhaus). Klick laedt die Karte an Ort und Stelle neu,
+  nichts wird gespeichert. Geprueft in kerker12 (Fischgraet+Backstein,
+  Holzdielen+Fachwerk, Gebein+Beinhaus - Screenshots r138-werkbank-*) und
+  in der Goldmine (Boden wechselt, Fels-Stollenwand bleibt natuerlich).
+- tsc fehlerfrei, 54 Testdateien / 340 Tests gruen.

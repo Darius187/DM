@@ -94,6 +94,8 @@ import { ladeReitTuning, reitTuningExport, REIT_TUNING_STANDARD, speichereReitTu
 import { getSettings, saveSettings } from '../logic/settings';
 import { seededRng, pick, ri } from '../logic/rng';
 import { respawnZiel } from '../logic/respawn';
+import { BODEN_STILE, bodenStilTextur } from '../gfx/bodenStile';
+import { WAND_STILE, wandStilFrontTextur, wandStilKroneTextur } from '../gfx/wandStile';
 import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type SaveData } from '../logic/save';
 import { storage } from '../logic/gameStorage';
 import { ladeStadtplan, speichereStadtplan, loescheStadtplan, wendePlanAn, setzeKachel, radiere, type Stadtplan, type PlanTier } from '../logic/stadtplan';
@@ -313,6 +315,10 @@ export class WorldScene extends CombatScene {
   private static readonly PLANUNGSKARTEN = new Set(['kerker12', 'v9', 'katakomben']);
   private v9Wurf = 0;
   private katakombenWurf = 0;
+  // R138b (Autor): Boden/Wand-Werkbank - 20 Boeden + 10 Waende live testen.
+  // Reiner Test-Zustand (nicht gespeichert); null = Standard-Optik der Karte.
+  private devBodenStil: string | null = null;
+  private devWandStil: string | null = null;
   private reitSpuren: { e: Phaser.GameObjects.Ellipse; leben: number }[] = [];
   private reitSpurWeg = 0;      // zurueckgelegter Weg seit letzter Spur
   private reitSpurSeite = 1;    // wechselt fuer linke/rechte Hufe
@@ -4402,6 +4408,8 @@ export class WorldScene extends CombatScene {
   }
 
   private hoheWandKey(variant: number, tiefe: number, theme: AreaData['theme'], hF: number): string {
+    // R138b: Wand-Werkbank-Override (Dev-Konsole > STIL) - nur zum Testen.
+    if (this.devWandStil) return wandStilFrontTextur(this, this.devWandStil, variant, Math.round(TILE * hF));
     const { top, face } = this.wandFarben(theme);
     const key = `kwand_hoch_${tiefe}_${variant % 4}_${face}_${Math.round(hF * 100)}`;
     if (!this.textures.exists(key)) {
@@ -4427,7 +4435,15 @@ export class WorldScene extends CombatScene {
 
   // Stein-OBERSEITE der Wand (Krone): heller als die schwarze Füllmasse, mit
   // dezenten Plattenfugen - macht Räume sichtbar RUNDUM geschlossen.
+  // R138b: Boden-Werkbank (Dev-Konsole > STIL) - ersetzt den Dungeon-/Hoehlen-
+  // Boden zum Testen. null = Standard-Optik der Karte.
+  private devBodenKey(variant: number): string | null {
+    return this.devBodenStil ? bodenStilTextur(this, this.devBodenStil, ((variant % 7) + 7) % 7) : null;
+  }
+
   private wandKroneKey(variant: number, tiefe: number, theme: AreaData['theme']): string {
+    // R138b: Wand-Werkbank-Override - Krone im Grundton des gewaehlten Stils.
+    if (this.devWandStil) return wandStilKroneTextur(this, this.devWandStil, variant);
     const { face } = this.wandFarben(theme);
     const key = `kwand_krone_${tiefe}_${variant % 4}_${face}`;
     if (!this.textures.exists(key)) {
@@ -4992,6 +5008,20 @@ export class WorldScene extends CombatScene {
         cs.push({ kind: 'button', label: () => 'Zurück nach Ravensmoor (stadt)', onClick: () => { this.devKonsole?.toggle(); this.goArea('stadt'); } });
         return cs;
       } },
+      // R138b (Autor): Boden/Wand-Werkbank - 20 Boeden + 10 Waende live auf der
+      // aktuellen Karte testen (nur dunkle Karten: Krypta, Kerker, Mine, Maps).
+      // Klick laedt die Karte an Ort und Stelle neu; nichts wird gespeichert.
+      { name: 'STIL', controls: () => {
+        const neuLaden = (): void => { this.goArea(this.area.id, { x: this.px, y: this.py }); this.devKonsole?.refresh(); };
+        const cs: DKControl[] = [
+          { kind: 'note', text: 'Boden/Wand-Werkbank: wirkt auf DUNKLEN Karten (Krypta, Kerker, Mine, Maps-Karten). Nur zum Testen - nichts wird gespeichert. In der Höhle bleibt die Fels-Wand (natürlicher Stollen).' },
+          { kind: 'button', label: () => `${this.devBodenStil === null ? '● ' : ''}Boden: STANDARD der Karte`, onClick: () => { this.devBodenStil = null; neuLaden(); } },
+        ];
+        for (const s of BODEN_STILE) cs.push({ kind: 'button', label: () => `${this.devBodenStil === s.id ? '● ' : ''}Boden: ${s.name}`, onClick: () => { this.devBodenStil = s.id; neuLaden(); } });
+        cs.push({ kind: 'button', label: () => `${this.devWandStil === null ? '● ' : ''}Wand: STANDARD der Karte`, onClick: () => { this.devWandStil = null; neuLaden(); } });
+        for (const s of WAND_STILE) cs.push({ kind: 'button', label: () => `${this.devWandStil === s.id ? '● ' : ''}Wand: ${s.name}`, onClick: () => { this.devWandStil = s.id; neuLaden(); } });
+        return cs;
+      } },
       { name: 'WASSER', controls: wasserControls },
       { name: 'KAMERA', controls: () => [
         { kind: 'button', label: () => `Frei-Kamera: ${this.devFreiKam ? 'AN (WASD/Pfeile + Mittelmaus zieht)' : 'aus'}`, onClick: () => { this.setzeFreiKamera(!this.devFreiKam); this.devKonsole?.refresh(); } },
@@ -5449,7 +5479,7 @@ export class WorldScene extends CombatScene {
         if (id === T.ROCK) return;
       }
       if (id === T.FLOOR || id === T.STUHL) {
-        tag(this.add.image(tx * TILE + 16, ty * TILE + 16, hoehleTextur(this, inKammer ? 'bohlen' : 'boden', tx, ty)).setDepth(-10));
+        tag(this.add.image(tx * TILE + 16, ty * TILE + 16, this.devBodenKey(variant) ?? hoehleTextur(this, inKammer ? 'bohlen' : 'boden', tx, ty)).setDepth(-10));
         if (id === T.STUHL) {
           tag(this.add.image(tx * TILE + 16, ty * TILE + 16, this.provider.tileKey('stuhl', variant, a.depth, a.theme)).setDepth(ty * TILE + 10));
         } else if (!inKammer) {
@@ -5483,9 +5513,10 @@ export class WorldScene extends CombatScene {
       if (!a.gebackenerBoden && !(a.hoehlenOptik && id === T.ORE)) {
         // (Erz-Grund zeichnet in der Höhle schon der Wand-Zweig oben - flach
         // oder als hoher Südwand-Körper, R127i.)
-        const grundKey = a.hoehlenOptik
-          ? hoehleTextur(this, inKammer ? 'bohlen' : 'boden', tx, ty)
-          : this.provider.tileKey(groundName, variant, a.depth, a.theme);
+        const grundKey = ((a.dark || a.hoehlenOptik) ? this.devBodenKey(variant) : null)
+          ?? (a.hoehlenOptik
+            ? hoehleTextur(this, inKammer ? 'bohlen' : 'boden', tx, ty)
+            : this.provider.tileKey(groundName, variant, a.depth, a.theme));
         tag(this.add.image(tx * TILE + 16, ty * TILE + 16, grundKey).setDepth(-10));
       }
       // Dichter Wald: Bäume mit vielen Baum-Nachbarn nutzen die
@@ -5657,7 +5688,9 @@ export class WorldScene extends CombatScene {
         return;
       }
     }
-    const key = this.provider.tileKey(name, variant, a.depth, a.theme);
+    // R138b: Boden-Werkbank ersetzt den Dungeon-Boden (krypta_boden) live.
+    const stilKey = a.dark && name === 'krypta_boden' ? this.devBodenKey(variant) : null;
+    const key = stilKey ?? this.provider.tileKey(name, variant, a.depth, a.theme);
     const img = tag(this.add.image(tx * TILE + 16, ty * TILE + 16, key).setDepth(-10));
     // R87 (Autor "man muss SEHEN, dass es hinuntergeht"): der Treppenlauf wird
     // zum Lauf-Ende hin (Norden) stufig dunkler (Abgang ins Loch) bzw. beim
