@@ -3,10 +3,12 @@
 // Trank-Anzeige mit Q/F-Hinweis.
 
 import Phaser from 'phaser';
-import hudWoodUrl from '../../assets/ui/wood.png';
-import hudButtonUrl from '../../assets/ui/button.png';
+import hudKeyboardUrl from '../../assets/ui/hud/hud-keyboard-block-blank-1300.png';
+import hudMouseUrl from '../../assets/ui/hud/hud-mouse-block-blank-1300.png';
 import hudLifeOrbUrl from '../../assets/ui/hud/hud-orb-life-empty-1300.png';
 import hudManaOrbUrl from '../../assets/ui/hud/hud-orb-mana-empty-1300.png';
+import hudPotionUrl from '../../assets/ui/hud/hud-potion-label-blank-1300.png';
+import hudStatusUrl from '../../assets/ui/hud/hud-status-strip-blank-1300.png';
 import { SPELLS, ABILITIES, ABILITY_FX } from '../data/balancing';
 import { skillBeschreibung, skillWirkungText } from '../data/skills';
 import { getSettings, saveSettings } from '../logic/settings';
@@ -51,58 +53,78 @@ const SLOT_KAT_FARBE: Record<SlotKat, number> = {
 };
 
 const ORB_R = 42;
-const RESOURCE_W = 110;
-const RESOURCE_H = 28;
 // Getrennte Leisten (Runde 20): Tastatur-Slots 1-6/9/0/R/T und Maus-Slots M1-M5
 const KB_SLOTS = 10;
-const MAUS_SLOTS = 5;
-const SLOT_W = 46;
-const LEISTEN_LUECKE = 30; // Abstand zwischen Maus- und Tastenleiste
+
+// Pixelkoordinaten der verbindlichen 1961x212-HUD-Vorlage. Alle Bauteile
+// werden gemeinsam skaliert; dadurch bleiben Abstaende und Proportionen bei
+// jeder Fensterbreite exakt wie in final-hud-extra-flat-reference-layout-1300.
+const HUD_DESIGN_W = 1961;
+const HUD_DESIGN_H = 212;
+const HUD_MOUSE_X = 181;
+const HUD_MOUSE_Y = 0;
+const HUD_KEYBOARD_X = 759;
+const HUD_KEYBOARD_Y = 34;
+const HUD_ORB_HP_X = 28;
+const HUD_ORB_MP_X = 1773;
+const HUD_ORB_Y = 18;
+const HUD_POTION_HP_X = 39;
+const HUD_POTION_MP_X = 1779;
+const HUD_POTION_Y = 157;
+const HUD_STATUS_X = 477;
+const HUD_STATUS_Y = 154;
+const HUD_SLOT_Y = 108;
+const HUD_MOUSE_SLOT_X = 253;
+const HUD_KEYBOARD_SLOT_X = 814;
+const HUD_SLOT_STEP = 99;
+
+function hudSkala(w: number): number {
+  return Math.min(1, Math.max(0.3, (w - 12) / HUD_DESIGN_W));
+}
+
+function hudLinks(w: number): number {
+  return Math.round((w - HUD_DESIGN_W * hudSkala(w)) / 2);
+}
 
 const HUD_TEXTURES = {
-  keyboard: { key: 'hud_1300_keyboard', url: hudWoodUrl },
-  mouse: { key: 'hud_1300_mouse', url: hudWoodUrl },
+  keyboard: { key: 'hud_1300_keyboard', url: hudKeyboardUrl },
+  mouse: { key: 'hud_1300_mouse', url: hudMouseUrl },
   lifeOrb: { key: 'hud_1300_life_orb', url: hudLifeOrbUrl },
   manaOrb: { key: 'hud_1300_mana_orb', url: hudManaOrbUrl },
-  potion: { key: 'hud_1300_potion', url: hudButtonUrl },
-  status: { key: 'hud_1300_status', url: hudWoodUrl },
+  potion: { key: 'hud_1300_potion', url: hudPotionUrl },
+  status: { key: 'hud_1300_status', url: hudStatusUrl },
 } as const;
 const HUD_LIFE_FRAME = 'hud_1300_life_frame';
 const HUD_MANA_FRAME = 'hud_1300_mana_frame';
 const HUD_PANEL_DEPTH = 4599;
 const HUD_DYNAMIC_DEPTH = 4601;
 const HUD_FRAME_DEPTH = 4602;
-const HUD_ORB_FRAME_W = 90;
-const HUD_ORB_FRAME_H = 80;
 
 // Beide Leisten bilden EINEN zentrierten Block (Runde 40, Autorwunsch
 // "mittig, skaliert nicht verrutschen"): Maus-Leiste links, Tastenleiste
 // rechts. Anker = linke Kante des Blocks, rechnet sich aus w/2 - bleibt also
 // auf jeder Fenstergröße zentriert. mausLeisteAnkerX wird auch vom
 // UI-Verschiebe-Griff genutzt.
-const BLOCK_W = MAUS_SLOTS * SLOT_W + LEISTEN_LUECKE + KB_SLOTS * SLOT_W;
 export function mausLeisteAnkerX(w: number): number {
-  return Math.round(w / 2 - BLOCK_W / 2);
+  return Math.round(hudLinks(w) + HUD_MOUSE_X * hudSkala(w));
 }
 // Mitte der Tastenleiste (für den UI-Verschiebe-Griff im Entwicklungskasten)
 export function tastenLeisteMitteX(w: number): number {
-  return mausLeisteAnkerX(w) + MAUS_SLOTS * SLOT_W + LEISTEN_LUECKE + (KB_SLOTS * SLOT_W) / 2;
+  const s = hudSkala(w);
+  return Math.round(hudLinks(w) + (HUD_KEYBOARD_X + 501) * s);
 }
 // Alias fuer die Codex-Uebergabe: alte Nutzer von tastenLeisteMitteX bleiben
 // unveraendert, neue koennen den sprechenderen Namen verwenden.
 export function hotbarMitteX(w: number): number {
   return tastenLeisteMitteX(w);
 }
-// Kugeln flankieren die Leisten (Runde 40, Autorwunsch): Lebenskugel direkt
-// links neben der Maus-Leiste, Manakugel direkt rechts neben der Tastenleiste.
-const ORB_BALKEN_LUECKE = 14; // Abstand Kugel <-> Leistenkante
 export function orbHpAnkerX(w: number): number {
-  // linke Kante der Maus-Leiste (slotX(KB_SLOTS) - 26, ohne Benutzer-Versatz)
-  return mausLeisteAnkerX(w) + 21 - 26 - ORB_BALKEN_LUECKE - RESOURCE_W / 2;
+  const s = hudSkala(w);
+  return Math.round(hudLinks(w) + (HUD_ORB_HP_X + 80) * s);
 }
 export function orbMpAnkerX(w: number): number {
-  // rechte Kante der Tastenleiste (slotX(KB_SLOTS-1) + 26, ohne Versatz)
-  return mausLeisteAnkerX(w) + MAUS_SLOTS * SLOT_W + LEISTEN_LUECKE + (KB_SLOTS - 1) * SLOT_W + 21 + 26 + ORB_BALKEN_LUECKE + RESOURCE_W / 2;
+  const s = hudSkala(w);
+  return Math.round(hudLinks(w) + (HUD_ORB_MP_X + 81) * s);
 }
 
 export class Hud {
@@ -336,31 +358,32 @@ export class Hud {
     this.scene.textures.get(HUD_LIFE_FRAME).setFilter(Phaser.Textures.FilterMode.LINEAR);
     this.scene.textures.get(HUD_MANA_FRAME).setFilter(Phaser.Textures.FilterMode.LINEAR);
 
-    this.keyboardPanel.setTexture(HUD_TEXTURES.keyboard.key).setOrigin(0.5).setTint(0x78654d).setVisible(true);
-    this.mousePanel.setTexture(HUD_TEXTURES.mouse.key).setOrigin(0.5).setTint(0x78654d).setVisible(true);
-    this.statusPanel.setTexture(HUD_TEXTURES.status.key).setOrigin(0.5).setTint(0x65543f).setVisible(true);
-    this.hpFrame.setTexture(HUD_LIFE_FRAME).setOrigin(80 / 160, 79 / 142);
-    this.mpFrame.setTexture(HUD_MANA_FRAME).setOrigin(81 / 162, 79 / 142);
-    this.potPanel.setTexture(HUD_TEXTURES.potion.key).setOrigin(0.5).setVisible(false);
-    this.mpotPanel.setTexture(HUD_TEXTURES.potion.key).setOrigin(0.5).setVisible(false);
+    this.keyboardPanel.setTexture(HUD_TEXTURES.keyboard.key).setOrigin(0).clearTint().setVisible(true);
+    this.mousePanel.setTexture(HUD_TEXTURES.mouse.key).setOrigin(0).clearTint().setVisible(true);
+    this.statusPanel.setTexture(HUD_TEXTURES.status.key).setOrigin(0).clearTint().setVisible(true);
+    this.hpFrame.setTexture(HUD_LIFE_FRAME).setOrigin(0).setVisible(true);
+    this.mpFrame.setTexture(HUD_MANA_FRAME).setOrigin(0).setVisible(true);
+    this.potPanel.setTexture(HUD_TEXTURES.potion.key).setOrigin(0).setVisible(true);
+    this.mpotPanel.setTexture(HUD_TEXTURES.potion.key).setOrigin(0).setVisible(true);
     this.hudAssetsReady = true;
   }
 
   private slotX(i: number): number {
     const w = this.scene.scale.width;
-    const links = mausLeisteAnkerX(w);
+    const links = hudLinks(w);
+    const skala = hudSkala(w);
     if (i < KB_SLOTS) {
-      // Tastenleiste sitzt RECHTS im zentrierten Block
-      return links + MAUS_SLOTS * SLOT_W + LEISTEN_LUECKE + i * SLOT_W + 21 + getSettings().ui.hotbar.x;
+      return links + (HUD_KEYBOARD_SLOT_X + i * HUD_SLOT_STEP) * skala + getSettings().ui.hotbar.x;
     }
-    // Maus-Leiste sitzt LINKS im Block
     const j = i - KB_SLOTS;
-    return links + j * SLOT_W + 21 + getSettings().ui.mausleiste.x;
+    return links + (HUD_MOUSE_SLOT_X + j * 100) * skala + getSettings().ui.mausleiste.x;
   }
 
   private slotY(i: number): number {
     const ui = getSettings().ui;
-    return this.scene.scale.height - 66 + (i < KB_SLOTS ? ui.hotbar.y : ui.mausleiste.y);
+    const skala = hudSkala(this.scene.scale.width);
+    const y = this.scene.scale.height - HUD_DESIGN_H * skala + HUD_SLOT_Y * skala;
+    return y + (i < KB_SLOTS ? ui.hotbar.y : ui.mausleiste.y);
   }
 
   private buildSlotObjects(): void {
@@ -470,68 +493,29 @@ export class Hud {
 
   private positionHudAssets(hx: number, hy: number, mx: number, my: number): void {
     if (!this.hudAssetsReady) return;
-    const keyboardW = this.slotX(KB_SLOTS - 1) - this.slotX(0) + 50;
-    const mouseW = this.slotX(this.slots.length - 1) - this.slotX(KB_SLOTS) + 68;
-    const statusW = Math.min(560, Math.max(440, this.scene.scale.width - 360));
-    const statusY = this.scene.scale.height - 18 + getSettings().ui.hotbar.y;
+    const w = this.scene.scale.width;
+    const skala = hudSkala(w);
+    const links = hudLinks(w);
+    const oben = this.scene.scale.height - HUD_DESIGN_H * skala;
+    const ui = getSettings().ui;
 
     this.keyboardPanel
-      .setPosition((this.slotX(0) + this.slotX(KB_SLOTS - 1)) / 2, this.slotY(0))
-      .setDisplaySize(keyboardW, 58);
+      .setPosition(links + HUD_KEYBOARD_X * skala + ui.hotbar.x, oben + HUD_KEYBOARD_Y * skala + ui.hotbar.y)
+      .setDisplaySize(1002 * skala, 148 * skala);
     this.mousePanel
-      .setPosition((this.slotX(KB_SLOTS) + this.slotX(this.slots.length - 1)) / 2, this.slotY(KB_SLOTS))
-      .setDisplaySize(mouseW, 58);
+      .setPosition(links + HUD_MOUSE_X * skala + ui.mausleiste.x, oben + HUD_MOUSE_Y * skala + ui.mausleiste.y)
+      .setDisplaySize(560 * skala, 170 * skala);
     this.statusPanel
-      .setPosition(this.scene.scale.width / 2 + getSettings().ui.hotbar.x, statusY)
-      .setDisplaySize(statusW, 20);
-    this.hpFrame.setPosition(hx, hy).setDisplaySize(HUD_ORB_FRAME_W, HUD_ORB_FRAME_H);
-    this.mpFrame.setPosition(mx, my).setDisplaySize(HUD_ORB_FRAME_W, HUD_ORB_FRAME_H);
-    this.potPanel.setVisible(false);
-    this.mpotPanel.setVisible(false);
-  }
-
-  private zeichneTexturSlot(
-    g: Phaser.GameObjects.Graphics,
-    x: number,
-    y: number,
-    katFarbe: number,
-    locked: boolean,
-    pressed: boolean,
-  ): void {
-    g.fillStyle(0x090807, 0.76);
-    g.fillRoundedRect(x - 21, y - 22, 42, 44, 3);
-    g.fillStyle(locked ? 0x171513 : pressed ? 0x171a1b : 0x242321, 0.98);
-    g.fillRoundedRect(x - 19, y - 20, 38, 40, 2);
-    if (!locked && !pressed) {
-      g.fillStyle(0xffffff, 0.07);
-      g.fillRect(x - 17, y - 18, 34, 7);
-    }
-    g.lineStyle(1, locked ? 0x4b4640 : 0x877b68, locked ? 0.55 : 0.95);
-    g.strokeRoundedRect(x - 19, y - 20, 38, 40, 2);
-    g.lineStyle(2, locked ? 0x35312d : katFarbe, locked ? 0.35 : pressed ? 0.95 : 0.72);
-    g.lineBetween(x - 15, y + 18, x + 15, y + 18);
-  }
-
-  private zeichneKompaktBalken(g: Phaser.GameObjects.Graphics, cx: number, cy: number, frac: number, leben: boolean): [number, number] {
-    const bw = RESOURCE_W, bh = RESOURCE_H, r = 3;
-    const x0 = cx - bw / 2, y0 = cy - bh / 2;
-    const f = Phaser.Math.Clamp(frac, 0, 1);
-    const fill = leben ? (f < 0.25 ? 0x8f211c : 0xc33d34) : 0x356bc8;
-    g.fillStyle(0x090807, 0.9);
-    g.fillRoundedRect(x0 - 4, y0 - 4, bw + 8, bh + 8, r + 2);
-    g.fillStyle(0x191715, 1);
-    g.fillRoundedRect(x0, y0, bw, bh, r);
-    if (f > 0) {
-      g.fillStyle(fill, 1);
-      g.fillRoundedRect(x0 + 2, y0 + 2, (bw - 4) * f, bh - 4, r - 2);
-    }
-    g.fillStyle(0xffffff, 0.12);
-    g.fillRect(x0 + 3, y0 + 3, bw - 6, 6);
-    g.lineStyle(2, 0x292622, 1);
-    g.strokeRoundedRect(x0 - 2, y0 - 2, bw + 4, bh + 4, r + 1);
-    g.lineStyle(1, 0xa99a80, 0.9);
-    g.strokeRoundedRect(x0, y0, bw, bh, r);
-    return [cx, cy];
+      .setPosition(links + HUD_STATUS_X * skala + ui.hotbar.x, oben + HUD_STATUS_Y * skala + ui.hotbar.y)
+      .setDisplaySize(1008 * skala, 54 * skala);
+    this.hpFrame.setPosition(hx - 80 * skala, hy - 71 * skala).setDisplaySize(160 * skala, 142 * skala);
+    this.mpFrame.setPosition(mx - 81 * skala, my - 71 * skala).setDisplaySize(162 * skala, 142 * skala);
+    this.potPanel
+      .setPosition(links + HUD_POTION_HP_X * skala + ui.orbHp.x, oben + HUD_POTION_Y * skala + ui.orbHp.y)
+      .setDisplaySize(146 * skala, 52 * skala);
+    this.mpotPanel
+      .setPosition(links + HUD_POTION_MP_X * skala + ui.orbMp.x, oben + HUD_POTION_Y * skala + ui.orbMp.y)
+      .setDisplaySize(146 * skala, 52 * skala);
   }
 
   // --- Drag & Drop auf die Maus-Leiste (Runde 20) ------------------------------
@@ -781,31 +765,30 @@ export class Hud {
     // Codex HUD-Uebergabe: die Anzeigen bleiben Teil der flachen Leiste.
     // Anker folgt weiter den ECHTEN Leistenkanten (slotX bezieht die Benutzer-
     // Versätze mit ein), damit F10-Griffe, Drag und Klickschutz stabil bleiben.
-    const balkenLinks = this.slotX(KB_SLOTS) - 26;       // linke Kante der Maus-Leiste
-    const balkenRechts = this.slotX(KB_SLOTS - 1) + 26;   // rechte Kante der Tastenleiste
-    const resourceY0 = this.slotY(0);
-    // auf dem Bildschirm halten (Runde 29: nie aus dem Bild ziehen)
-    const klemmX = (x: number) => Math.max(RESOURCE_W / 2 + 4, Math.min(w - RESOURCE_W / 2 - 4, x));
-    const klemmY = (y: number) => Math.max(RESOURCE_H / 2 + 4, Math.min(h - RESOURCE_H / 2 - 4, y));
+    const skala = hudSkala(w);
+    const links = hudLinks(w);
+    const oben = h - HUD_DESIGN_H * skala;
+    const klemmX = (x: number) => Math.max(82 * skala, Math.min(w - 82 * skala, x));
+    const klemmY = (y: number) => Math.max(72 * skala, Math.min(h - 72 * skala, y));
     const oh = getSettings().ui.orbHp, om = getSettings().ui.orbMp;
-    const hx = klemmX(balkenLinks - ORB_BALKEN_LUECKE - RESOURCE_W / 2 + oh.x);
-    const hy = klemmY(resourceY0 + oh.y);
-    const mx = klemmX(balkenRechts + ORB_BALKEN_LUECKE + RESOURCE_W / 2 + om.x);
-    const my = klemmY(resourceY0 + om.y);
+    const hx = klemmX(orbHpAnkerX(w) + oh.x);
+    const hy = klemmY(oben + (HUD_ORB_Y + 71) * skala + oh.y);
+    const mx = klemmX(orbMpAnkerX(w) + om.x);
+    const my = klemmY(oben + (HUD_ORB_Y + 71) * skala + om.y);
     const hpFrac = p.hp / p.stats.maxhp, mpFrac = p.mana / p.stats.maxmana;
     const hpVal = String(Math.max(0, Math.ceil(p.hp))), mpVal = String(Math.ceil(p.mana));
     const potT = `${kb.pot.toUpperCase()} Trank x${p.pot}`, mpotT = `${kb.mpot.toUpperCase()} Trank x${p.mpot}`;
     this.positionHudAssets(hx, hy, mx, my);
-    this.hpImg.setVisible(false);
-    this.mpImg.setVisible(false);
-    this.hpFrame.setVisible(false);
-    this.mpFrame.setVisible(false);
-    const [hnx, hny] = this.zeichneKompaktBalken(g, hx, hy, hpFrac, true);
-    const [mnx, mny] = this.zeichneKompaktBalken(g, mx, my, mpFrac, false);
-    this.hpText.setPosition(hnx, hny).setText(hpVal);
-    this.mpText.setPosition(mnx, mny).setText(mpVal);
-    this.potText.setPosition(hx, hy + 25).setText(potT);
-    this.mpotText.setPosition(mx, my + 25).setText(mpotT);
+    this.hpImg.setVisible(true).setPosition(hx, hy).setDisplaySize(102 * skala, 102 * skala).setAlpha(0.42 + 0.58 * Phaser.Math.Clamp(hpFrac, 0, 1));
+    this.mpImg.setVisible(true).setPosition(mx, my).setDisplaySize(102 * skala, 102 * skala).setAlpha(0.42 + 0.58 * Phaser.Math.Clamp(mpFrac, 0, 1));
+    this.hpFrame.setVisible(true);
+    this.mpFrame.setVisible(true);
+    const zahlGroesse = Math.max(14, Math.round(30 * skala));
+    this.hpText.setFontSize(zahlGroesse).setPosition(hx, hy).setText(hpVal);
+    this.mpText.setFontSize(zahlGroesse).setPosition(mx, my).setText(mpVal);
+    const trankGroesse = Math.max(9, Math.round(19 * skala));
+    this.potText.setFontSize(trankGroesse).setPosition(links + (HUD_POTION_HP_X + 73) * skala + oh.x, oben + (HUD_POTION_Y + 17) * skala + oh.y).setText(potT);
+    this.mpotText.setFontSize(trankGroesse).setPosition(links + (HUD_POTION_MP_X + 73) * skala + om.x, oben + (HUD_POTION_Y + 17) * skala + om.y).setText(mpotT);
 
     // Zwei getrennte Paneele (Runde 20): Tastenleiste und Maus-Leiste
     const panel = (a: number, b: number) => {
@@ -814,11 +797,11 @@ export class Hud {
       if (!this.hudAssetsReady) {
         g.fillStyle(0x514534, 0.97);
         g.fillRoundedRect(px0, py0 - 4, px1 - px0, 58, 3);
+        g.lineStyle(2, 0x26231f, 1);
+        g.strokeRoundedRect(px0, py0 - 4, px1 - px0, 58, 3);
+        g.lineStyle(1, 0xa99a80, 0.72);
+        g.strokeRoundedRect(px0 + 3, py0 - 1, px1 - px0 - 6, 52, 2);
       }
-      g.lineStyle(2, 0x26231f, 1);
-      g.strokeRoundedRect(px0, py0 - 4, px1 - px0, 58, 3);
-      g.lineStyle(1, 0xa99a80, 0.72);
-      g.strokeRoundedRect(px0 + 3, py0 - 1, px1 - px0 - 6, 52, 2);
     };
     panel(0, KB_SLOTS - 1);
     panel(KB_SLOTS, this.slots.length - 1);
@@ -826,51 +809,68 @@ export class Hud {
       const s = this.slots[i];
       const x = this.slotX(i);
       const y = this.slotY(i);
-      this.slotZones[i].setPosition(x, y);
+      const slotBreite = Math.max(30, 76 * skala);
+      const slotHoehe = Math.max(34, 96 * skala);
+      this.slotZones[i].setPosition(x, y).setSize(slotBreite, slotHoehe);
       const locked = s.locked() !== null;
       // Kategorie-Färbung (Runde 36): Rahmen + dezenter Schimmer je nach
       // Kampf/Zauber/Bogen/Item - so unterscheidet man die Slots auf einen Blick
       const katFarbe = SLOT_KAT_FARBE[s.kategorie?.() ?? 'item'];
       // 3D-Knopf im WoW-Stil (Runde 50, Autorwunsch); gedrückt-Optik (Runde 52)
       const pressed = !locked && this.gedruecktSlot === i && this.scene.time.now < this.gedruecktBis;
-      if (this.hudAssetsReady) this.zeichneTexturSlot(g, x, y, katFarbe, locked, pressed);
-      else this.zeichne3dKnopf(g, x, y, 42, katFarbe, locked, pressed);
+      if (!this.hudAssetsReady) {
+        this.zeichne3dKnopf(g, x, y, Math.min(slotBreite, slotHoehe), katFarbe, locked, pressed);
+      } else if (locked || pressed) {
+        g.fillStyle(locked ? 0x090807 : 0xffffff, locked ? 0.56 : 0.08);
+        g.fillRoundedRect(x - slotBreite / 2, y - slotHoehe / 2, slotBreite, slotHoehe, Math.max(2, 7 * skala));
+      }
       const cd = s.cdFrac();
       if (cd > 0) {
         // ganze Taste matt = "noch nicht aktiv" (Autorbug R60: Abklingen war nicht
         // ausgegraut, nur der Schwung war zu sehen)
         g.fillStyle(0x05030a, 0.5);
-        g.fillRoundedRect(x - 20, y - 20, 40, 40, 5);
+        g.fillRoundedRect(x - slotBreite / 2, y - slotHoehe / 2, slotBreite, slotHoehe, Math.max(2, 7 * skala));
         g.fillStyle(0x000000, 0.72);            // ablaufender Abkling-Schwung darüber
-        g.fillRoundedRect(x - 20, y - 20 + 40 * (1 - cd), 40, 40 * cd, 5);
+        g.fillRoundedRect(
+          x - slotBreite / 2,
+          y - slotHoehe / 2 + slotHoehe * (1 - cd),
+          slotBreite,
+          slotHoehe * cd,
+          Math.max(2, 7 * skala),
+        );
       }
       const cdS = s.cdSek();
       this.slotTexts[i].setText(cdS > 0.5 ? String(Math.ceil(cdS)) : `${s.ico()}`)
         .setColor(cdS > 0.5 ? '#e0b53a' : (s.farbe?.() ?? '#d8cfb8'))
-        .setAlpha(locked ? 0.3 : cd > 0 ? 0.5 : 1).setPosition(x, pressed ? y + 1 : y); // gedrückt: Symbol sinkt mit; Abklingen = matt
+        .setFontSize(Math.max(14, Math.round(31 * skala)))
+        .setAlpha(locked ? 0.3 : cd > 0 ? 0.5 : 1)
+        .setPosition(x, pressed ? y + Math.max(1, skala * 2) : y);
       // Tastenkürzel klein oben links
       g.fillStyle(0x000000, 0);
     }
     // Statuszeile (Runde 37): nur noch Stufe/Gold/Tag/Zeit - sauber, mit
     // Abstand zur Leiste. Der frühere Slot-Hilfetext stand schon in den
     // Tooltips ("Rechtsklick: belegen, Ziehen: tauschen") und überlud die Zeile.
-    const statusW = Math.min(640, Math.max(420, KB_SLOTS * SLOT_W + 80));
-    const statusX = w / 2 + getSettings().ui.hotbar.x - statusW / 2;
-    const statusY = h - 18 + getSettings().ui.hotbar.y;
+    const ui = getSettings().ui;
+    const statusW = 1008 * skala;
+    const statusX = links + HUD_STATUS_X * skala + ui.hotbar.x;
+    const statusY = oben + HUD_STATUS_Y * skala + ui.hotbar.y;
     if (!this.hudAssetsReady) {
       g.fillStyle(0x0c0804, 0.82);
-      g.fillRoundedRect(statusX, statusY - 10, statusW, 20, 3);
+      g.fillRoundedRect(statusX, statusY, statusW, 54 * skala, 3);
+      g.lineStyle(1, 0x8f806a, 0.72);
+      g.strokeRoundedRect(statusX + 1, statusY + 1, statusW - 2, 54 * skala - 2, 2);
     }
-    g.lineStyle(1, 0x8f806a, 0.72);
-    g.strokeRoundedRect(statusX + 1, statusY - 9, statusW - 2, 18, 2);
-    this.infoText.setPosition(w / 2 + getSettings().ui.hotbar.x, statusY - 7)
+    this.infoText
+      .setFontSize(Math.max(9, Math.round(19 * skala)))
+      .setPosition(statusX + statusW / 2, statusY + 26 * skala)
       .setText(extra);
     // Beschriftung ÜBER der Maus-Leiste, damit sie der Infozeile der
     // Tastenleiste nicht in die Quere kommt
     this.mausInfo.setPosition(
       (this.slotX(KB_SLOTS) + this.slotX(this.slots.length - 1)) / 2,
-      this.slotY(KB_SLOTS) - 43,
-    ).setText('MAUSTASTEN');
+      oben + 16 * skala + ui.mausleiste.y,
+    ).setFontSize(Math.max(9, Math.round(20 * skala))).setText('MAUSTASTEN');
 
     // XP-Leiste
     const xw = Math.min(420, w * 0.42);
