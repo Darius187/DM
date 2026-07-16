@@ -1369,3 +1369,22 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   Holzdielen+Fachwerk, Gebein+Beinhaus - Screenshots r138-werkbank-*) und
   in der Goldmine (Boden wechselt, Fels-Stollenwand bleibt natuerlich).
 - tsc fehlerfrei, 54 Testdateien / 340 Tests gruen.
+
+## Runde 139 - GPT-2-UI: HUD, Einstellungen, Charakter und Inventar
+- HUD auf die freigegebenen Einzelassets umgestellt: Mausblock links,
+  Tastaturblock daneben, flache Lebens-/Manakugeln aussen und Statusstreifen
+  unten. Alte Canvas-Rahmen werden nicht mehr ueber die Bildteile gezeichnet.
+- Einstellungen verwenden die neue 1672x941-GPT-Bildschale als verbindliche
+  Geometrie. Tabs, aktuelle Regler, Tasten und Schalter bleiben dynamische
+  DOM-Elemente und lassen sich weiterhin bedienen; das Titelband verschiebt
+  Bild und Inhalt gemeinsam.
+- Charakter/Inventar verwenden ebenfalls eine neue 1672x941-GPT-Bildschale.
+  Aldrics Portrait ohne Wappen, Ausruestung, echte Spielerwerte, Feuer-/Kaelte-/
+  Schattenwiderstand, Vorrat, Inventarfilter und Itemaktionen liegen auf festen
+  Referenzkoordinaten und skalieren proportional. Keine erfundenen Werte.
+- Browser-Abnahme bei 1024x768, 1280x720 und 1920x1080: oeffnen/schliessen,
+  Reiter, Verschieben, Klickschutz und erneutes Oeffnen funktionieren. Vorschauen
+  liegen ausserhalb des Repos unter menu-ui-template/codex-gpt2-*-final-1280.png.
+- `npm run typecheck`, 54 Testdateien / 340 Tests und `npm run build` gruen.
+  Offen im Gesamtauftrag bleiben Hauptmenue, Shop und Dialog; diese Runde hat
+  deren Logik und Dateien nicht angefasst.

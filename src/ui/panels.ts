@@ -22,6 +22,7 @@ import type { SpriteProvider } from '../gfx/SpriteProvider';
 import type { SoundProvider } from '../gfx/SoundProvider';
 import { fixUiScroll } from './dialog';
 import portraitAldricUrl from '../../assets/ui/character/aldric-portrait-ohne-wappen-1300.png';
+import characterShellUrl from '../../assets/ui/character/character-inventory-shell-gpt2-1300.png';
 import parchmentUrl from '../../assets/ui/parchment.png';
 import woodUrl from '../../assets/ui/wood.png';
 
@@ -34,6 +35,7 @@ const INK_SOFT = '#62503b';
 const UI_PARCHMENT = 'ui_1300_parchment';
 const UI_WOOD = 'ui_1300_wood';
 const UI_ALDRIC = 'ui_1300_aldric_portrait';
+const UI_CHARACTER_SHELL = 'ui_1300_character_inventory_shell';
 const RARITY_INK = ['#2b2118', '#285778', '#583778', '#78317b'] as const;
 
 const TYP_NAMEN: Record<string, string> = {
@@ -79,6 +81,7 @@ export class UIPanels {
   private scroll = 0;
   private selectedItem: Item | null = null;
   private compareItem: Item | null = null;
+  private panelScale = 1;
   onChanged: (() => void) | null = null;
   onUseScroll: ((scrollSkill: string) => void) | null = null;
   // Inventar -> Aktionsleiste ziehen (Runde 40): legt eine Schriftrolle/einen
@@ -138,6 +141,7 @@ export class UIPanels {
       { key: UI_PARCHMENT, url: parchmentUrl },
       { key: UI_WOOD, url: woodUrl },
       { key: UI_ALDRIC, url: portraitAldricUrl },
+      { key: UI_CHARACTER_SHELL, url: characterShellUrl },
     ].filter(({ key }) => !this.scene.textures.exists(key));
     if (!assets.length) return;
     this.scene.load.once(Phaser.Loader.Events.COMPLETE, () => {
@@ -185,30 +189,40 @@ export class UIPanels {
   private build(): void {
     this.container?.destroy();
     const sw = this.scene.scale.width, sh = this.scene.scale.height;
-    const w = Math.min(1180, sw - 20);
-    const h = Math.min(sh - 24, 650);
+    const w = Math.min(1672, sw - 12, (sh - 12) * (1672 / 941));
+    const h = w * (941 / 1672);
+    this.panelScale = w / 1672;
     const off = getSettings().ui.fenster;
     const c = this.scene.add.container((sw - w) / 2 + off.x, (sh - h) / 2 + off.y).setScrollFactor(0).setDepth(5100);
     this.container = c;
-    c.add(this.scene.add.rectangle(4, 6, w, h, 0x000000, 0.48).setOrigin(0));
-    if (this.scene.textures.exists(UI_PARCHMENT)) {
-      c.add(this.scene.add.tileSprite(0, 0, w, h, UI_PARCHMENT).setOrigin(0).setTint(0xd6c39d));
+    c.add(this.scene.add.rectangle(-sw, -sh, sw * 3, sh * 3, 0x050403, 0.58).setOrigin(0).setInteractive());
+    const shellAktiv = this.scene.textures.exists(UI_CHARACTER_SHELL);
+    if (shellAktiv) {
+      c.add(this.scene.add.image(0, 0, UI_CHARACTER_SHELL).setOrigin(0).setDisplaySize(w, h));
     } else {
+      c.add(this.scene.add.rectangle(4, 6, w, h, 0x000000, 0.48).setOrigin(0));
+    }
+    if (!shellAktiv && this.scene.textures.exists(UI_PARCHMENT)) {
+      c.add(this.scene.add.tileSprite(0, 0, w, h, UI_PARCHMENT).setOrigin(0).setTint(0xd6c39d));
+    } else if (!shellAktiv) {
       c.add(this.scene.add.rectangle(0, 0, w, h, 0xc9b58c, 0.98).setOrigin(0));
     }
-    if (this.scene.textures.exists(UI_WOOD)) {
+    if (!shellAktiv && this.scene.textures.exists(UI_WOOD)) {
       c.add(this.scene.add.tileSprite(0, 0, w, 55, UI_WOOD).setOrigin(0).setTint(0x58432f));
-    } else {
+    } else if (!shellAktiv) {
       c.add(this.scene.add.rectangle(0, 0, w, 55, 0x302016, 1).setOrigin(0));
     }
-    const bg = this.scene.add.rectangle(0, 0, w, h, 0x000000, 0.001).setOrigin(0).setStrokeStyle(3, 0x21170f);
+    const bg = this.scene.add.rectangle(0, 0, w, h, 0x000000, 0.001).setOrigin(0);
+    if (!shellAktiv) bg.setStrokeStyle(3, 0x21170f);
     bg.setInteractive();
     c.add(bg);
-    c.add(this.scene.add.rectangle(5, 5, w - 10, h - 10, 0x000000, 0).setOrigin(0).setStrokeStyle(1, 0x8a6840, 0.85));
+    if (!shellAktiv) c.add(this.scene.add.rectangle(5, 5, w - 10, h - 10, 0x000000, 0).setOrigin(0).setStrokeStyle(1, 0x8a6840, 0.85));
     // Fenster direkt greifen (Runde 23, oft gewünscht): die obere Leiste
     // zieht das Fenster, der Versatz landet dauerhaft in den Einstellungen
     // (ui.fenster - gilt damit auch für Handel und Chronik)
-    const griff = this.scene.add.rectangle(0, 0, w - 30, 26, 0xffffff, 0.02).setOrigin(0)
+    const griffY = shellAktiv ? h * (62 / 941) : 0;
+    const griffH = shellAktiv ? Math.max(10, h * (17 / 941)) : 26;
+    const griff = this.scene.add.rectangle(0, griffY, w - 30, griffH, 0xffffff, 0.02).setOrigin(0)
       .setInteractive({ draggable: true, useHandCursor: true });
     griff.on('pointerover', () => griff.setFillStyle(0xc9a227, 0.08));
     griff.on('pointerout', () => griff.setFillStyle(0xffffff, 0.02));
@@ -240,38 +254,48 @@ export class UIPanels {
       ['held', 'CHARAKTER'], ['faehigkeiten', 'FÄHIGKEITEN'], ['heer', 'HEER'], ['karte', 'KARTE'], ['aufgaben', 'AUFGABEN'],
       ['kontakte', 'KONTAKTE'], ['album', 'ALBUM'], ['statistik', 'STATISTIK'],
     ];
-    let rx = 18;
-    for (const [id, lbl] of reiter) {
-      const t = this.scene.add.text(rx, 10, lbl, {
-        fontFamily: 'serif', fontSize: w < 930 ? '10px' : '11px', letterSpacing: 1,
+    const tabLinks = w * (120 / 1672);
+    const tabRechts = w * (1558 / 1672);
+    const tabBreite = (tabRechts - tabLinks) / reiter.length;
+    const tabY = h * (37 / 941);
+    for (const [index, [id, lbl]] of reiter.entries()) {
+      const tx = tabLinks + index * tabBreite;
+      if (this.hauptTab === id) {
+        c.add(this.scene.add.rectangle(tx + 2, h * (15 / 941), tabBreite - 4, h * (45 / 941), 0x68281f, 0.74).setOrigin(0));
+      }
+      const hit = this.scene.add.rectangle(tx, h * (12 / 941), tabBreite, h * (50 / 941), 0xffffff, 0)
+        .setOrigin(0).setInteractive({ useHandCursor: true });
+      const t = this.scene.add.text(tx + tabBreite / 2, tabY, lbl, {
+        fontFamily: 'serif', fontSize: `${Math.max(8, Math.round(w * 13 / 1672))}px`, letterSpacing: 1,
         color: this.hauptTab === id ? '#f0dfbd' : '#b9a98b',
-        backgroundColor: this.hauptTab === id ? '#6b2d24' : '#251a13', padding: { x: w < 930 ? 7 : 10, y: 8 },
-      }).setInteractive({ useHandCursor: true });
-      t.on('pointerdown', () => {
+      }).setOrigin(0.5);
+      hit.on('pointerdown', () => {
         this.hauptTab = id;
         this.build();
         this.sfx.play('klick');
       });
-      c.add(t);
-      rx += t.width + 5;
+      c.add([hit, t]);
     }
     // Trennlinie unter den Reitern - der Inhalt beginnt klar darunter (kein
     // Überlappen der Sektionstitel mehr, Autorkritik Runde 38)
-    c.add(this.scene.add.rectangle(0, 54, w, 2, 0x21170f).setOrigin(0));
-    const inhalt = this.scene.add.container(0, 56);
+    if (!shellAktiv) c.add(this.scene.add.rectangle(0, 54, w, 2, 0x21170f).setOrigin(0));
+    const inhaltY = Math.round(h * (79 / 941));
+    const inhalt = this.scene.add.container(0, inhaltY);
     c.add(inhalt);
     if (this.hauptTab === 'heer') {
       inhalt.add(this.scene.add.rectangle(7, 5, w - 14, h - 70, PANEL_BG, 0.94).setOrigin(0));
       this.buildHeerTab(inhalt, w, h);
     } else if (this.hauptTab === 'held') {
-      const linksW = Math.round(w * 0.35);
-      const mitteW = Math.round(w * 0.38);
+      const linksW = Math.round(w * (592 / 1672));
+      const mitteW = Math.round(w * (609 / 1672));
       const rechtsX = linksW + mitteW;
-      inhalt.add(this.scene.add.rectangle(linksW, 0, 1, h - 56, 0x71583b, 0.8).setOrigin(0));
-      inhalt.add(this.scene.add.rectangle(rechtsX, 0, 1, h - 56, 0x71583b, 0.8).setOrigin(0));
-      this.buildCharacterSide(inhalt, linksW, h - 56);
-      this.buildInventorySide(inhalt, linksW + 10, mitteW - 20, h - 62);
-      this.buildItemDetailSide(inhalt, rechtsX + 10, w - rechtsX - 20, h - 62);
+      if (!shellAktiv) {
+        inhalt.add(this.scene.add.rectangle(linksW, 0, 1, h - inhaltY, 0x71583b, 0.8).setOrigin(0));
+        inhalt.add(this.scene.add.rectangle(rechtsX, 0, 1, h - inhaltY, 0x71583b, 0.8).setOrigin(0));
+      }
+      this.buildCharacterSide(inhalt, linksW, h - inhaltY);
+      this.buildInventorySide(inhalt, linksW + 10, mitteW - 20, h - inhaltY - 6);
+      this.buildItemDetailSide(inhalt, rechtsX + 10, w - rechtsX - 20, h - inhaltY - 6);
     } else if (this.hauptTab === 'faehigkeiten') {
       inhalt.add(this.scene.add.rectangle(7, 5, w - 14, h - 70, PANEL_BG, 0.94).setOrigin(0));
       this.buildSkillsTab(inhalt, w, h - 62);
@@ -300,8 +324,9 @@ export class UIPanels {
     // Phaser-Falle: Kinder des Unter-Containers brauchen die Hitbox-Korrektur
     // SELBST, sonst tote Knöpfe bei gescrollter Kamera
     fixUiScroll(inhalt);
-    const closeBtn = this.scene.add.text(w - 10, 9, 'X', { fontFamily: 'serif', fontSize: '15px', color: '#d6bea0', backgroundColor: '#522218', padding: { x: 8, y: 5 } })
-      .setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    const closeBtn = this.scene.add.text(w * (1635 / 1672), h * (36 / 941), 'X', {
+      fontFamily: 'serif', fontSize: `${Math.max(11, Math.round(w * 17 / 1672))}px`, color: '#d6bea0',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     closeBtn.on('pointerdown', () => this.closeAll());
     c.add(closeBtn);
     fixUiScroll(c);
@@ -345,12 +370,166 @@ export class UIPanels {
 
   // Trennlinie mit Mittel-Ornament (◆)
   private zierLinie(c: Phaser.GameObjects.Container, x: number, y: number, breite: number, titel?: string, aufPergament = false): void {
+    if (this.hauptTab === 'held' && this.scene.textures.exists(UI_CHARACTER_SHELL)) {
+      if (titel) c.add(this.scene.add.text(x + breite / 2, y - 13 * this.panelScale, titel, {
+        fontFamily: 'serif', fontSize: `${Math.max(8, Math.round(13 * this.panelScale))}px`,
+        color: INK_SOFT, letterSpacing: Math.max(1, Math.round(2 * this.panelScale)),
+      }).setOrigin(0.5, 0));
+      return;
+    }
     c.add(this.scene.add.rectangle(x, y, breite, 1, aufPergament ? 0x806746 : 0x4a3a26).setOrigin(0));
     c.add(this.scene.add.text(x + breite / 2, y - 5, '◆', { fontFamily: 'serif', fontSize: '9px', color: aufPergament ? INK_SOFT : '#8a6f3c' }).setOrigin(0.5, 0));
     if (titel) c.add(this.scene.add.text(x + 2, y - 16, titel, { fontFamily: 'serif', fontSize: '12px', color: aufPergament ? INK_SOFT : GOLD, letterSpacing: 2 }));
   }
 
+  private buildCharacterSideShell(c: Phaser.GameObjects.Container, w: number): void {
+    const p = this.getPlayer();
+    const s = this.panelScale;
+    const y = (sourceY: number): number => (sourceY - 79) * s;
+    const textSize = (sourcePx: number, min = 8): string => `${Math.max(min, Math.round(sourcePx * s))}px`;
+
+    c.add(this.scene.add.text(296 * s, y(82), 'AUSRÜSTUNG', {
+      fontFamily: 'serif', fontSize: textSize(14), color: INK_SOFT, letterSpacing: Math.max(1, Math.round(2 * s)),
+    }).setOrigin(0.5, 0));
+
+    const portraitKey = this.scene.textures.exists(UI_ALDRIC)
+      ? UI_ALDRIC
+      : this.provider.heldPortraitKey(heldTier(p.armorIt ? p.armorIt.val : null));
+    const portrait = this.scene.add.image(169.5 * s, y(219), portraitKey);
+    if (portraitKey === UI_ALDRIC) portrait.setCrop(80, 48, 864, 1160).setDisplaySize(175 * s, 226 * s);
+    else portrait.setScale((172 * s) / Math.max(portrait.width, portrait.height));
+    c.add(portrait);
+
+    const nameX = 168.5 * s;
+    c.add(this.scene.add.text(nameX, y(348), `STUFE ${p.level}`, {
+      fontFamily: 'serif', fontSize: textSize(14), color: '#e2cfaa', letterSpacing: 1,
+    }).setOrigin(0.5, 0));
+    c.add(this.scene.add.text(nameX, y(374), 'Aldric von Weiden', {
+      fontFamily: 'serif', fontSize: textSize(12), color: '#d7c9ae',
+    }).setOrigin(0.5, 0));
+
+    const slot = (
+      it: Item | null,
+      sx: number,
+      sy: number,
+      sw: number,
+      sh: number,
+      label: string,
+      aktiv = false,
+      inaktiv = false,
+    ): void => {
+      const bx = sx * s, by = y(sy), bw = sw * s, bh = sh * s;
+      const hit = this.scene.add.rectangle(bx, by, bw, bh, 0xffffff, 0).setOrigin(0);
+      if (aktiv) hit.setStrokeStyle(Math.max(1, Math.round(2 * s)), 0xb88936, 0.9);
+      c.add(hit);
+      if (!it) {
+        c.add(this.scene.add.text(bx + bw / 2, by + bh / 2, label, {
+          fontFamily: 'serif', fontSize: textSize(10, 7), color: '#75664f',
+        }).setOrigin(0.5));
+        return;
+      }
+      const icon = this.scene.add.image(bx + bw / 2, by + bh / 2, this.provider.itemIcon(it));
+      const maxW = bw * 0.76, maxH = bh * 0.76;
+      icon.setScale(Math.min(maxW / icon.width, maxH / icon.height));
+      if (inaktiv) icon.setAlpha(0.34);
+      c.add(icon);
+      hit.setInteractive({ useHandCursor: true });
+      hit.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
+      hit.on('pointerout', () => this.hideTooltip());
+      hit.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
+        if (ptr.rightButtonDown()) this.clickItem(it, true);
+        else {
+          this.selectedItem = it;
+          this.compareItem = null;
+          this.hideTooltip();
+          this.build();
+          this.sfx.play('klick');
+        }
+      });
+    };
+
+    slot(p.weapon, 278, 150, 57, 150, 'Waffe', !p.bogenAktiv);
+    slot(null, 369, 98, 66, 71, 'Kopf');
+    slot(p.armorIt, 369, 213, 67, 96, 'Rüstung');
+    slot(p.schildIt, 489, 150, 59, 150, 'Schild', false, !!p.bogenAktiv && !!p.schildIt);
+    slot(p.bogen, 278, 331, 57, 71, 'Bogen', !!p.bogenAktiv);
+    slot(null, 369, 331, 67, 71, 'Stiefel');
+    slot(p.ring, 489, 331, 59, 71, 'Ring');
+
+    const sectionTitle = (sourceY: number, title: string): void => {
+      c.add(this.scene.add.text(315 * s, y(sourceY), title, {
+        fontFamily: 'serif', fontSize: textSize(13), color: INK_SOFT,
+        letterSpacing: Math.max(1, Math.round(2 * s)),
+      }).setOrigin(0.5, 0));
+    };
+    const pair = (label: string, value: string, sourceX: number, sourceY: number, valueX: number): void => {
+      c.add(this.scene.add.text(sourceX * s, y(sourceY), label, { fontFamily: 'serif', fontSize: textSize(12), color: INK }));
+      c.add(this.scene.add.text(valueX * s, y(sourceY), value, { fontFamily: 'serif', fontSize: textSize(12), color: INK }).setOrigin(1, 0));
+    };
+
+    const dmgMin = Math.max(1, Math.round(p.stats.dmg * 0.85));
+    const dmgMax = Math.max(dmgMin, Math.round(p.stats.dmg * 1.2));
+    sectionTitle(416, 'WERTE');
+    const werte: Array<[string, string]> = [
+      ['Schaden', `${dmgMin}-${dmgMax}`], ['Rüstung', String(p.stats.armor)],
+      ['Trefferpunkte', `${Math.ceil(p.hp)}/${p.stats.maxhp}`], ['Mana', `${Math.ceil(p.mana)}/${p.stats.maxmana}`],
+      ['Lebensraub', String(p.stats.leech)], ['Lichtradius', `+${p.stats.licht}`],
+    ];
+    werte.forEach(([label, value], index) => {
+      const right = index % 2 === 1;
+      pair(label, value, right ? 322 : 91, 449 + Math.floor(index / 2) * 32, right ? 548 : 286);
+    });
+
+    sectionTitle(566, 'WIDERSTÄNDE');
+    const res = p.resist ?? { feuer: 0, frost: 0, schatten: 0, seuche: 0 };
+    ([['Feuer', res.feuer, 0xb64a28], ['Kälte', res.frost, 0x477b98], ['Schatten', res.schatten, 0x654f7e]] as Array<[string, number, number]>).forEach(([label, value, color], index) => {
+      const left = (98 + index * 158) * s;
+      c.add(this.scene.add.circle(left, y(610), Math.max(3, 6 * s), color));
+      c.add(this.scene.add.text(left + 13 * s, y(597), label, { fontFamily: 'serif', fontSize: textSize(12), color: INK }));
+      c.add(this.scene.add.text(left + 128 * s, y(597), `${value}%`, { fontFamily: 'serif', fontSize: textSize(12), color: INK }).setOrigin(1, 0));
+    });
+
+    sectionTitle(641, 'VORRAT');
+    const m = p.materials;
+    const vorrat: Array<[string, string, number]> = [
+      ['Gold', String(p.gold), 0xe0b53a], ['Flaschen', `${p.flaskCount}/${p.flaskMax}`, 0xd8402a],
+      ['Holz', String(m.holz), 0x8a6434], ['Stein', String(m.stein), 0x8a8e96],
+      ['Eisen', String(m.eisen), 0xb8bcc4], ['Kräuter', String(m.kraeuter), 0x4a8a3a],
+      ['Kohle', String(m.kohle), 0x2a2a30], ['Fasern', String(m.fasern ?? 0), 0x9aa06a],
+      ['Verbände', String(p.verbaende ?? 0), 0xd8cfb8],
+    ];
+    vorrat.forEach(([label, value, color], index) => {
+      const right = index % 2 === 1;
+      const sourceX = right ? 322 : 91;
+      const sourceY = 675 + Math.floor(index / 2) * 21;
+      c.add(this.scene.add.circle((sourceX + 4) * s, y(sourceY + 8), Math.max(2, 5 * s), color));
+      pair(label, value, sourceX + 15, sourceY, right ? 548 : 286);
+    });
+
+    sectionTitle(780, 'KRÄUTERBEUTEL');
+    const pflanzen = PFLANZEN.filter((pf) => (m[pf.id as MaterialId] ?? 0) > 0).slice(0, 8);
+    if (!pflanzen.length) {
+      c.add(this.scene.add.text(w / 2, y(821), 'Noch keine Kräuter gesammelt', {
+        fontFamily: 'serif', fontSize: textSize(11), color: INK_SOFT, fontStyle: 'italic',
+      }).setOrigin(0.5));
+    } else {
+      pflanzen.forEach((pf, index) => {
+        const cx = (109 + index * 59) * s;
+        c.add(this.scene.add.text(cx, y(824), '✦', {
+          fontFamily: 'serif', fontSize: textSize(22, 10), color: pf.palette.bluete,
+        }).setOrigin(0.5));
+        c.add(this.scene.add.text(cx + 19 * s, y(843), String(m[pf.id as MaterialId] ?? 0), {
+          fontFamily: 'serif', fontSize: textSize(10, 7), color: '#d8cfb8',
+        }).setOrigin(1, 0));
+      });
+    }
+  }
+
   private buildCharacterSide(c: Phaser.GameObjects.Container, w: number, _h: number): void {
+    if (this.scene.textures.exists(UI_CHARACTER_SHELL)) {
+      this.buildCharacterSideShell(c, w);
+      return;
+    }
     const p = this.getPlayer();
     c.add(this.scene.add.text(w / 2, 9, 'AUSRUESTUNG', { fontFamily: 'serif', fontSize: '12px', color: INK_SOFT, letterSpacing: 2 }).setOrigin(0.5, 0));
     c.add(this.scene.add.rectangle(14, 30, 104, 140, 0x17130f).setOrigin(0));
@@ -845,33 +1024,59 @@ export class UIPanels {
 
   private buildInventorySide(c: Phaser.GameObjects.Container, x0: number, w: number, h: number): void {
     const p = this.getPlayer();
-    c.add(this.scene.add.text(x0 + 5, 10, 'RUCKSACK', { fontFamily: 'serif', fontSize: '17px', color: INK, letterSpacing: 2 }));
-    c.add(this.scene.add.text(x0 + w, 12, `${p.inv.length} Gegenstände  ·  ${p.gold} Gold`, { fontFamily: 'serif', fontSize: '9px', color: INK_SOFT }).setOrigin(1, 0));
+    const shellAktiv = this.scene.textures.exists(UI_CHARACTER_SHELL);
+    const s = this.panelScale;
+    c.add(this.scene.add.text(x0 + 5, 10 * s, 'RUCKSACK', {
+      fontFamily: 'serif', fontSize: `${shellAktiv ? Math.max(11, Math.round(18 * s)) : 17}px`, color: INK, letterSpacing: 2,
+    }));
+    c.add(this.scene.add.text(x0 + w, 12 * s, `${p.inv.length} Gegenstände  ·  ${p.gold} Gold`, {
+      fontFamily: 'serif', fontSize: `${shellAktiv ? Math.max(7, Math.round(10 * s)) : 9}px`, color: INK_SOFT,
+    }).setOrigin(1, 0));
     // Filter-Reiter (Feedback-Runde 2)
     const tabs: Array<[typeof this.filter, string]> = [
       ['alle', 'ALLE'], ['weapon', 'WAFFEN'], ['stab', 'ZAUBERSTÄBE'], ['axt', 'ÄXTE'],
       ['armor', 'RÜSTUNG'], ['schild', 'SCHILDE'], ['ring', 'RINGE'], ['rest', 'SONSTIGES'],
     ];
-    let tx2 = x0, ty2 = 34;
-    for (const [id, lbl] of tabs) {
-      const t = this.scene.add.text(tx2, ty2, lbl, {
-        fontFamily: 'serif', fontSize: '11px', letterSpacing: 1,
-        color: this.filter === id ? '#efe2c6' : INK_SOFT,
-        backgroundColor: this.filter === id ? '#4a3925' : '#c6b184', padding: { x: 5, y: 3 },
-      }).setInteractive({ useHandCursor: true });
-      // Umbruch in eine zweite Reihe, wenn die Reiter sonst aus dem Menü ragen
-      // (Bug Runde 39: "SONST" stand außerhalb)
-      if (tx2 > x0 && tx2 + t.width > x0 + w) { tx2 = x0; ty2 += 20; t.setPosition(tx2, ty2); }
-      t.on('pointerdown', () => {
-        this.filter = id;
-        this.scroll = 0;
-        this.build();
-        this.sfx.play('klick');
+    let tx2 = x0, ty2 = shellAktiv ? (144 - 79) * s : 34;
+    let tabUmbruch = false;
+    if (shellAktiv) {
+      const tabW = w / tabs.length;
+      const tabH = 34 * s;
+      tabs.forEach(([id, lbl], index) => {
+        const tx = x0 + index * tabW;
+        if (this.filter === id) c.add(this.scene.add.rectangle(tx + 1, ty2, tabW - 2, tabH, 0x4a3925, 0.78).setOrigin(0));
+        const hit = this.scene.add.rectangle(tx, ty2, tabW, tabH, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true });
+        const t = this.scene.add.text(tx + tabW / 2, ty2 + tabH / 2, lbl, {
+          fontFamily: 'serif', fontSize: `${Math.max(6, Math.round(9 * s))}px`, letterSpacing: 0,
+          color: this.filter === id ? '#efe2c6' : INK_SOFT,
+        }).setOrigin(0.5);
+        hit.on('pointerdown', () => {
+          this.filter = id;
+          this.scroll = 0;
+          this.build();
+          this.sfx.play('klick');
+        });
+        c.add([hit, t]);
       });
-      c.add(t);
-      tx2 += t.width + 6;
+    } else {
+      for (const [id, lbl] of tabs) {
+        const t = this.scene.add.text(tx2, ty2, lbl, {
+          fontFamily: 'serif', fontSize: '11px', letterSpacing: 1,
+          color: this.filter === id ? '#efe2c6' : INK_SOFT,
+          backgroundColor: this.filter === id ? '#4a3925' : '#c6b184', padding: { x: 5, y: 3 },
+        }).setInteractive({ useHandCursor: true });
+        if (tx2 > x0 && tx2 + t.width > x0 + w) { tx2 = x0; ty2 += 20; t.setPosition(tx2, ty2); }
+        t.on('pointerdown', () => {
+          this.filter = id;
+          this.scroll = 0;
+          this.build();
+          this.sfx.play('klick');
+        });
+        c.add(t);
+        tx2 += t.width + 6;
+      }
+      tabUmbruch = ty2 > 34;
     }
-    const tabUmbruch = ty2 > 34;
 
     // Angelegtes erscheint NUR links im Charakter (Feedback-Runde 2);
     // Rest nach Filter, beste zuerst (Seltenheit, dann Wert).
@@ -890,13 +1095,15 @@ export class UIPanels {
         return (b.rarity ?? 0) - (a.rarity ?? 0) || wert(b) - wert(a);
       });
 
-    const rowH = 42;
-    const listTop = (tabUmbruch ? 78 : 58);
+    const rowH = shellAktiv ? 68 * s : 42;
+    const listTop = shellAktiv ? (192 - 79) * s : (tabUmbruch ? 78 : 58);
     const visible = Math.floor((h - listTop - 14) / rowH);
     const maxScroll = Math.max(0, inv.length - visible);
     this.scroll = Math.min(this.scroll, maxScroll);
     if (inv.length === 0) {
-      c.add(this.scene.add.text(x0, listTop, MELDUNGEN.inventarLeer, { fontFamily: 'serif', fontSize: '13px', color: INK_SOFT, fontStyle: 'italic' }));
+      c.add(this.scene.add.text(x0 + (shellAktiv ? 82 * s : 0), listTop + (shellAktiv ? 8 * s : 0), shellAktiv ? 'Der Rucksack ist leer.' : MELDUNGEN.inventarLeer, {
+        fontFamily: 'serif', fontSize: `${shellAktiv ? Math.max(8, Math.round(13 * s)) : 13}px`, color: INK_SOFT, fontStyle: 'italic',
+      }));
     }
     let y = listTop;
     for (const it of inv.slice(this.scroll, this.scroll + visible)) {
@@ -915,6 +1122,8 @@ export class UIPanels {
 
   private buildItemDetailSide(c: Phaser.GameObjects.Container, x0: number, w: number, h: number): void {
     const p = this.getPlayer();
+    const shellAktiv = this.scene.textures.exists(UI_CHARACTER_SHELL);
+    const s = this.panelScale;
     const vorhanden = [p.weapon, p.bogen, p.armorIt, p.schildIt, p.ring, ...p.inv]
       .filter((it): it is Item => !!it);
     if (!this.selectedItem || !vorhanden.includes(this.selectedItem)) this.selectedItem = vorhanden[0] ?? null;
@@ -984,24 +1193,29 @@ export class UIPanels {
       }
     }
 
+    const buttonH = shellAktiv ? 45 * s : 31;
     const button = (by: number, label: string, aktiv: boolean, farbe: number, fn: () => void): void => {
-      const bg = this.scene.add.rectangle(x0 + 18, by, w - 36, 31, aktiv ? farbe : 0x6c6458, aktiv ? 0.95 : 0.35)
-        .setOrigin(0).setStrokeStyle(1, aktiv ? 0x2a2117 : 0x554c40);
-      const text = this.scene.add.text(x0 + w / 2, by + 8, label, {
-        fontFamily: 'serif', fontSize: '11px', color: aktiv ? '#e9ddc5' : '#817769', letterSpacing: 1,
-      }).setOrigin(0.5, 0);
+      const buttonX = shellAktiv ? 1283 * s : x0 + 18;
+      const buttonW = shellAktiv ? 245 * s : w - 36;
+      const bg = this.scene.add.rectangle(buttonX, by, buttonW, buttonH, aktiv ? farbe : 0x302b25, shellAktiv ? (aktiv ? 0.12 : 0.42) : (aktiv ? 0.95 : 0.35))
+        .setOrigin(0);
+      if (!shellAktiv) bg.setStrokeStyle(1, aktiv ? 0x2a2117 : 0x554c40);
+      const text = this.scene.add.text(buttonX + buttonW / 2, by + buttonH / 2, label, {
+        fontFamily: 'serif', fontSize: `${shellAktiv ? Math.max(8, Math.round(12 * s)) : 11}px`, color: aktiv ? '#e9ddc5' : '#817769', letterSpacing: 1,
+      }).setOrigin(0.5);
       c.add(bg); c.add(text);
       if (!aktiv) return;
       bg.setInteractive({ useHandCursor: true });
-      bg.on('pointerover', () => bg.setFillStyle(Phaser.Display.Color.IntegerToColor(farbe).brighten(12).color, 1));
-      bg.on('pointerout', () => bg.setFillStyle(farbe, 0.95));
+      bg.on('pointerover', () => bg.setFillStyle(Phaser.Display.Color.IntegerToColor(farbe).brighten(12).color, shellAktiv ? 0.24 : 1));
+      bg.on('pointerout', () => bg.setFillStyle(farbe, shellAktiv ? 0.12 : 0.95));
       bg.on('pointerdown', fn);
     };
     const verbrauchbar = ['potion', 'mpotion', 'scroll', 'food'].includes(it.kind);
-    const basisY = h - 112;
+    const basisY = shellAktiv ? (699 - 79) * s : h - 112;
+    const buttonAbstand = shellAktiv ? 60 * s : 37;
     button(basisY, verbrauchbar ? 'BENUTZEN' : 'AUSRUESTEN', (ausruestbar && !angelegt) || verbrauchbar, 0x435536, () => this.clickItem(it, verbrauchbar));
-    button(basisY + 37, 'ABLEGEN', angelegt, 0x493020, () => this.clickItem(it, false));
-    button(basisY + 74, this.compareItem === it ? 'VERGLEICH AUS' : 'VERGLEICHEN', ausruestbar, 0x283c4a, () => {
+    button(basisY + buttonAbstand, 'ABLEGEN', angelegt, 0x493020, () => this.clickItem(it, false));
+    button(basisY + buttonAbstand * 2, this.compareItem === it ? 'VERGLEICH AUS' : 'VERGLEICHEN', ausruestbar, 0x283c4a, () => {
       this.compareItem = this.compareItem === it ? null : it;
       this.build();
       this.sfx.play('klick');
@@ -1010,16 +1224,18 @@ export class UIPanels {
 
   private buildItemRow(c: Phaser.GameObjects.Container, it: Item, x0: number, y: number, w: number): void {
     const p = this.getPlayer();
+    const shellAktiv = this.scene.textures.exists(UI_CHARACTER_SHELL);
+    const rowH = shellAktiv ? Math.max(36, 64 * this.panelScale) : 38;
     const equipped = it === p.weapon || it === p.bogen || it === p.armorIt || it === p.ring || it === p.schildIt;
     const rar = (it.rarity ?? 0) as Rarity;
     const rarCol = Phaser.Display.Color.HexStringToColor(RARITY_COLORS[rar]).color;
     const selected = it === this.selectedItem;
-    const row = this.scene.add.rectangle(x0, y, w, 38, selected ? 0x8b642a : equipped ? 0xc9a227 : 0xffffff, selected ? 0.2 : equipped ? 0.09 : 0.07).setOrigin(0);
-    row.setStrokeStyle(selected ? 2 : 1, selected ? 0xa8782c : rar >= 1 ? rarCol : 0x796445, selected ? 1 : 0.65);
+    const row = this.scene.add.rectangle(x0, y, w, rowH, selected ? 0x8b642a : equipped ? 0xc9a227 : 0xffffff, selected ? 0.2 : equipped ? 0.09 : shellAktiv ? 0 : 0.07).setOrigin(0);
+    if (selected || !shellAktiv) row.setStrokeStyle(selected ? 2 : 1, selected ? 0xa8782c : rar >= 1 ? rarCol : 0x796445, selected ? 1 : 0.65);
     row.setInteractive({ useHandCursor: true });
     c.add(row);
-    if (rar >= 1) c.add(this.scene.add.rectangle(x0, y, 3, 38, rarCol).setOrigin(0));
-    c.add(this.scene.add.image(x0 + 20, y + 19, this.provider.itemIcon(it)).setScale(0.42));
+    if (rar >= 1) c.add(this.scene.add.rectangle(x0, y, 3, rowH, rarCol).setOrigin(0));
+    c.add(this.scene.add.image(x0 + rowH / 2, y + rowH / 2, this.provider.itemIcon(it)).setScale(Math.max(0.3, 0.42 * (rowH / 38))));
     c.add(this.scene.add.text(x0 + 40, y + 3, it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
       fontFamily: 'serif', fontSize: '12px', color: RARITY_INK[rar],
     }));
