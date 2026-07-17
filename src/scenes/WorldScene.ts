@@ -3789,7 +3789,7 @@ export class WorldScene extends CombatScene {
       const aktiv = this.rtsSpawnTyp === typ;
       const kn = this.add.rectangle(F(8), y, w - F(16), F(24), aktiv ? 0x3a2a12 : farbe, 0.9).setOrigin(0).setStrokeStyle(1, aktiv ? 0xc9a227 : 0x4a3a26).setInteractive({ useHandCursor: true });
       kn.on('pointerdown', () => { this.starteRtsSpawn(typ); this.sfx.play('klick', 0.5); this.baueRtsLeiste(); });
-      const rolle = typ === 'e_golem' ? 'Schweres Monster (Steinpanzer)' : d.heiler ? 'Heilt Verwundete' : d.reich > 100 ? 'Fernkampf (Bogen)' : d.reich > 32 ? 'Reiter (schnell, stark)' : 'Nahkampf (Schild/Schwert)';
+      const rolle = typ === 'e_golem' ? 'Schwere Monstrositaet (faulendes Fleisch)' : d.heiler ? 'Heilt Verwundete' : d.reich > 100 ? 'Fernkampf (Bogen)' : d.reich > 32 ? 'Reiter (schnell, stark)' : 'Nahkampf (Schild/Schwert)';
       const tip = `${d.name}\n${rolle}\nLeben ${d.hp} · Schaden ${d.dmg} · Reichweite ${d.reich} · Tempo ${d.speed}\nKämpft mit der Dungeon-Technik.`;
       kn.on('pointerover', () => this.zeigeBauTooltip(tip, c.x));
       kn.on('pointerout', () => this.versteckeBauTooltip());
