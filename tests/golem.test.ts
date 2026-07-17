@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GOLEM, golemFrame } from '../src/data/golem';
+import { GOLEM, golemFrame, golemPhaseFuerLeben } from '../src/data/golem';
 import { GOLEM_TUNING_STANDARD, normalisiereGolemTuning } from '../src/gfx/golemTuning';
 import { ENEMIES } from '../src/data/enemies';
 import { RTS_UNIT_TYP } from '../src/data/rts';
@@ -25,4 +25,14 @@ describe('Menschengolem im RTS', () => {
     expect(normalisiereGolemTuning({ skala: 9, breite: 0, hoehe: 1.1, bodenanker: 0.8, leben: 99999 }))
       .toEqual({ ...GOLEM_TUNING_STANDARD, skala: 1.4, breite: 0.7, hoehe: 1.1, bodenanker: 0.8, leben: 20000 });
   });
+
+  it('ordnet die Kampfphasen an den vereinbarten HP-Schwellen zu', () => {
+    expect(golemPhaseFuerLeben(3000, 3000)).toBe('unverletzt');
+    expect(golemPhaseFuerLeben(2100, 3000)).toBe('welle');
+    expect(golemPhaseFuerLeben(1500, 3000)).toBe('stampf');
+    expect(golemPhaseFuerLeben(900, 3000)).toBe('aufgerissen');
+    expect(golemPhaseFuerLeben(450, 3000)).toBe('armverlust');
+    expect(golemPhaseFuerLeben(149, 3000)).toBe('raserei');
+  });
+
 });

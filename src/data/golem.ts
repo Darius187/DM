@@ -13,9 +13,29 @@ export const GOLEM = {
   standardBodenanker: 0.81,
   trefferDauerS: 0.38,
   schlagNachlaufS: 0.48,
+  leichenDauerS: 7,
+  phasen: {
+    rundumNurUeber: 0.70,
+    stampfAb: 0.50,
+    fleischverlustAb: 0.30,
+    armverlustAb: 0.15,
+    rasereiUnter: 0.05,
+  },
 } as const;
 
 export type GolemClip = keyof typeof GOLEM.frames;
+
+export type GolemPhase = 'unverletzt' | 'welle' | 'stampf' | 'aufgerissen' | 'armverlust' | 'raserei';
+
+export function golemPhaseFuerLeben(hp: number, maxhp: number): GolemPhase {
+  const anteil = Math.max(0, hp) / Math.max(1, maxhp);
+  if (anteil < GOLEM.phasen.rasereiUnter) return 'raserei';
+  if (anteil <= GOLEM.phasen.armverlustAb) return 'armverlust';
+  if (anteil <= GOLEM.phasen.fleischverlustAb) return 'aufgerissen';
+  if (anteil <= GOLEM.phasen.stampfAb) return 'stampf';
+  if (anteil <= GOLEM.phasen.rundumNurUeber) return 'welle';
+  return 'unverletzt';
+}
 
 export function golemFrame(clip: GolemClip, dir: number, frame: number): string {
   const d = ((dir % GOLEM.richtungen) + GOLEM.richtungen) % GOLEM.richtungen;

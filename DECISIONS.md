@@ -2374,10 +2374,19 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Menschengolem statt Steingolem: Spielertexte und sichtbarer Name verwenden nur
   `Menschengolem`. Bestehende interne Kennungen und der Atlas-Dateiname werden
   vorerst nicht migriert, weil sie Savegame- und Phaser-Cache-Vertraege sind.
-- Die Autorabnahme der Monsterproportion erfolgt ueber F10 > GOLEM. Diese Werte
+- Die Autorabnahme der Monsterproportion erfolgt ueber F10 > GEGNER. Diese Werte
   werden lokal gespeichert und skalieren nur das gerenderte Bild. Trefferkreis,
   Wegfindung, Schaden und Reichweite werden erst gemeinsam angepasst, wenn der
   Autor die endgueltige visuelle Groesse bestaetigt.
-- Der HP-Regler unter F10 > GOLEM ist ausdruecklich ein RTS-Testwert. Eine
+- Der HP-Regler unter F10 > GEGNER ist ausdruecklich ein RTS-Testwert. Eine
   Aenderung setzt bestehende lebende Menschengolems auf den neuen Wert und heilt
   sie voll, damit wiederholte Schadensmessungen denselben Ausgangspunkt haben.
+- Der Menschengolem ist ein standfester Phasengegner, kein vergroesserter
+  Standardgegner. Er ignoriert Rueckstoss, Standard-Stun und weissen Hit-Flash.
+  Seine Schwellen liegen zentral in `data/golem.ts` bei 70/50/30/15/5 Prozent.
+  Armverlust halbiert dauerhaft seinen Schaden; Heilung setzt verlorene
+  Koerperteile im normalen Kampf nicht wieder an. Nur der 100%-Dev-Test setzt
+  den Phasenzustand bewusst komplett zurueck.
+- Die Dev-Werkbank heisst `GEGNER`, weil sie nicht dauerhaft nur fuer den
+  Menschengolem reserviert sein soll. Neue besondere Gegner erhalten darin
+  jeweils einen klar benannten eigenen Abschnitt.

@@ -3479,6 +3479,7 @@ export class WorldScene extends CombatScene {
         const leben = typ === 'e_golem' ? aktuellesGolemTuning().leben : d.hp;
         e.maxhp = leben; e.hp = leben;
         e.dmg = d.dmg;
+        if (typ === 'e_golem') e.golemVollerSchaden = d.dmg;
         e.speed = d.speed;
         e.schild = d.schild ?? false;
         e.schadensRed = d.schadensRed ?? 1;
@@ -5165,9 +5166,21 @@ export class WorldScene extends CombatScene {
     // Messlauf reproduzierbar, ohne das Monster erneut setzen zu muessen.
     for (const e of this.enemies) {
       if (e.type !== 'golem' || e.hp <= 0) continue;
+      this.setzeGolemPhasenZurueck(e);
       e.maxhp = neu;
       e.hp = neu;
     }
+  }
+
+  private setzeGolemTestPhase(prozent: number): void {
+    for (const e of this.enemies) {
+      if (e.type !== 'golem' || e.hp <= 0) continue;
+      if (prozent >= 100) this.setzeGolemPhasenZurueck(e);
+      e.hp = Math.max(1, Math.round(e.maxhp * prozent / 100));
+      this.aktualisiereGolemPhasen(e);
+      e.passiv = false;
+    }
+    this.logMsg(`Menschengolem-Testphase: ${prozent}% Leben.`, 'gold');
   }
 
   private baueDevTabs(): DKTab[] {
@@ -5259,13 +5272,21 @@ export class WorldScene extends CombatScene {
         })),
       ] },
       { name: 'PFERD', controls: () => this.baueReitTuningControls() },
-      { name: 'GOLEM', controls: () => [
-        { kind: 'note', text: 'MENSCHENGOLEM live testen. Groessenregler aendern nur die Darstellung; Trefferkreis und Reichweite bleiben bis zur Endabnahme unveraendert.' },
+      { name: 'GEGNER', controls: () => [
+        { kind: 'note', text: 'MENSCHENGOLEM - erster Gegnertyp dieser Werkbank. Weitere besondere Gegner kommen spaeter als eigene Abschnitte hinzu.' },
+        { kind: 'note', text: 'Groessenregler aendern nur die Darstellung; Trefferkreis und Reichweite bleiben bis zur Endabnahme unveraendert.' },
         { kind: 'slider', label: 'Gesamtgroesse', min: 0.45, max: 1.40, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => aktuellesGolemTuning().skala, set: (v) => { setzeGolemTuning({ skala: v }); } },
         { kind: 'slider', label: 'Breite', min: 0.70, max: 1.35, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => aktuellesGolemTuning().breite, set: (v) => { setzeGolemTuning({ breite: v }); } },
         { kind: 'slider', label: 'Hoehe', min: 0.70, max: 1.35, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => aktuellesGolemTuning().hoehe, set: (v) => { setzeGolemTuning({ hoehe: v }); } },
         { kind: 'slider', label: 'Bodenanker', min: 0.72, max: 0.96, step: 0.005, fmt: (v) => v.toFixed(3), get: () => aktuellesGolemTuning().bodenanker, set: (v) => { setzeGolemTuning({ bodenanker: v }); } },
         { kind: 'slider', label: 'Leben (RTS-Test)', min: 100, max: 20000, step: 100, fmt: (v) => `${Math.round(v)} HP`, get: () => aktuellesGolemTuning().leben, set: (v) => { this.setzeGolemTestLeben(v); } },
+        { kind: 'note', text: 'PHASEN DIREKT TESTEN - wirkt auf bereits platzierte Menschengolems:' },
+        { kind: 'button', label: () => '100% - unverletzt', onClick: () => this.setzeGolemTestPhase(100) },
+        { kind: 'button', label: () => '70% - Fleischwelle', onClick: () => this.setzeGolemTestPhase(70) },
+        { kind: 'button', label: () => '50% - Bodenstampfer', onClick: () => this.setzeGolemTestPhase(50) },
+        { kind: 'button', label: () => '30% - Fleisch und Knochen brechen auf', onClick: () => this.setzeGolemTestPhase(30) },
+        { kind: 'button', label: () => '15% - Armverlust, halber Schaden', onClick: () => this.setzeGolemTestPhase(15) },
+        { kind: 'button', label: () => '4% - letzte Raserei', onClick: () => this.setzeGolemTestPhase(4) },
         { kind: 'button', label: () => 'WERTE KOPIEREN fuer Codex', onClick: () => window.prompt('Diese Werte kopieren und im Chat einfuegen:', golemTuningExport()) },
         { kind: 'button', label: () => 'Auf aktuellen Spielstandard zuruecksetzen', onClick: () => { setzeGolemTuning({ ...GOLEM_TUNING_STANDARD }); this.setzeGolemTestLeben(GOLEM_TUNING_STANDARD.leben); this.devKonsole?.refresh(); } },
       ] as DKControl[] },
@@ -6929,6 +6950,7 @@ export class WorldScene extends CombatScene {
   // Held im RTS-Modus zum Ziel laufen lassen + Gegner automatisch angreifen.
   private updateRtsHeld(dt: number): void {
     if (this.rtsAttackCd > 0) this.rtsAttackCd -= dt;
+    if (this.golemLaehmungT > 0) { this.rtsLaeuft = false; return; }
     // Auswahl-Ring
     if (this.rtsHeldGewaehlt && this.devFreiKam) {
       if (!this.rtsWahlRing) { this.rtsWahlRing = this.add.graphics().setDepth(this.py - 1); }
@@ -7316,6 +7338,7 @@ export class WorldScene extends CombatScene {
       logMsg: (t, c) => s.logMsg(t, c),
       playSound: (n, v) => s.playSound(n, v),
       burstFx: (x, y, col, n, spd) => s.burstFx(x, y, col, n, spd),
+      golemSpezial: (en, art) => s.golemSpezial(en, art),
       verbuendeteNahe: (en, radius) => { let n = 0; for (const o of s.enemies) { if (o !== en && o.team === en.team && o.hp > 0 && Math.hypot(o.x - en.x, o.y - en.y) < radius) n++; } return n; },
       begegnungsRuf: (en) => { if (en.team !== 'spieler') s.begegnungsRuf(en); },
       wegRichtung: (x, y) => {

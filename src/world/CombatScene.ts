@@ -82,6 +82,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   playerSprite!: Phaser.GameObjects.Sprite;
   playerHitFlash = 0;
   playerDead = false;
+  protected golemLaehmungT = 0;
 
   enemies: Enemy[] = [];
   projectiles: Projectile[] = [];
@@ -122,6 +123,53 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   playSound(name: string, volMult = 1): void { this.sfx.play(name, volMult); }
   burstFx(x: number, y: number, col: number, n: number, spd: number): void { this.fx.burst(x, y, col, n, spd); }
 
+  golemSpezial(e: Enemy, art: 'rundum' | 'welle' | 'stampf' | 'zorn'): void {
+    const cfg = art === 'rundum'
+      ? { radius: 96, dmgF: 0.90, stoss: 0, laehmung: 0, farbe: 0x9b1720, text: 'RUNDUMSCHLAG' }
+      : art === 'welle'
+        ? { radius: 122, dmgF: 1.05, stoss: 560, laehmung: 0.55, farbe: 0x741018, text: 'FLEISCHWELLE' }
+        : art === 'stampf'
+          ? { radius: 138, dmgF: 0.55, stoss: 0, laehmung: 1.45, farbe: 0x8b3028, text: 'BODENSTAMPFER' }
+          : { radius: 158, dmgF: 1.35, stoss: 680, laehmung: 1.85, farbe: 0xc01824, text: 'LETZTE RASEREI' };
+    const schaden = Math.max(1, Math.round(e.dmg * cfg.dmgF));
+    this.fx.welle(e.x, e.y, cfg.radius, cfg.farbe);
+    if (art === 'zorn' || art === 'stampf') this.fx.welle(e.x, e.y, cfg.radius * 0.58, 0xd3b08c);
+    this.fx.burst(e.x, e.y, cfg.farbe, art === 'zorn' ? 38 : 24, art === 'zorn' ? 320 : 230);
+    this.fx.float(e.x, e.y - e.r - 28, cfg.text, art === 'zorn' ? '#ff6a62' : '#e0a078');
+    this.sfx.play(art === 'stampf' || art === 'zorn' ? 'boss_slam' : 'hammer_schlag', 1);
+    this.shake(art === 'zorn' ? 11 : art === 'stampf' ? 8 : 6);
+
+    const trifft = (x: number, y: number, r: number): boolean => Math.hypot(x - e.x, y - e.y) < cfg.radius + r;
+    if (e.team === 'feind') {
+      if (!this.playerDead && trifft(this.px, this.py, PLAYER.radius)) {
+        this.enemyMeleeHit(e, schaden);
+        if (cfg.stoss > 0) {
+          const a = Math.atan2(this.py - e.y, this.px - e.x);
+          const weg = Math.min(68, cfg.stoss * 0.105);
+          for (let i = 0; i < 6; i++) this.movePlayer(Math.cos(a) * weg / 6, Math.sin(a) * weg / 6);
+        }
+        this.golemLaehmungT = Math.max(this.golemLaehmungT, cfg.laehmung);
+      }
+      for (const ziel of [...this.enemies]) {
+        if (ziel === e || ziel.team !== 'spieler' || ziel.hp <= 0 || !trifft(ziel.x, ziel.y, ziel.r)) continue;
+        this.trifftVerbuendeten(ziel, schaden);
+        if (ziel.hp <= 0) continue;
+        const a = Math.atan2(ziel.y - e.y, ziel.x - e.x);
+        if (cfg.stoss > 0) ziel.stossWeg(Math.cos(a) * cfg.stoss, Math.sin(a) * cfg.stoss, cfg.laehmung);
+        else ziel.stun = Math.max(ziel.stun, cfg.laehmung);
+      }
+    } else {
+      for (const ziel of [...this.enemies]) {
+        if (ziel === e || ziel.team === e.team || ziel.hp <= 0 || !trifft(ziel.x, ziel.y, ziel.r)) continue;
+        this.damageEnemy(ziel, schaden, 0, 0, '#d06058', false);
+        if (ziel.hp <= 0) continue;
+        const a = Math.atan2(ziel.y - e.y, ziel.x - e.x);
+        if (cfg.stoss > 0) ziel.stossWeg(Math.cos(a) * cfg.stoss, Math.sin(a) * cfg.stoss, cfg.laehmung);
+        else if (ziel.type !== 'golem') ziel.stun = Math.max(ziel.stun, cfg.laehmung);
+      }
+    }
+  }
+
   protected setupCombat(startX: number, startY: number): void {
     // Neustart-Hygiene (Szenen-Instanz wird wiederverwendet)
     this.keysDown = {};
@@ -129,6 +177,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.bowDrawT = -1;
     this.hitstopT = 0;
     this.shakeAmt = 0;
+    this.golemLaehmungT = 0;
     this.hittables = [];
     this.banishZones = [];
     this.touch = null;
@@ -1548,7 +1597,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       const dmg = this.rollDamage(dmgMult) + (gem ? gem.power : 0);
       this.damageEnemy(e, dmg, Math.cos(ang) * knockback, Math.sin(ang) * knockback, gem?.col);
       this.steinProc(e, dmg);   // R110: Feuer brennt jetzt auch im Nahkampf
-      if (breaksPosture && !e.boss) e.stun = Math.max(e.stun, HEAVY_ATTACK.postureStunS);
+      if (breaksPosture && !e.boss && e.type !== 'golem') e.stun = Math.max(e.stun, HEAVY_ATTACK.postureStunS);
       hitAny = true;
     }
     return hitAny;
@@ -1618,7 +1667,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (Math.abs(diff) < 1.35) {
         const rest = inDeckung ? 0 : Math.max(1, Math.round(dmg * 0.3));
         e.hp -= rest;
-        e.hitFlash = 0.06;
+        if (e.type !== 'golem') e.hitFlash = 0.06;
         this.fx.float(e.x, e.y - e.r - 8, inDeckung ? 'PARIERT' : 'GEBLOCKT', '#aab4c0');
         this.fx.burst(e.x + Math.cos(zumSpieler) * e.r, e.y + Math.sin(zumSpieler) * e.r, 0xaab4c0, 6, 120);
         this.sfx.play('block');
@@ -1639,10 +1688,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // mindestens 1 Schaden bleibt - das Schwert wirkt immer, es dauert nur laenger).
     if (e.schadensRed < 1) dmg = Math.max(1, Math.round(dmg * e.schadensRed));
     e.hp -= dmg;
-    e.hitFlash = 0.12;
+    if (e.type !== 'golem') e.hitFlash = 0.12;
     e.onHurt();
+    if (e.type === 'golem') this.aktualisiereGolemPhasen(e);
     this.fx.float(e.x + (Math.random() * 12 - 6), e.y - e.r - 8, String(dmg), col ?? '#e8dcc0');
-    if (kx || ky) {
+    if ((kx || ky) && e.type !== 'golem') {
       // Nur kräftige Treffer (Finisher/Schwer) schleudern den Gegner im Physik-
       // Test als Impuls weg - sonst hielt das Dauer-Wegrutschen die Gegner im
       // Gleit-Zustand fest und sie kamen NIE zum Schlag (Autorbug Runde 40:
@@ -1675,6 +1725,86 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Nahkampf-Schule steigt nur mit Nahkampf-Treffern
     if (melee) this.gainSchoolUse('nahkampf');
     if (e.hp <= 0) this.killEnemy(e);
+  }
+
+  protected setzeGolemPhasenZurueck(e: Enemy): void {
+    if (e.type !== 'golem') return;
+    e.golemFleischStufe = 0;
+    e.golemArmVerloren = false;
+    e.golemTelegraphArt = null;
+    e.golemSpezialCd = 1.8;
+    e.dmg = Math.max(1, e.golemVollerSchaden || e.dmg);
+    e.sprite?.setCrop().clearTint();
+  }
+
+  protected aktualisiereGolemPhasen(e: Enemy): void {
+    if (e.type !== 'golem' || e.maxhp <= 0) return;
+    const anteil = Math.max(0, e.hp / e.maxhp);
+    if (anteil <= GOLEM.phasen.fleischverlustAb && e.golemFleischStufe < 1) {
+      e.golemFleischStufe = 1;
+      this.zeigeGolemFleischverlust(e, false);
+      this.fx.float(e.x, e.y - e.r - 34, 'FLEISCH REISST AUF', '#d85550');
+    }
+    if (anteil <= GOLEM.phasen.armverlustAb && !e.golemArmVerloren) {
+      e.golemFleischStufe = 2;
+      e.golemArmVerloren = true;
+      e.dmg = Math.max(1, Math.round((e.golemVollerSchaden || e.dmg) * 0.5));
+      this.zeigeGolemFleischverlust(e, true);
+      this.fx.float(e.x, e.y - e.r - 42, 'ARM ABGERISSEN', '#ff6860');
+      this.cameras.main.shake(240, 0.008);
+    }
+    if (anteil < GOLEM.phasen.rasereiUnter && e.golemFleischStufe < 3) {
+      e.golemFleischStufe = 3;
+      e.golemSpezialCd = 0.35;
+      this.fx.welle(e.x, e.y, 118, 0xc01824);
+      this.fx.burst(e.x, e.y, 0xc01824, 34, 300);
+      this.fx.float(e.x, e.y - e.r - 50, 'LETZTE RASEREI', '#ff5048');
+      this.sfx.play('boss_slam', 1);
+    }
+  }
+
+  private zeigeGolemFleischverlust(e: Enemy, arm: boolean): void {
+    const teile = arm ? 7 : 10;
+    for (let i = 0; i < teile; i++) {
+      const a = (i / teile) * Math.PI * 2 + Math.random() * 0.45;
+      const distanz = (arm ? 38 : 24) + Math.random() * (arm ? 54 : 42);
+      const teil = this.add.ellipse(e.x, e.y - 10, 5 + Math.random() * 8, 3 + Math.random() * 5,
+        i % 4 === 0 ? 0xd8c5a0 : i % 2 === 0 ? 0x8f111b : 0x4f080d, 0.96)
+        .setDepth(e.y + 2).setAngle(Math.random() * 180);
+      this.tweens.add({
+        targets: teil,
+        x: e.x + Math.cos(a) * distanz,
+        y: e.y + Math.sin(a) * distanz * 0.48 + 8,
+        angle: teil.angle + 180 + Math.random() * 240,
+        duration: 430 + Math.random() * 360,
+        ease: 'Quad.Out',
+      });
+      this.time.delayedCall(25_000 + Math.random() * 10_000, () => {
+        if (!teil.active) return;
+        this.tweens.add({ targets: teil, alpha: 0, duration: 1400, onComplete: () => teil.destroy() });
+      });
+    }
+    if (!arm) {
+      this.fx.burst(e.x, e.y - 8, 0x8f111b, 22, 210);
+      return;
+    }
+    // Deutlich lesbarer abgetrennter Arm: Fleischmasse, Hand und heller
+    // Knochenstumpf bleiben mehrere Sekunden auf dem Boden liegen.
+    const armTeil = this.add.container(e.x, e.y - 16).setDepth(e.y + 3);
+    const oberarm = this.add.ellipse(0, 0, 34, 13, 0x651018, 1).setStrokeStyle(2, 0x2a0508);
+    const hand = this.add.ellipse(18, 2, 14, 11, 0x7e141d, 1).setStrokeStyle(1, 0x2a0508);
+    const knochen = this.add.rectangle(-17, 0, 9, 5, 0xd3c29c, 1).setStrokeStyle(1, 0x5a3828);
+    armTeil.add([oberarm, hand, knochen]);
+    const wurf = e.visualDir8 * (Math.PI / 4) + Math.PI * 0.55;
+    this.tweens.add({
+      targets: armTeil, x: e.x + Math.cos(wurf) * 76, y: e.y + Math.sin(wurf) * 30 + 10,
+      angle: 110, duration: 760, ease: 'Quad.Out',
+    });
+    this.time.delayedCall(38_000, () => {
+      if (!armTeil.active) return;
+      this.tweens.add({ targets: armTeil, alpha: 0, duration: 1800, onComplete: () => armTeil.destroy() });
+    });
+    this.fx.burst(e.x, e.y - 14, 0x9f1019, 34, 260);
   }
 
   protected gainSchoolUse(school: 'nahkampf' | 'zauberei' | 'bogen'): void {
@@ -1759,8 +1889,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
           if (leiche.active) leiche.setTexture(GOLEM.atlasKey, golemFrame('death', e.visualDir8, frame));
         });
       }
-      this.time.delayedCall((GOLEM.frames.death + 1) * (1000 / GOLEM.fps.death), () => {
-        this.tweens.add({ targets: leiche, alpha: 0, duration: 500, onComplete: () => leiche.destroy() });
+      this.time.delayedCall((GOLEM.frames.death + 1) * (1000 / GOLEM.fps.death) + GOLEM.leichenDauerS * 1000, () => {
+        this.tweens.add({ targets: leiche, alpha: 0, duration: 1000, onComplete: () => leiche.destroy() });
       });
       this.fx.burst(e.x, e.y, 0x7d0b16, 32, 210);
       this.cameras.main.shake(170, 0.006);
@@ -1839,7 +1969,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
     if (result === 'parried') {
       this.fx.float(this.px, this.py - 22, MELDUNGEN.pariert, '#f0d878');
-      if (!e.boss) e.stun = BLOCK.parryStunS;
+      if (!e.boss && e.type !== 'golem') e.stun = BLOCK.parryStunS;
       this.applyHitstop(HITSTOP_MS.parry);
       this.fx.burst(this.px + Math.cos(aTo) * 14, this.py + Math.sin(aTo) * 14, 0xf0e8c0, 14, 220);
       this.sfx.play('parade');
@@ -2521,7 +2651,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         this.fx.float(this.px, this.py - 30, 'KRIEGSSCHREI', '#f0e08a');
         for (const e of [...this.enemies]) {
           if (Math.hypot(e.x - this.px, e.y - this.py) < fx.radius + e.r && !e.boss) {
-            e.stun = Math.max(e.stun, fx.stunS);
+            if (e.type !== 'golem') e.stun = Math.max(e.stun, fx.stunS);
           }
         }
         this.sfx.play('rolle');
@@ -3052,6 +3182,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.updateTodesszene(dt);
       return dt;
     }
+    this.golemLaehmungT = Math.max(0, this.golemLaehmungT - dt);
+    const vomGolemGelaehmt = this.golemLaehmungT > 0;
     // Offene Fenster/Dialoge pausieren die Welt (Referenz-Verhalten)
     if (this.uiBlocked()) {
       this.hintText.setVisible(false);
@@ -3061,24 +3193,24 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
     // Kampfzustand fortschreiben; gepufferte Angriffe feuern hier
     const step = stepCombat(this.combat, dt);
-    if (step.attack) this.executeAttack(step.attack);
+    if (step.attack && !vomGolemGelaehmt) this.executeAttack(step.attack);
     const attackHeld = this.mouseDown || (this.touch?.attackHeld && this.weaponClass() !== 'bogen');
-    if (attackHeld && !this.uiBlocked() && !this.zielModus) this.tryLight();
+    if (attackHeld && !vomGolemGelaehmt && !this.uiBlocked() && !this.zielModus) this.tryLight();
 
     // Bewegung (Tastatur + Touch-Joystick). Die Frei-Kamera (Dev) sperrt die
     // Held-Bewegung, weil dieselben Tasten dann die Kamera scrollen.
     let dx = 0, dy = 0;
-    if (!this.bewegungGesperrt()) {
+    if (!vomGolemGelaehmt && !this.bewegungGesperrt()) {
       if (this.keysDown['w'] || this.keysDown['arrowup']) dy -= 1;
       if (this.keysDown['s'] || this.keysDown['arrowdown']) dy += 1;
       if (this.keysDown['a'] || this.keysDown['arrowleft']) dx -= 1;
       if (this.keysDown['d'] || this.keysDown['arrowright']) dx += 1;
     }
-    if (this.touch && !this.bewegungGesperrt()) {
+    if (!vomGolemGelaehmt && this.touch && !this.bewegungGesperrt()) {
       dx += this.touch.joyX;
       dy += this.touch.joyY;
     }
-    const reitet = this.updateReitbewegung(dt);
+    const reitet = !vomGolemGelaehmt && this.updateReitbewegung(dt);
     if (!reitet && this.combat.action === 'roll') {
       this.movePlayer(this.rollVx * dt, this.rollVy * dt);
       this.rollLight -= dt;
@@ -3642,7 +3774,15 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       else if (e.sprite.alpha !== 1) e.sprite.setAlpha(1);
       if (!istGolem && e.boss) e.sprite.setScale(1.5);
       else if (!istGolem && e.elite) e.sprite.setScale(1.25);
-      if (e.hitFlash > 0) e.sprite.setTintFill(0xffffff);
+      if (istGolem) {
+        // Keine weisse Standard-Trefferlampe. Die Verletzungsstufen werden
+        // dauerhaft dunkler/roher; unter 5% pulst die letzte Raserei rot.
+        if (e.golemFleischStufe >= 3) e.sprite.setTint(Math.sin(e.visualTime * 13) > 0 ? 0xd07070 : 0x8f3038);
+        else if (e.golemFleischStufe === 2) e.sprite.setTint(0x74383e);
+        else if (e.golemFleischStufe === 1) e.sprite.setTint(0x9a5558);
+        else if (gruselT) e.sprite.setTint(gruselT);
+        else e.sprite.clearTint();
+      } else if (e.hitFlash > 0) e.sprite.setTintFill(0xffffff);
       else if (gruselT) e.sprite.setTint(gruselT);
       else e.sprite.clearTint();
     }
@@ -3726,6 +3866,34 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
           g.fillStyle(0x6a5a3a, 1);
           g.fillCircle(bx - Math.cos(sp.ang) * 7, by - Math.sin(sp.ang) * 7, 1.5);
         }
+      }
+      if (e.type === 'golem' && e.golemTelegraphArt && e.windup > 0) {
+        const radius = e.golemTelegraphArt === 'rundum' ? 96
+          : e.golemTelegraphArt === 'welle' ? 122
+          : e.golemTelegraphArt === 'stampf' ? 138 : 158;
+        const puls = 0.52 + Math.abs(Math.sin(time * 10)) * 0.34;
+        const farbe = e.golemTelegraphArt === 'stampf' ? 0xd3a06f
+          : e.golemTelegraphArt === 'zorn' ? 0xff3028 : 0xb5222c;
+        g.lineStyle(e.golemTelegraphArt === 'zorn' ? 4 : 3, farbe, puls);
+        g.strokeCircle(e.x, e.y, radius);
+        g.fillStyle(farbe, 0.055 + puls * 0.035);
+        g.fillCircle(e.x, e.y, radius);
+      }
+      if (e.type === 'golem' && e.golemFleischStufe >= 1) {
+        // Zusaetzliche helle Knochen lesen sich auch auf dunklem Spielboden.
+        g.lineStyle(2.2, 0xd7c7a3, 0.95);
+        g.lineBetween(e.x - 9, e.y - 23, e.x + 7, e.y - 19);
+        g.lineBetween(e.x - 10, e.y - 17, e.x + 8, e.y - 13);
+        g.lineBetween(e.x - 8, e.y - 11, e.x + 7, e.y - 7);
+        g.lineStyle(1.2, 0x5b1518, 1);
+        g.lineBetween(e.x - 2, e.y - 26, e.x - 1, e.y - 5);
+      }
+      if (e.type === 'golem' && e.golemArmVerloren) {
+        const rechts = [0, 1, 2, 7].includes(e.visualDir8);
+        const sx = e.x + (rechts ? 23 : -23);
+        g.fillStyle(0x430408, 1); g.fillCircle(sx, e.y - 20, 7);
+        g.fillStyle(0xd8c6a0, 1); g.fillRect(sx - 3, e.y - 22, 6, 4);
+        g.lineStyle(2, 0xa01018, 0.95); g.strokeCircle(sx, e.y - 20, 8);
       }
       // R131 (Autor: rote Angriffs-Ringe weg): nur zeichnen, wenn eingeschaltet.
       if (e.windup > 0 && getSettings().gegnerWindupRing === true) {

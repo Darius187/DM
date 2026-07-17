@@ -1525,16 +1525,39 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
 - Alle 440 Richtungsframes fuer Idle, Lauf, Schlag, Treffer und Tod wurden aus
   Blender 5.1 neu gerendert und in den Phaser-Atlas gepackt. Die editierbare
   Szene liegt als `C:/Obsidian/DM/ravensmoor-flesh-golem.blend` bereit.
-- F10 > GOLEM hat persistente Live-Regler fuer Gesamtgroesse, Breite, Hoehe und
+- F10 > GEGNER hat beim Abschnitt MENSCHENGOLEM persistente Live-Regler fuer Gesamtgroesse, Breite, Hoehe und
   Bodenanker sowie Kopieren und Zuruecksetzen. Die Regler wirken sofort auf
   lebende Menschengolems und werden beim Erzeugen ihrer Todesanimation
   uebernommen. Trefferkreis und Kampfreichweite bleiben bis zur Endabnahme
   absichtlich unveraendert.
-- Browser-Abnahme: GOLEM-Tab sichtbar, Groessenregler korrekt mit Standardwerten
+- Browser-Abnahme: GEGNER-Tab sichtbar, Groessenregler korrekt mit Standardwerten
   0.92 / 1.00 / 1.00 / 0.810; keine Browserfehler. TypeScript, Build und 59
   Testdateien / 379 Tests gruen.
-- Nachtrag HP-Testregler: F10 > GOLEM bietet `Leben (RTS-Test)` von 100 bis
+- Nachtrag HP-Testregler: F10 > GEGNER bietet `Leben (RTS-Test)` von 100 bis
   20.000 HP in 100er-Schritten. Der Wert wird gespeichert, fuer neue
   RTS-Menschengolems verwendet und setzt bereits lebende Golems sofort auf den
   neuen Maximalwert mit voller Heilung. Browser-Anzeige und fehlerfreie Konsole
   geprueft.
+
+## Menschengolem - standfeste Kampfphasen und sichtbare Zerlegung
+- Die normale Gegner-Trefferreaktion ist fuer den Menschengolem abgeschaltet:
+  kein weisses Aufleuchten, kein Treffer-Rueckzug, kein Hammer-Schub und keine
+  normale Betäubung. Blut- und Fleischfeedback bleibt erhalten.
+- Eigene HP-Kampfphasen: ueber 70% gelegentlicher Rundumschlag; ab 70% statt
+  dessen Fleischwelle mit starkem Flaechen-Rueckstoss; ab 50% zusaetzlicher
+  Bodenstampfer mit 1,45 s Laehmung; unter 5% kombinierte letzte Raserei mit
+  allen Flaecheneffekten. Jeder Spezialangriff hat einen grossen sichtbaren
+  Warnkreis.
+- Sichtbarer Zerfall: ab 30% reissen Fleischstuecke heraus, weitere Knochen
+  liegen frei und die Brocken bleiben 25 bis 35 Sekunden auf dem Boden. Ab 15%
+  wird ein Arm richtungsabhaengig aus dem Atlasbild entfernt; der abgetrennte
+  Arm mit Knochenstumpf bleibt 38 Sekunden liegen und der Golem verursacht nur
+  noch halben Schaden. Unter 5% pulst das verbleibende Gewebe dunkelrot.
+- Die Todesanimation bleibt komplett sichtbar; danach liegt der Leichnam sieben
+  Sekunden am Boden und blendet erst anschliessend langsam aus.
+- Dev-Konsole: `GOLEM` wurde zu `GEGNER`. Darin steht der Menschengolem als
+  erster Gegnertyp mit Groessen-/HP-Reglern und Direktknoepfen fuer 100, 70, 50,
+  30, 15 und 4 Prozent. Weitere Gegner koennen dort als eigene Abschnitte folgen.
+- Browser-geprueft: 30%-Fleischverlust, 15%-Armverlust, 4%-Raserei sowie
+  50%-Stampfer-Telegraph und Treffer funktionieren; keine Konsolenfehler.
+  TypeScript, Build und 59 Testdateien / 380 Tests gruen.
