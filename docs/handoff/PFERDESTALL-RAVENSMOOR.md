@@ -25,6 +25,11 @@ dem Tor sichtbar bleiben kann.
 - Pferd 1 bis 4: Manifest-Keys `stall_1` bis `stall_4`
 - Geschlossen: Frame 1
 - Offen: Frame 30
+- Alle fuenf Tueren und Tore schlagen nach aussen in den Vorbereich auf.
+- Die vier Pferdeoeffnungen sind im offenen Zustand ohne feste Schwelle und
+  ohne Fassadenriegel frei. Einzelne flache Erdauffahrten verbinden den
+  Vorbereich mit dem Stallboden; nur das bewegliche Torblatt liegt in der
+  Oeffnung.
 - Pferde duerfen das Tor erst ab Tuerzustand `0.82` passieren.
 - Die Trigger `TRIGGER_STALL_1` bis `TRIGGER_STALL_4` liegen direkt in den
   Pferdeoeffnungen. Die dynamische Tuerkollision bleibt im geschlossenen Zustand
