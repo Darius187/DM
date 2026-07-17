@@ -1456,3 +1456,37 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
 - tsc fehlerfrei, 57 Testdateien / 368 Tests gruen (4 neue Marsch-Tests).
 - OFFEN (Autor-Frage): WIE ruft der Graf - automatisch oder per Bote?
   Vorschlag steht in OFFENE-FRAGEN.md (benannter Reiter, abfangbar).
+
+## Runde 143-145 - Rekrutierung, Kampf-Fix, Tod ohne Resets
+- R143 REKRUTIERUNG (Dok 03, 2.3 - Manor Lords): Bauern-Rekrut kostet 40 Gold
+  (Dorfkasse zuerst, Rest zahlt der Held) + EINE Waffe aus dem Dorf-Lager
+  (die Schmiede-Kette schliesst sich) + EINEN ARBEITER. Die Tagesproduktion
+  (inkl. Holzfaeller) skaliert mit der Bevoelkerung - jeder Soldat macht das
+  Dorf spuerbar aermer. Soeldner: 150 Gold, kein Arbeiter, aber Moral-Malus
+  und Desertion bei Flucht (endgueltig weg, NICHT im Gefallenen-Buch).
+  Heer-Deckel = Bevoelkerung/2. AUSHEBUNG im BEFEHLE-Tab; der Neue tritt der
+  Garnison von Ravensmoor bei (steht er beim Helden, tritt er sichtbar an).
+  Browser-gemessen: 30+10 Gold gebucht, Waffe raus, Bevoelkerung 30->29,
+  "Kaspar der Stille" angetreten; ohne Waffe blockt es; Obergrenze greift.
+- R144 KAMPF-FIX (Autor-Meldung "Soldaten stehen bloed rum und wehren sich
+  nicht"): Ursache gefunden und im Browser REPRODUZIERT (3 Garnisons-Soldaten
+  + Monster, 20s: wach 0/3) - das Weck-System (Team-Alarm, Gegner-in-Sicht)
+  und die Moral liefen NUR im RTS-Modus; Garnisonen stehen aber immer auf der
+  Karte. Jetzt laufen beide in jedem Modus (Moral nur, wenn Truppen beteiligt -
+  das Dungeon-ARPG-Gefuehl bleibt unveraendert). Dazu: beim RTS-Einstieg
+  uebernimmt die Befehls-Schicht stehende Garnisonen (anwaehlbar/steuerbar),
+  Nachzuegler melden sich mitten im Gefecht selbst an. DASSELBE Repro-Skript
+  danach: wach 3/3, Monster von 32 auf 8 HP heruntergekaempft, Moral live.
+  Rueckweg getestet: RTS an->aus->an ohne Doppel-Fuehrung.
+- R145 TOD OHNE RESETS (Autor-Order): Tod kostet nur noch 10% Gold (vorher
+  15%). Lebende Monster merken sich Wunden UND Stellung je Karte - beim
+  Wiederkommen (auch nach dem Tod) stehen sie verwundet da, wo sie standen.
+  Tote bleiben tot (R47), geleerte Ebenen bleiben leer (R40), andere Karten
+  bleiben unberuehrt. Browser-gemessen: Monster auf HP 9 geschlagen ->
+  Kartenwechsel hin/zurueck -> HP 9 an gemerkter Stelle; Tod mit 100 Gold ->
+  Erwachen mit 90 auf derselben Karte, Verwundeter noch da, Toter noch tot.
+- OFFEN/GEFUNDEN: der Monster-Einfall referenziert noch das ARCHIV-Dorf
+  (village) - im neuen Ravensmoor feuert kein Einfall, und ein Tod waehrend
+  eines Einfalls liesse die Angreifer verpuffen. Wegen der ARCHIV-Regel nicht
+  angefasst - Vorschlag "Einfall-Umzug" steht in OFFENE-FRAGEN.md.
+- tsc fehlerfrei, 59 Testdateien / 378 Tests gruen (8 neue Rekrutierungs-Tests).
