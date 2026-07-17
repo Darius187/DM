@@ -234,6 +234,15 @@ export const ZIEL_SPERRE = {
   maxVerfolgung: 560,     // weiter entfernte gesperrte Ziele werden losgelassen
 } as const;
 
+// R142 (Autor, Jagged-Alliance-Prinzip): das Heer marschiert KARTENWEISE
+// ueber die Oberwelt - sichtbar, wenn der Held zusieht, sonst abstrakt.
+export const MARSCH = {
+  dauerJeKarteS: 75,     // Sekunden je Karten-Teilstrecke (Spielgefuehl-Regler)
+  grafTrupp: 6,          // Kopfstaerke einer Grafen-Verstaerkung
+  grafStart: 'start',    // die Verstaerkung betritt die Welt am Waldrand (ganz links erschlossen)
+  zielStadt: 'stadt',    // ... und zieht nach Ravensmoor
+} as const;
+
 // Einheiten-Erfahrung: Veteranen schlagen härter und halten stand.
 export const RTS_RANG = {
   killsProRang: 3,

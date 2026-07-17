@@ -104,6 +104,10 @@ export class UIPanels {
   // voller Kachel-Auflösung - für die Klick-Vergrößerung im KARTE-Tab.
   getGebietGross: ((id: string) => { w: number; h: number; farben: number[][] }) | null = null;
   private karteGross: string | null = null;   // id des vergrößerten Gebiets (null = Raster)
+  // R142: Truppen-Verlegung auf der Karte: Quelle waehlen (⚔-Schild), Menge,
+  // dann Ziel-Karte anklicken.
+  private truppenQuelle: string | null = null;
+  private truppenMenge: number = 99;
   toggleKarteDev: (() => void) | null = null;
   // Aufgedeckte Karte der AKTUELLEN Ebene (Runde 53, Autorwunsch): zeigt das
   // Erkundete samt Treppen (hinab/hinauf). null = keine (Dorf/Wald, nicht dunkel).
@@ -111,8 +115,11 @@ export class UIPanels {
   private hauptTab: 'held' | 'faehigkeiten' | 'aufgaben' | 'album' | 'statistik' | 'kontakte' | 'karte' | 'ebene' | 'heer' = 'held';
   // R87: Umschalten in den RTS-Modus (WorldScene hängt sich hier ein)
   onRtsModus?: () => void;
-  // R141 (2.1): Blick ins persistente Heer (Roster) - nur lesen.
-  onGetArmee?: () => { einheiten: Array<{ id: number; name: string; typ: string; hp: number; kills: number }>; gefallene: string[] };
+  // R141/R142: Blick ins persistente Heer (Roster + Standorte + Maersche).
+  onGetArmee?: () => { einheiten: Array<{ id: number; name: string; typ: string; hp: number; kills: number; ort: string }>; gefallene: string[]; maersche: Array<{ ids: number[]; route: string[]; beiKarte: number }> };
+  // R142: Trupps kartenweise verlegen (Jagged-Alliance-Prinzip). Gibt die
+  // tatsaechlich losgeschickte Kopfzahl zurueck.
+  onSendeTruppen?: (von: string, nach: string, anzahl: number) => number;
 
   // Fenster direkt auf einem Reiter öffnen (B = Album)
   openTab(tab: 'held' | 'album' | 'statistik'): void {
@@ -747,7 +754,22 @@ export class UIPanels {
       return;
     }
     this.karteGross = null;   // Gebiet nicht (mehr) sichtbar -> zurück zum Raster
-    c.add(this.scene.add.text(16, 26, 'Erforschte Gebiete der Oberwelt - KLICK auf eine Karte vergrößert sie. Schwarz = unerforscht. Krypten liegen unter der Erde.', { fontFamily: 'serif', fontSize: '11.5px', color: '#8a7a5a' }));
+    const armee = this.onGetArmee?.();
+    const garnison = (id: string): number => armee ? armee.einheiten.filter((e) => e.ort === id && !armee.maersche.some((mm) => mm.ids.includes(e.id))).length : 0;
+    const unterwegs = (id: string): number => armee ? armee.maersche.filter((mm) => mm.route[mm.beiKarte] === id).reduce((n, mm) => n + mm.ids.length, 0) : 0;
+    c.add(this.scene.add.text(16, 26, this.truppenQuelle
+      ? `TRUPPEN VERLEGEN: ${this.truppenQuelle} → Ziel-Karte anklicken (Klick auf ⚔ bricht ab).`
+      : 'KLICK auf eine Karte vergrößert sie. ⚔ anklicken = Truppen dieser Karte verlegen. ⚑ = Trupp im Marsch.', { fontFamily: 'serif', fontSize: '11.5px', color: this.truppenQuelle ? '#e8b45a' : '#8a7a5a', wordWrap: { width: w - 200 } }));
+    // Mengen-Wahl, solange eine Quelle gewaehlt ist
+    if (this.truppenQuelle) {
+      let mx = 16;
+      for (const [lbl, n] of [['Alle', 99], ['Hälfte', -2], ['5 Mann', 5]] as Array<[string, number]>) {
+        const an = this.truppenMenge === n;
+        const kn = this.scene.add.text(mx, 44, lbl, { fontFamily: 'serif', fontSize: '11px', color: an ? '#f0d060' : '#d8cfb8', backgroundColor: an ? '#3a2a10' : '#221808', padding: { x: 7, y: 3 } }).setInteractive({ useHandCursor: true });
+        kn.on('pointerdown', () => { this.truppenMenge = n; this.build(); this.sfx.play('klick'); });
+        c.add(kn); mx += kn.width + 8;
+      }
+    }
     // Dev-Aufdeck-Knopf (in der finalen Version entfernbar)
     const dev = this.scene.add.text(w - 16, 6, info.aufgedeckt ? 'AUFDECKEN: AN (Dev)' : 'ALLES AUFDECKEN (Dev)', {
       fontFamily: 'serif', fontSize: '11px', color: info.aufgedeckt ? '#9ad86a' : '#d0a0a0', backgroundColor: '#1c1408', padding: { x: 8, y: 4 },
@@ -776,10 +798,33 @@ export class UIPanels {
         }
         g.lineStyle(1, 0x6e5a36, 1); g.strokeRect(bx, by, boxW, boxH);
         c.add(this.scene.add.text(bx + boxW / 2, by + boxH - 14, geb.name, { fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5, 0));
-        // Klick -> Großansicht dieses Gebiets (Runde 74)
+        // Klick -> Großansicht; laeuft eine Truppen-Verlegung, ist der Klick
+        // stattdessen das ZIEL (R142).
         const hit = this.scene.add.rectangle(bx, by, boxW, boxH, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true });
-        hit.on('pointerdown', () => { this.karteGross = geb.id; this.build(); });
+        hit.on('pointerdown', () => {
+          if (this.truppenQuelle && this.truppenQuelle !== geb.id) {
+            const vorhanden = garnison(this.truppenQuelle);
+            const n = this.truppenMenge === -2 ? Math.max(1, Math.floor(vorhanden / 2)) : Math.min(this.truppenMenge, vorhanden);
+            this.onSendeTruppen?.(this.truppenQuelle, geb.id, n);
+            this.truppenQuelle = null;
+            this.sfx.play('klick');
+            this.build();
+            return;
+          }
+          this.karteGross = geb.id; this.build();
+        });
         c.add(hit);
+        // R142: Truppen-Badges. ⚔N = Garnison (klickbar: Quelle waehlen/abwaehlen),
+        // ⚑N = Trupp zieht gerade ueber diese Karte.
+        const gz = garnison(geb.id);
+        if (gz > 0) {
+          const quelleAktiv = this.truppenQuelle === geb.id;
+          const badge = this.scene.add.text(bx + 4, by + 3, `⚔ ${gz}`, { fontFamily: 'serif', fontSize: '12px', color: quelleAktiv ? '#f0d060' : '#e8dcc0', backgroundColor: quelleAktiv ? '#5a3a10' : '#22180ad0', padding: { x: 5, y: 2 }, stroke: '#000', strokeThickness: 2 }).setInteractive({ useHandCursor: true });
+          badge.on('pointerdown', () => { this.truppenQuelle = quelleAktiv ? null : geb.id; this.truppenMenge = 99; this.sfx.play('klick'); this.build(); });
+          c.add(badge);
+        }
+        const uz = unterwegs(geb.id);
+        if (uz > 0) c.add(this.scene.add.text(bx + boxW - 4, by + 3, `⚑ ${uz}`, { fontFamily: 'serif', fontSize: '12px', color: '#9ad86a', backgroundColor: '#16220ed0', padding: { x: 5, y: 2 }, stroke: '#000', strokeThickness: 2 }).setOrigin(1, 0));
       } else {
         g.fillStyle(0x000000, 1); g.fillRect(bx, by, boxW, boxH);
         g.lineStyle(1, 0x2a2218, 1); g.strokeRect(bx, by, boxW, boxH);

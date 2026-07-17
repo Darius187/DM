@@ -1430,3 +1430,29 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
 - OFFEN: Fernkampf-Kills zaehlen noch nicht (Projektil kennt den Schuetzen
   nicht) - kleiner Folgeschritt; Auto-Aufstellen beim Feldzug siehe
   OFFENE-FRAGEN.
+
+## Runde 142 - Das Heer LEBT in der Welt (Autor-Order, Jagged-Alliance-Prinzip)
+- Autor-Korrektur eingearbeitet: KEIN "Heer aufstellen"-Knopf mehr. Das Heer
+  steht dauerhaft auf den Karten: jede Karte merkt sich, WER (namentlich) dort
+  stationiert ist und WO er stand. Beim Betreten stehen die Garnisonen an ihren
+  Stellungen und verteidigen selbststaendig (passiv bis Sichtkontakt/Alarm).
+- Graf-Verstaerkung betritt die Welt am WALDRAND (erste Karte ganz links) und
+  marschiert SICHTBAR von allein nach Ravensmoor (Kolonne zieht von Kante zu
+  Kante, Marsch-Uhr 75s je Karte, Chronik meldet Etappen und Ankunft).
+- Trupps verlegen im Karten-Tab: Quelle anklicken (Schwerter-Zahl je Karte),
+  Menge waehlen (Alle/Haelfte/5), Ziel anklicken - der Trupp marschiert
+  kartenweise (BFS ueber das Fuerstentum-Raster), mit oder ohne Held.
+- Wartfeuer ruft jetzt REAL: Reserve auf der Held-Karte sammelt sich am Feuer,
+  sonst rueckt die NAECHSTE Garnison aus (mit Ankunftszeit-Meldung).
+- Zwei Stolperfallen gefunden und gefixt: (1) der Feld-Sync lief beim
+  Kartenwechsel erst NACH der area-Zuweisung - das Heer "reiste heimlich mit
+  dem Helden mit"; (2) Sprites abgeschlossener Maersche zogen beim Sync die
+  Ankunft zurueck - ort wechselt jetzt AUSSCHLIESSLICH ueber die Marsch-Logik,
+  und Kolonnen, die die Karte laut Uhr verlassen, werden abgeraeumt.
+- Ende-zu-Ende im Browser gemessen (7 Sonden, alle gruen): Graf schickt 6 ->
+  6 sichtbar ziehend am Waldrand -> Etappen -> benannte 6er-Garnison in
+  Ravensmoor -> 3 nach Finsterhain verlegt -> Garnison 3/3 passiv dort ->
+  Wartfeuer auf leerer Karte holt die 3 aus Finsterhain (Marsch gestartet).
+- tsc fehlerfrei, 57 Testdateien / 368 Tests gruen (4 neue Marsch-Tests).
+- OFFEN (Autor-Frage): WIE ruft der Graf - automatisch oder per Bote?
+  Vorschlag steht in OFFENE-FRAGEN.md (benannter Reiter, abfangbar).

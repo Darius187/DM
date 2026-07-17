@@ -61,7 +61,7 @@ import { HoehlenLeben } from '../gfx/hoehlenLeben';
 import { KriegsnebelAnzeige, type SichtSet } from '../systems/kriegsnebel';
 import { buildKerkerArea } from '../world/kerkerArea';
 import { MINE } from '../data/mine';
-import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, MARSCH, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE } from '../data/wirtschaft';
@@ -96,7 +96,7 @@ import { seededRng, pick, ri } from '../logic/rng';
 import { respawnZiel } from '../logic/respawn';
 import { moralWert, fluchtEntscheidung, istEingekesselt, type MoralLage } from '../logic/moral';
 import { konterFaktor } from '../data/kampfarten';
-import { neueArmee, musterEin, schreibeZurueck, vermerkeGefallen, naechsteVerstaerkung, rangFuerKills, rangDmgF, einheitMaxHp, type Armee, type ArmeeEinheit } from '../logic/armee';
+import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, garnisonVon, marschVon, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, einheitMaxHp, type Armee, type ArmeeEinheit } from '../logic/armee';
 import { BODEN_STILE, bodenStilTextur } from '../gfx/bodenStile';
 import { WAND_STILE, wandStilFrontTextur, wandStilKroneTextur } from '../gfx/wandStile';
 import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type SaveData } from '../logic/save';
@@ -489,6 +489,7 @@ export class WorldScene extends CombatScene {
     this.panels.getKarte = () => this.getKarteInfo();
     this.panels.onRtsModus = () => { this.panels.closeAll(); this.toggleRtsModus(); };   // R87: HEER-Tab -> Schlachtfeld-Steuerung
     this.panels.onGetArmee = () => { this.syncArmeeVomFeld(); return this.armee; };      // R141: Roster im HEER-Tab
+    this.panels.onSendeTruppen = (von, nach, n) => this.sendeTruppen(von, nach, n);      // R142: Karten-Tab verlegt Trupps
     // R105: Dorf-Editor - Karten-Klick platziert/waehlt, Ziehen verschiebt/skaliert.
     this.input.on('pointerdown', this.dorfEditPointer);
     this.input.on('pointermove', this.dorfEditMove);
@@ -1842,6 +1843,10 @@ export class WorldScene extends CombatScene {
       this.playerSprite.setCrop().setVisible(true);
       this.logMsg('Das Pferd bleibt vor dem engen Zugang zurück.', '');
     }
+    // R142-Fix: den Feld-Zustand JETZT syncen, solange this.area noch die ALTE
+    // Karte ist - sonst bekaemen die Einheiten die neue Karte als Standort und
+    // das Heer "reiste heimlich mit dem Helden mit".
+    if (this.area) this.syncArmeeVomFeld();
     this.area = a;
     if (FUERSTENTUM.some((g) => g.id === id)) this.flags[`besucht_${id}`] = true; // Karte: erforscht
     // Erster Dungeon-Besuch beendet den Stimmungs-Dauerregen (Heavy-Rain-Gefühl,
@@ -1859,6 +1864,7 @@ export class WorldScene extends CombatScene {
     // Kachel (z. B. im Kirchenaltar), auf die nächste freie schieben -
     // sonst steckt der Held unlösbar fest
     this.entklemmeSpieler(a);
+    this.spawneGarnison(a);   // R142: hier stationierte + durchmarschierende Heer-Einheiten
     if (pferdKommtMit && this.reitPferd) {
       this.reitPferd.areaId = id;
       this.reitPferd.x = this.px;
@@ -3546,53 +3552,38 @@ export class WorldScene extends CombatScene {
     if (!this.rtsBattle) return;
     if (this.wartfeuerCd > 0) { this.logMsg(`Verstärkung sammelt sich noch (${Math.ceil(this.wartfeuerCd)}s).`, ''); return; }
     this.wartfeuerCd = LAGER_EFFEKT.wartfeuerCd;
-    // R141 (Dok 03, 2.4): Verstaerkung kommt aus dem ROSTER - Einheiten, die
-    // noch nicht auf dem Feld stehen. Kein Roster = kein Gratis-Nachschub.
-    // Sie trifft in SCHUEBEN ein (erst wenige, der Rest verzoegert) -
-    // die Dramaturgie von "durchhalten, bis sie kommen".
-    const aufFeld = new Set<number>();
-    for (const e of this.enemies) if (e.team === 'spieler' && e.armeeId !== null && e.hp > 0) aufFeld.add(e.armeeId);
-    const bereit = naechsteVerstaerkung(this.armee, aufFeld, 6);
-    if (!bereit.length) {
-      this.sfx.play('fehler');
-      this.logMsg('Das Signalfeuer lodert - doch niemand antwortet. Das Heer ist erschöpft.', 'bad');
-      return;
-    }
-    const stelleAuf = (einheiten: ArmeeEinheit[], versatz: number): void => {
-      einheiten.forEach((einheit, i) => {
+    // R142 (Autor): das Wartfeuer TELEPORTIERT nicht mehr - es ruft die
+    // naechstgelegene GARNISON, und die marschiert real los (kartenweise,
+    // sichtbar wenn man zusieht). Kein Heer irgendwo = niemand antwortet.
+    const hierFrei = garnisonVon(this.armee, this.area.id)
+      .filter((einheit) => !this.enemies.some((e) => e.armeeId === einheit.id && e.hp > 0));
+    if (hierFrei.length) {
+      // Reserve auf DIESER Karte (noch nicht im Feld): sammelt sich am Feuer.
+      hierFrei.slice(0, 6).forEach((einheit, i) => {
         this.naechsteEinheit = einheit;
-        this.rtsBattle?.spawn(einheit.typ, f.x - 40 + ((i + versatz) % 3) * 26, f.y + 30 + Math.floor((i + versatz) / 3) * 24);
+        this.rtsBattle?.spawn(einheit.typ, f.x - 40 + (i % 3) * 26, f.y + 30 + Math.floor(i / 3) * 24);
       });
       this.naechsteEinheit = null;
-    };
-    const erste = bereit.slice(0, Math.max(1, Math.ceil(bereit.length / 2)));
-    const rest = bereit.slice(erste.length);
-    stelleAuf(erste, 0);
+      this.sfx.play('fertigkeit_neu', 0.5);
+      this.logMsg(`Das Signalfeuer lodert - ${Math.min(6, hierFrei.length)} aus der Reserve sammeln sich.`, 'gold');
+      return;
+    }
+    // Naechste Karte mit Garnison suchen (BFS-Distanz) und ausruecken lassen.
+    let beste: { ort: string; dist: number } | null = null;
+    for (const einheit of this.armee.einheiten) {
+      if (einheit.ort === this.area.id || marschVon(this.armee, einheit.id)) continue;
+      const route = routeZu(this.kartenNachbarn, einheit.ort, this.area.id);
+      if (!route) continue;
+      if (!beste || route.length < beste.dist) beste = { ort: einheit.ort, dist: route.length };
+    }
+    if (!beste) {
+      this.sfx.play('fehler');
+      this.logMsg('Das Signalfeuer lodert - doch niemand antwortet. Kein Heer in Reichweite.', 'bad');
+      return;
+    }
+    const n = this.sendeTruppen(beste.ort, this.area.id, 6);
     this.sfx.play('fertigkeit_neu', 0.5);
-    this.logMsg(`Das Signalfeuer lodert - ${erste.length} aus dem Heer treffen ein${rest.length ? ', weitere folgen!' : '!'}`, 'gold');
-    if (rest.length) this.time.delayedCall(6000, () => {
-      if (!this.rtsBattle) return;   // Schlacht/Karte inzwischen vorbei
-      stelleAuf(rest, erste.length);
-      this.logMsg(`Der zweite Schub trifft ein - ${rest.length} weitere.`, 'gold');
-    });
-  }
-
-  // R141 (2.1): alle Roster-Einheiten, die nicht auf dem Feld stehen, beim
-  // Helden aufstellen (Halbkreis hinter ihm).
-  private stelleHeerAuf(): void {
-    if (!this.rtsBattle) return;
-    const aufFeld = new Set<number>();
-    for (const e of this.enemies) if (e.team === 'spieler' && e.armeeId !== null && e.hp > 0) aufFeld.add(e.armeeId);
-    const bereit = naechsteVerstaerkung(this.armee, aufFeld, 99);
-    if (!bereit.length) { this.logMsg('Niemand im Heer, der nicht schon im Feld steht.', ''); return; }
-    bereit.forEach((einheit, i) => {
-      const a = Math.PI * 0.6 + (i / Math.max(1, bereit.length - 1)) * Math.PI * 0.8;
-      this.naechsteEinheit = einheit;
-      this.rtsBattle?.spawn(einheit.typ, this.px + Math.cos(a) * (60 + (i % 3) * 24), this.py + Math.sin(a) * (60 + (i % 3) * 24));
-    });
-    this.naechsteEinheit = null;
-    this.sfx.play('klick');
-    this.logMsg(`${bereit.length} aus dem Heer treten an.`, 'gold');
+    this.logMsg(`Das Feuer ist gesehen worden - ${n} Mann rücken aus ${this.kartenName(beste.ort)} aus (Ankunft in ~${Math.round((beste.dist - 1) * MARSCH.dauerJeKarteS)}s).`, 'gold');
   }
 
   private aktuelleMoral(): number {
@@ -3734,16 +3725,10 @@ export class WorldScene extends CombatScene {
         c.add(kn); ax2 += kn.width + F(4);
       }
       y += F(26);
-      // R141 (2.1): das ROSTER aufs Feld rufen - Einheiten, die nicht schon
-      // draussen stehen, sammeln sich beim Helden.
-      const aufFeld2 = new Set<number>();
-      for (const e2 of this.enemies) if (e2.team === 'spieler' && e2.armeeId !== null && e2.hp > 0) aufFeld2.add(e2.armeeId);
-      const bereitZahl = this.armee.einheiten.filter((e2) => !aufFeld2.has(e2.id)).length;
-      const heerBtn = this.add.rectangle(F(8), y, w - F(16), F(26), bereitZahl ? 0x1a2418 : 0x120d07, 0.95).setOrigin(0).setStrokeStyle(1, bereitZahl ? 0x6a9a5a : 0x3a2f1e).setInteractive({ useHandCursor: true });
-      heerBtn.on('pointerdown', () => { this.stelleHeerAuf(); this.baueRtsLeiste(); });
-      c.add(heerBtn);
-      c.add(this.add.text(F(14), y + F(5), `⚑ Heer aufstellen (${bereitZahl} bereit)`, { fontFamily: 'serif', fontSize: `${F(10)}px`, color: bereitZahl ? '#9ad86a' : '#7a6a52' }));
-      y += F(32);
+      // R142: KEIN Aufstell-Knopf mehr (Autor) - das Heer LEBT auf den Karten.
+      // Truppen kommen ueber Maersche (Karten-Tab) oder das Wartfeuer.
+      c.add(this.add.text(F(8), y, `Garnison hier: ${garnisonVon(this.armee, this.area.id).length} Mann (Karte im Menü verlegt Truppen)`, { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#8a7a5a', wordWrap: { width: w - F(16) } }));
+      y += F(20);
       // Angriffsmarsch scharf schalten (A blieb der Kamera, R97): danach führt der
       // nächste Rechts-Befehl den Angriffsmarsch aus.
       const amBtn = this.add.rectangle(F(8), y, w - F(16), F(24), this.rtsAngriffArmed ? 0x2a1810 : 0x120d07, 0.9).setOrigin(0).setStrokeStyle(1, this.rtsAngriffArmed ? 0xd8804a : 0x3a2f1e).setInteractive({ useHandCursor: true });
@@ -3771,6 +3756,15 @@ export class WorldScene extends CombatScene {
   // setzen (Klick = spawnen, mehrfach; Rechtsklick beendet). Kein Auto-Spawn.
   private baueRtsTestTab(c: Phaser.GameObjects.Container, F: (s: number) => number, w: number, y0: number): void {
     let y = y0;
+    // R142: der GRAF schickt Verstaerkung - sie betritt die Welt am Waldrand
+    // (ganz links) und marschiert SELBSTSTAENDIG nach Ravensmoor. Wie der Ruf
+    // im fertigen Spiel ausgeloest wird (automatisch/Bote), entscheidet der
+    // Autor spaeter - der Knopf ist der Test-Ausloeser.
+    const grafBtn = this.add.rectangle(F(8), y, w - F(16), F(26), 0x1a2418, 0.95).setOrigin(0).setStrokeStyle(1, 0x6a9a5a).setInteractive({ useHandCursor: true });
+    grafBtn.on('pointerdown', () => { this.grafSchicktVerstaerkung(); this.baueRtsLeiste(); });
+    c.add(grafBtn);
+    c.add(this.add.text(F(14), y + F(5), `⚑ Der Graf schickt ${MARSCH.grafTrupp} Mann (marschieren vom Waldrand)`, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#9ad86a' }));
+    y += F(32);
     const knopf = (typ: RtsUnitTyp, farbe: number): void => {
       const d = RTS_UNIT_TYP[typ];
       const aktiv = this.rtsSpawnTyp === typ;
@@ -5422,7 +5416,8 @@ export class WorldScene extends CombatScene {
     for (const b of this.breakableEnts) b.img.destroy();
     this.breakableEnts = [];
     this.hittables = [];
-    this.syncArmeeVomFeld();   // R141 (2.1): Zustand der Truppe wandert ins Roster
+    // R141/R142: der Armee-Sync laeuft schon in goArea VOR der area-Zuweisung
+    // (hier waere this.area bereits die NEUE Karte - falscher Standort).
     // R99d: Schlacht endet beim Kartenwechsel (Enemy-Refs gehoeren zur alten Karte)
     if (this.rtsBattle) { this.rtsBattle.destroy(); this.rtsBattle = null; if (this.rtsLeiste) { this.rtsLeiste.destroy(); this.rtsLeiste = null; this.entferneRtsLauscher(); this.setzeFreiKamera(false); } }
     for (const e of this.enemies) e.sprite?.destroy();
@@ -7262,7 +7257,7 @@ export class WorldScene extends CombatScene {
     // R141 (2.1): jede Spieler-Einheit IST eine Roster-Einheit (benannte
     // Person, Permadeath). Verstaerkung/Aufstellen reicht eine bestimmte
     // Einheit herein (naechsteEinheit), sonst wird frisch eingemustert.
-    const einheit = this.naechsteEinheit ?? musterEin(this.armee, rtsTyp);
+    const einheit = this.naechsteEinheit ?? musterEin(this.armee, rtsTyp, this.area.id);
     this.naechsteEinheit = null;
     e.team = 'spieler';
     e.figurName = m.figur;
@@ -7430,8 +7425,157 @@ export class WorldScene extends CombatScene {
   // (Kartenwechsel + Speichern). Tote sind da schon endgueltig ausgetragen.
   private syncArmeeVomFeld(): void {
     for (const e of this.enemies) {
-      if (e.team === 'spieler' && e.armeeId !== null && e.hp > 0) schreibeZurueck(this.armee, e.armeeId, e.hp, e.kills);
+      if (e.team !== 'spieler' || e.armeeId === null || e.hp <= 0) continue;
+      schreibeZurueck(this.armee, e.armeeId, e.hp, e.kills);
+      // R142: Stellung merken - aber NUR fuer Einheiten, die logisch auf DIESER
+      // Karte stationiert sind. ort wechselt ausschliesslich ueber die Marsch-
+      // Logik; sonst zoege ein zurueckgebliebener Sprite eine Ankunft zurueck.
+      const einheit = this.armee.einheiten.find((x) => x.id === e.armeeId);
+      if (einheit && !marschVon(this.armee, einheit.id) && einheit.ort === this.area.id) einheit.pos = { x: e.x, y: e.y };
     }
+  }
+
+  // --- R142: DAS HEER LEBT IN DER WELT (Autor, Jagged-Alliance-Prinzip) -----
+  // Beim Betreten einer Karte stehen die hier stationierten Einheiten an ihren
+  // gemerkten Stellungen (Garnison) und VERTEIDIGEN selbststaendig - passiv,
+  // bis ein Feind in Sicht kommt (Team-Alarm weckt sie wie im Dungeon).
+  // Marschierende Trupps, deren Route gerade UEBER diese Karte fuehrt, ziehen
+  // SICHTBAR von Kante zu Kante.
+  private spawneGarnison(a: AreaData): void {
+    for (const einheit of garnisonVon(this.armee, a.id)) {
+      const pos = einheit.pos ?? { x: a.spawn.x + 40 + (einheit.id % 5) * 26, y: a.spawn.y + 30 + Math.floor((einheit.id % 15) / 5) * 26 };
+      this.naechsteEinheit = einheit;
+      const e = this.spawnVerbuendeter(einheit.typ, pos.x, pos.y);
+      if (e) { e.jagdZiel = null; e.passiv = true; }   // Wache: steht, kaempft ab Sichtkontakt
+    }
+    this.naechsteEinheit = null;
+    // Durchmarschierende: an der Herkunfts-Kante einsetzen, Ziel = Weiter-Kante.
+    for (const m of this.armee.maersche) {
+      if (m.route[m.beiKarte] !== a.id) continue;
+      const von = m.beiKarte > 0 ? m.route[m.beiKarte - 1] : null;
+      const nach = m.beiKarte < m.route.length - 1 ? m.route[m.beiKarte + 1] : null;
+      const start = this.kantenPunkt(a, von, true);
+      const ziel = this.kantenPunkt(a, nach, false);
+      m.ids.forEach((id2, i) => {
+        const einheit = this.armee.einheiten.find((x) => x.id === id2);
+        if (!einheit) return;
+        this.naechsteEinheit = einheit;
+        const e = this.spawnVerbuendeter(einheit.typ, start.x + (i % 3) * 24, start.y + Math.floor(i / 3) * 24);
+        if (e) { e.passiv = false; e.jagdZiel = { x: ziel.x, y: ziel.y }; }   // Kolonne zieht weiter
+      });
+      this.naechsteEinheit = null;
+    }
+  }
+
+  // Kanten-Punkt Richtung Nachbarkarte (aus dem FUERSTENTUM-Raster). eintritt:
+  // leicht INNERHALB der Kante (Einsetzpunkt), sonst AUF der Kante (Marschziel).
+  private kantenPunkt(a: AreaData, nachbarId: string | null, eintritt: boolean): { x: number; y: number } {
+    const mitte = { x: a.w * TILE / 2, y: a.h * TILE / 2 };
+    if (!nachbarId) return mitte;
+    const hier = FUERSTENTUM.find((g) => g.id === a.id);
+    const dort = FUERSTENTUM.find((g) => g.id === nachbarId);
+    if (!hier || !dort) return mitte;
+    const dx = Math.sign(dort.gx - hier.gx), dy = Math.sign(dort.gy - hier.gy);
+    const rand = eintritt ? TILE * 3 : TILE * 1.2;
+    const x = dx > 0 ? a.w * TILE - rand : dx < 0 ? rand : mitte.x;
+    const y = dy > 0 ? a.h * TILE - rand : dy < 0 ? rand : mitte.y;
+    return { x, y };
+  }
+
+  // FUERSTENTUM-Raster-Nachbarn (Abstand 1, nur waagerecht/senkrecht) - der
+  // Marsch-Graph der Oberwelt. Das Archiv-Dorf bleibt ausgenommen.
+  private kartenNachbarn = (id: string): string[] => {
+    const g = FUERSTENTUM.find((x) => x.id === id);
+    if (!g) return [];
+    return FUERSTENTUM
+      .filter((o) => o.id !== 'village' && Math.abs(o.gx - g.gx) + Math.abs(o.gy - g.gy) === 1)
+      .map((o) => o.id);
+  };
+
+  // Marsch-Uhr: laeuft IMMER (auch ohne RTS-Modus). Ankuenfte melden sich;
+  // erreicht ein Trupp die Karte des Helden, marschiert er sichtbar ein.
+  private updateMarsch(dt: number): void {
+    const ereignisse = marschTick(this.armee, dt, MARSCH.dauerJeKarteS);
+    for (const ev of ereignisse) {
+      const namen = ev.ids.map((id2) => this.armee.einheiten.find((x) => x.id === id2)?.name).filter(Boolean);
+      if (ev.typ === 'ankunft') {
+        this.logMsg(ev.karte === MARSCH.zielStadt
+          ? `Verstärkung in Ravensmoor eingetroffen: ${namen.length} Mann melden sich.`
+          : `${namen.length} Mann haben ${this.kartenName(ev.karte)} erreicht.`, 'gold');
+      }
+      // Betritt der Trupp die Karte des Helden (Teilstrecke ODER Ankunft):
+      // sichtbar an der Kante einsetzen. Verlaesst er sie laut Uhr, verschwinden
+      // seine Sprites - sonst stuende die Kolonne doppelt (hier UND druebem).
+      if (ev.karte === this.area.id) this.spawneMarschierer(ev.ids);
+      else this.entferneMarschierteSprites(ev.ids);
+    }
+  }
+
+  // Sprites eines Trupps abraeumen, der die Held-Karte abstrakt verlassen hat
+  // (kein Tod: Zustand wird vorher ins Roster geschrieben).
+  private entferneMarschierteSprites(ids: number[]): void {
+    const weg = this.enemies.filter((e) => e.team === 'spieler' && e.armeeId !== null && ids.includes(e.armeeId) && e.hp > 0);
+    if (!weg.length) return;
+    for (const e of weg) { schreibeZurueck(this.armee, e.armeeId!, e.hp, e.kills); e.sprite?.destroy(); }
+    this.enemies = this.enemies.filter((e) => !weg.includes(e));
+  }
+
+  private kartenName(id: string): string { return FUERSTENTUM.find((g) => g.id === id)?.name ?? id; }
+
+  private spawneMarschierer(ids: number[]): void {
+    for (const id2 of ids) {
+      const einheit = this.armee.einheiten.find((x) => x.id === id2);
+      if (!einheit) continue;
+      if (this.enemies.some((e) => e.armeeId === id2 && e.hp > 0)) continue;   // steht schon im Feld
+      const m = marschVon(this.armee, id2);
+      const von = m && m.beiKarte > 0 ? m.route[m.beiKarte - 1] : null;
+      const start = this.kantenPunkt(this.area, von, true);
+      this.naechsteEinheit = einheit;
+      const e = this.spawnVerbuendeter(einheit.typ, start.x + (id2 % 3) * 24, start.y + (id2 % 2) * 24);
+      if (e) {
+        if (m && m.beiKarte < m.route.length - 1) {
+          const ziel = this.kantenPunkt(this.area, m.route[m.beiKarte + 1], false);
+          e.passiv = false; e.jagdZiel = { x: ziel.x, y: ziel.y };
+        } else {
+          e.passiv = true; e.jagdZiel = null;   // angekommen: Garnison
+        }
+      }
+    }
+    this.naechsteEinheit = null;
+  }
+
+  // R142: die Grafen-Verstaerkung betritt die Welt am Waldrand und zieht von
+  // allein nach Ravensmoor - dort wird sie abgeholt oder weiterverlegt.
+  grafSchicktVerstaerkung(): void {
+    const typen: RtsUnitTyp[] = ['nahkampf', 'nahkampf', 'schild', 'bogen', 'bogen', 'nahkampf'];
+    const neue: number[] = [];
+    for (let i = 0; i < MARSCH.grafTrupp; i++) neue.push(musterEin(this.armee, typen[i % typen.length], MARSCH.grafStart).id);
+    const route = routeZu(this.kartenNachbarn, MARSCH.grafStart, MARSCH.zielStadt);
+    if (route && route.length > 1) starteMarsch(this.armee, neue, route);
+    this.logMsg(`Der Graf schickt ${neue.length} Mann - sie betreten das Land am ${this.kartenName(MARSCH.grafStart)} und ziehen nach Ravensmoor.`, 'gold');
+    if (this.area.id === MARSCH.grafStart) this.spawneMarschierer(neue);   // der Held sieht sie eintreffen
+  }
+
+  // R142: Trupps von Karte zu Karte schicken (Karten-Tab). Einheiten, die auf
+  // der HELD-Karte im Feld stehen, laufen sichtbar zur Kante los.
+  sendeTruppen(von: string, nach: string, anzahl: number): number {
+    const route = routeZu(this.kartenNachbarn, von, nach);
+    if (!route || route.length < 2) return 0;
+    const trupp = garnisonVon(this.armee, von).slice(0, anzahl);
+    if (!trupp.length) return 0;
+    this.syncArmeeVomFeld();
+    starteMarsch(this.armee, trupp.map((e) => e.id), route);
+    if (von === this.area.id) {
+      // sichtbar Richtung Kante ausruecken (die Marsch-Uhr uebernimmt abstrakt)
+      const ziel = this.kantenPunkt(this.area, route[1], false);
+      for (const e of this.enemies) {
+        if (e.team === 'spieler' && e.armeeId !== null && trupp.some((t) => t.id === e.armeeId)) {
+          e.passiv = false; e.fokusZiel = null; e.jagdZiel = { x: ziel.x, y: ziel.y };
+        }
+      }
+    }
+    this.logMsg(`${trupp.length} Mann marschieren von ${this.kartenName(von)} nach ${this.kartenName(nach)} (${route.length - 1} Etappen).`, 'gold');
+    return trupp.length;
   }
 
   protected override areaDark(): boolean { return this.area?.dark ?? false; }
@@ -10909,7 +11053,7 @@ export class WorldScene extends CombatScene {
     this.dorfFelder = wi?.felder ?? Array.from({ length: FELD_REGELN.anzahl }, () => ({ wachstum: 0 }));   // M5
     this.dorfVieh = wi?.vieh ?? viehStart();   // M5 (alte Staende: Startbestand)
     this.breschen = data.welt.breschen ?? [];
-    this.armee = data.welt.armee ?? neueArmee();   // R141 (alte Staende: leeres Heer)
+    this.armee = ruesteArmeeNach(data.welt.armee ?? neueArmee(), 'stadt');   // R141/R142 (alte Staende: leeres Heer, Bestand steht in Ravensmoor)
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
     recalc(p);
     p.hp = Math.min(p.stats.maxhp, s.hp || p.stats.maxhp);
@@ -12541,6 +12685,7 @@ export class WorldScene extends CombatScene {
     this.updateWachwerden();     // R100b: passive Einheiten wecken, wenn Gegner nah
     this.updateBelagerung(dt);   // R100: Monster nagen an Wehrbauten (Bunker)
     this.updateTurmBesatzung();  // R100: Turm-Insassen unsichtbar + Symbol
+    this.updateMarsch(dt);   // R142: das Heer marschiert IMMER (auch ohne RTS-Modus)
     if (this.rtsBattle) {
       // R97: Schlachtführer (Held) tot -> Schlacht verloren, Truppe flieht.
       if (this.playerDead && !this.rtsBattle.verloren) { this.rtsBattle.schlachtVerloren(); this.logMsg('SCHLACHT VERLOREN - der Schlachtführer ist gefallen, die Banner sinken.', 'bad'); }

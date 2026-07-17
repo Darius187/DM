@@ -2340,3 +2340,29 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   OFFENE-FRAGEN.
 - HEER-Tab zeigt das echte Roster (Name, Rang-Winkel, LP, Kills) + die
   letzten Gefallenen.
+
+## R142 - Das Heer LEBT in der Welt (Autor-Korrektur, Jagged-Alliance-Prinzip)
+- Der R141-Aufstell-Knopf ist WEG (Autor: "das Heer wird nicht aufgestellt").
+  Einheiten haben ort (Karten-Id) + pos (gemerkte Stellung); beim Betreten
+  einer Karte steht die GARNISON an ihren Stellungen und verteidigt
+  selbststaendig (passiv bis Sichtkontakt - der Team-Alarm weckt sie, die
+  Enemy-KI kaempft ohne Helden weiter; zieht der Held ab, wird der Stand
+  zurueckgeschrieben).
+- MAERSCHE: kartenweise ueber den FUERSTENTUM-Raster-Graphen (BFS-Route,
+  MARSCH.dauerJeKarteS je Etappe, Regler in data/rts.ts). Ist der Held auf
+  der Karte, zieht die Kolonne SICHTBAR von Kante zu Kante (kantenPunkt aus
+  den Raster-Richtungen); sonst laeuft der Marsch abstrakt weiter. Die
+  Marsch-Uhr tickt IMMER (auch ohne RTS-Modus).
+- GRAF-VERSTAERKUNG: betritt die Welt am Waldrand (MARSCH.grafStart) und
+  zieht selbststaendig nach Ravensmoor (MARSCH.zielStadt). Ausloeser vorerst
+  der TEST-Tab-Knopf - ob automatisch oder per Bote entscheidet der Autor
+  (OFFENE-FRAGEN).
+- WARTFEUER: teleportiert NICHTS mehr. Reserve auf derselben Karte sammelt
+  sich am Feuer; sonst rueckt die NAECHSTE Garnison (BFS-Distanz) real aus -
+  mit ehrlicher Ankunftszeit in der Meldung.
+- KARTEN-TAB: ⚔N = Garnison je Karte (Klick = Quelle waehlen), ⚑N = Trupp
+  im Marsch; Menge Alle/Haelfte/5, dann Ziel-Karte anklicken. Das ist die
+  Jagged-Alliance-Verlege-Geste des Autors ("10 Mann auf die Ostkarte").
+- Offscreen-Kaempfe (Monster greifen eine Garnison OHNE Helden an) werden
+  NICHT simuliert - es gibt derzeit keine Offscreen-Angriffe. Kommt mit
+  Aufklaerung/Feldzug (Dok 03 Rang 3).

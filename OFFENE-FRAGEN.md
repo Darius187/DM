@@ -325,3 +325,12 @@ mich fuer einen AUFSTELL-Knopf entschieden (BEFEHLE-Tab + Wartfeuer-Schuebe)
 statt Auto-Spawn - sonst marschiert die Armee auch durch Stadt und Dungeon.
 ZWISCHENLOESUNG: Heer folgt nur auf Befehl. FRAGE: Beim spaeteren FELDZUG
 (Akt 3, eigene Schlacht-Karten) automatisch aufstellen - reicht dir das?
+
+## R142 - Wie ruft der Graf?
+Die Verstaerkung marschiert jetzt real vom Waldrand nach Ravensmoor
+(Test-Knopf im TEST-Tab). Du liessest offen, WIE der Ruf ausgeloest wird.
+ZWISCHENLOESUNG: Test-Knopf. VORSCHLAG mit Spielgefuehl: ein BOTE - du
+schickst einen benannten Reiter von Ravensmoor zur Fuerstenburg (er
+marschiert real ueber die Karten, kann abgefangen werden!), und erst seine
+Ankunft loest die Grafen-Kolonne aus. Teuer erkauft, spuerbar, erzaehlt sich
+selbst. Alternative: automatisch alle N Tage mit der Abgabe. Was willst du?
