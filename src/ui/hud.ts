@@ -47,6 +47,9 @@ const SLOT_KAT_FARBE: Record<SlotKat, number> = {
   kampf: 0x5a86e0, zauber: 0xd0563a, bogen: 0x5ac06a, item: 0xb89a4a,
 };
 
+const HUD_TEXT_FONT = '"Palatino Linotype", "Book Antiqua", Georgia, serif';
+const HUD_ICON_FONT = '"Segoe UI Symbol", "Segoe UI Emoji", "Palatino Linotype", serif';
+
 const ORB_R = 42;
 // Getrennte Leisten (Runde 20): Tastatur-Slots 1-6/9/0/R/T und Maus-Slots M1-M5
 const KB_SLOTS = 10;
@@ -168,18 +171,35 @@ export class Hud {
     this.hpImg = scene.add.image(28 + ORB_R, h - 24 - ORB_R, 'orb_rot').setScrollFactor(0).setDepth(4601);
     this.mpImg = scene.add.image(scene.scale.width - 28 - ORB_R, h - 24 - ORB_R, 'orb_blau').setScrollFactor(0).setDepth(4601);
     const txt = (size: string, col = '#f3e6c8') => scene.add.text(0, 0, '', {
-      fontFamily: 'serif', fontSize: size, color: col, stroke: '#000000', strokeThickness: 3,
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(4603);
+      fontFamily: HUD_TEXT_FONT,
+      fontSize: size,
+      fontStyle: 'bold',
+      color: col,
+      stroke: '#0a0704',
+      strokeThickness: 2,
+      padding: { x: 4, y: 3 },
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(4603).setResolution(2);
     this.hpText = txt('15px');
     this.mpText = txt('15px');
-    this.potText = txt('10px', '#cbbd9c').setStroke('#000000', 2);
-    this.mpotText = txt('10px', '#cbbd9c').setStroke('#000000', 2);
+    this.potText = txt('10px', '#d8c7a2').setFontStyle('normal').setStroke('#0a0704', 1);
+    this.mpotText = txt('10px', '#d8c7a2').setFontStyle('normal').setStroke('#0a0704', 1);
     this.infoText = scene.add.text(0, 0, '', {
-      fontFamily: 'serif', fontSize: '12px', color: '#bfa86f', letterSpacing: 1,
-    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(4603);
+      fontFamily: HUD_TEXT_FONT,
+      fontSize: '12px',
+      color: '#d7c394',
+      stroke: '#0a0704',
+      strokeThickness: 1,
+      letterSpacing: 0,
+      padding: { x: 3, y: 2 },
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(4603).setResolution(2);
     this.mausInfo = scene.add.text(0, 0, '', {
-      fontFamily: 'serif', fontSize: '11px', color: '#bfa86f', letterSpacing: 1,
-    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(4603);
+      fontFamily: HUD_TEXT_FONT,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#3a2618',
+      letterSpacing: 0,
+      padding: { x: 3, y: 2 },
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(4603).setResolution(2);
 
     // ALLE Slots sind frei belegbar (Runde 26, "wie bei WoW"): Rechtsklick
     // öffnet die Aktionsliste, Ziehen tauscht zwei Slots
@@ -403,8 +423,11 @@ export class Hud {
       const s = this.slots[i];
       const x = this.slotX(i);
       const ico = this.scene.add.text(x, this.slotY(i), '', {
-        fontFamily: 'serif', fontSize: '19px', color: '#d8cfb8',
-      }).setOrigin(0.5).setScrollFactor(0).setDepth(4602);
+        fontFamily: HUD_ICON_FONT,
+        fontSize: '19px',
+        color: '#d8cfb8',
+        padding: { x: 2, y: 2 },
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(4602).setResolution(2);
       this.slotTexts.push(ico);
       const zone = this.scene.add.zone(x, this.slotY(i), 42, 42).setOrigin(0.5).setScrollFactor(0).setInteractive();
       zone.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showSlotTooltip(s, ptr));
@@ -443,8 +466,13 @@ export class Hud {
         this.hideTooltip();
         this.dragVon = i;
         this.dragGhost = this.scene.add.text(ptr.x, ptr.y, s.ico(), {
-          fontFamily: 'serif', fontSize: '24px', color: '#f0dfa0', stroke: '#000000', strokeThickness: 3,
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(6000);
+          fontFamily: HUD_ICON_FONT,
+          fontSize: '24px',
+          color: '#f0dfa0',
+          stroke: '#000000',
+          strokeThickness: 2,
+          padding: { x: 3, y: 3 },
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(6000).setResolution(2);
       });
       zone.on('drag', (ptr: Phaser.Input.Pointer) => this.dragGhost?.setPosition(ptr.x, ptr.y));
       zone.on('dragend', (ptr: Phaser.Input.Pointer) => this.endDrag(ptr));
@@ -675,8 +703,8 @@ export class Hud {
     bg.setInteractive();
     c.add(bg);
     c.add(this.scene.add.text(mx + padX, my + 8, `BELEGUNG ${s.key}  ·  klicken oder auf einen Slot ziehen`, {
-      fontFamily: 'serif', fontSize: '11px', color: '#c9a227', letterSpacing: 1,
-    }));
+      fontFamily: HUD_TEXT_FONT, fontSize: '11px', color: '#c9a227', letterSpacing: 0,
+    }).setResolution(2));
     const aktiv = (getSettings()[feld.store] as Record<string, string>)[feld.feld];
 
     spalten.forEach((sp, ci) => {
@@ -684,7 +712,9 @@ export class Hud {
       const katFarbe = '#' + SLOT_KAT_FARBE[sp.kat].toString(16).padStart(6, '0');
       if (ci > 0) c.add(this.scene.add.rectangle(cx - gap / 2, my + padT, 1, hdrH + maxRows * rowH, 0x3a2f1c).setOrigin(0));
       c.add(this.scene.add.rectangle(cx, my + padT + 2, 3, hdrH - 8, SLOT_KAT_FARBE[sp.kat]).setOrigin(0));
-      c.add(this.scene.add.text(cx + 8, my + padT, sp.titel, { fontFamily: 'serif', fontSize: '11px', color: katFarbe, letterSpacing: 1 }));
+      c.add(this.scene.add.text(cx + 8, my + padT, sp.titel, {
+        fontFamily: HUD_TEXT_FONT, fontSize: '11px', fontStyle: 'bold', color: katFarbe, letterSpacing: 0,
+      }).setResolution(2));
       let zy = my + padT + hdrH;
       for (const [id, ico, name] of sp.eintr) {
         const lvl = this.skillLevel(id);
@@ -693,11 +723,11 @@ export class Hud {
         const ruheFarbe = !gelernt ? grau : id === aktiv ? '#f0dca0' : katFarbe;
         const kurz = name.replace(/\s*\(.*\)$/, '');               // Klammer-Zusatz weg -> kompakt
         const eintrag = this.scene.add.text(cx + 4, zy, `${ico} ${kurz}${lvl ? `  ·${lvl}` : ''}`, {
-          fontFamily: 'serif', fontSize: '12px',
+          fontFamily: HUD_TEXT_FONT, fontSize: '12px',
           color: ruheFarbe,
           backgroundColor: id === aktiv ? '#221808' : undefined,
           padding: { x: 4, y: 1 },
-        }).setScrollFactor(0).setInteractive({ useHandCursor: true });
+        }).setScrollFactor(0).setResolution(2).setInteractive({ useHandCursor: true });
         eintrag.on('pointerover', () => eintrag.setColor(gelernt ? '#f8e8b8' : '#7a6f58'));
         eintrag.on('pointerout', () => eintrag.setColor(ruheFarbe));
         eintrag.on('pointerup', () => {
@@ -707,8 +737,9 @@ export class Hud {
         // Ziehen auf einen Slot der Aktionsleiste belegt jenen Slot (Autorwunsch)
         this.scene.input.setDraggable(eintrag);
         eintrag.on('dragstart', (ptr: Phaser.Input.Pointer) => {
-          this.popupGhost = this.scene.add.text(ptr.x, ptr.y, ico, { fontFamily: 'serif', fontSize: '22px', color: katFarbe })
-            .setOrigin(0.5).setScrollFactor(0).setDepth(5400);
+          this.popupGhost = this.scene.add.text(ptr.x, ptr.y, ico, {
+            fontFamily: HUD_ICON_FONT, fontSize: '22px', color: katFarbe, padding: { x: 2, y: 2 },
+          }).setOrigin(0.5).setScrollFactor(0).setDepth(5400).setResolution(2);
         });
         eintrag.on('drag', (ptr: Phaser.Input.Pointer) => this.popupGhost?.setPosition(ptr.x, ptr.y));
         eintrag.on('dragend', (ptr: Phaser.Input.Pointer) => {
@@ -743,7 +774,13 @@ export class Hud {
     let ty = 8;
     const texts: Phaser.GameObjects.Text[] = [];
     for (const [t2, col] of lines) {
-      const t = this.scene.add.text(10, ty, t2, { fontFamily: 'serif', fontSize: '12.5px', color: col, wordWrap: { width: 240 } });
+      const t = this.scene.add.text(10, ty, t2, {
+        fontFamily: HUD_TEXT_FONT,
+        fontSize: '12.5px',
+        color: col,
+        wordWrap: { width: 240 },
+        padding: { x: 1, y: 1 },
+      }).setResolution(2);
       texts.push(t);
       ty += t.height + 2;
     }
@@ -757,6 +794,19 @@ export class Hud {
   private hideTooltip(): void {
     this.tooltip?.destroy();
     this.tooltip = null;
+  }
+
+  private passeEinzeiligEin(
+    text: Phaser.GameObjects.Text,
+    inhalt: string,
+    basisGroesse: number,
+    minGroesse: number,
+    maxBreite: number,
+  ): void {
+    text.setText(inhalt).setFontSize(basisGroesse);
+    if (text.width <= maxBreite) return;
+    const groesse = Math.max(minGroesse, Math.floor(basisGroesse * maxBreite / text.width));
+    text.setFontSize(groesse);
   }
 
   update(extra: string): void {
@@ -787,12 +837,14 @@ export class Hud {
     this.mpImg.setVisible(true).setPosition(mx, my).setDisplaySize(86 * skala, 86 * skala).setAlpha(0.42 + 0.58 * Phaser.Math.Clamp(mpFrac, 0, 1));
     this.hpFrame.setVisible(true);
     this.mpFrame.setVisible(true);
-    const zahlGroesse = Math.max(14, Math.round(30 * skala));
+    const zahlGroesse = Math.max(16, Math.round(28 * skala));
     this.hpText.setFontSize(zahlGroesse).setPosition(hx, hy).setText(hpVal);
     this.mpText.setFontSize(zahlGroesse).setPosition(mx, my).setText(mpVal);
-    const trankGroesse = Math.max(9, Math.round(19 * skala));
-    this.potText.setFontSize(trankGroesse).setPosition(links + HUD_ORB_HP_X * skala + oh.x, oben + 181 * skala + oh.y).setText(potT);
-    this.mpotText.setFontSize(trankGroesse).setPosition(links + HUD_ORB_MP_X * skala + om.x, oben + 181 * skala + om.y).setText(mpotT);
+    const trankGroesse = Math.max(10, Math.round(18 * skala));
+    this.passeEinzeiligEin(this.potText, potT, trankGroesse, 9, (HUD_LIFE_W - 22) * skala);
+    this.potText.setPosition(links + HUD_ORB_HP_X * skala + oh.x, oben + 181 * skala + oh.y);
+    this.passeEinzeiligEin(this.mpotText, mpotT, trankGroesse, 9, (HUD_MANA_W - 18) * skala);
+    this.mpotText.setPosition(links + HUD_ORB_MP_X * skala + om.x, oben + 181 * skala + om.y);
 
     // Zwei getrennte Paneele (Runde 20): Tastenleiste und Maus-Leiste
     const panel = (a: number, b: number) => {
@@ -845,8 +897,9 @@ export class Hud {
       }
       const cdS = s.cdSek();
       this.slotTexts[i].setText(cdS > 0.5 ? String(Math.ceil(cdS)) : `${s.ico()}`)
+        .setFontFamily(cdS > 0.5 ? HUD_TEXT_FONT : HUD_ICON_FONT)
         .setColor(cdS > 0.5 ? '#e0b53a' : (s.farbe?.() ?? '#d8cfb8'))
-        .setFontSize(Math.max(14, Math.round(31 * skala)))
+        .setFontSize(Math.max(14, Math.round(28 * skala)))
         .setAlpha(locked ? 0.3 : cd > 0 ? 0.5 : 1)
         .setPosition(x, pressed ? y + Math.max(1, skala * 2) : y);
       // Tastenkürzel klein oben links
@@ -865,16 +918,27 @@ export class Hud {
       g.lineStyle(1, 0x8f806a, 0.72);
       g.strokeRoundedRect(statusX + 1, statusY + 1, statusW - 2, 38 * skala - 2, 2);
     }
-    this.infoText
-      .setFontSize(Math.max(9, Math.round(19 * skala)))
-      .setPosition(statusX + statusW / 2, statusY + 8 * skala)
-      .setText(extra);
+    this.passeEinzeiligEin(
+      this.infoText,
+      extra,
+      Math.max(10, Math.round(19 * skala)),
+      9,
+      statusW - 18 * skala,
+    );
+    this.infoText.setPosition(statusX + statusW / 2, statusY + 15 * skala);
     // Beschriftung ÜBER der Maus-Leiste, damit sie der Infozeile der
     // Tastenleiste nicht in die Quere kommt
+    this.passeEinzeiligEin(
+      this.mausInfo,
+      'MAUSTASTEN',
+      Math.max(10, Math.round(18 * skala)),
+      9,
+      (HUD_MOUSE_W - 44) * skala,
+    );
     this.mausInfo.setPosition(
       (this.slotX(KB_SLOTS) + this.slotX(this.slots.length - 1)) / 2,
-      oben + 10 * skala + ui.mausleiste.y,
-    ).setFontSize(Math.max(9, Math.round(20 * skala))).setText('MAUSTASTEN');
+      oben + 25 * skala + ui.mausleiste.y,
+    );
 
     // XP-Leiste
     const xw = Math.min(420, w * 0.42);
