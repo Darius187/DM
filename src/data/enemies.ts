@@ -41,6 +41,10 @@ export const ENEMIES: Readonly<Record<EnemyTypeId, EnemyDef>> = {
     name: 'Ratte', hpBase: 8, hpPerDepth: 2, dmgBase: 3, dmgPerDepth: 1,
     speedMin: 130, speedMax: 150, r: 7, col: '#5a4a3a', xpBase: 4, xpPerDepth: 1, aggro: 180,
   },
+  golem: {
+    name: 'Steingolem', hpBase: 2600, hpPerDepth: 120, dmgBase: 48, dmgPerDepth: 4,
+    speedMin: 30, speedMax: 30, r: 29, col: '#667058', xpBase: 520, xpPerDepth: 20, aggro: 560,
+  },
 };
 
 // Elite-Affixe (Referenz makeElite): 10% Chance, garantierter Drop höherer Stufe

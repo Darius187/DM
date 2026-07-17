@@ -11,6 +11,7 @@ import type { Dir } from '../gfx/fallbackArt';
 import { TUNING } from '../logic/tuning';
 import { PHYSIK, ANGRIFFSSLOTS } from '../data/kampf';
 import { MORAL } from '../data/rts';
+import { GOLEM } from '../data/golem';
 
 export interface EnemyHost {
   isSolidAt(x: number, y: number): boolean;
@@ -78,6 +79,9 @@ const PATTERNS: Partial<Record<EnemyTypeId, AttackPattern[]>> = {
     { id: 'hieb', windup: 0.42, weight: 3 },
     { id: 'doppelhieb', windup: 0.55, weight: 1 },
   ],
+  golem: [
+    { id: 'hieb', windup: 0.78, weight: 1 },
+  ],
 };
 
 // Positions-Audio je Typ (Hören vor Sehen, Masterprompt 4.3)
@@ -125,6 +129,14 @@ export class Enemy {
   brennDps = 0;      // Schaden pro Sekunde, solange brennT > 0
   brennTick = 0;     // Takt bis zum nächsten Brand-Schaden
   hitFlash = 0;
+  // Asset-Animation: von der KI getrennte Uhren, damit Lauf/Schlag/Treffer
+  // weich ablaufen und nicht an den vier alten Fallback-Frames hängen.
+  visualTime = 0;
+  visualMoveT = 0;
+  visualHitT = 0;
+  visualAttackT = 0;
+  visualAttackDauer = 0;
+  visualDir8 = 0;
   wobble: number;
   dir: Dir = 0;
   step = 0;
@@ -230,6 +242,7 @@ export class Enemy {
 
   // bei Treffern zurückweichen (Feedback-Runde 2)
   onHurt(): void {
+    if (this.type === 'golem') this.visualHitT = GOLEM.trefferDauerS;
     this.passiv = false;   // R100b: Schaden weckt eine passive Einheit
     this.schlaeft = false; // R118: Schaden weckt auch Schlafende
     if (this.boss) return;
@@ -340,6 +353,10 @@ export class Enemy {
     this.atkCd = Math.max(0, this.atkCd - dt);
     this.shootCd = Math.max(0, this.shootCd - dt);
     this.hitFlash = Math.max(0, this.hitFlash - dt);
+    this.visualTime += dt;
+    this.visualMoveT = Math.max(0, this.visualMoveT - dt);
+    this.visualHitT = Math.max(0, this.visualHitT - dt);
+    this.visualAttackT = Math.max(0, this.visualAttackT - dt);
     this.slowT = Math.max(0, this.slowT - dt);
     this.rootT = Math.max(0, this.rootT - dt);
     this.markedT = Math.max(0, this.markedT - dt);
@@ -375,6 +392,7 @@ export class Enemy {
     // Blickrichtung für das Sprite
     const ang = Math.atan2(py - this.y, px - this.x);
     this.dir = angleToDir(ang);
+    this.visualDir8 = angleToDir8(ang);
 
     // Wucht-Rückstoß (Runde 44): Hammer/Axt schleudern den Gegner zurück - er
     // gleitet mit Reibung aus, bevor die KI (nach dem kurzen Stun) übernimmt.
@@ -714,6 +732,10 @@ export class Enemy {
     // Schlagtempo-Regler (F10, Runde 27): höher = kürzeres Ausholen,
     // kürzere Pausen zwischen den Hieben
     this.windup = (windup ?? def?.windup ?? ENEMY_AI.meleeWindup) / (TUNING.gegnerSchlagtempo * this.schlagtempoF);
+    if (this.type === 'golem') {
+      this.visualAttackDauer = this.windup + GOLEM.schlagNachlaufS;
+      this.visualAttackT = this.visualAttackDauer;
+    }
     this.atkCd = (ENEMY_AI.meleeAtkCd + (id === 'hieb' ? 0 : 0.6)) / (TUNING.gegnerSchlagtempo * this.schlagtempoF);
     host.playSound('telegraph', 0.7);
   }
@@ -894,6 +916,7 @@ export class Enemy {
   }
 
   private advanceStep(dt: number): void {
+    this.visualMoveT = 0.22;
     this.stepT += dt;
     if (this.stepT > 0.14) {
       this.stepT = 0;

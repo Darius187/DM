@@ -3461,6 +3461,7 @@ export class WorldScene extends CombatScene {
         e.name = d.name;
         e.maxhp = d.hp; e.hp = d.hp;
         e.dmg = d.dmg;
+        e.speed = d.speed;
         e.schild = d.schild ?? false;
         e.schadensRed = d.schadensRed ?? 1;
         e.kampfTags = d.tags ?? [];
@@ -3691,7 +3692,7 @@ export class WorldScene extends CombatScene {
         y += F(34);
       }
       c.add(this.add.text(F(8), y + F(2), 'Bauwerk wählen -> mit der Maus\nplatzieren (Rechtsklick bricht ab).\nPalisade: ziehen für mehrere.', { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#6a5f4c', lineSpacing: 2 }));
-    } else {
+    } else if (this.rtsTab === 'befehle') {
       // BEFEHLE: Steuerungs-Umschalter + Formationen
       const heldMod = !this.devFreiKam;
       const modBtn = this.add.rectangle(F(8), y, w - F(16), F(28), 0x221808, 0.95).setOrigin(0).setStrokeStyle(1, 0x6a5636).setInteractive({ useHandCursor: true });
@@ -3776,7 +3777,7 @@ export class WorldScene extends CombatScene {
       const aktiv = this.rtsSpawnTyp === typ;
       const kn = this.add.rectangle(F(8), y, w - F(16), F(24), aktiv ? 0x3a2a12 : farbe, 0.9).setOrigin(0).setStrokeStyle(1, aktiv ? 0xc9a227 : 0x4a3a26).setInteractive({ useHandCursor: true });
       kn.on('pointerdown', () => { this.starteRtsSpawn(typ); this.sfx.play('klick', 0.5); this.baueRtsLeiste(); });
-      const rolle = d.heiler ? 'Heilt Verwundete' : d.reich > 100 ? 'Fernkampf (Bogen)' : d.reich > 32 ? 'Reiter (schnell, stark)' : 'Nahkampf (Schild/Schwert)';
+      const rolle = typ === 'e_golem' ? 'Schweres Monster (Steinpanzer)' : d.heiler ? 'Heilt Verwundete' : d.reich > 100 ? 'Fernkampf (Bogen)' : d.reich > 32 ? 'Reiter (schnell, stark)' : 'Nahkampf (Schild/Schwert)';
       const tip = `${d.name}\n${rolle}\nLeben ${d.hp} · Schaden ${d.dmg} · Reichweite ${d.reich} · Tempo ${d.speed}\nKämpft mit der Dungeon-Technik.`;
       kn.on('pointerover', () => this.zeigeBauTooltip(tip, c.x));
       kn.on('pointerout', () => this.versteckeBauTooltip());
@@ -3788,7 +3789,7 @@ export class WorldScene extends CombatScene {
     c.add(this.add.text(F(8), y, 'Eigene Truppen', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a', letterSpacing: 1 })); y += F(15);
     for (const t of ['schild', 'nahkampf', 'bogen', 'reiter'] as RtsUnitTyp[]) knopf(t, 0x16220f);
     c.add(this.add.text(F(8), y, 'Feind-Monster', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a', letterSpacing: 1 })); y += F(15);
-    for (const t of ['e_nah', 'e_bogen', 'e_elite'] as RtsUnitTyp[]) knopf(t, 0x221010);
+    for (const t of ['e_nah', 'e_bogen', 'e_elite', 'e_golem'] as RtsUnitTyp[]) knopf(t, 0x221010);
     const z = this.rtsBattle?.zaehlung() ?? { eigene: 0, feind: 0 };
     const loesch = this.add.text(F(8), y + F(2), `Eigene ${z.eigene} · Feind ${z.feind}  [alle entfernen]`, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a' }).setInteractive({ useHandCursor: true });
     loesch.on('pointerdown', () => { this.rtsBattle?.alleEntfernen(); this.brichRtsSpawnAb(); this.baueRtsLeiste(); });

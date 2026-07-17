@@ -44,6 +44,8 @@ import { steinWirkung } from '../logic/steinEffekte';
 import { blutTint } from '../logic/spuren';
 import { SPUREN } from '../data/welt';
 import { NOTIZEN } from '../data/texte';
+import { GOLEM, golemFrame } from '../data/golem';
+import { wendeGolemSpriteAn } from '../gfx/golemArt';
 
 export interface Projectile {
   x: number; y: number; vx: number; vy: number; r: number; dmg: number;
@@ -1349,7 +1351,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Treffer-Schema (Runde 12): armor_cut auf Gepanzerte (Tempelritter,
   // Schildträger), schwert_slice auf weiche Gegner - Fallback: alte Klänge
   private playHitSound(e: Enemy): void {
-    const gepanzert = e.type === 'templer' || e.schild;
+    const gepanzert = e.type === 'templer' || e.type === 'golem' || e.schild;
     if (gepanzert && this.sfx.playAtAbwechselnd('armor_cut', 2, e.x, e.y)) return;
     if (!gepanzert && this.sfx.playAtAbwechselnd('schwert_slice', 3, e.x, e.y)) return;
     this.sfx.playAt(e.type === 'skelett' || e.type === 'schuetze' ? 'treffer_knochen' : 'treffer_fleisch', e.x, e.y);
@@ -1654,7 +1656,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       }
     }
     // Treffer-Spritzer: Blut bei Fleisch, Knochenstaub bei Skeletten (Runde 34)
-    this.fx.burst(e.x, e.y, (e.type === 'skelett' || e.type === 'schuetze') ? 0xcfc4a8 : 0xa82020, 6, 120);
+    const trefferFarbe = e.type === 'golem' ? 0x82906c
+      : (e.type === 'skelett' || e.type === 'schuetze') ? 0xcfc4a8 : 0xa82020;
+    this.fx.burst(e.x, e.y, trefferFarbe, e.type === 'golem' ? 10 : 6, e.type === 'golem' ? 95 : 120);
+    if (e.type === 'golem') this.cameras.main.shake(55, 0.0015);
     this.playHitSound(e);
     // Lebensraub: nur ein Bruchteil je Punkt und Treffer (Runde 42), Bruchteile
     // werden gesammelt und als ganze HP gutgeschrieben - kein Voll-Heilen mehr.
@@ -1737,12 +1742,26 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // R113 Spuren: eine fleischige Nahkampf-Tötung aus der Nähe bespritzt den
     // Helden - die Figur wird sichtbar blutig und hinterlässt rote Tritte,
     // bis Regen oder Wasser es abwaschen. (Skelette/Schatten spritzen nicht.)
-    if (!knochen && e.type !== 'schatten' && getSettings().blood
+    if (!knochen && e.type !== 'schatten' && e.type !== 'golem' && getSettings().blood
       && this.weaponClass() !== 'bogen' && Math.hypot(e.x - this.px, e.y - this.py) < 70) {
       this.heldBlut = Math.min(1, this.heldBlut + SPUREN.blutProKill);
       this.blutSchrittRest = Math.max(this.blutSchrittRest, SPUREN.blutSchritte);
     }
-    if (e.sprite && getSettings().blood) {
+    if (e.type === 'golem' && e.sprite) {
+      const leiche = e.sprite;
+      e.sprite = null;
+      leiche.clearTint().setOrigin(0.5, GOLEM.ursprungY).setScale(GOLEM.spriteScale);
+      for (let frame = 0; frame < GOLEM.frames.death; frame++) {
+        this.time.delayedCall(frame * (1000 / GOLEM.fps.death), () => {
+          if (leiche.active) leiche.setTexture(GOLEM.atlasKey, golemFrame('death', e.visualDir8, frame));
+        });
+      }
+      this.time.delayedCall((GOLEM.frames.death + 1) * (1000 / GOLEM.fps.death), () => {
+        this.tweens.add({ targets: leiche, alpha: 0, duration: 500, onComplete: () => leiche.destroy() });
+      });
+      this.fx.burst(e.x, e.y, 0x82906c, 24, 190);
+      this.cameras.main.shake(170, 0.006);
+    } else if (e.sprite && getSettings().blood) {
       const leiche = e.sprite;
       e.sprite = null;
       leiche.setTintFill(knochen ? 0xe8e2d0 : 0xa01414);
@@ -1929,7 +1948,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     e.dmg = Math.round(e.dmg * TUNING.gegnerSchaden);
     e.speed *= TUNING.gegnerTempo;
     e.sprite = this.add.sprite(x, y, '__DEFAULT');
-    this.provider.applyFigure(e.sprite, e.figur(), 0, 0);
+    if (type === 'golem') wendeGolemSpriteAn(e.sprite, e);
+    else this.provider.applyFigure(e.sprite, e.figur(), 0, 0);
     if (e.boss) e.sprite.setScale(1.5);
     else if (e.elite) e.sprite.setScale(1.25);
     // Friedliche Karte: Gegner NICHT in die Welt nehmen (Sprite sofort weg,
@@ -3610,13 +3630,15 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       // Etwas"): kein Lauf-Hüpfen (Schritt eingefroren), sanftes Schweben, halb-
       // transparent.
       const istSchatten = e.type === 'schatten';
-      const wob = istSchatten ? Math.sin(e.wobble * 0.6) * 2.5 : Math.sin(e.wobble) * 1.5;
+      const istGolem = e.type === 'golem';
+      const wob = istGolem ? 0 : istSchatten ? Math.sin(e.wobble * 0.6) * 2.5 : Math.sin(e.wobble) * 1.5;
       e.sprite.setPosition(e.x, e.y + wob).setDepth(this.gegnerTiefe(e.sprite, e.y));
-      this.provider.applyFigure(e.sprite, e.figur(), e.dir, istSchatten ? 0 : e.step);
+      if (istGolem) wendeGolemSpriteAn(e.sprite, e);
+      else this.provider.applyFigure(e.sprite, e.figur(), e.dir, istSchatten ? 0 : e.step);
       if (istSchatten) e.sprite.setAlpha(0.72);
       else if (e.sprite.alpha !== 1) e.sprite.setAlpha(1);
-      if (e.boss) e.sprite.setScale(1.5);
-      else if (e.elite) e.sprite.setScale(1.25);
+      if (!istGolem && e.boss) e.sprite.setScale(1.5);
+      else if (!istGolem && e.elite) e.sprite.setScale(1.25);
       if (e.hitFlash > 0) e.sprite.setTintFill(0xffffff);
       else if (gruselT) e.sprite.setTint(gruselT);
       else e.sprite.clearTint();
