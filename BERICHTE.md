@@ -1519,6 +1519,11 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   lebende Menschengolems und werden beim Erzeugen ihrer Todesanimation
   uebernommen. Trefferkreis und Kampfreichweite bleiben bis zur Endabnahme
   absichtlich unveraendert.
-- Browser-Abnahme: GOLEM-Tab sichtbar, vier Regler korrekt mit Standardwerten
+- Browser-Abnahme: GOLEM-Tab sichtbar, Groessenregler korrekt mit Standardwerten
   0.92 / 1.00 / 1.00 / 0.810; keine Browserfehler. TypeScript, Build und 59
   Testdateien / 379 Tests gruen.
+- Nachtrag HP-Testregler: F10 > GOLEM bietet `Leben (RTS-Test)` von 100 bis
+  20.000 HP in 100er-Schritten. Der Wert wird gespeichert, fuer neue
+  RTS-Menschengolems verwendet und setzt bereits lebende Golems sofort auf den
+  neuen Maximalwert mit voller Heilung. Browser-Anzeige und fehlerfreie Konsole
+  geprueft.

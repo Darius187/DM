@@ -1,12 +1,14 @@
 import { GOLEM } from '../data/golem';
+import { RTS_UNIT_TYP } from '../data/rts';
 
-// Rein visuelles Live-Tuning fuer die Asset-Abnahme. Kampfkreis und Reichweite
-// bleiben dabei bewusst unveraendert, bis der Autor die Endgroesse bestaetigt.
+// Live-Tuning fuer Asset-Abnahme und RTS-Kampftests. Kampfkreis und Reichweite
+// bleiben bewusst unveraendert, bis der Autor die Endgroesse bestaetigt.
 export interface GolemDarstellungTuning {
   skala: number;
   breite: number;
   hoehe: number;
   bodenanker: number;
+  leben: number;
 }
 
 export const GOLEM_TUNING_STANDARD: Readonly<GolemDarstellungTuning> = {
@@ -14,6 +16,7 @@ export const GOLEM_TUNING_STANDARD: Readonly<GolemDarstellungTuning> = {
   breite: 1,
   hoehe: 1,
   bodenanker: GOLEM.standardBodenanker,
+  leben: RTS_UNIT_TYP.e_golem.hp,
 };
 
 const SPEICHER_KEY = 'ravensmoor_menschengolem_tuning_v1';
@@ -22,6 +25,7 @@ const GRENZEN: Record<keyof GolemDarstellungTuning, readonly [number, number]> =
   breite: [0.70, 1.35],
   hoehe: [0.70, 1.35],
   bodenanker: [0.72, 0.96],
+  leben: [100, 20000],
 };
 
 export function normalisiereGolemTuning(rohdaten: unknown): GolemDarstellungTuning {

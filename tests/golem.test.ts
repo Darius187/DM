@@ -21,8 +21,8 @@ describe('Menschengolem im RTS', () => {
     expect(golemFrame('attack', 8, 14)).toBe('attack_d0_f0');
   });
 
-  it('begrenzt das visuelle Groessen-Tuning auf sichere Werte', () => {
-    expect(normalisiereGolemTuning({ skala: 9, breite: 0, hoehe: 1.1, bodenanker: 0.8 }))
-      .toEqual({ ...GOLEM_TUNING_STANDARD, skala: 1.4, breite: 0.7, hoehe: 1.1, bodenanker: 0.8 });
+  it('begrenzt Groesse und Test-Leben auf sichere Werte', () => {
+    expect(normalisiereGolemTuning({ skala: 9, breite: 0, hoehe: 1.1, bodenanker: 0.8, leben: 99999 }))
+      .toEqual({ ...GOLEM_TUNING_STANDARD, skala: 1.4, breite: 0.7, hoehe: 1.1, bodenanker: 0.8, leben: 20000 });
   });
 });

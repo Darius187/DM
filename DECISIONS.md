@@ -2377,3 +2377,6 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   werden lokal gespeichert und skalieren nur das gerenderte Bild. Trefferkreis,
   Wegfindung, Schaden und Reichweite werden erst gemeinsam angepasst, wenn der
   Autor die endgueltige visuelle Groesse bestaetigt.
+- Der HP-Regler unter F10 > GOLEM ist ausdruecklich ein RTS-Testwert. Eine
+  Aenderung setzt bestehende lebende Menschengolems auf den neuen Wert und heilt
+  sie voll, damit wiederholte Schadensmessungen denselben Ausgangspunkt haben.
