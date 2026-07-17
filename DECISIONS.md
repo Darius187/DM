@@ -2248,3 +2248,33 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Dev-Hook window.__settings (main.ts): dieselbe Settings-Instanz wie das
   Spiel fuer die Browser-Verifikation (Seiten-Import erwischte nach HMR eine
   zweite Instanz).
+
+## R139 - RTS Rang 1: Dorf-Lager-Kosten, MORAL, Ziel-Sperrzeit (Dok 03)
+- 1.1 BAUKOSTEN: RTS-Bauten zahlt das DORF-LAGER (M3-Bestand, Record<string,
+  number> - fehlende Waren zaehlen 0, voll flexibel bis das physische
+  Lagergebaeude steht). Kosten-QUELLE ('held'|'dorf') haengt am Platzierungs-
+  Modus, an Baustellen und am fertigen Feldbau: Reparatur + Abbau-Erstattung
+  buchen in DIESELBE Kasse. Persoenliches Baumenue (Taste N) zahlt weiter der
+  Held ("Held farmt" ist Absicht, Dok 03). BAUEN-Tab zeigt den Lagerbestand.
+- 1.2 MORAL: die EINE Formel lebt in src/logic/moral.ts (Systemkarte: nur EINE,
+  damit Proviant/Sold spaeter einspeisen koennen), alle Stellschrauben in
+  data/rts.ts (MORAL). Senker: Verluste im 12s-Fenster, Uebermacht, Kessel,
+  Panik durch fliehende Kameraden, Nacht (Sunzi N5.5). Heber: Kameraden,
+  Standarte, Anfuehrer (Held bzw. Elite-Anfuehrer der Feinde), geweihter
+  Feldaltar, Veteranenraenge (Feld vorhanden, Raenge kommen mit 2.2).
+  BEIDE Seiten werden alle 0,5s bewertet (O(n^2) bei 2 Hz, unkritisch).
+- FLUCHT: unter fluchtUnter bricht die Einheit SICHTBAR ("BRICHT!"-Schwebetext),
+  laeuft vom Feind-Schwerpunkt weg zur Kartenkante (jagdZiel = laufen ohne
+  kaempfen, +15% Tempo). FEINDE entkommen an der Kante (verlassen das Feld,
+  vorher abfangbar); EIGENE kauern dort und sammeln sich ab Moral>=45
+  (Hysterese). Fliehende bleiben gueltige Ziele.
+- Sunzi N5.3 "das Loch im Kessel": EINGEKESSELTE (Feinde in >=3 Quadranten)
+  fliehen NICHT - sie kaempfen verzweifelt (+15% Schaden, roter Schwebetext).
+  Fluchtwege offenlassen ist jetzt eine echte taktische Entscheidung.
+- Banner-Moral in der RTS-Leiste zeigt den ECHTEN Truppen-Durchschnitt.
+- 1.4 ZIEL-SPERRZEIT (Dungeon Siege): zielFuer haelt das gewaehlte Ziel ~0,9s
+  (+-40% Streuung) statt jeden Frame den Naechsten zu nehmen - kein Zappeln
+  zwischen zwei gleich nahen Zielen. Wechsel bei tot/unerreichbar (>560px)/
+  Spielerbefehl (Fokus schlaegt Sperre immer).
+- OFFEN als Asset: Flucht-/Sammel-RUFE (Sound) - der Autor ist Sound-Fanatiker,
+  Platzhalter bewusst NICHT eingebaut (nur Schwebetexte).

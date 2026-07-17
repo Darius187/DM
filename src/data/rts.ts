@@ -199,6 +199,35 @@ export const MORAL = {
   anfuehrerNahBonus: 10,     // der Held (Banneret) steht bei der Truppe
   verlustMalusJe10Prozent: 6,
   fluchtUnter: 25,
+  // R139 (Dok 03, 1.2 "Moral entscheidet Kaempfe" - Total War): die EINE
+  // Formel lebt in src/logic/moral.ts, ALLE Stellschrauben hier.
+  umkreis: 220,              // Umkreis (px) fuer Kameraden/Feinde/Panik
+  tickS: 0.5,                // wie oft die Moral neu bewertet wird
+  kameradBonusJe: 1.5,       // je nahem Kameraden ...
+  kameradBonusMax: 12,       // ... bis zu diesem Deckel
+  unterzahlMalusJe: 8,       // je 1,0 Uebermacht ueber Gleichstand (Feinde/Eigene)
+  unterzahlMalusMax: 24,
+  kesselMalus: 15,           // Feinde in >=3 Richtungs-Quadranten
+  panikJeFliehendem: 4,      // Flucht steckt an (Total War): je fliehendem Kameraden nah
+  panikMax: 16,
+  nachtMalus: 6,             // N5.5 (Sunzi): nachts kaempft es sich schlechter
+  altarBonus: 8,             // geweihter Feldaltar im Umkreis (LAGER_EFFEKT.radius)
+  verlusteFensterS: 12,      // "hohe Verluste in KURZER Zeit": nur Tote der letzten N Sekunden
+  sammelnAb: 45,             // Fliehende sammeln sich, wenn die Moral sich erholt
+  fluchtTempoF: 1.15,        // Fliehende rennen etwas schneller (Angst)
+  // Sunzi N5.3 "das Loch im Kessel": OHNE Fluchtweg (eingekesselt) flieht
+  // niemand - die Einheit kaempft verbissen weiter (Verzweiflungs-Schaden).
+  verzweiflungDmgF: 1.15,
+} as const;
+
+// R139 (Dok 03, 1.4 - Dungeon Siege): Ziel-Sperrzeit gegen das Ziel-Zappeln.
+// Ein gewaehltes Ziel wird festgehalten; Wechsel nur bei tot/unerreichbar/
+// Spielerbefehl oder Ablauf der Sperre. Leicht gestreut, damit nicht alle
+// Einheiten im selben Takt umschwenken.
+export const ZIEL_SPERRE = {
+  dauerS: 0.9,
+  streuung: 0.4,          // +-40% der Dauer
+  maxVerfolgung: 560,     // weiter entfernte gesperrte Ziele werden losgelassen
 } as const;
 
 // Einheiten-Erfahrung: Veteranen schlagen härter und halten stand.

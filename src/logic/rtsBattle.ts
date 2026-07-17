@@ -332,6 +332,9 @@ export class RtsBattle {
     // R100b: passive (frisch gesetzte) Einheit steht still - nicht steuern, bis
     // sie geweckt (Gegner nah) oder befohlen wird (Befehle loeschen passiv).
     if (ref.passiv) return;
+    // R139 Moral: eine GEBROCHENE Einheit hoert auf keine Befehle mehr - die
+    // Szene (updateMoral) setzt ihr Fluchtziel, hier nichts ueberschreiben.
+    if (ref.flieht) { ref.fokusZiel = null; return; }
     if (this.verloren) {
       // Rout: weg vom nächsten Feind
       const f = this.naechsterFeind(u);

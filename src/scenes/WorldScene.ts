@@ -61,7 +61,7 @@ import { HoehlenLeben } from '../gfx/hoehlenLeben';
 import { KriegsnebelAnzeige, type SichtSet } from '../systems/kriegsnebel';
 import { buildKerkerArea } from '../world/kerkerArea';
 import { MINE } from '../data/mine';
-import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE } from '../data/wirtschaft';
@@ -94,6 +94,7 @@ import { ladeReitTuning, reitTuningExport, REIT_TUNING_STANDARD, speichereReitTu
 import { getSettings, saveSettings } from '../logic/settings';
 import { seededRng, pick, ri } from '../logic/rng';
 import { respawnZiel } from '../logic/respawn';
+import { moralWert, fluchtEntscheidung, istEingekesselt, type MoralLage } from '../logic/moral';
 import { BODEN_STILE, bodenStilTextur } from '../gfx/bodenStile';
 import { WAND_STILE, wandStilFrontTextur, wandStilKroneTextur } from '../gfx/wandStile';
 import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type SaveData } from '../logic/save';
@@ -3542,6 +3543,10 @@ export class WorldScene extends CombatScene {
   }
 
   private aktuelleMoral(): number {
+    // R139: steht eine Truppe im Feld, zeigt das Banner die ECHTE Durchschnitts-
+    // moral der Einheiten (die EINE Formel) - nicht mehr die alte Schaetzung.
+    const eigene = this.enemies.filter((e) => e.team === 'spieler' && e.hp > 0);
+    if (eigene.length) return Math.round(eigene.reduce((s, e) => s + e.moral, 0) / eigene.length);
     let moral = MORAL.basis;
     for (const st of this.standartenAktiv) {
       if (Math.hypot(st.x - this.px, st.y - this.py) < MORAL.standarteRadius) moral += MORAL.standarteBonus;
@@ -6931,7 +6936,7 @@ export class WorldScene extends CombatScene {
     const besieger: Enemy[] = [];
     for (const e of this.enemies) {
       if (e.hp <= 0 || e.team === 'spieler') continue;
-      if (e.passiv || e.jagdZiel) { e.belagerungsZiel = null; continue; }   // schlaeft/jagt Tier -> nicht belagern
+      if (e.passiv || e.jagdZiel || e.flieht) { e.belagerungsZiel = null; continue; }   // schlaeft/jagt Tier/flieht -> nicht belagern
       let kampfNah = !this.playerDead && Math.hypot(this.px - e.x, this.py - e.y) < BELAGERUNG.keinKampfRadius;
       if (!kampfNah) for (const o of this.enemies) { if (o.team === 'spieler' && o.hp > 0 && Math.hypot(o.x - e.x, o.y - e.y) < BELAGERUNG.keinKampfRadius) { kampfNah = true; break; } }
       if (kampfNah || this.hatWegZumZiel(e)) { e.belagerungsZiel = null; continue; }   // kaempft / hat Weg -> nicht belagern
@@ -7035,6 +7040,11 @@ export class WorldScene extends CombatScene {
   // zielen auf den naechsten von {Held, Verbuendete}.
   private kampfZiele = new Map<Enemy, Enemy | 'held' | null>();
   private kampfZieleFrame = -1;
+  // R139 (Dok 03, 1.4 - Dungeon Siege): Ziel-SPERRZEIT. Ohne sie rechnete
+  // zielFuer jeden Frame den NAECHSTEN Gegner neu - stand ein anderer minimal
+  // naeher, zappelten die Einheiten zwischen zwei Zielen hin und her.
+  private zielSperre = new WeakMap<Enemy, { ziel: Enemy | 'held' | null; bis: number }>();
+
   private zielFuer(e: Enemy): Enemy | 'held' | null {
     if (this.kampfZieleFrame !== this.game.loop.frame) {
       this.kampfZieleFrame = this.game.loop.frame;
@@ -7042,19 +7052,35 @@ export class WorldScene extends CombatScene {
     }
     const memo = this.kampfZiele.get(e);
     if (memo !== undefined) return memo;
+    // Spielerbefehl (Fokus) schlaegt IMMER die Sperre.
+    if (e.team === 'spieler' && e.fokusZiel && e.fokusZiel.hp > 0) {
+      this.kampfZiele.set(e, e.fokusZiel);
+      return e.fokusZiel;
+    }
+    // Gesperrtes Ziel weiterverwenden, solange es lebt, erreichbar bleibt
+    // und die Sperre laeuft. Fliehende Ziele bleiben gueltig (abfangbar!).
+    const jetzt = this.time.now / 1000;
+    const sp = this.zielSperre.get(e);
+    if (sp && jetzt < sp.bis) {
+      const z = sp.ziel;
+      const lebt = z === 'held' ? !this.playerDead : !!z && z.hp > 0;
+      if (lebt) {
+        const d = z === 'held' ? Math.hypot(this.px - e.x, this.py - e.y) : Math.hypot((z as Enemy).x - e.x, (z as Enemy).y - e.y);
+        if (d < ZIEL_SPERRE.maxVerfolgung) { this.kampfZiele.set(e, z); return z; }
+      }
+    }
     let ziel: Enemy | 'held' | null = null;
     if (e.team === 'spieler') {
-      if (e.fokusZiel && e.fokusZiel.hp > 0) ziel = e.fokusZiel;
-      else {
-        let bd = 420;
-        for (const o of this.enemies) { if (o.team === 'spieler' || o.hp <= 0) continue; const d = Math.hypot(o.x - e.x, o.y - e.y); if (d < bd) { bd = d; ziel = o; } }
-      }
+      let bd = 420;
+      for (const o of this.enemies) { if (o.team === 'spieler' || o.hp <= 0) continue; const d = Math.hypot(o.x - e.x, o.y - e.y); if (d < bd) { bd = d; ziel = o; } }
     } else {
       // Feind: naechster von {Held, Verbuendete}
       ziel = this.playerDead ? null : 'held';
       let bd = this.playerDead ? 1e9 : Math.hypot(this.px - e.x, this.py - e.y);
       for (const o of this.enemies) { if (o.team !== 'spieler' || o.hp <= 0) continue; const d = Math.hypot(o.x - e.x, o.y - e.y); if (d < bd) { bd = d; ziel = o; } }
     }
+    // Sperre leicht streuen, damit nicht alle Einheiten im selben Takt wechseln.
+    this.zielSperre.set(e, { ziel, bis: jetzt + ZIEL_SPERRE.dauerS * (1 + (Math.random() - 0.5) * 2 * ZIEL_SPERRE.streuung) });
     this.kampfZiele.set(e, ziel);
     return ziel;
   }
@@ -7078,9 +7104,11 @@ export class WorldScene extends CombatScene {
       playerDir: () => { const z = s.zielFuer(e); return z === 'held' ? s.pdir : 0; },
       playerTot: () => { const z = s.zielFuer(e); return z === 'held' ? s.playerDead : false; },
       enemyMeleeHit: (en, dmg) => {
+        // R139 (Sunzi N5.3): Eingekesselte kaempfen verzweifelt - mehr Schaden.
+        const d2 = en.verzweifelt ? Math.round(dmg * MORAL.verzweiflungDmgF) : dmg;
         const z = s.zielFuer(en);
-        if (z === 'held') s.enemyMeleeHit(en, dmg);
-        else if (z) { if (en.team === 'spieler') s.damageEnemy(z, dmg, 0, 0, null, true); else s.trifftVerbuendeten(z, dmg); }
+        if (z === 'held') s.enemyMeleeHit(en, d2);
+        else if (z) { if (en.team === 'spieler') s.damageEnemy(z, d2, 0, 0, null, true); else s.trifftVerbuendeten(z, d2); }
       },
       spawnEnemyProjectile: (x, y, vx, vy, dmg, col, pfeil, _vt, hoch) => s.spawnEnemyProjectile(x, y, vx, vy, dmg, col, pfeil, e.team === 'spieler' ? 'spieler' : 'feind', hoch),
       addTelegraph: (x, y, r, t, dmg) => s.addTelegraph(x, y, r, t, dmg),
@@ -7161,7 +7189,106 @@ export class WorldScene extends CombatScene {
       a.sprite?.destroy();
       this.enemies = this.enemies.filter((o) => o !== a);
       this.logMsg(`${a.name} ist gefallen.`, 'bad');
+      this.moralTote.push({ team: a.team, t: this.time.now / 1000 });   // R139: Verluste druecken die Moral
     }
+  }
+
+  // R139: auch getoetete FEINDE zaehlen in das Verlust-Fenster ihrer Seite.
+  protected override killEnemy(e: Enemy): void {
+    if (this.rtsBattle) this.moralTote.push({ team: e.team, t: this.time.now / 1000 });
+    super.killEnemy(e);
+  }
+
+  // --- R139 MORAL (Dok 03, 1.2 - Total War): die EINE Formel (logic/moral.ts)
+  // bewertet alle MORAL.tickS Sekunden BEIDE Seiten. Bricht eine Einheit,
+  // flieht sie SICHTBAR zur Kartenkante (Feinde entkommen dort, eigene kauern
+  // und sammeln sich, wenn die Moral sich erholt). Eingekesselte fliehen NICHT,
+  // sie kaempfen verzweifelt (Sunzi N5.3: dem Feind eine Bruecke lassen). ----
+  private moralTickT = 0;
+  private moralTote: Array<{ team: 'feind' | 'spieler'; t: number }> = [];
+
+  private updateMoral(dt: number): void {
+    this.moralTickT -= dt;
+    if (this.moralTickT > 0) return;
+    this.moralTickT = MORAL.tickS;
+    const jetzt = this.time.now / 1000;
+    this.moralTote = this.moralTote.filter((m) => jetzt - m.t < MORAL.verlusteFensterS);
+    const lebende = this.enemies.filter((e) => e.hp > 0 && !e.passiv);
+    if (!lebende.length) return;
+    const nacht = this.tageszeit < TAG.morgenAb || this.tageszeit > TAG.nachtAb;
+    const toteFeind = this.moralTote.filter((m) => m.team === 'feind').length;
+    const toteAlly = this.moralTote.filter((m) => m.team === 'spieler').length;
+    const lebFeind = lebende.filter((e) => e.team === 'feind').length;
+    const lebAlly = lebende.filter((e) => e.team === 'spieler').length;
+    const um2 = MORAL.umkreis * MORAL.umkreis;
+    for (const e of lebende) {
+      let eigene = 0, feinde = 0, fliehende = 0;
+      const kx: number[] = [], ky: number[] = [];
+      for (const o of lebende) {
+        if (o === e) continue;
+        const dx = o.x - e.x, dy = o.y - e.y;
+        if (dx * dx + dy * dy > um2) continue;
+        if (o.team === e.team) { eigene++; if (o.flieht) fliehende++; }
+        else { feinde++; kx.push(dx); ky.push(dy); }
+      }
+      // Der Held zaehlt fuer Feinde als Gegner, fuer die eigene Truppe als Anfuehrer.
+      const heldD = this.playerDead ? Infinity : Math.hypot(this.px - e.x, this.py - e.y);
+      if (e.team !== 'spieler' && heldD < MORAL.umkreis) { feinde++; kx.push(this.px - e.x); ky.push(this.py - e.y); }
+      let standarten = 0, altar = false, anfuehrer = false;
+      if (e.team === 'spieler') {
+        anfuehrer = heldD < MORAL.standarteRadius;
+        for (const st of this.standartenAktiv) if (Math.hypot(st.x - e.x, st.y - e.y) < MORAL.standarteRadius) standarten++;
+        for (const f of this.feldbauten) if (f.id === 'feldaltar' && Math.hypot(f.x - e.x, f.y - e.y) < LAGER_EFFEKT.radius) { altar = true; break; }
+      } else {
+        // Feindlicher "Anfuehrer": Elite/Boss in der Naehe haelt die Meute zusammen.
+        anfuehrer = lebende.some((o) => o !== e && o.team === e.team && (o.elite || o.boss) && Math.hypot(o.x - e.x, o.y - e.y) < MORAL.standarteRadius);
+      }
+      const tote = e.team === 'spieler' ? toteAlly : toteFeind;
+      const staerke = (e.team === 'spieler' ? lebAlly : lebFeind) + tote;
+      const lage: MoralLage = {
+        verlusteFrac: staerke > 0 ? tote / staerke : 0,
+        eigeneNah: eigene, feindeNah: feinde, fliehendeNah: fliehende,
+        eingekesselt: feinde >= 3 && istEingekesselt(kx, ky),
+        standartenNah: standarten, anfuehrerNah: anfuehrer, feldaltarNah: altar,
+        nacht, rang: 0,
+      };
+      e.moral = moralWert(lage);
+      const vorher = { flieht: e.flieht, verzweifelt: e.verzweifelt };
+      const neu = fluchtEntscheidung(e.moral, lage.eingekesselt, vorher);
+      if (neu.flieht && !vorher.flieht) {
+        this.fx.float(e.x, e.y - e.r - 10, 'BRICHT!', '#e8b45a');
+        e.fokusZiel = null; e.belagerungsZiel = null;
+      }
+      if (!neu.flieht && vorher.flieht) { this.fx.float(e.x, e.y - e.r - 10, 'sammelt sich', '#9ad86a'); e.jagdZiel = null; }
+      if (neu.verzweifelt && !vorher.verzweifelt) this.fx.float(e.x, e.y - e.r - 10, 'kämpft verbissen!', '#d86a5a');
+      e.flieht = neu.flieht; e.verzweifelt = neu.verzweifelt;
+      if (e.flieht) this.fluchtSchritt(e, kx, ky);
+    }
+  }
+
+  // Fluchtpunkt: weg vom Feind-Schwerpunkt, sonst zur naechsten Kartenkante.
+  // FEINDE entkommen an der Kante (verlassen das Feld - abfangbar, solange sie
+  // rennen); EIGENE kauern dort und koennen sich wieder sammeln.
+  private fluchtSchritt(e: Enemy, kx: number[], ky: number[]): void {
+    const W = this.area.w * TILE, H = this.area.h * TILE;
+    if (e.team !== 'spieler' && (e.x < TILE * 2 || e.x > W - TILE * 2 || e.y < TILE * 2 || e.y > H - TILE * 2)) {
+      e.sprite?.destroy();
+      this.enemies = this.enemies.filter((o) => o !== e);
+      this.logMsg(`${e.name} ist vom Feld geflohen.`, '');
+      return;
+    }
+    let ax = 0, ay = 0;
+    for (let i = 0; i < kx.length; i++) { ax += kx[i]; ay += ky[i]; }
+    const n = Math.hypot(ax, ay);
+    let dx: number, dy: number;
+    if (n > 1) { dx = -ax / n; dy = -ay / n; }
+    else {
+      const links = e.x, rechts = W - e.x, oben = e.y, unten = H - e.y;
+      const min = Math.min(links, rechts, oben, unten);
+      dx = min === links ? -1 : min === rechts ? 1 : 0;
+      dy = min === oben ? -1 : min === unten ? 1 : 0;
+    }
+    e.jagdZiel = { x: Phaser.Math.Clamp(e.x + dx * 320, TILE, W - TILE), y: Phaser.Math.Clamp(e.y + dy * 320, TILE, H - TILE) };
   }
 
   protected override areaDark(): boolean { return this.area?.dark ?? false; }
@@ -12275,6 +12402,7 @@ export class WorldScene extends CombatScene {
       this.rtsBattle.update(dt * kampfTempo); this.rtsBattle.zeichneOverlay();   // R131: Formationen in Echtzeit (keine Slow-Motion)
       this.wendeFeldschmiedeAn(dt);
       if (this.wartfeuerCd > 0) this.wartfeuerCd -= dt;
+      this.updateMoral(dt);   // R139: Kaempfe enden, weil eine Seite BRICHT (Dok 03, 1.2)
     }
     this.updateNassSpritzer(dt);  // Spritzer in Pfützen + auf nassem Rasen (R78)
     this.updateRegenPlatschen(dt); // Regen plätschert im Gras (R79)

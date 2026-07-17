@@ -10,6 +10,7 @@ import { rnd, pick } from '../logic/rng';
 import type { Dir } from '../gfx/fallbackArt';
 import { TUNING } from '../logic/tuning';
 import { PHYSIK, ANGRIFFSSLOTS } from '../data/kampf';
+import { MORAL } from '../data/rts';
 
 export interface EnemyHost {
   isSolidAt(x: number, y: number): boolean;
@@ -190,6 +191,12 @@ export class Enemy {
   // exakt derselben Dungeon-KI (Schild/Parade/Bogen), aber sein "Spieler"-Ziel
   // ist ueber den Proxy-Host der naechste FEIND (WorldScene.enemyHost).
   team: 'feind' | 'spieler' = 'feind';
+  // R139 Moral (Dok 03, 1.2 - Total War): 0..100, unter MORAL.fluchtUnter
+  // BRICHT die Einheit und flieht zur Kartenkante; eingekesselt flieht sie
+  // NICHT, sondern kaempft verzweifelt weiter (Sunzi N5.3, "Loch im Kessel").
+  moral = 100;
+  flieht = false;
+  verzweifelt = false;
   fokusZiel: Enemy | null = null;   // Angriffsbefehl der RTS-Steuerung (Verbuendete)
   imTurm = false;                    // R100: sitzt im Wachturm -> Sprite unsichtbar, schiesst von oben
   passiv = false;                    // R100b: frisch gesetzt -> steht still, bis geweckt (Gegner nah/Schaden/Befehl)
@@ -384,7 +391,8 @@ export class Enemy {
         const wa = host.wegRichtungZiel(this.x, this.y, this.jagdZiel.x, this.jagdZiel.y);
         const ang = wa !== null ? wa : Math.atan2(dzy, dzx);
         this.dir = angleToDir(ang);   // animieren, wenn WIRKLICH Weg zum Ziel ist
-        this.laufe(host, ang, this.speed, dt);
+        // R139: Fliehende rennen etwas schneller (Angst treibt).
+        this.laufe(host, ang, this.speed * (this.flieht ? MORAL.fluchtTempoF : 1), dt);
         this.advanceStep(dt);
       } else { this.step = 0; }   // am Ziel -> Stand, KEINE Lauf-Animation
       return;
