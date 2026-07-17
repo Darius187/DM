@@ -1,0 +1,56 @@
+{
+  "schema": "ravensmoor.horse-roster.v1",
+  "stable": {
+    "area": "stadt",
+    "building_box": "S2",
+    "building_manifest": "houses/stable/medieval_stable_house_3d_runtime.json"
+  },
+  "shared_model": {
+    "atlas_image": "horse/ravensmoor-horse.png",
+    "atlas_json": "horse/ravensmoor-horse.json",
+    "fast_atlas_image": "horse/ravensmoor-horse-fast.png",
+    "fast_atlas_json": "horse/ravensmoor-horse-fast.json",
+    "duplicate_textures_per_variant": false
+  },
+  "horses": [
+    {
+      "id": "arbeit_fuchs",
+      "role": "work",
+      "display_name": "Arbeitspferd Fuchs",
+      "stall_id": "stall_1",
+      "multiply_tint": "0xb66f45",
+      "scale": 1.0
+    },
+    {
+      "id": "arbeit_dunkelbraun",
+      "role": "work",
+      "display_name": "Arbeitspferd Dunkelbraun",
+      "stall_id": "stall_2",
+      "multiply_tint": "0x76533d",
+      "scale": 1.03
+    },
+    {
+      "id": "arbeit_schwarzbraun",
+      "role": "work",
+      "display_name": "Arbeitspferd Schwarzbraun",
+      "stall_id": "stall_3",
+      "multiply_tint": "0x51463d",
+      "scale": 1.02
+    },
+    {
+      "id": "reiten_braun",
+      "role": "riding",
+      "display_name": "Reit- und Botenpferd",
+      "stall_id": "stall_4",
+      "multiply_tint": "0x9a7658",
+      "scale": 0.96
+    }
+  ],
+  "runtime_rules": {
+    "entities_are_independent": true,
+    "use_existing_horse_animation_model": true,
+    "park_only_when_matching_gate_open": 0.82,
+    "head_display_marker_required": true,
+    "npc_schedule": "future_gameplay_task"
+  }
+}
