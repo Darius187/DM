@@ -2384,9 +2384,16 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Der Menschengolem ist ein standfester Phasengegner, kein vergroesserter
   Standardgegner. Er ignoriert Rueckstoss, Standard-Stun und weissen Hit-Flash.
   Seine Schwellen liegen zentral in `data/golem.ts` bei 70/50/30/15/5 Prozent.
-  Armverlust halbiert dauerhaft seinen Schaden; Heilung setzt verlorene
-  Koerperteile im normalen Kampf nicht wieder an. Nur der 100%-Dev-Test setzt
-  den Phasenzustand bewusst komplett zurueck.
+  Die fruehere abgeschnittene Arm-Grafik ist nach der Live-Abnahme verworfen:
+  15% bedeutet nun massiven Blutverlust und halbierten Schaden, unter 5% eine
+  kontinuierliche Blutung mit Bodenlachen. Nur der 100%-Dev-Test setzt den
+  Phasenzustand bewusst komplett zurueck.
+- Standfestigkeit ist auch eine Kollisionsregel: Trefferimpulse, Held-Kollision
+  und Einheiten-Trennung duerfen die Position des Menschengolems nicht aendern.
+  Bei Ueberlappung nimmt immer die leichtere Figur die gesamte Korrektur auf.
+- Sein Testtempo betraegt 34 px/s. Der Tod wird mit 7 fps langsam ausgespielt,
+  durch Aufschlag und Blutlachen gestaffelt und bleibt neun Sekunden als Leiche
+  liegen; schnelle Zerlegung oder abspringende Gliedmassen sind ausgeschlossen.
 - Die Dev-Werkbank heisst `GEGNER`, weil sie nicht dauerhaft nur fuer den
   Menschengolem reserviert sein soll. Neue besondere Gegner erhalten darin
   jeweils einen klar benannten eigenen Abschnitt.

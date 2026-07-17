@@ -1730,9 +1730,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected setzeGolemPhasenZurueck(e: Enemy): void {
     if (e.type !== 'golem') return;
     e.golemFleischStufe = 0;
-    e.golemArmVerloren = false;
+    e.golemSchwerVerletzt = false;
+    e.golemBlutCd = 0;
+    e.golemBlutLacheCd = 0;
     e.golemTelegraphArt = null;
     e.golemSpezialCd = 1.8;
+    e.kbT = 0; e.kvx = 0; e.kvy = 0;
     e.dmg = Math.max(1, e.golemVollerSchaden || e.dmg);
     e.sprite?.setCrop().clearTint();
   }
@@ -1742,19 +1745,21 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const anteil = Math.max(0, e.hp / e.maxhp);
     if (anteil <= GOLEM.phasen.fleischverlustAb && e.golemFleischStufe < 1) {
       e.golemFleischStufe = 1;
-      this.zeigeGolemFleischverlust(e, false);
+      this.zeigeGolemBlutung(e, false);
       this.fx.float(e.x, e.y - e.r - 34, 'FLEISCH REISST AUF', '#d85550');
     }
-    if (anteil <= GOLEM.phasen.armverlustAb && !e.golemArmVerloren) {
+    if (anteil <= GOLEM.phasen.blutverlustAb && !e.golemSchwerVerletzt) {
       e.golemFleischStufe = 2;
-      e.golemArmVerloren = true;
+      e.golemSchwerVerletzt = true;
       e.dmg = Math.max(1, Math.round((e.golemVollerSchaden || e.dmg) * 0.5));
-      this.zeigeGolemFleischverlust(e, true);
-      this.fx.float(e.x, e.y - e.r - 42, 'ARM ABGERISSEN', '#ff6860');
+      this.zeigeGolemBlutung(e, true);
+      this.fx.float(e.x, e.y - e.r - 42, 'MASSIVER BLUTVERLUST', '#ff6860');
       this.cameras.main.shake(240, 0.008);
     }
     if (anteil < GOLEM.phasen.rasereiUnter && e.golemFleischStufe < 3) {
       e.golemFleischStufe = 3;
+      e.golemBlutCd = 0;
+      e.golemBlutLacheCd = 0;
       e.golemSpezialCd = 0.35;
       this.fx.welle(e.x, e.y, 118, 0xc01824);
       this.fx.burst(e.x, e.y, 0xc01824, 34, 300);
@@ -1763,48 +1768,45 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
   }
 
-  private zeigeGolemFleischverlust(e: Enemy, arm: boolean): void {
-    const teile = arm ? 7 : 10;
-    for (let i = 0; i < teile; i++) {
-      const a = (i / teile) * Math.PI * 2 + Math.random() * 0.45;
-      const distanz = (arm ? 38 : 24) + Math.random() * (arm ? 54 : 42);
-      const teil = this.add.ellipse(e.x, e.y - 10, 5 + Math.random() * 8, 3 + Math.random() * 5,
-        i % 4 === 0 ? 0xd8c5a0 : i % 2 === 0 ? 0x8f111b : 0x4f080d, 0.96)
-        .setDepth(e.y + 2).setAngle(Math.random() * 180);
-      this.tweens.add({
-        targets: teil,
-        x: e.x + Math.cos(a) * distanz,
-        y: e.y + Math.sin(a) * distanz * 0.48 + 8,
-        angle: teil.angle + 180 + Math.random() * 240,
-        duration: 430 + Math.random() * 360,
-        ease: 'Quad.Out',
-      });
-      this.time.delayedCall(25_000 + Math.random() * 10_000, () => {
-        if (!teil.active) return;
-        this.tweens.add({ targets: teil, alpha: 0, duration: 1400, onComplete: () => teil.destroy() });
-      });
-    }
-    if (!arm) {
-      this.fx.burst(e.x, e.y - 8, 0x8f111b, 22, 210);
-      return;
-    }
-    // Deutlich lesbarer abgetrennter Arm: Fleischmasse, Hand und heller
-    // Knochenstumpf bleiben mehrere Sekunden auf dem Boden liegen.
-    const armTeil = this.add.container(e.x, e.y - 16).setDepth(e.y + 3);
-    const oberarm = this.add.ellipse(0, 0, 34, 13, 0x651018, 1).setStrokeStyle(2, 0x2a0508);
-    const hand = this.add.ellipse(18, 2, 14, 11, 0x7e141d, 1).setStrokeStyle(1, 0x2a0508);
-    const knochen = this.add.rectangle(-17, 0, 9, 5, 0xd3c29c, 1).setStrokeStyle(1, 0x5a3828);
-    armTeil.add([oberarm, hand, knochen]);
-    const wurf = e.visualDir8 * (Math.PI / 4) + Math.PI * 0.55;
-    this.tweens.add({
-      targets: armTeil, x: e.x + Math.cos(wurf) * 76, y: e.y + Math.sin(wurf) * 30 + 10,
-      angle: 110, duration: 760, ease: 'Quad.Out',
+  private legeGolemBlutlache(x: number, y: number, gross = false): void {
+    if (!getSettings().blood) return;
+    const breite = (gross ? 38 : 17) + Math.random() * (gross ? 30 : 14);
+    const lache = this.add.ellipse(x, y + 8, breite, breite * (0.24 + Math.random() * 0.11),
+      Math.random() < 0.5 ? 0x4b050a : 0x6e0710, 0.72)
+      .setDepth(y - 2).setAngle(Math.random() * 180).setScale(0.18);
+    this.tweens.add({ targets: lache, scaleX: 1, scaleY: 1, alpha: 0.86, duration: gross ? 1100 : 620, ease: 'Sine.Out' });
+    this.time.delayedCall(gross ? 55_000 : 38_000, () => {
+      if (!lache.active) return;
+      this.tweens.add({ targets: lache, alpha: 0, duration: 2200, onComplete: () => lache.destroy() });
     });
-    this.time.delayedCall(38_000, () => {
-      if (!armTeil.active) return;
-      this.tweens.add({ targets: armTeil, alpha: 0, duration: 1800, onComplete: () => armTeil.destroy() });
-    });
-    this.fx.burst(e.x, e.y - 14, 0x9f1019, 34, 260);
+  }
+
+  private zeigeGolemBlutung(e: Enemy, massiv: boolean): void {
+    if (!getSettings().blood) return;
+    this.fx.burst(e.x, e.y - 12, 0xa80e1a, massiv ? 48 : 28, massiv ? 290 : 220);
+    this.fx.burst(e.x, e.y - 4, 0x4f050b, massiv ? 28 : 16, massiv ? 210 : 150);
+    this.fx.mist(e.x, e.y - 8, 0x6a0710, massiv ? 64 : 46);
+    const lacheN = massiv ? 4 : 2;
+    for (let i = 0; i < lacheN; i++) {
+      const a = Math.random() * Math.PI * 2, d = 8 + Math.random() * (massiv ? 34 : 20);
+      this.legeGolemBlutlache(e.x + Math.cos(a) * d, e.y + Math.sin(a) * d, massiv && i === 0);
+    }
+  }
+
+  private aktualisiereGolemAusbluten(e: Enemy, dt: number): void {
+    if (e.golemFleischStufe < 3 || !getSettings().blood) return;
+    e.golemBlutCd -= dt;
+    e.golemBlutLacheCd -= dt;
+    if (e.golemBlutCd <= 0) {
+      e.golemBlutCd = 0.16 + Math.random() * 0.14;
+      const sx = e.x + (Math.random() - 0.5) * 34;
+      const sy = e.y - 18 + Math.random() * 30;
+      this.fx.burst(sx, sy, Math.random() < 0.3 ? 0x4c0409 : 0xb00e1b, 5 + Math.floor(Math.random() * 5), 115 + Math.random() * 85);
+    }
+    if (e.golemBlutLacheCd <= 0) {
+      e.golemBlutLacheCd = 0.8 + Math.random() * 0.65;
+      this.legeGolemBlutlache(e.x + (Math.random() - 0.5) * 26, e.y + (Math.random() - 0.5) * 14);
+    }
   }
 
   protected gainSchoolUse(school: 'nahkampf' | 'zauberei' | 'bogen'): void {
@@ -1881,19 +1883,35 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     if (e.type === 'golem' && e.sprite) {
       const leiche = e.sprite;
       const tuning = aktuellesGolemTuning();
+      const frameMs = 1000 / GOLEM.fps.death;
+      const fallMs = GOLEM.frames.death * frameMs;
       e.sprite = null;
       leiche.clearTint().setOrigin(0.5, tuning.bodenanker)
         .setScale(tuning.skala * tuning.breite, tuning.skala * tuning.hoehe);
       for (let frame = 0; frame < GOLEM.frames.death; frame++) {
-        this.time.delayedCall(frame * (1000 / GOLEM.fps.death), () => {
+        this.time.delayedCall(frame * frameMs, () => {
           if (leiche.active) leiche.setTexture(GOLEM.atlasKey, golemFrame('death', e.visualDir8, frame));
         });
       }
-      this.time.delayedCall((GOLEM.frames.death + 1) * (1000 / GOLEM.fps.death) + GOLEM.leichenDauerS * 1000, () => {
-        this.tweens.add({ targets: leiche, alpha: 0, duration: 1000, onComplete: () => leiche.destroy() });
+      // Der Fall kommt aus dem gerenderten Death-Clip. Das langsame Absinken
+      // verleiht ihm zusaetzlich Gewicht, ohne den Koerper kuenstlich zu kippen.
+      this.tweens.add({ targets: leiche, y: leiche.y + 13, duration: fallMs, ease: 'Cubic.In' });
+      if (getSettings().blood) {
+        this.time.delayedCall(fallMs * 0.25, () => this.fx.burst(e.x, e.y - 10, 0xa70d18, 28, 230));
+        this.time.delayedCall(fallMs * 0.56, () => {
+          this.legeGolemBlutlache(e.x - 8, e.y + 5, true);
+          this.fx.mist(e.x, e.y - 4, 0x5d060d, 68);
+        });
+        this.time.delayedCall(fallMs * 0.88, () => {
+          this.fx.deathGore(e.x, e.y + 4, false, 1.35);
+          this.legeGolemBlutlache(e.x + 12, e.y + 8, true);
+        });
+      }
+      this.time.delayedCall(fallMs * 0.82, () => this.cameras.main.shake(260, 0.009));
+      this.time.delayedCall(fallMs + GOLEM.leichenDauerS * 1000, () => {
+        if (!leiche.active) return;
+        this.tweens.add({ targets: leiche, alpha: 0, duration: 1400, onComplete: () => leiche.destroy() });
       });
-      this.fx.burst(e.x, e.y, 0x7d0b16, 32, 210);
-      this.cameras.main.shake(170, 0.006);
     } else if (e.sprite && getSettings().blood) {
       const leiche = e.sprite;
       e.sprite = null;
@@ -3079,7 +3097,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       const dx = e.x - this.px, dy = e.y - this.py, d = Math.hypot(dx, dy), m = hr + e.r;
       if (d < m && d > 0.01) {
         const a = Math.atan2(dy, dx), push = m - d;
-        e.moveBody(this, Math.cos(a) * push, Math.sin(a) * push);
+        if (e.type === 'golem') this.movePlayer(-Math.cos(a) * push, -Math.sin(a) * push);
+        else e.moveBody(this, Math.cos(a) * push, Math.sin(a) * push);
       }
     }
   }
@@ -3104,9 +3123,17 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
           if (B.id <= A.id) continue; // jedes Paar nur einmal
           const d = Math.hypot(A.x - B.x, A.y - B.y), m = A.r + B.r;
           if (d < m && d > 0.01) {
-            const a = Math.atan2(B.y - A.y, B.x - A.x), push = (m - d) / 2;
-            A.moveBody(this, -Math.cos(a) * push, -Math.sin(a) * push);
-            B.moveBody(this, Math.cos(a) * push, Math.sin(a) * push);
+            const a = Math.atan2(B.y - A.y, B.x - A.x), ueberlappung = m - d;
+            // Der schwere Menschengolem bleibt beim Gedraenge stehen; die
+            // leichtere Einheit nimmt die gesamte Trennung auf.
+            if (A.type === 'golem' && B.type === 'golem') continue;
+            if (A.type === 'golem') B.moveBody(this, Math.cos(a) * ueberlappung, Math.sin(a) * ueberlappung);
+            else if (B.type === 'golem') A.moveBody(this, -Math.cos(a) * ueberlappung, -Math.sin(a) * ueberlappung);
+            else {
+              const push = ueberlappung / 2;
+              A.moveBody(this, -Math.cos(a) * push, -Math.sin(a) * push);
+              B.moveBody(this, Math.cos(a) * push, Math.sin(a) * push);
+            }
           }
         }
       }
@@ -3270,6 +3297,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     for (const e of [...this.enemies]) {
       e.update(this.enemyHost(e), dt);
       if (this.playerDead) return dt;
+      if (e.type === 'golem' && e.hp > 0) this.aktualisiereGolemAusbluten(e, dt);
       // Brand-DoT (Runde 41, Feuerregen): tickt Schaden, während es brennt
       if (e.brennT > 0 && e.hp > 0) {
         e.brennT -= dt;
@@ -3880,20 +3908,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         g.fillCircle(e.x, e.y, radius);
       }
       if (e.type === 'golem' && e.golemFleischStufe >= 1) {
-        // Zusaetzliche helle Knochen lesen sich auch auf dunklem Spielboden.
+        // Aufgerissene Rippen bleiben als dezentes Phasenmerkmal; lose,
+        // kuenstlich gezeichnete Gliedmassen gibt es bewusst nicht mehr.
         g.lineStyle(2.2, 0xd7c7a3, 0.95);
         g.lineBetween(e.x - 9, e.y - 23, e.x + 7, e.y - 19);
         g.lineBetween(e.x - 10, e.y - 17, e.x + 8, e.y - 13);
         g.lineBetween(e.x - 8, e.y - 11, e.x + 7, e.y - 7);
         g.lineStyle(1.2, 0x5b1518, 1);
         g.lineBetween(e.x - 2, e.y - 26, e.x - 1, e.y - 5);
-      }
-      if (e.type === 'golem' && e.golemArmVerloren) {
-        const rechts = [0, 1, 2, 7].includes(e.visualDir8);
-        const sx = e.x + (rechts ? 23 : -23);
-        g.fillStyle(0x430408, 1); g.fillCircle(sx, e.y - 20, 7);
-        g.fillStyle(0xd8c6a0, 1); g.fillRect(sx - 3, e.y - 22, 6, 4);
-        g.lineStyle(2, 0xa01018, 0.95); g.strokeCircle(sx, e.y - 20, 8);
       }
       // R131 (Autor: rote Angriffs-Ringe weg): nur zeichnen, wenn eingeschaltet.
       if (e.windup > 0 && getSettings().gegnerWindupRing === true) {

@@ -8,29 +8,29 @@ export const GOLEM = {
   zellen: 144,
   richtungen: 8,
   frames: { idle: 8, walk: 12, attack: 14, hit: 7, death: 14 },
-  fps: { idle: 6, walk: 12, attack: 14, hit: 18, death: 12 },
+  fps: { idle: 6, walk: 12, attack: 14, hit: 18, death: 7 },
   standardSkala: 0.92,
   standardBodenanker: 0.81,
   trefferDauerS: 0.38,
   schlagNachlaufS: 0.48,
-  leichenDauerS: 7,
+  leichenDauerS: 9,
   phasen: {
     rundumNurUeber: 0.70,
     stampfAb: 0.50,
     fleischverlustAb: 0.30,
-    armverlustAb: 0.15,
+    blutverlustAb: 0.15,
     rasereiUnter: 0.05,
   },
 } as const;
 
 export type GolemClip = keyof typeof GOLEM.frames;
 
-export type GolemPhase = 'unverletzt' | 'welle' | 'stampf' | 'aufgerissen' | 'armverlust' | 'raserei';
+export type GolemPhase = 'unverletzt' | 'welle' | 'stampf' | 'aufgerissen' | 'blutverlust' | 'raserei';
 
 export function golemPhaseFuerLeben(hp: number, maxhp: number): GolemPhase {
   const anteil = Math.max(0, hp) / Math.max(1, maxhp);
   if (anteil < GOLEM.phasen.rasereiUnter) return 'raserei';
-  if (anteil <= GOLEM.phasen.armverlustAb) return 'armverlust';
+  if (anteil <= GOLEM.phasen.blutverlustAb) return 'blutverlust';
   if (anteil <= GOLEM.phasen.fleischverlustAb) return 'aufgerissen';
   if (anteil <= GOLEM.phasen.stampfAb) return 'stampf';
   if (anteil <= GOLEM.phasen.rundumNurUeber) return 'welle';

@@ -5285,7 +5285,7 @@ export class WorldScene extends CombatScene {
         { kind: 'button', label: () => '70% - Fleischwelle', onClick: () => this.setzeGolemTestPhase(70) },
         { kind: 'button', label: () => '50% - Bodenstampfer', onClick: () => this.setzeGolemTestPhase(50) },
         { kind: 'button', label: () => '30% - Fleisch und Knochen brechen auf', onClick: () => this.setzeGolemTestPhase(30) },
-        { kind: 'button', label: () => '15% - Armverlust, halber Schaden', onClick: () => this.setzeGolemTestPhase(15) },
+        { kind: 'button', label: () => '15% - massiver Blutverlust, halber Schaden', onClick: () => this.setzeGolemTestPhase(15) },
         { kind: 'button', label: () => '4% - letzte Raserei', onClick: () => this.setzeGolemTestPhase(4) },
         { kind: 'button', label: () => 'WERTE KOPIEREN fuer Codex', onClick: () => window.prompt('Diese Werte kopieren und im Chat einfuegen:', golemTuningExport()) },
         { kind: 'button', label: () => 'Auf aktuellen Spielstandard zuruecksetzen', onClick: () => { setzeGolemTuning({ ...GOLEM_TUNING_STANDARD }); this.setzeGolemTestLeben(GOLEM_TUNING_STANDARD.leben); this.devKonsole?.refresh(); } },

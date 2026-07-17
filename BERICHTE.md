@@ -1539,7 +1539,7 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   neuen Maximalwert mit voller Heilung. Browser-Anzeige und fehlerfreie Konsole
   geprueft.
 
-## Menschengolem - standfeste Kampfphasen und sichtbare Zerlegung
+## Menschengolem - standfeste Kampfphasen und Ausbluten
 - Die normale Gegner-Trefferreaktion ist fuer den Menschengolem abgeschaltet:
   kein weisses Aufleuchten, kein Treffer-Rueckzug, kein Hammer-Schub und keine
   normale Betäubung. Blut- und Fleischfeedback bleibt erhalten.
@@ -1548,16 +1548,21 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   Bodenstampfer mit 1,45 s Laehmung; unter 5% kombinierte letzte Raserei mit
   allen Flaecheneffekten. Jeder Spezialangriff hat einen grossen sichtbaren
   Warnkreis.
-- Sichtbarer Zerfall: ab 30% reissen Fleischstuecke heraus, weitere Knochen
-  liegen frei und die Brocken bleiben 25 bis 35 Sekunden auf dem Boden. Ab 15%
-  wird ein Arm richtungsabhaengig aus dem Atlasbild entfernt; der abgetrennte
-  Arm mit Knochenstumpf bleibt 38 Sekunden liegen und der Golem verursacht nur
-  noch halben Schaden. Unter 5% pulst das verbleibende Gewebe dunkelrot.
-- Die Todesanimation bleibt komplett sichtbar; danach liegt der Leichnam sieben
-  Sekunden am Boden und blendet erst anschliessend langsam aus.
+- Korrektur nach Live-Abnahme: die kuenstlich ausgeschnittene Gliedmasse und der
+  separat gezeichnete Arm sind entfernt. Ab 30% reisst der Koerper auf; ab 15%
+  beginnt massiver Blutverlust und der Schaden halbiert sich. Unter 5% blutet
+  der Golem fortlaufend aus mehreren Stellen und legt wachsende, lange sichtbare
+  Blutlachen auf den Boden. Das Atlasbild bleibt in jeder Richtung vollstaendig.
+- Alle Treffer-, Impuls- und Kollisionswege behandeln den Golem jetzt als
+  unverrueckbare Masse. Beim Kontakt mit Held oder Soldaten weicht die leichtere
+  Figur aus; der Golem wird nicht mehr durch den Kampf ueber die Karte geschoben.
+- Das RTS-Tempo wurde leicht von 30 auf 34 px/s angehoben. Die Todesanimation
+  laeuft mit 7 statt 12 Bildern/s deutlich schwerer und fast zwei Sekunden lang;
+  Aufschlag, Blutnebel und zwei grosse Lachen sind gestaffelt. Der Leichnam liegt
+  danach neun Sekunden und blendet in weiteren 1,4 Sekunden aus.
 - Dev-Konsole: `GOLEM` wurde zu `GEGNER`. Darin steht der Menschengolem als
   erster Gegnertyp mit Groessen-/HP-Reglern und Direktknoepfen fuer 100, 70, 50,
   30, 15 und 4 Prozent. Weitere Gegner koennen dort als eigene Abschnitte folgen.
-- Browser-geprueft: 30%-Fleischverlust, 15%-Armverlust, 4%-Raserei sowie
-  50%-Stampfer-Telegraph und Treffer funktionieren; keine Konsolenfehler.
-  TypeScript, Build und 59 Testdateien / 380 Tests gruen.
+- Browser-geprueft: 15%-Text und 4%-Dauerblutung mit mehreren Bodenlachen,
+  vollstaendig sichtbarer Koerper und Raserei-Telegraph; keine Konsolenfehler.
+  TypeScript, Produktions-Build und 59 Testdateien / 380 Tests gruen.

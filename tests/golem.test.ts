@@ -10,6 +10,7 @@ describe('Menschengolem im RTS', () => {
     expect(RTS_UNIT_TYP.e_golem.team).toBe('feind');
     expect(RTS_UNIT_TYP.e_golem.hp).toBe(3000);
     expect(RTS_UNIT_TYP.e_golem.schadensRed).toBe(0.5);
+    expect(RTS_UNIT_TYP.e_golem.speed).toBe(34);
     expect(RTS_UNIT_TYP.e_golem.name).toBe('Menschengolem');
     expect(RTS_UNIT_TYP.e_golem.tags).toEqual(expect.arrayContaining(['faul', 'ungepanzert', 'schwer']));
   });
@@ -31,7 +32,7 @@ describe('Menschengolem im RTS', () => {
     expect(golemPhaseFuerLeben(2100, 3000)).toBe('welle');
     expect(golemPhaseFuerLeben(1500, 3000)).toBe('stampf');
     expect(golemPhaseFuerLeben(900, 3000)).toBe('aufgerissen');
-    expect(golemPhaseFuerLeben(450, 3000)).toBe('armverlust');
+    expect(golemPhaseFuerLeben(450, 3000)).toBe('blutverlust');
     expect(golemPhaseFuerLeben(149, 3000)).toBe('raserei');
   });
 

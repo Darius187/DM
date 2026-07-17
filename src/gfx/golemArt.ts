@@ -21,11 +21,6 @@ export function wendeGolemSpriteAn(sprite: Phaser.GameObjects.Sprite, e: Enemy):
   const tuning = aktuellesGolemTuning();
   sprite.setTexture(GOLEM.atlasKey, golemFrame(clip, e.visualDir8, frame));
   sprite.setOrigin(0.5, tuning.bodenanker)
-    .setScale(tuning.skala * tuning.breite, tuning.skala * tuning.hoehe);
-  if (e.golemArmVerloren) {
-    // Der Atlas bleibt Save-/Cache-kompatibel. Ein richtungsabhaengiger Crop
-    // entfernt nach der 15%-Schwelle den aeusseren Arm samt Hand sichtbar.
-    const armRechtsImBild = [0, 1, 2, 7].includes(e.visualDir8);
-    sprite.setCrop(armRechtsImBild ? 0 : 30, 0, 114, GOLEM.zellen);
-  } else sprite.setCrop();
+    .setScale(tuning.skala * tuning.breite, tuning.skala * tuning.hoehe)
+    .setCrop();
 }

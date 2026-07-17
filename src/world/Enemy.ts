@@ -141,9 +141,11 @@ export class Enemy {
   visualAttackDauer = 0;
   visualDir8 = 0;
   // Eigene Menschengolem-Phasen. Der schwere Koerper ignoriert Rueckstoss und
-  // verliert bei 30/15 Prozent sichtbar Gewebe bzw. einen Arm.
+  // blutet bei 30/15/5 Prozent zunehmend stark aus.
   golemFleischStufe = 0;
-  golemArmVerloren = false;
+  golemSchwerVerletzt = false;
+  golemBlutCd = 0;
+  golemBlutLacheCd = 0;
   golemVollerSchaden = 0;
   golemSpezialCd = 2.8 + Math.random() * 1.8;
   golemTelegraphArt: 'rundum' | 'welle' | 'stampf' | 'zorn' | null = null;
@@ -369,6 +371,9 @@ export class Enemy {
   }
 
   update(host: EnemyHost, dt: number): void {
+    // Der Menschengolem ist zu schwer fuer Impuls-/Treffer-Rueckstoss. Auch ein
+    // eventuell bereits gesetzter Impuls darf ihn nicht einen Frame weit tragen.
+    if (this.type === 'golem') { this.kbT = 0; this.kvx = 0; this.kvy = 0; }
     this.atkCd = Math.max(0, this.atkCd - dt);
     this.shootCd = Math.max(0, this.shootCd - dt);
     this.hitFlash = Math.max(0, this.hitFlash - dt);
