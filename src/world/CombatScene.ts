@@ -46,6 +46,7 @@ import { SPUREN } from '../data/welt';
 import { NOTIZEN } from '../data/texte';
 import { GOLEM, golemFrame } from '../data/golem';
 import { wendeGolemSpriteAn } from '../gfx/golemArt';
+import { aktuellesGolemTuning } from '../gfx/golemTuning';
 
 export interface Projectile {
   x: number; y: number; vx: number; vy: number; r: number; dmg: number;
@@ -1749,8 +1750,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
     if (e.type === 'golem' && e.sprite) {
       const leiche = e.sprite;
+      const tuning = aktuellesGolemTuning();
       e.sprite = null;
-      leiche.clearTint().setOrigin(0.5, GOLEM.ursprungY).setScale(GOLEM.spriteScale);
+      leiche.clearTint().setOrigin(0.5, tuning.bodenanker)
+        .setScale(tuning.skala * tuning.breite, tuning.skala * tuning.hoehe);
       for (let frame = 0; frame < GOLEM.frames.death; frame++) {
         this.time.delayedCall(frame * (1000 / GOLEM.fps.death), () => {
           if (leiche.active) leiche.setTexture(GOLEM.atlasKey, golemFrame('death', e.visualDir8, frame));

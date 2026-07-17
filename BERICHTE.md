@@ -1502,3 +1502,23 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
 - Im RTS-Testmodus auf echtem Spielboden geprueft; Fleischgolem platzierbar,
   Richtungen und Laufanimation sichtbar, Browserkonsole ohne Fehler.
 - TypeScript, Build und 59 Testdateien / 378 Tests gruen.
+
+## Menschengolem - Fleisch, Blut, Knochen und Live-Groesse
+- Die sichtbare Identitaet heisst jetzt ueberall `Menschengolem`. Der interne
+  Typ `golem` und der alte Atlas-Dateiname bleiben nur fuer Savegame- und
+  Cache-Kompatibilitaet bestehen und werden dem Spieler nicht gezeigt.
+- Neuer Blender-Pass: deutlich weniger steinerne Normalstruktur, blutiges
+  Muskelgewebe, offene Brusthoehle, drei freiliegende gebrochene Rippen,
+  Brustbein, grobe Kreuznaehte, Schulter-Knochenfragment und Sehnen. Alle
+  anatomischen Teile sind an das Rig gebunden und bewegen sich mit den Clips.
+- Alle 440 Richtungsframes fuer Idle, Lauf, Schlag, Treffer und Tod wurden aus
+  Blender 5.1 neu gerendert und in den Phaser-Atlas gepackt. Die editierbare
+  Szene liegt als `C:/Obsidian/DM/ravensmoor-flesh-golem.blend` bereit.
+- F10 > GOLEM hat persistente Live-Regler fuer Gesamtgroesse, Breite, Hoehe und
+  Bodenanker sowie Kopieren und Zuruecksetzen. Die Regler wirken sofort auf
+  lebende Menschengolems und werden beim Erzeugen ihrer Todesanimation
+  uebernommen. Trefferkreis und Kampfreichweite bleiben bis zur Endabnahme
+  absichtlich unveraendert.
+- Browser-Abnahme: GOLEM-Tab sichtbar, vier Regler korrekt mit Standardwerten
+  0.92 / 1.00 / 1.00 / 0.810; keine Browserfehler. TypeScript, Build und 59
+  Testdateien / 379 Tests gruen.

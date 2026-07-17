@@ -121,7 +121,9 @@ def make_material(source: Path) -> bpy.types.Material:
     normal_tex = nodes.new("ShaderNodeTexImage")
     normal_tex.image = load_image(source / "T_golem_Normal.png", "Non-Color")
     normal = nodes.new("ShaderNodeNormalMap")
-    normal.inputs["Strength"].default_value = 0.30
+    # Keep only a trace of the source relief.  A stronger value makes the
+    # silhouette read as recoloured stone even after the flesh shader pass.
+    normal.inputs["Strength"].default_value = 0.16
     links.new(normal_tex.outputs["Color"], normal.inputs["Color"])
 
     pores = nodes.new("ShaderNodeTexNoise")
@@ -205,6 +207,21 @@ def make_tissue_material(name: str, colour: tuple[float, float, float, float], r
     return mat
 
 
+def make_bone_material() -> bpy.types.Material:
+    """Blood-stained exposed bone: pale enough to read at 144 px, never clean ivory."""
+    mat = bpy.data.materials.new("Ravensmoor_Exposed_Bone")
+    mat.diffuse_color = (0.48, 0.32, 0.18, 1.0)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = (0.48, 0.32, 0.18, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.63
+    if bsdf.inputs.get("Subsurface Weight"):
+        bsdf.inputs["Subsurface Weight"].default_value = 0.035
+    if bsdf.inputs.get("Coat Weight"):
+        bsdf.inputs["Coat Weight"].default_value = 0.025
+    return mat
+
+
 def parent_to_bone(obj: bpy.types.Object, armature: bpy.types.Object, bone: str) -> None:
     world = obj.matrix_world.copy()
     obj.parent = armature
@@ -217,7 +234,35 @@ def add_flesh_growths(armature: bpy.types.Object, flesh: bpy.types.Material) -> 
     """Break the original stone silhouette with readable organic anatomy."""
     wound = make_tissue_material("Ravensmoor_Open_Wound", (0.075, 0.0003, 0.001, 1.0), 0.16)
     sinew = make_tissue_material("Ravensmoor_Sinew", (0.24, 0.003, 0.008, 1.0), 0.30)
+    bone = make_bone_material()
+    stitch = make_tissue_material("Ravensmoor_Stitching", (0.012, 0.0002, 0.0003, 1.0), 0.72)
     added: list[bpy.types.Object] = []
+
+    def anatomy_curve(
+        name: str,
+        paths: tuple[tuple[tuple[float, float, float], ...], ...],
+        bevel: float,
+        material: bpy.types.Material,
+        parent_bone: str,
+    ) -> bpy.types.Object:
+        curve_data = bpy.data.curves.new(name, "CURVE")
+        curve_data.dimensions = "3D"
+        curve_data.resolution_u = 3
+        curve_data.bevel_depth = bevel
+        curve_data.bevel_resolution = 2
+        for coordinates in paths:
+            spline = curve_data.splines.new("BEZIER")
+            spline.bezier_points.add(len(coordinates) - 1)
+            for point, coordinate in zip(spline.bezier_points, coordinates):
+                point.co = coordinate
+                point.handle_left_type = "AUTO"
+                point.handle_right_type = "AUTO"
+        curve_data.materials.append(material)
+        obj = bpy.data.objects.new(name, curve_data)
+        bpy.context.scene.collection.objects.link(obj)
+        parent_to_bone(obj, armature, parent_bone)
+        added.append(obj)
+        return obj
 
     def growth(
         name: str,
@@ -260,30 +305,63 @@ def add_flesh_growths(armature: bpy.types.Object, flesh: bpy.types.Material) -> 
     growth("FLESH_wound_lip_left", (-0.57, -0.79, 2.23), (0.050, 0.045, 0.16), "spine_03.x", sinew, -11.0)
     growth("FLESH_wound_lip_lower", (-0.20, -0.79, 2.02), (0.17, 0.045, 0.048), "spine_03.x", sinew, 13.0)
 
+    # Torn ribs and sternum inside the chest cavity turn the former stone chest
+    # into recognisable human anatomy.  All pieces follow the chest bone.
+    ribs = (
+        ((-0.52, -0.825, 2.36), (-0.31, -0.842, 2.31), (-0.10, -0.825, 2.35)),
+        ((-0.55, -0.828, 2.27), (-0.31, -0.845, 2.21), (-0.08, -0.828, 2.26)),
+        ((-0.51, -0.825, 2.17), (-0.30, -0.842, 2.11), (-0.11, -0.825, 2.16)),
+    )
+    anatomy_curve("BONE_exposed_ribs", ribs, 0.023, bone, "spine_03.x")
+    anatomy_curve(
+        "BONE_broken_sternum",
+        (((-0.31, -0.855, 2.38), (-0.29, -0.865, 2.25), (-0.30, -0.855, 2.08)),),
+        0.028,
+        bone,
+        "spine_03.x",
+    )
+
+    # Crude cross-stitches along the intact side: the monster was assembled,
+    # not born.  Their near-black colour reads as wire or dried tendon.
+    stitches = tuple(
+        (
+            ((0.06 + i * 0.055, -0.79, 2.42 - i * 0.055),
+             (0.14 + i * 0.055, -0.81, 2.34 - i * 0.055)),
+            ((0.14 + i * 0.055, -0.81, 2.42 - i * 0.055),
+             (0.06 + i * 0.055, -0.79, 2.34 - i * 0.055)),
+        )
+        for i in range(4)
+    )
+    anatomy_curve(
+        "FLESH_crude_stitches",
+        tuple(path for pair in stitches for path in pair),
+        0.010,
+        stitch,
+        "spine_03.x",
+    )
+
+    # A snapped scapula fragment breaches the swollen shoulder.  Applying the
+    # transform before bone parenting avoids scale surprises from the FBX rig.
+    bpy.ops.mesh.primitive_cone_add(vertices=7, radius1=0.075, radius2=0.018, depth=0.34,
+                                    location=(0.80, -0.24, 2.68),
+                                    rotation=(math.radians(18), math.radians(-34), math.radians(14)))
+    shoulder_bone = bpy.context.object
+    shoulder_bone.name = "BONE_shoulder_fragment"
+    bpy.context.view_layer.objects.active = shoulder_bone
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+    shoulder_bone.data.materials.append(bone)
+    parent_to_bone(shoulder_bone, armature, "shoulder.l")
+    added.append(shoulder_bone)
+
     # Wet tendon cords hang from the torn abdomen and move rigidly with it.
-    curve_data = bpy.data.curves.new("FLESH_hanging_tendons", "CURVE")
-    curve_data.dimensions = "3D"
-    curve_data.resolution_u = 2
-    curve_data.bevel_depth = 0.035
-    curve_data.bevel_resolution = 2
+    tendon_paths = []
     for offset, length in ((-0.17, 0.46), (0.01, 0.66), (0.15, 0.51)):
-        spline = curve_data.splines.new("BEZIER")
-        spline.bezier_points.add(2)
-        points = (
+        tendon_paths.append((
             (offset, -0.66, 1.63),
             (offset + 0.10, -0.72, 1.63 - length * 0.52),
             (offset - 0.04, -0.64, 1.63 - length),
-        )
-        for index, (point, coordinate) in enumerate(zip(spline.bezier_points, points)):
-            point.co = coordinate
-            point.radius = (0.72, 1.30, 0.55)[index]
-            point.handle_left_type = "AUTO"
-            point.handle_right_type = "AUTO"
-    curve_data.materials.append(sinew)
-    tendons = bpy.data.objects.new("FLESH_hanging_tendons", curve_data)
-    bpy.context.scene.collection.objects.link(tendons)
-    parent_to_bone(tendons, armature, "spine_01.x")
-    added.append(tendons)
+        ))
+    anatomy_curve("FLESH_hanging_tendons", tuple(tendon_paths), 0.035, sinew, "spine_01.x")
     return added
 
 
@@ -491,7 +569,7 @@ def main() -> None:
     camera, scene = setup_stage()
     low, high = mesh_bounds(meshes)
     target = Vector(((low.x + high.x) * 0.5, (low.y + high.y) * 0.5, low.z + 1.48))
-    save_stage(out.parent / "ravensmoor-stone-golem.blend")
+    save_stage(out.parent / "ravensmoor-flesh-golem.blend")
 
     if mode == "preview":
         set_pose(armature, "idle", 0)
