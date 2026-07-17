@@ -72,9 +72,12 @@ const HUD_ORB_Y = 99;
 const HUD_STATUS_X = 526;
 const HUD_STATUS_Y = 166;
 const HUD_STATUS_W = 878;
-const HUD_SLOT_Y = 100;
-const HUD_MOUSE_SLOT_X = [262, 365, 466, 568, 670] as const;
-const HUD_KEYBOARD_SLOT_X = [816, 914, 1011, 1105, 1200, 1295, 1388, 1480, 1574, 1667] as const;
+const HUD_SLOT_Y = 98;
+const HUD_MOUSE_SLOT_X = [252, 356, 459, 560, 658] as const;
+const HUD_KEYBOARD_SLOT_X = [808, 905, 1001, 1096, 1190, 1286, 1379, 1472, 1565, 1661] as const;
+const HUD_MOUSE_LABEL_X = 466;
+const HUD_MOUSE_LABEL_Y = 33;
+const HUD_NUMBER_OFFSET_X = -2;
 
 function hudSkala(w: number): number {
   // Harte Obergrenze: auch auf breiten oder flachen Browserfenstern darf das
@@ -838,8 +841,8 @@ export class Hud {
     this.hpFrame.setVisible(true);
     this.mpFrame.setVisible(true);
     const zahlGroesse = Math.max(16, Math.round(28 * skala));
-    this.hpText.setFontSize(zahlGroesse).setPosition(hx, hy).setText(hpVal);
-    this.mpText.setFontSize(zahlGroesse).setPosition(mx, my).setText(mpVal);
+    this.hpText.setFontSize(zahlGroesse).setPosition(hx + HUD_NUMBER_OFFSET_X, hy).setText(hpVal);
+    this.mpText.setFontSize(zahlGroesse).setPosition(mx + HUD_NUMBER_OFFSET_X, my).setText(mpVal);
     const trankGroesse = Math.max(10, Math.round(18 * skala));
     this.passeEinzeiligEin(this.potText, potT, trankGroesse, 9, (HUD_LIFE_W - 22) * skala);
     this.potText.setPosition(links + HUD_ORB_HP_X * skala + oh.x, oben + 181 * skala + oh.y);
@@ -865,9 +868,10 @@ export class Hud {
       const s = this.slots[i];
       const x = this.slotX(i);
       const y = this.slotY(i);
-      const slotBreite = Math.max(28, 82 * skala);
+      const slotBreite = Math.max(28, (i < KB_SLOTS ? 74 : 82) * skala);
       const slotHoehe = slotBreite;
-      this.slotZones[i].setPosition(x, y).setSize(slotBreite, slotHoehe);
+      const klickGroesse = Math.max(32, 82 * skala);
+      this.slotZones[i].setPosition(x, y).setSize(klickGroesse, klickGroesse);
       const locked = s.locked() !== null;
       // Kategorie-Färbung (Runde 36): Rahmen + dezenter Schimmer je nach
       // Kampf/Zauber/Bogen/Item - so unterscheidet man die Slots auf einen Blick
@@ -936,8 +940,8 @@ export class Hud {
       (HUD_MOUSE_W - 44) * skala,
     );
     this.mausInfo.setPosition(
-      (this.slotX(KB_SLOTS) + this.slotX(this.slots.length - 1)) / 2,
-      oben + 25 * skala + ui.mausleiste.y,
+      links + HUD_MOUSE_LABEL_X * skala + ui.mausleiste.x,
+      oben + HUD_MOUSE_LABEL_Y * skala + ui.mausleiste.y,
     );
 
     // XP-Leiste
