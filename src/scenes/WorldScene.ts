@@ -95,6 +95,7 @@ import { getSettings, saveSettings } from '../logic/settings';
 import { seededRng, pick, ri } from '../logic/rng';
 import { respawnZiel } from '../logic/respawn';
 import { moralWert, fluchtEntscheidung, istEingekesselt, type MoralLage } from '../logic/moral';
+import { konterFaktor } from '../data/kampfarten';
 import { BODEN_STILE, bodenStilTextur } from '../gfx/bodenStile';
 import { WAND_STILE, wandStilFrontTextur, wandStilKroneTextur } from '../gfx/wandStile';
 import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type SaveData } from '../logic/save';
@@ -3455,6 +3456,7 @@ export class WorldScene extends CombatScene {
         e.schild = d.schild ?? false;
         e.schadensRed = d.schadensRed ?? 1;
         e.kampfTags = d.tags ?? [];
+        e.schadensArt = d.schadensArt ?? 'schnitt';
         e.aggro = 5000;
         e.passiv = true;   // R100b: frisch gesetzt -> steht still, bis geweckt (Gegner nah/Schaden)
       },
@@ -3652,17 +3654,33 @@ export class WorldScene extends CombatScene {
       c.add(schildBtn);
       c.add(this.add.text(F(14), y + F(6), this.rtsSchildAktiv ? '🛡 Schild: AN' : '🛡 Schild: AUS', { fontFamily: 'serif', fontSize: `${F(10)}px`, color: this.rtsSchildAktiv ? '#9ad86a' : '#b0a48a' }));
       y += F(36);
-      // Haltung der Auswahl (aggressiv/verteidigen/halten)
-      c.add(this.add.text(F(8), y, 'Haltung', { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#8a7a5a', letterSpacing: 1 }));
-      y += F(16);
-      const haltungen: Array<['aggressiv' | 'verteidigen' | 'halten', string]> = [['aggressiv', 'Angriff'], ['verteidigen', 'Verteidigen'], ['halten', 'Halten']];
-      let hx = F(8);
-      for (const [s, lbl] of haltungen) {
-        // R100c: aktive Haltung hervorheben (Highlight = zuletzt gesetzte / Held-Haltung)
-        const aktiv = this.rtsAktHaltung === s;
-        const kn = this.add.text(hx, y, lbl, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: aktiv ? '#f0d060' : '#d8cfb8', backgroundColor: aktiv ? '#3a2a10' : '#120d07', padding: { x: F(5), y: F(3) } }).setInteractive({ useHandCursor: true });
-        kn.on('pointerdown', () => { this.setzeHaltung(s); this.sfx.play('klick'); this.baueRtsLeiste(); });
-        c.add(kn); hx += kn.width + F(4);
+      // R139 (Dok 03, 1.7 - Dungeon Siege): DREI Verhaltens-Achsen. Erst dadurch
+      // entstehen Rollen (Feldscher: nahe bleiben + Feuer einstellen).
+      const achse = <T extends string>(titel: string, eintraege: Array<[T, string]>, aktiv: T | null, setze: (v: T) => void): void => {
+        c.add(this.add.text(F(8), y, titel, { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#8a7a5a', letterSpacing: 1 }));
+        y += F(16);
+        let hx = F(8);
+        for (const [v, lbl] of eintraege) {
+          const an = aktiv === v;
+          const kn = this.add.text(hx, y, lbl, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: an ? '#f0d060' : '#d8cfb8', backgroundColor: an ? '#3a2a10' : '#120d07', padding: { x: F(5), y: F(3) } }).setInteractive({ useHandCursor: true });
+          kn.on('pointerdown', () => { setze(v); this.sfx.play('klick'); this.baueRtsLeiste(); });
+          c.add(kn); hx += kn.width + F(4);
+        }
+        y += F(26);
+      };
+      achse('Bewegung', [['aggressiv', 'Verfolgen'], ['verteidigen', 'Nahe bleiben'], ['halten', 'Halten']], this.rtsAktHaltung, (v) => this.setzeHaltung(v));
+      achse('Angriff', [['angreifen', 'Angreifen'], ['zurueckschlagen', 'Nur zurückschlagen'], ['feuerEinstellen', 'Feuer einstellen']], this.rtsAktAngriff, (v) => { this.rtsAktAngriff = v; this.rtsBattle?.setAngriff(v); });
+      achse('Zielwahl', [['naechster', 'Nächster'], ['schwaechster', 'Schwächster'], ['gefaehrlichster', 'Gefährlichster']], this.rtsAktZielwahl, (v) => { this.rtsAktZielwahl = v; this.rtsBattle?.setZielwahl(v); });
+      // R139 (1.9): Formations-Abstand - eng fuer den Nahkampf, weit gegen
+      // Flaechenschaden (der natuerliche Katapult-Konter).
+      c.add(this.add.text(F(8), y, `Abstand ${this.rtsBattle ? this.rtsBattle.abstandF.toFixed(1) : '1.0'}x  (eng = Nahkampf, weit = gegen Fläche)`, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a' }));
+      y += F(14);
+      let ax2 = F(8);
+      for (const [lbl, f] of [['Eng', 0.7], ['Normal', 1.0], ['Weit', 1.5]] as Array<[string, number]>) {
+        const an = Math.abs((this.rtsBattle?.abstandF ?? 1) - f) < 0.05;
+        const kn = this.add.text(ax2, y, lbl, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: an ? '#f0d060' : '#d8cfb8', backgroundColor: an ? '#3a2a10' : '#120d07', padding: { x: F(5), y: F(3) } }).setInteractive({ useHandCursor: true });
+        kn.on('pointerdown', () => { this.rtsBattle?.setAbstand(f); this.sfx.play('klick'); this.baueRtsLeiste(); });
+        c.add(kn); ax2 += kn.width + F(4);
       }
       y += F(26);
       // Angriffsmarsch scharf schalten (A blieb der Kamera, R97): danach führt der
@@ -6720,6 +6738,9 @@ export class WorldScene extends CombatScene {
   // Haltung auf die AUSWAHL (Truppen) UND den Helden anwenden + aktive Haltung merken.
   private rtsHeldStance: 'aggressiv' | 'verteidigen' | 'halten' = 'verteidigen';
   private rtsAktHaltung: 'aggressiv' | 'verteidigen' | 'halten' | null = null;
+  // R139 (1.7): die zwei neuen Verhaltens-Achsen der Auswahl (UI-Merker).
+  private rtsAktAngriff: 'angreifen' | 'zurueckschlagen' | 'feuerEinstellen' | null = null;
+  private rtsAktZielwahl: 'naechster' | 'schwaechster' | 'gefaehrlichster' | null = null;
   private setzeHaltung(s: 'aggressiv' | 'verteidigen' | 'halten'): void {
     this.rtsBattle?.setStance(s);
     if (this.rtsHeldGewaehlt || this.rtsBattle?.gewaehlte().length === 0) this.rtsHeldStance = s;
@@ -7071,8 +7092,18 @@ export class WorldScene extends CombatScene {
     }
     let ziel: Enemy | 'held' | null = null;
     if (e.team === 'spieler') {
-      let bd = 420;
-      for (const o of this.enemies) { if (o.team === 'spieler' || o.hp <= 0) continue; const d = Math.hypot(o.x - e.x, o.y - e.y); if (d < bd) { bd = d; ziel = o; } }
+      // R139 (1.7) Zielwahl-Achse: naechster (Standard), schwaechster (wenig
+      // HP zuerst - Fokusfeuer), gefaehrlichster (hoechster Schaden zuerst).
+      let best = Infinity;
+      for (const o of this.enemies) {
+        if (o.team === 'spieler' || o.hp <= 0) continue;
+        const d = Math.hypot(o.x - e.x, o.y - e.y);
+        if (d > 420) continue;
+        const score = e.zielWahl === 'schwaechster' ? o.hp + d * 0.05
+          : e.zielWahl === 'gefaehrlichster' ? -o.dmg * 100 + d
+          : d;
+        if (score < best) { best = score; ziel = o; }
+      }
     } else {
       // Feind: naechster von {Held, Verbuendete}
       ziel = this.playerDead ? null : 'held';
@@ -7108,7 +7139,13 @@ export class WorldScene extends CombatScene {
         const d2 = en.verzweifelt ? Math.round(dmg * MORAL.verzweiflungDmgF) : dmg;
         const z = s.zielFuer(en);
         if (z === 'held') s.enemyMeleeHit(en, d2);
-        else if (z) { if (en.team === 'spieler') s.damageEnemy(z, d2, 0, 0, null, true); else s.trifftVerbuendeten(z, d2); }
+        else if (z) {
+          // R139 (Dok 03, 1.6 - AoE IV): Tag-Konter Einheit gegen Einheit.
+          const f = konterFaktor(en.schadensArt, z.kampfTags);
+          const d3 = Math.max(1, Math.round(d2 * f));
+          s.zeigeKonter(z, f);
+          if (en.team === 'spieler') s.damageEnemy(z, d3, 0, 0, null, true); else s.trifftVerbuendeten(z, d3);
+        }
       },
       spawnEnemyProjectile: (x, y, vx, vy, dmg, col, pfeil, _vt, hoch) => s.spawnEnemyProjectile(x, y, vx, vy, dmg, col, pfeil, e.team === 'spieler' ? 'spieler' : 'feind', hoch),
       addTelegraph: (x, y, r, t, dmg) => s.addTelegraph(x, y, r, t, dmg),
@@ -7164,6 +7201,8 @@ export class WorldScene extends CombatScene {
     e.hp = e.maxhp = d.hp;
     e.dmg = d.dmg;
     e.speed = d.speed;
+    e.kampfTags = d.tags ?? [];            // R139 (1.6): Konter-Matrix kennt beide Seiten
+    e.schadensArt = d.schadensArt ?? 'schnitt';
     e.aggro = 5000;   // Verbuendete "sehen" ihr Ziel immer (Befehle steuern sie)
     e.jagdZiel = { x, y };   // ohne Befehl: Stellung halten
     e.passiv = true;  // R100b: frisch gesetzt -> steht still, bis geweckt/befohlen

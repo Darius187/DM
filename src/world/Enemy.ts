@@ -197,6 +197,16 @@ export class Enemy {
   moral = 100;
   flieht = false;
   verzweifelt = false;
+  // R139 (Dok 03, 1.7 - Dungeon Siege "Field Commands"): Angriffs-Achse
+  // "Feuer einstellen" - die Einheit bewegt sich, holt aber NIE aus (der
+  // Feldscher zieht keine Aggro durch Gegenwehr). Zielwahl-Achse steuert,
+  // WEN zielFuer aussucht (naechster/schwaechster/gefaehrlichster).
+  kaempftNicht = false;
+  zielWahl: 'naechster' | 'schwaechster' | 'gefaehrlichster' = 'naechster';
+  // R139 (1.6): womit diese Einheit zuschlaegt (speist die KONTER-Matrix) und
+  // wann zuletzt ein Konter-Text ueber ihr stand (Drossel gegen Text-Spam).
+  schadensArt: import('../data/kampfarten').SchadensArt = 'schnitt';
+  konterTextT = 0;
   fokusZiel: Enemy | null = null;   // Angriffsbefehl der RTS-Steuerung (Verbuendete)
   imTurm = false;                    // R100: sitzt im Wachturm -> Sprite unsichtbar, schiesst von oben
   passiv = false;                    // R100b: frisch gesetzt -> steht still, bis geweckt (Gegner nah/Schaden/Befehl)
@@ -496,7 +506,7 @@ export class Enemy {
     // umkreist/angegriffen, sondern IMMER ums Hindernis gepfadet (durchs offene Tor).
     const zielSicht = this.hasLineOfSight(host);
     if (this.ranged && d < ENEMY_AI.rangedMaxShoot && d > ENEMY_AI.rangedMinShoot && zielSicht) {
-      if (this.shootCd === 0) {
+      if (this.shootCd === 0 && !this.kaempftNicht) {   // R139 (1.7): Feuer einstellen
         this.shootCd = ENEMY_AI.rangedShootCd;
         const a = ang + (Math.random() * 0.12 - 0.06);
         // Zauberstab-Gefallene schleudern ein violettes Arkangeschoss statt Pfeil
@@ -692,6 +702,8 @@ export class Enemy {
   }
 
   private startPattern(host: EnemyHost, id: AttackPattern['id'], windup?: number): void {
+    // R139 (1.7): Kampfverbot - kein Ausholen, egal aus welchem Zweig.
+    if (this.kaempftNicht) return;
     const def = (PATTERNS[this.type] ?? []).find((p) => p.id === id);
     this.pattern = id;
     // Schlagtempo-Regler (F10, Runde 27): höher = kürzeres Ausholen,

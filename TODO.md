@@ -129,3 +129,11 @@
 - [ ] V9-Tueren huebscher oeffnen (Autor: "die loesen sich einfach auf"):
       sichtbares Tuerblatt, das aufschwingt und OFFEN STEHEN BLEIBT (Sprite an
       der Wand), statt Kipp-Tween + Ausblenden.
+
+- R139: Engstellen-Kompression (Dok 03, 1.8) - erst REPRODUZIEREN (Tor-Karte,
+  breite Linie durchschicken, Verklumpung filmen), dann bauen. Regel 9.1.
+- R139: Konter-Matrix auch fuer den HELDEN-Schwung gegen Einheiten-Tags
+  (WAFFEN_SCHADENSART x kampfTags) - eigener Schritt, Dungeon-Balance pruefen.
+- R139: Feldscher/Heiler-Einheit fehlt weiter (R99d) - spawnVerbuendeter hat
+  keinen 'heiler'-Eintrag; die Verhaltens-Achsen-Rolle ist schon vorbereitet.
+- R139: Flucht-/Sammel-RUFE als Sound-Assets (Autor fragen: WAV 48kHz/24bit).

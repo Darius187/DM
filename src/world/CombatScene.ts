@@ -18,6 +18,7 @@ import {
   stepCombat, resolveIncoming, damageAfterArmor, blockedDamage, type CombatState, type AttackEvent,
 } from '../logic/combat';
 import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TIMESCALE, WEAPON_MOVESETS, GORE_WUCHT, KNOCKBACK, WEAPON_HAND, NAHKAMPF, PHYSIK, PFEIL_PHYSIK, ANGRIFFSSLOTS } from '../data/kampf';
+import { konterFaktor, konterFeedback } from '../data/kampfarten';
 import { weiseSlotsZu } from '../logic/angriffsSlots';
 import { ALTAR, SPELLS, SPELL_FX, SCHOOLS } from '../data/balancing';
 import { newPlayerState, recalc, weaponGem, aktiveWaffe, type PlayerState } from '../logic/playerState';
@@ -935,6 +936,18 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected enemyHost(_e: Enemy): EnemyHost { return this; }
   // Feind-Geschoss trifft einen Verbuendeten (nur die Welt hat welche).
   protected trifftVerbuendeten(_a: Enemy, _dmg: number): void { /* Welt */ }
+
+  // R139 (Dok 03, 1.6 + kampfarten Kap. 4): Konter-Rueckmeldung ueber dem Ziel.
+  // Ohne die Anzeige existiert das Konter-System fuer den Spieler nicht.
+  // Gedrosselt je Ziel, damit eine Schlacht nicht in Texten ertrinkt.
+  protected zeigeKonter(ziel: Enemy, faktor: number): void {
+    const fb = konterFeedback(faktor);
+    if (!fb) return;
+    const jetzt = this.time.now / 1000;
+    if (jetzt - ziel.konterTextT < 1.2) return;
+    ziel.konterTextT = jetzt;
+    this.fx.float(ziel.x, ziel.y - ziel.r - 8, fb.text, fb.farbe);
+  }
   protected stepSound(): string { return 'schritte_stein'; }
 
   // R96: den Geh-Zyklus (pstep) einen Takt weiterdrehen - für die RTS-Klick-
@@ -3285,7 +3298,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         // R99d: VERBUENDETEN-Geschoss trifft Feinde (gleiches Dungeon-Projektil)
         for (const e of [...this.enemies]) {
           if (e.team === 'spieler' || e.hp <= 0) continue;
-          if (Math.hypot(pr.x - e.x, pr.y - e.y) < pr.r + e.r) { pr.dead = true; this.damageEnemy(e, pr.dmg, 0, 0, null, false); break; }
+          if (Math.hypot(pr.x - e.x, pr.y - e.y) < pr.r + e.r) {
+            pr.dead = true;
+            // R139 (1.6): Pfeil-Konter (prallt an Schilden ab, maeht Leichtes)
+            const f = konterFaktor(pr.arrow ? 'pfeil' : 'schatten', e.kampfTags);
+            this.zeigeKonter(e, f);
+            this.damageEnemy(e, Math.max(1, Math.round(pr.dmg * f)), 0, 0, null, false);
+            break;
+          }
         }
       } else if (Math.hypot(pr.x - this.px, pr.y - this.py) < pr.r + PLAYER.radius) {
         pr.dead = true;
@@ -3303,7 +3323,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         // R99d: Feind-Geschoss kann auch VERBUENDETE treffen
         for (const e of [...this.enemies]) {
           if (e.team !== 'spieler' || e.hp <= 0) continue;
-          if (Math.hypot(pr.x - e.x, pr.y - e.y) < pr.r + e.r) { pr.dead = true; this.trifftVerbuendeten(e, pr.dmg); break; }
+          if (Math.hypot(pr.x - e.x, pr.y - e.y) < pr.r + e.r) {
+            pr.dead = true;
+            // R139 (1.6): Pfeil-Konter auch gegen die eigene Truppe
+            const f = konterFaktor(pr.arrow ? 'pfeil' : 'schatten', e.kampfTags);
+            this.zeigeKonter(e, f);
+            this.trifftVerbuendeten(e, Math.max(1, Math.round(pr.dmg * f)));
+            break;
+          }
         }
       }
     }

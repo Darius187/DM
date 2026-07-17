@@ -2278,3 +2278,35 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Spielerbefehl (Fokus schlaegt Sperre immer).
 - OFFEN als Asset: Flucht-/Sammel-RUFE (Sound) - der Autor ist Sound-Fanatiker,
   Platzhalter bewusst NICHT eingebaut (nur Schwebetexte).
+
+## R139b - RTS Rang 1 fertig: Achsen, Set-Target, Tag-Konter, Abstand (Dok 03)
+- 1.7 DREI VERHALTENS-ACHSEN (Dungeon Siege "Field Commands"): Stance bleibt
+  die BEWEGUNGS-Achse (Verfolgen/Nahe bleiben/Halten), NEU sind Angriff
+  (Angreifen/Nur zurueckschlagen/Feuer einstellen) und Zielwahl (Naechster/
+  Schwaechster/Gefaehrlichster). Enemy.kaempftNicht gatet startPattern +
+  Fernschuss zentral. 'Zurueckschlagen' kaempft nur, wenn in den letzten 5s
+  getroffen oder der Feind ansteht (<60px). Heiler-Einheiten starten als
+  "nahe bleiben + Feuer einstellen" (zieht keine Aggro) - die Feldscher-
+  Einheit selbst fehlt noch (TODO R99d), die Rolle ist vorbereitet.
+- 1.3 BEWEGUNG UND ZIEL TRENNEN (BAR "Set Target"): Feind-Rechtsklick bei
+  LAUFENDEM Gruppen-Marsch setzt nur noch die ZIEL-PRIORITAET (Marsch laeuft
+  weiter, angegriffen wird, sobald das Ziel in Reichweite ist); im Stand
+  bleibt es der bekannte Angriffsbefehl. Nicht headless verifiziert -
+  Autor bitte im Spiel gegenfuehlen (wie R131).
+- 1.6 TAG-KONTER: die VORHANDENE KONTER-Matrix aus kampfarten.ts (Dok 02,
+  war nie verdrahtet!) wirkt jetzt Einheit-gegen-Einheit: Nahkampf ueber
+  schadensArt des Angreifers x kampfTags des Ziels, Fernkampf als Pfeil-
+  Konter an beiden Projektil-Einschlaegen. ALLE RTS-Einheiten haben jetzt
+  schadensArt + tags (Spielerseite neu: Schildtraeger wucht/gepanzert+schild,
+  Gewappneter schnitt, Bogenschuetze pfeil/leicht, Ritter stich/schwer -
+  KEINE Reiter, N0: der 'Ritter' kaempft zu Fuss). Rueckmeldung nach
+  kampfarten Kap. 4 ("SCHWACH!"/"PRALLT AB"), je Ziel auf 1,2s gedrosselt.
+  Dungeon-Monster ohne Tags bleiben unveraendert (Faktor 1).
+- 1.9 FORMATIONS-ABSTAND (Dungeon Siege 30.4): abstandF 0,6-2,0 skaliert
+  alle Slot-Rechnungen; UI-Knoepfe Eng/Normal/Weit im BEFEHLE-Tab
+  (eng = Nahkampf, weit = gegen Flaechenschaden).
+- 1.8 ENGSTELLEN-KOMPRESSION: BEWUSST ZURUECKGESTELLT - Dok 03 sagt selbst
+  "das passiert VERMUTLICH schon". Regel 9.1: erst auf einer Tor-Karte
+  REPRODUZIEREN, dann fixen. Eintrag in TODO.md.
+- Held-Waffen gegen Einheiten-Tags (Konter fuer den HELDEN-Schwung) bewusst
+  NICHT mit verdrahtet - eigener Schritt, beruehrt die Dungeon-Balance.

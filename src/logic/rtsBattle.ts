@@ -20,6 +20,13 @@ import { Wegfeld } from '../world/Wegfeld';
 const TILE = 32;
 
 export type Stance = 'aggressiv' | 'verteidigen' | 'halten';
+// R139 (Dok 03, 1.7 - Dungeon Siege "Field Commands"): DREI unabhaengige
+// Verhaltens-Achsen statt einer Haltung. Stance bleibt die BEWEGUNGS-Achse
+// (aggressiv=frei verfolgen, verteidigen=in der Naehe bleiben, halten=Stellung),
+// dazu kommen Angriff und Zielwahl. Erst dadurch entstehen ROLLEN (der
+// Feldscher bleibt nah und greift NIE an, zieht also keine Aggro).
+export type AngriffsArt = 'angreifen' | 'zurueckschlagen' | 'feuerEinstellen';
+export type ZielWahl = 'naechster' | 'schwaechster' | 'gefaehrlichster';
 
 interface Gruppe { anker: { x: number; y: number }; facing: number; ziel: { x: number; y: number } | null; manuell: boolean; angriffsMarsch: boolean }
 
@@ -32,6 +39,8 @@ export interface RtsUnit {
   basisDmg: number;
   tot: boolean; gewaehlt: boolean;
   stance: Stance; rank: number;
+  angriff: AngriffsArt; zielwahl: ZielWahl;
+  zuletztGetroffenT: number;   // Schlacht-Zeit des letzten erlittenen Treffers (fuer 'zurueckschlagen')
   grp: Gruppe | null; off: Slot | null;
   fokusRef: Enemy | null;
   turm: { x: number; y: number } | null;
@@ -105,7 +114,9 @@ export class RtsBattle {
     if (!ref) { this.feedback(`${d.name}: Spawn nicht möglich`); return null; }
     const u: RtsUnit = {
       ref, typ, x, y, hp: ref.hp, maxhp: ref.maxhp, basisDmg: ref.dmg,
-      tot: false, gewaehlt: false, stance: 'aggressiv', rank: d.rank,
+      tot: false, gewaehlt: false, stance: d.heiler ? 'verteidigen' : 'aggressiv', rank: d.rank,
+      angriff: d.heiler ? 'feuerEinstellen' : 'angreifen', zielwahl: 'naechster',
+      zuletztGetroffenT: -999,
       grp: null, off: null, fokusRef: null, turm: null, buffDmg: 1,
     };
     this.units.push(u);
@@ -207,10 +218,18 @@ export class RtsBattle {
     if (turm) { this.befehlTurm(turm); return; }
     const ef = this.feindBei(b.x, b.y);
     if (ef) {
-      this.befehlFokus(ef);
+      // R139 (1.3): laeuft ein Gruppen-Marsch, setzt der Feind-Klick nur die
+      // ZIEL-PRIORITAET - die Truppe marschiert weiter (BAR "Set Target").
+      const marschiert = this.gewaehlte().some((u) => u.grp && u.grp.ziel);
+      if (marschiert) {
+        for (const u of this.gewaehlte()) { u.fokusRef = ef; u.ref.passiv = false; }
+        this.feedback('Ziel-Priorität: ' + ef.name + ' (Marsch läuft weiter)');
+      } else {
+        this.befehlFokus(ef);
+        this.feedback('Angriff auf ' + ef.name);
+      }
       if (this.heldGewaehlt) this.held.befehlAngriff(ef.x, ef.y);
       this.marker.push({ x: ef.x, y: ef.y, t: 0.8, feind: true });
-      this.feedback('Angriff auf ' + ef.name);
       this.host.play('klick', 0.5);
     } else {
       this.befehlMarsch(b, false);
@@ -219,7 +238,27 @@ export class RtsBattle {
     }
   }
 
+  // R139 (Dok 03, 1.9 - Dungeon Siege): Formations-ABSTAND. Eng = stark im
+  // Nahkampf (mehr kaempfen zugleich), weit = ueberlebt Flaechenschaden
+  // (Katapult/Feuerregen trifft weniger). Der natuerliche Konter-Regler.
+  abstandF = 1;
+  setAbstand(f: number): void {
+    this.abstandF = Math.max(0.6, Math.min(2, f));
+    this.formiere(this.aktiveForm);   // Auswahl formiert sich sofort neu
+    this.feedback(`Abstand ${this.abstandF.toFixed(1)}x`);
+  }
+
   setForm(form: Form): void { this.aktiveForm = form; this.formiere(form); }
+  setAngriff(a: AngriffsArt): void {
+    const g = this.gewaehlte();
+    for (const u of g) { u.angriff = a; if (a !== 'feuerEinstellen') u.ref.passiv = false; }
+    if (g.length) this.feedback(a === 'feuerEinstellen' ? 'Feuer einstellen' : a === 'zurueckschlagen' ? 'Nur zurueckschlagen' : 'Angreifen');
+  }
+  setZielwahl(z: ZielWahl): void {
+    const g = this.gewaehlte();
+    for (const u of g) u.zielwahl = z;
+    if (g.length) this.feedback('Zielwahl: ' + z);
+  }
   setStance(s: Stance): void {
     const g = this.gewaehlte();
     // R100g (Autor "Haltung Angriff, aber NPCs greifen nicht an"): Angriff/Verteidigen
@@ -245,7 +284,7 @@ export class RtsBattle {
     const cx = sel.reduce((a, u) => a + u.x, 0) / sel.length, cy = sel.reduce((a, u) => a + u.y, 0) / sel.length;
     const grp: Gruppe = { anker: { x: cx, y: cy }, facing: this.zumFeind(cx, cy), ziel: null, manuell: false, angriffsMarsch: false };
     const sortiert = [...sel].sort((a, b) => a.rank - b.rank);
-    const slots = formSlots(sortiert.length, form, 30);
+    const slots = formSlots(sortiert.length, form, 30 * this.abstandF);   // R139 (1.9)
     sortiert.forEach((u, i) => { this.verlasseTurm(u); u.grp = grp; u.off = slots[i]; u.fokusRef = null; u.ref.passiv = false; });
     this.host.play('klick', 0.6);
   }
@@ -271,13 +310,13 @@ export class RtsBattle {
       }
       const proj = (u: RtsUnit) => (u.x - a.x) * Math.cos(dir) + (u.y - a.y) * Math.sin(dir);
       const sortiert = [...sel].sort((u, v) => proj(u) - proj(v));
-      const slots = linienSlots(sortiert.map((u) => u.rank), laenge, 30);
+      const slots = linienSlots(sortiert.map((u) => u.rank), laenge, 30 * this.abstandF);   // R139 (1.9)
       const gruppe: Gruppe = { anker: mid, facing, ziel: null, manuell: false, angriffsMarsch: false };
       return { gruppe, zuweisung: sortiert.map((u, i) => ({ u, slot: slots[i] })) };
     }
     const facing = Math.atan2(b.y - a.y, b.x - a.x);
     const sortiert = [...sel].sort((u, v) => u.rank - v.rank);
-    const slots = formSlotsSkaliert(sortiert.length, this.aktiveForm, laenge);
+    const slots = formSlotsSkaliert(sortiert.length, this.aktiveForm, laenge, 16 * this.abstandF, 90 * this.abstandF);   // R139 (1.9)
     const gruppe: Gruppe = { anker: mid, facing, ziel: null, manuell: false, angriffsMarsch: false };
     return { gruppe, zuweisung: sortiert.map((u, i) => ({ u, slot: slots[i] })) };
   }
@@ -311,7 +350,10 @@ export class RtsBattle {
   private verlasseTurm(u: RtsUnit): void { u.turm = null; }
 
   // --- Simulation (nur noch Befehls-Steuerung; der KAMPF läuft im Enemy-System)
+  private zeit = 0;   // Schlacht-Uhr (fuer 'zurueckschlagen' und Treffer-Zeiten)
+
   update(dt: number): void {
+    this.zeit += dt;
     this.fxg.clear();
     this.raeumeWegfelder();
     this.wendeLagerAurenAn(dt);
@@ -327,7 +369,15 @@ export class RtsBattle {
   private steuereEinheit(u: RtsUnit): void {
     const ref = u.ref;
     if (ref.hp <= 0 || !this.host.istAktiv(ref)) { u.tot = true; u.gewaehlt = false; return; }
+    if (ref.hp < u.hp) u.zuletztGetroffenT = this.zeit;   // R139 (1.7): erlittener Treffer
     u.x = ref.x; u.y = ref.y; u.hp = ref.hp; u.maxhp = ref.maxhp;
+    // R139 (1.7) Angriffs-Achse -> Kampfverbot im Enemy-Ref:
+    // 'zurueckschlagen' kaempft nur, wenn juengst getroffen oder der Feind ansteht.
+    const naechster = this.naechsterFeind(u);
+    const nfd = naechster ? Math.hypot(naechster.x - u.x, naechster.y - u.y) : Infinity;
+    ref.kaempftNicht = u.angriff === 'feuerEinstellen'
+      || (u.angriff === 'zurueckschlagen' && this.zeit - u.zuletztGetroffenT > 5 && nfd > 60);
+    ref.zielWahl = u.zielwahl;   // R139 (1.7) Zielwahl-Achse (liest zielFuer)
     ref.dmg = Math.round(u.basisDmg * u.buffDmg);   // Feldküchen-Aura
     // R100b: passive (frisch gesetzte) Einheit steht still - nicht steuern, bis
     // sie geweckt (Gegner nah) oder befohlen wird (Befehle loeschen passiv).
@@ -359,15 +409,26 @@ export class RtsBattle {
     }
     // Turm verlassen: Fixierung loesen
     if (ref.festPos) { ref.festPos = null; ref.turmReichF = 1; }
-    if (u.fokusRef && u.fokusRef.hp > 0 && this.host.istAktiv(u.fokusRef)) {
+    if (u.fokusRef && (u.fokusRef.hp <= 0 || !this.host.istAktiv(u.fokusRef))) u.fokusRef = null;
+    // R139 (Dok 03, 1.3 - BAR "Set Target"): Fokus OHNE Marsch = reiner
+    // Angriffsbefehl (wie bisher). Fokus MIT laufendem Gruppen-Slot = das Ziel
+    // wird BEVORZUGT beschossen/angegriffen, der Marsch laeuft weiter
+    // ("zieht euch zurueck, aber schiesst weiter auf X").
+    if (u.fokusRef && !(u.grp && u.off)) {
       ref.fokusZiel = u.fokusRef;
       ref.jagdZiel = null;
       return;
     }
-    u.fokusRef = null; ref.fokusZiel = null;
+    ref.fokusZiel = null;
     const slot = this.slotWeltPos(u);
     const f = this.naechsterFeind(u);
     const fd = f ? Math.hypot(f.x - u.x, f.y - u.y) : Infinity;
+    if (u.fokusRef && slot) {
+      // bevorzugtes Ziel in Reichweite? Dann im Gehen darauf einschlagen/schiessen.
+      const reich = RTS_UNIT_TYP[u.typ].reich + 50;
+      const fokusD = Math.hypot(u.fokusRef.x - u.x, u.fokusRef.y - u.y);
+      if (fokusD < reich) ref.fokusZiel = u.fokusRef;
+    }
     if (slot) {
       const dS = Math.hypot(slot.x - u.x, slot.y - u.y);
       if (u.grp?.angriffsMarsch && fd < 160) { ref.jagdZiel = null; return; }   // Angriffsmarsch: unterwegs kämpfen
