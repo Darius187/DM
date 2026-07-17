@@ -1,0 +1,613 @@
+{
+  "asset": "medieval_village_church_3d_runtime",
+  "asset_type": "rotatable walkable 3D medieval village church",
+  "historical_target_year": 1349,
+  "runtime_mode": "walkable_interior",
+  "model": "medieval_village_church_3d_runtime.glb",
+  "units": "meters",
+  "root_node": "CHURCH_HOUSE_ROTATION_PIVOT",
+  "bounds_blender": {
+    "min": [
+      -4.88,
+      -9.13,
+      0.0
+    ],
+    "max": [
+      4.88,
+      8.12,
+      16.32
+    ],
+    "center": [
+      0.0,
+      -0.505,
+      8.16
+    ],
+    "size": [
+      9.76,
+      17.25,
+      16.32
+    ],
+    "bounding_radius": 12.48394
+  },
+  "coordinate_conversion": {
+    "blender": "X/Y ground, Z up",
+    "threejs": "X/Z ground, Y up",
+    "point_rule": "[x,y,z] -> [x,z,-y]"
+  },
+  "continuous_controls": {
+    "building_yaw_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 0
+    },
+    "uniform_scale": {
+      "min": 0.25,
+      "max": 4,
+      "default": 1
+    },
+    "camera_elevation_degrees": {
+      "min": 18,
+      "max": 78,
+      "default": 43
+    },
+    "camera_azimuth_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 36
+    },
+    "orthographic_zoom": {
+      "min": 0.55,
+      "max": 2.4,
+      "default": 1
+    }
+  },
+  "materials": {
+    "all_visible_materials_have_embedded_basecolor_textures": true,
+    "runtime_tinting_allowed": false,
+    "transparent_windows": true,
+    "texture_count": 12,
+    "used_materials": [
+      "MAT_CHURCH_CANDLE_WAX",
+      "MAT_CHURCH_DEEP_OPENING",
+      "MAT_CHURCH_FORGED_IRON",
+      "MAT_CHURCH_LEADED_GLASS_TRANSPARENT",
+      "MAT_CHURCH_MOSS",
+      "MAT_CHURCH_OAK_DARK",
+      "MAT_CHURCH_OAK_MID",
+      "MAT_CHURCH_STONE_DARK",
+      "MAT_CHURCH_STONE_WARM",
+      "MAT_CHURCH_TERRACOTTA_A",
+      "MAT_CHURCH_TERRACOTTA_B",
+      "MAT_CHURCH_TERRACOTTA_WEATHERED"
+    ]
+  },
+  "renderer_recipe": {
+    "output_color_space": "SRGBColorSpace",
+    "tone_mapping": "ACESFilmicToneMapping",
+    "exposure": 1.0,
+    "do_not_replace_materials": true
+  },
+  "doors": {
+    "main": {
+      "nodes": [
+        "DOOR_CHURCH_LEFT_HINGE",
+        "DOOR_CHURCH_RIGHT_HINGE"
+      ],
+      "trigger": "TRIGGER_CHURCH_MAIN",
+      "closed_frame": 1,
+      "open_frame": 30
+    }
+  },
+  "walkable_interior": {
+    "enabled": true,
+    "ground": [
+      "NAV_CHURCH_NAVE",
+      "NAV_CHURCH_TOWER"
+    ],
+    "stairs": null
+  },
+  "visibility_controls": {
+    "main_roof_property": "roof_removable",
+    "cutaway_property": "cutaway_near_wall",
+    "floor_property": "floor_level"
+  },
+  "node_groups": {
+    "transparent_windows": [
+      "WINDOW_NAVE_LEFT_0_GLASS",
+      "WINDOW_NAVE_LEFT_1_GLASS",
+      "WINDOW_NAVE_LEFT_2_GLASS",
+      "WINDOW_NAVE_REAR_GLASS",
+      "WINDOW_NAVE_RIGHT_0_GLASS",
+      "WINDOW_NAVE_RIGHT_1_GLASS",
+      "WINDOW_NAVE_RIGHT_2_GLASS"
+    ],
+    "batched_roof_meshes": [
+      "NAVE_ROOF_TILES_TILE_A",
+      "NAVE_ROOF_TILES_TILE_B",
+      "NAVE_ROOF_TILES_TILE_DARK",
+      "TOWER_ROOF_TILES_TILE_A",
+      "TOWER_ROOF_TILES_TILE_B",
+      "TOWER_ROOF_TILES_TILE_DARK"
+    ]
+  },
+  "animations": [
+    {
+      "name": "DOOR_CHURCH_LEFT_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_CHURCH_RIGHT_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    }
+  ],
+  "collision_guides": [
+    {
+      "name": "NAV_CHURCH_NAVE",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        2.525,
+        0.48
+      ],
+      "size_blender_xyz": [
+        7.7,
+        9.4,
+        0.06
+      ]
+    },
+    {
+      "name": "NAV_CHURCH_TOWER",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        -5.0,
+        0.48
+      ],
+      "size_blender_xyz": [
+        4.82,
+        5.2,
+        0.06
+      ]
+    },
+    {
+      "name": "NAV_CHURCH_APPROACH",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        0.0,
+        -8.55,
+        0.08
+      ],
+      "size_blender_xyz": [
+        2.8,
+        1.35,
+        0.06
+      ]
+    },
+    {
+      "name": "COLLISION_NAVE_LEFT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -4.15,
+        2.525,
+        2.75
+      ],
+      "size_blender_xyz": [
+        0.38,
+        9.95,
+        5.15
+      ]
+    },
+    {
+      "name": "COLLISION_NAVE_RIGHT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        4.15,
+        2.525,
+        2.75
+      ],
+      "size_blender_xyz": [
+        0.38,
+        9.95,
+        5.15
+      ]
+    },
+    {
+      "name": "COLLISION_NAVE_REAR",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        7.5,
+        2.75
+      ],
+      "size_blender_xyz": [
+        8.3,
+        0.38,
+        5.15
+      ]
+    },
+    {
+      "name": "COLLISION_TOWER_LEFT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -2.7,
+        -5.0,
+        2.55
+      ],
+      "size_blender_xyz": [
+        0.38,
+        5.4,
+        4.75
+      ]
+    },
+    {
+      "name": "COLLISION_TOWER_RIGHT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        2.7,
+        -5.0,
+        2.55
+      ],
+      "size_blender_xyz": [
+        0.38,
+        5.4,
+        4.75
+      ]
+    },
+    {
+      "name": "COLLISION_TOWER_FRONT_LEFT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -1.76,
+        -7.7,
+        1.75
+      ],
+      "size_blender_xyz": [
+        1.88,
+        0.38,
+        3.25
+      ]
+    },
+    {
+      "name": "COLLISION_TOWER_FRONT_RIGHT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        1.76,
+        -7.7,
+        1.75
+      ],
+      "size_blender_xyz": [
+        1.88,
+        0.38,
+        3.25
+      ]
+    },
+    {
+      "name": "COLLISION_PEW_LEFT_0",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -1.78,
+        -0.45,
+        1.0
+      ],
+      "size_blender_xyz": [
+        2.25,
+        0.52,
+        0.95
+      ]
+    },
+    {
+      "name": "COLLISION_PEW_RIGHT_0",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        1.78,
+        -0.45,
+        1.0
+      ],
+      "size_blender_xyz": [
+        2.25,
+        0.52,
+        0.95
+      ]
+    },
+    {
+      "name": "COLLISION_PEW_LEFT_1",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -1.78,
+        0.55,
+        1.0
+      ],
+      "size_blender_xyz": [
+        2.25,
+        0.52,
+        0.95
+      ]
+    },
+    {
+      "name": "COLLISION_PEW_RIGHT_1",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        1.78,
+        0.55,
+        1.0
+      ],
+      "size_blender_xyz": [
+        2.25,
+        0.52,
+        0.95
+      ]
+    },
+    {
+      "name": "COLLISION_PEW_LEFT_2",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -1.78,
+        1.55,
+        1.0
+      ],
+      "size_blender_xyz": [
+        2.25,
+        0.52,
+        0.95
+      ]
+    },
+    {
+      "name": "COLLISION_PEW_RIGHT_2",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        1.78,
+        1.55,
+        1.0
+      ],
+      "size_blender_xyz": [
+        2.25,
+        0.52,
+        0.95
+      ]
+    },
+    {
+      "name": "COLLISION_PEW_LEFT_3",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -1.78,
+        2.55,
+        1.0
+      ],
+      "size_blender_xyz": [
+        2.25,
+        0.52,
+        0.95
+      ]
+    },
+    {
+      "name": "COLLISION_PEW_RIGHT_3",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        1.78,
+        2.55,
+        1.0
+      ],
+      "size_blender_xyz": [
+        2.25,
+        0.52,
+        0.95
+      ]
+    },
+    {
+      "name": "COLLISION_PEW_LEFT_4",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -1.78,
+        3.55,
+        1.0
+      ],
+      "size_blender_xyz": [
+        2.25,
+        0.52,
+        0.95
+      ]
+    },
+    {
+      "name": "COLLISION_PEW_RIGHT_4",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        1.78,
+        3.55,
+        1.0
+      ],
+      "size_blender_xyz": [
+        2.25,
+        0.52,
+        0.95
+      ]
+    },
+    {
+      "name": "COLLISION_PEW_LEFT_5",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -1.78,
+        4.55,
+        1.0
+      ],
+      "size_blender_xyz": [
+        2.25,
+        0.52,
+        0.95
+      ]
+    },
+    {
+      "name": "COLLISION_PEW_RIGHT_5",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        1.78,
+        4.55,
+        1.0
+      ],
+      "size_blender_xyz": [
+        2.25,
+        0.52,
+        0.95
+      ]
+    },
+    {
+      "name": "COLLISION_ALTAR",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        6.55,
+        1.0
+      ],
+      "size_blender_xyz": [
+        2.95,
+        1.15,
+        1.35
+      ]
+    },
+    {
+      "name": "TRIGGER_CHURCH_MAIN",
+      "kind": "transition",
+      "role": "enter_church",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        -7.68,
+        1.55
+      ],
+      "size_blender_xyz": [
+        1.72,
+        1.15,
+        2.7
+      ]
+    },
+    {
+      "name": "TRIGGER_CHURCH_CRYPT",
+      "kind": "interaction",
+      "role": "crypt_stairs",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        2.82,
+        6.35,
+        0.75
+      ],
+      "size_blender_xyz": [
+        1.35,
+        1.7,
+        1.2
+      ]
+    }
+  ],
+  "markers": [
+    {
+      "name": "SPAWN_CHURCH_EXTERIOR",
+      "role": "spawn_exterior",
+      "floor": "EXTERIOR",
+      "blender_xyz": [
+        0.0,
+        -8.85,
+        0.08
+      ]
+    },
+    {
+      "name": "SPAWN_CHURCH_INTERIOR",
+      "role": "spawn_interior",
+      "floor": "GROUND",
+      "blender_xyz": [
+        0.0,
+        -6.6,
+        0.5
+      ]
+    },
+    {
+      "name": "SPAWN_CHURCH_ALTAR",
+      "role": "spawn_altar",
+      "floor": "GROUND",
+      "blender_xyz": [
+        0.0,
+        5.35,
+        0.5
+      ]
+    },
+    {
+      "name": "MARKER_CHURCH_CRYPT",
+      "role": "crypt_stairs",
+      "floor": "GROUND",
+      "blender_xyz": [
+        2.82,
+        6.35,
+        0.52
+      ]
+    }
+  ],
+  "counts": {
+    "runtime_objects": 527,
+    "materials": 12,
+    "windows": 7,
+    "doors": 2,
+    "collisions": 25,
+    "batched_roof_meshes": 6,
+    "roof_tile_boxes": 1444
+  },
+  "integration_contract": {
+    "load_with": "Three.js GLTFLoader",
+    "rotate": "CHURCH_HOUSE_ROTATION_PIVOT around Three.js Y",
+    "collisions": "build from JSON and transform with building",
+    "doors": "play named animations",
+    "forbidden": [
+      "PNG replacement",
+      "material tinting",
+      "visible collision meshes"
+    ]
+  }
+}
