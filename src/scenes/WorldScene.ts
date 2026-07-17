@@ -96,6 +96,7 @@ import { seededRng, pick, ri } from '../logic/rng';
 import { respawnZiel } from '../logic/respawn';
 import { moralWert, fluchtEntscheidung, istEingekesselt, type MoralLage } from '../logic/moral';
 import { konterFaktor } from '../data/kampfarten';
+import { neueArmee, musterEin, schreibeZurueck, vermerkeGefallen, naechsteVerstaerkung, rangFuerKills, rangDmgF, einheitMaxHp, type Armee, type ArmeeEinheit } from '../logic/armee';
 import { BODEN_STILE, bodenStilTextur } from '../gfx/bodenStile';
 import { WAND_STILE, wandStilFrontTextur, wandStilKroneTextur } from '../gfx/wandStile';
 import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type SaveData } from '../logic/save';
@@ -321,6 +322,12 @@ export class WorldScene extends CombatScene {
   // Reiner Test-Zustand (nicht gespeichert); null = Standard-Optik der Karte.
   private devBodenStil: string | null = null;
   private devWandStil: string | null = null;
+  // R141 (Dok 03, 2.1): die PERSISTENTE ARMEE. Lebt ausserhalb von RtsBattle
+  // (Kommando-Schicht bleibt rein), wandert in den Spielstand. Tote sind
+  // endgueltig raus. naechsteEinheit: welche Roster-Einheit der naechste
+  // spawnAlly aufstellt (gesetzt von Verstaerkung/Aufstellen; null = neu mustern).
+  private armee: Armee = neueArmee();
+  private naechsteEinheit: ArmeeEinheit | null = null;
   private reitSpuren: { e: Phaser.GameObjects.Ellipse; leben: number; alpha: number }[] = [];
   private reitSpurWeg = 0;      // zurueckgelegter Weg seit letzter Spur
   private reitSpurSeite = 1;    // wechselt fuer linke/rechte Hufe
@@ -481,6 +488,7 @@ export class WorldScene extends CombatScene {
     this.panels.getKontakteZeilen = () => this.kontakteZeilen();
     this.panels.getKarte = () => this.getKarteInfo();
     this.panels.onRtsModus = () => { this.panels.closeAll(); this.toggleRtsModus(); };   // R87: HEER-Tab -> Schlachtfeld-Steuerung
+    this.panels.onGetArmee = () => { this.syncArmeeVomFeld(); return this.armee; };      // R141: Roster im HEER-Tab
     // R105: Dorf-Editor - Karten-Klick platziert/waehlt, Ziehen verschiebt/skaliert.
     this.input.on('pointerdown', this.dorfEditPointer);
     this.input.on('pointermove', this.dorfEditMove);
@@ -3538,10 +3546,53 @@ export class WorldScene extends CombatScene {
     if (!this.rtsBattle) return;
     if (this.wartfeuerCd > 0) { this.logMsg(`Verstärkung sammelt sich noch (${Math.ceil(this.wartfeuerCd)}s).`, ''); return; }
     this.wartfeuerCd = LAGER_EFFEKT.wartfeuerCd;
-    const trupp: RtsUnitTyp[] = ['nahkampf', 'nahkampf', 'nahkampf', 'bogen', 'bogen', 'heiler'];
-    trupp.forEach((t, i) => this.rtsBattle!.spawn(t, f.x - 40 + (i % 3) * 26, f.y + 30 + Math.floor(i / 3) * 24));
+    // R141 (Dok 03, 2.4): Verstaerkung kommt aus dem ROSTER - Einheiten, die
+    // noch nicht auf dem Feld stehen. Kein Roster = kein Gratis-Nachschub.
+    // Sie trifft in SCHUEBEN ein (erst wenige, der Rest verzoegert) -
+    // die Dramaturgie von "durchhalten, bis sie kommen".
+    const aufFeld = new Set<number>();
+    for (const e of this.enemies) if (e.team === 'spieler' && e.armeeId !== null && e.hp > 0) aufFeld.add(e.armeeId);
+    const bereit = naechsteVerstaerkung(this.armee, aufFeld, 6);
+    if (!bereit.length) {
+      this.sfx.play('fehler');
+      this.logMsg('Das Signalfeuer lodert - doch niemand antwortet. Das Heer ist erschöpft.', 'bad');
+      return;
+    }
+    const stelleAuf = (einheiten: ArmeeEinheit[], versatz: number): void => {
+      einheiten.forEach((einheit, i) => {
+        this.naechsteEinheit = einheit;
+        this.rtsBattle?.spawn(einheit.typ, f.x - 40 + ((i + versatz) % 3) * 26, f.y + 30 + Math.floor((i + versatz) / 3) * 24);
+      });
+      this.naechsteEinheit = null;
+    };
+    const erste = bereit.slice(0, Math.max(1, Math.ceil(bereit.length / 2)));
+    const rest = bereit.slice(erste.length);
+    stelleAuf(erste, 0);
     this.sfx.play('fertigkeit_neu', 0.5);
-    this.logMsg('Das Signalfeuer lodert - eine Verstärkungswelle trifft ein!', 'gold');
+    this.logMsg(`Das Signalfeuer lodert - ${erste.length} aus dem Heer treffen ein${rest.length ? ', weitere folgen!' : '!'}`, 'gold');
+    if (rest.length) this.time.delayedCall(6000, () => {
+      if (!this.rtsBattle) return;   // Schlacht/Karte inzwischen vorbei
+      stelleAuf(rest, erste.length);
+      this.logMsg(`Der zweite Schub trifft ein - ${rest.length} weitere.`, 'gold');
+    });
+  }
+
+  // R141 (2.1): alle Roster-Einheiten, die nicht auf dem Feld stehen, beim
+  // Helden aufstellen (Halbkreis hinter ihm).
+  private stelleHeerAuf(): void {
+    if (!this.rtsBattle) return;
+    const aufFeld = new Set<number>();
+    for (const e of this.enemies) if (e.team === 'spieler' && e.armeeId !== null && e.hp > 0) aufFeld.add(e.armeeId);
+    const bereit = naechsteVerstaerkung(this.armee, aufFeld, 99);
+    if (!bereit.length) { this.logMsg('Niemand im Heer, der nicht schon im Feld steht.', ''); return; }
+    bereit.forEach((einheit, i) => {
+      const a = Math.PI * 0.6 + (i / Math.max(1, bereit.length - 1)) * Math.PI * 0.8;
+      this.naechsteEinheit = einheit;
+      this.rtsBattle?.spawn(einheit.typ, this.px + Math.cos(a) * (60 + (i % 3) * 24), this.py + Math.sin(a) * (60 + (i % 3) * 24));
+    });
+    this.naechsteEinheit = null;
+    this.sfx.play('klick');
+    this.logMsg(`${bereit.length} aus dem Heer treten an.`, 'gold');
   }
 
   private aktuelleMoral(): number {
@@ -3683,6 +3734,16 @@ export class WorldScene extends CombatScene {
         c.add(kn); ax2 += kn.width + F(4);
       }
       y += F(26);
+      // R141 (2.1): das ROSTER aufs Feld rufen - Einheiten, die nicht schon
+      // draussen stehen, sammeln sich beim Helden.
+      const aufFeld2 = new Set<number>();
+      for (const e2 of this.enemies) if (e2.team === 'spieler' && e2.armeeId !== null && e2.hp > 0) aufFeld2.add(e2.armeeId);
+      const bereitZahl = this.armee.einheiten.filter((e2) => !aufFeld2.has(e2.id)).length;
+      const heerBtn = this.add.rectangle(F(8), y, w - F(16), F(26), bereitZahl ? 0x1a2418 : 0x120d07, 0.95).setOrigin(0).setStrokeStyle(1, bereitZahl ? 0x6a9a5a : 0x3a2f1e).setInteractive({ useHandCursor: true });
+      heerBtn.on('pointerdown', () => { this.stelleHeerAuf(); this.baueRtsLeiste(); });
+      c.add(heerBtn);
+      c.add(this.add.text(F(14), y + F(5), `⚑ Heer aufstellen (${bereitZahl} bereit)`, { fontFamily: 'serif', fontSize: `${F(10)}px`, color: bereitZahl ? '#9ad86a' : '#7a6a52' }));
+      y += F(32);
       // Angriffsmarsch scharf schalten (A blieb der Kamera, R97): danach führt der
       // nächste Rechts-Befehl den Angriffsmarsch aus.
       const amBtn = this.add.rectangle(F(8), y, w - F(16), F(24), this.rtsAngriffArmed ? 0x2a1810 : 0x120d07, 0.9).setOrigin(0).setStrokeStyle(1, this.rtsAngriffArmed ? 0xd8804a : 0x3a2f1e).setInteractive({ useHandCursor: true });
@@ -5361,6 +5422,7 @@ export class WorldScene extends CombatScene {
     for (const b of this.breakableEnts) b.img.destroy();
     this.breakableEnts = [];
     this.hittables = [];
+    this.syncArmeeVomFeld();   // R141 (2.1): Zustand der Truppe wandert ins Roster
     // R99d: Schlacht endet beim Kartenwechsel (Enemy-Refs gehoeren zur alten Karte)
     if (this.rtsBattle) { this.rtsBattle.destroy(); this.rtsBattle = null; if (this.rtsLeiste) { this.rtsLeiste.destroy(); this.rtsLeiste = null; this.entferneRtsLauscher(); this.setzeFreiKamera(false); } }
     for (const e of this.enemies) e.sprite?.destroy();
@@ -7144,7 +7206,10 @@ export class WorldScene extends CombatScene {
           const f = konterFaktor(en.schadensArt, z.kampfTags);
           const d3 = Math.max(1, Math.round(d2 * f));
           s.zeigeKonter(z, f);
-          if (en.team === 'spieler') s.damageEnemy(z, d3, 0, 0, null, true); else s.trifftVerbuendeten(z, d3);
+          if (en.team === 'spieler') {
+            s.damageEnemy(z, d3, 0, 0, null, true);
+            if (z.hp <= 0) s['meldeKill'](en);   // R141 (2.2): Nahkampf-Kill zaehlt
+          } else s.trifftVerbuendeten(z, d3);
         }
       },
       spawnEnemyProjectile: (x, y, vx, vy, dmg, col, pfeil, _vt, hoch) => s.spawnEnemyProjectile(x, y, vx, vy, dmg, col, pfeil, e.team === 'spieler' ? 'spieler' : 'feind', hoch),
@@ -7194,12 +7259,21 @@ export class WorldScene extends CombatScene {
     if (!m) return null;
     const e = this.spawnEnemy(m.typ as never, 2, x, y, false, true);
     if (e.hp <= 0) return null;
+    // R141 (2.1): jede Spieler-Einheit IST eine Roster-Einheit (benannte
+    // Person, Permadeath). Verstaerkung/Aufstellen reicht eine bestimmte
+    // Einheit herein (naechsteEinheit), sonst wird frisch eingemustert.
+    const einheit = this.naechsteEinheit ?? musterEin(this.armee, rtsTyp);
+    this.naechsteEinheit = null;
     e.team = 'spieler';
     e.figurName = m.figur;
     e.schild = m.schild;
-    e.name = d.name;
-    e.hp = e.maxhp = d.hp;
-    e.dmg = d.dmg;
+    e.armeeId = einheit.id;
+    e.kills = einheit.kills;
+    const rang = rangFuerKills(einheit.kills);
+    e.name = rang > 0 ? `${einheit.name} ${'▲'.repeat(rang)}` : einheit.name;
+    e.maxhp = einheitMaxHp(einheit);
+    e.hp = Math.min(e.maxhp, Math.max(1, einheit.hp));
+    e.dmg = Math.round(d.dmg * rangDmgF(rang));
     e.speed = d.speed;
     e.kampfTags = d.tags ?? [];            // R139 (1.6): Konter-Matrix kennt beide Seiten
     e.schadensArt = d.schadensArt ?? 'schnitt';
@@ -7227,8 +7301,11 @@ export class WorldScene extends CombatScene {
       this.sfx.playAt('tod_universal1', a.x, a.y, 0.6);
       a.sprite?.destroy();
       this.enemies = this.enemies.filter((o) => o !== a);
-      this.logMsg(`${a.name} ist gefallen.`, 'bad');
       this.moralTote.push({ team: a.team, t: this.time.now / 1000 });   // R139: Verluste druecken die Moral
+      // R141 (2.1): Permadeath - endgueltig raus aus dem Roster, Name ins
+      // Gedenkbuch. Verluste muessen weh tun.
+      const name = a.armeeId !== null ? vermerkeGefallen(this.armee, a.armeeId) : null;
+      this.logMsg(name ? `${name} ist gefallen - das Heer verliert ihn für immer.` : `${a.name} ist gefallen.`, 'bad');
     }
   }
 
@@ -7289,7 +7366,7 @@ export class WorldScene extends CombatScene {
         eigeneNah: eigene, feindeNah: feinde, fliehendeNah: fliehende,
         eingekesselt: feinde >= 3 && istEingekesselt(kx, ky),
         standartenNah: standarten, anfuehrerNah: anfuehrer, feldaltarNah: altar,
-        nacht, rang: 0,
+        nacht, rang: rangFuerKills(e.kills),   // R141 (2.2): Veteranen stehen fester
       };
       e.moral = moralWert(lage);
       const vorher = { flieht: e.flieht, verzweifelt: e.verzweifelt };
@@ -7328,6 +7405,33 @@ export class WorldScene extends CombatScene {
       dy = min === oben ? -1 : min === unten ? 1 : 0;
     }
     e.jagdZiel = { x: Phaser.Math.Clamp(e.x + dx * 320, TILE, W - TILE), y: Phaser.Math.Clamp(e.y + dy * 320, TILE, H - TILE) };
+  }
+
+  // R141 (Dok 03, 2.2): Kill einer ROSTER-Einheit melden - Kills zaehlen,
+  // Rang-Aufstieg sofort anwenden (Schaden/Leben) und sichtbar feiern.
+  private meldeKill(toeter: Enemy): void {
+    if (toeter.team !== 'spieler' || toeter.armeeId === null || toeter.hp <= 0) return;
+    const vorher = rangFuerKills(toeter.kills);
+    toeter.kills++;
+    const einheit = this.armee.einheiten.find((x) => x.id === toeter.armeeId);
+    if (einheit) einheit.kills = toeter.kills;
+    const nachher = rangFuerKills(toeter.kills);
+    if (nachher > vorher && einheit) {
+      const altMax = toeter.maxhp;
+      toeter.maxhp = einheitMaxHp(einheit);
+      toeter.hp += toeter.maxhp - altMax;   // der neue Rang staerkt sofort
+      toeter.name = `${einheit.name} ${'▲'.repeat(nachher)}`;
+      this.fx.float(toeter.x, toeter.y - toeter.r - 12, `RANG ${nachher}!`, '#f0d23a');
+      this.logMsg(`${einheit.name} ist jetzt Veteran (Rang ${nachher}).`, 'gold');
+    }
+  }
+
+  // R141 (2.1): Feld-Zustand der lebenden Roster-Einheiten zurueckschreiben
+  // (Kartenwechsel + Speichern). Tote sind da schon endgueltig ausgetragen.
+  private syncArmeeVomFeld(): void {
+    for (const e of this.enemies) {
+      if (e.team === 'spieler' && e.armeeId !== null && e.hp > 0) schreibeZurueck(this.armee, e.armeeId, e.hp, e.kills);
+    }
   }
 
   protected override areaDark(): boolean { return this.area?.dark ?? false; }
@@ -10736,6 +10840,7 @@ export class WorldScene extends CombatScene {
         tagwerke: this.tagwerke,
         dorfkasse: this.dorfkasse,
         wirtschaft: { lager: this.dorfLager, naechsteAbgabe: this.naechsteAbgabe, rueckstand: this.abgabeRueckstand, bericht: this.lagerBerichtGestern, felder: this.dorfFelder, vieh: this.dorfVieh },
+        armee: (this.syncArmeeVomFeld(), this.armee),   // R141: Feld-Zustand mitnehmen
         breschen: this.breschen,
       },
     };
@@ -10804,6 +10909,7 @@ export class WorldScene extends CombatScene {
     this.dorfFelder = wi?.felder ?? Array.from({ length: FELD_REGELN.anzahl }, () => ({ wachstum: 0 }));   // M5
     this.dorfVieh = wi?.vieh ?? viehStart();   // M5 (alte Staende: Startbestand)
     this.breschen = data.welt.breschen ?? [];
+    this.armee = data.welt.armee ?? neueArmee();   // R141 (alte Staende: leeres Heer)
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
     recalc(p);
     p.hp = Math.min(p.stats.maxhp, s.hp || p.stats.maxhp);

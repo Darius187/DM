@@ -137,3 +137,5 @@
 - R139: Feldscher/Heiler-Einheit fehlt weiter (R99d) - spawnVerbuendeter hat
   keinen 'heiler'-Eintrag; die Verhaltens-Achsen-Rolle ist schon vorbereitet.
 - R139: Flucht-/Sammel-RUFE als Sound-Assets (Autor fragen: WAV 48kHz/24bit).
+- R141: Fernkampf-Kills fuer den Veteranen-Rang zaehlen (Projectile um
+  schuetze-Ref erweitern, Kill-Hook am Ally-Projektil-Einschlag).

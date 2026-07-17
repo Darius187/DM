@@ -15,6 +15,7 @@ import type { SpriteProvider } from '../gfx/SpriteProvider';
 import type { Enemy } from '../world/Enemy';
 import { formSlots, formSlotsSkaliert, linienSlots, slotWelt, type Form, type Slot } from './formationen';
 import { RTS_UNIT_TYP, TURM, LAGER_EFFEKT, type RtsUnitTyp, type RtsTeam } from '../data/rts';
+import { rangFuerKills, rangDmgF } from './armee';
 import { Wegfeld } from '../world/Wegfeld';
 
 const TILE = 32;
@@ -378,7 +379,7 @@ export class RtsBattle {
     ref.kaempftNicht = u.angriff === 'feuerEinstellen'
       || (u.angriff === 'zurueckschlagen' && this.zeit - u.zuletztGetroffenT > 5 && nfd > 60);
     ref.zielWahl = u.zielwahl;   // R139 (1.7) Zielwahl-Achse (liest zielFuer)
-    ref.dmg = Math.round(u.basisDmg * u.buffDmg);   // Feldküchen-Aura
+    ref.dmg = Math.round(u.basisDmg * u.buffDmg * rangDmgF(rangFuerKills(ref.kills)));   // Feldküchen-Aura + Veteranen-Rang (R141)
     // R100b: passive (frisch gesetzte) Einheit steht still - nicht steuern, bis
     // sie geweckt (Gegner nah) oder befohlen wird (Befehle loeschen passiv).
     if (ref.passiv) return;
@@ -532,6 +533,15 @@ export class RtsBattle {
       if (u.tot) continue;
       // kleiner Haltungs-Punkt ueber JEDER Einheit (rot=Angriff, blau=Verteidigen, grau=Halten)
       g.fillStyle(stanceCol(u.stance), 0.95); g.fillCircle(u.x, u.y - 30, 2.6);
+      // R141 (2.2): Veteranen-Raenge als goldene Winkel neben dem Haltungs-Punkt
+      const rang = rangFuerKills(u.ref.kills);
+      if (rang > 0) {
+        g.fillStyle(0xf0d23a, 0.95);
+        for (let ri = 0; ri < rang; ri++) {
+          const rx = u.x + 6 + ri * 6;
+          g.fillTriangle(rx - 2.4, u.y - 28, rx + 2.4, u.y - 28, rx, u.y - 32);
+        }
+      }
       if (u.gewaehlt) { g.lineStyle(1.5, stanceCol(u.stance), 0.95); g.strokeEllipse(u.x, u.y + 9, 24, 11); }
       if (u.hp < u.maxhp || u.gewaehlt) {
         const w = 22, frac = Math.max(0, u.hp / u.maxhp);

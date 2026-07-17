@@ -2310,3 +2310,33 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   REPRODUZIEREN, dann fixen. Eintrag in TODO.md.
 - Held-Waffen gegen Einheiten-Tags (Konter fuer den HELDEN-Schwung) bewusst
   NICHT mit verdrahtet - eigener Schritt, beruehrt die Dungeon-Balance.
+
+## R141 - RTS Rang 2.1/2.2/2.4: Persistente Armee, Veteranen, Verstaerkung
+- ROSTER (2.1): src/logic/armee.ts - reine, getestete Logik AUSSERHALB von
+  RtsBattle (Dok 03: Kommando-Schicht nicht aufweichen). Einheiten sind
+  BENANNTE Personen (Namenspool aus dem R53-Heer wiederverwendet - keine
+  dritte Parallelwelt), Modell { id, name, typ, hp, kills, verletzungen[] }.
+  verletzungen[] liegt bereit fuers spaetere Wundsystem.
+- JEDE Spieler-Einheit, die uebers Spawn-System entsteht, IST eine Roster-
+  Einheit (Test-Spawns mustern automatisch ein; Rekrutierungs-KOSTEN kommen
+  mit 2.3). Kartenwechsel + Speichern schreiben hp/kills zurueck
+  (syncArmeeVomFeld in unloadAreaObjects + Save). SaveData: welt.armee
+  (optional, alte Staende laden mit leerem Heer).
+- PERMADEATH: Tote sind endgueltig raus, Namen wandern ins Gefallenen-Buch
+  (armee.gefallene) - Meldung "NAME ist gefallen - das Heer verliert ihn
+  fuer immer." Verluste muessen weh tun.
+- VETERANEN (2.2): Kills je Einheit (Nahkampf exakt ueber den Host-Closure-
+  Kill-Hook; Fernkampf-Kills: TODO, Projektil kennt den Schuetzen noch
+  nicht). rangFuerKills/rangDmgF/rangHpF = EINE Rechnung fuer Spawn, Kampf
+  (steuereEinheit skaliert den Schaden) und Anzeige. Aufstieg feiert sichtbar
+  ("RANG N!"-Schwebetext, goldene Winkel im Overlay, ▲ im Namen), Moral-
+  Formel bekommt den Rang als Heber.
+- VERSTAERKUNG (2.4): das Wartfeuer ruft aus dem ROSTER (nicht Aufgestellte),
+  in SCHUEBEN (Haelfte sofort, Rest nach 6s - "durchhalten, bis sie
+  kommen"). Leeres Roster = "niemand antwortet" - kein Gratis-Nachschub mehr.
+- AUFSTELLEN: Knopf im BEFEHLE-Tab ("Heer aufstellen (N bereit)") sammelt
+  die Nicht-Aufgestellten beim Helden. BEWUSST kein Auto-Spawn beim
+  Kartenwechsel (das Heer marschiert nicht ueberall mit) - siehe
+  OFFENE-FRAGEN.
+- HEER-Tab zeigt das echte Roster (Name, Rang-Winkel, LP, Kills) + die
+  letzten Gefallenen.

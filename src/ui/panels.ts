@@ -111,6 +111,8 @@ export class UIPanels {
   private hauptTab: 'held' | 'faehigkeiten' | 'aufgaben' | 'album' | 'statistik' | 'kontakte' | 'karte' | 'ebene' | 'heer' = 'held';
   // R87: Umschalten in den RTS-Modus (WorldScene hängt sich hier ein)
   onRtsModus?: () => void;
+  // R141 (2.1): Blick ins persistente Heer (Roster) - nur lesen.
+  onGetArmee?: () => { einheiten: Array<{ id: number; name: string; typ: string; hp: number; kills: number }>; gefallene: string[] };
 
   // Fenster direkt auf einem Reiter öffnen (B = Album)
   openTab(tab: 'held' | 'album' | 'statistik'): void {
@@ -338,9 +340,32 @@ export class UIPanels {
   // HEER-Tab (R87, Autorauftrag "RTS-Hybrid"): Doktrin des Banners um 1300,
   // Moral-Regeln und der Umschalter in den RTS-Modus (Schlachtfeld-Steuerung).
   private buildHeerTab(c: Phaser.GameObjects.Container, w: number, _h: number): void {
+    const TYP_NAMEN_HEER: Record<string, string> = { schild: 'Schildträger', nahkampf: 'Gewappneter', bogen: 'Bogenschütze', heiler: 'Feldscher', reiter: 'Ritter' };
     c.add(this.scene.add.text(16, 6, 'DAS BANNER - Aufgebot um 1300', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
     c.add(this.scene.add.text(16, 28, 'Ein Banneret führt Gleven, Fußvolk und Schützen unter seiner Standarte.\nSie ist Sammelpunkt und Moral-Anker - fällt das Banner, bricht der Haufen.', { fontFamily: 'serif', fontSize: '11px', color: '#9a8a6a', lineSpacing: 3 }));
     let y = 84;
+    // R141 (Dok 03, 2.1): DEIN HEER - das persistente Roster (benannte Leute,
+    // Permadeath). Erst die eigenen Maenner, dann die Doktrin-Tabelle.
+    const armee = this.onGetArmee?.();
+    if (armee) {
+      this.zierLinie(c, 12, y - 6, w - 24, `DEIN HEER (${armee.einheiten.length} Mann)`);
+      if (!armee.einheiten.length) {
+        c.add(this.scene.add.text(20, y, 'Noch niemand unter deinem Banner - Einheiten entstehen im RTS-Modus (TEST-Tab) und bleiben dir erhalten.', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a', fontStyle: 'italic', wordWrap: { width: w - 40 } }));
+        y += 30;
+      }
+      for (const e of armee.einheiten.slice(0, 10)) {
+        const rang = Math.min(3, Math.floor(e.kills / 3));
+        c.add(this.scene.add.text(20, y, `${e.name}${rang ? ' ' + '▲'.repeat(rang) : ''}`, { fontFamily: 'serif', fontSize: '12px', color: rang ? GOLD : '#e8dcc0' }));
+        c.add(this.scene.add.text(w * 0.42, y, `${TYP_NAMEN_HEER[e.typ] ?? e.typ} · ${Math.round(e.hp)} LP · ${e.kills} Gegner`, { fontFamily: 'serif', fontSize: '11px', color: BONE }));
+        y += 20;
+      }
+      if (armee.einheiten.length > 10) { c.add(this.scene.add.text(20, y, `... und ${armee.einheiten.length - 10} weitere`, { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' })); y += 18; }
+      if (armee.gefallene.length) {
+        c.add(this.scene.add.text(20, y, `Gefallen: ${armee.gefallene.slice(-4).join(' · ')}${armee.gefallene.length > 4 ? ' ...' : ''}`, { fontFamily: 'serif', fontSize: '10px', color: '#a06a5a', fontStyle: 'italic', wordWrap: { width: w - 40 } }));
+        y += 22;
+      }
+      y += 10;
+    }
     this.zierLinie(c, 12, y - 6, w - 24, 'EINHEITEN');
     for (const e of RTS_EINHEITEN) {
       c.add(this.scene.add.text(20, y, e.name, { fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0' }));

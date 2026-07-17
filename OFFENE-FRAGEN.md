@@ -318,3 +318,10 @@ FRAGE: Soll ich einen Sichtbarkeits-Pass am Wasser-Shader machen (staerkerer
 Ufersaum/Kontrast bei Tageslicht)? Ich fasse den kanonischen Shader-Look
 (reference/fluss-bach.html) nicht ohne dein Go an. ZWISCHENLOESUNG: keine -
 Werte lassen sich live im WASSER-Tab der Dev-Konsole testen.
+
+## R141 - Soll das Heer beim Kartenwechsel automatisch mitkommen?
+Dok 03 sagt "beim Betreten einer Karte: Roster-Einheiten spawnen". Ich habe
+mich fuer einen AUFSTELL-Knopf entschieden (BEFEHLE-Tab + Wartfeuer-Schuebe)
+statt Auto-Spawn - sonst marschiert die Armee auch durch Stadt und Dungeon.
+ZWISCHENLOESUNG: Heer folgt nur auf Befehl. FRAGE: Beim spaeteren FELDZUG
+(Akt 3, eigene Schlacht-Karten) automatisch aufstellen - reicht dir das?

@@ -1412,3 +1412,21 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   4) Portraet verzerrt: setCrop+setDisplaySize arbeiteten gegeneinander
      (DisplaySize misst den vollen Frame, der Crop zeigt einen Ausschnitt) -
      neuer Einpass-Helfer skaliert den Ausschnitt und zentriert ihn korrekt.
+
+## Runde 141 - Persistente Armee: das Fundament der RTS-Schicht (Dok 03, 2.1/2.2/2.4)
+- Das Heer besteht jetzt aus BENANNTEN Leuten (Namenspool des R53-Heers), die
+  Kartenwechsel und Speichern ueberleben: hp/kills wandern vom Feld ins Roster
+  und zurueck. Tote sind ENDGUELTIG raus und stehen im Gefallenen-Buch.
+- Veteranen: je 3 Kills ein Rang (goldene Winkel im Overlay, ▲ im Namen,
+  +Schaden/+Leben/+Moral aus RTS_RANG). Aufstieg wird sichtbar gefeiert.
+- Wartfeuer ruft aus dem ROSTER in Schueben - leeres Heer = keine Verstaerkung.
+  Neuer Knopf "Heer aufstellen (N bereit)" im BEFEHLE-Tab. HEER-Tab zeigt die
+  Mannschaft samt Gefallenen.
+- Ende-zu-Ende im Browser gemessen: Einmustern (3 benannte), Rang-Aufstieg
+  (Heinz Sauerbier ▲, 242 statt 220 LP), Kartenwechsel-Persistenz (hp 100
+  bleibt), Wiederantreten, Permadeath (Roster 3 -> 2, Gedenkbuch), Wartfeuer
+  leer ("niemand antwortet") und mit Schub (+1 sofort, Rest nach 6s).
+- tsc fehlerfrei, 57 Testdateien / 364 Tests gruen (7 neue Armee-Tests).
+- OFFEN: Fernkampf-Kills zaehlen noch nicht (Projektil kennt den Schuetzen
+  nicht) - kleiner Folgeschritt; Auto-Aufstellen beim Feldzug siehe
+  OFFENE-FRAGEN.

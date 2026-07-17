@@ -66,6 +66,9 @@ export interface SaveData {
       vieh?: { huehner: number; kuehe: number; schweine: number; huhnT: number; kuhT: number; schweinT: number };
     };
     breschen?: Array<{ x: number; y: number }>;
+    // R141 (Dok 03, 2.1): die persistente Armee (benannte Einheiten,
+    // Permadeath, Gefallenen-Buch). Optional - alte Staende laden mit leerem Heer.
+    armee?: import('./armee').Armee;
   };
 }
 

@@ -207,6 +207,11 @@ export class Enemy {
   // wann zuletzt ein Konter-Text ueber ihr stand (Drossel gegen Text-Spam).
   schadensArt: import('../data/kampfarten').SchadensArt = 'schnitt';
   konterTextT = 0;
+  // R141 (Dok 03, 2.1/2.2): Verweis auf die ROSTER-Einheit (persistente Armee)
+  // und die Feld-Kills fuer den Veteranen-Rang. null = kein Roster (Feinde,
+  // Dungeon-Monster).
+  armeeId: number | null = null;
+  kills = 0;
   fokusZiel: Enemy | null = null;   // Angriffsbefehl der RTS-Steuerung (Verbuendete)
   imTurm = false;                    // R100: sitzt im Wachturm -> Sprite unsichtbar, schiesst von oben
   passiv = false;                    // R100b: frisch gesetzt -> steht still, bis geweckt (Gegner nah/Schaden/Befehl)
