@@ -1490,3 +1490,15 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   eines Einfalls liesse die Angreifer verpuffen. Wegen der ARCHIV-Regel nicht
   angefasst - Vorschlag "Einfall-Umzug" steht in OFFENE-FRAGEN.md.
 - tsc fehlerfrei, 59 Testdateien / 378 Tests gruen (8 neue Rekrutierungs-Tests).
+
+## Runde 146 - Unsichtbare Fluss-Waende v2 (Autor-Repro Waldrand)
+- Reproduziert per Kachel-Sonde: die Kollision stimmt (Fluss = SOLID), aber
+  ZWEI Lesbarkeits-Luecken machten sie "unsichtbar": ertraenkte Weg-Querungen
+  (begehbar, aber vom Wasser-Overlay uebermalt - start 45, wald_o 23, stadt 7
+  Kacheln) und Regen-Truebung, die das Wasser in stumpfes Kies-Grau kippte.
+- Fix: FURTEN sichtbar (Trittstein-/Kiesband nur auf den echten Weg-Kacheln,
+  Bruecken-Ebene ueber dem Wasser; R100h "keine Auto-Bruecke" bleibt) +
+  Regen-Truebung gedeckelt (regenTurb 0.2) + Ufer-Wasserlinie immer lesbar.
+- Browser-verifiziert: furt_start-Textur vorhanden, alle 4 Sonden-Kacheln der
+  Ost-Strassen-Querung begehbar, Screenshot zeigt das Steinband ueber dem Fluss.
+- tsc fehlerfrei, 378 Tests gruen.

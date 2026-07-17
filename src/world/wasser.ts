@@ -252,7 +252,9 @@ void main(){
   float rain=rainH(uv); col += vec3(0.82,0.88,0.96)*abs(rain)*0.18*localDepth;
   vec3 dryStone=stoneLit(sN,sCol)*1.08*u_ambient; col=mix(col, dryStone, sMask*emerged*edgeFade);
   float waterline=sMask*smoothstep(0.0,0.32,emerged)*(1.0-smoothstep(0.32,0.62,emerged));
-  col=mix(col, vec3(0.92,0.95,0.96), clamp(waterline,0.0,1.0)*(0.16+0.34*u_turb)*edgeFade);
+  // R146: Grundanteil der Wasserlinie angehoben (0.16 -> 0.30) - die Uferkante
+  // muss in JEDEM Wetter lesbar sein, sonst wirkt truebes Wasser wie fester Kies.
+  col=mix(col, vec3(0.92,0.95,0.96), clamp(waterline,0.0,1.0)*(0.30+0.30*u_turb)*edgeFade);
 
   col *= u_lichtMul;   // Tag/Nacht-Tönung aus dorfSim (nahtlose Einbettung ins Canvas-Licht)
   if(u_layerMode>0.5){
@@ -335,6 +337,7 @@ export const WASSER_CFG = {
   tiefe: -9,            // Render-Tiefe: über Boden (-10/-11), unter Spieler/Objekten
   smink: 0.08,          // smin-Verschmelzung der Gewässer (UV) - = Carve-Wert (areagen) -> Optik deckt Kollision
   flowMul: 1.0, turbAdd: 0.0, ambientMul: 1.0,
+  regenTurb: 0.2,       // R146: Truebungs-ZUSCHLAG bei vollem Regen (vorher 0.5 - das Wasser kippte in stumpfes Grau und war nicht mehr als Wasser lesbar)
   widthMul: 1.0,        // Live-Flussbreite (Dev-Regler) - skaliert alle Fluss-/Bach-Breiten
   overlayFeather: 0.03, // Breite der weichen Außenblende (Shader-Land -> dorfSim-Gras) hinter dem Ufersaum
 };

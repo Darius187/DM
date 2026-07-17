@@ -226,6 +226,49 @@ export function maleBoden(ctx: CanvasRenderingContext2D, karte: BodenKarte, TILE
 // unebene Planken QUER zur Laufrichtung (5 Brauntöne, Fugen, Maserung, Ast-
 // löcher), Bordkanten, Geländer mit Pfosten/Handlauf/unterem Holm auf BEIDEN
 // Längsseiten, Deck-Schatten. Ein Bild je Brücke statt Kachel-Bretter. -------
+// R146 (Autor "unsichtbare Wände am Fluss"): FURT-Bild. Wo ein WEG die
+// Wasser-SDF quert, bleibt die Kachel begehbar (R100h) - aber das Wasser-
+// Overlay malte darueber, die Querung war unsichtbar. Diese Trittstein-/
+// Kiesdamm-Grafik liegt auf der Bruecken-Ebene UEBER dem Wasser und zeigt:
+// hier kommst du trockenen Fusses rueber. Deterministisch (sin-Hash).
+// zellen = Kachel-Koordinaten RELATIV zur Bild-Ecke - gezeichnet wird NUR auf
+// diesen Kacheln (nicht die ganze Bounding-Box), gedeckt und organisch.
+export function macheFurtBild(wTiles: number, hTiles: number, zellen: Array<[number, number]>): HTMLCanvasElement {
+  const K = 32;
+  const c = document.createElement('canvas');
+  c.width = wTiles * K; c.height = hTiles * K;
+  const g = c.getContext('2d')!;
+  const hash = (n: number): number => { const s = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return s - Math.floor(s); };
+  for (const [zx, zy] of zellen) {
+    const seed = zx * 131 + zy * 197;
+    const cx = zx * K + K / 2, cy = zy * K + K / 2;
+    // Nasser Kies-Fleck (ueberlappende Blobs statt hartem Quadrat)
+    g.fillStyle = 'rgba(66,60,50,0.45)';
+    for (let i = 0; i < 3; i++) {
+      g.beginPath();
+      g.ellipse(cx + (hash(seed + i * 3) - 0.5) * 16, cy + (hash(seed + i * 5) - 0.5) * 16, 13 + hash(seed + i * 7) * 6, 11 + hash(seed + i * 11) * 5, hash(seed + i) * 3, 0, 7);
+      g.fill();
+    }
+    // Wenige flache, gedeckte Trittsteine
+    const n = 2 + Math.floor(hash(seed + 41) * 2);
+    for (let i = 0; i < n; i++) {
+      const sx = cx + (hash(seed + i * 13 + 1) - 0.5) * 20, sy = cy + (hash(seed + i * 17 + 2) - 0.5) * 20;
+      const rx = 4 + hash(seed + i * 19 + 3) * 3.5, ry = 3 + hash(seed + i * 23 + 4) * 2.5;
+      g.fillStyle = 'rgba(16,20,22,0.4)';
+      g.beginPath(); g.ellipse(sx + 1, sy + 1.6, rx + 1.2, ry + 1, 0, 0, 7); g.fill();
+      g.fillStyle = ['#57544c', '#615c52', '#4c4842', '#5c574b'][Math.floor(hash(seed + i * 29 + 5) * 4)];
+      g.beginPath(); g.ellipse(sx, sy, rx, ry, 0, 0, 7); g.fill();
+      g.fillStyle = 'rgba(205,212,214,0.16)';
+      g.beginPath(); g.ellipse(sx - rx * 0.2, sy - ry * 0.4, rx * 0.5, ry * 0.32, 0, 0, 7); g.fill();
+    }
+    // ein Hauch Schaum am Zellenrand (Wasser bricht sich an der Furt)
+    g.fillStyle = 'rgba(228,236,238,0.14)';
+    g.beginPath(); g.ellipse(cx + (hash(seed + 61) - 0.5) * 18, zy * K + 2 + hash(seed + 67) * 3, 3.5, 1.2, 0, 0, 7); g.fill();
+    g.beginPath(); g.ellipse(cx + (hash(seed + 71) - 0.5) * 18, zy * K + K - 3 - hash(seed + 73) * 3, 3.5, 1.2, 0, 0, 7); g.fill();
+  }
+  return c;
+}
+
 export function macheBrueckenBild(laenge: number, breite: number): HTMLCanvasElement {
   const railH = 17, rand = 6;
   const c = document.createElement('canvas');
