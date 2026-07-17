@@ -8,7 +8,7 @@
 // Sunzi N5.3 ("das Loch im Kessel"): eine EINGEKESSELTE Einheit flieht nicht -
 // sie kaempft verbissen (Verzweiflung). Fluchtwege offen lassen lohnt sich.
 
-import { MORAL, RTS_RANG } from '../data/rts';
+import { MORAL, REKRUTIERUNG, RTS_RANG } from '../data/rts';
 
 export interface MoralLage {
   verlusteFrac: number;      // Gefallene der eigenen Seite (juengstes Fenster) / Staerke 0..1
@@ -21,6 +21,7 @@ export interface MoralLage {
   feldaltarNah: boolean;     // geweihter Feldaltar im Umkreis
   nacht: boolean;            // N5.5: nachts sinkt der Mut
   rang: number;              // Veteranen-Raenge (RTS_RANG.moralBonusJeRang)
+  soeldner?: boolean;        // R143 (2.3): kaempft fuers Geld, nicht fuers Dorf
 }
 
 export const LEERE_LAGE: MoralLage = {
@@ -38,6 +39,7 @@ export function moralWert(l: MoralLage): number {
   if (l.eingekesselt) m -= MORAL.kesselMalus;
   m -= Math.min(MORAL.panikMax, l.fliehendeNah * MORAL.panikJeFliehendem);
   if (l.nacht) m -= MORAL.nachtMalus;
+  if (l.soeldner) m -= REKRUTIERUNG.soeldnerMoralMalus;
   // Heber
   m += Math.min(MORAL.kameradBonusMax, l.eigeneNah * MORAL.kameradBonusJe);
   m += l.standartenNah * MORAL.standarteBonus;

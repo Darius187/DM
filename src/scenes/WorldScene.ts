@@ -61,10 +61,10 @@ import { HoehlenLeben } from '../gfx/hoehlenLeben';
 import { KriegsnebelAnzeige, type SichtSet } from '../systems/kriegsnebel';
 import { buildKerkerArea } from '../world/kerkerArea';
 import { MINE } from '../data/mine';
-import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, MARSCH, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, MARSCH, REKRUTIERUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
-import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE } from '../data/wirtschaft';
+import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
 import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
@@ -96,7 +96,7 @@ import { seededRng, pick, ri } from '../logic/rng';
 import { respawnZiel } from '../logic/respawn';
 import { moralWert, fluchtEntscheidung, istEingekesselt, type MoralLage } from '../logic/moral';
 import { konterFaktor } from '../data/kampfarten';
-import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, garnisonVon, marschVon, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, einheitMaxHp, type Armee, type ArmeeEinheit } from '../logic/armee';
+import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, garnisonVon, marschVon, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, einheitMaxHp, heerObergrenze, pruefeRekrutierung, desertiere, type Armee, type ArmeeEinheit } from '../logic/armee';
 import { BODEN_STILE, bodenStilTextur } from '../gfx/bodenStile';
 import { WAND_STILE, wandStilFrontTextur, wandStilKroneTextur } from '../gfx/wandStile';
 import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type SaveData } from '../logic/save';
@@ -451,6 +451,7 @@ export class WorldScene extends CombatScene {
     this.tagwerke = {};
     this.dorfkasse = 0;
     this.dorfLager = { ...DORF_LAGER_START };
+    this.bevoelkerung = REKRUTIERUNG.bevoelkerungStart;
     this.karteAufgedeckt = false;
     this.naechsteAbgabe = ABGABE.intervallTage;
     this.abgabeRueckstand = 0;
@@ -3730,6 +3731,23 @@ export class WorldScene extends CombatScene {
       // Truppen kommen ueber Maersche (Karten-Tab) oder das Wartfeuer.
       c.add(this.add.text(F(8), y, `Garnison hier: ${garnisonVon(this.armee, this.area.id).length} Mann (Karte im Menü verlegt Truppen)`, { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#8a7a5a', wordWrap: { width: w - F(16) } }));
       y += F(20);
+      // R143 (2.3): AUSHEBUNG - Soldaten sind rar und teuer (Manor Lords).
+      // Der Rekrut tritt der Garnison von Ravensmoor bei (R142 verlegt ihn).
+      c.add(this.add.text(F(8), y, `AUSHEBUNG · Dorf: ${this.bevoelkerung} Arbeiter · Heer ${this.armee.einheiten.length}/${heerObergrenze(this.bevoelkerung)}`, { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#8a7a5a', letterSpacing: 1 }));
+      y += F(16);
+      const rekruten: Array<[string, RtsUnitTyp, 'bauer' | 'soeldner', string]> = [
+        ['Gewappneter', 'nahkampf', 'bauer', `${REKRUTIERUNG.gold} Gold + 1 Waffe + 1 Arbeiter`],
+        ['Bogenschütze', 'bogen', 'bauer', `${REKRUTIERUNG.gold} Gold + 1 Waffe + 1 Arbeiter`],
+        ['Söldner', 'nahkampf', 'soeldner', `${REKRUTIERUNG.soeldnerGold} Gold - kämpft fürs Geld`],
+      ];
+      for (const [lbl, typ, art, kosten] of rekruten) {
+        const knopf = this.add.rectangle(F(8), y, w - F(16), F(26), 0x120d07, 0.9).setOrigin(0).setStrokeStyle(1, 0x3a2f1e).setInteractive({ useHandCursor: true });
+        knopf.on('pointerdown', () => { if (this.rekrutiereSoldat(typ, art)) this.sfx.play('klick'); this.baueRtsLeiste(); });
+        c.add(knopf);
+        c.add(this.add.text(F(14), y + F(3), lbl, { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#d8cfb8' }));
+        c.add(this.add.text(F(14), y + F(15), kosten, { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#7a6a52' }));
+        y += F(30);
+      }
       // Angriffsmarsch scharf schalten (A blieb der Kamera, R97): danach führt der
       // nächste Rechts-Befehl den Angriffsmarsch aus.
       const amBtn = this.add.rectangle(F(8), y, w - F(16), F(24), this.rtsAngriffArmed ? 0x2a1810 : 0x120d07, 0.9).setOrigin(0).setStrokeStyle(1, this.rtsAngriffArmed ? 0xd8804a : 0x3a2f1e).setInteractive({ useHandCursor: true });
@@ -7267,6 +7285,7 @@ export class WorldScene extends CombatScene {
     e.schild = m.schild;
     e.armeeId = einheit.id;
     e.kills = einheit.kills;
+    e.soeldner = !!einheit.soeldner;   // R143 (2.3): Moral-Malus + Desertion
     const rang = rangFuerKills(einheit.kills);
     e.name = rang > 0 ? `${einheit.name} ${'▲'.repeat(rang)}` : einheit.name;
     e.maxhp = einheitMaxHp(einheit);
@@ -7365,6 +7384,7 @@ export class WorldScene extends CombatScene {
         eingekesselt: feinde >= 3 && istEingekesselt(kx, ky),
         standartenNah: standarten, anfuehrerNah: anfuehrer, feldaltarNah: altar,
         nacht, rang: rangFuerKills(e.kills),   // R141 (2.2): Veteranen stehen fester
+        soeldner: e.soeldner,                  // R143 (2.3): kaempft fuers Geld
       };
       e.moral = moralWert(lage);
       const vorher = { flieht: e.flieht, verzweifelt: e.verzweifelt };
@@ -7385,10 +7405,18 @@ export class WorldScene extends CombatScene {
   // rennen); EIGENE kauern dort und koennen sich wieder sammeln.
   private fluchtSchritt(e: Enemy, kx: number[], ky: number[]): void {
     const W = this.area.w * TILE, H = this.area.h * TILE;
-    if (e.team !== 'spieler' && (e.x < TILE * 2 || e.x > W - TILE * 2 || e.y < TILE * 2 || e.y > H - TILE * 2)) {
+    const anKante = e.x < TILE * 2 || e.x > W - TILE * 2 || e.y < TILE * 2 || e.y > H - TILE * 2;
+    if (anKante && (e.team !== 'spieler' || e.soeldner)) {
       e.sprite?.destroy();
       this.enemies = this.enemies.filter((o) => o !== e);
-      this.logMsg(`${e.name} ist vom Feld geflohen.`, '');
+      if (e.team === 'spieler') {
+        // R143 (2.3): der fliehende Soeldner desertiert ENDGUELTIG (kein
+        // Gefallenen-Buch - er ist nicht tot, er ist weg, mitsamt Sold).
+        const name = e.armeeId !== null ? desertiere(this.armee, e.armeeId) : null;
+        this.logMsg(`${name ?? e.name} hat genug - der Söldner desertiert mitsamt Sold.`, 'bad');
+      } else {
+        this.logMsg(`${e.name} ist vom Feld geflohen.`, '');
+      }
       return;
     }
     let ax = 0, ay = 0;
@@ -7557,6 +7585,44 @@ export class WorldScene extends CombatScene {
     if (route && route.length > 1) starteMarsch(this.armee, neue, route);
     this.logMsg(`Der Graf schickt ${neue.length} Mann - sie betreten das Land am ${this.kartenName(MARSCH.grafStart)} und ziehen nach Ravensmoor.`, 'gold');
     if (this.area.id === MARSCH.grafStart) this.spawneMarschierer(neue);   // der Held sieht sie eintreffen
+  }
+
+  // R143 (Dok 03, 2.3 - Manor Lords): Aushebung. Ein Bauern-Rekrut kostet
+  // Gold + EINE Waffe aus dem Dorf-Lager (Schmiede-Kette) + EINEN ARBEITER
+  // (die Tagesproduktion sinkt spuerbar). Soeldner kosten nur Gold, kaempfen
+  // aber fuers Geld (Moral-Malus, Desertion). Der Neue tritt der Garnison von
+  // Ravensmoor bei - abholen oder verlegen laeuft ueber R142.
+  rekrutiereSoldat(typ: RtsUnitTyp, art: 'bauer' | 'soeldner'): boolean {
+    const fehler = pruefeRekrutierung(art, {
+      gold: this.dorfkasse + this.p.gold,
+      waffen: this.dorfLager['waffen'] ?? 0,
+      bevoelkerung: this.bevoelkerung,
+      heerGroesse: this.armee.einheiten.length,
+    });
+    if (fehler) { this.sfx.play('fehler'); this.logMsg(fehler, 'bad'); return false; }
+    const gold = art === 'bauer' ? REKRUTIERUNG.gold : REKRUTIERUNG.soeldnerGold;
+    const ausKasse = Math.min(this.dorfkasse, gold);   // Dorfkasse zuerst, Rest zahlt der Held
+    this.dorfkasse -= ausKasse;
+    this.p.gold -= gold - ausKasse;
+    if (art === 'bauer') {
+      this.lagerRaus('waffen', REKRUTIERUNG.waffen);
+      this.bevoelkerung -= REKRUTIERUNG.arbeiter;
+    }
+    const einheit = musterEin(this.armee, typ, REKRUTIERUNG.aushebungsOrt, undefined, art === 'soeldner');
+    if (art === 'bauer') {
+      this.chronik('ereignis', `${einheit.name} legt den Pflug nieder und nimmt die Waffe - das Dorf ist um einen Arbeiter ärmer.`);
+      this.logMsg(`${einheit.name} ausgehoben (${gold} Gold, 1 Waffe, 1 Arbeiter) - er meldet sich in Ravensmoor.`, 'gold');
+    } else {
+      this.logMsg(`Söldner ${einheit.name} angeworben (${gold} Gold) - er wartet in Ravensmoor.`, 'gold');
+    }
+    // Steht der Held gerade in Ravensmoor, tritt der Neue SICHTBAR an.
+    if (this.area.id === REKRUTIERUNG.aushebungsOrt) {
+      this.naechsteEinheit = einheit;
+      const e = this.spawnVerbuendeter(typ, this.px + 46, this.py + (einheit.id % 3) * 22 - 22);
+      if (e) { e.passiv = true; e.jagdZiel = null; }
+      this.naechsteEinheit = null;
+    }
+    return true;
   }
 
   // R142: Trupps von Karte zu Karte schicken (Karten-Tab). Einheiten, die auf
@@ -9194,6 +9260,9 @@ export class WorldScene extends CombatScene {
   dorfkasse = 0;
   // Wirtschaft Phase 1 (Runde 51): Dorf-Lager, nächste Abgabe, Rückstand.
   private dorfLager: Record<string, number> = { ...DORF_LAGER_START };
+  // R143 (Dok 03, 2.3): Arbeiter-Zaehler des Dorfes. Jeder Bauern-Rekrut
+  // nimmt EINEN weg - die Tagesproduktion skaliert mit (skaliereProduktion).
+  private bevoelkerung: number = REKRUTIERUNG.bevoelkerungStart;
   private naechsteAbgabe: number = ABGABE.intervallTage;
   private abgabeRueckstand = 0;
 
@@ -9306,7 +9375,8 @@ export class WorldScene extends CombatScene {
     for (const [m, n] of Object.entries(TAGES_PRODUKTION)) {
       const wer = PRODUZENTEN[m];
       if (wer && !this.kettenNpcVerfuegbar(wer)) { stockt.push(wareName(m)); continue; }
-      this.lagerRein(m, n ?? 0);
+      // R143 (2.3): jeder rekrutierte Arbeiter fehlt der Tagesleistung
+      this.lagerRein(m, skaliereProduktion(n ?? 0, this.bevoelkerung));
     }
     if (stockt.length) this.chronik('ereignis', `Heute ohne Nachschub: ${stockt.join(', ')} - die Leute dafür fehlen.`);
     // 1b) M5 BAUERN-FELDER (Familie A): wachsen nur, wenn der Bauer arbeitet;
@@ -9381,7 +9451,8 @@ export class WorldScene extends CombatScene {
     // das gewollte "mühsam, aber für ein Lagerfeuer reicht es".
     // M4: auch das grosse Holzschlagen gehoert dem Holzfaeller
     if (this.kettenNpcVerfuegbar('holzfaeller')) {
-      this.lagerRein('holz', HOLZ.npcBaeumeProTag * HOLZ.baumInhalt.mittel);
+      // R143 (2.3): auch das grosse Holzschlagen haengt an den verbliebenen Haenden
+      this.lagerRein('holz', skaliereProduktion(HOLZ.npcBaeumeProTag * HOLZ.baumInhalt.mittel, this.bevoelkerung));
     }
     const saege = this.lagerRaus('holz', HOLZ.saegewerkProTag);
     if (saege > 0) this.lagerRein('bretter', saege * HOLZ.bretterProHolz);
@@ -10988,6 +11059,7 @@ export class WorldScene extends CombatScene {
         dorfkasse: this.dorfkasse,
         wirtschaft: { lager: this.dorfLager, naechsteAbgabe: this.naechsteAbgabe, rueckstand: this.abgabeRueckstand, bericht: this.lagerBerichtGestern, felder: this.dorfFelder, vieh: this.dorfVieh },
         armee: (this.syncArmeeVomFeld(), this.armee),   // R141: Feld-Zustand mitnehmen
+        bevoelkerung: this.bevoelkerung,               // R143 (2.3)
         breschen: this.breschen,
       },
     };
@@ -11057,6 +11129,7 @@ export class WorldScene extends CombatScene {
     this.dorfVieh = wi?.vieh ?? viehStart();   // M5 (alte Staende: Startbestand)
     this.breschen = data.welt.breschen ?? [];
     this.armee = ruesteArmeeNach(data.welt.armee ?? neueArmee(), 'stadt');   // R141/R142 (alte Staende: leeres Heer, Bestand steht in Ravensmoor)
+    this.bevoelkerung = data.welt.bevoelkerung ?? REKRUTIERUNG.bevoelkerungStart;   // R143 (2.3)
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
     recalc(p);
     p.hp = Math.min(p.stats.maxhp, s.hp || p.stats.maxhp);

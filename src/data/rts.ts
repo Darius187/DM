@@ -244,6 +244,22 @@ export const MARSCH = {
   zielStadt: 'stadt',    // ... und zieht nach Ravensmoor
 } as const;
 
+// 2.3 REKRUTIERUNG (Dok 03, Manor Lords): Soldaten sind RAR und teuer. Ein
+// Rekrut kostet Gold + EINE Waffe aus dem Dorf-Lager (die Schmiede-Kette
+// schliesst sich) + EINEN ARBEITER - das Dorf wird spuerbar aermer.
+// Soeldner kosten NUR Gold (viel), aber kaempfen fuers Geld: Moral-Malus,
+// und wer flieht, desertiert an der Kartenkante ENDGUELTIG.
+export const REKRUTIERUNG = {
+  gold: 40,                   // je Rekrut (Dorfkasse zuerst, Rest zahlt der Held)
+  waffen: 1,                  // waffen-Einheiten aus dem Dorf-Lager je Rekrut
+  arbeiter: 1,                // Arbeiter, die der Dorfarbeit verloren gehen
+  bevoelkerungStart: 30,      // 23 benannte Bewohner + Tageloehner
+  obergrenzeJeEinwohner: 0.5, // Heer-Deckel = floor(bevoelkerung * Faktor)
+  soeldnerGold: 150,          // Soeldner: nur Gold, kein Arbeiter, keine Waffe
+  soeldnerMoralMalus: 12,     // ... aber sie stehen nicht fuers Dorf ein
+  aushebungsOrt: 'stadt',     // ausgehoben wird in Ravensmoor (Garnison dort)
+} as const;
+
 // Einheiten-Erfahrung: Veteranen schlagen härter und halten stand.
 export const RTS_RANG = {
   killsProRang: 3,

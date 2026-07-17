@@ -69,6 +69,8 @@ export interface SaveData {
     // R141 (Dok 03, 2.1): die persistente Armee (benannte Einheiten,
     // Permadeath, Gefallenen-Buch). Optional - alte Staende laden mit leerem Heer.
     armee?: import('./armee').Armee;
+    // R143 (Dok 03, 2.3): Arbeiter-Zaehler - jeder Rekrut fehlt der Produktion.
+    bevoelkerung?: number;
   };
 }
 

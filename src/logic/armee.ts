@@ -9,7 +9,7 @@
 // (RTS_RANG), Rang gibt +Schaden/+Leben/+Moral. Die Rechnung lebt in
 // rangFuerKills/rangDmgF/rangHpF - EINE Quelle fuer Spawn UND Anzeige.
 
-import { RTS_RANG, RTS_UNIT_TYP, type RtsUnitTyp } from '../data/rts';
+import { REKRUTIERUNG, RTS_RANG, RTS_UNIT_TYP, type RtsUnitTyp } from '../data/rts';
 import { VORNAMEN, BEINAMEN } from '../data/heer';
 import type { Rng } from './rng';
 import { defaultRng } from './rng';
@@ -26,6 +26,9 @@ export interface ArmeeEinheit {
   // Stellung auf dieser Karte (beim Verlassen geschrieben).
   ort: string;
   pos?: { x: number; y: number };
+  // R143 (2.3): Soeldner kaempfen fuers Geld - Moral-Malus, und wer flieht,
+  // desertiert an der Kartenkante endgueltig (steht dann in KEINEM Buch).
+  soeldner?: boolean;
 }
 
 // Ein MARSCH: eine Gruppe zieht kartenweise ueber die Oberwelt (Route =
@@ -71,14 +74,14 @@ export function einheitMaxHp(e: ArmeeEinheit): number {
 
 // Einheit einmustern (benannte Person). Namen doppeln sich erst, wenn der
 // Pool erschoepft ist - bei 20x15 Kombinationen kein Praxisproblem.
-export function musterEin(armee: Armee, typ: RtsUnitTyp, ort: string, rng: Rng = defaultRng): ArmeeEinheit {
+export function musterEin(armee: Armee, typ: RtsUnitTyp, ort: string, rng: Rng = defaultRng, soeldner = false): ArmeeEinheit {
   const benutzt = new Set(armee.einheiten.map((e) => e.name));
   let name = '';
   for (let i = 0; i < 40; i++) {
     name = `${VORNAMEN[Math.floor(rng.random() * VORNAMEN.length)]} ${BEINAMEN[Math.floor(rng.random() * BEINAMEN.length)]}`;
     if (!benutzt.has(name)) break;
   }
-  const e: ArmeeEinheit = { id: armee.naechsteId++, name, typ, hp: RTS_UNIT_TYP[typ].hp, kills: 0, verletzungen: [], ort };
+  const e: ArmeeEinheit = { id: armee.naechsteId++, name, typ, hp: RTS_UNIT_TYP[typ].hp, kills: 0, verletzungen: [], ort, ...(soeldner ? { soeldner: true } : {}) };
   armee.einheiten.push(e);
   return e;
 }
@@ -167,6 +170,35 @@ export function marschTick(armee: Armee, dtS: number, dauerJeKarteS: number): Ma
     }
   }
   return ereignisse;
+}
+
+// --- R143 (2.3) REKRUTIERUNG: Soldaten sind RAR und teuer -------------------
+// Truppen-Obergrenze haengt an der Bevoelkerung, nicht frei (Dok 03).
+export function heerObergrenze(bevoelkerung: number): number {
+  return Math.max(0, Math.floor(bevoelkerung * REKRUTIERUNG.obergrenzeJeEinwohner));
+}
+
+// Prueft eine Aushebung und nennt im Fehlerfall den Grund (Spielertext).
+// gold = verfuegbares Gold GESAMT (Dorfkasse + Held) - wer bucht, entscheidet
+// die Szene. Pure und damit testbar.
+export interface RekrutierungsLage { gold: number; waffen: number; bevoelkerung: number; heerGroesse: number }
+
+export function pruefeRekrutierung(art: 'bauer' | 'soeldner', l: RekrutierungsLage): string | null {
+  const gold = art === 'bauer' ? REKRUTIERUNG.gold : REKRUTIERUNG.soeldnerGold;
+  if (l.gold < gold) return `Zu wenig Gold (${gold} nötig).`;
+  if (art === 'bauer' && l.waffen < REKRUTIERUNG.waffen) return 'Keine Waffe im Dorf-Lager - der Schmied muss erst liefern.';
+  if (art === 'bauer' && l.bevoelkerung < REKRUTIERUNG.arbeiter + 1) return 'Kein Arbeiter mehr entbehrlich.';
+  if (l.heerGroesse >= heerObergrenze(l.bevoelkerung)) return `Die Bevölkerung trägt kein größeres Heer (${l.heerGroesse}/${heerObergrenze(l.bevoelkerung)}).`;
+  return null;
+}
+
+// Desertion (Soeldner an der Kartenkante): endgueltig raus, aber NICHT ins
+// Gefallenen-Buch - er ist nicht tot, er ist nur weg (mitsamt Sold).
+export function desertiere(armee: Armee, id: number): string | null {
+  const e = armee.einheiten.find((x) => x.id === id);
+  if (!e) return null;
+  armee.einheiten = armee.einheiten.filter((x) => x.id !== id);
+  return e.name;
 }
 
 // 2.4 Verstaerkung: die naechsten N Einheiten, die NICHT auf dem Feld stehen.

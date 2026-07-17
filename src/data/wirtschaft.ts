@@ -4,6 +4,7 @@
 // komplex zu werden. Alle Werte hier, in EINER Datei leicht änderbar.
 
 import type { MaterialId } from './crafting';
+import { REKRUTIERUNG } from './rts';
 
 // Tägliche Produktion des Dorfes ins Dorf-Lager. M4 (Auftrag Dorfwirtschaft):
 // jede Zeile gehört einem BEWOHNER (PRODUZENTEN unten) - fällt er aus
@@ -15,6 +16,13 @@ import type { MaterialId } from './crafting';
 export const TAGES_PRODUKTION: Partial<Record<MaterialId, number>> & Record<string, number> = {
   holz: 4, stein: 2, kraeuter: 1, fisch: 2, honig: 1, wasser: 4,
 };
+
+// R143 (Dok 03, 2.3): JEDER Soldat macht das Dorf ärmer - die Tagesleistung
+// skaliert mit der verbliebenen Bevölkerung. Math.round, damit Kleinstmengen
+// (1er-Zeilen) nicht schon beim ersten Rekruten auf 0 fallen. Pure, testbar.
+export function skaliereProduktion(menge: number, bevoelkerung: number): number {
+  return Math.max(0, Math.round(menge * bevoelkerung / REKRUTIERUNG.bevoelkerungStart));
+}
 
 // M4: Wer erzeugt was? Fehlt der Bewohner (tot/verwundet/geflohen), stockt
 // GENAU seine Zeile - die Kette wird spürbar (Autor-Ziel).
