@@ -7,7 +7,7 @@ import re
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageFilter
 
 
 CELL = 144
@@ -24,14 +24,18 @@ def sort_key(path: Path) -> tuple[int, int, int]:
 
 def grade(image: Image.Image) -> Image.Image:
     alpha = image.getchannel("A")
-    rgb = ImageEnhance.Color(image.convert("RGB")).enhance(0.72)
-    rgb = ImageEnhance.Brightness(rgb).enhance(0.78)
-    rgb = ImageEnhance.Contrast(rgb).enhance(1.12)
+    # Keep the source material's warm rock and emissive lava separation.  The
+    # former grade desaturated and green-shifted every frame, effectively
+    # erasing the texture once the 144 px cell was scaled down in Phaser.
+    rgb = ImageEnhance.Color(image.convert("RGB")).enhance(1.06)
+    rgb = ImageEnhance.Brightness(rgb).enhance(0.88)
+    rgb = ImageEnhance.Contrast(rgb).enhance(1.14)
+    rgb = rgb.filter(ImageFilter.UnsharpMask(radius=0.8, percent=65, threshold=3))
     r, g, b = rgb.split()
     return Image.merge("RGBA", (
-        r.point(lambda v: min(255, int(v * 0.82))),
-        g.point(lambda v: min(255, int(v * 0.88))),
-        b.point(lambda v: min(255, int(v * 0.72))),
+        r,
+        g.point(lambda v: min(255, int(v * 0.96))),
+        b.point(lambda v: min(255, int(v * 0.92))),
         alpha,
     ))
 

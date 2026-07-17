@@ -63,22 +63,22 @@ def make_material(source: Path) -> bpy.types.Material:
     bsdf = nodes.new("ShaderNodeBsdfPrincipled")
     bsdf.inputs["Roughness"].default_value = 0.88
     bsdf.inputs["Metallic"].default_value = 0.0
-    links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
-
+    # Rebuild the three selectable Unity-material layers instead of flattening
+    # the pale albedo to one green colour.  At Phaser sprite size the neutral
+    # rock, dark AO cavities and orange lava seams must remain clearly legible.
     base = nodes.new("ShaderNodeTexImage")
     base.image = load_image(source / "T_golem_BaseColor.png", "sRGB")
     base.interpolation = "Linear"
     tint = nodes.new("ShaderNodeMixRGB")
     tint.blend_type = "MULTIPLY"
     tint.inputs[0].default_value = 1.0
-    tint.inputs[2].default_value = (0.34, 0.39, 0.29, 1.0)
+    tint.inputs[2].default_value = (0.42, 0.38, 0.32, 1.0)
     links.new(base.outputs["Color"], tint.inputs[1])
-    links.new(tint.outputs["Color"], bsdf.inputs["Base Color"])
 
     normal_tex = nodes.new("ShaderNodeTexImage")
     normal_tex.image = load_image(source / "T_golem_Normal.png", "Non-Color")
     normal = nodes.new("ShaderNodeNormalMap")
-    normal.inputs["Strength"].default_value = 0.75
+    normal.inputs["Strength"].default_value = 1.15
     links.new(normal_tex.outputs["Color"], normal.inputs["Color"])
     links.new(normal.outputs["Normal"], bsdf.inputs["Normal"])
 
@@ -87,6 +87,39 @@ def make_material(source: Path) -> bpy.types.Material:
     sep = nodes.new("ShaderNodeSeparateColor")
     links.new(orm.outputs["Color"], sep.inputs["Color"])
     links.new(sep.outputs["Green"], bsdf.inputs["Roughness"])
+
+    ao = nodes.new("ShaderNodeMixRGB")
+    ao.blend_type = "MULTIPLY"
+    ao.inputs[0].default_value = 0.62
+    links.new(tint.outputs["Color"], ao.inputs[1])
+    links.new(sep.outputs["Red"], ao.inputs[2])
+
+    lava = nodes.new("ShaderNodeTexImage")
+    lava.image = load_image(source / "T_lava.png", "sRGB")
+    lava.interpolation = "Linear"
+    eye = nodes.new("ShaderNodeTexImage")
+    eye.image = load_image(source / "T_Eye.png", "sRGB")
+    eye.interpolation = "Linear"
+    glow = nodes.new("ShaderNodeMixRGB")
+    glow.blend_type = "ADD"
+    glow.inputs[0].default_value = 1.0
+    links.new(lava.outputs["Color"], glow.inputs[1])
+    links.new(eye.outputs["Color"], glow.inputs[2])
+
+    rock_with_seams = nodes.new("ShaderNodeMixRGB")
+    rock_with_seams.blend_type = "ADD"
+    rock_with_seams.inputs[0].default_value = 0.32
+    links.new(ao.outputs["Color"], rock_with_seams.inputs[1])
+    links.new(glow.outputs["Color"], rock_with_seams.inputs[2])
+    links.new(rock_with_seams.outputs["Color"], bsdf.inputs["Base Color"])
+
+    emission = nodes.new("ShaderNodeEmission")
+    emission.inputs["Strength"].default_value = 1.9
+    links.new(glow.outputs["Color"], emission.inputs["Color"])
+    surface = nodes.new("ShaderNodeAddShader")
+    links.new(bsdf.outputs["BSDF"], surface.inputs[0])
+    links.new(emission.outputs["Emission"], surface.inputs[1])
+    links.new(surface.outputs[0], out.inputs["Surface"])
     return mat
 
 
@@ -126,7 +159,7 @@ def setup_stage() -> tuple[bpy.types.Object, bpy.types.Object]:
     camera_data.type = "ORTHO"
     camera_data.ortho_scale = 4.15
 
-    for name, energy, size in (("KEY", 950, 4.0), ("FILL", 500, 5.0), ("RIM", 700, 3.0)):
+    for name, energy, size in (("KEY", 1050, 3.6), ("FILL", 280, 5.0), ("RIM", 820, 3.0)):
         data = bpy.data.lights.new(name, "AREA")
         data.energy = energy
         data.shape = "DISK"
