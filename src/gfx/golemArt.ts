@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GOLEM, golemFrame, type GolemClip } from '../data/golem';
+import { aktuellesGolemTuning } from './golemTuning';
 import type { Enemy } from '../world/Enemy';
 
 export function golemClipUndFrame(e: Enemy): { clip: GolemClip; frame: number } {
@@ -17,6 +18,8 @@ export function golemClipUndFrame(e: Enemy): { clip: GolemClip; frame: number } 
 
 export function wendeGolemSpriteAn(sprite: Phaser.GameObjects.Sprite, e: Enemy): void {
   const { clip, frame } = golemClipUndFrame(e);
+  const tuning = aktuellesGolemTuning();
   sprite.setTexture(GOLEM.atlasKey, golemFrame(clip, e.visualDir8, frame));
-  sprite.setOrigin(0.5, GOLEM.ursprungY).setScale(GOLEM.spriteScale);
+  sprite.setOrigin(0.5, tuning.bodenanker)
+    .setScale(tuning.skala * tuning.breite, tuning.skala * tuning.hoehe);
 }

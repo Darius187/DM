@@ -1,5 +1,6 @@
-// Echter Blender-Sprite des Stone-Golem-Pakets. Alle Spielwerte bleiben hier
-// zentral tunbar; das Originalpaket enthielt Rig + Mesh, aber keine Animationen.
+// Gerenderter Menschengolem aus Fleisch, Blut und freiliegenden Knochen.
+// Atlas-Key und Dateiname behalten aus Kompatibilitaet den alten Paketnamen;
+// diese technische Herkunft ist weder im Spiel noch in Spielertexten sichtbar.
 export const GOLEM = {
   atlasKey: 'ravensmoor_stone_golem',
   atlasBild: 'golem/ravensmoor-stone-golem.png',
@@ -8,8 +9,8 @@ export const GOLEM = {
   richtungen: 8,
   frames: { idle: 8, walk: 12, attack: 14, hit: 7, death: 14 },
   fps: { idle: 6, walk: 12, attack: 14, hit: 18, death: 12 },
-  spriteScale: 0.92,
-  ursprungY: 0.81,
+  standardSkala: 0.92,
+  standardBodenanker: 0.81,
   trefferDauerS: 0.38,
   schlagNachlaufS: 0.48,
 } as const;

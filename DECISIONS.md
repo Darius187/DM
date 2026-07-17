@@ -2370,3 +2370,14 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - R144 (Autor-Bugmeldung "Soldaten wehren sich nicht"): Weck-System (updateWachwerden) und Moral laufen jetzt in JEDEM Modus, nicht nur im RTS-Modus. Moral aber nur, wenn Truppen auf dem Feld stehen - reiner Held-Kampf im Dungeon bleibt moral-frei (Spielgefuehl unveraendert). Beim RTS-Einstieg uebernimmt die Befehls-Schicht stehende Garnisonen (rtsTyp am Enemy); Nachzuegler (Marschierer/Rekruten mitten im Gefecht) melden sich selbst an.
 - R145 (Autor): Tod kostet NUR noch 10% Gold (vorher 15, Masterprompt sagte 15 - Autor-Order schlaegt Spez). Lebende Monster schreiben beim Kartenwechsel Stellung+Wunden in ihren Spawn zurueck (EnemySpawn.hp) - nach Tod/Rueckkehr stehen sie verwundet dort, wo sie standen. Tote bleiben tot (R47), geleert bleibt geleert (R40). geleert ignoriert jetzt eigene Soldaten (Garnison verhinderte sonst das Totenstill-Flag).
 - R146 (Autor-Repro "unsichtbare Waende am Waldrand"): Ursache war NICHT fehlende Kollision, sondern Lesbarkeit: (1) Weg-Kacheln, die die Wasser-SDF queren, sind seit R100h begehbar - aber das Wasser-Overlay malte drueber, die Querung war unsichtbar (start: 45, wald_o: 23, stadt: 7 ertraenkte Kacheln). Fix: Furt-Bilder (Trittsteine/Kies, bodenMaler.macheFurtBild) auf der Bruecken-Ebene UEBER dem Wasser, nur auf den echten Weg-Kacheln. Keine Auto-Bruecke (R100h bleibt). (2) Bei Regen stieg die Wasser-Truebung um rainAmt*0.5 - das Wasser kippte in stumpfes Grau und wirkte wie fester Kies. Zuschlag jetzt 0.2 (WASSER_CFG.regenTurb), Ufer-Wasserlinie mit hoeherem Grundanteil (0.30 statt 0.16) - in jedem Wetter lesbar.
+- Fleischgolem-Gang: 1,0-s-Zyklus bei 30 px/s mit 62% Standphase je Fuss; gespiegelte Beinknochen werden lokal gleichsinnig angesteuert, damit sie sich im Raum gegensinnig bewegen. Alle Atlasframes liegen auf Bodenlinie 132 und erhalten einen festen Kontaktschatten.
+- Menschengolem statt Steingolem: Spielertexte und sichtbarer Name verwenden nur
+  `Menschengolem`. Bestehende interne Kennungen und der Atlas-Dateiname werden
+  vorerst nicht migriert, weil sie Savegame- und Phaser-Cache-Vertraege sind.
+- Die Autorabnahme der Monsterproportion erfolgt ueber F10 > GOLEM. Diese Werte
+  werden lokal gespeichert und skalieren nur das gerenderte Bild. Trefferkreis,
+  Wegfindung, Schaden und Reichweite werden erst gemeinsam angepasst, wenn der
+  Autor die endgueltige visuelle Groesse bestaetigt.
+- Der HP-Regler unter F10 > GOLEM ist ausdruecklich ein RTS-Testwert. Eine
+  Aenderung setzt bestehende lebende Menschengolems auf den neuen Wert und heilt
+  sie voll, damit wiederholte Schadensmessungen denselben Ausgangspunkt haben.

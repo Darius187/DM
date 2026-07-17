@@ -1502,3 +1502,39 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
 - Browser-verifiziert: furt_start-Textur vorhanden, alle 4 Sonden-Kacheln der
   Ost-Strassen-Querung begehbar, Screenshot zeigt das Steinband ueber dem Fluss.
 - tsc fehlerfrei, 378 Tests gruen.
+## Fleischgolem - Gang und Anatomie ueberarbeitet
+- Animationsfehler behoben: Die gespiegelten Beine schwangen vorher gemeinsam in
+  dieselbe Raumrichtung. Jetzt wechseln Stand- und Schwungbein mit einer langen,
+  schweren Standphase; die Schrittdistanz passt zu 30 px/s RTS-Tempo.
+- Alle 440 Frames neu gerendert. Feste Bodenlinie und Kontaktschatten verhindern
+  das sichtbare Schweben zwischen den Einzelbildern.
+- Material und Silhouette staerker organisch: dunkelrotes Muskelgewebe, Poren,
+  Blutspalten, asymmetrische Wucherungen, offene Brustwunde und haengende Sehnen.
+- Im RTS-Testmodus auf echtem Spielboden geprueft; Fleischgolem platzierbar,
+  Richtungen und Laufanimation sichtbar, Browserkonsole ohne Fehler.
+- TypeScript, Build und 59 Testdateien / 378 Tests gruen.
+
+## Menschengolem - Fleisch, Blut, Knochen und Live-Groesse
+- Die sichtbare Identitaet heisst jetzt ueberall `Menschengolem`. Der interne
+  Typ `golem` und der alte Atlas-Dateiname bleiben nur fuer Savegame- und
+  Cache-Kompatibilitaet bestehen und werden dem Spieler nicht gezeigt.
+- Neuer Blender-Pass: deutlich weniger steinerne Normalstruktur, blutiges
+  Muskelgewebe, offene Brusthoehle, drei freiliegende gebrochene Rippen,
+  Brustbein, grobe Kreuznaehte, Schulter-Knochenfragment und Sehnen. Alle
+  anatomischen Teile sind an das Rig gebunden und bewegen sich mit den Clips.
+- Alle 440 Richtungsframes fuer Idle, Lauf, Schlag, Treffer und Tod wurden aus
+  Blender 5.1 neu gerendert und in den Phaser-Atlas gepackt. Die editierbare
+  Szene liegt als `C:/Obsidian/DM/ravensmoor-flesh-golem.blend` bereit.
+- F10 > GOLEM hat persistente Live-Regler fuer Gesamtgroesse, Breite, Hoehe und
+  Bodenanker sowie Kopieren und Zuruecksetzen. Die Regler wirken sofort auf
+  lebende Menschengolems und werden beim Erzeugen ihrer Todesanimation
+  uebernommen. Trefferkreis und Kampfreichweite bleiben bis zur Endabnahme
+  absichtlich unveraendert.
+- Browser-Abnahme: GOLEM-Tab sichtbar, Groessenregler korrekt mit Standardwerten
+  0.92 / 1.00 / 1.00 / 0.810; keine Browserfehler. TypeScript, Build und 59
+  Testdateien / 379 Tests gruen.
+- Nachtrag HP-Testregler: F10 > GOLEM bietet `Leben (RTS-Test)` von 100 bis
+  20.000 HP in 100er-Schritten. Der Wert wird gespeichert, fuer neue
+  RTS-Menschengolems verwendet und setzt bereits lebende Golems sofort auf den
+  neuen Maximalwert mit voller Heilung. Browser-Anzeige und fehlerfreie Konsole
+  geprueft.

@@ -50,6 +50,9 @@ the primary representation.
 - Root pivot: `STABLE_HOUSE_ROTATION_PIVOT`
 - Doors: `DOOR_STABLE_MAIN_HINGE`, `DOOR_STALL_1_HINGE`,
   `DOOR_STALL_2_HINGE`, `DOOR_STALL_3_HINGE`, `DOOR_STALL_4_HINGE`.
+- All five leaves swing outward. When opened, the four horse passages contain
+  no fixed threshold or facade rail. Separate packed-earth ramps bridge the
+  floor height; never reverse the exported animation.
 - The stable is a four-place covered standing stable. It deliberately has no
   chimney and no modern loose boxes. Timber partitions, rear mangers, hay
   racks, drainage, tack, hay and a water trough are part of the GLB.
@@ -63,9 +66,9 @@ the primary representation.
   consolidated into one runtime mesh while all four panes remain present.
 - The JSON contains 17 collision/navigation guides. The ground floor and horse
   aisle are walkable; the hay loft is visual only and has no player navigation.
-- The roof contains 766 genuinely overlapping shingles laid on both roof
+- The roof contains 765 genuinely overlapping shingles laid on both roof
   planes, consolidated into six material batches.
-- The GLB contains only 45 meshes. Do not split batched meshes at runtime.
+- The GLB contains only 46 meshes. Do not split batched meshes at runtime.
 - The global ground plate/shadow is intentionally absent from the GLB.
 
 ## Cooperage

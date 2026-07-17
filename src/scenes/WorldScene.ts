@@ -91,6 +91,7 @@ import { recalc, newPlayerState } from '../logic/playerState';
 import { REIT_PFERD, type ReitClip, type ReitGangClip, type ReitSattelPunkte } from '../data/reiten';
 import { clipFps, clipFrames, istReitGang, istReitUebergang, kuerzesterWinkel, mausLenkung, mausZielTempo, naechsterReitGang, naehereZahl, reitClip, reitUebergang, uebergangQuellFrame, uebergangZielFrame, uebertrageAnimationsPhase } from '../logic/reiten';
 import { ladeReitTuning, reitTuningExport, REIT_TUNING_STANDARD, speichereReitTuning, type ReitDarstellungTuning } from '../gfx/reitTuning';
+import { aktuellesGolemTuning, golemTuningExport, GOLEM_TUNING_STANDARD, setzeGolemTuning } from '../gfx/golemTuning';
 import { getSettings, saveSettings } from '../logic/settings';
 import { seededRng, pick, ri } from '../logic/rng';
 import { respawnZiel } from '../logic/respawn';
@@ -3475,7 +3476,8 @@ export class WorldScene extends CombatScene {
         const d = RTS_UNIT_TYP[typ];
         const e = this.spawnEnemy((d.figur ?? 'skelett') as never, 2, x, y, typ === 'e_elite', true);
         e.name = d.name;
-        e.maxhp = d.hp; e.hp = d.hp;
+        const leben = typ === 'e_golem' ? aktuellesGolemTuning().leben : d.hp;
+        e.maxhp = leben; e.hp = leben;
         e.dmg = d.dmg;
         e.speed = d.speed;
         e.schild = d.schild ?? false;
@@ -3803,7 +3805,7 @@ export class WorldScene extends CombatScene {
       const aktiv = this.rtsSpawnTyp === typ;
       const kn = this.add.rectangle(F(8), y, w - F(16), F(24), aktiv ? 0x3a2a12 : farbe, 0.9).setOrigin(0).setStrokeStyle(1, aktiv ? 0xc9a227 : 0x4a3a26).setInteractive({ useHandCursor: true });
       kn.on('pointerdown', () => { this.starteRtsSpawn(typ); this.sfx.play('klick', 0.5); this.baueRtsLeiste(); });
-      const rolle = typ === 'e_golem' ? 'Schwere Monstrositaet (faulendes Fleisch)' : d.heiler ? 'Heilt Verwundete' : d.reich > 100 ? 'Fernkampf (Bogen)' : d.reich > 32 ? 'Reiter (schnell, stark)' : 'Nahkampf (Schild/Schwert)';
+      const rolle = typ === 'e_golem' ? 'Monstrositaet aus Fleisch, Blut und Knochen' : d.heiler ? 'Heilt Verwundete' : d.reich > 100 ? 'Fernkampf (Bogen)' : d.reich > 32 ? 'Reiter (schnell, stark)' : 'Nahkampf (Schild/Schwert)';
       const tip = `${d.name}\n${rolle}\nLeben ${d.hp} · Schaden ${d.dmg} · Reichweite ${d.reich} · Tempo ${d.speed}\nKämpft mit der Dungeon-Technik.`;
       kn.on('pointerover', () => this.zeigeBauTooltip(tip, c.x));
       kn.on('pointerout', () => this.versteckeBauTooltip());
@@ -5156,6 +5158,18 @@ export class WorldScene extends CombatScene {
     ];
   }
 
+  private setzeGolemTestLeben(leben: number): void {
+    const neu = setzeGolemTuning({ leben }).leben;
+    // Der Regler ist ein ausdruecklicher Kampf-Test: bereits platzierte Golems
+    // werden auf den neuen Maximalwert gesetzt und voll geheilt. So ist jeder
+    // Messlauf reproduzierbar, ohne das Monster erneut setzen zu muessen.
+    for (const e of this.enemies) {
+      if (e.type !== 'golem' || e.hp <= 0) continue;
+      e.maxhp = neu;
+      e.hp = neu;
+    }
+  }
+
   private baueDevTabs(): DKTab[] {
     const wasserControls = (): DKControl[] => {
       const p = this.aktWasserPreset();
@@ -5245,6 +5259,16 @@ export class WorldScene extends CombatScene {
         })),
       ] },
       { name: 'PFERD', controls: () => this.baueReitTuningControls() },
+      { name: 'GOLEM', controls: () => [
+        { kind: 'note', text: 'MENSCHENGOLEM live testen. Groessenregler aendern nur die Darstellung; Trefferkreis und Reichweite bleiben bis zur Endabnahme unveraendert.' },
+        { kind: 'slider', label: 'Gesamtgroesse', min: 0.45, max: 1.40, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => aktuellesGolemTuning().skala, set: (v) => { setzeGolemTuning({ skala: v }); } },
+        { kind: 'slider', label: 'Breite', min: 0.70, max: 1.35, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => aktuellesGolemTuning().breite, set: (v) => { setzeGolemTuning({ breite: v }); } },
+        { kind: 'slider', label: 'Hoehe', min: 0.70, max: 1.35, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => aktuellesGolemTuning().hoehe, set: (v) => { setzeGolemTuning({ hoehe: v }); } },
+        { kind: 'slider', label: 'Bodenanker', min: 0.72, max: 0.96, step: 0.005, fmt: (v) => v.toFixed(3), get: () => aktuellesGolemTuning().bodenanker, set: (v) => { setzeGolemTuning({ bodenanker: v }); } },
+        { kind: 'slider', label: 'Leben (RTS-Test)', min: 100, max: 20000, step: 100, fmt: (v) => `${Math.round(v)} HP`, get: () => aktuellesGolemTuning().leben, set: (v) => { this.setzeGolemTestLeben(v); } },
+        { kind: 'button', label: () => 'WERTE KOPIEREN fuer Codex', onClick: () => window.prompt('Diese Werte kopieren und im Chat einfuegen:', golemTuningExport()) },
+        { kind: 'button', label: () => 'Auf aktuellen Spielstandard zuruecksetzen', onClick: () => { setzeGolemTuning({ ...GOLEM_TUNING_STANDARD }); this.setzeGolemTestLeben(GOLEM_TUNING_STANDARD.leben); this.devKonsole?.refresh(); } },
+      ] as DKControl[] },
       // R80 (Autorbug "2 Wetterregler, eigener Tag-Nacht-Rhythmus, total irre"):
       // Zeit + Wetter wohnen NUR noch hier. Der Wetter-Regler setzt das Wetter
       // FEST (kein Auto-Überschreiben mehr), "Automatik" gibt es wieder frei.

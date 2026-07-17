@@ -24,7 +24,7 @@
   "bounds_blender": {
     "min": [
       -5.655,
-      -3.47935,
+      -4.25,
       0.0
     ],
     "max": [
@@ -34,12 +34,12 @@
     ],
     "center": [
       -0.0,
-      -0.00725,
+      -0.39258,
       3.1275
     ],
     "size": [
       11.31,
-      6.94419,
+      7.71484,
       6.255
     ],
     "bounding_radius": 6.62586
@@ -105,31 +105,36 @@
       "node": "DOOR_STABLE_MAIN_HINGE",
       "trigger": "TRIGGER_STABLE_MAIN",
       "closed_frame": 1,
-      "open_frame": 30
+      "open_frame": 30,
+      "opens_to": "exterior"
     },
     "stall_1": {
       "node": "DOOR_STALL_1_HINGE",
       "trigger": "TRIGGER_STALL_1",
       "closed_frame": 1,
-      "open_frame": 30
+      "open_frame": 30,
+      "opens_to": "exterior"
     },
     "stall_2": {
       "node": "DOOR_STALL_2_HINGE",
       "trigger": "TRIGGER_STALL_2",
       "closed_frame": 1,
-      "open_frame": 30
+      "open_frame": 30,
+      "opens_to": "exterior"
     },
     "stall_3": {
       "node": "DOOR_STALL_3_HINGE",
       "trigger": "TRIGGER_STALL_3",
       "closed_frame": 1,
-      "open_frame": 30
+      "open_frame": 30,
+      "opens_to": "exterior"
     },
     "stall_4": {
       "node": "DOOR_STALL_4_HINGE",
       "trigger": "TRIGGER_STALL_4",
       "closed_frame": 1,
-      "open_frame": 30
+      "open_frame": 30,
+      "opens_to": "exterior"
     }
   },
   "walkable_interior": {
@@ -241,7 +246,7 @@
   },
   "node_groups": {
     "transparent_windows": [
-      "BATCH_018_exterior_GROUND"
+      "BATCH_019_exterior_GROUND"
     ],
     "horses": []
   },
@@ -721,18 +726,18 @@
     }
   ],
   "counts": {
-    "runtime_objects": 45,
+    "runtime_objects": 46,
     "materials": 15,
     "windows": 1,
     "doors": 5,
     "collisions": 17,
-    "batched_roof_shingles": 766
+    "batched_roof_shingles": 765
   },
   "integration_contract": {
     "load_with": "Three.js GLTFLoader",
     "rotate": "STABLE_HOUSE_ROTATION_PIVOT around Three.js Y",
     "collisions": "build from JSON and transform with building",
-    "doors": "play named animations; a horse may cross only when the matching gate is at least 82 percent open",
+    "doors": "play named animations; all five doors swing outward; a horse may cross only when the matching gate is at least 82 percent open",
     "parking": "move the existing horse entity from approach_marker to parking_marker and align its head with head_marker",
     "forbidden": [
       "PNG replacement",
