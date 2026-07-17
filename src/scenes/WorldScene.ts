@@ -6184,10 +6184,12 @@ export class WorldScene extends CombatScene {
     { box: 'N1', id: 'haus', url: 'houses/medieval_carpenter_house_3d_runtime.json', yaw: 210 },
     { box: 'N2', id: 'apotheke', url: 'houses/apothecary/medieval_apothecary_house_3d_runtime.json', yaw: 180 },
     { box: 'N3', id: 'kueferei', url: 'houses/cooperage/medieval_cooperage_house_3d_runtime.json', yaw: 180 },
+    { box: 'N7', id: 'pfarrhaus', url: 'houses/rectory/medieval_rectory_house_3d_runtime.json', yaw: 0 },
     { box: 'S1', id: 'fleischerei', url: 'houses/butcher/medieval_butcher_house_3d_runtime.json', yaw: 0 },
     { box: 'S2', id: 'stall', url: 'houses/stable/medieval_stable_house_3d_runtime.json', yaw: 0 },
     { box: 'B1', id: 'schmiede', url: 'houses/forge/medieval_forge_3d_runtime.json', yaw: 0 },
     { box: 'B3', id: 'baeckerei', url: 'houses/bakery/medieval_bakery_house_3d_runtime.json', yaw: 0 },
+    { box: 'B4', id: 'kirche', url: 'houses/church/medieval_village_church_3d_runtime.json', yaw: 0 },
     { box: 'B6', id: 'muehle', url: 'houses/mill/medieval_mill_house_3d_runtime.json', yaw: 180 },
   ] as const;
 
