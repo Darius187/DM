@@ -1,4 +1,4 @@
-"""Build the Ravensmoor stone-golem Blender stage and directional sprite frames.
+"""Build the Ravensmoor flesh-golem Blender stage and directional sprite frames.
 
 The purchased Unity package contains a rigged mesh but no animation clips.  This
 script authors the required idle, walk, attack, hit and death poses against the
@@ -54,39 +54,57 @@ def load_image(path: Path, colorspace: str) -> bpy.types.Image:
 
 
 def make_material(source: Path) -> bpy.types.Material:
-    mat = bpy.data.materials.new("Ravensmoor_Stone")
+    mat = bpy.data.materials.new("Ravensmoor_Flesh")
     mat.use_nodes = True
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links
     nodes.clear()
     out = nodes.new("ShaderNodeOutputMaterial")
     bsdf = nodes.new("ShaderNodeBsdfPrincipled")
-    bsdf.inputs["Roughness"].default_value = 0.88
+    bsdf.inputs["Roughness"].default_value = 0.48
     bsdf.inputs["Metallic"].default_value = 0.0
-    # Rebuild the three selectable Unity-material layers instead of flattening
-    # the pale albedo to one green colour.  At Phaser sprite size the neutral
-    # rock, dark AO cavities and orange lava seams must remain clearly legible.
+    for socket, value in (("Subsurface Weight", 0.08), ("Coat Weight", 0.16), ("Coat Roughness", 0.24)):
+        if bsdf.inputs.get(socket):
+            bsdf.inputs[socket].default_value = value
+    # The licensed mesh began as stone.  Its albedo/UV detail is retained, but
+    # recoloured as bruised flesh with wet blood-filled seams for the game's
+    # flesh-golem variant.
     base = nodes.new("ShaderNodeTexImage")
     base.image = load_image(source / "T_golem_BaseColor.png", "sRGB")
     base.interpolation = "Linear"
     tint = nodes.new("ShaderNodeMixRGB")
     tint.blend_type = "MULTIPLY"
     tint.inputs[0].default_value = 1.0
-    tint.inputs[2].default_value = (0.14, 0.125, 0.105, 1.0)
+    tint.inputs[2].default_value = (0.20, 0.038, 0.028, 1.0)
     links.new(base.outputs["Color"], tint.inputs[1])
 
     normal_tex = nodes.new("ShaderNodeTexImage")
     normal_tex.image = load_image(source / "T_golem_Normal.png", "Non-Color")
     normal = nodes.new("ShaderNodeNormalMap")
-    normal.inputs["Strength"].default_value = 1.15
+    normal.inputs["Strength"].default_value = 0.48
     links.new(normal_tex.outputs["Color"], normal.inputs["Color"])
-    links.new(normal.outputs["Normal"], bsdf.inputs["Normal"])
+
+    pores = nodes.new("ShaderNodeTexNoise")
+    pores.inputs["Scale"].default_value = 8.0
+    pores.inputs["Detail"].default_value = 4.0
+    pores.inputs["Roughness"].default_value = 0.72
+    flesh_bump = nodes.new("ShaderNodeBump")
+    flesh_bump.inputs["Strength"].default_value = 0.20
+    flesh_bump.inputs["Distance"].default_value = 0.07
+    links.new(pores.outputs["Fac"], flesh_bump.inputs["Height"])
+    links.new(normal.outputs["Normal"], flesh_bump.inputs["Normal"])
+    links.new(flesh_bump.outputs["Normal"], bsdf.inputs["Normal"])
 
     orm = nodes.new("ShaderNodeTexImage")
     orm.image = load_image(source / "T_golem_ORM.png", "Non-Color")
     sep = nodes.new("ShaderNodeSeparateColor")
     links.new(orm.outputs["Color"], sep.inputs["Color"])
-    links.new(sep.outputs["Green"], bsdf.inputs["Roughness"])
+    wet_roughness = nodes.new("ShaderNodeMath")
+    wet_roughness.operation = "MULTIPLY_ADD"
+    wet_roughness.inputs[1].default_value = 0.42
+    wet_roughness.inputs[2].default_value = 0.18
+    links.new(sep.outputs["Green"], wet_roughness.inputs[0])
+    links.new(wet_roughness.outputs[0], bsdf.inputs["Roughness"])
 
     ao = nodes.new("ShaderNodeMixRGB")
     ao.blend_type = "MULTIPLY"
@@ -97,25 +115,31 @@ def make_material(source: Path) -> bpy.types.Material:
     lava = nodes.new("ShaderNodeTexImage")
     lava.image = load_image(source / "T_lava.png", "sRGB")
     lava.interpolation = "Linear"
+    blood = nodes.new("ShaderNodeMixRGB")
+    blood.blend_type = "MULTIPLY"
+    blood.inputs[0].default_value = 1.0
+    blood.inputs[2].default_value = (0.42, 0.009, 0.012, 1.0)
+    links.new(lava.outputs["Color"], blood.inputs[1])
+
     eye = nodes.new("ShaderNodeTexImage")
     eye.image = load_image(source / "T_Eye.png", "sRGB")
     eye.interpolation = "Linear"
-    glow = nodes.new("ShaderNodeMixRGB")
-    glow.blend_type = "ADD"
-    glow.inputs[0].default_value = 1.0
-    links.new(lava.outputs["Color"], glow.inputs[1])
-    links.new(eye.outputs["Color"], glow.inputs[2])
+    red_eye = nodes.new("ShaderNodeMixRGB")
+    red_eye.blend_type = "MULTIPLY"
+    red_eye.inputs[0].default_value = 1.0
+    red_eye.inputs[2].default_value = (0.75, 0.012, 0.018, 1.0)
+    links.new(eye.outputs["Color"], red_eye.inputs[1])
 
-    rock_with_seams = nodes.new("ShaderNodeMixRGB")
-    rock_with_seams.blend_type = "ADD"
-    rock_with_seams.inputs[0].default_value = 0.32
-    links.new(ao.outputs["Color"], rock_with_seams.inputs[1])
-    links.new(glow.outputs["Color"], rock_with_seams.inputs[2])
-    links.new(rock_with_seams.outputs["Color"], bsdf.inputs["Base Color"])
+    flesh_with_blood = nodes.new("ShaderNodeMixRGB")
+    flesh_with_blood.blend_type = "ADD"
+    flesh_with_blood.inputs[0].default_value = 0.72
+    links.new(ao.outputs["Color"], flesh_with_blood.inputs[1])
+    links.new(blood.outputs["Color"], flesh_with_blood.inputs[2])
+    links.new(flesh_with_blood.outputs["Color"], bsdf.inputs["Base Color"])
 
     emission = nodes.new("ShaderNodeEmission")
-    emission.inputs["Strength"].default_value = 1.9
-    links.new(glow.outputs["Color"], emission.inputs["Color"])
+    emission.inputs["Strength"].default_value = 1.65
+    links.new(red_eye.outputs["Color"], emission.inputs["Color"])
     surface = nodes.new("ShaderNodeAddShader")
     links.new(bsdf.outputs["BSDF"], surface.inputs[0])
     links.new(emission.outputs["Emission"], surface.inputs[1])

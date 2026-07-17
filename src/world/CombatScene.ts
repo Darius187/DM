@@ -1351,7 +1351,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Treffer-Schema (Runde 12): armor_cut auf Gepanzerte (Tempelritter,
   // Schildträger), schwert_slice auf weiche Gegner - Fallback: alte Klänge
   private playHitSound(e: Enemy): void {
-    const gepanzert = e.type === 'templer' || e.type === 'golem' || e.schild;
+    const gepanzert = e.type === 'templer' || e.schild;
     if (gepanzert && this.sfx.playAtAbwechselnd('armor_cut', 2, e.x, e.y)) return;
     if (!gepanzert && this.sfx.playAtAbwechselnd('schwert_slice', 3, e.x, e.y)) return;
     this.sfx.playAt(e.type === 'skelett' || e.type === 'schuetze' ? 'treffer_knochen' : 'treffer_fleisch', e.x, e.y);
@@ -1656,9 +1656,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       }
     }
     // Treffer-Spritzer: Blut bei Fleisch, Knochenstaub bei Skeletten (Runde 34)
-    const trefferFarbe = e.type === 'golem' ? 0x82906c
+    const trefferFarbe = e.type === 'golem' ? 0x8f101c
       : (e.type === 'skelett' || e.type === 'schuetze') ? 0xcfc4a8 : 0xa82020;
-    this.fx.burst(e.x, e.y, trefferFarbe, e.type === 'golem' ? 10 : 6, e.type === 'golem' ? 95 : 120);
+    this.fx.burst(e.x, e.y, trefferFarbe, e.type === 'golem' ? 14 : 6, e.type === 'golem' ? 125 : 120);
     if (e.type === 'golem') this.cameras.main.shake(55, 0.0015);
     this.playHitSound(e);
     // Lebensraub: nur ein Bruchteil je Punkt und Treffer (Runde 42), Bruchteile
@@ -1742,7 +1742,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // R113 Spuren: eine fleischige Nahkampf-Tötung aus der Nähe bespritzt den
     // Helden - die Figur wird sichtbar blutig und hinterlässt rote Tritte,
     // bis Regen oder Wasser es abwaschen. (Skelette/Schatten spritzen nicht.)
-    if (!knochen && e.type !== 'schatten' && e.type !== 'golem' && getSettings().blood
+    if (!knochen && e.type !== 'schatten' && getSettings().blood
       && this.weaponClass() !== 'bogen' && Math.hypot(e.x - this.px, e.y - this.py) < 70) {
       this.heldBlut = Math.min(1, this.heldBlut + SPUREN.blutProKill);
       this.blutSchrittRest = Math.max(this.blutSchrittRest, SPUREN.blutSchritte);
@@ -1759,7 +1759,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.time.delayedCall((GOLEM.frames.death + 1) * (1000 / GOLEM.fps.death), () => {
         this.tweens.add({ targets: leiche, alpha: 0, duration: 500, onComplete: () => leiche.destroy() });
       });
-      this.fx.burst(e.x, e.y, 0x82906c, 24, 190);
+      this.fx.burst(e.x, e.y, 0x7d0b16, 32, 210);
       this.cameras.main.shake(170, 0.006);
     } else if (e.sprite && getSettings().blood) {
       const leiche = e.sprite;
