@@ -1490,3 +1490,15 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   eines Einfalls liesse die Angreifer verpuffen. Wegen der ARCHIV-Regel nicht
   angefasst - Vorschlag "Einfall-Umzug" steht in OFFENE-FRAGEN.md.
 - tsc fehlerfrei, 59 Testdateien / 378 Tests gruen (8 neue Rekrutierungs-Tests).
+
+## Fleischgolem - Gang und Anatomie ueberarbeitet
+- Animationsfehler behoben: Die gespiegelten Beine schwangen vorher gemeinsam in
+  dieselbe Raumrichtung. Jetzt wechseln Stand- und Schwungbein mit einer langen,
+  schweren Standphase; die Schrittdistanz passt zu 30 px/s RTS-Tempo.
+- Alle 440 Frames neu gerendert. Feste Bodenlinie und Kontaktschatten verhindern
+  das sichtbare Schweben zwischen den Einzelbildern.
+- Material und Silhouette staerker organisch: dunkelrotes Muskelgewebe, Poren,
+  Blutspalten, asymmetrische Wucherungen, offene Brustwunde und haengende Sehnen.
+- Im RTS-Testmodus auf echtem Spielboden geprueft; Fleischgolem platzierbar,
+  Richtungen und Laufanimation sichtbar, Browserkonsole ohne Fehler.
+- TypeScript, Build und 59 Testdateien / 378 Tests gruen.

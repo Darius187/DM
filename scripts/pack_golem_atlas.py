@@ -7,11 +7,12 @@ import re
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
 
 CELL = 144
 COLUMNS = 12
+GROUND_Y = 132
 CLIP_ORDER = {"idle": 0, "walk": 1, "attack": 2, "hit": 3, "death": 4}
 CLIP_FRAMES = {"idle": 8, "walk": 12, "attack": 14, "hit": 7, "death": 14}
 DIRECTIONS = 8
@@ -26,12 +27,10 @@ def sort_key(path: Path) -> tuple[int, int, int]:
 
 def grade(image: Image.Image) -> Image.Image:
     alpha = image.getchannel("A")
-    # Keep the source material's warm rock and emissive lava separation.  The
-    # former grade desaturated and green-shifted every frame, effectively
-    # erasing the texture once the 144 px cell was scaled down in Phaser.
-    rgb = ImageEnhance.Color(image.convert("RGB")).enhance(1.06)
-    rgb = ImageEnhance.Brightness(rgb).enhance(0.84)
-    rgb = ImageEnhance.Contrast(rgb).enhance(1.18)
+    # Preserve the deep tissue reds and wet highlights after game-scale downsampling.
+    rgb = ImageEnhance.Color(image.convert("RGB")).enhance(1.18)
+    rgb = ImageEnhance.Brightness(rgb).enhance(0.86)
+    rgb = ImageEnhance.Contrast(rgb).enhance(1.20)
     rgb = rgb.filter(ImageFilter.UnsharpMask(radius=0.8, percent=65, threshold=3))
     r, g, b = rgb.split()
     return Image.merge("RGBA", (
@@ -40,6 +39,31 @@ def grade(image: Image.Image) -> Image.Image:
         b.point(lambda v: min(255, int(v * 0.92))),
         alpha,
     ))
+
+
+def align_ground(image: Image.Image) -> Image.Image:
+    """Anchor every rendered pose to one atlas baseline.
+
+    Phaser moves the sprite while the Blender cycle runs in place.  Even a
+    four-pixel change in the lowest opaque pixel reads as hovering at the
+    golem's scale, so all directions and poses share an exact ground line.
+    """
+    bounds = image.getchannel("A").getbbox()
+    if bounds is None:
+        return image
+    dy = GROUND_Y - bounds[3]
+    grounded = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    grounded.alpha_composite(image, (0, dy))
+    return grounded
+
+
+def add_contact_shadow(image: Image.Image) -> Image.Image:
+    shadow = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(shadow)
+    draw.ellipse((38, GROUND_Y - 6, 106, GROUND_Y + 4), fill=(0, 0, 0, 105))
+    shadow = shadow.filter(ImageFilter.GaussianBlur(radius=3.0))
+    shadow.alpha_composite(image)
+    return shadow
 
 
 def main() -> None:
@@ -59,7 +83,7 @@ def main() -> None:
     atlas = Image.new("RGBA", (COLUMNS * CELL, rows * CELL), (0, 0, 0, 0))
     data: dict[str, object] = {}
     for index, path in enumerate(frames):
-        image = grade(Image.open(path).convert("RGBA"))
+        image = add_contact_shadow(align_ground(grade(Image.open(path).convert("RGBA"))))
         if image.size != (CELL, CELL):
             raise SystemExit(f"Unexpected frame size {image.size}: {path}")
         x, y = (index % COLUMNS) * CELL, (index // COLUMNS) * CELL

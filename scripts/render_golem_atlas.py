@@ -61,9 +61,9 @@ def make_material(source: Path) -> bpy.types.Material:
     nodes.clear()
     out = nodes.new("ShaderNodeOutputMaterial")
     bsdf = nodes.new("ShaderNodeBsdfPrincipled")
-    bsdf.inputs["Roughness"].default_value = 0.48
+    bsdf.inputs["Roughness"].default_value = 0.40
     bsdf.inputs["Metallic"].default_value = 0.0
-    for socket, value in (("Subsurface Weight", 0.08), ("Coat Weight", 0.16), ("Coat Roughness", 0.24)):
+    for socket, value in (("Subsurface Weight", 0.22), ("Coat Weight", 0.12), ("Coat Roughness", 0.28)):
         if bsdf.inputs.get(socket):
             bsdf.inputs[socket].default_value = value
     # The licensed mesh began as stone.  Its albedo/UV detail is retained, but
@@ -75,22 +75,62 @@ def make_material(source: Path) -> bpy.types.Material:
     tint = nodes.new("ShaderNodeMixRGB")
     tint.blend_type = "MULTIPLY"
     tint.inputs[0].default_value = 1.0
-    tint.inputs[2].default_value = (0.20, 0.038, 0.028, 1.0)
+    tint.inputs[2].default_value = (0.31, 0.006, 0.012, 1.0)
     links.new(base.outputs["Color"], tint.inputs[1])
+
+    # Broad bruising and stretched muscle bands keep the pale stone albedo only
+    # as fine surface structure.  At game resolution the dominant read must be
+    # raw tissue, not recoloured rock.
+    tissue_noise = nodes.new("ShaderNodeTexNoise")
+    tissue_noise.inputs["Scale"].default_value = 4.2
+    tissue_noise.inputs["Detail"].default_value = 6.0
+    tissue_noise.inputs["Roughness"].default_value = 0.78
+    tissue_ramp = nodes.new("ShaderNodeValToRGB")
+    tissue_ramp.color_ramp.elements[0].position = 0.24
+    tissue_ramp.color_ramp.elements[0].color = (0.018, 0.0005, 0.002, 1.0)
+    tissue_ramp.color_ramp.elements[1].position = 0.76
+    tissue_ramp.color_ramp.elements[1].color = (0.42, 0.012, 0.018, 1.0)
+    links.new(tissue_noise.outputs["Fac"], tissue_ramp.inputs["Fac"])
+    bruised_flesh = nodes.new("ShaderNodeMixRGB")
+    bruised_flesh.blend_type = "MULTIPLY"
+    bruised_flesh.inputs[0].default_value = 0.48
+    links.new(tint.outputs["Color"], bruised_flesh.inputs[1])
+    links.new(tissue_ramp.outputs["Color"], bruised_flesh.inputs[2])
+
+    texcoord = nodes.new("ShaderNodeTexCoord")
+    mapping = nodes.new("ShaderNodeMapping")
+    mapping.inputs["Scale"].default_value = (1.4, 9.0, 2.4)
+    links.new(texcoord.outputs["Generated"], mapping.inputs["Vector"])
+    fibres = nodes.new("ShaderNodeTexWave")
+    fibres.wave_type = "BANDS"
+    fibres.bands_direction = "X"
+    fibres.inputs["Scale"].default_value = 5.5
+    fibres.inputs["Distortion"].default_value = 7.0
+    fibres.inputs["Detail"].default_value = 4.0
+    links.new(mapping.outputs["Vector"], fibres.inputs["Vector"])
+    fibre_ramp = nodes.new("ShaderNodeValToRGB")
+    fibre_ramp.color_ramp.elements[0].color = (0.055, 0.001, 0.004, 1.0)
+    fibre_ramp.color_ramp.elements[1].color = (0.50, 0.018, 0.024, 1.0)
+    links.new(fibres.outputs["Color"], fibre_ramp.inputs["Fac"])
+    striated_flesh = nodes.new("ShaderNodeMixRGB")
+    striated_flesh.blend_type = "OVERLAY"
+    striated_flesh.inputs[0].default_value = 0.38
+    links.new(bruised_flesh.outputs["Color"], striated_flesh.inputs[1])
+    links.new(fibre_ramp.outputs["Color"], striated_flesh.inputs[2])
 
     normal_tex = nodes.new("ShaderNodeTexImage")
     normal_tex.image = load_image(source / "T_golem_Normal.png", "Non-Color")
     normal = nodes.new("ShaderNodeNormalMap")
-    normal.inputs["Strength"].default_value = 0.48
+    normal.inputs["Strength"].default_value = 0.30
     links.new(normal_tex.outputs["Color"], normal.inputs["Color"])
 
     pores = nodes.new("ShaderNodeTexNoise")
-    pores.inputs["Scale"].default_value = 8.0
-    pores.inputs["Detail"].default_value = 4.0
-    pores.inputs["Roughness"].default_value = 0.72
+    pores.inputs["Scale"].default_value = 18.0
+    pores.inputs["Detail"].default_value = 7.0
+    pores.inputs["Roughness"].default_value = 0.80
     flesh_bump = nodes.new("ShaderNodeBump")
-    flesh_bump.inputs["Strength"].default_value = 0.20
-    flesh_bump.inputs["Distance"].default_value = 0.07
+    flesh_bump.inputs["Strength"].default_value = 0.34
+    flesh_bump.inputs["Distance"].default_value = 0.035
     links.new(pores.outputs["Fac"], flesh_bump.inputs["Height"])
     links.new(normal.outputs["Normal"], flesh_bump.inputs["Normal"])
     links.new(flesh_bump.outputs["Normal"], bsdf.inputs["Normal"])
@@ -101,25 +141,28 @@ def make_material(source: Path) -> bpy.types.Material:
     links.new(orm.outputs["Color"], sep.inputs["Color"])
     wet_roughness = nodes.new("ShaderNodeMath")
     wet_roughness.operation = "MULTIPLY_ADD"
-    wet_roughness.inputs[1].default_value = 0.42
-    wet_roughness.inputs[2].default_value = 0.18
+    wet_roughness.inputs[1].default_value = 0.30
+    wet_roughness.inputs[2].default_value = 0.12
     links.new(sep.outputs["Green"], wet_roughness.inputs[0])
     links.new(wet_roughness.outputs[0], bsdf.inputs["Roughness"])
 
     ao = nodes.new("ShaderNodeMixRGB")
     ao.blend_type = "MULTIPLY"
     ao.inputs[0].default_value = 0.62
-    links.new(tint.outputs["Color"], ao.inputs[1])
+    links.new(striated_flesh.outputs["Color"], ao.inputs[1])
     links.new(sep.outputs["Red"], ao.inputs[2])
 
     lava = nodes.new("ShaderNodeTexImage")
     lava.image = load_image(source / "T_lava.png", "sRGB")
     lava.interpolation = "Linear"
-    blood = nodes.new("ShaderNodeMixRGB")
-    blood.blend_type = "MULTIPLY"
-    blood.inputs[0].default_value = 1.0
-    blood.inputs[2].default_value = (0.42, 0.009, 0.012, 1.0)
-    links.new(lava.outputs["Color"], blood.inputs[1])
+    blood_mask = nodes.new("ShaderNodeRGBToBW")
+    links.new(lava.outputs["Color"], blood_mask.inputs["Color"])
+    blood_ramp = nodes.new("ShaderNodeValToRGB")
+    blood_ramp.color_ramp.elements[0].position = 0.06
+    blood_ramp.color_ramp.elements[1].position = 0.36
+    links.new(blood_mask.outputs["Val"], blood_ramp.inputs["Fac"])
+    blood_colour = nodes.new("ShaderNodeRGB")
+    blood_colour.outputs[0].default_value = (0.22, 0.0008, 0.002, 1.0)
 
     eye = nodes.new("ShaderNodeTexImage")
     eye.image = load_image(source / "T_Eye.png", "sRGB")
@@ -131,10 +174,10 @@ def make_material(source: Path) -> bpy.types.Material:
     links.new(eye.outputs["Color"], red_eye.inputs[1])
 
     flesh_with_blood = nodes.new("ShaderNodeMixRGB")
-    flesh_with_blood.blend_type = "ADD"
-    flesh_with_blood.inputs[0].default_value = 0.72
+    flesh_with_blood.blend_type = "MIX"
+    links.new(blood_ramp.outputs["Color"], flesh_with_blood.inputs[0])
     links.new(ao.outputs["Color"], flesh_with_blood.inputs[1])
-    links.new(blood.outputs["Color"], flesh_with_blood.inputs[2])
+    links.new(blood_colour.outputs["Color"], flesh_with_blood.inputs[2])
     links.new(flesh_with_blood.outputs["Color"], bsdf.inputs["Base Color"])
 
     emission = nodes.new("ShaderNodeEmission")
@@ -147,6 +190,103 @@ def make_material(source: Path) -> bpy.types.Material:
     return mat
 
 
+def make_tissue_material(name: str, colour: tuple[float, float, float, float], roughness: float) -> bpy.types.Material:
+    mat = bpy.data.materials.new(name)
+    mat.diffuse_color = colour
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = colour
+    bsdf.inputs["Roughness"].default_value = roughness
+    if bsdf.inputs.get("Subsurface Weight"):
+        bsdf.inputs["Subsurface Weight"].default_value = 0.26
+    if bsdf.inputs.get("Coat Weight"):
+        bsdf.inputs["Coat Weight"].default_value = 0.18
+        bsdf.inputs["Coat Roughness"].default_value = 0.20
+    return mat
+
+
+def parent_to_bone(obj: bpy.types.Object, armature: bpy.types.Object, bone: str) -> None:
+    world = obj.matrix_world.copy()
+    obj.parent = armature
+    obj.parent_type = "BONE"
+    obj.parent_bone = bone
+    obj.matrix_world = world
+
+
+def add_flesh_growths(armature: bpy.types.Object, flesh: bpy.types.Material) -> list[bpy.types.Object]:
+    """Break the original stone silhouette with readable organic anatomy."""
+    wound = make_tissue_material("Ravensmoor_Open_Wound", (0.075, 0.0003, 0.001, 1.0), 0.16)
+    sinew = make_tissue_material("Ravensmoor_Sinew", (0.24, 0.003, 0.008, 1.0), 0.30)
+    added: list[bpy.types.Object] = []
+
+    def growth(
+        name: str,
+        location: tuple[float, float, float],
+        scale: tuple[float, float, float],
+        bone: str,
+        material: bpy.types.Material,
+        rotation_y: float = 0.0,
+    ) -> bpy.types.Object:
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=1.0, location=location)
+        obj = bpy.context.object
+        obj.name = name
+        obj.scale = scale
+        obj.rotation_euler.y = math.radians(rotation_y)
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+        obj.data.materials.append(material)
+        for polygon in obj.data.polygons:
+            polygon.use_smooth = True
+        texture = bpy.data.textures.new(f"{name}_surface", type="CLOUDS")
+        texture.noise_scale = 0.11
+        texture.noise_depth = 2
+        displace = obj.modifiers.new("Unregelmaessiges_Gewebe", "DISPLACE")
+        displace.texture = texture
+        displace.strength = min(scale) * 0.28
+        displace.mid_level = 0.48
+        parent_to_bone(obj, armature, bone)
+        added.append(obj)
+        return obj
+
+    # Swollen, asymmetric masses cover the clean rock-golem read.
+    growth("FLESH_abdominal_sac", (0.34, -0.47, 1.66), (0.30, 0.17, 0.25), "spine_01.x", flesh)
+    growth("FLESH_abdominal_nodule", (0.52, -0.40, 1.82), (0.19, 0.15, 0.18), "spine_01.x", flesh)
+    growth("FLESH_shoulder_tumour", (0.78, -0.08, 2.55), (0.26, 0.22, 0.25), "shoulder.l", flesh)
+    growth("FLESH_neck_growth", (-0.28, -0.08, 2.93), (0.17, 0.14, 0.16), "neck.x", flesh)
+
+    # A dark chest cavity with a raised raw rim remains readable at 144 px.
+    growth("FLESH_chest_cavity", (-0.30, -0.73, 2.22), (0.31, 0.045, 0.22), "spine_03.x", wound)
+    growth("FLESH_wound_lip_top", (-0.32, -0.79, 2.43), (0.25, 0.045, 0.052), "spine_03.x", sinew, -7.0)
+    growth("FLESH_wound_lip_left", (-0.57, -0.79, 2.23), (0.050, 0.045, 0.16), "spine_03.x", sinew, -11.0)
+    growth("FLESH_wound_lip_lower", (-0.20, -0.79, 2.02), (0.17, 0.045, 0.048), "spine_03.x", sinew, 13.0)
+
+    # Wet tendon cords hang from the torn abdomen and move rigidly with it.
+    curve_data = bpy.data.curves.new("FLESH_hanging_tendons", "CURVE")
+    curve_data.dimensions = "3D"
+    curve_data.resolution_u = 2
+    curve_data.bevel_depth = 0.035
+    curve_data.bevel_resolution = 2
+    for offset, length in ((-0.17, 0.46), (0.01, 0.66), (0.15, 0.51)):
+        spline = curve_data.splines.new("BEZIER")
+        spline.bezier_points.add(2)
+        points = (
+            (offset, -0.66, 1.63),
+            (offset + 0.10, -0.72, 1.63 - length * 0.52),
+            (offset - 0.04, -0.64, 1.63 - length),
+        )
+        for index, (point, coordinate) in enumerate(zip(spline.bezier_points, points)):
+            point.co = coordinate
+            point.radius = (0.72, 1.30, 0.55)[index]
+            point.handle_left_type = "AUTO"
+            point.handle_right_type = "AUTO"
+    curve_data.materials.append(sinew)
+    tendons = bpy.data.objects.new("FLESH_hanging_tendons", curve_data)
+    bpy.context.scene.collection.objects.link(tendons)
+    parent_to_bone(tendons, armature, "spine_01.x")
+    added.append(tendons)
+    return added
+
+
 def import_golem(source: Path) -> tuple[bpy.types.Object, list[bpy.types.Object]]:
     bpy.ops.import_scene.fbx(filepath=str(source / "SKM_Golem.fbx"), automatic_bone_orientation=False)
     armature = next(o for o in bpy.context.scene.objects if o.type == "ARMATURE")
@@ -155,6 +295,8 @@ def import_golem(source: Path) -> tuple[bpy.types.Object, list[bpy.types.Object]
     for mesh in meshes:
         mesh.data.materials.clear()
         mesh.data.materials.append(material)
+    growths = add_flesh_growths(armature, material)
+    meshes.extend(obj for obj in growths if obj.type == "MESH")
     # The FBX armature carries a 0.01 object scale. Applying it gives predictable
     # metre-sized bounds while preserving skinning and the original rest pose.
     bpy.context.view_layer.objects.active = armature
@@ -235,6 +377,19 @@ def rot(armature: bpy.types.Object, bone: str, axis: str, degrees: float) -> Non
     pose.rotation_quaternion = pose.rotation_quaternion @ Quaternion(axes[axis], math.radians(degrees))
 
 
+def gait_leg(phase: float) -> tuple[float, float]:
+    """Return fore/aft stride and foot lift for one planted heavy step."""
+    t = phase % 1.0
+    stance = 0.62
+    if t < stance:
+        # The planted foot travels backwards at constant speed relative to the
+        # body while Phaser advances the whole sprite by the same stride.
+        return 1.0 - 2.0 * (t / stance), 0.0
+    swing = (t - stance) / (1.0 - stance)
+    smooth = swing * swing * (3.0 - 2.0 * swing)
+    return -1.0 + 2.0 * smooth, math.sin(math.pi * smooth)
+
+
 def set_pose(armature: bpy.types.Object, clip: str, frame: int) -> None:
     reset_pose(armature)
     count = CLIP_FRAMES[clip]
@@ -249,22 +404,25 @@ def set_pose(armature: bpy.types.Object, clip: str, frame: int) -> None:
         rot(armature, "shoulder.l", "z", wave * 0.8)
         rot(armature, "shoulder.r", "z", -wave * 0.8)
     elif clip == "walk":
-        # Heavy four-beat stride: opposite arm and leg, bent knees, torso counter-rotation.
-        rot(armature, "thigh_stretch.l", "z", wave * 24)
-        rot(armature, "thigh_stretch.r", "z", opposite * 24)
-        rot(armature, "leg_stretch.l", "z", max(0.0, -wave) * 34)
-        rot(armature, "leg_stretch.r", "z", -max(0.0, -opposite) * 34)
-        rot(armature, "foot.l", "z", -wave * 12)
-        rot(armature, "foot.r", "z", -opposite * 12)
-        rot(armature, "arm_stretch.l", "z", -opposite * 18)
-        rot(armature, "arm_stretch.r", "z", wave * 18)
-        rot(armature, "forearm_stretch.l", "z", -max(0.0, wave) * 12)
-        rot(armature, "forearm_stretch.r", "z", max(0.0, opposite) * 12)
-        rot(armature, "spine_01.x", "y", wave * 3.5)
-        rot(armature, "spine_03.x", "z", -wave * 2.0)
-        root = armature.pose.bones.get("root.x")
-        if root:
-            root.location.z = -0.035 * (1 - math.cos(phase * math.tau * 2))
+        # Heavy two-beat shuffle.  The right bones are mirrored, therefore both
+        # thighs require the same local sign to travel in opposite world-space
+        # directions.  The former opposite sign made both feet swing together.
+        stride_l, lift_l = gait_leg(phase)
+        stride_r, lift_r = gait_leg(phase + 0.5)
+        rot(armature, "thigh_stretch.l", "z", -stride_l * 9)
+        rot(armature, "thigh_stretch.r", "z", stride_r * 9)
+        rot(armature, "leg_stretch.l", "z", lift_l * 30)
+        rot(armature, "leg_stretch.r", "z", -lift_r * 30)
+        rot(armature, "foot.l", "z", -stride_l * 5 + lift_l * 10)
+        rot(armature, "foot.r", "z", stride_r * 5 - lift_r * 10)
+        rot(armature, "arm_stretch.l", "z", stride_l * 9)
+        rot(armature, "arm_stretch.r", "z", -stride_r * 9)
+        rot(armature, "forearm_stretch.l", "z", -max(0.0, -stride_l) * 10)
+        rot(armature, "forearm_stretch.r", "z", max(0.0, -stride_r) * 10)
+        rot(armature, "spine_01.x", "z", -5.5)
+        rot(armature, "spine_01.x", "y", wave * 2.2)
+        rot(armature, "spine_03.x", "z", -wave * 1.6)
+        rot(armature, "head.x", "z", -wave * 1.2)
     elif clip == "attack":
         # Readable overhead hammer-fist: wind-up, impact at frame 6, recovery.
         keys = [0.0, 0.24, 0.48, 0.66, 1.0]
@@ -369,6 +527,15 @@ def main() -> None:
             aim_stage(camera, CAMERA_DIRECTIONS[direction], target)
             scene.render.filepath = str(out / f"direction_{direction}.png")
             bpy.ops.render.render(write_still=True)
+        return
+
+    if mode == "walk-preview":
+        for direction in (0, 2, 6):
+            for frame in range(CLIP_FRAMES["walk"]):
+                set_pose(armature, "walk", frame)
+                aim_stage(camera, CAMERA_DIRECTIONS[direction], target)
+                scene.render.filepath = str(out / f"walk_d{direction}_f{frame}.png")
+                bpy.ops.render.render(write_still=True)
         return
 
     for clip, frame_count in CLIP_FRAMES.items():
