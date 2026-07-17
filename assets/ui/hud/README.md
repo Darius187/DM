@@ -19,6 +19,8 @@ fertigen Branch und fasst `src/ui/hud.ts` waehrenddessen nicht parallel an.
 | `hud-orb-mana-empty-1300.png` | blaue Manaanzeige ohne eingebrannte Zahl |
 | `hud-potion-label-blank-1300.png` | kleine blanke Trank-Plakette |
 | `hud-status-strip-blank-1300.png` | schmale blanke Statusleiste |
+| `hud-unified-flat-gpt2-v2.png` | neue, elegante GPT-2-Mastergrafik; wird in `hud.ts` in verschiebbare Abschnitte zerlegt |
+| `hud-in-game-gpt2-v2-preview.png` | Browser-Abnahme bei 1900 x 500 Pixeln |
 
 Die Dateien mit `reference-` im Namen enthalten teilweise eingebrannte Beispieltexte
 oder Icons. Sie sind Referenzmaterial, nicht 1:1 als finales UI-Overlay benutzen.
