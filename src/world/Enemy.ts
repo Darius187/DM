@@ -133,6 +133,7 @@ export class Enemy {
   // weich ablaufen und nicht an den vier alten Fallback-Frames hängen.
   visualTime = 0;
   visualMoveT = 0;
+  visualWalkTime = 0;
   visualHitT = 0;
   visualAttackT = 0;
   visualAttackDauer = 0;
@@ -354,6 +355,7 @@ export class Enemy {
     this.shootCd = Math.max(0, this.shootCd - dt);
     this.hitFlash = Math.max(0, this.hitFlash - dt);
     this.visualTime += dt;
+    if (this.visualMoveT > 0) this.visualWalkTime += dt;
     this.visualMoveT = Math.max(0, this.visualMoveT - dt);
     this.visualHitT = Math.max(0, this.visualHitT - dt);
     this.visualAttackT = Math.max(0, this.visualAttackT - dt);
@@ -916,6 +918,10 @@ export class Enemy {
   }
 
   private advanceStep(dt: number): void {
+    // Eine neue Laufsequenz beginnt immer auf der gemeinsamen neutralen Pose.
+    // Dadurch springt der Golem beim Wechsel Idle -> Walk nicht in eine
+    // zufaellige Phase seiner globalen Animationsuhr.
+    if (this.visualMoveT <= 0) this.visualWalkTime = 0;
     this.visualMoveT = 0.22;
     this.stepT += dt;
     if (this.stepT > 0.14) {

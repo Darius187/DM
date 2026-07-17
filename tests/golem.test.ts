@@ -14,7 +14,8 @@ describe('Steingolem im RTS', () => {
 
   it('adressiert alle acht Richtungen und begrenzt Clip-Frames sicher', () => {
     expect(GOLEM.richtungen).toBe(8);
-    expect(golemFrame('walk', 7, 7)).toBe('walk_d7_f7');
-    expect(golemFrame('attack', 8, 10)).toBe('attack_d0_f0');
+    expect(GOLEM.frames.walk).toBeGreaterThanOrEqual(12);
+    expect(golemFrame('walk', 7, 11)).toBe('walk_d7_f11');
+    expect(golemFrame('attack', 8, 14)).toBe('attack_d0_f0');
   });
 });

@@ -24,11 +24,11 @@ DIRECTIONS = 8
 # camera orbit 6 is its front view.
 CAMERA_DIRECTIONS = (6, 7, 0, 1, 2, 3, 4, 5)
 CLIP_FRAMES = {
-    "idle": 6,
-    "walk": 8,
-    "attack": 10,
-    "hit": 5,
-    "death": 10,
+    "idle": 8,
+    "walk": 12,
+    "attack": 14,
+    "hit": 7,
+    "death": 14,
 }
 
 
@@ -72,7 +72,7 @@ def make_material(source: Path) -> bpy.types.Material:
     tint = nodes.new("ShaderNodeMixRGB")
     tint.blend_type = "MULTIPLY"
     tint.inputs[0].default_value = 1.0
-    tint.inputs[2].default_value = (0.42, 0.38, 0.32, 1.0)
+    tint.inputs[2].default_value = (0.14, 0.125, 0.105, 1.0)
     links.new(base.outputs["Color"], tint.inputs[1])
 
     normal_tex = nodes.new("ShaderNodeTexImage")
@@ -228,14 +228,14 @@ def set_pose(armature: bpy.types.Object, clip: str, frame: int) -> None:
         # Heavy four-beat stride: opposite arm and leg, bent knees, torso counter-rotation.
         rot(armature, "thigh_stretch.l", "z", wave * 24)
         rot(armature, "thigh_stretch.r", "z", opposite * 24)
-        rot(armature, "leg_stretch.l", "z", max(0.0, -wave) * 34 - 5)
-        rot(armature, "leg_stretch.r", "z", -max(0.0, -opposite) * 34 + 5)
+        rot(armature, "leg_stretch.l", "z", max(0.0, -wave) * 34)
+        rot(armature, "leg_stretch.r", "z", -max(0.0, -opposite) * 34)
         rot(armature, "foot.l", "z", -wave * 12)
         rot(armature, "foot.r", "z", -opposite * 12)
         rot(armature, "arm_stretch.l", "z", -opposite * 18)
         rot(armature, "arm_stretch.r", "z", wave * 18)
-        rot(armature, "forearm_stretch.l", "z", -8 - max(0.0, wave) * 12)
-        rot(armature, "forearm_stretch.r", "z", 8 + max(0.0, opposite) * 12)
+        rot(armature, "forearm_stretch.l", "z", -max(0.0, wave) * 12)
+        rot(armature, "forearm_stretch.r", "z", max(0.0, opposite) * 12)
         rot(armature, "spine_01.x", "y", wave * 3.5)
         rot(armature, "spine_03.x", "z", -wave * 2.0)
         root = armature.pose.bones.get("root.x")

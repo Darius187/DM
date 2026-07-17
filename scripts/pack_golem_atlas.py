@@ -13,6 +13,8 @@ from PIL import Image, ImageEnhance, ImageFilter
 CELL = 144
 COLUMNS = 12
 CLIP_ORDER = {"idle": 0, "walk": 1, "attack": 2, "hit": 3, "death": 4}
+CLIP_FRAMES = {"idle": 8, "walk": 12, "attack": 14, "hit": 7, "death": 14}
+DIRECTIONS = 8
 
 
 def sort_key(path: Path) -> tuple[int, int, int]:
@@ -28,8 +30,8 @@ def grade(image: Image.Image) -> Image.Image:
     # former grade desaturated and green-shifted every frame, effectively
     # erasing the texture once the 144 px cell was scaled down in Phaser.
     rgb = ImageEnhance.Color(image.convert("RGB")).enhance(1.06)
-    rgb = ImageEnhance.Brightness(rgb).enhance(0.88)
-    rgb = ImageEnhance.Contrast(rgb).enhance(1.14)
+    rgb = ImageEnhance.Brightness(rgb).enhance(0.84)
+    rgb = ImageEnhance.Contrast(rgb).enhance(1.18)
     rgb = rgb.filter(ImageFilter.UnsharpMask(radius=0.8, percent=65, threshold=3))
     r, g, b = rgb.split()
     return Image.merge("RGBA", (
@@ -50,8 +52,9 @@ def main() -> None:
         (p for p in source.glob("*.png") if re.match(r"^(idle|walk|attack|hit|death)_d\d+_f\d+$", p.stem)),
         key=sort_key,
     )
-    if len(frames) != 312:
-        raise SystemExit(f"Expected 312 rendered frames, found {len(frames)}")
+    expected = sum(CLIP_FRAMES.values()) * DIRECTIONS
+    if len(frames) != expected:
+        raise SystemExit(f"Expected {expected} rendered frames, found {len(frames)}")
     rows = (len(frames) + COLUMNS - 1) // COLUMNS
     atlas = Image.new("RGBA", (COLUMNS * CELL, rows * CELL), (0, 0, 0, 0))
     data: dict[str, object] = {}

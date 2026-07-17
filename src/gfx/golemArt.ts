@@ -11,7 +11,7 @@ export function golemClipUndFrame(e: Enemy): { clip: GolemClip; frame: number } 
     const fortschritt = 1 - e.visualAttackT / Math.max(0.001, e.visualAttackDauer);
     return { clip: 'attack', frame: Math.floor(fortschritt * GOLEM.frames.attack) };
   }
-  if (e.visualMoveT > 0) return { clip: 'walk', frame: Math.floor(e.visualTime * GOLEM.fps.walk) };
+  if (e.visualMoveT > 0) return { clip: 'walk', frame: Math.floor(e.visualWalkTime * GOLEM.fps.walk) };
   return { clip: 'idle', frame: Math.floor(e.visualTime * GOLEM.fps.idle) };
 }
 
