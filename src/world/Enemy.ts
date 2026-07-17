@@ -226,6 +226,9 @@ export class Enemy {
   armeeId: number | null = null;
   kills = 0;
   soeldner = false;   // R143 (2.3): Moral-Malus; flieht er zur Kante, desertiert er
+  // R144: RTS-Einheitentyp eines Verbuendeten - damit die Befehls-Schicht eine
+  // bereits stehende Garnison (R142) beim RTS-Einstieg uebernehmen kann.
+  rtsTyp: import('../data/rts').RtsUnitTyp | null = null;
   fokusZiel: Enemy | null = null;   // Angriffsbefehl der RTS-Steuerung (Verbuendete)
   imTurm = false;                    // R100: sitzt im Wachturm -> Sprite unsichtbar, schiesst von oben
   passiv = false;                    // R100b: frisch gesetzt -> steht still, bis geweckt (Gegner nah/Schaden/Befehl)

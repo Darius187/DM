@@ -3483,6 +3483,11 @@ export class WorldScene extends CombatScene {
       lager: () => this.feldbauten.map((f) => ({ typ: f.id, x: f.x, y: f.y })),
     }, this.heldRef());
     this.rtsBattle.onFeedback = (t) => this.logMsg(t + '.', '');
+    // R144 (Autor, Jagged-Alliance): die GARNISON dieser Karte tritt sofort in
+    // die Befehls-Schicht ein - stehende Soldaten sind anwaehlbar und steuerbar.
+    for (const e of this.enemies) {
+      if (e.team === 'spieler' && e.hp > 0 && e.rtsTyp) this.rtsBattle.uebernimm(e, e.rtsTyp);
+    }
     this.baueRtsLauscher();
     this.baueRtsLeiste();
     this.logMsg('Schlachtfeld-Steuerung: Linksklick/Ziehen wählt, Rechtsklick befiehlt, Rechts-Ziehen formiert. A = Angriffsmarsch, H = Stellung halten.', 'gold');
@@ -6990,7 +6995,9 @@ export class WorldScene extends CombatScene {
   // Bogenschuetzen reagieren auf Ziele auf Distanz; (3) ALARM: wer wach ist, weckt
   // Kameraden im Umkreis (Kette) - "sobald einer angegriffen wird, greifen alle an".
   private updateWachwerden(): void {
-    if (!this.rtsBattle) return;
+    // R144 (Autor: "Soldaten werden angegriffen und stehen bloed rum"): das
+    // Weck-System lief nur im RTS-Modus - Garnisonen (R142) und Rekruten
+    // stehen aber IMMER auf der Karte. Es laeuft jetzt in jedem Modus.
     const sichtR = 340;
     // R100j (Autor "Monster stehen doof rum wenn ihre Freunde angegriffen werden,
     // nur ein paar legen los - nimm die Dungeon-Logik"): TEAM-ALARM. Wurde IRGENDEINE
@@ -7286,6 +7293,7 @@ export class WorldScene extends CombatScene {
     e.armeeId = einheit.id;
     e.kills = einheit.kills;
     e.soeldner = !!einheit.soeldner;   // R143 (2.3): Moral-Malus + Desertion
+    e.rtsTyp = rtsTyp;                 // R144: Befehls-Schicht kennt den Typ
     const rang = rangFuerKills(einheit.kills);
     e.name = rang > 0 ? `${einheit.name} ${'▲'.repeat(rang)}` : einheit.name;
     e.maxhp = einheitMaxHp(einheit);
@@ -7297,6 +7305,9 @@ export class WorldScene extends CombatScene {
     e.aggro = 5000;   // Verbuendete "sehen" ihr Ziel immer (Befehle steuern sie)
     e.jagdZiel = { x, y };   // ohne Befehl: Stellung halten
     e.passiv = true;  // R100b: frisch gesetzt -> steht still, bis geweckt/befohlen
+    // R144: laeuft gerade eine Schlacht, meldet sich der Neue sofort bei der
+    // Befehls-Schicht (Marschierer/Rekruten treffen mitten im Gefecht ein).
+    if (this.rtsBattle) this.rtsBattle.uebernimm(e, rtsTyp);
     return e;
   }
 
@@ -7327,8 +7338,9 @@ export class WorldScene extends CombatScene {
   }
 
   // R139: auch getoetete FEINDE zaehlen in das Verlust-Fenster ihrer Seite.
+  // R144: immer zaehlen - die Moral laeuft jetzt in jedem Modus.
   protected override killEnemy(e: Enemy): void {
-    if (this.rtsBattle) this.moralTote.push({ team: e.team, t: this.time.now / 1000 });
+    this.moralTote.push({ team: e.team, t: this.time.now / 1000 });
     super.killEnemy(e);
   }
 
@@ -12768,6 +12780,11 @@ export class WorldScene extends CombatScene {
       this.rtsBattle.update(dt * kampfTempo); this.rtsBattle.zeichneOverlay();   // R131: Formationen in Echtzeit (keine Slow-Motion)
       this.wendeFeldschmiedeAn(dt);
       if (this.wartfeuerCd > 0) this.wartfeuerCd -= dt;
+    }
+    // R144: Moral laeuft, sobald TRUPPEN auf dem Feld stehen - auch ohne
+    // RTS-Modus (R142 "Heer lebt"). Reiner Held-gegen-Monster-Kampf bleibt
+    // moral-frei, damit sich das ARPG-Gefuehl im Dungeon nicht aendert.
+    if (this.rtsBattle || this.enemies.some((e) => e.team === 'spieler' && e.hp > 0)) {
       this.updateMoral(dt);   // R139: Kaempfe enden, weil eine Seite BRICHT (Dok 03, 1.2)
     }
     this.updateNassSpritzer(dt);  // Spritzer in Pfützen + auf nassem Rasen (R78)

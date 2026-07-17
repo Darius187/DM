@@ -113,8 +113,31 @@ export class RtsBattle {
     if (d.team === 'feind') { this.host.spawnFeind(typ, x, y); return null; }
     const ref = this.host.spawnAlly(typ, x, y);
     if (!ref) { this.feedback(`${d.name}: Spawn nicht möglich`); return null; }
+    // R144: spawnAlly kann den Neuen bereits per uebernimm() gemeldet haben -
+    // dann NICHT doppelt fuehren.
+    const schon = this.units.find((u2) => u2.ref === ref);
+    if (schon) return schon;
     const u: RtsUnit = {
       ref, typ, x, y, hp: ref.hp, maxhp: ref.maxhp, basisDmg: ref.dmg,
+      tot: false, gewaehlt: false, stance: d.heiler ? 'verteidigen' : 'aggressiv', rank: d.rank,
+      angriff: d.heiler ? 'feuerEinstellen' : 'angreifen', zielwahl: 'naechster',
+      zuletztGetroffenT: -999,
+      grp: null, off: null, fokusRef: null, turm: null, buffDmg: 1,
+    };
+    this.units.push(u);
+    return u;
+  }
+
+  // R144: eine BEREITS auf dem Feld stehende Einheit (Garnison R142, frisch
+  // eingetroffene Marschierer, Rekruten) in die Befehls-Schicht uebernehmen -
+  // ohne neu zu spawnen. So ist die Garnison beim RTS-Einstieg anwaehlbar.
+  uebernimm(ref: Enemy, typ: RtsUnitTyp): RtsUnit | null {
+    const d = RTS_UNIT_TYP[typ];
+    if (d.team === 'feind') return null;
+    const schon = this.units.find((u2) => u2.ref === ref);
+    if (schon) return schon;
+    const u: RtsUnit = {
+      ref, typ, x: ref.x, y: ref.y, hp: ref.hp, maxhp: ref.maxhp, basisDmg: ref.dmg,
       tot: false, gewaehlt: false, stance: d.heiler ? 'verteidigen' : 'aggressiv', rank: d.rank,
       angriff: d.heiler ? 'feuerEinstellen' : 'angreifen', zielwahl: 'naechster',
       zuletztGetroffenT: -999,
