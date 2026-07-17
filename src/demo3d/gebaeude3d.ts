@@ -80,7 +80,7 @@ function leiheRenderer(groesse: number): THREE.WebGLRenderer {
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMappingExposure = 0.72;
   rendererPool.set(groesse, { renderer, nutzer: 1 });
   return renderer;
 }
