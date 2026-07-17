@@ -49,18 +49,23 @@ the primary representation.
 - Runtime data: `stable/medieval_stable_house_3d_runtime.json`
 - Root pivot: `STABLE_HOUSE_ROTATION_PIVOT`
 - Doors: `DOOR_STABLE_MAIN_HINGE`, `DOOR_STALL_1_HINGE`,
-  `DOOR_STALL_2_HINGE`, `DOOR_STALL_3_HINGE`,
-  `DOOR_HAY_LOFT_LEFT_HINGE`, `DOOR_HAY_LOFT_RIGHT_HINGE`
-- The tall stable entrance is the far-left front door beside the three stall
-  boxes. Use `TRIGGER_STABLE_MAIN`; keep its framed steps unobstructed.
-- Five transparent windows use `MAT_STABLE_GLASS_TRANSPARENT`.
-- Three modeled horses, stall partitions, mangers, tack, hay, barrels, wheels
-  and the open feed lean-to are part of the GLB.
-- The JSON contains 18 collision/navigation guides and separate exterior,
-  stable-aisle, hay-loft and lean-to spawn points.
-- The stable aisle, individual boxes, hay loft and feed lean-to are walkable.
-- The roof contains 858 main shingles, 186 hay-gable shingles and 191 lean-to
-  shingles laid individually on their roof planes.
+  `DOOR_STALL_2_HINGE`, `DOOR_STALL_3_HINGE`, `DOOR_STALL_4_HINGE`.
+- The stable is a four-place covered standing stable. It deliberately has no
+  chimney and no modern loose boxes. Timber partitions, rear mangers, hay
+  racks, drainage, tack, hay and a water trough are part of the GLB.
+- Horses are never baked into the building. The JSON provides four independent
+  `APPROACH_STALL_*`, `PARK_STALL_*` and `HEAD_STALL_*` marker sets. Existing
+  horse entities must be moved to these markers so parked heads remain visible
+  above the low gates.
+- A horse may enter a stall only after the corresponding `stall_1` through
+  `stall_4` door state has reached at least `0.82` open.
+- Four transparent windows use `MAT_STABLE_GLASS_TRANSPARENT`. Their geometry is
+  consolidated into one runtime mesh while all four panes remain present.
+- The JSON contains 17 collision/navigation guides. The ground floor and horse
+  aisle are walkable; the hay loft is visual only and has no player navigation.
+- The roof contains 766 genuinely overlapping shingles laid on both roof
+  planes, consolidated into six material batches.
+- The GLB contains only 45 meshes. Do not split batched meshes at runtime.
 - The global ground plate/shadow is intentionally absent from the GLB.
 
 ## Cooperage
