@@ -65,10 +65,11 @@
     "all_visible_materials_have_embedded_basecolor_textures": true,
     "runtime_tinting_allowed": false,
     "transparent_windows": true,
-    "texture_count": 12,
+    "texture_count": 13,
     "used_materials": [
       "MAT_CHURCH_CANDLE_WAX",
       "MAT_CHURCH_DEEP_OPENING",
+      "MAT_CHURCH_DRESSED_LIMESTONE",
       "MAT_CHURCH_FORGED_IRON",
       "MAT_CHURCH_LEADED_GLASS_TRANSPARENT",
       "MAT_CHURCH_MOSS",
@@ -592,7 +593,7 @@
   ],
   "counts": {
     "runtime_objects": 527,
-    "materials": 12,
+    "materials": 13,
     "windows": 7,
     "doors": 2,
     "collisions": 25,

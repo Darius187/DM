@@ -69,6 +69,7 @@ export class Gebaeude3DWelt {
       for (const t of g.tueren) this.tuerAnteile[t.key] = 0;
       if (this.scene.textures.exists(this.texKey)) this.scene.textures.remove(this.texKey);
       this.tex = this.scene.textures.createCanvas(this.texKey, g.canvas.width, g.canvas.height) ?? undefined;
+      this.tex?.setFilter(Phaser.Textures.FilterMode.LINEAR);
       this.bild = this.scene.add.image(this.footX, this.footY, this.texKey);
       this.ignoriere(this.bild);
       this.stelleSprite();
