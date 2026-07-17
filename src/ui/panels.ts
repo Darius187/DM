@@ -82,6 +82,7 @@ export class UIPanels {
   private selectedItem: Item | null = null;
   private compareItem: Item | null = null;
   private panelScale = 1;
+  private klickMerker: { it: Item; t: number } | null = null;   // R140: Doppelklick-Ausruesten
   onChanged: (() => void) | null = null;
   onUseScroll: ((scrollSkill: string) => void) | null = null;
   // Inventar -> Aktionsleiste ziehen (Runde 40): legt eine Schriftrolle/einen
@@ -382,6 +383,20 @@ export class UIPanels {
     if (titel) c.add(this.scene.add.text(x + 2, y - 16, titel, { fontFamily: 'serif', fontSize: '12px', color: aufPergament ? INK_SOFT : GOLD, letterSpacing: 2 }));
   }
 
+  // R140 (Autor: "das Bild des Spielers ist verzerrt"): setCrop + setDisplaySize
+  // arbeiten GEGENEINANDER - DisplaySize misst den VOLLEN Frame, der Crop zeigt
+  // nur einen Ausschnitt; das Portraet wirkte gestaucht und sass daneben.
+  // Stattdessen: Skala aus dem CROP-Ausschnitt rechnen, Ausschnitt zentrieren.
+  private passePortraitEin(img: Phaser.GameObjects.Image, cx: number, cy: number, zielW: number, zielH: number): void {
+    const cropX = 80, cropY = 48, cropW = 864, cropH = 1160;
+    img.setCrop(cropX, cropY, cropW, cropH);
+    const sk = Math.min(zielW / cropW, zielH / cropH);
+    img.setScale(sk);
+    const dx = (cropX + cropW / 2 - img.width / 2) * sk;
+    const dy = (cropY + cropH / 2 - img.height / 2) * sk;
+    img.setPosition(cx - dx, cy - dy);
+  }
+
   private buildCharacterSideShell(c: Phaser.GameObjects.Container, w: number): void {
     const p = this.getPlayer();
     const s = this.panelScale;
@@ -396,7 +411,7 @@ export class UIPanels {
       ? UI_ALDRIC
       : this.provider.heldPortraitKey(heldTier(p.armorIt ? p.armorIt.val : null));
     const portrait = this.scene.add.image(169.5 * s, y(219), portraitKey);
-    if (portraitKey === UI_ALDRIC) portrait.setCrop(80, 48, 864, 1160).setDisplaySize(175 * s, 226 * s);
+    if (portraitKey === UI_ALDRIC) this.passePortraitEin(portrait, 169.5 * s, y(219), 175 * s, 226 * s);
     else portrait.setScale((172 * s) / Math.max(portrait.width, portrait.height));
     c.add(portrait);
 
@@ -538,7 +553,7 @@ export class UIPanels {
       : this.provider.heldPortraitKey(heldTier(p.armorIt ? p.armorIt.val : null));
     const img = this.scene.add.image(66, 100, ptKey);
     if (ptKey === UI_ALDRIC) {
-      img.setCrop(80, 48, 864, 1160).setDisplaySize(100, 136);
+      this.passePortraitEin(img, 66, 100, 100, 136);   // R140: unverzerrt einpassen
     } else {
       img.setScale(96 / Math.max(img.width, img.height));
     }
@@ -1030,7 +1045,7 @@ export class UIPanels {
       fontFamily: 'serif', fontSize: `${shellAktiv ? Math.max(11, Math.round(18 * s)) : 17}px`, color: INK, letterSpacing: 2,
     }));
     c.add(this.scene.add.text(x0 + w, 12 * s, `${p.inv.length} Gegenstände  ·  ${p.gold} Gold`, {
-      fontFamily: 'serif', fontSize: `${shellAktiv ? Math.max(7, Math.round(10 * s)) : 9}px`, color: INK_SOFT,
+      fontFamily: 'serif', fontSize: `${shellAktiv ? Math.max(12, Math.round(15 * s)) : 13}px`, color: INK,   // R140: war winzig
     }).setOrigin(1, 0));
     // Filter-Reiter (Feedback-Runde 2)
     const tabs: Array<[typeof this.filter, string]> = [
@@ -1235,20 +1250,25 @@ export class UIPanels {
     row.setInteractive({ useHandCursor: true });
     c.add(row);
     if (rar >= 1) c.add(this.scene.add.rectangle(x0, y, 3, rowH, rarCol).setOrigin(0));
-    c.add(this.scene.add.image(x0 + rowH / 2, y + rowH / 2, this.provider.itemIcon(it)).setScale(Math.max(0.3, 0.42 * (rowH / 38))));
-    c.add(this.scene.add.text(x0 + 40, y + 3, it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
-      fontFamily: 'serif', fontSize: '12px', color: RARITY_INK[rar],
+    // R140 (Autor: "alles verschoben"): das Icon passt sich der ZEILE an
+    // (Pack-Icons sind 128px - die alte Skala ragte 20px ueber die Zeile und
+    // der Name lag AUF dem Icon). Texte wachsen mit der Zeilenhoehe mit.
+    const iconS = rowH - 10;
+    c.add(this.scene.add.image(x0 + 6 + iconS / 2, y + rowH / 2, this.provider.itemIcon(it)).setDisplaySize(iconS, iconS));
+    const textX = x0 + rowH + 8;   // rechts neben dem Icon-Quadrat, mit Luft
+    c.add(this.scene.add.text(textX, y + Math.round(rowH * 0.12), it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
+      fontFamily: 'serif', fontSize: `${Math.max(12, Math.round(13 * this.panelScale))}px`, color: RARITY_INK[rar],
     }));
     const typ = it.kind === 'weapon' ? `${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} · ${handLabel(it.weaponClass)}` : TYP_NAMEN[it.kind] ?? '';
     const wert = it.kind === 'weapon' ? `${weaponDamageRange(it)} Schaden` : (it.kind === 'armor' || it.kind === 'schild') ? `${it.val + (it.upgrade ?? 0)} Rüstung` : '';
-    const grund = this.scene.add.text(x0 + 40, y + 21, `${typ}${wert ? ' · ' + wert : ''}`, {
-      fontFamily: 'serif', fontSize: '9.5px', color: INK_SOFT,
+    const grund = this.scene.add.text(textX, y + Math.round(rowH * 0.55), `${typ}${wert ? ' · ' + wert : ''}`, {
+      fontFamily: 'serif', fontSize: `${Math.max(10, Math.round(11 * this.panelScale))}px`, color: INK_SOFT,
     });
     c.add(grund);
     if (it.boni.length) {
       // Bonus-Werte grün, direkt dahinter (Runde 29)
-      c.add(this.scene.add.text(x0 + 40 + grund.width + 8, y + 21, it.boni.map((b) => b.t.replace('#', String(b.v))).join(' · '), {
-        fontFamily: 'serif', fontSize: '10.5px', color: '#6ad06a',
+      c.add(this.scene.add.text(textX + grund.width + 8, y + Math.round(rowH * 0.55), it.boni.map((b) => b.t.replace('#', String(b.v))).join(' · '), {
+        fontFamily: 'serif', fontSize: `${Math.max(10, Math.round(11 * this.panelScale))}px`, color: '#6ad06a',
       }));
     }
     if (equipped) {
@@ -1257,13 +1277,20 @@ export class UIPanels {
     row.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
     row.on('pointerout', () => this.hideTooltip());
     row.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
-      if (ptr.rightButtonDown()) this.clickItem(it, true);
-      else {
-        this.selectedItem = it;
-        this.hideTooltip();
-        this.build();
-        this.sfx.play('klick');
+      if (ptr.rightButtonDown()) { this.clickItem(it, true); return; }
+      // R140 (Autor: "ausruesten mit Doppelklick wie frueher"): zweiter Klick
+      // auf DIESELBE Zeile innerhalb 350ms legt an/ab bzw. benutzt.
+      const jetzt = this.scene.time.now;
+      if (this.klickMerker && this.klickMerker.it === it && jetzt - this.klickMerker.t < 350) {
+        this.klickMerker = null;
+        this.clickItem(it, it.kind === 'potion' || it.kind === 'mpotion' || it.kind === 'scroll' || it.kind === 'food');
+        return;
       }
+      this.klickMerker = { it, t: jetzt };
+      this.selectedItem = it;
+      this.hideTooltip();
+      this.build();
+      this.sfx.play('klick');
     });
     // Schriftrollen/Tränke auf die Aktionsleiste ziehen (Runde 40)
     const slotAktion = SLOT_AKTION[it.kind];

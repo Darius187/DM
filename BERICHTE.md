@@ -1388,3 +1388,27 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
 - `npm run typecheck`, 54 Testdateien / 340 Tests und `npm run build` gruen.
   Offen im Gesamtauftrag bleiben Hauptmenue, Shop und Dialog; diese Runde hat
   deren Logik und Dateien nicht angefasst.
+
+## Runde 139/140 - RTS Rang 1 komplett + Charakter-Menue repariert
+- RTS (Dok 03, Rang 1 - alle Punkte): 1.1 Dorf-Lager zahlt die Feldbauten
+  (Leiste zeigt den Bestand und faerbt danach), 1.2 MORAL entscheidet Kaempfe
+  (die EINE Formel, Flucht zur Kartenkante, Sunzi-Kessel, Banner-Durchschnitt;
+  live gemessen: 3 Soeldner gegen 10 Gewappnete -> Moral 39 -> BRICHT bei 4 ->
+  flieht -> sammelt sich bei 46), 1.3 Set-Target (Marsch + Ziel-Prioritaet
+  getrennt), 1.4 Ziel-Sperrzeit (kein Zappeln), 1.6 Tag-Konter (Matrix aus
+  Dok 02 endlich verdrahtet, 'SCHWACH!'/'PRALLT AB'-Rueckmeldung), 1.7 drei
+  Verhaltens-Achsen (Bewegung/Angriff/Zielwahl - "Feuer einstellen" existiert),
+  1.9 Formations-Abstand (Eng/Normal/Weit). 1.8 Engstellen: erst reproduzieren
+  (TODO). Vier Commits, alles browser-verifiziert, 357 Tests gruen.
+- CHARAKTER-MENUE (Autor-Meldung, Codex-Bildschale): alle vier Punkte behoben
+  und im Browser nachgestellt (Vorher/Nachher in screenshots/r140-*):
+  1) Items/Schriften verschoben: Pack-Icons (128px) ragten 20px ueber die
+     Zeilen, der Name lag AUF dem Icon - Icons passen sich jetzt der Zeile an,
+     Texte wachsen mit der Zeilenhoehe.
+  2) AUSRUESTEN PER DOPPELKLICK wie frueher (350ms-Fenster; Traenke/Rollen
+     werden per Doppelklick benutzt) - programmatisch verifiziert
+     (Rostige Klinge -> Probeklinge angelegt).
+  3) 'N Gegenstaende · Gold' war 7-10px winzig -> jetzt 12-15px in Tinte.
+  4) Portraet verzerrt: setCrop+setDisplaySize arbeiteten gegeneinander
+     (DisplaySize misst den vollen Frame, der Crop zeigt einen Ausschnitt) -
+     neuer Einpass-Helfer skaliert den Ausschnitt und zentriert ihn korrekt.
