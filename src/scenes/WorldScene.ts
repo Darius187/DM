@@ -1832,7 +1832,16 @@ export class WorldScene extends CombatScene {
       // dunklen Krypta. Wer zur Treppe lief, hatte die restlichen Gegner um
       // die Ecke gerade nicht im Blick - die galten fälschlich als erledigt,
       // und die ganze Ebene war beim Zurückkommen leer, obwohl voller Gegner.)
-      this.area.geleert = !this.enemies.some((e) => e.hp > 0);
+      // R145: eigene Soldaten (R142-Garnison) zaehlen dabei NICHT als Gegner.
+      this.area.geleert = !this.enemies.some((e) => e.hp > 0 && e.team !== 'spieler');
+      // R145 (Autor "beim Tod/Kartenwechsel darf NICHTS resetten"): lebende
+      // Monster schreiben Stellung und Wunden in ihren Spawn zurueck - beim
+      // Wiederkommen stehen sie verwundet DA, wo sie zuletzt standen.
+      for (const e of this.enemies) {
+        if (e.hp > 0 && e.team !== 'spieler' && e.spawnRef && !e.spawnRef.tot) {
+          e.spawnRef.x = e.x; e.spawnRef.y = e.y; e.spawnRef.hp = e.hp;
+        }
+      }
     }
     const a = this.getArea(id);
     const pferdKommtMit = this.reitet && !a.dark && !a.innen;
@@ -5969,6 +5978,7 @@ export class WorldScene extends CombatScene {
       if (sp.tot) continue; // schon erschlagen (Runde 47) - kommt nicht zurück
       const e = this.spawnEnemy(sp.type, a.depth + tiefenBonus, sp.x, sp.y, sp.elite);
       e.spawnRef = sp;      // beim Tod als 'tot' merken, damit er nicht respawnt
+      if (sp.hp !== undefined) e.hp = Math.max(1, Math.min(e.maxhp, sp.hp));   // R145: Wunden bleiben
       if (sp.schlaeft) e.schlaeft = true;   // R118 V9: schlaeft bis die Raumtuer faellt
       if (sp.champion) {
         e.champion = true;

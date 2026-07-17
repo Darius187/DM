@@ -164,7 +164,7 @@ export const PHYSIK = {
 
 // Tod und Rasten (Masterprompt 4.4 - schlägt Referenz: dort 20% Goldverlust)
 export const DEATH = {
-  goldLossPct: 0.15,    // 15% Goldverlust
+  goldLossPct: 0.10,    // R145 (Autor): 10% Goldverlust - der EINZIGE Preis des Todes
   // R138: Erwachen nach dem Tod in Dungeons/Innenraeumen fuehrt HIERHIN
   // (neues Ravensmoor). Regel selbst: src/logic/respawn.ts.
   respawnKarte: 'stadt',

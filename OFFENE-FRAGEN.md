@@ -334,3 +334,12 @@ schickst einen benannten Reiter von Ravensmoor zur Fuerstenburg (er
 marschiert real ueber die Karten, kann abgefangen werden!), und erst seine
 Ankunft loest die Grafen-Kolonne aus. Teuer erkauft, spuerbar, erzaehlt sich
 selbst. Alternative: automatisch alle N Tage mit der Abgabe. Was willst du?
+
+## R145 - Einfall haengt noch am ARCHIV-Dorf
+Der Monster-Einfall (startEinfall/startGrosserEinfall, Einfall-Zwischenspeicher,
+Abwehr-Belohnung) prueft ueberall noch `village` - das ist seit dem Umzug das
+tote Archiv. Folgen: im NEUEN Ravensmoor (stadt) feuert kein Einfall mehr, und
+stirbt man waehrend eines (Archiv-)Einfalls, verpuffen die Angreifer beim
+Erwachen. Wegen Regel 14 (ARCHIV nie anfassen) habe ich das nicht umgebaut.
+ZWISCHENLOESUNG: keine - Einfaelle ruhen faktisch. VORSCHLAG: eigener Auftrag
+"Einfall-Umzug nach Neu-Ravensmoor" (Tor-/Mauer-Logik der stadt gleich mit).

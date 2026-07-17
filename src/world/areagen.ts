@@ -19,7 +19,10 @@ export interface Pos { x: number; y: number }
 export interface Abbaubar extends Pos { hp?: number; stufe?: number; inhalt?: number; gegeben?: number; g?: number; erz?: 'eisen' | 'kupfer' | 'gold' }
 
 export interface BreakableSpawn { kind: BreakableKind; x: number; y: number; ambush: boolean }
-export interface EnemySpawn { type: EnemyTypeId; x: number; y: number; elite: boolean; champion?: string; tot?: boolean; schlaeft?: boolean }
+// R145 (Autor "nichts darf resetten"): x/y/hp werden beim Verlassen der Karte
+// mit dem LIVE-Zustand ueberschrieben - ein angeschlagenes Monster steht beim
+// Wiederkommen verwundet da, wo es zuletzt stand. tot bleibt endgueltig (R47).
+export interface EnemySpawn { type: EnemyTypeId; x: number; y: number; elite: boolean; champion?: string; tot?: boolean; schlaeft?: boolean; hp?: number }
 export interface SpecialMarker { id: string; x: number; y: number; raum: string }
 // R118 V9: Raum-Rechtecke (Kacheln) fuer das Monster-Erwachen beim Tuer-Oeffnen
 export interface V9RaumRect { x: number; y: number; w: number; h: number }
