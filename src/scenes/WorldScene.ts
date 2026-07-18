@@ -32,7 +32,7 @@ import { dichteNoise, moorNoise, biomAt } from '../world/biome';
 import { PFLANZEN_BY_ID, pflanzenFuerBiom, PFLANZEN_RESPAWN_S, type PflanzenDef } from '../data/pflanzen';
 import { machePflanzenBild } from '../gfx/pflanzenArt';
 import { POI_BILDER } from '../world/poiBilder';
-import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
+import { sdWasser, skaliereGeometrie, UFER_SAUM_UV, type WasserGeometrie } from '../world/wasserFeld';
 import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale, berechneTagLicht } from '../demo3d/dorfSim';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
 import { wetter } from '../logic/wetter';
@@ -5071,10 +5071,14 @@ export class WorldScene extends CombatScene {
     const wpx = this.area.w * TILE, hpx = this.area.h * TILE, m = TILE;
     let ziel: string | undefined; let spawn: { x: number; y: number } | undefined;
     const west = nachbar(-1, 0), ost = nachbar(1, 0), nord = nachbar(0, -1), sued = nachbar(0, 1);
-    if (this.px < m && west) { ziel = west; spawn = { x: (this.getArea(west).w - 3) * TILE, y: this.py }; }
-    else if (this.px > wpx - m && ost) { ziel = ost; spawn = { x: 3 * TILE, y: this.py }; }
-    else if (this.py < m && nord) { ziel = nord; spawn = { x: this.px, y: (this.getArea(nord).h - 3) * TILE }; }
-    else if (this.py > hpx - m && sued) { ziel = sued; spawn = { x: this.px, y: 3 * TILE }; }
+    // R155 (Autor "von Ravensmoor nach Westen landet man im Fluss"): Karten
+    // sind unterschiedlich gross (stadt 128x128, Wald 130x85) - die Position
+    // ENTLANG der Kante wird darum PROPORTIONAL uebertragen. Sonst trifft der
+    // 53%-Weg der Stadt auf 80% des Nachbarn - und dort fliesst der Fluss.
+    if (this.px < m && west) { const z = this.getArea(west); ziel = west; spawn = { x: (z.w - 3) * TILE, y: this.py / hpx * (z.h * TILE) }; }
+    else if (this.px > wpx - m && ost) { const z = this.getArea(ost); ziel = ost; spawn = { x: 3 * TILE, y: this.py / hpx * (z.h * TILE) }; }
+    else if (this.py < m && nord) { const z = this.getArea(nord); ziel = nord; spawn = { x: this.px / wpx * (z.w * TILE), y: (z.h - 3) * TILE }; }
+    else if (this.py > hpx - m && sued) { const z = this.getArea(sued); ziel = sued; spawn = { x: this.px / wpx * (z.w * TILE), y: 3 * TILE }; }
     if (ziel && spawn) this.goArea(ziel, spawn);
   }
 
@@ -5219,6 +5223,30 @@ export class WorldScene extends CombatScene {
   private wasserAnwenden(): void {
     if (this.wasser2Shader) wendeWasser2(this.wasser2Shader, this.aktWasserPreset());
     if (this.wasserFallbackImg) this.baueWasserFallback();   // R138: Breite/Preset auch im flachen Ersatz-Wasser
+    this.recarveWasser();   // R156: Kollision folgt IMMER der sichtbaren Breite
+  }
+
+  // R156 (Autor "Begrenzungen frueherer Fluesse"): die Kollision wird aus der
+  // AKTUELL SICHTBAREN (skalierten) Geometrie neu gecarvt, sobald die Werkbank
+  // Fluesse breiter/schmaler stellt. Nur WASSER<->GRAS wird getauscht - Wege,
+  // Baeume und Bauten bleiben unberuehrt. Ohne das blieben unsichtbare
+  // Wasser-Waende stehen, wo der Regler den Fluss wegschmaelert hat.
+  private recarveWasser(): void {
+    const a = this.area, lauf = a?.wasserLauf;
+    if (!a || !lauf || lauf.vollszene || lauf.begehbar) return;
+    const geo = this.aktuelleWasserGeo() ?? lauf.geo;
+    const smink = lauf.smink ?? WASSER2_CFG.smink;
+    let geaendert = 0;
+    for (let ty = 0; ty < a.h; ty++) {
+      for (let tx = 0; tx < a.w; tx++) {
+        const t = a.map[ty][tx];
+        if (t !== T.WATER && t !== T.GRASS) continue;
+        const sd = sdWasser((tx + 0.5) / a.w, (ty + 0.5) / a.h, geo, smink, WASSER2_CFG.widthMul);
+        const soll = sd < -UFER_SAUM_UV ? T.WATER : T.GRASS;
+        if (t !== soll) { a.map[ty][tx] = soll; geaendert++; }
+      }
+    }
+    if (geaendert > 0) this.wegfeldNeu();
   }
 
   private setzeReitTuning(werte: Partial<ReitDarstellungTuning>): void {
@@ -5629,6 +5657,7 @@ export class WorldScene extends CombatScene {
     setzeWasserGeometrie(this.wasser2Shader, this.skaliertesWasser, lauf.smink);
     // R138: das flache Ersatz-Wasser (Shader aus) folgt den Breite-Reglern mit.
     if (this.wasserFallbackImg) this.baueWasserFallback();
+    this.recarveWasser();   // R156: auch je-Strang/See-Regler ziehen die Kollision mit
   }
 
   private aktuelleWasserGeo(): WasserGeometrie | undefined {
