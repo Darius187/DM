@@ -1691,3 +1691,12 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   Stufe 1 (vorher gab es auf Stufe 1 KEINEN Zauber), Monster-Ansprung halbiert,
   Wasser-Preset + Ufer-Klang auf Autor-Wunsch zurueckgenommen.
 - tsc fehlerfrei, 391 Tests gruen.
+
+## Runde 175 - Minimap-Kartographie (letzter Alt-Backlog-Punkt)
+- Minimap zeigt weiter NUR Gesehenes (Sichtlinien-Aufdeckung), ist jetzt aber
+  lesbar-huebsch (Pergament-Toene + Wand-Konturen um jeden begangenen Raum,
+  pulsierender Held-Punkt), per Mausrad ueber der Karte ZOOMBAR (2-6 px je
+  Kachel) und hat das DIABLO-OVERLAY: TAB legt die erkundete Karte gross und
+  halbtransparent mittig ueber das Spielfeld. Browser-verifiziert (Screenshot).
+- Damit ist die alte Aufgabenliste KOMPLETT abgearbeitet. Naechster Auftrag
+  (Autor): Kirche als Verlies-Eingang mit Zelda-Innenraum + Stadtportal-Quest.

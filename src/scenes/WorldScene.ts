@@ -412,6 +412,14 @@ export class WorldScene extends CombatScene {
     // dieselbe Instanz benutzt, darum erst abmelden, dann anmelden (Regel 9).
     this.input.off('wheel', this.chronikWheel);
     this.input.on('wheel', this.chronikWheel);
+    // #13: Mausrad ueber der Minimap zoomt (2..6 px je Kachel), TAB schaltet
+    // das Diablo-Overlay - gleiche Einmal-Registrierung (Regel 9).
+    this.input.off('wheel', this.minimapWheel);
+    this.input.on('wheel', this.minimapWheel);
+    this.input.keyboard?.addCapture('TAB');
+    this.input.keyboard?.off('keydown-TAB', this.minimapTab);
+    this.input.keyboard?.on('keydown-TAB', this.minimapTab);
+    this.minimapOverlay = false;
     this.hoverText = null;
     this.wasserBilder = [];
     this.hausBilder = [];
@@ -12617,19 +12625,41 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     return ({ boss: 'Grab des Kreuzritters', goldmine: 'Goldmine', kirchenschiff: 'Kirchenschiff' } as Record<string, string>)[id] ?? id;
   }
 
+  // #13 MINIMAP-KARTOGRAPHIE: nur Gesehenes (Sichtlinien-Aufdeckung, wie
+  // gehabt), aber huebscher (Pergament-Toene + Wand-KONTUREN um begangene
+  // Raeume), ZOOMBAR (Mausrad ueber der Karte, 2..6 px je Kachel) und mit
+  // DIABLO-OVERLAY (TAB): dieselbe Karte gross und halbtransparent mittig
+  // ueber dem Spielfeld.
+  minimapMs = 3;             // Zoomstufe (px je Kachel), Mausrad ueber der Karte
+  minimapOverlay = false;    // TAB: grosses Overlay im Diablo-Stil
+  private minimapRect = { x: 0, y: 0, w: 0, h: 0 };   // fuer den Mausrad-Treffer
+
+  private minimapWheel = (_p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number): void => {
+    const r = this.minimapRect;
+    if (!r.w) return;
+    const ptr = this.input.activePointer;
+    if (ptr.x < r.x || ptr.x > r.x + r.w || ptr.y < r.y || ptr.y > r.y + r.h) return;
+    this.minimapMs = Phaser.Math.Clamp(this.minimapMs + (dy < 0 ? 1 : -1), 2, 6);
+  };
+
+  private minimapTab = (ev: KeyboardEvent): void => {
+    ev.preventDefault?.();
+    if (!this.area?.dark) return;
+    this.minimapOverlay = !this.minimapOverlay;
+  };
+
   private renderMinimap(): void {
     const g = this.minimapGfx;
     g.clear();
-    if (!this.area.dark) return;
+    if (!this.area.dark) { this.minimapRect.w = 0; return; }
     const seen = this.seen.get(this.area.id);
     if (!seen) return;
-    // Sichtbereich markieren
+    // Sichtbereich markieren (nur wirklich Einsehbares - keine Raeume hinter Waenden)
     const ptx = Math.floor(this.px / TILE), pty = Math.floor(this.py / TILE);
     const R = 8;
     for (let ty = pty - R; ty <= pty + R; ty++) {
       for (let tx = ptx - R; tx <= ptx + R; tx++) {
         if (tx >= 0 && ty >= 0 && tx < this.area.w && ty < this.area.h && (tx - ptx) ** 2 + (ty - pty) ** 2 <= R * R) {
-          // nur aufdecken, was wirklich einsehbar ist (keine Räume hinter Wänden)
           const steps = 6;
           let frei = true;
           for (let i = 1; i < steps; i++) {
@@ -12640,24 +12670,47 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         }
       }
     }
-    const ms = 3;
+    const zeichne = (mx: number, my: number, ms: number, alpha: number, rahmen: boolean): void => {
+      if (rahmen) {
+        g.fillStyle(0x0c0906, 0.8 * alpha);
+        g.fillRect(mx - 5, my - 5, this.area.w * ms + 10, this.area.h * ms + 10);
+        g.lineStyle(1, 0x6a5636, alpha);
+        g.strokeRect(mx - 4.5, my - 4.5, this.area.w * ms + 9, this.area.h * ms + 9);
+      }
+      for (let ty = 0; ty < this.area.h; ty++) {
+        for (let tx = 0; tx < this.area.w; tx++) {
+          if (!seen[ty][tx]) continue;
+          const v = this.area.map[ty][tx];
+          if (SOLID.has(v)) continue;
+          // begangener Boden in warmem Pergament-Ton, Wege/Sonder abgesetzt
+          g.fillStyle(v === T.STAIR ? 0xc9a227 : v === T.STAIRUP ? 0x8aa6d8 : v === T.PATH ? 0x6a5c44 : 0x51473a, alpha);
+          g.fillRect(mx + tx * ms, my + ty * ms, ms, ms);
+          // Wand-KONTUR: solide Nachbarn einer gesehenen Bodenkachel zeichnen
+          // die Raumraender nach - das macht die Karte sofort lesbar/huebsch.
+          g.fillStyle(0x241c12, alpha);
+          if (SOLID.has(this.area.map[ty - 1]?.[tx] ?? -1)) g.fillRect(mx + tx * ms, my + ty * ms - 1, ms, 1);
+          if (SOLID.has(this.area.map[ty + 1]?.[tx] ?? -1)) g.fillRect(mx + tx * ms, my + (ty + 1) * ms, ms, 1);
+          if (SOLID.has(this.area.map[ty]?.[tx - 1] ?? -1)) g.fillRect(mx + tx * ms - 1, my + ty * ms, 1, ms);
+          if (SOLID.has(this.area.map[ty]?.[tx + 1] ?? -1)) g.fillRect(mx + (tx + 1) * ms, my + ty * ms, 1, ms);
+        }
+      }
+      // Held: pulsierender warmer Punkt
+      const puls = 1 + Math.sin(this.time.now / 220) * 0.25;
+      g.fillStyle(0xe04a3a, alpha);
+      g.fillCircle(mx + ptx * ms + ms / 2, my + pty * ms + ms / 2, Math.max(2, ms * 0.8) * puls);
+    };
+    if (this.minimapOverlay) {
+      // Diablo-Stil: gross und halbtransparent MITTIG ueber dem Spielfeld
+      const ms = Math.max(4, Math.min(8, Math.floor(Math.min(this.scale.width / this.area.w, this.scale.height / this.area.h) * 0.9)));
+      zeichne(Math.round((this.scale.width - this.area.w * ms) / 2), Math.round((this.scale.height - this.area.h * ms) / 2), ms, 0.55, false);
+      this.minimapRect.w = 0;
+      return;
+    }
+    const ms = this.minimapMs;
     const mw = this.area.w * ms, mh = this.area.h * ms;
     const mx = this.scale.width - mw - 14, my = 14;
-    g.fillStyle(0x050403, 0.75);
-    g.fillRect(mx - 4, my - 4, mw + 8, mh + 8);
-    g.lineStyle(1, 0x3a2f24, 1);
-    g.strokeRect(mx - 3.5, my - 3.5, mw + 7, mh + 7);
-    for (let ty = 0; ty < this.area.h; ty++) {
-      for (let tx = 0; tx < this.area.w; tx++) {
-        if (!seen[ty][tx]) continue;
-        const v = this.area.map[ty][tx];
-        if (SOLID.has(v)) continue;
-        g.fillStyle(v === T.STAIR ? 0xc9a227 : v === T.STAIRUP ? 0x8a9ab8 : 0x4a4236, 1);
-        g.fillRect(mx + tx * ms, my + ty * ms, ms, ms);
-      }
-    }
-    g.fillStyle(0xe04a3a, 1);
-    g.fillRect(mx + ptx * ms - 1, my + pty * ms - 1, ms + 2, ms + 2);
+    this.minimapRect = { x: mx - 5, y: my - 5, w: mw + 10, h: mh + 10 };
+    zeichne(mx, my, ms, 1, true);
   }
 
   // --- Dorfleben: Tiere, Tagesablauf, Atmosphäre ------------------------------------
