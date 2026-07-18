@@ -96,6 +96,13 @@ function segDist(px: number, py: number, a: BahnPunkt, b: BahnPunkt, widthMul = 
  * Signierte Distanz zum Wasser an einem Punkt (UV): <0 = im Wasser. Gleiche
  * Logik wie der Shader (smin-Verschmelzung). Für Tests und spätere Abfragen.
  */
+// R149 (Autor "ich laufe immer noch gegen unsichtbare Waende"): die Kollision
+// beginnt erst ETWAS tiefer als die Wasserlinie. Der flache Ufersaum (~1 Kachel
+// in UV, 1/130), wo das Wasser fast durchsichtig ist und Schilf waechst, bleibt
+// BEGEHBAR - man watet hinein statt gegen Glas zu laufen. Duenne Baeche werden
+// dadurch komplett durchwatbar. Eine Zahl, hier tunen.
+export const UFER_SAUM_UV = 0.008;
+
 export function sdWasser(px: number, py: number, geo: WasserGeometrie, verschmelzung = 0.06, widthMul = 1): number {
   let d = 1e9, erst = true;
   for (const bahn of geo.bahnen) {

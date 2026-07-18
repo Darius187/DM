@@ -2411,3 +2411,4 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Bei Belagerungen haben Palisade, Tor und Wachturm Zielprioritaet. Erst wenn
   keine Wehrstruktur mehr steht und kein Verteidiger erreichbar ist, duerfen
   Menschengolem und andere Belagerer uebrige Feld-/Lagerbauten angreifen.
+- R149 (Autor "was sind das fuer Steine?! nur die unsichtbare Wand weg"): R146-Trittstein-Furten komplett zurueckgebaut. Stattdessen UFER_SAUM_UV (wasserFeld.ts, 0.008 ~ 1 Kachel): die Wasser-Kollision beginnt erst ETWAS tiefer als die Wasserlinie - der flache, fast durchsichtige Saum (wo Schilf steht) ist BEGEHBAR, duenne Baeche werden durchwatbar. In BEIDEN Carve-Pfaden (areagen cfg-Generator + Oberwelt-Generator OW_SMIN). Auf start: 1400 -> 1001 solide Wasserkacheln; Ost-Strassen-Querung durchgaengig (2 Kacheln breit, Pferd nutzt dieselbe Kollision).

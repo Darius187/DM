@@ -8,7 +8,7 @@ import type { EnemyTypeId } from '../data/types';
 import { rnd, ri, pick, type Rng } from '../logic/rng';
 import { TUNING } from '../logic/tuning';
 import type { InnenraumDef, InnenMoebel } from '../data/innenraeume';
-import { sdWasser, type WasserGeometrie } from './wasserFeld';
+import { sdWasser, UFER_SAUM_UV, type WasserGeometrie } from './wasserFeld';
 import { baueHoehle } from './hoehlenDungeon';
 import { dichteNoise, felsNoise, biomAt } from './biome';
 import { OBERWELT_KANTEN, type KantenKreuzung } from '../data/oberweltKanten';
@@ -1857,7 +1857,9 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
   if (solide) {
     for (let ty = 0; ty < h; ty++) {
       for (let tx = 0; tx < w; tx++) {
-        if (sdWasser((tx + 0.5) / w, (ty + 0.5) / h, geo, verschm) < 0) map[ty][tx] = T.WATER;
+        // R149: erst ab UFER_SAUM_UV Tiefe solid - der flache, fast durch-
+        // sichtige Saum bleibt begehbar (keine unsichtbare Wand am Ufer).
+        if (sdWasser((tx + 0.5) / w, (ty + 0.5) / h, geo, verschm) < -UFER_SAUM_UV) map[ty][tx] = T.WATER;
       }
     }
   }
@@ -1969,9 +1971,11 @@ export function buildStart(rng: Rng): AreaData {
     geo: { bahnen: randKanten('start', startSee).flussBahnen, seen: [startSee] },
   };
   const geo = a.wasserLauf.geo;
-  // Wasser als T.WATER carven (Kollision + Minikarte aus derselben SDF)
+  // Wasser als T.WATER carven (Kollision + Minikarte aus derselben SDF).
+  // R149: erst ab UFER_SAUM_UV Tiefe solid - der flache Saum bleibt begehbar
+  // (keine unsichtbare Wand am Ufer, siehe wasserFeld.ts).
   for (let ty = 0; ty < h; ty++) for (let tx = 0; tx < w; tx++) {
-    if (sdWasser((tx + 0.5) / w, (ty + 0.5) / h, geo, OW_SMIN) < 0) map[ty][tx] = T.WATER;
+    if (sdWasser((tx + 0.5) / w, (ty + 0.5) / h, geo, OW_SMIN) < -UFER_SAUM_UV) map[ty][tx] = T.WATER;
   }
   // SALZSTRASSE geschwungen (R100): weicher Bezier-Bogen von der Westkante
   // (Tabelle 59.1%) zur Ostkante (77%) - kein Achsen-Ellenbogen. Wo der Weg

@@ -27,7 +27,7 @@ import { RabenSchwarm } from '../systems/Raben';
 import { WetterOverlay } from '../world/wetterOverlay';
 import { FLUSS_SHADER, WASSER_PRESET, BLUT_PRESET, findeFluessigkeitsRegionen, spawneFluessigkeit, type FluessigkeitPreset } from '../world/fluessigkeitsShader';
 import { spawneWasser as spawneNeuesWasserShader, setzeGeometrie as setzeWasserGeometrie, wendeWasserPreset as wendeWasser2, WASSER as WASSER2, BLUT as BLUT2, WASSER_CFG as WASSER2_CFG, WASSER_REGLER, WASSER_FARBEN, type WasserPreset as WasserPreset2 } from '../world/wasser';
-import { maleBoden, machePfuetzenBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheBrueckenBild, macheFurtBild, macheGeroellBild, macheFelsRisseBild, macheFeinGrasBild, macheMoorSchilfBild, macheFelsBild, macheGrasKachel, macheRoehrichtBild } from '../world/bodenMaler';
+import { maleBoden, machePfuetzenBild, wegMittellinie, baumDichteFn, macheBewuchsBilder, macheBrueckenBild, macheGeroellBild, macheFelsRisseBild, macheFeinGrasBild, macheMoorSchilfBild, macheFelsBild, macheGrasKachel, macheRoehrichtBild } from '../world/bodenMaler';
 import { dichteNoise, moorNoise, biomAt } from '../world/biome';
 import { PFLANZEN_BY_ID, pflanzenFuerBiom, PFLANZEN_RESPAWN_S, type PflanzenDef } from '../data/pflanzen';
 import { machePflanzenBild } from '../gfx/pflanzenArt';
@@ -4589,45 +4589,10 @@ export class WorldScene extends CombatScene {
     }
   }
 
-  // R146 (Autor "unsichtbare Wände am Fluss"): FURTEN sichtbar machen. Wege,
-  // die die Wasser-SDF queren, sind begehbar (R100h: Weg schlaegt Wasser) -
-  // aber das Wasser-Overlay malte darueber. Je zusammenhaengender Gruppe
-  // ertraenkter Weg-Kacheln liegt jetzt ein Trittstein-Bild UEBER dem Wasser
-  // (Bruecken-Ebene) - man SIEHT, wo man rueberkommt. Keine Auto-Bruecke.
-  private spawneFurten(a: AreaData): void {
-    if (!a.wasserLauf) return;
-    const geo = a.wasserLauf.geo, smink = a.wasserLauf.smink ?? WASSER2_CFG.smink;
-    const imWasser = (tx: number, ty: number): boolean =>
-      a.map[ty]?.[tx] === T.PATH && sdWasser((tx + 0.5) / a.w, (ty + 0.5) / a.h, geo, smink) < 0;
-    const gesehen = new Set<string>();
-    let nr = 0;
-    for (let ty = 0; ty < a.h; ty++) {
-      for (let tx = 0; tx < a.w; tx++) {
-        if (!imWasser(tx, ty) || gesehen.has(`${tx},${ty}`)) continue;
-        let x0 = tx, x1 = tx, y0 = ty, y1 = ty;
-        const gruppe: Array<[number, number]> = [];
-        const stapel: Array<[number, number]> = [[tx, ty]];
-        gesehen.add(`${tx},${ty}`);
-        while (stapel.length) {
-          const [cx, cy] = stapel.pop()!;
-          gruppe.push([cx, cy]);
-          x0 = Math.min(x0, cx); x1 = Math.max(x1, cx); y0 = Math.min(y0, cy); y1 = Math.max(y1, cy);
-          for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-            const nx = cx + dx, ny = cy + dy;
-            if (imWasser(nx, ny) && !gesehen.has(`${nx},${ny}`)) { gesehen.add(`${nx},${ny}`); stapel.push([nx, ny]); }
-          }
-        }
-        const key = `furt_${a.id}_${nr++}`;
-        if (!this.textures.exists(key)) {
-          const zellen: Array<[number, number]> = gruppe.map(([gx, gy]) => [gx - x0, gy - y0]);
-          this.textures.addCanvas(key, macheFurtBild(x1 - x0 + 1, y1 - y0 + 1, zellen))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
-          this.pfuetzenTexKeys.push(key);   // gleiche Aufraeum-Liste (Texturen je Karte)
-        }
-        const img = this.add.image(x0 * TILE, y0 * TILE, key).setOrigin(0, 0).setDepth(-8);
-        this.tileImages.push(img);
-      }
-    }
-  }
+  // R149 (Autor): die R146-Trittstein-Furten sind wieder RAUS ("was sind das
+  // fuer Steine?!") - die Querung bleibt begehbar, die Sichtbarkeit regelt
+  // jetzt die Kollisions-Schwelle (UFER_SAUM_UV in wasserFeld.ts): SOLID ist
+  // nur noch, was sichtbar tiefes Wasser ist.
 
   // POIs (Runde 76): die Wegzeichen der Karte als Y-sortierte Bilder. Texturen
   // werden lazy aus world/poiBilder.ts gebacken (LINEAR - malerisch).
@@ -6155,7 +6120,6 @@ export class WorldScene extends CombatScene {
       this.spawneUferSchilf(a);     // Schilf-Cluster an der Wasserkante (R75-Test)
       this.spawneWiesenBewuchs(a);  // Wiesengras + Blumen (dorfSim-Stil, R77)
       this.spawneBruecken(a);       // Brücken im dorfSim-Look (R78)
-      this.spawneFurten(a);         // R146: begehbare Weg-Querungen SICHTBAR machen
     }
     this.spawnePois(a);             // Wegzeichen/POIs (R76, Autorfreigabe)
     // Persönliche Lagerfeuer dieser Karte wieder aufbauen (R81, Baumenü)
