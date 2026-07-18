@@ -1674,3 +1674,20 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   (Lichtkante oben, Sockelschatten am Boden - Waende lesen sich als Barriere,
   Autor lief dagegen weil er sie nicht erkannte). Basalt im Browser gerendert.
 - tsc fehlerfrei, 390 Tests gruen.
+
+## Runde 164-174 - Kommando-Pult (BAR), Einfall-Politur, grosser Fix-Schub
+- R164 KOMMANDO-PULT: das Banner-Fenster mit 4 Tabs ist ersetzt durch EIN
+  kontextabhaengiges Pult nach der Autor-Spezifikation (Beyond All Reason):
+  Ressourcen-Zeile, Auswahl-Bereich (Chips/Detail-Karte), festes 4x3-Raster,
+  dessen Inhalt allein der Auswahl folgt (Kampf-Befehle vs. Bau-Kategorien in
+  zwei Rasterebenen). Browser-verifiziert mit Screenshot beider Kontexte.
+- R165-R169: Einfall in Echtzeit (Zeitlupe raus), Kolonnen marschieren ueber
+  die Strassen und haengen nie mehr am Fluss (Anti-Haenger), Mueller/Magd
+  raus aus dem Muehlenweiher, Marsch-Storno statt Verschwinden mitten im Dorf,
+  Stadtportal nach NEU-Ravensmoor, Relikt-Dialog raus (Trugbild-Meldung).
+- R170-R174: Held-Licht-Regler wirken (Licht am Fusspunkt statt aus der
+  Figur), Rand-Vignette standard aus (auch das Nacht-Banding), Beute-Doppel-
+  senkung aufgehoben (beuteRate 1.0 = 4,5% Ausruestung je Kill), Feuerball ab
+  Stufe 1 (vorher gab es auf Stufe 1 KEINEN Zauber), Monster-Ansprung halbiert,
+  Wasser-Preset + Ufer-Klang auf Autor-Wunsch zurueckgenommen.
+- tsc fehlerfrei, 391 Tests gruen.

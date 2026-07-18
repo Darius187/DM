@@ -244,6 +244,16 @@ export const MARSCH = {
   zielStadt: 'stadt',    // ... und zieht nach Ravensmoor
 } as const;
 
+// R164 (Autor, BAR-Spezifikation): das Kommandopult zeigt Bau-Optionen als
+// KATEGORIE-Raster (erste Ebene) -> konkrete Bauten (zweite Ebene). Keine
+// Tabs. Die ids verweisen auf RTS_BAUTEN.
+export const BAU_KATEGORIEN: ReadonlyArray<{ id: string; name: string; taste: string; bauten: string[] }> = [
+  { id: 'wehr', name: 'Befestigung', taste: 'Q', bauten: ['palisade', 'tor', 'wachturm', 'wachturm_45', 'wachturm_40'] },
+  { id: 'lager', name: 'Lager', taste: 'W', bauten: ['lagerfeuer', 'zelt', 'lazarett', 'nachschub', 'feldschmiede'] },
+  { id: 'versorgung', name: 'Versorgung', taste: 'E', bauten: ['kochstelle', 'brunnen'] },
+  { id: 'zeichen', name: 'Feldzeichen', taste: 'R', bauten: ['standarte', 'feldaltar', 'wartfeuer'] },
+];
+
 // 2.3 REKRUTIERUNG (Dok 03, Manor Lords): Soldaten sind RAR und teuer. Ein
 // Rekrut kostet Gold + EINE Waffe aus dem Dorf-Lager (die Schmiede-Kette
 // schliesst sich) + EINEN ARBEITER - das Dorf wird spuerbar aermer.

@@ -178,6 +178,13 @@ export class RtsBattle {
   }
 
   gewaehlte(): RtsUnit[] { return this.units.filter((u) => u.gewaehlt && !u.tot); }
+
+  // R164 (BAR): Auswahl auf EINEN Typ filtern (Typ-Chip-Klick im Pult).
+  waehleNurTyp(typ: RtsUnitTyp): void {
+    for (const u of this.units) if (u.gewaehlt && u.typ !== typ) u.gewaehlt = false;
+    this.setHeldGewaehlt(false);
+    this.meldeAuswahl();
+  }
   private lebendeEigene(): RtsUnit[] { return this.units.filter((u) => !u.tot); }
 
   // --- Eingabe ----------------------------------------------------------------

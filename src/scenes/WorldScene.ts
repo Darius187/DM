@@ -60,7 +60,7 @@ import { HoehlenLeben } from '../gfx/hoehlenLeben';
 import { KriegsnebelAnzeige, type SichtSet } from '../systems/kriegsnebel';
 import { buildKerkerArea } from '../world/kerkerArea';
 import { MINE } from '../data/mine';
-import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, MARSCH, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, MORAL, MARSCH, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
@@ -3563,9 +3563,7 @@ export class WorldScene extends CombatScene {
         const wp = this.cameras.main.getWorldPoint(p.x, p.y);
         const f = this.feldbauten.find((fb) => Math.hypot(fb.x - wp.x, fb.y - wp.y) < 26) ?? null;
         if (f !== this.rtsGebaeudeWahl) {
-          this.rtsGebaeudeWahl = f;
-          if (f) this.rtsTab = 'wahl';
-          else if (this.rtsTab === 'wahl') this.rtsTab = 'befehle';
+          this.rtsGebaeudeWahl = f;   // R164: das Pult zeigt Gebaeude kontextabhaengig
           this.baueRtsLeiste();
         }
       }
@@ -3668,16 +3666,15 @@ export class WorldScene extends CombatScene {
     return Math.min(100, moral);
   }
 
-  private rtsTab: 'befehle' | 'bauen' | 'test' | 'wahl' = 'bauen';
   // R148: gewaehltes GEBAEUDE (Klick auf Feldbau ohne Einheiten-Auswahl)
   private rtsGebaeudeWahl: (typeof this.feldbauten)[number] | null = null;
 
   // R148: Auswahl geaendert -> AUSWAHL-Ansicht zeigen bzw. verlassen.
+  // R164 (BAR): das Pult ist KONTEXTABHAENGIG - die Auswahl bestimmt den
+  // Inhalt direkt, es gibt keine Tabs mehr, die umgeschaltet werden muessten.
   private aktualisiereRtsAuswahl(): void {
     if (!this.rtsLeiste || !this.rtsBattle) return;
-    const hat = this.rtsBattle.gewaehlte().length > 0 || this.rtsBattle.heldGewaehlt;
-    if (hat) { this.rtsGebaeudeWahl = null; this.rtsTab = 'wahl'; }
-    else if (this.rtsTab === 'wahl' && !this.rtsGebaeudeWahl) this.rtsTab = 'befehle';
+    if (this.rtsBattle.gewaehlte().length > 0 || this.rtsBattle.heldGewaehlt) this.rtsGebaeudeWahl = null;
     this.baueRtsLeiste();
   }
   private rtsSkala = 1;   // Baumenü-Größe (Autor: skalierbar), 0.8..1.4
@@ -3712,7 +3709,9 @@ export class WorldScene extends CombatScene {
     kopf.on('dragend', () => { zStart = null; getSettings().rtsLeistePos = { x: Math.round(c.x), y: Math.round(c.y) }; saveSettings(); });
     c.add(kopf);
     // Kopf: Titel, Moral, Skalieren, Schließen
-    c.add(this.add.text(F(8), F(6), '⚔ BANNER', { fontFamily: 'serif', fontSize: `${F(12)}px`, color: '#c9a227', letterSpacing: 1 }));
+    // R164: "Banner" (der alte Name, mittelalterlich fuer den Sammelpunkt des
+    // Aufgebots) hiess dem Autor nichts - das Ding ist jetzt das KOMMANDO-Pult.
+    c.add(this.add.text(F(8), F(6), '⚔ KOMMANDO', { fontFamily: 'serif', fontSize: `${F(12)}px`, color: '#c9a227', letterSpacing: 1 }));
     const moral = this.aktuelleMoral();
     c.add(this.add.text(F(8), F(22), `Moral ${moral}`, { fontFamily: 'serif', fontSize: `${F(11)}px`, color: moral >= MORAL.basis ? '#9ad86a' : '#d86a5a' }));
     const zu = this.add.text(w - F(18), F(4), '✕', { fontFamily: 'serif', fontSize: `${F(13)}px`, color: '#d8cfb8' }).setInteractive({ useHandCursor: true });
@@ -3722,126 +3721,144 @@ export class WorldScene extends CombatScene {
     const aPlus = this.add.text(w - F(36), F(4), 'A+', { fontFamily: 'serif', fontSize: `${F(12)}px`, color: '#8a7a5a' }).setInteractive({ useHandCursor: true });
     aPlus.on('pointerdown', () => { this.rtsSkala = Math.min(1.4, this.rtsSkala + 0.1); this.baueRtsLeiste(); }); c.add(aPlus);
     // Tab-Reiter
-    let ty2 = F(40);
-    const tabs: Array<[typeof this.rtsTab, string]> = [['wahl', 'WAHL'], ['bauen', 'BAUEN'], ['befehle', 'BEFEHLE'], ['test', 'TEST']];
-    let tx = F(8);
-    for (const [id, lbl] of tabs) {
-      const aktiv = this.rtsTab === id;
-      const t = this.add.text(tx, ty2, lbl, { fontFamily: 'serif', fontSize: `${F(11)}px`, letterSpacing: 1, color: aktiv ? '#c9a227' : '#8a7a5a', backgroundColor: aktiv ? '#221808' : '#100b06', padding: { x: F(8), y: F(3) } }).setInteractive({ useHandCursor: true });
-      t.on('pointerdown', () => { this.rtsTab = id; this.sfx.play('klick'); this.baueRtsLeiste(); });
-      c.add(t); tx += t.width + F(4);
+    // R164 (Autor, BAR-Spezifikation): KEINE TABS mehr. EIN kontextabhaengiges
+    // Pult: Ressourcen-Zeile -> Auswahl-Bereich -> festes 4x3-Kommando-Raster,
+    // dessen Inhalt allein aus der AUSWAHL folgt (Einheiten = Befehle; nichts
+    // gewaehlt = Bau-Kategorien -> zweite Rasterebene; Dev als eigene Ebene).
+    let y = F(40);
+    y = this.bauePultRessourcen(c, F, w, y);
+    c.add(this.add.rectangle(F(6), y, w - F(12), 1, 0x4a3a26).setOrigin(0));
+    y += F(6);
+    const gridH = F(3 * 36 + 12);
+    const gridY = h - gridH - F(8);
+    // AUSWAHL-Bereich (nutzt die R148-Ansicht: Chips + Detail-Karte/Gebaeude)
+    const auswahl = this.rtsBattle ? (this.rtsBattle.gewaehlte().length > 0 || this.rtsBattle.heldGewaehlt) : false;
+    if (auswahl || this.rtsGebaeudeWahl) this.baueRtsWahlTab(c, F, w, y);
+    else {
+      c.add(this.add.text(F(8), y, 'Nichts gewählt', { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#6a5f4c', fontStyle: 'italic' }));
+      c.add(this.add.text(F(8), y + F(14), `Garnison hier: ${garnisonVon(this.armee, this.area.id).length} Mann`, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a' }));
     }
-    c.add(this.add.rectangle(F(6), ty2 + F(22), w - F(12), 1, 0x4a3a26).setOrigin(0));
-    let y = ty2 + F(34);
-    if (this.rtsTab === 'bauen') {
-      // R139: das DORF-LAGER zahlt - Bestand der Bau-Waren direkt anzeigen,
-      // sonst luegt die Farbcodierung gefuehlt (Dok 03, 1.1).
-      const bauWaren = ['holz', 'stein', 'fasern', 'schafgarbe'] as const;
-      const bestand = bauWaren.map((w2) => `${this.dorfLager[w2] ?? 0} ${MATERIAL_NAMES[w2 as MaterialId] ?? w2}`).join(' · ');
-      c.add(this.add.text(F(8), y, `Dorf-Lager: ${bestand}`, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#9a8a6a', wordWrap: { width: w - F(16) } }));
-      y += F(16);
-      // Feldbauten UNTEREINANDER mit Kosten (C&C-artige Bau-Icons)
-      for (const b of RTS_BAUTEN) {
-        const kann = b.frei && !this.kostenFehlen('dorf', b.kosten as Record<string, number>);   // R139: das DORF-LAGER zahlt
-        const farbe = !b.frei ? '#5a5348' : kann ? '#e8dfc8' : '#7a6a52';
-        const knopf = this.add.rectangle(F(8), y, w - F(16), F(30), kann ? 0x1c1409 : 0x120d07, 0.9).setOrigin(0).setStrokeStyle(1, kann ? 0x5a4a2e : 0x3a2f1e).setInteractive({ useHandCursor: true });
-        knopf.on('pointerdown', () => this.rtsBaue(b));
-        const hp = BAU_HP[b.id]; const tip = `${b.name}\n${b.beschreibung}${hp ? `\nLebenspunkte: ${hp}` : ''}`;
-        knopf.on('pointerover', () => this.zeigeBauTooltip(tip, c.x));
-        knopf.on('pointerout', () => this.versteckeBauTooltip());
-        c.add(knopf);
-        c.add(this.add.text(F(14), y + F(4), b.name, { fontFamily: 'serif', fontSize: `${F(11)}px`, color: farbe }));
-        const ktxt = Object.entries(b.kosten).map(([k, n]) => `${n}${MATERIAL_NAMES[k as MaterialId][0]}`).join(' ');
-        c.add(this.add.text(F(14), y + F(17), ktxt, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a' }));
-        y += F(34);
-      }
-      c.add(this.add.text(F(8), y + F(2), 'Bauwerk wählen -> mit der Maus\nplatzieren (Rechtsklick bricht ab).\nPalisade: ziehen für mehrere.', { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#6a5f4c', lineSpacing: 2 }));
-    } else if (this.rtsTab === 'befehle') {
-      // BEFEHLE: Steuerungs-Umschalter + Formationen
-      const heldMod = !this.devFreiKam;
-      const modBtn = this.add.rectangle(F(8), y, w - F(16), F(28), 0x221808, 0.95).setOrigin(0).setStrokeStyle(1, 0x6a5636).setInteractive({ useHandCursor: true });
-      modBtn.on('pointerdown', () => { this.setzeFreiKamera(!this.devFreiKam); this.sfx.play('klick'); this.baueRtsLeiste(); });
-      c.add(modBtn);
-      c.add(this.add.text(F(14), y + F(6), heldMod ? '⚑ Steuerung: HELD (WASD)' : '⚑ Steuerung: TRUPPEN (Maus)', { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#c9a227' }));
-      y += F(34);
-      // Schild-Toggle: der gewählte Held hält zwischen den Schlägen die Deckung
-      const schildBtn = this.add.rectangle(F(8), y, w - F(16), F(28), this.rtsSchildAktiv ? 0x1a2418 : 0x221808, 0.95).setOrigin(0).setStrokeStyle(1, this.rtsSchildAktiv ? 0x6a9a5a : 0x6a5636).setInteractive({ useHandCursor: true });
-      schildBtn.on('pointerdown', () => { this.rtsSchildAktiv = !this.rtsSchildAktiv; this.sfx.play('klick'); this.baueRtsLeiste(); this.logMsg(this.rtsSchildAktiv ? 'Held hält den Schild oben.' : 'Held kämpft ohne Deckung.', ''); });
-      c.add(schildBtn);
-      c.add(this.add.text(F(14), y + F(6), this.rtsSchildAktiv ? '🛡 Schild: AN' : '🛡 Schild: AUS', { fontFamily: 'serif', fontSize: `${F(10)}px`, color: this.rtsSchildAktiv ? '#9ad86a' : '#b0a48a' }));
-      y += F(36);
-      // R139 (Dok 03, 1.7 - Dungeon Siege): DREI Verhaltens-Achsen. Erst dadurch
-      // entstehen Rollen (Feldscher: nahe bleiben + Feuer einstellen).
-      const achse = <T extends string>(titel: string, eintraege: Array<[T, string]>, aktiv: T | null, setze: (v: T) => void): void => {
-        c.add(this.add.text(F(8), y, titel, { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#8a7a5a', letterSpacing: 1 }));
-        y += F(16);
-        let hx = F(8);
-        for (const [v, lbl] of eintraege) {
-          const an = aktiv === v;
-          const kn = this.add.text(hx, y, lbl, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: an ? '#f0d060' : '#d8cfb8', backgroundColor: an ? '#3a2a10' : '#120d07', padding: { x: F(5), y: F(3) } }).setInteractive({ useHandCursor: true });
-          kn.on('pointerdown', () => { setze(v); this.sfx.play('klick'); this.baueRtsLeiste(); });
-          c.add(kn); hx += kn.width + F(4);
-        }
-        y += F(26);
-      };
-      achse('Bewegung', [['aggressiv', 'Verfolgen'], ['verteidigen', 'Nahe bleiben'], ['halten', 'Halten']], this.rtsAktHaltung, (v) => this.setzeHaltung(v));
-      achse('Angriff', [['angreifen', 'Angreifen'], ['zurueckschlagen', 'Nur zurückschlagen'], ['feuerEinstellen', 'Feuer einstellen']], this.rtsAktAngriff, (v) => { this.rtsAktAngriff = v; this.rtsBattle?.setAngriff(v); });
-      achse('Zielwahl', [['naechster', 'Nächster'], ['schwaechster', 'Schwächster'], ['gefaehrlichster', 'Gefährlichster']], this.rtsAktZielwahl, (v) => { this.rtsAktZielwahl = v; this.rtsBattle?.setZielwahl(v); });
-      // R139 (1.9): Formations-Abstand - eng fuer den Nahkampf, weit gegen
-      // Flaechenschaden (der natuerliche Katapult-Konter).
-      c.add(this.add.text(F(8), y, `Abstand ${this.rtsBattle ? this.rtsBattle.abstandF.toFixed(1) : '1.0'}x  (eng = Nahkampf, weit = gegen Fläche)`, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a' }));
-      y += F(14);
-      let ax2 = F(8);
-      for (const [lbl, f] of [['Eng', 0.7], ['Normal', 1.0], ['Weit', 1.5]] as Array<[string, number]>) {
-        const an = Math.abs((this.rtsBattle?.abstandF ?? 1) - f) < 0.05;
-        const kn = this.add.text(ax2, y, lbl, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: an ? '#f0d060' : '#d8cfb8', backgroundColor: an ? '#3a2a10' : '#120d07', padding: { x: F(5), y: F(3) } }).setInteractive({ useHandCursor: true });
-        kn.on('pointerdown', () => { this.rtsBattle?.setAbstand(f); this.sfx.play('klick'); this.baueRtsLeiste(); });
-        c.add(kn); ax2 += kn.width + F(4);
-      }
-      y += F(26);
-      // R142: KEIN Aufstell-Knopf mehr (Autor) - das Heer LEBT auf den Karten.
-      // Truppen kommen ueber Maersche (Karten-Tab) oder das Wartfeuer.
-      c.add(this.add.text(F(8), y, `Garnison hier: ${garnisonVon(this.armee, this.area.id).length} Mann (Karte im Menü verlegt Truppen)`, { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#8a7a5a', wordWrap: { width: w - F(16) } }));
-      y += F(20);
-      // R143 (2.3): AUSHEBUNG - Soldaten sind rar und teuer (Manor Lords).
-      // Der Rekrut tritt der Garnison von Ravensmoor bei (R142 verlegt ihn).
-      c.add(this.add.text(F(8), y, `AUSHEBUNG · Dorf: ${this.bevoelkerung} Arbeiter · Heer ${this.armee.einheiten.length}/${heerObergrenze(this.bevoelkerung)}`, { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#8a7a5a', letterSpacing: 1 }));
-      y += F(16);
-      const rekruten: Array<[string, RtsUnitTyp, 'bauer' | 'soeldner', string]> = [
-        ['Gewappneter', 'nahkampf', 'bauer', `${REKRUTIERUNG.gold} Gold + 1 Waffe + 1 Arbeiter`],
-        ['Bogenschütze', 'bogen', 'bauer', `${REKRUTIERUNG.gold} Gold + 1 Waffe + 1 Arbeiter`],
-        ['Söldner', 'nahkampf', 'soeldner', `${REKRUTIERUNG.soeldnerGold} Gold - kämpft fürs Geld`],
-      ];
-      for (const [lbl, typ, art, kosten] of rekruten) {
-        const knopf = this.add.rectangle(F(8), y, w - F(16), F(26), 0x120d07, 0.9).setOrigin(0).setStrokeStyle(1, 0x3a2f1e).setInteractive({ useHandCursor: true });
-        knopf.on('pointerdown', () => { if (this.rekrutiereSoldat(typ, art)) this.sfx.play('klick'); this.baueRtsLeiste(); });
-        c.add(knopf);
-        c.add(this.add.text(F(14), y + F(3), lbl, { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#d8cfb8' }));
-        c.add(this.add.text(F(14), y + F(15), kosten, { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#7a6a52' }));
-        y += F(30);
-      }
-      // Angriffsmarsch scharf schalten (A blieb der Kamera, R97): danach führt der
-      // nächste Rechts-Befehl den Angriffsmarsch aus.
-      const amBtn = this.add.rectangle(F(8), y, w - F(16), F(24), this.rtsAngriffArmed ? 0x2a1810 : 0x120d07, 0.9).setOrigin(0).setStrokeStyle(1, this.rtsAngriffArmed ? 0xd8804a : 0x3a2f1e).setInteractive({ useHandCursor: true });
-      amBtn.on('pointerdown', () => { this.rtsAngriffArmed = !this.rtsAngriffArmed; this.sfx.play('klick'); this.baueRtsLeiste(); this.logMsg(this.rtsAngriffArmed ? 'Angriffsmarsch scharf - Ziel mit rechter Maus wählen.' : 'Angriffsmarsch aus.', ''); });
-      c.add(amBtn);
-      c.add(this.add.text(F(14), y + F(5), this.rtsAngriffArmed ? '⚔ Angriffsmarsch: SCHARF' : '⚔ Angriffsmarsch (dann rechts)', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: this.rtsAngriffArmed ? '#e8a060' : '#b0a48a' }));
-      y += F(30);
-      c.add(this.add.text(F(8), y, 'Formation (dann rechts ziehen)', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a', letterSpacing: 1 }));
-      y += F(18);
-      for (const f of RTS_FORMATIONEN) {
-        const aktiv = this.rtsFormation === f.id;
-        const knopf = this.add.rectangle(F(8), y, w - F(16), F(26), aktiv ? 0x2a1e0a : 0x120d07, 0.9).setOrigin(0).setStrokeStyle(1, aktiv ? 0xc9a227 : 0x3a2f1e).setInteractive({ useHandCursor: true });
-        knopf.on('pointerdown', () => { this.rtsFormation = f.id; this.rtsBattle?.setForm(WorldScene.RTS_FORM_MAP[f.id]); this.sfx.play('klick'); this.baueRtsLeiste(); this.logMsg(`Formation: ${f.name} - ${f.hinweis}.`, ''); });
-        c.add(knopf);
-        c.add(this.add.text(F(14), y + F(3), f.name, { fontFamily: 'serif', fontSize: `${F(11)}px`, color: aktiv ? '#c9a227' : '#d8cfb8' }));
-        c.add(this.add.text(F(14), y + F(15), f.hinweis, { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#7a6a52' }));
-        y += F(30);
-      }
-    }
-    if (this.rtsTab === 'test') this.baueRtsTestTab(c, F, w, y);
-    if (this.rtsTab === 'wahl') this.baueRtsWahlTab(c, F, w, y);
+    c.add(this.add.rectangle(F(6), gridY - F(6), w - F(12), 1, 0x4a3a26).setOrigin(0));
+    this.bauePultGrid(c, F, w, gridY);
     fixUiScroll(c);
+  }
+
+  // R164: Ressourcen-Zeile des Pults (BAR: Wirtschaft IMMER sichtbar) -
+  // Kernwaren des Dorf-Lagers + Arbeiter + Heer-Deckel.
+  private bauePultRessourcen(c: Phaser.GameObjects.Container, F: (s: number) => number, _w: number, y: number): number {
+    const L = this.dorfLager;
+    const z1 = `🪵${L['holz'] ?? 0}  🪨${L['stein'] ?? 0}  🍞${L['brot'] ?? 0}  ⛓${L['eisen'] ?? 0}  ⚔${L['waffen'] ?? 0}`;
+    const z2 = `Arbeiter ${this.bevoelkerung} · Heer ${this.armee.einheiten.length}/${heerObergrenze(this.bevoelkerung)}`;
+    c.add(this.add.text(F(8), y, z1, { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#c9b88a' }));
+    c.add(this.add.text(F(8), y + F(14), z2, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a' }));
+    return y + F(28);
+  }
+
+  // R164: das feste 4x3-Kommando-Raster. Inhalt = Funktion der Auswahl.
+  private rtsBauKat: string | null = null;
+  private rtsDevOffen = false;
+
+  private bauePultGrid(c: Phaser.GameObjects.Container, F: (s: number) => number, w: number, y0: number): void {
+    const battle = this.rtsBattle;
+    if (!battle) return;
+    const zw = Math.floor((w - F(14)) / 4), zh = F(34);
+    const feld = (col: number, row: number, symbol: string, lbl: string, opts: { an?: boolean; aus?: boolean; taste?: string; tip?: string }, fn: (() => void) | null): void => {
+      const x = F(7) + col * zw, y = y0 + row * (zh + F(2));
+      const klickbar = !!fn && !opts.aus;
+      const bg = this.add.rectangle(x, y, zw - F(2), zh, opts.an ? 0x3a2a10 : 0x120d07, 0.95)
+        .setOrigin(0).setStrokeStyle(1, opts.an ? 0xc9a227 : klickbar ? 0x4a3a26 : 0x2a2118);
+      c.add(bg);
+      c.add(this.add.text(x + (zw - F(2)) / 2, y + F(4), symbol, { fontFamily: 'serif', fontSize: `${F(12)}px`, color: opts.aus ? '#4a4238' : opts.an ? '#f0d060' : '#d8cfb8' }).setOrigin(0.5, 0));
+      c.add(this.add.text(x + (zw - F(2)) / 2, y + F(19), lbl, { fontFamily: 'serif', fontSize: `${F(7)}px`, color: opts.aus ? '#4a4238' : opts.an ? '#c9a227' : '#8a7a5a' }).setOrigin(0.5, 0));
+      if (opts.taste) c.add(this.add.text(x + zw - F(6), y + F(2), opts.taste, { fontFamily: 'serif', fontSize: `${F(7)}px`, color: '#6a5f4c' }).setOrigin(1, 0));
+      if (!klickbar) return;
+      bg.setInteractive({ useHandCursor: true });
+      bg.on('pointerdown', () => { fn!(); this.sfx.play('klick'); this.baueRtsLeiste(); });
+      if (opts.tip) {
+        bg.on('pointerover', () => this.zeigeBauTooltip(opts.tip!, c.x));
+        bg.on('pointerout', () => this.versteckeBauTooltip());
+      }
+    };
+    const sel = battle.gewaehlte();
+    // --- Kontext KAMPF: Einheiten (oder Held) gewaehlt --------------------
+    if (sel.length > 0 || battle.heldGewaehlt) {
+      const formNamen: Record<string, string> = { linie: 'Linie', schildwall: 'Schildwall', keil: 'Keil', plaenkler: 'Plänkler' };
+      const naechsteForm = (): void => {
+        const ids = RTS_FORMATIONEN.map((f) => f.id);
+        const i = (ids.indexOf(this.rtsFormation) + 1) % ids.length;
+        this.rtsFormation = ids[i];
+        battle.setForm(WorldScene.RTS_FORM_MAP[this.rtsFormation]);
+      };
+      const abstaende: Array<[string, number]> = [['Eng', 0.7], ['Normal', 1.0], ['Weit', 1.5]];
+      const abIdx = abstaende.findIndex(([, f]) => Math.abs(battle.abstandF - f) < 0.05);
+      feld(0, 0, '⚔', 'Angriff', { an: this.rtsAngriffArmed, taste: 'A', tip: 'Angriffsmarsch scharf - dann Ziel mit rechter Maus' }, () => { this.rtsAngriffArmed = !this.rtsAngriffArmed; });
+      feld(1, 0, '✋', 'Halten', { taste: 'H', tip: 'Stellung halten' }, () => battle.stellungHalten());
+      feld(2, 0, '⛬', formNamen[this.rtsFormation] ?? 'Formation', { tip: 'Formation wechseln (dann rechts ziehen)' }, naechsteForm);
+      feld(3, 0, '↔', abstaende[(abIdx + 1) % 3]?.[0] ?? 'Abstand', { tip: 'Formations-Abstand: eng = Nahkampf, weit = gegen Fläche' }, () => battle.setAbstand(abstaende[(abIdx + 1) % abstaende.length][1]));
+      feld(0, 1, '🐾', 'Verfolgen', { an: this.rtsAktHaltung === 'aggressiv' }, () => this.setzeHaltung('aggressiv'));
+      feld(1, 1, '🛡', 'Nahe bleiben', { an: this.rtsAktHaltung === 'verteidigen' }, () => this.setzeHaltung('verteidigen'));
+      feld(2, 1, '⚓', 'Halten', { an: this.rtsAktHaltung === 'halten' }, () => this.setzeHaltung('halten'));
+      feld(3, 1, '🛡', this.rtsSchildAktiv ? 'Schild AN' : 'Schild aus', { an: this.rtsSchildAktiv, tip: 'Held hält zwischen den Schlägen die Deckung' }, () => { this.rtsSchildAktiv = !this.rtsSchildAktiv; });
+      const feuerNamen: Record<string, string> = { angreifen: 'Feuer frei', zurueckschlagen: 'Nur zurück', feuerEinstellen: 'Feuer halt' };
+      const feuerAktuell = this.rtsAktAngriff ?? 'angreifen';
+      const naechsterFeuer = (): void => {
+        const reihe: Array<'angreifen' | 'zurueckschlagen' | 'feuerEinstellen'> = ['angreifen', 'zurueckschlagen', 'feuerEinstellen'];
+        const neu = reihe[(reihe.indexOf(feuerAktuell) + 1) % reihe.length];
+        this.rtsAktAngriff = neu;
+        battle.setAngriff(neu);
+      };
+      feld(0, 2, '🔥', feuerNamen[feuerAktuell], { an: feuerAktuell !== 'angreifen' }, naechsterFeuer);
+      feld(1, 2, '◎', 'Nächster', { an: this.rtsAktZielwahl === 'naechster' }, () => { this.rtsAktZielwahl = 'naechster'; battle.setZielwahl('naechster'); });
+      feld(2, 2, '♡', 'Schwächster', { an: this.rtsAktZielwahl === 'schwaechster' }, () => { this.rtsAktZielwahl = 'schwaechster'; battle.setZielwahl('schwaechster'); });
+      feld(3, 2, '☠', 'Gefahr', { an: this.rtsAktZielwahl === 'gefaehrlichster' }, () => { this.rtsAktZielwahl = 'gefaehrlichster'; battle.setZielwahl('gefaehrlichster'); });
+      return;
+    }
+    // --- Kontext DEV: Test-Werkzeuge als eigene Rasterebene ----------------
+    if (this.rtsDevOffen) {
+      this.baueRtsTestTab(c, F, w, y0 - F(150));
+      feld(3, 2, '◀', 'Zurück', {}, () => { this.rtsDevOffen = false; });
+      return;
+    }
+    // --- Kontext BAU Ebene 2: Rekruten ------------------------------------
+    if (this.rtsBauKat === 'aushebung') {
+      const rekruten: Array<[number, string, RtsUnitTyp, 'bauer' | 'soeldner', string]> = [
+        [0, 'Gewappneter', 'nahkampf', 'bauer', `${REKRUTIERUNG.gold}G+Waffe+Arbeiter`],
+        [1, 'Bogenschütze', 'bogen', 'bauer', `${REKRUTIERUNG.gold}G+Waffe+Arbeiter`],
+        [2, 'Söldner', 'nahkampf', 'soeldner', `${REKRUTIERUNG.soeldnerGold}G - kämpft fürs Geld`],
+      ];
+      for (const [i, lbl, typ, art, tip] of rekruten) {
+        feld(i, 0, '⚑', lbl, { tip }, () => this.rekrutiereSoldat(typ, art));
+      }
+      feld(3, 2, '◀', 'Zurück', {}, () => { this.rtsBauKat = null; });
+      return;
+    }
+    // --- Kontext BAU Ebene 2: konkrete Bauten der Kategorie ---------------
+    if (this.rtsBauKat) {
+      const kat = BAU_KATEGORIEN.find((k) => k.id === this.rtsBauKat);
+      (kat?.bauten ?? []).forEach((bid, i) => {
+        const b = RTS_BAUTEN.find((x) => x.id === bid);
+        if (!b) return;
+        const kann = b.frei && !this.kostenFehlen('dorf', b.kosten as Record<string, number>);
+        const ktxt = Object.entries(b.kosten).map(([k, n]) => `${n}${MATERIAL_NAMES[k as MaterialId][0]}`).join(' ');
+        const hp = BAU_HP[b.id];
+        feld(i % 4, Math.floor(i / 4), '⌂', `${b.name.split(' ')[0]} ${ktxt}`, { aus: !kann, tip: `${b.name}
+${b.beschreibung}${hp ? `
+Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
+      });
+      feld(3, 2, '◀', 'Zurück', {}, () => { this.rtsBauKat = null; });
+      return;
+    }
+    // --- Kontext BAU Ebene 1: Kategorien (BAR-Prinzip) --------------------
+    BAU_KATEGORIEN.forEach((kat, i) => {
+      feld(i, 0, '⌂', kat.name, { taste: kat.taste }, () => { this.rtsBauKat = kat.id; });
+    });
+    feld(0, 1, '⚑', 'Aushebung', { tip: `Dorf: ${this.bevoelkerung} Arbeiter · Heer ${this.armee.einheiten.length}/${heerObergrenze(this.bevoelkerung)}` }, () => { this.rtsBauKat = 'aushebung'; });
+    feld(1, 1, '⚑', this.devFreiKam ? 'Steuerung: Truppen' : 'Steuerung: Held', { an: this.devFreiKam, tip: 'Frei-Kamera + Truppenbefehle vs. Helden-Steuerung (WASD)' }, () => this.setzeFreiKamera(!this.devFreiKam));
+      feld(2, 1, '⚒', 'Dev/Test', {}, () => { this.rtsDevOffen = true; });
+    feld(3, 1, '✕', 'Schließen', { tip: 'Zurück zur Helden-Steuerung' }, () => this.toggleRtsModus());
+    const bauWaren = ['holz', 'stein', 'fasern', 'schafgarbe'] as const;
+    const bestand = bauWaren.map((w2) => `${this.dorfLager[w2] ?? 0} ${MATERIAL_NAMES[w2 as MaterialId] ?? w2}`).join(' · ');
+    c.add(this.add.text(F(8), y0 + 2 * (zh + F(2)) + F(4), `Dorf-Lager zahlt: ${bestand}`, { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#6a5f4c', wordWrap: { width: w - F(16) } }));
   }
 
   // R148 (AoE/BAR): AUSWAHL-Ansicht. Chips aller Gewaehlten (Klick pickt EINE
