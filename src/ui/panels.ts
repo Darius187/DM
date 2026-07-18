@@ -265,12 +265,20 @@ export class UIPanels {
       ['held', 'CHARAKTER'], ['faehigkeiten', 'FÄHIGKEITEN'], ['heer', 'HEER'], ['karte', 'KARTE'], ['aufgaben', 'AUFGABEN'],
       ['kontakte', 'KONTAKTE'], ['album', 'ALBUM'], ['statistik', 'STATISTIK'],
     ];
+    // R161 (Autor "alles versetzt"): die Bildschale malt ihre EIGENEN Tab-
+    // Kaesten - Positionen aus dem Bild vermessen (dunkle Pixel-Laeufe bei
+    // y=37). Die alte Gleichverteilung driftete bis 39px neben die Kaesten.
+    const SHELL_TAB_BOXEN: ReadonlyArray<readonly [number, number]> = [
+      [126, 304], [321, 512], [529, 688], [705, 862], [879, 1038], [1054, 1214], [1231, 1386], [1402, 1552],
+    ];
+    const shellTabs = shellAktiv && SHELL_TAB_BOXEN.length === reiter.length;
     const tabLinks = w * (120 / 1672);
     const tabRechts = w * (1558 / 1672);
-    const tabBreite = (tabRechts - tabLinks) / reiter.length;
+    const gleichBreite = (tabRechts - tabLinks) / reiter.length;
     const tabY = h * (37 / 941);
     for (const [index, [id, lbl]] of reiter.entries()) {
-      const tx = tabLinks + index * tabBreite;
+      const tx = shellTabs ? w * (SHELL_TAB_BOXEN[index][0] / 1672) : tabLinks + index * gleichBreite;
+      const tabBreite = shellTabs ? w * ((SHELL_TAB_BOXEN[index][1] - SHELL_TAB_BOXEN[index][0]) / 1672) : gleichBreite;
       if (this.hauptTab === id) {
         c.add(this.scene.add.rectangle(tx + 2, h * (15 / 941), tabBreite - 4, h * (45 / 941), 0x68281f, 0.74).setOrigin(0));
       }
@@ -1138,10 +1146,16 @@ export class UIPanels {
     let tx2 = x0, ty2 = shellAktiv ? (144 - 79) * s : 34;
     let tabUmbruch = false;
     if (shellAktiv) {
-      const tabW = w / tabs.length;
-      const tabH = 34 * s;
+      // R161: die Schale malt die 8 Filter-Reiter bei Design-x 676..1176
+      // (vermessen, helle Pixel-Laeufe bei y=160) - Labels/Hitboxen sitzen
+      // jetzt EXAKT auf den gemalten Reitern statt gleichverteilt daneben.
+      const FILTER_BOXEN: ReadonlyArray<readonly [number, number]> = [
+        [676, 738], [739, 800], [802, 863], [864, 926], [927, 988], [990, 1051], [1052, 1112], [1114, 1176],
+      ];
+      const tabH = 30 * s;
       tabs.forEach(([id, lbl], index) => {
-        const tx = x0 + index * tabW;
+        const [b0, b1] = FILTER_BOXEN[index];
+        const tx = b0 * s, tabW = (b1 - b0) * s;
         if (this.filter === id) c.add(this.scene.add.rectangle(tx + 1, ty2, tabW - 2, tabH, 0x4a3925, 0.78).setOrigin(0));
         const hit = this.scene.add.rectangle(tx, ty2, tabW, tabH, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true });
         const t = this.scene.add.text(tx + tabW / 2, ty2 + tabH / 2, lbl, {
@@ -1239,6 +1253,64 @@ export class UIPanels {
     }
 
     const rar = (it.rarity ?? 0) as Rarity;
+    // R161 (Autor "alles versetzt, 4-6 Schaden schwebt ausserhalb"): im
+    // Schalen-Modus liegt ALLES in der gemalten Innenbox (Design 1283..1528,
+    // dieselben Koordinaten wie die Knoepfe) und SKALIERT mit - vorher waren
+    // die Positionen Fixpixel und liefen bei kleiner Schale aus den Kaesten.
+    if (shellAktiv) {
+      const bx = 1283 * s, bw = 245 * s, bcx = bx + bw / 2;
+      const icon = this.scene.add.image(bcx, (178 - 79) * s, this.provider.itemIcon(it));
+      icon.setScale(Math.min(1.05, (84 * s) / Math.max(icon.width, icon.height)));
+      c.add(icon);
+      c.add(this.scene.add.text(bcx, (238 - 79) * s, it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
+        fontFamily: 'serif', fontSize: `${Math.max(11, Math.round(15 * s))}px`, color: RARITY_INK[rar],
+        wordWrap: { width: bw - 8 }, align: 'center',
+      }).setOrigin(0.5, 0));
+      const typS = it.kind === 'weapon'
+        ? `${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} · ${handLabel(it.weaponClass)}`
+        : TYP_NAMEN[it.kind] ?? 'Gegenstand';
+      c.add(this.scene.add.text(bcx, (268 - 79) * s, `${typS} · ${RARITY_NAMES[rar]}`, {
+        fontFamily: 'serif', fontSize: `${Math.max(9, Math.round(11 * s))}px`, color: INK_SOFT,
+      }).setOrigin(0.5, 0));
+      this.zierLinie(c, bx, (300 - 79) * s, bw, 'WERTE', true);
+      c.add(this.scene.add.text(bx + 8 * s, (312 - 79) * s, itemStatLine(it, false), {
+        fontFamily: 'serif', fontSize: `${Math.max(10, Math.round(12 * s))}px`, color: INK,
+        wordWrap: { width: bw - 16 * s }, lineSpacing: 3,
+      }));
+      let ys = (362 - 79) * s;
+      if (it.boni.length || it.sock) {
+        this.zierLinie(c, bx, ys - 7 * s, bw, 'AFFIXE', true);
+        ys += 8 * s;
+        for (const bonus of it.boni) {
+          c.add(this.scene.add.text(bx + 8 * s, ys, `◆  ${bonus.t.replace('#', String(bonus.v))}`, {
+            fontFamily: 'serif', fontSize: `${Math.max(9, Math.round(10.5 * s))}px`, color: '#604185', wordWrap: { width: bw - 16 * s },
+          }));
+          ys += 20 * s;
+        }
+        if (it.sock) {
+          const sockel = it.sock.gem ? `${it.sock.gem.name} (+${it.sock.gem.power})` : 'Leerer Sockel';
+          c.add(this.scene.add.text(bx + 8 * s, ys, `◇  ${sockel}`, { fontFamily: 'serif', fontSize: `${Math.max(9, Math.round(10.5 * s))}px`, color: INK_SOFT }));
+          ys += 20 * s;
+        }
+      }
+      const ausruestbarS = ['weapon', 'armor', 'ring', 'schild'].includes(it.kind);
+      if (ausruestbarS && this.compareItem === it) {
+        this.zierLinie(c, bx, Math.max(ys, (470 - 79) * s) - 7 * s, bw, 'VERGLEICH', true);
+        let yv = Math.max(ys, (470 - 79) * s) + 8 * s;
+        const neu = this.statsWith(it);
+        const werte: Array<[string, number, number]> = [
+          ['Schaden', p.stats.dmg, neu.dmg], ['Rüstung', p.stats.armor, neu.armor],
+          ['Trefferpunkte', p.stats.maxhp, neu.maxhp], ['Mana', p.stats.maxmana, neu.maxmana],
+        ];
+        for (const [name, alt, wert] of werte) {
+          const farbe = wert > alt ? '#3f7135' : wert < alt ? '#8b3027' : INK_SOFT;
+          c.add(this.scene.add.text(bx + 8 * s, yv, `${name}: ${alt}  →  ${wert}`, { fontFamily: 'serif', fontSize: `${Math.max(9, Math.round(10.5 * s))}px`, color: farbe }));
+          yv += 19 * s;
+        }
+      }
+      this.buildDetailButtons(c, it, x0, w, h, shellAktiv, s);
+      return;
+    }
     const icon = this.scene.add.image(x0 + 56, 92, this.provider.itemIcon(it));
     icon.setScale(Math.min(1.05, 78 / Math.max(icon.width, icon.height)));
     c.add(icon);
@@ -1273,7 +1345,6 @@ export class UIPanels {
     }
 
     const ausruestbar = ['weapon', 'armor', 'ring', 'schild'].includes(it.kind);
-    const angelegt = it === p.weapon || it === p.bogen || it === p.armorIt || it === p.ring || it === p.schildIt;
     if (ausruestbar && this.compareItem === it) {
       y = Math.max(y + 4, 268);
       this.zierLinie(c, x0 + 8, y - 7, w - 16, 'VERGLEICH', true);
@@ -1291,6 +1362,15 @@ export class UIPanels {
       }
     }
 
+    this.buildDetailButtons(c, it, x0, w, h, shellAktiv, s);
+  }
+
+  // R161: BENUTZEN/ABLEGEN/VERGLEICHEN - EIN Block fuer Schalen- und
+  // Fallback-Layout (vorher nur im Fallback-Zweig erreichbar).
+  private buildDetailButtons(c: Phaser.GameObjects.Container, it: Item, x0: number, w: number, h: number, shellAktiv: boolean, s: number): void {
+    const p = this.getPlayer();
+    const ausruestbar = ['weapon', 'armor', 'ring', 'schild'].includes(it.kind);
+    const angelegt = it === p.weapon || it === p.bogen || it === p.armorIt || it === p.ring || it === p.schildIt;
     const buttonH = shellAktiv ? 45 * s : 31;
     const button = (by: number, label: string, aktiv: boolean, farbe: number, fn: () => void): void => {
       const buttonX = shellAktiv ? 1283 * s : x0 + 18;
@@ -1333,12 +1413,15 @@ export class UIPanels {
     row.setInteractive({ useHandCursor: true });
     c.add(row);
     if (rar >= 1) c.add(this.scene.add.rectangle(x0, y, 3, rowH, rarCol).setOrigin(0));
-    // R140 (Autor: "alles verschoben"): das Icon passt sich der ZEILE an
-    // (Pack-Icons sind 128px - die alte Skala ragte 20px ueber die Zeile und
-    // der Name lag AUF dem Icon). Texte wachsen mit der Zeilenhoehe mit.
-    const iconS = rowH - 10;
-    c.add(this.scene.add.image(x0 + 6 + iconS / 2, y + rowH / 2, this.provider.itemIcon(it)).setDisplaySize(iconS, iconS));
-    const textX = x0 + rowH + 8;   // rechts neben dem Icon-Quadrat, mit Luft
+    // R140 (Autor: "alles verschoben"): das Icon passt sich der ZEILE an.
+    // R161: im Schalen-Modus sitzt das Icon in der GEMALTEN Slot-Spalte
+    // (Design-x 565..615, vermessen) - der Slot-Rahmen schnitt sonst in den
+    // Text. Der Text beginnt rechts NEBEN der Slot-Spalte.
+    const s2 = this.panelScale;
+    const iconS = shellAktiv ? Math.min(rowH - 10, 44 * s2) : rowH - 10;
+    const iconCx = shellAktiv ? 590 * s2 : x0 + 6 + iconS / 2;
+    c.add(this.scene.add.image(iconCx, y + rowH / 2, this.provider.itemIcon(it)).setDisplaySize(iconS, iconS));
+    const textX = shellAktiv ? 628 * s2 : x0 + rowH + 8;   // rechts neben Slot/Icon, mit Luft
     c.add(this.scene.add.text(textX, y + Math.round(rowH * 0.12), it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
       fontFamily: 'serif', fontSize: `${Math.max(12, Math.round(13 * this.panelScale))}px`, color: RARITY_INK[rar],
     }));
