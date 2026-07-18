@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir, angleToDir8, angleToDir16, type EnemyHost } from '../world/Enemy';
-import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildWaldWest, buildWaldSuedOst, buildBurg, buildWaldNord, buildWaldMitte, buildLager, buildStadt2, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn, type Abbaubar } from '../world/areagen';
+import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildWaldWest, buildWaldSuedOst, buildBurg, buildWaldNord, buildWaldMitte, buildLager, buildStadt2, buildHochland, buildWaldNordWest, buildWaldNordOst, buildSchlachtfeld, buildKloster, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn, type Abbaubar } from '../world/areagen';
 import { katakombenAktivFuer, buildKatakombenKrypta } from '../world/katakombenKrypta';
 import { kryptaVersatzUnter, ebeneFuerKlassik } from '../data/katakombenDungeon';
 import { v9AktivFuer, buildV9Krypta } from '../world/v9Krypta';
@@ -35,7 +35,6 @@ import { POI_BILDER } from '../world/poiBilder';
 import { sdWasser, skaliereGeometrie, type WasserGeometrie } from '../world/wasserFeld';
 import { setRegler as dorfSetRegler, starteWelt as dorfStart, setKamera as dorfSetKamera, istSolide as dorfIstSolide, pausiereWelt as dorfPause, aktuellesLicht as dorfLicht, setExternWasser as dorfSetExternWasser, aktuellerRegen as dorfRegen, tick as dorfTick, setRenderScale as dorfSetRenderScale, berechneTagLicht } from '../demo3d/dorfSim';
 import { DevKonsole, type DKTab, type DKControl } from '../ui/devKonsole';
-import { KARTEN_KANTEN } from '../data/kartenKanten';
 import { wetter } from '../logic/wetter';
 import { SchattenManager, mischFarbe, type Occluder, type Licht } from '../systems/SchattenManager';
 import { LichtPanel } from '../ui/lichtPanel';
@@ -191,6 +190,13 @@ export const FUERSTENTUM: ReadonlyArray<FuerstentumGebiet> = [
   { id: 'wald_m', name: 'Krähenwald', gx: 3, gy: 2 },
   { id: 'lager', name: 'Monsterlager', gx: 4, gy: 2 },     // R98 Prompt-2 Schub 3 (gy2 komplett)
   { id: 'stadt2', name: 'Verfallene Stadt', gx: 5, gy: 2 },
+  // R154 (Autor "es fehlen noch Karten im Norden"): gy1-Reihe + Kloster (5,0)
+  // aus der ravenkarte - Huellen, Inhalte folgen je Karten-Auftrag.
+  { id: 'hochland', name: 'Hoher Norden', gx: 2, gy: 1 },
+  { id: 'wald_nw', name: 'Grauwald', gx: 3, gy: 1 },
+  { id: 'wald_ne', name: 'Hünenwald', gx: 4, gy: 1 },
+  { id: 'schlacht', name: 'Altes Schlachtfeld', gx: 5, gy: 1 },
+  { id: 'kloster', name: 'Klosterberg', gx: 5, gy: 0 },
 ];
 
 // Eine Kachel auf eine Minikarten-Farbe abbilden.
@@ -1762,6 +1768,11 @@ export class WorldScene extends CombatScene {
     else if (id === 'wald_m') a = buildWaldMitte(rng);
     else if (id === 'lager') a = buildLager(rng);
     else if (id === 'stadt2') a = buildStadt2(rng);
+    else if (id === 'hochland') a = buildHochland(rng);        // R154: Nord-Reihe
+    else if (id === 'wald_nw') a = buildWaldNordWest(rng);
+    else if (id === 'wald_ne') a = buildWaldNordOst(rng);
+    else if (id === 'schlacht') a = buildSchlachtfeld(rng);
+    else if (id === 'kloster') a = buildKloster(rng);
     else if (id === 'goldmine') a = buildGoldmine(rng);
     else {
       // R102: Katakomben-Generator je Ebene per Konfig (KATAKOMBEN_EINSATZ).
@@ -5048,15 +5059,22 @@ export class WorldScene extends CombatScene {
   // nahtlos hinüber und erscheint an der gespiegelten Kante. Basis für den
   // Weg START->Wald->Stadt und den späteren Schnelllauf.
   private checkKartenRand(): void {
-    const k = KARTEN_KANTEN[this.area.id];
-    if (!k || this.uiBlocked()) return;
+    // R154 (Autor "mache alle Karten betretbar"): die Rand-Uebergaenge laufen
+    // jetzt ueber das FUERSTENTUM-Raster (wie die Heer-Maersche) - JEDE
+    // Oberweltkarte fuehrt an jeder offenen Kante zum Raster-Nachbarn. Die
+    // Altlasten 'wald'/'village' (Legacy-Plaetze im Raster) bleiben aussen vor.
+    if (this.uiBlocked()) return;
+    const hier = FUERSTENTUM.find((g) => g.id === this.area.id);
+    if (!hier || hier.id === 'wald' || hier.id === 'village') return;
+    const nachbar = (dx: number, dy: number): string | undefined =>
+      FUERSTENTUM.find((g) => g.id !== 'wald' && g.id !== 'village' && g.gx === hier.gx + dx && g.gy === hier.gy + dy)?.id;
     const wpx = this.area.w * TILE, hpx = this.area.h * TILE, m = TILE;
-    const erreichbar = (id?: string): id is string => !!id && !!KARTEN_KANTEN[id];
     let ziel: string | undefined; let spawn: { x: number; y: number } | undefined;
-    if (this.px < m && erreichbar(k.nachbarn.west)) { ziel = k.nachbarn.west; spawn = { x: (this.getArea(ziel).w - 3) * TILE, y: this.py }; }
-    else if (this.px > wpx - m && erreichbar(k.nachbarn.ost)) { ziel = k.nachbarn.ost; spawn = { x: 3 * TILE, y: this.py }; }
-    else if (this.py < m && erreichbar(k.nachbarn.nord)) { ziel = k.nachbarn.nord; spawn = { x: this.px, y: (this.getArea(ziel).h - 3) * TILE }; }
-    else if (this.py > hpx - m && erreichbar(k.nachbarn.sued)) { ziel = k.nachbarn.sued; spawn = { x: this.px, y: 3 * TILE }; }
+    const west = nachbar(-1, 0), ost = nachbar(1, 0), nord = nachbar(0, -1), sued = nachbar(0, 1);
+    if (this.px < m && west) { ziel = west; spawn = { x: (this.getArea(west).w - 3) * TILE, y: this.py }; }
+    else if (this.px > wpx - m && ost) { ziel = ost; spawn = { x: 3 * TILE, y: this.py }; }
+    else if (this.py < m && nord) { ziel = nord; spawn = { x: this.px, y: (this.getArea(nord).h - 3) * TILE }; }
+    else if (this.py > hpx - m && sued) { ziel = sued; spawn = { x: this.px, y: 3 * TILE }; }
     if (ziel && spawn) this.goArea(ziel, spawn);
   }
 
@@ -5341,7 +5359,13 @@ export class WorldScene extends CombatScene {
         // hinzulaufen. Gilt ab jetzt fuer ALLE neuen Karten (AGENTS.md-Regel).
         cs.push({ kind: 'note', text: 'Live-Karten (im Spiel platziert) - Schnellzugang zum Testen:' });
         cs.push({ kind: 'button', label: () => 'Höhle/Goldmine betreten (live, Eingang Finsterhain)', onClick: () => { this.devKonsole?.toggle(); this.goArea('goldmine'); } });
-        cs.push({ kind: 'button', label: () => 'Zurück nach Ravensmoor (stadt)', onClick: () => { this.devKonsole?.toggle(); this.goArea('stadt'); } });
+        // R154 + Maps-Tab-Regel (R138b): ALLE Oberweltkarten automatisch hier -
+        // jede kuenftig ins FUERSTENTUM eingetragene Karte erscheint von selbst.
+        cs.push({ kind: 'note', text: 'Oberwelt (Fürstentum-Raster) - direkt betreten:' });
+        for (const g of FUERSTENTUM) {
+          if (g.id === 'village') continue;   // ARCHIV bleibt zu
+          cs.push({ kind: 'button', label: () => `${g.name} [${g.gx},${g.gy}] betreten`, onClick: () => { this.devKonsole?.toggle(); this.goArea(g.id); } });
+        }
         return cs;
       } },
       // R138b (Autor): Boden/Wand-Werkbank - 20 Boeden + 10 Waende live auf der

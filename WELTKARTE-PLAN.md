@@ -49,7 +49,7 @@ von West nach Ost.
 | `wald_ne` | Dunkelwald | 4,1 | `buildForest`-Variante | später |
 | `wald_se` | Dunkelwald (Süd-Ost) | 5,3 | `buildForest`-Variante | später |
 | `lager` | Monsterlager | 4,2 | `buildForest` + Lager | später |
-| `hochland` | Hoher Norden (Schnee) | 2,1 | Schnee-Builder | später |
+| `hochland` | Hoher Norden (Schnee) | 2,1 | Huelle (R154), Schnee spaeter | VERDRAHTET |
 | `burg` | Fürstenburg | 0,3 | Burg-Builder | später (RTS-Nachschub) |
 | `schlacht` | Schlachtfeld | 5,1 | später | später |
 | `stadt2` | Verfallene Stadt | 5,2 | später | später |
@@ -207,3 +207,13 @@ Referenz; die restlichen Huellen folgen dem Rezept oben.
   quer ueber dem geraden Wasserband, Ufer-zu-Ufer, beide Enden angeschlossen.
 - Monsterlager: See NUR ganz links, Mitte frei/bebaubar (kleine Stadt geplant).
 - Gilt fuer ALLE Karten; bei neuen Huellen einhalten (Rezept oben nutzen).
+
+## Stand R154 (nachgetragen)
+- gy1-Reihe + kloster (5,0) sind als HUELLEN verdrahtet (FUERSTENTUM +
+  getArea + Maps-Tab automatisch): hochland/wald_nw/wald_ne/schlacht/kloster.
+- Rand-Uebergaenge laufen ueber das FUERSTENTUM-RASTER (checkKartenRand),
+  nicht mehr ueber KARTEN_KANTEN (die alte 3er-Tabelle ist nur noch Doku).
+- Uferpfad: Baeume am Wasser weichen -> Fluss-Kanten sind als Wildwechsel
+  begehbar; Weg-Kanten sowieso (randWegLinien).
+- OFFEN je Karte: Schnee-Look (hochland), Schlachtfeld-Deko (schlacht),
+  Kloster-Bau (kloster, Endboss), Feinjustierung der Kanten-pos mit dem Autor.

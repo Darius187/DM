@@ -1618,3 +1618,21 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
 - OFFEN aus der Autor-Liste: R152 Live-Karte (Held/NPCs/Truppen/Haeuser),
   R154 Nord-Karten + alle Raender betretbar - in Arbeit.
 - tsc fehlerfrei, 61 Testdateien / 390 Tests gruen.
+
+## Runde 154 - Der Norden steht, alle Karten betretbar
+- 5 neue Karten aus der ravenkarte: Hoher Norden (2,1), Grauwald (3,1),
+  Huenenwald (4,1), Altes Schlachtfeld (5,1), Klosterberg (5,0) - Huellen mit
+  Tabellen-Kanten; Schnee/Schlachtfeld-Deko/Kloster folgen je eigenem Auftrag.
+- Rand-Uebergaenge umgestellt: statt der alten 3-Karten-Tabelle laeuft der
+  Kartenrand jetzt ueber das FUERSTENTUM-Raster - jede Karte fuehrt an jeder
+  offenen Kante zum Nachbarn. Browser-verifiziert: alle 12 Oberweltkarten
+  laden, Uebergang Nebelforst -> Hoher Norden funktioniert.
+- UFERPFAD: Baeume direkt am Wasser weichen - der begehbare Ufersaum (R149)
+  ist frei, man kann am Fluss entlang, und reine Fluss-Kanten oeffnen sich
+  als Wildwechsel zum Nachbarn.
+- Maps-Tab (Dev-Konsole) listet ab jetzt ALLE Fuerstentum-Karten automatisch -
+  die R138b-Regel (jede neue Karte sofort im Maps-Tab) erfuellt sich von selbst.
+- R152 LIVE-KARTE (aus derselben Autor-Liste): der Karten-Tab zeigt Held (rot),
+  eigene Truppen (blau, kartenuebergreifend aus den Roster-Stellungen) und
+  Bewohner (gelb) live; Waelder/Fluesse/Wege/Haeuser stecken in den Thumbs.
+- tsc fehlerfrei, 390 Tests gruen.

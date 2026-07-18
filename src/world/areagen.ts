@@ -1734,6 +1734,19 @@ function kantenPunkt(arr: KantenKreuzung[], seite: 'w' | 'e' | 'n' | 's', feat: 
   return seite === 'w' ? { x: -0.03, y: p } : seite === 'e' ? { x: 1.03, y: p } : seite === 'n' ? { x: p, y: -0.03 } : { x: p, y: 1.03 };
 }
 
+// R154: UFERPFAD - Baeume direkt am Wasser weichen. So ist der begehbare
+// R149-Saum wirklich begehbar (kein Baumriegel darauf), man kann am Fluss
+// entlang gehen, und Fluss-Kanten zum Nachbarn oeffnen sich als Wildwechsel.
+function raeumeUferpfad(map: number[][], w: number, h: number, geo: WasserGeometrie, verschm: number): void {
+  for (let ty = 0; ty < h; ty++) {
+    for (let tx = 0; tx < w; tx++) {
+      if (map[ty][tx] !== T.TREE) continue;
+      const sd = sdWasser((tx + 0.5) / w, (ty + 0.5) / h, geo, verschm);
+      if (sd > -UFER_SAUM_UV && sd < 0.012) map[ty][tx] = T.GRASS;
+    }
+  }
+}
+
 function randKanten(id: string, see?: { cx: number; cy: number }): RandKanten {
   const k = OBERWELT_KANTEN[id];
   if (!k) return { flussBahnen: [], wegWestV: null, wegOstV: null, wegNordU: null, wegSuedU: null };
@@ -1862,6 +1875,7 @@ function baueOberweltGebiet(rng: Rng, cfg: OberweltCfg): AreaData {
         if (sdWasser((tx + 0.5) / w, (ty + 0.5) / h, geo, verschm) < -UFER_SAUM_UV) map[ty][tx] = T.WATER;
       }
     }
+    raeumeUferpfad(map, w, h, geo, verschm);
   }
 
   const pfadY: number[] = [];
@@ -1977,6 +1991,7 @@ export function buildStart(rng: Rng): AreaData {
   for (let ty = 0; ty < h; ty++) for (let tx = 0; tx < w; tx++) {
     if (sdWasser((tx + 0.5) / w, (ty + 0.5) / h, geo, OW_SMIN) < -UFER_SAUM_UV) map[ty][tx] = T.WATER;
   }
+  raeumeUferpfad(map, w, h, geo, OW_SMIN);
   // SALZSTRASSE geschwungen (R100): weicher Bezier-Bogen von der Westkante
   // (Tabelle 59.1%) zur Ostkante (77%) - kein Achsen-Ellenbogen. Wo der Weg
   // Wasser kreuzt, wird die Kachel zur begehbaren Bruecke.
@@ -2399,5 +2414,25 @@ export function buildStadt2(rng: Rng): AreaData {
     id: 'stadt2', name: 'Verfallene Stadt', wolfXs: [44, 92], baumGruppen: 55,
     geo: { bahnen: [], seen: [] },   // Wege-Kreuzung (alle vier Kanten) + Fluss aus der Tabelle
   });
+}
+
+// R154 (Autor "es fehlen noch Karten im Norden"): die gy1-Reihe + das Kloster
+// (5,0) aus der ravenkarte. NUR Huellen - Kanten (Wege/Fluesse) kommen aus der
+// OBERWELT_KANTEN-Tabelle; Inhalte (Schnee, Schlachtfeld-Deko, Kloster) folgen
+// je eigenem Karten-Auftrag. Namen sind Vorschlaege (DECISIONS, leicht aenderbar).
+export function buildHochland(rng: Rng): AreaData {
+  return baueOberweltGebiet(rng, { id: 'hochland', name: 'Hoher Norden', wolfXs: [30, 64, 96], baumGruppen: 90, geo: { bahnen: [], seen: [] } });
+}
+export function buildWaldNordWest(rng: Rng): AreaData {
+  return baueOberweltGebiet(rng, { id: 'wald_nw', name: 'Grauwald', wolfXs: [36, 78], baumGruppen: 215, geo: { bahnen: [], seen: [] } });
+}
+export function buildWaldNordOst(rng: Rng): AreaData {
+  return baueOberweltGebiet(rng, { id: 'wald_ne', name: 'Hünenwald', wolfXs: [40, 86], baumGruppen: 205, geo: { bahnen: [], seen: [] } });
+}
+export function buildSchlachtfeld(rng: Rng): AreaData {
+  return baueOberweltGebiet(rng, { id: 'schlacht', name: 'Altes Schlachtfeld', wolfXs: [50, 96], baumGruppen: 60, geo: { bahnen: [], seen: [] } });
+}
+export function buildKloster(rng: Rng): AreaData {
+  return baueOberweltGebiet(rng, { id: 'kloster', name: 'Klosterberg', wolfXs: [44], baumGruppen: 130, geo: { bahnen: [], seen: [] } });
 }
 
