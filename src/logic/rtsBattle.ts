@@ -89,6 +89,11 @@ export class RtsBattle {
   linieStart: { x: number; y: number } | null = null;
   linieNow: { x: number; y: number } | null = null;
   private lastKlickT = -999; private lastKlickTyp: RtsUnitTyp | null = null;
+  // R148 (AoE): Kontrollgruppen - Strg+Zahl bindet die Auswahl, Zahl ruft sie.
+  private kontrollGruppen = new Map<number, RtsUnit[]>();
+  private heldInGruppe = new Set<number>();
+  // R148: die UI (Auswahl-Chips/Einheiten-Karte) haengt sich hier ein.
+  onAuswahl?: () => void;
   marker: Array<{ x: number; y: number; t: number; feind: boolean }> = [];
   hover: { x: number; y: number } | null = null;   // P18: Zeigerposition fuer Feind-Hervorhebung
   heldGewaehlt = false;
@@ -188,7 +193,7 @@ export class RtsBattle {
   }
   mausHoch(): boolean {
     let getan = false;
-    if (this.boxStart && this.boxNow) { this.rahmenWaehlen((this as unknown as { _shift?: boolean })._shift ?? false); getan = true; }
+    if (this.boxStart && this.boxNow) { this.rahmenWaehlen((this as unknown as { _shift?: boolean })._shift ?? false); getan = true; this.meldeAuswahl(); }
     if (this.linieStart && this.linieNow) { this.rechtsBefehl(); getan = true; }
     this.boxStart = this.boxNow = this.linieStart = this.linieNow = null;
     return getan;
@@ -300,6 +305,39 @@ export class RtsBattle {
   stellungHalten(): void { const g = this.gewaehlte(); for (const u of g) { u.stance = 'halten'; u.grp = null; u.off = null; u.fokusRef = null; u.ref.passiv = false; } if (g.length) this.feedback('Stellung halten'); }
 
   private feedback(t: string): void { this.onFeedback?.(t); }
+  private meldeAuswahl(): void { this.onAuswahl?.(); }
+
+  // --- R148: Kontrollgruppen + Chip-Auswahl (AoE/BAR-Verwaltung) -------------
+  bindeGruppe(n: number): void {
+    const sel = this.gewaehlte();
+    if (!sel.length && !this.heldGewaehlt) { this.feedback(`Gruppe ${n}: nichts gewählt`); return; }
+    this.kontrollGruppen.set(n, [...sel]);
+    if (this.heldGewaehlt) this.heldInGruppe.add(n); else this.heldInGruppe.delete(n);
+    this.feedback(`Gruppe ${n} gebunden (${sel.length}${this.heldGewaehlt ? ' + Held' : ''})`);
+  }
+
+  rufeGruppe(n: number): void {
+    const g = (this.kontrollGruppen.get(n) ?? []).filter((u) => !u.tot && this.units.includes(u));
+    const mitHeld = this.heldInGruppe.has(n) && this.held.lebt();
+    if (!g.length && !mitHeld) { this.feedback(`Gruppe ${n} ist leer`); return; }
+    for (const u of this.units) u.gewaehlt = false;
+    for (const u of g) u.gewaehlt = true;
+    this.setHeldGewaehlt(mitHeld);
+    this.feedback(`Gruppe ${n}: ${g.length}${mitHeld ? ' + Held' : ''} gewählt`);
+    this.meldeAuswahl();
+  }
+
+  // Chip-Klick: NUR diese Einheit (bzw. nur den Helden) waehlen.
+  waehleNur(u: RtsUnit): void {
+    for (const o of this.units) o.gewaehlt = o === u;
+    this.setHeldGewaehlt(false);
+    this.meldeAuswahl();
+  }
+  waehleNurHeld(): void {
+    for (const o of this.units) o.gewaehlt = false;
+    this.setHeldGewaehlt(true);
+    this.meldeAuswahl();
+  }
 
   private zumFeind(x: number, y: number): number {
     const fs = this.host.feinde();

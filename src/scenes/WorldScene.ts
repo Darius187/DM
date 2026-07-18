@@ -3450,6 +3450,7 @@ export class WorldScene extends CombatScene {
     if (this.rtsBattle) {
       // Wiedereinstieg in den RTS-Modus: bestehende Schlacht weiterfuehren (P16)
       this.setzeFreiKamera(true);
+      this.rtsBattle.onAuswahl = () => this.aktualisiereRtsAuswahl();   // R148
       this.baueRtsLauscher();
       this.baueRtsLeiste();
       this.logMsg('Schlachtfeld-Steuerung wieder aktiv.', 'gold');
@@ -3497,6 +3498,7 @@ export class WorldScene extends CombatScene {
       lager: () => this.feldbauten.map((f) => ({ typ: f.id, x: f.x, y: f.y })),
     }, this.heldRef());
     this.rtsBattle.onFeedback = (t) => this.logMsg(t + '.', '');
+    this.rtsBattle.onAuswahl = () => this.aktualisiereRtsAuswahl();   // R148: WAHL-Ansicht folgt der Auswahl
     // R144 (Autor, Jagged-Alliance): die GARNISON dieser Karte tritt sofort in
     // die Befehls-Schicht ein - stehende Soldaten sind anwaehlbar und steuerbar.
     for (const e of this.enemies) {
@@ -3535,12 +3537,32 @@ export class WorldScene extends CombatScene {
         this.rtsBattle.angriffsMarsch(wp.x, wp.y); this.rtsAngriffArmed = false; void p; return;
       }
       this.rtsBattle.mausHoch();
+      // R148: einfacher Klick OHNE Einheiten-Treffer waehlt ein GEBAEUDE
+      if (Math.hypot(p.x - p.downX, p.y - p.downY) < 6 && this.rtsBattle
+        && this.rtsBattle.gewaehlte().length === 0 && !this.rtsBattle.heldGewaehlt) {
+        const wp = this.cameras.main.getWorldPoint(p.x, p.y);
+        const f = this.feldbauten.find((fb) => Math.hypot(fb.x - wp.x, fb.y - wp.y) < 26) ?? null;
+        if (f !== this.rtsGebaeudeWahl) {
+          this.rtsGebaeudeWahl = f;
+          if (f) this.rtsTab = 'wahl';
+          else if (this.rtsTab === 'wahl') this.rtsTab = 'befehle';
+          this.baueRtsLeiste();
+        }
+      }
     };
     this.rtsKeyDown = (ev) => {
       if (!this.rtsBattle) return;
       // A bleibt Kamera (WASD, Autorwunsch R97) - Angriffsmarsch läuft über den
       // Menü-Knopf. H = Stellung halten (kollisionsfrei).
       if (ev.key === 'h' || ev.key === 'H') { this.rtsBattle.stellungHalten(); }
+      // R148 (AoE): Strg+1..9 bindet die Auswahl als Kontrollgruppe, 1..9 ruft sie.
+      if (ev.code.startsWith('Digit')) {
+        const n = Number(ev.code.slice(5));
+        if (n >= 1 && n <= 9) {
+          if (ev.ctrlKey) this.rtsBattle.bindeGruppe(n);
+          else this.rtsBattle.rufeGruppe(n);
+        }
+      }
     };
     this.input.on('pointermove', this.rtsPointerMove);
     this.input.on('pointerup', this.rtsPointerUp);
@@ -3626,7 +3648,18 @@ export class WorldScene extends CombatScene {
     return Math.min(100, moral);
   }
 
-  private rtsTab: 'befehle' | 'bauen' | 'test' = 'bauen';
+  private rtsTab: 'befehle' | 'bauen' | 'test' | 'wahl' = 'bauen';
+  // R148: gewaehltes GEBAEUDE (Klick auf Feldbau ohne Einheiten-Auswahl)
+  private rtsGebaeudeWahl: (typeof this.feldbauten)[number] | null = null;
+
+  // R148: Auswahl geaendert -> AUSWAHL-Ansicht zeigen bzw. verlassen.
+  private aktualisiereRtsAuswahl(): void {
+    if (!this.rtsLeiste || !this.rtsBattle) return;
+    const hat = this.rtsBattle.gewaehlte().length > 0 || this.rtsBattle.heldGewaehlt;
+    if (hat) { this.rtsGebaeudeWahl = null; this.rtsTab = 'wahl'; }
+    else if (this.rtsTab === 'wahl' && !this.rtsGebaeudeWahl) this.rtsTab = 'befehle';
+    this.baueRtsLeiste();
+  }
   private rtsSkala = 1;   // Baumenü-Größe (Autor: skalierbar), 0.8..1.4
 
   // R94: VERTIKALE Seitenleiste rechts unten (Command-&-Conquer-Stil) mit Tabs
@@ -3670,7 +3703,7 @@ export class WorldScene extends CombatScene {
     aPlus.on('pointerdown', () => { this.rtsSkala = Math.min(1.4, this.rtsSkala + 0.1); this.baueRtsLeiste(); }); c.add(aPlus);
     // Tab-Reiter
     let ty2 = F(40);
-    const tabs: Array<[typeof this.rtsTab, string]> = [['bauen', 'BAUEN'], ['befehle', 'BEFEHLE'], ['test', 'TEST']];
+    const tabs: Array<[typeof this.rtsTab, string]> = [['wahl', 'WAHL'], ['bauen', 'BAUEN'], ['befehle', 'BEFEHLE'], ['test', 'TEST']];
     let tx = F(8);
     for (const [id, lbl] of tabs) {
       const aktiv = this.rtsTab === id;
@@ -3787,7 +3820,107 @@ export class WorldScene extends CombatScene {
       }
     }
     if (this.rtsTab === 'test') this.baueRtsTestTab(c, F, w, y);
+    if (this.rtsTab === 'wahl') this.baueRtsWahlTab(c, F, w, y);
     fixUiScroll(c);
+  }
+
+  // R148 (AoE/BAR): AUSWAHL-Ansicht. Chips aller Gewaehlten (Klick pickt EINE
+  // Einheit heraus - auch den Helden), darunter die Detail-Karte der Einzel-
+  // Auswahl (Portraet, Name, Rang, Kills, Typ, Leben, Ruestung, Ausruestung)
+  // bzw. die Karte des gewaehlten GEBAEUDES.
+  private baueRtsWahlTab(c: Phaser.GameObjects.Container, F: (s: number) => number, w: number, y0: number): void {
+    let y = y0;
+    const b = this.rtsBattle;
+    if (!b) return;
+    const sel = b.gewaehlte();
+    const kicker = { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#8a7a5a', letterSpacing: 1 } as const;
+    const zeile = { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#d8cfb8' } as const;
+    const klein = { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#9a8a6a', wordWrap: { width: w - F(16) } } as const;
+    // --- Gebaeude-Karte -----------------------------------------------------
+    if (this.rtsGebaeudeWahl && !sel.length && !b.heldGewaehlt) {
+      const f = this.rtsGebaeudeWahl;
+      const def = RTS_BAUTEN.find((x) => x.id === f.id);
+      c.add(this.add.text(F(8), y, 'GEBÄUDE', kicker)); y += F(16);
+      c.add(this.add.text(F(8), y, def?.name ?? f.id, { fontFamily: 'serif', fontSize: `${F(12)}px`, color: '#e8dfc8' })); y += F(18);
+      const frac = f.maxHp > 0 ? Math.max(0, f.hp / f.maxHp) : 1;
+      c.add(this.add.rectangle(F(8), y, w - F(16), F(6), 0x000000, 0.6).setOrigin(0));
+      c.add(this.add.rectangle(F(8), y, Math.round((w - F(16)) * frac), F(6), frac > 0.4 ? 0x5ac85a : 0xc85a5a).setOrigin(0));
+      y += F(10);
+      c.add(this.add.text(F(8), y, `Zustand ${Math.round(f.hp)}/${f.maxHp}`, zeile)); y += F(16);
+      if (this.istWachturm(f.id)) {
+        const besatzung = this.enemies.filter((e) => e.team === 'spieler' && e.imTurm && Math.hypot(e.x - f.x, e.y - f.y) < TURM.andockRadius + 20).length;
+        c.add(this.add.text(F(8), y, `Besatzung: ${besatzung}/2 Schützen`, zeile)); y += F(16);
+      }
+      if (def) { c.add(this.add.text(F(8), y, def.beschreibung, klein)); }
+      return;
+    }
+    if (!sel.length && !b.heldGewaehlt) {
+      c.add(this.add.text(F(8), y, 'Nichts gewählt.\nEinheit anklicken, Rahmen ziehen oder Doppelklick = alle des Typs. Strg+1..9 bindet Gruppen, 1..9 ruft sie.', klein));
+      return;
+    }
+    // --- Chips (Klick = herauspicken; auch der Held) ------------------------
+    c.add(this.add.text(F(8), y, `AUSWAHL (${sel.length + (b.heldGewaehlt ? 1 : 0)})`, kicker)); y += F(16);
+    const chipS = F(24); let cx = F(8);
+    const chip = (lbl: string, farbe: number, hpFrac: number | null, klick: () => void): void => {
+      if (cx + chipS > w - F(8)) { cx = F(8); y += chipS + F(6); }
+      const r = this.add.rectangle(cx, y, chipS, chipS, 0x1c1409, 0.95).setOrigin(0).setStrokeStyle(1, farbe).setInteractive({ useHandCursor: true });
+      r.on('pointerdown', () => { this.sfx.play('klick', 0.4); klick(); });
+      c.add(r);
+      c.add(this.add.text(cx + chipS / 2, y + chipS / 2 - F(2), lbl, { fontFamily: 'serif', fontSize: `${F(11)}px`, color: '#e8dfc8' }).setOrigin(0.5));
+      if (hpFrac !== null) {
+        c.add(this.add.rectangle(cx + 2, y + chipS - F(4), chipS - 4, F(2), 0x000000, 0.7).setOrigin(0));
+        c.add(this.add.rectangle(cx + 2, y + chipS - F(4), Math.max(1, Math.round((chipS - 4) * hpFrac)), F(2), hpFrac > 0.4 ? 0x5ac85a : 0xc85a5a).setOrigin(0));
+      }
+      cx += chipS + F(4);
+    };
+    if (b.heldGewaehlt) chip('♛', 0xc9a227, this.p.hp / this.p.stats.maxhp, () => b.waehleNurHeld());
+    const typKuerzel: Record<string, string> = { nahkampf: 'G', schild: 'S', bogen: 'B', reiter: 'R' };
+    for (const u of sel) chip(typKuerzel[u.typ] ?? '?', 0x5aa8e8, u.ref.maxhp > 0 ? u.ref.hp / u.ref.maxhp : 0, () => b.waehleNur(u));
+    y += chipS + F(10);
+    // --- Detail-Karte -------------------------------------------------------
+    if (sel.length === 1 && !b.heldGewaehlt) {
+      const u = sel[0]; const ref = u.ref;
+      const d = RTS_UNIT_TYP[u.typ];
+      const einheit = ref.armeeId !== null ? this.armee.einheiten.find((e) => e.id === ref.armeeId) : null;
+      // Portraet: das echte Feld-Sprite, in die Karte eingepasst
+      if (ref.sprite) {
+        const img = this.add.image(F(8), y, ref.sprite.texture.key, ref.sprite.frame.name).setOrigin(0);
+        const s = Math.min(F(40) / img.width, F(40) / img.height);
+        img.setScale(s); c.add(img);
+      } else {
+        c.add(this.add.rectangle(F(8), y, F(40), F(40), 0x2a2216).setOrigin(0).setStrokeStyle(1, 0x5a4a2e));
+      }
+      const rang = rangFuerKills(ref.kills);
+      c.add(this.add.text(F(54), y, einheit?.name ?? ref.name, { fontFamily: 'serif', fontSize: `${F(11)}px`, color: '#e8dfc8', wordWrap: { width: w - F(62) } }));
+      c.add(this.add.text(F(54), y + F(14), `${d.name}${einheit?.soeldner ? ' · Söldner' : ''}`, klein));
+      c.add(this.add.text(F(54), y + F(26), `Rang ${rang} ${'▲'.repeat(rang)} · ${ref.kills} erledigt`, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: rang > 0 ? '#f0d23a' : '#9a8a6a' }));
+      y += F(46);
+      const frac = ref.maxhp > 0 ? Math.max(0, ref.hp / ref.maxhp) : 0;
+      c.add(this.add.rectangle(F(8), y, w - F(16), F(6), 0x000000, 0.6).setOrigin(0));
+      c.add(this.add.rectangle(F(8), y, Math.round((w - F(16)) * frac), F(6), frac > 0.4 ? 0x5ac85a : 0xc85a5a).setOrigin(0));
+      y += F(10);
+      c.add(this.add.text(F(8), y, `Leben ${Math.max(0, Math.round(ref.hp))}/${ref.maxhp} · Moral ${ref.moral}`, zeile)); y += F(15);
+      const waffe = ref.schadensArt === 'pfeil' ? 'Bogen' : ref.schadensArt === 'wucht' ? 'Streitkolben' : ref.schadensArt === 'stich' ? 'Spieß' : 'Schwert';
+      const schutz = Math.round((1 - (d.schadensRed ?? 1)) * 100);
+      c.add(this.add.text(F(8), y, `Waffe: ${waffe} (${ref.dmg} Schaden)`, zeile)); y += F(15);
+      c.add(this.add.text(F(8), y, `Rüstung: ${schutz > 0 ? `${schutz}% Schutz` : 'Stoff'}${d.schild ? ' · Schild' : ''}`, zeile)); y += F(15);
+      const stanceN: Record<string, string> = { aggressiv: 'Verfolgen', verteidigen: 'Nahe bleiben', halten: 'Halten' };
+      const angriffN: Record<string, string> = { angreifen: 'Angreifen', zurueckschlagen: 'Nur zurückschlagen', feuerEinstellen: 'Feuer einstellen' };
+      c.add(this.add.text(F(8), y, `Verhalten: ${stanceN[u.stance] ?? u.stance} · ${angriffN[u.angriff] ?? u.angriff} (BEFEHLE-Tab ändert)`, klein));
+    } else if (!sel.length && b.heldGewaehlt) {
+      c.add(this.add.text(F(8), y, 'Der Held (Banneret)', { fontFamily: 'serif', fontSize: `${F(11)}px`, color: '#e8dfc8' })); y += F(16);
+      c.add(this.add.text(F(8), y, `Stufe ${this.p.level} · Leben ${Math.round(this.p.hp)}/${this.p.stats.maxhp}`, zeile)); y += F(15);
+      c.add(this.add.text(F(8), y, 'Nah bei der Truppe wirkt er als Anführer (+Moral). Rechtsklick marschiert.', klein));
+    } else {
+      // Mehrfach-Auswahl: Zusammenfassung je Typ
+      const zaehler = new Map<string, number>();
+      for (const u of sel) zaehler.set(u.typ, (zaehler.get(u.typ) ?? 0) + 1);
+      for (const [typ, n] of zaehler) {
+        c.add(this.add.text(F(8), y, `${n}x ${RTS_UNIT_TYP[typ as RtsUnitTyp].name}`, zeile)); y += F(14);
+      }
+      if (b.heldGewaehlt) { c.add(this.add.text(F(8), y, '+ der Held', zeile)); y += F(14); }
+      c.add(this.add.text(F(8), y, 'Chip anklicken pickt eine Einheit heraus.', klein));
+    }
   }
 
   // TEST-Tab (R96/R97): Einheiten/Monster wählen und per MAUS auf die Karte
