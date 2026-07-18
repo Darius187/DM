@@ -819,7 +819,7 @@ export class Enemy {
         // Vorstoß in den Schlag (Runde 39): der Gegner setzt mit dem Hieb NACH,
         // damit ein simpler Schritt zurück nicht reicht - man muss rollen oder
         // seitlich ausweichen. Macht jeden Gegner bedrohlich (Duell-Gefühl).
-        this.lungeIn(host, px, py, 26);
+        this.lungeIn(host, px, py, ENEMY_AI.hiebVorstoss);   // R174: gedaempft
         const d2 = Math.hypot(px - this.x, py - this.y);
         if (d2 < this.r + host.playerR() + 16 * (TUNING.gegnerReichweite * this.reichweiteF)) host.enemyMeleeHit(this, Math.round(this.dmg * (0.8 + Math.random() * 0.35)));
         if (Math.random() < (AGGRO[this.type] ?? AGGRO_STD).rueckzugChance) {
@@ -829,7 +829,7 @@ export class Enemy {
         break;
       }
       case 'doppelhieb':
-        this.lungeIn(host, px, py, 22);
+        this.lungeIn(host, px, py, ENEMY_AI.doppelVorstoss);   // R174: gedaempft
         if (Math.hypot(px - this.x, py - this.y) < this.r + host.playerR() + 18 * (TUNING.gegnerReichweite * this.reichweiteF)) host.enemyMeleeHit(this, Math.round(this.dmg * 0.7));
         this.secondHitT = 0.25;
         break;
@@ -856,9 +856,9 @@ export class Enemy {
         break;
       }
       case 'sprung':
-        this.lungeT = 0.35;
-        this.lungeVx = Math.cos(ang) * 330;
-        this.lungeVy = Math.sin(ang) * 330;
+        this.lungeT = ENEMY_AI.sprungDauerS;   // R174: kuerzer + langsamer
+        this.lungeVx = Math.cos(ang) * ENEMY_AI.sprungTempo;
+        this.lungeVy = Math.sin(ang) * ENEMY_AI.sprungTempo;
         host.playSound('wolf');
         break;
       case 'golem_rundum':

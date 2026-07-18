@@ -79,6 +79,13 @@ export const ENEMY_AI = {
   // Runde 35: Gegner wirkten harmlos (langes Anlaufen, träges Nachsetzen).
   // Kürzeres Ausholen + deutlich kürzere Pause = "zack-zack" statt gemütlich.
   // Über den F10-Schlagtempo-Regler (global UND je Typ) wieder entschärfbar.
+  // R174 (Autor "die Monster springen mich beim Angriff zu arg an - Mittelweg"):
+  // der Vorstoss in den Schlag (R39, "Duell-Gefuehl") ist HALBIERT - ein
+  // Nachsetz-Schritt statt Sprung; der Wolfssprung fliegt langsamer/kuerzer.
+  hiebVorstoss: 13,      // px Vorstoss beim normalen Hieb (war 26)
+  doppelVorstoss: 11,    // px beim Doppelhieb (war 22)
+  sprungTempo: 240,      // px/s des Sprungangriffs (war 330)
+  sprungDauerS: 0.3,     // Flugdauer des Sprungangriffs (war 0.35)
   meleeAtkCd: 0.7,
   meleeWindup: 0.28,    // Telegraph-Vorwarnung normaler Gegner
   rangedShootCd: 1.8,
