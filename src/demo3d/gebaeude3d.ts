@@ -67,6 +67,11 @@ interface RendererPoolEintrag {
 // Eine Stadt kann viele begehbare GLB-Haeuser gleichzeitig enthalten. Eigene
 // WebGL-Kontexte pro Haus ueberschreiten schnell das Browser-Limit; gerendert
 // wird ohnehin nacheinander und sofort in die jeweilige Phaser-Textur kopiert.
+// R151 (Autor: "die Kirche ist im Spiel viel heller als die duestere Codex-
+// Vorschau"): EIN Licht-Stimmungs-Block fuer ALLE 3D-Gebaeude, Richtung
+// Vorschau-Look (grimdark 1349) gedrueckt. Hier tunen - eine Stelle.
+const GEB3D_LICHT = { exposure: 0.55, sonne: 1.15, hemi: 0.4, env: 0.25 } as const;
+
 const rendererPool = new Map<number, RendererPoolEintrag>();
 
 function leiheRenderer(groesse: number): THREE.WebGLRenderer {
@@ -80,7 +85,7 @@ function leiheRenderer(groesse: number): THREE.WebGLRenderer {
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.72;
+  renderer.toneMappingExposure = GEB3D_LICHT.exposure;
   rendererPool.set(groesse, { renderer, nutzer: 1 });
   return renderer;
 }
@@ -179,15 +184,15 @@ export class Gebaeude3D {
     this.canvas = this.renderer.domElement;
 
     this.scene = new THREE.Scene();
-    this.scene.add(new THREE.HemisphereLight(0xcdd4ea, 0x2a2016, 0.5));
-    const sonne = new THREE.DirectionalLight(0xffe8c4, 1.6);
+    this.scene.add(new THREE.HemisphereLight(0xcdd4ea, 0x2a2016, GEB3D_LICHT.hemi));
+    const sonne = new THREE.DirectionalLight(0xffe8c4, GEB3D_LICHT.sonne);
     sonne.position.set(4, 8, 5);
     this.scene.add(sonne);
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     this.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     pmrem.dispose();
     this.scene.environment = this.environment;
-    this.scene.environmentIntensity = 0.35;
+    this.scene.environmentIntensity = GEB3D_LICHT.env;
 
     this.scene.add(gltfScene);
     // Pivot laut Manifest (HOUSE_/FORGE_ROTATION_PIVOT): NUR dieser dreht um Y.
