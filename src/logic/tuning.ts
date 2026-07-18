@@ -10,10 +10,13 @@ export const TUNING = {
   // Runde 16: Krypta-Gegner schleichen (Horror statt Gewusel)
   kryptaGegnerTempo: 0.72,
   // Runde 21: Beutemenge - skaliert die Drop-Chancen von Gegnern (Waffen,
-  // Rüstung, Tränke, Steine, Rollen); 0 = nur Gold, 1 = wie bisher.
-  // Runde 40: Standard auf 0.4 gesenkt (Autorwunsch "Beute runter"), dann per
-  // Tuning-Bericht auf 0.3 (noch weniger Drops).
-  beuteRate: 0.3,
+  // Rüstung, Tränke, Steine, Rollen); 0 = nur Gold, 1 = neutral.
+  // R172 (Autor "kaum Waffen/Schilde als Beute"): zurueck auf 1.0. Die alte
+  // 0.3 (Autorwunsch R40) und die spaetere Drittelung der Basis-gearChance
+  // (0.11 -> 0.045, R38/39) MULTIPLIZIERTEN sich zu 1,35% je Kill - diese
+  // Doppel-Senkung hatte niemand so entschieden. Seltenheit lebt jetzt allein
+  // in KILL_DROPS (4,5% = ~1 Teil je 22 Kills). F10-Regler bleibt.
+  beuteRate: 1.0,
   // Runde 22: Nahkampf-Reichweiten zum Justieren - Held (Hieb-Weite und
   // Schwung-Breite) und Gegner (wie weit ihr Schlag trägt).
   // Runde 40 (Tuning-Bericht): Held kürzer (0.8), Gegner weiter (1.4) -

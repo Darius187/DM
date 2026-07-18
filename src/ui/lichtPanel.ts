@@ -89,6 +89,7 @@ export class LichtPanel {
     // R130-Fallback: Held-Schein wieder ueber die Figur legen (alter Look)
     this.toggle(() => `Held-Schein über Figur (alt): ${(L().heldGlutUeberFigur ?? false) ? 'AN' : 'aus'}`, () => { L().heldGlutUeberFigur = !(L().heldGlutUeberFigur ?? false); });
     this.toggle(() => `Held-Eigenglühen (Halo): ${(L().heldEigenGlut ?? false) ? 'AN' : 'aus'}`, () => { L().heldEigenGlut = !(L().heldEigenGlut ?? false); });
+    this.toggle(() => `Rand-Vignette: ${(L().vignetteAn ?? false) ? 'AN' : 'aus'}`, () => { L().vignetteAn = !(L().vignetteAn ?? false); });
     this.slider('Sichtradius', 40, 240, () => L().sichtRadius, (v) => { L().sichtRadius = v; });
     this.slider('Held-Licht-Farbe (rot..weiß)', 0, 100, () => L().heldFarbe, (v) => { L().heldFarbe = v; });
     // ----- Fackel-Licht (Raum vs. Flamme) -----

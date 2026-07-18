@@ -8305,7 +8305,15 @@ export class WorldScene extends CombatScene {
     const raumLicht = (lic.fackelRaumLicht ?? 50) / 100, raumFarbe = (lic.fackelRaumFarbe ?? 60) / 100, glutRadius = (lic.fackelGlutRadius ?? 45) / 100;
     // Schatten-Aufhellung: NAHE Lichter (am Helden) vs FERNE - getrennt regelbar (stärkerer Effekt R57).
     const schNah = (lic.schattenNah ?? 30) / 100, schFern = (lic.schattenFern ?? 15) / 100;
-    if (lic.heldLichtAn) lichter.push({ x: this.px, y: this.py - 6, art: lic.heldSchatten ? 'fackel' : 'sicht', radius: lic.sichtRadius, weich, farbe: heldFarbe, raumLicht, raumFarbe, glutRadius, schattenHell: schNah });
+    // R170 (Autor "das Licht kommt AUS dem Helden, ich will es UM ihn herum"):
+    // die beiden Werkbank-Regler wirken jetzt auch in DIESEM (Standard-)Pfad:
+    // - "Schein ueber Figur" AUS (Standard): das Held-Licht sitzt am FUSSPUNKT,
+    //   der Boden ringsum leuchtet, die Figur strahlt nicht von innen.
+    // - "Eigengluehen" AUS (Standard): kein warmer Glut-Kern am Helden.
+    if (lic.heldLichtAn) {
+      const heldY = lic.heldGlutUeberFigur ? this.py - 6 : this.py + 14;
+      lichter.push({ x: this.px, y: heldY, art: lic.heldSchatten ? 'fackel' : 'sicht', radius: lic.sichtRadius, weich, farbe: heldFarbe, raumLicht, raumFarbe, glutRadius: lic.heldEigenGlut ? glutRadius : 0, schattenHell: schNah });
+    }
     // Nahe Fackeln: wie weit weg sie noch leuchten = Aktiv-Distanz-Regler. Die Sicht-
     // Toleranz bestimmt, durch WIE VIELE Wände das Licht noch zählt: 0 = nur direkt
     // sichtbar, 1 = um die Ecke (eine Wand dazwischen), höher = großzügiger. So leuchtet
@@ -8560,8 +8568,11 @@ export class WorldScene extends CombatScene {
     // Regen-DUNST (dorfSim Z.1645): bei Sturm wird die Sicht spürbar nebliger.
     const fog = this.regnet ? Math.min(0.42, (this.wetterWert - 0.1) * 0.55) * 0.55 : 0;
     this.dunstRect!.setFillStyle(0x96a6ba, Math.max(0, fog));
-    // Vignette aus der Tageszeit (Nacht stärker), Bewölkung verstärkt leicht (dorfSim 1:1)
-    this.vignetteImg?.setAlpha(Math.min(0.85, L.vig + bew * 0.12));
+    // R171 (Autor "dunkler Schleier am Kartenrand - entferne das"): die
+    // dorfSim-Vignette ist STANDARD AUS - ihr Radialverlauf erzeugte nachts
+    // zudem sichtbares Banding (blockige Stufen). Werkbank-Schalter holt sie
+    // fuer Vergleiche zurueck.
+    this.vignetteImg?.setAlpha(getSettings().licht.vignetteAn === true ? Math.min(0.85, L.vig + bew * 0.12) : 0);
   }
 
   // Schritt-Klänge (Runde 31): spielen nur, wenn der Autor Dateien liefert

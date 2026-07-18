@@ -106,6 +106,7 @@ export interface Settings {
     kriegsnebelDraussen?: boolean; // R130: DEV-Test - Nebel auch in der Aussenwelt
     heldGlutUeberFigur?: boolean;  // R130-Fallback: Held-Schein wieder UEBER der Figur (alt)
     heldEigenGlut?: boolean;       // R131: warmer Halo UM den Helden (aus = nur normal beleuchtet)
+    vignetteAn?: boolean;          // R171 (Autor "dunkler Schleier am Rand - entferne das"): Standard AUS
   };
   audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
   zoomV: number;          // einmaliger Zoom-Standard (Runde 41: 130%)
