@@ -1588,3 +1588,33 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
 - Live-Werkbank geprueft: 1,00 / 0,70 / 0,70 / 0,910 / 1000 HP werden geladen,
   4%-Phase reagiert und keine Rippen-Ueberzeichnung erscheint. TypeScript,
   Produktions-Build und 60 Testdateien / 385 Tests gruen.
+
+## Runde 147-153 - RTS-Grosspaket (Autor-Liste) - alles browser-verifiziert
+- R147 XP-GERECHTIGKEIT: Held-XP nur noch fuer EIGENE Kills (Soldaten-Kill: 0 XP,
+  gemessen). Stattdessen SCHLACHT-WERTUNG: Sieg (>=3 Feinde, 6s Ruhe im Umkreis)
+  gibt Fuehrer-XP nach Formel (Verlust-Malus, Moral-Bonus, Schonungs-Bonus) -
+  Browser: 5 Feinde, 0 Verluste, Moral 83 -> exakt 37 XP wie gerechnet.
+  Fernkampf-Projektile kennen ihren Schuetzen (Rang-TODO zu). Monster haben
+  KEINE Moral/Flucht mehr (Autor-Entscheid). Auswahlringe: duenn, blau/rot,
+  Boden-Ebene am Fusspunkt; Held-Ring sitzt (fester Fusspunkt).
+- R148 RTS-VERWALTUNG (AoE/BAR): Kontrollgruppen Strg+1..9 / 1..9 (verifiziert
+  4+Held), WAHL-Tab folgt der Auswahl: Chip-Reihe (Klick pickt EINE Einheit
+  heraus, auch den Helden ♛), Einheiten-Karte (Portraet=Feld-Sprite, Name, Typ,
+  Rang/Kills, Leben, Waffe/Ruestung, Verhalten), Mehrfach-Zusammenfassung je
+  Typ, Gebaeude-Karte bei Feldbau-Klick (Zustand, Besatzung). Doppelklick=Typ-
+  Auswahl gab es schon.
+- R149 FLUSS-NACHARBEIT: R146-Trittsteine RAUS (Autor-Order). UFER_SAUM_UV:
+  Kollision beginnt erst unter der Wasserlinie - Ufersaum/Schilfband begehbar
+  (start: 1400->1001 Solid-Kacheln), Ost-Strassen-Querung durchgaengig (Pferd
+  nutzt dieselbe Kollision). In BEIDEN Carve-Pfaden.
+- R150 EDITOR: Einzel-Groessenfaktor je 3D-Gebaeude ("Dies +-") zusaetzlich zur
+  globalen Skalierung ("Alle +-") - Kirche x1,5 gemessen, persistent.
+- R151 LICHT: 3D-Gebaeude Richtung duesterer Vorschau gedimmt (GEB3D_LICHT-
+  Block: Exposure 0.72->0.55, Sonne 1.6->1.15, Hemi, Env - EINE Stelle).
+- R153 FEINSCHLIFF: doppelte Lebensbalken weg (eigene Truppen: NUR der schmale
+  gruene, jetzt aus der Dungeon-Zeichnung; Feinde: nur der rote), Marschierer
+  verlassen die Karte an der Kante SOFORT (verifiziert: Feld 0, Roster bleibt),
+  ⚑-Hinweis ueber ziehenden Kolonnen nennt das Etappen-Ziel.
+- OFFEN aus der Autor-Liste: R152 Live-Karte (Held/NPCs/Truppen/Haeuser),
+  R154 Nord-Karten + alle Raender betretbar - in Arbeit.
+- tsc fehlerfrei, 61 Testdateien / 390 Tests gruen.

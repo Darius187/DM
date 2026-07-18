@@ -7825,7 +7825,35 @@ export class WorldScene extends CombatScene {
       if (ev.karte === this.area.id) this.spawneMarschierer(ev.ids);
       else this.entferneMarschierteSprites(ev.ids);
     }
+    // R153 (Autor "an der Kante bleiben die stehen"): sichtbare Marschierer,
+    // die ihr Kanten-Ziel erreichen, VERLASSEN die Karte sofort (Zustand ins
+    // Roster) - drueben tauchen sie mit ihrer Teilstrecken-Ankunft auf.
+    for (const e of [...this.enemies]) {
+      if (e.team !== 'spieler' || e.armeeId === null || e.hp <= 0 || !e.jagdZiel) continue;
+      const m = marschVon(this.armee, e.armeeId);
+      if (!m || Math.hypot(e.jagdZiel.x - e.x, e.jagdZiel.y - e.y) > 36) continue;
+      schreibeZurueck(this.armee, e.armeeId, e.hp, e.kills);
+      e.sprite?.destroy();
+      this.enemies = this.enemies.filter((o) => o !== e);
+      if (!this.enemies.some((o) => o.armeeId !== null && m.ids.includes(o.armeeId))) {
+        const ziel = m.route[Math.min(m.beiKarte + 1, m.route.length - 1)];
+        this.logMsg(`Der Trupp hat die Karte verlassen - weiter nach ${this.kartenName(ziel)}.`, '');
+      }
+    }
+    // R153: eindeutiges Marsch-Zeichen - alle paar Sekunden eine ⚑-Meldung
+    // ueber der ziehenden Kolonne mit dem ZIEL der naechsten Etappe.
+    this.marschHinweisT -= dt;
+    if (this.marschHinweisT <= 0) {
+      this.marschHinweisT = 2.5;
+      for (const m of this.armee.maersche) {
+        const sichtbar = this.enemies.find((e) => e.armeeId !== null && e.hp > 0 && m.ids.includes(e.armeeId) && !!e.jagdZiel);
+        if (!sichtbar) continue;
+        const ziel = m.route[Math.min(m.beiKarte + 1, m.route.length - 1)];
+        this.fx.float(sichtbar.x, sichtbar.y - 34, `⚑ nach ${this.kartenName(ziel)}`, '#c9a227');
+      }
+    }
   }
+  private marschHinweisT = 0;
 
   // Sprites eines Trupps abraeumen, der die Held-Karte abstrakt verlassen hat
   // (kein Tod: Zustand wird vorher ins Roster geschrieben).

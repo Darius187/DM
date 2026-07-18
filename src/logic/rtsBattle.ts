@@ -611,19 +611,11 @@ export class RtsBattle {
       }
       // R147d (Autor): duenner BLAUER Ring am FUSSPUNKT, unter der Figur.
       if (u.gewaehlt) { rg.lineStyle(1, 0x5aa8e8, 0.9); rg.strokeEllipse(u.x, u.y + 14, 22, 9); }
-      if (u.hp < u.maxhp || u.gewaehlt) {
-        const w = 22, frac = Math.max(0, u.hp / u.maxhp);
-        g.fillStyle(0x000000, 0.5); g.fillRect(u.x - w / 2 - 1, u.y - 27, w + 2, 4);
-        g.fillStyle(0x5ac85a, 1); g.fillRect(u.x - w / 2, u.y - 26, w * frac, 2);
-      }
+      // R153: der HP-Balken kommt jetzt aus der Dungeon-Zeichnung (CombatScene,
+      // schmaler gruener) - KEIN zweiter Balken mehr aus dem Overlay.
     }
-    // Feind-HP (Feedback beim Anvisieren): nur beschädigte
-    for (const e of this.host.feinde()) {
-      if (e.hp >= e.maxhp) continue;
-      const w = 22, frac = Math.max(0, e.hp / e.maxhp);
-      g.fillStyle(0x000000, 0.5); g.fillRect(e.x - w / 2 - 1, e.y - 27, w + 2, 4);
-      g.fillStyle(0xc85a5a, 1); g.fillRect(e.x - w / 2, e.y - 26, w * frac, 2);
-    }
+    // R153: Feind-HP zeichnet NUR noch die Dungeon-Schicht (roter Balken) -
+    // der zweite schmale Overlay-Balken ist weg (Autor: "zwei Lebensbalken?").
     // P18: Feind unterm Zeiger ROT hervorheben (Angriffsziel-Feedback) -
     // R147d: ebenfalls duenn und am Fusspunkt, unter der Figur.
     if (this.hover) {

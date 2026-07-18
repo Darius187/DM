@@ -3927,12 +3927,21 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         g.strokeCircle(e.x, e.y, e.r + 5);
       }
       if (e.hp < e.maxhp) {
-        const w = e.boss ? 60 : e.r * 2;
-        const h = e.boss ? 6 : 4;
-        g.fillStyle(0x1a0808, 1);
-        g.fillRect(e.x - w / 2, e.y - e.r - 12, w, h);
-        g.fillStyle(0xa82020, 1);
-        g.fillRect(e.x - w / 2, e.y - e.r - 12, w * Math.max(0, e.hp / e.maxhp), h);
+        if (e.team === 'spieler') {
+          // R153 (Autor "warum zwei Lebensbalken?"): eigene Truppen bekommen
+          // NUR den schmalen gruenen Balken - hier, damit er auch ohne
+          // RTS-Overlay da ist (das Overlay zeichnet keinen mehr).
+          const w = 22, frac = Math.max(0, e.hp / e.maxhp);
+          g.fillStyle(0x000000, 0.5); g.fillRect(e.x - w / 2 - 1, e.y - 27, w + 2, 4);
+          g.fillStyle(0x5ac85a, 1); g.fillRect(e.x - w / 2, e.y - 26, w * frac, 2);
+        } else {
+          const w = e.boss ? 60 : e.r * 2;
+          const h = e.boss ? 6 : 4;
+          g.fillStyle(0x1a0808, 1);
+          g.fillRect(e.x - w / 2, e.y - e.r - 12, w, h);
+          g.fillStyle(0xa82020, 1);
+          g.fillRect(e.x - w / 2, e.y - e.r - 12, w * Math.max(0, e.hp / e.maxhp), h);
+        }
       }
       if (e.stun > 0) {
         g.fillStyle(0xf0d878, 0.9);
