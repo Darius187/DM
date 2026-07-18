@@ -232,6 +232,161 @@ export const WAND_STILE: WandStil[] = [
       ctx.fillRect(x - 1.9, sy - 1, 1.3, 1.6); ctx.fillRect(x + 0.7, sy - 1, 1.3, 1.6);
     }
   } },
+  // ---- R162 (Autor "die Waende sehen alle wirklich sehr schlecht aus"):
+  // 8 NEUE Stile. Kernunterschied zu den alten: die GEOMETRIE (Reihen, Fugen,
+  // Verbaende) ist DETERMINISTISCH - Mauerwerk laeuft NAHTLOS ueber
+  // Kachelgrenzen weiter (die alten wuerfelten die Reihen-Phase je Kachel,
+  // darum sprangen die Fugen an jeder Naht). Nur die Steintoenung variiert.
+  // Dazu kraeftige Kantenlichter je Block - man LIEST die Wand als Mauer. ----
+
+  // 11 - Kalkstein-Quader: heller Werkstein im Laeuferverband, tiefe Fugen
+  { id: 'kalkstein', name: 'Kalkstein-Quader (nahtlos)', deck: [118, 110, 92], front(ctx, n, H) {
+    const r = prng(n + 41);
+    voll(ctx, '#1c160e', 0, 0, TILE, H);
+    for (let y = 0, reihe = 0; y < H; y += 9, reihe++) {
+      const off = (reihe % 2) * 8;                       // Phase NUR aus der Reihe -> nahtlos
+      for (let x = -off; x < TILE; x += 16) {
+        const g = 150 + r() * 24;
+        quaderBlock(ctx, x + 1, y + 1, 14, 7, g, g - 10, g - 34);
+        ctx.fillStyle = `rgba(120,100,70,${0.06 + r() * 0.08})`;   // Wetterspur
+        ctx.fillRect(x + 2, y + 2 + r() * 4, 12, 1);
+      }
+    }
+  } },
+  // 12 - Basalt mit Kalkfugen: dunkler Stein, HELLE Fugen (Kontrast-Umkehr)
+  { id: 'basalt', name: 'Basalt mit Kalkfugen', deck: [52, 54, 58], front(ctx, n, H) {
+    const r = prng(n + 43);
+    voll(ctx, '#b8b0a0', 0, 0, TILE, H);                 // heller Kalkmoertel als Grund
+    for (let y = 0, reihe = 0; y < H; y += 8, reihe++) {
+      const off = (reihe % 2) * 8;
+      for (let x = -off; x < TILE; x += 16) {
+        const g = 42 + r() * 14;
+        quaderBlock(ctx, x + 1.5, y + 1.5, 13, 5.5, g, g + 2, g + 8);
+        for (let i = 0; i < 4; i++) { ctx.fillStyle = 'rgba(160,160,168,0.12)'; ctx.fillRect(x + 2 + r() * 11, y + 2 + r() * 4, 1, 1); }
+      }
+    }
+  } },
+  // 13 - Klosterziegel: rote Ziegel mit hellem Kalkmoertel + Rollschicht-Sockel
+  { id: 'klosterziegel', name: 'Klosterziegel (heller Moertel)', deck: [104, 54, 38], front(ctx, n, H) {
+    const r = prng(n + 47);
+    voll(ctx, '#a89880', 0, 0, TILE, H);                 // Kalkmoertel
+    const sockelY = H - 6;
+    for (let y = 0, reihe = 0; y < sockelY; y += 4, reihe++) {
+      const off = (reihe % 2) * 4;
+      for (let x = -off; x < TILE; x += 8) {
+        const g = 112 + r() * 30;
+        ctx.fillStyle = `rgb(${g | 0},${(g * 0.44) | 0},${(g * 0.3) | 0})`;
+        ctx.fillRect(x + 0.8, y + 0.8, 6.4, 2.6);
+        ctx.fillStyle = 'rgba(255,235,210,0.10)';
+        ctx.fillRect(x + 0.8, y + 0.8, 6.4, 0.8);
+      }
+    }
+    // Rollschicht (stehende Ziegel) als Sockel - klare Standlinie
+    for (let x = 0; x < TILE; x += 4) {
+      const g = 100 + r() * 22;
+      ctx.fillStyle = `rgb(${g | 0},${(g * 0.42) | 0},${(g * 0.3) | 0})`;
+      ctx.fillRect(x + 0.6, sockelY + 0.8, 2.8, 4.6);
+    }
+  } },
+  // 14 - Putz mit Eckquaderung: Kirchen-/Klosterwand, gemalte Quader an den Kanten
+  { id: 'putzquader', name: 'Putz mit Eckquaderung', deck: [110, 104, 92], front(ctx, n, H) {
+    const r = prng(n + 53);
+    const g = 148 + (n % 4) * 5;
+    voll(ctx, `rgb(${g},${g - 8},${g - 24})`, 0, 0, TILE, H);
+    for (let i = 0; i < 4; i++) {                        // Putzwolken
+      ctx.fillStyle = `rgba(105,96,80,${0.05 + r() * 0.05})`;
+      ctx.beginPath(); ctx.ellipse(r() * TILE, r() * H, 7 + r() * 8, 5 + r() * 6, r() * 3, 0, 6.283); ctx.fill();
+    }
+    // Eckquaderung links+rechts im Wechsel (deterministisch)
+    for (let y = 0, reihe = 0; y < H; y += 8, reihe++) {
+      const links = reihe % 2 === 0;
+      const qg = 128 + (reihe * 7) % 18;
+      quaderBlock(ctx, links ? 0.5 : TILE - 10.5, y + 1, 10, 6.5, qg, qg - 8, qg - 26);
+    }
+    // Sockelband unten
+    ctx.fillStyle = 'rgba(70,62,50,0.55)'; ctx.fillRect(0, H - 5, TILE, 5);
+    ctx.fillStyle = 'rgba(255,245,220,0.10)'; ctx.fillRect(0, H - 5, TILE, 1);
+  } },
+  // 15 - Opus mixtum: Bruchstein mit Ziegel-Ausgleichsschichten (roem. Bestand)
+  { id: 'mixtum', name: 'Bruchstein + Ziegelband', deck: [80, 70, 58], front(ctx, n, H) {
+    const r = prng(n + 59);
+    voll(ctx, '#28221a', 0, 0, TILE, H);
+    for (let y = 0, reihe = 0; y < H; ) {
+      if (reihe % 3 === 2) {                             // Ziegel-Ausgleichsschicht
+        for (let x = 0; x < TILE; x += 8) {
+          const g = 118 + r() * 22;
+          ctx.fillStyle = `rgb(${g | 0},${(g * 0.46) | 0},${(g * 0.32) | 0})`;
+          ctx.fillRect(x + 0.6, y + 0.8, 6.8, 2.4);
+        }
+        y += 4;
+      } else {
+        const off = (reihe % 2) * 6;
+        for (let x = -off; x < TILE; x += 12) {
+          const g = 92 + r() * 26;
+          quaderBlock(ctx, x + 1, y + 1, 10, 6, g, g - 6, g - 18);
+        }
+        y += 8;
+      }
+      reihe++;
+    }
+  } },
+  // 16 - Tuffstein: poroese helle Grossbloecke (leicht zu brechen, viel verbaut)
+  { id: 'tuff', name: 'Tuffstein-Bloecke', deck: [112, 106, 88], front(ctx, n, H) {
+    const r = prng(n + 61);
+    voll(ctx, '#221c12', 0, 0, TILE, H);
+    for (let y = 0, reihe = 0; y < H; y += 11, reihe++) {
+      const off = (reihe % 2) * 8;
+      for (let x = -off; x < TILE; x += 16) {
+        const g = 140 + r() * 22;
+        quaderBlock(ctx, x + 1, y + 1, 14, 9, g, g - 8, g - 32);
+        for (let i = 0; i < 8; i++) {                    // Poren
+          ctx.fillStyle = 'rgba(60,50,34,0.35)';
+          ctx.beginPath(); ctx.arc(x + 2 + r() * 12, y + 2 + r() * 7, 0.6 + r() * 0.7, 0, 6.283); ctx.fill();
+        }
+      }
+    }
+  } },
+  // 17 - Blockbau: liegende Eichenbohlen mit Holznaegeln (durchlaufende Lagen)
+  { id: 'blockbau', name: 'Eichen-Blockbau', deck: [64, 48, 30], front(ctx, n, H) {
+    const r = prng(n + 67);
+    voll(ctx, '#120c06', 0, 0, TILE, H);
+    for (let y = 0; y < H; y += 6) {                     // Lagen laufen durch (nahtlos)
+      const c = 88 + ((y / 6) % 3) * 10 + r() * 10;
+      ctx.fillStyle = `rgb(${c | 0},${(c * 0.62) | 0},${(c * 0.36) | 0})`;
+      ctx.fillRect(0, y + 0.6, TILE, 4.8);
+      ctx.fillStyle = 'rgba(255,230,190,0.10)'; ctx.fillRect(0, y + 0.6, TILE, 1);
+      ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(0, y + 5.0, TILE, 1);
+      ctx.strokeStyle = 'rgba(40,26,12,0.5)'; ctx.lineWidth = 0.7;   // Maserung
+      ctx.beginPath(); ctx.moveTo(0, y + 2 + r() * 2);
+      for (let x = 6; x <= TILE; x += 6) ctx.lineTo(x, y + 2 + r() * 2.4);
+      ctx.stroke();
+      if (r() < 0.5) { ctx.fillStyle = '#2a1c0c'; ctx.beginPath(); ctx.arc(4 + r() * 24, y + 3, 1, 0, 6.283); ctx.fill(); }  // Holznagel
+    }
+  } },
+  // 18 - Moosstein: feuchter Bruchstein, Moos kriecht von oben (Krypta/Moor)
+  { id: 'moosstein', name: 'Bemooster Bruchstein', deck: [58, 66, 48], front(ctx, n, H) {
+    const r = prng(n + 71);
+    voll(ctx, '#20241c', 0, 0, TILE, H);
+    for (let y = 0, reihe = 0; y < H; y += 8, reihe++) {
+      const off = (reihe % 2) * 8;
+      for (let x = -off; x < TILE; x += 16) {
+        const g = 74 + r() * 22;
+        quaderBlock(ctx, x + 1, y + 1, 14, 6, g, g + 2, g - 6);
+      }
+    }
+    // Moos-Schleier oben, Traenen nach unten
+    const moosTiefe = Math.min(H * 0.45, 16);
+    const grad = ctx.createLinearGradient(0, 0, 0, moosTiefe);
+    grad.addColorStop(0, 'rgba(74,96,52,0.55)'); grad.addColorStop(1, 'rgba(74,96,52,0)');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, TILE, moosTiefe);
+    for (let i = 0; i < 5; i++) {
+      const x = r() * TILE, tiefe = moosTiefe * (0.6 + r() * 0.8);
+      const g2 = ctx.createLinearGradient(0, 0, 0, tiefe);
+      g2.addColorStop(0, 'rgba(86,110,58,0.5)'); g2.addColorStop(1, 'rgba(86,110,58,0)');
+      ctx.fillStyle = g2; ctx.fillRect(x, 0, 2 + r() * 2, tiefe);
+    }
+    ctx.fillStyle = 'rgba(140,170,200,0.06)'; ctx.fillRect(0, H - 8, TILE, 8);   // feuchter Fuss
+  } },
 ];
 
 export const WAND_STIL_IDS = WAND_STILE.map((s) => s.id);
@@ -247,7 +402,15 @@ export function wandStilFrontTextur(scene: SzeneMitTexturen, stilId: string, var
   const cv = document.createElement('canvas'); cv.width = TILE; cv.height = H;
   const ctx = cv.getContext('2d')!;
   stil.front(ctx, variant, H);
-  ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(0, 3, TILE, 1);   // Lichtkante unter der Krone
+  // R162 (Autor "ich laufe gegen Waende, weil ich sie nicht erkenne"):
+  // KRAEFTIGE Lichtkante unter der Krone + SOCKELSCHATTEN am Boden - die
+  // Ober- und Standkante machen jede Wand als Barriere lesbar, egal welcher
+  // Stil und wie dunkel der Dungeon ist.
+  ctx.fillStyle = 'rgba(255,246,220,0.14)'; ctx.fillRect(0, 3, TILE, 1);   // Lichtkante unter der Krone
+  const sockel = ctx.createLinearGradient(0, H - 6, 0, H);
+  sockel.addColorStop(0, 'rgba(0,0,0,0)'); sockel.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx.fillStyle = sockel; ctx.fillRect(0, H - 6, TILE, 6);                 // Bodenkontakt-Schatten
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, H - 1, TILE, 1);     // Standlinie
   const [dr, dg, db] = stil.deck;
   ctx.fillStyle = `rgb(${Math.round(dr * 0.5)},${Math.round(dg * 0.5)},${Math.round(db * 0.5)})`;
   ctx.fillRect(0, 0, TILE, 3);                                             // dunkle Deckkante oben

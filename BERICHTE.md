@@ -1656,3 +1656,21 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   Dorfplan-Box, Prolog + Ebenen-Kette haengen dran, und die Kirche kann den
   Eingang NIE blockieren (Kollisions-Ausnahme der Eingangs-Flaeche).
 - tsc fehlerfrei, 390 Tests gruen, alles browser-verifiziert.
+
+## Runde 159-163 - Zaeune, Kugeln, Menue-Vermessung, Risse, neue Waende
+- R159: Zaeune in Neu-Ravensmoor entfernt (Vieh bleibt per pen auf der Weide).
+- R160: HP-/Mana-Kugeln zeigen echten FUELLSTAND (Diablo-Crop von unten) statt
+  Alpha-Fade - bei 25% Leben steht das Rot exakt auf 25% (browser-gemessen).
+- R161: Charakter-Menue per BILD-VERMESSUNG ausgerichtet: obere Tabs exakt in
+  die gemalten Kaesten (vorher bis 39px Drift), Filter-Reiter auf die gemalten
+  Reiter, Item-Icons in die gemalte Slot-Spalte, AUSGEWAEHLT-Panel skaliert
+  in die Innenbox ("4-6 Schaden" sitzt IM Werte-Kasten). Screenshot-verifiziert.
+- R163: Mauerrisse (Geheimkammern) treffen wieder zuverlaessig: Radius 16->30
+  und Nahschlag trifft unabhaengig vom Winkel (hoehere Waende hatten die
+  sichtbare Fassade aus dem alten Trefferfenster geschoben). In Ebene 3
+  verifiziert: Riss bricht mit schraegem Schlag durch.
+- R162: 8 NEUE Wand-Stile mit NAHTLOSEM Mauerwerk (deterministische Fugen -
+  die alten sprangen an jeder Kachelnaht) + Lesbarkeits-Pass fuer alle 18
+  (Lichtkante oben, Sockelschatten am Boden - Waende lesen sich als Barriere,
+  Autor lief dagegen weil er sie nicht erkannte). Basalt im Browser gerendert.
+- tsc fehlerfrei, 390 Tests gruen.
