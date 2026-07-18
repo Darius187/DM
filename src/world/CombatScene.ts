@@ -3899,23 +3899,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         const radius = e.golemTelegraphArt === 'rundum' ? 96
           : e.golemTelegraphArt === 'welle' ? 122
           : e.golemTelegraphArt === 'stampf' ? 138 : 158;
-        const puls = 0.52 + Math.abs(Math.sin(time * 10)) * 0.34;
-        const farbe = e.golemTelegraphArt === 'stampf' ? 0xd3a06f
-          : e.golemTelegraphArt === 'zorn' ? 0xff3028 : 0xb5222c;
-        g.lineStyle(e.golemTelegraphArt === 'zorn' ? 4 : 3, farbe, puls);
+        const puls = GOLEM.telegraph.alphaBasis + Math.abs(Math.sin(time * 7)) * GOLEM.telegraph.alphaPuls;
+        const farbe = e.golemTelegraphArt === 'stampf' ? 0x9b7860
+          : e.golemTelegraphArt === 'zorn' ? 0x9f2028 : 0x7d1a21;
+        g.lineStyle(e.golemTelegraphArt === 'zorn' ? GOLEM.telegraph.zornLinie : GOLEM.telegraph.linie, farbe, puls);
         g.strokeCircle(e.x, e.y, radius);
-        g.fillStyle(farbe, 0.055 + puls * 0.035);
+        g.fillStyle(farbe, GOLEM.telegraph.fuellungAlpha);
         g.fillCircle(e.x, e.y, radius);
-      }
-      if (e.type === 'golem' && e.golemFleischStufe >= 1) {
-        // Aufgerissene Rippen bleiben als dezentes Phasenmerkmal; lose,
-        // kuenstlich gezeichnete Gliedmassen gibt es bewusst nicht mehr.
-        g.lineStyle(2.2, 0xd7c7a3, 0.95);
-        g.lineBetween(e.x - 9, e.y - 23, e.x + 7, e.y - 19);
-        g.lineBetween(e.x - 10, e.y - 17, e.x + 8, e.y - 13);
-        g.lineBetween(e.x - 8, e.y - 11, e.x + 7, e.y - 7);
-        g.lineStyle(1.2, 0x5b1518, 1);
-        g.lineBetween(e.x - 2, e.y - 26, e.x - 1, e.y - 5);
       }
       // R131 (Autor: rote Angriffs-Ringe weg): nur zeichnen, wenn eingeschaltet.
       if (e.windup > 0 && getSettings().gegnerWindupRing === true) {

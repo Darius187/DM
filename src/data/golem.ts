@@ -9,11 +9,23 @@ export const GOLEM = {
   richtungen: 8,
   frames: { idle: 8, walk: 12, attack: 14, hit: 7, death: 14 },
   fps: { idle: 6, walk: 12, attack: 14, hit: 18, death: 7 },
-  standardSkala: 0.92,
-  standardBodenanker: 0.81,
+  standardSkala: 1,
+  // Koerperkontakt liegt in allen geprueften Idle-/Walk-/Attack-Frames auf
+  // Atlaszeile 131 von 144. 0,91 verankert die Fuesse dort; der schwache
+  // Kontaktschatten darf noch wenige Pixel darunter auslaufen.
+  standardBodenanker: 0.91,
   trefferDauerS: 0.38,
   schlagNachlaufS: 0.48,
+  belagerungsSchlagDauerS: 1,
+  belagerungsSchlagPauseS: 1.15,
   leichenDauerS: 9,
+  telegraph: {
+    linie: 1.1,
+    zornLinie: 1.45,
+    alphaBasis: 0.14,
+    alphaPuls: 0.12,
+    fuellungAlpha: 0.012,
+  },
   phasen: {
     rundumNurUeber: 0.70,
     stampfAb: 0.50,

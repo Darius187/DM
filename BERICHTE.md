@@ -1566,3 +1566,25 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
 - Browser-geprueft: 15%-Text und 4%-Dauerblutung mit mehreren Bodenlachen,
   vollstaendig sichtbarer Koerper und Raserei-Telegraph; keine Konsolenfehler.
   TypeScript, Produktions-Build und 59 Testdateien / 380 Tests gruen.
+
+## Menschengolem - Proportion, Bresche und dezente Spezialwarnung
+- Autorwerte als neuer Spielstandard uebernommen: Gesamtgroesse 1,00, Breite
+  0,70, Hoehe 0,70 und 1000 HP. Der Bodenanker ist nicht geraten, sondern am
+  Atlas vermessen: Koerperkontakt Zeile 131 von 144, daher 0,910. Der alte
+  lokale Tuning-Speicher wird einmalig ueber eine neue Versionskennung ersetzt.
+- Die zusaetzlich in Phaser gezeichneten Rippen sind vollstaendig entfernt.
+  Fleischverlust bleibt ueber Atlas, Tint, Blut und Bodenlachen lesbar.
+- Spezialangriffe behalten eine faire Vorwarnung, aber der rote Kreis ist nur
+  noch 1,1 px breit (Raserei 1,45 px), stark transparent und fast ungefuellt.
+- Beim Angriff auf Palisade, Tor oder Wachturm spielt der Menschengolem nun den
+  echten Schlagclip. Holzsplitter entstehen im Schlagrhythmus statt zufaellig.
+  Nach dem Fall der Wehrbauten kann er auch die uebrigen Lagergebaeude mit
+  diesem Clip angreifen, statt sie als unverwundbare Kulisse zu ignorieren.
+- Eine Palisadenkachel ist 32 px breit, der Golem mit Radius 29 braucht 58 px.
+  Nach dem ersten Durchbruch erweitert er seine Bresche deshalb gezielt um ein
+  direkt angrenzendes Segment. Ein Doppeltor ist bereits breit genug. Damit
+  folgt er nicht mehr einem fuer den Wegfinder offenen, fuer seinen Koerper aber
+  zu schmalen Loch.
+- Live-Werkbank geprueft: 1,00 / 0,70 / 0,70 / 0,910 / 1000 HP werden geladen,
+  4%-Phase reagiert und keine Rippen-Ueberzeichnung erscheint. TypeScript,
+  Produktions-Build und 60 Testdateien / 385 Tests gruen.

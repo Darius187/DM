@@ -146,6 +146,7 @@ export class Enemy {
   golemSchwerVerletzt = false;
   golemBlutCd = 0;
   golemBlutLacheCd = 0;
+  golemBrescheRest = 0;
   golemVollerSchaden = 0;
   golemSpezialCd = 2.8 + Math.random() * 1.8;
   golemTelegraphArt: 'rundum' | 'welle' | 'stampf' | 'zorn' | null = null;
@@ -189,6 +190,7 @@ export class Enemy {
   // WorldScene.updateBelagerung; der Monster marschiert dorthin und HAELT davor,
   // damit die Belagerung ihn dort gebuendelt nagen laesst.
   belagerungsZiel: { x: number; y: number } | null = null;
+  belagerungsSchlagCd = 0;
   // Einfall-Failsafe (Runde 41): erkennt im Gelände festsitzende Nachzügler
   fsT = 0; fsX?: number; fsY?: number;
   // Schildträger (Runde 11): blockt Treffer von vorn, weicht nicht zurück
@@ -689,6 +691,18 @@ export class Enemy {
       if (this.type === 'golem' && this.waehleGolemSpezial(host, d)) return;
       this.choosePattern(host);
     }
+  }
+
+  aktualisiereBelagerungsSchlag(dt: number): boolean {
+    this.belagerungsSchlagCd = Math.max(0, this.belagerungsSchlagCd - dt);
+    if (this.belagerungsSchlagCd > 0) return false;
+    this.belagerungsSchlagCd = this.type === 'golem' ? GOLEM.belagerungsSchlagPauseS : 0.8;
+    if (this.type === 'golem') {
+      this.visualAttackDauer = GOLEM.belagerungsSchlagDauerS;
+      this.visualAttackT = this.visualAttackDauer;
+      this.golemTelegraphArt = null;
+    }
+    return true;
   }
 
   private waehleGolemSpezial(host: EnemyHost, distanz: number): boolean {

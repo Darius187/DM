@@ -78,6 +78,7 @@ import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, FLYOVER, tileNameAt } from '../world/tiles';
 import { TILE } from '../gfx/fallbackArt';
 import { findePfad } from '../world/Wegfeld';
+import { angrenzendeWehrstruktur, benoetigteBreschenFelder, priorisierteBelagerungsziele, strukturBreiteInFeldern } from '../logic/belagerung';
 import { WASSER_FRAMES } from '../gfx/tileArt';
 import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64, drawSchlucht, drawKristall } from '../gfx/detailArt';
 import { DialogUI, fixUiScroll, macheFensterZiehbar } from '../ui/dialog';
@@ -7133,16 +7134,22 @@ export class WorldScene extends CombatScene {
   private belagerungsNeuT = 0;
   private updateBelagerung(dt: number): void {
     if (!this.rtsBattle) { this.belagerungAus(); return; }
-    const strukturen = this.feldbauten.filter((f) => f.id === 'palisade' || f.id === 'tor' || this.istWachturm(f.id));
-    if (!strukturen.length) { this.belagerungAus(); return; }
+    const alleStrukturen = this.feldbauten.filter((f) => f.hp > 0);
+    if (!alleStrukturen.length) { this.belagerungAus(); return; }
+    // Erst die Befestigung brechen. Sind Palisade/Tor/Turm gefallen und kein
+    // Verteidiger erreichbar, werden auch Lagerbauten zu echten Angriffszielen.
+    const strukturen = priorisierteBelagerungsziele(alleStrukturen);
     // 1) Belagerer sammeln: wache Feinde OHNE Nahkampf-Ziel UND ohne Weg zum Ziel.
     const besieger: Enemy[] = [];
     for (const e of this.enemies) {
       if (e.hp <= 0 || e.team === 'spieler') continue;
       if (e.passiv || e.jagdZiel || e.flieht) { e.belagerungsZiel = null; continue; }   // schlaeft/jagt Tier/flieht -> nicht belagern
+      const golemErweitertBresche = e.type === 'golem' && e.golemBrescheRest > 0 && !!e.belagerungsZiel
+        && strukturen.some((f) => Math.hypot(f.x - e.belagerungsZiel!.x, f.y - e.belagerungsZiel!.y) < 4);
+      if (e.type === 'golem' && e.golemBrescheRest > 0 && !golemErweitertBresche) e.golemBrescheRest = 0;
       let kampfNah = !this.playerDead && Math.hypot(this.px - e.x, this.py - e.y) < BELAGERUNG.keinKampfRadius;
       if (!kampfNah) for (const o of this.enemies) { if (o.team === 'spieler' && o.hp > 0 && Math.hypot(o.x - e.x, o.y - e.y) < BELAGERUNG.keinKampfRadius) { kampfNah = true; break; } }
-      if (kampfNah || this.hatWegZumZiel(e)) { e.belagerungsZiel = null; continue; }   // kaempft / hat Weg -> nicht belagern
+      if (kampfNah || (!golemErweitertBresche && this.hatWegZumZiel(e))) { e.belagerungsZiel = null; continue; }   // kaempft / hat Weg -> nicht belagern
       besieger.push(e);
     }
     if (!besieger.length) { this.belagerungsZielRef = null; return; }
@@ -7168,27 +7175,47 @@ export class WorldScene extends CombatScene {
     besieger.sort((a, b) => Math.hypot(a.x - bresche.x, a.y - bresche.y) - Math.hypot(b.x - bresche.x, b.y - bresche.y));
     const belegung = new Map<(typeof strukturen)[number], number>();
     for (const e of besieger) {
-      const zielF = kandidaten.find((f) => (belegung.get(f) ?? 0) < BELAGERUNG.maxProStelle) ?? bresche;
+      const festesGolemZiel = e.type === 'golem' && e.golemBrescheRest > 0 && e.belagerungsZiel
+        ? strukturen.find((f) => Math.hypot(f.x - e.belagerungsZiel!.x, f.y - e.belagerungsZiel!.y) < 4)
+        : undefined;
+      const zielF = festesGolemZiel ?? kandidaten.find((f) => (belegung.get(f) ?? 0) < BELAGERUNG.maxProStelle) ?? bresche;
       belegung.set(zielF, (belegung.get(zielF) ?? 0) + 1);
       e.belagerungsZiel = { x: zielF.x, y: zielF.y };
       if (Math.hypot(zielF.x - e.x, zielF.y - e.y) < BELAGERUNG.radius + e.r) {
         // dran: gezielt nagen
+        const neuerSchlag = e.aktualisiereBelagerungsSchlag(dt);
         zielF.hp -= e.dmg * BELAGERUNG.schadensFaktor * dt;
-        if (Math.random() < dt * 3) this.fx.burst(zielF.x, zielF.y - 6, 0x8a6a3c, 2, 50);
+        if (neuerSchlag) this.fx.burst(zielF.x, zielF.y - 6, 0x8a6a3c, e.type === 'golem' ? 5 : 2, 50);
         if (zielF.hp <= 0) {
-          this.logMsg(`${zielF.id === 'tor' ? 'Das Tor' : this.istWachturm(zielF.id) ? 'Der Wachturm' : 'Die Palisade'} wurde eingerissen!`, 'bad');
+          let breschenErweiterung: (typeof strukturen)[number] | null = null;
+          if (e.type === 'golem') {
+            const rest = e.golemBrescheRest > 0
+              ? e.golemBrescheRest - 1
+              : Math.max(0, benoetigteBreschenFelder(e.r, TILE) - strukturBreiteInFeldern(zielF));
+            breschenErweiterung = rest > 0 ? angrenzendeWehrstruktur(zielF, strukturen) : null;
+            e.golemBrescheRest = breschenErweiterung ? rest : 0;
+          }
+          const bauName = RTS_BAUTEN.find((b) => b.id === zielF.id)?.name ?? zielF.id;
+          this.logMsg(`${bauName} wurde zerstört!`, 'bad');
           this.sfx.playAt('holz_hacken', zielF.x, zielF.y, 0.7);
           this.entferneFeldbau(zielF);
           if (this.belagerungsZielRef === zielF) this.belagerungsZielRef = null;
+          if (breschenErweiterung) {
+            e.belagerungsZiel = { x: breschenErweiterung.x, y: breschenErweiterung.y };
+            this.belagerungsZielRef = breschenErweiterung;
+          } else {
+            e.belagerungsZiel = null;
+          }
           this.rtsBattle.wegfelderNeu();   // sofort neu pfaden -> Angreifer stroemen durch die Bresche
           this.wegfeldNeu();               // Szenen-Feld (Held-Ziel) ebenfalls
+          break;                           // entfernte Struktur in diesem Frame nicht doppelt treffen
         }
       }
     }
   }
   private belagerungAus(): void {
     this.belagerungsZielRef = null;
-    for (const e of this.enemies) if (e.team !== 'spieler') e.belagerungsZiel = null;
+    for (const e of this.enemies) if (e.team !== 'spieler') { e.belagerungsZiel = null; e.golemBrescheRest = 0; }
   }
   // Hat der Feind e einen begehbaren Weg zu seinem aktuellen Ziel? (dann nicht belagern,
   // sondern normal durchziehen - offenes Tor, aussen herum). Kein Weg = eingeschlossen.

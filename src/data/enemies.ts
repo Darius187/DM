@@ -42,7 +42,7 @@ export const ENEMIES: Readonly<Record<EnemyTypeId, EnemyDef>> = {
     speedMin: 130, speedMax: 150, r: 7, col: '#5a4a3a', xpBase: 4, xpPerDepth: 1, aggro: 180,
   },
   golem: {
-    name: 'Menschengolem', hpBase: 2600, hpPerDepth: 120, dmgBase: 48, dmgPerDepth: 4,
+    name: 'Menschengolem', hpBase: 1000, hpPerDepth: 0, dmgBase: 48, dmgPerDepth: 4,
     speedMin: 34, speedMax: 34, r: 29, col: '#667058', xpBase: 520, xpPerDepth: 20, aggro: 560,
   },
 };

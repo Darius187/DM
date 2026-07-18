@@ -177,7 +177,7 @@ export const RTS_UNIT_TYP: Record<RtsUnitTyp, RtsUnitDef> = {
   e_nah:    { name: 'Untoter Söldner', team: 'feind', hp: 210, dmg: 12, reich: 30,  speed: 56, rank: 1, figur: 'skelett',  heiler: false, schadensRed: 0.7,  schild: true,  schadensArt: 'schnitt', tags: ['untot', 'knochen', 'gepanzert', 'schild'] },
   e_bogen:  { name: 'Untoter Schütze', team: 'feind', hp: 120, dmg: 8,  reich: 190, speed: 56, rank: 2, figur: 'schuetze', heiler: false, schadensRed: 0.9,  schild: false, schadensArt: 'pfeil', tags: ['untot', 'knochen', 'fernkampf'] },
   e_elite:  { name: 'Untoter Ritter',  team: 'feind', hp: 540, dmg: 19, reich: 34,  speed: 52, rank: 0, figur: 'skelett',  heiler: false, tint: 0xc090d0, groesse: 1.35, schadensRed: 0.55, schild: true, schadensArt: 'wucht', tags: ['untot', 'knochen', 'gepanzert', 'schild', 'schwer', 'anfuehrer'] },
-  e_golem:  { name: 'Menschengolem', team: 'feind', hp: 3000, dmg: 52, reich: 48, speed: 34, rank: 0, figur: 'golem', heiler: false, schadensRed: 0.5, schild: false, schadensArt: 'wucht', tags: ['faul', 'ungepanzert', 'schwer'] },
+  e_golem:  { name: 'Menschengolem', team: 'feind', hp: 1000, dmg: 52, reich: 48, speed: 34, rank: 0, figur: 'golem', heiler: false, schadensRed: 0.5, schild: false, schadensArt: 'wucht', tags: ['faul', 'ungepanzert', 'schwer'] },
 };
 
 // Wachturm-Besatzung (R96, Autor "ich muss jemanden befehligen auf den Turm zu

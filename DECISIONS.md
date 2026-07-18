@@ -2397,3 +2397,16 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Die Dev-Werkbank heisst `GEGNER`, weil sie nicht dauerhaft nur fuer den
   Menschengolem reserviert sein soll. Neue besondere Gegner erhalten darin
   jeweils einen klar benannten eigenen Abschnitt.
+- Der Menschengolem-Standard ist 1,00 Gesamtgroesse, 0,70 Breite, 0,70 Hoehe
+  und 1000 HP. Sein Bodenanker ist mit 0,910 aus dem Koerperkontakt in Atlaszeile
+  131/144 abgeleitet; der darunterliegende Kontaktschatten bestimmt nicht den
+  Kollisionsfuss.
+- Ein Menschengolem erweitert eine eingerissene 32-px-Palisadenkachel auf zwei
+  benachbarte freie Kacheln, weil sein Kollisionsdurchmesser 58 px betraegt. Ein
+  zweikacheliges Tor zaehlt bereits als vollwertige Bresche.
+- Golem-Spezialangriffe bleiben aus Fairness telegraphiert, aber nur mit einer
+  duennen, transparenten Kreislinie. Zusaetzliche gezeichnete Rippen sind keine
+  Anatomie und werden nicht mehr ueber den Atlas gelegt.
+- Bei Belagerungen haben Palisade, Tor und Wachturm Zielprioritaet. Erst wenn
+  keine Wehrstruktur mehr steht und kein Verteidiger erreichbar ist, duerfen
+  Menschengolem und andere Belagerer uebrige Feld-/Lagerbauten angreifen.
