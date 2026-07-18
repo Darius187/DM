@@ -7422,6 +7422,36 @@ export class WorldScene extends CombatScene {
     return (this.isSolidAt(x, y) && !this.torOffenHier(x, y)) || this.gebaeudeSolid(x, y, true);
   }
 
+  // R158 (Autor "unsichtbare Wand am Fluss"): blockiert WASSER den Helden,
+  // zeigt ein Spritzer + (einmal je Karte) ein Hinweis unmissverstaendlich,
+  // dass hier ein Fluss ist - selbst wenn das truebe Moorwasser wie Boden
+  // aussieht. Gedrosselt gegen Spam.
+  private wasserBlockT = 0;
+  private wasserHinweisGezeigt = false;
+  protected override blockiertFeedback(zx: number, zy: number): void {
+    // Blockierende Ecke kann eine Nachbarkachel sein - kleine Umgebung pruefen.
+    const tx = Math.floor(zx / TILE), ty = Math.floor(zy / TILE);
+    let wasser = false;
+    for (let dy = -1; dy <= 1 && !wasser; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (this.area?.map?.[ty + dy]?.[tx + dx] === T.WATER) { wasser = true; break; }
+    }
+    if (!wasser) return;
+    const jetzt = this.time.now / 1000;
+    if (jetzt - this.wasserBlockT < 0.5) return;
+    this.wasserBlockT = jetzt;
+    // Spritzer an der Uferkante Richtung Wasser
+    this.fx.burst((this.px + zx) / 2, (this.py + zy) / 2, 0x9ab8cc, 6, 90);
+    if (this.textures.exists('regenring')) {
+      const ring = this.add.image(zx, zy, 'regenring').setDepth(-8.3).setAlpha(0.55).setScale(0.12);
+      this.tweens.add({ targets: ring, scale: 0.6, alpha: 0, duration: 480, ease: 'Quad.easeOut', onComplete: () => ring.destroy() });
+    }
+    this.playSound('block', 0.25);
+    if (!this.wasserHinweisGezeigt) {
+      this.wasserHinweisGezeigt = true;
+      this.logMsg('Der Fluss ist zu tief - du musst eine Furt oder Brücke suchen.', '');
+    }
+  }
+
   // R101c (Autor-Bug "bei offenem Tor kommen die Monster nicht rein"): ein OFFENES
   // Tor ist jetzt auch fuer FEINDE kein Hindernis - sie stroemen durch. Sonst wie
   // die rohe Kollision (geschlossenes Tor + Palisade + Wand bleiben Wand).

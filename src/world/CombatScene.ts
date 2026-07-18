@@ -3417,14 +3417,23 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   protected movePlayer(dx: number, dy: number, r: number = PLAYER.radius): void {
     const nx = this.px + dx;
-    if (!this.solidFuerHeld(nx - r, this.py - r) && !this.solidFuerHeld(nx + r, this.py - r)
+    const xFrei = !this.solidFuerHeld(nx - r, this.py - r) && !this.solidFuerHeld(nx + r, this.py - r)
       && !this.solidFuerHeld(nx - r, this.py + r) && !this.solidFuerHeld(nx + r, this.py + r)
-      && !this.spielerExtraBlockiert(nx, this.py, r)) this.px = nx;
+      && !this.spielerExtraBlockiert(nx, this.py, r);
+    if (xFrei) this.px = nx;
+    else if (dx !== 0) this.blockiertFeedback(nx + Math.sign(dx) * r, this.py);   // R158
     const ny = this.py + dy;
-    if (!this.solidFuerHeld(this.px - r, ny - r) && !this.solidFuerHeld(this.px + r, ny - r)
+    const yFrei = !this.solidFuerHeld(this.px - r, ny - r) && !this.solidFuerHeld(this.px + r, ny - r)
       && !this.solidFuerHeld(this.px - r, ny + r) && !this.solidFuerHeld(this.px + r, ny + r)
-      && !this.spielerExtraBlockiert(this.px, ny, r)) this.py = ny;
+      && !this.spielerExtraBlockiert(this.px, ny, r);
+    if (yFrei) this.py = ny;
+    else if (dy !== 0) this.blockiertFeedback(this.px, ny + Math.sign(dy) * r);   // R158
   }
+
+  // R158 (Autor "unsichtbare Wand am Fluss"): wird der Held von etwas
+  // geblockt, entscheidet die WorldScene, ob es Wasser ist, und gibt
+  // lesbare Rueckmeldung (Spritzer + einmaliger Hinweis). Default: nichts.
+  protected blockiertFeedback(_zx: number, _zy: number): void { /* Hook: WorldScene */ }
 
   private updateProjectiles(dt: number): void {
     for (const pr of this.projectiles) {
