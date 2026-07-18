@@ -27,6 +27,7 @@ export interface EnemyHost {
   logMsg(text: string, cls?: string): void;
   playSound(name: string, volMult?: number): void;
   burstFx(x: number, y: number, col: number, n: number, spd: number): void;
+  golemSpezial(e: Enemy, art: 'rundum' | 'welle' | 'stampf' | 'zorn'): void;
   // Rudel-Verhalten (Runde 27): wie viele Verbündete stehen nahe bei e?
   verbuendeteNahe(e: Enemy, radius: number): number;
   // Begegnungs-Ruf (Runde 32): erster Sichtkontakt, gedrosselt
@@ -48,7 +49,8 @@ export interface EnemyHost {
 
 // Angriffsmuster je Gegnertyp (Masterprompt 4.3: 2-3 Muster, Telegraph 0,35-0,85 s)
 interface AttackPattern {
-  id: 'hieb' | 'doppelhieb' | 'giftwolke' | 'blinkschlag' | 'sprung';
+  id: 'hieb' | 'doppelhieb' | 'giftwolke' | 'blinkschlag' | 'sprung'
+    | 'golem_rundum' | 'golem_welle' | 'golem_stampf' | 'golem_zorn';
   windup: number;
   weight: number;
 }
@@ -138,6 +140,17 @@ export class Enemy {
   visualAttackT = 0;
   visualAttackDauer = 0;
   visualDir8 = 0;
+  // Eigene Menschengolem-Phasen. Der schwere Koerper ignoriert Rueckstoss und
+  // blutet bei 30/15/5 Prozent zunehmend stark aus.
+  golemFleischStufe = 0;
+  golemSchwerVerletzt = false;
+  golemBlutCd = 0;
+  golemBlutLacheCd = 0;
+  golemBrescheRest = 0;
+  golemVollerSchaden = 0;
+  golemSpezialCd = 2.8 + Math.random() * 1.8;
+  golemTelegraphArt: 'rundum' | 'welle' | 'stampf' | 'zorn' | null = null;
+  private golemZornFolge = 0;
   wobble: number;
   dir: Dir = 0;
   step = 0;
@@ -177,6 +190,7 @@ export class Enemy {
   // WorldScene.updateBelagerung; der Monster marschiert dorthin und HAELT davor,
   // damit die Belagerung ihn dort gebuendelt nagen laesst.
   belagerungsZiel: { x: number; y: number } | null = null;
+  belagerungsSchlagCd = 0;
   // Einfall-Failsafe (Runde 41): erkennt im Gelände festsitzende Nachzügler
   fsT = 0; fsX?: number; fsY?: number;
   // Schildträger (Runde 11): blockt Treffer von vorn, weicht nicht zurück
@@ -247,9 +261,11 @@ export class Enemy {
 
   // bei Treffern zurückweichen (Feedback-Runde 2)
   onHurt(): void {
-    if (this.type === 'golem') this.visualHitT = GOLEM.trefferDauerS;
     this.passiv = false;   // R100b: Schaden weckt eine passive Einheit
     this.schlaeft = false; // R118: Schaden weckt auch Schlafende
+    // Der Menschengolem zuckt nicht zurueck. Seine Trefferreaktion kommt ueber
+    // Blut, Fleischverlust und die HP-Phasen, nicht ueber Positionsspruenge.
+    if (this.type === 'golem') return;
     if (this.boss) return;
     // Runde 35: beim Treffer nur noch SELTEN zurückzucken (vorher 0,7 für
     // flinke Typen - man konnte sie folgenlos abschnetzeln). Richtet sich
@@ -287,6 +303,7 @@ export class Enemy {
     this.maxhp = Math.round(def.hpBase + def.hpPerDepth * kt);
     this.hp = this.maxhp;
     this.dmg = Math.round(def.dmgBase + def.dmgPerDepth * kt);
+    this.golemVollerSchaden = this.dmg;
     this.speed = rnd(rng, def.speedMin, def.speedMax);
     this.xp = def.xpBase + def.xpPerDepth * depth;
     this.aggro = def.aggro;
@@ -337,6 +354,7 @@ export class Enemy {
   // weg und betäubt ihn kurz, damit er nicht sofort wieder heranläuft. Wirkt
   // IMMER (nicht nur im Physik-Test), aber bei Bossen stark gedämpft.
   stossWeg(vx: number, vy: number, stunS: number): void {
+    if (this.type === 'golem') return;
     const f = this.boss ? 0.18 : this.champion ? 0.5 : 1;
     this.kvx = vx * f; this.kvy = vy * f;
     this.kbT = 0.22;
@@ -355,6 +373,9 @@ export class Enemy {
   }
 
   update(host: EnemyHost, dt: number): void {
+    // Der Menschengolem ist zu schwer fuer Impuls-/Treffer-Rueckstoss. Auch ein
+    // eventuell bereits gesetzter Impuls darf ihn nicht einen Frame weit tragen.
+    if (this.type === 'golem') { this.kbT = 0; this.kvx = 0; this.kvy = 0; }
     this.atkCd = Math.max(0, this.atkCd - dt);
     this.shootCd = Math.max(0, this.shootCd - dt);
     this.hitFlash = Math.max(0, this.hitFlash - dt);
@@ -363,6 +384,7 @@ export class Enemy {
     this.visualMoveT = Math.max(0, this.visualMoveT - dt);
     this.visualHitT = Math.max(0, this.visualHitT - dt);
     this.visualAttackT = Math.max(0, this.visualAttackT - dt);
+    this.golemSpezialCd = Math.max(0, this.golemSpezialCd - dt);
     this.slowT = Math.max(0, this.slowT - dt);
     this.rootT = Math.max(0, this.rootT - dt);
     this.markedT = Math.max(0, this.markedT - dt);
@@ -666,8 +688,47 @@ export class Enemy {
         }
       }
     } else if (this.atkCd === 0) {
+      if (this.type === 'golem' && this.waehleGolemSpezial(host, d)) return;
       this.choosePattern(host);
     }
+  }
+
+  aktualisiereBelagerungsSchlag(dt: number): boolean {
+    this.belagerungsSchlagCd = Math.max(0, this.belagerungsSchlagCd - dt);
+    if (this.belagerungsSchlagCd > 0) return false;
+    this.belagerungsSchlagCd = this.type === 'golem' ? GOLEM.belagerungsSchlagPauseS : 0.8;
+    if (this.type === 'golem') {
+      this.visualAttackDauer = GOLEM.belagerungsSchlagDauerS;
+      this.visualAttackT = this.visualAttackDauer;
+      this.golemTelegraphArt = null;
+    }
+    return true;
+  }
+
+  private waehleGolemSpezial(host: EnemyHost, distanz: number): boolean {
+    if (this.golemSpezialCd > 0 || distanz > 145 || this.kaempftNicht) return false;
+    const anteil = this.hp / Math.max(1, this.maxhp);
+    let art: AttackPattern['id'] | null = null;
+    if (anteil < GOLEM.phasen.rasereiUnter) {
+      // Letzte Raserei: keine saubere Phase mehr, sondern alle erlernten
+      // Flaecheneffekte als eine stark telegraphierte Verzweiflungstat.
+      art = 'golem_zorn';
+      this.golemZornFolge++;
+    } else if (anteil <= GOLEM.phasen.stampfAb) {
+      art = this.golemZornFolge++ % 2 === 0 ? 'golem_stampf' : 'golem_welle';
+    } else if (anteil <= GOLEM.phasen.rundumNurUeber) {
+      art = 'golem_welle';
+    } else if (Math.random() < 0.34) {
+      art = 'golem_rundum';
+    }
+    if (!art) {
+      this.golemSpezialCd = 1.4;
+      return false;
+    }
+    const windup = art === 'golem_zorn' ? 1.05 : art === 'golem_stampf' ? 0.92 : 0.72;
+    this.startPattern(host, art, windup);
+    this.golemSpezialCd = art === 'golem_zorn' ? 4.2 : 4.8 + Math.random() * 2.2;
+    return true;
   }
 
   // Hindernis-Umgehung (Runde 27): ist der direkte Weg versperrt, dreht
@@ -741,6 +802,10 @@ export class Enemy {
     if (this.type === 'golem') {
       this.visualAttackDauer = this.windup + GOLEM.schlagNachlaufS;
       this.visualAttackT = this.visualAttackDauer;
+      this.golemTelegraphArt = id === 'golem_rundum' ? 'rundum'
+        : id === 'golem_welle' ? 'welle'
+        : id === 'golem_stampf' ? 'stampf'
+        : id === 'golem_zorn' ? 'zorn' : null;
     }
     this.atkCd = (ENEMY_AI.meleeAtkCd + (id === 'hieb' ? 0 : 0.6)) / (TUNING.gegnerSchlagtempo * this.schlagtempoF);
     host.playSound('telegraph', 0.7);
@@ -796,7 +861,20 @@ export class Enemy {
         this.lungeVy = Math.sin(ang) * 330;
         host.playSound('wolf');
         break;
+      case 'golem_rundum':
+        host.golemSpezial(this, 'rundum');
+        break;
+      case 'golem_welle':
+        host.golemSpezial(this, 'welle');
+        break;
+      case 'golem_stampf':
+        host.golemSpezial(this, 'stampf');
+        break;
+      case 'golem_zorn':
+        host.golemSpezial(this, 'zorn');
+        break;
     }
+    this.golemTelegraphArt = null;
   }
 
   // Hören vor Sehen: ab ~1,5-facher Aggro-Reichweite leise hörbar

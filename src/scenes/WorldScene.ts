@@ -78,6 +78,7 @@ import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, FLYOVER, tileNameAt } from '../world/tiles';
 import { TILE } from '../gfx/fallbackArt';
 import { findePfad } from '../world/Wegfeld';
+import { angrenzendeWehrstruktur, benoetigteBreschenFelder, priorisierteBelagerungsziele, strukturBreiteInFeldern } from '../logic/belagerung';
 import { WASSER_FRAMES } from '../gfx/tileArt';
 import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64, drawSchlucht, drawKristall } from '../gfx/detailArt';
 import { DialogUI, fixUiScroll, macheFensterZiehbar } from '../ui/dialog';
@@ -3480,6 +3481,7 @@ export class WorldScene extends CombatScene {
         const leben = typ === 'e_golem' ? aktuellesGolemTuning().leben : d.hp;
         e.maxhp = leben; e.hp = leben;
         e.dmg = d.dmg;
+        if (typ === 'e_golem') e.golemVollerSchaden = d.dmg;
         e.speed = d.speed;
         e.schild = d.schild ?? false;
         e.schadensRed = d.schadensRed ?? 1;
@@ -5166,9 +5168,21 @@ export class WorldScene extends CombatScene {
     // Messlauf reproduzierbar, ohne das Monster erneut setzen zu muessen.
     for (const e of this.enemies) {
       if (e.type !== 'golem' || e.hp <= 0) continue;
+      this.setzeGolemPhasenZurueck(e);
       e.maxhp = neu;
       e.hp = neu;
     }
+  }
+
+  private setzeGolemTestPhase(prozent: number): void {
+    for (const e of this.enemies) {
+      if (e.type !== 'golem' || e.hp <= 0) continue;
+      if (prozent >= 100) this.setzeGolemPhasenZurueck(e);
+      e.hp = Math.max(1, Math.round(e.maxhp * prozent / 100));
+      this.aktualisiereGolemPhasen(e);
+      e.passiv = false;
+    }
+    this.logMsg(`Menschengolem-Testphase: ${prozent}% Leben.`, 'gold');
   }
 
   private baueDevTabs(): DKTab[] {
@@ -5260,13 +5274,21 @@ export class WorldScene extends CombatScene {
         })),
       ] },
       { name: 'PFERD', controls: () => this.baueReitTuningControls() },
-      { name: 'GOLEM', controls: () => [
-        { kind: 'note', text: 'MENSCHENGOLEM live testen. Groessenregler aendern nur die Darstellung; Trefferkreis und Reichweite bleiben bis zur Endabnahme unveraendert.' },
+      { name: 'GEGNER', controls: () => [
+        { kind: 'note', text: 'MENSCHENGOLEM - erster Gegnertyp dieser Werkbank. Weitere besondere Gegner kommen spaeter als eigene Abschnitte hinzu.' },
+        { kind: 'note', text: 'Groessenregler aendern nur die Darstellung; Trefferkreis und Reichweite bleiben bis zur Endabnahme unveraendert.' },
         { kind: 'slider', label: 'Gesamtgroesse', min: 0.45, max: 1.40, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => aktuellesGolemTuning().skala, set: (v) => { setzeGolemTuning({ skala: v }); } },
         { kind: 'slider', label: 'Breite', min: 0.70, max: 1.35, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => aktuellesGolemTuning().breite, set: (v) => { setzeGolemTuning({ breite: v }); } },
         { kind: 'slider', label: 'Hoehe', min: 0.70, max: 1.35, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => aktuellesGolemTuning().hoehe, set: (v) => { setzeGolemTuning({ hoehe: v }); } },
         { kind: 'slider', label: 'Bodenanker', min: 0.72, max: 0.96, step: 0.005, fmt: (v) => v.toFixed(3), get: () => aktuellesGolemTuning().bodenanker, set: (v) => { setzeGolemTuning({ bodenanker: v }); } },
         { kind: 'slider', label: 'Leben (RTS-Test)', min: 100, max: 20000, step: 100, fmt: (v) => `${Math.round(v)} HP`, get: () => aktuellesGolemTuning().leben, set: (v) => { this.setzeGolemTestLeben(v); } },
+        { kind: 'note', text: 'PHASEN DIREKT TESTEN - wirkt auf bereits platzierte Menschengolems:' },
+        { kind: 'button', label: () => '100% - unverletzt', onClick: () => this.setzeGolemTestPhase(100) },
+        { kind: 'button', label: () => '70% - Fleischwelle', onClick: () => this.setzeGolemTestPhase(70) },
+        { kind: 'button', label: () => '50% - Bodenstampfer', onClick: () => this.setzeGolemTestPhase(50) },
+        { kind: 'button', label: () => '30% - Fleisch und Knochen brechen auf', onClick: () => this.setzeGolemTestPhase(30) },
+        { kind: 'button', label: () => '15% - massiver Blutverlust, halber Schaden', onClick: () => this.setzeGolemTestPhase(15) },
+        { kind: 'button', label: () => '4% - letzte Raserei', onClick: () => this.setzeGolemTestPhase(4) },
         { kind: 'button', label: () => 'WERTE KOPIEREN fuer Codex', onClick: () => window.prompt('Diese Werte kopieren und im Chat einfuegen:', golemTuningExport()) },
         { kind: 'button', label: () => 'Auf aktuellen Spielstandard zuruecksetzen', onClick: () => { setzeGolemTuning({ ...GOLEM_TUNING_STANDARD }); this.setzeGolemTestLeben(GOLEM_TUNING_STANDARD.leben); this.devKonsole?.refresh(); } },
       ] as DKControl[] },
@@ -6931,6 +6953,7 @@ export class WorldScene extends CombatScene {
   // Held im RTS-Modus zum Ziel laufen lassen + Gegner automatisch angreifen.
   private updateRtsHeld(dt: number): void {
     if (this.rtsAttackCd > 0) this.rtsAttackCd -= dt;
+    if (this.golemLaehmungT > 0) { this.rtsLaeuft = false; return; }
     // Auswahl-Ring
     if (this.rtsHeldGewaehlt && this.devFreiKam) {
       if (!this.rtsWahlRing) { this.rtsWahlRing = this.add.graphics().setDepth(this.py - 1); }
@@ -7116,16 +7139,22 @@ export class WorldScene extends CombatScene {
   private belagerungsNeuT = 0;
   private updateBelagerung(dt: number): void {
     if (!this.rtsBattle) { this.belagerungAus(); return; }
-    const strukturen = this.feldbauten.filter((f) => f.id === 'palisade' || f.id === 'tor' || this.istWachturm(f.id));
-    if (!strukturen.length) { this.belagerungAus(); return; }
+    const alleStrukturen = this.feldbauten.filter((f) => f.hp > 0);
+    if (!alleStrukturen.length) { this.belagerungAus(); return; }
+    // Erst die Befestigung brechen. Sind Palisade/Tor/Turm gefallen und kein
+    // Verteidiger erreichbar, werden auch Lagerbauten zu echten Angriffszielen.
+    const strukturen = priorisierteBelagerungsziele(alleStrukturen);
     // 1) Belagerer sammeln: wache Feinde OHNE Nahkampf-Ziel UND ohne Weg zum Ziel.
     const besieger: Enemy[] = [];
     for (const e of this.enemies) {
       if (e.hp <= 0 || e.team === 'spieler') continue;
       if (e.passiv || e.jagdZiel || e.flieht) { e.belagerungsZiel = null; continue; }   // schlaeft/jagt Tier/flieht -> nicht belagern
+      const golemErweitertBresche = e.type === 'golem' && e.golemBrescheRest > 0 && !!e.belagerungsZiel
+        && strukturen.some((f) => Math.hypot(f.x - e.belagerungsZiel!.x, f.y - e.belagerungsZiel!.y) < 4);
+      if (e.type === 'golem' && e.golemBrescheRest > 0 && !golemErweitertBresche) e.golemBrescheRest = 0;
       let kampfNah = !this.playerDead && Math.hypot(this.px - e.x, this.py - e.y) < BELAGERUNG.keinKampfRadius;
       if (!kampfNah) for (const o of this.enemies) { if (o.team === 'spieler' && o.hp > 0 && Math.hypot(o.x - e.x, o.y - e.y) < BELAGERUNG.keinKampfRadius) { kampfNah = true; break; } }
-      if (kampfNah || this.hatWegZumZiel(e)) { e.belagerungsZiel = null; continue; }   // kaempft / hat Weg -> nicht belagern
+      if (kampfNah || (!golemErweitertBresche && this.hatWegZumZiel(e))) { e.belagerungsZiel = null; continue; }   // kaempft / hat Weg -> nicht belagern
       besieger.push(e);
     }
     if (!besieger.length) { this.belagerungsZielRef = null; return; }
@@ -7151,27 +7180,47 @@ export class WorldScene extends CombatScene {
     besieger.sort((a, b) => Math.hypot(a.x - bresche.x, a.y - bresche.y) - Math.hypot(b.x - bresche.x, b.y - bresche.y));
     const belegung = new Map<(typeof strukturen)[number], number>();
     for (const e of besieger) {
-      const zielF = kandidaten.find((f) => (belegung.get(f) ?? 0) < BELAGERUNG.maxProStelle) ?? bresche;
+      const festesGolemZiel = e.type === 'golem' && e.golemBrescheRest > 0 && e.belagerungsZiel
+        ? strukturen.find((f) => Math.hypot(f.x - e.belagerungsZiel!.x, f.y - e.belagerungsZiel!.y) < 4)
+        : undefined;
+      const zielF = festesGolemZiel ?? kandidaten.find((f) => (belegung.get(f) ?? 0) < BELAGERUNG.maxProStelle) ?? bresche;
       belegung.set(zielF, (belegung.get(zielF) ?? 0) + 1);
       e.belagerungsZiel = { x: zielF.x, y: zielF.y };
       if (Math.hypot(zielF.x - e.x, zielF.y - e.y) < BELAGERUNG.radius + e.r) {
         // dran: gezielt nagen
+        const neuerSchlag = e.aktualisiereBelagerungsSchlag(dt);
         zielF.hp -= e.dmg * BELAGERUNG.schadensFaktor * dt;
-        if (Math.random() < dt * 3) this.fx.burst(zielF.x, zielF.y - 6, 0x8a6a3c, 2, 50);
+        if (neuerSchlag) this.fx.burst(zielF.x, zielF.y - 6, 0x8a6a3c, e.type === 'golem' ? 5 : 2, 50);
         if (zielF.hp <= 0) {
-          this.logMsg(`${zielF.id === 'tor' ? 'Das Tor' : this.istWachturm(zielF.id) ? 'Der Wachturm' : 'Die Palisade'} wurde eingerissen!`, 'bad');
+          let breschenErweiterung: (typeof strukturen)[number] | null = null;
+          if (e.type === 'golem') {
+            const rest = e.golemBrescheRest > 0
+              ? e.golemBrescheRest - 1
+              : Math.max(0, benoetigteBreschenFelder(e.r, TILE) - strukturBreiteInFeldern(zielF));
+            breschenErweiterung = rest > 0 ? angrenzendeWehrstruktur(zielF, strukturen) : null;
+            e.golemBrescheRest = breschenErweiterung ? rest : 0;
+          }
+          const bauName = RTS_BAUTEN.find((b) => b.id === zielF.id)?.name ?? zielF.id;
+          this.logMsg(`${bauName} wurde zerstört!`, 'bad');
           this.sfx.playAt('holz_hacken', zielF.x, zielF.y, 0.7);
           this.entferneFeldbau(zielF);
           if (this.belagerungsZielRef === zielF) this.belagerungsZielRef = null;
+          if (breschenErweiterung) {
+            e.belagerungsZiel = { x: breschenErweiterung.x, y: breschenErweiterung.y };
+            this.belagerungsZielRef = breschenErweiterung;
+          } else {
+            e.belagerungsZiel = null;
+          }
           this.rtsBattle.wegfelderNeu();   // sofort neu pfaden -> Angreifer stroemen durch die Bresche
           this.wegfeldNeu();               // Szenen-Feld (Held-Ziel) ebenfalls
+          break;                           // entfernte Struktur in diesem Frame nicht doppelt treffen
         }
       }
     }
   }
   private belagerungAus(): void {
     this.belagerungsZielRef = null;
-    for (const e of this.enemies) if (e.team !== 'spieler') e.belagerungsZiel = null;
+    for (const e of this.enemies) if (e.team !== 'spieler') { e.belagerungsZiel = null; e.golemBrescheRest = 0; }
   }
   // Hat der Feind e einen begehbaren Weg zu seinem aktuellen Ziel? (dann nicht belagern,
   // sondern normal durchziehen - offenes Tor, aussen herum). Kein Weg = eingeschlossen.
@@ -7321,6 +7370,7 @@ export class WorldScene extends CombatScene {
       logMsg: (t, c) => s.logMsg(t, c),
       playSound: (n, v) => s.playSound(n, v),
       burstFx: (x, y, col, n, spd) => s.burstFx(x, y, col, n, spd),
+      golemSpezial: (en, art) => s.golemSpezial(en, art),
       verbuendeteNahe: (en, radius) => { let n = 0; for (const o of s.enemies) { if (o !== en && o.team === en.team && o.hp > 0 && Math.hypot(o.x - en.x, o.y - en.y) < radius) n++; } return n; },
       begegnungsRuf: (en) => { if (en.team !== 'spieler') s.begegnungsRuf(en); },
       wegRichtung: (x, y) => {

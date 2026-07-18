@@ -13,13 +13,15 @@ export interface GolemDarstellungTuning {
 
 export const GOLEM_TUNING_STANDARD: Readonly<GolemDarstellungTuning> = {
   skala: GOLEM.standardSkala,
-  breite: 1,
-  hoehe: 1,
+  breite: 0.7,
+  hoehe: 0.7,
   bodenanker: GOLEM.standardBodenanker,
   leben: RTS_UNIT_TYP.e_golem.hp,
 };
 
-const SPEICHER_KEY = 'ravensmoor_menschengolem_tuning_v1';
+// v2 uebernimmt die vom Autor abgenommene Proportion samt neu vermessenem
+// Bodenanker, statt alte Testwerte aus v1 ueber die neuen Standards zu legen.
+const SPEICHER_KEY = 'ravensmoor_menschengolem_tuning_v2';
 const GRENZEN: Record<keyof GolemDarstellungTuning, readonly [number, number]> = {
   skala: [0.45, 1.40],
   breite: [0.70, 1.35],

@@ -21,5 +21,6 @@ export function wendeGolemSpriteAn(sprite: Phaser.GameObjects.Sprite, e: Enemy):
   const tuning = aktuellesGolemTuning();
   sprite.setTexture(GOLEM.atlasKey, golemFrame(clip, e.visualDir8, frame));
   sprite.setOrigin(0.5, tuning.bodenanker)
-    .setScale(tuning.skala * tuning.breite, tuning.skala * tuning.hoehe);
+    .setScale(tuning.skala * tuning.breite, tuning.skala * tuning.hoehe)
+    .setCrop();
 }

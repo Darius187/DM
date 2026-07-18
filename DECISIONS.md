@@ -2374,11 +2374,40 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Menschengolem statt Steingolem: Spielertexte und sichtbarer Name verwenden nur
   `Menschengolem`. Bestehende interne Kennungen und der Atlas-Dateiname werden
   vorerst nicht migriert, weil sie Savegame- und Phaser-Cache-Vertraege sind.
-- Die Autorabnahme der Monsterproportion erfolgt ueber F10 > GOLEM. Diese Werte
+- Die Autorabnahme der Monsterproportion erfolgt ueber F10 > GEGNER. Diese Werte
   werden lokal gespeichert und skalieren nur das gerenderte Bild. Trefferkreis,
   Wegfindung, Schaden und Reichweite werden erst gemeinsam angepasst, wenn der
   Autor die endgueltige visuelle Groesse bestaetigt.
-- Der HP-Regler unter F10 > GOLEM ist ausdruecklich ein RTS-Testwert. Eine
+- Der HP-Regler unter F10 > GEGNER ist ausdruecklich ein RTS-Testwert. Eine
   Aenderung setzt bestehende lebende Menschengolems auf den neuen Wert und heilt
   sie voll, damit wiederholte Schadensmessungen denselben Ausgangspunkt haben.
 - R147 (Autor): (a) Held-XP nur noch fuer EIGENE Kills - Soldaten-Kills geben keine Held-XP mehr (killDurchTruppe-Kennung durch damageEnemy; Fernkampf-Projektile kennen jetzt ihren Schuetzen -> dessen Rang zaehlt, R141-TODO geschlossen). (b) Monster haben KEINE Moral/Flucht mehr (Autor-Entscheid) - Moral gehoert den eigenen Truppen. (c) SCHLACHT-WERTUNG: gewonnene Schlachten (>=3 Feinde, 6s Ruhe im 600px-Umkreis) geben Held-XP nach Formel (Basis je Feind x Verlust-Malus x Moral-Bonus x Schonungs-Bonus; logic/schlachtWertung.ts, Regler SCHLACHT_WERTUNG). (d) Auswahlringe: duenn (1px), BLAU eigene / ROT Feind-Hover, auf Boden-Ebene (Tiefe 0) am Fusspunkt statt ueber den Figuren; Held-Ring fester Fusspunkt py+14 (displayHeight enthaelt transparenten Rand).
+- Der Menschengolem ist ein standfester Phasengegner, kein vergroesserter
+  Standardgegner. Er ignoriert Rueckstoss, Standard-Stun und weissen Hit-Flash.
+  Seine Schwellen liegen zentral in `data/golem.ts` bei 70/50/30/15/5 Prozent.
+  Die fruehere abgeschnittene Arm-Grafik ist nach der Live-Abnahme verworfen:
+  15% bedeutet nun massiven Blutverlust und halbierten Schaden, unter 5% eine
+  kontinuierliche Blutung mit Bodenlachen. Nur der 100%-Dev-Test setzt den
+  Phasenzustand bewusst komplett zurueck.
+- Standfestigkeit ist auch eine Kollisionsregel: Trefferimpulse, Held-Kollision
+  und Einheiten-Trennung duerfen die Position des Menschengolems nicht aendern.
+  Bei Ueberlappung nimmt immer die leichtere Figur die gesamte Korrektur auf.
+- Sein Testtempo betraegt 34 px/s. Der Tod wird mit 7 fps langsam ausgespielt,
+  durch Aufschlag und Blutlachen gestaffelt und bleibt neun Sekunden als Leiche
+  liegen; schnelle Zerlegung oder abspringende Gliedmassen sind ausgeschlossen.
+- Die Dev-Werkbank heisst `GEGNER`, weil sie nicht dauerhaft nur fuer den
+  Menschengolem reserviert sein soll. Neue besondere Gegner erhalten darin
+  jeweils einen klar benannten eigenen Abschnitt.
+- Der Menschengolem-Standard ist 1,00 Gesamtgroesse, 0,70 Breite, 0,70 Hoehe
+  und 1000 HP. Sein Bodenanker ist mit 0,910 aus dem Koerperkontakt in Atlaszeile
+  131/144 abgeleitet; der darunterliegende Kontaktschatten bestimmt nicht den
+  Kollisionsfuss.
+- Ein Menschengolem erweitert eine eingerissene 32-px-Palisadenkachel auf zwei
+  benachbarte freie Kacheln, weil sein Kollisionsdurchmesser 58 px betraegt. Ein
+  zweikacheliges Tor zaehlt bereits als vollwertige Bresche.
+- Golem-Spezialangriffe bleiben aus Fairness telegraphiert, aber nur mit einer
+  duennen, transparenten Kreislinie. Zusaetzliche gezeichnete Rippen sind keine
+  Anatomie und werden nicht mehr ueber den Atlas gelegt.
+- Bei Belagerungen haben Palisade, Tor und Wachturm Zielprioritaet. Erst wenn
+  keine Wehrstruktur mehr steht und kein Verteidiger erreichbar ist, duerfen
+  Menschengolem und andere Belagerer uebrige Feld-/Lagerbauten angreifen.

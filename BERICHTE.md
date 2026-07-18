@@ -1525,16 +1525,66 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
 - Alle 440 Richtungsframes fuer Idle, Lauf, Schlag, Treffer und Tod wurden aus
   Blender 5.1 neu gerendert und in den Phaser-Atlas gepackt. Die editierbare
   Szene liegt als `C:/Obsidian/DM/ravensmoor-flesh-golem.blend` bereit.
-- F10 > GOLEM hat persistente Live-Regler fuer Gesamtgroesse, Breite, Hoehe und
+- F10 > GEGNER hat beim Abschnitt MENSCHENGOLEM persistente Live-Regler fuer Gesamtgroesse, Breite, Hoehe und
   Bodenanker sowie Kopieren und Zuruecksetzen. Die Regler wirken sofort auf
   lebende Menschengolems und werden beim Erzeugen ihrer Todesanimation
   uebernommen. Trefferkreis und Kampfreichweite bleiben bis zur Endabnahme
   absichtlich unveraendert.
-- Browser-Abnahme: GOLEM-Tab sichtbar, Groessenregler korrekt mit Standardwerten
+- Browser-Abnahme: GEGNER-Tab sichtbar, Groessenregler korrekt mit Standardwerten
   0.92 / 1.00 / 1.00 / 0.810; keine Browserfehler. TypeScript, Build und 59
   Testdateien / 379 Tests gruen.
-- Nachtrag HP-Testregler: F10 > GOLEM bietet `Leben (RTS-Test)` von 100 bis
+- Nachtrag HP-Testregler: F10 > GEGNER bietet `Leben (RTS-Test)` von 100 bis
   20.000 HP in 100er-Schritten. Der Wert wird gespeichert, fuer neue
   RTS-Menschengolems verwendet und setzt bereits lebende Golems sofort auf den
   neuen Maximalwert mit voller Heilung. Browser-Anzeige und fehlerfreie Konsole
   geprueft.
+
+## Menschengolem - standfeste Kampfphasen und Ausbluten
+- Die normale Gegner-Trefferreaktion ist fuer den Menschengolem abgeschaltet:
+  kein weisses Aufleuchten, kein Treffer-Rueckzug, kein Hammer-Schub und keine
+  normale Betäubung. Blut- und Fleischfeedback bleibt erhalten.
+- Eigene HP-Kampfphasen: ueber 70% gelegentlicher Rundumschlag; ab 70% statt
+  dessen Fleischwelle mit starkem Flaechen-Rueckstoss; ab 50% zusaetzlicher
+  Bodenstampfer mit 1,45 s Laehmung; unter 5% kombinierte letzte Raserei mit
+  allen Flaecheneffekten. Jeder Spezialangriff hat einen grossen sichtbaren
+  Warnkreis.
+- Korrektur nach Live-Abnahme: die kuenstlich ausgeschnittene Gliedmasse und der
+  separat gezeichnete Arm sind entfernt. Ab 30% reisst der Koerper auf; ab 15%
+  beginnt massiver Blutverlust und der Schaden halbiert sich. Unter 5% blutet
+  der Golem fortlaufend aus mehreren Stellen und legt wachsende, lange sichtbare
+  Blutlachen auf den Boden. Das Atlasbild bleibt in jeder Richtung vollstaendig.
+- Alle Treffer-, Impuls- und Kollisionswege behandeln den Golem jetzt als
+  unverrueckbare Masse. Beim Kontakt mit Held oder Soldaten weicht die leichtere
+  Figur aus; der Golem wird nicht mehr durch den Kampf ueber die Karte geschoben.
+- Das RTS-Tempo wurde leicht von 30 auf 34 px/s angehoben. Die Todesanimation
+  laeuft mit 7 statt 12 Bildern/s deutlich schwerer und fast zwei Sekunden lang;
+  Aufschlag, Blutnebel und zwei grosse Lachen sind gestaffelt. Der Leichnam liegt
+  danach neun Sekunden und blendet in weiteren 1,4 Sekunden aus.
+- Dev-Konsole: `GOLEM` wurde zu `GEGNER`. Darin steht der Menschengolem als
+  erster Gegnertyp mit Groessen-/HP-Reglern und Direktknoepfen fuer 100, 70, 50,
+  30, 15 und 4 Prozent. Weitere Gegner koennen dort als eigene Abschnitte folgen.
+- Browser-geprueft: 15%-Text und 4%-Dauerblutung mit mehreren Bodenlachen,
+  vollstaendig sichtbarer Koerper und Raserei-Telegraph; keine Konsolenfehler.
+  TypeScript, Produktions-Build und 59 Testdateien / 380 Tests gruen.
+
+## Menschengolem - Proportion, Bresche und dezente Spezialwarnung
+- Autorwerte als neuer Spielstandard uebernommen: Gesamtgroesse 1,00, Breite
+  0,70, Hoehe 0,70 und 1000 HP. Der Bodenanker ist nicht geraten, sondern am
+  Atlas vermessen: Koerperkontakt Zeile 131 von 144, daher 0,910. Der alte
+  lokale Tuning-Speicher wird einmalig ueber eine neue Versionskennung ersetzt.
+- Die zusaetzlich in Phaser gezeichneten Rippen sind vollstaendig entfernt.
+  Fleischverlust bleibt ueber Atlas, Tint, Blut und Bodenlachen lesbar.
+- Spezialangriffe behalten eine faire Vorwarnung, aber der rote Kreis ist nur
+  noch 1,1 px breit (Raserei 1,45 px), stark transparent und fast ungefuellt.
+- Beim Angriff auf Palisade, Tor oder Wachturm spielt der Menschengolem nun den
+  echten Schlagclip. Holzsplitter entstehen im Schlagrhythmus statt zufaellig.
+  Nach dem Fall der Wehrbauten kann er auch die uebrigen Lagergebaeude mit
+  diesem Clip angreifen, statt sie als unverwundbare Kulisse zu ignorieren.
+- Eine Palisadenkachel ist 32 px breit, der Golem mit Radius 29 braucht 58 px.
+  Nach dem ersten Durchbruch erweitert er seine Bresche deshalb gezielt um ein
+  direkt angrenzendes Segment. Ein Doppeltor ist bereits breit genug. Damit
+  folgt er nicht mehr einem fuer den Wegfinder offenen, fuer seinen Koerper aber
+  zu schmalen Loch.
+- Live-Werkbank geprueft: 1,00 / 0,70 / 0,70 / 0,910 / 1000 HP werden geladen,
+  4%-Phase reagiert und keine Rippen-Ueberzeichnung erscheint. TypeScript,
+  Produktions-Build und 60 Testdateien / 385 Tests gruen.
