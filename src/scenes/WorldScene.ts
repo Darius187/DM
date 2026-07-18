@@ -106,7 +106,8 @@ import { storage } from '../logic/gameStorage';
 import { ladeStadtplan, speichereStadtplan, loescheStadtplan, wendePlanAn, setzeKachel, radiere, type Stadtplan, type PlanTier } from '../logic/stadtplan';
 import { alsCanvas, stelleFrei, verarbeiteUpload, verkleinereCanvas } from '../gfx/bildVerarbeitung';
 import { zoomFaktor } from '../logic/zoom';
-import type { Item } from '../data/types';
+import type { Item, EnemyTypeId } from '../data/types';
+import { OBERWELT_KANTEN } from '../data/oberweltKanten';
 import type { Pickup } from '../world/Pickups';
 import { itemTooltipLines } from '../ui/panels';
 import { ANNA_GRAB } from '../data/dialoge';
@@ -1821,18 +1822,19 @@ export class WorldScene extends CombatScene {
   }
 
   goArea(id: string, spawnAt?: { x: number; y: number }): void {
-    // Ein laufender Einfall verpufft beim Verlassen des Dorfes (kein
-    // Exploit) - der Blick ins Gemeindehaus unterbricht ihn aber NICHT
-    // (Runde 16): die Angreifer warten draußen
+    // R157: der Einfall lebt in NEU-Ravensmoor (stadt). Er verpufft beim
+    // VERLASSEN der Stadt (kein Exploit) - aber NICHT beim Tod-Erwachen auf
+    // derselben Karte (R145 "nichts resettet"): dann warten die Angreifer.
     if (this.einfallAktiv) {
-      if (this.area?.id === 'village' && id.startsWith('innen_')) {
-        this.einfallRest = this.enemies.map((e) => ({
+      if (this.area?.id === 'stadt' && id === 'stadt') {
+        this.einfallRest = this.enemies.filter((e) => e.team !== 'spieler' && e.hp > 0).map((e) => ({
           type: e.type, hp: e.hp, x: e.x, y: e.y, elite: e.elite,
           champion: e.champion, name: e.name, schild: e.schild,
         }));
-      } else if (id !== 'village' && !id.startsWith('innen_')) {
+      } else if (id !== 'stadt') {
         this.einfallAktiv = false;
         this.einfallRest = [];
+        this.einfallQueue = [];
       }
     }
     // Leergeräumte Ebenen merken (Runde 26, erweitert Runde 40): wer beim
@@ -1976,10 +1978,10 @@ export class WorldScene extends CombatScene {
       this.logMsg('Der Gestank der Verwesung liegt in der Luft.', 'bad');
       if (this.sfx.has('musik_kirche')) this.sfx.playMusic('musik_kirche', { loop: true });
     }
-    // Einfall: Angreifer kehren aus dem Zwischenspeicher zurück
-    if (id === 'village' && this.einfallAktiv && this.einfallRest.length) {
+    // Einfall: Angreifer kehren aus dem Zwischenspeicher zurück (R157: stadt)
+    if (id === 'stadt' && this.einfallAktiv && this.einfallRest.length) {
       for (const r of this.einfallRest) {
-        const e = this.spawnEnemy(r.type as never, EINFALL.tiefe, r.x, r.y, r.elite);
+        const e = this.spawnEnemy(r.type as never, EINFALL.tiefe, r.x, r.y, r.elite, true);
         e.hp = Math.min(e.maxhp, r.hp);
         e.champion = r.champion;
         e.name = r.name;
@@ -1988,8 +1990,8 @@ export class WorldScene extends CombatScene {
       }
       this.einfallRest = [];
     }
-    // Bei der Rückkehr ins belagerte Dorf ist der Brunnen schon verseucht.
-    if (id === 'village' && this.einfallAktiv) this.setzeBrunnenBlutig(true);
+    // Bei der Rückkehr in die belagerte Stadt ist der Brunnen schon verseucht.
+    if (id === 'stadt' && this.einfallAktiv) this.setzeBrunnenBlutig(true);
     // Während des Einfalls drängen sich die Flüchtlinge im Gemeindehaus
     if (id === 'innen_gemeindehaus' && this.einfallAktiv) {
       this.addFluechtlinge();
@@ -6483,6 +6485,13 @@ export class WorldScene extends CombatScene {
   // Kollision der 3D-Gebaeude (Held nutzt seine Ebene EG/OG, Feinde die EG-Sicht;
   // offene Tueren geben den Durchgang frei, zu = blockiert).
   private gebaeudeSolid(x: number, y: number, fuerHeld: boolean): boolean {
+    // R157 (Autor "die Kirche darf den Eingang nicht behindern"): die Flaeche
+    // des Krypta-Eingangs (Dorfplan-Box, 100..105/49..54) bleibt IMMER frei -
+    // egal wie die Kirche verschoben/skaliert wird.
+    if (this.area?.id === 'stadt') {
+      const tx = x / TILE, ty = y / TILE;
+      if (tx >= 100 && tx <= 106 && ty >= 49 && ty <= 55) return false;
+    }
     for (const g of this.gebaeude3d.values()) if (g.istSolid(x, y, fuerHeld)) return true;
     return false;
   }
@@ -8982,7 +8991,10 @@ export class WorldScene extends CombatScene {
     this.logMsg('Das Dorf drängt sich zitternd um das Feuer.', '');
   }
 
-  // Bresche in die Palisade schlagen (Belagerung)
+  // Bresche in die Palisade schlagen (Belagerung). R157: aktuell ohne
+  // Aufrufer - die Alt-Dorf-Mauerlogik ruht, bis die NEUE Stadtbefestigung
+  // (RTS-Palisaden an den Strassen) die Belagerung uebernimmt.
+  // @ts-expect-error bewusst ungenutzt (Alt-Dorf-Mauerlogik ruht, R157)
   private schlageBresche(): void {
     const a = this.getArea('village');
     const kandidaten: Array<{ x: number; y: number }> = [];
@@ -9026,45 +9038,57 @@ export class WorldScene extends CombatScene {
     }
   }
 
-  private startEinfall(): void {
-    // Mit Palisade kommen die Trupps nur durch OFFENE Tore der Salzstraße;
-    // sind beide zu, ist Ravensmoor sicher (Feedback-Runde 8). Ohne Mauer
-    // brechen sie zusätzlich aus dem Waldrand hervor.
-    const westTor = { x: 3.5, y: 30.5 };
-    const ostTor = { x: 88, y: 30.5 };
-    const waldrand = [{ x: 20, y: 3.5 }, { x: 70, y: 3.5 }, { x: 20, y: 56 }, { x: 70, y: 56 }, { x: 3.5, y: 15 }, { x: 88, y: 45 }];
-    let punkte = [westTor, ostTor, ...waldrand];
-    if (this.stadtmauerStufe >= 1) {
-      punkte = [];
-      if (!this.torWestZu) punkte.push(westTor);
-      if (!this.torOstZu) punkte.push(ostTor);
-      if (!punkte.length) {
-        this.letzterEinfallTag = this.tag;
-        this.logMsg('Trommeln im Dunkelwald - doch die Tore sind zu. Ravensmoor atmet auf.', 'gold');
-        return;
-      }
+  // R157 (Autor): der Einfall kommt ORGANISCH - die Monster marschieren als
+  // gestaffelte Schuebe ueber die WEGE von NORDEN und OSTEN herein (die
+  // Kanten-Kreuzungen der ravenkarte), statt irgendwo aufzupoppen.
+  private einfallQueue: Array<{ t: number; typ: EnemyTypeId; x: number; y: number; elite: boolean; tiefe: number }> = [];
+
+  private einfallWege(): Array<{ x: number; y: number }> {
+    const a = this.area;
+    const k = OBERWELT_KANTEN[a.id];
+    const nordWeg = k?.nord.find((c) => c.feature === 'weg')?.pos ?? 43;
+    const ostWeg = k?.ost.find((c) => c.feature === 'weg')?.pos ?? 56;
+    return [
+      { x: nordWeg / 100 * a.w * TILE, y: 2.5 * TILE },              // Nord-Weg
+      { x: (a.w - 2.5) * TILE, y: ostWeg / 100 * a.h * TILE },       // Ost-Weg
+    ];
+  }
+
+  private updateEinfallQueue(dt: number): void {
+    if (!this.einfallQueue.length) return;
+    if (this.area.id !== 'stadt') { this.einfallQueue = []; return; }
+    for (const q of this.einfallQueue) q.t -= dt;
+    const faellig = this.einfallQueue.filter((q) => q.t <= 0);
+    this.einfallQueue = this.einfallQueue.filter((q) => q.t > 0);
+    for (const q of faellig) {
+      // erzwinge: die friedliche Stadt wehrt Spawns normal ab - der Einfall
+      // bricht den Frieden ausdruecklich.
+      const e = this.spawnEnemy(q.typ as never, q.tiefe, q.x + (Math.random() - 0.5) * 50, q.y + (Math.random() - 0.5) * 30, q.elite, true);
+      e.aggro = 5000;
+      // zielgerichtet Richtung Stadtmitte einmarschieren, bis etwas sie weckt
+      e.jagdZiel = { x: 64 * TILE + (Math.random() - 0.5) * 300, y: 64 * TILE + (Math.random() - 0.5) * 300 };
     }
+  }
+
+  private startEinfall(): void {
     this.einfallAktiv = true;
     this.setzeBrunnenBlutig(true);
     this.letzterEinfallTag = this.tag;
-    // Jeder 7. Tag ist eine BELAGERUNG (Runde 16): größerer Trupp, ein
-    // Rammbock-Anführer - und die Palisade bekommt Breschen
+    // Jeder 3. Einfall ist eine BELAGERUNG (Runde 16): groesserer Trupp + Anfuehrer.
     this.einfallZaehler++;
     const belagerung = this.einfallZaehler >= 3 && this.einfallZaehler % 3 === 0;
-    if (belagerung && this.stadtmauerStufe >= 1) {
-      this.schlageBresche();
-      for (const b of this.breschen) punkte.push({ x: b.x, y: Math.min(b.y + 1.5, 57) });
-    }
     const anzahl = Math.min(EINFALL.anzahlMax, EINFALL.anzahlBasis + Math.floor(this.tag / 7) * EINFALL.anzahlProWoche) + (belagerung ? 4 : 0);
     const typen = ['skelett', 'pest', 'wolf', 'lebender_toter'] as const;
+    // R157: gestaffelte Schuebe (0s/8s/16s) abwechselnd ueber Nord- und Ost-Weg -
+    // man SIEHT die Kolonnen die Strassen herunterkommen.
+    const wege = this.einfallWege();
     for (let i = 0; i < anzahl; i++) {
-      const p0 = punkte[i % punkte.length];
-      const e = this.spawnEnemy(pick(this.rng, typen), EINFALL.tiefe, p0.x * TILE + (Math.random() - 0.5) * 40, p0.y * TILE + (Math.random() - 0.5) * 40, this.rng.random() < 0.15);
-      e.aggro = 5000; // sie suchen den Verteidiger, egal wie weit
+      const p0 = wege[i % wege.length];
+      this.einfallQueue.push({ t: Math.floor(i / Math.ceil(anzahl / 3)) * 8 + Math.random() * 2, typ: pick(this.rng, typen as unknown as EnemyTypeId[]), x: p0.x, y: p0.y, elite: this.rng.random() < 0.15, tiefe: EINFALL.tiefe });
     }
     if (belagerung) {
-      const p0 = punkte[0];
-      const ram = this.spawnEnemy('skelett', EINFALL.tiefe + 2, p0.x * TILE, p0.y * TILE, true);
+      const p0 = wege[0];
+      const ram = this.spawnEnemy('skelett', EINFALL.tiefe + 2, p0.x, p0.y, true, true);
       ram.champion = true;
       ram.name = 'Der Rammbock';
       ram.schild = true;
@@ -9072,24 +9096,21 @@ export class WorldScene extends CombatScene {
       ram.hp = ram.maxhp;
       ram.dmg = Math.round(ram.dmg * 1.5);
       ram.aggro = 5000;
+      ram.jagdZiel = { x: 64 * TILE, y: 64 * TILE };
       this.logMsg('BELAGERUNG! Ein gepanzertes Untier führt den Trupp an!', 'bad');
     }
     if (!this.flags.wurdeBelagert) {
       this.flags.wurdeBelagert = true;
-      // Nach dem ersten Schrecken raet der Schulze zur Mauer
+      // Nach dem ersten Schrecken raet der Schulze zur Befestigung
       this.time.delayedCall(4000, () => {
-        if (this.area.id === 'village') this.logMsg('Schulze Bertram: »Das darf nie wieder geschehen - redet mit dem Schmied über eine Palisade!«', 'gold');
+        if (this.area.id === 'stadt') this.logMsg('Schulze Bertram: »Das darf nie wieder geschehen - wir brauchen Palisaden an den Straßen!«', 'gold');
       });
     }
     this.sfx.playMusic('musik_einfall');
-    this.logMsg(this.stadtmauerStufe >= 1
-      ? 'EINFALL! Ein Trupp drängt durch die Tore der Salzstraße!'
-      : 'EINFALL! Monster brechen aus dem Dunkelwald über Ravensmoor herein!', 'bad');
-    this.logMsg('Frauen, Kinder und Alte fliehen ins Gemeindehaus!', '');
+    this.logMsg('EINFALL! Monster kommen die Straßen aus Norden und Osten herab!', 'bad');
+    this.logMsg('Frauen, Kinder und Alte fliehen in ihre Häuser!', '');
     this.sfx.play('templer_stimme');
-    this.zeigeKampfBanner('BESCHÜTZE DIE EINWOHNER', this.stadtmauerStufe >= 1
-      ? 'Ein Trupp drängt durch die Tore - haltet die Mauer!'
-      : 'Monster brechen aus dem Dunkelwald herein - verteidigt Ravensmoor!');
+    this.zeigeKampfBanner('BESCHÜTZE DIE EINWOHNER', 'Kolonnen nähern sich auf den Straßen aus Norden und Osten - verteidigt Ravensmoor!');
     this.shake(6);
   }
 
@@ -9111,14 +9132,9 @@ export class WorldScene extends CombatScene {
     if (this.area?.bauernFelder?.length) this.zeichneFeldWachstum();
     this.chronik('ereignis', 'Die Horde zertrampelt die Äcker - die Saat leidet.');
     for (const n of this.npcEnts) { n.imHaus = false; n.hp = undefined; n.atkCd = 0; } // Kämpfer wieder frisch
-    // Einfall-Punkte am DORF-Rand (Runde 51: +Waldgürtel-Versatz, das Dorf liegt
-    // jetzt mittig in einer größeren, von Wald umschlossenen Karte).
-    const R = DORF_WALDRAND;
-    const punkte = [
-      { x: 3.5, y: 30.5 }, { x: 88, y: 30.5 }, { x: 20, y: 3.5 }, { x: 70, y: 3.5 },
-      { x: 20, y: 56 }, { x: 70, y: 56 }, { x: 3.5, y: 15 }, { x: 88, y: 45 },
-      { x: 46, y: 3.5 }, { x: 46, y: 56 }, { x: 3.5, y: 45 }, { x: 88, y: 15 },
-    ].map((p) => ({ x: p.x + R, y: p.y + R }));
+    // R157: die Heerschar kommt ORGANISCH ueber die Strassen von NORD und OST
+    // (ravenkarte-Kanten) - in Schueben, man sieht die Kolonnen anruecken.
+    const wege = this.einfallWege();
     const typen = ['skelett', 'pest', 'wolf', 'lebender_toter', 'schatten'] as const;
     // Räuber NAHE einem Tier/Bewohner einsetzen, damit sie sofort darüber
     // herfallen (das Vieh steht in Gattern am Dorfrand - vom fernen Kartenrand
@@ -9137,18 +9153,25 @@ export class WorldScene extends CombatScene {
         }
         return { x: z.x, y: z.y - 60 };
       }
-      return { x: (46 + R) * TILE, y: (22 + R) * TILE };
+      return { x: 64 * TILE, y: 40 * TILE };
     };
     for (let i = 0; i < 32; i++) {
       const raeuber = i % 2 === 0;
-      const pos = raeuber ? beuteSpawn() : (() => { const p0 = punkte[i % punkte.length]; return { x: p0.x * TILE + (Math.random() - 0.5) * 70, y: p0.y * TILE + (Math.random() - 0.5) * 70 }; })();
-      const e = this.spawnEnemy(pick(this.rng, typen), EINFALL.tiefe + 1, pos.x, pos.y, this.rng.random() < 0.18);
-      e.aggro = 5000;
-      // Räuber (jagdZiel markiert sie) reißen Vieh und verschleppen Bewohner,
-      // statt nur den Helden zu suchen - und sind flinker als die fliehende Beute.
-      if (raeuber) { e.jagdZiel = { x: e.x, y: e.y }; e.speed *= 1.4; }
+      if (raeuber) {
+        // Raeuber reissen Vieh/verschleppen Bewohner - sie setzen NAHE der
+        // Beute ein (vom fernen Rand kaemen sie nie an) und sind flinker.
+        const pos = beuteSpawn();
+        const e = this.spawnEnemy(pick(this.rng, typen), EINFALL.tiefe + 1, pos.x, pos.y, this.rng.random() < 0.18, true);
+        e.aggro = 5000;
+        e.jagdZiel = { x: e.x, y: e.y };
+        e.speed *= 1.4;
+      } else {
+        // Der Rest marschiert in Schueben ueber die Strassen ein (organisch).
+        const p0 = wege[i % wege.length];
+        this.einfallQueue.push({ t: Math.floor(i / 8) * 6 + Math.random() * 2, typ: pick(this.rng, typen as unknown as EnemyTypeId[]), x: p0.x, y: p0.y, elite: this.rng.random() < 0.18, tiefe: EINFALL.tiefe + 1 });
+      }
     }
-    const champ = this.spawnEnemy('schatten', EINFALL.tiefe + 2, (46 + R) * TILE, (5 + R) * TILE, true);
+    const champ = this.spawnEnemy('schatten', EINFALL.tiefe + 2, this.einfallWege()[0].x, this.einfallWege()[0].y, true, true);
     champ.champion = true;
     champ.name = 'Vorbote des Krieges';
     champ.maxhp = Math.round(champ.maxhp * 3);
@@ -11188,7 +11211,10 @@ export class WorldScene extends CombatScene {
     }
     this.dropLoot(e);
     // Einfall abgewehrt: Belohnung der Dörfler, sobald der letzte Angreifer fällt
-    if (this.einfallAktiv && this.area.id === 'village' && this.enemies.length === 0) {
+    // R157: gewonnen erst, wenn KEIN Angreifer mehr lebt UND keine Kolonne
+    // mehr unterwegs ist (einfallQueue leer) - sonst "siegt" man in die Welle.
+    if (this.einfallAktiv && this.area.id === 'stadt' && this.einfallQueue.length === 0
+      && !this.enemies.some((e) => e.team !== 'spieler' && e.hp > 0)) {
       this.einfallAktiv = false;
       this.setzeBrunnenBlutig(false); // Brunnen wird wieder rein
       if (this.sfx.aktuelleMusik() === 'musik_einfall') this.sfx.stopMusic();
@@ -12596,7 +12622,7 @@ export class WorldScene extends CombatScene {
     // nur abends - wer tagsüber heimkam, erlebte nie etwas)
     const siegErrungen = this.bossDead || this.flags.ngPlusGeschafft === true;
     const ersterSteht = siegErrungen && this.flags.ersterEinfallKam !== true;
-    if ((ersterSteht || (abend && siegErrungen)) && this.area.id === 'village'
+    if ((ersterSteht || (abend && siegErrungen)) && this.area.id === 'stadt'
       && !this.einfallAktiv && !this.playerDead
       && (ersterSteht || this.tag - this.letzterEinfallTag > EINFALL.pauseTage)) {
       this.flags.ersterEinfallKam = true;
@@ -13148,6 +13174,7 @@ export class WorldScene extends CombatScene {
     this.updateBelagerung(dt);   // R100: Monster nagen an Wehrbauten (Bunker)
     this.updateTurmBesatzung();  // R100: Turm-Insassen unsichtbar + Symbol
     this.updateMarsch(dt);   // R142: das Heer marschiert IMMER (auch ohne RTS-Modus)
+    this.updateEinfallQueue(dt);   // R157: Einfall-Kolonnen ruecken in Schueben an
     if (this.rtsBattle) {
       // R97: Schlachtführer (Held) tot -> Schlacht verloren, Truppe flieht.
       if (this.playerDead && !this.rtsBattle.verloren) { this.rtsBattle.schlachtVerloren(); this.logMsg('SCHLACHT VERLOREN - der Schlachtführer ist gefallen, die Banner sinken.', 'bad'); }

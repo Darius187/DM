@@ -1636,3 +1636,23 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   eigene Truppen (blau, kartenuebergreifend aus den Roster-Stellungen) und
   Bewohner (gelb) live; Waelder/Fluesse/Wege/Haeuser stecken in den Thumbs.
 - tsc fehlerfrei, 390 Tests gruen.
+
+## Runde 155-157 - Uebergaenge, Wasser-Sync, Einfall-Umzug
+- R155: "Von Ravensmoor nach Westen im Fluss gelandet" - Ursache Kartengroessen
+  (stadt 128x128 vs. Wald 130x85): Rand-Uebergaenge uebertragen die Position
+  jetzt PROPORTIONAL. Verifiziert: Landung am Weg (Zeile 45) statt im Fluss.
+- R156: Voll-Audit aller 10 Oberweltkarten: bei Standard-Reglern deckt sich
+  jede Solid-Wasserkachel mit sichtbarem Wasser (0 Geisterkacheln). recarve-
+  Haertung: Werkbank-Regler (Flussbreite/Bahn/See) carven die Kollision live
+  mit - Optik und Wand koennen nicht mehr auseinanderlaufen.
+- R157: EINFALL lebt jetzt in NEU-RAVENSMOOR: erst nach dem Boss-Sieg (Logik
+  unveraendert), die Monster kommen ORGANISCH als gestaffelte Kolonnen ueber
+  die Strassen von NORDEN und OSTEN und ziehen zur Stadtmitte; Raeuber fallen
+  weiter ueber Vieh/Bewohner her. Sieg erst, wenn auch die letzte Kolonne
+  geschlagen ist. Browser-gemessen: 21 Sofort-Angreifer + 12 Kolonnen-Nachschub,
+  32 Feinde auf der Karte, Zug zur Mitte. Der Tod des Helden laesst die
+  Angreifer warten (nichts resettet); Stadt verlassen bricht den Einfall ab.
+- R157b: Der KRYPTA-EINGANG an der Kirche ist real - Wendeltreppe auf der
+  Dorfplan-Box, Prolog + Ebenen-Kette haengen dran, und die Kirche kann den
+  Eingang NIE blockieren (Kollisions-Ausnahme der Eingangs-Flaeche).
+- tsc fehlerfrei, 390 Tests gruen, alles browser-verifiziert.
