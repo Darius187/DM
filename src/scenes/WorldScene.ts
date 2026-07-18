@@ -6214,7 +6214,11 @@ export class WorldScene extends CombatScene {
     // Mauerrisse vor Geheimkammern (Runde 40): als Trefferziel - Angriffe
     // brechen sie auf, dahinter öffnet sich der verborgene Durchgang
     for (const c of a.cracks ?? []) {
-      const hit = { x: c.tx * TILE + 16, y: c.ty * TILE + 16, r: 16, onHit: (ang: number) => this.hitCrack(c, hit, ang) };
+      // R163 (Autor "brueckige Waende lassen sich oft nicht mehr durchschlagen"):
+      // Radius 16 war zu knapp - seit hoeheren Waenden (R138) liegt die
+      // sichtbare Riss-Fassade nicht exakt ueber der Kachelmitte. Grosszuegiger
+      // Radius, damit jeder Schlag "auf den Riss" auch den Riss trifft.
+      const hit = { x: c.tx * TILE + 16, y: c.ty * TILE + 16, r: 30, onHit: (ang: number) => this.hitCrack(c, hit, ang) };
       this.hittables.push(hit);
     }
     // Gegner (NG+ macht alle zäher; Champions sind die Minibosse der Ebene)

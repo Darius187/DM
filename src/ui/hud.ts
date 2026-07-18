@@ -836,8 +836,21 @@ export class Hud {
     const hpVal = String(Math.max(0, Math.ceil(p.hp))), mpVal = String(Math.ceil(p.mana));
     const potT = `${kb.pot.toUpperCase()} Trank x${p.pot}`, mpotT = `${kb.mpot.toUpperCase()} Trank x${p.mpot}`;
     this.positionHudAssets();
-    this.hpImg.setVisible(true).setPosition(hx, hy).setDisplaySize(86 * skala, 86 * skala).setAlpha(0.42 + 0.58 * Phaser.Math.Clamp(hpFrac, 0, 1));
-    this.mpImg.setVisible(true).setPosition(mx, my).setDisplaySize(86 * skala, 86 * skala).setAlpha(0.42 + 0.58 * Phaser.Math.Clamp(mpFrac, 0, 1));
+    // R160 (Autor "das Rote/Blaue fehlt"): FUELLSTAND wie bei Diablo - die
+    // Fluessigkeit steht auf Hoehe des Anteils (Crop von unten), nicht mehr
+    // nur ein Alpha-Fade der ganzen Kugel (der bei wenig Leben wie "leer ohne
+    // Rot" aussah). Crop arbeitet im TEXTUR-Raum (Groesse ORB_R*2) - der
+    // Rest der Kugel bleibt als dunkler Grund sichtbar (Alpha-Sockel).
+    const orbFuellung = (img: Phaser.GameObjects.Image, frac: number): void => {
+      const f = Phaser.Math.Clamp(frac, 0, 1);
+      const size = ORB_R * 2;
+      img.setCrop(0, size * (1 - f), size, size * f);
+      img.setAlpha(0.96);
+    };
+    this.hpImg.setVisible(true).setPosition(hx, hy).setDisplaySize(86 * skala, 86 * skala);
+    orbFuellung(this.hpImg, hpFrac);
+    this.mpImg.setVisible(true).setPosition(mx, my).setDisplaySize(86 * skala, 86 * skala);
+    orbFuellung(this.mpImg, mpFrac);
     this.hpFrame.setVisible(true);
     this.mpFrame.setVisible(true);
     const zahlGroesse = Math.max(16, Math.round(28 * skala));

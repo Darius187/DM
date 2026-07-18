@@ -2316,20 +2316,16 @@ function bevoelkereStadt(a: AreaData): void {
   frei(56, 91, 65, 97); carve(map, 56, 92, 64, 96, T.FIELD);
   a.bauernFelder.push({ x0: 56, y0: 92, x1: 64, y1: 96 });
   N({ id: 'bauer2', name: 'Bäuerin Grete', x: 60 * T32, y: 91 * T32, abend: { x: 60 * T32, y: 48.5 * T32 }, arbeit: 'feld' });
-  // Familie B (VIEH): Gatter auf der Angerwiese oestlich + westlich der Linde
+  // Familie B (VIEH): offene Weiden auf der Angerwiese oestlich + westlich der
+  // Linde. R159 (Autor): KEINE Zaeune mehr in Ravensmoor - die Tiere bleiben
+  // ueber ihre pen-Rechtecke auf der Wiese, die Flaeche bleibt frei begehbar.
   frei(47, 63, 57, 71);
-  for (let x = 48; x <= 56; x++) { map[64][x] = T.FENCE; map[70][x] = T.FENCE; }
-  for (let y = 64; y <= 70; y++) { map[y][48] = T.FENCE; map[y][56] = T.FENCE; }
-  map[64][52] = T.GRASS;   // Gatter-Oeffnung
   const penB1 = { x0: 49 * T32, y0: 65 * T32, x1: 56 * T32, y1: 70 * T32 };
   a.animals.push({ type: 'huhn', x: 50 * T32, y: 66 * T32, pen: penB1 });
   a.animals.push({ type: 'huhn', x: 53 * T32, y: 68 * T32, pen: penB1 });
   a.animals.push({ type: 'schwein', x: 51 * T32, y: 69 * T32, pen: penB1 });
   a.animals.push({ type: 'schwein', x: 54 * T32, y: 66 * T32, pen: penB1 });
   frei(66, 63, 76, 71);
-  for (let x = 67; x <= 75; x++) { map[64][x] = T.FENCE; map[70][x] = T.FENCE; }
-  for (let y = 64; y <= 70; y++) { map[y][67] = T.FENCE; map[y][75] = T.FENCE; }
-  map[64][71] = T.GRASS;
   const penB2 = { x0: 68 * T32, y0: 65 * T32, x1: 75 * T32, y1: 70 * T32 };
   a.animals.push({ type: 'kuh', x: 70 * T32, y: 67 * T32, pen: penB2 });
   a.animals.push({ type: 'kuh', x: 73 * T32, y: 69 * T32, pen: penB2 });

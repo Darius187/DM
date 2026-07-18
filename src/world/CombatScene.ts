@@ -1580,13 +1580,15 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   private hitEnemiesInArc(ang: number, range: number, arc: number, dmgMult: number, knockback: number, breaksPosture: boolean): boolean {
     let hitAny = false;
     const gem = weaponGem(this.p);
-    // Zerstörbare Objekte: jede Angriffsart trifft sie
+    // Zerstörbare Objekte: jede Angriffsart trifft sie. R163: wer DIREKT davor
+    // steht, trifft unabhaengig vom Schlagwinkel - Mauerrisse sassen sonst oft
+    // knapp ausserhalb des Bogens (hoehere Waende verschieben die Fassade).
     for (const hb of [...this.hittables]) {
       const d = Math.hypot(hb.x - this.px, hb.y - this.py);
       if (d >= range + hb.r) continue;
       let da = Math.atan2(hb.y - this.py, hb.x - this.px) - ang;
       da = Math.atan2(Math.sin(da), Math.cos(da));
-      if (Math.abs(da) < arc) hb.onHit(ang);
+      if (Math.abs(da) < arc || d < 46) hb.onHit(ang);
     }
     for (const e of [...this.enemies]) {
       const d = Math.hypot(e.x - this.px, e.y - this.py);
