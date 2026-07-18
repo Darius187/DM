@@ -92,7 +92,21 @@ export class Gebaeude3DWelt {
     return { x: b.centerX, y: b.bottom - 10, w: b.width * 0.55, h: 14, hoehe: b.height * 0.72 };
   }
 
-  private ppm(): number { return getSettings().gebaeude3d?.ppm ?? 16; }
+  // R150 (Autor): gemeinsame ppm-Groesse x EINZEL-Faktor dieses Gebaeudes.
+  private ppm(): number {
+    const s = getSettings().gebaeude3d;
+    return (s?.ppm ?? 16) * (s?.skalaF?.[this.opts.id] ?? 1);
+  }
+  einzelSkala(): number { return getSettings().gebaeude3d?.skalaF?.[this.opts.id] ?? 1; }
+  skaliereEinzeln(dF: number): void {
+    const s = getSettings();
+    if (!s.gebaeude3d) s.gebaeude3d = { ppm: 16, drehung: {} };
+    s.gebaeude3d.skalaF ??= {};
+    const alt = s.gebaeude3d.skalaF[this.opts.id] ?? 1;
+    s.gebaeude3d.skalaF[this.opts.id] = Math.max(0.3, Math.min(3, +(alt + dF).toFixed(2)));
+    saveSettings();
+    this.stelleSprite();
+  }
   private yaw(): number { return getSettings().gebaeude3d?.drehung[this.opts.id] ?? 0; }
 
   // --- Plan <-> Welt -----------------------------------------------------------

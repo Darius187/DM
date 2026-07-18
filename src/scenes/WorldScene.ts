@@ -2270,17 +2270,24 @@ export class WorldScene extends CombatScene {
       if (gebDef && geb) {
         const e = gebaeudeEinstellung(gebDef.id);
         const ppm = getSettings().gebaeude3d?.ppm ?? 16;
-        add(this.add.text(8, y, `3D-Gebäude · Drehung ${Math.round(e.yaw)}° · Größe ${ppm.toFixed(1)} px/m (alle)`, { fontFamily: 'serif', fontSize: '10px', color: '#c9a227', wordWrap: { width: w - 16 } })); y += 16;
+        // R150 (Autor): Groesse ALLER Gebaeude (ppm) UND Einzel-Faktor NUR
+        // fuer dieses Gebaeude (z.B. die Kirche) - beides, live + persistent.
+        add(this.add.text(8, y, `3D-Gebäude · Drehung ${Math.round(e.yaw)}° · Größe ${ppm.toFixed(1)} px/m (alle) · ×${geb.einzelSkala().toFixed(2)} (dieses)`, { fontFamily: 'serif', fontSize: '10px', color: '#c9a227', wordWrap: { width: w - 16 } })); y += 16;
         const dreh = (d: number): void => { geb.drehen(d); this.baueDorfToolbar(); };
         const skal = (d: number): void => { Gebaeude3DWelt.skaliere(d); for (const g of this.gebaeude3d.values()) g.nachSkalierung(); this.baueDorfToolbar(); };
+        const skalE = (d: number): void => { geb.skaliereEinzeln(d); this.baueDorfToolbar(); };
         knopf(8, 44, '⟲ −15°', false, () => dreh(-15));
         knopf(56, 44, '⟳ +15°', false, () => dreh(15));
         knopf(112, 44, '⟲ −1°', false, () => dreh(-1));
         knopf(160, 44, '⟳ +1°', false, () => dreh(1)); y += 28;
-        knopf(8, 44, 'Gr −1', false, () => skal(-1));
-        knopf(56, 44, 'Gr +1', false, () => skal(1));
-        knopf(112, 44, 'Gr −.2', false, () => skal(-0.2));
-        knopf(160, 44, 'Gr +.2', false, () => skal(0.2)); y += 28;
+        knopf(8, 44, 'Alle −1', false, () => skal(-1));
+        knopf(56, 44, 'Alle +1', false, () => skal(1));
+        knopf(112, 44, 'Alle −.2', false, () => skal(-0.2));
+        knopf(160, 44, 'Alle +.2', false, () => skal(0.2)); y += 28;
+        knopf(8, 44, 'Dies −.1', false, () => skalE(-0.1));
+        knopf(56, 44, 'Dies +.1', false, () => skalE(0.1));
+        knopf(112, 44, 'Dies −.02', false, () => skalE(-0.02));
+        knopf(160, 44, 'Dies +.02', false, () => skalE(0.02)); y += 28;
       }
       add(this.add.rectangle(6, y + 2, w - 12, 1, 0x4a3a26).setOrigin(0)); y += 8;
     } else {

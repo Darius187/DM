@@ -119,7 +119,9 @@ export interface Settings {
   // R132: 3D-Gebaeude (Zimmermannshaus, Schmiede) - EINE gemeinsame Groesse
   // (ppm = Pixel je Meter, "einheitliche Groesse beider Gebaeude") und je
   // Gebaeude eine Drehung. Im Dorf-Editor einstellbar, hier persistent.
-  gebaeude3d?: { ppm: number; drehung: Record<string, number> };
+  // R150: skalaF = EINZEL-Groessenfaktor je Gebaeude (Kirche unabhaengig vom
+  // Rest), multipliziert auf die gemeinsame ppm-Groesse.
+  gebaeude3d?: { ppm: number; drehung: Record<string, number>; skalaF?: Record<string, number> };
   kb: KeyBindings;
 }
 
