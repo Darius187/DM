@@ -9582,13 +9582,33 @@ export class WorldScene extends CombatScene {
   // --- Karte des Fürstentums (Runde 51) -------------------------------------
   private karteAufgedeckt = false; // Dev-Aufdecken (nicht gespeichert, Final entfernbar)
 
-  private getKarteInfo(): { aufgedeckt: boolean; gebiete: Array<{ id: string; name: string; gx: number; gy: number; sichtbar: boolean; thumb: { w: number; h: number; farben: number[][] } | null }> } {
+  private getKarteInfo(): { aufgedeckt: boolean; gebiete: Array<{ id: string; name: string; gx: number; gy: number; sichtbar: boolean; thumb: { w: number; h: number; farben: number[][] } | null }>; punkte: Array<{ karte: string; u: number; v: number; art: 'held' | 'truppe' | 'npc' }> } {
+    // R152 (Autor "keine Live-Karte"): LIVE-Marker. Held (rot) an seiner
+    // echten Position, eigene Truppen (blau) - auf der Held-Karte aus dem Feld,
+    // sonst aus den gemerkten Roster-Stellungen (R142) - und NPCs (gelb) auf
+    // der aktuellen Karte. Waelder/Wasser/Wege/Haeuser traegt der Thumb selbst.
+    const punkte: Array<{ karte: string; u: number; v: number; art: 'held' | 'truppe' | 'npc' }> = [];
+    const W = this.area.w * TILE, H = this.area.h * TILE;
+    punkte.push({ karte: this.area.id, u: this.px / W, v: this.py / H, art: 'held' });
+    for (const e of this.enemies) {
+      if (e.team === 'spieler' && e.hp > 0) punkte.push({ karte: this.area.id, u: e.x / W, v: e.y / H, art: 'truppe' });
+    }
+    for (const einheit of this.armee.einheiten) {
+      if (einheit.ort === this.area.id || marschVon(this.armee, einheit.id)) continue;
+      const dort = this.areas.get(einheit.ort);
+      if (!dort || !einheit.pos) continue;
+      punkte.push({ karte: einheit.ort, u: einheit.pos.x / (dort.w * TILE), v: einheit.pos.y / (dort.h * TILE), art: 'truppe' });
+    }
+    for (const n of this.npcEnts) {
+      if (n.sprite.visible) punkte.push({ karte: this.area.id, u: n.sprite.x / W, v: n.sprite.y / H, art: 'npc' });
+    }
     return {
       aufgedeckt: this.karteAufgedeckt,
       gebiete: FUERSTENTUM.map((g) => {
         const sichtbar = this.karteAufgedeckt || !!this.flags[`besucht_${g.id}`];
         return { id: g.id, name: g.name, gx: g.gx, gy: g.gy, sichtbar, thumb: sichtbar ? this.gebietThumb(g.id) : null };
       }),
+      punkte,
     };
   }
 

@@ -99,7 +99,8 @@ export class UIPanels {
   getStatistikZeilen: (() => Array<[string, string]>) | null = null;
   getKontakteZeilen: (() => Array<[string, string]>) | null = null;
   // Karte des Fürstentums (Runde 51)
-  getKarte: (() => { aufgedeckt: boolean; gebiete: Array<{ id: string; name: string; gx: number; gy: number; sichtbar: boolean; thumb: { w: number; h: number; farben: number[][] } | null }> }) | null = null;
+  // R152: punkte = LIVE-Marker (Held/Truppen/NPCs) an ihren echten Stellungen.
+  getKarte: (() => { aufgedeckt: boolean; gebiete: Array<{ id: string; name: string; gx: number; gy: number; sichtbar: boolean; thumb: { w: number; h: number; farben: number[][] } | null }>; punkte?: Array<{ karte: string; u: number; v: number; art: 'held' | 'truppe' | 'npc' }> }) | null = null;
   // Großansicht (Runde 74, Autorwunsch): liefert die Minimap eines Gebiets in
   // voller Kachel-Auflösung - für die Klick-Vergrößerung im KARTE-Tab.
   getGebietGross: ((id: string) => { w: number; h: number; farben: number[][] }) | null = null;
@@ -731,6 +732,16 @@ export class UIPanels {
     c.add(this.scene.add.text(16, 6, 'KARTE - Das Fürstentum von Ravensmoor', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
     const info = this.getKarte?.();
     if (!info || !info.gebiete.length) { c.add(this.scene.add.text(16, 56, 'Keine Kartendaten.', { fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c' })); return; }
+    // R152 (Autor "keine Live-Karte"): Held/Truppen/NPC-Punkte in eine Karte malen.
+    const maleLive = (g2: Phaser.GameObjects.Graphics, karte: string, x0: number, y0: number, wPx: number, hPx: number): void => {
+      for (const p of info.punkte ?? []) {
+        if (p.karte !== karte) continue;
+        const px2 = x0 + p.u * wPx, py2 = y0 + p.v * hPx;
+        if (p.art === 'held') { g2.fillStyle(0xe03a2a, 1); g2.fillCircle(px2, py2, 3.4); g2.lineStyle(1, 0xffffff, 0.9); g2.strokeCircle(px2, py2, 4.6); }
+        else if (p.art === 'truppe') { g2.fillStyle(0x5aa8e8, 1); g2.fillCircle(px2, py2, 2.2); }
+        else { g2.fillStyle(0xe8c84a, 1); g2.fillCircle(px2, py2, 1.7); }
+      }
+    };
     // GROSSANSICHT eines Gebiets (karteGross gesetzt und noch sichtbar)
     const grossGeb = this.karteGross ? info.gebiete.find((g) => g.id === this.karteGross && g.sichtbar) : undefined;
     if (grossGeb && this.getGebietGross) {
@@ -748,6 +759,7 @@ export class UIPanels {
         }
       }
       g.lineStyle(1, 0x6e5a36, 1); g.strokeRect(tx0, ty0, th.w * cell, th.h * cell);
+      maleLive(g, grossGeb.id, tx0, ty0, th.w * cell, th.h * cell);   // R152: Live-Marker
       const hit = this.scene.add.rectangle(tx0, ty0, th.w * cell, th.h * cell, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true });
       hit.on('pointerdown', () => { this.karteGross = null; this.build(); });
       c.add(hit);
@@ -759,7 +771,7 @@ export class UIPanels {
     const unterwegs = (id: string): number => armee ? armee.maersche.filter((mm) => mm.route[mm.beiKarte] === id).reduce((n, mm) => n + mm.ids.length, 0) : 0;
     c.add(this.scene.add.text(16, 26, this.truppenQuelle
       ? `TRUPPEN VERLEGEN: ${this.truppenQuelle} → Ziel-Karte anklicken (Klick auf ⚔ bricht ab).`
-      : 'KLICK auf eine Karte vergrößert sie. ⚔ anklicken = Truppen dieser Karte verlegen. ⚑ = Trupp im Marsch.', { fontFamily: 'serif', fontSize: '11.5px', color: this.truppenQuelle ? '#e8b45a' : '#8a7a5a', wordWrap: { width: w - 200 } }));
+      : 'KLICK vergrößert. ⚔ = Truppen verlegen, ⚑ = Marsch. Live: ● rot = Held, ● blau = Truppen, ● gelb = Bewohner.', { fontFamily: 'serif', fontSize: '11.5px', color: this.truppenQuelle ? '#e8b45a' : '#8a7a5a', wordWrap: { width: w - 200 } }));
     // Mengen-Wahl, solange eine Quelle gewaehlt ist
     if (this.truppenQuelle) {
       let mx = 16;
@@ -797,6 +809,7 @@ export class UIPanels {
           }
         }
         g.lineStyle(1, 0x6e5a36, 1); g.strokeRect(bx, by, boxW, boxH);
+        maleLive(g, geb.id, tx0, ty0, th.w * cell, th.h * cell);   // R152: Live-Marker
         c.add(this.scene.add.text(bx + boxW / 2, by + boxH - 14, geb.name, { fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5, 0));
         // Klick -> Großansicht; laeuft eine Truppen-Verlegung, ist der Klick
         // stattdessen das ZIEL (R142).
