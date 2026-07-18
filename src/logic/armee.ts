@@ -108,6 +108,16 @@ export function marschVon(armee: Armee, id: number): Marsch | null {
   return armee.maersche.find((m) => m.ids.includes(id)) ?? null;
 }
 
+// R167 (Autor "unterbrochene Truppen duerfen nicht verschwinden"): Marsch
+// einer Einheit STORNIEREN - sie bleibt auf der angegebenen Karte stationiert.
+// Leere Maersche loesen sich auf.
+export function storniereMarsch(armee: Armee, id: number, ort: string): void {
+  for (const m of armee.maersche) m.ids = m.ids.filter((x) => x !== id);
+  armee.maersche = armee.maersche.filter((m) => m.ids.length > 0);
+  const e = armee.einheiten.find((x) => x.id === id);
+  if (e) { e.ort = ort; e.pos = undefined; }
+}
+
 // Stationierte (nicht marschierende) Einheiten einer Karte.
 export function garnisonVon(armee: Armee, ort: string): ArmeeEinheit[] {
   return armee.einheiten.filter((e) => e.ort === ort && !marschVon(armee, e.id));

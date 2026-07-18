@@ -252,9 +252,8 @@ void main(){
   float rain=rainH(uv); col += vec3(0.82,0.88,0.96)*abs(rain)*0.18*localDepth;
   vec3 dryStone=stoneLit(sN,sCol)*1.08*u_ambient; col=mix(col, dryStone, sMask*emerged*edgeFade);
   float waterline=sMask*smoothstep(0.0,0.32,emerged)*(1.0-smoothstep(0.32,0.62,emerged));
-  // R158: die Uferkante ist die WICHTIGSTE Lesehilfe (hier hoert begehbarer
-  // Boden auf) - ein heller Saum, IMMER deutlich, unabhaengig vom Wetter.
-  col=mix(col, vec3(0.90,0.94,0.97), clamp(waterline,0.0,1.0)*(0.50+0.22*u_turb)*edgeFade);
+  // R146/R158b: Uferlinie deutlich, aber nicht grell (Autor stimmt Optik ab).
+  col=mix(col, vec3(0.92,0.95,0.96), clamp(waterline,0.0,1.0)*(0.30+0.30*u_turb)*edgeFade);
 
   col *= u_lichtMul;   // Tag/Nacht-Tönung aus dorfSim (nahtlose Einbettung ins Canvas-Licht)
   if(u_layerMode>0.5){
@@ -285,20 +284,16 @@ export interface WasserPreset {
   light: [number, number];
 }
 
-// R158 (Autor "der Fluss sieht aus wie Kiesboden, ich laufe hinein"): das
-// Wasser las sich als matschiger Kies in Gras-Farbe (bed=1.0 zeigte das
-// Flussbett voll, gloss=0.35 kaum Reflexion, Ton grau-gruen wie das Gras).
-// Jetzt: WENIGER Flussbett (bed 0.5), mehr Oberflaechen-Glanz (gloss 0.55,
-// spec stark), klarer Teal-Ton (deep saturierter/dunkler) - hebt sich vom
-// Gras ab und liest sich als reflektierende Wasserflaeche. Bleibt truebes
-// Moorwasser, kein Postkarten-Blau. Feinabstimmung weiter live in F10.
+// R158b (Autor "das Wasser sieht seltsam aus"): meine R158-Umtstimmung des
+// Presets ZURUECKGENOMMEN - die Wasser-Optik stimmt der Autor selbst in der
+// F10-Werkbank ab. Es gilt wieder der alte Stand (R138 "WASSER SICHTBAR").
 export const WASSER: WasserPreset = {
-  speed: 0.13, turb: 0.0, wake: 0.5, bed: 0.5, refract: 0.05,
-  tint: 0.85, shore: 0.010, wavescale: 5.0, nscale: 0.10, gloss: 0.55,
-  turbidity: 0.45, bank: 0.35, emerge: 0.4, sand: 0.35,
+  speed: 0.13, turb: 0.0, wake: 0.5, bed: 1.0, refract: 0.05,
+  tint: 0.8, shore: 0.010, wavescale: 5.0, nscale: 0.10, gloss: 0.35,
+  turbidity: 0.6, bank: 0.45, emerge: 0.4, sand: 0.5,
   procDensity: 0.35, procSize: 0.05, flowDir: 1.0, ambient: 1.0,
-  deep: [0.05, 0.17, 0.23], sky: [0.5, 0.68, 0.86], spec: [0.98, 0.98, 0.92],
-  bedShallow: [0.34, 0.33, 0.30], bedDeep: [0.10, 0.14, 0.15], stoneCol: [0.31, 0.31, 0.30],
+  deep: [0.07, 0.19, 0.24], sky: [0.5, 0.66, 0.82], spec: [0.95, 0.95, 0.9],
+  bedShallow: [0.40, 0.37, 0.30], bedDeep: [0.13, 0.16, 0.16], stoneCol: [0.345, 0.329, 0.298],
   light: [0.25, 0.65],
 };
 

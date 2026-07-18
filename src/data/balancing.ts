@@ -30,7 +30,10 @@ export interface SpellDef {
 // Aktionsleiste passen (s1=Feuerball, s2=Heiliges Licht, s3=Heilung) - sonst
 // wirkt der falsche Effekt (Autorbug "Heilung mit Heiligem Licht vertauscht").
 export const SPELLS: ReadonlyArray<SpellDef> = [
-  { id: 'feuerball', name: 'Feuerball', ico: '✦', mana: 12, unlock: 2, cd: 0.55 },
+  // R173 (Autor "welchen Zauber kann ich mit Level 1 benutzen?"): vorher
+  // KEINEN - die Zauberei-Schule war auf Stufe 1 nicht steigerbar. Der
+  // Feuerball ist jetzt von Anfang an frei.
+  { id: 'feuerball', name: 'Feuerball', ico: '✦', mana: 12, unlock: 1, cd: 0.55 },
   // Runde 41 (Autorwunsch): Heilung schon Stufe 3, Heiliges Licht Stufe 4.
   { id: 'heiligesLicht', name: 'Heiliges Licht der Säuberung', ico: '☩', mana: 22, unlock: 4, cd: 2 },
   { id: 'heilung', name: 'Heilung', ico: '✚', mana: 26, unlock: 3, cd: 4 },

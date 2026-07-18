@@ -2284,10 +2284,12 @@ function bevoelkereStadt(a: AreaData): void {
   frei(14, 62, 19, 65);
   N({ id: 'schmied', name: 'Schmied', x: 16 * T32, y: 63.5 * T32, abend: WIRTSHAUS, kaempfer: true, arbeit: 'schmieden', questgeber: 'stahl' });
   (a.stationen ??= []).push({ art: 'amboss', x: 17.5 * T32, y: 63.5 * T32 });
-  frei(108, 90, 113, 93);
-  N({ id: 'mueller', name: 'Müller', x: 110.5 * T32, y: 91.5 * T32, abend: { x: 106.5 * T32, y: 81.5 * T32 }, kaempfer: true });
+  // R166 (Autor "Mueller und Magd stehen im Wasser"): die alten Anker
+  // (110/91) lagen IN der See-Ellipse des Muehlenweihers - jetzt am NORDufer.
+  frei(103, 82, 108, 86);
+  N({ id: 'mueller', name: 'Müller', x: 105.5 * T32, y: 83.5 * T32, abend: { x: 106.5 * T32, y: 81.5 * T32 }, kaempfer: true });
   frei(104, 80, 109, 83);
-  N({ id: 'magd', name: 'Magd Trine', x: 110 * T32, y: 92.5 * T32, abend: { x: 106.5 * T32, y: 81.5 * T32 } });
+  N({ id: 'magd', name: 'Magd Trine', x: 104.5 * T32, y: 84.5 * T32, abend: { x: 106.5 * T32, y: 81.5 * T32 } });
   frei(75, 60, 79, 63);
   N({ id: 'baecker', name: 'Bäcker Matthes', x: 77 * T32, y: 61.5 * T32, abend: { x: 77 * T32, y: 61.5 * T32 }, arbeit: 'backen' });
   a.stationen.push({ art: 'backofen', x: 75.5 * T32, y: 61.5 * T32 });

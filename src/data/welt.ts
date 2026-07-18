@@ -77,8 +77,10 @@ export const KAEMPFER = {
 // Stadtmauer (Feedback-Runde 7): Palisade als Bauprojekt beim Schmied.
 // Stufe 1 ist unzerstörbar für normale Monster - sie kommen nur noch
 // durch die zwei Tore der Salzstraße.
-// Fester Stadt-Anker des Portal-Paars (Runde 28): am Marktplatz
-export const PORTAL_STADT = { x: 43 * 32 + 16, y: 30 * 32 + 16 } as const;
+// Fester Stadt-Anker des Portal-Paars (Runde 28). R168 (Autor "das Portal
+// bringt mich ins ALTE Ravensmoor"): Anker liegt jetzt in NEU-Ravensmoor
+// (stadt) neben dem Brunnen (Kachel 61/72, freigeraeumte Brunnen-Zone).
+export const PORTAL_STADT = { x: 61 * 32 + 16, y: 72 * 32 + 16 } as const;
 
 export const STADTMAUER = {
   stufen: [

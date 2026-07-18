@@ -81,7 +81,7 @@ import { angrenzendeWehrstruktur, benoetigteBreschenFelder, priorisierteBelageru
 import { WASSER_FRAMES } from '../gfx/tileArt';
 import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64, drawSchlucht, drawKristall } from '../gfx/detailArt';
 import { DialogUI, fixUiScroll, macheFensterZiehbar } from '../ui/dialog';
-import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, RELIKT, ENDEN, TOD, INTRO_FILM, erzaehlerSeiten } from '../data/texte';
+import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, ENDEN, TOD, INTRO_FILM, erzaehlerSeiten } from '../data/texte';
 import { ALTAR, BLOOD_WELL, CHEST, RELIC_ACCEPT_ELIXIRS, ABILITY_FX, BUCH_ZAUBER } from '../data/balancing';
 import { BREAKABLES, BREAKABLE_LOOT, BEINHAUS, CHEST_VERFLUCHT, BOSS_KAMPF } from '../data/krypta';
 import { DEATH, SHRINE, PHYSIK, BREAKABLE_MASSE, PLAYER } from '../data/kampf';
@@ -97,7 +97,7 @@ import { seededRng, pick, ri } from '../logic/rng';
 import { respawnZiel } from '../logic/respawn';
 import { moralWert, fluchtEntscheidung, istEingekesselt, type MoralLage } from '../logic/moral';
 import { konterFaktor } from '../data/kampfarten';
-import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, garnisonVon, marschVon, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, einheitMaxHp, heerObergrenze, pruefeRekrutierung, desertiere, type Armee, type ArmeeEinheit } from '../logic/armee';
+import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, garnisonVon, marschVon, storniereMarsch, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, einheitMaxHp, heerObergrenze, pruefeRekrutierung, desertiere, type Armee, type ArmeeEinheit } from '../logic/armee';
 import { schlachtXp } from '../logic/schlachtWertung';
 import { BODEN_STILE, bodenStilTextur } from '../gfx/bodenStile';
 import { WAND_STILE, wandStilFrontTextur, wandStilKroneTextur } from '../gfx/wandStile';
@@ -7449,7 +7449,8 @@ export class WorldScene extends CombatScene {
       const ring = this.add.image(zx, zy, 'regenring').setDepth(-8.3).setAlpha(0.55).setScale(0.12);
       this.tweens.add({ targets: ring, scale: 0.6, alpha: 0, duration: 480, ease: 'Quad.easeOut', onComplete: () => ring.destroy() });
     }
-    this.playSound('block', 0.25);
+    // R158b (Autor "seltsame Geraeusche"): der Block-Klang am Ufer war falsch
+    // besetzt - Spritzer + Hinweis reichen als Rueckmeldung, KEIN Ton.
     if (!this.wasserHinweisGezeigt) {
       this.wasserHinweisGezeigt = true;
       this.logMsg('Der Fluss ist zu tief - du musst eine Furt oder Brücke suchen.', '');
@@ -7953,11 +7954,24 @@ export class WorldScene extends CombatScene {
 
   // Sprites eines Trupps abraeumen, der die Held-Karte abstrakt verlassen hat
   // (kein Tod: Zustand wird vorher ins Roster geschrieben).
+  // R167 (Autor "die standen mitten im Dorf und sind VOR MEINEN AUGEN
+  // verschwunden"): despawnen darf NUR, wer wirklich NAHE der Kante ist.
+  // Wer mitten auf der Karte steht (befehligt/aufgehalten), dessen Marsch
+  // wird STORNIERT - er bleibt sichtbar hier stationiert.
   private entferneMarschierteSprites(ids: number[]): void {
-    const weg = this.enemies.filter((e) => e.team === 'spieler' && e.armeeId !== null && ids.includes(e.armeeId) && e.hp > 0);
-    if (!weg.length) return;
-    for (const e of weg) { schreibeZurueck(this.armee, e.armeeId!, e.hp, e.kills); e.sprite?.destroy(); }
-    this.enemies = this.enemies.filter((e) => !weg.includes(e));
+    const betroffen = this.enemies.filter((e) => e.team === 'spieler' && e.armeeId !== null && ids.includes(e.armeeId) && e.hp > 0);
+    if (!betroffen.length) return;
+    const W = this.area.w * TILE, H = this.area.h * TILE, rand = TILE * 5;
+    const anKante = (e: Enemy): boolean => e.x < rand || e.x > W - rand || e.y < rand || e.y > H - rand;
+    const weg = betroffen.filter(anKante);
+    for (const e of betroffen) {
+      schreibeZurueck(this.armee, e.armeeId!, e.hp, e.kills);
+      if (anKante(e)) { e.sprite?.destroy(); continue; }
+      storniereMarsch(this.armee, e.armeeId!, this.area.id);
+      const einheit = this.armee.einheiten.find((x) => x.id === e.armeeId);
+      if (einheit) einheit.pos = { x: e.x, y: e.y };
+    }
+    if (weg.length) this.enemies = this.enemies.filter((e) => !weg.includes(e));
   }
 
   private kartenName(id: string): string { return FUERSTENTUM.find((g) => g.id === id)?.name ?? id; }
@@ -9099,8 +9113,32 @@ export class WorldScene extends CombatScene {
       // bricht den Frieden ausdruecklich.
       const e = this.spawnEnemy(q.typ as never, q.tiefe, q.x + (Math.random() - 0.5) * 50, q.y + (Math.random() - 0.5) * 30, q.elite, true);
       e.aggro = 5000;
-      // zielgerichtet Richtung Stadtmitte einmarschieren, bis etwas sie weckt
-      e.jagdZiel = { x: 64 * TILE + (Math.random() - 0.5) * 300, y: 64 * TILE + (Math.random() - 0.5) * 300 };
+      // R166 (Autor "die haengen alle am Wasser"): NICHT Luftlinie zur Mitte
+      // (die fuehrt in den Fluss), sondern ENTLANG DER STRASSE ins Innere -
+      // der Anti-Haenger (updateEinfallEntklemmer) uebergibt danach an die
+      // normale KI, die per Wegfeld um das Wasser herum zum Ziel findet.
+      const vonNorden = q.y < 10 * TILE;
+      e.jagdZiel = vonNorden
+        ? { x: q.x + (Math.random() - 0.5) * 60, y: 58 * TILE }
+        : { x: 80 * TILE, y: q.y + (Math.random() - 0.5) * 60 };
+    }
+  }
+
+  // R166: haengt ein Einfall-Angreifer (kein Fortschritt trotz jagdZiel),
+  // uebernimmt die normale KI - ihr Wegfeld fuehrt um Fluss/Waende herum.
+  // Der Spieler darf die Angreifer NIE suchen muessen.
+  private einfallHaengT = 0;
+  private einfallLetztePos = new WeakMap<Enemy, { x: number; y: number }>();
+  private updateEinfallEntklemmer(dt: number): void {
+    if (!this.einfallAktiv) return;
+    this.einfallHaengT -= dt;
+    if (this.einfallHaengT > 0) return;
+    this.einfallHaengT = 2;
+    for (const e of this.enemies) {
+      if (e.team === 'spieler' || e.hp <= 0 || !e.jagdZiel) continue;
+      const alt = this.einfallLetztePos.get(e);
+      if (alt && Math.hypot(e.x - alt.x, e.y - alt.y) < 10) e.jagdZiel = null;
+      this.einfallLetztePos.set(e, { x: e.x, y: e.y });
     }
   }
 
@@ -11327,7 +11365,7 @@ export class WorldScene extends CombatScene {
     for (const img of this.portalEnts) img.destroy();
     this.portalEnts = [];
     if (!this.portalZiel) return;
-    const stelle = this.area.id === 'village' ? PORTAL_STADT
+    const stelle = this.area.id === 'stadt' ? PORTAL_STADT
       : this.area.id === this.portalZiel.areaId ? { x: this.portalZiel.x, y: this.portalZiel.y } : null;
     if (!stelle) return;
     if (!this.textures.exists('portalwirbel')) {
@@ -11356,7 +11394,7 @@ export class WorldScene extends CombatScene {
     if (!this.portalZiel) return null;
     const ik = getSettings().kb.interact.toUpperCase();
     const ziel = this.portalZiel;
-    if (this.area.id === 'village' && Math.hypot(this.px - PORTAL_STADT.x, this.py - PORTAL_STADT.y) < 64) {
+    if (this.area.id === 'stadt' && Math.hypot(this.px - PORTAL_STADT.x, this.py - PORTAL_STADT.y) < 64) {
       return {
         text: `Portal in die Tiefe - ${ik} zum Durchschreiten`,
         action: () => {
@@ -11373,7 +11411,7 @@ export class WorldScene extends CombatScene {
         text: `Portal nach Ravensmoor - ${ik} zum Durchschreiten`,
         action: () => {
           this.sfx.play('heiliges_licht');
-          this.goArea('village', { x: PORTAL_STADT.x, y: PORTAL_STADT.y + 40 });
+          this.goArea('stadt', { x: PORTAL_STADT.x, y: PORTAL_STADT.y + 40 });   // R168: NEUES Ravensmoor
         },
       };
     }
@@ -11382,24 +11420,23 @@ export class WorldScene extends CombatScene {
 
   protected override onPortalPickup(): void {
     this.sfx.play('heiliges_licht');
-    this.goArea('village');
+    this.goArea('stadt', { x: PORTAL_STADT.x, y: PORTAL_STADT.y + 40 });   // R168: NEUES Ravensmoor
     this.logMsg('Das Portal trägt dich zurück nach Ravensmoor.', 'magic');
   }
 
+  // R169 (Autor "mache das weg, das ist voellig sinnfrei aktuell"): der
+  // Annehmen/Zerstoeren-Dialog samt Spiel-Ende entfaellt - der Boss hatte
+  // das WAHRE Relikt nie, die Geschichte geht mit dem Krieg weiter. Der
+  // endGame-Zweig bleibt fuer das echte Relikt-Finale erhalten (ENDEN).
   protected override onRelicPickup(pk: Pickup): void {
     this.pickups.remove(pk);
-    this.dialog.show(RELIKT.name, [
-      RELIKT.text,
-      {
-        text: RELIKT.frage,
-        choices: [
-          { label: RELIKT.annehmen, fn: () => this.endGame('annehmen') },
-          { label: RELIKT.zerstoeren, fn: () => this.endGame('zerstoeren') },
-        ],
-      },
-    ]);
+    this.sfx.play('heiliges_licht');
+    this.logMsg('Ein Trugbild zerfällt in deiner Hand - das WAHRE Relikt ist noch da draußen.', 'magic');
+    this.chronik('geschichte', 'Das Relikt des Tempelritters war ein Trugbild - die Suche geht weiter, und der Krieg hat erst begonnen.');
   }
 
+  // R169: aktuell ohne Aufrufer - kommt mit dem ECHTEN Relikt-Finale zurueck.
+  // @ts-expect-error bewusst ungenutzt, bis das wahre Relikt gefunden werden kann
   private endGame(choice: 'annehmen' | 'zerstoeren'): void {
     this.relicChoice = choice;
     const ende = ENDEN[choice];
@@ -13184,10 +13221,11 @@ export class WorldScene extends CombatScene {
     // R131 (Autor "im RTS läuft alles wie in Zeitlupe, auch die Pfeile - das
     // war nicht der Sinn, Held und Monster sollen sich wie in den Dungeons
     // bewegen"): die RTS-Schlacht bekommt KEINE globale Slow-Motion mehr. Held,
-    // Monster und Geschosse laufen in Echtzeit (Dungeon-Tempo = normales dt); das
-    // bedächtige Helden-Gefühl liefert allein areaSpeedFactor(). Nur der große
-    // Stadt-Einfall (einfallAktiv) behält seine bewusste Slow-Motion.
-    const kampfTempo = this.einfallAktiv ? TUNING.kryptaTempo : 1;
+    // Monster und Geschosse laufen in Echtzeit (Dungeon-Tempo = normales dt).
+    // R165 (Autor "57 FPS aber alles stockend wie Zeitlupe"): auch der Stadt-
+    // Einfall laeuft jetzt in ECHTZEIT - die fruehere bewusste Slow-Motion
+    // fuehlte sich wie Lag an.
+    const kampfTempo = 1;
     this.updateCombat(dt * kampfTempo);
     this.aktualisiereReitPferd(dt * kampfTempo);
     this.checkKartenRand();   // begehbare Kartenränder (Oberwelt-Übergänge)
@@ -13209,6 +13247,7 @@ export class WorldScene extends CombatScene {
     this.updateTurmBesatzung();  // R100: Turm-Insassen unsichtbar + Symbol
     this.updateMarsch(dt);   // R142: das Heer marschiert IMMER (auch ohne RTS-Modus)
     this.updateEinfallQueue(dt);   // R157: Einfall-Kolonnen ruecken in Schueben an
+    this.updateEinfallEntklemmer(dt);   // R166: niemand bleibt am Fluss haengen
     if (this.rtsBattle) {
       // R97: Schlachtführer (Held) tot -> Schlacht verloren, Truppe flieht.
       if (this.playerDead && !this.rtsBattle.verloren) { this.rtsBattle.schlachtVerloren(); this.logMsg('SCHLACHT VERLOREN - der Schlachtführer ist gefallen, die Banner sinken.', 'bad'); }

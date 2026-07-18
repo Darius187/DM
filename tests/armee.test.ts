@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, naechsteVerstaerkung, garnisonVon, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, rangHpF, einheitMaxHp } from '../src/logic/armee';
+import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, naechsteVerstaerkung, garnisonVon, routeZu, starteMarsch, storniereMarsch, marschTick, rangFuerKills, rangDmgF, rangHpF, einheitMaxHp } from '../src/logic/armee';
 import { RTS_RANG, RTS_UNIT_TYP } from '../src/data/rts';
 import { seededRng } from '../src/logic/rng';
 
@@ -87,6 +87,16 @@ describe('Das Heer lebt in der Welt (R142 - Karten, Maersche)', () => {
     expect(e.ort).toBe('stadt');
     expect(a.maersche).toEqual([]);
     expect(garnisonVon(a, 'stadt').map((x) => x.id)).toEqual([e.id]);   // angekommen = Garnison
+  });
+
+  it('storniereMarsch (R167): Einheit bleibt auf der Karte, Marsch loest sich auf', () => {
+    const a = neueArmee();
+    const e = musterEin(a, 'nahkampf', 'start', seededRng(21));
+    starteMarsch(a, [e.id], ['start', 'wald_o', 'stadt']);
+    storniereMarsch(a, e.id, 'wald_o');
+    expect(a.maersche).toEqual([]);
+    expect(e.ort).toBe('wald_o');
+    expect(garnisonVon(a, 'wald_o').map((x) => x.id)).toEqual([e.id]);
   });
 
   it('Gefallene fallen aus dem Marsch, leere Maersche loesen sich auf', () => {
