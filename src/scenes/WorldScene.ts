@@ -61,7 +61,7 @@ import { HoehlenLeben } from '../gfx/hoehlenLeben';
 import { KriegsnebelAnzeige, type SichtSet } from '../systems/kriegsnebel';
 import { buildKerkerArea } from '../world/kerkerArea';
 import { MINE } from '../data/mine';
-import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, MARSCH, REKRUTIERUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, MORAL, MARSCH, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
@@ -98,6 +98,7 @@ import { respawnZiel } from '../logic/respawn';
 import { moralWert, fluchtEntscheidung, istEingekesselt, type MoralLage } from '../logic/moral';
 import { konterFaktor } from '../data/kampfarten';
 import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, garnisonVon, marschVon, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, einheitMaxHp, heerObergrenze, pruefeRekrutierung, desertiere, type Armee, type ArmeeEinheit } from '../logic/armee';
+import { schlachtXp } from '../logic/schlachtWertung';
 import { BODEN_STILE, bodenStilTextur } from '../gfx/bodenStile';
 import { WAND_STILE, wandStilFrontTextur, wandStilKroneTextur } from '../gfx/wandStile';
 import { writeSave, readSave, equipIndices, AUTOSAVE_SLOT, SAVE_VERSION, type SaveData } from '../logic/save';
@@ -5515,6 +5516,7 @@ export class WorldScene extends CombatScene {
     this.hittables = [];
     // R141/R142: der Armee-Sync laeuft schon in goArea VOR der area-Zuweisung
     // (hier waere this.area bereits die NEUE Karte - falscher Standort).
+    this.schlacht = null;   // R147c: abgebrochene Schlacht wird nicht gewertet
     // R99d: Schlacht endet beim Kartenwechsel (Enemy-Refs gehoeren zur alten Karte)
     if (this.rtsBattle) { this.rtsBattle.destroy(); this.rtsBattle = null; if (this.rtsLeiste) { this.rtsLeiste.destroy(); this.rtsLeiste = null; this.entferneRtsLauscher(); this.setzeFreiKamera(false); } }
     for (const e of this.enemies) e.sprite?.destroy();
@@ -6933,7 +6935,10 @@ export class WorldScene extends CombatScene {
     if (this.rtsHeldGewaehlt && this.devFreiKam) {
       if (!this.rtsWahlRing) { this.rtsWahlRing = this.add.graphics().setDepth(this.py - 1); }
       const g = this.rtsWahlRing; g.clear();
-      g.lineStyle(1.5, 0x9ad86a, 0.9); g.strokeEllipse(this.px, this.py + 8, 26, 12);
+      // R147d (Autor "beim Helden ist der Kreis versetzt"): fester Fusspunkt
+      // wie bei den Soldaten (Sprite-displayHeight enthaelt transparenten Rand
+      // und taugt NICHT als Fussmass - der Ring hing 70px unter der Figur).
+      g.lineStyle(1, 0x5aa8e8, 0.9); g.strokeEllipse(this.px, this.py + 14, 24, 10);
       g.setDepth(this.py - 1);
     } else if (this.rtsWahlRing) { this.rtsWahlRing.clear(); }
     if (!this.devFreiKam) { this.rtsMoveZiel = null; this.rtsLaeuft = false; return; }
@@ -7305,12 +7310,12 @@ export class WorldScene extends CombatScene {
           const d3 = Math.max(1, Math.round(d2 * f));
           s.zeigeKonter(z, f);
           if (en.team === 'spieler') {
-            s.damageEnemy(z, d3, 0, 0, null, true);
+            s.damageEnemy(z, d3, 0, 0, null, true, true);   // R147: durchTruppe - keine Held-XP
             if (z.hp <= 0) s['meldeKill'](en);   // R141 (2.2): Nahkampf-Kill zaehlt
           } else s.trifftVerbuendeten(z, d3);
         }
       },
-      spawnEnemyProjectile: (x, y, vx, vy, dmg, col, pfeil, _vt, hoch) => s.spawnEnemyProjectile(x, y, vx, vy, dmg, col, pfeil, e.team === 'spieler' ? 'spieler' : 'feind', hoch),
+      spawnEnemyProjectile: (x, y, vx, vy, dmg, col, pfeil, _vt, hoch) => s.spawnEnemyProjectile(x, y, vx, vy, dmg, col, pfeil, e.team === 'spieler' ? 'spieler' : 'feind', hoch, e.team === 'spieler' ? e : undefined),
       addTelegraph: (x, y, r, t, dmg) => s.addTelegraph(x, y, r, t, dmg),
       summonAdds: (en, n) => { if (en.team !== 'spieler') s.summonAdds(en, n); },
       logMsg: (t, c) => s.logMsg(t, c),
@@ -7405,6 +7410,7 @@ export class WorldScene extends CombatScene {
       a.sprite?.destroy();
       this.enemies = this.enemies.filter((o) => o !== a);
       this.moralTote.push({ team: a.team, t: this.time.now / 1000 });   // R139: Verluste druecken die Moral
+      if (this.schlacht) this.schlacht.verluste++;   // R147c: eigene Gefallene druecken die Wertung
       // R141 (2.1): Permadeath - endgueltig raus aus dem Roster, Name ins
       // Gedenkbuch. Verluste muessen weh tun.
       const name = a.armeeId !== null ? vermerkeGefallen(this.armee, a.armeeId) : null;
@@ -7416,7 +7422,42 @@ export class WorldScene extends CombatScene {
   // R144: immer zaehlen - die Moral laeuft jetzt in jedem Modus.
   protected override killEnemy(e: Enemy): void {
     this.moralTote.push({ team: e.team, t: this.time.now / 1000 });
+    // R147c: ein Feind faellt, waehrend eigene Truppen MITKAEMPFEN - das ist
+    // (der Beginn) eine(r) Schlacht. Held-Solo-Kämpfe zaehlen nicht doppelt.
+    if (e.team !== 'spieler') {
+      const truppeKaempft = this.enemies.some((o) => o.team === 'spieler' && o.hp > 0 && !o.passiv);
+      if (truppeKaempft || this.schlacht) {
+        this.schlacht ??= { feinde: 0, verluste: 0, staerke: this.enemies.filter((o) => o.team === 'spieler' && o.hp > 0).length, ruheT: 0 };
+        this.schlacht.feinde++;
+        this.schlacht.ruheT = 0;
+      }
+    }
     super.killEnemy(e);
+  }
+
+  // R147c: Sieg erkannt, wenn ruheS Sekunden kein wacher Feind mehr steht.
+  private updateSchlacht(dt: number): void {
+    if (!this.schlacht) return;
+    if (this.playerDead) { this.schlacht = null; return; }   // verloren: keine Wertung
+    // "Vorbei" heisst: kein wacher Feind mehr IM UMKREIS von Held oder Truppe -
+    // streunende Monster am anderen Kartenende halten den Sieg nicht auf.
+    const nah = SCHLACHT_WERTUNG.umkreis;
+    const feindeDa = this.enemies.some((e) => e.team !== 'spieler' && e.hp > 0 && !e.passiv
+      && (Math.hypot(e.x - this.px, e.y - this.py) < nah
+        || this.enemies.some((o) => o.team === 'spieler' && o.hp > 0 && Math.hypot(o.x - e.x, o.y - e.y) < nah)));
+    if (feindeDa) { this.schlacht.ruheT = 0; return; }
+    this.schlacht.ruheT += dt;
+    if (this.schlacht.ruheT < SCHLACHT_WERTUNG.ruheS) return;
+    const s = this.schlacht;
+    this.schlacht = null;
+    const truppe = this.enemies.filter((e) => e.team === 'spieler' && e.hp > 0);
+    const moralSchnitt = truppe.length ? truppe.reduce((a, e) => a + e.moral, 0) / truppe.length : 0;
+    const xp = schlachtXp({ feindeBesiegt: s.feinde, eigeneVerluste: s.verluste, eigeneStaerke: s.staerke, moralSchnitt });
+    if (xp <= 0) return;
+    this.giveXp(xp);
+    if (this.sfx.has('muenzen')) this.sfx.play('muenzen', 0.5);
+    this.logMsg(`Schlacht gewonnen: ${s.feinde} Feinde besiegt, ${s.verluste} eigene Verluste - ${xp} Erfahrung für die Führung.`, 'gold');
+    this.chronik('kampf', `Schlacht gewonnen (${s.feinde} Feinde, ${s.verluste} Verluste, Moral ${Math.round(moralSchnitt)}) - ${xp} Erfahrung für den Feldherrn.`);
   }
 
   // --- R139 MORAL (Dok 03, 1.2 - Total War): die EINE Formel (logic/moral.ts)
@@ -7426,6 +7467,10 @@ export class WorldScene extends CombatScene {
   // sie kaempfen verzweifelt (Sunzi N5.3: dem Feind eine Bruecke lassen). ----
   private moralTickT = 0;
   private moralTote: Array<{ team: 'feind' | 'spieler'; t: number }> = [];
+  // R147c: laufende Schlacht-Bilanz. Beginnt mit dem ersten Feind-Kill, an dem
+  // eigene Truppen beteiligt sind; endet nach ruheS Sekunden ohne Feind (Sieg)
+  // oder mit dem Tod des Helden / Kartenwechsel (keine Wertung).
+  private schlacht: { feinde: number; verluste: number; staerke: number; ruheT: number } | null = null;
 
   private updateMoral(dt: number): void {
     this.moralTickT -= dt;
@@ -7436,12 +7481,13 @@ export class WorldScene extends CombatScene {
     const lebende = this.enemies.filter((e) => e.hp > 0 && !e.passiv);
     if (!lebende.length) return;
     const nacht = this.tageszeit < TAG.morgenAb || this.tageszeit > TAG.nachtAb;
-    const toteFeind = this.moralTote.filter((m) => m.team === 'feind').length;
     const toteAlly = this.moralTote.filter((m) => m.team === 'spieler').length;
-    const lebFeind = lebende.filter((e) => e.team === 'feind').length;
     const lebAlly = lebende.filter((e) => e.team === 'spieler').length;
     const um2 = MORAL.umkreis * MORAL.umkreis;
     for (const e of lebende) {
+      // R147b (Autor): MONSTER haben KEINE Moral und fliehen nicht - die Moral
+      // gehoert den eigenen Truppen (und speist die Schlacht-Wertung des Helden).
+      if (e.team !== 'spieler') continue;
       let eigene = 0, feinde = 0, fliehende = 0;
       const kx: number[] = [], ky: number[] = [];
       for (const o of lebende) {
@@ -7451,20 +7497,14 @@ export class WorldScene extends CombatScene {
         if (o.team === e.team) { eigene++; if (o.flieht) fliehende++; }
         else { feinde++; kx.push(dx); ky.push(dy); }
       }
-      // Der Held zaehlt fuer Feinde als Gegner, fuer die eigene Truppe als Anfuehrer.
+      // Der Held nah bei der Truppe wirkt als Anfuehrer (Banneret).
       const heldD = this.playerDead ? Infinity : Math.hypot(this.px - e.x, this.py - e.y);
-      if (e.team !== 'spieler' && heldD < MORAL.umkreis) { feinde++; kx.push(this.px - e.x); ky.push(this.py - e.y); }
-      let standarten = 0, altar = false, anfuehrer = false;
-      if (e.team === 'spieler') {
-        anfuehrer = heldD < MORAL.standarteRadius;
-        for (const st of this.standartenAktiv) if (Math.hypot(st.x - e.x, st.y - e.y) < MORAL.standarteRadius) standarten++;
-        for (const f of this.feldbauten) if (f.id === 'feldaltar' && Math.hypot(f.x - e.x, f.y - e.y) < LAGER_EFFEKT.radius) { altar = true; break; }
-      } else {
-        // Feindlicher "Anfuehrer": Elite/Boss in der Naehe haelt die Meute zusammen.
-        anfuehrer = lebende.some((o) => o !== e && o.team === e.team && (o.elite || o.boss) && Math.hypot(o.x - e.x, o.y - e.y) < MORAL.standarteRadius);
-      }
-      const tote = e.team === 'spieler' ? toteAlly : toteFeind;
-      const staerke = (e.team === 'spieler' ? lebAlly : lebFeind) + tote;
+      let standarten = 0, altar = false;
+      const anfuehrer = heldD < MORAL.standarteRadius;
+      for (const st of this.standartenAktiv) if (Math.hypot(st.x - e.x, st.y - e.y) < MORAL.standarteRadius) standarten++;
+      for (const f of this.feldbauten) if (f.id === 'feldaltar' && Math.hypot(f.x - e.x, f.y - e.y) < LAGER_EFFEKT.radius) { altar = true; break; }
+      const tote = toteAlly;
+      const staerke = lebAlly + tote;
       const lage: MoralLage = {
         verlusteFrac: staerke > 0 ? tote / staerke : 0,
         eigeneNah: eigene, feindeNah: feinde, fliehendeNah: fliehende,
@@ -7488,8 +7528,8 @@ export class WorldScene extends CombatScene {
   }
 
   // Fluchtpunkt: weg vom Feind-Schwerpunkt, sonst zur naechsten Kartenkante.
-  // FEINDE entkommen an der Kante (verlassen das Feld - abfangbar, solange sie
-  // rennen); EIGENE kauern dort und koennen sich wieder sammeln.
+  // R147b: nur noch EIGENE Truppen fliehen (Monster kennen keine Moral) -
+  // sie kauern an der Kante und sammeln sich; SOELDNER desertieren dort.
   private fluchtSchritt(e: Enemy, kx: number[], ky: number[]): void {
     const W = this.area.w * TILE, H = this.area.h * TILE;
     const anKante = e.x < TILE * 2 || e.x > W - TILE * 2 || e.y < TILE * 2 || e.y > H - TILE * 2;
@@ -7519,6 +7559,10 @@ export class WorldScene extends CombatScene {
     }
     e.jagdZiel = { x: Phaser.Math.Clamp(e.x + dx * 320, TILE, W - TILE), y: Phaser.Math.Clamp(e.y + dy * 320, TILE, H - TILE) };
   }
+
+  // R147: Fernkampf-Kills (Projektil kennt jetzt seinen Schuetzen) zaehlen
+  // fuer dessen Rang - das offene R141-TODO ist damit geschlossen.
+  protected override meldeTruppenKill(schuetze: Enemy): void { this.meldeKill(schuetze); }
 
   // R141 (Dok 03, 2.2): Kill einer ROSTER-Einheit melden - Kills zaehlen,
   // Rang-Aufstieg sofort anwenden (Schaden/Leben) und sichtbar feiern.
@@ -12862,6 +12906,7 @@ export class WorldScene extends CombatScene {
     if (this.rtsBattle || this.enemies.some((e) => e.team === 'spieler' && e.hp > 0)) {
       this.updateMoral(dt);   // R139: Kaempfe enden, weil eine Seite BRICHT (Dok 03, 1.2)
     }
+    this.updateSchlacht(dt);   // R147c: Sieg-Erkennung + Schlacht-Wertung des Helden
     this.updateNassSpritzer(dt);  // Spritzer in Pfützen + auf nassem Rasen (R78)
     this.updateRegenPlatschen(dt); // Regen plätschert im Gras (R79)
     this.updateWasserWetter();  // Regen-Ringe/Wirbel auf dem neuen Wasser

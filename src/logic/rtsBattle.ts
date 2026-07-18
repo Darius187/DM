@@ -82,6 +82,7 @@ export class RtsBattle {
   private held: HeldRef;
   gfx: Phaser.GameObjects.Graphics;
   fxg: Phaser.GameObjects.Graphics;
+  ringGfx: Phaser.GameObjects.Graphics;   // R147d: Auswahl-Ringe auf Boden-Ebene
   aktiveForm: Form = 'linie';
   boxStart: { x: number; y: number } | null = null;
   boxNow: { x: number; y: number } | null = null;
@@ -97,12 +98,16 @@ export class RtsBattle {
     this.host = host; this.held = held;
     this.gfx = host.scene.add.graphics().setDepth(6100);
     this.fxg = host.scene.add.graphics().setDepth(6099);
+    // R147d (Autor "Kreise ueberlagern die Figuren"): Auswahl-Ringe liegen auf
+    // einer BODEN-Ebene (Tiefe 0) - unter allen y-sortierten Figuren (Tiefe=y),
+    // aber ueber Boden/Wasser (negativ). Balken/Punkte bleiben oben (gfx).
+    this.ringGfx = host.scene.add.graphics().setDepth(0);
   }
 
   destroy(): void {
     for (const u of this.units) if (!u.tot) this.host.entferne(u.ref);
     this.units = [];
-    this.gfx.destroy(); this.fxg.destroy();
+    this.gfx.destroy(); this.fxg.destroy(); this.ringGfx.destroy();
   }
 
   // --- Spawnen ---------------------------------------------------------------
@@ -550,6 +555,7 @@ export class RtsBattle {
   // --- Overlay (Ringe, HP, Marker, Box, Ghost) - P18-Feedback ----------------
   zeichneOverlay(): void {
     const g = this.gfx; g.clear();
+    const rg = this.ringGfx; rg.clear();
     // R100c: Haltungs-Farbe (Autor "man sieht nicht welche Haltung aktiv ist")
     const stanceCol = (s: Stance): number => s === 'aggressiv' ? 0xd0603a : s === 'verteidigen' ? 0x4a8ad0 : 0x9a9a9a;
     for (const u of this.units) {
@@ -565,7 +571,8 @@ export class RtsBattle {
           g.fillTriangle(rx - 2.4, u.y - 28, rx + 2.4, u.y - 28, rx, u.y - 32);
         }
       }
-      if (u.gewaehlt) { g.lineStyle(1.5, stanceCol(u.stance), 0.95); g.strokeEllipse(u.x, u.y + 9, 24, 11); }
+      // R147d (Autor): duenner BLAUER Ring am FUSSPUNKT, unter der Figur.
+      if (u.gewaehlt) { rg.lineStyle(1, 0x5aa8e8, 0.9); rg.strokeEllipse(u.x, u.y + 14, 22, 9); }
       if (u.hp < u.maxhp || u.gewaehlt) {
         const w = 22, frac = Math.max(0, u.hp / u.maxhp);
         g.fillStyle(0x000000, 0.5); g.fillRect(u.x - w / 2 - 1, u.y - 27, w + 2, 4);
@@ -579,10 +586,11 @@ export class RtsBattle {
       g.fillStyle(0x000000, 0.5); g.fillRect(e.x - w / 2 - 1, e.y - 27, w + 2, 4);
       g.fillStyle(0xc85a5a, 1); g.fillRect(e.x - w / 2, e.y - 26, w * frac, 2);
     }
-    // P18: Feind unterm Zeiger rot hervorheben (Angriffsziel-Feedback)
+    // P18: Feind unterm Zeiger ROT hervorheben (Angriffsziel-Feedback) -
+    // R147d: ebenfalls duenn und am Fusspunkt, unter der Figur.
     if (this.hover) {
       const hz = this.feindBei(this.hover.x, this.hover.y);
-      if (hz) { g.lineStyle(1.5, 0xe05a4a, 0.95); g.strokeEllipse(hz.x, hz.y + 9, 26, 12); }
+      if (hz) { rg.lineStyle(1, 0xe05a4a, 0.95); rg.strokeEllipse(hz.x, hz.y + 14, 24, 10); }
     }
     for (const m of this.marker) {
       const a = Math.min(1, m.t / 0.8);

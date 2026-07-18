@@ -52,6 +52,7 @@ export interface Projectile {
   x: number; y: number; vx: number; vy: number; r: number; dmg: number;
   from: 'player' | 'enemy'; col: string; fire?: boolean; magie?: boolean; pierce?: boolean; arrow?: boolean;
   vonTeam?: 'spieler' | 'feind';   // R99d: verbuendete Schuetzen treffen FEINDE statt den Spieler
+  schuetze?: Enemy;                // R147: der Schuetze - Fernkampf-Kills zaehlen fuer SEINEN Rang, nicht als Held-XP
   hoch?: boolean;                  // R100j: erhoehter Schuss (Turm) - fliegt UEBER Waende/Palisaden
   hitIds?: Set<number>; dead?: boolean;
   elem?: 'feuer' | 'eis' | 'schatten'; gemPower?: number; // Elementarpfeil (Runde 44)
@@ -1593,8 +1594,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     return gem ? parseInt(gem.col.slice(1), 16) : null;
   }
 
-  damageEnemy(e: Enemy, dmg: number, kx = 0, ky = 0, col?: string | null, melee = true): void {
+  // R147 (Autor): der Held bekommt NUR fuer EIGENE Kills Erfahrung. Toetet eine
+  // Soldaten-Einheit (durchTruppe), gibt es keine Held-XP - der Soldat sammelt
+  // seinen Rang (meldeKill), der Held seine Schlacht-Wertung (R147c).
+  protected killDurchTruppe = false;
+
+  damageEnemy(e: Enemy, dmg: number, kx = 0, ky = 0, col?: string | null, melee = true, durchTruppe = false): void {
     if (e.team === 'spieler') return;   // R99d: Verbuendete nehmen keinen Spieler-Schaden
+    this.killDurchTruppe = durchTruppe;
     // Ausweichen (Runde 20): flinke Gegner entgehen Nahkampfhieben ab und
     // zu mit einem Schritt zur Seite - Nahkampf wird ein Tanz
     // Nur TIERE (Wolf/Ratte) weichen noch seitlich aus - Monster stehen und
@@ -1801,7 +1808,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     if (!this.sfx.playAtAbwechselnd(todBasis, 3, e.x, e.y, 0.9) && !this.sfx.playAtAbwechselnd('tod_universal', 3, e.x, e.y, 0.9)) {
       this.sfx.playAt('tod', e.x, e.y);
     }
-    this.giveXp(Math.max(1, Math.round(e.xp * XP.gegnerMult)));
+    // R147: XP nur fuer EIGENE Kills des Helden - Soldaten-Kills geben keine.
+    if (!this.killDurchTruppe) this.giveXp(Math.max(1, Math.round(e.xp * XP.gegnerMult)));
+    this.killDurchTruppe = false;
     // Sammelalbum: Jagdstatistik und besiegte Vorsteher
     this.album.kills[e.type] = (this.album.kills[e.type] ?? 0) + 1;
     if ((e.champion || e.boss) && !this.album.champions.includes(e.name)) this.album.champions.push(e.name);
@@ -1869,8 +1878,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
   }
 
-  spawnEnemyProjectile(x: number, y: number, vx: number, vy: number, dmg: number, col: string, pfeil = false, vonTeam: 'spieler' | 'feind' = 'feind', hoch = false): void {
-    this.projectiles.push({ x, y, vx, vy, r: 4, dmg, from: 'enemy', col, arrow: pfeil, vonTeam, hoch });
+  // R147: Fernkampf-Kill einer Truppen-Einheit - WorldScene zaehlt den Rang.
+  protected meldeTruppenKill(_schuetze: Enemy): void { /* Hook - WorldScene */ }
+
+  spawnEnemyProjectile(x: number, y: number, vx: number, vy: number, dmg: number, col: string, pfeil = false, vonTeam: 'spieler' | 'feind' = 'feind', hoch = false, schuetze?: Enemy): void {
+    this.projectiles.push({ x, y, vx, vy, r: 4, dmg, from: 'enemy', col, arrow: pfeil, vonTeam, hoch, schuetze });
     // Abschuss räumlich hörbar (Runde 45): Pfeil/Zauber von der Seite pannt mit
     this.sfx.playAt(pfeil ? 'pfeil_schuss' : 'feuerball', x, y, 0.45);
   }
@@ -3326,7 +3338,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
             // R139 (1.6): Pfeil-Konter (prallt an Schilden ab, maeht Leichtes)
             const f = konterFaktor(pr.arrow ? 'pfeil' : 'schatten', e.kampfTags);
             this.zeigeKonter(e, f);
-            this.damageEnemy(e, Math.max(1, Math.round(pr.dmg * f)), 0, 0, null, false);
+            this.damageEnemy(e, Math.max(1, Math.round(pr.dmg * f)), 0, 0, null, false, true);
+            // R147: Fernkampf-Kill zaehlt fuer den RANG des Schuetzen (offenes R141-TODO)
+            if (e.hp <= 0 && pr.schuetze) this.meldeTruppenKill(pr.schuetze);
             break;
           }
         }

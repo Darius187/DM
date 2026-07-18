@@ -260,6 +260,20 @@ export const REKRUTIERUNG = {
   aushebungsOrt: 'stadt',     // ausgehoben wird in Ravensmoor (Garnison dort)
 } as const;
 
+// R147c (Autor): der Held bekommt KEINE XP fuer Soldaten-Kills - er bekommt
+// eine SCHLACHT-WERTUNG. Der Anreiz: Schlachten GEWINNEN und die eigenen
+// Leute SCHONEN. Verluste druecken den Sieg-Bonus, hohe End-Moral hebt ihn,
+// eine Schlacht ganz ohne Tote gibt den Schonungs-Bonus obendrauf.
+export const SCHLACHT_WERTUNG = {
+  xpJeFeind: 4,            // Basis-XP je besiegtem Feind der Schlacht
+  ruheS: 6,                // Sekunden ohne Feind IM UMKREIS = die Schlacht ist gewonnen
+  umkreis: 600,            // so weit "zaehlt" ein Feind noch zur laufenden Schlacht
+  mindestFeinde: 3,        // Scharmuetzel darunter zaehlen nicht als Schlacht
+  verlustMalusMax: 0.7,    // 100% eigene Verluste druecken den Bonus um bis zu 70%
+  moralBonusMax: 0.5,      // Durchschnitts-Moral 100 der Ueberlebenden hebt bis zu +50%
+  schonungBonus: 0.3,      // KEIN eigener Gefallener: +30% obendrauf
+} as const;
+
 // Einheiten-Erfahrung: Veteranen schlagen härter und halten stand.
 export const RTS_RANG = {
   killsProRang: 3,
