@@ -63,6 +63,18 @@ export const EINFALL = {
   bindeNah: 120,
 } as const;
 
+// R178 (Autor "es kommen immer mal Späher-Monster, die vom Kloster aus
+// geschickt werden"): kleine Kundschafter-Trupps sickern zwischen den
+// Einfällen über die NORDSTRASSE nach Ravensmoor - das Kloster liegt im Norden.
+export const SPAEHER = {
+  abTag: 2,              // der erste Tag bleibt ruhig
+  intervallMinS: 240,    // Wartezeit zwischen zwei Trupps (Minimum) ...
+  intervallMaxS: 540,    // ... und Maximum (echte Spielsekunden in der Stadt)
+  anzahlMin: 1,
+  anzahlMax: 2,
+  tiefe: 1,              // Kundschafter sind FLACH - kein kleiner Einfall
+} as const;
+
 // Kämpfende Bewohner beim Einfall (Runde 41, Autorwunsch "der Schmied kann
 // mitkämpfen"): Schmied & andere kaempfer-NPCs greifen Monster aktiv an.
 export const KAEMPFER = {

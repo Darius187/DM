@@ -60,13 +60,13 @@ import { HoehlenLeben } from '../gfx/hoehlenLeben';
 import { KriegsnebelAnzeige, type SichtSet } from '../systems/kriegsnebel';
 import { buildKerkerArea } from '../world/kerkerArea';
 import { MINE } from '../data/mine';
-import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, MORAL, MARSCH, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, MORAL, MARSCH, VERTEIDIGUNG, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, SPAEHER, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
 import { STAHL_QUEST } from '../data/questlinien';
@@ -410,6 +410,7 @@ export class WorldScene extends CombatScene {
     this.hausEditAn = false;
     this.portalZiel = null;
     this.portalEnts = [];
+    this.spaeherT = SPAEHER.intervallMinS;   // R178: Kundschafter-Uhr frisch
     this.nebelSprites = [];
     this.stimmungRect = null;
     this.vignetteImg = null;   // Neustart: mit dem stimmungRect zusammen neu aufbauen
@@ -8072,7 +8073,11 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // SICHTBAR von Kante zu Kante.
   private spawneGarnison(a: AreaData): void {
     for (const einheit of garnisonVon(this.armee, a.id)) {
-      const pos = einheit.pos ?? { x: a.spawn.x + 40 + (einheit.id % 5) * 26, y: a.spawn.y + 30 + Math.floor((einheit.id % 15) / 5) * 26 };
+      // R177: in Ravensmoor beziehen Einheiten OHNE gemerkte Stellung die
+      // Verteidigungslinie am Hauptweg statt des Spawn-Haufens.
+      const pos = einheit.pos ?? (a.id === MARSCH.zielStadt
+        ? this.verteidigungsStellung(a, this.wegStellungIndex(einheit.id))
+        : { x: a.spawn.x + 40 + (einheit.id % 5) * 26, y: a.spawn.y + 30 + Math.floor((einheit.id % 15) / 5) * 26 });
       this.naechsteEinheit = einheit;
       const e = this.spawnVerbuendeter(einheit.typ, pos.x, pos.y);
       if (e) { e.jagdZiel = null; e.passiv = true; }   // Wache: steht, kaempft ab Sichtkontakt
@@ -8206,6 +8211,12 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         if (m && m.beiKarte < m.route.length - 1) {
           const ziel = this.kantenPunkt(this.area, m.route[m.beiKarte + 1], false);
           e.passiv = false; e.jagdZiel = { x: ziel.x, y: ziel.y };
+        } else if (this.area.id === MARSCH.zielStadt) {
+          // R177: in Ravensmoor bleibt die Ankunft nicht an der Kante stehen,
+          // sondern rueckt zur Weg-Stellung aus (Verteidigungslinie Nord/Ost).
+          const p = this.verteidigungsStellung(this.area, this.wegStellungIndex(id2));
+          einheit.pos = { x: p.x, y: p.y };
+          e.passiv = false; e.jagdZiel = { x: p.x, y: p.y };
         } else {
           e.passiv = true; e.jagdZiel = null;   // angekommen: Garnison
         }
@@ -9341,6 +9352,30 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     ];
   }
 
+  // R177 (Autor "die herbeigerufene Armee soll sich auf dem Hauptweg zur
+  // Verteidigung positionieren"): Stellungs-Punkt Nr. index quer ueber den
+  // Einfall-Strassen - abwechselnd Nord- und Ost-Linie, Reihen nach hinten.
+  private verteidigungsStellung(a: AreaData, index: number): { x: number; y: number } {
+    const k = OBERWELT_KANTEN[a.id];
+    const nordWeg = (k?.nord.find((c) => c.feature === 'weg')?.pos ?? 43) / 100 * a.w * TILE;
+    const ostWeg = (k?.ost.find((c) => c.feature === 'weg')?.pos ?? 56) / 100 * a.h * TILE;
+    const linie = index % 2;
+    const platz = Math.floor(index / 2);
+    const reihe = Math.floor(platz / VERTEIDIGUNG.jeReihe);
+    const seite = (platz % VERTEIDIGUNG.jeReihe - (VERTEIDIGUNG.jeReihe - 1) / 2) * VERTEIDIGUNG.abstandPx;
+    return linie === 0
+      ? { x: nordWeg + seite, y: VERTEIDIGUNG.tiefeKacheln * TILE + reihe * VERTEIDIGUNG.reihenPx }
+      : { x: a.w * TILE - VERTEIDIGUNG.tiefeKacheln * TILE - reihe * VERTEIDIGUNG.reihenPx, y: ostWeg + seite };
+  }
+
+  // Fester Stellungs-Index einer Einheit: Platz in der (sortierten) Stadt-
+  // Garnison - deterministisch, ohne Doppelbelegung.
+  private wegStellungIndex(id: number): number {
+    const ids = garnisonVon(this.armee, MARSCH.zielStadt).map((e) => e.id).sort((x, y) => x - y);
+    const i = ids.indexOf(id);
+    return i >= 0 ? i : ids.length;
+  }
+
   private updateEinfallQueue(dt: number): void {
     if (!this.einfallQueue.length) return;
     if (this.area.id !== 'stadt') { this.einfallQueue = []; return; }
@@ -9363,13 +9398,37 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     }
   }
 
+  // R178 (Autor): das Kloster schickt immer mal SPAEHER - 1-2 Kundschafter
+  // sickern ueber die Nordstrasse herein, solange der Held in der Stadt ist.
+  private spaeherT: number = SPAEHER.intervallMinS;
+  private updateSpaeher(dt: number): void {
+    if (this.area.id !== 'stadt' || this.tag < SPAEHER.abTag || this.einfallAktiv) return;
+    this.spaeherT -= dt;
+    if (this.spaeherT > 0) return;
+    this.spaeherT = SPAEHER.intervallMinS + Math.random() * (SPAEHER.intervallMaxS - SPAEHER.intervallMinS);
+    const p0 = this.einfallWege()[0];   // Nordstrasse - der Weg vom Klosterberg
+    const anzahl = SPAEHER.anzahlMin + Math.floor(Math.random() * (SPAEHER.anzahlMax - SPAEHER.anzahlMin + 1));
+    for (let i = 0; i < anzahl; i++) {
+      const e = this.spawnEnemy('skelett', SPAEHER.tiefe, p0.x + (Math.random() - 0.5) * 40, p0.y + i * 22, false, true);
+      e.name = 'Kloster-Späher';
+      e.aggro = 5000;
+      // Wie der Einfall (R166): erst ENTLANG der Strasse ins Innere, der
+      // Entklemmer uebergibt bei Haengern an die Wegfeld-KI.
+      e.jagdZiel = { x: p0.x + (Math.random() - 0.5) * 60, y: 58 * TILE };
+    }
+    this.logMsg('Späher des Klosters sickern über die Nordstraße herein!', 'bad');
+    this.sfx.play('begegnung_skelett1', 0.5);
+  }
+
   // R166: haengt ein Einfall-Angreifer (kein Fortschritt trotz jagdZiel),
   // uebernimmt die normale KI - ihr Wegfeld fuehrt um Fluss/Waende herum.
   // Der Spieler darf die Angreifer NIE suchen muessen.
+  // R178: laeuft in der Stadt IMMER (auch fuer Kloster-Spaeher, nicht nur
+  // waehrend eines Einfalls).
   private einfallHaengT = 0;
   private einfallLetztePos = new WeakMap<Enemy, { x: number; y: number }>();
   private updateEinfallEntklemmer(dt: number): void {
-    if (!this.einfallAktiv) return;
+    if (!this.einfallAktiv && this.area.id !== 'stadt') return;
     this.einfallHaengT -= dt;
     if (this.einfallHaengT > 0) return;
     this.einfallHaengT = 2;
@@ -13552,6 +13611,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.updateTurmBesatzung();  // R100: Turm-Insassen unsichtbar + Symbol
     this.updateMarsch(dt);   // R142: das Heer marschiert IMMER (auch ohne RTS-Modus)
     this.updateEinfallQueue(dt);   // R157: Einfall-Kolonnen ruecken in Schueben an
+    this.updateSpaeher(dt);        // R178: Kundschafter des Klosters (Nordstrasse)
     this.updateEinfallEntklemmer(dt);   // R166: niemand bleibt am Fluss haengen
     if (this.rtsBattle) {
       // R97: Schlachtführer (Held) tot -> Schlacht verloren, Truppe flieht.

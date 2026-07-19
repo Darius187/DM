@@ -245,6 +245,17 @@ export const MARSCH = {
   zielStadt: 'stadt',    // ... und zieht nach Ravensmoor
 } as const;
 
+// R177 (Autor "die herbeigerufene Armee soll sich auf dem Hauptweg zur
+// Verteidigung positionieren"): ankommende Verstaerkung bezieht in Ravensmoor
+// Stellungs-LINIEN quer ueber die Einfall-Strassen (Nord + Ost) - dort, wo
+// Einfall und Klosterspaeher hereinkommen.
+export const VERTEIDIGUNG = {
+  tiefeKacheln: 15,      // Abstand der Stellungs-Linie von der Kartenkante
+  abstandPx: 30,         // seitlicher Abstand der Maenner in der Linie
+  jeReihe: 5,            // Maenner je Reihe - mehr bilden eine zweite Reihe dahinter
+  reihenPx: 26,          // Abstand zwischen den Reihen
+} as const;
+
 // R164 (Autor, BAR-Spezifikation): das Kommandopult zeigt Bau-Optionen als
 // KATEGORIE-Raster (erste Ebene) -> konkrete Bauten (zweite Ebene). Keine
 // Tabs. Die ids verweisen auf RTS_BAUTEN.
