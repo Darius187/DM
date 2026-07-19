@@ -1837,3 +1837,12 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   Tooltip und Platzierungsmodus funktionieren, neuer Atlas wird geladen,
   keine Browser-Konsolenfehler. Produktions-Build sowie 66 Testdateien / 412
   Tests sind gruen.
+## Runde 186 - Kommando-Pult-Paket (+ Feind-Karten)
+- Gebaeude werden komplett im PULT gesteuert: Karte mit Zustand, Beschreibung,
+  Reparieren/Abbauen und Sonderaktionen (Wartfeuer/Tor/Botenposten) - das
+  alte Schwebe-Fenster ist raus. Schrift im Raster deutlich groesser,
+  Tooltips auf ALLEN Knoepfen, und der Formation-Knopf oeffnet jetzt eine
+  eigene Ebene mit allen Formationen + Abstand + Zurueck.
+- Gegner anklicken zeigt ihre FEIND-Karte im Pult (Name, Leben, Schaden,
+  Kampfart, Elite/Anfuehrer-Merkmal). Browser-verifiziert mit Screenshot;
+  tsc + 410 Tests gruen. Bilder auf den Knoepfen folgen spaeter (Autor).

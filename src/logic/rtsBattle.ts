@@ -179,6 +179,14 @@ export class RtsBattle {
 
   gewaehlte(): RtsUnit[] { return this.units.filter((u) => u.gewaehlt && !u.tot); }
 
+  // R186: Auswahl komplett leeren (die Gebaeude-/Gegner-Karte im Pult
+  // uebernimmt den Auswahl-Bereich).
+  waehleNichts(): void {
+    for (const u of this.units) u.gewaehlt = false;
+    this.setHeldGewaehlt(false);
+    this.meldeAuswahl();
+  }
+
   // R164 (BAR): Auswahl auf EINEN Typ filtern (Typ-Chip-Klick im Pult).
   waehleNurTyp(typ: RtsUnitTyp): void {
     for (const u of this.units) if (u.gewaehlt && u.typ !== typ) u.gewaehlt = false;

@@ -413,6 +413,9 @@ export class WorldScene extends CombatScene {
     this.hausEditAn = false;
     this.portalZiel = null;
     this.portalEnts = [];
+    this.rtsGegnerWahl = null;               // R193: Zeiger auf alte Szene kappen (Regel 9)
+    this.rtsGebaeudeWahl = null;
+    this.rtsFormOffen = false;
     this.spaeherT = SPAEHER.intervallMinS;   // R178: Kundschafter-Uhr frisch
     this.bote = boteNeu(BOTE.heim);          // R179: der Bote startet daheim
     this.lage = neueGebietslage(FELDZUG.startBesetzt);   // F1: Gebietslage frisch
@@ -3473,7 +3476,6 @@ export class WorldScene extends CombatScene {
   // Klick-Menü (Reparieren/Abbauen) und die Lebensbalken.
   private feldbauten: Array<{ id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null; offen?: boolean; tx2?: number; ty2?: number; senk?: boolean; quelle?: 'held' | 'dorf' }> = [];
   private gewaehlterBau: { id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null; offen?: boolean; tx2?: number; ty2?: number; senk?: boolean; quelle?: 'held' | 'dorf' } | null = null;
-  private bauPopup: Phaser.GameObjects.Container | null = null;
   // R96: Schlacht-Schicht (Einheiten, Auswahl, Befehle, Formationen) + Eingabe-
   // Lauscher, die nur im RTS-Modus aktiv sind.
   private rtsBattle: RtsBattle | null = null;
@@ -3615,8 +3617,11 @@ export class WorldScene extends CombatScene {
         && this.rtsBattle.gewaehlte().length === 0 && !this.rtsBattle.heldGewaehlt) {
         const wp = this.cameras.main.getWorldPoint(p.x, p.y);
         const f = this.feldbauten.find((fb) => Math.hypot(fb.x - wp.x, fb.y - wp.y) < 26) ?? null;
-        if (f !== this.rtsGebaeudeWahl) {
+        // R193 (Autor): auch GEGNER bekommen eine Info-Karte im Pult.
+        const g = f ? null : this.enemies.find((e) => e.team !== 'spieler' && e.hp > 0 && Math.hypot(e.x - wp.x, e.y - wp.y) < e.r + 14) ?? null;
+        if (f !== this.rtsGebaeudeWahl || g !== this.rtsGegnerWahl) {
           this.rtsGebaeudeWahl = f;   // R164: das Pult zeigt Gebaeude kontextabhaengig
+          this.rtsGegnerWahl = g;
           this.baueRtsLeiste();
         }
       }
@@ -3721,13 +3726,14 @@ export class WorldScene extends CombatScene {
 
   // R148: gewaehltes GEBAEUDE (Klick auf Feldbau ohne Einheiten-Auswahl)
   private rtsGebaeudeWahl: (typeof this.feldbauten)[number] | null = null;
+  private rtsGegnerWahl: Enemy | null = null;   // R193: angeklickter Gegner (Info-Karte)
 
   // R148: Auswahl geaendert -> AUSWAHL-Ansicht zeigen bzw. verlassen.
   // R164 (BAR): das Pult ist KONTEXTABHAENGIG - die Auswahl bestimmt den
   // Inhalt direkt, es gibt keine Tabs mehr, die umgeschaltet werden muessten.
   private aktualisiereRtsAuswahl(): void {
     if (!this.rtsLeiste || !this.rtsBattle) return;
-    if (this.rtsBattle.gewaehlte().length > 0 || this.rtsBattle.heldGewaehlt) this.rtsGebaeudeWahl = null;
+    if (this.rtsBattle.gewaehlte().length > 0 || this.rtsBattle.heldGewaehlt) { this.rtsGebaeudeWahl = null; this.rtsGegnerWahl = null; }
     this.baueRtsLeiste();
   }
   private rtsSkala = 1;   // Baumenü-Größe (Autor: skalierbar), 0.8..1.4
@@ -3737,7 +3743,7 @@ export class WorldScene extends CombatScene {
   private baueRtsLeiste(): void {
     this.rtsLeiste?.destroy();
     const S = this.rtsSkala;
-    const w = Math.round(190 * S), h = Math.round(360 * S);
+    const w = Math.round(190 * S), h = Math.round(384 * S);   // R186: Platz fuer groesseres Raster
     // R96 (UI-Regel 11): frei verschiebbar - gespeicherte Position nutzen, sonst
     // rechts unten andocken. In den Bildschirm klemmen, falls Fenster kleiner wurde.
     const gespeichert = getSettings().rtsLeistePos;
@@ -3782,11 +3788,11 @@ export class WorldScene extends CombatScene {
     y = this.bauePultRessourcen(c, F, w, y);
     c.add(this.add.rectangle(F(6), y, w - F(12), 1, 0x4a3a26).setOrigin(0));
     y += F(6);
-    const gridH = F(3 * 36 + 12);
+    const gridH = F(3 * 42 + 12);   // R186: groessere Felder (zh 40 + Fuge)
     const gridY = h - gridH - F(8);
     // AUSWAHL-Bereich (nutzt die R148-Ansicht: Chips + Detail-Karte/Gebaeude)
     const auswahl = this.rtsBattle ? (this.rtsBattle.gewaehlte().length > 0 || this.rtsBattle.heldGewaehlt) : false;
-    if (auswahl || this.rtsGebaeudeWahl) this.baueRtsWahlTab(c, F, w, y);
+    if (auswahl || this.rtsGebaeudeWahl || this.rtsGegnerWahl) this.baueRtsWahlTab(c, F, w, y);
     else {
       c.add(this.add.text(F(8), y, 'Nichts gewählt', { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#6a5f4c', fontStyle: 'italic' }));
       c.add(this.add.text(F(8), y + F(14), `Garnison hier: ${garnisonVon(this.armee, this.area.id).length} Mann`, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a' }));
@@ -3810,20 +3816,23 @@ export class WorldScene extends CombatScene {
   // R164: das feste 4x3-Kommando-Raster. Inhalt = Funktion der Auswahl.
   private rtsBauKat: string | null = null;
   private rtsDevOffen = false;
+  private rtsFormOffen = false;   // R186: Formations-Auswahl als eigene Rasterebene
 
   private bauePultGrid(c: Phaser.GameObjects.Container, F: (s: number) => number, w: number, y0: number): void {
     const battle = this.rtsBattle;
     if (!battle) return;
-    const zw = Math.floor((w - F(14)) / 4), zh = F(34);
+    // R186 (Autor "die Schrift ist zu klein/unscharf"): groessere Felder und
+    // Beschriftungen (Symbol 14, Text 9 statt 12/7).
+    const zw = Math.floor((w - F(14)) / 4), zh = F(40);
     const feld = (col: number, row: number, symbol: string, lbl: string, opts: { an?: boolean; aus?: boolean; taste?: string; tip?: string }, fn: (() => void) | null): void => {
       const x = F(7) + col * zw, y = y0 + row * (zh + F(2));
       const klickbar = !!fn && !opts.aus;
       const bg = this.add.rectangle(x, y, zw - F(2), zh, opts.an ? 0x3a2a10 : 0x120d07, 0.95)
         .setOrigin(0).setStrokeStyle(1, opts.an ? 0xc9a227 : klickbar ? 0x4a3a26 : 0x2a2118);
       c.add(bg);
-      c.add(this.add.text(x + (zw - F(2)) / 2, y + F(4), symbol, { fontFamily: 'serif', fontSize: `${F(12)}px`, color: opts.aus ? '#4a4238' : opts.an ? '#f0d060' : '#d8cfb8' }).setOrigin(0.5, 0));
-      c.add(this.add.text(x + (zw - F(2)) / 2, y + F(19), lbl, { fontFamily: 'serif', fontSize: `${F(7)}px`, color: opts.aus ? '#4a4238' : opts.an ? '#c9a227' : '#8a7a5a' }).setOrigin(0.5, 0));
-      if (opts.taste) c.add(this.add.text(x + zw - F(6), y + F(2), opts.taste, { fontFamily: 'serif', fontSize: `${F(7)}px`, color: '#6a5f4c' }).setOrigin(1, 0));
+      c.add(this.add.text(x + (zw - F(2)) / 2, y + F(3), symbol, { fontFamily: 'serif', fontSize: `${F(14)}px`, color: opts.aus ? '#4a4238' : opts.an ? '#f0d060' : '#d8cfb8' }).setOrigin(0.5, 0));
+      c.add(this.add.text(x + (zw - F(2)) / 2, y + F(22), lbl, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: opts.aus ? '#4a4238' : opts.an ? '#c9a227' : '#a89878' }).setOrigin(0.5, 0));
+      if (opts.taste) c.add(this.add.text(x + zw - F(6), y + F(2), opts.taste, { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#6a5f4c' }).setOrigin(1, 0));
       if (!klickbar) return;
       bg.setInteractive({ useHandCursor: true });
       bg.on('pointerdown', () => { fn!(); this.sfx.play('klick'); this.baueRtsLeiste(); });
@@ -3833,25 +3842,33 @@ export class WorldScene extends CombatScene {
       }
     };
     const sel = battle.gewaehlte();
+    // --- R186: FORMATIONS-Ebene (Autor "eine ganze Latte von Formationen
+    // im naechsten Fenster, aus dem ich auch wieder zurueck kann") ----------
+    if ((sel.length > 0 || battle.heldGewaehlt) && this.rtsFormOffen) {
+      RTS_FORMATIONEN.forEach((fm, i) => {
+        feld(i % 4, Math.floor(i / 4), '⛬', fm.name, { an: this.rtsFormation === fm.id, tip: fm.hinweis }, () => {
+          this.rtsFormation = fm.id;
+          battle.setForm(WorldScene.RTS_FORM_MAP[fm.id]);
+          this.rtsFormOffen = false;
+        });
+      });
+      const abstaende2: Array<[string, number]> = [['Eng', 0.7], ['Normal', 1.0], ['Weit', 1.5]];
+      abstaende2.forEach(([lbl, f2], i) => {
+        feld(i, 1, '↔', lbl, { an: Math.abs(battle.abstandF - f2) < 0.05, tip: 'Formations-Abstand: eng = Nahkampf, weit = gegen Flächenschaden' }, () => battle.setAbstand(f2));
+      });
+      feld(3, 2, '◀', 'Zurück', { tip: 'Zurück zu den Befehlen' }, () => { this.rtsFormOffen = false; });
+      return;
+    }
     // --- Kontext KAMPF: Einheiten (oder Held) gewaehlt --------------------
     if (sel.length > 0 || battle.heldGewaehlt) {
       const formNamen: Record<string, string> = { linie: 'Linie', schildwall: 'Schildwall', keil: 'Keil', plaenkler: 'Plänkler' };
-      const naechsteForm = (): void => {
-        const ids = RTS_FORMATIONEN.map((f) => f.id);
-        const i = (ids.indexOf(this.rtsFormation) + 1) % ids.length;
-        this.rtsFormation = ids[i];
-        battle.setForm(WorldScene.RTS_FORM_MAP[this.rtsFormation]);
-      };
-      const abstaende: Array<[string, number]> = [['Eng', 0.7], ['Normal', 1.0], ['Weit', 1.5]];
-      const abIdx = abstaende.findIndex(([, f]) => Math.abs(battle.abstandF - f) < 0.05);
       feld(0, 0, '⚔', 'Angriff', { an: this.rtsAngriffArmed, taste: 'A', tip: 'Angriffsmarsch scharf - dann Ziel mit rechter Maus' }, () => { this.rtsAngriffArmed = !this.rtsAngriffArmed; });
-      feld(1, 0, '✋', 'Halten', { taste: 'H', tip: 'Stellung halten' }, () => battle.stellungHalten());
-      feld(2, 0, '⛬', formNamen[this.rtsFormation] ?? 'Formation', { tip: 'Formation wechseln (dann rechts ziehen)' }, naechsteForm);
-      feld(3, 0, '↔', abstaende[(abIdx + 1) % 3]?.[0] ?? 'Abstand', { tip: 'Formations-Abstand: eng = Nahkampf, weit = gegen Fläche' }, () => battle.setAbstand(abstaende[(abIdx + 1) % abstaende.length][1]));
-      feld(0, 1, '🐾', 'Verfolgen', { an: this.rtsAktHaltung === 'aggressiv' }, () => this.setzeHaltung('aggressiv'));
-      feld(1, 1, '🛡', 'Nahe bleiben', { an: this.rtsAktHaltung === 'verteidigen' }, () => this.setzeHaltung('verteidigen'));
-      feld(2, 1, '⚓', 'Halten', { an: this.rtsAktHaltung === 'halten' }, () => this.setzeHaltung('halten'));
-      feld(3, 1, '🛡', this.rtsSchildAktiv ? 'Schild AN' : 'Schild aus', { an: this.rtsSchildAktiv, tip: 'Held hält zwischen den Schlägen die Deckung' }, () => { this.rtsSchildAktiv = !this.rtsSchildAktiv; });
+      feld(1, 0, '✋', 'Halten', { taste: 'H', tip: 'Stellung halten - die Einheit bleibt stehen und kämpft am Platz' }, () => battle.stellungHalten());
+      feld(2, 0, '⛬', formNamen[this.rtsFormation] ?? 'Formation', { tip: 'Formations-Auswahl öffnen (alle Formationen + Abstand)' }, () => { this.rtsFormOffen = true; });
+      feld(3, 0, '🛡', this.rtsSchildAktiv ? 'Schild AN' : 'Schild aus', { an: this.rtsSchildAktiv, tip: 'Held hält zwischen den Schlägen die Deckung' }, () => { this.rtsSchildAktiv = !this.rtsSchildAktiv; });
+      feld(0, 1, '🐾', 'Verfolgen', { an: this.rtsAktHaltung === 'aggressiv', tip: 'Haltung: Feinde aktiv verfolgen und stellen' }, () => this.setzeHaltung('aggressiv'));
+      feld(1, 1, '🛡', 'Nahe bleiben', { an: this.rtsAktHaltung === 'verteidigen', tip: 'Haltung: kämpfen, aber die Stellung nicht weit verlassen' }, () => this.setzeHaltung('verteidigen'));
+      feld(2, 1, '⚓', 'Halten', { an: this.rtsAktHaltung === 'halten', tip: 'Haltung: eisern stehen bleiben, nur Gegner in Reichweite schlagen' }, () => this.setzeHaltung('halten'));
       const feuerNamen: Record<string, string> = { angreifen: 'Feuer frei', zurueckschlagen: 'Nur zurück', feuerEinstellen: 'Feuer halt' };
       const feuerAktuell = this.rtsAktAngriff ?? 'angreifen';
       const naechsterFeuer = (): void => {
@@ -3860,10 +3877,10 @@ export class WorldScene extends CombatScene {
         this.rtsAktAngriff = neu;
         battle.setAngriff(neu);
       };
-      feld(0, 2, '🔥', feuerNamen[feuerAktuell], { an: feuerAktuell !== 'angreifen' }, naechsterFeuer);
-      feld(1, 2, '◎', 'Nächster', { an: this.rtsAktZielwahl === 'naechster' }, () => { this.rtsAktZielwahl = 'naechster'; battle.setZielwahl('naechster'); });
-      feld(2, 2, '♡', 'Schwächster', { an: this.rtsAktZielwahl === 'schwaechster' }, () => { this.rtsAktZielwahl = 'schwaechster'; battle.setZielwahl('schwaechster'); });
-      feld(3, 2, '☠', 'Gefahr', { an: this.rtsAktZielwahl === 'gefaehrlichster' }, () => { this.rtsAktZielwahl = 'gefaehrlichster'; battle.setZielwahl('gefaehrlichster'); });
+      feld(3, 1, '🔥', feuerNamen[feuerAktuell], { an: feuerAktuell !== 'angreifen', tip: 'Feuer-Erlaubnis: frei / nur zurückschlagen / einstellen' }, naechsterFeuer);
+      feld(0, 2, '◎', 'Nächster', { an: this.rtsAktZielwahl === 'naechster', tip: 'Zielwahl: den nächsten Gegner angreifen' }, () => { this.rtsAktZielwahl = 'naechster'; battle.setZielwahl('naechster'); });
+      feld(1, 2, '♡', 'Schwächster', { an: this.rtsAktZielwahl === 'schwaechster', tip: 'Zielwahl: den verwundetsten Gegner zuerst erledigen' }, () => { this.rtsAktZielwahl = 'schwaechster'; battle.setZielwahl('schwaechster'); });
+      feld(2, 2, '☠', 'Gefahr', { an: this.rtsAktZielwahl === 'gefaehrlichster', tip: 'Zielwahl: den gefährlichsten Gegner zuerst angreifen' }, () => { this.rtsAktZielwahl = 'gefaehrlichster'; battle.setZielwahl('gefaehrlichster'); });
       return;
     }
     // --- Kontext DEV: Test-Werkzeuge als eigene Rasterebene ----------------
@@ -3903,11 +3920,12 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     }
     // --- Kontext BAU Ebene 1: Kategorien (BAR-Prinzip) --------------------
     BAU_KATEGORIEN.forEach((kat, i) => {
-      feld(i, 0, '⌂', kat.name, { taste: kat.taste }, () => { this.rtsBauKat = kat.id; });
+      const inhalt = kat.bauten.map((bid) => RTS_BAUTEN.find((b) => b.id === bid)?.name ?? bid).join(', ');
+      feld(i, 0, '⌂', kat.name, { taste: kat.taste, tip: `${kat.name}: ${inhalt}` }, () => { this.rtsBauKat = kat.id; });
     });
     feld(0, 1, '⚑', 'Aushebung', { tip: `Dorf: ${this.bevoelkerung} Arbeiter · Heer ${this.armee.einheiten.length}/${heerObergrenze(this.bevoelkerung)}` }, () => { this.rtsBauKat = 'aushebung'; });
     feld(1, 1, '⚑', this.devFreiKam ? 'Steuerung: Truppen' : 'Steuerung: Held', { an: this.devFreiKam, tip: 'Frei-Kamera + Truppenbefehle vs. Helden-Steuerung (WASD)' }, () => this.setzeFreiKamera(!this.devFreiKam));
-      feld(2, 1, '⚒', 'Dev/Test', {}, () => { this.rtsDevOffen = true; });
+      feld(2, 1, '⚒', 'Dev/Test', { tip: 'Test-Werkzeuge: Einheiten/Monster setzen, Grafen-Ruf' }, () => { this.rtsDevOffen = true; });
     feld(3, 1, '✕', 'Schließen', { tip: 'Zurück zur Helden-Steuerung' }, () => this.toggleRtsModus());
     const bauWaren = ['holz', 'stein', 'fasern', 'schafgarbe'] as const;
     const bestand = bauWaren.map((w2) => `${this.dorfLager[w2] ?? 0} ${MATERIAL_NAMES[w2 as MaterialId] ?? w2}`).join(' · ');
@@ -3926,6 +3944,25 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     const kicker = { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#8a7a5a', letterSpacing: 1 } as const;
     const zeile = { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#d8cfb8' } as const;
     const klein = { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#9a8a6a', wordWrap: { width: w - F(16) } } as const;
+    // --- R193: Feind-Karte (angeklickter Gegner) ---------------------------
+    if (this.rtsGegnerWahl && !this.rtsGebaeudeWahl && !sel.length && !b.heldGewaehlt) {
+      const g = this.rtsGegnerWahl;
+      if (g.hp <= 0) { this.rtsGegnerWahl = null; }
+      else {
+        c.add(this.add.text(F(8), y, 'FEIND', { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#d86a5a', letterSpacing: 1 })); y += F(16);
+        c.add(this.add.text(F(8), y, g.name, { fontFamily: 'serif', fontSize: `${F(12)}px`, color: '#e8dfc8', wordWrap: { width: w - F(16) } })); y += F(20);
+        const gf = g.maxhp > 0 ? Math.max(0, g.hp / g.maxhp) : 0;
+        c.add(this.add.rectangle(F(8), y, w - F(16), F(6), 0x000000, 0.6).setOrigin(0));
+        c.add(this.add.rectangle(F(8), y, Math.round((w - F(16)) * gf), F(6), 0xc85a5a).setOrigin(0));
+        y += F(10);
+        c.add(this.add.text(F(8), y, `Leben ${Math.max(0, Math.round(g.hp))}/${g.maxhp} · Schaden ${g.dmg}`, zeile)); y += F(15);
+        const art = g.schadensArt === 'pfeil' ? 'Fernkampf' : g.schadensArt === 'wucht' ? 'Wucht' : g.schadensArt === 'stich' ? 'Stich' : 'Schnitt';
+        const merkmale = [art, g.schild ? 'Schild' : '', g.champion ? 'ANFÜHRER' : g.elite ? 'Elite' : '', g.feldzugTrupp ? 'Feindzug-Welle' : ''].filter(Boolean).join(' · ');
+        c.add(this.add.text(F(8), y, merkmale, zeile)); y += F(16);
+        c.add(this.add.text(F(8), y, 'Rechtsklick mit gewählten Einheiten = Angriffsmarsch dorthin.', klein));
+        return;
+      }
+    }
     // --- Gebaeude-Karte -----------------------------------------------------
     if (this.rtsGebaeudeWahl && !sel.length && !b.heldGewaehlt) {
       const f = this.rtsGebaeudeWahl;
@@ -3941,7 +3978,38 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         const besatzung = this.enemies.filter((e) => e.team === 'spieler' && e.imTurm && Math.hypot(e.x - f.x, e.y - f.y) < TURM.andockRadius + 20).length;
         c.add(this.add.text(F(8), y, `Besatzung: ${besatzung}/2 Schützen`, zeile)); y += F(16);
       }
-      if (def) { c.add(this.add.text(F(8), y, def.beschreibung, klein)); }
+      if (def) { c.add(this.add.text(F(8), y, def.beschreibung, klein)); y += F(26); }
+      // R186 (Autor): Reparieren/Abbauen + Sonderaktionen leben JETZT HIER -
+      // das alte Schwebe-Fenster am Bauwerk ist Geschichte.
+      const knopf = (kx: number, ky: number, lbl: string, farbe: string, aktiv: boolean, fn: () => void): void => {
+        const t = this.add.text(F(8) + kx, y + ky, lbl, { fontFamily: 'serif', fontSize: `${F(11)}px`, color: aktiv ? farbe : '#8a7a5a', backgroundColor: '#221808', padding: { x: F(7), y: F(4) } });
+        if (aktiv) {
+          t.setInteractive({ useHandCursor: true });
+          t.on('pointerdown', () => { fn(); this.sfx.play('klick', 0.5); this.baueRtsLeiste(); });
+        }
+        c.add(t);
+      };
+      knopf(0, 0, '🔨 Reparieren', '#9ad86a', f.hp < f.maxHp, () => this.repariereBau(f));
+      knopf(F(92), 0, '⛏ Abbauen', '#d8a06a', true, () => { this.baueBauAb(f); this.rtsGebaeudeWahl = null; this.gewaehlterBau = null; });
+      if (f.id === 'wartfeuer') {
+        const bereit = this.wartfeuerCd <= 0;
+        knopf(0, F(26), bereit ? '🔥 Verstärkung rufen' : `Sammelt (${Math.ceil(this.wartfeuerCd)}s)`, '#f0c040', bereit, () => this.rufeVerstaerkung(f));
+      }
+      if (f.id === 'tor') {
+        knopf(0, F(26), f.offen ? '🚪 Tor schließen' : '🚪 Tor öffnen', '#f0d060', true, () => this.schalteTor(f));
+      }
+      if (f.id === 'botenposten') {
+        const bo = this.bote;
+        const hier = bo.status === 'posten' && bo.karte === this.area.id;
+        const lbl = hier ? '🐎 Boten zum Grafen schicken'
+          : bo.status === 'reitet' ? `Bote unterwegs (${this.kartenName(bo.karte)})`
+            : bo.status === 'tot' ? 'Bote gefallen - Ersatz rüstet sich'
+              : '🐎 Boten herbeirufen (aus Ravensmoor)';
+        knopf(0, F(26), lbl, '#f0c040', hier || bo.status === 'heim' || bo.status === 'posten', () => {
+          if (hier) this.botenZumGrafen();
+          else this.botenZumPosten();
+        });
+      }
       return;
     }
     if (!sel.length && !b.heldGewaehlt) {
@@ -4292,65 +4360,17 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     return null;
   }
 
+  // R186 (Autor "das Extra-Fenster will ich nicht - das steuert jetzt das
+  // Kommando-Fenster"): Klick auf einen Feldbau waehlt ihn im PULT (Gebaeude-
+  // Karte mit Reparieren/Abbauen/Sonderaktionen). Ist der RTS-Modus zu,
+  // oeffnet er sich dafuer.
   private oeffneBauMenu(f: (typeof this.feldbauten)[number]): void {
     this.gewaehlterBau = f;
-    this.bauPopup?.destroy();
-    const w = 190, h = (f.id === 'wartfeuer' || f.id === 'tor') ? 124 : 96;
-    const cam = this.cameras.main, zm = cam.zoom;
-    const sx = (f.x - cam.worldView.x) * zm, sy = (f.y - cam.worldView.y) * zm;
-    const px = Math.max(6, Math.min(this.scale.width - w - 6, sx - w / 2));
-    const py = Math.max(6, Math.min(this.scale.height - h - 6, sy - h - 30));
-    const c = this.add.container(px, py).setScrollFactor(0).setDepth(6600);
-    c.setData('w', w); c.setData('h', h);   // R100: Bounds fuer den UI-Klick-Schutz
-    this.bauPopup = c;
-    const bg = this.add.rectangle(0, 0, w, h, 0x14100a, 0.96).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
-    bg.setInteractive(); c.add(bg);
-    const name = RTS_BAUTEN.find((b) => b.id === f.id)?.name ?? f.id;
-    c.add(this.add.text(10, 6, name, { fontFamily: 'serif', fontSize: '13px', color: '#c9a227' }));
-    const zu = this.add.text(w - 20, 4, '✕', { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8' }).setInteractive({ useHandCursor: true });
-    zu.on('pointerdown', () => this.schliesseBauMenu()); c.add(zu);
-    // HP-Balken
-    const frac = f.hp / f.maxHp;
-    c.add(this.add.rectangle(10, 28, w - 20, 10, 0x000000, 0.6).setOrigin(0));
-    c.add(this.add.rectangle(11, 29, (w - 22) * frac, 8, frac < BAU_REPARATUR.balkenRotUnter ? 0xd8402a : 0x6ab04a).setOrigin(0));
-    c.add(this.add.text(10, 40, `${Math.ceil(f.hp)} / ${f.maxHp} LP`, { fontFamily: 'serif', fontSize: '10px', color: '#bcae90' }));
-    // Reparieren
-    const rep = this.add.text(10, 62, 'Reparieren', { fontFamily: 'serif', fontSize: '12px', color: '#9ad86a', backgroundColor: '#221808', padding: { x: 8, y: 4 } }).setInteractive({ useHandCursor: true });
-    rep.on('pointerdown', () => this.repariereBau(f)); c.add(rep);
-    // Abbauen
-    const ab = this.add.text(104, 62, 'Abbauen', { fontFamily: 'serif', fontSize: '12px', color: '#d8a06a', backgroundColor: '#221808', padding: { x: 8, y: 4 } }).setInteractive({ useHandCursor: true });
-    ab.on('pointerdown', () => this.baueBauAb(f)); c.add(ab);
-    // R97: Wartfeuer ruft eine Verstärkungswelle.
-    if (f.id === 'wartfeuer') {
-      const bereit = this.wartfeuerCd <= 0;
-      const vr = this.add.text(10, 92, bereit ? '🔥 Verstärkung rufen' : `Sammelt (${Math.ceil(this.wartfeuerCd)}s)`, { fontFamily: 'serif', fontSize: '12px', color: bereit ? '#f0c040' : '#8a7a5a', backgroundColor: '#2a1c08', padding: { x: 8, y: 4 } }).setInteractive({ useHandCursor: true });
-      vr.on('pointerdown', () => { this.rufeVerstaerkung(f); this.schliesseBauMenu(); }); c.add(vr);
-    }
-    // R179: der Botenposten zeigt den Boten-Stand und schickt bzw. ruft ihn.
-    if (f.id === 'botenposten') {
-      const b = this.bote;
-      const hier = b.status === 'posten' && b.karte === this.area.id;
-      const label = hier ? '🐎 Boten zum Grafen schicken'
-        : b.status === 'reitet' ? `Bote unterwegs (${this.kartenName(b.karte)})`
-          : b.status === 'tot' ? 'Bote gefallen - Ersatz rüstet sich'
-            : '🐎 Boten herbeirufen (aus Ravensmoor)';
-      const aktiv = hier || b.status === 'heim' || b.status === 'posten';
-      const bt = this.add.text(10, 92, label, { fontFamily: 'serif', fontSize: '12px', color: aktiv ? '#f0c040' : '#8a7a5a', backgroundColor: '#2a1c08', padding: { x: 8, y: 4 } }).setInteractive({ useHandCursor: true });
-      bt.on('pointerdown', () => {
-        if (hier) this.botenZumGrafen();
-        else if (b.status === 'heim' || b.status === 'posten') this.botenZumPosten();
-        this.schliesseBauMenu();
-      });
-      c.add(bt);
-    }
-    // R99 (P11): das TOR wird AKTIV über das Menü geöffnet/geschlossen (nicht von
-    // selbst). Offen = Durchlass nur für Held/eigene Truppen; Gegner bleiben
-    // immer blockiert (deren Kollision liest die rohe SOLID-Kachel).
-    if (f.id === 'tor') {
-      const tg = this.add.text(10, 92, f.offen ? '🚪 Tor schließen' : '🚪 Tor öffnen', { fontFamily: 'serif', fontSize: '12px', color: '#f0d060', backgroundColor: '#2a1c08', padding: { x: 8, y: 4 } }).setInteractive({ useHandCursor: true });
-      tg.on('pointerdown', () => { this.schalteTor(f); this.schliesseBauMenu(); }); c.add(tg);
-    }
-    fixUiScroll(c);
+    if (!this.rtsBattle) this.toggleRtsModus();
+    this.rtsBattle?.waehleNichts();
+    this.rtsGebaeudeWahl = f;
+    this.rtsGegnerWahl = null;
+    this.baueRtsLeiste();
   }
 
   // R99 (P5): Tor auf/zu - Textur-Wechsel (aufgeschwungene Flügel) mit kurzem
@@ -4368,7 +4388,8 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   }
 
   private schliesseBauMenu(): void {
-    this.bauPopup?.destroy(); this.bauPopup = null; this.gewaehlterBau = null;
+    this.gewaehlterBau = null;
+    if (this.rtsGebaeudeWahl) { this.rtsGebaeudeWahl = null; this.baueRtsLeiste(); }
   }
 
   private repariereBau(f: (typeof this.feldbauten)[number]): void {
@@ -4383,7 +4404,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.sfx.play('holz_hacken');
     this.fx.burst(f.x, f.y - 8, 0xc9b06a, 8, 90);
     this.logMsg('Repariert.', 'gold');
-    this.oeffneBauMenu(f);   // Menü mit neuem HP-Stand
+    this.baueRtsLeiste();   // R186: Gebaeude-Karte im Pult mit neuem HP-Stand
   }
 
   private baueBauAb(f: (typeof this.feldbauten)[number]): void {
@@ -7330,7 +7351,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
     const f = this.feldbauUnter(wp.x, wp.y);
     if (f && !ptr.rightButtonDown()) { this.oeffneBauMenu(f); return true; }
-    if (this.bauPopup) { this.schliesseBauMenu(); }
+    if (this.rtsGebaeudeWahl && !this.feldbauUnter(wp.x, wp.y)) { this.schliesseBauMenu(); }
     // R97: Spawn-Platzierung per Maus - Rechtsklick bricht ab, Linksklick setzt
     // eine Einheit/ein Monster genau dorthin (mehrfach setzbar).
     if (this.rtsSpawnTyp && this.rtsBattle) {
@@ -7466,7 +7487,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     // R100 (Autor "Klick im Baumenü spawnt das Monster UNTER dem Menü - er klickt
     // durch"): ein Klick, der auf der RTS-Leiste oder dem Bau-Popup landet, ist ein
     // UI-Klick und darf NICHT als Weltklick (Spawn/Bau) durchgereicht werden.
-    if (this.zeigerAufPanel(this.rtsLeiste, ptr) || this.zeigerAufPanel(this.bauPopup, ptr)) return true;
+    if (this.zeigerAufPanel(this.rtsLeiste, ptr)) return true;
     if (this.zeigerAufPanel(this.dorfToolbar ?? null, ptr)) return true;   // R105: Editor-Leiste
     return this.hud?.klickBlockiert(ptr) ?? false;
   }
