@@ -343,3 +343,10 @@ stirbt man waehrend eines (Archiv-)Einfalls, verpuffen die Angreifer beim
 Erwachen. Wegen Regel 14 (ARCHIV nie anfassen) habe ich das nicht umgebaut.
 ZWISCHENLOESUNG: keine - Einfaelle ruhen faktisch. VORSCHLAG: eigener Auftrag
 "Einfall-Umzug nach Neu-Ravensmoor" (Tor-/Mauer-Logik der stadt gleich mit).
+
+## NACHTRAG R176: Stand der alten Fragen
+- R145 (Einfall am Archiv-Dorf): ERLEDIGT in R157 - der Einfall laeuft jetzt
+  komplett im neuen Ravensmoor (stadt), Monster kommen organisch ueber die
+  Nord-/Ost-Strassen. Frage gegenstandslos.
+- R141 (Heer beim Kartenwechsel) und R142 (Wie ruft der Graf? Boten-Vorschlag)
+  sind weiterhin OFFEN und warten auf deine Entscheidung.
