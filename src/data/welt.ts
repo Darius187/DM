@@ -88,6 +88,16 @@ export const FELDZUG = {
   truppHpF: 2.2,
   truppDmgF: 1.3,
   liveWelleMax: 10,      // Deckel je Live-Welle (keine Hunderterhorden, Autor R180)
+  // F3 (Dok 06 A3/E): das FEINDLAGER auf besetzten Karten. Der BINDEALTAR
+  // haelt den Horden-Abschnitt (zerstoeren = die Besatzung zerfaellt); der
+  // KNOCHENWALL waechst nach fester Reihenfolge mit der Besatzungszeit
+  // (untote Zimmerleute) und ist wie bruechige Waende durchschlagbar.
+  // Optik ist PLATZHALTER - die Monster-Bau-Assets definiert der Autor noch.
+  altarHp: 320,          // Lebenspunkte des Bindealtars
+  altarZerfallF: 0.5,    // Altar zerstoert -> Besatzung verliert die Haelfte ihrer HP
+  wallRadiusKacheln: 6,  // Knochenwall-Ring um den Altar
+  ausbauStufenS: [90, 300] as ReadonlyArray<number>,   // besetzt seit -> Stufe 1 (halber Ring) / 2 (voller Ring)
+  waechterJeStufe: [3, 5, 7] as ReadonlyArray<number>, // zaehe Waechter je Ausbaustufe
 } as const;
 
 export const SPAEHER = {

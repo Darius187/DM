@@ -394,3 +394,10 @@ Vergleich. ZWISCHENLOESUNG: A.
 Der Autor ueberlegt, ob auch GEGENSTAENDE im Auswahl-Bereich des Kommando-
 Pults erscheinen sollen (neben Einheiten/Gegnern/Gebaeuden, R193).
 ZWISCHENLOESUNG: erstmal nicht - erst Einheiten/Gegner/Gebaeude sauber.
+
+## F3 - Monster-Bau-Assets definieren (Autor-Ansage)
+Das Feindlager steht mechanisch (Bindealtar, Knochenwall, Waechter), aber die
+OPTIK ist Platzhalter (Altar = Untoten-Koerper, Wall = Mauerriss-Kacheln).
+Zu definieren (Autor + ggf. Codex/Blender): Bindealtar-Modell, Knochen-
+palisade, Fleisch/Blut-Bauten, Blutlager-Fass/Becken. ZWISCHENLOESUNG:
+Platzhalter bleiben, Mechanik ist fertig verdrahtet.

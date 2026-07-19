@@ -1987,6 +1987,10 @@ export class WorldScene extends CombatScene {
       ]));
       this.chronik('geschichte', 'Die Fürstenburg verschließt sich Flüchtlingen aus Angst vor Krankheiten - als sicher gilt allein die Zuflucht im Norden.');
     }
+    // F3: auf einer BESETZTEN Karte steht das Feindlager (erst nach dem
+    // Krypta-Boss - vorher schlaeft die Fabrik, Dok 06 C3).
+    this.altarStehtHier = false;
+    if (this.bossDead && gebietsStatus(this.lage, id) === 'besetzt') this.baueFeindlager(a);
     if (id === 'crypt3' && !this.flags.ebene3) {
       // R176 (Autor): das Stadtportal ist QUEST-Belohnung - freigeschaltet,
       // sobald der Held die dritte Verlies-Ebene erreicht.
@@ -8503,10 +8507,92 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   private feindzug: Feindzug = neuerFeindzug(FELDZUG.startBesetzt);
   private feldzugWelleGespawnt = false;
 
+  // F3 (Dok 06 A3/E): das sichtbare FEINDLAGER auf besetzten Karten - der
+  // BINDEALTAR haelt den Abschnitt, der KNOCHENWALL waechst mit der
+  // Besatzungszeit (feste Reihenfolge, keine freie Bau-KI). Die Optik ist
+  // PLATZHALTER, bis der Autor die Monster-Bau-Assets definiert.
+  private altarStehtHier = false;
+
+  private baueFeindlager(a: AreaData): void {
+    if (this.enemies.some((e) => e.name === 'Bindealtar' && e.hp > 0)) { this.altarStehtHier = true; return; }
+    const lager = this.feindzug.lager.find((l) => l.karte === a.id);
+    const seitS = lager?.seitS ?? 0;
+    const stufe = FELDZUG.ausbauStufenS.filter((s2) => seitS >= s2).length;
+    // Anker: freier Boden nahe der Kartenmitte (Spiralsuche)
+    let ax = Math.floor(a.w / 2), ay = Math.floor(a.h / 2);
+    aussen: for (let ring = 0; ring < 12; ring++) {
+      for (let dy = -ring; dy <= ring; dy++) for (let dx = -ring; dx <= ring; dx++) {
+        const tx = Math.floor(a.w / 2) + dx, ty = Math.floor(a.h / 2) + dy;
+        if (a.map[ty]?.[tx] === T.GRASS) { ax = tx; ay = ty; break aussen; }
+      }
+    }
+    // Bindealtar: stationaeres Herzstueck (zerstoerbar, Platzhalter-Koerper)
+    const alt = this.spawnEnemy('lebender_toter', EINFALL.tiefe, ax * TILE + 16, ay * TILE + 16, false, true);
+    alt.name = 'Bindealtar';
+    alt.champion = true;
+    alt.maxhp = FELDZUG.altarHp;
+    alt.hp = FELDZUG.altarHp;
+    alt.dmg = 0;
+    alt.speed = 0;
+    this.altarStehtHier = true;
+    // Knochenwall: bruechiger Ring (CRACK = durchschlagbar wie Mauerrisse),
+    // Stufe 1 = Sued-Halbring, Stufe 2 = voller Ring; Tor-Luecken Nord/Sued.
+    if (stufe >= 1) {
+      const r = FELDZUG.wallRadiusKacheln;
+      const schritte = 30;
+      for (let i = 0; i < schritte; i++) {
+        const wk = (i / schritte) * Math.PI * 2;
+        if (stufe < 2 && Math.sin(wk) < 0) continue;
+        if (Math.abs(Math.sin(wk)) > 0.96) continue;
+        const tx = ax + Math.round(Math.cos(wk) * r), ty = ay + Math.round(Math.sin(wk) * r * 0.7);
+        const t = a.map[ty]?.[tx];
+        if (t === T.GRASS || t === T.TREE) { a.map[ty][tx] = T.CRACK; this.refreshTile(tx, ty); }
+      }
+    }
+    // Waechter: zaehe Feind-Trupps am Altar (wachen, bis geweckt)
+    const n = FELDZUG.waechterJeStufe[Math.min(stufe, FELDZUG.waechterJeStufe.length - 1)];
+    for (let i = 0; i < n; i++) {
+      const wnk = (i / n) * Math.PI * 2;
+      const e = this.spawnEnemy(i % 2 === 0 ? 'skelett' : 'lebender_toter', EINFALL.tiefe, alt.x + Math.cos(wnk) * 70, alt.y + Math.sin(wnk) * 50, this.rng.random() < 0.2, true);
+      e.maxhp = Math.round(e.maxhp * FELDZUG.truppHpF);
+      e.hp = e.maxhp;
+      e.dmg = Math.round(e.dmg * FELDZUG.truppDmgF);
+    }
+    this.wegfeldNeu();
+  }
+
+  // Der Bindealtar ist gefallen: die Besatzung des Abschnitts ZERFAELLT
+  // (Dok 06 A3 - der Comeback-Mechanismus des Schwaecheren).
+  private pruefeAltarSturz(): void {
+    if (!this.altarStehtHier) return;
+    if (this.enemies.some((e) => e.name === 'Bindealtar' && e.hp > 0)) return;
+    this.altarStehtHier = false;
+    for (const e of this.enemies) {
+      if (e.team === 'spieler' || e.hp <= 0) continue;
+      e.hp = Math.max(1, Math.round(e.hp * FELDZUG.altarZerfallF));
+      e.hitFlash = 0.3;
+    }
+    this.fx.burst(this.px, this.py, 0x8a2a4a, 20, 240);
+    this.logMsg('Der Bindealtar birst - die Horde dieses Abschnitts ZERFÄLLT!', 'gold');
+    this.chronik('kampf', `Der Bindealtar von ${this.kartenName(this.area.id)} ist zerstört - die Besatzung zerfällt.`);
+  }
+
+  // Nach der Saeuberung: den Knochenwall abraeumen (nur der Ring-Umkreis).
+  private raeumeFeindlagerWall(a: AreaData): void {
+    const cx = Math.floor(a.w / 2), cy = Math.floor(a.h / 2);
+    const r = FELDZUG.wallRadiusKacheln + 13;
+    for (let ty = Math.max(0, cy - r); ty <= Math.min(a.h - 1, cy + r); ty++) {
+      for (let tx = Math.max(0, cx - r); tx <= Math.min(a.w - 1, cx + r); tx++) {
+        if (a.map[ty][tx] === T.CRACK) { a.map[ty][tx] = T.GRASS; this.refreshTile(tx, ty); }
+      }
+    }
+    this.wegfeldNeu();
+  }
+
   // Rueckeroberung V1 (Autor: "Gebiete saeubern"): steht der Held auf einer
   // BESETZTEN Karte und lebt dort kein Feind mehr, faellt sie nach kurzer
-  // Bestaetigungs-Uhr zurueck an den Spieler. (F3 haengt hier spaeter das
-  // zerstoerbare Feindlager ein.)
+  // Bestaetigungs-Uhr zurueck an den Spieler (F3: der Bindealtar zaehlt als
+  // Feind - die Karte faellt erst, wenn AUCH er gefallen ist).
   private saeuberungT = 0;
 
   private updateFeindzug(dt: number): void {
@@ -8518,9 +8604,11 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         this.saeuberungT = 0;
         verliereLager(this.feindzug, this.area.id);
         this.setzeLage(this.area.id, 'frei');
+        this.raeumeFeindlagerWall(this.area);   // F3: der Knochenwall faellt mit
         this.logMsg(`${this.kartenName(this.area.id)} ist gesäubert - das Gebiet ist wieder unser!`, 'gold');
       }
     } else this.saeuberungT = 0;
+    this.pruefeAltarSturz();   // F3: Altar gefallen -> Besatzung zerfaellt
     const evs = tickFeindzug(this.feindzug, dt, {
       produktionProS: FELDZUG.produktionProS,
       welleMin: FELDZUG.welleMin,

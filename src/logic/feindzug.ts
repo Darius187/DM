@@ -13,6 +13,7 @@ import type { GebietsStatus } from './gebietslage';
 export interface FeindLager {
   karte: string;
   punkte: number;            // gesparte Kampfkraft
+  seitS?: number;            // F3: Sekunden besetzt - bestimmt die Ausbaustufe
 }
 
 export interface FeindAngriff {
@@ -87,7 +88,7 @@ export function verliereLager(z: Feindzug, karte: string): void {
 
 export function tickFeindzug(z: Feindzug, dt: number, cfg: FeindzugCfg): FeindzugEreignis[] {
   const out: FeindzugEreignis[] = [];
-  for (const l of z.lager) l.punkte += cfg.produktionProS * dt;
+  for (const l of z.lager) { l.punkte += cfg.produktionProS * dt; l.seitS = (l.seitS ?? 0) + dt; }
 
   const a = z.angriff;
   if (!a) {
