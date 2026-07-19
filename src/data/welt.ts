@@ -69,11 +69,24 @@ export const EINFALL = {
 // R180 (Autor + Dok 06 C3 "bis dahin läuft alles still und heimlich"): sie
 // kommen ERST, nachdem der Boss in der Krypta gefallen ist - sein Tod öffnet
 // die Büchse, das Kloster beginnt zu spähen.
-// F1 (FELDZUG-PLAN): Gebiete, die der FEIND von Spielbeginn an haelt -
-// das Monsterlager, die verfallene Stadt (Dok 06 G1: "ueberrannt") und der
-// Klosterberg (die Quelle, Akt 4).
+// F1/F2 (FELDZUG-PLAN): der Feldzug der Untoten. startBesetzt = Gebiete, die
+// der Feind von Beginn an haelt (Monsterlager, verfallene Stadt, Klosterberg).
+// Ab dem Krypta-Boss produzieren die Lager Kampfkraft und greifen nach den
+// Nachbarkarten (07-FEIND-KI: Spaeher melden, die Welle wird daran bemessen).
+// Wellen-Groessen sind Zwischenwerte - offene Autor-Frage (OFFENE-FRAGEN.md).
 export const FELDZUG = {
   startBesetzt: ['lager', 'stadt2', 'kloster'],
+  unantastbar: ['stadt', 'burg'],   // stadt faellt nur im F5-Story-Ereignis, burg ist der letzte Rueckzugsort
+  produktionProS: 0.6,   // Kampfkraft-Punkte je Sekunde und Feindlager
+  welleMin: 40,          // kleinste Angriffswelle (Kampfkraft)
+  staerkeFaktor: 1.3,    // Welle uebertrifft die gespaehte Verteidigung um 30%
+  kraftJeMann: 12,       // Kampfkraft-Schaetzwert einer Garnisons-Einheit
+  spaehVorlaufS: 40,     // Kundschafter-Vorlauf vor dem Angriff
+  kampfDauerS: 30,       // abstrakte Kampf-Dauer (Held nicht auf der Karte)
+  // Dok 06 H1.1: Feind-TRUPPEN sind keine Dungeon-Monster - zaeher und haerter.
+  truppHpF: 2.2,
+  truppDmgF: 1.3,
+  liveWelleMax: 10,      // Deckel je Live-Welle (keine Hunderterhorden, Autor R180)
 } as const;
 
 export const SPAEHER = {

@@ -1781,3 +1781,16 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   Der KARTE-Tab zeigt es (rote Rahmen + BESETZT-Stempel, orange UMKAEMPFT
   bei laufendem Einfall), Aenderungen landen im Log + Kriegstagebuch,
   alles im Spielstand. Screenshot der Karte liegt vor. tsc + 405 Tests gruen.
+
+## Runde 183 - F2: Der Feind fuehrt Krieg (Produktion + Expansion)
+- Ab dem Krypta-Boss produzieren die drei Feindlager Kampfkraft und greifen
+  nach den Nachbarkarten: erst Kundschafter (Vorwarnung im Log), dann eine
+  an der Sichtung bemessene Welle. Ohne Verteidigung faellt die Karte
+  (Garnison zieht sich Richtung Ravensmoor zurueck - niemand stirbt mit der
+  Karte); steht der Held dort, kommt die Welle REAL ueber die Kante (zaehe
+  Feind-Trupps, Deckel 10). Saeubern gewinnt die Karte zurueck.
+- Im Test lief exakt die Autor-Geschichte: die Verfallene Stadt nahm zuerst
+  RABENHAIN, waehrend das Kloster das Alte Schlachtfeld ausspaehte - zwei
+  Fronten, alles im Kriegstagebuch und auf der Karte (F1-Faerbung).
+- Browser-verifiziert (komplette Kette: Spaeher -> Angriff -> erobert ->
+  gesaeubert -> Live-Welle -> zurueckgeschlagen), tsc fehlerfrei, 410 Tests.

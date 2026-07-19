@@ -250,6 +250,7 @@ export class Enemy {
   armeeId: number | null = null;
   kills = 0;
   soeldner = false;   // R143 (2.3): Moral-Malus; flieht er zur Kante, desertiert er
+  feldzugTrupp = false;   // F2: Teil einer Feindzug-Angriffswelle (Live-Aufloesung)
   // R144: RTS-Einheitentyp eines Verbuendeten - damit die Befehls-Schicht eine
   // bereits stehende Garnison (R142) beim RTS-Einstieg uebernehmen kann.
   rtsTyp: import('../data/rts').RtsUnitTyp | null = null;

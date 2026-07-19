@@ -101,6 +101,7 @@ import { konterFaktor } from '../data/kampfarten';
 import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, garnisonVon, marschVon, storniereMarsch, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, einheitMaxHp, heerObergrenze, pruefeRekrutierung, desertiere, type Armee, type ArmeeEinheit } from '../logic/armee';
 import { boteNeu, schickeBote, tickBote, type Bote } from '../logic/bote';
 import { neueGebietslage, gebietsStatus, setzeGebietsStatus, type Gebietslage, type GebietsStatus } from '../logic/gebietslage';
+import { neuerFeindzug, tickFeindzug, beendeAngriff, verliereLager, type Feindzug } from '../logic/feindzug';
 import { schlachtXp } from '../logic/schlachtWertung';
 import { BODEN_STILE, bodenStilTextur } from '../gfx/bodenStile';
 import { WAND_STILE, wandStilFrontTextur, wandStilKroneTextur } from '../gfx/wandStile';
@@ -415,6 +416,9 @@ export class WorldScene extends CombatScene {
     this.spaeherT = SPAEHER.intervallMinS;   // R178: Kundschafter-Uhr frisch
     this.bote = boteNeu(BOTE.heim);          // R179: der Bote startet daheim
     this.lage = neueGebietslage(FELDZUG.startBesetzt);   // F1: Gebietslage frisch
+    this.feindzug = neuerFeindzug(FELDZUG.startBesetzt); // F2: Feindzug frisch
+    this.feldzugWelleGespawnt = false;
+    this.saeuberungT = 0;
     this.nebelSprites = [];
     this.stimmungRect = null;
     this.vignetteImg = null;   // Neustart: mit dem stimmungRect zusammen neu aufbauen
@@ -8275,6 +8279,109 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     } else this.chronik('kampf', `${name} ist wieder in unserer Hand.`);
   }
 
+  // --- F2: DER FEINDZUG (Feind-Produktion + Expansion, 07-FEIND-KI) --------
+  // Laeuft erst NACH dem Krypta-Boss (vorher bleibt alles still, Dok 06 C3).
+  private feindzug: Feindzug = neuerFeindzug(FELDZUG.startBesetzt);
+  private feldzugWelleGespawnt = false;
+
+  // Rueckeroberung V1 (Autor: "Gebiete saeubern"): steht der Held auf einer
+  // BESETZTEN Karte und lebt dort kein Feind mehr, faellt sie nach kurzer
+  // Bestaetigungs-Uhr zurueck an den Spieler. (F3 haengt hier spaeter das
+  // zerstoerbare Feindlager ein.)
+  private saeuberungT = 0;
+
+  private updateFeindzug(dt: number): void {
+    if (!this.bossDead) return;
+    if (gebietsStatus(this.lage, this.area.id) === 'besetzt'
+      && !this.enemies.some((e) => e.team !== 'spieler' && e.hp > 0)) {
+      this.saeuberungT += dt;
+      if (this.saeuberungT > 3) {
+        this.saeuberungT = 0;
+        verliereLager(this.feindzug, this.area.id);
+        this.setzeLage(this.area.id, 'frei');
+        this.logMsg(`${this.kartenName(this.area.id)} ist gesäubert - das Gebiet ist wieder unser!`, 'gold');
+      }
+    } else this.saeuberungT = 0;
+    const evs = tickFeindzug(this.feindzug, dt, {
+      produktionProS: FELDZUG.produktionProS,
+      welleMin: FELDZUG.welleMin,
+      staerkeFaktor: FELDZUG.staerkeFaktor,
+      spaehVorlaufS: FELDZUG.spaehVorlaufS,
+      kampfDauerS: FELDZUG.kampfDauerS,
+      unantastbar: FELDZUG.unantastbar,
+      nachbarn: this.kartenNachbarn,
+      status: (id) => gebietsStatus(this.lage, id),
+      verteidigung: (id) => garnisonVon(this.armee, id).length * FELDZUG.kraftJeMann,
+      distanzZuStadt: (id) => routeZu(this.kartenNachbarn, id, MARSCH.zielStadt)?.length ?? 99,
+      liveKarte: this.area.id,
+      rng: () => Math.random(),
+    });
+    for (const ev of evs) this.feindzugEreignis(ev);
+    // Live-Aufloesung: kaempft die Welle auf der HELD-Karte, entscheidet der
+    // echte Kampf - sind alle Angreifer gefallen, ist sie zurueckgeschlagen.
+    const a = this.feindzug.angriff;
+    if (a && a.phase === 'kaempft' && a.nach === this.area.id) {
+      if (!this.feldzugWelleGespawnt) { this.spawneFeldzugWelle(a.von, a.staerke); this.feldzugWelleGespawnt = true; }
+      else if (!this.enemies.some((e) => e.feldzugTrupp && e.hp > 0)) {
+        for (const ev of beendeAngriff(this.feindzug, false)) this.feindzugEreignis(ev);
+      }
+    }
+    if (!a) this.feldzugWelleGespawnt = false;
+  }
+
+  private feindzugEreignis(ev: ReturnType<typeof tickFeindzug>[number]): void {
+    if (ev.typ === 'spaeher') {
+      this.logMsg(`Feindliche Kundschafter wurden bei ${this.kartenName(ev.nach)} gesehen - ein Angriff kündigt sich an.`, 'bad');
+      this.chronik('kampf', `Kundschafter des Feindes spähen ${this.kartenName(ev.nach)} aus.`);
+    } else if (ev.typ === 'angriff') {
+      this.setzeLage(ev.nach, 'umkaempft');
+      this.logMsg(`Der Feind greift ${this.kartenName(ev.nach)} an (Stärke ~${ev.staerke})!`, 'bad');
+      this.sfx.play('fehler');
+    } else if (ev.typ === 'erobert') {
+      this.garnisonRueckzug(ev.karte);
+      this.setzeLage(ev.karte, 'besetzt');
+    } else {
+      this.setzeLage(ev.karte, 'frei');
+      this.logMsg(`Der Angriff auf ${this.kartenName(ev.karte)} ist zurückgeschlagen!`, 'gold');
+    }
+  }
+
+  // Live-Welle: der Held steht auf der Zielkarte - die Angreifer kommen REAL
+  // von der Kante Richtung Angreifer-Lager. Zaeher als Dungeon-Monster
+  // (Dok 06 H1.1), gedeckelt (keine Hunderterhorden, Autor R180).
+  private spawneFeldzugWelle(von: string, staerke: number): void {
+    const start = this.kantenPunkt(this.area, von, true);
+    const anzahl = Math.max(3, Math.min(FELDZUG.liveWelleMax, Math.round(staerke / FELDZUG.kraftJeMann)));
+    const typen = ['skelett', 'pest', 'lebender_toter'] as const;
+    for (let i = 0; i < anzahl; i++) {
+      const e = this.spawnEnemy(pick(this.rng, typen as unknown as EnemyTypeId[]) as never, EINFALL.tiefe, start.x + (i % 3) * 30 - 30, start.y + Math.floor(i / 3) * 28, this.rng.random() < 0.15, true);
+      e.feldzugTrupp = true;
+      e.maxhp = Math.round(e.maxhp * FELDZUG.truppHpF);
+      e.hp = e.maxhp;
+      e.dmg = Math.round(e.dmg * FELDZUG.truppDmgF);
+      e.aggro = 5000;
+      e.jagdZiel = { x: this.area.w * TILE / 2, y: this.area.h * TILE / 2 };
+    }
+    this.logMsg('Die Angriffswelle bricht über die Kante - halte die Stellung!', 'bad');
+  }
+
+  // Faellt eine Karte, weicht die Garnison Richtung Ravensmoor aus (Autor
+  // R182: man verliert nie ALLES - die Maenner sterben nicht mit der Karte).
+  private garnisonRueckzug(karte: string): void {
+    const trupp = garnisonVon(this.armee, karte);
+    if (!trupp.length) return;
+    const ziel = this.kartenNachbarn(karte)
+      .filter((n) => gebietsStatus(this.lage, n) === 'frei')
+      .sort((a, b) => (routeZu(this.kartenNachbarn, a, MARSCH.zielStadt)?.length ?? 99) - (routeZu(this.kartenNachbarn, b, MARSCH.zielStadt)?.length ?? 99))[0];
+    if (!ziel) {
+      for (const e of trupp) { e.ort = MARSCH.zielStadt; e.pos = undefined; }
+      return;
+    }
+    this.syncArmeeVomFeld();
+    starteMarsch(this.armee, trupp.map((e) => e.id), [karte, ziel]);
+    this.logMsg(`Die Garnison von ${this.kartenName(karte)} zieht sich nach ${this.kartenName(ziel)} zurück.`, 'bad');
+  }
+
   private updateBote(dt: number): void {
     const risiko = (this.einfallAktiv || this.flags.kriegBegonnen) ? BOTE.abfangRisikoKrieg : BOTE.abfangRisiko;
     const evs = tickBote(this.bote, dt, {
@@ -11986,6 +12093,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         armee: (this.syncArmeeVomFeld(), this.armee),   // R141: Feld-Zustand mitnehmen
         bote: this.bote,                                // R179: der Grafen-Bote reist mit
         lage: this.lage,                                // F1: die Gebietslage reist mit
+        feindzug: this.feindzug,                        // F2: der Feindzug reist mit
         bevoelkerung: this.bevoelkerung,               // R143 (2.3)
         breschen: this.breschen,
       },
@@ -12058,6 +12166,8 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.armee = ruesteArmeeNach(data.welt.armee ?? neueArmee(), 'stadt');   // R141/R142 (alte Staende: leeres Heer, Bestand steht in Ravensmoor)
     this.bote = data.welt.bote ?? boteNeu(BOTE.heim);   // R179 (alte Staende: Bote daheim)
     this.lage = data.welt.lage ?? neueGebietslage(FELDZUG.startBesetzt);   // F1 (alte Staende: Startlage)
+    this.feindzug = data.welt.feindzug ?? neuerFeindzug(FELDZUG.startBesetzt);   // F2 (alte Staende: Startlage)
+    this.feldzugWelleGespawnt = false;
     this.bevoelkerung = data.welt.bevoelkerung ?? REKRUTIERUNG.bevoelkerungStart;   // R143 (2.3)
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
     recalc(p);
@@ -13739,6 +13849,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.updateTurmBesatzung();  // R100: Turm-Insassen unsichtbar + Symbol
     this.updateMarsch(dt);   // R142: das Heer marschiert IMMER (auch ohne RTS-Modus)
     this.updateBote(dt);     // R179: die Boten-Uhr (Grafen-Ruf) laeuft ebenso immer
+    this.updateFeindzug(dt); // F2: der Feind produziert und greift nach Gebieten
     this.updateEinfallQueue(dt);   // R157: Einfall-Kolonnen ruecken in Schueben an
     this.updateSpaeher(dt);        // R178: Kundschafter des Klosters (Nordstrasse)
     this.updateEinfallEntklemmer(dt);   // R166: niemand bleibt am Fluss haengen
