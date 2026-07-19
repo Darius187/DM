@@ -51,12 +51,39 @@ daraus BAUBARE Phasen). Autor-Order (R180, woertlich zusammengefasst):
   der grosse Anteil ist jetzt der MARSCH, nicht der Bote). GESAMT ~7:35.
   Regler: MARSCH.dauerJeKarteS, BOTE.tempoF/burgDauerS.
 
-## Niederlagen-Regel (Autor R182: "auf keinen Fall verliert man komplett")
-- Es gibt KEINEN Totalverlust/Game Over im Feldzug. Verliert der Spieler
-  Karten, zieht er sich zurueck - letzter Rueckzugsort ist die FUERSTENBURG
-  (Vorschlag; Alternative "in die Berge/Zuflucht" -> OFFENE-FRAGEN). Von
-  dort ist IMMER ein Comeback moeglich (Blutlager-Zerstoerung schwaecht die
-  Besatzer, Dok 06 A3).
+## Niederlagen-Regel (UEBERARBEITET R184, Autor: "es muss ein Schachmatt geben")
+- Das Spiel MUSS verlierbar sein, sonst ist die Bedrohung kalter Kaffee.
+  SCHACHMATT-Kette: nimmt der Feind ALLE Karten, steht die Horde vor der
+  FUERSTENBURG und stuermt sie (Masse). Der Graf kann keine Truppen mehr
+  stellen, wenn seine Karten weg sind - AUSSER es gibt Farmkarten WESTLICH
+  der Burg (Autor will die noch einbringen: dort wird gefarmt/produziert,
+  solange sie stehen). Die LETZTE SCHLACHT: Held + Garde des Grafen in der
+  Burg - gewinnt der Held, treibt er den Feind hinaus und schlaegt mit der
+  Garde zurueck (Comeback); faellt der GRAF, ist das Spiel VORBEI (laden
+  oder neu beginnen). Kein stilles Aussitzen in der Zuflucht moeglich.
+- RUECKZUGSWEG beim Fall Ravensmoors (Autor R184): westlich hinaus
+  (Finsterhain), dann NORDWAERTS (Kraehenwald - dort stehen bereits Feinde,
+  fuer den Helden machbar), weiter noerdlich (Grauwald), dann WESTLICH in
+  den HOHEN NORDEN (hochland, Schnee/Berge - ggf. eigene neue Schneekarte
+  obendrauf): AUF DEM BERG liegt der Rueckzugsort/die Zuflucht.
+- OFFEN: Zwei-Zufluchten-Konflikt (Zuflucht im Hohen Norden vs. Fuerstenburg
+  des Grafen) - Vorschlaege liegen beim Autor (OFFENE-FRAGEN.md R184).
+
+## Feind-KI wie ein ECHTER SPIELER (Autor R184: "mit Konzept und Strategie")
+- Ziel: die Horde fuehlt sich wie ein menschlicher Gegner an - reagiert auf
+  die Spielweise, lernt, fuehrt ZANGEN und unerwartete Angriffe, setzt den
+  Spieler unter Druck, bleibt aber fair. Umsetzung auf Basis 07-FEIND-KI
+  (M28AI/OpenRA/BAR-Recherche des Autors), Ausbau in F6:
+  1. GEDAECHTNIS je Route: gescheiterte Angriffe erhoehen die Mindeststaerke
+     dort, erfolgreiche merken sich den Weg (Erfahrungswert je Kante).
+  2. ANPASSUNG an den Spieler: verteidigt er stark im Osten, verlagert die
+     Produktion nach Norden (Druck auf die schwache Flanke der Zange).
+  3. ZANGE: ab 2 Lagern mit vollen Kassen synchronisierter Doppel-Angriff
+     auf ZWEI Karten gleichzeitig (Phasenlinien aus der Autor-Recherche).
+  4. UNVORHERSEHBARKEIT: leicht gewichteter Zufall unter den besten 2-3
+     Zielen + gelegentliche Ueberfaelle auf schwache Ziele statt der Front.
+  5. FAIRNESS: alles laeuft ueber sichtbare Spaeher (toete sie = er ist
+     blind), kein Ressourcen-Betrug, Vorwarnungen bleiben.
 
 ## Feind-KI (R182): Autor-Recherche gesichtet
 - Verbindliche Bauanleitung: docs/design/07-FEIND-KI.md (uebernommen/

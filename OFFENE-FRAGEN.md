@@ -369,3 +369,23 @@ ZWISCHENLOESUNG: ich baue F1 zuerst (Gebiets-Status) - der ist zahlenfrei.
 Beschlossen: KEIN Totalverlust. Offen: WOHIN zieht man sich zurueck, wenn
 alle Karten fallen - Fuerstenburg (existiert als Karte, mein Vorschlag)
 oder "in die Berge" (neue Karte noetig)? ZWISCHENLOESUNG: Fuerstenburg.
+
+## R184 - Zwei Zufluchten (Hoher Norden vs. Fuerstenburg): meine Vorschlaege
+Problem (Autor): warum in den Hohen Norden fliehen, wenn es die Burg gibt?
+VORSCHLAG A (mein Favorit): die Burg NIMMT KEINE FLUECHTLINGE. Der Graf
+  verriegelt die Tore - "die Seuche des Nordens" (Dok 06 B1: er KANN
+  politisch nichts anderes sagen) darf seine Mauern nicht erreichen; er
+  fuerchtet Ansteckung/Unterwanderung und hat selbst kaum Vorraete. Er gibt
+  TRUPPEN, aber kein Asyl. Das ist historisch glaubwuerdig (Staedte wiesen
+  Pestfluechtlinge ab), macht den Grafen ambivalent (starker Story-Ton) und
+  ZWINGT die Zuflucht im Norden, ohne eine Karte zu sperren.
+VORSCHLAG B: die Burg ist ZU WEIT und der Weg zu gefaehrlich fuer einen
+  Treck - Bewohner sind langsam, der Konvoi wuerde auf den Weststrassen von
+  der Horde gestellt (Konvoi-Mechanik). Der Norden ist naeher und die Horde
+  will die STADT, nicht die Berge. (Funktioniert, erklaert aber nicht,
+  warum man nicht SPAETER nachzieht.)
+VORSCHLAG C: Kombination - kurzfristig Norden (nah, Berge = verteidigbar),
+  und die Burg nimmt nur VERWUNDETE/Kinder in kleinen, eskortierten
+  Konvois auf (Nebenmissionen). Das nutzt beide Orte.
+Dein eigener Vorschlag (Horde blockiert die Startkarte) kommt danach zum
+Vergleich. ZWISCHENLOESUNG: A.

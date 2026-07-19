@@ -7517,10 +7517,16 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // (nicht nur nah) weckt - so greifen Monster an, sobald man in Sicht ist, und
   // Bogenschuetzen reagieren auf Ziele auf Distanz; (3) ALARM: wer wach ist, weckt
   // Kameraden im Umkreis (Kette) - "sobald einer angegriffen wird, greifen alle an".
-  private updateWachwerden(): void {
+  private wachwerdenT = 0;
+  private updateWachwerden(dt: number): void {
     // R144 (Autor: "Soldaten werden angegriffen und stehen bloed rum"): das
     // Weck-System lief nur im RTS-Modus - Garnisonen (R142) und Rekruten
     // stehen aber IMMER auf der Karte. Es laeuft jetzt in jedem Modus.
+    // R188: gedrosselt auf 4x je Sekunde - die Paar-Schleifen mit Sichtlinien-
+    // Pruefung sind zu teuer fuer jeden Frame.
+    this.wachwerdenT -= dt;
+    if (this.wachwerdenT > 0) return;
+    this.wachwerdenT = 0.25;
     const sichtR = 340;
     // R100j (Autor "Monster stehen doof rum wenn ihre Freunde angegriffen werden,
     // nur ein paar legen los - nimm die Dungeon-Logik"): TEAM-ALARM. Wurde IRGENDEINE
@@ -7544,6 +7550,22 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         if (o.hp <= 0 || o === e || o.passiv) continue;
         const gegner = feindlich ? o.team !== 'spieler' : o.team === 'spieler';
         if (gegner && Math.hypot(o.x - e.x, o.y - e.y) < sichtR && !this.wandZwischen(e.x, e.y, o.x, o.y)) { e.passiv = false; break; }
+      }
+    }
+    // R189 (Autor "nur 1-2 von 10 ruehren sich"): der STELLUNGS-Befehl
+    // (jagdZiel) laeuft in der Einheiten-KI VOR dem Kampf-Zweig und blockte
+    // jede Gegenwehr. Eine WACHE Einheit laesst ihre Stellung fallen, sobald
+    // ein Gegner in Reaktionsweite ist - Marschierer bleiben ausgenommen
+    // (sonst zerlegt jeder Gegner-Kontakt den Marsch, R167).
+    for (const e of this.enemies) {
+      if (e.team !== 'spieler' || e.passiv || e.hp <= 0 || !e.jagdZiel) continue;
+      if (e.armeeId !== null && marschVon(this.armee, e.armeeId)) continue;
+      for (const o of this.enemies) {
+        if (o.hp <= 0 || o.team === 'spieler') continue;
+        if (Math.hypot(o.x - e.x, o.y - e.y) < VERTEIDIGUNG.reaktionPx && !this.wandZwischen(e.x, e.y, o.x, o.y)) {
+          e.jagdZiel = null;
+          break;
+        }
       }
     }
   }
@@ -13441,7 +13463,8 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       if (kampf && kampfGegner && d < 34 && (n.atkCd ?? 0) <= 0) {
         n.atkCd = KAEMPFER.cd;
         const a = Math.atan2(kampfGegner.y - n.curY, kampfGegner.x - n.curX);
-        this.damageEnemy(kampfGegner, KAEMPFER.dmg, Math.cos(a) * 14, Math.sin(a) * 14, '#d8cfb8', false);
+        // R190 (Autor-Verbot): Kills der BEWOHNER-Kaempfer geben KEINE Held-XP
+        this.damageEnemy(kampfGegner, KAEMPFER.dmg, Math.cos(a) * 14, Math.sin(a) * 14, '#d8cfb8', false, true);
         this.fx.addSwing(n.curX, n.curY - 6, a, { col: 'rgba(216,207,184,', w: 4, radius: 24 });
         this.sfx.play('schwert_slice1', 0.45);
         n.hp = (n.hp ?? KAEMPFER.hp) - KAEMPFER.gegnerDmg; n.flashT = 0.16;
@@ -13844,7 +13867,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.updateHackBalken(dt);   // Lebensbalken + Schlag-Fortschritt (R93)
     this.updateBauBalken();      // Feldbau-Lebensbalken (R94)
     this.updateRtsHeld(dt * kampfTempo);      // Einheitensteuerung im RTS-Modus (R94); im RTS Echtzeit (R131, keine Slow-Motion)
-    this.updateWachwerden();     // R100b: passive Einheiten wecken, wenn Gegner nah
+    this.updateWachwerden(dt);   // R100b: passive Einheiten wecken, wenn Gegner nah
     this.updateBelagerung(dt);   // R100: Monster nagen an Wehrbauten (Bunker)
     this.updateTurmBesatzung();  // R100: Turm-Insassen unsichtbar + Symbol
     this.updateMarsch(dt);   // R142: das Heer marschiert IMMER (auch ohne RTS-Modus)

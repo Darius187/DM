@@ -1794,3 +1794,18 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   Fronten, alles im Kriegstagebuch und auf der Karte (F1-Faerbung).
 - Browser-verifiziert (komplette Kette: Spaeher -> Angriff -> erobert ->
   gesaeubert -> Live-Welle -> zurueckgeschlagen), tsc fehlerfrei, 410 Tests.
+
+## Runde 184a - Drei Kern-Bugs aus dem Autor-Test (Performance, Gegenwehr, XP)
+- 1-FPS-Einbruch bei bewegten Formationen: Wegfindung rechnete je Einheit
+  und Frame ein Voll-Karten-Flussfeld - Freie-Bahn-Abkuerzung + Cache-
+  Buendelung + Weck-Drossel. Marsch kostet jetzt nichts mehr extra (1,0x).
+- "Nur 1-2 von 10 wehren sich": der Stellungs-Befehl blockierte die
+  Gegenwehr komplett - Wachen lassen die Stellung jetzt fallen, wenn ein
+  Gegner in Reaktionsweite ist. 10/10 kaempfen im Test.
+- Held-XP-Lecks gestopft: Bewohner-Kaempfer- und Skelettwache-Kills gaben
+  faelschlich Held-XP. Die "Erfahrung fuer die Fuehrung"-Meldung nach
+  gewonnener Schlacht ist das gewollte R147c-System.
+- Offen als Aufgaben: unsichtbare Wand Waldrand + Fluss-Neuverlegung,
+  Pult-UI (Gebaeude-Karte/Tooltips/Schrift/Formations-Ebene), Heer-
+  Ausruestung, Rueckzugs-Befehl + sichtbare Reparatur. Feldzug-Plan um
+  Schachmatt-Endgame, Rueckzugsweg und Spieler-KI-Konzept erweitert.

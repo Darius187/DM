@@ -574,10 +574,29 @@ export class RtsBattle {
 
   // --- Wegfeld (P17): wird von den Verbündeten-Proxies + dem Held genutzt ----
   private wegfelder = new Map<string, { feld: Wegfeld; t: number }>();
+  // R188 (Autor "1 FPS bei bewegter Formation"): Freie-Bahn-Pruefung. Ist die
+  // Gerade zum Ziel frei, braucht es KEIN Flussfeld - vorher rechnete JEDE
+  // Einheit einer bewegten Formation je Frame ein Voll-Karten-Feld (ihr
+  // Slot-Ziel wandert jeden Frame, der Feld-Cache griff nie).
+  private bahnFrei(x0: number, y0: number, x1: number, y1: number): boolean {
+    const d = Math.hypot(x1 - x0, y1 - y0);
+    const schritte = Math.max(1, Math.ceil(d / (TILE / 2)));
+    for (let i = 1; i <= schritte; i++) {
+      const t = i / schritte;
+      if (this.host.isSolid(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)) return false;
+    }
+    return true;
+  }
+
   wegPunkt(team: RtsTeam, vonX: number, vonY: number, ziel: { x: number; y: number }): { x: number; y: number } | null {
     const g = this.host.gitter();
     if (!g) return null;
-    const ztx = Math.max(0, Math.min(g.w - 1, Math.floor(ziel.x / TILE))), zty = Math.max(0, Math.min(g.h - 1, Math.floor(ziel.y / TILE)));
+    if (this.bahnFrei(vonX, vonY, ziel.x, ziel.y)) return { x: ziel.x, y: ziel.y };
+    // R188: Ziel-Kacheln in 3er-Bloecke buendeln - bewegte Ziele verwerfen den
+    // Feld-Cache sonst bei jedem Kachelwechsel (die Feinablage macht bahnFrei).
+    const q = 3;
+    const ztx = Math.max(0, Math.min(g.w - 1, Math.floor(Math.floor(ziel.x / TILE) / q) * q + 1));
+    const zty = Math.max(0, Math.min(g.h - 1, Math.floor(Math.floor(ziel.y / TILE) / q) * q + 1));
     const key = `${team}:${ztx},${zty}`;
     let e = this.wegfelder.get(key);
     const now = this.host.scene.time.now;

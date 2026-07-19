@@ -164,7 +164,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     } else {
       for (const ziel of [...this.enemies]) {
         if (ziel === e || ziel.team === e.team || ziel.hp <= 0 || !trifft(ziel.x, ziel.y, ziel.r)) continue;
-        this.damageEnemy(ziel, schaden, 0, 0, '#d06058', false);
+        // R190: Kills der EIGENEN Skelettwache geben keine Held-XP (durchTruppe)
+        this.damageEnemy(ziel, schaden, 0, 0, '#d06058', false, true);
         if (ziel.hp <= 0) continue;
         const a = Math.atan2(ziel.y - e.y, ziel.x - e.x);
         if (cfg.stoss > 0) ziel.stossWeg(Math.cos(a) * cfg.stoss, Math.sin(a) * cfg.stoss, cfg.laehmung);
@@ -195,7 +196,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     } else {
       for (const ziel of [...this.enemies]) {
         if (ziel === e || ziel.team === e.team || ziel.hp <= 0 || !trifft(ziel.x, ziel.y, ziel.r)) continue;
-        this.damageEnemy(ziel, schaden, 0, 0, '#d5c7a7', false);
+        // R190: Kills der EIGENEN Skelettwache geben keine Held-XP (durchTruppe)
+        this.damageEnemy(ziel, schaden, 0, 0, '#d5c7a7', false, true);
         const a = Math.atan2(ziel.y - e.y, ziel.x - e.x);
         ziel.stossWeg(Math.cos(a) * cfg.stoss, Math.sin(a) * cfg.stoss, 0.28);
       }
