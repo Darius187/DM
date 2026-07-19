@@ -12,6 +12,7 @@ import { registriereLagerBitmaps, registriereBauKacheln } from '../gfx/lagerBitm
 import gfxConfig from '../data/gfx.json';
 import { REIT_PFERD } from '../data/reiten';
 import { GOLEM } from '../data/golem';
+import { SKELETTWACHE } from '../data/skelettwache';
 
 interface Candidate { key: string; url: string; art: 'image' | 'audio' | 'atlas' | 'json'; atlasJson?: string; optional?: boolean }
 
@@ -34,6 +35,7 @@ export class BootScene extends Phaser.Scene {
     c.push({ key: REIT_PFERD.uebergangRunterAtlasKey, url: REIT_PFERD.uebergangRunterAtlasBild, art: 'atlas', atlasJson: REIT_PFERD.uebergangRunterAtlasJson });
     c.push({ key: REIT_PFERD.sattelPunkteKey, url: REIT_PFERD.sattelPunkteJson, art: 'json' });
     c.push({ key: GOLEM.atlasKey, url: GOLEM.atlasBild, art: 'atlas', atlasJson: GOLEM.atlasJson });
+    c.push({ key: SKELETTWACHE.atlasKey, url: SKELETTWACHE.atlasBild, art: 'atlas', atlasJson: SKELETTWACHE.atlasJson });
     for (const name of PORTRAITS) {
       c.push({ key: `pt_${name}`, url: `portraits/${name}.png`, art: 'image' });
       for (let v = 2; v <= 3; v++) {

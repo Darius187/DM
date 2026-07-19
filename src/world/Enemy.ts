@@ -12,6 +12,7 @@ import { TUNING } from '../logic/tuning';
 import { PHYSIK, ANGRIFFSSLOTS } from '../data/kampf';
 import { MORAL } from '../data/rts';
 import { GOLEM } from '../data/golem';
+import { SKELETTWACHE } from '../data/skelettwache';
 
 export interface EnemyHost {
   isSolidAt(x: number, y: number): boolean;
@@ -28,6 +29,7 @@ export interface EnemyHost {
   playSound(name: string, volMult?: number): void;
   burstFx(x: number, y: number, col: number, n: number, spd: number): void;
   golemSpezial(e: Enemy, art: 'rundum' | 'welle' | 'stampf' | 'zorn'): void;
+  skelettwacheRundum(e: Enemy): void;
   // Rudel-Verhalten (Runde 27): wie viele Verbündete stehen nahe bei e?
   verbuendeteNahe(e: Enemy, radius: number): number;
   // Begegnungs-Ruf (Runde 32): erster Sichtkontakt, gedrosselt
@@ -50,7 +52,8 @@ export interface EnemyHost {
 // Angriffsmuster je Gegnertyp (Masterprompt 4.3: 2-3 Muster, Telegraph 0,35-0,85 s)
 interface AttackPattern {
   id: 'hieb' | 'doppelhieb' | 'giftwolke' | 'blinkschlag' | 'sprung'
-    | 'golem_rundum' | 'golem_welle' | 'golem_stampf' | 'golem_zorn';
+    | 'golem_rundum' | 'golem_welle' | 'golem_stampf' | 'golem_zorn'
+    | 'wache_stich' | 'wache_kombo' | 'wache_rundum';
   windup: number;
   weight: number;
 }
@@ -62,6 +65,11 @@ const PATTERNS: Partial<Record<EnemyTypeId, AttackPattern[]>> = {
   skelett: [
     { id: 'hieb', windup: 0.36, weight: 3 },
     { id: 'doppelhieb', windup: 0.5, weight: 1 },
+  ],
+  skelettwache: [
+    { id: 'wache_stich', windup: 0.38, weight: 5 },
+    { id: 'wache_kombo', windup: 0.52, weight: 3 },
+    { id: 'wache_rundum', windup: 0.78, weight: 1 },
   ],
   schuetze: [
     { id: 'hieb', windup: 0.35, weight: 1 },
@@ -150,6 +158,8 @@ export class Enemy {
   golemVollerSchaden = 0;
   golemSpezialCd = 2.8 + Math.random() * 1.8;
   golemTelegraphArt: 'rundum' | 'welle' | 'stampf' | 'zorn' | null = null;
+  skelettwacheAngriff: 'thrust' | 'combo' | 'spin' | null = null;
+  skelettwacheSpezialCd = 2.8 + Math.random() * 2.2;
   private golemZornFolge = 0;
   wobble: number;
   dir: Dir = 0;
@@ -385,6 +395,7 @@ export class Enemy {
     this.visualHitT = Math.max(0, this.visualHitT - dt);
     this.visualAttackT = Math.max(0, this.visualAttackT - dt);
     this.golemSpezialCd = Math.max(0, this.golemSpezialCd - dt);
+    this.skelettwacheSpezialCd = Math.max(0, this.skelettwacheSpezialCd - dt);
     this.slowT = Math.max(0, this.slowT - dt);
     this.rootT = Math.max(0, this.rootT - dt);
     this.markedT = Math.max(0, this.markedT - dt);
@@ -794,6 +805,7 @@ export class Enemy {
   private startPattern(host: EnemyHost, id: AttackPattern['id'], windup?: number): void {
     // R139 (1.7): Kampfverbot - kein Ausholen, egal aus welchem Zweig.
     if (this.kaempftNicht) return;
+    if (id === 'wache_rundum' && this.skelettwacheSpezialCd > 0) id = 'wache_stich';
     const def = (PATTERNS[this.type] ?? []).find((p) => p.id === id);
     this.pattern = id;
     // Schlagtempo-Regler (F10, Runde 27): höher = kürzeres Ausholen,
@@ -806,6 +818,14 @@ export class Enemy {
         : id === 'golem_welle' ? 'welle'
         : id === 'golem_stampf' ? 'stampf'
         : id === 'golem_zorn' ? 'zorn' : null;
+    }
+    if (this.type === 'skelettwache') {
+      this.skelettwacheAngriff = id === 'wache_kombo' ? 'combo' : id === 'wache_rundum' ? 'spin' : 'thrust';
+      this.visualAttackDauer = this.windup + SKELETTWACHE.schlagNachlaufS;
+      this.visualAttackT = this.visualAttackDauer;
+      if (id === 'wache_rundum') {
+        this.skelettwacheSpezialCd = SKELETTWACHE.rundum.cooldownMinS + Math.random() * SKELETTWACHE.rundum.cooldownSpanneS;
+      }
     }
     this.atkCd = (ENEMY_AI.meleeAtkCd + (id === 'hieb' ? 0 : 0.6)) / (TUNING.gegnerSchlagtempo * this.schlagtempoF);
     host.playSound('telegraph', 0.7);
@@ -872,6 +892,22 @@ export class Enemy {
         break;
       case 'golem_zorn':
         host.golemSpezial(this, 'zorn');
+        break;
+      case 'wache_stich': {
+        this.lungeIn(host, px, py, 28);
+        const reichweite = this.r + host.playerR() + 30 * (TUNING.gegnerReichweite * this.reichweiteF);
+        if (Math.hypot(px - this.x, py - this.y) < reichweite) host.enemyMeleeHit(this, this.dmg);
+        break;
+      }
+      case 'wache_kombo': {
+        this.lungeIn(host, px, py, 25);
+        const reichweite = this.r + host.playerR() + 32 * (TUNING.gegnerReichweite * this.reichweiteF);
+        if (Math.hypot(px - this.x, py - this.y) < reichweite) host.enemyMeleeHit(this, Math.round(this.dmg * 0.72));
+        this.secondHitT = 0.22;
+        break;
+      }
+      case 'wache_rundum':
+        host.skelettwacheRundum(this);
         break;
     }
     this.golemTelegraphArt = null;

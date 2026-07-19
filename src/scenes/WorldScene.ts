@@ -3986,7 +3986,9 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       const aktiv = this.rtsSpawnTyp === typ;
       const kn = this.add.rectangle(F(8), y, w - F(16), F(24), aktiv ? 0x3a2a12 : farbe, 0.9).setOrigin(0).setStrokeStyle(1, aktiv ? 0xc9a227 : 0x4a3a26).setInteractive({ useHandCursor: true });
       kn.on('pointerdown', () => { this.starteRtsSpawn(typ); this.sfx.play('klick', 0.5); this.baueRtsLeiste(); });
-      const rolle = typ === 'e_golem' ? 'Monstrositaet aus Fleisch, Blut und Knochen' : d.heiler ? 'Heilt Verwundete' : d.reich > 100 ? 'Fernkampf (Bogen)' : d.reich > 32 ? 'Reiter (schnell, stark)' : 'Nahkampf (Schild/Schwert)';
+      const rolle = typ === 'e_golem' ? 'Monstrositaet aus Fleisch, Blut und Knochen'
+        : typ === 'e_skelettwache' ? 'Besondere Speerwache mit Stichkombos und Rundumschlag'
+        : d.heiler ? 'Heilt Verwundete' : d.reich > 100 ? 'Fernkampf (Bogen)' : d.reich > 32 ? 'Reiter (schnell, stark)' : 'Nahkampf (Schild/Schwert)';
       const tip = `${d.name}\n${rolle}\nLeben ${d.hp} · Schaden ${d.dmg} · Reichweite ${d.reich} · Tempo ${d.speed}\nKämpft mit der Dungeon-Technik.`;
       kn.on('pointerover', () => this.zeigeBauTooltip(tip, c.x));
       kn.on('pointerout', () => this.versteckeBauTooltip());
@@ -3998,7 +4000,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     c.add(this.add.text(F(8), y, 'Eigene Truppen', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a', letterSpacing: 1 })); y += F(15);
     for (const t of ['schild', 'nahkampf', 'bogen', 'reiter'] as RtsUnitTyp[]) knopf(t, 0x16220f);
     c.add(this.add.text(F(8), y, 'Feind-Monster', { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a', letterSpacing: 1 })); y += F(15);
-    for (const t of ['e_nah', 'e_bogen', 'e_elite', 'e_golem'] as RtsUnitTyp[]) knopf(t, 0x221010);
+    for (const t of ['e_nah', 'e_bogen', 'e_elite', 'e_skelettwache', 'e_golem'] as RtsUnitTyp[]) knopf(t, 0x221010);
     const z = this.rtsBattle?.zaehlung() ?? { eigene: 0, feind: 0 };
     const loesch = this.add.text(F(8), y + F(2), `Eigene ${z.eigene} · Feind ${z.feind}  [alle entfernen]`, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: '#8a7a5a' }).setInteractive({ useHandCursor: true });
     loesch.on('pointerdown', () => { this.rtsBattle?.alleEntfernen(); this.brichRtsSpawnAb(); this.baueRtsLeiste(); });
@@ -6493,6 +6495,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     { box: 'S1', id: 'fleischerei', url: 'houses/butcher/medieval_butcher_house_3d_runtime.json', yaw: 0 },
     { box: 'S2', id: 'stall', url: 'houses/stable/medieval_stable_house_3d_runtime.json', yaw: 0 },
     { box: 'B1', id: 'schmiede', url: 'houses/forge/medieval_forge_3d_runtime.json', yaw: 0 },
+    { box: 'B2', id: 'wirtshaus', url: 'houses/tavern/medieval_tavern_house_3d_runtime.json', yaw: 0 },
     { box: 'B3', id: 'baeckerei', url: 'houses/bakery/medieval_bakery_house_3d_runtime.json', yaw: 0 },
     { box: 'B4', id: 'kirche', url: 'houses/church/medieval_village_church_3d_runtime.json', yaw: 0 },
     { box: 'B6', id: 'muehle', url: 'houses/mill/medieval_mill_house_3d_runtime.json', yaw: 180 },
@@ -7597,6 +7600,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       playSound: (n, v) => s.playSound(n, v),
       burstFx: (x, y, col, n, spd) => s.burstFx(x, y, col, n, spd),
       golemSpezial: (en, art) => s.golemSpezial(en, art),
+      skelettwacheRundum: (en) => s.skelettwacheRundum(en),
       verbuendeteNahe: (en, radius) => { let n = 0; for (const o of s.enemies) { if (o !== en && o.team === en.team && o.hp > 0 && Math.hypot(o.x - en.x, o.y - en.y) < radius) n++; } return n; },
       begegnungsRuf: (en) => { if (en.team !== 'spieler') s.begegnungsRuf(en); },
       wegRichtung: (x, y) => {

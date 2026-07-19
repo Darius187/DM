@@ -47,6 +47,8 @@ import { NOTIZEN } from '../data/texte';
 import { GOLEM, golemFrame } from '../data/golem';
 import { wendeGolemSpriteAn } from '../gfx/golemArt';
 import { aktuellesGolemTuning } from '../gfx/golemTuning';
+import { SKELETTWACHE, skelettwacheFrame } from '../data/skelettwache';
+import { wendeSkelettwacheSpriteAn } from '../gfx/skelettwacheArt';
 
 export interface Projectile {
   x: number; y: number; vx: number; vy: number; r: number; dmg: number;
@@ -167,6 +169,35 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         const a = Math.atan2(ziel.y - e.y, ziel.x - e.x);
         if (cfg.stoss > 0) ziel.stossWeg(Math.cos(a) * cfg.stoss, Math.sin(a) * cfg.stoss, cfg.laehmung);
         else if (ziel.type !== 'golem') ziel.stun = Math.max(ziel.stun, cfg.laehmung);
+      }
+    }
+  }
+
+  skelettwacheRundum(e: Enemy): void {
+    const cfg = SKELETTWACHE.rundum;
+    const schaden = Math.max(1, Math.round(e.dmg * cfg.schadenF));
+    this.fx.welle(e.x, e.y, cfg.radius, 0x9a8a6f);
+    this.fx.burst(e.x, e.y, 0xbeb49c, 18, 190);
+    this.sfx.play('telegraph', 0.8);
+    const trifft = (x: number, y: number, r: number): boolean => Math.hypot(x - e.x, y - e.y) < cfg.radius + r;
+    if (e.team === 'feind') {
+      if (!this.playerDead && trifft(this.px, this.py, PLAYER.radius)) {
+        this.enemyMeleeHit(e, schaden);
+        const a = Math.atan2(this.py - e.y, this.px - e.x);
+        this.movePlayer(Math.cos(a) * 20, Math.sin(a) * 20);
+      }
+      for (const ziel of [...this.enemies]) {
+        if (ziel === e || ziel.team !== 'spieler' || ziel.hp <= 0 || !trifft(ziel.x, ziel.y, ziel.r)) continue;
+        this.trifftVerbuendeten(ziel, schaden);
+        const a = Math.atan2(ziel.y - e.y, ziel.x - e.x);
+        ziel.stossWeg(Math.cos(a) * cfg.stoss, Math.sin(a) * cfg.stoss, 0.28);
+      }
+    } else {
+      for (const ziel of [...this.enemies]) {
+        if (ziel === e || ziel.team === e.team || ziel.hp <= 0 || !trifft(ziel.x, ziel.y, ziel.r)) continue;
+        this.damageEnemy(ziel, schaden, 0, 0, '#d5c7a7', false);
+        const a = Math.atan2(ziel.y - e.y, ziel.x - e.x);
+        ziel.stossWeg(Math.cos(a) * cfg.stoss, Math.sin(a) * cfg.stoss, 0.28);
       }
     }
   }
@@ -1698,6 +1729,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     if (e.schadensRed < 1) dmg = Math.max(1, Math.round(dmg * e.schadensRed));
     e.hp -= dmg;
     if (e.type !== 'golem') e.hitFlash = 0.12;
+    if (e.type === 'skelettwache') e.visualHitT = SKELETTWACHE.trefferDauerS;
     e.onHurt();
     if (e.type === 'golem') this.aktualisiereGolemPhasen(e);
     this.fx.float(e.x + (Math.random() * 12 - 6), e.y - e.r - 8, String(dmg), col ?? '#e8dcc0');
@@ -1717,7 +1749,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
     // Treffer-Spritzer: Blut bei Fleisch, Knochenstaub bei Skeletten (Runde 34)
     const trefferFarbe = e.type === 'golem' ? 0x8f101c
-      : (e.type === 'skelett' || e.type === 'schuetze') ? 0xcfc4a8 : 0xa82020;
+      : (e.type === 'skelett' || e.type === 'skelettwache' || e.type === 'schuetze') ? 0xcfc4a8 : 0xa82020;
     this.fx.burst(e.x, e.y, trefferFarbe, e.type === 'golem' ? 14 : 6, e.type === 'golem' ? 125 : 120);
     if (e.type === 'golem') this.cameras.main.shake(55, 0.0015);
     this.playHitSound(e);
@@ -1877,7 +1909,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // langsam, ALLE Partikel fallen blutrot auseinander (Skelette weiß),
     // dazu Lichtblitz + Blutnebel. Länger, passend zu den Todeslauten.
     // Abschaltbar über "Blut & Überreste".
-    const knochen = e.type === 'skelett' || e.type === 'schuetze';
+    const knochen = e.type === 'skelett' || e.type === 'skelettwache' || e.type === 'schuetze';
     // Wucht der tötenden Waffe: Hammer schleudert die Teile weiter als ein
     // Schwert (Runde 35, Werte in kampf.ts).
     const wucht = GORE_WUCHT[this.weaponClass()] ?? 1;
@@ -1921,6 +1953,22 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         if (!leiche.active) return;
         this.tweens.add({ targets: leiche, alpha: 0, duration: 1400, onComplete: () => leiche.destroy() });
       });
+    } else if (e.type === 'skelettwache' && e.sprite) {
+      const leiche = e.sprite;
+      const frameMs = 1000 / SKELETTWACHE.fps.death;
+      const fallMs = SKELETTWACHE.frames.death * frameMs;
+      e.sprite = null;
+      leiche.clearTint().setOrigin(0.5, SKELETTWACHE.bodenanker).setScale(SKELETTWACHE.skala);
+      for (let frame = 0; frame < SKELETTWACHE.frames.death; frame++) {
+        this.time.delayedCall(frame * frameMs, () => {
+          if (leiche.active) leiche.setTexture(SKELETTWACHE.atlasKey, skelettwacheFrame('death', e.visualDir8, frame));
+        });
+      }
+      this.time.delayedCall(fallMs * 0.7, () => this.fx.burst(e.x, e.y, 0xcfc4a8, 16, 130));
+      this.time.delayedCall(fallMs + 4200, () => {
+        if (!leiche.active) return;
+        this.tweens.add({ targets: leiche, alpha: 0, duration: 1000, onComplete: () => leiche.destroy() });
+      });
     } else if (e.sprite && getSettings().blood) {
       const leiche = e.sprite;
       e.sprite = null;
@@ -1953,7 +2001,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.sfx.playAbwechselnd('schwert_slice', 3, 0.8);
     const todBasis = e.type === 'pest' ? 'tod_pest'
       : e.type === 'skelett' && e.schild ? 'tod_skelett_schild'
-      : (e.type === 'skelett' || e.type === 'schuetze') ? 'tod_skelett'
+      : (e.type === 'skelett' || e.type === 'skelettwache' || e.type === 'schuetze') ? 'tod_skelett'
       : 'tod_universal';
     if (!this.sfx.playAtAbwechselnd(todBasis, 3, e.x, e.y, 0.9) && !this.sfx.playAtAbwechselnd('tod_universal', 3, e.x, e.y, 0.9)) {
       this.sfx.playAt('tod', e.x, e.y);
@@ -2114,6 +2162,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     e.speed *= TUNING.gegnerTempo;
     e.sprite = this.add.sprite(x, y, '__DEFAULT');
     if (type === 'golem') wendeGolemSpriteAn(e.sprite, e);
+    else if (type === 'skelettwache') wendeSkelettwacheSpriteAn(e.sprite, e);
     else this.provider.applyFigure(e.sprite, e.figur(), 0, 0);
     if (e.boss) e.sprite.setScale(1.5);
     else if (e.elite) e.sprite.setScale(1.25);
@@ -3819,14 +3868,16 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       // transparent.
       const istSchatten = e.type === 'schatten';
       const istGolem = e.type === 'golem';
-      const wob = istGolem ? 0 : istSchatten ? Math.sin(e.wobble * 0.6) * 2.5 : Math.sin(e.wobble) * 1.5;
+      const istSkelettwache = e.type === 'skelettwache';
+      const wob = istGolem || istSkelettwache ? 0 : istSchatten ? Math.sin(e.wobble * 0.6) * 2.5 : Math.sin(e.wobble) * 1.5;
       e.sprite.setPosition(e.x, e.y + wob).setDepth(this.gegnerTiefe(e.sprite, e.y));
       if (istGolem) wendeGolemSpriteAn(e.sprite, e);
+      else if (istSkelettwache) wendeSkelettwacheSpriteAn(e.sprite, e);
       else this.provider.applyFigure(e.sprite, e.figur(), e.dir, istSchatten ? 0 : e.step);
       if (istSchatten) e.sprite.setAlpha(0.72);
       else if (e.sprite.alpha !== 1) e.sprite.setAlpha(1);
-      if (!istGolem && e.boss) e.sprite.setScale(1.5);
-      else if (!istGolem && e.elite) e.sprite.setScale(1.25);
+      if (!istGolem && !istSkelettwache && e.boss) e.sprite.setScale(1.5);
+      else if (!istGolem && !istSkelettwache && e.elite) e.sprite.setScale(1.25);
       if (istGolem) {
         // Keine weisse Standard-Trefferlampe. Die Verletzungsstufen werden
         // dauerhaft dunkler/roher; unter 5% pulst die letzte Raserei rot.
