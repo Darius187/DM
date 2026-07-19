@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { RTS_UNIT_TYP } from '../src/data/rts';
 import { SKELETTWACHE, skelettwacheFrame } from '../src/data/skelettwache';
+import { skelettwacheClipUndFrame } from '../src/gfx/skelettwacheArt';
+import type { Enemy } from '../src/world/Enemy';
 
 describe('Skelettwache', () => {
   it('ist als besondere feindliche RTS-Einheit verdrahtet', () => {
@@ -21,5 +23,24 @@ describe('Skelettwache', () => {
     const frameAnzahl = Object.values(SKELETTWACHE.frames).reduce((summe, n) => summe + n, 0) * SKELETTWACHE.richtungen;
     expect(frameAnzahl).toBe(576);
     expect(Math.ceil(frameAnzahl / 12) * SKELETTWACHE.zellen).toBeLessThanOrEqual(8192);
+  });
+
+  it('haelt die Angriffskadenz kurz und synchron zur Clipdauer', () => {
+    expect(SKELETTWACHE.angriffe.thrust.zyklusS).toBeLessThan(0.8);
+    expect(SKELETTWACHE.angriffe.combo.windupS / (SKELETTWACHE.angriffe.combo.windupS + SKELETTWACHE.angriffe.combo.nachlaufS)).toBeCloseTo(0.42, 1);
+    expect(SKELETTWACHE.angriffe.combo.zweiterTrefferS).toBeLessThan(SKELETTWACHE.angriffe.combo.nachlaufS);
+  });
+
+  it('unterbricht einen laufenden Speerangriff nicht mit dem Trefferclip', () => {
+    const wache = {
+      visualHitT: SKELETTWACHE.trefferDauerS,
+      visualAttackT: 0.3,
+      visualAttackDauer: 0.6,
+      skelettwacheAngriff: 'thrust',
+      visualMoveT: 0,
+      visualWalkTime: 0,
+      visualTime: 0,
+    } as Enemy;
+    expect(skelettwacheClipUndFrame(wache).clip).toBe('thrust');
   });
 });

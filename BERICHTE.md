@@ -1820,3 +1820,20 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
 - Dazu R184: der Waldrand recarvt seine Wasser-Kollision jetzt nach der
   SICHTBAREN Geometrie (unsichtbare Alt-Fluss-Wand weg) und R192: die
   Zuflucht-Lore (Burg nimmt keine Fluechtlinge) beim ersten Stadtbesuch.
+
+## Runde 193 - Skelettwache: dynamischer Lauf und schlagfertige Speerkombos
+- Blender-Pass ueber alle sieben Clips und acht Richtungen: groesserer,
+  geerdeter Schritt mit Gewichtsverlagerung von Becken/Rumpf, lesbare diagonale
+  Speerstiche sowie ein echter Ganzkoerper-Rundumschlag. Der 576-Frame-Atlas
+  wurde mit Blender 5.1 vollstaendig neu gerendert und WebGL-sicher gepackt.
+- Kampfcode und Clip sind jetzt eine Zeitleiste: Stichkontakt bei 0,30 s,
+  erster Kombotreffer bei 0,34 s, zweiter Treffer 0,24 s spaeter. Weg sind die
+  vorherige 1,3-s-Pauschalpause, der Hit-Clip-Sprung mitten im Angriff und das
+  Umspringen der Blickrichtung waehrend eines laufenden Speerhiebs.
+- Die Wache pariert kuerzer und kontert mit ihrem eigenen Speerstich. Kombo und
+  Stich kommen haeufiger zum Einsatz; der Rundumschlag bleibt der seltene,
+  deutlich lesbare Spezialangriff.
+- Browser-Abnahme: `RTS -> Dev/Test -> Feind-Monster -> Skelettwache` sichtbar,
+  Tooltip und Platzierungsmodus funktionieren, neuer Atlas wird geladen,
+  keine Browser-Konsolenfehler. Produktions-Build sowie 66 Testdateien / 412
+  Tests sind gruen.

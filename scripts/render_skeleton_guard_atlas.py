@@ -164,10 +164,10 @@ def keyed(t: float, keys: tuple[tuple[float, float], ...]) -> float:
 
 def gait(phase: float) -> tuple[float, float]:
     t = phase % 1.0
-    if t < 0.62:
-        return 0.14 - (t / 0.62) * 0.28, 0.0
-    swing = smoothstep((t - 0.62) / 0.38)
-    return -0.14 + swing * 0.28, math.sin(math.pi * swing) * 0.11
+    if t < 0.60:
+        return 0.18 - (t / 0.60) * 0.36, 0.0
+    swing = smoothstep((t - 0.60) / 0.40)
+    return -0.18 + swing * 0.36, math.sin(math.pi * swing) * 0.14
 
 
 def place_weapon(weapon: bpy.types.Object, center: Vector, direction: Vector, roll: float = 0.0) -> None:
@@ -204,38 +204,67 @@ def set_pose(armature: bpy.types.Object, weapon: bpy.types.Object, clip: str, fr
         stride_r, lift_r = gait(phase + 0.5)
         set_target("foot_l", (0.17, stride_l, 0.08 + lift_l))
         set_target("foot_r", (-0.17, stride_r, 0.08 + lift_r))
-        rot(armature, "spine_01", "y", wave * 2.8)
-        rot(armature, "spine_03", "z", -wave * 1.5)
-        rear += Vector((wave * 0.018, 0, abs(wave) * 0.018))
+        # Gewicht klar ueber das Standbein verlagern. Becken und Schultergurt
+        # arbeiten gegeneinander; dadurch laeuft nicht nur das Bein unter einer
+        # starren, scheinbar schwebenden Brust.
+        armature.location.x = wave * 0.022
+        armature.location.z = 0.012 + abs(wave) * 0.018
+        armature.rotation_euler.z = math.radians(wave * 2.4)
+        rot(armature, "pelvis", "y", wave * 5.5)
+        rot(armature, "spine_01", "y", -wave * 4.2)
+        rot(armature, "spine_03", "z", -wave * 3.4)
+        rot(armature, "head", "z", wave * 2.2)
+        rear += Vector((-wave * 0.038, wave * 0.018, abs(wave) * 0.028))
         set_target("hand_r", tuple(rear))
         set_target("hand_l", tuple(rear + spear_dir * 0.37))
     elif clip == "thrust":
-        spear_dir = Vector((0, -1, 0.10)).normalized()
-        advance = keyed(t, ((0, 0), (0.28, -0.28), (0.50, 0.48), (0.66, 0.22), (1, 0)))
-        rear += spear_dir * advance
-        rot(armature, "spine_01", "z", -advance * 17)
-        rot(armature, "spine_03", "z", -advance * 10)
+        # Leicht diagonal stechen: Ein exakt zur Kamera gefuehrter Speer wuerde
+        # in Vorder-/Rueckansicht optisch auf Faustlaenge zusammenschrumpfen.
+        spear_dir = Vector((-0.34, -1, 0.16)).normalized()
+        advance = keyed(t, ((0, 0), (0.28, -0.30), (0.50, 0.58), (0.64, 0.24), (1, 0)))
+        side = keyed(t, ((0, 0), (0.28, 0.14), (0.50, -0.04), (0.72, 0.03), (1, 0)))
+        rear += spear_dir * advance + Vector((side, 0, max(0, advance) * 0.04))
+        armature.location.y = -max(0, advance) * 0.08
+        rot(armature, "pelvis", "z", -advance * 8)
+        rot(armature, "spine_01", "z", -advance * 25)
+        rot(armature, "spine_03", "y", side * 42)
+        rot(armature, "head", "z", advance * 6)
+        set_target("foot_l", (0.19, -0.02 - max(0, advance) * 0.12, 0.08))
+        set_target("foot_r", (-0.19, 0.02 + max(0, advance) * 0.05, 0.08))
         set_target("hand_r", tuple(rear))
-        set_target("hand_l", tuple(rear + spear_dir * 0.40))
+        set_target("hand_l", tuple(rear + spear_dir * 0.43))
     elif clip == "combo":
-        spear_dir = Vector((0, -1, 0.10)).normalized()
-        first = keyed(t, ((0, 0), (0.16, -0.20), (0.29, 0.40), (0.40, 0.06), (0.47, 0))) if t <= 0.47 else 0
-        second = keyed(t, ((0.47, 0), (0.57, -0.23), (0.70, 0.53), (0.82, 0.16), (1, 0))) if t >= 0.47 else 0
+        first = keyed(t, ((0, 0), (0.18, -0.26), (0.42, 0.52), (0.50, 0.08), (0.54, 0))) if t <= 0.54 else 0
+        second = keyed(t, ((0.50, 0), (0.57, -0.27), (0.72, 0.58), (0.84, 0.16), (1, 0))) if t >= 0.50 else 0
         advance = first + second
-        side = -0.10 if t < 0.47 else 0.10
-        rear += spear_dir * advance + Vector((side * abs(advance), 0, 0))
-        rot(armature, "spine_01", "y", side * 75)
-        rot(armature, "spine_03", "z", -advance * 18)
+        diagonal = keyed(t, ((0, -0.34), (0.47, -0.30), (0.54, 0.36), (1, 0.30)))
+        spear_dir = Vector((diagonal, -1, 0.15)).normalized()
+        side = (-0.12 if t < 0.52 else 0.14) * abs(advance)
+        rear += spear_dir * advance + Vector((side, 0, max(0, advance) * 0.035))
+        armature.location.y = -max(0, advance) * 0.07
+        armature.rotation_euler.z = math.radians(keyed(t, ((0, 0), (0.18, -5), (0.42, 4), (0.57, 6), (0.72, -5), (1, 0))))
+        rot(armature, "pelvis", "z", -advance * 7)
+        rot(armature, "spine_01", "y", side * 95)
+        rot(armature, "spine_03", "z", -advance * 24)
+        set_target("foot_l", (0.20, -0.01 - max(0, first) * 0.10, 0.08))
+        set_target("foot_r", (-0.20, 0.02 - max(0, second) * 0.10, 0.08))
         set_target("hand_r", tuple(rear))
-        set_target("hand_l", tuple(rear + spear_dir * 0.40))
+        set_target("hand_l", tuple(rear + spear_dir * 0.43))
     elif clip == "spin":
-        turn = smoothstep(t) * math.tau
+        # Kurze Gegenbewegung, explosive volle Drehung, kontrollierter Nachlauf.
+        # Der ganze Koerper dreht mit - nicht nur der Speer vor einer starren Figur.
+        turn = keyed(t, ((0, 0), (0.18, -0.24), (0.68, math.tau + 0.12), (0.84, math.tau), (1, math.tau)))
         spear_dir = Vector((math.sin(turn), -math.cos(turn), 0.04)).normalized()
         center = Vector((0, -0.08, 1.22 + math.sin(t * math.pi) * 0.06))
         set_target("hand_r", tuple(center - spear_dir * 0.13))
         set_target("hand_l", tuple(center + spear_dir * 0.13))
-        rot(armature, "spine_01", "y", math.sin(turn) * 12)
-        rot(armature, "spine_03", "z", -math.sin(turn) * 8)
+        armature.rotation_euler.z = turn
+        armature.location.z = math.sin(t * math.pi) * 0.025
+        rot(armature, "pelvis", "y", math.sin(turn) * 10)
+        rot(armature, "spine_01", "y", math.sin(turn) * 16)
+        rot(armature, "spine_03", "z", -math.sin(turn) * 12)
+        set_target("foot_l", (0.22, 0.02, 0.08))
+        set_target("foot_r", (-0.22, -0.02, 0.08))
         weapon_center = center
     elif clip == "hit":
         recoil = math.sin(t * math.pi)

@@ -8,8 +8,15 @@ export const SKELETTWACHE = {
   fps: { idle: 6, walk: 11, thrust: 13, combo: 14, spin: 15, hit: 16, death: 8 },
   skala: 0.68,
   bodenanker: 0.925,
-  trefferDauerS: 0.34,
-  schlagNachlaufS: 0.42,
+  trefferDauerS: 0.20,
+  // Trefferzeit, Nachschwung und naechster Angriff benutzen dieselbe Zeitleiste
+  // wie die Blender-Clips. So trifft der Speer im sichtbaren Kontakt-Frame und
+  // die Wache faellt danach nicht in eine lange, untätige Standardpause.
+  angriffe: {
+    thrust: { windupS: 0.30, nachlaufS: 0.30, zyklusS: 0.74 },
+    combo: { windupS: 0.34, nachlaufS: 0.48, zyklusS: 0.96, zweiterTrefferS: 0.24 },
+    spin: { windupS: 0.52, nachlaufS: 0.46, zyklusS: 1.24 },
+  },
   rundum: { radius: 92, schadenF: 0.82, stoss: 270, cooldownMinS: 5.5, cooldownSpanneS: 2.5 },
 } as const;
 

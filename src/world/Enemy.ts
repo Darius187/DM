@@ -67,9 +67,9 @@ const PATTERNS: Partial<Record<EnemyTypeId, AttackPattern[]>> = {
     { id: 'doppelhieb', windup: 0.5, weight: 1 },
   ],
   skelettwache: [
-    { id: 'wache_stich', windup: 0.38, weight: 5 },
-    { id: 'wache_kombo', windup: 0.52, weight: 3 },
-    { id: 'wache_rundum', windup: 0.78, weight: 1 },
+    { id: 'wache_stich', windup: SKELETTWACHE.angriffe.thrust.windupS, weight: 4 },
+    { id: 'wache_kombo', windup: SKELETTWACHE.angriffe.combo.windupS, weight: 4 },
+    { id: 'wache_rundum', windup: SKELETTWACHE.angriffe.spin.windupS, weight: 1 },
   ],
   schuetze: [
     { id: 'hieb', windup: 0.35, weight: 1 },
@@ -432,7 +432,9 @@ export class Enemy {
     // Blickrichtung für das Sprite
     const ang = Math.atan2(py - this.y, px - this.x);
     this.dir = angleToDir(ang);
-    this.visualDir8 = angleToDir8(ang);
+    // Einen begonnenen Speerhieb in seiner Richtung zu Ende fuehren. Sonst kann
+    // seitliches Ausweichen mitten im Clip zwischen zwei Atlasansichten springen.
+    if (this.type !== 'skelettwache' || this.visualAttackT <= 0) this.visualDir8 = angleToDir8(ang);
 
     // Wucht-Rückstoß (Runde 44): Hammer/Axt schleudern den Gegner zurück - er
     // gleitet mit Reibung aus, bevor die KI (nach dem kurzen Stun) übernimmt.
@@ -509,14 +511,19 @@ export class Enemy {
       // Regler - höher = blockt öfter. Bei 2.0 (Standard) wie bisher.
       const clever = Math.max(0.05, TUNING.gegnerCleverness);
       if (this.blockCd === 0 && nahGenug && this.blockT === 0 && clever > 0.05) {
-        this.blockT = this.schild ? 0.9 + Math.random() * 0.5 : 0.4 + Math.random() * 0.3;
-        this.blockCd = (this.schild ? 2.5 + Math.random() * 2 : 3.2 + Math.random() * 2.6) * 2 / clever;
+        // Die Speerwache pariert nur kurz und kontert, statt bis zu 0,7 s in der
+        // Idle-Pose festzuhängen. Schildträger behalten ihre defensive Identität.
+        const istSpeerwache = this.type === 'skelettwache';
+        this.blockT = istSpeerwache ? 0.20 + Math.random() * 0.12
+          : this.schild ? 0.9 + Math.random() * 0.5 : 0.4 + Math.random() * 0.3;
+        this.blockCd = (istSpeerwache ? 4.0 + Math.random() * 1.8
+          : this.schild ? 2.5 + Math.random() * 2 : 3.2 + Math.random() * 2.6) * 2 / clever;
       }
       if (this.blockT > 0) {
         // Deckung läuft ab und der Spieler steht dran: Gegenstoß (Runde 27).
         // Konter-Chance skaliert STETIG mit der Cleverness (bei 2.0 = sicher).
         if (this.blockT <= dt * 2 && nahGenug && this.windup <= 0 && Math.random() < 0.5 * clever) {
-          this.startPattern(host, 'hieb', 0.2);
+          this.startPattern(host, this.type === 'skelettwache' ? 'wache_stich' : 'hieb', this.type === 'skelettwache' ? SKELETTWACHE.angriffe.thrust.windupS : 0.2);
         }
         return; // in Deckung: stehen, nicht angreifen
       }
@@ -524,8 +531,10 @@ export class Enemy {
     // Doppelhieb: zweiter Schlag kurz nach dem ersten
     if (this.secondHitT > 0) {
       this.secondHitT -= dt;
-      if (this.secondHitT <= 0 && d < this.r + host.playerR() + 20 * (TUNING.gegnerReichweite * this.reichweiteF)) {
-        host.enemyMeleeHit(this, Math.round(this.dmg * 0.7));
+      const istWachenKombo = this.type === 'skelettwache' && this.pattern === 'wache_kombo';
+      const zweiteReichweite = (istWachenKombo ? 32 : 20) * (TUNING.gegnerReichweite * this.reichweiteF);
+      if (this.secondHitT <= 0 && d < this.r + host.playerR() + zweiteReichweite) {
+        host.enemyMeleeHit(this, Math.round(this.dmg * (istWachenKombo ? 0.72 : 0.7)));
       }
     }
     // Sprungangriff: fliegt auf den Spieler zu, Kontakt verletzt
@@ -806,7 +815,10 @@ export class Enemy {
   private startPattern(host: EnemyHost, id: AttackPattern['id'], windup?: number): void {
     // R139 (1.7): Kampfverbot - kein Ausholen, egal aus welchem Zweig.
     if (this.kaempftNicht) return;
-    if (id === 'wache_rundum' && this.skelettwacheSpezialCd > 0) id = 'wache_stich';
+    if (id === 'wache_rundum' && this.skelettwacheSpezialCd > 0) {
+      id = 'wache_stich';
+      windup = SKELETTWACHE.angriffe.thrust.windupS;
+    }
     const def = (PATTERNS[this.type] ?? []).find((p) => p.id === id);
     this.pattern = id;
     // Schlagtempo-Regler (F10, Runde 27): höher = kürzeres Ausholen,
@@ -822,13 +834,17 @@ export class Enemy {
     }
     if (this.type === 'skelettwache') {
       this.skelettwacheAngriff = id === 'wache_kombo' ? 'combo' : id === 'wache_rundum' ? 'spin' : 'thrust';
-      this.visualAttackDauer = this.windup + SKELETTWACHE.schlagNachlaufS;
+      const timing = SKELETTWACHE.angriffe[this.skelettwacheAngriff];
+      this.visualAttackDauer = this.windup + timing.nachlaufS / (TUNING.gegnerSchlagtempo * this.schlagtempoF);
       this.visualAttackT = this.visualAttackDauer;
       if (id === 'wache_rundum') {
         this.skelettwacheSpezialCd = SKELETTWACHE.rundum.cooldownMinS + Math.random() * SKELETTWACHE.rundum.cooldownSpanneS;
       }
     }
-    this.atkCd = (ENEMY_AI.meleeAtkCd + (id === 'hieb' ? 0 : 0.6)) / (TUNING.gegnerSchlagtempo * this.schlagtempoF);
+    const wacheTiming = this.type === 'skelettwache' && this.skelettwacheAngriff
+      ? SKELETTWACHE.angriffe[this.skelettwacheAngriff] : null;
+    this.atkCd = (wacheTiming?.zyklusS ?? (ENEMY_AI.meleeAtkCd + (id === 'hieb' ? 0 : 0.6)))
+      / (TUNING.gegnerSchlagtempo * this.schlagtempoF);
     host.playSound('telegraph', 0.7);
   }
 
@@ -904,7 +920,8 @@ export class Enemy {
         this.lungeIn(host, px, py, 25);
         const reichweite = this.r + host.playerR() + 32 * (TUNING.gegnerReichweite * this.reichweiteF);
         if (Math.hypot(px - this.x, py - this.y) < reichweite) host.enemyMeleeHit(this, Math.round(this.dmg * 0.72));
-        this.secondHitT = 0.22;
+        this.secondHitT = SKELETTWACHE.angriffe.combo.zweiterTrefferS
+          / (TUNING.gegnerSchlagtempo * this.schlagtempoF);
         break;
       }
       case 'wache_rundum':
