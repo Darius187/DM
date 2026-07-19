@@ -1970,6 +1970,17 @@ export class WorldScene extends CombatScene {
     if (id === 'boss' && this.bossKampfSteht() && !a.geleert) this.resetBossTore(a);
     if (id === 'boss') this.baueBossBlut();
     if (!a.dark && !a.innen && (id === 'village' || id === 'wald')) this.baueRaben();
+    // R192 (Autor, Zuflucht-Vorschlag A angenommen): von ANFANG an klar -
+    // die Fuerstenburg nimmt kaum Fluechtlinge (Angst vor Krankheit), die
+    // sichere Zuflucht liegt im Norden. Der Held haelt es beim ersten
+    // Betreten Ravensmoors in seinen Aufzeichnungen fest.
+    if (id === 'stadt' && !this.flags.zufluchtGehoert) {
+      this.flags.zufluchtGehoert = true;
+      this.time.delayedCall(2500, () => this.dialog.show('Aus meinen Aufzeichnungen', [
+        'Unterwegs hieß es: Die Fürstenburg nimmt kaum noch Flüchtlinge auf - aus Angst vor Krankheiten. Wer Schutz sucht, dem bleibt der Norden. In den Bergen soll eine Zuflucht liegen, die als sicher gilt.',
+      ]));
+      this.chronik('geschichte', 'Die Fürstenburg verschließt sich Flüchtlingen aus Angst vor Krankheiten - als sicher gilt allein die Zuflucht im Norden.');
+    }
     if (id === 'crypt3' && !this.flags.ebene3) {
       // R176 (Autor): das Stadtportal ist QUEST-Belohnung - freigeschaltet,
       // sobald der Held die dritte Verlies-Ebene erreicht.
@@ -5321,7 +5332,12 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // Wasser-Waende stehen, wo der Regler den Fluss wegschmaelert hat.
   private recarveWasser(): void {
     const a = this.area, lauf = a?.wasserLauf;
-    if (!a || !lauf || lauf.vollszene || lauf.begehbar) return;
+    // R184 (Autor "auf Waldrand laufe ich gegen eine unsichtbare Wand, wo
+    // frueher ein Fluss war"): auch BEGEHBARE Wasserkarten (start) recarven -
+    // die Ausnahme liess dort die beim Kartenbau eingebrannte Kollision
+    // stehen, waehrend die SICHTBARE Geometrie (F10-Regler) laengst anders
+    // lief. R156-Regel gilt ueberall: Kollision folgt IMMER der Sichtbreite.
+    if (!a || !lauf || lauf.vollszene) return;
     const geo = this.aktuelleWasserGeo() ?? lauf.geo;
     const smink = lauf.smink ?? WASSER2_CFG.smink;
     let geaendert = 0;

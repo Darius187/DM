@@ -389,3 +389,8 @@ VORSCHLAG C: Kombination - kurzfristig Norden (nah, Berge = verteidigbar),
   Konvois auf (Nebenmissionen). Das nutzt beide Orte.
 Dein eigener Vorschlag (Horde blockiert die Startkarte) kommt danach zum
 Vergleich. ZWISCHENLOESUNG: A.
+
+## R192 - Gegenstaende im Kommando-Fenster?
+Der Autor ueberlegt, ob auch GEGENSTAENDE im Auswahl-Bereich des Kommando-
+Pults erscheinen sollen (neben Einheiten/Gegnern/Gebaeuden, R193).
+ZWISCHENLOESUNG: erstmal nicht - erst Einheiten/Gegner/Gebaeude sauber.
