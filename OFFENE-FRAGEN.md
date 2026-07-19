@@ -350,3 +350,9 @@ ZWISCHENLOESUNG: keine - Einfaelle ruhen faktisch. VORSCHLAG: eigener Auftrag
   Nord-/Ost-Strassen. Frage gegenstandslos.
 - R141 (Heer beim Kartenwechsel) und R142 (Wie ruft der Graf? Boten-Vorschlag)
   sind weiterhin OFFEN und warten auf deine Entscheidung.
+
+## R179 - Wie heisst der Bote?
+Der Grafen-Bote ist eingebaut (wohnt beim Amt, Schulze schickt ihn; Botenposten
+holt ihn ins Feldlager). Ich habe ihm bewusst KEINEN Namen gegeben (Regel 6:
+Namen kommen vom Autor). ZWISCHENLOESUNG: er heisst schlicht "der Bote".
+FRAGE: Wie soll er heissen - und soll er ein Gesicht/Portrait bekommen?

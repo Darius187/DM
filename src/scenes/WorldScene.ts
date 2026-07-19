@@ -60,7 +60,7 @@ import { HoehlenLeben } from '../gfx/hoehlenLeben';
 import { KriegsnebelAnzeige, type SichtSet } from '../systems/kriegsnebel';
 import { buildKerkerArea } from '../world/kerkerArea';
 import { MINE } from '../data/mine';
-import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, MORAL, MARSCH, VERTEIDIGUNG, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, MORAL, MARSCH, VERTEIDIGUNG, BOTE, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
@@ -99,6 +99,7 @@ import { respawnZiel } from '../logic/respawn';
 import { moralWert, fluchtEntscheidung, istEingekesselt, type MoralLage } from '../logic/moral';
 import { konterFaktor } from '../data/kampfarten';
 import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, garnisonVon, marschVon, storniereMarsch, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, einheitMaxHp, heerObergrenze, pruefeRekrutierung, desertiere, type Armee, type ArmeeEinheit } from '../logic/armee';
+import { boteNeu, schickeBote, tickBote, type Bote } from '../logic/bote';
 import { schlachtXp } from '../logic/schlachtWertung';
 import { BODEN_STILE, bodenStilTextur } from '../gfx/bodenStile';
 import { WAND_STILE, wandStilFrontTextur, wandStilKroneTextur } from '../gfx/wandStile';
@@ -411,6 +412,7 @@ export class WorldScene extends CombatScene {
     this.portalZiel = null;
     this.portalEnts = [];
     this.spaeherT = SPAEHER.intervallMinS;   // R178: Kundschafter-Uhr frisch
+    this.bote = boteNeu(BOTE.heim);          // R179: der Bote startet daheim
     this.nebelSprites = [];
     this.stimmungRect = null;
     this.vignetteImg = null;   // Neustart: mit dem stimmungRect zusammen neu aufbauen
@@ -4254,6 +4256,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     }
     // R94: in die Feldbau-Registry (Lebenspunkte, Klick-Menü)
     this.feldbauten.push({ id, x, y, tx, ty, tx2, ty2, hp: maxHp, maxHp, img, balken: null, offen: id === 'tor' ? false : undefined, quelle });
+    if (id === 'botenposten') this.botenZumPosten();   // R179: der Bote reitet heran
     this.panels?.refresh?.();
   }
 
@@ -4304,6 +4307,23 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       const bereit = this.wartfeuerCd <= 0;
       const vr = this.add.text(10, 92, bereit ? '🔥 Verstärkung rufen' : `Sammelt (${Math.ceil(this.wartfeuerCd)}s)`, { fontFamily: 'serif', fontSize: '12px', color: bereit ? '#f0c040' : '#8a7a5a', backgroundColor: '#2a1c08', padding: { x: 8, y: 4 } }).setInteractive({ useHandCursor: true });
       vr.on('pointerdown', () => { this.rufeVerstaerkung(f); this.schliesseBauMenu(); }); c.add(vr);
+    }
+    // R179: der Botenposten zeigt den Boten-Stand und schickt bzw. ruft ihn.
+    if (f.id === 'botenposten') {
+      const b = this.bote;
+      const hier = b.status === 'posten' && b.karte === this.area.id;
+      const label = hier ? '🐎 Boten zum Grafen schicken'
+        : b.status === 'reitet' ? `Bote unterwegs (${this.kartenName(b.karte)})`
+          : b.status === 'tot' ? 'Bote gefallen - Ersatz rüstet sich'
+            : '🐎 Boten herbeirufen (aus Ravensmoor)';
+      const aktiv = hier || b.status === 'heim' || b.status === 'posten';
+      const bt = this.add.text(10, 92, label, { fontFamily: 'serif', fontSize: '12px', color: aktiv ? '#f0c040' : '#8a7a5a', backgroundColor: '#2a1c08', padding: { x: 8, y: 4 } }).setInteractive({ useHandCursor: true });
+      bt.on('pointerdown', () => {
+        if (hier) this.botenZumGrafen();
+        else if (b.status === 'heim' || b.status === 'posten') this.botenZumPosten();
+        this.schliesseBauMenu();
+      });
+      c.add(bt);
     }
     // R99 (P11): das TOR wird AKTIV über das Menü geöffnet/geschlossen (nicht von
     // selbst). Offen = Durchlass nur für Held/eigene Truppen; Gegner bleiben
@@ -4411,7 +4431,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     // R100 (Autor "Feldaltar sieht riesig aus, Groessenverhaeltnisse passen nicht"):
     // Lager-Props auf stimmige, kleinere Groesse relativ zu Palisade/Turm.
     // R101: Turm-Zielhoehe so, dass der Beinstand ~2 Kacheln (64px) breit wird.
-    const zielH: Record<string, number> = { zelt: 84, lazarett: 84, nachschub: 76, feldaltar: 40, kochstelle: 42, brunnen: 50, feldschmiede: 44, wartfeuer: 46 };
+    const zielH: Record<string, number> = { zelt: 84, lazarett: 84, nachschub: 76, feldaltar: 40, kochstelle: 42, brunnen: 50, feldschmiede: 44, wartfeuer: 46, botenposten: 50 };
     const h = turm ? 132 : zielH[id];
     if (h) {
       const src = this.textures.get(key).getSourceImage();
@@ -4429,7 +4449,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     if (this.istWachturm(id)) return this.macheWachturmBild();
     if (id === 'lazarett') return this.macheZeltBild(true);
     if (id === 'nachschub') return this.macheZeltBild(false);
-    if (id === 'feldaltar' || id === 'kochstelle' || id === 'brunnen' || id === 'feldschmiede' || id === 'wartfeuer') return this.macheLagerBild(id);
+    if (id === 'feldaltar' || id === 'kochstelle' || id === 'brunnen' || id === 'feldschmiede' || id === 'wartfeuer' || id === 'botenposten') return this.macheLagerBild(id);
     return this.macheZeltBild(false);
   }
 
@@ -4461,6 +4481,13 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       g.fillStyle = '#8a7a52'; g.fillRect(cx - 16, 20, 6, 26);                                           // Pfosten
       g.fillStyle = '#e07a2a'; g.beginPath(); g.ellipse(cx - 8, 40, 4, 3, 0, 0, Math.PI * 2); g.fill();  // Glut
       g.fillStyle = '#9a9088'; g.fillRect(cx + 2, 18, 3, 14); g.fillRect(cx + 1, 16, 6, 4);              // Hammer
+    } else if (id === 'botenposten') {
+      g.fillStyle = '#5a4326'; g.fillRect(cx - 2, 8, 4, 40);                                            // Fahnenpfosten
+      g.fillStyle = '#274a7a'; g.beginPath(); g.moveTo(cx + 2, 10); g.lineTo(cx + 18, 14); g.lineTo(cx + 2, 19); g.closePath(); g.fill();  // Wimpel des Fürsten
+      g.fillStyle = '#5a4326'; g.fillRect(cx - 19, 30, 3, 18); g.fillRect(cx + 13, 30, 3, 18);          // Anbinde-Balken fürs Pferd
+      g.fillStyle = '#6a5030'; g.fillRect(cx - 19, 32, 35, 3);
+      g.fillStyle = '#8a7a52'; g.fillRect(cx - 14, 42, 11, 6);                                          // Futtertrog
+      g.fillStyle = '#c9b060'; g.fillRect(cx - 13, 41, 9, 2);                                           // Heu
     } else {  // wartfeuer - Signalfeuer auf Holzstoß
       g.fillStyle = '#4a3216'; for (let i = -2; i <= 2; i++) g.fillRect(cx + i * 4 - 1.5, 34, 3, 14);
       g.fillStyle = '#3a2810'; g.save(); g.translate(cx, 41); g.rotate(0.5); for (let i = -2; i <= 2; i++) g.fillRect(i * 4 - 1.5, -1.5, 3, 14); g.restore();
@@ -8225,6 +8252,73 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.naechsteEinheit = null;
   }
 
+  // --- R179: DER BOTE (Autor "ja, der Bote soll das ausloesen") --------------
+  // Der Grafen-Ruf laeuft ueber einen berittenen Boten aus Ravensmoor. Er
+  // reitet kartenweise (Boten-Uhr laeuft immer, wie der Marsch) und kann
+  // unterwegs abgefangen werden - dann ruestet sich daheim ein Ersatz.
+  private bote: Bote = boteNeu(BOTE.heim);
+
+  private updateBote(dt: number): void {
+    const risiko = (this.einfallAktiv || this.flags.kriegBegonnen) ? BOTE.abfangRisikoKrieg : BOTE.abfangRisiko;
+    const evs = tickBote(this.bote, dt, {
+      teilstreckeS: MARSCH.dauerJeKarteS * BOTE.tempoF,
+      abfangRisiko: risiko,
+      burgDauerS: BOTE.burgDauerS,
+      ersatzS: BOTE.ersatzS,
+      heim: BOTE.heim,
+      rng: () => Math.random(),
+    });
+    for (const ev of evs) {
+      if (ev.typ === 'grafErreicht') {
+        this.logMsg('Der Bote hat die Fürstenburg erreicht!', 'gold');
+        this.chronik('ereignis', 'Der Bote hat die Fürstenburg erreicht - der Graf schickt Verstärkung.');
+        this.grafSchicktVerstaerkung();
+      } else if (ev.typ === 'abgefangen') {
+        this.logMsg(`Der Bote wurde bei ${this.kartenName(ev.wo)} abgefangen! Ross und Reiter sind verloren.`, 'bad');
+        this.chronik('ereignis', `Der Bote wurde auf der Straße bei ${this.kartenName(ev.wo)} abgefangen - ein neuer Reiter rüstet sich in Ravensmoor.`);
+        this.sfx.play('fehler');
+      } else if (ev.typ === 'postenBezogen') {
+        this.logMsg(`Der Bote hat den Botenposten bei ${this.kartenName(ev.wo)} bezogen - sein Pferd steht angebunden bereit.`, 'gold');
+      } else if (ev.typ === 'ersatzBereit') {
+        this.logMsg('Ein neuer Bote steht in Ravensmoor bereit.', 'gold');
+      }
+    }
+  }
+
+  // Den Grafen rufen: der Bote reitet von seinem Standort zum Waldrand im
+  // Westen (Richtung Fuerstenburg). Erst seine ANKUNFT loest die Kolonne aus.
+  botenZumGrafen(): boolean {
+    const b = this.bote;
+    if (b.status === 'tot') { this.logMsg('Der Bote ist gefallen - sein Ersatz rüstet sich noch.', 'bad'); return false; }
+    if (b.status === 'reitet') { this.logMsg('Der Bote ist bereits unterwegs.', ''); return false; }
+    const route = routeZu(this.kartenNachbarn, b.karte, BOTE.zielKarte);
+    if (!route || !schickeBote(b, route, 'graf')) { this.logMsg('Von hier führt kein Weg zur Fürstenburg.', 'bad'); return false; }
+    this.logMsg('Der Bote schwingt sich aufs Pferd und reitet gen Westen zum Grafen - die Straßen sind unsicher.', 'gold');
+    this.chronik('ereignis', 'Ein Bote ist zur Fürstenburg aufgebrochen, den Grafen um Verstärkung zu bitten.');
+    return true;
+  }
+
+  // Ein frisch errichteter Botenposten holt den Boten nach: er reitet mit
+  // einem der Ravensmoorer Pferde heran (kartenweise, abfangbar).
+  private botenZumPosten(): void {
+    const b = this.bote;
+    if (b.status === 'reitet' || b.status === 'tot') {
+      this.logMsg('Der Botenposten steht - doch der Bote ist nicht verfügbar. Rufe ihn später über den Posten.', '');
+      return;
+    }
+    if (b.karte === this.area.id) {
+      b.status = 'posten';
+      this.logMsg('Der Bote bezieht den Botenposten.', 'gold');
+      return;
+    }
+    const route = routeZu(this.kartenNachbarn, b.karte, this.area.id);
+    if (!route || !schickeBote(b, route, 'lager')) {
+      this.logMsg('Der Bote findet keinen Weg hierher - der Posten bleibt vorerst unbesetzt.', 'bad');
+      return;
+    }
+    this.logMsg('Der Botenposten steht - ein Reiter mit Pferd macht sich aus Ravensmoor auf den Weg hierher.', 'gold');
+  }
+
   // R142: die Grafen-Verstaerkung betritt die Welt am Waldrand und zieht von
   // allein nach Ravensmoor - dort wird sie abgeholt oder weiterverlegt.
   grafSchicktVerstaerkung(): void {
@@ -10412,6 +10506,13 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       choices: [
         { label: 'Ins Verwaltungsbuch schauen', fn: () => this.zeigeVerwaltungsbuch() },
         { label: 'Für die Dorfkasse spenden (50 Gold)', fn: () => this.spendeDorfkasse(50) },
+        // R179: der Bote wohnt beim Amt - der Schulze schickt ihn zum Grafen.
+        ...(this.bote.status === 'heim' ? [{
+          label: 'Den Boten zum Grafen schicken (Verstärkung erbitten)',
+          fn: () => { this.botenZumGrafen(); },
+        }] : this.bote.status === 'reitet' ? [{
+          label: `Nach dem Boten fragen (unterwegs bei ${this.kartenName(this.bote.karte)})`,
+        }] : []),
         // M6: der Held füllt Lücken - Vorräte direkt ins Dorf-Lager spenden
         ...([['holz', 10], ['eisen', 5], ['kohle', 5]] as const)
           .filter(([m, n]) => (this.p.materials[m] ?? 0) >= n)
@@ -11860,6 +11961,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         dorfkasse: this.dorfkasse,
         wirtschaft: { lager: this.dorfLager, naechsteAbgabe: this.naechsteAbgabe, rueckstand: this.abgabeRueckstand, bericht: this.lagerBerichtGestern, felder: this.dorfFelder, vieh: this.dorfVieh },
         armee: (this.syncArmeeVomFeld(), this.armee),   // R141: Feld-Zustand mitnehmen
+        bote: this.bote,                                // R179: der Grafen-Bote reist mit
         bevoelkerung: this.bevoelkerung,               // R143 (2.3)
         breschen: this.breschen,
       },
@@ -11930,6 +12032,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.dorfVieh = wi?.vieh ?? viehStart();   // M5 (alte Staende: Startbestand)
     this.breschen = data.welt.breschen ?? [];
     this.armee = ruesteArmeeNach(data.welt.armee ?? neueArmee(), 'stadt');   // R141/R142 (alte Staende: leeres Heer, Bestand steht in Ravensmoor)
+    this.bote = data.welt.bote ?? boteNeu(BOTE.heim);   // R179 (alte Staende: Bote daheim)
     this.bevoelkerung = data.welt.bevoelkerung ?? REKRUTIERUNG.bevoelkerungStart;   // R143 (2.3)
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
     recalc(p);
@@ -13610,6 +13713,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.updateBelagerung(dt);   // R100: Monster nagen an Wehrbauten (Bunker)
     this.updateTurmBesatzung();  // R100: Turm-Insassen unsichtbar + Symbol
     this.updateMarsch(dt);   // R142: das Heer marschiert IMMER (auch ohne RTS-Modus)
+    this.updateBote(dt);     // R179: die Boten-Uhr (Grafen-Ruf) laeuft ebenso immer
     this.updateEinfallQueue(dt);   // R157: Einfall-Kolonnen ruecken in Schueben an
     this.updateSpaeher(dt);        // R178: Kundschafter des Klosters (Nordstrasse)
     this.updateEinfallEntklemmer(dt);   // R166: niemand bleibt am Fluss haengen

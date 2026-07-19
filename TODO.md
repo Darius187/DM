@@ -148,3 +148,5 @@
 - Zelda-Innenraum fuer JEDES Stadt-Haus (Haus fuer Haus): Betreten oeffnet
   eine Innenraum-Karte wie beim Kirchenschiff; huebsche Assets entstehen
   mit Codex/Blender. Kirche zuerst verschoenern (aktuell alter R18-Raum).
+- R179-Folgearbeit: der reitende Bote als SICHTBARE Figur (Codex-Pferd-Sprite)
+  auf der Karte, wenn der Held ihm begegnet; Abfang-Szene statt Wuerfelwurf.

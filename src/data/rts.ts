@@ -83,6 +83,9 @@ export const RTS_BAUTEN: ReadonlyArray<RtsBau> = [
   { id: 'feldschmiede', name: 'Feldschmiede', kosten: { holz: 10, stein: 8 }, frei: true, beschreibung: 'Der Schmied repariert nahe Bauwerke von selbst' },
   { id: 'wartfeuer', name: 'Wartfeuer', kosten: { holz: 12 }, frei: true, beschreibung: 'Signalfeuer - ruft eine Verstärkungswelle (anklicken)' },
   { id: 'nachschub', name: 'Nachschubzelt', kosten: { holz: 10, fasern: 8 }, frei: true, beschreibung: 'Versorgt nahe Einheiten - sie heilen schneller' },
+  // R179: der Botenposten holt den Ravensmoorer Boten (samt Pferd) ins Lager -
+  // von hier laesst sich der Graf um Verstaerkung rufen (Ritt ist abfangbar).
+  { id: 'botenposten', name: 'Botenposten', kosten: { holz: 12, fasern: 4 }, frei: true, beschreibung: 'Ein Reiter aus Ravensmoor bezieht den Posten - von hier reitet er zum Grafen' },
 ];
 
 // Wirkung der Lager-Bauten (R97, "durchhalten bis Verstärkung"). Aura-Radius +
@@ -245,6 +248,19 @@ export const MARSCH = {
   zielStadt: 'stadt',    // ... und zieht nach Ravensmoor
 } as const;
 
+// R179 (Autor "ja, der Bote soll das ausloesen"): der Grafen-Ruf laeuft ueber
+// einen BERITTENEN BOTEN. Er wohnt in Ravensmoor (Amt); ein Botenposten im
+// Feldlager holt ihn nach. Der Ritt ist ABFANGBAR - Verlust tut weh.
+export const BOTE = {
+  tempoF: 0.4,             // Reiter braucht nur 40% der Fussmarsch-Zeit je Karte
+  abfangRisiko: 0.08,      // Risiko je Teilstrecke, abgefangen zu werden ...
+  abfangRisikoKrieg: 0.2,  // ... waehrend Einfall/Krieg deutlich hoeher
+  zielKarte: 'burg',       // der Bote reitet bis zur Fuerstenburg-Karte
+  burgDauerS: 45,          // Audienz beim Grafen, bis die Kolonne aufbricht
+  ersatzS: 300,            // ein neuer Bote ruestet sich in Ravensmoor
+  heim: 'stadt',           // Heimat des Boten (Amt von Ravensmoor)
+} as const;
+
 // R177 (Autor "die herbeigerufene Armee soll sich auf dem Hauptweg zur
 // Verteidigung positionieren"): ankommende Verstaerkung bezieht in Ravensmoor
 // Stellungs-LINIEN quer ueber die Einfall-Strassen (Nord + Ost) - dort, wo
@@ -262,7 +278,7 @@ export const VERTEIDIGUNG = {
 export const BAU_KATEGORIEN: ReadonlyArray<{ id: string; name: string; taste: string; bauten: string[] }> = [
   { id: 'wehr', name: 'Befestigung', taste: 'Q', bauten: ['palisade', 'tor', 'wachturm', 'wachturm_45', 'wachturm_40'] },
   { id: 'lager', name: 'Lager', taste: 'W', bauten: ['lagerfeuer', 'zelt', 'lazarett', 'nachschub', 'feldschmiede'] },
-  { id: 'versorgung', name: 'Versorgung', taste: 'E', bauten: ['kochstelle', 'brunnen'] },
+  { id: 'versorgung', name: 'Versorgung', taste: 'E', bauten: ['kochstelle', 'brunnen', 'botenposten'] },
   { id: 'zeichen', name: 'Feldzeichen', taste: 'R', bauten: ['standarte', 'feldaltar', 'wartfeuer'] },
 ];
 

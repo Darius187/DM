@@ -1747,3 +1747,23 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   fehlerfrei, 391 Tests gruen.
 - Ausdruecklich SPAETER (Autor-Plan, in TODO.md): Zelda-Innenraum fuer jedes
   Haus + Verschoenerung des Kirchenschiffs mit Codex/Blender-Assets.
+
+## Runde 177-179 - Verteidigung am Hauptweg, Kloster-Spaeher, der Bote
+- R177: Verstaerkung, die Ravensmoor erreicht, bleibt nicht mehr an der Kante
+  stehen - sie rueckt selbststaendig in STELLUNGS-LINIEN quer ueber die
+  Nord- und Ost-Strasse (dort, wo Einfall und Spaeher kommen). Browser-
+  verifiziert: 6 Grafen-Maenner marschieren exakt auf die beiden Linien.
+- R178: das Kloster schickt alle paar Minuten 1-2 Kundschafter ueber die
+  Nordstrasse ("Kloster-Spaeher", flache Gegner, ab Tag 2, nie waehrend
+  eines Einfalls) - die Stadt bleibt spuerbar bedroht. Browser-verifiziert.
+- R179: der GRAFEN-RUF laeuft jetzt ueber den BOTEN (Autor-Order). Schulze
+  schickt ihn (Dialog), oder man baut im Feldlager einen BOTENPOSTEN
+  (RTS-Bau, Versorgung) - dann reitet der Bote samt Pferd aus Ravensmoor
+  heran und wartet dort. Der Ritt zur Fuerstenburg (echte burg-Karte) ist
+  ABFANGBAR (8%/Teilstrecke, 20% im Krieg); faellt er, ruestet sich nach
+  5 Minuten ein Ersatz. Ankunft loest die Grafen-Kolonne aus. Reine Logik
+  in logic/bote.ts (5 Tests), Bote wird gespeichert. Browser-verifiziert:
+  kompletter Ritt, Posten-Bezug, Ritt vom Posten. Der Reiter ist noch
+  NICHT als Figur sichtbar (Meldungen/Chronik erzaehlen den Ritt) - steht
+  in TODO.md; sein Name gehoert dem Autor (OFFENE-FRAGEN).
+- tsc fehlerfrei, 402 Tests gruen (64 Dateien).
