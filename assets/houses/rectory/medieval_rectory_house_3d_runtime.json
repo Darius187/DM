@@ -2,7 +2,7 @@
   "asset": "medieval_rectory_house_3d_runtime",
   "asset_type": "rotatable walkable 3D medieval rectory house",
   "historical_target_year": 1349,
-  "runtime_mode": "walkable_interior",
+  "runtime_mode": "exterior_only",
   "model": "medieval_rectory_house_3d_runtime.glb",
   "units": "meters",
   "root_node": "RECTORY_HOUSE_ROTATION_PIVOT",
@@ -65,13 +65,12 @@
     "all_visible_materials_have_embedded_basecolor_textures": true,
     "runtime_tinting_allowed": false,
     "transparent_windows": true,
-    "texture_count": 14,
+    "texture_count": 13,
     "used_materials": [
       "MAT_RECTORY_BLUE_SLATE_A",
       "MAT_RECTORY_BLUE_SLATE_B",
       "MAT_RECTORY_FORGED_IRON",
       "MAT_RECTORY_GARDEN_LEAF",
-      "MAT_RECTORY_HOUSEHOLD_LINEN",
       "MAT_RECTORY_LEADED_GLASS_TRANSPARENT",
       "MAT_RECTORY_MOSS",
       "MAT_RECTORY_OAK_DARK",
@@ -104,11 +103,8 @@
     }
   },
   "walkable_interior": {
-    "enabled": true,
-    "ground": "NAV_RECTORY_GROUND",
-    "upper": "NAV_RECTORY_UPPER",
-    "annex": "NAV_RECTORY_ANNEX",
-    "stairs": "COLLISION_RECTORY_STAIR"
+    "enabled": false,
+    "replacement": "separate Phaser interior map"
   },
   "visibility_controls": {
     "main_roof_property": "roof_removable",
@@ -121,7 +117,9 @@
     "beams_through_windows_or_doors": false,
     "rear_and_side_framing_complete": true,
     "roof_covering_lies_on_planes": true,
-    "global_ground_plate": false
+    "global_ground_plate": false,
+    "embedded_interior_fitout": false,
+    "separate_interior_map_ready": true
   },
   "node_groups": {
     "transparent_windows": [
@@ -144,12 +142,54 @@
       "WINDOW_RIGHT_UPPER_1_GLASS"
     ],
     "batched_roof_meshes": [
-      "ANNEX_ROOF_TILES_SLATE_A",
-      "ANNEX_ROOF_TILES_SLATE_B",
-      "ANNEX_ROOF_TILES_SLATE_WORN",
-      "MAIN_ROOF_TILES_SLATE_A",
-      "MAIN_ROOF_TILES_SLATE_B",
-      "MAIN_ROOF_TILES_SLATE_WORN"
+      "CHIMNEY_OPENING",
+      "MAIN_ROOF_RIDGE",
+      "RUNTIME_BATCH_009_MAT_RECTORY_STONE_WARM",
+      "RUNTIME_BATCH_010_MAT_RECTORY_STONE_DARK",
+      "RUNTIME_BATCH_035_MAT_RECTORY_SLATE_WEATHERED",
+      "RUNTIME_BATCH_036_MAT_RECTORY_BLUE_SLATE_A",
+      "RUNTIME_BATCH_037_MAT_RECTORY_BLUE_SLATE_B"
+    ],
+    "batched_runtime_meshes": [
+      "RUNTIME_BATCH_000_MAT_RECTORY_STONE_WARM",
+      "RUNTIME_BATCH_001_MAT_RECTORY_OAK_DARK",
+      "RUNTIME_BATCH_002_MAT_RECTORY_OAK_DARK",
+      "RUNTIME_BATCH_003_MAT_RECTORY_OAK_DARK",
+      "RUNTIME_BATCH_004_MAT_RECTORY_OAK_DARK",
+      "RUNTIME_BATCH_005_MAT_RECTORY_OAK_MID",
+      "RUNTIME_BATCH_006_MAT_RECTORY_OAK_MID",
+      "RUNTIME_BATCH_008_MAT_RECTORY_STONE_DARK",
+      "RUNTIME_BATCH_009_MAT_RECTORY_STONE_WARM",
+      "RUNTIME_BATCH_010_MAT_RECTORY_STONE_DARK",
+      "RUNTIME_BATCH_012_MAT_RECTORY_STONE_DARK",
+      "RUNTIME_BATCH_013_MAT_RECTORY_STONE_WARM",
+      "RUNTIME_BATCH_014_MAT_RECTORY_PLASTER_AGED",
+      "RUNTIME_BATCH_015_MAT_RECTORY_PLASTER_WORN",
+      "RUNTIME_BATCH_016_MAT_RECTORY_STONE_DARK",
+      "RUNTIME_BATCH_017_MAT_RECTORY_STONE_WARM",
+      "RUNTIME_BATCH_018_MAT_RECTORY_PLASTER_AGED",
+      "RUNTIME_BATCH_019_MAT_RECTORY_PLASTER_WORN",
+      "RUNTIME_BATCH_020_MAT_RECTORY_PLASTER_AGED",
+      "RUNTIME_BATCH_021_MAT_RECTORY_PLASTER_WORN",
+      "RUNTIME_BATCH_022_MAT_RECTORY_PLASTER_AGED",
+      "RUNTIME_BATCH_023_MAT_RECTORY_PLASTER_WORN",
+      "RUNTIME_BATCH_024_MAT_RECTORY_OAK_DARK",
+      "RUNTIME_BATCH_025_MAT_RECTORY_OAK_MID",
+      "RUNTIME_BATCH_026_MAT_RECTORY_FORGED_IRON",
+      "RUNTIME_BATCH_027_MAT_RECTORY_FORGED_IRON",
+      "RUNTIME_BATCH_028_MAT_RECTORY_OAK_DARK",
+      "RUNTIME_BATCH_029_MAT_RECTORY_OAK_MID",
+      "RUNTIME_BATCH_030_MAT_RECTORY_FORGED_IRON",
+      "RUNTIME_BATCH_031_MAT_RECTORY_FORGED_IRON",
+      "RUNTIME_BATCH_032_MAT_RECTORY_OAK_MID",
+      "RUNTIME_BATCH_033_MAT_RECTORY_FORGED_IRON",
+      "RUNTIME_BATCH_034_MAT_RECTORY_STONE_DARK",
+      "RUNTIME_BATCH_035_MAT_RECTORY_SLATE_WEATHERED",
+      "RUNTIME_BATCH_036_MAT_RECTORY_BLUE_SLATE_A",
+      "RUNTIME_BATCH_037_MAT_RECTORY_BLUE_SLATE_B",
+      "RUNTIME_BATCH_039_MAT_RECTORY_FORGED_IRON",
+      "RUNTIME_BATCH_040_MAT_RECTORY_GARDEN_LEAF",
+      "RUNTIME_BATCH_041_MAT_RECTORY_OAK_DARK"
     ]
   },
   "animations": [
@@ -170,54 +210,6 @@
   ],
   "collision_guides": [
     {
-      "name": "NAV_RECTORY_GROUND",
-      "kind": "walk",
-      "role": "walkable_polygon",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        0.0,
-        0.0,
-        0.48
-      ],
-      "size_blender_xyz": [
-        6.65,
-        5.85,
-        0.06
-      ]
-    },
-    {
-      "name": "NAV_RECTORY_UPPER",
-      "kind": "walk",
-      "role": "walkable_polygon",
-      "floor": "UPPER",
-      "center_blender_xyz": [
-        0.0,
-        0.0,
-        3.13
-      ],
-      "size_blender_xyz": [
-        6.72,
-        5.92,
-        0.06
-      ]
-    },
-    {
-      "name": "NAV_RECTORY_ANNEX",
-      "kind": "walk",
-      "role": "walkable_polygon",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        4.55,
-        1.625,
-        0.1
-      ],
-      "size_blender_xyz": [
-        1.75,
-        2.8,
-        0.06
-      ]
-    },
-    {
       "name": "NAV_RECTORY_APPROACH",
       "kind": "walk",
       "role": "walkable_polygon",
@@ -231,198 +223,6 @@
         2.7,
         1.1,
         0.06
-      ]
-    },
-    {
-      "name": "COLLISION_RECTORY_STAIR",
-      "kind": "walk",
-      "role": "stair_ramp",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        2.38,
-        1.38,
-        1.72
-      ],
-      "size_blender_xyz": [
-        1.02,
-        2.55,
-        2.75
-      ]
-    },
-    {
-      "name": "COLLISION_FRONT_LEFT",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        -2.1,
-        -3.2,
-        1.7
-      ],
-      "size_blender_xyz": [
-        2.95,
-        0.36,
-        2.55
-      ]
-    },
-    {
-      "name": "COLLISION_FRONT_RIGHT",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        2.1,
-        -3.2,
-        1.7
-      ],
-      "size_blender_xyz": [
-        2.95,
-        0.36,
-        2.55
-      ]
-    },
-    {
-      "name": "COLLISION_REAR",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        0.0,
-        3.2,
-        1.7
-      ],
-      "size_blender_xyz": [
-        7.2,
-        0.36,
-        2.55
-      ]
-    },
-    {
-      "name": "COLLISION_LEFT",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        -3.6,
-        0.0,
-        1.7
-      ],
-      "size_blender_xyz": [
-        0.36,
-        6.4,
-        2.55
-      ]
-    },
-    {
-      "name": "COLLISION_RIGHT_FRONT",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        3.6,
-        -1.55,
-        1.7
-      ],
-      "size_blender_xyz": [
-        0.36,
-        3.1,
-        2.55
-      ]
-    },
-    {
-      "name": "COLLISION_UPPER_FRONT",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "UPPER",
-      "center_blender_xyz": [
-        0.0,
-        -3.2,
-        4.3
-      ],
-      "size_blender_xyz": [
-        7.2,
-        0.34,
-        2.35
-      ]
-    },
-    {
-      "name": "COLLISION_UPPER_REAR",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "UPPER",
-      "center_blender_xyz": [
-        0.0,
-        3.2,
-        4.3
-      ],
-      "size_blender_xyz": [
-        7.2,
-        0.34,
-        2.35
-      ]
-    },
-    {
-      "name": "COLLISION_UPPER_LEFT",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "UPPER",
-      "center_blender_xyz": [
-        -3.6,
-        0.0,
-        4.3
-      ],
-      "size_blender_xyz": [
-        0.34,
-        6.4,
-        2.35
-      ]
-    },
-    {
-      "name": "COLLISION_UPPER_RIGHT",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "UPPER",
-      "center_blender_xyz": [
-        3.6,
-        0.0,
-        4.3
-      ],
-      "size_blender_xyz": [
-        0.34,
-        6.4,
-        2.35
-      ]
-    },
-    {
-      "name": "COLLISION_GROUND_TABLE",
-      "kind": "block",
-      "role": "fixed_furniture",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        -1.55,
-        1.1,
-        1.0
-      ],
-      "size_blender_xyz": [
-        1.6,
-        1.0,
-        1.0
-      ]
-    },
-    {
-      "name": "COLLISION_UPPER_BED",
-      "kind": "block",
-      "role": "fixed_furniture",
-      "floor": "UPPER",
-      "center_blender_xyz": [
-        -1.75,
-        0.95,
-        3.65
-      ],
-      "size_blender_xyz": [
-        2.45,
-        1.2,
-        0.7
       ]
     },
     {
@@ -456,6 +256,38 @@
         1.0,
         2.2
       ]
+    },
+    {
+      "name": "COLLISION_EXTERIOR_FOOTPRINT_0",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        4.55,
+        1.625,
+        1.55
+      ],
+      "size_blender_xyz": [
+        1.8,
+        2.85,
+        3.1
+      ]
+    },
+    {
+      "name": "COLLISION_EXTERIOR_FOOTPRINT_1",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        0.0,
+        1.55
+      ],
+      "size_blender_xyz": [
+        6.75,
+        5.95,
+        3.1
+      ]
     }
   ],
   "markers": [
@@ -468,46 +300,18 @@
         -4.25,
         0.08
       ]
-    },
-    {
-      "name": "SPAWN_RECTORY_INTERIOR",
-      "role": "spawn_interior",
-      "floor": "GROUND",
-      "blender_xyz": [
-        0.0,
-        -2.35,
-        0.5
-      ]
-    },
-    {
-      "name": "SPAWN_RECTORY_UPPER",
-      "role": "spawn_upper",
-      "floor": "UPPER",
-      "blender_xyz": [
-        2.38,
-        2.45,
-        3.17
-      ]
-    },
-    {
-      "name": "SPAWN_RECTORY_ANNEX",
-      "role": "spawn_annex",
-      "floor": "GROUND",
-      "blender_xyz": [
-        4.55,
-        0.9,
-        0.1
-      ]
     }
   ],
   "counts": {
-    "runtime_objects": 541,
-    "materials": 14,
+    "runtime_objects": 80,
+    "materials": 13,
     "windows": 17,
     "doors": 2,
-    "collisions": 18,
+    "collisions": 5,
     "batched_roof_meshes": 6,
-    "roof_tile_boxes": 702
+    "roof_tile_boxes": 702,
+    "removed_interior_objects": 21,
+    "merged_static_objects": 440
   },
   "integration_contract": {
     "load_with": "Three.js GLTFLoader",

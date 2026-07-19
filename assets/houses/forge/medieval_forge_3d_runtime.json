@@ -70,6 +70,7 @@
       "MAT_FLAME",
       "MAT_FORGED_IRON_DARK",
       "MAT_GLASS_HANDMADE_TRANSPARENT",
+      "MAT_GROUND_SHADOW_ALPHA",
       "MAT_HEMP_ROPE",
       "MAT_INTERIOR_LIME_CLAY",
       "MAT_LIME_CLAY_PLASTER_AGED",
@@ -79,7 +80,6 @@
       "MAT_OAK_HANDHEWN_GREY",
       "MAT_OAK_HANDHEWN_WEATHERED",
       "MAT_OAK_HEAT_AGED_SOOT",
-      "MAT_PACKED_EARTH_FORGE",
       "MAT_RUBBLE_STONE_DARK",
       "MAT_RUBBLE_STONE_WARM",
       "MAT_SACK_CLOTH",
@@ -228,17 +228,8 @@
     }
   },
   "walkable_interior": {
-    "enabled": true,
-    "ground_floor_nav": "NAV_GROUND_FLOOR_WALKABLE",
-    "upper_floor_nav": [
-      "NAV_UPPER_FLOOR_WALKABLE_FRONT",
-      "NAV_UPPER_FLOOR_WALKABLE_REAR"
-    ],
-    "forge_work_area_nav": "NAV_FORGE_WORK_AREA",
-    "front_entry_nav": "NAV_FRONT_ENTRY",
-    "stairs_collision": "COLLISION_STAIR_RUN",
-    "stairs_upper_exit": "SPAWN_UPPER_STAIR_EXIT",
-    "collision_guides_are_json_only_not_visible_glb_meshes": true
+    "enabled": false,
+    "replacement": "separate Phaser interior map"
   },
   "visibility_controls": {
     "main_roof_property": "main_roof_removable",
@@ -3744,7 +3735,87 @@
       "WINDOW_REAR_UPPER_RIGHT_GLASS",
       "WINDOW_RIGHT_UPPER_FRONT_GLASS",
       "WINDOW_RIGHT_UPPER_REAR_GLASS"
-    ]
+    ],
+    "batched_runtime_meshes": [
+      "RUNTIME_BATCH_000_MAT_LIME_MORTAR",
+      "RUNTIME_BATCH_001_MAT_RUBBLE_STONE_DARK",
+      "RUNTIME_BATCH_002_MAT_RUBBLE_STONE_WARM",
+      "RUNTIME_BATCH_003_MAT_RUBBLE_STONE_WARM",
+      "RUNTIME_BATCH_004_MAT_RUBBLE_STONE_DARK",
+      "RUNTIME_BATCH_005_MAT_RUBBLE_STONE_DARK",
+      "RUNTIME_BATCH_006_MAT_OAK_HANDHEWN_WEATHERED",
+      "RUNTIME_BATCH_007_MAT_OAK_HANDHEWN_GREY",
+      "RUNTIME_BATCH_008_MAT_OAK_HANDHEWN_WEATHERED",
+      "RUNTIME_BATCH_009_MAT_OAK_HANDHEWN_GREY",
+      "RUNTIME_BATCH_010_MAT_OAK_HEAT_AGED_SOOT",
+      "RUNTIME_BATCH_011_MAT_OAK_HANDHEWN_WEATHERED",
+      "RUNTIME_BATCH_012_MAT_OAK_HANDHEWN_GREY",
+      "RUNTIME_BATCH_013_MAT_OAK_HANDHEWN_WEATHERED",
+      "RUNTIME_BATCH_014_MAT_OAK_HANDHEWN_GREY",
+      "RUNTIME_BATCH_015_MAT_OAK_HANDHEWN_WEATHERED",
+      "RUNTIME_BATCH_016_MAT_OAK_HANDHEWN_GREY",
+      "RUNTIME_BATCH_017_MAT_OAK_HANDHEWN_WEATHERED",
+      "RUNTIME_BATCH_018_MAT_OAK_HANDHEWN_GREY",
+      "RUNTIME_BATCH_019_MAT_LIME_CLAY_PLASTER_AGED",
+      "RUNTIME_BATCH_020_MAT_LIME_CLAY_PLASTER_WORN",
+      "RUNTIME_BATCH_021_MAT_LIME_CLAY_PLASTER_AGED",
+      "RUNTIME_BATCH_022_MAT_LIME_CLAY_PLASTER_WORN",
+      "RUNTIME_BATCH_023_MAT_LIME_CLAY_PLASTER_AGED",
+      "RUNTIME_BATCH_024_MAT_LIME_CLAY_PLASTER_WORN",
+      "RUNTIME_BATCH_025_MAT_LIME_CLAY_PLASTER_AGED",
+      "RUNTIME_BATCH_026_MAT_LIME_CLAY_PLASTER_WORN",
+      "RUNTIME_BATCH_027_MAT_LIME_CLAY_PLASTER_SOOTED",
+      "RUNTIME_BATCH_028_MAT_LIME_CLAY_PLASTER_AGED",
+      "RUNTIME_BATCH_029_MAT_LIME_CLAY_PLASTER_AGED",
+      "RUNTIME_BATCH_030_MAT_INTERIOR_LIME_CLAY",
+      "RUNTIME_BATCH_031_MAT_OAK_HANDHEWN_WEATHERED",
+      "RUNTIME_BATCH_033_MAT_OAK_HANDHEWN_WEATHERED",
+      "RUNTIME_BATCH_034_MAT_OAK_HANDHEWN_GREY",
+      "RUNTIME_BATCH_035_MAT_OAK_HANDHEWN_WEATHERED",
+      "RUNTIME_BATCH_036_MAT_FORGED_IRON_DARK",
+      "RUNTIME_BATCH_037_MAT_FORGED_IRON_DARK",
+      "RUNTIME_BATCH_038_MAT_OAK_HANDHEWN_WEATHERED",
+      "RUNTIME_BATCH_039_MAT_OAK_HANDHEWN_GREY",
+      "RUNTIME_BATCH_040_MAT_OAK_HANDHEWN_WEATHERED",
+      "RUNTIME_BATCH_041_MAT_OAK_HANDHEWN_GREY",
+      "RUNTIME_BATCH_042_MAT_OAK_HEAT_AGED_SOOT",
+      "RUNTIME_BATCH_043_MAT_SHINGLE_WEATHERED_GREY",
+      "RUNTIME_BATCH_044_MAT_SHINGLE_WEATHERED_DARK",
+      "RUNTIME_BATCH_045_MAT_SHINGLE_WEATHERED_BROWN",
+      "RUNTIME_BATCH_047_MAT_RUBBLE_STONE_WARM",
+      "RUNTIME_BATCH_048_MAT_RUBBLE_STONE_DARK",
+      "RUNTIME_BATCH_050_MAT_LIME_MORTAR",
+      "RUNTIME_BATCH_051_MAT_OAK_HEAT_AGED_SOOT",
+      "RUNTIME_BATCH_052_MAT_OAK_HEAT_AGED_SOOT",
+      "RUNTIME_BATCH_053_MAT_SHINGLE_WEATHERED_DARK",
+      "RUNTIME_BATCH_054_MAT_SHINGLE_WEATHERED_BROWN",
+      "RUNTIME_BATCH_055_MAT_SHINGLE_WEATHERED_GREY",
+      "RUNTIME_BATCH_056_MAT_RUBBLE_STONE_DARK",
+      "RUNTIME_BATCH_058_MAT_ASH_SOOT",
+      "RUNTIME_BATCH_059_MAT_CHARCOAL",
+      "RUNTIME_BATCH_060_MAT_FORGED_IRON_DARK",
+      "RUNTIME_BATCH_062_MAT_LIME_MORTAR",
+      "RUNTIME_BATCH_063_MAT_OAK_HEAT_AGED_SOOT",
+      "RUNTIME_BATCH_064_MAT_OAK_HANDHEWN_WEATHERED",
+      "RUNTIME_BATCH_066_MAT_OAK_HANDHEWN_GREY",
+      "RUNTIME_BATCH_068_MAT_FORGED_IRON_DARK",
+      "RUNTIME_BATCH_069_MAT_OAK_HANDHEWN_GREY",
+      "RUNTIME_BATCH_070_MAT_DARK_WATER",
+      "RUNTIME_BATCH_071_MAT_OAK_HANDHEWN_WEATHERED",
+      "RUNTIME_BATCH_072_MAT_WOOD_CUT_END",
+      "RUNTIME_BATCH_073_MAT_SACK_CLOTH",
+      "RUNTIME_BATCH_076_MAT_OAK_HANDHEWN_GREY",
+      "RUNTIME_BATCH_077_MAT_FORGED_IRON_DARK",
+      "RUNTIME_BATCH_081_MAT_FORGED_IRON_DARK",
+      "RUNTIME_BATCH_082_MAT_SACK_CLOTH",
+      "RUNTIME_BATCH_083_MAT_SACK_CLOTH",
+      "RUNTIME_BATCH_085_MAT_SACK_CLOTH",
+      "RUNTIME_BATCH_086_MAT_GROUND_SHADOW_ALPHA",
+      "RUNTIME_BATCH_087_MAT_EMBER_GLOW",
+      "RUNTIME_BATCH_088_MAT_FLAME",
+      "RUNTIME_BATCH_089_MAT_SMOKE_ALPHA"
+    ],
+    "batched_roof_meshes": []
   },
   "animations": [
     {
@@ -3770,69 +3841,6 @@
     }
   ],
   "collision_guides": [
-    {
-      "name": "NAV_GROUND_FLOOR_WALKABLE",
-      "kind": "walk",
-      "role": "walkable_polygon",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        0.0,
-        0.0,
-        0.63
-      ],
-      "size_blender_xyz": [
-        5.15,
-        7.48,
-        0.06
-      ],
-      "rotation_euler_xyz": [
-        0.0,
-        0.0,
-        0.0
-      ]
-    },
-    {
-      "name": "NAV_UPPER_FLOOR_WALKABLE_FRONT",
-      "kind": "walk",
-      "role": "walkable_polygon",
-      "floor": "UPPER",
-      "center_blender_xyz": [
-        0.58,
-        -1.55,
-        3.12
-      ],
-      "size_blender_xyz": [
-        4.72,
-        4.18,
-        0.06
-      ],
-      "rotation_euler_xyz": [
-        0.0,
-        0.0,
-        0.0
-      ]
-    },
-    {
-      "name": "NAV_UPPER_FLOOR_WALKABLE_REAR",
-      "kind": "walk",
-      "role": "walkable_polygon",
-      "floor": "UPPER",
-      "center_blender_xyz": [
-        0.75,
-        2.7,
-        3.12
-      ],
-      "size_blender_xyz": [
-        3.88,
-        3.42,
-        0.06
-      ],
-      "rotation_euler_xyz": [
-        0.0,
-        0.0,
-        0.0
-      ]
-    },
     {
       "name": "NAV_FORGE_WORK_AREA",
       "kind": "walk",
@@ -3868,132 +3876,6 @@
         1.78,
         1.42,
         0.06
-      ],
-      "rotation_euler_xyz": [
-        0.0,
-        0.0,
-        0.0
-      ]
-    },
-    {
-      "name": "COLLISION_WALL_FRONT_LEFT",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        -2.25,
-        -4.1,
-        1.62
-      ],
-      "size_blender_xyz": [
-        1.3,
-        0.3,
-        2.2
-      ],
-      "rotation_euler_xyz": [
-        0.0,
-        0.0,
-        0.0
-      ]
-    },
-    {
-      "name": "COLLISION_WALL_FRONT_RIGHT",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        1.44,
-        -4.1,
-        1.62
-      ],
-      "size_blender_xyz": [
-        2.96,
-        0.3,
-        2.2
-      ],
-      "rotation_euler_xyz": [
-        0.0,
-        0.0,
-        0.0
-      ]
-    },
-    {
-      "name": "COLLISION_WALL_REAR",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        0.0,
-        4.1,
-        1.62
-      ],
-      "size_blender_xyz": [
-        6.0,
-        0.3,
-        2.2
-      ],
-      "rotation_euler_xyz": [
-        0.0,
-        0.0,
-        0.0
-      ]
-    },
-    {
-      "name": "COLLISION_WALL_LEFT",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        -3.0,
-        0.0,
-        1.62
-      ],
-      "size_blender_xyz": [
-        0.3,
-        8.2,
-        2.2
-      ],
-      "rotation_euler_xyz": [
-        0.0,
-        0.0,
-        0.0
-      ]
-    },
-    {
-      "name": "COLLISION_WALL_RIGHT_FRONT",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        3.0,
-        -2.72,
-        1.62
-      ],
-      "size_blender_xyz": [
-        0.3,
-        2.72,
-        2.2
-      ],
-      "rotation_euler_xyz": [
-        0.0,
-        0.0,
-        0.0
-      ]
-    },
-    {
-      "name": "COLLISION_WALL_RIGHT_REAR",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        3.0,
-        1.4,
-        1.62
-      ],
-      "size_blender_xyz": [
-        0.3,
-        5.1,
-        2.2
       ],
       "rotation_euler_xyz": [
         0.0,
@@ -4149,48 +4031,6 @@
       ]
     },
     {
-      "name": "COLLISION_STAIR_RUN",
-      "kind": "walk",
-      "role": "stair_ramp",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        -2.08,
-        2.4,
-        1.78
-      ],
-      "size_blender_xyz": [
-        1.18,
-        2.68,
-        0.1
-      ],
-      "rotation_euler_xyz": [
-        0.0,
-        0.0,
-        0.0
-      ]
-    },
-    {
-      "name": "COLLISION_STAIR_OPENING",
-      "kind": "block",
-      "role": "stair_opening",
-      "floor": "UPPER",
-      "center_blender_xyz": [
-        -2.08,
-        2.4,
-        3.09
-      ],
-      "size_blender_xyz": [
-        1.3,
-        2.76,
-        0.1
-      ],
-      "rotation_euler_xyz": [
-        0.0,
-        0.0,
-        0.0
-      ]
-    },
-    {
       "name": "COLLISION_LEAN_POST_00",
       "kind": "block",
       "role": "support_post",
@@ -4315,6 +4155,22 @@
         0.0,
         0.0
       ]
+    },
+    {
+      "name": "COLLISION_EXTERIOR_FOOTPRINT_0",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        0.0,
+        1.55
+      ],
+      "size_blender_xyz": [
+        5.52,
+        7.72,
+        3.1
+      ]
     }
   ],
   "markers": [
@@ -4329,16 +4185,6 @@
       ]
     },
     {
-      "name": "SPAWN_INTERIOR_FRONT_DOOR",
-      "role": "spawn_interior",
-      "floor": "GROUND",
-      "blender_xyz": [
-        -0.46,
-        -3.22,
-        0.5
-      ]
-    },
-    {
       "name": "SPAWN_FORGE_WORK_AREA",
       "role": "spawn_forge",
       "floor": "EXTERIOR",
@@ -4346,16 +4192,6 @@
         4.42,
         -0.78,
         0.0
-      ]
-    },
-    {
-      "name": "SPAWN_UPPER_STAIR_EXIT",
-      "role": "spawn_upper",
-      "floor": "UPPER",
-      "blender_xyz": [
-        -2.08,
-        3.72,
-        2.95
       ]
     },
     {
@@ -4375,7 +4211,13 @@
     "transparent_windows": 12,
     "collision_guides": 26,
     "main_roof_shingles": 631,
-    "lean_to_roof_shingles": 208
+    "lean_to_roof_shingles": 208,
+    "runtime_objects": 140,
+    "materials": 26,
+    "windows": 12,
+    "collisions": 16,
+    "removed_interior_objects": 34,
+    "merged_static_objects": 2106
   },
   "integration_contract": {
     "load_with": "Three.js GLTFLoader",
@@ -4389,5 +4231,10 @@
       "rotation atlas as primary",
       "name-based material tinting"
     ]
+  },
+  "runtime_mode": "exterior_only",
+  "construction_contract": {
+    "embedded_interior_fitout": false,
+    "separate_interior_map_ready": true
   }
 }

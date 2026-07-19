@@ -4,6 +4,35 @@ These are authoritative textured GLB assets. Do not replace their materials,
 apply name-based tints, flatten them to PNG sprites, or use a rotation atlas as
 the primary representation.
 
+## Current interior contract (2026-07-19)
+
+- Every building currently placed in Ravensmoor uses `runtime_mode: exterior_only`.
+- Embedded walkable interiors, furniture, stairs and upper-floor navigation were
+  removed from the runtime GLBs. This avoids player snagging, abrupt alpha
+  cutaways and unnecessary draw calls.
+- Doors remain animated and transparent windows remain separate meshes. The
+  exported transition guides are the hand-off points for dedicated Phaser
+  interior maps, similar to a classic scene change.
+- Older per-building notes below describe the authored source scenes. Any claim
+  that a ground or upper floor is directly walkable inside the GLB is superseded
+  by this section.
+- Never restore embedded interiors by changing only the JSON. A later interior
+  must be a separate map and must return the player to the matching exterior
+  door marker.
+
+## Tavern
+
+- Model: `tavern/medieval_tavern_house_3d_runtime.glb`
+- Runtime data: `tavern/medieval_tavern_house_3d_runtime.json`
+- Root pivot: `TAVERN_HOUSE_ROTATION_PIVOT`
+- Doors: `DOOR_TAVERN_MAIN_HINGE`, `DOOR_TAVERN_SERVICE_HINGE`
+- Both doors open outwards. `TRIGGER_TAVERN_MAIN` is the future transition to
+  the separate taproom map; `TRIGGER_TAVERN_SERVICE` is the rear service exit.
+- Twenty-six transparent window panes remain available for night-light overlays.
+- The 1,210 overlapping roof tiles are consolidated into material batches and
+  lie on the main, service-wing and porch roof planes.
+- The runtime contains 87 visible objects and no global ground plate.
+
 ## Carpenter house
 
 - Model: `medieval_carpenter_house_3d_runtime.glb`

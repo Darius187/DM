@@ -1,0 +1,465 @@
+{
+  "asset": "medieval_tavern_house_3d_runtime",
+  "asset_type": "rotatable exterior-only 3D medieval tavern and lodging house",
+  "historical_target_year": 1349,
+  "historical_form": "prosperous village alehouse and hostelry, not a later coaching inn",
+  "runtime_mode": "exterior_only",
+  "model": "medieval_tavern_house_3d_runtime.glb",
+  "units": "meters",
+  "root_node": "TAVERN_HOUSE_ROTATION_PIVOT",
+  "bounds_blender": {
+    "min": [
+      -6.53,
+      -6.22,
+      -0.03
+    ],
+    "max": [
+      4.76156,
+      8.965,
+      9.95
+    ],
+    "center": [
+      -0.88422,
+      1.3725,
+      4.96
+    ],
+    "size": [
+      11.29156,
+      15.185,
+      9.98
+    ],
+    "bounding_radius": 10.02509
+  },
+  "coordinate_conversion": {
+    "blender": "X/Y ground, Z up",
+    "threejs": "X/Z ground, Y up",
+    "point_rule": "[x,y,z] -> [x,z,-y]"
+  },
+  "continuous_controls": {
+    "building_yaw_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 0
+    },
+    "uniform_scale": {
+      "min": 0.25,
+      "max": 4,
+      "default": 1
+    },
+    "camera_elevation_degrees": {
+      "min": 18,
+      "max": 78,
+      "default": 43
+    },
+    "camera_azimuth_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 36
+    },
+    "orthographic_zoom": {
+      "min": 0.55,
+      "max": 2.4,
+      "default": 1
+    }
+  },
+  "materials": {
+    "all_visible_materials_have_embedded_basecolor_textures": true,
+    "runtime_tinting_allowed": false,
+    "transparent_windows": true,
+    "texture_count": 14,
+    "used_materials": [
+      "MAT_TAVERN_DOORWAY_SHADOW",
+      "MAT_TAVERN_FORGED_IRON",
+      "MAT_TAVERN_GLASS_TRANSPARENT",
+      "MAT_TAVERN_MOSS",
+      "MAT_TAVERN_OAK_DARK",
+      "MAT_TAVERN_OAK_MID",
+      "MAT_TAVERN_PLASTER_AGED",
+      "MAT_TAVERN_PLASTER_WORN",
+      "MAT_TAVERN_ROOF_TILE_DARK",
+      "MAT_TAVERN_ROOF_TILE_RED",
+      "MAT_TAVERN_ROOF_TILE_WORN",
+      "MAT_TAVERN_SIGN_OCHRE",
+      "MAT_TAVERN_STONE_DARK",
+      "MAT_TAVERN_STONE_WARM"
+    ]
+  },
+  "renderer_recipe": {
+    "output_color_space": "SRGBColorSpace",
+    "tone_mapping": "ACESFilmicToneMapping",
+    "exposure": 0.72,
+    "do_not_replace_materials": true
+  },
+  "doors": {
+    "main": {
+      "node": "DOOR_TAVERN_MAIN_HINGE",
+      "trigger": "TRIGGER_TAVERN_MAIN",
+      "closed_frame": 1,
+      "open_frame": 30,
+      "opens_outward": true
+    },
+    "service": {
+      "node": "DOOR_TAVERN_SERVICE_HINGE",
+      "trigger": "TRIGGER_TAVERN_SERVICE",
+      "closed_frame": 1,
+      "open_frame": 30,
+      "opens_outward": true
+    }
+  },
+  "walkable_interior": {
+    "enabled": false,
+    "replacement": "separate Phaser interior map via TRANSITION_TAVERN_INTERIOR_MAP"
+  },
+  "visibility_controls": {
+    "main_roof_property": "roof_removable",
+    "lean_roof_property": "roof_removable",
+    "cutaway_property": "cutaway_near_wall",
+    "floor_property": "floor_level"
+  },
+  "construction_contract": {
+    "fachwerk_infill_between_beams": true,
+    "beams_through_windows_or_doors": false,
+    "rear_and_side_framing_complete": true,
+    "roof_covering_lies_on_planes": true,
+    "global_ground_plate": false,
+    "embedded_interior_fitout": false,
+    "separate_interior_map_ready": true
+  },
+  "node_groups": {
+    "transparent_windows": [
+      "WINDOW_FRONT_ATTIC_GLASS",
+      "WINDOW_FRONT_GROUND_0_GLASS",
+      "WINDOW_FRONT_GROUND_1_GLASS",
+      "WINDOW_FRONT_UPPER_0_GLASS",
+      "WINDOW_FRONT_UPPER_1_GLASS",
+      "WINDOW_FRONT_UPPER_ROW_0_GLASS",
+      "WINDOW_FRONT_UPPER_ROW_1_GLASS",
+      "WINDOW_FRONT_UPPER_ROW_2_GLASS",
+      "WINDOW_LEFT_GROUND_0_GLASS",
+      "WINDOW_LEFT_GROUND_1_GLASS",
+      "WINDOW_LEFT_GROUND_2_GLASS",
+      "WINDOW_LEFT_UPPER_0_GLASS",
+      "WINDOW_LEFT_UPPER_1_GLASS",
+      "WINDOW_LEFT_UPPER_2_GLASS",
+      "WINDOW_RIGHT_GROUND_0_GLASS",
+      "WINDOW_RIGHT_GROUND_1_GLASS",
+      "WINDOW_RIGHT_GROUND_2_GLASS",
+      "WINDOW_RIGHT_UPPER_0_GLASS",
+      "WINDOW_RIGHT_UPPER_1_GLASS",
+      "WINDOW_RIGHT_UPPER_2_GLASS",
+      "WINDOW_SERVICE_LEFT_GROUND_GLASS",
+      "WINDOW_SERVICE_LEFT_UPPER_GLASS",
+      "WINDOW_SERVICE_REAR_UPPER_0_GLASS",
+      "WINDOW_SERVICE_REAR_UPPER_1_GLASS",
+      "WINDOW_SERVICE_RIGHT_GROUND_GLASS",
+      "WINDOW_SERVICE_RIGHT_UPPER_GLASS"
+    ],
+    "batched_roof_meshes": [
+      "MAIN_ROOF_TILES_TILE_RED",
+      "MAIN_ROOF_TILES_TILE_WORN",
+      "SERVICE_ROOF_TILES_TILE_RED",
+      "SERVICE_ROOF_TILES_TILE_WORN"
+    ]
+  },
+  "animations": [
+    {
+      "name": "DOOR_TAVERN_MAIN_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_TAVERN_SERVICE_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    }
+  ],
+  "collision_guides": [
+    {
+      "name": "NAV_TAVERN_APPROACH",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        0.0,
+        -5.55,
+        0.08
+      ],
+      "size_blender_xyz": [
+        3.0,
+        1.45,
+        0.06
+      ]
+    },
+    {
+      "name": "COLLISION_TAVERN_FOOTPRINT",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        0.0,
+        1.72
+      ],
+      "size_blender_xyz": [
+        8.4,
+        9.2,
+        3.1
+      ]
+    },
+    {
+      "name": "COLLISION_SERVICE_FOOTPRINT",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        6.455,
+        1.72
+      ],
+      "size_blender_xyz": [
+        6.5,
+        3.79,
+        3.1
+      ]
+    },
+    {
+      "name": "COLLISION_FRONT_LEFT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -2.46,
+        -4.6,
+        1.72
+      ],
+      "size_blender_xyz": [
+        3.45,
+        0.38,
+        2.55
+      ]
+    },
+    {
+      "name": "COLLISION_FRONT_RIGHT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        2.46,
+        -4.6,
+        1.72
+      ],
+      "size_blender_xyz": [
+        3.45,
+        0.38,
+        2.55
+      ]
+    },
+    {
+      "name": "COLLISION_MAIN_LEFT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -4.2,
+        0.0,
+        1.72
+      ],
+      "size_blender_xyz": [
+        0.38,
+        9.2,
+        2.55
+      ]
+    },
+    {
+      "name": "COLLISION_MAIN_RIGHT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        4.2,
+        0.0,
+        1.72
+      ],
+      "size_blender_xyz": [
+        0.38,
+        9.2,
+        2.55
+      ]
+    },
+    {
+      "name": "COLLISION_REAR_LEFT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -2.49,
+        4.6,
+        1.72
+      ],
+      "size_blender_xyz": [
+        3.42,
+        0.38,
+        2.55
+      ]
+    },
+    {
+      "name": "COLLISION_REAR_RIGHT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        2.49,
+        4.6,
+        1.72
+      ],
+      "size_blender_xyz": [
+        3.42,
+        0.38,
+        2.55
+      ]
+    },
+    {
+      "name": "COLLISION_SERVICE_LEFT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -3.25,
+        6.455,
+        1.72
+      ],
+      "size_blender_xyz": [
+        0.38,
+        3.79,
+        2.55
+      ]
+    },
+    {
+      "name": "COLLISION_SERVICE_RIGHT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        3.25,
+        6.455,
+        1.72
+      ],
+      "size_blender_xyz": [
+        0.38,
+        3.79,
+        2.55
+      ]
+    },
+    {
+      "name": "COLLISION_SERVICE_REAR_LEFT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -1.98,
+        8.35,
+        1.72
+      ],
+      "size_blender_xyz": [
+        2.55,
+        0.38,
+        2.55
+      ]
+    },
+    {
+      "name": "COLLISION_SERVICE_REAR_RIGHT",
+      "kind": "block",
+      "role": "solid_wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        1.98,
+        8.35,
+        1.72
+      ],
+      "size_blender_xyz": [
+        2.55,
+        0.38,
+        2.55
+      ]
+    },
+    {
+      "name": "TRIGGER_TAVERN_MAIN",
+      "kind": "transition",
+      "role": "enter_tavern",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        -4.58,
+        1.5
+      ],
+      "size_blender_xyz": [
+        1.6,
+        1.2,
+        2.58
+      ]
+    },
+    {
+      "name": "TRIGGER_TAVERN_SERVICE",
+      "kind": "transition",
+      "role": "enter_tavern_service",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        8.33,
+        1.5
+      ],
+      "size_blender_xyz": [
+        1.6,
+        1.2,
+        2.58
+      ]
+    }
+  ],
+  "markers": [
+    {
+      "name": "SPAWN_TAVERN_EXTERIOR",
+      "role": "spawn_exterior",
+      "floor": "EXTERIOR",
+      "blender_xyz": [
+        0.0,
+        -6.08,
+        0.08
+      ]
+    },
+    {
+      "name": "TRANSITION_TAVERN_INTERIOR_MAP",
+      "role": "load_tavern_interior_map",
+      "floor": "GROUND",
+      "blender_xyz": [
+        0.0,
+        -4.12,
+        0.56
+      ]
+    }
+  ],
+  "counts": {
+    "runtime_objects": 87,
+    "materials": 14,
+    "windows": 26,
+    "doors": 2,
+    "collisions": 15,
+    "batched_roof_meshes": 4,
+    "roof_tile_boxes": 1210
+  },
+  "integration_contract": {
+    "load_with": "Three.js GLTFLoader",
+    "rotate": "TAVERN_HOUSE_ROTATION_PIVOT around Three.js Y",
+    "collisions": "build from JSON and transform with building",
+    "doors": "play named animations",
+    "forbidden": [
+      "PNG replacement",
+      "material tinting",
+      "visible collision meshes",
+      "global ground plate"
+    ]
+  }
+}

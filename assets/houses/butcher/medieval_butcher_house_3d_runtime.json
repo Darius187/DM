@@ -40,7 +40,7 @@
     "all_visible_materials_have_embedded_basecolor_textures": true,
     "runtime_tinting_allowed": false,
     "transparent_windows": true,
-    "texture_count": 16,
+    "texture_count": 15,
     "used_materials": [
       "MAT_BUTCHER_AWNING_CLOTH",
       "MAT_BUTCHER_CURED_MEAT",
@@ -48,7 +48,6 @@
       "MAT_BUTCHER_GLASS_TRANSPARENT",
       "MAT_BUTCHER_OAK_DARK",
       "MAT_BUTCHER_OAK_MID",
-      "MAT_BUTCHER_PACKED_EARTH",
       "MAT_BUTCHER_PLASTER_AGED",
       "MAT_BUTCHER_PLASTER_WORN",
       "MAT_BUTCHER_SHINGLE_A",
@@ -81,12 +80,8 @@
     }
   },
   "walkable_interior": {
-    "enabled": true,
-    "ground": "NAV_GROUND_FLOOR",
-    "upper": "NAV_UPPER_FLOOR",
-    "annex": "NAV_ANNEX_WORKROOM",
-    "market": "NAV_MARKET_FRONT",
-    "stairs": "COLLISION_STAIR_RUN"
+    "enabled": false,
+    "replacement": "separate Phaser interior map"
   },
   "visibility_controls": {
     "roof_property": "roof_removable",
@@ -105,6 +100,67 @@
       "WINDOW_RIGHT_ATTIC_GLASS",
       "WINDOW_RIGHT_UPPER_FRONT_GLASS",
       "WINDOW_RIGHT_UPPER_REAR_GLASS"
+    ],
+    "batched_runtime_meshes": [
+      "RUNTIME_BATCH_000_MAT_BUTCHER_STONE_WARM",
+      "RUNTIME_BATCH_001_MAT_BUTCHER_STONE_DARK",
+      "RUNTIME_BATCH_002_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_003_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_004_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_005_MAT_BUTCHER_OAK_MID",
+      "RUNTIME_BATCH_006_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_007_MAT_BUTCHER_STONE_WARM",
+      "RUNTIME_BATCH_009_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_010_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_011_MAT_BUTCHER_PLASTER_WORN",
+      "RUNTIME_BATCH_012_MAT_BUTCHER_PLASTER_AGED",
+      "RUNTIME_BATCH_013_MAT_BUTCHER_STONE_DARK",
+      "RUNTIME_BATCH_014_MAT_BUTCHER_STONE_WARM",
+      "RUNTIME_BATCH_015_MAT_BUTCHER_STONE_DARK",
+      "RUNTIME_BATCH_016_MAT_BUTCHER_STONE_WARM",
+      "RUNTIME_BATCH_017_MAT_BUTCHER_FORGED_IRON",
+      "RUNTIME_BATCH_018_MAT_BUTCHER_OAK_MID",
+      "RUNTIME_BATCH_019_MAT_BUTCHER_PLASTER_AGED",
+      "RUNTIME_BATCH_020_MAT_BUTCHER_PLASTER_WORN",
+      "RUNTIME_BATCH_021_MAT_BUTCHER_PLASTER_AGED",
+      "RUNTIME_BATCH_022_MAT_BUTCHER_PLASTER_WORN",
+      "RUNTIME_BATCH_023_MAT_BUTCHER_PLASTER_AGED",
+      "RUNTIME_BATCH_024_MAT_BUTCHER_PLASTER_WORN",
+      "RUNTIME_BATCH_025_MAT_BUTCHER_FORGED_IRON",
+      "RUNTIME_BATCH_026_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_027_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_028_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_029_MAT_BUTCHER_SHINGLE_A",
+      "RUNTIME_BATCH_030_MAT_BUTCHER_SHINGLE_C",
+      "RUNTIME_BATCH_031_MAT_BUTCHER_SHINGLE_B",
+      "RUNTIME_BATCH_032_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_033_MAT_BUTCHER_SHINGLE_C",
+      "RUNTIME_BATCH_034_MAT_BUTCHER_SHINGLE_A",
+      "RUNTIME_BATCH_035_MAT_BUTCHER_SHINGLE_B",
+      "RUNTIME_BATCH_036_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_038_MAT_BUTCHER_OAK_MID",
+      "RUNTIME_BATCH_039_MAT_BUTCHER_SMOKED_MEAT",
+      "RUNTIME_BATCH_040_MAT_BUTCHER_STONE_WARM",
+      "RUNTIME_BATCH_041_MAT_BUTCHER_CURED_MEAT",
+      "RUNTIME_BATCH_042_MAT_BUTCHER_OAK_MID",
+      "RUNTIME_BATCH_043_MAT_BUTCHER_FORGED_IRON",
+      "RUNTIME_BATCH_045_MAT_BUTCHER_SMOKE"
+    ],
+    "batched_roof_meshes": [
+      "RUNTIME_BATCH_009_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_010_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_011_MAT_BUTCHER_PLASTER_WORN",
+      "RUNTIME_BATCH_012_MAT_BUTCHER_PLASTER_AGED",
+      "RUNTIME_BATCH_015_MAT_BUTCHER_STONE_DARK",
+      "RUNTIME_BATCH_016_MAT_BUTCHER_STONE_WARM",
+      "RUNTIME_BATCH_017_MAT_BUTCHER_FORGED_IRON",
+      "RUNTIME_BATCH_029_MAT_BUTCHER_SHINGLE_A",
+      "RUNTIME_BATCH_030_MAT_BUTCHER_SHINGLE_C",
+      "RUNTIME_BATCH_031_MAT_BUTCHER_SHINGLE_B",
+      "RUNTIME_BATCH_032_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_033_MAT_BUTCHER_SHINGLE_C",
+      "RUNTIME_BATCH_034_MAT_BUTCHER_SHINGLE_A",
+      "RUNTIME_BATCH_035_MAT_BUTCHER_SHINGLE_B"
     ]
   },
   "animations": [
@@ -125,54 +181,6 @@
   ],
   "collision_guides": [
     {
-      "name": "NAV_GROUND_FLOOR",
-      "kind": "walk",
-      "role": "walkable_polygon",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        0.0,
-        0.0,
-        0.55
-      ],
-      "size_blender_xyz": [
-        6.2,
-        7.2,
-        0.06
-      ]
-    },
-    {
-      "name": "NAV_UPPER_FLOOR",
-      "kind": "walk",
-      "role": "walkable_polygon",
-      "floor": "UPPER",
-      "center_blender_xyz": [
-        0.0,
-        0.0,
-        3.12
-      ],
-      "size_blender_xyz": [
-        6.5,
-        7.5,
-        0.06
-      ]
-    },
-    {
-      "name": "NAV_ANNEX_WORKROOM",
-      "kind": "walk",
-      "role": "walkable_polygon",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        4.85,
-        0.7,
-        0.22
-      ],
-      "size_blender_xyz": [
-        2.25,
-        5.45,
-        0.06
-      ]
-    },
-    {
       "name": "NAV_MARKET_FRONT",
       "kind": "walk",
       "role": "walkable_polygon",
@@ -186,86 +194,6 @@
         6.5,
         1.4,
         0.06
-      ]
-    },
-    {
-      "name": "COLLISION_STAIR_RUN",
-      "kind": "walk",
-      "role": "stair_ramp",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        -2.45,
-        2.2,
-        1.8
-      ],
-      "size_blender_xyz": [
-        1.05,
-        2.9,
-        2.7
-      ]
-    },
-    {
-      "name": "COLLISION_REAR_WALL",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        0.0,
-        4.0,
-        1.7
-      ],
-      "size_blender_xyz": [
-        7.0,
-        0.3,
-        2.5
-      ]
-    },
-    {
-      "name": "COLLISION_LEFT_WALL",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        -3.5,
-        0.0,
-        1.7
-      ],
-      "size_blender_xyz": [
-        0.3,
-        8.0,
-        2.5
-      ]
-    },
-    {
-      "name": "COLLISION_FRONT_LEFT",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        -1.5,
-        -4.0,
-        1.7
-      ],
-      "size_blender_xyz": [
-        3.8,
-        0.3,
-        2.5
-      ]
-    },
-    {
-      "name": "COLLISION_FRONT_RIGHT",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        2.65,
-        -4.0,
-        1.7
-      ],
-      "size_blender_xyz": [
-        1.7,
-        0.3,
-        2.5
       ]
     },
     {
@@ -347,6 +275,38 @@
         1.0,
         2.5
       ]
+    },
+    {
+      "name": "COLLISION_EXTERIOR_FOOTPRINT_0",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        4.915,
+        0.725,
+        1.55
+      ],
+      "size_blender_xyz": [
+        2.37,
+        5.85,
+        3.1
+      ]
+    },
+    {
+      "name": "COLLISION_EXTERIOR_FOOTPRINT_1",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        0.0,
+        1.55
+      ],
+      "size_blender_xyz": [
+        6.55,
+        7.55,
+        3.1
+      ]
     }
   ],
   "markers": [
@@ -359,45 +319,17 @@
         -4.85,
         0.08
       ]
-    },
-    {
-      "name": "SPAWN_INTERIOR_MAIN",
-      "role": "spawn_interior",
-      "floor": "GROUND",
-      "blender_xyz": [
-        1.12,
-        -3.35,
-        0.55
-      ]
-    },
-    {
-      "name": "SPAWN_UPPER_STAIRS",
-      "role": "spawn_upper",
-      "floor": "UPPER",
-      "blender_xyz": [
-        -2.45,
-        3.55,
-        3.08
-      ]
-    },
-    {
-      "name": "SPAWN_ANNEX_INTERIOR",
-      "role": "spawn_annex",
-      "floor": "GROUND",
-      "blender_xyz": [
-        5.2,
-        -1.6,
-        0.2
-      ]
     }
   ],
   "counts": {
-    "runtime_objects": 1927,
-    "materials": 16,
+    "runtime_objects": 91,
+    "materials": 15,
     "windows": 10,
-    "collisions": 14,
+    "collisions": 8,
     "main_roof_shingles": 610,
-    "annex_roof_shingles": 275
+    "annex_roof_shingles": 275,
+    "removed_interior_objects": 23,
+    "merged_static_objects": 1813
   },
   "integration_contract": {
     "load_with": "Three.js GLTFLoader",
@@ -409,5 +341,10 @@
       "material tinting",
       "visible collision meshes"
     ]
+  },
+  "runtime_mode": "exterior_only",
+  "construction_contract": {
+    "embedded_interior_fitout": false,
+    "separate_interior_map_ready": true
   }
 }

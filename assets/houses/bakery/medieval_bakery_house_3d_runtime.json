@@ -37,17 +37,33 @@
     }
   },
   "bounds_blender": {
-    "min": [-4.31339, -5.255, -0.01],
-    "max": [6.74291, 4.09, 9.3088],
-    "center": [1.21476, -0.5825, 4.6494],
-    "size": [11.0563, 9.345, 9.3188],
+    "min": [
+      -4.31339,
+      -5.255,
+      -0.01
+    ],
+    "max": [
+      6.74291,
+      4.09,
+      9.3088
+    ],
+    "center": [
+      1.21476,
+      -0.5825,
+      4.6494
+    ],
+    "size": [
+      11.0563,
+      9.345,
+      9.3188
+    ],
     "bounding_radius": 8.12051
   },
   "materials": {
     "all_visible_materials_have_embedded_basecolor_textures": true,
     "runtime_tinting_allowed": false,
     "transparent_windows": true,
-    "texture_count": 21,
+    "texture_count": 20,
     "used_materials": [
       "MAT_BAKERY_AWNING_CLOTH",
       "MAT_BAKERY_BAKED_BREAD",
@@ -61,7 +77,6 @@
       "MAT_BAKERY_OAK_MID",
       "MAT_BAKERY_OVEN_CHAR",
       "MAT_BAKERY_OVEN_FIRE",
-      "MAT_BAKERY_PACKED_EARTH",
       "MAT_BAKERY_PLASTER_AGED",
       "MAT_BAKERY_PLASTER_WORN",
       "MAT_BAKERY_RAW_DOUGH",
@@ -99,12 +114,8 @@
     }
   },
   "walkable_interior": {
-    "enabled": true,
-    "ground": "NAV_BAKERY_GROUND",
-    "upper": "NAV_BAKERY_UPPER",
-    "oven_annex": "NAV_OVEN_ANNEX",
-    "stall": "NAV_BREAD_STALL",
-    "stairs": "COLLISION_UPPER_STAIR"
+    "enabled": false,
+    "replacement": "separate Phaser interior map"
   },
   "visibility_controls": {
     "roof_property": "roof_removable",
@@ -130,6 +141,75 @@
       "OVEN_FIRE_2",
       "OVEN_FIRE_3",
       "OVEN_FIRE_4"
+    ],
+    "batched_runtime_meshes": [
+      "RUNTIME_BATCH_000_MAT_BAKERY_STONE_WARM",
+      "RUNTIME_BATCH_001_MAT_BAKERY_STONE_DARK",
+      "RUNTIME_BATCH_002_MAT_BAKERY_STONE_DARK",
+      "RUNTIME_BATCH_003_MAT_BAKERY_STONE_WARM",
+      "RUNTIME_BATCH_004_MAT_BAKERY_STONE_WARM",
+      "RUNTIME_BATCH_005_MAT_BAKERY_STONE_DARK",
+      "RUNTIME_BATCH_006_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_007_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_010_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_011_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_012_MAT_BAKERY_STONE_WARM",
+      "RUNTIME_BATCH_013_MAT_BAKERY_STONE_DARK",
+      "RUNTIME_BATCH_014_MAT_BAKERY_STONE_DARK",
+      "RUNTIME_BATCH_015_MAT_BAKERY_STONE_WARM",
+      "RUNTIME_BATCH_017_MAT_BAKERY_PLASTER_AGED",
+      "RUNTIME_BATCH_018_MAT_BAKERY_PLASTER_WORN",
+      "RUNTIME_BATCH_019_MAT_BAKERY_PLASTER_AGED",
+      "RUNTIME_BATCH_020_MAT_BAKERY_PLASTER_WORN",
+      "RUNTIME_BATCH_021_MAT_BAKERY_PLASTER_AGED",
+      "RUNTIME_BATCH_022_MAT_BAKERY_PLASTER_WORN",
+      "RUNTIME_BATCH_023_MAT_BAKERY_OAK_MID",
+      "RUNTIME_BATCH_024_MAT_BAKERY_FORGED_IRON",
+      "RUNTIME_BATCH_025_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_026_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_027_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_028_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_029_MAT_BAKERY_SHINGLE_B",
+      "RUNTIME_BATCH_030_MAT_BAKERY_SHINGLE_A",
+      "RUNTIME_BATCH_031_MAT_BAKERY_SHINGLE_C",
+      "RUNTIME_BATCH_032_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_033_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_034_MAT_BAKERY_SHINGLE_C",
+      "RUNTIME_BATCH_035_MAT_BAKERY_SHINGLE_B",
+      "RUNTIME_BATCH_036_MAT_BAKERY_SHINGLE_A",
+      "RUNTIME_BATCH_037_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_040_MAT_BAKERY_MOSS_WEATHERING",
+      "RUNTIME_BATCH_041_MAT_BAKERY_FLOUR_SACK",
+      "RUNTIME_BATCH_042_MAT_BAKERY_OAK_MID",
+      "RUNTIME_BATCH_043_MAT_BAKERY_FORGED_IRON",
+      "RUNTIME_BATCH_044_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_046_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_047_MAT_BAKERY_MECHANISM_WOOD",
+      "RUNTIME_BATCH_048_MAT_BAKERY_BAKED_BREAD",
+      "RUNTIME_BATCH_049_MAT_BAKERY_RAW_DOUGH",
+      "RUNTIME_BATCH_050_MAT_BAKERY_BAKED_BREAD",
+      "RUNTIME_BATCH_051_MAT_BAKERY_RAW_DOUGH",
+      "RUNTIME_BATCH_052_MAT_BAKERY_OVEN_CHAR",
+      "RUNTIME_BATCH_053_MAT_BAKERY_STONE_WARM",
+      "RUNTIME_BATCH_054_MAT_BAKERY_STONE_DARK",
+      "RUNTIME_BATCH_055_MAT_BAKERY_OVEN_FIRE"
+    ],
+    "batched_roof_meshes": [
+      "BAKERY_CHIMNEY_OPEN_MOUTH",
+      "RUNTIME_BATCH_010_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_011_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_014_MAT_BAKERY_STONE_DARK",
+      "RUNTIME_BATCH_015_MAT_BAKERY_STONE_WARM",
+      "RUNTIME_BATCH_021_MAT_BAKERY_PLASTER_AGED",
+      "RUNTIME_BATCH_022_MAT_BAKERY_PLASTER_WORN",
+      "RUNTIME_BATCH_029_MAT_BAKERY_SHINGLE_B",
+      "RUNTIME_BATCH_030_MAT_BAKERY_SHINGLE_A",
+      "RUNTIME_BATCH_031_MAT_BAKERY_SHINGLE_C",
+      "RUNTIME_BATCH_032_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_033_MAT_BAKERY_OAK_DARK",
+      "RUNTIME_BATCH_034_MAT_BAKERY_SHINGLE_C",
+      "RUNTIME_BATCH_035_MAT_BAKERY_SHINGLE_B",
+      "RUNTIME_BATCH_036_MAT_BAKERY_SHINGLE_A"
     ]
   },
   "animations": [
@@ -157,38 +237,6 @@
   ],
   "collision_guides": [
     {
-      "name": "NAV_BAKERY_GROUND",
-      "kind": "walk",
-      "role": "walkable_polygon",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        0.0,
-        0.2,
-        0.52
-      ],
-      "size_blender_xyz": [
-        6.8,
-        5.9,
-        0.06
-      ]
-    },
-    {
-      "name": "NAV_BAKERY_UPPER",
-      "kind": "walk",
-      "role": "walkable_polygon",
-      "floor": "UPPER",
-      "center_blender_xyz": [
-        0.0,
-        0.0,
-        3.14
-      ],
-      "size_blender_xyz": [
-        7.0,
-        6.3,
-        0.06
-      ]
-    },
-    {
       "name": "NAV_BREAD_STALL",
       "kind": "walk",
       "role": "walkable_polygon",
@@ -205,102 +253,6 @@
       ]
     },
     {
-      "name": "NAV_OVEN_ANNEX",
-      "kind": "walk",
-      "role": "walkable_polygon",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        5.105,
-        0.2,
-        0.2
-      ],
-      "size_blender_xyz": [
-        2.39,
-        4.6,
-        0.06
-      ]
-    },
-    {
-      "name": "COLLISION_UPPER_STAIR",
-      "kind": "walk",
-      "role": "stair_ramp",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        -3.0,
-        1.75,
-        1.78
-      ],
-      "size_blender_xyz": [
-        1.0,
-        2.5,
-        2.7
-      ]
-    },
-    {
-      "name": "COLLISION_REAR_WALL",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        0.0,
-        3.4,
-        1.7
-      ],
-      "size_blender_xyz": [
-        7.6,
-        0.3,
-        2.5
-      ]
-    },
-    {
-      "name": "COLLISION_LEFT_WALL",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        -3.8,
-        0.0,
-        1.7
-      ],
-      "size_blender_xyz": [
-        0.3,
-        6.8,
-        2.5
-      ]
-    },
-    {
-      "name": "COLLISION_FRONT_LEFT",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        -2.2,
-        -3.4,
-        1.7
-      ],
-      "size_blender_xyz": [
-        3.1,
-        0.3,
-        2.5
-      ]
-    },
-    {
-      "name": "COLLISION_FRONT_RIGHT",
-      "kind": "block",
-      "role": "solid_wall",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        2.25,
-        -3.4,
-        1.7
-      ],
-      "size_blender_xyz": [
-        3.0,
-        0.3,
-        2.5
-      ]
-    },
-    {
       "name": "COLLISION_BREAD_STALL",
       "kind": "block",
       "role": "fixed_furniture",
@@ -314,38 +266,6 @@
         2.44,
         0.9,
         1.15
-      ]
-    },
-    {
-      "name": "COLLISION_OVEN",
-      "kind": "block",
-      "role": "hot_oven",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        5.105,
-        -2.33,
-        1.05
-      ],
-      "size_blender_xyz": [
-        2.0,
-        1.6,
-        2.1
-      ]
-    },
-    {
-      "name": "COLLISION_DOUGH_TABLE",
-      "kind": "block",
-      "role": "fixed_furniture",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        -0.65,
-        0.55,
-        0.55
-      ],
-      "size_blender_xyz": [
-        2.3,
-        0.9,
-        1.1
       ]
     },
     {
@@ -381,38 +301,6 @@
       ]
     },
     {
-      "name": "INTERACTION_OVEN",
-      "kind": "interaction",
-      "role": "bake_bread",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        5.105,
-        -2.83,
-        1.1
-      ],
-      "size_blender_xyz": [
-        2.1,
-        1.7,
-        2.0
-      ]
-    },
-    {
-      "name": "INTERACTION_DOUGH_TABLE",
-      "kind": "interaction",
-      "role": "prepare_dough",
-      "floor": "GROUND",
-      "center_blender_xyz": [
-        -0.65,
-        0.55,
-        1.0
-      ],
-      "size_blender_xyz": [
-        2.5,
-        1.4,
-        1.8
-      ]
-    },
-    {
       "name": "INTERACTION_BREAD_STALL",
       "kind": "interaction",
       "role": "buy_bread",
@@ -426,6 +314,38 @@
         2.5,
         1.4,
         1.6
+      ]
+    },
+    {
+      "name": "COLLISION_EXTERIOR_FOOTPRINT_0",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        5.105,
+        0.12,
+        1.55
+      ],
+      "size_blender_xyz": [
+        2.44,
+        4.95,
+        3.1
+      ]
+    },
+    {
+      "name": "COLLISION_EXTERIOR_FOOTPRINT_1",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        0.0,
+        1.55
+      ],
+      "size_blender_xyz": [
+        7.12,
+        6.32,
+        3.1
       ]
     }
   ],
@@ -441,36 +361,6 @@
       ]
     },
     {
-      "name": "SPAWN_INTERIOR_MAIN",
-      "role": "spawn_interior",
-      "floor": "GROUND",
-      "blender_xyz": [
-        0.0,
-        -2.7,
-        0.52
-      ]
-    },
-    {
-      "name": "SPAWN_UPPER_STAIRS",
-      "role": "spawn_upper",
-      "floor": "UPPER",
-      "blender_xyz": [
-        -3.0,
-        2.86,
-        3.18
-      ]
-    },
-    {
-      "name": "SPAWN_OVEN_ANNEX",
-      "role": "spawn_oven_annex",
-      "floor": "GROUND",
-      "blender_xyz": [
-        4.45,
-        0.4,
-        0.2
-      ]
-    },
-    {
       "name": "SPAWN_BREAD_STALL",
       "role": "spawn_bread_stall",
       "floor": "EXTERIOR",
@@ -482,14 +372,16 @@
     }
   ],
   "counts": {
-    "runtime_objects": 2090,
-    "materials": 21,
+    "runtime_objects": 93,
+    "materials": 20,
     "windows": 10,
     "doors": 3,
-    "collisions": 17,
+    "collisions": 7,
     "main_roof_shingles": 648,
     "annex_roof_shingles": 208,
-    "bread_objects": 92
+    "bread_objects": 92,
+    "removed_interior_objects": 24,
+    "merged_static_objects": 1973
   },
   "integration_contract": {
     "load_with": "Three.js GLTFLoader",
@@ -503,5 +395,10 @@
       "visible collision meshes",
       "global ground plate"
     ]
+  },
+  "runtime_mode": "exterior_only",
+  "construction_contract": {
+    "embedded_interior_fitout": false,
+    "separate_interior_map_ready": true
   }
 }
