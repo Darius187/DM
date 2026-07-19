@@ -2270,12 +2270,11 @@ function bevoelkereStadt(a: AreaData): void {
   N({ id: 'johannes', name: 'Pater Johannes', x: 97 * T32, y: 50.5 * T32, abend: { x: 97 * T32, y: 50.5 * T32 } });
   frei(94, 32, 99, 35);
   N({ id: 'kuester', name: 'Küster Benedikt', x: 96.5 * T32, y: 33 * T32, mittag: { x: 97 * T32, y: 50 * T32 }, abend: { x: 96.5 * T32, y: 33 * T32 } });
-  // R157 (Autor "haenge die Level alle an die Kirche"): der Krypta-Eingang
-  // suedoestlich der Kirche (Dorfplan-Box 'KryptaEingang', 101,50 3x3) wird
-  // REAL - Wendeltreppe hinab nach Ebene 1. Prolog + Spiel-Logik haengen am
-  // WENDEL-Interact der WorldScene; die Kirchen-Kollision spart die Flaeche aus.
+  // R176 (Autor): der Verlies-Eingang ist die KIRCHE selbst - Betreten oeffnet
+  // das Kirchenschiff (Zelda-Innenraum), der Geheimgang unter dem Chor fuehrt
+  // in die Krypta. Die R157-Aussen-Wendeltreppe ist entfernt; die Flaeche
+  // suedoestlich der Kirche bleibt als freier Vorplatz.
   frei(100, 49, 105, 54);
-  map[51][102] = T.WENDEL;
   // Wirtshaus (B2)
   frei(41, 60, 46, 63);
   N({ id: 'heinrich', name: 'Heinrich Kramer', x: 43.5 * T32, y: 61.5 * T32, abend: { x: 43.5 * T32, y: 61.5 * T32 }, kaempfer: true, questgeber: 'kopfgeld' });

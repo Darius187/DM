@@ -1728,3 +1728,22 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
 - Live im Browser geprueft: Testeintrag sichtbar, Platzierung funktioniert,
   Textur wird geladen, die Einheit läuft zum Ziel und spielt ihre Angriffsfolge
   ohne Konsolenfehler. Produktions-Build und 62 Testdateien / 394 Tests sind gruen.
+## Runde 176 - Die Kirche ist der Verlies-Eingang + Stadtportal-Quest
+- Der Weg ins Verlies fuehrt jetzt DURCH die Kirche (Zelda-Prinzip): an der
+  Tuer der 3D-Kirche oeffnet E das Kirchenschiff (Schluessel-Gate bei Pater
+  Johannes bleibt), drinnen liegt der "Geheimgang unter dem Chor" (Wendel-
+  treppe links vom Altar, Angst-Prolog beim ersten Abstieg) hinab in die
+  Krypta. Die R157-Aussentreppe auf dem Vorplatz ist weg; der Kirchhof-
+  Ausgang bringt einen vor die STADT-Kirche (nicht mehr ins Archiv-Dorf).
+  Die Tuer-Erkennung haengt an den echten Tueren des 3D-Modells - verschiebt
+  der Autor die Kirche im Dorf-Editor, wandert der Eingang mit.
+- Stadtportal ist QUEST-Belohnung: neue Nebenquest "Der Weg zurueck ans
+  Licht" - wer die dritte Verlies-Ebene erreicht, schaltet das Portal frei
+  (vorher: erst nach dem Boss). Meldung + Chronik beim Freischalten,
+  Zeile in der Aufgabenliste; Portal-ROLLEN wirken weiterhin jederzeit.
+- Browser-verifiziert (Playwright, komplette Kette): Kirchentuer zu/auf ->
+  Kirchenschiff -> Kirchhof zurueck zur Stadt -> Portal in crypt1 abgelehnt,
+  nach Betreten von crypt3 freigeschaltet und traegt in die Stadt. tsc
+  fehlerfrei, 391 Tests gruen.
+- Ausdruecklich SPAETER (Autor-Plan, in TODO.md): Zelda-Innenraum fuer jedes
+  Haus + Verschoenerung des Kirchenschiffs mit Codex/Blender-Assets.

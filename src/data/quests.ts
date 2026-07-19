@@ -95,6 +95,21 @@ export const QUESTS: QuestDef[] = [
     ],
   },
   {
+    // R176 (Autor "ich will eine Quest fuer das Stadtportal, ab der dritten
+    // Ebene im Verlies"): Freischaltung haengt am bestehenden ebene3-Flag.
+    id: 'neben_stadtportal',
+    titel: 'Der Weg zurück ans Licht',
+    kategorie: 'neben',
+    geber: 'Das Verlies',
+    kurz: 'Wer sich bis zur dritten Ebene des Verlieses vorkämpft, dem öffnet sich das Stadtportal.',
+    aktiv: (c) => c.hasKey,
+    fertig: (c) => f(c, 'ebene3'),
+    belohnung: 'Der Stadtportal-Zauber - jederzeit zurück nach Ravensmoor',
+    ziele: [
+      { text: 'Erreiche die dritte Ebene des Verlieses.', wohin: 'Verlies unter der Kirche', erfuellt: (c) => f(c, 'ebene3') },
+    ],
+  },
+  {
     id: 'haupt_schattenfuerst',
     titel: 'Der Schattenfürst',
     kategorie: 'haupt',

@@ -143,3 +143,8 @@
   Auswahl-Wechsel - Live-Aktualisierung (0,5s-Takt) nachziehen.
 - R148: Gebaeude-Karte zeigt Turm-Besatzung; weitere Gebaeude-Aktionen
   (Reparieren/Abbauen-Knoepfe in der Karte) folgen mit dem Gebaeude-Menue.
+
+## R176-Folgearbeit (Autor-Plan, ausdruecklich SPAETER)
+- Zelda-Innenraum fuer JEDES Stadt-Haus (Haus fuer Haus): Betreten oeffnet
+  eine Innenraum-Karte wie beim Kirchenschiff; huebsche Assets entstehen
+  mit Codex/Blender. Kirche zuerst verschoenern (aktuell alter R18-Raum).

@@ -135,7 +135,7 @@ export const DORFPLAN_BOXEN: DorfBox[] = [
 
   // --- WEITERE POIs ---------------------------------------------------------
   { id: 'Friedhof', typ: 'poi', x: 91, y: 28, breite: 11, hoehe: 9, label: 'Friedhof', notes: 'noerdlich der Kirche.' },
-  { id: 'KryptaEingang', typ: 'poi', x: 101, y: 50, breite: 3, hoehe: 3, label: 'Krypta-Eingang', notes: 'suedoestl. der Kirche; spaeter Dungeon-Eingang.' },
+  { id: 'KryptaEingang', typ: 'poi', x: 101, y: 50, breite: 3, hoehe: 3, label: 'Kirch-Vorplatz', notes: 'R176: Verlies-Eingang ist die Kirchentuer selbst; Flaeche bleibt freier Vorplatz.' },
   { id: 'BrandHofstelle', typ: 'poi', x: 50, y: 75, breite: 9, hoehe: 8, label: 'niedergebr. Hofstelle', notes: 'Wiederaufbauprojekt, Mitte-Sued zwischen den S-Haeusern.' },
 
   // --- WOHNHAEUSER NORD N1-N7 (Reihe noerdlich des Angers) -------------------

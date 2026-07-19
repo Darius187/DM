@@ -160,6 +160,14 @@ export class Gebaeude3DWelt {
     return m ? this.planZuWelt(m.x, m.y) : null;
   }
 
+  // R176: Tuer-Positionen in Weltpixeln (Eingangs-Interaktionen, z.B. die
+  // Kirchentuer als Verlies-Eingang). Leer, solange das GLB noch laedt.
+  tuerWeltPositionen(): Array<{ x: number; y: number }> {
+    const g = this.gebaeude;
+    if (!g) return [];
+    return g.tueren.map((t) => this.planZuWelt(t.pos.x, t.pos.y));
+  }
+
   // --- Pro-Frame-Update ----------------------------------------------------------
   update(dt: number, heldX: number, heldY: number): void {
     const g = this.gebaeude;

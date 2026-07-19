@@ -82,6 +82,12 @@ export const KAEMPFER = {
 // (stadt) neben dem Brunnen (Kachel 61/72, freigeraeumte Brunnen-Zone).
 export const PORTAL_STADT = { x: 61 * 32 + 16, y: 72 * 32 + 16 } as const;
 
+// R176 (Autor "der Eingang in das Verlies ist die Kirche"): Rückkehr-Punkt
+// vor der Tür der Stadt-Kirche (Dorfplan-Box B4, Vorplatz bei Pater Johannes).
+export const KIRCHE_VORPLATZ = { x: 97 * 32 + 16, y: 52 * 32 + 16 } as const;
+// Ab dieser Nähe zur Kirchentür greift die Betreten-Interaktion (Weltpixel).
+export const KIRCHE_TUER_REICHWEITE_PX = 56;
+
 export const STADTMAUER = {
   stufen: [
     { name: 'Palisade', gold: 750, holz: 80, stein: 30, naechte: 3, beschreibung: 'Angespitzte Pfähle rund um Ravensmoor mit zwei verschließbaren Toren - der Bau dauert drei Nächte' },

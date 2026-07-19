@@ -66,7 +66,7 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
 import { STAHL_QUEST } from '../data/questlinien';
@@ -1960,7 +1960,13 @@ export class WorldScene extends CombatScene {
     if (id === 'boss' && this.bossKampfSteht() && !a.geleert) this.resetBossTore(a);
     if (id === 'boss') this.baueBossBlut();
     if (!a.dark && !a.innen && (id === 'village' || id === 'wald')) this.baueRaben();
-    if (id === 'crypt3') this.flags.ebene3 = true;
+    if (id === 'crypt3' && !this.flags.ebene3) {
+      // R176 (Autor): das Stadtportal ist QUEST-Belohnung - freigeschaltet,
+      // sobald der Held die dritte Verlies-Ebene erreicht.
+      this.flags.ebene3 = true;
+      this.logMsg('Ebene 3 erreicht - der Stadtportal-Zauber steht dir jetzt offen.', 'gold');
+      this.chronik('geschichte', 'Die dritte Ebene des Verlieses ist erreicht - das Stadtportal trägt dich fortan heim nach Ravensmoor.');
+    }
     this.gruselT = 6 + Math.random() * 8;
     // Gebiets-Musik (Runde 17): liegt musik_dorf/wald/krypta als Loop vor,
     // läuft sie hier - sonst wie bisher (Stille bzw. Grusel-Rotation)
@@ -6536,15 +6542,23 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // Kollision der 3D-Gebaeude (Held nutzt seine Ebene EG/OG, Feinde die EG-Sicht;
   // offene Tueren geben den Durchgang frei, zu = blockiert).
   private gebaeudeSolid(x: number, y: number, fuerHeld: boolean): boolean {
-    // R157 (Autor "die Kirche darf den Eingang nicht behindern"): die Flaeche
-    // des Krypta-Eingangs (Dorfplan-Box, 100..105/49..54) bleibt IMMER frei -
-    // egal wie die Kirche verschoben/skaliert wird.
-    if (this.area?.id === 'stadt') {
-      const tx = x / TILE, ty = y / TILE;
-      if (tx >= 100 && tx <= 106 && ty >= 49 && ty <= 55) return false;
-    }
+    // (Die R157-Freistellung des Aussen-Krypta-Eingangs entfiel mit R176 -
+    // der Verlies-Eingang ist jetzt die Kirchentuer selbst.)
     for (const g of this.gebaeude3d.values()) if (g.istSolid(x, y, fuerHeld)) return true;
     return false;
+  }
+
+  // R176: steht der Held nah an einer Tuer der 3D-Kirche? Liefert die
+  // naechstgelegene Tuer-Position (Weltpixel) oder null.
+  private stadtKirchenTuer(): { x: number; y: number } | null {
+    const tueren = this.gebaeude3d.get('kirche')?.tuerWeltPositionen() ?? [];
+    let best: { x: number; y: number } | null = null;
+    let bestD = KIRCHE_TUER_REICHWEITE_PX;
+    for (const t of tueren) {
+      const d = Math.hypot(this.px - t.x, this.py - t.y);
+      if (d < bestD) { bestD = d; best = t; }
+    }
+    return best;
   }
 
   // Held-Hoehenversatz (Obergeschoss/Treppe) fuer die Figur-Zeichnung.
@@ -11167,6 +11181,26 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   private stairHint(): { text: string; action: () => void } | null {
     const ik = getSettings().kb.interact.toUpperCase();
     const tid = this.area.map[Math.floor(this.py / TILE)]?.[Math.floor(this.px / TILE)];
+    // R176 (Autor "der Eingang in das Verlies ist die Kirche"): an der Tuer
+    // der 3D-Kirche oeffnet die Interaktionstaste das Kirchenschiff (Zelda-
+    // Innenraum) - von dort fuehrt der Geheimgang unter dem Chor in die Krypta.
+    if (this.area.id === 'stadt') {
+      const tuer = this.stadtKirchenTuer();
+      if (tuer) {
+        return {
+          text: this.p.hasKey ? `Kirche St. Marien betreten - ${ik}` : 'Die Kirchentür ist verschlossen (Pater Johannes)',
+          action: () => {
+            if (!this.p.hasKey) {
+              this.logMsg(MELDUNGEN.kircheZu, 'bad');
+              this.sfx.play('fehler');
+              return;
+            }
+            this.sfx.play('tuer');
+            this.goArea('kirchenschiff');
+          },
+        };
+      }
+    }
     if (tid === T.CDOOR) {
       return {
         text: this.p.hasKey ? `Kryptaeingang - ${ik} zum Hinabsteigen` : 'Die Kirchentür ist verschlossen (Pater Johannes)',
@@ -11186,10 +11220,9 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         return {
           text: `Hinaus auf den Kirchhof - ${ik}`,
           action: () => {
-            const village = this.getArea('village');
-            const door = village.cryptDoor;
             this.sfx.play('tuer');
-            this.goArea('village', door ? { x: door.x, y: door.y + 40 } : undefined);
+            // R176: hinaus vor die Tuer der STADT-Kirche (nicht mehr ins Archiv-Dorf)
+            this.goArea('stadt', { x: KIRCHE_VORPLATZ.x, y: KIRCHE_VORPLATZ.y });
           },
         };
       }
@@ -11204,10 +11237,10 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       }
     }
     if (tid === T.WENDEL) {
-      // Wendeltreppe links vom Altar (Runde 41): erster Abstieg = Angst-Prolog,
-      // danach normal in die Krypta.
+      // Wendeltreppe links vom Altar (Runde 41, R176 "Geheimgang unter dem
+      // Chor"): erster Abstieg = Angst-Prolog, danach normal in die Krypta.
       return {
-        text: `Wendeltreppe hinab zu Ebene 1 - ${ik} zum Hinabsteigen`,
+        text: `Geheimgang unter dem Chor: Wendeltreppe hinab - ${ik} zum Hinabsteigen`,
         action: () => {
           if (!this.flags.prologGesehen) this.starteProlog('crypt1', 'Treppenabstieg', { schmal: true, weiter: 'LangerGang' });
           else this.goArea('crypt1');
@@ -11566,21 +11599,22 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   private portalEnts: Phaser.GameObjects.Image[] = [];
 
   protected override castTownPortal(viaScroll = false): void {
-    // Die feste Stadtportal-Taste öffnet erst nach dem Boss; eine Stadtportal-
-    // ROLLE wirkt jederzeit (Runde 41) - sie ist das Mittel selbst.
-    if (!viaScroll && !this.bossDead && !this.flags.ngPlusGeschafft) {
-      this.logMsg('Das Stadtportal öffnet sich erst, wenn der Tempelritter gefallen ist.', 'bad');
+    // R176 (Autor): die feste Stadtportal-Taste ist QUEST-Belohnung - sie
+    // öffnet ab dem Erreichen der dritten Verlies-Ebene (flags.ebene3).
+    // Eine Stadtportal-ROLLE wirkt jederzeit (Runde 41) - sie ist das Mittel selbst.
+    if (!viaScroll && !this.flags.ebene3 && !this.bossDead && !this.flags.ngPlusGeschafft) {
+      this.logMsg('Das Stadtportal öffnet sich erst, wenn du die dritte Ebene des Verlieses erreicht hast.', 'bad');
       this.sfx.play('fehler');
       return;
     }
-    if (this.area.id === 'village') {
+    if (this.area.id === 'stadt') {
       this.logMsg('Du stehst bereits in Ravensmoor.', '');
       return;
     }
     this.portalZiel = { areaId: this.area.id, x: this.px, y: this.py };
     this.fx.burst(this.px, this.py, 0x8aa6e8, 24, 200);
     this.sfx.play('heiliges_licht');
-    this.goArea('village', { x: PORTAL_STADT.x, y: PORTAL_STADT.y + 40 });
+    this.goArea('stadt', { x: PORTAL_STADT.x, y: PORTAL_STADT.y + 40 });
     this.logMsg('Das Portal trägt dich nach Ravensmoor - es bleibt offen, bis du zurückkehrst.', 'magic');
   }
 
@@ -11914,6 +11948,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     else if (!f.nAnkunft) out.push('· Folge dem Pfad nach Osten nach Ravensmoor.');
     else if (!this.p.hasKey) out.push('· Pater Johannes an der Kirche hat den Kryptaschlüssel.');
     else if (!this.bossDead && !f.ngPlus) out.push('· Steig in die Krypta hinab und finde die Quelle des Übels.');
+    if (this.p.hasKey && !f.ebene3) out.push('· Erreiche die dritte Ebene des Verlieses - dann öffnet sich dir das Stadtportal.');
     if (f.rattenAktiv) out.push('· Erledige die Ratten im Lager der Mühle.');
     if (f.medaillonGenommen && !f.annaQuestFertig) out.push('· Bring Annas Medaillon zu Heinrich in die Taverne.');
     if (f.ngPlus && !f.ngPlusGeschafft) out.push('· Neues Spiel+: Im Grab des Kreuzritters wartet der Schattenfürst.');
