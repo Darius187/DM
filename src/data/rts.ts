@@ -86,6 +86,9 @@ export const RTS_BAUTEN: ReadonlyArray<RtsBau> = [
   // R179: der Botenposten holt den Ravensmoorer Boten (samt Pferd) ins Lager -
   // von hier laesst sich der Graf um Verstaerkung rufen (Ritt ist abfangbar).
   { id: 'botenposten', name: 'Botenposten', kosten: { holz: 12, fasern: 4 }, frei: true, beschreibung: 'Ein Reiter aus Ravensmoor bezieht den Posten - von hier reitet er zum Grafen' },
+  // F4: die Pferde-Einrichtung des Lagers - nur MIT ihr reitet der Bote
+  // (sonst laeuft er); spaeter docken hier weitere Pferde-Funktionen an.
+  { id: 'pferdekoppel', name: 'Pferdekoppel', kosten: { holz: 10, fasern: 6 }, frei: true, beschreibung: 'Ein Pferd steht bereit - Boten reiten statt zu laufen' },
 ];
 
 // Wirkung der Lager-Bauten (R97, "durchhalten bis Verstärkung"). Aura-Radius +
@@ -259,6 +262,9 @@ export const BOTE = {
   // R182 (Autor "9:30 ist zu lang; im Galopp keine 30s je Karte; Audienz 5s"):
   // der Reiter galoppiert - 20% der Fussmarsch-Zeit (15s je Karte).
   tempoF: 0.2,
+  // F4 (Autor "Pferd nur mit Pferde-Einrichtung im Lager"): ohne Pferd LAEUFT
+  // der Bote - deutlich langsamer.
+  tempoFZuFuss: 0.55,
   abfangRisiko: 0.08,      // Risiko je Teilstrecke, abgefangen zu werden ...
   abfangRisikoKrieg: 0.2,  // ... waehrend Einfall/Krieg deutlich hoeher
   zielKarte: 'burg',       // der Bote reitet bis zur Fuerstenburg-Karte
@@ -296,7 +302,7 @@ export const VERTEIDIGUNG = {
 export const BAU_KATEGORIEN: ReadonlyArray<{ id: string; name: string; taste: string; bauten: string[] }> = [
   { id: 'wehr', name: 'Befestigung', taste: 'Q', bauten: ['palisade', 'tor', 'wachturm', 'wachturm_45', 'wachturm_40'] },
   { id: 'lager', name: 'Lager', taste: 'W', bauten: ['lagerfeuer', 'zelt', 'lazarett', 'nachschub', 'feldschmiede'] },
-  { id: 'versorgung', name: 'Versorgung', taste: 'E', bauten: ['kochstelle', 'brunnen', 'botenposten'] },
+  { id: 'versorgung', name: 'Versorgung', taste: 'E', bauten: ['kochstelle', 'brunnen', 'botenposten', 'pferdekoppel'] },
   { id: 'zeichen', name: 'Feldzeichen', taste: 'R', bauten: ['standarte', 'feldaltar', 'wartfeuer'] },
 ];
 

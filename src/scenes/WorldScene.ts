@@ -419,6 +419,9 @@ export class WorldScene extends CombatScene {
     this.rtsRuestOffen = false;              // R187
     this.reparaturAuftraege = [];            // R191: Zeiger auf alte Szene kappen
     this.rueckzugPanikT = 0;
+    this.zwischenbote = null;                // F4
+    this.boteSprite = null;
+
     this.spaeherT = SPAEHER.intervallMinS;   // R178: Kundschafter-Uhr frisch
     this.bote = boteNeu(BOTE.heim);          // R179: der Bote startet daheim
     this.lage = neueGebietslage(FELDZUG.startBesetzt);   // F1: Gebietslage frisch
@@ -4050,7 +4053,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       if (f.id === 'botenposten') {
         const bo = this.bote;
         const hier = bo.status === 'posten' && bo.karte === this.area.id;
-        const lbl = hier ? '🐎 Boten zum Grafen schicken'
+        const lbl = hier ? (this.botePferdHier() ? '🐎 Boten zum Grafen schicken' : '👣 Boten (zu Fuß) zum Grafen')
           : bo.status === 'reitet' ? `Bote unterwegs (${this.kartenName(bo.karte)})`
             : bo.status === 'tot' ? 'Bote gefallen - Ersatz rüstet sich'
               : '🐎 Boten herbeirufen (aus Ravensmoor)';
@@ -4058,6 +4061,11 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
           if (hier) this.botenZumGrafen();
           else this.botenZumPosten();
         });
+        // F4: der Zwischenbote laeuft nach Ravensmoor und aktiviert den
+        // Hauptboten - fuer den Fall, dass der Bote NICHT hier am Posten ist.
+        if (!hier) {
+          knopf(0, F(52), this.zwischenbote ? `Zwischenbote läuft (${Math.ceil(this.zwischenbote.t)}s)` : '👣 Zwischenboten nach Ravensmoor', '#c9d8f0', !this.zwischenbote, () => this.schickeZwischenboten());
+        }
       }
       return;
     }
@@ -4617,7 +4625,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     // R100 (Autor "Feldaltar sieht riesig aus, Groessenverhaeltnisse passen nicht"):
     // Lager-Props auf stimmige, kleinere Groesse relativ zu Palisade/Turm.
     // R101: Turm-Zielhoehe so, dass der Beinstand ~2 Kacheln (64px) breit wird.
-    const zielH: Record<string, number> = { zelt: 84, lazarett: 84, nachschub: 76, feldaltar: 40, kochstelle: 42, brunnen: 50, feldschmiede: 44, wartfeuer: 46, botenposten: 50 };
+    const zielH: Record<string, number> = { zelt: 84, lazarett: 84, nachschub: 76, feldaltar: 40, kochstelle: 42, brunnen: 50, feldschmiede: 44, wartfeuer: 46, botenposten: 50, pferdekoppel: 46 };
     const h = turm ? 132 : zielH[id];
     if (h) {
       const src = this.textures.get(key).getSourceImage();
@@ -4635,7 +4643,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     if (this.istWachturm(id)) return this.macheWachturmBild();
     if (id === 'lazarett') return this.macheZeltBild(true);
     if (id === 'nachschub') return this.macheZeltBild(false);
-    if (id === 'feldaltar' || id === 'kochstelle' || id === 'brunnen' || id === 'feldschmiede' || id === 'wartfeuer' || id === 'botenposten') return this.macheLagerBild(id);
+    if (id === 'feldaltar' || id === 'kochstelle' || id === 'brunnen' || id === 'feldschmiede' || id === 'wartfeuer' || id === 'botenposten' || id === 'pferdekoppel') return this.macheLagerBild(id);
     return this.macheZeltBild(false);
   }
 
@@ -4674,6 +4682,14 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       g.fillStyle = '#6a5030'; g.fillRect(cx - 19, 32, 35, 3);
       g.fillStyle = '#8a7a52'; g.fillRect(cx - 14, 42, 11, 6);                                          // Futtertrog
       g.fillStyle = '#c9b060'; g.fillRect(cx - 13, 41, 9, 2);                                           // Heu
+    } else if (id === 'pferdekoppel') {
+      g.fillStyle = '#5a4326'; g.fillRect(cx - 20, 26, 3, 22); g.fillRect(cx + 17, 26, 3, 22);   // Koppel-Pfosten
+      g.fillStyle = '#5a4326'; g.fillRect(cx - 4, 26, 3, 22);
+      g.fillStyle = '#6a5030'; g.fillRect(cx - 20, 30, 40, 3); g.fillRect(cx - 20, 40, 40, 3);   // Querbalken
+      g.fillStyle = '#7a5c38'; g.beginPath(); g.ellipse(cx + 7, 36, 8, 5, 0, 0, Math.PI * 2); g.fill();   // Pferderumpf
+      g.fillStyle = '#7a5c38'; g.fillRect(cx + 12, 26, 4, 8);                                     // Hals
+      g.fillStyle = '#6a4c2c'; g.fillRect(cx + 12, 24, 7, 4);                                     // Kopf
+      g.fillStyle = '#c9b060'; g.fillRect(cx - 16, 44, 10, 4);                                    // Heu
     } else {  // wartfeuer - Signalfeuer auf Holzstoß
       g.fillStyle = '#4a3216'; for (let i = -2; i <= 2; i++) g.fillRect(cx + i * 4 - 1.5, 34, 3, 14);
       g.fillStyle = '#3a2810'; g.save(); g.translate(cx, 41); g.rotate(0.5); for (let i = -2; i <= 2; i++) g.fillRect(i * 4 - 1.5, -1.5, 3, 14); g.restore();
@@ -8689,10 +8705,16 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.logMsg(`Die Garnison von ${this.kartenName(karte)} zieht sich nach ${this.kartenName(ziel)} zurück.`, 'bad');
   }
 
+  // F4: hat der Bote hier ein Pferd? In Ravensmoor immer (die Stadt-Pferde),
+  // im Feld nur mit einer PFERDEKOPPEL im Lager.
+  private botePferdHier(): boolean {
+    return this.area.id === BOTE.heim || this.feldbauten.some((f) => f.id === 'pferdekoppel' && f.hp > 0);
+  }
+
   private updateBote(dt: number): void {
     const risiko = (this.einfallAktiv || this.flags.kriegBegonnen) ? BOTE.abfangRisikoKrieg : BOTE.abfangRisiko;
     const evs = tickBote(this.bote, dt, {
-      teilstreckeS: MARSCH.dauerJeKarteS * BOTE.tempoF,
+      teilstreckeS: MARSCH.dauerJeKarteS * (this.bote.beritten === false ? BOTE.tempoFZuFuss : BOTE.tempoF),
       abfangRisiko: risiko,
       burgDauerS: BOTE.burgDauerS,
       ersatzS: BOTE.ersatzS,
@@ -8723,10 +8745,76 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     if (b.status === 'tot') { this.logMsg('Der Bote ist gefallen - sein Ersatz rüstet sich noch.', 'bad'); return false; }
     if (b.status === 'reitet') { this.logMsg('Der Bote ist bereits unterwegs.', ''); return false; }
     const route = routeZu(this.kartenNachbarn, b.karte, BOTE.zielKarte);
-    if (!route || !schickeBote(b, route, 'graf')) { this.logMsg('Von hier führt kein Weg zur Fürstenburg.', 'bad'); return false; }
-    this.logMsg('Der Bote schwingt sich aufs Pferd und reitet gen Westen zum Grafen - die Straßen sind unsicher.', 'gold');
+    // F4: Pferd nur, wenn hier eines steht (Stadt oder Pferdekoppel im Lager)
+    const beritten = b.karte === this.area.id ? this.botePferdHier() : b.karte === BOTE.heim;
+    if (!route || !schickeBote(b, route, 'graf', beritten)) { this.logMsg('Von hier führt kein Weg zur Fürstenburg.', 'bad'); return false; }
+    this.logMsg(beritten
+      ? 'Der Bote schwingt sich aufs Pferd und reitet gen Westen zum Grafen - die Straßen sind unsicher.'
+      : 'Der Bote macht sich ZU FUSS auf den Weg zum Grafen (keine Pferdekoppel im Lager) - das dauert.', 'gold');
     this.chronik('ereignis', 'Ein Bote ist zur Fürstenburg aufgebrochen, den Grafen um Verstärkung zu bitten.');
     return true;
+  }
+
+  // F4 (Autor "einen Zwischenboten anheuern, der nach Ravensmoor rennt und
+  // den Hauptboten aktiviert"): ein Laeufer laeuft abstrakt zur Stadt; kommt
+  // er an, schickt er den Hauptboten sofort zum Grafen.
+  private zwischenbote: { t: number } | null = null;
+
+  private schickeZwischenboten(): void {
+    if (this.zwischenbote) { this.logMsg('Der Zwischenbote ist bereits unterwegs.', ''); return; }
+    const route = routeZu(this.kartenNachbarn, this.area.id, BOTE.heim);
+    if (!route) { this.logMsg('Von hier führt kein Weg nach Ravensmoor.', 'bad'); return; }
+    this.zwischenbote = { t: Math.max(1, route.length - 1) * MARSCH.dauerJeKarteS * BOTE.tempoFZuFuss };
+    this.logMsg('Ein Zwischenbote rennt nach Ravensmoor, um den Boten des Amts loszuschicken.', 'gold');
+  }
+
+  private updateZwischenbote(dt: number): void {
+    if (!this.zwischenbote) return;
+    this.zwischenbote.t -= dt;
+    if (this.zwischenbote.t > 0) return;
+    this.zwischenbote = null;
+    if (this.bote.status === 'heim') {
+      const route = routeZu(this.kartenNachbarn, this.bote.karte, BOTE.zielKarte);
+      if (route && schickeBote(this.bote, route, 'graf', true)) {
+        this.logMsg('Der Zwischenbote hat Ravensmoor erreicht - der Bote des Amts reitet zum Grafen!', 'gold');
+        this.chronik('ereignis', 'Ein Zwischenbote hat den Grafen-Ruf ausgelöst - der Bote reitet zur Fürstenburg.');
+        return;
+      }
+    }
+    this.logMsg('Der Zwischenbote erreichte Ravensmoor - doch der Bote des Amts war nicht verfügbar.', 'bad');
+  }
+
+  // F4 (Autor "den Boten will ich schon sehen, wie er reitet"): quert der
+  // Bote die HELD-Karte, gleitet die Pferd-Figur sichtbar von Kante zu Kante.
+  private boteSprite: Phaser.GameObjects.Sprite | null = null;
+  private boteAnimT = 0;
+
+  private updateBoteSprite(dt: number): void {
+    const b = this.bote;
+    const sichtbar = b.status === 'reitet' && b.karte === this.area.id && b.beiKarte < b.route.length - 1;
+    if (!sichtbar) {
+      if (this.boteSprite) { this.boteSprite.destroy(); this.boteSprite = null; }
+      return;
+    }
+    const von = b.beiKarte > 0 ? b.route[b.beiKarte - 1] : null;
+    const nach = b.route[b.beiKarte + 1];
+    const start = this.kantenPunkt(this.area, von, true);
+    const ziel = this.kantenPunkt(this.area, nach, false);
+    const teilS = MARSCH.dauerJeKarteS * (b.beritten === false ? BOTE.tempoFZuFuss : BOTE.tempoF);
+    const frac = Math.min(1, b.t / Math.max(0.001, teilS));
+    const x = start.x + (ziel.x - start.x) * frac, y = start.y + (ziel.y - start.y) * frac;
+    if (!this.boteSprite) {
+      if (!this.reitFrameVorhanden(REIT_PFERD.atlasKey, 'idle_d0_f0')) return;   // Atlas fehlt: ehrlich unsichtbar
+      this.boteSprite = this.add.sprite(x, y, REIT_PFERD.atlasKey, 'idle_d0_f0')
+        .setOrigin(0.5, 0.86).setScale(0.5).setTint(0xd8c8a8);
+      this.uiCam?.ignore(this.boteSprite);
+    }
+    const dir = angleToDir16(Math.atan2(ziel.y - start.y, ziel.x - start.x));
+    this.boteAnimT += dt * 10;
+    const f = Math.floor(this.boteAnimT) % 4;
+    const schnell = `fast_d${dir}_f${f}`;
+    const frame = this.reitFrameVorhanden(REIT_PFERD.atlasKey, schnell) ? schnell : `idle_d${dir}_f0`;
+    this.boteSprite.setFrame(frame).setPosition(x, y).setDepth(y);
   }
 
   // Ein frisch errichteter Botenposten holt den Boten nach: er reitet mit
@@ -14157,6 +14245,8 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.updateTurmBesatzung();  // R100: Turm-Insassen unsichtbar + Symbol
     this.updateMarsch(dt);   // R142: das Heer marschiert IMMER (auch ohne RTS-Modus)
     this.updateBote(dt);     // R179: die Boten-Uhr (Grafen-Ruf) laeuft ebenso immer
+    this.updateBoteSprite(dt);   // F4: der Reiter ist auf der Held-Karte sichtbar
+    this.updateZwischenbote(dt); // F4: Laeufer nach Ravensmoor (aktiviert den Boten)
     this.updateFeindzug(dt); // F2: der Feind produziert und greift nach Gebieten
     this.updateReparaturen(dt); // R191: sichtbare Bau-Reparatur (Auftrag + Haemmern)
     if (this.rueckzugPanikT > 0) this.rueckzugPanikT -= dt;

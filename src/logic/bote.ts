@@ -15,6 +15,7 @@ export interface Bote {
   t: number;                        // Sekunden auf der Teilstrecke
   burgT: number;                    // ziel 'graf': Restweg Waldrand -> Burg
   ersatzT: number;                  // tot: Countdown bis zum Ersatz-Boten
+  beritten?: boolean;               // F4: mit Pferd (Galopp) oder zu Fuss
 }
 
 export type BoteEreignis =
@@ -38,10 +39,11 @@ export function boteNeu(heim: string): Bote {
 
 // Ritt starten. false, wenn der Bote nicht verfuegbar ist (unterwegs/tot)
 // oder die Route leer/unpassend ist.
-export function schickeBote(b: Bote, route: string[] | null, ziel: 'lager' | 'graf'): boolean {
+export function schickeBote(b: Bote, route: string[] | null, ziel: 'lager' | 'graf', beritten = true): boolean {
   if (b.status !== 'heim' && b.status !== 'posten') return false;
   if (!route || route.length < 1 || route[0] !== b.karte) return false;
   b.status = 'reitet';
+  b.beritten = beritten;
   b.ziel = ziel;
   b.route = [...route];
   b.beiKarte = 0;
