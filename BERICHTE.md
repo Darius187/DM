@@ -1709,7 +1709,7 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
 - Der 1920 x 7680 grosse Phaser-Atlas bleibt WebGL-sicher. Alle Frames besitzen
   dieselbe Bodenlinie und einen dezenten Kontaktschatten; Speerspitze und
   Todespose bleiben vollständig in der 160-px-Zelle.
-- In `RTS -> TEST -> Feind-Monster` erscheint `Skelettwache`. Sie hat 720 HP,
+- In `RTS -> Dev/Test -> Feind-Monster` erscheint `Skelettwache`. Sie hat 720 HP,
   Stichschaden, gepanzerte Knochen-Tags und eine seltene echte Flaechenattacke.
 - Live im Browser geprueft: Testeintrag sichtbar, Platzierung funktioniert,
   Textur wird geladen, die Einheit läuft zum Ziel und spielt ihre Angriffsfolge
