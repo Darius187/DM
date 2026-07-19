@@ -265,6 +265,17 @@ export const BOTE = {
   heim: 'stadt',           // Heimat des Boten (Amt von Ravensmoor)
 } as const;
 
+// R187 (Autor "Standard-Heerwaffe mit 5-8 Schaden wie Spielerwaffen, Ruestung
+// Leder/Kette statt Stoff"): Grundausstattung des Heeres. Der Schaden
+// WUERFELT je Schlag zwischen min und max; red = eingehender Schadens-
+// Multiplikator der Ruestung (0.9 = 10% Schutz).
+export const HEER_AUSRUESTUNG: Readonly<Record<string, { waffe: string; min: number; max: number; ruestung: string; red: number }>> = {
+  nahkampf: { waffe: 'Heerklinge', min: 5, max: 8, ruestung: 'Lederwams', red: 0.9 },
+  schild: { waffe: 'Heerklinge', min: 5, max: 8, ruestung: 'Kettenhemd', red: 0.82 },
+  bogen: { waffe: 'Heerbogen', min: 4, max: 7, ruestung: 'Lederwams', red: 0.9 },
+  reiter: { waffe: 'Heerklinge', min: 5, max: 8, ruestung: 'Kettenhemd', red: 0.82 },
+};
+
 // R177 (Autor "die herbeigerufene Armee soll sich auf dem Hauptweg zur
 // Verteidigung positionieren"): ankommende Verstaerkung bezieht in Ravensmoor
 // Stellungs-LINIEN quer ueber die Einfall-Strassen (Nord + Ost) - dort, wo

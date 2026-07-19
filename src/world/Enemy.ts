@@ -251,6 +251,14 @@ export class Enemy {
   kills = 0;
   soeldner = false;   // R143 (2.3): Moral-Malus; flieht er zur Kante, desertiert er
   feldzugTrupp = false;   // F2: Teil einer Feindzug-Angriffswelle (Live-Aufloesung)
+  // R187: Heer-Ausruestung eines Verbuendeten. waffeMax > 0 -> der Schaden
+  // WUERFELT je Schlag zwischen waffeMin und waffeMax; ruestungRed ist der
+  // eingehende Schadens-Multiplikator (0.9 = 10% Schutz).
+  waffeMin = 0;
+  waffeMax = 0;
+  waffeName = '';
+  ruestungRed = 1;
+  ruestungName = '';
   // R144: RTS-Einheitentyp eines Verbuendeten - damit die Befehls-Schicht eine
   // bereits stehende Garnison (R142) beim RTS-Einstieg uebernehmen kann.
   rtsTyp: import('../data/rts').RtsUnitTyp | null = null;

@@ -1846,3 +1846,17 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
 - Gegner anklicken zeigt ihre FEIND-Karte im Pult (Name, Leben, Schaden,
   Kampfart, Elite/Anfuehrer-Merkmal). Browser-verifiziert mit Screenshot;
   tsc + 410 Tests gruen. Bilder auf den Knoepfen folgen spaeter (Autor).
+
+## Runde 187 - Heer-Ausruestung (Von-Bis-Waffen, Leder/Kette, Uebergabe)
+- Jeder Soldat traegt jetzt eine echte Grundausstattung: Heerklinge 5-8 /
+  Heerbogen 4-7 (wuerfelt je Schlag wie Spielerwaffen) und Lederwams bzw.
+  Kettenhemd, das eingehenden Schaden real daempft - kein "Stoff", kein
+  fixer Streitkolben-Wert mehr. Die Soldaten-Karte im Pult zeigt Waffe,
+  Spanne und Schutz.
+- NEU: "Ausruesten"-Knopf auf der Soldaten-Karte - der Held schiebt Waffen
+  oder Ruestungen aus seinem Rucksack an einzelne Maenner (z.B. eine
+  epische Klinge an den Veteranen). Der Gegenstand wandert ins Roster,
+  wirkt sofort (5-8 wird mit +6-Klinge zu 11-14) und kommt beim Ersetzen
+  zurueck in den Rucksack. Alles im Spielstand.
+- Browser-verifiziert (Grundwerte, Uebergabe, Ruestungs-Daempfung 10->9),
+  tsc fehlerfrei, 412 Tests gruen.

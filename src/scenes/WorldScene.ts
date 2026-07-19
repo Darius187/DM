@@ -60,7 +60,7 @@ import { HoehlenLeben } from '../gfx/hoehlenLeben';
 import { KriegsnebelAnzeige, type SichtSet } from '../systems/kriegsnebel';
 import { buildKerkerArea } from '../world/kerkerArea';
 import { MINE } from '../data/mine';
-import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, MORAL, MARSCH, VERTEIDIGUNG, BOTE, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, HEER_AUSRUESTUNG, MORAL, MARSCH, VERTEIDIGUNG, BOTE, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
@@ -3817,6 +3817,45 @@ export class WorldScene extends CombatScene {
   private rtsBauKat: string | null = null;
   private rtsDevOffen = false;
   private rtsFormOffen = false;   // R186: Formations-Auswahl als eigene Rasterebene
+  private rtsRuestOffen = false;  // R187: Uebergabe-Liste (Waffe/Ruestung an Soldat)
+
+  // R187: Waffen-/Ruestungs-Wert eines Gegenstands fuer die Heer-Uebergabe -
+  // Summe der passenden Boni + Schmiede-Verbesserung.
+  private itemHeerBonus(it: Item): number {
+    return it.boni.reduce((s2, b2) => s2 + (b2.k === 'dmg' ? b2.v : 0), 0) + (it.upgrade ?? 0);
+  }
+  private itemHeerSchutz(it: Item): number {
+    return it.boni.reduce((s2, b2) => s2 + (b2.k === 'armor' ? b2.v : 0), 0) + (it.upgrade ?? 0);
+  }
+
+  // R187: Gegenstand aus dem Helden-Rucksack an einen Soldaten uebergeben.
+  // Ein vorheriges Geschenk wandert zurueck in den Rucksack.
+  private gibHeerAusruestung(einheit: ArmeeEinheit, ref: Enemy, it: Item, art: 'waffe' | 'ruestung'): void {
+    const idx = this.p.inv.indexOf(it);
+    if (idx < 0) return;
+    this.p.inv.splice(idx, 1);
+    if (art === 'waffe') {
+      if (einheit.waffeGeschenk?.item) this.p.inv.push(einheit.waffeGeschenk.item);
+      einheit.waffeGeschenk = { name: it.name, bonus: this.itemHeerBonus(it), item: it };
+    } else {
+      if (einheit.ruestungGeschenk?.item) this.p.inv.push(einheit.ruestungGeschenk.item);
+      einheit.ruestungGeschenk = { name: it.name, schutz: this.itemHeerSchutz(it), item: it };
+    }
+    // Die stehende Figur zieht die Werte sofort nach (gleiche Formel wie beim Spawn).
+    const ha = HEER_AUSRUESTUNG[einheit.typ];
+    if (ha) {
+      const rang = rangFuerKills(ref.kills);
+      const bonus = einheit.waffeGeschenk?.bonus ?? 0;
+      ref.waffeMin = Math.max(1, Math.round((ha.min + bonus) * rangDmgF(rang)));
+      ref.waffeMax = Math.max(ref.waffeMin, Math.round((ha.max + bonus) * rangDmgF(rang)));
+      ref.dmg = Math.round((ref.waffeMin + ref.waffeMax) / 2);
+      ref.waffeName = einheit.waffeGeschenk?.name ?? ha.waffe;
+      ref.ruestungRed = Math.max(0.5, +(ha.red - (einheit.ruestungGeschenk?.schutz ?? 0) * 0.01).toFixed(2));
+      ref.ruestungName = einheit.ruestungGeschenk?.name ?? ha.ruestung;
+    }
+    this.logMsg(`${it.name} an ${einheit.name} übergeben.`, 'gold');
+    this.rtsRuestOffen = false;
+  }
 
   private bauePultGrid(c: Phaser.GameObjects.Container, F: (s: number) => number, w: number, y0: number): void {
     const battle = this.rtsBattle;
@@ -4058,13 +4097,38 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       c.add(this.add.rectangle(F(8), y, Math.round((w - F(16)) * frac), F(6), frac > 0.4 ? 0x5ac85a : 0xc85a5a).setOrigin(0));
       y += F(10);
       c.add(this.add.text(F(8), y, `Leben ${Math.max(0, Math.round(ref.hp))}/${ref.maxhp} · Moral ${ref.moral}`, zeile)); y += F(15);
-      const waffe = ref.schadensArt === 'pfeil' ? 'Bogen' : ref.schadensArt === 'wucht' ? 'Streitkolben' : ref.schadensArt === 'stich' ? 'Spieß' : 'Schwert';
-      const schutz = Math.round((1 - (d.schadensRed ?? 1)) * 100);
-      c.add(this.add.text(F(8), y, `Waffe: ${waffe} (${ref.dmg} Schaden)`, zeile)); y += F(15);
-      c.add(this.add.text(F(8), y, `Rüstung: ${schutz > 0 ? `${schutz}% Schutz` : 'Stoff'}${d.schild ? ' · Schild' : ''}`, zeile)); y += F(15);
-      const stanceN: Record<string, string> = { aggressiv: 'Verfolgen', verteidigen: 'Nahe bleiben', halten: 'Halten' };
-      const angriffN: Record<string, string> = { angreifen: 'Angreifen', zurueckschlagen: 'Nur zurückschlagen', feuerEinstellen: 'Feuer einstellen' };
-      c.add(this.add.text(F(8), y, `Verhalten: ${stanceN[u.stance] ?? u.stance} · ${angriffN[u.angriff] ?? u.angriff} (BEFEHLE-Tab ändert)`, klein));
+      // R187: echte Heer-Ausruestung (Von-Bis-Waffe, Leder/Kette, Geschenke)
+      const wName = ref.waffeName || (ref.schadensArt === 'pfeil' ? 'Bogen' : 'Schwert');
+      const wWert = ref.waffeMax > 0 ? `${ref.waffeMin}-${ref.waffeMax}` : `${ref.dmg}`;
+      c.add(this.add.text(F(8), y, `Waffe: ${wName} (${wWert} Schaden)`, zeile)); y += F(15);
+      const schutzPct = Math.round((1 - ref.ruestungRed) * 100);
+      c.add(this.add.text(F(8), y, `Rüstung: ${ref.ruestungName || 'Stoff'}${schutzPct > 0 ? ` (${schutzPct}% Schutz)` : ''}${d.schild ? ' · Schild' : ''}`, zeile)); y += F(17);
+      if (this.rtsRuestOffen && einheit) {
+        // R187: Uebergabe-Liste - beste Waffen/Ruestungen aus dem Rucksack.
+        const waffen = this.p.inv.filter((it) => it.kind === 'weapon').sort((a2, b2) => this.itemHeerBonus(b2) - this.itemHeerBonus(a2)).slice(0, 3);
+        const ruestungen = this.p.inv.filter((it) => it.kind === 'armor' || it.kind === 'schild').sort((a2, b2) => this.itemHeerSchutz(b2) - this.itemHeerSchutz(a2)).slice(0, 2);
+        const gib = (lbl: string, fn: () => void): void => {
+          const t = this.add.text(F(8), y, lbl, { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#f0d060', backgroundColor: '#221808', padding: { x: F(6), y: F(3) } }).setInteractive({ useHandCursor: true });
+          t.on('pointerdown', () => { fn(); this.sfx.play('aufheben', 0.6); this.baueRtsLeiste(); });
+          c.add(t); y += F(21);
+        };
+        if (!waffen.length && !ruestungen.length) { c.add(this.add.text(F(8), y, 'Keine Waffen/Rüstungen im Rucksack.', klein)); y += F(14); }
+        for (const it of waffen) gib(`⚔ ${it.name} (+${this.itemHeerBonus(it)})`, () => this.gibHeerAusruestung(einheit, ref, it, 'waffe'));
+        for (const it of ruestungen) gib(`🛡 ${it.name} (+${this.itemHeerSchutz(it)} Schutz)`, () => this.gibHeerAusruestung(einheit, ref, it, 'ruestung'));
+        const zr = this.add.text(F(8), y, '◀ Zurück', { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#a89878', backgroundColor: '#1a1408', padding: { x: F(6), y: F(3) } }).setInteractive({ useHandCursor: true });
+        zr.on('pointerdown', () => { this.rtsRuestOffen = false; this.sfx.play('klick', 0.4); this.baueRtsLeiste(); });
+        c.add(zr);
+      } else {
+        const stanceN: Record<string, string> = { aggressiv: 'Verfolgen', verteidigen: 'Nahe bleiben', halten: 'Halten' };
+        c.add(this.add.text(F(8), y, `Verhalten: ${stanceN[u.stance] ?? u.stance}`, klein)); y += F(15);
+        if (einheit) {
+          // R187: Uebergabe-Knopf (Autor "dem einen oder anderen eine epische
+          // Waffe rueberschieben")
+          const rk = this.add.text(F(8), y, '⇄ Ausrüsten (Waffe/Rüstung geben)', { fontFamily: 'serif', fontSize: `${F(10)}px`, color: '#f0d060', backgroundColor: '#221808', padding: { x: F(6), y: F(3) } }).setInteractive({ useHandCursor: true });
+          rk.on('pointerdown', () => { this.rtsRuestOffen = true; this.sfx.play('klick', 0.4); this.baueRtsLeiste(); });
+          c.add(rk);
+        }
+      }
     } else if (!sel.length && b.heldGewaehlt) {
       c.add(this.add.text(F(8), y, 'Der Held (Banneret)', { fontFamily: 'serif', fontSize: `${F(11)}px`, color: '#e8dfc8' })); y += F(16);
       c.add(this.add.text(F(8), y, `Stufe ${this.p.level} · Leben ${Math.round(this.p.hp)}/${this.p.stats.maxhp}`, zeile)); y += F(15);
@@ -7859,8 +7923,10 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       playerDir: () => { const z = s.zielFuer(e); return z === 'held' ? s.pdir : 0; },
       playerTot: () => { const z = s.zielFuer(e); return z === 'held' ? s.playerDead : false; },
       enemyMeleeHit: (en, dmg) => {
+        // R187: Heer-Waffen WUERFELN je Schlag zwischen min und max.
+        const wurf = en.waffeMax > 0 ? Math.round(en.waffeMin + Math.random() * (en.waffeMax - en.waffeMin)) : dmg;
         // R139 (Sunzi N5.3): Eingekesselte kaempfen verzweifelt - mehr Schaden.
-        const d2 = en.verzweifelt ? Math.round(dmg * MORAL.verzweiflungDmgF) : dmg;
+        const d2 = en.verzweifelt ? Math.round(wurf * MORAL.verzweiflungDmgF) : wurf;
         const z = s.zielFuer(en);
         if (z === 'held') s.enemyMeleeHit(en, d2);
         else if (z) {
@@ -7874,7 +7940,10 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
           } else s.trifftVerbuendeten(z, d3);
         }
       },
-      spawnEnemyProjectile: (x, y, vx, vy, dmg, col, pfeil, _vt, hoch) => s.spawnEnemyProjectile(x, y, vx, vy, dmg, col, pfeil, e.team === 'spieler' ? 'spieler' : 'feind', hoch, e.team === 'spieler' ? e : undefined),
+      spawnEnemyProjectile: (x, y, vx, vy, dmg, col, pfeil, _vt, hoch) => s.spawnEnemyProjectile(x, y, vx, vy,
+        // R187: auch der Heerbogen wuerfelt seinen Von-Bis-Schaden je Schuss.
+        e.waffeMax > 0 ? Math.round(e.waffeMin + Math.random() * (e.waffeMax - e.waffeMin)) : dmg,
+        col, pfeil, e.team === 'spieler' ? 'spieler' : 'feind', hoch, e.team === 'spieler' ? e : undefined),
       addTelegraph: (x, y, r, t, dmg) => s.addTelegraph(x, y, r, t, dmg),
       summonAdds: (en, n) => { if (en.team !== 'spieler') s.summonAdds(en, n); },
       logMsg: (t, c) => s.logMsg(t, c),
@@ -7939,7 +8008,18 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     e.name = rang > 0 ? `${einheit.name} ${'▲'.repeat(rang)}` : einheit.name;
     e.maxhp = einheitMaxHp(einheit);
     e.hp = Math.min(e.maxhp, Math.max(1, einheit.hp));
-    e.dmg = Math.round(d.dmg * rangDmgF(rang));
+    // R187: Heer-Grundausstattung (Von-Bis-Waffe, Leder/Kette) + vom Helden
+    // uebergebene Geschenke; der Rang skaliert die Klinge mit.
+    const ha = HEER_AUSRUESTUNG[rtsTyp];
+    if (ha) {
+      const bonus = einheit.waffeGeschenk?.bonus ?? 0;
+      e.waffeMin = Math.max(1, Math.round((ha.min + bonus) * rangDmgF(rang)));
+      e.waffeMax = Math.max(e.waffeMin, Math.round((ha.max + bonus) * rangDmgF(rang)));
+      e.dmg = Math.round((e.waffeMin + e.waffeMax) / 2);
+      e.waffeName = einheit.waffeGeschenk?.name ?? ha.waffe;
+      e.ruestungRed = Math.max(0.5, +(ha.red - (einheit.ruestungGeschenk?.schutz ?? 0) * 0.01).toFixed(2));
+      e.ruestungName = einheit.ruestungGeschenk?.name ?? ha.ruestung;
+    } else e.dmg = Math.round(d.dmg * rangDmgF(rang));
     e.speed = d.speed;
     e.kampfTags = d.tags ?? [];            // R139 (1.6): Konter-Matrix kennt beide Seiten
     e.schadensArt = d.schadensArt ?? 'schnitt';
@@ -7963,7 +8043,8 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       a.blockT = 0;
       return;
     }
-    a.hp -= dmg;
+    // R187: die Ruestung (Leder/Kette/Geschenk) daempft eingehenden Schaden.
+    a.hp -= Math.max(1, Math.round(dmg * a.ruestungRed));
     a.hitFlash = 0.12;
     if (a.hp <= 0) {
       this.fx.burst(a.x, a.y, 0xd0c8b0, 12, 160);

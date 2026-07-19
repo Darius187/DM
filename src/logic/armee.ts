@@ -29,6 +29,12 @@ export interface ArmeeEinheit {
   // R143 (2.3): Soeldner kaempfen fuers Geld - Moral-Malus, und wer flieht,
   // desertiert an der Kartenkante endgueltig (steht dann in KEINEM Buch).
   soeldner?: boolean;
+  // R187 (Autor "eine epische Waffe rueberschieben"): vom Helden uebergebene
+  // Ausruestung. bonus/schutz kommen aus den Gegenstands-Boni und wirken
+  // ZUSAETZLICH zur Heer-Grundausstattung (HEER_AUSRUESTUNG). item = der
+  // Original-Gegenstand - beim Ersetzen wandert er zurueck in den Rucksack.
+  waffeGeschenk?: { name: string; bonus: number; item?: import('../data/types').Item };
+  ruestungGeschenk?: { name: string; schutz: number; item?: import('../data/types').Item };
 }
 
 // Ein MARSCH: eine Gruppe zieht kartenweise ueber die Oberwelt (Route =
