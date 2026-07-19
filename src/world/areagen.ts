@@ -1727,6 +1727,55 @@ function bogenPunkte(a: { x: number; y: number }, b: { x: number; y: number }, v
   for (let i = 0; i <= n; i++) { const t = i / n, u = 1 - t; pts.push({ x: u * u * a.x + 2 * u * t * cx + t * t * b.x, y: u * u * a.y + 2 * u * t * cy + t * t * b.y }); }
   return pts;
 }
+// R185 (Autor "Fluesse laufen NIE diagonal - natuerlich vertikal oder
+// horizontal mit Kurven, wie in der ravenkarte gezeichnet"): achsentreue
+// Fluss-Fuehrung. Ein Lauf folgt der Achse seiner Start-Kante (Nord/Sued ->
+// senkrecht, West/Ost -> waagerecht), schlaengelt leicht und biegt zum Ziel
+// in einem RUNDEN ELLBOGEN ab - nie als diagonale Gerade uebers Land.
+function flussWeg(a: { x: number; y: number }, b: { x: number; y: number }, seed: number, n = 26): Array<{ x: number; y: number }> {
+  const senkrechtA = a.y < 0 || a.y > 1;        // Start an Nord-/Suedkante -> Lauf senkrecht
+  const senkrechtB = b.y < 0 || b.y > 1;
+  const randB = b.x < 0 || b.x > 1 || senkrechtB;
+  const pts: Array<{ x: number; y: number }> = [];
+  const wackel = (t: number, amp: number) => Math.sin(t * Math.PI * 3 + seed * 7) * amp * Math.sin(t * Math.PI);
+  if (randB && senkrechtA === senkrechtB) {
+    // GEGENUEBERLIEGENDE Kanten: gerader Achslauf, der Quer-Versatz wandert
+    // weich (smoothstep) und schlaengelt - "vertikal/horizontal mit Kurven".
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const s = t * t * (3 - 2 * t);
+      if (senkrechtA) pts.push({ x: a.x + (b.x - a.x) * s + wackel(t, 0.05), y: a.y + (b.y - a.y) * t });
+      else pts.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * s + wackel(t, 0.05) });
+    }
+    return pts;
+  }
+  // ELLBOGEN: entlang der Start-Achse bis zur Ziel-Hoehe, runde Kurve, dann
+  // achsgerecht weiter (gilt auch fuer See-/Hub-Muendungen im Inneren).
+  const ecke = senkrechtA ? { x: a.x, y: b.y } : { x: b.x, y: a.y };
+  const r = 0.14;
+  const l1 = Math.hypot(ecke.x - a.x, ecke.y - a.y), l2 = Math.hypot(b.x - ecke.x, b.y - ecke.y);
+  const t1 = Math.max(0, 1 - r / Math.max(0.001, l1)), t2 = Math.min(1, r / Math.max(0.001, l2));
+  const p1 = { x: a.x + (ecke.x - a.x) * t1, y: a.y + (ecke.y - a.y) * t1 };
+  const p2 = { x: ecke.x + (b.x - ecke.x) * t2, y: ecke.y + (b.y - ecke.y) * t2 };
+  const n1 = Math.max(4, Math.round(n * 0.4));
+  for (let i = 0; i <= n1; i++) {
+    const t = i / n1;
+    const g = { x: a.x + (p1.x - a.x) * t, y: a.y + (p1.y - a.y) * t };
+    if (senkrechtA) g.x += wackel(t, 0.04); else g.y += wackel(t, 0.04);
+    pts.push(g);
+  }
+  for (let i = 1; i <= 8; i++) {
+    const t = i / 8, u = 1 - t;
+    pts.push({ x: u * u * p1.x + 2 * u * t * ecke.x + t * t * p2.x, y: u * u * p1.y + 2 * u * t * ecke.y + t * t * p2.y });
+  }
+  const n2 = Math.max(4, Math.round(n * 0.4));
+  for (let i = 1; i <= n2; i++) {
+    const t = i / n2;
+    pts.push({ x: p2.x + (b.x - p2.x) * t, y: p2.y + (b.y - p2.y) * t });
+  }
+  return pts;
+}
+
 // Kreuzungspunkt einer Kante als UV (leicht ausserhalb, damit der Rand sauber trifft).
 function kantenPunkt(arr: KantenKreuzung[], seite: 'w' | 'e' | 'n' | 's', feat: 'fluss' | 'weg'): { x: number; y: number } | null {
   const c = arr.find((e) => e.feature === feat); if (!c) return null;
@@ -1753,21 +1802,23 @@ function randKanten(id: string, see?: { cx: number; cy: number }): RandKanten {
   const cr = [kantenPunkt(k.west, 'w', 'fluss'), kantenPunkt(k.ost, 'e', 'fluss'), kantenPunkt(k.nord, 'n', 'fluss'), kantenPunkt(k.sued, 's', 'fluss')].filter((p): p is { x: number; y: number } => !!p);
   const bahnen: WasserGeometrie['bahnen'] = [];
   const bh = (pts: Array<{ x: number; y: number }>) => bahnen.push({ punkte: pts.map((p) => ({ x: p.x, y: p.y, hw: KANTEN_HW })) });
-  const v = 0.09 * idSign(id);
+  // R185: Fluesse laufen ACHSENTREU (flussWeg) - nie mehr als diagonaler
+  // Bogen quer ueber die Karte (Autor-Order, Vorlage ravenkarte.png).
+  const s0 = idSign(id);
   if (see) {
-    // Fluesse muenden geschwungen in den See (Zentrum = Hub).
-    for (const c of cr) bh(bogenPunkte(c, { x: see.cx, y: see.cy }, v));
+    // Fluesse muenden achsgerecht mit Ellbogen in den See (Zentrum = Hub).
+    cr.forEach((c, i) => bh(flussWeg(c, { x: see.cx, y: see.cy }, s0 + i)));
   } else if (cr.length === 2) {
-    // Durchlaufender Fluss: EIN weicher Bogen von Kante zu Kante.
-    bh(bogenPunkte(cr[0], cr[1], v, 18));
+    // Durchlaufender Fluss: Achslauf mit Kurven bzw. runder Ellbogen.
+    bh(flussWeg(cr[0], cr[1], s0));
   } else if (cr.length >= 3) {
-    // Zusammenfluss: Hub = Schwerpunkt der Kreuzungen, jede Bahn geschwungen dahin.
+    // Zusammenfluss: Hub = Schwerpunkt der Kreuzungen, jede Bahn achsgerecht dahin.
     const hub = { x: cr.reduce((s, c) => s + c.x, 0) / cr.length, y: cr.reduce((s, c) => s + c.y, 0) / cr.length };
-    for (const c of cr) bh(bogenPunkte(c, hub, v * 0.6));
+    cr.forEach((c, i) => bh(flussWeg(c, hub, s0 + i)));
   } else if (cr.length === 1) {
-    // Einzelner Zulauf: geschwungen ein Stueck nach innen (verebbt).
-    const c = cr[0], inw = { x: c.x < 0 ? 0.3 : c.x > 1 ? 0.7 : c.x, y: c.y < 0 ? 0.3 : c.y > 1 ? 0.7 : c.y };
-    bh(bogenPunkte(c, inw, v));
+    // Einzelner Zulauf: achsgerecht ein Stueck nach innen (verebbt).
+    const c = cr[0], inw = { x: c.x < 0 ? 0.35 : c.x > 1 ? 0.65 : c.x, y: c.y < 0 ? 0.35 : c.y > 1 ? 0.65 : c.y };
+    bh(flussWeg(c, inw, s0));
   }
   const w = (arr: typeof k.west) => { const f = arr.find((c) => c.feature === 'weg'); return f ? f.pos / 100 : null; };
   return { flussBahnen: bahnen, wegWestV: w(k.west), wegOstV: w(k.ost), wegNordU: w(k.nord), wegSuedU: w(k.sued) };

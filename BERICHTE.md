@@ -1809,3 +1809,14 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   Pult-UI (Gebaeude-Karte/Tooltips/Schrift/Formations-Ebene), Heer-
   Ausruestung, Rueckzugs-Befehl + sichtbare Reparatur. Feldzug-Plan um
   Schachmatt-Endgame, Rueckzugsweg und Spieler-KI-Konzept erweitert.
+
+## Runde 185 - Fluesse neu verlegt (achsentreu, nach deiner Skizze)
+- Alle Tabellen-Fluesse laufen jetzt wie in der ravenkarte gezeichnet:
+  senkrecht oder waagerecht mit leichtem Schlaengeln und RUNDEN Ellbogen -
+  keine diagonalen Boegen mehr quer ueber die Karte. Kanten-Anschluesse an
+  die Nachbarn unveraendert. Die frueher abgeschnittene Nordost-Ecke der
+  Verfallenen Stadt ist frei; stadt2->Schlachtfeld, Stadt->West und
+  Waldrand->Ost sind per Kollisions-BFS bestaetigt erreichbar.
+- Dazu R184: der Waldrand recarvt seine Wasser-Kollision jetzt nach der
+  SICHTBAREN Geometrie (unsichtbare Alt-Fluss-Wand weg) und R192: die
+  Zuflucht-Lore (Burg nimmt keine Fluechtlinge) beim ersten Stadtbesuch.
