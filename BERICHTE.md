@@ -1860,3 +1860,12 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   zurueck in den Rucksack. Alles im Spielstand.
 - Browser-verifiziert (Grundwerte, Uebergabe, Ruestungs-Daempfung 10->9),
   tsc fehlerfrei, 412 Tests gruen.
+
+## Runde 191 - Rueckzugs-Befehl + sichtbare Reparatur
+- RUECKZUG ist ein sichtbarer Punkt im Kommando-Raster: die Truppen der
+  Karte weichen zur freien Nachbarkarte Richtung Zuflucht aus (verifiziert:
+  stadt -> Finsterhain), die Bewohner rennen ins Gemeindehaus.
+- Reparieren ist Handwerk geworden: ein benannter Soldat geht zum Bau und
+  haemmert sichtbar 4 Sekunden, dann steigt der Zustand (verifiziert:
+  10 -> 24 LP durch "Cord der Stille"); ohne Leute in der Naehe gibt es
+  keine Zauber-Reparatur mehr. tsc + 412 Tests gruen.

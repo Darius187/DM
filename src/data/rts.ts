@@ -143,6 +143,8 @@ export const BAU_REPARATUR = {
   kostenFrac: 0.25,      // kostet ~1/4 der Baukosten je Reparatur
   abbauRueckFrac: 0.5,   // Abbau gibt ~50% der Baukosten zurück
   balkenRotUnter: 0.35,  // Lebensbalken erscheint dauerhaft ab <35% (roter Bereich)
+  dauerS: 4,             // R191: SICHTBARE Arbeitszeit - jemand haemmert am Bau
+  arbeiterUmkreis: 700,  // R191: so weit sucht der Auftrag den naechsten Soldaten
 } as const;
 
 // RTS-KAMPFEINHEITEN (R96, Autor "übernimm formationen.ts in die Spielwelt,

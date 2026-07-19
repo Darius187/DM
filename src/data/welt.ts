@@ -77,6 +77,7 @@ export const EINFALL = {
 export const FELDZUG = {
   startBesetzt: ['lager', 'stadt2', 'kloster'],
   unantastbar: ['stadt', 'burg'],   // stadt faellt nur im F5-Story-Ereignis, burg ist der letzte Rueckzugsort
+  zufluchtKarte: 'hochland',        // R191: der Rueckzug zieht Richtung Hoher Norden (Zuflucht)
   produktionProS: 0.6,   // Kampfkraft-Punkte je Sekunde und Feindlager
   welleMin: 40,          // kleinste Angriffswelle (Kampfkraft)
   staerkeFaktor: 1.3,    // Welle uebertrifft die gespaehte Verteidigung um 30%

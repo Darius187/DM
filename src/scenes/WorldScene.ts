@@ -416,6 +416,9 @@ export class WorldScene extends CombatScene {
     this.rtsGegnerWahl = null;               // R193: Zeiger auf alte Szene kappen (Regel 9)
     this.rtsGebaeudeWahl = null;
     this.rtsFormOffen = false;
+    this.rtsRuestOffen = false;              // R187
+    this.reparaturAuftraege = [];            // R191: Zeiger auf alte Szene kappen
+    this.rueckzugPanikT = 0;
     this.spaeherT = SPAEHER.intervallMinS;   // R178: Kundschafter-Uhr frisch
     this.bote = boteNeu(BOTE.heim);          // R179: der Bote startet daheim
     this.lage = neueGebietslage(FELDZUG.startBesetzt);   // F1: Gebietslage frisch
@@ -3963,12 +3966,15 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       feld(i, 0, '⌂', kat.name, { taste: kat.taste, tip: `${kat.name}: ${inhalt}` }, () => { this.rtsBauKat = kat.id; });
     });
     feld(0, 1, '⚑', 'Aushebung', { tip: `Dorf: ${this.bevoelkerung} Arbeiter · Heer ${this.armee.einheiten.length}/${heerObergrenze(this.bevoelkerung)}` }, () => { this.rtsBauKat = 'aushebung'; });
+    // R191 (Autor): der RUECKZUG ist ein sichtbarer Menuepunkt.
+    feld(0, 2, '🏳', 'Rückzug', { tip: 'Alle Einheiten dieser Karte weichen zur freien Nachbarkarte Richtung Zuflucht aus; Bewohner suchen Schutz' }, () => this.befehleRueckzug());
     feld(1, 1, '⚑', this.devFreiKam ? 'Steuerung: Truppen' : 'Steuerung: Held', { an: this.devFreiKam, tip: 'Frei-Kamera + Truppenbefehle vs. Helden-Steuerung (WASD)' }, () => this.setzeFreiKamera(!this.devFreiKam));
       feld(2, 1, '⚒', 'Dev/Test', { tip: 'Test-Werkzeuge: Einheiten/Monster setzen, Grafen-Ruf' }, () => { this.rtsDevOffen = true; });
     feld(3, 1, '✕', 'Schließen', { tip: 'Zurück zur Helden-Steuerung' }, () => this.toggleRtsModus());
     const bauWaren = ['holz', 'stein', 'fasern', 'schafgarbe'] as const;
     const bestand = bauWaren.map((w2) => `${this.dorfLager[w2] ?? 0} ${MATERIAL_NAMES[w2 as MaterialId] ?? w2}`).join(' · ');
-    c.add(this.add.text(F(8), y0 + 2 * (zh + F(2)) + F(4), `Dorf-Lager zahlt: ${bestand}`, { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#6a5f4c', wordWrap: { width: w - F(16) } }));
+    // R191: neben dem Rueckzug-Feld (Spalte 0) - Text rueckt nach rechts.
+    c.add(this.add.text(F(7) + zw + F(4), y0 + 2 * (zh + F(2)) + F(4), `Dorf-Lager zahlt: ${bestand}`, { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#6a5f4c', wordWrap: { width: w - zw - F(18) } }));
   }
 
   // R148 (AoE/BAR): AUSWAHL-Ansicht. Chips aller Gewaehlten (Klick pickt EINE
@@ -4456,19 +4462,92 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     if (this.rtsGebaeudeWahl) { this.rtsGebaeudeWahl = null; this.baueRtsLeiste(); }
   }
 
+  // R191 (Autor "ich moechte, dass jemand SICHTBAR die Gebaeude repariert"):
+  // Reparatur ist ein AUFTRAG - der naechste eigene Soldat geht ans Bauwerk
+  // und haemmert (oder der Held, wenn er daneben steht); erst nach der
+  // Arbeitszeit steigt der Zustand. Niemand da = keine Reparatur.
+  private reparaturAuftraege: Array<{ f: WorldScene['feldbauten'][number]; arbeiter: Enemy | null; t: number; fxT: number }> = [];
+
   private repariereBau(f: (typeof this.feldbauten)[number]): void {
     if (f.hp >= f.maxHp) { this.logMsg('Ist unbeschädigt.', ''); return; }
+    if (this.reparaturAuftraege.some((a) => a.f === f)) { this.logMsg('Wird bereits repariert.', ''); return; }
+    let arbeiter: Enemy | null = null;
+    let beste: number = BAU_REPARATUR.arbeiterUmkreis;
+    for (const e of this.enemies) {
+      if (e.team !== 'spieler' || e.hp <= 0 || e.imTurm) continue;
+      const d = Math.hypot(e.x - f.x, e.y - f.y);
+      if (d < beste) { beste = d; arbeiter = e; }
+    }
+    const heldNah = Math.hypot(f.x - this.px, f.y - this.py) < 90;
+    if (!arbeiter && !heldNah) {
+      this.sfx.play('fehler');
+      this.logMsg('Niemand zum Reparieren in der Nähe - stell einen Mann ab oder geh selbst hin.', 'bad');
+      return;
+    }
     const bau = RTS_BAUTEN.find((b) => b.id === f.id);
     // R139: dieselbe Kasse wie beim Bau (alte Feldbauten ohne Vermerk: RTS -> Dorf)
     const quelle = f.quelle ?? (bau ? 'dorf' : 'held');
     const kosten = Object.fromEntries(Object.entries(bau?.kosten ?? {}).map(([k, n]) => [k, Math.max(1, Math.round((n ?? 0) * BAU_REPARATUR.kostenFrac))]));
     if (this.kostenFehlen(quelle, kosten)) { this.sfx.play('fehler'); this.logMsg(quelle === 'dorf' ? 'Das Dorf-Lager hat nicht genug zum Reparieren.' : 'Nicht genug Material zum Reparieren.', ''); return; }
     this.bucheKosten(quelle, kosten);
-    f.hp = Math.min(f.maxHp, f.hp + f.maxHp * BAU_REPARATUR.proAktionFrac);
-    this.sfx.play('holz_hacken');
-    this.fx.burst(f.x, f.y - 8, 0xc9b06a, 8, 90);
-    this.logMsg('Repariert.', 'gold');
-    this.baueRtsLeiste();   // R186: Gebaeude-Karte im Pult mit neuem HP-Stand
+    if (arbeiter) { arbeiter.passiv = false; arbeiter.jagdZiel = { x: f.x + 20, y: f.y + 16 }; }
+    this.reparaturAuftraege.push({ f, arbeiter, t: 0, fxT: 0 });
+    this.logMsg(arbeiter ? `${arbeiter.name} geht ans Werk.` : 'Du legst selbst Hand an.', '');
+    this.baueRtsLeiste();
+  }
+
+  private updateReparaturen(dt: number): void {
+    if (!this.reparaturAuftraege.length) return;
+    for (const a of [...this.reparaturAuftraege]) {
+      if (a.f.hp <= 0 || !this.feldbauten.includes(a.f)) {
+        this.reparaturAuftraege = this.reparaturAuftraege.filter((x) => x !== a);
+        continue;
+      }
+      if (a.arbeiter && (a.arbeiter.hp <= 0 || !this.enemies.includes(a.arbeiter))) a.arbeiter = null;
+      const wx = a.arbeiter ? a.arbeiter.x : this.px, wy = a.arbeiter ? a.arbeiter.y : this.py;
+      if (Math.hypot(wx - a.f.x, wy - a.f.y) > 60) {
+        // Noch auf dem Weg. Hat der Kampf (R189) den Marschbefehl gekappt,
+        // nimmt der Arbeiter die Arbeit danach wieder auf.
+        if (a.arbeiter && !a.arbeiter.jagdZiel && !this.enemies.some((o) => o.team !== 'spieler' && o.hp > 0 && Math.hypot(o.x - a.arbeiter!.x, o.y - a.arbeiter!.y) < VERTEIDIGUNG.reaktionPx)) {
+          a.arbeiter.jagdZiel = { x: a.f.x + 20, y: a.f.y + 16 };
+        }
+        continue;
+      }
+      a.t += dt;
+      a.fxT -= dt;
+      if (a.fxT <= 0) {
+        a.fxT = 0.8;
+        this.fx.burst(a.f.x, a.f.y - 10, 0xc9b06a, 6, 80);
+        this.sfx.playAt('holz_hacken', a.f.x, a.f.y, 0.5);
+      }
+      if (a.t >= BAU_REPARATUR.dauerS) {
+        a.f.hp = Math.min(a.f.maxHp, a.f.hp + a.f.maxHp * BAU_REPARATUR.proAktionFrac);
+        this.reparaturAuftraege = this.reparaturAuftraege.filter((x) => x !== a);
+        if (a.arbeiter) a.arbeiter.jagdZiel = null;
+        this.logMsg('Repariert.', 'gold');
+        if (this.rtsGebaeudeWahl === a.f) this.baueRtsLeiste();
+      }
+    }
+  }
+
+  // R191 (Autor "im RTS-Menue muss der Punkt RUECKZUG sichtbar sein"): alle
+  // Einheiten dieser Karte weichen zur freien Nachbarkarte Richtung Zuflucht
+  // (Hoher Norden) aus; auf der Stadtkarte suchen die Bewohner Schutz im
+  // Gemeindehaus (der grosse Treck in die Zuflucht kommt mit F5).
+  private rueckzugPanikT = 0;
+
+  private befehleRueckzug(): void {
+    const ziel = this.kartenNachbarn(this.area.id)
+      .filter((n) => gebietsStatus(this.lage, n) === 'frei')
+      .sort((a, b) => (routeZu(this.kartenNachbarn, a, FELDZUG.zufluchtKarte)?.length ?? 99) - (routeZu(this.kartenNachbarn, b, FELDZUG.zufluchtKarte)?.length ?? 99))[0];
+    if (!ziel) { this.logMsg('Kein freier Weg für einen Rückzug - wir sind eingeschlossen!', 'bad'); return; }
+    const n = this.sendeTruppen(this.area.id, ziel, 999);
+    if (this.area.id === 'stadt') {
+      this.rueckzugPanikT = 60;
+      this.logMsg('RÜCKZUG! Die Bewohner suchen Schutz im Gemeindehaus.', 'bad');
+    }
+    this.logMsg(n > 0 ? `Rückzug! ${n} Mann weichen nach ${this.kartenName(ziel)} aus.` : 'Rückzug befohlen - keine Truppen auf dieser Karte.', n > 0 ? 'bad' : '');
+    this.chronik('kampf', `Rückzug von ${this.kartenName(this.area.id)} nach ${this.kartenName(ziel)} befohlen.`);
   }
 
   private baueBauAb(f: (typeof this.feldbauten)[number]): void {
@@ -13525,7 +13604,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       // Zeiten/Versaetze: src/data/dorfleben.ts. Kampf/Panik uebersteuern.
       const phase = tagesZiel(this.tageszeit, npcZeitversatz(n.id));
       const mittagPhase = phase === 'mittag';
-      const panik = this.grosserEinfall && !n.kaempfer && !n.imHaus;
+      const panik = (this.grosserEinfall || this.rueckzugPanikT > 0) && !n.kaempfer && !n.imHaus;
       // KÄMPFENDE Bewohner (Schmied & Co.) suchen sich beim Einfall einen Gegner
       // und gehen ihn an (Runde 41, Autorwunsch "der Schmied kann mitkämpfen").
       const kampf = this.grosserEinfall && !!n.kaempfer && !n.imHaus;
@@ -13991,6 +14070,8 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.updateMarsch(dt);   // R142: das Heer marschiert IMMER (auch ohne RTS-Modus)
     this.updateBote(dt);     // R179: die Boten-Uhr (Grafen-Ruf) laeuft ebenso immer
     this.updateFeindzug(dt); // F2: der Feind produziert und greift nach Gebieten
+    this.updateReparaturen(dt); // R191: sichtbare Bau-Reparatur (Auftrag + Haemmern)
+    if (this.rueckzugPanikT > 0) this.rueckzugPanikT -= dt;
     this.updateEinfallQueue(dt);   // R157: Einfall-Kolonnen ruecken in Schueben an
     this.updateSpaeher(dt);        // R178: Kundschafter des Klosters (Nordstrasse)
     this.updateEinfallEntklemmer(dt);   // R166: niemand bleibt am Fluss haengen
