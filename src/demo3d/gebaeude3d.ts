@@ -57,6 +57,7 @@ interface Manifest {
   walkable_interior?: { enabled?: boolean };
   collision_guides: RohGuide[];
   markers: { name: string; role: string; floor: string; blender_xyz: number[] }[];
+  node_groups?: { horses?: string[] };
 }
 
 interface RendererPoolEintrag {
@@ -165,6 +166,12 @@ export class Gebaeude3D {
   private environment?: THREE.Texture;
   readonly hatInnenraum: boolean;
 
+  marker(name: string): { x: number; y: number; z: number } | null {
+    const m = this.manifest.markers.find((eintrag) => eintrag.name === name);
+    if (!m || m.blender_xyz.length < 3) return null;
+    return { x: m.blender_xyz[0], y: m.blender_xyz[1], z: m.blender_xyz[2] };
+  }
+
   // Begehbarkeits-Modell (Plan-Koordinaten, Meter)
   blockEG!: PlanGitter;      // Waende/Moebel Erdgeschoss + Aussenbereich
   blockOG!: PlanGitter;      // Waende/Gelaender Obergeschoss
@@ -195,6 +202,13 @@ export class Gebaeude3D {
     this.scene.environmentIntensity = GEB3D_LICHT.env;
 
     this.scene.add(gltfScene);
+    // Pferde sind eigenstaendige Gameplay-Entities. Manche Stall-Exporte
+    // enthalten Anschauungspferde; diese muessen raus, sonst stehen zusaetzlich
+    // zu den vier reitbaren Tieren unsichtbar unsteuerbare Duplikate im Stall.
+    for (const name of manifest.node_groups?.horses ?? []) {
+      const pferd = gltfScene.getObjectByName(name);
+      if (pferd) pferd.visible = false;
+    }
     // Pivot laut Manifest (HOUSE_/FORGE_ROTATION_PIVOT): NUR dieser dreht um Y.
     this.pivot = gltfScene.getObjectByName(manifest.root_node) ?? gltfScene;
 

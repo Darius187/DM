@@ -89,6 +89,7 @@ import { TEMPLERKLINGE, BOSS_GOLD } from '../data/items';
 import { rollGear, rollGem } from '../logic/loot';
 import { recalc, newPlayerState } from '../logic/playerState';
 import { REIT_PFERD, type ReitClip, type ReitGangClip, type ReitSattelPunkte } from '../data/reiten';
+import { HELDEN_PFERD_ID, RAVENSMOOR_PFERDE, pferdDef, type RavensmoorPferdDef } from '../data/ravensmoorPferde';
 import { clipFps, clipFrames, istReitGang, istReitUebergang, kuerzesterWinkel, mausLenkung, mausZielTempo, naechsterReitGang, naehereZahl, reitClip, reitUebergang, uebergangQuellFrame, uebergangZielFrame, uebertrageAnimationsPhase } from '../logic/reiten';
 import { ladeReitTuning, reitTuningExport, REIT_TUNING_STANDARD, speichereReitTuning, type ReitDarstellungTuning } from '../gfx/reitTuning';
 import { aktuellesGolemTuning, golemTuningExport, GOLEM_TUNING_STANDARD, setzeGolemTuning } from '../gfx/golemTuning';
@@ -170,6 +171,19 @@ interface ReitPferdState {
   y: number;
   richtung: number;
   tempo: number;
+  variante: RavensmoorPferdDef;
+}
+
+interface FreiesPferdState extends ReitPferdState {
+  sprite?: Phaser.GameObjects.Sprite;
+  schatten?: Phaser.GameObjects.Ellipse;
+  homeX: number;
+  homeY: number;
+  targetX: number;
+  targetY: number;
+  pauseT: number;
+  animT: number;
+  markerEingerichtet: boolean;
 }
 
 // Karte des Fürstentums (Runde 51, Autorwunsch): die OBERWELT-Gebiete mit ihrer
@@ -310,6 +324,7 @@ export class WorldScene extends CombatScene {
   private npcEnts: NpcEntity[] = [];
   private animalEnts: AnimalEntity[] = [];
   private reitPferd: ReitPferdState | null = null;
+  private freiePferde: FreiesPferdState[] = [];
   private reitPferdSprite?: Phaser.GameObjects.Sprite;
   private reitReiterSprite?: Phaser.GameObjects.Sprite;
   private reitPferdSchatten?: Phaser.GameObjects.Ellipse;
@@ -436,6 +451,7 @@ export class WorldScene extends CombatScene {
     this.npcEnts = [];
     this.animalEnts = [];
     this.reitPferd = null;
+    this.freiePferde = [];
     this.reitPferdSprite = undefined;
     this.reitReiterSprite = undefined;
     this.reitPferdSchatten = undefined;
@@ -453,6 +469,7 @@ export class WorldScene extends CombatScene {
     this.reitSpurSeite = 1;
     this.reitTuning = ladeReitTuning();
     this.reitReiterPos = undefined;
+    this.initialisiereRavensmoorPferde();
     this.gefaellteBaeume.clear();
     this.baumSchlaege.clear();
     this.lager = [];
@@ -1905,9 +1922,10 @@ export class WorldScene extends CombatScene {
       this.reitPferd.y = this.py;
     } else if (!this.reitPferd && !a.dark && !a.innen) {
       const stand = this.freierReitPunkt(this.px, this.py, REIT_PFERD.startAbstand);
-      this.reitPferd = { areaId: id, x: stand.x, y: stand.y, richtung: 0, tempo: 0 };
+      this.reitPferd = { areaId: id, x: stand.x, y: stand.y, richtung: 0, tempo: 0, variante: pferdDef(HELDEN_PFERD_ID) };
     }
     this.erstelleReitPferdGrafik();
+    this.erstelleFreiePferdeGrafik();
     // Kamera SOFORT hart auf den Helden zentrieren (sonst startet sie mit der
     // Verfolgung erst zu lerpen und der Held kann beim Laden unter dem Bildrand
     // liegen - dorfSim-Hintergrund füllte den Schirm, der Held war off-screen).
@@ -5696,6 +5714,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   private unloadAreaObjects(): void {
     this.dorfBrunnenPos = undefined;   // M2: Brunnen-Cache gehoert zur alten Karte
     this.zerstoereReitPferdGrafik();
+    this.zerstoereFreiePferdeGrafik();
     this.raeumeGebaeude3d();   // R132: 3D-Gebaeude gehoeren zur alten Karte
     for (const img of this.tileImages) img.destroy();
     this.tileImages = [];
@@ -6657,6 +6676,157 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
 
   // --- Reitbares Blender-Pferd ---------------------------------------------
 
+  private pferdeStartpunkt(def: RavensmoorPferdDef): { x: number; y: number } {
+    const idx = Number(def.stallId.slice(-1)) - 1;
+    const markerX = [-2.45, -0.45, 1.55, 3.55][idx] ?? 0;
+    // S2-Pivot laut Dorfplan; nur Startnetz. Sobald die GLB bereit ist, wird
+    // exakt auf den exportierten APPROACH-Marker umgestellt.
+    return { x: 40 * TILE + markerX * 16, y: 84 * TILE - 10 + 3.82 * 16 * Math.sin(35 * Math.PI / 180) };
+  }
+
+  private initialisiereRavensmoorPferde(): void {
+    const held = pferdDef(HELDEN_PFERD_ID);
+    const hp = this.pferdeStartpunkt(held);
+    this.reitPferd = { areaId: 'stadt', x: hp.x, y: hp.y, richtung: -Math.PI / 2, tempo: 0, variante: held };
+    this.freiePferde = RAVENSMOOR_PFERDE.filter((def) => def.id !== HELDEN_PFERD_ID).map((def) => {
+      const p = this.pferdeStartpunkt(def);
+      return {
+        areaId: 'stadt', x: p.x, y: p.y, richtung: -Math.PI / 2, tempo: 0, variante: def,
+        homeX: p.x, homeY: p.y, targetX: p.x, targetY: p.y,
+        pauseT: 2 + Math.random() * 4, animT: Math.random() * 8, markerEingerichtet: false,
+      };
+    });
+  }
+
+  private pferdSkala(pferd: ReitPferdState): { x: number; y: number } {
+    return {
+      x: this.reitTuning.pferdSkala * this.reitTuning.pferdBreite * pferd.variante.skala * pferd.variante.breite,
+      y: this.reitTuning.pferdSkala * this.reitTuning.pferdHoehe * pferd.variante.skala * pferd.variante.hoehe,
+    };
+  }
+
+  private erstelleFreiePferdeGrafik(): void {
+    for (const pferd of this.freiePferde) {
+      if (pferd.areaId !== this.area.id || pferd.sprite || !this.reitFrameVorhanden(REIT_PFERD.atlasKey, 'idle_d0_f0')) continue;
+      const sk = this.pferdSkala(pferd);
+      pferd.schatten = this.add.ellipse(pferd.x, pferd.y + 1, this.reitTuning.schattenBreite * pferd.variante.skala, this.reitTuning.schattenHoehe * pferd.variante.skala, 0x080604, 0.3)
+        .setDepth(pferd.y - 2);
+      pferd.sprite = this.add.sprite(pferd.x, pferd.y, REIT_PFERD.atlasKey, `idle_d${angleToDir16(pferd.richtung)}_f0`)
+        .setOrigin(0.5, this.reitTuning.fussOriginY)
+        .setScale(sk.x, sk.y)
+        .setTint(pferd.variante.tint)
+        .setDepth(pferd.y);
+      this.uiCam?.ignore([pferd.schatten, pferd.sprite]);
+    }
+  }
+
+  private zerstoereFreiePferdeGrafik(): void {
+    for (const pferd of this.freiePferde) {
+      pferd.sprite?.destroy();
+      pferd.schatten?.destroy();
+      pferd.sprite = undefined;
+      pferd.schatten = undefined;
+    }
+  }
+
+  private aktualisiereFreiePferde(dt: number): void {
+    if (!this.area) return;
+    this.erstelleFreiePferdeGrafik();
+    const stall = this.area.id === 'stadt' ? this.gebaeude3d.get('stall') : undefined;
+    for (let i = 0; i < this.freiePferde.length; i++) {
+      const pferd = this.freiePferde[i];
+      if (pferd.areaId !== this.area.id || !pferd.sprite) continue;
+
+      // Einmalig vom belastbaren GLB-Marker statt von einer Pixelannahme ankern.
+      if (stall && !pferd.markerEingerichtet && pferd.variante.startMarker) {
+        const marker = stall.markerWelt(pferd.variante.startMarker);
+        if (marker) {
+          const dx = marker.x - pferd.homeX, dy = marker.y - pferd.homeY;
+          pferd.x += dx; pferd.y += dy;
+          pferd.homeX = marker.x; pferd.homeY = marker.y;
+          pferd.targetX = marker.x; pferd.targetY = marker.y;
+          pferd.markerEingerichtet = true;
+        }
+      }
+
+      let bewegt = false;
+      // Nur Arbeitspferde haben eine NPC-Routine. Das schwarze Heldenpferd
+      // wartet, wenn es nicht geritten wird, an der Stelle des Absitzens.
+      if (pferd.variante.rolle === 'arbeit' && pferd.areaId === 'stadt') {
+        pferd.pauseT -= dt;
+        if (pferd.pauseT <= 0) {
+          const knecht = this.npcEnts.find((n) => n.id === pferd.variante.npcId && !n.imHaus && n.sprite.visible);
+          const idx = Number(pferd.variante.stallId.slice(-1)) - 1;
+          const knechtAmStall = !!knecht && Math.hypot(knecht.curX - pferd.homeX, knecht.curY - pferd.homeY) < 170;
+          if (knechtAmStall) {
+            // Breite, versetzte Fuehrrunde um den Stallknecht: drei ganze
+            // Pferdekoerper bleiben lesbar und bilden keinen Sprite-Knoten.
+            const phase = this.time.now / 5200 + i * 2.1;
+            const formation = [
+              { x: -100, y: 38 },
+              { x: -8, y: 78 },
+              { x: 88, y: 38 },
+            ][idx] ?? { x: 0, y: 58 };
+            pferd.targetX = knecht.curX + formation.x + Math.cos(phase) * 9;
+            pferd.targetY = knecht.curY + formation.y + Math.sin(phase) * 7;
+          } else {
+            pferd.targetX = pferd.homeX;
+            pferd.targetY = pferd.homeY;
+          }
+          pferd.pauseT = 3.8 + i * 0.7;
+        }
+        const dx = pferd.targetX - pferd.x, dy = pferd.targetY - pferd.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 5) {
+          const tempo = Math.min(31, dist * 1.15);
+          const nx = pferd.x + dx / dist * tempo * dt;
+          const ny = pferd.y + dy / dist * tempo * dt;
+          const r = REIT_PFERD.kollisionsRadius;
+          const freiX = !this.isSolidAt(nx, pferd.y) && !this.gebaeudeSolid(nx + Math.sign(dx) * r, pferd.y, false);
+          const freiY = !this.isSolidAt(pferd.x, ny) && !this.gebaeudeSolid(pferd.x, ny + Math.sign(dy) * r, false);
+          if (freiX) pferd.x = nx;
+          if (freiY) pferd.y = ny;
+          if (freiX || freiY) {
+            pferd.richtung = Math.atan2(dy, dx);
+            pferd.tempo = tempo;
+            bewegt = true;
+          }
+        }
+      }
+      if (!bewegt) pferd.tempo = 0;
+      const clip: ReitClip = bewegt ? 'walk' : 'idle';
+      pferd.animT += dt * clipFps(clip, pferd.tempo) * this.reitTuning.animationTempo;
+      const dir = angleToDir16(pferd.richtung);
+      const frame = Math.floor(pferd.animT) % clipFrames(clip);
+      this.setzeReitFrameSicher(pferd.sprite, REIT_PFERD.atlasKey, `${clip}_d${dir}_f${frame}`, dir);
+      const sk = this.pferdSkala(pferd);
+      pferd.sprite.setPosition(pferd.x, pferd.y).setScale(sk.x, sk.y).setTint(pferd.variante.tint).setDepth(pferd.y);
+      pferd.schatten?.setPosition(pferd.x, pferd.y + 1)
+        .setDisplaySize(this.reitTuning.schattenBreite * pferd.variante.skala, this.reitTuning.schattenHoehe * pferd.variante.skala)
+        .setDepth(pferd.y - 2);
+    }
+  }
+
+  private wechsleAufFreiesPferd(neu: FreiesPferdState): void {
+    const alt = this.reitPferd;
+    if (!alt || neu.areaId !== this.area.id) return;
+    this.zerstoereReitPferdGrafik();
+    neu.sprite?.destroy(); neu.schatten?.destroy();
+    const idx = this.freiePferde.indexOf(neu);
+    if (idx >= 0) this.freiePferde.splice(idx, 1);
+    this.freiePferde.push({
+      ...alt, sprite: undefined, schatten: undefined,
+      homeX: alt.x, homeY: alt.y, targetX: alt.x, targetY: alt.y,
+      pauseT: 3, animT: this.reitAnimT, markerEingerichtet: true,
+    });
+    this.reitPferd = {
+      areaId: neu.areaId, x: neu.x, y: neu.y, richtung: neu.richtung, tempo: 0, variante: neu.variante,
+    };
+    this.erstelleReitPferdGrafik();
+    this.erstelleFreiePferdeGrafik();
+    this.logMsg(`${neu.variante.name}: Die NPC-Routine pausiert, solange du dieses Pferd reitest.`, 'gold');
+  }
+
   private freierReitPunkt(x: number, y: number, abstand: number, startWinkel = 0): { x: number; y: number } {
     const kandidaten = [startWinkel, startWinkel + Math.PI, startWinkel + Math.PI / 2, startWinkel - Math.PI / 2, startWinkel + Math.PI / 4, startWinkel - Math.PI / 4];
     for (const winkel of kandidaten) {
@@ -6675,15 +6845,13 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     const startFrame = 'idle_d0_f0';
     if (!pferd || pferd.areaId !== this.area.id || !this.reitFrameVorhanden(REIT_PFERD.atlasKey, startFrame)) return;
     this.reitPferdSchatten = this.add.ellipse(
-      pferd.x, pferd.y + 1, this.reitTuning.schattenBreite, this.reitTuning.schattenHoehe, 0x080604, 0.32,
+      pferd.x, pferd.y + 1, this.reitTuning.schattenBreite * pferd.variante.skala, this.reitTuning.schattenHoehe * pferd.variante.skala, 0x080604, 0.32,
     ).setDepth(pferd.y - 2);
+    const sk = this.pferdSkala(pferd);
     this.reitPferdSprite = this.add.sprite(pferd.x, pferd.y, REIT_PFERD.atlasKey, startFrame)
       .setOrigin(0.5, this.reitTuning.fussOriginY)
-      .setScale(
-        this.reitTuning.pferdSkala * this.reitTuning.pferdBreite,
-        this.reitTuning.pferdSkala * this.reitTuning.pferdHoehe,
-      )
-      .setTint(REIT_PFERD.farbTint)   // Verdunkelung (bleibt ueber setTexture erhalten)
+      .setScale(sk.x, sk.y)
+      .setTint(pferd.variante.tint)   // Variantenton bleibt ueber setTexture erhalten
       .setDepth(pferd.y);
     this.reitReiterSprite = this.add.sprite(pferd.x, pferd.y, '__DEFAULT')
       .setScale(this.reitTuning.reiterSkala)
@@ -6748,8 +6916,11 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
 
   protected override spielerExtraBlockiert(x: number, y: number, radius: number): boolean {
     const pferd = this.reitPferd;
-    return !this.reitet && !!pferd && pferd.areaId === this.area.id
-      && Math.hypot(x - pferd.x, y - pferd.y) < radius + REIT_PFERD.kollisionsRadius;
+    if (this.reitet) return false;
+    if (pferd && pferd.areaId === this.area.id
+      && Math.hypot(x - pferd.x, y - pferd.y) < radius + REIT_PFERD.kollisionsRadius) return true;
+    return this.freiePferde.some((frei) => frei.areaId === this.area.id
+      && Math.hypot(x - frei.x, y - frei.y) < radius + REIT_PFERD.kollisionsRadius);
   }
 
   protected override updateReitbewegung(dt: number): boolean {
@@ -6863,14 +7034,16 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     const frameName = `${clip}_d${dir}_f${frame}`;
     const atlasKey = this.reitAtlasKey(clip);
     this.setzeReitFrameSicher(sprite, atlasKey, frameName, dir);
-    const pferdSkalaX = this.reitTuning.pferdSkala * this.reitTuning.pferdBreite;
-    const pferdSkalaY = this.reitTuning.pferdSkala * this.reitTuning.pferdHoehe;
+    const sk = this.pferdSkala(pferd);
+    const pferdSkalaX = sk.x;
+    const pferdSkalaY = sk.y;
     sprite.setPosition(pferd.x, pferd.y)
       .setOrigin(0.5, this.reitTuning.fussOriginY)
       .setScale(pferdSkalaX, pferdSkalaY)
+      .setTint(pferd.variante.tint)
       .setDepth(pferd.y + 0.1).setAlpha(1);
     this.reitPferdSchatten?.setPosition(pferd.x, pferd.y + 1)
-      .setDisplaySize(this.reitTuning.schattenBreite, this.reitTuning.schattenHoehe)
+      .setDisplaySize(this.reitTuning.schattenBreite * pferd.variante.skala, this.reitTuning.schattenHoehe * pferd.variante.skala)
       .setDepth(pferd.y - 2);
     this.aktualisiereReitSpuren(dt, pferd);
 
@@ -8807,8 +8980,20 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     const near = (x: number, y: number, dist: number) => Math.hypot(x - this.px, y - this.py) < dist;
     if (this.reitet) return { text: `Pferd - ${ik} zum Absitzen`, action: () => this.steigeAb() };
     const reitPferd = this.reitPferd;
-    if (reitPferd && reitPferd.areaId === this.area.id && near(reitPferd.x, reitPferd.y, REIT_PFERD.aufsitzDistanz)) {
-      return { text: `Gesatteltes Pferd - ${ik} zum Aufsitzen`, action: () => this.steigeAuf() };
+    const kandidaten: Array<{ pferd: ReitPferdState; frei?: FreiesPferdState; dist: number }> = [];
+    if (reitPferd?.areaId === this.area.id) kandidaten.push({ pferd: reitPferd, dist: Math.hypot(reitPferd.x - this.px, reitPferd.y - this.py) });
+    for (const frei of this.freiePferde) if (frei.areaId === this.area.id) kandidaten.push({ pferd: frei, frei, dist: Math.hypot(frei.x - this.px, frei.y - this.py) });
+    kandidaten.sort((a, b) => a.dist - b.dist);
+    const nahesPferd = kandidaten[0];
+    if (nahesPferd && nahesPferd.dist < REIT_PFERD.aufsitzDistanz) {
+      const arbeit = nahesPferd.pferd.variante.rolle === 'arbeit' ? 'Arbeitspferd' : 'Heldenpferd';
+      return {
+        text: `${nahesPferd.pferd.variante.name} (${arbeit}) - ${ik} zum Aufsitzen`,
+        action: () => {
+          if (nahesPferd.frei) this.wechsleAufFreiesPferd(nahesPferd.frei);
+          this.steigeAuf();
+        },
+      };
     }
     // Offenes Portal-Paar hat Vorrang (Runde 28)
     const portal = this.portalAktion();
@@ -13430,7 +13615,10 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       this.advanceClock(dt * (this.area.dark ? TAG.dungeonFaktor : 1));
       // Dorfleben mit demselben Angriffs-Tempo wie der Kampf (Bewohner/Tiere
       // fliehen genauso bedächtig wie Held und Gegner während des Einfalls).
-      if (!this.area.dark) this.updateVillageLife(dt * kampfTempo);
+      if (!this.area.dark) {
+        this.updateVillageLife(dt * kampfTempo);
+        this.aktualisiereFreiePferde(dt * kampfTempo);
+      }
       // Kamin-Buff "Aufgewärmt": Regeneration im Kryptagang
       if (this.area.dark && this.p.warmBuff) {
         this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + KAMIN_BUFF.hpRegenPerS * dt);

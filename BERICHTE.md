@@ -1700,6 +1700,20 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   halbtransparent mittig ueber das Spielfeld. Browser-verifiziert (Screenshot).
 - Damit ist die alte Aufgabenliste KOMPLETT abgearbeitet. Naechster Auftrag
   (Autor): Kirche als Verlies-Eingang mit Zelda-Innenraum + Stadtportal-Quest.
+
+## Ravensmoor-Pferdebestand - vier Varianten live
+
+- Am 3D-Pferdestall S2 stehen vier echte Pferde-Entities. Die Platzierung folgt
+  den exportierten GLB-Markern statt fest in ein Hausbild gebackener Pferde.
+- Das Heldenpferd ist schwarz. Die bisherige dunkelbraune Abnahme lebt in einem
+  kraeftigeren Arbeitspferd weiter; hinzu kommen gedeckter Fuchs und warmes Braun.
+- Alle vier sind mit E reitbar und behalten ihre Variante durch alle Gangarten
+  und Atlaswechsel. Beim Pferdewechsel bleibt das vorige Pferd in der Welt.
+- Stallknecht Hanko fuehrt die drei Arbeitspferde tagsueber in einer ruhigen,
+  raeumlich getrennten Hofrunde; das schwarze Heldenpferd wartet ungeritten.
+- Browser-Abnahme: vier Pferde am Stall, Namenshinweis, Aufsitzen auf die
+  Fuchsstute und Reiterdarstellung funktionieren ohne Pferde-/Konsolenfehler.
+- Produktions-Build sowie 63 Testdateien / 397 Tests sind gruen.
 ## Skelettwache - Blender-Animation und RTS-Testeinheit
 
 - Das modulare Skeleton-Guard-Fab-Asset ist als dunkle, gepanzerte Skelettwache

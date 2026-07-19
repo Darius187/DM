@@ -57,23 +57,37 @@ Die vier Eintraege verwenden dasselbe vorhandene Pferde-Atlasmodell. Es werden
 keine vier Atlas-Kopien geladen. Unterschiede entstehen nur ueber Multiply-Tint
 und eine kleine Skalierung:
 
-- Drei kompakte Arbeitspferde: Fuchs, Dunkelbraun, Schwarzbraun
-- Ein etwas leichteres Reit- und Botenpferd: Braun
+- Drei kompakte Arbeitspferde: gedeckter Fuchs, das bisherige Dunkelbraun und
+  ein nah verwandter warmer Braunton
+- Das etwas leichtere Heldenpferd: Schwarz (mit lesbarer warmer Restzeichnung)
 
 Fuer Ravensmoor ist die plausibelste Einordnung kein moderner kommunaler
 Fuhrpark. Die Tiere gehoeren zum Fronhof beziehungsweise zu einem gemeinschaftlich
 genutzten Arbeitsbestand; das Reitpferd dient Schulze, Boten oder Herrschaft.
 
-## Offen fuer Claude Code
+## Live verdrahtet
 
-Codex liefert Stall, Animationen, Parkmarker und Varianten. Die folgenden Punkte
-bleiben gemaess `AGENTS.md` Gameplay-Logik und werden erst im naechsten Auftrag
-verdrahtet:
+- Vier eigenstaendige Entities werden an den vier exportierten
+  `APPROACH_STALL_n`-Markern erzeugt.
+- Wenn der Export die Marker traegt, werden sie aus der laufenden GLB in
+  Weltkoordinaten transformiert. Neuere Stallvarianten ohne diese Marker nutzen
+  den stabilen S2-Vorplatzanker als Rueckfall.
+- Das schwarze Pferd gehoert dem Helden und wartet ungeritten an seinem Standort.
+- Die drei etwas breiteren Arbeitspferde folgen tagsueber einer langsamen,
+  versetzten Fuehrrunde um Stallknecht Hanko und kehren ohne ihn an ihren Anker
+  zurueck. Sie verwenden die echte Schrittanimation, kein Gleiten.
+- Alle vier sind mit `E` reitbar. Beim Aufsitzen auf ein Arbeitspferd pausiert
+  dessen NPC-Routine; das zuvor aktive Pferd bleibt physisch in der Welt stehen.
+- Alle Varianten teilen dieselben Stand-, Schritt-, Trab-, Galopp-, Wende- und
+  Uebergangsatlanten. Tint und Proportion bleiben auch beim Atlaswechsel stabil.
 
-- vier persistente Pferde-Entities in Area `stadt` erzeugen
-- Parken/Ausparken und Torabhaengigkeit implementieren
-- NPC-Besitz und Nutzung
-- Tagesablauf Weide, Arbeit und Rueckkehr in den Stall
+Noch offen ist nur eine spaetere Verwaltungsoberflaeche fuer Zuteilung,
+Stallbelegung und Tagesauftraege. Die Laufzeit-Entities und NPC-Grundroutine sind
+nicht mehr offen.
 
 Keine Pferdemeshes in die Stall-GLB backen und die 3D-Hausmaterialien nicht
 tinten oder ersetzen.
+
+Falls ein angelieferter Stall dennoch Vorschau-Pferde in `node_groups.horses`
+enthaelt, blendet die Runtime sie aus. Gameplay zeigt ausschliesslich die vier
+steuerbaren Entities; gebackene Duplikate sind nie anklickbar oder reitbar.

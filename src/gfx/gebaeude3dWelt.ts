@@ -152,6 +152,14 @@ export class Gebaeude3DWelt {
 
   heldInnen(): boolean { return this.ebene !== 'aussen'; }
 
+  // Datengetriebene Weltposition eines Blender-Markers. Der Pferdestall nutzt
+  // das fuer seine vier APPROACH/PARK/HEAD-Punkte, damit die Pferde auch nach
+  // Drehen, Skalieren oder Verschieben des 3D-Gebaeudes korrekt davor stehen.
+  markerWelt(name: string): { x: number; y: number } | null {
+    const m = this.gebaeude?.marker(name);
+    return m ? this.planZuWelt(m.x, m.y) : null;
+  }
+
   // --- Pro-Frame-Update ----------------------------------------------------------
   update(dt: number, heldX: number, heldY: number): void {
     const g = this.gebaeude;

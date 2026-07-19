@@ -2295,6 +2295,11 @@ function bevoelkereStadt(a: AreaData): void {
   a.stationen.push({ art: 'backofen', x: 75.5 * T32, y: 61.5 * T32 });
   frei(52, 82, 57, 85);
   N({ id: 'zimmermann', name: 'Zimmermann Jakob', x: 54.5 * T32, y: 83.5 * T32, abend: WIRTSHAUS, kaempfer: true, arbeit: 'hacken' });
+  // Stall S2: der Knecht bleibt tagsueber am Pferdebestand. Die drei
+  // Arbeitspferde folgen seiner kleinen Hofrunde; abends stehen sie wieder an
+  // ihren Markerplaetzen, waehrend er ins Wirtshaus geht.
+  frei(36, 84, 45, 89);
+  N({ id: 'stallknecht', name: 'Stallknecht Hanko', x: 40 * T32, y: 86.5 * T32, mittag: { x: 40 * T32, y: 86.5 * T32 }, abend: WIRTSHAUS, arbeit: 'fuettern' });
   frei(7, 29, 11, 32);
   N({ id: 'holzfaeller', name: 'Holzfäller Ruprecht', x: 8.5 * T32, y: 30.5 * T32, mittag: WIRTSHAUS, abend: WIRTSHAUS, arbeit: 'hacken' });
   a.stationen.push({ art: 'holzstapel', x: 10 * T32, y: 30.9 * T32 });

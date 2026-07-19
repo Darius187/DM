@@ -168,6 +168,10 @@ export const VOLK: Readonly<Record<string, ReadonlyArray<string>>> = {
     'Jakob, Zimmermann. Balken, Dachstühle, Särge - in diesen Tagen leider mehr Särge, als mir lieb ist.',
     'Die Palisade? Gutes Holz, sauber gesetzt. Wenn der Schmied den Auftrag gibt, stehen meine Leute bereit.',
   ],
+  stallknecht: [
+    'Hanko, Stallknecht. Der schwarze gehÃ¶rt euch; die drei breiteren Tiere ziehen sonst Karren und Pflug. Alle vier sind eingeritten, wenn auch nicht alle gleich willig.',
+    'Fuchs, Braun und das seltene Schwarz waren hier schon immer vernÃ¼nftige Farben. Ein Pferd soll arbeiten, nicht wie ein Jahrmarktsbanner leuchten.',
+  ],
   schneider: [
     'Caspar, Schneider. Ich flicke mehr, als ich nähe - neues Tuch hat seit Jahren keiner mehr gesehen. Aber ein gerader Saum hält die Würde zusammen.',
   ],

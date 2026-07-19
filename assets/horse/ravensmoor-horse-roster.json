@@ -16,34 +16,45 @@
     {
       "id": "arbeit_fuchs",
       "role": "work",
-      "display_name": "Arbeitspferd Fuchs",
+      "display_name": "Fuchsstute",
       "stall_id": "stall_1",
-      "multiply_tint": "0xb66f45",
-      "scale": 1.0
+      "multiply_tint": "0x9a674f",
+      "scale": 1.035,
+      "width_scale": 1.08,
+      "height_scale": 1.015,
+      "npc_id": "stallknecht"
     },
     {
       "id": "arbeit_dunkelbraun",
       "role": "work",
-      "display_name": "Arbeitspferd Dunkelbraun",
+      "display_name": "Dunkelbrauner Wallach",
       "stall_id": "stall_2",
-      "multiply_tint": "0x76533d",
-      "scale": 1.03
+      "multiply_tint": "0x5c4c3c",
+      "scale": 1.055,
+      "width_scale": 1.11,
+      "height_scale": 1.02,
+      "npc_id": "stallknecht"
     },
     {
-      "id": "arbeit_schwarzbraun",
+      "id": "arbeit_braun",
       "role": "work",
-      "display_name": "Arbeitspferd Schwarzbraun",
+      "display_name": "Braune Arbeitspferdstute",
       "stall_id": "stall_3",
-      "multiply_tint": "0x51463d",
-      "scale": 1.02
+      "multiply_tint": "0x735443",
+      "scale": 1.045,
+      "width_scale": 1.095,
+      "height_scale": 1.015,
+      "npc_id": "stallknecht"
     },
     {
-      "id": "reiten_braun",
-      "role": "riding",
-      "display_name": "Reit- und Botenpferd",
+      "id": "held_schwarz",
+      "role": "hero",
+      "display_name": "Schwarzes Reitpferd",
       "stall_id": "stall_4",
-      "multiply_tint": "0x9a7658",
-      "scale": 0.96
+      "multiply_tint": "0x403b38",
+      "scale": 0.985,
+      "width_scale": 1.0,
+      "height_scale": 1.0
     }
   ],
   "runtime_rules": {
@@ -51,6 +62,7 @@
     "use_existing_horse_animation_model": true,
     "park_only_when_matching_gate_open": 0.82,
     "head_display_marker_required": true,
-    "npc_schedule": "future_gameplay_task"
+    "npc_schedule": "work horses follow stallknecht around the stable; hero horse waits when unmounted",
+    "all_horses_rideable": true
   }
 }

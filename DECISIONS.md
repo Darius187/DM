@@ -2444,3 +2444,12 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Texturen, aber keine Animationen. Die sieben Clips wurden in Blender neu
   erstellt; im Repository liegen nur Phaser-Atlas und Entitlement-Attribution,
   keine FBX- oder 4K-Quelldateien.
+- Der Ravensmoorer Pferdebestand besteht aus vier eigenstaendigen, reitbaren
+  Entities mit gemeinsamem Blender-Atlas: schwarzes, etwas leichteres
+  Heldenpferd sowie drei breitere Arbeitspferde in gedecktem Fuchs, dem bisher
+  abgenommenen Dunkelbraun und warmem Braun. Es werden keine modernen Rassen
+  behauptet; die leichte Formdifferenz steht fuer mittelalterliche Nutztypen.
+- Die Arbeitspferde sind NPC-gefuehrt: Stallknecht Hanko bestimmt tagsueber eine
+  langsame, breite Hofrunde. Aufsitzen pausiert diese Routine. Das Heldenpferd
+  wartet ungeritten. Eine spaetere Stallverwaltung darf diese Grundlogik
+  erweitern, aber nicht wieder auf ein einziges globales Pferd reduzieren.
