@@ -8327,7 +8327,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     for (let i = 0; i < MARSCH.grafTrupp; i++) neue.push(musterEin(this.armee, typen[i % typen.length], MARSCH.grafStart).id);
     const route = routeZu(this.kartenNachbarn, MARSCH.grafStart, MARSCH.zielStadt);
     if (route && route.length > 1) starteMarsch(this.armee, neue, route);
-    this.logMsg(`Der Graf schickt ${neue.length} Mann - sie betreten das Land am ${this.kartenName(MARSCH.grafStart)} und ziehen nach Ravensmoor.`, 'gold');
+    this.logMsg(`Der Graf schickt ${neue.length} Mann - sie brechen an der ${this.kartenName(MARSCH.grafStart)} auf und ziehen nach Ravensmoor.`, 'gold');
     if (this.area.id === MARSCH.grafStart) this.spawneMarschierer(neue);   // der Held sieht sie eintreffen
   }
 
@@ -9496,7 +9496,9 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // sickern ueber die Nordstrasse herein, solange der Held in der Stadt ist.
   private spaeherT: number = SPAEHER.intervallMinS;
   private updateSpaeher(dt: number): void {
-    if (this.area.id !== 'stadt' || this.tag < SPAEHER.abTag || this.einfallAktiv) return;
+    // R180 (Autor): Spaeher erst NACH dem Krypta-Boss - vorher bleibt alles
+    // still und heimlich (Dok 06 C3, der Vorhang faellt erst mit seinem Tod).
+    if (this.area.id !== 'stadt' || !this.bossDead || this.einfallAktiv) return;
     this.spaeherT -= dt;
     if (this.spaeherT > 0) return;
     this.spaeherT = SPAEHER.intervallMinS + Math.random() * (SPAEHER.intervallMaxS - SPAEHER.intervallMinS);

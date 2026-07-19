@@ -66,8 +66,10 @@ export const EINFALL = {
 // R178 (Autor "es kommen immer mal Späher-Monster, die vom Kloster aus
 // geschickt werden"): kleine Kundschafter-Trupps sickern zwischen den
 // Einfällen über die NORDSTRASSE nach Ravensmoor - das Kloster liegt im Norden.
+// R180 (Autor + Dok 06 C3 "bis dahin läuft alles still und heimlich"): sie
+// kommen ERST, nachdem der Boss in der Krypta gefallen ist - sein Tod öffnet
+// die Büchse, das Kloster beginnt zu spähen.
 export const SPAEHER = {
-  abTag: 2,              // der erste Tag bleibt ruhig
   intervallMinS: 240,    // Wartezeit zwischen zwei Trupps (Minimum) ...
   intervallMaxS: 540,    // ... und Maximum (echte Spielsekunden in der Stadt)
   anzahlMin: 1,

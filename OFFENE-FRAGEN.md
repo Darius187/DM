@@ -356,3 +356,11 @@ Der Grafen-Bote ist eingebaut (wohnt beim Amt, Schulze schickt ihn; Botenposten
 holt ihn ins Feldlager). Ich habe ihm bewusst KEINEN Namen gegeben (Regel 6:
 Namen kommen vom Autor). ZWISCHENLOESUNG: er heisst schlicht "der Bote".
 FRAGE: Wie soll er heissen - und soll er ein Gesicht/Portrait bekommen?
+
+## R180 - Feldzug-Balance (Zahlen gehoeren dir)
+Der Feldzug-Plan steht (FELDZUG-PLAN.md, Phasen F1-F6). Offene Design-Zahlen:
+1. Wellen-Groesse der Feind-Produktion je Lager (Vorschlag: 4-8, waechst je Woche)?
+2. Wie viele Karten darf der Feind maximal besetzen, ehe es kritisch wird?
+3. Golem: nur per Truppen-Fokus fällbar - oder auch mit Belagerungs-Trick (Palisade+Bogen)?
+4. Aussehen der Feind-Befestigung (Knochenpalisade? Pfahlwerk mit Bannern?)
+ZWISCHENLOESUNG: ich baue F1 zuerst (Gebiets-Status) - der ist zahlenfrei.

@@ -244,7 +244,9 @@ export const ZIEL_SPERRE = {
 export const MARSCH = {
   dauerJeKarteS: 75,     // Sekunden je Karten-Teilstrecke (Spielgefuehl-Regler)
   grafTrupp: 6,          // Kopfstaerke einer Grafen-Verstaerkung
-  grafStart: 'start',    // die Verstaerkung betritt die Welt am Waldrand (ganz links erschlossen)
+  // R181 (Autor "das ist die aeusserste Karte ganz links und von dort sollen
+  // auch die Truppen los laufen"): die Kolonne startet an der FUERSTENBURG.
+  grafStart: 'burg',
   zielStadt: 'stadt',    // ... und zieht nach Ravensmoor
 } as const;
 
