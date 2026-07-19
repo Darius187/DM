@@ -66,7 +66,7 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, SPAEHER, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
 import { STAHL_QUEST } from '../data/questlinien';
@@ -100,6 +100,7 @@ import { moralWert, fluchtEntscheidung, istEingekesselt, type MoralLage } from '
 import { konterFaktor } from '../data/kampfarten';
 import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, garnisonVon, marschVon, storniereMarsch, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, einheitMaxHp, heerObergrenze, pruefeRekrutierung, desertiere, type Armee, type ArmeeEinheit } from '../logic/armee';
 import { boteNeu, schickeBote, tickBote, type Bote } from '../logic/bote';
+import { neueGebietslage, gebietsStatus, setzeGebietsStatus, type Gebietslage, type GebietsStatus } from '../logic/gebietslage';
 import { schlachtXp } from '../logic/schlachtWertung';
 import { BODEN_STILE, bodenStilTextur } from '../gfx/bodenStile';
 import { WAND_STILE, wandStilFrontTextur, wandStilKroneTextur } from '../gfx/wandStile';
@@ -413,6 +414,7 @@ export class WorldScene extends CombatScene {
     this.portalEnts = [];
     this.spaeherT = SPAEHER.intervallMinS;   // R178: Kundschafter-Uhr frisch
     this.bote = boteNeu(BOTE.heim);          // R179: der Bote startet daheim
+    this.lage = neueGebietslage(FELDZUG.startBesetzt);   // F1: Gebietslage frisch
     this.nebelSprites = [];
     this.stimmungRect = null;
     this.vignetteImg = null;   // Neustart: mit dem stimmungRect zusammen neu aufbauen
@@ -1861,6 +1863,7 @@ export class WorldScene extends CombatScene {
         }));
       } else if (id !== 'stadt') {
         this.einfallAktiv = false;
+        this.setzeLage('stadt', 'frei');   // F1: abgebrochener Einfall haelt die Karte nicht
         this.einfallRest = [];
         this.einfallQueue = [];
       }
@@ -8258,6 +8261,20 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // unterwegs abgefangen werden - dann ruestet sich daheim ein Ersatz.
   private bote: Bote = boteNeu(BOTE.heim);
 
+  // F1 (FELDZUG-PLAN): die Gebietslage - wer haelt welche Karte. Jede
+  // Aenderung meldet sich im Log/Kriegstagebuch (Chronik, Reiter KAMPF).
+  private lage: Gebietslage = neueGebietslage(FELDZUG.startBesetzt);
+
+  private setzeLage(id: string, status: GebietsStatus): void {
+    if (!setzeGebietsStatus(this.lage, id, status)) return;
+    const name = this.kartenName(id);
+    if (status === 'umkaempft') this.chronik('kampf', `Um ${name} wird gekämpft!`);
+    else if (status === 'besetzt') {
+      this.logMsg(`${name} ist an den Feind gefallen!`, 'bad');
+      this.chronik('kampf', `${name} ist an den Feind gefallen.`);
+    } else this.chronik('kampf', `${name} ist wieder in unserer Hand.`);
+  }
+
   private updateBote(dt: number): void {
     const risiko = (this.einfallAktiv || this.flags.kriegBegonnen) ? BOTE.abfangRisikoKrieg : BOTE.abfangRisiko;
     const evs = tickBote(this.bote, dt, {
@@ -9538,6 +9555,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
 
   private startEinfall(): void {
     this.einfallAktiv = true;
+    this.setzeLage('stadt', 'umkaempft');   // F1: auf der Karte sichtbar
     this.setzeBrunnenBlutig(true);
     this.letzterEinfallTag = this.tag;
     // Jeder 3. Einfall ist eine BELAGERUNG (Runde 16): groesserer Trupp + Anfuehrer.
@@ -9589,6 +9607,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // Geschichte weiter (der Boss hatte das Relikt nicht, der Krieg hat begonnen).
   private startGrosserEinfall(): void {
     this.einfallAktiv = true;
+    this.setzeLage('stadt', 'umkaempft');   // F1: auf der Karte sichtbar
     this.setzeBrunnenBlutig(true);
     this.grosserEinfall = true;
     this.flags.wurdeBelagert = true; // Runde 41 Fix: schaltet die Palisade beim Schmied frei (fehlte hier)
@@ -10148,7 +10167,8 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       aufgedeckt: this.karteAufgedeckt,
       gebiete: FUERSTENTUM.map((g) => {
         const sichtbar = this.karteAufgedeckt || !!this.flags[`besucht_${g.id}`];
-        return { id: g.id, name: g.name, gx: g.gx, gy: g.gy, sichtbar, thumb: sichtbar ? this.gebietThumb(g.id) : null };
+        // F1: die Gebietslage faerbt die strategische Karte (frei/umkaempft/besetzt)
+        return { id: g.id, name: g.name, gx: g.gx, gy: g.gy, sichtbar, lage: gebietsStatus(this.lage, g.id), thumb: sichtbar ? this.gebietThumb(g.id) : null };
       }),
       punkte,
     };
@@ -11708,6 +11728,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     if (this.einfallAktiv && this.area.id === 'stadt' && this.einfallQueue.length === 0
       && !this.enemies.some((e) => e.team !== 'spieler' && e.hp > 0)) {
       this.einfallAktiv = false;
+      this.setzeLage('stadt', 'frei');   // F1: Ravensmoor wieder in Spielerhand
       this.setzeBrunnenBlutig(false); // Brunnen wird wieder rein
       if (this.sfx.aktuelleMusik() === 'musik_einfall') this.sfx.stopMusic();
       if (this.grosserEinfall) {
@@ -11964,6 +11985,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         wirtschaft: { lager: this.dorfLager, naechsteAbgabe: this.naechsteAbgabe, rueckstand: this.abgabeRueckstand, bericht: this.lagerBerichtGestern, felder: this.dorfFelder, vieh: this.dorfVieh },
         armee: (this.syncArmeeVomFeld(), this.armee),   // R141: Feld-Zustand mitnehmen
         bote: this.bote,                                // R179: der Grafen-Bote reist mit
+        lage: this.lage,                                // F1: die Gebietslage reist mit
         bevoelkerung: this.bevoelkerung,               // R143 (2.3)
         breschen: this.breschen,
       },
@@ -12035,6 +12057,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.breschen = data.welt.breschen ?? [];
     this.armee = ruesteArmeeNach(data.welt.armee ?? neueArmee(), 'stadt');   // R141/R142 (alte Staende: leeres Heer, Bestand steht in Ravensmoor)
     this.bote = data.welt.bote ?? boteNeu(BOTE.heim);   // R179 (alte Staende: Bote daheim)
+    this.lage = data.welt.lage ?? neueGebietslage(FELDZUG.startBesetzt);   // F1 (alte Staende: Startlage)
     this.bevoelkerung = data.welt.bevoelkerung ?? REKRUTIERUNG.bevoelkerungStart;   // R143 (2.3)
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
     recalc(p);

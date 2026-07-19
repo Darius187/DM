@@ -1767,3 +1767,17 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   NICHT als Figur sichtbar (Meldungen/Chronik erzaehlen den Ritt) - steht
   in TODO.md; sein Name gehoert dem Autor (OFFENE-FRAGEN).
 - tsc fehlerfrei, 402 Tests gruen (64 Dateien).
+
+## Runde 182 - Feldzug-Auftakt: Boten-Tempo, Feind-KI-Plan, Gebietslage (F1)
+- Bote galoppiert jetzt (15s je Karte, Audienz 5s) - Boten-Kette ab Nord-
+  Lager ~7:35 statt 9:30; der grosse Rest ist der bewusst schwere
+  Kolonnen-Fussmarsch (eigener Regler). Niederlagen-Regel festgehalten:
+  man verliert NIE komplett (letzter Rueckzugsort: Fuerstenburg, offen).
+- Deine Feind-KI-Recherche ist gesichtet: docs/design/07-FEIND-KI.md haelt
+  fest, was uebernommen wird und was nicht (Kavallerie, Armbrust und
+  Belagerungsgeraet fliegen raus - deine eigenen harten Regeln 5/6).
+- F1 GEBIETSLAGE ist GEBAUT und verifiziert: jede Karte ist frei/umkaempft/
+  besetzt (Start: Monsterlager, Verfallene Stadt, Klosterberg besetzt).
+  Der KARTE-Tab zeigt es (rote Rahmen + BESETZT-Stempel, orange UMKAEMPFT
+  bei laufendem Einfall), Aenderungen landen im Log + Kriegstagebuch,
+  alles im Spielstand. Screenshot der Karte liegt vor. tsc + 405 Tests gruen.

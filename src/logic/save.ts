@@ -70,6 +70,7 @@ export interface SaveData {
     // Permadeath, Gefallenen-Buch). Optional - alte Staende laden mit leerem Heer.
     armee?: import('./armee').Armee;
     bote?: import('./bote').Bote;   // R179: der Grafen-Bote (Standort/Ritt/Ersatz-Uhr)
+    lage?: import('./gebietslage').Gebietslage;   // F1: Gebietslage des Feldzugs
     // R143 (Dok 03, 2.3): Arbeiter-Zaehler - jeder Rekrut fehlt der Produktion.
     bevoelkerung?: number;
   };

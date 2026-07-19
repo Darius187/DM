@@ -100,7 +100,7 @@ export class UIPanels {
   getKontakteZeilen: (() => Array<[string, string]>) | null = null;
   // Karte des Fürstentums (Runde 51)
   // R152: punkte = LIVE-Marker (Held/Truppen/NPCs) an ihren echten Stellungen.
-  getKarte: (() => { aufgedeckt: boolean; gebiete: Array<{ id: string; name: string; gx: number; gy: number; sichtbar: boolean; thumb: { w: number; h: number; farben: number[][] } | null }>; punkte?: Array<{ karte: string; u: number; v: number; art: 'held' | 'truppe' | 'npc' }> }) | null = null;
+  getKarte: (() => { aufgedeckt: boolean; gebiete: Array<{ id: string; name: string; gx: number; gy: number; sichtbar: boolean; lage?: 'frei' | 'umkaempft' | 'besetzt'; thumb: { w: number; h: number; farben: number[][] } | null }>; punkte?: Array<{ karte: string; u: number; v: number; art: 'held' | 'truppe' | 'npc' }> }) | null = null;
   // Großansicht (Runde 74, Autorwunsch): liefert die Minimap eines Gebiets in
   // voller Kachel-Auflösung - für die Klick-Vergrößerung im KARTE-Tab.
   getGebietGross: ((id: string) => { w: number; h: number; farben: number[][] }) | null = null;
@@ -816,8 +816,17 @@ export class UIPanels {
             g.fillRect(Math.round(tx0 + xx * cell), Math.round(ty0 + yy * cell), Math.ceil(cell), Math.ceil(cell));
           }
         }
-        g.lineStyle(1, 0x6e5a36, 1); g.strokeRect(bx, by, boxW, boxH);
+        // F1 (Feldzug): die Gebietslage faerbt den Rahmen und stempelt den
+        // Status - besetzt rot, umkaempft orange, frei wie gehabt.
+        const lageFarbe = geb.lage === 'besetzt' ? 0xc03828 : geb.lage === 'umkaempft' ? 0xe08a28 : 0x6e5a36;
+        if (geb.lage === 'besetzt') { g.fillStyle(0xc03828, 0.16); g.fillRect(bx, by, boxW, boxH); }
+        g.lineStyle(geb.lage && geb.lage !== 'frei' ? 3 : 1, lageFarbe, 1); g.strokeRect(bx, by, boxW, boxH);
         maleLive(g, geb.id, tx0, ty0, th.w * cell, th.h * cell);   // R152: Live-Marker
+        if (geb.lage === 'besetzt') {
+          c.add(this.scene.add.text(bx + boxW / 2, by + 4, '☠ BESETZT', { fontFamily: 'serif', fontSize: '11px', color: '#f0a090', backgroundColor: '#3a120ad0', padding: { x: 5, y: 2 }, stroke: '#000', strokeThickness: 2 }).setOrigin(0.5, 0));
+        } else if (geb.lage === 'umkaempft') {
+          c.add(this.scene.add.text(bx + boxW / 2, by + 4, '⚔ UMKÄMPFT', { fontFamily: 'serif', fontSize: '11px', color: '#f0d090', backgroundColor: '#3a2a0ad0', padding: { x: 5, y: 2 }, stroke: '#000', strokeThickness: 2 }).setOrigin(0.5, 0));
+        }
         c.add(this.scene.add.text(bx + boxW / 2, by + boxH - 14, geb.name, { fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5, 0));
         // Klick -> Großansicht; laeuft eine Truppen-Verlegung, ist der Klick
         // stattdessen das ZIEL (R142).

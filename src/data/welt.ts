@@ -69,6 +69,13 @@ export const EINFALL = {
 // R180 (Autor + Dok 06 C3 "bis dahin läuft alles still und heimlich"): sie
 // kommen ERST, nachdem der Boss in der Krypta gefallen ist - sein Tod öffnet
 // die Büchse, das Kloster beginnt zu spähen.
+// F1 (FELDZUG-PLAN): Gebiete, die der FEIND von Spielbeginn an haelt -
+// das Monsterlager, die verfallene Stadt (Dok 06 G1: "ueberrannt") und der
+// Klosterberg (die Quelle, Akt 4).
+export const FELDZUG = {
+  startBesetzt: ['lager', 'stadt2', 'kloster'],
+} as const;
+
 export const SPAEHER = {
   intervallMinS: 240,    // Wartezeit zwischen zwei Trupps (Minimum) ...
   intervallMaxS: 540,    // ... und Maximum (echte Spielsekunden in der Stadt)

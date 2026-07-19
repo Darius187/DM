@@ -44,12 +44,25 @@ daraus BAUBARE Phasen). Autor-Order (R180, woertlich zusammengefasst):
 - Grafen-Kolonne startet an der Fuerstenburg (burg, aeusserste Karte links)
   und marschiert real bis Ravensmoor (R181).
 
-## Zeitrechnung (aktuelle Regler, MARSCH.dauerJeKarteS=75s, BOTE.tempoF=0.4)
-- Bote je Karten-Teilstrecke 30s, Audienz an der Burg 45s.
-- Beispiel Lager NOERDLICH von Ravensmoor (Karte 'lager'): Ritt lager ->
-  stadt -> wald_o -> start -> wald_w -> burg = 5x30s + 45s = ~3:15 min.
-- Kolonne burg -> stadt = 5x75s = ~6:15 min. GESAMT ~9:30 Spielminuten
-  vom Absenden bis zum Eintreffen der Verstaerkung. Alles Regler.
+## Zeitrechnung (R182: Autor "9:30 zu lang" - Galopp + kurze Audienz)
+- Bote GALOPPIERT: 15s je Karten-Teilstrecke (BOTE.tempoF 0.2), Audienz 5s.
+- Beispiel Lager NOERDLICH von Ravensmoor: Ritt 5x15s + 5s = ~1:20 min.
+- Kolonne burg -> stadt = 5x75s = ~6:15 min (Fussmarsch, bewusst schwer -
+  der grosse Anteil ist jetzt der MARSCH, nicht der Bote). GESAMT ~7:35.
+  Regler: MARSCH.dauerJeKarteS, BOTE.tempoF/burgDauerS.
+
+## Niederlagen-Regel (Autor R182: "auf keinen Fall verliert man komplett")
+- Es gibt KEINEN Totalverlust/Game Over im Feldzug. Verliert der Spieler
+  Karten, zieht er sich zurueck - letzter Rueckzugsort ist die FUERSTENBURG
+  (Vorschlag; Alternative "in die Berge/Zuflucht" -> OFFENE-FRAGEN). Von
+  dort ist IMMER ein Comeback moeglich (Blutlager-Zerstoerung schwaecht die
+  Besatzer, Dok 06 A3).
+
+## Feind-KI (R182): Autor-Recherche gesichtet
+- Verbindliche Bauanleitung: docs/design/07-FEIND-KI.md (uebernommen/
+  verworfen dokumentiert; Kavallerie/Armbrust/Belagerungsgeraet NICHT
+  uebernommen - harte Regeln 5/6). Feind-Spaeher schaetzen zuerst die
+  Staerke, dann bemisst der Feind seine Angriffsgruppe.
 
 ## Phasen (Aufgaben F1-F6, in dieser Reihenfolge)
 - F1 GEBIETS-STATUS: je Karte frei/umkaempft/besetzt (gebietslage.ts, rein/

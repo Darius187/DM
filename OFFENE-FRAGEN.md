@@ -364,3 +364,8 @@ Der Feldzug-Plan steht (FELDZUG-PLAN.md, Phasen F1-F6). Offene Design-Zahlen:
 3. Golem: nur per Truppen-Fokus fällbar - oder auch mit Belagerungs-Trick (Palisade+Bogen)?
 4. Aussehen der Feind-Befestigung (Knochenpalisade? Pfahlwerk mit Bannern?)
 ZWISCHENLOESUNG: ich baue F1 zuerst (Gebiets-Status) - der ist zahlenfrei.
+
+## R182 - Letzter Rueckzugsort bei verlorenem Feldzug?
+Beschlossen: KEIN Totalverlust. Offen: WOHIN zieht man sich zurueck, wenn
+alle Karten fallen - Fuerstenburg (existiert als Karte, mein Vorschlag)
+oder "in die Berge" (neue Karte noetig)? ZWISCHENLOESUNG: Fuerstenburg.

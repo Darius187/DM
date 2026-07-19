@@ -254,11 +254,13 @@ export const MARSCH = {
 // einen BERITTENEN BOTEN. Er wohnt in Ravensmoor (Amt); ein Botenposten im
 // Feldlager holt ihn nach. Der Ritt ist ABFANGBAR - Verlust tut weh.
 export const BOTE = {
-  tempoF: 0.4,             // Reiter braucht nur 40% der Fussmarsch-Zeit je Karte
+  // R182 (Autor "9:30 ist zu lang; im Galopp keine 30s je Karte; Audienz 5s"):
+  // der Reiter galoppiert - 20% der Fussmarsch-Zeit (15s je Karte).
+  tempoF: 0.2,
   abfangRisiko: 0.08,      // Risiko je Teilstrecke, abgefangen zu werden ...
   abfangRisikoKrieg: 0.2,  // ... waehrend Einfall/Krieg deutlich hoeher
   zielKarte: 'burg',       // der Bote reitet bis zur Fuerstenburg-Karte
-  burgDauerS: 45,          // Audienz beim Grafen, bis die Kolonne aufbricht
+  burgDauerS: 5,           // Audienz beim Grafen, bis die Kolonne aufbricht (R182)
   ersatzS: 300,            // ein neuer Bote ruestet sich in Ravensmoor
   heim: 'stadt',           // Heimat des Boten (Amt von Ravensmoor)
 } as const;
