@@ -125,7 +125,7 @@ export class SettingsScene extends Phaser.Scene {
         { art: 'schalter', label: 'Wasser-Effekte (Shader)', get: () => s.wasserEffekte, tun: () => this.grafikSet(() => { s.wasserEffekte = !s.wasserEffekte; this.liveGrafik(); }) },
         { art: 'schalter', label: 'Blut & Überreste', get: () => s.blood, tun: () => this.grafikSet(() => { s.blood = !s.blood; }) },
         { art: 'schalter', label: 'Bildschirmwackeln bei Treffern', get: () => s.shake, tun: () => this.grafikSet(() => { s.shake = !s.shake; }) },
-        { art: 'schalter', label: 'Schadenszahlen', get: () => s.dmgNums, tun: () => this.grafikSet(() => { s.dmgNums = !s.dmgNums; }) },
+        { art: 'schalter', label: 'Schadenszahlen & Treffermeldungen', get: () => s.dmgNums, tun: () => this.grafikSet(() => { s.dmgNums = !s.dmgNums; }) },
         { art: 'schalter', label: 'Nebel des Krieges im Dunkelwald', get: () => s.fow, tun: () => this.grafikSet(() => { s.fow = !s.fow; }) },
       ];
       case 'steuerung': {

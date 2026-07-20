@@ -590,6 +590,9 @@ export class WorldScene extends CombatScene {
     // gruen=Baum, rot=Wand, magenta=Gebaeude, cyan=Bruecken-Sperre) - so wird
     // die unsichtbare Wand sichtbar UND die Farbe verraet, WAS sie ist.
     this.input.keyboard?.on('keydown-K', () => this.toggleKollisionOverlay());
+    // Im K-Modus: Klick auf eine Stelle -> Koordinaten + Kachel-Typ + Grund
+    // (fuer die Ferndiagnose der unsichtbaren Wand - der Autor klickt drauf).
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.kollisionKlick(p));
     this.worldGfx = this.add.graphics().setDepth(2450);
     // Blutspuren liegen UNTER den Figuren (Autorbug R45: lagen "vor" den
     // Einheiten). Boden = -10, Figuren = y (positiv); -5 liegt sauber dazwischen.
@@ -8721,6 +8724,29 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       { fontFamily: 'monospace', fontSize: '13px', color: '#ffffff', backgroundColor: '#000000c0' }).setScrollFactor(0).setDepth(99999);
     console.log('KOLLISION ' + JSON.stringify({ karte: a.id, ...zahl, wandTypen: [...wandTypen] }));
     this.logMsg(`Kollision-Overlay AN (${Object.entries(zahl).map(([k, v]) => `${k}:${v}`).join(' ')})`, 'gold');
+  }
+
+  // Grund, WARUM eine Kachel fuer den Helden blockiert (oder 'frei').
+  private kollisionGrund(cx: number, cy: number, t: number, tx: number, ty: number): string {
+    if (!this.solidFuerHeld(cx, cy)) return 'frei';
+    if (this.gebaeudeSolid(cx, cy, true)) return 'GEBAEUDE';
+    if (t === T.WATER) return 'WASSER (Fluss?)';
+    if (t === T.TREE) return 'BAUM';
+    if (this.brueckenSperre.has(ty * this.area.w + tx)) return 'BRUECKEN-SPERRE';
+    return `WAND (Typ ${t})`;
+  }
+
+  // K-Modus: Klick zeigt Koordinaten + Kachel-Typ + Grund (Ferndiagnose).
+  private kollisionKlick(p: Phaser.Input.Pointer): void {
+    if (!this.kollisionGfx || !this.area) return;
+    const wx = p.worldX, wy = p.worldY;
+    const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
+    const t = this.area.map[ty]?.[tx] ?? -1;
+    const grund = this.kollisionGrund(tx * TILE + 16, ty * TILE + 16, t, tx, ty);
+    const txt = `Kachel (${tx}, ${ty})  Typ ${t}  -> ${grund}`;
+    console.log('KLICK ' + txt);
+    this.kollisionText?.setText('Kollision-Overlay AN (K)   ' + txt);
+    this.logMsg(txt, grund === 'frei' ? '' : 'gold');
   }
 
   private baueFeindlager(a: AreaData): void {

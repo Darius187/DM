@@ -214,7 +214,10 @@ export class EffectSystem {
     // R131 (Autor: "pariert und andere sachen abschaltbar"): Schwebetexte per
     // Schalter aus; Zahlen zusaetzlich ueber dmgNums.
     if (getSettings().kampfTexte === false) return;
-    if (!getSettings().dmgNums && /^[0-9-]/.test(txt)) return;
+    // Autor: "Schadenszahlen UND parieren/ausweichen standardmaessig aus" (steht
+    // im Log) - dmgNums schluckt jetzt Zahlen UND die Treffermeldungen. Die
+    // dramatischen Texte (WUCHT, Spezialangriffe, Heilung) bleiben.
+    if (!getSettings().dmgNums && (/^[0-9-]/.test(txt) || /pariert|blockt|ausgewichen/i.test(txt))) return;
     const obj = this.scene.add.text(x, y, txt, {
       fontFamily: 'serif', fontSize: '15px', color: col, stroke: '#000000', strokeThickness: 3, fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(2700);

@@ -138,7 +138,7 @@ export const DEF_SETTINGS: Settings = {
   tempo: 90,
   fow: true,
   shake: false,
-  dmgNums: true,
+  dmgNums: false,   // Autor: Schadenszahlen + Parade/Ausweichen/Block standardmaessig AUS (steht im Ereignis-Log)
   blood: true,
   lefty: false,
   // Runde 49 (Autorwunsch): Leiste startet LEER bis auf Angriff/Block/Tränke -
