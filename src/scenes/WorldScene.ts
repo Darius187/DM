@@ -585,6 +585,11 @@ export class WorldScene extends CombatScene {
     // der Autor die Grenze auf SEINER Hardware (headless = softwaregerendert,
     // nicht aussagekraeftig). Zyklus 300/600/1000/1500, Shift+B raeumt auf.
     this.input.keyboard?.on('keydown-B', (ev: KeyboardEvent) => { if (ev.shiftKey) this.devStressRaeumen(); else this.devStressBattle(); });
+    // DEV-Kollisions-Overlay (Autor-Bug "unsichtbare Wand, ich finde sie nicht"):
+    // Taste K faerbt JEDE blockierte Kachel farbcodiert ein (blau=Wasser,
+    // gruen=Baum, rot=Wand, magenta=Gebaeude, cyan=Bruecken-Sperre) - so wird
+    // die unsichtbare Wand sichtbar UND die Farbe verraet, WAS sie ist.
+    this.input.keyboard?.on('keydown-K', () => this.toggleKollisionOverlay());
     this.worldGfx = this.add.graphics().setDepth(2450);
     // Blutspuren liegen UNTER den Figuren (Autorbug R45: lagen "vor" den
     // Einheiten). Boden = -10, Figuren = y (positiv); -5 liegt sauber dazwischen.
@@ -8674,6 +8679,48 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.devFpsText?.destroy(); this.devFpsText = null;
     this.devStressN = 0;
     this.logMsg('Stresstest geräumt.', '');
+  }
+
+  // DEV-Kollisions-Overlay (Autor "unsichtbare Wand, ich finde sie nicht"): faerbt
+  // JEDE fuer den Helden blockierte Kachel farbcodiert ein - so wird die Wand
+  // SICHTBAR und die Farbe verraet, WORAN es liegt. Logt zudem die Verteilung
+  // und die Kachel-Typen der "Wand"-Faelle (fuer die Ferndiagnose).
+  private kollisionGfx: Phaser.GameObjects.Graphics | null = null;
+  private kollisionText: Phaser.GameObjects.Text | null = null;
+
+  private toggleKollisionOverlay(): void {
+    if (this.kollisionGfx) {
+      this.kollisionGfx.destroy(); this.kollisionGfx = null;
+      this.kollisionText?.destroy(); this.kollisionText = null;
+      this.logMsg('Kollisions-Overlay AUS.', '');
+      return;
+    }
+    const a = this.area;
+    const g = this.add.graphics().setDepth(99998);
+    const zahl: Record<string, number> = {};
+    const wandTypen = new Set<number>();
+    for (let ty = 0; ty < a.h; ty++) {
+      for (let tx = 0; tx < a.w; tx++) {
+        const cx = tx * TILE + TILE / 2, cy = ty * TILE + TILE / 2;
+        if (!this.solidFuerHeld(cx, cy)) continue;
+        const t = a.map[ty][tx];
+        let col = 0xff2020, grund = 'wand';
+        if (this.gebaeudeSolid(cx, cy, true)) { col = 0xff30ff; grund = 'gebaeude'; }
+        else if (t === T.WATER) { col = 0x2878ff; grund = 'wasser'; }
+        else if (t === T.TREE) { col = 0x30d030; grund = 'baum'; }
+        else if (this.brueckenSperre.has(ty * a.w + tx)) { col = 0x00e0e0; grund = 'bruecke'; }
+        else { wandTypen.add(t); }   // SOLID-Kachel, aber kein Wasser/Baum/Gebaeude/Bruecke
+        g.fillStyle(col, 0.5);
+        g.fillRect(tx * TILE, ty * TILE, TILE, TILE);
+        zahl[grund] = (zahl[grund] ?? 0) + 1;
+      }
+    }
+    this.kollisionGfx = g;
+    this.kollisionText = this.add.text(12, 40,
+      'K: blau=Wasser  gruen=Baum  rot=Wand  magenta=Gebaeude  cyan=Bruecke',
+      { fontFamily: 'monospace', fontSize: '13px', color: '#ffffff', backgroundColor: '#000000c0' }).setScrollFactor(0).setDepth(99999);
+    console.log('KOLLISION ' + JSON.stringify({ karte: a.id, ...zahl, wandTypen: [...wandTypen] }));
+    this.logMsg(`Kollision-Overlay AN (${Object.entries(zahl).map(([k, v]) => `${k}:${v}`).join(' ')})`, 'gold');
   }
 
   private baueFeindlager(a: AreaData): void {
