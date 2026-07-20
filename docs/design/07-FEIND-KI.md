@@ -390,3 +390,20 @@ Schritt) - der wahrscheinliche echte Flaschenhals; (2) GC-Spikes (in den max-
 Werten sichtbar); (3) echte Zielhardware (headless != Autor-PC).
 NAECHSTE MESSUNG: volle Frame inkl. Rendering bei 300/600, dann steht die
 ehrliche fps-Zahl "laeuft nachweislich gut".
+
+## V2d - STRESS BIS 2000 + WICHTIGE MESS-EINSCHRAENKUNG
+Gemessen (headless): LOGIK je Frame skaliert MILD:
+  300 -> 10.4 ms | 600 -> 8.6 ms | 1000 -> 12.4 ms | 2000 -> 20.9 ms (Median).
+-> Die Spiel-LOGIK ist NICHT die Grenze: selbst 2000 Einheiten = ~21 ms in einer
+   LANGSAMEN headless-CPU; auf echter CPU noch weniger. 300v300/500v500 logik-
+   seitig unkritisch.
+RENDER NICHT VERLAESSLICH MESSBAR HIER: das "volle Bild" lag bei ~720-790 ms
+KONSTANT ueber 300..2000 (fpsVoll=1). Das ist KEIN echter Wert, sondern ein
+HEADLESS-ARTEFAKT: headless-Chromium rendert per SOFTWARE (SwiftShader, ~100x
+langsamer als GPU); die ~720 ms sind die FIXEN Vollbild-Passes (Nebel/Licht),
+NICHT die Einheiten (deshalb konstant, egal ob 300 oder 2000 Sprites). Auf
+echter GPU sind diese Passes < 1 ms und laufen im Normalspiel laengst fluessig.
+FAZIT: Die echte Grenze setzt die GPU (Sprite-Durchsatz) + GC - und die ist NUR
+auf ECHTER HARDWARE messbar, nicht headless. DARUM: DEV-Stresstest gebaut (Taste
+B auf jeder Karte: 300/600/1000/1500 Einheiten Schlacht + Live-FPS oben links,
+Shift+B raeumt). Der Autor misst damit die Grenze auf SEINEM PC.

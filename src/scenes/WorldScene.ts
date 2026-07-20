@@ -580,6 +580,11 @@ export class WorldScene extends CombatScene {
     this.input.keyboard?.on('keydown-L', () => this.lichtPanel?.umschalten());
     // R105: Dorf-Editor (nur in der 'stadt'-Area). Taste P schaltet ihn um.
     this.input.keyboard?.on('keydown-P', () => this.toggleDorfEditor());
+    // DEV-Stresstest (Autor-Frage "wo ist die Grenze?"): Taste B spawnt eine
+    // Schlacht auf der AKTUELLEN Karte und blendet die ECHTE FPS ein - so misst
+    // der Autor die Grenze auf SEINER Hardware (headless = softwaregerendert,
+    // nicht aussagekraeftig). Zyklus 300/600/1000/1500, Shift+B raeumt auf.
+    this.input.keyboard?.on('keydown-B', (ev: KeyboardEvent) => { if (ev.shiftKey) this.devStressRaeumen(); else this.devStressBattle(); });
     this.worldGfx = this.add.graphics().setDepth(2450);
     // Blutspuren liegen UNTER den Figuren (Autorbug R45: lagen "vor" den
     // Einheiten). Boden = -10, Figuren = y (positiv); -5 liegt sauber dazwischen.
@@ -8608,6 +8613,50 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       case 'vollring':    // voller Ring mit Nord- UND Sued-Tor
         return !(nahe(S) || nahe(N));
     }
+  }
+
+  // DEV-Stresstest zum MESSEN der Einheiten-Grenze auf echter Hardware (Autor-
+  // Frage "wo ist die Grenze?"). Taste B zyklt die Stufen, Shift+B raeumt.
+  // Nur ein Messwerkzeug - kein Spiel-Feature.
+  private devStressN = 0;
+  private static readonly DEV_STRESS_STUFEN = [300, 600, 1000, 1500] as const;
+  private devFpsText: Phaser.GameObjects.Text | null = null;
+  private devFpsTimer?: Phaser.Time.TimerEvent;
+
+  private devStressBattle(): void {
+    const n = WorldScene.DEV_STRESS_STUFEN[this.devStressN % WorldScene.DEV_STRESS_STUFEN.length];
+    this.devStressN++;
+    this.devStressRaeumen(true);
+    const a = this.area; const je = Math.floor(n / 2);
+    const L = { x: a.w * TILE * 0.30, y: a.h * TILE * 0.5 };
+    const R = { x: a.w * TILE * 0.70, y: a.h * TILE * 0.5 };
+    const gruppe = (mitte: { x: number; y: number }, ziel: { x: number; y: number }, team: 'feind' | 'spieler'): void => {
+      for (let i = 0; i < je; i++) {
+        const e = this.spawnEnemy('skelett', 2, mitte.x + (i % 30) * 16 - 240, mitte.y + Math.floor(i / 30) * 16 - 120, false, true);
+        if (team === 'spieler') e.team = 'spieler';
+        e.aggro = 5000; e.jagdZiel = { x: ziel.x, y: ziel.y };
+      }
+    };
+    gruppe(L, R, 'feind');
+    gruppe(R, L, 'spieler');
+    if (!this.devFpsText) {
+      this.devFpsText = this.add.text(12, 12, '', { fontFamily: 'monospace', fontSize: '18px', color: '#7CFC00', backgroundColor: '#000000b0' }).setScrollFactor(0).setDepth(99999);
+      this.devFpsTimer = this.time.addEvent({ delay: 400, loop: true, callback: () => {
+        const lebend = this.enemies.filter((e) => e.hp > 0).length;
+        this.devFpsText?.setText(`STRESS  Einheiten ${lebend}  FPS ${Math.round(this.game.loop.actualFps)}`);
+      } });
+    }
+    this.logMsg(`Stresstest: ${n} Einheiten (B = naechste Stufe, Shift+B = raeumen).`, 'gold');
+  }
+
+  private devStressRaeumen(nurEinheiten = false): void {
+    for (const e of [...this.enemies]) e.sprite?.destroy();
+    this.enemies = [];
+    if (nurEinheiten) return;
+    this.devFpsTimer?.remove(); this.devFpsTimer = undefined;
+    this.devFpsText?.destroy(); this.devFpsText = null;
+    this.devStressN = 0;
+    this.logMsg('Stresstest geräumt.', '');
   }
 
   private baueFeindlager(a: AreaData): void {
