@@ -16,17 +16,19 @@
 - Darstellung ueber die bestehende Three.js-Canvas-Textur in Phaser
 - Spieler-Spawn direkt am offenen Tor/Innenhof
 - wasserfreie, freigeraeumte Stellflaeche ohne Aussenweg
-- Spieler bleibt vor dem gemeinsamen Burg-Layer sichtbar
+- dynamische Teilung am Spielerfuss: Hof hinten, Suedmauer und Tor vorne
+- Fluss-Naht nur als Randkollision, ohne Wasser-Shader auf der Burgkarte
 
 ## Verifikation
 
-- Blender-Geometriepruefung: Tor ausgerichtet, Mauerring geschlossen,
-  Hauptweg 4,4 m, keine schwebenden Teile oder kritischen Ueberschneidungen
+- Blender-Geometriepruefung: Tor ausgerichtet und dauerhaft offen, ungeeignete
+  Torbogen- und Tuer-Module entfernt, Mauerring geschlossen, Hauptweg 4,4 m,
+  keine schwebenden Teile oder kritischen Ueberschneidungen
 - HTTP: Manifest und GLB werden vom Vite-Server mit Status 200 ausgeliefert
-- Browser: `F10 > MAPS > Fuerstenburg` laedt die Burg sichtbar im echten Spiel
-- Browser-Konsole: keine Ladefehler; nur die bereits vorhandene Three.js-
-  Deprecation-Warnung fuer `PCFSoftShadowMap`
-- TypeScript-Pruefung und Produktions-Build erfolgreich
+- Browser: `F10 > MAPS > Fuerstenburg` laedt die ueberarbeitete Burg sichtbar
+  im echten Spiel, ohne schwarzen Bildschirm
+- Browser-Konsole: nach dem Fix keine neuen Lade-, Shader- oder WebGL-Fehler
+- TypeScript-Pruefung, 419 Vitest-Tests und Produktions-Build erfolgreich
 
 ## Vorschau
 

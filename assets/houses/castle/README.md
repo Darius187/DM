@@ -29,18 +29,23 @@ diese als Phaser-Weltobjekt dar. Die Kollisionsrechtecke aus der JSON sperren
 Mauern, Tuerme, Donjon, Nebengebaeude, Stall und Brunnen.
 
 `buildBurg()` erzeugt eine wasserfreie Burgkarte, raeumt die Stellflaeche frei
-und setzt den Spieler direkt an das offene Suedtor im Innenhof. Da die ganze
-Burg ein gemeinsames Canvas-Sprite ist, werden Spielfiguren auf dieser Karte
-vor dem Burg-Layer gerendert; die physische Mauerkollision bleibt aktiv.
+und setzt den Spieler direkt an das offene Suedtor im Innenhof. Die fuer die
+Oberwelt-Naht benoetigten Fluss-Randkacheln bleiben ausserhalb der sichtbaren
+Burg erhalten, erzeugen hier aber bewusst keinen Wasser-Shader.
+
+Die Burg wird aus derselben Canvas-Textur in einen Hintergrund- und einen
+Vordergrund-Ausschnitt am Fuss der Spielfigur geteilt. Dadurch bleibt der Hof
+hinter dem Spieler, waehrend Suedmauer und Tor ihn korrekt verdecken. Die
+physischen Kollisionen bleiben unabhaengig davon aktiv.
 
 ## Runtime-Vertrag
 
 - Modus: `exterior_only`
 - Root: `BRG_CASTLE_RUNTIME_ROOT`
-- Groesse: etwa 61 x 46 x 16 Meter
+- Groesse: etwa 61 x 45 x 16 Meter
 - Eingang: `TRIGGER_CASTLE_GATE`
 - Hof-Spawn: `SPAWN_CASTLE_COURTYARD`
-- Durchgang: offen, keine animierten Tuerfluegel
+- Durchgang: offen, keine Torbogen-Module oder Tuerfluegel
 - Materialien: unveraendert aus dem GLB, sRGB + ACES Filmic
 
 Die bearbeitbare Quelldatei liegt unter

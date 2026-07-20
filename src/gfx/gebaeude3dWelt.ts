@@ -21,6 +21,9 @@ const GRAD = Math.PI / 180;
 const TUER_REICHWEITE = 1.6;    // Meter: Tuer oeffnet, wenn der Held so nah ist
 const TUER_TEMPO = 2.2;         // Oeffnungsanteil je Sekunde
 const TUER_FREI_AB = 0.55;      // ab diesem Oeffnungsanteil ist der Durchgang frei
+export const BURG_FIGUR_TIEFE = 1_000_000;
+const BURG_HINTERGRUND_TIEFE = BURG_FIGUR_TIEFE - 100_000;
+const BURG_VORDERGRUND_TIEFE = BURG_FIGUR_TIEFE + 100_000;
 
 export type HeldEbene = 'aussen' | 'eg' | 'og' | 'treppe';
 
@@ -42,6 +45,7 @@ export function gebaeudeEinstellung(id: string, standardYaw = 0): { yaw: number 
 export class Gebaeude3DWelt {
   private gebaeude: Gebaeude3D | null = null;
   private bild?: Phaser.GameObjects.Image;
+  private vorderBild?: Phaser.GameObjects.Image;
   private tex?: Phaser.Textures.CanvasTexture;
   private texKey: string;
   private footX: number; private footY: number;
@@ -72,6 +76,15 @@ export class Gebaeude3DWelt {
       this.tex?.setFilter(Phaser.Textures.FilterMode.LINEAR);
       this.bild = this.scene.add.image(this.footX, this.footY, this.texKey);
       this.ignoriere(this.bild);
+      // Die offene Burg braucht zwei Ausschnitte derselben Rendertextur: Alles
+      // oberhalb des Heldenfusses liegt hinter der Figur, alles darunter davor.
+      // So verdecken Suedmauer und Tor den Helden korrekt, waehrend Hof und
+      // Nordgebaeude hinter ihm bleiben. Ein einzelnes Gesamtsprite kann das
+      // prinzipbedingt nicht leisten.
+      if (this.opts.id === 'burg') {
+        this.vorderBild = this.scene.add.image(this.footX, this.footY, this.texKey);
+        this.ignoriere(this.vorderBild);
+      }
       this.stelleSprite();
     } catch (e) {
       this.ladeFehler = true;
@@ -221,10 +234,25 @@ export class Gebaeude3DWelt {
       this.stelleSprite();
     }
 
-    // 4) Tiefe: aussen sortiert die SUEDKANTE des Gebaeudes, innen liegt das
-    // Gebaeude unter dem Helden (Dach/Vorderwand sind ausgeblendet).
-    if (this.ebene === 'aussen') this.bild.setDepth(this.suedkanteY());
+    // 4) Tiefe: Die grosse offene Burg wird dynamisch am Heldenfuss geteilt.
+    // Normale Haeuser behalten die bewaehrte Sortierung an ihrer Suedkante.
+    if (this.opts.id === 'burg' && this.vorderBild) this.sortiereBurg(heldY);
+    else if (this.ebene === 'aussen') this.bild.setDepth(this.suedkanteY());
     else this.bild.setDepth(heldY - 48);
+  }
+
+  private sortiereBurg(heldY: number): void {
+    const g = this.gebaeude;
+    if (!g || !this.bild || !this.vorderBild) return;
+    const texW = g.canvas.width, texH = g.canvas.height;
+    const bildOben = this.footY - this.bild.displayHeight * this.bild.originY;
+    const anteil = (heldY - bildOben) / Math.max(1, this.bild.displayHeight);
+    const schnittY = Phaser.Math.Clamp(Math.round(anteil * texH), 0, texH);
+
+    this.bild.setVisible(schnittY > 0).setDepth(BURG_HINTERGRUND_TIEFE + heldY);
+    if (schnittY > 0) this.bild.setCrop(0, 0, texW, schnittY);
+    this.vorderBild.setVisible(schnittY < texH).setDepth(BURG_VORDERGRUND_TIEFE + heldY);
+    if (schnittY < texH) this.vorderBild.setCrop(0, schnittY, texW, texH - schnittY);
   }
 
   // Welt-y der suedlichsten Gebaeudekante (Plan-Bounds, mitgedreht).
@@ -244,9 +272,12 @@ export class Gebaeude3DWelt {
     if (!g || !this.bild) return;
     const anker = g.ankerUV();
     const spannePx = g.canvas.width * g.meterProPixel() * this.ppm();  // Weltbreite des Canvas
-    this.bild.setOrigin(anker.u, anker.v);
-    this.bild.setPosition(this.footX, this.footY);
-    this.bild.setDisplaySize(spannePx, spannePx);
+    for (const bild of [this.bild, this.vorderBild]) {
+      if (!bild) continue;
+      bild.setOrigin(anker.u, anker.v);
+      bild.setPosition(this.footX, this.footY);
+      bild.setDisplaySize(spannePx, spannePx);
+    }
   }
 
   setPosition(footX: number, footY: number): void {
@@ -273,6 +304,7 @@ export class Gebaeude3DWelt {
   destroy(): void {
     this.zerstoert = true;
     this.bild?.destroy();
+    this.vorderBild?.destroy();
     if (this.scene.textures.exists(this.texKey)) this.scene.textures.remove(this.texKey);
     this.gebaeude?.dispose();
     this.gebaeude = null;

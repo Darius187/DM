@@ -1927,6 +1927,21 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   normal weiter). Rest-Ursache in TODO notiert (kartenKanten-Verdrahtung).
 - tsc + 416 Tests gruen.
 
+## Runde 194 - Fuerstenburg Debug-Pass
+- Schwarzer Bildschirm reproduziert und auf einen WebGL-Kontextverlust beim
+  gleichzeitigen Erzeugen des ausserhalb liegenden Wasser-Shaders und Laden
+  der grossen Three-Burg zurueckgefuehrt. Die Fluss-Randkacheln bleiben fuer
+  die Oberwelt-Naht erhalten, die Burgkarte erzeugt dafuer keinen Shader mehr.
+- Die wie eine Bruecke wirkenden Torbogen-Module und lose Tuerfluegel wurden
+  aus dem Blender-Runtime-Export entfernt. Das Suedtor ist klar, dauerhaft
+  offen und der Aussenweg endet am Tor; kein Graben oder Aussengelaende.
+- Die gemeinsame Burg-Rendertextur wird dynamisch am Spielerfuss geteilt:
+  Hof und Nordbauten liegen hinter der Figur, Suedmauer und Tor davor.
+- Neue Runtime-Regressionstests pruefen freien Torweg, freien Hof-Spawn,
+  Exterior-Modus ohne Tueren sowie sichtbaren Burgbereich ohne Wasserlauf.
+- TypeScript-Pruefung, 419 Vitest-Tests und Produktions-Build gruen; Manifest
+  und GLB werden ueber Vite mit Status 200 ausgeliefert.
+
 ## Feindlager-Mittelweg M1 - Blaupausen-Varianten (Autor "so machen wir das")
 - Das Feindlager baut jetzt nach vorgefertigten, routen-SICHEREN Blaupausen
   statt einer festen Form: Sichel / Hufeisen / Zwei Riegel / Voller Ring.

@@ -2473,6 +2473,11 @@ export function buildBurg(rng: Rng): AreaData {
   };
   a.rocks = a.rocks.filter(ausserhalb);
   a.kraeuter = a.kraeuter.filter(ausserhalb);
+  // Die Randkacheln bleiben fuer Oberwelt-Naht und Kollision erhalten. Einen
+  // Wasser-Shader erzeugen wir hier bewusst nicht: Der Lauf liegt ausserhalb
+  // des sichtbaren Burgbereichs und ein weiterer WebGL-Shader kann beim Laden
+  // des grossen Three-Modells den Phaser-Kontext verlieren lassen.
+  a.wasserLauf = undefined;
   return a;
 }
 export function buildWaldNord(rng: Rng): AreaData {

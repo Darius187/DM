@@ -73,7 +73,7 @@ import { zeichneStation } from '../gfx/stationsArt';
 import { STAHL_QUEST } from '../data/questlinien';
 import { istMatsch, matschTempo, heldBlutAbbau, abdruckAlpha } from '../logic/spuren';
 import { TUNING } from '../logic/tuning';
-import { Gebaeude3DWelt, gebaeudeEinstellung } from '../gfx/gebaeude3dWelt';
+import { BURG_FIGUR_TIEFE, Gebaeude3DWelt, gebaeudeEinstellung } from '../gfx/gebaeude3dWelt';
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, FLYOVER, tileNameAt } from '../world/tiles';
 import { TILE } from '../gfx/fallbackArt';
@@ -7911,12 +7911,10 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // Bäume sortieren auf ihrem Stammfuß - so liegt der Held VOR dem Stamm (Kopf
   // frei), sobald seine Füße unter dem Stammfuß stehen, und dahinter, wenn nicht.
   protected override spielerTiefe(): number {
-    // Das komplette Schloss wird von der vorhandenen Three-Runtime als ein
-    // Canvas-Sprite gerendert. Auf der Burgkarte muss der Held deshalb vor
-    // diesem Karten-Layer liegen; Mauern bleiben physisch ueber die Runtime-
-    // Kollisionen gesperrt. Die hohe Tiefe betrifft nur die Hauptkamera, da
-    // der Held in der getrennten UI-Kamera ignoriert wird.
-    if (this.area?.id === 'burg') return 1_000_000 + this.py;
+    // Die Burg-Canvas liegt in zwei Ausschnitten um diese Tiefe: Hof/Norden
+    // dahinter, Suedmauer/Tor davor. Die hohe Tiefe betrifft nur die
+    // Hauptkamera, da der Held in der getrennten UI-Kamera ignoriert wird.
+    if (this.area?.id === 'burg') return BURG_FIGUR_TIEFE + this.py;
     return this.py + this.playerSprite.displayHeight * (1 - this.playerSprite.originY);
   }
   protected override gegnerTiefe(spr: Phaser.GameObjects.Sprite, grundY: number): number {

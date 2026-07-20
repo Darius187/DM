@@ -5,7 +5,7 @@
   "bounds_blender": {
     "min": [
       -30.9571,
-      -23.7383,
+      -22.4327,
       -0.035
     ],
     "max": [
@@ -15,15 +15,15 @@
     ],
     "center": [
       -0.4616,
-      -0.6549,
+      -0.002,
       7.9855
     ],
     "size": [
       60.991,
-      46.1669,
+      44.8613,
       16.0409
     ],
-    "bounding_radius": 39.0109
+    "bounding_radius": 38.2304
   },
   "continuous_controls": {
     "camera_elevation_degrees": {
