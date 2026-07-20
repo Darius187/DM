@@ -81,4 +81,33 @@ describe('feindzug', () => {
     expect(z.lager.length).toBe(0);
     expect(z.angriff).toBeNull();
   });
+
+  // F6 (Dok 06 Teil H, Blutlager-Comeback): faellt ein Lager, verliert die
+  // HORDE Kraft - die uebrigen Lager geben Punkte ab und die Produktion
+  // laeuft eine Weile gedrosselt. Der Schwaechere bekommt Luft.
+  it('schwaecht die Horde beim Lagerverlust: Punkte-Abgabe + gedrosselte Produktion', () => {
+    const z = neuerFeindzug(['lager', 'stadt2']);
+    const c = cfg({ produktionProS: 1, schwaecheProduktionF: 0.25 });
+    tickFeindzug(z, 20, c);   // beide Lager bei 20 Punkten
+    verliereLager(z, 'stadt2', 60, 0.5);   // 60s Schwaeche, Abgabe 50%
+    const rest = z.lager.find((l) => l.karte === 'lager');
+    expect(rest?.punkte).toBe(10);         // 20 * 0.5
+    expect(z.schwaecheT).toBe(60);
+    // Waehrend der Schwaeche: nur 25% Produktion (10 + 20*1*0.25 = 15)
+    tickFeindzug(z, 20, c);
+    expect(rest?.punkte).toBeCloseTo(15, 5);
+    expect(z.schwaecheT).toBeCloseTo(40, 5);
+    // Nach Ablauf: volle Produktion (Restschwaeche 40s, dann 10s voll)
+    tickFeindzug(z, 50, c);
+    expect(rest?.punkte).toBeCloseTo(15 + 40 * 0.25 + 10 * 1, 5);
+    expect(z.schwaecheT).toBe(0);
+  });
+
+  it('alte Staende ohne Schwaeche-Feld laufen unveraendert (Default 0)', () => {
+    const z = neuerFeindzug(['lager']);
+    delete z.schwaecheT;   // wie ein alter Spielstand
+    const c = cfg({ produktionProS: 1 });
+    tickFeindzug(z, 10, c);
+    expect(z.lager[0].punkte).toBeCloseTo(10, 5);
+  });
 });

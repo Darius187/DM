@@ -1887,3 +1887,21 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   Rueckeroberung, alle 6 Stationen gruen), tsc + 414 Tests gruen.
 - Man verliert NIE komplett (Autor-Order): der Fall ist ein Story-Tal,
   kein Game Over - Burg und Zuflucht stehen immer.
+
+## F6 - Balance-Pass Ueberlegenheit (Dok 06 Teil H)
+- Der Golem ist jetzt eine echte ELITE-Aufgabe: allein prallt der Held an
+  seinem Panzer ab (15% Schaden kommt durch, verifiziert 100 -> 15), erst
+  von drei Seiten GEBUNDEN faellt er (60%, verifiziert 100 -> 60). Der
+  Held wurde dafuer NICHT geschwaecht - die Armee wird wichtig, weil sie
+  bindet, was er allein nicht binden kann.
+- Angriffs-Slots wirken in BEIDE Richtungen: Monster umringen jetzt auch
+  Soldaten (verifiziert: 6 von 6 Nahkaempfern bekommen Ring-Plaetze um
+  einen Soldaten), Soldaten umringen Feinde - Einkreisung ist allgemein.
+- Wellen-Deckel: der Sturm-Nachschub pausiert bei 16 lebenden Feinden
+  (verifiziert: voller Deckel -> 0 Nachschub, freier -> Nachschub kommt).
+- Feldzug-Wellen marschieren als FORMATION (Reihen zu 5) und greifen auf
+  breiter Front an (verifiziert: 10 Mann, 5 Zielpunkte).
+- Blutlager-Comeback: ein verlorenes Feindlager kostet die Horde die
+  Haelfte ihrer Ruecklagen und drosselt die Produktion 150s auf 35%
+  (Vitest, 2 neue Tests).
+- tsc + 414 Tests gruen, alle Werte in src/data (FELDZUG).

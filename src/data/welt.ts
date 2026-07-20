@@ -107,6 +107,21 @@ export const FELDZUG = {
   wallRadiusKacheln: 6,  // Knochenwall-Ring um den Altar
   ausbauStufenS: [90, 300] as ReadonlyArray<number>,   // besetzt seit -> Stufe 1 (halber Ring) / 2 (voller Ring)
   waechterJeStufe: [3, 5, 7] as ReadonlyArray<number>, // zaehe Waechter je Ausbaustufe
+  // F6 (Dok 06 Teil H): Balance-Pass Ueberlegenheit - die Armee wird wichtig,
+  // OHNE den Helden zu schwaechen.
+  sturmDeckel: 16,       // nie mehr lebende Sturm-Feinde als das (Wellen-Deckel)
+  frontBreitePx: 46,     // Formations-Angriff: Schulterabstand der Front-Ziele
+  reihenBreite: 5,       // Welle marschiert in Reihen zu 5 (Formation statt Klumpen)
+  // GOLEM-ELITE: sein Panzer bricht nur GEBUNDEN - erst wenn genug Nahkaempfer
+  // (Truppen/Held) ihn gleichzeitig bedraengen, nimmt er vollen Schaden.
+  golemBindungAb: 3,     // so viele Binder brauchen es
+  golemBindungPx: 110,   // Bindungs-Radius um den Golem
+  golemRedFrei: 0.15,    // ungebunden: nur 15% des Schadens kommen durch
+  golemRedGebunden: 0.6, // gebunden: 60% kommen durch (zaeh, aber faellbar)
+  // BLUTLAGER-COMEBACK: faellt ein Lager, verliert die HORDE mit.
+  lagerVerlustSchwaecheS: 150,  // so lange laeuft die Produktion gedrosselt
+  lagerVerlustAbgabeF: 0.5,     // uebrige Lager geben die Haelfte ihrer Punkte ab
+  schwaecheProduktionF: 0.35,   // Produktions-Faktor waehrend der Schwaeche
 } as const;
 
 export const SPAEHER = {

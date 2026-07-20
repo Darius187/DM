@@ -84,7 +84,8 @@ import { DialogUI, fixUiScroll, macheFensterZiehbar } from '../ui/dialog';
 import { ERZAEHLER, NOTIZEN, BUECHER, MELDUNGEN, BOSS_TEXTE, ENDEN, TOD, INTRO_FILM, erzaehlerSeiten } from '../data/texte';
 import { ALTAR, BLOOD_WELL, CHEST, RELIC_ACCEPT_ELIXIRS, ABILITY_FX, BUCH_ZAUBER } from '../data/balancing';
 import { BREAKABLES, BREAKABLE_LOOT, BEINHAUS, CHEST_VERFLUCHT, BOSS_KAMPF } from '../data/krypta';
-import { DEATH, SHRINE, PHYSIK, BREAKABLE_MASSE, PLAYER } from '../data/kampf';
+import { DEATH, SHRINE, PHYSIK, BREAKABLE_MASSE, PLAYER, ANGRIFFSSLOTS } from '../data/kampf';
+import { weiseSlotsZu, type SlotAntrag } from '../logic/angriffsSlots';
 import { TEMPLERKLINGE, BOSS_GOLD } from '../data/items';
 import { rollGear, rollGem } from '../logic/loot';
 import { recalc, newPlayerState } from '../logic/playerState';
@@ -432,6 +433,8 @@ export class WorldScene extends CombatScene {
     this.feindzug = neuerFeindzug(FELDZUG.startBesetzt); // F2: Feindzug frisch
     this.feldzugWelleGespawnt = false;
     this.saeuberungT = 0;
+    this.golemBindungT = 0;        // F6: Golem-Bindung frisch
+    this.golemHinweisKam = false;
     this.nebelSprites = [];
     this.stimmungRect = null;
     this.vignetteImg = null;   // Neustart: mit dem stimmungRect zusammen neu aufbauen
@@ -8636,8 +8639,12 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         this.fallNachschubT -= dt;
         if (this.fallNachschubT <= 0) {
           this.fallNachschubT = FELDZUG.fallNachschubS;
+          // F6 (Wellen-Deckel): der Sturm ist ENDLOS, aber nie eine Hunderter-
+          // horde - Nachschub kommt nur, solange der Deckel Luft laesst.
+          const lebend = this.enemies.filter((e) => e.team !== 'spieler' && e.hp > 0).length + this.einfallQueue.length;
+          const platz = Math.max(0, FELDZUG.sturmDeckel - lebend);
           const wege = this.einfallWege();
-          for (let i = 0; i < FELDZUG.fallNachschubAnzahl; i++) {
+          for (let i = 0; i < Math.min(platz, FELDZUG.fallNachschubAnzahl); i++) {
             const p0 = wege[i % wege.length];
             this.einfallQueue.push({ t: i * 2, typ: (i % 2 === 0 ? 'skelett' : 'lebender_toter') as EnemyTypeId, x: p0.x, y: p0.y, elite: this.rng.random() < 0.2, tiefe: EINFALL.tiefe + 1 });
           }
@@ -8684,6 +8691,64 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     }
   }
 
+  // F6 (Dok 06 Teil H, "Golem-Elite nur mit Truppen faellbar" - OHNE den Held
+  // zu nerfen): der Golem-Panzer ist eine BINDUNGS-Mechanik. Solange weniger
+  // als golemBindungAb Nahkaempfer (eigene Truppen + Held) ihn gleichzeitig
+  // bedraengen, prallt fast alles ab (golemRedFrei); erst GEBUNDEN nimmt er
+  // ernsthaften Schaden (golemRedGebunden). Der Held bleibt stark - aber den
+  // Koloss bringt er nur MIT seiner Armee zu Fall.
+  private golemBindungT = 0;
+  private golemHinweisKam = false;
+
+  private updateGolemBindung(dt: number): void {
+    this.golemBindungT -= dt;
+    if (this.golemBindungT > 0) return;
+    this.golemBindungT = 0.5;
+    for (const g of this.enemies) {
+      if (g.type !== 'golem' || g.team === 'spieler' || g.hp <= 0) continue;
+      let binder = 0;
+      if (!this.playerDead && Math.hypot(this.px - g.x, this.py - g.y) < FELDZUG.golemBindungPx) binder++;
+      for (const o of this.enemies) {
+        if (o.team !== 'spieler' || o.hp <= 0 || o.ranged) continue;
+        if (Math.hypot(o.x - g.x, o.y - g.y) < FELDZUG.golemBindungPx) binder++;
+      }
+      const gebunden = binder >= FELDZUG.golemBindungAb;
+      g.schadensRed = gebunden ? FELDZUG.golemRedGebunden : FELDZUG.golemRedFrei;
+      if (!gebunden && !this.golemHinweisKam && binder > 0) {
+        this.golemHinweisKam = true;
+        this.logMsg('Der Panzer des Golems prallt alles ab - er muss von mehreren Seiten GEBUNDEN werden!', 'bad');
+      }
+    }
+  }
+
+  // F6 (Dok 06 Teil H, Massnahme 2 "beidseitig"): Ring-Plaetze gibt es um
+  // JEDES Ziel - Held, eigene Einheit oder Feind. Die Angreifer werden je
+  // ZIEL gruppiert und bekommen Slots auf dessen Ring: Monster koennen einen
+  // Soldaten einkreisen, Soldaten einen Golem - nicht mehr nur den Helden.
+  protected override weiseAngriffsSlotsZu(dt: number): void {
+    this.slotZuweisT -= dt;
+    if (this.slotZuweisT > 0) return;
+    this.slotZuweisT = ANGRIFFSSLOTS.neuZuweisenS;
+    const gruppen = new Map<Enemy | 'held', { antraege: SlotAntrag[]; beiId: Map<number, Enemy> }>();
+    for (const e of this.enemies) {
+      e.slotWinkel = null;
+      if (e.hp <= 0 || e.ranged || e.boss || e.versteckt || e.jagdZiel || e.belagerungsZiel) continue;
+      const z = this.zielFuer(e);
+      if (!z || (z === 'held' && this.playerDead)) continue;
+      const zx = z === 'held' ? this.px : z.x;
+      const zy = z === 'held' ? this.py : z.y;
+      if (Math.hypot(zx - e.x, zy - e.y) > ANGRIFFSSLOTS.engagierRadius) continue;
+      let g = gruppen.get(z);
+      if (!g) { g = { antraege: [], beiId: new Map() }; gruppen.set(z, g); }
+      g.antraege.push({ id: e.id, winkel: Math.atan2(e.y - zy, e.x - zx) });
+      g.beiId.set(e.id, e);
+    }
+    for (const g of gruppen.values()) {
+      const zuteilung = weiseSlotsZu(g.antraege, ANGRIFFSSLOTS.anzahl);
+      for (const [id, w] of zuteilung) g.beiId.get(id)!.slotWinkel = w;
+    }
+  }
+
   // Rueckeroberung V1 (Autor: "Gebiete saeubern"): steht der Held auf einer
   // BESETZTEN Karte und lebt dort kein Feind mehr, faellt sie nach kurzer
   // Bestaetigungs-Uhr zurueck an den Spieler (F3: der Bindealtar zaehlt als
@@ -8697,7 +8762,9 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       this.saeuberungT += dt;
       if (this.saeuberungT > 3) {
         this.saeuberungT = 0;
-        verliereLager(this.feindzug, this.area.id);
+        // F6 (Blutlager-Comeback): der Verlust schwaecht die ganze Horde -
+        // Punkte-Abgabe der uebrigen Lager + gedrosselte Produktion.
+        verliereLager(this.feindzug, this.area.id, FELDZUG.lagerVerlustSchwaecheS, FELDZUG.lagerVerlustAbgabeF);
         this.setzeLage(this.area.id, 'frei');
         this.raeumeFeindlagerWall(this.area);   // F3: der Knochenwall faellt mit
         this.logMsg(`${this.kartenName(this.area.id)} ist gesäubert - das Gebiet ist wieder unser!`, 'gold');
@@ -8726,6 +8793,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       distanzZuStadt: (id) => routeZu(this.kartenNachbarn, id, MARSCH.zielStadt)?.length ?? 99,
       liveKarte: this.area.id,
       rng: () => Math.random(),
+      schwaecheProduktionF: FELDZUG.schwaecheProduktionF,   // F6: Blutlager-Schwaeche
     });
     for (const ev of evs) this.feindzugEreignis(ev);
     // Live-Aufloesung: kaempft die Welle auf der HELD-Karte, entscheidet der
@@ -8764,14 +8832,27 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     const start = this.kantenPunkt(this.area, von, true);
     const anzahl = Math.max(3, Math.min(FELDZUG.liveWelleMax, Math.round(staerke / FELDZUG.kraftJeMann)));
     const typen = ['skelett', 'pest', 'lebender_toter'] as const;
+    // F6 (Formations-Angriff): die Welle kommt als FRONT, nicht als Klumpen -
+    // Reihen quer zur Marschrichtung, und jeder haelt seinen Platz in der
+    // Linie auch am Ziel (breite Front auf die Kartenmitte statt EIN Punkt).
+    const mitte = { x: this.area.w * TILE / 2, y: this.area.h * TILE / 2 };
+    const richt = Math.atan2(mitte.y - start.y, mitte.x - start.x);
+    const quer = richt + Math.PI / 2;
     for (let i = 0; i < anzahl; i++) {
-      const e = this.spawnEnemy(pick(this.rng, typen as unknown as EnemyTypeId[]) as never, EINFALL.tiefe, start.x + (i % 3) * 30 - 30, start.y + Math.floor(i / 3) * 28, this.rng.random() < 0.15, true);
+      const reihe = Math.floor(i / FELDZUG.reihenBreite);
+      const spalte = (i % FELDZUG.reihenBreite) - Math.floor(FELDZUG.reihenBreite / 2);
+      const sx = start.x + Math.cos(quer) * spalte * 34 - Math.cos(richt) * reihe * 30;
+      const sy = start.y + Math.sin(quer) * spalte * 34 - Math.sin(richt) * reihe * 30;
+      const e = this.spawnEnemy(pick(this.rng, typen as unknown as EnemyTypeId[]) as never, EINFALL.tiefe, sx, sy, this.rng.random() < 0.15, true);
       e.feldzugTrupp = true;
       e.maxhp = Math.round(e.maxhp * FELDZUG.truppHpF);
       e.hp = e.maxhp;
       e.dmg = Math.round(e.dmg * FELDZUG.truppDmgF);
       e.aggro = 5000;
-      e.jagdZiel = { x: this.area.w * TILE / 2, y: this.area.h * TILE / 2 };
+      e.jagdZiel = {
+        x: mitte.x + Math.cos(quer) * spalte * FELDZUG.frontBreitePx,
+        y: mitte.y + Math.sin(quer) * spalte * FELDZUG.frontBreitePx,
+      };
     }
     this.logMsg('Die Angriffswelle bricht über die Kante - halte die Stellung!', 'bad');
   }
@@ -14356,6 +14437,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.updateBoteSprite(dt);   // F4: der Reiter ist auf der Held-Karte sichtbar
     this.updateZwischenbote(dt); // F4: Laeufer nach Ravensmoor (aktiviert den Boten)
     this.updateFeindzug(dt); // F2: der Feind produziert und greift nach Gebieten
+    this.updateGolemBindung(dt); // F6: Golem-Panzer bricht nur GEBUNDEN (Truppen noetig)
     this.updateReparaturen(dt); // R191: sichtbare Bau-Reparatur (Auftrag + Haemmern)
     this.updateFall(dt);        // F5: der Fall von Ravensmoor (Sturm/Treck)
     if (this.rueckzugPanikT > 0) this.rueckzugPanikT -= dt;

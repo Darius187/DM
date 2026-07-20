@@ -3135,8 +3135,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // angreifen wollen, auf Ring-Plaetze um ihn herum, statt dass alle denselben
   // Punkt anrennen. Nur alle neuZuweisenS neu (kein Zappeln). Fernkaempfer, Bosse,
   // Vieh-/Belagerungs-Jaeger und Verbuendete bekommen keinen Slot.
-  private slotZuweisT = 0;
-  private weiseAngriffsSlotsZu(dt: number): void {
+  protected slotZuweisT = 0;
+  protected weiseAngriffsSlotsZu(dt: number): void {
     this.slotZuweisT -= dt;
     if (this.slotZuweisT > 0) return;
     this.slotZuweisT = ANGRIFFSSLOTS.neuZuweisenS;

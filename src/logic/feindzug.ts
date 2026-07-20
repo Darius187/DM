@@ -28,6 +28,10 @@ export interface FeindAngriff {
 export interface Feindzug {
   lager: FeindLager[];
   angriff: FeindAngriff | null;   // V1: ein Angriff zur Zeit
+  // F6 (Dok 06 Teil H, Blutlager): Rest-Sekunden gedrosselter Produktion nach
+  // einem Lagerverlust - der Comeback-Hebel des Schwaecheren. Optional, damit
+  // alte Spielstaende ohne das Feld unveraendert laufen.
+  schwaecheT?: number;
 }
 
 export interface FeindzugCfg {
@@ -43,6 +47,9 @@ export interface FeindzugCfg {
   distanzZuStadt: (id: string) => number;
   liveKarte: string | null;   // Karte des Helden - dort entscheidet der ECHTE Kampf
   rng: () => number;
+  // F6: Produktions-Faktor waehrend der Schwaeche nach Lagerverlust (0..1).
+  // Fehlt er, gibt es keine Drosselung (alte Aufrufer unveraendert).
+  schwaecheProduktionF?: number;
 }
 
 export type FeindzugEreignis =
@@ -80,15 +87,25 @@ export function beendeAngriff(z: Feindzug, erobert: boolean): FeindzugEreignis[]
 }
 
 // Ein Lager faellt an den Spieler (Rueckeroberung): aus der Lager-Liste
-// streichen; ein laufender Angriff VON dort bricht zusammen.
-export function verliereLager(z: Feindzug, karte: string): void {
+// streichen; ein laufender Angriff VON dort bricht zusammen. F6 (Blutlager-
+// Comeback): die HORDE verliert mit - die uebrigen Lager geben einen Teil
+// ihrer gesparten Punkte ab und die Produktion laeuft schwaecheS lang
+// gedrosselt (tickFeindzug, schwaecheProduktionF).
+export function verliereLager(z: Feindzug, karte: string, schwaecheS = 0, abgabeF = 0): void {
   z.lager = z.lager.filter((l) => l.karte !== karte);
   if (z.angriff?.von === karte) z.angriff = null;
+  if (abgabeF > 0) for (const l of z.lager) l.punkte *= Math.max(0, 1 - abgabeF);
+  if (schwaecheS > 0) z.schwaecheT = Math.max(z.schwaecheT ?? 0, schwaecheS);
 }
 
 export function tickFeindzug(z: Feindzug, dt: number, cfg: FeindzugCfg): FeindzugEreignis[] {
   const out: FeindzugEreignis[] = [];
-  for (const l of z.lager) { l.punkte += cfg.produktionProS * dt; l.seitS = (l.seitS ?? 0) + dt; }
+  // F6: nach einem Lagerverlust produziert die Horde eine Weile gedrosselt.
+  const schwaeche = Math.max(0, Math.min(dt, z.schwaecheT ?? 0));
+  const f = cfg.schwaecheProduktionF ?? 1;
+  const produktion = cfg.produktionProS * (schwaeche * f + (dt - schwaeche));
+  if (schwaeche > 0) z.schwaecheT = Math.max(0, (z.schwaecheT ?? 0) - dt);
+  for (const l of z.lager) { l.punkte += produktion; l.seitS = (l.seitS ?? 0) + dt; }
 
   const a = z.angriff;
   if (!a) {
