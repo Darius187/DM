@@ -66,7 +66,8 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import type { FeindlagerVariante, WallForm } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
 import { STAHL_QUEST } from '../data/questlinien';
@@ -8581,12 +8582,41 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // PLATZHALTER, bis der Autor die Monster-Bau-Assets definiert.
   private altarStehtHier = false;
 
+  // M1: stabile Blaupausen-Wahl je Karte (Seed = Karten-Name) - dieselbe Karte
+  // bekommt immer dieselbe Variante, verschiedene Karten verschiedene.
+  private feindlagerVariante(kartenId: string): FeindlagerVariante {
+    let h = 0;
+    for (let i = 0; i < kartenId.length; i++) h = (h * 31 + kartenId.charCodeAt(i)) | 0;
+    return FEINDLAGER_VARIANTEN[Math.abs(h) % FEINDLAGER_VARIANTEN.length];
+  }
+
+  // M1: ist der Winkel wk (rad) bei dieser Wall-Form WAND (true) oder OFFEN?
+  // Jede Form laesst bewusst grosse Oeffnungen - nie ein geschlossener Kasten.
+  private wallHatWand(wk: number, form: WallForm, stufe: number, torHalb: number): boolean {
+    // Nahe einem "Tor" ist immer offen. sin(wk)>0 = Sueden (y waechst nach unten).
+    const nahe = (ziel: number) => Math.abs(Math.atan2(Math.sin(wk - ziel), Math.cos(wk - ziel))) < torHalb;
+    const S = Math.PI / 2, N = -Math.PI / 2;   // Sued / Nord
+    switch (form) {
+      case 'halbmond':    // Sued-Halbring (Stufe 1), voller ab Stufe 2 - Enden offen
+        if (stufe < 2 && Math.sin(wk) < 0) return false;
+        return !(nahe(0) || nahe(Math.PI));   // Ost/West offen
+      case 'hufeisen':    // U, nach NORDEN (Strassenseite) weit offen
+        if (Math.sin(wk) < -0.35) return false;
+        return !nahe(S);                       // ein Sued-Tor
+      case 'doppelriegel': // zwei Seiten-Riegel, Nord UND Sued weit offen
+        return Math.abs(Math.cos(wk)) > 0.55;
+      case 'vollring':    // voller Ring mit Nord- UND Sued-Tor
+        return !(nahe(S) || nahe(N));
+    }
+  }
+
   private baueFeindlager(a: AreaData): void {
     if (this.enemies.some((e) => e.name === 'Bindealtar' && e.hp > 0)) { this.altarStehtHier = true; return; }
     const lager = this.feindzug.lager.find((l) => l.karte === a.id);
     const seitS = lager?.seitS ?? 0;
     const stufe = FELDZUG.ausbauStufenS.filter((s2) => seitS >= s2).length;
-    // Anker: freier Boden nahe der Kartenmitte (Spiralsuche)
+    const v = this.feindlagerVariante(a.id);   // M1: Blaupause dieser Karte
+    // Anker: freier Boden nahe der Kartenmitte (Spiralsuche) + Blaupausen-Versatz
     let ax = Math.floor(a.w / 2), ay = Math.floor(a.h / 2);
     aussen: for (let ring = 0; ring < 12; ring++) {
       for (let dy = -ring; dy <= ring; dy++) for (let dx = -ring; dx <= ring; dx++) {
@@ -8594,6 +8624,8 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         if (a.map[ty]?.[tx] === T.GRASS) { ax = tx; ay = ty; break aussen; }
       }
     }
+    ax = Math.max(2, Math.min(a.w - 3, ax + v.altarVersatz.x));
+    ay = Math.max(2, Math.min(a.h - 3, ay + v.altarVersatz.y));
     // Bindealtar: stationaeres Herzstueck (zerstoerbar, Platzhalter-Koerper)
     const alt = this.spawnEnemy('lebender_toter', EINFALL.tiefe, ax * TILE + 16, ay * TILE + 16, false, true);
     alt.name = 'Bindealtar';
@@ -8603,25 +8635,24 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     alt.dmg = 0;
     alt.speed = 0;
     this.altarStehtHier = true;
-    // Knochenwall: bruechiger Ring (CRACK = durchschlagbar wie Mauerrisse),
-    // Stufe 1 = Sued-Halbring, Stufe 2 = voller Ring; Tor-Luecken Nord/Sued.
+    // Knochenwall nach der Blaupause: bruechiger Ring (CRACK = durchschlagbar),
+    // Form + Radius + Tor-Breite kommen aus der Variante - immer mit Oeffnungen.
     if (stufe >= 1) {
-      const r = FELDZUG.wallRadiusKacheln;
-      const schritte = 30;
+      const r = FELDZUG.wallRadiusKacheln * v.wallRadiusF;
+      const schritte = 40;
       for (let i = 0; i < schritte; i++) {
         const wk = (i / schritte) * Math.PI * 2;
-        if (stufe < 2 && Math.sin(wk) < 0) continue;
-        if (Math.abs(Math.sin(wk)) > 0.96) continue;
+        if (!this.wallHatWand(wk, v.wallForm, stufe, v.torHalb)) continue;
         const tx = ax + Math.round(Math.cos(wk) * r), ty = ay + Math.round(Math.sin(wk) * r * 0.7);
         const t = a.map[ty]?.[tx];
         if (t === T.GRASS || t === T.TREE) { a.map[ty][tx] = T.CRACK; this.refreshTile(tx, ty); }
       }
     }
-    // Waechter: zaehe Feind-Trupps am Altar (wachen, bis geweckt)
+    // Waechter: zaehe Feind-Trupps am Altar (wachen, bis geweckt) - Ring aus der Variante
     const n = FELDZUG.waechterJeStufe[Math.min(stufe, FELDZUG.waechterJeStufe.length - 1)];
     for (let i = 0; i < n; i++) {
       const wnk = (i / n) * Math.PI * 2;
-      const e = this.spawnEnemy(i % 2 === 0 ? 'skelett' : 'lebender_toter', EINFALL.tiefe, alt.x + Math.cos(wnk) * 70, alt.y + Math.sin(wnk) * 50, this.rng.random() < 0.2, true);
+      const e = this.spawnEnemy(i % 2 === 0 ? 'skelett' : 'lebender_toter', EINFALL.tiefe, alt.x + Math.cos(wnk) * v.waechterRingPx, alt.y + Math.sin(wnk) * v.waechterRingPx * 0.72, this.rng.random() < 0.2, true);
       e.maxhp = Math.round(e.maxhp * FELDZUG.truppHpF);
       e.hp = e.maxhp;
       e.dmg = Math.round(e.dmg * FELDZUG.truppDmgF);

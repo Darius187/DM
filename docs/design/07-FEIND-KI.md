@@ -247,3 +247,57 @@ billig mit unseren Verkehrsdaten). GRUND: Der Autor hasst Wegfindungs-Haenger -
 eine VOLL-FREIE Bau-KI ist genau die klassische Quelle dafuer (die KI mauert sich
 selbst zu). Der Mittelweg gibt RTS-Abwechslung OHNE das Risiko. STATUS: offen,
 Autor entscheidet (starr behalten / Mittelweg / voll-frei).
+
+---
+
+# TEIL 3 - FEINDLAGER-MITTELWEG + MONSTER-OEKONOMIE (Autor bestaetigt, Bau-Spec)
+
+## M1. Bau nach Blaupausen (BESTAETIGT - "so machen wir das")
+Weder starr (immer gleich) noch voll-frei (mauert sich zu). Das Lager waechst
+nach VORGEFERTIGTEN, routen-sicheren BLAUPAUSEN:
+- MEHRERE Varianten je Ausbaustufe (Wall-Form, Waechter-Anordnung, Altar-Lage) -
+  ein Seed je Karte waehlt eine, so gleicht kein Lager dem anderen, aber jedes
+  folgt einem klaren Schema. (Autor: "mehrere Varianten definieren.")
+- Jede Blaupause hat GARANTIERTE Oeffnungen (Tor-Luecken) - nie ein
+  geschlossener Kasten. Zusaetzliche Haertung spaeter: BFS-Pruefung, dass ein
+  Weg von jeder Kante zum Altar bleibt.
+- Sichtbare MONSTER-ARBEITER (eigene Einheit, kein Kampf) bauen die Teile in
+  Reihenfolge auf (spaeterer Schritt).
+- Verteidigung richtet sich zur Angriffsseite des Spielers (KI-Teil-2 Punkt 18).
+
+## M2. Lager ist eine VERTEIDIGUNGSLINIE, kein Kaefig (BESTAETIGT - wichtig!)
+Autor: "ich wuerde nicht alle Einheiten im Lager lassen - wenn ich das Lager
+einfach umgehe weil die da alle drin festsitzen, juckt es keinen." -> Das Lager
+darf NICHT komplett geschlossen sein und die Besatzung NICHT eingesperrt:
+- Die Garnison SORTIERT AUS (patrouilliert den Zugang, faengt den Helden ab,
+  besetzt die Tore) - nicht alle im Ring gebunkert.
+- Das Lager sitzt AUF/an der Route, die der Held nehmen muss (kontrolliert den
+  Korridor, KI-Teil-2 Punkt 18) - Umgehen kostet, ist nicht gratis.
+- Unser F3-Wall ist schon ein HALBRING/mit Toren (kein Kasten) - gut, wird nur
+  um das aktive Aussortieren erweitert.
+
+## M3. MONSTER-OEKONOMIE - Empfehlung (Autor-Frage "was meinst du?")
+Autor ueberlegt: Monster bauen Rohstoffe ab (Stein/Holz) wie der Held. Sorge:
+viele Karten = irre Rohstoffe; und thematisch - Palisaden aus KNOCHEN, woher der
+Rohstoff? "Vielleicht keine gute Idee."
+CLAUDE-EMPFEHLUNG: KEINE woertliche Holz/Stein-Minen-Wirtschaft. Gruende:
+(1) thematisch falsch (Untote faellen kein Holz), (2) genau das Runaway-Problem,
+das der Autor fuerchtet, (3) eine Ernte-/Arbeiter-Mining-Sim = mehr Wegfindungs-
+Last = mehr Ruckeln (Autors Hauptschmerz).
+STATTDESSEN - der Rohstoff ist BIOMASSE / TOD: Leichen, Blut, Knochen, geerntet
+vom besetzten Land (Doerfler, Vieh, Gefallene). Das ist Dok 06 (Untoten-
+Oekonomie). Woher die Knochen fuer die Palisade? Aus den TOTEN des Landes, das
+sie halten - das beantwortet die Autor-Frage direkt und stimmungsvoll.
+MECHANIK - wir haben die Abstraktion SCHON: der Feindzug produziert "Kampfkraft"
+je besetztem Lager ueber Zeit (F2); ein zerstoertes Lager schwaecht die ganze
+Horde (F6 Blutlager-Comeback). DAS ist der Rohstoff, abstrakt. Zentrale
+Verwaltung = das KLOSTER als Hauptlager (Autor); faellt es, bricht das Netz
+zusammen (passt zu Schachmatt/Hierarchie, Dok 06). "Monster weniger effizient"
+= einfach eine Zahl (hoehere Kosten/langsamere Produktion), kein neues System.
+RUNAWAY-SCHUTZ (Autor-Order "nie eine Karte komplett zubauen"): (a) Blaupausen
+sind routen-sicher (M1), (b) Bau-Deckel je Karte, (c) mehrere Lager, durch die
+der Held MUSS - die geballten Rohstoffe fliessen in Wellen/Ausbau, nicht in eine
+Mauer-Wand; und der Comeback-Hebel (Lager zerstoeren) bremst die Horde.
+STATUS M3: EMPFEHLUNG, Autor bestaetigt/aendert. Bau der Blaupausen (M1/M2)
+laeuft mit dem ABSTRAKTEN Zeit-Gate (wie F3 heute) - braucht die Oekonomie-
+Entscheidung NICHT, ist also entkoppelt und kann sofort starten.

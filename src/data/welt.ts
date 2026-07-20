@@ -128,6 +128,27 @@ export const FELDZUG = {
   spaehVersucheMax: 3,
 } as const;
 
+// FEINDLAGER-MITTELWEG (07-FEIND-KI TEIL 3, M1 - Autor bestaetigt): das Lager
+// baut nach vorgefertigten, routen-SICHEREN Blaupausen. Mehrere Varianten, ein
+// Seed je Karte waehlt eine - kein Lager gleicht dem anderen, aber jedes folgt
+// einem klaren Schema. JEDE Form hat garantierte Oeffnungen (nie ein Kasten).
+export type WallForm = 'halbmond' | 'hufeisen' | 'doppelriegel' | 'vollring';
+export interface FeindlagerVariante {
+  name: string;
+  wallForm: WallForm;      // Grundform des Knochenwalls
+  wallRadiusF: number;     // Multiplikator auf FELDZUG.wallRadiusKacheln
+  torHalb: number;         // halbe Tor-Luecken-Breite (rad) - so breit bleibt offen
+  waechterRingPx: number;  // Radius der Waechter um den Altar (px)
+  altarVersatz: { x: number; y: number };  // Altar aus der Mitte gerueckt (Kacheln)
+}
+// Bewusst hand-gebaut und je Form mit OFFENEN Seiten - keine schliesst zu.
+export const FEINDLAGER_VARIANTEN: ReadonlyArray<FeindlagerVariante> = [
+  { name: 'Sichel',      wallForm: 'halbmond',    wallRadiusF: 1.0,  torHalb: 0.28, waechterRingPx: 70,  altarVersatz: { x: 0, y: 0 } },
+  { name: 'Hufeisen',    wallForm: 'hufeisen',    wallRadiusF: 1.15, torHalb: 0.34, waechterRingPx: 78,  altarVersatz: { x: 0, y: 1 } },
+  { name: 'Zwei Riegel', wallForm: 'doppelriegel', wallRadiusF: 1.25, torHalb: 0.30, waechterRingPx: 64,  altarVersatz: { x: 0, y: 0 } },
+  { name: 'Voller Ring', wallForm: 'vollring',    wallRadiusF: 1.05, torHalb: 0.24, waechterRingPx: 82,  altarVersatz: { x: -1, y: 0 } },
+] as const;
+
 export const SPAEHER = {
   intervallMinS: 240,    // Wartezeit zwischen zwei Trupps (Minimum) ...
   intervallMaxS: 540,    // ... und Maximum (echte Spielsekunden in der Stadt)
