@@ -1869,3 +1869,21 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   haemmert sichtbar 4 Sekunden, dann steigt der Zustand (verifiziert:
   10 -> 24 LP durch "Cord der Stille"); ohne Leute in der Naehe gibt es
   keine Zauber-Reparatur mehr. tsc + 412 Tests gruen.
+
+## F5 - Der Fall von Ravensmoor (Sturm, Treck, Rueckeroberung)
+- Der grosse Einfall ist jetzt der ANFANG VOM FALL: endloser Nachschub
+  (alle 18s), nach 30s bricht der GOLEM ueber die Nordstrasse herein, nach
+  75s kommt die ehrliche Ansage "nicht zu halten - Rueckzug!".
+- Weicht der Held (Karte verlassen oder Rueckzugs-Befehl), FAELLT die
+  Stadt: Lage besetzt, Feindlager + Bindealtar stehen, die Bewohner sind
+  fort (Treck, 4 Minuten Weg) und erreichen die Zuflucht im Norden.
+- In der besetzten Stadt sind alle Bewohner unsichtbar (schon beim
+  Betreten, nicht erst im Dorfleben-Takt) - und mit der normalen
+  Saeuberung (F2/F3) kommt alles zurueck: Lage frei, Bewohner daheim,
+  Chronik-Eintrag "Ravensmoor ist zurueckerobert".
+- In der gefallenen Stadt starten keine Einfaelle mehr (Sperre) - sonst
+  haette der Nacht-Trigger die Rueckeroberung gestoert.
+- Browser-verifiziert (kompletter Durchlauf Sturm -> Fall -> Zuflucht ->
+  Rueckeroberung, alle 6 Stationen gruen), tsc + 414 Tests gruen.
+- Man verliert NIE komplett (Autor-Order): der Fall ist ein Story-Tal,
+  kein Game Over - Burg und Zuflucht stehen immer.

@@ -93,6 +93,15 @@ export const FELDZUG = {
   // KNOCHENWALL waechst nach fester Reihenfolge mit der Besatzungszeit
   // (untote Zimmerleute) und ist wie bruechige Waende durchschlagbar.
   // Optik ist PLATZHALTER - die Monster-Bau-Assets definiert der Autor noch.
+  // F5 (Dok 06 C3 "der Vorhang faellt"): der FALL VON RAVENSMOOR nach dem
+  // Krypta-Boss - der grosse Sturm ist NICHT zu halten (Nachschub endet nie),
+  // der Held muss alle in den Norden bringen und die Stadt spaeter mit der
+  // Grafen-Kolonne zurueckerobern.
+  fallUeberrennenS: 75,  // ab hier ist die Stadt offiziell verloren (Meldung)
+  fallNachschubS: 18,    // endlose Nachschub-Wellen im Sturm (Sekunden-Takt)
+  fallNachschubAnzahl: 4,
+  fallGolemNachS: 30,    // der Golem fuehrt den Sturm an (Autor-Wunsch)
+  fallTreckS: 240,       // der Bewohner-Treck braucht so lange bis zur Zuflucht
   altarHp: 320,          // Lebenspunkte des Bindealtars
   altarZerfallF: 0.5,    // Altar zerstoert -> Besatzung verliert die Haelfte ihrer HP
   wallRadiusKacheln: 6,  // Knochenwall-Ring um den Altar

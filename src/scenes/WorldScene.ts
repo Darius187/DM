@@ -421,6 +421,10 @@ export class WorldScene extends CombatScene {
     this.rueckzugPanikT = 0;
     this.zwischenbote = null;                // F4
     this.boteSprite = null;
+    this.fallT = 0;                          // F5
+    this.fallNachschubT = 0;
+    this.fallGolemKam = false;
+    this.treckT = 0;
 
     this.spaeherT = SPAEHER.intervallMinS;   // R178: Kundschafter-Uhr frisch
     this.bote = boteNeu(BOTE.heim);          // R179: der Bote startet daheim
@@ -6560,6 +6564,13 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       const lbl = this.add.text(n.x, n.y - 22, n.name, {
         fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8e6', stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5).setDepth(2300);
+      // F5: in der besetzten Stadt sind die Bewohner geflohen - schon beim
+      // Spawn verstecken, nicht erst im Dorfleben-Takt (der pausiert bei
+      // offenen Fenstern und liesse sie sonst kurz sichtbar stehen)
+      if (this.flags.stadtGefallen && a.id === 'stadt') {
+        sprite.setVisible(false);
+        lbl.setVisible(false);
+      }
       this.npcEnts.push({ ...n, sprite, label: lbl, curX: n.x, curY: n.y });
     }
     // Tiere
@@ -8605,6 +8616,74 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.wegfeldNeu();
   }
 
+  // --- F5: DER FALL VON RAVENSMOOR (Dok 06 C3, Autor R180) -----------------
+  // Der grosse Sturm nach dem Krypta-Boss ist NICHT zu halten: endloser
+  // Nachschub + der Golem. Der Held bringt alle in den Norden (Rueckzug),
+  // die Stadt faellt und wird vom Feind besetzt/befestigt; der Treck erreicht
+  // die Zuflucht; die Rueckeroberung (Saeuberung mit der Grafen-Kolonne)
+  // holt die Bewohner heim - dann beginnt die dauerhafte Verteidigung.
+  private fallT = 0;
+  private fallNachschubT = 0;
+  private fallGolemKam = false;
+  private treckT = 0;
+
+  private updateFall(dt: number): void {
+    // Phase STURM: laeuft ab dem grossen Einfall, bis die Stadt faellt.
+    if (this.flags.fallSturm && !this.flags.stadtGefallen) {
+      this.fallT += dt;
+      if (this.area.id === 'stadt') {
+        // Endloser Nachschub - der Sturm ist nicht totzuschlagen.
+        this.fallNachschubT -= dt;
+        if (this.fallNachschubT <= 0) {
+          this.fallNachschubT = FELDZUG.fallNachschubS;
+          const wege = this.einfallWege();
+          for (let i = 0; i < FELDZUG.fallNachschubAnzahl; i++) {
+            const p0 = wege[i % wege.length];
+            this.einfallQueue.push({ t: i * 2, typ: (i % 2 === 0 ? 'skelett' : 'lebender_toter') as EnemyTypeId, x: p0.x, y: p0.y, elite: this.rng.random() < 0.2, tiefe: EINFALL.tiefe + 1 });
+          }
+        }
+        // Der GOLEM fuehrt den Sturm an (einmalig).
+        if (!this.fallGolemKam && this.fallT >= FELDZUG.fallGolemNachS) {
+          this.fallGolemKam = true;
+          const p0 = this.einfallWege()[0];
+          const g = this.spawnEnemy('golem', EINFALL.tiefe + 2, p0.x, p0.y, true, true);
+          g.champion = true;
+          g.aggro = 5000;
+          g.jagdZiel = { x: 64 * TILE, y: 64 * TILE };
+          this.logMsg('Die Erde bebt - ein GOLEM bricht über die Nordstraße herein!', 'bad');
+        }
+      }
+      if (this.fallT >= FELDZUG.fallUeberrennenS && !this.flags.fallVerloren) {
+        this.flags.fallVerloren = true;
+        this.logMsg('RAVENSMOOR IST NICHT ZU HALTEN! Befiehl den RÜCKZUG und bring alle in den Norden!', 'bad');
+        this.chronik('geschichte', 'Ravensmoor ist nicht zu halten - der Rückzug in den Norden ist der einzige Weg.');
+      }
+      // Die Stadt FAELLT, sobald sie verloren ist und der Held weicht
+      // (Karte verlassen oder Rueckzug befohlen).
+      if (this.flags.fallVerloren && (this.area.id !== 'stadt' || this.rueckzugPanikT > 0)) {
+        this.flags.stadtGefallen = true;
+        this.flags.fallSturm = false;
+        this.einfallAktiv = false;
+        this.grosserEinfall = false;   // der Sturm ist vorbei - die Stadt ist gefallen
+        this.einfallQueue = [];
+        this.setzeLage('stadt', 'besetzt');
+        if (!this.feindzug.lager.some((l) => l.karte === 'stadt')) this.feindzug.lager.push({ karte: 'stadt', punkte: 0, seitS: 0 });
+        this.treckT = FELDZUG.fallTreckS;
+        this.logMsg('Ravensmoor ist GEFALLEN. Die Bewohner fliehen mit dem Treck nach Norden - bring sie zur Zuflucht.', 'bad');
+        this.chronik('geschichte', 'Ravensmoor ist gefallen. Der Treck der Bewohner zieht nach Norden - die Monster besetzen die Stadt.');
+      }
+    }
+    // Phase TRECK: die Bewohner ziehen zur Zuflucht.
+    if (this.flags.stadtGefallen && !this.flags.zufluchtBezogen && this.treckT > 0) {
+      this.treckT -= dt;
+      if (this.treckT <= 0) {
+        this.flags.zufluchtBezogen = true;
+        this.logMsg('Der Treck hat die Zuflucht im Hohen Norden erreicht - die Bewohner sind in Sicherheit.', 'gold');
+        this.chronik('geschichte', 'Die Bewohner Ravensmoors haben die Zuflucht in den Bergen erreicht.');
+      }
+    }
+  }
+
   // Rueckeroberung V1 (Autor: "Gebiete saeubern"): steht der Held auf einer
   // BESETZTEN Karte und lebt dort kein Feind mehr, faellt sie nach kurzer
   // Bestaetigungs-Uhr zurueck an den Spieler (F3: der Bindealtar zaehlt als
@@ -8622,6 +8701,15 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         this.setzeLage(this.area.id, 'frei');
         this.raeumeFeindlagerWall(this.area);   // F3: der Knochenwall faellt mit
         this.logMsg(`${this.kartenName(this.area.id)} ist gesäubert - das Gebiet ist wieder unser!`, 'gold');
+        // F5: die RUECKEROBERUNG Ravensmoors - die Bewohner kehren heim,
+        // die dauerhafte Verteidigungs-Phase beginnt.
+        if (this.area.id === 'stadt' && this.flags.stadtGefallen) {
+          this.flags.stadtGefallen = false;
+          this.flags.stadtZurueck = true;
+          this.flags.kriegBegonnen = true;
+          this.logMsg('RAVENSMOOR IST ZURÜCKEROBERT! Die Bewohner kehren aus der Zuflucht heim.', 'gold');
+          this.chronik('geschichte', 'Ravensmoor ist zurückerobert - die Bewohner kehren heim. Jetzt gilt es, die Stadt zu HALTEN.');
+        }
       }
     } else this.saeuberungT = 0;
     this.pruefeAltarSturz();   // F3: Altar gefallen -> Besatzung zerfaellt
@@ -10110,6 +10198,11 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   private startGrosserEinfall(): void {
     this.einfallAktiv = true;
     this.setzeLage('stadt', 'umkaempft');   // F1: auf der Karte sichtbar
+    // F5: der grosse Sturm ist der ANFANG VOM FALL - die Uhr laeuft.
+    this.flags.fallSturm = true;
+    this.fallT = 0;
+    this.fallNachschubT = FELDZUG.fallNachschubS;
+    this.fallGolemKam = false;
     this.setzeBrunnenBlutig(true);
     this.grosserEinfall = true;
     this.flags.wurdeBelagert = true; // Runde 41 Fix: schaltet die Palisade beim Schmied frei (fehlte hier)
@@ -12489,6 +12582,8 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         bote: this.bote,                                // R179: der Grafen-Bote reist mit
         lage: this.lage,                                // F1: die Gebietslage reist mit
         feindzug: this.feindzug,                        // F2: der Feindzug reist mit
+        fallT: this.fallT,                              // F5: Sturm-/Treck-Uhren
+        treckT: this.treckT,
         bevoelkerung: this.bevoelkerung,               // R143 (2.3)
         breschen: this.breschen,
       },
@@ -12562,6 +12657,8 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.bote = data.welt.bote ?? boteNeu(BOTE.heim);   // R179 (alte Staende: Bote daheim)
     this.lage = data.welt.lage ?? neueGebietslage(FELDZUG.startBesetzt);   // F1 (alte Staende: Startlage)
     this.feindzug = data.welt.feindzug ?? neuerFeindzug(FELDZUG.startBesetzt);   // F2 (alte Staende: Startlage)
+    this.fallT = data.welt.fallT ?? 0;       // F5
+    this.treckT = data.welt.treckT ?? 0;
     this.feldzugWelleGespawnt = false;
     this.bevoelkerung = data.welt.bevoelkerung ?? REKRUTIERUNG.bevoelkerungStart;   // R143 (2.3)
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
@@ -13690,7 +13787,10 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     // nur abends - wer tagsüber heimkam, erlebte nie etwas)
     const siegErrungen = this.bossDead || this.flags.ngPlusGeschafft === true;
     const ersterSteht = siegErrungen && this.flags.ersterEinfallKam !== true;
+    // F5: in der GEFALLENEN Stadt gibt es keine Einfaelle - sie gehoert dem
+    // Feind bereits (sonst wuerde der Sturm die Rueckeroberung stoeren).
     if ((ersterSteht || (abend && siegErrungen)) && this.area.id === 'stadt'
+      && !this.flags.stadtGefallen
       && !this.einfallAktiv && !this.playerDead
       && (ersterSteht || this.tag - this.letzterEinfallTag > EINFALL.pauseTage)) {
       this.flags.ersterEinfallKam = true;
@@ -13710,6 +13810,14 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     // Gemeindehaus, die Kämpfer bleiben auf der Straße (Feedback-Runde 8/9).
     const nacht = this.tageszeit > TAG.nachtAb || this.tageszeit < TAG.morgenAb;
     for (const n of this.npcEnts) {
+      // F5: ist Ravensmoor GEFALLEN, sind die Bewohner mit dem Treck fort -
+      // niemand steht in der besetzten Stadt herum.
+      if (this.flags.stadtGefallen && this.area.id === 'stadt') {
+        n.sprite?.setVisible(false);
+        n.label?.setVisible(false);
+        n.heilLicht?.setVisible(false);
+        continue;
+      }
       let sichtbar: boolean;
       if (this.area.innen) {
         // erst nachts daheim - abends stehen sie noch sichtbar draußen
@@ -14249,6 +14357,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.updateZwischenbote(dt); // F4: Laeufer nach Ravensmoor (aktiviert den Boten)
     this.updateFeindzug(dt); // F2: der Feind produziert und greift nach Gebieten
     this.updateReparaturen(dt); // R191: sichtbare Bau-Reparatur (Auftrag + Haemmern)
+    this.updateFall(dt);        // F5: der Fall von Ravensmoor (Sturm/Treck)
     if (this.rueckzugPanikT > 0) this.rueckzugPanikT -= dt;
     this.updateEinfallQueue(dt);   // R157: Einfall-Kolonnen ruecken in Schueben an
     this.updateSpaeher(dt);        // R178: Kundschafter des Klosters (Nordstrasse)
