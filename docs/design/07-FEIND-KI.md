@@ -301,3 +301,47 @@ Mauer-Wand; und der Comeback-Hebel (Lager zerstoeren) bremst die Horde.
 STATUS M3: EMPFEHLUNG, Autor bestaetigt/aendert. Bau der Blaupausen (M1/M2)
 laeuft mit dem ABSTRAKTEN Zeit-Gate (wie F3 heute) - braucht die Oekonomie-
 Entscheidung NICHT, ist also entkoppelt und kann sofort starten.
+
+---
+
+# TEIL 4 - AUTOR-GROSSVISION (Runde nach M1, ZU BESTAETIGEN vor Bau)
+
+Der Autor erweitert die Vision deutlich - noch nicht gebaut, erst Rahmen abklaeren:
+
+## V1. Der Feind ist kein hirnloser Untoten-Haufen, sondern eine ARBEITENDE Macht
+Vorbild HERR DER RINGE / ISENGARD: die Gegner arbeiten sichtbar - HOLZEN AB,
+schuften, bauen -, haben dadurch Intelligenz und Charakter, und sie arbeiten
+FUER JEMANDEN. Im KLOSTER sitzt der Herr, der die Region als sein Koenigreich
+aufbauen und beherrschen will.
+KOPPLUNG zu Dok 01/06 (Untoten-Identitaet) - VORSCHLAG zur Aufloesung, damit die
+Story nicht bricht: die Untoten sind die ARBEITS-Gangs, aber nicht willenlos -
+sie werden von einem WILLEN (Nekromant/Herr im Kloster) erhoben und GELENKT.
+Bild = Sarumans Orks: sie roden den Wald, brechen Stein, befeuern die
+Kriegsmaschine - sichtbare Industrialisierung des besetzten Landes. Das gibt
+Charakter + Intelligenz UND behaelt die Untoten-Identitaet. (Autor bestaetigt
+Framing? Oder echter Wechsel zu Orks als eigene Spezies?)
+FOLGE fuer M3-Oekonomie: KEHRTWENDE - wenn sichtbares Arbeiten/Ernten der PUNKT
+ist (Charakterisierung), lohnt ein schlankes, GEDECKELTES Ernte-/Rohstoffsystem
+DOCH (frueher abgelehnt, weil "hirnlose Untote + versteckte Oekonomie"). Runaway-
+Schutz bleibt (Bau-Deckel, nie zubauen, Comeback-Hebel).
+
+## V2. 600 EINHEITEN je Karte moeglich (ausser Ravensmoor)
+HARTE Ansage. Realitaet (ehrlich): die aktuelle Architektur schafft ~60 (bei 60
+schon 7,7 ms + Spikes). 600 = ~10x = voellig ausserhalb des jetzigen Designs
+(jede Einheit volle KI je Frame). 600 in einem 2D-Phaser-Browserspiel ist
+MACHBAR, aber nur mit der BAR-Architektur aus dem Wegfindungs-Dokument:
+- Simulation von der GRAFIK TRENNEN (Logik-Sim mit fester 20-30 Hz fuer ALLE,
+  Renderer interpoliert; nichts schlaeft off-camera).
+- KI-Detailstufe (fern/untaetig = seltener denken; nah/kaempfend = voll).
+- Squad-Wegfindung (ein Gruppenpfad statt 600 A*), Spatial Hash, Portale.
+- Sprite-Batching (EIN Atlas, keine Container/Effekte je Einheit, nur Sichtbares).
+- ggf. Pathfinding im Web Worker.
+Das ist ein MEHR-PHASEN-UMBAU der Einheiten-/Kampf-Schicht, kein Patch. 600 ist
+das STRETCH-Ziel; validieren in Stufen 100 -> 300 -> 600 mit Messung (Rendering
+von 600 Sprites + Nebel + Gelaende ist ein eigenes Thema neben der Sim).
+FOLGE fuer die Reihenfolge: die Performance-/Architektur-Grundlage ist damit
+NICHT mehr optional, sondern PFLICHT UND ZUERST - sie wird von BEIDEN neuen
+Zielen (arbeitende Laborer + 600 Einheiten) verlangt.
+OFFEN: ist 600 ein hartes Muss oder "so viel dass es wie eine Horde wirkt"?
+(Aktive Kaempfer auf dem Schirm vs. Gesamtzahl-mit-LOD ist ein riesiger
+Unterschied - das bestimmt den Bauaufwand.)
