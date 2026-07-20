@@ -2150,6 +2150,18 @@ export class WorldScene extends CombatScene {
       // Beim Verlassen der Stadt den Editor sauber schliessen (Globales abmelden).
       if (this.dorfEdit) this.toggleDorfEditor(true);
       this.raeumeGebaeude3d();
+      // Die Fuerstenburg ist ein kompaktes GLB ohne eigenen Aussenboden. Phaser
+      // liefert Wiese/Weg/Umgebung; die bestehende Three-Runtime rendert die GLB
+      // live als transparentes Canvas-Sprite und uebernimmt die JSON-Kollisionen.
+      if (a.id === 'burg') {
+        this.starteGebaeude3d(
+          'burg',
+          'houses/castle/medieval_castle_3d_runtime.json',
+          a.w * TILE * 0.5,
+          a.h * TILE * 0.5,
+          0,
+        );
+      }
       return;
     }
     // Arbeitskopie aus dem Browser laden (Autor-Edits), sonst die Datei-Saat.
@@ -7899,6 +7911,12 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // Bäume sortieren auf ihrem Stammfuß - so liegt der Held VOR dem Stamm (Kopf
   // frei), sobald seine Füße unter dem Stammfuß stehen, und dahinter, wenn nicht.
   protected override spielerTiefe(): number {
+    // Das komplette Schloss wird von der vorhandenen Three-Runtime als ein
+    // Canvas-Sprite gerendert. Auf der Burgkarte muss der Held deshalb vor
+    // diesem Karten-Layer liegen; Mauern bleiben physisch ueber die Runtime-
+    // Kollisionen gesperrt. Die hohe Tiefe betrifft nur die Hauptkamera, da
+    // der Held in der getrennten UI-Kamera ignoriert wird.
+    if (this.area?.id === 'burg') return 1_000_000 + this.py;
     return this.py + this.playerSprite.displayHeight * (1 - this.playerSprite.originY);
   }
   protected override gegnerTiefe(spr: Phaser.GameObjects.Sprite, grundY: number): number {

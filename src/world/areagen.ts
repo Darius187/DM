@@ -2435,10 +2435,45 @@ export function buildWaldSuedOst(rng: Rng): AreaData {
 // R98 (Prompt-2 Schub 2): burg(0,3) + gy2-Anfang wald_n(2,2), wald_m(3,2).
 // Erste SENKRECHTE Naehte (Nord/Sued). NUR Huelle.
 export function buildBurg(rng: Rng): AreaData {
-  return baueOberweltGebiet(rng, {
-    id: 'burg', name: 'Fürstenburg', wolfXs: [40, 92], baumGruppen: 150,
-    geo: { bahnen: [], seen: [{ cx: 0.34, cy: 0.42, rx: 0.09, ry: 0.07 }] },   // Fluss aus Tabelle; kleiner Teich
+  const westFluss = kantenFlussAnker('burg', 'west')!;
+  const ostFluss = kantenFlussAnker('burg', 'ost')!;
+  const a = baueOberweltGebiet(rng, {
+    id: 'burg', name: 'Fürstenburg', wolfXs: [], baumGruppen: 80,
+    randFluesseAuto: false,
+    // Der Kartenfluss bleibt fuer die Naht zu den Nachbargebieten erhalten,
+    // laeuft aber weit ausserhalb der Burgflaeche am Suedrand entlang. Er ist
+    // kein Wassergraben und im normalen Burg-Ausschnitt nicht zu sehen.
+    geo: {
+      bahnen: [{ punkte: [
+        westFluss,
+        { x: 0.08, y: westFluss.y, hw: 0.014 },
+        { x: 0.12, y: 0.94, hw: 0.014 },
+        { x: 0.50, y: 0.96, hw: 0.015 },
+        { x: 0.92, y: 0.94, hw: 0.014 },
+        { x: 0.94, y: ostFluss.y, hw: 0.014 },
+        ostFluss,
+      ] }],
+      seen: [],
+    },
   });
+  // Freie, von Phaser gelieferte Aufstellflaeche fuer das 61 x 46 m grosse
+  // Castle-GLB. Kein Wassergraben/Inselsockel im Asset und keine zufaelligen
+  // Baeume oder Felsen, die durch Mauern/Hof ragen koennten.
+  const cx = Math.round(a.w * 0.5), cy = Math.round(a.h * 0.5);
+  const x0 = cx - 38, x1 = cx + 38, y0 = cy - 28, y1 = cy + 25;
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    if (a.map[y]?.[x] !== undefined) a.map[y][x] = T.GRASS;
+  }
+  // Die Karte beginnt direkt im Innenhof. So braucht die Burg weder einen
+  // Anmarschweg noch Wassergraben, Bruecke oder sonstige Aussenkulisse.
+  a.spawn = { x: cx * TILE, y: (cy + 4) * TILE };
+  const ausserhalb = (p: Pos): boolean => {
+    const tx = p.x / TILE, ty = p.y / TILE;
+    return tx < x0 || tx > x1 || ty < y0 || ty > y1;
+  };
+  a.rocks = a.rocks.filter(ausserhalb);
+  a.kraeuter = a.kraeuter.filter(ausserhalb);
+  return a;
 }
 export function buildWaldNord(rng: Rng): AreaData {
   return baueOberweltGebiet(rng, {

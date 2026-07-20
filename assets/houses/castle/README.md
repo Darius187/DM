@@ -1,40 +1,47 @@
-# Ravensmoor Burg - 3D-Runtime
+# Fuerstenburg - Phaser-3-Runtime
 
-Die Burg ist ein echtes, texturiertes GLB fuer den vorhandenen
-Three.js/GLTFLoader-Pfad. Materialien duerfen im Spiel nicht ersetzt oder
-getintet werden.
+Die Burg ist als kompaktes, texturiertes GLB in die vorhandene
+Three.js/Phaser-Runtime von Ravensmoor eingebunden. Sie enthaelt nur die
+eigentliche Schlossanlage und den Innenhof: kein Wassergraben, keine Bruecke,
+keine Insel, kein Aussenboden und keinen Anmarschweg.
 
-## Runtime-Dateien
+## Dateien
 
-- `medieval_castle_3d_runtime.glb`
-- `medieval_castle_3d_runtime.json`
-- `medieval_castle_3d_runtime_preview.png`
+- `medieval_castle_3d_runtime.glb` - sichtbares 3D-Modell
+- `medieval_castle_3d_runtime.json` - Bounds, Marker und 24 Kollisionen
+- `medieval_castle_3d_runtime_preview.png` - Blender-Abnahmebild
 
-## Vertrag
+Vite verwendet `assets/` als `publicDir`. Deshalb lautet die Laufzeit-URL des
+Manifests:
 
-- Runtime-Modus: `exterior_only`
-- Root-Pivot: `CASTLE_ROTATION_PIVOT`
-- Haupttor: `GATE_DOOR_LEFT_HINGE` und `GATE_DOOR_RIGHT_HINGE`
-- Tor-Trigger: `TRIGGER_CASTLE_GATE`
-- Aussen-Spawn: `SPAWN_CASTLE_EXTERIOR`
+```text
+houses/castle/medieval_castle_3d_runtime.json
+```
+
+Das Manifest verweist relativ auf `medieval_castle_3d_runtime.glb`.
+
+## Einbindung im Spiel
+
+`WorldScene.zeichneDorfplan()` startet das Modell automatisch, sobald die
+Area-ID `burg` aktiv ist. `Gebaeude3DWelt` laedt das Manifest und GLB mit dem
+vorhandenen `GLTFLoader`, rendert transparent in eine Canvas-Textur und stellt
+diese als Phaser-Weltobjekt dar. Die Kollisionsrechtecke aus der JSON sperren
+Mauern, Tuerme, Donjon, Nebengebaeude, Stall und Brunnen.
+
+`buildBurg()` erzeugt eine wasserfreie Burgkarte, raeumt die Stellflaeche frei
+und setzt den Spieler direkt an das offene Suedtor im Innenhof. Da die ganze
+Burg ein gemeinsames Canvas-Sprite ist, werden Spielfiguren auf dieser Karte
+vor dem Burg-Layer gerendert; die physische Mauerkollision bleibt aktiv.
+
+## Runtime-Vertrag
+
+- Modus: `exterior_only`
+- Root: `BRG_CASTLE_RUNTIME_ROOT`
+- Groesse: etwa 61 x 46 x 16 Meter
+- Eingang: `TRIGGER_CASTLE_GATE`
 - Hof-Spawn: `SPAWN_CASTLE_COURTYARD`
-- Toranimation: Frame 1 geschlossen, Frame 30 offen
-- Einheiten: Meter, Blender X/Y Boden und Z oben
-- Three.js-Konvertierung: `[x,y,z] -> [x,z,-y]`
+- Durchgang: offen, keine animierten Tuerfluegel
+- Materialien: unveraendert aus dem GLB, sRGB + ACES Filmic
 
-Die JSON-Datei ist die verbindliche Quelle fuer Bounds, Kollisionsfuehrer,
-Marker und Modulbelegung. Das GLB enthaelt absichtlich keinen Weltboden und
-keinen begehbaren Innenraum. Ein spaeterer Burghof oder Innenraum wird als
-eigene Phaser-Karte an `TRIGGER_CASTLE_GATE` angeschlossen.
-
-## Verifikation
-
-- Frischer Blender-GLB-Roundtrip: Root und beide Torknoten vorhanden
-- 37 Materialien mit eingebetteten Farbkarten
-- 2 Toranimationen
-- Bounds-Abweichung nach GLB-Roundtrip: 0,00001 m
-- Browser: Three.js/GLTFLoader, Tor auf und wieder zu, keine Konsolenfehler
-
-Die bearbeitbare Blender-Datei und die vollstaendige Baupipeline liegen unter
-`C:/Obsidian/DM/medieval-castle/` und
-`C:/Obsidian/DM/build_medieval_castle.py`.
+Die bearbeitbare Quelldatei liegt unter
+`C:/Obsidian/DM/medieval-castle/castle_reworked.blend`.
