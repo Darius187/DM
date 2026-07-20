@@ -1926,3 +1926,17 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   von 7 auf 3 Rand-Starter reduziert (die faengt der Entklemmer, sie kaempfen
   normal weiter). Rest-Ursache in TODO notiert (kartenKanten-Verdrahtung).
 - tsc + 416 Tests gruen.
+
+## Feindlager-Mittelweg M1 - Blaupausen-Varianten (Autor "so machen wir das")
+- Das Feindlager baut jetzt nach vorgefertigten, routen-SICHEREN Blaupausen
+  statt einer festen Form: Sichel / Hufeisen / Zwei Riegel / Voller Ring.
+  Ein Seed je Karte waehlt eine - kein Lager gleicht dem anderen, aber jedes
+  folgt einem klaren Schema (deine Ansage "mehrere Varianten").
+- Browser-verifiziert: 4 Karten -> 3 verschiedene Formen; die Knochenwall
+  wird real gebaut (11-24 Kacheln je nach Form) und ist solide; und - dein
+  wichtigster Punkt - auf JEDER Karte bleibt der Altar vom Rand erreichbar.
+  Keine Karte wird zugebaut, nie ein geschlossener Kasten.
+- tsc + 416 Tests gruen.
+- OFFEN als naechster Schritt (M2): die Garnison SORTIERT AUS statt drin zu
+  bunkern (dein "wenn ich das Lager umgehe, juckt es keinen") + Lager auf der
+  Route. Danach Monster-Arbeiter + Optik. Oekonomie bleibt abstrakt (M3).
