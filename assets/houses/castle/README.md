@@ -8,7 +8,7 @@ keine Insel, kein Aussenboden und keinen Anmarschweg.
 ## Dateien
 
 - `medieval_castle_3d_runtime.glb` - sichtbares 3D-Modell
-- `medieval_castle_3d_runtime.json` - Bounds, Marker und 24 Kollisionen
+- `medieval_castle_3d_runtime.json` - Bounds, Marker und 28 Kollisionen
 - `medieval_castle_3d_runtime_preview.png` - Blender-Abnahmebild
 
 Vite verwendet `assets/` als `publicDir`. Deshalb lautet die Laufzeit-URL des
@@ -26,7 +26,7 @@ Das Manifest verweist relativ auf `medieval_castle_3d_runtime.glb`.
 Area-ID `burg` aktiv ist. `Gebaeude3DWelt` laedt das Manifest und GLB mit dem
 vorhandenen `GLTFLoader`, rendert transparent in eine Canvas-Textur und stellt
 diese als Phaser-Weltobjekt dar. Die Kollisionsrechtecke aus der JSON sperren
-Mauern, Tuerme, Donjon, Nebengebaeude, Stall und Brunnen.
+Mauern, vier Eckverbinder, Tuerme, Donjon, Nebengebaeude, Stall und Brunnen.
 
 `buildBurg()` erzeugt eine wasserfreie Burgkarte, raeumt die Stellflaeche frei
 und setzt den Spieler direkt an das offene Suedtor im Innenhof. Die fuer die
@@ -42,10 +42,13 @@ physischen Kollisionen bleiben unabhaengig davon aktiv.
 
 - Modus: `exterior_only`
 - Root: `BRG_CASTLE_RUNTIME_ROOT`
-- Groesse: etwa 61 x 45 x 16 Meter
+- Groesse: etwa 60 x 45 x 16 Meter
 - Eingang: `TRIGGER_CASTLE_GATE`
 - Hof-Spawn: `SPAWN_CASTLE_COURTYARD`
-- Durchgang: offen, keine Torbogen-Module oder Tuerfluegel
+- Haupttor: echtes Paket-Torhaus, korrekt auf die Nord-Sued-Achse gedreht
+- Durchgang: offen, beide Holzfluegel sichtbar an die Tunnelwaende geschwenkt
+- Ringmauer: lueckenlos mit vier texturierten Eckverbindern
+- Wehrgang: Traeger/Laufseite zeigt nach innen; zwei durchgehende Treppenlaeufe
 - Materialien: unveraendert aus dem GLB, sRGB + ACES Filmic
 
 Die bearbeitbare Quelldatei liegt unter

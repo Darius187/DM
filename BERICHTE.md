@@ -1955,3 +1955,19 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
 - OFFEN als naechster Schritt (M2): die Garnison SORTIERT AUS statt drin zu
   bunkern (dein "wenn ich das Lager umgehe, juckt es keinen") + Lager auf der
   Route. Danach Monster-Arbeiter + Optik. Oekonomie bleibt abstrakt (M3).
+
+## Runde 195 - Fuerstenburg konstruktiv geschlossen
+- Autorbefund bestaetigt: Das Paket-Torhaus stand mit seiner geschlossenen
+  Schmalseite zur Zufahrt, die schwarzen Wehrgang-Traeger lagen aussen und die
+  oberen Treppenteile waren seitlich statt in Laufrichtung versetzt.
+- Haupttor um 90 Grad auf die Nord-Sued-Achse gedreht. Aussenbogen, sichtbarer
+  Tunnel und Innenbogen sind jetzt lesbar; beide 3 m hohen Holzfluegel stehen
+  sichtbar offen an den Tunnelwaenden.
+- Alle vier Mauerlaeufe exakt zentriert, ohne Zufallswinkel um 180 Grad auf die
+  Hofseite gedreht und an Tor-/Ecktuerme herangezogen. Vier texturierte
+  Mauer-Eckverbinder schliessen die verbliebenen L-Stoesse.
+- Zwei Wehrgangstreppen bestehen nun aus jeweils zwei fluchtenden Segmenten:
+  Boden -> Zwischenstufe -> 4,15-m-Wehrgang, ohne Seitenversatz oder Luftspalt.
+- Blender-QA: Torachse 0,0 m Fehler, Mauerring 472/472 Messpunkte geschlossen,
+  4,4 m Hauptweg, keine schwebenden Teile oder kritischen Ueberschneidungen.
+- TypeScript-Pruefung, 420 Vitest-Tests und Produktions-Build erfolgreich.

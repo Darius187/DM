@@ -2,12 +2,13 @@
 
 ## Ergebnis
 
-- Kompakte mittelalterliche Burg mit geschlossener Ringmauer, vier Ecktuerme,
-  offenem Suedtor, Innenhof, Donjon, Wirtschaftsgebaeuden, Stall und Brunnen
+- Kompakte mittelalterliche Burg mit geschlossener Ringmauer, vier gemauerten
+  Eckverbindern, offenem Haupttor, Innenhof, Donjon, Wirtschaftsgebaeuden,
+  Stall und Brunnen
 - Wassergraben, Bruecke, Insel, Ufersteine, Aussenboden und Anmarschweg entfernt
 - Laufzeit-Root `BRG_CASTLE_RUNTIME_ROOT`
-- 24 datengetriebene Kollisionsfuehrer und 3 Gameplay-Marker
-- Runtime-Bounds etwa 61 x 46 x 16 Meter
+- 28 datengetriebene Kollisionsfuehrer und 3 Gameplay-Marker
+- Runtime-Bounds etwa 60 x 45 x 16 Meter
 
 ## Phaser-3-Integration
 
@@ -21,14 +22,17 @@
 
 ## Verifikation
 
-- Blender-Geometriepruefung: Tor ausgerichtet und dauerhaft offen, ungeeignete
-  Torbogen- und Tuer-Module entfernt, Mauerring geschlossen, Hauptweg 4,4 m,
-  keine schwebenden Teile oder kritischen Ueberschneidungen
+- Blender-Geometriepruefung: Paket-Torhaus um 90 Grad auf die Zufahrtsachse
+  gedreht, Doppelfluegel sichtbar offen, alle Wandmodule um 180 Grad mit dem
+  Wehrgang nach innen ausgerichtet, vier Eckverbinder eingesetzt
+- Mauerkontinuitaet: 472 Messpunkte, 100 Prozent Abdeckung; Hauptweg 4,4 m
+- Zwei zweiteilige Treppenlaeufe verbinden Boden und Wehrgang ohne Seitenversatz
+- Keine schwebenden Teile oder kritischen Ueberschneidungen
 - HTTP: Manifest und GLB werden vom Vite-Server mit Status 200 ausgeliefert
 - Browser: `F10 > MAPS > Fuerstenburg` laedt die ueberarbeitete Burg sichtbar
   im echten Spiel, ohne schwarzen Bildschirm
 - Browser-Konsole: nach dem Fix keine neuen Lade-, Shader- oder WebGL-Fehler
-- TypeScript-Pruefung, 419 Vitest-Tests und Produktions-Build erfolgreich
+- TypeScript-Pruefung, 420 Vitest-Tests und Produktions-Build erfolgreich
 
 ## Vorschau
 

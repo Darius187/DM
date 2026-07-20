@@ -2513,3 +2513,10 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   geteilt, damit Ringmauer und Tor korrekt verdecken. Die schief wirkenden
   Pack-Torbogenmodule und Tuerfluegel entfallen; der Sueddurchgang bleibt offen.
 - MASSENSCHLACHT-MODUS (Autor-Befund Stresstest: bei 700+ Toten 35 fps + Sound bricht, "ist der Loot schuld?"): JA - beim Tod erzeugt jede Einheit 8 Gore-Partikel-Tweens + Todes-Sound + >=1 Gold-Stueck, das LIEGEN BLEIBT und wackelt. Hunderte Tode = tausende Tweens + hunderte Dauer-Pickups + Sound-Flut. FIX: Enemy.massenEinheit-Flag - kein Einzel-Loot (dropLoot uebersprungen), leichter Tod (keine 8 Gore-Tweens, nur Staub-Puff), Todes-Sound auf ~1/8 gedrosselt. Verifiziert: 30 Massen-Tode = 0 Pickups, 30 normale = 41. Der DEV-Stresstest (Taste B) nutzt es jetzt -> der Autor misst die reine Einheiten-Grenze ohne Loot-Flut. Fuer ECHTE Massenschlachten spaeter: Sammel-Beute (einmal einsammeln) statt Einzel-Loot.
+- R195 Fuerstenburg-Konstruktion: Das echte SM_Gate bleibt und wird um 90 Grad
+  mit seinem Durchgang auf die Nord-Sued-Torachse gesetzt; die beiden
+  SM_DoorsA-Fluegel stehen sichtbar offen. SM_CastleWall wird auf allen Seiten
+  so gedreht, dass Traeger und Wehrgang hofseitig liegen. Vier kleine
+  texturierte Eckverbinder sind als erlaubte Uebergangselemente verbindlich;
+  jeder der zwei Treppenaufgaenge besteht aus zwei fluchtenden Segmenten bis
+  zur Wehrganghoehe.

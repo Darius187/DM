@@ -15,6 +15,11 @@ interface BurgManifest {
   doors?: Record<string, unknown>;
   collision_guides: Guide[];
   markers: Array<{ name: string; blender_xyz: [number, number, number] }>;
+  node_groups?: {
+    main_gate?: string[];
+    wall_corners?: string[];
+    wall_access?: string[];
+  };
 }
 
 const manifest = manifestData as unknown as BurgManifest;
@@ -40,6 +45,28 @@ describe('Fuerstenburg-Runtime', () => {
   it('bleibt eine offene Aussenruntime ohne Tuer-Riegel', () => {
     expect(manifest.runtime_mode).toBe('exterior_only');
     expect(Object.keys(manifest.doors ?? {})).toHaveLength(0);
+    expect(manifest.node_groups?.main_gate).toEqual([
+      'BRG_MainGatehouse',
+      'BRG_GateDoor_Left_Open',
+      'BRG_GateDoor_Right_Open',
+    ]);
+  });
+
+  it('schliesst den Mauerring an allen vier Eckverbindern', () => {
+    expect(manifest.node_groups?.wall_corners).toEqual([
+      'BRG_WallCorner_SW', 'BRG_WallCorner_SE',
+      'BRG_WallCorner_NW', 'BRG_WallCorner_NE',
+    ]);
+    expect(manifest.node_groups?.wall_access).toHaveLength(4);
+
+    for (let x = -27.6; x <= 27.6; x += 0.4) {
+      expect(istBlockiert(x, 19.9), `Nordmauer offen bei x=${x}`).toBe(true);
+      if (Math.abs(x) >= 3.3) expect(istBlockiert(x, -18.6), `Suedmauer offen bei x=${x}`).toBe(true);
+    }
+    for (let y = -18.6; y <= 19.9; y += 0.4) {
+      expect(istBlockiert(-27.6, y), `Westmauer offen bei y=${y}`).toBe(true);
+      expect(istBlockiert(27.6, y), `Ostmauer offen bei y=${y}`).toBe(true);
+    }
   });
 
   it('erzeugt im sichtbaren Burgbereich weder Wasser noch Wasser-Shader', () => {
