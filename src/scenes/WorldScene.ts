@@ -8650,6 +8650,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       for (let i = 0; i < je; i++) {
         const e = this.spawnEnemy('skelett', 2, mitte.x + (i % 30) * 16 - 240, mitte.y + Math.floor(i / 30) * 16 - 120, false, true);
         if (team === 'spieler') e.team = 'spieler';
+        e.massenEinheit = true;   // kein Einzel-Loot, leichter Tod, gedrosselter Sound
         e.aggro = 5000; e.jagdZiel = { x: ziel.x, y: ziel.y };
       }
     };
@@ -12575,7 +12576,9 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       this.p.materials.fell++;
       this.logMsg('+1 Fell', '');
     }
-    this.dropLoot(e);
+    // MASSENSCHLACHT: keine Einzel-Beute - hunderte gleichzeitige Gold-Stuecke
+    // fluten die Karte und die FPS (Autor-Befund). Sammel-Beute spaeter separat.
+    if (!e.massenEinheit) this.dropLoot(e);
     // Einfall abgewehrt: Belohnung der Dörfler, sobald der letzte Angreifer fällt
     // R157: gewonnen erst, wenn KEIN Angreifer mehr lebt UND keine Kolonne
     // mehr unterwegs ist (einfallQueue leer) - sonst "siegt" man in die Welle.

@@ -251,6 +251,10 @@ export class Enemy {
   kills = 0;
   soeldner = false;   // R143 (2.3): Moral-Malus; flieht er zur Kante, desertiert er
   feldzugTrupp = false;   // F2: Teil einer Feindzug-Angriffswelle (Live-Aufloesung)
+  // MASSENSCHLACHT: Einheit einer grossen Schlacht - beim Tod KEIN Einzel-Loot,
+  // leichter Tod (keine 8 Gore-Tweens), gedrosselter Todes-Sound. Sonst kippen
+  // hunderte gleichzeitige Tode die FPS + den Sound (Autor-Befund Stresstest).
+  massenEinheit = false;
   // R187: Heer-Ausruestung eines Verbuendeten. waffeMax > 0 -> der Schaden
   // WUERFELT je Schlag zwischen waffeMin und waffeMax; ruestungRed ist der
   // eingehende Schadens-Multiplikator (0.9 = 10% Schutz).

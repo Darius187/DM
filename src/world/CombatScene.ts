@@ -1971,7 +1971,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         if (!leiche.active) return;
         this.tweens.add({ targets: leiche, alpha: 0, duration: 1000, onComplete: () => leiche.destroy() });
       });
-    } else if (e.sprite && getSettings().blood) {
+    } else if (e.sprite && getSettings().blood && !e.massenEinheit) {
       const leiche = e.sprite;
       e.sprite = null;
       leiche.setTintFill(knochen ? 0xe8e2d0 : 0xa01414);
@@ -2000,13 +2000,17 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Todesstoß: schwert_slice (Autor-Sound), dazu der Sterbelaut -
     // Runde 32: eigene Todes-Schreie je Gegnerart (rotierend), auch für
     // Elite/Boss-Varianten desselben Typs; universal als Fallback
-    this.sfx.playAbwechselnd('schwert_slice', 3, 0.8);
-    const todBasis = e.type === 'pest' ? 'tod_pest'
-      : e.type === 'skelett' && e.schild ? 'tod_skelett_schild'
-      : (e.type === 'skelett' || e.type === 'skelettwache' || e.type === 'schuetze') ? 'tod_skelett'
-      : 'tod_universal';
-    if (!this.sfx.playAtAbwechselnd(todBasis, 3, e.x, e.y, 0.9) && !this.sfx.playAtAbwechselnd('tod_universal', 3, e.x, e.y, 0.9)) {
-      this.sfx.playAt('tod', e.x, e.y);
+    // Massenschlacht: Todes-Sound stark gedrosselt (nur ~1 von 8), sonst
+    // ueberlagern hunderte gleichzeitige Tode den Audio-Bus (Autor-Befund).
+    if (!e.massenEinheit || Math.random() < 0.12) {
+      this.sfx.playAbwechselnd('schwert_slice', 3, 0.8);
+      const todBasis = e.type === 'pest' ? 'tod_pest'
+        : e.type === 'skelett' && e.schild ? 'tod_skelett_schild'
+        : (e.type === 'skelett' || e.type === 'skelettwache' || e.type === 'schuetze') ? 'tod_skelett'
+        : 'tod_universal';
+      if (!this.sfx.playAtAbwechselnd(todBasis, 3, e.x, e.y, 0.9) && !this.sfx.playAtAbwechselnd('tod_universal', 3, e.x, e.y, 0.9)) {
+        this.sfx.playAt('tod', e.x, e.y);
+      }
     }
     // R147: XP nur fuer EIGENE Kills des Helden - Soldaten-Kills geben keine.
     if (!this.killDurchTruppe) this.giveXp(Math.max(1, Math.round(e.xp * XP.gegnerMult)));
