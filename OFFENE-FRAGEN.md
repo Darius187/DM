@@ -421,3 +421,15 @@ Platzhalter bleiben, Mechanik ist fertig verdrahtet.
   R147b (Untote fliehen nicht). FRAGE: Willst du groessere Feldzug-Schlachten
   (Rueckeroberung mit mehreren Gruppen)? Dann lege ich die zurueckgestellten
   Punkte (Korridor, Sync, Flanken, Kampfsimulation) wieder vor.
+
+## AUTOR-NACHTRAG (nach KI-Teil-2) - drei Punkte zurueck auf "offen"
+Details + Begruendung in docs/design/07-FEIND-KI.md TEIL 2 AUTOR-NACHTRAG (N1-N3).
+- N1 BELAGERUNGSGERAET: nicht verworfen, nur zurueckgestellt - erst alles andere,
+  dann klaeren WAS genau (Rammbock/Wurfgeraet, nur Monster oder auch Heer). Regel
+  5/6 bleibt: Kavallerie-Gattung tabu, Belagerungsgeraet braucht Autor-Freigabe.
+- N2 FEIND-RUECKZUG MIT NACHHUT: aufnehmen fuer den grossen Feldzug. Kopplung zu
+  R147b aufgeloest: kein individuelles Panik-Fliehen (verboten), aber BEFOHLENER
+  Horden-Rueckzug durch die steuernde Intelligenz ist erlaubt (kalte Taktik).
+- N3 FREIE BAU-KI: Autor unschluessig. IST = feste Reihenfolge/feste Anker (A9/F3).
+  Claude-Empfehlung = Mittelweg (vorgefertigte, routen-sichere Lager-Blaupausen +
+  sichtbare Monster-Arbeiter). ENTSCHEIDUNG des Autors steht aus.

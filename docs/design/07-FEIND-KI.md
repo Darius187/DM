@@ -196,3 +196,54 @@ Overkill fuer Fernkampf steht bereits in A8.
   Garnisonskraft) IST die einfache Simulation; eine 12s-Iteration braucht
   Werte (DPS je Rolle, Moralmodell beidseitig), die es beim Feind bewusst
   nicht gibt. WIEDERVORLAGE mit groesseren Schlachten.
+
+---
+
+# TEIL 2 - AUTOR-NACHTRAG (Runde nach KI-Teil-2, Entscheidungen praezisiert)
+
+Der Autor hat drei zuvor als "NICHT UEBERNOMMEN" markierte Punkte neu bewertet.
+Sie wandern damit von "raus" nach "OFFEN / WIEDERVORLAGE" - NICHT jetzt bauen,
+aber die Tuer bleibt auf. Reihenfolge-Order des Autors: erst muss alles andere
+stehen (Performance/Wegfindung/Feldzug), DANN diese drei.
+
+## N1. Belagerungsgeraet (Cavalry/Siege/Cart/Rammbock) - OPTION OFFEN
+Frueher wegen Regel 5/6 (keine Kavallerie-Gattung, kein schweres Geraet) raus.
+AUTOR: "damit bin ich noch nicht ganz durch - die Belagerung mit diesen Geraeten
+war damals Thema, vielleicht nehmen wir das auf. Erst muss alles andere stehen,
+Option offen lassen." -> STATUS: zurueckgestellt, NICHT verworfen. Wenn es kommt,
+gilt weiter Regel 5/6-Pruefung (Kavallerie als TRUPPENGATTUNG bleibt tabu; ein
+Belagerungs-GERAET fuer die MONSTER-Seite - der Golem ist schon ein lebender
+Rammbock - waere gesondert vom Autor freizugeben). Zuerst klaeren, WAS genau
+(Rammbock gegen Tore? Wurfgeraet? nur Monster-Seite oder auch Spieler-Heer?).
+
+## N2. Feind-Rueckzug mit Nachhut - AUFNEHMEN (taktisch), NICHT als Panik
+Frueher raus wegen R147b (Untote kennen keine Moral-Flucht). AUTOR: "vielleicht
+macht es spielerisch Sinn, wenn sich auch der Gegner zurueckzieht und mit Nachhut
+anrueckt - auch wenn es Monster sind, haben die eh schon eine KI, also warum
+nicht, aus taktischen Gruenden."
+AUFLOESUNG der Kopplung zu R147b (WICHTIG, vor dem Bau): R147b verbietet das
+INDIVIDUELLE Panik-Fliehen einzelner Monster (Angst/Moral) - das bleibt verboten
+(sie sind willenlose Untote). Ein BEFOHLENER, geordneter Rueckzug der ganzen
+Horde durch die STEUERNDE Intelligenz (Nekromant/Bindealtar) ist etwas anderes:
+kein Zittern, keine Flucht, sondern kalte Taktik ("die Horde weicht geschlossen
+zurueck, eine Nachhut deckt"). Damit bleibt der Geist von R147b erhalten UND der
+taktische Rueckzug ist moeglich. STATUS: fuer den grossen Feldzug vorgemerkt
+(gehoert zu den "groesseren Schlachten"), gebaut wird es dort, nicht einzeln.
+
+## N3. Freie Bau-KI (Feindlager) - AUTOR UNSCHLUESSIG, Empfehlung: Mittelweg
+AUTOR: "ich moechte es wie die guten RTS-Games haben - wie bauen die Feindlager?"
+IST-STAND (A9/F3): unser Feindlager baut nach FESTER Reihenfolge an FESTEN Ankern
+(Bindealtar zuerst, Knochenwall Stufe 1 ab 90s, Stufe 2 ab 300s, Waechter) -
+sicher, vorhersehbar, blockiert NIE einen Weg, aber immer gleich.
+DOKUMENT (KI-Teil-2 Punkt 17/18): echte Bau-KI fuehrt eine interne Verkehrsgrafik,
+platziert Gebaeude dynamisch dort, wo sie keine Route blocken, und richtet
+Verteidigung zu den TATSAECHLICH benutzten Angriffskorridoren aus.
+EMPFEHLUNG (Claude): MITTELWEG "vorgefertigte, geprüfte Blaupausen" statt starr
+ODER voll-frei. Das Lager waechst durch mehrere hand-gebaute, VORAB-validierte
+Lager-Layouts (nie routen-blockierend), kontextabhaengig gewaehlt; sichtbare
+MONSTER-ARBEITER (Autor-Idee) bauen die Teile in Reihenfolge auf; die
+Wall-Oeffnungen/Tuerme richten sich nach der Angriffsseite des Spielers (Punkt 18,
+billig mit unseren Verkehrsdaten). GRUND: Der Autor hasst Wegfindungs-Haenger -
+eine VOLL-FREIE Bau-KI ist genau die klassische Quelle dafuer (die KI mauert sich
+selbst zu). Der Mittelweg gibt RTS-Abwechslung OHNE das Risiko. STATUS: offen,
+Autor entscheidet (starr behalten / Mittelweg / voll-frei).
