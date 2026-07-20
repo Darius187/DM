@@ -345,3 +345,30 @@ Zielen (arbeitende Laborer + 600 Einheiten) verlangt.
 OFFEN: ist 600 ein hartes Muss oder "so viel dass es wie eine Horde wirkt"?
 (Aktive Kaempfer auf dem Schirm vs. Gesamtzahl-mit-LOD ist ein riesiger
 Unterschied - das bestimmt den Bauaufwand.)
+
+## V1b/V2b - AUTOR-PRAEZISIERUNG (Setting + Zahlen)
+- SETTING BLEIBT: Europa um 1349 (Pest), UNTOTE - KEINE Orks. "Isengard/HdR"
+  war nur Veranschaulichung fuers ARBEITENDE (roden, schuften, fuer den Herrn
+  im Kloster). Framing "gelenkte Untote" bestaetigt.
+- ZAHLEN: 600 war eine Hausnummer. Realistisches Ziel = grosse SPAETSPIEL-
+  SCHLACHT (Cannae/Hannibal-Fantasie): 300 vs 300 (evtl. 500 vs 500, Grenze
+  offen) - NUR im fortgeschrittenen Spiel, auf der VORLETZTEN/LETZTEN Karte
+  (Kloster-Eroberung oder alte Schlachtkarte). Anfangskarten NICHT, Horde
+  spawnt dort keine Hunderte. Karten sind gross + offen (deutlich groesser als
+  Dungeons) -> die Zahlen sind geometrisch nicht unrealistisch.
+- MUSS "nachweislich gut laufen" (Autor). Der Hauptmenue-Test hatte KEINE
+  Baeume/Logik/Kollision = Bestfall; die echte Grenze liegt tiefer und wird
+  GEMESSEN, nicht geraten.
+- GRENZE = Schnittmenge dreier Limits, die ZUSAMMENHAENGEN muessen (Autor):
+  (1) FIKTION - die grosse Schlacht wird ERARBEITET (Spaetspiel), kein
+      Dauerzustand; als DESIGNTE Set-Piece (feste Karte/Trigger) viel leichter
+      zu optimieren als "ueberall/jederzeit emergent".
+  (2) OEKONOMIE - Spieler kann nicht unendlich Soldaten anheuern (Gold/
+      Bevoelkerung); die Monster SYMMETRISCH gedeckelt durch ihre Ernte-
+      Oekonomie (Biomasse je gehaltener Karte, Kloster-Durchsatz) - mehr
+      Gebiet gehalten = groessere Horde moeglich = Druck zum Gegenschlag.
+  (3) PERFORMANCE - ueber allem ein GEMESSENER harter Deckel "laeuft gut";
+      was die Oekonomien mehr erlauben, kommt als Nachschub-Wellen, nicht als
+      600 gleichzeitig auf dem Schirm.
+- NAECHSTER SCHRITT: Stress-Messung auf 'schlacht' (echte Karte) - IST-Grenze
+  heute feststellen, DANN entscheiden, wie weit das Fundament sie hebt.
