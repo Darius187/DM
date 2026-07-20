@@ -401,3 +401,23 @@ OPTIK ist Platzhalter (Altar = Untoten-Koerper, Wall = Mauerriss-Kacheln).
 Zu definieren (Autor + ggf. Codex/Blender): Bindealtar-Modell, Knochen-
 palisade, Fleisch/Blut-Bauten, Blutlager-Fass/Becken. ZWISCHENLOESUNG:
 Platzhalter bleiben, Mechanik ist fertig verdrahtet.
+
+## NACHTRAG (F5/F6/KI-Teil-2 - einige der obigen Fragen sind jetzt praktisch beantwortet)
+- R180.1 (Wellen-Groesse): gesetzt - Live-Welle gedeckelt auf 10, Sturm-Nachschub
+  gedeckelt auf 16 lebende Feinde (nie Hunderterhorden, dein R180-Wunsch). Alle
+  Zahlen in src/data/welt.ts FELDZUG, in einer Zeile aenderbar. FRAGE bleibt nur:
+  passt dir das Gefuehl der Deckel, oder groesser/kleiner?
+- R180.3 (Golem faellbar): ENTSCHIEDEN mit F6 - der Golem-Panzer bricht nur
+  GEBUNDEN (3+ Nahkaempfer/Held im Umkreis), allein prallt fast alles ab. KEIN
+  eigener Belagerungs-Trick noetig; wenn du einen willst (Palisade+Bogen), sag es.
+- R192 (Gegenstaende im Kommando-Fenster): weiterhin Zwischenloesung "erstmal
+  nicht" - Einheiten/Gegner/Gebaeude sind sauber (R193). Sag, ob Items rein sollen.
+- NEU offen (KI-Teil-2): Ich habe 16 der 24 Punkte des KI-Dokuments NICHT
+  uebernommen (Reservierungen, Force-Tracking, Detachment-Baum, Korridor/Sync/
+  Flanken/Frontabschnitte, Feind-Rueckzug mit Nachhut, freie Bau-KI, Kampf-
+  simulation) - alle mit Begruendung in docs/design/07-FEIND-KI.md TEIL 2. Die
+  meisten brauchen eine 200-Einheiten-RTS-Buehne, die wir bewusst nicht haben,
+  oder verstossen gegen die harten Regeln 5/6 (Kavallerie/Belagerung) bzw. gegen
+  R147b (Untote fliehen nicht). FRAGE: Willst du groessere Feldzug-Schlachten
+  (Rueckeroberung mit mehreren Gruppen)? Dann lege ich die zurueckgestellten
+  Punkte (Korridor, Sync, Flanken, Kampfsimulation) wieder vor.

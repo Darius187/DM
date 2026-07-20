@@ -1905,3 +1905,24 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   Haelfte ihrer Ruecklagen und drosselt die Produktion 150s auf 35%
   (Vitest, 2 neue Tests).
 - tsc + 414 Tests gruen, alle Werte in src/data (FELDZUG).
+
+## KI-Teil-2 - Autor-Doku (24 Punkte) gesichtet + Wegfindungs-Pass
+- Das zweite KI-Dokument ist Punkt fuer Punkt gegen unser Spiel geprueft.
+  Vollstaendige Entscheidungs-Tabelle in docs/design/07-FEIND-KI.md TEIL 2
+  (UEBERNOMMEN / SCHON DA / NICHT UEBERNOMMEN, jeweils mit Begruendung).
+- Umgesetzt (was auf unserer Karten-Buehne SPUERBAR ist):
+  - Die Spaeher SCHAETZEN jetzt (+-25%), statt die exakte Verteidigung zu
+    kennen - die KI ist nicht mehr allwissend.
+  - Wechselhuerde: beisst sich der Feind an einem zu stark verstaerkten Ziel
+    fest, gibt er es nach 3 Spaeh-Runden auf und plant neu.
+  - Der Haenger-Entklemmer wacht jetzt ueber die Feldzug-Wellen auf jeder Karte.
+- WEGFINDUNGS-PASS (dein Dauerthema "es hakt"): drei echte Ursachen gefunden
+  und behoben - (1) Marsch-Wege gab es bisher nur im RTS-Modus, ohne ihn
+  liefen Wellen per Luftlinie in die Baumwand; jetzt hat die Welt ein eigenes
+  Wegfeld. (2) Wellen spawnten mit den hinteren Reihen im Randbewuchs; der
+  Anker rueckt jetzt ins Karteninnere und jeder Platz wird auf freien UND
+  erreichbaren Boden geprueft. (3) Entklemmer ueberall aktiv.
+  Verifiziert: in der Stadt marschieren 10/10 sauber durch; auf Waldkarten
+  von 7 auf 3 Rand-Starter reduziert (die faengt der Entklemmer, sie kaempfen
+  normal weiter). Rest-Ursache in TODO notiert (kartenKanten-Verdrahtung).
+- tsc + 416 Tests gruen.
