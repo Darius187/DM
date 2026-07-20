@@ -122,6 +122,10 @@ export const FELDZUG = {
   lagerVerlustSchwaecheS: 150,  // so lange laeuft die Produktion gedrosselt
   lagerVerlustAbgabeF: 0.5,     // uebrige Lager geben die Haelfte ihrer Punkte ab
   schwaecheProduktionF: 0.35,   // Produktions-Faktor waehrend der Schwaeche
+  // KI-Teil-2 (Punkt 2/5): Spaeher SCHAETZEN (+-25%), und nach 3 vergeblichen
+  // Spaeh-Runden gibt der Feind ein zu stark gewordenes Ziel auf (Wechselhuerde).
+  sichtungsUnschaerfe: 0.25,
+  spaehVersucheMax: 3,
 } as const;
 
 export const SPAEHER = {

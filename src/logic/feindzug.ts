@@ -21,8 +21,9 @@ export interface FeindAngriff {
   nach: string;
   phase: 'spaeht' | 'kaempft';
   t: number;                 // Sekunden in der aktuellen Phase
-  sichtung: number;          // gemeldete Verteidigungs-Staerke (Spaeher)
+  sichtung: number;          // gemeldete Verteidigungs-Staerke (Spaeher-SCHAETZUNG)
   staerke: number;           // Kampfkraft der Welle (ab Phase 'kaempft')
+  versuche?: number;         // KI-Teil-2 D2: vergebliche Spaeh-Runden (Wechselhuerde)
 }
 
 export interface Feindzug {
@@ -50,6 +51,12 @@ export interface FeindzugCfg {
   // F6: Produktions-Faktor waehrend der Schwaeche nach Lagerverlust (0..1).
   // Fehlt er, gibt es keine Drosselung (alte Aufrufer unveraendert).
   schwaecheProduktionF?: number;
+  // KI-Teil-2 D1 (Punkt 2): die Spaeher SCHAETZEN nur - die Sichtung streut
+  // um +-diesen Anteil (0 = allwissend wie bisher).
+  sichtungsUnschaerfe?: number;
+  // KI-Teil-2 D2 (Punkt 5): nach so vielen vergeblichen Spaeh-Runden (Ziel
+  // zu teuer geworden) gibt der Feind das Ziel auf und plant neu.
+  spaehVersucheMax?: number;
 }
 
 export type FeindzugEreignis =
@@ -127,12 +134,21 @@ export function tickFeindzug(z: Feindzug, dt: number, cfg: FeindzugCfg): Feindzu
   a.t += dt;
   if (a.phase === 'spaeht') {
     if (a.t < cfg.spaehVorlaufS) return out;
-    // Die Spaeher melden JETZT - die Welle wird an der Sichtung bemessen.
-    a.sichtung = cfg.verteidigung(a.nach);
+    // Die Spaeher melden JETZT - eine SCHAETZUNG mit Unschaerfe (D1), keine
+    // Allwissenheit. Die Welle wird an der Schaetzung bemessen.
+    const streu = (cfg.rng() * 2 - 1) * (cfg.sichtungsUnschaerfe ?? 0);
+    a.sichtung = cfg.verteidigung(a.nach) * (1 + streu);
     const benoetigt = Math.max(cfg.welleMin, a.sichtung * cfg.staerkeFaktor);
     const lager = z.lager.find((l) => l.karte === a.von);
     if (!lager || lager.punkte < benoetigt) {
-      // Zu teuer geworden (Spieler hat verstaerkt): weiter sparen, neu spaehen.
+      // Zu teuer geworden (Spieler hat verstaerkt): weiter sparen, neu
+      // spaehen - aber nicht ewig festbeissen (D2, Wechselhuerde): nach
+      // spaehVersucheMax Runden wird das Ziel aufgegeben und neu geplant.
+      a.versuche = (a.versuche ?? 0) + 1;
+      if (cfg.spaehVersucheMax && a.versuche >= cfg.spaehVersucheMax) {
+        z.angriff = null;
+        return out;
+      }
       a.t = 0;
       return out;
     }

@@ -76,7 +76,7 @@ import { Gebaeude3DWelt, gebaeudeEinstellung } from '../gfx/gebaeude3dWelt';
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, FLYOVER, tileNameAt } from '../world/tiles';
 import { TILE } from '../gfx/fallbackArt';
-import { findePfad } from '../world/Wegfeld';
+import { findePfad, Wegfeld } from '../world/Wegfeld';
 import { angrenzendeWehrstruktur, benoetigteBreschenFelder, priorisierteBelagerungsziele, strukturBreiteInFeldern } from '../logic/belagerung';
 import { WASSER_FRAMES } from '../gfx/tileArt';
 import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64, drawSchlucht, drawKristall } from '../gfx/detailArt';
@@ -5995,6 +5995,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.schlacht = null;   // R147c: abgebrochene Schlacht wird nicht gewertet
     // R99d: Schlacht endet beim Kartenwechsel (Enemy-Refs gehoeren zur alten Karte)
     if (this.rtsBattle) { this.rtsBattle.destroy(); this.rtsBattle = null; if (this.rtsLeiste) { this.rtsLeiste.destroy(); this.rtsLeiste = null; this.entferneRtsLauscher(); this.setzeFreiKamera(false); } }
+    this.marschFelder.clear();   // Marschfelder gehoeren zur alten Karte
     for (const e of this.enemies) e.sprite?.destroy();
     this.enemies = [];
     for (const n of this.npcEnts) {
@@ -8017,6 +8018,41 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     return ziel;
   }
 
+  // KI-Teil-2 Wegfindungs-Pass: Marsch-Flussfelder OHNE RTS-Modus. Bisher gab
+  // es Felder zu beliebigen Zetteln (jagdZiel/Marsch) nur ueber rtsBattle -
+  // der existiert aber nur im RTS-Modus. Auf Waldkarten liefen Feldzug-Wellen
+  // deshalb per Luftlinie in die Baumwand und standen fest. Dieselbe R188-
+  // Mechanik (freie Bahn -> direkt, sonst gecachtes Flussfeld je 3er-Block).
+  private marschFelder = new Map<string, { feld: Wegfeld; t: number }>();
+
+  private marschBahnFrei(x0: number, y0: number, x1: number, y1: number): boolean {
+    const d = Math.hypot(x1 - x0, y1 - y0);
+    const schritte = Math.max(1, Math.ceil(d / (TILE / 2)));
+    for (let i = 1; i <= schritte; i++) {
+      const t = i / schritte;
+      if (this.solidFuerFeind(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)) return false;
+    }
+    return true;
+  }
+
+  override wegRichtungZiel(x: number, y: number, zielX: number, zielY: number): number | null {
+    if (!this.area) return null;
+    if (this.marschBahnFrei(x, y, zielX, zielY)) return Math.atan2(zielY - y, zielX - x);
+    const q = 3;
+    const ztx = Math.max(0, Math.min(this.area.w - 1, Math.floor(Math.floor(zielX / TILE) / q) * q + 1));
+    const zty = Math.max(0, Math.min(this.area.h - 1, Math.floor(Math.floor(zielY / TILE) / q) * q + 1));
+    const key = `${ztx},${zty}`;
+    let e = this.marschFelder.get(key);
+    const now = this.time.now;
+    if (!e || !e.feld.passt(this.area.w, this.area.h)) { e = { feld: new Wegfeld(this.area.w, this.area.h), t: -1e9 }; this.marschFelder.set(key, e); }
+    if (now - e.t > 300 || e.feld.zielTx !== ztx || e.feld.zielTy !== zty) {
+      e.t = now;
+      e.feld.berechne(ztx, zty, (tx, ty) => !this.solidFuerFeind(tx * TILE + TILE / 2, ty * TILE + TILE / 2));
+    }
+    const nb = e.feld.bestesNachbarfeld(Math.floor(x / TILE), Math.floor(y / TILE));
+    return nb ? Math.atan2(nb.ty * TILE + TILE / 2 - y, nb.tx * TILE + TILE / 2 - x) : null;
+  }
+
   private kampfHostCache = new WeakMap<Enemy, EnemyHost>();
   protected override enemyHost(e: Enemy): EnemyHost {
     // Ohne Verbuendete verhalten sich Feinde exakt wie bisher (schneller Pfad) -
@@ -8081,9 +8117,11 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         if (!z || !s.rtsBattle) return false;
         return s.rtsBattle.wegPunkt(e.team === 'spieler' ? 'spieler' : 'feind', x, y, { x: z.x, y: z.y }) === null;
       },
-      // R101e: Flussfeld-Richtung zu einem beliebigen Marsch-/Bresche-Ziel (ganze Karte).
+      // R101e: Flussfeld-Richtung zu einem beliebigen Marsch-/Bresche-Ziel (ganze
+      // Karte). KI-Teil-2: OHNE RTS-Modus greift das Szenen-Marschfeld als
+      // Fallback (sonst liefen Wellen per Luftlinie in die Baumwand).
       wegRichtungZiel: (x, y, zx, zy) => {
-        if (!s.rtsBattle) return null;
+        if (!s.rtsBattle) return s.wegRichtungZiel(x, y, zx, zy);
         const wp = s.rtsBattle.wegPunkt(e.team === 'spieler' ? 'spieler' : 'feind', x, y, { x: zx, y: zy });
         return wp ? Math.atan2(wp.y - y, wp.x - x) : null;
       },
@@ -8794,6 +8832,8 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       liveKarte: this.area.id,
       rng: () => Math.random(),
       schwaecheProduktionF: FELDZUG.schwaecheProduktionF,   // F6: Blutlager-Schwaeche
+      sichtungsUnschaerfe: FELDZUG.sichtungsUnschaerfe,     // KI-Teil-2: Spaeher schaetzen nur
+      spaehVersucheMax: FELDZUG.spaehVersucheMax,           // KI-Teil-2: Wechselhuerde
     });
     for (const ev of evs) this.feindzugEreignis(ev);
     // Live-Aufloesung: kaempft die Welle auf der HELD-Karte, entscheidet der
@@ -8838,21 +8878,58 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     const mitte = { x: this.area.w * TILE / 2, y: this.area.h * TILE / 2 };
     const richt = Math.atan2(mitte.y - start.y, mitte.x - start.x);
     const quer = richt + Math.PI / 2;
+    // Der Kanten-Punkt liegt nur ~3 Kacheln vor dem Rand - die hinteren
+    // Reihen wuerden RUECKWAERTS im Randbewuchs landen (Wegfindungs-Diagnose:
+    // Haenger bei x~90 am Westrand). Darum den Anker um die volle Reihen-
+    // tiefe ins Karteninnere vorschieben: alle Reihen stehen auf Spielflaeche.
+    const reihen = Math.ceil(anzahl / FELDZUG.reihenBreite);
+    start.x += Math.cos(richt) * reihen * 30;
+    start.y += Math.sin(richt) * reihen * 30;
+    // KI-Teil-2 Wegfindungs-Pass: an Waldkanten liegt der Formations-Platz
+    // oft IN Baeumen/Wasser - jeden Spawn auf den naechsten freien Boden
+    // ruecken, sonst stehen die Marschierer fest, bevor sie losgehen.
+    const freierBoden = (x: number, y: number): { x: number; y: number } => {
+      // Frei UND von dort erreichbar zur Kartenmitte - eine freie Kachel in
+      // einer abgeschlossenen Baum-Tasche am Rand hilft nichts (Diagnose:
+      // Haenger mit weg=0 trotz freiem Boden).
+      const taugt = (px2: number, py2: number): boolean =>
+        !this.solidFuerFeind(px2, py2)
+        && (this.marschBahnFrei(px2, py2, mitte.x, mitte.y) || this.wegRichtungZiel(px2, py2, mitte.x, mitte.y) !== null);
+      if (taugt(x, y)) return { x, y };
+      for (let ring = 1; ring <= 6; ring++) {
+        for (let s2 = 0; s2 < 16; s2++) {
+          const a2 = (s2 / 16) * Math.PI * 2;
+          const nx = x + Math.cos(a2) * ring * TILE, ny = y + Math.sin(a2) * ring * TILE;
+          if (nx < TILE || ny < TILE || nx > (this.area.w - 1) * TILE || ny > (this.area.h - 1) * TILE) continue;
+          if (taugt(nx, ny)) return { x: nx, y: ny };
+        }
+      }
+      // Notnagel: Richtung Kartenmitte vorruecken, bis Boden mit Anschluss kommt
+      for (let s3 = 1; s3 <= 24; s3++) {
+        const nx = x + Math.cos(richt) * s3 * TILE, ny = y + Math.sin(richt) * s3 * TILE;
+        if (taugt(nx, ny)) return { x: nx, y: ny };
+      }
+      return { x, y };
+    };
     for (let i = 0; i < anzahl; i++) {
       const reihe = Math.floor(i / FELDZUG.reihenBreite);
       const spalte = (i % FELDZUG.reihenBreite) - Math.floor(FELDZUG.reihenBreite / 2);
-      const sx = start.x + Math.cos(quer) * spalte * 34 - Math.cos(richt) * reihe * 30;
-      const sy = start.y + Math.sin(quer) * spalte * 34 - Math.sin(richt) * reihe * 30;
+      const p2 = freierBoden(
+        start.x + Math.cos(quer) * spalte * 34 - Math.cos(richt) * reihe * 30,
+        start.y + Math.sin(quer) * spalte * 34 - Math.sin(richt) * reihe * 30,
+      );
+      const sx = p2.x, sy = p2.y;
       const e = this.spawnEnemy(pick(this.rng, typen as unknown as EnemyTypeId[]) as never, EINFALL.tiefe, sx, sy, this.rng.random() < 0.15, true);
       e.feldzugTrupp = true;
       e.maxhp = Math.round(e.maxhp * FELDZUG.truppHpF);
       e.hp = e.maxhp;
       e.dmg = Math.round(e.dmg * FELDZUG.truppDmgF);
       e.aggro = 5000;
-      e.jagdZiel = {
-        x: mitte.x + Math.cos(quer) * spalte * FELDZUG.frontBreitePx,
-        y: mitte.y + Math.sin(quer) * spalte * FELDZUG.frontBreitePx,
-      };
+      // Auch das Front-Ziel muss auf freiem Boden liegen (Waldkarten!)
+      e.jagdZiel = freierBoden(
+        mitte.x + Math.cos(quer) * spalte * FELDZUG.frontBreitePx,
+        mitte.y + Math.sin(quer) * spalte * FELDZUG.frontBreitePx,
+      );
     }
     this.logMsg('Die Angriffswelle bricht über die Kante - halte die Stellung!', 'bad');
   }
@@ -10212,7 +10289,12 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   private einfallHaengT = 0;
   private einfallLetztePos = new WeakMap<Enemy, { x: number; y: number }>();
   private updateEinfallEntklemmer(dt: number): void {
-    if (!this.einfallAktiv && this.area.id !== 'stadt') return;
+    // KI-Teil-2 D3 (Punkt 21, Stuck-Detection): auch FELDZUG-Wellen auf
+    // beliebigen Karten werden entklemmt - haengt ein Marschierer fest,
+    // faellt er auf die normale Gegner-KI zurueck (lokal loesen statt Plan
+    // loeschen).
+    if (!this.einfallAktiv && this.area.id !== 'stadt'
+      && !this.enemies.some((e) => e.feldzugTrupp && e.hp > 0)) return;
     this.einfallHaengT -= dt;
     if (this.einfallHaengT > 0) return;
     this.einfallHaengT = 2;

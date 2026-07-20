@@ -109,3 +109,90 @@ Erst wenn F2/F3 stehen - fuer den Anfang reichen Cluster + Gebietslage.
 - F3:  Lagerbau nach fester Reihenfolge (A9).
 - F6:  Gruppen-Zustandsmaschine im Feld + Rueckzug + Zielwahl (A6/A7/A8),
        Einflusskarte (A11), spaeter Stufen/Scheinangriffe.
+
+---
+
+# TEIL 2 - Autor-Dokument "24 Punkte" (Nacht-Auftrag, gesichtet + entschieden)
+
+Grundlage: das zweite Autor-KI-Dokument (Reservierungen, Tracking, Plan-
+Bindung, Formationen, Budgets - 24 Punkte). Geprueft gegen die 12 harten
+Regeln (Dok 00), Dok 06 und den IST-Stand (F1-F6). Massstab: unser Feldzug
+ist ein KARTEN-Spiel (abstrakte Lager + eine Live-Welle beim Helden, Deckel
+10-16 Einheiten) - keine 200-Einheiten-RTS-Schlacht. Uebernommen wird, was
+auf dieser Groesse SPUERBAR ist.
+
+## D. UEBERNOMMEN (jetzt umgesetzt)
+
+### D1. Unsicherheitsbereich statt Exaktwert (Punkt 2)
+Die Spaeher meldeten bisher die EXAKTE Verteidigungsstaerke - allwissend,
+wirkt betruegerisch (vgl. A2). Jetzt: die Sichtung streut (+-25%,
+FELDZUG.sichtungsUnschaerfe), die Welle wird an der GESCHAETZTEN Staerke
+bemessen. Der staerkeFaktor 1.3 ist unsere "vorsichtige KI" (rechnet nach
+oben) - genau der Geist von getRiskAdjustedEnemyPower.
+
+### D2. Plan-Bindung + Wechselhuerde (Punkt 5)
+Unser Feindzug hatte das Gegenteil des Zappel-Problems: er konnte sich an
+einem Ziel FESTBEISSEN (verstaerkt der Spieler das Ziel, spaeht das Lager
+endlos neu). Jetzt: nach 3 vergeblichen Spaeh-Runden (zu teuer geworden)
+gibt der Feind das Ziel AUF (FELDZUG.spaehVersucheMax) und plant neu -
+ein anderes Lager/Ziel kann dran sein. Ein LAUFENDER Angriff (kaempft)
+bleibt gebunden - keine Sekundentakt-Wechsel (das war schon so).
+
+### D3. Stuck-Detection fuer Wellen (Punkt 21)
+R166-Entklemmer gab es nur fuer Einfall/stadt. Jetzt wacht er auch ueber
+FELDZUG-Wellen auf jeder Karte: kommt eine Einheit mit Marschziel 2s lang
+keine 10px voran, faellt sie auf die normale Gegner-KI zurueck (Reaktion 1
+der Autor-Liste: lokal neu loesen statt den Plan zu loeschen). Punkt vom
+Autor doppelt eingefordert ("Kollision und Wegfindung... beachte das immer").
+
+### D4. Zielbudgets/Overkill + Angriffsplaetze (Punkt 15)
+Angriffsplaetze um JEDES Ziel sind mit F6 gebaut (Slots beidseitig, je Ziel
+gruppiert, 12 Plaetze) - genau die EngagementSlots des Dokuments. Kein-
+Overkill fuer Fernkampf steht bereits in A8.
+
+## E. SCHON VORHANDEN (kein Neubau - Doppelstrukturen vermeiden)
+
+- Punkt 8 (weiche Slots statt starrem Rechteck): Formations-Slots + Abstands-
+  regler (RTS 1.8/1.9) + Slot-Ring im Nahkampf (F6) sind unsere weichen
+  Zielbereiche. Marsch-Formationen wechseln nicht die Form je Korridor -
+  bei Wellen-Groesse 10 kein spuerbarer Gewinn.
+- Punkt 22/23 (Rechenbudget, ereignis+periodisch): R188 hat genau das
+  etabliert (Wachwerden-Drossel, Slot-Takt 0.3s, Bindungs-Takt 0.5s,
+  Flussfeld-Cache). Ein eigenes Job-Queue-Framework waere Overkill.
+- Punkt 11 (Bereitschaft): A5 deckt das in einfacher Form (Schwellen +
+  Timeouts); die Welle spawnt erst, wenn die Punkte reichen.
+- Punkt 19 (Constraints vor Utility): unser zielVon() prueft harte Regeln
+  (unantastbar, frei, Nachbarschaft) VOR der Bewertung - Prinzip erfuellt.
+
+## F. NICHT UEBERNOMMEN (und warum)
+
+- Punkt 1 (Reservierungs-Struktur mit Besitzern): unsere Feind-Seite hat
+  EINEN Plan zur Zeit (V1) und keine konkurrierenden Planer - Reservierungen
+  loesen ein Problem, das es bei uns (noch) nicht gibt. WIEDERVORLAGE, falls
+  mehrere gleichzeitige Angriffe kommen.
+- Punkt 3/4 (TrackedEnemyForce, Sammlungs-Score): der Spieler hat EINE
+  Armee-Seite mit Garnisonen je Karte; der Feind sieht sie ueber die
+  Spaeher-Sichtung je Karte. Cluster-Verfolgung ueber Frames braucht die
+  200-Einheiten-Buehne, die wir bewusst nicht haben (welleMax).
+- Punkt 6/7 (Anforderungsprofile, Detachment-Baum): unsere Wellen sind
+  3-10 Mann aus 3 Typen - Rollen-Zusammenstellung nach Faehigkeiten waere
+  Theater ohne Buehne. Die CAVALRY/SIEGE-Begriffe des Dokuments verstossen
+  zudem gegen die harten Regeln 5/6 (keine Kavallerie-Gattung, kein
+  schweres Geraet - der GOLEM ist unser lebender Rammbock).
+- Punkt 9/12/13/14 (Korridorbreite, Zeitfenster-Sync, Flanken-Utility,
+  Frontabschnitte): Mehr-Gruppen-Operationen - unsere Welle ist EINE
+  Gruppe mit breiter Front (F6). WIEDERVORLAGE fuer den grossen Feldzug
+  (Rueckeroberungs-Schlachten), falls der Autor groessere Schlachten will.
+- Punkt 10 (Sammel-Flaechen): Wellen spawnen an der Kante in Formation -
+  es gibt keine Sammel-Phase auf der Live-Karte.
+- Punkt 16 (Rueckzugsplan mit Nachhut fuer den FEIND): kollidiert mit
+  R147b (Autor-Order: Monster kennen keine Moral-Flucht - sie sind
+  willenlose Untote, Dok 06). Der abstrakte Angriff bricht ab
+  (zurueckgeschlagen), aber lebende Monster fliehen nicht.
+- Punkt 17/18 (Basisbau-Strassennetz, Verteidigungs-Korridore): kollidiert
+  mit A9/F3 (Autor-Entscheid: Feindlager baut nach FESTER Reihenfolge an
+  festen Ankern, keine freie Bau-KI).
+- Punkt 20 (Kurz-Kampfsimulation): unsere abstrakte Aufloesung (Welle vs.
+  Garnisonskraft) IST die einfache Simulation; eine 12s-Iteration braucht
+  Werte (DPS je Rolle, Moralmodell beidseitig), die es beim Feind bewusst
+  nicht gibt. WIEDERVORLAGE mit groesseren Schlachten.

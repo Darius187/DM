@@ -103,6 +103,39 @@ describe('feindzug', () => {
     expect(z.schwaecheT).toBe(0);
   });
 
+  // KI-Teil-2 D1 (Punkt 2): die Spaeher melden eine SCHAETZUNG, keinen
+  // Exaktwert - die Welle wird an der gestreuten Sichtung bemessen.
+  it('bemisst die Welle an der UNSCHARFEN Sichtung (Spaeher schaetzen)', () => {
+    const z = neuerFeindzug(['lager']);
+    // rng()=1 -> obere Schaetzung: 100 * (1 + 0.25) = 125 -> Welle 125*1.3
+    const c = cfg({ verteidigung: (id) => (id === 'wald' ? 100 : 0), sichtungsUnschaerfe: 0.25, rng: () => 1 });
+    tickFeindzug(z, 300, c);            // sparen + Spaeher los (Ziel per rng()=1 egal, nur wald frei)
+    const evs = tickFeindzug(z, 11, c); // Spaeh-Vorlauf um
+    expect(evs).toEqual([{ typ: 'angriff', von: 'lager', nach: 'wald', staerke: Math.round(125 * 1.3) }]);
+  });
+
+  // KI-Teil-2 D2 (Punkt 5): Wechselhuerde statt Festbeissen - nach
+  // spaehVersucheMax vergeblichen Spaeh-Runden wird das Ziel aufgegeben.
+  it('gibt ein zu stark verteidigtes Ziel nach 3 Spaeh-Runden auf', () => {
+    const z = neuerFeindzug(['lager']);
+    const c = cfg({ verteidigung: (id) => (id === 'wald' ? 9999 : 0), spaehVersucheMax: 3 });
+    tickFeindzug(z, 41, c);             // Spaeher los (grobe Schaetzung war noch bezahlbar? nein -
+    // zielVon prueft nur FREI, die Planung prueft die GROBE Schaetzung: 9999*1.3 -
+    // zu teuer, es startet gar kein Angriff. Also: Verteidigung waechst NACH dem Start.
+    expect(z.angriff).toBeNull();
+    const c2 = cfg({ verteidigung: () => 0 });
+    tickFeindzug(z, 1, c2);             // jetzt startet der Spaeher (billiges Ziel)
+    expect(z.angriff?.phase).toBe('spaeht');
+    // Spieler verstaerkt massiv: jede Spaeh-Runde scheitert an den Kosten
+    const c3 = cfg({ verteidigung: () => 9999, spaehVersucheMax: 3 });
+    tickFeindzug(z, 11, c3);
+    expect(z.angriff?.phase).toBe('spaeht');   // Versuch 1: weiter sparen
+    tickFeindzug(z, 11, c3);                   // Versuch 2
+    expect(z.angriff).not.toBeNull();
+    tickFeindzug(z, 11, c3);                   // Versuch 3 -> Ziel aufgeben
+    expect(z.angriff).toBeNull();
+  });
+
   it('alte Staende ohne Schwaeche-Feld laufen unveraendert (Default 0)', () => {
     const z = neuerFeindzug(['lager']);
     delete z.schwaecheT;   // wie ein alter Spielstand

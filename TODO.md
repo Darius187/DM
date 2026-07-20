@@ -150,3 +150,4 @@
   mit Codex/Blender. Kirche zuerst verschoenern (aktuell alter R18-Raum).
 - R179-Folgearbeit: der reitende Bote als SICHTBARE Figur (Codex-Pferd-Sprite)
   auf der Karte, wenn der Held ihm begegnet; Abfang-Szene statt Wuerfelwurf.
+- Wegfindung Waldkarten: Feldzug-Wellen spawnen an der geometrischen Kante, nicht am STRASSEN-Uebergang - in dichtem Randbewuchs starten ~3/10 in abgeschlossenen Taschen (Entklemmer faengt sie, aber schoen ist anders). Saubere Loesung: kartenKanten.ts in areagen verdrahten und kantenPunkt auf den Weg-Uebergang legen (WELTKARTE-PLAN-Altpunkt).
