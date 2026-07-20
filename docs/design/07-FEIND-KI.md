@@ -372,3 +372,21 @@ Unterschied - das bestimmt den Bauaufwand.)
       600 gleichzeitig auf dem Schirm.
 - NAECHSTER SCHRITT: Stress-Messung auf 'schlacht' (echte Karte) - IST-Grenze
   heute feststellen, DANN entscheiden, wie weit das Fundament sie hebt.
+
+## V2c - STRESS-MESSUNG IST-GRENZE (schlacht, echte Baeume/Kollision/KI)
+Gemessen: reine w.update()-LOGIK je Frame (OHNE WebGL-Zeichnen), headless.
+  100 Einheiten: Median 11.6 ms (~86 fps), p95 22, max 27
+  300 Einheiten: Median  9.9 ms (~101 fps), p95 19, max 68 (GC-Spike)
+  600 Einheiten: Median  8.4 ms (~119 fps), p95 14, max 19
+BEFUND (wichtig, korrigiert frueheren Pessimismus): die Logik EXPLODIERT NICHT
+mit der Zahl. Auf einer OFFENEN Karte ist Bewegung billig (Freie-Bahn-Abkuerzung
+greift fast immer - kein Flussfeld noetig), darum bleibt 600 ~gleich/besser als
+100 (bei 600 verklumpen viele sofort und stehen = noch weniger Pfad-Arbeit).
+Der frueher genannte "~60-Deckel" galt fuer die STADT (enge Karte, alle jagen
+den Helden = teures Pathing) - NICHT fuer eine designte offene Schlachtkarte.
+NOCH NICHT gemessen (die echten Risiken): (1) das WebGL-ZEICHNEN von 600 Sprites
++ Lebensbalken + Nebel + Baeumen (laeuft AUSSERHALB update(), separater Render-
+Schritt) - der wahrscheinliche echte Flaschenhals; (2) GC-Spikes (in den max-
+Werten sichtbar); (3) echte Zielhardware (headless != Autor-PC).
+NAECHSTE MESSUNG: volle Frame inkl. Rendering bei 300/600, dann steht die
+ehrliche fps-Zahl "laeuft nachweislich gut".
