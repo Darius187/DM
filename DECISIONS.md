@@ -2685,3 +2685,16 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   'arbeiter'. Browser-verifiziert: Stufe1 -> 3 Arbeiter (dmg0/passiv/hp40),
   Vollausbau -> 0, Altarsturz 3->0, 0 Fehler. Die V1-Grossvision (region-weite
   Isengard-Industrialisierung) bleibt separat (TEIL 4, vom Autor zu bestaetigen).
+
+- Glatte Kanten = STANDARD (Autor "sieht gut aus, immer an"): glatteKanten
+  Default true (main.ts liest !== false, SettingsScene ?? true). pixelArt AUS
+  ist jetzt die Voreinstellung; wer die harte Pixel-Optik will, schaltet aus.
+- Schrift-Schaerfe (Autor "die Schrift wirkt unscharf"): der lineare Filter
+  weichzeichnet Text in 1x-Aufloesung. Fix: globaler Text-Factory-Patch in
+  main.ts setzt fuer JEDEN neuen Text eine Standard-Aufloesung von 2-3x
+  (devicePixelRatio+1, gedeckelt 3) - Glyphen ueberabgetastet = scharf.
+  Explizite style.resolution / setResolution() ueberschreiben weiter. Verifiziert:
+  pixelArt false, Default-Text-Resolution 2, explizite bleibt 1, 0 Fehler.
+  OFFEN (Autor-Frage "Aufloesung generell erhoehen"): eine echte Supersampling-
+  Render-Skala (SSAA) fuer die WELT-Sprites unter Kamera-Zoom ist eine groessere,
+  scale-sensible Aenderung (RESIZE-Layout) - separat + auf echtem Geraet zu machen.

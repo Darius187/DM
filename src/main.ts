@@ -34,7 +34,24 @@ import { getSettings } from './logic/settings';
 // Experiment (Autor): "Glatte Kanten" schaltet pixelArt AUS -> lineare Filterung
 // (weichere Blender-Sprites). Wird beim Boot gelesen; Umschalten braucht Neustart,
 // weil Phaser den Textur-Filter bei der Spiel-Erzeugung festlegt.
-const glatteKanten = getSettings().glatteKanten === true;
+// "Glatte Kanten" ist jetzt STANDARD (Autor R-heute: "sieht gut aus"): pixelArt
+// AUS -> lineare Filterung. Nur wer es ausdruecklich abschaltet (=== false) bekommt
+// wieder die harte Pixel-Optik.
+const glatteKanten = getSettings().glatteKanten !== false;
+
+// Schrift-Schaerfe (Autor "die Schrift wirkt unscharf"): der lineare Filter der
+// glatten Kanten weichzeichnet Text, der nur in 1x-Aufloesung vorliegt. Darum
+// bekommt JEDER Text ab jetzt eine hoehere Standard-Aufloesung (2-3x je nach
+// Bildschirm) - die Glyphen werden ueberabgetastet gerendert und bleiben scharf.
+// Einzelne setResolution()-Aufrufe (z. B. HUD) ueberschreiben das weiterhin.
+const TEXT_RES = Math.min(3, Math.max(2, Math.round(window.devicePixelRatio || 1) + 1));
+const origText = Phaser.GameObjects.GameObjectFactory.prototype.text;
+Phaser.GameObjects.GameObjectFactory.prototype.text = function (x, y, text, style) {
+  const t = origText.call(this, x, y, text, style);
+  if (!style || (style as { resolution?: number }).resolution == null) t.setResolution(TEXT_RES);
+  return t;
+};
+
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',

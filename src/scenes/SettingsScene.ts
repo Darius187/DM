@@ -121,7 +121,7 @@ export class SettingsScene extends Phaser.Scene {
         { art: 'regler', label: 'Leuchten / Bloom', icon: '✨', min: 0, max: 100, get: () => s.bloom, set: (v) => this.grafikSet(() => { s.bloom = v; }) },
         { art: 'regler', label: 'Farb-Grading (Stimmung)', icon: '🎨', min: 0, max: 100, get: () => s.grading ?? 0, set: (v) => this.grafikSet(() => { s.grading = v; }) },
         { art: 'schalter', label: 'Rand-Vignette (dunkle Ränder)', get: () => s.licht.vignetteAn ?? false, tun: () => this.grafikSet(() => { s.licht.vignetteAn = !(s.licht.vignetteAn ?? false); }) },
-        { art: 'schalter', label: 'Glatte Kanten (Blender-Look, Neustart nötig)', get: () => s.glatteKanten ?? false, tun: () => this.grafikSet(() => { s.glatteKanten = !(s.glatteKanten ?? false); }) },
+        { art: 'schalter', label: 'Glatte Kanten (Standard AN, Neustart nötig)', get: () => s.glatteKanten ?? true, tun: () => this.grafikSet(() => { s.glatteKanten = !(s.glatteKanten ?? true); }) },
         { art: 'schalter', label: 'Bump-Licht / Light2D (Props plastisch, Neustart nötig)', get: () => s.light2d ?? false, tun: () => this.grafikSet(() => { s.light2d = !(s.light2d ?? false); }) },
         { art: 'regler', label: 'Schatten / Licht Außenwelt', icon: '🌗', min: 0, max: 100, get: () => s.schatten, set: (v) => this.grafikSet(() => { s.schatten = v; }) },
         { art: 'schalter', label: 'Dungeon: echte Wandschatten (Raycaster)', get: () => s.licht.dungeonNeu, tun: () => this.grafikSet(() => { s.licht.dungeonNeu = !s.licht.dungeonNeu; }) },
