@@ -19,6 +19,10 @@ import {
 // Greifzone (Welt-Pixel) fuer das Groesse-Ziehen.
 const DORF_GRIFF = 18;        // sichtbares Quadrat
 const DORF_GRIFF_ZONE = 30;   // fassbarer Radius um die untere-rechte Ecke
+// Held ueber ALLE Licht-Overlays (lightRT 4000, renderStimmung-Warm 4004..4010,
+// SchattenManager ~3990..3994), aber UNTER Nebel (4100)/UI: so scheint das Licht
+// in der Ebene HINTER dem Helden (Schalter heldLichtHinten, Autorwunsch).
+const HELD_UEBER_LICHT_TIEFE = 4050;
 import { INNENRAEUME } from '../data/innenraeume';
 import { PROLOG_AKTIV } from '../systems/prologFluss';
 import { BloodFlow } from '../systems/BloodFlow';
@@ -8192,6 +8196,15 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     // dahinter, Suedmauer/Tor davor. Die hohe Tiefe betrifft nur die
     // Hauptkamera, da der Held in der getrennten UI-Kamera ignoriert wird.
     if (this.area?.id === 'burg') return BURG_FIGUR_TIEFE + this.py;
+    // Autor "das Licht soll in der EBENE HINTER dem Helden scheinen (wie eine
+    // Photoshop-Ebene), damit man den Lichtkegel nicht ueber den Helden strahlen
+    // sieht": alle Licht-Overlays liegen bei Tiefe ~3990..4010. Wenn der Schalter
+    // an ist, hebt der Held sich UEBER diese Overlays (aber unter Nebel 4100/UI)
+    // -> das Licht leuchtet den Boden hinter/um ihn, die Figur selbst bleibt klar.
+    // Nur in DUNKLEN Ebenen (Dungeon/Nacht-Innen): dort ist der Lichtkegel ueber
+    // dem Helden das Problem. Draussen bleibt die normale Tiefe (Baum-/Wand-
+    // Verdeckung) erhalten, sonst stuende der Held vor jedem Vordergrund-Baum.
+    if (this.area?.dark && getSettings().licht.heldLichtHinten) return HELD_UEBER_LICHT_TIEFE;
     return this.py + this.playerSprite.displayHeight * (1 - this.playerSprite.originY);
   }
   protected override gegnerTiefe(spr: Phaser.GameObjects.Sprite, grundY: number): number {
@@ -9882,7 +9895,12 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     // sichtbare Lichtquelle": die Held-Lichtfarbe ist jetzt NEUTRAL (soft-warmweiss ..
     // weiss) statt tiefrot..warm. So faerbt das Held-Licht die Figur nicht mehr ein;
     // der Regler steuert nur noch die Wärme (dezent), nicht einen roten Punkt.
-    const heldFarbe = mischFarbe(0xf0e6d6, 0xffffff, (lic.heldFarbe ?? 45) / 100);
+    // Autor "die Held-Lichtfarbe laesst sich nicht mehr aendern, der Regler hat
+    // keinen Effekt": vorher mischte er zwischen zwei fast weissen Toenen (0xf0e6d6
+    // .. weiss) - unsichtbar. Jetzt echte Spanne warm-bernstein .. kuehl-weiss, der
+    // Regler faerbt das Licht wieder sichtbar (mit Licht-hinten faellt die Farbe
+    // auf den Boden HINTER dem Helden, nicht als Punkt auf die Figur).
+    const heldFarbe = mischFarbe(0xff9636, 0xf2f6ff, (lic.heldFarbe ?? 45) / 100);
     // Raumlicht-Parameter (heller/weißer Raum, getrennt von der warmen Flamme).
     const raumLicht = (lic.fackelRaumLicht ?? 50) / 100, raumFarbe = (lic.fackelRaumFarbe ?? 60) / 100, glutRadius = (lic.fackelGlutRadius ?? 45) / 100;
     // Schatten-Aufhellung: NAHE Lichter (am Helden) vs FERNE - getrennt regelbar (stärkerer Effekt R57).
