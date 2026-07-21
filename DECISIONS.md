@@ -2661,3 +2661,15 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   A5-Schwellen: 'Angriff >=1.3' ist der bestehende staerkeFaktor; die weiteren
   Aktionstypen (Abfangen/Befestigung/Ueberfall) fehlen im Karten-Feldzug noch -
   zurueckgestellt, bis es diese Aktionen gibt (gehoert zu F6/groesseren Schlachten).
+
+- F3 Wehrtuerme am Feindlager (07-FEIND-KI A9 "Tuerme/Tor Richtung Feind",
+  Punkt 18): ab Ausbaustufe 2 (voller Ring, FELDZUG.turmAbStufe) steht an jedem
+  Tor ein KNOCHENTURM - EINE Einheit, die Turm+Schuetze buendelt: stationaer
+  (speed 0), zaeh (turmHp 260, zerstoerbar), Fernkampf mit grosser Reichweite
+  (turmReichF 1.8, nutzt den bestehenden R100c-Turm-Mechanismus) und haerterem
+  Schaden (turmDmgF). Steht am Tor-Winkel knapp AUSSERHALB des Walls und deckt
+  den Zugangs-Korridor, den der Held nehmen muss (M2-Verteidigungslinie). Optik
+  ist PLATZHALTER (schuetze-Koerper), wie Altar/Wall - Turm-Asset definiert der
+  Autor. lagerRolle 'turm' (bewegt sich nicht, updateFeindlagerWachen ignoriert
+  es). Browser-verifiziert: Stufe-2-Lager 'lager' -> 2 Tuerme (halbmond, 2 Tore),
+  speed 0/ranged/turmReichF 1.8/hp 260, 0 Fehler.

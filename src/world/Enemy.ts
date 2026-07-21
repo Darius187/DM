@@ -279,7 +279,7 @@ export class Enemy {
   // M2: Rolle in der Feindlager-Garnison. 'tor' = besetzt eine Tor-Oeffnung und
   // faengt den Helden ab (patrouilliert), 'kern' = Ring am Altar (bunkert, letzte
   // Linie). lagerPost = der Tor-Posten, zu dem ein Tor-Waechter zurueckkehrt.
-  lagerRolle: 'tor' | 'kern' | null = null;
+  lagerRolle: 'tor' | 'kern' | 'turm' | null = null;
   lagerPost: { x: number; y: number } | null = null;
   turmReichF = 1;                    // R100c: Reichweiten-Faktor auf dem Turm (Fernkampf massiv)
   magie = false;

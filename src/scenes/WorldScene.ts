@@ -9287,6 +9287,26 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       rueste(e);
       e.lagerRolle = 'kern';
     }
+    // F3 (A9 "Tuerme/Tor Richtung Feind", Punkt 18): im Vollausbau bekommt jedes
+    // Tor einen WEHRTURM - ein stationaerer, zaeher Fernkampf-Posten mit weiter
+    // Reichweite, der den Zugangs-Korridor deckt (zerstoerbar). Placeholder-Optik.
+    if (stufe >= FELDZUG.turmAbStufe) {
+      for (const wk of tore) {
+        const tx = (ax + Math.cos(wk) * (rTile + 1.1)) * TILE + 16;
+        const ty = (ay + Math.sin(wk) * (rTile + 1.1) * 0.7) * TILE + 16;
+        const turm = this.spawnEnemy('schuetze', EINFALL.tiefe, tx, ty, false, true);
+        turm.name = 'Knochenturm';
+        turm.champion = true;
+        turm.maxhp = FELDZUG.turmHp; turm.hp = FELDZUG.turmHp;
+        turm.speed = 0;                        // steht auf dem Turm - unbeweglich
+        turm.ranged = true;
+        turm.turmReichF = FELDZUG.turmReichF;  // deckt den Korridor weit
+        turm.dmg = Math.round(turm.dmg * FELDZUG.turmDmgF);
+        turm.aggro = 5000;
+        turm.passiv = false;
+        turm.lagerRolle = 'turm';
+      }
+    }
     // M1-Netz: nach dem Wall garantieren, dass der Altar begehbar bleibt.
     this.sichereLagerRoute(a, ax, ay, tore);
     this.wegfeldNeu();

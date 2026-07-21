@@ -107,6 +107,14 @@ export const FELDZUG = {
   wallRadiusKacheln: 6,  // Knochenwall-Ring um den Altar
   ausbauStufenS: [90, 300] as ReadonlyArray<number>,   // besetzt seit -> Stufe 1 (halber Ring) / 2 (voller Ring)
   waechterJeStufe: [3, 5, 7] as ReadonlyArray<number>, // zaehe Waechter je Ausbaustufe
+  // F3 (07-FEIND-KI A9 "Tuerme/Tor Richtung Feind", Punkt 18): im Vollausbau
+  // steht an jedem Tor ein WEHRTURM - ein stationaerer, zaeher Fernkampf-Posten
+  // mit grosser Reichweite, der den Zugangs-Korridor deckt (zerstoerbar mit HP).
+  // Optik ist PLATZHALTER (wie Altar/Wall) - das Turm-Asset definiert der Autor.
+  turmAbStufe: 2,        // Wehrtuerme erst im Vollausbau (voller Ring)
+  turmHp: 260,           // Lebenspunkte eines Knochenturms (zerstoerbar)
+  turmReichF: 1.8,       // Reichweiten-Faktor des Turm-Schuetzen (deckt den Korridor weit)
+  turmDmgF: 1.4,         // Hoehenvorteil - der Turm-Schuetze trifft haerter
   // M2 (Autor "nicht alle im Ring gebunkert - das Lager ist eine Verteidigungs-
   // LINIE, keine Kaefig"): ein Teil der Besatzung besetzt die TORE und faengt den
   // Helden ab, statt am Altar zu stehen. Rest bleibt Kern-Ring (letzte Linie).
