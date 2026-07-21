@@ -4187,8 +4187,12 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       feld(i, 0, '⌂', kat.name, { taste: kat.taste, tip: `${kat.name}: ${inhalt}` }, () => { this.rtsBauKat = kat.id; });
     });
     feld(0, 1, '⚑', 'Aushebung', { tip: `Dorf: ${this.bevoelkerung} Arbeiter · Heer ${this.armee.einheiten.length}/${heerObergrenze(this.bevoelkerung)}` }, () => { this.rtsBauKat = 'aushebung'; });
-    // R191 (Autor): der RUECKZUG ist ein sichtbarer Menuepunkt.
-    feld(0, 2, '🏳', 'Rückzug', { tip: 'Alle Einheiten dieser Karte weichen zur freien Nachbarkarte Richtung Zuflucht aus; Bewohner suchen Schutz' }, () => this.befehleRueckzug());
+    // R191 (Autor): der RUECKZUG ist ein sichtbarer Menuepunkt. Autor-Nachtrag:
+    // ein laufender Rueckzug muss ABBRECHBAR sein - der Knopf schaltet um.
+    if (this.rueckzugLaeuft())
+      feld(0, 2, '↩', 'Rückzug abbrechen', { an: true, tip: 'Der Ausweich-Marsch wird gestoppt; die Truppen beziehen wieder Stellung auf dieser Karte' }, () => this.befehleRueckzugAbbrechen());
+    else
+      feld(0, 2, '🏳', 'Rückzug', { tip: 'Alle Einheiten dieser Karte weichen zur freien Nachbarkarte Richtung Zuflucht aus; Bewohner suchen Schutz' }, () => this.befehleRueckzug());
     feld(1, 1, '⚑', this.devFreiKam ? 'Steuerung: Truppen' : 'Steuerung: Held', { an: this.devFreiKam, tip: 'Frei-Kamera + Truppenbefehle vs. Helden-Steuerung (WASD)' }, () => this.setzeFreiKamera(!this.devFreiKam));
       feld(2, 1, '⚒', 'Dev/Test', { tip: 'Test-Werkzeuge: Einheiten/Monster setzen, Grafen-Ruf' }, () => { this.rtsDevOffen = true; });
     feld(3, 1, '✕', 'Schließen', { tip: 'Zurück zur Helden-Steuerung' }, () => this.toggleRtsModus());
@@ -4778,6 +4782,31 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     }
     this.logMsg(n > 0 ? `Rückzug! ${n} Mann weichen nach ${this.kartenName(ziel)} aus.` : 'Rückzug befohlen - keine Truppen auf dieser Karte.', n > 0 ? 'bad' : '');
     this.chronik('kampf', `Rückzug von ${this.kartenName(this.area.id)} nach ${this.kartenName(ziel)} befohlen.`);
+  }
+
+  // Laeuft gerade ein Ausweich-Marsch VON dieser Karte weg? (Truppen noch hier,
+  // beiKarte 0). Dann laesst sich der Rueckzug abbrechen.
+  private rueckzugLaeuft(): boolean {
+    return this.rueckzugPanikT > 0 || this.armee.maersche.some((m) => m.beiKarte === 0 && m.route[0] === this.area.id);
+  }
+
+  // Rueckzug abbrechen (Autorwunsch): die Ausweich-Maersche dieser Karte
+  // aufloesen und die Garnison frisch aufstellen - die Truppen bleiben also hier
+  // und beziehen wieder Stellung, statt zur Kante abzuwandern.
+  private befehleRueckzugAbbrechen(): void {
+    const weg = this.armee.maersche.filter((m) => m.beiKarte === 0 && m.route[0] === this.area.id);
+    if (!weg.length && this.rueckzugPanikT <= 0) { this.logMsg('Kein laufender Rückzug.', ''); return; }
+    this.armee.maersche = this.armee.maersche.filter((m) => !weg.includes(m));
+    // sichtbare eigene Einheiten entfernen und die Garnison neu aufstellen
+    for (const e of this.enemies) if (e.team === 'spieler') e.sprite?.destroy();
+    this.enemies = this.enemies.filter((e) => e.team !== 'spieler');
+    this.rueckzugPanikT = 0;
+    this.spawneGarnison(this.area);
+    const n = garnisonVon(this.armee, this.area.id).length;
+    this.logMsg(`Rückzug abgebrochen - ${n} Mann beziehen wieder Stellung.`, 'gold');
+    this.chronik('kampf', `Rückzug von ${this.kartenName(this.area.id)} abgebrochen.`);
+    this.panels?.refresh?.();
+    this.baueRtsLeiste();
   }
 
   private baueBauAb(f: (typeof this.feldbauten)[number]): void {
