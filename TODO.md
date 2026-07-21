@@ -216,3 +216,26 @@ Ausbau/Sicherung der Stadt.
 - [ ] Gemeindehaus als Gebaeude platzieren (Autor will es selbst hinstellen);
       Innen-Def gemeindehaus existiert bereits, wird analog zum Wirtshaus
       verdrahtet, sobald das Gebaeude steht.
+
+## PERF-BEFUND Ravensmoor-Ruckeln / 5 FPS Grafen-Einberufung (#107, Messung)
+Headless-Messung (Stadt, ms/Frame ueber 60 Schritte):
+- leer (0 Einheiten): ~600 ms/Frame  |  +80 Einheiten: ~595 ms/Frame
+=> Die Einheiten kosten praktisch NICHTS extra. Die per-Frame-Kosten sind FIX.
+Analyse der CPU-Seite (alles schon optimiert):
+- Trennung/Separation: Spatial-Grid O(n) (R188). Kein O(n^2).
+- Wegfindung: pro Einheit gedrosselt (nur alle ~0,7-1,2 s neu), NICHT per Frame.
+- 3D-Gebaeude (gebaeude3dWelt): rendern NUR bei Tuer-Animation/dirty, nicht per Frame.
+- applyFigure: nur setTexture bei Aenderung.
+SCHLUSS: Der Ruckler ist NICHT die Einheiten-KI. Die ~600 ms sind der SOFTWARE-
+WebGL-Renderer im Headless (PostFX/Bloom/Grading/Shader ueber 1280x720) - auf der
+RTX 4070 des Autors ist das ein Bruchteil. Ein VERLAESSLICHER Profil des echten
+5-FPS-Effekts geht nur AUF DEM GERAET des Autors.
+NAECHSTER SCHRITT (Autor, RTX 4070): Chrome DevTools > Performance > Aufnahme
+WAEHREND der Grafen-Einberufung (5-8 s), dann schicken:
+- ist es ein SPITZEN-Hitch beim Spawn (viele Sprites/Text auf einmal) oder ein
+  DAUERHAFTER Einbruch, solange das Heer gross ist?
+- welcher Balken dominiert (Scripting = CPU/JS, oder Rendering/GPU = PostFX)?
+Verdacht (zu pruefen mit dem Profil): (a) Spawn-Spike durch viele Sprite/Text-
+Objekte auf einen Schlag -> gestaffelt spawnen; (b) Live-Karten-/HUD-Neuaufbau
+mit vielen Markern; (c) PostFX-Kette (Bloom) zu teuer bei vielen additiven
+Lichtern -> Bloom im Einfall drosseln. Ohne Geraeteprofil aber nicht auf Verdacht.
