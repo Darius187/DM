@@ -2531,3 +2531,10 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Kerne mit einem Eckzinnenblock, nicht schmale aussen aufgesetzte Pfeiler.
   SM_Gate bleibt das verbindliche Haupttor; seine offenen Fluegel liegen im
   Tunnel, damit Aussenbogen und Durchgang aus der Spielkamera klar bleiben.
+- R197 Burghof-Materialien: Bodentexturen muessen als einfache Bildmaterialien
+  mit expliziten UVs in der GLB landen; Blender-Prozeduraltexturen gelten nicht
+  als Runtime-Vertrag. Eine gemeinsame 4-m-Planar-UV haelt den Massstab ueber
+  Grundflaeche, Wege und Flecken konsistent. Das vorhandene Paketpflaster wird
+  wiederverwendet; Erde/Kies und dezente Moos-Erde sind spielgerechte
+  1024px-Bilder und werden in die GLB eingebettet, nicht separat von Phaser
+  geladen.

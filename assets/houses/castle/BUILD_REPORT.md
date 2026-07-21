@@ -33,12 +33,16 @@
   Bodenfehler 0,000 m, Wandanschluss 0,000 m, Hoehenfehler 0,001 m
 - Geschlossener Hofboden unter allen inneren Mauerkanten und steinerne
   Torschwelle durch den ganzen Tunnel; kein scheinbarer Wasser-/Hintergrundspalt
+- Boden-Feinpass: Paket-Kopfsteinpflaster auf Hauptweg, Torschwelle und
+  Brunnenring; spielgerechte 1024px-Texturen fuer verdichtete Erde/Kies und
+  helle Moos-Erde-Randstellen. Alle Flaechen verwenden eine kontinuierliche
+  4-m-Planar-UV und alle Bilder sind direkt in der GLB eingebettet.
 - Keine schwebenden Teile oder kritischen Ueberschneidungen
 - HTTP: Manifest und GLB werden vom Vite-Server mit Status 200 ausgeliefert
 - Browser: `F10 > MAPS > Fuerstenburg` laedt die ueberarbeitete Burg sichtbar
   im echten Spiel, ohne schwarzen Bildschirm
 - Browser-Konsole: nach dem Fix keine neuen Lade-, Shader- oder WebGL-Fehler
-- TypeScript-Pruefung, 420 Vitest-Tests und Produktions-Build erfolgreich
+- TypeScript-Pruefung, 421 Vitest-Tests und Produktions-Build erfolgreich
 
 ## Vorschau
 

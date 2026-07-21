@@ -53,6 +53,11 @@ physischen Kollisionen bleiben unabhaengig davon aktiv.
   durchgehende Steintreppen vom Hofboden bis auf 4,13 m Hoehe
 - Hofboden: geschlossen bis unter die inneren Mauerkanten; steinerne Schwelle
   durch den kompletten Tortunnel
+- Bodenmaterialien: 4-m-UV-Kachelung mit Paket-Kopfsteinpflaster auf Hauptweg,
+  Tor und Brunnenring, verdichteter Erde/Kies auf dem Hof sowie hellen,
+  sparsamen Moos-Erde-Flaechen an wenig begangenen Randzonen
+- Texturtransport: alle drei Bodenbilder sind in der GLB eingebettet; Phaser
+  benoetigt dafuer keine zusaetzlichen Bild-URLs oder Codepfade
 - Materialien: unveraendert aus dem GLB, sRGB + ACES Filmic
 
 Die bearbeitbare Quelldatei liegt unter

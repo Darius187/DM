@@ -13,6 +13,13 @@ interface Guide {
 interface BurgManifest {
   runtime_mode: string;
   doors?: Record<string, unknown>;
+  courtyard_surfaces?: {
+    uv_tile_meters: number;
+    packed_earth_material: string;
+    paving_material: string;
+    moss_edge_material: string;
+    textures_embedded_in_glb: boolean;
+  };
   collision_guides: Guide[];
   markers: Array<{ name: string; blender_xyz: [number, number, number] }>;
   node_groups?: {
@@ -84,5 +91,15 @@ describe('Fuerstenburg-Runtime', () => {
       for (let x = cx - 35; x <= cx + 35; x++) expect(a.map[y][x]).not.toBe(T.WATER);
     }
     expect(a.map[Math.floor(a.spawn.y / 32)][Math.floor(a.spawn.x / 32)]).toBe(T.GRASS);
+  });
+
+  it('liefert gekachelte und im GLB eingebettete Hofmaterialien', () => {
+    expect(manifest.courtyard_surfaces).toEqual({
+      uv_tile_meters: 4,
+      packed_earth_material: 'BRG_MAT_CourtyardPackedEarth',
+      paving_material: 'BRG_MAT_CourtyardPaving',
+      moss_edge_material: 'BRG_MAT_CourtyardMoss',
+      textures_embedded_in_glb: true,
+    });
   });
 });

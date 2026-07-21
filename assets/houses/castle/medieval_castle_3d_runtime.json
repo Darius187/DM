@@ -53,6 +53,13 @@
     "enabled": false,
     "note": "Courtyard remains exterior gameplay space; only walls, towers, buildings, stable and well block movement."
   },
+  "courtyard_surfaces": {
+    "uv_tile_meters": 4.0,
+    "packed_earth_material": "BRG_MAT_CourtyardPackedEarth",
+    "paving_material": "BRG_MAT_CourtyardPaving",
+    "moss_edge_material": "BRG_MAT_CourtyardMoss",
+    "textures_embedded_in_glb": true
+  },
   "collision_guides": [
     {
       "name": "COLLISION_BRG_Wall_South_W1",

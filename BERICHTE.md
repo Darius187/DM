@@ -1991,3 +1991,19 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   GLB-Neuimport enthaelt alle Tor-, Eck- und Treppenknoten. Zwei getrennte
   Torhaus-Kollisionen schliessen die massiven Seitenwangen, ohne den freien
   3,6-m-Durchgang zu sperren.
+
+## Runde 197 - Texturierter Burghof
+- Der bisher flachfarbige Hof besitzt jetzt echte, GLB-faehige Bildmaterialien:
+  verdichtete Erde mit feinem Kies als Grundflaeche, Paket-Kopfsteinpflaster
+  fuer Hauptweg, Tor und Brunnenring sowie helle, sparsame Moos-Erde-Flecken
+  an wenig begangenen Randzonen.
+- Alle Bodenmeshes erhielten eine gemeinsame, weltmassbasierte Planar-UV mit
+  4 m Kachelgroesse. Dadurch bleiben Steingroesse und Materialausrichtung ueber
+  getrennte Wege und Polygone hinweg gleich und die Texturen verzerren nicht.
+- Die zwei neuen 1024px-Bodentexturen liegen in der Blender-Quelldatei gepackt;
+  zusammen mit dem vorhandenen Pflaster werden sie in die GLB eingebettet.
+  Phaser benoetigt keine zusaetzlichen Ladepfade.
+- Blender-Ansicht und sauberer GLB-Neuimport bestaetigen drei Hofmaterialien,
+  drei eingebettete Bilder und erhaltene UV-Daten; geometrische Burg-QA bleibt
+  unveraendert gruen. TypeScript, 421 Vitest-Tests, Produktions-Build sowie
+  Manifest und GLB per HTTP 200 erfolgreich.
