@@ -9710,6 +9710,9 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   }
 
   protected override areaDark(): boolean { return this.area?.dark ?? false; }
+  // Einfall-Angreifer in der (hellen) Stadt sollen sich wie Kerker-Monster
+  // bewegen, nicht wie flinke Oberwelt-Gegner (Autor "die laufen irre schnell").
+  protected override monsterZeitlupe(): boolean { return this.areaDark() || this.einfallAktiv; }
 
   protected override areaFriedlich(): boolean { return this.area?.friedlich ?? false; }
 

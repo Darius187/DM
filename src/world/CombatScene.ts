@@ -1012,6 +1012,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   protected areaDepth(): number { return 1; }
   protected areaDark(): boolean { return false; }
+  // Monster laufen im gedaempften "Dungeon-Tempo" (kryptaGegnerTempo). Standard:
+  // nur in dunklen Ebenen. WorldScene erweitert das auf den Einfall, damit die
+  // Angreifer in Ravensmoor NICHT irre schnell wie auf der Oberwelt rennen,
+  // sondern sich wie im Kerker anfuehlen (Autor-Meldung).
+  protected monsterZeitlupe(): boolean { return this.areaDark(); }
   // Friedliche Karte (Autorwunsch Runde 74): hier spawnt niemals ein Gegner.
   // Die Welt überschreibt das aus dem Area-Flag; ein zentraler Guard in
   // spawnEnemy neutralisiert damit ALLE Spawn-Pfade auf einmal.
@@ -2142,7 +2147,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     if (elite) e.makeElite(this.rng);
     // Krypta-Gegner schleichen statt wuseln (Runde 16: Spannung) -
     // Faktor im Entwicklungskasten justierbar
-    if (this.areaDark() && !e.boss) e.speed *= TUNING.kryptaGegnerTempo;
+    if (this.monsterZeitlupe() && !e.boss) e.speed *= TUNING.kryptaGegnerTempo;
     // Je-Typ-Feinjustierung (Runde 18, F10)
     const typTuning = TUNING.typ[type];
     if (typTuning) {

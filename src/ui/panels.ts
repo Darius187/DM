@@ -489,8 +489,12 @@ export class UIPanels {
         return;
       }
       const icon = this.scene.add.image(bx + bw / 2, by + bh / 2, this.provider.itemIcon(it));
-      const maxW = bw * 0.76, maxH = bh * 0.76;
-      icon.setScale(Math.min(maxW / icon.width, maxH / icon.height));
+      // R-Fix (Autor "das soll mittig sein?"): das quadratische Icon schwamm klein
+      // und diagonal in den HOHEN Slots (Waffe/Schild 57x150) -> las sich als "nicht
+      // zentriert". Jetzt fuellt es den KUERZEREN Kasten-Rand deutlich (0,92) statt
+      // sich an der langen Seite kleinzurechnen; Origin 0.5 haelt es exakt mittig.
+      const grund = Math.min(bw, bh) * 0.92;
+      icon.setScale(Math.min(grund / icon.width, grund / icon.height, (bh * 0.82) / icon.height));
       if (inaktiv) icon.setAlpha(0.34);
       c.add(icon);
       hit.setInteractive({ useHandCursor: true });
