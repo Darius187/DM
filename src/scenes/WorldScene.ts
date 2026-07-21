@@ -633,6 +633,7 @@ export class WorldScene extends CombatScene {
       if (ev.key === '[') this.wasserEditPinselAendern(-1);
       else if (ev.key === ']') this.wasserEditPinselAendern(1);
       else if (ev.key === 'Delete' && ev.shiftKey) this.wasserKarteLeeren();
+      else if (ev.key.toLowerCase() === 'x') this.exportiereWasser();   // Export in Zwischenablage
     });
     this.worldGfx = this.add.graphics().setDepth(2450);
     // Blutspuren liegen UNTER den Figuren (Autorbug R45: lagen "vor" den
@@ -5964,6 +5965,18 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   private wasserEditPinselAendern(d: number): void {
     this.wasserEditPinsel = Math.max(0, Math.min(WASSER_MAL.pinselMax, this.wasserEditPinsel + d));
     this.logMsg(`Wasser-Pinsel: Radius ${this.wasserEditPinsel} Kacheln`, 'gold');
+  }
+  // EXPORT (Autor "wie uebertrage ich dir was ich gemalt habe"): schreibt die
+  // gemalten Wasser-Kacheln dieser Karte als JSON in die Zwischenablage UND die
+  // Konsole - der Autor kopiert es und schickt es mir; ich backe es fest ein.
+  private exportiereWasser(): void {
+    const a = this.area; if (!a?.map) return;
+    const liste: number[] = [];
+    for (let ty = 0; ty < a.h; ty++) for (let tx = 0; tx < a.w; tx++) if (a.map[ty][tx] === T.WATER) liste.push(ty * a.w + tx);
+    const json = JSON.stringify({ karte: a.id, w: a.w, h: a.h, wasser: liste });
+    console.log('WASSER-EXPORT ' + json);
+    try { void navigator.clipboard?.writeText(json); } catch { /* kein Clipboard - Konsole reicht */ }
+    this.logMsg(`Wasser-Export "${a.id}": ${liste.length} Kacheln in Zwischenablage + Konsole (F12). Schick es mir.`, 'gold');
   }
   private wasserKarteLeeren(): void {
     const a = this.area; if (!a?.map) return;
