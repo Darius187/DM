@@ -134,4 +134,39 @@ export async function registriereBauKacheln(tex: Phaser.Textures.TextureManager)
     if (tex.exists(key)) continue;
     tex.addCanvas(key, skaliere(beschneideCanvas(prop.backe(bau())), 200))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
   }
+  // R109 "grosser Sprung", Emissiv zuerst: Feuer-Props bekommen eine GLUT-Karte
+  // (nur die leuchtenden Teile, gleicher Zuschnitt wie der Farb-Sprite). Die Welt
+  // legt sie nachts additiv drueber -> die Flamme leuchtet, statt vom Nacht-
+  // Schleier gedimmt zu werden. Nur Bauten mit echtem Feuer/Glut.
+  const feuerProps: Array<[string, () => THREE_NS.Group]> = [
+    ['feldbau_kochstelle', baueKochstelle], ['feldbau_feldschmiede', baueFeldschmiede], ['feldbau_wartfeuer', baueWartfeuer],
+  ];
+  for (const [key, bau] of feuerProps) {
+    const glutKey = `${key}_glut`;
+    if (tex.exists(glutKey)) continue;
+    // Gleicher Zuschnitt wie der Farb-Sprite (beschneideCanvas mit derselben Box),
+    // damit die Glut deckungsgleich sitzt: Farbe backen NUR fuer die Crop-Box.
+    const farbe = prop.backe(bau());
+    const glut = prop.backeEmissive(bau());
+    tex.addCanvas(glutKey, skaliere(beschneideNach(glut, farbe), 200))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+  }
+}
+
+// Schneidet cv auf die sichtbare Box der REFERENZ (Farb-Sprite) zu - so bleiben
+// Farb- und Glut-Karte pixelgenau deckungsgleich (die Glut allein waere anders
+// beschnitten). Gibt eine neue Leinwand in Referenz-Groesse zurueck.
+function beschneideNach(cv: HTMLCanvasElement, referenz: HTMLCanvasElement): HTMLCanvasElement {
+  const g = referenz.getContext('2d')!;
+  const d = g.getImageData(0, 0, referenz.width, referenz.height).data;
+  let x0 = referenz.width, y0 = referenz.height, x1 = 0, y1 = 0;
+  for (let y = 0; y < referenz.height; y++) for (let x = 0; x < referenz.width; x++) {
+    if (d[(y * referenz.width + x) * 4 + 3] > 20) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  const rand = 4;
+  x0 = Math.max(0, x0 - rand); y0 = Math.max(0, y0 - rand);
+  x1 = Math.min(referenz.width - 1, x1 + rand); y1 = Math.min(referenz.height - 1, y1 + rand);
+  const out = document.createElement('canvas');
+  out.width = Math.max(1, x1 - x0 + 1); out.height = Math.max(1, y1 - y0 + 1);
+  out.getContext('2d')!.drawImage(cv, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+  return out;
 }

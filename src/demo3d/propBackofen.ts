@@ -8,6 +8,10 @@ import * as THREE from 'three';
 
 export interface Backofen {
   backe(gruppe: THREE.Group): HTMLCanvasElement;
+  // "Grosser Sprung" (Autor R109, Emissiv zuerst): nur die selbstleuchtenden
+  // Teile (Glut/Flamme) auf Schwarz - aus DEMSELBEN Bake-Blick, damit das Bild
+  // pixelgenau ueber den Farb-Sprite passt und additiv als Nacht-Glut leuchtet.
+  backeEmissive(gruppe: THREE.Group): HTMLCanvasElement;
   groesse: number;
 }
 
@@ -67,22 +71,54 @@ export function macheBackofen(groesse = 256, mitSchatten = true, elevGrad?: numb
   }
   const halter = new THREE.Object3D(); scene.add(halter);
 
+  // Gruppe mit DERSELBEN Kamera-Rahmung rendern (Farbe wie Emissiv liegen dann
+  // pixelgenau uebereinander) und das Ergebnis in eine frische Leinwand ziehen.
+  const rahmenUndRender = (gruppe: THREE.Group): HTMLCanvasElement => {
+    const box = new THREE.Box3().setFromObject(gruppe);
+    const center = box.getCenter(new THREE.Vector3());
+    const radius = box.getSize(new THREE.Vector3()).length() / 2;
+    const dist = radius / Math.sin((camera.fov * Math.PI / 180) / 2) * 1.12;
+    camera.position.copy(center).addScaledVector(blick, dist);
+    camera.lookAt(center);
+    renderer.render(scene, camera);
+    const out = document.createElement('canvas'); out.width = groesse; out.height = groesse;
+    out.getContext('2d')!.drawImage(renderer.domElement, 0, 0);
+    return out;
+  };
+
   return {
     groesse,
     backe(gruppe: THREE.Group): HTMLCanvasElement {
       gruppe.traverse((o) => { if ((o as THREE.Mesh).isMesh) { o.castShadow = true; (o as THREE.Mesh).receiveShadow = true; } });
-      const box = new THREE.Box3().setFromObject(gruppe);
-      const center = box.getCenter(new THREE.Vector3());
-      const radius = box.getSize(new THREE.Vector3()).length() / 2;
-      const dist = radius / Math.sin((camera.fov * Math.PI / 180) / 2) * 1.12;
       halter.add(gruppe);
-      camera.position.copy(center).addScaledVector(blick, dist);
-      camera.lookAt(center);
-      renderer.render(scene, camera);
+      const out = rahmenUndRender(gruppe);
       halter.remove(gruppe);
-      const out = document.createElement('canvas'); out.width = groesse; out.height = groesse;
-      out.getContext('2d')!.drawImage(renderer.domElement, 0, 0);
       return out;
+    },
+    backeEmissive(gruppe: THREE.Group): HTMLCanvasElement {
+      // Materialien temporaer auf UNBELEUCHTETES Basic mit der emissive-Farbe
+      // tauschen (Glut/Flamme leuchten, alles andere wird schwarz), rendern,
+      // zuruecktauschen. Schwarz = additiv unsichtbar -> nur die Glut leuchtet.
+      const meshes: THREE.Mesh[] = [];
+      const original: THREE.Material[] = [];
+      gruppe.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh && !Array.isArray(m.material)) { meshes.push(m); original.push(m.material as THREE.Material); }
+      });
+      const neu = meshes.map((m) => {
+        const std = m.material as THREE.MeshStandardMaterial;
+        const farbe = std.emissive ? std.emissive.clone().multiplyScalar(std.emissiveIntensity ?? 1) : new THREE.Color(0x000000);
+        const basic = new THREE.MeshBasicMaterial({ color: farbe });
+        if (std.emissiveMap) basic.map = std.emissiveMap;
+        return basic;
+      });
+      meshes.forEach((m, i) => { m.material = neu[i]; });
+      halter.add(gruppe);
+      const cv = rahmenUndRender(gruppe);
+      halter.remove(gruppe);
+      meshes.forEach((m, i) => { m.material = original[i]; });
+      neu.forEach((m) => m.dispose());
+      return cv;
     },
   };
 }

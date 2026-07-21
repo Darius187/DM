@@ -170,11 +170,11 @@ im Browser messen sobald er wieder stabil ist):
      gesetzt bekommen - aktuell meist 0.)
    WICHTIG (CLAUDE.md §3 kein toter Code): NICHT als ungenutzte Exports committen -
    erst zusammen mit Schritt 2/3 einbauen, sodass sie sofort verwendet werden.
-2. Emissiv zuerst (billiger Wow-Effekt, "leuchtende Fenster"): pro Prop mit Fenstern
-   ein additives Glow-Sprite (zweites Sprite, BlendMode ADD) ueber den Farb-Sprite;
-   Alpha/Helligkeit mit der Dunkelheit koppeln (Nacht/Dungeon = hell, Tag = aus).
-   An EINEM Prop (z.B. Wachturm/Haus) beweisen, dann ausrollen. Fenster-emissive in
-   den *Bau.ts setzen. Registrierung analog zu den bestehenden *Bitmaps.ts.
+2. [ERLEDIGT R109] Emissiv: Feuer-Props (Kochstelle/Feldschmiede/Wartfeuer) leuchten
+   nachts. backeEmissive im propBackofen, feldbau_<id>_glut in lagerBitmaps, additives
+   Glow-Sprite je Prop (ruesteLagerGlut/updateLagerGlut), Alpha an nachtFaktor gekoppelt.
+   Browser-verifiziert (Alpha tags 0, nachts 0,85). OFFEN falls gewuenscht: mehr Props
+   mit Leucht-Teilen (Feldaltar-Kerzen?), und ein Regler fuer die Glut-Staerke.
 3. Normal danach (Light2D bumpig): pro Prop-Textur die Normal-Bake als __NORMAL an
    die Phaser-Textur haengen und sprite.setPipeline('Light2D'); eine Lichtquelle
    (Sonne/Fackel) in der WorldScene. ACHTUNG Risiko-Checkliste: Light2D vertraegt

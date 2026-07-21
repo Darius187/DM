@@ -366,6 +366,7 @@ export class WorldScene extends CombatScene {
   private _tierPrevX = 0; private _tierPrevY = 0;   // Spielerposition letzter Frame (für Tempo der Scheu-Flucht)
   private tag = 1;
   private tageszeit = 0.3; // 0..1, Start am Morgen
+  private nachtFaktor = 0;  // 0=heller Tag .. 1=tiefe Nacht (aus renderLight, treibt die Feuer-Glut)
   private glockePrevZeit?: number;   // M1: erkennt die Morgen-/Abendglocken-Schwelle
   private dorfBrunnenPos?: { x: number; y: number } | null;   // M2: Brunnen-Kachel (Magd-Pendelweg), je Karte gecacht
   private dorfHunger = false;   // M6: Speisekammer reichte gestern nicht (Unmut, langsamere Arbeit)
@@ -3520,8 +3521,8 @@ export class WorldScene extends CombatScene {
   // R94: EINHEITLICHE Feldbau-Registry mit Lebenspunkten. Jeder platzierte Bau
   // (Lagerfeuer/Standarte/Palisade/Wachturm/Lazarett/Zelt) landet hier - für
   // Klick-Menü (Reparieren/Abbauen) und die Lebensbalken.
-  private feldbauten: Array<{ id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null; offen?: boolean; tx2?: number; ty2?: number; senk?: boolean; quelle?: 'held' | 'dorf' }> = [];
-  private gewaehlterBau: { id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null; offen?: boolean; tx2?: number; ty2?: number; senk?: boolean; quelle?: 'held' | 'dorf' } | null = null;
+  private feldbauten: Array<{ id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; glut?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null; offen?: boolean; tx2?: number; ty2?: number; senk?: boolean; quelle?: 'held' | 'dorf' }> = [];
+  private gewaehlterBau: { id: string; x: number; y: number; tx?: number; ty?: number; hp: number; maxHp: number; img?: Phaser.GameObjects.Image; glut?: Phaser.GameObjects.Image; balken: Phaser.GameObjects.Graphics | null; offen?: boolean; tx2?: number; ty2?: number; senk?: boolean; quelle?: 'held' | 'dorf' } | null = null;
   // R96: Schlacht-Schicht (Einheiten, Auswahl, Befehle, Formationen) + Eingabe-
   // Lauscher, die nur im RTS-Modus aktiv sind.
   private rtsBattle: RtsBattle | null = null;
@@ -4459,7 +4460,9 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       this.logMsg(`${b?.name ?? 'Feldbau'} errichtet.`, 'gold');
     }
     // R94: in die Feldbau-Registry (Lebenspunkte, Klick-Menü)
-    this.feldbauten.push({ id, x, y, tx, ty, tx2, ty2, hp: maxHp, maxHp, img, balken: null, offen: id === 'tor' ? false : undefined, quelle });
+    const rec = { id, x, y, tx, ty, tx2, ty2, hp: maxHp, maxHp, img, balken: null, offen: id === 'tor' ? false : undefined, quelle };
+    this.feldbauten.push(rec);
+    this.ruesteLagerGlut(rec);   // R109: Feuer-Props bekommen ihre Nacht-Glut
     if (id === 'botenposten') this.botenZumPosten();   // R179: der Bote reitet heran
     this.panels?.refresh?.();
   }
@@ -4615,6 +4618,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     // hat jetzt tx/ty (2x2-Fussabdruck), veraendert aber KEINE Map-Kachel. Nur
     // Palisade/Tor setzen ihre soliden Kacheln zurueck.
     if (f.img?.active) f.img.destroy();
+    if (f.glut?.active) f.glut.destroy();   // R109: Nacht-Glut mit entfernen
     if ((f.id === 'palisade' || f.id === 'tor') && f.tx !== undefined && f.ty !== undefined) {
       const t = this.area.map[f.ty]?.[f.tx];
       if (t === T.PALISADE || t === T.TOR) {
@@ -4670,6 +4674,36 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     }
     this.tileImages.push(img);
     return img;
+  }
+
+  // R109 "grosser Sprung": ein Feuer-Prop (Kochstelle/Schmiede/Wartfeuer) bekommt
+  // ein zweites Sprite mit der GLUT-Karte, additiv (ADD) und deckungsgleich ueber
+  // dem Farb-Sprite. Alpha=0 am Tag; updateLagerGlut hebt sie nachts an. So leuchtet
+  // die Flamme in der Dunkelheit, statt vom Nacht-Schleier gedimmt zu werden.
+  private ruesteLagerGlut(f: (typeof this.feldbauten)[number]): void {
+    if (!f.img) return;
+    const glutKey = `feldbau_${f.id}_glut`;
+    if (!this.textures.exists(glutKey)) return;
+    const glut = this.add.image(f.img.x, f.img.y, glutKey)
+      .setOrigin(f.img.originX, f.img.originY)
+      .setDisplaySize(f.img.displayWidth, f.img.displayHeight)
+      .setDepth(f.img.depth + 0.1)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0);
+    f.glut = glut;
+    this.tileImages.push(glut);   // wird beim Kartenwechsel mit aufgeraeumt
+  }
+
+  // Die Feuer-Glut jeden Frame an die Dunkelheit koppeln + leicht flackern lassen.
+  private updateLagerGlut(): void {
+    if (!this.feldbauten.some((f) => f.glut)) return;
+    const flack = 0.82 + Math.sin(this.time.now / 90) * 0.1 + Math.sin(this.time.now / 37) * 0.06;
+    for (const f of this.feldbauten) {
+      if (!f.glut) continue;
+      // zerstoerte/entfernte Bauten: Glut mit ausblenden
+      const lebt = f.hp > 0 && !!f.img && f.img.active;
+      f.glut.setAlpha(lebt ? this.nachtFaktor * flack : 0);
+    }
   }
 
   // R96 (Autor "Zelte schäbig, Turm zu klein, ich brauche ein Tor"): Feldbauten
@@ -13562,6 +13596,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       const hoehe = berechneTagLicht(this.tageszeit * 24).hoehe;
       nachtFaktor = 1 - Math.min(1, hoehe / 0.22);
     }
+    this.nachtFaktor = nachtFaktor;   // R109: die Feuer-Glut (updateLagerGlut) folgt der Nacht
     if (this.lightRT.width !== this.scale.width || this.lightRT.height !== this.scale.height) {
       this.erstelleLichtTextur();
     }
@@ -14859,6 +14894,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     }
     this.renderWorldOverlay();
     this.renderLight();
+    this.updateLagerGlut();   // R109: Feuer-Glut nach dem Licht (nachtFaktor ist gesetzt)
     this.renderMinimap();
     this.renderHud();
     this.sortiereKameras();

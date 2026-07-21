@@ -2034,3 +2034,21 @@ Commit erledigt. Diese Runde die restlichen drei:
 TypeScript fehlerfrei, 421 Vitest-Tests gruen, im Browser verifiziert.
 Naechster Block laut Autor-Auftrag: der grosse Grafik-Sprung (Normal-/Emissive-
 Maps aus dem Blender-Bake).
+
+## Runde (Grosser Grafik-Sprung, Schritt 1: leuchtende Feuer bei Nacht)
+Der erste Teil des grossen Grafik-Sprungs steht: die Lagerfeuer leuchten jetzt.
+Kochstelle, Feldschmiede und Wartfeuer bekommen aus dem Blender-/three-Bake eine
+EMISSIV-Karte (nur Glut/Flamme) und legen sie nachts additiv ueber ihr Bild.
+Tagsueber ist die Glut aus, nachts leuchtet sie warm auf und flackert leicht -
+so wirkt ein Lager im Dunkeln lebendig, statt vom Nacht-Schleier gedimmt zu werden.
+Genau das "leuchtende Fenster"-Gefuehl (Graveyard-Keeper-Look), nur setting-gerecht
+mit echten Feuern statt Glasfenstern.
+
+Verifiziert im Browser (end-to-end): Glut-Deckkraft tagsueber 0, nachts ~0,85;
+additive Mischung; Texturen liegen beim Boot bereit. Die reine Bake-Funktion
+separat geprueft (Kochstelle-Glut ~241 Pixel Ember, Wartfeuer-Flamme ~3252 Pixel).
+TypeScript fehlerfrei, 421 Vitest-Tests gruen.
+
+Naechster Schritt (in TODO.md): NORMAL-Maps + Phaser-Light2D (bumpige Beleuchtung).
+Bewusst NACH dem Emissiv-Teil, weil Light2D pipeline-tief ist und mehr
+Regressionsrisiko traegt (Vertraeglichkeit mit RESIZE + Kamera-PostFX pruefen).

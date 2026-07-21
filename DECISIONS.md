@@ -2556,3 +2556,13 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
     Provokation. Loest das "Bogenschuetze aus 290px, Wache reagiert erst ab 220px,
     Soldat steht bloed rum". Verifiziert: Ally nach Pfeiltreffer laeuft 64px auf
     den 270px entfernten Schuetzen zu, zielFuer liefert ihn.
+- R109 GROSSER GRAFIK-SPRUNG, Schritt 1 (Emissiv/"leuchtende Fenster"): Feuer-Props
+  (Kochstelle, Feldschmiede, Wartfeuer) leuchten jetzt nachts. Umsetzung:
+  backeEmissive() im propBackofen backt aus DEMSELBEN Kamera-Blick eine GLUT-Karte
+  (nur die emissive Materialteile hell, Rest schwarz). lagerBitmaps registriert
+  feldbau_<id>_glut, deckungsgleich zur Farb-Karte (beschneideNach). Die Welt legt
+  je Feuer-Prop ein zweites Sprite additiv (ADD) drueber; updateLagerGlut koppelt
+  dessen Alpha an nachtFaktor (0=Tag..1=Nacht) plus leichtes Flackern. Verifiziert
+  im Browser end-to-end: Glut-Alpha tags 0, nachts 0,85; ADD-Blend; Texturen am
+  Boot da. Bake-Funktion isoliert geprueft (Kochstelle 241px Glut, Wartfeuer
+  3252px Flamme). NORMAL-Maps/Light2D bleiben Schritt 2 (Fahrplan in TODO.md).
