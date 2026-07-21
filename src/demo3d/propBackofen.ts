@@ -12,6 +12,9 @@ export interface Backofen {
   // Teile (Glut/Flamme) auf Schwarz - aus DEMSELBEN Bake-Blick, damit das Bild
   // pixelgenau ueber den Farb-Sprite passt und additiv als Nacht-Glut leuchtet.
   backeEmissive(gruppe: THREE.Group): HTMLCanvasElement;
+  // R109 Schritt 2 (Light2D): Sicht-Raum-Normalen als RGB (0.5,0.5,1 = zur Kamera).
+  // Genau das Format, das die Phaser-Light2D-Pipeline als Normal-Datenquelle erwartet.
+  backeNormal(gruppe: THREE.Group): HTMLCanvasElement;
   groesse: number;
 }
 
@@ -118,6 +121,24 @@ export function macheBackofen(groesse = 256, mitSchatten = true, elevGrad?: numb
       halter.remove(gruppe);
       meshes.forEach((m, i) => { m.material = original[i]; });
       neu.forEach((m) => m.dispose());
+      return cv;
+    },
+    backeNormal(gruppe: THREE.Group): HTMLCanvasElement {
+      // Materialien temporaer auf MeshNormalMaterial (Sicht-Raum-Normalen als RGB)
+      // tauschen, rendern, zuruecktauschen. Der transparente Hintergrund bleibt frei.
+      const meshes: THREE.Mesh[] = [];
+      const original: THREE.Material[] = [];
+      gruppe.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh && !Array.isArray(m.material)) { meshes.push(m); original.push(m.material as THREE.Material); }
+      });
+      const norm = new THREE.MeshNormalMaterial();
+      meshes.forEach((m) => { m.material = norm; });
+      halter.add(gruppe);
+      const cv = rahmenUndRender(gruppe);
+      halter.remove(gruppe);
+      meshes.forEach((m, i) => { m.material = original[i]; });
+      norm.dispose();
       return cv;
     },
   };

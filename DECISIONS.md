@@ -2566,3 +2566,19 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   im Browser end-to-end: Glut-Alpha tags 0, nachts 0,85; ADD-Blend; Texturen am
   Boot da. Bake-Funktion isoliert geprueft (Kochstelle 241px Glut, Wartfeuer
   3252px Flamme). NORMAL-Maps/Light2D bleiben Schritt 2 (Fahrplan in TODO.md).
+- R109 GROSSER SPRUNG, Schritt 2 (Normal-Maps + Light2D): als OPT-IN-EXPERIMENT
+  gebaut (Schalter "Bump-Licht / Light2D", Standard AUS, Neustart noetig - analog
+  Glatte-Kanten). backeNormal() im propBackofen (MeshNormalMaterial, Sicht-Raum-
+  Normalen als RGB). lagerBitmaps.backeProp() haengt bei aktivem Experiment die
+  deckungsgleich beschnittene Normal-Karte als Daten-Quelle an die Prop-Textur.
+  WorldScene: light2d an -> this.lights.enable(), Umgebungslicht MITTEL (0xb4b4b4,
+  nicht weiss - Phaser-Light2D ist multiplikativ, bei Weiss clippt das Punktlicht
+  weg und die Normal-Map zeigt nichts), warmes Heldenlicht folgt dem Helden; die
+  Prop-Sprites laufen ueber die Light2D-Pipeline (nur die Props, Rest der Welt
+  unveraendert -> kein globales Doppel-Abdunkeln neben dem Nacht-Schleier).
+  STATUS EHRLICH: kompiliert (tsc) + 421 Tests gruen + Standard-AUS-Pfad ist ein
+  reiner Refactor (identische Operationen wie vorher, kein Risiko fuers Grundspiel).
+  Der EIN-Pfad (Bump-Optik) konnte in DIESER Sitzung NICHT im Browser verifiziert
+  werden - der Container hat den Vite-Server wiederholt abgeschossen. backeNormal
+  folgt exakt dem in derselben Sitzung browser-bewiesenen backeEmissive-Muster.
+  Vor der Abnahme des EIN-Pfads: einmal mit Schalter an + Neustart ansehen.

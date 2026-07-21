@@ -623,6 +623,7 @@ export class WorldScene extends CombatScene {
     this.uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height);
     this.uiCam.setScroll(0, 0);
     this.wendePostFxAn();
+    this.wendeLight2dAn();   // R109 Schritt 2: optionales Bump-Licht (Experiment)
     // Fenstergröße ändern / Vollbild (F11): Kameras, Lichtschicht und OFFENE
     // Fenster neu ausrichten - sonst hingen Charakterfenster & Co. schief und
     // das Bild "brach" (Autorbug Runde 40). Beim Verlassen wieder abmelden.
@@ -4672,6 +4673,9 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       const aspekt = src.width / Math.max(1, src.height);
       img.setDisplaySize(h * aspekt, h);
     }
+    // R109 Schritt 2: im Light2D-Experiment die Props ueber die Light2D-Pipeline
+    // rendern (nutzt die am Boot gebackene Normal-Datenquelle fuer Bump-Relief).
+    if (getSettings().light2d === true) img.setPipeline('Light2D');
     this.tileImages.push(img);
     return img;
   }
@@ -5502,6 +5506,23 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
 
   // R107: Grafik-Einstellungen live anwenden (Wasser-Shader, FPS-Anzeige). Wird
   // beim Kartenaufbau und beim Zurueckkehren aus den Einstellungen gerufen.
+  // R109 Schritt 2 (Autor "Normal-Maps + Light2D, bumpige Beleuchtung"): OPT-IN-
+  // Experiment. Umgebungslicht bleibt WEISS (kein Doppel-Abdunkeln neben dem
+  // bestehenden Nacht-Schleier) - ein warmes Punktlicht am Helden hebt die
+  // Normal-Map-Relief der Props hervor. Nur wenn der Schalter an ist; sonst
+  // exakt wie bisher. Braucht Neustart (Normal-Maps werden am Boot gebacken).
+  private light2dHeldLicht: Phaser.GameObjects.Light | null = null;
+  private wendeLight2dAn(): void {
+    if (getSettings().light2d !== true) return;
+    // Phaser-Light2D ist MULTIPLIKATIV: bei vollweissem Umgebungslicht wird der
+    // Punktlicht-Anteil weggeclippt und die Normal-Map zeigt NICHTS. Darum ein
+    // mittleres Umgebungslicht (~0,7) - so moduliert das warme Heldenlicht die
+    // Relief-Normalen sichtbar. Betrifft NUR die Light2D-Props (der Rest der Welt
+    // rendert unveraendert), also kein globales Doppel-Abdunkeln.
+    this.lights.enable().setAmbientColor(0xb4b4b4);
+    this.light2dHeldLicht = this.lights.addLight(this.px, this.py, 300, 0xfff0d8, 2.2);
+  }
+
   wendeGrafikAn(): void {
     const an = getSettings().wasserEffekte;
     this.wasser2Shader?.setVisible(an);
@@ -14895,6 +14916,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.renderWorldOverlay();
     this.renderLight();
     this.updateLagerGlut();   // R109: Feuer-Glut nach dem Licht (nachtFaktor ist gesetzt)
+    this.light2dHeldLicht?.setPosition(this.px, this.py);   // R109 Schritt 2: Bump-Licht folgt dem Helden
     this.renderMinimap();
     this.renderHud();
     this.sortiereKameras();

@@ -2052,3 +2052,22 @@ TypeScript fehlerfrei, 421 Vitest-Tests gruen.
 Naechster Schritt (in TODO.md): NORMAL-Maps + Phaser-Light2D (bumpige Beleuchtung).
 Bewusst NACH dem Emissiv-Teil, weil Light2D pipeline-tief ist und mehr
 Regressionsrisiko traegt (Vertraeglichkeit mit RESIZE + Kamera-PostFX pruefen).
+
+## Runde (Grosser Grafik-Sprung, Schritt 2: Normal-Maps + Light2D - Experiment)
+Der zweite, ehrgeizige Teil ist gebaut - als ABSCHALTBARES Experiment (Schalter
+"Bump-Licht / Light2D", Standard AUS, Neustart noetig). Idee: Die Props bekommen
+aus dem Bake eine Normal-Karte, und ein warmes Heldenlicht laesst ihre Oberflaeche
+per-Pixel plastisch/bumpig wirken (three.js-Relief statt flacher Sprite).
+
+WICHTIG - ehrlicher Stand: Der Schalter ist AUS als Standard, das Grundspiel bleibt
+damit voellig unveraendert (der Aus-Pfad ist ein reiner Refactor, TypeScript
+fehlerfrei, 421 Tests gruen). Den EIN-Pfad (die Bump-Optik selbst) konnte ich in
+DIESER Sitzung NICHT im Browser ansehen - die Container-Umgebung hat den Dev-Server
+(Vite) wiederholt abgeschossen. Die Normal-Bake-Funktion folgt exakt dem Muster der
+Emissiv-Bake, die ich in derselben Sitzung end-to-end im Browser bewiesen habe.
+
+BITTE: Wenn der Server wieder stabil laeuft, den Schalter einmal AN + Neustart
+ansehen und sagen, ob die Plastik gefaellt. Technik-Hinweis: Phaser-Light2D ist
+multiplikativ - Umgebungslicht steht bewusst auf mittel (nicht weiss), sonst
+clippt das Punktlicht weg. Zu dunkel? Umgebungs-/Heldenlicht in wendeLight2dAn()
+nachziehen.

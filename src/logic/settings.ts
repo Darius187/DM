@@ -56,6 +56,7 @@ export interface Settings {
   bloom: number;          // Leucht-/Bloom-Stärke 0-100 (Runde 51: Regler, 0 = aus)
   grading?: number;       // Farb-Grading (warm + Kontrast + leicht entsättigt) 0-100, 0 = aus
   glatteKanten?: boolean; // Experiment: pixelArt AUS -> lineare Filterung (weichere Blender-Sprites), NEUSTART nötig
+  light2d?: boolean;      // Experiment R109 Schritt 2: Normal-Maps + Phaser-Light2D (bumpige Beleuchtung der Props), NEUSTART nötig
   figuren3d: boolean;     // TEST (Runde 77): Held als 3D-gebackener Atlas statt 2D-Zeichnung
   grusel: number;         // Grusel-Atmosphäre: kalter, dunkler Tint auf Gegner 0-100 (Runde 55)
   schatten: number;       // Schatten-/Licht-Stärke AUSSENWELT 0-100 (Runde 55: 0 = aus, Leistungsregler)

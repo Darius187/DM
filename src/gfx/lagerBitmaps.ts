@@ -5,11 +5,28 @@
 
 import Phaser from 'phaser';
 import type * as THREE from 'three';
-import { macheBackofen, beschneideCanvas } from '../demo3d/propBackofen';
+import { macheBackofen, beschneideCanvas, type Backofen } from '../demo3d/propBackofen';
 import { baueZelt } from '../demo3d/lagerBau';
 import { baueWachturm } from '../demo3d/codexTurm';   // R101: Codex-Turm statt Alt-Wachturm
+import { getSettings } from '../logic/settings';
 
 let bereit = false;
+
+// R109 Schritt 2: einen Prop als Farb-Textur backen und - wenn das Light2D-
+// Experiment an ist - die passende Normal-Karte (deckungsgleich beschnitten) als
+// Daten-Quelle anhaengen. So beleuchtet Phaser-Light2D den Sprite per-Pixel
+// "bumpig". Ohne das Experiment bleibt alles exakt wie bisher (nur Farbe).
+function backeProp(tex: Phaser.Textures.TextureManager, key: string, ofen: Backofen, bau: () => THREE.Group, zielH: number): void {
+  if (tex.exists(key)) return;
+  const farbeVoll = ofen.backe(bau());
+  const t = tex.addCanvas(key, skaliere(beschneideCanvas(farbeVoll), zielH));
+  t?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+  if (t && getSettings().light2d === true) {
+    // Normal aus demselben Blick, auf die GLEICHE Box beschnitten -> pixelgleiche Groesse.
+    const norm = skaliere(beschneideNach(ofen.backeNormal(bau()), farbeVoll), zielH);
+    t.setDataSource(norm);
+  }
+}
 
 // grob auf ~Zielhöhe verkleinern (weiches Herunterrechnen wie bei den Bäumen)
 function skaliere(cv: HTMLCanvasElement, zielH: number): HTMLCanvasElement {
@@ -31,20 +48,14 @@ export async function registriereLagerBitmaps(tex: Phaser.Textures.TextureManage
     ['feldbau_zelt', () => baueZelt(false)],
     ['feldbau_lazarett', () => baueZelt(true)],
   ];
-  for (const [key, bau] of items) {
-    if (tex.exists(key)) continue;
-    const cv = skaliere(beschneideCanvas(ofen.backe(bau())), 320);
-    tex.addCanvas(key, cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
-  }
+  for (const [key, bau] of items) backeProp(tex, key, ofen, bau, 320);
   // R101b/d: Wachturm FRONT (0deg Yaw, wie die Haeuser) - in DREI Kamera-Back-
   // winkeln zum Vergleich (Autorwunsch, im Spiel baubar): 57° (aktuell), 45°, 40°.
   // Jeder Winkel braucht einen eigenen Ofen (feste Kamera je Ofen).
   const turmWinkel: Array<[string, number]> = [['feldbau_wachturm', 57], ['feldbau_wachturm_45', 45], ['feldbau_wachturm_40', 40]];
   for (const [key, grad] of turmWinkel) {
     if (tex.exists(key)) continue;
-    const to = macheBackofen(640, false, grad);
-    const cv = skaliere(beschneideCanvas(to.backe(baueWachturm())), 320);
-    tex.addCanvas(key, cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    backeProp(tex, key, macheBackofen(640, false, grad), baueWachturm, 320);
   }
   bereit = true;
 }
@@ -130,10 +141,7 @@ export async function registriereBauKacheln(tex: Phaser.Textures.TextureManager)
     ['feldbau_feldaltar', baueFeldaltar], ['feldbau_kochstelle', baueKochstelle], ['feldbau_brunnen', baueBrunnen],
     ['feldbau_feldschmiede', baueFeldschmiede], ['feldbau_wartfeuer', baueWartfeuer],
   ];
-  for (const [key, bau] of props) {
-    if (tex.exists(key)) continue;
-    tex.addCanvas(key, skaliere(beschneideCanvas(prop.backe(bau())), 200))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
-  }
+  for (const [key, bau] of props) backeProp(tex, key, prop, bau, 200);
   // R109 "grosser Sprung", Emissiv zuerst: Feuer-Props bekommen eine GLUT-Karte
   // (nur die leuchtenden Teile, gleicher Zuschnitt wie der Farb-Sprite). Die Welt
   // legt sie nachts additiv drueber -> die Flamme leuchtet, statt vom Nacht-
