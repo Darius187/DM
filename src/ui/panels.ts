@@ -231,8 +231,12 @@ export class UIPanels {
     // Fenster direkt greifen (Runde 23, oft gewünscht): die obere Leiste
     // zieht das Fenster, der Versatz landet dauerhaft in den Einstellungen
     // (ui.fenster - gilt damit auch für Handel und Chronik)
-    const griffY = shellAktiv ? h * (62 / 941) : 0;
-    const griffH = shellAktiv ? Math.max(10, h * (17 / 941)) : 26;
+    // R-Fix (Autor "das Charakterfenster C sollte man verschieben koennen"):
+    // der Griff war nur ein ~13px-Streifen direkt unter den Reitern - kaum zu
+    // treffen. Jetzt ein breites Greif-Band unter den Reitern (die Reiter und
+    // Inhalts-Elemente liegen DARUEBER und bleiben klickbar; nur Leerraum zieht).
+    const griffY = shellAktiv ? h * (60 / 941) : 0;
+    const griffH = shellAktiv ? Math.max(28, h * (52 / 941)) : 26;
     const griff = this.scene.add.rectangle(0, griffY, w - 30, griffH, 0xffffff, 0.02).setOrigin(0)
       .setInteractive({ draggable: true, useHandCursor: true });
     griff.on('pointerover', () => griff.setFillStyle(0xc9a227, 0.08));
