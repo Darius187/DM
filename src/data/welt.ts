@@ -107,6 +107,12 @@ export const FELDZUG = {
   wallRadiusKacheln: 6,  // Knochenwall-Ring um den Altar
   ausbauStufenS: [90, 300] as ReadonlyArray<number>,   // besetzt seit -> Stufe 1 (halber Ring) / 2 (voller Ring)
   waechterJeStufe: [3, 5, 7] as ReadonlyArray<number>, // zaehe Waechter je Ausbaustufe
+  // M2 (Autor "nicht alle im Ring gebunkert - das Lager ist eine Verteidigungs-
+  // LINIE, keine Kaefig"): ein Teil der Besatzung besetzt die TORE und faengt den
+  // Helden ab, statt am Altar zu stehen. Rest bleibt Kern-Ring (letzte Linie).
+  torWaechterJeTor: 2,       // Waechter je Tor-Oeffnung (besetzen das Tor, fangen ab)
+  torAbfangRadiusPx: 300,    // naehert sich der Held dem Lager, ruecken die Tor-Waechter aus
+  torPostRadiusPx: 24,       // so nah am Tor-Posten gilt "auf Posten" (steht dann still)
   // F6 (Dok 06 Teil H): Balance-Pass Ueberlegenheit - die Armee wird wichtig,
   // OHNE den Helden zu schwaechen.
   sturmDeckel: 16,       // nie mehr lebende Sturm-Feinde als das (Wellen-Deckel)

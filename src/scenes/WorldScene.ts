@@ -9094,6 +9094,18 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     }
   }
 
+  // M2: die Tor-Winkel je Blaupause (die Haupt-Oeffnungen der Wall) - dort werden
+  // Tor-Waechter gepostet. Ein Tor-Winkel = wo der Held ins Lager kommt.
+  private torWinkel(form: WallForm): number[] {
+    const S = Math.PI / 2, N = -Math.PI / 2;
+    switch (form) {
+      case 'halbmond':    return [0, Math.PI];   // Ost/West-Enden
+      case 'hufeisen':    return [N, S];          // Nord weit offen + Sued-Tor
+      case 'doppelriegel': return [N, S];         // Nord + Sued offen
+      case 'vollring':    return [N, S];          // Nord- + Sued-Tor
+    }
+  }
+
   // DEV-Stresstest zum MESSEN der Einheiten-Grenze auf echter Hardware (Autor-
   // Frage "wo ist die Grenze?"). Taste B zyklt die Stufen, Shift+B raeumt.
   // Nur ein Messwerkzeug - kein Spiel-Feature.
@@ -9242,16 +9254,54 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         if (t === T.GRASS || t === T.TREE) { a.map[ty][tx] = T.CRACK; this.refreshTile(tx, ty); }
       }
     }
-    // Waechter: zaehe Feind-Trupps am Altar (wachen, bis geweckt) - Ring aus der Variante
+    // Waechter: zaehe Feind-Trupps. M2 - NICHT alle im Ring bunkern: ein Teil
+    // besetzt die TORE (aktive Verteidigungslinie, faengt den Helden ab), der
+    // Rest bleibt Kern-Ring am Altar (letzte Linie, wacht bis geweckt).
     const n = FELDZUG.waechterJeStufe[Math.min(stufe, FELDZUG.waechterJeStufe.length - 1)];
-    for (let i = 0; i < n; i++) {
-      const wnk = (i / n) * Math.PI * 2;
-      const e = this.spawnEnemy(i % 2 === 0 ? 'skelett' : 'lebender_toter', EINFALL.tiefe, alt.x + Math.cos(wnk) * v.waechterRingPx, alt.y + Math.sin(wnk) * v.waechterRingPx * 0.72, this.rng.random() < 0.2, true);
-      e.maxhp = Math.round(e.maxhp * FELDZUG.truppHpF);
-      e.hp = e.maxhp;
-      e.dmg = Math.round(e.dmg * FELDZUG.truppDmgF);
+    const rTile = FELDZUG.wallRadiusKacheln * v.wallRadiusF;
+    const rueste = (e: Enemy): void => { e.maxhp = Math.round(e.maxhp * FELDZUG.truppHpF); e.hp = e.maxhp; e.dmg = Math.round(e.dmg * FELDZUG.truppDmgF); };
+    // Tor-Posten: je Tor-Oeffnung ein paar Waechter, leicht INNEN am Tor.
+    const tore = stufe >= 1 ? this.torWinkel(v.wallForm) : [];   // ohne Wall kein Tor
+    let gesetzt = 0, idx = 0;
+    for (const wk of tore) {
+      const px = (ax + Math.cos(wk) * (rTile - 0.5)) * TILE + 16;
+      const py = (ay + Math.sin(wk) * (rTile - 0.5) * 0.7) * TILE + 16;
+      for (let k = 0; k < FELDZUG.torWaechterJeTor && gesetzt < n; k++, gesetzt++, idx++) {
+        const e = this.spawnEnemy(idx % 2 === 0 ? 'skelett' : 'lebender_toter', EINFALL.tiefe, px + (k - 0.5) * 22, py, this.rng.random() < 0.2, true);
+        rueste(e);
+        e.lagerRolle = 'tor'; e.lagerPost = { x: e.x, y: e.y }; e.passiv = false;   // besetzt aktiv
+      }
+    }
+    // Rest: Kern-Ring am Altar (passiv, letzte Linie).
+    const kern = Math.max(1, n - gesetzt);
+    for (let i = 0; i < kern; i++, idx++) {
+      const wnk = (i / kern) * Math.PI * 2;
+      const e = this.spawnEnemy(idx % 2 === 0 ? 'skelett' : 'lebender_toter', EINFALL.tiefe, alt.x + Math.cos(wnk) * v.waechterRingPx, alt.y + Math.sin(wnk) * v.waechterRingPx * 0.72, this.rng.random() < 0.2, true);
+      rueste(e);
+      e.lagerRolle = 'kern';
     }
     this.wegfeldNeu();
+  }
+
+  // M2: die Tor-Waechter besetzen aktiv ihr Tor und fangen den Helden ab, sobald
+  // er sich dem Lager naehert - zieht er wieder ab, kehren sie auf Posten zurueck.
+  // So ist das Lager eine VERTEIDIGUNGSLINIE, kein Kaefig (Autor-Order M2).
+  private updateFeindlagerWachen(): void {
+    if (!this.altarStehtHier || this.playerDead) return;
+    const altar = this.enemies.find((e) => e.name === 'Bindealtar' && e.hp > 0);
+    if (!altar) return;
+    const heldNah = Math.hypot(this.px - altar.x, this.py - altar.y) < FELDZUG.torAbfangRadiusPx;
+    for (const e of this.enemies) {
+      if (e.team === 'spieler' || e.hp <= 0 || e.lagerRolle !== 'tor' || !e.lagerPost) continue;
+      if (e.fokusZiel) continue;   // kaempft schon -> normale KI
+      if (heldNah) {
+        e.passiv = false; e.jagdZiel = { x: this.px, y: this.py };   // abfangen
+      } else {
+        const dp = Math.hypot(e.x - e.lagerPost.x, e.y - e.lagerPost.y);
+        if (dp > FELDZUG.torPostRadiusPx) { e.passiv = false; e.jagdZiel = { x: e.lagerPost.x, y: e.lagerPost.y }; }
+        else { e.jagdZiel = null; }   // auf Posten -> steht am Tor
+      }
+    }
   }
 
   // Der Bindealtar ist gefallen: die Besatzung des Abschnitts ZERFAELLT
@@ -9443,6 +9493,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       }
     } else this.saeuberungT = 0;
     this.pruefeAltarSturz();   // F3: Altar gefallen -> Besatzung zerfaellt
+    this.updateFeindlagerWachen();   // M2: Tor-Waechter besetzen aktiv + fangen ab
     const evs = tickFeindzug(this.feindzug, dt, {
       produktionProS: FELDZUG.produktionProS,
       welleMin: FELDZUG.welleMin,

@@ -276,6 +276,11 @@ export class Enemy {
   passiv = false;                    // R100b: frisch gesetzt -> steht still, bis geweckt (Gegner nah/Schaden/Befehl)
   schlaeft = false;                  // R118 V9: schlaeft hinter verschlossener Tuer - weckt NUR Tuer-Oeffnen oder Schaden
   festPos: { x: number; y: number } | null = null;   // R100c: fixierter Posten (Turmplattform) - steht still, schiesst von dort
+  // M2: Rolle in der Feindlager-Garnison. 'tor' = besetzt eine Tor-Oeffnung und
+  // faengt den Helden ab (patrouilliert), 'kern' = Ring am Altar (bunkert, letzte
+  // Linie). lagerPost = der Tor-Posten, zu dem ein Tor-Waechter zurueckkehrt.
+  lagerRolle: 'tor' | 'kern' | null = null;
+  lagerPost: { x: number; y: number } | null = null;
   turmReichF = 1;                    // R100c: Reichweiten-Faktor auf dem Turm (Fernkampf massiv)
   magie = false;
   // Sichtbarer Figurname (mit Waffe, falls "Gefallener"), sonst der Typ

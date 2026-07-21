@@ -203,7 +203,7 @@ Ausbau/Sicherung der Stadt.
 - [x] SCHRITT 1 (erledigt): Wirtshaus = klassischer RPG-Eingang (Tuer ->
       Innen-Instanz innen_taverne). leaveInterior kehrt zur Herkunftskarte
       zurueck (nicht mehr ins tote Dorf). Grundstein fuer die Zuflucht.
-- [ ] SCHRITT 2: 3D-Begehbare Gebaeude, in denen NPCs stecken bleiben,
+- [ ] (Feldzug-Haeuser) SCHRITT 2: 3D-Begehbare Gebaeude, in denen NPCs stecken bleiben,
       entschaerfen - Fussabdruck SOLID machen (kein 1:1-Reinlaufen mehr), Tuer
       als einziger Eingang. Betrifft Wirtshaus (+ spaeter Gemeindehaus, das
       der Autor noch platzieren will).
