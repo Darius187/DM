@@ -9280,7 +9280,67 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       rueste(e);
       e.lagerRolle = 'kern';
     }
+    // M1-Netz: nach dem Wall garantieren, dass der Altar begehbar bleibt.
+    this.sichereLagerRoute(a, ax, ay, tore);
     this.wegfeldNeu();
+  }
+
+  // M1-Sicherheitsnetz (07-FEIND-KI): die Blaupausen haben designte Tor-Luecken,
+  // aber falls eine Variante den Altar doch einmauert, MUSS eine Route zur Kante
+  // bleiben - sonst ist das Lager ein zugemauerter Kasten. BFS ab Altar ueber
+  // feind-begehbare Kacheln; erreicht sie keine Kante, schlagen wir am naechsten
+  // Tor-Winkel eine Bresche in den Knochenwall (designtreu, greift nur im Notfall).
+  private sichereLagerRoute(a: AreaData, ax: number, ay: number, tore: number[]): void {
+    const frei = (tx: number, ty: number): boolean =>
+      tx >= 0 && ty >= 0 && tx < a.w && ty < a.h &&
+      !this.solidFuerFeind(tx * TILE + 16, ty * TILE + 16);
+    // Flut ab Altar: erreichte Kacheln, ob eine Kante dabei ist, und die
+    // angrenzenden CRACK-Risse (moegliche Breschen-Punkte).
+    const flut = (): { kante: boolean; risse: { tx: number; ty: number }[] } => {
+      const gesehen = new Set<number>();
+      const risse: { tx: number; ty: number }[] = [];
+      const q: number[] = [ay * a.w + ax];
+      gesehen.add(q[0]);
+      let kante = false;
+      for (let h = 0; h < q.length; h++) {
+        const id = q[h], tx = id % a.w, ty = (id - tx) / a.w;
+        if (tx === 0 || ty === 0 || tx === a.w - 1 || ty === a.h - 1) kante = true;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+          const nx = tx + dx, ny = ty + dy;
+          if (nx < 0 || ny < 0 || nx >= a.w || ny >= a.h) continue;
+          const nid = ny * a.w + nx;
+          if (gesehen.has(nid)) continue;
+          gesehen.add(nid);
+          if (frei(nx, ny)) q.push(nid);
+          else if (a.map[ny]?.[nx] === T.CRACK) risse.push({ tx: nx, ty: ny });
+        }
+      }
+      return { kante, risse };
+    };
+    for (let versuch = 0; versuch < 24; versuch++) {
+      const { kante, risse } = flut();
+      if (kante) return;               // Route steht - Netz greift nicht (Normalfall)
+      if (!risse.length) return;       // kein Riss erreichbar (kein Wall) - nichts zu tun
+      // Bresche am Riss, der einem Tor-Winkel am naechsten liegt.
+      risse.sort((p, q2) => this.rissTorAbstand(ax, ay, p, tore) - this.rissTorAbstand(ax, ay, q2, tore));
+      const b = risse[0];
+      a.map[b.ty][b.tx] = T.GRASS;
+      this.refreshTile(b.tx, b.ty);
+      this.logMsg(`Feindlager-Netz: Bresche bei (${b.tx}, ${b.ty}) - Altar war zugemauert.`, 'gold');
+    }
+  }
+
+  // Winkelabstand eines Risses zum naechsten Tor-Winkel (fuer designtreue Bresche).
+  private rissTorAbstand(ax: number, ay: number, r: { tx: number; ty: number }, tore: number[]): number {
+    if (!tore.length) return 0;
+    const wk = Math.atan2(r.ty - ay, r.tx - ax);
+    let best = Infinity;
+    for (const t of tore) {
+      let d = Math.abs(wk - t) % (Math.PI * 2);
+      if (d > Math.PI) d = Math.PI * 2 - d;
+      if (d < best) best = d;
+    }
+    return best;
   }
 
   // M2: die Tor-Waechter besetzen aktiv ihr Tor und fangen den Helden ab, sobald
