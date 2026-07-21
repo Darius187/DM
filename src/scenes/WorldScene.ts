@@ -13718,14 +13718,13 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     const w = this.scale.width, h = this.scale.height;
     const time = this.time.now / 1000;
     void time; // Nebelballen entfernt (Feedback-Runde 2: "weiße Wolken" störten)
-    // bleierner Himmel: kräftige Vignette + kühler Grundton
-    g.fillStyle(0x10141c, 0.16);
+    // Autor "die grauen Balken am Bildschirmrand sollen WEG - sind seit Beginn drin":
+    // die feste "bleierner Himmel"-Rand-Vignette (dunkle Baender oben/unten/links/
+    // rechts) ist RAUS. Wer Rand-Abdunklung will, nutzt den Vignette-Schalter in den
+    // Einstellungen. Ein SEHR dezenter, gleichmaessiger Grundton bleibt fuer die
+    // Stimmung (kein Rand-Rahmen mehr).
+    g.fillStyle(0x10141c, 0.08);
     g.fillRect(0, 0, w, h);
-    g.fillStyle(0x0e1216, 0.30);
-    g.fillRect(0, 0, w, h * 0.1);
-    g.fillRect(0, h * 0.9, w, h * 0.1);
-    g.fillRect(0, 0, w * 0.07, h);
-    g.fillRect(w * 0.93, 0, w * 0.07, h);
     // Nebel = trübes Wetter (Runde 40, Autorwunsch): pralle Sonne und Nebel
     // passen nicht zusammen. Bei aktivem Nebel legt sich ein kühler Grauschleier
     // übers ganze Bild (desättigt) und dunkelt es ab - es wird dämmrig-fahl wie
