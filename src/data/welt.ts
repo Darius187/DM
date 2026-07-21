@@ -115,6 +115,14 @@ export const FELDZUG = {
   turmHp: 260,           // Lebenspunkte eines Knochenturms (zerstoerbar)
   turmReichF: 1.8,       // Reichweiten-Faktor des Turm-Schuetzen (deckt den Korridor weit)
   turmDmgF: 1.4,         // Hoehenvorteil - der Turm-Schuetze trifft haerter
+  // F3/M1 (07-FEIND-KI "sichtbare Monster-Arbeiter bauen die Teile auf"): solange
+  // das Lager noch WAECHST (Stufe < Vollausbau), schuften untote Zimmerleute
+  // sichtbar am Wall - eigene Einheit, KEIN Kampf (dmg 0, zerbrechlich), zerstreut
+  // sich vom Helden und ZERFAELLT mit dem Bindealtar (der Wille, der sie treibt).
+  arbeiterAnzahl: 3,        // sichtbare Zimmerleute am wachsenden Lager
+  arbeiterHp: 40,           // zerbrechlich (kein Kaempfer)
+  arbeiterFluchtRadiusPx: 190,  // so nah scheucht der Held sie nach innen
+  arbeiterWerkTaktS: 0.8,   // Takt der sichtbaren Werk-Funken
   // M2 (Autor "nicht alle im Ring gebunkert - das Lager ist eine Verteidigungs-
   // LINIE, keine Kaefig"): ein Teil der Besatzung besetzt die TORE und faengt den
   // Helden ab, statt am Altar zu stehen. Rest bleibt Kern-Ring (letzte Linie).

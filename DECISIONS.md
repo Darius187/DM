@@ -2673,3 +2673,15 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Autor. lagerRolle 'turm' (bewegt sich nicht, updateFeindlagerWachen ignoriert
   es). Browser-verifiziert: Stufe-2-Lager 'lager' -> 2 Tuerme (halbmond, 2 Tore),
   speed 0/ranged/turmReichF 1.8/hp 260, 0 Fehler.
+
+- F3/M1 sichtbare untote Zimmerleute (07-FEIND-KI M1 "Monster-Arbeiter bauen die
+  Teile auf"): solange ein Feindlager WAECHST (Stufe < Vollausbau) schuften
+  FELDZUG.arbeiterAnzahl (3) sichtbare 'Untoter Zimmermann' am Wall - eigene
+  Einheit, KEIN Kampf (dmg 0, hp 40, passiv). Verhalten: werkeln am Wall-Platz
+  (Funken im Takt arbeiterWerkTaktS), zerstreuen sich NACH INNEN sobald der Held
+  in arbeiterFluchtRadiusPx kommt (fliehen statt fechten), und ZERFALLEN mit dem
+  Bindealtar (pruefeAltarSturz - kein Nachjagen). Am voll ausgebauten Lager gibt
+  es keine Arbeiter mehr (Bau fertig). Optik Placeholder (skelett). lagerRolle
+  'arbeiter'. Browser-verifiziert: Stufe1 -> 3 Arbeiter (dmg0/passiv/hp40),
+  Vollausbau -> 0, Altarsturz 3->0, 0 Fehler. Die V1-Grossvision (region-weite
+  Isengard-Industrialisierung) bleibt separat (TEIL 4, vom Autor zu bestaetigen).

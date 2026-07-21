@@ -444,6 +444,7 @@ export class WorldScene extends CombatScene {
 
     this.spaeherT = SPAEHER.intervallMinS;   // R178: Kundschafter-Uhr frisch
     this.spaeherBlindT = 0;                  // F2a: Spaeher-Blindheit frisch
+    this.feindlagerWerkT = 0;                // F3/M1: Arbeiter-Werk-Takt frisch
     this.bote = boteNeu(BOTE.heim);          // R179: der Bote startet daheim
     this.lage = neueGebietslage(FELDZUG.startBesetzt);   // F1: Gebietslage frisch
     this.feindzug = neuerFeindzug(FELDZUG.startBesetzt); // F2: Feindzug frisch
@@ -9307,6 +9308,23 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         turm.lagerRolle = 'turm';
       }
     }
+    // F3/M1: solange das Lager noch WAECHST (nicht voll ausgebaut), schuften
+    // sichtbare untote Zimmerleute daran - eigene Einheit, KEIN Kampf.
+    if (stufe < FELDZUG.ausbauStufenS.length) {
+      const rW = FELDZUG.wallRadiusKacheln * v.wallRadiusF;
+      for (let i = 0; i < FELDZUG.arbeiterAnzahl; i++) {
+        const wk = (i / FELDZUG.arbeiterAnzahl) * Math.PI * 2 + this.rng.random();
+        const bx = (ax + Math.cos(wk) * (rW - 1)) * TILE + 16;
+        const by = (ay + Math.sin(wk) * (rW - 1) * 0.7) * TILE + 16;
+        const w = this.spawnEnemy('skelett', EINFALL.tiefe, bx, by, false, true);
+        w.name = 'Untoter Zimmermann';
+        w.dmg = 0;                 // kein Kampf - er baut, er schlaegt nicht
+        w.maxhp = FELDZUG.arbeiterHp; w.hp = FELDZUG.arbeiterHp;
+        w.passiv = true;
+        w.lagerRolle = 'arbeiter';
+        w.lagerPost = { x: bx, y: by };   // sein Werk-Platz am Wall
+      }
+    }
     // M1-Netz: nach dem Wall garantieren, dass der Altar begehbar bleibt.
     this.sichereLagerRoute(a, ax, ay, tore);
     this.wegfeldNeu();
@@ -9391,17 +9409,48 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     }
   }
 
+  // F3/M1: die sichtbaren untoten Zimmerleute schuften am wachsenden Lager -
+  // kein Kampf: sie werkeln an ihrem Wall-Platz (Funken im Takt) und zerstreuen
+  // sich NACH INNEN, sobald der Held sie erreicht (fliehen statt fechten).
+  private feindlagerWerkT = 0;
+  private updateFeindlagerArbeiter(dt: number): void {
+    if (!this.altarStehtHier || this.playerDead) return;
+    const arbeiter = this.enemies.filter((e) => e.team !== 'spieler' && e.hp > 0 && e.lagerRolle === 'arbeiter');
+    if (!arbeiter.length) return;
+    const altar = this.enemies.find((e) => e.name === 'Bindealtar' && e.hp > 0);
+    for (const w of arbeiter) {
+      const heldNah = Math.hypot(this.px - w.x, this.py - w.y) < FELDZUG.arbeiterFluchtRadiusPx;
+      if (heldNah && altar) {
+        w.jagdZiel = { x: altar.x + (w.x - altar.x) * 0.2, y: altar.y + (w.y - altar.y) * 0.2 };   // nach innen scheuchen
+      } else if (w.lagerPost) {
+        const dp = Math.hypot(w.x - w.lagerPost.x, w.y - w.lagerPost.y);
+        w.jagdZiel = dp < 24 ? null : { x: w.lagerPost.x, y: w.lagerPost.y };   // am Platz -> werkeln (steht)
+      }
+    }
+    // sichtbare Werk-Funken im Takt (ein Arbeiter, der gerade am Platz steht)
+    this.feindlagerWerkT -= dt;
+    if (this.feindlagerWerkT <= 0) {
+      this.feindlagerWerkT = FELDZUG.arbeiterWerkTaktS;
+      const werker = arbeiter.find((w) => !w.jagdZiel);
+      if (werker) this.fx.burst(werker.x, werker.y - 8, 0xb8a06a, 4, 60);
+    }
+  }
+
   // Der Bindealtar ist gefallen: die Besatzung des Abschnitts ZERFAELLT
   // (Dok 06 A3 - der Comeback-Mechanismus des Schwaecheren).
   private pruefeAltarSturz(): void {
     if (!this.altarStehtHier) return;
     if (this.enemies.some((e) => e.name === 'Bindealtar' && e.hp > 0)) return;
     this.altarStehtHier = false;
+    // F3/M1: die Zimmerleute werden vom Altar-WILLEN getrieben - er birst, sie
+    // zerfallen sofort (kein tediöses Nachjagen fliehender Arbeiter).
+    const arbeiter = this.enemies.filter((e) => e.lagerRolle === 'arbeiter' && e.hp > 0);
     for (const e of this.enemies) {
-      if (e.team === 'spieler' || e.hp <= 0) continue;
+      if (e.team === 'spieler' || e.hp <= 0 || e.lagerRolle === 'arbeiter') continue;
       e.hp = Math.max(1, Math.round(e.hp * FELDZUG.altarZerfallF));
       e.hitFlash = 0.3;
     }
+    for (const w of arbeiter) { this.fx.burst(w.x, w.y, 0x6a5a3a, 8, 120); w.hp = 0; this.killEnemy(w); }
     this.fx.burst(this.px, this.py, 0x8a2a4a, 20, 240);
     this.logMsg('Der Bindealtar birst - die Horde dieses Abschnitts ZERFÄLLT!', 'gold');
     this.chronik('kampf', `Der Bindealtar von ${this.kartenName(this.area.id)} ist zerstört - die Besatzung zerfällt.`);
@@ -9581,6 +9630,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     } else this.saeuberungT = 0;
     this.pruefeAltarSturz();   // F3: Altar gefallen -> Besatzung zerfaellt
     this.updateFeindlagerWachen();   // M2: Tor-Waechter besetzen aktiv + fangen ab
+    this.updateFeindlagerArbeiter(dt);   // F3/M1: sichtbare untote Zimmerleute am Bau
     // F2a (A10): die durch getoetete Kloster-Spaeher erkaufte Blindheit klingt ab.
     if (this.spaeherBlindT > 0) this.spaeherBlindT = Math.max(0, this.spaeherBlindT - dt);
     const evs = tickFeindzug(this.feindzug, dt, {
