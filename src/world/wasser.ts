@@ -287,12 +287,17 @@ export interface WasserPreset {
 // R158b (Autor "das Wasser sieht seltsam aus"): meine R158-Umtstimmung des
 // Presets ZURUECKGENOMMEN - die Wasser-Optik stimmt der Autor selbst in der
 // F10-Werkbank ab. Es gilt wieder der alte Stand (R138 "WASSER SICHTBAR").
+// Autorwunsch "das Wasser sieht matschig aus - an die saubere Referenz
+// (reference/fluss-bach.html) angleichen": tint 0,8->0,65, Truebung 0,6->0,4 und
+// die Tiefenfarbe auf den Referenz-Ton #143d45 gezogen - so kippt das Wasser
+// nicht mehr ins truebe Braun-Gruen, sondern liest sich als klares Teal-Blau.
+// Feinschliff weiterhin in der F10-Wasser-Werkbank.
 export const WASSER: WasserPreset = {
   speed: 0.13, turb: 0.0, wake: 0.5, bed: 1.0, refract: 0.05,
-  tint: 0.8, shore: 0.010, wavescale: 5.0, nscale: 0.10, gloss: 0.35,
-  turbidity: 0.6, bank: 0.45, emerge: 0.4, sand: 0.5,
+  tint: 0.65, shore: 0.010, wavescale: 5.0, nscale: 0.10, gloss: 0.35,
+  turbidity: 0.4, bank: 0.45, emerge: 0.4, sand: 0.5,
   procDensity: 0.35, procSize: 0.05, flowDir: 1.0, ambient: 1.0,
-  deep: [0.07, 0.19, 0.24], sky: [0.5, 0.66, 0.82], spec: [0.95, 0.95, 0.9],
+  deep: [0.078, 0.239, 0.271], sky: [0.5, 0.66, 0.82], spec: [0.95, 0.95, 0.9],
   bedShallow: [0.40, 0.37, 0.30], bedDeep: [0.13, 0.16, 0.16], stoneCol: [0.345, 0.329, 0.298],
   light: [0.25, 0.65],
 };
