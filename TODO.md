@@ -107,8 +107,10 @@
   Opus), Zuweisung Einheit<-Slot im Dorf-Zeughaus + Feld-Nachschubzelt.
 - R99d: Turm-Reichweiten-Bonus fuer Enemy-basierte Bogenschuetzen (Schuetzen-KI
   Reichweite je Einheit anheben, wenn turm gesetzt).
-- R99d: Feldscher/Heiler-Einheit neu auf Dungeon-Basis (Heil-KI), war in der
-  alten Test-Sim und ist mit ihr entfernt.
+- [x] R99d: Feldscher/Heiler ERLEDIGT - spawnVerbuendeter-
+  Eintrag 'heiler', Heil-KI updateFeldscher (geht zum naechsten Verwundeten,
+  heilt in Reichweite 16 HP/s, auch den Helden), Rekrutier-Knopf 'Feldscher'.
+  Browser-verifiziert (Verwundeter 20->53 HP in ~2s).
 - R100 OFFEN: echtes 2-Kachel-breites Tor (Autor "vielleicht 2 Felder gross").
   Aktuell 1 Kachel, aber massiv + doppeltoeffnend. 2-Kachel-Footprint braucht
   Platzierung/Kollision/Durchlass ueber 2 Tiles.
@@ -134,8 +136,10 @@
   breite Linie durchschicken, Verklumpung filmen), dann bauen. Regel 9.1.
 - R139: Konter-Matrix auch fuer den HELDEN-Schwung gegen Einheiten-Tags
   (WAFFEN_SCHADENSART x kampfTags) - eigener Schritt, Dungeon-Balance pruefen.
-- R139: Feldscher/Heiler-Einheit fehlt weiter (R99d) - spawnVerbuendeter hat
-  keinen 'heiler'-Eintrag; die Verhaltens-Achsen-Rolle ist schon vorbereitet.
+- [x] R139: Feldscher/Heiler ERLEDIGT - spawnVerbuendeter-
+  Eintrag 'heiler', Heil-KI updateFeldscher (geht zum naechsten Verwundeten,
+  heilt in Reichweite 16 HP/s, auch den Helden), Rekrutier-Knopf 'Feldscher'.
+  Browser-verifiziert (Verwundeter 20->53 HP in ~2s).
 - R139: Flucht-/Sammel-RUFE als Sound-Assets (Autor fragen: WAV 48kHz/24bit).
 - [x] R141: Fernkampf-Kills zaehlen fuer den Veteranen-Rang - war bereits
   verdrahtet (pr.schuetze -> meldeTruppenKill -> meldeKill), verifiziert:

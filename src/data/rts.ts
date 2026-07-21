@@ -106,6 +106,13 @@ export const LAGER_EFFEKT = {
   wartfeuerCd: 20,         // Wartfeuer: Sekunden bis wieder rufbar
 } as const;
 
+// Feldscher/Heiler-Einheit (R99d/R139): verbindet verwundete Verbuendete im Feld.
+export const FELDSCHER = {
+  suchRadius: 260,   // sucht Verwundete in diesem Umkreis (px) und geht hin
+  heilRadius: 48,    // in dieser Naehe wird verbunden
+  heilProS: 16,      // Lebenspunkte pro Sekunde je Feldscher
+} as const;
+
 // Held-Steuerung im RTS-Modus (R96, Autor "läuft viel zu schnell, Lauf-
 // Animation dadurch nicht gut"): der Marsch ist bedächtiger als das ARPG-Tempo,
 // damit der Geh-Zyklus sauber aussieht. Reiner Regler-Wert, hier justierbar.

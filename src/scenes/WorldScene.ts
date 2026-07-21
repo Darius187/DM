@@ -64,7 +64,7 @@ import { HoehlenLeben } from '../gfx/hoehlenLeben';
 import { KriegsnebelAnzeige, type SichtSet } from '../systems/kriegsnebel';
 import { buildKerkerArea } from '../world/kerkerArea';
 import { MINE } from '../data/mine';
-import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, HEER_AUSRUESTUNG, MORAL, MARSCH, VERTEIDIGUNG, BOTE, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, HEER_AUSRUESTUNG, MORAL, MARSCH, VERTEIDIGUNG, BOTE, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, FELDSCHER, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
@@ -3993,6 +3993,40 @@ export class WorldScene extends CombatScene {
     this.rtsWahlRefreshT -= dt;
     if (this.rtsWahlRefreshT <= 0) { this.rtsWahlRefreshT = 0.5; this.baueRtsLeiste(); }
   }
+
+  // R99d/R139 Feldscher: verbindet verwundete Verbuendete (und den Helden). Geht
+  // zum naechsten Verwundeten im Umkreis und heilt in Reichweite Leben/s. Kaempft
+  // nicht (ranged/magie sind fuer den Heiler aus). Wenige Heiler -> guenstig.
+  private feldscherFxT = 0;
+  private updateFeldscher(dt: number): void {
+    const heiler = this.enemies.filter((e) => e.team === 'spieler' && e.hp > 0 && e.rtsTyp === 'heiler');
+    if (!heiler.length) return;
+    this.feldscherFxT -= dt;
+    const funkeln = this.feldscherFxT <= 0;
+    if (funkeln) this.feldscherFxT = 0.5;
+    for (const h of heiler) {
+      // naechsten verwundeten Verbuendeten suchen; der Held zaehlt auch
+      let ziel: { x: number; y: number; heil: (v: number) => void } | null = null;
+      let bd: number = FELDSCHER.suchRadius;
+      for (const a of this.enemies) {
+        if (a === h || a.team !== 'spieler' || a.hp <= 0 || a.hp >= a.maxhp) continue;
+        const d = Math.hypot(a.x - h.x, a.y - h.y);
+        if (d < bd) { bd = d; ziel = { x: a.x, y: a.y, heil: (v) => { a.hp = Math.min(a.maxhp, a.hp + v); } }; }
+      }
+      if (!this.playerDead && this.p.hp < this.p.stats.maxhp) {
+        const dp = Math.hypot(this.px - h.x, this.py - h.y);
+        if (dp < bd) { bd = dp; ziel = { x: this.px, y: this.py, heil: (v) => { this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + v); } }; }
+      }
+      if (!ziel) { h.jagdZiel = null; continue; }
+      if (bd > FELDSCHER.heilRadius) {
+        h.jagdZiel = { x: ziel.x, y: ziel.y }; h.passiv = false;   // hingehen
+      } else {
+        h.jagdZiel = null;                                        // in Reichweite -> verbinden
+        ziel.heil(FELDSCHER.heilProS * dt);
+        if (funkeln) this.fx.float(ziel.x, ziel.y - 18, '+', '#9ad86a');
+      }
+    }
+  }
   // Baumenü-Größe (Autor: skalierbar), 0.8..1.4 - Standard MAX (Autorwunsch
   // "nimm die maximale Groesse als Standard, sonst ist alles zu klein"); die
   // A+/A--Wahl bleibt gespeichert.
@@ -4194,6 +4228,7 @@ export class WorldScene extends CombatScene {
         [0, 'Gewappneter', 'nahkampf', 'bauer', `${REKRUTIERUNG.gold}G+Waffe+Arbeiter`],
         [1, 'Bogenschütze', 'bogen', 'bauer', `${REKRUTIERUNG.gold}G+Waffe+Arbeiter`],
         [2, 'Söldner', 'nahkampf', 'soeldner', `${REKRUTIERUNG.soeldnerGold}G - kämpft fürs Geld`],
+        [3, 'Feldscher', 'heiler', 'bauer', `Verbindet Verwundete im Feld - ${REKRUTIERUNG.gold}G+Waffe+Arbeiter`],
       ];
       for (const [i, lbl, typ, art, tip] of rekruten) {
         feld(i, 0, '⚑', lbl, { tip }, () => this.rekrutiereSoldat(typ, art));
@@ -8549,6 +8584,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       nahkampf: { typ: 'skelett', figur: 'soldat', schild: false },
       bogen: { typ: 'schuetze', figur: 'bogensoldat', schild: false },
       reiter: { typ: 'skelett', figur: 'soldat', schild: true },
+      heiler: { typ: 'skelett', figur: 'soldat', schild: false },   // Feldscher: heilt statt zu kaempfen
     };
     const m = map[rtsTyp];
     if (!m) return null;
@@ -15194,6 +15230,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.updateBauBalken();      // Feldbau-Lebensbalken (R94)
     this.updateRtsHeld(dt * kampfTempo);      // Einheitensteuerung im RTS-Modus (R94); im RTS Echtzeit (R131, keine Slow-Motion)
     this.updateRtsWahlLive(dt);   // R148-Politur: Auswahl-Karte (Leben/Moral) live nachziehen
+    this.updateFeldscher(dt);     // R99d/R139: Feldscher verbindet Verwundete
     this.updateWachwerden(dt);   // R100b: passive Einheiten wecken, wenn Gegner nah
     this.updateBelagerung(dt);   // R100: Monster nagen an Wehrbauten (Bunker)
     this.updateTurmBesatzung();  // R100: Turm-Insassen unsichtbar + Symbol
