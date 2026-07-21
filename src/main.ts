@@ -31,11 +31,15 @@ import { getSettings } from './logic/settings';
 // Bildgröße (Runde 27): KEIN gestrecktes Canvas mehr (machte Schrift
 // pixelig) - das Spiel rendert immer in voller Fensterauflösung, der
 // Zoom-Regler vergrößert nur die WELT-Kamera in der Spielszene.
+// Experiment (Autor): "Glatte Kanten" schaltet pixelArt AUS -> lineare Filterung
+// (weichere Blender-Sprites). Wird beim Boot gelesen; Umschalten braucht Neustart,
+// weil Phaser den Textur-Filter bei der Spiel-Erzeugung festlegt.
+const glatteKanten = getSettings().glatteKanten === true;
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   backgroundColor: '#0a0806',
-  pixelArt: true,
+  pixelArt: !glatteKanten,
   scale: {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,

@@ -2538,3 +2538,8 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   wiederverwendet; Erde/Kies und dezente Moos-Erde sind spielgerechte
   1024px-Bilder und werden in die GLB eingebettet, nicht separat von Phaser
   geladen.
+- GRAFIK-POLITUR (Autor-Dokumente Post-FX/Licht gesichtet - ~70% hatten wir schon: Bloom/ColorMatrix/Vignette/Light2D/Kontaktschatten/Partikel/Juice/3D-Bake). NEU gebaut:
+  - FARB-GRADING (Regler "Farb-Grading (Stimmung)", Standard 0/aus): eigene ColorMatrix in der Kamera-Post-FX-Kette (warm + Kontrast + leicht entsaettigt), getrennt vom Tag/Nacht-Multiply. Verifiziert: bei 65 sichtbar waermer/kontrastreicher, kein Fehler, reversibel. Der billigste "kinoreife" Look-Gewinn.
+  - VIGNETTE-SCHALTER ins normale Einstellungsmenue (war nur in der Licht-Werkbank/Taste L; Standard AUS seit R171).
+  - GLATTE KANTEN (Experiment, Autor): Schalter -> main.ts setzt pixelArt=false (lineare Filterung, weichere Blender-Sprites). NEUSTART noetig (Phaser legt den Textur-Filter bei Spiel-Erzeugung fest). Fuer den Vorher/Nachher-Vergleich.
+  - NAECHSTER grosser Schritt (Autor bestellt): Normal- + Emissive-Maps aus dem Blender-Bake (propBackofen) -> Light2D bumpig + leuchtende Fenster.

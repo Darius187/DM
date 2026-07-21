@@ -53,6 +53,8 @@ export interface Settings {
   nebelV?: number;        // einmalig: Kriegsnebel v2 abschalten (R131, Autor: "blinkt, weglassen")
   chronikAuto: boolean;   // Chronik-Fenster beim Spielstart offen (Runde 36)
   bloom: number;          // Leucht-/Bloom-Stärke 0-100 (Runde 51: Regler, 0 = aus)
+  grading?: number;       // Farb-Grading (warm + Kontrast + leicht entsättigt) 0-100, 0 = aus
+  glatteKanten?: boolean; // Experiment: pixelArt AUS -> lineare Filterung (weichere Blender-Sprites), NEUSTART nötig
   figuren3d: boolean;     // TEST (Runde 77): Held als 3D-gebackener Atlas statt 2D-Zeichnung
   grusel: number;         // Grusel-Atmosphäre: kalter, dunkler Tint auf Gegner 0-100 (Runde 55)
   schatten: number;       // Schatten-/Licht-Stärke AUSSENWELT 0-100 (Runde 55: 0 = aus, Leistungsregler)
@@ -159,6 +161,7 @@ export const DEF_SETTINGS: Settings = {
   lichtV: 2,
   nebelV: 1,
   bloom: 0, // Runde 51 (Autorwunsch): Bloom standardmäßig AUS, war zu stark
+  grading: 0, // Farb-Grading standardmäßig AUS (Autor-Experiment, hochregeln zum Testen)
   figuren3d: false, // 3D-Held-Test standardmäßig AUS (2D bleibt die Wahrheit)
   grusel: 100, // Runde 58 (Autorwunsch): Grusel-Atmosphäre standardmäßig voll an
   schatten: 70, // Runde 55: Schatten/Licht (Aussenwelt) standardmäßig an (mittlere Stärke)

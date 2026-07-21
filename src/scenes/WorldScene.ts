@@ -14594,15 +14594,29 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // Runde 51 (Autorwunsch): aus dem An/Aus-Schalter wird ein REGLER (0-100),
   // standardmäßig 0 = aus - das feste Bloom war "zu stark".
   private bloomStaerke: number | null = null;
+  private gradingStaerke: number | null = null;
   private wendePostFxAn(): void {
     const b = Math.max(0, Math.min(100, getSettings().bloom ?? 0));
+    const gr = Math.max(0, Math.min(100, getSettings().grading ?? 0));
     this.bloomStaerke = b;
+    this.gradingStaerke = gr;
     const cam = this.cameras.main;
     cam.postFX.clear();
     // Tageszeit-MULTIPLY als Kamera-ColorMatrix (Runde 78): das Blendmodus-
     // Multiply gibt es im WebGL-Renderer für Formen nicht - die ColorMatrix
     // multipliziert die Kanäle echt. Wird pro Frame in renderStimmung gesetzt.
     this.tagLichtFX = cam.postFX.addColorMatrix();
+    // FARB-GRADING (Autor-Experiment, reversibel per Regler): warm + Kontrast +
+    // leicht entsaettigt = der "kinoreife" Look. EIGENE ColorMatrix, damit das
+    // Tag/Nacht-Multiply (tagLichtFX, jeden Frame gesetzt) sie nicht ueberschreibt.
+    if (gr > 0) {
+      const s = gr / 100;
+      const g = cam.postFX.addColorMatrix();
+      // warme Diagonale (R hoch, B runter), dann Kontrast + leichte Entsaettigung
+      g.set([1 + 0.12 * s, 0, 0, 0, 0, 0, 1 + 0.02 * s, 0, 0, 0, 0, 0, 1 - 0.10 * s, 0, 0, 0, 0, 0, 1, 0]);
+      g.contrast(0.14 * s, true);
+      g.saturate(-0.10 * s, true);
+    }
     if (b <= 0) return; // 0 = aus
     // Regler 0-100 -> Bloom-Stärke 0..1,0 (vorher fest 1,1, Autorkritik "zu stark")
     cam.postFX.addBloom(0xffffff, 1, 1, 1.0, (b / 100) * 1.0, 6);
@@ -14650,7 +14664,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     if (!this.area) return;
     const dt = Math.min(0.05, delta / 1000);
     // Nachbearbeitung nachziehen, falls der Bloom-Regler verstellt wurde
-    if ((getSettings().bloom ?? 0) !== this.bloomStaerke) this.wendePostFxAn();
+    if ((getSettings().bloom ?? 0) !== this.bloomStaerke || (getSettings().grading ?? 0) !== this.gradingStaerke) this.wendePostFxAn();
     // Schiebephysik VOR der Bewegung (Runde 40): so bremst die Kiste den Helden
     // im selben Frame, in dem er sie berührt - vorher hinkte die Bremse einen
     // Frame hinterher und griff kaum
