@@ -7,6 +7,7 @@ export interface KeyBindings {
   pot: string; mpot: string; s1: string; s2: string; s3: string;
   heavy: string; faehigkeit1: string; faehigkeit2: string; faehigkeit3: string;
   pause: string;
+  kollisionOverlay: string;   // Dev-Werkzeug: Kollisions-Overlay ein/aus (Standard K)
 }
 
 export interface Settings {
@@ -182,6 +183,7 @@ export const DEF_SETTINGS: Settings = {
     pot: 'q', mpot: 'f', s1: '1', s2: '2', s3: '3',
     heavy: 'shift', faehigkeit1: 'r', faehigkeit2: 't', faehigkeit3: 'z',
     pause: 'p',
+    kollisionOverlay: 'k',
   },
 };
 

@@ -586,10 +586,13 @@ export class WorldScene extends CombatScene {
     // nicht aussagekraeftig). Zyklus 300/600/1000/1500, Shift+B raeumt auf.
     this.input.keyboard?.on('keydown-B', (ev: KeyboardEvent) => { if (ev.shiftKey) this.devStressRaeumen(); else this.devStressBattle(); });
     // DEV-Kollisions-Overlay (Autor-Bug "unsichtbare Wand, ich finde sie nicht"):
-    // Taste K faerbt JEDE blockierte Kachel farbcodiert ein (blau=Wasser,
-    // gruen=Baum, rot=Wand, magenta=Gebaeude, cyan=Bruecken-Sperre) - so wird
-    // die unsichtbare Wand sichtbar UND die Farbe verraet, WAS sie ist.
-    this.input.keyboard?.on('keydown-K', (ev: KeyboardEvent) => { if (!ev.shiftKey) this.toggleKollisionOverlay(); });
+    // faerbt JEDE blockierte Kachel farbcodiert ein (blau=Wasser, gruen=Baum,
+    // rot=Wand, magenta=Gebaeude, cyan=Bruecken-Sperre). Die Taste ist in der
+    // Tastenbelegung aenderbar (kb.kollisionOverlay, Standard K); Shift = frei
+    // fuer die Dev-Selbsttoetung (Shift+K).
+    this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {
+      if (ev.key.toLowerCase() === (getSettings().kb.kollisionOverlay ?? 'k') && !ev.shiftKey) this.toggleKollisionOverlay();
+    });
     // Im K-Modus: Klick auf eine Stelle -> Koordinaten + Kachel-Typ + Grund
     // (fuer die Ferndiagnose der unsichtbaren Wand - der Autor klickt drauf).
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.kollisionKlick(p));

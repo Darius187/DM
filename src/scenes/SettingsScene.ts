@@ -141,7 +141,9 @@ export class SettingsScene extends Phaser.Scene {
           taste('inv', 'Inventar'), taste('charakter', 'Charakterfenster'),
           taste('s1', 'Zauber 1'), taste('s2', 'Zauber 2'), taste('s3', 'Zauber 3'),
           taste('faehigkeit1', 'Waffen-Fähigkeit 1'), taste('faehigkeit2', 'Waffen-Fähigkeit 2'),
-          { art: 'hinweis', text: 'F10 im Spiel: Entwicklungskasten (Balancing, UI verschieben).' },
+          { art: 'abschnitt', titel: 'Werkzeuge (Entwicklung)' },
+          taste('kollisionOverlay', 'Kollisions-Overlay (Wände sichtbar)'),
+          { art: 'hinweis', text: 'Weitere Tool-Tasten: B = Stresstest (Shift+B räumt) · L = Licht-Werkbank · Shift+K = Held sofort töten (Test) · F10 = Entwicklungskasten.' },
         ];
       }
       case 'allgemein': return [
