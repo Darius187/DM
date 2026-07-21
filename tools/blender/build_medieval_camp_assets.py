@@ -412,6 +412,29 @@ def build_field_tent():
                        -half_l + v * half_l * 2,
                        ridge * (1 - u) + .08 + .035 * math.sin(v * math.pi * 3) * math.sin(u * math.pi)
                        - .055 * math.sin(v * math.pi) * math.sin(u * math.pi)))
+        # Raised seams and a weighted lower hem keep the canvas from reading as one flat sheet.
+        for u in (.34, .67):
+            x = side * u * half_w
+            z = ridge * (1 - u) + .086
+            strip_half = .022
+            BATCHES["canvas_dark"].quad([
+                (x - strip_half, -half_l, z), (x + strip_half, -half_l, z),
+                (x + strip_half, half_l, z), (x - strip_half, half_l, z),
+            ])
+        edge_x = side * half_w
+        BATCHES["canvas_dark"].quad([
+            (edge_x - side * .055, -half_l, .095), (edge_x + side * .010, -half_l, .095),
+            (edge_x + side * .010, half_l, .095), (edge_x - side * .055, half_l, .095),
+        ])
+        # Small repairs are deliberately asymmetric and sit just above the roof skin.
+        for u, v, width, length in ((.52, .30, .32, .43), (.78, .68, .26, .34)):
+            x = side * u * half_w
+            y = -half_l + v * half_l * 2
+            z = ridge * (1 - u) + .092
+            BATCHES["canvas_dark"].quad([
+                (x - width / 2, y - length / 2, z), (x + width / 2, y - length / 2, z),
+                (x + width / 2, y + length / 2, z), (x - width / 2, y + length / 2, z),
+            ])
     # Closed back panel.
     cloth_grid("canvas_dark", "BACK", 12, 8,
                lambda u, v: (-half_w + u * half_w * 2, half_l + .015,

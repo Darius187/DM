@@ -1,0 +1,67 @@
+{
+  "asset": "medieval_field_tent_3d_runtime",
+  "label_de": "Kleines Feldzelt",
+  "glb": "medieval_field_tent_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "FIELD_TENT_ROTATION_PIVOT",
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -3.405,
+      -3.604,
+      -0.12
+    ],
+    "max": [
+      3.4,
+      3.604,
+      3.353
+    ],
+    "size": [
+      6.805,
+      7.207,
+      3.473
+    ]
+  },
+  "runtime": {
+    "visible_objects": 4,
+    "triangles": 1632,
+    "embedded_textured_materials": 4,
+    "static_material_batches": [
+      "FIELD_TENT_WOOD_DARK_BATCH",
+      "FIELD_TENT_ROPE_BATCH",
+      "FIELD_TENT_CANVAS_BATCH",
+      "FIELD_TENT_CANVAS_DARK_BATCH"
+    ]
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      5.2,
+      4.5
+    ],
+    "center": [
+      0,
+      0.15
+    ],
+    "front_open": true
+  },
+  "content": {
+    "walkable_front_opening": true,
+    "guy_ropes": 6,
+    "stakes": 6,
+    "visible_bedroll": true
+  },
+  "interactions": [],
+  "notes": [
+    "Eigenstaendiges Asset; nicht mit den beiden anderen Lager-Assets verschmelzen.",
+    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
+    "Material-Farbtexturen sind im GLB eingebettet."
+  ]
+}
