@@ -13928,6 +13928,20 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       this.eraseLight(sx, sy - 4 * zm, (LAGERFEUER.lichtRadius + Math.sin(time * 6 + lf.ph) * 10) * zm);
       warmIdx = this.placeWarm(warmIdx, lf.x, lf.y - 4, 85, 0.7);
     }
+    // Feuer-Feldbauten (R109-Folge, Autor "nachts nur dunkles Licht statt
+    // ehrliches Feuer"): Kochstelle/Feldschmiede/Wartfeuer stanzen selbst ein
+    // Loch in den Nacht-Schleier und werfen warmen Schein - sonst frisst der
+    // Dunkelheits-Overlay ihre Emissiv-Glut (die liegt in der Welt-Tiefe, das
+    // lightRT-Overlay liegt darueber). eraseLight ist am Tag folgenlos (kaum
+    // Schleier), der warme Schein waechst mit der Nacht.
+    for (const f of (fow ? [] : this.feldbauten)) {
+      if (!f.glut || f.hp <= 0 || !f.img || !f.img.active) continue;
+      const sx = (f.x - cam.worldView.x) * zm, sy = (f.y - cam.worldView.y) * zm;
+      if (sx < -160 || sy < -160 || sx > this.scale.width + 160 || sy > this.scale.height + 160) continue;
+      const fl = 1 + Math.sin(time * 6 + f.x * 0.05) * 0.06 + Math.sin(time * 15 + f.y * 0.03) * 0.04;
+      this.eraseLight(sx, sy - 8 * zm, 78 * fl * zm);
+      warmIdx = this.placeWarm(warmIdx, f.x, f.y - 8, 66, (0.28 + 0.4 * nachtFaktor) * fl, 0xffb060);
+    }
     // Hausfenster im Dorf (Runde 35): abends leuchten die Fenster warm, nachts
     // erlischt ein Haus nach dem anderen, tagsüber sind alle dunkel.
     if (this.area.id === 'village' && !fow) {
