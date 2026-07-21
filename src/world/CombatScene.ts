@@ -272,9 +272,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     kb.on('keydown', (ev: KeyboardEvent) => {
       const k = ev.key.toLowerCase();
       this.keysDown[k] = true;
-      // Dev: K tötet den Helden sofort (Todes-Sequenz testen) - auch bei
-      // offenem Fenster, damit man es jederzeit auslösen kann. Nur Dev-Build.
-      if (import.meta.env.DEV && k === 'k' && !this.playerDead) { this.hurtPlayer(99999); return; }
+      // Dev: SHIFT+K tötet den Helden sofort (Todes-Sequenz testen). Frueher
+      // lag das auf K allein - kollidierte mit dem Kollisions-Overlay (Taste K).
+      if (import.meta.env.DEV && k === 'k' && ev.shiftKey && !this.playerDead) { this.hurtPlayer(99999); return; }
       if (this.playerDead) return;
       // Escape bricht den Bodenzauber-Zielmodus ab (Runde 46)
       if (k === 'escape' && this.zielModus) { this.zielModus = null; this.logMsg('Abgebrochen.', ''); return; }

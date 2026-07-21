@@ -589,7 +589,7 @@ export class WorldScene extends CombatScene {
     // Taste K faerbt JEDE blockierte Kachel farbcodiert ein (blau=Wasser,
     // gruen=Baum, rot=Wand, magenta=Gebaeude, cyan=Bruecken-Sperre) - so wird
     // die unsichtbare Wand sichtbar UND die Farbe verraet, WAS sie ist.
-    this.input.keyboard?.on('keydown-K', () => this.toggleKollisionOverlay());
+    this.input.keyboard?.on('keydown-K', (ev: KeyboardEvent) => { if (!ev.shiftKey) this.toggleKollisionOverlay(); });
     // Im K-Modus: Klick auf eine Stelle -> Koordinaten + Kachel-Typ + Grund
     // (fuer die Ferndiagnose der unsichtbaren Wand - der Autor klickt drauf).
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.kollisionKlick(p));
