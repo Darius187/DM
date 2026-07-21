@@ -7200,9 +7200,11 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   }
 
   private initialisiereRavensmoorPferde(): void {
-    const held = pferdDef(HELDEN_PFERD_ID);
-    const hp = this.pferdeStartpunkt(held);
-    this.reitPferd = { areaId: 'stadt', x: hp.x, y: hp.y, richtung: -Math.PI / 2, tempo: 0, variante: held };
+    // Autor "das schwarze Pferd beim Helden am Start ist weg": das HELD-Pferd wird
+    // NICHT mehr vorab in die Stadt gesetzt (dann fehlte es am Waldrand-Start).
+    // reitPferd bleibt null -> die Karten-Spawn-Logik (goArea) stellt das schwarze
+    // Reitpferd direkt neben den Helden, auf welcher Aussenkarte er auch startet.
+    this.reitPferd = null;
     this.freiePferde = RAVENSMOOR_PFERDE.filter((def) => def.id !== HELDEN_PFERD_ID).map((def) => {
       const p = this.pferdeStartpunkt(def);
       return {
@@ -15107,6 +15109,10 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.updateLagerGlut();   // R109: Feuer-Glut nach dem Licht (nachtFaktor ist gesetzt)
     this.light2dHeldLicht?.setPosition(this.px, this.py);   // R109 Schritt 2: Bump-Licht folgt dem Helden
     this.wendeSchwimmOptik();   // Wasser: Held watet/schwimmt (Sprite von unten beschnitten)
+    // Pferd-Grafik nachziehen, falls das Reit-Atlas erst NACH dem Kartenaufbau
+    // fertig geladen war (sonst blieb das schwarze Startpferd unsichtbar).
+    if (this.reitPferd && this.reitPferd.areaId === this.area.id && !this.reitPferdSprite
+      && this.reitFrameVorhanden(REIT_PFERD.atlasKey, 'idle_d0_f0')) this.erstelleReitPferdGrafik();
     this.renderMinimap();
     this.renderHud();
     this.sortiereKameras();
