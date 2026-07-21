@@ -2,7 +2,7 @@
 
 The supplied Unity package contains a modular UE4 rig, spear-like weapon and
 textures, but no animation clips. This script authors idle, grounded walk,
-thrust, thrust-combo, two-handed spin, hit and death poses and renders eight
+thrust, thrust-combo, two-handed spin, hit and death poses and renders sixteen
 directions. The original package remains outside the repository.
 
 Run with Blender 5.1:
@@ -20,11 +20,13 @@ from mathutils import Euler, Matrix, Quaternion, Vector
 
 
 CELL = 160
-DIRECTIONS = 8
-CAMERA_DIRECTIONS = (6, 7, 0, 1, 2, 3, 4, 5)
+DIRECTIONS = 16
+# Atlas d0 schaut wie die Spielrichtung nach Sueden. Danach folgen echte
+# 22,5-Grad-Zwischenansichten statt harter 45-Grad-Spruenge.
+CAMERA_DIRECTIONS = tuple((direction + 12) % DIRECTIONS for direction in range(DIRECTIONS))
 CLIP_FRAMES = {
     "idle": 6,
-    "walk": 10,
+    "walk": 12,
     "thrust": 10,
     "combo": 14,
     "spin": 14,
@@ -164,15 +166,36 @@ def keyed(t: float, keys: tuple[tuple[float, float], ...]) -> float:
 
 def gait(phase: float) -> tuple[float, float]:
     t = phase % 1.0
-    if t < 0.60:
-        return 0.18 - (t / 0.60) * 0.36, 0.0
-    swing = smoothstep((t - 0.60) / 0.40)
-    return -0.18 + swing * 0.36, math.sin(math.pi * swing) * 0.14
+    # Menschlicher Gehzyklus in Modellrichtung -Y:
+    # Fersenkontakt vorne -> Belastung -> Standbein nach hinten -> Abheben ->
+    # Passierstellung -> Schwung nach vorne. Der alte Zyklus lief genau
+    # andersherum und erzeugte sichtbares Rueckwaerts-/Pferdegleiten.
+    stride = keyed(t, (
+        (0.00, -0.17),
+        (0.12, -0.14),
+        (0.54, 0.15),
+        (0.62, 0.18),
+        (0.74, 0.10),
+        (0.86, -0.04),
+        (1.00, -0.17),
+    ))
+    lift = keyed(t, (
+        (0.00, 0.00),
+        (0.56, 0.00),
+        (0.68, 0.045),
+        (0.82, 0.105),
+        (0.92, 0.055),
+        (1.00, 0.00),
+    ))
+    return stride, lift
 
 
 def place_weapon(weapon: bpy.types.Object, center: Vector, direction: Vector, roll: float = 0.0) -> None:
     direction = direction.normalized()
-    align = Vector((1, 0, 0)).rotation_difference(direction)
+    # Beim gelieferten Mesh liegt die Klinge auf der lokalen -X-Seite. +X auf
+    # die Angriffsrichtung auszurichten liess die Wache mit dem Schaftende
+    # treffen. Jetzt zeigt die echte Klingenseite in Bewegungsrichtung.
+    align = Vector((-1, 0, 0)).rotation_difference(direction)
     if roll:
         align = align @ Quaternion(direction, math.radians(roll))
     weapon.rotation_mode = "QUATERNION"
@@ -204,24 +227,27 @@ def set_pose(armature: bpy.types.Object, weapon: bpy.types.Object, clip: str, fr
         stride_r, lift_r = gait(phase + 0.5)
         set_target("foot_l", (0.17, stride_l, 0.08 + lift_l))
         set_target("foot_r", (-0.17, stride_r, 0.08 + lift_r))
-        # Gewicht klar ueber das Standbein verlagern. Becken und Schultergurt
-        # arbeiten gegeneinander; dadurch laeuft nicht nur das Bein unter einer
-        # starren, scheinbar schwebenden Brust.
-        armature.location.x = wave * 0.022
-        armature.location.z = 0.012 + abs(wave) * 0.018
-        armature.rotation_euler.z = math.radians(wave * 2.4)
-        rot(armature, "pelvis", "y", wave * 5.5)
-        rot(armature, "spine_01", "y", -wave * 4.2)
-        rot(armature, "spine_03", "z", -wave * 3.4)
-        rot(armature, "head", "z", wave * 2.2)
-        rear += Vector((-wave * 0.038, wave * 0.018, abs(wave) * 0.028))
+        # Zweibeiniger Gewichtswechsel: Becken ueber dem Standbein, zwei kleine
+        # Hoehenmaxima pro Schrittfolge und gegenlaeufiger Schultergurt. Das
+        # bindet Brust, Kopf und getragene Waffe an die Beinbewegung.
+        weight = math.sin(phase * math.tau)
+        vertical = (1.0 - math.cos(phase * math.tau * 2.0)) * 0.008
+        armature.location.x = weight * 0.026
+        armature.location.z = 0.006 + vertical
+        armature.rotation_euler.z = math.radians(weight * 1.8)
+        rot(armature, "pelvis", "y", weight * 4.8)
+        rot(armature, "pelvis", "z", weight * 3.2)
+        rot(armature, "spine_01", "y", -weight * 3.5)
+        rot(armature, "spine_03", "z", -weight * 4.6)
+        rot(armature, "head", "z", weight * 1.5)
+        rear += Vector((-weight * 0.032, weight * 0.014, vertical * 0.8))
         set_target("hand_r", tuple(rear))
         set_target("hand_l", tuple(rear + spear_dir * 0.37))
     elif clip == "thrust":
         # Leicht diagonal stechen: Ein exakt zur Kamera gefuehrter Speer wuerde
         # in Vorder-/Rueckansicht optisch auf Faustlaenge zusammenschrumpfen.
         spear_dir = Vector((-0.34, -1, 0.16)).normalized()
-        advance = keyed(t, ((0, 0), (0.28, -0.30), (0.50, 0.58), (0.64, 0.24), (1, 0)))
+        advance = keyed(t, ((0, 0), (0.28, -0.30), (0.50, 0.30), (0.64, 0.18), (1, 0)))
         side = keyed(t, ((0, 0), (0.28, 0.14), (0.50, -0.04), (0.72, 0.03), (1, 0)))
         rear += spear_dir * advance + Vector((side, 0, max(0, advance) * 0.04))
         armature.location.y = -max(0, advance) * 0.08
@@ -234,8 +260,8 @@ def set_pose(armature: bpy.types.Object, weapon: bpy.types.Object, clip: str, fr
         set_target("hand_r", tuple(rear))
         set_target("hand_l", tuple(rear + spear_dir * 0.43))
     elif clip == "combo":
-        first = keyed(t, ((0, 0), (0.18, -0.26), (0.42, 0.52), (0.50, 0.08), (0.54, 0))) if t <= 0.54 else 0
-        second = keyed(t, ((0.50, 0), (0.57, -0.27), (0.72, 0.58), (0.84, 0.16), (1, 0))) if t >= 0.50 else 0
+        first = keyed(t, ((0, 0), (0.18, -0.26), (0.42, 0.30), (0.50, 0.06), (0.54, 0))) if t <= 0.54 else 0
+        second = keyed(t, ((0.50, 0), (0.57, -0.27), (0.72, 0.32), (0.84, 0.12), (1, 0))) if t >= 0.50 else 0
         advance = first + second
         diagonal = keyed(t, ((0, -0.34), (0.47, -0.30), (0.54, 0.36), (1, 0.30)))
         spear_dir = Vector((diagonal, -1, 0.15)).normalized()
@@ -279,7 +305,7 @@ def set_pose(armature: bpy.types.Object, weapon: bpy.types.Object, clip: str, fr
             constraint.influence = 0.0
         fall = smoothstep(t)
         # Seitlich auf den Boden kippen. Eine Rotation um Y bleibt aus allen
-        # acht Richtungen als echter Sturz lesbar und endet nicht kniend.
+        # Richtungen als echter Sturz lesbar und endet nicht kniend.
         armature.rotation_euler.y = math.radians(88 * fall)
         armature.rotation_euler.x = math.radians(-12 * fall)
         armature.location.z = 0.03 * fall
@@ -314,7 +340,10 @@ def setup_stage() -> tuple[bpy.types.Object, bpy.types.Scene]:
     scene.collection.objects.link(camera)
     scene.camera = camera
     camera_data.type = "ORTHO"
-    camera_data.ortho_scale = 2.75
+    # Genug Sicherheitsrand fuer die voll ausgestreckte Speerklinge. Bei 2.75
+    # verschwand der Kopf im Kontakt-Frame aus der Zelle und sah dadurch wie
+    # ein Schlag mit dem blossen Schaftende aus.
+    camera_data.ortho_scale = 3.25
     for name, energy, size in (("KEY", 920, 3.5), ("FILL", 250, 4.5), ("RIM", 690, 3.0)):
         data = bpy.data.lights.new(name, "AREA")
         data.energy = energy
@@ -331,8 +360,10 @@ def setup_stage() -> tuple[bpy.types.Object, bpy.types.Scene]:
 
 
 def aim_stage(camera: bpy.types.Object, direction: int) -> None:
-    target = Vector((0, -0.04, 0.94))
-    yaw = math.radians(direction * 45.0)
+    # Etwas vor den Koerper zielen: Die Figur steht dadurch im Bild leicht
+    # hintermittig und die lange Klinge hat in Angriffsrichtung mehr Platz.
+    target = Vector((0, -0.44, 0.94))
+    yaw = math.radians(direction * (360.0 / DIRECTIONS))
     distance = 6.5
     elevation = math.radians(15.0)
     horizontal = distance * math.cos(elevation)
@@ -370,7 +401,7 @@ def main() -> None:
         samples = {"idle": 0, "walk": 3, "thrust": 5, "combo": 10, "spin": 7, "hit": 2, "death": 9}
         for clip, frame in samples.items():
             set_pose(armature, weapon, clip, frame)
-            aim_stage(camera, 6)
+            aim_stage(camera, CAMERA_DIRECTIONS[4])
             scene.render.filepath = str(out / f"sample_{clip}.png")
             bpy.ops.render.render(write_still=True)
         return

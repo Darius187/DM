@@ -49,6 +49,7 @@ import { wendeGolemSpriteAn } from '../gfx/golemArt';
 import { aktuellesGolemTuning } from '../gfx/golemTuning';
 import { SKELETTWACHE, skelettwacheFrame } from '../data/skelettwache';
 import { wendeSkelettwacheSpriteAn } from '../gfx/skelettwacheArt';
+import { aktuellesSpezialgegnerTuning } from '../gfx/spezialgegnerTuning';
 
 export interface Projectile {
   x: number; y: number; vx: number; vy: number; r: number; dmg: number;
@@ -1970,10 +1971,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       });
     } else if (e.type === 'skelettwache' && e.sprite) {
       const leiche = e.sprite;
+      const tuning = aktuellesSpezialgegnerTuning('skelettwache');
       const frameMs = 1000 / SKELETTWACHE.fps.death;
       const fallMs = SKELETTWACHE.frames.death * frameMs;
       e.sprite = null;
-      leiche.clearTint().setOrigin(0.5, SKELETTWACHE.bodenanker).setScale(SKELETTWACHE.skala);
+      leiche.clearTint().setOrigin(0.5, tuning.bodenanker)
+        .setScale(tuning.skala * tuning.breite, tuning.skala * tuning.hoehe);
       for (let frame = 0; frame < SKELETTWACHE.frames.death; frame++) {
         this.time.delayedCall(frame * frameMs, () => {
           if (leiche.active) leiche.setTexture(SKELETTWACHE.atlasKey, skelettwacheFrame('death', e.visualDir8, frame));

@@ -94,7 +94,15 @@ import { REIT_PFERD, type ReitClip, type ReitGangClip, type ReitSattelPunkte } f
 import { HELDEN_PFERD_ID, RAVENSMOOR_PFERDE, pferdDef, type RavensmoorPferdDef } from '../data/ravensmoorPferde';
 import { clipFps, clipFrames, istReitGang, istReitUebergang, kuerzesterWinkel, mausLenkung, mausZielTempo, naechsterReitGang, naehereZahl, reitClip, reitUebergang, uebergangQuellFrame, uebergangZielFrame, uebertrageAnimationsPhase } from '../logic/reiten';
 import { ladeReitTuning, reitTuningExport, REIT_TUNING_STANDARD, speichereReitTuning, type ReitDarstellungTuning } from '../gfx/reitTuning';
-import { aktuellesGolemTuning, golemTuningExport, GOLEM_TUNING_STANDARD, setzeGolemTuning } from '../gfx/golemTuning';
+import {
+  SPEZIALGEGNER_TUNING_STANDARD,
+  SPEZIALGEGNER_TUNING_TYPEN,
+  aktuellesSpezialgegnerTuning,
+  setzeSpezialgegnerTuning,
+  spezialgegnerTuningExport,
+  spezialgegnerTuningIdFuerRts,
+  type SpezialgegnerTuningId,
+} from '../gfx/spezialgegnerTuning';
 import { getSettings, saveSettings } from '../logic/settings';
 import { seededRng, pick, ri } from '../logic/rng';
 import { respawnZiel } from '../logic/respawn';
@@ -280,6 +288,7 @@ export class WorldScene extends CombatScene {
   private devKonsole?: DevKonsole;                  // F10-Tab-Konsole (Wasser/Wetter/Uhrzeit/Nässe/Anfangskarte)
   private devWasserBlut = false;                    // Wasser-Tab: Wasser- oder Blut-Preset bearbeiten
   private devFreiKam = false;                        // Dev: Frei-Kamera (vom Helden entkoppelt, scrollbar) - Basis RTS
+  private devSpezialgegnerTyp: SpezialgegnerTuningId = 'golem';
   private perfAn = false;                             // Dev: FPS-/Mess-Anzeige (echte Messung im Browser)
   private perfText?: Phaser.GameObjects.Text;
   private perfRefreshMs = 0;                          // geglättete Zeit für den dorfSim-Canvas-Upload (tex.refresh)
@@ -3761,7 +3770,8 @@ export class WorldScene extends CombatScene {
         const d = RTS_UNIT_TYP[typ];
         const e = this.spawnEnemy((d.figur ?? 'skelett') as never, 2, x, y, typ === 'e_elite', true);
         e.name = d.name;
-        const leben = typ === 'e_golem' ? aktuellesGolemTuning().leben : d.hp;
+        const tuningId = spezialgegnerTuningIdFuerRts(typ);
+        const leben = tuningId ? aktuellesSpezialgegnerTuning(tuningId).leben : d.hp;
         e.maxhp = leben; e.hp = leben;
         e.dmg = d.dmg;
         if (typ === 'e_golem') e.golemVollerSchaden = d.dmg;
@@ -4381,7 +4391,9 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       const rolle = typ === 'e_golem' ? 'Monstrositaet aus Fleisch, Blut und Knochen'
         : typ === 'e_skelettwache' ? 'Besondere Speerwache mit Stichkombos und Rundumschlag'
         : d.heiler ? 'Heilt Verwundete' : d.reich > 100 ? 'Fernkampf (Bogen)' : d.reich > 32 ? 'Reiter (schnell, stark)' : 'Nahkampf (Schild/Schwert)';
-      const tip = `${d.name}\n${rolle}\nLeben ${d.hp} · Schaden ${d.dmg} · Reichweite ${d.reich} · Tempo ${d.speed}\nKämpft mit der Dungeon-Technik.`;
+      const tuningId = spezialgegnerTuningIdFuerRts(typ);
+      const leben = tuningId ? aktuellesSpezialgegnerTuning(tuningId).leben : d.hp;
+      const tip = `${d.name}\n${rolle}\nLeben ${leben} · Schaden ${d.dmg} · Reichweite ${d.reich} · Tempo ${d.speed}\nKämpft mit der Dungeon-Technik.`;
       kn.on('pointerover', () => this.zeigeBauTooltip(tip, c.x));
       kn.on('pointerout', () => this.versteckeBauTooltip());
       c.add(kn);
@@ -5857,17 +5869,59 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     ];
   }
 
-  private setzeGolemTestLeben(leben: number): void {
-    const neu = setzeGolemTuning({ leben }).leben;
-    // Der Regler ist ein ausdruecklicher Kampf-Test: bereits platzierte Golems
-    // werden auf den neuen Maximalwert gesetzt und voll geheilt. So ist jeder
-    // Messlauf reproduzierbar, ohne das Monster erneut setzen zu muessen.
+  private setzeSpezialgegnerTestLeben(typ: SpezialgegnerTuningId, leben: number): void {
+    const neu = setzeSpezialgegnerTuning(typ, { leben }).leben;
+    const definition = SPEZIALGEGNER_TUNING_TYPEN.find((eintrag) => eintrag.id === typ);
+    if (!definition) return;
+    // Der Regler ist ein ausdruecklicher Kampf-Test: bereits platzierte Gegner
+    // dieses Typs werden auf den neuen Maximalwert gesetzt und voll geheilt.
     for (const e of this.enemies) {
-      if (e.type !== 'golem' || e.hp <= 0) continue;
-      this.setzeGolemPhasenZurueck(e);
+      if (e.type !== definition.enemyType || e.hp <= 0) continue;
+      if (typ === 'golem') this.setzeGolemPhasenZurueck(e);
       e.maxhp = neu;
       e.hp = neu;
     }
+  }
+
+  private baueSpezialgegnerControls(): DKControl[] {
+    const typ = this.devSpezialgegnerTyp;
+    const definition = SPEZIALGEGNER_TUNING_TYPEN.find((eintrag) => eintrag.id === typ)!;
+    const set = (werte: Parameters<typeof setzeSpezialgegnerTuning>[1]): void => {
+      setzeSpezialgegnerTuning(typ, werte);
+    };
+    const controls: DKControl[] = [
+      { kind: 'note', text: 'SPEZIALGEGNER-WERKBANK - Gegner auswaehlen, dann Darstellung und RTS-Testleben live einstellen. Weitere Spezialgegner werden in dieselbe Auswahl eingehangen.' },
+      ...SPEZIALGEGNER_TUNING_TYPEN.map((eintrag) => ({
+        kind: 'button' as const,
+        label: () => `${eintrag.id === this.devSpezialgegnerTyp ? '●' : '○'} ${eintrag.name}`,
+        onClick: () => { this.devSpezialgegnerTyp = eintrag.id; this.devKonsole?.refresh(); },
+      })),
+      { kind: 'note', text: `${definition.name}: Groessenregler aendern nur die Darstellung; Trefferkreis und Reichweite bleiben bis zur Endabnahme unveraendert.` },
+      { kind: 'slider', label: 'Gesamtgroesse', min: 0.45, max: 1.40, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => aktuellesSpezialgegnerTuning(typ).skala, set: (v) => set({ skala: v }) },
+      { kind: 'slider', label: 'Breite', min: 0.70, max: 1.35, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => aktuellesSpezialgegnerTuning(typ).breite, set: (v) => set({ breite: v }) },
+      { kind: 'slider', label: 'Hoehe', min: 0.70, max: 1.35, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => aktuellesSpezialgegnerTuning(typ).hoehe, set: (v) => set({ hoehe: v }) },
+      { kind: 'slider', label: 'Bodenanker', min: 0.72, max: 0.96, step: 0.005, fmt: (v) => v.toFixed(3), get: () => aktuellesSpezialgegnerTuning(typ).bodenanker, set: (v) => set({ bodenanker: v }) },
+      { kind: 'slider', label: 'Leben (RTS-Test)', min: 100, max: 20000, step: 10, fmt: (v) => `${Math.round(v)} HP`, get: () => aktuellesSpezialgegnerTuning(typ).leben, set: (v) => this.setzeSpezialgegnerTestLeben(typ, v) },
+    ];
+    if (typ === 'golem') controls.push(
+      { kind: 'note', text: 'PHASEN DIREKT TESTEN - wirkt auf bereits platzierte Menschengolems:' },
+      { kind: 'button', label: () => '100% - unverletzt', onClick: () => this.setzeGolemTestPhase(100) },
+      { kind: 'button', label: () => '70% - Fleischwelle', onClick: () => this.setzeGolemTestPhase(70) },
+      { kind: 'button', label: () => '50% - Bodenstampfer', onClick: () => this.setzeGolemTestPhase(50) },
+      { kind: 'button', label: () => '30% - Fleisch und Knochen brechen auf', onClick: () => this.setzeGolemTestPhase(30) },
+      { kind: 'button', label: () => '15% - massiver Blutverlust, halber Schaden', onClick: () => this.setzeGolemTestPhase(15) },
+      { kind: 'button', label: () => '4% - letzte Raserei', onClick: () => this.setzeGolemTestPhase(4) },
+    );
+    controls.push(
+      { kind: 'button', label: () => `WERTE KOPIEREN - ${definition.name}`, onClick: () => window.prompt('Diese Werte kopieren und im Chat einfuegen:', spezialgegnerTuningExport(typ)) },
+      { kind: 'button', label: () => `${definition.name} auf Spielstandard zuruecksetzen`, onClick: () => {
+        const standard = SPEZIALGEGNER_TUNING_STANDARD[typ];
+        setzeSpezialgegnerTuning(typ, { ...standard });
+        this.setzeSpezialgegnerTestLeben(typ, standard.leben);
+        this.devKonsole?.refresh();
+      } },
+    );
+    return controls;
   }
 
   private setzeGolemTestPhase(prozent: number): void {
@@ -5976,24 +6030,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         })),
       ] },
       { name: 'PFERD', controls: () => this.baueReitTuningControls() },
-      { name: 'GEGNER', controls: () => [
-        { kind: 'note', text: 'MENSCHENGOLEM - erster Gegnertyp dieser Werkbank. Weitere besondere Gegner kommen spaeter als eigene Abschnitte hinzu.' },
-        { kind: 'note', text: 'Groessenregler aendern nur die Darstellung; Trefferkreis und Reichweite bleiben bis zur Endabnahme unveraendert.' },
-        { kind: 'slider', label: 'Gesamtgroesse', min: 0.45, max: 1.40, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => aktuellesGolemTuning().skala, set: (v) => { setzeGolemTuning({ skala: v }); } },
-        { kind: 'slider', label: 'Breite', min: 0.70, max: 1.35, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => aktuellesGolemTuning().breite, set: (v) => { setzeGolemTuning({ breite: v }); } },
-        { kind: 'slider', label: 'Hoehe', min: 0.70, max: 1.35, step: 0.01, fmt: (v) => `${v.toFixed(2)}x`, get: () => aktuellesGolemTuning().hoehe, set: (v) => { setzeGolemTuning({ hoehe: v }); } },
-        { kind: 'slider', label: 'Bodenanker', min: 0.72, max: 0.96, step: 0.005, fmt: (v) => v.toFixed(3), get: () => aktuellesGolemTuning().bodenanker, set: (v) => { setzeGolemTuning({ bodenanker: v }); } },
-        { kind: 'slider', label: 'Leben (RTS-Test)', min: 100, max: 20000, step: 100, fmt: (v) => `${Math.round(v)} HP`, get: () => aktuellesGolemTuning().leben, set: (v) => { this.setzeGolemTestLeben(v); } },
-        { kind: 'note', text: 'PHASEN DIREKT TESTEN - wirkt auf bereits platzierte Menschengolems:' },
-        { kind: 'button', label: () => '100% - unverletzt', onClick: () => this.setzeGolemTestPhase(100) },
-        { kind: 'button', label: () => '70% - Fleischwelle', onClick: () => this.setzeGolemTestPhase(70) },
-        { kind: 'button', label: () => '50% - Bodenstampfer', onClick: () => this.setzeGolemTestPhase(50) },
-        { kind: 'button', label: () => '30% - Fleisch und Knochen brechen auf', onClick: () => this.setzeGolemTestPhase(30) },
-        { kind: 'button', label: () => '15% - massiver Blutverlust, halber Schaden', onClick: () => this.setzeGolemTestPhase(15) },
-        { kind: 'button', label: () => '4% - letzte Raserei', onClick: () => this.setzeGolemTestPhase(4) },
-        { kind: 'button', label: () => 'WERTE KOPIEREN fuer Codex', onClick: () => window.prompt('Diese Werte kopieren und im Chat einfuegen:', golemTuningExport()) },
-        { kind: 'button', label: () => 'Auf aktuellen Spielstandard zuruecksetzen', onClick: () => { setzeGolemTuning({ ...GOLEM_TUNING_STANDARD }); this.setzeGolemTestLeben(GOLEM_TUNING_STANDARD.leben); this.devKonsole?.refresh(); } },
-      ] as DKControl[] },
+      { name: 'GEGNER', controls: () => this.baueSpezialgegnerControls() },
       // R80 (Autorbug "2 Wetterregler, eigener Tag-Nacht-Rhythmus, total irre"):
       // Zeit + Wetter wohnen NUR noch hier. Der Wetter-Regler setzt das Wetter
       // FEST (kein Auto-Überschreiben mehr), "Automatik" gibt es wieder frei.

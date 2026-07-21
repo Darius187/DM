@@ -1,71 +1,30 @@
-import { GOLEM } from '../data/golem';
-import { RTS_UNIT_TYP } from '../data/rts';
+import {
+  SPEZIALGEGNER_TUNING_STANDARD,
+  aktuellesSpezialgegnerTuning,
+  normalisiereSpezialgegnerTuning,
+  setzeSpezialgegnerTuning,
+  spezialgegnerTuningExport,
+  type SpezialgegnerDarstellungTuning,
+} from './spezialgegnerTuning';
 
-// Live-Tuning fuer Asset-Abnahme und RTS-Kampftests. Kampfkreis und Reichweite
-// bleiben bewusst unveraendert, bis der Autor die Endgroesse bestaetigt.
-export interface GolemDarstellungTuning {
-  skala: number;
-  breite: number;
-  hoehe: number;
-  bodenanker: number;
-  leben: number;
-}
+// Kompatibilitaets-Fassade fuer bestehenden Golem-Code. Die eigentliche
+// Werkbank ist jetzt gemeinsam und kann weitere Spezialgegner aufnehmen.
+export type GolemDarstellungTuning = SpezialgegnerDarstellungTuning;
 
-export const GOLEM_TUNING_STANDARD: Readonly<GolemDarstellungTuning> = {
-  skala: GOLEM.standardSkala,
-  breite: 0.7,
-  hoehe: 0.7,
-  bodenanker: GOLEM.standardBodenanker,
-  leben: RTS_UNIT_TYP.e_golem.hp,
-};
-
-// v2 uebernimmt die vom Autor abgenommene Proportion samt neu vermessenem
-// Bodenanker, statt alte Testwerte aus v1 ueber die neuen Standards zu legen.
-const SPEICHER_KEY = 'ravensmoor_menschengolem_tuning_v2';
-const GRENZEN: Record<keyof GolemDarstellungTuning, readonly [number, number]> = {
-  skala: [0.45, 1.40],
-  breite: [0.70, 1.35],
-  hoehe: [0.70, 1.35],
-  bodenanker: [0.72, 0.96],
-  leben: [100, 20000],
-};
+export const GOLEM_TUNING_STANDARD: Readonly<GolemDarstellungTuning> = SPEZIALGEGNER_TUNING_STANDARD.golem;
 
 export function normalisiereGolemTuning(rohdaten: unknown): GolemDarstellungTuning {
-  const quelle = rohdaten && typeof rohdaten === 'object'
-    ? rohdaten as Partial<Record<keyof GolemDarstellungTuning, unknown>>
-    : {};
-  const ergebnis = { ...GOLEM_TUNING_STANDARD };
-  for (const key of Object.keys(GRENZEN) as Array<keyof GolemDarstellungTuning>) {
-    const wert = quelle[key];
-    if (typeof wert !== 'number' || !Number.isFinite(wert)) continue;
-    const [min, max] = GRENZEN[key];
-    ergebnis[key] = Math.max(min, Math.min(max, wert));
-  }
-  return ergebnis;
+  return normalisiereSpezialgegnerTuning('golem', rohdaten);
 }
-
-function lade(): GolemDarstellungTuning {
-  try {
-    return normalisiereGolemTuning(JSON.parse(localStorage.getItem(SPEICHER_KEY) ?? 'null'));
-  } catch {
-    return { ...GOLEM_TUNING_STANDARD };
-  }
-}
-
-let aktuell = lade();
 
 export function aktuellesGolemTuning(): Readonly<GolemDarstellungTuning> {
-  return aktuell;
+  return aktuellesSpezialgegnerTuning('golem');
 }
 
 export function setzeGolemTuning(werte: Partial<GolemDarstellungTuning>): GolemDarstellungTuning {
-  aktuell = normalisiereGolemTuning({ ...aktuell, ...werte });
-  try {
-    localStorage.setItem(SPEICHER_KEY, JSON.stringify(aktuell));
-  } catch { /* Live-Regler funktioniert auch bei gesperrtem Browser-Speicher. */ }
-  return aktuell;
+  return setzeSpezialgegnerTuning('golem', werte);
 }
 
 export function golemTuningExport(): string {
-  return JSON.stringify(aktuell, null, 2);
+  return spezialgegnerTuningExport('golem');
 }

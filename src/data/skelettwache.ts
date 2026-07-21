@@ -3,10 +3,13 @@ export const SKELETTWACHE = {
   atlasBild: 'skeleton_guard/ravensmoor-skeleton-guard.png',
   atlasJson: 'skeleton_guard/ravensmoor-skeleton-guard.json',
   zellen: 160,
-  richtungen: 8,
-  frames: { idle: 6, walk: 10, thrust: 10, combo: 14, spin: 14, hit: 6, death: 12 },
-  fps: { idle: 6, walk: 11, thrust: 13, combo: 14, spin: 15, hit: 16, death: 8 },
-  skala: 0.68,
+  richtungen: 16,
+  atlasSpalten: 24,
+  frames: { idle: 6, walk: 12, thrust: 10, combo: 14, spin: 14, hit: 6, death: 12 },
+  fps: { idle: 6, walk: 12, thrust: 13, combo: 14, spin: 15, hit: 16, death: 8 },
+  // Kompensiert die weitere Blender-Kamera, welche die Speerklinge auch im
+  // maximalen Ausfall vollstaendig innerhalb der Atlaszelle haelt.
+  skala: 0.80,
   bodenanker: 0.925,
   trefferDauerS: 0.20,
   // Trefferzeit, Nachschwung und naechster Angriff benutzen dieselbe Zeitleiste

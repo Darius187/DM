@@ -453,7 +453,9 @@ export class Enemy {
     this.dir = angleToDir(ang);
     // Einen begonnenen Speerhieb in seiner Richtung zu Ende fuehren. Sonst kann
     // seitliches Ausweichen mitten im Clip zwischen zwei Atlasansichten springen.
-    if (this.type !== 'skelettwache' || this.visualAttackT <= 0) this.visualDir8 = angleToDir8(ang);
+    if (this.type !== 'skelettwache' || this.visualAttackT <= 0) {
+      this.visualDir8 = this.type === 'skelettwache' ? angleToDir16(ang) : angleToDir8(ang);
+    }
 
     // Wucht-Rückstoß (Runde 44): Hammer/Axt schleudern den Gegner zurück - er
     // gleitet mit Reibung aus, bevor die KI (nach dem kurzen Stun) übernimmt.

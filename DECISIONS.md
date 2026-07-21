@@ -2599,3 +2599,10 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   38-Grad-Kamera; ein Reset stellt genau diese Werte wieder her. Der Editor
   liegt auf F8, weil P bereits Pause ist. Editierbare GLB-Teile muessen ihre
   Kollisions-Guides mittransformieren und persistent gespeichert werden.
+- R199 Spezialgegner-Animation und Tuning: Gerenderte humanoide Elitegegner
+  verwenden 16 Richtungen, wenn acht Ansichten die Drehung sichtbar springen
+  lassen; die Laufbewegung muss eine menschliche Stand-/Schwungphase besitzen.
+  Eine Stangenwaffen-Zelle gilt nur dann als abgenommen, wenn die Klinge in
+  Bewegungsrichtung voll im Bild bleibt. Golem, Skelettwache und spaetere
+  Spezialgegner teilen sich im F10-Tab GEGNER ein typbasiertes Tuning-Register
+  mit einheitlichen Reglern fuer Skala, Breite, Hoehe, Bodenanker und RTS-Leben.

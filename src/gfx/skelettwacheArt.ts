@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SKELETTWACHE, skelettwacheFrame, type SkelettwacheClip } from '../data/skelettwache';
+import { aktuellesSpezialgegnerTuning } from './spezialgegnerTuning';
 import type { Enemy } from '../world/Enemy';
 
 export function skelettwacheClipUndFrame(e: Enemy): { clip: SkelettwacheClip; frame: number } {
@@ -21,6 +22,9 @@ export function skelettwacheClipUndFrame(e: Enemy): { clip: SkelettwacheClip; fr
 
 export function wendeSkelettwacheSpriteAn(sprite: Phaser.GameObjects.Sprite, e: Enemy): void {
   const { clip, frame } = skelettwacheClipUndFrame(e);
+  const tuning = aktuellesSpezialgegnerTuning('skelettwache');
   sprite.setTexture(SKELETTWACHE.atlasKey, skelettwacheFrame(clip, e.visualDir8, frame));
-  sprite.setOrigin(0.5, SKELETTWACHE.bodenanker).setScale(SKELETTWACHE.skala).setCrop();
+  sprite.setOrigin(0.5, tuning.bodenanker)
+    .setScale(tuning.skala * tuning.breite, tuning.skala * tuning.hoehe)
+    .setCrop();
 }

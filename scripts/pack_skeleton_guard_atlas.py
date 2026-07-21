@@ -11,11 +11,11 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
 
 CELL = 160
-COLUMNS = 12
+COLUMNS = 24
 GROUND_Y = 148
 CLIP_ORDER = {"idle": 0, "walk": 1, "thrust": 2, "combo": 3, "spin": 4, "hit": 5, "death": 6}
-CLIP_FRAMES = {"idle": 6, "walk": 10, "thrust": 10, "combo": 14, "spin": 14, "hit": 6, "death": 12}
-DIRECTIONS = 8
+CLIP_FRAMES = {"idle": 6, "walk": 12, "thrust": 10, "combo": 14, "spin": 14, "hit": 6, "death": 12}
+DIRECTIONS = 16
 FRAME_RE = re.compile(r"^(idle|walk|thrust|combo|spin|hit|death)_d(\d+)_f(\d+)$")
 
 

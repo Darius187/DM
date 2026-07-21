@@ -2088,3 +2088,28 @@ nachziehen.
   folgen den veraenderten Teilen.
 - Blender-QA fuer Tor, Mauerring, Treppen und schwebende Teile bleibt gruen.
   Runtime-Manifest und GLB werden ueber Vite mit Status 200 ausgeliefert.
+
+## Runde 199 - Skelettwache: menschlicher Gang, richtige Waffenseite und 16 Ansichten
+- Die Ursache des falschen Speerstichs lag sowohl in der Blender-Ausrichtung als
+  auch im zu engen Bildausschnitt: Die Schaft-Rueckseite zeigte in Angriffsrichtung,
+  waehrend die eigentliche Klinge teilweise aus der Zelle lief. Die Waffe ist nun
+  korrekt ausgerichtet, die Angriffsauslenkung begrenzt und die Kamera breiter
+  gefasst. Stich und Kombination fuehren sichtbar die Klinge voraus.
+- Der alte Schrittzyklus schob den belasteten Fuss nach vorn und las sich deshalb
+  wie eine vierbeinige bzw. rueckwaerts laufende Bewegung. Der neue menschliche
+  Zyklus bildet Fersenkontakt, Belastung, ruecklaufende Standphase, Zehenabdruck,
+  Passier- und Vorschwungphase ab. Becken, Oberkoerper und Kopf rotieren dezent
+  gegeneinander; beide Beine wechseln sauber und die Fuesse bleiben am Boden.
+- Statt acht grober Richtungen besitzt die Skelettwache jetzt 16 Ansichten in
+  22,5-Grad-Schritten. Der neue Atlas umfasst 1.184 Frames bei 3.840 x 8.000 px
+  und bleibt damit unter der WebGL-Texturgrenze von 8.192 px. Die editierbare
+  Blender-Datei liegt unter
+  `C:/Obsidian/DM/skeleton-guard-render/ravensmoor-skeleton-guard.blend`.
+- F10 > GEGNER ist nun eine gemeinsame Spezialgegner-Werkbank. Menschengolem
+  und Skelettwache lassen sich dort auswaehlen und mit denselben Reglern fuer
+  Skala, Breite, Hoehe, Bodenanker und RTS-Leben live einstellen, kopieren und
+  zuruecksetzen. Neue Spezialgegner koennen ueber das zentrale Register ergaenzt
+  werden, ohne einen weiteren Dev-Tab zu bauen.
+- Im Browser wurden beide Gegnerprofile und alle Regler geprueft; die
+  Skelettwache startet mit 0,80 / 1,00 / 1,00 / 0,925 / 720 Leben. Keine
+  Browserfehler. TypeScript, 423 Vitest-Tests und Produktions-Build erfolgreich.
