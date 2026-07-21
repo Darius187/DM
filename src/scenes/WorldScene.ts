@@ -8261,8 +8261,24 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     // Fels, Palisaden, Gebaeude bleiben natuerlich Wand. (Feinde: solidFuerFeind
     // unveraendert - Monster meiden Wasser weiter.)
     const t = this.area?.map[Math.floor(y / TILE)]?.[Math.floor(x / TILE)];
-    if (t === T.WATER) return this.gebaeudeSolid(x, y, true);
+    if (t === T.WATER) {
+      // Autor-Entscheidung: das PFERD geht NICHT ins tiefe Wasser - beritten
+      // blockt tiefes Wasser (am Ufer bleiben; zum Queren absteigen und zu Fuss
+      // schwimmen). Zu Fuss bleibt jedes Wasser durchwatbar/schwimmbar.
+      if (this.reitet && this.tiefesWasserBei(x, y)) return true;
+      return this.gebaeudeSolid(x, y, true);
+    }
     return (this.isSolidAt(x, y) && !this.torOffenHier(x, y)) || this.gebaeudeSolid(x, y, true);
+  }
+
+  // Wassertiefe an (x,y) als 0..1 (gleiche Skala wie heldNass); ab ~0,5 gilt es
+  // als "tief" - dort geht das Pferd nicht mehr rein.
+  private tiefesWasserBei(x: number, y: number): boolean {
+    const lauf = this.area?.wasserLauf;
+    if (!lauf) return false;
+    const u = x / (this.area.w * TILE), v = y / (this.area.h * TILE);
+    const sd = sdWasser(u, v, this.aktuelleWasserGeo() ?? lauf.geo, lauf.smink ?? WASSER2_CFG.smink, WASSER2_CFG.widthMul);
+    return (0.015 - sd) / 0.055 > 0.5;
   }
 
   // R158 (Autor "unsichtbare Wand am Fluss"): blockiert WASSER den Helden,
