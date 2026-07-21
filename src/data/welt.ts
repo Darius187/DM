@@ -170,6 +170,11 @@ export const SPAEHER = {
   anzahlMin: 1,
   anzahlMax: 2,
   tiefe: 1,              // Kundschafter sind FLACH - kein kleiner Einfall
+  // F2a (07-FEIND-KI A10 "Spaeher toeten = der Feind bleibt blind"): faellt ein
+  // Kloster-Spaeher, verliert der Feindzug fuer eine Weile die Sicht - seine
+  // abstrakten Spaeh-Versuche scheitern (er plant blind, gibt Ziele auf).
+  blindProKillS: 90,     // je getoetetem Spaeher so lange blind
+  blindMaxS: 240,        // Deckel der aufgestauten Blindheit
 } as const;
 
 // Kämpfende Bewohner beim Einfall (Runde 41, Autorwunsch "der Schmied kann

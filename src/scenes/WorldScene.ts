@@ -443,6 +443,7 @@ export class WorldScene extends CombatScene {
     this.treckT = 0;
 
     this.spaeherT = SPAEHER.intervallMinS;   // R178: Kundschafter-Uhr frisch
+    this.spaeherBlindT = 0;                  // F2a: Spaeher-Blindheit frisch
     this.bote = boteNeu(BOTE.heim);          // R179: der Bote startet daheim
     this.lage = neueGebietslage(FELDZUG.startBesetzt);   // F1: Gebietslage frisch
     this.feindzug = neuerFeindzug(FELDZUG.startBesetzt); // F2: Feindzug frisch
@@ -8688,6 +8689,12 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // R144: immer zaehlen - die Moral laeuft jetzt in jedem Modus.
   protected override killEnemy(e: Enemy): void {
     this.moralTote.push({ team: e.team, t: this.time.now / 1000 });
+    // F2a (A10): ein gefallener Kloster-Spaeher blendet den Feindzug - seine
+    // abstrakten Spaeh-Versuche scheitern eine Weile (spaeherKommtDurch).
+    if (e.name === 'Kloster-Späher' && e.team !== 'spieler') {
+      this.spaeherBlindT = Math.min(SPAEHER.blindMaxS, this.spaeherBlindT + SPAEHER.blindProKillS);
+      this.logMsg('Ein Kloster-Späher ist gefallen - der Feind bleibt vorerst blind.', 'gold');
+    }
     // R147c: ein Feind faellt, waehrend eigene Truppen MITKAEMPFEN - das ist
     // (der Beginn) eine(r) Schlacht. Held-Solo-Kämpfe zaehlen nicht doppelt.
     if (e.team !== 'spieler') {
@@ -9554,6 +9561,8 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     } else this.saeuberungT = 0;
     this.pruefeAltarSturz();   // F3: Altar gefallen -> Besatzung zerfaellt
     this.updateFeindlagerWachen();   // M2: Tor-Waechter besetzen aktiv + fangen ab
+    // F2a (A10): die durch getoetete Kloster-Spaeher erkaufte Blindheit klingt ab.
+    if (this.spaeherBlindT > 0) this.spaeherBlindT = Math.max(0, this.spaeherBlindT - dt);
     const evs = tickFeindzug(this.feindzug, dt, {
       produktionProS: FELDZUG.produktionProS,
       welleMin: FELDZUG.welleMin,
@@ -9572,6 +9581,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       spaehVersucheMax: FELDZUG.spaehVersucheMax,           // KI-Teil-2: Wechselhuerde
       wissenVerfall: FELDZUG.wissenVerfall,                 // F2a (A2): Blackboard verfaellt
       wissenAufschlag: FELDZUG.wissenAufschlag,             // F2a (A5): vorsichtiger Aufschlag bei Unsicherheit
+      spaeherKommtDurch: () => this.spaeherBlindT <= 0,     // F2a (A10): getoetete Spaeher -> Feind blind
     });
     for (const ev of evs) this.feindzugEreignis(ev);
     // Live-Aufloesung: kaempft die Welle auf der HELD-Karte, entscheidet der
@@ -11014,6 +11024,9 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // R178 (Autor): das Kloster schickt immer mal SPAEHER - 1-2 Kundschafter
   // sickern ueber die Nordstrasse herein, solange der Held in der Stadt ist.
   private spaeherT: number = SPAEHER.intervallMinS;
+  // F2a (A10): Rest-Sekunden, die der Feindzug nach getoeteten Spaehern "blind"
+  // bleibt (spaeherKommtDurch scheitert dann - er plant ohne frische Sichtung).
+  private spaeherBlindT = 0;
   private updateSpaeher(dt: number): void {
     // R180 (Autor): Spaeher erst NACH dem Krypta-Boss - vorher bleibt alles
     // still und heimlich (Dok 06 C3, der Vorhang faellt erst mit seinem Tod).

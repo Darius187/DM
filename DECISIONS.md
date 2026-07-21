@@ -2637,3 +2637,12 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   blind"). Backward-kompatibel: ohne wissenVerfall verfaellt nichts (alte Tests
   gruen, 12/12). Live-Wiring der Spaeher-Abfangung (sichtbare Kloster-Spaeher ->
   spaeherKommtDurch) ist der naechste Schritt.
+
+- F2a Live-Wiring (A10 "Spaeher toeten = blind"): die sichtbaren Kloster-Spaeher
+  (R178) sind jetzt an den Feindzug gekoppelt. Faellt ein 'Kloster-Späher'
+  (killEnemy-Hook), steigt spaeherBlindT um SPAEHER.blindProKillS (90s, Deckel
+  blindMaxS 240s); solange blind, liefert spaeherKommtDurch() false -> die
+  abstrakten Spaeh-Versuche scheitern, der Feind plant ohne frische Sichtung und
+  gibt Ziele auf. Klingt je Feindzug-Tick ab (bossDead-gated wie der Rest),
+  bei Szenenwechsel zurueckgesetzt. Browser-verifiziert: Kill->90, Deckel->240,
+  Abklingen 100->95->0 (nie negativ), 0 Fehler.
