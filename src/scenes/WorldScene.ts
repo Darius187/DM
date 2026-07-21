@@ -3957,7 +3957,10 @@ export class WorldScene extends CombatScene {
     if (this.rtsBattle.gewaehlte().length > 0 || this.rtsBattle.heldGewaehlt) { this.rtsGebaeudeWahl = null; this.rtsGegnerWahl = null; }
     this.baueRtsLeiste();
   }
-  private rtsSkala = 1;   // Baumenü-Größe (Autor: skalierbar), 0.8..1.4
+  // Baumenü-Größe (Autor: skalierbar), 0.8..1.4 - Standard MAX (Autorwunsch
+  // "nimm die maximale Groesse als Standard, sonst ist alles zu klein"); die
+  // A+/A--Wahl bleibt gespeichert.
+  private rtsSkala = getSettings().rtsLeisteSkala ?? 1.4;
 
   // R94: VERTIKALE Seitenleiste rechts unten (Command-&-Conquer-Stil) mit Tabs
   // "Befehle" (Formationen/Steuerung) und "Bauen" (Feldbauten). Skalierbar.
@@ -3997,9 +4000,9 @@ export class WorldScene extends CombatScene {
     const zu = this.add.text(w - F(18), F(4), '✕', { fontFamily: 'serif', fontSize: `${F(13)}px`, color: '#d8cfb8' }).setInteractive({ useHandCursor: true });
     zu.on('pointerdown', () => this.toggleRtsModus()); c.add(zu);
     const aMinus = this.add.text(w - F(52), F(4), 'A-', { fontFamily: 'serif', fontSize: `${F(12)}px`, color: '#8a7a5a' }).setInteractive({ useHandCursor: true });
-    aMinus.on('pointerdown', () => { this.rtsSkala = Math.max(0.8, this.rtsSkala - 0.1); this.baueRtsLeiste(); }); c.add(aMinus);
+    aMinus.on('pointerdown', () => { this.rtsSkala = Math.max(0.8, this.rtsSkala - 0.1); getSettings().rtsLeisteSkala = this.rtsSkala; saveSettings(); this.baueRtsLeiste(); }); c.add(aMinus);
     const aPlus = this.add.text(w - F(36), F(4), 'A+', { fontFamily: 'serif', fontSize: `${F(12)}px`, color: '#8a7a5a' }).setInteractive({ useHandCursor: true });
-    aPlus.on('pointerdown', () => { this.rtsSkala = Math.min(1.4, this.rtsSkala + 0.1); this.baueRtsLeiste(); }); c.add(aPlus);
+    aPlus.on('pointerdown', () => { this.rtsSkala = Math.min(1.4, this.rtsSkala + 0.1); getSettings().rtsLeisteSkala = this.rtsSkala; saveSettings(); this.baueRtsLeiste(); }); c.add(aPlus);
     // Tab-Reiter
     // R164 (Autor, BAR-Spezifikation): KEINE TABS mehr. EIN kontextabhaengiges
     // Pult: Ressourcen-Zeile -> Auswahl-Bereich -> festes 4x3-Kommando-Raster,

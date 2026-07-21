@@ -49,6 +49,7 @@ export interface Settings {
   chronikBox: { x: number; y: number; w: number; h: number };
   chronikMini?: boolean;  // Chronik eingeklappt (nur Kopfzeile), R86
   rtsLeistePos?: { x: number; y: number };  // RTS-Baumenü frei verschoben (R96, UI-Regel 11)
+  rtsLeisteSkala?: number;   // KOMMANDO-Pult-Groesse (A+/A-), Standard MAX (Autorwunsch)
   chronikV?: number;      // einmalig: Chronik an den UNTERSTEN Rand andocken (R86)
   lichtV?: number;        // einmalig: weiches lightRT-Dungeonlicht als Standard (R128)
   nebelV?: number;        // einmalig: Kriegsnebel v2 abschalten (R131, Autor: "blinkt, weglassen")
