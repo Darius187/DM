@@ -8159,6 +8159,16 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
 
   // R99 (P11): OFFENES Tor ist für den Helden/eigene Truppen KEIN Hindernis.
   protected override solidFuerHeld(x: number, y: number): boolean {
+    // Autor "ich laufe ueberall gegen eine unsichtbare Wand, wo frueher Wasser
+    // war": auf BEGEHBAREN Wasserkarten (start/Waldrand) darf T.WATER KEINE harte
+    // Wand sein - der Held WATET hindurch, stark gebremst (tempoFaktor, Wat-Bremse).
+    // Sonst blockte die Kollision, bevor die Bremse ueberhaupt greift = tote Wand.
+    // Andere solide Kacheln (Baum/Fels/Gebaeude) bleiben natuerlich Wand.
+    if (this.area?.wasserLauf?.begehbar) {
+      const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+      const t = this.area.map[ty]?.[tx];
+      if (t === T.WATER) return this.gebaeudeSolid(x, y, true);   // Wasser durchlassen
+    }
     return (this.isSolidAt(x, y) && !this.torOffenHier(x, y)) || this.gebaeudeSolid(x, y, true);
   }
 
