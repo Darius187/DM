@@ -112,7 +112,7 @@ import { seededRng, pick, ri } from '../logic/rng';
 import { respawnZiel } from '../logic/respawn';
 import { moralWert, fluchtEntscheidung, istEingekesselt, type MoralLage } from '../logic/moral';
 import { konterFaktor } from '../data/kampfarten';
-import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, garnisonVon, marschVon, storniereMarsch, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, einheitMaxHp, heerObergrenze, pruefeRekrutierung, desertiere, type Armee, type ArmeeEinheit } from '../logic/armee';
+import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, garnisonVon, garnisonKampfkraft, marschVon, storniereMarsch, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, einheitMaxHp, heerObergrenze, pruefeRekrutierung, desertiere, type Armee, type ArmeeEinheit } from '../logic/armee';
 import { boteNeu, schickeBote, tickBote, type Bote } from '../logic/bote';
 import { neueGebietslage, gebietsStatus, setzeGebietsStatus, type Gebietslage, type GebietsStatus } from '../logic/gebietslage';
 import { neuerFeindzug, tickFeindzug, beendeAngriff, verliereLager, type Feindzug } from '../logic/feindzug';
@@ -9572,7 +9572,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       unantastbar: FELDZUG.unantastbar,
       nachbarn: this.kartenNachbarn,
       status: (id) => gebietsStatus(this.lage, id),
-      verteidigung: (id) => garnisonVon(this.armee, id).length * FELDZUG.kraftJeMann,
+      verteidigung: (id) => garnisonKampfkraft(garnisonVon(this.armee, id)),   // F2b (A4): echte Kampfstaerke statt Kopfzahl
       distanzZuStadt: (id) => routeZu(this.kartenNachbarn, id, MARSCH.zielStadt)?.length ?? 99,
       liveKarte: this.area.id,
       rng: () => Math.random(),

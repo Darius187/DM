@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, naechsteVerstaerkung, garnisonVon, routeZu, starteMarsch, storniereMarsch, marschTick, rangFuerKills, rangDmgF, rangHpF, einheitMaxHp } from '../src/logic/armee';
-import { RTS_RANG, RTS_UNIT_TYP } from '../src/data/rts';
+import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, naechsteVerstaerkung, garnisonVon, garnisonKampfkraft, einheitKampfkraft, routeZu, starteMarsch, storniereMarsch, marschTick, rangFuerKills, rangDmgF, rangHpF, einheitMaxHp } from '../src/logic/armee';
+import { RTS_RANG, RTS_UNIT_TYP, KAMPFKRAFT } from '../src/data/rts';
 import { seededRng } from '../src/logic/rng';
 
 describe('Persistente Armee / Roster (R141, Dok 03 2.1)', () => {
@@ -113,5 +113,54 @@ describe('Das Heer lebt in der Welt (R142 - Karten, Maersche)', () => {
     const a = ruesteArmeeNach(alt, 'stadt');
     expect(a.maersche).toEqual([]);
     expect(a.einheiten[0].ort).toBe('stadt');
+  });
+});
+
+// F2b (07-FEIND-KI A4): KAMPFSTAERKE statt Kopfzahl.
+describe('Kampfstaerke-Formel (F2b, A4)', () => {
+  const bau = (over: Partial<import('../src/logic/armee').ArmeeEinheit>) =>
+    ({ id: 1, name: 'X', typ: 'nahkampf', hp: RTS_UNIT_TYP.nahkampf.hp, kills: 0, verletzungen: [], ort: 'stadt', ...over }) as import('../src/logic/armee').ArmeeEinheit;
+
+  it('volle HP: Grundkraft aus Angriff + effektiver Zaehigkeit', () => {
+    const d = RTS_UNIT_TYP.nahkampf;   // dmg 12, hp 220, keine schadensRed
+    const erwartet = KAMPFKRAFT.dmgGewicht * d.dmg + KAMPFKRAFT.hpGewicht * d.hp;
+    expect(einheitKampfkraft(bau({}))).toBeCloseTo(erwartet, 5);
+  });
+
+  it('angeschlagene Einheit zaehlt weniger (hpRatio^0.7)', () => {
+    const voll = einheitKampfkraft(bau({}));
+    const halb = einheitKampfkraft(bau({ hp: Math.round(RTS_UNIT_TYP.nahkampf.hp / 2) }));
+    expect(halb).toBeCloseTo(voll * Math.pow(0.5, KAMPFKRAFT.hpRatioExp), 4);
+    expect(halb).toBeGreaterThan(voll * 0.5);   // ^0.7 ist milder als linear
+  });
+
+  it('Veteran (Rang) und Soeldner-Malus wirken', () => {
+    const grün = einheitKampfkraft(bau({ kills: 0 }));
+    const veteran = einheitKampfkraft(bau({ kills: RTS_RANG.killsProRang * RTS_RANG.maxRang }));
+    expect(veteran).toBeGreaterThan(grün);      // Kills -> mehr Kampfkraft
+    const soeldner = einheitKampfkraft(bau({ soeldner: true }));
+    expect(soeldner).toBeLessThan(grün);        // Soeldner-Moral-Malus
+  });
+
+  it('gepanzerte Typen mit Schadensreduktion sind wertvoller (effektive HP)', () => {
+    // e_elite hat schadensRed 0.55 -> zaeher; sein Grundwert steigt entsprechend.
+    const elite = einheitKampfkraft(bau({ typ: 'e_elite', hp: RTS_UNIT_TYP.e_elite.hp }));
+    const ohneRed = KAMPFKRAFT.dmgGewicht * RTS_UNIT_TYP.e_elite.dmg + KAMPFKRAFT.hpGewicht * RTS_UNIT_TYP.e_elite.hp;
+    expect(elite).toBeGreaterThan(ohneRed);     // /schadensRed hebt die effektive HP
+  });
+
+  it('garnisonKampfkraft summiert die Einheiten', () => {
+    const g = [bau({ id: 1 }), bau({ id: 2, typ: 'bogen', hp: RTS_UNIT_TYP.bogen.hp })];
+    expect(garnisonKampfkraft(g)).toBeCloseTo(einheitKampfkraft(g[0]) + einheitKampfkraft(g[1]), 5);
+    expect(garnisonKampfkraft([])).toBe(0);
+  });
+
+  it('typische Einheit bei voller HP ~12 (kalibriert auf FELDZUG.kraftJeMann)', () => {
+    // Schild/Gewappneter sollen grob bei der alten Pauschale (12) liegen -
+    // so bleiben Wellen-Anzahl/Deckel (staerke/kraftJeMann) stimmig.
+    expect(einheitKampfkraft(bau({ typ: 'schild', hp: RTS_UNIT_TYP.schild.hp }))).toBeGreaterThan(9);
+    expect(einheitKampfkraft(bau({ typ: 'schild', hp: RTS_UNIT_TYP.schild.hp }))).toBeLessThan(15);
+    expect(einheitKampfkraft(bau({ typ: 'nahkampf' }))).toBeGreaterThan(9);
+    expect(einheitKampfkraft(bau({ typ: 'nahkampf' }))).toBeLessThan(15);
   });
 });

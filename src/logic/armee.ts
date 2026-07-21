@@ -9,7 +9,7 @@
 // (RTS_RANG), Rang gibt +Schaden/+Leben/+Moral. Die Rechnung lebt in
 // rangFuerKills/rangDmgF/rangHpF - EINE Quelle fuer Spawn UND Anzeige.
 
-import { REKRUTIERUNG, RTS_RANG, RTS_UNIT_TYP, type RtsUnitTyp } from '../data/rts';
+import { REKRUTIERUNG, RTS_RANG, RTS_UNIT_TYP, KAMPFKRAFT, type RtsUnitTyp } from '../data/rts';
 import { VORNAMEN, BEINAMEN } from '../data/heer';
 import type { Rng } from './rng';
 import { defaultRng } from './rng';
@@ -76,6 +76,32 @@ export function rangHpF(rang: number): number { return 1 + rang * RTS_RANG.hpJeR
 // Maximale Lebenspunkte einer Einheit (Basiswert x Veteranen-Bonus).
 export function einheitMaxHp(e: ArmeeEinheit): number {
   return Math.round(RTS_UNIT_TYP[e.typ].hp * rangHpF(rangFuerKills(e.kills)));
+}
+
+// --- F2b (07-FEIND-KI A4): KAMPFSTAERKE statt Kopfzahl ----------------------
+// Grundkraft eines Einheiten-TYPS aus Angriff + effektiver Zaehigkeit (die
+// Schadensreduktion macht gepanzerte Typen zaeher, also wertvoller).
+function basePower(typ: RtsUnitTyp): number {
+  const d = RTS_UNIT_TYP[typ];
+  const effHp = d.hp / (d.schadensRed ?? 1);
+  return KAMPFKRAFT.dmgGewicht * d.dmg + KAMPFKRAFT.hpGewicht * effHp;
+}
+
+// Kampfkraft EINER Einheit: Grundkraft * hpRatio^0.7 (angeschlagen zaehlt
+// weniger) * Veteranen-Faktor * Moral-Faktor, plus uebergebene Ausruestung.
+export function einheitKampfkraft(e: ArmeeEinheit): number {
+  const hpRatio = Math.max(0, Math.min(1, e.hp / einheitMaxHp(e)));
+  const zustand = Math.pow(hpRatio, KAMPFKRAFT.hpRatioExp);
+  const veteran = rangDmgF(rangFuerKills(e.kills));
+  const moral = e.soeldner ? KAMPFKRAFT.soeldnerMoralF : 1;
+  const geschenk = KAMPFKRAFT.geschenkDmgGewicht * (e.waffeGeschenk?.bonus ?? 0)
+    + KAMPFKRAFT.geschenkSchutzGewicht * (e.ruestungGeschenk?.schutz ?? 0);
+  return basePower(e.typ) * zustand * veteran * moral + geschenk * zustand;
+}
+
+// Kampfkraft einer ganzen Garnison (A4: der Feind bemisst die Verteidigung so).
+export function garnisonKampfkraft(garnison: ReadonlyArray<ArmeeEinheit>): number {
+  return garnison.reduce((s, e) => s + einheitKampfkraft(e), 0);
 }
 
 // Einheit einmustern (benannte Person). Namen doppeln sich erst, wenn der

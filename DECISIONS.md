@@ -2646,3 +2646,18 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   gibt Ziele auf. Klingt je Feindzug-Tick ab (bossDead-gated wie der Rest),
   bei Szenenwechsel zurueckgesetzt. Browser-verifiziert: Kill->90, Deckel->240,
   Abklingen 100->95->0 (nie negativ), 0 Fehler.
+
+- F2b Kampfstaerke-Formel (07-FEIND-KI A4 "Kampfstaerke statt Kopfzahl"): der
+  Feindzug bemisst die Verteidigung einer Karte nicht mehr per Kopfzahl*12,
+  sondern per garnisonKampfkraft (armee.ts). einheitKampfkraft =
+  basePower(dmg + effektive HP via schadensRed) * hpRatio^0.7 * VeteranF *
+  MoralF + uebergebene Ausruestung. Gewichte in KAMPFKRAFT (rts.ts) so
+  kalibriert, dass eine typische Einheit bei voller HP ~12 (=FELDZUG.kraftJeMann)
+  ergibt - Wellen-Anzahl/Deckel (staerke/kraftJeMann in spawneFeldzugWelle)
+  bleiben stimmig. Konter-Eignung/Gelaende/Kohaesion (A4-Rest) bleiben der
+  LIVE-Schlacht vorbehalten (Angreifer-Mix beim Schaetzen unbekannt). Effekt:
+  ein Veteranen-Vollkraft-Heer liest sich staerker (Feind schickt groessere
+  Welle), ein angeschlagenes schwaecher. 6 Tests, browser-verifiziert (0 Fehler).
+  A5-Schwellen: 'Angriff >=1.3' ist der bestehende staerkeFaktor; die weiteren
+  Aktionstypen (Abfangen/Befestigung/Ueberfall) fehlen im Karten-Feldzug noch -
+  zurueckgestellt, bis es diese Aktionen gibt (gehoert zu F6/groesseren Schlachten).

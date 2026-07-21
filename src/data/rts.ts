@@ -353,3 +353,21 @@ export const RTS_RANG = {
   hpJeRang: 0.10,            // +10% Leben je Rang
   moralBonusJeRang: 2,
 } as const;
+
+// F2b (07-FEIND-KI A4 "KAMPFSTAERKE statt Kopfzahl"): der Feind bemisst eine
+// Garnison nach echter Kampfkraft, nicht nach Koepfen. Gewichte so kalibriert,
+// dass eine typische Einheit bei voller HP ~FELDZUG.kraftJeMann (12) ergibt -
+// so bleiben Wellen-Deckel/Anzahl (staerke/kraftJeMann) stimmig.
+//   basePower = dmgGewicht*dmg + hpGewicht*(hp/schadensRed)   [effektive HP]
+//   kampfkraft = basePower * hpRatio^hpRatioExp * veteranF * moralF + Geschenke
+// Konter-Eignung/Gelaende/Kohaesion (A4 Rest) bleiben der LIVE-Schlacht
+// (kampfarten.ts/rtsBattle) vorbehalten - beim abstrakten Schaetzwert ist die
+// Angreifer-Mischung noch unbekannt.
+export const KAMPFKRAFT = {
+  dmgGewicht: 0.6,           // Angriffs-Anteil der Grundkraft
+  hpGewicht: 0.02,           // Zaehigkeits-Anteil (effektive HP)
+  hpRatioExp: 0.7,           // A4: hpRatio^0.7 - angeschlagene Truppen zaehlen weniger
+  soeldnerMoralF: 0.9,       // A4-Moral: Soeldner sind unzuverlaessiger (Wert-Malus)
+  geschenkDmgGewicht: 0.6,   // uebergebene Waffe (waffeGeschenk.bonus)
+  geschenkSchutzGewicht: 0.4, // uebergebene Ruestung (ruestungGeschenk.schutz)
+} as const;
