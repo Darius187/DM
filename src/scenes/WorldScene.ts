@@ -9831,7 +9831,11 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     // ('fackel', wirft Wandschatten) ODER nur als weicher Sichtradius ('sicht', kein
     // Schattenwurf -> KEIN dunkler Schleier um den Helden). Auch als 'sicht' wirft er
     // weiter Schatten VON den Fackeln, weil er Verdecker bleibt.
-    const heldFarbe = mischFarbe(0x8a3010, 0xfff2d8, (lic.heldFarbe ?? 45) / 100);
+    // Autor "der gelbe/rote Farbpunkt am Helden soll WEG - einfach nur Licht, keine
+    // sichtbare Lichtquelle": die Held-Lichtfarbe ist jetzt NEUTRAL (soft-warmweiss ..
+    // weiss) statt tiefrot..warm. So faerbt das Held-Licht die Figur nicht mehr ein;
+    // der Regler steuert nur noch die Wärme (dezent), nicht einen roten Punkt.
+    const heldFarbe = mischFarbe(0xf0e6d6, 0xffffff, (lic.heldFarbe ?? 45) / 100);
     // Raumlicht-Parameter (heller/weißer Raum, getrennt von der warmen Flamme).
     const raumLicht = (lic.fackelRaumLicht ?? 50) / 100, raumFarbe = (lic.fackelRaumFarbe ?? 60) / 100, glutRadius = (lic.fackelGlutRadius ?? 45) / 100;
     // Schatten-Aufhellung: NAHE Lichter (am Helden) vs FERNE - getrennt regelbar (stärkerer Effekt R57).
