@@ -8253,9 +8253,12 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     if (e.team !== 'spieler') {
       const truppeKaempft = this.enemies.some((o) => o.team === 'spieler' && o.hp > 0 && !o.passiv);
       if (truppeKaempft || this.schlacht) {
-        this.schlacht ??= { feinde: 0, verluste: 0, staerke: this.enemies.filter((o) => o.team === 'spieler' && o.hp > 0).length, ruheT: 0 };
+        this.schlacht ??= { feinde: 0, verluste: 0, staerke: this.enemies.filter((o) => o.team === 'spieler' && o.hp > 0).length, ruheT: 0, heldDabei: false };
         this.schlacht.feinde++;
         this.schlacht.ruheT = 0;
+        // Autor "staendig Aufstieg wenn NPCs kaempfen": Fuehrungs-XP nur, wenn
+        // der Held selbst mitkaempft (Schaden aus-/eingesteckt in den letzten 4s).
+        if (this.time.now / 1000 - this.heldKampfT < 4) this.schlacht.heldDabei = true;
       }
     }
     super.killEnemy(e);
@@ -8278,6 +8281,9 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.schlacht = null;
     const truppe = this.enemies.filter((e) => e.team === 'spieler' && e.hp > 0);
     const moralSchnitt = truppe.length ? truppe.reduce((a, e) => a + e.moral, 0) / truppe.length : 0;
+    // Autor: reine NPC-/Truppen-Scharmuetzel ohne den Helden geben KEINE
+    // Fuehrungs-XP (kein "Aufstieg"-Spam) - der Kampf loest sich still auf.
+    if (!s.heldDabei) return;
     const xp = schlachtXp({ feindeBesiegt: s.feinde, eigeneVerluste: s.verluste, eigeneStaerke: s.staerke, moralSchnitt });
     if (xp <= 0) return;
     this.giveXp(xp);
@@ -8296,7 +8302,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // R147c: laufende Schlacht-Bilanz. Beginnt mit dem ersten Feind-Kill, an dem
   // eigene Truppen beteiligt sind; endet nach ruheS Sekunden ohne Feind (Sieg)
   // oder mit dem Tod des Helden / Kartenwechsel (keine Wertung).
-  private schlacht: { feinde: number; verluste: number; staerke: number; ruheT: number } | null = null;
+  private schlacht: { feinde: number; verluste: number; staerke: number; ruheT: number; heldDabei: boolean } | null = null;
 
   private updateMoral(dt: number): void {
     this.moralTickT -= dt;

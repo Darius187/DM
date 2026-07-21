@@ -1027,6 +1027,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Ohne die Anzeige existiert das Konter-System fuer den Spieler nicht.
   // Gedrosselt je Ziel, damit eine Schlacht nicht in Texten ertrinkt.
   protected zeigeKonter(ziel: Enemy, faktor: number): void {
+    // Autor "'SCHWACH/PRALLT AB' spammt im RTS-Kampf": haengt jetzt am
+    // Treffermeldungen-Schalter (dmgNums, standardmaessig aus). Der Konter wirkt
+    // mechanisch weiter - nur der Schwebetext ist still.
+    if (!getSettings().dmgNums) return;
     const fb = konterFeedback(faktor);
     if (!fb) return;
     const jetzt = this.time.now / 1000;
@@ -1682,10 +1686,15 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // Soldaten-Einheit (durchTruppe), gibt es keine Held-XP - der Soldat sammelt
   // seinen Rang (meldeKill), der Held seine Schlacht-Wertung (R147c).
   protected killDurchTruppe = false;
+  // R147c-Fix (Autor "staendig Aufstieg wenn NPCs kaempfen"): Zeitstempel, wann
+  // der HELD zuletzt selbst am Kampf beteiligt war (Schaden ausgeteilt/kassiert).
+  // Nur dann zaehlt eine Schlacht als "vom Helden gefuehrt" -> Fuehrungs-XP.
+  protected heldKampfT = -999;
 
   damageEnemy(e: Enemy, dmg: number, kx = 0, ky = 0, col?: string | null, melee = true, durchTruppe = false): void {
     if (e.team === 'spieler') return;   // R99d: Verbuendete nehmen keinen Spieler-Schaden
     this.killDurchTruppe = durchTruppe;
+    if (!durchTruppe) this.heldKampfT = this.time.now / 1000;   // ECHTER Held-Schlag
     // Ausweichen (Runde 20): flinke Gegner entgehen Nahkampfhieben ab und
     // zu mit einem Schritt zur Seite - Nahkampf wird ein Tanz
     // Nur TIERE (Wolf/Ratte) weichen noch seitlich aus - Monster stehen und
@@ -3079,6 +3088,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   hurtPlayer(dmg: number, alreadyReduced = false): void {
     if (TUNING.unbesiegbar) return; // Dev-Unbesiegbarkeit zum Testen (Runde 40)
+    this.heldKampfT = this.time.now / 1000;   // der Held ist am Kampf beteiligt (nimmt Schaden)
     const eff = alreadyReduced ? dmg : damageAfterArmor(dmg, this.p.stats.armor);
     this.p.hp -= eff;
     this.playerHitFlash = 0.18;
