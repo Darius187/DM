@@ -492,12 +492,29 @@ def build_command_pavilion():
             beam("wood_dark", (x, y, .02), (x, y, eave + .30), .12)
             BATCHES["wood_mid"].cone((x, y, eave + .48), .13, .34, 8)
     beam("wood_dark", (0, -half_l, ridge), (0, half_l, ridge), .13)
+    for y in (-half_l, half_l):
+        BATCHES["wood_mid"].cone((0, y, ridge + .22), .14, .42, 8)
     # Four sloped roof cloth panels with a gentle central sag.
     for side in (-1, 1):
         cloth_grid("canvas", f"PAV_ROOF_{side}", 12, 14,
                    lambda u, v, side=side: (
                        side * (u * half_w), -half_l + v * half_l * 2,
                        ridge - u * (ridge - eave) - .07 * math.sin(v * math.pi) * math.sin(u * math.pi)))
+        for u in (.33, .66):
+            x = side * u * half_w
+            z = ridge - u * (ridge - eave) + .018
+            BATCHES["canvas_dark"].quad([
+                (x - .025, -half_l, z), (x + .025, -half_l, z),
+                (x + .025, half_l, z), (x - .025, half_l, z),
+            ])
+        patch_u, patch_v = (.56, .31) if side < 0 else (.74, .67)
+        patch_x = side * patch_u * half_w
+        patch_y = -half_l + patch_v * half_l * 2
+        patch_z = ridge - patch_u * (ridge - eave) + .024
+        BATCHES["canvas_dark"].quad([
+            (patch_x - .20, patch_y - .27, patch_z), (patch_x + .20, patch_y - .27, patch_z),
+            (patch_x + .20, patch_y + .27, patch_z), (patch_x - .20, patch_y + .27, patch_z),
+        ])
     # Side and rear curtains; front curtains tied back around corner posts.
     cloth_grid("canvas_dark", "PAV_REAR", 14, 8,
                lambda u, v: (-half_w + u * half_w * 2, half_l, v * eave))
@@ -532,6 +549,8 @@ def build_command_pavilion():
     # Open, visible command furniture. This belongs to the prop silhouette.
     BATCHES["rug"].box((0, -.15, .035), (4.15, 3.30, .07))
     BATCHES["wood_mid"].box((0, -.25, .93), (2.75, 1.25, .14))
+    BATCHES["canvas"].box((-.43, -.30, 1.016), (1.02, .70, .018), (0, 0, -.08))
+    BATCHES["canvas_dark"].box((.55, -.18, 1.019), (.72, .48, .016), (0, 0, .12))
     for x in (-1.15, 1.15):
         for y in (-.74, .24):
             beam("wood_dark", (x, y, .04), (x, y, .86), .10)

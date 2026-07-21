@@ -2618,10 +2618,10 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   AN-Bahn browser-verifiziert: Normal-Maps gebacken + als dataSource an der
   Textur, Props auf Light2D-Pipeline, Umgebungslicht 0xb4b4b4 + Heldenlicht,
   keine Fehler. Bewusst NICHT als Standard - Regressionsrisiko mit RESIZE/PostFX.
-
 - Feindlager M1-Netz (sichereLagerRoute): nach dem Knochenwall-Bau BFS ab
   Bindealtar ueber feind-begehbare Kacheln; erreicht keine Kartenkante, wird
   am naechsten Tor-Winkel eine CRACK-Kachel zu GRASS geoeffnet (bounded 24x).
   Sicherheitsnetz gegen versehentlich zugemauerte Blaupausen - greift NUR im
   Notfall (browser-verifiziert: dicht -> 1 Bresche am Ost-Tor, Tor-Luecke
   vorhanden -> 0 Aenderungen, kein Ueber-Oeffnen). Winkel-Bias in rissTorAbstand.
+- 2026-07-21: Pfeilmacherstand, kleines Feldzelt und Befehlspavillon bleiben drei getrennte drehbare GLB-Assets. Ohne genannte Zielkarte oder Position werden sie nicht eigenmaechtig in die Welt gesetzt.

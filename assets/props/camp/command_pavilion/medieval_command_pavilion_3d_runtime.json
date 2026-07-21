@@ -1,0 +1,74 @@
+{
+  "asset": "medieval_command_pavilion_3d_runtime",
+  "label_de": "Großer Feld- und Befehlspavillon",
+  "glb": "medieval_command_pavilion_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "COMMAND_PAVILION_ROTATION_PIVOT",
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -4.99,
+      -4.104,
+      -0.12
+    ],
+    "max": [
+      4.99,
+      4.104,
+      5.61
+    ],
+    "size": [
+      9.98,
+      8.207,
+      5.73
+    ]
+  },
+  "runtime": {
+    "visible_objects": 8,
+    "triangles": 2440,
+    "embedded_textured_materials": 8,
+    "static_material_batches": [
+      "COMMAND_PAVILION_WOOD_DARK_BATCH",
+      "COMMAND_PAVILION_WOOD_MID_BATCH",
+      "COMMAND_PAVILION_ROPE_BATCH",
+      "COMMAND_PAVILION_CANVAS_BATCH",
+      "COMMAND_PAVILION_CANVAS_DARK_BATCH",
+      "COMMAND_PAVILION_RED_CLOTH_BATCH",
+      "COMMAND_PAVILION_IRON_BATCH",
+      "COMMAND_PAVILION_RUG_BATCH"
+    ]
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      7.4,
+      6.2
+    ],
+    "center": [
+      0,
+      0
+    ],
+    "front_open": true
+  },
+  "content": {
+    "open_front": true,
+    "banner_poles": 2,
+    "command_table": true,
+    "benches": 2,
+    "shelves": 2,
+    "chests": 3,
+    "visible_rug": true
+  },
+  "interactions": [],
+  "notes": [
+    "Eigenstaendiges Asset; nicht mit den beiden anderen Lager-Assets verschmelzen.",
+    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
+    "Material-Farbtexturen sind im GLB eingebettet."
+  ]
+}

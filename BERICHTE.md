@@ -2130,3 +2130,15 @@ nachziehen.
   positiven Eindruck des Autors ("weniger pixelig"). Bleibt bewusst optional.
 - Offen/Idee des Autors: ein eigener animierter Feuer-Effekt (three.js /
   Partikel) statt des gebackenen Glut-Sprites - als spaeterer Ausbau notiert.
+## 21.07.2026 - Drei getrennte mittelalterliche Lager-Assets
+
+- Pfeilmacher- und Bognerstand, kleines Feldzelt und grosser Befehlspavillon wurden
+  nacheinander als eigenstaendige Blender- und GLB-Assets gebaut.
+- Alle drei besitzen eingebettete Farbtexturen, einen kontinuierlich drehbaren
+  Root-Pivot, eine feste Frontachse und keine Bodenplatte.
+- Der Pfeilmacherstand nutzt 10 Meshes und 10.510 Dreiecke, das Feldzelt 4 Meshes
+  und 1.632 Dreiecke, der Pavillon 8 Meshes und 2.440 Dreiecke.
+- Jedes GLB wurde nach dem Export wieder in Blender importiert. Root, Meshzahl,
+  Dreieckzahl und Texturen stimmen; Export-Helfer und Bodenplatten fehlen wie geplant.
+- Offen: Der Autor hat keine Zielkarte oder Position genannt. Deshalb sind die
+  Assets geliefert, aber noch nicht in eine WorldScene-Area gesetzt.
