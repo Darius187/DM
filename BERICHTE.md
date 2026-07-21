@@ -2007,3 +2007,30 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
   drei eingebettete Bilder und erhaltene UV-Daten; geometrische Burg-QA bleibt
   unveraendert gruen. TypeScript, 421 Vitest-Tests, Produktions-Build sowie
   Manifest und GLB per HTTP 200 erfolgreich.
+
+## Runde (Kampf-Politur: 3 Autor-Aergernisse behoben)
+Der Autor hatte fuenf Aergernisse gemeldet; die ersten beiden (staendiges
+"Aufstieg" bei NPC-Kaempfen, "SCHWACH/PRALLT AB"-Spam) waren bereits im vorigen
+Commit erledigt. Diese Runde die restlichen drei:
+
+- STEH-WIPPEN weg: Die Figuren "schwammen" auch im Stillstand leicht auf und ab.
+  Das vertikale Wippen gehoert jetzt nur noch zum LAUFEN - im Stand stehen sie
+  ruhig. (Nur der koerperlose Schatten schwebt weiter.) Fuehlt sich sofort
+  gesetzter/soldatischer an. Verifiziert im Browser: Wippe im Stand = 0 Pixel.
+
+- BOGENSCHUETZE: Soldaten standen "bloed rum und liessen sich vom Bogenschuetzen
+  toeten". Ursache: Der Bogen schiesst aus ~290px, die Wache verliess ihre
+  Stellung aber erst ab 220px Naehe. Jetzt: Wer getroffen wird, MERKT sich seinen
+  Angreifer und laeuft ihn aktiv an - auch quer ueber das Feld; Kameraden in der
+  Naehe schliessen sich an ("alle auf ihn los"). Wirkt in JEDEM Modus.
+  Verifiziert: Getroffener Soldat lief 64px auf den 270px entfernten Schuetzen zu.
+
+- VERHALTENS-EINSTELLUNGEN "ohne Wirkung": Befund in OFFENE-FRAGEN notiert - die
+  Haltungs-Achsen (aggressiv/verteidigen/halten) greifen bisher nur im RTS-Modus.
+  Die Provokation oben behebt den konkreten Schmerz modus-uebergreifend; ob die
+  Achsen dauerhaft auch ausserhalb des RTS-Modus gelten sollen, ist eine echte
+  Design-Frage an den Autor (groesserer Umbau, ruehrt an die R188-Performance).
+
+TypeScript fehlerfrei, 421 Vitest-Tests gruen, im Browser verifiziert.
+Naechster Block laut Autor-Auftrag: der grosse Grafik-Sprung (Normal-/Emissive-
+Maps aus dem Blender-Bake).

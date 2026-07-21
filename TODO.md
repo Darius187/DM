@@ -151,3 +151,34 @@
 - R179-Folgearbeit: der reitende Bote als SICHTBARE Figur (Codex-Pferd-Sprite)
   auf der Karte, wenn der Held ihm begegnet; Abfang-Szene statt Wuerfelwurf.
 - Wegfindung Waldkarten: Feldzug-Wellen spawnen an der geometrischen Kante, nicht am STRASSEN-Uebergang - in dichtem Randbewuchs starten ~3/10 in abgeschlossenen Taschen (Entklemmer faengt sie, aber schoen ist anders). Saubere Loesung: kartenKanten.ts in areagen verdrahten und kantenPunkt auf den Weg-Uebergang legen (WELTKARTE-PLAN-Altpunkt).
+
+## GROSSER GRAFIK-SPRUNG - Normal + Emissive aus dem Blender-Bake (Autor R109, Fahrplan)
+Ziel (Autor-Zitat): "Normal- + Emissive-Maps aus dem Blender-Bake -> Light2D
+bumpig + leuchtende Fenster." Farb-Grading, Vignette, Glatte-Kanten sind fertig.
+Erarbeiteter, sauber verifizierbarer Weg (in kleinen Schritten, jeder mit
+Browser-Beleg - der Playwright-Harness war in dieser Sitzung flaky, Bake-Pixel
+im Browser messen sobald er wieder stabil ist):
+
+1. propBackofen.ts: macheBackofen um ZWEI zusaetzliche Bake-Pässe erweitern, die
+   DIESELBE Kamera-Rahmung wie backe() nutzen (Bilder liegen pixelgenau uebereinander):
+   - backeNormal(gruppe): Meshes temporaer auf MeshNormalMaterial tauschen, rendern,
+     zuruecktauschen -> Sicht-Raum-Normalen als RGB (Phaser-Light2D-__NORMAL-Format,
+     0.5/0.5/1 = zur Kamera). Framing-Code aus backe() in einen Helfer ziehen.
+   - backeEmissive(gruppe): Materialien auf unbeleuchtetes MeshBasicMaterial mit der
+     emissive-Farbe (x emissiveIntensity) tauschen, auf Schwarz rendern -> nur die
+     selbstleuchtenden Teile. (Braucht, dass Fenster-Meshes in den *Bau.ts emissive
+     gesetzt bekommen - aktuell meist 0.)
+   WICHTIG (CLAUDE.md §3 kein toter Code): NICHT als ungenutzte Exports committen -
+   erst zusammen mit Schritt 2/3 einbauen, sodass sie sofort verwendet werden.
+2. Emissiv zuerst (billiger Wow-Effekt, "leuchtende Fenster"): pro Prop mit Fenstern
+   ein additives Glow-Sprite (zweites Sprite, BlendMode ADD) ueber den Farb-Sprite;
+   Alpha/Helligkeit mit der Dunkelheit koppeln (Nacht/Dungeon = hell, Tag = aus).
+   An EINEM Prop (z.B. Wachturm/Haus) beweisen, dann ausrollen. Fenster-emissive in
+   den *Bau.ts setzen. Registrierung analog zu den bestehenden *Bitmaps.ts.
+3. Normal danach (Light2D bumpig): pro Prop-Textur die Normal-Bake als __NORMAL an
+   die Phaser-Textur haengen und sprite.setPipeline('Light2D'); eine Lichtquelle
+   (Sonne/Fackel) in der WorldScene. ACHTUNG Risiko-Checkliste: Light2D vertraegt
+   sich evtl. schlecht mit der RESIZE-Skalierung und den Kamera-PostFX (Grading/
+   Bloom) - isoliert testen, Rueckweg (an/aus) pruefen, in beide Richtungen.
+Reihenfolge bewusst: Emissiv (klein, sichtbar, geringes Risiko) vor Normal/Light2D
+(pipeline-tief, hoeheres Regressionsrisiko).
