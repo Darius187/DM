@@ -136,6 +136,54 @@ describe('feindzug', () => {
     expect(z.angriff).toBeNull();
   });
 
+  // F2a (07-FEIND-KI A2/A10): das Blackboard. Der Feind ist NICHT allwissend -
+  // ein abgefangener Spaeher liefert KEINE frische Sichtung, und altes Wissen
+  // verfaellt (Zuversicht sinkt), bis es vergessen wird.
+  const verfall = [[0, 1], [5, 0.8], [15, 0.45], [30, 0]] as ReadonlyArray<readonly [number, number]>;
+
+  it('A10: abgefangener Spaeher -> der Feind bleibt blind und gibt nach 3 Runden auf', () => {
+    const z = neuerFeindzug(['lager']);
+    // Ziel nie zuvor gesehen, jeder Spaeher wird abgefangen -> keine Sichtung
+    const c = cfg({ verteidigung: () => 0, spaehVersucheMax: 3, wissenVerfall: verfall,
+      spaeherKommtDurch: () => false });
+    tickFeindzug(z, 41, c);                       // Angriff geplant, Spaeher los
+    expect(z.angriff?.phase).toBe('spaeht');
+    tickFeindzug(z, 11, c); tickFeindzug(z, 11, c);
+    expect(z.angriff?.phase).toBe('spaeht');      // blind: kein Wissen, kein Angriff
+    tickFeindzug(z, 11, c);
+    expect(z.angriff).toBeNull();                 // 3 vergebliche Runden -> aufgegeben
+    expect(z.wissen?.wald).toBeUndefined();       // nie etwas gesehen
+  });
+
+  it('A2: eine erfolgreiche Sichtung landet im Blackboard und verfaellt mit der Zeit', () => {
+    const z = neuerFeindzug(['lager']);
+    const c = cfg({ verteidigung: (id) => (id === 'wald' ? 100 : 0), wissenVerfall: verfall });
+    tickFeindzug(z, 200, c);                       // sparen + Spaeher los
+    tickFeindzug(z, 11, c);                        // Spaeher SEHEN: 100 ins Blackboard
+    expect(z.wissen?.wald?.staerke).toBeCloseTo(100, 5);
+    expect(z.wissen?.wald?.alterS).toBeCloseTo(0, 5);
+    // Zeit vergeht ohne neue Sichtung -> der Eintrag altert weiter
+    tickFeindzug(z, 10, c);
+    expect(z.wissen?.wald?.alterS).toBeCloseTo(10, 5);
+    // Insgesamt >30s alt -> die Sichtung ist vergessen
+    tickFeindzug(z, 25, c);
+    expect(z.wissen?.wald).toBeUndefined();
+  });
+
+  it('A5: teilverfallenes Wissen -> vorsichtiger Aufschlag macht die Welle groesser', () => {
+    // Kein frischer Spaeher (immer abgefangen), aber ein aelteres Wissen ist da.
+    const z = neuerFeindzug(['lager']);
+    z.lager[0].punkte = 300;                       // genug gespart (kein langer Spar-Tick noetig)
+    z.wissen = { wald: { staerke: 100, alterS: 0 } };
+    const c = cfg({ verteidigung: () => 0, wissenVerfall: verfall, wissenAufschlag: 0.6,
+      spaeherKommtDurch: () => false, spaehVersucheMax: 99 });
+    tickFeindzug(z, 4, c);                          // planen; Wissen altert 0 -> 4
+    const evs = tickFeindzug(z, 11, c);            // spaehen; Wissen altert 4 -> 15 (Zuversicht 0.45)
+    // sichtung = 100 * (1 + 0.6*(1-0.45)) = 133 -> Welle = max(40, 133*1.3)
+    const sicht = 100 * (1 + 0.6 * (1 - 0.45));
+    expect(evs).toEqual([{ typ: 'angriff', von: 'lager', nach: 'wald', staerke: Math.round(sicht * 1.3) }]);
+  });
+
   it('alte Staende ohne Schwaeche-Feld laufen unveraendert (Default 0)', () => {
     const z = neuerFeindzug(['lager']);
     delete z.schwaecheT;   // wie ein alter Spielstand

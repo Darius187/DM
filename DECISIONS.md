@@ -2625,3 +2625,15 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Notfall (browser-verifiziert: dicht -> 1 Bresche am Ost-Tor, Tor-Luecke
   vorhanden -> 0 Aenderungen, kein Ueber-Oeffnen). Winkel-Bias in rissTorAbstand.
 - 2026-07-21: Pfeilmacherstand, kleines Feldzelt und Befehlspavillon bleiben drei getrennte drehbare GLB-Assets. Ohne genannte Zielkarte oder Position werden sie nicht eigenmaechtig in die Welt gesetzt.
+
+- F2a Feind-KI Blackboard (07-FEIND-KI A2/A10, reine Logik): der Feindzug fuehrt
+  ein Wissens-Blackboard je Zielkarte (staerke + alterS). Ein erfolgreicher
+  Spaeher schreibt die (unscharfe) Sichtung hinein; das Wissen ALTERT (Zuversicht
+  100%->80%@5s->45%@15s->vergessen@30s, Stuetzpunkte in FELDZUG.wissenVerfall) und
+  fliesst verfallen in die Wellen-Bemessung: je unsicherer, desto groesser der
+  vorsichtige Aufschlag (FELDZUG.wissenAufschlag 0.6, A5). Neuer cfg-Haken
+  spaeherKommtDurch (Default true) - false = Spaeher abgefangen -> KEINE frische
+  Sichtung, der Feind bleibt auf altem/keinem Wissen (A10 "Spaeher toeten =
+  blind"). Backward-kompatibel: ohne wissenVerfall verfaellt nichts (alte Tests
+  gruen, 12/12). Live-Wiring der Spaeher-Abfangung (sichtbare Kloster-Spaeher ->
+  spaeherKommtDurch) ist der naechste Schritt.

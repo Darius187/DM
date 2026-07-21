@@ -132,6 +132,15 @@ export const FELDZUG = {
   // Spaeh-Runden gibt der Feind ein zu stark gewordenes Ziel auf (Wechselhuerde).
   sichtungsUnschaerfe: 0.25,
   spaehVersucheMax: 3,
+  // F2a (07-FEIND-KI A2): Blackboard mit ERINNERUNGS-VERFALL. Der Feind ist NICHT
+  // allwissend - was ein Spaeher einmal gesehen hat, altert und wird unsicher.
+  // Stuetzpunkte (Alter in s -> Zuversicht 0..1) direkt aus der Doku:
+  // frisch 100%, nach 5s 80%, nach 15s 45%, nach 30s vergessen. Dazwischen linear.
+  wissenVerfall: [[0, 1], [5, 0.8], [15, 0.45], [30, 0]] as ReadonlyArray<readonly [number, number]>,
+  // A5 "vorsichtige KI rechnet nach oben": je unsicherer die Erinnerung, desto
+  // groesser der Sicherheits-Aufschlag auf die geschaetzte Verteidigung (max bei
+  // Zuversicht 0). 0,6 = bis zu +60% Aufschlag, wenn die Sichtung ganz verblasst.
+  wissenAufschlag: 0.6,
 } as const;
 
 // FEINDLAGER-MITTELWEG (07-FEIND-KI TEIL 3, M1 - Autor bestaetigt): das Lager

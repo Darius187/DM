@@ -9570,6 +9570,8 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       schwaecheProduktionF: FELDZUG.schwaecheProduktionF,   // F6: Blutlager-Schwaeche
       sichtungsUnschaerfe: FELDZUG.sichtungsUnschaerfe,     // KI-Teil-2: Spaeher schaetzen nur
       spaehVersucheMax: FELDZUG.spaehVersucheMax,           // KI-Teil-2: Wechselhuerde
+      wissenVerfall: FELDZUG.wissenVerfall,                 // F2a (A2): Blackboard verfaellt
+      wissenAufschlag: FELDZUG.wissenAufschlag,             // F2a (A5): vorsichtiger Aufschlag bei Unsicherheit
     });
     for (const ev of evs) this.feindzugEreignis(ev);
     // Live-Aufloesung: kaempft die Welle auf der HELD-Karte, entscheidet der

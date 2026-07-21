@@ -26,6 +26,15 @@ export interface FeindAngriff {
   versuche?: number;         // KI-Teil-2 D2: vergebliche Spaeh-Runden (Wechselhuerde)
 }
 
+// F2a (07-FEIND-KI A2): ein Blackboard-Eintrag - was ein Spaeher zuletzt bei
+// einer Karte SAH (geschaetzte Verteidigungsstaerke) und wie alt die Sichtung
+// ist. Das Alter frisst die Zuversicht (zuversicht()), bis der Eintrag vergessen
+// wird. So ist der Feind NICHT allwissend - Spaeher toeten = er bleibt blind.
+export interface FeindWissen {
+  staerke: number;   // gesehene (geschaetzte) Verteidigungs-Staerke
+  alterS: number;    // Sekunden seit der Sichtung
+}
+
 export interface Feindzug {
   lager: FeindLager[];
   angriff: FeindAngriff | null;   // V1: ein Angriff zur Zeit
@@ -33,6 +42,8 @@ export interface Feindzug {
   // einem Lagerverlust - der Comeback-Hebel des Schwaecheren. Optional, damit
   // alte Spielstaende ohne das Feld unveraendert laufen.
   schwaecheT?: number;
+  // F2a (A2): Blackboard je Karte. Optional - alte Staende starten ohne Wissen.
+  wissen?: Record<string, FeindWissen>;
 }
 
 export interface FeindzugCfg {
@@ -57,6 +68,17 @@ export interface FeindzugCfg {
   // KI-Teil-2 D2 (Punkt 5): nach so vielen vergeblichen Spaeh-Runden (Ziel
   // zu teuer geworden) gibt der Feind das Ziel auf und plant neu.
   spaehVersucheMax?: number;
+  // F2a (A2): Verfallskurve fuers Blackboard (Alter s -> Zuversicht 0..1),
+  // aufsteigend nach Alter. Fehlt sie, verfaellt Wissen nie (Zuversicht 1) -
+  // alte Aufrufer laufen unveraendert.
+  wissenVerfall?: ReadonlyArray<readonly [number, number]>;
+  // F2a (A5): Sicherheits-Aufschlag bei voller Unsicherheit (Zuversicht 0).
+  // Die vorsichtige KI rechnet die Verteidigung nach oben, je aelter das Wissen.
+  wissenAufschlag?: number;
+  // F2a (A10): kommt der Spaeher durch? false = abgefangen/getoetet -> KEINE
+  // frische Sichtung, der Feind bleibt auf altem (verfallendem) Wissen sitzen.
+  // Fehlt der Haken, kommt der Spaeher immer durch (bisheriges Verhalten).
+  spaeherKommtDurch?: (von: string, nach: string) => boolean;
 }
 
 export type FeindzugEreignis =
@@ -66,7 +88,20 @@ export type FeindzugEreignis =
   | { typ: 'zurueckgeschlagen'; karte: string };
 
 export function neuerFeindzug(startBesetzt: ReadonlyArray<string>): Feindzug {
-  return { lager: startBesetzt.map((karte) => ({ karte, punkte: 0 })), angriff: null };
+  return { lager: startBesetzt.map((karte) => ({ karte, punkte: 0 })), angriff: null, wissen: {} };
+}
+
+// F2a (A2): Zuversicht (0..1) eines Wissens-Eintrags nach seinem Alter, linear
+// interpoliert ueber die Stuetzpunkte der Verfallskurve (aufsteigend nach Alter).
+// Ohne Kurve gilt volle Zuversicht (alte Aufrufer ohne Verfall).
+function zuversicht(alterS: number, kurve?: ReadonlyArray<readonly [number, number]>): number {
+  if (!kurve || !kurve.length) return 1;
+  if (alterS <= kurve[0][0]) return kurve[0][1];
+  for (let i = 1; i < kurve.length; i++) {
+    const [a0, z0] = kurve[i - 1], [a1, z1] = kurve[i];
+    if (alterS <= a1) return z0 + (z1 - z0) * ((alterS - a0) / (a1 - a0));
+  }
+  return kurve[kurve.length - 1][1];
 }
 
 // Bestes Angriffs-Ziel eines Lagers: FREIE Nachbarkarte, nicht unantastbar,
@@ -114,6 +149,15 @@ export function tickFeindzug(z: Feindzug, dt: number, cfg: FeindzugCfg): Feindzu
   if (schwaeche > 0) z.schwaecheT = Math.max(0, (z.schwaecheT ?? 0) - dt);
   for (const l of z.lager) { l.punkte += produktion; l.seitS = (l.seitS ?? 0) + dt; }
 
+  // F2a (A2): das Blackboard altert. Vergessene Sichtungen (Zuversicht 0)
+  // fallen raus - nur bei aktiver Verfallskurve, sonst bleibt Wissen ewig.
+  if (z.wissen && cfg.wissenVerfall) {
+    for (const karte of Object.keys(z.wissen)) {
+      z.wissen[karte].alterS += dt;
+      if (zuversicht(z.wissen[karte].alterS, cfg.wissenVerfall) <= 0) delete z.wissen[karte];
+    }
+  }
+
   const a = z.angriff;
   if (!a) {
     // Neuen Angriff planen: das Lager mit den meisten Punkten, das ein Ziel
@@ -134,24 +178,32 @@ export function tickFeindzug(z: Feindzug, dt: number, cfg: FeindzugCfg): Feindzu
   a.t += dt;
   if (a.phase === 'spaeht') {
     if (a.t < cfg.spaehVorlaufS) return out;
-    // Die Spaeher melden JETZT - eine SCHAETZUNG mit Unschaerfe (D1), keine
-    // Allwissenheit. Die Welle wird an der Schaetzung bemessen.
-    const streu = (cfg.rng() * 2 - 1) * (cfg.sichtungsUnschaerfe ?? 0);
-    a.sichtung = cfg.verteidigung(a.nach) * (1 + streu);
+    if (!z.wissen) z.wissen = {};
+    // A10: kommt der Spaeher durch, liefert er eine frische SCHAETZUNG (D1,
+    // Unschaerfe) ins Blackboard. Wird er abgefangen, bleibt der Feind auf
+    // altem, verfallendem Wissen sitzen (oder blind, wenn er nie sah).
+    const durch = cfg.spaeherKommtDurch ? cfg.spaeherKommtDurch(a.von, a.nach) : true;
+    if (durch) {
+      const streu = (cfg.rng() * 2 - 1) * (cfg.sichtungsUnschaerfe ?? 0);
+      z.wissen[a.nach] = { staerke: cfg.verteidigung(a.nach) * (1 + streu), alterS: 0 };
+    }
+    const w = z.wissen[a.nach];
+    // Blind (nie gesehen UND abgefangen): weiter spaehen, aber nicht ewig (D2).
+    const scheitere = (): FeindzugEreignis[] => {
+      a.versuche = (a.versuche ?? 0) + 1;
+      if (cfg.spaehVersucheMax && a.versuche >= cfg.spaehVersucheMax) z.angriff = null;
+      else a.t = 0;
+      return out;
+    };
+    if (!w) return scheitere();
+    // A2/A5: aus dem (evtl. verfallenen) Wissen die geschaetzte Verteidigung -
+    // je unsicherer die Erinnerung, desto groesser der vorsichtige Aufschlag.
+    const zuv = zuversicht(w.alterS, cfg.wissenVerfall);
+    a.sichtung = w.staerke * (1 + (cfg.wissenAufschlag ?? 0) * (1 - zuv));
     const benoetigt = Math.max(cfg.welleMin, a.sichtung * cfg.staerkeFaktor);
     const lager = z.lager.find((l) => l.karte === a.von);
-    if (!lager || lager.punkte < benoetigt) {
-      // Zu teuer geworden (Spieler hat verstaerkt): weiter sparen, neu
-      // spaehen - aber nicht ewig festbeissen (D2, Wechselhuerde): nach
-      // spaehVersucheMax Runden wird das Ziel aufgegeben und neu geplant.
-      a.versuche = (a.versuche ?? 0) + 1;
-      if (cfg.spaehVersucheMax && a.versuche >= cfg.spaehVersucheMax) {
-        z.angriff = null;
-        return out;
-      }
-      a.t = 0;
-      return out;
-    }
+    // Zu teuer geworden (Spieler hat verstaerkt): weiter sparen/spaehen (D2).
+    if (!lager || lager.punkte < benoetigt) return scheitere();
     lager.punkte -= benoetigt;
     a.phase = 'kaempft';
     a.t = 0;
