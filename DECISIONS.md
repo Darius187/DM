@@ -2582,3 +2582,14 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   werden - der Container hat den Vite-Server wiederholt abgeschossen. backeNormal
   folgt exakt dem in derselben Sitzung browser-bewiesenen backeEmissive-Muster.
   Vor der Abnahme des EIN-Pfads: einmal mit Schalter an + Neustart ansehen.
+- AUFSTIEG-SPAM bei NPC-Kaempfen, ECHTE URSACHE gefunden (Autor mehrfach gemeldet,
+  frueherer Fix griff nur halb): Nicht die Held-STUFE, sondern die Held-SCHULE
+  (Nahkampf) stieg auf. damageEnemy rief `if (melee) gainSchoolUse('nahkampf')`
+  bei JEDEM Nahkampftreffer - AUCH bei Truppen-Treffern (durchTruppe=true). Die
+  Schule stieg, und ihr Aufstiegs-Banner (zeigeSchulAufstieg) blitzte auf. Fix:
+  beide Stellen (1726 Parade-Zweig, 1778 Normal) auf `melee && !durchTruppe`
+  gegatet - Schul-XP nur noch fuer ECHTE Held-Schlaege. (Kombiniert mit den schon
+  vorhandenen Gates: Held-Stufen-XP ueber killDurchTruppe, Schlacht-XP ueber
+  heldDabei.) STATUS: tsc + 421 Tests gruen. IM SPIEL NICHT bestaetigt, weil der
+  Container den Vite-Server diese Sitzung dauerhaft abgeschossen hat - Autor bitte
+  einmal eine reine NPC-Schlacht ansehen und zurueckmelden.

@@ -1723,7 +1723,9 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         this.fx.burst(e.x + Math.cos(zumSpieler) * e.r, e.y + Math.sin(zumSpieler) * e.r, 0xaab4c0, 6, 120);
         this.sfx.play('block');
         if (inDeckung) { e.blockT = 0; e.atkCd = Math.min(e.atkCd, 0.12); } // sofortiger Konter
-        if (melee) this.gainSchoolUse('nahkampf');
+        // Autor "staendig Aufstieg wenn NPCs kaempfen": Schul-XP (und ihr Aufstiegs-
+        // Banner) NUR fuer echte Held-Schlaege - Truppen-Treffer (durchTruppe) zaehlen nicht.
+        if (melee && !durchTruppe) this.gainSchoolUse('nahkampf');
         if (e.hp <= 0) this.killEnemy(e);
         return;
       }
@@ -1774,8 +1776,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + heal);
       }
     }
-    // Nahkampf-Schule steigt nur mit Nahkampf-Treffern
-    if (melee) this.gainSchoolUse('nahkampf');
+    // Nahkampf-Schule steigt nur mit Nahkampf-Treffern - und NUR wenn der Held
+    // selbst schlaegt. Truppen-Treffer (durchTruppe) duerfen keine Schul-XP und
+    // damit kein "Aufstieg"-Banner ausloesen (Autor: nervt bei NPC-Kaempfen).
+    if (melee && !durchTruppe) this.gainSchoolUse('nahkampf');
     if (e.hp <= 0) this.killEnemy(e);
   }
 
