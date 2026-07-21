@@ -180,6 +180,15 @@ export const FEINDLAGER_VARIANTEN: ReadonlyArray<FeindlagerVariante> = [
   { name: 'Voller Ring', wallForm: 'vollring',    wallRadiusF: 1.05, torHalb: 0.24, waechterRingPx: 82,  altarVersatz: { x: -1, y: 0 } },
 ] as const;
 
+// Wasser-Editor (Autor-Order "ich male das Wasser selbst"): das GEMALTE Wasser
+// (T.WATER-Kacheln) traegt die Effekte, alles andere NICHT. Feste Werte statt SDF.
+export const WASSER_MAL = {
+  heldNass: 0.5,         // Untertauch-Tiefe auf einer Wasserkachel (0.5 = wadet/schwimmt halb)
+  tiefe: -9,             // Render-Tiefe des Kachel-Wassers (ueber Boden -11, unter Figuren)
+  alpha: 235,            // Deckkraft der Wasserfuellung (0..255)
+  pinselMax: 8,          // groesster Pinsel-Radius (Kacheln)
+} as const;
+
 export const SPAEHER = {
   intervallMinS: 240,    // Wartezeit zwischen zwei Trupps (Minimum) ...
   intervallMaxS: 540,    // ... und Maximum (echte Spielsekunden in der Stadt)

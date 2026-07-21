@@ -70,7 +70,7 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, WASSER_MAL, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import type { FeindlagerVariante, WallForm } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
@@ -276,6 +276,11 @@ export class WorldScene extends CombatScene {
   private devBewuchs = 1;          // F10-Bewuchs-Dichtefaktor (wirkt beim Kartenwechsel)
   private devSchilfDichte = SCHILF_DICHTE;   // F10-Regler Ufer-Schilf-Dichte (live, R95)
   private heldNass = 0;            // 0..1: wie tief der Held im Wasser steht (Versink-Optik)
+  // Wasser-Editor (Autor malt das Wasser selbst): zuverlaessiges Kachel-Wasser +
+  // Malen/Radieren im K-Modus, gespeichert je Karte (localStorage).
+  private wasserKachelImg?: Phaser.GameObjects.Image;
+  private wasserEditPinsel = 1;   // Pinsel-Radius in Kacheln (Rad: 0 = 1 Kachel)
+  private wasserEditSaveT = 0;    // Debounce-Uhr fuers Speichern
   // Pfützen am Weg (Runde 75): wachsen/schwinden mit der Boden-Nässe.
   private pfuetzen: Array<{ img: Phaser.GameObjects.Image; schwelle: number; cur: number; bw: number; bh: number }> = [];
   private pfuetzenTexKeys: string[] = [];
@@ -616,6 +621,20 @@ export class WorldScene extends CombatScene {
     // Im K-Modus: Klick auf eine Stelle -> Koordinaten + Kachel-Typ + Grund
     // (fuer die Ferndiagnose der unsichtbaren Wand - der Autor klickt drauf).
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.kollisionKlick(p));
+    // Wasser-Editor: Ziehen malt/radiert weiter, solange der K-Modus laeuft.
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (!this.wasserEditAktiv() || p.event?.shiftKey) return;
+      if (p.leftButtonDown()) this.malWasserAmZeiger(p, true);
+      else if (p.rightButtonDown()) this.malWasserAmZeiger(p, false);
+    });
+    // Pinsel groesser/kleiner ([ / ]) + Karte leeren (Entf) - nur im K-Modus.
+    this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {
+      if (!this.wasserEditAktiv()) return;
+      if (ev.key === '[') this.wasserEditPinselAendern(-1);
+      else if (ev.key === ']') this.wasserEditPinselAendern(1);
+      else if (ev.key === 'Delete' && ev.shiftKey) this.wasserKarteLeeren();
+      else if (ev.key.toLowerCase() === 'x') this.exportiereWasser();   // Export in Zwischenablage
+    });
     this.worldGfx = this.add.graphics().setDepth(2450);
     // Blutspuren liegen UNTER den Figuren (Autorbug R45: lagen "vor" den
     // Einheiten). Boden = -10, Figuren = y (positiv); -5 liegt sauber dazwischen.
@@ -5858,6 +5877,117 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       .setDisplaySize(a.w * TILE, a.h * TILE).setDepth(WASSER2_CFG.tiefe);
   }
 
+  // === WASSER-EDITOR (Autor-Order "ich male das Wasser selbst") ==============
+  // Zuverlaessiges KACHEL-Wasser: zeichnet Wasser GENAU auf die T.WATER-Kacheln
+  // (kein SDF, kein fragiler Shader). So ist das sichtbare Wasser IMMER deckungs-
+  // gleich mit Kollision + Effekten. Der fragile Shader wird versteckt.
+  private baueWasserKachelBild(): void {
+    this.wasserKachelImg?.destroy(); this.wasserKachelImg = undefined;
+    const a = this.area; if (!a?.map) return;
+    this.wasser2Shader?.setVisible(false);     // Kachel-Wasser uebernimmt die Optik
+    this.wasserFallbackImg?.setVisible(false);
+    const istW = (tx: number, ty: number): boolean => a.map[ty]?.[tx] === T.WATER;
+    let any = false;
+    for (let ty = 0; ty < a.h && !any; ty++) for (let tx = 0; tx < a.w; tx++) if (istW(tx, ty)) { any = true; break; }
+    if (!any) return;
+    const res = 4, cw = a.w * res, ch = a.h * res;
+    const canvas = document.createElement('canvas'); canvas.width = cw; canvas.height = ch;
+    const ctx = canvas.getContext('2d')!;
+    const bild = ctx.createImageData(cw, ch);
+    const p = this.aktWasserPreset();
+    const tief = p.deep.map((c) => Math.round(c * 255));
+    const ufer = p.deep.map((c, i) => Math.round((c * 0.5 + p.sky[i] * 0.5) * 255));
+    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+      const tx = Math.floor(x / res), ty = Math.floor(y / res);
+      if (!istW(tx, ty)) continue;
+      const rand = !istW(tx - 1, ty) || !istW(tx + 1, ty) || !istW(tx, ty - 1) || !istW(tx, ty + 1);
+      const col = rand ? ufer : tief;
+      const i = (y * cw + x) * 4;
+      bild.data[i] = col[0]; bild.data[i + 1] = col[1]; bild.data[i + 2] = col[2]; bild.data[i + 3] = WASSER_MAL.alpha;
+    }
+    ctx.putImageData(bild, 0, 0);
+    const key = `wasser_kachel_${a.id}`;
+    if (this.textures.exists(key)) this.textures.remove(key);
+    this.textures.addCanvas(key, canvas)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    this.wasserKachelImg = this.add.image(0, 0, key).setOrigin(0, 0)
+      .setDisplaySize(a.w * TILE, a.h * TILE).setDepth(WASSER_MAL.tiefe);
+  }
+
+  // --- Wasser-Maske je Karte (localStorage) ---------------------------------
+  private wassermaskeStore(): Record<string, number[]> {
+    try { return JSON.parse(localStorage.getItem('ravensmoor_wassermaske') ?? '{}') as Record<string, number[]>; } catch { return {}; }
+  }
+  private ladeWassermaske(id: string): number[] | null {
+    return this.wassermaskeStore()[id] ?? null;
+  }
+  private speichereWassermaske(): void {
+    const a = this.area; if (!a?.map) return;
+    const liste: number[] = [];
+    for (let ty = 0; ty < a.h; ty++) for (let tx = 0; tx < a.w; tx++) if (a.map[ty][tx] === T.WATER) liste.push(ty * a.w + tx);
+    const s = this.wassermaskeStore(); s[a.id] = liste;
+    try { localStorage.setItem('ravensmoor_wassermaske', JSON.stringify(s)); } catch { /* Quota - egal */ }
+  }
+  // Auf Load: hat der Autor diese Karte gemalt, IST die Maske das Wasser (das
+  // Auto-Wasser wird vollstaendig ersetzt). Ohne Maske bleibt das Auto-Wasser.
+  private wendeWassermaskeAn(a: AreaData): void {
+    const liste = this.ladeWassermaske(a.id);
+    if (!liste || !a.map) return;
+    const soll = new Set(liste);
+    for (let ty = 0; ty < a.h; ty++) for (let tx = 0; tx < a.w; tx++) {
+      const idx = ty * a.w + tx, ist = a.map[ty][tx] === T.WATER, will = soll.has(idx);
+      if (ist && !will) a.map[ty][tx] = T.GRASS;
+      else if (!ist && will && a.map[ty][tx] !== T.PATH && a.map[ty][tx] !== T.BRIDGE && a.map[ty][tx] !== T.TREE) a.map[ty][tx] = T.WATER;
+    }
+  }
+
+  // --- Malen/Radieren im K-Modus --------------------------------------------
+  private wasserEditAktiv(): boolean { return !!this.kollisionGfx; }
+  private malWasserAmZeiger(p: Phaser.Input.Pointer, wasser: boolean): void {
+    const a = this.area; if (!a?.map) return;
+    const wx = p.worldX, wy = p.worldY;
+    const cx = Math.floor(wx / TILE), cy = Math.floor(wy / TILE);
+    const r = this.wasserEditPinsel;
+    let geaendert = false;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      if (dx * dx + dy * dy > r * r + r) continue;   // runder Pinsel
+      const tx = cx + dx, ty = cy + dy;
+      if (tx < 0 || ty < 0 || tx >= a.w || ty >= a.h) continue;
+      const t = a.map[ty][tx];
+      if (wasser) { if (t === T.GRASS || t === T.TREE) { a.map[ty][tx] = T.WATER; geaendert = true; } }
+      else { if (t === T.WATER) { a.map[ty][tx] = T.GRASS; geaendert = true; } }
+    }
+    if (!geaendert) return;
+    this.baueWasserKachelBild();
+    this.toggleKollisionOverlay(); this.toggleKollisionOverlay();   // Overlay neu zeichnen
+    this.wegfeldNeu();
+    this.wasserEditSaveT = 0.6;   // debounced speichern (update())
+  }
+  private wasserEditPinselAendern(d: number): void {
+    this.wasserEditPinsel = Math.max(0, Math.min(WASSER_MAL.pinselMax, this.wasserEditPinsel + d));
+    this.logMsg(`Wasser-Pinsel: Radius ${this.wasserEditPinsel} Kacheln`, 'gold');
+  }
+  // EXPORT (Autor "wie uebertrage ich dir was ich gemalt habe"): schreibt die
+  // gemalten Wasser-Kacheln dieser Karte als JSON in die Zwischenablage UND die
+  // Konsole - der Autor kopiert es und schickt es mir; ich backe es fest ein.
+  private exportiereWasser(): void {
+    const a = this.area; if (!a?.map) return;
+    const liste: number[] = [];
+    for (let ty = 0; ty < a.h; ty++) for (let tx = 0; tx < a.w; tx++) if (a.map[ty][tx] === T.WATER) liste.push(ty * a.w + tx);
+    const json = JSON.stringify({ karte: a.id, w: a.w, h: a.h, wasser: liste });
+    console.log('WASSER-EXPORT ' + json);
+    try { void navigator.clipboard?.writeText(json); } catch { /* kein Clipboard - Konsole reicht */ }
+    this.logMsg(`Wasser-Export "${a.id}": ${liste.length} Kacheln in Zwischenablage + Konsole (F12). Schick es mir.`, 'gold');
+  }
+  private wasserKarteLeeren(): void {
+    const a = this.area; if (!a?.map) return;
+    for (let ty = 0; ty < a.h; ty++) for (let tx = 0; tx < a.w; tx++) if (a.map[ty][tx] === T.WATER) a.map[ty][tx] = T.GRASS;
+    this.baueWasserKachelBild();
+    if (this.kollisionGfx) { this.toggleKollisionOverlay(); this.toggleKollisionOverlay(); }
+    this.wegfeldNeu();
+    this.speichereWassermaske();
+    this.logMsg('Wasser dieser Karte GELÖSCHT (leere Maske gespeichert).', 'gold');
+  }
+
   private updateFreiKamera(dt: number): void {
     if (!this.devFreiKam) return;
     const cam = this.cameras.main;
@@ -5900,6 +6030,9 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     // stehen, waehrend die SICHTBARE Geometrie (F10-Regler) laengst anders
     // lief. R156-Regel gilt ueberall: Kollision folgt IMMER der Sichtbreite.
     if (!a || !lauf || lauf.vollszene) return;
+    // Wasser-Editor: hat der Autor diese Karte gemalt, ist seine Maske
+    // MASSGEBLICH - die SDF darf sie nicht ueberschreiben.
+    if (this.ladeWassermaske(a.id)) return;
     const geo = this.aktuelleWasserGeo() ?? lauf.geo;
     const smink = lauf.smink ?? WASSER2_CFG.smink;
     let geaendert = 0;
@@ -6337,6 +6470,10 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.wasserSeeMul = a.wasserLauf.geo.seen.map(() => ({ rx: 1, ry: 1 }));
     this.wendeWasserGeometrieAn();
     this.wendeGrafikAn();   // R107: Wasser-Effekte-Einstellung sofort beachten
+    // Wasser-Editor: gemalte Maske anwenden (ueberschreibt Auto-Wasser), dann
+    // das zuverlaessige Kachel-Wasser bauen (versteckt den fragilen Shader).
+    this.wendeWassermaskeAn(a);
+    this.baueWasserKachelBild();
   }
 
   // Baut die Geometrie mit den Live-Reglern (je Bach/Fluss/See) und lädt sie in
@@ -6373,6 +6510,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.liegendeStaemme.clear();
     this.wasser2Shader?.destroy(); this.wasser2Shader = undefined;
     this.wasserFallbackImg?.destroy(); this.wasserFallbackImg = undefined;   // R138: flaches Ersatz-Wasser gehoert zur alten Karte
+    this.wasserKachelImg?.destroy(); this.wasserKachelImg = undefined;       // Wasser-Editor: Kachel-Wasser gehoert zur alten Karte
     // R113: Moor-Nebel + Fussspuren gehoeren zur alten Karte
     this.wetterNebel?.destroy(); this.wetterNebel = undefined;
     this.fussSpuren = [];
@@ -7909,15 +8047,13 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // 1 im tiefen Wasser). Unabhaengig von Bewegung, damit der Held auch im Stehen
   // watet/schwimmt (Sprite-Beschneidung in wendeSchwimmOptik).
   private berechneHeldNass(): void {
-    const lauf = this.area?.wasserLauf;
+    // Autor-Order (Ende mit dem Formel-Wasser): das Nass-/Schwimm-Verhalten haengt
+    // NUR noch an der GEMALTEN Wasserkachel (T.WATER), nicht mehr an der SDF. So
+    // taucht der Held NIRGENDS auf Gras "unter Wasser" - Effekt = wo Wasser gemalt.
     const htx = Math.floor(this.px / TILE), hty = Math.floor(this.py / TILE);
     const aufWasser = this.area?.map?.[hty]?.[htx] === T.WATER;
     const wegNah = [0, -1, 1].some((d) => { const k = this.area?.map?.[hty + d]?.[htx]; return k === T.BRIDGE || k === T.PATH; });
-    if (lauf && aufWasser && !wegNah) {
-      const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
-      const sd = sdWasser(u, v, this.aktuelleWasserGeo() ?? lauf.geo, lauf.smink ?? WASSER2_CFG.smink, WASSER2_CFG.widthMul);
-      this.heldNass = Math.max(0, Math.min(1, (0.015 - sd) / 0.055));
-    } else this.heldNass = 0;
+    this.heldNass = (aufWasser && !wegNah) ? WASSER_MAL.heldNass : 0;
   }
 
   // R88: im Platzierungs-Modus fängt der Weltklick die Bau-Platzierung ab
@@ -8347,11 +8483,12 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // Wassertiefe an (x,y) als 0..1 (gleiche Skala wie heldNass); ab ~0,5 gilt es
   // als "tief" - dort geht das Pferd nicht mehr rein.
   private tiefesWasserBei(x: number, y: number): boolean {
-    const lauf = this.area?.wasserLauf;
-    if (!lauf) return false;
-    const u = x / (this.area.w * TILE), v = y / (this.area.h * TILE);
-    const sd = sdWasser(u, v, this.aktuelleWasserGeo() ?? lauf.geo, lauf.smink ?? WASSER2_CFG.smink, WASSER2_CFG.widthMul);
-    return (0.015 - sd) / 0.055 > 0.5;
+    // GEMALTE Wasserkachel = tief (Pferd blockt) - AUSSER am Weg/an der Bruecke,
+    // dort kommt das Pferd durch (Furt/Uebergang). Kein SDF mehr.
+    const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+    if (this.area?.map?.[ty]?.[tx] !== T.WATER) return false;
+    const wegNah = [0, -1, 1].some((d) => { const k = this.area?.map?.[ty + d]?.[tx]; return k === T.BRIDGE || k === T.PATH; });
+    return !wegNah;
   }
 
   // R158 (Autor "unsichtbare Wand am Fluss"): blockiert WASSER den Helden,
@@ -9195,8 +9332,8 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     }
     this.kollisionGfx = g;
     this.kollisionText = this.add.text(12, 40,
-      'K: blau=Wasser  gruen=Baum  rot=Wand  magenta=Gebaeude  cyan=Bruecke',
-      { fontFamily: 'monospace', fontSize: '13px', color: '#ffffff', backgroundColor: '#000000c0' }).setScrollFactor(0).setDepth(99999);
+      'WASSER MALEN: Links=Wasser  Rechts=radieren  [ / ]=Pinsel  Shift+Entf=Karte leeren  Shift+Klick=Diagnose',
+      { fontFamily: 'monospace', fontSize: '13px', color: '#9fd8ff', backgroundColor: '#000000c0' }).setScrollFactor(0).setDepth(99999);
     console.log('KOLLISION ' + JSON.stringify({ karte: a.id, ...zahl, wandTypen: [...wandTypen] }));
     this.logMsg(`Kollision-Overlay AN (${Object.entries(zahl).map(([k, v]) => `${k}:${v}`).join(' ')})`, 'gold');
   }
@@ -9214,6 +9351,9 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // K-Modus: Klick zeigt Koordinaten + Kachel-Typ + Grund (Ferndiagnose).
   private kollisionKlick(p: Phaser.Input.Pointer): void {
     if (!this.kollisionGfx || !this.area) return;
+    // Wasser-Editor (Autor malt selbst): Shift+Klick = Diagnose (Koordinaten),
+    // sonst Links = Wasser malen, Rechts = radieren. Ziehen malt weiter.
+    if (!p.event?.shiftKey) { this.malWasserAmZeiger(p, !p.rightButtonDown()); return; }
     const wx = p.worldX, wy = p.worldY;
     const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
     const t = this.area.map[ty]?.[tx] ?? -1;
@@ -15391,6 +15531,8 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   update(_time: number, delta: number): void {
     if (!this.area) return;
     const dt = Math.min(0.05, delta / 1000);
+    // Wasser-Editor: gemalte Maske gedrosselt speichern (nach der letzten Aenderung).
+    if (this.wasserEditSaveT > 0) { this.wasserEditSaveT -= dt; if (this.wasserEditSaveT <= 0) this.speichereWassermaske(); }
     // Nachbearbeitung nachziehen, falls der Bloom-Regler verstellt wurde
     if ((getSettings().bloom ?? 0) !== this.bloomStaerke || (getSettings().grading ?? 0) !== this.gradingStaerke) this.wendePostFxAn();
     // Schiebephysik VOR der Bewegung (Runde 40): so bremst die Kiste den Helden

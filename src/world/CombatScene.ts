@@ -3950,9 +3950,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // TORSO/Bauch zum Helden hin - tief genug, dass Kopf und Gesicht frei bleiben.
     for (const e of this.enemies) {
       if (!e.schild || e.versteckt || e.hp <= 0) continue;
-      // Das Schild MUSS mit dem Wippen der Figur mitgehen (Autorkritik Runde 42:
-      // "Schild hängt in der Luft"). Dasselbe Lauf-Wippen wie der Sprite (oben).
-      const wob = Math.sin(e.wobble) * 1.5;
+      // Das Schild folgt EXAKT dem Koerper-Wippen (oben): eigenes HEER wippt gar
+      // nicht, Monster nur beim LAUFEN. Sonst schwamm das Schild seltsam hoch/
+      // runter, obwohl der Traeger ruhig stand (Autorkritik: "Schilde wippen noch").
+      const wob = e.team === 'spieler' ? 0 : (e.visualMoveT > 0 ? Math.sin(e.wobble) * 1.2 : 0);
       const ang = Math.atan2(this.py - e.y, this.px - e.x);
       const cx = e.x + Math.cos(ang) * (e.r * 0.4);
       const cy = e.y + wob + Math.sin(ang) * (e.r * 0.4) + e.r * 0.18; // tiefer = Bauchhöhe, wippt mit

@@ -2699,3 +2699,17 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   scale-sensible Aenderung (RESIZE-Layout) - separat + auf echtem Geraet zu machen.
 - 2026-07-21: Zeltstoff wird in Blender physikalisch simuliert und als statisches GLB-Mesh gebacken. Keine laufende Cloth-Physik in Phaser; offene Koecher bleiben echte Hohlkoerper statt optischer Deckeltricks.
 - 2026-07-22: Zeltleinwand nutzt getrennte Quad-Bahnen mit etwa 5 bis 8 cm Rasterweite, weiche `CLOTH_PIN`-Gewichte und maximal 8 cm gebackene Verformung. 3-mm-Dicke, Web-Normalmap und Naehte werden statisch exportiert; die alten Blender-Dateien bleiben unangetastet und liegen zusaetzlich in `BACKUP_ORIGINAL_TENTS`.
+
+- WASSER-EDITOR (Autor-Order "ich male das Wasser selbst - das SDF-Wasser
+  funktioniert nicht"): Schluss mit dem Formel-Wasser als Quelle fuer Effekte/
+  Optik. (1) berechneHeldNass + tiefesWasserBei lesen NUR noch die T.WATER-Kachel
+  (fester Wert WASSER_MAL.heldNass 0.5 + Weg/Bruecke-Ausnahme) - kein Untertauchen/
+  Pferd-Block mehr auf Gras. (2) baueWasserKachelBild zeichnet Wasser GENAU auf die
+  T.WATER-Kacheln (Canvas-Image, zuverlaessig, rendert auch headless) und versteckt
+  den fragilen Shader -> Wasser ist IMMER sichtbar + deckungsgleich mit Kollision.
+  (3) Editor im K-Modus: Links malt Wasser, Rechts radiert, [ / ] Pinselgroesse,
+  Shift+Entf leert die Karte, Shift+Klick = Diagnose. Gespeichert je Karte
+  (localStorage ravensmoor_wassermaske), auf Load angewandt (Maske ueberschreibt
+  Auto-Wasser; recarveWasser respektiert die Maske). NUR gemalte Kacheln = Wasser
+  mit Effekten. Browser-verifiziert: Kachel-Wasser sichtbar, Shader versteckt,
+  nass auf Wasser 0.5 / auf Gras 0, malen 1->27, radieren 27->1, Maske gespeichert.
