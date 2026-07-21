@@ -2606,3 +2606,15 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Bewegungsrichtung voll im Bild bleibt. Golem, Skelettwache und spaetere
   Spezialgegner teilen sich im F10-Tab GEGNER ein typbasiertes Tuning-Register
   mit einheitlichen Reglern fuer Skala, Breite, Hoehe, Bodenanker und RTS-Leben.
+
+- R109-Folge (Nacht-Feuer): Feuer-Feldbauten (Kochstelle/Wartfeuer/Feld-
+  schmiede) sind jetzt in renderLight eigene Lichtquellen - eraseLight stanzt
+  ein Loch in das lightRT-Nacht-Overlay, placeWarm wirft warmen Schein. Ohne
+  das lag ihre Emissiv-Glut (updateLagerGlut, Welt-Tiefe) UNTER dem Overlay und
+  wurde vom Nacht-Schleier gedimmt ("dunkles Licht statt Feuer", Autor). Muster
+  1:1 vom Lagerfeuer uebernommen. Schein waechst mit nachtFaktor (0,28..0,68),
+  am Tag folgenlos. Leicht aenderbar in der Schleife (Radius 78/66, Tint 0xffb060).
+- Light2D/Bump-Licht bleibt Experiment-Schalter (Standard AUS, Neustart noetig).
+  AN-Bahn browser-verifiziert: Normal-Maps gebacken + als dataSource an der
+  Textur, Props auf Light2D-Pipeline, Umgebungslicht 0xb4b4b4 + Heldenlicht,
+  keine Fehler. Bewusst NICHT als Standard - Regressionsrisiko mit RESIZE/PostFX.

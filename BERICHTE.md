@@ -2113,3 +2113,20 @@ nachziehen.
 - Im Browser wurden beide Gegnerprofile und alle Regler geprueft; die
   Skelettwache startet mit 0,80 / 1,00 / 1,00 / 0,925 / 720 Leben. Keine
   Browserfehler. TypeScript, 423 Vitest-Tests und Produktions-Build erfolgreich.
+
+## R-Folge: Nacht-Feuer leuchtet ehrlich + Light2D-AN-Bahn verifiziert
+
+- Autor-Meldung "bei Nacht ist das Feuer sehr dunkel, dunkles Licht statt
+  ehrliches Feuer, ein dunkler Schleier wird davorgezogen" ist behoben:
+  Kochstelle/Wartfeuer/Feldschmiede stanzen jetzt selbst ein Loch in den
+  Nacht-Schleier und werfen warmen, flackernden Schein - wie Lagerfeuer und
+  Fackeln. A/B bei tiefer Nacht (nachtFaktor 1): mit Fix leuchten die Feuer
+  warm durch die Dunkelheit (warmSichtbar 2), ohne Fix bleiben sie schwarze
+  Schemen (warmSichtbar 0). tsc sauber, 422 Tests gruen, Browser-verifiziert.
+- Light2D/Bump-Licht (Experiment-Schalter, Standard AUS): AN-Bahn im Browser
+  geprueft - Normal-Maps werden gebacken und haengen an der Textur, die Props
+  laufen auf der Light2D-Pipeline, Umgebungslicht + mitlaufendes Heldenlicht
+  aktiv, keine Fehler. Die Props rendern plastisch statt flach; passt zum
+  positiven Eindruck des Autors ("weniger pixelig"). Bleibt bewusst optional.
+- Offen/Idee des Autors: ein eigener animierter Feuer-Effekt (three.js /
+  Partikel) statt des gebackenen Glut-Sprites - als spaeterer Ausbau notiert.

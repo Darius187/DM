@@ -182,3 +182,8 @@ im Browser messen sobald er wieder stabil ist):
    Bloom) - isoliert testen, Rueckweg (an/aus) pruefen, in beide Richtungen.
 Reihenfolge bewusst: Emissiv (klein, sichtbar, geringes Risiko) vor Normal/Light2D
 (pipeline-tief, hoeheres Regressionsrisiko).
+
+- IDEE (Autor): animierter Feuer-Effekt statt gebackener Glut-Sprite - three.js/
+  Partikel-Flamme (Zuckeln, Funken, Rauch) fuer Kochstelle/Wartfeuer/Lagerfeuer.
+  Die Nacht-Beleuchtung selbst ist jetzt korrekt (Feuer stanzen Licht + Schein);
+  dieser Punkt betrifft nur die BEWEGTE Optik der Flamme, nicht das Licht.
