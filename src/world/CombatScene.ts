@@ -3892,7 +3892,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       // Auf-und-Ab-Wippe (Autor "die schwimmen beim Stehen zu stark hoch und
       // runter"): das Wippen gehoert zum LAUFEN, nicht zum Stehen. Stehende
       // Einheiten bleiben ruhig; nur der Schatten schwebt weiter (koerperlos).
-      const wob = istGolem || istSkelettwache ? 0
+      // Auf-und-Ab-Wippe: das eigene HEER wippt gar nicht (Autor "die Schilde
+      // schwimmen seltsam hoch und runter" - in Formation ruckeln sie staendig,
+      // darum griff das Steh-Kriterium nicht). Monster wippen nur beim Laufen.
+      const wob = istGolem || istSkelettwache || e.team === 'spieler' ? 0
         : istSchatten ? Math.sin(e.wobble * 0.6) * 2.5
         : e.visualMoveT > 0 ? Math.sin(e.wobble) * 1.2
         : 0;
