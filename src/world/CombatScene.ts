@@ -155,7 +155,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       }
       for (const ziel of [...this.enemies]) {
         if (ziel === e || ziel.team !== 'spieler' || ziel.hp <= 0 || !trifft(ziel.x, ziel.y, ziel.r)) continue;
-        this.trifftVerbuendeten(ziel, schaden);
+        this.trifftVerbuendeten(ziel, schaden, e);
         if (ziel.hp <= 0) continue;
         const a = Math.atan2(ziel.y - e.y, ziel.x - e.x);
         if (cfg.stoss > 0) ziel.stossWeg(Math.cos(a) * cfg.stoss, Math.sin(a) * cfg.stoss, cfg.laehmung);
@@ -189,7 +189,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       }
       for (const ziel of [...this.enemies]) {
         if (ziel === e || ziel.team !== 'spieler' || ziel.hp <= 0 || !trifft(ziel.x, ziel.y, ziel.r)) continue;
-        this.trifftVerbuendeten(ziel, schaden);
+        this.trifftVerbuendeten(ziel, schaden, e);
         const a = Math.atan2(ziel.y - e.y, ziel.x - e.x);
         ziel.stossWeg(Math.cos(a) * cfg.stoss, Math.sin(a) * cfg.stoss, 0.28);
       }
@@ -1021,7 +1021,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // jeweilige Kampfziel ist - die Dungeon-KI laeuft unveraendert.
   protected enemyHost(_e: Enemy): EnemyHost { return this; }
   // Feind-Geschoss trifft einen Verbuendeten (nur die Welt hat welche).
-  protected trifftVerbuendeten(_a: Enemy, _dmg: number): void { /* Welt */ }
+  protected trifftVerbuendeten(_a: Enemy, _dmg: number, _angreifer?: Enemy): void { /* Welt */ }
 
   // R139 (Dok 03, 1.6 + kampfarten Kap. 4): Konter-Rueckmeldung ueber dem Ziel.
   // Ohne die Anzeige existiert das Konter-System fuer den Spieler nicht.
@@ -3601,7 +3601,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
             // R139 (1.6): Pfeil-Konter auch gegen die eigene Truppe
             const f = konterFaktor(pr.arrow ? 'pfeil' : 'schatten', e.kampfTags);
             this.zeigeKonter(e, f);
-            this.trifftVerbuendeten(e, Math.max(1, Math.round(pr.dmg * f)));
+            this.trifftVerbuendeten(e, Math.max(1, Math.round(pr.dmg * f)), pr.schuetze);
             break;
           }
         }
@@ -3885,7 +3885,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       const istSchatten = e.type === 'schatten';
       const istGolem = e.type === 'golem';
       const istSkelettwache = e.type === 'skelettwache';
-      const wob = istGolem || istSkelettwache ? 0 : istSchatten ? Math.sin(e.wobble * 0.6) * 2.5 : Math.sin(e.wobble) * 1.5;
+      // Auf-und-Ab-Wippe (Autor "die schwimmen beim Stehen zu stark hoch und
+      // runter"): das Wippen gehoert zum LAUFEN, nicht zum Stehen. Stehende
+      // Einheiten bleiben ruhig; nur der Schatten schwebt weiter (koerperlos).
+      const wob = istGolem || istSkelettwache ? 0
+        : istSchatten ? Math.sin(e.wobble * 0.6) * 2.5
+        : e.visualMoveT > 0 ? Math.sin(e.wobble) * 1.2
+        : 0;
       e.sprite.setPosition(e.x, e.y + wob).setDepth(this.gegnerTiefe(e.sprite, e.y));
       if (istGolem) wendeGolemSpriteAn(e.sprite, e);
       else if (istSkelettwache) wendeSkelettwacheSpriteAn(e.sprite, e);

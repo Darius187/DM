@@ -294,6 +294,8 @@ export const VERTEIDIGUNG = {
   jeReihe: 5,            // Maenner je Reihe - mehr bilden eine zweite Reihe dahinter
   reihenPx: 26,          // Abstand zwischen den Reihen
   reaktionPx: 220,       // R189: ab dieser Gegner-Naehe verlaesst die Wache ihre Stellung zum Kampf
+  provokationS: 6,       // Autor: so lange jagt ein getroffener Soldat seinen Angreifer (Bogen-Konter)
+  provokationRadius: 140, // "alle auf ihn los": Kameraden in diesem Umkreis reagieren mit
 } as const;
 
 // R164 (Autor, BAR-Spezifikation): das Kommandopult zeigt Bau-Optionen als

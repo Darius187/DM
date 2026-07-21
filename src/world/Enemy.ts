@@ -267,6 +267,11 @@ export class Enemy {
   // bereits stehende Garnison (R142) beim RTS-Einstieg uebernehmen kann.
   rtsTyp: import('../data/rts').RtsUnitTyp | null = null;
   fokusZiel: Enemy | null = null;   // Angriffsbefehl der RTS-Steuerung (Verbuendete)
+  // Provokation (Autor "Soldaten stehen bloed rum und lassen sich vom Bogen-
+  // schuetzen toeten"): wer getroffen wird, jagt seinen Angreifer - auch wenn
+  // der weiter weg steht als die normale Zielsuche reicht. Laeuft nach ab.
+  letzterAngreifer: Enemy | null = null;
+  provokationT = 0;
   imTurm = false;                    // R100: sitzt im Wachturm -> Sprite unsichtbar, schiesst von oben
   passiv = false;                    // R100b: frisch gesetzt -> steht still, bis geweckt (Gegner nah/Schaden/Befehl)
   schlaeft = false;                  // R118 V9: schlaeft hinter verschlossener Tuer - weckt NUR Tuer-Oeffnen oder Schaden
@@ -402,6 +407,8 @@ export class Enemy {
     this.atkCd = Math.max(0, this.atkCd - dt);
     this.shootCd = Math.max(0, this.shootCd - dt);
     this.hitFlash = Math.max(0, this.hitFlash - dt);
+    if (this.provokationT > 0) { this.provokationT = Math.max(0, this.provokationT - dt); if (this.provokationT === 0) this.letzterAngreifer = null; }
+    if (this.letzterAngreifer && this.letzterAngreifer.hp <= 0) { this.letzterAngreifer = null; this.provokationT = 0; }
     this.visualTime += dt;
     if (this.visualMoveT > 0) this.visualWalkTime += dt;
     this.visualMoveT = Math.max(0, this.visualMoveT - dt);

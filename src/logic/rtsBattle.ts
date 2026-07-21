@@ -518,6 +518,11 @@ export class RtsBattle {
       ref.jagdZiel = fd < 70 ? null : slot;   // am Slot: kämpfen wenn der Feind ansteht
       return;
     }
+    // Provokation (Autor "Soldaten lassen sich vom Bogenschuetzen toeten statt
+    // alle auf ihn loszugehen"): wer juengst getroffen wurde, JAGT seinen
+    // Angreifer - egal welche Haltung. Sonst steht eine haltende/verteidigende
+    // Einheit im Pfeilhagel (Bogen schiesst aus 290px, verteidigen reagiert ab 220).
+    if (ref.provokationT > 0 && ref.letzterAngreifer && ref.letzterAngreifer.hp > 0) { ref.jagdZiel = null; return; }
     // lose Einheit nach Haltung (Autor Bug 2: Angriff soll den Angreifer VERFOLGEN,
     // auch wenn er weiter weg ist - nicht ab 320px stehen bleiben):
     if (u.stance === 'halten') { ref.jagdZiel = fd < 48 ? null : { x: u.x, y: u.y }; return; }

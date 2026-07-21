@@ -2544,3 +2544,15 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   - GLATTE KANTEN (Experiment, Autor): Schalter -> main.ts setzt pixelArt=false (lineare Filterung, weichere Blender-Sprites). NEUSTART noetig (Phaser legt den Textur-Filter bei Spiel-Erzeugung fest). Fuer den Vorher/Nachher-Vergleich.
   - NAECHSTER grosser Schritt (Autor bestellt): Normal- + Emissive-Maps aus dem Blender-Bake (propBackofen) -> Light2D bumpig + leuchtende Fenster.
 - KOLLISIONS-OVERLAY-TASTE aenderbar + dokumentiert (Autor "steht nicht in der Tastenbelegung, kann sie nicht aendern"): neue kb-Bindung kollisionOverlay (Standard K), in den Einstellungen unter "Werkzeuge (Entwicklung)" belegbar; WorldScene liest die gebundene Taste statt fest 'K'. Hinweiszeile dokumentiert B/L/Shift+K/F10. Kombiniert mit dem K-toetet-nicht-Fix (Dev-Selbsttoetung auf Shift+K).
+- KAMPF-POLITUR (Autor-Bugliste, 3 Aergernisse):
+  - (e) STEH-WIPPEN weg: das vertikale Sprite-Wippen (CombatScene, wob) galt jede
+    Frame - auch im Stand. Jetzt NUR in Bewegung (e.visualMoveT>0); Schatten
+    schweben weiter. Verifiziert: stehende Einheit wippe=0px (vorher +-1,2px).
+  - (c) PROVOKATION: getroffene Soldaten jagen ihren Angreifer, auch ausser
+    Reichweite. Neue Enemy-Felder letzterAngreifer/provokationT; trifftVerbuendeten
+    bekommt den Angreifer, setzt die Provokation und weckt Kameraden im Umkreis
+    (VERTEIDIGUNG.provokationRadius=140, provokationS=6s). zielFuer bevorzugt den
+    Angreifer (ueber die 420px-Kappung hinweg), rtsBattle-Haltung weicht der
+    Provokation. Loest das "Bogenschuetze aus 290px, Wache reagiert erst ab 220px,
+    Soldat steht bloed rum". Verifiziert: Ally nach Pfeiltreffer laeuft 64px auf
+    den 270px entfernten Schuetzen zu, zielFuer liefert ihn.

@@ -8013,6 +8013,13 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       this.kampfZiele.set(e, e.fokusZiel);
       return e.fokusZiel;
     }
+    // Provokation (Autor "Bogenschuetze"): ein getroffener Soldat OHNE Fokus-
+    // Befehl jagt seinen Angreifer - auch weiter weg als die normale Zielsuche
+    // (die bei 420px kappt). So laufen sie den Fernkaempfer aktiv an.
+    if (e.provokationT > 0 && e.letzterAngreifer && e.letzterAngreifer.hp > 0 && e.letzterAngreifer.team !== e.team) {
+      this.kampfZiele.set(e, e.letzterAngreifer);
+      return e.letzterAngreifer;
+    }
     // Gesperrtes Ziel weiterverwenden, solange es lebt, erreichbar bleibt
     // und die Sperre laeuft. Fliehende Ziele bleiben gueltig (abfangbar!).
     const jetzt = this.time.now / 1000;
@@ -8119,7 +8126,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
           if (en.team === 'spieler') {
             s.damageEnemy(z, d3, 0, 0, null, true, true);   // R147: durchTruppe - keine Held-XP
             if (z.hp <= 0) s['meldeKill'](en);   // R141 (2.2): Nahkampf-Kill zaehlt
-          } else s.trifftVerbuendeten(z, d3);
+          } else s.trifftVerbuendeten(z, d3, en);
         }
       },
       spawnEnemyProjectile: (x, y, vx, vy, dmg, col, pfeil, _vt, hoch) => s.spawnEnemyProjectile(x, y, vx, vy,
@@ -8218,9 +8225,27 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
 
   // Feind-Geschoss/-Hieb trifft einen Verbuendeten: leichte Parade-Abbildung
   // (Schild faengt frontal), sonst Schaden + Tod (kein Loot, eigene Truppe).
-  protected override trifftVerbuendeten(a: Enemy, dmg: number): void {
+  protected override trifftVerbuendeten(a: Enemy, dmg: number, angreifer?: Enemy): void {
     if (a.hp <= 0) return;
     a.passiv = false;   // R100g: getroffener Verbuendeter reagiert sofort (auch von Bogenschuetzen)
+    // Autor "Soldaten stehen bloed rum und lassen sich vom Bogenschuetzen toeten
+    // statt alle auf ihn loszugehen": der Getroffene MERKT sich den Angreifer und
+    // jagt ihn (auch ausser normaler Reichweite). Die Stellung faellt dafuer -
+    // der Fernkaempfer schiesst aus 290px, die R189-Reaktion greift erst ab 220px.
+    if (angreifer && angreifer.hp > 0 && angreifer.team !== a.team) {
+      a.letzterAngreifer = angreifer;
+      a.provokationT = VERTEIDIGUNG.provokationS;
+      if (a.armeeId === null || !marschVon(this.armee, a.armeeId)) a.jagdZiel = null;   // Stellung fallen lassen (nicht mitten im Marsch)
+      // "ALLE auf ihn los": nahe Kameraden desselben Teams reagieren mit.
+      for (const o of this.enemies) {
+        if (o === a || o.team !== a.team || o.hp <= 0) continue;
+        if (Math.hypot(o.x - a.x, o.y - a.y) > VERTEIDIGUNG.provokationRadius) continue;
+        o.passiv = false;
+        o.letzterAngreifer = angreifer;
+        o.provokationT = VERTEIDIGUNG.provokationS;
+        if (o.armeeId === null || !marschVon(this.armee, o.armeeId)) o.jagdZiel = null;
+      }
+    }
     if (a.blockT > 0 || (a.schild && Math.random() < 0.4)) {
       this.fx.float(a.x, a.y - a.r - 8, 'GEBLOCKT', '#aab4c0');
       this.sfx.play('block', 0.4);
