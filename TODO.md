@@ -137,10 +137,11 @@
 - R139: Feldscher/Heiler-Einheit fehlt weiter (R99d) - spawnVerbuendeter hat
   keinen 'heiler'-Eintrag; die Verhaltens-Achsen-Rolle ist schon vorbereitet.
 - R139: Flucht-/Sammel-RUFE als Sound-Assets (Autor fragen: WAV 48kHz/24bit).
-- R141: Fernkampf-Kills fuer den Veteranen-Rang zaehlen (Projectile um
-  schuetze-Ref erweitern, Kill-Hook am Ally-Projektil-Einschlag).
-- R148-Politur: Einheiten-Karte im WAHL-Tab aktualisiert Leben/Moral erst bei
-  Auswahl-Wechsel - Live-Aktualisierung (0,5s-Takt) nachziehen.
+- [x] R141: Fernkampf-Kills zaehlen fuer den Veteranen-Rang - war bereits
+  verdrahtet (pr.schuetze -> meldeTruppenKill -> meldeKill), verifiziert:
+  Ally-Pfeil-Kill -> ally.kills 0->1, einheit.kills 0->1.
+- [x] R148-Politur: Auswahl-Karte (Leben/Moral) wird jetzt LIVE im 0,5-s-Takt
+  nachgezogen (updateRtsWahlLive), guarded gegen Klick/Drag. Verifiziert.
 - R148: Gebaeude-Karte zeigt Turm-Besatzung; weitere Gebaeude-Aktionen
   (Reparieren/Abbauen-Knoepfe in der Karte) folgen mit dem Gebaeude-Menue.
 

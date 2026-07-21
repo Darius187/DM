@@ -3980,6 +3980,19 @@ export class WorldScene extends CombatScene {
     if (this.rtsBattle.gewaehlte().length > 0 || this.rtsBattle.heldGewaehlt) { this.rtsGebaeudeWahl = null; this.rtsGegnerWahl = null; }
     this.baueRtsLeiste();
   }
+
+  // R148-Politur (Autor): die Auswahl-Karte (Leben/Moral der gewaehlten Einheit
+  // bzw. des angeklickten Gegners) im 0,5-s-Takt LIVE nachziehen - vorher stand
+  // sie bis zum naechsten Auswahl-Wechsel. Nie neu bauen, waehrend der Nutzer
+  // klickt/zieht (sonst reisst es Knopf/Drag ab).
+  private rtsWahlRefreshT = 0;
+  private updateRtsWahlLive(dt: number): void {
+    if (!this.rtsLeiste || !this.rtsBattle) { this.rtsWahlRefreshT = 0; return; }
+    const zeigtLiveStats = this.rtsBattle.gewaehlte().length > 0 || this.rtsBattle.heldGewaehlt || !!this.rtsGegnerWahl;
+    if (!zeigtLiveStats || this.input.activePointer.isDown) { this.rtsWahlRefreshT = 0; return; }
+    this.rtsWahlRefreshT -= dt;
+    if (this.rtsWahlRefreshT <= 0) { this.rtsWahlRefreshT = 0.5; this.baueRtsLeiste(); }
+  }
   // Baumenü-Größe (Autor: skalierbar), 0.8..1.4 - Standard MAX (Autorwunsch
   // "nimm die maximale Groesse als Standard, sonst ist alles zu klein"); die
   // A+/A--Wahl bleibt gespeichert.
@@ -15180,6 +15193,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.updateHackBalken(dt);   // Lebensbalken + Schlag-Fortschritt (R93)
     this.updateBauBalken();      // Feldbau-Lebensbalken (R94)
     this.updateRtsHeld(dt * kampfTempo);      // Einheitensteuerung im RTS-Modus (R94); im RTS Echtzeit (R131, keine Slow-Motion)
+    this.updateRtsWahlLive(dt);   // R148-Politur: Auswahl-Karte (Leben/Moral) live nachziehen
     this.updateWachwerden(dt);   // R100b: passive Einheiten wecken, wenn Gegner nah
     this.updateBelagerung(dt);   // R100: Monster nagen an Wehrbauten (Bunker)
     this.updateTurmBesatzung();  // R100: Turm-Insassen unsichtbar + Symbol
