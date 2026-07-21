@@ -433,3 +433,17 @@ Details + Begruendung in docs/design/07-FEIND-KI.md TEIL 2 AUTOR-NACHTRAG (N1-N3
 - N3 FREIE BAU-KI: Autor unschluessig. IST = feste Reihenfolge/feste Anker (A9/F3).
   Claude-Empfehlung = Mittelweg (vorgefertigte, routen-sichere Lager-Blaupausen +
   sichtbare Monster-Arbeiter). ENTSCHEIDUNG des Autors steht aus.
+
+## KAMPF-VERHALTEN AUSSERHALB RTS-MODUS (Autor "die Verhaltens-Einstellungen haben keinerlei Wirkung")
+Befund: Die drei Verhaltens-Achsen (Bewegung aggressiv/verteidigen/halten,
+Angriff, Zielwahl) leben in rtsBattle.ts und werden NUR angewandt, solange der
+RTS-Modus laeuft (rtsBattle wird erst beim Umschalten erzeugt). Im normalen Spiel
+(Feldzug-Angriff, Garnison) nutzen die Soldaten die schlichte Enemy-KI - darum
+"keine Wirkung".
+Zwischenloesung (jetzt gebaut): PROVOKATION wirkt in BEIDEN Modi - ein getroffener
+Soldat jagt seinen Angreifer aktiv, auch den Bogenschuetzen aus der Distanz. Das
+loest den konkret gemeldeten Schmerz ("stehen bloed rum und lassen sich toeten").
+Echte Frage: Sollen die Verhaltens-Achsen dauerhaft (auch OHNE RTS-Modus) gelten -
+also z.B. eine als "aggressiv" gestellte Garnison jeden Feind verfolgen? Das waere
+ein groesserer Umbau (Haltungs-Logik unabhaengig vom rtsBattle-Update) und beruehrt
+die R188-Performance-Arbeit. Ich warte auf dein OK, bevor ich das anfasse.
