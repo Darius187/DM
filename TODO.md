@@ -187,3 +187,32 @@ Reihenfolge bewusst: Emissiv (klein, sichtbar, geringes Risiko) vor Normal/Light
   Partikel-Flamme (Zuckeln, Funken, Rauch) fuer Kochstelle/Wartfeuer/Lagerfeuer.
   Die Nacht-Beleuchtung selbst ist jetzt korrekt (Feuer stanzen Licht + Schein);
   dieser Punkt betrifft nur die BEWEGTE Optik der Flamme, nicht das Licht.
+
+## FELDZUG UM RAVENSMOOR - Staffelplan (Autor-Vision, Runde aktuell)
+Autor-Entscheidung: nach dem Boss rollt der Kampf um Ravensmoor OHNE Pause
+weiter (Dynamik gewollt). Der Held allein schafft es nicht - er muss die
+Bewohner in Sicherheit bringen UND Verstaerkung holen. Erst bei der
+Rueckeroberung mit mehreren Einheiten bleiben die Wellen aus, dann beginnt
+Ausbau/Sicherung der Stadt.
+
+- [x] SCHRITT 1 (erledigt): Wirtshaus = klassischer RPG-Eingang (Tuer ->
+      Innen-Instanz innen_taverne). leaveInterior kehrt zur Herkunftskarte
+      zurueck (nicht mehr ins tote Dorf). Grundstein fuer die Zuflucht.
+- [ ] SCHRITT 2: 3D-Begehbare Gebaeude, in denen NPCs stecken bleiben,
+      entschaerfen - Fussabdruck SOLID machen (kein 1:1-Reinlaufen mehr), Tuer
+      als einziger Eingang. Betrifft Wirtshaus (+ spaeter Gemeindehaus, das
+      der Autor noch platzieren will).
+- [ ] SCHRITT 3: Bewohner-FLUCHT bei Einfall: lebende NPCs pathen zur
+      Wirtshaus-Tuer und "verschwinden" in die Innen-Instanz (Zustand
+      'gefluechtet'). Auch VERWUNDETE fliehen - Verwundung blockiert nicht.
+      Monster folgen NICHT in die Instanz (sichere Zuflucht). Geheilt wird
+      drinnen in Sicherheit.
+- [ ] SCHRITT 4: Bewohner wieder RAUSHOLEN + westlich zur Zuflucht begleiten
+      (Eskorte). Mechanik im Eifer des Gefechts noch offen (Vorschlag: Held
+      spricht sie in der Instanz an -> sie folgen ihm als Gruppe zur Westkante).
+- [ ] SCHRITT 5: Wellen-Logik: Angriff laeuft ununterbrochen weiter (Held
+      allein nicht gewinnbar). Bei der RUECKEROBERUNG mit >=X eigenen
+      Einheiten: Wellen aussetzen -> Verschnaufen -> Ausbau/Sicherung.
+- [ ] Gemeindehaus als Gebaeude platzieren (Autor will es selbst hinstellen);
+      Innen-Def gemeindehaus existiert bereits, wird analog zum Wirtshaus
+      verdrahtet, sobald das Gebaeude steht.
