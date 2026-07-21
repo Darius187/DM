@@ -8,7 +8,7 @@ keine Insel, kein Aussenboden und keinen Anmarschweg.
 ## Dateien
 
 - `medieval_castle_3d_runtime.glb` - sichtbares 3D-Modell
-- `medieval_castle_3d_runtime.json` - Bounds, Marker und 28 Kollisionen
+- `medieval_castle_3d_runtime.json` - Bounds, Marker und 30 Kollisionen
 - `medieval_castle_3d_runtime_preview.png` - Blender-Abnahmebild
 
 Vite verwendet `assets/` als `publicDir`. Deshalb lautet die Laufzeit-URL des
@@ -42,13 +42,17 @@ physischen Kollisionen bleiben unabhaengig davon aktiv.
 
 - Modus: `exterior_only`
 - Root: `BRG_CASTLE_RUNTIME_ROOT`
-- Groesse: etwa 60 x 45 x 16 Meter
+- Groesse: 62,11 x 45,79 x 16,04 Meter
 - Eingang: `TRIGGER_CASTLE_GATE`
 - Hof-Spawn: `SPAWN_CASTLE_COURTYARD`
 - Haupttor: echtes Paket-Torhaus, korrekt auf die Nord-Sued-Achse gedreht
 - Durchgang: offen, beide Holzfluegel sichtbar an die Tunnelwaende geschwenkt
-- Ringmauer: lueckenlos mit vier texturierten Eckverbindern
-- Wehrgang: Traeger/Laufseite zeigt nach innen; zwei durchgehende Treppenlaeufe
+- Ringmauer: 28 cm Modulueberlappung, 11 echte Paket-Stuetzpfeiler an den
+  geraden Naehten und vier buendig mauerstarke Eckkerne
+- Wehrgang: Traeger/Laufseite zeigt nach innen; zwei je 6,4 m lange,
+  durchgehende Steintreppen vom Hofboden bis auf 4,13 m Hoehe
+- Hofboden: geschlossen bis unter die inneren Mauerkanten; steinerne Schwelle
+  durch den kompletten Tortunnel
 - Materialien: unveraendert aus dem GLB, sRGB + ACES Filmic
 
 Die bearbeitbare Quelldatei liegt unter

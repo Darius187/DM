@@ -1971,3 +1971,23 @@ alle 282 Tests gruen. Screenshot: screenshots/reitpferd-fehltextur-behoben.png.
 - Blender-QA: Torachse 0,0 m Fehler, Mauerring 472/472 Messpunkte geschlossen,
   4,4 m Hauptweg, keine schwebenden Teile oder kritischen Ueberschneidungen.
 - TypeScript-Pruefung, 420 Vitest-Tests und Produktions-Build erfolgreich.
+
+## Runde 196 - Fuerstenburg Feinpass ohne Restluecken
+- Das echte Paket-Torhaus bleibt erhalten, sitzt exakt auf der Nord-Sued-Achse
+  und zeigt seinen vollstaendigen Aussenbogen. Die offenen Tuerfluegel wurden
+  tiefer in den Tunnel gesetzt; eine durchgehende Steinschwelle schliesst den
+  Boden unter dem 3,6-m-Durchgang.
+- Alle Wandmodule ueberlappen nun konstruktiv um 28 cm. Elf echte
+  Paket-Stuetzpfeiler kaschieren die geraden Modulnaehte. Vier buendig
+  mauerstarke Eckkerne schliessen die Paket-Mesh-Aussparungen, ohne als lose
+  Ecktuermchen vorzustehen.
+- Die beiden unruhigen, gestapelten Treppenpaare wurden durch je einen
+  durchgehenden 6,4-m-Steinlauf ersetzt. Beide beginnen bei 0,000 m, treffen
+  den inneren Wehrgang ohne horizontalen Spalt und verfehlen seine Hoehe nur
+  um 0,001 m.
+- Der Hofgrund reicht jetzt bis unter jede innere Mauerkante. Blender-QA:
+  Torachse 0,000 m Fehler, Mauerring 472/472 Messpunkte geschlossen, keine
+  schwebenden Teile und keine kritischen Ueberschneidungen. Ein sauberer
+  GLB-Neuimport enthaelt alle Tor-, Eck- und Treppenknoten. Zwei getrennte
+  Torhaus-Kollisionen schliessen die massiven Seitenwangen, ohne den freien
+  3,6-m-Durchgang zu sperren.

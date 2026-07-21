@@ -7,8 +7,9 @@
   Stall und Brunnen
 - Wassergraben, Bruecke, Insel, Ufersteine, Aussenboden und Anmarschweg entfernt
 - Laufzeit-Root `BRG_CASTLE_RUNTIME_ROOT`
-- 28 datengetriebene Kollisionsfuehrer und 3 Gameplay-Marker
-- Runtime-Bounds etwa 60 x 45 x 16 Meter
+- 30 datengetriebene Kollisionsfuehrer und 3 Gameplay-Marker; die zwei
+  Torhauswangen sperren nur das Mauerwerk und lassen den 3,6-m-Durchgang frei
+- Runtime-Bounds 62,11 x 45,79 x 16,04 Meter
 
 ## Phaser-3-Integration
 
@@ -22,11 +23,16 @@
 
 ## Verifikation
 
-- Blender-Geometriepruefung: Paket-Torhaus um 90 Grad auf die Zufahrtsachse
-  gedreht, Doppelfluegel sichtbar offen, alle Wandmodule um 180 Grad mit dem
-  Wehrgang nach innen ausgerichtet, vier Eckverbinder eingesetzt
-- Mauerkontinuitaet: 472 Messpunkte, 100 Prozent Abdeckung; Hauptweg 4,4 m
-- Zwei zweiteilige Treppenlaeufe verbinden Boden und Wehrgang ohne Seitenversatz
+- Blender-Geometriepruefung: echtes Paket-Torhaus auf der Zufahrtsachse,
+  Doppelfluegel tief in den Tunnel geschwenkt, Torbogen und 3,6-m-Durchgang
+  frei lesbar; alle Wandmodule mit dem Wehrgang nach innen ausgerichtet
+- Mauerkontinuitaet: 472 Messpunkte, 100 Prozent Abdeckung; 28 cm Ueberlappung,
+  11 Paket-Stuetzpfeiler an geraden Naehten und vier buendig mauerstarke,
+  texturierte Eckkerne; keine sichtbaren Ringmauerluecken
+- Zwei einzelne 6,4-m-Steintreppen verbinden Hofboden und Wehrgang direkt:
+  Bodenfehler 0,000 m, Wandanschluss 0,000 m, Hoehenfehler 0,001 m
+- Geschlossener Hofboden unter allen inneren Mauerkanten und steinerne
+  Torschwelle durch den ganzen Tunnel; kein scheinbarer Wasser-/Hintergrundspalt
 - Keine schwebenden Teile oder kritischen Ueberschneidungen
 - HTTP: Manifest und GLB werden vom Vite-Server mit Status 200 ausgeliefert
 - Browser: `F10 > MAPS > Fuerstenburg` laedt die ueberarbeitete Burg sichtbar

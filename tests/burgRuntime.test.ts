@@ -18,7 +18,9 @@ interface BurgManifest {
   node_groups?: {
     main_gate?: string[];
     wall_corners?: string[];
+    wall_seams?: string[];
     wall_access?: string[];
+    wall_landings?: string[];
   };
 }
 
@@ -57,7 +59,12 @@ describe('Fuerstenburg-Runtime', () => {
       'BRG_WallCorner_SW', 'BRG_WallCorner_SE',
       'BRG_WallCorner_NW', 'BRG_WallCorner_NE',
     ]);
-    expect(manifest.node_groups?.wall_access).toHaveLength(4);
+    expect(manifest.node_groups?.wall_seams).toHaveLength(11);
+    expect(manifest.node_groups?.wall_access).toEqual([
+      'BRG_WallStairs_Gate',
+      'BRG_WallStairs_Rear',
+    ]);
+    expect(manifest.node_groups?.wall_landings).toEqual([]);
 
     for (let x = -27.6; x <= 27.6; x += 0.4) {
       expect(istBlockiert(x, 19.9), `Nordmauer offen bei x=${x}`).toBe(true);

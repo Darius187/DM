@@ -4,26 +4,26 @@
   "runtime_mode": "exterior_only",
   "bounds_blender": {
     "min": [
-      -30.5525,
+      -31.0567,
       -22.4327,
       -0.035
     ],
     "max": [
-      29.85,
-      22.9096,
+      31.0567,
+      23.3567,
       16.0059
     ],
     "center": [
-      -0.3513,
-      0.2385,
+      0.0,
+      0.462,
       7.9855
     ],
     "size": [
-      60.4025,
-      45.3423,
+      62.1135,
+      45.7894,
       16.0409
     ],
-    "bounding_radius": 37.9036
+    "bounding_radius": 38.8595
   },
   "continuous_controls": {
     "camera_elevation_degrees": {
@@ -65,7 +65,7 @@
         2.9505
       ],
       "size_blender_xyz": [
-        9.2969,
+        9.4769,
         4.1811,
         5.9009
       ]
@@ -81,7 +81,7 @@
         2.9505
       ],
       "size_blender_xyz": [
-        9.2969,
+        9.4769,
         4.1811,
         5.9009
       ]
@@ -97,7 +97,7 @@
         2.9505
       ],
       "size_blender_xyz": [
-        9.2969,
+        9.4769,
         4.1811,
         5.9009
       ]
@@ -113,7 +113,7 @@
         2.9505
       ],
       "size_blender_xyz": [
-        9.2969,
+        9.4769,
         4.1811,
         5.9009
       ]
@@ -129,7 +129,7 @@
         2.9505
       ],
       "size_blender_xyz": [
-        13.8954,
+        14.0754,
         4.1811,
         5.9009
       ]
@@ -145,7 +145,7 @@
         2.9505
       ],
       "size_blender_xyz": [
-        13.8954,
+        14.0754,
         4.1811,
         5.9009
       ]
@@ -161,7 +161,7 @@
         2.9505
       ],
       "size_blender_xyz": [
-        13.8954,
+        14.0754,
         4.1811,
         5.9009
       ]
@@ -177,7 +177,7 @@
         2.9505
       ],
       "size_blender_xyz": [
-        13.8954,
+        14.0754,
         4.1811,
         5.9009
       ]
@@ -194,7 +194,7 @@
       ],
       "size_blender_xyz": [
         4.1811,
-        12.9291,
+        13.109,
         5.9009
       ]
     },
@@ -210,7 +210,7 @@
       ],
       "size_blender_xyz": [
         4.1811,
-        12.9291,
+        13.109,
         5.9009
       ]
     },
@@ -226,7 +226,7 @@
       ],
       "size_blender_xyz": [
         4.1811,
-        12.9291,
+        13.109,
         5.9009
       ]
     },
@@ -242,7 +242,7 @@
       ],
       "size_blender_xyz": [
         4.1811,
-        12.9291,
+        13.109,
         5.9009
       ]
     },
@@ -258,7 +258,7 @@
       ],
       "size_blender_xyz": [
         4.1811,
-        12.9291,
+        13.109,
         5.9009
       ]
     },
@@ -274,7 +274,7 @@
       ],
       "size_blender_xyz": [
         4.1811,
-        12.9291,
+        13.109,
         5.9009
       ]
     },
@@ -286,12 +286,12 @@
       "center_blender_xyz": [
         -27.6,
         -18.6,
-        2.95
+        2.9
       ],
       "size_blender_xyz": [
-        4.5,
-        4.5,
-        5.9
+        4.3,
+        4.3,
+        5.8
       ]
     },
     {
@@ -302,12 +302,12 @@
       "center_blender_xyz": [
         27.6,
         -18.6,
-        2.95
+        2.9
       ],
       "size_blender_xyz": [
-        4.5,
-        4.5,
-        5.9
+        4.3,
+        4.3,
+        5.8
       ]
     },
     {
@@ -318,12 +318,12 @@
       "center_blender_xyz": [
         -27.6,
         19.9,
-        2.95
+        2.9
       ],
       "size_blender_xyz": [
-        4.5,
-        4.5,
-        5.9
+        4.3,
+        4.3,
+        5.8
       ]
     },
     {
@@ -334,12 +334,12 @@
       "center_blender_xyz": [
         27.6,
         19.9,
-        2.95
+        2.9
       ],
       "size_blender_xyz": [
-        4.5,
-        4.5,
-        5.9
+        4.3,
+        4.3,
+        5.8
       ]
     },
     {
@@ -348,14 +348,14 @@
       "role": "tower",
       "floor": "GROUND",
       "center_blender_xyz": [
-        -6.2,
+        -6.45,
         -18.6,
-        6.9574
+        5.4268
       ],
       "size_blender_xyz": [
-        6.0192,
-        5.9051,
-        13.9149
+        5.4173,
+        5.3146,
+        10.8536
       ]
     },
     {
@@ -364,14 +364,14 @@
       "role": "tower",
       "floor": "GROUND",
       "center_blender_xyz": [
-        6.2,
+        6.45,
         -18.6,
-        6.9574
+        5.4268
       ],
       "size_blender_xyz": [
-        5.9051,
-        6.0192,
-        13.9149
+        5.3146,
+        5.4173,
+        10.8536
       ]
     },
     {
@@ -501,6 +501,38 @@
         2.0815,
         2.8251
       ]
+    },
+    {
+      "name": "COLLISION_BRG_MainGatehouse_West",
+      "kind": "block",
+      "role": "gatehouse",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -3.1981,
+        -18.6,
+        4.5482
+      ],
+      "size_blender_xyz": [
+        2.7961,
+        5.8108,
+        9.0965
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_MainGatehouse_East",
+      "kind": "block",
+      "role": "gatehouse",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        3.1981,
+        -18.6,
+        4.5482
+      ],
+      "size_blender_xyz": [
+        2.7961,
+        5.8108,
+        9.0965
+      ]
     }
   ],
   "markers": [
@@ -547,12 +579,24 @@
       "BRG_WallCorner_NW",
       "BRG_WallCorner_NE"
     ],
+    "wall_seams": [
+      "BRG_WallSeam_South_W1W2",
+      "BRG_WallSeam_South_W2Tower",
+      "BRG_WallSeam_South_TowerE1",
+      "BRG_WallSeam_South_E1E2",
+      "BRG_WallSeam_North_W1W2",
+      "BRG_WallSeam_North_Center",
+      "BRG_WallSeam_North_E1E2",
+      "BRG_WallSeam_West_SM",
+      "BRG_WallSeam_West_MN",
+      "BRG_WallSeam_East_SM",
+      "BRG_WallSeam_East_MN"
+    ],
     "wall_access": [
-      "BRG_WallStairs_Gate_Lower",
-      "BRG_WallStairs_Gate_Upper",
-      "BRG_WallStairs_Rear_Lower",
-      "BRG_WallStairs_Rear_Upper"
-    ]
+      "BRG_WallStairs_Gate",
+      "BRG_WallStairs_Rear"
+    ],
+    "wall_landings": []
   },
   "source_blend": "castle_reworked.blend",
   "phaser_integration": {
