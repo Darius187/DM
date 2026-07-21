@@ -8651,8 +8651,14 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       toeter.maxhp = einheitMaxHp(einheit);
       toeter.hp += toeter.maxhp - altMax;   // der neue Rang staerkt sofort
       toeter.name = `${einheit.name} ${'▲'.repeat(nachher)}`;
-      this.fx.float(toeter.x, toeter.y - toeter.r - 12, `RANG ${nachher}!`, '#f0d23a');
-      this.logMsg(`${einheit.name} ist jetzt Veteran (Rang ${nachher}).`, 'gold');
+      // Autor "es kommen staendig Stufennachrichten wenn NPCs kaempfen": der
+      // Rang-Aufstieg WIRKT immer (staerkt die Einheit), aber die Meldung/das
+      // Banner erscheint NUR, wenn der Held selbst am Kampf beteiligt ist
+      // (Schaden aus-/eingesteckt in den letzten 4s). Reine NPC-Kaempfe bleiben still.
+      if (this.time.now / 1000 - this.heldKampfT < 4) {
+        this.fx.float(toeter.x, toeter.y - toeter.r - 12, `RANG ${nachher}!`, '#f0d23a');
+        this.logMsg(`${einheit.name} ist jetzt Veteran (Rang ${nachher}).`, 'gold');
+      }
     }
   }
 
