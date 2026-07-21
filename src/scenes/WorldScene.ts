@@ -8469,6 +8469,14 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     e.kills = einheit.kills;
     e.soeldner = !!einheit.soeldner;   // R143 (2.3): Moral-Malus + Desertion
     e.rtsTyp = rtsTyp;                 // R144: Befehls-Schicht kennt den Typ
+    // R-Fix (Autor "Fusssoldaten schiessen manchmal Pfeil/Bogen oder wirken
+    // Zauber, obwohl es Schwert-Fusssoldaten sind"): Verbuendete werden als
+    // 'skelett'/'schuetze' gespawnt und liefen dabei durch die ZUFAELLIGE
+    // Gefallenen-Bewaffnung (die konnte Bogen/Stab aufzwingen -> Fusssoldat
+    // schoss/zauberte). Fernkampf und Magie richten sich jetzt AUSSCHLIESSLICH
+    // nach dem rtsTyp - nur der Bogenschuetze schiesst, alle anderen kaempfen nah.
+    e.ranged = rtsTyp === 'bogen';
+    e.magie = false;
     const rang = rangFuerKills(einheit.kills);
     e.name = rang > 0 ? `${einheit.name} ${'▲'.repeat(rang)}` : einheit.name;
     e.maxhp = einheitMaxHp(einheit);
@@ -13748,6 +13756,25 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       ctx2.fillRect(0, 0, 128, 128);
       this.textures.addCanvas('farbblob', c2);
     }
+    // R-Folge (Autor "der Feuer-Rand ist zu hart, der Ueberlauf soll fliessend
+    // sein"): ein SEHR weicher Erase-Pinsel nur fuers Feuer-Loch - ohne festen
+    // Kern-Plateau, dafuer eine lange, sanft auslaufende Flanke. So franst der
+    // Rand des Nacht-Schleier-Lochs aus, statt als scharfe Kante zu enden.
+    if (!this.textures.exists('glutblob')) {
+      const c3 = document.createElement('canvas');
+      c3.width = 256;
+      c3.height = 256;
+      const ctx3 = c3.getContext('2d')!;
+      const grad3 = ctx3.createRadialGradient(128, 128, 0, 128, 128, 128);
+      grad3.addColorStop(0, 'rgba(255,255,255,0.92)');
+      grad3.addColorStop(0.30, 'rgba(255,255,255,0.62)');
+      grad3.addColorStop(0.60, 'rgba(255,255,255,0.26)');
+      grad3.addColorStop(0.82, 'rgba(255,255,255,0.08)');
+      grad3.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx3.fillStyle = grad3;
+      ctx3.fillRect(0, 0, 256, 256);
+      this.textures.addCanvas('glutblob', c3);
+    }
   }
 
   private fogGfx: Phaser.GameObjects.Graphics | null = null;
@@ -13939,8 +13966,10 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       const sx = (f.x - cam.worldView.x) * zm, sy = (f.y - cam.worldView.y) * zm;
       if (sx < -160 || sy < -160 || sx > this.scale.width + 160 || sy > this.scale.height + 160) continue;
       const fl = 1 + Math.sin(time * 6 + f.x * 0.05) * 0.06 + Math.sin(time * 15 + f.y * 0.03) * 0.04;
-      this.eraseLight(sx, sy - 8 * zm, 78 * fl * zm);
-      warmIdx = this.placeWarm(warmIdx, f.x, f.y - 8, 66, (0.28 + 0.4 * nachtFaktor) * fl, 0xffb060);
+      // weicher Erase-Pinsel + groesserer Radius: der Kern bleibt frei, die Flanke
+      // franst sanft aus (fliessender Ueberlauf statt harter Loch-Kante).
+      this.eraseLightSoft(sx, sy - 8 * zm, 104 * fl * zm);
+      warmIdx = this.placeWarm(warmIdx, f.x, f.y - 8, 74, (0.28 + 0.4 * nachtFaktor) * fl, 0xffb060);
     }
     // Hausfenster im Dorf (Runde 35): abends leuchten die Fenster warm, nachts
     // erlischt ein Haus nach dem anderen, tagsüber sind alle dunkel.
@@ -14026,6 +14055,17 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     }
     this.lightScratch.setScale((radius * 2) / 256);
     this.lightRT.erase(this.lightScratch, x, y);
+  }
+
+  // Wie eraseLight, aber mit dem sehr weichen 'glutblob' - fuers Feuer-Loch, das
+  // fliessend auslaufen soll statt mit harter Kante zu enden (Autorwunsch).
+  private lightScratchSoft: Phaser.GameObjects.Image | null = null;
+  private eraseLightSoft(x: number, y: number, radius: number): void {
+    if (!this.lightScratchSoft) {
+      this.lightScratchSoft = this.add.image(0, 0, 'glutblob').setVisible(false);
+    }
+    this.lightScratchSoft.setScale((radius * 2) / 256);
+    this.lightRT.erase(this.lightScratchSoft, x, y);
   }
 
   // tint gesetzt = farbiges Magie-Licht (weißer Blob wird eingefärbt)
