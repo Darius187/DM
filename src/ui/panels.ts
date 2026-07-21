@@ -1220,9 +1220,13 @@ export class UIPanels {
         return (b.rarity ?? 0) - (a.rarity ?? 0) || wert(b) - wert(a);
       });
 
-    const rowH = shellAktiv ? 68 * s : 42;
+    // R-Fix: Zeilen-Schritt = gemessener Kasten-Abstand (69,25) statt 68, damit
+    // die Icons ueber die 9 gemalten Kaesten nicht nach unten wegdriften. Die
+    // Schale hat GENAU 9 Kaesten -> nie mehr Zeilen als Kaesten anzeigen.
+    const rowH = shellAktiv ? 69.25 * s : 42;
     const listTop = shellAktiv ? (192 - 79) * s : (tabUmbruch ? 78 : 58);
-    const visible = Math.floor((h - listTop - 14) / rowH);
+    let visible = Math.floor((h - listTop - 14) / rowH);
+    if (shellAktiv) visible = Math.min(visible, 9);
     const maxScroll = Math.max(0, inv.length - visible);
     this.scroll = Math.min(this.scroll, maxScroll);
     if (inv.length === 0) {
@@ -1432,9 +1436,13 @@ export class UIPanels {
     // Text. Der Text beginnt rechts NEBEN der Slot-Spalte.
     const s2 = this.panelScale;
     const iconS = shellAktiv ? Math.min(rowH - 10, 44 * s2) : rowH - 10;
-    const iconCx = shellAktiv ? 590 * s2 : x0 + 6 + iconS / 2;
+    // R-Fix (Autor "die Waffen-Icons sitzen NEBEN den dunklen Kaesten, nicht
+    // DRIN"): die gemalten Slot-Kaesten der Schale sitzen bei Design-x 587..682
+    // (Mitte 634) - der alte Wert 590 lag am linken Kastenrand. Icon jetzt
+    // mittig im Kasten, Text startet rechts NEBEN dem Kasten (Rand 682).
+    const iconCx = shellAktiv ? 634 * s2 : x0 + 6 + iconS / 2;
     c.add(this.scene.add.image(iconCx, y + rowH / 2, this.provider.itemIcon(it)).setDisplaySize(iconS, iconS));
-    const textX = shellAktiv ? 628 * s2 : x0 + rowH + 8;   // rechts neben Slot/Icon, mit Luft
+    const textX = shellAktiv ? 700 * s2 : x0 + rowH + 8;   // rechts neben Slot/Icon, mit Luft
     c.add(this.scene.add.text(textX, y + Math.round(rowH * 0.12), it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
       fontFamily: 'serif', fontSize: `${Math.max(12, Math.round(13 * this.panelScale))}px`, color: RARITY_INK[rar],
     }));
