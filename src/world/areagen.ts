@@ -2330,12 +2330,10 @@ function bevoelkereStadt(a: AreaData): void {
   frei(41, 60, 46, 63);
   N({ id: 'heinrich', name: 'Heinrich Kramer', x: 43.5 * T32, y: 61.5 * T32, abend: { x: 43.5 * T32, y: 61.5 * T32 }, kaempfer: true, questgeber: 'kopfgeld' });
   N({ id: 'wirtin', name: 'Wirtin Agnes', x: 41.5 * T32, y: 61.5 * T32, abend: { x: 41.5 * T32, y: 61.5 * T32 }, arbeit: 'kochen' });
-  // Wirtshaus-Tuer (Autor): KLASSISCHER RPG-Eingang - durch die Tuer oeffnet sich
-  // eine eigene Innen-Instanz (innen_taverne) statt 1:1-Begehen (wo alle stecken
-  // blieben). Zugleich die Zuflucht, in die sich die Bewohner bei Einfaellen
-  // fluechten, solange das Gemeindehaus noch nicht steht.
-  (a.doors ??= []).push({ x: 44, y: 60, haus: 'taverne' });
-  map[60][44] = T.HDOOR;
+  // Wirtshaus-Tuer: NICHT hier in die Karte backen (Autor: "im alten Ravensmoor
+  // blieb der Eingang am alten Platz kleben, wenn man das Haus verschob"). Die
+  // Tuer wird stattdessen LIVE aus der Haus-Box abgeleitet (setzeStadtHausTueren
+  // in dorfRender) - so folgt sie dem Haus beim Verschieben, kein Geist-Eingang.
   // Handwerk
   frei(14, 62, 19, 65);
   N({ id: 'schmied', name: 'Schmied', x: 16 * T32, y: 63.5 * T32, abend: WIRTSHAUS, kaempfer: true, arbeit: 'schmieden', questgeber: 'stahl' });

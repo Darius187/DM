@@ -2256,6 +2256,29 @@ export class WorldScene extends CombatScene {
       const g = this.gebaeude3d.get(def.id);
       if (b && g) g.setPosition((b.x + b.breite / 2) * TILE, (b.y + b.hoehe) * TILE - 10);
     }
+    // Haus-Tueren LIVE aus den Boxen ableiten (folgen dem Haus beim Verschieben).
+    this.setzeStadtHausTueren();
+  }
+
+  // Welche Dorfplan-Box fuehrt in welche Innen-Instanz. Erweiterbar (Gemeindehaus
+  // etc.), sobald der Autor die Gebaeude gesetzt hat.
+  private static readonly STADT_HAUS_TUEREN: ReadonlyArray<{ box: string; haus: string }> = [
+    { box: 'B2', haus: 'taverne' },
+  ];
+
+  // Die Haus-Tueren der Stadt aus der LIVE-Box-Position berechnen (nicht in die
+  // Karte gebacken!) - so folgt der Eingang dem Haus beim Verschieben und bleibt
+  // NIE als Geist-Eingang am alten Platz stehen (Autor-Order). Tuer sitzt vorne-
+  // mittig eine Kachel VOR dem Haus (begehbarer Vorplatz).
+  private setzeStadtHausTueren(): void {
+    if (this.area?.id !== 'stadt') return;
+    const tueren: NonNullable<AreaData['doors']> = [];
+    for (const m of WorldScene.STADT_HAUS_TUEREN) {
+      const b = this.dorfBoxen.find((x) => x.id === m.box);
+      if (!b) continue;
+      tueren.push({ x: Math.round(b.x + b.breite / 2), y: Math.round(b.y + b.hoehe), haus: m.haus });
+    }
+    this.area.doors = tueren;
   }
 
   // Liefert die Box unter dem Welt-Punkt (oberste zuletzt gezeichnete zuerst) und
