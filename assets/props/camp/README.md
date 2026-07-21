@@ -23,8 +23,9 @@ einzigen Objekt zusammengefasst werden.
 - Manifest: `fletcher/medieval_fletcher_station_3d_runtime.json`
 - Root: `FLETCHER_STATION_ROTATION_PIVOT`
 - Groesse: 5,313 x 2,786 x 2,940 m
-- Laufzeit: 10 Meshes, 10.510 Dreiecke, 10 eingebettete Texturen
-- Inhalt: 119 Pfeile, drei Behaelter, drei gebundene Buendel, Sortiergestell
+- Laufzeit: 10 Meshes, 10.662 Dreiecke, 10 eingebettete Texturen
+- Inhalt: 119 Pfeile, drei wirklich offene Koerbe/Koecher mit sichtbarer
+  Innenwand, drei gebundene Buendel und Sortiergestell
 - Editierbare Blender-Datei:
   `C:/Obsidian/DM/camp-props/fletcher/medieval_fletcher_station_3d_runtime.blend`
 
@@ -34,8 +35,9 @@ einzigen Objekt zusammengefasst werden.
 - Manifest: `field_tent/medieval_field_tent_3d_runtime.json`
 - Root: `FIELD_TENT_ROTATION_PIVOT`
 - Groesse mit Abspannungen: 6,805 x 7,207 x 3,473 m
-- Laufzeit: 4 Meshes, 1.632 Dreiecke, 4 eingebettete Texturen
+- Laufzeit: 4 Meshes, 2.352 Dreiecke, 4 eingebettete Texturen
 - Inhalt: offener Eingang, sechs Abspannungen, sechs Heringe, sichtbare Schlafrolle
+- Stoff: Blender-Cloth ueber 36 Frames gebacken, Dachbahnen bis 9,6 cm verformt
 - Editierbare Blender-Datei:
   `C:/Obsidian/DM/camp-props/field_tent/medieval_field_tent_3d_runtime.blend`
 
@@ -45,9 +47,10 @@ einzigen Objekt zusammengefasst werden.
 - Manifest: `command_pavilion/medieval_command_pavilion_3d_runtime.json`
 - Root: `COMMAND_PAVILION_ROTATION_PIVOT`
 - Groesse mit Abspannungen: 9,980 x 8,207 x 5,730 m
-- Laufzeit: 8 Meshes, 2.440 Dreiecke, 8 eingebettete Texturen
+- Laufzeit: 8 Meshes, 3.640 Dreiecke, 8 eingebettete Texturen
 - Inhalt: offener Frontbereich, zwei Banner, Tisch, zwei Baenke, zwei Regale,
   drei Truhen, Teppich und sichtbare Kartenblaetter
+- Stoff: Blender-Cloth ueber 36 Frames gebacken, Dachbahnen bis 12,9 cm verformt
 - Editierbare Blender-Datei:
   `C:/Obsidian/DM/camp-props/command_pavilion/medieval_command_pavilion_3d_runtime.blend`
 

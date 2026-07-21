@@ -31,13 +31,33 @@
   },
   "runtime": {
     "visible_objects": 4,
-    "triangles": 1632,
+    "triangles": 2352,
     "embedded_textured_materials": 4,
     "static_material_batches": [
       "FIELD_TENT_WOOD_DARK_BATCH",
       "FIELD_TENT_ROPE_BATCH",
       "FIELD_TENT_CANVAS_BATCH",
       "FIELD_TENT_CANVAS_DARK_BATCH"
+    ],
+    "baked_cloth_panels": [
+      {
+        "panel": "ROOF_-1",
+        "frames": 36,
+        "average_displacement_m": 0.04527,
+        "maximum_displacement_m": 0.0961
+      },
+      {
+        "panel": "ROOF_1",
+        "frames": 36,
+        "average_displacement_m": 0.04527,
+        "maximum_displacement_m": 0.0961
+      },
+      {
+        "panel": "BACK",
+        "frames": 36,
+        "average_displacement_m": 0.0,
+        "maximum_displacement_m": 0.0
+      }
     ]
   },
   "collision_guide": {
@@ -56,12 +76,14 @@
     "walkable_front_opening": true,
     "guy_ropes": 6,
     "stakes": 6,
-    "visible_bedroll": true
+    "visible_bedroll": true,
+    "cloth_simulation": "baked_static_mesh"
   },
   "interactions": [],
   "notes": [
     "Eigenstaendiges Asset; nicht mit den beiden anderen Lager-Assets verschmelzen.",
     "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
-    "Material-Farbtexturen sind im GLB eingebettet."
+    "Material-Farbtexturen sind im GLB eingebettet.",
+    "Blender-Cloth wurde frameweise berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik."
   ]
 }

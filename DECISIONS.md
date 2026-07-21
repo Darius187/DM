@@ -2685,7 +2685,6 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   'arbeiter'. Browser-verifiziert: Stufe1 -> 3 Arbeiter (dmg0/passiv/hp40),
   Vollausbau -> 0, Altarsturz 3->0, 0 Fehler. Die V1-Grossvision (region-weite
   Isengard-Industrialisierung) bleibt separat (TEIL 4, vom Autor zu bestaetigen).
-
 - Glatte Kanten = STANDARD (Autor "sieht gut aus, immer an"): glatteKanten
   Default true (main.ts liest !== false, SettingsScene ?? true). pixelArt AUS
   ist jetzt die Voreinstellung; wer die harte Pixel-Optik will, schaltet aus.
@@ -2698,3 +2697,4 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   OFFEN (Autor-Frage "Aufloesung generell erhoehen"): eine echte Supersampling-
   Render-Skala (SSAA) fuer die WELT-Sprites unter Kamera-Zoom ist eine groessere,
   scale-sensible Aenderung (RESIZE-Layout) - separat + auf echtem Geraet zu machen.
+- 2026-07-21: Zeltstoff wird in Blender physikalisch simuliert und als statisches GLB-Mesh gebacken. Keine laufende Cloth-Physik in Phaser; offene Koecher bleiben echte Hohlkoerper statt optischer Deckeltricks.

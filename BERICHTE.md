@@ -2136,8 +2136,13 @@ nachziehen.
   nacheinander als eigenstaendige Blender- und GLB-Assets gebaut.
 - Alle drei besitzen eingebettete Farbtexturen, einen kontinuierlich drehbaren
   Root-Pivot, eine feste Frontachse und keine Bodenplatte.
-- Der Pfeilmacherstand nutzt 10 Meshes und 10.510 Dreiecke, das Feldzelt 4 Meshes
-  und 1.632 Dreiecke, der Pavillon 8 Meshes und 2.440 Dreiecke.
+- Der Pfeilmacherstand nutzt 10 Meshes und 10.662 Dreiecke, das Feldzelt 4 Meshes
+  und 2.352 Dreiecke, der Pavillon 8 Meshes und 3.640 Dreiecke.
+- Leder- und Stoffkoecher sind jetzt echte offene Hohlkoerper mit Innenwand,
+  Wandstaerke und geschlossenem Boden; der Flechtkorb war bereits offen.
+- Beide Zeltdaecher wurden mit Blender-Cloth ueber 36 Frames simuliert und als
+  statische Runtime-Geometrie gebacken. Maximaler Durchhang: 9,6 cm beim kleinen
+  Zelt und 12,9 cm beim Pavillon. Im Spiel ist keine Cloth-Physik erforderlich.
 - Jedes GLB wurde nach dem Export wieder in Blender importiert. Root, Meshzahl,
   Dreieckzahl und Texturen stimmen; Export-Helfer und Bodenplatten fehlen wie geplant.
 - Offen: Der Autor hat keine Zielkarte oder Position genannt. Deshalb sind die

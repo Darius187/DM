@@ -31,7 +31,7 @@
   },
   "runtime": {
     "visible_objects": 10,
-    "triangles": 10510,
+    "triangles": 10662,
     "embedded_textured_materials": 10,
     "static_material_batches": [
       "FLETCHER_WOOD_DARK_BATCH",
@@ -44,7 +44,8 @@
       "FLETCHER_STEEL_BATCH",
       "FLETCHER_FEATHER_WHITE_BATCH",
       "FLETCHER_FEATHER_BROWN_BATCH"
-    ]
+    ],
+    "baked_cloth_panels": []
   },
   "collision_guide": {
     "shape": "box",
@@ -60,6 +61,7 @@
   "content": {
     "arrows": 119,
     "large_baskets": 3,
+    "open_quivers": 3,
     "bound_bundles": 3,
     "sorting_rack": true
   },

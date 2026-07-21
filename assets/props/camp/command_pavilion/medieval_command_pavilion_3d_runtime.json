@@ -31,7 +31,7 @@
   },
   "runtime": {
     "visible_objects": 8,
-    "triangles": 2440,
+    "triangles": 3640,
     "embedded_textured_materials": 8,
     "static_material_batches": [
       "COMMAND_PAVILION_WOOD_DARK_BATCH",
@@ -42,6 +42,38 @@
       "COMMAND_PAVILION_RED_CLOTH_BATCH",
       "COMMAND_PAVILION_IRON_BATCH",
       "COMMAND_PAVILION_RUG_BATCH"
+    ],
+    "baked_cloth_panels": [
+      {
+        "panel": "PAV_ROOF_-1",
+        "frames": 36,
+        "average_displacement_m": 0.06181,
+        "maximum_displacement_m": 0.12873
+      },
+      {
+        "panel": "PAV_ROOF_1",
+        "frames": 36,
+        "average_displacement_m": 0.06181,
+        "maximum_displacement_m": 0.12873
+      },
+      {
+        "panel": "PAV_REAR",
+        "frames": 36,
+        "average_displacement_m": 0.00024,
+        "maximum_displacement_m": 0.00041
+      },
+      {
+        "panel": "PAV_SIDE_-1",
+        "frames": 36,
+        "average_displacement_m": 0.00023,
+        "maximum_displacement_m": 0.00039
+      },
+      {
+        "panel": "PAV_SIDE_1",
+        "frames": 36,
+        "average_displacement_m": 0.00023,
+        "maximum_displacement_m": 0.00039
+      }
     ]
   },
   "collision_guide": {
@@ -63,12 +95,14 @@
     "benches": 2,
     "shelves": 2,
     "chests": 3,
-    "visible_rug": true
+    "visible_rug": true,
+    "cloth_simulation": "baked_static_mesh"
   },
   "interactions": [],
   "notes": [
     "Eigenstaendiges Asset; nicht mit den beiden anderen Lager-Assets verschmelzen.",
     "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
-    "Material-Farbtexturen sind im GLB eingebettet."
+    "Material-Farbtexturen sind im GLB eingebettet.",
+    "Blender-Cloth wurde frameweise berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik."
   ]
 }

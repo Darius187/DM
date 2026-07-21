@@ -206,6 +206,40 @@ class MeshBatch:
         rotation = direction.to_track_quat("Z", "Y").to_matrix().to_4x4()
         self.transformed(vertices, faces, Matrix.Translation(Vector(center)) @ rotation)
 
+    def open_tube(self, center, radius, depth, thickness=.035, segments=18):
+        inner_radius = max(.01, radius - thickness)
+        outer_bottom = -depth / 2
+        inner_bottom = outer_bottom + thickness
+        top = depth / 2
+        vertices = []
+        for ring_radius, z in ((radius, outer_bottom), (radius, top),
+                               (inner_radius, inner_bottom), (inner_radius, top)):
+            for index in range(segments):
+                angle = 2 * math.pi * index / segments
+                vertices.append((ring_radius * math.cos(angle), ring_radius * math.sin(angle), z))
+        outer_bottom_start = 0
+        outer_top_start = segments
+        inner_bottom_start = segments * 2
+        inner_top_start = segments * 3
+        faces = []
+        for index in range(segments):
+            nxt = (index + 1) % segments
+            faces.append((outer_bottom_start + index, outer_bottom_start + nxt,
+                          outer_top_start + nxt, outer_top_start + index))
+            faces.append((inner_bottom_start + index, inner_top_start + index,
+                          inner_top_start + nxt, inner_bottom_start + nxt))
+            faces.append((outer_top_start + index, outer_top_start + nxt,
+                          inner_top_start + nxt, inner_top_start + index))
+        outer_center = len(vertices)
+        vertices.append((0, 0, outer_bottom))
+        inner_center = len(vertices)
+        vertices.append((0, 0, inner_bottom))
+        for index in range(segments):
+            nxt = (index + 1) % segments
+            faces.append((outer_center, outer_bottom_start + nxt, outer_bottom_start + index))
+            faces.append((inner_center, inner_bottom_start + index, inner_bottom_start + nxt))
+        self.transformed(vertices, faces, Matrix.Translation(Vector(center)))
+
     def cone(self, center, radius, depth, segments=8, direction=(0, 0, 1)):
         vertices = [(0, 0, depth / 2)]
         for index in range(segments):
@@ -248,6 +282,7 @@ class MeshBatch:
 
 
 BATCHES = {key: MeshBatch(key) for key in MATERIALS}
+CLOTH_BAKE_STATS = []
 
 
 def beam(key, start, end, thickness):
@@ -332,7 +367,7 @@ def build_fletcher():
               "feather_brown" if index % 4 else "feather_white", index % 7 != 0, .013)
 
     # Leather quiver with strap.
-    BATCHES["leather"].cylinder((-2.05, .20, .73), .43, 1.42, 18)
+    BATCHES["leather"].open_tube((-2.05, .20, .73), .43, 1.42, .045, 18)
     BATCHES["leather"].torus((-2.05, .20, 1.43), .43, .045, 18, 6)
     BATCHES["leather"].torus((-2.05, .20, .08), .36, .035, 18, 5)
     rope([(-2.38, .21, 1.28), (-2.72, .05, .70), (-2.50, -.03, .05)], .035)
@@ -343,7 +378,7 @@ def build_fletcher():
               1.35 + (index % 3) * .07, (0, 0, -1), "feather_brown", True, .014)
 
     # Stiff canvas arrow bag.
-    BATCHES["canvas_dark"].cylinder((1.05, .48, .70), .40, 1.35, 18)
+    BATCHES["canvas_dark"].open_tube((1.05, .48, .70), .40, 1.35, .040, 18)
     BATCHES["rope"].torus((1.05, .48, 1.39), .40, .038, 18, 5)
     for index in range(15):
         angle = 2 * math.pi * index / 15
@@ -373,7 +408,8 @@ def build_fletcher():
 
     return {
         "label": "Pfeilmacher- und Bognerstand",
-        "content": {"arrows": 119, "large_baskets": 3, "bound_bundles": 3, "sorting_rack": True},
+        "content": {"arrows": 119, "large_baskets": 3, "open_quivers": 3,
+                    "bound_bundles": 3, "sorting_rack": True},
         "collision": {"shape": "box", "size": [5.4, 3.2], "center": [0.15, -.22]},
     }
 
@@ -391,6 +427,71 @@ def cloth_grid(key, name, x_count, y_count, point_fn):
             batch.faces.append((a, a + 1, a + width + 1, a + width))
 
 
+def simulated_cloth_grid(key, name, x_count, y_count, point_fn, pin_fn, frames=36):
+    vertices = []
+    pin_indices = []
+    for iy in range(y_count + 1):
+        v = iy / y_count
+        for ix in range(x_count + 1):
+            u = ix / x_count
+            vertices.append(tuple(point_fn(u, v)))
+            if pin_fn(ix, iy, x_count, y_count):
+                pin_indices.append(iy * (x_count + 1) + ix)
+    faces = []
+    width = x_count + 1
+    for iy in range(y_count):
+        for ix in range(x_count):
+            a = iy * width + ix
+            faces.append((a, a + 1, a + width + 1, a + width))
+
+    mesh = bpy.data.meshes.new(name + "_CLOTH_SOURCE_MESH")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name + "_CLOTH_SOURCE", mesh)
+    helper_collection.objects.link(obj)
+    pin_group = obj.vertex_groups.new(name="PINNED_SEAMS")
+    pin_group.add(pin_indices, 1.0, "REPLACE")
+    modifier = obj.modifiers.new("BAKED_CLOTH_SIMULATION", "CLOTH")
+    settings = modifier.settings
+    settings.quality = 6
+    settings.mass = .22
+    settings.air_damping = 3.0
+    settings.tension_stiffness = 12.0
+    settings.compression_stiffness = 10.0
+    settings.shear_stiffness = 5.0
+    settings.bending_stiffness = .40
+    settings.vertex_group_mass = pin_group.name
+    settings.pin_stiffness = 1.0
+
+    old_gravity = scene.gravity.copy()
+    old_start, old_end = scene.frame_start, scene.frame_end
+    scene.gravity = (0, 0, -3.60)
+    scene.frame_start = 1
+    scene.frame_end = frames
+    for frame in range(1, frames + 1):
+        scene.frame_set(frame)
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    evaluated_mesh = bpy.data.meshes.new_from_object(evaluated, depsgraph=depsgraph)
+    simulated_vertices = [tuple(vertex.co) for vertex in evaluated_mesh.vertices]
+    simulated_faces = [tuple(polygon.vertices) for polygon in evaluated_mesh.polygons]
+    displacement = [(Vector(after) - Vector(before)).length
+                    for before, after in zip(vertices, simulated_vertices)]
+    CLOTH_BAKE_STATS.append({
+        "panel": name,
+        "frames": frames,
+        "average_displacement_m": round(sum(displacement) / len(displacement), 5),
+        "maximum_displacement_m": round(max(displacement), 5),
+    })
+    BATCHES[key].transformed(simulated_vertices, simulated_faces, Matrix.Identity(4))
+
+    scene.frame_set(1)
+    scene.gravity = old_gravity
+    scene.frame_start, scene.frame_end = old_start, old_end
+    bpy.data.objects.remove(obj, do_unlink=True)
+    bpy.data.meshes.remove(evaluated_mesh)
+
+
 def make_stake(x, y, z=0):
     BATCHES["wood_dark"].cylinder((x, y, z + .16), .035, .36, 8, (0, 0, 1))
     BATCHES["wood_dark"].cone((x, y, z - .03), .055, .18, 7, (0, 0, -1))
@@ -406,12 +507,13 @@ def build_field_tent():
         beam("wood_dark", (half_w + .18, y, .02), (-.16, y, ridge + .20), .10)
     # Roof cloth with irregular sag and weathering-rich baked texture.
     for side in (-1, 1):
-        cloth_grid("canvas", f"ROOF_{side}", 10, 12,
-                   lambda u, v, side=side: (
-                       side * (u * half_w),
-                       -half_l + v * half_l * 2,
-                       ridge * (1 - u) + .08 + .035 * math.sin(v * math.pi * 3) * math.sin(u * math.pi)
-                       - .055 * math.sin(v * math.pi) * math.sin(u * math.pi)))
+        simulated_cloth_grid("canvas", f"ROOF_{side}", 14, 18,
+                             lambda u, v, side=side: (
+                                 side * (u * half_w),
+                                 -half_l + v * half_l * 2,
+                                 ridge * (1 - u) + .08
+                                 + .030 * math.sin(v * math.pi * 3) * math.sin(u * math.pi)),
+                             lambda ix, iy, nx, ny: ix in (0, nx) or iy in (0, ny))
         # Raised seams and a weighted lower hem keep the canvas from reading as one flat sheet.
         for u in (.34, .67):
             x = side * u * half_w
@@ -436,9 +538,10 @@ def build_field_tent():
                 (x + width / 2, y + length / 2, z), (x - width / 2, y + length / 2, z),
             ])
     # Closed back panel.
-    cloth_grid("canvas_dark", "BACK", 12, 8,
-               lambda u, v: (-half_w + u * half_w * 2, half_l + .015,
-                             v * (ridge - abs(-half_w + u * half_w * 2) / half_w * ridge)))
+    simulated_cloth_grid("canvas_dark", "BACK", 16, 12,
+                         lambda u, v: (-half_w + u * half_w * 2, half_l + .015,
+                                       v * (ridge - abs(-half_w + u * half_w * 2) / half_w * ridge)),
+                         lambda ix, iy, nx, ny: iy in (0, ny))
     # Front flaps are tied aside, leaving a proper walkable opening.
     left_flap = [(-half_w, -half_l - .02, .02), (-.18, -half_l - .03, .02),
                  (-.62, -half_l - .12, 1.36), (0, -half_l - .02, ridge)]
@@ -465,7 +568,8 @@ def build_field_tent():
         beam("rope", (x, y, .06), (x + .28, y + .10 * math.sin(index), .10), .012)
     return {
         "label": "Kleines Feldzelt",
-        "content": {"walkable_front_opening": True, "guy_ropes": 6, "stakes": 6, "visible_bedroll": True},
+        "content": {"walkable_front_opening": True, "guy_ropes": 6, "stakes": 6,
+                    "visible_bedroll": True, "cloth_simulation": "baked_static_mesh"},
         "collision": {"shape": "box", "size": [5.2, 4.5], "center": [0, .15], "front_open": True},
     }
 
@@ -496,10 +600,12 @@ def build_command_pavilion():
         BATCHES["wood_mid"].cone((0, y, ridge + .22), .14, .42, 8)
     # Four sloped roof cloth panels with a gentle central sag.
     for side in (-1, 1):
-        cloth_grid("canvas", f"PAV_ROOF_{side}", 12, 14,
-                   lambda u, v, side=side: (
-                       side * (u * half_w), -half_l + v * half_l * 2,
-                       ridge - u * (ridge - eave) - .07 * math.sin(v * math.pi) * math.sin(u * math.pi)))
+        simulated_cloth_grid("canvas", f"PAV_ROOF_{side}", 16, 20,
+                             lambda u, v, side=side: (
+                                 side * (u * half_w), -half_l + v * half_l * 2,
+                                 ridge - u * (ridge - eave)
+                                 + .025 * math.sin(v * math.pi * 3) * math.sin(u * math.pi)),
+                             lambda ix, iy, nx, ny: ix in (0, nx) or iy in (0, ny))
         for u in (.33, .66):
             x = side * u * half_w
             z = ridge - u * (ridge - eave) + .018
@@ -516,12 +622,14 @@ def build_command_pavilion():
             (patch_x + .20, patch_y + .27, patch_z), (patch_x - .20, patch_y + .27, patch_z),
         ])
     # Side and rear curtains; front curtains tied back around corner posts.
-    cloth_grid("canvas_dark", "PAV_REAR", 14, 8,
-               lambda u, v: (-half_w + u * half_w * 2, half_l, v * eave))
+    simulated_cloth_grid("canvas_dark", "PAV_REAR", 18, 12,
+                         lambda u, v: (-half_w + u * half_w * 2, half_l, v * eave),
+                         lambda ix, iy, nx, ny: iy in (0, ny))
     for side in (-1, 1):
-        cloth_grid("canvas", f"PAV_SIDE_{side}", 12, 8,
-                   lambda u, v, side=side: (side * half_w, -half_l + u * half_l * 2,
-                                            v * eave + .035 * math.sin(u * math.pi * 2) * math.sin(v * math.pi)))
+        simulated_cloth_grid("canvas", f"PAV_SIDE_{side}", 16, 12,
+                             lambda u, v, side=side: (side * half_w, -half_l + u * half_l * 2,
+                                                      v * eave + .025 * math.sin(u * math.pi * 2) * math.sin(v * math.pi)),
+                             lambda ix, iy, nx, ny: iy in (0, ny))
         # Gathered front curtain wing.
         edge = side * half_w
         inner = side * 2.45
@@ -571,7 +679,8 @@ def build_command_pavilion():
     return {
         "label": "Großer Feld- und Befehlspavillon",
         "content": {"open_front": True, "banner_poles": 2, "command_table": True,
-                    "benches": 2, "shelves": 2, "chests": 3, "visible_rug": True},
+                    "benches": 2, "shelves": 2, "chests": 3, "visible_rug": True,
+                    "cloth_simulation": "baked_static_mesh"},
         "collision": {"shape": "box", "size": [7.4, 6.2], "center": [0, 0], "front_open": True},
     }
 
@@ -592,6 +701,9 @@ def make_objects():
         mesh = bpy.data.meshes.new(f"{ASSET_ID}_{key}_MESH")
         mesh.from_pydata(batch.verts, [], batch.faces)
         mesh.update()
+        if key in {"canvas", "canvas_dark", "red_cloth", "rug", "feather_white", "feather_brown"}:
+            for polygon in mesh.polygons:
+                polygon.use_smooth = True
         obj = bpy.data.objects.new(f"{ASSET_ID.upper()}_{key.upper()}_BATCH", mesh)
         runtime_collection.objects.link(obj)
         obj.data.materials.append(MATERIALS[key])
@@ -722,6 +834,7 @@ manifest = {
         "triangles": triangles,
         "embedded_textured_materials": len(runtime_objects),
         "static_material_batches": [obj.name for obj in runtime_objects],
+        "baked_cloth_panels": CLOTH_BAKE_STATS,
     },
     "collision_guide": metadata["collision"],
     "content": metadata["content"],
@@ -732,6 +845,10 @@ manifest = {
         "Material-Farbtexturen sind im GLB eingebettet.",
     ],
 }
+if CLOTH_BAKE_STATS:
+    manifest["notes"].append(
+        "Blender-Cloth wurde frameweise berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik."
+    )
 JSON_PATH.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 
 for source in (GLB_PATH, JSON_PATH, PREVIEW_PATH):
