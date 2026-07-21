@@ -5,6 +5,7 @@ import { buildBurg } from '../src/world/areagen';
 import { T } from '../src/world/tiles';
 
 interface Guide {
+  name: string;
   kind: string;
   center_blender_xyz: [number, number, number];
   size_blender_xyz: [number, number, number];
@@ -16,6 +17,7 @@ interface BurgManifest {
   courtyard_surfaces?: {
     uv_tile_meters: number;
     packed_earth_material: string;
+    stable_zone_material: string;
     paving_material: string;
     moss_edge_material: string;
     textures_embedded_in_glb: boolean;
@@ -29,6 +31,8 @@ interface BurgManifest {
     wall_access?: string[];
     wall_landings?: string[];
   };
+  editable_parts?: Array<{ id: string; label: string; node: string; nodes?: string[]; collision_guides: string[] }>;
+  continuous_controls: { camera_elevation_degrees: { default: number } };
 }
 
 const manifest = manifestData as unknown as BurgManifest;
@@ -97,9 +101,27 @@ describe('Fuerstenburg-Runtime', () => {
     expect(manifest.courtyard_surfaces).toEqual({
       uv_tile_meters: 4,
       packed_earth_material: 'BRG_MAT_CourtyardPackedEarth',
+      stable_zone_material: 'BRG_MAT_CourtyardPackedEarth',
       paving_material: 'BRG_MAT_CourtyardPaving',
       moss_edge_material: 'BRG_MAT_CourtyardMoss',
       textures_embedded_in_glb: true,
     });
+    expect(manifest.continuous_controls.camera_elevation_degrees.default).toBe(38);
+  });
+
+  it('stellt Tuerme und Hofgebaeude als einzeln editierbare Runtime-Teile bereit', () => {
+    expect(manifest.editable_parts?.map((p) => p.id)).toEqual([
+      'gatehouse', 'gate_tower_west', 'gate_tower_east', 'rear_tower_nw', 'keep',
+      'palas', 'chapel', 'kitchen', 'storage', 'stable',
+    ]);
+    const guideNamen = new Set(manifest.collision_guides.map((g) => g.name));
+    for (const teil of manifest.editable_parts ?? []) {
+      expect(teil.node, `${teil.id} ohne GLB-Knoten`).toMatch(/^BRG_/);
+      expect(teil.collision_guides.length, `${teil.id} ohne Kollision`).toBeGreaterThan(0);
+      for (const name of teil.collision_guides) expect(guideNamen.has(name), `${teil.id}: ${name} fehlt`).toBe(true);
+    }
+    expect(manifest.editable_parts?.[0].nodes).toEqual([
+      'BRG_MainGatehouse', 'BRG_GateDoor_Left_Open', 'BRG_GateDoor_Right_Open',
+    ]);
   });
 });

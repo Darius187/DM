@@ -2593,3 +2593,9 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   heldDabei.) STATUS: tsc + 421 Tests gruen. IM SPIEL NICHT bestaetigt, weil der
   Container den Vite-Server diese Sitzung dauerhaft abgeschossen hat - Autor bitte
   einmal eine reine NPC-Schlacht ansehen und zurueckmelden.
+- R198 Fuerstenburg-Spielintegration: Die Burgkarte verwendet fuer ihr
+  entferntes Randwasser ausschliesslich lokale Tiles, nie den alten
+  Bounding-Box-Fluessigkeits-Shader. Die Burg startet mit Faktor 0,7 und
+  38-Grad-Kamera; ein Reset stellt genau diese Werte wieder her. Der Editor
+  liegt auf F8, weil P bereits Pause ist. Editierbare GLB-Teile muessen ihre
+  Kollisions-Guides mittransformieren und persistent gespeichert werden.

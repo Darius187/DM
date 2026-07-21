@@ -2071,3 +2071,20 @@ ansehen und sagen, ob die Plastik gefaellt. Technik-Hinweis: Phaser-Light2D ist
 multiplikativ - Umgebungslicht steht bewusst auf mittel (nicht weiss), sonst
 clippt das Punktlicht weg. Zu dunkel? Umgebungs-/Heldenlicht in wendeLight2dAn()
 nachziehen.
+## Runde 198 - Fuerstenburg im Spiel korrigiert und editierbar
+- Die Burg steht auf der westlichen Fuerstenburg-Karte als live gerenderte
+  GLB. Ihre Standardgroesse wurde auf 70 Prozent reduziert und die Kamera von
+  48 auf 38 Grad abgesenkt, damit Mauern und Gebaeude nicht mehr wie eine
+  bildschirmfuellende, flache Draufsicht wirken.
+- Die fast weisse Stallflaeche war eine uebergrosse Stroh-Unterlage. Sie ist
+  jetzt festgetretene Hof-Erde; loses Stroh bleibt nur als kleines Detail.
+- Ursache der Wasseranimation ueber der gesamten Karte war der alte
+  Regions-Shader: entfernte, zusammenhaengende Randwasser-Kacheln erzeugten
+  eine fast kartengrosse Bounding-Box. Auf der Burgkarte bleiben die lokalen
+  Randkacheln erhalten, der Regions-Shader wird dort jedoch nicht erzeugt.
+- F8 oeffnet den Burg-Editor, da P bereits die Pause steuert. Gesamtburg sowie
+  zehn Tor-, Turm- und Gebaeudeteile lassen sich verschieben, drehen,
+  skalieren und zuruecksetzen. Werte werden gespeichert; die Kollisionen
+  folgen den veraenderten Teilen.
+- Blender-QA fuer Tor, Mauerring, Treppen und schwebende Teile bleibt gruen.
+  Runtime-Manifest und GLB werden ueber Vite mit Status 200 ausgeliefert.

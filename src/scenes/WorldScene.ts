@@ -579,8 +579,12 @@ export class WorldScene extends CombatScene {
       tageszeit: { get: () => this.tageszeit, set: (v) => { this.tageszeit = v; }, label: (v) => tageszeitLabel(v) },
     });
     this.input.keyboard?.on('keydown-L', () => this.lichtPanel?.umschalten());
-    // R105: Dorf-Editor (nur in der 'stadt'-Area). Taste P schaltet ihn um.
-    this.input.keyboard?.on('keydown-P', () => this.toggleDorfEditor());
+    // F8 oeffnet den passenden Karteneditor: Dorf in Ravensmoor, Burgbaugruppen
+    // in der Fuerstenburg.
+    this.input.keyboard?.on('keydown-F8', () => {
+      if (this.area?.id === 'burg') this.toggleBurgEditor();
+      else this.toggleDorfEditor();
+    });
     // DEV-Stresstest (Autor-Frage "wo ist die Grenze?"): Taste B spawnt eine
     // Schlacht auf der AKTUELLEN Karte und blendet die ECHTE FPS ein - so misst
     // der Autor die Grenze auf SEINER Hardware (headless = softwaregerendert,
@@ -2153,12 +2157,17 @@ export class WorldScene extends CombatScene {
   private dorfWege: WegKarte = new Map();
   private dorfMaltGerade = false;
   private dorfWegeGfx?: Phaser.GameObjects.Graphics;
+  private burgEdit = false;
+  private burgToolbar?: Phaser.GameObjects.Container;
+  private burgTeilIndex = 0;
+  private burgDrag: { wx0: number; wy0: number; dx0: number; dy0: number } | null = null;
 
   private zeichneDorfplan(a: AreaData): void {
     this.dorfplanLayer?.destroy();
     this.dorfplanLayer = undefined;
     this.dorfplanEditLayer?.destroy();
     this.dorfplanEditLayer = undefined;
+    if (a.id !== 'burg' && this.burgEdit) this.toggleBurgEditor(true);
     if (!DORFPLAN_AN || a.id !== 'stadt') {
       // Beim Verlassen der Stadt den Editor sauber schliessen (Globales abmelden).
       if (this.dorfEdit) this.toggleDorfEditor(true);
@@ -2173,6 +2182,7 @@ export class WorldScene extends CombatScene {
           a.w * TILE * 0.5,
           a.h * TILE * 0.5,
           0,
+          0.7,
         );
       }
       return;
@@ -2282,6 +2292,128 @@ export class WorldScene extends CombatScene {
     }
   }
 
+  // Fuerstenburg-Editor: Gesamtburg direkt in der Welt ziehen sowie Burgteile
+  // datengetrieben verschieben/drehen/skalieren. Alles landet in settings und
+  // bleibt nach Kartenwechsel oder Neustart erhalten.
+  private toggleBurgEditor(erzwungenAus = false): void {
+    if (this.area?.id !== 'burg') {
+      if (this.burgEdit) this.beendeBurgEditor();
+      return;
+    }
+    const neu = erzwungenAus ? false : !this.burgEdit;
+    if (neu === this.burgEdit) return;
+    this.burgEdit = neu;
+    if (neu) {
+      this.setzeFreiKamera(true);
+      this.baueBurgToolbar();
+      this.logMsg('BURG-EDITOR AN: Burg auf der Karte ziehen; Tuerme und Gebaeude im Fenster fein einstellen. [F8] beendet.', 'gold');
+    } else this.beendeBurgEditor();
+  }
+
+  private beendeBurgEditor(): void {
+    this.burgEdit = false;
+    this.burgDrag = null;
+    this.burgToolbar?.destroy(); this.burgToolbar = undefined;
+    this.setzeFreiKamera(false);
+    this.gebaeude3d.get('burg')?.speichereEditorWerte();
+    this.logMsg('Burg-Editor aus. Positionen und Groessen sind gespeichert.', '');
+  }
+
+  private baueBurgToolbar(): void {
+    this.burgToolbar?.destroy();
+    if (!this.burgEdit) { this.burgToolbar = undefined; return; }
+    const w = 276;
+    const c = this.add.container(8, 8).setScrollFactor(0).setDepth(6600);
+    this.burgToolbar = c;
+    this.cameras.main.ignore(c);
+    const add = <T extends Phaser.GameObjects.GameObject>(o: T): T => { c.add(o); return o; };
+    const bg = add(this.add.rectangle(0, 0, w, 10, 0x14100a, 0.97).setOrigin(0).setStrokeStyle(1, 0x6b5130));
+    bg.setInteractive(); c.setData('w', w);
+    const kopf = add(this.add.rectangle(0, 0, w, 28, 0xffffff, 0.05).setOrigin(0).setInteractive({ draggable: true, useHandCursor: true }));
+    let zs: { x: number; y: number } | null = null; let zp = { x: 0, y: 0 };
+    kopf.on('dragstart', (p: Phaser.Input.Pointer) => { zs = { x: p.x, y: p.y }; zp = { x: c.x, y: c.y }; });
+    kopf.on('drag', (p: Phaser.Input.Pointer) => { if (!zs) return; c.x = Phaser.Math.Clamp(zp.x + p.x - zs.x, 0, this.scale.width - w); c.y = Phaser.Math.Clamp(zp.y + p.y - zs.y, 0, this.scale.height - 40); });
+    kopf.on('dragend', () => { zs = null; });
+    add(this.add.text(8, 7, 'FUERSTENBURG-EDITOR', { fontFamily: 'serif', fontSize: '13px', color: '#d8ad48', letterSpacing: 1 }));
+    const zu = add(this.add.text(w - 20, 5, 'x', { fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8' }).setInteractive({ useHandCursor: true }));
+    zu.on('pointerdown', () => this.toggleBurgEditor(true));
+    let y = 36;
+    const info = (txt: string, farbe = '#a99876'): void => {
+      const t = add(this.add.text(8, y, txt, { fontFamily: 'serif', fontSize: '10px', color: farbe, wordWrap: { width: w - 16 }, lineSpacing: 2 }));
+      y += t.height + 6;
+    };
+    const reihe = (items: Array<{ text: string; cb: () => void; farbe?: string }>): void => {
+      const luecke = 4, bw = (w - 16 - luecke * (items.length - 1)) / items.length;
+      items.forEach((item, i) => {
+        const x = 8 + i * (bw + luecke);
+        const r = add(this.add.rectangle(x, y, bw, 24, 0x21170c, 0.98).setOrigin(0).setStrokeStyle(1, 0x5d4528).setInteractive({ useHandCursor: true }));
+        r.on('pointerdown', item.cb);
+        add(this.add.text(x + bw / 2, y + 6, item.text, { fontFamily: 'serif', fontSize: '10px', color: item.farbe ?? '#e8dfc8' }).setOrigin(0.5, 0));
+      });
+      y += 29;
+    };
+    const burg = this.gebaeude3d.get('burg');
+    if (!burg?.bereit) {
+      info('Burgmodell wird geladen ...', '#d8ad48');
+      bg.height = y + 4; c.setData('h', y + 4); return;
+    }
+    const pos = burg.gesamtVersatz();
+    const yaw = gebaeudeEinstellung('burg').yaw;
+    info(`GESAMTE BURG  X ${pos.dx}px  Y ${pos.dy}px  |  ${Math.round(yaw)} Grad  |  x${burg.einzelSkala().toFixed(2)}`, '#d8ad48');
+    info('In die Welt klicken und ziehen = ganze Burg verschieben.');
+    reihe([
+      { text: 'X -16', cb: () => { burg.setzeGesamtVersatz(pos.dx - 16, pos.dy); this.baueBurgToolbar(); } },
+      { text: 'X +16', cb: () => { burg.setzeGesamtVersatz(pos.dx + 16, pos.dy); this.baueBurgToolbar(); } },
+      { text: 'Y -16', cb: () => { burg.setzeGesamtVersatz(pos.dx, pos.dy - 16); this.baueBurgToolbar(); } },
+      { text: 'Y +16', cb: () => { burg.setzeGesamtVersatz(pos.dx, pos.dy + 16); this.baueBurgToolbar(); } },
+    ]);
+    reihe([
+      { text: '-15 Grad', cb: () => { burg.drehen(-15); this.baueBurgToolbar(); } },
+      { text: '+15 Grad', cb: () => { burg.drehen(15); this.baueBurgToolbar(); } },
+      { text: '-1 Grad', cb: () => { burg.drehen(-1); this.baueBurgToolbar(); } },
+      { text: '+1 Grad', cb: () => { burg.drehen(1); this.baueBurgToolbar(); } },
+    ]);
+    reihe([
+      { text: 'Kleiner -.10', cb: () => { burg.skaliereEinzeln(-0.1); this.baueBurgToolbar(); } },
+      { text: 'Groesser +.10', cb: () => { burg.skaliereEinzeln(0.1); this.baueBurgToolbar(); } },
+      { text: 'Gesamt Reset', cb: () => { burg.setzeGesamtZurueck(); this.baueBurgToolbar(); }, farbe: '#e3b269' },
+    ]);
+    add(this.add.rectangle(6, y + 1, w - 12, 1, 0x5d4528).setOrigin(0)); y += 9;
+
+    const teile = burg.editierbareTeile();
+    if (teile.length) {
+      this.burgTeilIndex = Phaser.Math.Wrap(this.burgTeilIndex, 0, teile.length);
+      const teil = teile[this.burgTeilIndex];
+      const t = burg.teilTransform(teil.id);
+      info(`EINZELTEIL ${this.burgTeilIndex + 1}/${teile.length}: ${teil.label}`, '#d8ad48');
+      info(`X ${t.dx.toFixed(2)}m  Y ${t.dy.toFixed(2)}m  |  ${t.drehung.toFixed(1)} Grad  |  x${t.skala.toFixed(2)}`);
+      reihe([
+        { text: '< Vorheriges', cb: () => { this.burgTeilIndex--; this.baueBurgToolbar(); } },
+        { text: 'Naechstes >', cb: () => { this.burgTeilIndex++; this.baueBurgToolbar(); } },
+      ]);
+      const aendern = (delta: Parameters<Gebaeude3DWelt['veraendereTeil']>[1]): void => { burg.veraendereTeil(teil.id, delta); this.baueBurgToolbar(); };
+      reihe([
+        { text: 'X -.25m', cb: () => aendern({ dx: -0.25 }) },
+        { text: 'X +.25m', cb: () => aendern({ dx: 0.25 }) },
+        { text: 'Y -.25m', cb: () => aendern({ dy: -0.25 }) },
+        { text: 'Y +.25m', cb: () => aendern({ dy: 0.25 }) },
+      ]);
+      reihe([
+        { text: '-15 Grad', cb: () => aendern({ drehung: -15 }) },
+        { text: '+15 Grad', cb: () => aendern({ drehung: 15 }) },
+        { text: '-1 Grad', cb: () => aendern({ drehung: -1 }) },
+        { text: '+1 Grad', cb: () => aendern({ drehung: 1 }) },
+      ]);
+      reihe([
+        { text: 'Kleiner -.05', cb: () => aendern({ skala: -0.05 }) },
+        { text: 'Groesser +.05', cb: () => aendern({ skala: 0.05 }) },
+        { text: 'Teil Reset', cb: () => { burg.setzeTeilZurueck(teil.id); this.baueBurgToolbar(); }, farbe: '#e3b269' },
+      ]);
+    }
+    info('F8 schliesst. Alle Werte werden automatisch im Browser gespeichert.', '#77694f');
+    bg.height = y + 2; c.setData('h', y + 2);
+  }
+
   // Editor umschalten (nur in 'stadt'). erzwungenAus=true schliesst nur.
   private toggleDorfEditor(erzwungenAus = false): void {
     if (this.area?.id !== 'stadt' || !DORFPLAN_AN) { if (this.dorfEdit) { this.dorfEdit = false; this.beendeDorfEditor(); } return; }
@@ -2291,7 +2423,7 @@ export class WorldScene extends CombatScene {
     if (neu) {
       this.setzeFreiKamera(true);   // frei schwenken (WASD/Mittelmaus), Held haelt still
       this.baueDorfToolbar();
-      this.logMsg('Dorf-Editor AN: Box ziehen = verschieben, weißer Eck-Griff = Größe. Baukasten setzt neue Marker. [P] beendet.', 'gold');
+      this.logMsg('Dorf-Editor AN: Box ziehen = verschieben, weißer Eck-Griff = Größe. Baukasten setzt neue Marker. [F8] beendet.', 'gold');
     } else {
       this.beendeDorfEditor();
     }
@@ -2503,6 +2635,15 @@ export class WorldScene extends CombatScene {
   // Globaler Karten-Klick im Editor: platziert (aktiver Typ) oder hebt die Auswahl
   // auf. Klicks auf die Leiste bleiben aussen vor; Rechtsklick bricht den Typ ab.
   private dorfEditPointer = (ptr: Phaser.Input.Pointer): void => {
+    if (this.burgEdit) {
+      if (this.zeigerAufPanel(this.burgToolbar ?? null, ptr) || ptr.middleButtonDown() || ptr.button !== 0) return;
+      const burg = this.gebaeude3d.get('burg');
+      if (!burg?.bereit) return;
+      const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
+      const pos = burg.gesamtVersatz();
+      this.burgDrag = { wx0: wp.x, wy0: wp.y, dx0: pos.dx, dy0: pos.dy };
+      return;
+    }
     if (!this.dorfEdit) return;   // im Editor ist der Kampf gesperrt -> auch auf Touch nutzbar
     if (this.zeigerAufPanel(this.dorfToolbar ?? null, ptr)) return;   // Leiste = kein Weltklick
     if (ptr.middleButtonDown()) return;   // Mittelmaus = Kamera schwenken
@@ -2528,6 +2669,13 @@ export class WorldScene extends CombatScene {
 
   // Ziehen (verschieben) oder Groesse aendern - kachelgerastet, in die Karte geklemmt.
   private dorfEditMove = (ptr: Phaser.Input.Pointer): void => {
+    if (this.burgEdit && this.burgDrag && ptr.isDown) {
+      const burg = this.gebaeude3d.get('burg');
+      if (!burg?.bereit) return;
+      const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
+      burg.setzeGesamtVersatz(this.burgDrag.dx0 + wp.x - this.burgDrag.wx0, this.burgDrag.dy0 + wp.y - this.burgDrag.wy0, false);
+      return;
+    }
     if (this.dorfEdit && this.dorfMaltGerade && ptr.isDown && this.dorfMalTyp) {
       const wp = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
       this.dorfMale(wp.x, wp.y);
@@ -2550,6 +2698,12 @@ export class WorldScene extends CombatScene {
   };
 
   private dorfEditUp = (): void => {
+    if (this.burgDrag) {
+      this.burgDrag = null;
+      this.gebaeude3d.get('burg')?.speichereEditorWerte();
+      this.baueBurgToolbar();
+      return;
+    }
     if (this.dorfMaltGerade) { this.dorfMaltGerade = false; speichereWege(this.dorfWege); }
     if (!this.dorfDrag) return;
     this.dorfDrag = null;
@@ -2739,6 +2893,11 @@ export class WorldScene extends CombatScene {
   // nur die alten Flüssigkeits-Tile-Sprites in der Region entfernt (kein Doppel-
   // Render). Komplett über FLUSS_SHADER abschaltbar.
   private spawneFluessigkeitsShader(a: AreaData): void {
+    // Die Fuerstenburg behaelt nur schmale Wasser-Kacheln am fernen Kartenrand,
+    // damit die Oberweltnaehte stimmen. Deren zusammenhaengende Bounding-Box
+    // spannt fast die ganze Karte auf; der alte Quad-Shader wuerde deshalb den
+    // gesamten Burgboden wie Wasser animieren. Hier bleiben nur lokale Tiles.
+    if (a.id === 'burg') return;
     if (a.wasserLauf) return;   // Karte nutzt das neue prozedurale Wasser (spawneNeuesWasser)
     if (!FLUSS_SHADER.aktiv) return;
     const auftraege: Array<{ id: number; preset: FluessigkeitPreset }> = [];
@@ -6860,11 +7019,12 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     { box: 'B6', id: 'muehle', url: 'houses/mill/medieval_mill_house_3d_runtime.json', yaw: 180 },
   ] as const;
 
-  private starteGebaeude3d(id: string, url: string, footX: number, footY: number, yaw: number): void {
+  private starteGebaeude3d(id: string, url: string, footX: number, footY: number, yaw: number, standardSkala = 1): void {
     this.gebaeude3d.get(id)?.destroy();
     this.gebaeude3d.set(id, new Gebaeude3DWelt(this, {
-      id, jsonUrl: url, footX, footY, standardYaw: yaw,
+      id, jsonUrl: url, footX, footY, standardYaw: yaw, standardSkala,
       ignoriere: (o) => this.uiCam?.ignore(o),
+      onBereit: () => { if (id === 'burg' && this.burgEdit) this.baueBurgToolbar(); },
     }));
   }
 
@@ -7751,6 +7911,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     // UI-Klick und darf NICHT als Weltklick (Spawn/Bau) durchgereicht werden.
     if (this.zeigerAufPanel(this.rtsLeiste, ptr)) return true;
     if (this.zeigerAufPanel(this.dorfToolbar ?? null, ptr)) return true;   // R105: Editor-Leiste
+    if (this.zeigerAufPanel(this.burgToolbar ?? null, ptr)) return true;
     return this.hud?.klickBlockiert(ptr) ?? false;
   }
 
@@ -9957,7 +10118,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     // Baukasten zählt als blockierend (Runde 40): beim Welt-Editieren darf der
     // Held NICHT zuschlagen/zaubern - jeder Mal-Klick löste sonst zugleich eine
     // Kampfaktion in der laufenden Welt aus (mögliche Absturzquelle beim "Weg malen").
-    return super.uiBlocked() || this.dialog?.open || this.shop?.open || this.stash?.open || !!this.deathOverlay || !!this.pauseMenu || !!this.heldEditor?.blocked || !!this.baukastenPanel || this.dorfEdit;
+    return super.uiBlocked() || this.dialog?.open || this.shop?.open || this.stash?.open || !!this.deathOverlay || !!this.pauseMenu || !!this.heldEditor?.blocked || !!this.baukastenPanel || this.dorfEdit || this.burgEdit;
   }
 
   // --- Zerstörbare Objekte ---------------------------------------------------

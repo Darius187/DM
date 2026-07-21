@@ -15,7 +15,7 @@
 
 import Phaser from 'phaser';
 import { getSettings, saveSettings } from '../logic/settings';
-import type { Gebaeude3D } from '../demo3d/gebaeude3d';
+import type { Gebaeude3D, Teil3DTransform } from '../demo3d/gebaeude3d';
 
 const GRAD = Math.PI / 180;
 const TUER_REICHWEITE = 1.6;    // Meter: Tuer oeffnet, wenn der Held so nah ist
@@ -32,7 +32,9 @@ export interface Gebaeude3DOpts {
   jsonUrl: string;               // Runtime-Manifest (relativ zu publicDir)
   footX: number; footY: number;  // Welt-Pixel des Modell-Ursprungs (Pivot am Boden)
   standardYaw?: number;
+  standardSkala?: number;
   ignoriere?: (o: Phaser.GameObjects.GameObject) => void;
+  onBereit?: () => void;
 }
 
 export function gebaeudeEinstellung(id: string, standardYaw = 0): { yaw: number } {
@@ -48,6 +50,7 @@ export class Gebaeude3DWelt {
   private vorderBild?: Phaser.GameObjects.Image;
   private tex?: Phaser.Textures.CanvasTexture;
   private texKey: string;
+  private basisFootX: number; private basisFootY: number;
   private footX: number; private footY: number;
   private ignoriere: (o: Phaser.GameObjects.GameObject) => void;
   private zerstoert = false;
@@ -57,7 +60,9 @@ export class Gebaeude3DWelt {
   private ladeFehler = false;
 
   constructor(private scene: Phaser.Scene, private opts: Gebaeude3DOpts) {
-    this.footX = opts.footX; this.footY = opts.footY;
+    this.basisFootX = opts.footX; this.basisFootY = opts.footY;
+    const pos = getSettings().gebaeude3d?.position?.[opts.id] ?? { dx: 0, dy: 0 };
+    this.footX = opts.footX + pos.dx; this.footY = opts.footY + pos.dy;
     this.ignoriere = opts.ignoriere ?? (() => {});
     this.texKey = `geb3d_${opts.id}`;
     gebaeudeEinstellung(opts.id, opts.standardYaw ?? 0);
@@ -70,6 +75,7 @@ export class Gebaeude3DWelt {
       const g = await ladeGebaeude3D(this.opts.jsonUrl, 900);
       if (this.zerstoert) { g.dispose(); return; }
       this.gebaeude = g;
+      g.setTeilTransforms(getSettings().gebaeude3d?.teile?.[this.opts.id] ?? {});
       for (const t of g.tueren) this.tuerAnteile[t.key] = 0;
       if (this.scene.textures.exists(this.texKey)) this.scene.textures.remove(this.texKey);
       this.tex = this.scene.textures.createCanvas(this.texKey, g.canvas.width, g.canvas.height) ?? undefined;
@@ -86,6 +92,7 @@ export class Gebaeude3DWelt {
         this.ignoriere(this.vorderBild);
       }
       this.stelleSprite();
+      this.opts.onBereit?.();
     } catch (e) {
       this.ladeFehler = true;
       if (import.meta.env.DEV) console.warn(`3D-Gebaeude ${this.opts.id} laedt nicht:`, e);
@@ -281,7 +288,75 @@ export class Gebaeude3DWelt {
   }
 
   setPosition(footX: number, footY: number): void {
-    this.footX = footX; this.footY = footY;
+    this.basisFootX = footX; this.basisFootY = footY;
+    const pos = this.gesamtVersatz();
+    this.footX = footX + pos.dx; this.footY = footY + pos.dy;
+    this.stelleSprite();
+  }
+
+  gesamtVersatz(): { dx: number; dy: number } {
+    return { ...(getSettings().gebaeude3d?.position?.[this.opts.id] ?? { dx: 0, dy: 0 }) };
+  }
+
+  setzeGesamtVersatz(dx: number, dy: number, speichern = true): void {
+    const s = getSettings();
+    if (!s.gebaeude3d) s.gebaeude3d = { ppm: 16, drehung: {} };
+    s.gebaeude3d.position ??= {};
+    s.gebaeude3d.position[this.opts.id] = {
+      dx: Math.max(-1600, Math.min(1600, Math.round(dx))),
+      dy: Math.max(-1600, Math.min(1600, Math.round(dy))),
+    };
+    const pos = s.gebaeude3d.position[this.opts.id];
+    this.footX = this.basisFootX + pos.dx; this.footY = this.basisFootY + pos.dy;
+    if (speichern) saveSettings();
+    this.stelleSprite();
+  }
+
+  speichereEditorWerte(): void { saveSettings(); }
+
+  editierbareTeile(): Array<{ id: string; label: string }> { return this.gebaeude?.editierbareTeile() ?? []; }
+
+  teilTransform(id: string): Teil3DTransform {
+    return { ...(getSettings().gebaeude3d?.teile?.[this.opts.id]?.[id]
+      ?? { dx: 0, dy: 0, drehung: 0, skala: 1 }) };
+  }
+
+  veraendereTeil(id: string, delta: Partial<Teil3DTransform>): void {
+    const s = getSettings();
+    if (!s.gebaeude3d) s.gebaeude3d = { ppm: 16, drehung: {} };
+    s.gebaeude3d.teile ??= {};
+    s.gebaeude3d.teile[this.opts.id] ??= {};
+    const alt = this.teilTransform(id);
+    const neu: Teil3DTransform = {
+      dx: Math.max(-12, Math.min(12, +(alt.dx + (delta.dx ?? 0)).toFixed(2))),
+      dy: Math.max(-12, Math.min(12, +(alt.dy + (delta.dy ?? 0)).toFixed(2))),
+      drehung: +((alt.drehung + (delta.drehung ?? 0) + 540) % 360 - 180).toFixed(1),
+      skala: Math.max(0.5, Math.min(2, +(alt.skala + (delta.skala ?? 0)).toFixed(2))),
+    };
+    s.gebaeude3d.teile[this.opts.id][id] = neu;
+    saveSettings();
+    this.gebaeude?.setTeilTransforms(s.gebaeude3d.teile[this.opts.id]);
+    this.stelleSprite();
+  }
+
+  setzeTeilZurueck(id: string): void {
+    const s = getSettings();
+    if (s.gebaeude3d?.teile?.[this.opts.id]) delete s.gebaeude3d.teile[this.opts.id][id];
+    saveSettings();
+    this.gebaeude?.setTeilTransforms(s.gebaeude3d?.teile?.[this.opts.id] ?? {});
+    this.stelleSprite();
+  }
+
+  setzeGesamtZurueck(): void {
+    const s = getSettings();
+    if (!s.gebaeude3d) s.gebaeude3d = { ppm: 16, drehung: {} };
+    s.gebaeude3d.drehung[this.opts.id] = this.opts.standardYaw ?? 0;
+    s.gebaeude3d.skalaF ??= {};
+    s.gebaeude3d.skalaF[this.opts.id] = this.opts.standardSkala ?? 1;
+    s.gebaeude3d.position ??= {};
+    s.gebaeude3d.position[this.opts.id] = { dx: 0, dy: 0 };
+    saveSettings();
+    this.footX = this.basisFootX; this.footY = this.basisFootY;
     this.stelleSprite();
   }
 

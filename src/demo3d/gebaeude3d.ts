@@ -41,6 +41,21 @@ interface RohGuide {
   size_blender_xyz: [number, number, number];
 }
 
+interface EditierbarerTeilDef {
+  id: string;
+  label: string;
+  node: string;
+  nodes?: string[];
+  collision_guides: string[];
+}
+
+export interface Teil3DTransform {
+  dx: number;
+  dy: number;
+  drehung: number;
+  skala: number;
+}
+
 interface Manifest {
   model: string;
   root_node: string;
@@ -58,6 +73,7 @@ interface Manifest {
   collision_guides: RohGuide[];
   markers: { name: string; role: string; floor: string; blender_xyz: number[] }[];
   node_groups?: { horses?: string[] };
+  editable_parts?: EditierbarerTeilDef[];
 }
 
 interface RendererPoolEintrag {
@@ -164,6 +180,12 @@ export class Gebaeude3D {
   private zustand!: GebaeudeState;
   private disposed = false;
   private environment?: THREE.Texture;
+  private teilBasis = new Map<string, {
+    knoten: Array<{ o: THREE.Object3D; position: THREE.Vector3; rotationY: number; skala: THREE.Vector3 }>;
+    pivot: { x: number; y: number };
+    lokalerPivot: THREE.Vector3;
+  }>();
+  private teilTransforms = new Map<string, Teil3DTransform>();
   readonly hatInnenraum: boolean;
 
   marker(name: string): { x: number; y: number; z: number } | null {
@@ -185,7 +207,7 @@ export class Gebaeude3D {
   tueren: TuerDef[] = [];
   grenzen!: PlanRect;        // Plan-Bounds (fuer schnellen Fruehtest)
 
-  constructor(private manifest: Manifest, gltfScene: THREE.Group, animationen: THREE.AnimationClip[], private groesse: number) {
+  constructor(private manifest: Manifest, private gltfScene: THREE.Group, animationen: THREE.AnimationClip[], private groesse: number) {
     this.hatInnenraum = manifest.runtime_mode !== 'exterior_only' && manifest.walkable_interior?.enabled !== false;
     this.renderer = leiheRenderer(groesse);
     this.canvas = this.renderer.domElement;
@@ -211,6 +233,22 @@ export class Gebaeude3D {
     }
     // Pivot laut Manifest (HOUSE_/FORGE_ROTATION_PIVOT): NUR dieser dreht um Y.
     this.pivot = gltfScene.getObjectByName(manifest.root_node) ?? gltfScene;
+
+    // Benannte Burgteile behalten ihre Export-Transformation als unveraenderliche
+    // Basis. Der Spiel-Editor legt nur gespeicherte Versatzwerte darueber.
+    gltfScene.updateMatrixWorld(true);
+    for (const def of manifest.editable_parts ?? []) {
+      const namen = def.nodes?.length ? def.nodes : [def.node];
+      const knoten = namen
+        .map((name) => gltfScene.getObjectByName(name))
+        .filter((o): o is THREE.Object3D => !!o)
+        .map((o) => ({ o, position: o.position.clone(), rotationY: o.rotation.y, skala: o.scale.clone() }));
+      const haupt = gltfScene.getObjectByName(def.node);
+      if (!knoten.length || !haupt) continue;
+      const p = haupt.getWorldPosition(new THREE.Vector3());
+      this.teilBasis.set(def.id, { knoten, pivot: { x: p.x, y: -p.z }, lokalerPivot: haupt.position.clone() });
+      this.teilTransforms.set(def.id, { dx: 0, dy: 0, drehung: 0, skala: 1 });
+    }
 
     // Kamera schaut auf die PIVOT-ACHSE (x=0,z=0) in halber Gebaeudehoehe: so
     // bleibt der Modell-Ursprung beim Drehen fix im Bild (exakter Welt-Anker).
@@ -259,6 +297,63 @@ export class Gebaeude3D {
 
     this.baueBegehbarkeit(gltfScene);
     this.zustand = this.standard();
+  }
+
+  editierbareTeile(): Array<{ id: string; label: string }> {
+    return (this.manifest.editable_parts ?? [])
+      .filter((def) => this.teilBasis.has(def.id))
+      .map(({ id, label }) => ({ id, label }));
+  }
+
+  teilTransform(id: string): Teil3DTransform {
+    return { ...(this.teilTransforms.get(id) ?? { dx: 0, dy: 0, drehung: 0, skala: 1 }) };
+  }
+
+  setTeilTransforms(transforms: Record<string, Teil3DTransform>): void {
+    for (const def of this.manifest.editable_parts ?? []) {
+      const basis = this.teilBasis.get(def.id);
+      if (!basis) continue;
+      const roh = transforms[def.id] ?? { dx: 0, dy: 0, drehung: 0, skala: 1 };
+      const t: Teil3DTransform = {
+        dx: Math.max(-12, Math.min(12, Number.isFinite(roh.dx) ? roh.dx : 0)),
+        dy: Math.max(-12, Math.min(12, Number.isFinite(roh.dy) ? roh.dy : 0)),
+        drehung: Number.isFinite(roh.drehung) ? roh.drehung : 0,
+        skala: Math.max(0.5, Math.min(2, Number.isFinite(roh.skala) ? roh.skala : 1)),
+      };
+      this.teilTransforms.set(def.id, t);
+      const a = t.drehung * GRAD, c = Math.cos(a), s = Math.sin(a);
+      for (const k of basis.knoten) {
+        const rx = (k.position.x - basis.lokalerPivot.x) * t.skala;
+        const ry = -(k.position.z - basis.lokalerPivot.z) * t.skala;
+        k.o.position.set(
+          basis.lokalerPivot.x + rx * c - ry * s + t.dx,
+          basis.lokalerPivot.y + (k.position.y - basis.lokalerPivot.y) * t.skala,
+          basis.lokalerPivot.z - (rx * s + ry * c) - t.dy,
+        );
+        k.o.rotation.y = k.rotationY + t.drehung * GRAD;
+        k.o.scale.copy(k.skala).multiplyScalar(t.skala);
+      }
+    }
+    this.gltfScene.updateMatrixWorld(true);
+    this.aktualisiereKameraBounds();
+    this.baueBegehbarkeit(this.gltfScene);
+    this.dirty = true;
+  }
+
+  private aktualisiereKameraBounds(): void {
+    const yaw = this.pivot.rotation.y;
+    this.pivot.rotation.y = 0;
+    this.gltfScene.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(this.gltfScene);
+    const center = box.getCenter(new THREE.Vector3());
+    this.mitteY = center.y;
+    this.radius = Math.max(
+      new THREE.Vector2(box.min.x, box.min.z).length(), new THREE.Vector2(box.max.x, box.max.z).length(),
+      new THREE.Vector2(box.min.x, box.max.z).length(), new THREE.Vector2(box.max.x, box.min.z).length(),
+      (box.max.y - box.min.y) / 2 + 1,
+    ) * 1.12;
+    this.pivot.rotation.y = yaw;
+    this.gltfScene.updateMatrixWorld(true);
   }
 
   standard(): GebaeudeState {
@@ -333,8 +428,14 @@ export class Gebaeude3D {
       max: [box.max.x, -box.min.z, box.max.y],
       center: [], size: [], bounding_radius: 0,
     };
+    const guideRects = this.manifest.collision_guides.map((g) => this.guideRect(g));
     const rand = 2;
-    this.grenzen = { x0: b.min[0] - rand, y0: b.min[1] - rand, x1: b.max[0] + rand, y1: b.max[1] + rand };
+    this.grenzen = {
+      x0: Math.min(b.min[0], ...guideRects.map((r) => r.x0)) - rand,
+      y0: Math.min(b.min[1], ...guideRects.map((r) => r.y0)) - rand,
+      x1: Math.max(b.max[0], ...guideRects.map((r) => r.x1)) + rand,
+      y1: Math.max(b.max[1], ...guideRects.map((r) => r.y1)) + rand,
+    };
     const mk = (): PlanGitter => new PlanGitter(this.grenzen.x0, this.grenzen.y0, this.grenzen.x1, this.grenzen.y1);
     this.blockEG = mk(); this.blockOG = mk(); this.innenEG = mk(); this.bodenOG = mk();
 
@@ -351,12 +452,9 @@ export class Gebaeude3D {
 
   // Schmiede-Weg: die Runtime-JSON traegt echte Zentren -> Guides 1:1 uebernehmen.
   private begehbarkeitAusJson(): void {
-    const rect = (g: RohGuide): PlanRect => ({
-      x0: g.center_blender_xyz[0] - g.size_blender_xyz[0] / 2, y0: g.center_blender_xyz[1] - g.size_blender_xyz[1] / 2,
-      x1: g.center_blender_xyz[0] + g.size_blender_xyz[0] / 2, y1: g.center_blender_xyz[1] + g.size_blender_xyz[1] / 2,
-    });
+    this.treppe = null;
     for (const g of this.manifest.collision_guides) {
-      const r = rect(g);
+      const r = this.guideRect(g);
       if (g.kind === 'block') {
         if (g.role === 'stair_opening') continue;           // Loch im OG-Boden: die Treppe regelt den Uebergang
         if (g.floor === 'UPPER') this.blockOG.fuelle(r);
@@ -373,6 +471,28 @@ export class Gebaeude3D {
     // OG-Bodenhoehe aus den NAV-Zentren (z), Standard 3.1 m
     const og = this.manifest.collision_guides.find((g) => g.kind === 'walk' && g.floor === 'UPPER');
     if (og) this.ogHoehe = og.center_blender_xyz[2];
+  }
+
+  // Ein editierter Turm/ein Hofgebaeude nimmt seine Blockierflaeche mit. Das
+  // Kollisionsgitter ist achsenparallel; nach Drehung wird daher die umschliessende
+  // AABB des gedrehten Rechtecks verwendet.
+  private guideRect(g: RohGuide): PlanRect {
+    let cx = g.center_blender_xyz[0], cy = g.center_blender_xyz[1];
+    let sx = g.size_blender_xyz[0], sy = g.size_blender_xyz[1];
+    const def = (this.manifest.editable_parts ?? []).find((p) => p.collision_guides.includes(g.name));
+    const basis = def ? this.teilBasis.get(def.id) : undefined;
+    const t = def ? this.teilTransforms.get(def.id) : undefined;
+    if (basis && t) {
+      const a = t.drehung * GRAD, c = Math.cos(a), s = Math.sin(a);
+      const rx = (cx - basis.pivot.x) * t.skala;
+      const ry = (cy - basis.pivot.y) * t.skala;
+      cx = basis.pivot.x + rx * c - ry * s + t.dx;
+      cy = basis.pivot.y + rx * s + ry * c + t.dy;
+      const bx = sx * t.skala, by = sy * t.skala;
+      sx = Math.abs(c) * bx + Math.abs(s) * by;
+      sy = Math.abs(s) * bx + Math.abs(c) * by;
+    }
+    return { x0: cx - sx / 2, y0: cy - sy / 2, x1: cx + sx / 2, y1: cy + sy / 2 };
   }
 
   // Haus-Weg (JSON-Zentren fehlen): Welt-AABBs der GLB-Meshes + extras.

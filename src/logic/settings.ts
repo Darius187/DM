@@ -121,12 +121,19 @@ export interface Settings {
   // 3D-Zimmermannshaus in Ravensmoor (R131c): Drehung/Kamera/Skala/Versatz frei
   // tunebar und persistent (drehbar + verschiebbar, UI-Regel 11). Eine Datei ändern.
   haus3d?: { yaw: number; elev: number; azimut: number; skala: number; dx: number; dy: number }; // ALT (R131c), wird nach gebaeude3d migriert
-  // R132: 3D-Gebaeude (Zimmermannshaus, Schmiede) - EINE gemeinsame Groesse
+  // R132/R198: 3D-Gebaeude - gemeinsame Groesse, je Gebaeude Drehung/Skala/
+  // Weltversatz und bei der Fuerstenburg zusaetzlich editierbare GLB-Teile.
   // (ppm = Pixel je Meter, "einheitliche Groesse beider Gebaeude") und je
   // Gebaeude eine Drehung. Im Dorf-Editor einstellbar, hier persistent.
   // R150: skalaF = EINZEL-Groessenfaktor je Gebaeude (Kirche unabhaengig vom
   // Rest), multipliziert auf die gemeinsame ppm-Groesse.
-  gebaeude3d?: { ppm: number; drehung: Record<string, number>; skalaF?: Record<string, number> };
+  gebaeude3d?: {
+    ppm: number;
+    drehung: Record<string, number>;
+    skalaF?: Record<string, number>;
+    position?: Record<string, { dx: number; dy: number }>;
+    teile?: Record<string, Record<string, { dx: number; dy: number; drehung: number; skala: number }>>;
+  };
   kb: KeyBindings;
 }
 
@@ -178,7 +185,7 @@ export const DEF_SETTINGS: Settings = {
   uiLayoutV: 5, // kompaktes Holz-HUD mit integrierten Ressourcenbalken
   barV: 1,      // Runde 49: Leiste startet leer (Skills selbst belegen)
   haus3d: { yaw: 210, elev: 52, azimut: 0, skala: 1, dx: 0, dy: 0 }, // ALT (Migration)
-  gebaeude3d: { ppm: 16, drehung: { haus: 210, schmiede: 0 } }, // R132: 3D-Gebaeude im Dorf
+  gebaeude3d: { ppm: 16, drehung: { haus: 210, schmiede: 0 }, skalaF: { burg: 0.7 } }, // R198: Burg kleiner im Kartenbild
   kb: {
     roll: ' ', interact: 'e', inv: 'i', charakter: 'c',
     pot: 'q', mpot: 'f', s1: '1', s2: '2', s3: '3',
@@ -205,6 +212,9 @@ export function getSettings(): Settings {
       current.gebaeude3d = {
         ppm: saved.gebaeude3d?.ppm ?? DEF_SETTINGS.gebaeude3d!.ppm,
         drehung: { ...DEF_SETTINGS.gebaeude3d!.drehung, ...(saved.gebaeude3d?.drehung ?? {}) },
+        skalaF: { ...(DEF_SETTINGS.gebaeude3d!.skalaF ?? {}), ...(saved.gebaeude3d?.skalaF ?? {}) },
+        position: { ...(DEF_SETTINGS.gebaeude3d!.position ?? {}), ...(saved.gebaeude3d?.position ?? {}) },
+        teile: { ...(DEF_SETTINGS.gebaeude3d!.teile ?? {}), ...(saved.gebaeude3d?.teile ?? {}) },
       };
       if (!saved.gebaeude3d && saved.haus3d) current.gebaeude3d.drehung.haus = saved.haus3d.yaw;
       current.maus = { ...DEF_SETTINGS.maus, ...(saved.maus ?? {}) };

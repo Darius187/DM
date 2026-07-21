@@ -29,7 +29,7 @@
     "camera_elevation_degrees": {
       "min": 28,
       "max": 68,
-      "default": 48
+      "default": 38
     },
     "camera_azimuth_degrees": {
       "min": -180,
@@ -56,6 +56,7 @@
   "courtyard_surfaces": {
     "uv_tile_meters": 4.0,
     "packed_earth_material": "BRG_MAT_CourtyardPackedEarth",
+    "stable_zone_material": "BRG_MAT_CourtyardPackedEarth",
     "paving_material": "BRG_MAT_CourtyardPaving",
     "moss_edge_material": "BRG_MAT_CourtyardMoss",
     "textures_embedded_in_glb": true
@@ -605,6 +606,94 @@
     ],
     "wall_landings": []
   },
+  "editable_parts": [
+    {
+      "id": "gatehouse",
+      "label": "Haupttorhaus",
+      "node": "BRG_MainGatehouse",
+      "nodes": [
+        "BRG_MainGatehouse",
+        "BRG_GateDoor_Left_Open",
+        "BRG_GateDoor_Right_Open"
+      ],
+      "collision_guides": [
+        "COLLISION_BRG_MainGatehouse_West",
+        "COLLISION_BRG_MainGatehouse_East"
+      ]
+    },
+    {
+      "id": "gate_tower_west",
+      "label": "Torturm West",
+      "node": "BRG_GateTower_West",
+      "collision_guides": [
+        "COLLISION_BRG_GateTower_West"
+      ]
+    },
+    {
+      "id": "gate_tower_east",
+      "label": "Torturm Ost",
+      "node": "BRG_GateTower_East",
+      "collision_guides": [
+        "COLLISION_BRG_GateTower_East"
+      ]
+    },
+    {
+      "id": "rear_tower_nw",
+      "label": "Eckturm Nordwest",
+      "node": "BRG_RearFlankTower_NW",
+      "collision_guides": [
+        "COLLISION_BRG_RearFlankTower_NW"
+      ]
+    },
+    {
+      "id": "keep",
+      "label": "Bergfried",
+      "node": "BRG_Keep_RearEast",
+      "collision_guides": [
+        "COLLISION_BRG_Keep_RearEast"
+      ]
+    },
+    {
+      "id": "palas",
+      "label": "Palas",
+      "node": "BRG_Palas_GreatHall_North",
+      "collision_guides": [
+        "COLLISION_BRG_Palas_GreatHall_North"
+      ]
+    },
+    {
+      "id": "chapel",
+      "label": "Kapelle",
+      "node": "BRG_SmallChapel_NorthEast",
+      "collision_guides": [
+        "COLLISION_BRG_SmallChapel_NorthEast"
+      ]
+    },
+    {
+      "id": "kitchen",
+      "label": "Kueche",
+      "node": "BRG_Kitchen_West",
+      "collision_guides": [
+        "COLLISION_BRG_Kitchen_West"
+      ]
+    },
+    {
+      "id": "storage",
+      "label": "Lagerhaus",
+      "node": "BRG_Storage_West",
+      "collision_guides": [
+        "COLLISION_BRG_Storage_West"
+      ]
+    },
+    {
+      "id": "stable",
+      "label": "Stall",
+      "node": "BRG_Stable_Shelter_East",
+      "collision_guides": [
+        "COLLISION_BRG_Stable_Shelter_East"
+      ]
+    }
+  ],
   "source_blend": "castle_reworked.blend",
   "phaser_integration": {
     "runtime": "src/demo3d/gebaeude3d.ts + src/gfx/gebaeude3dWelt.ts",
