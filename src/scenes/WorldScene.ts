@@ -12742,7 +12742,12 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       const door = this.area.doors?.find((d) => d.x === ptx && d.y === pty);
       if (door) {
         const name = INNENRAEUME[door.haus]?.name ?? 'Haus';
-        return { text: `${name} - ${ik} zum Eintreten`, action: () => this.goArea(`innen_${door.haus}`) };
+        return { text: `${name} - ${ik} zum Eintreten`, action: () => {
+          // R-Fix: merken, WOHER man kommt - leaveInterior kehrte frueher immer
+          // ins ALTE Dorf zurueck (ARCHIV-Regel!). Jetzt zurueck zur Herkunftskarte.
+          this.innenVonArea = this.area.id;
+          this.goArea(`innen_${door.haus}`);
+        } };
       }
     }
     if (tid === T.WENDEL) {
@@ -12846,12 +12851,22 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   }
 
   // Aus der Stube zurück vor die Haustür
+  // Herkunftskarte, aus der eine Innen-Instanz betreten wurde (fuer den Ausgang).
+  private innenVonArea: string | null = null;
+
   private leaveInterior(): void {
     const haus = this.area.innenHaus;
-    const village = this.getArea('village');
-    const door = village.doors?.find((d) => d.haus === haus);
+    // R-Fix: zurueck zur HERKUNFTSKARTE (frueher hart 'village' -> ARCHIV-Regel
+    // verletzt, man landete im toten Dorf). Fallback: die Karte, die eine Tuer
+    // fuer dieses Haus hat (stadt bevorzugt), sonst 'village'.
+    let zielId = this.innenVonArea;
+    if (!zielId || !this.getArea(zielId).doors?.some((d) => d.haus === haus)) {
+      zielId = this.getArea('stadt').doors?.some((d) => d.haus === haus) ? 'stadt' : 'village';
+    }
+    const ziel = this.getArea(zielId);
+    const door = ziel.doors?.find((d) => d.haus === haus);
     this.sfx.play('tuer');
-    this.goArea('village', door ? { x: (door.x + 0.5) * TILE, y: (door.y + 1.5) * TILE } : undefined);
+    this.goArea(zielId, door ? { x: (door.x + 0.5) * TILE, y: (door.y + 1.5) * TILE } : undefined);
   }
 
   private checkTriggers(): void {
