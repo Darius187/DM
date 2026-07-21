@@ -110,6 +110,7 @@ export interface Settings {
     kriegsnebelDraussen?: boolean; // R130: DEV-Test - Nebel auch in der Aussenwelt
     heldGlutUeberFigur?: boolean;  // R130-Fallback: Held-Schein wieder UEBER der Figur (alt)
     heldEigenGlut?: boolean;       // R131: warmer Halo UM den Helden (aus = nur normal beleuchtet)
+    heldLichtHinten?: boolean;     // Autor: Held-Licht HINTER den Helden projizieren (aus = davor, wie bisher)
     vignetteAn?: boolean;          // R171 (Autor "dunkler Schleier am Rand - entferne das"): Standard AUS
   };
   audioV: number;         // einmalige Audio-Standards (Runde 40: Musik auf 20%)
@@ -177,7 +178,7 @@ export const DEF_SETTINGS: Settings = {
   dungeonStaerke: 100, // Runde 58 / R131: 0-150, 100 = fast schwarz, >118 komplett
   kampfTexte: true,
   gegnerWindupRing: false,   // R131 (Autor: rote Ringe weg)
-  licht: { variante: 2, sichtRadius: 183, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: true, fackelHelligkeit: 23, fackelReichweite: 100, fackelFarbe: 31, dungeonWeichheit: 99, schattenFackeln: 100, heldFarbe: 18, alleFackelnSchatten: true, effekteSchatten: false, fackelSicht: true, heldSchatten: false, fackelSichtTol: 0, fackelDistanz: 100, fackelRaumLicht: 4, fackelRaumFarbe: 33, fackelGlutRadius: 0, lichtSchaerfe: 86, heldSichtfeld: true, sichtfeldRadius: 100, sichtfeldStaerke: 19, umgebungslicht: 0, lichtHelligkeit: 42, schattenNah: 0, schattenFern: 100, fackelBlende: 68, nachtDunkel: 82, nachtSicht: 240, nachtGlut: 50, nachtGlutFarbe: 0xffcf86, wandHoehe: 1.25, kriegsnebel: false, nebelErinnerung: 45, nebelErinnerungAn: false, kriegsnebelDraussen: false, heldGlutUeberFigur: false, heldEigenGlut: false },
+  licht: { variante: 2, sichtRadius: 183, heldLichtAn: true, feuerNeu: true, weichheit: 70, sonneRaycast: false, sonneKegel: 60, dungeonNeu: true, fackelHelligkeit: 23, fackelReichweite: 100, fackelFarbe: 31, dungeonWeichheit: 99, schattenFackeln: 100, heldFarbe: 18, alleFackelnSchatten: true, effekteSchatten: false, fackelSicht: true, heldSchatten: false, fackelSichtTol: 0, fackelDistanz: 100, fackelRaumLicht: 4, fackelRaumFarbe: 33, fackelGlutRadius: 0, lichtSchaerfe: 86, heldSichtfeld: true, sichtfeldRadius: 100, sichtfeldStaerke: 19, umgebungslicht: 0, lichtHelligkeit: 42, schattenNah: 0, schattenFern: 100, fackelBlende: 68, nachtDunkel: 82, nachtSicht: 240, nachtGlut: 50, nachtGlutFarbe: 0xffcf86, wandHoehe: 1.25, kriegsnebel: false, nebelErinnerung: 45, nebelErinnerungAn: false, kriegsnebelDraussen: false, heldGlutUeberFigur: false, heldEigenGlut: false, heldLichtHinten: false },
   audioV: 1,
   zoomV: 1,
   bloomV: 1,

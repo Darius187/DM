@@ -9848,7 +9848,11 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     //   der Boden ringsum leuchtet, die Figur strahlt nicht von innen.
     // - "Eigengluehen" AUS (Standard): kein warmer Glut-Kern am Helden.
     if (lic.heldLichtAn) {
-      const heldY = lic.heldGlutUeberFigur ? this.py - 6 : this.py + 14;
+      // Autor "Held-Licht wahlweise VOR oder HINTER dem Helden projizieren":
+      // hinten = Lichtquelle deutlich ueber/hinter der Figur (weg vom Betrachter,
+      // Schatten faellt nach vorn); vorne (Standard) = am Fusspunkt wie bisher.
+      const heldY = lic.heldLichtHinten ? this.py - 34
+        : lic.heldGlutUeberFigur ? this.py - 6 : this.py + 14;
       lichter.push({ x: this.px, y: heldY, art: lic.heldSchatten ? 'fackel' : 'sicht', radius: lic.sichtRadius, weich, farbe: heldFarbe, raumLicht, raumFarbe, glutRadius: lic.heldEigenGlut ? glutRadius : 0, schattenHell: schNah });
     }
     // Nahe Fackeln: wie weit weg sie noch leuchten = Aktiv-Distanz-Regler. Die Sicht-
