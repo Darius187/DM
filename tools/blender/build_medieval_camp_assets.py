@@ -41,10 +41,14 @@ TEXTURE_DIR = SOURCE_DIR / "source_textures"
 for directory in (SOURCE_DIR, GAME_DIR, TEXTURE_DIR):
     directory.mkdir(parents=True, exist_ok=True)
 
-BLEND_PATH = SOURCE_DIR / f"{ASSET_NAME}.blend"
+ORIGINAL_BLEND_PATH = SOURCE_DIR / f"{ASSET_NAME}.blend"
+BLEND_PATH = (SOURCE_DIR / "tents_cloth_corrected.blend"
+              if ASSET_ID in {"field_tent", "command_pavilion"}
+              else ORIGINAL_BLEND_PATH)
 GLB_PATH = SOURCE_DIR / f"{ASSET_NAME}.glb"
 JSON_PATH = SOURCE_DIR / f"{ASSET_NAME}.json"
 PREVIEW_PATH = SOURCE_DIR / f"{ASSET_NAME}_preview.png"
+CLOTH_CLOSEUP_PATH = SOURCE_DIR / f"{ASSET_NAME}_cloth_closeup.png"
 
 
 def clear_scene():
@@ -77,6 +81,10 @@ runtime_collection = bpy.data.collections.new("RUNTIME")
 scene.collection.children.link(runtime_collection)
 helper_collection = bpy.data.collections.new("PREVIEW_HELPERS")
 scene.collection.children.link(helper_collection)
+backup_collection = bpy.data.collections.new("BACKUP_ORIGINAL_TENTS")
+scene.collection.children.link(backup_collection)
+backup_collection.hide_viewport = True
+backup_collection.hide_render = True
 
 root = bpy.data.objects.new(ROOT_NAMES[ASSET_ID], None)
 runtime_collection.objects.link(root)
@@ -152,15 +160,100 @@ def make_material(key, base, dark, light, kind, seed, roughness=.9, metallic=0.0
     return material
 
 
+def make_canvas_textures(key, base, seed, size=512):
+    """Baked PBR textures with macro weathering and a non-checkered micro weave."""
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) / size
+
+    def harmonic_noise(frequencies):
+        field = np.zeros((size, size), dtype=np.float32)
+        for frequency, amplitude in frequencies:
+            angle = rng.uniform(0, math.tau)
+            phase = rng.uniform(0, math.tau)
+            axis = math.cos(angle) * xx + math.sin(angle) * yy
+            field += np.sin((axis * frequency) * math.tau + phase) * amplitude
+        span = max(abs(float(field.min())), abs(float(field.max())), .001)
+        return .5 + field / (span * 2)
+
+    coarse = harmonic_noise(((2.1, .55), (3.7, .28), (6.3, .17)))
+    broad = harmonic_noise(((1.2, .65), (2.4, .25), (4.1, .10)))
+    fine = blur(rng.random((size, size), dtype=np.float32), 2)
+
+    stains = np.clip((broad - .51) * 1.75, -.28, .24)
+    mottling = (coarse - .5) * .14 + (fine - .5) * .035
+    shade = np.clip(.94 + mottling - np.maximum(stains, 0) * .26, .72, 1.10)
+    base_rgb = np.asarray(base, dtype=np.float32)
+    rgb = np.clip(base_rgb[None, None, :] * shade[..., None], 0, 1)
+    rgba = np.concatenate((rgb, np.ones((size, size, 1), dtype=np.float32)), axis=2)
+    color_image = bpy.data.images.new(f"camp_{key}_basecolor.png", width=size, height=size, alpha=True)
+    color_image.pixels.foreach_set(rgba.ravel())
+    color_image.filepath_raw = str(TEXTURE_DIR / f"camp_{key}_basecolor.png")
+    color_image.file_format = "PNG"
+    color_image.save()
+    color_image.pack()
+
+    warp = np.sin((xx * 151.0 + coarse * .25) * math.tau)
+    weft = np.sin((yy * 137.0 + broad * .22) * math.tau)
+    height = .5 + warp * .020 + weft * .018 + warp * weft * .006 + (fine - .5) * .010
+    grad_y, grad_x = np.gradient(height)
+    normal = np.dstack((-grad_x * 7.0, -grad_y * 7.0, np.ones_like(height)))
+    normal /= np.linalg.norm(normal, axis=2, keepdims=True)
+    normal_rgb = normal * .5 + .5
+    normal_rgba = np.concatenate((normal_rgb, np.ones((size, size, 1), dtype=np.float32)), axis=2)
+    normal_image = bpy.data.images.new(f"camp_{key}_normal.png", width=size, height=size, alpha=True)
+    normal_image.colorspace_settings.name = "Non-Color"
+    normal_image.pixels.foreach_set(normal_rgba.ravel())
+    normal_image.filepath_raw = str(TEXTURE_DIR / f"camp_{key}_normal.png")
+    normal_image.file_format = "PNG"
+    normal_image.save()
+    normal_image.pack()
+    return color_image, normal_image
+
+
+def make_canvas_material(name, key, base, seed, roughness=.86, sheen=.16):
+    color_image, normal_image = make_canvas_textures(key, base, seed)
+    material = bpy.data.materials.new(name)
+    material.use_nodes = True
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    bsdf = nodes.get("Principled BSDF")
+    color = nodes.new("ShaderNodeTexImage")
+    color.name = "GAME_READY_BAKED_BASECOLOR"
+    color.image = color_image
+    color.extension = "REPEAT"
+    normal_texture = nodes.new("ShaderNodeTexImage")
+    normal_texture.name = "GAME_READY_FINE_WEAVE_NORMAL"
+    normal_texture.image = normal_image
+    normal_texture.image.colorspace_settings.name = "Non-Color"
+    normal_texture.extension = "REPEAT"
+    normal_map = nodes.new("ShaderNodeNormalMap")
+    normal_map.name = "FINE_HANDWOVEN_CANVAS"
+    normal_map.inputs["Strength"].default_value = .14
+    links.new(color.outputs["Color"], bsdf.inputs["Base Color"])
+    links.new(normal_texture.outputs["Color"], normal_map.inputs["Color"])
+    links.new(normal_map.outputs["Normal"], bsdf.inputs["Normal"])
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = 0.0
+    bsdf.inputs["Alpha"].default_value = 1.0
+    if "Sheen Weight" in bsdf.inputs:
+        bsdf.inputs["Sheen Weight"].default_value = sheen
+    if "Specular IOR Level" in bsdf.inputs:
+        bsdf.inputs["Specular IOR Level"].default_value = .30
+    material["embedded_pbr_texture"] = color_image.name
+    material["embedded_normal_texture"] = normal_image.name
+    material["historical_surface"] = "heavy_handwoven_linen_canvas"
+    return material
+
+
 MATERIALS = {
     "wood_dark": make_material("wood_dark", (.13, .078, .038), (.022, .014, .008), (.28, .17, .075), "wood", 11, .94),
     "wood_mid": make_material("wood_mid", (.24, .145, .068), (.055, .030, .014), (.43, .29, .13), "wood", 12, .91),
     "shaft": make_material("arrow_shaft", (.34, .225, .105), (.10, .060, .025), (.56, .40, .18), "wood", 13, .88),
     "wicker": make_material("wicker", (.31, .205, .095), (.075, .043, .017), (.53, .39, .17), "wood", 14, .96),
     "rope": make_material("hemp_rope", (.31, .235, .125), (.075, .052, .026), (.53, .43, .24), "fabric", 15, .99),
-    "canvas": make_material("weathered_canvas", (.50, .445, .335), (.17, .145, .105), (.72, .66, .52), "fabric", 16, .99),
-    "canvas_dark": make_material("canvas_shadow", (.25, .225, .18), (.065, .055, .044), (.42, .38, .30), "fabric", 17, 1.0),
-    "red_cloth": make_material("faded_red_cloth", (.31, .105, .068), (.075, .022, .018), (.52, .20, .12), "fabric", 18, .98),
+    "canvas": make_canvas_material("MAT_TENT_CANVAS", "tent_canvas", (.58, .50, .38), 16, .86, .17),
+    "canvas_dark": make_canvas_material("MAT_TENT_CANVAS_SHADOW", "tent_canvas_shadow", (.31, .265, .205), 17, .90, .11),
+    "red_cloth": make_canvas_material("MAT_FADED_RED_TENT_CLOTH", "faded_red_tent_cloth", (.30, .105, .065), 18, .89, .12),
     "leather": make_material("worn_leather", (.20, .105, .050), (.045, .020, .010), (.39, .22, .10), "leather", 19, .91),
     "iron": make_material("forged_iron", (.055, .052, .047), (.006, .006, .005), (.15, .14, .12), "metal", 20, .68, .62),
     "steel": make_material("arrowhead_steel", (.18, .19, .185), (.025, .027, .026), (.40, .42, .40), "metal", 21, .47, .78),
@@ -283,6 +376,7 @@ class MeshBatch:
 
 BATCHES = {key: MeshBatch(key) for key in MATERIALS}
 CLOTH_BAKE_STATS = []
+CLOTH_OBJECTS = []
 
 
 def beam(key, start, end, thickness):
@@ -427,16 +521,44 @@ def cloth_grid(key, name, x_count, y_count, point_fn):
             batch.faces.append((a, a + 1, a + width + 1, a + width))
 
 
-def simulated_cloth_grid(key, name, x_count, y_count, point_fn, pin_fn, frames=36):
+def soft_anchor_weight(ix, iy, anchors):
+    distance = min(max(abs(ix - ax), abs(iy - ay)) for ax, ay in anchors)
+    return {0: 1.0, 1: .7, 2: .3}.get(distance, 0.0)
+
+
+def edge_weight(distance):
+    return {0: 1.0, 1: .7, 2: .3}.get(distance, 0.0)
+
+
+def set_rna_value(owner, property_name, value):
+    properties = {item.identifier for item in owner.bl_rna.properties}
+    if property_name in properties:
+        setattr(owner, property_name, value)
+
+
+def average_grid_edge_length(vertices, x_count, y_count):
+    width = x_count + 1
+    lengths = []
+    for iy in range(y_count + 1):
+        for ix in range(x_count):
+            lengths.append((Vector(vertices[iy * width + ix + 1]) - Vector(vertices[iy * width + ix])).length)
+    for iy in range(y_count):
+        for ix in range(x_count + 1):
+            lengths.append((Vector(vertices[(iy + 1) * width + ix]) - Vector(vertices[iy * width + ix])).length)
+    return sum(lengths) / len(lengths)
+
+
+def simulated_cloth_grid(key, name, x_count, y_count, point_fn, pin_weight_fn,
+                         frames=72, gravity=-2.35, normal_hint=(0, 0, 1),
+                         maximum_bake_displacement=.08):
     vertices = []
-    pin_indices = []
+    pin_weights = []
     for iy in range(y_count + 1):
         v = iy / y_count
         for ix in range(x_count + 1):
             u = ix / x_count
             vertices.append(tuple(point_fn(u, v)))
-            if pin_fn(ix, iy, x_count, y_count):
-                pin_indices.append(iy * (x_count + 1) + ix)
+            pin_weights.append(float(pin_weight_fn(ix, iy, x_count, y_count)))
     faces = []
     width = x_count + 1
     for iy in range(y_count):
@@ -449,47 +571,160 @@ def simulated_cloth_grid(key, name, x_count, y_count, point_fn, pin_fn, frames=3
     mesh.update()
     obj = bpy.data.objects.new(name + "_CLOTH_SOURCE", mesh)
     helper_collection.objects.link(obj)
-    pin_group = obj.vertex_groups.new(name="PINNED_SEAMS")
-    pin_group.add(pin_indices, 1.0, "REPLACE")
+    pin_group = obj.vertex_groups.new(name="CLOTH_PIN")
+    for weight in (1.0, .7, .3):
+        indices = [index for index, item in enumerate(pin_weights) if abs(item - weight) < .01]
+        if indices:
+            pin_group.add(indices, weight, "REPLACE")
     modifier = obj.modifiers.new("BAKED_CLOTH_SIMULATION", "CLOTH")
     settings = modifier.settings
-    settings.quality = 6
-    settings.mass = .22
-    settings.air_damping = 3.0
-    settings.tension_stiffness = 12.0
-    settings.compression_stiffness = 10.0
-    settings.shear_stiffness = 5.0
-    settings.bending_stiffness = .40
-    settings.vertex_group_mass = pin_group.name
-    settings.pin_stiffness = 1.0
+    set_rna_value(settings, "quality", 12)
+    set_rna_value(settings, "mass", .55)
+    set_rna_value(settings, "air_damping", 4.0)
+    set_rna_value(settings, "tension_stiffness", 32.0)
+    set_rna_value(settings, "compression_stiffness", 18.0)
+    set_rna_value(settings, "shear_stiffness", 24.0)
+    set_rna_value(settings, "bending_stiffness", .32)
+    set_rna_value(settings, "tension_damping", 6.0)
+    set_rna_value(settings, "compression_damping", 5.0)
+    set_rna_value(settings, "shear_damping", 5.0)
+    set_rna_value(settings, "bending_damping", 2.0)
+    set_rna_value(settings, "vertex_group_mass", pin_group.name)
+    set_rna_value(settings, "pin_stiffness", .92)
+    collision = modifier.collision_settings
+    set_rna_value(collision, "use_collision", True)
+    set_rna_value(collision, "use_self_collision", True)
+    set_rna_value(collision, "collision_quality", 4)
+    set_rna_value(collision, "distance_min", .006)
+    set_rna_value(collision, "self_distance_min", .008)
+    set_rna_value(collision, "self_friction", 8.0)
 
     old_gravity = scene.gravity.copy()
     old_start, old_end = scene.frame_start, scene.frame_end
-    scene.gravity = (0, 0, -3.60)
+    scene.gravity = (0, 0, gravity)
     scene.frame_start = 1
     scene.frame_end = frames
+    scene.frame_set(1)
     for frame in range(1, frames + 1):
         scene.frame_set(frame)
     depsgraph = bpy.context.evaluated_depsgraph_get()
     evaluated = obj.evaluated_get(depsgraph)
     evaluated_mesh = bpy.data.meshes.new_from_object(evaluated, depsgraph=depsgraph)
-    simulated_vertices = [tuple(vertex.co) for vertex in evaluated_mesh.vertices]
+    raw_simulated_vertices = [tuple(vertex.co) for vertex in evaluated_mesh.vertices]
+    if len(raw_simulated_vertices) != len(vertices):
+        raise RuntimeError(f"Cloth vertex count changed for {name}: {len(vertices)} -> {len(raw_simulated_vertices)}")
+    simulated_vertices = []
+    raw_displacement = []
+    for before, after in zip(vertices, raw_simulated_vertices):
+        before_vector = Vector(before)
+        delta = Vector(after) - before_vector
+        raw_displacement.append(delta.length)
+        if delta.length > maximum_bake_displacement:
+            delta.normalize()
+            delta *= maximum_bake_displacement
+        simulated_vertices.append(tuple(before_vector + delta))
     simulated_faces = [tuple(polygon.vertices) for polygon in evaluated_mesh.polygons]
     displacement = [(Vector(after) - Vector(before)).length
                     for before, after in zip(vertices, simulated_vertices)]
+    final_mesh = evaluated_mesh
+    for vertex, coordinate in zip(final_mesh.vertices, simulated_vertices):
+        vertex.co = coordinate
+    final_mesh.update()
+    final_mesh.name = f"{ASSET_ID}_{name}_BAKED_CLOTH_MESH"
+    final_obj = bpy.data.objects.new(f"{ASSET_ID.upper()}_CLOTH_{name}", final_mesh)
+    runtime_collection.objects.link(final_obj)
+    final_obj.parent = root
+    final_obj.data.materials.append(MATERIALS[key])
+    final_obj["phaser_layer"] = "props"
+    final_obj["static_baked_cloth"] = True
+    final_obj["source_topology"] = "uniform_quads"
+    final_obj["source_grid"] = [x_count, y_count]
+    final_pin_group = final_obj.vertex_groups.new(name="CLOTH_PIN")
+    for weight in (1.0, .7, .3):
+        indices = [index for index, item in enumerate(pin_weights) if abs(item - weight) < .01]
+        if indices:
+            final_pin_group.add(indices, weight, "REPLACE")
+    subdivision = final_obj.modifiers.new("POST_CLOTH_SUBDIVISION", "SUBSURF")
+    subdivision.subdivision_type = "CATMULL_CLARK"
+    subdivision.levels = 0
+    subdivision.render_levels = 1
+    solidify = final_obj.modifiers.new("CANVAS_SOLIDIFY_3MM", "SOLIDIFY")
+    solidify.thickness = .003
+    solidify.offset = 0.0
+    solidify.use_even_offset = True
+    solidify.use_rim = True
+    if hasattr(solidify, "thickness_clamp"):
+        solidify.thickness_clamp = .01
+    if hasattr(solidify, "use_thickness_angle_clamp"):
+        solidify.use_thickness_angle_clamp = True
+    if hasattr(solidify, "use_quality_normals"):
+        solidify.use_quality_normals = True
+    CLOTH_OBJECTS.append(final_obj)
+
+    panel_data = {
+        "object": final_obj,
+        "vertices": simulated_vertices,
+        "x_count": x_count,
+        "y_count": y_count,
+        "normal": Vector(normal_hint).normalized(),
+    }
     CLOTH_BAKE_STATS.append({
         "panel": name,
         "frames": frames,
+        "quad_grid": [x_count, y_count],
+        "source_quads": len(faces),
+        "average_edge_m": round(average_grid_edge_length(vertices, x_count, y_count), 4),
+        "pinned_vertices": sum(1 for weight in pin_weights if weight > 0),
+        "pin_weights": [0.3, 0.7, 1.0],
+        "raw_maximum_displacement_m": round(max(raw_displacement), 5),
         "average_displacement_m": round(sum(displacement) / len(displacement), 5),
         "maximum_displacement_m": round(max(displacement), 5),
+        "solidify_m": .003,
+        "runtime_cloth_modifier": False,
     })
-    BATCHES[key].transformed(simulated_vertices, simulated_faces, Matrix.Identity(4))
 
     scene.frame_set(1)
     scene.gravity = old_gravity
     scene.frame_start, scene.frame_end = old_start, old_end
     bpy.data.objects.remove(obj, do_unlink=True)
-    bpy.data.meshes.remove(evaluated_mesh)
+    bpy.data.meshes.remove(mesh)
+    return panel_data
+
+
+def panel_vertex(panel, ix, iy):
+    return Vector(panel["vertices"][iy * (panel["x_count"] + 1) + ix])
+
+
+def add_panel_column_strip(panel, fraction, key="canvas_dark", width_cells=1):
+    center = round(panel["x_count"] * fraction)
+    offset = panel["normal"] * .006
+    thickness = .014 + max(0, width_cells - 1) * .006
+    for iy in range(panel["y_count"]):
+        beam(key, panel_vertex(panel, center, iy) + offset,
+             panel_vertex(panel, center, iy + 1) + offset, thickness)
+
+
+def add_panel_row_strip(panel, fraction, key="canvas_dark", width_cells=1):
+    center = round(panel["y_count"] * fraction)
+    offset = panel["normal"] * .006
+    thickness = .014 + max(0, width_cells - 1) * .006
+    for ix in range(panel["x_count"]):
+        beam(key, panel_vertex(panel, ix, center) + offset,
+             panel_vertex(panel, ix + 1, center) + offset, thickness)
+
+
+def add_panel_patch(panel, u, v, radius_cells=2, key="canvas_dark"):
+    cx = round(panel["x_count"] * u)
+    cy = round(panel["y_count"] * v)
+    left = max(0, cx - radius_cells)
+    right = min(panel["x_count"], cx + radius_cells)
+    bottom = max(0, cy - radius_cells)
+    top = min(panel["y_count"], cy + radius_cells)
+    offset = panel["normal"] * .008
+    BATCHES[key].quad([tuple(panel_vertex(panel, left, bottom) + offset),
+                       tuple(panel_vertex(panel, right, bottom) + offset),
+                       tuple(panel_vertex(panel, right, top) + offset),
+                       tuple(panel_vertex(panel, left, top) + offset)])
 
 
 def make_stake(x, y, z=0):
@@ -505,50 +740,78 @@ def build_field_tent():
     for y in (-half_l, half_l):
         beam("wood_dark", (-half_w - .18, y, .02), (.16, y, ridge + .20), .10)
         beam("wood_dark", (half_w + .18, y, .02), (-.16, y, ridge + .20), .10)
-    # Roof cloth with irregular sag and weathering-rich baked texture.
+    # Dense roof sheets: about 7.5 cm between simulation vertices.
     for side in (-1, 1):
-        simulated_cloth_grid("canvas", f"ROOF_{side}", 14, 18,
-                             lambda u, v, side=side: (
-                                 side * (u * half_w),
-                                 -half_l + v * half_l * 2,
-                                 ridge * (1 - u) + .08
-                                 + .030 * math.sin(v * math.pi * 3) * math.sin(u * math.pi)),
-                             lambda ix, iy, nx, ny: ix in (0, nx) or iy in (0, ny))
-        # Raised seams and a weighted lower hem keep the canvas from reading as one flat sheet.
-        for u in (.34, .67):
-            x = side * u * half_w
-            z = ridge * (1 - u) + .086
-            strip_half = .022
-            BATCHES["canvas_dark"].quad([
-                (x - strip_half, -half_l, z), (x + strip_half, -half_l, z),
-                (x + strip_half, half_l, z), (x - strip_half, half_l, z),
-            ])
-        edge_x = side * half_w
-        BATCHES["canvas_dark"].quad([
-            (edge_x - side * .055, -half_l, .095), (edge_x + side * .010, -half_l, .095),
-            (edge_x + side * .010, half_l, .095), (edge_x - side * .055, half_l, .095),
-        ])
-        # Small repairs are deliberately asymmetric and sit just above the roof skin.
-        for u, v, width, length in ((.52, .30, .32, .43), (.78, .68, .26, .34)):
-            x = side * u * half_w
-            y = -half_l + v * half_l * 2
-            z = ridge * (1 - u) + .092
-            BATCHES["canvas_dark"].quad([
-                (x - width / 2, y - length / 2, z), (x + width / 2, y - length / 2, z),
-                (x + width / 2, y + length / 2, z), (x - width / 2, y + length / 2, z),
-            ])
-    # Closed back panel.
-    simulated_cloth_grid("canvas_dark", "BACK", 16, 12,
-                         lambda u, v: (-half_w + u * half_w * 2, half_l + .015,
-                                       v * (ridge - abs(-half_w + u * half_w * 2) / half_w * ridge)),
-                         lambda ix, iy, nx, ny: iy in (0, ny))
-    # Front flaps are tied aside, leaving a proper walkable opening.
-    left_flap = [(-half_w, -half_l - .02, .02), (-.18, -half_l - .03, .02),
-                 (-.62, -half_l - .12, 1.36), (0, -half_l - .02, ridge)]
-    right_flap = [(half_w, -half_l - .02, .02), (.18, -half_l - .03, .02),
-                  (.62, -half_l - .12, 1.36), (0, -half_l - .02, ridge)]
-    BATCHES["canvas"].quad(left_flap)
-    BATCHES["canvas"].quad(right_flap)
+        def roof_point(u, v, side=side):
+            segment_phase = (v * 4.0) % 1.0
+            local_sag = .030 * math.sin(segment_phase * math.pi) ** 2 * math.sin(u * math.pi)
+            tension_fold = .012 * math.sin(v * math.tau * 7.0 + u * 2.7) * math.sin(u * math.pi)
+            x = side * (u * half_w + .008 * math.sin(v * math.tau * 5.0) * math.sin(u * math.pi))
+            return (x, -half_l + v * half_l * 2,
+                    ridge * (1 - u) + .08 - local_sag + tension_fold)
+
+        def roof_pin(ix, iy, nx, ny):
+            weight = edge_weight(ix)
+            eave_ties = [(nx, round(ny * fraction)) for fraction in (0, .25, .5, .75, 1)]
+            end_ties = [(round(nx * fraction), edge) for edge in (0, ny) for fraction in (.5, 1)]
+            return max(weight, soft_anchor_weight(ix, iy, eave_ties + end_ties))
+
+        roof_panel = simulated_cloth_grid(
+            "canvas", f"ROOF_{side}", 52, 64, roof_point, roof_pin,
+            frames=72, gravity=-2.20, normal_hint=(side * ridge, 0, half_w))
+        for seam in (.34, .67):
+            add_panel_column_strip(roof_panel, seam)
+        add_panel_column_strip(roof_panel, 1.0, width_cells=1)
+        for tie_v in (0, .25, .5, .75, 1):
+            add_panel_patch(roof_panel, 1.0, tie_v, 2)
+        add_panel_patch(roof_panel, .52, .30, 2)
+        add_panel_patch(roof_panel, .78, .68, 2)
+
+    # Rear wall: the upper seam is fixed, the lower hem only at individual loops.
+    def rear_point(u, v):
+        x = -half_w + u * half_w * 2
+        height = ridge - abs(x) / half_w * (ridge - .08)
+        y_wave = .034 * math.sin(u * math.tau * 9.0 + .4) * math.sin(v * math.pi)
+        return (x, half_l + .025 + y_wave, .04 + v * (height - .04))
+
+    def rear_pin(ix, iy, nx, ny):
+        weight = edge_weight(ny - iy)
+        lower_ties = [(round(nx * fraction), 0) for fraction in (0, .25, .5, .75, 1)]
+        return max(weight, soft_anchor_weight(ix, iy, lower_ties))
+
+    rear_panel = simulated_cloth_grid(
+        "canvas_dark", "BACK", 72, 44, rear_point, rear_pin,
+        frames=76, gravity=-2.30, normal_hint=(0, 1, 0))
+    add_panel_row_strip(rear_panel, 0.0)
+    add_panel_row_strip(rear_panel, 1.0)
+    for seam in (.25, .5, .75):
+        add_panel_column_strip(rear_panel, seam)
+    for tie_u in (0, .25, .5, .75, 1):
+        add_panel_patch(rear_panel, tie_u, 0.0, 2)
+
+    # Separate tied entrance flaps remain open and keep their lower edges free.
+    for side in (-1, 1):
+        p00 = Vector((side * half_w, -half_l - .025, .04))
+        p10 = Vector((side * .18, -half_l - .045, .04))
+        p11 = Vector((side * .62, -half_l - .14, 1.36))
+        p01 = Vector((0, -half_l - .025, ridge))
+
+        def flap_point(u, v, side=side, p00=p00, p10=p10, p11=p11, p01=p01):
+            point = ((1 - u) * (1 - v) * p00 + u * (1 - v) * p10
+                     + u * v * p11 + (1 - u) * v * p01)
+            point.y -= (.028 * math.sin(u * math.pi) * math.sin(v * math.pi)
+                        + .012 * math.sin(u * math.tau * 5.0 + v * 2.0) * math.sin(v * math.pi))
+            return tuple(point)
+
+        def flap_pin(ix, iy, nx, ny):
+            return edge_weight(ny - iy)
+
+        flap_panel = simulated_cloth_grid(
+            "canvas", f"FRONT_FLAP_{side}", 34, 46, flap_point, flap_pin,
+            frames=72, gravity=-2.10, normal_hint=(0, -1, 0))
+        add_panel_row_strip(flap_panel, 1.0)
+        add_panel_column_strip(flap_panel, 1.0)
+        add_panel_patch(flap_panel, 1.0, 1.0, 2)
     BATCHES["rope"].torus((-.62, -half_l - .14, 1.36), .11, .024, 12, 4, (math.pi / 2, 0, 0))
     BATCHES["rope"].torus((.62, -half_l - .14, 1.36), .11, .024, 12, 4, (math.pi / 2, 0, 0))
     # Guy ropes and pegs.
@@ -569,7 +832,8 @@ def build_field_tent():
     return {
         "label": "Kleines Feldzelt",
         "content": {"walkable_front_opening": True, "guy_ropes": 6, "stakes": 6,
-                    "visible_bedroll": True, "cloth_simulation": "baked_static_mesh"},
+                    "visible_bedroll": True, "cloth_simulation": "baked_static_mesh",
+                    "cloth_material": "MAT_TENT_CANVAS", "cloth_panels": 5},
         "collision": {"shape": "box", "size": [5.2, 4.5], "center": [0, .15], "front_open": True},
     }
 
@@ -598,43 +862,89 @@ def build_command_pavilion():
     beam("wood_dark", (0, -half_l, ridge), (0, half_l, ridge), .13)
     for y in (-half_l, half_l):
         BATCHES["wood_mid"].cone((0, y, ridge + .22), .14, .42, 8)
-    # Four sloped roof cloth panels with a gentle central sag.
+    # Two dense roof sheets, tensioned at the ridge and at individual eave ties.
     for side in (-1, 1):
-        simulated_cloth_grid("canvas", f"PAV_ROOF_{side}", 16, 20,
-                             lambda u, v, side=side: (
-                                 side * (u * half_w), -half_l + v * half_l * 2,
-                                 ridge - u * (ridge - eave)
-                                 + .025 * math.sin(v * math.pi * 3) * math.sin(u * math.pi)),
-                             lambda ix, iy, nx, ny: ix in (0, nx) or iy in (0, ny))
-        for u in (.33, .66):
-            x = side * u * half_w
-            z = ridge - u * (ridge - eave) + .018
-            BATCHES["canvas_dark"].quad([
-                (x - .025, -half_l, z), (x + .025, -half_l, z),
-                (x + .025, half_l, z), (x - .025, half_l, z),
-            ])
+        def pavilion_roof_point(u, v, side=side):
+            segment_phase = (v * 4.0) % 1.0
+            sag = .036 * math.sin(segment_phase * math.pi) ** 2 * math.sin(u * math.pi)
+            radial_fold = .015 * math.sin(v * math.tau * 8.0 + u * 2.2) * math.sin(u * math.pi)
+            x = side * (u * half_w + .010 * math.sin(v * math.tau * 6.0) * math.sin(u * math.pi))
+            return (x, -half_l + v * half_l * 2,
+                    ridge - u * (ridge - eave) - sag + radial_fold)
+
+        def pavilion_roof_pin(ix, iy, nx, ny):
+            weight = edge_weight(ix)
+            eave_ties = [(nx, round(ny * fraction)) for fraction in (0, .25, .5, .75, 1)]
+            end_ties = [(round(nx * fraction), edge) for edge in (0, ny) for fraction in (.5, 1)]
+            return max(weight, soft_anchor_weight(ix, iy, eave_ties + end_ties))
+
+        roof_panel = simulated_cloth_grid(
+            "canvas", f"PAV_ROOF_{side}", 52, 80,
+            pavilion_roof_point, pavilion_roof_pin,
+            frames=78, gravity=-2.15, normal_hint=(side * (ridge - eave), 0, half_w))
+        for seam in (.33, .66):
+            add_panel_column_strip(roof_panel, seam)
+        add_panel_column_strip(roof_panel, 1.0)
+        for tie_v in (0, .25, .5, .75, 1):
+            add_panel_patch(roof_panel, 1.0, tie_v, 2)
         patch_u, patch_v = (.56, .31) if side < 0 else (.74, .67)
-        patch_x = side * patch_u * half_w
-        patch_y = -half_l + patch_v * half_l * 2
-        patch_z = ridge - patch_u * (ridge - eave) + .024
-        BATCHES["canvas_dark"].quad([
-            (patch_x - .20, patch_y - .27, patch_z), (patch_x + .20, patch_y - .27, patch_z),
-            (patch_x + .20, patch_y + .27, patch_z), (patch_x - .20, patch_y + .27, patch_z),
-        ])
-    # Side and rear curtains; front curtains tied back around corner posts.
-    simulated_cloth_grid("canvas_dark", "PAV_REAR", 18, 12,
-                         lambda u, v: (-half_w + u * half_w * 2, half_l, v * eave),
-                         lambda ix, iy, nx, ny: iy in (0, ny))
+        add_panel_patch(roof_panel, patch_u, patch_v, 2)
+
+    # Rear curtain hangs from the beam; only individual lower loops are tied.
+    def rear_point(u, v):
+        return (-half_w + u * half_w * 2,
+                half_l + .030 * math.sin(u * math.tau * 10.0 + .3) * math.sin(v * math.pi),
+                .04 + v * (eave - .04))
+
+    def hanging_panel_pin(ix, iy, nx, ny):
+        weight = edge_weight(ny - iy)
+        lower_ties = [(round(nx * fraction), 0) for fraction in (0, .25, .5, .75, 1)]
+        return max(weight, soft_anchor_weight(ix, iy, lower_ties))
+
+    rear_panel = simulated_cloth_grid(
+        "canvas_dark", "PAV_REAR", 96, 44, rear_point, hanging_panel_pin,
+        frames=80, gravity=-2.25, normal_hint=(0, 1, 0))
+    add_panel_row_strip(rear_panel, 0.0)
+    add_panel_row_strip(rear_panel, 1.0)
+    for seam in (.25, .5, .75):
+        add_panel_column_strip(rear_panel, seam)
+
+    # Side walls have a fixed upper seam, loose spans and discrete floor loops.
     for side in (-1, 1):
-        simulated_cloth_grid("canvas", f"PAV_SIDE_{side}", 16, 12,
-                             lambda u, v, side=side: (side * half_w, -half_l + u * half_l * 2,
-                                                      v * eave + .025 * math.sin(u * math.pi * 2) * math.sin(v * math.pi)),
-                             lambda ix, iy, nx, ny: iy in (0, ny))
-        # Gathered front curtain wing.
+        def side_point(u, v, side=side):
+            x_wave = side * (.030 * math.sin(u * math.tau * 9.0 + .5) * math.sin(v * math.pi))
+            return (side * half_w + x_wave, -half_l + u * half_l * 2, .04 + v * (eave - .04))
+
+        side_panel = simulated_cloth_grid(
+            "canvas", f"PAV_SIDE_{side}", 80, 44, side_point, hanging_panel_pin,
+            frames=80, gravity=-2.25, normal_hint=(side, 0, 0))
+        add_panel_row_strip(side_panel, 0.0)
+        add_panel_row_strip(side_panel, 1.0)
+        for seam in (.25, .5, .75):
+            add_panel_column_strip(side_panel, seam)
+
+        # The front curtain wing is a separate, simulated and tied-back sheet.
         edge = side * half_w
         inner = side * 2.45
-        BATCHES["canvas"].quad([(edge, -half_l - .02, .02), (inner, -half_l - .04, .02),
-                                (side * 3.12, -half_l - .10, 1.48), (edge, -half_l - .02, eave)])
+        p00 = Vector((edge, -half_l - .025, .04))
+        p10 = Vector((inner, -half_l - .045, .04))
+        p11 = Vector((side * 3.12, -half_l - .12, 1.48))
+        p01 = Vector((edge, -half_l - .025, eave))
+
+        def wing_point(u, v, p00=p00, p10=p10, p11=p11, p01=p01):
+            point = ((1 - u) * (1 - v) * p00 + u * (1 - v) * p10
+                     + u * v * p11 + (1 - u) * v * p01)
+            point.y -= (.035 * math.sin(u * math.pi) * math.sin(v * math.pi)
+                        + .014 * math.sin(u * math.tau * 5.0 + v) * math.sin(v * math.pi))
+            return tuple(point)
+
+        wing_panel = simulated_cloth_grid(
+            "canvas", f"PAV_FRONT_WING_{side}", 30, 40,
+            wing_point, lambda ix, iy, nx, ny: edge_weight(ny - iy),
+            frames=72, gravity=-2.05, normal_hint=(0, -1, 0))
+        add_panel_row_strip(wing_panel, 1.0)
+        add_panel_column_strip(wing_panel, 1.0)
+        add_panel_patch(wing_panel, 1.0, 1.0, 2)
         BATCHES["rope"].torus((side * 3.12, -half_l - .12, 1.48), .12, .025, 12, 4, (math.pi / 2, 0, 0))
     scalloped_valance(-half_l - .03, -half_w, half_w, eave, -1)
     scalloped_valance(half_l + .03, -half_w, half_w, eave, 1)
@@ -680,7 +990,8 @@ def build_command_pavilion():
         "label": "Großer Feld- und Befehlspavillon",
         "content": {"open_front": True, "banner_poles": 2, "command_table": True,
                     "benches": 2, "shelves": 2, "chests": 3, "visible_rug": True,
-                    "cloth_simulation": "baked_static_mesh"},
+                    "cloth_simulation": "baked_static_mesh",
+                    "cloth_material": "MAT_TENT_CANVAS", "cloth_panels": 7},
         "collision": {"shape": "box", "size": [7.4, 6.2], "center": [0, 0], "front_open": True},
     }
 
@@ -694,7 +1005,7 @@ metadata = BUILDERS[ASSET_ID]()
 
 
 def make_objects():
-    objects = []
+    objects = list(CLOTH_OBJECTS)
     for key, batch in BATCHES.items():
         if not batch.faces:
             continue
@@ -711,6 +1022,8 @@ def make_objects():
         obj["phaser_layer"] = "props"
         obj["static_runtime_batch"] = True
         objects.append(obj)
+    for obj in objects:
+        bpy.ops.object.select_all(action="DESELECT")
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
         try:
@@ -724,6 +1037,30 @@ def make_objects():
 
 
 runtime_objects = make_objects()
+
+
+def load_original_tent_backup():
+    if ASSET_ID not in {"field_tent", "command_pavilion"} or not ORIGINAL_BLEND_PATH.exists():
+        return 0
+    prefix = ASSET_ID.upper()
+    with bpy.data.libraries.load(str(ORIGINAL_BLEND_PATH), link=False) as (source, target):
+        target.objects = [name for name in source.objects
+                          if name == ROOT_NAMES[ASSET_ID] or name.startswith(prefix)]
+    count = 0
+    for obj in target.objects:
+        if obj is None:
+            continue
+        backup_collection.objects.link(obj)
+        obj.hide_render = True
+        obj.hide_set(True)
+        obj["backup_original_tent"] = True
+        count += 1
+    backup_collection["source_blend"] = str(ORIGINAL_BLEND_PATH)
+    backup_collection["object_count"] = count
+    return count
+
+
+backup_object_count = load_original_tent_backup()
 
 
 def world_bounds(objects):
@@ -771,7 +1108,7 @@ def setup_preview():
     helper_collection.objects.link(rim)
     bpy.ops.object.camera_add()
     camera = bpy.context.object
-    camera.name = "PREVIEW_CAMERA"
+    camera.name = "GAME_VIEW_CAMERA"
     for collection in list(camera.users_collection):
         collection.objects.unlink(camera)
     helper_collection.objects.link(camera)
@@ -782,14 +1119,35 @@ def setup_preview():
     camera.data.type = "ORTHO"
     camera.data.ortho_scale = max(size.x, size.y, size.z * 1.05) * 1.30
     camera.data.lens = 58
-    scene.camera = camera
-    scene.world.color = (.025, .022, .018)
-    scene.render.filepath = str(PREVIEW_PATH)
+    bpy.ops.object.camera_add()
+    detail_camera = bpy.context.object
+    detail_camera.name = "CLOTH_DETAIL_CAMERA"
+    for collection in list(detail_camera.users_collection):
+        collection.objects.unlink(detail_camera)
+    helper_collection.objects.link(detail_camera)
+    detail_target = center + Vector((0, -.20, size.z * .16))
+    detail_direction = Vector((1.10, -1.55, .42)).normalized()
+    detail_distance = max(size.x, size.y) * 1.02
+    detail_camera.location = detail_target + detail_direction * detail_distance
+    detail_camera.rotation_euler = (detail_target - detail_camera.location).to_track_quat("-Z", "Y").to_euler()
+    detail_camera.data.type = "ORTHO"
+    detail_camera.data.ortho_scale = max(size.x, size.y) * .76
+    detail_camera.data.lens = 68
+    scene.world.color = (.045, .040, .032)
+    return camera, detail_camera
 
 
-setup_preview()
-bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH))
+game_camera, detail_camera = setup_preview()
+scene.camera = game_camera
+scene.render.filepath = str(PREVIEW_PATH)
 bpy.ops.render.render(write_still=True)
+if CLOTH_OBJECTS:
+    scene.camera = detail_camera
+    scene.render.filepath = str(CLOTH_CLOSEUP_PATH)
+    bpy.ops.render.render(write_still=True)
+scene.camera = game_camera
+scene.render.filepath = str(PREVIEW_PATH)
+bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH))
 
 # Export only the runtime root and batched visual meshes. Cameras and lights stay in the editable blend.
 bpy.ops.object.select_all(action="DESELECT")
@@ -807,15 +1165,30 @@ bpy.ops.export_scene.gltf(
     export_materials="EXPORT",
 )
 
-for obj in runtime_objects:
-    obj.data.calc_loop_triangles()
-triangles = sum(len(obj.data.loop_triangles) for obj in runtime_objects)
+def evaluated_triangle_count(objects):
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    count = 0
+    temporary_meshes = []
+    for obj in objects:
+        evaluated = obj.evaluated_get(depsgraph)
+        mesh = bpy.data.meshes.new_from_object(evaluated, depsgraph=depsgraph)
+        mesh.calc_loop_triangles()
+        count += len(mesh.loop_triangles)
+        temporary_meshes.append(mesh)
+    for mesh in temporary_meshes:
+        bpy.data.meshes.remove(mesh)
+    return count
+
+
+triangles = evaluated_triangle_count(runtime_objects)
 manifest = {
     "asset": ASSET_NAME,
     "label_de": metadata["label"],
     "glb": GLB_PATH.name,
     "runtime_mode": "static_exterior_prop",
     "root_node": root.name,
+    "editable_blend": str(BLEND_PATH),
+    "original_blend_preserved": str(ORIGINAL_BLEND_PATH),
     "meters_per_blender_unit": 1.0,
     "placement": {
         "front_axis": "-Y",
@@ -835,6 +1208,7 @@ manifest = {
         "embedded_textured_materials": len(runtime_objects),
         "static_material_batches": [obj.name for obj in runtime_objects],
         "baked_cloth_panels": CLOTH_BAKE_STATS,
+        "active_runtime_cloth_simulations": 0,
     },
     "collision_guide": metadata["collision"],
     "content": metadata["content"],
@@ -847,11 +1221,17 @@ manifest = {
 }
 if CLOTH_BAKE_STATS:
     manifest["notes"].append(
-        "Blender-Cloth wurde frameweise berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik."
+        "Blender-Cloth wurde 72 bis 80 Frames mit weichen CLOTH_PIN-Gewichten berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik."
+    )
+    manifest["notes"].append(
+        "Die vorherige Blender-Fassung bleibt unangetastet und ist zusaetzlich in BACKUP_ORIGINAL_TENTS der korrigierten Datei ausgeblendet enthalten."
     )
 JSON_PATH.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 
-for source in (GLB_PATH, JSON_PATH, PREVIEW_PATH):
+copy_sources = [GLB_PATH, JSON_PATH, PREVIEW_PATH]
+if CLOTH_OBJECTS:
+    copy_sources.append(CLOTH_CLOSEUP_PATH)
+for source in copy_sources:
     shutil.copy2(source, GAME_DIR / source.name)
 
 print("CAMP_ASSET_BUILD=" + json.dumps({
@@ -860,6 +1240,8 @@ print("CAMP_ASSET_BUILD=" + json.dumps({
     "glb": str(GLB_PATH),
     "json": str(JSON_PATH),
     "preview": str(PREVIEW_PATH),
+    "cloth_closeup": str(CLOTH_CLOSEUP_PATH) if CLOTH_OBJECTS else None,
+    "backup_objects": backup_object_count,
     "objects": len(runtime_objects),
     "triangles": triangles,
     "bounds": manifest["bounds_m"],

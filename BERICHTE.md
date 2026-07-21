@@ -2147,3 +2147,29 @@ nachziehen.
   Dreieckzahl und Texturen stimmen; Export-Helfer und Bodenplatten fehlen wie geplant.
 - Offen: Der Autor hat keine Zielkarte oder Position genannt. Deshalb sind die
   Assets geliefert, aber noch nicht in eine WorldScene-Area gesetzt.
+
+## 22.07.2026 - Zeltstoff geometrisch und materiell korrigiert
+
+- Die starren, grob unterteilten Planen wurden ersetzt: Feldzelt und Pavillon
+  bestehen jetzt aus fuenf bzw. sieben getrennten, dichten Quad-Stoffbahnen mit
+  5,1 bis 7,6 cm Kantenlaenge.
+- Jede Bahn besitzt `CLOTH_PIN` mit 0,3/0,7/1,0-Weichuebergang. First und obere
+  Naehte sind gehalten; Traufkanten, untere Saeume und Zelteingaenge werden nur
+  an einzelnen historischen Bindepunkten fixiert. Die Eingangsfluegel bleiben offen.
+- Blender-Cloth lief je Bahn 72 bis 80 Frames. Die gesetzte Runtime-Form ist auf
+  maximal 8 cm Bewegung begrenzt, besitzt 3 mm Stoffdicke und benoetigt in Phaser
+  keine laufende Simulation.
+- `MAT_TENT_CANVAS` verwendet matte Naturleinwand, organische Verwitterung und
+  eine eingebettete feine Web-Normalmap. Das alte sichtbare Karomuster ist entfernt.
+  Schmale Naehte, Saeume und Stoffverstaerkungen folgen der verformten Geometrie.
+- Die alten Blender-Dateien wurden nicht ueberschrieben. Die neuen Dateien heissen
+  jeweils `tents_cloth_corrected.blend` und enthalten ausserdem die ausgeblendete
+  Collection `BACKUP_ORIGINAL_TENTS` mit dem vorherigen Runtime-Modell.
+- Endwerte: Feldzelt 8 Meshes / 64.658 Dreiecke, Pavillon 15 Meshes / 110.612
+  Dreiecke. Je Asset liegen Spielkamera- und helle Stoff-Nahansicht vor.
+- Beide GLBs wurden in Blender rueckimportiert. Root, Mesh- und Dreieckzahl,
+  eingebettete Texturen, `MAT_TENT_CANVAS`, `CLOTH_PIN`, Modifier-Reihenfolge und
+  Backup-Collection sind korrekt; keine aktive Cloth-Simulation, Bodenplatte oder
+  Export-Hilfe gelangte ins Runtime-Asset.
+- Offen bleibt nur die vom Autor noch nicht benannte Weltposition. Spielcode und
+  Weltplatzierung wurden in dieser Runde nicht veraendert.

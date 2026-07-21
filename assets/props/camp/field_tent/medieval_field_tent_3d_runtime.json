@@ -4,6 +4,8 @@
   "glb": "medieval_field_tent_3d_runtime.glb",
   "runtime_mode": "static_exterior_prop",
   "root_node": "FIELD_TENT_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\field_tent\\tents_cloth_corrected.blend",
+  "original_blend_preserved": "C:\\Obsidian\\DM\\camp-props\\field_tent\\medieval_field_tent_3d_runtime.blend",
   "meters_per_blender_unit": 1.0,
   "placement": {
     "front_axis": "-Y",
@@ -30,35 +32,127 @@
     ]
   },
   "runtime": {
-    "visible_objects": 4,
-    "triangles": 2352,
-    "embedded_textured_materials": 4,
+    "visible_objects": 8,
+    "triangles": 64658,
+    "embedded_textured_materials": 8,
     "static_material_batches": [
+      "FIELD_TENT_CLOTH_ROOF_-1",
+      "FIELD_TENT_CLOTH_ROOF_1",
+      "FIELD_TENT_CLOTH_BACK",
+      "FIELD_TENT_CLOTH_FRONT_FLAP_-1",
+      "FIELD_TENT_CLOTH_FRONT_FLAP_1",
       "FIELD_TENT_WOOD_DARK_BATCH",
       "FIELD_TENT_ROPE_BATCH",
-      "FIELD_TENT_CANVAS_BATCH",
       "FIELD_TENT_CANVAS_DARK_BATCH"
     ],
     "baked_cloth_panels": [
       {
         "panel": "ROOF_-1",
-        "frames": 36,
-        "average_displacement_m": 0.04527,
-        "maximum_displacement_m": 0.0961
+        "frames": 72,
+        "quad_grid": [
+          52,
+          64
+        ],
+        "source_quads": 3328,
+        "average_edge_m": 0.0724,
+        "pinned_vertices": 288,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.14998,
+        "average_displacement_m": 0.05706,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
       },
       {
         "panel": "ROOF_1",
-        "frames": 36,
-        "average_displacement_m": 0.04527,
-        "maximum_displacement_m": 0.0961
+        "frames": 72,
+        "quad_grid": [
+          52,
+          64
+        ],
+        "source_quads": 3328,
+        "average_edge_m": 0.0724,
+        "pinned_vertices": 288,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.14998,
+        "average_displacement_m": 0.05706,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
       },
       {
         "panel": "BACK",
-        "frames": 36,
-        "average_displacement_m": 0.0,
-        "maximum_displacement_m": 0.0
+        "frames": 76,
+        "quad_grid": [
+          72,
+          44
+        ],
+        "source_quads": 3168,
+        "average_edge_m": 0.0607,
+        "pinned_vertices": 282,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.10925,
+        "average_displacement_m": 0.01513,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "FRONT_FLAP_-1",
+        "frames": 72,
+        "quad_grid": [
+          34,
+          46
+        ],
+        "source_quads": 1564,
+        "average_edge_m": 0.0508,
+        "pinned_vertices": 105,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 1.12853,
+        "average_displacement_m": 0.07058,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "FRONT_FLAP_1",
+        "frames": 72,
+        "quad_grid": [
+          34,
+          46
+        ],
+        "source_quads": 1564,
+        "average_edge_m": 0.0508,
+        "pinned_vertices": 105,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 1.27894,
+        "average_displacement_m": 0.07174,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
       }
-    ]
+    ],
+    "active_runtime_cloth_simulations": 0
   },
   "collision_guide": {
     "shape": "box",
@@ -77,13 +171,16 @@
     "guy_ropes": 6,
     "stakes": 6,
     "visible_bedroll": true,
-    "cloth_simulation": "baked_static_mesh"
+    "cloth_simulation": "baked_static_mesh",
+    "cloth_material": "MAT_TENT_CANVAS",
+    "cloth_panels": 5
   },
   "interactions": [],
   "notes": [
     "Eigenstaendiges Asset; nicht mit den beiden anderen Lager-Assets verschmelzen.",
     "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
     "Material-Farbtexturen sind im GLB eingebettet.",
-    "Blender-Cloth wurde frameweise berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik."
+    "Blender-Cloth wurde 72 bis 80 Frames mit weichen CLOTH_PIN-Gewichten berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik.",
+    "Die vorherige Blender-Fassung bleibt unangetastet und ist zusaetzlich in BACKUP_ORIGINAL_TENTS der korrigierten Datei ausgeblendet enthalten."
   ]
 }

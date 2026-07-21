@@ -4,6 +4,8 @@
   "glb": "medieval_command_pavilion_3d_runtime.glb",
   "runtime_mode": "static_exterior_prop",
   "root_node": "COMMAND_PAVILION_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\command_pavilion\\tents_cloth_corrected.blend",
+  "original_blend_preserved": "C:\\Obsidian\\DM\\camp-props\\command_pavilion\\medieval_command_pavilion_3d_runtime.blend",
   "meters_per_blender_unit": 1.0,
   "placement": {
     "front_axis": "-Y",
@@ -30,10 +32,17 @@
     ]
   },
   "runtime": {
-    "visible_objects": 8,
-    "triangles": 3640,
-    "embedded_textured_materials": 8,
+    "visible_objects": 15,
+    "triangles": 110612,
+    "embedded_textured_materials": 15,
     "static_material_batches": [
+      "COMMAND_PAVILION_CLOTH_PAV_ROOF_-1",
+      "COMMAND_PAVILION_CLOTH_PAV_ROOF_1",
+      "COMMAND_PAVILION_CLOTH_PAV_REAR",
+      "COMMAND_PAVILION_CLOTH_PAV_SIDE_-1",
+      "COMMAND_PAVILION_CLOTH_PAV_FRONT_WING_-1",
+      "COMMAND_PAVILION_CLOTH_PAV_SIDE_1",
+      "COMMAND_PAVILION_CLOTH_PAV_FRONT_WING_1",
       "COMMAND_PAVILION_WOOD_DARK_BATCH",
       "COMMAND_PAVILION_WOOD_MID_BATCH",
       "COMMAND_PAVILION_ROPE_BATCH",
@@ -46,35 +55,153 @@
     "baked_cloth_panels": [
       {
         "panel": "PAV_ROOF_-1",
-        "frames": 36,
-        "average_displacement_m": 0.06181,
-        "maximum_displacement_m": 0.12873
+        "frames": 78,
+        "quad_grid": [
+          52,
+          80
+        ],
+        "source_quads": 4160,
+        "average_edge_m": 0.0764,
+        "pinned_vertices": 336,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.19865,
+        "average_displacement_m": 0.06368,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
       },
       {
         "panel": "PAV_ROOF_1",
-        "frames": 36,
-        "average_displacement_m": 0.06181,
-        "maximum_displacement_m": 0.12873
+        "frames": 78,
+        "quad_grid": [
+          52,
+          80
+        ],
+        "source_quads": 4160,
+        "average_edge_m": 0.0764,
+        "pinned_vertices": 336,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.19865,
+        "average_displacement_m": 0.06368,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
       },
       {
         "panel": "PAV_REAR",
-        "frames": 36,
-        "average_displacement_m": 0.00024,
-        "maximum_displacement_m": 0.00041
+        "frames": 80,
+        "quad_grid": [
+          96,
+          44
+        ],
+        "source_quads": 4224,
+        "average_edge_m": 0.0737,
+        "pinned_vertices": 354,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.01958,
+        "average_displacement_m": 0.00235,
+        "maximum_displacement_m": 0.01958,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
       },
       {
         "panel": "PAV_SIDE_-1",
-        "frames": 36,
-        "average_displacement_m": 0.00023,
-        "maximum_displacement_m": 0.00039
+        "frames": 80,
+        "quad_grid": [
+          80,
+          44
+        ],
+        "source_quads": 3520,
+        "average_edge_m": 0.0738,
+        "pinned_vertices": 306,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.01962,
+        "average_displacement_m": 0.00276,
+        "maximum_displacement_m": 0.01962,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "PAV_FRONT_WING_-1",
+        "frames": 72,
+        "quad_grid": [
+          30,
+          40
+        ],
+        "source_quads": 1200,
+        "average_edge_m": 0.051,
+        "pinned_vertices": 93,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.864,
+        "average_displacement_m": 0.05751,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
       },
       {
         "panel": "PAV_SIDE_1",
-        "frames": 36,
-        "average_displacement_m": 0.00023,
-        "maximum_displacement_m": 0.00039
+        "frames": 80,
+        "quad_grid": [
+          80,
+          44
+        ],
+        "source_quads": 3520,
+        "average_edge_m": 0.0738,
+        "pinned_vertices": 306,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.01962,
+        "average_displacement_m": 0.00276,
+        "maximum_displacement_m": 0.01962,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "PAV_FRONT_WING_1",
+        "frames": 72,
+        "quad_grid": [
+          30,
+          40
+        ],
+        "source_quads": 1200,
+        "average_edge_m": 0.051,
+        "pinned_vertices": 93,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.80671,
+        "average_displacement_m": 0.05389,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
       }
-    ]
+    ],
+    "active_runtime_cloth_simulations": 0
   },
   "collision_guide": {
     "shape": "box",
@@ -96,13 +223,16 @@
     "shelves": 2,
     "chests": 3,
     "visible_rug": true,
-    "cloth_simulation": "baked_static_mesh"
+    "cloth_simulation": "baked_static_mesh",
+    "cloth_material": "MAT_TENT_CANVAS",
+    "cloth_panels": 7
   },
   "interactions": [],
   "notes": [
     "Eigenstaendiges Asset; nicht mit den beiden anderen Lager-Assets verschmelzen.",
     "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
     "Material-Farbtexturen sind im GLB eingebettet.",
-    "Blender-Cloth wurde frameweise berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik."
+    "Blender-Cloth wurde 72 bis 80 Frames mit weichen CLOTH_PIN-Gewichten berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik.",
+    "Die vorherige Blender-Fassung bleibt unangetastet und ist zusaetzlich in BACKUP_ORIGINAL_TENTS der korrigierten Datei ausgeblendet enthalten."
   ]
 }
