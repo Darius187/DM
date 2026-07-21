@@ -5609,15 +5609,22 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     const rainAmt = draussen && this.area.dorfSimBoden ? dorfRegen() : (draussen && this.regnet ? this.wetterWert : 0);
     sh.setUniform('u_rain.value', rainAmt);
     sh.setUniform('u_turb.value', Math.min(1, this.aktWasserPreset().turb + WASSER2_CFG.turbAdd + rainAmt * WASSER2_CFG.regenTurb));
-    // VERSINKEN (Autorwunsch R79): steht der Held im Wasser, wird er unten
-    // beschnitten - er steht sichtbar IM Fluss statt darauf.
+    // VERSINKEN/SCHWIMMEN: die Sprite-Beschneidung laeuft jetzt IMMER (auch ohne
+    // Shader) in wendeSchwimmOptik() - hier nur noch die Shader-Uniforms.
+  }
+
+  // VERSINKEN + SCHWIMMEN (Autor R79/jetzt "bei tiefem Wasser schwimmen, nur der
+  // Kopf schaut raus"): der Held wird im Wasser von unten beschnitten - flach ein
+  // Stueck (watet), tief bis auf Kopf/Schultern (schwimmt). Laeuft jede Frame,
+  // unabhaengig vom Wasser-Shader (heldNass kommt aus tempoFaktor).
+  private wendeSchwimmOptik(): void {
+    this.berechneHeldNass();   // jede Frame frisch (auch im Stehen)
     const fr = this.playerSprite?.frame;
-    if (fr) {
-      if (this.heldNass > 0.05) {
-        const cut = Math.min(0.42, this.heldNass * 0.5);
-        this.playerSprite.setCrop(0, 0, fr.realWidth, fr.realHeight * (1 - cut));
-      } else if (this.playerSprite.isCropped) this.playerSprite.setCrop();
-    }
+    if (!fr) return;
+    if (this.heldNass > 0.05) {
+      const cut = Math.min(0.72, this.heldNass * 0.82);   // tief -> nur Kopf/Schultern
+      this.playerSprite.setCrop(0, 0, fr.realWidth, fr.realHeight * (1 - cut));
+    } else if (this.playerSprite.isCropped) this.playerSprite.setCrop();
   }
 
   // F10 öffnet die neue Tab-Dev-Konsole (Autorwunsch Runde 72: ab jetzt alles
@@ -7740,25 +7747,29 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       const d = Math.hypot(bu.x - this.px, bu.y - this.py);
       if (d < bu.r) { f *= 0.55 + 0.35 * (d / bu.r); break; }
     }
-    // Begehbares Wasser (Runde 72): der Held watet hinein und wird zunehmend
-    // gebremst (kann nicht schwimmen) - bis er im tiefen Wasser fast steht.
-    // Verlangsamung aus DERSELBEN Geometrie wie Optik/Wellen.
-    const lauf = this.area?.wasserLauf;
-    if (lauf?.begehbar) {
-      // AUF Brücke/Weg gilt die Wat-Bremse NICHT (Autorbug "komme nicht über
-      // die Brücke"): die Bremse ist SDF-basiert und wusste nichts von der
-      // Kachel unter den Füßen - auf der Brücke stand der Held im "Wasser".
-      const htx = Math.floor(this.px / TILE), hty = Math.floor(this.py / TILE);
-      const wegNah = [0, -1, 1].some((d) => { const k = this.area.map[hty + d]?.[htx]; return k === T.BRIDGE || k === T.PATH; });
-      if (!wegNah) {
-        const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
-        const sd = sdWasser(u, v, this.aktuelleWasserGeo() ?? lauf.geo, lauf.smink ?? WASSER2_CFG.smink, WASSER2_CFG.widthMul);
-        const nass = Math.max(0, Math.min(1, (0.015 - sd) / 0.05));   // 0 am Ufer .. 1 tief
-        this.heldNass = nass;
-        f *= 1 - nass * 0.93;                                         // tief -> ~7% Tempo (fast fest)
-      } else this.heldNass = 0;
-    } else this.heldNass = 0;
+    // WASSER (Autor: "ueberall durchwatbar, und bei tiefem Wasser SCHWIMMEN, nur
+    // der Kopf schaut raus"): heldNass (0 Ufer .. 1 tief) wird jede Frame in
+    // berechneHeldNass() gesetzt (auch im Stehen). Flach WATEN bremst stark; ab
+    // knietief SCHWIMMEN mit gleichmaessigem Tempo (~45%), damit man breite Fluesse
+    // und Seen durchqueren kann, statt festzustecken.
+    const nass = this.heldNass;
+    if (nass > 0.02) f *= nass < 0.5 ? (1 - nass * 0.9) : 0.45;
     return f;
+  }
+
+  // heldNass jede Frame aus der aktuellen Held-Position bestimmen (0 am Ufer ..
+  // 1 im tiefen Wasser). Unabhaengig von Bewegung, damit der Held auch im Stehen
+  // watet/schwimmt (Sprite-Beschneidung in wendeSchwimmOptik).
+  private berechneHeldNass(): void {
+    const lauf = this.area?.wasserLauf;
+    const htx = Math.floor(this.px / TILE), hty = Math.floor(this.py / TILE);
+    const aufWasser = this.area?.map?.[hty]?.[htx] === T.WATER;
+    const wegNah = [0, -1, 1].some((d) => { const k = this.area?.map?.[hty + d]?.[htx]; return k === T.BRIDGE || k === T.PATH; });
+    if (lauf && aufWasser && !wegNah) {
+      const u = this.px / (this.area.w * TILE), v = this.py / (this.area.h * TILE);
+      const sd = sdWasser(u, v, this.aktuelleWasserGeo() ?? lauf.geo, lauf.smink ?? WASSER2_CFG.smink, WASSER2_CFG.widthMul);
+      this.heldNass = Math.max(0, Math.min(1, (0.015 - sd) / 0.055));
+    } else this.heldNass = 0;
   }
 
   // R88: im Platzierungs-Modus fängt der Weltklick die Bau-Platzierung ab
@@ -8159,16 +8170,14 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
 
   // R99 (P11): OFFENES Tor ist für den Helden/eigene Truppen KEIN Hindernis.
   protected override solidFuerHeld(x: number, y: number): boolean {
-    // Autor "ich laufe ueberall gegen eine unsichtbare Wand, wo frueher Wasser
-    // war": auf BEGEHBAREN Wasserkarten (start/Waldrand) darf T.WATER KEINE harte
-    // Wand sein - der Held WATET hindurch, stark gebremst (tempoFaktor, Wat-Bremse).
-    // Sonst blockte die Kollision, bevor die Bremse ueberhaupt greift = tote Wand.
-    // Andere solide Kacheln (Baum/Fels/Gebaeude) bleiben natuerlich Wand.
-    if (this.area?.wasserLauf?.begehbar) {
-      const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
-      const t = this.area.map[ty]?.[tx];
-      if (t === T.WATER) return this.gebaeudeSolid(x, y, true);   // Wasser durchlassen
-    }
+    // Autor-Entscheidung "Wasser ueberall durchwatbar (kein Risiko)": T.WATER ist
+    // fuer den HELDEN NIE eine harte Wand - er watet durch JEDES Wasser (stark
+    // gebremst, siehe tempoFaktor). So gibt es garantiert NIRGENDS eine unsichtbare
+    // Wand, wo Wasser wie Boden aussieht oder gar nicht gezeichnet wird. Baeume,
+    // Fels, Palisaden, Gebaeude bleiben natuerlich Wand. (Feinde: solidFuerFeind
+    // unveraendert - Monster meiden Wasser weiter.)
+    const t = this.area?.map[Math.floor(y / TILE)]?.[Math.floor(x / TILE)];
+    if (t === T.WATER) return this.gebaeudeSolid(x, y, true);
     return (this.isSolidAt(x, y) && !this.torOffenHier(x, y)) || this.gebaeudeSolid(x, y, true);
   }
 
@@ -15094,6 +15103,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.renderLight();
     this.updateLagerGlut();   // R109: Feuer-Glut nach dem Licht (nachtFaktor ist gesetzt)
     this.light2dHeldLicht?.setPosition(this.px, this.py);   // R109 Schritt 2: Bump-Licht folgt dem Helden
+    this.wendeSchwimmOptik();   // Wasser: Held watet/schwimmt (Sprite von unten beschnitten)
     this.renderMinimap();
     this.renderHud();
     this.sortiereKameras();
