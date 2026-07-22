@@ -13786,6 +13786,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
         feindzug: this.feindzug,                        // F2: der Feindzug reist mit
         fallT: this.fallT,                              // F5: Sturm-/Treck-Uhren
         treckT: this.treckT,
+        fallGolemKam: this.fallGolemKam,                // F5: Golem-Status ueber Kartenwechsel halten
         bevoelkerung: this.bevoelkerung,               // R143 (2.3)
         breschen: this.breschen,
       },
@@ -13861,6 +13862,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.feindzug = data.welt.feindzug ?? neuerFeindzug(FELDZUG.startBesetzt);   // F2 (alte Staende: Startlage)
     this.fallT = data.welt.fallT ?? 0;       // F5
     this.treckT = data.welt.treckT ?? 0;
+    this.fallGolemKam = data.welt.fallGolemKam ?? false;   // F5: Golem-Status halten (kein Phantom-Golem beim Portal)
     this.feldzugWelleGespawnt = false;
     this.bevoelkerung = data.welt.bevoelkerung ?? REKRUTIERUNG.bevoelkerungStart;   // R143 (2.3)
     this.areaSeed = data.welt.haendlerSeed ?? this.areaSeed;
