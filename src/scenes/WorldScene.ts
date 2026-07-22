@@ -281,6 +281,7 @@ export class WorldScene extends CombatScene {
   private wasserKachelImg?: Phaser.GameObjects.Image;
   private wasserEditPinsel = 1;   // Pinsel-Radius in Kacheln (Rad: 0 = 1 Kachel)
   private wasserEditSaveT = 0;    // Debounce-Uhr fuers Speichern
+  private baumenueIconsGeladen = false;   // Baumenue-Icons einmal nachladen
   // Pfützen am Weg (Runde 75): wachsen/schwinden mit der Boden-Nässe.
   private pfuetzen: Array<{ img: Phaser.GameObjects.Image; schwelle: number; cur: number; bw: number; bh: number }> = [];
   private pfuetzenTexKeys: string[] = [];
@@ -635,6 +636,7 @@ export class WorldScene extends CombatScene {
       else if (ev.key === 'Delete' && ev.shiftKey) this.wasserKarteLeeren();
       else if (ev.key.toLowerCase() === 'x') this.exportiereWasser();   // Export in Zwischenablage
     });
+    void this.ladeBaumenueIcons();   // Baumenue-Icons nachladen (falls vorhanden)
     this.worldGfx = this.add.graphics().setDepth(2450);
     // Blutspuren liegen UNTER den Figuren (Autorbug R45: lagen "vor" den
     // Einheiten). Boden = -10, Figuren = y (positiv); -5 liegt sauber dazwischen.
@@ -4178,14 +4180,26 @@ export class WorldScene extends CombatScene {
     // R186 (Autor "die Schrift ist zu klein/unscharf"): groessere Felder und
     // Beschriftungen (Symbol 14, Text 9 statt 12/7).
     const zw = Math.floor((w - F(14)) / 4), zh = F(40);
-    const feld = (col: number, row: number, symbol: string, lbl: string, opts: { an?: boolean; aus?: boolean; taste?: string; tip?: string }, fn: (() => void) | null): void => {
+    const feld = (col: number, row: number, symbol: string, lbl: string, opts: { an?: boolean; aus?: boolean; taste?: string; tip?: string; icon?: string }, fn: (() => void) | null): void => {
       const x = F(7) + col * zw, y = y0 + row * (zh + F(2));
       const klickbar = !!fn && !opts.aus;
       const bg = this.add.rectangle(x, y, zw - F(2), zh, opts.an ? 0x3a2a10 : 0x120d07, 0.95)
         .setOrigin(0).setStrokeStyle(1, opts.an ? 0xc9a227 : klickbar ? 0x4a3a26 : 0x2a2118);
       c.add(bg);
-      c.add(this.add.text(x + (zw - F(2)) / 2, y + F(3), symbol, { fontFamily: 'serif', fontSize: `${F(14)}px`, color: opts.aus ? '#4a4238' : opts.an ? '#f0d060' : '#d8cfb8' }).setOrigin(0.5, 0));
-      c.add(this.add.text(x + (zw - F(2)) / 2, y + F(22), lbl, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: opts.aus ? '#4a4238' : opts.an ? '#c9a227' : '#a89878' }).setOrigin(0.5, 0));
+      // Icon (Autor-Grafik) statt Glyph+Text, wenn vorhanden - Name laeuft ueber
+      // den Tooltip. Fehlt das Icon, bleibt der bisherige Glyph + Beschriftung.
+      const iconDa = !!opts.icon && this.textures.exists(opts.icon);
+      if (iconDa) {
+        const src = this.textures.get(opts.icon!).getSourceImage() as { width: number; height: number };
+        const maxB = zw - F(8), maxH = zh - F(6);
+        const sc = Math.min(maxB / (src.width || 1), maxH / (src.height || 1));
+        const img = this.add.image(x + (zw - F(2)) / 2, y + zh / 2, opts.icon!).setOrigin(0.5).setScale(sc);
+        if (opts.aus) img.setAlpha(0.4);
+        c.add(img);
+      } else {
+        c.add(this.add.text(x + (zw - F(2)) / 2, y + F(3), symbol, { fontFamily: 'serif', fontSize: `${F(14)}px`, color: opts.aus ? '#4a4238' : opts.an ? '#f0d060' : '#d8cfb8' }).setOrigin(0.5, 0));
+        c.add(this.add.text(x + (zw - F(2)) / 2, y + F(22), lbl, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: opts.aus ? '#4a4238' : opts.an ? '#c9a227' : '#a89878' }).setOrigin(0.5, 0));
+      }
       if (opts.taste) c.add(this.add.text(x + zw - F(6), y + F(2), opts.taste, { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#6a5f4c' }).setOrigin(1, 0));
       if (!klickbar) return;
       bg.setInteractive({ useHandCursor: true });
@@ -4266,7 +4280,7 @@ export class WorldScene extends CombatScene {
         const kann = b.frei && !this.kostenFehlen('dorf', b.kosten as Record<string, number>);
         const ktxt = Object.entries(b.kosten).map(([k, n]) => `${n}${MATERIAL_NAMES[k as MaterialId][0]}`).join(' ');
         const hp = BAU_HP[b.id];
-        feld(i % 4, Math.floor(i / 4), '⌂', `${b.name.split(' ')[0]} ${ktxt}`, { aus: !kann, tip: `${b.name}
+        feld(i % 4, Math.floor(i / 4), '⌂', `${b.name.split(' ')[0]} ${ktxt}`, { aus: !kann, icon: `baumenue_${b.id}`, tip: `${b.name}  (${ktxt})
 ${b.beschreibung}${hp ? `
 Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       });
@@ -4276,7 +4290,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     // --- Kontext BAU Ebene 1: Kategorien (BAR-Prinzip) --------------------
     BAU_KATEGORIEN.forEach((kat, i) => {
       const inhalt = kat.bauten.map((bid) => RTS_BAUTEN.find((b) => b.id === bid)?.name ?? bid).join(', ');
-      feld(i, 0, '⌂', kat.name, { taste: kat.taste, tip: `${kat.name}: ${inhalt}` }, () => { this.rtsBauKat = kat.id; });
+      feld(i, 0, '⌂', kat.name, { taste: kat.taste, tip: `${kat.name}: ${inhalt}`, icon: `baumenue_${kat.id}` }, () => { this.rtsBauKat = kat.id; });
     });
     feld(0, 1, '⚑', 'Aushebung', { tip: `Dorf: ${this.bevoelkerung} Arbeiter · Heer ${this.armee.einheiten.length}/${heerObergrenze(this.bevoelkerung)}` }, () => { this.rtsBauKat = 'aushebung'; });
     // R191 (Autor): der RUECKZUG ist ein sichtbarer Menuepunkt. Autor-Nachtrag:
@@ -5977,6 +5991,31 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     console.log('WASSER-EXPORT ' + json);
     try { void navigator.clipboard?.writeText(json); } catch { /* kein Clipboard - Konsole reicht */ }
     this.logMsg(`Wasser-Export "${a.id}": ${liste.length} Kacheln in Zwischenablage + Konsole (F12). Schick es mir.`, 'gold');
+  }
+  // Baumenue-Icons (Autor-Grafiken in assets/ui/baumenue/) EINMAL nachladen -
+  // nur die, die es wirklich gibt (HEAD-Probe, kein 404-Spam). Neue Icons
+  // erscheinen automatisch, sobald die PNG (id.png) im Ordner liegt.
+  private async ladeBaumenueIcons(): Promise<void> {
+    if (this.baumenueIconsGeladen) return;
+    this.baumenueIconsGeladen = true;
+    const ids = new Set<string>(['aushebung']);
+    for (const k of BAU_KATEGORIEN) ids.add(k.id);
+    for (const b of RTS_BAUTEN) ids.add(b.id);
+    let queued = 0;
+    for (const id of ids) {
+      const key = `baumenue_${id}`;
+      if (this.textures.exists(key)) continue;
+      try {
+        const r = await fetch(`ui/baumenue/${id}.png`, { method: 'HEAD' });
+        if (!r.ok || (r.headers.get('content-type') ?? '').includes('text/html')) continue;
+      } catch { continue; }
+      this.load.image(key, `ui/baumenue/${id}.png`);
+      queued++;
+    }
+    if (queued > 0) {
+      this.load.once(Phaser.Loader.Events.COMPLETE, () => { if (this.rtsBattle) this.baueRtsLeiste(); });
+      this.load.start();
+    }
   }
   private wasserKarteLeeren(): void {
     const a = this.area; if (!a?.map) return;
