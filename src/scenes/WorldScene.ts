@@ -15051,8 +15051,16 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     if (this.grosserEinfall && this.einfallAktiv && !this.playerDead) {
       this.aktualisiereChaos(dt);
       this.zeigeEinfallStand(dt);
-    } else if (this.einfallText.visible) {
-      this.einfallText.setVisible(false);
+    } else {
+      // Autor "ich weiss nie, wie viele Feinde noch da sind": IMMER die Zahl der
+      // lebenden Feinde auf der Karte anzeigen (draussen), damit man weiss, ob die
+      // Karte gesaeubert ist - auch wenn welche fliehen/sich verstreuen.
+      const feinde = this.enemies.filter((e) => e.team !== 'spieler' && e.hp > 0).length;
+      if (feinde > 0 && !this.area.innen && !this.area.dark && !this.playerDead) {
+        this.einfallText.setText(`Feinde auf dieser Karte: ${feinde}`).setVisible(true);
+      } else if (this.einfallText.visible) {
+        this.einfallText.setVisible(false);
+      }
     }
     // NPCs: 2 Positionen je Tageszeit, sie gehen sichtbar dorthin.
     // Nachts schlafen sie in ihren Häusern - in den Stuben sieht man dann
