@@ -1,0 +1,96 @@
+{
+  "asset": "medieval_carpenter_worksite_3d_runtime",
+  "label_de": "Zimmermanns-Arbeitsplatz",
+  "glb": "medieval_carpenter_worksite_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "CARPENTER_WORKSITE_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\carpenter_worksite\\medieval_carpenter_worksite_3d_runtime.blend",
+  "original_blend_preserved": null,
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -3.046,
+      -2.24,
+      -0.011
+    ],
+    "max": [
+      2.698,
+      1.854,
+      2.08
+    ],
+    "size": [
+      5.744,
+      4.094,
+      2.091
+    ]
+  },
+  "runtime": {
+    "visible_objects": 6,
+    "triangles": 1616,
+    "embedded_textured_materials": 6,
+    "static_material_batches": [
+      "CARPENTER_WORKSITE_WOOD_DARK_BATCH",
+      "CARPENTER_WORKSITE_WOOD_MID_BATCH",
+      "CARPENTER_WORKSITE_ROPE_BATCH",
+      "CARPENTER_WORKSITE_IRON_BATCH",
+      "CARPENTER_WORKSITE_STEEL_BATCH",
+      "CARPENTER_WORKSITE_STRAW_BATCH"
+    ],
+    "baked_cloth_panels": [],
+    "active_runtime_cloth_simulations": 0
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      5.45,
+      4.3
+    ],
+    "center": [
+      0.05,
+      -0.15
+    ]
+  },
+  "content": {
+    "workbench": true,
+    "wooden_vise": true,
+    "mallet": true,
+    "axe": true,
+    "chisels": 4,
+    "hand_plane": true,
+    "hewn_beams": 10,
+    "board_rack": true,
+    "saw_tripod": true,
+    "wood_shavings": 55,
+    "global_ground_plate": false
+  },
+  "interactions": [
+    {
+      "id": "carpentry_work_anchor",
+      "position": [
+        -0.72,
+        -0.36,
+        0
+      ]
+    },
+    {
+      "id": "timber_cut_anchor",
+      "position": [
+        -2.42,
+        1.34,
+        0
+      ]
+    }
+  ],
+  "notes": [
+    "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
+    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
+    "Material-Farbtexturen sind im GLB eingebettet."
+  ]
+}

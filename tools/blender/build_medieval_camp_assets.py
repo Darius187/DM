@@ -18,6 +18,7 @@ VALID_ASSETS = {
     "cooking_fire", "order_banner", "field_shrine",
     "field_forge", "supply_wagon", "horse_corral",
     "supply_tent", "rest_tent", "camp_supplies",
+    "camp_well", "firewood_stack", "carpenter_worksite",
 }
 
 
@@ -43,6 +44,9 @@ ASSET_NAMES = {
     "supply_tent": "medieval_supply_tent_3d_runtime",
     "rest_tent": "medieval_rest_tent_3d_runtime",
     "camp_supplies": "medieval_camp_supplies_3d_runtime",
+    "camp_well": "medieval_camp_well_3d_runtime",
+    "firewood_stack": "medieval_firewood_stack_3d_runtime",
+    "carpenter_worksite": "medieval_carpenter_worksite_3d_runtime",
 }
 ROOT_NAMES = {
     "fletcher": "FLETCHER_STATION_ROTATION_PIVOT",
@@ -58,6 +62,9 @@ ROOT_NAMES = {
     "supply_tent": "SUPPLY_TENT_ROTATION_PIVOT",
     "rest_tent": "REST_TENT_ROTATION_PIVOT",
     "camp_supplies": "CAMP_SUPPLIES_ROTATION_PIVOT",
+    "camp_well": "CAMP_WELL_ROTATION_PIVOT",
+    "firewood_stack": "FIREWOOD_STACK_ROTATION_PIVOT",
+    "carpenter_worksite": "CARPENTER_WORKSITE_ROTATION_PIVOT",
 }
 ASSET_NAME = ASSET_NAMES[ASSET_ID]
 SOURCE_DIR = SOURCE_ROOT / ASSET_ID
@@ -2044,6 +2051,223 @@ def build_camp_supplies():
     }
 
 
+def build_open_bucket(center, radius=.28, height=.48):
+    x, y, z = center
+    BATCHES["wood_mid"].open_tube((x, y, z + height / 2), radius, height, .045, 16)
+    for ring_z in (z + .10, z + height - .08):
+        BATCHES["iron"].torus((x, y, ring_z), radius + .010, .018, 16, 4)
+    BATCHES["iron"].torus((x, y, z + height + .12), radius * .72, .018, 16, 4,
+                           (math.pi / 2, 0, 0))
+
+
+def build_camp_well():
+    random.seed(1369)
+    ring_radius = 1.02
+    for course in range(5):
+        count = 16
+        offset = (course % 2) * math.pi / count
+        for index in range(count):
+            angle = index * math.tau / count + offset
+            radius = ring_radius + random.uniform(-.025, .025)
+            x = math.cos(angle) * radius
+            y = math.sin(angle) * radius
+            z = .12 + course * .22
+            BATCHES["stone"].box((x, y, z), (.39, .31, .20),
+                                  (0, random.uniform(-.035, .035), angle + math.pi / 2))
+    for x in (-1.42, 1.42):
+        beam("wood_dark", (x, 0, .02), (x, 0, 2.82), .12)
+        beam("wood_mid", (x, -.52, 2.55), (x, .52, 2.55), .095)
+        beam("wood_dark", (x, 0, 1.98), (x * .66, 0, 2.56), .075)
+    beam("wood_dark", (-1.54, 0, 2.72), (1.54, 0, 2.72), .10)
+    BATCHES["wood_mid"].cylinder((0, 0, 2.02), .14, 2.72, 14, (1, 0, 0))
+    BATCHES["rope"].torus((0, 0, 2.02), .23, .040, 18, 5, (0, math.pi / 2, 0))
+    rope([(0, 0, 1.96), (0, 0, .58)], .021)
+    build_open_bucket((0, 0, .28), .24, .42)
+    beam("iron", (1.48, 0, 2.02), (1.82, 0, 2.02), .035)
+    beam("iron", (1.82, 0, 2.02), (1.82, -.28, 2.02), .035)
+    BATCHES["wood_mid"].cylinder((1.82, -.42, 2.02), .055, .28, 10, (0, 1, 0))
+
+    roof_ridge, roof_eave, roof_span = 3.42, 2.67, 1.82
+    slope = math.atan2(roof_ridge - roof_eave, roof_span)
+    beam("wood_dark", (0, -1.48, roof_ridge), (0, 1.48, roof_ridge), .10)
+    for side in (-1, 1):
+        for row in range(5):
+            u = (row + .5) / 5
+            x = side * u * roof_span
+            z = roof_ridge - u * (roof_ridge - roof_eave)
+            for column in range(7):
+                y = -1.34 + column * .44 + (row % 2) * .07
+                BATCHES["wood_dark"].box((x, y, z), (.44, .48, .060),
+                                          (0, side * slope, random.uniform(-.012, .012)))
+        beam("wood_dark", (0, -1.42, roof_ridge - .03),
+             (side * roof_span, -1.42, roof_eave), .075)
+        beam("wood_dark", (0, 1.42, roof_ridge - .03),
+             (side * roof_span, 1.42, roof_eave), .075)
+    BATCHES["wood_mid"].cylinder((0, 0, roof_ridge + .05), .085, 2.98, 10, (0, 1, 0))
+    build_open_bucket((-1.82, -.72, .02), .30, .50)
+    build_open_bucket((1.78, -.54, .02), .27, .46)
+    build_barrel((1.48, .68, .02), .32, .68)
+    return {
+        "label": "Lagerbrunnen mit Spindel",
+        "content": {"open_stone_well": True, "roof_shingles": 70, "working_crank": True,
+                    "hanging_bucket": True, "loose_buckets": 2, "barrel": 1,
+                    "global_ground_plate": False},
+        "collision": {"shape": "circle", "radius": 1.28, "center": [0, 0]},
+        "interactions": [{"id": "well_crank_anchor", "position": [1.82, -.42, 2.02]},
+                         {"id": "water_bucket_anchor", "position": [0, 0, .70]}],
+    }
+
+
+def build_cut_log(start, end, radius, segments=12):
+    start = Vector(start)
+    end = Vector(end)
+    direction = end - start
+    unit = direction.normalized()
+    center = (start + end) / 2
+    BATCHES["wood_dark"].cylinder(center, radius, direction.length, segments, direction)
+    cap_depth = .024
+    BATCHES["wood_mid"].cylinder(start - unit * .004, radius * .92, cap_depth,
+                                 segments, direction)
+    BATCHES["wood_mid"].cylinder(end + unit * .004, radius * .92, cap_depth,
+                                 segments, direction)
+
+
+def build_firewood_stack():
+    random.seed(1370)
+    half_length, half_depth = 1.78, .82
+    for x in (-1.98, 1.98):
+        for y in (-.92, .92):
+            beam("wood_dark", (x, y, .02), (x, y, 2.28), .095)
+            beam("wood_dark", (x, y, .18), (x * 1.08, y * 1.08, .02), .070)
+    for x in (-1.98, 1.98):
+        beam("wood_mid", (x, -.92, .20), (x, .92, .20), .080)
+        beam("wood_mid", (x, -.92, 1.98), (x, .92, 1.98), .080)
+    for layer in range(7):
+        z = .22 + layer * .27
+        columns = 6 if layer < 5 else 5
+        for column in range(columns):
+            y = -.67 + column * (1.34 / max(1, columns - 1))
+            radius = random.uniform(.105, .145)
+            x_jitter = random.uniform(-.08, .08)
+            y_jitter = random.uniform(-.035, .035)
+            length = random.uniform(3.25, 3.52)
+            build_cut_log((-length / 2 + x_jitter, y + y_jitter, z),
+                          (length / 2 + x_jitter, y + y_jitter,
+                           z + random.uniform(-.025, .025)), radius, 11)
+    for index in range(13):
+        angle = random.uniform(-.22, .22)
+        x = -1.58 + (index % 7) * .48
+        y = -1.16 - (index // 7) * .20
+        length = random.uniform(.55, 1.00)
+        build_cut_log((x - length / 2, y, .10 + (index // 7) * .14),
+                      (x + length / 2, y + math.sin(angle) * .20,
+                       .13 + (index // 7) * .14), random.uniform(.045, .075), 9)
+    return {
+        "label": "Gestapeltes Brennholz",
+        "content": {"cut_logs": 54, "bark_sides": True, "visible_cut_ends": True,
+                    "support_rack": True, "kindling": 13, "global_ground_plate": False},
+        "collision": {"shape": "box", "size": [4.10, 2.15], "center": [0, 0]},
+    }
+
+
+def build_carpenter_mallet(center, rotation_z=0.0):
+    x, y, z = center
+    handle_start = local_point((x, y, z), (-.34, 0, .03), rotation_z)
+    handle_end = local_point((x, y, z), (.34, 0, .08), rotation_z)
+    beam("wood_mid", handle_start, handle_end, .045)
+    head = local_point((x, y, z), (.34, 0, .11), rotation_z)
+    direction = Matrix.Rotation(rotation_z, 4, "Z") @ Vector((0, 1, 0))
+    BATCHES["wood_dark"].cylinder(head, .12, .38, 10, direction)
+
+
+def build_carpenter_axe(center, rotation_z=0.0):
+    x, y, z = center
+    start = local_point((x, y, z), (-.46, 0, .03), rotation_z)
+    end = local_point((x, y, z), (.42, 0, .08), rotation_z)
+    beam("wood_mid", start, end, .040)
+    blade_center = local_point((x, y, z), (.42, 0, .13), rotation_z)
+    BATCHES["steel"].box(blade_center, (.20, .035, .28), (0, 0, rotation_z))
+
+
+def build_carpenter_worksite():
+    random.seed(1371)
+    bench_z = .82
+    BATCHES["wood_mid"].box((-.72, .28, bench_z), (2.85, .88, .18))
+    for x in (-1.78, .34):
+        for y in (-.02, .58):
+            beam("wood_dark", (x, y, .02), (x, y, bench_z - .05), .085)
+    beam("wood_dark", (-1.78, -.02, .12), (.34, -.02, .62), .065)
+    beam("wood_dark", (-1.78, .58, .12), (.34, .58, .62), .065)
+    BATCHES["wood_dark"].box((-2.05, .28, .92), (.34, .76, .30))
+    BATCHES["wood_mid"].box((-1.82, .28, .93), (.18, .66, .22))
+    BATCHES["iron"].cylinder((-2.24, .28, .90), .035, .38, 10, (1, 0, 0))
+    build_carpenter_mallet((-.95, .20, .95), .12)
+    build_carpenter_axe((-.22, .17, .96), -.10)
+    for index in range(4):
+        x = -.32 + index * .22
+        beam("steel", (x, .48, .93), (x + .08, .29, 1.00), .018)
+        BATCHES["wood_mid"].cylinder((x + .10, .25, 1.00), .035, .16, 8,
+                                      (.40, -.90, 0))
+    BATCHES["wood_mid"].box((.38, .24, .93), (.46, .28, .16))
+    BATCHES["iron"].box((.43, .24, 1.05), (.16, .11, .20), (0, .18, 0))
+
+    for index in range(6):
+        y = -.88 - index * .20
+        width = 3.10 - index * .18
+        BATCHES["wood_mid"].box((.30 + index * .06, y, .10 + (index % 2) * .07),
+                                  (width, .16, .16),
+                                  (0, random.uniform(-.025, .025), random.uniform(-.035, .035)))
+    for index, (x, y, length, width) in enumerate((
+            (-1.05, -1.65, 2.90, .28), (.45, -1.78, 2.65, .24),
+            (1.25, -1.54, 2.35, .22), (.08, -2.03, 2.72, .18))):
+        BATCHES["wood_mid"].box((x, y, .12 + index * .035),
+                                  (length, width, .16), (0, 0, random.uniform(-.12, .12)))
+
+    for x in (1.72, 2.48):
+        beam("wood_dark", (x, .42, .02), (x, .42, 2.08), .095)
+        beam("wood_dark", (x, 1.32, .02), (x, 1.32, 2.08), .095)
+        beam("wood_dark", (x, .42, .18), (x + .18, .20, .02), .070)
+    for z in (.48, 1.08, 1.68):
+        BATCHES["wood_mid"].box((2.10, .86, z), (1.02, .18, .44),
+                                  (0, 0, random.uniform(-.035, .035)))
+
+    tripod_center = (-2.42, 1.34)
+    beam("wood_dark", (tripod_center[0] - .58, tripod_center[1] - .35, .02),
+         (tripod_center[0], tripod_center[1], 1.78), .070)
+    beam("wood_dark", (tripod_center[0] + .58, tripod_center[1] - .35, .02),
+         (tripod_center[0], tripod_center[1], 1.78), .070)
+    beam("wood_dark", (tripod_center[0], tripod_center[1] + .48, .02),
+         (tripod_center[0], tripod_center[1], 1.78), .070)
+    BATCHES["rope"].torus((tripod_center[0], tripod_center[1], 1.64), .18, .026, 14, 5)
+    rope([(tripod_center[0], tripod_center[1], 1.54),
+          (tripod_center[0], tripod_center[1], .62)], .018)
+
+    for index in range(55):
+        x = random.uniform(-1.95, .62)
+        y = random.uniform(-.22, .88)
+        z = random.uniform(.018, .055)
+        length = random.uniform(.07, .24)
+        angle = random.uniform(0, math.tau)
+        beam("straw", (x, y, z),
+             (x + math.cos(angle) * length, y + math.sin(angle) * length,
+              z + random.uniform(-.01, .03)), .009)
+    BATCHES["wood_mid"].cylinder((.92, .95, .43), .30, .78, 12)
+    for index in range(7):
+        angle = index * math.tau / 7
+        beam("wood_dark", (.92, .95, .12),
+             (.92 + math.cos(angle) * .42, .95 + math.sin(angle) * .42, .02), .040)
+    return {
+        "label": "Zimmermanns-Arbeitsplatz",
+        "content": {"workbench": True, "wooden_vise": True, "mallet": True,
+                    "axe": True, "chisels": 4, "hand_plane": True,
+                    "hewn_beams": 10, "board_rack": True, "saw_tripod": True,
+                    "wood_shavings": 55, "global_ground_plate": False},
+        "collision": {"shape": "box", "size": [5.45, 4.30], "center": [.05, -.15]},
+        "interactions": [{"id": "carpentry_work_anchor", "position": [-.72, -.36, 0]},
+                         {"id": "timber_cut_anchor", "position": [-2.42, 1.34, 0]}],
+    }
+
+
 BUILDERS = {
     "fletcher": build_fletcher,
     "field_tent": build_field_tent,
@@ -2058,6 +2282,9 @@ BUILDERS = {
     "supply_tent": build_supply_tent,
     "rest_tent": build_rest_tent,
     "camp_supplies": build_camp_supplies,
+    "camp_well": build_camp_well,
+    "firewood_stack": build_firewood_stack,
+    "carpenter_worksite": build_carpenter_worksite,
 }
 metadata = BUILDERS[ASSET_ID]()
 
@@ -2089,7 +2316,8 @@ def make_objects():
         try:
             bpy.ops.object.mode_set(mode="EDIT")
             bpy.ops.mesh.select_all(action="SELECT")
-            if ASSET_ID in {"horse_corral", "supply_tent", "rest_tent"}:
+            if ASSET_ID in {"horse_corral", "supply_tent", "rest_tent",
+                            "camp_well", "firewood_stack", "carpenter_worksite"}:
                 bpy.ops.uv.cube_project(cube_size=1.0)
             else:
                 bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=.02)
