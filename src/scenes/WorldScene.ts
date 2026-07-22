@@ -4231,9 +4231,11 @@ export class WorldScene extends CombatScene {
         c.add(this.add.text(x + (zw - F(2)) / 2, y + F(22), lbl, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: opts.aus ? '#4a4238' : opts.an ? '#c9a227' : '#a89878' }).setOrigin(0.5, 0));
       }
       if (opts.taste) c.add(this.add.text(x + zw - F(6), y + F(2), opts.taste, { fontFamily: 'serif', fontSize: `${F(8)}px`, color: '#6a5f4c' }).setOrigin(1, 0));
-      if (!klickbar) return;
-      bg.setInteractive({ useHandCursor: true });
-      bg.on('pointerdown', () => { fn!(); this.sfx.play('klick'); this.baueRtsLeiste(); });
+      // Tooltip IMMER anbieten - auch bei deaktivierten Bauten (Autor "keine
+      // Tooltips, warum nicht freigeschaltet"): der Hover erklaert dann, WAS fehlt.
+      // Klick nur, wenn wirklich baubar.
+      if (klickbar || opts.tip) bg.setInteractive({ useHandCursor: klickbar });
+      if (klickbar) bg.on('pointerdown', () => { fn!(); this.sfx.play('klick'); this.baueRtsLeiste(); });
       if (opts.tip) {
         bg.on('pointerover', () => this.zeigeBauTooltip(opts.tip!, c.x));
         bg.on('pointerout', () => this.versteckeBauTooltip());
@@ -4310,9 +4312,20 @@ export class WorldScene extends CombatScene {
         const kann = b.frei && !this.kostenFehlen('dorf', b.kosten as Record<string, number>);
         const ktxt = Object.entries(b.kosten).map(([k, n]) => `${n}${MATERIAL_NAMES[k as MaterialId][0]}`).join(' ');
         const hp = BAU_HP[b.id];
+        // Autor "warum geht das nicht / nicht freigeschaltet?": im Tooltip klar
+        // sagen, WAS fehlt (Material mit Restmenge) bzw. dass es noch gesperrt ist.
+        const kasse = this.kasse('dorf');
+        const fehlt = !b.frei ? 'Noch nicht verfügbar'
+          : Object.entries(b.kosten)
+              .filter(([w, n]) => (kasse[w] ?? 0) < (n ?? 0))
+              .map(([w, n]) => `${(n ?? 0) - (kasse[w] ?? 0)} ${MATERIAL_NAMES[w as MaterialId]}`)
+              .join(', ');
+        const tipFehlt = !kann && fehlt ? `
+
+⚠ Fehlt: ${fehlt}` : '';
         feld(i % 4, Math.floor(i / 4), '⌂', `${b.name.split(' ')[0]} ${ktxt}`, { aus: !kann, icon: `baumenue_${b.id}`, tip: `${b.name}  (${ktxt})
 ${b.beschreibung}${hp ? `
-Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
+Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       });
       feld(3, 2, '◀', 'Zurück', {}, () => { this.rtsBauKat = null; });
       return;
@@ -6044,11 +6057,31 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     // Stattdessen jede PNG parallel per Image() holen und DIREKT als Textur
     // registrieren - deterministisch, unabhaengig vom Loader-Lebenszyklus.
     let neue = 0;
+    // Die Quell-PNGs sind hochaufloesend (~1254px). Der Bau-Button ist nur ~50px;
+    // liesse man die GPU 1254->50 in EINEM Schritt verkleinern (25-fach, ohne
+    // Mipmaps), matscht die bilineare Filterung -> "verpixelt und unscharf"
+    // (Autor-Befund). Darum das Icon EINMAL per Canvas mit hoher Glaettung auf
+    // eine handliche Groesse vorverkleinern und mit LINEAR registrieren - dann
+    // skaliert die GPU nur noch minimal und das Bild bleibt scharf.
+    const ZIEL = 160;
     await Promise.all([...ids].map((id) => new Promise<void>((resolve) => {
       const key = `baumenue_${id}`;
       if (this.textures.exists(key)) { resolve(); return; }
       const img = new Image();
-      img.onload = () => { if (!this.textures.exists(key)) { this.textures.addImage(key, img); neue++; } resolve(); };
+      img.onload = () => {
+        if (!this.textures.exists(key)) {
+          const f = Math.min(1, ZIEL / Math.max(img.width, img.height));
+          const cv = document.createElement('canvas');
+          cv.width = Math.max(1, Math.round(img.width * f));
+          cv.height = Math.max(1, Math.round(img.height * f));
+          const g = cv.getContext('2d')!;
+          g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+          g.drawImage(img, 0, 0, cv.width, cv.height);
+          this.textures.addCanvas(key, cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+          neue++;
+        }
+        resolve();
+      };
       img.onerror = () => resolve();   // fehlt (z.B. noch unklares Icon) - stiller Fallback auf Glyph
       img.src = `ui/baumenue/${id}.png`;
     })));
