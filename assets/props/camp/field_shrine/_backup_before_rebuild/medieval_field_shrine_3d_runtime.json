@@ -1,0 +1,100 @@
+{
+  "asset": "medieval_field_shrine_3d_runtime",
+  "label_de": "Feldschrein des Lagers",
+  "glb": "medieval_field_shrine_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "FIELD_SHRINE_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\field_shrine\\medieval_field_shrine_3d_runtime.blend",
+  "original_blend_preserved": null,
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -1.445,
+      -1.41,
+      0.0
+    ],
+    "max": [
+      1.445,
+      1.206,
+      4.06
+    ],
+    "size": [
+      2.89,
+      2.616,
+      4.06
+    ]
+  },
+  "runtime": {
+    "visible_objects": 6,
+    "triangles": 1878,
+    "embedded_textured_materials": 6,
+    "static_material_batches": [
+      "FIELD_SHRINE_WOOD_DARK_BATCH",
+      "FIELD_SHRINE_WOOD_MID_BATCH",
+      "FIELD_SHRINE_WAX_BATCH",
+      "FIELD_SHRINE_FLAME_BATCH",
+      "FIELD_SHRINE_ALTAR_CLOTH_BATCH",
+      "FIELD_SHRINE_BRONZE_BATCH"
+    ],
+    "baked_cloth_panels": [],
+    "active_runtime_cloth_simulations": 0
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      2.45,
+      2.3
+    ],
+    "center": [
+      0,
+      0
+    ],
+    "front_open": true
+  },
+  "content": {
+    "raised_wood_floor": true,
+    "shingle_roof": true,
+    "altar": true,
+    "candles": 2,
+    "chalice": true,
+    "period_crosses": 2
+  },
+  "interactions": [
+    {
+      "id": "prayer_anchor",
+      "position": [
+        0,
+        -1.28,
+        0.02
+      ]
+    },
+    {
+      "id": "candle_fx_left",
+      "position": [
+        -0.5,
+        0.3,
+        1.75
+      ]
+    },
+    {
+      "id": "candle_fx_right",
+      "position": [
+        0.5,
+        0.3,
+        1.75
+      ]
+    }
+  ],
+  "notes": [
+    "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
+    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
+    "Material-Farbtexturen sind im GLB eingebettet."
+  ]
+}

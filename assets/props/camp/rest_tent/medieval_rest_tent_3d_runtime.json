@@ -1,11 +1,10 @@
 {
   "asset": "medieval_rest_tent_3d_runtime",
-  "label_de": "Kleines Ruhe- und Pflegezelt",
+  "label_de": "Einfaches Ruhezelt",
   "glb": "medieval_rest_tent_3d_runtime.glb",
   "runtime_mode": "static_exterior_prop",
   "root_node": "REST_TENT_ROTATION_PIVOT",
-  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\rest_tent\\medieval_rest_tent_3d_runtime.blend",
-  "original_blend_preserved": null,
+  "editable_blend": "C:\\Obsidian\\DM\\Darius187-DM\\assets\\props\\camp\\rest_tent\\medieval_rest_tent_1349_rebuilt.blend",
   "meters_per_blender_unit": 1.0,
   "placement": {
     "front_axis": "-Y",
@@ -16,233 +15,143 @@
   },
   "bounds_m": {
     "min": [
-      -3.075,
-      -2.594,
-      -0.12
+      -1.685,
+      -1.745,
+      0.01
     ],
     "max": [
-      3.07,
-      2.594,
-      3.07
+      1.684,
+      1.704,
+      2.25
     ],
     "size": [
-      6.145,
-      5.187,
-      3.19
+      3.369,
+      3.45,
+      2.24
     ]
   },
   "runtime": {
-    "visible_objects": 16,
-    "triangles": 32968,
-    "embedded_textured_materials": 16,
-    "static_material_batches": [
-      "REST_TENT_CLOTH_REST_ROOF_-1",
-      "REST_TENT_CLOTH_REST_ROOF_1",
-      "REST_TENT_CLOTH_REST_REAR",
-      "REST_TENT_CLOTH_REST_SIDE_-1",
-      "REST_TENT_CLOTH_REST_FRONT_WING_-1",
-      "REST_TENT_CLOTH_REST_SIDE_1",
-      "REST_TENT_CLOTH_REST_FRONT_WING_1",
-      "REST_TENT_WOOD_DARK_BATCH",
-      "REST_TENT_WOOD_MID_BATCH",
-      "REST_TENT_ROPE_BATCH",
-      "REST_TENT_CANVAS_DARK_BATCH",
-      "REST_TENT_IRON_BATCH",
-      "REST_TENT_MEDICAL_LINEN_BATCH",
-      "REST_TENT_CERAMIC_BATCH",
-      "REST_TENT_MEDICINE_GLASS_BATCH",
-      "REST_TENT_WAX_BATCH"
+    "visible_objects": 12,
+    "triangles": 9160,
+    "embedded_textured_materials": 5,
+    "pbr_materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_COARSE_LINEN_PBR",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_FADED_MADDER_LINEN_PBR",
+      "MAT_WEATHERED_NATURAL_LINEN_PBR"
     ],
-    "baked_cloth_panels": [
-      {
-        "panel": "REST_ROOF_-1",
-        "frames": 68,
-        "quad_grid": [
-          30,
-          34
-        ],
-        "source_quads": 1020,
-        "average_edge_m": 0.0959,
-        "pinned_vertices": 168,
-        "pin_weights": [
-          0.3,
-          0.7,
-          1.0
-        ],
-        "raw_maximum_displacement_m": 0.0943,
-        "average_displacement_m": 0.04194,
-        "maximum_displacement_m": 0.08,
-        "solidify_m": 0.003,
-        "runtime_cloth_modifier": false
-      },
-      {
-        "panel": "REST_ROOF_1",
-        "frames": 68,
-        "quad_grid": [
-          30,
-          34
-        ],
-        "source_quads": 1020,
-        "average_edge_m": 0.0959,
-        "pinned_vertices": 168,
-        "pin_weights": [
-          0.3,
-          0.7,
-          1.0
-        ],
-        "raw_maximum_displacement_m": 0.0943,
-        "average_displacement_m": 0.04194,
-        "maximum_displacement_m": 0.08,
-        "solidify_m": 0.003,
-        "runtime_cloth_modifier": false
-      },
-      {
-        "panel": "REST_REAR",
-        "frames": 70,
-        "quad_grid": [
-          38,
-          30
-        ],
-        "source_quads": 1140,
-        "average_edge_m": 0.1028,
-        "pinned_vertices": 165,
-        "pin_weights": [
-          0.3,
-          0.7,
-          1.0
-        ],
-        "raw_maximum_displacement_m": 0.01221,
-        "average_displacement_m": 0.00138,
-        "maximum_displacement_m": 0.01221,
-        "solidify_m": 0.003,
-        "runtime_cloth_modifier": false
-      },
-      {
-        "panel": "REST_SIDE_-1",
-        "frames": 70,
-        "quad_grid": [
-          30,
-          24
-        ],
-        "source_quads": 720,
-        "average_edge_m": 0.1002,
-        "pinned_vertices": 141,
-        "pin_weights": [
-          0.3,
-          0.7,
-          1.0
-        ],
-        "raw_maximum_displacement_m": 0.0106,
-        "average_displacement_m": 0.00089,
-        "maximum_displacement_m": 0.0106,
-        "solidify_m": 0.003,
-        "runtime_cloth_modifier": false
-      },
-      {
-        "panel": "REST_FRONT_WING_-1",
-        "frames": 68,
-        "quad_grid": [
-          22,
-          30
-        ],
-        "source_quads": 660,
-        "average_edge_m": 0.072,
-        "pinned_vertices": 69,
-        "pin_weights": [
-          0.3,
-          0.7,
-          1.0
-        ],
-        "raw_maximum_displacement_m": 1.75672,
-        "average_displacement_m": 0.07342,
-        "maximum_displacement_m": 0.08,
-        "solidify_m": 0.003,
-        "runtime_cloth_modifier": false
-      },
-      {
-        "panel": "REST_SIDE_1",
-        "frames": 70,
-        "quad_grid": [
-          30,
-          24
-        ],
-        "source_quads": 720,
-        "average_edge_m": 0.1002,
-        "pinned_vertices": 141,
-        "pin_weights": [
-          0.3,
-          0.7,
-          1.0
-        ],
-        "raw_maximum_displacement_m": 0.0106,
-        "average_displacement_m": 0.00089,
-        "maximum_displacement_m": 0.0106,
-        "solidify_m": 0.003,
-        "runtime_cloth_modifier": false
-      },
-      {
-        "panel": "REST_FRONT_WING_1",
-        "frames": 68,
-        "quad_grid": [
-          22,
-          30
-        ],
-        "source_quads": 660,
-        "average_edge_m": 0.072,
-        "pinned_vertices": 69,
-        "pin_weights": [
-          0.3,
-          0.7,
-          1.0
-        ],
-        "raw_maximum_displacement_m": 2.6385,
-        "average_displacement_m": 0.06987,
-        "maximum_displacement_m": 0.08,
-        "solidify_m": 0.003,
-        "runtime_cloth_modifier": false
-      }
-    ],
-    "active_runtime_cloth_simulations": 0
+    "active_runtime_cloth_simulations": 0,
+    "lod_policy": "LOD0 authored; Phaser distance culling/LOD integration remains external"
   },
   "collision_guide": {
     "shape": "box",
     "size": [
-      4.7,
-      3.75
+      2.82,
+      3.08
     ],
     "center": [
       0,
       0
-    ],
-    "front_open": true,
-    "walkable_entry_width_m": 2.6
+    ]
   },
   "content": {
+    "historical_period": "Central Europe circa 1349",
+    "tent_type": "small low wedge rest tent",
+    "baked_static_cloth": true,
     "open_front": true,
-    "ridge_roof": true,
-    "single_cot": true,
-    "small_table": true,
-    "lantern": true,
-    "bucket": true,
-    "cloth_simulation": "baked_static_mesh",
-    "cloth_panels": 7,
-    "cloth_material": "MAT_MEDICAL_TENT_CANVAS"
+    "sleeping_arrangement": "straw pallet and folded blanket",
+    "modern_cot": false,
+    "luxury_furniture": false,
+    "global_floor": false
   },
   "interactions": [
     {
-      "id": "rest_anchor",
+      "id": "rest_spot",
       "position": [
-        -0.62,
-        0.22,
-        0.8
+        -0.22,
+        0.34,
+        0.26
       ]
     }
   ],
+  "quality_contract": {
+    "preview": "1536x1536 transparent RGBA, 62 mm perspective camera",
+    "texture_maps": "ambientCG CC0 2K BaseColor/Roughness/NormalGL; Metalness where applicable",
+    "uv_unwrapped": true,
+    "visible_edge_bevels": true,
+    "glb_reimport_required": true
+  },
   "notes": [
-    "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
-    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
-    "Material-Farbtexturen sind im GLB eingebettet.",
-    "Blender-Cloth wurde 72 bis 80 Frames mit weichen CLOTH_PIN-Gewichten berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik.",
-    "Neu aufgebautes Cloth-Asset; BACKUP_ORIGINAL_TENTS bleibt als leere, ausgeblendete Sicherungs-Collection fuer spaetere Revisionen erhalten."
-  ]
+    "Rebuilt from scratch for a rural Central European field camp circa 1349.",
+    "No global ground plate is included; localized ash belongs to the cooking-fire prop.",
+    "Same GLB and root-node names are retained for Phaser/Claude Code compatibility."
+  ],
+  "reimport_audit": {
+    "status": "passed",
+    "root_ok": true,
+    "mesh_objects": 12,
+    "triangles": 9160,
+    "embedded_images": {
+      "Wood035_aged_dark_oak_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Fabric019_coarse_linen_2K_Color": [
+        2048,
+        2048
+      ],
+      "Fabric019_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Fabric019_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Planks021_dark_weathered_planks_2K_Color": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Fabric019_faded_madder_linen_2K_Color": [
+        2048,
+        2048
+      ],
+      "Fabric019_weathered_natural_linen_2K_Color": [
+        2048,
+        2048
+      ]
+    },
+    "materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_COARSE_LINEN_PBR",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_DRY_STRAW",
+      "MAT_FADED_MADDER_LINEN_PBR",
+      "MAT_HEMP_ROPE",
+      "MAT_UNGLAZED_CERAMIC",
+      "MAT_WEATHERED_NATURAL_LINEN_PBR"
+    ],
+    "missing_uv_objects": [],
+    "active_cloth_modifiers": [],
+    "global_ground_plates": [],
+    "preview_rendered_from_reimported_glb": "medieval_rest_tent_3d_runtime_preview.png",
+    "errors": []
+  }
 }

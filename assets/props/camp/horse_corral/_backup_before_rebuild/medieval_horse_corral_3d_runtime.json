@@ -1,0 +1,90 @@
+{
+  "asset": "medieval_horse_corral_3d_runtime",
+  "label_de": "Pferdekoppel des Feldlagers",
+  "glb": "medieval_horse_corral_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "HORSE_CORRAL_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\horse_corral\\medieval_horse_corral_3d_runtime.blend",
+  "original_blend_preserved": null,
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -3.802,
+      -2.702,
+      0.02
+    ],
+    "max": [
+      3.802,
+      2.702,
+      1.63
+    ],
+    "size": [
+      7.604,
+      5.404,
+      1.61
+    ]
+  },
+  "runtime": {
+    "visible_objects": 4,
+    "triangles": 4476,
+    "embedded_textured_materials": 4,
+    "static_material_batches": [
+      "HORSE_CORRAL_WOOD_DARK_BATCH",
+      "HORSE_CORRAL_WOOD_MID_BATCH",
+      "HORSE_CORRAL_ROPE_BATCH",
+      "HORSE_CORRAL_IRON_BATCH"
+    ],
+    "baked_cloth_panels": [],
+    "active_runtime_cloth_simulations": 0
+  },
+  "collision_guide": {
+    "shape": "segments",
+    "size": [
+      7.4,
+      5.2
+    ],
+    "center": [
+      0,
+      0
+    ],
+    "open_front_from_x": [
+      -2.15,
+      2.15
+    ]
+  },
+  "content": {
+    "open_entry": true,
+    "entry_width_m": 4.3,
+    "hitching_rail": true,
+    "hitching_loops": 5,
+    "global_ground_plate": false
+  },
+  "interactions": [
+    {
+      "id": "horse_parking_line",
+      "from": [
+        -2.2,
+        0.18,
+        0
+      ],
+      "to": [
+        2.2,
+        0.18,
+        0
+      ],
+      "slots": 5
+    }
+  ],
+  "notes": [
+    "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
+    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
+    "Material-Farbtexturen sind im GLB eingebettet."
+  ]
+}

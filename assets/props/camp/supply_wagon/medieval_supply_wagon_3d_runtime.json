@@ -1,11 +1,10 @@
 {
   "asset": "medieval_supply_wagon_3d_runtime",
-  "label_de": "Lastwagen des Feldlagers",
+  "label_de": "Mittelalterlicher Versorgungswagen",
   "glb": "medieval_supply_wagon_3d_runtime.glb",
   "runtime_mode": "static_exterior_prop",
   "root_node": "SUPPLY_WAGON_ROTATION_PIVOT",
-  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\supply_wagon\\medieval_supply_wagon_3d_runtime.blend",
-  "original_blend_preserved": null,
+  "editable_blend": "C:\\Obsidian\\DM\\Darius187-DM\\assets\\props\\camp\\supply_wagon\\medieval_supply_wagon_1349_rebuilt.blend",
   "meters_per_blender_unit": 1.0,
   "placement": {
     "front_axis": "-Y",
@@ -16,77 +15,156 @@
   },
   "bounds_m": {
     "min": [
-      -1.96,
-      -3.605,
-      -0.06
+      -1.11,
+      -3.312,
+      -0.035
     ],
     "max": [
-      1.96,
-      1.74,
-      2.02
+      1.11,
+      1.895,
+      2.248
     ],
     "size": [
-      3.92,
-      5.345,
-      2.08
+      2.22,
+      5.207,
+      2.283
     ]
   },
   "runtime": {
-    "visible_objects": 6,
-    "triangles": 6988,
-    "embedded_textured_materials": 6,
-    "static_material_batches": [
-      "SUPPLY_WAGON_WOOD_DARK_BATCH",
-      "SUPPLY_WAGON_WOOD_MID_BATCH",
-      "SUPPLY_WAGON_WICKER_BATCH",
-      "SUPPLY_WAGON_ROPE_BATCH",
-      "SUPPLY_WAGON_IRON_BATCH",
-      "SUPPLY_WAGON_SACK_BATCH"
+    "visible_objects": 11,
+    "triangles": 50374,
+    "embedded_textured_materials": 4,
+    "pbr_materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_COARSE_LINEN_PBR",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_FORGED_IRON_PBR"
     ],
-    "baked_cloth_panels": [],
-    "active_runtime_cloth_simulations": 0
+    "active_runtime_cloth_simulations": 0,
+    "lod_policy": "LOD0 authored; Phaser distance culling/LOD integration remains external"
   },
   "collision_guide": {
     "shape": "box",
     "size": [
-      2.55,
-      4.3
+      2.18,
+      4.02
     ],
     "center": [
       0,
-      -0.4
+      0
     ]
   },
   "content": {
-    "wheels": 4,
-    "tow_shafts": 2,
-    "cargo_bed": true,
-    "barrels": 2,
-    "sacks": 3,
-    "basket": 1,
-    "crate": 1
+    "historical_period": "Central Europe circa 1349",
+    "functional_wheels": 4,
+    "wooden_spokes_per_wheel": 10,
+    "continuous_axles": 2,
+    "iron_tyres": 4,
+    "grounded_wheels": true,
+    "attached_drawbar": true,
+    "cargo": [
+      "crate",
+      "barrel",
+      "three sacks",
+      "rope lashings"
+    ]
   },
   "interactions": [
     {
-      "id": "hitch_anchor",
+      "id": "wagon_hitch",
       "position": [
         0,
-        -3.7,
-        0.44
+        -3.28,
+        0.4
       ]
     },
     {
-      "id": "cargo_anchor",
+      "id": "cargo_access",
       "position": [
         0,
-        0,
-        1.85
+        1.72,
+        1.2
       ]
     }
   ],
+  "quality_contract": {
+    "preview": "1536x1536 transparent RGBA, 62 mm perspective camera",
+    "texture_maps": "ambientCG CC0 2K BaseColor/Roughness/NormalGL; Metalness where applicable",
+    "uv_unwrapped": true,
+    "visible_edge_bevels": true,
+    "glb_reimport_required": true
+  },
   "notes": [
-    "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
-    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
-    "Material-Farbtexturen sind im GLB eingebettet."
-  ]
+    "Rebuilt from scratch for a rural Central European field camp circa 1349.",
+    "No global ground plate is included; localized ash belongs to the cooking-fire prop.",
+    "Same GLB and root-node names are retained for Phaser/Claude Code compatibility."
+  ],
+  "reimport_audit": {
+    "status": "passed",
+    "root_ok": true,
+    "mesh_objects": 11,
+    "triangles": 50374,
+    "embedded_images": {
+      "Wood035_aged_dark_oak_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Fabric019_coarse_linen_2K_Color": [
+        2048,
+        2048
+      ],
+      "Fabric019_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Fabric019_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Planks021_dark_weathered_planks_2K_Color": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Metal008_forged_iron_2K_Color": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_Metalness-Metal008_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ]
+    },
+    "materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_COARSE_LINEN_PBR",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_FORGED_IRON_PBR",
+      "MAT_HEMP_ROPE"
+    ],
+    "missing_uv_objects": [],
+    "active_cloth_modifiers": [],
+    "global_ground_plates": [],
+    "preview_rendered_from_reimported_glb": "medieval_supply_wagon_3d_runtime_preview.png",
+    "errors": []
+  }
 }

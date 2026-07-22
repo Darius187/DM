@@ -1,11 +1,10 @@
 {
   "asset": "medieval_horse_corral_3d_runtime",
-  "label_de": "Pferdekoppel des Feldlagers",
+  "label_de": "Pferch des Feldlagers",
   "glb": "medieval_horse_corral_3d_runtime.glb",
   "runtime_mode": "static_exterior_prop",
   "root_node": "HORSE_CORRAL_ROTATION_PIVOT",
-  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\horse_corral\\medieval_horse_corral_3d_runtime.blend",
-  "original_blend_preserved": null,
+  "editable_blend": "C:\\Obsidian\\DM\\Darius187-DM\\assets\\props\\camp\\horse_corral\\medieval_horse_corral_1349_rebuilt.blend",
   "meters_per_blender_unit": 1.0,
   "placement": {
     "front_axis": "-Y",
@@ -16,75 +15,149 @@
   },
   "bounds_m": {
     "min": [
-      -3.802,
-      -2.702,
-      0.02
+      -2.898,
+      -3.581,
+      -0.357
     ],
     "max": [
-      3.802,
-      2.702,
-      1.63
+      2.935,
+      2.238,
+      1.441
     ],
     "size": [
-      7.604,
-      5.404,
-      1.61
+      5.832,
+      5.819,
+      1.798
     ]
   },
   "runtime": {
-    "visible_objects": 4,
-    "triangles": 4476,
-    "embedded_textured_materials": 4,
-    "static_material_batches": [
-      "HORSE_CORRAL_WOOD_DARK_BATCH",
-      "HORSE_CORRAL_WOOD_MID_BATCH",
-      "HORSE_CORRAL_ROPE_BATCH",
-      "HORSE_CORRAL_IRON_BATCH"
+    "visible_objects": 6,
+    "triangles": 40072,
+    "embedded_textured_materials": 3,
+    "pbr_materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_FORGED_IRON_PBR"
     ],
-    "baked_cloth_panels": [],
-    "active_runtime_cloth_simulations": 0
+    "active_runtime_cloth_simulations": 0,
+    "lod_policy": "LOD0 authored; Phaser distance culling/LOD integration remains external"
   },
   "collision_guide": {
-    "shape": "segments",
+    "shape": "outline_with_gate",
     "size": [
-      7.4,
-      5.2
+      5.7,
+      4.4
     ],
-    "center": [
+    "gate_width": 2.18,
+    "gate_center": [
       0,
-      0
-    ],
-    "open_front_from_x": [
-      -2.15,
-      2.15
+      -2.12
     ]
   },
   "content": {
-    "open_entry": true,
-    "entry_width_m": 4.3,
-    "hitching_rail": true,
-    "hitching_loops": 5,
-    "global_ground_plate": false
+    "historical_period": "Central Europe circa 1349",
+    "irregular_fence_posts": 17,
+    "recognizable_gate": true,
+    "gate_opens_outward": true,
+    "clear_gate_width_m": 2.18,
+    "water_trough": true,
+    "fodder_hay": true,
+    "tether_rail_with_rings": 4,
+    "global_floor": false
   },
   "interactions": [
     {
-      "id": "horse_parking_line",
-      "from": [
-        -2.2,
-        0.18,
-        0
+      "id": "gate",
+      "position": [
+        -1.08,
+        -2.12,
+        0.0
+      ]
+    },
+    {
+      "id": "water_trough",
+      "position": [
+        1.62,
+        1.18,
+        0.64
+      ]
+    },
+    {
+      "id": "horse_parking",
+      "position": [
+        0,
+        0.75,
+        0.0
       ],
-      "to": [
-        2.2,
-        0.18,
-        0
-      ],
-      "slots": 5
+      "capacity": 4
     }
   ],
+  "quality_contract": {
+    "preview": "1536x1536 transparent RGBA, 62 mm perspective camera",
+    "texture_maps": "ambientCG CC0 2K BaseColor/Roughness/NormalGL; Metalness where applicable",
+    "uv_unwrapped": true,
+    "visible_edge_bevels": true,
+    "glb_reimport_required": true
+  },
   "notes": [
-    "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
-    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
-    "Material-Farbtexturen sind im GLB eingebettet."
-  ]
+    "Rebuilt from scratch for a rural Central European field camp circa 1349.",
+    "No global ground plate is included; localized ash belongs to the cooking-fire prop.",
+    "Same GLB and root-node names are retained for Phaser/Claude Code compatibility."
+  ],
+  "reimport_audit": {
+    "status": "passed",
+    "root_ok": true,
+    "mesh_objects": 6,
+    "triangles": 40072,
+    "embedded_images": {
+      "Wood035_aged_dark_oak_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Planks021_dark_weathered_planks_2K_Color": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Metal008_forged_iron_2K_Color": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_Metalness-Metal008_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ]
+    },
+    "materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_DARK_WATER",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_DRY_STRAW",
+      "MAT_FORGED_IRON_PBR"
+    ],
+    "missing_uv_objects": [],
+    "active_cloth_modifiers": [],
+    "global_ground_plates": [],
+    "preview_rendered_from_reimported_glb": "medieval_horse_corral_3d_runtime_preview.png",
+    "errors": []
+  }
 }

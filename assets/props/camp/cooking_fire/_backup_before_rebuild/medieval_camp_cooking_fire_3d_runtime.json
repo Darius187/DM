@@ -1,0 +1,93 @@
+{
+  "asset": "medieval_camp_cooking_fire_3d_runtime",
+  "label_de": "Kochstelle des Feldlagers",
+  "glb": "medieval_camp_cooking_fire_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "COOKING_FIRE_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\cooking_fire\\medieval_camp_cooking_fire_3d_runtime.blend",
+  "original_blend_preserved": null,
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -1.61,
+      -0.982,
+      -0.011
+    ],
+    "max": [
+      1.624,
+      1.006,
+      2.843
+    ],
+    "size": [
+      3.234,
+      1.987,
+      2.854
+    ]
+  },
+  "runtime": {
+    "visible_objects": 8,
+    "triangles": 2004,
+    "embedded_textured_materials": 8,
+    "static_material_batches": [
+      "COOKING_FIRE_WOOD_DARK_BATCH",
+      "COOKING_FIRE_WOOD_MID_BATCH",
+      "COOKING_FIRE_ROPE_BATCH",
+      "COOKING_FIRE_IRON_BATCH",
+      "COOKING_FIRE_STONE_BATCH",
+      "COOKING_FIRE_CHARCOAL_BATCH",
+      "COOKING_FIRE_EMBER_BATCH",
+      "COOKING_FIRE_FLAME_BATCH"
+    ],
+    "baked_cloth_panels": [],
+    "active_runtime_cloth_simulations": 0
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      2.55,
+      2.25
+    ],
+    "center": [
+      0,
+      0
+    ]
+  },
+  "content": {
+    "tripod": true,
+    "hanging_cauldron": true,
+    "stone_fire_ring": true,
+    "static_fire_mesh": true,
+    "firewood": 14,
+    "stool": 1
+  },
+  "interactions": [
+    {
+      "id": "fire_fx_anchor",
+      "position": [
+        0,
+        0,
+        0.28
+      ]
+    },
+    {
+      "id": "cooking_pot",
+      "position": [
+        0,
+        0,
+        1.58
+      ]
+    }
+  ],
+  "notes": [
+    "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
+    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
+    "Material-Farbtexturen sind im GLB eingebettet."
+  ]
+}

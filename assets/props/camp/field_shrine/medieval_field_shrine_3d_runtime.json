@@ -1,11 +1,10 @@
 {
   "asset": "medieval_field_shrine_3d_runtime",
-  "label_de": "Feldschrein des Lagers",
+  "label_de": "Tragbarer Feldschrein",
   "glb": "medieval_field_shrine_3d_runtime.glb",
   "runtime_mode": "static_exterior_prop",
   "root_node": "FIELD_SHRINE_ROTATION_PIVOT",
-  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\field_shrine\\medieval_field_shrine_3d_runtime.blend",
-  "original_blend_preserved": null,
+  "editable_blend": "C:\\Obsidian\\DM\\Darius187-DM\\assets\\props\\camp\\field_shrine\\medieval_field_shrine_1349_rebuilt.blend",
   "meters_per_blender_unit": 1.0,
   "placement": {
     "front_axis": "-Y",
@@ -16,85 +15,164 @@
   },
   "bounds_m": {
     "min": [
-      -1.445,
-      -1.41,
-      0.0
+      -0.899,
+      -0.751,
+      -0.008
     ],
     "max": [
-      1.445,
-      1.206,
-      4.06
+      0.903,
+      0.625,
+      2.583
     ],
     "size": [
-      2.89,
-      2.616,
-      4.06
+      1.801,
+      1.376,
+      2.591
     ]
   },
   "runtime": {
-    "visible_objects": 6,
-    "triangles": 1878,
+    "visible_objects": 8,
+    "triangles": 18814,
     "embedded_textured_materials": 6,
-    "static_material_batches": [
-      "FIELD_SHRINE_WOOD_DARK_BATCH",
-      "FIELD_SHRINE_WOOD_MID_BATCH",
-      "FIELD_SHRINE_WAX_BATCH",
-      "FIELD_SHRINE_FLAME_BATCH",
-      "FIELD_SHRINE_ALTAR_CLOTH_BATCH",
-      "FIELD_SHRINE_BRONZE_BATCH"
+    "pbr_materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_FIELD_STONE_PBR",
+      "MAT_LOW_FIRE_FLAME_CARD",
+      "MAT_WEATHERED_NATURAL_LINEN_PBR",
+      "MAT_WORN_BRONZE_PBR"
     ],
-    "baked_cloth_panels": [],
-    "active_runtime_cloth_simulations": 0
+    "active_runtime_cloth_simulations": 0,
+    "lod_policy": "LOD0 authored; Phaser distance culling/LOD integration remains external"
   },
   "collision_guide": {
     "shape": "box",
     "size": [
-      2.45,
-      2.3
+      1.75,
+      1.25
     ],
     "center": [
       0,
       0
-    ],
-    "front_open": true
+    ]
   },
   "content": {
-    "raised_wood_floor": true,
-    "shingle_roof": true,
+    "historical_period": "Central Europe circa 1349",
+    "portable_timber_shrine": true,
+    "roof_shingles": 48,
     "altar": true,
+    "latin_crosses": 2,
     "candles": 2,
-    "chalice": true,
-    "period_crosses": 2
+    "kneeler": 1,
+    "not_a_large_building": true
   },
   "interactions": [
     {
-      "id": "prayer_anchor",
+      "id": "pray",
       "position": [
         0,
-        -1.28,
-        0.02
-      ]
-    },
-    {
-      "id": "candle_fx_left",
-      "position": [
-        -0.5,
-        0.3,
-        1.75
-      ]
-    },
-    {
-      "id": "candle_fx_right",
-      "position": [
-        0.5,
-        0.3,
-        1.75
+        -0.78,
+        0.0
       ]
     }
   ],
+  "quality_contract": {
+    "preview": "1536x1536 transparent RGBA, 62 mm perspective camera",
+    "texture_maps": "ambientCG CC0 2K BaseColor/Roughness/NormalGL; Metalness where applicable",
+    "uv_unwrapped": true,
+    "visible_edge_bevels": true,
+    "glb_reimport_required": true
+  },
   "notes": [
-    "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
-    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
-    "Material-Farbtexturen sind im GLB eingebettet."
-  ]
+    "Rebuilt from scratch for a rural Central European field camp circa 1349.",
+    "No global ground plate is included; localized ash belongs to the cooking-fire prop.",
+    "Same GLB and root-node names are retained for Phaser/Claude Code compatibility."
+  ],
+  "reimport_audit": {
+    "status": "passed",
+    "root_ok": true,
+    "mesh_objects": 8,
+    "triangles": 18814,
+    "embedded_images": {
+      "Wood035_aged_dark_oak_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Planks021_dark_weathered_planks_2K_Color": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Rock027_field_stone_2K_Color": [
+        2048,
+        1024
+      ],
+      "Rock027_2K-JPG_Roughness": [
+        2048,
+        1024
+      ],
+      "Rock027_2K-JPG_NormalGL": [
+        2048,
+        1024
+      ],
+      "camp_fire_flame_rgba": [
+        512,
+        512
+      ],
+      "Fabric019_weathered_natural_linen_2K_Color": [
+        2048,
+        2048
+      ],
+      "Fabric019_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Fabric019_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Metal008_worn_bronze_2K_Color": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_Metalness-Metal008_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ]
+    },
+    "materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_BEESWAX",
+      "MAT_CHARCOAL",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_FIELD_STONE_PBR",
+      "MAT_LOW_FIRE_FLAME_CARD",
+      "MAT_WEATHERED_NATURAL_LINEN_PBR",
+      "MAT_WORN_BRONZE_PBR"
+    ],
+    "missing_uv_objects": [],
+    "active_cloth_modifiers": [],
+    "global_ground_plates": [],
+    "preview_rendered_from_reimported_glb": "medieval_field_shrine_3d_runtime_preview.png",
+    "errors": []
+  }
 }

@@ -1,11 +1,10 @@
 {
   "asset": "medieval_order_banner_3d_runtime",
-  "label_de": "Ordensbanner des Feldlagers",
+  "label_de": "Ordensbanner",
   "glb": "medieval_order_banner_3d_runtime.glb",
   "runtime_mode": "static_exterior_prop",
   "root_node": "ORDER_BANNER_ROTATION_PIVOT",
-  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\order_banner\\medieval_order_banner_3d_runtime.blend",
-  "original_blend_preserved": null,
+  "editable_blend": "C:\\Obsidian\\DM\\Darius187-DM\\assets\\props\\camp\\order_banner\\medieval_order_banner_1349_rebuilt.blend",
   "meters_per_blender_unit": 1.0,
   "placement": {
     "front_axis": "-Y",
@@ -16,130 +15,176 @@
   },
   "bounds_m": {
     "min": [
-      -1.58,
-      -0.834,
-      -0.12
+      -1.209,
+      -0.849,
+      -0.016
     ],
     "max": [
-      1.6,
-      0.974,
-      5.06
+      1.23,
+      0.848,
+      4.159
     ],
     "size": [
-      3.18,
-      1.807,
-      5.18
+      2.439,
+      1.697,
+      4.174
     ]
   },
   "runtime": {
-    "visible_objects": 8,
-    "triangles": 17466,
-    "embedded_textured_materials": 8,
-    "static_material_batches": [
-      "ORDER_BANNER_CLOTH_ORDER_BANNER_DARK",
-      "ORDER_BANNER_CLOTH_ORDER_BANNER_LIGHT",
-      "ORDER_BANNER_CLOTH_ORDER_BANNER_STREAMER",
-      "ORDER_BANNER_WOOD_DARK_BATCH",
-      "ORDER_BANNER_WOOD_MID_BATCH",
-      "ORDER_BANNER_ROPE_BATCH",
-      "ORDER_BANNER_IRON_BATCH",
-      "ORDER_BANNER_BANNER_DARK_BATCH"
+    "visible_objects": 9,
+    "triangles": 8926,
+    "embedded_textured_materials": 7,
+    "pbr_materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_CHARCOAL_DYED_LINEN_PBR",
+      "MAT_FADED_MADDER_LINEN_PBR",
+      "MAT_FIELD_STONE_PBR",
+      "MAT_FORGED_IRON_PBR",
+      "MAT_WEATHERED_NATURAL_LINEN_PBR",
+      "MAT_WORN_LEATHER_PBR"
     ],
-    "baked_cloth_panels": [
-      {
-        "panel": "ORDER_BANNER_DARK",
-        "frames": 72,
-        "quad_grid": [
-          18,
-          54
-        ],
-        "source_quads": 972,
-        "average_edge_m": 0.0571,
-        "pinned_vertices": 57,
-        "pin_weights": [
-          0.3,
-          0.7,
-          1.0
-        ],
-        "raw_maximum_displacement_m": 0.03101,
-        "average_displacement_m": 0.00884,
-        "maximum_displacement_m": 0.03101,
-        "solidify_m": 0.003,
-        "runtime_cloth_modifier": false
-      },
-      {
-        "panel": "ORDER_BANNER_LIGHT",
-        "frames": 72,
-        "quad_grid": [
-          18,
-          54
-        ],
-        "source_quads": 972,
-        "average_edge_m": 0.053,
-        "pinned_vertices": 57,
-        "pin_weights": [
-          0.3,
-          0.7,
-          1.0
-        ],
-        "raw_maximum_displacement_m": 0.03114,
-        "average_displacement_m": 0.00891,
-        "maximum_displacement_m": 0.03114,
-        "solidify_m": 0.003,
-        "runtime_cloth_modifier": false
-      },
-      {
-        "panel": "ORDER_BANNER_STREAMER",
-        "frames": 72,
-        "quad_grid": [
-          18,
-          54
-        ],
-        "source_quads": 972,
-        "average_edge_m": 0.036,
-        "pinned_vertices": 57,
-        "pin_weights": [
-          0.3,
-          0.7,
-          1.0
-        ],
-        "raw_maximum_displacement_m": 1.63523,
-        "average_displacement_m": 0.06748,
-        "maximum_displacement_m": 0.08,
-        "solidify_m": 0.003,
-        "runtime_cloth_modifier": false
-      }
-    ],
-    "active_runtime_cloth_simulations": 0
+    "active_runtime_cloth_simulations": 0,
+    "lod_policy": "LOD0 authored; Phaser distance culling/LOD integration remains external"
   },
   "collision_guide": {
-    "shape": "box",
-    "size": [
-      0.42,
-      0.42
-    ],
+    "shape": "circle",
+    "radius": 0.42,
     "center": [
       0,
       0
     ]
   },
   "content": {
-    "main_panels": 2,
-    "tattered_streamer": 1,
-    "period_cross": true,
-    "cloth_simulation": "baked_static_mesh",
-    "cloth_panels": 3,
-    "cloth_materials": [
-      "MAT_ORDER_BANNER_DARK",
-      "MAT_ORDER_BANNER_LIGHT"
+    "historical_period": "Central Europe circa 1349",
+    "split_dyed_linen_banner": true,
+    "cloth_applique_cross": true,
+    "forged_spear_finial": true,
+    "grounded_guy_ropes": 2,
+    "wind_animation": "Banner_Wind_Loop",
+    "wind_animation_frames": [
+      1,
+      72
     ]
   },
-  "interactions": [],
+  "interactions": [
+    {
+      "id": "banner_pole",
+      "position": [
+        0,
+        0,
+        1.0
+      ]
+    }
+  ],
+  "quality_contract": {
+    "preview": "1536x1536 transparent RGBA, 62 mm perspective camera",
+    "texture_maps": "ambientCG CC0 2K BaseColor/Roughness/NormalGL; Metalness where applicable",
+    "uv_unwrapped": true,
+    "visible_edge_bevels": true,
+    "glb_reimport_required": true
+  },
   "notes": [
-    "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
-    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
-    "Material-Farbtexturen sind im GLB eingebettet.",
-    "Blender-Cloth wurde 72 bis 80 Frames mit weichen CLOTH_PIN-Gewichten berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik.",
-    "Neu aufgebautes Cloth-Asset; BACKUP_ORIGINAL_TENTS bleibt als leere, ausgeblendete Sicherungs-Collection fuer spaetere Revisionen erhalten."
-  ]
+    "Rebuilt from scratch for a rural Central European field camp circa 1349.",
+    "No global ground plate is included; localized ash belongs to the cooking-fire prop.",
+    "Same GLB and root-node names are retained for Phaser/Claude Code compatibility."
+  ],
+  "reimport_audit": {
+    "status": "passed",
+    "root_ok": true,
+    "mesh_objects": 9,
+    "triangles": 8926,
+    "embedded_images": {
+      "Wood035_aged_dark_oak_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Fabric019_charcoal_dyed_linen_2K_Color": [
+        2048,
+        2048
+      ],
+      "Fabric019_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Fabric019_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Fabric019_faded_madder_linen_2K_Color": [
+        2048,
+        2048
+      ],
+      "Rock027_field_stone_2K_Color": [
+        2048,
+        1024
+      ],
+      "Rock027_2K-JPG_Roughness": [
+        2048,
+        1024
+      ],
+      "Rock027_2K-JPG_NormalGL": [
+        2048,
+        1024
+      ],
+      "Metal008_forged_iron_2K_Color": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_Metalness-Metal008_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Fabric019_weathered_natural_linen_2K_Color": [
+        2048,
+        2048
+      ],
+      "Leather026_2K-JPG_Color": [
+        2048,
+        2048
+      ],
+      "Leather026_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Leather026_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ]
+    },
+    "materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_CHARCOAL_DYED_LINEN_PBR",
+      "MAT_FADED_MADDER_LINEN_PBR",
+      "MAT_FIELD_STONE_PBR",
+      "MAT_FORGED_IRON_PBR",
+      "MAT_HEMP_ROPE",
+      "MAT_WEATHERED_NATURAL_LINEN_PBR",
+      "MAT_WORN_LEATHER_PBR"
+    ],
+    "missing_uv_objects": [],
+    "active_cloth_modifiers": [],
+    "animation_actions": [
+      "Banner_Wind_Loop",
+      "Banner_Wind_Loop.001"
+    ],
+    "shape_key_objects": [
+      "BANNER_DARK_HALF_ANIMATED",
+      "BANNER_LIGHT_HALF_ANIMATED"
+    ],
+    "global_ground_plates": [],
+    "preview_rendered_from_reimported_glb": "medieval_order_banner_3d_runtime_preview.png",
+    "errors": []
+  }
 }

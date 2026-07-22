@@ -1,0 +1,88 @@
+{
+  "asset": "medieval_camp_well_3d_runtime",
+  "label_de": "Lagerbrunnen mit Spindel",
+  "glb": "medieval_camp_well_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "CAMP_WELL_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\camp_well\\medieval_camp_well_3d_runtime.blend",
+  "original_blend_preserved": null,
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -2.148,
+      -1.582,
+      0.013
+    ],
+    "max": [
+      2.078,
+      1.612,
+      3.551
+    ],
+    "size": [
+      4.226,
+      3.195,
+      3.537
+    ]
+  },
+  "runtime": {
+    "visible_objects": 5,
+    "triangles": 4508,
+    "embedded_textured_materials": 5,
+    "static_material_batches": [
+      "CAMP_WELL_WOOD_DARK_BATCH",
+      "CAMP_WELL_WOOD_MID_BATCH",
+      "CAMP_WELL_ROPE_BATCH",
+      "CAMP_WELL_IRON_BATCH",
+      "CAMP_WELL_STONE_BATCH"
+    ],
+    "baked_cloth_panels": [],
+    "active_runtime_cloth_simulations": 0
+  },
+  "collision_guide": {
+    "shape": "circle",
+    "radius": 1.28,
+    "center": [
+      0,
+      0
+    ]
+  },
+  "content": {
+    "open_stone_well": true,
+    "roof_shingles": 70,
+    "working_crank": true,
+    "hanging_bucket": true,
+    "loose_buckets": 2,
+    "barrel": 1,
+    "global_ground_plate": false
+  },
+  "interactions": [
+    {
+      "id": "well_crank_anchor",
+      "position": [
+        1.82,
+        -0.42,
+        2.02
+      ]
+    },
+    {
+      "id": "water_bucket_anchor",
+      "position": [
+        0,
+        0,
+        0.7
+      ]
+    }
+  ],
+  "notes": [
+    "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
+    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
+    "Material-Farbtexturen sind im GLB eingebettet."
+  ]
+}

@@ -1,11 +1,10 @@
 {
   "asset": "medieval_firewood_stack_3d_runtime",
-  "label_de": "Gestapeltes Brennholz",
+  "label_de": "Brennholzstapel",
   "glb": "medieval_firewood_stack_3d_runtime.glb",
   "runtime_mode": "static_exterior_prop",
   "root_node": "FIREWOOD_STACK_ROTATION_PIVOT",
-  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\firewood_stack\\medieval_firewood_stack_3d_runtime.blend",
-  "original_blend_preserved": null,
+  "editable_blend": "C:\\Obsidian\\DM\\Darius187-DM\\assets\\props\\camp\\firewood_stack\\medieval_firewood_stack_1349_rebuilt.blend",
   "meters_per_blender_unit": 1.0,
   "placement": {
     "front_axis": "-Y",
@@ -16,37 +15,38 @@
   },
   "bounds_m": {
     "min": [
-      -2.175,
-      -1.433,
-      -0.006
+      -2.031,
+      -0.906,
+      -0.081
     ],
     "max": [
-      2.175,
-      1.035,
-      2.28
+      2.193,
+      0.976,
+      1.801
     ],
     "size": [
-      4.349,
-      2.468,
-      2.286
+      4.225,
+      1.882,
+      1.881
     ]
   },
   "runtime": {
-    "visible_objects": 2,
-    "triangles": 6192,
-    "embedded_textured_materials": 2,
-    "static_material_batches": [
-      "FIREWOOD_STACK_WOOD_DARK_BATCH",
-      "FIREWOOD_STACK_WOOD_MID_BATCH"
+    "visible_objects": 3,
+    "triangles": 38884,
+    "embedded_textured_materials": 3,
+    "pbr_materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_AGED_SPLIT_WOOD_PBR",
+      "MAT_ROUGH_BARK_PBR"
     ],
-    "baked_cloth_panels": [],
-    "active_runtime_cloth_simulations": 0
+    "active_runtime_cloth_simulations": 0,
+    "lod_policy": "LOD0 authored; Phaser distance culling/LOD integration remains external"
   },
   "collision_guide": {
     "shape": "box",
     "size": [
-      4.1,
-      2.15
+      3.95,
+      1.72
     ],
     "center": [
       0,
@@ -54,17 +54,88 @@
     ]
   },
   "content": {
-    "cut_logs": 54,
-    "bark_sides": true,
-    "visible_cut_ends": true,
-    "support_rack": true,
-    "kindling": 13,
-    "global_ground_plate": false
+    "historical_period": "Central Europe circa 1349",
+    "crooked_round_logs": 28,
+    "hand_split_billets": 15,
+    "kindling_sticks": 14,
+    "loose_splinters": 18,
+    "identical_cylinder_stack": false,
+    "global_floor": false
   },
-  "interactions": [],
+  "interactions": [
+    {
+      "id": "collect_firewood",
+      "position": [
+        0,
+        -0.94,
+        0.4
+      ]
+    }
+  ],
+  "quality_contract": {
+    "preview": "1536x1536 transparent RGBA, 62 mm perspective camera",
+    "texture_maps": "ambientCG CC0 2K BaseColor/Roughness/NormalGL; Metalness where applicable",
+    "uv_unwrapped": true,
+    "visible_edge_bevels": true,
+    "glb_reimport_required": true
+  },
   "notes": [
-    "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
-    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
-    "Material-Farbtexturen sind im GLB eingebettet."
-  ]
+    "Rebuilt from scratch for a rural Central European field camp circa 1349.",
+    "No global ground plate is included; localized ash belongs to the cooking-fire prop.",
+    "Same GLB and root-node names are retained for Phaser/Claude Code compatibility."
+  ],
+  "reimport_audit": {
+    "status": "passed",
+    "root_ok": true,
+    "mesh_objects": 3,
+    "triangles": 38884,
+    "embedded_images": {
+      "Wood035_aged_dark_oak_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Wood092_aged_split_wood_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood092_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood092_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Bark001_rough_bark_2K_Color": [
+        1024,
+        2048
+      ],
+      "Bark001_2K-JPG_Roughness": [
+        1024,
+        2048
+      ],
+      "Bark001_2K-JPG_NormalGL": [
+        1024,
+        2048
+      ]
+    },
+    "materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_AGED_SPLIT_WOOD_PBR",
+      "MAT_ROUGH_BARK_PBR"
+    ],
+    "missing_uv_objects": [],
+    "active_cloth_modifiers": [],
+    "global_ground_plates": [],
+    "preview_rendered_from_reimported_glb": "medieval_firewood_stack_3d_runtime_preview.png",
+    "errors": []
+  }
 }
