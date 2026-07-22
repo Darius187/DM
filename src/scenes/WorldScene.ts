@@ -1993,6 +1993,12 @@ export class WorldScene extends CombatScene {
     this.setupDorfSim(a);                // dorfSim-Hintergrund (Anfangskarte-Look) für diese Area
     this.spawneFluessigkeitsShader(a);   // additiver Liquid-Overlay-Test (Runde 71)
     this.spawneNeuesWasser(a);           // neues prozedurales Wasser pro Area (Runde 72)
+    // Wasser-Editor: gemalte Maske anwenden + zuverlaessiges Kachel-Wasser bauen -
+    // fuer JEDE Karte (auch ohne wasserLauf, z.B. Burg), sonst haetten dort
+    // gecarvte T.WATER-Kacheln Effekte (Untertauchen/Pferd-Block) OHNE sichtbares
+    // Wasser (Phantom-Wasser). So gilt ueberall: Kachel = sichtbares Wasser.
+    this.wendeWassermaskeAn(a);
+    this.baueWasserKachelBild();
     const s = spawnAt ?? a.spawn;
     this.px = s.x;
     this.py = s.y;
@@ -6513,10 +6519,6 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.wasserSeeMul = a.wasserLauf.geo.seen.map(() => ({ rx: 1, ry: 1 }));
     this.wendeWasserGeometrieAn();
     this.wendeGrafikAn();   // R107: Wasser-Effekte-Einstellung sofort beachten
-    // Wasser-Editor: gemalte Maske anwenden (ueberschreibt Auto-Wasser), dann
-    // das zuverlaessige Kachel-Wasser bauen (versteckt den fragilen Shader).
-    this.wendeWassermaskeAn(a);
-    this.baueWasserKachelBild();
   }
 
   // Baut die Geometrie mit den Live-Reglern (je Bach/Fluss/See) und lädt sie in
