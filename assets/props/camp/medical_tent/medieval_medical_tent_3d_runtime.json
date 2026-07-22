@@ -16,25 +16,25 @@
   },
   "bounds_m": {
     "min": [
-      -4.855,
-      -4.404,
+      -4.155,
+      -5.004,
       -0.12
     ],
     "max": [
-      4.85,
-      4.804,
-      5.12
+      4.15,
+      5.504,
+      3.845
     ],
     "size": [
-      9.705,
-      9.207,
-      5.24
+      8.305,
+      10.507,
+      3.965
     ]
   },
   "runtime": {
-    "visible_objects": 19,
-    "triangles": 125413,
-    "embedded_textured_materials": 19,
+    "visible_objects": 20,
+    "triangles": 116861,
+    "embedded_textured_materials": 20,
     "static_material_batches": [
       "MEDICAL_TENT_CLOTH_MED_ROOF_-1",
       "MEDICAL_TENT_CLOTH_MED_ROOF_1",
@@ -49,6 +49,7 @@
       "MEDICAL_TENT_CANVAS_DARK_BATCH",
       "MEDICAL_TENT_IRON_BATCH",
       "MEDICAL_TENT_MEDICAL_LINEN_BATCH",
+      "MEDICAL_TENT_MEDICAL_CANVAS_BATCH",
       "MEDICAL_TENT_CERAMIC_BATCH",
       "MEDICAL_TENT_MEDICINE_GLASS_BATCH",
       "MEDICAL_TENT_HERB_BATCH",
@@ -59,85 +60,85 @@
     "baked_cloth_panels": [
       {
         "panel": "MED_ROOF_-1",
-        "frames": 78,
+        "frames": 76,
         "quad_grid": [
-          54,
-          84
+          48,
+          96
         ],
-        "source_quads": 4536,
+        "source_quads": 4608,
         "average_edge_m": 0.0764,
-        "pinned_vertices": 363,
+        "pinned_vertices": 399,
         "pin_weights": [
           0.3,
           0.7,
           1.0
         ],
-        "raw_maximum_displacement_m": 0.20675,
-        "average_displacement_m": 0.06364,
+        "raw_maximum_displacement_m": 0.1842,
+        "average_displacement_m": 0.06178,
         "maximum_displacement_m": 0.08,
         "solidify_m": 0.003,
         "runtime_cloth_modifier": false
       },
       {
         "panel": "MED_ROOF_1",
-        "frames": 78,
+        "frames": 76,
         "quad_grid": [
-          54,
-          84
+          48,
+          96
         ],
-        "source_quads": 4536,
+        "source_quads": 4608,
         "average_edge_m": 0.0764,
-        "pinned_vertices": 363,
+        "pinned_vertices": 399,
         "pin_weights": [
           0.3,
           0.7,
           1.0
         ],
-        "raw_maximum_displacement_m": 0.20675,
-        "average_displacement_m": 0.06364,
+        "raw_maximum_displacement_m": 0.1842,
+        "average_displacement_m": 0.06178,
         "maximum_displacement_m": 0.08,
         "solidify_m": 0.003,
         "runtime_cloth_modifier": false
       },
       {
         "panel": "MED_REAR",
-        "frames": 80,
+        "frames": 78,
         "quad_grid": [
-          100,
-          44
+          86,
+          36
         ],
-        "source_quads": 4400,
-        "average_edge_m": 0.0725,
-        "pinned_vertices": 381,
+        "source_quads": 3096,
+        "average_edge_m": 0.0731,
+        "pinned_vertices": 339,
         "pin_weights": [
           0.3,
           0.7,
           1.0
         ],
-        "raw_maximum_displacement_m": 0.01634,
-        "average_displacement_m": 0.00254,
-        "maximum_displacement_m": 0.01634,
+        "raw_maximum_displacement_m": 0.00915,
+        "average_displacement_m": 0.00186,
+        "maximum_displacement_m": 0.00915,
         "solidify_m": 0.003,
         "runtime_cloth_modifier": false
       },
       {
         "panel": "MED_SIDE_-1",
-        "frames": 80,
+        "frames": 78,
         "quad_grid": [
-          84,
-          44
+          96,
+          36
         ],
-        "source_quads": 3696,
-        "average_edge_m": 0.0727,
-        "pinned_vertices": 333,
+        "source_quads": 3456,
+        "average_edge_m": 0.0753,
+        "pinned_vertices": 369,
         "pin_weights": [
           0.3,
           0.7,
           1.0
         ],
-        "raw_maximum_displacement_m": 0.019,
-        "average_displacement_m": 0.00328,
-        "maximum_displacement_m": 0.019,
+        "raw_maximum_displacement_m": 0.01821,
+        "average_displacement_m": 0.00263,
+        "maximum_displacement_m": 0.01821,
         "solidify_m": 0.003,
         "runtime_cloth_modifier": false
       },
@@ -145,41 +146,41 @@
         "panel": "MED_FRONT_WING_-1",
         "frames": 72,
         "quad_grid": [
-          32,
-          42
+          30,
+          36
         ],
-        "source_quads": 1344,
-        "average_edge_m": 0.0487,
-        "pinned_vertices": 99,
+        "source_quads": 1080,
+        "average_edge_m": 0.0488,
+        "pinned_vertices": 93,
         "pin_weights": [
           0.3,
           0.7,
           1.0
         ],
-        "raw_maximum_displacement_m": 0.69153,
-        "average_displacement_m": 0.06772,
+        "raw_maximum_displacement_m": 0.15638,
+        "average_displacement_m": 0.02339,
         "maximum_displacement_m": 0.08,
         "solidify_m": 0.003,
         "runtime_cloth_modifier": false
       },
       {
         "panel": "MED_SIDE_1",
-        "frames": 80,
+        "frames": 78,
         "quad_grid": [
-          84,
-          44
+          96,
+          36
         ],
-        "source_quads": 3696,
-        "average_edge_m": 0.0727,
-        "pinned_vertices": 333,
+        "source_quads": 3456,
+        "average_edge_m": 0.0753,
+        "pinned_vertices": 369,
         "pin_weights": [
           0.3,
           0.7,
           1.0
         ],
-        "raw_maximum_displacement_m": 0.019,
-        "average_displacement_m": 0.00328,
-        "maximum_displacement_m": 0.019,
+        "raw_maximum_displacement_m": 0.01821,
+        "average_displacement_m": 0.00263,
+        "maximum_displacement_m": 0.01821,
         "solidify_m": 0.003,
         "runtime_cloth_modifier": false
       },
@@ -187,19 +188,19 @@
         "panel": "MED_FRONT_WING_1",
         "frames": 72,
         "quad_grid": [
-          32,
-          42
+          30,
+          36
         ],
-        "source_quads": 1344,
-        "average_edge_m": 0.0487,
-        "pinned_vertices": 99,
+        "source_quads": 1080,
+        "average_edge_m": 0.0488,
+        "pinned_vertices": 93,
         "pin_weights": [
           0.3,
           0.7,
           1.0
         ],
-        "raw_maximum_displacement_m": 0.74094,
-        "average_displacement_m": 0.0679,
+        "raw_maximum_displacement_m": 0.15662,
+        "average_displacement_m": 0.02339,
         "maximum_displacement_m": 0.08,
         "solidify_m": 0.003,
         "runtime_cloth_modifier": false
@@ -210,15 +211,15 @@
   "collision_guide": {
     "shape": "box",
     "size": [
-      7.7,
-      6.5
+      6.6,
+      7.8
     ],
     "center": [
       0,
       0.1
     ],
     "front_open": true,
-    "walkable_entry_width_m": 4.8
+    "walkable_entry_width_m": 3.8
   },
   "content": {
     "open_front": true,
@@ -231,8 +232,11 @@
     "period_cross_device": true,
     "guy_ropes": 5,
     "center_entry_obstructions": 0,
+    "plain_ridge_tent": true,
+    "decorative_finials": 0,
+    "scalloped_valance": false,
     "cloth_simulation": "baked_static_mesh",
-    "cloth_material": "MAT_TENT_CANVAS",
+    "cloth_material": "MAT_MEDICAL_TENT_CANVAS",
     "cloth_panels": 7
   },
   "interactions": [],

@@ -77,13 +77,18 @@ Solidify bereits als statische Geometrie ausgewertet; Phaser simuliert keinen St
 - Runtime: `medical_tent/medieval_medical_tent_3d_runtime.glb`
 - Manifest: `medical_tent/medieval_medical_tent_3d_runtime.json`
 - Root: `MEDICAL_TENT_ROTATION_PIVOT`
-- Groesse mit Abspannungen: 9,705 x 9,207 x 5,240 m
-- Laufzeit: 19 Meshes, 125.413 Dreiecke, 16 eingebettete Texturen
+- Groesse mit Abspannungen: 8,305 x 10,507 x 3,965 m
+- Laufzeit: 20 Meshes, 116.861 Dreiecke, 16 eingebettete Texturen
 - Inhalt: drei Patientenliegen, Behandlungstisch, offene Verbandtruhe,
   Arzneiregal, Waschplatz, Flaschen, Schalen, Kraeuter und Haengelaterne
-- Eingang: 4,8 m nutzbare Breite; keine Mittelstuetze und kein Spannseil im Weg
+- Eingang: 3,8 m nutzbare Breite; keine Mittelstuetze und kein Spannseil im Weg
+- Silhouette: niedriges, langgezogenes Firstzelt mit stumpfen Pfosten, geradem
+  Saum und hochgebundenen Eingangsklappen; keine Fahnen, Zierspitzen oder
+  gezackte Pavillonblende
 - Stoff: sieben getrennte, statisch gebackene Quad-Bahnen mit maximal 8 cm
   Bewegung, sichtbaren Naehten, Saeumen und Verstaerkungen
+- Material: eigenes `MAT_MEDICAL_TENT_CANVAS` in kuehlem, verwittertem Graubeige;
+  nicht das warme Pavillonmaterial
 - Kennzeichen: blaues Schild mit ockerfarbenem mittelalterlichem Kreuz; bewusst
   kein modernes Rotes Kreuz
 - Vorschau: `medical_tent/medieval_medical_tent_3d_runtime_preview.png`

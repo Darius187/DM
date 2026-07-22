@@ -68,8 +68,9 @@ if cloth_modifiers:
 
 cloth_panels = manifest["runtime"].get("baked_cloth_panels", [])
 if cloth_panels:
-    if "MAT_TENT_CANVAS" not in material_names:
-        errors.append("MAT_TENT_CANVAS fehlt im GLB")
+    expected_cloth_material = manifest.get("content", {}).get("cloth_material", "MAT_TENT_CANVAS")
+    if expected_cloth_material not in material_names:
+        errors.append(f"{expected_cloth_material} fehlt im GLB")
     corrected_blend = Path(manifest.get("editable_blend", ""))
     source_audit = {
         "corrected_blend": str(corrected_blend),

@@ -2178,16 +2178,22 @@ nachziehen.
 
 - Das Lazarett wurde als eigenes, drehbares Blender- und GLB-Asset mit offener
   Front, drei Patientenliegen und sichtbarer Behandlungsausstattung gebaut.
-- Die Front besitzt weder Mittelpfosten noch mittiges Spannseil. Zwei Kopfbänder
-  tragen den vorderen First oberhalb des 4,8 m breiten Durchgangs.
-- Sieben getrennte Stoffbahnen wurden mit Blender-Cloth ueber 72 bis 80 Frames
+- Die Front besitzt weder Mittelpfosten noch mittiges Spannseil. Zwei Kopfbaender
+  tragen den vorderen First oberhalb des 3,8 m breiten Durchgangs.
+- Nach dem direkten Vergleich mit dem Befehlspavillon wurde die erste, zu
+  aehnliche Form verworfen. Das Lazarett ist jetzt niedriger, laenger und
+  schmaler, besitzt stumpfe Pfosten, einen geraden Saum und keine Fahnen,
+  Zierspitzen oder gezackte Pavillonblende.
+- `MAT_MEDICAL_TENT_CANVAS` trennt die kuehle, graubeige Arbeitsleinwand auch
+  materiell vom waermeren Stoff des Befehlspavillons.
+- Sieben getrennte Stoffbahnen wurden mit Blender-Cloth ueber 72 bis 78 Frames
   gesetzt und anschliessend statisch exportiert. Phaser benoetigt keine
   Cloth-Simulation.
 - Verbandtruhe, Arzneiregal, Waschplatz, Behandlungstisch, Flaschen, Schalen,
   Kraeuter und Haengelaterne bleiben als sichtbare Silhouetten im Runtime-Modell.
 - Das Kennzeichen ist ein blaues Schild mit ockerfarbenem mittelalterlichem
   Kreuz. Ein modernes Rotes Kreuz wurde bewusst nicht verwendet.
-- Endwert: 19 Meshes, 125.413 Dreiecke und 16 eingebettete Texturen. Der
+- Endwert: 20 Meshes, 116.861 Dreiecke und 16 eingebettete Texturen. Der
   Rueckimport bestaetigt Root, Materialien, sieben `CLOTH_PIN`-Gruppen,
   Modifier-Reihenfolge, fehlende Bodenplatte und fehlende aktive Cloth-Modifier.
 - Offen bleibt nur die vom Autor noch nicht benannte Weltposition. Spielcode und
