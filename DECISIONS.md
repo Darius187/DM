@@ -2701,6 +2701,8 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - 2026-07-22: Zeltleinwand nutzt getrennte Quad-Bahnen mit etwa 5 bis 8 cm Rasterweite, weiche `CLOTH_PIN`-Gewichte und maximal 8 cm gebackene Verformung. 3-mm-Dicke, Web-Normalmap und Naehte werden statisch exportiert; die alten Blender-Dateien bleiben unangetastet und liegen zusaetzlich in `BACKUP_ORIGINAL_TENTS`.
 - 2026-07-22: Das Lazarett bleibt ein eigenstaendiges, statisches Runtime-Asset ohne Bodenplatte. Sein Kennzeichen ist ein mittelalterliches Kreuzgeraet statt eines modernen Roten Kreuzes; Weltplatzierung erfolgt erst nach einer ausdruecklichen Zielposition.
 - 2026-07-22: Das Lazarett darf die repraesentative Silhouette des Befehlspavillons nicht wiederholen. Es bleibt ein niedriges, langgezogenes Firstzelt ohne Fahnen, Zierspitzen oder gezackte Blende und verwendet das eigene Material `MAT_MEDICAL_TENT_CANVAS`.
+- 2026-07-22: Die Fuerstenburg bleibt ein echtes GLB. Weil Phaser die Burg fuer die Heldentiefe in Vorder- und Hintergrund beschneidet, bleibt der notwendige Three.js-Offscreen-Pfad erhalten; seine Aufloesung folgt jedoch sichtbarer Spritegroesse mal Kamerazoom mal `min(devicePixelRatio, 2)` statt festen 900 Pixeln.
+- 2026-07-22: Wichtige Burgarchitektur wird selektiv mit 2048er Farbtexturen exportiert, kleine Props mit 1024. Das Runtime-Modell wird nicht vereinfacht. Die weissen Stallflecken waren keine Rauchpartikel, sondern zwei Stroh-Meshes mit nicht glTF-exportierbaren Noise-Materialien; generierte Prop-Materialien verwenden deshalb glTF-sichere Principled-Grundfarben.
 
 - WASSER-EDITOR (Autor-Order "ich male das Wasser selbst - das SDF-Wasser
   funktioniert nicht"): Schluss mit dem Formel-Wasser als Quelle fuer Effekte/

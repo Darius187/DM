@@ -98,11 +98,16 @@ function leiheRenderer(groesse: number): THREE.WebGLRenderer {
     return vorhanden.renderer;
   }
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-  renderer.setSize(groesse, groesse);
+  // Die uebergebene Groesse ist bereits die physische Zielaufloesung. Ein
+  // zusaetzlicher renderer-pixelRatio wuerde DPR doppelt anwenden.
+  renderer.setPixelRatio(1);
+  renderer.setSize(groesse, groesse, false);
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = GEB3D_LICHT.exposure;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   rendererPool.set(groesse, { renderer, nutzer: 1 });
   return renderer;
 }
@@ -162,7 +167,6 @@ class PlanGitter {
 }
 
 export class Gebaeude3D {
-  readonly canvas: HTMLCanvasElement;
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
   private camera: THREE.OrthographicCamera;
@@ -180,6 +184,7 @@ export class Gebaeude3D {
   private zustand!: GebaeudeState;
   private disposed = false;
   private environment?: THREE.Texture;
+  private sonne: THREE.DirectionalLight;
   private teilBasis = new Map<string, {
     knoten: Array<{ o: THREE.Object3D; position: THREE.Vector3; rotationY: number; skala: THREE.Vector3 }>;
     pivot: { x: number; y: number };
@@ -210,17 +215,12 @@ export class Gebaeude3D {
   constructor(private manifest: Manifest, private gltfScene: THREE.Group, animationen: THREE.AnimationClip[], private groesse: number) {
     this.hatInnenraum = manifest.runtime_mode !== 'exterior_only' && manifest.walkable_interior?.enabled !== false;
     this.renderer = leiheRenderer(groesse);
-    this.canvas = this.renderer.domElement;
 
     this.scene = new THREE.Scene();
     this.scene.add(new THREE.HemisphereLight(0xcdd4ea, 0x2a2016, GEB3D_LICHT.hemi));
-    const sonne = new THREE.DirectionalLight(0xffe8c4, GEB3D_LICHT.sonne);
-    sonne.position.set(4, 8, 5);
-    this.scene.add(sonne);
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    this.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    pmrem.dispose();
-    this.scene.environment = this.environment;
+    this.sonne = new THREE.DirectionalLight(0xffe8c4, GEB3D_LICHT.sonne);
+    this.scene.add(this.sonne, this.sonne.target);
+    this.erstelleEnvironment();
     this.scene.environmentIntensity = GEB3D_LICHT.env;
 
     this.scene.add(gltfScene);
@@ -263,6 +263,7 @@ export class Gebaeude3D {
       (box.max.y - box.min.y) / 2 + 1,
     ) * 1.12;
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, this.radius * 8);
+    this.konfiguriereRenderQualitaet();
 
     // Tueren: Hinge-Animationen (Frame 1..30) einfrieren + per Zeit posen.
     this.mixer = new THREE.AnimationMixer(gltfScene);
@@ -297,6 +298,134 @@ export class Gebaeude3D {
 
     this.baueBegehbarkeit(gltfScene);
     this.zustand = this.standard();
+  }
+
+  get canvas(): HTMLCanvasElement { return this.renderer.domElement; }
+
+  private erstelleEnvironment(): void {
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();
+    this.scene.environment = this.environment;
+  }
+
+  private materialTexturen(material: THREE.Material): Array<{ slot: string; textur: THREE.Texture }> {
+    const slots = [
+      'map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap',
+      'alphaMap', 'lightMap', 'bumpMap', 'displacementMap', 'transmissionMap',
+      'thicknessMap', 'clearcoatMap', 'clearcoatNormalMap', 'clearcoatRoughnessMap',
+    ];
+    const record = material as unknown as Record<string, unknown>;
+    return slots.flatMap((slot) => record[slot] instanceof THREE.Texture
+      ? [{ slot, textur: record[slot] as THREE.Texture }]
+      : []);
+  }
+
+  private konfiguriereSchatten(): void {
+    const r = this.radius;
+    this.sonne.castShadow = true;
+    this.sonne.position.set(r * 0.8, this.mitteY + r * 1.8, r * 1.2);
+    this.sonne.target.position.set(0, this.mitteY, 0);
+    this.sonne.shadow.mapSize.set(2048, 2048);
+    this.sonne.shadow.bias = -0.00035;
+    this.sonne.shadow.normalBias = 0.025;
+    const kamera = this.sonne.shadow.camera;
+    const rand = r * 1.12;
+    kamera.left = -rand; kamera.right = rand; kamera.top = rand; kamera.bottom = -rand;
+    kamera.near = 0.1; kamera.far = r * 6;
+    kamera.updateProjectionMatrix();
+  }
+
+  private konfiguriereRenderQualitaet(): void {
+    this.konfiguriereSchatten();
+    const anisotropie = Math.min(this.renderer.capabilities.getMaxAnisotropy(), 8);
+    const texturen = new Set<THREE.Texture>();
+    this.gltfScene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      o.castShadow = true;
+      o.receiveShadow = true;
+      const materialien = Array.isArray(o.material) ? o.material : [o.material];
+      for (const material of materialien) {
+        for (const { textur } of this.materialTexturen(material)) texturen.add(textur);
+      }
+    });
+    for (const textur of texturen) {
+      textur.anisotropy = anisotropie;
+      textur.generateMipmaps = true;
+      textur.minFilter = THREE.LinearMipmapLinearFilter;
+      textur.magFilter = THREE.LinearFilter;
+      textur.needsUpdate = true;
+    }
+  }
+
+  modellSpanneMeter(): number { return 2 * this.orthoHalb(); }
+
+  setRenderAufloesung(groesse: number): boolean {
+    const neu = Math.max(1, Math.min(4096, Math.ceil(groesse)));
+    if (neu === this.groesse) return false;
+    const neuerRenderer = leiheRenderer(neu);
+    this.environment?.dispose();
+    this.environment = undefined;
+    this.sonne.shadow.map?.dispose();
+    this.sonne.shadow.map = null;
+    gibRendererFrei(this.groesse);
+    this.groesse = neu;
+    this.renderer = neuerRenderer;
+    this.erstelleEnvironment();
+    this.konfiguriereRenderQualitaet();
+    this.dirty = true;
+    return true;
+  }
+
+  renderAufloesung(): { width: number; height: number } {
+    return { width: this.canvas.width, height: this.canvas.height };
+  }
+
+  texturDiagnose(): Array<Record<string, string | number>> {
+    const zeilen: Array<Record<string, string | number>> = [];
+    this.gltfScene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      const materialien = Array.isArray(o.material) ? o.material : [o.material];
+      for (const material of materialien) {
+        for (const { slot, textur } of this.materialTexturen(material)) {
+          const quelle = textur.source?.data as { width?: number; height?: number } | undefined;
+          zeilen.push({
+            mesh: o.name,
+            material: material.name,
+            slot,
+            textur: textur.name || '(embedded)',
+            width: quelle?.width ?? 0,
+            height: quelle?.height ?? 0,
+            anisotropie: textur.anisotropy,
+            minFilter: textur.minFilter,
+            magFilter: textur.magFilter,
+          });
+        }
+      }
+    });
+    return zeilen;
+  }
+
+  renderDiagnose(): Record<string, unknown> {
+    const texturen = this.texturDiagnose();
+    const groessen: Record<string, number> = {};
+    for (const t of texturen) {
+      const key = `${t.width}x${t.height}`;
+      groessen[key] = (groessen[key] ?? 0) + 1;
+    }
+    return {
+      renderer: 'Three.js WebGLRenderer -> Phaser CanvasTexture',
+      offscreenCanvas: this.renderAufloesung(),
+      postprocessing: 'none (direct renderer.render)',
+      antialias: true,
+      anisotropie: Math.min(this.renderer.capabilities.getMaxAnisotropy(), 8),
+      mipmaps: true,
+      minFilter: 'LinearMipmapLinearFilter',
+      magFilter: 'LinearFilter',
+      shadows: { enabled: this.renderer.shadowMap.enabled, type: 'PCFShadowMap', mapSize: 2048, tightFrustumHalfExtent: +(this.radius * 1.12).toFixed(3) },
+      texturSlots: texturen.length,
+      texturGroessen: groessen,
+    };
   }
 
   editierbareTeile(): Array<{ id: string; label: string }> {
@@ -354,6 +483,7 @@ export class Gebaeude3D {
     ) * 1.12;
     this.pivot.rotation.y = yaw;
     this.gltfScene.updateMatrixWorld(true);
+    this.konfiguriereSchatten();
   }
 
   standard(): GebaeudeState {

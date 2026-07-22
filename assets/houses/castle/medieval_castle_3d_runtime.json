@@ -47,7 +47,17 @@
     "tone_mapping": "ACESFilmicToneMapping",
     "exposure": 0.6,
     "do_not_replace_materials": true,
-    "transparent_background": true
+    "transparent_background": true,
+    "adaptive_offscreen_resolution": "display size * camera zoom * min(devicePixelRatio, 2), capped at 4096",
+    "texture_sampling": "mipmaps + LinearMipmapLinearFilter + anisotropy up to 8",
+    "shadow_map": "2048 PCFShadowMap with model-tight directional-light frustum",
+    "postprocessing": "none (direct WebGLRenderer render for a clean comparison path)"
+  },
+  "materials": {
+    "embedded_basecolor_textures": true,
+    "texture_max_size": 2048,
+    "texture_policy": "architecture/towers/walls/gates/roofs/courtyard paving 2048; small props 1024",
+    "generated_prop_materials": "glTF-safe Principled base colors (no unsupported procedural fallback)"
   },
   "walkable_interior": {
     "enabled": false,

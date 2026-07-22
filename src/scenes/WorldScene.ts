@@ -2217,6 +2217,7 @@ export class WorldScene extends CombatScene {
           a.h * TILE * 0.5,
           0,
           0.7,
+          true,
         );
       }
       return;
@@ -7310,10 +7311,10 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     { box: 'B6', id: 'muehle', url: 'houses/mill/medieval_mill_house_3d_runtime.json', yaw: 180 },
   ] as const;
 
-  private starteGebaeude3d(id: string, url: string, footX: number, footY: number, yaw: number, standardSkala = 1): void {
+  private starteGebaeude3d(id: string, url: string, footX: number, footY: number, yaw: number, standardSkala = 1, adaptiveAufloesung = false): void {
     this.gebaeude3d.get(id)?.destroy();
     this.gebaeude3d.set(id, new Gebaeude3DWelt(this, {
-      id, jsonUrl: url, footX, footY, standardYaw: yaw, standardSkala,
+      id, jsonUrl: url, footX, footY, standardYaw: yaw, standardSkala, adaptiveAufloesung,
       ignoriere: (o) => this.uiCam?.ignore(o),
       onBereit: () => { if (id === 'burg' && this.burgEdit) this.baueBurgToolbar(); },
     }));

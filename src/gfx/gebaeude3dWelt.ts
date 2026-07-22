@@ -16,6 +16,7 @@
 import Phaser from 'phaser';
 import { getSettings, saveSettings } from '../logic/settings';
 import type { Gebaeude3D, Teil3DTransform } from '../demo3d/gebaeude3d';
+import { berechneAdaptiveRenderAufloesung } from '../demo3d/renderAufloesung';
 
 const GRAD = Math.PI / 180;
 const TUER_REICHWEITE = 1.6;    // Meter: Tuer oeffnet, wenn der Held so nah ist
@@ -33,6 +34,7 @@ export interface Gebaeude3DOpts {
   footX: number; footY: number;  // Welt-Pixel des Modell-Ursprungs (Pivot am Boden)
   standardYaw?: number;
   standardSkala?: number;
+  adaptiveAufloesung?: boolean;
   ignoriere?: (o: Phaser.GameObjects.GameObject) => void;
   onBereit?: () => void;
 }
@@ -58,6 +60,7 @@ export class Gebaeude3DWelt {
   private ebene: HeldEbene = 'aussen';
   private treppenT = 0;
   private ladeFehler = false;
+  private diagnoseGeloggd = false;
 
   constructor(private scene: Phaser.Scene, private opts: Gebaeude3DOpts) {
     this.basisFootX = opts.footX; this.basisFootY = opts.footY;
@@ -72,10 +75,15 @@ export class Gebaeude3DWelt {
   private async lade(): Promise<void> {
     try {
       const { ladeGebaeude3D } = await import('../demo3d/gebaeude3d');
-      const g = await ladeGebaeude3D(this.opts.jsonUrl, 900);
+      const dpr = typeof window === 'undefined' ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+      const initialeGroesse = this.opts.adaptiveAufloesung
+        ? Math.min(4096, Math.ceil(Math.max(this.scene.scale.width, this.scene.scale.height) * dpr))
+        : 900;
+      const g = await ladeGebaeude3D(this.opts.jsonUrl, initialeGroesse);
       if (this.zerstoert) { g.dispose(); return; }
       this.gebaeude = g;
       g.setTeilTransforms(getSettings().gebaeude3d?.teile?.[this.opts.id] ?? {});
+      this.passeRenderAufloesungAn();
       for (const t of g.tueren) this.tuerAnteile[t.key] = 0;
       if (this.scene.textures.exists(this.texKey)) this.scene.textures.remove(this.texKey);
       this.tex = this.scene.textures.createCanvas(this.texKey, g.canvas.width, g.canvas.height) ?? undefined;
@@ -92,6 +100,7 @@ export class Gebaeude3DWelt {
         this.ignoriere(this.vorderBild);
       }
       this.stelleSprite();
+      this.schreibeDiagnose();
       this.opts.onBereit?.();
     } catch (e) {
       this.ladeFehler = true;
@@ -116,6 +125,78 @@ export class Gebaeude3DWelt {
   private ppm(): number {
     const s = getSettings().gebaeude3d;
     return (s?.ppm ?? 16) * (s?.skalaF?.[this.opts.id] ?? 1);
+  }
+
+  private renderZiel(): ReturnType<typeof berechneAdaptiveRenderAufloesung> | null {
+    const g = this.gebaeude;
+    if (!g || !this.opts.adaptiveAufloesung) return null;
+    return berechneAdaptiveRenderAufloesung({
+      displayWidth: g.modellSpanneMeter() * this.ppm(),
+      displayHeight: g.modellSpanneMeter() * this.ppm(),
+      kameraZoom: this.scene.cameras.main.zoom || 1,
+      devicePixelRatio: typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1,
+    });
+  }
+
+  private passeRenderAufloesungAn(): boolean {
+    const g = this.gebaeude;
+    const ziel = this.renderZiel();
+    if (!g || !ziel) return false;
+    const geaendert = g.setRenderAufloesung(Math.max(ziel.renderWidth, ziel.renderHeight));
+    if (!geaendert) return false;
+    if (this.tex) {
+      this.tex.setSize(g.canvas.width, g.canvas.height);
+      this.tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      this.tex.refresh();
+    }
+    this.schreibeDiagnose();
+    return true;
+  }
+
+  diagnose(): Record<string, unknown> | null {
+    const g = this.gebaeude;
+    if (!g) return null;
+    const logischeSeite = g.modellSpanneMeter() * this.ppm();
+    const kameraZoom = this.scene.cameras.main.zoom || 1;
+    const bildschirmSeite = logischeSeite * kameraZoom;
+    const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
+    const interneSeite = g.canvas.width;
+    const phaserCanvas = this.scene.game.canvas;
+    return {
+      asset: this.opts.jsonUrl,
+      glbBleibtRuntimeAsset: true,
+      pipeline: 'GLB -> Three.js WebGLRenderer (offscreen) -> Phaser CanvasTexture -> Welt-Sprite',
+      threeCanvasDirektImDom: false,
+      adaptiveAufloesung: !!this.opts.adaptiveAufloesung,
+      devicePixelRatio: dpr,
+      begrenzterPixelRatio: Math.min(Math.max(dpr, 1), 2),
+      kameraZoom,
+      threeOffscreenIntern: { width: g.canvas.width, height: g.canvas.height },
+      phaserTexturIntern: { width: this.tex?.width ?? g.canvas.width, height: this.tex?.height ?? g.canvas.height },
+      spriteLogisch: { width: +logischeSeite.toFixed(2), height: +logischeSeite.toFixed(2) },
+      spriteAufBildschirm: { width: +bildschirmSeite.toFixed(2), height: +bildschirmSeite.toFixed(2) },
+      finaleSkalierung: +(bildschirmSeite / Math.max(1, interneSeite)).toFixed(4),
+      phaserHauptCanvas: {
+        intern: [phaserCanvas.width, phaserCanvas.height],
+        css: [phaserCanvas.clientWidth, phaserCanvas.clientHeight],
+      },
+      renderZiel: this.renderZiel(),
+      ...g.renderDiagnose(),
+    };
+  }
+
+  private schreibeDiagnose(): void {
+    if (this.opts.id !== 'burg') return;
+    const diagnose = this.diagnose();
+    if (!diagnose) return;
+    this.scene.game.canvas.dataset.burg3dDiagnose = JSON.stringify(diagnose);
+    if (import.meta.env.DEV) {
+      console.info('[BURG3D_DIAGNOSE]', diagnose);
+      if (!this.diagnoseGeloggd) {
+        console.table(this.gebaeude?.texturDiagnose() ?? []);
+        this.diagnoseGeloggd = true;
+      }
+    }
   }
   einzelSkala(): number { return getSettings().gebaeude3d?.skalaF?.[this.opts.id] ?? 1; }
   skaliereEinzeln(dF: number): void {
@@ -192,6 +273,7 @@ export class Gebaeude3DWelt {
   update(dt: number, heldX: number, heldY: number): void {
     const g = this.gebaeude;
     if (!g || !this.bild || !this.tex) return;
+    this.passeRenderAufloesungAn();
     const p = this.weltZuPlan(heldX, heldY);
     const inGrenzen = p.x > g.grenzen.x0 && p.x < g.grenzen.x1 && p.y > g.grenzen.y0 && p.y < g.grenzen.y1;
 
@@ -278,7 +360,9 @@ export class Gebaeude3DWelt {
     const g = this.gebaeude;
     if (!g || !this.bild) return;
     const anker = g.ankerUV();
-    const spannePx = g.canvas.width * g.meterProPixel() * this.ppm();  // Weltbreite des Canvas
+    // Logische Weltgroesse und interne Renderaufloesung sind absichtlich
+    // getrennt: DPR/Zoom veraendern nur die Detaildichte, nie die Burggroesse.
+    const spannePx = g.modellSpanneMeter() * this.ppm();
     for (const bild of [this.bild, this.vorderBild]) {
       if (!bild) continue;
       bild.setOrigin(anker.u, anker.v);
@@ -374,7 +458,7 @@ export class Gebaeude3DWelt {
     saveSettings();
   }
 
-  nachSkalierung(): void { this.stelleSprite(); }
+  nachSkalierung(): void { this.stelleSprite(); this.passeRenderAufloesungAn(); }
 
   destroy(): void {
     this.zerstoert = true;
@@ -383,5 +467,6 @@ export class Gebaeude3DWelt {
     if (this.scene.textures.exists(this.texKey)) this.scene.textures.remove(this.texKey);
     this.gebaeude?.dispose();
     this.gebaeude = null;
+    if (this.opts.id === 'burg') delete this.scene.game.canvas.dataset.burg3dDiagnose;
   }
 }

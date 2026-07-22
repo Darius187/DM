@@ -33,6 +33,18 @@ interface BurgManifest {
   };
   editable_parts?: Array<{ id: string; label: string; node: string; nodes?: string[]; collision_guides: string[] }>;
   continuous_controls: { camera_elevation_degrees: { default: number } };
+  renderer_recipe: {
+    adaptive_offscreen_resolution: string;
+    texture_sampling: string;
+    shadow_map: string;
+    postprocessing: string;
+  };
+  materials: {
+    embedded_basecolor_textures: boolean;
+    texture_max_size: number;
+    texture_policy: string;
+    generated_prop_materials: string;
+  };
 }
 
 const manifest = manifestData as unknown as BurgManifest;
@@ -107,6 +119,19 @@ describe('Fuerstenburg-Runtime', () => {
       textures_embedded_in_glb: true,
     });
     expect(manifest.continuous_controls.camera_elevation_degrees.default).toBe(38);
+  });
+
+  it('fordert HiDPI-Sampling, 2K-Architektur und glTF-sichere Prop-Materialien an', () => {
+    expect(manifest.renderer_recipe.adaptive_offscreen_resolution).toContain('devicePixelRatio, 2');
+    expect(manifest.renderer_recipe.texture_sampling).toContain('LinearMipmapLinearFilter');
+    expect(manifest.renderer_recipe.shadow_map).toContain('2048');
+    expect(manifest.renderer_recipe.postprocessing).toContain('none');
+    expect(manifest.materials).toMatchObject({
+      embedded_basecolor_textures: true,
+      texture_max_size: 2048,
+    });
+    expect(manifest.materials.texture_policy).toContain('small props 1024');
+    expect(manifest.materials.generated_prop_materials).toContain('glTF-safe');
   });
 
   it('stellt Tuerme und Hofgebaeude als einzeln editierbare Runtime-Teile bereit', () => {

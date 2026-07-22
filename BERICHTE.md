@@ -2174,6 +2174,38 @@ nachziehen.
 - Offen bleibt nur die vom Autor noch nicht benannte Weltposition. Spielcode und
   Weltplatzierung wurden in dieser Runde nicht veraendert.
 
+## 22.07.2026 - Fuerstenburg als scharfes HiDPI-GLB exportiert
+
+- Die Renderkette wurde vor dem Umbau vollstaendig gemessen: Das GLB wird mit
+  Three.js geladen, live in ein transparentes Offscreen-Canvas gerendert, in
+  eine Phaser-CanvasTexture kopiert und fuer die Heldentiefe in zwei Ausschnitte
+  geteilt. Es war kein PNG-Hauptasset und es gab kein FXAA, TAA, Bloom, DOF oder
+  sonstiges Postprocessing.
+- Der feste 900-x-900-Zwischenschritt wurde fuer die Burg entfernt. Im Live-Test
+  bei DPR 1, Weltkamera-Zoom 1,3 und 974,91 px logischer Spritegroesse rendert sie
+  jetzt intern mit 1268 x 1268 px fuer 1267,38 x 1267,38 sichtbare Pixel. Die
+  finale Skalierung sank von 1,408-facher Hochskalierung auf 0,9995.
+- Resize, DPR, Kamera-Zoom und Burgskalierung werden laufend in die Zielaufloesung
+  einbezogen. DPR ist auf 2 und die Renderseite auf 4096 begrenzt. Interne
+  Texturgroesse und logische Phaser-Displaygroesse bleiben getrennt.
+- Alle verwendeten 3D-Texturen erhalten Mipmaps,
+  `LinearMipmapLinearFilter`, `LinearFilter` und bis zu 8-fache Anisotropie.
+  Das Hauptlicht verwendet eine 2048er PCF-Schattenkarte mit engem Frustum.
+- Der neue GLB ist 33.529.184 Byte gross. Ein sauberer Blender-Rueckimport ergibt
+  174 Meshes, 207.062 Polygone, 39 Materialien, 22 eingebettete 2048er und 6
+  eingebettete 1024er Texturen. Die editierbare Blender-Szene besitzt 595.882
+  Polygone insgesamt; es fand keine automatische Vereinfachung statt.
+- Die vermeintliche weisse Rauchwolke waren zwei Stroh-Meshes am Stall. Blenders
+  prozedurales Noise-Material fiel im glTF-Export auf Weiss zurueck. Beide Meshes
+  verwenden jetzt ein braunes, glTF-sicheres Principled-Material ohne
+  ausgebrannte oder additive Flaeche.
+- Browser-Abnahme auf der Fuerstenburg-Karte: Mauer-, Dach- und Hofdetails sind
+  klarer, die weissen Flecken fehlen, Diagnose meldet 8-fache Anisotropie,
+  2048er Schatten und keine Hochskalierung. Nach dem finalen Reload gab es keine
+  Browser-Warnung und keinen Browser-Fehler.
+- Verifiziert: sauberer GLB-Rueckimport, TypeScript fehlerfrei, 435 Vitest-Tests
+  gruen und Produktions-Build erfolgreich.
+
 ## 22.07.2026 - Lazarettzelt des Feldlagers
 
 - Das Lazarett wurde als eigenes, drehbares Blender- und GLB-Asset mit offener
