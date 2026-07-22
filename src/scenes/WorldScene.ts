@@ -4244,7 +4244,7 @@ export class WorldScene extends CombatScene {
     // im naechsten Fenster, aus dem ich auch wieder zurueck kann") ----------
     if ((sel.length > 0 || battle.heldGewaehlt) && this.rtsFormOffen) {
       RTS_FORMATIONEN.forEach((fm, i) => {
-        feld(i % 4, Math.floor(i / 4), '⛬', fm.name, { an: this.rtsFormation === fm.id, tip: fm.hinweis }, () => {
+        feld(i % 4, Math.floor(i / 4), '⛬', fm.name, { an: this.rtsFormation === fm.id, icon: `baumenue_${fm.id}`, tip: fm.hinweis }, () => {
           this.rtsFormation = fm.id;
           battle.setForm(WorldScene.RTS_FORM_MAP[fm.id]);
           this.rtsFormOffen = false;
@@ -4296,7 +4296,7 @@ export class WorldScene extends CombatScene {
         [3, 'Feldscher', 'heiler', 'bauer', `Verbindet Verwundete im Feld - ${REKRUTIERUNG.gold}G+Waffe+Arbeiter`],
       ];
       for (const [i, lbl, typ, art, tip] of rekruten) {
-        feld(i, 0, '⚑', lbl, { tip }, () => this.rekrutiereSoldat(typ, art));
+        feld(i, 0, '⚑', lbl, { icon: `baumenue_${typ}`, tip }, () => this.rekrutiereSoldat(typ, art));
       }
       feld(3, 2, '◀', 'Zurück', {}, () => { this.rtsBauKat = null; });
       return;
@@ -4322,11 +4322,11 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       const inhalt = kat.bauten.map((bid) => RTS_BAUTEN.find((b) => b.id === bid)?.name ?? bid).join(', ');
       feld(i, 0, '⌂', kat.name, { taste: kat.taste, tip: `${kat.name}: ${inhalt}`, icon: `baumenue_${kat.id}` }, () => { this.rtsBauKat = kat.id; });
     });
-    feld(0, 1, '⚑', 'Aushebung', { tip: `Dorf: ${this.bevoelkerung} Arbeiter · Heer ${this.armee.einheiten.length}/${heerObergrenze(this.bevoelkerung)}` }, () => { this.rtsBauKat = 'aushebung'; });
+    feld(0, 1, '⚑', 'Aushebung', { icon: 'baumenue_aushebung', tip: `Dorf: ${this.bevoelkerung} Arbeiter · Heer ${this.armee.einheiten.length}/${heerObergrenze(this.bevoelkerung)}` }, () => { this.rtsBauKat = 'aushebung'; });
     // R191 (Autor): der RUECKZUG ist ein sichtbarer Menuepunkt. Autor-Nachtrag:
     // ein laufender Rueckzug muss ABBRECHBAR sein - der Knopf schaltet um.
     if (this.rueckzugLaeuft())
-      feld(0, 2, '↩', 'Rückzug abbrechen', { an: true, tip: 'Der Ausweich-Marsch wird gestoppt; die Truppen beziehen wieder Stellung auf dieser Karte' }, () => this.befehleRueckzugAbbrechen());
+      feld(0, 2, '↩', 'Rückzug abbrechen', { an: true, icon: 'baumenue_rueckzug', tip: 'Der Ausweich-Marsch wird gestoppt; die Truppen beziehen wieder Stellung auf dieser Karte' }, () => this.befehleRueckzugAbbrechen());
     else
       feld(0, 2, '🏳', 'Rückzug', { tip: 'Alle Einheiten dieser Karte weichen zur freien Nachbarkarte Richtung Zuflucht aus; Bewohner suchen Schutz' }, () => this.befehleRueckzug());
     feld(1, 1, '⚑', this.devFreiKam ? 'Steuerung: Truppen' : 'Steuerung: Held', { an: this.devFreiKam, tip: 'Frei-Kamera + Truppenbefehle vs. Helden-Steuerung (WASD)' }, () => this.setzeFreiKamera(!this.devFreiKam));
@@ -6028,24 +6028,27 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   private async ladeBaumenueIcons(): Promise<void> {
     if (this.baumenueIconsGeladen) return;
     this.baumenueIconsGeladen = true;
-    const ids = new Set<string>(['aushebung']);
+    const ids = new Set<string>(['aushebung', 'rueckzug', 'steuerung',
+      // Einheiten (Rekruten-Ebene) + Formationen (Formations-Ebene)
+      'schild', 'nahkampf', 'bogen', 'heiler', 'reiter']);
     for (const k of BAU_KATEGORIEN) ids.add(k.id);
     for (const b of RTS_BAUTEN) ids.add(b.id);
-    let queued = 0;
-    for (const id of ids) {
+    for (const fm of RTS_FORMATIONEN) ids.add(fm.id);
+    // WICHTIG: NICHT ueber den Phaser-Loader (this.load) mitten in der laufenden
+    // Szene nachladen - das rennt mit dem Boot-Loader um die Wette und laedt nur
+    // nichtdeterministisch EIN PAAR Icons (Autor-Befund: mal 3, mal andere 3).
+    // Stattdessen jede PNG parallel per Image() holen und DIREKT als Textur
+    // registrieren - deterministisch, unabhaengig vom Loader-Lebenszyklus.
+    let neue = 0;
+    await Promise.all([...ids].map((id) => new Promise<void>((resolve) => {
       const key = `baumenue_${id}`;
-      if (this.textures.exists(key)) continue;
-      try {
-        const r = await fetch(`ui/baumenue/${id}.png`, { method: 'HEAD' });
-        if (!r.ok || (r.headers.get('content-type') ?? '').includes('text/html')) continue;
-      } catch { continue; }
-      this.load.image(key, `ui/baumenue/${id}.png`);
-      queued++;
-    }
-    if (queued > 0) {
-      this.load.once(Phaser.Loader.Events.COMPLETE, () => { if (this.rtsBattle) this.baueRtsLeiste(); });
-      this.load.start();
-    }
+      if (this.textures.exists(key)) { resolve(); return; }
+      const img = new Image();
+      img.onload = () => { if (!this.textures.exists(key)) { this.textures.addImage(key, img); neue++; } resolve(); };
+      img.onerror = () => resolve();   // fehlt (z.B. noch unklares Icon) - stiller Fallback auf Glyph
+      img.src = `ui/baumenue/${id}.png`;
+    })));
+    if (neue > 0 && this.rtsBattle) this.baueRtsLeiste();
   }
   private wasserKarteLeeren(): void {
     const a = this.area; if (!a?.map) return;
