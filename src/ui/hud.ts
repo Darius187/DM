@@ -3,10 +3,10 @@
 // Trank-Anzeige mit Q/F-Hinweis.
 
 import Phaser from 'phaser';
-import hudUnifiedUrl from '../../assets/ui/hud/hud-unified-flat-gpt2-v2.png';
+import hudUnifiedUrl from '../../assets/ui/hud/hud-command-bar-shell-v3.png';
 import { SPELLS, ABILITIES, ABILITY_FX } from '../data/balancing';
 import { skillBeschreibung, skillWirkungText } from '../data/skills';
-import { getSettings, saveSettings } from '../logic/settings';
+import { getSettings, keyLabel, saveSettings } from '../logic/settings';
 import { TUNING } from '../logic/tuning';
 import type { PlayerState } from '../logic/playerState';
 import type { WeaponClass } from '../data/types';
@@ -54,35 +54,48 @@ const ORB_R = 42;
 // Getrennte Leisten (Runde 20): Tastatur-Slots 1-6/9/0/R/T und Maus-Slots M1-M5
 const KB_SLOTS = 10;
 
-// Pixelkoordinaten der neuen, einteiligen GPT-2-Vorlage. Die vier sichtbaren
+// Pixelkoordinaten der einteiligen Kommandoleisten-Vorlage. Die vier sichtbaren
 // Abschnitte werden zur Laufzeit ausgeschnitten, damit die vorhandenen F10-
 // Versatzregler fuer Kugeln, Mausleiste und Tastenleiste erhalten bleiben.
-const HUD_DESIGN_W = 1919;
-const HUD_DESIGN_H = 206;
-const HUD_LIFE_W = 190;
-const HUD_MOUSE_X = 190;
-const HUD_MOUSE_W = 548;
-const HUD_KEYBOARD_X = 738;
-const HUD_KEYBOARD_W = 1017;
-const HUD_MANA_X = 1755;
-const HUD_MANA_W = 164;
-const HUD_ORB_HP_X = 96;
-const HUD_ORB_MP_X = 1822;
-const HUD_ORB_Y = 99;
-const HUD_STATUS_X = 526;
-const HUD_STATUS_Y = 166;
-const HUD_STATUS_W = 878;
-const HUD_SLOT_Y = 98;
-const HUD_MOUSE_SLOT_X = [252, 356, 459, 560, 658] as const;
-const HUD_KEYBOARD_SLOT_X = [808, 905, 1001, 1096, 1190, 1286, 1379, 1472, 1565, 1661] as const;
-const HUD_MOUSE_LABEL_X = 466;
-const HUD_MOUSE_LABEL_Y = 33;
-const HUD_NUMBER_OFFSET_X = -2;
+const HUD_DESIGN_W = 1846;
+const HUD_DESIGN_H = 325;
+const HUD_LIFE_W = 121;
+const HUD_MOUSE_X = 121;
+const HUD_MOUSE_W = 481;
+const HUD_KEYBOARD_X = 602;
+const HUD_KEYBOARD_W = 936;
+const HUD_MANA_X = 1538;
+const HUD_MANA_W = 308;
+const HUD_ORB_HP_X = 57;
+const HUD_ORB_MP_X = 1577;
+const HUD_ORB_Y = 145;
+const HUD_METER_W = 50;
+const HUD_METER_H = 240;
+const HUD_STATUS_X = 122;
+const HUD_STATUS_Y = 249;
+const HUD_STATUS_W = 1397;
+const HUD_STATUS_EDGES = [122, 395, 729, 1028, 1299, 1519] as const;
+const HUD_SLOT_Y = 151;
+const HUD_KEY_LABEL_Y = 77;
+const HUD_POTION_LABEL_Y = 294;
+const HUD_MOUSE_SLOT_X = [167, 260, 353, 446, 539] as const;
+const HUD_KEYBOARD_SLOT_X = [653, 746, 840, 933, 1027, 1121, 1214, 1308, 1402, 1495] as const;
+const HUD_MENU_BUTTONS = [
+  { id: 'einstellungen', label: 'Einstellungen', x: 1663, y: 102 },
+  { id: 'charakter', label: 'Charakter', x: 1734, y: 102 },
+  { id: 'faehigkeiten', label: 'Fähigkeiten', x: 1805, y: 102 },
+  { id: 'karte', label: 'Karte', x: 1690, y: 211 },
+  { id: 'rts', label: 'RTS-Menü', x: 1773, y: 211 },
+] as const;
+const HUD_MENU_SIZE = 68;
+const HUD_NUMBER_OFFSET_X = 0;
+
+export type HudMenuId = typeof HUD_MENU_BUTTONS[number]['id'];
 
 function hudSkala(w: number): number {
-  // Harte Obergrenze: auch auf breiten oder flachen Browserfenstern darf das
-  // HUD nicht wieder zu einem 200 Pixel hohen Block anwachsen.
-  return Math.min(0.62, Math.max(0.3, (w - 24) / HUD_DESIGN_W));
+  const faktor = Phaser.Math.Clamp((getSettings().hudSkala ?? 100) / 100, 0.6, 1.5);
+  const passend = Math.max(0.1, (w - 12) / HUD_DESIGN_W);
+  return Math.min(passend, Phaser.Math.Clamp(0.5 * faktor, 0.24, 0.75));
 }
 
 function hudLinks(w: number): number {
@@ -90,12 +103,12 @@ function hudLinks(w: number): number {
 }
 
 const HUD_TEXTURES = {
-  unified: { key: 'hud_1300_unified_v2', url: hudUnifiedUrl },
+  unified: { key: 'hud_1300_command_shell_v3', url: hudUnifiedUrl },
 } as const;
-const HUD_LIFE_FRAME = 'hud_1300_unified_life_v2';
-const HUD_MOUSE_FRAME = 'hud_1300_unified_mouse_v2';
-const HUD_KEYBOARD_FRAME = 'hud_1300_unified_keyboard_v2';
-const HUD_MANA_FRAME = 'hud_1300_unified_mana_v2';
+const HUD_LIFE_FRAME = 'hud_1300_command_life_v3';
+const HUD_MOUSE_FRAME = 'hud_1300_command_mouse_v3';
+const HUD_KEYBOARD_FRAME = 'hud_1300_command_keyboard_v3';
+const HUD_MANA_FRAME = 'hud_1300_command_mana_menu_v3';
 const HUD_PANEL_DEPTH = 4599;
 const HUD_DYNAMIC_DEPTH = 4601;
 const HUD_FRAME_DEPTH = 4602;
@@ -128,6 +141,8 @@ export function orbMpAnkerX(w: number): number {
 }
 
 export class Hud {
+  private meterGfx: Phaser.GameObjects.Graphics;
+  private menuGfx: Phaser.GameObjects.Graphics;
   private gfx: Phaser.GameObjects.Graphics;
   private keyboardPanel: Phaser.GameObjects.Image;
   private mousePanel: Phaser.GameObjects.Image;
@@ -143,14 +158,19 @@ export class Hud {
   private potText: Phaser.GameObjects.Text;
   private mpotText: Phaser.GameObjects.Text;
   private infoText: Phaser.GameObjects.Text;
+  private statusTexts: Phaser.GameObjects.Text[] = [];
   private mausInfo: Phaser.GameObjects.Text;
   private slotTexts: Phaser.GameObjects.Text[] = [];
+  private slotKeyTexts: Phaser.GameObjects.Text[] = [];
   private slotZones: Phaser.GameObjects.Zone[] = [];
+  private menuZones: Phaser.GameObjects.Zone[] = [];
+  private menuHover = -1;
   private tooltip: Phaser.GameObjects.Container | null = null;
   private slots: SlotDef[];
   private aktionen: Array<[string, string, string, string]> = [];
   private hudAssetsReady = false;
   private destroyed = false;
+  onMenuAction: ((id: HudMenuId) => void) | null = null;
 
   constructor(
     private scene: Phaser.Scene,
@@ -160,7 +180,9 @@ export class Hud {
     private onActivate: (id: string) => void = () => {},
   ) {
     this.ensureOrbTextures();
+    this.meterGfx = scene.add.graphics().setScrollFactor(0).setDepth(HUD_PANEL_DEPTH - 1);
     this.gfx = scene.add.graphics().setScrollFactor(0).setDepth(4600);
+    this.menuGfx = scene.add.graphics().setScrollFactor(0).setDepth(4604);
     const hiddenImage = (depth: number) => scene.add.image(0, 0, '__WHITE')
       .setScrollFactor(0).setDepth(depth).setVisible(false);
     this.keyboardPanel = hiddenImage(HUD_PANEL_DEPTH);
@@ -189,12 +211,22 @@ export class Hud {
     this.infoText = scene.add.text(0, 0, '', {
       fontFamily: HUD_TEXT_FONT,
       fontSize: '12px',
-      color: '#d7c394',
-      stroke: '#0a0704',
-      strokeThickness: 1,
+      color: '#33271c',
+      strokeThickness: 0,
       letterSpacing: 0,
       padding: { x: 3, y: 2 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(4603).setResolution(2);
+    this.statusTexts.push(this.infoText);
+    for (let i = 1; i < HUD_STATUS_EDGES.length - 1; i++) {
+      this.statusTexts.push(scene.add.text(0, 0, '', {
+        fontFamily: HUD_TEXT_FONT,
+        fontSize: '12px',
+        color: '#33271c',
+        strokeThickness: 0,
+        letterSpacing: 0,
+        padding: { x: 3, y: 2 },
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(4603).setResolution(2));
+    }
     this.mausInfo = scene.add.text(0, 0, '', {
       fontFamily: HUD_TEXT_FONT,
       fontSize: '11px',
@@ -309,6 +341,7 @@ export class Hud {
     ];
     this.aktionen = AKTIONEN;
     this.buildSlotObjects();
+    this.buildMenuObjects();
     this.loadHudAssets();
   }
 
@@ -378,14 +411,10 @@ export class Hud {
       if (!this.scene.textures.exists(key)) return;
       this.scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
     }
-    this.createHudPart(HUD_TEXTURES.unified.key, HUD_LIFE_FRAME, 0, HUD_LIFE_W, {
-      x: HUD_ORB_HP_X, y: HUD_ORB_Y, radius: 43,
-    });
+    this.createHudPart(HUD_TEXTURES.unified.key, HUD_LIFE_FRAME, 0, HUD_LIFE_W);
     this.createHudPart(HUD_TEXTURES.unified.key, HUD_MOUSE_FRAME, HUD_MOUSE_X, HUD_MOUSE_W);
     this.createHudPart(HUD_TEXTURES.unified.key, HUD_KEYBOARD_FRAME, HUD_KEYBOARD_X, HUD_KEYBOARD_W);
-    this.createHudPart(HUD_TEXTURES.unified.key, HUD_MANA_FRAME, HUD_MANA_X, HUD_MANA_W, {
-      x: HUD_ORB_MP_X - HUD_MANA_X, y: HUD_ORB_Y, radius: 43,
-    });
+    this.createHudPart(HUD_TEXTURES.unified.key, HUD_MANA_FRAME, HUD_MANA_X, HUD_MANA_W);
     for (const key of [HUD_LIFE_FRAME, HUD_MOUSE_FRAME, HUD_KEYBOARD_FRAME, HUD_MANA_FRAME]) {
       this.scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
     }
@@ -432,6 +461,16 @@ export class Hud {
         padding: { x: 2, y: 2 },
       }).setOrigin(0.5).setScrollFactor(0).setDepth(4602).setResolution(2);
       this.slotTexts.push(ico);
+      const taste = this.scene.add.text(x, 0, '', {
+        fontFamily: HUD_TEXT_FONT,
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: '#e8d8b8',
+        stroke: '#0a0704',
+        strokeThickness: 2,
+        padding: { x: 2, y: 1 },
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(4603).setResolution(2);
+      this.slotKeyTexts.push(taste);
       const zone = this.scene.add.zone(x, this.slotY(i), 42, 42).setOrigin(0.5).setScrollFactor(0).setInteractive();
       zone.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showSlotTooltip(s, ptr));
       zone.on('pointerout', () => this.hideTooltip());
@@ -481,6 +520,44 @@ export class Hud {
       zone.on('dragend', (ptr: Phaser.Input.Pointer) => this.endDrag(ptr));
       this.slotZones.push(zone);
     }
+  }
+
+  private buildMenuObjects(): void {
+    HUD_MENU_BUTTONS.forEach((def, index) => {
+      const zone = this.scene.add.zone(0, 0, HUD_MENU_SIZE, HUD_MENU_SIZE)
+        .setOrigin(0.5).setScrollFactor(0).setInteractive({ useHandCursor: true });
+      zone.on('pointerover', (ptr: Phaser.Input.Pointer) => {
+        this.menuHover = index;
+        this.showMenuTooltip(def.label, ptr);
+      });
+      zone.on('pointerout', () => {
+        this.menuHover = -1;
+        this.hideTooltip();
+      });
+      zone.on('pointerup', (ptr: Phaser.Input.Pointer) => {
+        if (ptr.button !== 0) return;
+        this.hideTooltip();
+        this.onMenuAction?.(def.id);
+      });
+      this.menuZones.push(zone);
+    });
+  }
+
+  private menuPosition(index: number): { x: number; y: number } {
+    const w = this.scene.scale.width;
+    const skala = hudSkala(w);
+    const links = hudLinks(w);
+    const oben = this.scene.scale.height - HUD_DESIGN_H * skala;
+    const versatz = getSettings().ui.orbMp;
+    const def = HUD_MENU_BUTTONS[index];
+    return {
+      x: links + def.x * skala + versatz.x,
+      y: oben + def.y * skala + versatz.y,
+    };
+  }
+
+  private slotTrefferHalbeBreite(): number {
+    return Math.max(18, HUD_MENU_SIZE * 0.62 * hudSkala(this.scene.scale.width));
   }
 
   // Erhabener 3D-Knopf im WoW-Stil (Runde 50): dunkler Körper, Glas-Glanz auf
@@ -573,8 +650,9 @@ export class Hud {
     if (von < 0) return;
     // Liegt unter dem Zeiger irgendein anderer Slot? Dann tauschen (R26)
     let ziel = -1;
+    const halb = this.slotTrefferHalbeBreite();
     for (let j = 0; j < this.slots.length; j++) {
-      if (Math.abs(ptr.x - this.slotX(j)) <= 23 && Math.abs(ptr.y - this.slotY(j)) <= 23) { ziel = j; break; }
+      if (Math.abs(ptr.x - this.slotX(j)) <= halb && Math.abs(ptr.y - this.slotY(j)) <= halb) { ziel = j; break; }
     }
     if (ziel < 0 || ziel === von) return;
     const a = this.slots[von].belegung;
@@ -598,8 +676,9 @@ export class Hud {
   // Aktionen (Angriff/Blocken) sind hier nicht im Spiel.
   belegeBeiPunkt(x: number, y: number, aktionId: string): boolean {
     if (!this.aktionen.some(([id]) => id === aktionId)) return false;
+    const halb = this.slotTrefferHalbeBreite();
     for (let j = 0; j < this.slots.length; j++) {
-      if (Math.abs(x - this.slotX(j)) > 23 || Math.abs(y - this.slotY(j)) > 23) continue;
+      if (Math.abs(x - this.slotX(j)) > halb || Math.abs(y - this.slotY(j)) > halb) continue;
       const feld = this.slots[j].belegung;
       if (!feld) return false;
       (getSettings()[feld.store] as Record<string, string>)[feld.feld] = aktionId;
@@ -617,13 +696,21 @@ export class Hud {
   // das Belegungs-Menü offen ist (sonst wirkt der Zauber beim Anklicken)
   klickBlockiert(ptr: Phaser.Input.Pointer): boolean {
     if (this.menue || this.dragGhost) return true;
-    const band = (a: number, b: number): boolean => {
-      const y0 = this.slotY(a) - 24;
-      const x0 = this.slotX(a) - 24;
-      const x1 = this.slotX(b) + 24;
-      return ptr.y >= y0 && ptr.y <= y0 + 48 && ptr.x >= x0 && ptr.x <= x1;
+    const w = this.scene.scale.width;
+    const skala = hudSkala(w);
+    const links = hudLinks(w);
+    const oben = this.scene.scale.height - HUD_DESIGN_H * skala;
+    const ui = getSettings().ui;
+    const inTeil = (sx: number, sw: number, versatz: { x: number; y: number }): boolean => {
+      const x0 = links + sx * skala + versatz.x;
+      const y0 = oben + versatz.y;
+      return ptr.x >= x0 && ptr.x <= x0 + sw * skala
+        && ptr.y >= y0 && ptr.y <= y0 + HUD_DESIGN_H * skala;
     };
-    return band(0, KB_SLOTS - 1) || band(KB_SLOTS, this.slots.length - 1);
+    return inTeil(0, HUD_LIFE_W, ui.orbHp)
+      || inTeil(HUD_MOUSE_X, HUD_MOUSE_W, ui.mausleiste)
+      || inTeil(HUD_KEYBOARD_X, HUD_KEYBOARD_W, ui.hotbar)
+      || inTeil(HUD_MANA_X, HUD_MANA_W, ui.orbMp);
   }
 
   private closeMenue(): void {
@@ -656,8 +743,9 @@ export class Hud {
 
   // Action-Bar-Slot unter dem Zeiger (für Drag aus dem Belegungs-Menü).
   private slotUnter(ptr: Phaser.Input.Pointer): number {
+    const halb = this.slotTrefferHalbeBreite();
     for (let i = 0; i < this.slots.length; i++) {
-      if (Math.abs(ptr.x - this.slotX(i)) <= 23 && Math.abs(ptr.y - this.slotY(i)) <= 23) return i;
+      if (Math.abs(ptr.x - this.slotX(i)) <= halb && Math.abs(ptr.y - this.slotY(i)) <= halb) return i;
     }
     return -1;
   }
@@ -794,6 +882,27 @@ export class Hud {
     this.tooltip = c;
   }
 
+  private showMenuTooltip(label: string, ptr: Phaser.Input.Pointer): void {
+    this.hideTooltip();
+    const text = this.scene.add.text(10, 7, label, {
+      fontFamily: HUD_TEXT_FONT,
+      fontSize: '12px',
+      color: '#ead9b4',
+      padding: { x: 1, y: 1 },
+    }).setResolution(2);
+    const breite = text.width + 20;
+    const hoehe = text.height + 14;
+    const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(5250);
+    c.add(this.scene.add.rectangle(0, 0, breite, hoehe, 0x0e0a06, 0.97)
+      .setOrigin(0).setStrokeStyle(1, 0x9b7a43));
+    c.add(text);
+    c.setPosition(
+      Phaser.Math.Clamp(ptr.x - breite / 2, 8, this.scene.scale.width - breite - 8),
+      Math.max(8, ptr.y - hoehe - 14),
+    );
+    this.tooltip = c;
+  }
+
   private hideTooltip(): void {
     this.tooltip?.destroy();
     this.tooltip = null;
@@ -818,6 +927,8 @@ export class Hud {
     const w = this.scene.scale.width, h = this.scene.scale.height;
     const kb = getSettings().kb;
     g.clear();
+    this.meterGfx.clear();
+    this.menuGfx.clear();
 
     // Codex HUD-Uebergabe: die Anzeigen bleiben Teil der flachen Leiste.
     // Anker folgt weiter den ECHTEN Leistenkanten (slotX bezieht die Benutzer-
@@ -834,23 +945,32 @@ export class Hud {
     const my = klemmY(oben + HUD_ORB_Y * skala + om.y);
     const hpFrac = p.hp / p.stats.maxhp, mpFrac = p.mana / p.stats.maxmana;
     const hpVal = String(Math.max(0, Math.ceil(p.hp))), mpVal = String(Math.ceil(p.mana));
-    const potT = `${kb.pot.toUpperCase()} Trank x${p.pot}`, mpotT = `${kb.mpot.toUpperCase()} Trank x${p.mpot}`;
+    const potT = `${keyLabel(kb.pot)} x${p.pot}`, mpotT = `${keyLabel(kb.mpot)} x${p.mpot}`;
     this.positionHudAssets();
-    // R160 (Autor "das Rote/Blaue fehlt"): FUELLSTAND wie bei Diablo - die
-    // Fluessigkeit steht auf Hoehe des Anteils (Crop von unten), nicht mehr
-    // nur ein Alpha-Fade der ganzen Kugel (der bei wenig Leben wie "leer ohne
-    // Rot" aussah). Crop arbeitet im TEXTUR-Raum (Groesse ORB_R*2) - der
-    // Rest der Kugel bleibt als dunkler Grund sichtbar (Alpha-Sockel).
-    const orbFuellung = (img: Phaser.GameObjects.Image, frac: number): void => {
+    // Die Vorlage besitzt transparente, schmale Sichtfenster. Fuellstand und
+    // Zahl werden exakt dahinter gezeichnet; dadurch bleiben Rahmen und Balken
+    // auch bei jeder HUD-Skalierung deckungsgleich.
+    this.hpImg.setVisible(false);
+    this.mpImg.setVisible(false);
+    const meter = (x: number, y: number, frac: number, farbe: number, licht: number): void => {
+      const breite = HUD_METER_W * skala;
+      const hoehe = HUD_METER_H * skala;
+      const innen = Math.max(2, 4 * skala);
+      const innenH = hoehe - innen * 2;
       const f = Phaser.Math.Clamp(frac, 0, 1);
-      const size = ORB_R * 2;
-      img.setCrop(0, size * (1 - f), size, size * f);
-      img.setAlpha(0.96);
+      this.meterGfx.fillStyle(0x080706, 0.96);
+      this.meterGfx.fillRoundedRect(x - breite / 2, y - hoehe / 2, breite, hoehe, Math.max(2, 5 * skala));
+      if (f > 0) {
+        const fuellH = innenH * f;
+        const fuellY = y + hoehe / 2 - innen - fuellH;
+        this.meterGfx.fillStyle(farbe, 0.98);
+        this.meterGfx.fillRect(x - breite / 2 + innen, fuellY, breite - innen * 2, fuellH);
+        this.meterGfx.fillStyle(licht, 0.2);
+        this.meterGfx.fillRect(x - breite / 2 + innen * 1.5, fuellY, Math.max(1, breite * 0.18), fuellH);
+      }
     };
-    this.hpImg.setVisible(true).setPosition(hx, hy).setDisplaySize(86 * skala, 86 * skala);
-    orbFuellung(this.hpImg, hpFrac);
-    this.mpImg.setVisible(true).setPosition(mx, my).setDisplaySize(86 * skala, 86 * skala);
-    orbFuellung(this.mpImg, mpFrac);
+    meter(hx, hy, hpFrac, 0x8f1e20, 0xffc7aa);
+    meter(mx, my, mpFrac, 0x244f91, 0xbcd8ff);
     this.hpFrame.setVisible(true);
     this.mpFrame.setVisible(true);
     const zahlGroesse = Math.max(16, Math.round(28 * skala));
@@ -858,9 +978,9 @@ export class Hud {
     this.mpText.setFontSize(zahlGroesse).setPosition(mx + HUD_NUMBER_OFFSET_X, my).setText(mpVal);
     const trankGroesse = Math.max(10, Math.round(18 * skala));
     this.passeEinzeiligEin(this.potText, potT, trankGroesse, 9, (HUD_LIFE_W - 22) * skala);
-    this.potText.setPosition(links + HUD_ORB_HP_X * skala + oh.x, oben + 181 * skala + oh.y);
+    this.potText.setPosition(links + HUD_ORB_HP_X * skala + oh.x, oben + HUD_POTION_LABEL_Y * skala + oh.y);
     this.passeEinzeiligEin(this.mpotText, mpotT, trankGroesse, 9, (HUD_MANA_W - 18) * skala);
-    this.mpotText.setPosition(links + HUD_ORB_MP_X * skala + om.x, oben + 181 * skala + om.y);
+    this.mpotText.setPosition(links + HUD_ORB_MP_X * skala + om.x, oben + HUD_POTION_LABEL_Y * skala + om.y);
 
     // Zwei getrennte Paneele (Runde 20): Tastenleiste und Maus-Leiste
     const panel = (a: number, b: number) => {
@@ -895,21 +1015,20 @@ export class Hud {
         this.zeichne3dKnopf(g, x, y, Math.min(slotBreite, slotHoehe), katFarbe, locked, pressed);
       } else if (locked || pressed) {
         g.fillStyle(locked ? 0x090807 : 0xffffff, locked ? 0.56 : 0.08);
-        g.fillRoundedRect(x - slotBreite / 2, y - slotHoehe / 2, slotBreite, slotHoehe, Math.max(2, 7 * skala));
+        g.fillRect(x - slotBreite / 2, y - slotHoehe / 2, slotBreite, slotHoehe);
       }
       const cd = s.cdFrac();
       if (cd > 0) {
         // ganze Taste matt = "noch nicht aktiv" (Autorbug R60: Abklingen war nicht
         // ausgegraut, nur der Schwung war zu sehen)
         g.fillStyle(0x05030a, 0.5);
-        g.fillRoundedRect(x - slotBreite / 2, y - slotHoehe / 2, slotBreite, slotHoehe, Math.max(2, 7 * skala));
+        g.fillRect(x - slotBreite / 2, y - slotHoehe / 2, slotBreite, slotHoehe);
         g.fillStyle(0x000000, 0.72);            // ablaufender Abkling-Schwung darüber
-        g.fillRoundedRect(
+        g.fillRect(
           x - slotBreite / 2,
           y - slotHoehe / 2 + slotHoehe * (1 - cd),
           slotBreite,
           slotHoehe * cd,
-          Math.max(2, 7 * skala),
         );
       }
       const cdS = s.cdSek();
@@ -920,7 +1039,23 @@ export class Hud {
         .setAlpha(locked ? 0.3 : cd > 0 ? 0.5 : 1)
         .setPosition(x, pressed ? y + Math.max(1, skala * 2) : y);
       // Tastenkürzel klein oben links
-      g.fillStyle(0x000000, 0);
+      const tastenWerte = [kb.s1, kb.s2, kb.s3, '4', '5', '6', '9', '0', kb.faehigkeit1, kb.faehigkeit2];
+      this.slotKeyTexts[i]
+        .setVisible(i < KB_SLOTS)
+        .setText(i < KB_SLOTS ? keyLabel(tastenWerte[i]) : '')
+        .setFontSize(Math.max(9, Math.round(18 * skala)))
+        .setPosition(x, oben + HUD_KEY_LABEL_Y * skala + getSettings().ui.hotbar.y);
+    }
+    for (let i = 0; i < HUD_MENU_BUTTONS.length; i++) {
+      const pos = this.menuPosition(i);
+      const groesse = HUD_MENU_SIZE * skala;
+      this.menuZones[i].setPosition(pos.x, pos.y).setSize(Math.max(30, groesse), Math.max(30, groesse));
+      if (this.menuHover === i) {
+        this.menuGfx.fillStyle(0xf0d28c, 0.09);
+        this.menuGfx.fillRect(pos.x - groesse / 2, pos.y - groesse / 2, groesse, groesse);
+        this.menuGfx.lineStyle(Math.max(1, 2 * skala), 0xd4ad63, 0.9);
+        this.menuGfx.strokeRect(pos.x - groesse / 2, pos.y - groesse / 2, groesse, groesse);
+      }
     }
     // Statuszeile (Runde 37): nur noch Stufe/Gold/Tag/Zeit - sauber, mit
     // Abstand zur Leiste. Der frühere Slot-Hilfetext stand schon in den
@@ -935,27 +1070,29 @@ export class Hud {
       g.lineStyle(1, 0x8f806a, 0.72);
       g.strokeRoundedRect(statusX + 1, statusY + 1, statusW - 2, 38 * skala - 2, 2);
     }
-    this.passeEinzeiligEin(
-      this.infoText,
-      extra,
-      Math.max(10, Math.round(19 * skala)),
-      9,
-      statusW - 18 * skala,
-    );
-    this.infoText.setPosition(statusX + statusW / 2, statusY + 15 * skala);
+    const teile = extra.split(' · ');
+    const statusInhalte = [
+      teile[0] ?? '',
+      teile[1] ?? '',
+      [teile[2], teile[3]].filter(Boolean).join(' · '),
+      teile[4] ?? '',
+      teile.slice(5).join(' · '),
+    ];
+    for (let i = 0; i < this.statusTexts.length; i++) {
+      const x0 = links + HUD_STATUS_EDGES[i] * skala + ui.hotbar.x;
+      const x1 = links + HUD_STATUS_EDGES[i + 1] * skala + ui.hotbar.x;
+      this.passeEinzeiligEin(
+        this.statusTexts[i],
+        statusInhalte[i],
+        Math.max(9, Math.round(17 * skala)),
+        8,
+        x1 - x0 - 12 * skala,
+      );
+      this.statusTexts[i].setPosition((x0 + x1) / 2, statusY + 28 * skala);
+    }
     // Beschriftung ÜBER der Maus-Leiste, damit sie der Infozeile der
     // Tastenleiste nicht in die Quere kommt
-    this.passeEinzeiligEin(
-      this.mausInfo,
-      'MAUSTASTEN',
-      Math.max(10, Math.round(18 * skala)),
-      9,
-      (HUD_MOUSE_W - 44) * skala,
-    );
-    this.mausInfo.setPosition(
-      links + HUD_MOUSE_LABEL_X * skala + ui.mausleiste.x,
-      oben + HUD_MOUSE_LABEL_Y * skala + ui.mausleiste.y,
-    );
+    this.mausInfo.setVisible(false);
 
     // XP-Leiste
     const xw = Math.min(420, w * 0.42);
@@ -967,16 +1104,21 @@ export class Hud {
 
   destroy(): void {
     this.destroyed = true;
+    this.meterGfx.destroy();
     this.gfx.destroy();
+    this.menuGfx.destroy();
     for (const image of [
       this.keyboardPanel, this.mousePanel, this.statusPanel,
       this.hpFrame, this.mpFrame, this.potPanel, this.mpotPanel,
     ]) image.destroy();
     this.hpImg.destroy();
     this.mpImg.destroy();
-    for (const t of [this.hpText, this.mpText, this.potText, this.mpotText, this.infoText, this.mausInfo]) t.destroy();
+    for (const t of [this.hpText, this.mpText, this.potText, this.mpotText, this.mausInfo]) t.destroy();
+    for (const t of this.statusTexts) t.destroy();
     for (const t of this.slotTexts) t.destroy();
+    for (const t of this.slotKeyTexts) t.destroy();
     for (const z of this.slotZones) z.destroy();
+    for (const z of this.menuZones) z.destroy();
     this.dragGhost?.destroy();
     this.dragGhost = null;
     this.hideTooltip();

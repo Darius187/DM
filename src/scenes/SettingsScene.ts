@@ -100,6 +100,7 @@ export class SettingsScene extends Phaser.Scene {
         { art: 'abschnitt', titel: 'Bild & Fenster' },
         { art: 'schalter', label: 'Vollbild', get: () => this.scale.isFullscreen, tun: () => { try { this.scale.toggleFullscreen(); } catch { /* ohne Vollbild */ } } },
         { art: 'regler', label: 'Spielwelt-Zoom', icon: '🔍', min: 100, max: 200, get: () => s.zoom, set: speichern((v) => { s.zoom = v; }) },
+        { art: 'regler', label: 'HUD-Größe', icon: '▣', min: 60, max: 150, get: () => s.hudSkala, set: speichern((v) => { s.hudSkala = v; }) },
         { art: 'regler', label: 'Helligkeit', icon: '☀', min: 70, max: 140, get: () => s.bright, set: speichern((v) => { s.bright = v; }) },
         { art: 'abschnitt', titel: 'Leistung' },
         { art: 'schalter', label: 'FPS-Anzeige (Bildrate einblenden)', get: () => s.fpsAnzeige, tun: () => { s.fpsAnzeige = !s.fpsAnzeige; saveSettings(); } },

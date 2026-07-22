@@ -44,6 +44,7 @@ export interface Settings {
   // HUD-Stil für Leben/Mana (Runde 52, Autorwunsch "Alternativen wie WoW"):
   // 0 = Kugeln rot/blau (bisher), 1 = WoW-Balken, 2 = Einheitenrahmen (Portrait).
   hudStil: number;
+  hudSkala: number;        // Groesse der gesamten unteren HUD-Leiste 60-150
   // Chronik als Chat-Fenster (Runde 29): frei verschieb- UND skalierbar;
   // y zählt vom UNTEREN Bildrand (Chat-Verankerung wie bei WoW)
   chronikBox: { x: number; y: number; w: number; h: number };
@@ -165,6 +166,7 @@ export const DEF_SETTINGS: Settings = {
   ui: { hotbar: { x: 0, y: 0 }, mausleiste: { x: 0, y: 0 }, dialog: { x: 0, y: 0 }, log: { x: 0, y: 0 }, orbHp: { x: 0, y: 0 }, orbMp: { x: 0, y: 0 }, fenster: { x: 0, y: 0 }, questTracker: { x: 0, y: 0 } },
   questTrackerAn: true,
   hudStil: 1,
+  hudSkala: 100,
   // R86 (Autorwunsch): von Anfang an GANZ UNTEN am Bildschirmrand angedockt
   chronikBox: { x: 4, y: -380, w: 340, h: 270 }, // links, oberhalb des HUDs
   chronikAuto: true,
