@@ -1,0 +1,145 @@
+{
+  "asset": "medieval_order_banner_3d_runtime",
+  "label_de": "Ordensbanner des Feldlagers",
+  "glb": "medieval_order_banner_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "ORDER_BANNER_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\order_banner\\medieval_order_banner_3d_runtime.blend",
+  "original_blend_preserved": null,
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -1.58,
+      -0.834,
+      -0.12
+    ],
+    "max": [
+      1.6,
+      0.974,
+      5.06
+    ],
+    "size": [
+      3.18,
+      1.807,
+      5.18
+    ]
+  },
+  "runtime": {
+    "visible_objects": 8,
+    "triangles": 17466,
+    "embedded_textured_materials": 8,
+    "static_material_batches": [
+      "ORDER_BANNER_CLOTH_ORDER_BANNER_DARK",
+      "ORDER_BANNER_CLOTH_ORDER_BANNER_LIGHT",
+      "ORDER_BANNER_CLOTH_ORDER_BANNER_STREAMER",
+      "ORDER_BANNER_WOOD_DARK_BATCH",
+      "ORDER_BANNER_WOOD_MID_BATCH",
+      "ORDER_BANNER_ROPE_BATCH",
+      "ORDER_BANNER_IRON_BATCH",
+      "ORDER_BANNER_BANNER_DARK_BATCH"
+    ],
+    "baked_cloth_panels": [
+      {
+        "panel": "ORDER_BANNER_DARK",
+        "frames": 72,
+        "quad_grid": [
+          18,
+          54
+        ],
+        "source_quads": 972,
+        "average_edge_m": 0.0571,
+        "pinned_vertices": 57,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.03101,
+        "average_displacement_m": 0.00884,
+        "maximum_displacement_m": 0.03101,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "ORDER_BANNER_LIGHT",
+        "frames": 72,
+        "quad_grid": [
+          18,
+          54
+        ],
+        "source_quads": 972,
+        "average_edge_m": 0.053,
+        "pinned_vertices": 57,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.03114,
+        "average_displacement_m": 0.00891,
+        "maximum_displacement_m": 0.03114,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "ORDER_BANNER_STREAMER",
+        "frames": 72,
+        "quad_grid": [
+          18,
+          54
+        ],
+        "source_quads": 972,
+        "average_edge_m": 0.036,
+        "pinned_vertices": 57,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 1.63523,
+        "average_displacement_m": 0.06748,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      }
+    ],
+    "active_runtime_cloth_simulations": 0
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      0.42,
+      0.42
+    ],
+    "center": [
+      0,
+      0
+    ]
+  },
+  "content": {
+    "main_panels": 2,
+    "tattered_streamer": 1,
+    "period_cross": true,
+    "cloth_simulation": "baked_static_mesh",
+    "cloth_panels": 3,
+    "cloth_materials": [
+      "MAT_ORDER_BANNER_DARK",
+      "MAT_ORDER_BANNER_LIGHT"
+    ]
+  },
+  "interactions": [],
+  "notes": [
+    "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
+    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
+    "Material-Farbtexturen sind im GLB eingebettet.",
+    "Blender-Cloth wurde 72 bis 80 Frames mit weichen CLOTH_PIN-Gewichten berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik.",
+    "Neu aufgebautes Cloth-Asset; BACKUP_ORIGINAL_TENTS bleibt als leere, ausgeblendete Sicherungs-Collection fuer spaetere Revisionen erhalten."
+  ]
+}

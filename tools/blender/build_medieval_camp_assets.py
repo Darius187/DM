@@ -13,13 +13,16 @@ from mathutils import Euler, Matrix, Vector
 
 REPO = Path(r"C:\Obsidian\DM\Darius187-DM")
 SOURCE_ROOT = Path(r"C:\Obsidian\DM\camp-props")
-VALID_ASSETS = {"fletcher", "field_tent", "command_pavilion", "medical_tent"}
+VALID_ASSETS = {
+    "fletcher", "field_tent", "command_pavilion", "medical_tent",
+    "cooking_fire", "order_banner", "field_shrine",
+}
 
 
 def cli_asset():
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     if len(args) != 1 or args[0] not in VALID_ASSETS:
-        raise SystemExit("Usage: blender --background --python build_medieval_camp_assets.py -- <fletcher|field_tent|command_pavilion|medical_tent>")
+        raise SystemExit("Usage: blender --background --python build_medieval_camp_assets.py -- <asset_id>")
     return args[0]
 
 
@@ -29,12 +32,18 @@ ASSET_NAMES = {
     "field_tent": "medieval_field_tent_3d_runtime",
     "command_pavilion": "medieval_command_pavilion_3d_runtime",
     "medical_tent": "medieval_medical_tent_3d_runtime",
+    "cooking_fire": "medieval_camp_cooking_fire_3d_runtime",
+    "order_banner": "medieval_order_banner_3d_runtime",
+    "field_shrine": "medieval_field_shrine_3d_runtime",
 }
 ROOT_NAMES = {
     "fletcher": "FLETCHER_STATION_ROTATION_PIVOT",
     "field_tent": "FIELD_TENT_ROTATION_PIVOT",
     "command_pavilion": "COMMAND_PAVILION_ROTATION_PIVOT",
     "medical_tent": "MEDICAL_TENT_ROTATION_PIVOT",
+    "cooking_fire": "COOKING_FIRE_ROTATION_PIVOT",
+    "order_banner": "ORDER_BANNER_ROTATION_PIVOT",
+    "field_shrine": "FIELD_SHRINE_ROTATION_PIVOT",
 }
 ASSET_NAME = ASSET_NAMES[ASSET_ID]
 SOURCE_DIR = SOURCE_ROOT / ASSET_ID
@@ -247,6 +256,22 @@ def make_canvas_material(name, key, base, seed, roughness=.86, sheen=.16):
     return material
 
 
+def make_emissive_material(key, base, dark, light, seed, strength):
+    material = make_material(key, base, dark, light, "default", seed, .58)
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    bsdf = nodes.get("Principled BSDF")
+    texture = nodes.get("GAME_READY_BAKED_BASECOLOR")
+    emission_name = "Emission Color" if "Emission Color" in bsdf.inputs else "Emission"
+    if texture and emission_name in bsdf.inputs:
+        links.new(texture.outputs["Color"], bsdf.inputs[emission_name])
+    strength_name = "Emission Strength" if "Emission Strength" in bsdf.inputs else None
+    if strength_name:
+        bsdf.inputs[strength_name].default_value = strength
+    material["runtime_emissive"] = True
+    return material
+
+
 MATERIALS = {
     "wood_dark": make_material("wood_dark", (.13, .078, .038), (.022, .014, .008), (.28, .17, .075), "wood", 11, .94),
     "wood_mid": make_material("wood_mid", (.24, .145, .068), (.055, .030, .014), (.43, .29, .13), "wood", 12, .91),
@@ -270,6 +295,14 @@ MATERIALS = {
     "heraldry_blue": make_material("hospital_cross_blue", (.055, .12, .19), (.008, .020, .035), (.12, .24, .34), "fabric", 29, .90),
     "heraldry_gold": make_material("hospital_cross_ochre", (.43, .28, .075), (.09, .045, .010), (.68, .50, .16), "fabric", 30, .86),
     "wax": make_material("lantern_wax", (.64, .37, .10), (.13, .045, .008), (.94, .66, .24), "default", 31, .74),
+    "stone": make_material("field_stone", (.31, .29, .25), (.055, .050, .043), (.53, .49, .41), "earth", 34, .97),
+    "charcoal": make_material("charcoal", (.035, .030, .025), (.004, .003, .002), (.12, .065, .028), "earth", 35, .96),
+    "ember": make_emissive_material("glowing_ember", (.62, .105, .018), (.08, .008, .002), (1.0, .42, .06), 36, 2.4),
+    "flame": make_emissive_material("fire_flame", (.95, .34, .045), (.34, .025, .002), (1.0, .78, .14), 37, 3.2),
+    "banner_dark": make_canvas_material("MAT_ORDER_BANNER_DARK", "order_banner_dark", (.12, .115, .105), 38, .94, .08),
+    "banner_light": make_canvas_material("MAT_ORDER_BANNER_LIGHT", "order_banner_light", (.57, .53, .44), 39, .94, .08),
+    "altar_cloth": make_canvas_material("MAT_ALTAR_LINEN", "altar_linen", (.69, .65, .56), 40, .95, .06),
+    "bronze": make_material("altar_bronze", (.28, .18, .055), (.035, .020, .006), (.58, .40, .11), "metal", 41, .54, .72),
 }
 
 
@@ -1309,11 +1342,183 @@ def build_medical_tent():
     }
 
 
+def build_candle(center, height=.46):
+    x, y, z = center
+    BATCHES["bronze"].cylinder((x, y, z + .05), .10, .10, 12)
+    BATCHES["bronze"].cylinder((x, y, z + height * .48), .025, height, 10)
+    BATCHES["wax"].cylinder((x, y, z + height + .20), .040, .32, 10)
+    BATCHES["flame"].cone((x, y, z + height + .40), .045, .20, 8)
+
+
+def build_cooking_fire():
+    random.seed(1360)
+    apex = Vector((0, 0, 2.82))
+    for index in range(3):
+        angle = -math.pi / 2 + index * math.tau / 3
+        base = Vector((math.cos(angle) * 1.08, math.sin(angle) * .92, .05))
+        beam("wood_dark", base, apex, .13)
+    BATCHES["rope"].torus((0, 0, 2.62), .17, .035, 16, 5)
+
+    for index in range(8):
+        rotation = (math.pi / 2, 0, 0) if index % 2 else (0, math.pi / 2, 0)
+        BATCHES["iron"].torus((0, 0, 2.48 - index * .105), .055, .013, 10, 4, rotation)
+    BATCHES["iron"].open_tube((0, 0, 1.36), .38, .48, .035, 18)
+    BATCHES["iron"].torus((0, 0, 1.63), .39, .030, 18, 5)
+    BATCHES["iron"].torus((0, 0, 1.70), .43, .022, 18, 5, (math.pi / 2, 0, 0))
+
+    for index in range(15):
+        angle = index * math.tau / 15
+        radius = .70 + .035 * math.sin(index * 1.8)
+        center = (math.cos(angle) * radius, math.sin(angle) * radius, .13)
+        BATCHES["stone"].box(center, (.34, .26, .24),
+                              (math.radians(index % 3 * 5), 0, angle + .18))
+    for index in range(7):
+        angle = index * math.pi / 3.5 + .18
+        start = (-math.cos(angle) * .48, -math.sin(angle) * .48, .14 + (index % 2) * .05)
+        end = (math.cos(angle) * .48, math.sin(angle) * .48, .18 + (index % 3) * .04)
+        beam("charcoal" if index % 3 == 0 else "wood_mid", start, end, .13)
+    for index in range(13):
+        angle = index * 2.31
+        radius = .40 * math.sqrt((index + .4) / 13)
+        BATCHES["ember"].box((math.cos(angle) * radius, math.sin(angle) * radius, .23),
+                              (.10, .08, .055), (0, 0, angle))
+    flame_specs = [(-.22, -.04, .48, .17, .78), (.13, .08, .51, .14, .92),
+                   (.02, -.17, .42, .12, .68), (.25, -.10, .39, .10, .56),
+                   (-.08, .18, .41, .12, .64)]
+    for x, y, z, radius, height in flame_specs:
+        BATCHES["flame"].cone((x, y, z), radius, height, 9, (x * .35, y * .35, 1))
+
+    build_stool((-1.30, -.48, 0))
+    for index in range(7):
+        y = .46 + (index % 4) * .16
+        z = .10 + (index // 4) * .16
+        beam("wood_mid", (.98, y, z), (1.62, y + .04 * math.sin(index), z), .12)
+    return {
+        "label": "Kochstelle des Feldlagers",
+        "content": {"tripod": True, "hanging_cauldron": True, "stone_fire_ring": True,
+                    "static_fire_mesh": True, "firewood": 14, "stool": 1},
+        "collision": {"shape": "box", "size": [2.55, 2.25], "center": [0, 0]},
+        "interactions": [{"id": "fire_fx_anchor", "position": [0, 0, .28]},
+                         {"id": "cooking_pot", "position": [0, 0, 1.58]}],
+    }
+
+
+def build_order_banner():
+    random.seed(1361)
+    beam("wood_dark", (0, 0, .02), (0, 0, 4.58), .12)
+    beam("wood_mid", (-1.28, 0, 4.05), (1.30, 0, 4.05), .095)
+    BATCHES["iron"].cone((0, 0, 4.82), .105, .48, 8)
+    BATCHES["iron"].cone((-1.43, 0, 4.05), .08, .30, 8, (-1, 0, 0))
+    BATCHES["iron"].cone((1.45, 0, 4.05), .08, .30, 8, (1, 0, 0))
+    BATCHES["rope"].torus((0, 0, 4.05), .14, .025, 14, 5)
+
+    def banner_pin(ix, iy, nx, ny):
+        return edge_weight(iy)
+
+    panels = [(-.92, -.02, "banner_dark", "ORDER_BANNER_DARK", 3.05, .54),
+              (-.02, .82, "banner_light", "ORDER_BANNER_LIGHT", 2.92, .38),
+              (.96, 1.24, "banner_light", "ORDER_BANNER_STREAMER", 2.55, .46)]
+    for left, right, key, name, height, tail in panels:
+        def point(u, v, left=left, right=right, height=height, tail=tail):
+            x = left + (right - left) * u
+            flutter = -.030 * math.sin(v * math.pi) * math.sin(u * math.tau + v * 2.7)
+            point_tail = tail * (v ** 7) * math.sin(u * math.pi) ** 2
+            return (x, -.045 + flutter, 3.90 - v * height - point_tail)
+
+        panel = simulated_cloth_grid(key, name, 18, 54, point, banner_pin,
+                                     frames=72, gravity=-1.85, normal_hint=(0, -1, 0))
+        add_panel_row_strip(panel, 0.0, "rope")
+        add_panel_column_strip(panel, 0.0, "rope")
+        add_panel_column_strip(panel, 1.0, "rope")
+
+    y = -.082
+    BATCHES["banner_dark"].quad([(.20, y, 3.36), (.40, y, 3.36),
+                                  (.40, y, 1.72), (.20, y, 1.72)])
+    BATCHES["banner_dark"].quad([(-.25, y, 2.72), (.72, y, 2.72),
+                                  (.72, y, 2.48), (-.25, y, 2.48)])
+    rope([(-.05, 0, .12), (-.88, -.78, .02)], .017)
+    rope([(.05, 0, .12), (.88, -.78, .02)], .017)
+    rope([(0, .02, .18), (0, .92, .02)], .017)
+    for x, yy in ((-.88, -.78), (.88, -.78), (0, .92)):
+        make_stake(x, yy)
+    return {
+        "label": "Ordensbanner des Feldlagers",
+        "content": {"main_panels": 2, "tattered_streamer": 1, "period_cross": True,
+                    "cloth_simulation": "baked_static_mesh", "cloth_panels": 3,
+                    "cloth_materials": ["MAT_ORDER_BANNER_DARK", "MAT_ORDER_BANNER_LIGHT"]},
+        "collision": {"shape": "box", "size": [.42, .42], "center": [0, 0]},
+    }
+
+
+def build_field_shrine():
+    random.seed(1362)
+    half_w, half_l = 1.18, 1.04
+    for y in (-.86, -.43, 0, .43, .86):
+        BATCHES["wood_mid"].box((0, y, .13), (2.35, .38, .18))
+    for x in (-1.02, 1.02):
+        for y in (-.88, .88):
+            beam("wood_dark", (x, y, .02), (x, y, 2.42), .12)
+    BATCHES["wood_dark"].box((0, .94, 1.30), (2.10, .12, 2.22))
+    for x in (-1.06, 1.06):
+        BATCHES["wood_dark"].box((x, .10, 1.26), (.11, 1.68, 2.10))
+    for x in (-.72, -.24, .24, .72):
+        BATCHES["wood_mid"].box((x, .875, 1.30), (.37, .08, 2.05))
+    beam("wood_dark", (-1.02, -.88, .15), (-1.02, -.88, 2.40), .12)
+    beam("wood_dark", (1.02, -.88, .15), (1.02, -.88, 2.40), .12)
+    beam("wood_dark", (-1.02, -.88, .45), (-.50, -.88, 1.05), .08)
+    beam("wood_dark", (1.02, -.88, .45), (.50, -.88, 1.05), .08)
+
+    ridge_z, eave_z = 3.38, 2.18
+    slope_angle = math.atan2(ridge_z - eave_z, 1.34)
+    rows, columns = 7, 7
+    for side in (-1, 1):
+        for row in range(rows):
+            u = (row + .52) / rows
+            x = side * u * 1.34
+            z = ridge_z - u * (ridge_z - eave_z)
+            for column in range(columns):
+                y = -1.18 + (column + .5) * 2.36 / columns
+                BATCHES["wood_dark"].box((x, y, z), (.48, .39, .055),
+                                          (0, side * slope_angle, 0))
+    beam("wood_dark", (0, -1.18, ridge_z), (0, 1.18, ridge_z), .12)
+
+    BATCHES["wood_mid"].box((0, .28, .91), (1.64, .72, .12))
+    for x in (-.70, .70):
+        for y in (.03, .53):
+            beam("wood_dark", (x, y, .18), (x, y, .84), .08)
+    BATCHES["altar_cloth"].quad([(-.76, -.10, .98), (.76, -.10, .98),
+                                  (.76, -.10, .40), (-.76, -.10, .40)])
+    BATCHES["altar_cloth"].quad([(-.76, -.10, .98), (.76, -.10, .98),
+                                  (.76, .62, .98), (-.76, .62, .98)])
+    beam("bronze", (0, .40, 1.03), (0, .40, 1.92), .055)
+    beam("bronze", (-.27, .40, 1.61), (.27, .40, 1.61), .055)
+    build_candle((-.50, .30, 1.00), .36)
+    build_candle((.50, .30, 1.00), .36)
+    BATCHES["bronze"].cylinder((.27, .08, 1.06), .10, .12, 12)
+    BATCHES["bronze"].cone((.27, .08, 1.18), .11, .18, 12)
+    beam("wood_mid", (0, -.98, 3.36), (0, -.98, 4.06), .075)
+    beam("wood_mid", (-.25, -.98, 3.82), (.25, -.98, 3.82), .075)
+    BATCHES["wood_mid"].box((0, -1.24, .07), (1.05, .34, .14))
+    return {
+        "label": "Feldschrein des Lagers",
+        "content": {"raised_wood_floor": True, "shingle_roof": True, "altar": True,
+                    "candles": 2, "chalice": True, "period_crosses": 2},
+        "collision": {"shape": "box", "size": [2.45, 2.30], "center": [0, 0],
+                      "front_open": True},
+        "interactions": [{"id": "prayer_anchor", "position": [0, -1.28, .02]},
+                         {"id": "candle_fx_left", "position": [-.50, .30, 1.75]},
+                         {"id": "candle_fx_right", "position": [.50, .30, 1.75]}],
+    }
+
+
 BUILDERS = {
     "fletcher": build_fletcher,
     "field_tent": build_field_tent,
     "command_pavilion": build_command_pavilion,
     "medical_tent": build_medical_tent,
+    "cooking_fire": build_cooking_fire,
+    "order_banner": build_order_banner,
+    "field_shrine": build_field_shrine,
 }
 metadata = BUILDERS[ASSET_ID]()
 
@@ -1327,7 +1532,8 @@ def make_objects():
         mesh.from_pydata(batch.verts, [], batch.faces)
         mesh.update()
         if key in {"canvas", "canvas_dark", "red_cloth", "rug", "feather_white", "feather_brown",
-                   "medical_linen", "medical_canvas", "ceramic", "medicine_glass", "wax"}:
+                   "medical_linen", "medical_canvas", "ceramic", "medicine_glass", "wax",
+                   "flame", "banner_dark", "banner_light", "altar_cloth"}:
             for polygon in mesh.polygons:
                 polygon.use_smooth = True
         obj = bpy.data.objects.new(f"{ASSET_ID.upper()}_{key.upper()}_BATCH", mesh)
@@ -1527,9 +1733,9 @@ manifest = {
     },
     "collision_guide": metadata["collision"],
     "content": metadata["content"],
-    "interactions": [],
+    "interactions": metadata.get("interactions", []),
     "notes": [
-        "Eigenstaendiges Asset; nicht mit den beiden anderen Lager-Assets verschmelzen.",
+        "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
         "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
         "Material-Farbtexturen sind im GLB eingebettet.",
     ],
