@@ -53,7 +53,7 @@ import { aktuellesSpezialgegnerTuning } from '../gfx/spezialgegnerTuning';
 
 export interface Projectile {
   x: number; y: number; vx: number; vy: number; r: number; dmg: number;
-  from: 'player' | 'enemy'; col: string; fire?: boolean; magie?: boolean; pierce?: boolean; arrow?: boolean;
+  from: 'player' | 'enemy'; col: string; fire?: boolean; frost?: boolean; frostSlowS?: number; magie?: boolean; pierce?: boolean; arrow?: boolean;
   vonTeam?: 'spieler' | 'feind';   // R99d: verbuendete Schuetzen treffen FEINDE statt den Spieler
   schuetze?: Enemy;                // R147: der Schuetze - Fernkampf-Kills zaehlen fuer SEINEN Rang, nicht als Held-XP
   hoch?: boolean;                  // R100j: erhoehter Schuss (Turm) - fliegt UEBER Waende/Palisaden
@@ -2207,7 +2207,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       case 's1': this.castSpell(0); break;
       case 's2': this.castSpell(1); break;
       case 's3': this.castSpell(2); break;
-      case 'kettenblitz': case 'frostnova': case 'bannkreis':
+      case 'frostball': case 'kettenblitz': case 'frostnova': case 'bannkreis':
       case 'feuerregen': case 'aderlass': case 'lebenstausch': case 'heilen':
       case 'atomschlag': // DEV: Mobile Massenvernichtungseinheit (fehlte hier -> Slot tat nichts)
       case 'hagel': case 'splitterpfeil': case 'sprungpfeil': case 'fesselpfeil':
@@ -2795,6 +2795,26 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         if (hit) this.applyHitstop(HITSTOP_MS.finisher);
         this.shake(6);
         this.gainSchoolUse('nahkampf');
+        break;
+      }
+      case 'frostball': {
+        // Frostball (Autor): Eisgeschoss wie der Feuerball, aber statt Brand ein
+        // spürbarer Slow auf Ziel + Umstehende. Frost-Flag traegt der Slow zum
+        // Treffer (onPlayerProjectileHit wertet frost aus).
+        const fx = ABILITY_FX.frostball;
+        if (!this.paySpellCost(fx.mana)) return;
+        this.p.abilityCds[id] = fx.cd;
+        const a = this.aimAngle();
+        this.pdir = a;
+        const zLevel = this.p.schools.zauberei.level;
+        const dmg = Math.round((fx.dmgBase + fx.dmgPerLevel * this.p.level + zLevel * 2) * (this.p.buffT > 0 ? ALTAR.buffDmgMult : 1));
+        this.projectiles.push({
+          x: this.px + Math.cos(a) * 16, y: this.py + Math.sin(a) * 16,
+          vx: Math.cos(a) * fx.speed, vy: Math.sin(a) * fx.speed,
+          r: 6, dmg, from: 'player', col: '#9ad8f0', frost: true, frostSlowS: fx.slowS,
+        });
+        this.sfx.play('heiliges_licht', 0.6);
+        this.gainSchoolUse('zauberei');
         break;
       }
       case 'kettenblitz': {
@@ -3686,6 +3706,19 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       this.fx.burst(pr.x, pr.y, 0xe8842a, 14, 170);
       for (const o of [...this.enemies]) {
         if (o !== e && Math.hypot(pr.x - o.x, pr.y - o.y) < 46) this.damageEnemy(o, Math.round(pr.dmg * 0.5), 0, 0, null, false);
+      }
+    } else if (pr.frost) {
+      // Frostball: Ziel klar verlangsamt, Umstehende im Splash halb so lang.
+      const fx = ABILITY_FX.frostball;
+      e.slowT = Math.max(e.slowT, pr.frostSlowS ?? fx.slowS);
+      this.fx.burst(pr.x, pr.y, 0x9ad8f0, 14, 160);
+      this.fx.welle(pr.x, pr.y, 30, 0x9ad8f0);
+      this.fx.float(e.x, e.y - e.r - 14, 'FROST', '#bfe8ff');
+      for (const o of [...this.enemies]) {
+        if (o !== e && o.hp > 0 && Math.hypot(pr.x - o.x, pr.y - o.y) < fx.splashRadius) {
+          this.damageEnemy(o, Math.round(pr.dmg * 0.4), 0, 0, '#9ad8f0', false);
+          o.slowT = Math.max(o.slowT, fx.slowSplashS);
+        }
       }
     }
     // Bogen-Fähigkeiten (Runde 47)

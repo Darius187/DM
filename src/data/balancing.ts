@@ -102,6 +102,7 @@ export const ABILITIES: ReadonlyArray<AbilityDef> = [
   { id: 'sturmangriff', school: 'nahkampf', unlock: 6, name: 'Sturmangriff', beschreibung: 'Kurzer Ansturm' },
   { id: 'erschuetterung', school: 'nahkampf', unlock: 7, name: 'Erschütternder Stoß', beschreibung: 'Du stampfst den Boden und schleuderst alle Gegner ringsum zu Boden' },
   { id: 'hinrichtung', school: 'nahkampf', unlock: 9, name: 'Hinrichtung', beschreibung: 'Bonus gegen taumelnde Gegner' },
+  { id: 'frostball', school: 'zauberei', unlock: 2, name: 'Frostball', beschreibung: 'Eisgeschoss: trifft hart und verlangsamt den Getroffenen samt Umstehenden spürbar' },
   { id: 'kettenblitz', school: 'zauberei', unlock: 3, name: 'Kettenblitz', beschreibung: 'Springt auf 2 weitere Gegner' },
   { id: 'frostnova', school: 'zauberei', unlock: 6, name: 'Frostnova', beschreibung: 'Kreis, verlangsamt' },
   { id: 'bannkreis', school: 'zauberei', unlock: 9, name: 'Bannkreis', beschreibung: 'Fläche, die Untote schwächt' },
@@ -128,26 +129,32 @@ export const ABILITY_FX = {
   // Runde 41: Abklingzeiten generell runter (Autorwunsch - "sonst nutzlos, wir
   // haben spaeter massig Gegner"). Die Faehigkeiten sollen Werkzeuge gegen
   // Massen sein, nicht alle paar Sekunden mal.
-  rundumschlag: { dmgMult: 1.5, radius: 75, cd: 1.8, stangeRadius: 105, stangeDmgMult: 1.8 },
+  // R-Buff (Autor "beim Schwert ist es mau / weniger Abklingzeit"): mehr Schaden
+  // UND spürbar kürzere Abklingzeiten - die Krieger-Moves sollen sich wuchtig
+  // anfühlen und oft verfügbar sein, nicht alle paar Sekunden ein Streicheln.
+  rundumschlag: { dmgMult: 1.8, radius: 82, cd: 1.3, stangeRadius: 110, stangeDmgMult: 2.1 },
   // Runde 44: deutlich gekürzt (160->85 px, ~2,5 Kacheln) - war "durch die
   // halbe Karte". Ein kurzer, harter Ansturm statt Dauer-Sprint.
-  sturmangriff: { distance: 85, speed: 700, dmgMult: 1.4, cd: 5 },
+  sturmangriff: { distance: 95, speed: 720, dmgMult: 1.8, cd: 3.5 },
   // Vier neue Nahkampf-Fähigkeiten (Runde 50, Autorwunsch "mehr RPG-typische
   // Krieger-Moves"). Werte leicht änderbar (DECISIONS.md).
   // Wuchtschlag: ein einziger, brutaler Hieb auf den nächsten Gegner vor dir.
-  wuchtschlag: { dmgMult: 2.2, reichweite: 66, knockback: 340, stunS: 1.3, cd: 5 },
+  wuchtschlag: { dmgMult: 2.8, reichweite: 72, knockback: 380, stunS: 1.5, cd: 3.2 },
   // Blutdurst: Rundhieb, der je getroffenem Gegner healPerHit Leben zurückgibt.
-  blutdurst: { dmgMult: 1.25, radius: 82, healPerHit: 7, cd: 9 },
+  blutdurst: { dmgMult: 1.6, radius: 90, healPerHit: 11, cd: 6 },
   // Kriegsschrei: betäubt nahe Gegner kurz und gibt dir den Stärke-Buff (wie
   // der Altar, ALTAR.buffDmgMult) für buffS Sekunden.
-  kriegsschrei: { radius: 155, stunS: 0.9, buffS: 8, cd: 16 },
+  kriegsschrei: { radius: 165, stunS: 1.1, buffS: 10, cd: 10 },
   // Erschütternder Stoß: weiter Bodenstampfer, schleudert alles ringsum weg.
-  erschuetterung: { dmgMult: 1.7, radius: 122, knockback: 420, stunS: 1.6, cd: 12 },
+  erschuetterung: { dmgMult: 2.1, radius: 130, knockback: 460, stunS: 1.8, cd: 8 },
   // Heilende Hand (Runde 46): Bodenziel. Hebt einen verwundeten Helfer im
   // Umkreis wieder auf (reviveFrac seiner Leben); ist keiner da, heilt es den
   // Helden (selbstHealPct). reichweite = wie weit man zielen kann.
   heilen: { mana: 24, cd: 6, reichweite: 320, radius: 48, reviveFrac: 0.7, selbstHealPct: 0.35, heilDauerS: 2.5 },
-  hinrichtung: { dmgMultVsStunned: 2.5, cd: 7 },
+  hinrichtung: { dmgMultVsStunned: 3.2, cd: 4.5 },
+  // Frostball (Autor "wir sollten sowas wie Frostball haben"): Eisgeschoss wie
+  // der Feuerball, aber statt Brand -> Slow auf Ziel + Umstehende (Splash-Slow).
+  frostball: { mana: 14, speed: 360, dmgBase: 18, dmgPerLevel: 5, slowS: 3.5, splashRadius: 52, slowSplashS: 2, cd: 0.8 },
   kettenblitz: { mana: 16, dmgBase: 18, dmgPerLevel: 5, jumps: 3, jumpRange: 150, cd: 1.2 },
   // Frostnova: laengerer, klar spuerbarer Slow als Crowd-Control, oefter wirkbar
   frostnova: { mana: 20, dmgBase: 12, dmgPerLevel: 3, radius: 130, slowS: 6, cd: 2.5 },

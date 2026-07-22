@@ -72,7 +72,8 @@ describe('Fertigkeits-Schulen (Learning by doing)', () => {
     expect(unlockedAbilities('nahkampf', 9)).toEqual(['wuchtschlag', 'rundumschlag', 'blutdurst', 'kriegsschrei', 'sturmangriff', 'erschuetterung', 'hinrichtung']);
     // Runde 11: Aderlass (Stufe 2) und Lebenstausch (Stufe 4) reihen sich ein;
     // Runde 46: Heilende Hand (Stufe 3) kommt dazu
-    expect(unlockedAbilities('zauberei', 6)).toEqual(['kettenblitz', 'frostnova', 'aderlass', 'lebenstausch', 'heilen']);
+    // Frostball (Stufe 2, Autorwunsch) reiht sich vor Kettenblitz ein
+    expect(unlockedAbilities('zauberei', 6)).toEqual(['frostball', 'kettenblitz', 'frostnova', 'aderlass', 'lebenstausch', 'heilen']);
     expect(unlockedAbilities('zauberei', 8)).toContain('feuerregen');
     expect(unlockedAbilities('bogen', 2)).toEqual([]);
     // Runde 47: vier neue Bogen-Fähigkeiten reihen sich ein

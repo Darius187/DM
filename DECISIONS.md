@@ -2769,3 +2769,19 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Autor im echten Browser pruefen; Feinjustage per einer Zahl (drehen) moeglich.
 - Befehlspavillon ist gebacken (feldbau_command_pavilion), aber noch NICHT als
   RTS_BAUTEN verdrahtet (rts.ts ist gerade Codex-Baustelle - Kollision vermeiden).
+
+## Kampf-Audit + Frostball + Schwert-Buffs (Autor: "prüfe Zauber/Schläge, mau, verbuggt")
+- AUDIT: alle ~22 Fähigkeiten + 3 Kern-Zauber + 5 Rollen-Zauber sind vollständig
+  verdrahtet (Dispatch-case + ABILITY_FX/SPELL_FX vorhanden). Neuer Regressions-
+  Test tests/abilityCoverage.test.ts sichert das dauerhaft (jede Fähigkeit MUSS
+  einen Wirkungs-Datensatz haben - fängt "Slot tut nichts").
+- NEU Frostball (Zauberei-Fähigkeit, unlock Zauberei-Stufe 2): Eisgeschoss wie
+  Feuerball, aber statt Brand ein Slow auf Ziel (3,5s) + Splash-Slow (2s) auf
+  Umstehende. Werte in ABILITY_FX.frostball; Projectile-Flag frost/frostSlowS;
+  Wirkung in onPlayerProjectileHit. Browser-verifiziert (Cast erzeugt Frost-
+  Projektil dmg 53 @ Lvl5, Slow 3,5, keine Fehler).
+- SCHWERT-BUFF (Autor "mau / weniger Abklingzeit"): Nahkampf-Fähigkeiten in
+  ABILITY_FX kräftiger UND kürzere Abklingzeiten - wuchtschlag 2.2->2.8 cd5->3.2,
+  rundumschlag 1.5->1.8 cd1.8->1.3, sturmangriff 1.4->1.8 cd5->3.5, blutdurst
+  1.25->1.6 heal7->11 cd9->6, kriegsschrei cd16->10, erschuetterung 1.7->2.1
+  cd12->8, hinrichtung 2.5->3.2 cd7->4.5. Reine Datenwerte (balancing.ts).
