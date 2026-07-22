@@ -17,6 +17,7 @@ VALID_ASSETS = {
     "fletcher", "field_tent", "command_pavilion", "medical_tent",
     "cooking_fire", "order_banner", "field_shrine",
     "field_forge", "supply_wagon", "horse_corral",
+    "supply_tent", "rest_tent", "camp_supplies",
 }
 
 
@@ -39,6 +40,9 @@ ASSET_NAMES = {
     "field_forge": "medieval_field_forge_3d_runtime",
     "supply_wagon": "medieval_supply_wagon_3d_runtime",
     "horse_corral": "medieval_horse_corral_3d_runtime",
+    "supply_tent": "medieval_supply_tent_3d_runtime",
+    "rest_tent": "medieval_rest_tent_3d_runtime",
+    "camp_supplies": "medieval_camp_supplies_3d_runtime",
 }
 ROOT_NAMES = {
     "fletcher": "FLETCHER_STATION_ROTATION_PIVOT",
@@ -51,6 +55,9 @@ ROOT_NAMES = {
     "field_forge": "FIELD_FORGE_ROTATION_PIVOT",
     "supply_wagon": "SUPPLY_WAGON_ROTATION_PIVOT",
     "horse_corral": "HORSE_CORRAL_ROTATION_PIVOT",
+    "supply_tent": "SUPPLY_TENT_ROTATION_PIVOT",
+    "rest_tent": "REST_TENT_ROTATION_PIVOT",
+    "camp_supplies": "CAMP_SUPPLIES_ROTATION_PIVOT",
 }
 ASSET_NAME = ASSET_NAMES[ASSET_ID]
 SOURCE_DIR = SOURCE_ROOT / ASSET_ID
@@ -1766,6 +1773,277 @@ def build_horse_corral():
     }
 
 
+def build_storage_shelf(center, width=2.20, depth=.62, height=1.82, levels=3):
+    x, y, z = center
+    for xx in (x - width * .46, x + width * .46):
+        for yy in (y - depth * .42, y + depth * .42):
+            beam("wood_dark", (xx, yy, z + .02), (xx, yy, z + height), .075)
+    for level in range(levels):
+        shelf_z = z + .34 + level * (height - .44) / max(1, levels - 1)
+        BATCHES["wood_mid"].box((x, y, shelf_z), (width, depth, .10))
+
+
+def build_supply_tent():
+    random.seed(1366)
+    half_w, half_l, eave, apex = 3.20, 2.70, 2.46, 3.92
+    crown = .10
+    for x in (-half_w, half_w):
+        for y in (-half_l, half_l):
+            beam("wood_dark", (x, y, .02), (x, y, eave + .20), .105)
+            BATCHES["wood_mid"].cone((x, y, eave + .34), .10, .26, 8)
+    beam("wood_dark", (0, 0, .02), (0, 0, apex + .18), .115)
+    BATCHES["wood_mid"].cone((0, 0, apex + .34), .12, .34, 9)
+
+    def radial_pin(ix, iy, nx, ny):
+        edge = max(edge_weight(iy), edge_weight(ny - iy))
+        ties = [(round(nx * fraction), ny) for fraction in (0, .25, .5, .75, 1)]
+        return max(edge, soft_anchor_weight(ix, iy, ties))
+
+    for direction in (-1, 1):
+        def end_roof(u, v, direction=direction):
+            inner_x = -crown + u * crown * 2
+            outer_x = -half_w + u * half_w * 2
+            x = inner_x * (1 - v) + outer_x * v
+            y = direction * (crown + (half_l - crown) * v)
+            fold = .025 * math.sin(u * math.tau * 5.0 + v) * math.sin(v * math.pi)
+            return (x, y, apex - (apex - eave) * v - .11 * math.sin(v * math.pi) + fold)
+
+        panel = simulated_cloth_grid("canvas", f"SUPPLY_ROOF_END_{direction}", 34, 28,
+                                     end_roof, radial_pin, frames=70, gravity=-2.15,
+                                     normal_hint=(0, direction, 1))
+        for seam in (.25, .5, .75):
+            add_panel_column_strip(panel, seam)
+        add_panel_row_strip(panel, 1.0)
+
+    for direction in (-1, 1):
+        def side_roof(u, v, direction=direction):
+            inner_y = -crown + u * crown * 2
+            outer_y = -half_l + u * half_l * 2
+            x = direction * (crown + (half_w - crown) * v)
+            y = inner_y * (1 - v) + outer_y * v
+            fold = .025 * math.sin(u * math.tau * 5.0 + v * 1.4) * math.sin(v * math.pi)
+            return (x, y, apex - (apex - eave) * v - .11 * math.sin(v * math.pi) + fold)
+
+        panel = simulated_cloth_grid("canvas", f"SUPPLY_ROOF_SIDE_{direction}", 34, 28,
+                                     side_roof, radial_pin, frames=70, gravity=-2.15,
+                                     normal_hint=(direction, 0, 1))
+        for seam in (.25, .5, .75):
+            add_panel_column_strip(panel, seam)
+        add_panel_row_strip(panel, 1.0)
+
+    def hanging_pin(ix, iy, nx, ny):
+        upper = edge_weight(ny - iy)
+        lower_ties = [(round(nx * fraction), 0) for fraction in (0, .25, .5, .75, 1)]
+        return max(upper, soft_anchor_weight(ix, iy, lower_ties))
+
+    def rear_wall(u, v):
+        return (-half_w + u * half_w * 2,
+                half_l + .025 * math.sin(u * math.tau * 7) * math.sin(v * math.pi),
+                .04 + v * (eave - .04))
+
+    rear = simulated_cloth_grid("canvas_dark", "SUPPLY_REAR", 42, 26, rear_wall,
+                                hanging_pin, frames=72, gravity=-2.25,
+                                normal_hint=(0, 1, 0))
+    add_panel_row_strip(rear, 0.0)
+    add_panel_row_strip(rear, 1.0)
+    for seam in (.25, .5, .75):
+        add_panel_column_strip(rear, seam)
+
+    for side in (-1, 1):
+        def side_wall(u, v, side=side):
+            wave = side * .024 * math.sin(u * math.tau * 7 + .4) * math.sin(v * math.pi)
+            return (side * half_w + wave, -half_l + u * half_l * 2,
+                    .04 + v * (eave - .04))
+
+        side_panel = simulated_cloth_grid("canvas_dark", f"SUPPLY_SIDE_{side}", 38, 26,
+                                          side_wall, hanging_pin, frames=72,
+                                          gravity=-2.25, normal_hint=(side, 0, 0))
+        add_panel_row_strip(side_panel, 0.0)
+        add_panel_row_strip(side_panel, 1.0)
+        for seam in (.33, .66):
+            add_panel_column_strip(side_panel, seam)
+
+        edge = side * half_w
+        p00 = Vector((edge, -half_l - .02, .04))
+        p10 = Vector((side * 2.30, -half_l - .05, .04))
+        p11 = Vector((side * 2.82, -half_l - .12, 1.10))
+        p01 = Vector((edge, -half_l - .02, eave))
+
+        def wing_point(u, v, p00=p00, p10=p10, p11=p11, p01=p01):
+            point = ((1 - u) * (1 - v) * p00 + u * (1 - v) * p10
+                     + u * v * p11 + (1 - u) * v * p01)
+            point.y -= .030 * math.sin(u * math.pi) * math.sin(v * math.pi)
+            return tuple(point)
+
+        wing = simulated_cloth_grid("canvas", f"SUPPLY_FRONT_WING_{side}", 20, 28,
+                                    wing_point,
+                                    lambda ix, iy, nx, ny: edge_weight(ny - iy),
+                                    frames=68, gravity=-2.05, normal_hint=(0, -1, 0))
+        add_panel_row_strip(wing, 1.0)
+        BATCHES["rope"].torus((side * 2.82, -half_l - .12, 1.10), .11, .022,
+                               12, 4, (math.pi / 2, 0, 0))
+
+    for x, y, anchor in ((-half_w, -half_l, (-4.00, -3.55, 0)),
+                         (half_w, -half_l, (4.00, -3.55, 0)),
+                         (-half_w, half_l, (-4.00, 3.55, 0)),
+                         (half_w, half_l, (4.00, 3.55, 0))):
+        rope([(x, y, eave + .12), anchor], .018)
+        make_stake(anchor[0], anchor[1])
+
+    build_storage_shelf((-1.72, 1.98, 0), 2.30, .62, 1.86, 3)
+    build_storage_shelf((1.72, 1.98, 0), 2.30, .62, 1.86, 3)
+    build_storage_shelf((2.72, .35, 0), 2.42, .58, 1.62, 3)
+    build_crate((-2.45, -.92, .02), (1.02, .76, .70), False)
+    build_crate((-1.30, -.76, .02), (.84, .68, .56), False)
+    build_crate((1.56, -.72, .02), (.96, .72, .62), True)
+    build_sack((-.55, 1.45, .02), .92, .18)
+    build_sack((.26, 1.56, .02), .82, -.20)
+    build_sack((.92, 1.42, .02), .98, .12)
+    build_barrel((2.36, -1.38, .02), .36, .76)
+    build_barrel((-2.72, .42, .02), .31, .66)
+    woven_basket((.10, -.92, .02), .38, .58, 18)
+    return {
+        "label": "Vorratspavillon des Feldlagers",
+        "content": {"open_front": True, "central_peak": True, "storage_shelves": 3,
+                    "crates": 3, "sacks": 3, "barrels": 2, "basket": 1,
+                    "cloth_simulation": "baked_static_mesh", "cloth_panels": 9,
+                    "cloth_materials": ["MAT_TENT_CANVAS", "MAT_TENT_CANVAS_SHADOW"]},
+        "collision": {"shape": "box", "size": [6.55, 5.50], "center": [0, 0],
+                      "front_open": True, "walkable_entry_width_m": 4.4},
+        "interactions": [{"id": "supply_pickup_anchor", "position": [0, -2.82, 0]}],
+    }
+
+
+def build_rest_tent():
+    random.seed(1367)
+    half_w, half_l, eave, ridge = 2.28, 1.82, 1.92, 3.02
+    for x in (-half_w, half_w):
+        for y in (-half_l, half_l):
+            beam("wood_dark", (x, y, .02), (x, y, eave + .12), .085)
+    beam("wood_dark", (0, -half_l - .10, ridge), (0, half_l + .10, ridge), .10)
+    for side in (-1, 1):
+        def roof_point(u, v, side=side):
+            x = side * u * half_w
+            y = -half_l + v * half_l * 2
+            sag = .055 * math.sin(u * math.pi) * math.sin(v * math.pi)
+            fold = .014 * math.sin(v * math.tau * 6 + u) * math.sin(u * math.pi)
+            return (x, y, ridge - u * (ridge - eave) - sag + fold)
+
+        def roof_pin(ix, iy, nx, ny):
+            ties = [(nx, round(ny * fraction)) for fraction in (0, .25, .5, .75, 1)]
+            return max(edge_weight(ix), soft_anchor_weight(ix, iy, ties))
+
+        panel = simulated_cloth_grid("medical_canvas", f"REST_ROOF_{side}", 30, 34,
+                                     roof_point, roof_pin, frames=68, gravity=-2.12,
+                                     normal_hint=(side, 0, 1))
+        for seam in (.33, .66):
+            add_panel_column_strip(panel, seam)
+        add_panel_column_strip(panel, 1.0)
+
+    def hanging_pin(ix, iy, nx, ny):
+        upper = edge_weight(ny - iy)
+        ties = [(round(nx * fraction), 0) for fraction in (0, .33, .66, 1)]
+        return max(upper, soft_anchor_weight(ix, iy, ties))
+
+    def rear_point(u, v):
+        x = -half_w + u * half_w * 2
+        roof_height = eave + max(0, 1 - abs(x) / half_w) * (ridge - eave)
+        return (x, half_l + .020 * math.sin(u * math.tau * 6) * math.sin(v * math.pi),
+                .04 + v * (roof_height - .04))
+
+    rear = simulated_cloth_grid("medical_canvas", "REST_REAR", 38, 30, rear_point,
+                                hanging_pin, frames=70, gravity=-2.22,
+                                normal_hint=(0, 1, 0))
+    add_panel_row_strip(rear, 0.0)
+    add_panel_row_strip(rear, 1.0)
+
+    for side in (-1, 1):
+        def side_point(u, v, side=side):
+            wave = side * .020 * math.sin(u * math.tau * 6 + .5) * math.sin(v * math.pi)
+            return (side * half_w + wave, -half_l + u * half_l * 2,
+                    .04 + v * (eave - .04))
+
+        side_panel = simulated_cloth_grid("medical_canvas", f"REST_SIDE_{side}", 30, 24,
+                                          side_point, hanging_pin, frames=70,
+                                          gravity=-2.22, normal_hint=(side, 0, 0))
+        add_panel_row_strip(side_panel, 0.0)
+        add_panel_row_strip(side_panel, 1.0)
+
+        p00 = Vector((side * half_w, -half_l - .02, .04))
+        p10 = Vector((side * .30, -half_l - .05, .04))
+        p11 = Vector((side * 1.50, -half_l - .14, 1.12))
+        p01 = Vector((0, -half_l - .02, ridge))
+
+        def wing_point(u, v, p00=p00, p10=p10, p11=p11, p01=p01):
+            point = ((1 - u) * (1 - v) * p00 + u * (1 - v) * p10
+                     + u * v * p11 + (1 - u) * v * p01)
+            point.y -= .028 * math.sin(u * math.pi) * math.sin(v * math.pi)
+            return tuple(point)
+
+        wing = simulated_cloth_grid("medical_canvas", f"REST_FRONT_WING_{side}", 22, 30,
+                                    wing_point,
+                                    lambda ix, iy, nx, ny: edge_weight(ny - iy),
+                                    frames=68, gravity=-2.05, normal_hint=(0, -1, 0))
+        add_panel_row_strip(wing, 1.0)
+        BATCHES["rope"].torus((side * 1.50, -half_l - .14, 1.12), .10, .021,
+                               12, 4, (math.pi / 2, 0, 0))
+
+    for x, y, anchor in ((-half_w, -half_l, (-3.02, -2.54, 0)),
+                         (half_w, -half_l, (3.02, -2.54, 0)),
+                         (-half_w, half_l, (-3.02, 2.54, 0)),
+                         (half_w, half_l, (3.02, 2.54, 0))):
+        rope([(x, y, eave + .08), anchor], .016)
+        make_stake(anchor[0], anchor[1])
+
+    build_medical_cot((-.62, .22, 0), 0)
+    build_medical_table((1.25, .82), (.78, .72), .68, False)
+    build_bottle((1.08, .72, .76), .72)
+    build_bowl((1.38, .78, .75), .14)
+    build_stool((1.18, -.20, 0))
+    build_medical_lantern((1.45, 1.10, 1.28))
+    build_barrel((1.75, -1.12, .02), .28, .58)
+    return {
+        "label": "Kleines Ruhe- und Pflegezelt",
+        "content": {"open_front": True, "ridge_roof": True, "single_cot": True,
+                    "small_table": True, "lantern": True, "bucket": True,
+                    "cloth_simulation": "baked_static_mesh", "cloth_panels": 7,
+                    "cloth_material": "MAT_MEDICAL_TENT_CANVAS"},
+        "collision": {"shape": "box", "size": [4.70, 3.75], "center": [0, 0],
+                      "front_open": True, "walkable_entry_width_m": 2.6},
+        "interactions": [{"id": "rest_anchor", "position": [-.62, .22, .80]}],
+    }
+
+
+def build_camp_supplies():
+    random.seed(1368)
+    build_crate((0, .55, .02), (1.28, .92, .82), False)
+    build_crate((-1.35, .38, .02), (.92, .72, .62), False)
+    build_crate((1.28, .26, .02), (1.02, .78, .64), False)
+    build_crate((1.52, -.60, .02), (.88, .66, .54), False)
+    build_crate((-1.78, -.70, .02), (.76, .62, .50), True)
+    build_crate((.25, -.78, .02), (.82, .68, .58), True)
+    build_crate((.28, .62, .84), (.94, .70, .62), False)
+    build_barrel((-1.02, -.72, .02), .42, .88)
+    build_barrel((.92, -.98, .02), .34, .74)
+    build_barrel((1.42, .32, .66), .31, .66)
+    build_barrel((-1.20, .50, .64), .34, .72)
+    build_sack((-2.18, .28, .02), 1.00, .22)
+    build_sack((2.05, -.18, .02), .94, -.18)
+    build_sack((-.44, -1.38, .02), .76, .28)
+    build_sack((1.92, -1.02, .02), .72, -.32)
+    woven_basket((-.10, -1.50, .02), .42, .58, 20)
+    BATCHES["rope"].torus((-2.12, -1.20, .16), .42, .045, 24, 6)
+    BATCHES["rope"].torus((-2.12, -1.20, .20), .31, .040, 22, 6)
+    BATCHES["ceramic"].cylinder((.78, -.64, .73), .11, .22, 12)
+    return {
+        "label": "Freier Lagergutstapel",
+        "content": {"crates": 7, "barrels": 4, "sacks": 4, "basket": 1,
+                    "rope_coil": True, "global_ground_plate": False},
+        "collision": {"shape": "box", "size": [4.90, 3.40], "center": [0, -.25]},
+        "interactions": [{"id": "cargo_pickup_anchor", "position": [0, -1.80, 0]}],
+    }
+
+
 BUILDERS = {
     "fletcher": build_fletcher,
     "field_tent": build_field_tent,
@@ -1777,6 +2055,9 @@ BUILDERS = {
     "field_forge": build_field_forge,
     "supply_wagon": build_supply_wagon,
     "horse_corral": build_horse_corral,
+    "supply_tent": build_supply_tent,
+    "rest_tent": build_rest_tent,
+    "camp_supplies": build_camp_supplies,
 }
 metadata = BUILDERS[ASSET_ID]()
 
@@ -1808,7 +2089,7 @@ def make_objects():
         try:
             bpy.ops.object.mode_set(mode="EDIT")
             bpy.ops.mesh.select_all(action="SELECT")
-            if ASSET_ID == "horse_corral":
+            if ASSET_ID in {"horse_corral", "supply_tent", "rest_tent"}:
                 bpy.ops.uv.cube_project(cube_size=1.0)
             else:
                 bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=.02)
