@@ -241,6 +241,17 @@ export const MORAL = {
   verzweiflungDmgF: 1.15,
 } as const;
 
+// PLATZ MACHEN (Autor: "wenn eine Einheit zurueck soll, behindern die anderen
+// ihr Durchlaufen - in anderen RTS ist das geloest"): eine MARSCHIERENDE eigene
+// Einheit schiebt STEHENDE Kameraden zur Seite (asymmetrische Trennung mit
+// Seitschritt quer zur Marschrichtung), statt symmetrisch im Stau zu stecken.
+// Kampf-Gedraenge (verschiedene Teams) bleibt unveraendert symmetrisch.
+export const DURCHLASS = {
+  marschZielMinPx: 24,   // ab dieser Restdistanz zum Ziel gilt "marschiert"
+  seitMix: 0.65,         // 0 = rein radial wegdruecken, 1 = rein seitlich ausweichen
+  moverAnteil: 0.15,     // kleiner Rest-Anteil der Trennung fuer den Marschierer (fuehlt sich koerperlich an)
+} as const;
+
 // R139 (Dok 03, 1.4 - Dungeon Siege): Ziel-Sperrzeit gegen das Ziel-Zappeln.
 // Ein gewaehltes Ziel wird festgehalten; Wechsel nur bei tot/unerreichbar/
 // Spielerbefehl oder Ablauf der Sperre. Leicht gestreut, damit nicht alle

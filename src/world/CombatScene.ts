@@ -20,6 +20,8 @@ import {
 import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TIMESCALE, WEAPON_MOVESETS, GORE_WUCHT, KNOCKBACK, WEAPON_HAND, NAHKAMPF, PHYSIK, PFEIL_PHYSIK, ANGRIFFSSLOTS } from '../data/kampf';
 import { konterFaktor, konterFeedback } from '../data/kampfarten';
 import { weiseSlotsZu } from '../logic/angriffsSlots';
+import { marschiert, platzmachWinkel } from '../logic/durchlass';
+import { DURCHLASS } from '../data/rts';
 import { ALTAR, SPELLS, SPELL_FX, SCHOOLS } from '../data/balancing';
 import { newPlayerState, recalc, weaponGem, aktiveWaffe, type PlayerState } from '../logic/playerState';
 import { addSchoolUse } from '../logic/progression';
@@ -3241,9 +3243,25 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
             if (A.type === 'golem') B.moveBody(this, Math.cos(a) * ueberlappung, Math.sin(a) * ueberlappung);
             else if (B.type === 'golem') A.moveBody(this, -Math.cos(a) * ueberlappung, -Math.sin(a) * ueberlappung);
             else {
-              const push = ueberlappung / 2;
-              A.moveBody(this, -Math.cos(a) * push, -Math.sin(a) * push);
-              B.moveBody(this, Math.cos(a) * push, Math.sin(a) * push);
+              // PLATZ MACHEN (Autor "die anderen behindern das Durchlaufen - in
+              // anderen RTS ist das geloest"): marschiert von zwei KAMERADEN genau
+              // einer, weicht der STEHENDE asymmetrisch aus - ueberwiegend QUER
+              // zur Marschrichtung (oeffnet die Gasse), der Marschierer laeuft
+              // fast ungebremst weiter. Kampf-Gedraenge (verschiedene Teams)
+              // bleibt symmetrisch wie bisher.
+              const aM = A.hp > 0 && marschiert(A.x, A.y, A.jagdZiel, DURCHLASS.marschZielMinPx);
+              const bM = B.hp > 0 && marschiert(B.x, B.y, B.jagdZiel, DURCHLASS.marschZielMinPx);
+              if (A.team === B.team && aM !== bM) {
+                const mover = aM ? A : B, stander = aM ? B : A;
+                const w = platzmachWinkel(mover.x, mover.y, mover.jagdZiel!.x, mover.jagdZiel!.y, stander.x, stander.y, DURCHLASS.seitMix);
+                stander.moveBody(this, Math.cos(w) * ueberlappung * (1 - DURCHLASS.moverAnteil), Math.sin(w) * ueberlappung * (1 - DURCHLASS.moverAnteil));
+                const rw = Math.atan2(mover.y - stander.y, mover.x - stander.x);
+                mover.moveBody(this, Math.cos(rw) * ueberlappung * DURCHLASS.moverAnteil, Math.sin(rw) * ueberlappung * DURCHLASS.moverAnteil);
+              } else {
+                const push = ueberlappung / 2;
+                A.moveBody(this, -Math.cos(a) * push, -Math.sin(a) * push);
+                B.moveBody(this, Math.cos(a) * push, Math.sin(a) * push);
+              }
             }
           }
         }

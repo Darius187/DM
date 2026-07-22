@@ -2785,3 +2785,23 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   rundumschlag 1.5->1.8 cd1.8->1.3, sturmangriff 1.4->1.8 cd5->3.5, blutdurst
   1.25->1.6 heal7->11 cd9->6, kriegsschrei cd16->10, erschuetterung 1.7->2.1
   cd12->8, hinrichtung 2.5->3.2 cd7->4.5. Reine Datenwerte (balancing.ts).
+
+## Platz machen: Marschierer schieben stehende Kameraden beiseite (Autor-Bug)
+- Autor: "wenn eine Einheit zurueck soll, behindern die anderen ihr Durchlaufen -
+  sie laeuft durch keine Luecke und nicht aussenrum; in anderen RTS ist das
+  geloest." Ursache: separateEnemies trennte IMMER symmetrisch (halb/halb) -
+  eine stehende Kolonne wirkte wie eine Wand.
+- Fix nach RTS-Standard (AoE/SC2): marschiert von zwei sich beruehrenden
+  KAMERADEN genau einer, weicht der STEHENDE asymmetrisch aus - ueberwiegend
+  QUER zur Marschrichtung (oeffnet die Gasse auf der Seite, auf der er ohnehin
+  steht), der Marschierer laeuft fast ungebremst weiter (moverAnteil 15%).
+  Kampf-Gedraenge zwischen VERSCHIEDENEN Teams bleibt symmetrisch wie bisher.
+- Reine, getestete Geometrie in src/logic/durchlass.ts (marschiert,
+  platzmachWinkel); Regler in src/data/rts.ts DURCHLASS (marschZielMinPx 24,
+  seitMix 0.65, moverAnteil 0.15). Anwendung: CombatScene.separateEnemies.
+- Browser-verifiziert (deterministisch getaktet, 500 Frames): Kolonne quer auf
+  der Strasse, Marschierer laeuft in ~1,7s Spielzeit durch; die Wand oeffnete
+  eine ~39px-Gasse (Steher wichen seitlich und kehren danach in Stellung).
+- Hinweis Messung: im Headless-Harness laufen Einheiten wegen Software-GL nur
+  ~6px/s (dt-Deckel bei ~5 FPS) - Bewegungs-Repros dort IMMER deterministisch
+  per w.update(t, 16.6)-Schleife takten, nie per Wanduhr warten.
