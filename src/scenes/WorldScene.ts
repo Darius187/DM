@@ -4262,13 +4262,18 @@ export class WorldScene extends CombatScene {
     // --- Kontext KAMPF: Einheiten (oder Held) gewaehlt --------------------
     if (sel.length > 0 || battle.heldGewaehlt) {
       const formNamen: Record<string, string> = { linie: 'Linie', schildwall: 'Schildwall', keil: 'Keil', plaenkler: 'Plänkler' };
-      feld(0, 0, '⚔', 'Angriff', { an: this.rtsAngriffArmed, taste: 'A', tip: 'Angriffsmarsch scharf - dann Ziel mit rechter Maus' }, () => { this.rtsAngriffArmed = !this.rtsAngriffArmed; });
-      feld(1, 0, '✋', 'Halten', { taste: 'H', tip: 'Stellung halten - die Einheit bleibt stehen und kämpft am Platz' }, () => battle.stellungHalten());
-      feld(2, 0, '⛬', formNamen[this.rtsFormation] ?? 'Formation', { tip: 'Formations-Auswahl öffnen (alle Formationen + Abstand)' }, () => { this.rtsFormOffen = true; });
-      feld(3, 0, '🛡', this.rtsSchildAktiv ? 'Schild AN' : 'Schild aus', { an: this.rtsSchildAktiv, tip: 'Held hält zwischen den Schlägen die Deckung' }, () => { this.rtsSchildAktiv = !this.rtsSchildAktiv; });
-      feld(0, 1, '🐾', 'Verfolgen', { an: this.rtsAktHaltung === 'aggressiv', tip: 'Haltung: Feinde aktiv verfolgen und stellen' }, () => this.setzeHaltung('aggressiv'));
-      feld(1, 1, '🛡', 'Nahe bleiben', { an: this.rtsAktHaltung === 'verteidigen', tip: 'Haltung: kämpfen, aber die Stellung nicht weit verlassen' }, () => this.setzeHaltung('verteidigen'));
-      feld(2, 1, '⚓', 'Halten', { an: this.rtsAktHaltung === 'halten', tip: 'Haltung: eisern stehen bleiben, nur Gegner in Reichweite schlagen' }, () => this.setzeHaltung('halten'));
+      feld(0, 0, '⚔', 'Angriff', { an: this.rtsAngriffArmed, taste: 'A', icon: 'baumenue_befehl_angriff', tip: 'Angriffsmarsch scharf - dann Ziel mit rechter Maus' }, () => { this.rtsAngriffArmed = !this.rtsAngriffArmed; });
+      feld(1, 0, '✋', 'Halten', { taste: 'H', icon: 'baumenue_befehl_halten', tip: 'Stellung halten - die Einheit bleibt stehen und kämpft am Platz' }, () => battle.stellungHalten());
+      // Formations-Knopf zeigt das Icon der AKTUELL gewaehlten Formation (die gibt es schon).
+      feld(2, 0, '⛬', formNamen[this.rtsFormation] ?? 'Formation', { icon: `baumenue_${this.rtsFormation}`, tip: 'Formations-Auswahl öffnen (alle Formationen + Abstand)' }, () => { this.rtsFormOffen = true; });
+      // "Schild AN" wirkt NUR auf den Helden (this.combat.blocking) - darum nur
+      // zeigen, wenn der Held in der Auswahl ist (Autor: "gilt ja nur fuer den Helden").
+      if (battle.heldGewaehlt) {
+        feld(3, 0, '🛡', this.rtsSchildAktiv ? 'Schild AN' : 'Schild aus', { an: this.rtsSchildAktiv, icon: 'baumenue_schild', tip: 'NUR der Held: hält zwischen den Schlägen die Deckung' }, () => { this.rtsSchildAktiv = !this.rtsSchildAktiv; });
+      }
+      feld(0, 1, '🐾', 'Verfolgen', { an: this.rtsAktHaltung === 'aggressiv', icon: 'baumenue_befehl_verfolgen', tip: 'Haltung: Feinde aktiv verfolgen und stellen' }, () => this.setzeHaltung('aggressiv'));
+      feld(1, 1, '🛡', 'Nahe bleiben', { an: this.rtsAktHaltung === 'verteidigen', icon: 'baumenue_befehl_nahebleiben', tip: 'Haltung: kämpfen, aber die Stellung nicht weit verlassen' }, () => this.setzeHaltung('verteidigen'));
+      feld(2, 1, '⚓', 'Halten', { an: this.rtsAktHaltung === 'halten', icon: 'baumenue_befehl_stellung', tip: 'Haltung: eisern stehen bleiben, nur Gegner in Reichweite schlagen' }, () => this.setzeHaltung('halten'));
       const feuerNamen: Record<string, string> = { angreifen: 'Feuer frei', zurueckschlagen: 'Nur zurück', feuerEinstellen: 'Feuer halt' };
       const feuerAktuell = this.rtsAktAngriff ?? 'angreifen';
       const naechsterFeuer = (): void => {
@@ -4277,10 +4282,10 @@ export class WorldScene extends CombatScene {
         this.rtsAktAngriff = neu;
         battle.setAngriff(neu);
       };
-      feld(3, 1, '🔥', feuerNamen[feuerAktuell], { an: feuerAktuell !== 'angreifen', tip: 'Feuer-Erlaubnis: frei / nur zurückschlagen / einstellen' }, naechsterFeuer);
-      feld(0, 2, '◎', 'Nächster', { an: this.rtsAktZielwahl === 'naechster', tip: 'Zielwahl: den nächsten Gegner angreifen' }, () => { this.rtsAktZielwahl = 'naechster'; battle.setZielwahl('naechster'); });
-      feld(1, 2, '♡', 'Schwächster', { an: this.rtsAktZielwahl === 'schwaechster', tip: 'Zielwahl: den verwundetsten Gegner zuerst erledigen' }, () => { this.rtsAktZielwahl = 'schwaechster'; battle.setZielwahl('schwaechster'); });
-      feld(2, 2, '☠', 'Gefahr', { an: this.rtsAktZielwahl === 'gefaehrlichster', tip: 'Zielwahl: den gefährlichsten Gegner zuerst angreifen' }, () => { this.rtsAktZielwahl = 'gefaehrlichster'; battle.setZielwahl('gefaehrlichster'); });
+      feld(3, 1, '🔥', feuerNamen[feuerAktuell], { an: feuerAktuell !== 'angreifen', icon: 'baumenue_befehl_feuer', tip: 'Feuer-Erlaubnis: frei / nur zurückschlagen / einstellen' }, naechsterFeuer);
+      feld(0, 2, '◎', 'Nächster', { an: this.rtsAktZielwahl === 'naechster', icon: 'baumenue_befehl_ziel_naechster', tip: 'Zielwahl: den nächsten Gegner angreifen' }, () => { this.rtsAktZielwahl = 'naechster'; battle.setZielwahl('naechster'); });
+      feld(1, 2, '♡', 'Schwächster', { an: this.rtsAktZielwahl === 'schwaechster', icon: 'baumenue_befehl_ziel_schwaechster', tip: 'Zielwahl: den verwundetsten Gegner zuerst erledigen' }, () => { this.rtsAktZielwahl = 'schwaechster'; battle.setZielwahl('schwaechster'); });
+      feld(2, 2, '☠', 'Gefahr', { an: this.rtsAktZielwahl === 'gefaehrlichster', icon: 'baumenue_befehl_ziel_gefahr', tip: 'Zielwahl: den gefährlichsten Gegner zuerst angreifen' }, () => { this.rtsAktZielwahl = 'gefaehrlichster'; battle.setZielwahl('gefaehrlichster'); });
       return;
     }
     // --- Kontext DEV: Test-Werkzeuge als eigene Rasterebene ----------------
@@ -6047,7 +6052,12 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.baumenueIconsGeladen = true;
     const ids = new Set<string>(['aushebung', 'rueckzug', 'steuerung',
       // Einheiten (Rekruten-Ebene) + Formationen (Formations-Ebene)
-      'schild', 'nahkampf', 'bogen', 'heiler', 'reiter']);
+      'schild', 'nahkampf', 'bogen', 'heiler', 'reiter',
+      // Kampf-Befehle (Autor "warum haben wir dafuer keine Bilder"): sobald die
+      // PNG ui/baumenue/befehl_*.png existiert, erscheint das Icon automatisch.
+      'befehl_angriff', 'befehl_halten', 'befehl_verfolgen', 'befehl_nahebleiben',
+      'befehl_stellung', 'befehl_feuer', 'befehl_ziel_naechster',
+      'befehl_ziel_schwaechster', 'befehl_ziel_gefahr']);
     for (const k of BAU_KATEGORIEN) ids.add(k.id);
     for (const b of RTS_BAUTEN) ids.add(b.id);
     for (const fm of RTS_FORMATIONEN) ids.add(fm.id);
