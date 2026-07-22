@@ -13,13 +13,13 @@ from mathutils import Euler, Matrix, Vector
 
 REPO = Path(r"C:\Obsidian\DM\Darius187-DM")
 SOURCE_ROOT = Path(r"C:\Obsidian\DM\camp-props")
-VALID_ASSETS = {"fletcher", "field_tent", "command_pavilion"}
+VALID_ASSETS = {"fletcher", "field_tent", "command_pavilion", "medical_tent"}
 
 
 def cli_asset():
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     if len(args) != 1 or args[0] not in VALID_ASSETS:
-        raise SystemExit("Usage: blender --background --python build_medieval_camp_assets.py -- <fletcher|field_tent|command_pavilion>")
+        raise SystemExit("Usage: blender --background --python build_medieval_camp_assets.py -- <fletcher|field_tent|command_pavilion|medical_tent>")
     return args[0]
 
 
@@ -28,11 +28,13 @@ ASSET_NAMES = {
     "fletcher": "medieval_fletcher_station_3d_runtime",
     "field_tent": "medieval_field_tent_3d_runtime",
     "command_pavilion": "medieval_command_pavilion_3d_runtime",
+    "medical_tent": "medieval_medical_tent_3d_runtime",
 }
 ROOT_NAMES = {
     "fletcher": "FLETCHER_STATION_ROTATION_PIVOT",
     "field_tent": "FIELD_TENT_ROTATION_PIVOT",
     "command_pavilion": "COMMAND_PAVILION_ROTATION_PIVOT",
+    "medical_tent": "MEDICAL_TENT_ROTATION_PIVOT",
 }
 ASSET_NAME = ASSET_NAMES[ASSET_ID]
 SOURCE_DIR = SOURCE_ROOT / ASSET_ID
@@ -260,6 +262,13 @@ MATERIALS = {
     "feather_white": make_material("goose_feather_white", (.57, .56, .51), (.15, .14, .125), (.80, .78, .68), "fabric", 22, .89),
     "feather_brown": make_material("goose_feather_brown", (.25, .16, .09), (.060, .035, .018), (.46, .31, .16), "fabric", 23, .91),
     "rug": make_material("pavilion_rug", (.22, .060, .038), (.040, .012, .009), (.43, .15, .085), "fabric", 24, .98),
+    "medical_linen": make_canvas_material("MAT_MEDICAL_LINEN", "medical_linen", (.66, .61, .51), 25, .91, .08),
+    "ceramic": make_material("medical_ceramic", (.43, .35, .25), (.10, .075, .045), (.68, .58, .43), "earth", 26, .93),
+    "medicine_glass": make_material("medicine_glass", (.18, .22, .15), (.025, .035, .020), (.38, .43, .27), "glass", 27, .46),
+    "herb": make_material("dried_medicinal_herbs", (.22, .25, .095), (.035, .045, .012), (.39, .43, .16), "earth", 28, .98),
+    "heraldry_blue": make_material("hospital_cross_blue", (.055, .12, .19), (.008, .020, .035), (.12, .24, .34), "fabric", 29, .90),
+    "heraldry_gold": make_material("hospital_cross_ochre", (.43, .28, .075), (.09, .045, .010), (.68, .50, .16), "fabric", 30, .86),
+    "wax": make_material("lantern_wax", (.64, .37, .10), (.13, .045, .008), (.94, .66, .24), "default", 31, .74),
 }
 
 
@@ -838,17 +847,17 @@ def build_field_tent():
     }
 
 
-def scalloped_valance(y, x0, x1, z, outward):
+def scalloped_valance(y, x0, x1, z, outward, key="red_cloth"):
     sections = 14
     depth = .46
     for index in range(sections):
         xa = x0 + (x1 - x0) * index / sections
         xb = x0 + (x1 - x0) * (index + 1) / sections
         mid = (xa + xb) / 2
-        BATCHES["red_cloth"].quad([(xa, y, z), (xb, y, z),
-                                   (xb, y + outward * .015, z - depth * .56),
-                                   (mid, y + outward * .025, z - depth),
-                                   (xa, y + outward * .015, z - depth * .56)])
+        BATCHES[key].quad([(xa, y, z), (xb, y, z),
+                           (xb, y + outward * .015, z - depth * .56),
+                           (mid, y + outward * .025, z - depth),
+                           (xa, y + outward * .015, z - depth * .56)])
 
 
 def build_command_pavilion():
@@ -996,10 +1005,292 @@ def build_command_pavilion():
     }
 
 
+def local_point(center, point, rotation_z=0.0):
+    return Vector(center) + Matrix.Rotation(rotation_z, 4, "Z") @ Vector(point)
+
+
+def local_beam(key, center, start, end, thickness, rotation_z=0.0):
+    beam(key, local_point(center, start, rotation_z), local_point(center, end, rotation_z), thickness)
+
+
+def build_medical_cot(center, rotation_z=0.0):
+    width, length, deck = .94, 2.18, .78
+    for x in (-width / 2, width / 2):
+        local_beam("wood_dark", center, (x, -length / 2, .06), (x, length / 2, .06), .085, rotation_z)
+        local_beam("wood_dark", center, (x, -length / 2, .06), (x, -length / 2, deck), .075, rotation_z)
+        local_beam("wood_dark", center, (x, length / 2, .06), (x, length / 2, deck), .075, rotation_z)
+        local_beam("wood_dark", center, (x, -length / 2, .10), (x, length / 2, deck - .04), .055, rotation_z)
+        local_beam("wood_dark", center, (x, length / 2, .10), (x, -length / 2, deck - .04), .055, rotation_z)
+    for y in (-length / 2, length / 2):
+        local_beam("wood_mid", center, (-width / 2, y, deck), (width / 2, y, deck), .09, rotation_z)
+    BATCHES["medical_linen"].box((center[0], center[1], deck + .10),
+                                  (width * .92, length * .94, .16), (0, 0, rotation_z))
+    pillow_center = local_point(center, (0, length * .33, deck + .24), rotation_z)
+    BATCHES["medical_linen"].box(pillow_center, (.68, .38, .16), (0, 0, rotation_z))
+    blanket_center = local_point(center, (0, -length * .28, deck + .20), rotation_z)
+    BATCHES["canvas_dark"].box(blanket_center, (.78, .54, .10), (0, 0, rotation_z))
+    for y in (-length * .48, length * .48):
+        tie_center = local_point(center, (0, y, deck + .10), rotation_z)
+        direction = Matrix.Rotation(rotation_z, 4, "Z") @ Vector((1, 0, 0))
+        BATCHES["rope"].cylinder(tie_center, .018, width * .98, 7, direction)
+
+
+def build_medical_table(center, dims=(1.12, 1.90), height=.92, linen=True):
+    width, length = dims
+    BATCHES["wood_mid"].box((center[0], center[1], height), (width, length, .12))
+    for x in (-width * .40, width * .40):
+        for y in (-length * .40, length * .40):
+            beam("wood_dark", (center[0] + x, center[1] + y, .04),
+                 (center[0] + x, center[1] + y, height - .03), .075)
+    if linen:
+        BATCHES["medical_linen"].box((center[0], center[1], height + .072),
+                                      (width * .72, length * 1.04, .025))
+
+
+def build_stool(center):
+    x, y, z = center
+    BATCHES["wood_mid"].cylinder((x, y, z + .47), .31, .11, 12)
+    for angle in (0, math.tau / 3, math.tau * 2 / 3):
+        px = x + math.cos(angle) * .20
+        py = y + math.sin(angle) * .20
+        beam("wood_dark", (px, py, z + .03), (px, py, z + .43), .055)
+
+
+def build_barrel(center, radius=.38, height=.78):
+    x, y, z = center
+    BATCHES["wood_mid"].cylinder((x, y, z + height / 2), radius, height, 18)
+    for ring_z in (z + .12, z + height * .50, z + height - .12):
+        BATCHES["iron"].torus((x, y, ring_z), radius + .012, .026, 18, 5)
+    BATCHES["wood_dark"].cylinder((x, y, z + height + .015), radius * .88, .035, 18)
+
+
+def build_bottle(center, scale=1.0):
+    x, y, z = center
+    BATCHES["medicine_glass"].cylinder((x, y, z + .13 * scale), .075 * scale, .26 * scale, 12)
+    BATCHES["medicine_glass"].cone((x, y, z + .30 * scale), .075 * scale, .12 * scale, 12)
+    BATCHES["medicine_glass"].cylinder((x, y, z + .39 * scale), .035 * scale, .14 * scale, 10)
+    BATCHES["rope"].torus((x, y, z + .46 * scale), .040 * scale, .010 * scale, 10, 4)
+
+
+def build_bowl(center, radius=.17, key="ceramic"):
+    BATCHES[key].open_tube(center, radius, .10, .028, 16)
+
+
+def build_open_medical_chest(center):
+    x, y, z = center
+    BATCHES["wood_dark"].box((x, y, z + .34), (1.18, .78, .66))
+    BATCHES["wood_mid"].box((x, y + .38, z + .84), (1.18, .10, .72), (math.radians(-18), 0, 0))
+    BATCHES["iron"].box((x, y - .402, z + .38), (.16, .025, .18))
+    for row in range(2):
+        for column in range(4):
+            px = x - .39 + column * .26
+            py = y - .18 + row * .25
+            BATCHES["medical_linen"].cylinder((px, py, z + .76), .085, .22, 12, (1, 0, 0))
+
+
+def build_medical_lantern(center):
+    x, y, z = center
+    BATCHES["iron"].torus((x, y, z + .06), .16, .025, 12, 5)
+    BATCHES["iron"].torus((x, y, z + .62), .13, .022, 12, 5)
+    for index in range(6):
+        angle = index * math.tau / 6
+        px = x + math.cos(angle) * .13
+        py = y + math.sin(angle) * .13
+        beam("iron", (px, py, z + .08), (px, py, z + .60), .018)
+    BATCHES["wax"].cylinder((x, y, z + .29), .055, .28, 10)
+    BATCHES["wax"].cone((x, y, z + .46), .045, .10, 8)
+    rope([(x, y, z + .64), (x, y, z + 1.18)], .014)
+
+
+def build_medical_tent():
+    random.seed(1352)
+    half_w, half_l, eave, ridge = 3.80, 3.20, 3.05, 4.65
+
+    for x in (-half_w, half_w):
+        for y in (-half_l, half_l):
+            beam("wood_dark", (x, y, .02), (x, y, eave + .30), .115)
+            BATCHES["wood_mid"].cone((x, y, eave + .48), .13, .34, 8)
+    beam("wood_dark", (0, -half_l, ridge), (0, half_l, ridge), .13)
+    beam("wood_dark", (0, half_l, .02), (0, half_l, ridge + .12), .105)
+    beam("wood_dark", (-half_w + .10, -half_l, eave + .02),
+         (0, -half_l, ridge + .08), .085)
+    beam("wood_dark", (half_w - .10, -half_l, eave + .02),
+         (0, -half_l, ridge + .08), .085)
+    for y in (-half_l, half_l):
+        BATCHES["wood_mid"].cone((0, y, ridge + .28), .14, .38, 8)
+
+    for side in (-1, 1):
+        def roof_point(u, v, side=side):
+            segment_phase = (v * 4.0) % 1.0
+            sag = .038 * math.sin(segment_phase * math.pi) ** 2 * math.sin(u * math.pi)
+            fold = .014 * math.sin(v * math.tau * 8.0 + u * 2.4) * math.sin(u * math.pi)
+            x = side * (u * half_w + .010 * math.sin(v * math.tau * 6.0) * math.sin(u * math.pi))
+            return (x, -half_l + v * half_l * 2,
+                    ridge - u * (ridge - eave) - sag + fold)
+
+        def roof_pin(ix, iy, nx, ny):
+            weight = edge_weight(ix)
+            eave_ties = [(nx, round(ny * fraction)) for fraction in (0, .2, .4, .6, .8, 1)]
+            end_ties = [(round(nx * fraction), edge) for edge in (0, ny) for fraction in (.5, 1)]
+            return max(weight, soft_anchor_weight(ix, iy, eave_ties + end_ties))
+
+        roof_panel = simulated_cloth_grid(
+            "canvas", f"MED_ROOF_{side}", 54, 84, roof_point, roof_pin,
+            frames=78, gravity=-2.15, normal_hint=(side * (ridge - eave), 0, half_w))
+        for seam in (.25, .5, .75):
+            add_panel_column_strip(roof_panel, seam)
+        add_panel_column_strip(roof_panel, 1.0)
+        for tie_v in (0, .2, .4, .6, .8, 1):
+            add_panel_patch(roof_panel, 1.0, tie_v, 2)
+        add_panel_patch(roof_panel, .63, .31 if side < 0 else .68, 2)
+
+    def hanging_pin(ix, iy, nx, ny):
+        weight = edge_weight(ny - iy)
+        lower_ties = [(round(nx * fraction), 0) for fraction in (0, .2, .4, .6, .8, 1)]
+        return max(weight, soft_anchor_weight(ix, iy, lower_ties))
+
+    def rear_point(u, v):
+        return (-half_w + u * half_w * 2,
+                half_l + .032 * math.sin(u * math.tau * 10.0) * math.sin(v * math.pi),
+                .04 + v * (eave - .04))
+
+    rear_panel = simulated_cloth_grid(
+        "canvas_dark", "MED_REAR", 100, 44, rear_point, hanging_pin,
+        frames=80, gravity=-2.25, normal_hint=(0, 1, 0))
+    add_panel_row_strip(rear_panel, 0.0)
+    add_panel_row_strip(rear_panel, 1.0)
+    for seam in (.2, .4, .6, .8):
+        add_panel_column_strip(rear_panel, seam)
+
+    for side in (-1, 1):
+        def side_point(u, v, side=side):
+            wave = side * .032 * math.sin(u * math.tau * 9.0 + .4) * math.sin(v * math.pi)
+            return (side * half_w + wave, -half_l + u * half_l * 2,
+                    .04 + v * (eave - .04))
+
+        side_panel = simulated_cloth_grid(
+            "canvas", f"MED_SIDE_{side}", 84, 44, side_point, hanging_pin,
+            frames=80, gravity=-2.25, normal_hint=(side, 0, 0))
+        add_panel_row_strip(side_panel, 0.0)
+        add_panel_row_strip(side_panel, 1.0)
+        for seam in (.25, .5, .75):
+            add_panel_column_strip(side_panel, seam)
+
+        edge = side * half_w
+        inner = side * 2.45
+        p00 = Vector((edge, -half_l - .025, .04))
+        p10 = Vector((inner, -half_l - .045, .04))
+        p11 = Vector((side * 3.15, -half_l - .14, 1.48))
+        p01 = Vector((edge, -half_l - .025, eave))
+
+        def wing_point(u, v, p00=p00, p10=p10, p11=p11, p01=p01):
+            point = ((1 - u) * (1 - v) * p00 + u * (1 - v) * p10
+                     + u * v * p11 + (1 - u) * v * p01)
+            point.y -= (.038 * math.sin(u * math.pi) * math.sin(v * math.pi)
+                        + .014 * math.sin(u * math.tau * 5.0 + v) * math.sin(v * math.pi))
+            return tuple(point)
+
+        wing = simulated_cloth_grid(
+            "canvas", f"MED_FRONT_WING_{side}", 32, 42, wing_point,
+            lambda ix, iy, nx, ny: edge_weight(ny - iy),
+            frames=72, gravity=-2.05, normal_hint=(0, -1, 0))
+        add_panel_row_strip(wing, 1.0)
+        add_panel_column_strip(wing, 1.0)
+        add_panel_patch(wing, 1.0, 1.0, 2)
+        BATCHES["rope"].torus((side * 3.15, -half_l - .16, 1.48), .12, .025, 12, 4,
+                               (math.pi / 2, 0, 0))
+
+    scalloped_valance(-half_l - .035, -half_w, half_w, eave, -1, "medical_linen")
+    scalloped_valance(half_l + .035, -half_w, half_w, eave, 1, "medical_linen")
+
+    rope_layout = [
+        (-half_w, -half_l, eave + .18, (-4.80, -4.35, 0)),
+        (half_w, -half_l, eave + .18, (4.80, -4.35, 0)),
+        (-half_w, half_l, eave + .18, (-4.80, 4.35, 0)),
+        (half_w, half_l, eave + .18, (4.80, 4.35, 0)),
+        (0, half_l, ridge + .08, (0, 4.75, 0)),
+    ]
+    for x, y, z, anchor in rope_layout:
+        rope([(x, y, z), anchor], .020)
+        make_stake(anchor[0], anchor[1])
+
+    build_medical_cot((-2.25, .65, 0))
+    build_medical_cot((2.25, .65, 0))
+    build_medical_cot((0, 2.05, 0), math.pi / 2)
+    build_medical_table((0, -.78), (1.08, 1.72), .94, True)
+    build_stool((1.02, -1.72, 0))
+
+    for x in (-1.15, 1.15):
+        beam("wood_dark", (x, 2.72, .04), (x, 2.72, 1.82), .075)
+    for z in (.46, 1.05, 1.64):
+        BATCHES["wood_mid"].box((0, 2.72, z), (2.45, .52, .09))
+    for index, x in enumerate((-.88, -.52, -.12, .32, .76)):
+        build_bottle((x, 2.58, 1.70), .78 + (index % 2) * .16)
+    for x in (-.78, -.30, .18, .66):
+        build_bowl((x, 2.55, 1.10), .14)
+    for x in (-.86, -.45, .48, .88):
+        for strand in range(3):
+            beam("herb", (x + strand * .025, 2.48, 1.58),
+                 (x + .06 * math.sin(strand), 2.43, 1.25 - strand * .03), .015)
+
+    build_open_medical_chest((-3.05, -1.82, 0))
+    build_barrel((3.12, -1.84, 0), .38, .80)
+    build_barrel((2.48, -2.18, 0), .29, .60)
+    build_medical_table((2.70, -.63), (.82, .72), .72, False)
+    build_bowl((2.70, -.63, .80), .27)
+    build_bowl((-1.25, -.72, 1.05), .18)
+    BATCHES["ceramic"].cylinder((-1.25, -.72, 1.18), .055, .22, 10)
+    for x in (-.26, .05, .32):
+        build_bottle((x, -.86, 1.02), .72)
+    for index in range(3):
+        beam("iron", (-.33 + index * .18, -.52, 1.04),
+             (-.20 + index * .18, -.22, 1.05), .014)
+
+    build_medical_lantern((0, .18, 2.35))
+
+    shield_x, shield_y, shield_z = half_w + .052, .72, 1.86
+    BATCHES["heraldry_blue"].quad([
+        (shield_x, shield_y - .45, shield_z + .55),
+        (shield_x, shield_y - .38, shield_z - .22),
+        (shield_x, shield_y, shield_z - .66),
+        (shield_x, shield_y + .38, shield_z - .22),
+        (shield_x, shield_y + .45, shield_z + .55),
+    ])
+    BATCHES["heraldry_gold"].box((shield_x + .018, shield_y, shield_z), (.032, .17, .86))
+    BATCHES["heraldry_gold"].box((shield_x + .020, shield_y, shield_z + .13), (.035, .64, .16))
+
+    return {
+        "label": "Lazarettzelt des Feldlagers",
+        "content": {
+            "open_front": True,
+            "patient_cots": 3,
+            "treatment_table": True,
+            "open_bandage_chest": True,
+            "medicine_shelf": True,
+            "wash_station": True,
+            "hanging_lantern": True,
+            "period_cross_device": True,
+            "guy_ropes": 5,
+            "center_entry_obstructions": 0,
+            "cloth_simulation": "baked_static_mesh",
+            "cloth_material": "MAT_TENT_CANVAS",
+            "cloth_panels": 7,
+        },
+        "collision": {
+            "shape": "box",
+            "size": [7.7, 6.5],
+            "center": [0, .10],
+            "front_open": True,
+            "walkable_entry_width_m": 4.8,
+        },
+    }
+
+
 BUILDERS = {
     "fletcher": build_fletcher,
     "field_tent": build_field_tent,
     "command_pavilion": build_command_pavilion,
+    "medical_tent": build_medical_tent,
 }
 metadata = BUILDERS[ASSET_ID]()
 
@@ -1012,7 +1303,8 @@ def make_objects():
         mesh = bpy.data.meshes.new(f"{ASSET_ID}_{key}_MESH")
         mesh.from_pydata(batch.verts, [], batch.faces)
         mesh.update()
-        if key in {"canvas", "canvas_dark", "red_cloth", "rug", "feather_white", "feather_brown"}:
+        if key in {"canvas", "canvas_dark", "red_cloth", "rug", "feather_white", "feather_brown",
+                   "medical_linen", "ceramic", "medicine_glass", "wax"}:
             for polygon in mesh.polygons:
                 polygon.use_smooth = True
         obj = bpy.data.objects.new(f"{ASSET_ID.upper()}_{key.upper()}_BATCH", mesh)
@@ -1188,7 +1480,7 @@ manifest = {
     "runtime_mode": "static_exterior_prop",
     "root_node": root.name,
     "editable_blend": str(BLEND_PATH),
-    "original_blend_preserved": str(ORIGINAL_BLEND_PATH),
+    "original_blend_preserved": str(ORIGINAL_BLEND_PATH) if backup_object_count else None,
     "meters_per_blender_unit": 1.0,
     "placement": {
         "front_axis": "-Y",
@@ -1223,9 +1515,14 @@ if CLOTH_BAKE_STATS:
     manifest["notes"].append(
         "Blender-Cloth wurde 72 bis 80 Frames mit weichen CLOTH_PIN-Gewichten berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik."
     )
-    manifest["notes"].append(
-        "Die vorherige Blender-Fassung bleibt unangetastet und ist zusaetzlich in BACKUP_ORIGINAL_TENTS der korrigierten Datei ausgeblendet enthalten."
-    )
+    if backup_object_count:
+        manifest["notes"].append(
+            "Die vorherige Blender-Fassung bleibt unangetastet und ist zusaetzlich in BACKUP_ORIGINAL_TENTS der korrigierten Datei ausgeblendet enthalten."
+        )
+    else:
+        manifest["notes"].append(
+            "Neu aufgebautes Cloth-Asset; BACKUP_ORIGINAL_TENTS bleibt als leere, ausgeblendete Sicherungs-Collection fuer spaetere Revisionen erhalten."
+        )
 JSON_PATH.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 
 copy_sources = [GLB_PATH, JSON_PATH, PREVIEW_PATH]

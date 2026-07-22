@@ -2,9 +2,9 @@
 
 Stand: 22.07.2026
 
-Die drei Motive der gemeinsamen Referenz sind absichtlich drei eigenstaendige
-Runtime-Assets. Sie duerfen beim Laden, Platzieren oder Backen nicht zu einem
-einzigen Objekt zusammengefasst werden.
+Die Lager-Motive sind absichtlich eigenstaendige Runtime-Assets. Sie duerfen
+beim Laden, Platzieren oder Backen nicht zu einem einzigen Objekt
+zusammengefasst werden.
 
 ## Gemeinsamer Vertrag
 
@@ -72,12 +72,33 @@ Beide korrigierten Blender-Dateien enthalten zusaetzlich die ausgeblendete
 Collection `BACKUP_ORIGINAL_TENTS`. Im Runtime-GLB sind Cloth, Subdivision und
 Solidify bereits als statische Geometrie ausgewertet; Phaser simuliert keinen Stoff.
 
+## 4. Lazarettzelt
+
+- Runtime: `medical_tent/medieval_medical_tent_3d_runtime.glb`
+- Manifest: `medical_tent/medieval_medical_tent_3d_runtime.json`
+- Root: `MEDICAL_TENT_ROTATION_PIVOT`
+- Groesse mit Abspannungen: 9,705 x 9,207 x 5,240 m
+- Laufzeit: 19 Meshes, 125.413 Dreiecke, 16 eingebettete Texturen
+- Inhalt: drei Patientenliegen, Behandlungstisch, offene Verbandtruhe,
+  Arzneiregal, Waschplatz, Flaschen, Schalen, Kraeuter und Haengelaterne
+- Eingang: 4,8 m nutzbare Breite; keine Mittelstuetze und kein Spannseil im Weg
+- Stoff: sieben getrennte, statisch gebackene Quad-Bahnen mit maximal 8 cm
+  Bewegung, sichtbaren Naehten, Saeumen und Verstaerkungen
+- Kennzeichen: blaues Schild mit ockerfarbenem mittelalterlichem Kreuz; bewusst
+  kein modernes Rotes Kreuz
+- Vorschau: `medical_tent/medieval_medical_tent_3d_runtime_preview.png`
+- Stoff-Nahansicht: `medical_tent/medieval_medical_tent_3d_runtime_cloth_closeup.png`
+- Editierbare Blender-Datei:
+  `C:/Obsidian/DM/camp-props/medical_tent/medieval_medical_tent_3d_runtime.blend`
+- Keine Bodenplatte; die Weltposition bleibt bis zur Vorgabe des Autors offen
+
 ## Reproduzierbarer Bau
 
 ```powershell
 blender --background --python tools/blender/build_medieval_camp_assets.py -- fletcher
 blender --background --python tools/blender/build_medieval_camp_assets.py -- field_tent
 blender --background --python tools/blender/build_medieval_camp_assets.py -- command_pavilion
+blender --background --python tools/blender/build_medieval_camp_assets.py -- medical_tent
 ```
 
 Jedes GLB wird danach mit `tools/blender/audit_medieval_camp_asset.py` wieder in

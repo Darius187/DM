@@ -1,0 +1,246 @@
+{
+  "asset": "medieval_medical_tent_3d_runtime",
+  "label_de": "Lazarettzelt des Feldlagers",
+  "glb": "medieval_medical_tent_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "MEDICAL_TENT_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\medical_tent\\medieval_medical_tent_3d_runtime.blend",
+  "original_blend_preserved": null,
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -4.855,
+      -4.404,
+      -0.12
+    ],
+    "max": [
+      4.85,
+      4.804,
+      5.12
+    ],
+    "size": [
+      9.705,
+      9.207,
+      5.24
+    ]
+  },
+  "runtime": {
+    "visible_objects": 19,
+    "triangles": 125413,
+    "embedded_textured_materials": 19,
+    "static_material_batches": [
+      "MEDICAL_TENT_CLOTH_MED_ROOF_-1",
+      "MEDICAL_TENT_CLOTH_MED_ROOF_1",
+      "MEDICAL_TENT_CLOTH_MED_REAR",
+      "MEDICAL_TENT_CLOTH_MED_SIDE_-1",
+      "MEDICAL_TENT_CLOTH_MED_FRONT_WING_-1",
+      "MEDICAL_TENT_CLOTH_MED_SIDE_1",
+      "MEDICAL_TENT_CLOTH_MED_FRONT_WING_1",
+      "MEDICAL_TENT_WOOD_DARK_BATCH",
+      "MEDICAL_TENT_WOOD_MID_BATCH",
+      "MEDICAL_TENT_ROPE_BATCH",
+      "MEDICAL_TENT_CANVAS_DARK_BATCH",
+      "MEDICAL_TENT_IRON_BATCH",
+      "MEDICAL_TENT_MEDICAL_LINEN_BATCH",
+      "MEDICAL_TENT_CERAMIC_BATCH",
+      "MEDICAL_TENT_MEDICINE_GLASS_BATCH",
+      "MEDICAL_TENT_HERB_BATCH",
+      "MEDICAL_TENT_HERALDRY_BLUE_BATCH",
+      "MEDICAL_TENT_HERALDRY_GOLD_BATCH",
+      "MEDICAL_TENT_WAX_BATCH"
+    ],
+    "baked_cloth_panels": [
+      {
+        "panel": "MED_ROOF_-1",
+        "frames": 78,
+        "quad_grid": [
+          54,
+          84
+        ],
+        "source_quads": 4536,
+        "average_edge_m": 0.0764,
+        "pinned_vertices": 363,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.20675,
+        "average_displacement_m": 0.06364,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "MED_ROOF_1",
+        "frames": 78,
+        "quad_grid": [
+          54,
+          84
+        ],
+        "source_quads": 4536,
+        "average_edge_m": 0.0764,
+        "pinned_vertices": 363,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.20675,
+        "average_displacement_m": 0.06364,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "MED_REAR",
+        "frames": 80,
+        "quad_grid": [
+          100,
+          44
+        ],
+        "source_quads": 4400,
+        "average_edge_m": 0.0725,
+        "pinned_vertices": 381,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.01634,
+        "average_displacement_m": 0.00254,
+        "maximum_displacement_m": 0.01634,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "MED_SIDE_-1",
+        "frames": 80,
+        "quad_grid": [
+          84,
+          44
+        ],
+        "source_quads": 3696,
+        "average_edge_m": 0.0727,
+        "pinned_vertices": 333,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.019,
+        "average_displacement_m": 0.00328,
+        "maximum_displacement_m": 0.019,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "MED_FRONT_WING_-1",
+        "frames": 72,
+        "quad_grid": [
+          32,
+          42
+        ],
+        "source_quads": 1344,
+        "average_edge_m": 0.0487,
+        "pinned_vertices": 99,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.69153,
+        "average_displacement_m": 0.06772,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "MED_SIDE_1",
+        "frames": 80,
+        "quad_grid": [
+          84,
+          44
+        ],
+        "source_quads": 3696,
+        "average_edge_m": 0.0727,
+        "pinned_vertices": 333,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.019,
+        "average_displacement_m": 0.00328,
+        "maximum_displacement_m": 0.019,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "MED_FRONT_WING_1",
+        "frames": 72,
+        "quad_grid": [
+          32,
+          42
+        ],
+        "source_quads": 1344,
+        "average_edge_m": 0.0487,
+        "pinned_vertices": 99,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.74094,
+        "average_displacement_m": 0.0679,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      }
+    ],
+    "active_runtime_cloth_simulations": 0
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      7.7,
+      6.5
+    ],
+    "center": [
+      0,
+      0.1
+    ],
+    "front_open": true,
+    "walkable_entry_width_m": 4.8
+  },
+  "content": {
+    "open_front": true,
+    "patient_cots": 3,
+    "treatment_table": true,
+    "open_bandage_chest": true,
+    "medicine_shelf": true,
+    "wash_station": true,
+    "hanging_lantern": true,
+    "period_cross_device": true,
+    "guy_ropes": 5,
+    "center_entry_obstructions": 0,
+    "cloth_simulation": "baked_static_mesh",
+    "cloth_material": "MAT_TENT_CANVAS",
+    "cloth_panels": 7
+  },
+  "interactions": [],
+  "notes": [
+    "Eigenstaendiges Asset; nicht mit den beiden anderen Lager-Assets verschmelzen.",
+    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
+    "Material-Farbtexturen sind im GLB eingebettet.",
+    "Blender-Cloth wurde 72 bis 80 Frames mit weichen CLOTH_PIN-Gewichten berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik.",
+    "Neu aufgebautes Cloth-Asset; BACKUP_ORIGINAL_TENTS bleibt als leere, ausgeblendete Sicherungs-Collection fuer spaetere Revisionen erhalten."
+  ]
+}

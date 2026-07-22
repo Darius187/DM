@@ -2699,6 +2699,7 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   scale-sensible Aenderung (RESIZE-Layout) - separat + auf echtem Geraet zu machen.
 - 2026-07-21: Zeltstoff wird in Blender physikalisch simuliert und als statisches GLB-Mesh gebacken. Keine laufende Cloth-Physik in Phaser; offene Koecher bleiben echte Hohlkoerper statt optischer Deckeltricks.
 - 2026-07-22: Zeltleinwand nutzt getrennte Quad-Bahnen mit etwa 5 bis 8 cm Rasterweite, weiche `CLOTH_PIN`-Gewichte und maximal 8 cm gebackene Verformung. 3-mm-Dicke, Web-Normalmap und Naehte werden statisch exportiert; die alten Blender-Dateien bleiben unangetastet und liegen zusaetzlich in `BACKUP_ORIGINAL_TENTS`.
+- 2026-07-22: Das Lazarett bleibt ein eigenstaendiges, statisches Runtime-Asset ohne Bodenplatte. Sein Kennzeichen ist ein mittelalterliches Kreuzgeraet statt eines modernen Roten Kreuzes; Weltplatzierung erfolgt erst nach einer ausdruecklichen Zielposition.
 
 - WASSER-EDITOR (Autor-Order "ich male das Wasser selbst - das SDF-Wasser
   funktioniert nicht"): Schluss mit dem Formel-Wasser als Quelle fuer Effekte/
