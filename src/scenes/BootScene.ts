@@ -9,6 +9,7 @@ import { PORTRAITS, ITEM_IMAGES, SOUNDS, SPRITE_NAMES, TILE_NAMES, TILE_VARIANTS
 import { queuePackSheets, composePackTextures } from '../gfx/PackLoader';
 import { registriereBaumBitmaps, registriereBuschBitmaps } from '../gfx/baumBitmaps';
 import { registriereLagerBitmaps, registriereBauKacheln } from '../gfx/lagerBitmaps';
+import { registriereCampGlbProps } from '../gfx/campGlbBitmaps';
 import gfxConfig from '../data/gfx.json';
 import { REIT_PFERD } from '../data/reiten';
 import { GOLEM } from '../data/golem';
@@ -156,6 +157,7 @@ export class BootScene extends Phaser.Scene {
       .then(() => registriereBaumBitmaps(this.textures).catch(() => {}))
       .then(() => registriereBuschBitmaps(this.textures).catch(() => {}))   // ez-tree-Büsche (R81)
       .then(() => registriereLagerBitmaps(this.textures).catch(() => {}))    // 3D-Wachturm/Zelte (R97)
+      .then(() => registriereCampGlbProps(this.textures).catch(() => {}))     // GLB-Zelte 1:1 (ueberschreibt feldbau_zelt)
       .then(() => registriereBauKacheln(this.textures).catch(() => {}))       // 3D-Palisade/Tor/Baustelle/Lager (R99e)
       .then(() => this.scene.start(ziel));
   }

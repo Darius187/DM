@@ -2751,3 +2751,21 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   scripts/_gefolge_verif.mjs (nah folgt nach wald_o, fern bleibt stadt).
 - Wert in src/data/rts.ts MARSCH.folgtRadiusPx; Helfer freierBodenNah setzt sie
   auf freien Boden (nie in Wand/Wasser).
+
+## 3D-Zelte aus GLB 1:1 (Autor: "warum nicht die GLB uebernehmen?")
+- Neuer GLB->Sprite-Backofen (src/demo3d/glbPropBackofen.ts): laedt das fertige
+  Blender/GLB-Modell (GLTFLoader), dreht Z-hoch->Y-hoch, backt mit DERSELBEN
+  Kamera/Beleuchtung wie die Handbau-Props (macheBackofen). Kein Nachbau.
+- src/gfx/campGlbBitmaps.ts backt field_tent + command_pavilion NICHT-DESTRUKTIV
+  auf feldbau_field_tent / feldbau_command_pavilion (die Handbau-Grafik
+  feldbau_zelt bleibt als Fallback unangetastet). Boot-Kette: nach
+  registriereLagerBitmaps in BootScene.
+- spawneFeldbau bevorzugt fuer das 'zelt'-Gebaeude feldbau_field_tent, faellt
+  aber auf feldbau_zelt zurueck, wenn die GLB-Backung fehlt.
+- OFFEN/VERIFIKATION: die three.js-Backung laeuft NUR auf echter GPU - im
+  Headless-Screenshot-Harness backt three.js keine Props (0 feldbau_*-Texturen,
+  gilt auch fuer die bestehenden Handbau-Props + den Wasser-Shader). Darum sind
+  3/4-Drehung (drehen=-0.72*PI) und Skala NICHT im Harness abgenommen - muss der
+  Autor im echten Browser pruefen; Feinjustage per einer Zahl (drehen) moeglich.
+- Befehlspavillon ist gebacken (feldbau_command_pavilion), aber noch NICHT als
+  RTS_BAUTEN verdrahtet (rts.ts ist gerade Codex-Baustelle - Kollision vermeiden).

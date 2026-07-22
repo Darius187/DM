@@ -4996,7 +4996,11 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
   // Einfacher Feldbau-Sprite (R92): Wachturm (Gerüst), Lazarett (Rotkreuz-Zelt),
   // Zelt. Prozedural, y-sortiert. Lebenspunkte/Menü folgen im RTS-Bau-Ausbau.
   private spawneFeldbau(id: string, x: number, y: number): Phaser.GameObjects.Image {
-    const key = `feldbau_${id}`;
+    let key = `feldbau_${id}`;
+    // Autor "die neuen Zelte sind geiler": das ECHTE GLB-Feldzelt (1:1-Modell,
+    // campGlbBitmaps) bevorzugen, wenn es gebacken ist - sonst bleibt der
+    // handgebaute feldbau_zelt-Fallback stehen (nichts wird ungesehen zerstoert).
+    if (id === 'zelt' && this.textures.exists('feldbau_field_tent')) key = 'feldbau_field_tent';
     // R97: Wachturm/Zelte werden beim Boot als 3D-Sprites gebacken (lagerBitmaps).
     // Fehlt das (Bake-Fehler), gemalter Canvas-Fallback.
     if (!this.textures.exists(key)) this.textures.addCanvas(key, this.macheFeldbauBild(id))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
