@@ -2209,24 +2209,23 @@ nachziehen.
 ## 22.07.2026 - Lazarettzelt des Feldlagers
 
 - Das Lazarett wurde als eigenes, drehbares Blender- und GLB-Asset mit offener
-  Front, drei Patientenliegen und sichtbarer Behandlungsausstattung gebaut.
-- Die Front besitzt weder Mittelpfosten noch mittiges Spannseil. Zwei Kopfbaender
-  tragen den vorderen First oberhalb des 3,8 m breiten Durchgangs.
-- Nach dem direkten Vergleich mit dem Befehlspavillon wurde die erste, zu
-  aehnliche Form verworfen. Das Lazarett ist jetzt niedriger, laenger und
-  schmaler, besitzt stumpfe Pfosten, einen geraden Saum und keine Fahnen,
-  Zierspitzen oder gezackte Pavillonblende.
-- `MAT_MEDICAL_TENT_CANVAS` trennt die kuehle, graubeige Arbeitsleinwand auch
-  materiell vom waermeren Stoff des Befehlspavillons.
-- Sieben getrennte Stoffbahnen wurden mit Blender-Cloth ueber 72 bis 78 Frames
+  Front, zwei Patientenliegen und sichtbarer Behandlungsausstattung gebaut.
+- Zwei zu aehnliche Firstzelt-Entwuerfe wurden nach dem Vergleich mit der
+  Referenz verworfen. Die finale Konstruktion folgt dem gezeigten Zelttyp:
+  quadratischer Grundriss, hoher Mittelmast, vier radial gespannte Dachfelder,
+  vier Eckpfosten, fuenf Zierspitzen und umlaufende Zackenblende.
+- Der 5,1 m breite Eingang bleibt ohne Pfosten oder Spannseil. Der Mittelmast
+  steht innerhalb des Zelts zwischen den beiden Liegen.
+- `MAT_MEDICAL_TENT_CANVAS` bildet die kuehle, graubeige Arbeitsleinwand.
+- Neun getrennte Stoffbahnen wurden mit Blender-Cloth ueber 72 bis 78 Frames
   gesetzt und anschliessend statisch exportiert. Phaser benoetigt keine
   Cloth-Simulation.
-- Verbandtruhe, Arzneiregal, Waschplatz, Behandlungstisch, Flaschen, Schalen,
-  Kraeuter und Haengelaterne bleiben als sichtbare Silhouetten im Runtime-Modell.
+- Verbandtruhe, Waschplatz, Behandlungstisch, Flaschen, Schalen, Instrumente
+  und Haengelaterne bleiben als sichtbare Silhouetten im Runtime-Modell.
 - Das Kennzeichen ist ein blaues Schild mit ockerfarbenem mittelalterlichem
   Kreuz. Ein modernes Rotes Kreuz wurde bewusst nicht verwendet.
-- Endwert: 20 Meshes, 116.861 Dreiecke und 16 eingebettete Texturen. Der
-  Rueckimport bestaetigt Root, Materialien, sieben `CLOTH_PIN`-Gruppen,
+- Endwert: 21 Meshes, 119.155 Dreiecke und 15 eingebettete Texturen. Der
+  Rueckimport bestaetigt Root, Materialien, neun `CLOTH_PIN`-Gruppen,
   Modifier-Reihenfolge, fehlende Bodenplatte und fehlende aktive Cloth-Modifier.
 - Offen bleibt nur die vom Autor noch nicht benannte Weltposition. Spielcode und
   Weltplatzierung wurden nicht veraendert.

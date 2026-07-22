@@ -77,18 +77,17 @@ Solidify bereits als statische Geometrie ausgewertet; Phaser simuliert keinen St
 - Runtime: `medical_tent/medieval_medical_tent_3d_runtime.glb`
 - Manifest: `medical_tent/medieval_medical_tent_3d_runtime.json`
 - Root: `MEDICAL_TENT_ROTATION_PIVOT`
-- Groesse mit Abspannungen: 8,305 x 10,507 x 3,965 m
-- Laufzeit: 20 Meshes, 116.861 Dreiecke, 16 eingebettete Texturen
-- Inhalt: drei Patientenliegen, Behandlungstisch, offene Verbandtruhe,
-  Arzneiregal, Waschplatz, Flaschen, Schalen, Kraeuter und Haengelaterne
-- Eingang: 3,8 m nutzbare Breite; keine Mittelstuetze und kein Spannseil im Weg
-- Silhouette: niedriges, langgezogenes Firstzelt mit stumpfen Pfosten, geradem
-  Saum und hochgebundenen Eingangsklappen; keine Fahnen, Zierspitzen oder
-  gezackte Pavillonblende
-- Stoff: sieben getrennte, statisch gebackene Quad-Bahnen mit maximal 8 cm
+- Groesse mit Abspannungen: 9,205 x 8,807 x 5,480 m
+- Laufzeit: 21 Meshes, 119.155 Dreiecke, 15 eingebettete Texturen
+- Inhalt: zwei Patientenliegen, Behandlungstisch, offene Verbandtruhe,
+  Waschplatz, Flaschen, Schalen, Instrumente und Haengelaterne
+- Eingang: 5,1 m nutzbare Breite; kein Pfosten und kein Spannseil in der Front
+- Silhouette: quadratischer Zelttyp aus der Referenz mit hohem Mittelmast, vier
+  radial gespannten Dachfeldern, vier Eckpfosten, fuenf Zierspitzen, umlaufender
+  Zackenblende und hochgebundenen Eingangsklappen; kein Firstbalken
+- Stoff: neun getrennte, statisch gebackene Quad-Bahnen mit maximal 8 cm
   Bewegung, sichtbaren Naehten, Saeumen und Verstaerkungen
-- Material: eigenes `MAT_MEDICAL_TENT_CANVAS` in kuehlem, verwittertem Graubeige;
-  nicht das warme Pavillonmaterial
+- Material: eigenes `MAT_MEDICAL_TENT_CANVAS` in kuehlem, verwittertem Graubeige
 - Kennzeichen: blaues Schild mit ockerfarbenem mittelalterlichem Kreuz; bewusst
   kein modernes Rotes Kreuz
 - Vorschau: `medical_tent/medieval_medical_tent_3d_runtime_preview.png`

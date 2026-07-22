@@ -861,6 +861,19 @@ def scalloped_valance(y, x0, x1, z, outward, key="red_cloth"):
                            (xa, y + outward * .015, z - depth * .56)])
 
 
+def scalloped_valance_side(x, y0, y1, z, outward, key="red_cloth"):
+    sections = 13
+    depth = .46
+    for index in range(sections):
+        ya = y0 + (y1 - y0) * index / sections
+        yb = y0 + (y1 - y0) * (index + 1) / sections
+        mid = (ya + yb) / 2
+        BATCHES[key].quad([(x, yb, z), (x, ya, z),
+                           (x + outward * .015, ya, z - depth * .56),
+                           (x + outward * .025, mid, z - depth),
+                           (x + outward * .015, yb, z - depth * .56)])
+
+
 def build_command_pavilion():
     random.seed(1351)
     half_w, half_l, eave, ridge = 3.65, 3.05, 3.15, 4.70
@@ -1105,54 +1118,76 @@ def build_medical_lantern(center):
 
 def build_medical_tent():
     random.seed(1352)
-    half_w, half_l, eave, ridge = 3.25, 3.85, 2.55, 3.78
+    half_w, half_l, eave, apex = 3.55, 3.35, 2.70, 4.65
+    crown = .10
 
     for x in (-half_w, half_w):
         for y in (-half_l, half_l):
-            beam("wood_dark", (x, y, .02), (x, y, eave + .18), .105)
-    beam("wood_dark", (0, -half_l, ridge), (0, half_l, ridge), .13)
-    beam("wood_dark", (0, half_l, .02), (0, half_l, ridge + .05), .105)
-    beam("wood_dark", (-half_w + .10, -half_l, eave + .02),
-         (0, -half_l, ridge + .02), .080)
-    beam("wood_dark", (half_w - .10, -half_l, eave + .02),
-         (0, -half_l, ridge + .02), .080)
+            beam("wood_dark", (x, y, .02), (x, y, eave + .25), .11)
+            BATCHES["wood_mid"].cone((x, y, eave + .43), .12, .34, 8)
+    beam("wood_dark", (0, 0, .02), (0, 0, apex + .25), .13)
+    BATCHES["wood_mid"].cone((0, 0, apex + .48), .15, .46, 10)
 
-    for side in (-1, 1):
-        def roof_point(u, v, side=side):
-            segment_phase = (v * 4.0) % 1.0
-            sag = .038 * math.sin(segment_phase * math.pi) ** 2 * math.sin(u * math.pi)
-            fold = .014 * math.sin(v * math.tau * 8.0 + u * 2.4) * math.sin(u * math.pi)
-            x = side * (u * half_w + .010 * math.sin(v * math.tau * 6.0) * math.sin(u * math.pi))
-            return (x, -half_l + v * half_l * 2,
-                    ridge - u * (ridge - eave) - sag + fold)
+    def radial_roof_pin(ix, iy, nx, ny):
+        inner = edge_weight(iy)
+        radial_seams = max(edge_weight(ix), edge_weight(nx - ix))
+        outer_ties = [(round(nx * fraction), ny) for fraction in (0, .2, .4, .6, .8, 1)]
+        return max(inner, radial_seams, soft_anchor_weight(ix, iy, outer_ties))
 
-        def roof_pin(ix, iy, nx, ny):
-            weight = edge_weight(ix)
-            eave_ties = [(nx, round(ny * fraction)) for fraction in (0, .2, .4, .6, .8, 1)]
-            end_ties = [(round(nx * fraction), edge) for edge in (0, ny) for fraction in (.5, 1)]
-            return max(weight, soft_anchor_weight(ix, iy, eave_ties + end_ties))
+    for direction in (-1, 1):
+        def end_roof_point(u, v, direction=direction):
+            inner_x = -crown + u * crown * 2
+            outer_x = -half_w + u * half_w * 2
+            x = inner_x * (1 - v) + outer_x * v
+            y = direction * (crown + (half_l - crown) * v)
+            sag = .13 * math.sin(v * math.pi) * (.80 + .20 * math.sin(u * math.pi))
+            fold = .018 * math.sin(u * math.tau * 7 + v * 2.0) * math.sin(v * math.pi)
+            return (x, y, apex - (apex - eave) * v - sag + fold)
 
-        roof_panel = simulated_cloth_grid(
-            "medical_canvas", f"MED_ROOF_{side}", 48, 96, roof_point, roof_pin,
-            frames=76, gravity=-2.15, normal_hint=(side * (ridge - eave), 0, half_w))
-        for seam in (.25, .5, .75):
-            add_panel_column_strip(roof_panel, seam)
-        add_panel_column_strip(roof_panel, 1.0)
-        for tie_v in (0, .2, .4, .6, .8, 1):
-            add_panel_patch(roof_panel, 1.0, tie_v, 2)
+        panel = simulated_cloth_grid(
+            "medical_canvas", f"MED_CANOPY_END_{direction}", 60, 44,
+            end_roof_point, radial_roof_pin, frames=78, gravity=-2.10,
+            normal_hint=(0, direction * (apex - eave), half_l))
+        for seam in (.2, .4, .6, .8):
+            add_panel_column_strip(panel, seam)
+        add_panel_row_strip(panel, 1.0)
+        for tie_u in (0, .2, .4, .6, .8, 1):
+            add_panel_patch(panel, tie_u, 1.0, 2)
+
+    for direction in (-1, 1):
+        def side_roof_point(u, v, direction=direction):
+            inner_y = -crown + u * crown * 2
+            outer_y = -half_l + u * half_l * 2
+            x = direction * (crown + (half_w - crown) * v)
+            y = inner_y * (1 - v) + outer_y * v
+            sag = .13 * math.sin(v * math.pi) * (.80 + .20 * math.sin(u * math.pi))
+            fold = .018 * math.sin(u * math.tau * 7 + v * 2.4) * math.sin(v * math.pi)
+            return (x, y, apex - (apex - eave) * v - sag + fold)
+
+        panel = simulated_cloth_grid(
+            "medical_canvas", f"MED_CANOPY_SIDE_{direction}", 58, 46,
+            side_roof_point, radial_roof_pin, frames=78, gravity=-2.10,
+            normal_hint=(direction * (apex - eave), 0, half_w))
+        for seam in (.2, .4, .6, .8):
+            add_panel_column_strip(panel, seam)
+        add_panel_row_strip(panel, 1.0)
+        for tie_u in (0, .2, .4, .6, .8, 1):
+            add_panel_patch(panel, tie_u, 1.0, 2)
+
+    BATCHES["medical_canvas"].cone((0, 0, apex + .02), .16, .28, 12)
 
     def hanging_pin(ix, iy, nx, ny):
-        weight = edge_weight(ny - iy)
+        upper = edge_weight(ny - iy)
         lower_ties = [(round(nx * fraction), 0) for fraction in (0, .2, .4, .6, .8, 1)]
-        return max(weight, soft_anchor_weight(ix, iy, lower_ties))
+        return max(upper, soft_anchor_weight(ix, iy, lower_ties))
 
     def rear_point(u, v):
         return (-half_w + u * half_w * 2,
-                half_l + .032 * math.sin(u * math.tau * 10.0) * math.sin(v * math.pi),
+                half_l + .034 * math.sin(u * math.tau * 9.0) * math.sin(v * math.pi),
                 .04 + v * (eave - .04))
 
     rear_panel = simulated_cloth_grid(
-        "medical_canvas", "MED_REAR", 86, 36, rear_point, hanging_pin,
+        "medical_canvas", "MED_REAR", 88, 36, rear_point, hanging_pin,
         frames=78, gravity=-2.25, normal_hint=(0, 1, 0))
     add_panel_row_strip(rear_panel, 0.0)
     add_panel_row_strip(rear_panel, 1.0)
@@ -1161,12 +1196,12 @@ def build_medical_tent():
 
     for side in (-1, 1):
         def side_point(u, v, side=side):
-            wave = side * .032 * math.sin(u * math.tau * 9.0 + .4) * math.sin(v * math.pi)
+            wave = side * .034 * math.sin(u * math.tau * 8.0 + .4) * math.sin(v * math.pi)
             return (side * half_w + wave, -half_l + u * half_l * 2,
                     .04 + v * (eave - .04))
 
         side_panel = simulated_cloth_grid(
-            "medical_canvas", f"MED_SIDE_{side}", 96, 36, side_point, hanging_pin,
+            "medical_canvas", f"MED_SIDE_{side}", 84, 36, side_point, hanging_pin,
             frames=78, gravity=-2.25, normal_hint=(side, 0, 0))
         add_panel_row_strip(side_panel, 0.0)
         add_panel_row_strip(side_panel, 1.0)
@@ -1174,91 +1209,65 @@ def build_medical_tent():
             add_panel_column_strip(side_panel, seam)
 
         edge = side * half_w
-        inner = side * 1.95
         p00 = Vector((edge, -half_l - .025, .04))
-        p10 = Vector((inner, -half_l - .045, .04))
-        p11 = Vector((side * 2.35, -half_l - .14, 1.28))
+        p10 = Vector((side * 2.62, -half_l - .045, .04))
+        p11 = Vector((side * 3.08, -half_l - .14, 1.26))
         p01 = Vector((edge, -half_l - .025, eave))
 
         def wing_point(u, v, p00=p00, p10=p10, p11=p11, p01=p01):
             point = ((1 - u) * (1 - v) * p00 + u * (1 - v) * p10
                      + u * v * p11 + (1 - u) * v * p01)
-            point.y -= (.038 * math.sin(u * math.pi) * math.sin(v * math.pi)
+            point.y -= (.040 * math.sin(u * math.pi) * math.sin(v * math.pi)
                         + .014 * math.sin(u * math.tau * 5.0 + v) * math.sin(v * math.pi))
             return tuple(point)
 
         wing = simulated_cloth_grid(
-            "medical_canvas", f"MED_FRONT_WING_{side}", 30, 36, wing_point,
+            "medical_canvas", f"MED_FRONT_WING_{side}", 26, 38, wing_point,
             lambda ix, iy, nx, ny: edge_weight(ny - iy),
             frames=72, gravity=-2.05, normal_hint=(0, -1, 0))
         add_panel_row_strip(wing, 1.0)
         add_panel_column_strip(wing, 1.0)
-        add_panel_patch(wing, 1.0, 1.0, 2)
-        BATCHES["rope"].torus((side * 2.35, -half_l - .16, 1.28), .12, .025, 12, 4,
+        BATCHES["rope"].torus((side * 3.08, -half_l - .16, 1.26), .12, .025, 12, 4,
                                (math.pi / 2, 0, 0))
 
-    BATCHES["medical_canvas"].quad([
-        (-half_w, -half_l - .052, eave),
-        (half_w, -half_l - .052, eave),
-        (half_w, -half_l - .052, eave - .24),
-        (-half_w, -half_l - .052, eave - .24),
-    ])
-    BATCHES["medical_canvas"].quad([
-        (half_w, half_l + .052, eave),
-        (-half_w, half_l + .052, eave),
-        (-half_w, half_l + .052, eave - .20),
-        (half_w, half_l + .052, eave - .20),
-    ])
-    for x in (-2.20, -1.10, 0, 1.10, 2.20):
-        rope([(x, -half_l - .07, eave), (x, -half_l - .07, eave - .27)], .010)
+    scalloped_valance(-half_l - .040, -half_w, half_w, eave, -1, "medical_canvas")
+    scalloped_valance(half_l + .040, -half_w, half_w, eave, 1, "medical_canvas")
+    scalloped_valance_side(-half_w - .040, -half_l, half_l, eave, -1, "medical_canvas")
+    scalloped_valance_side(half_w + .040, -half_l, half_l, eave, 1, "medical_canvas")
 
     rope_layout = [
-        (-half_w, -half_l, eave + .12, (-4.10, -4.95, 0)),
-        (half_w, -half_l, eave + .12, (4.10, -4.95, 0)),
-        (-half_w, half_l, eave + .12, (-4.10, 4.95, 0)),
-        (half_w, half_l, eave + .12, (4.10, 4.95, 0)),
-        (0, half_l, ridge + .04, (0, 5.45, 0)),
+        (-half_w, -half_l, eave + .18, (-4.55, -4.35, 0)),
+        (half_w, -half_l, eave + .18, (4.55, -4.35, 0)),
+        (-half_w, half_l, eave + .18, (-4.55, 4.35, 0)),
+        (half_w, half_l, eave + .18, (4.55, 4.35, 0)),
     ]
     for x, y, z, anchor in rope_layout:
         rope([(x, y, z), anchor], .020)
         make_stake(anchor[0], anchor[1])
 
-    build_medical_cot((-1.92, .70, 0))
-    build_medical_cot((1.92, .70, 0))
-    build_medical_cot((0, 2.56, 0), math.pi / 2)
-    build_medical_table((0, -.72), (1.08, 1.62), .94, True)
-    build_stool((1.02, -1.55, 0))
+    build_medical_cot((-1.55, .10, 0))
+    build_medical_cot((1.55, .10, 0))
+    build_medical_table((0, 2.18), (1.45, .82), .92, True)
+    build_stool((0, -1.42, 0))
 
-    shelf_y = half_l - .48
-    for x in (-1.15, 1.15):
-        beam("wood_dark", (x, shelf_y, .04), (x, shelf_y, 1.82), .075)
-    for z in (.46, 1.05, 1.64):
-        BATCHES["wood_mid"].box((0, shelf_y, z), (2.45, .52, .09))
-    for index, x in enumerate((-.88, -.52, -.12, .32, .76)):
-        build_bottle((x, shelf_y - .14, 1.70), .78 + (index % 2) * .16)
-    for x in (-.78, -.30, .18, .66):
-        build_bowl((x, shelf_y - .17, 1.10), .14)
-    for x in (-.86, -.45, .48, .88):
-        for strand in range(3):
-            beam("herb", (x + strand * .025, shelf_y - .24, 1.58),
-                 (x + .06 * math.sin(strand), shelf_y - .29, 1.25 - strand * .03), .015)
+    build_open_medical_chest((-2.70, -1.60, 0))
+    build_medical_table((-2.52, -.22), (.88, .72), .66, False)
+    build_bowl((-2.52, -.22, .74), .22)
+    BATCHES["ceramic"].cylinder((-2.26, -.20, .84), .055, .22, 10)
+    build_barrel((2.78, -1.72, 0), .38, .80)
+    build_barrel((2.28, -1.42, 0), .28, .58)
 
-    build_open_medical_chest((-2.55, -2.28, 0))
-    build_barrel((2.62, -2.32, 0), .38, .80)
-    build_barrel((2.06, -2.63, 0), .29, .60)
-    build_medical_table((2.34, -.72), (.82, .72), .72, False)
-    build_bowl((2.34, -.72, .80), .27)
-    build_bowl((-1.25, -.72, 1.05), .18)
-    BATCHES["ceramic"].cylinder((-1.25, -.72, 1.18), .055, .22, 10)
-    for x in (-.26, .05, .32):
-        build_bottle((x, -.86, 1.02), .72)
+    for index, x in enumerate((-.48, -.18, .15, .48)):
+        build_bottle((x, 2.08, .99), .72 + (index % 2) * .15)
+    for x in (-.58, .62):
+        build_bowl((x, 2.02, 1.00), .16)
     for index in range(3):
-        beam("iron", (-.33 + index * .18, -.52, 1.04),
-             (-.20 + index * .18, -.22, 1.05), .014)
+        beam("iron", (-.26 + index * .19, 1.93, .99),
+             (-.12 + index * .19, 2.18, 1.00), .014)
 
-    build_medical_lantern((0, .22, 1.82))
+    build_medical_lantern((.78, 1.20, 2.18))
 
-    shield_x, shield_y, shield_z = half_w + .052, .82, 1.52
+    shield_x, shield_y, shield_z = half_w + .052, .78, 1.58
     BATCHES["heraldry_blue"].quad([
         (shield_x, shield_y - .45, shield_z + .55),
         (shield_x, shield_y - .38, shield_z - .22),
@@ -1273,28 +1282,29 @@ def build_medical_tent():
         "label": "Lazarettzelt des Feldlagers",
         "content": {
             "open_front": True,
-            "patient_cots": 3,
+            "patient_cots": 2,
             "treatment_table": True,
             "open_bandage_chest": True,
-            "medicine_shelf": True,
+            "medicine_table": True,
             "wash_station": True,
             "hanging_lantern": True,
             "period_cross_device": True,
-            "guy_ropes": 5,
+            "guy_ropes": 4,
             "center_entry_obstructions": 0,
-            "plain_ridge_tent": True,
-            "decorative_finials": 0,
-            "scalloped_valance": False,
+            "central_peak_canopy": True,
+            "central_support_pole": True,
+            "decorative_finials": 5,
+            "scalloped_valance": True,
             "cloth_simulation": "baked_static_mesh",
             "cloth_material": "MAT_MEDICAL_TENT_CANVAS",
-            "cloth_panels": 7,
+            "cloth_panels": 9,
         },
         "collision": {
             "shape": "box",
-            "size": [6.6, 7.8],
-            "center": [0, .10],
+            "size": [7.2, 6.8],
+            "center": [0, .05],
             "front_open": True,
-            "walkable_entry_width_m": 3.8,
+            "walkable_entry_width_m": 5.1,
         },
     }
 
