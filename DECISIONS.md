@@ -2717,3 +2717,9 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Auto-Wasser; recarveWasser respektiert die Maske). NUR gemalte Kacheln = Wasser
   mit Effekten. Browser-verifiziert: Kachel-Wasser sichtbar, Shader versteckt,
   nass auf Wasser 0.5 / auf Gras 0, malen 1->27, radieren 27->1, Maske gespeichert.
+- 2026-07-22: Kochstelle, Ordensbanner, Feldschrein, Feldschmiede, Lastwagen,
+  Pferdekoppel, Vorratspavillon, Ruhezelt, Lagergut, Brunnen, Brennholz und
+  Zimmermannsplatz bleiben zwoelf getrennte, drehbare GLB-Assets ohne
+  Bodenplatte. JSON-Manifeste sind fuer Bounds, Kollision und Interaktionsanker
+  verbindlich. Stoff wird statisch gebacken; Claude Code verdrahtet die Assets
+  einzeln im RTS-Baumenue und erzeugt kein Sammelmodell.

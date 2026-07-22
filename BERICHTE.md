@@ -2229,3 +2229,30 @@ nachziehen.
   Modifier-Reihenfolge, fehlende Bodenplatte und fehlende aktive Cloth-Modifier.
 - Offen bleibt nur die vom Autor noch nicht benannte Weltposition. Spielcode und
   Weltplatzierung wurden nicht veraendert.
+
+## 22.07.2026 - Zwoelf weitere Lager- und RTS-Bauassets
+
+- Nacheinander gebaut wurden Kochstelle, Ordensbanner, Feldschrein,
+  Feldschmiede, Lastwagen, Pferdekoppel, Vorratspavillon, Ruhezelt,
+  Lagergutstapel, Brunnen, Brennholzstapel und Zimmermanns-Arbeitsplatz.
+- Jedes Motiv ist ein eigenes GLB mit eigenem Root-Pivot, JSON-Manifest,
+  Vorschaubild und eingebetteten Farbtexturen. Kein Asset besitzt eine globale
+  Boden- oder Erdplatte; die Frontachse ist immer `-Y` und die Drehung 0..360 Grad.
+- Die Koppel hat einen 4,30 m breiten offenen Eingang und fuenf Pferde-Slots.
+  Der Wagen hat vier tragende Raeder und eine freie Deichsel. Der Holzstapel
+  besteht aus Rindenkoerpern mit separaten sichtbaren Schnittenden.
+- Feldschmiede, Ordensbanner, Vorratspavillon und Ruhezelt verwenden getrennte,
+  in Blender berechnete Stoffbahnen. Die Runtime-Dateien enthalten nur statisch
+  gebackene Geometrie, keine aktive Cloth-Physik.
+- Vorratspavillon und Ruhezelt wurden nicht aus Befehlspavillon oder Lazarett
+  umgefaerbt. Sie haben eigene Grundrisse, Dachlinien, Eingangsformen und Inhalt.
+- Die zwoelf Assets ergeben zusammen 150.718 Dreiecke, werden aber einzeln
+  geladen und platziert. Shader- und Physiklaufzeit bleiben niedrig, weil jedes
+  Asset nach Material gebatcht ist und Stoff nur statisch vorliegt.
+- Alle zwoelf GLBs wurden nach dem Export in Blender rueckimportiert. Root,
+  Mesh- und Dreieckzahl, eingebettete Texturen, fehlende Bodenplatten und
+  fehlende aktive Cloth-Modifier stimmen in jedem Audit.
+- Die Integration in das RTS-Baumenue bleibt bei Claude Code. Die verbindlichen
+  Pfade, Bounds, Kollisionen und Interaktionsanker stehen in
+  `assets/props/camp/README.md` und den jeweiligen JSON-Manifesten.
+- Verifiziert: TypeScript fehlerfrei und 435 Vitest-Tests gruen.

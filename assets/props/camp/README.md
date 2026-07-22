@@ -96,6 +96,38 @@ Solidify bereits als statische Geometrie ausgewertet; Phaser simuliert keinen St
   `C:/Obsidian/DM/camp-props/medical_tent/medieval_medical_tent_3d_runtime.blend`
 - Keine Bodenplatte; die Weltposition bleibt bis zur Vorgabe des Autors offen
 
+## 5 bis 16. Weitere getrennte Lager-Assets
+
+Alle folgenden Dateien sind eigenstaendige Props. Claude Code soll sie einzeln
+laden und einzeln in das RTS-Baumenue eintragen. Sie duerfen weder miteinander
+noch mit einem Zelt zu einem Sammel-GLB verschmolzen werden.
+
+| Asset | Runtime / Root | Groesse m | Meshes / Dreiecke | Interaktionsanker |
+| --- | --- | --- | --- | --- |
+| Kochstelle | `cooking_fire/medieval_camp_cooking_fire_3d_runtime.glb` / `COOKING_FIRE_ROTATION_PIVOT` | 3,234 x 1,987 x 2,854 | 8 / 2.004 | `fire_fx_anchor`, `cooking_pot` |
+| Ordensbanner | `order_banner/medieval_order_banner_3d_runtime.glb` / `ORDER_BANNER_ROTATION_PIVOT` | 3,180 x 1,807 x 5,180 | 8 / 17.466 | keine |
+| Feldschrein | `field_shrine/medieval_field_shrine_3d_runtime.glb` / `FIELD_SHRINE_ROTATION_PIVOT` | 2,890 x 2,616 x 4,060 | 6 / 1.878 | `prayer_anchor`, zwei Kerzenanker |
+| Feldschmiede | `field_forge/medieval_field_forge_3d_runtime.glb` / `FIELD_FORGE_ROTATION_PIVOT` | 5,887 x 4,459 x 3,240 | 12 / 16.038 | `forge_fire_fx`, `repair_anchor` |
+| Lastwagen | `supply_wagon/medieval_supply_wagon_3d_runtime.glb` / `SUPPLY_WAGON_ROTATION_PIVOT` | 3,920 x 5,345 x 2,080 | 6 / 6.988 | `hitch_anchor`, `cargo_anchor` |
+| Pferdekoppel | `horse_corral/medieval_horse_corral_3d_runtime.glb` / `HORSE_CORRAL_ROTATION_PIVOT` | 7,604 x 5,404 x 1,610 | 4 / 4.476 | `horse_parking_line` mit 5 Slots |
+| Vorratspavillon | `supply_tent/medieval_supply_tent_3d_runtime.glb` / `SUPPLY_TENT_ROTATION_PIVOT` | 8,105 x 7,207 x 4,550 | 16 / 49.960 | `supply_pickup_anchor` |
+| Ruhezelt | `rest_tent/medieval_rest_tent_3d_runtime.glb` / `REST_TENT_ROTATION_PIVOT` | 6,145 x 5,187 x 3,190 | 16 / 32.968 | `rest_anchor` |
+| Lagergut | `camp_supplies/medieval_camp_supplies_3d_runtime.glb` / `CAMP_SUPPLIES_ROTATION_PIVOT` | 4,915 x 3,057 x 1,441 | 7 / 6.624 | `cargo_pickup_anchor` |
+| Brunnen | `camp_well/medieval_camp_well_3d_runtime.glb` / `CAMP_WELL_ROTATION_PIVOT` | 4,226 x 3,195 x 3,537 | 5 / 4.508 | `well_crank_anchor`, `water_bucket_anchor` |
+| Brennholz | `firewood_stack/medieval_firewood_stack_3d_runtime.glb` / `FIREWOOD_STACK_ROTATION_PIVOT` | 4,349 x 2,468 x 2,286 | 2 / 6.192 | keine |
+| Zimmermannsplatz | `carpenter_worksite/medieval_carpenter_worksite_3d_runtime.glb` / `CARPENTER_WORKSITE_ROTATION_PIVOT` | 5,744 x 4,094 x 2,091 | 6 / 1.616 | `carpentry_work_anchor`, `timber_cut_anchor` |
+
+Die JSON-Datei neben jedem GLB ist verbindlich fuer Bounds, Kollision und
+Interaktionspunkte. Feldschmiede, Banner, Vorratspavillon und Ruhezelt enthalten
+statisch gebackene Stoffbahnen. Es gibt in Phaser keine aktive Cloth-Simulation.
+Vorratspavillon und Ruhezelt sind absichtlich unterschiedliche Zelttypen; keines
+ist eine skalierte oder umgefaerbte Kopie des Befehlspavillons oder Lazaretts.
+
+Die Koppel hat vorne eine 4,30 m breite freie Oeffnung und fuenf Parkplaetze.
+Beim Wagen bleibt die Deichsel frei. Die Brennholzstaemme besitzen getrennte
+Rindenkoerper und sichtbare Schnittenden. Brunnen, Holzstapel, Koppel und
+Zimmermannsplatz enthalten keine versteckte Boden- oder Erdplatte.
+
 ## Reproduzierbarer Bau
 
 ```powershell
@@ -103,6 +135,18 @@ blender --background --python tools/blender/build_medieval_camp_assets.py -- fle
 blender --background --python tools/blender/build_medieval_camp_assets.py -- field_tent
 blender --background --python tools/blender/build_medieval_camp_assets.py -- command_pavilion
 blender --background --python tools/blender/build_medieval_camp_assets.py -- medical_tent
+blender --background --python tools/blender/build_medieval_camp_assets.py -- cooking_fire
+blender --background --python tools/blender/build_medieval_camp_assets.py -- order_banner
+blender --background --python tools/blender/build_medieval_camp_assets.py -- field_shrine
+blender --background --python tools/blender/build_medieval_camp_assets.py -- field_forge
+blender --background --python tools/blender/build_medieval_camp_assets.py -- supply_wagon
+blender --background --python tools/blender/build_medieval_camp_assets.py -- horse_corral
+blender --background --python tools/blender/build_medieval_camp_assets.py -- supply_tent
+blender --background --python tools/blender/build_medieval_camp_assets.py -- rest_tent
+blender --background --python tools/blender/build_medieval_camp_assets.py -- camp_supplies
+blender --background --python tools/blender/build_medieval_camp_assets.py -- camp_well
+blender --background --python tools/blender/build_medieval_camp_assets.py -- firewood_stack
+blender --background --python tools/blender/build_medieval_camp_assets.py -- carpenter_worksite
 ```
 
 Jedes GLB wird danach mit `tools/blender/audit_medieval_camp_asset.py` wieder in
