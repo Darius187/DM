@@ -4191,12 +4191,15 @@ export class WorldScene extends CombatScene {
       // den Tooltip. Fehlt das Icon, bleibt der bisherige Glyph + Beschriftung.
       const iconDa = !!opts.icon && this.textures.exists(opts.icon);
       if (iconDa) {
-        const src = this.textures.get(opts.icon!).getSourceImage() as { width: number; height: number };
-        const maxB = zw - F(8), maxH = zh - F(6);
-        const sc = Math.min(maxB / (src.width || 1), maxH / (src.height || 1));
-        const img = this.add.image(x + (zw - F(2)) / 2, y + zh / 2, opts.icon!).setOrigin(0.5).setScale(sc);
-        if (opts.aus) img.setAlpha(0.4);
+        // RTS-Slot: das Icon FUELLT den Knopf (quadratisch, deckend) - so wie in
+        // AoE/Warcraft. Vollflaechige Bilder (mit eigenem Hintergrund) sehen so
+        // scharf und "echt" aus statt als kleiner Ausschnitt mit Weissrand.
+        const box = Math.min(zw - F(3), zh - F(2));
+        const img = this.add.image(x + (zw - F(2)) / 2, y + zh / 2, opts.icon!).setOrigin(0.5).setDisplaySize(box, box);
+        if (opts.aus) img.setAlpha(0.42);
         c.add(img);
+        // feiner Innenrahmen ums Icon (Slot-Optik)
+        c.add(this.add.rectangle(x + (zw - F(2)) / 2, y + zh / 2, box, box).setStrokeStyle(1, opts.an ? 0xc9a227 : 0x5a4a2e).setFillStyle());
       } else {
         c.add(this.add.text(x + (zw - F(2)) / 2, y + F(3), symbol, { fontFamily: 'serif', fontSize: `${F(14)}px`, color: opts.aus ? '#4a4238' : opts.an ? '#f0d060' : '#d8cfb8' }).setOrigin(0.5, 0));
         c.add(this.add.text(x + (zw - F(2)) / 2, y + F(22), lbl, { fontFamily: 'serif', fontSize: `${F(9)}px`, color: opts.aus ? '#4a4238' : opts.an ? '#c9a227' : '#a89878' }).setOrigin(0.5, 0));
