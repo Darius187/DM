@@ -157,6 +157,14 @@ export const FELDZUG = {
   // groesser der Sicherheits-Aufschlag auf die geschaetzte Verteidigung (max bei
   // Zuversicht 0). 0,6 = bis zu +60% Aufschlag, wenn die Sichtung ganz verblasst.
   wissenAufschlag: 0.6,
+  // GEORDNETER FEIND-RUECKZUG (Autor: "die Feinde sollen nicht verstreut in der
+  // Gegend rumrennen - entweder zum naechsten Lager zurueck, oder auf eine bereits
+  // besetzte Nachbarkarte, und wenn beides fehlt: kaempfen bis sie fallen").
+  // Greift NUR, wenn der Feind gerade NICHT mit dem Helden im Gefecht ist (Held
+  // ausser Aggro-Reichweite) - sonst kaempft die normale KI ganz normal weiter.
+  rueckzugTickS: 0.5,          // Takt der Rueckzugs-Entscheidung (nicht jede Frame)
+  rueckzugLagerSammelPx: 130,  // so nah am Bindealtar gilt "am Lager" (steht dann)
+  rueckzugKanteWegPx: 96,      // an der Kante Richtung besetzter Nachbarkarte: abziehen
 } as const;
 
 // FEINDLAGER-MITTELWEG (07-FEIND-KI TEIL 3, M1 - Autor bestaetigt): das Lager

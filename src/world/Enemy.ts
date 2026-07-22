@@ -251,6 +251,10 @@ export class Enemy {
   kills = 0;
   soeldner = false;   // R143 (2.3): Moral-Malus; flieht er zur Kante, desertiert er
   feldzugTrupp = false;   // F2: Teil einer Feindzug-Angriffswelle (Live-Aufloesung)
+  // Geordneter Rueckzug (Autor): true, solange das jagdZiel ein RUECKZUGS-Ziel ist
+  // (zum Lager / zur besetzten Nachbarkarte). Wird beim Wieder-Gefecht geloescht,
+  // damit die normale Kampf-KI uebernimmt. Nur der Rueckzugs-Tick setzt/loescht es.
+  rueckzugAktiv = false;
   // MASSENSCHLACHT: Einheit einer grossen Schlacht - beim Tod KEIN Einzel-Loot,
   // leichter Tod (keine 8 Gore-Tweens), gedrosselter Todes-Sound. Sonst kippen
   // hunderte gleichzeitige Tode die FPS + den Sound (Autor-Befund Stresstest).

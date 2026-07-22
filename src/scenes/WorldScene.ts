@@ -111,6 +111,7 @@ import { getSettings, saveSettings } from '../logic/settings';
 import { seededRng, pick, ri } from '../logic/rng';
 import { respawnZiel } from '../logic/respawn';
 import { moralWert, fluchtEntscheidung, istEingekesselt, type MoralLage } from '../logic/moral';
+import { feindRueckzugModus } from '../logic/feindRueckzug';
 import { konterFaktor } from '../data/kampfarten';
 import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, garnisonVon, garnisonKampfkraft, marschVon, storniereMarsch, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, einheitMaxHp, heerObergrenze, pruefeRekrutierung, desertiere, type Armee, type ArmeeEinheit } from '../logic/armee';
 import { boteNeu, schickeBote, tickBote, type Bote } from '../logic/bote';
@@ -9621,6 +9622,65 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     }
   }
 
+  // GEORDNETER FEIND-RUECKZUG (Autor: "die Feinde sollen nicht verstreut in der
+  // Gegend rumrennen"): ein Feind, der GERADE NICHT im Gefecht mit dem Helden
+  // steht (Held ausser Aggro), laeuft nicht wirr umher, sondern
+  //   1. zum naechsten Feindlager (Bindealtar) auf DIESER Karte, oder
+  //   2. auf eine bereits BESETZTE Nachbarkarte (zieht dort ab), oder
+  //   3. wenn beides fehlt: er jagt den Helden und kaempft, bis er faellt.
+  // Greift nur auf Oberweltkarten und NICHT waehrend Einfall/Sturm (dort steuert
+  // die Chaos-/Fall-Schicht). Garnison/Arbeiter/Belagerer haben eigene Logik.
+  private feindRueckzugT = 0;
+  private updateFeindRueckzug(dt: number): void {
+    this.feindRueckzugT -= dt;
+    if (this.feindRueckzugT > 0) return;
+    this.feindRueckzugT = FELDZUG.rueckzugTickS;
+    // Nur Oberwelt, nicht im Dungeon/Innenraum, nicht bei Einfall/Sturm/Tod.
+    if (this.area.innen || this.area.dark || this.playerDead) return;
+    if (this.einfallAktiv || this.flags.fallSturm) return;
+    if (!FUERSTENTUM.some((g) => g.id === this.area.id)) return;
+    const altar = this.enemies.find((e) => e.name === 'Bindealtar' && e.hp > 0);
+    // Eine bereits besetzte Nachbarkarte als Rueckzugsraum (erste passende).
+    const besetzterNachbar = altar ? null
+      : this.kartenNachbarn(this.area.id).find((id) => gebietsStatus(this.lage, id) === 'besetzt') ?? null;
+    const W = this.area.w * TILE, H = this.area.h * TILE, rand = FELDZUG.rueckzugKanteWegPx;
+    for (const e of [...this.enemies]) {
+      if (e.team === 'spieler' || e.hp <= 0) continue;
+      // Sonderrollen mit eigener KI in Ruhe lassen.
+      if (e.boss || e.passiv || e.schlaeft || e.name === 'Bindealtar') continue;
+      if (e.lagerRolle || e.belagerungsZiel) continue;
+      if (e.feldzugTrupp) continue;   // Angriffswelle marschiert eigenstaendig
+      if (e.fokusZiel) continue;      // von der RTS-Schicht auf ein Ziel gehetzt
+      // Fremde jagdZiele (Chaos-Beute, Marsch) nie ueberschreiben - nur eigene.
+      if (e.jagdZiel && !e.rueckzugAktiv) continue;
+      const dH = Math.hypot(this.px - e.x, this.py - e.y);
+      const modus = feindRueckzugModus(dH < e.aggro, !!altar, besetzterNachbar);
+      if (modus === 'gefecht') {   // Held in Reichweite -> normale Kampf-KI uebernimmt
+        if (e.rueckzugAktiv) { e.jagdZiel = null; e.rueckzugAktiv = false; }
+        continue;
+      }
+      // --- disengaged: geordnet zurueck ---
+      if (modus === 'lager' && altar) {   // 1. zum Lager sammeln
+        const dL = Math.hypot(altar.x - e.x, altar.y - e.y);
+        e.jagdZiel = dL < FELDZUG.rueckzugLagerSammelPx ? null : { x: altar.x, y: altar.y };
+        e.rueckzugAktiv = true;
+      } else if (modus === 'nachbar' && besetzterNachbar) {   // 2. auf besetzte Nachbarkarte abziehen
+        const anKante = e.x < rand || e.x > W - rand || e.y < rand || e.y > H - rand;
+        if (anKante) {                 // an der Kante: zieht vom Feld (abstrakt zurueck)
+          e.sprite?.destroy();
+          this.enemies = this.enemies.filter((o) => o !== e);
+          continue;
+        }
+        const ziel = this.kantenPunkt(this.area, besetzterNachbar, false);
+        e.jagdZiel = { x: ziel.x, y: ziel.y };
+        e.rueckzugAktiv = true;
+      } else {                         // 3. kein Rueckzug -> kaempft bis zum Fall
+        e.aggro = Math.max(e.aggro, 5000);   // sucht den Helden ueber die ganze Karte
+        if (e.rueckzugAktiv) { e.jagdZiel = null; e.rueckzugAktiv = false; }
+      }
+    }
+  }
+
   // Der Bindealtar ist gefallen: die Besatzung des Abschnitts ZERFAELLT
   // (Dok 06 A3 - der Comeback-Mechanismus des Schwaecheren).
   private pruefeAltarSturz(): void {
@@ -9816,6 +9876,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     this.pruefeAltarSturz();   // F3: Altar gefallen -> Besatzung zerfaellt
     this.updateFeindlagerWachen();   // M2: Tor-Waechter besetzen aktiv + fangen ab
     this.updateFeindlagerArbeiter(dt);   // F3/M1: sichtbare untote Zimmerleute am Bau
+    this.updateFeindRueckzug(dt);   // Autor: kein wirres Rumrennen - Lager/besetzte Karte/Todeskampf
     // F2a (A10): die durch getoetete Kloster-Spaeher erkaufte Blindheit klingt ab.
     if (this.spaeherBlindT > 0) this.spaeherBlindT = Math.max(0, this.spaeherBlindT - dt);
     const evs = tickFeindzug(this.feindzug, dt, {

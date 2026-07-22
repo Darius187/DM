@@ -2723,3 +2723,19 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Bodenplatte. JSON-Manifeste sind fuer Bounds, Kollision und Interaktionsanker
   verbindlich. Stoff wird statisch gebacken; Claude Code verdrahtet die Assets
   einzeln im RTS-Baumenue und erzeugt kein Sammelmodell.
+
+## Geordneter Feind-Rueckzug (Autor: "kein wirres Rumrennen")
+- Feinde, die GERADE NICHT im Gefecht mit dem Helden stehen (Held ausser Aggro),
+  laufen nicht mehr verstreut umher, sondern nach fester Prioritaet:
+  1. zum naechsten Feindlager (Bindealtar) auf DERSELBEN Karte sammeln,
+  2. sonst auf eine bereits BESETZTE Nachbarkarte abziehen (an der Kante ziehen
+     sie vom Feld - abstrakter Rueckzug ins gehaltene Gebiet),
+  3. sonst (kein Lager, kein Rueckzugsraum): sie jagen den Helden ueber die
+     ganze Karte und kaempfen, bis sie fallen (aggro 5000).
+- Reine Entscheidung in src/logic/feindRueckzug.ts (feindRueckzugModus, getestet),
+  Verhalten in WorldScene.updateFeindRueckzug (Tick FELDZUG.rueckzugTickS=0.5s).
+- Greift NUR nach dem Krypta-Boss (updateFeindzug), nur auf Oberweltkarten und
+  NICHT waehrend Einfall/Sturm (dort steuert Chaos-/Fall-Schicht). Garnison,
+  Arbeiter, Belagerer, Feldzug-Wellen behalten ihre eigene KI.
+- Naeherte sich der Held wieder an, uebernimmt sofort die normale Kampf-KI
+  (rueckzugAktiv loescht das Rueckzugs-jagdZiel). Werte in src/data/welt.ts FELDZUG.
