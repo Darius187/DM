@@ -970,6 +970,19 @@ def add_rope_coil(name, location, radius=0.34, turns=6, rotation=(0, 0, 0)):
                   major_segments=22, minor_segments=6)
 
 
+def validate_clear_footprints(footprints, clearance=0.04):
+    """Fail the build when independently placed props overlap in plan view."""
+    for index, (name_a, x_a, y_a, radius_a) in enumerate(footprints):
+        for name_b, x_b, y_b, radius_b in footprints[index + 1:]:
+            distance = math.hypot(x_b - x_a, y_b - y_a)
+            required = radius_a + radius_b + clearance
+            if distance < required:
+                raise RuntimeError(
+                    f"Unsupported camp-supplies layout: {name_a} intersects {name_b} "
+                    f"({distance:.3f} m < {required:.3f} m)"
+                )
+
+
 def add_metal_blade(name, points, thickness=0.018):
     verts = [(x, y - thickness * 0.5, z) for x, y, z in points]
     verts += [(x, y + thickness * 0.5, z) for x, y, z in reversed(points)]
@@ -1723,38 +1736,60 @@ def build_rest_tent():
 
 
 def build_camp_supplies():
-    # A composed stores cluster rather than a copied stack: each container has a distinct use and scale.
-    add_crate("SUPPLIES_LARGE_LIDDED_CHEST", (-0.72, 0.56, 0.02), (1.08, 0.82, 0.72), False, 0.0)
-    add_crate("SUPPLIES_OPEN_GRAIN_CRATE", (0.60, 0.74, 0.02), (0.82, 0.66, 0.56), True, 0.0)
-    add_crate("SUPPLIES_SMALL_IRONBOUND_BOX", (-0.92, -0.43, 0.03), (0.66, 0.52, 0.46), False, 0.0)
-    add_crate("SUPPLIES_LOW_OPEN_BOX", (0.22, -0.77, 0.02), (0.86, 0.62, 0.38), True, 0.0)
-    add_barrel("SUPPLIES_TALL_BARREL", (1.24, 0.02, 0.02), 0.38, 0.92, 0.0, False)
-    add_barrel("SUPPLIES_OPEN_MEAL_BARREL", (-1.40, 0.17, 0.02), 0.33, 0.70, 0.0, True)
-    add_barrel("SUPPLIES_SMALL_CASK", (0.92, -0.83, 0.02), 0.28, 0.61, 0.0, False)
+    # Every ground-standing container owns a clearance footprint. The build fails if two overlap.
+    footprints = [
+        ("large_lidded_chest", -0.70, 0.55, 0.68),
+        ("open_grain_crate", 0.62, 0.66, 0.53),
+        ("small_ironbound_box", -1.15, -0.62, 0.42),
+        ("low_open_box", 0.00, -0.72, 0.53),
+        ("tall_barrel", 1.48, -0.08, 0.38),
+        ("open_meal_barrel", -1.70, 0.12, 0.33),
+        ("small_cask", 0.95, -1.02, 0.28),
+        ("sack_a", 0.05, 1.45, 0.27),
+        ("sack_b", 0.75, 1.55, 0.24),
+        ("sack_c", -0.30, -1.52, 0.23),
+        ("sack_d", 1.60, -0.72, 0.21),
+        ("sack_e", -1.55, -1.18, 0.20),
+        ("large_wicker_basket", -0.78, 1.70, 0.32),
+        ("small_wicker_basket", -2.25, -0.85, 0.27),
+        ("hemp_rope_coil", 0.40, -1.78, 0.32),
+        ("clay_jar_tall", 1.70, 0.78, 0.18),
+        ("clay_jug", 1.35, 1.15, 0.15),
+    ]
+    validate_clear_footprints(footprints)
+
+    add_crate("SUPPLIES_LARGE_LIDDED_CHEST", (-0.70, 0.55, 0.02), (1.08, 0.82, 0.72), False, 0.0)
+    add_crate("SUPPLIES_OPEN_GRAIN_CRATE", (0.62, 0.66, 0.02), (0.82, 0.66, 0.56), True, 0.0)
+    add_crate("SUPPLIES_SMALL_IRONBOUND_BOX", (-1.15, -0.62, 0.02), (0.66, 0.52, 0.46), False, 0.0)
+    add_crate("SUPPLIES_LOW_OPEN_BOX", (0.00, -0.72, 0.02), (0.86, 0.62, 0.38), True, 0.0)
+    add_barrel("SUPPLIES_TALL_BARREL", (1.48, -0.08, 0.02), 0.38, 0.92, 0.0, False)
+    add_barrel("SUPPLIES_OPEN_MEAL_BARREL", (-1.70, 0.12, 0.02), 0.33, 0.70, 0.0, True)
+    add_barrel("SUPPLIES_SMALL_CASK", (0.95, -1.02, 0.02), 0.28, 0.61, 0.0, False)
 
     sacks = [
-        ("A", (-0.15, 0.19, 0.49), 0.98, 0.10),
-        ("B", (0.33, 0.20, 0.43), 0.82, -0.18),
-        ("C", (-0.44, -0.37, 0.40), 0.76, 0.24),
-        ("D", (1.42, -0.63, 0.38), 0.72, -0.12),
-        ("E", (-1.48, -0.69, 0.34), 0.66, 0.30),
+        ("A", (0.05, 1.45, 0.394), 0.78, 0.10),
+        ("B", (0.75, 1.55, 0.356), 0.70, -0.18),
+        ("C", (-0.30, -1.52, 0.346), 0.68, 0.24),
+        ("D", (1.60, -0.72, 0.318), 0.62, -0.12),
+        ("E", (-1.55, -1.18, 0.308), 0.60, 0.30),
     ]
     for suffix, location, scale, rotation in sacks:
         add_sack(f"SUPPLIES_TIED_SACK_{suffix}", location, scale, rotation)
 
-    add_wicker_basket("SUPPLIES_WICKER_BASKET_LARGE", (-0.10, 1.16, 0.02), 0.36, 0.48, 20)
-    add_wicker_basket("SUPPLIES_WICKER_BASKET_SMALL", (-1.54, -1.02, 0.02), 0.27, 0.34, 16)
-    add_rope_coil("SUPPLIES_HEMP_ROPE_COIL", (0.64, -1.16, 0.04), 0.34, 6)
-    add_open_vessel("SUPPLIES_CLAY_JAR_TALL", (1.54, 0.82, 0.02), 0.17, 0.38, CERAMIC, 24)
-    add_open_vessel("SUPPLIES_CLAY_JUG", (1.16, 0.97, 0.02), 0.14, 0.30, CERAMIC, 22)
-    add_open_vessel("SUPPLIES_CLAY_BOWL", (-0.02, -0.72, 0.40), 0.18, 0.11, CERAMIC, 24)
+    add_wicker_basket("SUPPLIES_WICKER_BASKET_LARGE", (-0.78, 1.70, 0.02), 0.32, 0.44, 20)
+    add_wicker_basket("SUPPLIES_WICKER_BASKET_SMALL", (-2.25, -0.85, 0.02), 0.27, 0.34, 16)
+    add_rope_coil("SUPPLIES_HEMP_ROPE_COIL", (0.40, -1.78, 0.025), 0.32, 6)
+    add_open_vessel("SUPPLIES_CLAY_JAR_TALL", (1.70, 0.78, 0.02), 0.17, 0.38, CERAMIC, 24)
+    add_open_vessel("SUPPLIES_CLAY_JUG", (1.35, 1.15, 0.02), 0.14, 0.30, CERAMIC, 22)
+    # The bowl is deliberately supported by the closed ironbound box, not floating over an open crate.
+    add_open_vessel("SUPPLIES_CLAY_BOWL", (-1.15, -0.62, 0.555), 0.18, 0.11, CERAMIC, 24)
     add_cloth_surface("SUPPLIES_FOLDED_WOOL_CLOTH",
-                      [(-0.93, 0.13, 0.78), (-0.34, 0.13, 0.78),
-                       (-0.34, 0.67, 0.78), (-0.93, 0.67, 0.78)],
+                      [(-1.15, 0.25, 0.825), (-0.60, 0.25, 0.825),
+                       (-0.60, 0.80, 0.825), (-1.15, 0.80, 0.825)],
                       LINEN_RED, cols=8, rows=7, sag=0.035, ripple=0.020,
                       thickness=0.014, seed=211)
     return {
-        "collision": {"shape": "box", "size": [3.55, 2.70], "center": [0, 0]},
+        "collision": {"shape": "box", "size": [4.95, 4.20], "center": [-0.18, -0.06]},
         "content": {
             "historical_period": "Central Europe circa 1349",
             "mixed_crates": 4,
@@ -1764,6 +1799,9 @@ def build_camp_supplies():
             "hemp_rope_coil": True,
             "ceramics": 3,
             "folded_cloth": True,
+            "container_intersections": 0,
+            "layout_clearance_validated": True,
+            "supported_elevated_props": ["clay_bowl", "folded_wool_cloth"],
             "global_floor": False,
         },
         "interactions": [{"id": "camp_stores", "position": [0, -1.42, 0.0]}],
@@ -1771,21 +1809,26 @@ def build_camp_supplies():
 
 
 def build_camp_well():
-    # Three staggered fieldstone courses leave a genuinely open shaft.
+    # Four load-bearing courses use a fixed bed height and a slight 1 cm settlement overlap.
     stone_count = 0
-    for row in range(3):
-        count = 16
-        radius = 0.82 + row * 0.015
-        for index in range(count):
-            angle = math.tau * (index + 0.5 * (row % 2)) / count
-            stone = add_irregular_rock(
+    stone_rows = 4
+    stones_per_row = 14
+    course_height = 0.235
+    course_pitch = 0.225
+    rng = random.Random(12000)
+    for row in range(stone_rows):
+        radius = 0.80
+        for index in range(stones_per_row):
+            angle = math.tau * (index + 0.5 * (row % 2)) / stones_per_row
+            stone = add_box(
                 f"WELL_FIELDSTONE_{row:02d}_{index:02d}",
-                (math.cos(angle) * radius, math.sin(angle) * radius, 0.16 + row * 0.27),
-                (0.38, 0.25, 0.20), STONE, 12000 + row * 40 + index,
+                (math.cos(angle) * radius, math.sin(angle) * radius,
+                 0.13 + row * course_pitch),
+                (rng.uniform(0.355, 0.385), rng.uniform(0.305, 0.335), course_height),
+                STONE,
+                rotation=(0, 0, angle + math.pi * 0.5 + rng.uniform(-0.025, 0.025)),
+                bevel_width=0.028,
             )
-            stone.rotation_euler.z = angle
-            for polygon in stone.data.polygons:
-                polygon.use_smooth = True
             stone_count += 1
     add_irregular_disc("WELL_DARK_WATER_SURFACE", (0, 0), 0.61, WATER, 12070, z=0.24, segments=42)
 
@@ -1854,6 +1897,10 @@ def build_camp_well():
         "content": {
             "historical_period": "Central Europe circa 1349",
             "fieldstones": stone_count,
+            "load_bearing_stone_courses": stone_rows,
+            "stones_per_course": stones_per_row,
+            "stone_course_settlement_overlap_m": round(course_height - course_pitch, 3),
+            "floating_fieldstones": 0,
             "open_shaft": True,
             "working_crank": True,
             "rope_and_bucket": True,
@@ -1881,28 +1928,27 @@ def build_firewood_stack():
 
     round_logs = 0
     split_billets = 0
-    rows = [9, 8, 8, 7, 6, 5]
+    rows = [11, 10, 9, 8, 7, 6, 5]
+    layer_pitch = 0.18
+    nominal_radius = 0.11
     for row, count in enumerate(rows):
-        z = 0.14 + row * 0.245
-        spacing = 0.32
+        z = nominal_radius + row * layer_pitch
+        spacing = 0.25
         for index in range(count):
-            x = (index - (count - 1) * 0.5) * spacing + rng.uniform(-0.045, 0.045)
-            length = rng.uniform(0.92, 1.34)
-            y_shift = rng.uniform(-0.07, 0.07)
+            x = (index - (count - 1) * 0.5) * spacing + rng.uniform(-0.012, 0.012)
+            length = rng.uniform(0.98, 1.28)
+            y_shift = rng.uniform(-0.025, 0.025)
             if (row + index) % 3 == 0:
                 billet = add_split_log(f"HAND_SPLIT_BILLET_{row:02d}_{index:02d}",
-                                       (x, y_shift, z), length, rng.uniform(0.17, 0.25),
-                                       rng.uniform(0.15, 0.23), rng.uniform(-0.05, 0.05))
-                billet.rotation_euler.x = rng.uniform(-0.10, 0.10)
-                billet.rotation_euler.y = rng.uniform(-0.09, 0.09)
+                                       (x, y_shift, z), length, rng.uniform(0.22, 0.25),
+                                       0.21, rng.uniform(-0.025, 0.025))
                 split_billets += 1
             else:
-                radius = rng.uniform(0.075, 0.125)
-                start = (x, -length * 0.5 + y_shift, z + rng.uniform(-0.025, 0.025))
-                end = (x + rng.uniform(-0.05, 0.05), length * 0.5 + y_shift,
-                       z + rng.uniform(-0.02, 0.03))
+                radius = rng.uniform(0.104, 0.112)
+                start = (x, -length * 0.5 + y_shift, z)
+                end = (x + rng.uniform(-0.018, 0.018), length * 0.5 + y_shift, z)
                 add_rod(f"CROOKED_ROUND_LOG_{row:02d}_{index:02d}", start, end, radius, BARK,
-                        vertices=12, irregular=0.18, end_material=WOOD_LIGHT)
+                        vertices=12, irregular=0.10, end_material=WOOD_LIGHT)
                 round_logs += 1
 
     for index in range(14):
@@ -1926,6 +1972,9 @@ def build_firewood_stack():
             "hand_split_billets": split_billets,
             "kindling_sticks": 14,
             "loose_splinters": 18,
+            "supported_contact_layers": len(rows),
+            "layer_pitch_m": layer_pitch,
+            "floating_stack_members": 0,
             "identical_cylinder_stack": False,
             "global_floor": False,
         },

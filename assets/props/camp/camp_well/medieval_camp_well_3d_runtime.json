@@ -17,7 +17,7 @@
     "min": [
       -1.425,
       -1.092,
-      0.024
+      0.012
     ],
     "max": [
       1.471,
@@ -27,12 +27,12 @@
     "size": [
       2.896,
       2.184,
-      3.013
+      3.025
     ]
   },
   "runtime": {
     "visible_objects": 8,
-    "triangles": 42758,
+    "triangles": 23694,
     "embedded_textured_materials": 4,
     "pbr_materials": [
       "MAT_AGED_DARK_OAK_PBR",
@@ -53,7 +53,11 @@
   },
   "content": {
     "historical_period": "Central Europe circa 1349",
-    "fieldstones": 48,
+    "fieldstones": 56,
+    "load_bearing_stone_courses": 4,
+    "stones_per_course": 14,
+    "stone_course_settlement_overlap_m": 0.01,
+    "floating_fieldstones": 0,
     "open_shaft": true,
     "working_crank": true,
     "rope_and_bucket": true,
@@ -94,7 +98,7 @@
     "status": "passed",
     "root_ok": true,
     "mesh_objects": 8,
-    "triangles": 42758,
+    "triangles": 23694,
     "embedded_images": {
       "Wood035_aged_dark_oak_2K_Color": [
         2048,
@@ -155,6 +159,8 @@
     ],
     "missing_uv_objects": [],
     "active_cloth_modifiers": [],
+    "animation_actions": [],
+    "shape_key_objects": [],
     "global_ground_plates": [],
     "preview_rendered_from_reimported_glb": "medieval_camp_well_3d_runtime_preview.png",
     "errors": []

@@ -24,14 +24,24 @@ It is generated from the final GLBs by
 | supply_tent | 11 | 18,238 | 5 | 63.02 | passed |
 | rest_tent | 12 | 9,160 | 5 | 55.13 | passed |
 | camp_supplies | 7 | 27,408 | 5 | 63.10 | passed |
-| camp_well | 8 | 42,758 | 4 | 54.04 | passed |
-| firewood_stack | 3 | 38,884 | 3 | 42.66 | passed |
+| camp_well | 8 | 23,694 | 4 | 53.73 | passed |
+| firewood_stack | 3 | 46,316 | 3 | 42.85 | passed |
 | carpenter_worksite | 5 | 21,114 | 4 | 57.03 | passed |
 
 Each audit imports the GLB into a clean Blender scene and checks the expected
 root, mesh and triangle counts, UV layers, embedded image maps, active cloth
 modifiers and forbidden global ground plates. The final per-asset preview is
 then rendered from that reimported GLB, not from the authoring scene.
+
+## Physical placement correction
+
+- `camp_supplies`: all ground-standing containers now have validated clearance
+  footprints. The bowl and folded cloth sit on closed, load-bearing surfaces.
+- `camp_well`: the shaft uses four staggered masonry courses with a fixed bed
+  height and 1 cm settlement overlap, so every course bears on the one below.
+- `firewood_stack`: seven compact contact layers use a calculated pitch; logs
+  no longer receive random vertical tilt or height offsets that could make them
+  float above neighboring pieces.
 
 ## Materials and export
 
