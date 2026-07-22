@@ -260,6 +260,10 @@ export const MARSCH = {
   // auch die Truppen los laufen"): die Kolonne startet an der FUERSTENBURG.
   grafStart: 'burg',
   zielStadt: 'stadt',    // ... und zieht nach Ravensmoor
+  // Autor ("die Soldaten sind beim Kartenwechsel verschwunden und folgten mir
+  // nicht"): eigene Einheiten NAHE dem Helden gehen mit ihm ueber die Kante auf
+  // die Nachbarkarte (Gefolge). Wer zu weit weg steht, bleibt als Garnison.
+  folgtRadiusPx: 320,    // so nah beim Helden gilt "im Gefolge" (folgt ueber die Kante)
 } as const;
 
 // R179 (Autor "ja, der Bote soll das ausloesen"): der Grafen-Ruf laeuft ueber

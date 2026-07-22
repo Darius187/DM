@@ -1931,7 +1931,15 @@ export class WorldScene extends CombatScene {
     }
   }
 
-  goArea(id: string, spawnAt?: { x: number; y: number }): void {
+  goArea(id: string, spawnAt?: { x: number; y: number }, folgeHeer = false): void {
+    // Gefolge (Autor): eigene Einheiten NAHE dem Helden gehen ueber die Kante mit.
+    // Die ids VOR dem Zustands-Sync einsammeln (this.area ist noch die alte Karte).
+    const folgeIds: number[] = folgeHeer && this.area
+      ? this.enemies
+          .filter((e) => e.team === 'spieler' && e.armeeId !== null && e.hp > 0
+            && Math.hypot(this.px - e.x, this.py - e.y) < MARSCH.folgtRadiusPx)
+          .map((e) => e.armeeId as number)
+      : [];
     // R157: der Einfall lebt in NEU-Ravensmoor (stadt). Er verpufft beim
     // VERLASSEN der Stadt (kein Exploit) - aber NICHT beim Tod-Erwachen auf
     // derselben Karte (R145 "nichts resettet"): dann warten die Angreifer.
@@ -2007,6 +2015,17 @@ export class WorldScene extends CombatScene {
     // Kachel (z. B. im Kirchenaltar), auf die nächste freie schieben -
     // sonst steckt der Held unlösbar fest
     this.entklemmeSpieler(a);
+    // Gefolge (Autor): die mitgehenden Einheiten auf die NEUE Karte umstationieren,
+    // dicht beim Helden - spawneGarnison setzt sie dann direkt neben ihn ins Feld.
+    folgeIds.forEach((armeeId, i) => {
+      const ring = 1 + Math.floor(i / 8);
+      const wk = (i % 8) / 8 * Math.PI * 2;
+      const pos = this.freierBodenNah(this.px + Math.cos(wk) * ring * TILE * 1.4, this.py + Math.sin(wk) * ring * TILE * 1.4, a);
+      storniereMarsch(this.armee, armeeId, id);   // Marsch abbrechen, ort = neue Karte
+      const einheit = this.armee.einheiten.find((x) => x.id === armeeId);
+      if (einheit) einheit.pos = pos;
+    });
+    if (folgeIds.length) this.logMsg(`${folgeIds.length} Mann folgen dir auf die Nachbarkarte.`, '');
     this.spawneGarnison(a);   // R142: hier stationierte + durchmarschierende Heer-Einheiten
     if (pferdKommtMit && this.reitPferd) {
       this.reitPferd.areaId = id;
@@ -5760,7 +5779,7 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
     else if (this.px > wpx - m && ost) { const z = this.getArea(ost); ziel = ost; spawn = { x: 3 * TILE, y: this.py / hpx * (z.h * TILE) }; }
     else if (this.py < m && nord) { const z = this.getArea(nord); ziel = nord; spawn = { x: this.px / wpx * (z.w * TILE), y: (z.h - 3) * TILE }; }
     else if (this.py > hpx - m && sued) { const z = this.getArea(sued); ziel = sued; spawn = { x: this.px / wpx * (z.w * TILE), y: 3 * TILE }; }
-    if (ziel && spawn) this.goArea(ziel, spawn);
+    if (ziel && spawn) this.goArea(ziel, spawn, true);   // true: Gefolge geht mit ueber die Kante
   }
 
   // Wetter aufs Wasser: Regen-Tropfenkreise (u_rain) + mehr Wirbel bei Regen.
@@ -7682,6 +7701,22 @@ Lebenspunkte: ${hp}` : ''}` }, () => this.rtsBaue(b));
       const r = REIT_PFERD.kollisionsRadius;
       if (!this.solidFuerHeld(px - r, py - r) && !this.solidFuerHeld(px + r, py - r)
         && !this.solidFuerHeld(px - r, py + r) && !this.solidFuerHeld(px + r, py + r)) return { x: px, y: py };
+    }
+    return { x, y };
+  }
+
+  // Naechster freier (nicht-solider) Boden um einen Wunschpunkt - fuer das
+  // Absetzen mitgehender Einheiten neben dem Helden (Gefolge ueber die Kante).
+  private freierBodenNah(x: number, y: number, a: AreaData): { x: number; y: number } {
+    const W = a.w * TILE, H = a.h * TILE, klemm = (v: number, max: number) => Math.max(TILE, Math.min(max - TILE, v));
+    x = klemm(x, W); y = klemm(y, H);
+    if (!this.solidFuerHeld(x, y)) return { x, y };
+    for (let ring = 1; ring <= 6; ring++) {
+      for (let s = 0; s < 12; s++) {
+        const wk = s / 12 * Math.PI * 2;
+        const nx = klemm(x + Math.cos(wk) * ring * TILE, W), ny = klemm(y + Math.sin(wk) * ring * TILE, H);
+        if (!this.solidFuerHeld(nx, ny)) return { x: nx, y: ny };
+      }
     }
     return { x, y };
   }

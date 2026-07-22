@@ -2739,3 +2739,15 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Arbeiter, Belagerer, Feldzug-Wellen behalten ihre eigene KI.
 - Naeherte sich der Held wieder an, uebernimmt sofort die normale Kampf-KI
   (rueckzugAktiv loescht das Rueckzugs-jagdZiel). Werte in src/data/welt.ts FELDZUG.
+
+## Gefolge: eigene Einheiten folgen ueber die Kante (Autor-Bug "Soldaten verschwanden")
+- Beim Karten-Uebergang (checkKartenRand -> goArea mit folgeHeer=true) gehen eigene
+  Einheiten NAHE dem Helden (MARSCH.folgtRadiusPx=320) mit auf die Nachbarkarte:
+  ihr Roster-ort wird umgestellt (storniereMarsch auf Zielkarte), Stellung dicht
+  beim Helden - spawneGarnison setzt sie dort neben ihn. Wer zu weit weg steht,
+  bleibt als Garnison auf der alten Karte (bewusst - kein Zwangs-Nachziehen).
+- Nur beim echten Oberwelt-Kanten-Uebergang (goArea-Default folgeHeer=false, also
+  Tod/Portal/Dungeon ziehen NICHT das Heer nach). Browser-verifiziert per
+  scripts/_gefolge_verif.mjs (nah folgt nach wald_o, fern bleibt stadt).
+- Wert in src/data/rts.ts MARSCH.folgtRadiusPx; Helfer freierBodenNah setzt sie
+  auf freien Boden (nie in Wand/Wasser).
