@@ -1,0 +1,123 @@
+{
+  "asset": "medieval_field_forge_3d_runtime",
+  "label_de": "Feldschmiede des Lagers",
+  "glb": "medieval_field_forge_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "FIELD_FORGE_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\field_forge\\medieval_field_forge_3d_runtime.blend",
+  "original_blend_preserved": null,
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -2.946,
+      -2.23,
+      -0.12
+    ],
+    "max": [
+      2.941,
+      2.23,
+      3.12
+    ],
+    "size": [
+      5.887,
+      4.459,
+      3.24
+    ]
+  },
+  "runtime": {
+    "visible_objects": 12,
+    "triangles": 16038,
+    "embedded_textured_materials": 12,
+    "static_material_batches": [
+      "FIELD_FORGE_CLOTH_FORGE_CANOPY",
+      "FIELD_FORGE_WOOD_DARK_BATCH",
+      "FIELD_FORGE_WOOD_MID_BATCH",
+      "FIELD_FORGE_ROPE_BATCH",
+      "FIELD_FORGE_CANVAS_DARK_BATCH",
+      "FIELD_FORGE_LEATHER_BATCH",
+      "FIELD_FORGE_IRON_BATCH",
+      "FIELD_FORGE_STEEL_BATCH",
+      "FIELD_FORGE_STONE_BATCH",
+      "FIELD_FORGE_CHARCOAL_BATCH",
+      "FIELD_FORGE_EMBER_BATCH",
+      "FIELD_FORGE_FLAME_BATCH"
+    ],
+    "baked_cloth_panels": [
+      {
+        "panel": "FORGE_CANOPY",
+        "frames": 76,
+        "quad_grid": [
+          64,
+          44
+        ],
+        "source_quads": 2816,
+        "average_edge_m": 0.0773,
+        "pinned_vertices": 66,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.1914,
+        "average_displacement_m": 0.07474,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      }
+    ],
+    "active_runtime_cloth_simulations": 0
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      5.1,
+      3.55
+    ],
+    "center": [
+      0,
+      0
+    ]
+  },
+  "content": {
+    "masonry_forge": true,
+    "anvil": true,
+    "bellows": true,
+    "tool_rack": true,
+    "water_bucket": true,
+    "cloth_simulation": "baked_static_mesh",
+    "cloth_panels": 1,
+    "cloth_material": "MAT_TENT_CANVAS"
+  },
+  "interactions": [
+    {
+      "id": "forge_fire_fx",
+      "position": [
+        -1.1,
+        0.52,
+        1.2
+      ]
+    },
+    {
+      "id": "repair_anchor",
+      "position": [
+        0.2,
+        -1.28,
+        0
+      ]
+    }
+  ],
+  "notes": [
+    "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
+    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
+    "Material-Farbtexturen sind im GLB eingebettet.",
+    "Blender-Cloth wurde 72 bis 80 Frames mit weichen CLOTH_PIN-Gewichten berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik.",
+    "Neu aufgebautes Cloth-Asset; BACKUP_ORIGINAL_TENTS bleibt als leere, ausgeblendete Sicherungs-Collection fuer spaetere Revisionen erhalten."
+  ]
+}

@@ -16,6 +16,7 @@ SOURCE_ROOT = Path(r"C:\Obsidian\DM\camp-props")
 VALID_ASSETS = {
     "fletcher", "field_tent", "command_pavilion", "medical_tent",
     "cooking_fire", "order_banner", "field_shrine",
+    "field_forge", "supply_wagon", "horse_corral",
 }
 
 
@@ -35,6 +36,9 @@ ASSET_NAMES = {
     "cooking_fire": "medieval_camp_cooking_fire_3d_runtime",
     "order_banner": "medieval_order_banner_3d_runtime",
     "field_shrine": "medieval_field_shrine_3d_runtime",
+    "field_forge": "medieval_field_forge_3d_runtime",
+    "supply_wagon": "medieval_supply_wagon_3d_runtime",
+    "horse_corral": "medieval_horse_corral_3d_runtime",
 }
 ROOT_NAMES = {
     "fletcher": "FLETCHER_STATION_ROTATION_PIVOT",
@@ -44,6 +48,9 @@ ROOT_NAMES = {
     "cooking_fire": "COOKING_FIRE_ROTATION_PIVOT",
     "order_banner": "ORDER_BANNER_ROTATION_PIVOT",
     "field_shrine": "FIELD_SHRINE_ROTATION_PIVOT",
+    "field_forge": "FIELD_FORGE_ROTATION_PIVOT",
+    "supply_wagon": "SUPPLY_WAGON_ROTATION_PIVOT",
+    "horse_corral": "HORSE_CORRAL_ROTATION_PIVOT",
 }
 ASSET_NAME = ASSET_NAMES[ASSET_ID]
 SOURCE_DIR = SOURCE_ROOT / ASSET_ID
@@ -303,6 +310,8 @@ MATERIALS = {
     "banner_light": make_canvas_material("MAT_ORDER_BANNER_LIGHT", "order_banner_light", (.57, .53, .44), 39, .94, .08),
     "altar_cloth": make_canvas_material("MAT_ALTAR_LINEN", "altar_linen", (.69, .65, .56), 40, .95, .06),
     "bronze": make_material("altar_bronze", (.28, .18, .055), (.035, .020, .006), (.58, .40, .11), "metal", 41, .54, .72),
+    "sack": make_material("coarse_sackcloth", (.40, .33, .22), (.075, .055, .032), (.63, .53, .35), "fabric", 42, .98),
+    "straw": make_material("dry_straw", (.46, .32, .095), (.08, .045, .010), (.72, .55, .18), "earth", 43, .99),
 }
 
 
@@ -389,6 +398,33 @@ class MeshBatch:
         direction = Vector(direction).normalized()
         rotation = direction.to_track_quat("Z", "Y").to_matrix().to_4x4()
         self.transformed(vertices, faces, Matrix.Translation(Vector(center)) @ rotation)
+
+    def ellipsoid(self, center, dims, segments=12, rings=7, rotation=(0, 0, 0)):
+        rx, ry, rz = (value / 2 for value in dims)
+        vertices = [(0, 0, rz)]
+        for ring in range(1, rings):
+            phi = math.pi / 2 - math.pi * ring / rings
+            for index in range(segments):
+                angle = math.tau * index / segments
+                vertices.append((rx * math.cos(phi) * math.cos(angle),
+                                 ry * math.cos(phi) * math.sin(angle),
+                                 rz * math.sin(phi)))
+        bottom = len(vertices)
+        vertices.append((0, 0, -rz))
+        faces = []
+        for index in range(segments):
+            faces.append((0, 1 + index, 1 + (index + 1) % segments))
+        for ring in range(rings - 2):
+            start = 1 + ring * segments
+            nxt = start + segments
+            for index in range(segments):
+                following = (index + 1) % segments
+                faces.append((start + index, nxt + index, nxt + following, start + following))
+        last = 1 + (rings - 2) * segments
+        for index in range(segments):
+            faces.append((last + index, bottom, last + (index + 1) % segments))
+        matrix = Matrix.Translation(Vector(center)) @ Euler(rotation, "XYZ").to_matrix().to_4x4()
+        self.transformed(vertices, faces, matrix)
 
     def torus(self, center, major_radius, minor_radius, major_segments=16, minor_segments=5, rotation=(0, 0, 0)):
         vertices = []
@@ -1511,6 +1547,225 @@ def build_field_shrine():
     }
 
 
+def build_crate(center, dims=(.90, .72, .62), open_top=False):
+    x, y, z = center
+    width, length, height = dims
+    if not open_top:
+        BATCHES["wood_mid"].box((x, y, z + height / 2), dims)
+    else:
+        BATCHES["wood_mid"].box((x, y, z + .055), (width, length, .11))
+        for xx in (-width / 2 + .055, width / 2 - .055):
+            BATCHES["wood_mid"].box((x + xx, y, z + height / 2), (.11, length, height))
+        for yy in (-length / 2 + .055, length / 2 - .055):
+            BATCHES["wood_mid"].box((x, y + yy, z + height / 2), (width, .11, height))
+    for xx in (-width / 2 + .055, width / 2 - .055):
+        BATCHES["iron"].box((x + xx, y - length / 2 - .008, z + height / 2),
+                             (.055, .018, height * .92))
+        BATCHES["iron"].box((x + xx, y + length / 2 + .008, z + height / 2),
+                             (.055, .018, height * .92))
+    for yy in (-length / 2 + .055, length / 2 - .055):
+        BATCHES["wood_dark"].box((x, y + yy, z + height * .78), (width * .94, .065, .065))
+
+
+def build_sack(center, scale=1.0, rotation_z=0.0):
+    x, y, z = center
+    BATCHES["sack"].ellipsoid((x, y, z + .42 * scale),
+                               (.62 * scale, .50 * scale, .84 * scale), 12, 7,
+                               (0, 0, rotation_z))
+    BATCHES["sack"].ellipsoid((x, y, z + .82 * scale),
+                               (.24 * scale, .20 * scale, .24 * scale), 10, 6,
+                               (0, 0, rotation_z))
+    BATCHES["rope"].torus((x, y, z + .73 * scale), .13 * scale, .018 * scale, 12, 4)
+
+
+def build_wheel(center, radius=.66, width=.10, spokes=10):
+    x, y, z = center
+    BATCHES["wood_dark"].torus((x, y, z), radius, .10, 20, 6, (math.pi / 2, 0, 0))
+    BATCHES["iron"].torus((x, y, z), radius + .035, .030, 22, 5, (math.pi / 2, 0, 0))
+    for index in range(spokes):
+        angle = index * math.tau / spokes
+        beam("wood_mid", (x, y, z),
+             (x + math.cos(angle) * (radius - .10), y, z + math.sin(angle) * (radius - .10)), .055)
+    BATCHES["wood_dark"].cylinder((x, y, z), .15, width + .18, 14, (0, 1, 0))
+    BATCHES["iron"].torus((x, y - width / 2 - .08, z), .15, .025, 14, 4, (math.pi / 2, 0, 0))
+
+
+def build_anvil(center, scale=1.0):
+    x, y, z = center
+    BATCHES["steel"].box((x, y, z + .42 * scale),
+                          (.78 * scale, .30 * scale, .22 * scale))
+    BATCHES["steel"].box((x - .18 * scale, y, z + .25 * scale),
+                          (.28 * scale, .24 * scale, .34 * scale))
+    BATCHES["steel"].cone((x + .52 * scale, y, z + .45 * scale),
+                           .15 * scale, .52 * scale, 8, (1, 0, 0))
+
+
+def build_field_forge():
+    random.seed(1363)
+    half_w, half_l = 2.45, 1.70
+    for x in (-half_w, half_w):
+        for y in (-half_l, half_l):
+            beam("wood_dark", (x, y, .02), (x, y, 2.78 + (y + half_l) * .10), .105)
+
+    def canopy_point(u, v):
+        x = -half_w + u * half_w * 2
+        y = -half_l + v * half_l * 2
+        edge_z = 2.72 + v * .34
+        built_sag = .13 * math.sin(u * math.pi) * math.sin(v * math.pi)
+        ripple = .018 * math.sin(u * math.tau * 5 + v * 2.1)
+        return (x, y, edge_z - built_sag + ripple)
+
+    def canopy_pin(ix, iy, nx, ny):
+        anchors = [(0, 0), (nx, 0), (0, ny), (nx, ny),
+                   (round(nx * .5), 0), (round(nx * .5), ny)]
+        return soft_anchor_weight(ix, iy, anchors)
+
+    canopy = simulated_cloth_grid("canvas", "FORGE_CANOPY", 64, 44, canopy_point,
+                                  canopy_pin, frames=76, gravity=-2.10,
+                                  normal_hint=(0, 0, 1))
+    add_panel_row_strip(canopy, 0.0)
+    add_panel_row_strip(canopy, 1.0)
+    for seam in (.25, .5, .75):
+        add_panel_column_strip(canopy, seam)
+    for x, y in ((-half_w, -half_l), (half_w, -half_l),
+                 (-half_w, half_l), (half_w, half_l)):
+        anchor = (x * 1.18, y * 1.28, 0)
+        rope([(x, y, 2.80), anchor], .017)
+        make_stake(anchor[0], anchor[1])
+
+    forge_x, forge_y = -1.10, .52
+    for row in range(4):
+        for column in range(4):
+            x = forge_x - .67 + column * .44 + (row % 2) * .05
+            BATCHES["stone"].box((x, forge_y, .15 + row * .22), (.40, 1.10, .20),
+                                  (0, 0, .02 * math.sin(column + row)))
+    BATCHES["charcoal"].box((forge_x, forge_y - .02, 1.03), (1.45, .96, .18))
+    for index in range(9):
+        angle = index * 2.13
+        BATCHES["ember"].box((forge_x + math.cos(angle) * .42,
+                              forge_y + math.sin(angle) * .24, 1.15), (.10, .08, .05))
+    for x in (-1.27, -1.00, -.74):
+        BATCHES["flame"].cone((x, forge_y, 1.35), .12, .52 + (x + 1.27) * .30, 8)
+    BATCHES["iron"].box((forge_x, forge_y + .18, 1.55), (1.30, .78, .18))
+    BATCHES["iron"].cone((forge_x, forge_y + .28, 2.02), .60, .90, 4)
+    BATCHES["iron"].box((forge_x, forge_y + .28, 2.56), (.42, .42, .82))
+
+    BATCHES["wood_dark"].cylinder((.20, -.42, .43), .42, .86, 16)
+    build_anvil((.20, -.42, .76), 1.0)
+    BATCHES["wood_mid"].box((1.48, .55, .72), (1.25, 1.05, .12))
+    for x in (.95, 2.01):
+        for y in (.15, .95):
+            beam("wood_dark", (x, y, .05), (x, y, .66), .075)
+    BATCHES["leather"].ellipsoid((1.48, .55, .88), (1.05, .76, .22), 14, 6)
+    beam("wood_mid", (1.80, .55, .92), (2.23, .25, 1.20), .055)
+    BATCHES["iron"].cylinder((1.84, -1.04, .34), .32, .58, 14)
+    BATCHES["iron"].torus((1.84, -1.04, .65), .32, .025, 14, 4)
+    for index in range(5):
+        x = -.20 + index * .24
+        beam("iron", (x, 1.18, .18), (x + .10, 1.18, 1.32), .025)
+    return {
+        "label": "Feldschmiede des Lagers",
+        "content": {"masonry_forge": True, "anvil": True, "bellows": True,
+                    "tool_rack": True, "water_bucket": True,
+                    "cloth_simulation": "baked_static_mesh", "cloth_panels": 1,
+                    "cloth_material": "MAT_TENT_CANVAS"},
+        "collision": {"shape": "box", "size": [5.10, 3.55], "center": [0, 0]},
+        "interactions": [{"id": "forge_fire_fx", "position": [forge_x, forge_y, 1.20]},
+                         {"id": "repair_anchor", "position": [.20, -1.28, 0]}],
+    }
+
+
+def build_supply_wagon():
+    random.seed(1364)
+    floor_z = .92
+    BATCHES["wood_dark"].box((0, 0, floor_z), (2.10, 3.45, .20))
+    for y in (-1.48, -.74, 0, .74, 1.48):
+        BATCHES["wood_mid"].box((0, y, floor_z + .12), (2.02, .52, .13))
+    for x in (-1.02, 1.02):
+        for y in (-1.55, 1.55):
+            beam("wood_dark", (x, y, floor_z), (x, y, 2.02), .10)
+        for row in range(4):
+            z = 1.08 + row * .25
+            BATCHES["wood_mid"].box((x, 0, z), (.11, 3.18, .20))
+    for y in (-1.55, 1.55):
+        for row in range(4):
+            z = 1.08 + row * .25
+            BATCHES["wood_mid"].box((0, y, z), (2.02, .11, .20))
+    for y in (-1.10, 1.10):
+        build_wheel((-1.18, y, .72), .68, .11, 10)
+        build_wheel((1.18, y, .72), .68, .11, 10)
+        BATCHES["iron"].cylinder((0, y, .72), .075, 2.55, 10, (1, 0, 0))
+    beam("wood_dark", (-.56, -1.62, .92), (-.70, -3.55, .44), .095)
+    beam("wood_dark", (.56, -1.62, .92), (.70, -3.55, .44), .095)
+    beam("wood_dark", (-.75, -3.55, .44), (.75, -3.55, .44), .085)
+    BATCHES["iron"].torus((0, -3.58, .44), .13, .025, 14, 4, (math.pi / 2, 0, 0))
+
+    build_barrel((-.63, .72, floor_z + .18), .34, .72)
+    build_barrel((.62, .82, floor_z + .18), .29, .62)
+    build_sack((-.58, -.45, floor_z + .08), .92, .18)
+    build_sack((.08, -.35, floor_z + .08), 1.02, -.22)
+    build_sack((.63, -.52, floor_z + .08), .82, .30)
+    woven_basket((.28, .55, floor_z + .08), .34, .55, 16)
+    build_crate((-.38, .02, floor_z + .05), (.78, .68, .58), False)
+    return {
+        "label": "Lastwagen des Feldlagers",
+        "content": {"wheels": 4, "tow_shafts": 2, "cargo_bed": True,
+                    "barrels": 2, "sacks": 3, "basket": 1, "crate": 1},
+        "collision": {"shape": "box", "size": [2.55, 4.30], "center": [0, -.40]},
+        "interactions": [{"id": "hitch_anchor", "position": [0, -3.70, .44]},
+                         {"id": "cargo_anchor", "position": [0, 0, 1.85]}],
+    }
+
+
+def build_horse_corral():
+    random.seed(1365)
+    half_w, half_l = 3.65, 2.55
+    post_positions = []
+    for x in (-half_w, half_w):
+        for y in (-half_l, -half_l / 2, 0, half_l / 2, half_l):
+            post_positions.append((x, y))
+    for y in (half_l,):
+        for x in (-half_w / 2, 0, half_w / 2):
+            post_positions.append((x, y))
+    for x in (-half_w, -2.15, 2.15, half_w):
+        post_positions.append((x, -half_l))
+    for x, y in post_positions:
+        beam("wood_dark", (x, y, .02), (x, y, 1.55 + .08 * math.sin(x + y)), .11)
+        for z in (.68, 1.18):
+            BATCHES["rope"].torus((x, y, z), .13, .022, 12, 4)
+
+    for x in (-half_w, half_w):
+        for ya, yb in ((-half_l, -half_l / 2), (-half_l / 2, 0),
+                       (0, half_l / 2), (half_l / 2, half_l)):
+            for z in (.62, 1.12):
+                beam("wood_mid", (x, ya, z), (x, yb, z + .03 * math.sin(ya)), .075)
+    for y in (half_l,):
+        for xa, xb in ((-half_w, -half_w / 2), (-half_w / 2, 0),
+                       (0, half_w / 2), (half_w / 2, half_w)):
+            for z in (.62, 1.12):
+                beam("wood_mid", (xa, y, z), (xb, y, z + .03 * math.sin(xa)), .075)
+    for xa, xb in ((-half_w, -2.15), (2.15, half_w)):
+        for z in (.62, 1.12):
+            beam("wood_mid", (xa, -half_l, z), (xb, -half_l, z), .075)
+
+    for x in (-2.20, -1.10, 0, 1.10, 2.20):
+        beam("wood_dark", (x, .18, .02), (x, .18, 1.08), .085)
+    beam("wood_mid", (-2.35, .18, 1.02), (2.35, .18, 1.02), .085)
+    for x in (-1.85, -.92, 0, .92, 1.85):
+        BATCHES["iron"].torus((x, .15, .92), .09, .018, 12, 4, (math.pi / 2, 0, 0))
+        rope([(x, .13, .88), (x + .10, .05, .52)], .014)
+    return {
+        "label": "Pferdekoppel des Feldlagers",
+        "content": {"open_entry": True, "entry_width_m": 4.30,
+                    "hitching_rail": True, "hitching_loops": 5,
+                    "global_ground_plate": False},
+        "collision": {"shape": "segments", "size": [7.40, 5.20], "center": [0, 0],
+                      "open_front_from_x": [-2.15, 2.15]},
+        "interactions": [{"id": "horse_parking_line", "from": [-2.20, .18, 0],
+                         "to": [2.20, .18, 0], "slots": 5}],
+    }
+
+
 BUILDERS = {
     "fletcher": build_fletcher,
     "field_tent": build_field_tent,
@@ -1519,6 +1774,9 @@ BUILDERS = {
     "cooking_fire": build_cooking_fire,
     "order_banner": build_order_banner,
     "field_shrine": build_field_shrine,
+    "field_forge": build_field_forge,
+    "supply_wagon": build_supply_wagon,
+    "horse_corral": build_horse_corral,
 }
 metadata = BUILDERS[ASSET_ID]()
 
@@ -1550,7 +1808,10 @@ def make_objects():
         try:
             bpy.ops.object.mode_set(mode="EDIT")
             bpy.ops.mesh.select_all(action="SELECT")
-            bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=.02)
+            if ASSET_ID == "horse_corral":
+                bpy.ops.uv.cube_project(cube_size=1.0)
+            else:
+                bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=.02)
             bpy.ops.object.mode_set(mode="OBJECT")
         finally:
             obj.select_set(False)
