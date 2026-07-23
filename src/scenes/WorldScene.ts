@@ -15028,6 +15028,12 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   protected override devRessourcen(): void {
     super.devRessourcen();
     for (const k of Object.keys(this.dorfLager)) this.dorfLager[k] = Math.max(this.dorfLager[k] ?? 0, 999);
+    // Autor-Befund: der Cheat fuellte nur BEREITS vorhandene Lager-Waren - neue
+    // Baukosten-Rohstoffe (z.B. fasern/schafgarbe fuers Lazarett), die noch nie
+    // im Lager standen, fehlten weiterhin und der Bau blieb gesperrt. Darum JEDES
+    // Material, das IRGENDEIN RTS-Bau kostet, garantiert auf >= 999 setzen. So
+    // lassen sich alle Gebaeude ohne Farmen testen.
+    for (const b of RTS_BAUTEN) for (const w of Object.keys(b.kosten)) this.dorfLager[w] = Math.max(this.dorfLager[w] ?? 0, 999);
   }
 
   // Aufgedeckte Karte der aktuellen Ebene fürs Charakterfenster (Runde 53):
