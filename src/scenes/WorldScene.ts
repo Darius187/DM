@@ -82,6 +82,7 @@ import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, FLYOVER, tileNameAt } from '../world/tiles';
 import { TILE } from '../gfx/fallbackArt';
 import { findePfad, Wegfeld, ziehePfadStraff } from '../world/Wegfeld';
+import { backeCampSprite, campGlbKey, hatCampGlb } from '../gfx/campGlbBitmaps';
 import { angrenzendeWehrstruktur, benoetigteBreschenFelder, priorisierteBelagerungsziele, strukturBreiteInFeldern } from '../logic/belagerung';
 import { WASSER_FRAMES } from '../gfx/tileArt';
 import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64, drawSchlucht, drawKristall } from '../gfx/detailArt';
@@ -5013,35 +5014,49 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
 
   // Einfacher Feldbau-Sprite (R92): Wachturm (Gerüst), Lazarett (Rotkreuz-Zelt),
   // Zelt. Prozedural, y-sortiert. Lebenspunkte/Menü folgen im RTS-Bau-Ausbau.
+  // Zielhöhe je Bau (massiver als vorher); Breite folgt dem echten Seitenverhältnis.
+  // R100 (Autor "Feldaltar sieht riesig aus"): Lager-Props auf stimmige Groesse.
+  // R101: Turm-Zielhoehe so, dass der Beinstand ~2 Kacheln (64px) breit wird.
+  private static readonly FELDBAU_ZIEL_H: Record<string, number> = { zelt: 84, lazarett: 84, nachschub: 76, feldaltar: 40, kochstelle: 42, brunnen: 50, feldschmiede: 44, wartfeuer: 46, botenposten: 50, pferdekoppel: 46, standarte: 70 };
+
+  private setzeFeldbauGroesse(img: Phaser.GameObjects.Image, id: string, key: string): void {
+    const h = this.istWachturm(id) ? 132 : WorldScene.FELDBAU_ZIEL_H[id];
+    if (!h) return;
+    const src = this.textures.get(key).getSourceImage();
+    img.setDisplaySize(h * (src.width / Math.max(1, src.height)), h);
+  }
+
   private spawneFeldbau(id: string, x: number, y: number): Phaser.GameObjects.Image {
+    // Codex-Entscheid: RTS-/Lagerbauten sind aus den ECHTEN GLBs gebackene
+    // Sprites. Bevorzugt die (lazy) GLB-Textur feldbau_glb_<id>; ist sie noch
+    // nicht gebacken, wird das Backen JETZT angestossen (nur auf echter GPU
+    // erfolgreich) und die handgebaute feldbau_<id> dient solange als Fallback.
     let key = `feldbau_${id}`;
-    // Autor "die neuen Zelte sind geiler": das ECHTE GLB-Feldzelt (1:1-Modell,
-    // campGlbBitmaps) bevorzugen, wenn es gebacken ist - sonst bleibt der
-    // handgebaute feldbau_zelt-Fallback stehen (nichts wird ungesehen zerstoert).
-    if (id === 'zelt' && this.textures.exists('feldbau_field_tent')) key = 'feldbau_field_tent';
-    // R97: Wachturm/Zelte werden beim Boot als 3D-Sprites gebacken (lagerBitmaps).
-    // Fehlt das (Bake-Fehler), gemalter Canvas-Fallback.
+    const glbKey = campGlbKey(id);
+    if (this.textures.exists(glbKey)) key = glbKey;
+    // R97: Handbau-Fallback (lagerBitmaps am Boot); fehlt der, gemalter Canvas.
     if (!this.textures.exists(key)) this.textures.addCanvas(key, this.macheFeldbauBild(id))?.setFilter(Phaser.Textures.FilterMode.LINEAR);
     // R101: der Codex-Turm sitzt mit seiner Fussmitte auf der Block-Mitte (x,y) -
     // Origin hoeher (0.78) als bei 1-Kachel-Bauten, damit die vorderen Beine in den
     // 2x2-Block reichen und nicht darueber hinaus; Tiefe an der Block-Vorderkante.
     const turm = this.istWachturm(id);
     const img = this.add.image(x, y, key).setOrigin(0.5, turm ? 0.78 : 0.94).setDepth(turm ? y + 24 : y);
-    // Zielhöhe je Bau (massiver als vorher); Breite folgt dem echten Seitenverhältnis.
-    // R100 (Autor "Feldaltar sieht riesig aus, Groessenverhaeltnisse passen nicht"):
-    // Lager-Props auf stimmige, kleinere Groesse relativ zu Palisade/Turm.
-    // R101: Turm-Zielhoehe so, dass der Beinstand ~2 Kacheln (64px) breit wird.
-    const zielH: Record<string, number> = { zelt: 84, lazarett: 84, nachschub: 76, feldaltar: 40, kochstelle: 42, brunnen: 50, feldschmiede: 44, wartfeuer: 46, botenposten: 50, pferdekoppel: 46 };
-    const h = turm ? 132 : zielH[id];
-    if (h) {
-      const src = this.textures.get(key).getSourceImage();
-      const aspekt = src.width / Math.max(1, src.height);
-      img.setDisplaySize(h * aspekt, h);
-    }
+    this.setzeFeldbauGroesse(img, id, key);
     // R109 Schritt 2: im Light2D-Experiment die Props ueber die Light2D-Pipeline
     // rendern (nutzt die am Boot gebackene Normal-Datenquelle fuer Bump-Relief).
     if (getSettings().light2d === true) img.setPipeline('Light2D');
     this.tileImages.push(img);
+    // Lazy-Bake anstossen: sobald die GLB-Textur da ist, dieses Sprite (und
+    // kuenftige) auf das echte Modell umstellen. Mehrere Instanzen teilen die
+    // Textur; scheitert das Backen (Cloud/kein git-lfs), bleibt der Fallback.
+    if (key !== glbKey && hatCampGlb(id)) {
+      void backeCampSprite(this.textures, id).then((ok) => {
+        if (ok && img.active && this.textures.exists(glbKey)) {
+          img.setTexture(glbKey);
+          this.setzeFeldbauGroesse(img, id, glbKey);
+        }
+      });
+    }
     return img;
   }
 

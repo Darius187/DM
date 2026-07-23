@@ -2826,3 +2826,31 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   einzige Luecke).
 - Sanity im Browser (deterministisch getaktet): Marsch + Platz-machen-Gasse
   funktionieren unveraendert, Ziel wird erreicht, 0 Konsolenfehler.
+
+## RTS-Lagerbauten aus echten GLBs - LAZY-Bake-Architektur (Codex-Entscheid)
+- Entscheid (Codex/Autor): permanente Dorfgebaeude = live-3D; ALLE RTS-/Lager-
+  bauten = aus den ECHTEN GLBs gebackene 2D-Sprites (auch der Befehlspavillon,
+  damit alle Lagerbauten dieselbe Platzierungs-/Y-Sortier-/Performance-Architektur
+  teilen). "Keine Ersatzgrafiken" = keine handgezeichneten Nachbauten/geschaetzten
+  Farben; das GLB unveraendert mit seinen PBR-Materialien in ein Sprite rendern
+  ist ausdruecklich gewuenscht.
+- Umsetzung (nur Logik/Verdrahtung, visuelle Abnahme macht Codex lokal):
+  * glbPropBackofen.backeGlbProp gibt nach dem Bake Renderer-Kontext + GLB-
+    Ressourcen frei (propBackofen.Backofen.dispose + gibGruppeFrei). Kein
+    WebGL-Kontext-Leak bei vielen Lazy-Bakes.
+  * campGlbBitmaps: CAMP_GLB kartiert 9 Bau-IDs auf ihre Camp-GLBs (zelt,
+    lazarett, feldschmiede, kochstelle, brunnen, standarte, feldaltar,
+    nachschub, pferdekoppel). backeCampSprite(id) backt LAZY zu feldbau_glb_<id>
+    (Cache je ID, doppel-sicher, nicht-destruktiv).
+  * spawneFeldbau bevorzugt feldbau_glb_<id>; fehlt es, stoesst es den Lazy-Bake
+    an und stellt das Sprite bei Erfolg auf das echte Modell um (mehrere
+    Instanzen teilen die Textur). Scheitert der Bake (Cloud ohne git-lfs /
+    Headless-GL), bleibt die handgebaute feldbau_<id> als Fallback.
+  * BootScene backt NICHTS mehr am Boot (Codex-Vorgabe "nicht alle GLBs
+    gleichzeitig laden").
+- Verifikation Cloud: 9 Bauten spawnen fehlerfrei mit Fallback (0 pageErrors,
+  0 Exceptions); GLB-Bakes schlagen erwartungsgemaess fehl (git-lfs/GL fehlt) -
+  KEIN Absturz. Visuelle Abnahme der Modelle: Codex lokal (echte GPU). Ich habe
+  die GLB-Sprites NICHT visuell getestet.
+- OFFEN (Codex, rts.ts): eigene Bau-Typen fuer command_pavilion (Befehls-
+  pavillon), rest_tent, supply_tent, fletcher, ...; Banner-/Feuer-Frameanimation.

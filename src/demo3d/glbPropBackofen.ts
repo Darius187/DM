@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { macheBackofen, beschneideCanvas } from './propBackofen';
+import { macheBackofen, beschneideCanvas, gibGruppeFrei } from './propBackofen';
 
 export interface GlbBackOpt {
   groesse?: number;   // Render-Aufloesung des Backofens (default 640)
@@ -26,7 +26,9 @@ function skaliereAufHoehe(cv: HTMLCanvasElement, zielH: number): HTMLCanvasEleme
   return out;
 }
 
-// Laedt die GLB, richtet sie fuer die Backofen-Kamera aus und backt sie.
+// Laedt die GLB, richtet sie fuer die Backofen-Kamera aus, backt sie und gibt
+// DANACH den Renderer-Kontext + alle GLB-Ressourcen frei (Codex-Vorgabe:
+// "GLB-Ressourcen nach dem Backen freigeben", "kein Kontext-Leak bei Lazy-Bakes").
 export async function backeGlbProp(url: string, opt: GlbBackOpt = {}): Promise<HTMLCanvasElement> {
   const gltf = await new GLTFLoader().loadAsync(url);
   // Aussenhuelle: Yaw fuer die Blickrichtung. Darin die Z-hoch -> Y-hoch-Drehung,
@@ -38,6 +40,11 @@ export async function backeGlbProp(url: string, opt: GlbBackOpt = {}): Promise<H
   gruppe.rotation.y = opt.drehen ?? 0;
   gruppe.add(auf);
   const ofen = macheBackofen(opt.groesse ?? 640, false);
-  const roh = beschneideCanvas(ofen.backe(gruppe));
-  return skaliereAufHoehe(roh, opt.zielH ?? 320);
+  try {
+    const roh = beschneideCanvas(ofen.backe(gruppe));
+    return skaliereAufHoehe(roh, opt.zielH ?? 320);
+  } finally {
+    gibGruppeFrei(gltf.scene);   // Geometrien/Materialien/Texturen des Modells
+    ofen.dispose();             // WebGL-Kontext hart freigeben
+  }
 }

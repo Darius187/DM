@@ -16,6 +16,10 @@ export interface Backofen {
   // Genau das Format, das die Phaser-Light2D-Pipeline als Normal-Datenquelle erwartet.
   backeNormal(gruppe: THREE.Group): HTMLCanvasElement;
   groesse: number;
+  // Gibt den WebGL-Renderer/Kontext frei. WICHTIG fuer LAZY-Bakes (je Prop ein
+  // eigener Ofen): Browser deckeln die Zahl gleichzeitiger WebGL-Kontexte -
+  // ohne dispose() reisst die 9.-16. Backung den Kontext ab.
+  dispose(): void;
 }
 
 // Beschneidet ein gebackenes Bild auf seinen sichtbaren Inhalt (Alpha-Bounding-
@@ -141,5 +145,33 @@ export function macheBackofen(groesse = 256, mitSchatten = true, elevGrad?: numb
       norm.dispose();
       return cv;
     },
+    dispose(): void {
+      renderer.dispose();
+      // Kontext hart freigeben (three.js gibt ihn sonst erst beim GC frei -
+      // zu spaet, um das Browser-Kontextlimit bei vielen Bakes zu halten).
+      renderer.forceContextLoss();
+      const el = renderer.domElement;
+      el.parentNode?.removeChild(el);
+    },
   };
+}
+
+// Gibt alle Geometrien/Materialien/Texturen eines geladenen GLB-Szenegraphen
+// frei (Autor/Codex-Vorgabe: "GLB-Ressourcen nach dem Backen freigeben").
+export function gibGruppeFrei(root: THREE.Object3D): void {
+  root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    m.geometry?.dispose();
+    const mat = m.material;
+    const einzeln = Array.isArray(mat) ? mat : [mat];
+    for (const ma of einzeln) {
+      if (!ma) continue;
+      for (const k of Object.keys(ma) as Array<keyof THREE.Material>) {
+        const v = (ma as unknown as Record<string, unknown>)[k as string];
+        if (v && (v as THREE.Texture).isTexture) (v as THREE.Texture).dispose();
+      }
+      ma.dispose();
+    }
+  });
 }
