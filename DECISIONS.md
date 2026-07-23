@@ -2854,3 +2854,23 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   die GLB-Sprites NICHT visuell getestet.
 - OFFEN (Codex, rts.ts): eigene Bau-Typen fuer command_pavilion (Befehls-
   pavillon), rest_tent, supply_tent, fletcher, ...; Banner-/Feuer-Frameanimation.
+
+## HUD-Upgrade verkabelt + Kugeln aufgehuebscht + Charakterfenster-Baukasten
+- HUD-Menue-Knoepfe (Codex-HUD v3): onMenuAction war unbelegt -> die Knoepfe
+  Einstellungen/Charakter/Faehigkeiten/Karte/RTS taten nichts. Jetzt in WorldScene
+  verkabelt (Charakter/Faehigkeiten/Karte = panels.openTab, Einstellungen =
+  oeffneEinstellungen, RTS = toggleRtsModus). Browser-verifiziert.
+- HP/Mana-Fuellung: statt flacher Fluessigkeit jetzt Tiefen-Verlauf (dunkler
+  Sockel), schmaler Glas-Glanz und eine sanft (±0,7px) wellende, leuchtende
+  Oberflaechenkante - dezent (niedrige Alphas). In hud.ts update().
+- CHARAKTERFENSTER-BAUKASTEN (Autor "ich moechte Groessen selber anpassen und
+  dir die Werte schicken"): src/ui/charLayout.ts haelt das Layout (12 Elemente:
+  Porträt, Stufe/Name/Titel, 7 Ausruestungs-Slots, WERTE) als QUELL-Koordinaten
+  + localStorage-Overrides. panels.buildCharacterSideShell liest jedes Element
+  aus charBox(id). Editor-Knopf "✏ Layout" im C-Fenster: Element anklicken =
+  auswaehlen (Rahmen), Fussleiste mit -/+ und -10/+10 fuer X/Y/Breite/Hoehe,
+  "Export -> Log" (Wert-Block in der F12-Konsole zum Kopieren/Schicken),
+  "Zuruecksetzen". Alles live + persistent. Verifiziert (12 Boxen, Auswahl,
+  Override greift, 0 Fehler).
+- Workflow: Autor schiebt im Editor, klickt Export, schickt mir den Block; ich
+  uebernehme ihn als neue CHAR_LAYOUT_DEFAULT.

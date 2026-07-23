@@ -18,6 +18,7 @@ import { RTS_EINHEITEN, MORAL, RTS_RANG } from '../data/rts';
 import { PFLANZEN } from '../data/pflanzen';
 import type { MaterialId } from '../data/crafting';
 import { setVerfolgtWunsch, type QuestSicht } from '../logic/questLog';
+import { charBox, setCharBox, resetCharLayout, exportCharLayout, CHAR_LAYOUT_LABEL, type CharBox } from './charLayout';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import type { SoundProvider } from '../gfx/SoundProvider';
 import { fixUiScroll } from './dialog';
@@ -76,6 +77,12 @@ export function itemTooltipLines(it: Item): Array<[string, string]> {
 
 export class UIPanels {
   private open_ = false;
+  // BAUKASTEN-Editor fuers Charakterfenster (Autor): Element waehlen, Groesse/
+  // Position nudgen, Werte exportieren. charEditBoxen wird je Aufbau gefuellt.
+  private charEditor = false;
+  private charSel: string | null = null;
+  private charEditBoxen: Array<{ id: string; cx: number; cy: number; w: number; h: number }> = [];
+  private charScale = 1;   // panelScale zum Zeitpunkt des letzten Aufbaus (Editor rechnet Quell<->Schirm)
   private container: Phaser.GameObjects.Container | null = null;
   private tooltip: Phaser.GameObjects.Container | null = null;
   private scroll = 0;
@@ -445,40 +452,52 @@ export class UIPanels {
   private buildCharacterSideShell(c: Phaser.GameObjects.Container, w: number): void {
     const p = this.getPlayer();
     const s = this.panelScale;
+    this.charScale = s;   // BAUKASTEN: Editor rechnet Quell<->Schirm mit dieser Skala
     const y = (sourceY: number): number => (sourceY - 79) * s;
     const textSize = (sourcePx: number, min = 8): string => `${Math.max(min, Math.round(sourcePx * s))}px`;
 
-    c.add(this.scene.add.text(296 * s, y(82), 'AUSRÜSTUNG', {
+    // BAUKASTEN: jedes Element liest seine Quell-Box aus charBox(id) (Vorgabe +
+    // Editor-Override). charEditBoxen sammelt die Schirm-Rechtecke fuer den Editor.
+    this.charEditBoxen = [];
+    const merke = (id: string, cx: number, cy: number, ww: number, hh: number): void => {
+      this.charEditBoxen.push({ id, cx, cy, w: ww, h: hh });
+    };
+    const bA = charBox('ausruestung');
+    c.add(this.scene.add.text(bA.x * s, y(bA.y), 'AUSRÜSTUNG', {
       fontFamily: 'serif', fontSize: textSize(14), color: INK_SOFT, letterSpacing: Math.max(1, Math.round(2 * s)),
     }).setOrigin(0.5, 0));
+    merke('ausruestung', bA.x * s, y(bA.y) + 8 * s, 90 * s, 18 * s);
 
+    const bP = charBox('portrait');
     const portraitKey = this.scene.textures.exists(UI_ALDRIC)
       ? UI_ALDRIC
       : this.provider.heldPortraitKey(heldTier(p.armorIt ? p.armorIt.val : null));
-    const portrait = this.scene.add.image(169.5 * s, y(219), portraitKey);
-    if (portraitKey === UI_ALDRIC) this.passePortraitEin(portrait, 169.5 * s, y(219), 175 * s, 226 * s);
-    else portrait.setScale((172 * s) / Math.max(portrait.width, portrait.height));
+    const portrait = this.scene.add.image(bP.x * s, y(bP.y), portraitKey);
+    if (portraitKey === UI_ALDRIC) this.passePortraitEin(portrait, bP.x * s, y(bP.y), (bP.w ?? 175) * s, (bP.h ?? 226) * s);
+    else portrait.setScale(((bP.w ?? 172) * s) / Math.max(portrait.width, portrait.height));
     c.add(portrait);
+    merke('portrait', bP.x * s, y(bP.y), (bP.w ?? 175) * s, (bP.h ?? 226) * s);
 
-    const nameX = 168.5 * s;
-    c.add(this.scene.add.text(nameX, y(348), `STUFE ${p.level}`, {
+    const bStufe = charBox('stufe'), bName = charBox('name');
+    c.add(this.scene.add.text(bStufe.x * s, y(bStufe.y), `STUFE ${p.level}`, {
       fontFamily: 'serif', fontSize: textSize(14), color: '#e2cfaa', letterSpacing: 1,
     }).setOrigin(0.5, 0));
-    c.add(this.scene.add.text(nameX, y(374), 'Aldric von Weiden', {
+    merke('stufe', bStufe.x * s, y(bStufe.y) + 9 * s, 90 * s, 18 * s);
+    c.add(this.scene.add.text(bName.x * s, y(bName.y), 'Aldric von Weiden', {
       fontFamily: 'serif', fontSize: textSize(12), color: '#d7c9ae',
     }).setOrigin(0.5, 0));
+    merke('name', bName.x * s, y(bName.y) + 8 * s, 120 * s, 16 * s);
 
     const slot = (
       it: Item | null,
-      sx: number,
-      sy: number,
-      sw: number,
-      sh: number,
+      id: string,
       label: string,
       aktiv = false,
       inaktiv = false,
     ): void => {
-      const bx = sx * s, by = y(sy), bw = sw * s, bh = sh * s;
+      const box = charBox(id);
+      const bx = box.x * s, by = y(box.y), bw = (box.w ?? 60) * s, bh = (box.h ?? 71) * s;
+      merke(id, bx + bw / 2, by + bh / 2, bw, bh);
       const hit = this.scene.add.rectangle(bx, by, bw, bh, 0xffffff, 0).setOrigin(0);
       if (aktiv) hit.setStrokeStyle(Math.max(1, Math.round(2 * s)), 0xb88936, 0.9);
       c.add(hit);
@@ -512,13 +531,13 @@ export class UIPanels {
       });
     };
 
-    slot(p.weapon, 278, 150, 57, 150, 'Waffe', !p.bogenAktiv);
-    slot(null, 369, 98, 66, 71, 'Kopf');
-    slot(p.armorIt, 369, 213, 67, 96, 'Rüstung');
-    slot(p.schildIt, 489, 150, 59, 150, 'Schild', false, !!p.bogenAktiv && !!p.schildIt);
-    slot(p.bogen, 278, 331, 57, 71, 'Bogen', !!p.bogenAktiv);
-    slot(null, 369, 331, 67, 71, 'Stiefel');
-    slot(p.ring, 489, 331, 59, 71, 'Ring');
+    slot(p.weapon, 's_waffe', 'Waffe', !p.bogenAktiv);
+    slot(null, 's_kopf', 'Kopf');
+    slot(p.armorIt, 's_ruestung', 'Rüstung');
+    slot(p.schildIt, 's_schild', 'Schild', false, !!p.bogenAktiv && !!p.schildIt);
+    slot(p.bogen, 's_bogen', 'Bogen', !!p.bogenAktiv);
+    slot(null, 's_stiefel', 'Stiefel');
+    slot(p.ring, 's_ring', 'Ring');
 
     const sectionTitle = (sourceY: number, title: string): void => {
       c.add(this.scene.add.text(315 * s, y(sourceY), title, {
@@ -533,7 +552,11 @@ export class UIPanels {
 
     const dmgMin = Math.max(1, Math.round(p.stats.dmg * 0.85));
     const dmgMax = Math.max(dmgMin, Math.round(p.stats.dmg * 1.2));
-    sectionTitle(416, 'WERTE');
+    const bW = charBox('werte');
+    c.add(this.scene.add.text(bW.x * s, y(bW.y), 'WERTE', {
+      fontFamily: 'serif', fontSize: textSize(13), color: INK_SOFT, letterSpacing: Math.max(1, Math.round(2 * s)),
+    }).setOrigin(0.5, 0));
+    merke('werte', bW.x * s, y(bW.y) + 8 * s, 70 * s, 16 * s);
     const werte: Array<[string, string]> = [
       ['Schaden', `${dmgMin}-${dmgMax}`], ['Rüstung', String(p.stats.armor)],
       ['Trefferpunkte', `${Math.ceil(p.hp)}/${p.stats.maxhp}`], ['Mana', `${Math.ceil(p.mana)}/${p.stats.maxmana}`],
@@ -587,7 +610,71 @@ export class UIPanels {
         }).setOrigin(1, 0));
       });
     }
+    // BAUKASTEN: Editor-Knopf + (falls aktiv) Auswahl-Rahmen und Werte-Fussleiste.
+    this.zeichneCharEditor(c);
   }
+
+  // Layout-Baukasten fuers Charakterfenster (Autor "ich moechte die Groessen
+  // selber anpassen und dir die Werte schicken"): kleiner "Layout"-Knopf; ist er
+  // an, umrahmt er jedes Element (Klick = auswaehlen) und zeigt eine Fussleiste
+  // mit -/+ fuer X/Y/Breite/Hoehe, Export (Werte fuers Uebernehmen) und Reset.
+  private zeichneCharEditor(c: Phaser.GameObjects.Container): void {
+    const s = this.charScale;
+    const knopf = (bx: number, by: number, bw: number, bh: number, txt: string, an: boolean, fn: () => void): void => {
+      const r = this.scene.add.rectangle(bx, by, bw, bh, an ? 0x5a3a12 : 0x1a130a, 0.95).setOrigin(0).setStrokeStyle(1, an ? 0xc9a227 : 0x5a4a2e);
+      r.setInteractive({ useHandCursor: true }).on('pointerdown', fn);
+      c.add(r);
+      c.add(this.scene.add.text(bx + bw / 2, by + bh / 2, txt, { fontFamily: 'serif', fontSize: `${Math.max(9, Math.round(11 * s))}px`, color: an ? '#f0d878' : '#b9a98b' }).setOrigin(0.5));
+    };
+    // Umschalt-Knopf (immer sichtbar), oben rechts im Shell-Bereich.
+    knopf(300 * s, -4 * s, 96 * s, 20 * s, this.charEditor ? '✏ Layout AN' : '✏ Layout', this.charEditor, () => {
+      this.charEditor = !this.charEditor;
+      if (!this.charEditor) this.charSel = null;
+      this.build();
+    });
+    if (!this.charEditor) return;
+
+    // Auswahl-Rahmen um jedes Element; Klick waehlt es.
+    for (const b of this.charEditBoxen) {
+      const sel = b.id === this.charSel;
+      const rect = this.scene.add.rectangle(b.cx, b.cy, Math.max(10, b.w), Math.max(10, b.h), 0xc9a227, sel ? 0.14 : 0.05)
+        .setStrokeStyle(sel ? 2 : 1, sel ? 0xffe08a : 0x8a6f3c, 0.9);
+      rect.setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.charSel = b.id; this.build(); });
+      c.add(rect);
+    }
+
+    // Fussleiste: gewaehltes Element + Nudge-Knoepfe + Export/Reset.
+    const fy = 470 * s;
+    c.add(this.scene.add.rectangle(4 * s, fy, 560 * s, 92 * s, 0x0d0a06, 0.92).setOrigin(0).setStrokeStyle(1, 0x5a4a2e));
+    const sel = this.charSel ? charBox(this.charSel) : null;
+    const titel = this.charSel ? (CHAR_LAYOUT_LABEL[this.charSel] ?? this.charSel) : 'Element anklicken zum Auswählen';
+    c.add(this.scene.add.text(12 * s, fy + 6 * s, `Layout-Baukasten - ${titel}`, { fontFamily: 'serif', fontSize: `${Math.max(9, Math.round(12 * s))}px`, color: '#e2cfaa' }));
+    const nudge = (feld: keyof CharBox, label: string, spalte: number, hat: boolean): void => {
+      const bx = (12 + spalte * 138) * s, by = fy + 30 * s;
+      const wert = sel && sel[feld] !== undefined ? String(Math.round((sel[feld] as number) * 10) / 10) : '-';
+      c.add(this.scene.add.text(bx, by, `${label}: ${wert}`, { fontFamily: 'serif', fontSize: `${Math.max(8, Math.round(11 * s))}px`, color: hat ? '#d8cfb8' : '#6a5f4c' }));
+      if (!this.charSel || !hat) return;
+      const setzen = (d: number) => { const cur = charBox(this.charSel!); setCharBox(this.charSel!, { [feld]: Math.round(((cur[feld] as number) + d) * 10) / 10 } as Partial<CharBox>); this.build(); };
+      knopf(bx, by + 16 * s, 26 * s, 20 * s, '−', false, () => setzen(-1));
+      knopf(bx + 30 * s, by + 16 * s, 26 * s, 20 * s, '+', false, () => setzen(1));
+      knopf(bx + 62 * s, by + 16 * s, 34 * s, 20 * s, '−10', false, () => setzen(-10));
+      knopf(bx + 100 * s, by + 16 * s, 34 * s, 20 * s, '+10', false, () => setzen(10));
+    };
+    nudge('x', 'X', 0, true);
+    nudge('y', 'Y', 1, !!sel);
+    nudge('w', 'Breite', 2, !!sel && sel.w !== undefined);
+    nudge('h', 'Höhe', 3, !!sel && sel.h !== undefined);
+    // Export + Reset (rechte Spalte).
+    knopf(430 * s, fy + 6 * s, 120 * s, 20 * s, 'Export → Log', false, () => {
+      const txt = exportCharLayout();
+      console.log('[CHAR-LAYOUT]\n' + txt);   // Autor kopiert das aus der Konsole und schickt es mir
+      this.onCharLayoutExport?.(txt);
+    });
+    knopf(430 * s, fy + 30 * s, 120 * s, 20 * s, 'Zurücksetzen', false, () => { resetCharLayout(); this.charSel = null; this.build(); });
+  }
+
+  // Optionaler Haken: die Szene kann den Export-Text auch ins Log-Fenster spiegeln.
+  onCharLayoutExport?: (text: string) => void;
 
   private buildCharacterSide(c: Phaser.GameObjects.Container, w: number, _h: number): void {
     if (this.scene.textures.exists(UI_CHARACTER_SHELL)) {

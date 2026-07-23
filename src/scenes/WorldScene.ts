@@ -660,6 +660,7 @@ export class WorldScene extends CombatScene {
     };
     // Schriftrollen/Tränke aus dem Inventar auf die Leiste ziehen (Runde 40)
     this.panels.onAssignToSlot = (x, y, id) => this.hud.belegeBeiPunkt(x, y, id);
+    this.panels.onCharLayoutExport = () => this.logMsg('Charakter-Layout exportiert - in der Browser-Konsole (F12) steht der Wert-Block zum Kopieren.', 'gold');
     this.hudText = this.add.text(0, 0, '', { fontFamily: 'serif', fontSize: '13px', color: '#bfa86f' }).setScrollFactor(0).setDepth(4610);
     this.areaText = this.add.text(this.scale.width / 2, 16, '', {
       fontFamily: 'serif', fontSize: '15px', color: '#bfa86f', letterSpacing: 2,
