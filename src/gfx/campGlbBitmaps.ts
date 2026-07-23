@@ -23,6 +23,7 @@ const G = (rest: string) => `/props/camp/${rest}`;
 // Bau-Typen in rts.ts (Codex).
 export const CAMP_GLB: Readonly<Record<string, { url: string; drehen: number }>> = {
   zelt:         { url: G('field_tent/medieval_field_tent_3d_runtime.glb'), drehen: -Math.PI * 0.72 },
+  befehlszelt:  { url: G('command_pavilion/medieval_command_pavilion_3d_runtime.glb'), drehen: -Math.PI * 0.72 },
   lazarett:     { url: G('medical_tent/medieval_medical_tent_3d_runtime.glb'), drehen: -Math.PI * 0.72 },
   feldschmiede: { url: G('field_forge/medieval_field_forge_3d_runtime.glb'), drehen: -Math.PI * 0.72 },
   kochstelle:   { url: G('cooking_fire/medieval_camp_cooking_fire_3d_runtime.glb'), drehen: -Math.PI * 0.72 },

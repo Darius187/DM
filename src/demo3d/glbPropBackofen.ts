@@ -10,7 +10,11 @@ import { macheBackofen, beschneideCanvas, gibGruppeFrei } from './propBackofen';
 export interface GlbBackOpt {
   groesse?: number;   // Render-Aufloesung des Backofens (default 640)
   drehen?: number;    // Yaw um die Hochachse (Radiant) fuer die 3/4-Ansicht
-  zUp?: boolean;      // Blender-Export ist Z-hoch -> auf Y-hoch drehen (default true)
+  // AUTOR-BEFUND "die Assets liegen alle auf dem Boden": glTF/GLB ist per
+  // SPEZIFIKATION immer Y-hoch - die fruehere Standard-Kippung (-90 Grad um X,
+  // gedacht fuer rohe Blender-Z-hoch-Daten) legte die fertigen Modelle flach um.
+  // Darum ist zUp jetzt standardmaessig AUS; nur fuer echte Z-hoch-Sonderfaelle setzen.
+  zUp?: boolean;      // default false (GLB ist bereits Y-hoch)
   zielH?: number;     // Ziel-Sprite-Hoehe in px (default 320)
 }
 

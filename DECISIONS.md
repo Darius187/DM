@@ -2874,3 +2874,32 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Override greift, 0 Fehler).
 - Workflow: Autor schiebt im Editor, klickt Export, schickt mir den Block; ich
   uebernehme ihn als neue CHAR_LAYOUT_DEFAULT.
+
+## Wehrbauten = echter Kampf-Bestandteil (Autor-Grosspaket, AoE-Prinzip)
+- GLB-Assets lagen FLACH: glTF ist per Spez IMMER Y-hoch - die Standard-
+  Z-hoch-Kippung im GLB-Backofen legte fertige Modelle um. zUp jetzt default AUS.
+- Belagerung lief NUR im RTS-Modus -> im normalen Spiel griffen Monster
+  Palisaden NIE an (standen "dumm an der Ecke"). Laeuft jetzt immer; und
+  Verteidiger HINTER der Wand zaehlen nicht mehr als "im Kampf" (nur Ziele mit
+  freier SICHT binden) -> ohne Weg wird belagert wie in AoE.
+  hatWegZumZiel faellt ohne rtsBattle auf das Szenen-Wegfeld zurueck (Guard,
+  vom Sanity-Test gefangen).
+- KEIN Nahkampf durch Waende (beide Seiten): Schlag, dessen Bahn durch eine
+  Wand fuehrt, trifft nicht - stattdessen nagt die Belagerung an der Wand.
+- Eigene Truppen ignorieren Ziele OHNE Sichtlinie (kein Durchdrehen/Zittern an
+  der eigenen Palisade); Feinde zielen nicht auf TURM-INSASSEN (imTurm) - erst
+  der zerstoerte Turm wirft die Besatzung heraus (verwundbar am Turmfuss).
+- Bresche/Abbau oeffnet jetzt ALLE Wegfelder (marschFelder + rtsBattle + Szene)
+  -> Monster stroemen durch statt haengenzubleiben.
+- Ecken-Haenger: Glaettungs-Sichtlinie als KORRIDOR (3 parallele Bahnen im
+  Einheitenradius, WEGFINDUNG.korridorPx=10) an allen drei Steuerstellen.
+- TECHNIK-TOOLTIPS (bauTechnikText in data/rts.ts): jede Bau-Karte zeigt unter
+  der Rollenspiel-Zeile die ECHTEN Werte (heilt +x/s, Moral +y, Umkreis, LP) -
+  gespeist aus den Konstanten, bleibt bei Balance-Aenderungen automatisch korrekt.
+- NEU Befehlszelt (command_pavilion-GLB, Kategorie Lager, 16H+8F, 260 LP):
+  wirkt als grosse Standarte (Moral +10 im Standarten-Umkreis).
+- Balance: Turm-Reichweite reichF 1.55->1.9; Bogenschuetze dmg 9->13,
+  Heerbogen 4-7 -> 6-10 (Autor "Pfeile machen kaum Schaden").
+- docs/handoff/WEHRBAU-SPEC.md: verbindliche Masse fuer Codex (Palisade 1
+  Kachel/Kachel-Set, Tor exakt 2 Kacheln beide Richtungen, Turm 2x2, Y-hoch,
+  kein Bodenteller/Schatten - gegen "seltsamer Rand").

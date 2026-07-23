@@ -64,7 +64,7 @@ import { HoehlenLeben } from '../gfx/hoehlenLeben';
 import { KriegsnebelAnzeige, type SichtSet } from '../systems/kriegsnebel';
 import { buildKerkerArea } from '../world/kerkerArea';
 import { MINE } from '../data/mine';
-import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, HEER_AUSRUESTUNG, MORAL, MARSCH, VERTEIDIGUNG, BOTE, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, FELDSCHER, TURM, WEGFINDUNG, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, HEER_AUSRUESTUNG, MORAL, MARSCH, VERTEIDIGUNG, BOTE, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, FELDSCHER, TURM, WEGFINDUNG, bauTechnikText, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
@@ -4331,7 +4331,9 @@ export class WorldScene extends CombatScene {
         if (!b) return;
         const kann = b.frei && !this.kostenFehlen('dorf', b.kosten as Record<string, number>);
         const ktxt = Object.entries(b.kosten).map(([k, n]) => `${n}${MATERIAL_NAMES[k as MaterialId][0]}`).join(' ');
-        const hp = BAU_HP[b.id];
+        // Autor "unter der Rollenspiel-Beschreibung muss stehen, was es TECHNISCH
+        // gibt": Wirkzeilen kommen aus den echten Konstanten (bauTechnikText).
+        const technik = bauTechnikText(b.id).map((z) => `▪ ${z}`).join('\n');
         // Autor "warum geht das nicht / nicht freigeschaltet?": im Tooltip klar
         // sagen, WAS fehlt (Material mit Restmenge) bzw. dass es noch gesperrt ist.
         const kasse = this.kasse('dorf');
@@ -4344,8 +4346,8 @@ export class WorldScene extends CombatScene {
 
 ⚠ Fehlt: ${fehlt}` : '';
         feld(i % 4, Math.floor(i / 4), '⌂', `${b.name.split(' ')[0]} ${ktxt}`, { aus: !kann, icon: `baumenue_${b.id}`, tip: `${b.name}  (${ktxt})
-${b.beschreibung}${hp ? `
-Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
+${b.beschreibung}${technik ? `
+${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       });
       feld(3, 2, '◀', 'Zurück', {}, () => { this.rtsBauKat = null; });
       return;
@@ -4771,6 +4773,12 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     } else if (id === 'standarte') {
       img = this.spawneStandarte(x, y);
       this.logMsg(`Die Standarte weht - Moral im Umkreis +${MORAL.standarteBonus}.`, 'gold');
+    } else if (id === 'befehlszelt') {
+      // Autor "wo ist das Kommandozelt": Befehlspavillon = grosser Moral-Anker
+      // (zaehlt wie eine Standarte, gleiche Aura).
+      img = this.spawneFeldbau(id, x, y);
+      this.standartenAktiv.push({ x, y });
+      this.logMsg(`Das Befehlszelt steht - Moral im Umkreis +${MORAL.standarteBonus}.`, 'gold');
     } else if (id === 'palisade') {
       tx = Math.floor(x / TILE); ty = Math.floor(y / TILE);
       this.area.map[ty][tx] = T.PALISADE;
@@ -5008,8 +5016,13 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       this.lagerfeuerAktiv = this.lagerfeuerAktiv.filter((lf) => Math.hypot(lf.x - f.x, lf.y - f.y) > 8);
       const arr = this.lagerfeuerProKarte[this.area.id]; if (arr) this.lagerfeuerProKarte[this.area.id] = arr.filter((lf) => Math.hypot(lf.x - f.x, lf.y - f.y) > 8);
     }
-    if (f.id === 'standarte') this.standartenAktiv = this.standartenAktiv.filter((st) => Math.hypot(st.x - f.x, st.y - f.y) > 8);
+    if (f.id === 'standarte' || f.id === 'befehlszelt') this.standartenAktiv = this.standartenAktiv.filter((st) => Math.hypot(st.x - f.x, st.y - f.y) > 8);
     this.feldbauten = this.feldbauten.filter((x) => x !== f);
+    // Wegfelder frisch: ein entfernter Bau (Abbau ODER Zerstoerung) aendert die
+    // Begehbarkeit - sonst laufen Einheiten weiter gegen die alte Wand.
+    this.marschFelder.clear();
+    this.rtsBattle?.wegfelderNeu();
+    this.wegfeldNeu();
   }
 
   // Dauer-Lebensbalken der beschädigten (roten) Bauten + Auswahl
@@ -5031,7 +5044,7 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // Zielhöhe je Bau (massiver als vorher); Breite folgt dem echten Seitenverhältnis.
   // R100 (Autor "Feldaltar sieht riesig aus"): Lager-Props auf stimmige Groesse.
   // R101: Turm-Zielhoehe so, dass der Beinstand ~2 Kacheln (64px) breit wird.
-  private static readonly FELDBAU_ZIEL_H: Record<string, number> = { zelt: 84, lazarett: 84, nachschub: 76, feldaltar: 40, kochstelle: 42, brunnen: 50, feldschmiede: 44, wartfeuer: 46, botenposten: 50, pferdekoppel: 46, standarte: 70 };
+  private static readonly FELDBAU_ZIEL_H: Record<string, number> = { zelt: 84, lazarett: 84, nachschub: 76, feldaltar: 40, kochstelle: 42, brunnen: 50, feldschmiede: 44, wartfeuer: 46, botenposten: 50, pferdekoppel: 46, standarte: 70, befehlszelt: 104 };
 
   private setzeFeldbauGroesse(img: Phaser.GameObjects.Image, id: string, key: string): void {
     const h = this.istWachturm(id) ? 132 : WorldScene.FELDBAU_ZIEL_H[id];
@@ -8495,7 +8508,9 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   private belagerungsZielRef: (typeof this.feldbauten)[number] | null = null;
   private belagerungsNeuT = 0;
   private updateBelagerung(dt: number): void {
-    if (!this.rtsBattle) { this.belagerungAus(); return; }
+    // Autor "die stehen an der Ecke und greifen die Palisade nicht an":
+    // Belagerung lief NUR im RTS-Modus - im normalen Spiel nagten Monster nie
+    // an Wehrbauten. Jetzt laeuft sie immer, sobald Bauten stehen.
     const alleStrukturen = this.feldbauten.filter((f) => f.hp > 0);
     if (!alleStrukturen.length) { this.belagerungAus(); return; }
     // Erst die Befestigung brechen. Sind Palisade/Tor/Turm gefallen und kein
@@ -8509,8 +8524,14 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       const golemErweitertBresche = e.type === 'golem' && e.golemBrescheRest > 0 && !!e.belagerungsZiel
         && strukturen.some((f) => Math.hypot(f.x - e.belagerungsZiel!.x, f.y - e.belagerungsZiel!.y) < 4);
       if (e.type === 'golem' && e.golemBrescheRest > 0 && !golemErweitertBresche) e.golemBrescheRest = 0;
-      let kampfNah = !this.playerDead && Math.hypot(this.px - e.x, this.py - e.y) < BELAGERUNG.keinKampfRadius;
-      if (!kampfNah) for (const o of this.enemies) { if (o.team === 'spieler' && o.hp > 0 && Math.hypot(o.x - e.x, o.y - e.y) < BELAGERUNG.keinKampfRadius) { kampfNah = true; break; } }
+      // Autor: Verteidiger HINTER der Palisade zaehlen NICHT als "im Kampf" -
+      // nur ein Ziel mit freier SICHT bindet den Angreifer; sonst belagert er.
+      let kampfNah = !this.playerDead && Math.hypot(this.px - e.x, this.py - e.y) < BELAGERUNG.keinKampfRadius
+        && this.marschBahnFrei(e.x, e.y, this.px, this.py);
+      if (!kampfNah) for (const o of this.enemies) {
+        if (o.team === 'spieler' && o.hp > 0 && !o.imTurm && Math.hypot(o.x - e.x, o.y - e.y) < BELAGERUNG.keinKampfRadius
+          && this.marschBahnFrei(e.x, e.y, o.x, o.y)) { kampfNah = true; break; }
+      }
       if (kampfNah || (!golemErweitertBresche && this.hatWegZumZiel(e))) { e.belagerungsZiel = null; continue; }   // kaempft / hat Weg -> nicht belagern
       besieger.push(e);
     }
@@ -8560,6 +8581,20 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
           const bauName = RTS_BAUTEN.find((b) => b.id === zielF.id)?.name ?? zielF.id;
           this.logMsg(`${bauName} wurde zerstört!`, 'bad');
           this.sfx.playAt('holz_hacken', zielF.x, zielF.y, 0.7);
+          // Autor "im Turm sollen die Soldaten geschuetzt sein, der Turm muss
+          // erst zerstoert werden": faellt ein WACHTURM, springen die Insassen
+          // heraus (verwundbar, am Turmfuss) - vorher sind sie kein Ziel.
+          if (this.istWachturm(zielF.id)) {
+            for (const o of this.enemies) {
+              if (o.team !== 'spieler' || !o.imTurm || !o.festPos) continue;
+              if (Math.hypot(o.festPos.x - zielF.x, o.festPos.y - (zielF.y - TURM.hoeheOffset)) > TURM.andockRadius + 24) continue;
+              o.imTurm = false; o.festPos = null; o.turmReichF = 1;
+              o.x = zielF.x + (Math.random() - 0.5) * 20; o.y = zielF.y + 14;
+              o.sprite?.setVisible(true);
+              this.fx.burst(o.x, o.y, 0x8a6a3c, 6, 90);
+            }
+            this.logMsg('Die Turmbesatzung springt aus den Trümmern!', 'bad');
+          }
           this.entferneFeldbau(zielF);
           if (this.belagerungsZielRef === zielF) this.belagerungsZielRef = null;
           if (breschenErweiterung) {
@@ -8568,7 +8603,8 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
           } else {
             e.belagerungsZiel = null;
           }
-          this.rtsBattle.wegfelderNeu();   // sofort neu pfaden -> Angreifer stroemen durch die Bresche
+          this.rtsBattle?.wegfelderNeu();  // sofort neu pfaden -> Angreifer stroemen durch die Bresche
+          this.marschFelder.clear();       // Autor "Monster haengt an der Bresche": auch die jagdZiel-Felder verwerfen
           this.wegfeldNeu();               // Szenen-Feld (Held-Ziel) ebenfalls
           break;                           // entfernte Struktur in diesem Frame nicht doppelt treffen
         }
@@ -8585,7 +8621,9 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     const z = this.zielFuer(e);
     if (z === 'held') return this.wegRichtung(e.x, e.y) !== null;
     if (!z) return false;
-    return this.rtsBattle!.wegPunkt('feind', e.x, e.y, { x: z.x, y: z.y }) !== null;
+    // Belagerung laeuft jetzt auch OHNE RTS-Modus - dann ueber das Szenen-Feld.
+    if (this.rtsBattle) return this.rtsBattle.wegPunkt('feind', e.x, e.y, { x: z.x, y: z.y }) !== null;
+    return this.wegRichtungZiel(e.x, e.y, z.x, z.y) !== null;
   }
 
   // R95 (Autor "Stamm verdeckt den Kopf, obwohl der Held davorsteht"): Held und
@@ -8741,21 +8779,26 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     if (e.team === 'spieler') {
       // R139 (1.7) Zielwahl-Achse: naechster (Standard), schwaechster (wenig
       // HP zuerst - Fokusfeuer), gefaehrlichster (hoechster Schaden zuerst).
+      // Autor "Soldaten/Held drehen durch, wenn Gegner HINTER der Palisade
+      // stehen": Ziele ohne freie SICHT werden ignoriert - die Truppe bleibt
+      // ruhig in Stellung, statt an der eigenen Wand zu zittern.
       let best = Infinity;
       for (const o of this.enemies) {
         if (o.team === 'spieler' || o.hp <= 0) continue;
         const d = Math.hypot(o.x - e.x, o.y - e.y);
         if (d > 420) continue;
+        if (!this.marschBahnFrei(e.x, e.y, o.x, o.y)) continue;
         const score = e.zielWahl === 'schwaechster' ? o.hp + d * 0.05
           : e.zielWahl === 'gefaehrlichster' ? -o.dmg * 100 + d
           : d;
         if (score < best) { best = score; ziel = o; }
       }
     } else {
-      // Feind: naechster von {Held, Verbuendete}
+      // Feind: naechster von {Held, Verbuendete}. Autor: Turm-Insassen sind
+      // GESCHUETZT (kein Ziel) - erst der zerstoerte Turm wirft sie heraus.
       ziel = this.playerDead ? null : 'held';
       let bd = this.playerDead ? 1e9 : Math.hypot(this.px - e.x, this.py - e.y);
-      for (const o of this.enemies) { if (o.team !== 'spieler' || o.hp <= 0) continue; const d = Math.hypot(o.x - e.x, o.y - e.y); if (d < bd) { bd = d; ziel = o; } }
+      for (const o of this.enemies) { if (o.team !== 'spieler' || o.hp <= 0 || o.imTurm) continue; const d = Math.hypot(o.x - e.x, o.y - e.y); if (d < bd) { bd = d; ziel = o; } }
     }
     // Sperre leicht streuen, damit nicht alle Einheiten im selben Takt wechseln.
     this.zielSperre.set(e, { ziel, bis: jetzt + ZIEL_SPERRE.dauerS * (1 + (Math.random() - 0.5) * 2 * ZIEL_SPERRE.streuung) });
@@ -8799,7 +8842,16 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     // naechste Kachel - so wird die Ecke VOR der Wand angeschnitten.
     const pfad = e.feld.pfadVon(Math.floor(x / TILE), Math.floor(y / TILE), WEGFINDUNG.glattMaxPfad)
       .map((p) => ({ x: p.tx * TILE + TILE / 2, y: p.ty * TILE + TILE / 2 }));
-    const zp = ziehePfadStraff(pfad, x, y, (x0, y0, x1, y1) => this.marschBahnFrei(x0, y0, x1, y1), WEGFINDUNG.glattProben);
+    // Korridor-Sicht (Autor "Einheiten haengen an Ecken"): 3 parallele Bahnen
+    // im Einheiten-Radius - keine Abkuerzung, durch die der Koerper nicht passt.
+    const breitFrei = (x0: number, y0: number, x1: number, y1: number): boolean => {
+      if (!this.marschBahnFrei(x0, y0, x1, y1)) return false;
+      const a = Math.atan2(y1 - y0, x1 - x0) + Math.PI / 2;
+      const ox = Math.cos(a) * WEGFINDUNG.korridorPx, oy = Math.sin(a) * WEGFINDUNG.korridorPx;
+      return this.marschBahnFrei(x0 + ox, y0 + oy, x1 + ox, y1 + oy)
+        && this.marschBahnFrei(x0 - ox, y0 - oy, x1 - ox, y1 - oy);
+    };
+    const zp = ziehePfadStraff(pfad, x, y, breitFrei, WEGFINDUNG.glattProben);
     return zp ? Math.atan2(zp.y - y, zp.x - x) : null;
   }
 
@@ -8827,6 +8879,13 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         // R139 (Sunzi N5.3): Eingekesselte kaempfen verzweifelt - mehr Schaden.
         const d2 = en.verzweifelt ? Math.round(wurf * MORAL.verzweiflungDmgF) : wurf;
         const z = s.zielFuer(en);
+        // Autor "Monster greifen UEBER die Palisade an - ohne Belagerungsturm
+        // unmoeglich": ein Nahkampfschlag, dessen gerade Bahn durch eine Wand
+        // fuehrt, trifft NICHT (gilt fuer beide Seiten; die Belagerung nagt
+        // stattdessen an der Wand selbst).
+        const zx = z === 'held' ? s.px : z ? z.x : en.x;
+        const zy = z === 'held' ? s.py : z ? z.y : en.y;
+        if (z && !s.marschBahnFrei(en.x, en.y, zx, zy)) return;
         if (z === 'held') s.enemyMeleeHit(en, d2);
         else if (z) {
           // R139 (Dok 03, 1.6 - AoE IV): Tag-Konter Einheit gegen Einheit.

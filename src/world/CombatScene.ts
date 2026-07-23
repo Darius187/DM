@@ -3312,7 +3312,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       }
       return true;
     };
-    const zp = ziehePfadStraff(pfad, x, y, frei, WEGFINDUNG.glattProben);
+    // Korridor-Sicht (Autor "Einheiten haengen an Ecken"): Bahn im Radius pruefen.
+    const breitFrei = (x0: number, y0: number, x1: number, y1: number): boolean => {
+      if (!frei(x0, y0, x1, y1)) return false;
+      const a = Math.atan2(y1 - y0, x1 - x0) + Math.PI / 2;
+      const ox = Math.cos(a) * WEGFINDUNG.korridorPx, oy = Math.sin(a) * WEGFINDUNG.korridorPx;
+      return frei(x0 + ox, y0 + oy, x1 + ox, y1 + oy) && frei(x0 - ox, y0 - oy, x1 - ox, y1 - oy);
+    };
+    const zp = ziehePfadStraff(pfad, x, y, breitFrei, WEGFINDUNG.glattProben);
     return zp ? Math.atan2(zp.y - y, zp.x - x) : null;
   }
 

@@ -620,9 +620,16 @@ export class RtsBattle {
     }
     // String-Pulling (Autor "erst gegen die Wand, dann Umweg - wie AoE/SC2"):
     // den entferntesten SICHTBAREN Pfadpunkt ansteuern statt Kachel fuer Kachel.
+    // Korridor-Sicht: 3 parallele Bahnen im Einheiten-Radius (kein Ecken-Haenger).
     const pfad = e.feld.pfadVon(Math.floor(vonX / TILE), Math.floor(vonY / TILE), WEGFINDUNG.glattMaxPfad)
       .map((p) => ({ x: p.tx * TILE + TILE / 2, y: p.ty * TILE + TILE / 2 }));
-    return ziehePfadStraff(pfad, vonX, vonY, (x0, y0, x1, y1) => this.bahnFrei(x0, y0, x1, y1), WEGFINDUNG.glattProben);
+    const breitFrei = (x0: number, y0: number, x1: number, y1: number): boolean => {
+      if (!this.bahnFrei(x0, y0, x1, y1)) return false;
+      const a = Math.atan2(y1 - y0, x1 - x0) + Math.PI / 2;
+      const ox = Math.cos(a) * WEGFINDUNG.korridorPx, oy = Math.sin(a) * WEGFINDUNG.korridorPx;
+      return this.bahnFrei(x0 + ox, y0 + oy, x1 + ox, y1 + oy) && this.bahnFrei(x0 - ox, y0 - oy, x1 - ox, y1 - oy);
+    };
+    return ziehePfadStraff(pfad, vonX, vonY, breitFrei, WEGFINDUNG.glattProben);
   }
   private raeumeWegfelder(): void {
     const now = this.host.scene.time.now;

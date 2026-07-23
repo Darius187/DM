@@ -75,6 +75,9 @@ export const RTS_BAUTEN: ReadonlyArray<RtsBau> = [
   { id: 'tor', name: 'Tor', kosten: { holz: 12 }, frei: true, beschreibung: 'Verschließbarer Durchlass in der Palisadenreihe' },
   { id: 'lazarett', name: 'Lazarett-Zelt', kosten: { holz: 14, fasern: 10, schafgarbe: 4 }, frei: true, beschreibung: 'Der Feldscher verbindet hier Verwundete' },
   { id: 'zelt', name: 'Mannschaftszelt', kosten: { holz: 10, fasern: 6 }, frei: true, beschreibung: 'Rast: eigene Einheiten im Umkreis regenerieren langsam' },
+  // Autor "wo ist das Kommandozelt?": der Befehlspavillon (command_pavilion-GLB)
+  // als eigener Bau - wirkt wie eine grosse Standarte (Moral-Anker des Lagers).
+  { id: 'befehlszelt', name: 'Befehlszelt', kosten: { holz: 16, fasern: 8 }, frei: true, beschreibung: 'Der Befehlspavillon des Lagers - Sammelpunkt, hebt die Moral im Umkreis' },
   // R97 "Lager zum Durchhalten": Aura-/Wirk-Bauten (Autorliste). Alle docken auf
   // dem stehenden Bausystem (platzieren/HP/reparieren/abbauen) an.
   { id: 'feldaltar', name: 'Feldaltar', kosten: { holz: 8, stein: 6 }, frei: true, beschreibung: 'Der Pater weiht ihn - Moral + Schutz gegen Untote im Umkreis' },
@@ -127,8 +130,37 @@ export const RTS_HELD = {
 // paar Monster ~1-2 Minuten. Werte hier tunen.
 export const BAU_HP: Record<string, number> = {
   lagerfeuer: 40, standarte: 60, palisade: 900, tor: 1500, wachturm: 1300, wachturm_45: 1300, wachturm_40: 1300, lazarett: 130, zelt: 90,
-  feldaltar: 90, kochstelle: 60, brunnen: 110, feldschmiede: 120, wartfeuer: 70, nachschub: 90,
+  feldaltar: 90, kochstelle: 60, brunnen: 110, feldschmiede: 120, wartfeuer: 70, nachschub: 90, befehlszelt: 260,
 };
+
+// TECHNIK-TEXT je Bau (Autor: "unter der Rollenspiel-Beschreibung muss stehen,
+// was es TECHNISCH gibt - heilt +x/s, Moral +y, in welchem Umkreis"). Alle
+// Zahlen kommen aus den ECHTEN Konstanten (LAGER_EFFEKT/MORAL/TURM/FELDSCHER) -
+// aendert sich die Balance, stimmt der Tooltip automatisch weiter.
+export function bauTechnikText(id: string): string[] {
+  const r = `${LAGER_EFFEKT.radius}px Umkreis`;
+  const zeilen: Record<string, string[]> = {
+    lagerfeuer: [`Rastpunkt + Licht bei Nacht`],
+    standarte: [`Moral +${MORAL.standarteBonus} (${MORAL.standarteRadius}px Umkreis)`],
+    befehlszelt: [`Moral +${MORAL.standarteBonus} (${MORAL.standarteRadius}px Umkreis)`, 'Sammelpunkt des Lagers'],
+    palisade: ['Sperrt 1 Kachel - Feinde muessen sie erst brechen'],
+    tor: ['Sperrt 2 Kacheln - fuer eigene Einheiten passierbar (auf/zu)'],
+    wachturm: [`Besatzung: ${TURM.kapazitaet} - geschuetzt bis der Turm faellt`, `Fernkampf: Reichweite x${TURM.reichF}, Schaden x${TURM.dmgBonus}`],
+    lazarett: [`Feldscher verbindet hier: +${FELDSCHER.heilProS} Leben/s (${FELDSCHER.heilRadius}px)`],
+    zelt: [`Heilt eigene Einheiten +${LAGER_EFFEKT.zeltRegen} Leben/s (${r})`],
+    feldaltar: [`Moral +${LAGER_EFFEKT.altarMoral} · Untoten-Schaden x${LAGER_EFFEKT.altarUntotSchutz}`, `Heilt +${LAGER_EFFEKT.altarHeal} Leben/s (${r})`],
+    kochstelle: [`Schaden der Truppe x${LAGER_EFFEKT.kochDmg} (${r})`],
+    brunnen: [`Moral +${LAGER_EFFEKT.brunnenMoral} (${r})`],
+    feldschmiede: [`Repariert nahe Bauwerke +${LAGER_EFFEKT.schmiedeReparaturProS} LP/s (${r})`],
+    wartfeuer: [`Ruft Verstaerkung (alle ${LAGER_EFFEKT.wartfeuerCd}s, anklicken)`],
+    nachschub: [`Heilt eigene Einheiten +${LAGER_EFFEKT.nachschubRegen} Leben/s (${r})`],
+    botenposten: ['Bote bezieht Posten - Grafen-Ruf von hier (abfangbar)'],
+    pferdekoppel: ['Der Bote REITET (statt zu laufen) - Ruf kommt schneller an'],
+  };
+  const eff = zeilen[id.startsWith('wachturm') ? 'wachturm' : id] ?? [];
+  const hp = BAU_HP[id];
+  return hp ? [...eff, `Lebenspunkte: ${hp}`] : eff;
+}
 // Belagerung (R100): Monster nagen an Wehrbauten, wenn sie gerade NICHTS zu
 // bekaempfen haben (Bunker-Situation). Schaden = Monster-dmg * schadensFaktor pro
 // Sekunde (kontinuierlich) - klein, damit Holz lange haelt.
@@ -185,7 +217,7 @@ export interface RtsUnitDef {
 export const RTS_UNIT_TYP: Record<RtsUnitTyp, RtsUnitDef> = {
   schild:   { name: 'Schildträger', team: 'spieler', hp: 320, dmg: 8,  reich: 30,  speed: 46, rank: 0, figur: 'soldat',      heiler: false, tint: 0xb8c4d2, schadensArt: 'wucht', tags: ['lebend', 'gepanzert', 'schild'] },
   nahkampf: { name: 'Gewappneter',  team: 'spieler', hp: 220, dmg: 12, reich: 30,  speed: 62, rank: 1, figur: 'soldat',      heiler: false, schadensArt: 'schnitt', tags: ['lebend', 'gepanzert'] },
-  bogen:    { name: 'Bogenschütze', team: 'spieler', hp: 140, dmg: 9,  reich: 200, speed: 64, rank: 2, figur: 'bogensoldat', heiler: false, schadensArt: 'pfeil', tags: ['lebend', 'ungepanzert', 'leicht', 'fernkampf'] },
+  bogen:    { name: 'Bogenschütze', team: 'spieler', hp: 140, dmg: 13,  reich: 200, speed: 64, rank: 2, figur: 'bogensoldat', heiler: false, schadensArt: 'pfeil', tags: ['lebend', 'ungepanzert', 'leicht', 'fernkampf'] },
   heiler:   { name: 'Feldscher',    team: 'spieler', hp: 150, dmg: 9,  reich: 150, speed: 58, rank: 3, figur: 'johannes',    heiler: true,  tint: 0xe8e0a0, schadensArt: 'wucht', tags: ['lebend', 'ungepanzert'] },
   reiter:   { name: 'Ritter',       team: 'spieler', hp: 360, dmg: 20, reich: 34,  speed: 96, rank: 0, figur: 'soldat',      heiler: false, tint: 0xf0d878, groesse: 1.2, schadensArt: 'stich', tags: ['lebend', 'gepanzert', 'schwer'] },
   // Feind-Truppen: eigene, deutlich zaehere Werte (nicht Dungeon-Skelette).
@@ -207,7 +239,7 @@ export const TURM = {
   dmgBonus: 1.35,         // erhöhte Stellung = härtere Treffer
   hoeheOffset: 40,        // Pixel-Versatz nach oben auf die Plattform
   andockRadius: 34,       // so nah muss der Befehl am Turm liegen
-  reichF: 1.55,           // R100c: Reichweiten-Faktor auf dem Turm (Fernkampf ~ +55%)
+  reichF: 1.9,            // Autor: Turm-Bogenschuetzen sollen WEIT tragen (~ +90%)
 } as const;
 
 // Truppen-Moral (um 1300 entschied sie Schlachten öfter als das Schwert):
@@ -259,6 +291,10 @@ export const DURCHLASS = {
 export const WEGFINDUNG = {
   glattMaxPfad: 40,   // wie viele Kacheln des Feld-Abstiegs betrachtet werden
   glattProben: 5,     // max. Sichtlinien-Proben je Aufruf (Kosten-Deckel)
+  // Autor "Einheiten bleiben an Ecken haengen": die Glaettungs-Sichtlinie wird
+  // um den Einheiten-Radius verbreitert (3 parallele Bahnen) - so schneidet
+  // niemand eine Ecke an, durch die sein Koerper nicht passt.
+  korridorPx: 10,
 } as const;
 
 // R139 (Dok 03, 1.4 - Dungeon Siege): Ziel-Sperrzeit gegen das Ziel-Zappeln.
@@ -311,7 +347,7 @@ export const BOTE = {
 export const HEER_AUSRUESTUNG: Readonly<Record<string, { waffe: string; min: number; max: number; ruestung: string; red: number }>> = {
   nahkampf: { waffe: 'Heerklinge', min: 5, max: 8, ruestung: 'Lederwams', red: 0.9 },
   schild: { waffe: 'Heerklinge', min: 5, max: 8, ruestung: 'Kettenhemd', red: 0.82 },
-  bogen: { waffe: 'Heerbogen', min: 4, max: 7, ruestung: 'Lederwams', red: 0.9 },
+  bogen: { waffe: 'Heerbogen', min: 6, max: 10, ruestung: 'Lederwams', red: 0.9 },
   reiter: { waffe: 'Heerklinge', min: 5, max: 8, ruestung: 'Kettenhemd', red: 0.82 },
 };
 
@@ -334,7 +370,7 @@ export const VERTEIDIGUNG = {
 // Tabs. Die ids verweisen auf RTS_BAUTEN.
 export const BAU_KATEGORIEN: ReadonlyArray<{ id: string; name: string; taste: string; bauten: string[] }> = [
   { id: 'wehr', name: 'Befestigung', taste: 'Q', bauten: ['palisade', 'tor', 'wachturm', 'wachturm_45', 'wachturm_40'] },
-  { id: 'lager', name: 'Lager', taste: 'W', bauten: ['lagerfeuer', 'zelt', 'lazarett', 'nachschub', 'feldschmiede'] },
+  { id: 'lager', name: 'Lager', taste: 'W', bauten: ['lagerfeuer', 'zelt', 'befehlszelt', 'lazarett', 'nachschub', 'feldschmiede'] },
   { id: 'versorgung', name: 'Versorgung', taste: 'E', bauten: ['kochstelle', 'brunnen', 'botenposten', 'pferdekoppel'] },
   { id: 'zeichen', name: 'Feldzeichen', taste: 'R', bauten: ['standarte', 'feldaltar', 'wartfeuer'] },
 ];
