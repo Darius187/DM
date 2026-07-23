@@ -645,6 +645,19 @@ export class WorldScene extends CombatScene {
     this.bodenGfx = this.add.graphics().setDepth(-5);
     this.minimapGfx = this.add.graphics().setScrollFactor(0).setDepth(4500);
     this.hud = new Hud(this, () => this.p, () => this.weaponClass(), (id) => this.runActionFromBar(id));
+    // Neue HUD-Menue-Knoepfe (Codex-HUD-Upgrade): jeder Knopf oeffnet sein Ziel.
+    // Vorher war onMenuAction nicht belegt -> die Knoepfe taten nichts (Autor).
+    this.hud.onMenuAction = (id) => {
+      if (this.uiBlocked() && id !== 'einstellungen') return;   // im Dialog/Editor nichts umschalten
+      this.sfx.play('klick');
+      switch (id) {
+        case 'einstellungen': this.oeffneEinstellungen(); break;
+        case 'charakter': this.panels.openTab('held'); break;
+        case 'faehigkeiten': this.panels.openTab('faehigkeiten'); break;
+        case 'karte': this.panels.openTab('karte'); break;
+        case 'rts': this.panels.closeAll(); this.toggleRtsModus(); break;
+      }
+    };
     // Schriftrollen/Tränke aus dem Inventar auf die Leiste ziehen (Runde 40)
     this.panels.onAssignToSlot = (x, y, id) => this.hud.belegeBeiPunkt(x, y, id);
     this.hudText = this.add.text(0, 0, '', { fontFamily: 'serif', fontSize: '13px', color: '#bfa86f' }).setScrollFactor(0).setDepth(4610);
@@ -14083,8 +14096,7 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     });
     mkBtn(h * 0.34 + 5 * 52, 'EINSTELLUNGEN', () => {
       this.togglePause();
-      this.scene.pause();
-      this.scene.launch('Settings', { zurueck: 'World', resume: true });
+      this.oeffneEinstellungen();
     });
     mkBtn(h * 0.34 + 6 * 52, 'HAUPTMENÜ', () => {
       this.autosave();
@@ -14092,6 +14104,13 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     });
     fixUiScroll(c);
     this.pauseMenu = c;
+  }
+
+  // Einstellungen oeffnen (aus Pausenmenue ODER HUD-Knopf): Welt pausieren,
+  // Settings-Szene mit Rueckweg starten.
+  private oeffneEinstellungen(): void {
+    this.scene.pause();
+    this.scene.launch('Settings', { zurueck: 'World', resume: true });
   }
 
   // Spielzustand fürs Quest-System (Runde 52): Flags + abgeleitete Werte.

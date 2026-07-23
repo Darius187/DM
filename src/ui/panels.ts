@@ -122,8 +122,8 @@ export class UIPanels {
   // tatsaechlich losgeschickte Kopfzahl zurueck.
   onSendeTruppen?: (von: string, nach: string, anzahl: number) => number;
 
-  // Fenster direkt auf einem Reiter öffnen (B = Album)
-  openTab(tab: 'held' | 'album' | 'statistik'): void {
+  // Fenster direkt auf einem Reiter öffnen (B = Album, HUD-Knöpfe = held/faehigkeiten/karte)
+  openTab(tab: 'held' | 'faehigkeiten' | 'aufgaben' | 'album' | 'statistik' | 'kontakte' | 'karte' | 'ebene' | 'heer'): void {
     this.hauptTab = tab;
     if (!this.open_) {
       this.open_ = true;
