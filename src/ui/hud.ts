@@ -952,7 +952,14 @@ export class Hud {
     // auch bei jeder HUD-Skalierung deckungsgleich.
     this.hpImg.setVisible(false);
     this.mpImg.setVisible(false);
-    const meter = (x: number, y: number, frac: number, farbe: number, licht: number): void => {
+    // Fluessigkeits-Anzeige (Autor "interessanter als flache Fluessigkeit, aber
+    // dezent"): Tiefen-Verlauf (dunkler Sockel), schmaler Glas-Glanz und eine
+    // sanft leuchtende, kaum merklich wellende Oberflaechenkante. Alles mit
+    // niedrigen Alphas - lebt, faellt aber nicht auf.
+    const jetzt = this.scene.time.now;
+    const dunkler = (c: number, f: number): number =>
+      (Math.round(((c >> 16) & 255) * f) << 16) | (Math.round(((c >> 8) & 255) * f) << 8) | Math.round((c & 255) * f);
+    const meter = (x: number, y: number, frac: number, farbe: number, licht: number, seed: number): void => {
       const breite = HUD_METER_W * skala;
       const hoehe = HUD_METER_H * skala;
       const innen = Math.max(2, 4 * skala);
@@ -960,17 +967,27 @@ export class Hud {
       const f = Phaser.Math.Clamp(frac, 0, 1);
       this.meterGfx.fillStyle(0x080706, 0.96);
       this.meterGfx.fillRoundedRect(x - breite / 2, y - hoehe / 2, breite, hoehe, Math.max(2, 5 * skala));
-      if (f > 0) {
-        const fuellH = innenH * f;
-        const fuellY = y + hoehe / 2 - innen - fuellH;
-        this.meterGfx.fillStyle(farbe, 0.98);
-        this.meterGfx.fillRect(x - breite / 2 + innen, fuellY, breite - innen * 2, fuellH);
-        this.meterGfx.fillStyle(licht, 0.2);
-        this.meterGfx.fillRect(x - breite / 2 + innen * 1.5, fuellY, Math.max(1, breite * 0.18), fuellH);
-      }
+      if (f <= 0) return;
+      const fuellH = innenH * f;
+      const x0 = x - breite / 2 + innen, bw = breite - innen * 2;
+      const kante = y + hoehe / 2 - innen - fuellH;   // Oberkante der Fuellung
+      // Tiefe: dunkler Sockel ueber die ganze Fuellung, hellere Farbe im oberen Teil.
+      this.meterGfx.fillStyle(dunkler(farbe, 0.7), 1);
+      this.meterGfx.fillRect(x0, kante, bw, fuellH);
+      this.meterGfx.fillStyle(farbe, 0.92);
+      this.meterGfx.fillRect(x0, kante, bw, fuellH * 0.6);
+      // Glas-Glanz: schmaler, heller Senkrecht-Streifen links.
+      this.meterGfx.fillStyle(licht, 0.12);
+      this.meterGfx.fillRect(x0 + bw * 0.14, kante, Math.max(1, bw * 0.16), fuellH);
+      // Oberflaeche: weicher Schein + helle Kante, ganz sanft wellend (±0,7px).
+      const wob = Math.sin(jetzt / 900 + seed) * skala * 0.7;
+      this.meterGfx.fillStyle(licht, 0.10);
+      this.meterGfx.fillRect(x0, kante + wob, bw, Math.max(2, 6 * skala));
+      this.meterGfx.fillStyle(licht, 0.5);
+      this.meterGfx.fillRect(x0, kante + wob, bw, Math.max(1, 1.6 * skala));
     };
-    meter(hx, hy, hpFrac, 0x8f1e20, 0xffc7aa);
-    meter(mx, my, mpFrac, 0x244f91, 0xbcd8ff);
+    meter(hx, hy, hpFrac, 0x8f1e20, 0xffc7aa, 0);
+    meter(mx, my, mpFrac, 0x244f91, 0xbcd8ff, 1.7);
     this.hpFrame.setVisible(true);
     this.mpFrame.setVisible(true);
     const zahlGroesse = Math.max(16, Math.round(28 * skala));
