@@ -45,3 +45,47 @@ describe('Wegfeld (Flussfeld-Wegfindung)', () => {
     expect(pfad![pfad!.length - 1]).toEqual([4, 0]);
   });
 });
+
+// Autor-Befund: "Einheiten laufen erst gegen die Wand und suchen DANN den
+// Umweg." Mit gewichteten Kosten (10/14) + String-Pulling steuert die Einheit
+// von ANFANG an den entferntesten sichtbaren Pfadpunkt Richtung Luecke an.
+describe('Wegfindung nach RTS-Standard (Kosten 10/14 + String-Pulling)', () => {
+  const TILE = 32;
+  const W = 20, H = 10;
+  // Wand bei tx=10 ueber die volle Hoehe, EINZIGE Luecke bei ty=8
+  const frei = (tx: number, ty: number) => tx >= 0 && ty >= 0 && tx < W && ty < H && !(tx === 10 && ty !== 8);
+  const sichtFrei = (x0: number, y0: number, x1: number, y1: number): boolean => {
+    const d = Math.hypot(x1 - x0, y1 - y0);
+    const schritte = Math.max(1, Math.ceil(d / (TILE / 2)));
+    for (let i = 1; i <= schritte; i++) {
+      const t = i / schritte;
+      if (!frei(Math.floor((x0 + (x1 - x0) * t) / TILE), Math.floor((y0 + (y1 - y0) * t) / TILE))) return false;
+    }
+    return true;
+  };
+
+  it('der Feld-Abstieg fuehrt durch die Luecke (nicht in die Wand)', async () => {
+    const { Wegfeld: WF } = await import('../src/world/Wegfeld');
+    const wf = new WF(W, H);
+    wf.berechne(13, 2, frei);
+    const pfad = wf.pfadVon(8, 2, 40);
+    expect(pfad.length).toBeGreaterThan(0);
+    expect(pfad.some((p) => p.tx === 10 && p.ty === 8)).toBe(true);   // einzige Querung
+    expect(pfad.every((p) => frei(p.tx, p.ty))).toBe(true);
+  });
+
+  it('String-Pulling steuert einen WEITEN sichtbaren Punkt an (plant vor der Wand)', async () => {
+    const { Wegfeld: WF, ziehePfadStraff } = await import('../src/world/Wegfeld');
+    const wf = new WF(W, H);
+    wf.berechne(13, 2, frei);
+    const sx = 8 * TILE + 16, sy = 2 * TILE + 16;
+    const punkte = wf.pfadVon(8, 2, 40).map((p) => ({ x: p.tx * TILE + 16, y: p.ty * TILE + 16 }));
+    const zp = ziehePfadStraff(punkte, sx, sy, sichtFrei, 5);
+    expect(zp).not.toBeNull();
+    // Der Steuerpunkt liegt WEIT voraus (>= 3 Kacheln), nicht auf der Nachbarkachel -
+    // die Einheit laeuft also von Anfang an schraeg zur Luecke statt zur Wand.
+    expect(Math.hypot(zp!.x - sx, zp!.y - sy)).toBeGreaterThan(3 * TILE);
+    // Und die gerade Bahn dorthin ist wirklich frei (kein Wandkontakt).
+    expect(sichtFrei(sx, sy, zp!.x, zp!.y)).toBe(true);
+  });
+});

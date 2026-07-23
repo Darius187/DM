@@ -252,6 +252,15 @@ export const DURCHLASS = {
   moverAnteil: 0.15,     // kleiner Rest-Anteil der Trennung fuer den Marschierer (fuehlt sich koerperlich an)
 } as const;
 
+// WEGFINDUNGS-GLAETTUNG (Autor: "Einheiten laufen erst gegen die Wand und
+// suchen dann den Umweg - vergleiche AoE/SC2"): String-Pulling auf dem
+// Flussfeld-Pfad. Die Einheit steuert den entferntesten SICHTBAREN Wegpunkt
+// an und schneidet Ecken damit VOR der Wand an.
+export const WEGFINDUNG = {
+  glattMaxPfad: 40,   // wie viele Kacheln des Feld-Abstiegs betrachtet werden
+  glattProben: 5,     // max. Sichtlinien-Proben je Aufruf (Kosten-Deckel)
+} as const;
+
 // R139 (Dok 03, 1.4 - Dungeon Siege): Ziel-Sperrzeit gegen das Ziel-Zappeln.
 // Ein gewaehltes Ziel wird festgehalten; Wechsel nur bei tot/unerreichbar/
 // Spielerbefehl oder Ablauf der Sperre. Leicht gestreut, damit nicht alle

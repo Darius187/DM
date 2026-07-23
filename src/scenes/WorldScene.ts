@@ -64,7 +64,7 @@ import { HoehlenLeben } from '../gfx/hoehlenLeben';
 import { KriegsnebelAnzeige, type SichtSet } from '../systems/kriegsnebel';
 import { buildKerkerArea } from '../world/kerkerArea';
 import { MINE } from '../data/mine';
-import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, HEER_AUSRUESTUNG, MORAL, MARSCH, VERTEIDIGUNG, BOTE, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, FELDSCHER, TURM, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, HEER_AUSRUESTUNG, MORAL, MARSCH, VERTEIDIGUNG, BOTE, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, FELDSCHER, TURM, WEGFINDUNG, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
@@ -81,7 +81,7 @@ import { BURG_FIGUR_TIEFE, Gebaeude3DWelt, gebaeudeEinstellung } from '../gfx/ge
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, FLYOVER, tileNameAt } from '../world/tiles';
 import { TILE } from '../gfx/fallbackArt';
-import { findePfad, Wegfeld } from '../world/Wegfeld';
+import { findePfad, Wegfeld, ziehePfadStraff } from '../world/Wegfeld';
 import { angrenzendeWehrstruktur, benoetigteBreschenFelder, priorisierteBelagerungsziele, strukturBreiteInFeldern } from '../logic/belagerung';
 import { WASSER_FRAMES } from '../gfx/tileArt';
 import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64, drawSchlucht, drawKristall } from '../gfx/detailArt';
@@ -8765,8 +8765,13 @@ Lebenspunkte: ${hp}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       e.t = now;
       e.feld.berechne(ztx, zty, (tx, ty) => !this.solidFuerFeind(tx * TILE + TILE / 2, ty * TILE + TILE / 2));
     }
-    const nb = e.feld.bestesNachbarfeld(Math.floor(x / TILE), Math.floor(y / TILE));
-    return nb ? Math.atan2(nb.ty * TILE + TILE / 2 - y, nb.tx * TILE + TILE / 2 - x) : null;
+    // String-Pulling (Autor "erst gegen die Wand, dann Umweg - mache es wie
+    // AoE/SC2"): den entferntesten SICHTBAREN Pfadpunkt ansteuern, nicht die
+    // naechste Kachel - so wird die Ecke VOR der Wand angeschnitten.
+    const pfad = e.feld.pfadVon(Math.floor(x / TILE), Math.floor(y / TILE), WEGFINDUNG.glattMaxPfad)
+      .map((p) => ({ x: p.tx * TILE + TILE / 2, y: p.ty * TILE + TILE / 2 }));
+    const zp = ziehePfadStraff(pfad, x, y, (x0, y0, x1, y1) => this.marschBahnFrei(x0, y0, x1, y1), WEGFINDUNG.glattProben);
+    return zp ? Math.atan2(zp.y - y, zp.x - x) : null;
   }
 
   private kampfHostCache = new WeakMap<Enemy, EnemyHost>();

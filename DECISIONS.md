@@ -2805,3 +2805,24 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Hinweis Messung: im Headless-Harness laufen Einheiten wegen Software-GL nur
   ~6px/s (dt-Deckel bei ~5 FPS) - Bewegungs-Repros dort IMMER deterministisch
   per w.update(t, 16.6)-Schleife takten, nie per Wanduhr warten.
+
+## Wegfindung nach RTS-Standard: Kosten 10/14 + String-Pulling (Autor-Befund)
+- Autor: "Einheiten laufen zuerst gegen die Wand und suchen DANN den Umweg -
+  vergleiche AoE/SC2." Diagnose: (1) das Flussfeld-BFS zaehlte diagonal =
+  gerade (1) - viele Treppen-Pfade waren 'gleich kurz', der Abstieg lief
+  frontal zur Wand und daran entlang. (2) Einheiten steuerten stur die
+  NAECHSTE Kachel an - keine Pfad-Glaettung, Ecken wurden nie vorausschauend
+  angeschnitten.
+- Fix wie in den RTS-Referenzen: Wegfeld rechnet jetzt mit echten Kosten
+  (gerade 10 / diagonal 14 ~ sqrt2, klassisches A*-Schema; Dijkstra mit
+  Dial-Buckets, weiterhin O(N) ohne Heap). Dazu String-Pulling (SC2-Funnel-
+  Prinzip): die Einheit steuert den ENTFERNTESTEN noch SICHTBAREN Punkt ihres
+  Pfades an (ziehePfadStraff, max glattProben Sichtlinien je Aufruf).
+- Angewandt an ALLEN drei Steuerstellen: WorldScene.wegRichtungZiel (Maersche/
+  jagdZiel), rtsBattle.wegPunkt (RTS-Befehle) und CombatScene.wegRichtung
+  (Monster zum Helden). Regler in src/data/rts.ts WEGFINDUNG (glattMaxPfad 40,
+  glattProben 5). Neue Wegfeld-API: pfadVon() + ziehePfadStraff() (getestet:
+  Steuerpunkt liegt >= 3 Kacheln voraus, Bahn dorthin frei, Pfad durch die
+  einzige Luecke).
+- Sanity im Browser (deterministisch getaktet): Marsch + Platz-machen-Gasse
+  funktionieren unveraendert, Ziel wird erreicht, 0 Konsolenfehler.

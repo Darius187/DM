@@ -14,9 +14,9 @@ import Phaser from 'phaser';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import type { Enemy } from '../world/Enemy';
 import { formSlots, formSlotsSkaliert, linienSlots, slotWelt, type Form, type Slot } from './formationen';
-import { RTS_UNIT_TYP, TURM, LAGER_EFFEKT, type RtsUnitTyp, type RtsTeam } from '../data/rts';
+import { RTS_UNIT_TYP, TURM, LAGER_EFFEKT, WEGFINDUNG, type RtsUnitTyp, type RtsTeam } from '../data/rts';
 import { rangFuerKills, rangDmgF } from './armee';
-import { Wegfeld } from '../world/Wegfeld';
+import { Wegfeld, ziehePfadStraff } from '../world/Wegfeld';
 
 const TILE = 32;
 
@@ -618,8 +618,11 @@ export class RtsBattle {
       e.t = now;
       e.feld.berechne(ztx, zty, (tx, ty) => this.host.begehbar(tx, ty, team));
     }
-    const nb = e.feld.bestesNachbarfeld(Math.floor(vonX / TILE), Math.floor(vonY / TILE));
-    return nb ? { x: nb.tx * TILE + TILE / 2, y: nb.ty * TILE + TILE / 2 } : null;
+    // String-Pulling (Autor "erst gegen die Wand, dann Umweg - wie AoE/SC2"):
+    // den entferntesten SICHTBAREN Pfadpunkt ansteuern statt Kachel fuer Kachel.
+    const pfad = e.feld.pfadVon(Math.floor(vonX / TILE), Math.floor(vonY / TILE), WEGFINDUNG.glattMaxPfad)
+      .map((p) => ({ x: p.tx * TILE + TILE / 2, y: p.ty * TILE + TILE / 2 }));
+    return ziehePfadStraff(pfad, vonX, vonY, (x0, y0, x1, y1) => this.bahnFrei(x0, y0, x1, y1), WEGFINDUNG.glattProben);
   }
   private raeumeWegfelder(): void {
     const now = this.host.scene.time.now;

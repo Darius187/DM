@@ -11,40 +11,53 @@ const NACHBARN: ReadonlyArray<readonly [number, number]> = [
   [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1],
 ];
 
+// Schrittkosten wie im klassischen A* der RTS-Referenzen (AoE): gerade 10,
+// diagonal 14 (~ 10*sqrt(2)). Der alte Einheits-BFS zaehlte diagonal = gerade -
+// dadurch waren viele Treppen-Pfade "gleich kurz" und der Abstieg lief erst
+// FRONTAL zur Wand und dann daran entlang (Autor-Befund). Mit echten Kosten
+// ist der Feld-Abstieg der wirklich kuerzeste Weg.
+const KOST_GERADE = 10;
+const KOST_DIAG = 14;
+
 export class Wegfeld {
-  private dist: Int16Array;
+  private dist: Int32Array;
   zielTx = -1; zielTy = -1;
 
   constructor(private w: number, private h: number) {
-    this.dist = new Int16Array(w * h).fill(-1);
+    this.dist = new Int32Array(w * h).fill(-1);
   }
 
   passt(w: number, h: number): boolean { return this.w === w && this.h === h; }
 
-  // BFS vom Zielfeld (Spielerkachel) aus. begehbar(tx,ty) = Kachel ist frei.
+  // Distanzfeld vom Zielfeld aus - Dijkstra mit Dial-Buckets (Kosten sind
+  // kleine Ganzzahlen, darum O(N) ohne Heap). begehbar(tx,ty) = Kachel frei.
   berechne(zielTx: number, zielTy: number, begehbar: (tx: number, ty: number) => boolean): void {
     this.zielTx = zielTx; this.zielTy = zielTy;
     this.dist.fill(-1);
     if (zielTx < 0 || zielTy < 0 || zielTx >= this.w || zielTy >= this.h) return;
     // Steht der Spieler auf einer "soliden" Kachel (Sonderfall), trotzdem von dort starten.
-    const queue = new Int32Array(this.w * this.h);
-    let head = 0, tail = 0;
     const start = zielTy * this.w + zielTx;
-    this.dist[start] = 0; queue[tail++] = start;
-    while (head < tail) {
-      const idx = queue[head++];
-      const tx = idx % this.w, ty = (idx / this.w) | 0;
-      const d = this.dist[idx];
-      for (const [dx, dy] of NACHBARN) {
-        const nx = tx + dx, ny = ty + dy;
-        if (nx < 0 || ny < 0 || nx >= this.w || ny >= this.h) continue;
-        const ni = ny * this.w + nx;
-        if (this.dist[ni] !== -1) continue;
-        if (!begehbar(nx, ny)) continue;
-        // Diagonale nur, wenn beide orthogonalen Nachbarn frei sind (kein Durchschlüpfen an Ecken)
-        if (dx !== 0 && dy !== 0 && (!begehbar(tx + dx, ty) || !begehbar(tx, ty + dy))) continue;
-        this.dist[ni] = d + 1;
-        queue[tail++] = ni;
+    this.dist[start] = 0;
+    const buckets: Array<number[] | undefined> = [[start]];
+    for (let d = 0; d < buckets.length; d++) {
+      const b = buckets[d];
+      if (!b) continue;
+      for (let k = 0; k < b.length; k++) {
+        const idx = b[k];
+        if (this.dist[idx] !== d) continue;   // veralteter Bucket-Eintrag
+        const tx = idx % this.w, ty = (idx / this.w) | 0;
+        for (const [dx, dy] of NACHBARN) {
+          const nx = tx + dx, ny = ty + dy;
+          if (nx < 0 || ny < 0 || nx >= this.w || ny >= this.h) continue;
+          const ni = ny * this.w + nx;
+          if (!begehbar(nx, ny)) continue;
+          // Diagonale nur, wenn beide orthogonalen Nachbarn frei sind (kein Durchschlüpfen an Ecken)
+          if (dx !== 0 && dy !== 0 && (!begehbar(tx + dx, ty) || !begehbar(tx, ty + dy))) continue;
+          const nd = d + (dx !== 0 && dy !== 0 ? KOST_DIAG : KOST_GERADE);
+          if (this.dist[ni] !== -1 && this.dist[ni] <= nd) continue;
+          this.dist[ni] = nd;
+          (buckets[nd] ??= []).push(ni);
+        }
       }
     }
   }
@@ -69,6 +82,40 @@ export class Wegfeld {
     if (tx < 0 || ty < 0 || tx >= this.w || ty >= this.h) return false;
     return this.dist[ty * this.w + tx] >= 0;
   }
+
+  // Gieriger Feld-Abstieg als Kachel-PFAD (fuer die Glaettung): folgt
+  // bestesNachbarfeld bis Ziel/maxLen. Leer, wenn am Ziel/unerreichbar.
+  pfadVon(tx: number, ty: number, maxLen: number): Array<{ tx: number; ty: number }> {
+    const pfad: Array<{ tx: number; ty: number }> = [];
+    let cx = tx, cy = ty;
+    for (let i = 0; i < maxLen; i++) {
+      const nb = this.bestesNachbarfeld(cx, cy);
+      if (!nb) break;
+      pfad.push(nb);
+      cx = nb.tx; cy = nb.ty;
+    }
+    return pfad;
+  }
+}
+
+// String-Pulling (SC2-Funnel/AoE-Glaettung, Autor: "Einheiten laufen erst gegen
+// die Wand und suchen DANN den Umweg"): statt Kachel fuer Kachel dem Feld zu
+// folgen, steuert die Einheit den ENTFERNTESTEN noch SICHTBAREN Punkt ihres
+// Pfades an - so schneidet sie die Ecke an, BEVOR sie die Wand beruehrt.
+// sichtFrei prueft die gerade Bahn; maxProben deckelt die Kosten je Aufruf.
+export function ziehePfadStraff(
+  punkte: ReadonlyArray<{ x: number; y: number }>,
+  vonX: number, vonY: number,
+  sichtFrei: (x0: number, y0: number, x1: number, y1: number) => boolean,
+  maxProben: number,
+): { x: number; y: number } | null {
+  if (!punkte.length) return null;
+  const schritt = Math.max(1, Math.ceil(punkte.length / Math.max(1, maxProben)));
+  for (let i = punkte.length - 1; i > 0; i -= schritt) {
+    const p = punkte[i];
+    if (sichtFrei(vonX, vonY, p.x, p.y)) return p;
+  }
+  return punkte[0];   // Notanker: die naechste Kachel ist immer erreichbar
 }
 
 // A*-Wegfindung für EINZELZIELE (Runde 50): NPCs/Bewohner haben je eigene Ziele

@@ -6,7 +6,7 @@ import Phaser from 'phaser';
 import { SpriteProvider } from '../gfx/SpriteProvider';
 import { SoundProvider } from '../gfx/SoundProvider';
 import { spielerFigur, TILE } from '../gfx/fallbackArt';
-import { Wegfeld } from './Wegfeld';
+import { Wegfeld, ziehePfadStraff } from './Wegfeld';
 import { getHeldForm } from '../data/heldForm';
 import { heldTier } from '../data/helden';
 import { EffectSystem } from './effects';
@@ -21,7 +21,7 @@ import { PLAYER, LIGHT_ATTACK, HEAVY_ATTACK, BLOCK, ROLL, HITSTOP_MS, HITSTOP_TI
 import { konterFaktor, konterFeedback } from '../data/kampfarten';
 import { weiseSlotsZu } from '../logic/angriffsSlots';
 import { marschiert, platzmachWinkel } from '../logic/durchlass';
-import { DURCHLASS } from '../data/rts';
+import { DURCHLASS, WEGFINDUNG } from '../data/rts';
 import { ALTAR, SPELLS, SPELL_FX, SCHOOLS } from '../data/balancing';
 import { newPlayerState, recalc, weaponGem, aktiveWaffe, type PlayerState } from '../logic/playerState';
 import { addSchoolUse } from '../logic/progression';
@@ -3294,11 +3294,26 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   }
 
   // Richtung (rad) zum Spieler entlang des Flussfeldes (um Hindernisse herum).
+  // String-Pulling (Autor "erst gegen die Wand, dann Umweg - wie AoE/SC2"):
+  // auch Monster steuern den entferntesten SICHTBAREN Pfadpunkt an und
+  // schneiden Ecken vor der Wand an, statt an ihr entlangzuschrammen.
   wegRichtung(x: number, y: number): number | null {
     if (!this.wegfeld) return null;
     const nb = this.wegfeld.bestesNachbarfeld(Math.floor(x / TILE), Math.floor(y / TILE));
     if (!nb) return null;
-    return Math.atan2((nb.ty * TILE + 16) - y, (nb.tx * TILE + 16) - x);
+    const pfad = this.wegfeld.pfadVon(Math.floor(x / TILE), Math.floor(y / TILE), WEGFINDUNG.glattMaxPfad)
+      .map((p) => ({ x: p.tx * TILE + 16, y: p.ty * TILE + 16 }));
+    const frei = (x0: number, y0: number, x1: number, y1: number): boolean => {
+      const d = Math.hypot(x1 - x0, y1 - y0);
+      const schritte = Math.max(1, Math.ceil(d / (TILE / 2)));
+      for (let i = 1; i <= schritte; i++) {
+        const t = i / schritte;
+        if (this.isSolidAt(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)) return false;
+      }
+      return true;
+    };
+    const zp = ziehePfadStraff(pfad, x, y, frei, WEGFINDUNG.glattProben);
+    return zp ? Math.atan2(zp.y - y, zp.x - x) : null;
   }
 
   // R101: existiert ein Flussfeld zum Helden, das von (x,y) KEINEN Weg findet?
