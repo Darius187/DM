@@ -2903,3 +2903,40 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - docs/handoff/WEHRBAU-SPEC.md: verbindliche Masse fuer Codex (Palisade 1
   Kachel/Kachel-Set, Tor exakt 2 Kacheln beide Richtungen, Turm 2x2, Y-hoch,
   kein Bodenteller/Schatten - gegen "seltsamer Rand").
+
+## R195 - HUD-Fluessigkeit, RTS-Bauten, Kampf-Fixes, Charakterfenster
+- HP/MANA als ARKANE FLUESSIGKEIT (Autor-Referenz: rote/blaue Kugel).
+  Ebenen: dunkler Grund + Geisterbalken (Graphics) -> zwei Wolkenlagen ->
+  Adern (ADD) -> Glasreflex -> Innenschatten/Oberflaechenkante. Texturen
+  entstehen EINMAL (128x256, umlaufend gezeichnet = nahtlos), danach werden nur
+  tilePosition/Alpha/Maske bewegt. Werte in src/data/hudFluessigkeit.ts.
+  ABWEICHUNG von der Autor-Vorlage: unsere Balken sind SENKRECHT (Maske
+  schneidet oben ab, Glasreflex laeuft als Roehren-Streifen), und statt Tweens
+  laeuft eine dt-basierte Glaettung - bei Dauerschaden waeren Tweens ein
+  staendiges Neu-Anlegen von Tween-Objekten.
+- Geisterbalken (verzoegerter Schaden): 0,3 s stehen, dann 1,6/s nachfallen.
+  Der Anstoss vergleicht das NEUE mit dem VORHERIGEN Ziel (nicht mit dem
+  Geisterwert) - sonst wird die Wartezeit in jedem Bild neu gesetzt.
+- GLB-Aufrichtung: `opt.zUp !== false` war immer wahr - alle Camp-Props lagen
+  flach. Jetzt `opt.zUp === true`. (Ursache des Autor-Screenshots R195.)
+- Lagerbauten-Baukasten (src/data/feldbauOptik.ts): Drehung + Groesse je Bau,
+  Regler im Entwicklungskasten unter LAGERBAUTEN, Werte kopierbar. Vorgabe-
+  Drehung -35 Grad fuer alle (der alte Wert -0,72*PI war fuer die FLACH
+  liegenden Modelle eingestellt und damit hinfaellig).
+- Bau-Sprites werden beim Setzen der BAUSTELLE vorgebacken - dadurch kein
+  Aufblitzen der Notgrafik mehr ("kurz erscheint noch das alte Asset").
+- Monster-Geschosse tragen jetzt IMMER ihren Schuetzen (vorher nur eigene
+  Truppe). Ohne Absender konnte trifftVerbuendeten weder Rache noch
+  Kameraden-Alarm ausloesen - deshalb "Soldaten greifen nicht an, wenn sie
+  beschossen werden".
+- Turm-Insassen: keine Sichtsperre bei der Zielsuche (sie stehen auf einer
+  SOLIDen Kachel, die Sichtpruefung meldete immer "verbaut") und Suchradius
+  mal turmReichF - sonst kappte die 420px-Suche die 1,9-fache Turmreichweite.
+- Charakterfenster: EIN Schriftfaktor (Vorgabe 125 %, im Baukasten verstellbar),
+  eigene Toene fuer Ueberschriften (#3a2c1e) und Nebentext (#59493a), Werte-,
+  Widerstands-, Vorrats- und Kraeuterblock sind jetzt BLOECKE im Baukasten
+  (x/y/Spaltenabstand/Zeilenhoehe) - vorher unbeweglich. Knopf-Reihenfolge
+  AUSRUESTEN/VERGLEICHEN/ABLEGEN, Knoepfe folgen den Gegenstandsdaten.
+- Der "Layout"-Knopf ist im Spiel AUS (TUNING.layoutBaukasten) und wird im
+  Entwicklungskasten unter FENSTER eingeschaltet - Autor: gehoert nicht in die
+  fertige Oberflaeche.

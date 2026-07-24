@@ -18,7 +18,8 @@ import { RTS_EINHEITEN, MORAL, RTS_RANG } from '../data/rts';
 import { PFLANZEN } from '../data/pflanzen';
 import type { MaterialId } from '../data/crafting';
 import { setVerfolgtWunsch, type QuestSicht } from '../logic/questLog';
-import { charBox, setCharBox, resetCharLayout, exportCharLayout, CHAR_LAYOUT_LABEL, type CharBox } from './charLayout';
+import { TUNING } from '../logic/tuning';
+import { charBox, setCharBox, resetCharLayout, exportCharLayout, charSchrift, setzeCharSchrift, CHAR_LAYOUT_LABEL, type CharBox } from './charLayout';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import type { SoundProvider } from '../gfx/SoundProvider';
 import { fixUiScroll } from './dialog';
@@ -33,6 +34,10 @@ const GOLD = '#c9a227';
 const BONE = '#d8cfb8';
 const INK = '#2b2118';
 const INK_SOFT = '#62503b';
+// R195 (Autor: "der Kontrast ist zu gering"): eigene Toene fuer Ueberschriften
+// und Nebentext - vorher lief beides ueber INK_SOFT und verschwand im Pergament.
+const INK_TITEL = '#3a2c1e';
+const INK_ZWEIT = '#59493a';
 const UI_PARCHMENT = 'ui_1300_parchment';
 const UI_WOOD = 'ui_1300_wood';
 const UI_ALDRIC = 'ui_1300_aldric_portrait';
@@ -432,7 +437,9 @@ export class UIPanels {
     }
     c.add(this.scene.add.rectangle(x, y, breite, 1, aufPergament ? 0x806746 : 0x4a3a26).setOrigin(0));
     c.add(this.scene.add.text(x + breite / 2, y - 5, '◆', { fontFamily: 'serif', fontSize: '9px', color: aufPergament ? INK_SOFT : '#8a6f3c' }).setOrigin(0.5, 0));
-    if (titel) c.add(this.scene.add.text(x + 2, y - 16, titel, { fontFamily: 'serif', fontSize: '12px', color: aufPergament ? INK_SOFT : GOLD, letterSpacing: 2 }));
+    // R195 (Autor: "zu weit gesperrt und zu klein - wirkt duenn"): groesser,
+    // weniger Sperrung, kraeftigere Tinte auf Pergament.
+    if (titel) c.add(this.scene.add.text(x + 2, y - 17, titel, { fontFamily: 'serif', fontSize: '14px', color: aufPergament ? INK_TITEL : GOLD, letterSpacing: 1 }));
   }
 
   // R140 (Autor: "das Bild des Spielers ist verzerrt"): setCrop + setDisplaySize
@@ -454,7 +461,11 @@ export class UIPanels {
     const s = this.panelScale;
     this.charScale = s;   // BAUKASTEN: Editor rechnet Quell<->Schirm mit dieser Skala
     const y = (sourceY: number): number => (sourceY - 79) * s;
-    const textSize = (sourcePx: number, min = 8): string => `${Math.max(min, Math.round(sourcePx * s))}px`;
+    // R195 (Autor: "fast saemtliche Schriften sind zu klein"): EIN Faktor auf
+    // alle Texte des Fensters, im Baukasten verstellbar. Mindestgroesse mit
+    // hoch, damit auch die kleinsten Angaben lesbar bleiben.
+    const tf = charSchrift();
+    const textSize = (sourcePx: number, min = 8): string => `${Math.max(Math.round(min * tf), Math.round(sourcePx * s * tf))}px`;
 
     // BAUKASTEN: jedes Element liest seine Quell-Box aus charBox(id) (Vorgabe +
     // Editor-Override). charEditBoxen sammelt die Schirm-Rechtecke fuer den Editor.
@@ -503,7 +514,7 @@ export class UIPanels {
       c.add(hit);
       if (!it) {
         c.add(this.scene.add.text(bx + bw / 2, by + bh / 2, label, {
-          fontFamily: 'serif', fontSize: textSize(10, 7), color: '#75664f',
+          fontFamily: 'serif', fontSize: textSize(11, 9), color: INK_ZWEIT,
         }).setOrigin(0.5));
         return;
       }
@@ -539,11 +550,15 @@ export class UIPanels {
     slot(null, 's_stiefel', 'Stiefel');
     slot(p.ring, 's_ring', 'Ring');
 
-    const sectionTitle = (sourceY: number, title: string): void => {
-      c.add(this.scene.add.text(315 * s, y(sourceY), title, {
-        fontFamily: 'serif', fontSize: textSize(13), color: INK_SOFT,
-        letterSpacing: Math.max(1, Math.round(2 * s)),
+    // Abschnitts-Ueberschrift: Position aus dem Baukasten, kraeftige Tinte
+    // (der Autor las die alten hellen Titel kaum) und weniger Sperrung.
+    const sectionTitle = (id: string, title: string): void => {
+      const b = charBox(id);
+      c.add(this.scene.add.text(b.x * s, y(b.y), title, {
+        fontFamily: 'serif', fontSize: textSize(14), color: INK_TITEL,
+        letterSpacing: Math.max(1, Math.round(1.5 * s)),
       }).setOrigin(0.5, 0));
+      merke(id, b.x * s, y(b.y) + 9 * s, 120 * s, 18 * s);
     };
     const pair = (label: string, value: string, sourceX: number, sourceY: number, valueX: number): void => {
       c.add(this.scene.add.text(sourceX * s, y(sourceY), label, { fontFamily: 'serif', fontSize: textSize(12), color: INK }));
@@ -552,31 +567,36 @@ export class UIPanels {
 
     const dmgMin = Math.max(1, Math.round(p.stats.dmg * 0.85));
     const dmgMax = Math.max(dmgMin, Math.round(p.stats.dmg * 1.2));
-    const bW = charBox('werte');
-    c.add(this.scene.add.text(bW.x * s, y(bW.y), 'WERTE', {
-      fontFamily: 'serif', fontSize: textSize(13), color: INK_SOFT, letterSpacing: Math.max(1, Math.round(2 * s)),
-    }).setOrigin(0.5, 0));
-    merke('werte', bW.x * s, y(bW.y) + 8 * s, 70 * s, 16 * s);
+    sectionTitle('werte', 'WERTE');
     const werte: Array<[string, string]> = [
       ['Schaden', `${dmgMin}-${dmgMax}`], ['Rüstung', String(p.stats.armor)],
       ['Trefferpunkte', `${Math.ceil(p.hp)}/${p.stats.maxhp}`], ['Mana', `${Math.ceil(p.mana)}/${p.stats.maxmana}`],
       ['Lebensraub', String(p.stats.leech)], ['Lichtradius', `+${p.stats.licht}`],
     ];
+    // BLOCK statt fester Zahlen: x/y = Ecke, w = Spaltenabstand, h = Zeilenhoehe.
+    // Beide Spalten nutzen denselben Wert-Versatz - die Zahlen stehen damit
+    // sauber untereinander (Autorwunsch "feste Spalten, Werte rechtsbuendig").
+    const bWB = charBox('werteBlock');
+    const spalteW = bWB.w ?? 231, zeileW = bWB.h ?? 32;
     werte.forEach(([label, value], index) => {
-      const right = index % 2 === 1;
-      pair(label, value, right ? 322 : 91, 449 + Math.floor(index / 2) * 32, right ? 548 : 286);
+      const sx = bWB.x + (index % 2) * spalteW;
+      pair(label, value, sx, bWB.y + Math.floor(index / 2) * zeileW, sx + spalteW - 26);
     });
+    merke('werteBlock', (bWB.x + spalteW) * s, y(bWB.y + zeileW), (spalteW * 2 - 26) * s, (zeileW * 3) * s);
 
-    sectionTitle(566, 'WIDERSTÄNDE');
+    sectionTitle('widerstaende', 'WIDERSTÄNDE');
     const res = p.resist ?? { feuer: 0, frost: 0, schatten: 0, seuche: 0 };
+    const bWid = charBox('widerstaendeBlock');
+    const widSpalte = bWid.w ?? 158;
     ([['Feuer', res.feuer, 0xb64a28], ['Kälte', res.frost, 0x477b98], ['Schatten', res.schatten, 0x654f7e]] as Array<[string, number, number]>).forEach(([label, value, color], index) => {
-      const left = (98 + index * 158) * s;
-      c.add(this.scene.add.circle(left, y(610), Math.max(3, 6 * s), color));
-      c.add(this.scene.add.text(left + 13 * s, y(597), label, { fontFamily: 'serif', fontSize: textSize(12), color: INK }));
-      c.add(this.scene.add.text(left + 128 * s, y(597), `${value}%`, { fontFamily: 'serif', fontSize: textSize(12), color: INK }).setOrigin(1, 0));
+      const left = (bWid.x + index * widSpalte) * s;
+      c.add(this.scene.add.circle(left, y(bWid.y + 13), Math.max(3, 6 * s), color));
+      c.add(this.scene.add.text(left + 13 * s, y(bWid.y), label, { fontFamily: 'serif', fontSize: textSize(12), color: INK }));
+      c.add(this.scene.add.text(left + (widSpalte - 30) * s, y(bWid.y), `${value}%`, { fontFamily: 'serif', fontSize: textSize(12), color: INK }).setOrigin(1, 0));
     });
+    merke('widerstaendeBlock', (bWid.x + widSpalte) * s, y(bWid.y + 8), (widSpalte * 3 - 30) * s, 26 * s);
 
-    sectionTitle(641, 'VORRAT');
+    sectionTitle('vorrat', 'VORRAT');
     const m = p.materials;
     const vorrat: Array<[string, string, number]> = [
       ['Gold', String(p.gold), 0xe0b53a], ['Flaschen', `${p.flaskCount}/${p.flaskMax}`, 0xd8402a],
@@ -585,30 +605,38 @@ export class UIPanels {
       ['Kohle', String(m.kohle), 0x2a2a30], ['Fasern', String(m.fasern ?? 0), 0x9aa06a],
       ['Verbände', String(p.verbaende ?? 0), 0xd8cfb8],
     ];
+    const bV = charBox('vorratBlock');
+    const vSpalte = bV.w ?? 231, vZeile = bV.h ?? 21;
     vorrat.forEach(([label, value, color], index) => {
-      const right = index % 2 === 1;
-      const sourceX = right ? 322 : 91;
-      const sourceY = 675 + Math.floor(index / 2) * 21;
-      c.add(this.scene.add.circle((sourceX + 4) * s, y(sourceY + 8), Math.max(2, 5 * s), color));
-      pair(label, value, sourceX + 15, sourceY, right ? 548 : 286);
+      const sx = bV.x + (index % 2) * vSpalte;
+      const sy = bV.y + Math.floor(index / 2) * vZeile;
+      c.add(this.scene.add.circle((sx + 4) * s, y(sy + 8), Math.max(2, 5 * s), color));
+      pair(label, value, sx + 15, sy, sx + vSpalte - 26);
     });
+    merke('vorratBlock', (bV.x + vSpalte) * s, y(bV.y + vZeile * 2), (vSpalte * 2 - 26) * s, (vZeile * 5) * s);
 
-    sectionTitle(780, 'KRÄUTERBEUTEL');
+    sectionTitle('kraeuter', 'KRÄUTERBEUTEL');
     const pflanzen = PFLANZEN.filter((pf) => (m[pf.id as MaterialId] ?? 0) > 0).slice(0, 8);
     if (!pflanzen.length) {
       c.add(this.scene.add.text(w / 2, y(821), 'Noch keine Kräuter gesammelt', {
-        fontFamily: 'serif', fontSize: textSize(11), color: INK_SOFT, fontStyle: 'italic',
+        fontFamily: 'serif', fontSize: textSize(12), color: INK_ZWEIT, fontStyle: 'italic',
       }).setOrigin(0.5));
     } else {
+      const bK = charBox('kraeuterBlock');
+      const kAbstand = bK.w ?? 59;
       pflanzen.forEach((pf, index) => {
-        const cx = (109 + index * 59) * s;
-        c.add(this.scene.add.text(cx, y(824), '✦', {
-          fontFamily: 'serif', fontSize: textSize(22, 10), color: pf.palette.bluete,
+        const cx = (bK.x + index * kAbstand) * s;
+        c.add(this.scene.add.text(cx, y(bK.y), '✦', {
+          fontFamily: 'serif', fontSize: textSize(24, 12), color: pf.palette.bluete,
         }).setOrigin(0.5));
-        c.add(this.scene.add.text(cx + 19 * s, y(843), String(m[pf.id as MaterialId] ?? 0), {
-          fontFamily: 'serif', fontSize: textSize(10, 7), color: '#d8cfb8',
+        // Menge auf dunklem Feld (Autor: "Zahlen kleben unten rechts und sind winzig")
+        const zx = cx + 15 * s, zy = y(bK.y + (bK.h ?? 19));
+        c.add(this.scene.add.rectangle(zx, zy, 26 * s, 15 * s, 0x1a130a, 0.75).setOrigin(1, 0).setStrokeStyle(1, 0x5a4a2e, 0.8));
+        c.add(this.scene.add.text(zx - 4 * s, zy + 1 * s, String(m[pf.id as MaterialId] ?? 0), {
+          fontFamily: 'serif', fontSize: textSize(11, 9), color: '#f0e2c2',
         }).setOrigin(1, 0));
       });
+      merke('kraeuterBlock', (bK.x + kAbstand * (pflanzen.length - 1) / 2) * s, y(bK.y + 8), Math.max(40, kAbstand * pflanzen.length) * s, 44 * s);
     }
     // BAUKASTEN: Editor-Knopf + (falls aktiv) Auswahl-Rahmen und Werte-Fussleiste.
     this.zeichneCharEditor(c);
@@ -626,8 +654,13 @@ export class UIPanels {
       c.add(r);
       c.add(this.scene.add.text(bx + bw / 2, by + bh / 2, txt, { fontFamily: 'serif', fontSize: `${Math.max(9, Math.round(11 * s))}px`, color: an ? '#f0d878' : '#b9a98b' }).setOrigin(0.5));
     };
-    // Umschalt-Knopf (immer sichtbar), oben rechts im Shell-Bereich.
-    knopf(300 * s, -4 * s, 96 * s, 20 * s, this.charEditor ? '✏ Layout AN' : '✏ Layout', this.charEditor, () => {
+    // R195 (Autor: "dieser kleine schwarze Kasten ist ein Debug-Element und
+    // stoert die Ueberschrift - muss in der finalen Oberflaeche komplett weg"):
+    // der Knopf erscheint nur noch, wenn der Baukasten im Entwicklungskasten
+    // (F10 -> ANZEIGE) eingeschaltet ist. Im normalen Spiel ist er unsichtbar.
+    if (!TUNING.layoutBaukasten) { this.charEditor = false; return; }
+    // Umschalt-Knopf, oben rechts im Shell-Bereich (nicht ueber dem Titel).
+    knopf(430 * s, -4 * s, 96 * s, 20 * s, this.charEditor ? '✏ Layout AN' : '✏ Layout', this.charEditor, () => {
       this.charEditor = !this.charEditor;
       if (!this.charEditor) this.charSel = null;
       this.build();
@@ -664,6 +697,11 @@ export class UIPanels {
     nudge('y', 'Y', 1, !!sel);
     nudge('w', 'Breite', 2, !!sel && sel.w !== undefined);
     nudge('h', 'Höhe', 3, !!sel && sel.h !== undefined);
+    // Schriftgroesse des GANZEN Fensters (Autorwunsch R195).
+    const sy2 = fy + 68 * s;
+    c.add(this.scene.add.text(12 * s, sy2 + 3 * s, `Schrift: ${Math.round(charSchrift() * 100)}%`, { fontFamily: 'serif', fontSize: `${Math.max(8, Math.round(11 * s))}px`, color: '#d8cfb8' }));
+    knopf(100 * s, sy2, 26 * s, 18 * s, '−', false, () => { setzeCharSchrift(charSchrift() - 0.05); this.build(); });
+    knopf(130 * s, sy2, 26 * s, 18 * s, '+', false, () => { setzeCharSchrift(charSchrift() + 0.05); this.build(); });
     // Export + Reset (rechte Spalte).
     knopf(430 * s, fy + 6 * s, 120 * s, 20 * s, 'Export → Log', false, () => {
       const txt = exportCharLayout();
@@ -1260,12 +1298,19 @@ export class UIPanels {
       tabs.forEach(([id, lbl], index) => {
         const [b0, b1] = FILTER_BOXEN[index];
         const tx = b0 * s, tabW = (b1 - b0) * s;
-        if (this.filter === id) c.add(this.scene.add.rectangle(tx + 1, ty2, tabW - 2, tabH, 0x4a3925, 0.78).setOrigin(0));
+        // R195 (Autor: "Kategorien zu klein, aktiver Zustand zu schwach"):
+        // groessere Schrift, hellerer Innenbereich und eine kraeftige Goldkante
+        // unten am aktiven Reiter. Lange Namen werden eingepasst statt gequetscht.
+        if (this.filter === id) {
+          c.add(this.scene.add.rectangle(tx + 1, ty2, tabW - 2, tabH, 0x5c4726, 0.9).setOrigin(0));
+          c.add(this.scene.add.rectangle(tx + 1, ty2 + tabH - 3 * s, tabW - 2, Math.max(2, 3 * s), 0xd8a83c, 1).setOrigin(0));
+        }
         const hit = this.scene.add.rectangle(tx, ty2, tabW, tabH, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true });
         const t = this.scene.add.text(tx + tabW / 2, ty2 + tabH / 2, lbl, {
-          fontFamily: 'serif', fontSize: `${Math.max(6, Math.round(9 * s))}px`, letterSpacing: 0,
-          color: this.filter === id ? '#efe2c6' : INK_SOFT,
+          fontFamily: 'serif', fontSize: `${Math.max(10, Math.round(13 * s))}px`, letterSpacing: 0,
+          color: this.filter === id ? '#f7ecd2' : INK_TITEL,
         }).setOrigin(0.5);
+        if (t.width > tabW - 6) t.setFontSize(Math.max(9, Math.floor(t.style.fontSize ? Number.parseInt(String(t.style.fontSize), 10) * (tabW - 6) / t.width : 10)));
         hit.on('pointerdown', () => {
           this.filter = id;
           this.scroll = 0;
@@ -1349,8 +1394,8 @@ export class UIPanels {
     if (!this.selectedItem || !vorhanden.includes(this.selectedItem)) this.selectedItem = vorhanden[0] ?? null;
     const it = this.selectedItem;
 
-    c.add(this.scene.add.text(x0 + w / 2, 10, 'AUSGEWAEHLT', {
-      fontFamily: 'serif', fontSize: '12px', color: INK_SOFT, letterSpacing: 2,
+    c.add(this.scene.add.text(x0 + w / 2, 10, 'AUSGEWÄHLT', {
+      fontFamily: 'serif', fontSize: '15px', color: INK_TITEL, letterSpacing: 1,
     }).setOrigin(0.5, 0));
     this.zierLinie(c, x0 + 8, 31, w - 16, undefined, true);
     if (!it) {
@@ -1366,24 +1411,33 @@ export class UIPanels {
     // dieselben Koordinaten wie die Knoepfe) und SKALIERT mit - vorher waren
     // die Positionen Fixpixel und liefen bei kleiner Schale aus den Kaesten.
     if (shellAktiv) {
+      // R195 (Autor: "Symbol viel zu klein, Name zu schwach, rechte Spalte zu
+      // leer"): Gegenstand auf einer dunklen Praesentationsflaeche, Symbol rund
+      // doppelt so gross, darunter Name / Seltenheit / Typ als eigene Zeilen.
       const bx = 1283 * s, bw = 245 * s, bcx = bx + bw / 2;
-      const icon = this.scene.add.image(bcx, (178 - 79) * s, this.provider.itemIcon(it));
-      icon.setScale(Math.min(1.05, (84 * s) / Math.max(icon.width, icon.height)));
+      const platteY = (150 - 79) * s, platte = 104 * s;
+      c.add(this.scene.add.rectangle(bcx, platteY + platte / 2, platte, platte, 0x1c150d, 0.5)
+        .setStrokeStyle(Math.max(1, Math.round(1.5 * s)), Phaser.Display.Color.HexStringToColor(RARITY_COLORS[rar]).color, 0.7));
+      const icon = this.scene.add.image(bcx, platteY + platte / 2, this.provider.itemIcon(it));
+      icon.setScale(Math.min(2.1, (platte - 16 * s) / Math.max(icon.width, icon.height)));
       c.add(icon);
-      c.add(this.scene.add.text(bcx, (238 - 79) * s, it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
-        fontFamily: 'serif', fontSize: `${Math.max(11, Math.round(15 * s))}px`, color: RARITY_INK[rar],
+      c.add(this.scene.add.text(bcx, platteY + platte + 8 * s, it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
+        fontFamily: 'serif', fontSize: `${Math.max(14, Math.round(19 * s))}px`, color: RARITY_INK[rar],
         wordWrap: { width: bw - 8 }, align: 'center',
       }).setOrigin(0.5, 0));
       const typS = it.kind === 'weapon'
         ? `${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} · ${handLabel(it.weaponClass)}`
         : TYP_NAMEN[it.kind] ?? 'Gegenstand';
-      c.add(this.scene.add.text(bcx, (268 - 79) * s, `${typS} · ${RARITY_NAMES[rar]}`, {
-        fontFamily: 'serif', fontSize: `${Math.max(9, Math.round(11 * s))}px`, color: INK_SOFT,
+      c.add(this.scene.add.text(bcx, platteY + platte + 32 * s, RARITY_NAMES[rar], {
+        fontFamily: 'serif', fontSize: `${Math.max(11, Math.round(13 * s))}px`, color: RARITY_INK[rar],
+      }).setOrigin(0.5, 0));
+      c.add(this.scene.add.text(bcx, platteY + platte + 50 * s, typS, {
+        fontFamily: 'serif', fontSize: `${Math.max(11, Math.round(13 * s))}px`, color: INK_ZWEIT,
       }).setOrigin(0.5, 0));
       this.zierLinie(c, bx, (300 - 79) * s, bw, 'WERTE', true);
       c.add(this.scene.add.text(bx + 8 * s, (312 - 79) * s, itemStatLine(it, false), {
-        fontFamily: 'serif', fontSize: `${Math.max(10, Math.round(12 * s))}px`, color: INK,
-        wordWrap: { width: bw - 16 * s }, lineSpacing: 3,
+        fontFamily: 'serif', fontSize: `${Math.max(12, Math.round(14 * s))}px`, color: INK,
+        wordWrap: { width: bw - 16 * s }, lineSpacing: 4,
       }));
       let ys = (362 - 79) * s;
       if (it.boni.length || it.sock) {
@@ -1391,7 +1445,7 @@ export class UIPanels {
         ys += 8 * s;
         for (const bonus of it.boni) {
           c.add(this.scene.add.text(bx + 8 * s, ys, `◆  ${bonus.t.replace('#', String(bonus.v))}`, {
-            fontFamily: 'serif', fontSize: `${Math.max(9, Math.round(10.5 * s))}px`, color: '#604185', wordWrap: { width: bw - 16 * s },
+            fontFamily: 'serif', fontSize: `${Math.max(11, Math.round(13 * s))}px`, color: '#4d2e73', wordWrap: { width: bw - 16 * s },
           }));
           ys += 20 * s;
         }
@@ -1412,11 +1466,12 @@ export class UIPanels {
         ];
         for (const [name, alt, wert] of werte) {
           const farbe = wert > alt ? '#3f7135' : wert < alt ? '#8b3027' : INK_SOFT;
-          c.add(this.scene.add.text(bx + 8 * s, yv, `${name}: ${alt}  →  ${wert}`, { fontFamily: 'serif', fontSize: `${Math.max(9, Math.round(10.5 * s))}px`, color: farbe }));
-          yv += 19 * s;
+          c.add(this.scene.add.text(bx + 8 * s, yv, `${name}: ${alt}  →  ${wert}`, { fontFamily: 'serif', fontSize: `${Math.max(11, Math.round(13 * s))}px`, color: farbe }));
+          yv += 21 * s;
         }
+        ys = yv;   // die Knoepfe folgen auch dem Vergleichsblock
       }
-      this.buildDetailButtons(c, it, x0, w, h, shellAktiv, s);
+      this.buildDetailButtons(c, it, x0, w, h, shellAktiv, s, ys + 18 * s);
       return;
     }
     const icon = this.scene.add.image(x0 + 56, 92, this.provider.itemIcon(it));
@@ -1475,7 +1530,7 @@ export class UIPanels {
 
   // R161: BENUTZEN/ABLEGEN/VERGLEICHEN - EIN Block fuer Schalen- und
   // Fallback-Layout (vorher nur im Fallback-Zweig erreichbar).
-  private buildDetailButtons(c: Phaser.GameObjects.Container, it: Item, x0: number, w: number, h: number, shellAktiv: boolean, s: number): void {
+  private buildDetailButtons(c: Phaser.GameObjects.Container, it: Item, x0: number, w: number, h: number, shellAktiv: boolean, s: number, startY?: number): void {
     const p = this.getPlayer();
     const ausruestbar = ['weapon', 'armor', 'ring', 'schild'].includes(it.kind);
     const angelegt = it === p.weapon || it === p.bogen || it === p.armorIt || it === p.ring || it === p.schildIt;
@@ -1483,29 +1538,36 @@ export class UIPanels {
     const button = (by: number, label: string, aktiv: boolean, farbe: number, fn: () => void): void => {
       const buttonX = shellAktiv ? 1283 * s : x0 + 18;
       const buttonW = shellAktiv ? 245 * s : w - 36;
-      const bg = this.scene.add.rectangle(buttonX, by, buttonW, buttonH, aktiv ? farbe : 0x302b25, shellAktiv ? (aktiv ? 0.12 : 0.42) : (aktiv ? 0.95 : 0.35))
+      const bg = this.scene.add.rectangle(buttonX, by, buttonW, buttonH, aktiv ? farbe : 0x302b25, shellAktiv ? (aktiv ? 0.55 : 0.42) : (aktiv ? 0.95 : 0.35))
         .setOrigin(0);
       if (!shellAktiv) bg.setStrokeStyle(1, aktiv ? 0x2a2117 : 0x554c40);
       const text = this.scene.add.text(buttonX + buttonW / 2, by + buttonH / 2, label, {
-        fontFamily: 'serif', fontSize: `${shellAktiv ? Math.max(8, Math.round(12 * s)) : 11}px`, color: aktiv ? '#e9ddc5' : '#817769', letterSpacing: 1,
+        fontFamily: 'serif', fontSize: `${shellAktiv ? Math.max(11, Math.round(15 * s)) : 13}px`, color: aktiv ? '#f4ead2' : '#8a7a68', letterSpacing: 1,
       }).setOrigin(0.5);
       c.add(bg); c.add(text);
       if (!aktiv) return;
       bg.setInteractive({ useHandCursor: true });
-      bg.on('pointerover', () => bg.setFillStyle(Phaser.Display.Color.IntegerToColor(farbe).brighten(12).color, shellAktiv ? 0.24 : 1));
-      bg.on('pointerout', () => bg.setFillStyle(farbe, shellAktiv ? 0.12 : 0.95));
+      bg.on('pointerover', () => bg.setFillStyle(Phaser.Display.Color.IntegerToColor(farbe).brighten(12).color, shellAktiv ? 0.72 : 1));
+      bg.on('pointerout', () => bg.setFillStyle(farbe, shellAktiv ? 0.55 : 0.95));
       bg.on('pointerdown', fn);
     };
     const verbrauchbar = ['potion', 'mpotion', 'scroll', 'food'].includes(it.kind);
-    const basisY = shellAktiv ? (699 - 79) * s : h - 112;
+    // R195 (Autor: "die Knoepfe sitzen zu weit unten, wirken vom Gegenstand
+    // getrennt"): sie folgen jetzt direkt auf die Affix-/Vergleichszeilen und
+    // rutschen nur nach unten, wenn der Platz sonst nicht reicht.
+    const basisY = shellAktiv ? Math.min((699 - 79) * s, Math.max((430 - 79) * s, startY ?? (699 - 79) * s)) : h - 112;
     const buttonAbstand = shellAktiv ? 60 * s : 37;
+    // R195 (Autorwunsch): Reihenfolge AUSRUESTEN - VERGLEICHEN - ABLEGEN.
+    // "Vergleichen" ist die haeufigere und harmlosere Handlung; "Ablegen" steht
+    // zuletzt und bleibt zurueckhaltend (leicht roetlich), weil man es selten
+    // will. Die Knoepfe ruecken naeher an die Gegenstandsdaten (basisY).
     button(basisY, verbrauchbar ? 'BENUTZEN' : 'AUSRUESTEN', (ausruestbar && !angelegt) || verbrauchbar, 0x435536, () => this.clickItem(it, verbrauchbar));
-    button(basisY + buttonAbstand, 'ABLEGEN', angelegt, 0x493020, () => this.clickItem(it, false));
-    button(basisY + buttonAbstand * 2, this.compareItem === it ? 'VERGLEICH AUS' : 'VERGLEICHEN', ausruestbar, 0x283c4a, () => {
+    button(basisY + buttonAbstand, this.compareItem === it ? 'VERGLEICH AUS' : 'VERGLEICHEN', ausruestbar, 0x283c4a, () => {
       this.compareItem = this.compareItem === it ? null : it;
       this.build();
       this.sfx.play('klick');
     });
+    button(basisY + buttonAbstand * 2, 'ABLEGEN', angelegt, 0x5a2a22, () => this.clickItem(it, false));
   }
 
   private buildItemRow(c: Phaser.GameObjects.Container, it: Item, x0: number, y: number, w: number): void {
@@ -1516,11 +1578,14 @@ export class UIPanels {
     const rar = (it.rarity ?? 0) as Rarity;
     const rarCol = Phaser.Display.Color.HexStringToColor(RARITY_COLORS[rar]).color;
     const selected = it === this.selectedItem;
-    const row = this.scene.add.rectangle(x0, y, w, rowH, selected ? 0x8b642a : equipped ? 0xc9a227 : 0xffffff, selected ? 0.2 : equipped ? 0.09 : shellAktiv ? 0 : 0.07).setOrigin(0);
-    if (selected || !shellAktiv) row.setStrokeStyle(selected ? 2 : 1, selected ? 0xa8782c : rar >= 1 ? rarCol : 0x796445, selected ? 1 : 0.65);
+    // R195 (Autor: "der Auswahlrahmen ist zu schwach, faellt kaum auf"):
+    // waermere Fuellung, kraeftigerer Rahmen und ein breiter Goldbalken links.
+    const row = this.scene.add.rectangle(x0, y, w, rowH, selected ? 0x8b642a : equipped ? 0xc9a227 : 0xffffff, selected ? 0.34 : equipped ? 0.09 : shellAktiv ? 0 : 0.07).setOrigin(0);
+    if (selected || !shellAktiv) row.setStrokeStyle(selected ? 3 : 1, selected ? 0xd8a83c : rar >= 1 ? rarCol : 0x796445, selected ? 1 : 0.65);
     row.setInteractive({ useHandCursor: true });
     c.add(row);
-    if (rar >= 1) c.add(this.scene.add.rectangle(x0, y, 3, rowH, rarCol).setOrigin(0));
+    if (rar >= 1) c.add(this.scene.add.rectangle(x0, y, 4, rowH, rarCol).setOrigin(0));
+    if (selected) c.add(this.scene.add.rectangle(x0, y, 6, rowH, 0xffd870).setOrigin(0));
     // R140 (Autor: "alles verschoben"): das Icon passt sich der ZEILE an.
     // R161: im Schalen-Modus sitzt das Icon in der GEMALTEN Slot-Spalte
     // (Design-x 565..615, vermessen) - der Slot-Rahmen schnitt sonst in den
@@ -1533,24 +1598,24 @@ export class UIPanels {
     // mittig im Kasten, Text startet rechts NEBEN dem Kasten (Rand 682).
     const iconCx = shellAktiv ? 634 * s2 : x0 + 6 + iconS / 2;
     c.add(this.scene.add.image(iconCx, y + rowH / 2, this.provider.itemIcon(it)).setDisplaySize(iconS, iconS));
-    const textX = shellAktiv ? 700 * s2 : x0 + rowH + 8;   // rechts neben Slot/Icon, mit Luft
+    const textX = shellAktiv ? 706 * s2 : x0 + rowH + 16;   // rechts neben Slot/Icon, mit Luft (R195: mehr Abstand)
     c.add(this.scene.add.text(textX, y + Math.round(rowH * 0.12), it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
-      fontFamily: 'serif', fontSize: `${Math.max(12, Math.round(13 * this.panelScale))}px`, color: RARITY_INK[rar],
+      fontFamily: 'serif', fontSize: `${Math.max(14, Math.round(16 * this.panelScale))}px`, color: RARITY_INK[rar],
     }));
     const typ = it.kind === 'weapon' ? `${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} · ${handLabel(it.weaponClass)}` : TYP_NAMEN[it.kind] ?? '';
     const wert = it.kind === 'weapon' ? `${weaponDamageRange(it)} Schaden` : (it.kind === 'armor' || it.kind === 'schild') ? `${it.val + (it.upgrade ?? 0)} Rüstung` : '';
     const grund = this.scene.add.text(textX, y + Math.round(rowH * 0.55), `${typ}${wert ? ' · ' + wert : ''}`, {
-      fontFamily: 'serif', fontSize: `${Math.max(10, Math.round(11 * this.panelScale))}px`, color: INK_SOFT,
+      fontFamily: 'serif', fontSize: `${Math.max(12, Math.round(13 * this.panelScale))}px`, color: INK_ZWEIT,
     });
     c.add(grund);
     if (it.boni.length) {
       // Bonus-Werte grün, direkt dahinter (Runde 29)
       c.add(this.scene.add.text(textX + grund.width + 8, y + Math.round(rowH * 0.55), it.boni.map((b) => b.t.replace('#', String(b.v))).join(' · '), {
-        fontFamily: 'serif', fontSize: `${Math.max(10, Math.round(11 * this.panelScale))}px`, color: '#6ad06a',
+        fontFamily: 'serif', fontSize: `${Math.max(12, Math.round(13 * this.panelScale))}px`, color: '#3f7135',
       }));
     }
     if (equipped) {
-      c.add(this.scene.add.text(x0 + w - 6, y + 4, 'ANGELEGT', { fontFamily: 'serif', fontSize: '9px', color: GOLD }).setOrigin(1, 0));
+      c.add(this.scene.add.text(x0 + w - 6, y + 4, 'ANGELEGT', { fontFamily: 'serif', fontSize: '12px', color: GOLD }).setOrigin(1, 0));
     }
     row.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
     row.on('pointerout', () => this.hideTooltip());

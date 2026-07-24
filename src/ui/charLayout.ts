@@ -19,7 +19,18 @@ export const CHAR_LAYOUT_DEFAULT: Readonly<Record<string, CharBox>> = {
   s_bogen:     { x: 278, y: 331, w: 57, h: 71 },
   s_stiefel:   { x: 369, y: 331, w: 67, h: 71 },
   s_ring:      { x: 489, y: 331, w: 59, h: 71 },
-  werte:       { x: 315, y: 416 },
+  // Abschnitts-Ueberschriften
+  werte:          { x: 315, y: 416 },
+  widerstaende:   { x: 315, y: 566 },
+  vorrat:         { x: 315, y: 641 },
+  kraeuter:       { x: 315, y: 780 },
+  // BLOECKE (Autor R195 "man kann nicht alles bewegen"): x/y = linke obere Ecke
+  // der Tabelle, w = Spaltenabstand, h = Zeilenhoehe. Titel und Block lassen
+  // sich getrennt schieben.
+  werteBlock:        { x: 91, y: 449, w: 231, h: 32 },
+  widerstaendeBlock: { x: 98, y: 597, w: 158, h: 24 },
+  vorratBlock:       { x: 91, y: 675, w: 231, h: 21 },
+  kraeuterBlock:     { x: 109, y: 824, w: 59, h: 19 },
 };
 
 // Menschliche Namen fuer den Editor.
@@ -27,7 +38,10 @@ export const CHAR_LAYOUT_LABEL: Readonly<Record<string, string>> = {
   ausruestung: 'Titel „Ausrüstung"', portrait: 'Porträt', stufe: 'Stufe-Zeile',
   name: 'Name-Zeile', s_waffe: 'Slot Waffe', s_kopf: 'Slot Kopf', s_ruestung: 'Slot Rüstung',
   s_schild: 'Slot Schild', s_bogen: 'Slot Bogen', s_stiefel: 'Slot Stiefel', s_ring: 'Slot Ring',
-  werte: 'Titel „Werte"',
+  werte: 'Titel „Werte"', widerstaende: 'Titel „Widerstände"', vorrat: 'Titel „Vorrat"',
+  kraeuter: 'Titel „Kräuterbeutel"',
+  werteBlock: 'Werte-Tabelle', widerstaendeBlock: 'Widerstands-Zeile',
+  vorratBlock: 'Vorrats-Tabelle', kraeuterBlock: 'Kräuter-Reihe',
 };
 
 export const CHAR_LAYOUT_IDS = Object.keys(CHAR_LAYOUT_DEFAULT);
@@ -60,6 +74,26 @@ export function setCharBox(id: string, box: Partial<CharBox>): void {
 export function resetCharLayout(): void {
   cache = {};
   try { localStorage.removeItem(KEY); } catch { /* egal */ }
+  setzeCharSchrift(CHAR_SCHRIFT_VORGABE);
+}
+
+// SCHRIFTGROESSE (Autor R195: "fast saemtliche Schriften sind zu klein, etwa
+// 20-30 % groesser"). Ein Faktor auf ALLE Texte des Charakterfensters, im
+// Baukasten stufenlos verstellbar.
+export const CHAR_SCHRIFT_VORGABE = 1.25;
+const SCHRIFT_KEY = 'ravensmoor_charschrift';
+let schriftCache: number | null = null;
+
+export function charSchrift(): number {
+  if (schriftCache !== null) return schriftCache;
+  const roh = Number.parseFloat(localStorage.getItem(SCHRIFT_KEY) ?? '');
+  schriftCache = Number.isFinite(roh) && roh >= 0.8 && roh <= 2 ? roh : CHAR_SCHRIFT_VORGABE;
+  return schriftCache;
+}
+
+export function setzeCharSchrift(faktor: number): void {
+  schriftCache = Math.max(0.8, Math.min(2, Math.round(faktor * 100) / 100));
+  try { localStorage.setItem(SCHRIFT_KEY, String(schriftCache)); } catch { /* egal */ }
 }
 
 // Export fuer den Autor: die AKTUELLEN effektiven Boxen als kompakter Block,
@@ -70,9 +104,9 @@ export function exportCharLayout(): string {
     const teile = [`x: ${round(b.x)}`, `y: ${round(b.y)}`];
     if (b.w !== undefined) teile.push(`w: ${round(b.w)}`);
     if (b.h !== undefined) teile.push(`h: ${round(b.h)}`);
-    return `  ${id.padEnd(12)}: { ${teile.join(', ')} },`;
+    return `  ${id.padEnd(18)}: { ${teile.join(', ')} },`;
   });
-  return `CHAR_LAYOUT_DEFAULT = {\n${zeilen.join('\n')}\n}`;
+  return `CHAR_LAYOUT_DEFAULT = {\n${zeilen.join('\n')}\n}\nCHAR_SCHRIFT = ${charSchrift()}`;
 }
 
 function round(n: number): number { return Math.round(n * 10) / 10; }

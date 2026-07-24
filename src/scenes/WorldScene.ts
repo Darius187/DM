@@ -6498,6 +6498,10 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       ] },
       { name: 'PFERD', controls: () => this.baueReitTuningControls() },
       { name: 'LAGERBAUTEN', controls: () => this.baueFeldbauOptikControls() },
+      { name: 'FENSTER', controls: () => [
+        { kind: 'note', text: 'Layout-Baukasten des Charakterfensters (C). Im normalen Spiel ist der kleine "Layout"-Knopf AUS - hier schaltest du ihn zum Justieren an.' },
+        { kind: 'button', label: () => `Layout-Baukasten: ${TUNING.layoutBaukasten ? 'AN' : 'AUS'}`, onClick: () => { TUNING.layoutBaukasten = !TUNING.layoutBaukasten; this.devKonsole?.refresh(); } },
+      ] },
       { name: 'GEGNER', controls: () => this.baueSpezialgegnerControls() },
       // R80 (Autorbug "2 Wetterregler, eigener Tag-Nacht-Rhythmus, total irre"):
       // Zeit + Wetter wohnen NUR noch hier. Der Wetter-Regler setzt das Wetter

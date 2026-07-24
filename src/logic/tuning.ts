@@ -2,6 +2,10 @@
 // F10 öffnet das Panel; "Bericht" kopiert die Werte, um sie mir zu schicken.
 
 export const TUNING = {
+  // R195: Layout-Baukasten des Charakterfensters. AUS = der kleine "Layout"-
+  // Knopf ist im Spiel unsichtbar (Autor: gehoert nicht in die fertige
+  // Oberflaeche). AN nur zum Justieren ueber den Entwicklungskasten.
+  layoutBaukasten: false,
   spielerSchaden: 1.0,
   gegnerLeben: 1.0,
   gegnerSchaden: 1.0,
