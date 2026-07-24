@@ -7,6 +7,7 @@ import hudUnifiedUrl from '../../assets/ui/hud/hud-command-bar-shell-v3.png';
 import { SPELLS, ABILITIES, ABILITY_FX } from '../data/balancing';
 import { skillBeschreibung, skillWirkungText } from '../data/skills';
 import { getSettings, keyLabel, saveSettings } from '../logic/settings';
+import { ArkaneFluessigkeit } from './arkaneFluessigkeit';
 import { TUNING } from '../logic/tuning';
 import type { PlayerState } from '../logic/playerState';
 import type { WeaponClass } from '../data/types';
@@ -110,6 +111,8 @@ const HUD_MOUSE_FRAME = 'hud_1300_command_mouse_v3';
 const HUD_KEYBOARD_FRAME = 'hud_1300_command_keyboard_v3';
 const HUD_MANA_FRAME = 'hud_1300_command_mana_menu_v3';
 const HUD_PANEL_DEPTH = 4599;
+// Die Fluessigkeits-Ebenen belegen HUD_FLUID_DEPTH bis +5 (also 4593..4598)
+const HUD_FLUID_DEPTH = 4593;
 const HUD_DYNAMIC_DEPTH = 4601;
 const HUD_FRAME_DEPTH = 4602;
 
@@ -141,7 +144,9 @@ export function orbMpAnkerX(w: number): number {
 }
 
 export class Hud {
-  private meterGfx: Phaser.GameObjects.Graphics;
+  private hpFluid: ArkaneFluessigkeit;
+  private mpFluid: ArkaneFluessigkeit;
+  private fluidBereit = false;
   private menuGfx: Phaser.GameObjects.Graphics;
   private gfx: Phaser.GameObjects.Graphics;
   private keyboardPanel: Phaser.GameObjects.Image;
@@ -180,7 +185,11 @@ export class Hud {
     private onActivate: (id: string) => void = () => {},
   ) {
     this.ensureOrbTextures();
-    this.meterGfx = scene.add.graphics().setScrollFactor(0).setDepth(HUD_PANEL_DEPTH - 1);
+    // Arkane Fluessigkeit (Runde 194): eigene Ebenen unter dem Rahmenbild
+    // (HUD_FRAME_DEPTH), damit der Rahmen NIE von der Fuellstandsmaske
+    // beschnitten wird.
+    this.hpFluid = new ArkaneFluessigkeit(scene, { farbe: 'rot', tiefe: HUD_FLUID_DEPTH });
+    this.mpFluid = new ArkaneFluessigkeit(scene, { farbe: 'blau', tiefe: HUD_FLUID_DEPTH });
     this.gfx = scene.add.graphics().setScrollFactor(0).setDepth(4600);
     this.menuGfx = scene.add.graphics().setScrollFactor(0).setDepth(4604);
     const hiddenImage = (depth: number) => scene.add.image(0, 0, '__WHITE')
@@ -927,7 +936,6 @@ export class Hud {
     const w = this.scene.scale.width, h = this.scene.scale.height;
     const kb = getSettings().kb;
     g.clear();
-    this.meterGfx.clear();
     this.menuGfx.clear();
 
     // Codex HUD-Uebergabe: die Anzeigen bleiben Teil der flachen Leiste.
@@ -952,42 +960,25 @@ export class Hud {
     // auch bei jeder HUD-Skalierung deckungsgleich.
     this.hpImg.setVisible(false);
     this.mpImg.setVisible(false);
-    // Fluessigkeits-Anzeige (Autor "interessanter als flache Fluessigkeit, aber
-    // dezent"): Tiefen-Verlauf (dunkler Sockel), schmaler Glas-Glanz und eine
-    // sanft leuchtende, kaum merklich wellende Oberflaechenkante. Alles mit
-    // niedrigen Alphas - lebt, faellt aber nicht auf.
+    // Arkane Fluessigkeit (Runde 194, Autor-Referenz "rote/blaue Kugel"):
+    // dunkler Grund, zwei langsame Wolkenlagen, leuchtende Adern, Glasreflex,
+    // Innenschatten - alles in eigenen Ebenen unter dem Rahmen. Die Texturen
+    // entstehen EINMAL, hier wird nur noch bewegt und maskiert.
     const jetzt = this.scene.time.now;
-    const dunkler = (c: number, f: number): number =>
-      (Math.round(((c >> 16) & 255) * f) << 16) | (Math.round(((c >> 8) & 255) * f) << 8) | Math.round((c & 255) * f);
-    const meter = (x: number, y: number, frac: number, farbe: number, licht: number, seed: number): void => {
-      const breite = HUD_METER_W * skala;
-      const hoehe = HUD_METER_H * skala;
-      const innen = Math.max(2, 4 * skala);
-      const innenH = hoehe - innen * 2;
-      const f = Phaser.Math.Clamp(frac, 0, 1);
-      this.meterGfx.fillStyle(0x080706, 0.96);
-      this.meterGfx.fillRoundedRect(x - breite / 2, y - hoehe / 2, breite, hoehe, Math.max(2, 5 * skala));
-      if (f <= 0) return;
-      const fuellH = innenH * f;
-      const x0 = x - breite / 2 + innen, bw = breite - innen * 2;
-      const kante = y + hoehe / 2 - innen - fuellH;   // Oberkante der Fuellung
-      // Tiefe: dunkler Sockel ueber die ganze Fuellung, hellere Farbe im oberen Teil.
-      this.meterGfx.fillStyle(dunkler(farbe, 0.7), 1);
-      this.meterGfx.fillRect(x0, kante, bw, fuellH);
-      this.meterGfx.fillStyle(farbe, 0.92);
-      this.meterGfx.fillRect(x0, kante, bw, fuellH * 0.6);
-      // Glas-Glanz: schmaler, heller Senkrecht-Streifen links.
-      this.meterGfx.fillStyle(licht, 0.12);
-      this.meterGfx.fillRect(x0 + bw * 0.14, kante, Math.max(1, bw * 0.16), fuellH);
-      // Oberflaeche: weicher Schein + helle Kante, ganz sanft wellend (±0,7px).
-      const wob = Math.sin(jetzt / 900 + seed) * skala * 0.7;
-      this.meterGfx.fillStyle(licht, 0.10);
-      this.meterGfx.fillRect(x0, kante + wob, bw, Math.max(2, 6 * skala));
-      this.meterGfx.fillStyle(licht, 0.5);
-      this.meterGfx.fillRect(x0, kante + wob, bw, Math.max(1, 1.6 * skala));
-    };
-    meter(hx, hy, hpFrac, 0x8f1e20, 0xffc7aa, 0);
-    meter(mx, my, mpFrac, 0x244f91, 0xbcd8ff, 1.7);
+    const fluidB = HUD_METER_W * skala, fluidH = HUD_METER_H * skala;
+    this.hpFluid.setGeometrie(hx, hy, fluidB, fluidH, skala);
+    this.mpFluid.setGeometrie(mx, my, fluidB, fluidH, skala);
+    if (!this.fluidBereit) {
+      this.fluidBereit = true;
+      this.hpFluid.setzeSofort(hpFrac);
+      this.mpFluid.setzeSofort(mpFrac);
+    } else {
+      this.hpFluid.setAnteil(hpFrac);
+      this.mpFluid.setAnteil(mpFrac);
+    }
+    const dtMs = this.scene.game.loop.delta;
+    this.hpFluid.update(jetzt, dtMs);
+    this.mpFluid.update(jetzt, dtMs);
     this.hpFrame.setVisible(true);
     this.mpFrame.setVisible(true);
     const zahlGroesse = Math.max(16, Math.round(28 * skala));
@@ -1121,7 +1112,8 @@ export class Hud {
 
   destroy(): void {
     this.destroyed = true;
-    this.meterGfx.destroy();
+    this.hpFluid.destroy();
+    this.mpFluid.destroy();
     this.gfx.destroy();
     this.menuGfx.destroy();
     for (const image of [
