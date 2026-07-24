@@ -2256,3 +2256,26 @@ nachziehen.
   Pfade, Bounds, Kollisionen und Interaktionsanker stehen in
   `assets/props/camp/README.md` und den jeweiligen JSON-Manifesten.
 - Verifiziert: TypeScript fehlerfrei und 435 Vitest-Tests gruen.
+
+## R195 - Fluessigkeits-Balken, RTS-Bauten-Fixes, Kampf-Fixes, Charakterfenster
+
+FERTIG UND GEPRUEFT (tsc sauber, 459 Tests gruen):
+- HP/Mana-Balken als arkane Fluessigkeit (Wolken, Adern, Glas, Geisterbalken).
+- Camp-Bauten stehen wieder aufrecht (Aufricht-Bedingung war invertiert).
+- Bau-Modelle werden waehrend der Bauzeit vorgebacken (kein Notgrafik-Blitz).
+- Baukasten fuer Drehung/Groesse je Lagerbau (F10 -> LAGERBAUTEN, Werte
+  kopierbar).
+- Soldaten schlagen zurueck, wenn sie beschossen werden.
+- Turmschuetzen finden wieder Ziele (Sicht + Reichweite).
+- Charakterfenster: Schrift +25 % (regelbar), kraeftigere Tinte, bewegliche
+  Bloecke, groesseres Gegenstandsbild, Knopf-Reihenfolge, Layout-Knopf raus.
+
+NICHT IM BROWSER VERIFIZIERT (ehrliche Luecke): das Screenshot-Werkzeug bricht
+in dieser Sitzung seit der Haelfte reproduzierbar ab (page.screenshot laeuft in
+den Timeout, einmal SIGSEGV beim Browserstart) - das Hauptmenue laesst sich
+aufnehmen, die Weltszene nicht mehr. Vor dem Abbruch entstand EIN Bild der
+neuen Balken; darin waren zwei echte Fehler sichtbar (Geisterbalken blieb
+stehen, Fluessigkeitskoerper zu dunkel) - beide sind behoben und der
+Geisterbalken ist testabgedeckt. Die Optik der Balken NACH dem Fix und die
+Charakterfenster-Aenderungen hat der Autor noch nicht gesehen; bitte einmal
+draufschauen.
