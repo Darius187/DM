@@ -82,7 +82,8 @@ import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, FLYOVER, tileNameAt } from '../world/tiles';
 import { TILE } from '../gfx/fallbackArt';
 import { findePfad, Wegfeld, ziehePfadStraff } from '../world/Wegfeld';
-import { backeCampSprite, campGlbKey, hatCampGlb } from '../gfx/campGlbBitmaps';
+import { backeCampSprite, campGlbKey, hatCampGlb, verwerfeCampSprite, vorwaermeCampSprites } from '../gfx/campGlbBitmaps';
+import { FELDBAU_OPTIK_IDS, FELDBAU_OPTIK_LABEL, exportFeldbauOptik, feldbauOptik, resetFeldbauOptik, setFeldbauOptik } from '../data/feldbauOptik';
 import { angrenzendeWehrstruktur, benoetigteBreschenFelder, priorisierteBelagerungsziele, strukturBreiteInFeldern } from '../logic/belagerung';
 import { WASSER_FRAMES } from '../gfx/tileArt';
 import { fels64, zaun64, acker64, folterbank64, skelett64, altar64, wasser64, drawSchlucht, drawKristall } from '../gfx/detailArt';
@@ -4728,6 +4729,10 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     const balken = this.add.graphics().setDepth(y + 20);
     this.tileImages.push(balken as unknown as Phaser.GameObjects.Image);
     this.baustellen.push({ id, x, y, t: 0, dauer, img, balken, quelle });
+    // R195 (Autor: "kurz erscheint noch das alte Asset, dann das neue"): das
+    // GLB-Modell schon WAEHREND der Bauzeit backen. Dann steht beim Fertigwerden
+    // sofort das echte Modell da statt erst der Notgrafik.
+    void vorwaermeCampSprites(this.textures, [id]);
   }
 
   // Baustellen fortschreiten (aus dem Update-Takt); fertige -> echtes Bauwerk.
@@ -5047,8 +5052,10 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   private static readonly FELDBAU_ZIEL_H: Record<string, number> = { zelt: 84, lazarett: 84, nachschub: 76, feldaltar: 40, kochstelle: 42, brunnen: 50, feldschmiede: 44, wartfeuer: 46, botenposten: 50, pferdekoppel: 46, standarte: 70, befehlszelt: 104 };
 
   private setzeFeldbauGroesse(img: Phaser.GameObjects.Image, id: string, key: string): void {
-    const h = this.istWachturm(id) ? 132 : WorldScene.FELDBAU_ZIEL_H[id];
-    if (!h) return;
+    const basis = this.istWachturm(id) ? 132 : WorldScene.FELDBAU_ZIEL_H[id];
+    if (!basis) return;
+    // Baukasten (R195): der Autor kann jeden Bau einzeln groesser/kleiner stellen.
+    const h = basis * feldbauOptik(id).skala;
     const src = this.textures.get(key).getSourceImage();
     img.setDisplaySize(h * (src.width / Math.max(1, src.height)), h);
   }
@@ -6272,6 +6279,63 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     ];
   }
 
+  // BAUKASTEN Lagerbauten (Autor R195: "du musst mir die Moeglichkeit geben
+  // alles skalieren zu koennen ... oder drehen"). Drehen backt das Modell neu
+  // (deshalb kurz Wartezeit), Groesse wirkt sofort auf alle stehenden Bauten.
+  private baueFeldbauOptikControls(): DKControl[] {
+    const neuZeichnen = (id: string): void => {
+      for (const f of this.feldbauten) {
+        if (f.id !== id || !f.img) continue;
+        const key = this.textures.exists(campGlbKey(id)) ? campGlbKey(id) : `feldbau_${id}`;
+        f.img.setTexture(key);
+        this.setzeFeldbauGroesse(f.img, id, key);
+      }
+    };
+    const neuBacken = (id: string): void => {
+      verwerfeCampSprite(this.textures, id);
+      void backeCampSprite(this.textures, id).then(() => neuZeichnen(id));
+      neuZeichnen(id);
+    };
+    const steuerung: DKControl[] = [
+      { kind: 'note', text: 'Jeden Lagerbau einzeln drehen und skalieren. Die Werte bleiben nach dem Neuladen erhalten. Wenn es passt: "WERTE KOPIEREN" und mir schicken - ich uebernehme sie als neue Vorgabe.' },
+    ];
+    for (const id of FELDBAU_OPTIK_IDS) {
+      const name = FELDBAU_OPTIK_LABEL[id] ?? id;
+      steuerung.push({
+        kind: 'slider', label: `${name}: Drehung`, min: -180, max: 180, step: 5,
+        fmt: (v) => `${v.toFixed(0)}°`,
+        get: () => feldbauOptik(id).drehen,
+        set: (v) => { setFeldbauOptik(id, { drehen: v }); neuBacken(id); },
+      });
+      steuerung.push({
+        kind: 'slider', label: `${name}: Groesse`, min: 0.4, max: 2.5, step: 0.05,
+        fmt: (v) => `${v.toFixed(2)}x`,
+        get: () => feldbauOptik(id).skala,
+        set: (v) => { setFeldbauOptik(id, { skala: v }); neuZeichnen(id); },
+      });
+    }
+    steuerung.push({ kind: 'button', label: () => 'WERTE KOPIEREN (fuer den Chat)', onClick: () => this.kopiereText(exportFeldbauOptik(), 'Lagerbau-Werte kopiert.') });
+    steuerung.push({ kind: 'button', label: () => 'Alles auf Vorgabe zuruecksetzen', onClick: () => {
+      resetFeldbauOptik();
+      for (const id of FELDBAU_OPTIK_IDS) neuBacken(id);
+      this.devKonsole?.refresh();
+    } });
+    return steuerung;
+  }
+
+  // Text in die Zwischenablage (wie kopiereReitTuning, aber allgemein nutzbar).
+  private kopiereText(text: string, erfolg: string): void {
+    const feld = document.createElement('textarea');
+    feld.value = text;
+    feld.style.cssText = 'position:fixed;left:-9999px;top:0;';
+    document.body.appendChild(feld);
+    feld.select();
+    const kopiert = document.execCommand('copy');
+    feld.remove();
+    if (kopiert) this.logMsg(erfolg, 'gold');
+    else window.prompt('Diese Werte kopieren und im Chat einfuegen:', text);
+  }
+
   private setzeSpezialgegnerTestLeben(typ: SpezialgegnerTuningId, leben: number): void {
     const neu = setzeSpezialgegnerTuning(typ, { leben }).leben;
     const definition = SPEZIALGEGNER_TUNING_TYPEN.find((eintrag) => eintrag.id === typ);
@@ -6433,6 +6497,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         })),
       ] },
       { name: 'PFERD', controls: () => this.baueReitTuningControls() },
+      { name: 'LAGERBAUTEN', controls: () => this.baueFeldbauOptikControls() },
       { name: 'GEGNER', controls: () => this.baueSpezialgegnerControls() },
       // R80 (Autorbug "2 Wetterregler, eigener Tag-Nacht-Rhythmus, total irre"):
       // Zeit + Wetter wohnen NUR noch hier. Der Wetter-Regler setzt das Wetter
@@ -8782,12 +8847,20 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       // Autor "Soldaten/Held drehen durch, wenn Gegner HINTER der Palisade
       // stehen": Ziele ohne freie SICHT werden ignoriert - die Truppe bleibt
       // ruhig in Stellung, statt an der eigenen Wand zu zittern.
+      // R195 (Autorbug "Bogenschuetzen schiessen nicht aus dem Turm"): der
+      // Turm-Insasse steht AUF der Plattform, also mitten in einer SOLIDen
+      // Kachel - die Sichtpruefung meldete darum immer "verbaut" und er fand nie
+      // ein Ziel. Wer oben steht, schaut ueber die Mauer: keine Sichtsperre, und
+      // die Zielsuche reicht so weit wie sein Turm-Bonus (sonst kappte die
+      // 420px-Suche die 1,9-fache Turmreichweite wieder weg).
+      const obenImTurm = e.imTurm || !!e.festPos;
+      const suchR = 420 * (obenImTurm ? Math.max(1, e.turmReichF) : 1);
       let best = Infinity;
       for (const o of this.enemies) {
         if (o.team === 'spieler' || o.hp <= 0) continue;
         const d = Math.hypot(o.x - e.x, o.y - e.y);
-        if (d > 420) continue;
-        if (!this.marschBahnFrei(e.x, e.y, o.x, o.y)) continue;
+        if (d > suchR) continue;
+        if (!obenImTurm && !this.marschBahnFrei(e.x, e.y, o.x, o.y)) continue;
         const score = e.zielWahl === 'schwaechster' ? o.hp + d * 0.05
           : e.zielWahl === 'gefaehrlichster' ? -o.dmg * 100 + d
           : d;
@@ -8901,7 +8974,12 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       spawnEnemyProjectile: (x, y, vx, vy, dmg, col, pfeil, _vt, hoch) => s.spawnEnemyProjectile(x, y, vx, vy,
         // R187: auch der Heerbogen wuerfelt seinen Von-Bis-Schaden je Schuss.
         e.waffeMax > 0 ? Math.round(e.waffeMin + Math.random() * (e.waffeMax - e.waffeMin)) : dmg,
-        col, pfeil, e.team === 'spieler' ? 'spieler' : 'feind', hoch, e.team === 'spieler' ? e : undefined),
+        // R195 (Autorbug "Soldaten greifen nicht an, wenn sie mit Pfeil und Bogen
+        // beschossen werden"): der Schuetze wurde NUR fuer die eigene Truppe
+        // mitgegeben. Monster-Pfeile kamen also ohne Absender an, und
+        // trifftVerbuendeten konnte weder letzterAngreifer setzen noch die
+        // Kameraden aufscheuchen. Jetzt haengt IMMER der Schuetze am Geschoss.
+        col, pfeil, e.team === 'spieler' ? 'spieler' : 'feind', hoch, e),
       addTelegraph: (x, y, r, t, dmg) => s.addTelegraph(x, y, r, t, dmg),
       summonAdds: (en, n) => { if (en.team !== 'spieler') s.summonAdds(en, n); },
       logMsg: (t, c) => s.logMsg(t, c),

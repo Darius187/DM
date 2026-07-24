@@ -38,7 +38,11 @@ export async function backeGlbProp(url: string, opt: GlbBackOpt = {}): Promise<H
   // Aussenhuelle: Yaw fuer die Blickrichtung. Darin die Z-hoch -> Y-hoch-Drehung,
   // damit die Backofen-Kamera (Y = oben) das Modell aufrecht sieht.
   const auf = new THREE.Group();
-  if (opt.zUp !== false) auf.rotation.x = -Math.PI / 2;
+  // ACHTUNG (Autorbug R195 "die Bauten liegen falsch herum"): hier stand
+  // `opt.zUp !== false` - bei nicht gesetztem zUp ist das WAHR, die Kippung wurde
+  // also weiter angewandt und alle Camp-Props lagen flach. Jetzt nur noch bei
+  // ausdruecklichem zUp: true.
+  if (opt.zUp === true) auf.rotation.x = -Math.PI / 2;
   auf.add(gltf.scene);
   const gruppe = new THREE.Group();
   gruppe.rotation.y = opt.drehen ?? 0;

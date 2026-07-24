@@ -14,6 +14,7 @@
 
 import Phaser from 'phaser';
 import { backeGlbProp } from '../demo3d/glbPropBackofen';
+import { feldbauOptik } from '../data/feldbauOptik';
 
 const G = (rest: string) => `/props/camp/${rest}`;
 
@@ -21,17 +22,19 @@ const G = (rest: string) => `/props/camp/${rest}`;
 // die Feinjustage lokal ab). Nur EINDEUTIG passende Zuordnungen; weitere GLBs
 // (rest_tent, supply_tent, fletcher, ... command_pavilion) warten auf eigene
 // Bau-Typen in rts.ts (Codex).
-export const CAMP_GLB: Readonly<Record<string, { url: string; drehen: number }>> = {
-  zelt:         { url: G('field_tent/medieval_field_tent_3d_runtime.glb'), drehen: -Math.PI * 0.72 },
-  befehlszelt:  { url: G('command_pavilion/medieval_command_pavilion_3d_runtime.glb'), drehen: -Math.PI * 0.72 },
-  lazarett:     { url: G('medical_tent/medieval_medical_tent_3d_runtime.glb'), drehen: -Math.PI * 0.72 },
-  feldschmiede: { url: G('field_forge/medieval_field_forge_3d_runtime.glb'), drehen: -Math.PI * 0.72 },
-  kochstelle:   { url: G('cooking_fire/medieval_camp_cooking_fire_3d_runtime.glb'), drehen: -Math.PI * 0.72 },
-  brunnen:      { url: G('camp_well/medieval_camp_well_3d_runtime.glb'), drehen: -Math.PI * 0.72 },
-  standarte:    { url: G('order_banner/medieval_order_banner_3d_runtime.glb'), drehen: -Math.PI * 0.72 },
-  feldaltar:    { url: G('field_shrine/medieval_field_shrine_3d_runtime.glb'), drehen: -Math.PI * 0.72 },
-  nachschub:    { url: G('supply_wagon/medieval_supply_wagon_3d_runtime.glb'), drehen: -Math.PI * 0.72 },
-  pferdekoppel: { url: G('horse_corral/medieval_horse_corral_3d_runtime.glb'), drehen: -Math.PI * 0.72 },
+// Der Blickwinkel steht NICHT mehr hier, sondern im Baukasten
+// (src/data/feldbauOptik.ts) - der Autor kann ihn im Spiel drehen.
+export const CAMP_GLB: Readonly<Record<string, { url: string }>> = {
+  zelt:         { url: G('field_tent/medieval_field_tent_3d_runtime.glb') },
+  befehlszelt:  { url: G('command_pavilion/medieval_command_pavilion_3d_runtime.glb') },
+  lazarett:     { url: G('medical_tent/medieval_medical_tent_3d_runtime.glb') },
+  feldschmiede: { url: G('field_forge/medieval_field_forge_3d_runtime.glb') },
+  kochstelle:   { url: G('cooking_fire/medieval_camp_cooking_fire_3d_runtime.glb') },
+  brunnen:      { url: G('camp_well/medieval_camp_well_3d_runtime.glb') },
+  standarte:    { url: G('order_banner/medieval_order_banner_3d_runtime.glb') },
+  feldaltar:    { url: G('field_shrine/medieval_field_shrine_3d_runtime.glb') },
+  nachschub:    { url: G('supply_wagon/medieval_supply_wagon_3d_runtime.glb') },
+  pferdekoppel: { url: G('horse_corral/medieval_horse_corral_3d_runtime.glb') },
 };
 
 export function hatCampGlb(id: string): boolean { return id in CAMP_GLB; }
@@ -51,7 +54,8 @@ export async function backeCampSprite(tex: Phaser.Textures.TextureManager, id: s
   if (!def || laeuft.has(id)) return false;
   laeuft.add(id);
   try {
-    const cv = await backeGlbProp(def.url, { groesse: 640, drehen: def.drehen, zielH: 340 });
+    const drehen = feldbauOptik(id).drehen * Math.PI / 180;
+    const cv = await backeGlbProp(def.url, { groesse: 640, drehen, zielH: 340 });
     if (!tex.exists(key)) tex.addCanvas(key, cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
     return true;
   } catch (e) {
@@ -59,5 +63,25 @@ export async function backeCampSprite(tex: Phaser.Textures.TextureManager, id: s
     return false;
   } finally {
     laeuft.delete(id);
+  }
+}
+
+// Baukasten: nach einer Drehungs-Aenderung muss neu gebacken werden.
+export function verwerfeCampSprite(tex: Phaser.Textures.TextureManager, id: string): void {
+  const key = campGlbKey(id);
+  if (tex.exists(key)) tex.remove(key);
+}
+
+// VORWAERMEN (Autorbug R195 "kurz erscheint noch das alte Asset"): die Bakes
+// laufen los, BEVOR ein Bau fertig ist - dann steht beim Aufstellen sofort das
+// echte Modell da statt erst der Notgrafik. Nacheinander, damit nicht zehn
+// GLB-Ladevorgaenge gleichzeitig das Bild anhalten.
+export async function vorwaermeCampSprites(
+  tex: Phaser.Textures.TextureManager,
+  ids: readonly string[],
+): Promise<void> {
+  for (const id of ids) {
+    if (!hatCampGlb(id) || tex.exists(campGlbKey(id))) continue;
+    await backeCampSprite(tex, id);
   }
 }
