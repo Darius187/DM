@@ -16,6 +16,10 @@ export interface GlbBackOpt {
   // Darum ist zUp jetzt standardmaessig AUS; nur fuer echte Z-hoch-Sonderfaelle setzen.
   zUp?: boolean;      // default false (GLB ist bereits Y-hoch)
   zielH?: number;     // Ziel-Sprite-Hoehe in px (default 320)
+  // R196 (Autor "Perspektive sieht seltsam aus"): Kamera-Neigung in GRAD ueber
+  // dem Boden. Ohne Angabe die Spiel-Vorgabe ~57 Grad. Kleiner = flacher (man
+  // sieht mehr von der Seite), groesser = steiler (mehr Dach).
+  elevGrad?: number;
 }
 
 // Skaliert eine Leinwand proportional auf die Ziel-Hoehe (wie in lagerBitmaps).
@@ -47,7 +51,7 @@ export async function backeGlbProp(url: string, opt: GlbBackOpt = {}): Promise<H
   const gruppe = new THREE.Group();
   gruppe.rotation.y = opt.drehen ?? 0;
   gruppe.add(auf);
-  const ofen = macheBackofen(opt.groesse ?? 640, false);
+  const ofen = macheBackofen(opt.groesse ?? 640, false, opt.elevGrad);
   try {
     const roh = beschneideCanvas(ofen.backe(gruppe));
     return skaliereAufHoehe(roh, opt.zielH ?? 320);

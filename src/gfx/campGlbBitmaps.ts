@@ -54,8 +54,10 @@ export async function backeCampSprite(tex: Phaser.Textures.TextureManager, id: s
   if (!def || laeuft.has(id)) return false;
   laeuft.add(id);
   try {
-    const drehen = feldbauOptik(id).drehen * Math.PI / 180;
-    const cv = await backeGlbProp(def.url, { groesse: 640, drehen, zielH: 340 });
+    const optik = feldbauOptik(id);
+    const cv = await backeGlbProp(def.url, {
+      groesse: 640, drehen: optik.drehen * Math.PI / 180, zielH: 340, elevGrad: optik.neigung,
+    });
     if (!tex.exists(key)) tex.addCanvas(key, cv)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
     return true;
   } catch (e) {

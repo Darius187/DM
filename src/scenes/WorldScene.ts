@@ -113,6 +113,7 @@ import { getSettings, saveSettings } from '../logic/settings';
 import { seededRng, pick, ri } from '../logic/rng';
 import { respawnZiel } from '../logic/respawn';
 import { moralWert, fluchtEntscheidung, istEingekesselt, type MoralLage } from '../logic/moral';
+import { anmarschVonSpawn, blaupausenDrehung, hauptTor, normWinkel } from '../logic/anmarsch';
 import { feindRueckzugModus } from '../logic/feindRueckzug';
 import { konterFaktor } from '../data/kampfarten';
 import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, garnisonVon, garnisonKampfkraft, marschVon, storniereMarsch, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, einheitMaxHp, heerObergrenze, pruefeRekrutierung, desertiere, type Armee, type ArmeeEinheit } from '../logic/armee';
@@ -2109,6 +2110,11 @@ export class WorldScene extends CombatScene {
     // F3: auf einer BESETZTEN Karte steht das Feindlager (erst nach dem
     // Krypta-Boss - vorher schlaeft die Fabrik, Dok 06 C3).
     this.altarStehtHier = false;
+    // M1/Punkt 18: MERKEN, von welcher Kante der Held hereinkommt - danach
+    // richtet das Feindlager gleich seine befestigte Front aus.
+    (this.feindzug.anmarsch ??= {})[id] = anmarschVonSpawn(
+      Math.floor(this.px / TILE), Math.floor(this.py / TILE), a.w, a.h,
+    );
     if (this.bossDead && gebietsStatus(this.lage, id) === 'besetzt') this.baueFeindlager(a);
     if (id === 'crypt3' && !this.flags.ebene3) {
       // R176 (Autor): das Stadtportal ist QUEST-Belohnung - freigeschaltet,
@@ -6321,6 +6327,15 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         get: () => feldbauOptik(id).skala,
         set: (v) => { setFeldbauOptik(id, { skala: v }); neuZeichnen(id); },
       });
+      // R196 (Autor "die Perspektive sieht seltsam aus"): die Kamera-NEIGUNG
+      // beim Backen. 57 Grad = wie der Rest der Welt; kleiner zeigt mehr
+      // Seitenwand statt Dach. Aendert das Bild -> muss neu gebacken werden.
+      steuerung.push({
+        kind: 'slider', label: `${name}: Neigung`, min: 30, max: 75, step: 1,
+        fmt: (v) => `${v.toFixed(0)}° (57 = wie die Welt)`,
+        get: () => feldbauOptik(id).neigung,
+        set: (v) => { setFeldbauOptik(id, { neigung: v }); neuBacken(id); },
+      });
     }
     steuerung.push({ kind: 'button', label: () => 'WERTE KOPIEREN (fuer den Chat)', onClick: () => this.kopiereText(exportFeldbauOptik(), 'Lagerbau-Werte kopiert.') });
     steuerung.push({ kind: 'button', label: () => 'Alles auf Vorgabe zuruecksetzen', onClick: () => {
@@ -9684,6 +9699,13 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     const seitS = lager?.seitS ?? 0;
     const stufe = FELDZUG.ausbauStufenS.filter((s2) => seitS >= s2).length;
     const v = this.feindlagerVariante(a.id);   // M1: Blaupause dieser Karte
+    // M1/Punkt 18: die Blaupause wird GEDREHT, bis ihr Haupttor zur Seite zeigt,
+    // von der der Held anmarschiert. Torwache und Wehrturm stehen dann genau in
+    // seinem Korridor - die Befestigung ist Kampf, nicht Kulisse. Ohne bekannte
+    // Anmarschseite (nie betreten) bleibt die Variante in ihrer Grundlage.
+    const seite = this.feindzug.anmarsch?.[a.id];
+    const grundTore = this.torWinkel(v.wallForm);
+    const dreh = seite ? blaupausenDrehung(hauptTor(grundTore, seite), seite) : 0;
     // Anker: freier Boden nahe der Kartenmitte (Spiralsuche) + Blaupausen-Versatz
     let ax = Math.floor(a.w / 2), ay = Math.floor(a.h / 2);
     aussen: for (let ring = 0; ring < 12; ring++) {
@@ -9710,7 +9732,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       const schritte = 40;
       for (let i = 0; i < schritte; i++) {
         const wk = (i / schritte) * Math.PI * 2;
-        if (!this.wallHatWand(wk, v.wallForm, stufe, v.torHalb)) continue;
+        if (!this.wallHatWand(normWinkel(wk - dreh), v.wallForm, stufe, v.torHalb)) continue;
         const tx = ax + Math.round(Math.cos(wk) * r), ty = ay + Math.round(Math.sin(wk) * r * 0.7);
         const t = a.map[ty]?.[tx];
         if (t === T.GRASS || t === T.TREE) { a.map[ty][tx] = T.CRACK; this.refreshTile(tx, ty); }
@@ -9723,7 +9745,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     const rTile = FELDZUG.wallRadiusKacheln * v.wallRadiusF;
     const rueste = (e: Enemy): void => { e.maxhp = Math.round(e.maxhp * FELDZUG.truppHpF); e.hp = e.maxhp; e.dmg = Math.round(e.dmg * FELDZUG.truppDmgF); };
     // Tor-Posten: je Tor-Oeffnung ein paar Waechter, leicht INNEN am Tor.
-    const tore = stufe >= 1 ? this.torWinkel(v.wallForm) : [];   // ohne Wall kein Tor
+    const tore = stufe >= 1 ? grundTore.map((wk) => normWinkel(wk + dreh)) : [];   // ohne Wall kein Tor
     let gesetzt = 0, idx = 0;
     for (const wk of tore) {
       const px = (ax + Math.cos(wk) * (rTile - 0.5)) * TILE + 16;

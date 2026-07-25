@@ -44,6 +44,10 @@ export interface Feindzug {
   schwaecheT?: number;
   // F2a (A2): Blackboard je Karte. Optional - alte Staende starten ohne Wissen.
   wissen?: Record<string, FeindWissen>;
+  // M1/Punkt 18: von welcher Kante der Held die Karte zuletzt betreten hat.
+  // Danach richtet das Feindlager seine befestigte Front aus. Optional, damit
+  // alte Spielstaende ohne das Feld unveraendert laufen.
+  anmarsch?: Record<string, 'n' | 'e' | 's' | 'w'>;
 }
 
 export interface FeindzugCfg {

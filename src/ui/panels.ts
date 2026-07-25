@@ -1295,6 +1295,22 @@ export class UIPanels {
         [676, 738], [739, 800], [802, 863], [864, 926], [927, 988], [990, 1051], [1052, 1112], [1114, 1176],
       ];
       const tabH = 30 * s;
+      // R196: EINE Schriftgroesse fuer ALLE Reiter - so gross, dass auch das
+      // laengste Wort ("ZAUBERSTÄBE") in seinen gemalten Reiter passt. Vorher
+      // wurde je Reiter einzeln geschrumpft, dadurch standen zwei winzige
+      // Woerter zwischen normalen (Autor-Screenshot).
+      const tabSchrift = ((): number => {
+        const mess = this.scene.add.text(0, 0, '', { fontFamily: 'serif', fontSize: '20px', letterSpacing: 0 });
+        let klein = Math.max(10, Math.round(13 * s));
+        for (let i = 0; i < tabs.length; i++) {
+          const [b0, b1] = FILTER_BOXEN[i];
+          const platz = (b1 - b0) * s - 8 * s;
+          mess.setFontSize(klein).setText(tabs[i][1]);
+          if (mess.width > platz) klein = Math.max(9, Math.floor(klein * platz / mess.width));
+        }
+        mess.destroy();
+        return klein;
+      })();
       tabs.forEach(([id, lbl], index) => {
         const [b0, b1] = FILTER_BOXEN[index];
         const tx = b0 * s, tabW = (b1 - b0) * s;
@@ -1307,10 +1323,13 @@ export class UIPanels {
         }
         const hit = this.scene.add.rectangle(tx, ty2, tabW, tabH, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true });
         const t = this.scene.add.text(tx + tabW / 2, ty2 + tabH / 2, lbl, {
-          fontFamily: 'serif', fontSize: `${Math.max(10, Math.round(13 * s))}px`, letterSpacing: 0,
+          fontFamily: 'serif', fontSize: `${tabSchrift}px`, letterSpacing: 0,
           color: this.filter === id ? '#f7ecd2' : INK_TITEL,
         }).setOrigin(0.5);
-        if (t.width > tabW - 6) t.setFontSize(Math.max(9, Math.floor(t.style.fontSize ? Number.parseInt(String(t.style.fontSize), 10) * (tabW - 6) / t.width : 10)));
+        // R196-Korrektur: NICHT je Reiter einzeln schrumpfen (dann waren
+        // "ZAUBERSTAEBE" und "SONSTIGES" winzig neben den anderen). Die Groesse
+        // wird EINMAL fuer alle bestimmt - siehe tabSchrift oben.
+        void tabW;
         hit.on('pointerdown', () => {
           this.filter = id;
           this.scroll = 0;
@@ -1415,31 +1434,42 @@ export class UIPanels {
       // leer"): Gegenstand auf einer dunklen Praesentationsflaeche, Symbol rund
       // doppelt so gross, darunter Name / Seltenheit / Typ als eigene Zeilen.
       const bx = 1283 * s, bw = 245 * s, bcx = bx + bw / 2;
-      const platteY = (150 - 79) * s, platte = 104 * s;
+      // R196-Korrektur (Autor-Screenshot "was ist das fuer ein Mist"): die
+      // Zeilen lagen UEBEREINANDER, weil sie mit festen Pixel-Abstaenden unter
+      // die Bildflaeche gesetzt wurden - bei kleiner Schale war der Abstand
+      // kleiner als die (vergroesserte) Schrift. Jetzt wird JEDE Zeile gesetzt
+      // und der Stapel um ihre TATSAECHLICHE Hoehe weitergeschoben.
+      const platteY = (146 - 79) * s, platte = 92 * s;
       c.add(this.scene.add.rectangle(bcx, platteY + platte / 2, platte, platte, 0x1c150d, 0.5)
         .setStrokeStyle(Math.max(1, Math.round(1.5 * s)), Phaser.Display.Color.HexStringToColor(RARITY_COLORS[rar]).color, 0.7));
       const icon = this.scene.add.image(bcx, platteY + platte / 2, this.provider.itemIcon(it));
-      icon.setScale(Math.min(2.1, (platte - 16 * s) / Math.max(icon.width, icon.height)));
+      icon.setScale(Math.min(2.1, (platte - 14 * s) / Math.max(icon.width, icon.height)));
       c.add(icon);
-      c.add(this.scene.add.text(bcx, platteY + platte + 8 * s, it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
-        fontFamily: 'serif', fontSize: `${Math.max(14, Math.round(19 * s))}px`, color: RARITY_INK[rar],
-        wordWrap: { width: bw - 8 }, align: 'center',
-      }).setOrigin(0.5, 0));
+      let stapel = platteY + platte + 6 * s;
+      const zeile = (txt: string, groesse: number, farbe: string, luft = 3): void => {
+        const t2 = this.scene.add.text(bcx, stapel, txt, {
+          fontFamily: 'serif', fontSize: `${Math.max(10, Math.round(groesse * s))}px`, color: farbe,
+          wordWrap: { width: bw - 10 * s }, align: 'center',
+        }).setOrigin(0.5, 0);
+        c.add(t2);
+        stapel += t2.height + luft * s;
+      };
       const typS = it.kind === 'weapon'
         ? `${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} · ${handLabel(it.weaponClass)}`
         : TYP_NAMEN[it.kind] ?? 'Gegenstand';
-      c.add(this.scene.add.text(bcx, platteY + platte + 32 * s, RARITY_NAMES[rar], {
-        fontFamily: 'serif', fontSize: `${Math.max(11, Math.round(13 * s))}px`, color: RARITY_INK[rar],
-      }).setOrigin(0.5, 0));
-      c.add(this.scene.add.text(bcx, platteY + platte + 50 * s, typS, {
-        fontFamily: 'serif', fontSize: `${Math.max(11, Math.round(13 * s))}px`, color: INK_ZWEIT,
-      }).setOrigin(0.5, 0));
-      this.zierLinie(c, bx, (300 - 79) * s, bw, 'WERTE', true);
-      c.add(this.scene.add.text(bx + 8 * s, (312 - 79) * s, itemStatLine(it, false), {
-        fontFamily: 'serif', fontSize: `${Math.max(12, Math.round(14 * s))}px`, color: INK,
-        wordWrap: { width: bw - 16 * s }, lineSpacing: 4,
-      }));
-      let ys = (362 - 79) * s;
+      zeile(it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), 17, RARITY_INK[rar], 2);
+      zeile(RARITY_NAMES[rar], 12, RARITY_INK[rar], 1);
+      zeile(typS, 12, INK_ZWEIT, 4);
+      // Die WERTE-Linie folgt dem Stapel, faellt aber nie ueber ihre gemalte
+      // Grundlinie hinaus nach oben.
+      const werteY = Math.max(stapel + 8 * s, (300 - 79) * s);
+      this.zierLinie(c, bx, werteY, bw, 'WERTE', true);
+      const werteText = this.scene.add.text(bx + 8 * s, werteY + 12 * s, itemStatLine(it, false), {
+        fontFamily: 'serif', fontSize: `${Math.max(11, Math.round(13 * s))}px`, color: INK,
+        wordWrap: { width: bw - 16 * s }, lineSpacing: 3,
+      });
+      c.add(werteText);
+      let ys = Math.max(werteY + 12 * s + werteText.height + 14 * s, (362 - 79) * s);
       if (it.boni.length || it.sock) {
         this.zierLinie(c, bx, ys - 7 * s, bw, 'AFFIXE', true);
         ys += 8 * s;
@@ -1471,7 +1501,7 @@ export class UIPanels {
         }
         ys = yv;   // die Knoepfe folgen auch dem Vergleichsblock
       }
-      this.buildDetailButtons(c, it, x0, w, h, shellAktiv, s, ys + 18 * s);
+      this.buildDetailButtons(c, it, x0, w, h, shellAktiv, s);
       return;
     }
     const icon = this.scene.add.image(x0 + 56, 92, this.provider.itemIcon(it));
@@ -1542,7 +1572,7 @@ export class UIPanels {
         .setOrigin(0);
       if (!shellAktiv) bg.setStrokeStyle(1, aktiv ? 0x2a2117 : 0x554c40);
       const text = this.scene.add.text(buttonX + buttonW / 2, by + buttonH / 2, label, {
-        fontFamily: 'serif', fontSize: `${shellAktiv ? Math.max(11, Math.round(15 * s)) : 13}px`, color: aktiv ? '#f4ead2' : '#8a7a68', letterSpacing: 1,
+        fontFamily: 'serif', fontSize: `${shellAktiv ? Math.max(11, Math.round(15 * s)) : 13}px`, color: aktiv ? '#f4ead2' : '#cbbba4', letterSpacing: 1,
       }).setOrigin(0.5);
       c.add(bg); c.add(text);
       if (!aktiv) return;
@@ -1552,10 +1582,12 @@ export class UIPanels {
       bg.on('pointerdown', fn);
     };
     const verbrauchbar = ['potion', 'mpotion', 'scroll', 'food'].includes(it.kind);
-    // R195 (Autor: "die Knoepfe sitzen zu weit unten, wirken vom Gegenstand
-    // getrennt"): sie folgen jetzt direkt auf die Affix-/Vergleichszeilen und
-    // rutschen nur nach unten, wenn der Platz sonst nicht reicht.
-    const basisY = shellAktiv ? Math.min((699 - 79) * s, Math.max((430 - 79) * s, startY ?? (699 - 79) * s)) : h - 112;
+    // R196-Korrektur: die Knoepfe sitzen wieder auf den GEMALTEN Knopfflaechen
+    // der Schale. Mein Versuch aus R195, sie an die Gegenstandsdaten
+    // heranzuziehen, hat sie neben die gemalten Kaesten geschoben - im Fenster
+    // standen dann drei leere Rahmen darunter (Autor-Screenshot).
+    void startY;
+    const basisY = shellAktiv ? (699 - 79) * s : h - 112;
     const buttonAbstand = shellAktiv ? 60 * s : 37;
     // R195 (Autorwunsch): Reihenfolge AUSRUESTEN - VERGLEICHEN - ABLEGEN.
     // "Vergleichen" ist die haeufigere und harmlosere Handlung; "Ablegen" steht
