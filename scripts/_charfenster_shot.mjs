@@ -11,6 +11,6 @@ export default async (page) => {
     if (w?.panels?.openTab) w.panels.openTab('held');
   });
   await page.waitForTimeout(1200);
-  await page.evaluate(() => window.__game.loop.sleep());
+  await page.evaluate(() => window.__game?.loop?.sleep?.());
   await page.waitForTimeout(400);
 };
