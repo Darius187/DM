@@ -150,7 +150,10 @@ export const ABILITY_FX = {
   // Heilende Hand (Runde 46): Bodenziel. Hebt einen verwundeten Helfer im
   // Umkreis wieder auf (reviveFrac seiner Leben); ist keiner da, heilt es den
   // Helden (selbstHealPct). reichweite = wie weit man zielen kann.
-  heilen: { mana: 24, cd: 6, reichweite: 320, radius: 48, reviveFrac: 0.7, selbstHealPct: 0.35, heilDauerS: 2.5 },
+  // R197 (Autorbug "warum kann ich mit heilender Hand keine NPCs/das Heer
+  // heilen?"): truppHealPct = Anteil der MAXIMALEN Lebenspunkte, den jeder
+  // Verwundete im Wirkkreis zurueckbekommt.
+  heilen: { mana: 24, cd: 6, reichweite: 320, radius: 68, reviveFrac: 0.7, selbstHealPct: 0.35, truppHealPct: 0.4, heilDauerS: 2.5 },
   hinrichtung: { dmgMultVsStunned: 3.2, cd: 4.5 },
   // Frostball (Autor "wir sollten sowas wie Frostball haben"): Eisgeschoss wie
   // der Feuerball, aber statt Brand -> Slow auf Ziel + Umstehende (Splash-Slow).

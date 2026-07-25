@@ -8926,9 +8926,29 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   override wegRichtungZiel(x: number, y: number, zielX: number, zielY: number): number | null {
     if (!this.area) return null;
     if (this.marschBahnFrei(x, y, zielX, zielY)) return Math.atan2(zielY - y, zielX - x);
+    // Ziel-Kachel auf ein 3x3-Raster runden (ein Wegfeld je Block, spart Rechnung).
     const q = 3;
-    const ztx = Math.max(0, Math.min(this.area.w - 1, Math.floor(Math.floor(zielX / TILE) / q) * q + 1));
-    const zty = Math.max(0, Math.min(this.area.h - 1, Math.floor(Math.floor(zielY / TILE) / q) * q + 1));
+    let ztx = Math.max(0, Math.min(this.area.w - 1, Math.floor(Math.floor(zielX / TILE) / q) * q + 1));
+    let zty = Math.max(0, Math.min(this.area.h - 1, Math.floor(Math.floor(zielY / TILE) / q) * q + 1));
+    // R197 (Autorbug "Monster hackt aufs Tor, obwohl die Palisade daneben offen
+    // steht"): faellt die GERUNDETE Zielkachel auf eine Wand (Palisade, Tor,
+    // Baum), findet das Wegfeld von dort aus NIE einen Weg - der Aufrufer las
+    // "kein Durchkommen" und die Belagerung sprang an, obwohl nebenan eine Gasse
+    // offen war. Ist die gerundete Kachel verbaut, wird die ECHTE Zielkachel
+    // genommen (und notfalls eine freie Nachbarkachel davon).
+    const begehbar = (tx: number, ty: number): boolean =>
+      tx >= 0 && ty >= 0 && tx < this.area.w && ty < this.area.h
+      && !this.solidFuerFeind(tx * TILE + TILE / 2, ty * TILE + TILE / 2);
+    if (!begehbar(ztx, zty)) {
+      const etx = Math.floor(zielX / TILE), ety = Math.floor(zielY / TILE);
+      if (begehbar(etx, ety)) { ztx = etx; zty = ety; } else {
+        suche: for (let ring = 1; ring <= 2; ring++) {
+          for (let dy = -ring; dy <= ring; dy++) for (let dx = -ring; dx <= ring; dx++) {
+            if (begehbar(etx + dx, ety + dy)) { ztx = etx + dx; zty = ety + dy; break suche; }
+          }
+        }
+      }
+    }
     const key = `${ztx},${zty}`;
     let e = this.marschFelder.get(key);
     const now = this.time.now;
@@ -9019,7 +9039,15 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       wegRichtung: (x, y) => {
         const z = s.zielFuer(e);
         if (z === 'held') return s.wegRichtung(x, y);
-        if (!z || !s.rtsBattle) return null;
+        if (!z) return null;
+        // R197 (Autorbug "Monster bleibt vor dem Tor stehen und hackt darauf,
+        // obwohl nebendran die Palisade offen steht - keiner geht da durch"):
+        // OHNE RTS-Modus gab es hier frueher `null` zurueck, sobald das Ziel eine
+        // EINHEIT war (statt des Helden). Die Einheiten-KI wertet null als "kein
+        // Weg" und bleibt STEHEN - deshalb lief niemand durch die offene Gasse.
+        // Jetzt faellt sie auf das Wegfeld der Szene zurueck, wie bei der
+        // Belagerungs-Pruefung (hatWegZumZiel) auch.
+        if (!s.rtsBattle) return s.wegRichtungZiel(x, y, z.x, z.y);
         const wp = s.rtsBattle.wegPunkt(e.team === 'spieler' ? 'spieler' : 'feind', x, y, { x: z.x, y: z.y });
         return wp ? Math.atan2(wp.y - y, wp.x - x) : null;
       },
@@ -11838,6 +11866,28 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // Heilende Hand am Zielort (Runde 46): hebt den nächsten verwundeten Helfer im
   // Umkreis wieder auf die Beine. Liefert true, wenn jemand geheilt wurde.
   protected override heileVerwundete(x: number, y: number, radius: number): boolean {
+    // R197 (Autorbug "warum kann ich mit Heilender Hand keine NPCs, also das Heer
+    // heilen?"): dieser Haken kannte NUR niedergeschlagene Dorfbewohner - die
+    // eigenen TRUPPEN kamen darin ueberhaupt nicht vor. Jetzt zuerst jeder
+    // verwundete Verbuendete im Wirkkreis (und der Held, wenn er mit drinsteht);
+    // das Aufrichten eines niedergeschlagenen Bewohners bleibt danach erhalten.
+    const fxH = ABILITY_FX.heilen;
+    let versorgt = 0;
+    for (const e of this.enemies) {
+      if (e.team !== 'spieler' || e.hp <= 0 || e.hp >= e.maxhp) continue;
+      if (Math.hypot(e.x - x, e.y - y) > radius + e.r) continue;
+      const heal = Math.max(1, Math.round(e.maxhp * fxH.truppHealPct));
+      e.hp = Math.min(e.maxhp, e.hp + heal);
+      this.fx.float(e.x, e.y - e.r - 10, `+${heal}`, '#7ce08a');
+      versorgt++;
+    }
+    if (this.p.hp < this.p.stats.maxhp && Math.hypot(this.px - x, this.py - y) <= radius + 14) {
+      const heal = Math.max(1, Math.round(this.p.stats.maxhp * fxH.truppHealPct));
+      this.p.hp = Math.min(this.p.stats.maxhp, this.p.hp + heal);
+      this.fx.float(this.px, this.py - 24, `+${heal}`, '#7ce08a');
+      versorgt++;
+    }
+    if (versorgt > 0) this.logMsg(`Heilende Hand versorgt ${versorgt} Verwundete.`, 'gold');
     // großzügiger suchen, damit ein Klick neben dem Verwundeten trotzdem trifft
     let best: NpcEntity | null = null, bd = radius + 36;
     for (const n of this.npcEnts) {
@@ -11845,7 +11895,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       const d = Math.hypot(n.curX - x, n.curY - y);   // (x,y) = Zielort
       if (d < bd) { bd = d; best = n; }
     }
-    if (!best) return false;
+    if (!best) return versorgt > 0;
     if (best.heilT && best.heilT > 0) return true;               // schon in Heilung
     // Göttliches Licht (Runde 53, Autorwunsch): senkt sich auf den Verwundeten,
     // er richtet sich über ein paar Sekunden wieder auf. Die eigentliche Heilung
