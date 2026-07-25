@@ -590,6 +590,9 @@ export class Enemy {
       this.begegnet = true;
       host.begegnungsRuf(this);
     }
+    // R196: erst wenn das Ziel wieder WEIT weg ist, darf sich die Einheit beim
+    // naechsten Anlauf erneut sammeln (siehe ENEMY_AI.sammelnNeuAb).
+    if (d > ENEMY_AI.sammelnNeuAb) this.mutT = -1;
 
     // R135d Angriffs-Slot: ein Nahkaempfer mit zugewiesenem Slot steuert seinen
     // Platz auf dem Ring um den Helden an (steuerAng), statt den Mittelpunkt - so
@@ -616,7 +619,10 @@ export class Enemy {
         host.playSound(this.magie ? 'fireball1' : 'pfeil_schuss');
       }
       if (d < ENEMY_AI.rangedKeepDist) {
-        this.moveBody(host, -Math.cos(ang) * this.speed * 0.6 * slowF * dt, -Math.sin(ang) * this.speed * 0.6 * slowF * dt);
+        // R196: Rueckzugstempo aus den Daten (war eine nackte 0.6 - damit war
+        // der Schuetze so schnell wie sein Verfolger und blieb ewig auf 140 px).
+        const kite = this.speed * ENEMY_AI.rangedKiteTempoF * slowF * dt;
+        this.moveBody(host, -Math.cos(ang) * kite, -Math.sin(ang) * kite);
         this.advanceStep(dt);
       }
     } else if (this.retreatT > 0) {
@@ -679,7 +685,11 @@ export class Enemy {
         if (this.mutT > 0) {
           if (host.verbuendeteNahe(this, 150) >= ENEMY_AI.sammelnAb) this.mutT = 0;
           else {
-            this.mutT -= dt;
+            // R196: NICHT unter 0 laufen lassen. Wurde mutT negativ, hat die
+            // Zeile darueber im naechsten Bild sofort eine neue Wartezeit
+            // gesetzt - die Einheit sammelte sich unendlich und griff nie an
+            // (sichtbar als "Soldat kreist auf 140 px und tut nichts").
+            this.mutT = Math.max(0, this.mutT - dt);
             const oa2 = ang + this.orbitDir * 1.5;
             this.moveBody(host, Math.cos(oa2) * this.speed * 0.45 * slowF * dt, Math.sin(oa2) * this.speed * 0.45 * slowF * dt);
             this.advanceStep(dt);

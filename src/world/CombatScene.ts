@@ -2216,7 +2216,16 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       // Direkt belegbar (Autorbug R53: markierterTod/mehrfachschuss/durchschlag
       // liefen vorher NUR über R/T = waffe1/waffe2, direkt belegt taten sie nichts)
       case 'mehrfachschuss': case 'markierterTod': case 'durchschlag':
-      case 'wuchtschlag': case 'blutdurst': case 'kriegsschrei': case 'erschuetterung': this.useAbility(id); break;
+      case 'wuchtschlag': case 'blutdurst': case 'kriegsschrei': case 'erschuetterung':
+      // R196 (Audit): rundumschlag und sturmangriff FEHLTEN hier - sie waren nur
+      // ueber die Waffen-Slots (waffe1/waffe2) erreichbar. Direkt auf eine Taste
+      // gelegt taten sie NICHTS. Gleicher Fehler wie R53 bei den Bogen-Skills.
+      case 'rundumschlag': case 'sturmangriff': this.useAbility(id); break;
+      // R196: der Angriffs-Slot war ueber die Leiste tot. Maustasten fangen
+      // 'angriff' vorher ab (Halten fuer den Bogen); ein KLICK auf das
+      // Leisten-Feld landete hier und lief ins Leere. Nahkampf schlaegt jetzt zu;
+      // der Bogen braucht weiterhin gedrueckt-halten (Spannen).
+      case 'angriff': if (this.weaponClass() !== 'bogen') this.tryLight(); break;
       // Waffen-Fähigkeiten auch auf Maustasten legbar (Runde 20)
       case 'waffe1': this.useAbility(this.weaponClass() === 'bogen' ? 'mehrfachschuss' : 'rundumschlag'); break;
       case 'waffe2': this.useAbility(this.weaponClass() === 'bogen' ? 'markierterTod' : 'sturmangriff'); break;

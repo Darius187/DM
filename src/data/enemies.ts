@@ -95,6 +95,14 @@ export const ENEMY_AI = {
   rangedShootCd: 1.8,
   rangedProjSpeed: 265,
   rangedKeepDist: 140,
+  // R196 (Audit): Tempo, mit dem ein Fernkaempfer vor einem Nahkaempfer
+  // zurueckweicht - als ANTEIL seines Grundtempos. Stand als nackte 0.6 im
+  // Code; mit 0.6 lief ein Schuetze (Tempo 55-70) genauso schnell rueckwaerts
+  // wie ein Gewappneter (62) vorwaerts: der Abstand blieb bei exakt 140 px
+  // stehen, der Kampf loeste sich NIE auf und der Soldat wurde in Ruhe
+  // totgeschossen. 0.42 heisst: wer einen Schuetzen stellt, holt ihn auch ein -
+  // Bogenschuetzen sind im Nahkampf verwundbar (wie in jedem RTS).
+  rangedKiteTempoF: 0.42,
   rangedMaxShoot: 290,
   rangedMinShoot: 90,
   slowFactorEis: 0.5,   // Frostsplitter verlangsamt auf 50%
@@ -109,6 +117,11 @@ export const ENEMY_AI = {
   sammelnMin: 0.4,
   sammelnSpanne: 0.6,
   sammelnAb: 1,         // ab so vielen nahen Verbündeten gemeinsam angreifen
+  // R196 (Audit): ab dieser Entfernung gilt die Begegnung als beendet und das
+  // Sammeln darf beim naechsten Anlauf NEU beginnen. Ohne diese Grenze wurde
+  // die Wartezeit nach jedem Ablauf sofort wieder neu gesetzt - eine Einheit
+  // ohne Kameraden umkreiste ihr Ziel dann ENDLOS, statt anzugreifen.
+  sammelnNeuAb: 420,
 } as const;
 
 // Aggressions-Profil je Gegnertyp (Runde 35): rueckzugChance = wie oft ein

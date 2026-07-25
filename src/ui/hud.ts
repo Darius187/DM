@@ -37,10 +37,10 @@ interface SlotDef {
 type SlotKat = 'kampf' | 'zauber' | 'bogen' | 'item';
 const SLOT_KAT: Record<string, SlotKat> = {
   angriff: 'kampf', block: 'kampf', rundumschlag: 'kampf', sturmangriff: 'kampf',
-  wuchtschlag: 'kampf', blutdurst: 'kampf', kriegsschrei: 'kampf', erschuetterung: 'kampf', hinrichtung: 'kampf',
+  wuchtschlag: 'kampf', blutdurst: 'kampf', kriegsschrei: 'kampf', erschuetterung: 'kampf',
   mehrfachschuss: 'bogen', markierterTod: 'bogen', hagel: 'bogen', splitterpfeil: 'bogen',
   durchschlag: 'bogen', sprungpfeil: 'bogen', fesselpfeil: 'bogen',
-  s1: 'zauber', s2: 'zauber', s3: 'zauber', heilen: 'zauber', kettenblitz: 'zauber', frostnova: 'zauber',
+  s1: 'zauber', s2: 'zauber', s3: 'zauber', heilen: 'zauber', kettenblitz: 'zauber', frostnova: 'zauber', frostball: 'zauber',
   bannkreis: 'zauber', feuerregen: 'zauber', aderlass: 'zauber', lebenstausch: 'zauber', atomschlag: 'zauber',
   pot: 'item', mpot: 'item', rolle: 'item', stadtportal: 'item',
 };
@@ -261,11 +261,18 @@ export class Hud {
       ['wuchtschlag', '⤲', 'Wuchtschlag', '#e0b070'], ['rundumschlag', '↻', 'Rundumschlag', '#d8cfb8'],
       ['blutdurst', '🩸', 'Blutdurst', '#c83838'], ['kriegsschrei', '⛉', 'Kriegsschrei', '#e0c060'],
       ['sturmangriff', '⇒', 'Sturmangriff', '#d8cfb8'], ['erschuetterung', '⤓', 'Erschütternder Stoß', '#c89858'],
-      ['hinrichtung', '☠', 'Hinrichtung', '#d0d0d0'],
+      // R196 (Audit): 'hinrichtung' stand hier als belegbare Aktion, ist aber
+      // eine PASSIVE Wirkung (Bonus-Schaden gegen taumelnde Gegner, greift von
+      // selbst ab Nahkampf-Stufe 9). Auf einen Slot gelegt tat sie nichts -
+      // darum ist sie hier raus. Sichtbar bleibt sie im Faehigkeiten-Fenster.
+
       // Zauber (Magier)
       ['s1', '✦', 'Feuerball', '#f0883a'], ['s2', '☩', 'Heiliges Licht', '#f0e08a'], ['s3', '✚', 'Heilung', '#6ad06a'],
       ['heilen', '🤲', 'Heilende Hand', '#9ad86a'],
       ['kettenblitz', '⌁', 'Kettenblitz', '#9ae0f8'], ['frostnova', '❄', 'Frostnova', '#74aef0'], ['bannkreis', '◎', 'Bannkreis', '#d8b84a'],
+      // R196 (Audit): Frostball war gebaut, aber NICHT belegbar - er fehlte in
+      // dieser Liste und tauchte darum in keinem Slot-Menue auf.
+      ['frostball', '✻', 'Frostball', '#8ac8f0'],
       ['feuerregen', '☄', 'Feuerregen (auf den Zielort)', '#e85a3a'],
       ['aderlass', '⚱', 'Aderlass (Leben gegen Mana)', '#c04848'], ['lebenstausch', '❤', 'Lebenstausch (Mana gegen Leben)', '#e87a9a'],
       ['atomschlag', '☢', 'Mobile Massenvernichtungseinheit (DEV, alle Zauber frei)', '#ffe000'],

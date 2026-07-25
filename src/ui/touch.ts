@@ -29,14 +29,26 @@ export class TouchControls {
   private buttons: Array<{ x: number; y: number; r: number; label: string; down?: (p: Phaser.Input.Pointer) => void; up?: () => void; visible: () => boolean }> = [];
   private interactVisible = false;
 
+  // R196 (Risiko-Checkliste 4 "globale Lauscher beim Verlassen abmelden"):
+  // die Lauscher werden als FELDER gemerkt. Vorher hingen sie als anonyme
+  // Funktionen an scale/input und liessen sich nicht mehr entfernen - bei jedem
+  // Szenenwechsel blieb einer auf einer TOTEN Szene liegen und zeichnete beim
+  // naechsten Fenster-Resize in bereits zerstoerte Objekte.
+  private readonly aufDown = (p: Phaser.Input.Pointer): void => this.onDown(p);
+  private readonly aufMove = (p: Phaser.Input.Pointer): void => this.onMove(p);
+  private readonly aufUp = (p: Phaser.Input.Pointer): void => this.onUp(p);
+  private readonly aufResize = (): void => this.layoutButtons();
+
   constructor(private scene: Phaser.Scene, private host: TouchHost) {
     this.gfx = scene.add.graphics().setScrollFactor(0).setDepth(5300);
     scene.input.addPointer(3);
     this.layoutButtons();
-    scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.onDown(p));
-    scene.input.on('pointermove', (p: Phaser.Input.Pointer) => this.onMove(p));
-    scene.input.on('pointerup', (p: Phaser.Input.Pointer) => this.onUp(p));
-    scene.scale.on('resize', () => this.layoutButtons());
+    scene.input.on('pointerdown', this.aufDown);
+    scene.input.on('pointermove', this.aufMove);
+    scene.input.on('pointerup', this.aufUp);
+    scene.scale.on('resize', this.aufResize);
+    // Sicherheitsnetz: auch ohne ausdruecklichen destroy-Aufruf sauber abmelden.
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
   }
 
   setInteractVisible(v: boolean): void {
@@ -144,7 +156,12 @@ export class TouchControls {
   }
 
   destroy(): void {
+    this.scene.input.off('pointerdown', this.aufDown);
+    this.scene.input.off('pointermove', this.aufMove);
+    this.scene.input.off('pointerup', this.aufUp);
+    this.scene.scale.off('resize', this.aufResize);
     this.gfx.destroy();
     for (const t of this.labels) t.destroy();
+    this.labels = [];
   }
 }

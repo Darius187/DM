@@ -646,6 +646,14 @@ export class WorldScene extends CombatScene {
     this.bodenGfx = this.add.graphics().setDepth(-5);
     this.minimapGfx = this.add.graphics().setScrollFactor(0).setDepth(4500);
     this.hud = new Hud(this, () => this.p, () => this.weaponClass(), (id) => this.runActionFromBar(id));
+    // R196: das HUD beim Szenenende ABRAEUMEN. Die Fuellstands-Maske der
+    // Fluessigkeits-Balken liegt bewusst NICHT auf der Anzeigeliste (Phaser-
+    // Falle: Maske und maskiertes Objekt duerfen nicht im selben Container
+    // sein) - Phaser raeumt sie darum beim Szenenwechsel NICHT mit ab. Ohne
+    // diesen Haken bleibt bei jedem Kartenwechsel eine Maske liegen.
+    // Vorbild: SchattenManager, der genau das schon macht.
+    const huddy = this.hud;
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => huddy.destroy());
     // Neue HUD-Menue-Knoepfe (Codex-HUD-Upgrade): jeder Knopf oeffnet sein Ziel.
     // Vorher war onMenuAction nicht belegt -> die Knoepfe taten nichts (Autor).
     this.hud.onMenuAction = (id) => {
