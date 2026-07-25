@@ -8,6 +8,7 @@ import { SPELLS, ABILITIES, ABILITY_FX } from '../data/balancing';
 import { skillBeschreibung, skillWirkungText } from '../data/skills';
 import { getSettings, keyLabel, saveSettings } from '../logic/settings';
 import { ArkaneFluessigkeit } from './arkaneFluessigkeit';
+import { XP_LEISTE } from '../data/hudFluessigkeit';
 import { TUNING } from '../logic/tuning';
 import type { PlayerState } from '../logic/playerState';
 import type { WeaponClass } from '../data/types';
@@ -1102,12 +1103,29 @@ export class Hud {
     // Tastenleiste nicht in die Quere kommt
     this.mausInfo.setVisible(false);
 
-    // XP-Leiste
+    // XP-Leiste (R195, dritter "Statusbalken"): dieselbe Bildsprache wie die
+    // Kugeln, aber in klein - dunkles Bett, tiefer Sockel, hellere Oberhaelfte,
+    // Glas-Glanz und eine leuchtende Vorderkante, die ganz langsam pulst.
     const xw = Math.min(420, w * 0.42);
-    g.fillStyle(0x0e0a06, 1);
-    g.fillRect(w / 2 - xw / 2, h - 6, xw, 3);
-    g.fillStyle(0x8c7ad0, 1);
-    g.fillRect(w / 2 - xw / 2, h - 6, xw * Phaser.Math.Clamp(p.xp / p.xpNext, 0, 1), 3);
+    const xh = XP_LEISTE.hoehe;
+    const x0 = w / 2 - xw / 2, y0 = h - 4 - xh;
+    g.fillStyle(XP_LEISTE.bett, 1);
+    g.fillRect(x0, y0, xw, xh);
+    const xf = Phaser.Math.Clamp(p.xp / p.xpNext, 0, 1);
+    const fw = xw * xf;
+    if (fw > 0.5) {
+      const puls = 0.5 + 0.5 * Math.sin(jetzt * XP_LEISTE.pulsTempo);
+      g.fillStyle(XP_LEISTE.tief, 1);
+      g.fillRect(x0, y0, fw, xh);
+      g.fillStyle(XP_LEISTE.mitte, 0.95);
+      g.fillRect(x0, y0, fw, xh * 0.55);
+      g.fillStyle(XP_LEISTE.glanz, XP_LEISTE.glanzAlpha);
+      g.fillRect(x0, y0 + 1, fw, 1);
+      // Vorderkante: der Fortschritt hat einen leuchtenden Kopf.
+      const kante = XP_LEISTE.kanteAlpha * (1 - XP_LEISTE.pulsAnteil + puls * XP_LEISTE.pulsAnteil * 2);
+      g.fillStyle(XP_LEISTE.glanz, Math.min(1, kante));
+      g.fillRect(x0 + fw - XP_LEISTE.kanteBreite, y0, XP_LEISTE.kanteBreite, xh);
+    }
   }
 
   destroy(): void {

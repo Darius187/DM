@@ -75,6 +75,23 @@ export const ARKAN_FUELLUNG = {
   randDunkelAlpha: 0.34,      // Innenschatten links/rechts
 } as const;
 
+// XP-Leiste (der dritte "Statusbalken"): waagerecht und nur wenige Pixel hoch -
+// dort waeren Wolken und Adern nur Rauschen. Sie bekommt darum dieselbe
+// Bildsprache in klein: dunkles Bett, tiefer Grundton, hellere Oberhaelfte,
+// leuchtende Vorderkante, sehr langsames Pulsieren.
+export const XP_LEISTE = {
+  hoehe: 5,
+  bett: 0x0e0a06,
+  tief: 0x2a1f4a,
+  mitte: 0x6a54b4,
+  glanz: 0xcdbcff,
+  glanzAlpha: 0.16,
+  kanteAlpha: 0.75,
+  kanteBreite: 2,
+  pulsTempo: 0.0011,
+  pulsAnteil: 0.18,
+} as const;
+
 // '#rrggbb' -> 0xrrggbb (fuer Phaser-Graphics, die Zahlen brauchen)
 export function hexZahl(hex: string): number {
   return Number.parseInt(hex.replace('#', ''), 16);
