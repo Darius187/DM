@@ -2279,3 +2279,28 @@ stehen, Fluessigkeitskoerper zu dunkel) - beide sind behoben und der
 Geisterbalken ist testabgedeckt. Die Optik der Balken NACH dem Fix und die
 Charakterfenster-Aenderungen hat der Autor noch nicht gesehen; bitte einmal
 draufschauen.
+
+## R196 - Gesamt-Bugcheck (Autorauftrag "alles durchgehen, Kampf pruefen")
+
+VORGEHEN: tsc + 465 Tests + Produktionsbau gruen; statische Suche nach den
+bekannten Phaser-Fallen; dann SIEBEN Kampfszenarien deterministisch im Browser
+gefahren (w.update(t,16.6) statt Wanduhr, Messwerte als JSON - Screenshots
+laufen in dieser Umgebung nicht zuverlaessig).
+
+GEFUNDEN UND BEHOBEN
+1. Sammel-Sperre: Einheiten (auch eigene Soldaten) umkreisten ihr Ziel endlos
+   statt anzugreifen. Nachweis: Abstand blieb bei exakt 140 px stehen.
+   Nach dem Fix: 214 -> 15 px, Schuetze faellt.
+2. Angriff/Rundumschlag/Sturmangriff waren als Leisten-Aktion tot.
+   Nach dem Fix: 11/15/18 Schaden gemessen.
+3. Frostball war nicht belegbar; Hinrichtung war belegbar, wirkt aber passiv.
+4. Fernkaempfer-Rueckzugstempo als Magic Number im Code.
+5. HUD-Maske blieb beim Szenenwechsel liegen; Touch-Lauscher wurden nie
+   abgemeldet.
+
+GEPRUEFT, KEIN FEHLER: 24 Faehigkeiten, Turmbesatzung, Gegenwehr bei Beschuss,
+Belagerung am geschlossenen Ring, Speichern/Laden (eigene Tests gruen).
+
+OFFEN FUER DEN AUTOR (Balance, bewusst nicht angefasst): Palisade 900 LP ist
+sehr zaeh (4 Skelette > 1 Minute je Kachel); Held Stufe 1 stirbt untaetig in
+5 s gegen drei Skelette.

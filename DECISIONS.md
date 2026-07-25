@@ -2940,3 +2940,34 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Der "Layout"-Knopf ist im Spiel AUS (TUNING.layoutBaukasten) und wird im
   Entwicklungskasten unter FENSTER eingeschaltet - Autor: gehoert nicht in die
   fertige Oberflaeche.
+
+## R196 - Gesamt-Bugcheck + Kampfszenarien
+- SAMMEL-SPERRE (schwerster Fund): die Regel "Sammeln statt einzeln anrennen"
+  (Runde 27) setzte ihre Wartezeit nach Ablauf SOFORT neu - eine Einheit ohne
+  Kameraden in 80-160 px Abstand umkreiste ihr Ziel damit ENDLOS und griff nie
+  an. Betraf Skelette UND die eigenen Fusssoldaten (die laufen unter demselben
+  Typ). Gemessen: ein Gewappneter kam an einen Schuetzen nie naeher als 140 px.
+  Jetzt: Wartezeit laeuft auf 0 aus (kein Neuaufziehen), neu gesammelt wird erst
+  nach ENEMY_AI.sammelnNeuAb=420 px Abstand. Entscheidung liegt jetzt als reine
+  Funktion in src/logic/sammeln.ts + Regressionstest.
+- TOTE LEISTEN-AKTIONEN: runAction kannte weder 'rundumschlag' noch
+  'sturmangriff' (nur ueber waffe1/waffe2 erreichbar) noch 'angriff'. Auf eine
+  Taste gelegt taten sie NICHTS. Jetzt verdrahtet ('angriff' schlaegt im
+  Nahkampf zu; der Bogen braucht weiter gedrueckt-halten).
+- 'hinrichtung' stand als belegbare Aktion in der Leiste, ist aber PASSIV
+  (Bonus gegen taumelnde Gegner ab Nahkampf 9) - aus der Belegungsliste raus.
+- 'frostball' war gebaut, fehlte aber in der Belegungsliste - jetzt drin.
+- Fernkaempfer-Rueckzugstempo stand als nackte 0.6 im Code -> jetzt
+  ENEMY_AI.rangedKiteTempoF = 0.42 (Bogenschuetzen sind im Nahkampf stellbar).
+- HUD wird beim Szenenende abgeraeumt: die Fuellstandsmaske der Balken liegt
+  bewusst NICHT auf der Anzeigeliste und wurde darum von Phaser nie zerstoert.
+- Touch-Steuerung meldet ihre globalen Lauscher (scale/input) jetzt ab
+  (Risiko-Checkliste 4); vorher blieben sie auf toten Szenen liegen.
+- GEPRUEFT UND IN ORDNUNG: alle 24 aktiven Faehigkeiten loesen aus und wirken;
+  Turmschuetzen finden Ziele und treffen; Soldaten schlagen bei Beschuss zurueck
+  und stellen den Schuetzen jetzt auch; Belagerung (geschlossener Ring) nagt an
+  der Wand, der Verteidiger dahinter bleibt unversehrt; aderlass/lebenstausch
+  tauschen korrekt.
+- BALANCE-BEOBACHTUNGEN (nicht geaendert, Autor entscheidet): (a) Palisade hat
+  900 LP - vier Skelette brauchen ueber eine Minute fuer EINE Kachel; (b) ein
+  Held Stufe 1, der NICHTS tut, faellt gegen drei Skelette in ~5 s.

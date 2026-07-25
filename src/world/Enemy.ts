@@ -3,6 +3,7 @@
 
 import Phaser from 'phaser';
 import { ENEMIES, ELITE, ENEMY_AI, AGGRO, AGGRO_STD, BOSS, kampfTiefe } from '../data/enemies';
+import { sammelSchritt, sammelnZuruecksetzen } from '../logic/sammeln';
 import type { EnemyTypeId, EliteAffix } from '../data/types';
 import { BOSS_TEXTE } from '../data/texte';
 import type { Rng } from '../logic/rng';
@@ -592,7 +593,7 @@ export class Enemy {
     }
     // R196: erst wenn das Ziel wieder WEIT weg ist, darf sich die Einheit beim
     // naechsten Anlauf erneut sammeln (siehe ENEMY_AI.sammelnNeuAb).
-    if (d > ENEMY_AI.sammelnNeuAb) this.mutT = -1;
+    if (sammelnZuruecksetzen(d, ENEMY_AI.sammelnNeuAb)) this.mutT = -1;
 
     // R135d Angriffs-Slot: ein Nahkaempfer mit zugewiesenem Slot steuert seinen
     // Platz auf dem Ring um den Helden an (steuerAng), statt den Mittelpunkt - so
@@ -681,20 +682,17 @@ export class Enemy {
       // Sammel-Dauer skaliert STETIG mit der Cleverness (Runde 41): cleverer =
       // wartet länger geduldig auf Verbündete; bei 2.0 wie bisher.
       if (TUNING.gegnerCleverness > 0.05 && this.type === 'skelett' && d < 160 && d > 80) {
-        if (this.mutT < 0) this.mutT = (ENEMY_AI.sammelnMin + Math.random() * ENEMY_AI.sammelnSpanne) * Math.min(2, TUNING.gegnerCleverness) / 2;
-        if (this.mutT > 0) {
-          if (host.verbuendeteNahe(this, 150) >= ENEMY_AI.sammelnAb) this.mutT = 0;
-          else {
-            // R196: NICHT unter 0 laufen lassen. Wurde mutT negativ, hat die
-            // Zeile darueber im naechsten Bild sofort eine neue Wartezeit
-            // gesetzt - die Einheit sammelte sich unendlich und griff nie an
-            // (sichtbar als "Soldat kreist auf 140 px und tut nichts").
-            this.mutT = Math.max(0, this.mutT - dt);
-            const oa2 = ang + this.orbitDir * 1.5;
-            this.moveBody(host, Math.cos(oa2) * this.speed * 0.45 * slowF * dt, Math.sin(oa2) * this.speed * 0.45 * slowF * dt);
-            this.advanceStep(dt);
-            return;
-          }
+        // R196: die Entscheidung liegt in src/logic/sammeln.ts (testbar). Der
+        // Fehler davor: die Wartezeit wurde nach Ablauf sofort neu gesetzt -
+        // eine Einheit ohne Kameraden umkreiste ihr Ziel ENDLOS.
+        const stand = sammelSchritt(this.mutT, dt, host.verbuendeteNahe(this, 150), ENEMY_AI,
+          Math.random() * Math.min(2, TUNING.gegnerCleverness) / 2);
+        this.mutT = stand.mutT;
+        if (stand.wartet) {
+          const oa2 = ang + this.orbitDir * 1.5;
+          this.moveBody(host, Math.cos(oa2) * this.speed * 0.45 * slowF * dt, Math.sin(oa2) * this.speed * 0.45 * slowF * dt);
+          this.advanceStep(dt);
+          return;
         }
       }
       if (this.umwegT > 0) {
