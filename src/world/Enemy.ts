@@ -241,6 +241,14 @@ export class Enemy {
   // WEN zielFuer aussucht (naechster/schwaechster/gefaehrlichster).
   kaempftNicht = false;
   zielWahl: 'naechster' | 'schwaechster' | 'gefaehrlichster' = 'naechster';
+  // R198 (Autor-Entscheid "die Verhaltens-Achsen sollen DAUERHAFT gelten - der
+  // RTS-Modus oeffnet nur das Bauen"): Haltung und Angriffsart wohnen jetzt an
+  // der EINHEIT statt nur im RTS-Kommandopult. So gilt die Einstellung auch,
+  // wenn der Modus wieder zu ist.
+  stance: 'aggressiv' | 'verteidigen' | 'halten' = 'aggressiv';
+  angriffsArt: 'angreifen' | 'zurueckschlagen' | 'feuerEinstellen' = 'angreifen';
+  postenPos: { x: number; y: number } | null = null;   // Stellung fuer 'halten'/'verteidigen'
+  letzterTrefferT = 0;   // Spielzeit (s) des letzten erlittenen Treffers - fuer 'zurueckschlagen'
   // R139 (1.6): womit diese Einheit zuschlaegt (speist die KONTER-Matrix) und
   // wann zuletzt ein Konter-Text ueber ihr stand (Drossel gegen Text-Spam).
   schadensArt: import('../data/kampfarten').SchadensArt = 'schnitt';

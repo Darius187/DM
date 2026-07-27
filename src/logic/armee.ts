@@ -29,6 +29,12 @@ export interface ArmeeEinheit {
   // R143 (2.3): Soeldner kaempfen fuers Geld - Moral-Malus, und wer flieht,
   // desertiert an der Kartenkante endgueltig (steht dann in KEINEM Buch).
   soeldner?: boolean;
+  // R198: die drei Verhaltens-Achsen gehoeren zur EINHEIT, nicht zur Sitzung -
+  // sie ueberleben Kartenwechsel, Neuaufstellung und das Schliessen des
+  // RTS-Modus. Optional, damit alte Spielstaende unveraendert laufen.
+  stance?: 'aggressiv' | 'verteidigen' | 'halten';
+  angriff?: 'angreifen' | 'zurueckschlagen' | 'feuerEinstellen';
+  zielwahl?: 'naechster' | 'schwaechster' | 'gefaehrlichster';
   // R187 (Autor "eine epische Waffe rueberschieben"): vom Helden uebergebene
   // Ausruestung. bonus/schutz kommen aus den Gegenstands-Boni und wirken
   // ZUSAETZLICH zur Heer-Grundausstattung (HEER_AUSRUESTUNG). item = der

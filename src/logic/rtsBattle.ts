@@ -59,6 +59,8 @@ export interface HeldRef {
 }
 
 export interface RtsHost {
+  // R198: Zugriff aufs Heer-Buch, damit die Verhaltens-Achsen dauerhaft sind.
+  heerEintrag?: (armeeId: number) => { stance?: Stance; angriff?: AngriffsArt; zielwahl?: 'naechster' | 'schwaechster' | 'gefaehrlichster' } | undefined;
   scene: Phaser.Scene;
   provider: SpriteProvider;
   play(key: string, vol?: number): void;
@@ -129,8 +131,10 @@ export class RtsBattle {
     if (schon) return schon;
     const u: RtsUnit = {
       ref, typ, x, y, hp: ref.hp, maxhp: ref.maxhp, basisDmg: ref.dmg,
-      tot: false, gewaehlt: false, stance: d.heiler ? 'verteidigen' : 'aggressiv', rank: d.rank,
-      angriff: d.heiler ? 'feuerEinstellen' : 'angreifen', zielwahl: 'naechster',
+      // R198: vorhandene Haltung der Einheit uebernehmen (sie gilt dauerhaft),
+      // sonst die Vorgabe ihrer Gattung.
+      tot: false, gewaehlt: false, stance: ref.stance ?? (d.heiler ? 'verteidigen' : 'aggressiv'), rank: d.rank,
+      angriff: ref.angriffsArt ?? (d.heiler ? 'feuerEinstellen' : 'angreifen'), zielwahl: ref.zielWahl ?? 'naechster',
       zuletztGetroffenT: -999,
       grp: null, off: null, fokusRef: null, turm: null, buffDmg: 1,
     };
@@ -148,8 +152,10 @@ export class RtsBattle {
     if (schon) return schon;
     const u: RtsUnit = {
       ref, typ, x: ref.x, y: ref.y, hp: ref.hp, maxhp: ref.maxhp, basisDmg: ref.dmg,
-      tot: false, gewaehlt: false, stance: d.heiler ? 'verteidigen' : 'aggressiv', rank: d.rank,
-      angriff: d.heiler ? 'feuerEinstellen' : 'angreifen', zielwahl: 'naechster',
+      // R198: vorhandene Haltung der Einheit uebernehmen (sie gilt dauerhaft),
+      // sonst die Vorgabe ihrer Gattung.
+      tot: false, gewaehlt: false, stance: ref.stance ?? (d.heiler ? 'verteidigen' : 'aggressiv'), rank: d.rank,
+      angriff: ref.angriffsArt ?? (d.heiler ? 'feuerEinstellen' : 'angreifen'), zielwahl: ref.zielWahl ?? 'naechster',
       zuletztGetroffenT: -999,
       grp: null, off: null, fokusRef: null, turm: null, buffDmg: 1,
     };
@@ -300,12 +306,16 @@ export class RtsBattle {
   setForm(form: Form): void { this.aktiveForm = form; this.formiere(form); }
   setAngriff(a: AngriffsArt): void {
     const g = this.gewaehlte();
-    for (const u of g) { u.angriff = a; if (a !== 'feuerEinstellen') u.ref.passiv = false; }
+    for (const u of g) {
+      u.angriff = a; u.ref.angriffsArt = a;
+      this.merkeHaltung(u);                      // R198: dauerhaft ins Heer-Buch
+      if (a !== 'feuerEinstellen') u.ref.passiv = false;
+    }
     if (g.length) this.feedback(a === 'feuerEinstellen' ? 'Feuer einstellen' : a === 'zurueckschlagen' ? 'Nur zurueckschlagen' : 'Angreifen');
   }
   setZielwahl(z: ZielWahl): void {
     const g = this.gewaehlte();
-    for (const u of g) u.zielwahl = z;
+    for (const u of g) { u.zielwahl = z; u.ref.zielWahl = z; this.merkeHaltung(u); }
     if (g.length) this.feedback('Zielwahl: ' + z);
   }
   setStance(s: Stance): void {
@@ -313,10 +323,27 @@ export class RtsBattle {
     // R100g (Autor "Haltung Angriff, aber NPCs greifen nicht an"): Angriff/Verteidigen
     // machen die Einheit AKTIV (passiv aus) - sie sucht/reagiert dann selbst. Nur
     // 'halten' laesst sie stehen.
-    for (const u of g) { u.stance = s; if (s !== 'halten') u.ref.passiv = false; }
+    for (const u of g) {
+      u.stance = s; u.ref.stance = s;
+      u.ref.postenPos = { x: u.ref.x, y: u.ref.y };   // hier wird Stellung bezogen
+      this.merkeHaltung(u);
+      if (s !== 'halten') u.ref.passiv = false;
+    }
     if (g.length) this.feedback('Haltung: ' + s);
   }
   angriffsMarsch(wx: number, wy: number): void { this.befehlMarsch({ x: wx, y: wy }, true); if (this.heldGewaehlt) this.held.befehlMarsch(wx, wy); this.marker.push({ x: wx, y: wy, t: 0.8, feind: true }); this.feedback('Angriffsmarsch'); }
+  // R198: die drei Achsen gehoeren der EINHEIT und wandern ins Heer-Buch, damit
+  // sie Kartenwechsel und das Schliessen des Kommandopults ueberleben.
+  private merkeHaltung(u: RtsUnit): void {
+    const id = u.ref.armeeId;
+    if (id === null || id === undefined) return;
+    const eintrag = this.host.heerEintrag?.(id);
+    if (!eintrag) return;
+    eintrag.stance = u.stance;
+    eintrag.angriff = u.angriff;
+    eintrag.zielwahl = u.zielwahl;
+  }
+
   stellungHalten(): void { const g = this.gewaehlte(); for (const u of g) { u.stance = 'halten'; u.grp = null; u.off = null; u.fokusRef = null; u.ref.passiv = false; } if (g.length) this.feedback('Stellung halten'); }
 
   private feedback(t: string): void { this.onFeedback?.(t); }
@@ -460,6 +487,10 @@ export class RtsBattle {
     ref.kaempftNicht = u.angriff === 'feuerEinstellen'
       || (u.angriff === 'zurueckschlagen' && this.zeit - u.zuletztGetroffenT > 5 && nfd > 60);
     ref.zielWahl = u.zielwahl;   // R139 (1.7) Zielwahl-Achse (liest zielFuer)
+    // R198: die Achsen an der EINHEIT festhalten, damit sie auch nach dem
+    // Schliessen des Kommandopults weitergelten (Autor-Entscheid).
+    ref.stance = u.stance;
+    ref.angriffsArt = u.angriff;
     ref.dmg = Math.round(u.basisDmg * u.buffDmg * rangDmgF(rangFuerKills(ref.kills)));   // Feldküchen-Aura + Veteranen-Rang (R141)
     // R100b: passive (frisch gesetzte) Einheit steht still - nicht steuern, bis
     // sie geweckt (Gegner nah) oder befohlen wird (Befehle loeschen passiv).

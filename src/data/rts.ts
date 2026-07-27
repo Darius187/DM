@@ -110,6 +110,15 @@ export const LAGER_EFFEKT = {
 } as const;
 
 // Feldscher/Heiler-Einheit (R99d/R139): verbindet verwundete Verbuendete im Feld.
+// R198 (Autor "die Verhaltens-Achsen sollen dauerhaft gelten"): Werte der
+// Haltungs-Schicht, die jetzt in JEDEM Modus laeuft - nicht nur im RTS-Pult.
+export const HALTUNG = {
+  verteidigenRadius: 220,   // so weit geht ein "verteidigen"-Posten entgegen
+  handgemengePx: 60,        // naeher = Handgemenge, Stellung zaehlt nicht mehr
+  zurueckschlagenS: 5,      // so lange nach einem Treffer gilt "wurde angegriffen"
+  taktS: 0.25,              // Takt der Haltungs-Pruefung (nicht jedes Bild)
+} as const;
+
 export const FELDSCHER = {
   suchRadius: 260,   // sucht Verwundete in diesem Umkreis (px) und geht hin
   heilRadius: 48,    // in dieser Naehe wird verbunden

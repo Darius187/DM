@@ -64,7 +64,7 @@ import { HoehlenLeben } from '../gfx/hoehlenLeben';
 import { KriegsnebelAnzeige, type SichtSet } from '../systems/kriegsnebel';
 import { buildKerkerArea } from '../world/kerkerArea';
 import { MINE } from '../data/mine';
-import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, HEER_AUSRUESTUNG, MORAL, MARSCH, VERTEIDIGUNG, BOTE, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, FELDSCHER, TURM, WEGFINDUNG, bauTechnikText, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
+import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, HEER_AUSRUESTUNG, MORAL, MARSCH, VERTEIDIGUNG, BOTE, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, HALTUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, FELDSCHER, TURM, WEGFINDUNG, bauTechnikText, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
@@ -113,6 +113,7 @@ import { getSettings, saveSettings } from '../logic/settings';
 import { seededRng, pick, ri } from '../logic/rng';
 import { respawnZiel } from '../logic/respawn';
 import { moralWert, fluchtEntscheidung, istEingekesselt, type MoralLage } from '../logic/moral';
+import { haltungsBefehl } from '../logic/haltung';
 import { anmarschVonSpawn, blaupausenDrehung, hauptTor, normWinkel } from '../logic/anmarsch';
 import { feindRueckzugModus } from '../logic/feindRueckzug';
 import { konterFaktor } from '../data/kampfarten';
@@ -3892,6 +3893,9 @@ export class WorldScene extends CombatScene {
       },
       feinde: () => this.enemies.filter((e) => e.team !== 'spieler' && e.hp > 0),
       istAktiv: (e) => this.enemies.includes(e),
+      // R198: das Kommandopult schreibt die Verhaltens-Achsen ins Heer-Buch -
+      // dort ueberleben sie Kartenwechsel und das Schliessen des Pults.
+      heerEintrag: (armeeId) => this.armee.einheiten.find((x) => x.id === armeeId),
       entferne: (e) => { e.sprite?.destroy(); this.enemies = this.enemies.filter((o) => o !== e); },
       entferneAlleFeinde: () => { for (const e of this.enemies) if (e.team !== 'spieler') e.sprite?.destroy(); this.enemies = this.enemies.filter((e) => e.team === 'spieler'); },
       lager: () => this.feldbauten.map((f) => ({ typ: f.id, x: f.x, y: f.y })),
@@ -8590,6 +8594,42 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     }
   }
 
+  // R198 (Autor-Entscheid "die Verhaltens-Achsen sollen DAUERHAFT gelten - der
+  // RTS-Modus oeffnet nur das Bauen"): Bewegung/Angriff/Zielwahl wirkten bisher
+  // NUR solange das Kommandopult offen war (rtsBattle). Diese Schicht wendet sie
+  // in jedem Modus an - laeuft aber NUR, wenn das Pult zu ist, sonst wuerde sie
+  // dessen Befehle (Marsch, Fokus, Formation) ueberschreiben.
+  private haltungT = 0;
+  private updateHaltung(dt: number): void {
+    if (this.rtsBattle) return;   // im RTS-Modus fuehrt das Kommandopult
+    this.haltungT -= dt;
+    if (this.haltungT > 0) return;
+    this.haltungT = HALTUNG.taktS;
+    const jetzt = this.time.now / 1000;
+    for (const e of this.enemies) {
+      if (e.team !== 'spieler' || e.hp <= 0 || e.passiv || e.flieht) continue;
+      if (e.armeeId !== null && marschVon(this.armee, e.armeeId)) continue;   // Marsch hat Vorrang
+      if (e.festPos) continue;                                                // Turmbesatzung steht fest
+      // naechster Feind
+      let nah = Infinity;
+      for (const o of this.enemies) {
+        if (o.team === 'spieler' || o.hp <= 0) continue;
+        const d = Math.hypot(o.x - e.x, o.y - e.y);
+        if (d < nah) nah = d;
+      }
+      if (!e.postenPos) e.postenPos = { x: e.x, y: e.y };
+      const befehl = haltungsBefehl({
+        stance: e.stance, angriff: e.angriffsArt, feindAbstand: nah,
+        seitTreffer: e.letzterTrefferT > 0 ? jetzt - e.letzterTrefferT : Infinity,
+        posten: e.postenPos, x: e.x, y: e.y,
+      }, HALTUNG);
+      e.kaempftNicht = befehl.kaempftNicht;
+      // Provokation schlaegt die Stellung (R189/R195): wer beschossen wird, geht ran.
+      if (e.provokationT > 0) { e.jagdZiel = null; continue; }
+      e.jagdZiel = befehl.jagdZiel;
+    }
+  }
+
   // R101 (Autor "Monster sollen nicht ueberall ein bisschen an der Palisade nagen,
   // sondern gezielt die schwaechste Stelle einreissen"): BRESCHE-FOKUS. Statt jeder
   // Monster nagt am naechsten Stueck, bestimmt die Belagerung EINE Bresche-Struktur
@@ -9126,6 +9166,12 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     e.kampfTags = d.tags ?? [];            // R139 (1.6): Konter-Matrix kennt beide Seiten
     e.schadensArt = d.schadensArt ?? 'schnitt';
     e.aggro = 5000;   // Verbuendete "sehen" ihr Ziel immer (Befehle steuern sie)
+    // R198: die dauerhaften Verhaltens-Achsen aus dem Heer-Buch uebernehmen -
+    // die Einstellung ueberlebt Kartenwechsel und Neuaufstellung.
+    if (einheit.stance) e.stance = einheit.stance;
+    if (einheit.angriff) e.angriffsArt = einheit.angriff;
+    if (einheit.zielwahl) e.zielWahl = einheit.zielwahl;
+    e.postenPos = { x, y };
     e.jagdZiel = { x, y };   // ohne Befehl: Stellung halten
     e.passiv = true;  // R100b: frisch gesetzt -> steht still, bis geweckt/befohlen
     // R144: laeuft gerade eine Schlacht, meldet sich der Neue sofort bei der
@@ -9143,6 +9189,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     // statt alle auf ihn loszugehen": der Getroffene MERKT sich den Angreifer und
     // jagt ihn (auch ausser normaler Reichweite). Die Stellung faellt dafuer -
     // der Fernkaempfer schiesst aus 290px, die R189-Reaktion greift erst ab 220px.
+    a.letzterTrefferT = this.time.now / 1000;   // R198: fuer die Achse "nur zurueckschlagen"
     if (angreifer && angreifer.hp > 0 && angreifer.team !== a.team) {
       a.letzterAngreifer = angreifer;
       a.provokationT = VERTEIDIGUNG.provokationS;
@@ -16038,6 +16085,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.updateRtsWahlLive(dt);   // R148-Politur: Auswahl-Karte (Leben/Moral) live nachziehen
     this.updateFeldscher(dt);     // R99d/R139: Feldscher verbindet Verwundete
     this.updateWachwerden(dt);   // R100b: passive Einheiten wecken, wenn Gegner nah
+    this.updateHaltung(dt);      // R198: Verhaltens-Achsen gelten in JEDEM Modus
     this.updateBelagerung(dt);   // R100: Monster nagen an Wehrbauten (Bunker)
     this.updateTurmBesatzung();  // R100: Turm-Insassen unsichtbar + Symbol
     this.updateMarsch(dt);   // R142: das Heer marschiert IMMER (auch ohne RTS-Modus)
