@@ -51,7 +51,7 @@ export default async (page) => {
       return null;
     };
     // Ein Lauf: Einheiten setzen, laufen lassen, Bewegung je Einheit messen.
-    const lauf = (name, bauen, takte = 600) => {
+    const lauf = (name, bauen, takte = 260) => {
       leer();
       const einheiten = bauen() ?? [];
       frei();
@@ -173,7 +173,7 @@ export default async (page) => {
         m.passiv = false; liste.push(m);
       }
       return liste;
-    }, 900));
+    }, 400));
 
     out.laeufe = laeufe;
     return out;
