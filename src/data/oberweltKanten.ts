@@ -49,6 +49,22 @@ export function kantenPixel(id: string, breitePx: number, hoehePx: number): {
   };
 }
 
+// R201 (TODO "Wegfindung Waldkarten"): WO kreuzt die STRASSE diese Kante, in
+// Weltpixeln ENTLANG der Kante? (West/Ost -> y, Nord/Sued -> x). Genau dort
+// betreten und verlassen Truppen und Wellen die Karte - die geometrische
+// Kantenmitte lag auf Waldkarten regelmaessig im dichten Randbewuchs.
+// null = diese Kante hat gar keinen Weg (dann bleibt die Mitte der Notnagel).
+export function wegKreuzungPx(
+  id: string,
+  seite: "west" | "ost" | "nord" | "sued",
+  breitePx: number,
+  hoehePx: number,
+): number | null {
+  const c = OBERWELT_KANTEN[id]?.[seite].find((e) => e.feature === "weg");
+  if (!c) return null;
+  return c.pos / 100 * (seite === "west" || seite === "ost" ? hoehePx : breitePx);
+}
+
 // Nachbar-Zelle in eine Richtung (fuer den Uebergabe-Abgleich).
 export function nachbarId(id: string, richtung: "west" | "ost" | "nord" | "sued"): string | null {
   const k = OBERWELT_KANTEN[id]; if (!k) return null;

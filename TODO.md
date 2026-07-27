@@ -105,15 +105,18 @@
 - Erschöpfungs-/Wach-Wechsel-System (Einheiten-Moral/Ermüdung, Rotation).
 - Ausrüstung ans Heer verteilen: benannte Ausrüstungs-Items mit Werten (Vorarbeit
   Opus), Zuweisung Einheit<-Slot im Dorf-Zeughaus + Feld-Nachschubzelt.
-- R99d: Turm-Reichweiten-Bonus fuer Enemy-basierte Bogenschuetzen (Schuetzen-KI
-  Reichweite je Einheit anheben, wenn turm gesetzt).
+- [x] R99d: Turm-Reichweiten-Bonus ERLEDIGT - Enemy.turmReichF wirkt auf die
+  Schussweite (Enemy.ts:460), FELDZUG.turmReichF setzt ihn beim Besetzen,
+  zielFuer zieht den Suchradius mit (WorldScene:8953). Beim Turmtod zurueck
+  auf 1.
 - [x] R99d: Feldscher/Heiler ERLEDIGT - spawnVerbuendeter-
   Eintrag 'heiler', Heil-KI updateFeldscher (geht zum naechsten Verwundeten,
   heilt in Reichweite 16 HP/s, auch den Helden), Rekrutier-Knopf 'Feldscher'.
   Browser-verifiziert (Verwundeter 20->53 HP in ~2s).
-- R100 OFFEN: echtes 2-Kachel-breites Tor (Autor "vielleicht 2 Felder gross").
-  Aktuell 1 Kachel, aber massiv + doppeltoeffnend. 2-Kachel-Footprint braucht
-  Platzierung/Kollision/Durchlass ueber 2 Tiles.
+- [x] R100d: 2-Kachel-Tor ERLEDIGT - das Tor belegt zwei Kacheln (tx2/ty2), wird
+  als Paar gesetzt (WorldScene:4829) und beim Abbau auch als Paar geraeumt
+  (:5036). Der Codex-Auftrag fuer die Tor-Grafiken (10 Texturen) liegt in
+  docs/handoff/PROMPT-CODEX-PALISADE-TOR-TURM.md.
 - R100 pruefen: "NPCs laufen wirr umher" - Idle-Verhalten der Verbuendeten/Feinde
   ohne Ziel im Auge behalten (sollten halten statt jittern).
 - R102 Katakomben-Dungeon (V8): Runtime-AUSLOESUNG der Ereignis-Marker bauen
@@ -155,7 +158,13 @@
   mit Codex/Blender. Kirche zuerst verschoenern (aktuell alter R18-Raum).
 - R179-Folgearbeit: der reitende Bote als SICHTBARE Figur (Codex-Pferd-Sprite)
   auf der Karte, wenn der Held ihm begegnet; Abfang-Szene statt Wuerfelwurf.
-- Wegfindung Waldkarten: Feldzug-Wellen spawnen an der geometrischen Kante, nicht am STRASSEN-Uebergang - in dichtem Randbewuchs starten ~3/10 in abgeschlossenen Taschen (Entklemmer faengt sie, aber schoen ist anders). Saubere Loesung: kartenKanten.ts in areagen verdrahten und kantenPunkt auf den Weg-Uebergang legen (WELTKARTE-PLAN-Altpunkt).
+- [x] R201 Wegfindung Waldkarten ERLEDIGT: kantenPunkt liest die Weg-Kreuzung aus
+  OBERWELT_KANTEN (wegKreuzungPx) statt der geometrischen Kantenmitte; das
+  Auf-freien-Boden-Ruecken (angeschlossenerBoden) gilt jetzt fuer JEDES
+  Kanten-Einsetzen, nicht nur fuer die Feldzug-Welle. Browser-A/B auf wald_o:
+  West-Kante 3 Stehenbleiber -> 0, geretteter Spawn-Anteil 43 % -> 23 %,
+  Marschweg 208 -> 285 px. REST: an der Nord-Kante bleibt 1/10 stehen (vorher
+  ebenfalls 1) - kleiner Einzelfall, spaeter nachsehen.
 
 ## GROSSER GRAFIK-SPRUNG - Normal + Emissive aus dem Blender-Bake (Autor R109, Fahrplan)
 Ziel (Autor-Zitat): "Normal- + Emissive-Maps aus dem Blender-Bake -> Light2D

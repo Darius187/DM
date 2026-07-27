@@ -3015,3 +3015,28 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   verbietet Regel 5/6. Punkt 16 (Feind-Rueckzug mit Nachhut) wartet auf den
   grossen Feldzug und wird dann als BEFOHLENER Rueckzug gebaut, nicht als
   Panikflucht (R147b: Untote fliehen nicht).
+
+## R201 - Wald-Wegfindung: die Kante ist der WEG, nicht die Mitte
+- Bisher setzte `kantenPunkt` (WorldScene) Truppen und Angriffswellen an der
+  GEOMETRISCHEN Mitte einer Kartenkante ab. Die Salzstrasse kreuzt die Kante
+  aber dort, wo es die autoritative Tabelle `OBERWELT_KANTEN` sagt - auf
+  wald_o.west z. B. bei 77 % statt 50 %. Ergebnis: die Welle betrat die Karte
+  mitten im dichten Randbewuchs statt am Strassen-Uebergang.
+  Neu: `wegKreuzungPx(id, seite, breitePx, hoehePx)` liefert die Laengs-
+  Koordinate der Weg-Kreuzung; hat eine Kante keinen Weg, bleibt die Mitte der
+  Notnagel. Weil BEIDE Nachbarn denselben Tabellenwert lesen, treffen sich
+  Auszug und Einzug an derselben Stelle (Test dazu).
+- Das Ruecken auf ANGESCHLOSSENEN Boden (frei UND mit Bahn/Weg zum Ziel) steckte
+  bisher als lokale Hilfsfunktion nur in spawneFeldzugWelle. Es ist jetzt die
+  Methode `angeschlossenerBoden` und gilt auch fuer durchmarschierende Kolonnen
+  und einrueckende Verstaerkung - die hatten dasselbe Problem, nur ohne Netz.
+  (Nicht zu verwechseln mit dem aelteren `freierBodenNah`: das prueft nur
+  "nicht solide", ohne Anschluss-Pruefung, und dient dem Gefolge des Helden.)
+- Beleg (scripts/_wald_anmarsch.mjs, A/B auf wald_o, je 10 Mann, 300 Takte,
+  Kontroll-Einheit mitlaufend): West-Kante ALT 3 Stehenbleiber / 43 % der
+  Spawn-Plaetze mussten aus dem Bewuchs gerettet werden / 208 px Marschweg,
+  NEU 0 Stehenbleiber / 23 % / 285 px. Ost- und Nord-Kante bleiben gleich - dort
+  liegt die Weg-Kreuzung ohnehin nahe der Mitte (53 % bzw. 46,7 %), der Fix
+  kann da nichts verbessern. EHRLICH: in zwei Laeufen ist die Kontroll-Einheit
+  nicht gelaufen; die Welle in denselben Laeufen schon (296 bzw. 248 px), die
+  Welt war also nicht eingefroren - der Kontroll-Spawn selbst war der Aussetzer.

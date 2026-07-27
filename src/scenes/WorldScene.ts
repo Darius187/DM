@@ -132,7 +132,7 @@ import { ladeStadtplan, speichereStadtplan, loescheStadtplan, wendePlanAn, setze
 import { alsCanvas, stelleFrei, verarbeiteUpload, verkleinereCanvas } from '../gfx/bildVerarbeitung';
 import { zoomFaktor } from '../logic/zoom';
 import type { Item, EnemyTypeId } from '../data/types';
-import { OBERWELT_KANTEN } from '../data/oberweltKanten';
+import { OBERWELT_KANTEN, wegKreuzungPx } from '../data/oberweltKanten';
 import type { Pickup } from '../world/Pickups';
 import { itemTooltipLines } from '../ui/panels';
 import { ANNA_GRAB } from '../data/dialoge';
@@ -9482,7 +9482,10 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         const einheit = this.armee.einheiten.find((x) => x.id === id2);
         if (!einheit) return;
         this.naechsteEinheit = einheit;
-        const e = this.spawnVerbuendeter(einheit.typ, start.x + (i % 3) * 24, start.y + Math.floor(i / 3) * 24);
+        // R201: auch die Kolonne wird auf angeschlossenen Boden gesetzt -
+        // sonst steht sie im Randbewuchs, bevor sie einen Schritt tut.
+        const p = this.angeschlossenerBoden(start.x + (i % 3) * 24, start.y + Math.floor(i / 3) * 24, ziel.x, ziel.y);
+        const e = this.spawnVerbuendeter(einheit.typ, p.x, p.y);
         if (e) { e.passiv = false; e.jagdZiel = { x: ziel.x, y: ziel.y }; }   // Kolonne zieht weiter
       });
       this.naechsteEinheit = null;
@@ -9491,6 +9494,12 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
 
   // Kanten-Punkt Richtung Nachbarkarte (aus dem FUERSTENTUM-Raster). eintritt:
   // leicht INNERHALB der Kante (Einsetzpunkt), sonst AUF der Kante (Marschziel).
+  //
+  // R201 (TODO "Wegfindung Waldkarten", Autor: "Wellen spawnen an der Kante
+  // statt am Strassen-Uebergang"): die Laengs-Koordinate kommt jetzt aus der
+  // autoritativen Kanten-Tabelle - also DORT, wo die Salzstrasse die Kante
+  // wirklich kreuzt und wo areagen den Weg gebaut hat. Vorher war es stumpf die
+  // geometrische Kantenmitte; auf den Waldkarten liegt die mitten im Bewuchs.
   private kantenPunkt(a: AreaData, nachbarId: string | null, eintritt: boolean): { x: number; y: number } {
     const mitte = { x: a.w * TILE / 2, y: a.h * TILE / 2 };
     if (!nachbarId) return mitte;
@@ -9499,8 +9508,37 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     if (!hier || !dort) return mitte;
     const dx = Math.sign(dort.gx - hier.gx), dy = Math.sign(dort.gy - hier.gy);
     const rand = eintritt ? TILE * 3 : TILE * 1.2;
-    const x = dx > 0 ? a.w * TILE - rand : dx < 0 ? rand : mitte.x;
-    const y = dy > 0 ? a.h * TILE - rand : dy < 0 ? rand : mitte.y;
+    const seite = dx > 0 ? 'ost' : dx < 0 ? 'west' : dy > 0 ? 'sued' : 'nord';
+    const weg = wegKreuzungPx(a.id, seite, a.w * TILE, a.h * TILE);
+    const x = dx > 0 ? a.w * TILE - rand : dx < 0 ? rand : (weg ?? mitte.x);
+    const y = dy > 0 ? a.h * TILE - rand : dy < 0 ? rand : (weg ?? mitte.y);
+    return { x, y };
+  }
+
+  // R201: einen Punkt auf freien, ANGESCHLOSSENEN Boden ruecken. "Angeschlossen"
+  // heisst: von dort fuehrt eine Bahn oder ein Weg zum Ziel - eine freie Kachel
+  // in einer abgeschlossenen Baum-Tasche am Kartenrand hilft niemandem
+  // (Diagnose: Haenger mit weg=0 trotz freiem Boden). War bisher nur in
+  // spawneFeldzugWelle eingebaut; jetzt fuer JEDES Kanten-Einsetzen.
+  private angeschlossenerBoden(x: number, y: number, zielX: number, zielY: number): { x: number; y: number } {
+    const taugt = (px2: number, py2: number): boolean =>
+      !this.solidFuerFeind(px2, py2)
+      && (this.marschBahnFrei(px2, py2, zielX, zielY) || this.wegRichtungZiel(px2, py2, zielX, zielY) !== null);
+    if (taugt(x, y)) return { x, y };
+    for (let ring = 1; ring <= 6; ring++) {
+      for (let s = 0; s < 16; s++) {
+        const a = (s / 16) * Math.PI * 2;
+        const nx = x + Math.cos(a) * ring * TILE, ny = y + Math.sin(a) * ring * TILE;
+        if (nx < TILE || ny < TILE || nx > (this.area.w - 1) * TILE || ny > (this.area.h - 1) * TILE) continue;
+        if (taugt(nx, ny)) return { x: nx, y: ny };
+      }
+    }
+    // Notnagel: Richtung Ziel vorruecken, bis Boden mit Anschluss kommt.
+    const richt = Math.atan2(zielY - y, zielX - x);
+    for (let s = 1; s <= 24; s++) {
+      const nx = x + Math.cos(richt) * s * TILE, ny = y + Math.sin(richt) * s * TILE;
+      if (taugt(nx, ny)) return { x: nx, y: ny };
+    }
     return { x, y };
   }
 
@@ -9594,7 +9632,13 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       const von = m && m.beiKarte > 0 ? m.route[m.beiKarte - 1] : null;
       const start = this.kantenPunkt(this.area, von, true);
       this.naechsteEinheit = einheit;
-      const e = this.spawnVerbuendeter(einheit.typ, start.x + (id2 % 3) * 24, start.y + (id2 % 2) * 24);
+      // R201: einrueckende Verstaerkung landet auf angeschlossenem Boden, nicht
+      // im Baum-Riegel am Kartenrand.
+      const p = this.angeschlossenerBoden(
+        start.x + (id2 % 3) * 24, start.y + (id2 % 2) * 24,
+        this.area.w * TILE / 2, this.area.h * TILE / 2,
+      );
+      const e = this.spawnVerbuendeter(einheit.typ, p.x, p.y);
       if (e) {
         if (m && m.beiKarte < m.route.length - 1) {
           const ziel = this.kantenPunkt(this.area, m.route[m.beiKarte + 1], false);
@@ -10346,29 +10390,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     // KI-Teil-2 Wegfindungs-Pass: an Waldkanten liegt der Formations-Platz
     // oft IN Baeumen/Wasser - jeden Spawn auf den naechsten freien Boden
     // ruecken, sonst stehen die Marschierer fest, bevor sie losgehen.
-    const freierBoden = (x: number, y: number): { x: number; y: number } => {
-      // Frei UND von dort erreichbar zur Kartenmitte - eine freie Kachel in
-      // einer abgeschlossenen Baum-Tasche am Rand hilft nichts (Diagnose:
-      // Haenger mit weg=0 trotz freiem Boden).
-      const taugt = (px2: number, py2: number): boolean =>
-        !this.solidFuerFeind(px2, py2)
-        && (this.marschBahnFrei(px2, py2, mitte.x, mitte.y) || this.wegRichtungZiel(px2, py2, mitte.x, mitte.y) !== null);
-      if (taugt(x, y)) return { x, y };
-      for (let ring = 1; ring <= 6; ring++) {
-        for (let s2 = 0; s2 < 16; s2++) {
-          const a2 = (s2 / 16) * Math.PI * 2;
-          const nx = x + Math.cos(a2) * ring * TILE, ny = y + Math.sin(a2) * ring * TILE;
-          if (nx < TILE || ny < TILE || nx > (this.area.w - 1) * TILE || ny > (this.area.h - 1) * TILE) continue;
-          if (taugt(nx, ny)) return { x: nx, y: ny };
-        }
-      }
-      // Notnagel: Richtung Kartenmitte vorruecken, bis Boden mit Anschluss kommt
-      for (let s3 = 1; s3 <= 24; s3++) {
-        const nx = x + Math.cos(richt) * s3 * TILE, ny = y + Math.sin(richt) * s3 * TILE;
-        if (taugt(nx, ny)) return { x: nx, y: ny };
-      }
-      return { x, y };
-    };
+    const freierBoden = (x: number, y: number): { x: number; y: number } =>
+      this.angeschlossenerBoden(x, y, mitte.x, mitte.y);
     const rollen = verteileRollen(anzahl, WELLEN_PLAN);
     for (let i = 0; i < anzahl; i++) {
       const reihe = Math.floor(i / FELDZUG.reihenBreite);

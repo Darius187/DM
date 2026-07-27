@@ -2,7 +2,7 @@
 // Nachbarn EXAKT denselben Kreuzungssatz - darum laufen Fluesse/Wege ueber die
 // Kartengrenzen durch. Bricht der Test, ist die Tabelle inkonsistent.
 import { describe, it, expect } from 'vitest';
-import { OBERWELT_KANTEN, nachbarId, kantenPixel } from '../src/data/oberweltKanten';
+import { OBERWELT_KANTEN, nachbarId, kantenPixel, wegKreuzungPx } from '../src/data/oberweltKanten';
 
 const gleich = (a: { feature: string; pos: number }[], b: { feature: string; pos: number }[]) => {
   if (a.length !== b.length) return false;
@@ -36,5 +36,35 @@ describe('Oberwelt-Kanten (Uebergabe-System)', () => {
     const ys = p!.ost.map((c) => Math.round(c.y!));
     expect(ys).toContain(Math.round(0.47 * 2720));
     expect(ys).toContain(Math.round(0.77 * 2720));
+  });
+});
+
+// R201 (TODO "Wegfindung Waldkarten"): Truppen und Wellen betreten die Karte am
+// STRASSEN-Uebergang, nicht in der geometrischen Kantenmitte.
+describe('Weg-Kreuzung einer Kante', () => {
+  it('West/Ost liefern eine y-Koordinate, Nord/Sued eine x-Koordinate', () => {
+    // wald_o.ost = weg 53 % -> y = 53 % der HOEHE
+    expect(wegKreuzungPx('wald_o', 'ost', 4160, 2720)).toBeCloseTo(0.53 * 2720, 3);
+    // wald_o.nord = weg 46.7 % -> x = 46.7 % der BREITE
+    expect(wegKreuzungPx('wald_o', 'nord', 4160, 2720)).toBeCloseTo(0.467 * 4160, 3);
+  });
+
+  it('liegt spuerbar neben der geometrischen Kantenmitte (genau der alte Fehler)', () => {
+    const mitteY = 2720 / 2;
+    expect(Math.abs(wegKreuzungPx('start', 'ost', 4160, 2720)! - mitteY)).toBeGreaterThan(400);
+  });
+
+  it('Kante ohne Weg gibt null (dann bleibt die Mitte der Notnagel)', () => {
+    expect(wegKreuzungPx('wald_n', 'nord', 4160, 2720)).toBeNull();   // nur Fluss
+    expect(wegKreuzungPx('gibtesnicht', 'west', 4160, 2720)).toBeNull();
+  });
+
+  it('beide Nachbarn treffen sich am selben Weg-Punkt', () => {
+    for (const z of Object.values(OBERWELT_KANTEN)) {
+      const n = nachbarId(z.id, 'ost');
+      if (!n) continue;
+      expect(wegKreuzungPx(z.id, 'ost', 4160, 2720), `${z.id}.ost == ${n}.west`)
+        .toBe(wegKreuzungPx(n, 'west', 4160, 2720));
+    }
   });
 });
