@@ -167,6 +167,19 @@ export const FELDZUG = {
   rueckzugKanteWegPx: 96,      // an der Kante Richtung besetzter Nachbarkarte: abziehen
 } as const;
 
+// R200 (KI-Teil-2 Punkte 12/13/14, vom Autor freigegeben): eine Angriffswelle
+// teilt sich in Stoss und zwei Flanken, sammelt sich VOR dem Ziel und stuermt
+// gemeinsam. Vorher lief jeder einzeln los und wurde einzeln erschlagen.
+export const WELLEN_PLAN = {
+  stossAnteil: 0.5,          // die Haelfte bindet frontal ...
+  flankeVersatzPx: 190,      // ... der Rest holt seitlich aus
+  bereitstellungPx: 260,     // so weit vor dem Ziel wird gesammelt
+  stehtPx: 70,               // so nah am Sammelpunkt gilt man als bereit
+  sturmAnteil: 0.7,          // ab 70 % Bereiten geht es los ...
+  gedulS: 14,                // ... spaetestens aber nach 14 Sekunden
+  taktS: 0.4,                // Takt der Wellen-Steuerung
+} as const;
+
 // FEINDLAGER-MITTELWEG (07-FEIND-KI TEIL 3, M1 - Autor bestaetigt): das Lager
 // baut nach vorgefertigten, routen-SICHEREN Blaupausen. Mehrere Varianten, ein
 // Seed je Karte waehlt eine - kein Lager gleicht dem anderen, aber jedes folgt

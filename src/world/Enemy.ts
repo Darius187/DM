@@ -249,6 +249,10 @@ export class Enemy {
   angriffsArt: 'angreifen' | 'zurueckschlagen' | 'feuerEinstellen' = 'angreifen';
   postenPos: { x: number; y: number } | null = null;   // Stellung fuer 'halten'/'verteidigen'
   letzterTrefferT = 0;   // Spielzeit (s) des letzten erlittenen Treffers - fuer 'zurueckschlagen'
+  // R200 (KI-Teil-2 Punkte 12/13/14): Platz in der Zange und das ECHTE Ziel,
+  // das erst angesteuert wird, wenn der gemeinsame Sturm freigegeben ist.
+  stossRolle: 'stoss' | 'flankeLinks' | 'flankeRechts' | null = null;
+  sturmZiel: { x: number; y: number } | null = null;
   // R139 (1.6): womit diese Einheit zuschlaegt (speist die KONTER-Matrix) und
   // wann zuletzt ein Konter-Text ueber ihr stand (Drossel gegen Text-Spam).
   schadensArt: import('../data/kampfarten').SchadensArt = 'schnitt';

@@ -70,7 +70,7 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, SPUREN, WASSER_MAL, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, SPUREN, WASSER_MAL, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import type { FeindlagerVariante, WallForm } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
@@ -114,6 +114,7 @@ import { seededRng, pick, ri } from '../logic/rng';
 import { respawnZiel } from '../logic/respawn';
 import { moralWert, fluchtEntscheidung, istEingekesselt, type MoralLage } from '../logic/moral';
 import { haltungsBefehl } from '../logic/haltung';
+import { bereitstellung, sturmFrei, verteileRollen } from '../logic/wellenPlan';
 import { anmarschVonSpawn, blaupausenDrehung, hauptTor, normWinkel } from '../logic/anmarsch';
 import { feindRueckzugModus } from '../logic/feindRueckzug';
 import { konterFaktor } from '../data/kampfarten';
@@ -10367,6 +10368,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       }
       return { x, y };
     };
+    const rollen = verteileRollen(anzahl, WELLEN_PLAN);
     for (let i = 0; i < anzahl; i++) {
       const reihe = Math.floor(i / FELDZUG.reihenBreite);
       const spalte = (i % FELDZUG.reihenBreite) - Math.floor(FELDZUG.reihenBreite / 2);
@@ -10381,13 +10383,45 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       e.hp = e.maxhp;
       e.dmg = Math.round(e.dmg * FELDZUG.truppDmgF);
       e.aggro = 5000;
-      // Auch das Front-Ziel muss auf freiem Boden liegen (Waldkarten!)
-      e.jagdZiel = freierBoden(
+      // R200 (KI-Teil-2 Punkte 12/13/14): jeder bekommt seine Rolle in der
+      // Zange - Stoss oder eine der beiden Flanken - und marschiert zuerst auf
+      // seinen BEREITSTELLUNGS-Punkt. Losgestuermt wird gemeinsam.
+      e.stossRolle = rollen[i];
+      const bp = bereitstellung(rollen[i], start.x, start.y, mitte.x, mitte.y, WELLEN_PLAN);
+      e.jagdZiel = freierBoden(bp.x, bp.y);
+      // Das ECHTE Ziel merken - dorthin geht es, sobald der Sturm frei ist.
+      e.sturmZiel = freierBoden(
         mitte.x + Math.cos(quer) * spalte * FELDZUG.frontBreitePx,
         mitte.y + Math.sin(quer) * spalte * FELDZUG.frontBreitePx,
       );
     }
-    this.logMsg('Die Angriffswelle bricht über die Kante - halte die Stellung!', 'bad');
+    this.welleSturm = false;
+    this.welleWartetS = 0;
+    this.logMsg('Eine Angriffswelle sammelt sich am Rand - sie kommt in einer Zange.', 'bad');
+  }
+
+  // R200: die Welle sammelt sich an ihren Bereitstellungspunkten und stuermt
+  // GEMEINSAM los, sobald genug stehen (oder die Geduld abgelaufen ist).
+  // Vorher lief jeder einzeln los und wurde einzeln erschlagen.
+  private welleSturm = false;
+  private welleWartetS = 0;
+  private welleTaktT = 0;
+  private updateWellenPlan(dt: number): void {
+    this.welleTaktT -= dt;
+    if (this.welleTaktT > 0) return;
+    this.welleTaktT = WELLEN_PLAN.taktS;
+    const welle = this.enemies.filter((e) => e.feldzugTrupp && e.hp > 0 && e.sturmZiel);
+    if (!welle.length) { this.welleSturm = false; this.welleWartetS = 0; return; }
+    if (!this.welleSturm) {
+      this.welleWartetS += WELLEN_PLAN.taktS;
+      const bereit = welle.filter((e) => e.jagdZiel
+        && Math.hypot(e.x - e.jagdZiel.x, e.y - e.jagdZiel.y) < WELLEN_PLAN.stehtPx).length;
+      if (sturmFrei({ bereit, gesamt: welle.length, wartetS: this.welleWartetS, schonGestuermt: false }, WELLEN_PLAN)) {
+        this.welleSturm = true;
+        for (const e of welle) e.jagdZiel = e.sturmZiel;
+        this.logMsg('Die Welle setzt sich in Bewegung - Stoß und Flanken zugleich!', 'bad');
+      }
+    }
   }
 
   // Faellt eine Karte, weicht die Garnison Richtung Ravensmoor aus (Autor
@@ -16113,6 +16147,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.updateFeldscher(dt);     // R99d/R139: Feldscher verbindet Verwundete
     this.updateWachwerden(dt);   // R100b: passive Einheiten wecken, wenn Gegner nah
     this.updateHaltung(dt);      // R198: Verhaltens-Achsen gelten in JEDEM Modus
+    this.updateWellenPlan(dt);   // R200: Welle sammelt sich und stuermt gemeinsam
     this.updateBelagerung(dt);   // R100: Monster nagen an Wehrbauten (Bunker)
     this.updateTurmBesatzung();  // R100: Turm-Insassen unsichtbar + Symbol
     this.updateMarsch(dt);   // R142: das Heer marschiert IMMER (auch ohne RTS-Modus)
