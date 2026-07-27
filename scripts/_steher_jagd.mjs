@@ -68,13 +68,36 @@ export default async (page) => {
         const weg = Math.hypot(e.x - start[i].x, e.y - start[i].y);
         const z = w.zielFuer(e);
         const hatZiel = z === 'held' ? !w.playerDead : !!z && z.hp > 0;
-        if (weg < 6 && hatZiel && !e.passiv && !e.festPos) {
+        // FALSCHMELDUNG vermeiden: wer gerade mit IRGENDWEM im Handgemenge steht
+        // oder ausholt, steht zu Recht. Nur wer frei steht und trotzdem nichts
+        // tut, ist ein echter Stehenbleiber.
+        let naechsterGegner = Infinity;
+        for (const o of w.enemies) {
+          if (o === e || o.hp <= 0) continue;
+          if ((o.team === 'spieler') === (e.team === 'spieler')) continue;
+          naechsterGegner = Math.min(naechsterGegner, Math.hypot(o.x - e.x, o.y - e.y) - o.r - e.r);
+        }
+        const imHandgemenge = naechsterGegner < 40;
+        const holtAus = (e.windup ?? 0) > 0 || (e.atkCd ?? 0) > 0 || (e.visualAttackT ?? 0) > 0;
+        // Ein Fernkaempfer in Schussweite STEHT richtig - er schiesst ja.
+        const zielD = z === 'held' ? Math.hypot(w.px - e.x, w.py - e.y) : Math.hypot(z.x - e.x, z.y - e.y);
+        const schiesstGerade = !!e.ranged && zielD < 290 * (e.turmReichF || 1) && zielD > 90;
+        if (weg < 6 && hatZiel && !e.passiv && !e.festPos && !e.flieht && !imHandgemenge && !holtAus && !schiesstGerade) {
           steher.push({
             nr: i, team: e.team, typ: e.type, weg: Math.round(weg),
             ziel: z === 'held' ? 'held' : 'einheit',
-            abstand: z === 'held' ? Math.round(Math.hypot(w.px - e.x, w.py - e.y))
+            abstandZiel: z === 'held' ? Math.round(Math.hypot(w.px - e.x, w.py - e.y))
               : Math.round(Math.hypot(z.x - e.x, z.y - e.y)),
-            jagd: !!e.jagdZiel, belagert: !!e.belagerungsZiel, flieht: !!e.flieht,
+            naechsterGegner: Math.round(naechsterGegner),
+            aggro: e.aggro, jagd: !!e.jagdZiel, belagert: !!e.belagerungsZiel,
+            schlaeft: !!e.schlaeft, kaempftNicht: !!e.kaempftNicht,
+            // Warum steht er? Die drei Groessen, an denen die KI entscheidet:
+            sicht: z !== 'held' ? w.marschBahnFrei(e.x, e.y, z.x, z.y) : null,
+            wegDa: z !== 'held' ? w.wegRichtungZiel(e.x, e.y, z.x, z.y) !== null : null,
+            direktFrei: !w.solidFuerFeind(e.x + Math.cos(Math.atan2((z.y ?? e.y) - e.y, (z.x ?? e.x) - e.x)) * (e.r + 12),
+                                          e.y + Math.sin(Math.atan2((z.y ?? e.y) - e.y, (z.x ?? e.x) - e.x)) * (e.r + 12)),
+            speed: Math.round(e.speed), stun: Math.round((e.stun ?? 0) * 10) / 10,
+            root: Math.round((e.rootT ?? 0) * 10) / 10, mutT: Math.round((e.mutT ?? -1) * 100) / 100,
           });
         }
       });

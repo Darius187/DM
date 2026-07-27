@@ -619,7 +619,8 @@ export class Enemy {
     // Tor zu kommen"): freie SICHT zum Ziel? Ohne Sicht (Wand dazwischen) wird NICHT
     // umkreist/angegriffen, sondern IMMER ums Hindernis gepfadet (durchs offene Tor).
     const zielSicht = this.hasLineOfSight(host);
-    if (this.ranged && d < ENEMY_AI.rangedMaxShoot && d > ENEMY_AI.rangedMinShoot && zielSicht) {
+    // R198: bis rangedAnrueckF heranruecken statt am Rand der Reichweite kleben.
+    if (this.ranged && d < ENEMY_AI.rangedMaxShoot * ENEMY_AI.rangedAnrueckF && d > ENEMY_AI.rangedMinShoot && zielSicht) {
       if (this.shootCd === 0 && !this.kaempftNicht) {   // R139 (1.7): Feuer einstellen
         this.shootCd = ENEMY_AI.rangedShootCd;
         const a = ang + (Math.random() * 0.12 - 0.06);

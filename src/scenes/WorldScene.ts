@@ -8562,18 +8562,45 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       if (e.hp <= 0) continue;
       if (e.hp < e.maxhp) { if (e.team === 'spieler') allyGetroffen = true; else feindGetroffen = true; }
     }
+    // R198 (Stehenbleiber-Jagd): WER GEWECKT WIRD, HAT AUCH GESEHEN. Das Wecken
+    // reicht bis sichtR (340 px) - der Aggro-Radius einer Einheit ist aber
+    // typabhaengig und liegt teils darunter (Skelett-Wuerfe ab 250). Ergebnis:
+    // die Einheit war wach, ihre eigene KI brach aber mit "Ziel zu weit" ab und
+    // sie stand regungslos da, waehrend der Gegner 280 px vor ihr stand.
+    // Gemessen im Szenario "offenes Feld": aggro 250, Ziel auf 284, Sicht frei,
+    // Weg frei - und sie ruehrte sich 4 Sekunden lang nicht.
+    const wecke = (e: Enemy): void => {
+      e.passiv = false;
+      e.aggro = Math.max(e.aggro, sichtR);
+    };
     for (const e of this.enemies) {
-      if (!e.passiv || e.hp <= 0) continue;
+      if (e.hp <= 0) continue;
       const feindlich = e.team === 'spieler';   // Ally: Gegner=Feind; Feind: Gegner=Held/Ally
+      // R198: WACHE Einheit mit zu kleinem Aggro-Radius: sieht sie einen Gegner
+      // innerhalb der Weckreichweite, zieht ihr Radius nach. Ohne das stand ein
+      // Skelett (aggro 250) regungslos vor einem Soldaten auf 276 px - Sicht
+      // frei, Weg frei, wach - und seine KI brach mit "zu weit" ab.
+      if (!e.passiv && e.aggro < sichtR) {
+        for (const o of this.enemies) {
+          if (o.hp <= 0 || o === e) continue;
+          const gegner = feindlich ? o.team !== 'spieler' : o.team === 'spieler';
+          if (!gegner) continue;
+          if (Math.hypot(o.x - e.x, o.y - e.y) < sichtR && !this.wandZwischen(e.x, e.y, o.x, o.y)) {
+            e.aggro = Math.max(e.aggro, sichtR);
+            break;
+          }
+        }
+      }
+      if (!e.passiv) continue;
       // getroffenes Team weckt KOMPLETT ("sobald einer angegriffen wird, greifen alle an")
-      if ((feindlich && allyGetroffen) || (!feindlich && feindGetroffen)) { e.passiv = false; continue; }
+      if ((feindlich && allyGetroffen) || (!feindlich && feindGetroffen)) { wecke(e); continue; }
       // Held in Sicht weckt Monster
-      if (!feindlich && !this.playerDead && Math.hypot(this.px - e.x, this.py - e.y) < sichtR && !this.wandZwischen(e.x, e.y, this.px, this.py)) { e.passiv = false; continue; }
+      if (!feindlich && !this.playerDead && Math.hypot(this.px - e.x, this.py - e.y) < sichtR && !this.wandZwischen(e.x, e.y, this.px, this.py)) { wecke(e); continue; }
       // aktiver Gegner in Sicht weckt
       for (const o of this.enemies) {
         if (o.hp <= 0 || o === e || o.passiv) continue;
         const gegner = feindlich ? o.team !== 'spieler' : o.team === 'spieler';
-        if (gegner && Math.hypot(o.x - e.x, o.y - e.y) < sichtR && !this.wandZwischen(e.x, e.y, o.x, o.y)) { e.passiv = false; break; }
+        if (gegner && Math.hypot(o.x - e.x, o.y - e.y) < sichtR && !this.wandZwischen(e.x, e.y, o.x, o.y)) { wecke(e); break; }
       }
     }
     // R189 (Autor "nur 1-2 von 10 ruehren sich"): der STELLUNGS-Befehl

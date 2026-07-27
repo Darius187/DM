@@ -104,6 +104,11 @@ export const ENEMY_AI = {
   // Bogenschuetzen sind im Nahkampf verwundbar (wie in jedem RTS).
   rangedKiteTempoF: 0.42,
   rangedMaxShoot: 290,
+  // R198: Fernkaempfer sollen nicht GENAU auf ihrer Maximalreichweite kleben -
+  // dort schwankt der Abstand um wenige Pixel und sie stehen abwechselnd still
+  // und schiessen nicht. Sie ruecken bis auf diesen Anteil der Maximalreichweite
+  // heran, DANN schiessen sie.
+  rangedAnrueckF: 0.88,
   rangedMinShoot: 90,
   slowFactorEis: 0.5,   // Frostsplitter verlangsamt auf 50%
   slowDauerEis: 1.2,

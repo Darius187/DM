@@ -2971,3 +2971,25 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - BALANCE-BEOBACHTUNGEN (nicht geaendert, Autor entscheidet): (a) Palisade hat
   900 LP - vier Skelette brauchen ueber eine Minute fuer EINE Kachel; (b) ein
   Held Stufe 1, der NICHTS tut, faellt gegen drei Skelette in ~5 s.
+
+## R198 - Verhaltens-Achsen dauerhaft + Stehenbleiber-Jagd
+- ACHSEN DAUERHAFT (Autor-Entscheid "der RTS-Modus oeffnet nur das Bauen"):
+  Haltung/Angriffsart/Zielwahl wohnen an der EINHEIT und im Heer-Buch, nicht
+  mehr nur im Kommandopult. Eine Haltungs-Schicht (src/logic/haltung.ts, rein
+  und getestet) wendet sie in jedem Modus an - AUSSER waehrend das Pult offen
+  ist, dort fuehrt weiter das Pult (sonst wuerde sie Marsch/Fokus/Formation
+  ueberschreiben). Provokation schlaegt weiter jede Haltung.
+- AGGRO-LUECKE (Stehenbleiber-Jagd, gemessen): das Weck-System reicht bis
+  sichtR=340 px, der Aggro-Radius einzelner Typen liegt darunter (Skelett-Wuerfe
+  ab 250). Eine geweckte Einheit stand deshalb regungslos vor einem Gegner auf
+  276-290 px - wach, freie Sicht, freier Weg, und ihre KI brach mit "zu weit"
+  ab. Jetzt zieht der Aggro-Radius auf sichtR nach, sobald eine Einheit einen
+  Gegner in Weckreichweite SIEHT (auch wenn sie schon wach war).
+- FERNKAEMPFER-RANDFALL: ein Schuetze klebte genau auf rangedMaxShoot (290 von
+  290) - dort schiesst er nicht mehr und ruecht auch kaum nach. Er ruckt jetzt
+  bis rangedAnrueckF=0.88 der Maximalreichweite heran, dann schiesst er.
+- MESSKULISSE mit PFLICHT-KONTROLLE (scripts/_steher_jagd.mjs): jeder Lauf
+  spawnt eine Kontroll-Einheit. Bewegt die sich nicht, ist die Welt eingefroren
+  (uiBlocked) und ALLE Zahlen des Laufs sind wertlos. Diese Falle hatte mich
+  vorher drei Messungen gekostet. Zweiter Filter: wer im Handgemenge steht,
+  ausholt oder als Fernkaempfer in Schussweite ist, ist KEIN Stehenbleiber.
