@@ -180,6 +180,17 @@ export const WELLEN_PLAN = {
   taktS: 0.4,                // Takt der Wellen-Steuerung
 } as const;
 
+// R200 (KI-Teil-2 Punkt 9 "Korridorbreite"): Wie eine Welle eine Luecke in
+// einer Befestigung bewertet. Lieber ein Umweg zu einer breiten Gasse als der
+// Stau vor einer Ein-Mann-Luecke.
+export const KORRIDOR = {
+  einheitBreitePx: 34,     // Platzbedarf EINER Einheit
+  bequemPx: 110,           // ab hier fliesst ein Trupp ohne Stau (3 Spuren)
+  umwegProBreite: 3.2,     // so viel Umweg ist ein Pixel Breite wert
+  ringKacheln: 9,          // in diesem Umkreis um das Ziel wird nach Luecken gesucht
+  strahlen: 48,            // so viele Suchstrahlen (7.5 Grad Schritte)
+} as const;
+
 // FEINDLAGER-MITTELWEG (07-FEIND-KI TEIL 3, M1 - Autor bestaetigt): das Lager
 // baut nach vorgefertigten, routen-SICHEREN Blaupausen. Mehrere Varianten, ein
 // Seed je Karte waehlt eine - kein Lager gleicht dem anderen, aber jedes folgt

@@ -70,7 +70,7 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, SPUREN, WASSER_MAL, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import type { FeindlagerVariante, WallForm } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
@@ -115,6 +115,7 @@ import { respawnZiel } from '../logic/respawn';
 import { moralWert, fluchtEntscheidung, istEingekesselt, type MoralLage } from '../logic/moral';
 import { haltungsBefehl } from '../logic/haltung';
 import { bereitstellung, sturmFrei, verteileRollen } from '../logic/wellenPlan';
+import { waehleDurchlass, type Durchlass } from '../logic/korridor';
 import { anmarschVonSpawn, blaupausenDrehung, hauptTor, normWinkel } from '../logic/anmarsch';
 import { feindRueckzugModus } from '../logic/feindRueckzug';
 import { konterFaktor } from '../data/kampfarten';
@@ -10400,10 +10401,48 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.logMsg('Eine Angriffswelle sammelt sich am Rand - sie kommt in einer Zange.', 'bad');
   }
 
+  // R200 (Punkt 9 "Korridorbreite"): die LUECKEN in einer Befestigung um das
+  // Ziel finden. Strahlen vom Ziel nach aussen; wo der Strahl den Ring ohne
+  // Wand erreicht, ist eine Gasse. Benachbarte freie Strahlen werden zu EINER
+  // Luecke zusammengefasst und ihre Breite am Ring gemessen.
+  private findeDurchlaesse(zielX: number, zielY: number, vonX: number, vonY: number): Durchlass[] {
+    const rPx = KORRIDOR.ringKacheln * TILE;
+    const n = KORRIDOR.strahlen;
+    const frei: boolean[] = [];
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const rx = zielX + Math.cos(a) * rPx, ry = zielY + Math.sin(a) * rPx;
+      frei.push(this.marschBahnFrei(rx, ry, zielX, zielY));
+    }
+    // Zusammenhaengende Laeufe freier Strahlen = Luecken (auch ueber 0 hinweg).
+    const luecken: Durchlass[] = [];
+    let i0 = 0;
+    while (i0 < n && frei[i0]) i0++;          // Start auf einer WAND suchen
+    if (i0 === n) {                            // gar keine Wand -> alles offen
+      return [{ x: zielX, y: zielY, breitePx: 1e6, abstandPx: Math.hypot(zielX - vonX, zielY - vonY) }];
+    }
+    let lauf: number[] = [];
+    for (let k = 1; k <= n; k++) {
+      const i = (i0 + k) % n;
+      if (frei[i]) { lauf.push(i); continue; }
+      if (lauf.length) {
+        const mitteIdx = lauf[Math.floor(lauf.length / 2)];
+        const a = (mitteIdx / n) * Math.PI * 2;
+        const mx = zielX + Math.cos(a) * rPx, my = zielY + Math.sin(a) * rPx;
+        // Bogenlaenge der Luecke am Ring = nutzbare Breite
+        const breitePx = (lauf.length / n) * 2 * Math.PI * rPx;
+        luecken.push({ x: mx, y: my, breitePx, abstandPx: Math.hypot(mx - vonX, my - vonY) });
+        lauf = [];
+      }
+    }
+    return luecken;
+  }
+
   // R200: die Welle sammelt sich an ihren Bereitstellungspunkten und stuermt
   // GEMEINSAM los, sobald genug stehen (oder die Geduld abgelaufen ist).
   // Vorher lief jeder einzeln los und wurde einzeln erschlagen.
   private welleSturm = false;
+  private welleGasse: Durchlass | null = null;
   private welleWartetS = 0;
   private welleTaktT = 0;
   private updateWellenPlan(dt: number): void {
@@ -10412,14 +10451,39 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.welleTaktT = WELLEN_PLAN.taktS;
     const welle = this.enemies.filter((e) => e.feldzugTrupp && e.hp > 0 && e.sturmZiel);
     if (!welle.length) { this.welleSturm = false; this.welleWartetS = 0; return; }
+    // Wer die Gasse durchschritten hat, geht auf sein eigentliches Ziel weiter.
+    if (this.welleSturm && this.welleGasse) {
+      const g = this.welleGasse;
+      let durch = 0;
+      for (const e of welle) {
+        if (e.jagdZiel === e.sturmZiel) { durch++; continue; }
+        if (Math.hypot(e.x - g.x, e.y - g.y) < TILE * 1.5) { e.jagdZiel = e.sturmZiel; durch++; }
+      }
+      if (durch >= welle.length) this.welleGasse = null;
+    }
     if (!this.welleSturm) {
       this.welleWartetS += WELLEN_PLAN.taktS;
       const bereit = welle.filter((e) => e.jagdZiel
         && Math.hypot(e.x - e.jagdZiel.x, e.y - e.jagdZiel.y) < WELLEN_PLAN.stehtPx).length;
       if (sturmFrei({ bereit, gesamt: welle.length, wartetS: this.welleWartetS, schonGestuermt: false }, WELLEN_PLAN)) {
         this.welleSturm = true;
-        for (const e of welle) e.jagdZiel = e.sturmZiel;
-        this.logMsg('Die Welle setzt sich in Bewegung - Stoß und Flanken zugleich!', 'bad');
+        // Punkt 9: liegt eine Befestigung dazwischen, nimmt die Welle die
+        // BREITESTE Gasse statt der naechstbesten - sonst staut sie sich vor
+        // einer Ein-Mann-Luecke (der Aerger, den der Autor am Tor hatte).
+        const ziel = welle[0].sturmZiel!;
+        const mx = welle.reduce((a2, e) => a2 + e.x, 0) / welle.length;
+        const my = welle.reduce((a2, e) => a2 + e.y, 0) / welle.length;
+        const gasse = this.marschBahnFrei(mx, my, ziel.x, ziel.y)
+          ? null
+          : waehleDurchlass(this.findeDurchlaesse(ziel.x, ziel.y, mx, my), KORRIDOR);
+        for (const e of welle) e.jagdZiel = gasse ? { x: gasse.x, y: gasse.y } : e.sturmZiel;
+        if (gasse) {
+          this.welleGasse = gasse;
+          this.logMsg(`Die Welle sucht sich eine Gasse (${Math.round(gasse.breitePx / 34)} Mann breit) - Stoß und Flanken zugleich!`, 'bad');
+        } else {
+          this.welleGasse = null;
+          this.logMsg('Die Welle setzt sich in Bewegung - Stoß und Flanken zugleich!', 'bad');
+        }
       }
     }
   }

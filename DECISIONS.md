@@ -2993,3 +2993,25 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   (uiBlocked) und ALLE Zahlen des Laufs sind wertlos. Diese Falle hatte mich
   vorher drei Messungen gekostet. Zweiter Filter: wer im Handgemenge steht,
   ausholt oder als Fernkaempfer in Schussweite ist, ist KEIN Stehenbleiber.
+
+## R200 - KI-Punkte 9/12/13/14 (Autor: "ja pack das rein")
+- WELLEN-PLAN (Punkte 12/13/14, src/logic/wellenPlan.ts): eine Angriffswelle
+  teilt sich in Stoss und ZWEI Flanken, sammelt sich an eigenen
+  Bereitstellungspunkten VOR dem Ziel und stuermt GEMEINSAM, sobald 70 % stehen
+  (spaetestens nach 14 s, damit nichts haengt, wenn unterwegs jemand faellt).
+  Einmal gestuermt bleibt gestuermt - sonst faellt die Welle mitten im Angriff
+  in die Bereitstellung zurueck. Unter drei Mann wird NICHT aufgeteilt.
+  Werte in WELLEN_PLAN (src/data/welt.ts).
+- KORRIDORBREITE (Punkt 9, src/logic/korridor.ts): liegt eine Befestigung
+  zwischen Welle und Ziel, sucht sie die BREITESTE passierbare Gasse statt der
+  naechsten. Ein Umweg ist erlaubt, aber begrenzt (umwegProBreite); mehr Breite
+  als "bequem" (3 Spuren) bringt keinen weiteren Bonus. Passt NIRGENDS jemand
+  durch, ist das Ergebnis null - dann uebernimmt die Belagerung und die Welle
+  bricht eine Bresche, statt an der Wand zu stehen.
+  Die Luecken findet die Szene per Strahlenkranz um das Ziel (findeDurchlaesse),
+  die Bewertung ist rein und getestet.
+- NICHT gebaut (und warum): Punkt 6/7 (Anforderungsprofile/Detachment-Baum)
+  arbeitet mit den Gattungen Kavallerie und Belagerungsgeraet - beides
+  verbietet Regel 5/6. Punkt 16 (Feind-Rueckzug mit Nachhut) wartet auf den
+  grossen Feldzug und wird dann als BEFOHLENER Rueckzug gebaut, nicht als
+  Panikflucht (R147b: Untote fliehen nicht).
