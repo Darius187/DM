@@ -3,7 +3,19 @@
 // QUELL-Koordinaten (Design-Raum, wie im Shell-PNG); der Editor legt Overrides
 // in localStorage ab. Reine Daten - der Editor lebt in panels.ts.
 
-export interface CharBox { x: number; y: number; w?: number; h?: number }
+// R199 (Autor: "gib mir die Moeglichkeit dort ALLES zu verschieben nach
+// Belieben mit der Maus und dann fixieren und dir die Werte ueber einen Bericht
+// zu geben ... wirklich alles, von Schrift zu Schriftgroesse und Bild-Position"):
+// jedes Element hat neben Lage/Groesse jetzt auch eine eigene SCHRIFTGROESSE
+// und laesst sich FESTNAGELN (fest = wird beim Ziehen nicht mehr angefasst).
+export interface CharBox {
+  x: number;
+  y: number;
+  w?: number;
+  h?: number;
+  schrift?: number;   // Schriftgroesse in QUELL-Pixeln (leer = Vorgabe des Elements)
+  fest?: boolean;     // true = festgenagelt, Ziehen greift nicht
+}
 
 // Vorgabe-Layout in Quell-Koordinaten (aus der bisherigen Verdrahtung uebernommen).
 // w/h nur dort, wo ein Element eine Groesse hat (Slots + Porträt).
@@ -71,6 +83,15 @@ export function setCharBox(id: string, box: Partial<CharBox>): void {
   try { localStorage.setItem(KEY, JSON.stringify(o)); } catch { /* Storage gesperrt */ }
 }
 
+// Ist dieses Element festgenagelt?
+export function charFest(id: string): boolean {
+  return charBox(id).fest === true;
+}
+
+export function setCharFest(id: string, fest: boolean): void {
+  setCharBox(id, { fest });
+}
+
 export function resetCharLayout(): void {
   cache = {};
   try { localStorage.removeItem(KEY); } catch { /* egal */ }
@@ -104,6 +125,7 @@ export function exportCharLayout(): string {
     const teile = [`x: ${round(b.x)}`, `y: ${round(b.y)}`];
     if (b.w !== undefined) teile.push(`w: ${round(b.w)}`);
     if (b.h !== undefined) teile.push(`h: ${round(b.h)}`);
+    if (b.schrift !== undefined) teile.push(`schrift: ${round(b.schrift)}`);
     return `  ${id.padEnd(18)}: { ${teile.join(', ')} },`;
   });
   return `CHAR_LAYOUT_DEFAULT = {\n${zeilen.join('\n')}\n}\nCHAR_SCHRIFT = ${charSchrift()}`;

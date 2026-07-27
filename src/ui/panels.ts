@@ -19,7 +19,7 @@ import { PFLANZEN } from '../data/pflanzen';
 import type { MaterialId } from '../data/crafting';
 import { setVerfolgtWunsch, type QuestSicht } from '../logic/questLog';
 import { TUNING } from '../logic/tuning';
-import { charBox, setCharBox, resetCharLayout, exportCharLayout, charSchrift, setzeCharSchrift, CHAR_LAYOUT_LABEL, type CharBox } from './charLayout';
+import { charBox, charFest, setCharFest, setCharBox, resetCharLayout, exportCharLayout, charSchrift, setzeCharSchrift, CHAR_LAYOUT_LABEL, type CharBox } from './charLayout';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import type { SoundProvider } from '../gfx/SoundProvider';
 import { fixUiScroll } from './dialog';
@@ -87,6 +87,10 @@ export class UIPanels {
   private charEditor = false;
   private charSel: string | null = null;
   private charEditBoxen: Array<{ id: string; cx: number; cy: number; w: number; h: number }> = [];
+  // R199: Zustand des Maus-Ziehens im Layout-Baukasten
+  private charDrag: { id: string; zx: number; zy: number; x0: number; y0: number } | null = null;
+  private charDragHaken = false;
+  private charZiehTick = false;
   private charScale = 1;   // panelScale zum Zeitpunkt des letzten Aufbaus (Editor rechnet Quell<->Schirm)
   private container: Phaser.GameObjects.Container | null = null;
   private tooltip: Phaser.GameObjects.Container | null = null;
@@ -466,6 +470,10 @@ export class UIPanels {
     // hoch, damit auch die kleinsten Angaben lesbar bleiben.
     const tf = charSchrift();
     const textSize = (sourcePx: number, min = 8): string => `${Math.max(Math.round(min * tf), Math.round(sourcePx * s * tf))}px`;
+    // R199: hat der Autor diesem Element im Baukasten eine EIGENE Schriftgroesse
+    // gegeben, gilt die - sonst die Vorgabe des Elements.
+    const schriftVon = (id: string, vorgabe: number, min = 8): string =>
+      textSize(charBox(id).schrift ?? vorgabe, min);
 
     // BAUKASTEN: jedes Element liest seine Quell-Box aus charBox(id) (Vorgabe +
     // Editor-Override). charEditBoxen sammelt die Schirm-Rechtecke fuer den Editor.
@@ -475,7 +483,7 @@ export class UIPanels {
     };
     const bA = charBox('ausruestung');
     c.add(this.scene.add.text(bA.x * s, y(bA.y), 'AUSRÜSTUNG', {
-      fontFamily: 'serif', fontSize: textSize(14), color: INK_SOFT, letterSpacing: Math.max(1, Math.round(2 * s)),
+      fontFamily: 'serif', fontSize: schriftVon('ausruestung', 14), color: INK_TITEL, letterSpacing: Math.max(1, Math.round(2 * s)),
     }).setOrigin(0.5, 0));
     merke('ausruestung', bA.x * s, y(bA.y) + 8 * s, 90 * s, 18 * s);
 
@@ -491,11 +499,11 @@ export class UIPanels {
 
     const bStufe = charBox('stufe'), bName = charBox('name');
     c.add(this.scene.add.text(bStufe.x * s, y(bStufe.y), `STUFE ${p.level}`, {
-      fontFamily: 'serif', fontSize: textSize(14), color: '#e2cfaa', letterSpacing: 1,
+      fontFamily: 'serif', fontSize: schriftVon('stufe', 14), color: '#e2cfaa', letterSpacing: 1,
     }).setOrigin(0.5, 0));
     merke('stufe', bStufe.x * s, y(bStufe.y) + 9 * s, 90 * s, 18 * s);
     c.add(this.scene.add.text(bName.x * s, y(bName.y), 'Aldric von Weiden', {
-      fontFamily: 'serif', fontSize: textSize(12), color: '#d7c9ae',
+      fontFamily: 'serif', fontSize: schriftVon('name', 12), color: '#d7c9ae',
     }).setOrigin(0.5, 0));
     merke('name', bName.x * s, y(bName.y) + 8 * s, 120 * s, 16 * s);
 
@@ -555,7 +563,7 @@ export class UIPanels {
     const sectionTitle = (id: string, title: string): void => {
       const b = charBox(id);
       c.add(this.scene.add.text(b.x * s, y(b.y), title, {
-        fontFamily: 'serif', fontSize: textSize(14), color: INK_TITEL,
+        fontFamily: 'serif', fontSize: schriftVon(id, 14), color: INK_TITEL,
         letterSpacing: Math.max(1, Math.round(1.5 * s)),
       }).setOrigin(0.5, 0));
       merke(id, b.x * s, y(b.y) + 9 * s, 120 * s, 18 * s);
@@ -667,23 +675,63 @@ export class UIPanels {
     });
     if (!this.charEditor) return;
 
-    // Auswahl-Rahmen um jedes Element; Klick waehlt es.
+    // R199 (Autor: "gib mir die Moeglichkeit dort ALLES zu verschieben nach
+    // Belieben MIT DER MAUS und dann fixieren"): jedes Element laesst sich
+    // anfassen und ziehen. Festgenagelte Elemente (Schloss) bleiben liegen.
+    //
+    // PHASER-FALLE (Risiko-Checkliste 4): NIEMALS die lokalen dragX/dragY auf
+    // die Container-Position addieren - das schaukelt sich auf. Wir merken uns
+    // die ZEIGER-SCHIRMKOORDINATE beim Anfassen und rechnen mit dem Delta.
     for (const b of this.charEditBoxen) {
       const sel = b.id === this.charSel;
-      const rect = this.scene.add.rectangle(b.cx, b.cy, Math.max(10, b.w), Math.max(10, b.h), 0xc9a227, sel ? 0.14 : 0.05)
-        .setStrokeStyle(sel ? 2 : 1, sel ? 0xffe08a : 0x8a6f3c, 0.9);
-      rect.setInteractive({ useHandCursor: true }).on('pointerdown', () => { this.charSel = b.id; this.build(); });
+      const fest = charFest(b.id);
+      const rect = this.scene.add.rectangle(b.cx, b.cy, Math.max(10, b.w), Math.max(10, b.h),
+        fest ? 0x808080 : 0xc9a227, sel ? 0.16 : 0.05)
+        .setStrokeStyle(sel ? 2 : 1, fest ? 0x9a9a9a : sel ? 0xffe08a : 0x8a6f3c, 0.9);
+      rect.setInteractive({ useHandCursor: true, draggable: !fest });
+      rect.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
+        this.charSel = b.id;
+        if (fest) { this.build(); return; }
+        const start = charBox(b.id);
+        this.charDrag = { id: b.id, zx: ptr.x, zy: ptr.y, x0: start.x, y0: start.y };
+        this.build();
+      });
       c.add(rect);
     }
+    // Ziehen laeuft an der SZENE (nicht am Objekt): so bleibt es auch dann
+    // stabil, wenn der Zeiger die kleine Trefferflaeche verlaesst.
+    if (!this.charDragHaken) {
+      this.charDragHaken = true;
+      this.scene.input.on('pointermove', (ptr: Phaser.Input.Pointer) => {
+        const d = this.charDrag;
+        if (!d || !ptr.isDown) return;
+        const sk = this.charScale || 1;
+        setCharBox(d.id, {
+          x: Math.round((d.x0 + (ptr.x - d.zx) / sk) * 10) / 10,
+          y: Math.round((d.y0 + (ptr.y - d.zy) / sk) * 10) / 10,
+        });
+        this.charZiehTick = true;
+      });
+      this.scene.input.on('pointerup', () => {
+        if (!this.charDrag) return;
+        this.charDrag = null;
+        this.build();
+      });
+    }
+    // Waehrend des Ziehens neu zeichnen (einmal je Bild, nicht je Mausereignis)
+    if (this.charZiehTick && this.charDrag) { this.charZiehTick = false; this.scene.time.delayedCall(16, () => { if (this.charDrag) this.build(); }); }
 
     // Fussleiste: gewaehltes Element + Nudge-Knoepfe + Export/Reset.
     const fy = 470 * s;
-    c.add(this.scene.add.rectangle(4 * s, fy, 560 * s, 92 * s, 0x0d0a06, 0.92).setOrigin(0).setStrokeStyle(1, 0x5a4a2e));
+    c.add(this.scene.add.rectangle(4 * s, fy, 580 * s, 104 * s, 0x0d0a06, 0.92).setOrigin(0).setStrokeStyle(1, 0x5a4a2e));
     const sel = this.charSel ? charBox(this.charSel) : null;
     const titel = this.charSel ? (CHAR_LAYOUT_LABEL[this.charSel] ?? this.charSel) : 'Element anklicken zum Auswählen';
-    c.add(this.scene.add.text(12 * s, fy + 6 * s, `Layout-Baukasten - ${titel}`, { fontFamily: 'serif', fontSize: `${Math.max(9, Math.round(12 * s))}px`, color: '#e2cfaa' }));
+    c.add(this.scene.add.text(12 * s, fy + 4 * s, `Layout-Baukasten - ${titel}`, { fontFamily: 'serif', fontSize: `${Math.max(9, Math.round(12 * s))}px`, color: '#e2cfaa' }));
+    c.add(this.scene.add.text(12 * s, fy + 18 * s, 'Element ANKLICKEN und ZIEHEN · Schloss nagelt es fest · "Bericht kopieren" legt alle Werte in die Zwischenablage', {
+      fontFamily: 'serif', fontSize: `${Math.max(8, Math.round(10 * s))}px`, color: '#9a8a6a',
+    }));
     const nudge = (feld: keyof CharBox, label: string, spalte: number, hat: boolean): void => {
-      const bx = (12 + spalte * 138) * s, by = fy + 30 * s;
+      const bx = (12 + spalte * 138) * s, by = fy + 36 * s;
       const wert = sel && sel[feld] !== undefined ? String(Math.round((sel[feld] as number) * 10) / 10) : '-';
       c.add(this.scene.add.text(bx, by, `${label}: ${wert}`, { fontFamily: 'serif', fontSize: `${Math.max(8, Math.round(11 * s))}px`, color: hat ? '#d8cfb8' : '#6a5f4c' }));
       if (!this.charSel || !hat) return;
@@ -697,15 +745,47 @@ export class UIPanels {
     nudge('y', 'Y', 1, !!sel);
     nudge('w', 'Breite', 2, !!sel && sel.w !== undefined);
     nudge('h', 'Höhe', 3, !!sel && sel.h !== undefined);
+    // R199: Schriftgroesse DIESES Elements + Festnageln.
+    if (this.charSel) {
+      const eigen = sel?.schrift;
+      const sy3 = fy + 36 * s;
+      const bx3 = (12 + 4 * 138) * s;
+      c.add(this.scene.add.text(bx3, sy3, `Schrift: ${eigen !== undefined ? eigen : 'Vorgabe'}`, {
+        fontFamily: 'serif', fontSize: `${Math.max(8, Math.round(11 * s))}px`, color: '#d8cfb8',
+      }));
+      const setzeSchrift = (d: number): void => {
+        const cur = charBox(this.charSel!);
+        const basis = cur.schrift ?? 12;
+        setCharBox(this.charSel!, { schrift: Math.max(6, Math.min(40, Math.round((basis + d) * 10) / 10)) });
+        this.build();
+      };
+      knopf(bx3, sy3 + 16 * s, 26 * s, 20 * s, '−', false, () => setzeSchrift(-1));
+      knopf(bx3 + 30 * s, sy3 + 16 * s, 26 * s, 20 * s, '+', false, () => setzeSchrift(1));
+      const fest = charFest(this.charSel);
+      knopf(bx3 + 62 * s, sy3 + 16 * s, 72 * s, 20 * s, fest ? '🔒 fest' : '🔓 frei', fest, () => {
+        setCharFest(this.charSel!, !fest);
+        this.build();
+      });
+    }
     // Schriftgroesse des GANZEN Fensters (Autorwunsch R195).
     const sy2 = fy + 68 * s;
     c.add(this.scene.add.text(12 * s, sy2 + 3 * s, `Schrift: ${Math.round(charSchrift() * 100)}%`, { fontFamily: 'serif', fontSize: `${Math.max(8, Math.round(11 * s))}px`, color: '#d8cfb8' }));
     knopf(100 * s, sy2, 26 * s, 18 * s, '−', false, () => { setzeCharSchrift(charSchrift() - 0.05); this.build(); });
     knopf(130 * s, sy2, 26 * s, 18 * s, '+', false, () => { setzeCharSchrift(charSchrift() + 0.05); this.build(); });
     // Export + Reset (rechte Spalte).
-    knopf(430 * s, fy + 6 * s, 120 * s, 20 * s, 'Export → Log', false, () => {
+    // R199 (Autor: "und dir die Werte ueber einen Bericht geben"): der Export
+    // geht direkt in die ZWISCHENABLAGE - kein Umweg ueber die Browserkonsole.
+    knopf(430 * s, fy + 6 * s, 120 * s, 20 * s, '📋 Bericht kopieren', false, () => {
       const txt = exportCharLayout();
-      console.log('[CHAR-LAYOUT]\n' + txt);   // Autor kopiert das aus der Konsole und schickt es mir
+      console.log('[CHAR-LAYOUT]\n' + txt);
+      const feld = document.createElement('textarea');
+      feld.value = txt;
+      feld.style.cssText = 'position:fixed;left:-9999px;top:0;';
+      document.body.appendChild(feld);
+      feld.select();
+      const kopiert = document.execCommand('copy');
+      feld.remove();
+      if (!kopiert) window.prompt('Diese Werte kopieren und mir schicken:', txt);
       this.onCharLayoutExport?.(txt);
     });
     knopf(430 * s, fy + 30 * s, 120 * s, 20 * s, 'Zurücksetzen', false, () => { resetCharLayout(); this.charSel = null; this.build(); });
