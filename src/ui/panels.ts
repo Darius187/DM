@@ -1291,8 +1291,14 @@ export class UIPanels {
       // R161: die Schale malt die 8 Filter-Reiter bei Design-x 676..1176
       // (vermessen, helle Pixel-Laeufe bei y=160) - Labels/Hitboxen sitzen
       // jetzt EXAKT auf den gemalten Reitern statt gleichverteilt daneben.
+      // R199 (vermessen im Schalen-PNG, Trennlinien bei y=158): die Schale malt
+      // NEUN Reiter-Kaesten (617/675/738/801/864/926/989/1052/1112/1177). Der
+      // Code belegte Kasten 2 bis 9 - Kasten 1 blieb LEER (der leere Rahmen
+      // links von "ALLE" im Autor-Screenshot). Jetzt liegen die acht Kategorien
+      // auf Kasten 1 bis 8, und "SONSTIGES" bekommt den Rest bis zum Ende der
+      // Leiste - so bleibt kein Loch.
       const FILTER_BOXEN: ReadonlyArray<readonly [number, number]> = [
-        [676, 738], [739, 800], [802, 863], [864, 926], [927, 988], [990, 1051], [1052, 1112], [1114, 1176],
+        [617, 675], [676, 738], [739, 801], [802, 864], [865, 926], [927, 989], [990, 1052], [1053, 1177],
       ];
       const tabH = 30 * s;
       // R196: EINE Schriftgroesse fuer ALLE Reiter - so gross, dass auch das
