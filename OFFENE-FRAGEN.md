@@ -447,3 +447,18 @@ Echte Frage: Sollen die Verhaltens-Achsen dauerhaft (auch OHNE RTS-Modus) gelten
 also z.B. eine als "aggressiv" gestellte Garnison jeden Feind verfolgen? Das waere
 ein groesserer Umbau (Haltungs-Logik unabhaengig vom rtsBattle-Update) und beruehrt
 die R188-Performance-Arbeit. Ich warte auf dein OK, bevor ich das anfasse.
+
+## R206 - Monster-Vorschlaege (Kontaktbogen liegt im Chat)
+Sechs neue Gegner, alle aus Dok 06 ("Zeitgeist statt Zauber") abgeleitet,
+als FIGURES-Eintraege gebaut (Platzhalter-Optik, Werte folgen nach Auswahl):
+1. DER SCHINDER (Dok 06 Teil D) - hebt Gefallene wieder auf, selten/langsam/
+   schwach, DAS Prioritaetsziel. Zwischenloesung: noch nicht verdrahtet.
+2. GEFALLENER HELD (C2) - Elite-Scherge in rostiger Prunkruestung.
+3. MOORLEICHE - zaeher, langsamer Ufer-/Moor-Schrecken (historisch verwurzelt).
+4. UNTOTER FUHRMANN (Teil E) - fuehrt den Blut-Konvoi, Ueberfall-Ziel.
+5. UNTOTER ZIMMERMANN (Teil E) - baut die Feind-Palisaden sichtbar.
+6. LEICHENHUND - verwildertes Tier, jagt im Rudel, flieht bei Gegenwehr.
+FRAGE an den Autor: welche davon einbauen, welche zuerst? Vorschlag:
+Schinder zuerst (loest laut Doku den Lehrmoment im Kerker), dann Moorleiche
+(nutzt Moor-Nebel/Naesse), dann die zwei Arbeiter (machen die Feind-
+Wirtschaft sichtbar). Werte kommen dann nach Dok 06/02 in enemies.ts.
