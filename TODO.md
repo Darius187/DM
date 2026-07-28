@@ -36,16 +36,22 @@
 - BootScene erzeugt beim Start einige HEAD-Anfragen für fehlende
   Hot-Swap-Dateien - erwartetes Verhalten, im Netzwerk-Tab sichtbar,
   Konsole bleibt sauber.
-- Inventarliste: Blättern/Scrollen fehlt, bei sehr vielen Items wird
-  abgeschnitten (Überlaufschutz aktiv). Mit Maus-Rad/Touch-Wisch nachrüsten.
-- Fähigkeits-Abklingzeiten (R/T/4-6) sind nicht im HUD sichtbar.
+- [x] Inventarliste ERLEDIGT (Altlast-Zeile): Maus-Rad blättert (panels.ts:158),
+  Bildlaufleiste rechts (:1483). Browser-verifiziert R202 (Scroll 0->3->0 mit
+  30 Items). Touch-Wisch offen, faellt unter den Touch-Gesamtpass.
+- [x] Fähigkeits-Abklingzeiten ERLEDIGT (Altlast-Zeile, gebaut seit R60):
+  Abkling-Schwung + Restsekunden-Zahl auf jedem Slot (hud.ts:1036). Browser-
+  verifiziert R203 (R zeigt "7", T zeigt "4" bei laufendem Cd).
 - Einrichtungs-Sets (Stufe 3) haben noch keine sichtbare Deko am Haus.
 - Erledigt 2026-06-10: Einstellungen liefen bei kleinen Fenstern aus dem
   Bild - jetzt zweispaltig.
-- Feedback-Runde 1, noch offen: UI-Fenster verschiebbar machen; Buch-Lesen
-  als eigenes Pergament-Fenster mit mehr Text; Maustasten-Belegung in den
-  Einstellungen frei wählbar (aktuell fest: Mitte=Feuerball, Daumen1=Trank,
-  Daumen2=Heilung); Zauberrollen-Schnellslot ohne Inventar.
+- Feedback-Runde 1, Rest: Buch-Lesen als eigenes Pergament-Fenster mit mehr
+  Text. ERLEDIGT davon (R203-Audit): UI-Fenster verschiebbar (alle schwebenden
+  Fenster haben Griffe - dialog, Charakter, questTracker, lichtPanel,
+  devKonsole, heldEditor, shop, stash, Einstellungen, medievalUi-Panels;
+  HUD/Kommando-Pult/Baukasten sind angedockte Leisten, Pause/Tod Vollbild);
+  Maustasten-Belegung frei (M1-M5 per Rechtsklick belegbar, hud.ts);
+  Zauberrollen-Schnellslot (Aktion 'rolle' wirkt die oberste Rolle).
 - Feedback-Runde 3, noch offen (nächste Runde): Endboss mit 3 Phasen +
   Raumwechsel + Eskalation; mehr Zaubersprüche (Blitzschlag einzeln,
   Feuerwand ...); Maustasten FREI belegbar (aktuell feste Anzeige M3/M4/M5

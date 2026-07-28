@@ -321,7 +321,9 @@ export class Hud {
           if (i >= 0) return p().spellCds[i] > 0 ? p().spellCds[i] / SPELLS[i].cd : 0;
           const fx = fxVon();
           const cd = p().abilityCds[echteId(aktId())] ?? 0;
-          return fx && cd > 0 ? cd / fx.cd : 0;
+          // Klemme auf 1: laeuft ein Cd je laenger als sein Nennwert (Dev-
+          // Eingriff), malt der Abkling-Schwung sonst UEBER den Knopf hinaus.
+          return fx && cd > 0 ? Math.min(1, cd / fx.cd) : 0;
         },
         cdSek: () => {
           const i = spellIdx();

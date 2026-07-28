@@ -3040,3 +3040,23 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   kann da nichts verbessern. EHRLICH: in zwei Laeufen ist die Kontroll-Einheit
   nicht gelaufen; die Welle in denselben Laeufen schon (296 bzw. 248 px), die
   Welt war also nicht eingefroren - der Kontroll-Spawn selbst war der Aussetzer.
+
+## R202/R203 - Altlasten-Audit UI: drei "offene" TODO-Punkte waren laengst gebaut
+- Inventar-Scrollen: Maus-Rad blaettert (panels.ts:158) mit Bildlaufleiste
+  (:1483). Browser-Beleg mit 30 Probe-Aexten: Scroll 0 -> 3 (drei Rad-Schritte)
+  -> 0 (Rueckweg). Nur Touch-Wisch fehlt noch - der gehoert zum Touch-Pass.
+- Abklingzeiten im HUD: seit R60 gebaut (Schwung + Restsekunden-Zahl,
+  hud.ts:1036). Browser-Beleg: R-Slot zeigt "7", T-Slot "4" bei laufendem Cd.
+  Dabei gefunden und geklemmt: cdFrac konnte ueber 1 steigen (Cd laenger als
+  Nennwert, nur per Dev-Eingriff moeglich) - der Schwung malte dann ueber den
+  Knopf hinaus. Jetzt Math.min(1, ...).
+- Regel-11-Audit (Fenster verschiebbar): ALLE schwebenden Fenster haben Griffe
+  (dialog, Charakterfenster, questTracker, lichtPanel, devKonsole, heldEditor,
+  shop, stash, Einstellungen, medievalUi-Panels). HUD, Kommando-Pult und
+  Stadt-Baukasten sind ANGEDOCKTE Leisten, Pause/Tod sind Vollbild-Overlays -
+  keine Fenster im Sinne der Regel. Offen aus Feedback-Runde 1 bleibt nur das
+  Buch-Lesen als eigenes Pergament-Fenster.
+- Lehre: TODO-Zeilen aus fruehen Runden VOR dem Bauen gegen den Code pruefen -
+  das war die dritte Runde in Folge mit "schon gebaut"-Punkten (Feldscher,
+  2-Kachel-Tor, Turm-Reichweite, Normal/Emissive, Fernkampf-Kills, jetzt drei
+  UI-Punkte).
