@@ -9,6 +9,7 @@ import { PORTRAITS, ITEM_IMAGES, SOUNDS, SPRITE_NAMES, TILE_NAMES, TILE_VARIANTS
 import { queuePackSheets, composePackTextures } from '../gfx/PackLoader';
 import { registriereBaumBitmaps, registriereBuschBitmaps } from '../gfx/baumBitmaps';
 import { registriereLagerBitmaps, registriereBauKacheln } from '../gfx/lagerBitmaps';
+import { registrierePoiBitmaps } from '../gfx/poiBitmaps';
 import gfxConfig from '../data/gfx.json';
 import { REIT_PFERD } from '../data/reiten';
 import { GOLEM } from '../data/golem';
@@ -159,6 +160,7 @@ export class BootScene extends Phaser.Scene {
       // Camp-GLB-Bakes NICHT am Boot (Codex-Vorgabe: nicht alle GLBs gleichzeitig
       // laden) - sie werden lazy je Bau-Typ gebacken (campGlbBitmaps.backeCampSprite).
       .then(() => registriereBauKacheln(this.textures).catch(() => {}))       // 3D-Palisade/Tor/Baustelle/Lager (R99e)
+      .then(() => registrierePoiBitmaps(this.textures).catch(() => {}))       // 3D-Wegzeichen Galgen/Meiler/... (R204)
       .then(() => this.scene.start(ziel));
   }
 

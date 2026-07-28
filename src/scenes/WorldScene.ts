@@ -5403,19 +5403,26 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // jetzt die Kollisions-Schwelle (UFER_SAUM_UV in wasserFeld.ts): SOLID ist
   // nur noch, was sichtbar tiefes Wasser ist.
 
-  // POIs (Runde 76): die Wegzeichen der Karte als Y-sortierte Bilder. Texturen
-  // werden lazy aus world/poiBilder.ts gebacken (LINEAR - malerisch).
+  // POIs (Runde 76): die Wegzeichen der Karte als Y-sortierte Bilder.
+  // R204: wo ein 3D-Bake existiert (poi3d_*, Boot-Kette registrierePoiBitmaps),
+  // wird ER gezeigt - der gemalte Canvas aus world/poiBilder.ts ist der
+  // Fallback (kein WebGL / Bake fehlgeschlagen).
   private spawnePois(a: AreaData): void {
     if (!a.pois?.length) return;
     const skalen: Record<string, number> = { bildstock: 1.2, wegweiser: 1.2, galgen: 1.6, suehnekreuz: 1.1, karren: 1.3, meiler: 1.4 };
     for (const p of a.pois) {
-      const maler = POI_BILDER[p.art];
-      if (!maler) continue;
-      const key = `poi_${p.art}`;
-      if (!this.textures.exists(key)) this.textures.addCanvas(key, maler())?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      const key3d = `poi3d_${p.art}`;
+      let key = key3d, skala = 1;
+      if (!this.textures.exists(key3d)) {
+        const maler = POI_BILDER[p.art];
+        if (!maler) continue;
+        key = `poi_${p.art}`;
+        skala = skalen[p.art] ?? 1.2;
+        if (!this.textures.exists(key)) this.textures.addCanvas(key, maler())?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      }
       const img = this.add.image(p.x, p.y, key).setDepth(p.y);
       img.setOrigin(0.5, 0.9);
-      img.setScale(skalen[p.art] ?? 1.2);
+      img.setScale(skala);
       this.tileImages.push(img);
     }
   }

@@ -3060,3 +3060,17 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   das war die dritte Runde in Folge mit "schon gebaut"-Punkten (Feldscher,
   2-Kachel-Tor, Turm-Reichweite, Normal/Emissive, Fernkampf-Kills, jetzt drei
   UI-Punkte).
+
+## R204 - Wegzeichen-POIs als 3D-Bakes (Galgen, Meiler, Bildstock, Karren)
+- Autorwunsch R77 ("kommt viel besser raus"): die Canvas-POIs der Startkarte
+  laufen jetzt durch dieselbe three.js-Backofen-Pipeline wie Zelte/Koppel.
+  Modelle in demo3d/poiBau.ts, Bakes in gfx/poiBitmaps.ts (Boot-Kette nach den
+  Bau-Kacheln), spawnePois zeigt poi3d_* - faellt das Backen aus (kein WebGL),
+  greift wie gehabt das gemalte Canvas-Bild.
+- Sichtpruefung NICHT per Welt-Screenshot (flaky), sondern per PNG-Export der
+  gebackenen Texturen (scripts/_poi_bake.mjs schreibt poi3d_*.png raus).
+  Zwei Nachbesserungen aus der Sichtung: der Meiler las sich als "Schokokugel
+  mit Kirsche" (Kegel steiler, Flicken flach an die Flanke, Glut gedimmt),
+  das Bildstock-Dach war ein schwarzer Klotz (kleiner + helleres Holz).
+- Wegweiser und Suehnekreuz bleiben BEWUSST Canvas: beide leben von der
+  eingekerbten Raben-/Kreuz-Zeichnung - ein 3D-Klotz gewinnt da nichts.
