@@ -11227,7 +11227,15 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     // Pixel-gemessen gegen die ECHTE Anfangskarte (R80): dorfSims soft-light
     // mit dem warmen #fff3da hebt den Tag kräftig, aber KANALGEWICHTET - Rot
     // voll, Grün fast voll, Blau kaum ("tagsüber scheint die Sonne", warm).
-    const liftBase = Math.max(0, L.lift * (1 - bew * 0.55) + klar * 0.06) * 1.6;
+    // R205 (Autor "bei Sonne am Tag muss alles sonniger sein"): klares Wetter
+    // hebt das Tageslicht KRAEFTIG statt homoeopathisch (vorher klar * 0.06) -
+    // aber nur bei hoher Sonne, Morgen-/Abendlicht bleibt golden-tief.
+    const sonnenHoehe = Math.min(1, L.hoehe / 0.3);
+    const sonnig = klar * sonnenHoehe * WETTER.sonnigLift;
+    const liftBase = Math.max(0, L.lift * (1 - bew * 0.55) + sonnig) * 1.6;
+    // R205 Naesse-Dunkelboden: nasses Land schluckt Licht (Blau am wenigsten -
+    // nass wirkt kuehl). Wirkt auch NACH dem Regen weiter, bis es abtrocknet.
+    const nassMul = 1 - this.naesse * WETTER.nassDunkel;
     // R83 (Autor "nachts ist der Held trotzdem dunkel, im Dungeon besser"):
     // NACHTS hebt der Boden-Ton auf Dungeon-Niveau (blau, aber hell genug) -
     // die eigentliche DUNKELHEIT trägt das Licht-Overlay (renderLight), das um
@@ -11235,20 +11243,23 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     // dadurch klar und farbig sichtbar statt schwarz getönt.
     const nachtF = 1 - Math.min(1, L.hoehe / 0.22);
     setzeMul(
-      Math.max(lerp(L.mul[0], 0.5, bew * 0.55) * dunkel * (1 + liftBase), 0.52 * nachtF),
-      Math.max(lerp(L.mul[1], 0.52, bew * 0.55) * dunkel * (1 + liftBase * 0.87), 0.54 * nachtF),
-      Math.max(lerp(L.mul[2], 0.56, bew * 0.45) * dunkel * (1 + liftBase * 0.35), 0.66 * nachtF),
+      Math.max(lerp(L.mul[0], 0.5, bew * 0.55) * dunkel * (1 + liftBase) * nassMul, 0.52 * nachtF),
+      Math.max(lerp(L.mul[1], 0.52, bew * 0.55) * dunkel * (1 + liftBase * 0.87) * nassMul, 0.54 * nachtF),
+      Math.max(lerp(L.mul[2], 0.56, bew * 0.45) * dunkel * (1 + liftBase * 0.35) * Math.min(1, nassMul + this.naesse * 0.04), 0.66 * nachtF),
     );
     // R83 (Autor "Farben/Kontraste am Tag satter"): leichte Sättigungs-Anhebung
     // bei Sonnenschein, von Wolken gedämpft, nachts aus.
-    this.tagLichtFX?.saturate(0.16 * Math.min(1, L.hoehe / 0.25) * (1 - bew * 0.8), true);
+    // R205: klares Wetter treibt die Saettigung zusaetzlich - Sonne = satte Wiese.
+    this.tagLichtFX?.saturate((0.16 + klar * WETTER.sonnigSatt) * Math.min(1, L.hoehe / 0.25) * (1 - bew * 0.8), true);
     // dorfSims kräftige soft-light-AUFHELLUNG lässt sich mit ADD nicht nachbauen
     // (deckt zu) - deshalb wird der Lift in die ColorMatrix GEFALTET (heller
     // Multiply), nur der goldene Hauch bleibt als hauchdünnes ADD (R78).
     // ADD hebt (anders als dorfSims soft-light) auch BLAU an -> wärmerer Ton
     // und kleinere Deckkraft, sonst kippt die Wiese ins Kühle (Messung R80).
-    const lift = Math.max(0, L.lift * (1 - bew * 0.55) + klar * 0.06);
-    this.stimmungRect.setFillStyle(0xffe9b0, Math.min(0.06, lift * 0.08));
+    const lift = Math.max(0, L.lift * (1 - bew * 0.55) + sonnig);
+    // R205: der goldene Sonnen-Hauch darf bei klarem Himmel sichtbar werden
+    // (Deckel vorher 0.06 - praktisch unsichtbar).
+    this.stimmungRect.setFillStyle(0xffe9b0, Math.min(0.06 + klar * sonnenHoehe * 0.06 * WETTER.sonnigWarm, lift * 0.08 + klar * 0.05));
     const warm = L.warm * (1 - bew);
     this.lichtWarmRect!.setFillStyle(0xffcf86, Math.min(0.12, warm * 0.16));
     // Regen-DUNST (dorfSim Z.1645): bei Sturm wird die Sicht spürbar nebliger.

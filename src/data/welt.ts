@@ -290,6 +290,16 @@ export const WETTER = {
   wechselTempo: 0.35,               // Annäherung ans Ziel (Anteil pro Sekunde)
   regenAb: 0.15,                    // ab diesem Wert fällt sichtbarer Regen
   nassAuf: 0.15, nassAb: 0.01,      // Nässe: füllt schnell, trocknet langsam
+  // R205 (Autor "bei Sonne am Tag muss alles sonniger sein"): wie stark
+  // KLARES Wetter (wetterWert < 0) das Tageslicht zusätzlich anhebt.
+  // sonnigLift wirkt kanalgewichtet in den Multiply (warm), sonnigWarm auf die
+  // goldene ADD-Ebene, sonnigSatt auf die Sättigung. Nur bei hoher Sonne.
+  sonnigLift: 0.22,
+  sonnigWarm: 0.5,
+  sonnigSatt: 0.14,
+  // R205 Nässe-Dunkelboden: nasser Boden schluckt Licht - multiplikative
+  // Abdunklung bei voller Nässe (Blau etwas weniger: nasses Land wirkt kühl).
+  nassDunkel: 0.12,
 } as const;
 
 // Ufer-Schilf-Dichte (R95, Autorwunsch "das neue Schilf ist sehr dezent, darf

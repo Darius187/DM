@@ -3074,3 +3074,17 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   das Bildstock-Dach war ein schwarzer Klotz (kleiner + helleres Holz).
 - Wegweiser und Suehnekreuz bleiben BEWUSST Canvas: beide leben von der
   eingekerbten Raben-/Kreuz-Zeichnung - ein 3D-Klotz gewinnt da nichts.
+
+## R205 - Wetter-Feinschliff: Sonne macht sonnig, Naesse macht dunkel
+- Autor: "bei Sonne am Tag muss alles sonniger sein." Klares Wetter (< 0) hob
+  das Licht bisher fast unmerklich (klar * 0.06). Jetzt: WETTER.sonnigLift/
+  sonnigWarm/sonnigSatt (welt.ts) treiben Multiply, Gold-Ebene und Saettigung -
+  nur bei hoher Sonne, Morgen-/Abendlicht bleibt golden-tief.
+  Messung (Mess-Stub statt PostFX, Mittag): neutral 1.80/1.68/1.20 ->
+  sonnig 2.15/1.98/1.32 (+20 %, warm gewichtet), Saettigung 0.16 -> 0.30,
+  Gold-Hauch 0.04 -> 0.09. Regen drueckt auf 0.71/0.69/0.60 (stand schon).
+- NEU dazu: Naesse-Dunkelboden (WETTER.nassDunkel) - nasses Land schluckt
+  ~12 % Licht bei voller Naesse, Blau am wenigsten (kuehl-nass). Wirkt auch
+  NACH dem Regen weiter, bis es abtrocknet: 1.63/1.52/1.13 gemessen.
+- Bereits gebaut (Altlast-Zeilen): Bewoelkungs-Tint, oertliche Boeen-Welle
+  (boeWelle), Donner mit Entfernungs-Verzoegerung + Synth-Fallback (R113).
