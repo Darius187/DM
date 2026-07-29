@@ -3156,3 +3156,25 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   figurFrameAnteil(). Alle applyFigure-Verbraucher sind durch den gerechneten
   Ursprung unberuehrt; Probe-Szenen (SchlachtProbe/StrahlenProbe) zeigen die
   Figur minimal kleiner im Kasten - kosmetisch, Dev-only, notiert.
+
+## R208b/R211 - Schildtraeger sichtbar, Faeuste am Griff, Ebenen-Varianten, 10 Neue
+- Schildtraeger (Autor: "ich sehe keine"): das Schild war bisher NUR das
+  drehende Szenen-Overlay. Jetzt gibt es zusaetzlich FigureSpec.schild -
+  Wappenschild (Heater) fest am linken Arm: soldat_schild (RTS-Schildtraeger),
+  skelett/pest/lebender_toter _schwertschild (Gefallenen-Loadout "Schwert &
+  Schild"). Zweihand + Schild schliessen sich aus (Autor-Logik).
+- Zweihand sichtbar (Autor: "wo sieht man das"): die zwei FAEUSTE sitzen auf
+  der Griffwicklung und DREHEN MIT dem Schwert (von Hand rotierte Anker), die
+  Arme folgen ihnen in jede Schlagphase - vorher blieben sie in Ruhepose.
+- R211 Ebenen-Varianten: EBENEN_TOENE (monsterVarianten.ts) x 9 Grundtypen
+  = 45 Toenungen, plus Gefallenen-Waffenkombos je Ebene (90) und Schild-
+  Varianten - zusammen ueber 130 unterscheidbare Figuren, alles generiert
+  (mischen() + shade), KEINE Zeichenarbeit je Variante. Spawn verdrahtet:
+  spawnEnemy waehlt <typ>_e<tiefe> bzw. <typ>_e<tiefe>_<waffe>, Ebene 0 =
+  Grundfigur. Tiefe 5+ klemmt auf e5.
+- 10 NEUE Monster (Zeitgeist, Dok 06 Teil B - nur AUSSEHEN, Werte nach
+  Auswahl): Schnabeldoktor (Pestarzt-Maske), Totengraeber (Schaufel),
+  Gehaengter (Strick), Ertrunkener, Geissler (Geissel), Gloeckner (Glocke,
+  Alarm-Mechanik-Kandidat), Verkohlter (Glutaugen), Henker (Beil, massig),
+  Abtruenniger Moench (Stab - Kandidat fuer R210 Schwert+Stab), Ausgezehrter.
+  Neue HD-Werkzeuge: Schaufel, Geissel, Glocke; neue Merkmale: schnabel, strick.

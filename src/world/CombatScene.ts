@@ -5,7 +5,7 @@
 import Phaser from 'phaser';
 import { SpriteProvider } from '../gfx/SpriteProvider';
 import { SoundProvider } from '../gfx/SoundProvider';
-import { spielerFigur, TILE } from '../gfx/fallbackArt';
+import { spielerFigur, TILE, FIGURES } from '../gfx/fallbackArt';
 import { Wegfeld, ziehePfadStraff } from './Wegfeld';
 import { getHeldForm } from '../data/heldForm';
 import { heldTier } from '../data/helden';
@@ -2185,7 +2185,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       let roll = this.rng.random() * total;
       let w = GEFALLENE_WAFFEN[0];
       for (const cand of GEFALLENE_WAFFEN) { roll -= cand.weight; if (roll <= 0) { w = cand; break; } }
-      e.figurName = `${type}_${w.figur}`;
+      // R211: Waffen-Variante MIT Ebenen-Ton kombinieren, wenn es sie gibt
+      // (skelett_e3_schwert); sonst wie gehabt die Grundvariante.
+      const eb = `${type}_e${Math.min(depth, 5)}_${w.id === 'schwertschild' ? 'schwertschild' : w.figur}`;
+      e.figurName = FIGURES[eb] ? eb : `${type}_${w.id === 'schwertschild' ? 'schwertschild' : w.figur}`;
       e.dmg = Math.max(1, Math.round(e.dmg * w.dmgMult));
       e.reichweiteF *= w.reichMult;
       e.schlagtempoF *= w.tempoMult;
@@ -2193,6 +2196,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (w.ranged) { e.ranged = true; e.aggro = Math.max(e.aggro, 320); e.rolle = 'front'; }
       if (w.magie) e.magie = true;
       e.name = `${e.name} ${w.label}`;
+    } else if (!e.figurName && depth >= 1 && FIGURES[`${type}_e${Math.min(depth, 5)}`]) {
+      // R211 (Autor: "unterschiedlich je nach Ebene"): ohne Waffen-Loadout
+      // greift die reine Ebenen-Toenung - tiefere Ebenen faerben die Monster
+      // um und geben Gluehaugen/Helm/Schild dazu (EBENEN_TOENE).
+      e.figurName = `${type}_e${Math.min(depth, 5)}`;
     }
     // Entwicklungskasten-Faktoren
     e.maxhp = Math.round(e.maxhp * TUNING.gegnerLeben);

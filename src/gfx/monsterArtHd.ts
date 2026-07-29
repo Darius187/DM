@@ -158,26 +158,66 @@ function hdZweihandGriff(
   hdSchwert(ctx, gx, gy, langF);
   ctx.restore();
 
-  // Arme als gerade Balken von der Schulter zur jeweiligen Faust - schmaler
-  // als die haengenden Arme, damit der Querarm kein Brustband bildet.
+  // R208b (Autor: "man sieht die zwei Haende nicht"): die FAEUSTE sitzen AUF
+  // der Griffwicklung und DREHEN MIT dem Schwert - die Arme folgen ihnen in
+  // jede Schlagphase. Faust-Anker entlang der Klingenachse um den Griffpunkt
+  // rotiert (von Hand gerechnet, kein Canvas-Transform noetig).
+  const dreh = (px: number, py: number): { x: number; y: number } => {
+    const c = Math.cos(NEIGUNG), sn = Math.sin(NEIGUNG);
+    return { x: gx + (px - gx) * c - (py - gy) * sn, y: gy + (px - gx) * sn + (py - gy) * c };
+  };
+  const fObenP = dreh(gx + 0.5, gy - 0.45);   // Faust direkt unter der Parierstange
+  const fUntenP = dreh(gx + 0.5, gy + 0.6);   // Faust am Knauf
   const armCol = f.skeletal ? '#d8cfb0' : f.tunic;
   const arm = (sx: number, sy: number, hx: number, hy: number, br: number): void => {
     ctx.fillStyle = shade(armCol, -8);
     ctx.beginPath();
     ctx.moveTo(sx * U, sy * U);
     ctx.lineTo((sx + br) * U, sy * U);
-    ctx.lineTo((hx + br) * U, hy * U);
-    ctx.lineTo(hx * U, hy * U);
+    ctx.lineTo((hx + br * 0.5) * U, hy * U);
+    ctx.lineTo((hx - br * 0.5) * U, hy * U);
     ctx.closePath(); ctx.fill();
   };
-  // rechter Arm: kurz von der rechten Schulter zur OBEREN Faust
-  arm(10.9, 7.2 + bob + legL, gx - 0.35, gy - 0.6, 0.9);
-  // linker Arm: quer ueber den GUERTEL (nicht ueber die Brust) zur unteren Faust
-  arm(4.3, 7.9 + bob + legR, gx - 0.9, gy + 0.9, 0.85);
-  // Faeuste auf der Wicklung
+  arm(10.9, 7.2 + bob + legL, fObenP.x, fObenP.y, 0.95);   // rechte Schulter -> obere Faust
+  arm(4.3, 7.9 + bob + legR, fUntenP.x, fUntenP.y, 0.9);   // linker Arm quer -> untere Faust
+  // GROSSE, klar lesbare Faeuste (rotiert wie der Griff)
   const faust = f.skeletal ? '#e2dcc4' : shade(f.skin, -6);
-  rund(ctx, gx - 0.3, gy - 0.85, 1.6, 0.9, 0.35, faust);
-  rund(ctx, gx - 0.25, gy + 0.2, 1.6, 0.9, 0.35, shade(faust, -14));
+  const zeichneFaust = (p: { x: number; y: number }, col: string): void => {
+    ctx.save();
+    ctx.translate(p.x * U, p.y * U);
+    ctx.rotate(NEIGUNG);
+    ctx.beginPath();
+    ctx.roundRect(-1.0 * U, -0.55 * U, 2.0 * U, 1.1 * U, 0.4 * U);
+    ctx.fillStyle = col; ctx.fill();
+    ctx.strokeStyle = shade(col, -30); ctx.lineWidth = 0.12 * U; ctx.stroke();
+    ctx.restore();
+  };
+  zeichneFaust(fObenP, faust);
+  zeichneFaust(fUntenP, shade(faust, -14));
+}
+
+// R208b: Wappenschild (Heater) fest am linken Arm - der Autor wollte die
+// Schildtraeger IM Kader sehen; das drehende Szenen-Schild bleibt zusaetzlich.
+function hdSchild(ctx: CanvasRenderingContext2D, bob: number): void {
+  const cx = 4.2, cy = 8.2 + bob, hw = 1.9;
+  ctx.fillStyle = '#7a808a'; ctx.beginPath();
+  ctx.moveTo((cx - hw) * U, (cy - 1.9) * U);
+  ctx.lineTo((cx + hw) * U, (cy - 1.9) * U);
+  ctx.lineTo((cx + hw) * U, (cy + 0.4) * U);
+  ctx.quadraticCurveTo((cx + hw * 0.7) * U, (cy + 1.9) * U, cx * U, (cy + 2.5) * U);
+  ctx.quadraticCurveTo((cx - hw * 0.7) * U, (cy + 1.9) * U, (cx - hw) * U, (cy + 0.4) * U);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#9aa0aa';                                   // Lichtkante oben
+  ctx.fillRect((cx - hw) * U, (cy - 1.9) * U, hw * 2 * U, 0.8 * U);
+  rund(ctx, cx - 0.45, cy - 0.55, 0.9, 0.9, 0.45, '#4a4640'); // Buckel
+  ctx.strokeStyle = '#23201c'; ctx.lineWidth = 0.18 * U;      // Rand
+  ctx.beginPath();
+  ctx.moveTo((cx - hw) * U, (cy - 1.9) * U);
+  ctx.lineTo((cx + hw) * U, (cy - 1.9) * U);
+  ctx.lineTo((cx + hw) * U, (cy + 0.4) * U);
+  ctx.quadraticCurveTo((cx + hw * 0.7) * U, (cy + 1.9) * U, cx * U, (cy + 2.5) * U);
+  ctx.quadraticCurveTo((cx - hw * 0.7) * U, (cy + 1.9) * U, (cx - hw) * U, (cy + 0.4) * U);
+  ctx.closePath(); ctx.stroke();
 }
 
 // Langbogen (Schuetze): figurhoher Bogen mit Sehne und aufgelegtem Pfeil.
@@ -301,6 +341,49 @@ function hdEimer(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
   ctx.beginPath(); ctx.arc((x + 0.2) * U, (8.2 + b) * U, 1.05 * U, Math.PI, 0); ctx.stroke();
 }
 
+// Grabschaufel (Totengraeber): langer Stiel, Blatt unten - Werkzeug UND Waffe.
+function hdSchaufel(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
+  const b = bob;
+  r(ctx, x + 0.15, 1.6 + b, 0.65, 8.6, '#5a4226');
+  r(ctx, x + 0.28, 1.6 + b, 0.16, 8.6, '#7a5c38');
+  r(ctx, x - 0.35, 0.9 + b, 1.6, 0.7, '#5a4226');              // Quergriff oben
+  ctx.fillStyle = '#8a8f96'; ctx.beginPath();                   // Blatt unten
+  ctx.moveTo((x - 0.5) * U, (10.2 + b) * U);
+  ctx.lineTo((x + 1.45) * U, (10.2 + b) * U);
+  ctx.lineTo((x + 1.15) * U, (12.4 + b) * U);
+  ctx.quadraticCurveTo((x + 0.5) * U, (13.0 + b) * U, (x - 0.2) * U, (12.4 + b) * U);
+  ctx.closePath(); ctx.fill();
+  r(ctx, x - 0.5, 10.2 + b, 1.95, 0.35, '#a8aeb6');
+}
+
+// Geissel (Geissler): kurzer Griff, drei haengende Straenge mit Knoten.
+function hdGeissel(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
+  const b = bob;
+  r(ctx, x + 0.1, 6.2 + b, 0.7, 2.4, '#4a3a26');               // Griff
+  ctx.strokeStyle = '#7a6a4e'; ctx.lineWidth = 0.22 * U;
+  for (const [ex, sw] of [[-0.7, 0.3], [0.1, 0], [0.9, -0.25]] as const) {
+    ctx.beginPath();
+    ctx.moveTo((x + 0.45) * U, (6.4 + b) * U);
+    ctx.quadraticCurveTo((x + 0.45 + ex) * U, (8.6 + b + sw) * U, (x + 0.45 + ex * 1.4) * U, (10.6 + b) * U);
+    ctx.stroke();
+    rund(ctx, x + 0.15 + ex * 1.4, 10.5 + b, 0.6, 0.6, 0.3, '#5a4a34');   // Knoten
+  }
+}
+
+// Handglocke (Gloeckner): Totenglocke mit Klöppel - er laeutet die Toten herbei.
+function hdGlocke(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
+  const b = bob;
+  r(ctx, x + 0.2, 5.2 + b, 0.5, 1.4, '#4a3a26');               // Griff
+  ctx.fillStyle = '#8a7a3e'; ctx.beginPath();                   // Glockenkoerper
+  ctx.moveTo((x - 0.7) * U, (8.9 + b) * U);
+  ctx.quadraticCurveTo((x - 0.7) * U, (6.4 + b) * U, (x + 0.45) * U, (6.3 + b) * U);
+  ctx.quadraticCurveTo((x + 1.6) * U, (6.4 + b) * U, (x + 1.6) * U, (8.9 + b) * U);
+  ctx.closePath(); ctx.fill();
+  r(ctx, x - 0.7, 8.7 + b, 2.3, 0.4, '#a8983e');               // Schlagring
+  r(ctx, x - 0.4, 6.8 + b, 0.4, 1.6, '#b8a85e');               // Lichtkante
+  rund(ctx, x + 0.25, 9.1 + b, 0.55, 0.55, 0.27, '#3a3226');   // Kloeppel
+}
+
 function hdKorb(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
   const b = bob;
   rund(ctx, x - 0.9, 7.6 + b, 2.5, 2.4, 0.6, '#9a7a44');
@@ -409,7 +492,9 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
 
   // Arme. Zweihand-Traeger bekommen sie ERST mit der Waffe (beide greifen
   // zum Griff); alle anderen lassen sie gegenlaeufig zum Schritt haengen.
-  const zweihand = f.zweihand === true && f.weapon === 'schwert';
+  // Zweihand nur OHNE Schild (Autor-Logik: "mit beiden Haenden, wenn die kein
+  // Schild halten") - Schildtraeger fuehren das Schwert einhaendig.
+  const zweihand = f.zweihand === true && f.weapon === 'schwert' && !f.schild;
   const armCol = f.skeletal ? '#d8cfb0' : f.tunic;
   if (!zweihand) {
     const aw = f.massig ? 1.6 : 1, al = f.massig ? 3.8 : 3, ax = f.massig ? 3.3 : 4.1;
@@ -461,11 +546,35 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
       ctx.fillRect(8.4 * U, (3.3 + bob) * U, 1.35 * U, 1.25 * U);
     }
   }
+  // R211: Schnabelmaske des Pestarztes - lederner Schnabel mitten im Gesicht,
+  // die Augen werden zu runden Glaslinsen.
+  if (f.schnabel && dir !== 3) {
+    rund(ctx, 6.1, 3.3 + bob, 1.5, 1.3, 0.6, '#2e2620');       // Glaslinse links
+    rund(ctx, 8.4, 3.3 + bob, 1.5, 1.3, 0.6, '#2e2620');
+    r(ctx, 6.4, 3.6 + bob, 0.5, 0.5, '#8aa8b8');               // Glas-Glanz
+    r(ctx, 8.7, 3.6 + bob, 0.5, 0.5, '#8aa8b8');
+    ctx.fillStyle = '#4a3a28'; ctx.beginPath();                 // Schnabel
+    ctx.moveTo(7.0 * U, (4.1 + bob) * U);
+    ctx.lineTo(9.0 * U, (4.1 + bob) * U);
+    ctx.lineTo(8.0 * U, (6.4 + bob) * U);
+    ctx.closePath(); ctx.fill();
+    r(ctx, 7.4, 4.7 + bob, 0.9, 0.2, '#2e2318');               // Naht
+    r(ctx, 7.55, 5.3 + bob, 0.6, 0.18, '#2e2318');
+  }
+  // R211: Strick des Gehaengten - Schlinge um den Hals, Ende baumelt.
+  if (f.strick) {
+    r(ctx, 5.6, 5.9 + bob, 4.8, 0.55, '#9a8a5e');              // Schlinge
+    r(ctx, 5.6, 5.9 + bob, 4.8, 0.2, '#b8a878');
+    r(ctx, 9.6, 6.3 + bob, 0.5, 2.6, '#9a8a5e');               // haengendes Ende
+    rund(ctx, 9.45, 8.7 + bob, 0.8, 0.7, 0.3, '#8a7a50');      // Knoten
+  }
 
   // Waffe. Zweihand zeichnet Klinge + beide Arme + Faeuste in einem Zug;
   // einhaendige Waffen sitzen am Ende des rechten Arms (R207c, Autor: "er
   // haelt das nicht richtig") und bekommen eine sichtbare Faust am Schaft.
   const langF = f.schwertLang ?? 1.0;
+  // Wappenschild VOR der Waffe zeichnen (liegt am linken Arm, Waffe rechts).
+  if (f.schild) hdSchild(ctx, bob);
   if (zweihand) {
     hdZweihandGriff(ctx, f, bob, legL, legR, langF, schlagPhase);
   } else {
@@ -497,6 +606,15 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
     } else if (f.weapon === 'hammer') {
       hdHammer(ctx, wx, wy);
       rund(ctx, wx - 0.3, 8.6 + wy, 1.6, 1.0, 0.35, f.skeletal ? '#e2dcc4' : shade(f.skin, -6));
+    } else if (f.weapon === 'schaufel') {
+      hdSchaufel(ctx, wx, wy);
+      rund(ctx, wx - 0.3, 7.6 + wy, 1.6, 1.0, 0.35, f.skeletal ? '#e2dcc4' : shade(f.skin, -6));
+    } else if (f.weapon === 'geissel') {
+      hdGeissel(ctx, wx, wy);
+      rund(ctx, wx - 0.35, 6.6 + wy, 1.6, 1.0, 0.35, f.skeletal ? '#e2dcc4' : shade(f.skin, -6));
+    } else if (f.weapon === 'glocke') {
+      hdGlocke(ctx, wx, wy);
+      rund(ctx, wx - 0.3, 5.4 + wy, 1.5, 0.9, 0.35, f.skeletal ? '#e2dcc4' : shade(f.skin, -6));
     } else if (f.weapon === 'sack') {
       hdSack(ctx, wx - 0.5, wy);
     } else if (f.weapon === 'angel') {

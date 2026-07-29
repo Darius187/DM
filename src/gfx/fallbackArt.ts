@@ -19,7 +19,8 @@ export interface FigureSpec {
   // M1 Dorfwirtschaft: auch WERKZEUGE in der Hand (Hammer, Mehlsack, Angel,
   // Eimer, Kraeuterkorb) - jede Rolle traegt sichtbar ihr Handwerkszeug.
   weapon?: 'schwert' | 'axt' | 'stange' | 'wucht' | 'bogen' | 'keule' | 'stab'
-    | 'hammer' | 'sack' | 'angel' | 'eimer' | 'korb' | 'haken' | null;
+    | 'hammer' | 'sack' | 'angel' | 'eimer' | 'korb' | 'haken'
+    | 'schaufel' | 'geissel' | 'glocke' | null;
   scale?: number;       // Templer ist größer
   skeletal?: boolean;   // Skelett-Look (Schädel, Brustkorb)
   glow?: string;        // Schatten-Look (Umriss-Glühen)
@@ -35,6 +36,13 @@ export interface FigureSpec {
   // Kopf, 1.5 = Bidenhänder (halbe Klinge über dem Kopf, Autor-Wunsch für den
   // Templer). Tuning-Wert - hier ändern reicht.
   schwertLang?: number;
+  // R208b (Autor: "ich sehe keine Schildträger"): Wappenschild am linken Arm,
+  // fest in die Figur gezeichnet (zusätzlich zum drehenden Szenen-Schild).
+  schild?: boolean;
+  // R211, neue Monster: Schnabelmaske (Pestarzt) und Strick um den Hals
+  // (Gehängter) - kleine Aufsätze im HD-Zeichner.
+  schnabel?: boolean;
+  strick?: boolean;
 }
 
 export type Dir = 0 | 1 | 2 | 3; // unten, links, rechts, oben
@@ -498,12 +506,72 @@ for (const stufe of Object.keys(SPIELER_STUFEN) as HeldTier[]) {
 
 // Bewaffnete "Gefallene" (Runde 35): je Untoten-Typ eine sichtbare Waffe -
 // klont die Basis-Figur und tauscht nur die Waffe (analog zum Helden).
+// R208b: schwertschild = Schwert einhaendig + Wappenschild am Arm.
 const GEFALLENE_FIG_TYPEN = ['skelett', 'pest', 'lebender_toter'] as const;
 const GEFALLENE_FIG_WAFFEN = ['schwert', 'axt', 'wucht', 'bogen', 'stab'] as const;
 for (const t of GEFALLENE_FIG_TYPEN) {
   const basis = FIGURES[t] as FigureSpec;
   for (const w of GEFALLENE_FIG_WAFFEN) {
     FIGURES[`${t}_${w}`] = { ...basis, weapon: w };
+  }
+  FIGURES[`${t}_schwertschild`] = { ...basis, weapon: 'schwert', schild: true, zweihand: false };
+}
+// Sichtbare Schild-Varianten fuers Heer (RTS-Schildtraeger nutzt soldat_schild).
+FIGURES['soldat_schild'] = { ...(FIGURES['soldat'] as FigureSpec), schild: true };
+
+// --- R211: ZEHN NEUE MONSTER (Zeitgeist statt Zauber, Dok 06 Teil B) --------
+// Alle historisch verwurzelt, kein Fantasy-Vokabular. Werte folgen nach der
+// Autor-Auswahl in enemies.ts - hier steht erst einmal das AUSSEHEN.
+FIGURES['schnabeldoktor'] = { tunic: '#241f1a', skin: '#c8bca8', hair: '#181410', legs: '#1c1814', robe: true, weapon: 'keule', schnabel: true };
+FIGURES['totengraeber'] = { tunic: '#4a4438', skin: '#a89a84', hair: '#3a342c', legs: '#33302a', weapon: 'schaufel', skeletal: true };
+FIGURES['gehaengter'] = { tunic: '#5a5648', skin: '#9aa0a8', hair: '#46403a', legs: '#3e3a32', weapon: null, strick: true, augen: '#c8d8e8' };
+FIGURES['ertrunkener'] = { tunic: '#3a5a5e', skin: '#7a9a96', hair: '#2c4644', legs: '#2a4246', weapon: null, seuche: true, augen: '#a8e0d8' };
+FIGURES['geissler'] = { tunic: '#8a8274', skin: '#c0a890', hair: '#5a4a38', legs: '#6a6254', robe: true, weapon: 'geissel' };
+FIGURES['gloeckner'] = { tunic: '#46424e', skin: '#b0a894', hair: '#302c36', legs: '#36323e', robe: true, weapon: 'glocke' };
+FIGURES['verkohlter'] = { tunic: '#242020', skin: '#3a3230', hair: '#1c1818', legs: '#201c1c', weapon: null, augen: '#ff7020' };
+FIGURES['henker'] = { tunic: '#3a1e1e', skin: '#b09a80', hair: '#241414', legs: '#2a1818', weapon: 'axt', hat: '#241414', massig: true };
+FIGURES['moench_abtruennig'] = { tunic: '#5a4632', skin: '#c0aa8e', hair: '#42342a', legs: '#4a3a2c', robe: true, weapon: 'stab', augen: '#b060ff' };
+FIGURES['ausgezehrter'] = { tunic: '#6a665a', skin: '#b8b4a4', hair: '#54504a', legs: '#4c4840', weapon: null, skeletal: true, augen: '#d8d0a0' };
+
+// --- R211: EBENEN-VARIANTEN (Autor: "~50 Variationen, je nach Ebene") -------
+// Der Generator kreuzt die Grundtypen mit den EBENEN_TOENEN aus
+// src/data/monsterVarianten.ts: Gewand/Haut/Beine werden getoent, ab tieferen
+// Ebenen kommen Gluehaugen, Helm und Schild dazu. Namen: <typ>_e<1..5> und
+// <typ>_e<n>_<waffe> fuer die Gefallenen-Waffen. Ebene 0 = Grundfigur.
+import { EBENEN_TOENE, VARIANTEN_TYPEN, mischen } from '../data/monsterVarianten';
+
+function toene(basis: FigureSpec, e: number): FigureSpec {
+  const t = EBENEN_TOENE[e];
+  const f = (c: string): string => shadeHex(mischen(c, t.tint, t.anteil), t.hell);
+  const kopie: FigureSpec = {
+    ...basis,
+    tunic: f(basis.tunic), skin: f(basis.skin), legs: f(basis.legs),
+    hair: t.helm ?? f(basis.hair),
+    hat: t.helm ?? basis.hat,
+    augen: t.augen ?? basis.augen,
+  };
+  if (t.schild && !kopie.zweihand) kopie.schild = true;
+  return kopie;
+}
+// shade() liefert "rgb(..)" - fuer mischen() brauchen die Varianten HEX.
+function shadeHex(hex: string, amt: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const k = (v: number): number => Math.max(0, Math.min(255, v + amt));
+  const r2 = k(n >> 16), g2 = k((n >> 8) & 255), b2 = k(n & 255);
+  return `#${((r2 << 16) | (g2 << 8) | b2).toString(16).padStart(6, '0')}`;
+}
+for (const typ of VARIANTEN_TYPEN) {
+  const basis = FIGURES[typ] as FigureSpec | undefined;
+  if (!basis || 'quad' in (basis as object)) continue;
+  for (let e = 1; e < EBENEN_TOENE.length; e++) {
+    FIGURES[`${typ}_e${e}`] = toene(basis, e);
+    // Waffen-Kombos nur fuer die Gefallenen-Typen (dort waehlt der Spawn Waffen)
+    if ((GEFALLENE_FIG_TYPEN as readonly string[]).includes(typ)) {
+      for (const w of GEFALLENE_FIG_WAFFEN) {
+        FIGURES[`${typ}_e${e}_${w}`] = { ...toene(basis, e), weapon: w };
+      }
+      FIGURES[`${typ}_e${e}_schwertschild`] = { ...toene(basis, e), weapon: 'schwert', schild: true, zweihand: false };
+    }
   }
 }
 

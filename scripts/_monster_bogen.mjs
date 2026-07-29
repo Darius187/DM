@@ -30,6 +30,27 @@ export default async (page) => {
       ['bauer1', 'DORF: BAUER\n(Helm-Kappe statt Hut)'],
       ['magd', 'DORF: MAGD\n(Eimer)'],
       ['haendler', 'DORF: HAENDLER\n(HD)'],
+      // R208b: die Schildtraeger, die der Autor vermisst hat
+      ['soldat_schild', 'SCHILDTRAEGER (HEER)\nSchwert + Wappenschild'],
+      ['skelett_schwertschild', 'SKELETT-SCHILDTRAEGER\neinhaendig + Schild'],
+      // R211: Ebenen-Reihe am Beispiel Skelett (e1..e5)
+      ['skelett_e1', 'SKELETT Ebene 1\nGruft'],
+      ['skelett_e2', 'SKELETT Ebene 2\nKatakomben (Gluehaugen)'],
+      ['skelett_e3', 'SKELETT Ebene 3\nTiefe Gaenge (+Helm)'],
+      ['skelett_e4', 'SKELETT Ebene 4\nBlutstrom (+Schild)'],
+      ['skelett_e5', 'SKELETT Ebene 5\nSchattenwerk'],
+      ['pest_e3', 'PEST Ebene 3\n(Beispiel-Toenung)'],
+      // R211: die ZEHN NEUEN
+      ['schnabeldoktor', 'DER SCHNABELDOKTOR\nPestarzt mit Maske'],
+      ['totengraeber', 'DER TOTENGRAEBER\nSchaufel als Waffe'],
+      ['gehaengter', 'DER GEHAENGTE\nStrick um den Hals'],
+      ['ertrunkener', 'DER ERTRUNKENE\naus Fluss und Muehlteich'],
+      ['geissler', 'DER GEISSLER\nBuesser mit Geissel'],
+      ['gloeckner', 'DER GLOECKNER\nlaeutet die Toten herbei'],
+      ['verkohlter', 'DER VERKOHLTE\nGlutaugen, verbrannt'],
+      ['henker', 'DER HENKER\nBeil + Kapuze, massig'],
+      ['moench_abtruennig', 'ABTRUENNIGER MOENCH\nStab (verbotene Kunst)'],
+      ['ausgezehrter', 'DER AUSGEZEHRTE\nschnell, zerbrechlich'],
     ];
     // Zelle hoch genug fuer den 1.35er Gefallenen bei voller 5x-Skala (216px) -
     // im ersten Bogen war sein Helm abgeschnitten (Autor hat es gesehen).
@@ -40,7 +61,7 @@ export default async (page) => {
     const g = cv.getContext('2d');
     g.fillStyle = '#1c1610'; g.fillRect(0, 0, cv.width, cv.height);
     g.fillStyle = '#c9a227'; g.font = 'bold 26px serif'; g.textAlign = 'center';
-    g.fillText('FIGUREN R208: HD fuer ALLE - Monster, Heer, Dorf (Platzhalter-Optik)', cv.width / 2, 38);
+    g.fillText('FIGUREN R208/R211: Kader, Schildtraeger, Ebenen-Toene, 10 NEUE (Platzhalter)', cv.width / 2, 38);
     zeigen.forEach(([name, label], i) => {
       const sx = (i % SP) * ZELLE, sy = KOPF + Math.floor(i / SP) * (ZELLE + FUSS);
       g.fillStyle = i < 6 ? '#241c12' : '#1f1a14';
