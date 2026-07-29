@@ -261,3 +261,16 @@ Verdacht (zu pruefen mit dem Profil): (a) Spawn-Spike durch viele Sprite/Text-
 Objekte auf einen Schlag -> gestaffelt spawnen; (b) Live-Karten-/HUD-Neuaufbau
 mit vielen Markern; (c) PostFX-Kette (Bloom) zu teuer bei vielen additiven
 Lichtern -> Bloom im Einfall drosseln. Ohne Geraeteprofil aber nicht auf Verdacht.
+
+## R213-GEPLANT: Elementar-Waffen fuer hohe Ebenen (Autor-Order, "spaeter")
+- Fernkampf-Monster ab hoeheren Ebenen verschiessen AB UND ZU Brand-/Frost-/
+  Schattenpfeile wie der Held (ELEM_PFEIL existiert bereits fuer Spieler-
+  Munition: Brand = DoT via BRAND_TICK_S, Frost = verlangsamen, Schatten =
+  Leben saugen). WICHTIG (Autor): nur gelegentlich, weil DoT dazukommt -
+  Vorschlag: elemChance je Ebene in enemies.ts (e3: 15 %, e4: 25 %, e5: 35 %),
+  Elementwahl passend zum Ebenen-Ton (Blutstrom -> Brand, Katakomben -> Frost,
+  Schattenwerk -> Schatten). Verdrahtung: spawnEnemyProjectile bekommt elem,
+  Treffer-Zweig nutzt die BESTEHENDE Elem-Logik der Spielerpfeile.
+- Dasselbe fuer NAHKAEMPFER: brennende/frostige Schwerter (Klinge im HD-
+  Zeichner mit Glut-/Frostkante + Partikel am Schlag, Schaden ueber dieselben
+  On-Hit-Effekte). Erst nach Autor-Abnahme der Schlag-Animation (R209).

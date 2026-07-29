@@ -107,6 +107,19 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected auraGfx!: Phaser.GameObjects.Graphics;
   /** R207c: Bodenschatten aller Figuren (eine Ebene, unter den Figuren). */
   protected figurSchattenGfx!: Phaser.GameObjects.Graphics;
+
+  /**
+   * R213: eine Schatten-Ellipse am Fusspunkt in den Frame-Batch legen.
+   * Gemeinsam fuer Gegner (updateCombat) und Dorfvolk/Vieh (WorldScene) -
+   * die Ebene wird am Anfang des Gegner-Zeichnens geleert, alles danach im
+   * selben Bild landet im selben Batch.
+   */
+  protected zeichneFigurSchatten(x: number, y: number, skala = 1): void {
+    this.figurSchattenGfx?.fillEllipse(
+      x, y + FIGUR_SCHATTEN.fussVersatzPx * skala,
+      FIGUR_SCHATTEN.breitePx * 2 * skala, FIGUR_SCHATTEN.hoehePx * 2 * skala,
+    );
+  }
   // Schiebe-Widerstand (Runde 39): < 1 bremst den Helden beim Kistenschieben
   protected schiebeBremse = 1;
   protected keysDown: Record<string, boolean> = {};
@@ -4039,11 +4052,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       // haetten sonst zwei. Der Schatten sitzt am FUSSPUNKT und wippt nicht
       // mit (kein wob), damit die Figur wirklich auf dem Boden steht.
       if (!istGolem && !istSkelettwache && istHdFigur(e.figur())) {
-        const sk = e.sprite.scaleX || 1;
-        schattenG.fillEllipse(
-          e.x, e.y + FIGUR_SCHATTEN.fussVersatzPx * sk,
-          FIGUR_SCHATTEN.breitePx * 2 * sk, FIGUR_SCHATTEN.hoehePx * 2 * sk,
-        );
+        this.zeichneFigurSchatten(e.x, e.y, e.sprite.scaleX || 1);
       }
       if (istGolem) {
         // Keine weisse Standard-Trefferlampe. Die Verletzungsstufen werden

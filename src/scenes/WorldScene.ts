@@ -80,7 +80,7 @@ import { TUNING } from '../logic/tuning';
 import { BURG_FIGUR_TIEFE, Gebaeude3DWelt, gebaeudeEinstellung } from '../gfx/gebaeude3dWelt';
 import type { Dir } from '../gfx/fallbackArt';
 import { T, SOLID, FLYOVER, tileNameAt } from '../world/tiles';
-import { TILE } from '../gfx/fallbackArt';
+import { TILE, FIGURES } from '../gfx/fallbackArt';
 import { findePfad, Wegfeld, ziehePfadStraff } from '../world/Wegfeld';
 import { backeCampSprite, campGlbKey, hatCampGlb, verwerfeCampSprite, vorwaermeCampSprites } from '../gfx/campGlbBitmaps';
 import { FELDBAU_OPTIK_IDS, FELDBAU_OPTIK_LABEL, exportFeldbauOptik, feldbauOptik, resetFeldbauOptik, setFeldbauOptik } from '../data/feldbauOptik';
@@ -16001,6 +16001,21 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       t.curY = Phaser.Math.Clamp(t.curY, Math.max(16, pen.y0), Math.min(this.area.h * TILE - 16, pen.y1));
       this.provider.applyFigure(t.sprite, t.type, t.dir, t.step);
       t.sprite.setPosition(t.curX, t.curY).setDepth(t.curY);
+    }
+    // R213 (Autor: "hast du auch Kinder und die Tiere geaendert?"): Szenen-
+    // Bodenschatten auch fuer Dorfvolk und Vieh - ihre gebackenen Flecken sind
+    // mit dem HD-Pass verschwunden. Kinder werfen kleinere Schatten (scale),
+    // grosse Tiere (Kuh, Pferd) breitere (quad.size); das Huhn behaelt seinen
+    // gebackenen 32er-Fleck und wird uebersprungen.
+    for (const n of this.npcEnts) {
+      if (!n.sprite.visible) continue;
+      const spec = FIGURES[n.figur ?? n.id] as { scale?: number } | undefined;
+      this.zeichneFigurSchatten(n.curX, n.curY, Math.min(1, spec?.scale ?? 1));
+    }
+    for (const t of this.animalEnts) {
+      if (t.type === 'huhn' || !t.sprite.visible) continue;
+      const spec = FIGURES[t.type] as { quad?: { size: number } } | undefined;
+      this.zeichneFigurSchatten(t.curX, t.curY, spec?.quad?.size ?? 1);
     }
     // Schornsteinrauch
     this.smokeT -= dt;

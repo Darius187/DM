@@ -11,7 +11,7 @@
 // aber Achtelschritte sind jetzt echte Pixel. Schwerter duerfen ueber den
 // Kopf hinausragen (Autor: "so sieht das eher aus wie eine Kerze").
 
-import type { FigureSpec } from './fallbackArt';
+import type { FigureSpec, QuadSpec } from './fallbackArt';
 import { FIGURES, shade } from './fallbackArt';
 
 // R207c (Autor: "der Templer ist ingame am Kopf abgeschnitten, das Schwert
@@ -59,7 +59,9 @@ export function hdFrameGroesse(spriteGroesse: number): number {
 export function istHdFigur(name: string): boolean {
   const f = FIGURES[name];
   if (!f) return false;
-  return !('quad' in f) && !('chicken' in f);
+  // R212b (Autor: "und die Tiere?"): Vierbeiner nehmen jetzt AUCH den HD-Weg
+  // (drawQuadrupedHd). Nur das Huhn bleibt beim charmanten 32er-Pixelvieh.
+  return !('chicken' in f);
 }
 
 /**
@@ -403,6 +405,73 @@ function hdAxt(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
   r(ctx, x - 1.45, 4.35 + b, 1.1, 0.2, '#ccd2da');             // Schneide
 }
 
+// --- Vierbeiner (R212b, Autor: "und die Tiere?") ----------------------------
+// Gleiche HD-Technik wie die Menschen: Rundformen, drei Tonstufen, feine
+// Details (Nuestern, Hufe, fliessender Schweif) - aus DENSELBEN QuadSpec-Daten
+// wie der 32er-Bestand, deshalb sehen Kuh, Pferd, Wolf sofort nach sich aus.
+export function drawQuadrupedHd(ctx: CanvasRenderingContext2D, q: QuadSpec, dir: number, frame: number): void {
+  const flip = dir === 1;
+  ctx.save();
+  ctx.translate(HD_LUFT_SEITE_U * U, HD_LUFT_OBEN_U * U);
+  if (flip) { ctx.translate(HD_FIGUR_U * U, 0); ctx.scale(-1, 1); }
+  const step = frame % 4;
+  const legA = step === 1 ? 0.8 : 0;
+  const legB = step === 3 ? 0.8 : 0;
+  const bw = 8 * q.size, bh = 4 * q.size;
+  const bx = Math.max(0.5, (16 - (bw + 3)) / 2 + 1);
+  const by = 9 - bh;
+  const legLen = q.size >= 1.2 ? 3 : 2;
+
+  // Schweif zuerst (liegt hinter dem Koerper)
+  if (q.tail) {
+    ctx.strokeStyle = shade(q.body, -14); ctx.lineWidth = 0.5 * U;
+    ctx.beginPath();
+    ctx.moveTo((bx + 0.2) * U, (by + 0.6) * U);
+    if (q.longTail) ctx.quadraticCurveTo((bx - 1.4) * U, (by + 1.5) * U, (bx - 1.0) * U, (by + 4.6) * U);
+    else ctx.quadraticCurveTo((bx - 0.9) * U, (by + 0.4) * U, (bx - 0.8) * U, (by + 1.8) * U);
+    ctx.stroke();
+  }
+  // Beine mit Hufen/Pfoten (vorn/hinten je nach Groesse vier)
+  const bein = (x: number, extra: number, dunkel: number): void => {
+    rund(ctx, x, by + bh - 0.3, 0.95, legLen + extra + 0.3, 0.3, shade(q.body, dunkel));
+    r(ctx, x, by + bh + legLen + extra - 0.45, 0.95, 0.45, shade(q.body, dunkel - 18));
+  };
+  bein(bx + 0.8, legA, -20);
+  bein(bx + bw - 1.8, legB, -20);
+  if (q.size >= 1.2) { bein(bx + 2.6, legB, -28); bein(bx + bw - 3.6, legA, -28); }
+  // Koerper: Rundform mit Licht oben und Bauch-Schatten
+  rund(ctx, bx, by, bw, bh, Math.min(1.4, bh * 0.42), q.body);
+  r(ctx, bx + 0.5, by + 0.15, bw - 1, 0.7, shade(q.body, 14));
+  r(ctx, bx + 0.4, by + bh - 0.7, bw - 0.8, 0.5, shade(q.body, -16));
+  if (q.spots) {
+    rund(ctx, bx + 1.4, by + 0.8, 1.7, 1.5, 0.7, q.spots);
+    rund(ctx, bx + 4.2, by + 0.3, 1.8, 1.6, 0.7, q.spots);
+    rund(ctx, bx + bw - 2.2, by + 1.4, 1.3, 1.1, 0.5, q.spots);
+  }
+  // Kopf (Pferd mit laengerer Schnauze), leicht geneigt
+  const hw = q.longHead ? 4 : 3;
+  const hx = bx + bw - 1, hy = by - 1;
+  if (q.mane) {   // Maehne am Nacken
+    rund(ctx, hx - 1.1, hy - 1.1, 1.2, 4.4, 0.5, q.mane);
+    r(ctx, hx - 0.1, hy - 1.0, 1.1, 0.8, q.mane);
+  }
+  if (q.ears) {
+    rund(ctx, hx + 0.1, hy - 0.95, 0.8, 1.2, 0.35, q.head);
+    rund(ctx, hx + 1.9, hy - 0.95, 0.8, 1.2, 0.35, q.head);
+  }
+  if (q.horns) {
+    rund(ctx, hx - 0.1, hy - 0.9, 0.7, 1.0, 0.3, q.horns);
+    rund(ctx, hx + 2.2, hy - 0.9, 0.7, 1.0, 0.3, q.horns);
+  }
+  rund(ctx, hx, hy, hw, 3, 0.9, q.head);
+  r(ctx, hx + 0.3, hy + 0.15, hw - 0.6, 0.6, shade(q.head, 12));
+  if (q.snout) rund(ctx, hx + hw - 1.1, hy + 0.9, 1.1, 1.9, 0.5, q.snout);
+  r(ctx, hx + 1.0, hy + 0.9, 0.55, 0.55, '#1a0e08');           // Auge
+  r(ctx, hx + 1.12, hy + 1.0, 0.2, 0.2, '#e8e0d0');            // Glanzpunkt
+  if (!q.snout) r(ctx, hx + hw - 0.5, hy + 1.6, 0.35, 0.3, '#1a0e08');   // Nase
+  ctx.restore();
+}
+
 // --- Figur -----------------------------------------------------------------
 
 // dir: 0 unten, 1 links, 2 rechts, 3 oben (wie der Bestand); frame 0..3 =
@@ -410,8 +479,13 @@ function hdAxt(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
 // nur fuer Zweihand-Traeger gezeichnet und nur zum Zeigen, die Spiel-
 // Verdrahtung kommt nach der Autor-Abnahme.
 export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: number, frame: number): void {
-  const f = FIGURES[name] as FigureSpec | undefined;
-  if (!f || 'quad' in (f as object) || 'chicken' in (f as object)) return;
+  const roh = FIGURES[name];
+  if (!roh || 'chicken' in (roh as object)) return;
+  if ('quad' in (roh as object)) {   // R212b: Vierbeiner auf demselben Weg
+    drawQuadrupedHd(ctx, (roh as { quad: QuadSpec }).quad, dir, frame);
+    return;
+  }
+  const f = roh as FigureSpec;
   const schlagPhase = frame >= 4 ? Math.min(frame - 4, 2) : -1;
   if (schlagPhase >= 0) frame = 0;   // Beine stehen im Schlag (kein Gehschritt)
   const step = frame % 4;
@@ -422,14 +496,17 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
   // KEIN eingebackener Bodenschatten mehr (Autor R207b: "falls das ein
   // Schatten ist, lasse das bitte weg") - die HD-Figur steht schattenfrei,
   // Licht/Schatten macht die Szene.
-  //
-  // R207c: die Figur wird IMMER in Normalgroesse gezeichnet und sitzt im
-  // Luft-Rahmen der Zelle. f.scale wird hier BEWUSST ignoriert - "groesser"
-  // ist Sache der SZENE (sprite.setScale, z. B. boss 1.5 / elite 1.25).
-  // Vorher wurde der Templer doppelt vergroessert (Zeichnung 1.5 UND Szene
-  // 1.5) und lief oben aus der Zelle heraus - genau der abgeschnittene Kopf,
-  // den der Autor im Spiel gesehen hat.
   ctx.translate(HD_LUFT_SEITE_U * U, HD_LUFT_OBEN_U * U);
+  // R212b: KLEINE Figuren (Kinder 0.65, Hirtenjunge 0.85) schrumpfen um den
+  // FUSSPUNKT - ohne das standen die Dorfkinder ploetzlich erwachsen gross da
+  // (der 32er-Zeichner hatte f.scale beachtet, der HD-Weg nicht).
+  // VERGROESSERN (> 1) bleibt bewusst Sache der Szene: Zeichnung UND Szenen-
+  // Skala zusammen schnitten dem Templer den Kopf ab (R207c).
+  const zSkala = Math.min(1, f.scale ?? 1);
+  if (zSkala !== 1) {
+    ctx.translate(8 * U * (1 - zSkala), 14 * U * (1 - zSkala));
+    ctx.scale(zSkala, zSkala);
+  }
 
   const flip = dir === 1;
   if (flip) { ctx.translate(HD_FIGUR_U * U, 0); ctx.scale(-1, 1); }

@@ -3193,3 +3193,20 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   24 Skelette -> Leben 28..36 (8 verschiedene Werte), 16 Tempi, aber alle
   6 Schwert-Traeger exakt Schaden 9.
 - Wuerfel nutzt this.rng (Karten-Seed) - gleiche Karte, gleiche Bewohner.
+
+## R213 - Tiere + Kinder im HD-Pass, Schatten fuers ganze Dorf
+- Autor-Frage "auch Kinder und die Tiere?" deckte zwei Luecken auf:
+  (a) KINDER (kind1/kind2, Skala 0,65) waeren im HD-Pfad ERWACHSEN gross
+  geworden - der HD-Zeichner ignorierte f.scale seit R207c. Jetzt: VERKLEINERN
+  (< 1) wird um den Fusspunkt beachtet (Kinder, Hirtenjunge), VERGROESSERN
+  bleibt Sache der Szene (die Templer-Doppelskalierung kommt nicht zurueck).
+  (b) TIERE waren noch 32er: drawQuadrupedHd zeichnet alle Vierbeiner
+  (Wolf, Ratte, Leichenhund, Schwein, Schaf, Kuh, Hund, Pferd) in HD aus
+  DENSELBEN QuadSpec-Daten - Rundformen, Hufe, fliessender Schweif, Nuestern.
+  Nur das Huhn bleibt 32er-Pixelvieh (Absicht, charmant).
+- Bodenschatten jetzt fuer ALLE: zeichneFigurSchatten() als gemeinsamer
+  Helfer; Dorfvolk und Vieh zeichnen ihre Ellipse in denselben Batch wie die
+  Gegner (Kinder kleiner ueber scale, Kuh/Pferd breiter ueber quad.size).
+  EHRLICH: seit R208 hatten NPCs GAR KEINEN Schatten - das fiel erst durch
+  die Autor-Frage auf.
+- "Nervige" Schwarm-Wesen (Aaskraehen, Fliegen) auf Autor-Order VERWORFEN.
