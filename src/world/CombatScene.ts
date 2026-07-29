@@ -44,7 +44,8 @@ import { rollGear, rollGem } from '../logic/loot';
 import { KILL_DROPS, LEECH_HEAL_PER_POINT, ELEM_PFEIL } from '../data/items';
 import { steinWirkung } from '../logic/steinEffekte';
 import { blutTint } from '../logic/spuren';
-import { SPUREN } from '../data/welt';
+import { SPUREN, FIGUR_SCHATTEN } from '../data/welt';
+import { istHdFigur } from '../gfx/monsterArtHd';
 import { NOTIZEN } from '../data/texte';
 import { GOLEM, golemFrame } from '../data/golem';
 import { wendeGolemSpriteAn } from '../gfx/golemArt';
@@ -104,6 +105,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected overlay!: Phaser.GameObjects.Graphics;
   // Additives Leuchten für stärkere Gegner (Runde 39, statt hartem Kreis)
   protected auraGfx!: Phaser.GameObjects.Graphics;
+  /** R207c: Bodenschatten aller Figuren (eine Ebene, unter den Figuren). */
+  protected figurSchattenGfx!: Phaser.GameObjects.Graphics;
   // Schiebe-Widerstand (Runde 39): < 1 bremst den Helden beim Kistenschieben
   protected schiebeBremse = 1;
   protected keysDown: Record<string, boolean> = {};
@@ -237,6 +240,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Elite-/Champion-Leuchten: eigene ADD-Schicht, damit der Schein den
     // Gegner aufhellt statt ihn zu verdecken (kein harter Kreis mehr).
     this.auraGfx = this.add.graphics().setDepth(2590).setBlendMode(Phaser.BlendModes.ADD);
+    // R207c (Autor: "schwebend sollten die nicht wirken"): seit die HD-Figuren
+    // ihren EINGEBACKENEN Bodenschatten verloren haben, braucht es einen
+    // echten Szenen-Schatten. Er liegt als EINE Grafik-Ebene knapp ueber dem
+    // Boden und unter allen Figuren - so wandert er nicht mit der Figur nach
+    // oben und kann spaeter dem Sonnenstand folgen. Ein einziger Draw-Batch
+    // fuer alle Gegner (guenstig, siehe Perf-Befund #107).
+    this.figurSchattenGfx = this.add.graphics().setDepth(FIGUR_SCHATTEN.tiefe);
     this.pickups = new PickupSystem(this, this.provider);
     this.panels = new UIPanels(this, this.provider, this.sfx, () => this.p);
     this.panels.onUseScroll = (skill) => this.useScroll(skill);
@@ -3965,6 +3975,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       else this.playerSprite.clearTint();
     }
 
+    // R207c: Bodenschatten-Ebene EINMAL je Bild leeren; die Schleife unten
+    // sammelt alle Ellipsen in denselben Batch.
+    const schattenG = this.figurSchattenGfx;
+    schattenG.clear();
+    schattenG.fillStyle(0x000000, FIGUR_SCHATTEN.alpha);
+
     for (const e of this.enemies) {
       if (!e.sprite) continue;
       // In der Krypta: ohne Sichtlinie kein Gegner sichtbar (Feedback-Runde 2)
@@ -3997,6 +4013,17 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       else if (e.sprite.alpha !== 1) e.sprite.setAlpha(1);
       if (!istGolem && !istSkelettwache && e.boss) e.sprite.setScale(1.5);
       else if (!istGolem && !istSkelettwache && e.elite) e.sprite.setScale(1.25);
+      // R207c: Bodenschatten NUR fuer HD-Figuren - die uebrigen (Wolf, Ratte,
+      // Golem, Skelettwache) tragen ihren Fleck weiterhin im Sprite und
+      // haetten sonst zwei. Der Schatten sitzt am FUSSPUNKT und wippt nicht
+      // mit (kein wob), damit die Figur wirklich auf dem Boden steht.
+      if (!istGolem && !istSkelettwache && istHdFigur(e.figur())) {
+        const sk = e.sprite.scaleX || 1;
+        schattenG.fillEllipse(
+          e.x, e.y + FIGUR_SCHATTEN.fussVersatzPx * sk,
+          FIGUR_SCHATTEN.breitePx * 2 * sk, FIGUR_SCHATTEN.hoehePx * 2 * sk,
+        );
+      }
       if (istGolem) {
         // Keine weisse Standard-Trefferlampe. Die Verletzungsstufen werden
         // dauerhaft dunkler/roher; unter 5% pulst die letzte Raserei rot.

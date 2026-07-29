@@ -3127,3 +3127,32 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Monster "schweben", legen wir einen weichen Szenen-Schatten unter den
   Fusspunkt (eine Ellipse je Gegner, billig). Der alte 32er-Weg (Dorfvolk,
   Vierbeiner) behaelt seinen gebackenen Schatten unveraendert.
+
+## R207c/R208 - Grosse Zelle, Zweihand-Griff, Helme, HD fuer ALLE
+- Templer war ingame am Kopf abgeschnitten: Zeichnungs-scale 1.5 UND Szenen-
+  Boss-Skala 1.5 wirkten DOPPELT (2.25x) und die Klinge lief aus der Zelle.
+  Loesung in zwei Teilen: (a) die HD-Zelle hat jetzt LUFT (26x26 Einheiten,
+  Frame 52 px, Figur darin unveraendert 32 px; Ursprung 0.5/0.6923 GERECHNET,
+  damit der Fusspunkt exakt liegen bleibt - Beweis: Anker->Unterkante alt
+  16 px, neu 16.0 px, beim 1.5x-Templer 24=24). (b) drawMonsterHd ignoriert
+  f.scale BEWUSST - Groesse macht die Szene (boss/elite setScale).
+- Schwert haengt am GRIFF (hdSchwert(x, gy, langF)): schwertLang in FIGURES
+  als Tuning-Wert, Templer 1.5 (Bidenhaender, halbe Klinge ueber dem Kopf),
+  Gefallener 1.25, Standard 1.0. ZWEIHAND-Haltung (zweihand: true): beide
+  Arme greifen schraeg zum Griff, zwei Faeuste auf der Wicklung, Klinge 0.2 rad
+  nach aussen geneigt - kein "Fahnenmast" neben der Figur mehr.
+- KEINE HUETE mehr (Autor: "sieht aus wie ein Cowboy"): f.hat zeichnet im
+  HD-Pfad eine anliegende Helm-Kalotte, Ritter mit Nasal und Kammansatz.
+- R208: istHdFigur() gilt jetzt fuer JEDE humanoide FIGURES-Figur - Heer,
+  Wache, Riesen (massig-Wulst portiert), alle Dorfbewohner samt Werkzeugen
+  (Hellebarde, Keule, Hammer, Sack, Angel, Eimer, Korb neu in HD). Vierbeiner/
+  Huhn bleiben 32er, Detail-NPCs behalten ihren eigenen Weg. Der Schild der
+  Schildtraeger bleibt das bewaehrte Szenen-Overlay.
+- Bodenschatten: Szenen-Ebene (FIGUR_SCHATTEN in welt.ts, EIN Graphics-Batch
+  unter allen Figuren, wippt nicht mit). Ingame-Beweis: 306 Zeichenbefehle.
+- Audit-Nachlese (Workflow lief ins Sitzungslimit, 4/23 Agenten fertig - Rest
+  von Hand geprueft): ECHT gebrochen waren nur die zwei figureFrame-Direkt-
+  verbraucher (Dialog-Portraet, Kommando-Infokarte) - beide teilen jetzt durch
+  figurFrameAnteil(). Alle applyFigure-Verbraucher sind durch den gerechneten
+  Ursprung unberuehrt; Probe-Szenen (SchlachtProbe/StrahlenProbe) zeigen die
+  Figur minimal kleiner im Kasten - kosmetisch, Dev-only, notiert.

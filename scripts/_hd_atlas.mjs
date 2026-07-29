@@ -16,7 +16,7 @@ export default async (page) => {
       const src = t.getSourceImage();
       const c = document.createElement('canvas'); c.width = 32; c.height = 32;
       const cx = c.getContext('2d');
-      cx.drawImage(src, fr.cutX, fr.cutY, 32, 32, 0, 0, 32, 32);
+      cx.drawImage(src, fr.cutX, fr.cutY, fr.width, fr.height, 0, 0, 32, 32);
       const d = cx.getImageData(0, 0, 32, 32).data;
       let voll = 0;
       for (let i = 3; i < d.length; i += 4) if (d[i] > 30) voll++;

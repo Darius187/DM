@@ -2,6 +2,7 @@
 // NPC-Portrait links neben dem Text (Masterprompt 5.2).
 
 import Phaser from 'phaser';
+import { figurFrameAnteil } from '../gfx/monsterArtHd';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import { getSettings, saveSettings } from '../logic/settings';
 
@@ -235,8 +236,11 @@ export class DialogUI {
         img.setScale(66 / Math.max(img.width, img.height));
         c.add(img);
       } else {
+        // R207c: HD-Frames haben Luft um die Figur - ohne die Anteils-Korrektur
+        // saesse im Portraet eine geschrumpfte Figur mit breitem Rand.
         const f = this.provider.figureFrame(this.portrait!, 0, 0);
-        c.add(this.scene.add.image(48, Math.min(56, h / 2), f.key, f.frame).setScale(2));
+        c.add(this.scene.add.image(48, Math.min(56, h / 2), f.key, f.frame)
+          .setScale(2 / figurFrameAnteil(this.portrait!)));
       }
     }
     c.add(nameText);

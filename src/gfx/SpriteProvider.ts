@@ -9,7 +9,7 @@ import { drawHeld, drawReiter, HELD_CELL, HELD_DIRS, HELD_FRAMES, HELD_FELD, HEL
 import { drawItemIcon, iconKey, ICON_SIZE } from './itemIcons';
 import { drawTileArt, drawObjectArt, drawBreakable } from './tileArt';
 import { DETAIL_NPCS } from './npcArt';
-import { HD_FIGUREN, HD_ZELLE, drawMonsterHd } from './monsterArtHd';
+import { istHdFigur, HD_ZELLE, HD_ORIGIN_X, HD_ORIGIN_Y, hdFrameGroesse, drawMonsterHd } from './monsterArtHd';
 import type { CryptTheme } from '../data/krypta';
 import type { HeldTier } from '../data/helden';
 import type { Item } from '../data/types';
@@ -172,6 +172,12 @@ export class SpriteProvider {
     const f = this.figureFrame(name, dir, step, waffe);
     if (sprite.texture.key !== f.key || sprite.frame.name !== (f.frame ?? '__BASE')) {
       sprite.setTexture(f.key, f.frame);
+      // R207c: HD-Frames sind groesser als die Figur darin. Der gerechnete
+      // Ursprung legt den FUSSPUNKT auf exakt dieselbe Weltposition wie bei
+      // den alten 32er-Frames - Tiefensortierung, Trefferzonen und
+      // Lebensbalken bleiben dadurch unveraendert. Nur beim Texturwechsel.
+      if (f.key === `fig_${name}` && istHdFigur(name)) sprite.setOrigin(HD_ORIGIN_X, HD_ORIGIN_Y);
+      else if (sprite.originY !== 0.5) sprite.setOrigin(0.5, 0.5);
     }
   }
 
@@ -190,10 +196,15 @@ export class SpriteProvider {
     // R207 HD-Pass: die neuen Monster werden intern mit 128x128 gezeichnet
     // (4x Aufloesung, Schwert ragt ueber den Kopf) und weich auf die 32er-
     // Zelle heruntergerechnet - Weltgroesse und Verbraucher bleiben unberuehrt.
-    if (HD_FIGUREN.includes(name)) {
+    if (istHdFigur(name)) {
+      // R207c: der Frame ist GROESSER als SPRITE (Luft fuer lange Klingen und
+      // Helme), die FIGUR darin bleibt aber exakt SPRITE gross. Der Ursprung
+      // (HD_ORIGIN_*) haelt den Fusspunkt auf derselben Weltposition -
+      // applyFigure setzt ihn beim Texturwechsel.
+      const F = hdFrameGroesse(SPRITE);
       const canvas = document.createElement('canvas');
-      canvas.width = SPRITE * 4;
-      canvas.height = SPRITE * 4;
+      canvas.width = F * 4;
+      canvas.height = F * 4;
       const ctx = canvas.getContext('2d')!;
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
@@ -205,14 +216,14 @@ export class SpriteProvider {
         for (let frame = 0; frame < 4; frame++) {
           gctx.clearRect(0, 0, HD_ZELLE, HD_ZELLE);
           drawMonsterHd(gctx, name, dir, frame);
-          ctx.drawImage(gross, 0, 0, HD_ZELLE, HD_ZELLE, frame * SPRITE, dir * SPRITE, SPRITE, SPRITE);
+          ctx.drawImage(gross, 0, 0, HD_ZELLE, HD_ZELLE, frame * F, dir * F, F, F);
         }
       }
       const t = this.tex.addCanvas(key, canvas)!;
       t.setFilter(Phaser.Textures.FilterMode.LINEAR);
       for (let dir = 0; dir < 4; dir++) {
         for (let frame = 0; frame < 4; frame++) {
-          t.add(`d${dir}f${frame}`, 0, frame * SPRITE, dir * SPRITE, SPRITE, SPRITE);
+          t.add(`d${dir}f${frame}`, 0, frame * F, dir * F, F, F);
         }
       }
       return;

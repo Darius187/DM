@@ -27,6 +27,14 @@ export interface FigureSpec {
   seuche?: boolean;     // Pest-Look: Beulen + Lumpen (Runde 40)
   ritter?: boolean;     // Templer-Politur: Schulterpanzer, Tabard-Kreuz, Helmvisier (Runde 41)
   massig?: boolean;     // Hünen-/Troll-Look: breite Schultern, dicke Arme, Hauer (Runde 54)
+  // R207c (Autor: "sollten die das Schwert nicht mit beiden Händen halten,
+  // wenn die kein Schild halten?"): beide Arme greifen zum Griff, zwei Fäuste
+  // liegen übereinander auf der Wicklung. Nur im HD-Pfad wirksam.
+  zweihand?: boolean;
+  // Schwertlänge als Vielfaches der FIGURHÖHE. 1.0 = Klinge ragt über den
+  // Kopf, 1.5 = Bidenhänder (halbe Klinge über dem Kopf, Autor-Wunsch für den
+  // Templer). Tuning-Wert - hier ändern reicht.
+  schwertLang?: number;
 }
 
 export type Dir = 0 | 1 | 2 | 3; // unten, links, rechts, oben
@@ -373,13 +381,15 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   // dunkelblaugraues Gewand. KEINE Waffe in der Hand (Schlag per Schwung-FX).
   spieler:   { tunic: '#34343f', skin: '#c8b090', hair: '#6a6a6a', legs: '#2a2a32', robe: true, weapon: null, scale: 1.18 },
   pest:      { tunic: '#5a7a3a', skin: '#9aa87a', hair: '#46602e', legs: '#3a4a26', weapon: null, seuche: true },
-  skelett:   { tunic: '#cfc4a8', skin: '#e0d8c0', hair: '#cfc4a8', legs: '#b8ae90', weapon: 'schwert', skeletal: true },
+  skelett:   { tunic: '#cfc4a8', skin: '#e0d8c0', hair: '#cfc4a8', legs: '#b8ae90', weapon: 'schwert', skeletal: true, zweihand: true },
   schuetze:  { tunic: '#b8a888', skin: '#d0c8b0', hair: '#b8a888', legs: '#a09070', weapon: 'bogen', skeletal: true },
   // Grabschatten (Runde 41): echter schwarzer Schatten statt buntem Männchen -
   // durchgehend nahezu schwarze Silhouette, nur die Augen glimmen. Wird in der
   // Szene zusätzlich halbtransparent gerendert und gleitet (kein Hüpfen).
   schatten:  { tunic: '#0c0a14', skin: '#0a0812', hair: '#08060f', legs: '#070510', weapon: null, glow: '#1a1026', augen: '#e84860' },
-  templer:   { tunic: '#6a6258', skin: '#8a8278', hair: '#3a3430', legs: '#4a443c', weapon: 'schwert', hat: '#56504a', scale: 1.5, ritter: true },
+  // R207c: KEIN scale mehr - die Szene vergroessert Bosse ohnehin (setScale 1.5).
+  // Beides zusammen ergab 2,25x und schnitt Kopf + Klinge an der Zellkante ab.
+  templer:   { tunic: '#6a6258', skin: '#8a8278', hair: '#3a3430', legs: '#4a443c', weapon: 'schwert', hat: '#56504a', ritter: true, zweihand: true, schwertLang: 1.5 },
   // Soldaten des Fürsten (Runde 51, Schlacht-Prototyp): Blau-Stahl, gepanzert
   soldat:    { tunic: '#3a4a6a', skin: '#c8b090', hair: '#2a2018', legs: '#2a3242', hat: '#6a6d74', weapon: 'schwert', ritter: true },
   bogensoldat: { tunic: '#3a4a6a', skin: '#c8b090', hair: '#2a2018', legs: '#2a3242', hat: '#5a6068', weapon: 'bogen' },
@@ -397,7 +407,7 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   schinder:  { tunic: '#4a3428', skin: '#b0a894', hair: '#2a2018', legs: '#332619', robe: true, weapon: 'haken', augen: '#c8d8b0' },
   // GEFALLENER HELD (Dok 06 C2): einst ein Held, jetzt Scherge des Schatten-
   // meisters. Rostige Prunkruestung, zerschlissener Umhang, glimmende Augen.
-  gefallener: { tunic: '#5a4438', skin: '#9a9488', hair: '#3a3028', legs: '#41332a', hat: '#6a5a48', weapon: 'schwert', ritter: true, skeletal: true, augen: '#e8b048' },
+  gefallener: { tunic: '#5a4438', skin: '#9a9488', hair: '#3a3028', legs: '#41332a', hat: '#6a5a48', weapon: 'schwert', ritter: true, skeletal: true, augen: '#e8b048', zweihand: true, schwertLang: 1.25 },
   // MOORLEICHE: im Moor konserviert, lederbraune Haut, Torf und Binsen am
   // Leib - steigt an Ufern und im Moor-Nebel aus dem Boden. Zaeh, langsam.
   moorleiche: { tunic: '#3e3a26', skin: '#5c4a30', hair: '#2e2a1a', legs: '#33301e', weapon: null, seuche: true, augen: '#a8c860' },

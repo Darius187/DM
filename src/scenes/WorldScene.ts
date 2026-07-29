@@ -133,6 +133,7 @@ import { alsCanvas, stelleFrei, verarbeiteUpload, verkleinereCanvas } from '../g
 import { zoomFaktor } from '../logic/zoom';
 import type { Item, EnemyTypeId } from '../data/types';
 import { OBERWELT_KANTEN, wegKreuzungPx } from '../data/oberweltKanten';
+import { figurFrameAnteil } from '../gfx/monsterArtHd';
 import type { Pickup } from '../world/Pickups';
 import { itemTooltipLines } from '../ui/panels';
 import { ANNA_GRAB } from '../data/dialoge';
@@ -4509,8 +4510,11 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       const einheit = ref.armeeId !== null ? this.armee.einheiten.find((e) => e.id === ref.armeeId) : null;
       // Portraet: das echte Feld-Sprite, in die Karte eingepasst
       if (ref.sprite) {
+        // R207c: bei HD-Frames ist ein Teil des Frames Luft (Klinge/Helm) -
+        // die Figur wuerde in der Karte sonst um diesen Anteil schrumpfen.
+        const anteil = figurFrameAnteil(ref.figur());
         const img = this.add.image(F(8), y, ref.sprite.texture.key, ref.sprite.frame.name).setOrigin(0);
-        const s = Math.min(F(40) / img.width, F(40) / img.height);
+        const s = Math.min(F(40) / img.width, F(40) / img.height) / anteil;
         img.setScale(s); c.add(img);
       } else {
         c.add(this.add.rectangle(F(8), y, F(40), F(40), 0x2a2216).setOrigin(0).setStrokeStyle(1, 0x5a4a2e));

@@ -302,6 +302,23 @@ export const WETTER = {
   nassDunkel: 0.12,
 } as const;
 
+// R207c (Autor: "schwebend sollten die nicht wirken"): Bodenschatten der
+// HD-Figuren. Er ist NICHT mehr in den Sprite gebacken, sondern wird von der
+// Szene als eigene Ebene gezeichnet - dadurch bleibt er am Boden liegen (wippt
+// nicht mit), wird von der Zellgrenze nicht beschnitten und kann später dem
+// Sonnenstand folgen. Werte hier ändern = Schatten tunen.
+export const FIGUR_SCHATTEN = {
+  /** Zeichenebene: über dem Boden, unter allen Figuren. */
+  tiefe: 2,
+  /** Abstand des Fußpunkts unter dem Sprite-Anker (px, bei Skala 1). */
+  fussVersatzPx: 12,
+  /** Halbachsen der Ellipse bei Skala 1 (px) - wie der alte gebackene Fleck. */
+  breitePx: 8,
+  hoehePx: 3,
+  /** Deckkraft. Wird bei Nacht/Bewölkung von der Szene gedämpft. */
+  alpha: 0.34,
+} as const;
+
 // Ufer-Schilf-Dichte (R95, Autorwunsch "das neue Schilf ist sehr dezent, darf
 // schon mehr rein - mach mir einen Regler"): 1 = bisheriger Stand, höhere Werte
 // dichter (mehr Kacheln + mehr Halme je Kachel). Der F10-Regler (Tab ANFANG)
