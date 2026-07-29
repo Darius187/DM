@@ -27,6 +27,10 @@ const PX_PRO_U = 8;                  // 4x-Aufloesung wie bisher
 export const HD_ZELLE = HD_ZELLE_U * PX_PRO_U;                // 208 px intern
 const U = PX_PRO_U;
 
+// R209: Frames je Richtung im HD-Atlas - 0-3 Gehen, 4-6 Schlag-/Wirk-Phasen
+// (dieselbe Aufteilung wie beim Helden, HELD_FRAMES/SCHLAG_FRAME).
+export const HD_FRAMES = 7;
+
 // Fuss der Figur im Alt-Raster (dort steht die Ellipse des Bodenschattens).
 const FUSS_U = 14;
 
@@ -223,24 +227,36 @@ function hdSchild(ctx: CanvasRenderingContext2D, bob: number): void {
 }
 
 // Langbogen (Schuetze): figurhoher Bogen mit Sehne und aufgelegtem Pfeil.
-function hdBogen(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
+// R209 Schuss-Phasen: 0 = GESPANNT (Sehne im Knick zur Zughand, Pfeil zurueck-
+// gezogen), 1 = GELOEST (Sehne schnellt gerade, Pfeil ist unterwegs),
+// 2 = NACHLEGEN (neuer Pfeil wird aufgelegt, sitzt noch nicht vorn).
+function hdBogen(ctx: CanvasRenderingContext2D, x: number, bob: number, schlagPhase = -1): void {
   const b = bob;
   ctx.strokeStyle = '#7a5c34'; ctx.lineWidth = 0.45 * U;
   ctx.beginPath();
   ctx.arc((x - 2.2) * U, (6.5 + b) * U, 4.6 * U, -1.05, 1.05); // Bogenrucken
   ctx.stroke();
+  const s1x = x - 2.2 + 4.6 * Math.cos(-1.05), s1y = 6.5 + b + 4.6 * Math.sin(-1.05);
+  const s2x = x - 2.2 + 4.6 * Math.cos(1.05), s2y = 6.5 + b + 4.6 * Math.sin(1.05);
   ctx.strokeStyle = '#d8d0c0'; ctx.lineWidth = 0.14 * U;       // Sehne
   ctx.beginPath();
-  ctx.moveTo((x - 2.2 + 4.6 * Math.cos(-1.05)) * U, (6.5 + b + 4.6 * Math.sin(-1.05)) * U);
-  ctx.lineTo((x - 2.2 + 4.6 * Math.cos(1.05)) * U, (6.5 + b + 4.6 * Math.sin(1.05)) * U);
+  ctx.moveTo(s1x * U, s1y * U);
+  if (schlagPhase === 0) ctx.lineTo((x - 2.0) * U, (6.5 + b) * U);   // gespannt: Knick
+  ctx.lineTo(s2x * U, s2y * U);
   ctx.stroke();
-  r(ctx, x - 1.2, 6.35 + b, 3.4, 0.3, '#8a6a3e');              // Pfeilschaft
-  ctx.fillStyle = '#b8bcc4'; ctx.beginPath();                   // Pfeilspitze
-  ctx.moveTo((x + 2.7) * U, (6.5 + b) * U);
-  ctx.lineTo((x + 2.0) * U, (6.15 + b) * U);
-  ctx.lineTo((x + 2.0) * U, (6.85 + b) * U);
-  ctx.closePath(); ctx.fill();
-  r(ctx, x - 1.5, 6.2 + b, 0.5, 0.6, '#c8c0a8');               // Befiederung
+  if (schlagPhase !== 1) {                                      // Phase 1: Pfeil fliegt
+    const zug = schlagPhase === 0 ? -1.5 : schlagPhase === 2 ? -0.8 : 0;
+    r(ctx, x - 1.2 + zug, 6.35 + b, 3.4, 0.3, '#8a6a3e');      // Pfeilschaft
+    ctx.fillStyle = '#b8bcc4'; ctx.beginPath();                 // Pfeilspitze
+    ctx.moveTo((x + 2.7 + zug) * U, (6.5 + b) * U);
+    ctx.lineTo((x + 2.0 + zug) * U, (6.15 + b) * U);
+    ctx.lineTo((x + 2.0 + zug) * U, (6.85 + b) * U);
+    ctx.closePath(); ctx.fill();
+    r(ctx, x - 1.5 + zug, 6.2 + b, 0.5, 0.6, '#c8c0a8');       // Befiederung
+    if (schlagPhase === 0) {                                    // Zughand an der Sehne
+      rund(ctx, x - 2.6, 6.05 + b, 1.4, 0.95, 0.35, '#c8b090');
+    }
+  }
 }
 
 function hdHaken(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
@@ -266,9 +282,10 @@ function hdWucht(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
   r(ctx, x - 0.2, 4.0 + b, 1.4, 0.45, '#4a443c');              // Zwinge unter dem Kopf
 }
 
-// Zauberstab: Holzschaft, Zierring, Kristall in Krallenfassung - er LEUCHTET
-// (der spaetere Zauber-Schwung setzt hier an, R210).
-function hdStab(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
+// Zauberstab: Holzschaft, Zierring, Kristall in Krallenfassung - er LEUCHTET.
+// R209 Wirk-Phasen: 0 = SAMMELN (Kristall glimmt heller), 1 = ENTLADUNG
+// (grosser Schein + vier Strahlen), 2 = VERKLINGEN (Schein ebbt ab).
+function hdStab(ctx: CanvasRenderingContext2D, x: number, bob: number, schlagPhase = -1): void {
   const b = bob;
   r(ctx, x + 0.2, 1.9 + b, 0.6, 9.6, '#5a3c22');               // Schaft
   r(ctx, x + 0.32, 1.9 + b, 0.15, 9.6, '#7a5636');             // Lichtkante
@@ -282,8 +299,18 @@ function hdStab(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
   ctx.lineTo((x - 0.25) * U, (1.3 + b) * U);
   ctx.closePath(); ctx.fill();
   r(ctx, x + 0.3, 1.0 + b, 0.45, 0.5, '#e8c8ff');              // Glanzpunkt
-  ctx.fillStyle = '#a85ce033';                                  // Schein
-  ctx.beginPath(); ctx.arc((x + 0.5) * U, (1.3 + b) * U, 1.8 * U, 0, 7); ctx.fill();
+  const schein = schlagPhase === 0 ? 2.6 : schlagPhase === 1 ? 3.6 : schlagPhase === 2 ? 2.2 : 1.8;
+  ctx.fillStyle = schlagPhase === 1 ? '#a85ce055' : '#a85ce033'; // Schein
+  ctx.beginPath(); ctx.arc((x + 0.5) * U, (1.3 + b) * U, schein * U, 0, 7); ctx.fill();
+  if (schlagPhase === 1) {                                      // Entladung: 4 Strahlen
+    ctx.strokeStyle = '#d8a8ff'; ctx.lineWidth = 0.22 * U;
+    for (const w of [0.5, 2.1, 3.7, 5.3]) {
+      ctx.beginPath();
+      ctx.moveTo((x + 0.5 + Math.cos(w) * 1.6) * U, (1.3 + b + Math.sin(w) * 1.6) * U);
+      ctx.lineTo((x + 0.5 + Math.cos(w) * 3.2) * U, (1.3 + b + Math.sin(w) * 3.2) * U);
+      ctx.stroke();
+    }
+  }
 }
 
 // Hellebarde ("stange", Wache): langer Schaft, Stossspitze, seitliches Blatt.
@@ -405,15 +432,73 @@ function hdAxt(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
   r(ctx, x - 1.45, 4.35 + b, 1.1, 0.2, '#ccd2da');             // Schneide
 }
 
+// --- R209 Schlagphasen fuer EINHAND-Traeger (Autor-Freigabe: "mach alle") ---
+// Die Waffe dreht in drei Phasen um die FAUST (Ausholen/Hieb/Ausklang), Faust
+// und Waffe verschieben sich leicht mit, der Schlagarm folgt der Faust.
+// Je Gattung ein eigener Verlauf - Hieb, Stoss, Laeuten, Wirken.
+
+// y-Mitte der Waffenfaust im Alt-Raster (deckungsgleich mit den rund()-Faeusten
+// der Ruhepose unten in drawMonsterHd).
+const FAUST_Y: Record<string, number> = {
+  schwert: 8.5, haken: 8.9, axt: 8.7, wucht: 8.9, stab: 8.9, stange: 8.7,
+  keule: 9.1, hammer: 9.1, schaufel: 8.1, geissel: 7.1, glocke: 5.85,
+};
+
+// [Ausholen, Hieb, Ausklang] als Drehwinkel (rad) um die Faust.
+const SCHWUNG: Record<string, readonly [number, number, number]> = {
+  schwert: [-0.9, 1.25, 0.55], axt: [-0.9, 1.25, 0.55], wucht: [-0.95, 1.2, 0.5],
+  keule: [-0.9, 1.25, 0.55], hammer: [-0.95, 1.2, 0.5], haken: [-0.8, 1.1, 0.5],
+  schaufel: [-0.8, 1.15, 0.5], geissel: [-1.05, 1.0, 0.45],
+  stange: [-0.35, 0.65, 0.3],       // Stoss: kleiner Winkel, dafuer Vorschub
+  stab: [-0.4, 0.3, 0.1],           // Wirken: Stab neigt sich, Kristall entlaedt
+  glocke: [-0.6, 0.6, -0.3],        // Laeuten: Pendel
+};
+
+// Faust-Versatz je Phase (die Hand schwingt mit, nicht nur das Geraet).
+const SCHWUNG_DELTA: ReadonlyArray<{ dx: number; dy: number }> = [
+  { dx: -0.5, dy: -0.7 }, { dx: 0.7, dy: 0.5 }, { dx: 0.25, dy: 0.2 },
+];
+
+// Stoss-Waffen (stange) schieben in der Hieb-Phase deutlich VOR statt zu drehen.
+const STOSS_DELTA: ReadonlyArray<{ dx: number; dy: number }> = [
+  { dx: -0.7, dy: 0.2 }, { dx: 1.7, dy: -0.2 }, { dx: 0.6, dy: 0 },
+];
+
+// Schlagarm: von der Schulter zur (mitgeschwungenen) Faust. Die Breite liegt
+// SENKRECHT zur Armrichtung - mit horizontalen Kanten (wie bei den vertikalen
+// Zweihand-Armen) degeneriert ein waagerechter Stoss zu einem Strich.
+function zeichneSchlagArm(ctx: CanvasRenderingContext2D, f: FigureSpec, sx: number, sy: number, hx: number, hy: number, br: number): void {
+  const dx = hx - sx, dy = hy - sy;
+  const len = Math.hypot(dx, dy) || 1;
+  const ox = (-dy / len) * br * 0.5, oy = (dx / len) * br * 0.5;
+  const armCol = f.skeletal ? '#d8cfb0' : f.tunic;
+  ctx.fillStyle = shade(armCol, -8);
+  ctx.beginPath();
+  ctx.moveTo((sx + ox) * U, (sy + oy) * U);
+  ctx.lineTo((sx - ox) * U, (sy - oy) * U);
+  ctx.lineTo((hx - ox * 0.7) * U, (hy - oy * 0.7) * U);
+  ctx.lineTo((hx + ox * 0.7) * U, (hy + oy * 0.7) * U);
+  ctx.closePath(); ctx.fill();
+}
+
 // --- Vierbeiner (R212b, Autor: "und die Tiere?") ----------------------------
 // Gleiche HD-Technik wie die Menschen: Rundformen, drei Tonstufen, feine
 // Details (Nuestern, Hufe, fliessender Schweif) - aus DENSELBEN QuadSpec-Daten
 // wie der 32er-Bestand, deshalb sehen Kuh, Pferd, Wolf sofort nach sich aus.
 export function drawQuadrupedHd(ctx: CanvasRenderingContext2D, q: QuadSpec, dir: number, frame: number): void {
+  // R209: Frames 4-6 = SPRUNG-Phasen (Ducken/Satz/Landen) - Wolf und
+  // Leichenhund reissen sichtbar zu, statt nur zu laufen.
+  const schlagPhase = frame >= 4 ? Math.min(frame - 4, 2) : -1;
+  if (schlagPhase >= 0) frame = 0;
   const flip = dir === 1;
   ctx.save();
   ctx.translate(HD_LUFT_SEITE_U * U, HD_LUFT_OBEN_U * U);
   if (flip) { ctx.translate(HD_FIGUR_U * U, 0); ctx.scale(-1, 1); }
+  if (schlagPhase >= 0) {
+    const s = [{ dx: -1.1, dy: 0.7, rot: 0.1 }, { dx: 2.2, dy: -1.0, rot: -0.22 }, { dx: 0.7, dy: 0, rot: -0.07 }][schlagPhase];
+    ctx.translate(s.dx * U, s.dy * U);
+    ctx.translate(8 * U, 12 * U); ctx.rotate(s.rot); ctx.translate(-8 * U, -12 * U);
+  }
   const step = frame % 4;
   const legA = step === 1 ? 0.8 : 0;
   const legB = step === 3 ? 0.8 : 0;
@@ -572,11 +657,16 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
   // Zweihand nur OHNE Schild (Autor-Logik: "mit beiden Haenden, wenn die kein
   // Schild halten") - Schildtraeger fuehren das Schwert einhaendig.
   const zweihand = f.zweihand === true && f.weapon === 'schwert' && !f.schild;
+  // R209: Fuehrt diese Figur gerade einen EINHAND-Schwung (Waffe mit Profil)
+  // oder einen FAUSTSCHLAG (waffenlos bzw. reines Tragegeraet) aus? Dann
+  // ersetzt der Schlagarm den haengenden rechten Arm.
+  const schwungProfil = schlagPhase >= 0 && !zweihand && f.weapon ? SCHWUNG[f.weapon] : undefined;
+  const faustkampf = schlagPhase >= 0 && !zweihand && !schwungProfil && f.weapon !== 'bogen';
   const armCol = f.skeletal ? '#d8cfb0' : f.tunic;
   if (!zweihand) {
     const aw = f.massig ? 1.6 : 1, al = f.massig ? 3.8 : 3, ax = f.massig ? 3.3 : 4.1;
     rund(ctx, ax, 7 + bob + legR, aw, al, 0.4, shade(armCol, -8));
-    rund(ctx, f.massig ? 11.1 : 10.9, 7 + bob + legL, aw, al, 0.4, shade(armCol, -8));
+    if (!schwungProfil && !faustkampf) rund(ctx, f.massig ? 11.1 : 10.9, 7 + bob + legL, aw, al, 0.4, shade(armCol, -8));
   }
 
   // Kopf: Rundbox + Wangenschatten; Skelett bekommt Schaedel-Zuege
@@ -656,6 +746,20 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
     hdZweihandGriff(ctx, f, bob, legL, legR, langF, schlagPhase);
   } else {
     const wx = 11.4, wy = bob + legL;
+    // R209 Einhand-Schwung: Faust-Mittelpunkt als Drehpunkt, Waffe UND Faust
+    // schwingen mit (Versatz je Phase), der Arm folgt nach dem Zeichnen.
+    const faustX = wx + 0.5;
+    const faustY = (f.weapon ? (FAUST_Y[f.weapon] ?? 8.9) : 8.9) + wy;
+    let schwungDx = 0, schwungDy = 0;
+    if (schwungProfil && f.weapon) {
+      const delta = (f.weapon === 'stange' ? STOSS_DELTA : SCHWUNG_DELTA)[schlagPhase];
+      schwungDx = delta.dx; schwungDy = delta.dy;
+      ctx.save();
+      ctx.translate(schwungDx * U, schwungDy * U);
+      ctx.translate(faustX * U, faustY * U);
+      ctx.rotate(schwungProfil[schlagPhase]);
+      ctx.translate(-faustX * U, -faustY * U);
+    }
     if (f.weapon === 'schwert') {
       hdSchwert(ctx, wx, 8.6 + wy, langF);
       rund(ctx, wx - 0.35, 8.0 + wy, 1.7, 1.0, 0.35, f.skeletal ? '#e2dcc4' : shade(f.skin, -6));
@@ -669,10 +773,10 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
       hdWucht(ctx, wx, wy);
       rund(ctx, wx - 0.35, 8.4 + wy, 1.7, 1.0, 0.35, f.skeletal ? '#e2dcc4' : shade(f.skin, -6));
     } else if (f.weapon === 'stab') {
-      hdStab(ctx, wx, wy);
+      hdStab(ctx, wx, wy, schlagPhase);
       rund(ctx, wx - 0.3, 8.4 + wy, 1.6, 1.0, 0.35, f.skeletal ? '#e2dcc4' : shade(f.skin, -6));
     } else if (f.weapon === 'bogen') {
-      hdBogen(ctx, wx, wy);
+      hdBogen(ctx, wx, wy, schlagPhase);
       rund(ctx, wx - 0.9, 6.1 + wy, 1.5, 0.9, 0.35, f.skeletal ? '#e2dcc4' : shade(f.skin, -6));
     } else if (f.weapon === 'stange') {
       hdStange(ctx, wx, wy);
@@ -700,6 +804,20 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
       hdEimer(ctx, wx - 0.5, wy);
     } else if (f.weapon === 'korb') {
       hdKorb(ctx, wx - 0.5, wy);
+    }
+    if (schwungProfil) {
+      ctx.restore();
+      // Schlagarm folgt der mitgeschwungenen Faust (Drehpunkt = Faustmitte,
+      // darum wandert sie nur um den Phasen-Versatz).
+      zeichneSchlagArm(ctx, f, 10.9, 7.2 + bob, faustX + schwungDx, faustY + schwungDy, 0.95);
+    } else if (faustkampf) {
+      // FAUSTSCHLAG (waffenlos / Tragegeraet): der rechte Arm stoesst vor,
+      // eine grosse Faust am Ende - Ausholen, Treffer, Zurueckziehen.
+      const ziel = [
+        { x: 11.6, y: 7.9 + bob }, { x: 14.1, y: 7.1 + bob }, { x: 12.8, y: 7.6 + bob },
+      ][schlagPhase];
+      zeichneSchlagArm(ctx, f, 10.9, 7.2 + bob, ziel.x, ziel.y, f.massig ? 1.5 : 0.95);
+      rund(ctx, ziel.x - 0.85, ziel.y - 0.55, 1.7, 1.1, 0.4, f.skeletal ? '#e2dcc4' : shade(f.skin, -6));
     }
   }
 

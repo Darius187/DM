@@ -282,6 +282,15 @@ export const INDIVIDUALITAET = {
   schadenPct: 0.12,   // +-12 % Koerper-Schaden (nur ohne Waffe)
   tempoPct: 0.06,     // +-6 % Schrittempo (leichtes Auseinanderziehen im Trupp)
 } as const;
+// R209 (Autor-Freigabe "mach alle"): Schlag-/Wirk-Animation aller Figuren.
+// Das Ausholen (Frame 4) laeuft waehrend des windup; nachlaufS traegt Hieb +
+// Ausklang (Frames 5/6). schussDauerS = Bogen/Stab nach dem Schuss (Loesen +
+// Nachladen), npcDauerS = Hieb der Dorf-Kaempfer (Schmied & Co.).
+export const SCHLAG_ANIM = {
+  nachlaufS: 0.3,
+  schussDauerS: 0.5,
+  npcDauerS: 0.42,
+} as const;
 export const GEFALLENE_WAFFEN: ReadonlyArray<GefalleneWaffe> = [
   { id: 'schwert', label: 'mit Schwert', figur: 'schwert', dmgMult: 1.0, reichMult: 1.15, tempoMult: 1.0, weight: 3 },
   { id: 'schwertschild', label: 'mit Schwert & Schild', figur: 'schwert', schild: true, dmgMult: 0.9, reichMult: 1.1, tempoMult: 0.95, weight: 2 },

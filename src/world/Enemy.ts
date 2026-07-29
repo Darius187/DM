@@ -2,7 +2,7 @@
 // erweitert um Telegraph-Werte aus dem Masterprompt und Haltungsbruch.
 
 import Phaser from 'phaser';
-import { ENEMIES, ELITE, ENEMY_AI, AGGRO, AGGRO_STD, BOSS, kampfTiefe } from '../data/enemies';
+import { ENEMIES, ELITE, ENEMY_AI, AGGRO, AGGRO_STD, BOSS, SCHLAG_ANIM, kampfTiefe } from '../data/enemies';
 import { sammelSchritt, sammelnZuruecksetzen } from '../logic/sammeln';
 import type { EnemyTypeId, EliteAffix } from '../data/types';
 import { BOSS_TEXTE } from '../data/texte';
@@ -148,6 +148,9 @@ export class Enemy {
   visualHitT = 0;
   visualAttackT = 0;
   visualAttackDauer = 0;
+  // R209: Nachlauf-Anteil des laufenden Schlags (Hieb+Ausklang nach dem
+  // windup) - braucht die Phasen-Rechnung in schlagAnimPhase().
+  schlagNachlauf = 0;
   visualDir8 = 0;
   // Eigene Menschengolem-Phasen. Der schwere Koerper ignoriert Rueckstoss und
   // blutet bei 30/15/5 Prozent zunehmend stark aus.
@@ -464,6 +467,7 @@ export class Enemy {
         // sonst prallten die Pfeile an der eigenen Mauer ab ("kommen nicht raus").
         host.spawnEnemyProjectile(this.x, this.y - 6, Math.cos(a) * ENEMY_AI.rangedProjSpeed, Math.sin(a) * ENEMY_AI.rangedProjSpeed, this.dmg, this.magie ? '#b06ae8' : '#cfc4a8', !this.magie, this.team === 'spieler' ? 'spieler' : 'feind', true);
         host.playSound(this.magie ? 'fireball1' : 'pfeil_schuss');
+        this.starteSchussAnim();
       }
       return;
     }
@@ -631,6 +635,7 @@ export class Enemy {
         // Zauberstab-Gefallene schleudern ein violettes Arkangeschoss statt Pfeil
         host.spawnEnemyProjectile(this.x, this.y, Math.cos(a) * ENEMY_AI.rangedProjSpeed, Math.sin(a) * ENEMY_AI.rangedProjSpeed, this.dmg, this.magie ? '#b06ae8' : '#cfc4a8', !this.magie);
         host.playSound(this.magie ? 'fireball1' : 'pfeil_schuss');
+        this.starteSchussAnim();
       }
       if (d < ENEMY_AI.rangedKeepDist) {
         // R196: Rueckzugstempo aus den Daten (war eine nackte 0.6 - damit war
@@ -863,6 +868,26 @@ export class Enemy {
     this.startPattern(host, chosen.id, chosen.windup);
   }
 
+  /**
+   * R209: aktuelle Schlag-/Wirk-Phase fuer die Sprite-Frames 4-6.
+   * -1 = kein Schlag; 0 = Ausholen (waehrend windup), 1 = Hieb/Loesen,
+   * 2 = Ausklang/Nachladen. Golem + Skelettwache haben eigene Zeichner
+   * (schlagNachlauf bleibt dort 0 -> immer -1).
+   */
+  schlagAnimPhase(): number {
+    if (this.visualAttackT <= 0 || this.schlagNachlauf <= 0) return -1;
+    if (this.windup > 0) return 0;
+    return this.visualAttackT > this.schlagNachlauf / 2 ? 1 : 2;
+  }
+
+  // R209: Schuss-Animation der Fernkaempfer (Bogen loest + legt nach, Stab
+  // entlaedt den Kristall) - startet im Moment des Abschusses.
+  private starteSchussAnim(): void {
+    this.schlagNachlauf = SCHLAG_ANIM.schussDauerS;
+    this.visualAttackDauer = SCHLAG_ANIM.schussDauerS;
+    this.visualAttackT = this.visualAttackDauer;
+  }
+
   private startPattern(host: EnemyHost, id: AttackPattern['id'], windup?: number): void {
     // R139 (1.7): Kampfverbot - kein Ausholen, egal aus welchem Zweig.
     if (this.kaempftNicht) return;
@@ -875,6 +900,13 @@ export class Enemy {
     // Schlagtempo-Regler (F10, Runde 27): höher = kürzeres Ausholen,
     // kürzere Pausen zwischen den Hieben
     this.windup = (windup ?? def?.windup ?? ENEMY_AI.meleeWindup) / (TUNING.gegnerSchlagtempo * this.schlagtempoF);
+    // R209: JEDE Figur zeigt ihren Schlag (Ausholen waehrend windup, dann
+    // Hieb + Ausklang). Golem/Skelettwache behalten ihre eigenen Zeiten unten.
+    if (this.type !== 'golem' && this.type !== 'skelettwache') {
+      this.schlagNachlauf = SCHLAG_ANIM.nachlaufS;
+      this.visualAttackDauer = this.windup + this.schlagNachlauf;
+      this.visualAttackT = this.visualAttackDauer;
+    }
     if (this.type === 'golem') {
       this.visualAttackDauer = this.windup + GOLEM.schlagNachlaufS;
       this.visualAttackT = this.visualAttackDauer;

@@ -3244,3 +3244,28 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   eine Einzelkachel beide Seiten sah (Seed 31337). Jetzt sucht eine BFS
   durch Prop-Kacheln einen Pfad von der erreichten zur unerreichten Seite
   und macht ihn wieder zu Boden. Erreichbarkeits-Test ueber 8 Seeds gruen.
+
+## R209 - Schlag-Animationen fuer ALLE Figuren (Autor: "mach alle")
+- HD-Atlas von 4 auf 7 Frames je Richtung erweitert (0-3 Gehen, 4-6 Schlag) -
+  dieselbe Aufteilung wie beim Helden (SCHLAG_FRAME). HD_FRAMES in
+  monsterArtHd.ts, SpriteProvider zeichnet und schneidet 7 Spalten.
+- Je Gattung eigener Verlauf: Einhand-Waffen DREHEN um die Faust
+  (SCHWUNG-Profile, Faust schwingt mit, Schlagarm folgt), Stange stoesst vor
+  (STOSS_DELTA), Bogen loest die Sehne und legt nach (Phase 0 = gespannt mit
+  Zughand), Stab entlaedt den Kristall (Schein + 4 Strahlen), Glocke pendelt,
+  Waffenlose/Traeger schlagen mit der Faust zu, Vierbeiner ducken sich und
+  springen (drawQuadrupedHd-Phasen). Zweihand-Schlag war schon da (R209a).
+- Verdrahtung: startPattern setzt fuer ALLE Typen visualAttackDauer =
+  windup + SCHLAG_ANIM.nachlaufS (Golem/Skelettwache behalten eigene
+  Zeichner); Fernkampf-Schuesse starten starteSchussAnim() (schussDauerS).
+  schlagAnimPhase() liefert 0 (Ausholen, solange windup laeuft) / 1 / 2.
+  CombatScene zieht Frames 4-6 fuer Gegner UND eigenes Heer; Dorf-Kaempfer
+  (Schmied & Co.) ueber n.schlagT in updateVillageLife.
+- Bugfix dabei: der Schlagarm-Quad hatte horizontale Kanten (wie die
+  vertikalen Zweihand-Arme) - ein waagerechter Fauststoss degenerierte zum
+  Strich. Jetzt liegt die Armbreite senkrecht zur Armrichtung.
+- Belege: Kontaktbogen 16 Gattungen x 4 Phasen (Zeichner), Ingame-Messung
+  Katakomben: Skelett spielt p0/p1/p2 und Frames d2f4/d2f5/d2f6.
+- Offen/ehrlich: der Bogen zeigt "gespannt" (Phase 0) nur, wenn ein windup
+  laeuft - beim normalen Schuss sieht man Loesen + Nachlegen (der Schuss
+  selbst ist instantan, ein Spann-Telegraph waere ein KI-Umbau; notiert).

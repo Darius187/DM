@@ -4,6 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir, angleToDir8, angleToDir16, type EnemyHost } from '../world/Enemy';
+import { SCHLAG_ANIM } from '../data/enemies';
 import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildWaldWest, buildWaldSuedOst, buildBurg, buildWaldNord, buildWaldMitte, buildLager, buildStadt2, buildHochland, buildWaldNordWest, buildWaldNordOst, buildSchlachtfeld, buildKloster, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn, type Abbaubar } from '../world/areagen';
 import { katakombenAktivFuer, buildKatakombenKrypta } from '../world/katakombenKrypta';
 import { kryptaVersatzUnter, ebeneFuerKlassik } from '../data/katakombenDungeon';
@@ -160,6 +161,7 @@ interface NpcEntity extends NpcSpawn {
   umgehSeite?: number; // Seite, zu der dieser Bewohner Hindernisse umläuft (Runde 41)
   hp?: number;        // Kämpfer-Bewohner (Schmied & Co.) haben Lebenspunkte (Runde 41)
   atkCd?: number;     // Schlag-Abklingzeit des kämpfenden Bewohners
+  schlagT?: number;   // R209: Rest-Sekunden der sichtbaren Schlag-Animation (Frames 4-6)
   flashT?: number;    // kurzes Aufblitzen bei Treffer
   verwundet?: boolean; // niedergeschlagen: liegt am Boden, bis der Held ihn heilt (Runde 46)
   heilT?: number;       // Rest-Sekunden der göttlichen Heilung (Runde 53)
@@ -15831,6 +15833,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       // Kämpfer schlägt zu, wenn der Gegner in Reichweite ist
       if (kampf && kampfGegner && d < 34 && (n.atkCd ?? 0) <= 0) {
         n.atkCd = KAEMPFER.cd;
+        n.schlagT = SCHLAG_ANIM.npcDauerS;   // R209: sichtbarer Hieb (Frames 4-6)
         const a = Math.atan2(kampfGegner.y - n.curY, kampfGegner.x - n.curX);
         // R190 (Autor-Verbot): Kills der BEWOHNER-Kaempfer geben KEINE Held-XP
         this.damageEnemy(kampfGegner, KAEMPFER.dmg, Math.cos(a) * 14, Math.sin(a) * 14, '#d8cfb8', false, true);
@@ -15839,7 +15842,14 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         n.hp = (n.hp ?? KAEMPFER.hp) - KAEMPFER.gegnerDmg; n.flashT = 0.16;
         if (n.hp <= 0) { n.verwundet = true; n.hp = 0; this.fx.burst(n.curX, n.curY, 0x7a1010, 14, 110); this.logMsg(`${n.name} ist verwundet gefallen - heile ihn, sonst fällt er aus!`, 'bad'); continue; }
       }
-      if (d > 4 && !(kampf && d < 30)) {
+      if ((n.schlagT ?? 0) > 0 && kampfGegner) {
+        // R209: der Dorf-Kaempfer zieht seinen Hieb sichtbar durch
+        // (Frames 4-6: Ausholen/Hieb/Ausklang), Blick zum Gegner.
+        n.schlagT = (n.schlagT ?? 0) - dt;
+        const a = Math.atan2(kampfGegner.y - n.curY, kampfGegner.x - n.curX);
+        const prog = 1 - Math.max(0, n.schlagT) / SCHLAG_ANIM.npcDauerS;
+        this.provider.applyFigure(n.sprite, n.figur ?? n.id, angleToDir(a), 4 + Math.min(2, Math.floor(prog * 3)));
+      } else if (d > 4 && !(kampf && d < 30)) {
         // Wegfindung (Runde 50): per A*-Pfad um Hindernisse herum statt stur
         // gegen Zäune/Wände; nah dran direkt.
         const a = this.npcRichtung(n, ziel.x, ziel.y, dt);

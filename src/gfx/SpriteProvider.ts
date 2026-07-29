@@ -9,7 +9,7 @@ import { drawHeld, drawReiter, HELD_CELL, HELD_DIRS, HELD_FRAMES, HELD_FELD, HEL
 import { drawItemIcon, iconKey, ICON_SIZE } from './itemIcons';
 import { drawTileArt, drawObjectArt, drawBreakable } from './tileArt';
 import { DETAIL_NPCS } from './npcArt';
-import { istHdFigur, HD_ZELLE, HD_ORIGIN_X, HD_ORIGIN_Y, hdFrameGroesse, drawMonsterHd } from './monsterArtHd';
+import { istHdFigur, HD_ZELLE, HD_FRAMES, HD_ORIGIN_X, HD_ORIGIN_Y, hdFrameGroesse, drawMonsterHd } from './monsterArtHd';
 import type { CryptTheme } from '../data/krypta';
 import type { HeldTier } from '../data/helden';
 import type { Item } from '../data/types';
@@ -59,7 +59,10 @@ export class SpriteProvider {
       return { key, frame: `d${d}f${fr}` };
     }
     this.ensureFallbackFigure(name);
-    return { key: `fig_${name}`, frame: `d${dir}f${step % 4}` };
+    // R209: HD-Figuren haben 7 Frames (0-3 Gehen, 4-6 Schlag) - Schlag-Steps
+    // duerfen NICHT auf %4 zurueckgefaltet werden. 32er-Bestand bleibt bei 4.
+    const fr = istHdFigur(name) ? Math.min(step, HD_FRAMES - 1) : step % 4;
+    return { key: `fig_${name}`, frame: `d${dir}f${fr}` };
   }
 
   // Held-Atlanten nach einer Proportions-Änderung NEU ZEICHNEN (Figur-Editor,
@@ -201,9 +204,10 @@ export class SpriteProvider {
       // Helme), die FIGUR darin bleibt aber exakt SPRITE gross. Der Ursprung
       // (HD_ORIGIN_*) haelt den Fusspunkt auf derselben Weltposition -
       // applyFigure setzt ihn beim Texturwechsel.
+      // R209: 7 Frames je Richtung - 0-3 Gehen, 4-6 Schlag-/Wirk-Phasen.
       const F = hdFrameGroesse(SPRITE);
       const canvas = document.createElement('canvas');
-      canvas.width = F * 4;
+      canvas.width = F * HD_FRAMES;
       canvas.height = F * 4;
       const ctx = canvas.getContext('2d')!;
       ctx.imageSmoothingEnabled = true;
@@ -213,7 +217,7 @@ export class SpriteProvider {
       gross.height = HD_ZELLE;
       const gctx = gross.getContext('2d')!;
       for (let dir = 0; dir < 4; dir++) {
-        for (let frame = 0; frame < 4; frame++) {
+        for (let frame = 0; frame < HD_FRAMES; frame++) {
           gctx.clearRect(0, 0, HD_ZELLE, HD_ZELLE);
           drawMonsterHd(gctx, name, dir, frame);
           ctx.drawImage(gross, 0, 0, HD_ZELLE, HD_ZELLE, frame * F, dir * F, F, F);
@@ -222,7 +226,7 @@ export class SpriteProvider {
       const t = this.tex.addCanvas(key, canvas)!;
       t.setFilter(Phaser.Textures.FilterMode.LINEAR);
       for (let dir = 0; dir < 4; dir++) {
-        for (let frame = 0; frame < 4; frame++) {
+        for (let frame = 0; frame < HD_FRAMES; frame++) {
           t.add(`d${dir}f${frame}`, 0, frame * F, dir * F, F, F);
         }
       }

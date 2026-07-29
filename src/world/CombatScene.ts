@@ -4045,7 +4045,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       e.sprite.setPosition(e.x, e.y + wob).setDepth(this.gegnerTiefe(e.sprite, e.y));
       if (istGolem) wendeGolemSpriteAn(e.sprite, e);
       else if (istSkelettwache) wendeSkelettwacheSpriteAn(e.sprite, e);
-      else this.provider.applyFigure(e.sprite, e.figur(), e.dir, istSchatten ? 0 : e.step);
+      else {
+        // R209: waehrend eines Schlags/Schusses laufen die Frames 4-6
+        // (Ausholen/Hieb/Ausklang bzw. Loesen/Nachladen) statt des Gehschritts.
+        const schlag = istSchatten ? -1 : e.schlagAnimPhase();
+        this.provider.applyFigure(e.sprite, e.figur(), e.dir, istSchatten ? 0 : schlag >= 0 ? 4 + schlag : e.step);
+      }
       if (istSchatten) e.sprite.setAlpha(0.72);
       else if (e.sprite.alpha !== 1) e.sprite.setAlpha(1);
       if (!istGolem && !istSkelettwache && e.boss) e.sprite.setScale(1.5);
