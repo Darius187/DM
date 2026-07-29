@@ -17,11 +17,12 @@ import { FIGURES, shade } from './fallbackArt';
 export const HD_ZELLE = 128;
 const U = HD_ZELLE / 16;   // 8 px je Alt-Raster-Einheit
 
-// Welche Figuren den HD-Weg nehmen (die R206-Monster; der Leichenhund bleibt
-// vorerst beim Vierbeiner-Bestand - der HD-Vierbeiner kommt, wenn die
-// Menschen-Silhouetten abgenommen sind).
+// Welche Figuren den HD-Weg nehmen: die R206-Monster UND der Menschen-Bestand
+// (Autor R207: "mach auch die anderen fertig"). Vierbeiner (Wolf, Ratte,
+// Leichenhund) bleiben vorerst beim Bestand - der HD-Vierbeiner folgt.
 export const HD_FIGUREN: ReadonlyArray<string> = [
   'schinder', 'gefallener', 'moorleiche', 'fuhrmann_tot', 'zimmermann_tot',
+  'skelett', 'schuetze', 'pest', 'lebender_toter', 'schatten', 'templer',
 ];
 
 function r(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, col: string): void {
@@ -39,24 +40,48 @@ function rund(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h:
 
 // --- Waffen (lang!) --------------------------------------------------------
 
-function hdSchwert(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
-  const b = bob;
-  // Klinge vom oberen Zellrand (deutlich UEBER dem Kopf) bis zur Huefte -
-  // laenger als die Figur selbst, mit Spitze, Grat und Hohlkehle.
+// top = oberste sichtbare Y-Einheit (bei skalierten Figuren liegt der Zellrand
+// hoeher - R207b, Autor: "leider sehe ich das ganze Schwert nicht": bei
+// scale 1.35 wurde die Spitze oben abgeschnitten).
+function hdSchwert(ctx: CanvasRenderingContext2D, x: number, bob: number, top = 0.2): void {
+  const b = bob, t = top;
+  // Klinge vom obersten sichtbaren Rand (deutlich UEBER dem Kopf) bis zur
+  // Huefte - laenger als die Figur selbst, mit Spitze, Grat und Hohlkehle.
   ctx.fillStyle = '#b8bcc4'; ctx.beginPath();
-  ctx.moveTo((x + 0.5) * U, (0.2 + b) * U);                    // Spitze
-  ctx.lineTo((x + 0.95) * U, (1.3 + b) * U);
+  ctx.moveTo((x + 0.5) * U, (t + b) * U);                      // Spitze
+  ctx.lineTo((x + 0.95) * U, (t + 1.1 + b) * U);
   ctx.lineTo((x + 0.95) * U, (9.6 + b) * U);
   ctx.lineTo((x + 0.05) * U, (9.6 + b) * U);
-  ctx.lineTo((x + 0.05) * U, (1.3 + b) * U);
+  ctx.lineTo((x + 0.05) * U, (t + 1.1 + b) * U);
   ctx.closePath(); ctx.fill();
-  r(ctx, x + 0.42, 0.9 + b, 0.16, 8.6, '#e2e6ec');             // Mittelgrat
-  r(ctx, x + 0.14, 1.5 + b, 0.14, 7.6, '#8e939c');             // Hohlkehle-Schatten
+  r(ctx, x + 0.42, t + 0.7 + b, 0.16, 8.7 - t, '#e2e6ec');     // Mittelgrat
+  r(ctx, x + 0.14, t + 1.3 + b, 0.14, 7.8 - t, '#8e939c');     // Hohlkehle-Schatten
   r(ctx, x - 0.75, 9.6 + b, 2.5, 0.55, '#6a5430');             // Parierstange
   r(ctx, x - 0.55, 9.6 + b, 0.4, 0.55, '#8a7040');             // Licht auf der Stange
   r(ctx, x + 0.15, 10.15 + b, 0.7, 1.2, '#3e3220');            // Griffwicklung
   r(ctx, x + 0.15, 10.5 + b, 0.7, 0.15, '#5a4a30');
   rund(ctx, x - 0.05, 11.35 + b, 1.1, 0.9, 0.4, '#9a7a44');    // Knauf
+}
+
+// Langbogen (Schuetze): figurhoher Bogen mit Sehne und aufgelegtem Pfeil.
+function hdBogen(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
+  const b = bob;
+  ctx.strokeStyle = '#7a5c34'; ctx.lineWidth = 0.45 * U;
+  ctx.beginPath();
+  ctx.arc((x - 2.2) * U, (6.5 + b) * U, 4.6 * U, -1.05, 1.05); // Bogenrucken
+  ctx.stroke();
+  ctx.strokeStyle = '#d8d0c0'; ctx.lineWidth = 0.14 * U;       // Sehne
+  ctx.beginPath();
+  ctx.moveTo((x - 2.2 + 4.6 * Math.cos(-1.05)) * U, (6.5 + b + 4.6 * Math.sin(-1.05)) * U);
+  ctx.lineTo((x - 2.2 + 4.6 * Math.cos(1.05)) * U, (6.5 + b + 4.6 * Math.sin(1.05)) * U);
+  ctx.stroke();
+  r(ctx, x - 1.2, 6.35 + b, 3.4, 0.3, '#8a6a3e');              // Pfeilschaft
+  ctx.fillStyle = '#b8bcc4'; ctx.beginPath();                   // Pfeilspitze
+  ctx.moveTo((x + 2.7) * U, (6.5 + b) * U);
+  ctx.lineTo((x + 2.0) * U, (6.15 + b) * U);
+  ctx.lineTo((x + 2.0) * U, (6.85 + b) * U);
+  ctx.closePath(); ctx.fill();
+  r(ctx, x - 1.5, 6.2 + b, 0.5, 0.6, '#c8c0a8');               // Befiederung
 }
 
 function hdHaken(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
@@ -95,15 +120,17 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
   const s = f.scale ?? 1;
 
   ctx.save();
-  // Bodenschatten (unskaliert an der Standflaeche)
-  ctx.fillStyle = 'rgba(0,0,0,0.30)';
-  ctx.beginPath();
-  ctx.ellipse(8 * U, 13.9 * U, 4.4 * U * s, 1.35 * U, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // KEIN eingebackener Bodenschatten mehr (Autor R207b: "falls das ein
+  // Schatten ist, lasse das bitte weg") - die HD-Figur steht schattenfrei,
+  // Licht/Schatten macht die Szene.
   if (s !== 1) {           // grosse Figuren wachsen um den FUSSPUNKT
     ctx.translate(8 * U * (1 - s), 14 * U * (1 - s));
     ctx.scale(s, s);
   }
+  // Oberster sichtbarer Punkt in FIGUR-Einheiten: bei skalierten Figuren
+  // liegt der Zellrand "hoeher" - Waffen duerfen nur bis dorthin ragen,
+  // sonst schneidet die Zelle die Schwertspitze ab (Autor hat es gesehen).
+  const deckelY = s === 1 ? 0.2 : Math.max(0.2, (14 * (s - 1)) / s + 0.15);
 
   const flip = dir === 1;
   if (flip) { ctx.translate(16 * U, 0); ctx.scale(-1, 1); }
@@ -200,9 +227,10 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
 
   // Waffe in der "vorderen" Hand (bei flip zeichnet der Spiegel sie links)
   const wx = 12.1;
-  if (f.weapon === 'schwert') hdSchwert(ctx, wx, bob + legL);
+  if (f.weapon === 'schwert') hdSchwert(ctx, wx, bob + legL, deckelY);
   else if (f.weapon === 'haken') hdHaken(ctx, wx, bob + legL);
   else if (f.weapon === 'axt') hdAxt(ctx, wx, bob + legL);
+  else if (f.weapon === 'bogen') hdBogen(ctx, wx, bob + legL);
 
   ctx.restore();
 }

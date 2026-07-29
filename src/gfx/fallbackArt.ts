@@ -397,7 +397,7 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   schinder:  { tunic: '#4a3428', skin: '#b0a894', hair: '#2a2018', legs: '#332619', robe: true, weapon: 'haken', augen: '#c8d8b0' },
   // GEFALLENER HELD (Dok 06 C2): einst ein Held, jetzt Scherge des Schatten-
   // meisters. Rostige Prunkruestung, zerschlissener Umhang, glimmende Augen.
-  gefallener: { tunic: '#5a4438', skin: '#9a9488', hair: '#3a3028', legs: '#41332a', hat: '#6a5a48', weapon: 'schwert', ritter: true, skeletal: true, augen: '#e8b048', scale: 1.35 },
+  gefallener: { tunic: '#5a4438', skin: '#9a9488', hair: '#3a3028', legs: '#41332a', hat: '#6a5a48', weapon: 'schwert', ritter: true, skeletal: true, augen: '#e8b048' },
   // MOORLEICHE: im Moor konserviert, lederbraune Haut, Torf und Binsen am
   // Leib - steigt an Ufern und im Moor-Nebel aus dem Boden. Zaeh, langsam.
   moorleiche: { tunic: '#3e3a26', skin: '#5c4a30', hair: '#2e2a1a', legs: '#33301e', weapon: null, seuche: true, augen: '#a8c860' },

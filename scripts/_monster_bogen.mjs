@@ -15,15 +15,20 @@ export default async (page) => {
       ['moorleiche', 'MOORLEICHE\nzaeher Ufer-Schrecken'],
       ['fuhrmann_tot', 'UNTOTER FUHRMANN\nfuehrt den Blut-Konvoi'],
       ['zimmermann_tot', 'UNTOTER ZIMMERMANN\nbaut Feind-Palisaden'],
-      ['leichenhund', 'LEICHENHUND\njagt im Rudel'],
-      ['skelett', '(Skelett - Bestand,\nzum Vergleich)'],
-      ['wolf', '(Wolf - Bestand,\nzum Vergleich)'],
+      ['leichenhund', 'LEICHENHUND\n(noch 32er-Vierbeiner)'],
+      ['skelett', 'SKELETT\n(Bestand, jetzt HD)'],
+      ['schuetze', 'SCHUETZE\n(Bestand, jetzt HD)'],
+      ['pest', 'PESTKRANKER\n(Bestand, jetzt HD)'],
+      ['lebender_toter', 'LEBENDER TOTER\n(Bestand, jetzt HD)'],
+      ['schatten', 'GRABSCHATTEN\n(Bestand, jetzt HD)'],
+      ['templer', 'TEMPLER\n(Bestand, jetzt HD)'],
     ];
     // Zelle hoch genug fuer den 1.35er Gefallenen bei voller 5x-Skala (216px) -
     // im ersten Bogen war sein Helm abgeschnitten (Autor hat es gesehen).
     const ZELLE = 240, KOPF = 60, FUSS = 64, SP = 4;
+    const reihen = Math.ceil(zeigen.length / SP);
     const cv = document.createElement('canvas');
-    cv.width = ZELLE * SP; cv.height = KOPF + (ZELLE + FUSS) * 2;
+    cv.width = ZELLE * SP; cv.height = KOPF + (ZELLE + FUSS) * reihen;
     const g = cv.getContext('2d');
     g.fillStyle = '#1c1610'; g.fillRect(0, 0, cv.width, cv.height);
     g.fillStyle = '#c9a227'; g.font = 'bold 26px serif'; g.textAlign = 'center';

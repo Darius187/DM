@@ -3108,3 +3108,22 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   geht es erst mit groesseren Atlas-Zellen (Folgearbeit, wie beim Held).
 - Beleg: Kontaktbogen v3 aus den echten 128er-Zeichnungen + Atlas-Probe
   (scripts/_hd_atlas.mjs): alle fuenf fig_-Atlanten bauen mit Inhalt.
+
+## R207b - HD-Pass auf den Monster-Bestand + Schatten raus (Autor-Order)
+- Autor bestaetigt die Richtung ("gleicher Stil wie die Spielfigur - mach auch
+  die anderen fertig"): skelett, schuetze, pest, lebender_toter, schatten und
+  templer laufen jetzt ueber denselben 128er-HD-Weg. Neu dazu: HD-Langbogen
+  mit Sehne und aufgelegtem Pfeil (Schuetze). Vierbeiner (Wolf/Ratte/
+  Leichenhund) bleiben vorerst Bestand - HD-Vierbeiner ist Folgearbeit.
+- Schwert-Beschnitt beim Gefallenen (Autor hat es gesehen): bei scale 1.35
+  wurde die Spitze vom Zellrand geschnitten. Loesung: die ZEICHNUNG bleibt auf
+  Normalgroesse (Schwert nutzt die volle Zelle und ragt ueber den Kopf),
+  GROESSER wird er im Spiel ueber den Elite-Skalierer der Szene, sobald er
+  als Gegner verdrahtet ist. Beim Templer (Bestand, scale 1.5 unangetastet)
+  klemmt deckelY die Klinge auf den sichtbaren Bereich.
+- Eingebackener Bodenschatten ist bei allen HD-Figuren RAUS (Autor: "lasse
+  das bitte weg"). EHRLICH: es gab KEIN zweites Schatten-System fuer Gegner -
+  der Schatten im Sprite war der einzige. Faellt im Spiel auf, dass die
+  Monster "schweben", legen wir einen weichen Szenen-Schatten unter den
+  Fusspunkt (eine Ellipse je Gegner, billig). Der alte 32er-Weg (Dorfvolk,
+  Vierbeiner) behaelt seinen gebackenen Schatten unveraendert.
