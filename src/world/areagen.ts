@@ -3,7 +3,7 @@
 
 import { T, SOLID } from './tiles';
 import { CRYPT_THEMES, CRYPT_GEN, CHEST_VERFLUCHT, ALTAR_COUNT, CHESTS_PER_LEVEL, BREAKABLES_PER_LEVEL, ORE_VEINS, ROCKS_PER_LEVEL, GEHEIMKAMMER, type CryptTheme, type BreakableKind } from '../data/krypta';
-import { MAX_SCRIPTED_SCARES } from '../data/enemies';
+import { MAX_SCRIPTED_SCARES, NEUE_GEGNER_JE_EBENE, SCHINDER } from '../data/enemies';
 import type { EnemyTypeId } from '../data/types';
 import { rnd, ri, pick, type Rng } from '../logic/rng';
 import { TUNING } from '../logic/tuning';
@@ -603,8 +603,18 @@ export function buildCrypt(n: number, rng: Rng): AreaData {
   if (n >= 2) types.push('schuetze', 'schuetze');
   if (n >= 3) types.push('schatten', 'schuetze', 'lebender_toter');
   if (n >= 4) types.push('schatten', 'schatten', 'skelett');
+  // R214: die neuen Gegner je Ebene dazumischen (enemies.ts, Autor-Order
+  // "verteile es logisch") - oben die frisch Begrabenen, unten die Schweren.
+  types.push(...(NEUE_GEGNER_JE_EBENE[Math.min(n, 5)] ?? []));
+  // R214: der SCHINDER ist selten und einmalig je Karte (Dok 06 Teil D) -
+  // kampfschwach, aber das Prioritaetsziel; die Aufhebe-Mechanik folgt.
+  let schinderGesetzt = false;
   for (const r of rooms) {
     if (r === start) continue;
+    if (!schinderGesetzt && n >= SCHINDER.abEbene && rng.random() < SCHINDER.chanceJeRaum) {
+      a.enemySpawns.push({ type: 'schinder', x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE, elite: false });
+      schinderGesetzt = true;
+    }
     // Anzahl je Raum, skaliert mit der Tiefe; gegnerDichte (F10) regelt sie
     const cnt = Math.max(0, Math.round((ri(rng, 1, 2) + Math.min(3, Math.ceil(n / 1.5))) * TUNING.gegnerDichte));
     for (let i = 0; i < cnt; i++) {

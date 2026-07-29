@@ -3210,3 +3210,18 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   EHRLICH: seit R208 hatten NPCs GAR KEINEN Schatten - das fiel erst durch
   die Autor-Frage auf.
 - "Nervige" Schwarm-Wesen (Aaskraehen, Fliegen) auf Autor-Order VERWORFEN.
+
+## R214 - Kampfwerte fuer alle 16 neuen Gegner (Autor: "entscheide selber")
+- Logik der Verteilung: VOLK-UNTOTE als Masse (Ausgezehrter flink/zerbrechlich,
+  Gehaengter/Totengraeber zaeh-langsam), WASSER-SCHRECKEN als Brocken
+  (Ertrunkener, Moorleiche), MITTELFELD ab Ebene 2-4 (Geissler trifft hart,
+  Verkohlter, Schnabeldoktor, Gloeckner schwach-aber-wertvoll), SCHWERE
+  EINZELGAENGER ab Ebene 4 (Henker 92 HP, Gefallener Held 160 HP als der
+  "staerkere Ritter"), ARBEITER schwach mit XP-Bonus (Wirtschafts-Ziele),
+  SCHINDER kampfschwach/hoher Lohn, hoechstens EINER je Karte ab Ebene 2
+  (SCHINDER-Konstante; die Aufhebe-Mechanik ist notierte Folgearbeit).
+- NEUE_GEGNER_JE_EBENE speist v9Krypta UND areagen-Krypten; Oberwelt-Wald
+  bekommt Leichenhund + Moorleiche dazu; Katakomben-Editor-Whitelist und
+  F10-Typenliste erweitert. Abtruenniger Moench ist ranged (Stab).
+- Browser-Beleg: alle 16 spawnen auf Ebene 3 mit Werten UND ziehen von selbst
+  ihre Ebenen-Variante (fig_schinder_e3 usw.) - R211-Verdrahtung greift.

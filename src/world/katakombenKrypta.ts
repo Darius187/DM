@@ -44,7 +44,11 @@ const PROP_TILE: Record<string, number> = {
 // Gegner-Marker -> echte Gegner-Typen (boss = Elite-Champion, KEIN Templer-Boss:
 // dessen Tod-Logik gehoert den Boss-Kammern; die echte Boss-Inszenierung dieser
 // Ebenen entscheidet der Autor spaeter - siehe OFFENE-FRAGEN).
-const GEGNER_TYP = new Set<string>(['pest', 'skelett', 'schuetze', 'schatten', 'wolf', 'ratte', 'lebender_toter']);
+const GEGNER_TYP = new Set<string>(['pest', 'skelett', 'schuetze', 'schatten', 'wolf', 'ratte', 'lebender_toter',
+  // R214: neue Gegner auch im Katakomben-Editor zulassen
+  'schinder', 'gefallener', 'moorleiche', 'leichenhund', 'schnabeldoktor', 'totengraeber',
+  'gehaengter', 'ertrunkener', 'geissler', 'gloeckner', 'verkohlter', 'henker',
+  'moench_abtruennig', 'ausgezehrter', 'fuhrmann_tot', 'zimmermann_tot']);
 
 export function buildKatakombenKrypta(n: number, rng: Rng): AreaData {
   const d = baueKatakombenDungeon(rng);

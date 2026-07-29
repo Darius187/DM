@@ -731,7 +731,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Gegnertyp-Feinjustierung (Runde 18): Typ wählen, Tempo/Schaden drehen
     c.add(this.add.text(12, y + 2, 'JE GEGNERTYP:', { fontFamily: 'serif', fontSize: '12px', color: '#c9a227', letterSpacing: 1 }));
     y += 20;
-    const typen = ['pest', 'skelett', 'schuetze', 'schatten', 'wolf', 'ratte', 'templer', 'lebender_toter'];
+    const typen = ['pest', 'skelett', 'schuetze', 'schatten', 'wolf', 'ratte', 'templer', 'lebender_toter',
+      'schinder', 'gefallener', 'moorleiche', 'leichenhund', 'schnabeldoktor', 'totengraeber',
+      'gehaengter', 'ertrunkener', 'geissler', 'gloeckner', 'verkohlter', 'henker',
+      'moench_abtruennig', 'ausgezehrter'];
     const typText = this.add.text(80, y, typen[this.devTypIdx], { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8' });
     const mkTyp = (x: number, lbl: string, delta: number) => {
       const b = this.add.text(x, y, lbl, {

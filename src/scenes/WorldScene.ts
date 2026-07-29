@@ -11933,7 +11933,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.einfallZaehler++;
     const belagerung = this.einfallZaehler >= 3 && this.einfallZaehler % 3 === 0;
     const anzahl = Math.min(EINFALL.anzahlMax, EINFALL.anzahlBasis + Math.floor(this.tag / 7) * EINFALL.anzahlProWoche) + (belagerung ? 4 : 0);
-    const typen = ['skelett', 'pest', 'wolf', 'lebender_toter'] as const;
+    const typen = ['skelett', 'pest', 'wolf', 'lebender_toter', 'leichenhund'] as const;
     // R157: gestaffelte Schuebe (0s/8s/16s) abwechselnd ueber Nord- und Ost-Weg -
     // man SIEHT die Kolonnen die Strassen herunterkommen.
     const wege = this.einfallWege();
@@ -11996,7 +11996,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     // R157: die Heerschar kommt ORGANISCH ueber die Strassen von NORD und OST
     // (ravenkarte-Kanten) - in Schueben, man sieht die Kolonnen anruecken.
     const wege = this.einfallWege();
-    const typen = ['skelett', 'pest', 'wolf', 'lebender_toter', 'schatten'] as const;
+    const typen = ['skelett', 'pest', 'wolf', 'lebender_toter', 'schatten', 'leichenhund', 'moorleiche'] as const;
     // Räuber NAHE einem Tier/Bewohner einsetzen, damit sie sofort darüber
     // herfallen (das Vieh steht in Gattern am Dorfrand - vom fernen Kartenrand
     // kämen sie nie an).

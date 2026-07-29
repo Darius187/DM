@@ -55,7 +55,11 @@ export interface GemItem extends Item {
   power: number;
 }
 
-export type EnemyTypeId = 'pest' | 'skelett' | 'skelettwache' | 'schuetze' | 'schatten' | 'templer' | 'wolf' | 'ratte' | 'lebender_toter' | 'golem';
+export type EnemyTypeId = 'pest' | 'skelett' | 'skelettwache' | 'schuetze' | 'schatten' | 'templer' | 'wolf' | 'ratte' | 'lebender_toter' | 'golem'
+  // R214: die 16 neuen Gegner (R206/R211) mit Kampfwerten
+  | 'schinder' | 'gefallener' | 'moorleiche' | 'fuhrmann_tot' | 'zimmermann_tot' | 'leichenhund'
+  | 'schnabeldoktor' | 'totengraeber' | 'gehaengter' | 'ertrunkener' | 'geissler'
+  | 'gloeckner' | 'verkohlter' | 'henker' | 'moench_abtruennig' | 'ausgezehrter';
 
 export interface EnemyDef {
   name: string;

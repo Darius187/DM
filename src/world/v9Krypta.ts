@@ -11,7 +11,7 @@ import { rnd } from '../logic/rng';
 import { baueV9 } from './v9Dungeon';
 import { V9_EINSATZ } from '../data/katakombenDungeon';
 import { CRYPT_THEMES } from '../data/krypta';
-import { MAX_SCRIPTED_SCARES } from '../data/enemies';
+import { MAX_SCRIPTED_SCARES, NEUE_GEGNER_JE_EBENE } from '../data/enemies';
 import type { EnemyTypeId } from '../data/types';
 import type { AreaData } from './areagen';
 
@@ -25,6 +25,10 @@ declare global { interface Window { __v9Einsatz?: typeof V9_EINSATZ } }
 if (typeof window !== 'undefined' && import.meta.env?.DEV) window.__v9Einsatz = V9_EINSATZ;
 
 const RAUM_GEGNER: EnemyTypeId[] = ['skelett', 'pest', 'lebender_toter', 'schuetze'];
+// R214: je Ebene mischen die NEUEN Gegner mit (enemies.ts, "logisch verteilt").
+function raumGegner(ebene: number): EnemyTypeId[] {
+  return [...RAUM_GEGNER, ...(NEUE_GEGNER_JE_EBENE[Math.min(ebene, 5)] ?? [])];
+}
 
 export function buildV9Krypta(n: number, rng: Rng): AreaData {
   const d = baueV9(() => rng.random());
@@ -74,7 +78,8 @@ export function buildV9Krypta(n: number, rng: Rng): AreaData {
       const gx = r.x + 2 + Math.floor(rng.random() * (r.w - 4));
       const gy = r.y + 2 + Math.floor(rng.random() * (r.h - 4));
       if (map[gy][gx] !== T.FLOOR) continue;
-      const typ = RAUM_GEGNER[Math.floor(rng.random() * RAUM_GEGNER.length)];
+      const pool = raumGegner(n);
+      const typ = pool[Math.floor(rng.random() * pool.length)];
       a.enemySpawns.push({ type: typ, x: gx * TILE + 16, y: gy * TILE + 16, elite: false, schlaeft: true });
     }
     if (rng.random() < 0.3) {

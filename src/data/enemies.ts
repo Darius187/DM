@@ -49,7 +49,103 @@ export const ENEMIES: Readonly<Record<EnemyTypeId, EnemyDef>> = {
     name: 'Menschengolem', hpBase: 1000, hpPerDepth: 0, dmgBase: 48, dmgPerDepth: 4,
     speedMin: 34, speedMax: 34, r: 29, col: '#667058', xpBase: 520, xpPerDepth: 20, aggro: 560,
   },
+
+  // --- R214: die 16 neuen Gegner (Werte vom Entwickler gesetzt, Autor-Order
+  // "entscheide selber, verteile es logisch"). Faustregeln: Arbeiter schwach
+  // aber lohnend (Wirtschafts-Ziele), Volk-Untote = Masse, Eliten selten und
+  // hart. Die Individualitaets-Streuung (R212) liegt oben noch drauf. --------
+
+  // FLINK & ZERBRECHLICH (Ebene 1+): stuermt vor der Masse heran.
+  ausgezehrter: {
+    name: 'Der Ausgezehrte', hpBase: 12, hpPerDepth: 5, dmgBase: 6, dmgPerDepth: 2,
+    speedMin: 112, speedMax: 134, r: 9, col: '#b8b4a4', xpBase: 8, xpPerDepth: 3, aggro: 290,
+  },
+  // ZAEHE MASSE (Ebene 1+): langsam, haelt den Weg zu.
+  gehaengter: {
+    name: 'Der Gehängte', hpBase: 42, hpPerDepth: 12, dmgBase: 8, dmgPerDepth: 3,
+    speedMin: 38, speedMax: 50, r: 12, col: '#9aa0a8', xpBase: 14, xpPerDepth: 4, aggro: 200,
+  },
+  totengraeber: {
+    name: 'Der Totengräber', hpBase: 34, hpPerDepth: 11, dmgBase: 10, dmgPerDepth: 3,
+    speedMin: 52, speedMax: 64, r: 11, col: '#a89a84', xpBase: 15, xpPerDepth: 4, aggro: 240,
+  },
+  // WASSER-/UFER-SCHRECKEN: aufgedunsen, langsamer Brocken.
+  ertrunkener: {
+    name: 'Der Ertrunkene', hpBase: 56, hpPerDepth: 14, dmgBase: 9, dmgPerDepth: 3,
+    speedMin: 32, speedMax: 42, r: 13, col: '#7a9a96', xpBase: 17, xpPerDepth: 5, aggro: 190,
+  },
+  moorleiche: {
+    name: 'Moorleiche', hpBase: 70, hpPerDepth: 16, dmgBase: 12, dmgPerDepth: 4,
+    speedMin: 28, speedMax: 38, r: 13, col: '#5c4a30', xpBase: 22, xpPerDepth: 6, aggro: 170,
+  },
+  // MITTELFELD (Ebene 2-4)
+  geissler: {
+    name: 'Der Geißler', hpBase: 26, hpPerDepth: 9, dmgBase: 12, dmgPerDepth: 4,
+    speedMin: 70, speedMax: 85, r: 11, col: '#8a8274', xpBase: 16, xpPerDepth: 5, aggro: 260,
+  },
+  verkohlter: {
+    name: 'Der Verkohlte', hpBase: 30, hpPerDepth: 10, dmgBase: 11, dmgPerDepth: 4,
+    speedMin: 60, speedMax: 75, r: 11, col: '#3a3230', xpBase: 16, xpPerDepth: 5, aggro: 250,
+  },
+  schnabeldoktor: {
+    name: 'Der Schnabeldoktor', hpBase: 28, hpPerDepth: 9, dmgBase: 9, dmgPerDepth: 3,
+    speedMin: 64, speedMax: 78, r: 11, col: '#241f1a', xpBase: 18, xpPerDepth: 5, aggro: 280,
+  },
+  // ALARM-GLOCKE (Mechanik-Folgearbeit): schwach, aber er weckt die Ebene.
+  gloeckner: {
+    name: 'Der Glöckner', hpBase: 30, hpPerDepth: 9, dmgBase: 5, dmgPerDepth: 2,
+    speedMin: 48, speedMax: 60, r: 11, col: '#46424e', xpBase: 20, xpPerDepth: 5, aggro: 320,
+  },
+  // FERNKAMPF-MAGIE (verbotene Kunst): haelt Abstand wie der Skelett-Schuetze.
+  moench_abtruennig: {
+    name: 'Abtrünniger Mönch', hpBase: 22, hpPerDepth: 8, dmgBase: 10, dmgPerDepth: 4,
+    speedMin: 55, speedMax: 68, r: 10, col: '#5a4632', xpBase: 19, xpPerDepth: 5, aggro: 340, ranged: true,
+  },
+  // SCHWERE EINZELGAENGER (Ebene 4+)
+  henker: {
+    name: 'Der Henker', hpBase: 92, hpPerDepth: 20, dmgBase: 18, dmgPerDepth: 5,
+    speedMin: 46, speedMax: 54, r: 14, col: '#3a1e1e', xpBase: 42, xpPerDepth: 8, aggro: 300,
+  },
+  gefallener: {
+    name: 'Gefallener Held', hpBase: 160, hpPerDepth: 35, dmgBase: 16, dmgPerDepth: 5,
+    speedMin: 70, speedMax: 80, r: 13, col: '#5a4438', xpBase: 80, xpPerDepth: 12, aggro: 400,
+  },
+  // PRIORITAETSZIEL (Dok 06 Teil D): kampfschwach, aber sein Tod lohnt -
+  // die Aufhebe-Mechanik (Tote stehen wieder auf) ist notierte Folgearbeit.
+  schinder: {
+    name: 'Der Schinder', hpBase: 60, hpPerDepth: 15, dmgBase: 4, dmgPerDepth: 1,
+    speedMin: 30, speedMax: 36, r: 12, col: '#4a3428', xpBase: 60, xpPerDepth: 10, aggro: 160,
+  },
+  // ARBEITER DER FEIND-WIRTSCHAFT (Dok 06 Teil E): schwach, aber ihr Tod
+  // trifft den Nachschub - der XP-Lohn liegt darum ueber ihrer Gefahr.
+  fuhrmann_tot: {
+    name: 'Untoter Fuhrmann', hpBase: 30, hpPerDepth: 8, dmgBase: 7, dmgPerDepth: 2,
+    speedMin: 55, speedMax: 65, r: 11, col: '#46403a', xpBase: 18, xpPerDepth: 4, aggro: 220,
+  },
+  zimmermann_tot: {
+    name: 'Untoter Zimmermann', hpBase: 34, hpPerDepth: 9, dmgBase: 9, dmgPerDepth: 3,
+    speedMin: 50, speedMax: 60, r: 11, col: '#5c4a30', xpBase: 18, xpPerDepth: 4, aggro: 220,
+  },
+  // RUDELTIER: schnell, schwach, jagt zu mehreren (Fluchtneigung in AGGRO).
+  leichenhund: {
+    name: 'Leichenhund', hpBase: 18, hpPerDepth: 5, dmgBase: 6, dmgPerDepth: 2,
+    speedMin: 118, speedMax: 138, r: 10, col: '#6a5c48', xpBase: 8, xpPerDepth: 2, aggro: 300,
+  },
 };
+
+// R214: welche NEUEN Gegner ab welcher Kerker-Ebene mitspielen ("logisch
+// verteilt"): oben die frisch Begrabenen, in der Tiefe die Schweren. Die
+// Generatoren mischen diese Pools zu ihren Grundlisten.
+export const NEUE_GEGNER_JE_EBENE: Readonly<Record<number, readonly EnemyTypeId[]>> = {
+  1: ['totengraeber', 'gehaengter', 'ausgezehrter'],
+  2: ['gloeckner', 'ertrunkener', 'moench_abtruennig', 'ausgezehrter'],
+  3: ['geissler', 'schnabeldoktor', 'verkohlter', 'moench_abtruennig'],
+  4: ['henker', 'verkohlter', 'geissler', 'totengraeber'],
+  5: ['gefallener', 'henker', 'schnabeldoktor', 'gloeckner'],
+};
+// Der Schinder ist SELTEN (Dok 06: 1-2 je Schlacht, nie mehr): kleine Chance
+// je Raum ab Ebene 2, hoechstens einer pro Karte (setzt der Generator um).
+export const SCHINDER = { abEbene: 2, chanceJeRaum: 0.05 } as const;
 
 // Elite-Affixe (Referenz makeElite): 10% Chance, garantierter Drop höherer Stufe
 export const ELITE = {
@@ -145,6 +241,14 @@ export const AGGRO: Record<string, { rueckzugChance: number }> = {
   schuetze: { rueckzugChance: 0.0 },
   wolf: { rueckzugChance: 0.35 },
   ratte: { rueckzugChance: 0.45 },
+  // R214: der Leichenhund weicht wie ein Tier, der Schinder versucht zu
+  // entkommen (er ist wertvoll), die schwere Garde weicht nie.
+  leichenhund: { rueckzugChance: 0.4 },
+  schinder: { rueckzugChance: 0.5 },
+  ausgezehrter: { rueckzugChance: 0.15 },
+  henker: { rueckzugChance: 0.0 },
+  gefallener: { rueckzugChance: 0.0 },
+  moorleiche: { rueckzugChance: 0.0 },
 };
 export const AGGRO_STD = { rueckzugChance: 0.0 };
 
