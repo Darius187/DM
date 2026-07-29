@@ -3178,3 +3178,18 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Alarm-Mechanik-Kandidat), Verkohlter (Glutaugen), Henker (Beil, massig),
   Abtruenniger Moench (Stab - Kandidat fuer R210 Schwert+Stab), Ausgezehrter.
   Neue HD-Werkzeuge: Schaufel, Geissel, Glocke; neue Merkmale: schnabel, strick.
+
+## R212 - Die tote Bevoelkerung + Individualitaet
+- verstorben() (fallbackArt) macht aus JEDER lebenden Berufs-Figur ihren
+  Wiedergaenger: fahle Haut mit Verwesungston, abgedunkelte Kleidung, bleiches
+  Augen-Gluehen, WERKZEUG BLEIBT (Dok 06 Teil E: sie tun, was sie zu Lebzeiten
+  taten). 20 Berufe als <beruf>_tot, dazu priester/moench als neue Grundlagen
+  (Johannes bleibt Story-Figur - der tote Priester ist ein Namenloser).
+  Ebenen-Toene greifen AUCH auf die toten Berufe und die 10 Neuen ->
+  410 Figuren im Register (Browser-gezaehlt).
+- INDIVIDUALITAET (enemies.ts): Leben +-14 %, Tempo +-6 % fuer jeden Nicht-
+  Boss; Koerper-Schaden +-12 % NUR ohne Waffen-Loadout - der Autor-Satz "die
+  Schwerter machen ja gleich viel je Sorte" ist die Regel. Browser-Beleg:
+  24 Skelette -> Leben 28..36 (8 verschiedene Werte), 16 Tempi, aber alle
+  6 Schwert-Traeger exakt Schaden 9.
+- Wuerfel nutzt this.rng (Karten-Seed) - gleiche Karte, gleiche Bewohner.

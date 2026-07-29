@@ -166,6 +166,18 @@ export interface GefalleneWaffe {
   weight: number;
 }
 export const GEFALLENE_TYPEN = ['skelett', 'pest', 'lebender_toter'] as const;
+
+// R212 (Autor: "die haben alle unterschiedliche Grundwerte ... voll
+// individuell und man weiss nie, auf was man trifft"): jeder gespawnte Gegner
+// wuerfelt seine Koerperwerte LEICHT um den Typ-Grundwert. WICHTIG (Autor):
+// der WAFFENSCHADEN bleibt fix je Waffensorte - ein Schwert schlaegt wie ein
+// Schwert; gestreut wird nur, was vom KOERPER kommt (Leben immer, Schaden nur
+// bei Gegnern OHNE Waffen-Loadout). Bosse streuen nicht (verlaessliche Duelle).
+export const INDIVIDUALITAET = {
+  lebenPct: 0.14,     // +-14 % Leben
+  schadenPct: 0.12,   // +-12 % Koerper-Schaden (nur ohne Waffe)
+  tempoPct: 0.06,     // +-6 % Schrittempo (leichtes Auseinanderziehen im Trupp)
+} as const;
 export const GEFALLENE_WAFFEN: ReadonlyArray<GefalleneWaffe> = [
   { id: 'schwert', label: 'mit Schwert', figur: 'schwert', dmgMult: 1.0, reichMult: 1.15, tempoMult: 1.0, weight: 3 },
   { id: 'schwertschild', label: 'mit Schwert & Schild', figur: 'schwert', schild: true, dmgMult: 0.9, reichMult: 1.1, tempoMult: 0.95, weight: 2 },

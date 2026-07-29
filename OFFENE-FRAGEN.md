@@ -462,3 +462,19 @@ FRAGE an den Autor: welche davon einbauen, welche zuerst? Vorschlag:
 Schinder zuerst (loest laut Doku den Lehrmoment im Kerker), dann Moorleiche
 (nutzt Moor-Nebel/Naesse), dann die zwei Arbeiter (machen die Feind-
 Wirtschaft sichtbar). Werte kommen dann nach Dok 06/02 in enemies.ts.
+
+## R212 - Wesen jenseits untoter Menschen (Autor-Frage "was gibt es noch?")
+Vorhanden: Wolf, Ratte, Leichenhund (Tiere), Menschengolem + Skelettwache
+(Machwerke des Klosters), Grabschatten (Geist). Vorschlaege im Zeitgeist-Ton
+(Volksglaube statt Fantasy - niemand sagt "Magie"):
+1. AASKRAEHEN-SCHWARM - die Raben von Ravensmoor als Gegner: umkreisen den
+   Helden, picken, stieben bei Schlag auseinander. Passt zum Spielnamen.
+2. IRRLICHT - Moorlicht, das nachts in den Sumpf LOCKT (kein Kaempfer,
+   ein Verfuehrer; Volkssage, im Moor-Nebel-System zuhause).
+3. WERWOLF - Volksglaube; als seltener Wald-Boss bei Nacht.
+4. KEILER / verwilderte Weidetiere - entlaufenes Vieh der Gefallenen,
+   nutzt das bestehende Vierbeiner-System.
+5. FLIEGENSCHWARM am Kadaver - Flaechen-Aergernis um Leichen, verbindet
+   sich mit dem Beerdigen-System aus Dok 06 D4.
+Zwischenloesung: nichts davon gebaut, erst Autor-Wahl. Empfehlung:
+Aaskraehen zuerst (Marke!), dann Irrlicht (nutzt Moor-Nebel).

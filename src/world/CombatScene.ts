@@ -31,7 +31,7 @@ import { getSettings, saveSettings, type Settings } from '../logic/settings';
 import { TUNING, TUNING_ROWS, neuerTypTuning } from '../logic/tuning';
 import { defaultRng, type Rng } from '../logic/rng';
 import { alleGegenstaende, gegenstandsAnzahl, kompendium } from '../logic/kompendium';
-import { ELITE, ENEMIES, GEFALLENE_TYPEN, GEFALLENE_WAFFEN } from '../data/enemies';
+import { ELITE, ENEMIES, GEFALLENE_TYPEN, GEFALLENE_WAFFEN, INDIVIDUALITAET } from '../data/enemies';
 import type { EnemyTypeId, WeaponClass, Item, GemItem } from '../data/types';
 import { ABILITY_FX, ABILITIES, LORE_XP, ROLLEN_ZAUBER, XP, BRAND_TICK_S } from '../data/balancing';
 import { SKILL_ICONS } from '../data/skills';
@@ -2168,6 +2168,19 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       e.schlagtempoF = typTuning.schlagtempo;
       e.reichweiteF = typTuning.reichweite;
       e.maxhp = Math.max(1, Math.round(e.maxhp * (typTuning.leben ?? 1))); // Leben je Typ (Runde 35)
+    }
+    // R212 (Autor: "voll individuell, man weiss nie auf was man trifft"):
+    // Koerperwerte streuen leicht um den Typ-Grundwert. Der WAFFENSCHADEN
+    // bleibt fix je Sorte (Autor: "die Schwerter machen ja gleich viel") -
+    // darum streut der Schaden NUR bei Gegnern, die gleich KEIN Waffen-
+    // Loadout bekommen. Bosse streuen gar nicht (verlaessliche Duelle).
+    if (!e.boss) {
+      const wuerfel = (pct: number): number => 1 + (this.rng.random() * 2 - 1) * pct;
+      e.maxhp = Math.max(1, Math.round(e.maxhp * wuerfel(INDIVIDUALITAET.lebenPct)));
+      e.speed *= wuerfel(INDIVIDUALITAET.tempoPct);
+      const bekommtWaffe = TUNING.gefallene && !e.ranged
+        && (GEFALLENE_TYPEN as readonly string[]).includes(type);
+      if (!bekommtWaffe) e.dmg = Math.max(1, Math.round(e.dmg * wuerfel(INDIVIDUALITAET.schadenPct)));
     }
     // Manche Skelette tragen Schilde (Runde 11) - sie blocken von vorn.
     // Ab Ebene 2 (Runde 17), und das Schild ist im Bild SICHTBAR. Im

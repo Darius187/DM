@@ -533,6 +533,46 @@ FIGURES['henker'] = { tunic: '#3a1e1e', skin: '#b09a80', hair: '#241414', legs: 
 FIGURES['moench_abtruennig'] = { tunic: '#5a4632', skin: '#c0aa8e', hair: '#42342a', legs: '#4a3a2c', robe: true, weapon: 'stab', augen: '#b060ff' };
 FIGURES['ausgezehrter'] = { tunic: '#6a665a', skin: '#b8b4a4', hair: '#54504a', legs: '#4c4840', weapon: null, skeletal: true, augen: '#d8d0a0' };
 
+// --- R212: DIE TOTE BEVOELKERUNG (Autor: "alle Berufe die es damals gab,
+// nur in tot" - Dok 06 Teil E "Herkunft = Beruf") -----------------------------
+// verstorben() macht aus jeder lebenden Berufs-Figur ihren Wiedergaenger:
+// fahle Haut, gruenlicher Verwesungston, abgedunkelte Kleidung, bleiches
+// Augen-Gluehen - Werkzeug bleibt in der Hand (sie tun, was sie zu Lebzeiten
+// taten, und kaempfen damit). Namen: <beruf>_tot.
+const VERWESUNG = { haut: '#8aa08a', hautAnteil: 0.55, stoff: '#3a4038', stoffAnteil: 0.3, augen: '#b8d05a' } as const;
+export function verstorben(basis: FigureSpec): FigureSpec {
+  const mischeLokal = (hexA: string, hexB: string, anteil: number): string => {
+    const a = parseInt(hexA.slice(1), 16), b = parseInt(hexB.slice(1), 16);
+    const k = (sh: number): number => {
+      const va = (a >> sh) & 255, vb = (b >> sh) & 255;
+      return Math.max(0, Math.min(255, Math.round(va * (1 - anteil) + vb * anteil)));
+    };
+    return `#${((k(16) << 16) | (k(8) << 8) | k(0)).toString(16).padStart(6, '0')}`;
+  };
+  return {
+    ...basis,
+    skin: shadeHex(mischeLokal(basis.skin, VERWESUNG.haut, VERWESUNG.hautAnteil), -10),
+    tunic: shadeHex(mischeLokal(basis.tunic, VERWESUNG.stoff, VERWESUNG.stoffAnteil), -18),
+    legs: shadeHex(mischeLokal(basis.legs, VERWESUNG.stoff, VERWESUNG.stoffAnteil), -18),
+    hair: shadeHex(basis.hair, -20),
+    augen: VERWESUNG.augen,
+  };
+}
+// Priester als eigene Grundfigur (Johannes bleibt Story-Figur und wird nicht
+// getoetet - der tote Priester ist ein NAMENLOSER Amtsbruder).
+FIGURES['priester'] = { tunic: '#3a3a44', skin: '#c0b096', hair: '#6a665e', legs: '#2a2a32', robe: true, weapon: null };
+FIGURES['moench'] = { tunic: '#5a4632', skin: '#c0aa8e', hair: '#42342a', legs: '#4a3a2c', robe: true, weapon: null };
+const BERUFE_TOT: ReadonlyArray<string> = [
+  'schmied', 'mueller', 'baecker', 'schneider', 'hirte', 'schaefer', 'magd',
+  'bauer1', 'bauer2', 'haendler', 'schulze', 'wache', 'landherr', 'wirtin',
+  'gerber', 'fischer', 'priester', 'moench', 'soldat', 'bogensoldat',
+];
+for (const b of BERUFE_TOT) {
+  const basis = FIGURES[b] as FigureSpec | undefined;
+  if (!basis || 'quad' in (basis as object)) continue;
+  if (!FIGURES[`${b}_tot`]) FIGURES[`${b}_tot`] = verstorben(basis);
+}
+
 // --- R211: EBENEN-VARIANTEN (Autor: "~50 Variationen, je nach Ebene") -------
 // Der Generator kreuzt die Grundtypen mit den EBENEN_TOENEN aus
 // src/data/monsterVarianten.ts: Gewand/Haut/Beine werden getoent, ab tieferen
@@ -560,7 +600,14 @@ function shadeHex(hex: string, amt: number): string {
   const r2 = k(n >> 16), g2 = k((n >> 8) & 255), b2 = k(n & 255);
   return `#${((r2 << 16) | (g2 << 8) | b2).toString(16).padStart(6, '0')}`;
 }
-for (const typ of VARIANTEN_TYPEN) {
+const ALLE_VARIANTEN_TYPEN: ReadonlyArray<string> = [
+  ...VARIANTEN_TYPEN,
+  ...BERUFE_TOT.map((b) => `${b}_tot`),
+  'fuhrmann_tot', 'zimmermann_tot',
+  'schnabeldoktor', 'totengraeber', 'gehaengter', 'ertrunkener', 'geissler',
+  'gloeckner', 'verkohlter', 'henker', 'moench_abtruennig', 'ausgezehrter',
+];
+for (const typ of ALLE_VARIANTEN_TYPEN) {
   const basis = FIGURES[typ] as FigureSpec | undefined;
   if (!basis || 'quad' in (basis as object)) continue;
   for (let e = 1; e < EBENEN_TOENE.length; e++) {
