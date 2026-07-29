@@ -3225,3 +3225,22 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   F10-Typenliste erweitert. Abtruenniger Moench ist ranged (Stab).
 - Browser-Beleg: alle 16 spawnen auf Ebene 3 mit Werten UND ziehen von selbst
   ihre Ebenen-Variante (fig_schinder_e3 usw.) - R211-Verdrahtung greift.
+
+## R215 - Familien fuer jeden Hausplatz + Blutstrom als roter Fluss
+- Familien-Generator in bevoelkereStadt: jede der 13 Wohnhaus-Boxen des
+  Dorfplans bekommt Vater (kaempfer, Feldarbeit), Mutter (Brunnen/Haus) und
+  2-4 Kinder (Vorplatz-/Brunnenspiel) - im Schnitt ~3 Kinder je Familie,
+  passend zur vorindustriellen Kinderzahl. Namen aus mittelalterlichen
+  Listen (Wenzel, Bela, Katrey...), Familienname "vom <Name>hof" je Haus.
+  Browser-Beleg: 66 neue NPCs (13 Vaeter, 13 Muetter, 40 Kinder), Stadt
+  gesamt 94.
+- Blutstrom: FLUSS_SHADER.blut jetzt STANDARD AN - T.BLUTSTROM rendert mit
+  dem kanonischen Wasser-Shader im BLUT-Preset (dunkelrot, Tempo 0.05,
+  traege wie zaehes Blut). Bossnahe Katakomben-Raeume (blutStufe >= 0.3)
+  bekommen 1-3 echte 2x2-Blutlachen in den inneren Ecken (Bossarena 3).
+- Sicherheitsnetz erweitert (Cluster-Fall): raeumeBlockadenWeg legte bisher
+  nur EINZELNE Props frei, die erreichbaren und unerreichbaren Boden
+  beruehren - ein 2x2-Lachen-Block konnte eine Tasche versiegeln, ohne dass
+  eine Einzelkachel beide Seiten sah (Seed 31337). Jetzt sucht eine BFS
+  durch Prop-Kacheln einen Pfad von der erreichten zur unerreichten Seite
+  und macht ihn wieder zu Boden. Erreichbarkeits-Test ueber 8 Seeds gruen.

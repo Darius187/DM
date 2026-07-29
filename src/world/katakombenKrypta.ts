@@ -13,7 +13,7 @@ import { TILE } from '../gfx/fallbackArt';
 import type { Rng } from '../logic/rng';
 import { rnd } from '../logic/rng';
 import { baueKatakombenDungeon, type KatakombenRaum } from './katakombenDungeon';
-import { KATAKOMBEN_EINSATZ } from '../data/katakombenDungeon';
+import { KATAKOMBEN_EINSATZ, KATAKOMBEN_BLUT } from '../data/katakombenDungeon';
 import { CRYPT_THEMES } from '../data/krypta';
 import { MAX_SCRIPTED_SCARES } from '../data/enemies';
 import type { EnemyTypeId } from '../data/types';
@@ -82,6 +82,35 @@ export function buildKatakombenKrypta(n: number, rng: Rng): AreaData {
   const solideProps: Array<{ x: number; y: number }> = [];
   for (const raum of d.rooms) statteRaumAus(a, d.rooms, raum, rng, solideProps);
 
+  // R215 (Autor: "aendere den Blutstrom in den Katakomben, wie der Wasser-
+  // Fluss nur blutrot, langsam fliessend"): bossnahe Raeume bekommen ECHTE
+  // Blutlachen aus T.BLUTSTROM - die rendert der Fluss-Shader mit dem
+  // BLUT-Preset (dunkelrot, Fliess-Tempo 0.05) als lebende Fluessigkeit.
+  // Lachen liegen in den INNEREN Ecken (nie vor Tueren, Raeume >= 7 Kacheln),
+  // damit kein Weg blockiert - Pfeile fliegen drueber (FLYOVER).
+  for (const raum of d.rooms) {
+    if (raum.blutStufe < KATAKOMBEN_BLUT.abStufe) continue;
+    const rc = raum.rect;
+    if (rc.w < 7 || rc.h < 7) continue;
+    const ecken = [
+      { x: rc.x + 1, y: rc.y + 1 }, { x: rc.x + rc.w - 3, y: rc.y + 1 },
+      { x: rc.x + 1, y: rc.y + rc.h - 3 }, { x: rc.x + rc.w - 3, y: rc.y + rc.h - 3 },
+    ];
+    const anzahl = raum.rolle === 'bossarena' ? 3 : 1 + Math.floor(rng.random() * 2);
+    for (let e = 0; e < anzahl; e++) {
+      const ecke = ecken[Math.floor(rng.random() * ecken.length)];
+      for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+        const tx = ecke.x + dx, ty = ecke.y + dy;
+        if (map[ty]?.[tx] === T.FLOOR && !solideProps.some((p) => p.x === tx && p.y === ty)) {
+          map[ty][tx] = T.BLUTSTROM;
+          // ins Sicherheitsnetz: klemmt eine Lache einen Durchgang ab,
+          // macht raeumeBlockadenWeg sie wieder zu Boden (Testfall Seed 1).
+          solideProps.push({ x: tx, y: ty });
+        }
+      }
+    }
+  }
+
   // Treppen + Spawn (Muster wie buildCrypt: 1x4-Treppenlauf, Spawn daneben)
   const eingang = d.rooms[d.entranceRoomId];
   const boss = d.rooms[d.bossRoomId];
@@ -136,6 +165,52 @@ function raeumeBlockadenWeg(map: number[][], sx: number, sy: number, solideProps
         map[p.y][p.x] = T.FLOOR;   // Moebel weg, Durchgang frei
         solideProps.splice(i, 1);
         entfernt = true;
+      }
+    }
+    // R215 Cluster-Fall (2x2-Blutlachen): keine EINZELNE Prop-Kachel beruehrt
+    // beide Seiten, aber ein zusammenhaengender Prop-Block trennt sie trotzdem.
+    // Dann einen Pfad DURCH den Block freilegen: BFS ueber Prop-Kacheln von
+    // der erreichten zur unerreichten Seite, den ganzen Pfad wieder zu Boden.
+    if (!entfernt) {
+      const key = (x: number, y: number): number => y * w + x;
+      const propKeys = new Set(solideProps.map((p) => key(p.x, p.y)));
+      const seite = (px: number, py: number): { err: boolean; unerr: boolean } => {
+        let err = false, unerr = false;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = px + dx, ny = py + dy;
+          if (ny < 0 || nx < 0 || ny >= h || nx >= w || !begehbar(map[ny][nx])) continue;
+          if (seen[ny][nx]) err = true; else unerr = true;
+        }
+        return { err, unerr };
+      };
+      const parent = new Map<number, number>();
+      const queue: number[] = [];
+      for (const p of solideProps) {
+        if (seite(p.x, p.y).err && !parent.has(key(p.x, p.y))) {
+          parent.set(key(p.x, p.y), -1);
+          queue.push(key(p.x, p.y));
+        }
+      }
+      let zielK = -1;
+      while (queue.length && zielK < 0) {
+        const k = queue.shift()!;
+        const px = k % w, py = Math.floor(k / w);
+        if (seite(px, py).unerr) { zielK = k; break; }
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = px + dx, ny = py + dy;
+          if (nx < 0 || ny < 0 || ny >= h || nx >= w) continue;
+          const nk = key(nx, ny);
+          if (propKeys.has(nk) && !parent.has(nk)) { parent.set(nk, k); queue.push(nk); }
+        }
+      }
+      if (zielK >= 0) {
+        for (let k = zielK; k >= 0; k = parent.get(k)!) {
+          const px = k % w, py = Math.floor(k / w);
+          map[py][px] = T.FLOOR;
+          const i = solideProps.findIndex((p) => p.x === px && p.y === py);
+          if (i >= 0) solideProps.splice(i, 1);
+          entfernt = true;
+        }
       }
     }
     if (!entfernt) break;

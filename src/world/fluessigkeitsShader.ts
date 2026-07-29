@@ -27,9 +27,10 @@ export { findeFluessigkeitsRegionen, segmentiereBahn, type KachelRegion, type Fl
 export const FLUSS_SHADER = {
   aktiv: true,    // Gesamtschalter für den Overlay-Test
   wasser: true,   // T.WATER-Kacheln bekommen den Wasser-Shader
-  // Standard AUS: der reich dekorierte Bossraum-Blutstrom (eigenes BloodFlow-
-  // System) bleibt damit exakt wie er ist. Zum Vergleich auf true setzen.
-  blut: false,    // T.BLUTSTROM-Kacheln bekommen den Blut-Shader
+  // R215 (Autor-Order): der Blutstrom fliesst wie der Wasser-Fluss, nur
+  // blutrot und langsam - der Shader ist jetzt STANDARD AN. Das alte
+  // BloodFlow-Dekor im Bossraum bleibt zusaetzlich bestehen.
+  blut: true,     // T.BLUTSTROM-Kacheln bekommen den Blut-Shader
   tiefe: -9,      // Render-Tiefe: über dem Grund (-10/-11), unter Spieler/Objekten
   bettMax: 768,   // max. Kantenlänge der Bett-Textur (Performance/Speicher)
 };

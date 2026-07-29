@@ -117,8 +117,10 @@ export const KATAKOMBEN_GEGNER_ANZAHL: Record<0 | 1 | 2 | 3, readonly [number, n
 
 // --- STRUKTUR (Phase 3): Blut-Progression ---------------------------------------
 export const KATAKOMBEN_BLUT = {
-  maxZusatzProps: 3,     // bis zu so viele Blut-Marker extra im bossnahsten Raum
-  abStufe: 0.45,         // erst ab dieser Boss-Naehe (0..1) beginnt das Blut
+  // R215 (Autor: "ueberarbeite die Raeume etwas besser"): das Blut beginnt
+  // frueher und wird dichter - die Boss-Naehe ist dadurch klarer LESBAR.
+  maxZusatzProps: 6,     // bis zu so viele Blut-Marker extra im bossnahsten Raum
+  abStufe: 0.3,          // ab dieser Boss-Naehe (0..1) beginnt das Blut
 } as const;
 
 // --- EREIGNISSE (Phase 4): Marker, die Runtime ausloest --------------------------

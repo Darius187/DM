@@ -2304,3 +2304,20 @@ Belagerung am geschlossenen Ring, Speichern/Laden (eigene Tests gruen).
 OFFEN FUER DEN AUTOR (Balance, bewusst nicht angefasst): Palisade 900 LP ist
 sehr zaeh (4 Skelette > 1 Minute je Kachel); Held Stufe 1 stirbt untaetig in
 5 s gegen drei Skelette.
+
+## Runde 215 - Familien im Dorf + fliessender Blutstrom
+
+WAS FERTIG IST (verifiziert)
+1. Jeder Hausplatz hat jetzt eine Familie: 13 Familien mit Vater, Mutter
+   und 2-4 Kindern (insgesamt 66 neue Bewohner, Stadt: 94 NPCs). Die Vaeter
+   arbeiten tagsueber am Feld, Muetter am Brunnen und daheim, Kinder spielen
+   am Vorplatz - abends sammelt sich die Familie vor dem eigenen Haus.
+2. Der Blutstrom in den Katakomben fliesst jetzt WIRKLICH: gleicher Shader
+   wie der Fluss im Spiel, nur blutrot und traege-langsam. Bossnahe Raeume
+   haben echte Blutlachen (22-48 Kacheln je Karte), die Bossarena die
+   groessten. Screenshot: Lache glueht dunkelrot und stroemt sichtbar.
+3. Sicherheitsnetz ausgebaut: Blutlachen koennen keine Raumecke mehr
+   abklemmen (Erreichbarkeits-Test ueber 8 Zufallskarten gruen).
+
+TESTS: tsc sauber, 492/492 Vitest gruen, Browser-Proben (Zahlen + Screenshot).
+OFFEN: Feinschliff der Raum-Rollen (mehr Moebel-Vielfalt) bei Bedarf.

@@ -12,6 +12,7 @@ import { sdWasser, UFER_SAUM_UV, type WasserGeometrie } from './wasserFeld';
 import { baueHoehle } from './hoehlenDungeon';
 import { dichteNoise, felsNoise, biomAt } from './biome';
 import { OBERWELT_KANTEN, type KantenKreuzung } from '../data/oberweltKanten';
+import { DORFPLAN_BOXEN } from '../data/dorfplan';
 
 export interface Pos { x: number; y: number }
 // Abbaubarer Brocken (Fels/Erzader) mit Zerfalls-Zustand (R80, 7DtD-Abbau).
@@ -2426,6 +2427,60 @@ function bevoelkereStadt(a: AreaData): void {
   // 3) Wache an der SCHMIEDE/Westzufahrt (Dorfeingang von der Salzstrasse)
   N({ id: 'wache3', name: 'Wächter Hagen', figur: 'wache', x: 20 * T32, y: 62 * T32, kaempfer: true,
     patrouille: [P(14, 60), P(20, 66), P(34, 62), P(20, 58)] });
+
+  // --- R215 (Autor: "jeder Hausplatz bekommt eine Familie, mehr Kinder wenn
+  // das damals typisch war"): FAMILIEN-GENERATOR. Jede Wohnhaus-Box des
+  // Dorfplans bekommt Vater + Mutter + 2-4 Kinder (deterministisch aus der
+  // Box-Id gewuerfelt). Historische Einordnung: Haushalte um 1300 zaehlten
+  // durch die hohe Geburtenrate meist 5-7 Koepfe - 2-4 UEBERLEBENDE Kinder je
+  // Familie sind plausibel, ohne den Anger zu ueberfuellen. Die benannten
+  // Alt-Bewohner bleiben unangetastet; Familien sind ZUSAETZLICHES Dorfleben.
+  const MAENNER = ['Albrecht', 'Konrad', 'Dietrich', 'Wenzel', 'Lorenz', 'Sifrid', 'Eberlin', 'Gunther', 'Marquart', 'Reinbold', 'Ortlieb', 'Volkmar', 'Heinz'];
+  const FRAUEN = ['Adelheid', 'Mechthild', 'Gesa', 'Elsbeth', 'Kunigunde', 'Irmel', 'Clara', 'Jutta', 'Richilde', 'Osanna', 'Bela', 'Gela', 'Metze'];
+  const KINDER = ['Fritzl', 'Bärbel', 'Michel', 'Anneli', 'Clas', 'Grethlin', 'Peterlin', 'Katrey', 'Hensel', 'Elslin', 'Jost', 'Nese', 'Wentzel', 'Trude', 'Diethelm', 'Agnes', 'Cuntz', 'Lene'];
+  const wuerfel = (saat: string): number => {
+    let h = 7;
+    for (const c of saat) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    return h;
+  };
+  const FELD_SUED = { x: 34 * T32, y: 91 * T32 }, FELD_OST = { x: 60 * T32, y: 91 * T32 };
+  const BRUNNEN = { x: 59.5 * T32, y: 71 * T32 };
+  let familieNr = 0;
+  for (const box of DORFPLAN_BOXEN) {
+    if (box.typ !== 'wohnhaus') continue;
+    const h = wuerfel(box.id);
+    const vorplatz = { x: (box.x + box.breite / 2) * T32, y: (box.y + box.hoehe + 0.8) * T32 };
+    frei(box.x - 1, box.y + box.hoehe, box.x + box.breite + 1, box.y + box.hoehe + 2);
+    const hofname = `${MAENNER[(h >> 3) % MAENNER.length]}hof`;
+    // Vater: tagsueber auf dem naeheren Feld, abends daheim
+    N({
+      id: `fam_${box.id}_vater`, name: `${MAENNER[h % MAENNER.length]} vom ${hofname}`,
+      figur: `mann${1 + (h % 3)}`, kaempfer: true, arbeit: 'feld',
+      x: (box.y > 60 ? FELD_SUED : FELD_OST).x + ((h >> 5) % 5 - 2) * 18,
+      y: (box.y > 60 ? FELD_SUED : FELD_OST).y + ((h >> 7) % 3 - 1) * 14,
+      abend: vorplatz,
+    });
+    // Mutter: pendelt zum Brunnen, mittags/abends daheim
+    N({
+      id: `fam_${box.id}_mutter`, name: `${FRAUEN[(h >> 2) % FRAUEN.length]} vom ${hofname}`,
+      figur: `frau${1 + ((h >> 4) % 3)}`,
+      x: BRUNNEN.x + ((h >> 6) % 5 - 2) * 14, y: BRUNNEN.y + ((h >> 8) % 3 - 1) * 12,
+      mittag: vorplatz, abend: vorplatz,
+    });
+    // Kinder: 2-4, spielen am Vorplatz und um den Brunnen
+    const kinderZahl = 2 + (h % 3);
+    for (let k = 0; k < kinderZahl; k++) {
+      const kh = wuerfel(`${box.id}k${k}`);
+      N({
+        id: `fam_${box.id}_kind${k}`, name: KINDER[(kh + familieNr * 5 + k) % KINDER.length],
+        figur: `kind${3 + (kh % 3)}`,
+        x: vorplatz.x + ((kh >> 3) % 5 - 2) * 16, y: vorplatz.y + ((kh >> 5) % 3) * 12,
+        mittag: { x: BRUNNEN.x + ((kh >> 4) % 7 - 3) * 16, y: BRUNNEN.y + ((kh >> 6) % 3 - 1) * 14 },
+        abend: vorplatz,
+      });
+    }
+    familieNr++;
+  }
 }
 
 // R98 (Prompt-2, gy3-Reihe komplettieren): wald_w (1,3) westlich von START,

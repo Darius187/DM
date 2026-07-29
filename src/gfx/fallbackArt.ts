@@ -562,6 +562,18 @@ export function verstorben(basis: FigureSpec): FigureSpec {
 // getoetet - der tote Priester ist ein NAMENLOSER Amtsbruder).
 FIGURES['priester'] = { tunic: '#3a3a44', skin: '#c0b096', hair: '#6a665e', legs: '#2a2a32', robe: true, weapon: null };
 FIGURES['moench'] = { tunic: '#5a4632', skin: '#c0aa8e', hair: '#42342a', legs: '#4a3a2c', robe: true, weapon: null };
+// R215 (Autor: "jeder Hausplatz bekommt eine Familie"): einfache Leute in
+// Farb-Varianten - Vaeter, Muetter, Kinder fuer den Familien-Generator.
+FIGURES['mann1'] = { tunic: '#6a5a42', skin: '#c8b090', hair: '#4a3a26', legs: '#463a26' };
+FIGURES['mann2'] = { tunic: '#54604a', skin: '#c0a888', hair: '#2e2418', legs: '#3c4434' };
+FIGURES['mann3'] = { tunic: '#5c5266', skin: '#ccb494', hair: '#6a5a3a', legs: '#403a4a' };
+FIGURES['frau1'] = { tunic: '#7a5a4e', skin: '#d0b896', hair: '#5c422a', legs: '#54403a', robe: true };
+FIGURES['frau2'] = { tunic: '#5a6a5a', skin: '#c8b090', hair: '#3a2c1a', legs: '#42503f', robe: true };
+FIGURES['frau3'] = { tunic: '#6e5a72', skin: '#d0b896', hair: '#4a3826', legs: '#4e4252', robe: true };
+FIGURES['kind3'] = { tunic: '#8a7050', skin: '#d8c0a0', hair: '#5a4228', legs: '#4e402c', scale: 0.65 };
+FIGURES['kind4'] = { tunic: '#607a6a', skin: '#d0b896', hair: '#3c2e1c', legs: '#41544a', scale: 0.62 };
+FIGURES['kind5'] = { tunic: '#7a6a8a', skin: '#d8c0a0', hair: '#6a5232', legs: '#544a60', scale: 0.68 };
+
 const BERUFE_TOT: ReadonlyArray<string> = [
   'schmied', 'mueller', 'baecker', 'schneider', 'hirte', 'schaefer', 'magd',
   'bauer1', 'bauer2', 'haendler', 'schulze', 'wache', 'landherr', 'wirtin',
