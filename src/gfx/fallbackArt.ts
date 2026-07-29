@@ -19,7 +19,7 @@ export interface FigureSpec {
   // M1 Dorfwirtschaft: auch WERKZEUGE in der Hand (Hammer, Mehlsack, Angel,
   // Eimer, Kraeuterkorb) - jede Rolle traegt sichtbar ihr Handwerkszeug.
   weapon?: 'schwert' | 'axt' | 'stange' | 'wucht' | 'bogen' | 'keule' | 'stab'
-    | 'hammer' | 'sack' | 'angel' | 'eimer' | 'korb' | null;
+    | 'hammer' | 'sack' | 'angel' | 'eimer' | 'korb' | 'haken' | null;
   scale?: number;       // Templer ist größer
   skeletal?: boolean;   // Skelett-Look (Schädel, Brustkorb)
   glow?: string;        // Schatten-Look (Umriss-Glühen)
@@ -199,16 +199,36 @@ function drawHeldWeapon(ctx: CanvasRenderingContext2D, w: NonNullable<FigureSpec
   const x = dir === 1 ? 2 : 12;
   switch (w) {
     case 'schwert':
-      p(ctx, x, 4 + bob, 1, 5, '#b8bcc4');
-      p(ctx, x - 0.5, 8 + bob, 2, 1, '#6a5430');
+      // R207 (Autor "die Schwerter koennten laenger sein"): Klinge von 5 auf 8
+      // Raster, dazu Spitze, Mittelgrat, Parierstange und Knauf - halbe
+      // Rasterschritte machen die Klinge schlank statt klobig.
+      p(ctx, x + 0.1, 1.5 + bob, 0.8, 7, '#b8bcc4');    // Klinge
+      p(ctx, x + 0.3, 0.8 + bob, 0.4, 0.9, '#d8dce4');  // Spitze
+      p(ctx, x + 0.35, 2 + bob, 0.3, 6, '#dce0e8');     // Mittelgrat (Lichtkante)
+      p(ctx, x - 0.6, 8.4 + bob, 2.2, 0.7, '#6a5430');  // Parierstange
+      p(ctx, x + 0.1, 9.1 + bob, 0.8, 1.1, '#4a3a24');  // Griff
+      p(ctx, x, 10.2 + bob, 1, 0.8, '#9a7a44');         // Knauf
       break;
     case 'axt':
       p(ctx, x, 4 + bob, 1, 6, '#6a5430');
       p(ctx, x - 1, 4 + bob, 3, 2, '#9aa0a8');
       break;
     case 'stange':
-      p(ctx, x, 1 + bob, 1, 11, '#6a5430');
-      p(ctx, x - 1, 1 + bob, 3, 2, '#9aa0a8');
+      // R207: Hellebarden-Optik statt "Hammer-Klotz" - langer Schaft mit
+      // Stossspitze und seitlichem Beilblatt (Wache/Hellebarde tragen das).
+      p(ctx, x + 0.1, 1 + bob, 0.8, 11, '#6a5430');     // Schaft
+      p(ctx, x + 0.2, -0.6 + bob, 0.6, 1.8, '#b8bcc4'); // Stossspitze
+      p(ctx, x - 1.2, 0.6 + bob, 1.3, 1.6, '#9aa0a8');  // Beilblatt seitlich
+      p(ctx, x - 1.0, 2.1 + bob, 0.9, 0.5, '#9aa0a8');  // Blatt-Schwung unten
+      break;
+    case 'haken':
+      // R207: Fleischerhaken des Schinders/Fuhrmanns - langer Schaft, oben ein
+      // gebogener Eisenhaken (aus drei versetzten Segmenten), KEIN Blatt.
+      p(ctx, x + 0.1, 1.5 + bob, 0.8, 10.5, '#5a4226'); // Schaft
+      p(ctx, x, 0.6 + bob, 1, 0.9, '#8a8f96');          // Zwinge
+      p(ctx, x - 1.4, -0.4 + bob, 1.6, 0.6, '#9aa0a8'); // Haken: Bogen oben
+      p(ctx, x - 1.4, 0.2 + bob, 0.6, 1.2, '#9aa0a8');  // Haken: faellt ab
+      p(ctx, x - 1.2, 1.2 + bob, 0.5, 0.5, '#c8ccd4');  // Hakenspitze (hell)
       break;
     case 'wucht':
       p(ctx, x, 4 + bob, 1, 6, '#6a5430');
@@ -374,7 +394,7 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   // Der SCHINDER (Dok 06 Teil D): der Abdecker, der ueber die Walstatt geht
   // und die Toten wieder aufhebt. Lederschurz, Kapuze, Fleischerhaken-Stange,
   // fahle Haut - selten, langsam, schwach, aber DAS Prioritaetsziel.
-  schinder:  { tunic: '#4a3428', skin: '#b0a894', hair: '#2a2018', legs: '#332619', robe: true, weapon: 'stange', augen: '#c8d8b0' },
+  schinder:  { tunic: '#4a3428', skin: '#b0a894', hair: '#2a2018', legs: '#332619', robe: true, weapon: 'haken', augen: '#c8d8b0' },
   // GEFALLENER HELD (Dok 06 C2): einst ein Held, jetzt Scherge des Schatten-
   // meisters. Rostige Prunkruestung, zerschlissener Umhang, glimmende Augen.
   gefallener: { tunic: '#5a4438', skin: '#9a9488', hair: '#3a3028', legs: '#41332a', hat: '#6a5a48', weapon: 'schwert', ritter: true, skeletal: true, augen: '#e8b048', scale: 1.35 },
@@ -383,7 +403,7 @@ export const FIGURES: Record<string, FigureSpec | { quad: QuadSpec } | { chicken
   moorleiche: { tunic: '#3e3a26', skin: '#5c4a30', hair: '#2e2a1a', legs: '#33301e', weapon: null, seuche: true, augen: '#a8c860' },
   // UNTOTER FUHRMANN (Dok 06 Teil E): fuehrt den Blut-Konvoi. Kutscherrock,
   // breiter Hut, Peitschen-Stange - toete ihn, und der Karren steht.
-  fuhrmann_tot: { tunic: '#46403a', skin: '#a8a090', hair: '#3a342c', legs: '#302a24', hat: '#241f18', weapon: 'stange', skeletal: true },
+  fuhrmann_tot: { tunic: '#46403a', skin: '#a8a090', hair: '#3a342c', legs: '#302a24', hat: '#241f18', weapon: 'haken', skeletal: true },
   // UNTOTER ZIMMERMANN (Dok 06 Teil E): baut dem Feind Palisaden und Rampen.
   // Werkschurz, Zimmermannsaxt - das sichtbare Gesicht der Feind-Wirtschaft.
   zimmermann_tot: { tunic: '#5c4a30', skin: '#9aa088', hair: '#2c2418', legs: '#3c3020', weapon: 'axt', skeletal: true },

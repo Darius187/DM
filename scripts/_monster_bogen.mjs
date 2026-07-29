@@ -18,7 +18,9 @@ export default async (page) => {
       ['skelett', '(Skelett - Bestand,\nzum Vergleich)'],
       ['wolf', '(Wolf - Bestand,\nzum Vergleich)'],
     ];
-    const ZELLE = 200, KOPF = 60, FUSS = 64, SP = 4;
+    // Zelle hoch genug fuer den 1.35er Gefallenen bei voller 5x-Skala (216px) -
+    // im ersten Bogen war sein Helm abgeschnitten (Autor hat es gesehen).
+    const ZELLE = 240, KOPF = 60, FUSS = 64, SP = 4;
     const cv = document.createElement('canvas');
     cv.width = ZELLE * SP; cv.height = KOPF + (ZELLE + FUSS) * 2;
     const g = cv.getContext('2d');
