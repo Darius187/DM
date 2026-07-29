@@ -132,13 +132,25 @@ function hdSchwert(ctx: CanvasRenderingContext2D, x: number, gy: number, langF: 
  */
 function hdZweihandGriff(
   ctx: CanvasRenderingContext2D, f: FigureSpec, bob: number, legL: number, legR: number, langF: number,
+  schlagPhase = -1,
 ): void {
   // Griff DICHT am Rumpf (kurzer Querarm) und die Klinge leicht nach aussen
   // GENEIGT - so laeuft sie am Kopf vorbei statt darueber, und die Haltung
   // liest sich wie ein abgesetzter Bidenhaender statt wie ein Fahnenmast.
-  const gx = 10.3;
-  const gy = 8.5 + bob;
-  const NEIGUNG = 0.2;                   // rad, Spitze kippt nach aussen
+  //
+  // R209 SCHLAG (drei Phasen wie beim Helden, erst nur zum ZEIGEN):
+  //  0 AUSHOLEN - Klinge weit nach hinten ueber die Schulter gerissen
+  //  1 HIEB     - Klinge quer nach vorn-unten durchgezogen, Griff vorgeschoben
+  //  2 AUSKLANG - Klinge sinkt aus, kehrt Richtung Ruhe zurueck
+  const SCHLAG = [
+    { winkel: -1.15, dx: -0.6, dy: -1.1 },
+    { winkel: 1.55, dx: 0.9, dy: 0.5 },
+    { winkel: 0.65, dx: 0.3, dy: 0.2 },
+  ] as const;
+  const s = schlagPhase >= 0 ? SCHLAG[Math.min(schlagPhase, 2)] : null;
+  const gx = 10.3 + (s?.dx ?? 0);
+  const gy = 8.5 + bob + (s?.dy ?? 0);
+  const NEIGUNG = s ? s.winkel : 0.2;    // rad, Spitze kippt nach aussen
   ctx.save();
   ctx.translate(gx * U, gy * U);
   ctx.rotate(NEIGUNG);
@@ -310,10 +322,15 @@ function hdAxt(ctx: CanvasRenderingContext2D, x: number, bob: number): void {
 
 // --- Figur -----------------------------------------------------------------
 
-// dir: 0 unten, 1 links, 2 rechts, 3 oben (wie der Bestand); frame 0..3.
+// dir: 0 unten, 1 links, 2 rechts, 3 oben (wie der Bestand); frame 0..3 =
+// Gehen. R209: frame 4..6 = SCHLAG-Phasen (Ausholen/Hieb/Ausklang) - vorerst
+// nur fuer Zweihand-Traeger gezeichnet und nur zum Zeigen, die Spiel-
+// Verdrahtung kommt nach der Autor-Abnahme.
 export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: number, frame: number): void {
   const f = FIGURES[name] as FigureSpec | undefined;
   if (!f || 'quad' in (f as object) || 'chicken' in (f as object)) return;
+  const schlagPhase = frame >= 4 ? Math.min(frame - 4, 2) : -1;
+  if (schlagPhase >= 0) frame = 0;   // Beine stehen im Schlag (kein Gehschritt)
   const step = frame % 4;
   const legL = step === 1 ? 0.9 : 0;
   const legR = step === 3 ? 0.9 : 0;
@@ -450,7 +467,7 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
   // haelt das nicht richtig") und bekommen eine sichtbare Faust am Schaft.
   const langF = f.schwertLang ?? 1.0;
   if (zweihand) {
-    hdZweihandGriff(ctx, f, bob, legL, legR, langF);
+    hdZweihandGriff(ctx, f, bob, legL, legR, langF, schlagPhase);
   } else {
     const wx = 11.4, wy = bob + legL;
     if (f.weapon === 'schwert') {
