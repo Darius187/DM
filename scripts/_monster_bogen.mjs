@@ -7,6 +7,7 @@ export default async (page) => {
   await page.waitForTimeout(4000);
   const dataUrl = await page.evaluate(async () => {
     const mod = await import('/src/gfx/fallbackArt.ts');
+    const hd = await import('/src/gfx/monsterArtHd.ts');
     const { FIGURES, drawHumanoid, drawQuadruped } = mod;
     const zeigen = [
       ['schinder', 'DER SCHINDER\nhebt Tote wieder auf'],
@@ -31,16 +32,20 @@ export default async (page) => {
       const sx = (i % SP) * ZELLE, sy = KOPF + Math.floor(i / SP) * (ZELLE + FUSS);
       g.fillStyle = i < 6 ? '#241c12' : '#1f1a14';
       g.fillRect(sx + 6, sy + 4, ZELLE - 12, ZELLE + FUSS - 12);
-      // Figur in 32x32 zeichnen, dann 5x hochskaliert (scharf) einblenden
-      const fc = document.createElement('canvas'); fc.width = 32; fc.height = 32;
+      // HD-Figuren (R207) direkt aus der 128er-Zeichnung zeigen, Bestand wie
+      // gehabt aus der 32er - beides auf dieselbe Anzeigegroesse gebracht.
+      const istHd = hd.HD_FIGUREN.includes(name);
+      const nat = istHd ? 128 : 32;
+      const fc = document.createElement('canvas'); fc.width = nat; fc.height = nat;
       const fg = fc.getContext('2d');
       const spec = FIGURES[name];
-      if (spec && 'quad' in spec) drawQuadruped(fg, spec.quad, 0, 0);
+      if (istHd) hd.drawMonsterHd(fg, name, 0, 0);
+      else if (spec && 'quad' in spec) drawQuadruped(fg, spec.quad, 0, 0);
       else if (spec) drawHumanoid(fg, spec, 0, 0);
-      g.imageSmoothingEnabled = false;
-      // Zellen-Deckel: grosse Figuren (scale) nicht ueber den Kasten wachsen lassen
+      g.imageSmoothingEnabled = istHd;                  // HD glatt, Bestand pixelig
+      g.imageSmoothingQuality = 'high';
       const w = Math.min(32 * (spec && spec.scale ? spec.scale : 1) * 5, ZELLE - 24);
-      g.drawImage(fc, sx + ZELLE / 2 - w / 2, sy + ZELLE - w + 10, w, w);
+      g.drawImage(fc, 0, 0, nat, nat, sx + ZELLE / 2 - w / 2, sy + ZELLE - w + 10, w, w);
       g.fillStyle = '#e8dcc0'; g.font = '15px serif';
       label.split('\n').forEach((zeile, zi) => g.fillText(zeile, sx + ZELLE / 2, sy + ZELLE + 24 + zi * 19));
     });

@@ -3088,3 +3088,23 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   NACH dem Regen weiter, bis es abtrocknet: 1.63/1.52/1.13 gemessen.
 - Bereits gebaut (Altlast-Zeilen): Bewoelkungs-Tint, oertliche Boeen-Welle
   (boeWelle), Donner mit Entfernungs-Verzoegerung + Synth-Fallback (R113).
+
+## R207 - HD-Pass fuer die neuen Monster (Autorwunsch "Pixel groesser, dann skalieren")
+- Genau die vorgeschlagene Technik, und sie hatte schon zwei Vorbilder im Code
+  (Held R37 = eigene 64er-Figur, Detail-NPCs R40 = 64 -> 32 heruntergerechnet):
+  die fuenf neuen Menschen-Monster werden jetzt intern mit 128x128 gezeichnet
+  (gfx/monsterArtHd.ts - runde Koepfe, Kapuzen-Faltenwurf, Schaedelzuege,
+  Gluehaugen, 1-px-Details) und vom SpriteProvider weich auf die 32er-Zelle
+  heruntergerechnet. Weltgroesse, Skalen (Boss/Elite) und alle Verbraucher
+  bleiben unberuehrt; der Leichenhund (Vierbeiner) bleibt vorerst Bestand.
+- Warum 128 und nicht 256: bei 32 px Anzeigegroesse ist 4x die Nutzgrenze -
+  Details jenseits davon mitteln sich beim Herunterrechnen weg, 256 kostet
+  nur Speicher/Bakezeit. (Erst wenn Figuren GROESSER angezeigt werden -
+  staerkerer Kamera-Zoom, Portraits - lohnt mehr; dann liegt die 128er-
+  Zeichnung schon bereit.)
+- Schwerter (Autor "wie eine Kerze"): die HD-Klinge laeuft vom oberen Zellrand
+  bis zur Huefte - laenger als die Figur, mit Spitze, Grat und Hohlkehle,
+  ragt klar ueber den Kopf. Grenze ehrlich benannt: ueber den ZELLRAND hinaus
+  geht es erst mit groesseren Atlas-Zellen (Folgearbeit, wie beim Held).
+- Beleg: Kontaktbogen v3 aus den echten 128er-Zeichnungen + Atlas-Probe
+  (scripts/_hd_atlas.mjs): alle fuenf fig_-Atlanten bauen mit Inhalt.

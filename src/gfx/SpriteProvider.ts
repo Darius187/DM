@@ -9,6 +9,7 @@ import { drawHeld, drawReiter, HELD_CELL, HELD_DIRS, HELD_FRAMES, HELD_FELD, HEL
 import { drawItemIcon, iconKey, ICON_SIZE } from './itemIcons';
 import { drawTileArt, drawObjectArt, drawBreakable } from './tileArt';
 import { DETAIL_NPCS } from './npcArt';
+import { HD_FIGUREN, HD_ZELLE, drawMonsterHd } from './monsterArtHd';
 import type { CryptTheme } from '../data/krypta';
 import type { HeldTier } from '../data/helden';
 import type { Item } from '../data/types';
@@ -184,6 +185,36 @@ export class SpriteProvider {
     const detail = DETAIL_NPCS[name];
     if (detail) {
       this.ensureDetailNpc(key, detail);
+      return;
+    }
+    // R207 HD-Pass: die neuen Monster werden intern mit 128x128 gezeichnet
+    // (4x Aufloesung, Schwert ragt ueber den Kopf) und weich auf die 32er-
+    // Zelle heruntergerechnet - Weltgroesse und Verbraucher bleiben unberuehrt.
+    if (HD_FIGUREN.includes(name)) {
+      const canvas = document.createElement('canvas');
+      canvas.width = SPRITE * 4;
+      canvas.height = SPRITE * 4;
+      const ctx = canvas.getContext('2d')!;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      const gross = document.createElement('canvas');
+      gross.width = HD_ZELLE;
+      gross.height = HD_ZELLE;
+      const gctx = gross.getContext('2d')!;
+      for (let dir = 0; dir < 4; dir++) {
+        for (let frame = 0; frame < 4; frame++) {
+          gctx.clearRect(0, 0, HD_ZELLE, HD_ZELLE);
+          drawMonsterHd(gctx, name, dir, frame);
+          ctx.drawImage(gross, 0, 0, HD_ZELLE, HD_ZELLE, frame * SPRITE, dir * SPRITE, SPRITE, SPRITE);
+        }
+      }
+      const t = this.tex.addCanvas(key, canvas)!;
+      t.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      for (let dir = 0; dir < 4; dir++) {
+        for (let frame = 0; frame < 4; frame++) {
+          t.add(`d${dir}f${frame}`, 0, frame * SPRITE, dir * SPRITE, SPRITE, SPRITE);
+        }
+      }
       return;
     }
     const spec = FIGURES[name] ?? FIGURES['spieler'];
