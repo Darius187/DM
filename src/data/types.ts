@@ -59,7 +59,9 @@ export type EnemyTypeId = 'pest' | 'skelett' | 'skelettwache' | 'schuetze' | 'sc
   // R214: die 16 neuen Gegner (R206/R211) mit Kampfwerten
   | 'schinder' | 'gefallener' | 'moorleiche' | 'fuhrmann_tot' | 'zimmermann_tot' | 'leichenhund'
   | 'schnabeldoktor' | 'totengraeber' | 'gehaengter' | 'ertrunkener' | 'geissler'
-  | 'gloeckner' | 'verkohlter' | 'henker' | 'moench_abtruennig' | 'ausgezehrter';
+  | 'gloeckner' | 'verkohlter' | 'henker' | 'moench_abtruennig' | 'ausgezehrter'
+  // R210: Kampf-Zauberer (Schwert + Stab in der anderen Hand)
+  | 'schwarzkuenstler';
 
 export interface EnemyDef {
   name: string;
@@ -71,6 +73,9 @@ export interface EnemyDef {
   xpBase: number; xpPerDepth: number;
   aggro: number;
   ranged?: boolean;
+  // R210: Fernkampf mit ARKANEN Geschossen statt Pfeilen (violett, kein
+  // Pfeil-Sprite) - Moench + Schwarzkuenstler.
+  magie?: boolean;
   boss?: boolean;
 }
 

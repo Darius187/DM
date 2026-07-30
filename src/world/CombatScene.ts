@@ -734,7 +734,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const typen = ['pest', 'skelett', 'schuetze', 'schatten', 'wolf', 'ratte', 'templer', 'lebender_toter',
       'schinder', 'gefallener', 'moorleiche', 'leichenhund', 'schnabeldoktor', 'totengraeber',
       'gehaengter', 'ertrunkener', 'geissler', 'gloeckner', 'verkohlter', 'henker',
-      'moench_abtruennig', 'ausgezehrter'];
+      'moench_abtruennig', 'ausgezehrter', 'schwarzkuenstler'];
     const typText = this.add.text(80, y, typen[this.devTypIdx], { fontFamily: 'serif', fontSize: '13px', color: '#d8cfb8' });
     const mkTyp = (x: number, lbl: string, delta: number) => {
       const b = this.add.text(x, y, lbl, {

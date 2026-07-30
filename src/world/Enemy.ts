@@ -361,6 +361,9 @@ export class Enemy {
     this.xp = def.xpBase + def.xpPerDepth * depth;
     this.aggro = def.aggro;
     this.ranged = def.ranged ?? false;
+    // R210: arkane Schuetzen (Moench, Schwarzkuenstler) schiessen violette
+    // Geschosse statt Pfeile - vorher blieb magie faelschlich false.
+    this.magie = def.magie ?? false;
     this.boss = def.boss ?? false;
     this.name = def.name;
     // Rolle (Runde 35): flinke, leichte Gegner umlaufen den Spieler und fallen

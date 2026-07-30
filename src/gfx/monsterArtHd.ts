@@ -742,6 +742,12 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
   const langF = f.schwertLang ?? 1.0;
   // Wappenschild VOR der Waffe zeichnen (liegt am linken Arm, Waffe rechts).
   if (f.schild) hdSchild(ctx, bob);
+  // R210 Kampf-Zauberer: Zauberstab in der LINKEN Hand (der Kristall wirkt in
+  // den Schlagphasen mit - beim Zuschlagen flackert die Entladung auf).
+  if (f.stabLinks) {
+    hdStab(ctx, 3.0, bob + legR, schlagPhase);
+    rund(ctx, 2.65, 8.9 + bob + legR, 1.6, 1.0, 0.35, f.skeletal ? '#e2dcc4' : shade(f.skin, -6));
+  }
   if (zweihand) {
     hdZweihandGriff(ctx, f, bob, legL, legR, langF, schlagPhase);
   } else {

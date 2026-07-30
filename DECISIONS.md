@@ -3269,3 +3269,21 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Offen/ehrlich: der Bogen zeigt "gespannt" (Phase 0) nur, wenn ein windup
   laeuft - beim normalen Schuss sieht man Loesen + Nachlegen (der Schuss
   selbst ist instantan, ein Spann-Telegraph waere ein KI-Umbau; notiert).
+
+## R210 - Der Schwarzkuenstler (Kampf-Zauberer, Autor-Order)
+- Name statt "Kampfzauberer": DER SCHWARZKUENSTLER - mittelalterlicher
+  Begriff fuer den Totenbeschwoerer, passt zur Regel "Zeitgeist statt
+  Fantasy-Vokabular" (Dok 06 Teil B).
+- Figur: dunkle Robe, Schwert RECHTS (Einhand-Schwung aus R209), leuchtender
+  Zauberstab LINKS (neues FigureSpec-Feld stabLinks, nur HD-Pfad). In den
+  Schlagphasen laedt/entlaedt sich der Kristall sichtbar mit.
+- Verhalten ohne KI-Umbau: ranged+magie = arkane violette Geschosse auf
+  Abstand; kommt der Held zu nah, greift die normale Nahkampf-Kette (hieb
+  mit Schwert-Schwung). Werte: 48 LP +13/Ebene, 13 Schaden +4/Ebene, XP 34 -
+  Hybrid zwischen Geissler und Henker, ab Ebene 4 (Pools 4+5).
+- Nebenbei-Fix: magie kommt jetzt DATENGETRIEBEN aus EnemyDef.magie - der
+  abtruennige Moench schoss bisher faelschlich pfeilfarbene Geschosse
+  (magie wurde nie gesetzt), jetzt violett wie vorgesehen.
+- Belege: Kontaktbogen (Grundfigur + e4/e5 mit allen Schlagphasen),
+  Spawn-Zaehlung ueber 5 Seeds: Ebene 1-3 = 0, Ebene 4 = 15/259,
+  Ebene 5 = 10/278 Spawns.

@@ -43,6 +43,9 @@ export interface FigureSpec {
   // (Gehängter) - kleine Aufsätze im HD-Zeichner.
   schnabel?: boolean;
   strick?: boolean;
+  // R210 Kampf-Zauberer: Zauberstab in der LINKEN Hand, zusätzlich zur
+  // weapon-Waffe rechts (Schwarzkünstler). Nur im HD-Pfad gezeichnet.
+  stabLinks?: boolean;
 }
 
 export type Dir = 0 | 1 | 2 | 3; // unten, links, rechts, oben
@@ -532,6 +535,9 @@ FIGURES['verkohlter'] = { tunic: '#242020', skin: '#3a3230', hair: '#1c1818', le
 FIGURES['henker'] = { tunic: '#3a1e1e', skin: '#b09a80', hair: '#241414', legs: '#2a1818', weapon: 'axt', hat: '#241414', massig: true };
 FIGURES['moench_abtruennig'] = { tunic: '#5a4632', skin: '#c0aa8e', hair: '#42342a', legs: '#4a3a2c', robe: true, weapon: 'stab', augen: '#b060ff' };
 FIGURES['ausgezehrter'] = { tunic: '#6a665a', skin: '#b8b4a4', hair: '#54504a', legs: '#4c4840', weapon: null, skeletal: true, augen: '#d8d0a0' };
+// R210 (Autor: "Monster, die mit dem Schwert schlagen und mit dem Stab in der
+// anderen Hand zaubern"): dunkle Robe, Schwert rechts, Stab links.
+FIGURES['schwarzkuenstler'] = { tunic: '#3a2a4a', skin: '#c0b098', hair: '#241c30', legs: '#2c2238', robe: true, weapon: 'schwert', stabLinks: true, augen: '#b060ff' };
 
 // --- R212: DIE TOTE BEVOELKERUNG (Autor: "alle Berufe die es damals gab,
 // nur in tot" - Dok 06 Teil E "Herkunft = Beruf") -----------------------------
@@ -618,6 +624,7 @@ const ALLE_VARIANTEN_TYPEN: ReadonlyArray<string> = [
   'fuhrmann_tot', 'zimmermann_tot',
   'schnabeldoktor', 'totengraeber', 'gehaengter', 'ertrunkener', 'geissler',
   'gloeckner', 'verkohlter', 'henker', 'moench_abtruennig', 'ausgezehrter',
+  'schwarzkuenstler',
 ];
 for (const typ of ALLE_VARIANTEN_TYPEN) {
   const basis = FIGURES[typ] as FigureSpec | undefined;

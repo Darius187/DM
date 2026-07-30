@@ -99,7 +99,14 @@ export const ENEMIES: Readonly<Record<EnemyTypeId, EnemyDef>> = {
   // FERNKAMPF-MAGIE (verbotene Kunst): haelt Abstand wie der Skelett-Schuetze.
   moench_abtruennig: {
     name: 'Abtrünniger Mönch', hpBase: 22, hpPerDepth: 8, dmgBase: 10, dmgPerDepth: 4,
-    speedMin: 55, speedMax: 68, r: 10, col: '#5a4632', xpBase: 19, xpPerDepth: 5, aggro: 340, ranged: true,
+    speedMin: 55, speedMax: 68, r: 10, col: '#5a4632', xpBase: 19, xpPerDepth: 5, aggro: 340, ranged: true, magie: true,
+  },
+  // R210 KAMPF-ZAUBERER (Autor: "schlagen mit einem Schwert und zaubern mit
+  // einem Stab in der anderen Hand"): auf Abstand arkane Geschosse, in der
+  // Naehe zieht er das Schwert durch - gefaehrlicher Hybrid ab Ebene 4.
+  schwarzkuenstler: {
+    name: 'Der Schwarzkünstler', hpBase: 48, hpPerDepth: 13, dmgBase: 13, dmgPerDepth: 4,
+    speedMin: 62, speedMax: 74, r: 11, col: '#3a2a4a', xpBase: 34, xpPerDepth: 7, aggro: 340, ranged: true, magie: true,
   },
   // SCHWERE EINZELGAENGER (Ebene 4+)
   henker: {
@@ -140,8 +147,8 @@ export const NEUE_GEGNER_JE_EBENE: Readonly<Record<number, readonly EnemyTypeId[
   1: ['totengraeber', 'gehaengter', 'ausgezehrter'],
   2: ['gloeckner', 'ertrunkener', 'moench_abtruennig', 'ausgezehrter'],
   3: ['geissler', 'schnabeldoktor', 'verkohlter', 'moench_abtruennig'],
-  4: ['henker', 'verkohlter', 'geissler', 'totengraeber'],
-  5: ['gefallener', 'henker', 'schnabeldoktor', 'gloeckner'],
+  4: ['henker', 'verkohlter', 'geissler', 'totengraeber', 'schwarzkuenstler'],
+  5: ['gefallener', 'henker', 'schnabeldoktor', 'gloeckner', 'schwarzkuenstler'],
 };
 // Der Schinder ist SELTEN (Dok 06: 1-2 je Schlacht, nie mehr): kleine Chance
 // je Raum ab Ebene 2, hoechstens einer pro Karte (setzt der Generator um).

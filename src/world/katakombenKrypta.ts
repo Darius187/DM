@@ -48,7 +48,7 @@ const GEGNER_TYP = new Set<string>(['pest', 'skelett', 'schuetze', 'schatten', '
   // R214: neue Gegner auch im Katakomben-Editor zulassen
   'schinder', 'gefallener', 'moorleiche', 'leichenhund', 'schnabeldoktor', 'totengraeber',
   'gehaengter', 'ertrunkener', 'geissler', 'gloeckner', 'verkohlter', 'henker',
-  'moench_abtruennig', 'ausgezehrter', 'fuhrmann_tot', 'zimmermann_tot']);
+  'moench_abtruennig', 'ausgezehrter', 'fuhrmann_tot', 'zimmermann_tot', 'schwarzkuenstler']);
 
 export function buildKatakombenKrypta(n: number, rng: Rng): AreaData {
   const d = baueKatakombenDungeon(rng);
