@@ -293,10 +293,16 @@ export const INDIVIDUALITAET = {
 // Das Ausholen (Frame 4) laeuft waehrend des windup; nachlaufS traegt Hieb +
 // Ausklang (Frames 5/6). schussDauerS = Bogen/Stab nach dem Schuss (Loesen +
 // Nachladen), npcDauerS = Hieb der Dorf-Kaempfer (Schmied & Co.).
+// R216 (Autor: "die Schlaganimation vom Schwert koennte schneller ablaufen, wie
+// beim Spieler"): der Held zieht seinen Schlag in 0,2 s durch. Darum laeuft das
+// AUSHOLEN jetzt nur in den letzten ausholenS des Telegraphs (davor steht die
+// Figur normal - das Kampf-Timing/windup bleibt unangetastet), und Hieb +
+// Ausklang sind deutlich kuerzer. Sichtbare Schlagdauer ~0,3 s statt ~0,7 s.
 export const SCHLAG_ANIM = {
-  nachlaufS: 0.3,
-  schussDauerS: 0.5,
-  npcDauerS: 0.42,
+  ausholenS: 0.12,
+  nachlaufS: 0.18,
+  schussDauerS: 0.3,
+  npcDauerS: 0.26,
 } as const;
 export const GEFALLENE_WAFFEN: ReadonlyArray<GefalleneWaffe> = [
   { id: 'schwert', label: 'mit Schwert', figur: 'schwert', dmgMult: 1.0, reichMult: 1.15, tempoMult: 1.0, weight: 3 },

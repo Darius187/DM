@@ -31,6 +31,23 @@ const U = PX_PRO_U;
 // (dieselbe Aufteilung wie beim Helden, HELD_FRAMES/SCHLAG_FRAME).
 export const HD_FRAMES = 7;
 
+// R216 (Autor: "einige Gegner sehen unscharf/verschwommen aus"): der Atlas wird
+// UEBERZEICHNET gebacken - Figur 32*HD_UEBER px statt 32 px. Die Szene zeigt sie
+// dann mit Skala < HD_UEBER, also VERKLEINERT statt vergroessert. Ein Hochskalieren
+// weichgezeichneter 32er-Pixel war die Ursache der Unschaerfe (seit die Figuren
+// groesser dargestellt werden). Interne Zeichnung bleibt 208 px - der Weg
+// 208 -> 104 ist nur noch halb so grob wie 208 -> 52.
+export const HD_UEBER = 2;
+
+/**
+ * Umrechnung Wunsch-Anzeigegroesse -> Sprite-Skala. HD-Figuren sind im Atlas um
+ * HD_UEBER ueberzeichnet, brauchen also entsprechend weniger Skala. Wer eine
+ * Figur skaliert, MUSS durch diese Funktion gehen, sonst ist sie doppelt so gross.
+ */
+export function hdSkala(name: string, wunsch: number): number {
+  return istHdFigur(name) ? wunsch / HD_UEBER : wunsch;
+}
+
 // Fuss der Figur im Alt-Raster (dort steht die Ellipse des Bodenschattens).
 const FUSS_U = 14;
 
@@ -299,8 +316,10 @@ function hdStab(ctx: CanvasRenderingContext2D, x: number, bob: number, schlagPha
   ctx.lineTo((x - 0.25) * U, (1.3 + b) * U);
   ctx.closePath(); ctx.fill();
   r(ctx, x + 0.3, 1.0 + b, 0.45, 0.5, '#e8c8ff');              // Glanzpunkt
-  const schein = schlagPhase === 0 ? 2.6 : schlagPhase === 1 ? 3.6 : schlagPhase === 2 ? 2.2 : 1.8;
-  ctx.fillStyle = schlagPhase === 1 ? '#a85ce055' : '#a85ce033'; // Schein
+  // R216 (Autor: "dieser Leuchteffekt ist auch nicht so toll bei den Gegnern"):
+  // der Kristall glimmt, aber der Hof ist kleiner und schwaecher als zuvor.
+  const schein = schlagPhase === 0 ? 1.9 : schlagPhase === 1 ? 2.7 : schlagPhase === 2 ? 1.6 : 1.25;
+  ctx.fillStyle = schlagPhase === 1 ? '#a85ce033' : '#a85ce01c'; // Schein
   ctx.beginPath(); ctx.arc((x + 0.5) * U, (1.3 + b) * U, schein * U, 0, 7); ctx.fill();
   if (schlagPhase === 1) {                                      // Entladung: 4 Strahlen
     ctx.strokeStyle = '#d8a8ff'; ctx.lineWidth = 0.22 * U;

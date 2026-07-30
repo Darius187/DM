@@ -44,8 +44,8 @@ import { rollGear, rollGem } from '../logic/loot';
 import { KILL_DROPS, LEECH_HEAL_PER_POINT, ELEM_PFEIL } from '../data/items';
 import { steinWirkung } from '../logic/steinEffekte';
 import { blutTint } from '../logic/spuren';
-import { SPUREN, FIGUR_SCHATTEN } from '../data/welt';
-import { istHdFigur } from '../gfx/monsterArtHd';
+import { SPUREN, FIGUR_SCHATTEN, FIGUR_GROESSE, FIGUR_GROESSE_TYP, ELITE_LEUCHTEN } from '../data/welt';
+import { istHdFigur, hdSkala } from '../gfx/monsterArtHd';
 import { NOTIZEN } from '../data/texte';
 import { GOLEM, golemFrame } from '../data/golem';
 import { wendeGolemSpriteAn } from '../gfx/golemArt';
@@ -114,6 +114,19 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
    * die Ebene wird am Anfang des Gegner-Zeichnens geleert, alles danach im
    * selben Bild landet im selben Batch.
    */
+  /**
+   * R216 (Autor: "die Größenverhältnisse von Spieler zu NPC passen nicht"):
+   * Anzeigegröße EINER Figur - Typ-Tabelle (FIGUR_GROESSE_TYP) mal Elite-/Boss-
+   * Zuschlag. Reine Optik: Trefferradius, Tiefe und Kollision bleiben unberührt.
+   * Das Ergebnis ist die WUNSCHgröße; hdSkala() rechnet sie auf die Sprite-Skala
+   * um (HD-Frames sind überzeichnet).
+   */
+  protected figurAnzeigeSkala(e: Enemy): number {
+    const basis = FIGUR_GROESSE_TYP[e.type] ?? FIGUR_GROESSE.standard;
+    const zuschlag = e.boss ? FIGUR_GROESSE.bossF : (e.elite || e.champion) ? FIGUR_GROESSE.eliteF : 1;
+    return basis * zuschlag;
+  }
+
   protected zeichneFigurSchatten(x: number, y: number, skala = 1): void {
     this.figurSchattenGfx?.fillEllipse(
       x, y + FIGUR_SCHATTEN.fussVersatzPx * skala,
@@ -2240,8 +2253,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     if (type === 'golem') wendeGolemSpriteAn(e.sprite, e);
     else if (type === 'skelettwache') wendeSkelettwacheSpriteAn(e.sprite, e);
     else this.provider.applyFigure(e.sprite, e.figur(), 0, 0);
-    if (e.boss) e.sprite.setScale(1.5);
-    else if (e.elite) e.sprite.setScale(1.25);
+    // R216: Anzeigegroesse aus der Tabelle (siehe figurAnzeigeSkala) - Golem und
+    // Skelettwache haben eigene Zeichner und bleiben unangetastet.
+    if (type !== 'golem' && type !== 'skelettwache') {
+      e.sprite.setScale(hdSkala(e.figur(), this.figurAnzeigeSkala(e)));
+    }
     // Friedliche Karte: Gegner NICHT in die Welt nehmen (Sprite sofort weg,
     // nicht in enemies -> keine KI, kein Kampf). Rückgabeobjekt bleibt gültig,
     // damit Aufrufer (Namen setzen etc.) nicht brechen.
@@ -4042,7 +4058,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         : istSchatten ? Math.sin(e.wobble * 0.6) * 2.5
         : e.visualMoveT > 0 ? Math.sin(e.wobble) * 1.2
         : 0;
-      e.sprite.setPosition(e.x, e.y + wob).setDepth(this.gegnerTiefe(e.sprite, e.y));
+      // R216: Anzeigegroesse aus FIGUR_GROESSE (Autor: "Groessenverhaeltnisse
+      // Spieler zu NPC passen nicht"). Der FUSSPUNKT bleibt dabei auf e.y +
+      // fussPx - ohne die Korrektur sinken groessere Figuren in den Boden.
+      const skalaWunsch = istGolem || istSkelettwache ? 1 : this.figurAnzeigeSkala(e);
+      const fussKorrektur = istGolem || istSkelettwache ? 0
+        : -FIGUR_GROESSE.fussPx * (skalaWunsch - 1);
+      e.sprite.setPosition(e.x, e.y + wob + fussKorrektur).setDepth(this.gegnerTiefe(e.sprite, e.y));
       if (istGolem) wendeGolemSpriteAn(e.sprite, e);
       else if (istSkelettwache) wendeSkelettwacheSpriteAn(e.sprite, e);
       else {
@@ -4053,14 +4075,16 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       }
       if (istSchatten) e.sprite.setAlpha(0.72);
       else if (e.sprite.alpha !== 1) e.sprite.setAlpha(1);
-      if (!istGolem && !istSkelettwache && e.boss) e.sprite.setScale(1.5);
-      else if (!istGolem && !istSkelettwache && e.elite) e.sprite.setScale(1.25);
+      // R216: EINE Stelle setzt die Groesse (Typ-Tabelle x Elite/Boss-Zuschlag,
+      // durch die HD-Ueberzeichnung geteilt).
+      if (!istGolem && !istSkelettwache) e.sprite.setScale(hdSkala(e.figur(), skalaWunsch));
       // R207c: Bodenschatten NUR fuer HD-Figuren - die uebrigen (Wolf, Ratte,
       // Golem, Skelettwache) tragen ihren Fleck weiterhin im Sprite und
       // haetten sonst zwei. Der Schatten sitzt am FUSSPUNKT und wippt nicht
       // mit (kein wob), damit die Figur wirklich auf dem Boden steht.
-      if (!istGolem && !istSkelettwache && istHdFigur(e.figur())) {
-        this.zeichneFigurSchatten(e.x, e.y, e.sprite.scaleX || 1);
+      // R216: standardmaessig AUS (FIGUR_SCHATTEN.aktiv) - Autor-Order.
+      if (FIGUR_SCHATTEN.aktiv && !istGolem && !istSkelettwache && istHdFigur(e.figur())) {
+        this.zeichneFigurSchatten(e.x, e.y, skalaWunsch);
       }
       if (istGolem) {
         // Keine weisse Standard-Trefferlampe. Die Verletzungsstufen werden
@@ -4085,12 +4109,17 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       if (e.versteckt || e.boss || !(e.elite || e.champion)) continue;
       const col = eliteLeuchtFarbe(e);
       const puls = 0.55 + 0.45 * Math.sin(time * 3 + e.wobble);
-      for (let i = 0; i < 3; i++) {
-        ag.fillStyle(col, (0.12 - i * 0.035) * puls);
+      // R216 (Autor: "dieser Leuchteffekt ist auch nicht so toll"): dezenter -
+      // Ringzahl und Deckkraft kommen aus ELITE_LEUCHTEN, Boden-Schein optional.
+      const schritt = ELITE_LEUCHTEN.staerke / Math.max(1, ELITE_LEUCHTEN.ringe);
+      for (let i = 0; i < ELITE_LEUCHTEN.ringe; i++) {
+        ag.fillStyle(col, (ELITE_LEUCHTEN.staerke - i * schritt * 0.7) * puls);
         ag.fillCircle(e.x, e.y - e.r * 0.1, e.r + 3 + i * 5);
       }
-      ag.fillStyle(col, 0.1 * puls); // Boden-Schein
-      ag.fillEllipse(e.x, e.y + e.r * 0.75, (e.r + 12) * 2, e.r + 5);
+      if (ELITE_LEUCHTEN.bodenSchein) {
+        ag.fillStyle(col, ELITE_LEUCHTEN.staerke * 0.8 * puls);
+        ag.fillEllipse(e.x, e.y + e.r * 0.75, (e.r + 12) * 2, e.r + 5);
+      }
     }
     // Schildträger (Runde 41, Autorwunsch "kein CD, Gesicht muss sichtbar
     // bleiben"): ein kleineres WAPPENSCHILD (Heater, unten spitz) vor dem

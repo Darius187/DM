@@ -307,7 +307,53 @@ export const WETTER = {
 // Szene als eigene Ebene gezeichnet - dadurch bleibt er am Boden liegen (wippt
 // nicht mit), wird von der Zellgrenze nicht beschnitten und kann später dem
 // Sonnenstand folgen. Werte hier ändern = Schatten tunen.
+// R216 (Autor: "die Größenverhältnisse von Spieler zu NPC passen nicht - die
+// Skelette und alle anderen NPCs würde ich bei der Größe nochmal überarbeiten;
+// der Schatten kann so klein bleiben; die Champions haben die Größe vom
+// Spieler"): EINE Tabelle regelt, wie groß eine Figur im Feld erscheint.
+// 1.0 = alte Größe (Figur 32 px). Der Held ist ~1.8 (64 px × Form-Skala 0.9),
+// darum liegt der Standard knapp darunter - Monster sind auf Augenhöhe, aber
+// der Held bleibt der Größte seiner Klasse. Elite/Boss multiplizieren obendrauf.
+export const FIGUR_GROESSE = {
+  standard: 1.55,   // Humanoide: Skelette, Pest, Soldaten, Dorfvolk, Untote
+  klein: 1.05,      // Grabschatten & Co. (Autor: "der Schatten kann so klein bleiben")
+  gross: 1.8,       // Hünen: Henker, massige Gestalten
+  riese: 2.0,       // Templer/Kreuzritter - er überragt alles
+  vieh: 1.35,       // Vierbeiner (Wolf, Kuh, Pferd) - sonst wirken sie mickrig
+  eliteF: 1.12,     // Champion-Zuschlag (war 1.25) - knapp über Heldengröße
+  bossF: 1.3,       // Boss-Zuschlag (war 1.5)
+  /** Fußpunkt-Abstand unter dem Sprite-Anker bei Skala 1 (px). Hält beim
+   *  Vergrößern den Fuß auf derselben Weltzeile (sonst versinkt die Figur). */
+  fussPx: 16,
+} as const;
+
+// Ausnahmen je Gegner-/Figurtyp. Alles ohne Eintrag nimmt FIGUR_GROESSE.standard.
+export const FIGUR_GROESSE_TYP: Readonly<Record<string, number>> = {
+  schatten: FIGUR_GROESSE.klein,
+  ratte: FIGUR_GROESSE.klein,
+  templer: FIGUR_GROESSE.riese,
+  gefallener: FIGUR_GROESSE.gross,
+  henker: FIGUR_GROESSE.gross,
+  moorleiche: FIGUR_GROESSE.gross,
+  ertrunkener: FIGUR_GROESSE.gross,
+  wolf: FIGUR_GROESSE.vieh,
+  leichenhund: FIGUR_GROESSE.vieh,
+};
+
+// R216 (Autor: "dieser Leuchteffekt ist auch nicht so toll bei den Gegnern"):
+// das Champion-Leuchten bleibt als Lesehilfe, aber deutlich dezenter - zwei
+// schwache Ringe statt drei starker, KEIN Boden-Schein mehr.
+export const ELITE_LEUCHTEN = {
+  ringe: 2,
+  staerke: 0.05,   // Deckkraft des innersten Rings (war 0.12)
+  bodenSchein: false,
+} as const;
+
 export const FIGUR_SCHATTEN = {
+  /** R216 (Autor: "die haben immer noch diesen schwarzen Schatten auf dem
+   *  Boden"): der eigene Figur-Bodenschatten ist AUS. Das Licht der Szene
+   *  macht die Erdung; auf true stellen holt ihn zurück. */
+  aktiv: false,
   /** Zeichenebene: über dem Boden, unter allen Figuren. */
   tiefe: 2,
   /** Abstand des Fußpunkts unter dem Sprite-Anker (px, bei Skala 1). */

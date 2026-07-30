@@ -22,6 +22,13 @@ export interface EnemyHost {
   playerR(): number;
   playerDir(): number; // Blickrichtung des Spielers (rad) für die Flanken-KI
   playerTot(): boolean; // tot: Gegner scharen sich um die Leiche statt anzugreifen
+  // R216 (Autorbug "nach dem Erwachen kaempfen die Soldaten gegen unsichtbare
+  // Gegner weiter"): hat diese Einheit ueberhaupt ein Ziel? Der Feld-Host
+  // liefert bei FEHLENDEM Ziel die EIGENE Position als "Spielerposition" -
+  // Abstand 0 galt damit als "in Reichweite" und die Einheit schlug endlos ins
+  // Leere (ohne Schaden, aber mit Ausholen, Sound und Schlag-Animation).
+  // Fehlt die Methode (Kampf-Werkbank, Held ist immer Ziel), gilt "hat Ziel".
+  zielVorhanden?(e: Enemy): boolean;
   enemyMeleeHit(e: Enemy, dmg: number): void;
   spawnEnemyProjectile(x: number, y: number, vx: number, vy: number, dmg: number, col: string, pfeil?: boolean, vonTeam?: 'spieler' | 'feind', hoch?: boolean): void;
   addTelegraph(x: number, y: number, r: number, t: number, dmg: number): void;
@@ -536,6 +543,19 @@ export class Enemy {
       else this.step = 0;   // an der Bresche: stehen (Belagerung schlaegt zu)
       return;
     }
+    // R216 (Autorbug, mehrfach gemeldet): OHNE Ziel wird NICHT gekaempft.
+    // Der Feld-Host gibt bei fehlendem Ziel die eigene Position zurueck (d = 0),
+    // wodurch jede Einheit "in Reichweite" war und endlos zuschlug - sichtbar
+    // seit die Schlag-Animation existiert ("kaempfen gegen unsichtbare Gegner").
+    // Marsch-/Belagerungs-/Jagd-Befehle sind oben schon abgehandelt, hier bleibt
+    // nur der Kampf: Ausholen abbrechen, Animation beenden, still stehen.
+    if (host.zielVorhanden && !host.zielVorhanden(this)) {
+      this.windup = 0;
+      this.visualAttackT = 0;
+      this.schlagNachlauf = 0;
+      this.step = 0;
+      return;
+    }
     if (this.boss) {
       this.bossAI(host, dt, d);
       return;
@@ -879,6 +899,10 @@ export class Enemy {
    */
   schlagAnimPhase(): number {
     if (this.visualAttackT <= 0 || this.schlagNachlauf <= 0) return -1;
+    // R216: das Ausholen zeigt sich erst kurz VOR dem Treffer (SCHLAG_ANIM.
+    // ausholenS) - so wirkt der Schlag so schnappig wie beim Helden, ohne das
+    // Kampf-Timing (windup als Ausweich-Fenster) anzutasten.
+    if (this.windup > SCHLAG_ANIM.ausholenS) return -1;
     if (this.windup > 0) return 0;
     return this.visualAttackT > this.schlagNachlauf / 2 ? 1 : 2;
   }

@@ -3287,3 +3287,40 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
 - Belege: Kontaktbogen (Grundfigur + e4/e5 mit allen Schlagphasen),
   Spawn-Zaehlung ueber 5 Seeds: Ebene 1-3 = 0, Ebene 4 = 15/259,
   Ebene 5 = 10/278 Spawns.
+
+## R216 - Autor-Meldungen: Groessen, Schaerfe, Schatten, Leuchten, Tempo, Phantomkampf
+- GROESSEN (Autor: "Verhaeltnis Spieler zu NPC passt nicht"): neue Tabelle
+  FIGUR_GROESSE + FIGUR_GROESSE_TYP in welt.ts. Gemessen im Spiel: Held
+  57,6 px; Standard-Humanoide (Skelett/Pest/Soldat/Dorfvolk) 49,6 px;
+  Schatten 33,6 px (bleibt klein, Autor-Order); Huenen (Henker, Gefallener,
+  Moorleiche) 57,6 px = Heldenhoehe; Templer 83,2 px; Vieh 1.35x.
+  Elite/Boss-Zuschlag von 1.25/1.5 auf 1.12/1.3 gesenkt, sonst waeren die
+  Champions ueber Templergroesse gelandet. Rein optisch - Trefferradius,
+  Tiefensortierung und Kollision bleiben unberuehrt. Fusspunkt-Korrektur
+  (FIGUR_GROESSE.fussPx) haelt die Fuesse trotz Vergroesserung auf ihrer
+  Weltzeile (in CombatScene und fuer Dorfvolk/Vieh in WorldScene).
+- SCHAERFE (Autor: "einige Gegner sehen unscharf/verschwommen aus"): Ursache
+  war Hochskalieren der 32er-HD-Frames. Der Atlas wird jetzt UEBERZEICHNET
+  gebacken (HD_UEBER = 2, Frame 104 statt 52 px), die Szene VERKLEINERT.
+  hdSkala() ist die einzige erlaubte Umrechnung Wunschgroesse -> Sprite-Skala.
+- BODENSCHATTEN (Autor: "die haben immer noch diesen schwarzen Schatten"):
+  FIGUR_SCHATTEN.aktiv = false. Code bleibt, ein Schalter holt ihn zurueck.
+- LEUCHTEN (Autor: "dieser Leuchteffekt ist auch nicht so toll"): das
+  Champion-Leuchten laeuft ueber ELITE_LEUCHTEN (2 Ringe, Deckkraft 0.05
+  statt 0.12, KEIN Boden-Schein). Auch der Zauberstab-Hof ist kleiner/
+  schwaecher (1.25 statt 1.8 Radius, Alpha 1c statt 33).
+- SCHLAGTEMPO (Autor: "koennte schneller ablaufen, wie beim Spieler"): das
+  Ausholen zeigt sich erst in den letzten SCHLAG_ANIM.ausholenS (0,12 s) des
+  Telegraphs, Nachlauf 0,18 s statt 0,3 s. Gemessen: laengster sichtbarer
+  Schlag 0,13 s (Held 0,2 s), vorher ~0,7 s. Das KAMPF-Timing (windup als
+  Ausweichfenster) ist unangetastet - nur die Animation ist knapper.
+- PHANTOMKAMPF (Autor: "nach dem Erwachen kaempfen die Soldaten gegen
+  unsichtbare Gegner weiter - das hatten wir schon"): ECHTE Ursache gefunden.
+  Der Feld-Kampfhost liefert bei FEHLENDEM Ziel die EIGENE Position als
+  "Spielerposition" (playerX: ... : e.x). Abstand 0 galt als "in Reichweite",
+  also holte jede geweckte Einheit endlos aus und schlug ins Leere - ohne
+  Schaden (enemyMeleeHit prueft das Ziel), aber mit Sound und Animation.
+  Fix: EnemyHost.zielVorhanden(); ohne Ziel bricht Enemy.update Ausholen und
+  Animation ab und die Einheit steht still. A/B im selben Browserlauf:
+  ohne Fix 280 Schlag-Frames bei 0 Feinden (Sprite haengt auf d2f4), mit Fix
+  0 Schlag-Frames (d0f0).

@@ -2343,3 +2343,28 @@ WAS FERTIG IST (verifiziert)
 TESTS: tsc sauber, 492/492 gruen, 2 Kontaktbogen + Ingame-Frame-Messung.
 OFFEN: Bogen zeigt die volle Spann-Pose nur im Nahkampf-Telegraph (der
 Schuss selbst ist instantan - ein Spann-Vorlauf waere ein KI-Umbau, notiert).
+
+## Runde 216 - Deine sechs Meldungen
+
+1. GROESSEN passen jetzt: Held 58 px, normale Untote/Soldaten/Dorfvolk 50 px,
+   Huenen (Henker, Gefallener Held) auf Heldenhoehe, Templer 83 px, der
+   Grabschatten bleibt klein (34 px) wie gewuenscht. Champions liegen knapp
+   ueber dem Helden statt weit darueber. Alles nur Optik - Trefferzonen,
+   Kollision und Sortierung sind unveraendert; die Fuesse stehen weiter auf
+   derselben Bodenlinie.
+2. UNSCHARF ist behoben: die Figuren werden jetzt doppelt so gross gebacken
+   und im Spiel VERKLEINERT. Vorher wurden kleine Bilder hochgezogen - genau
+   das sah verwaschen aus.
+3. SCHWARZER BODENFLECK ist weg (ein Schalter in src/data/welt.ts holt ihn
+   zurueck, falls du ihn doch willst).
+4. LEUCHTEFFEKT deutlich dezenter: Champion-Schein halbiert, Boden-Schein
+   raus, auch der Zauberstab-Hof ist kleiner.
+5. SCHLAG ist schnell wie beim Helden: sichtbarer Schlag 0,13 s gemessen
+   (Held 0,2 s), vorher rund 0,7 s. Das Ausweich-Fenster im Kampf bleibt
+   unveraendert lang - nur die Animation schnappt zu.
+6. SOLDATEN GEGEN UNSICHTBARE GEGNER - Ursache gefunden und behoben: ohne
+   Ziel bekam eine Einheit ihre EIGENE Position als Ziel geliefert, stand
+   also "0 Schritte vor dem Feind" und hieb ewig ins Leere. Beweis im selben
+   Lauf: vorher 280 Schlag-Frames ohne einen einzigen Gegner, danach null.
+
+TESTS: tsc sauber, 492/492 gruen, Messungen + Screenshot im Browser.

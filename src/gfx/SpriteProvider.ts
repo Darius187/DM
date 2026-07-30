@@ -9,7 +9,7 @@ import { drawHeld, drawReiter, HELD_CELL, HELD_DIRS, HELD_FRAMES, HELD_FELD, HEL
 import { drawItemIcon, iconKey, ICON_SIZE } from './itemIcons';
 import { drawTileArt, drawObjectArt, drawBreakable } from './tileArt';
 import { DETAIL_NPCS } from './npcArt';
-import { istHdFigur, HD_ZELLE, HD_FRAMES, HD_ORIGIN_X, HD_ORIGIN_Y, hdFrameGroesse, drawMonsterHd } from './monsterArtHd';
+import { istHdFigur, HD_ZELLE, HD_FRAMES, HD_UEBER, HD_ORIGIN_X, HD_ORIGIN_Y, hdFrameGroesse, drawMonsterHd } from './monsterArtHd';
 import type { CryptTheme } from '../data/krypta';
 import type { HeldTier } from '../data/helden';
 import type { Item } from '../data/types';
@@ -205,7 +205,9 @@ export class SpriteProvider {
       // (HD_ORIGIN_*) haelt den Fusspunkt auf derselben Weltposition -
       // applyFigure setzt ihn beim Texturwechsel.
       // R209: 7 Frames je Richtung - 0-3 Gehen, 4-6 Schlag-/Wirk-Phasen.
-      const F = hdFrameGroesse(SPRITE);
+      // R216: UEBERZEICHNET (HD_UEBER) - die Szene verkleinert danach, statt
+      // weichgezeichnete 32er-Pixel hochzuziehen (Autor: "unscharf/verschwommen").
+      const F = hdFrameGroesse(SPRITE) * HD_UEBER;
       const canvas = document.createElement('canvas');
       canvas.width = F * HD_FRAMES;
       canvas.height = F * 4;

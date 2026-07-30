@@ -5,6 +5,13 @@ import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir, angleToDir8, angleToDir16, type EnemyHost } from '../world/Enemy';
 import { SCHLAG_ANIM } from '../data/enemies';
+
+// R216: Die groesseren Welt-Figuren (Dorfvolk, Vieh) wuerden nach unten aus
+// ihrem Standpunkt herauswachsen - der Anker liegt in der Koerpermitte, der Fuss
+// FIGUR_GROESSE.fussPx darunter. Diese Korrektur haelt den Fuss auf derselben
+// Weltzeile wie bei Skala 1 (Berechnung wie in CombatScene).
+const WELT_FUSS_NPC = -FIGUR_GROESSE.fussPx * (FIGUR_GROESSE.standard - 1);
+const WELT_FUSS_VIEH = -FIGUR_GROESSE.fussPx * (FIGUR_GROESSE.vieh - 1);
 import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildWaldWest, buildWaldSuedOst, buildBurg, buildWaldNord, buildWaldMitte, buildLager, buildStadt2, buildHochland, buildWaldNordWest, buildWaldNordOst, buildSchlachtfeld, buildKloster, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn, type Abbaubar } from '../world/areagen';
 import { katakombenAktivFuer, buildKatakombenKrypta } from '../world/katakombenKrypta';
 import { kryptaVersatzUnter, ebeneFuerKlassik } from '../data/katakombenDungeon';
@@ -71,7 +78,7 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import type { FeindlagerVariante, WallForm } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
@@ -134,7 +141,7 @@ import { alsCanvas, stelleFrei, verarbeiteUpload, verkleinereCanvas } from '../g
 import { zoomFaktor } from '../logic/zoom';
 import type { Item, EnemyTypeId } from '../data/types';
 import { OBERWELT_KANTEN, wegKreuzungPx } from '../data/oberweltKanten';
-import { figurFrameAnteil } from '../gfx/monsterArtHd';
+import { figurFrameAnteil, hdSkala } from '../gfx/monsterArtHd';
 import type { Pickup } from '../world/Pickups';
 import { itemTooltipLines } from '../ui/panels';
 import { ANNA_GRAB } from '../data/dialoge';
@@ -7367,6 +7374,10 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     for (const n of a.npcs) {
       const sprite = this.add.sprite(n.x, n.y, '__DEFAULT').setDepth(n.y);
       this.provider.applyFigure(sprite, n.figur ?? n.id, 0, 0);
+      // R216: Dorfvolk in derselben Groesse wie Monster/Heer (Autor: "und alle
+      // anderen NPCs"). Kinder bleiben klein - deren Verkleinerung steckt in
+      // der ZEICHNUNG (FIGURES.scale) und multipliziert sich damit.
+      sprite.setScale(hdSkala(n.figur ?? n.id, FIGUR_GROESSE.standard));
       const lbl = this.add.text(n.x, n.y - 22, n.name, {
         fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8e6', stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5).setDepth(2300);
@@ -7735,6 +7746,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   private spawnTier(t: AnimalSpawn): void {
     const sprite = this.add.sprite(t.x, t.y, '__DEFAULT').setDepth(t.y);
     this.provider.applyFigure(sprite, t.type, 0, 0);
+    // R216: Vieh waechst mit, sonst wirkt es neben den groesseren Figuren winzig.
+    sprite.setScale(hdSkala(t.type, FIGUR_GROESSE.vieh));
     this.animalEnts.push({
       ...t, sprite, curX: t.x, curY: t.y, targetX: t.x, targetY: t.y,
       pauseT: Math.random() * 2, soundT: 2 + Math.random() * 8, step: 0, stepT: 0, dir: 0,
@@ -9075,6 +9088,9 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       playerR: () => { const z = s.zielFuer(e); return z === 'held' ? 12 : 11; },
       playerDir: () => { const z = s.zielFuer(e); return z === 'held' ? s.pdir : 0; },
       playerTot: () => { const z = s.zielFuer(e); return z === 'held' ? s.playerDead : false; },
+      // R216: kein Ziel = kein Kampf (siehe EnemyHost.zielVorhanden). Ohne das
+      // schlugen Einheiten auf ihre EIGENE Position ein (Abstand 0).
+      zielVorhanden: (en) => s.zielFuer(en) !== null,
       enemyMeleeHit: (en, dmg) => {
         // R187: Heer-Waffen WUERFELN je Schlag zwischen min und max.
         const wurf = en.waffeMax > 0 ? Math.round(en.waffeMin + Math.random() * (en.waffeMax - en.waffeMin)) : dmg;
@@ -15900,7 +15916,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         }
         this.provider.applyFigure(n.sprite, n.figur ?? n.id, dir, 0);
       }
-      n.sprite.setPosition(n.curX, n.curY).setDepth(n.curY);
+      n.sprite.setPosition(n.curX, n.curY + WELT_FUSS_NPC).setDepth(n.curY);
       if ((n.flashT ?? 0) > 0) n.sprite.setTintFill(0xff7048); else n.sprite.clearTint();
       n.label.setPosition(n.curX, n.curY - 22);
     }
@@ -15939,7 +15955,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
           t.stepT += dt; if (t.stepT > 0.11) { t.stepT = 0; t.step = (t.step + 1) % 4; }
           if (t.soundT <= 0) { t.soundT = 1.4 + Math.random() * 2; if (Math.hypot(t.curX - this.px, t.curY - this.py) < 460) this.sfx.play(t.type, 0.6); }
           this.provider.applyFigure(t.sprite, t.type, t.dir, t.step);
-          t.sprite.setPosition(t.curX, t.curY).setDepth(t.curY);
+          t.sprite.setPosition(t.curX, t.curY + WELT_FUSS_VIEH).setDepth(t.curY);
           continue;
         }
       }
@@ -15967,7 +15983,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
           t.pauseT = 0.2;
           if (t.type === 'huhn' && t.soundT <= 0) { t.soundT = 1.4 + Math.random() * 2; if (dP < 320) this.sfx.play('huhn', 0.5); }
           this.provider.applyFigure(t.sprite, t.type, t.dir, t.step);
-          t.sprite.setPosition(t.curX, t.curY).setDepth(t.curY);
+          t.sprite.setPosition(t.curX, t.curY + WELT_FUSS_VIEH).setDepth(t.curY);
           continue;
         }
       }
@@ -16010,22 +16026,26 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       t.curX = Phaser.Math.Clamp(t.curX, Math.max(16, pen.x0), Math.min(this.area.w * TILE - 16, pen.x1));
       t.curY = Phaser.Math.Clamp(t.curY, Math.max(16, pen.y0), Math.min(this.area.h * TILE - 16, pen.y1));
       this.provider.applyFigure(t.sprite, t.type, t.dir, t.step);
-      t.sprite.setPosition(t.curX, t.curY).setDepth(t.curY);
+      t.sprite.setPosition(t.curX, t.curY + WELT_FUSS_VIEH).setDepth(t.curY);
     }
     // R213 (Autor: "hast du auch Kinder und die Tiere geaendert?"): Szenen-
     // Bodenschatten auch fuer Dorfvolk und Vieh - ihre gebackenen Flecken sind
     // mit dem HD-Pass verschwunden. Kinder werfen kleinere Schatten (scale),
     // grosse Tiere (Kuh, Pferd) breitere (quad.size); das Huhn behaelt seinen
     // gebackenen 32er-Fleck und wird uebersprungen.
-    for (const n of this.npcEnts) {
-      if (!n.sprite.visible) continue;
-      const spec = FIGURES[n.figur ?? n.id] as { scale?: number } | undefined;
-      this.zeichneFigurSchatten(n.curX, n.curY, Math.min(1, spec?.scale ?? 1));
-    }
-    for (const t of this.animalEnts) {
-      if (t.type === 'huhn' || !t.sprite.visible) continue;
-      const spec = FIGURES[t.type] as { quad?: { size: number } } | undefined;
-      this.zeichneFigurSchatten(t.curX, t.curY, spec?.quad?.size ?? 1);
+    // R216 (Autor-Order): der Figur-Bodenschatten ist AUS - FIGUR_SCHATTEN.aktiv
+    // holt ihn zurueck, ohne den Code zu aendern.
+    if (FIGUR_SCHATTEN.aktiv) {
+      for (const n of this.npcEnts) {
+        if (!n.sprite.visible) continue;
+        const spec = FIGURES[n.figur ?? n.id] as { scale?: number } | undefined;
+        this.zeichneFigurSchatten(n.curX, n.curY, Math.min(1, spec?.scale ?? 1));
+      }
+      for (const t of this.animalEnts) {
+        if (t.type === 'huhn' || !t.sprite.visible) continue;
+        const spec = FIGURES[t.type] as { quad?: { size: number } } | undefined;
+        this.zeichneFigurSchatten(t.curX, t.curY, spec?.quad?.size ?? 1);
+      }
     }
     // Schornsteinrauch
     this.smokeT -= dt;
