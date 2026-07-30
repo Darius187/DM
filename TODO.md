@@ -274,3 +274,6 @@ Lichtern -> Bloom im Einfall drosseln. Ohne Geraeteprofil aber nicht auf Verdach
 - Dasselbe fuer NAHKAEMPFER: brennende/frostige Schwerter (Klinge im HD-
   Zeichner mit Glut-/Frostkante + Partikel am Schlag, Schaden ueber dieselben
   On-Hit-Effekte). Erst nach Autor-Abnahme der Schlag-Animation (R209).
+- R209-Folge: Fernkampf-Schuss mit kurzem Spann-VORLAUF (Bogen sichtbar
+  gespannt BEVOR der Pfeil fliegt) - braucht einen kleinen KI-Umbau
+  (Schuss-Telegraph analog windup).

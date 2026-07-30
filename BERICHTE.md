@@ -2321,3 +2321,25 @@ WAS FERTIG IST (verifiziert)
 
 TESTS: tsc sauber, 492/492 Vitest gruen, Browser-Proben (Zahlen + Screenshot).
 OFFEN: Feinschliff der Raum-Rollen (mehr Moebel-Vielfalt) bei Bedarf.
+
+## Runde 216 (R209+R210) - Schlag-Animationen fuer alle + Der Schwarzkuenstler
+
+WAS FERTIG IST (verifiziert)
+1. JEDE Figur hat jetzt ihre Schlag-Animation (Freigabe "mach alle"):
+   Einhand-Waffen schwingen um die Faust (Schwert, Axt, Hammer, Keule,
+   Schaufel, Geissel...), die Hellebarde stoesst vor, der Bogen loest die
+   Sehne und legt nach, der Stab entlaedt den Kristall, die Glocke pendelt,
+   Waffenlose schlagen mit der Faust zu, Wolf und Leichenhund ducken sich
+   und springen. Gilt fuer Monster, das eigene Heer UND die kaempfenden
+   Dorfbewohner (Schmied und Co.).
+2. Ingame gemessen: Gegner spielen beim Angriff wirklich die drei Phasen
+   (Ausholen waehrend des Telegraphs, Hieb, Ausklang) - Frames d2f4-d2f6.
+3. NEU: Der Schwarzkuenstler (Kampf-Zauberer, dein Wunsch "Schwert schlagen
+   + Stab zaubern"): auf Abstand violette Arkan-Geschosse, in der Naehe
+   zieht er das Schwert durch. Ab Ebene 4, mit Ebenen-Varianten.
+4. Nebenbei gefixt: der abtruennige Moench schoss bisher pfeilfarbene
+   Geschosse - jetzt violett-arkan wie vorgesehen.
+
+TESTS: tsc sauber, 492/492 gruen, 2 Kontaktbogen + Ingame-Frame-Messung.
+OFFEN: Bogen zeigt die volle Spann-Pose nur im Nahkampf-Telegraph (der
+Schuss selbst ist instantan - ein Spann-Vorlauf waere ein KI-Umbau, notiert).
