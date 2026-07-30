@@ -3324,3 +3324,32 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   Animation ab und die Einheit steht still. A/B im selben Browserlauf:
   ohne Fix 280 Schlag-Frames bei 0 Feinden (Sprite haengt auf d2f4), mit Fix
   0 Schlag-Frames (d0f0).
+
+## R217 - Layout-Baukasten: eigenes Werkzeugfenster + alle drei Spalten
+- Autor-Meldung 1 ("das Fenster mit den Tools kann ich nicht verschieben, das
+  haengt irgendwo ausserhalb vom Bildschirmrand"): die Werkzeugleiste war ein
+  Kind des Charakterfensters und lag bei fester Quell-Position 470*s - bei
+  kleiner Fensterskala/verschobenem Fenster rutschte sie hinaus. Jetzt ein
+  EIGENES Fenster (eigener Container an der Szene, Tiefe 5300, feste Groesse
+  620x150 px unabhaengig von der Fensterskala) mit Griff in der Kopfzeile,
+  Position in localStorage (baukastenPos) und KLEMME beim Aufbau: sie kann
+  nie ausserhalb liegen, auch nicht nach Aufloesungswechsel. Belegt: eine
+  absichtlich gesetzte Position 99999/99999 landet geklemmt bei 656/566.
+- Autor-Meldung 2 ("dann kann ich die Schrift nicht voneinander unterschiedlich
+  vergroessern, also einzelne Texte"): schriftVon() galt nur fuer Titel/Stufe/
+  Name. Jetzt haben AUCH Werte-Tabelle, Vorrat, Widerstaende, Kraeuter-Zahlen,
+  Slot-Beschriftungen, Rucksack-Titel/Zaehler/Filter-Reiter, Gegenstands-Name
+  und -Info sowie die Vergleichs-Spalte je eine EIGENE Schriftgroesse.
+  Belegt: r_itemName von Vorgabe auf 30 gesetzt -> groesster Text im Fenster
+  waechst von 21 auf 28 px, danach zurueck auf 21.
+- Autor-Meldung 3+4 ("unter Rucksack geht gar nichts davon und das Fenster
+  nebenan mit dem Vergleich auch nicht"): der Editor wird jetzt zentral in
+  build() NACH allen drei Spalten gezeichnet, und die Spalten melden ihre
+  Elemente an dieselbe Liste. Neu editierbar: r_titel, r_zaehler, r_filter
+  (mit Reiterhoehe), r_liste (mit ZEILENHOEHE), r_itemName, r_itemInfo,
+  d_titel, d_name, d_werte, d_vergleich. Belegt: 27 Elemente statt 18 -
+  davon 6 im Rucksack und 3-4 im Vergleich.
+- Diese neuen Boxen arbeiten mit VERSATZ (x/y = 0 heisst "wie gebaut"), weil
+  die mittlere und rechte Spalte an der gemalten Bildschale haengen -
+  absolute Quell-Koordinaten haetten das gewachsene Layout zerrissen. Der
+  Editor sagt das in der Kopfzeile an (CHAR_LAYOUT_VERSATZ).

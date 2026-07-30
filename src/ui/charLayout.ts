@@ -43,7 +43,31 @@ export const CHAR_LAYOUT_DEFAULT: Readonly<Record<string, CharBox>> = {
   widerstaendeBlock: { x: 98, y: 597, w: 158, h: 24 },
   vorratBlock:       { x: 91, y: 675, w: 231, h: 21 },
   kraeuterBlock:     { x: 109, y: 824, w: 59, h: 19 },
+  // R217 (Autor: "unter Rucksack geht gar nichts davon und das Fenster nebenan
+  // mit dem Vergleich auch nicht"): die MITTLERE (Rucksack) und die RECHTE
+  // Spalte (Ausgewählt/Vergleich) sind jetzt ebenfalls im Baukasten.
+  // Diese Boxen sind VERSÄTZE (x/y = 0 bedeutet "wie gebaut") - so bleibt das
+  // gewachsene Layout der Bildschale erhalten und der Autor schiebt relativ.
+  // schrift = Schriftgröße in Quell-Pixeln, h = Zeilen-/Reiterhöhe.
+  r_titel:      { x: 0, y: 0, schrift: 18 },
+  r_zaehler:    { x: 0, y: 0, schrift: 15 },
+  r_filter:     { x: 0, y: 0, h: 30, schrift: 13 },
+  r_liste:      { x: 0, y: 0, h: 69.25 },
+  r_itemName:   { x: 0, y: 0, schrift: 15 },
+  r_itemInfo:   { x: 0, y: 0, schrift: 12 },
+  d_titel:      { x: 0, y: 0, schrift: 17 },
+  d_name:       { x: 0, y: 0, schrift: 16 },
+  d_werte:      { x: 0, y: 0, schrift: 13 },
+  d_vergleich:  { x: 0, y: 0, schrift: 13 },
+  d_knoepfe:    { x: 0, y: 0, schrift: 13 },
 };
+
+// R217: Diese Elemente arbeiten mit VERSATZ statt absoluter Quell-Position -
+// der Editor zeigt das an, damit der Autor die Zahlen richtig liest.
+export const CHAR_LAYOUT_VERSATZ = new Set<string>([
+  'r_titel', 'r_zaehler', 'r_filter', 'r_liste', 'r_itemName', 'r_itemInfo',
+  'd_titel', 'd_name', 'd_werte', 'd_vergleich', 'd_knoepfe',
+]);
 
 // Menschliche Namen fuer den Editor.
 export const CHAR_LAYOUT_LABEL: Readonly<Record<string, string>> = {
@@ -54,6 +78,12 @@ export const CHAR_LAYOUT_LABEL: Readonly<Record<string, string>> = {
   kraeuter: 'Titel „Kräuterbeutel"',
   werteBlock: 'Werte-Tabelle', widerstaendeBlock: 'Widerstands-Zeile',
   vorratBlock: 'Vorrats-Tabelle', kraeuterBlock: 'Kräuter-Reihe',
+  r_titel: 'Rucksack: Titel', r_zaehler: 'Rucksack: Anzahl + Gold',
+  r_filter: 'Rucksack: Filter-Reiter', r_liste: 'Rucksack: Liste (h = Zeilenhöhe)',
+  r_itemName: 'Rucksack: Gegenstands-Name', r_itemInfo: 'Rucksack: Gegenstands-Info',
+  d_titel: 'Vergleich: Titel', d_name: 'Vergleich: Gegenstands-Name',
+  d_werte: 'Vergleich: Werte-Block', d_vergleich: 'Vergleich: Gegenüberstellung',
+  d_knoepfe: 'Vergleich: Knöpfe',
 };
 
 export const CHAR_LAYOUT_IDS = Object.keys(CHAR_LAYOUT_DEFAULT);
@@ -115,6 +145,27 @@ export function charSchrift(): number {
 export function setzeCharSchrift(faktor: number): void {
   schriftCache = Math.max(0.8, Math.min(2, Math.round(faktor * 100) / 100));
   try { localStorage.setItem(SCHRIFT_KEY, String(schriftCache)); } catch { /* egal */ }
+}
+
+// R217 (Autor: "das Fenster mit den Tools kann ich nicht verschieben, das
+// haengt irgendwo ausserhalb vom Bildschirmrand"): die Werkzeugleiste ist ein
+// EIGENES Fenster mit eigener, gespeicherter Position. Die Szene klemmt sie
+// beim Aufbau in den sichtbaren Bereich - sie kann also nie verloren gehen.
+const WZ_KEY = 'ravensmoor_baukasten_pos';
+let wzCache: { x: number; y: number } | null = null;
+
+export function baukastenPos(): { x: number; y: number } {
+  if (wzCache) return wzCache;
+  try {
+    const roh = JSON.parse(localStorage.getItem(WZ_KEY) ?? 'null') as { x: number; y: number } | null;
+    wzCache = roh && Number.isFinite(roh.x) && Number.isFinite(roh.y) ? roh : { x: 24, y: 24 };
+  } catch { wzCache = { x: 24, y: 24 }; }
+  return wzCache;
+}
+
+export function setzeBaukastenPos(x: number, y: number): void {
+  wzCache = { x: Math.round(x), y: Math.round(y) };
+  try { localStorage.setItem(WZ_KEY, JSON.stringify(wzCache)); } catch { /* egal */ }
 }
 
 // Export fuer den Autor: die AKTUELLEN effektiven Boxen als kompakter Block,

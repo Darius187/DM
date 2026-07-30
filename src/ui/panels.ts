@@ -19,7 +19,7 @@ import { PFLANZEN } from '../data/pflanzen';
 import type { MaterialId } from '../data/crafting';
 import { setVerfolgtWunsch, type QuestSicht } from '../logic/questLog';
 import { TUNING } from '../logic/tuning';
-import { charBox, charFest, setCharFest, setCharBox, resetCharLayout, exportCharLayout, charSchrift, setzeCharSchrift, CHAR_LAYOUT_LABEL, type CharBox } from './charLayout';
+import { charBox, charFest, setCharFest, setCharBox, resetCharLayout, exportCharLayout, charSchrift, setzeCharSchrift, baukastenPos, setzeBaukastenPos, CHAR_LAYOUT_LABEL, CHAR_LAYOUT_VERSATZ, type CharBox } from './charLayout';
 import type { SpriteProvider } from '../gfx/SpriteProvider';
 import type { SoundProvider } from '../gfx/SoundProvider';
 import { fixUiScroll } from './dialog';
@@ -89,6 +89,10 @@ export class UIPanels {
   private charEditBoxen: Array<{ id: string; cx: number; cy: number; w: number; h: number }> = [];
   // R199: Zustand des Maus-Ziehens im Layout-Baukasten
   private charDrag: { id: string; zx: number; zy: number; x0: number; y0: number } | null = null;
+  /** R217: eine Sammelstelle fuer ALLE Baukasten-Elemente (alle drei Spalten). */
+  private merkeEditBox(id: string, cx: number, cy: number, w: number, h: number): void {
+    this.charEditBoxen.push({ id, cx, cy, w, h });
+  }
   private charDragHaken = false;
   private charZiehTick = false;
   private charScale = 1;   // panelScale zum Zeitpunkt des letzten Aufbaus (Editor rechnet Quell<->Schirm)
@@ -332,9 +336,14 @@ export class UIPanels {
         inhalt.add(this.scene.add.rectangle(linksW, 0, 1, h - inhaltY, 0x71583b, 0.8).setOrigin(0));
         inhalt.add(this.scene.add.rectangle(rechtsX, 0, 1, h - inhaltY, 0x71583b, 0.8).setOrigin(0));
       }
+      // R217: EINE Sammelliste fuer alle drei Spalten - der Editor wird erst
+      // NACH allen Spalten gezeichnet, damit auch Rucksack und Vergleich
+      // anklickbare Elemente haben (Autor: "unter Rucksack geht gar nichts").
+      this.charEditBoxen = [];
       this.buildCharacterSide(inhalt, linksW, h - inhaltY);
       this.buildInventorySide(inhalt, linksW + 10, mitteW - 20, h - inhaltY - 6);
       this.buildItemDetailSide(inhalt, rechtsX + 10, w - rechtsX - 20, h - inhaltY - 6);
+      this.zeichneCharEditor(inhalt);
     } else if (this.hauptTab === 'faehigkeiten') {
       inhalt.add(this.scene.add.rectangle(7, 5, w - 14, h - 70, PANEL_BG, 0.94).setOrigin(0));
       this.buildSkillsTab(inhalt, w, h - 62);
@@ -476,10 +485,11 @@ export class UIPanels {
       textSize(charBox(id).schrift ?? vorgabe, min);
 
     // BAUKASTEN: jedes Element liest seine Quell-Box aus charBox(id) (Vorgabe +
-    // Editor-Override). charEditBoxen sammelt die Schirm-Rechtecke fuer den Editor.
-    this.charEditBoxen = [];
+    // Editor-Override). charEditBoxen sammelt die Schirm-Rechtecke fuer den
+    // Editor - R217: die Liste wird in build() geleert, damit auch Rucksack und
+    // Vergleichs-Spalte ihre Elemente dazulegen koennen.
     const merke = (id: string, cx: number, cy: number, ww: number, hh: number): void => {
-      this.charEditBoxen.push({ id, cx, cy, w: ww, h: hh });
+      this.merkeEditBox(id, cx, cy, ww, hh);
     };
     const bA = charBox('ausruestung');
     c.add(this.scene.add.text(bA.x * s, y(bA.y), 'AUSRÜSTUNG', {
@@ -522,7 +532,7 @@ export class UIPanels {
       c.add(hit);
       if (!it) {
         c.add(this.scene.add.text(bx + bw / 2, by + bh / 2, label, {
-          fontFamily: 'serif', fontSize: textSize(11, 9), color: INK_ZWEIT,
+          fontFamily: 'serif', fontSize: schriftVon(id, 11, 9), color: INK_ZWEIT,
         }).setOrigin(0.5));
         return;
       }
@@ -568,9 +578,12 @@ export class UIPanels {
       }).setOrigin(0.5, 0));
       merke(id, b.x * s, y(b.y) + 9 * s, 120 * s, 18 * s);
     };
-    const pair = (label: string, value: string, sourceX: number, sourceY: number, valueX: number): void => {
-      c.add(this.scene.add.text(sourceX * s, y(sourceY), label, { fontFamily: 'serif', fontSize: textSize(12), color: INK }));
-      c.add(this.scene.add.text(valueX * s, y(sourceY), value, { fontFamily: 'serif', fontSize: textSize(12), color: INK }).setOrigin(1, 0));
+    // R217 (Autor: "die Schrift einzelner Texte getrennt vergroessern"): jede
+    // Tabelle hat ihre EIGENE Schriftgroesse (Schrift-Knopf am gewaehlten Block).
+    const pair = (label: string, value: string, sourceX: number, sourceY: number, valueX: number, id = ''): void => {
+      const gr = id ? schriftVon(id, 12) : textSize(12);
+      c.add(this.scene.add.text(sourceX * s, y(sourceY), label, { fontFamily: 'serif', fontSize: gr, color: INK }));
+      c.add(this.scene.add.text(valueX * s, y(sourceY), value, { fontFamily: 'serif', fontSize: gr, color: INK }).setOrigin(1, 0));
     };
 
     const dmgMin = Math.max(1, Math.round(p.stats.dmg * 0.85));
@@ -588,7 +601,7 @@ export class UIPanels {
     const spalteW = bWB.w ?? 231, zeileW = bWB.h ?? 32;
     werte.forEach(([label, value], index) => {
       const sx = bWB.x + (index % 2) * spalteW;
-      pair(label, value, sx, bWB.y + Math.floor(index / 2) * zeileW, sx + spalteW - 26);
+      pair(label, value, sx, bWB.y + Math.floor(index / 2) * zeileW, sx + spalteW - 26, 'werteBlock');
     });
     merke('werteBlock', (bWB.x + spalteW) * s, y(bWB.y + zeileW), (spalteW * 2 - 26) * s, (zeileW * 3) * s);
 
@@ -599,8 +612,8 @@ export class UIPanels {
     ([['Feuer', res.feuer, 0xb64a28], ['Kälte', res.frost, 0x477b98], ['Schatten', res.schatten, 0x654f7e]] as Array<[string, number, number]>).forEach(([label, value, color], index) => {
       const left = (bWid.x + index * widSpalte) * s;
       c.add(this.scene.add.circle(left, y(bWid.y + 13), Math.max(3, 6 * s), color));
-      c.add(this.scene.add.text(left + 13 * s, y(bWid.y), label, { fontFamily: 'serif', fontSize: textSize(12), color: INK }));
-      c.add(this.scene.add.text(left + (widSpalte - 30) * s, y(bWid.y), `${value}%`, { fontFamily: 'serif', fontSize: textSize(12), color: INK }).setOrigin(1, 0));
+      c.add(this.scene.add.text(left + 13 * s, y(bWid.y), label, { fontFamily: 'serif', fontSize: schriftVon('widerstaendeBlock', 12), color: INK }));
+      c.add(this.scene.add.text(left + (widSpalte - 30) * s, y(bWid.y), `${value}%`, { fontFamily: 'serif', fontSize: schriftVon('widerstaendeBlock', 12), color: INK }).setOrigin(1, 0));
     });
     merke('widerstaendeBlock', (bWid.x + widSpalte) * s, y(bWid.y + 8), (widSpalte * 3 - 30) * s, 26 * s);
 
@@ -619,7 +632,7 @@ export class UIPanels {
       const sx = bV.x + (index % 2) * vSpalte;
       const sy = bV.y + Math.floor(index / 2) * vZeile;
       c.add(this.scene.add.circle((sx + 4) * s, y(sy + 8), Math.max(2, 5 * s), color));
-      pair(label, value, sx + 15, sy, sx + vSpalte - 26);
+      pair(label, value, sx + 15, sy, sx + vSpalte - 26, 'vorratBlock');
     });
     merke('vorratBlock', (bV.x + vSpalte) * s, y(bV.y + vZeile * 2), (vSpalte * 2 - 26) * s, (vZeile * 5) * s);
 
@@ -641,13 +654,12 @@ export class UIPanels {
         const zx = cx + 15 * s, zy = y(bK.y + (bK.h ?? 19));
         c.add(this.scene.add.rectangle(zx, zy, 26 * s, 15 * s, 0x1a130a, 0.75).setOrigin(1, 0).setStrokeStyle(1, 0x5a4a2e, 0.8));
         c.add(this.scene.add.text(zx - 4 * s, zy + 1 * s, String(m[pf.id as MaterialId] ?? 0), {
-          fontFamily: 'serif', fontSize: textSize(11, 9), color: '#f0e2c2',
+          fontFamily: 'serif', fontSize: schriftVon('kraeuterBlock', 11, 9), color: '#f0e2c2',
         }).setOrigin(1, 0));
       });
       merke('kraeuterBlock', (bK.x + kAbstand * (pflanzen.length - 1) / 2) * s, y(bK.y + 8), Math.max(40, kAbstand * pflanzen.length) * s, 44 * s);
     }
-    // BAUKASTEN: Editor-Knopf + (falls aktiv) Auswahl-Rahmen und Werte-Fussleiste.
-    this.zeichneCharEditor(c);
+    // R217: der Editor wird zentral in build() gezeichnet - NACH allen Spalten.
   }
 
   // Layout-Baukasten fuers Charakterfenster (Autor "ich moechte die Groessen
@@ -721,61 +733,112 @@ export class UIPanels {
     // Waehrend des Ziehens neu zeichnen (einmal je Bild, nicht je Mausereignis)
     if (this.charZiehTick && this.charDrag) { this.charZiehTick = false; this.scene.time.delayedCall(16, () => { if (this.charDrag) this.build(); }); }
 
-    // Fussleiste: gewaehltes Element + Nudge-Knoepfe + Export/Reset.
-    const fy = 470 * s;
-    c.add(this.scene.add.rectangle(4 * s, fy, 580 * s, 104 * s, 0x0d0a06, 0.92).setOrigin(0).setStrokeStyle(1, 0x5a4a2e));
+    // R217 (Autor: "das Fenster mit den Tools kann ich nicht verschieben, das
+    // haengt irgendwo ausserhalb vom Bildschirmrand"): die Werkzeugleiste ist
+    // jetzt ein EIGENES Fenster - eigener Container an der SZENE (nicht im
+    // Charakterfenster), mit Griff verschiebbar, Position gespeichert und beim
+    // Aufbau in den sichtbaren Bereich geklemmt.
+    this.zeichneBaukastenFenster();
+  }
+
+  private baukastenBox: Phaser.GameObjects.Container | null = null;
+
+  /** Werkzeugfenster des Baukastens: eigenes, verschiebbares Fenster (R217). */
+  private zeichneBaukastenFenster(): void {
+    this.baukastenBox?.destroy();
+    this.baukastenBox = null;
+    if (!TUNING.layoutBaukasten || !this.charEditor) return;
+    const sw = this.scene.scale.width, sh = this.scene.scale.height;
+    // Feste, gut lesbare Groesse - unabhaengig von der Fenster-Skala, damit die
+    // Werkzeuge nicht mitschrumpfen (Autor-Kritik: "kann ich kaum treffen").
+    const W = 620, H = 150;
+    const pos = baukastenPos();
+    // KLEMME: immer sichtbar, egal was gespeichert war (auch nach Fenster-
+    // groessen-Wechsel oder wenn es frueher "irgendwo draussen" hing).
+    const px = Math.max(4, Math.min(sw - W - 4, pos.x));
+    const py = Math.max(4, Math.min(sh - H - 4, pos.y));
+    if (px !== pos.x || py !== pos.y) setzeBaukastenPos(px, py);
+    const c = this.scene.add.container(px, py).setScrollFactor(0).setDepth(5300);
+    this.baukastenBox = c;
+    c.add(this.scene.add.rectangle(0, 0, W, H, 0x0d0a06, 0.95).setOrigin(0).setStrokeStyle(1, 0xc9a227, 0.8));
+    // Griff (Kopfzeile) - Regel 11: JEDES Fenster ist verschiebbar.
+    const griff = this.scene.add.rectangle(0, 0, W, 22, 0x2a1e0c, 0.95).setOrigin(0)
+      .setInteractive({ draggable: true, useHandCursor: true });
+    c.add(griff);
     const sel = this.charSel ? charBox(this.charSel) : null;
     const titel = this.charSel ? (CHAR_LAYOUT_LABEL[this.charSel] ?? this.charSel) : 'Element anklicken zum Auswählen';
-    c.add(this.scene.add.text(12 * s, fy + 4 * s, `Layout-Baukasten - ${titel}`, { fontFamily: 'serif', fontSize: `${Math.max(9, Math.round(12 * s))}px`, color: '#e2cfaa' }));
-    c.add(this.scene.add.text(12 * s, fy + 18 * s, 'Element ANKLICKEN und ZIEHEN · Schloss nagelt es fest · "Bericht kopieren" legt alle Werte in die Zwischenablage', {
-      fontFamily: 'serif', fontSize: `${Math.max(8, Math.round(10 * s))}px`, color: '#9a8a6a',
+    c.add(this.scene.add.text(8, 4, `⇕ Layout-Baukasten - ${titel}`, {
+      fontFamily: 'serif', fontSize: '13px', color: '#e2cfaa',
     }));
-    const nudge = (feld: keyof CharBox, label: string, spalte: number, hat: boolean): void => {
-      const bx = (12 + spalte * 138) * s, by = fy + 36 * s;
-      const wert = sel && sel[feld] !== undefined ? String(Math.round((sel[feld] as number) * 10) / 10) : '-';
-      c.add(this.scene.add.text(bx, by, `${label}: ${wert}`, { fontFamily: 'serif', fontSize: `${Math.max(8, Math.round(11 * s))}px`, color: hat ? '#d8cfb8' : '#6a5f4c' }));
-      if (!this.charSel || !hat) return;
-      const setzen = (d: number) => { const cur = charBox(this.charSel!); setCharBox(this.charSel!, { [feld]: Math.round(((cur[feld] as number) + d) * 10) / 10 } as Partial<CharBox>); this.build(); };
-      knopf(bx, by + 16 * s, 26 * s, 20 * s, '−', false, () => setzen(-1));
-      knopf(bx + 30 * s, by + 16 * s, 26 * s, 20 * s, '+', false, () => setzen(1));
-      knopf(bx + 62 * s, by + 16 * s, 34 * s, 20 * s, '−10', false, () => setzen(-10));
-      knopf(bx + 100 * s, by + 16 * s, 34 * s, 20 * s, '+10', false, () => setzen(10));
+    let zeiger: { x: number; y: number } | null = null;
+    let start = { x: 0, y: 0 };
+    griff.on('dragstart', (p: Phaser.Input.Pointer) => { zeiger = { x: p.x, y: p.y }; start = { x: c.x, y: c.y }; });
+    griff.on('drag', (p: Phaser.Input.Pointer) => {
+      if (!zeiger) return;
+      c.x = Math.max(4, Math.min(sw - W - 4, start.x + (p.x - zeiger.x)));
+      c.y = Math.max(4, Math.min(sh - H - 4, start.y + (p.y - zeiger.y)));
+    });
+    griff.on('dragend', () => { zeiger = null; setzeBaukastenPos(c.x, c.y); });
+
+    const knopf = (bx: number, by: number, bw: number, bh: number, txt: string, an: boolean, fn: () => void): void => {
+      const r = this.scene.add.rectangle(bx, by, bw, bh, an ? 0x5a3a12 : 0x1a130a, 0.95).setOrigin(0).setStrokeStyle(1, an ? 0xc9a227 : 0x5a4a2e);
+      r.setInteractive({ useHandCursor: true }).on('pointerdown', fn);
+      c.add(r);
+      c.add(this.scene.add.text(bx + bw / 2, by + bh / 2, txt, { fontFamily: 'serif', fontSize: '12px', color: an ? '#f0d878' : '#b9a98b' }).setOrigin(0.5));
     };
-    nudge('x', 'X', 0, true);
-    nudge('y', 'Y', 1, !!sel);
+    const versatz = this.charSel ? CHAR_LAYOUT_VERSATZ.has(this.charSel) : false;
+    c.add(this.scene.add.text(8, 24, versatz
+      ? 'X/Y sind VERSÄTZE (0 = wie gebaut) · Element anklicken und ziehen · "Bericht kopieren" legt alles in die Zwischenablage'
+      : 'Element ANKLICKEN und ZIEHEN · Schloss nagelt es fest · "Bericht kopieren" legt alle Werte in die Zwischenablage', {
+      fontFamily: 'serif', fontSize: '10px', color: '#9a8a6a',
+    }));
+    // Spalten: X, Y, Breite, Höhe, Schrift - jede mit −10/−1/+1/+10.
+    const nudge = (feld: keyof CharBox, label: string, spalte: number, hat: boolean): void => {
+      const bx = 8 + spalte * 122, by = 42;
+      const wert = sel && sel[feld] !== undefined ? String(Math.round((sel[feld] as number) * 10) / 10) : '-';
+      c.add(this.scene.add.text(bx, by, `${label}: ${wert}`, { fontFamily: 'serif', fontSize: '12px', color: hat ? '#d8cfb8' : '#6a5f4c' }));
+      if (!this.charSel || !hat) return;
+      const setzen = (d: number): void => {
+        const cur = charBox(this.charSel!);
+        const alt = (cur[feld] as number | undefined) ?? 0;
+        setCharBox(this.charSel!, { [feld]: Math.round((alt + d) * 10) / 10 } as Partial<CharBox>);
+        this.build();
+      };
+      knopf(bx, by + 18, 26, 20, '−', false, () => setzen(-1));
+      knopf(bx + 29, by + 18, 26, 20, '+', false, () => setzen(1));
+      knopf(bx + 58, by + 18, 28, 20, '−10', false, () => setzen(-10));
+      knopf(bx + 89, by + 18, 28, 20, '+10', false, () => setzen(10));
+    };
+    nudge('x', 'X', 0, !!this.charSel);
+    nudge('y', 'Y', 1, !!this.charSel);
     nudge('w', 'Breite', 2, !!sel && sel.w !== undefined);
     nudge('h', 'Höhe', 3, !!sel && sel.h !== undefined);
-    // R199: Schriftgroesse DIESES Elements + Festnageln.
+    // R199/R217: Schriftgroesse DIESES Elements - fuer JEDES auswaehlbare
+    // Element, auch wenn es noch keine eigene Groesse hat (dann ab Vorgabe).
     if (this.charSel) {
-      const eigen = sel?.schrift;
-      const sy3 = fy + 36 * s;
-      const bx3 = (12 + 4 * 138) * s;
-      c.add(this.scene.add.text(bx3, sy3, `Schrift: ${eigen !== undefined ? eigen : 'Vorgabe'}`, {
-        fontFamily: 'serif', fontSize: `${Math.max(8, Math.round(11 * s))}px`, color: '#d8cfb8',
+      const bx3 = 8 + 4 * 122, by3 = 42;
+      c.add(this.scene.add.text(bx3, by3, `Schrift: ${sel?.schrift !== undefined ? sel.schrift : 'Vorgabe'}`, {
+        fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8',
       }));
       const setzeSchrift = (d: number): void => {
         const cur = charBox(this.charSel!);
         const basis = cur.schrift ?? 12;
-        setCharBox(this.charSel!, { schrift: Math.max(6, Math.min(40, Math.round((basis + d) * 10) / 10)) });
+        setCharBox(this.charSel!, { schrift: Math.max(6, Math.min(48, Math.round((basis + d) * 10) / 10)) });
         this.build();
       };
-      knopf(bx3, sy3 + 16 * s, 26 * s, 20 * s, '−', false, () => setzeSchrift(-1));
-      knopf(bx3 + 30 * s, sy3 + 16 * s, 26 * s, 20 * s, '+', false, () => setzeSchrift(1));
-      const fest = charFest(this.charSel);
-      knopf(bx3 + 62 * s, sy3 + 16 * s, 72 * s, 20 * s, fest ? '🔒 fest' : '🔓 frei', fest, () => {
-        setCharFest(this.charSel!, !fest);
+      knopf(bx3, by3 + 18, 26, 20, '−', false, () => setzeSchrift(-1));
+      knopf(bx3 + 29, by3 + 18, 26, 20, '+', false, () => setzeSchrift(1));
+      knopf(bx3 + 58, by3 + 18, 59, 20, charFest(this.charSel) ? '🔒 fest' : '🔓 frei', charFest(this.charSel), () => {
+        setCharFest(this.charSel!, !charFest(this.charSel!));
         this.build();
       });
     }
-    // Schriftgroesse des GANZEN Fensters (Autorwunsch R195).
-    const sy2 = fy + 68 * s;
-    c.add(this.scene.add.text(12 * s, sy2 + 3 * s, `Schrift: ${Math.round(charSchrift() * 100)}%`, { fontFamily: 'serif', fontSize: `${Math.max(8, Math.round(11 * s))}px`, color: '#d8cfb8' }));
-    knopf(100 * s, sy2, 26 * s, 18 * s, '−', false, () => { setzeCharSchrift(charSchrift() - 0.05); this.build(); });
-    knopf(130 * s, sy2, 26 * s, 18 * s, '+', false, () => { setzeCharSchrift(charSchrift() + 0.05); this.build(); });
-    // Export + Reset (rechte Spalte).
-    // R199 (Autor: "und dir die Werte ueber einen Bericht geben"): der Export
-    // geht direkt in die ZWISCHENABLAGE - kein Umweg ueber die Browserkonsole.
-    knopf(430 * s, fy + 6 * s, 120 * s, 20 * s, '📋 Bericht kopieren', false, () => {
+    // Untere Reihe: Gesamt-Schrift, Export, Zuruecksetzen, Schliessen.
+    const uy = 96;
+    c.add(this.scene.add.text(8, uy + 4, `Alle Schriften: ${Math.round(charSchrift() * 100)}%`, { fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8' }));
+    knopf(140, uy, 26, 20, '−', false, () => { setzeCharSchrift(charSchrift() - 0.05); this.build(); });
+    knopf(169, uy, 26, 20, '+', false, () => { setzeCharSchrift(charSchrift() + 0.05); this.build(); });
+    knopf(206, uy, 150, 20, '📋 Bericht kopieren', false, () => {
       const txt = exportCharLayout();
       console.log('[CHAR-LAYOUT]\n' + txt);
       const feld = document.createElement('textarea');
@@ -788,7 +851,8 @@ export class UIPanels {
       if (!kopiert) window.prompt('Diese Werte kopieren und mir schicken:', txt);
       this.onCharLayoutExport?.(txt);
     });
-    knopf(430 * s, fy + 30 * s, 120 * s, 20 * s, 'Zurücksetzen', false, () => { resetCharLayout(); this.charSel = null; this.build(); });
+    knopf(366, uy, 110, 20, 'Zurücksetzen', false, () => { resetCharLayout(); this.charSel = null; this.build(); });
+    knopf(486, uy, 126, 20, '✖ Baukasten zu', false, () => { this.charEditor = false; this.charSel = null; this.build(); });
   }
 
   // Optionaler Haken: die Szene kann den Export-Text auch ins Log-Fenster spiegeln.
@@ -1354,18 +1418,29 @@ export class UIPanels {
     const p = this.getPlayer();
     const shellAktiv = this.scene.textures.exists(UI_CHARACTER_SHELL);
     const s = this.panelScale;
-    c.add(this.scene.add.text(x0 + 5, 10 * s, 'RUCKSACK', {
-      fontFamily: 'serif', fontSize: `${shellAktiv ? Math.max(11, Math.round(18 * s)) : 17}px`, color: INK, letterSpacing: 2,
-    }));
-    c.add(this.scene.add.text(x0 + w, 12 * s, `${p.inv.length} Gegenstände  ·  ${p.gold} Gold`, {
-      fontFamily: 'serif', fontSize: `${shellAktiv ? Math.max(12, Math.round(15 * s)) : 13}px`, color: INK,   // R140: war winzig
-    }).setOrigin(1, 0));
+    // R217 (Autor: "unter Rucksack geht gar nichts davon"): Titel, Anzahl,
+    // Filterleiste und Liste sind jetzt Baukasten-Elemente. x/y wirken als
+    // VERSATZ auf die gebaute Position, schrift als eigene Groesse.
+    const tf = charSchrift();
+    const bT = charBox('r_titel'), bZ = charBox('r_zaehler');
+    const spx = (quell: number, min: number): string => `${Math.max(min, Math.round(quell * s * tf))}px`;
+    const tTitel = this.scene.add.text(x0 + 5 + bT.x * s, (10 + bT.y) * s, 'RUCKSACK', {
+      fontFamily: 'serif', fontSize: shellAktiv ? spx(bT.schrift ?? 18, 11) : '17px', color: INK, letterSpacing: 2,
+    });
+    c.add(tTitel);
+    this.merkeEditBox('r_titel', tTitel.x + tTitel.width / 2, tTitel.y + tTitel.height / 2, Math.max(40, tTitel.width), Math.max(16, tTitel.height));
+    const tZaehler = this.scene.add.text(x0 + w + bZ.x * s, (12 + bZ.y) * s, `${p.inv.length} Gegenstände  ·  ${p.gold} Gold`, {
+      fontFamily: 'serif', fontSize: shellAktiv ? spx(bZ.schrift ?? 15, 12) : '13px', color: INK,   // R140: war winzig
+    }).setOrigin(1, 0);
+    c.add(tZaehler);
+    this.merkeEditBox('r_zaehler', tZaehler.x - tZaehler.width / 2, tZaehler.y + tZaehler.height / 2, Math.max(40, tZaehler.width), Math.max(16, tZaehler.height));
     // Filter-Reiter (Feedback-Runde 2)
     const tabs: Array<[typeof this.filter, string]> = [
       ['alle', 'ALLE'], ['weapon', 'WAFFEN'], ['stab', 'ZAUBERSTÄBE'], ['axt', 'ÄXTE'],
       ['armor', 'RÜSTUNG'], ['schild', 'SCHILDE'], ['ring', 'RINGE'], ['rest', 'SONSTIGES'],
     ];
-    let tx2 = x0, ty2 = shellAktiv ? (144 - 79) * s : 34;
+    const bF = charBox('r_filter');
+    let tx2 = x0, ty2 = (shellAktiv ? (144 - 79) : 34) * s + bF.y * s;
     let tabUmbruch = false;
     if (shellAktiv) {
       // R161: die Schale malt die 8 Filter-Reiter bei Design-x 676..1176
@@ -1380,14 +1455,14 @@ export class UIPanels {
       const FILTER_BOXEN: ReadonlyArray<readonly [number, number]> = [
         [617, 675], [676, 738], [739, 801], [802, 864], [865, 926], [927, 989], [990, 1052], [1053, 1177],
       ];
-      const tabH = 30 * s;
+      const tabH = (bF.h ?? 30) * s;
       // R196: EINE Schriftgroesse fuer ALLE Reiter - so gross, dass auch das
       // laengste Wort ("ZAUBERSTÄBE") in seinen gemalten Reiter passt. Vorher
       // wurde je Reiter einzeln geschrumpft, dadurch standen zwei winzige
       // Woerter zwischen normalen (Autor-Screenshot).
       const tabSchrift = ((): number => {
         const mess = this.scene.add.text(0, 0, '', { fontFamily: 'serif', fontSize: '20px', letterSpacing: 0 });
-        let klein = Math.max(10, Math.round(13 * s));
+        let klein = Math.max(10, Math.round((bF.schrift ?? 13) * s * tf));
         for (let i = 0; i < tabs.length; i++) {
           const [b0, b1] = FILTER_BOXEN[i];
           const platz = (b1 - b0) * s - 8 * s;
@@ -1399,7 +1474,7 @@ export class UIPanels {
       })();
       tabs.forEach(([id, lbl], index) => {
         const [b0, b1] = FILTER_BOXEN[index];
-        const tx = b0 * s, tabW = (b1 - b0) * s;
+        const tx = b0 * s + bF.x * s, tabW = (b1 - b0) * s;
         // R195 (Autor: "Kategorien zu klein, aktiver Zustand zu schwach"):
         // groessere Schrift, hellerer Innenbereich und eine kraeftige Goldkante
         // unten am aktiven Reiter. Lange Namen werden eingepasst statt gequetscht.
@@ -1464,8 +1539,10 @@ export class UIPanels {
     // R-Fix: Zeilen-Schritt = gemessener Kasten-Abstand (69,25) statt 68, damit
     // die Icons ueber die 9 gemalten Kaesten nicht nach unten wegdriften. Die
     // Schale hat GENAU 9 Kaesten -> nie mehr Zeilen als Kaesten anzeigen.
-    const rowH = shellAktiv ? 69.25 * s : 42;
-    const listTop = shellAktiv ? (192 - 79) * s : (tabUmbruch ? 78 : 58);
+    // R217: Zeilenhoehe (h) und Listen-Versatz kommen aus dem Baukasten.
+    const bL = charBox('r_liste');
+    const rowH = (shellAktiv ? (bL.h ?? 69.25) : 42) * (shellAktiv ? s : 1);
+    const listTop = (shellAktiv ? (192 - 79) * s : (tabUmbruch ? 78 : 58)) + bL.y * s;
     let visible = Math.floor((h - listTop - 14) / rowH);
     if (shellAktiv) visible = Math.min(visible, 9);
     const maxScroll = Math.max(0, inv.length - visible);
@@ -1477,9 +1554,13 @@ export class UIPanels {
     }
     let y = listTop;
     for (const it of inv.slice(this.scroll, this.scroll + visible)) {
-      this.buildItemRow(c, it, x0, y, w);
+      this.buildItemRow(c, it, x0 + bL.x * s, y, w, y === listTop);
       y += rowH;
     }
+    // R217: Filterleiste und Liste als anklickbare Baukasten-Elemente.
+    this.merkeEditBox('r_filter', x0 + w / 2 + bF.x * s, ty2 + (bF.h ?? 30) * s / 2, w, (bF.h ?? 30) * s);
+    this.merkeEditBox('r_liste', x0 + w / 2 + bL.x * s, listTop + Math.max(rowH, (y - listTop)) / 2,
+      w, Math.max(rowH, y - listTop));
     // Bildlauf-Anzeige
     if (maxScroll > 0) {
       const trackH = visible * rowH;
@@ -1499,9 +1580,17 @@ export class UIPanels {
     if (!this.selectedItem || !vorhanden.includes(this.selectedItem)) this.selectedItem = vorhanden[0] ?? null;
     const it = this.selectedItem;
 
-    c.add(this.scene.add.text(x0 + w / 2, 10, 'AUSGEWÄHLT', {
-      fontFamily: 'serif', fontSize: '15px', color: INK_TITEL, letterSpacing: 1,
-    }).setOrigin(0.5, 0));
+    // R217 (Autor: "das Fenster nebenan mit dem Vergleich auch nicht"): auch
+    // die rechte Spalte haengt jetzt am Baukasten - Versatz + eigene Schriften.
+    const tfd = charSchrift();
+    const bDT = charBox('d_titel'), bDN = charBox('d_name'), bDW = charBox('d_werte'), bDV = charBox('d_vergleich');
+    const dSchrift = (b: { schrift?: number }, vorgabe: number, min: number, mitSkala = false): string =>
+      `${Math.max(min, Math.round((b.schrift ?? vorgabe) * (mitSkala ? s : 1) * tfd))}px`;
+    const tDT = this.scene.add.text(x0 + w / 2 + bDT.x, 10 + bDT.y, 'AUSGEWÄHLT', {
+      fontFamily: 'serif', fontSize: dSchrift(bDT, 15, 10), color: INK_TITEL, letterSpacing: 1,
+    }).setOrigin(0.5, 0);
+    c.add(tDT);
+    this.merkeEditBox('d_titel', tDT.x, tDT.y + tDT.height / 2, Math.max(60, tDT.width), Math.max(16, tDT.height));
     this.zierLinie(c, x0 + 8, 31, w - 16, undefined, true);
     if (!it) {
       c.add(this.scene.add.text(x0 + w / 2, 72, 'Kein Gegenstand ausgewählt', {
@@ -1543,18 +1632,20 @@ export class UIPanels {
       const typS = it.kind === 'weapon'
         ? `${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} · ${handLabel(it.weaponClass)}`
         : TYP_NAMEN[it.kind] ?? 'Gegenstand';
-      zeile(it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), 17, RARITY_INK[rar], 2);
+      zeile(it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), bDN.schrift ?? 17, RARITY_INK[rar], 2);
+      this.merkeEditBox('d_name', bcx, stapel - 10 * s, bw, 26 * s);
       zeile(RARITY_NAMES[rar], 12, RARITY_INK[rar], 1);
       zeile(typS, 12, INK_ZWEIT, 4);
       // Die WERTE-Linie folgt dem Stapel, faellt aber nie ueber ihre gemalte
       // Grundlinie hinaus nach oben.
       const werteY = Math.max(stapel + 8 * s, (300 - 79) * s);
       this.zierLinie(c, bx, werteY, bw, 'WERTE', true);
-      const werteText = this.scene.add.text(bx + 8 * s, werteY + 12 * s, itemStatLine(it, false), {
-        fontFamily: 'serif', fontSize: `${Math.max(11, Math.round(13 * s))}px`, color: INK,
+      const werteText = this.scene.add.text(bx + 8 * s + bDW.x * s, werteY + 12 * s + bDW.y * s, itemStatLine(it, false), {
+        fontFamily: 'serif', fontSize: dSchrift(bDW, 13, 11, true), color: INK,
         wordWrap: { width: bw - 16 * s }, lineSpacing: 3,
       });
       c.add(werteText);
+      this.merkeEditBox('d_werte', bcx + bDW.x * s, werteText.y + werteText.height / 2, bw, Math.max(20, werteText.height));
       let ys = Math.max(werteY + 12 * s + werteText.height + 14 * s, (362 - 79) * s);
       if (it.boni.length || it.sock) {
         this.zierLinie(c, bx, ys - 7 * s, bw, 'AFFIXE', true);
@@ -1634,11 +1725,16 @@ export class UIPanels {
         ['Trefferpunkte', p.stats.maxhp, neu.maxhp],
         ['Mana', p.stats.maxmana, neu.maxmana],
       ];
+      // R217: der Vergleichsblock ist ein eigenes Baukasten-Element.
+      const yStart = y;
       for (const [name, alt, wert] of werte) {
         const farbe = wert > alt ? '#3f7135' : wert < alt ? '#8b3027' : INK_SOFT;
-        c.add(this.scene.add.text(x0 + 16, y, `${name}: ${alt}  →  ${wert}`, { fontFamily: 'serif', fontSize: '10.5px', color: farbe }));
+        c.add(this.scene.add.text(x0 + 16 + bDV.x, y + bDV.y, `${name}: ${alt}  →  ${wert}`, {
+          fontFamily: 'serif', fontSize: dSchrift(bDV, 11, 9), color: farbe,
+        }));
         y += 19;
       }
+      this.merkeEditBox('d_vergleich', x0 + w / 2 + bDV.x, (yStart + y) / 2 + bDV.y, w - 20, Math.max(20, y - yStart));
     }
 
     this.buildDetailButtons(c, it, x0, w, h, shellAktiv, s);
@@ -1688,7 +1784,9 @@ export class UIPanels {
     button(basisY + buttonAbstand * 2, 'ABLEGEN', angelegt, 0x5a2a22, () => this.clickItem(it, false));
   }
 
-  private buildItemRow(c: Phaser.GameObjects.Container, it: Item, x0: number, y: number, w: number): void {
+  // erste = oberste sichtbare Zeile; nur sie meldet ihre Text-Elemente an den
+  // Baukasten (R217) - sonst laegen neun gleiche Rahmen uebereinander.
+  private buildItemRow(c: Phaser.GameObjects.Container, it: Item, x0: number, y: number, w: number, erste = false): void {
     const p = this.getPlayer();
     const shellAktiv = this.scene.textures.exists(UI_CHARACTER_SHELL);
     const rowH = shellAktiv ? Math.max(36, 64 * this.panelScale) : 38;
@@ -1717,19 +1815,28 @@ export class UIPanels {
     const iconCx = shellAktiv ? 634 * s2 : x0 + 6 + iconS / 2;
     c.add(this.scene.add.image(iconCx, y + rowH / 2, this.provider.itemIcon(it)).setDisplaySize(iconS, iconS));
     const textX = shellAktiv ? 706 * s2 : x0 + rowH + 16;   // rechts neben Slot/Icon, mit Luft (R195: mehr Abstand)
-    c.add(this.scene.add.text(textX, y + Math.round(rowH * 0.12), it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
-      fontFamily: 'serif', fontSize: `${Math.max(14, Math.round(16 * this.panelScale))}px`, color: RARITY_INK[rar],
-    }));
+    // R217: Name und Info-Zeile haben je eine EIGENE Schriftgroesse im Baukasten
+    // (Autor: "die Schrift einzelner Texte getrennt vergroessern").
+    const tfz = charSchrift();
+    const bIN = charBox('r_itemName'), bII = charBox('r_itemInfo');
+    const zSchrift = (b: { schrift?: number }, vorgabe: number, min: number): string =>
+      `${Math.max(min, Math.round((b.schrift ?? vorgabe) * this.panelScale * tfz))}px`;
+    const tName = this.scene.add.text(textX + bIN.x * this.panelScale, y + Math.round(rowH * 0.12) + bIN.y * this.panelScale, it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
+      fontFamily: 'serif', fontSize: zSchrift(bIN, 15, 11), color: RARITY_INK[rar],
+    });
+    c.add(tName);
+    if (erste) this.merkeEditBox('r_itemName', tName.x + tName.width / 2, tName.y + tName.height / 2, Math.max(60, tName.width), Math.max(14, tName.height));
     const typ = it.kind === 'weapon' ? `${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} · ${handLabel(it.weaponClass)}` : TYP_NAMEN[it.kind] ?? '';
     const wert = it.kind === 'weapon' ? `${weaponDamageRange(it)} Schaden` : (it.kind === 'armor' || it.kind === 'schild') ? `${it.val + (it.upgrade ?? 0)} Rüstung` : '';
-    const grund = this.scene.add.text(textX, y + Math.round(rowH * 0.55), `${typ}${wert ? ' · ' + wert : ''}`, {
-      fontFamily: 'serif', fontSize: `${Math.max(12, Math.round(13 * this.panelScale))}px`, color: INK_ZWEIT,
+    const grund = this.scene.add.text(textX + bII.x * this.panelScale, y + Math.round(rowH * 0.55) + bII.y * this.panelScale, `${typ}${wert ? ' · ' + wert : ''}`, {
+      fontFamily: 'serif', fontSize: zSchrift(bII, 12, 9), color: INK_ZWEIT,
     });
     c.add(grund);
+    if (erste) this.merkeEditBox('r_itemInfo', grund.x + grund.width / 2, grund.y + grund.height / 2, Math.max(60, grund.width), Math.max(12, grund.height));
     if (it.boni.length) {
       // Bonus-Werte grün, direkt dahinter (Runde 29)
-      c.add(this.scene.add.text(textX + grund.width + 8, y + Math.round(rowH * 0.55), it.boni.map((b) => b.t.replace('#', String(b.v))).join(' · '), {
-        fontFamily: 'serif', fontSize: `${Math.max(12, Math.round(13 * this.panelScale))}px`, color: '#3f7135',
+      c.add(this.scene.add.text(textX + bII.x * this.panelScale + grund.width + 8, y + Math.round(rowH * 0.55) + bII.y * this.panelScale, it.boni.map((b) => b.t.replace('#', String(b.v))).join(' · '), {
+        fontFamily: 'serif', fontSize: zSchrift(bII, 12, 9), color: '#3f7135',
       }));
     }
     if (equipped) {

@@ -2368,3 +2368,27 @@ Schuss selbst ist instantan - ein Spann-Vorlauf waere ein KI-Umbau, notiert).
    Lauf: vorher 280 Schlag-Frames ohne einen einzigen Gegner, danach null.
 
 TESTS: tsc sauber, 492/492 gruen, Messungen + Screenshot im Browser.
+
+## Runde 217 - Layout-Baukasten (deine vier Punkte)
+
+1. Die Werkzeuge sind jetzt ein EIGENES Fenster: oben in der Leiste anfassen
+   und hinschieben, wo du magst - die Position bleibt gespeichert. Es kann
+   nicht mehr aus dem Bild rutschen (auch eine absichtlich "verlorene"
+   Position wird beim Öffnen wieder hereingeholt). Es ist in fester Größe,
+   schrumpft also nicht mehr mit dem Charakterfenster mit.
+2. Einzelne Texte lassen sich getrennt vergrößern: Element anklicken, dann
+   der Schrift-Knopf rechts im Werkzeugfenster. Das gilt jetzt für Werte,
+   Vorrat, Widerstände, Kräuter, Slot-Beschriftungen, Rucksack-Titel, Anzahl,
+   Filter-Reiter, Gegenstands-Name und -Info und die Vergleichs-Spalte.
+   Nachgewiesen: Gegenstands-Name auf 30 gestellt - der Text im Fenster
+   wächst messbar mit.
+3. Der RUCKSACK ist jetzt im Baukasten: Titel, Anzahl-Zeile, Filterleiste
+   (auch die Reiterhöhe), die Liste selbst samt ZEILENHÖHE, und Name/Info
+   der Gegenstands-Zeilen.
+4. Das VERGLEICHSFENSTER ebenfalls: Titel, Gegenstands-Name, Werte-Block und
+   die Gegenüberstellung (letztere erscheint, sobald ein Vergleich läuft).
+
+TESTS: tsc sauber, 492/492 grün, Browser-Messung + Screenshot.
+OFFEN: Die Knöpfe (Ausrüsten/Vergleichen/Ablegen) sitzen weiter fest auf den
+gemalten Kästen der Bildschale - die habe ich bewusst nicht freigegeben,
+sonst rutschen sie von ihren Rahmen. Sag Bescheid, wenn du sie auch willst.
