@@ -46,6 +46,7 @@ import { steinWirkung } from '../logic/steinEffekte';
 import { blutTint } from '../logic/spuren';
 import { SPUREN, FIGUR_SCHATTEN, FIGUR_GROESSE, FIGUR_GROESSE_TYP, ELITE_LEUCHTEN } from '../data/welt';
 import { istHdFigur, hdSkala } from '../gfx/monsterArtHd';
+import { figurHatSchild } from '../gfx/fallbackArt';
 import { NOTIZEN } from '../data/texte';
 import { GOLEM, golemFrame } from '../data/golem';
 import { wendeGolemSpriteAn } from '../gfx/golemArt';
@@ -4126,6 +4127,12 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // TORSO/Bauch zum Helden hin - tief genug, dass Kopf und Gesicht frei bleiben.
     for (const e of this.enemies) {
       if (!e.schild || e.versteckt || e.hp <= 0) continue;
+      // R218 (Autor: "einige Gegner haben jetzt auch 2 Schilde" + "warum tragen
+      // die ihren Schild an den Hoden?"): Seit R208 zeichnet die FIGUR selbst
+      // ein Wappenschild am Arm. Dieses alte Szenen-Schild (R41) kam obendrauf -
+      // es sass auf Guerteltiefe und drehte sich zum Helden. Wer sein Schild
+      // schon traegt, bekommt hier keins mehr.
+      if (figurHatSchild(e.figur())) continue;
       // Das Schild folgt EXAKT dem Koerper-Wippen (oben): eigenes HEER wippt gar
       // nicht, Monster nur beim LAUFEN. Sonst schwamm das Schild seltsam hoch/
       // runter, obwohl der Traeger ruhig stand (Autorkritik: "Schilde wippen noch").

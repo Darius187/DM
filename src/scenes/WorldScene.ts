@@ -4,7 +4,14 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir, angleToDir8, angleToDir16, type EnemyHost } from '../world/Enemy';
-import { SCHLAG_ANIM } from '../data/enemies';
+import { SCHLAG_ANIM, NEUE_GEGNER_JE_EBENE } from '../data/enemies';
+
+// R218: welche Gegner ein Einfall schickt - dieselbe Liste, die der Spawn nutzt.
+// Wird zum VORWAERMEN der Figur-Atlanten gebraucht (siehe waermeGegnerFiguren).
+const EINFALL_TYPEN: readonly string[] = [
+  'skelett', 'pest', 'lebender_toter', 'schuetze', 'wolf',
+  ...(NEUE_GEGNER_JE_EBENE[3] ?? []), ...(NEUE_GEGNER_JE_EBENE[4] ?? []),
+];
 
 // R216: Die groesseren Welt-Figuren (Dorfvolk, Vieh) wuerden nach unten aus
 // ihrem Standpunkt herauswachsen - der Anker liegt in der Koerpermitte, der Fuss
@@ -2006,7 +2013,20 @@ export class WorldScene extends CombatScene {
       // die Ecke gerade nicht im Blick - die galten fälschlich als erledigt,
       // und die ganze Ebene war beim Zurückkommen leer, obwohl voller Gegner.)
       // R145: eigene Soldaten (R142-Garnison) zaehlen dabei NICHT als Gegner.
-      this.area.geleert = !this.enemies.some((e) => e.hp > 0 && e.team !== 'spieler');
+      // R218 (Autorbug "die Monster despawnen nach meinem Tod"): Gegner OHNE
+      // spawnRef (Einfall-Wellen, Feldzug-Truppen, gerufene Verstaerkung) stehen
+      // in KEINER Spawn-Liste - beim Neuaufbau der Karte waren sie ersatzlos
+      // weg. Sie kommen jetzt in ein Karten-Gedaechtnis und stehen beim
+      // Betreten wieder da, wo sie waren.
+      this.restMonsterProKarte[this.area.id] = this.enemies
+        .filter((e) => e.hp > 0 && e.team !== 'spieler' && !e.spawnRef && !e.boss)
+        .map((e) => ({
+          type: e.type, hp: e.hp, x: e.x, y: e.y, elite: e.elite,
+          champion: e.champion, name: e.name, schild: e.schild, aggro: e.aggro,
+        }));
+      // "geleert" nur, wenn WIRKLICH nichts mehr da ist - auch keine Welle.
+      this.area.geleert = !this.enemies.some((e) => e.hp > 0 && e.team !== 'spieler')
+        && (this.restMonsterProKarte[this.area.id]?.length ?? 0) === 0;
       // R145 (Autor "beim Tod/Kartenwechsel darf NICHTS resetten"): lebende
       // Monster schreiben Stellung und Wunden in ihren Spawn zurueck - beim
       // Wiederkommen stehen sie verwundet DA, wo sie zuletzt standen.
@@ -2030,6 +2050,9 @@ export class WorldScene extends CombatScene {
     // Karte ist - sonst bekaemen die Einheiten die neue Karte als Standort und
     // das Heer "reiste heimlich mit dem Helden mit".
     if (this.area) this.syncArmeeVomFeld();
+    // R218: Wunden/Tor-Zustaende der Bauten sichern, SOLANGE this.area noch die
+    // alte Karte ist - sonst landen sie in der Liste der neuen Karte.
+    this.syncFeldbautenInsGedaechtnis();
     this.area = a;
     if (FUERSTENTUM.some((g) => g.id === id)) this.flags[`besucht_${id}`] = true; // Karte: erforscht
     // Erster Dungeon-Besuch beendet den Stimmungs-Dauerregen (Heavy-Rain-Gefühl,
@@ -4840,7 +4863,9 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       else tx2 = kannBau(tx + 1, ty) ? tx + 1 : tx - 1;
       const px = Math.min(tx, tx2), py = Math.min(ty, ty2), sx = Math.max(tx, tx2), sy = Math.max(ty, ty2);
       this.area.map[py][px] = T.TOR; this.area.map[sy][sx] = T.TOR;
-      this.feldbauten.push({ id, x: px * TILE + 16, y: py * TILE + 16, tx: px, ty: py, tx2: sx, ty2: sy, senk, hp: maxHp, maxHp, balken: null, offen: false, quelle });
+      const torRec = { id, x: px * TILE + 16, y: py * TILE + 16, tx: px, ty: py, tx2: sx, ty2: sy, senk, hp: maxHp, maxHp, balken: null, offen: false, quelle };
+      this.feldbauten.push(torRec);
+      this.merkeFeldbau(torRec);   // R218: Tor ueberlebt Kartenwechsel und Tod
       for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]]) { this.refreshTile(px + dx, py + dy); this.refreshTile(sx + dx, sy + dy); }
       this.logMsg('Doppeltor steht (geschlossen, 2 Felder) - öffnen/schließen über das Klick-Menü.', 'gold');
       this.panels?.refresh?.();
@@ -4860,6 +4885,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     // R94: in die Feldbau-Registry (Lebenspunkte, Klick-Menü)
     const rec = { id, x, y, tx, ty, tx2, ty2, hp: maxHp, maxHp, img, balken: null, offen: id === 'tor' ? false : undefined, quelle };
     this.feldbauten.push(rec);
+    this.merkeFeldbau(rec);   // R218: ueberlebt Kartenwechsel UND Tod
     this.ruesteLagerGlut(rec);   // R109: Feuer-Props bekommen ihre Nacht-Glut
     if (id === 'botenposten') this.botenZumPosten();   // R179: der Bote reitet heran
     this.panels?.refresh?.();
@@ -5035,7 +5061,73 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.panels?.refresh?.();
   }
 
+  // --- R218 FELDBAU-GEDAECHTNIS (Autorbug "ich sterbe und mein Turm despawnt")
+  // Ursache war: loadAreaObjects leerte this.feldbauten bei JEDEM Kartenaufbau,
+  // und niemand baute sie wieder auf (Lagerfeuer hatten so eine Liste, Bauten
+  // nicht). Jetzt merkt sich jede Karte ihre Bauten - inklusive Wunden und
+  // Tor-Zustand - und stellt sie beim Betreten wieder her. Wird mitgespeichert.
+  private feldbautenProKarte: Record<string, Array<{
+    id: string; x: number; y: number; tx?: number; ty?: number; tx2?: number; ty2?: number;
+    senk?: boolean; hp: number; maxHp: number; offen?: boolean; quelle?: 'held' | 'dorf';
+  }>> = {};
+
+  // R218: Wellen-/Einfall-Gegner je Karte (siehe goArea) - sie haben keinen
+  // Eintrag in area.enemySpawns und wuerden sonst beim Neuaufbau verschwinden.
+  private restMonsterProKarte: Record<string, Array<{
+    type: string; hp: number; x: number; y: number; elite: boolean;
+    champion?: string | boolean; name: string; schild: boolean; aggro: number;
+  }>> = {};
+
+  private merkeFeldbau(f: (typeof this.feldbauten)[number]): void {
+    (this.feldbautenProKarte[this.area.id] ??= []).push({
+      id: f.id, x: f.x, y: f.y, tx: f.tx, ty: f.ty, tx2: f.tx2, ty2: f.ty2,
+      senk: f.senk, hp: f.hp, maxHp: f.maxHp, offen: f.offen, quelle: f.quelle,
+    });
+  }
+
+  /** Aktuelle Wunden/Tor-Zustände ins Gedächtnis schreiben (vor Kartenwechsel). */
+  private syncFeldbautenInsGedaechtnis(): void {
+    if (!this.area) return;
+    this.feldbautenProKarte[this.area.id] = this.feldbauten.map((f) => ({
+      id: f.id, x: f.x, y: f.y, tx: f.tx, ty: f.ty, tx2: f.tx2, ty2: f.ty2,
+      senk: f.senk, hp: f.hp, maxHp: f.maxHp, offen: f.offen, quelle: f.quelle,
+    }));
+  }
+
+  /** Gemerkte Bauten dieser Karte zurück ins Feld holen (Bild + Registry). */
+  private stelleFeldbautenHer(a: AreaData): void {
+    for (const d of this.feldbautenProKarte[a.id] ?? []) {
+      let img: Phaser.GameObjects.Image | undefined;
+      if (d.id === 'lagerfeuer') continue;   // hat seine eigene Liste (R81)
+      if (d.id === 'palisade' || d.id === 'tor') {
+        // Kacheln sichern (die Area kann frisch erzeugt worden sein)
+        const kachel = d.id === 'tor' ? T.TOR : T.PALISADE;
+        if (d.tx !== undefined && d.ty !== undefined && a.map[d.ty]?.[d.tx] !== undefined) {
+          a.map[d.ty][d.tx] = d.offen && d.id === 'tor' ? T.GRASS : kachel;
+          if (d.tx2 !== undefined && d.ty2 !== undefined && a.map[d.ty2]?.[d.tx2] !== undefined) {
+            a.map[d.ty2][d.tx2] = d.offen && d.id === 'tor' ? T.GRASS : kachel;
+          }
+        }
+      } else if (d.id === 'standarte' || d.id === 'befehlszelt') {
+        img = this.spawneStandarte(d.x, d.y);
+        this.standartenAktiv.push({ x: d.x, y: d.y });
+      } else {
+        img = this.spawneFeldbau(d.id, d.x, d.y);
+      }
+      const rec = {
+        id: d.id, x: d.x, y: d.y, tx: d.tx, ty: d.ty, tx2: d.tx2, ty2: d.ty2, senk: d.senk,
+        hp: d.hp, maxHp: d.maxHp, img, balken: null, offen: d.offen, quelle: d.quelle,
+      };
+      this.feldbauten.push(rec);
+      this.ruesteLagerGlut(rec);
+    }
+  }
+
   private entferneFeldbau(f: (typeof this.feldbauten)[number]): void {
+    // R218: auch aus dem Karten-Gedächtnis nehmen, sonst käme er beim nächsten
+    // Betreten wieder (abgerissen = abgerissen).
+    const merk = this.feldbautenProKarte[this.area.id];
+    if (merk) this.feldbautenProKarte[this.area.id] = merk.filter((d) => Math.hypot(d.x - f.x, d.y - f.y) > 4 || d.id !== f.id);
     f.balken?.destroy();
     // R101: Bild-Bauten (Turm, Zelte, Lager-Props) IMMER entfernen - der Wachturm
     // hat jetzt tx/ty (2x2-Fussabdruck), veraendert aber KEINE Map-Kachel. Nur
@@ -7296,6 +7388,9 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.brichPlatzierungAb();
     this.hackZiel = null; this.hackBalken = null;   // R93: Hack-Anzeige je Karte
     this.feldbauten = []; this.schliesseBauMenu();   // R94: Feldbauten je Karte
+    // R218 (Autorbug "ich sterbe und mein Turm despawnt"): gemerkte Bauten
+    // dieser Karte zurueckholen - Wunden und Tor-Zustand inklusive.
+    this.stelleFeldbautenHer(a);
     // Tiles als statische Bilder (Pseudo-3D, Masterprompt 5.1). Bei dorfSimBoden
     // malt der dorfSim-Canvas alles - keine Kacheln.
     if (!a.dorfSimBoden) {
@@ -7356,6 +7451,18 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         e.dmg = Math.round(e.dmg * 1.25);
       }
     }
+    // R218: gemerkte Wellen-Gegner dieser Karte zurueckholen (mit Wunden und
+    // Stellung). erzwinge=true, weil friedliche Karten Spawns sonst abweisen.
+    for (const r of this.restMonsterProKarte[a.id] ?? []) {
+      const e = this.spawnEnemy(r.type as never, a.depth + tiefenBonus, r.x, r.y, r.elite, true);
+      if (e.hp <= 0) continue;
+      e.hp = Math.max(1, Math.min(e.maxhp, r.hp));
+      if (r.champion) e.champion = true;
+      e.name = r.name;
+      e.schild = r.schild;
+      e.aggro = r.aggro;
+    }
+    this.restMonsterProKarte[a.id] = [];
     a.enemySpawns = a.enemySpawns.filter(() => true); // Spawns bleiben für Wiederbevölkerung erhalten
     // Bodenbeute
     for (const g of a.gear) this.pickups.add({ kind: 'gear', item: rollGear(this.rng, a.depth), x: g.x, y: g.y, bob: Math.random() * 6 });
@@ -11942,8 +12049,29 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     }
   }
 
+  /**
+   * R218 (Autor: "wenn die Hoelle losbricht ruckelt es wie Sau"): Bevor eine
+   * Welle hereinbricht, die Figur-Atlanten der zu erwartenden Gegner VORWAERMEN.
+   * Gemessen: EIN Atlas kostet in dieser Testumgebung ~0,7 s - wird er mitten im
+   * Gefecht gebacken, steht das Bild. Die Warteschlange arbeitet pro Frame EINEN
+   * ab (vorwaermSchritt in update), das verteilt die Last unsichtbar.
+   */
+  private waermeGegnerFiguren(typen: readonly string[], tiefe: number): void {
+    const namen: string[] = [];
+    const e = Math.max(1, Math.min(tiefe, 5));
+    for (const t of typen) {
+      namen.push(t, `${t}_e${e}`);
+      // die Gefallenen-Waffen dazu (der Spawn wuerfelt sie aus)
+      for (const w of ['schwert', 'axt', 'wucht', 'bogen', 'stab', 'schwertschild']) {
+        namen.push(`${t}_e${e}_${w}`, `${t}_${w}`);
+      }
+    }
+    this.provider.vorwaermen(namen.filter((n) => FIGURES[n]));
+  }
+
   private startEinfall(): void {
     this.einfallAktiv = true;
+    this.waermeGegnerFiguren(EINFALL_TYPEN, EINFALL.tiefe);
     this.setzeLage('stadt', 'umkaempft');   // F1: auf der Karte sichtbar
     this.setzeBrunnenBlutig(true);
     this.letzterEinfallTag = this.tag;
@@ -11996,6 +12124,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // Geschichte weiter (der Boss hatte das Relikt nicht, der Krieg hat begonnen).
   private startGrosserEinfall(): void {
     this.einfallAktiv = true;
+    this.waermeGegnerFiguren([...EINFALL_TYPEN, 'schatten', 'templer'], EINFALL.tiefe + 1);
     this.setzeLage('stadt', 'umkaempft');   // F1: auf der Karte sichtbar
     // F5: der grosse Sturm ist der ANFANG VOM FALL - die Uhr laeuft.
     this.flags.fallSturm = true;
@@ -14402,6 +14531,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         tageszeit: this.tageszeit,
         feld: this.feld,
         lagerfeuer: this.lagerfeuerProKarte,
+        feldbauten: this.feldbautenProKarte,     // R218: Turm & Co. ueberleben Speichern
+        restMonster: this.restMonsterProKarte,   // R218: Wellen-Gegner je Karte
         haendlerSeed: this.areaSeed,
         aufbauBestellt: this.aufbauBestellt,
         einrichtung: this.einrichtung,
@@ -14472,6 +14603,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.tag = data.welt.tag ?? 1;
     this.tageszeit = data.welt.tageszeit ?? 0.3;
     this.lagerfeuerProKarte = data.welt.lagerfeuer ?? {};
+    this.feldbautenProKarte = data.welt.feldbauten ?? {};
+    this.restMonsterProKarte = data.welt.restMonster ?? {};
     this.feld = data.welt.feld ?? this.feld;
     this.kopfgeld = data.welt.kopfgeld ?? null;
     this.album = data.welt.album ?? { kills: {}, champions: [], unikate: [], notizen: [] };
@@ -16260,6 +16393,9 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
 
   update(_time: number, delta: number): void {
     if (!this.area) return;
+    // R218: EINE vorgemerkte Figur je Bild backen (siehe waermeGegnerFiguren) -
+    // so entstehen die Atlanten VOR dem Gefecht, verteilt statt in einem Ruck.
+    this.provider.vorwaermSchritt();
     const dt = Math.min(0.05, delta / 1000);
     // Wasser-Editor: gemalte Maske gedrosselt speichern (nach der letzten Aenderung).
     if (this.wasserEditSaveT > 0) { this.wasserEditSaveT -= dt; if (this.wasserEditSaveT <= 0) this.speichereWassermaske(); }

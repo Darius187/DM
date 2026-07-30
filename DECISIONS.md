@@ -3353,3 +3353,40 @@ Rezepte: Waffengift/Flugsalbe). Tränke NUR dort, wenn der Held Ressourcen bring
   die mittlere und rechte Spalte an der gemalten Bildschale haengen -
   absolute Quell-Koordinaten haetten das gewachsene Layout zerrissen. Der
   Editor sagt das in der Kopfzeile an (CHAR_LAYOUT_VERSATZ).
+
+## R218 - Autorbugs: Turm/Monster despawnen, Doppelschild, Koepfe, Ruckeln
+URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
+1. TURM WEG: loadAreaObjects leerte this.feldbauten bei JEDEM Kartenaufbau
+   (WorldScene 7298) und niemand baute sie wieder auf - Lagerfeuer hatten eine
+   Karten-Liste, Feldbauten nicht. respawn() -> goArea(dieselbe Karte) ->
+   genau dieser Neuaufbau. Galt auch bei jedem normalen Kartenwechsel.
+   FIX: feldbautenProKarte (Gedaechtnis je Karte, mit Wunden und Tor-Zustand),
+   stelleFeldbautenHer() beim Laden, syncFeldbautenInsGedaechtnis() beim
+   Verlassen, Abbau raeumt den Eintrag - und alles im Savegame.
+2. MONSTER WEG: beim Laden werden Gegner NUR aus a.enemySpawns wiederhergestellt
+   (WorldScene 7333). Einfall-Wellen/Feldzug-Trupps stehen dort nie -> nach dem
+   Tod spurlos weg. Zusaetzlich setzte goArea 'geleert', wenn beim Sterben
+   zufaellig kein Gegner mehr lebte -> Karte blieb dauerhaft leer.
+   FIX: restMonsterProKarte sichert lebende Gegner OHNE spawnRef (Stellung +
+   Wunden), das Laden holt sie zurueck; 'geleert' nur, wenn auch die Welle leer
+   ist. Beweis: Turm + 3 Wellen-Gegner ueberleben Tod und Erwachen.
+3. ZWEI SCHILDE / "Schild an den Hoden": seit R208 zeichnet die FIGUR ihr
+   Wappenschild am Arm; das alte Szenen-Schild (R41, CombatScene ~4130) kam
+   obendrauf - auf Guerteltiefe und zum Helden gedreht. FIX: figurHatSchild()
+   - wer sein Schild traegt, bekommt kein zweites.
+4. KOEPFE ZU GROSS: gemessen Kopf/Schulter beim Helden 0,43, bei den Monstern
+   0,65 (gleiche Messmethode, ohne Waffe). Kopfbreite von 5,2 auf 4,0 Einheiten
+   (-23 %), Hoehe 4,2 -> 3,9; alle Kopf-Details (Augen, Helm, Kapuze, Schnabel,
+   Haar) haengen jetzt an KOPF_X/KOPF_B und wandern mit. Neu gemessen: 0,50.
+5. RUCKELN BEIM EINFALL: gemessen - das Backen EINES Figur-Atlas kostete in der
+   Testumgebung im Schnitt 724 ms (Summe 29 s fuer 40 Atlanten). Jeder erste
+   Auftritt eines Typs/einer Ebenen-Variante buk MITTEN im Gefecht; R209 (7
+   statt 4 Frames) und R216 (doppelte Aufloesung) hatten das verteuert.
+   FIX a: Richtung LINKS wird aus RECHTS gespiegelt statt neu gezeichnet
+   (21 statt 28 Zeichnungen). FIX b: vorwaermen()/vorwaermSchritt() - beide
+   Einfall-Starter melden die erwarteten Gegner an, die Hauptschleife backt
+   EINEN Atlas je Bild, also VOR dem Gefecht und verteilt. Messung danach:
+   292 ms Mittel, Median 152 ms, Summe 11,7 s (dieselbe Umgebung).
+- Ehrlich: die FPS-Zahlen dieser Umgebung (Software-Renderer, 5 FPS im
+  Leerlauf) taugen NUR als Verhaeltnis, nicht als Absolutwert. Ob es beim
+  Autor jetzt fluessig ist, muss er sagen.

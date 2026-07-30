@@ -643,6 +643,15 @@ for (const typ of ALLE_VARIANTEN_TYPEN) {
 
 // Figurname des Helden je getragener Ruestung (Wert, null = nichts).
 // Waffenlos (Runde 37): der Held trägt keine Waffe in der Hand.
+/**
+ * R218: Trägt DIESE Figur ihr Schild bereits gezeichnet am Arm? Dann darf die
+ * Szene kein zweites darüberlegen (Autorbug "einige Gegner haben zwei Schilde").
+ */
+export function figurHatSchild(name: string): boolean {
+  const f = FIGURES[name] as FigureSpec | undefined;
+  return !!f && !('quad' in (f as object)) && f.schild === true;
+}
+
 export function spielerFigur(ruestwert: number | null): string {
   return `spieler_${heldTier(ruestwert)}`;
 }

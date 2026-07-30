@@ -40,6 +40,17 @@ export interface SaveData {
     feld: Array<{ saatId: string | null; tageGewachsen: number; gegossen: boolean }>;
     // Persönliche Lagerfeuer je Karte (R81, Baumenü) - überleben Kartenwechsel und Laden
     lagerfeuer?: Record<string, Array<{ x: number; y: number }>>;
+    // R218 (Autorbug "mein Turm despawnt nach dem Tod"): Feldbauten und
+    // Wellen-Gegner je Karte - beides ueberlebt jetzt Kartenwechsel, Tod UND
+    // Speichern/Laden.
+    feldbauten?: Record<string, Array<{
+      id: string; x: number; y: number; tx?: number; ty?: number; tx2?: number; ty2?: number;
+      senk?: boolean; hp: number; maxHp: number; offen?: boolean; quelle?: 'held' | 'dorf';
+    }>>;
+    restMonster?: Record<string, Array<{
+      type: string; hp: number; x: number; y: number; elite: boolean;
+      champion?: string | boolean; name: string; schild: boolean; aggro: number;
+    }>>;
     haendlerSeed: number;
     aufbauBestellt?: boolean;
     einrichtung?: number;

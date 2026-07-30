@@ -184,6 +184,29 @@ export class SpriteProvider {
     }
   }
 
+  /**
+   * R218 (Autor: "wenn die Hölle losbricht ruckelt es wie Sau"): Figur-Atlanten
+   * VORWÄRMEN statt mitten im Gefecht backen. Die Szene meldet, welche Figuren
+   * gleich auftauchen; hier wird pro Aufruf EINE gebacken (der Rest kommt in den
+   * nächsten Frames), damit kein einzelnes Bild lange stockt.
+   * Rückgabe: true, wenn noch etwas in der Warteschlange liegt.
+   */
+  private vorwaermListe: string[] = [];
+
+  vorwaermen(namen: readonly string[]): void {
+    for (const n of namen) {
+      if (!n || this.tex.exists(`fig_${n}`) || this.vorwaermListe.includes(n)) continue;
+      this.vorwaermListe.push(n);
+    }
+  }
+
+  /** Einen Schritt der Vorwärm-Warteschlange abarbeiten (pro Frame aufrufen). */
+  vorwaermSchritt(): boolean {
+    const n = this.vorwaermListe.shift();
+    if (n) this.ensureFallbackFigure(n);
+    return this.vorwaermListe.length > 0;
+  }
+
   private ensureFallbackFigure(name: string): void {
     const key = `fig_${name}`;
     if (this.tex.exists(key)) return;
@@ -218,8 +241,25 @@ export class SpriteProvider {
       gross.width = HD_ZELLE;
       gross.height = HD_ZELLE;
       const gctx = gross.getContext('2d')!;
-      for (let dir = 0; dir < 4; dir++) {
+      // R218 (Autor: "nachdem Ravensmoor angegriffen wurde ruckelt es wie
+      // Sau"): Das Backen EINES Atlas kostete 28 HD-Zeichnungen (4 Richtungen x
+      // 7 Frames) - beim Einfall tauchen viele Typen/Ebenen-Varianten zum ersten
+      // Mal auf und jeder Erstauftritt buk mitten im Gefecht. Richtung 1 (links)
+      // ist die GESPIEGELTE Richtung 2 (rechts): sie wird jetzt aus dem fertigen
+      // Bild gespiegelt statt neu gezeichnet - ein Viertel weniger Arbeit.
+      // Reihenfolge: erst die gezeichneten Richtungen, DANN die gespiegelte.
+      const SPIEGEL_VON: Record<number, number> = { 1: 2 };
+      for (const dir of [0, 2, 3, 1]) {
+        const quelle = SPIEGEL_VON[dir];
         for (let frame = 0; frame < HD_FRAMES; frame++) {
+          if (quelle !== undefined) {
+            ctx.save();
+            ctx.translate(frame * F + F, dir * F);
+            ctx.scale(-1, 1);
+            ctx.drawImage(canvas, frame * F, quelle * F, F, F, 0, 0, F, F);
+            ctx.restore();
+            continue;
+          }
           gctx.clearRect(0, 0, HD_ZELLE, HD_ZELLE);
           drawMonsterHd(gctx, name, dir, frame);
           ctx.drawImage(gross, 0, 0, HD_ZELLE, HD_ZELLE, frame * F, dir * F, F, F);

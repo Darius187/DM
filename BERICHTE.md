@@ -2392,3 +2392,22 @@ TESTS: tsc sauber, 492/492 grün, Browser-Messung + Screenshot.
 OFFEN: Die Knöpfe (Ausrüsten/Vergleichen/Ablegen) sitzen weiter fest auf den
 gemalten Kästen der Bildschale - die habe ich bewusst nicht freigegeben,
 sonst rutschen sie von ihren Rahmen. Sag Bescheid, wenn du sie auch willst.
+
+## Runde 218 - Turm/Monster-Despawn, Doppelschild, Koepfe, Einfall-Ruckeln
+
+1. TURM bleibt stehen: Feldbauten haben jetzt ein Gedaechtnis je Karte (mit
+   Wunden und Tor-Zustand) - sie ueberleben Kartenwechsel, Tod UND Speichern.
+2. MONSTER bleiben: Wellen-Gegner (Einfall/Feldzug) werden gesichert und beim
+   Betreten wieder aufgestellt, wo sie standen. Belegt: Turm + 3 Gegner nach
+   dem Erwachen unveraendert da.
+3. Kein DOPPELSCHILD mehr und kein Schild auf Guerteltiefe: das alte
+   Szenen-Schild entfaellt fuer alle, die ihr Schild gezeichnet tragen.
+4. KOEPFE schlanker: Kopf/Schulter-Verhaeltnis von 0,65 auf 0,50 (Held 0,43).
+5. RUCKELN beim Einfall: Ursache war das Backen der Figur-Atlanten MITTEN im
+   Gefecht. Jetzt wird vorgewaermt (ein Atlas je Bild, vor der Welle) und je
+   Atlas ein Viertel weniger gezeichnet. Backzeit in der Messumgebung von
+   724 ms auf 292 ms je Atlas.
+
+TESTS: tsc sauber, 492/492 gruen, Browser-Beweise fuer 1, 2 und 5.
+OFFEN: Ob es beim Spielen wirklich fluessig ist, kann nur der Autor sagen -
+diese Testumgebung hat keine Grafikkarte.

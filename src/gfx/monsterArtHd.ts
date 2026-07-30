@@ -688,64 +688,76 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
     if (!schwungProfil && !faustkampf) rund(ctx, f.massig ? 11.1 : 10.9, 7 + bob + legL, aw, al, 0.4, shade(armCol, -8));
   }
 
-  // Kopf: Rundbox + Wangenschatten; Skelett bekommt Schaedel-Zuege
-  rund(ctx, 5.4, 2 + bob, 5.2, 4.2, 1.3, f.skin);
-  r(ctx, 9.7, 3 + bob, 0.8, 2.6, shade(f.skin, -16));
-  r(ctx, 5.6, 2.15 + bob, 4.4, 0.7, shade(f.skin, 12));
+  // Kopf: Rundbox + Wangenschatten; Skelett bekommt Schaedel-Zuege.
+  // R218 (Autor: "die Koepfe sind viel zu riesig, orientiere dich an den
+  // Proportionen vom Spieler"): gemessen war der Kopf 85 % der Schulterbreite,
+  // beim Helden sind es 43 %. Der Kopf ist jetzt schmaler UND etwas kuerzer -
+  // alle Kopf-Details (Augen, Helm, Kapuze, Schnabel) haengen an KOPF_X/KOPF_B,
+  // damit sie mitwandern statt nebeneinander zu liegen.
+  const KOPF_B = 4.0;                    // Breite (war 5.2), Rumpf ist 6 breit
+  const KOPF_H = 3.9;                    // Hoehe (war 4.2)
+  const KOPF_X = 8 - KOPF_B / 2;         // mittig ueber dem Rumpf (Mitte = 8)
+  const KOPF_Y = 2.3 + bob;              // etwas tiefer: kein Riesenschaedel mehr
+  rund(ctx, KOPF_X, KOPF_Y, KOPF_B, KOPF_H, 1.05, f.skin);
+  r(ctx, KOPF_X + KOPF_B - 0.7, KOPF_Y + 0.9, 0.65, KOPF_H - 1.6, shade(f.skin, -16));
+  r(ctx, KOPF_X + 0.2, KOPF_Y + 0.15, KOPF_B - 0.4, 0.6, shade(f.skin, 12));
   if (f.skeletal && dir !== 3) {
-    r(ctx, 6.2, 4.9 + bob, 3.4, 0.55, shade(f.skin, -30));     // Kieferschatten
-    r(ctx, 6.5, 5.1 + bob, 0.3, 0.4, shade(f.skin, -44));      // Zahnluecken
-    r(ctx, 7.3, 5.1 + bob, 0.3, 0.4, shade(f.skin, -44));
-    r(ctx, 8.1, 5.1 + bob, 0.3, 0.4, shade(f.skin, -44));
+    r(ctx, KOPF_X + 0.6, KOPF_Y + 2.6, KOPF_B - 1.2, 0.5, shade(f.skin, -30));   // Kieferschatten
+    r(ctx, KOPF_X + 0.9, KOPF_Y + 2.8, 0.28, 0.36, shade(f.skin, -44));          // Zahnluecken
+    r(ctx, KOPF_X + 1.6, KOPF_Y + 2.8, 0.28, 0.36, shade(f.skin, -44));
+    r(ctx, KOPF_X + 2.3, KOPF_Y + 2.8, 0.28, 0.36, shade(f.skin, -44));
   }
   // Haar/Kapuze bzw. Hut
   if (f.robe) {                                                // Kapuze
+    const kl = KOPF_X - 0.35, kr = KOPF_X + KOPF_B + 0.35;
     ctx.fillStyle = f.hair; ctx.beginPath();
-    ctx.moveTo(5.1 * U, (4.4 + bob) * U);
-    ctx.quadraticCurveTo(5.0 * U, (1.4 + bob) * U, 8 * U, (1.25 + bob) * U);
-    ctx.quadraticCurveTo(11.0 * U, (1.4 + bob) * U, 10.9 * U, (4.4 + bob) * U);
-    ctx.lineTo(10.2 * U, (3.4 + bob) * U);
-    ctx.quadraticCurveTo(8 * U, (2.2 + bob) * U, 5.8 * U, (3.4 + bob) * U);
+    ctx.moveTo(kl * U, (KOPF_Y + 2.2) * U);
+    ctx.quadraticCurveTo(kl * U, (KOPF_Y - 0.7) * U, 8 * U, (KOPF_Y - 0.85) * U);
+    ctx.quadraticCurveTo(kr * U, (KOPF_Y - 0.7) * U, kr * U, (KOPF_Y + 2.2) * U);
+    ctx.lineTo((kr - 0.7) * U, (KOPF_Y + 1.2) * U);
+    ctx.quadraticCurveTo(8 * U, (KOPF_Y + 0.05) * U, (kl + 0.7) * U, (KOPF_Y + 1.2) * U);
     ctx.closePath(); ctx.fill();
   } else if (f.hat) {
     // R207d (Autor: "sieht aus wie ein Cowboy - KEINE Huete, wenn dann Helm"):
-    // hat zeichnet jetzt einen anliegenden HELM ohne Krempe. Ritter bekommen
-    // eine Beckenhaube mit Nasal, alle anderen eine schlichte Kalotte.
-    rund(ctx, 5.3, 1.3 + bob, 5.4, 2.6, 1.4, f.hat);           // Helmglocke
-    r(ctx, 5.5, 1.55 + bob, 4.6, 0.5, shade(f.hat, 16));       // Lichtkante
-    r(ctx, 5.3, 3.5 + bob, 5.4, 0.45, shade(f.hat, -18));      // Helmrand
+    // hat zeichnet einen anliegenden HELM ohne Krempe. Ritter bekommen eine
+    // Beckenhaube mit Nasal, alle anderen eine schlichte Kalotte.
+    rund(ctx, KOPF_X - 0.15, KOPF_Y - 0.75, KOPF_B + 0.3, 2.4, 1.15, f.hat);      // Helmglocke
+    r(ctx, KOPF_X + 0.1, KOPF_Y - 0.5, KOPF_B - 0.2, 0.42, shade(f.hat, 16));     // Lichtkante
+    r(ctx, KOPF_X - 0.15, KOPF_Y + 1.3, KOPF_B + 0.3, 0.4, shade(f.hat, -18));    // Helmrand
     if (f.ritter) {
-      r(ctx, 7.65, 2.6 + bob, 0.7, 1.9, shade(f.hat, -12));    // Nasal
-      r(ctx, 5.9, 0.9 + bob, 4.2, 0.5, shade(f.hat, -20));     // Kammansatz
+      r(ctx, 7.68, KOPF_Y + 0.5, 0.62, 1.7, shade(f.hat, -12));                   // Nasal
+      r(ctx, KOPF_X + 0.4, KOPF_Y - 1.15, KOPF_B - 0.8, 0.45, shade(f.hat, -20)); // Kammansatz
     }
   } else {
-    r(ctx, 5.4, 1.9 + bob, 5.2, 0.9, f.hair);
+    r(ctx, KOPF_X, KOPF_Y - 0.4, KOPF_B, 0.85, f.hair);
   }
   // Augen (dir 0/1/2; oben = Hinterkopf)
   if (dir !== 3) {
     const ac = f.augen ?? '#1c1410';
-    r(ctx, 6.5, 3.6 + bob, 0.75, 0.65, ac);
-    r(ctx, 8.7, 3.6 + bob, 0.75, 0.65, ac);
+    const augL = KOPF_X + 0.65, augR = KOPF_X + KOPF_B - 1.3, augY = KOPF_Y + 1.35;
+    r(ctx, augL, augY, 0.65, 0.58, ac);
+    r(ctx, augR, augY, 0.65, 0.58, ac);
     if (f.augen) {                                             // Gluehen
       ctx.fillStyle = f.augen + '55';
-      ctx.fillRect(6.2 * U, (3.3 + bob) * U, 1.35 * U, 1.25 * U);
-      ctx.fillRect(8.4 * U, (3.3 + bob) * U, 1.35 * U, 1.25 * U);
+      ctx.fillRect((augL - 0.25) * U, (augY - 0.25) * U, 1.15 * U, 1.1 * U);
+      ctx.fillRect((augR - 0.25) * U, (augY - 0.25) * U, 1.15 * U, 1.1 * U);
     }
   }
   // R211: Schnabelmaske des Pestarztes - lederner Schnabel mitten im Gesicht,
   // die Augen werden zu runden Glaslinsen.
   if (f.schnabel && dir !== 3) {
-    rund(ctx, 6.1, 3.3 + bob, 1.5, 1.3, 0.6, '#2e2620');       // Glaslinse links
-    rund(ctx, 8.4, 3.3 + bob, 1.5, 1.3, 0.6, '#2e2620');
-    r(ctx, 6.4, 3.6 + bob, 0.5, 0.5, '#8aa8b8');               // Glas-Glanz
-    r(ctx, 8.7, 3.6 + bob, 0.5, 0.5, '#8aa8b8');
+    const lx = KOPF_X + 0.35, rx = KOPF_X + KOPF_B - 1.55, ly = KOPF_Y + 1.05;
+    rund(ctx, lx, ly, 1.25, 1.15, 0.55, '#2e2620');            // Glaslinse links
+    rund(ctx, rx, ly, 1.25, 1.15, 0.55, '#2e2620');
+    r(ctx, lx + 0.25, ly + 0.3, 0.42, 0.42, '#8aa8b8');        // Glas-Glanz
+    r(ctx, rx + 0.25, ly + 0.3, 0.42, 0.42, '#8aa8b8');
     ctx.fillStyle = '#4a3a28'; ctx.beginPath();                 // Schnabel
-    ctx.moveTo(7.0 * U, (4.1 + bob) * U);
-    ctx.lineTo(9.0 * U, (4.1 + bob) * U);
-    ctx.lineTo(8.0 * U, (6.4 + bob) * U);
+    ctx.moveTo(7.2 * U, (KOPF_Y + 1.9) * U);
+    ctx.lineTo(8.8 * U, (KOPF_Y + 1.9) * U);
+    ctx.lineTo(8.0 * U, (KOPF_Y + 4.0) * U);
     ctx.closePath(); ctx.fill();
-    r(ctx, 7.4, 4.7 + bob, 0.9, 0.2, '#2e2318');               // Naht
-    r(ctx, 7.55, 5.3 + bob, 0.6, 0.18, '#2e2318');
+    r(ctx, 7.55, KOPF_Y + 2.5, 0.8, 0.18, '#2e2318');          // Naht
+    r(ctx, 7.7, KOPF_Y + 3.05, 0.55, 0.16, '#2e2318');
   }
   // R211: Strick des Gehaengten - Schlinge um den Hals, Ende baumelt.
   if (f.strick) {
