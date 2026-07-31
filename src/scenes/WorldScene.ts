@@ -9301,7 +9301,9 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     };
     const m = map[rtsTyp];
     if (!m) return null;
-    const e = this.spawnEnemy(m.typ as never, 2, x, y, false, true);
+    // R221: die Soldaten-Figur DIREKT setzen - sonst wuerfelt der Spawn erst
+    // eine Gefallenen-Waffe und backt Skelett-Atlanten, die niemand sieht.
+    const e = this.spawnEnemy(m.typ as never, 2, x, y, false, true, m.figur);
     if (e.hp <= 0) return null;
     // R141 (2.1): jede Spieler-Einheit IST eine Roster-Einheit (benannte
     // Person, Permadeath). Verstaerkung/Aufstellen reicht eine bestimmte
@@ -10506,6 +10508,11 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       this.setzeLage(ev.nach, 'umkaempft');
       this.logMsg(`Der Feind greift ${this.kartenName(ev.nach)} an (Stärke ~${ev.staerke})!`, 'bad');
       this.sfx.play('fehler');
+      // R221 (Autor "die stehen einfach nur bloed rum"): die Figur-Atlanten der
+      // kommenden Welle JETZT vorwaermen (Sekunden Vorlauf) - beim Spawn mitten
+      // im Gefecht gebacken kostete jeder ~300-700 ms und das Bild stand.
+      this.waermeGegnerFiguren(['skelett', 'pest', 'lebender_toter'], EINFALL.tiefe);
+      this.provider.vorwaermen(['soldat', 'bogensoldat']);
     } else if (ev.typ === 'erobert') {
       this.garnisonRueckzug(ev.karte);
       this.setzeLage(ev.karte, 'besetzt');
@@ -10519,6 +10526,10 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // von der Kante Richtung Angreifer-Lager. Zaeher als Dungeon-Monster
   // (Dok 06 H1.1), gedeckelt (keine Hunderterhorden, Autor R180).
   private spawneFeldzugWelle(von: string, staerke: number): void {
+    // R221-Sicherheitsnetz: falls die Ankuendigungs-Vorwaermung nicht lief
+    // (Spielstand geladen, Karte gewechselt), ist das hier ein No-Op je schon
+    // gebackener Figur.
+    this.waermeGegnerFiguren(['skelett', 'pest', 'lebender_toter'], EINFALL.tiefe);
     const start = this.kantenPunkt(this.area, von, true);
     const anzahl = Math.max(3, Math.min(FELDZUG.liveWelleMax, Math.round(staerke / FELDZUG.kraftJeMann)));
     const typen = ['skelett', 'pest', 'lebender_toter'] as const;

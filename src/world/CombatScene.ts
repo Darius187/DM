@@ -2167,7 +2167,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.fx.burst(e.x, e.y, 0x6a6258, 20, 180);
   }
 
-  spawnEnemy(type: EnemyTypeId, depth: number, x: number, y: number, elite = false, erzwinge = false): Enemy {
+  // R221: `figur` legt die Figur direkt fest (Verbuendete!). Ohne das spawnte
+  // ein Soldat erst als Skelett MIT Gefallenen-Waffenwurf - das backte bis zu
+  // vier Skelett-Atlanten (je ~300-700 ms), die niemand je sah, und danach
+  // noch fig_soldat obendrauf. Gemessen in der R221-Diagnose (Frame 645-874 ms).
+  spawnEnemy(type: EnemyTypeId, depth: number, x: number, y: number, elite = false, erzwinge = false, figur?: string): Enemy {
     // Entklemmen (Runde 26): Spawns in Wänden/Altären hingen unsichtbar
     // fest - auf die nächste freie Kachel ausweichen (Ringsuche)
     if (this.isSolidAt(x, y)) {
@@ -2222,7 +2226,8 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
     // "Gefallene" (Runde 35, F10-Schalter): bewaffnete Untote. Balance-Test -
     // Schwert/Axt/Hammer/Bogen/Stab/Schild zufällig, sichtbar an der Figur.
-    if (TUNING.gefallene && !e.boss && !e.ranged && (GEFALLENE_TYPEN as readonly string[]).includes(type)) {
+    if (figur) e.figurName = figur;   // R221: feste Figur schlaegt den Waffenwurf
+    if (!figur && TUNING.gefallene && !e.boss && !e.ranged && (GEFALLENE_TYPEN as readonly string[]).includes(type)) {
       let total = 0;
       for (const w of GEFALLENE_WAFFEN) total += w.weight;
       let roll = this.rng.random() * total;

@@ -3469,3 +3469,24 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
 - Skelettwache und Golem sind Blender-Atlanten - deren Proportionen sind
   im Bild gebacken und NICHT von diesem Fix beruehrt (nur ueber die
   Spezialgegner-Werkbank skalierbar, echte Aenderung = neuer Bake).
+
+## R221 - "Soldaten stehen bloed rum" unter Beschuss (Autor-Screenshots)
+- Messreihe (Formation + 3 Skelett-Schuetzen, mit und ohne RTS-Modus): die
+  Reaktions-KETTE ist intakt - Soldaten wachen auf, Provokation greift beim
+  ersten Pfeiltreffer, Ziel = Schuetze, Stellung faellt, sie laufen los
+  (39->70 px in den ersten Sekunden). Der sichtbare Stillstand korreliert
+  STRIKT mit einem Frame-Einbruch beim Kampfstart.
+- Belegte Fresser: (a) Verbuendeten-Spawn wuerfelte erst eine
+  Gefallenen-Waffe und backte bis zu VIER Skelett-Atlanten (je 0,3-0,7 s
+  Standbild), die nie jemand sah, dann erst fig_soldat; (b) Feldzug-Wellen
+  spawnen ohne Vorwaermen -> Ebenen-/Waffen-Varianten backen mitten im
+  Gefecht (das R218-Vorwaermen deckte nur den Stadt-Einfall ab).
+- Fixes: spawnEnemy nimmt die Ziel-Figur direkt (figur-Parameter, kein
+  Phantom-Waffenwurf); Wellen-Vorwaermung bereits bei der
+  Angriffs-Ankuendigung + Sicherheitsnetz im Wellen-Spawn; soldat/
+  bogensoldat werden mit vorgewaermt. A/B: 6 Atlas-Bakes -> 2 beim
+  Kampfstart.
+- EHRLICHE GRENZE: die Testumgebung hat keine GPU - dort bricht zusaetzlich
+  das Rendering ein, was sich nicht vom Autor-Rechner trennen laesst.
+  Task #107 (Ruckeln) bleibt offen; naechster Schritt braucht die
+  FPS-Anzeige des Autors im Gefecht.
