@@ -349,6 +349,12 @@ export const ELITE_LEUCHTEN = {
   bodenSchein: false,
 } as const;
 
+// R222 (Autor "beim Einfall ruckelt es wie Sau"): Pause zwischen zwei
+// Atlas-Vorwaerm-Bakes. "Einer je Frame" (R218) machte mit voller
+// Warteschlange JEDEN Frame maximal teuer - jetzt hoechstens ein Bake
+// alle X Millisekunden, der Rest der Zeit laeuft das Spiel normal.
+export const VORWAERM_PAUSE_MS = 250;
+
 export const FIGUR_SCHATTEN = {
   /** R216 (Autor: "die haben immer noch diesen schwarzen Schatten auf dem
    *  Boden"): der eigene Figur-Bodenschatten ist AUS. Das Licht der Szene

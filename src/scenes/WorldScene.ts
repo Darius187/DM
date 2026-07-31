@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CombatScene } from '../world/CombatScene';
 import { Enemy, angleToDir, angleToDir8, angleToDir16, type EnemyHost } from '../world/Enemy';
-import { SCHLAG_ANIM, NEUE_GEGNER_JE_EBENE } from '../data/enemies';
+import { SCHLAG_ANIM, NEUE_GEGNER_JE_EBENE, GEFALLENE_TYPEN } from '../data/enemies';
 
 // R218: welche Gegner ein Einfall schickt - dieselbe Liste, die der Spawn nutzt.
 // Wird zum VORWAERMEN der Figur-Atlanten gebraucht (siehe waermeGegnerFiguren).
@@ -86,7 +86,7 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import type { FeindlagerVariante, WallForm } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
@@ -393,6 +393,8 @@ export class WorldScene extends CombatScene {
   private v9Wurf = 0;
   private katakombenWurf = 0;
   private domWurf = 0;
+  // R222: Zeit-Drossel fuers Atlas-Vorwaermen (siehe update + VORWAERM_PAUSE_MS)
+  private vorwaermPauseT = 0;
   // R138b (Autor): Boden/Wand-Werkbank - 20 Boeden + 10 Waende live testen.
   // Reiner Test-Zustand (nicht gespeichert); null = Standard-Optik der Karte.
   private devBodenStil: string | null = null;
@@ -12084,7 +12086,10 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     const e = Math.max(1, Math.min(tiefe, 5));
     for (const t of typen) {
       namen.push(t, `${t}_e${e}`);
-      // die Gefallenen-Waffen dazu (der Spawn wuerfelt sie aus)
+      // R222: Waffen-Varianten wuerfelt der Spawn NUR fuer die Gefallenen-Typen
+      // (CombatScene, GEFALLENE_TYPEN) - alle anderen vorzubacken blaehte die
+      // Warteschlange auf ~80 Atlanten auf und der Einfall wurde zur Diashow.
+      if (!(GEFALLENE_TYPEN as readonly string[]).includes(t)) continue;
       for (const w of ['schwert', 'axt', 'wucht', 'bogen', 'stab', 'schwertschild']) {
         namen.push(`${t}_e${e}_${w}`, `${t}_${w}`);
       }
@@ -16416,9 +16421,15 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
 
   update(_time: number, delta: number): void {
     if (!this.area) return;
-    // R218: EINE vorgemerkte Figur je Bild backen (siehe waermeGegnerFiguren) -
-    // so entstehen die Atlanten VOR dem Gefecht, verteilt statt in einem Ruck.
-    this.provider.vorwaermSchritt();
+    // R218: vorgemerkte Figuren-Atlanten VOR dem Gefecht backen.
+    // R222 (Autor "beim Einfall ruckelt es immer noch wie Sau - unspielbar"):
+    // "einer je Bild" war der Taeter - ein Atlas kostet je nach Rechner
+    // 50 ms bis Sekunden, also wurde mit voller Warteschlange JEDER Frame
+    // maximal teuer (gemessen: 11-19 s Update-Zeit je Echtzeit-Sekunde beim
+    // startEinfall). Jetzt hoechstens EIN Bake alle VORWAERM_PAUSE_MS -
+    // die Queue leert sich in Ankuendigungs-/Marschzeit, das Spiel bleibt fluessig.
+    this.vorwaermPauseT -= delta;
+    if (this.vorwaermPauseT <= 0 && this.provider.vorwaermSchritt()) this.vorwaermPauseT = VORWAERM_PAUSE_MS;
     const dt = Math.min(0.05, delta / 1000);
     // Wasser-Editor: gemalte Maske gedrosselt speichern (nach der letzten Aenderung).
     if (this.wasserEditSaveT > 0) { this.wasserEditSaveT -= dt; if (this.wasserEditSaveT <= 0) this.speichereWassermaske(); }

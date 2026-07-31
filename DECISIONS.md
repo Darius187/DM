@@ -3490,3 +3490,21 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   das Rendering ein, was sich nicht vom Autor-Rechner trennen laesst.
   Task #107 (Ruckeln) bleibt offen; naechster Schritt braucht die
   FPS-Anzeige des Autors im Gefecht.
+
+## R222 - Einfall-Ruckeln: der R218-Vorwaermer war selbst der Taeter
+- Profiler ueber den ECHTEN startEinfall (alle update-Systeme + Render
+  getrennt): Render harmlos, aber die Update-Zeit lag bei 11-19 s je
+  Echtzeit-Sekunde. Grund: waermeGegnerFiguren stopfte ~80 Atlas-Namen in
+  die Warteschlange (alle Typen x Ebenen-Ton x 6 Waffen), und
+  vorwaermSchritt backte EINEN JE FRAME - mit voller Queue war damit
+  JEDER Frame maximal teuer, minutenlang. "Ein Atlas je Bild" war gut
+  gemeint und genau falsch.
+- Fix: (a) Zeit-Drossel VORWAERM_PAUSE_MS = 250 (src/data/welt.ts) -
+  hoechstens ein Bake alle 250 ms, dazwischen laeuft das Spiel; (b) die
+  Waffen-Varianten werden nur noch fuer GEFALLENE_TYPEN vorgewaermt
+  (nur die wuerfeln Waffen). A/B am echten Einfall: ~80 Bakes -> 13,
+  Update-Last je Sekunde Faktor 3-10 kleiner.
+- Wichtig fuers Bild "Soldaten stehen bloed rum": die KI-Kette ist in
+  beiden Modi gemessen intakt (wecken, Provokation, Ziel, Anlauf) - bei
+  1-3 FPS SIEHT Anlauf nur wie Stillstand aus. Das Ruckeln war das
+  Problem, nicht die Haltungen.
