@@ -3455,3 +3455,17 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   moeglich.
 - Der Dom ist Planungskarte 'dom' im Maps-Tab (Regel R138): noch kein
   Eingang im Spiel - wo er in der Welt liegt, entscheidet der Autor.
+
+## R220 - Kopf-Ausreisser (Autor-Screenshots "fette Schaedel / winzig")
+- Befund per Messung ueber alle 409 HD-Figuren: massige Figuren (Riese,
+  Untoter Riese, Henker) hatten 0,33 Kopf/Schulter (Schulterwuelste kamen
+  in R208, der Kopf blieb 3,0) - das "winzig". Figuren OHNE Schulterpanzer
+  (Skelett, Frauen, Schinder) lagen bei 0,47, der Held bei 0,43 - das
+  "fett".
+- Fix: (a) massig-Kopf waechst mit der Koerpermasse (x1,2, Unterkante
+  bleibt auf dem Rumpf, Helm/Kiefer/Haar skalieren mit), (b) Kopf-Basis
+  3,0 -> 2,8. Neue Spanne 0,36-0,44 um das Held-Mass; Riesen bewusst
+  einen Tick kleinkoepfiger (liest sich als Huene).
+- Skelettwache und Golem sind Blender-Atlanten - deren Proportionen sind
+  im Bild gebacken und NICHT von diesem Fix beruehrt (nur ueber die
+  Spezialgegner-Werkbank skalierbar, echte Aenderung = neuer Bake).

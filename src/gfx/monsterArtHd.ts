@@ -700,12 +700,22 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
   // Der Kopf ist jetzt eine ELLIPSE im Held-Stil (kopf() in heldArt.ts) statt
   // der alten Rundbox: schmaler, flacher, tiefer aufgesetzt, mit Hals,
   // Glanzlicht oben links und Wangenschatten - kein skalierter Klotz mehr.
-  const KOPF_B = 3.0;                    // Breite (R207: 5.2 -> R218b: 3.45)
-  const KOPF_H = 3.0;                    // Hoehe (R207: 4.2 -> R218b: 3.6)
+  // R220 (Autor: "fette Schaedel bei einigen, winzig bei anderen"): massige
+  // Figuren (Riese/Henker) bekamen breite Schulterwuelste, der Kopf blieb aber
+  // bei 3,0 - gemessen 0,33 Kopf/Schulter statt 0,42. Der Kopf waechst jetzt
+  // mit der Koerpermasse mit (x1,2), Unterkante bleibt auf dem Rumpf.
+  const KOPF_SKALA = f.massig ? 1.2 : 1;
+  // R220b: Basis 3,0 -> 2,8. Gemessen lagen Figuren OHNE Schulter-Panzer
+  // (Skelett, Frauen, Schinder) bei 0,47 Kopf/Schulter, der Held bei 0,43 -
+  // das war der "fette Schaedel" aus dem Autor-Screenshot. Mit 2,8 liegt die
+  // ganze Spanne (0,38-0,44) eng um das Held-Mass.
+  const KOPF_B = 2.8 * KOPF_SKALA;       // Breite (R207: 5.2 -> R218b: 3.45 -> R218c: 3.0)
+  const KOPF_H = 2.8 * KOPF_SKALA;       // Hoehe (R207: 4.2 -> R218b: 3.6 -> R218c: 3.0)
   const KOPF_X = 8 - KOPF_B / 2;         // mittig ueber dem Rumpf (Mitte = 8)
   // R218d (Autor: "bitte lasse den Hals weg"): Kopf sitzt direkt auf dem
-  // Rumpf (Rumpf-Oberkante = 6), kein Hals-Rechteck mehr.
-  const KOPF_Y = 3.1 + bob;
+  // Rumpf (Rumpf-Oberkante = 6), kein Hals-Rechteck mehr - auch der groessere
+  // massig-Kopf waechst nach OBEN, die Unterkante bleibt bei 6,1.
+  const KOPF_Y = 6.1 - KOPF_H + bob;
   const KM_X = 8, KM_Y = KOPF_Y + KOPF_H / 2;   // Kopfmitte
   // Kopf als Ellipse
   ctx.fillStyle = f.skin;
@@ -722,10 +732,11 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
   ctx.ellipse((KM_X + KOPF_B * 0.3) * U, (KM_Y + KOPF_H * 0.16) * U, 0.34 * U, 0.62 * U, 0, 0, Math.PI * 2);
   ctx.fill();
   if (f.skeletal && dir !== 3) {
-    r(ctx, KOPF_X + 0.55, KOPF_Y + 2.1, KOPF_B - 1.1, 0.42, shade(f.skin, -30));  // Kieferschatten
-    r(ctx, KOPF_X + 0.75, KOPF_Y + 2.28, 0.24, 0.3, shade(f.skin, -44));          // Zahnluecken
-    r(ctx, KOPF_X + 1.35, KOPF_Y + 2.28, 0.24, 0.3, shade(f.skin, -44));
-    r(ctx, KOPF_X + 1.95, KOPF_Y + 2.28, 0.24, 0.3, shade(f.skin, -44));
+    const kS = KOPF_SKALA;
+    r(ctx, KOPF_X + 0.55 * kS, KOPF_Y + 2.1 * kS, KOPF_B - 1.1 * kS, 0.42, shade(f.skin, -30));  // Kieferschatten
+    r(ctx, KOPF_X + 0.75 * kS, KOPF_Y + 2.28 * kS, 0.24, 0.3, shade(f.skin, -44));               // Zahnluecken
+    r(ctx, KOPF_X + 1.35 * kS, KOPF_Y + 2.28 * kS, 0.24, 0.3, shade(f.skin, -44));
+    r(ctx, KOPF_X + 1.95 * kS, KOPF_Y + 2.28 * kS, 0.24, 0.3, shade(f.skin, -44));
   }
   // Haar/Kapuze bzw. Hut
   if (f.robe) {
@@ -746,9 +757,9 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
     // R207d (Autor: "sieht aus wie ein Cowboy - KEINE Huete, wenn dann Helm"):
     // hat zeichnet einen anliegenden HELM ohne Krempe. Ritter bekommen eine
     // Beckenhaube mit Nasal, alle anderen eine schlichte Kalotte.
-    rund(ctx, KOPF_X - 0.12, KOPF_Y - 0.7, KOPF_B + 0.24, 2.25, 1.05, f.hat);     // Helmglocke
-    r(ctx, KOPF_X + 0.1, KOPF_Y - 0.5, KOPF_B - 0.2, 0.42, shade(f.hat, 16));     // Lichtkante
-    r(ctx, KOPF_X - 0.12, KOPF_Y + 1.2, KOPF_B + 0.24, 0.38, shade(f.hat, -18));  // Helmrand
+    rund(ctx, KOPF_X - 0.12, KOPF_Y - 0.7 * KOPF_SKALA, KOPF_B + 0.24, 2.25 * KOPF_SKALA, 1.05, f.hat);     // Helmglocke
+    r(ctx, KOPF_X + 0.1, KOPF_Y - 0.5 * KOPF_SKALA, KOPF_B - 0.2, 0.42, shade(f.hat, 16));                  // Lichtkante
+    r(ctx, KOPF_X - 0.12, KOPF_Y + 1.2 * KOPF_SKALA, KOPF_B + 0.24, 0.38, shade(f.hat, -18));               // Helmrand
     if (f.ritter) {
       r(ctx, 7.68, KOPF_Y + 0.5, 0.62, 1.7, shade(f.hat, -12));                   // Nasal
       r(ctx, KOPF_X + 0.4, KOPF_Y - 1.15, KOPF_B - 0.8, 0.45, shade(f.hat, -20)); // Kammansatz
@@ -757,15 +768,15 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
     // Haar als runde Kappe auf der Kopf-Ellipse (kein eckiges Band)
     ctx.fillStyle = f.hair;
     ctx.beginPath();
-    ctx.ellipse(KM_X * U, (KOPF_Y + 0.75) * U, (KOPF_B / 2 + 0.04) * U, 0.78 * U, 0, Math.PI, Math.PI * 2);
+    ctx.ellipse(KM_X * U, (KOPF_Y + 0.75 * KOPF_SKALA) * U, (KOPF_B / 2 + 0.04) * U, 0.78 * KOPF_SKALA * U, 0, Math.PI, Math.PI * 2);
     ctx.fill();
-    r(ctx, KOPF_X + 0.1, KOPF_Y + 0.55, KOPF_B - 0.2, 0.35, f.hair);
+    r(ctx, KOPF_X + 0.1, KOPF_Y + 0.55 * KOPF_SKALA, KOPF_B - 0.2, 0.35, f.hair);
   }
   // Augen (dir 0/1/2; oben = Hinterkopf)
   if (dir !== 3) {
     const ac = f.augen ?? '#1c1410';
     // Feine Augen im Held-Stil: kleine Punkte statt Quadrate.
-    const augL = 8 - 0.72, augR = 8 + 0.72, augY = KOPF_Y + 1.35;
+    const augL = 8 - 0.72 * KOPF_SKALA, augR = 8 + 0.72 * KOPF_SKALA, augY = KOPF_Y + 1.35 * KOPF_SKALA;
     r(ctx, augL - 0.21, augY, 0.42, 0.4, ac);
     r(ctx, augR - 0.21, augY, 0.42, 0.4, ac);
     if (f.augen) {                                             // Gluehen
