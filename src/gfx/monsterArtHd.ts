@@ -694,21 +694,37 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
   // beim Helden sind es 43 %. Der Kopf ist jetzt schmaler UND etwas kuerzer -
   // alle Kopf-Details (Augen, Helm, Kapuze, Schnabel) haengen an KOPF_X/KOPF_B,
   // damit sie mitwandern statt nebeneinander zu liegen.
-  // R218b (Autor: "sind die Koepfe jetzt ALLE so gross im Verhaeltnis wie beim
-  // Spieler?"): Nachgemessen war es NICHT so - Schnitt 0,55 statt 0,43. Der
-  // Kopf sitzt jetzt auf dem HELDEN-Verhaeltnis: Schulter 8 Einheiten x 0,43.
-  const KOPF_B = 3.45;                   // Breite (R207: 5.2, R218: 4.0)
-  const KOPF_H = 3.6;                    // Hoehe (war 4.2)
+  // R218c (Autor: "immer noch zu gross, vor allem zu HOCH - das Gesicht vom
+  // Spieler ist deutlich feiner, du hast die alten Gesichter nur skaliert"):
+  // Der Kopf ist jetzt eine ELLIPSE im Held-Stil (kopf() in heldArt.ts) statt
+  // der alten Rundbox: schmaler, flacher, tiefer aufgesetzt, mit Hals,
+  // Glanzlicht oben links und Wangenschatten - kein skalierter Klotz mehr.
+  const KOPF_B = 3.0;                    // Breite (R207: 5.2 -> R218b: 3.45)
+  const KOPF_H = 3.0;                    // Hoehe (R207: 4.2 -> R218b: 3.6)
   const KOPF_X = 8 - KOPF_B / 2;         // mittig ueber dem Rumpf (Mitte = 8)
-  const KOPF_Y = 2.3 + bob;              // etwas tiefer: kein Riesenschaedel mehr
-  rund(ctx, KOPF_X, KOPF_Y, KOPF_B, KOPF_H, 1.05, f.skin);
-  r(ctx, KOPF_X + KOPF_B - 0.7, KOPF_Y + 0.9, 0.65, KOPF_H - 1.6, shade(f.skin, -16));
-  r(ctx, KOPF_X + 0.2, KOPF_Y + 0.15, KOPF_B - 0.4, 0.6, shade(f.skin, 12));
+  const KOPF_Y = 2.85 + bob;             // tief aufgesetzt, kurzer Hals
+  const KM_X = 8, KM_Y = KOPF_Y + KOPF_H / 2;   // Kopfmitte
+  // Hals (wie beim Helden: dunklere Haut zur Schulterlinie)
+  r(ctx, 7.55, KOPF_Y + KOPF_H - 0.3, 0.9, 6 - (KOPF_Y - bob) - KOPF_H + 0.5, shade(f.skin, -16));
+  // Kopf als Ellipse
+  ctx.fillStyle = f.skin;
+  ctx.beginPath();
+  ctx.ellipse(KM_X * U, KM_Y * U, (KOPF_B / 2) * U, (KOPF_H / 2) * U, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Glanzlicht oben links + Wangenschatten rechts (Held-Gesicht)
+  ctx.fillStyle = shade(f.skin, 14);
+  ctx.beginPath();
+  ctx.ellipse((KM_X - KOPF_B * 0.22) * U, (KM_Y - KOPF_H * 0.26) * U, 0.62 * U, 0.4 * U, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = shade(f.skin, -14);
+  ctx.beginPath();
+  ctx.ellipse((KM_X + KOPF_B * 0.3) * U, (KM_Y + KOPF_H * 0.16) * U, 0.34 * U, 0.62 * U, 0, 0, Math.PI * 2);
+  ctx.fill();
   if (f.skeletal && dir !== 3) {
-    r(ctx, KOPF_X + 0.6, KOPF_Y + 2.6, KOPF_B - 1.2, 0.5, shade(f.skin, -30));   // Kieferschatten
-    r(ctx, KOPF_X + 0.9, KOPF_Y + 2.8, 0.28, 0.36, shade(f.skin, -44));          // Zahnluecken
-    r(ctx, KOPF_X + 1.6, KOPF_Y + 2.8, 0.28, 0.36, shade(f.skin, -44));
-    r(ctx, KOPF_X + 2.3, KOPF_Y + 2.8, 0.28, 0.36, shade(f.skin, -44));
+    r(ctx, KOPF_X + 0.55, KOPF_Y + 2.1, KOPF_B - 1.1, 0.42, shade(f.skin, -30));  // Kieferschatten
+    r(ctx, KOPF_X + 0.75, KOPF_Y + 2.28, 0.24, 0.3, shade(f.skin, -44));          // Zahnluecken
+    r(ctx, KOPF_X + 1.35, KOPF_Y + 2.28, 0.24, 0.3, shade(f.skin, -44));
+    r(ctx, KOPF_X + 1.95, KOPF_Y + 2.28, 0.24, 0.3, shade(f.skin, -44));
   }
   // Haar/Kapuze bzw. Hut
   if (f.robe) {                                                // Kapuze
@@ -737,27 +753,28 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
   // Augen (dir 0/1/2; oben = Hinterkopf)
   if (dir !== 3) {
     const ac = f.augen ?? '#1c1410';
-    const augL = KOPF_X + 0.5, augR = KOPF_X + KOPF_B - 1.08, augY = KOPF_Y + 1.25;
-    r(ctx, augL, augY, 0.58, 0.52, ac);
-    r(ctx, augR, augY, 0.58, 0.52, ac);
+    // Feine Augen im Held-Stil: kleine Punkte statt Quadrate.
+    const augL = 8 - 0.72, augR = 8 + 0.72, augY = KOPF_Y + 1.35;
+    r(ctx, augL - 0.21, augY, 0.42, 0.4, ac);
+    r(ctx, augR - 0.21, augY, 0.42, 0.4, ac);
     if (f.augen) {                                             // Gluehen
       ctx.fillStyle = f.augen + '55';
-      ctx.fillRect((augL - 0.25) * U, (augY - 0.25) * U, 1.15 * U, 1.1 * U);
-      ctx.fillRect((augR - 0.25) * U, (augY - 0.25) * U, 1.15 * U, 1.1 * U);
+      ctx.fillRect((augL - 0.42) * U, (augY - 0.2) * U, 0.84 * U, 0.8 * U);
+      ctx.fillRect((augR - 0.42) * U, (augY - 0.2) * U, 0.84 * U, 0.8 * U);
     }
   }
   // R211: Schnabelmaske des Pestarztes - lederner Schnabel mitten im Gesicht,
   // die Augen werden zu runden Glaslinsen.
   if (f.schnabel && dir !== 3) {
-    const lx = KOPF_X + 0.28, rx = KOPF_X + KOPF_B - 1.36, ly = KOPF_Y + 0.95;
-    rund(ctx, lx, ly, 1.08, 1.0, 0.48, '#2e2620');             // Glaslinse links
-    rund(ctx, rx, ly, 1.08, 1.0, 0.48, '#2e2620');
+    const lx = 8 - 1.3, rx = 8 + 0.35, ly = KOPF_Y + 0.85;
+    rund(ctx, lx, ly, 0.95, 0.88, 0.42, '#2e2620');            // Glaslinse links
+    rund(ctx, rx, ly, 0.95, 0.88, 0.42, '#2e2620');
     r(ctx, lx + 0.25, ly + 0.3, 0.42, 0.42, '#8aa8b8');        // Glas-Glanz
     r(ctx, rx + 0.25, ly + 0.3, 0.42, 0.42, '#8aa8b8');
     ctx.fillStyle = '#4a3a28'; ctx.beginPath();                 // Schnabel
     ctx.moveTo(7.2 * U, (KOPF_Y + 1.9) * U);
     ctx.lineTo(8.8 * U, (KOPF_Y + 1.9) * U);
-    ctx.lineTo(8.0 * U, (KOPF_Y + 4.0) * U);
+    ctx.lineTo(8.0 * U, (KOPF_Y + 3.4) * U);
     ctx.closePath(); ctx.fill();
     r(ctx, 7.55, KOPF_Y + 2.5, 0.8, 0.18, '#2e2318');          // Naht
     r(ctx, 7.7, KOPF_Y + 3.05, 0.55, 0.16, '#2e2318');

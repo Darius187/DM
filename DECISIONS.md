@@ -3403,3 +3403,16 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   Vierbeiner (drawQuadrupedHd - Tierkoepfe), das Huhn (32er-Bestand) und die
   handgemalte Wirtin (DETAIL_NPCS). Wenn der Autor die auch angeglichen haben
   will, ist das je Zeichner eigene Arbeit.
+
+## R218c - Koepfe nochmal (Autor: "immer noch zu gross, vor allem zu HOCH -
+## das Gesicht vom Spieler ist deutlich feiner, ihr habt nur skaliert")
+- Der Autor hatte recht: bisher war es die ALTE Rundbox mit Quadrat-Augen,
+  nur kleiner. Jetzt ist der Kopf im HELD-STIL gebaut (kopf() in heldArt.ts
+  als Vorlage): ELLIPSE statt Kasten, 3,0 x 3,0 Einheiten (vorher 3,45 x 3,6),
+  tiefer aufgesetzt mit kurzem HALS, Glanzlicht oben links, Wangenschatten
+  rechts, kleine Punkt-Augen statt Quadrate. Schnabelmaske/Linsen und
+  Skelett-Kiefer verkleinert und an die Kopfmitte gebunden.
+- Messung ueber alle 409 humanoiden Figuren: Schnitt 0,40 (Held 0,43) -
+  bewusst einen Hauch UNTER dem Helden, wie gewuenscht "noch schmaeler und
+  nicht so hoch". Sonderkoepfe (Kapuze, Schnabel, Strick, Helm) im
+  Kontaktbogen geprueft - alles schliesst sauber um die neue Form.
