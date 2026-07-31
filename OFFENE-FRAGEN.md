@@ -478,3 +478,11 @@ Vorhanden: Wolf, Ratte, Leichenhund (Tiere), Menschengolem + Skelettwache
    sich mit dem Beerdigen-System aus Dok 06 D4.
 Zwischenloesung: nichts davon gebaut, erst Autor-Wahl. Empfehlung:
 Aaskraehen zuerst (Marke!), dann Irrlicht (nutzt Moor-Nebel).
+
+## R219 - Der Hohe Dom (Trier)
+- WO liegt der Dom in der Spielwelt und wie betritt man ihn? Zwischenloesung:
+  Planungskarte 'dom' im Maps-Tab (Dev-Konsole), noch kein Eingang im Spiel.
+  Denkbar: eigener Huegel auf einer Nordkarte, oder als Wallfahrts-Ziel einer
+  Quest. Aussenansicht (Fassade auf der Oberwelt) fehlt ebenfalls noch.
+- Die drei Krypten liegen als Ost-Trakt AUF derselben Karte. Sollen sie
+  spaeter eine echte Unter-Ebene mit eigener Treppe werden?

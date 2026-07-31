@@ -3434,3 +3434,24 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   unten 4,7 - Tonstufen, Guertel und der Skelett-Brustkorb folgen der Form.
 - Kontaktboegen neu gerendert: Hauben rund, Koerper schlanker; Kopf/Schulter
   0,41 (Held 0,43).
+
+## R219 - Schlagtempo + Trierer Dom als Level
+- Schwertschlag der Gegner nochmal verkuerzt (Autor: "muss noch etwas
+  schneller"): SCHLAG_ANIM ausholenS 0,12->0,09, nachlaufS 0,18->0,13,
+  schussDauerS 0,3->0,24, npcDauerS 0,25->0,2 - sichtbarer Schlag jetzt
+  ~0,16 s (Held: 0,2 s). Eine Datei: src/data/enemies.ts.
+- Dom-Material (Autor: "Marmor oder Sandstein - entscheide du"): Boden
+  'marmor', Waende 'kalkstein' (heller Werkstein-Quader). Begruendung: der
+  echte Trierer Dom ist roemischer Kern + Kalkstein/Sandstein, innen hell
+  verputzt - Kalkstein-Quader lesen sich im Spiel am klarsten als
+  Kirchenwand, Marmorboden hebt den Dom von den Krypta-Ebenen ab. Beides
+  haengt an EINER Zeile in buildDomTrier (bodenStilId/wandStilId).
+- Dafuer neu: AreaData.bodenStilId/wandStilId - jede Karte kann ihren
+  Boden-/Wand-Stil fest aus den Stil-Werkbaenken beziehen; die
+  Dev-Konsolen-Overrides (STIL-Tab) gehen weiterhin vor.
+- Die drei Krypten (Ost/Mittel/West) liegen als Ost-Trakt AUF der Karte
+  (die Karte hat nur eine Ebene) - ein Abgang von der Ostapsis fuehrt
+  hinein. Echte Unter-Ebene waere ein eigener Kartenwechsel, spaeter
+  moeglich.
+- Der Dom ist Planungskarte 'dom' im Maps-Tab (Regel R138): noch kein
+  Eingang im Spiel - wo er in der Welt liegt, entscheidet der Autor.

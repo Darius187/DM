@@ -2411,3 +2411,26 @@ sonst rutschen sie von ihren Rahmen. Sag Bescheid, wenn du sie auch willst.
 TESTS: tsc sauber, 492/492 gruen, Browser-Beweise fuer 1, 2 und 5.
 OFFEN: Ob es beim Spielen wirklich fluessig ist, kann nur der Autor sagen -
 diese Testumgebung hat keine Grafikkarte.
+
+## R219 - Alle Einheiten neu, Schlag schneller, Trierer Dom als Level
+- ALLE Gattungen mit der neuen Kopf-/Koerperform gerendert und als EIN
+  Kontaktbogen abgenommen (6 Reihen x 8 Figuren: Monster, neue Monster,
+  Magier/Sonder, Heer/Dorf, tote Berufe, Ebenen-Varianten - 0 fehlend).
+  Bekannte Ausnahmen mit eigenen Zeichnern: Golem, Skelettwache,
+  Vierbeiner, Huhn, Wirtin.
+- Schwertschlag der Gegner verkuerzt: sichtbarer Schlag ~0,16 s (Held 0,2 s),
+  Werte in src/data/enemies.ts (SCHLAG_ANIM).
+- NEU: "Der Hohe Dom" (Planungskarte 'dom', Maps-Tab) nach dem
+  Autor-Grundriss des Trierer Doms, 150x96 Kacheln: dreischiffiges
+  Langhaus mit Westchor + Ostchor, Glockentuerme, Dom-Sakristei,
+  Domschatzkammer (3 seltene Truhen hinter verschlossener Tuer, 1
+  verflucht), Ost-/Mittel-/West-Krypta als Grabtrakt, Kreuzgang mit
+  gruenem Hof + Brunnen + Saeulenkranz, Pauluskapelle, Paradies,
+  Liebfrauenkirche als Kreuz-Zentralbau mit 4 Eckkapellen. 36 Gegner
+  thematisch verteilt (Geissler-Prozession im Schiff, Gloeckner im Turm,
+  Skelette + Champion "Der Domherr" in den Krypten, Schwarzkuenstler als
+  Schatzwaechter). Material: Marmorboden + Kalkstein-Quaderwaende (neu:
+  Karten koennen Boden-/Wand-Stil fest setzen, bodenStilId/wandStilId).
+- Verifiziert: tsc sauber, 492 Tests gruen, Karte im Browser geladen,
+  Erreichbarkeit aller 13 Raum-Marker vom Spawn per Flutfuellung geprueft,
+  Screenshots (Langhaus, Liebfrauenkirche, Krypten, Kreuzgang, Gesamt).

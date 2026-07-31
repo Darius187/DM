@@ -21,6 +21,7 @@ const WELT_FUSS_NPC = -FIGUR_GROESSE.fussPx * (FIGUR_GROESSE.standard - 1);
 const WELT_FUSS_VIEH = -FIGUR_GROESSE.fussPx * (FIGUR_GROESSE.vieh - 1);
 import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildWaldWest, buildWaldSuedOst, buildBurg, buildWaldNord, buildWaldMitte, buildLager, buildStadt2, buildHochland, buildWaldNordWest, buildWaldNordOst, buildSchlachtfeld, buildKloster, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn, type Abbaubar } from '../world/areagen';
 import { katakombenAktivFuer, buildKatakombenKrypta } from '../world/katakombenKrypta';
+import { buildDomTrier } from '../world/domTrier';
 import { kryptaVersatzUnter, ebeneFuerKlassik } from '../data/katakombenDungeon';
 import { v9AktivFuer, buildV9Krypta } from '../world/v9Krypta';
 import {
@@ -388,9 +389,10 @@ export class WorldScene extends CombatScene {
   private kerker12Wurf = 0;
   // R138: alle PLANUNGSKARTEN wohnen im Maps-Tab (Autor: "dort machen wir alle
   // neuen Maps, die vorbereitet sind, aber noch keinen Eingang im Spiel haben").
-  private static readonly PLANUNGSKARTEN = new Set(['kerker12', 'v9', 'katakomben']);
+  private static readonly PLANUNGSKARTEN = new Set(['kerker12', 'v9', 'katakomben', 'dom']);
   private v9Wurf = 0;
   private katakombenWurf = 0;
+  private domWurf = 0;
   // R138b (Autor): Boden/Wand-Werkbank - 20 Boeden + 10 Waende live testen.
   // Reiner Test-Zustand (nicht gespeichert); null = Standard-Optik der Karte.
   private devBodenStil: string | null = null;
@@ -1912,6 +1914,8 @@ export class WorldScene extends CombatScene {
     // Krypta-Kette (crypt1..) nicht mehr umbaut wie die alten Kasten-Knoepfe.
     else if (id === 'v9') { a = buildV9Krypta(1, seededRng(this.areaSeed + 900009 + this.v9Wurf * 104729)); a.id = 'v9'; }
     else if (id === 'katakomben') { a = buildKatakombenKrypta(1, seededRng(this.areaSeed + 880088 + this.katakombenWurf * 104729)); a.id = 'katakomben'; }
+    // R219: der Trierer Dom (Autor-Grundriss) als Planungskarte im Maps-Tab.
+    else if (id === 'dom') a = buildDomTrier(seededRng(this.areaSeed + 331349 + this.domWurf * 104729));
     else if (id.startsWith('innen_')) a = buildInterior(INNENRAEUME[id.replace('innen_', '')]);
     else if (id === 'wald') a = buildForest(rng);
     else if (id === 'start') a = buildStart(rng);
@@ -5635,7 +5639,9 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
 
   private hoheWandKey(variant: number, tiefe: number, theme: AreaData['theme'], hF: number): string {
     // R138b: Wand-Werkbank-Override (Dev-Konsole > STIL) - nur zum Testen.
-    if (this.devWandStil) return wandStilFrontTextur(this, this.devWandStil, variant, Math.round(TILE * hF));
+    // R219: Karten koennen ihren Wand-Stil fest mitbringen (a.wandStilId, Dom).
+    const wandStil = this.devWandStil ?? this.area?.wandStilId;
+    if (wandStil) return wandStilFrontTextur(this, wandStil, variant, Math.round(TILE * hF));
     const { top, face } = this.wandFarben(theme);
     const key = `kwand_hoch_${tiefe}_${variant % 4}_${face}_${Math.round(hF * 100)}`;
     if (!this.textures.exists(key)) {
@@ -5664,12 +5670,17 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // R138b: Boden-Werkbank (Dev-Konsole > STIL) - ersetzt den Dungeon-/Hoehlen-
   // Boden zum Testen. null = Standard-Optik der Karte.
   private devBodenKey(variant: number): string | null {
-    return this.devBodenStil ? bodenStilTextur(this, this.devBodenStil, ((variant % 7) + 7) % 7) : null;
+    // R219: Karten koennen ihren Boden-Stil fest mitbringen (a.bodenStilId,
+    // Dom = Marmor); der Dev-Konsolen-Override geht weiter vor.
+    const stil = this.devBodenStil ?? this.area?.bodenStilId;
+    return stil ? bodenStilTextur(this, stil, ((variant % 7) + 7) % 7) : null;
   }
 
   private wandKroneKey(variant: number, tiefe: number, theme: AreaData['theme']): string {
     // R138b: Wand-Werkbank-Override - Krone im Grundton des gewaehlten Stils.
-    if (this.devWandStil) return wandStilKroneTextur(this, this.devWandStil, variant);
+    // R219: fester Karten-Wandstil (a.wandStilId) als zweite Quelle.
+    const kroneStil = this.devWandStil ?? this.area?.wandStilId;
+    if (kroneStil) return wandStilKroneTextur(this, kroneStil, variant);
     const { face } = this.wandFarben(theme);
     const key = `kwand_krone_${tiefe}_${variant % 4}_${face}`;
     if (!this.textures.exists(key)) {
@@ -6582,6 +6593,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
           { id: 'kerker12', label: 'Kerker (V12) - Planungskarte der Sondermission', wurf: () => this.kerker12Wurf++ },
           { id: 'v9', label: 'V9-Kammern (echte Türen, R118)', wurf: () => this.v9Wurf++ },
           { id: 'katakomben', label: 'Katakomben-Gewölbe (Raum+Gang+Vault, R102)', wurf: () => this.katakombenWurf++ },
+          { id: 'dom', label: 'Der Hohe Dom (Trier-Grundriss, R219)', wurf: () => this.domWurf++ },
         ];
         const cs: DKControl[] = [
           { kind: 'note', text: 'Geplante Karten (noch ohne Eingang im Spiel) - sofort live, rein/raus nur hier. Neue vorbereitete Maps kommen ebenfalls hierher.' },

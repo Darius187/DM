@@ -159,6 +159,11 @@ export interface AreaData {
   innen?: boolean;                       // Innenraum: Holzboden unter Möbeln, warm
   innenHaus?: string;                    // welches Haus (für den Rückweg)
   bodenName?: string;                    // erzwingt den Bodengrund unter Objekten
+  // R219 (Dom-Level): eine Karte kann ihren Boden-/Wand-STIL direkt aus den
+  // Stil-Werkbänken (bodenStile.ts/wandStile.ts) beziehen - z. B. Marmor-Boden
+  // + Kalkstein-Quader im Dom. Dev-Konsolen-Overrides gehen weiter vor.
+  bodenStilId?: string;
+  wandStilId?: string;
   // R127f: Live-Hoehlenoptik der Goldmine (nahtloses Gestein/Boden/Kanten aus
   // hoehlenArt) + Kammer-Rechtecke (Bohlenboden, Moebel der Knappen)
   hoehlenOptik?: boolean;
