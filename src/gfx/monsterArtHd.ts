@@ -638,7 +638,8 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
 
   if (f.skeletal) {
     // feiner Brustkorb: Wirbelsaeule + 4 Rippenpaare mit 1-px-Linien
-    r(ctx, 5.6, 6.4 + bob, 4.8, 3.4, shade(f.tunic, -36));
+    // (R218e: etwas schmaler, damit die neue Taille nicht verdeckt wird)
+    r(ctx, 5.75, 6.4 + bob, 4.5, 3.2, shade(f.tunic, -36));
     r(ctx, 7.85, 6.4 + bob, 0.3, 3.4, '#e6ddc2');
     for (let i = 0; i < 4; i++) {
       const ry = 6.8 + bob + i * 0.72;
@@ -727,15 +728,20 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
     r(ctx, KOPF_X + 1.95, KOPF_Y + 2.28, 0.24, 0.3, shade(f.skin, -44));
   }
   // Haar/Kapuze bzw. Hut
-  if (f.robe) {                                                // Kapuze
-    const kl = KOPF_X - 0.12, kr = KOPF_X + KOPF_B + 0.12;
-    ctx.fillStyle = f.hair; ctx.beginPath();
-    ctx.moveTo(kl * U, (KOPF_Y + 2.2) * U);
-    ctx.quadraticCurveTo(kl * U, (KOPF_Y - 0.7) * U, 8 * U, (KOPF_Y - 0.85) * U);
-    ctx.quadraticCurveTo(kr * U, (KOPF_Y - 0.7) * U, kr * U, (KOPF_Y + 2.2) * U);
-    ctx.lineTo((kr - 0.7) * U, (KOPF_Y + 1.2) * U);
-    ctx.quadraticCurveTo(8 * U, (KOPF_Y + 0.05) * U, (kl + 0.7) * U, (KOPF_Y + 1.2) * U);
-    ctx.closePath(); ctx.fill();
+  if (f.robe) {
+    // R218e (Autor: "Coneheads"): die Kapuze ist jetzt eine RUNDE Haube um die
+    // Kopf-Ellipse (wie die Held-Haube) - kein Zipfel mehr. Vorne bleibt eine
+    // Gesichtsoeffnung frei, von hinten (dir 3) ist sie geschlossen.
+    ctx.fillStyle = f.hair;
+    ctx.beginPath();
+    ctx.ellipse(KM_X * U, (KM_Y - 0.08) * U, (KOPF_B / 2 + 0.32) * U, (KOPF_H / 2 + 0.42) * U, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (dir !== 3) {
+      ctx.fillStyle = f.skin;
+      ctx.beginPath();
+      ctx.ellipse(KM_X * U, (KM_Y + 0.28) * U, (KOPF_B / 2 - 0.32) * U, (KOPF_H / 2 - 0.36) * U, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   } else if (f.hat) {
     // R207d (Autor: "sieht aus wie ein Cowboy - KEINE Huete, wenn dann Helm"):
     // hat zeichnet einen anliegenden HELM ohne Krempe. Ritter bekommen eine
@@ -748,7 +754,12 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
       r(ctx, KOPF_X + 0.4, KOPF_Y - 1.15, KOPF_B - 0.8, 0.45, shade(f.hat, -20)); // Kammansatz
     }
   } else {
-    r(ctx, KOPF_X, KOPF_Y - 0.4, KOPF_B, 0.85, f.hair);
+    // Haar als runde Kappe auf der Kopf-Ellipse (kein eckiges Band)
+    ctx.fillStyle = f.hair;
+    ctx.beginPath();
+    ctx.ellipse(KM_X * U, (KOPF_Y + 0.75) * U, (KOPF_B / 2 + 0.04) * U, 0.78 * U, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+    r(ctx, KOPF_X + 0.1, KOPF_Y + 0.55, KOPF_B - 0.2, 0.35, f.hair);
   }
   // Augen (dir 0/1/2; oben = Hinterkopf)
   if (dir !== 3) {

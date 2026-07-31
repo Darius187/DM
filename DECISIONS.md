@@ -3421,3 +3421,16 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
 - Das Hals-Rechteck aus R218c ist entfernt; der Kopf sitzt direkt auf der
   Rumpf-Oberkante (KOPF_Y 2,85 -> 3,1). Kontaktbogen geprueft: Kapuzen, Helm,
   Schnabel und Strick schliessen weiterhin sauber.
+
+## R218e - "Coneheads oder Fettsaecke" (Autor-Meldung)
+- CONEHEAD-Ursache: die Kapuze lief mit Quadratkurven in einen ZIPFEL an der
+  Kopfspitze zusammen (Moench, Gloeckner, Schwarzkuenstler). Jetzt ist sie
+  eine RUNDE Haube um die Kopf-Ellipse (wie die Held-Haube) mit
+  Gesichtsoeffnung vorne, geschlossen von hinten. Auch das Haar ist jetzt
+  eine runde Kappe statt eines eckigen Bandes, das ueber die Ellipse stand.
+- FETTSACK-Ursache: der Rumpf war ein GERADER 6-Einheiten-Kasten - mit dem
+  kleineren Kopf las sich das als fett. Der Held hat eine Taille (schulterB
+  10 -> tailleB 6). Der Rumpf ist jetzt ein Trapez: oben Schulterbreite 6,
+  unten 4,7 - Tonstufen, Guertel und der Skelett-Brustkorb folgen der Form.
+- Kontaktboegen neu gerendert: Hauben rund, Koerper schlanker; Kopf/Schulter
+  0,41 (Held 0,43).
