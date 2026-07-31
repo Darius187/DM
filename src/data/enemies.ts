@@ -298,11 +298,13 @@ export const INDIVIDUALITAET = {
 // AUSHOLEN jetzt nur in den letzten ausholenS des Telegraphs (davor steht die
 // Figur normal - das Kampf-Timing/windup bleibt unangetastet), und Hieb +
 // Ausklang sind deutlich kuerzer. Sichtbare Schlagdauer ~0,3 s statt ~0,7 s.
+// R219 (Autor: "der Schwertschlag muss auch nochmal etwas schneller"):
+// sichtbarer Schlag jetzt ~0,22 s -> ~0,16 s (Held: 0,2 s).
 export const SCHLAG_ANIM = {
-  ausholenS: 0.12,
-  nachlaufS: 0.18,
-  schussDauerS: 0.3,
-  npcDauerS: 0.26,
+  ausholenS: 0.09,
+  nachlaufS: 0.13,
+  schussDauerS: 0.24,
+  npcDauerS: 0.2,
 } as const;
 export const GEFALLENE_WAFFEN: ReadonlyArray<GefalleneWaffe> = [
   { id: 'schwert', label: 'mit Schwert', figur: 'schwert', dmgMult: 1.0, reichMult: 1.15, tempoMult: 1.0, weight: 3 },
