@@ -702,10 +702,10 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
   const KOPF_B = 3.0;                    // Breite (R207: 5.2 -> R218b: 3.45)
   const KOPF_H = 3.0;                    // Hoehe (R207: 4.2 -> R218b: 3.6)
   const KOPF_X = 8 - KOPF_B / 2;         // mittig ueber dem Rumpf (Mitte = 8)
-  const KOPF_Y = 2.85 + bob;             // tief aufgesetzt, kurzer Hals
+  // R218d (Autor: "bitte lasse den Hals weg"): Kopf sitzt direkt auf dem
+  // Rumpf (Rumpf-Oberkante = 6), kein Hals-Rechteck mehr.
+  const KOPF_Y = 3.1 + bob;
   const KM_X = 8, KM_Y = KOPF_Y + KOPF_H / 2;   // Kopfmitte
-  // Hals (wie beim Helden: dunklere Haut zur Schulterlinie)
-  r(ctx, 7.55, KOPF_Y + KOPF_H - 0.3, 0.9, 6 - (KOPF_Y - bob) - KOPF_H + 0.5, shade(f.skin, -16));
   // Kopf als Ellipse
   ctx.fillStyle = f.skin;
   ctx.beginPath();

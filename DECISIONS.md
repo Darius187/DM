@@ -3416,3 +3416,8 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   bewusst einen Hauch UNTER dem Helden, wie gewuenscht "noch schmaeler und
   nicht so hoch". Sonderkoepfe (Kapuze, Schnabel, Strick, Helm) im
   Kontaktbogen geprueft - alles schliesst sauber um die neue Form.
+
+## R218d - Hals weg (Autor-Order)
+- Das Hals-Rechteck aus R218c ist entfernt; der Kopf sitzt direkt auf der
+  Rumpf-Oberkante (KOPF_Y 2,85 -> 3,1). Kontaktbogen geprueft: Kapuzen, Helm,
+  Schnabel und Strick schliessen weiterhin sauber.
