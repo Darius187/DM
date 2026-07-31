@@ -3390,3 +3390,16 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
 - Ehrlich: die FPS-Zahlen dieser Umgebung (Software-Renderer, 5 FPS im
   Leerlauf) taugen NUR als Verhaeltnis, nicht als Absolutwert. Ob es beim
   Autor jetzt fluessig ist, muss er sagen.
+
+## R218b - Autor-Nachfrage "sind die Koepfe ALLE wie beim Spieler?"
+- Nachgemessen (409 humanoide Figuren, ohne Waffen, Lauf durch die Figurmitte):
+  nach R218 lag der Schnitt bei 0,55 - NICHT beim Helden-Wert 0,43. Also
+  nachgezogen: Kopfbreite 4,0 -> 3,45 Einheiten, Hoehe 3,9 -> 3,6, Kapuzen- und
+  Helm-Ueberstand halbiert, Augen/Schnabel enger.
+- Neue Messung: Schnitt 0,46 (Held 0,43), Spanne 0,38 (Henker - massige Figuren
+  haben breitere Schultern) bis 0,50 (Hirte).
+- EHRLICHE AUSNAHMEN (haben eigene Zeichner, NICHT angefasst): Menschengolem
+  und Skelettwache (wendeGolemSpriteAn/wendeSkelettwacheSpriteAn), alle
+  Vierbeiner (drawQuadrupedHd - Tierkoepfe), das Huhn (32er-Bestand) und die
+  handgemalte Wirtin (DETAIL_NPCS). Wenn der Autor die auch angeglichen haben
+  will, ist das je Zeichner eigene Arbeit.

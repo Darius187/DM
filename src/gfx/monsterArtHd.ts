@@ -694,8 +694,11 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
   // beim Helden sind es 43 %. Der Kopf ist jetzt schmaler UND etwas kuerzer -
   // alle Kopf-Details (Augen, Helm, Kapuze, Schnabel) haengen an KOPF_X/KOPF_B,
   // damit sie mitwandern statt nebeneinander zu liegen.
-  const KOPF_B = 4.0;                    // Breite (war 5.2), Rumpf ist 6 breit
-  const KOPF_H = 3.9;                    // Hoehe (war 4.2)
+  // R218b (Autor: "sind die Koepfe jetzt ALLE so gross im Verhaeltnis wie beim
+  // Spieler?"): Nachgemessen war es NICHT so - Schnitt 0,55 statt 0,43. Der
+  // Kopf sitzt jetzt auf dem HELDEN-Verhaeltnis: Schulter 8 Einheiten x 0,43.
+  const KOPF_B = 3.45;                   // Breite (R207: 5.2, R218: 4.0)
+  const KOPF_H = 3.6;                    // Hoehe (war 4.2)
   const KOPF_X = 8 - KOPF_B / 2;         // mittig ueber dem Rumpf (Mitte = 8)
   const KOPF_Y = 2.3 + bob;              // etwas tiefer: kein Riesenschaedel mehr
   rund(ctx, KOPF_X, KOPF_Y, KOPF_B, KOPF_H, 1.05, f.skin);
@@ -709,7 +712,7 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
   }
   // Haar/Kapuze bzw. Hut
   if (f.robe) {                                                // Kapuze
-    const kl = KOPF_X - 0.35, kr = KOPF_X + KOPF_B + 0.35;
+    const kl = KOPF_X - 0.12, kr = KOPF_X + KOPF_B + 0.12;
     ctx.fillStyle = f.hair; ctx.beginPath();
     ctx.moveTo(kl * U, (KOPF_Y + 2.2) * U);
     ctx.quadraticCurveTo(kl * U, (KOPF_Y - 0.7) * U, 8 * U, (KOPF_Y - 0.85) * U);
@@ -721,9 +724,9 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
     // R207d (Autor: "sieht aus wie ein Cowboy - KEINE Huete, wenn dann Helm"):
     // hat zeichnet einen anliegenden HELM ohne Krempe. Ritter bekommen eine
     // Beckenhaube mit Nasal, alle anderen eine schlichte Kalotte.
-    rund(ctx, KOPF_X - 0.15, KOPF_Y - 0.75, KOPF_B + 0.3, 2.4, 1.15, f.hat);      // Helmglocke
+    rund(ctx, KOPF_X - 0.12, KOPF_Y - 0.7, KOPF_B + 0.24, 2.25, 1.05, f.hat);     // Helmglocke
     r(ctx, KOPF_X + 0.1, KOPF_Y - 0.5, KOPF_B - 0.2, 0.42, shade(f.hat, 16));     // Lichtkante
-    r(ctx, KOPF_X - 0.15, KOPF_Y + 1.3, KOPF_B + 0.3, 0.4, shade(f.hat, -18));    // Helmrand
+    r(ctx, KOPF_X - 0.12, KOPF_Y + 1.2, KOPF_B + 0.24, 0.38, shade(f.hat, -18));  // Helmrand
     if (f.ritter) {
       r(ctx, 7.68, KOPF_Y + 0.5, 0.62, 1.7, shade(f.hat, -12));                   // Nasal
       r(ctx, KOPF_X + 0.4, KOPF_Y - 1.15, KOPF_B - 0.8, 0.45, shade(f.hat, -20)); // Kammansatz
@@ -734,9 +737,9 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
   // Augen (dir 0/1/2; oben = Hinterkopf)
   if (dir !== 3) {
     const ac = f.augen ?? '#1c1410';
-    const augL = KOPF_X + 0.65, augR = KOPF_X + KOPF_B - 1.3, augY = KOPF_Y + 1.35;
-    r(ctx, augL, augY, 0.65, 0.58, ac);
-    r(ctx, augR, augY, 0.65, 0.58, ac);
+    const augL = KOPF_X + 0.5, augR = KOPF_X + KOPF_B - 1.08, augY = KOPF_Y + 1.25;
+    r(ctx, augL, augY, 0.58, 0.52, ac);
+    r(ctx, augR, augY, 0.58, 0.52, ac);
     if (f.augen) {                                             // Gluehen
       ctx.fillStyle = f.augen + '55';
       ctx.fillRect((augL - 0.25) * U, (augY - 0.25) * U, 1.15 * U, 1.1 * U);
@@ -746,9 +749,9 @@ export function drawMonsterHd(ctx: CanvasRenderingContext2D, name: string, dir: 
   // R211: Schnabelmaske des Pestarztes - lederner Schnabel mitten im Gesicht,
   // die Augen werden zu runden Glaslinsen.
   if (f.schnabel && dir !== 3) {
-    const lx = KOPF_X + 0.35, rx = KOPF_X + KOPF_B - 1.55, ly = KOPF_Y + 1.05;
-    rund(ctx, lx, ly, 1.25, 1.15, 0.55, '#2e2620');            // Glaslinse links
-    rund(ctx, rx, ly, 1.25, 1.15, 0.55, '#2e2620');
+    const lx = KOPF_X + 0.28, rx = KOPF_X + KOPF_B - 1.36, ly = KOPF_Y + 0.95;
+    rund(ctx, lx, ly, 1.08, 1.0, 0.48, '#2e2620');             // Glaslinse links
+    rund(ctx, rx, ly, 1.08, 1.0, 0.48, '#2e2620');
     r(ctx, lx + 0.25, ly + 0.3, 0.42, 0.42, '#8aa8b8');        // Glas-Glanz
     r(ctx, rx + 0.25, ly + 0.3, 0.42, 0.42, '#8aa8b8');
     ctx.fillStyle = '#4a3a28'; ctx.beginPath();                 // Schnabel
