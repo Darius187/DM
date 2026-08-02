@@ -486,3 +486,10 @@ Aaskraehen zuerst (Marke!), dann Irrlicht (nutzt Moor-Nebel).
   Quest. Aussenansicht (Fassade auf der Oberwelt) fehlt ebenfalls noch.
 - Die drei Krypten liegen als Ost-Trakt AUF derselben Karte. Sollen sie
   spaeter eine echte Unter-Ebene mit eigener Treppe werden?
+
+## R223 - Der versunkene Bezirk
+- WO kommt das Sonderlevel hin? Zwischenloesung: Planungskarte im Maps-Tab.
+  Es waere ein Kandidat fuer ein eigenes Stadt-Ruinen-Gebiet (versunkener
+  Stadtteil von Ravensmoor?) oder eine Zwischenebene der Katakomben.
+- Soll aus dem Modul-Prinzip der Vorlage ein eigener Generator werden
+  (Zellen-Module mit Anschlusskanten), oder bleibt es bei Einzelkarten?

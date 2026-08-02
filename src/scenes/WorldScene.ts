@@ -22,6 +22,7 @@ const WELT_FUSS_VIEH = -FIGUR_GROESSE.fussPx * (FIGUR_GROESSE.vieh - 1);
 import { buildCrypt, buildBoss, BOSS_TORE, BOSS_KAMMERN, buildKirchenschiff, buildVillage, buildForest, buildStart, buildWaldOst, buildStadtNatur, buildWaldWest, buildWaldSuedOst, buildBurg, buildWaldNord, buildWaldMitte, buildLager, buildStadt2, buildHochland, buildWaldNordWest, buildWaldNordOst, buildSchlachtfeld, buildKloster, buildGoldmine, buildInterior, verschiebeHaus, DORF_WALDRAND, type AreaData, type BreakableSpawn, type NpcSpawn, type AnimalSpawn, type Abbaubar } from '../world/areagen';
 import { katakombenAktivFuer, buildKatakombenKrypta } from '../world/katakombenKrypta';
 import { buildDomTrier } from '../world/domTrier';
+import { buildVersunkenerBezirk } from '../world/versunkenerBezirk';
 import { kryptaVersatzUnter, ebeneFuerKlassik } from '../data/katakombenDungeon';
 import { v9AktivFuer, buildV9Krypta } from '../world/v9Krypta';
 import {
@@ -389,10 +390,11 @@ export class WorldScene extends CombatScene {
   private kerker12Wurf = 0;
   // R138: alle PLANUNGSKARTEN wohnen im Maps-Tab (Autor: "dort machen wir alle
   // neuen Maps, die vorbereitet sind, aber noch keinen Eingang im Spiel haben").
-  private static readonly PLANUNGSKARTEN = new Set(['kerker12', 'v9', 'katakomben', 'dom']);
+  private static readonly PLANUNGSKARTEN = new Set(['kerker12', 'v9', 'katakomben', 'dom', 'versunken']);
   private v9Wurf = 0;
   private katakombenWurf = 0;
   private domWurf = 0;
+  private versunkenWurf = 0;
   // R222: Zeit-Drossel fuers Atlas-Vorwaermen (siehe update + VORWAERM_PAUSE_MS)
   private vorwaermPauseT = 0;
   // R138b (Autor): Boden/Wand-Werkbank - 20 Boeden + 10 Waende live testen.
@@ -1918,6 +1920,8 @@ export class WorldScene extends CombatScene {
     else if (id === 'katakomben') { a = buildKatakombenKrypta(1, seededRng(this.areaSeed + 880088 + this.katakombenWurf * 104729)); a.id = 'katakomben'; }
     // R219: der Trierer Dom (Autor-Grundriss) als Planungskarte im Maps-Tab.
     else if (id === 'dom') a = buildDomTrier(seededRng(this.areaSeed + 331349 + this.domWurf * 104729));
+    // R223: der versunkene Bezirk (Seeing-Eyes-Vorlage des Autors).
+    else if (id === 'versunken') a = buildVersunkenerBezirk(seededRng(this.areaSeed + 442239 + this.versunkenWurf * 104729));
     else if (id.startsWith('innen_')) a = buildInterior(INNENRAEUME[id.replace('innen_', '')]);
     else if (id === 'wald') a = buildForest(rng);
     else if (id === 'start') a = buildStart(rng);
@@ -6596,6 +6600,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
           { id: 'v9', label: 'V9-Kammern (echte Türen, R118)', wurf: () => this.v9Wurf++ },
           { id: 'katakomben', label: 'Katakomben-Gewölbe (Raum+Gang+Vault, R102)', wurf: () => this.katakombenWurf++ },
           { id: 'dom', label: 'Der Hohe Dom (Trier-Grundriss, R219)', wurf: () => this.domWurf++ },
+          { id: 'versunken', label: 'Der versunkene Bezirk (Seeing-Eyes-Vorlage, R223)', wurf: () => this.versunkenWurf++ },
         ];
         const cs: DKControl[] = [
           { kind: 'note', text: 'Geplante Karten (noch ohne Eingang im Spiel) - sofort live, rein/raus nur hier. Neue vorbereitete Maps kommen ebenfalls hierher.' },

@@ -3508,3 +3508,17 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   beiden Modi gemessen intakt (wecken, Provokation, Ziel, Anlauf) - bei
   1-3 FPS SIEHT Anlauf nur wie Stillstand aus. Das Ruckeln war das
   Problem, nicht die Haltungen.
+
+## R223 - Sonderlevel "Der versunkene Bezirk" (Seeing-Eyes-Vorlage)
+- Die Autor-Vorlage (6x6-Modul-Raster) wurde als EINE handgebaute Karte
+  uebersetzt, KEIN Modul-Generator (bewusst: erst ansehen, dann entscheiden,
+  ob das Prinzip einen eigenen Generator verdient). Zonen wie in der
+  Vorlage: Nordmauer mit 2 Toren, Graeberfeld (Zaun/Bogen/Tomben) im
+  Westen, Blutkanal in Spalte 4 mit EINER Bruecke und Gitter-Optik unter
+  den Mauern, versunkene Arkaden (Saeulen + Runen) im Suedwesten,
+  Kerkerblock Suedost (Zellentor/Kaefig/Streckbank/Kohlebecken, DTUER).
+- Licht-Preset der Vorlage uebernommen, so weit Bordmittel reichen: warme
+  Fackeln + GRUENES Zweitlicht als Runen-Farbe #94ffa0 (theme.rune) auf
+  Graeberfeld und Arkaden. Boden 'pflaster', Waende 'bruchstein'.
+- Planungskarte 'versunken' im Maps-Tab; wo sie in die Welt kommt,
+  entscheidet der Autor (OFFENE-FRAGEN).
