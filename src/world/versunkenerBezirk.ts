@@ -61,9 +61,14 @@ export function buildVersunkenerBezirk(rng: Rng): AreaData {
   const px = (t: number): number => t * TILE + 16;
   const fackel = (tx: number, ty: number): void => { a.torches.push({ x: px(tx), y: ty * TILE + 24, ph: rnd(rng, 0, 6.28) }); };
   const label = (tx: number, ty: number, t: string): void => { a.labels.push({ x: tx * TILE, y: ty * TILE, t }); };
-  const gegner = (type: EnemyTypeId, tx: number, ty: number, elite = false, champion?: string): void => {
-    a.enemySpawns.push({ type, x: px(tx), y: px(ty), elite, ...(champion ? { champion } : {}) });
+  // R224: jeder Gegner gehoert zu einer ZONEN-GARNISON (verschanzt, zonaler
+  // Alarm). Die Eskalationskette der Glocken: graeberfeld -> hof -> arkaden
+  // -> kerker. Der Kerker ist die letzte Zone (keine Glocke mehr).
+  const gegner = (type: EnemyTypeId, tx: number, ty: number, zone: string, elite = false, champion?: string): void => {
+    a.enemySpawns.push({ type, x: px(tx), y: px(ty), elite, zone, ...(champion ? { champion } : {}) });
   };
+  a.zonenAlarm = true;
+  a.zonenNachbar = { graeberfeld: 'hof', hof: 'arkaden', arkaden: 'kerker' };
   // Zellursprung (cx, cy 0..5) -> Kachel
   const ox = (cx: number): number => RAND + cx * M;
   const oy = (cy: number): number => RAND + cy * M;
@@ -110,8 +115,10 @@ export function buildVersunkenerBezirk(rng: Rng): AreaData {
   map[gy0 + 3][gx0 + 10] = T.SHRINE;
   a.shrines.push({ x: px(gx0 + 10), y: px(gy0 + 3) });
   label(gx0 + 2, gy0 + 2, 'Das Graeberfeld');
-  gegner('skelett', gx0 + 4, gy0 + 5); gegner('lebender_toter', gx0 + 12, gy0 + 3);
-  gegner('totengraeber', gx0 + 18, gy0 + 6); gegner('gehaengter', ox(1) + 5, gy1 + 3);
+  gegner('skelett', gx0 + 4, gy0 + 5, 'graeberfeld'); gegner('lebender_toter', gx0 + 12, gy0 + 3, 'graeberfeld');
+  gegner('totengraeber', gx0 + 18, gy0 + 6, 'graeberfeld'); gegner('gehaengter', ox(1) + 5, gy1 + 3, 'graeberfeld');
+  // der Glockenwaechter des Graeberfelds
+  gegner('gloeckner', gx1 - 3, gy0 + 3, 'graeberfeld');
 
   // ---- INNERE MAUERZUEGE (dwall-Zellen): Hoefe mit Tueren trennen ---------
   // Querzug unter dem Graeberfeld (Vorlage Zeile 2: w4_2doorO / gate / wall1)
@@ -144,8 +151,9 @@ export function buildVersunkenerBezirk(rng: Rng): AreaData {
   a.chests.push({ x: px(ax0 + 7), y: px(ay1 - 3), open: false, selten: true });
   fackel(ax0 + 2, ay0); fackel(ax1 - 2, ay0);
   label(ax0 + 2, ay0 + 3, 'Die versunkenen Arkaden');
-  gegner('schatten', ax0 + 5, ay0 + 4); gegner('schatten', ax1 - 4, ay1 - 4);
-  gegner('moench_abtruennig', ax0 + 10, ay0 + 6);
+  gegner('schatten', ax0 + 5, ay0 + 4, 'arkaden'); gegner('schatten', ax1 - 4, ay1 - 4, 'arkaden');
+  gegner('moench_abtruennig', ax0 + 10, ay0 + 6, 'arkaden');
+  gegner('gloeckner', ax1 - 6, ay0 + 2, 'arkaden');
 
   // ---- KERKERBLOCK Suedost (djail_w3_doorM) -------------------------------
   const jx0 = ox(5) + 1, jy0 = oy(5) + 0, jx1 = W - RAND - 2, jy1 = H - RAND - 2;
@@ -158,12 +166,13 @@ export function buildVersunkenerBezirk(rng: Rng): AreaData {
   }
   fackel(jx0 + 1, jy0); fackel(jx1 - 1, jy0);
   label(jx0, jy0 + 2, 'Der Kerker');
-  gegner('henker', jx0 + 3, jy0 + 4, true, 'Der Kerkermeister');
-  gegner('geissler', jx0 + 1, jy1 - 3);
+  gegner('henker', jx0 + 3, jy0 + 4, 'kerker', true, 'Der Kerkermeister');
+  gegner('geissler', jx0 + 1, jy1 - 3, 'kerker');
 
   // ---- Kanal-Bewohner + Hof-Streuner --------------------------------------
-  gegner('ertrunkener', kx - 2, oy(2) + 3); gegner('ertrunkener', kx + 4, oy(4) + 8);
-  gegner('skelett', ox(3) + 4, oy(1) + 4); gegner('pest', ox(2) + 4, oy(3) + 6);
+  gegner('ertrunkener', kx - 2, oy(2) + 3, 'hof'); gegner('ertrunkener', kx + 4, oy(4) + 8, 'kerker');
+  gegner('skelett', ox(3) + 4, oy(1) + 4, 'hof'); gegner('pest', ox(2) + 4, oy(3) + 6, 'hof');
+  gegner('gloeckner', ox(3) + 6, oy(3) + 3, 'hof');
 
   // ---- Abnahme-Marker: jede Zone erreichbar -------------------------------
   for (const [id, sx, sy] of [

@@ -87,7 +87,7 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import type { FeindlagerVariante, WallForm } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
@@ -7450,6 +7450,9 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       e.spawnRef = sp;      // beim Tod als 'tot' merken, damit er nicht respawnt
       if (sp.hp !== undefined) e.hp = Math.max(1, Math.min(e.maxhp, sp.hp));   // R145: Wunden bleiben
       if (sp.schlaeft) e.schlaeft = true;   // R118 V9: schlaeft bis die Raumtuer faellt
+      // R224: Zonen-Garnison - VERSCHANZT (passiv), bis die eigene Zone
+      // alarmiert wird (Treffer/Sicht) oder eine Glocke sie weckt.
+      if (sp.zone && a.zonenAlarm) { e.zonenId = sp.zone; e.passiv = true; }
       if (sp.champion) {
         e.champion = true;
         e.name = sp.champion;
@@ -8712,9 +8715,18 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     // wie im Dungeon - kein Umkreis-Limit mehr. Dazu: Monster wecken, sobald der Held
     // oder eine aktive gegnerische Einheit in SICHT ist.
     let feindGetroffen = false, allyGetroffen = false;
+    // R224 (Saeuberungs-Mission): auf Zonen-Karten weckt ein Treffer NICHT das
+    // ganze Team, sondern nur die Garnison derselben Zone - sonst waere die
+    // "Zone fuer Zone"-Taktik tot. Gegner OHNE Zone verhalten sich wie bisher.
+    const zonal = this.area.zonenAlarm === true;
+    const zonenGetroffen = new Set<string>();
     for (const e of this.enemies) {
       if (e.hp <= 0) continue;
-      if (e.hp < e.maxhp) { if (e.team === 'spieler') allyGetroffen = true; else feindGetroffen = true; }
+      if (e.hp < e.maxhp) {
+        if (e.team === 'spieler') allyGetroffen = true;
+        else if (zonal && e.zonenId) zonenGetroffen.add(e.zonenId);
+        else feindGetroffen = true;
+      }
     }
     // R198 (Stehenbleiber-Jagd): WER GEWECKT WIRD, HAT AUCH GESEHEN. Das Wecken
     // reicht bis sichtR (340 px) - der Aggro-Radius einer Einheit ist aber
@@ -8746,8 +8758,11 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         }
       }
       if (!e.passiv) continue;
-      // getroffenes Team weckt KOMPLETT ("sobald einer angegriffen wird, greifen alle an")
-      if ((feindlich && allyGetroffen) || (!feindlich && feindGetroffen)) { wecke(e); continue; }
+      // getroffenes Team weckt KOMPLETT ("sobald einer angegriffen wird, greifen alle an");
+      // R224: Zonen-Gegner wecken nur zonal.
+      const teamAlarm = feindlich ? allyGetroffen
+        : (zonal && e.zonenId) ? zonenGetroffen.has(e.zonenId) : feindGetroffen;
+      if (teamAlarm) { wecke(e); continue; }
       // Held in Sicht weckt Monster
       if (!feindlich && !this.playerDead && Math.hypot(this.px - e.x, this.py - e.y) < sichtR && !this.wandZwischen(e.x, e.y, this.px, this.py)) { wecke(e); continue; }
       // aktiver Gegner in Sicht weckt
@@ -8771,6 +8786,46 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
           e.jagdZiel = null;
           break;
         }
+      }
+    }
+    if (zonal) this.updateGlocken(0.25, zonenGetroffen);
+  }
+
+  // R224: Der Gloeckner ist der Waechter seiner Zone - ist sie alarmiert,
+  // schlaegt er hoerbar an und weckt nach GLOCKEN_ALARM.dauerS die Nachbar-
+  // zone (zonenNachbar). Wer ihn vorher toetet, haelt die Eskalation auf -
+  // er ist das sichtbare Prioritaetsziel der ruhigen Taktik.
+  private updateGlocken(dt: number, zonenGetroffen: Set<string>): void {
+    const nachbar = this.area.zonenNachbar;
+    if (!nachbar) return;
+    // Alarmiert ist NUR eine Zone mit Verwundeten (dort wird wirklich
+    // gekaempft) - "bloss wach" laeutet nicht weiter, sonst wuerde EIN
+    // Treffer die ganze Karte per Ketten-Laeuten eskalieren und die ruhige
+    // Zone-fuer-Zone-Taktik waere dahin.
+    const alarmiert = zonenGetroffen;
+    for (const g of this.enemies) {
+      if (g.hp <= 0 || g.team === 'spieler' || g.type !== 'gloeckner' || !g.zonenId) continue;
+      const ziel = nachbar[g.zonenId];
+      if (!ziel || !alarmiert.has(g.zonenId)) continue;
+      // Nachbarzone schon wach? Dann gibt es nichts mehr zu laeuten.
+      if (this.enemies.some((e) => e.hp > 0 && e.zonenId === ziel && !e.passiv)) continue;
+      const vorher = g.glockenT;
+      g.glockenT += dt;
+      if (Math.floor(g.glockenT / GLOCKEN_ALARM.anschlagJeS) > Math.floor(vorher / GLOCKEN_ALARM.anschlagJeS)) {
+        this.sfx.play('kirchenglocke', 0.35);
+        this.fx.float(g.x, g.y - g.r - 14, 'LÄUTET!', '#e8c040');
+      }
+      if (g.glockenT >= GLOCKEN_ALARM.dauerS) {
+        g.glockenT = 0;
+        this.sfx.play('kirchenglocke', 0.9);
+        for (const e of this.enemies) {
+          if (e.hp > 0 && e.team !== 'spieler' && e.zonenId === ziel && e.passiv) {
+            e.passiv = false;
+            e.aggro = Math.max(e.aggro, 340);
+          }
+        }
+        this.logMsg('Die Alarmglocke hallt durch den Bezirk - die nächste Garnison erwacht!', 'bad');
+        this.chronik('kampf', 'Ein Glöckner hat Alarm geschlagen - Verstärkung ist erwacht.');
       }
     }
   }

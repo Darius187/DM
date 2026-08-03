@@ -3522,3 +3522,17 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   Graeberfeld und Arkaden. Boden 'pflaster', Waende 'bruchstein'.
 - Planungskarte 'versunken' im Maps-Tab; wo sie in die Welt kommt,
   entscheidet der Autor (OFFENE-FRAGEN).
+
+## R224 Schritt 1 - Zonen-Garnisonen + Gloeckner-Alarm (versunkener Bezirk)
+- Neu: EnemySpawn.zone + AreaData.zonenAlarm/zonenNachbar. Zonen-Gegner
+  spawnen VERSCHANZT (passiv); ein Treffer weckt nur die eigene Zone
+  (updateWachwerden zonal statt Team-Alarm). Der Gloeckner ist der
+  Waechter seiner Zone: sie ist alarmiert (Verwundete!), er schlaegt
+  hoerbar an und weckt nach GLOCKEN_ALARM.dauerS (8 s, data/welt.ts)
+  die Nachbarzone. Toetet man ihn vorher, bleibt sie still.
+- Bewusst: "bloss wach" laeutet NICHT weiter (nur Zonen mit Verwundeten
+  alarmieren) - sonst wuerde ein einziger Treffer die ganze Karte per
+  Ketten-Laeuten eskalieren.
+- Browser-Beweis: alle 4 Zonen verschanzt -> Treffer weckt nur das
+  Graeberfeld (1 -> 5/5, Rest 0) -> volle Glocke weckt den Hof (4/4) ->
+  Gegenprobe: Hof kaempft, Gloeckner sofort getoetet, Arkaden bleiben 0/4.

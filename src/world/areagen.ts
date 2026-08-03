@@ -23,7 +23,9 @@ export interface BreakableSpawn { kind: BreakableKind; x: number; y: number; amb
 // R145 (Autor "nichts darf resetten"): x/y/hp werden beim Verlassen der Karte
 // mit dem LIVE-Zustand ueberschrieben - ein angeschlagenes Monster steht beim
 // Wiederkommen verwundet da, wo es zuletzt stand. tot bleibt endgueltig (R47).
-export interface EnemySpawn { type: EnemyTypeId; x: number; y: number; elite: boolean; champion?: string; tot?: boolean; schlaeft?: boolean; hp?: number }
+// zone (R224): Zonen-Garnison der Sonderkarten - der Gegner spawnt VERSCHANZT
+// (passiv) und wird nur zonal geweckt (siehe AreaData.zonenAlarm).
+export interface EnemySpawn { type: EnemyTypeId; x: number; y: number; elite: boolean; champion?: string; tot?: boolean; schlaeft?: boolean; hp?: number; zone?: string }
 export interface SpecialMarker { id: string; x: number; y: number; raum: string }
 // R118 V9: Raum-Rechtecke (Kacheln) fuer das Monster-Erwachen beim Tuer-Oeffnen
 export interface V9RaumRect { x: number; y: number; w: number; h: number }
@@ -164,6 +166,12 @@ export interface AreaData {
   // + Kalkstein-Quader im Dom. Dev-Konsolen-Overrides gehen weiter vor.
   bodenStilId?: string;
   wandStilId?: string;
+  // R224 (Saeuberungs-Mission): ZONALER Alarm statt Team-Alarm. Ein Treffer
+  // weckt nur die Garnison DERSELBEN Zone (EnemySpawn.zone); der Gloeckner
+  // einer alarmierten Zone schlaegt an und weckt nach GLOCKEN_ALARM.dauerS
+  // die Nachbarzone (zonenNachbar) - toetet man ihn vorher, bleibt sie still.
+  zonenAlarm?: boolean;
+  zonenNachbar?: Record<string, string>;
   // R127f: Live-Hoehlenoptik der Goldmine (nahtloses Gestein/Boden/Kanten aus
   // hoehlenArt) + Kammer-Rechtecke (Bohlenboden, Moebel der Knappen)
   hoehlenOptik?: boolean;

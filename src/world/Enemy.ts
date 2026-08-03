@@ -299,6 +299,10 @@ export class Enemy {
   // der weiter weg steht als die normale Zielsuche reicht. Laeuft nach ab.
   letzterAngreifer: Enemy | null = null;
   provokationT = 0;
+  // R224: Zonen-Garnison der Sonderkarten (zonaler Alarm) + Glocken-Countdown
+  // des Gloeckners (er schlaegt an, wenn seine Zone alarmiert ist).
+  zonenId: string | null = null;
+  glockenT = 0;
   imTurm = false;                    // R100: sitzt im Wachturm -> Sprite unsichtbar, schiesst von oben
   passiv = false;                    // R100b: frisch gesetzt -> steht still, bis geweckt (Gegner nah/Schaden/Befehl)
   schlaeft = false;                  // R118 V9: schlaeft hinter verschlossener Tuer - weckt NUR Tuer-Oeffnen oder Schaden

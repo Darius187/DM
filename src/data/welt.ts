@@ -355,6 +355,14 @@ export const ELITE_LEUCHTEN = {
 // alle X Millisekunden, der Rest der Zeit laeuft das Spiel normal.
 export const VORWAERM_PAUSE_MS = 250;
 
+// R224 (Saeuberungs-Mission): der Gloeckner ist der Waechter seiner Zone.
+// Ist sie alarmiert, schlaegt er an - erst nach dauerS weckt die Glocke die
+// Nachbarzone. Wer ihn vorher stoppt, haelt die Eskalation auf.
+export const GLOCKEN_ALARM = {
+  dauerS: 8,          // so lange laeutet er, bis die Nachbarzone erwacht
+  anschlagJeS: 1.6,   // Abstand der hoerbaren Anschlaege (Warnung!)
+} as const;
+
 export const FIGUR_SCHATTEN = {
   /** R216 (Autor: "die haben immer noch diesen schwarzen Schatten auf dem
    *  Boden"): der eigene Figur-Bodenschatten ist AUS. Das Licht der Szene
