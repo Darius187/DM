@@ -3563,3 +3563,15 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   kein Nachschub drinnen, Verluste sind Permadeath (Roster). Annahme:
   es kommen die NAECHSTEN VERFUEGBAREN, ein Auswahl-Fenster ist als
   Ausbau in OFFENE-FRAGEN notiert.
+
+## R225 - Gerettete heimwaerts + Erzaehl-Schicht im Bezirk
+- Autor-Entscheid: Gerettete kehren ins ZWEITE Dorf zurueck und leben dort
+  weiter. Umsetzung heute: sie werden NAMENTLICH und dauerhaft gespeichert
+  (Savegame welt.gerettete) - sobald das zweite Dorf gebaut wird, sind sie
+  sein Bewohner-Grundstock (Figur + Name liegen fest).
+- Erzaehl-Schicht: drei Inschriften-Schilder (Warnung am Tor, Graeberfeld,
+  Kanal) ueber das vorhandene Schilder-System; KANAL-TREIBGUT (data/welt):
+  alle 110 s treibt eine Leiche den Blutkanal hinab - reines Detail, das
+  den Ort erzaehlt.
+- Browser-Beweis: 3 Schilder auf der Karte, Treibgut driftet, Befreiter
+  landet namentlich in der Geretteten-Liste.

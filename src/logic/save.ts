@@ -51,6 +51,10 @@ export interface SaveData {
       type: string; hp: number; x: number; y: number; elite: boolean;
       champion?: string | boolean; name: string; schild: boolean; aggro: number;
     }>>;
+    // R225: aus dem versunkenen Bezirk befreite Verschleppte - sie kehren ins
+    // ZWEITE Dorf heim (Autor-Entscheid) und sind dessen Bewohner-Grundstock,
+    // sobald es gebaut wird. Namentlich, dauerhaft.
+    gerettete?: string[];
     haendlerSeed: number;
     aufbauBestellt?: boolean;
     einrichtung?: number;

@@ -370,6 +370,10 @@ export const GLOCKEN_ALARM = {
 // Saeuberungs-Mission mit durchs Tor (kein Nachschub im Bezirk).
 export const MISSION_TRUPP = { max: 6 } as const;
 
+// R225: Kanal-Treibgut - in Abstaenden treibt eine Leiche den Blutkanal
+// hinunter. Reines Erzaehl-Detail, keine Mechanik.
+export const KANAL_TREIBGUT = { intervallS: 110, tempo: 34 } as const;
+
 export const AUSHOEHLUNG = {
   ersteS: 150,        // Zeit bis zum ersten Ritual nach Betreten der Karte
   intervallS: 120,    // Abstand der weiteren Rituale

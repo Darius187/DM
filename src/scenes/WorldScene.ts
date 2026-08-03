@@ -87,7 +87,7 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, AUSHOEHLUNG, MISSION_TRUPP, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, AUSHOEHLUNG, MISSION_TRUPP, KANAL_TREIBGUT, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import type { FeindlagerVariante, WallForm } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
@@ -401,10 +401,16 @@ export class WorldScene extends CombatScene {
   // Befreite laufen zum Spawn-Tor; der Ritual-Timer verwandelt Unbefreite
   // in Ausgezehrte, solange der Ritualmeister lebt.
   private verschleppte: Array<{ x: number; y: number; name: string; figur: string; sprite: Phaser.GameObjects.Sprite; label: Phaser.GameObjects.Text; frei: boolean; weg: boolean }> = [];
+  // R225 (Autor): Gerettete kehren ins ZWEITE Dorf heim - namentlich und
+  // dauerhaft gespeichert (Savegame), als Bewohner-Grundstock fuer spaeter.
+  private geretteteNamen: string[] = [];
   private geretteteVerschleppte = 0;
   private ausgehoehlteVerschleppte = 0;
   private ausholungT = 0;
   private ausholungGewarnt = false;
+  // R225: Kanal-Treibgut (Erzaehl-Detail) - eine Leiche treibt den Kanal hinab
+  private treibgutT = 30;
+  private treibgut: Phaser.GameObjects.Sprite | null = null;
   // R138b (Autor): Boden/Wand-Werkbank - 20 Boeden + 10 Waende live testen.
   // Reiner Test-Zustand (nicht gespeichert); null = Standard-Optik der Karte.
   private devBodenStil: string | null = null;
@@ -8841,7 +8847,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         v.weg = true;
         v.sprite.destroy(); v.label.destroy();
         this.geretteteVerschleppte++;
-        this.logMsg(`${v.name} hat den Bezirk lebend verlassen (${this.geretteteVerschleppte} gerettet).`, 'gold');
+        this.geretteteNamen.push(v.name);
+        this.logMsg(`${v.name} hat den Bezirk lebend verlassen und kehrt heim (${this.geretteteVerschleppte} gerettet).`, 'gold');
         continue;
       }
       const w = this.wegRichtungZiel(v.x, v.y, a.spawn.x, a.spawn.y)
@@ -8885,6 +8892,26 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // Namens-Schild der Verschleppten folgt der Figur.
   private label8(v: { label: Phaser.GameObjects.Text; x: number; y: number }): void {
     v.label.setPosition(v.x, v.y - 24);
+  }
+
+  // R225: Kanal-Treibgut - alle KANAL_TREIBGUT.intervallS treibt eine Leiche
+  // den Blutkanal hinab. Reines Erzaehl-Detail: der Ort spricht, ohne dass
+  // jemand etwas sagt.
+  private updateTreibgut(dt: number): void {
+    const k = this.area.kanal!;
+    if (this.treibgut) {
+      this.treibgut.y += KANAL_TREIBGUT.tempo * dt;
+      this.treibgut.setDepth(-8);
+      if (this.treibgut.y > k.y1) { this.treibgut.destroy(); this.treibgut = null; }
+      return;
+    }
+    this.treibgutT -= dt;
+    if (this.treibgutT > 0) return;
+    this.treibgutT = KANAL_TREIBGUT.intervallS;
+    const s = this.add.sprite(k.x, k.y0 + 8, '__DEFAULT');
+    this.provider.applyFigure(s, 'bauer1', 0, 0);
+    s.setAngle(90).setAlpha(0.85).setTint(0x8a7a6a).setDepth(-8);
+    this.treibgut = s;
   }
 
   // R224: Der Gloeckner ist der Waechter seiner Zone - ist sie alarmiert,
@@ -14732,6 +14759,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         lagerfeuer: this.lagerfeuerProKarte,
         feldbauten: this.feldbautenProKarte,     // R218: Turm & Co. ueberleben Speichern
         restMonster: this.restMonsterProKarte,   // R218: Wellen-Gegner je Karte
+        gerettete: this.geretteteNamen,          // R225: Grundstock des zweiten Dorfs
         haendlerSeed: this.areaSeed,
         aufbauBestellt: this.aufbauBestellt,
         einrichtung: this.einrichtung,
@@ -14804,6 +14832,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.lagerfeuerProKarte = data.welt.lagerfeuer ?? {};
     this.feldbautenProKarte = data.welt.feldbauten ?? {};
     this.restMonsterProKarte = data.welt.restMonster ?? {};
+    this.geretteteNamen = data.welt.gerettete ?? [];   // R225
+    this.geretteteVerschleppte = this.geretteteNamen.length;
     this.feld = data.welt.feld ?? this.feld;
     this.kopfgeld = data.welt.kopfgeld ?? null;
     this.album = data.welt.album ?? { kills: {}, champions: [], unikate: [], notizen: [] };
@@ -16602,6 +16632,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.vorwaermPauseT -= delta;
     if (this.vorwaermPauseT <= 0 && this.provider.vorwaermSchritt()) this.vorwaermPauseT = VORWAERM_PAUSE_MS;
     if (this.verschleppte.length) this.updateVerschleppte(Math.min(0.05, delta / 1000));
+    if (this.area.kanal) this.updateTreibgut(Math.min(0.05, delta / 1000));
     const dt = Math.min(0.05, delta / 1000);
     // Wasser-Editor: gemalte Maske gedrosselt speichern (nach der letzten Aenderung).
     if (this.wasserEditSaveT > 0) { this.wasserEditSaveT -= dt; if (this.wasserEditSaveT <= 0) this.speichereWassermaske(); }

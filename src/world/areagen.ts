@@ -178,6 +178,9 @@ export interface AreaData {
   // Dorfs, siehe OFFENE-FRAGEN). ritual = der Ritualplatz der Aushoehlung.
   gefangene?: Array<{ x: number; y: number; name: string; figur: string }>;
   ritual?: { x: number; y: number };
+  // R225: der Kanal-Lauf (Weltpixel, Mitte) - alle paar Minuten treibt eine
+  // Leiche hindurch (KANAL_TREIBGUT): das Detail, das den Ort erzaehlt.
+  kanal?: { x: number; y0: number; y1: number };
   // R127f: Live-Hoehlenoptik der Goldmine (nahtloses Gestein/Boden/Kanten aus
   // hoehlenArt) + Kammer-Rechtecke (Bohlenboden, Moebel der Knappen)
   hoehlenOptik?: boolean;

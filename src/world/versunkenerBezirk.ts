@@ -193,6 +193,14 @@ export function buildVersunkenerBezirk(rng: Rng): AreaData {
   gefangener(rx + 2, ry - 2, 'Baeuerin Mechthild', 'frau1');
   gefangener(rx - 3, ry + 2, 'Kraemer Otwin', 'bauer1');
 
+  // ---- ERZAEHL-SCHICHT (R225): Inschriften + Kanal-Treibgut ---------------
+  a.kanal = { x: px(kx + 1), y0: RAND * TILE, y1: (H - RAND) * TILE };
+  a.schilder = [
+    { x: px(ox(1) + 5), y: px(RAND + 3), text: 'Kehrt um. Der Bezirk gehoert den Stillen.\nWer die Glocken hoert, ist schon gezaehlt.' },
+    { x: px(gx0 + 6), y: px(gy1 - 1), text: 'Hier ruhen die Vergessenen der alten Stadt.\nSie ruhen nicht mehr.' },
+    { x: px(kx - 2), y: px(oy(2) + 8), text: 'Trinkt nicht vom Kanal.\nEr fliesst aus dem Ritualplatz.' },
+  ];
+
   // ---- Kanal-Bewohner + Hof-Streuner --------------------------------------
   gegner('ertrunkener', kx - 2, oy(2) + 3, 'hof'); gegner('ertrunkener', kx + 4, oy(4) + 8, 'kerker');
   gegner('skelett', ox(3) + 4, oy(1) + 4, 'hof'); gegner('pest', ox(2) + 4, oy(3) + 6, 'hof');
