@@ -172,6 +172,12 @@ export interface AreaData {
   // die Nachbarzone (zonenNachbar) - toetet man ihn vorher, bleibt sie still.
   zonenAlarm?: boolean;
   zonenNachbar?: Record<string, string>;
+  // R224 Schritt 2: die VERSCHLEPPTEN - Fremde aus dem Umland, die auf ihre
+  // AUSHOEHLUNG warten (Konvertierung zum willenlosen Ausgezehrten). Befreite
+  // laufen zum Spawn-Tor und zaehlen als Gerettete (Grundstock des zweiten
+  // Dorfs, siehe OFFENE-FRAGEN). ritual = der Ritualplatz der Aushoehlung.
+  gefangene?: Array<{ x: number; y: number; name: string; figur: string }>;
+  ritual?: { x: number; y: number };
   // R127f: Live-Hoehlenoptik der Goldmine (nahtloses Gestein/Boden/Kanten aus
   // hoehlenArt) + Kammer-Rechtecke (Bohlenboden, Moebel der Knappen)
   hoehlenOptik?: boolean;

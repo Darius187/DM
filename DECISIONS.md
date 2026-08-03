@@ -3536,3 +3536,23 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
 - Browser-Beweis: alle 4 Zonen verschanzt -> Treffer weckt nur das
   Graeberfeld (1 -> 5/5, Rest 0) -> volle Glocke weckt den Hof (4/4) ->
   Gegenprobe: Hof kaempft, Gloeckner sofort getoetet, Arkaden bleiben 0/4.
+
+## R224 Schritt 2 - Die Verschleppten + das Aushoehlungs-Ritual
+- Lore-Entscheid (Autor-Skizze, eigenstaendig umgesetzt): die Gefangenen
+  sind FREMDE aus dem Umland (Grundstock des geplanten zweiten Dorfs),
+  die im Bezirk auf ihre AUSHOEHLUNG warten - die Konvertierung zum
+  willenlosen Ausgezehrten. Eigene Mythologie, keine fremden Namen.
+- Mechanik: 5 benannte Verschleppte (Kaefige im Kerker + am Ritualplatz),
+  Befreien per Interaktionstaste, Befreite fliehen selbststaendig zum
+  Tor (Zaehler Gerettete). Solange der Ritualmeister ("Der Aushoehler",
+  Elite-Schwarzkuenstler) lebt, laeuft die Ritual-Uhr (AUSHOEHLUNG in
+  data/welt.ts: erste 150 s, dann alle 120 s, 30 s hoerbare Warnung) -
+  bei Ablauf wird der naechste Unbefreite am Runenkreis zum Ausgezehrten
+  der Kerker-Garnison. Meister toeten beendet das Ritual endgueltig.
+- Browser-Beweis: echter E-Hinweis "Pilger Anselm befreien (E)",
+  Heimweg-Distanz sinkt, Warnung bei Uhr<30, Konvertierung erzeugt
+  1 Ausgezehrten (Gefangene 5->4, Uhr neu 120), Meister tot -> nichts
+  passiert mehr.
+- Zurueckgestellt: Speichern der Mission (Planungskarte, Session-Stand)
+  und die Frage, wohin Gerettete "heimkehren" (zweites Dorf existiert
+  noch nicht) - siehe OFFENE-FRAGEN.

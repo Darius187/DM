@@ -87,7 +87,7 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, AUSHOEHLUNG, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import type { FeindlagerVariante, WallForm } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
@@ -397,6 +397,14 @@ export class WorldScene extends CombatScene {
   private versunkenWurf = 0;
   // R222: Zeit-Drossel fuers Atlas-Vorwaermen (siehe update + VORWAERM_PAUSE_MS)
   private vorwaermPauseT = 0;
+  // R224 Schritt 2: die Verschleppten (Fremde, warten auf die Aushoehlung).
+  // Befreite laufen zum Spawn-Tor; der Ritual-Timer verwandelt Unbefreite
+  // in Ausgezehrte, solange der Ritualmeister lebt.
+  private verschleppte: Array<{ x: number; y: number; name: string; figur: string; sprite: Phaser.GameObjects.Sprite; label: Phaser.GameObjects.Text; frei: boolean; weg: boolean }> = [];
+  private geretteteVerschleppte = 0;
+  private ausgehoehlteVerschleppte = 0;
+  private ausholungT = 0;
+  private ausholungGewarnt = false;
   // R138b (Autor): Boden/Wand-Werkbank - 20 Boeden + 10 Waende live testen.
   // Reiner Test-Zustand (nicht gespeichert); null = Standard-Optik der Karte.
   private devBodenStil: string | null = null;
@@ -7519,6 +7527,19 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       }
       this.npcEnts.push({ ...n, sprite, label: lbl, curX: n.x, curY: n.y });
     }
+    // R224: die Verschleppten aufbauen (Karten mit gefangene-Liste)
+    for (const v of this.verschleppte) { v.sprite.destroy(); v.label.destroy(); }
+    this.verschleppte = [];
+    this.ausholungT = AUSHOEHLUNG.ersteS;
+    this.ausholungGewarnt = false;
+    for (const g of a.gefangene ?? []) {
+      const sprite = this.add.sprite(g.x, g.y, '__DEFAULT').setDepth(g.y);
+      this.provider.applyFigure(sprite, g.figur, 0, 0);
+      const lbl = this.add.text(g.x, g.y - 24, g.name, {
+        fontFamily: 'serif', fontSize: '11px', color: '#c8b89ae6', stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(2300);
+      this.verschleppte.push({ x: g.x, y: g.y, name: g.name, figur: g.figur, sprite, label: lbl, frei: false, weg: false });
+    }
     // Tiere
     for (const t of a.animals) this.spawnTier(t);
     // Beschriftbare Schilder (Baukasten, Runde 22): Pfosten + Brett,
@@ -8789,6 +8810,65 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       }
     }
     if (zonal) this.updateGlocken(0.25, zonenGetroffen);
+  }
+
+  // R224 Schritt 2: Befreite laufen zum Tor (Spawn), Unbefreite fallen dem
+  // Aushoehlungs-Ritual anheim - solange der Ritualmeister (Schwarzkuenstler
+  // der Kerker-Zone) lebt, wird im Takt AUSHOEHLUNG.intervallS je einer zum
+  // willenlosen Ausgezehrten. Ruhige Taktung mit hoerbarer Vorwarnung.
+  private updateVerschleppte(dt: number): void {
+    const a = this.area;
+    // Heimweg der Befreiten
+    for (const v of this.verschleppte) {
+      if (!v.frei || v.weg) continue;
+      if (Math.hypot(v.x - a.spawn.x, v.y - a.spawn.y) < 40) {
+        v.weg = true;
+        v.sprite.destroy(); v.label.destroy();
+        this.geretteteVerschleppte++;
+        this.logMsg(`${v.name} hat den Bezirk lebend verlassen (${this.geretteteVerschleppte} gerettet).`, 'gold');
+        continue;
+      }
+      const w = this.wegRichtungZiel(v.x, v.y, a.spawn.x, a.spawn.y)
+        ?? Math.atan2(a.spawn.y - v.y, a.spawn.x - v.x);
+      const nx = v.x + Math.cos(w) * AUSHOEHLUNG.laufTempo * dt;
+      const ny = v.y + Math.sin(w) * AUSHOEHLUNG.laufTempo * dt;
+      if (!this.solidFuerHeld(nx, ny)) { v.x = nx; v.y = ny; }
+      v.sprite.setPosition(v.x, v.y).setDepth(v.y);
+      this.label8(v);
+    }
+    // Das Ritual
+    if (!a.ritual) return;
+    const opfer = this.verschleppte.filter((v) => !v.frei && !v.weg);
+    if (!opfer.length) return;
+    const meister = this.enemies.find((e) => e.type === 'schwarzkuenstler' && e.zonenId === 'kerker' && e.hp > 0);
+    if (!meister) return;   // Ritualmeister tot -> die Aushoehlung endet
+    this.ausholungT -= dt;
+    if (this.ausholungT <= AUSHOEHLUNG.warnungS && !this.ausholungGewarnt) {
+      this.ausholungGewarnt = true;
+      this.sfx.play('krypta_grusel1', 0.6);
+      this.logMsg('Ein dumpfer Gesang schwillt am Ritualplatz an - die Aushöhlung beginnt!', 'bad');
+    }
+    if (this.ausholungT > 0) return;
+    this.ausholungT = AUSHOEHLUNG.intervallS;
+    this.ausholungGewarnt = false;
+    // das naechste Opfer: der dem Ritualplatz naechste Unbefreite
+    opfer.sort((x, y) => Math.hypot(x.x - a.ritual!.x, x.y - a.ritual!.y) - Math.hypot(y.x - a.ritual!.x, y.y - a.ritual!.y));
+    const o = opfer[0];
+    o.weg = true;
+    o.sprite.destroy(); o.label.destroy();
+    this.ausgehoehlteVerschleppte++;
+    const e = this.spawnEnemy('ausgezehrter', this.area.depth, a.ritual.x, a.ritual.y, false, true);
+    e.zonenId = 'kerker';
+    e.passiv = true;
+    this.sfx.play('krypta_grusel2', 0.8);
+    this.fx.burst(a.ritual.x, a.ritual.y, 0x94ffa0, 16, 140);
+    this.logMsg(`${o.name} wurde ausgehöhlt - ein willenloser Diener mehr.`, 'bad');
+    this.chronik('kampf', `Die Aushöhlung hat ${o.name} verschlungen.`);
+  }
+
+  // Namens-Schild der Verschleppten folgt der Figur.
+  private label8(v: { label: Phaser.GameObjects.Text; x: number; y: number }): void {
+    v.label.setPosition(v.x, v.y - 24);
   }
 
   // R224: Der Gloeckner ist der Waechter seiner Zone - ist sie alarmiert,
@@ -11737,6 +11817,21 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
             };
           }
         }
+      }
+    }
+    // R224: Verschleppte befreien - sie fliehen dann zum Tor (Spawn-Punkt).
+    for (const v of this.verschleppte) {
+      if (v.frei || v.weg) continue;
+      if (near(v.x, v.y, 52)) {
+        return {
+          text: `${v.name} befreien (${ik})`,
+          action: () => {
+            v.frei = true;
+            this.sfx.play('block', 0.5);
+            this.logMsg(`${v.name} ist frei und flieht zum Tor!`, 'gold');
+            this.chronik('ereignis', `${v.name} wurde aus dem versunkenen Bezirk befreit.`);
+          },
+        };
       }
     }
     // NPCs (schlafende sind unsichtbar und nicht ansprechbar)
@@ -16490,6 +16585,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     // die Queue leert sich in Ankuendigungs-/Marschzeit, das Spiel bleibt fluessig.
     this.vorwaermPauseT -= delta;
     if (this.vorwaermPauseT <= 0 && this.provider.vorwaermSchritt()) this.vorwaermPauseT = VORWAERM_PAUSE_MS;
+    if (this.verschleppte.length) this.updateVerschleppte(Math.min(0.05, delta / 1000));
     const dt = Math.min(0.05, delta / 1000);
     // Wasser-Editor: gemalte Maske gedrosselt speichern (nach der letzten Aenderung).
     if (this.wasserEditSaveT > 0) { this.wasserEditSaveT -= dt; if (this.wasserEditSaveT <= 0) this.speichereWassermaske(); }

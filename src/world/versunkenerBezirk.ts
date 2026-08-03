@@ -169,6 +169,30 @@ export function buildVersunkenerBezirk(rng: Rng): AreaData {
   gegner('henker', jx0 + 3, jy0 + 4, 'kerker', true, 'Der Kerkermeister');
   gegner('geissler', jx0 + 1, jy1 - 3, 'kerker');
 
+  // ---- DIE VERSCHLEPPTEN + DAS AUSHOEHLUNGS-RITUAL (R224 Schritt 2) -------
+  // Fremde aus dem Umland, gekaefigt im Kerker und am Ritualplatz - sie
+  // warten auf die Aushoehlung (Konvertierung zum willenlosen Ausgezehrten).
+  // Der Ritualplatz liegt im Ostufer-Hof: gruener Runenkreis, davor der
+  // Ritualmeister. Befreite fliehen zum Westtor (Spawn).
+  const rx = ox(5) + 3, ry = oy(3) + 4;                          // Ritualkreis-Mitte
+  for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    if (map[ry + dy]?.[rx + dx] === T.FLOOR) map[ry + dy][rx + dx] = T.RUNE;
+  }
+  a.ritual = { x: px(rx), y: px(ry) };
+  label(rx - 2, ry - 2, 'Der Ritualplatz');
+  gegner('schwarzkuenstler', rx, ry + 3, 'kerker', true, 'Der Aushoehler');
+  const gefangener = (tx: number, ty: number, name: string, figur: string): void => {
+    a.gefangene = a.gefangene ?? [];
+    a.gefangene.push({ x: px(tx), y: px(ty), name, figur });
+    // ein Kaefig daneben erzaehlt die Gefangenschaft (blockt nie den Weg)
+    if (map[ty]?.[tx - 1] === T.FLOOR) map[ty][tx - 1] = T.CAGE;
+  };
+  gefangener(jx0 + 2, jy0 + 2, 'Pilger Anselm', 'bauer1');
+  gefangener(jx0 + 5, jy0 + 3, 'Magd Ida', 'magd');
+  gefangener(jx0 + 4, jy1 - 2, 'Steinmetz Veit', 'bauer1');
+  gefangener(rx + 2, ry - 2, 'Baeuerin Mechthild', 'frau1');
+  gefangener(rx - 3, ry + 2, 'Kraemer Otwin', 'bauer1');
+
   // ---- Kanal-Bewohner + Hof-Streuner --------------------------------------
   gegner('ertrunkener', kx - 2, oy(2) + 3, 'hof'); gegner('ertrunkener', kx + 4, oy(4) + 8, 'kerker');
   gegner('skelett', ox(3) + 4, oy(1) + 4, 'hof'); gegner('pest', ox(2) + 4, oy(3) + 6, 'hof');

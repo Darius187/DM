@@ -363,6 +363,16 @@ export const GLOCKEN_ALARM = {
   anschlagJeS: 1.6,   // Abstand der hoerbaren Anschlaege (Warnung!)
 } as const;
 
+// R224 Schritt 2: die AUSHOEHLUNG - solange der Ritualmeister lebt, wird in
+// Abstaenden ein Verschleppter zum willenlosen Ausgezehrten konvertiert.
+// Ruhige Taktung (Autor: "nichts Hektisches"), mit hoerbarer Vorwarnung.
+export const AUSHOEHLUNG = {
+  ersteS: 150,        // Zeit bis zum ersten Ritual nach Betreten der Karte
+  intervallS: 120,    // Abstand der weiteren Rituale
+  warnungS: 30,       // so lange vorher schwillt der Gesang hoerbar an
+  laufTempo: 62,      // Schritt-Tempo der Befreiten auf dem Heimweg (px/s)
+} as const;
+
 export const FIGUR_SCHATTEN = {
   /** R216 (Autor: "die haben immer noch diesen schwarzen Schatten auf dem
    *  Boden"): der eigene Figur-Bodenschatten ist AUS. Das Licht der Szene
