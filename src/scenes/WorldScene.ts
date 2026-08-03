@@ -87,7 +87,7 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, AUSHOEHLUNG, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, AUSHOEHLUNG, MISSION_TRUPP, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import type { FeindlagerVariante, WallForm } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
@@ -136,7 +136,7 @@ import { waehleDurchlass, type Durchlass } from '../logic/korridor';
 import { anmarschVonSpawn, blaupausenDrehung, hauptTor, normWinkel } from '../logic/anmarsch';
 import { feindRueckzugModus } from '../logic/feindRueckzug';
 import { konterFaktor } from '../data/kampfarten';
-import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, garnisonVon, garnisonKampfkraft, marschVon, storniereMarsch, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, einheitMaxHp, heerObergrenze, pruefeRekrutierung, desertiere, type Armee, type ArmeeEinheit } from '../logic/armee';
+import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, garnisonVon, garnisonKampfkraft, marschVon, storniereMarsch, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, einheitMaxHp, heerObergrenze, pruefeRekrutierung, desertiere, naechsteVerstaerkung, type Armee, type ArmeeEinheit } from '../logic/armee';
 import { boteNeu, schickeBote, tickBote, type Bote } from '../logic/bote';
 import { neueGebietslage, gebietsStatus, setzeGebietsStatus, type Gebietslage, type GebietsStatus } from '../logic/gebietslage';
 import { neuerFeindzug, tickFeindzug, beendeAngriff, verliereLager, type Feindzug } from '../logic/feindzug';
@@ -7539,6 +7539,22 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         fontFamily: 'serif', fontSize: '11px', color: '#c8b89ae6', stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5).setDepth(2300);
       this.verschleppte.push({ x: g.x, y: g.y, name: g.name, figur: g.figur, sprite, label: lbl, frei: false, weg: false });
+    }
+    // R224 Schritt 3: Trupp-Mitnahme in die Saeuberungs-Mission - die
+    // naechsten verfuegbaren Roster-Einheiten treten mit durchs Tor. KEIN
+    // Nachschub im Bezirk; ein Auswahl-Fenster ist als Ausbau notiert.
+    if (a.id === 'versunken') {
+      const aufFeld = new Set<number>();
+      for (const e of this.enemies) if (e.armeeId !== null) aufFeld.add(e.armeeId);
+      const trupp = naechsteVerstaerkung(this.armee, aufFeld, MISSION_TRUPP.max);
+      trupp.forEach((einheit, i) => {
+        this.naechsteEinheit = einheit;
+        const e = this.spawnVerbuendeter(einheit.typ, a.spawn.x - 40 + (i % 3) * 40, a.spawn.y + 56 + Math.floor(i / 3) * 34);
+        if (e) { e.passiv = false; e.postenPos = { x: e.x, y: e.y }; }
+      });
+      this.naechsteEinheit = null;
+      if (trupp.length) this.logMsg(`${trupp.length} Mann aus dem Heer folgen dir in den Bezirk - kein Nachschub dort drin.`, 'gold');
+      else this.logMsg('Kein Heer verfügbar - du gehst allein in den Bezirk.', '');
     }
     // Tiere
     for (const t of a.animals) this.spawnTier(t);

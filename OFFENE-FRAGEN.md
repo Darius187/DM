@@ -493,3 +493,12 @@ Aaskraehen zuerst (Marke!), dann Irrlicht (nutzt Moor-Nebel).
   Stadtteil von Ravensmoor?) oder eine Zwischenebene der Katakomben.
 - Soll aus dem Modul-Prinzip der Vorlage ein eigener Generator werden
   (Zellen-Module mit Anschlusskanten), oder bleibt es bei Einzelkarten?
+
+## R224 - Saeuberungs-Mission
+- Trupp-AUSWAHL vor dem Einmarsch (welche 6 aus dem Roster?) - aktuell
+  kommen die naechsten Verfuegbaren automatisch. Auswahl-Fenster bauen?
+- Wohin kehren GERETTETE Verschleppte heim? (Das zweite Dorf existiert
+  noch nicht - aktuell nur Zaehler + Chronik.) Vorschlag: Fluechtlings-
+  lager als Keimzelle des zweiten Dorfs.
+- Missions-Stand (befreite/ausgehoehlte, geknackte Zonen) ins Savegame?
+  Aktuell Session-Stand der Planungskarte.

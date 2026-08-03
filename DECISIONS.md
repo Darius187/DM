@@ -3556,3 +3556,10 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
 - Zurueckgestellt: Speichern der Mission (Planungskarte, Session-Stand)
   und die Frage, wohin Gerettete "heimkehren" (zweites Dorf existiert
   noch nicht) - siehe OFFENE-FRAGEN.
+
+## R224 Schritt 3 - Trupp-Mitnahme
+- Beim Betreten des Bezirks treten bis zu MISSION_TRUPP.max (6, data/
+  welt.ts) Roster-Einheiten mit durchs Tor (naechsteVerstaerkung) -
+  kein Nachschub drinnen, Verluste sind Permadeath (Roster). Annahme:
+  es kommen die NAECHSTEN VERFUEGBAREN, ein Auswahl-Fenster ist als
+  Ausbau in OFFENE-FRAGEN notiert.

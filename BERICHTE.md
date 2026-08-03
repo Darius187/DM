@@ -2434,3 +2434,18 @@ diese Testumgebung hat keine Grafikkarte.
 - Verifiziert: tsc sauber, 492 Tests gruen, Karte im Browser geladen,
   Erreichbarkeit aller 13 Raum-Marker vom Spawn per Flutfuellung geprueft,
   Screenshots (Langhaus, Liebfrauenkirche, Krypten, Kreuzgang, Gesamt).
+
+## R224 - Die Saeuberungs-Mission im versunkenen Bezirk
+FERTIG UND BEWIESEN (je Schritt eigener Commit + Browser-Messreihe):
+1. Zonen-Garnisonen: 4 verschanzte Zonen, Treffer weckt nur die eigene
+   Zone; der Gloeckner jeder Zone schlaegt bei Kampf an und weckt nach
+   8 s die Nachbarzone - toetet man ihn vorher, bleibt sie still.
+2. Die Verschleppten: 5 benannte Fremde in Kaefigen, Befreien per E,
+   Befreite fliehen zum Tor (Zaehler). Aushoehlungs-Ritual: alle 120 s
+   (30 s hoerbare Warnung) wird ein Unbefreiter am Runenkreis zum
+   Ausgezehrten der Garnison - bis der Ritualmeister faellt.
+3. Trupp-Mitnahme: bis zu 6 Roster-Einheiten treten mit durchs Tor,
+   kein Nachschub, Verluste sind endgueltig (Permadeath-Roster).
+OFFEN: Trupp-Auswahl-UI, Heimat der Geretteten (zweites Dorf),
+Missions-Stand im Savegame - siehe OFFENE-FRAGEN.
+TESTS: tsc sauber, 492/492 gruen, alle Kern-Loops im Browser gemessen.

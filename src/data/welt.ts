@@ -366,6 +366,10 @@ export const GLOCKEN_ALARM = {
 // R224 Schritt 2: die AUSHOEHLUNG - solange der Ritualmeister lebt, wird in
 // Abstaenden ein Verschleppter zum willenlosen Ausgezehrten konvertiert.
 // Ruhige Taktung (Autor: "nichts Hektisches"), mit hoerbarer Vorwarnung.
+// R224 Schritt 3: so viele Roster-Einheiten treten beim Betreten der
+// Saeuberungs-Mission mit durchs Tor (kein Nachschub im Bezirk).
+export const MISSION_TRUPP = { max: 6 } as const;
+
 export const AUSHOEHLUNG = {
   ersteS: 150,        // Zeit bis zum ersten Ritual nach Betreten der Karte
   intervallS: 120,    // Abstand der weiteren Rituale
