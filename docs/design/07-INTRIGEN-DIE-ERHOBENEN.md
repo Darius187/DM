@@ -1,109 +1,106 @@
-# 07 - INTRIGEN: Die Erhobenen (Menschen im Dienst der Monster)
+# 07 - INTRIGEN: Die Erhobenen (Menschen im Dienst des Feindes)
 
-Autor-Auftrag (R226): Intrigen im Stil von Verrat und Kollaboration - Menschen
-helfen den Monstern, weil ihnen ein PLATZ versprochen wurde. Ravensmoorer
-bleiben loyal (hoechstens EIN Spitzel); in anderen Doerfern gibt es mehr
-Anhaenger. Die Bewegung braucht einen beschoenigenden Eigennamen.
+Autor-Auftrag (R226, praezisiert): Kollaborateure sind KEINE Kaempfer.
+Ihnen wird ein PLATZ angeboten: Herr ueber eine Monster-Brigade zu sein,
+die FUER SIE arbeitet - weil sie es satt haben, fuer Fuersten und Grafen
+zu schuerfen, Abgaben zu zahlen, unter Dauerdruck zu leben. Sie wollen
+frei sein; der Feind bietet ihnen eigene Untertanen, Reichtum und Macht.
+Der Endgegner BRAUCHT solche Leute - er kann nicht alles allein machen.
+Ravensmoorer bleiben loyal; hoechstens EIN Spitzel, und von dem erfaehrt
+man es erst, wenn es zu spaet ist.
 
 ## 1. Der Name: DIE ERHOBENEN
 
-Arbeitstitel-Favorit. Die Bewegung nennt sich selbst "Die Erhobenen" (auch:
-"Der Neue Bund"). Der Name traegt die ganze Geschichte in einem Wort:
-- Das VERSPRECHEN: aus Niedrigkeit erhoben werden - endlich zaehlen.
-- Die WAHRHEIT: am Ende wird man tatsaechlich "erhoben" - als Ausgezehrter
-  von den Toten. Die Aushoehlung (R224) IST der versprochene Aufstieg.
-- Alternativen, falls der Autor anders will: "Der Bund der Gerechten",
-  "Die Berufenen", "Die Kinder der Stille".
-Ravensmoorer nennen sie verachtend "die Stillen" oder "Grubenknechte".
+Die Bewegung nennt sich "Die Erhobenen" (auch: "Der Neue Bund").
+Doppelter Boden: sozial erhoben (endlich Herr statt Knecht) - und am Ende
+buchstaeblich erhoben, von den Toten. Fuer die VOEGTE (siehe 3) gilt die
+zweite Bedeutung ZUNAECHST nicht: der Feind haelt sein Versprechen, solange
+sie nuetzlich sind. Das macht sie glaubwuerdig - und ihre spaete Angst
+("was passiert, wenn ich nicht mehr nuetzlich bin?") erzaehlbar.
+Ravensmoorer Spottname: "die Stillen" oder "Grubenvoegte".
 
-## 2. Das Fundament: warum Menschen mitmachen (Recherche-Destillat)
+## 2. Warum sie mitmachen (Motiv-Kern nach Autor)
 
-Historisch belegtes Motivspektrum der Kollaboration (2. WK): politische
-Ueberzeugung, Bereicherung, Angst vor Strafe, und der Versuch, "durch
-Wohlverhalten das eigene Elend zu mildern". Uebersetzt in unsere Zeit (1349,
-Pest, zusammenbrechende Ordnung) und in SPIELBARE Figuren-Typen:
+Nicht Hass, sondern ERSCHOEPFUNG UND HUNGER NACH WUERDE: das ewige
+Schuerfen fuer den Grafen, der Zehnt am Monatsende, der Vogt an der Tuer.
+Der Feind dreht das Verhaeltnis um: "Du gibst nie wieder ab. Ab heute
+wird FUER DICH gearbeitet." Dazu die Typen aus der Kollaborations-
+Recherche als Faerbung einzelner Figuren: die Uebergangenen (Ressentiment),
+die Unehrlichen (Totengraeber/Henker/Schinder - endlich geachtet), die
+Bedeutungssucher, die Aengstlichen (Schutzbrief), die Glaeubigen (die
+Pest als Beweis, dass der alte Bund versagt hat).
 
-1. DIE UEBERGANGENEN (Ressentiment): der Mueller, den der Zoll ruiniert;
-   der zweite Sohn ohne Erbe; die Witwe, der der Vogt das Feld nahm. Nicht
-   boese - GEKRAENKT. Die Bewegung sagt: "Bei uns zaehlt ihr."
-2. DIE UNEHRLICHEN (Status fuer Ausgestossene): im Spaetmittelalter galten
-   Henker, Totengraeber, Abdecker/Schinder als "unehrliche Berufe" -
-   gemieden, ohne Zunftrecht, ohne Kirchenbank. UNSERE MONSTER-NAMEN SIND
-   DIESE BERUFE (Henker, Totengraeber, Schinder!). Die Bewegung ist ihre
-   Heimkehr: die Verachteten von gestern sind die Aufseher von morgen.
-3. DIE BEDEUTUNGSSUCHER: einfache Bauern, denen nie jemand zuhoerte -
-   "Teil von etwas Grossem sein". Der gefaehrlichste Typ, weil der
-   harmloseste.
-4. DIE AENGSTLICHEN (Schutzbrief): wer hilft, dessen Hof wird beim Einfall
-   verschont. Kollaboration als Versicherung.
-5. DIE GLAEUBIGEN (Endzeit): die Pest als Beweis, dass der alte Bund
-   (Kirche, Graf) versagt hat. "Der alte Bund brachte euch das Sterben.
-   Der Neue Bund erhebt euch." Geissler-Naehe: unsere Geissler sind die
-   Prediger-Bruecke zwischen Mensch und Bewegung.
+## 3. Mechanik A: Die LAGERVOEGTE (zivile Verwalter der Feindlager)
 
-## 3. Der Betrug als Kern (die Riddick-Pointe, eigenstaendig)
+- Feindlager (F2/F3) haben Monster-Arbeiter. NEU: manche Lager haben einen
+  menschlichen VOGT - eine ZIVILE Figur (keine Waffe, kaempft nie, flieht
+  bei Gefahr). Er beaufsichtigt sichtbar die Arbeiter, wohnt im Lager,
+  traegt gute Kleidung (sichtbarer Aufstieg!).
+- WIRKUNG: ein Lager MIT Vogt produziert schneller und organisierter
+  (F2-Produktionsbonus, Wert in src/data) - der Feind kann eben nicht
+  alles allein: Menschen fuehren seine Wirtschaft.
+- BEGEGNUNG statt Kampf: der Spieler kann mit dem Vogt REDEN (er
+  rechtfertigt sich - hier werden die Motive aus 2 zu Dialogen), ihn
+  GEFANGEN nehmen (Infos ueber das Lager, danach zweites-Dorf-Frage:
+  aufnehmen oder verstossen?) oder ihn TOETEN (Lager verliert den Bonus -
+  aber es ist ein Mensch ohne Waffe; Dorfstimmung und Chronik halten fest,
+  was der Held da getan hat).
+- Vertriebene/begnadigte Voegte koennen BRECHEN, wenn sie die Aushoehlung
+  gesehen haben ("Wir fuehren Vieh zur Schlachtbank und merken nicht,
+  dass wir mit anstehen") - Umkehrer als Informanten/Fluechtlinge.
 
-Die Rangleiter der Bewegung: ANWAERTER (dienen, spaehen, tragen) ->
-GEWEIHTE (duerfen "aufsteigen") -> in Wahrheit: die Aushoehlung. Der
-versprochene Platz im Neuen Bund ist der Runenkreis. Erzaehlt wird das
-NICHT als Twist-Ansage, sondern ueber Funde (Erzaehl-Schicht):
-Briefe eines Anwaerters, verteilt ueber mehrere Karten, voller Vorfreude
-auf seine "Erhebung" - der letzte Brief liegt neben dem Ritualplatz.
-Wer die Briefe alle findet, versteht es VOR den Figuren.
+## 4. Mechanik B: Der Spitzel von Ravensmoor - der lange Verrat
 
-## 4. Mechanik A: Der Spitzel in Ravensmoor (genau EINER)
+KEIN Ermittlungs-Spiel. Ein geskripteter Bogen in drei Akten; der Spieler
+erfaehrt die Wahrheit erst am Ende (Rueckblick-Momente inklusive).
 
-- Bei Spielstart wird verdeckt EIN Bewohner als Spitzel gewuerfelt
-  (nie Schulze/Questgeber; Seed-stabil, Savegame).
-- WIRKUNG (dockt an F2a-Blackboard an): solange er lebt und frei ist,
-  bekommt die Feind-KI schnellere/genauere Infos - Spaeher-Umweg entfaellt,
-  Einfaelle zielen auf die schwaechste Palisaden-Stelle, der Bote wird
-  haeufiger abgefangen.
-- INDIZIEN statt Anzeige (der Spieler ermittelt): (1) Bote abgefangen, ohne
-  dass Spaeher gesichtet wurden; (2) seltenes Nacht-Ereignis: eine Gestalt
-  mit Laterne am Zaun (Lichtzeichen) - wer hinschleicht, sieht WER;
-  (3) Wirtshaus-Geruechte ("X war wieder nachts draussen").
-- UEBERFUEHRUNG: Verdaechtigen nachts folgen -> Lichtzeichen beobachten ->
-  stellen. Dann die Wahl (Dialog):
-  a) Galgen (POI existiert): Blackboard verliert den Zutraeger, aber die
-     Dorfstimmung leidet ("er war doch einer von uns");
-  b) Verbannung: mild, er taucht spaeter als Erhobener wieder auf;
-  c) DOPPELAGENT: er fuettert die Feind-KI mit falschen Infos (Blackboard
-     bekommt Rauschen, Einfaelle laufen in vorbereitete Fallen) - kann nach
-     Zeit auffliegen, dann Rache-Einfall.
-- FALSCHE ANSCHULDIGUNG kostet Vertrauen/Moral - Ermitteln muss wehtun
-  koennen, sonst klickt man alle durch.
+- AKT 1 (Vertrauen): Ein Bewohner (bei Spielstart verdeckt gewuerfelt,
+  nie Schulze/Questgeber) tut sich unauffaellig hervor: hilft beim
+  Wiederaufbau, warnt einmal "zufaellig" richtig vor einem Spaehertrupp,
+  erledigt kleine Gefaelligkeiten. Er wird NUETZLICH und beliebt.
+- AKT 2 (Die Ernennung): Es liegt nahe, ihm Verantwortung zu geben -
+  im besten Fall ERNENNT DER SPIELER IHN SELBST zum Boten (Botenposten-
+  System R179 existiert). Die Grausamkeit des Twists: die Entscheidung
+  war deine.
+- AKT 3 (Der Schlag - NICHT in Ravensmoor, Autor-Order: kein zweites
+  Verteidigen): Die wichtige Botschaft an den Grafen (Ruf um Verstaerkung
+  im Feldzug). Der Bote reitet los - und oeffnet DORT die Tore: die
+  GRAFENBURG faellt bzw. die Verstaerkung bleibt fuer immer aus.
+  Spielwirkung: die Grafen-Verstaerkung (R142/MARSCH.grafTrupp) bricht als
+  Quelle weg, der Feldzug wird spuerbar haerter; die Chronik meldet den
+  Fall der Burg. Ravensmoor selbst wird nicht angegriffen - der Schlag
+  trifft die WELT und das VERTRAUEN.
+- DANACH: er kehrt nie zurueck. In seinem Haus findet man den
+  Abschiedsbrief - erst hier versteht man rueckwirkend die Indizien
+  (frueher abgefangene Boten, ein Licht am Zaun bei Nacht, sein
+  "zufaellig" richtiges Warnen). Brief-Motiv nach 2, z. B.: "Ihr habt
+  mir vertraut. Er hat mir mehr versprochen: nie wieder abgeben,
+  nie wieder knien."
+- RUECKBLICK-INDIZIEN (subtil, VOR dem Verrat erlebbar, aber nicht
+  aufloesbar): 1-2 abgefangene Boten "ohne gesichtete Spaeher", das
+  seltene Nachtlicht am Zaun (ohne Gesicht), ein Geruecht der Wirtin.
+  Wichtig: KEINE Moeglichkeit, ihn vorher zu stellen - der Bogen ist
+  eine Erzaehlung, kein Puzzle. (Wer die Indizien deutet, darf misstrauen,
+  aber nicht handeln - das Spiel bestaetigt nichts.)
 
-## 5. Mechanik B: Die Erhobenen als Fraktion (andere Doerfer)
+## 5. Der Endgegner-Bezug
 
-- Neuer menschlicher Gegnertyp "erhobener" (einfache Kleidung, Sense/
-  Knueppel/Fackel, schwach): spaehen, sabotieren, oeffnen beim Einfall
-  Tore von innen, treiben Verschleppte zusammen, arbeiten sichtbar in
-  Feindlagern (F3) als Aufseher.
-- MORALISCHES GEWICHT: es sind Menschen. Eigene Soldaten bekommen beim
-  ersten Kampf gegen Erhobene einen kleinen Moral-Daempfer; der Held kann
-  manche GEFANGEN nehmen statt toeten -> Verhoer (Lager-Infos) oder
-  UMKEHR: wer die Aushoehlung mit eigenen Augen sah, kann brechen
-  ("Wir sind ihnen nur Vieh") und wird Informant/Fluechtling
-  (-> zweites Dorf!).
-- WERBER auf der Oberwelt (Feldzug-Ebene): der Feind schickt neben
-  Spaehern WERBER in neutrale Doerfer. Unbehelligt kippt die Dorf-Stimmung:
-  das Dorf stellt der Bewegung Rekruten (Wellen enthalten Erhobene) und
-  Vorraete. Gegenmittel: Werber stellen (Kopfgeld-System), oder die
-  Stimmung mit Getreide-Hilfe halten (Dorfwirtschafts-Systeme M3-M6).
-  Ruhig und taktisch: eine Landkarte der Loyalitaeten statt Hektik.
+Der Antagonist ist Herr einer Wirtschaft, nicht nur einer Horde: Voegte
+fuehren seine Lager, der Spitzel oeffnet ihm Tueren, die Aushoehlung
+liefert ihm willenlose Arbeiter. Menschen sind sein Werkzeug UND seine
+Schwachstelle: jedes gebrochene Versprechen (Umkehrer!) ist ein Riss.
 
 ## 6. Reihenfolge (Vorschlag)
 
-1. B-Kern: Gegnertyp "erhobener" + Auftritt in Feldzug-Wellen/Feindlagern.
-2. Erzaehl-Schicht: die Anwaerter-Briefe (notes/schilder-Systeme).
-3. A: der Spitzel (Blackboard-Anbindung + Nacht-Ereignis + Ueberfuehrung).
-4. Werber/Loyalitaets-Karte (groesster Brocken, braucht F2-Ausbau).
+1. Lagervoegte (zivile Figur im Feindlager + Produktionsbonus + Dialog/
+   Gefangennahme/Toeten mit Folgen).
+2. Anwaerter-Briefe als Erzaehl-Schicht (bestehende notes/schilder).
+3. Der Spitzel-Bogen (3 Akte, geskriptet, Savegame-fest).
+4. Umkehrer-Mechanik (gebrochene Voegte als Informanten).
 
 ## 7. Grenzen (bewusst)
 
-- Ravensmoorer bleiben loyal (Autor-Order) - die Intrige lebt von EINEM
-  Verdacht, nicht von Paranoia gegen alle.
-- Keine realweltlichen Anleihen mit Namen/Symbolik (2. WK dient nur als
-  Motiv-Studie); keine geschuetzten Begriffe fremder Werke.
-- Kinder nie als Spitzel/Erhobene.
+- Erhobene kaempfen NIE (Autor-Order). Keine menschlichen Gegnertypen.
+- Kein zweites Ravensmoor-Verteidigen; der Verrat schlaegt woanders zu.
+- Ravensmoorer loyal bis auf den EINEN; Kinder nie Teil der Intrige.
+- Keine realweltliche Symbolik; die Historie dient nur als Motiv-Studie.

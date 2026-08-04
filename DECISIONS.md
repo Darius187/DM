@@ -3586,3 +3586,15 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   Mechanik fuer Ravensmoor (genau einer, Indizien + Ueberfuehrung +
   Doppelagent), Erhobene als menschliche Feind-Fraktion mit Werbern
   und Umkehr-Mechanik. NOCH KEIN CODE - erst Autor-Feedback zum Konzept.
+
+## R226b - Intrigen-Konzept nach Autor-Feedback umgebaut
+- Erhobene sind KEINE Kaempfer: sie werden LAGERVOEGTE - zivile Verwalter
+  der Feindlager mit Monster-Untertanen (Produktionsbonus), Motiv:
+  Freiheit von Abgaben/Druck, eigene Untertanen, Reichtum und Macht.
+  Begegnung statt Kampf: reden/gefangen nehmen/toeten (mit Folgen).
+- Der Spitzel ist KEIN Ermittlungs-Puzzle, sondern ein geskripteter
+  Verrat in 3 Akten: Vertrauen aufbauen -> (vom Spieler!) zum Boten
+  ernannt -> bei der wichtigen Botschaft oeffnet er die Tore der
+  GRAFENBURG (nicht Ravensmoor - Autor will kein zweites Verteidigen).
+  Grafen-Verstaerkung bricht weg, Abschiedsbrief macht die Indizien
+  rueckwirkend lesbar. Vorher nicht stellbar.
