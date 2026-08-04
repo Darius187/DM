@@ -378,6 +378,19 @@ export const KANAL_TREIBGUT = { intervallS: 110, tempo: 34 } as const;
 // Spieler-Feldbauten zaehlen in die ABSTRAKTE Verteidigung einer Karte
 // (Kampfkraft-Punkte je Bau, skaliert mit dessen Zustand). Live (Held auf
 // der Karte) kaempfen die Bauten ohnehin echt.
+// R229 (Doku 07/4f): FELD-VERSORGER - Personal an Feldbauten. Je Rolle genau
+// EINE Person; gerufen per Knopf am Bau, kommt nur bei freier Route von der
+// Heimatkarte. Der Bader war historisch der Wundarzt der einfachen Leute.
+export const FELD_VERSORGER: Readonly<Record<string, { rolle: string; name: string; figur: string; hinweis: string }>> = {
+  feldschmiede: { rolle: 'feldschmied', name: 'Lehrling Wenzel', figur: 'schmied', hinweis: 'Reparatur doppelt so schnell' },
+  lazarett: { rolle: 'feldarzt', name: 'Bader Lorenz', figur: 'bauer1', hinweis: 'verbindet Verwundete im Umkreis' },
+};
+export const FELD_VERSORGER_WERTE = {
+  heimatKarte: 'stadt',    // von hier kommen die Versorger (Route muss frei sein)
+  schmiedeFaktor: 2,       // Feldschmiede repariert x2, wenn der Lehrling dort steht
+  baderHeilProS: 6,        // Lazarett heilt eigene Truppen im Umkreis, wenn der Bader da ist
+} as const;
+
 export const FELDBAU_ABWEHR: Readonly<Record<string, number>> = {
   wachturm: 30, wachturm_45: 30, wachturm_40: 30,
   palisade: 4, tor: 10, standarte: 6, lagerfeuer: 2,

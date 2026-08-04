@@ -278,17 +278,14 @@ Lichtern -> Bloom im Einfall drosseln. Ohne Geraeteprofil aber nicht auf Verdach
   gespannt BEVOR der Pfeil fliegt) - braucht einen kleinen KI-Umbau
   (Schuss-Telegraph analog windup).
 
-## R227 - Feindzug-Regeln (Autor-Klaerung, noch NICHT gebaut)
-- [ ] Spieler-FELDBAUTEN zaehlen in die ABSTRAKTE Verteidigung einer
-      Karte (aktuell nur Garnison-Kampfkraft, WorldScene verteidigung()):
-      Turm/Palisade/Lager als Kampfkraft-Bonus, Formel in src/data.
-      Autor-Regel: "unser Lager muss erst fallen, bevor der Feind baut" -
-      live stimmt das (echter Kampf + Belagerung), abstrakt noch nicht.
-- [ ] VERSORGUNGSLINIE VOM KLOSTER: Feindlager ohne zusammenhaengende
-      Kette besetzter Karten bis zur Kloster-Route produzieren nichts
-      und greifen nicht an (abgeschnitten = verhungern, rueckeroberbar).
-      Aktuell produziert jedes Lager lokal weiter - "wundersame
-      Vermehrung" ist mechanisch moeglich, Autor will sie NICHT.
+## R227 - Feindzug-Regeln (Autor-Klaerung)
+- [x] Spieler-FELDBAUTEN zaehlen in die ABSTRAKTE Verteidigung einer
+      Karte: bautenAbwehr (logic/feindzug.ts) + FELDBAU_ABWEHR in
+      src/data/welt.ts - seit R227 in verteidigung() verdrahtet.
+- [x] VERSORGUNGSLINIE VOM KLOSTER: istVersorgt (logic/feindzug.ts) -
+      abgeschnittene Feindlager produzieren nichts und greifen nicht an
+      (seit R227, FELDZUG.startBesetzt als Ursprung).
 - [ ] Schmied-Lehrling: Bewohner + Arbeiter-Malus (langsamer, schlechtere
       Waffen als Datenwert) + Beordern-Befehl; Teil des Spitzel-Bogens
-      (Doku 07, 4b).
+      (Doku 07, 4b). Der FELD-Teil (Ruf an die Feldschmiede) steht seit
+      R229 - offen ist der DORF-Teil (Bewohner-NPC, Waffen-Malus).

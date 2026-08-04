@@ -55,6 +55,8 @@ export interface SaveData {
     // ZWEITE Dorf heim (Autor-Entscheid) und sind dessen Bewohner-Grundstock,
     // sobald es gebaut wird. Namentlich, dauerhaft.
     gerettete?: string[];
+    // R229: Feld-Versorger - welche Rolle steht auf welcher Karte (rolle -> Karten-id).
+    feldVersorger?: Record<string, string>;
     haendlerSeed: number;
     aufbauBestellt?: boolean;
     einrichtung?: number;

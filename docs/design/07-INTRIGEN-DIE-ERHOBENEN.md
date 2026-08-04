@@ -161,6 +161,50 @@ DER FEIND KOMMT NICHT UEBER LAND. ER KOMMT AUS DEN GRAEBERN.
   als System: Burg zurueckerobern heisst, die Gruft zu saeubern UND
   das Siegel zu erneuern, sonst erhebt es sich wieder.
 
+## 4e. SCHAERFUNG der Gruftsiegel-Regel (R229, Autor: "nicht schwammig!")
+
+Autor-Einwand: "Kirchen = boese, ueberall kann das Boese rauskommen"
+waere falsch - KEINE Zufalls-Spawns ueberall. Darum gilt:
+
+- Es gibt eine ENDLICHE, BENANNTE Liste von SCHWELLEN (grosse, alte
+  Grueften) - handverlesene Orte, nirgendwo sonst kommt etwas heraus:
+  1. Die Krypta unter der Kirche von RAVENSMOOR (unsere Kette E1..).
+  2. Das KLOSTER - die offene Quelle, Hauptroute des Feindzugs.
+  3. Die AHNENGRUFT unter der zweiten Kirche im BURGWEILER (Autor:
+     genau EIN konkreter Ort bei der Burg - der Schmied-Verrat).
+  4. Spaeter benennbar: Dom-Krypten, versunkener Bezirk.
+- NORMALE Dorfkirchen und Friedhoefe sind KEINE Schwellen. Kirchen sind
+  nicht boese - im Gegenteil: eine Kirche mit GEHALTENEM Siegel ist der
+  sicherste Ort der Karte. Gefaehrlich ist nur das GEBROCHENE Siegel
+  einer Schwelle, und brechen kann es nur ein Lebender von innen.
+- KONSEQUENZ (vom Autor selbst gezogen): nach dem Tod des TEMPELRITTERS
+  muss der Abstieg der Ravensmoor-Krypta VERSIEGELT werden - als
+  Abschluss-Handlung/Quest (Priester + Weihe), nicht automatisch.
+  Vorher gilt die Kette als "gesaeubert, aber offen".
+
+## 4f. FELD-VERSORGER (R229, Autor-Logik fuer Lager-Personal)
+
+Generische Regel fuer Personal an Feldbauten - EIN System, mehrere Rollen:
+
+- JE ROLLE GENAU EINE PERSON. Start-Rollen:
+  1. FELDSCHMIED = der Lehrling (Feldschmiede: Reparatur x2, spaeter
+     Schaerf-Aura).
+  2. FELDARZT = der Bader (Lazarett: schnellere Heilung). Historisch
+     stimmig: der Bader war der Wundarzt der einfachen Leute.
+  Kandidaten spaeter: Feldkoch (Kochstelle: Verpflegung/Moral),
+  Fuhrknecht (Nachschub), Stallknecht (Pferdekoppel).
+- HERBEIRUFEN PER KNOPF: am gebauten Feldbau ruft der Spieler die
+  Rolle. Sie kommt NUR, wenn die ROUTE von Ravensmoor zur Zielkarte
+  FREI ist (keine besetzte Karte auf dem Weg - Spiegelbild der
+  Versorgungslinien-Regel R227, gleiche BFS-Logik).
+- Die Person BLEIBT am Bau (persistent, Savegame). Baut man anderswo
+  denselben Bau-Typ und ruft erneut, WECHSELT sie dorthin (eine Person,
+  der Spieler entscheidet, wo sie gebraucht wird).
+- Faellt der Bau, flieht die Person heim (Route vorausgesetzt).
+- Nach dem Schmied-Verrat wird der Lehrling zusaetzlich in der DORF-
+  Schmiede gebraucht - dann muss der Spieler waehlen: Feld ODER Dorf.
+  Der Engpass bekommt eine Personal-Dimension.
+
 ## 5. Der Endgegner-Bezug
 
 Der Antagonist ist Herr einer Wirtschaft, nicht nur einer Horde: Voegte

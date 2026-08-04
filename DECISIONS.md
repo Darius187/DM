@@ -3641,3 +3641,24 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   Kirche/Krypta, Kloster-Quelle und die Rolle der Erhobenen (Tueren
   oeffnet man von innen). Spaetere Mechanik-Schiene: NEU-VERSIEGELN
   als Rueckeroberungs-Handlung fuer Graeberorte.
+
+## R229 - Feld-Versorger: Lehrling an die Feldschmiede, Bader ans Lazarett
+- FELD_VERSORGER (data/welt.ts): je Rolle EINE benannte Person -
+  Lehrling Wenzel (Feldschmiede, Reparatur x2) und Bader Lorenz
+  (Lazarett, verbindet eigene Truppen im Umkreis, 6 HP/s). Werte in
+  FELD_VERSORGER_WERTE, leicht aenderbar.
+- Ruf per Knopf am Bau (interactHint "herbeirufen"): die Person kommt
+  NUR, wenn die Route von der Heimatkarte (stadt) zur Zielkarte frei
+  ist - routeFrei (logic/feldversorger.ts, BFS ueber unbesetzte
+  Karten, Spiegelbild der Feind-Versorgungslinie aus R227). Besetzte
+  Karte dazwischen -> "kommt nicht durch, erst Route freikaempfen".
+- Steht die Person schon woanders, wechselt sie beim naechsten Ruf
+  (eine Person je Rolle, kein Klonen). Faellt ihr Bau, kehrt sie heim
+  und die Rolle wird frei. Stand liegt im Savegame (welt.feldVersorger).
+- Feldschmiede-Reparatur + Bader-Heilung laufen jetzt auch AUSSERHALB
+  des RTS-Modus: seit R218 stehen Feldbauten und Truppen dauerhaft im
+  Feld, die Wirkung darf nicht am Modus haengen (vorher lief
+  wendeFeldschmiedeAn nur unter this.rtsBattle).
+- Beweis: 7 Vitest-Faelle routeFrei (505/505 gruen) + Browser-Probe:
+  Ruf-Hint, besetzt-blockiert/frei-klappt, Reparatur 18,1 vs 10,2 HP
+  je 30 Frames (Faktor ~1,8 durch dt-Streuung), Bader heilt 10->15,2.

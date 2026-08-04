@@ -2449,3 +2449,25 @@ FERTIG UND BEWIESEN (je Schritt eigener Commit + Browser-Messreihe):
 OFFEN: Trupp-Auswahl-UI, Heimat der Geretteten (zweites Dorf),
 Missions-Stand im Savegame - siehe OFFENE-FRAGEN.
 TESTS: tsc sauber, 492/492 gruen, alle Kern-Loops im Browser gemessen.
+
+## R229 - Feld-Versorger (Lehrling + Bader) und die geschaerfte Gruftsiegel-Regel
+FERTIG UND VERIFIZIERT:
+1. Gruftsiegel-Regel geschaerft (Doku 07, 4e): KEINE Zufalls-Spawns,
+   endliche Schwellen-Liste (Ravensmoor-Krypta, Kloster, Ahnengruft der
+   Burgkapelle), normale Kirchen sind KEINE Schwellen. Faellt der
+   Templer, wird das Versiegeln des naechsten Abgangs eine Quest.
+2. Feld-Versorger (Doku 07, 4f): an der Feldschmiede laesst sich per
+   Knopf Lehrling Wenzel herbeirufen (Reparatur doppelt so schnell),
+   am Lazarett Bader Lorenz (verbindet eigene Truppen im Umkreis).
+   Die Person kommt nur, wenn keine besetzte Karte auf dem Weg von
+   Ravensmoor liegt - sonst "erst die Route freikaempfen". Faellt der
+   Bau, kehrt sie heim. Alles ueberlebt Speichern/Laden.
+3. Nebenfund behoben: die Feldschmiede-Selbstreparatur lief bisher NUR
+   im RTS-Modus - seit R218 stehen Feldbauten aber dauerhaft im Feld,
+   jetzt wirkt sie immer.
+SPIELGEFUEHL: Versorgung wird zur Entscheidung - wer tief im Feindland
+baut, muss erst die Strasse sichern, bevor die Fachleute nachruecken.
+TESTS: tsc sauber, 505/505 Vitest gruen (7 neue routeFrei-Faelle),
+Browser-Beweis fuer Ruf/Blockade/Reparatur-Faktor/Bader-Heilung.
+OFFEN: Lehrling als Dorf-Bewohner (Waffen-Malus, Beordern), Lagervoegte,
+Schmied-Verrats-Bogen - kommen als naechste Runden.

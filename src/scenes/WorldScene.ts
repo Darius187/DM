@@ -87,7 +87,7 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, AUSHOEHLUNG, MISSION_TRUPP, KANAL_TREIBGUT, FELDBAU_ABWEHR, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, AUSHOEHLUNG, MISSION_TRUPP, KANAL_TREIBGUT, FELDBAU_ABWEHR, FELD_VERSORGER, FELD_VERSORGER_WERTE, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import type { FeindlagerVariante, WallForm } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
@@ -140,6 +140,7 @@ import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefalle
 import { boteNeu, schickeBote, tickBote, type Bote } from '../logic/bote';
 import { neueGebietslage, gebietsStatus, setzeGebietsStatus, type Gebietslage, type GebietsStatus } from '../logic/gebietslage';
 import { neuerFeindzug, tickFeindzug, beendeAngriff, verliereLager, bautenAbwehr, type Feindzug } from '../logic/feindzug';
+import { routeFrei } from '../logic/feldversorger';
 import { schlachtXp } from '../logic/schlachtWertung';
 import { BODEN_STILE, bodenStilTextur } from '../gfx/bodenStile';
 import { WAND_STILE, wandStilFrontTextur, wandStilKroneTextur } from '../gfx/wandStile';
@@ -411,6 +412,10 @@ export class WorldScene extends CombatScene {
   // R225: Kanal-Treibgut (Erzaehl-Detail) - eine Leiche treibt den Kanal hinab
   private treibgutT = 30;
   private treibgut: Phaser.GameObjects.Sprite | null = null;
+  // R229: Feld-Versorger (Doku 07/4f) - rolle -> Karten-id, plus die Sprites
+  // der Rollen, die auf der AKTUELLEN Karte stehen.
+  private feldVersorgerOrt: Record<string, string> = {};
+  private versorgerSprites: Array<{ rolle: string; sprite: Phaser.GameObjects.Sprite; label: Phaser.GameObjects.Text }> = [];
   // R138b (Autor): Boden/Wand-Werkbank - 20 Boeden + 10 Waende live testen.
   // Reiner Test-Zustand (nicht gespeichert); null = Standard-Optik der Karte.
   private devBodenStil: string | null = null;
@@ -4042,13 +4047,25 @@ export class WorldScene extends CombatScene {
 
   private wartfeuerCd = 0;
   // R97: die Feldschmiede repariert beschädigte Bauwerke im Umkreis von selbst.
+  // R229: steht der LEHRLING an der Feldschmiede, repariert sie doppelt so
+  // schnell; steht der BADER am Lazarett, verbindet es eigene Truppen im Umkreis.
   private wendeFeldschmiedeAn(dt: number): void {
     const schmieden = this.feldbauten.filter((f) => f.id === 'feldschmiede');
-    if (!schmieden.length) return;
+    const faktor = this.versorgerHier('feldschmied') ? FELD_VERSORGER_WERTE.schmiedeFaktor : 1;
     for (const s of schmieden) for (const f of this.feldbauten) {
       if (f === s || f.hp >= f.maxHp) continue;
       if (Math.hypot(f.x - s.x, f.y - s.y) > LAGER_EFFEKT.radius) continue;
-      f.hp = Math.min(f.maxHp, f.hp + LAGER_EFFEKT.schmiedeReparaturProS * dt);
+      f.hp = Math.min(f.maxHp, f.hp + LAGER_EFFEKT.schmiedeReparaturProS * faktor * dt);
+    }
+    if (this.versorgerHier('feldarzt')) {
+      for (const l of this.feldbauten) {
+        if (l.id !== 'lazarett' || l.hp <= 0) continue;
+        for (const e of this.enemies) {
+          if (e.team !== 'spieler' || e.hp <= 0 || e.hp >= e.maxhp) continue;
+          if (Math.hypot(e.x - l.x, e.y - l.y) > LAGER_EFFEKT.radius) continue;
+          e.hp = Math.min(e.maxhp, e.hp + FELD_VERSORGER_WERTE.baderHeilProS * dt);
+        }
+      }
     }
   }
 
@@ -7562,6 +7579,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       if (trupp.length) this.logMsg(`${trupp.length} Mann aus dem Heer folgen dir in den Bezirk - kein Nachschub dort drin.`, 'gold');
       else this.logMsg('Kein Heer verfügbar - du gehst allein in den Bezirk.', '');
     }
+    // R229: Feld-Versorger dieser Karte aufstellen (neben ihrem Bau).
+    this.baueVersorgerSprites();
     // Tiere
     for (const t of a.animals) this.spawnTier(t);
     // Beschriftbare Schilder (Baukasten, Runde 22): Pfosten + Brett,
@@ -8892,6 +8911,33 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // Namens-Schild der Verschleppten folgt der Figur.
   private label8(v: { label: Phaser.GameObjects.Text; x: number; y: number }): void {
     v.label.setPosition(v.x, v.y - 24);
+  }
+
+  // R229: Die Feld-Versorger der AKTUELLEN Karte als Figuren neben ihren Bau
+  // stellen. Ist der Bau gefallen, kehrt die Person heim (Rolle wird frei).
+  private baueVersorgerSprites(): void {
+    for (const v of this.versorgerSprites) { v.sprite.destroy(); v.label.destroy(); }
+    this.versorgerSprites = [];
+    for (const [bauId, def] of Object.entries(FELD_VERSORGER)) {
+      if (this.feldVersorgerOrt[def.rolle] !== this.area.id) continue;
+      const bau = this.feldbauten.find((f) => f.id === bauId && f.hp > 0);
+      if (!bau) {
+        delete this.feldVersorgerOrt[def.rolle];
+        this.logMsg(`${def.name} ist heimgekehrt - sein Platz im Feld ist zerstört.`, '');
+        continue;
+      }
+      const sprite = this.add.sprite(bau.x + 26, bau.y + 14, '__DEFAULT').setDepth(bau.y + 14);
+      this.provider.applyFigure(sprite, def.figur, 0, 0);
+      const lbl = this.add.text(bau.x + 26, bau.y - 12, def.name, {
+        fontFamily: 'serif', fontSize: '11px', color: '#c8d8b8e6', stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(2300);
+      this.versorgerSprites.push({ rolle: def.rolle, sprite, label: lbl });
+    }
+  }
+
+  // R229: steht die Rolle auf DIESER Karte? (Wirkungs-Pruefung der Boni)
+  private versorgerHier(rolle: string): boolean {
+    return this.feldVersorgerOrt[rolle] === this.area.id;
   }
 
   // R225: Kanal-Treibgut - alle KANAL_TREIBGUT.intervallS treibt eine Leiche
@@ -11866,6 +11912,28 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         }
       }
     }
+    // R229: Feld-Versorger am Bau herbeirufen (Lehrling/Bader) - kommt nur,
+    // wenn die Route von der Heimatkarte FREI ist (keine besetzte Karte).
+    for (const f of this.feldbauten) {
+      const def = FELD_VERSORGER[f.id];
+      if (!def || f.hp <= 0 || !near(f.x, f.y, 64)) continue;
+      if (this.feldVersorgerOrt[def.rolle] === this.area.id) continue;   // schon hier
+      return {
+        text: `${def.name} herbeirufen (${ik})`,
+        action: () => {
+          const frei = routeFrei(FELD_VERSORGER_WERTE.heimatKarte, this.area.id,
+            this.kartenNachbarn, (id) => gebietsStatus(this.lage, id) === 'besetzt');
+          if (!frei) {
+            this.logMsg(`${def.name} kommt nicht durch - der Weg ist nicht sicher. Erst die Route freikämpfen!`, 'bad');
+            return;
+          }
+          this.feldVersorgerOrt[def.rolle] = this.area.id;
+          this.logMsg(`${def.name} ist eingetroffen (${def.hinweis}).`, 'gold');
+          this.chronik('ereignis', `${def.name} versieht jetzt den Dienst im Feldlager.`);
+          this.baueVersorgerSprites();
+        },
+      };
+    }
     // R224: Verschleppte befreien - sie fliehen dann zum Tor (Spawn-Punkt).
     for (const v of this.verschleppte) {
       if (v.frei || v.weg) continue;
@@ -14764,6 +14832,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         feldbauten: this.feldbautenProKarte,     // R218: Turm & Co. ueberleben Speichern
         restMonster: this.restMonsterProKarte,   // R218: Wellen-Gegner je Karte
         gerettete: this.geretteteNamen,          // R225: Grundstock des zweiten Dorfs
+        feldVersorger: this.feldVersorgerOrt,    // R229: Lehrling/Bader im Feld
         haendlerSeed: this.areaSeed,
         aufbauBestellt: this.aufbauBestellt,
         einrichtung: this.einrichtung,
@@ -14837,6 +14906,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.feldbautenProKarte = data.welt.feldbauten ?? {};
     this.restMonsterProKarte = data.welt.restMonster ?? {};
     this.geretteteNamen = data.welt.gerettete ?? [];   // R225
+    this.feldVersorgerOrt = data.welt.feldVersorger ?? {};   // R229
     this.geretteteVerschleppte = this.geretteteNamen.length;
     this.feld = data.welt.feld ?? this.feld;
     this.kopfgeld = data.welt.kopfgeld ?? null;
@@ -16697,9 +16767,11 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       // R97: Schlachtführer (Held) tot -> Schlacht verloren, Truppe flieht.
       if (this.playerDead && !this.rtsBattle.verloren) { this.rtsBattle.schlachtVerloren(); this.logMsg('SCHLACHT VERLOREN - der Schlachtführer ist gefallen, die Banner sinken.', 'bad'); }
       this.rtsBattle.update(dt * kampfTempo); this.rtsBattle.zeichneOverlay();   // R131: Formationen in Echtzeit (keine Slow-Motion)
-      this.wendeFeldschmiedeAn(dt);
       if (this.wartfeuerCd > 0) this.wartfeuerCd -= dt;
     }
+    // R229: Feldbauten stehen seit R218 DAUERHAFT im Feld - Schmiede-Reparatur
+    // und Bader-Heilung wirken darum auch ausserhalb des RTS-Modus.
+    if (this.feldbauten.length) this.wendeFeldschmiedeAn(dt);
     // R144: Moral laeuft, sobald TRUPPEN auf dem Feld stehen - auch ohne
     // RTS-Modus (R142 "Heer lebt"). Reiner Held-gegen-Monster-Kampf bleibt
     // moral-frei, damit sich das ARPG-Gefuehl im Dungeon nicht aendert.
