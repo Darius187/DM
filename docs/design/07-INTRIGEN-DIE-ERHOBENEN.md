@@ -231,8 +231,15 @@ den Grafen" traegt nicht. Und ein Verraeter schreibt keinen Abschiedsbrief.
   stand, bevor Ihr die Krypta betreten habt"). Weitere Kanaele (Zeugen
   des Treffens, Umkehrer, Sichtung als Waffenmeister im Feindlager)
   folgen.
-- Danach unveraendert: Grafenburg-Nachricht (nachrichtTage), Verstaerkung
-  versiegt, Wenzel traegt die Esse (R231-Regel).
+- SIEGEL-REVISION (R235, Autor): der Schmied bricht das Siegel NICHT im
+  Vorbeigehen - er GEHT IN DIE KIRCHE (die Kirche bei der Burg, Schwelle
+  3 aus 4e) und oeffnet es MIT ABSICHT. Und: ES FAELLT ERSTMAL NICHT
+  AUF. Die Ahnengruft ist eine tickende Uhr, kein sofortiger Fall -
+  darum lebt der Graf noch, wenn der Spieler um Hilfe bittet (Kampagnen-
+  Ablauf Doku 08). Der Burg-Fall kommt spaeter als Eskalation im
+  Wettlauf; erst dann versiegt die Verstaerkung (R232-Kette, nur
+  verzoegert gezuendet). Wenzel traegt ab dem Abgang die Esse
+  (R231-Regel) - unveraendert.
 
 ## 5. Der Endgegner-Bezug
 

@@ -3783,3 +3783,18 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
 - Alte R232-Reste entfernt: Abschiedsbrief (Interact + Texte),
   tageNachRuf-Ausloeser. lehrlingRufTag wird weiter aufgezeichnet
   (kuenftige Verwendung offen).
+
+## R235 - Kampagnen-Ablauf festgeschrieben (Doku 08) + Siegel-Revision
+- Autor-Entwurf als Kanon dokumentiert (docs/design/08): Fall von
+  Ravensmoor -> Spieler-Evakuierung mit ECHTER Flucht-Karawane (Bewohner
+  folgen ueber Karten, Zivilisten sind keine Monster-Ziele) -> Zuflucht
+  Hochland -> Audienz beim Grafen (Burg-Karte schlank: Burg, Vorplatz
+  light, KIRCHE, Graf; ~10 Mann sofort) -> Rueckeroberung (dort zuendet
+  der R234-Verrat organisch) -> Bewohner-Rueckholung -> Umzaeunen ->
+  ERST JETZT Feindzug-Expansion = der Wettlauf.
+- Feindzug-Pacing-Aenderung notiert: Produktion/Angriffe bis zur
+  Rueckeroberung GATED; Fluchtroute ohne Lager, nur einzelne Gegner.
+- SIEGEL (Doku 07/4g ergaenzt): der Schmied oeffnet es ABSICHTLICH in
+  der Kirche bei der Burg (waehrend der Zuflucht-Zeit), es faellt
+  erstmal nicht auf - der Graf lebt bei der Audienz, die Ahnengruft
+  tickt und bricht erst im Wettlauf aus (R232-Kette verzoegert).
