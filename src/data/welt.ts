@@ -397,6 +397,24 @@ export const FELDBAU_ABWEHR: Readonly<Record<string, number>> = {
   feldschmiede: 8, lazarett: 8, nachschub: 6, zelt: 3, befehlszelt: 10,
 };
 
+// R232 (Doku 07/4b+4c): DER VERRAT DES SCHMIEDS. Der Bogen zuendet, nachdem
+// der Lehrling eingearbeitet ist (erster Ruf an eine Feldschmiede) und der
+// Feldzug laeuft: eines Morgens ist der Schmied fort - "eine Lieferung an
+// den Grafen". Tage spaeter kommt die Nachricht: die Burg fiel von innen,
+// die Grafen-Verstaerkung bleibt fuer immer aus. Kein Ermittlungs-Spiel -
+// der Spieler versteht erst am Abschiedsbrief, was er da grossgezogen hat.
+export const SCHMIED_VERRAT = {
+  tageNachRuf: 3,      // Verrat N Tage nach dem ERSTEN Lehrlings-Ruf ins Feld
+  nachrichtTage: 2,    // so lange braucht die Nachricht vom Fall der Burg
+  brief: [
+    'Ihr habt mir vertraut, und das rechne ich Euch hoch an. Aber Vertrauen fuellt keinen Teller und adelt keinen Namen.',
+    'Mein Leben lang war ich der beste Schmied zwischen Moor und Bergen - und doch immer nur der, der ABLIEFERT. Der Graf nahm den Zehnt, der Vogt stand an meiner Tuer, und am Ende hiess es: Er hat seine Pflicht getan.',
+    'ER hat mir mehr versprochen: eine eigene Werkstatt, Gesellen, die sich verneigen, und dass ich NIE WIEDER abgebe und NIE WIEDER knie.',
+    'Die Schwerter, die ich der Burg lieferte, waren gute Arbeit. Was ich dort unten aufgebrochen habe, war es auch. Wenzel kann den Rest - er war immer besser, als ich ihm gesagt habe.',
+    'Sucht mich nicht.',
+  ],
+} as const;
+
 // R230 (Doku 07/3): LAGERVOEGTE - zivile Verwalter mancher Feindlager.
 // Menschen, die fuer den Feind die Wirtschaft fuehren (Motive: Doku 07/2).
 // Sie kaempfen NIE; ein Lager MIT Vogt produziert schneller. Der Spieler

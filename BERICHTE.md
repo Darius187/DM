@@ -2521,3 +2521,30 @@ Wenzel am Amboss (Screenshot), Meister-Tag fertigt, Lehrling-allein
 fertigt nur an geraden Tagen, Ruf raeumt den NPC live, Esse-aus belegt.
 EHRLICHE GRENZE: "schlechtere Waffen" = weniger Ausstoss (Waffen sind
 im Lager ein Zaehler, kein Einzelstueck mit Qualitaet).
+
+## R232 - Der Verrat des Schmieds
+FERTIG UND VERIFIZIERT:
+1. Der Bogen zuendet von selbst: 3 Tage nachdem Wenzel erstmals ins Feld
+   gerufen wurde (und der Feldzug laeuft), ist der Schmied eines Morgens
+   FORT - "eine Lieferung an den Grafen". Zwei Tage spaeter die Nachricht:
+   die Grafenburg fiel VON INNEN. Ein Fluechtling will am offenen Tor
+   einen Mann mit Schmiedeschuerze gesehen haben.
+2. Spielwirkung: die Grafen-Verstaerkung versiegt FUER IMMER (statt 6
+   Mann kommt die Meldung "es wird nie wieder eine Antwort kommen") und
+   die Dorfschmiede faellt in die Lehrlings-Regel aus R231 - Wenzel
+   traegt die Esse allein, langsamer, jeden zweiten Tag ein Stueck.
+3. Der Abschiedsbrief haengt am Amboss: 5 Seiten, in denen sich alles
+   rueckwirkend fuegt - der Lehrling kam nicht aus Fleiss, der Schmied
+   wusste immer, dass er geht. "Nie wieder abgeben, nie wieder knien."
+4. Neuer Knopf fuer alle Feld-Versorger: HEIMSCHICKEN am Sprite - in
+   Ravensmoor tritt Wenzel sofort wieder an den Amboss.
+SPIELGEFUEHL: der nuetzlichste Mann des Dorfs war der lange Verrat -
+und die Entscheidung, seinen Lehrling grosszuziehen, war deine. Danach:
+Engpass wie bestellt - Vorrat traegt, jede Klinge zaehlt.
+TESTS: tsc sauber, 512/512 gruen. Browser-Beweiskette: Ruf->Uhr, Tag+3
+Schmied fort (live), Tag+5 Burg gefallen + 0 statt 6 Grafen-Mann,
+Brief-Dialog am Amboss, Heimschicken + Esse im Lehrling-Modus (1 Stueck
+am geraden Tag). Ein Probe-Stolperer war ein eigener Einfall (Nicht-
+Kaempfer fliehen - gewolltes M4-Verhalten), kein Fehler.
+OFFEN (OFFENE-FRAGEN): Verrats-Timing bestaetigen; Burg-Karte sichtbar
+besetzt? Ahnengruft-Level (Doku 4d/4e) als eigene Runde.

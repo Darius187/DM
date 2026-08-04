@@ -502,3 +502,14 @@ Aaskraehen zuerst (Marke!), dann Irrlicht (nutzt Moor-Nebel).
   lager als Keimzelle des zweiten Dorfs.
 - Missions-Stand (befreite/ausgehoehlte, geknackte Zonen) ins Savegame?
   Aktuell Session-Stand der Planungskarte.
+
+## R232 - Schmied-Verrat (Timing)
+- WANN genau soll der Verrat zuenden? Zwischenloesung (eine Zeile in
+  SCHMIED_VERRAT aenderbar): 3 Tage nachdem der Lehrling ERSTMALS an
+  eine Feldschmiede gerufen wurde UND der Feldzug laeuft (Krypta-Boss
+  tot). Wer den Lehrling nie ruft, erlebt den Verrat nie - gewollt?
+  Alternative: zusaetzlich ein spaetester Tag nach Feldzug-Beginn.
+- Die Grafenburg faellt aktuell NUR als Nachricht/Chronik (+ Verstaerkung
+  versiegt fuer immer). Soll die Burg-Karte danach sichtbar besetzt sein
+  (Feindlager auf 'burg')? Und die Ahnengruft als betretbares Level folgt
+  als eigene Runde (Doku 4d/4e).

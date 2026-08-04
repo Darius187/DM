@@ -87,7 +87,7 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion , LEHRLING_SCHMIEDE, schmiedeArbeit } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, AUSHOEHLUNG, MISSION_TRUPP, KANAL_TREIBGUT, FELDBAU_ABWEHR, FELD_VERSORGER, FELD_VERSORGER_WERTE, LAGERVOGT, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, AUSHOEHLUNG, MISSION_TRUPP, KANAL_TREIBGUT, FELDBAU_ABWEHR, FELD_VERSORGER, FELD_VERSORGER_WERTE, LAGERVOGT, SCHMIED_VERRAT, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import type { FeindlagerVariante, WallForm } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
@@ -422,6 +422,11 @@ export class WorldScene extends CombatScene {
   // R230: gefangen genommene Voegte - warten (wie die Geretteten) auf das
   // zweite Dorf: aufnehmen oder verstossen ist die spaetere Frage.
   private gefangeneVoegte: string[] = [];
+  // R232 (Doku 07/4b+4c): der Verrats-Bogen des Schmieds. rufTag = Tag des
+  // ersten Lehrlings-Rufs (die Einarbeitung ist etabliert), verratTag = Tag
+  // des Abgangs; die Schalter schmiedVerrat/burgGefallen leben in flags.
+  private lehrlingRufTag: number | null = null;
+  private verratTag: number | null = null;
   // R138b (Autor): Boden/Wand-Werkbank - 20 Boeden + 10 Waende live testen.
   // Reiner Test-Zustand (nicht gespeichert); null = Standard-Optik der Karte.
   private devBodenStil: string | null = null;
@@ -511,6 +516,8 @@ export class WorldScene extends CombatScene {
     this.feindzug = neuerFeindzug(FELDZUG.startBesetzt); // F2: Feindzug frisch
     for (const l of this.feindzug.lager) this.wuerfleLagervogt(l.karte);   // R230: manche Start-Lager haben einen Vogt
     this.gefangeneVoegte = [];
+    this.lehrlingRufTag = null;   // R232: Verrats-Uhr frisch
+    this.verratTag = null;
     this.feldzugWelleGespawnt = false;
     this.saeuberungT = 0;
     this.golemBindungT = 0;        // F6: Golem-Bindung frisch
@@ -7544,6 +7551,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       // NICHT im Dorf - eine Person, ein Ort. Er kehrt zurueck, sobald die
       // Rolle frei wird (Feldschmiede zerstoert/heimgekehrt).
       if (n.id === LEHRLING_SCHMIEDE.npcId && this.feldVersorgerOrt['feldschmied']) continue;
+      // R232: nach dem Verrat ist der Schmied FORT - fuer immer.
+      if (n.id === 'schmied' && this.flags.schmiedVerrat) continue;
       const sprite = this.add.sprite(n.x, n.y, '__DEFAULT').setDepth(n.y);
       this.provider.applyFigure(sprite, n.figur ?? n.id, 0, 0);
       // R216: Dorfvolk in derselben Groesse wie Monster/Heer (Autor: "und alle
@@ -11173,6 +11182,12 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // R142: die Grafen-Verstaerkung betritt die Welt am Waldrand und zieht von
   // allein nach Ravensmoor - dort wird sie abgeholt oder weiterverlegt.
   grafSchicktVerstaerkung(): void {
+    // R232: nach dem Fall der Grafenburg (Schmied-Verrat) kommt NIE wieder
+    // Verstaerkung - diese Quelle ist fuer den Rest des Spiels versiegt.
+    if (this.flags.burgGefallen) {
+      this.logMsg('Von der Grafenburg kommt keine Antwort - und es wird nie wieder eine kommen.', 'bad');
+      return;
+    }
     const typen: RtsUnitTyp[] = ['nahkampf', 'nahkampf', 'schild', 'bogen', 'bogen', 'nahkampf'];
     const neue: number[] = [];
     for (let i = 0; i < MARSCH.grafTrupp; i++) neue.push(musterEin(this.armee, typen[i % typen.length], MARSCH.grafStart).id);
@@ -12050,10 +12065,60 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
           if (def.rolle === 'feldschmied') {
             const i = this.npcEnts.findIndex((n) => n.id === LEHRLING_SCHMIEDE.npcId);
             if (i >= 0) { this.npcEnts[i].sprite.destroy(); this.npcEnts[i].label.destroy(); this.npcEnts.splice(i, 1); }
+            // R232: der ERSTE Ruf startet die Verrats-Uhr des Schmieds -
+            // sein Lehrling ist im Feld eingearbeitet, der Abgang ist nah.
+            if (this.lehrlingRufTag === null) this.lehrlingRufTag = this.tag;
           }
           this.baueVersorgerSprites();
         },
       };
+    }
+    // R229/R232: einen Feld-Versorger heimschicken (Wenzel muss nach dem
+    // Verrat die Dorfschmiede uebernehmen - aber der Knopf ist immer da).
+    for (const v of this.versorgerSprites) {
+      if (!near(v.sprite.x, v.sprite.y, 48)) continue;
+      const def = Object.values(FELD_VERSORGER).find((d) => d.rolle === v.rolle);
+      if (!def) continue;
+      return {
+        text: `${def.name} heimschicken (${ik})`,
+        action: () => {
+          delete this.feldVersorgerOrt[v.rolle];
+          this.logMsg(`${def.name} macht sich auf den Heimweg nach Ravensmoor.`, 'gold');
+          this.chronik('ereignis', `${def.name} kehrt aus dem Feld heim.`);
+          this.baueVersorgerSprites();
+          // R232: steht der Held in Ravensmoor, tritt der Lehrling sofort
+          // wieder an den Amboss (sonst erst beim naechsten Kartenaufbau).
+          if (this.area.id === 'stadt' && v.rolle === 'feldschmied') {
+            const def2 = this.area.npcs.find((n) => n.id === LEHRLING_SCHMIEDE.npcId);
+            if (def2 && !this.npcEnts.some((n) => n.id === def2.id)) {
+              const sprite = this.add.sprite(def2.x, def2.y, '__DEFAULT').setDepth(def2.y);
+              this.provider.applyFigure(sprite, def2.figur ?? def2.id, 0, 0);
+              sprite.setScale(hdSkala(def2.figur ?? def2.id, FIGUR_GROESSE.standard));
+              const lbl = this.add.text(def2.x, def2.y - 22, def2.name, {
+                fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8e6', stroke: '#000000', strokeThickness: 2,
+              }).setOrigin(0.5).setDepth(2300);
+              this.npcEnts.push({ ...def2, sprite, label: lbl, curX: def2.x, curY: def2.y });
+            }
+          }
+        },
+      };
+    }
+    // R232: der Abschiedsbrief des Schmieds - haengt nach dem Verrat an
+    // seinem Amboss. Erst hier werden die Indizien rueckwirkend lesbar.
+    if (this.area.id === 'stadt' && this.flags.schmiedVerrat) {
+      const amboss = this.area.stationen?.find((s2) => s2.art === 'amboss');
+      if (amboss && near(amboss.x, amboss.y, 56)) {
+        return {
+          text: `Abschiedsbrief lesen (${ik})`,
+          action: () => {
+            this.dialog.show('Abschiedsbrief des Schmieds', [...SCHMIED_VERRAT.brief]);
+            if (!this.flags.briefGelesen) {
+              this.flags.briefGelesen = true;
+              this.chronik('geschichte', 'Der Abschiedsbrief des Schmieds: "Nie wieder abgeben, nie wieder knien." Er war einer der Erhobenen - lange bevor irgendwer es ahnte.');
+            }
+          },
+        };
+      }
     }
     // R230: dem Lagervogt begegnen (Doku 07/3) - reden statt kaempfen.
     if (this.vogtFigur && !this.vogtFigur.weg && !this.vogtFigur.flieht
@@ -13228,8 +13293,35 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     return true;
   }
 
+  // R232 (Doku 07/4b+4c): der Morgen des Verrats. Laeuft der Feldzug und ist
+  // der Lehrling seit tageNachRuf eingearbeitet, ist der Schmied eines Tages
+  // einfach FORT - "eine Lieferung an den Grafen". nachrichtTage spaeter
+  // trifft die Nachricht ein: die Burg fiel von innen, die Grafen-
+  // Verstaerkung bleibt fuer immer aus. Kein Rueckweg, kein Puzzle.
+  private pruefeSchmiedVerrat(): void {
+    if (!this.flags.schmiedVerrat) {
+      if (!this.bossDead || this.lehrlingRufTag === null) return;
+      if (this.tag < this.lehrlingRufTag + SCHMIED_VERRAT.tageNachRuf) return;
+      this.flags.schmiedVerrat = true;
+      this.verratTag = this.tag;
+      // Live vom Amboss raeumen, falls der Held gerade in Ravensmoor steht.
+      const i = this.npcEnts.findIndex((n) => n.id === 'schmied');
+      if (i >= 0) { this.npcEnts[i].sprite.destroy(); this.npcEnts[i].label.destroy(); this.npcEnts.splice(i, 1); }
+      this.logMsg('Der Schmied ist fort - "eine Lieferung an den Grafen", heißt es. Die Esse ist kalt.', 'bad');
+      this.chronik('ereignis', 'Der Schmied hat Ravensmoor verlassen - eine Lieferung an den Grafen, sagte er. Sein Werkzeug hängt noch an der Wand.');
+      return;
+    }
+    if (!this.flags.burgGefallen && this.verratTag !== null && this.tag >= this.verratTag + SCHMIED_VERRAT.nachrichtTage) {
+      this.flags.burgGefallen = true;
+      this.logMsg('Furchtbare Nachricht: die GRAFENBURG ist gefallen - die Tore wurden von INNEN geöffnet. Vom Grafen kommt keine Hilfe mehr.', 'bad');
+      this.chronik('kampf', 'Die Grafenburg ist gefallen. Ein Flüchtling schwört: die Tore standen offen, und am Tor stand ein Mann mit Schmiedeschürze.');
+      this.chronik('geschichte', 'Erst jetzt fügt es sich: der Lehrling kam nicht aus Fleiß. Der Schmied wusste immer, dass er gehen würde.');
+    }
+  }
+
   // Täglicher Wirtschafts-Tick (beim Tageswechsel aus sleep UND advanceClock).
   private wirtschaftsTick(): void {
+    this.pruefeSchmiedVerrat();   // R232: der Verrats-Bogen prueft jeden Morgen
     // M3: Tagesbericht umblattern (heute -> gestern)
     this.lagerBerichtGestern = this.lagerBerichtHeute;
     this.lagerBerichtHeute = { produziert: {}, verbraucht: {} };
@@ -14970,6 +15062,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         gerettete: this.geretteteNamen,          // R225: Grundstock des zweiten Dorfs
         feldVersorger: this.feldVersorgerOrt,    // R229: Lehrling/Bader im Feld
         gefangeneVoegte: this.gefangeneVoegte,   // R230: abgefuehrte Lagervoegte
+        lehrlingRufTag: this.lehrlingRufTag ?? undefined,   // R232: Verrats-Uhr
+        verratTag: this.verratTag ?? undefined,
         haendlerSeed: this.areaSeed,
         aufbauBestellt: this.aufbauBestellt,
         einrichtung: this.einrichtung,
@@ -15045,6 +15139,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.geretteteNamen = data.welt.gerettete ?? [];   // R225
     this.feldVersorgerOrt = data.welt.feldVersorger ?? {};   // R229
     this.gefangeneVoegte = data.welt.gefangeneVoegte ?? [];   // R230
+    this.lehrlingRufTag = data.welt.lehrlingRufTag ?? null;   // R232
+    this.verratTag = data.welt.verratTag ?? null;
     this.geretteteVerschleppte = this.geretteteNamen.length;
     this.feld = data.welt.feld ?? this.feld;
     this.kopfgeld = data.welt.kopfgeld ?? null;

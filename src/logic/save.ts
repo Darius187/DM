@@ -60,6 +60,11 @@ export interface SaveData {
     // R230: gefangen genommene Lagervoegte - warten auf das zweite Dorf
     // (aufnehmen oder verstossen). Die Voegte SELBST stehen in feindzug.lager.
     gefangeneVoegte?: string[];
+    // R232 (Schmied-Verrat): Tag des ersten Lehrlings-Rufs ins Feld und Tag
+    // des Verrats (Burg-Nachricht kommt nachrichtTage spaeter). Die Schalter
+    // selbst (schmiedVerrat/burgGefallen) leben in welt.flags.
+    lehrlingRufTag?: number;
+    verratTag?: number;
     haendlerSeed: number;
     aufbauBestellt?: boolean;
     einrichtung?: number;

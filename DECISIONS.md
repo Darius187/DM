@@ -3708,3 +3708,24 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   Ausstoss umgesetzt, nicht als Qualitaetswert je Stueck. Wenn das
   Zeughaus (ZEUGHAUS_HAKEN) verdrahtet wird, kann ein Qualitaets-Feld
   nachziehen.
+
+## R232 - Der Verrat des Schmieds (Doku 07/4, 4b, 4c)
+- SCHMIED_VERRAT (data/welt.ts): tageNachRuf 3, nachrichtTage 2, plus
+  der Abschiedsbrief (5 Seiten, Motiv "nie wieder abgeben, nie wieder
+  knien" - der beste Handwerker, der immer nur ABLIEFERT).
+- Ablauf: erster Lehrlings-Ruf ins Feld startet die Uhr (lehrlingRufTag).
+  Laeuft der Feldzug (bossDead), ist der Schmied tageNachRuf spaeter am
+  Morgen FORT ("eine Lieferung an den Grafen") - NPC dauerhaft aus dem
+  Roster, Esse faellt in die R231-Regel (Lehrling-Malus/Esse aus).
+  nachrichtTage spaeter faellt die GRAFENBURG (Chronik: Tore von innen,
+  Mann mit Schmiedeschuerze) - grafSchicktVerstaerkung verweigert ab da
+  FUER IMMER (flags.burgGefallen). Ravensmoor selbst wird nicht
+  angegriffen (Autor-Order: kein zweites Verteidigen).
+- Abschiedsbrief haengt am Amboss (interactHint, nur nach dem Verrat) -
+  erst er macht die Indizien rueckwirkend lesbar (Chronik-Eintrag einmal).
+- NEU generisch: jeder Feld-Versorger laesst sich am Sprite HEIMSCHICKEN
+  (Knopf) - Wenzel tritt in Ravensmoor sofort wieder an den Amboss (live
+  nachgebaut, sonst beim naechsten Kartenaufbau).
+- Savegame: lehrlingRufTag/verratTag als Zahlen, schmiedVerrat/
+  burgGefallen/briefGelesen als flags.
+- Timing als OFFENE FRAGE notiert (nie gerufener Lehrling = nie Verrat).
