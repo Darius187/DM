@@ -57,6 +57,9 @@ export interface SaveData {
     gerettete?: string[];
     // R229: Feld-Versorger - welche Rolle steht auf welcher Karte (rolle -> Karten-id).
     feldVersorger?: Record<string, string>;
+    // R230: gefangen genommene Lagervoegte - warten auf das zweite Dorf
+    // (aufnehmen oder verstossen). Die Voegte SELBST stehen in feindzug.lager.
+    gefangeneVoegte?: string[];
     haendlerSeed: number;
     aufbauBestellt?: boolean;
     einrichtung?: number;

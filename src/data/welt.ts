@@ -383,7 +383,7 @@ export const KANAL_TREIBGUT = { intervallS: 110, tempo: 34 } as const;
 // Heimatkarte. Der Bader war historisch der Wundarzt der einfachen Leute.
 export const FELD_VERSORGER: Readonly<Record<string, { rolle: string; name: string; figur: string; hinweis: string }>> = {
   feldschmiede: { rolle: 'feldschmied', name: 'Lehrling Wenzel', figur: 'schmied', hinweis: 'Reparatur doppelt so schnell' },
-  lazarett: { rolle: 'feldarzt', name: 'Bader Lorenz', figur: 'bauer1', hinweis: 'verbindet Verwundete im Umkreis' },
+  lazarett: { rolle: 'feldarzt', name: 'Bader Lorenz', figur: 'bader', hinweis: 'verbindet Verwundete im Umkreis' },
 };
 export const FELD_VERSORGER_WERTE = {
   heimatKarte: 'stadt',    // von hier kommen die Versorger (Route muss frei sein)
@@ -396,6 +396,31 @@ export const FELDBAU_ABWEHR: Readonly<Record<string, number>> = {
   palisade: 4, tor: 10, standarte: 6, lagerfeuer: 2,
   feldschmiede: 8, lazarett: 8, nachschub: 6, zelt: 3, befehlszelt: 10,
 };
+
+// R230 (Doku 07/3): LAGERVOEGTE - zivile Verwalter mancher Feindlager.
+// Menschen, die fuer den Feind die Wirtschaft fuehren (Motive: Doku 07/2).
+// Sie kaempfen NIE; ein Lager MIT Vogt produziert schneller. Der Spieler
+// begegnet ihnen statt sie zu bekaempfen: Reden, Gefangennehmen, Toeten.
+export const LAGERVOGT = {
+  anteil: 0.5,          // Chance, dass ein neues Feindlager einen Vogt bekommt
+  produktionsF: 1.5,    // Produktions-Faktor eines Lagers MIT Vogt
+  figur: 'schulze',     // gute Kleidung - der sichtbare Aufstieg
+  fluchtTempo: 74,      // px/s, wenn im Lager gekaempft wird
+  namen: [
+    'Vogt Aldous', 'Vogt Reinbald', 'Voegtin Ermel',
+    'Vogt Sigbert', 'Voegtin Adelind', 'Vogt Notker',
+  ],
+  // Rechtfertigungen im Gespraech - je Vogt eine (Index = Namens-Index),
+  // gefaerbt nach den Kollaborations-Typen aus Doku 07/2.
+  reden: [
+    'Zwanzig Jahre habe ich fuer den Grafen geschuerft. Zwanzig Jahre Zehnt, und am Ende stand der Buettel vor MEINER Tuer. Hier gibt niemand ab. Hier wird fuer MICH gearbeitet.',
+    'Ihr seht Knochen und schaudert. Ich sehe Arbeiter, die nicht hungern, nicht klagen, nicht sterben. Sagt mir: welcher Herr hat je besser fuer sein Gesinde gesorgt?',
+    'Ich war die Totengraeberin. Keiner gab mir die Hand, keiner trank mit mir. DIESE hier verneigen sich, wenn ich komme. Nennt es Suende - ich nenne es das erste Mal Achtung.',
+    'Die Pest hat meine Familie geholt und euer Gott hat zugesehen. Der alte Bund ist tot. Ich diene dem, der seine Diener zurueckholt - sogar aus dem Grab.',
+    'Ich habe einen Schutzbrief. MEIN Dorf wird nicht angeruehrt, solange ich das Lager fuehre. Toetet mich, und wer schuetzt sie dann - Ihr? Fuer wie lange?',
+    'Man hat mir Land versprochen und Leute. Ein Mann muss nehmen, was ihm angeboten wird, wenn ihm sein Leben lang nichts angeboten wurde.',
+  ],
+} as const;
 
 export const AUSHOEHLUNG = {
   ersteS: 150,        // Zeit bis zum ersten Ritual nach Betreten der Karte

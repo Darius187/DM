@@ -289,3 +289,9 @@ Lichtern -> Bloom im Einfall drosseln. Ohne Geraeteprofil aber nicht auf Verdach
       Waffen als Datenwert) + Beordern-Befehl; Teil des Spitzel-Bogens
       (Doku 07, 4b). Der FELD-Teil (Ruf an die Feldschmiede) steht seit
       R229 - offen ist der DORF-Teil (Bewohner-NPC, Waffen-Malus).
+- [ ] Umkehrer (Doku 07/3): vertriebene/begnadigte Voegte, die die
+      Aushoehlung gesehen haben, brechen mit dem Feind - Informanten/
+      Fluechtlinge. Braucht: Vogt-Schicksale nach Gefangennahme,
+      zweites-Dorf-Frage (aufnehmen oder verstossen).
+- [ ] Dorfstimmungs-Malus fuer das Toeten unbewaffneter Voegte (aktuell
+      nur Chronik-Eintrag) - sobald es ein Stimmungs-System gibt.

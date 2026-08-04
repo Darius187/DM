@@ -2471,3 +2471,29 @@ TESTS: tsc sauber, 505/505 Vitest gruen (7 neue routeFrei-Faelle),
 Browser-Beweis fuer Ruf/Blockade/Reparatur-Faktor/Bader-Heilung.
 OFFEN: Lehrling als Dorf-Bewohner (Waffen-Malus, Beordern), Lagervoegte,
 Schmied-Verrats-Bogen - kommen als naechste Runden.
+
+## R230 - Lagervoegte: die Erhobenen stehen jetzt im Spiel
+FERTIG UND VERIFIZIERT:
+1. Manche Feindlager haben jetzt einen menschlichen VOGT (6 benannte
+   Figuren, gute Kleidung, sichtbar am Bindealtar). Ein Lager mit Vogt
+   produziert 1,5x so schnell - der Feind kann eben nicht alles allein,
+   Menschen fuehren seine Wirtschaft. Abgeschnittene Lager bleiben
+   trotz Vogt tot (Versorgungslinie aus R227 gilt weiter).
+2. Begegnung statt Kampf: Ansprechen oeffnet ein Gespraech - jeder Vogt
+   rechtfertigt sich anders (Erschoepfung, Wuerde, Schutzbrief, toter
+   Glaube - die Motive aus dem Intrigen-Dokument). Danach die Wahl:
+   gefangen nehmen (er verraet die gesparte Kampfkraft des Lagers,
+   Bonus weg), niederstrecken (Bonus weg - aber die Chronik haelt fest,
+   dass es ein Mensch ohne Waffe war) oder gehen lassen.
+3. Der Vogt kaempft NIE: sobald im Lager gekaempft wird, flieht er zum
+   Kartenrand. Nur Gefangennahme oder Tod nehmen dem Lager den Bonus.
+4. Gefangene Voegte warten im Spielstand auf das zweite Dorf - dort
+   faellt spaeter die Frage: aufnehmen oder verstossen?
+SPIELGEFUEHL: das Boese bekommt Gesichter und Gruende - und der Spieler
+eine moralische Entscheidung, die Produktionsdruck wegnimmt, ohne dass
+ein Schwert gezogen werden muss.
+TESTS: tsc sauber, 509/509 Vitest gruen (4 neue Vogt-Faelle). Browser:
+Vogt steht mit Namensschild am Altar (Screenshot), Reden-Hint + Dialog,
+Gefangennahme raeumt Bonus/Figur, Flucht bei Kampf im Lager belegt.
+OFFEN: Umkehrer + aufnehmen/verstossen (kommt mit dem zweiten Dorf),
+Dorfstimmungs-Malus fuers Toeten (braucht Stimmungs-System).

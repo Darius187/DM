@@ -14,6 +14,9 @@ export interface FeindLager {
   karte: string;
   punkte: number;            // gesparte Kampfkraft
   seitS?: number;            // F3: Sekunden besetzt - bestimmt die Ausbaustufe
+  // R230 (Doku 07/3): Name des menschlichen LAGERVOGTS, falls dieses Lager
+  // einen hat. Ein Lager mit Vogt produziert schneller (cfg.vogtFaktor).
+  vogt?: string;
 }
 
 export interface FeindAngriff {
@@ -86,6 +89,9 @@ export interface FeindzugCfg {
   // frische Sichtung, der Feind bleibt auf altem (verfallendem) Wissen sitzen.
   // Fehlt der Haken, kommt der Spaeher immer durch (bisheriges Verhalten).
   spaeherKommtDurch?: (von: string, nach: string) => boolean;
+  // R230 (Doku 07/3): Produktions-Faktor eines Lagers MIT Vogt. Fehlt das
+  // Feld, produzieren Vogt-Lager wie alle anderen (alte Aufrufer unveraendert).
+  vogtFaktor?: number;
 }
 
 export type FeindzugEreignis =
@@ -187,6 +193,17 @@ export function verliereLager(z: Feindzug, karte: string, schwaecheS = 0, abgabe
   if (schwaecheS > 0) z.schwaecheT = Math.max(z.schwaecheT ?? 0, schwaecheS);
 }
 
+// R230: der Vogt verlaesst das Lager (gefangen genommen oder getoetet) -
+// der Produktions-Bonus faellt weg. Gibt den Namen zurueck (fuer Meldung
+// und Chronik), oder null, wenn dieses Lager keinen Vogt hatte.
+export function entferneVogt(z: Feindzug, karte: string): string | null {
+  const l = z.lager.find((l2) => l2.karte === karte);
+  if (!l || !l.vogt) return null;
+  const name = l.vogt;
+  delete l.vogt;
+  return name;
+}
+
 export function tickFeindzug(z: Feindzug, dt: number, cfg: FeindzugCfg): FeindzugEreignis[] {
   const out: FeindzugEreignis[] = [];
   // F6: nach einem Lagerverlust produziert die Horde eine Weile gedrosselt.
@@ -197,7 +214,9 @@ export function tickFeindzug(z: Feindzug, dt: number, cfg: FeindzugCfg): Feindzu
   for (const l of z.lager) {
     // R227: abgeschnittene Lager (keine besetzte Kette zur Kloster-Route)
     // produzieren NICHTS - sie zehren nur noch von dem, was sie haben.
-    if (istVersorgt(l.karte, cfg)) l.punkte += produktion;
+    // R230: fuehrt ein menschlicher VOGT das Lager, laeuft die Wirtschaft
+    // schneller - der Feind kann eben nicht alles allein.
+    if (istVersorgt(l.karte, cfg)) l.punkte += produktion * (l.vogt ? (cfg.vogtFaktor ?? 1) : 1);
     l.seitS = (l.seitS ?? 0) + dt;
   }
 

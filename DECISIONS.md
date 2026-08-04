@@ -3662,3 +3662,28 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
 - Beweis: 7 Vitest-Faelle routeFrei (505/505 gruen) + Browser-Probe:
   Ruf-Hint, besetzt-blockiert/frei-klappt, Reparatur 18,1 vs 10,2 HP
   je 30 Frames (Faktor ~1,8 durch dt-Streuung), Bader heilt 10->15,2.
+
+## R230 - Lagervoegte: die Erhobenen stehen jetzt im Spiel (Doku 07/3)
+- FeindLager.vogt (logic/feindzug.ts): manche Feindlager haben einen
+  menschlichen VOGT. Ein Vogt-Lager produziert um cfg.vogtFaktor
+  schneller (LAGERVOGT.produktionsF 1,5); R227 schlaegt R230 - ein
+  abgeschnittenes Lager produziert auch mit Vogt nichts. entferneVogt
+  nimmt den Bonus (Gefangennahme/Tod). 4 neue Vitest-Faelle.
+- LAGERVOGT (data/welt.ts): 6 benannte Voegte mit je einer
+  Rechtfertigungs-Rede nach den Kollaborations-Typen aus Doku 07/2
+  (Uebergangene, Unehrliche, Bedeutungssucher, Glaeubige, Aengstliche).
+  Figur 'schulze' (gute Kleidung = sichtbarer Aufstieg). Zuteilung:
+  50% Chance je NEUEM Lager (Eroberung + Start-Lager, max 6 im Spiel).
+- Begegnung statt Kampf: der Vogt steht sichtbar am Bindealtar,
+  Ansprechen oeffnet den Dialog (Rede + Wahl: GEFANGEN NEHMEN /
+  NIEDERSTRECKEN / GEHEN LASSEN). Gefangnahme verhoert ihn (verraet
+  die gesparte Kampfkraft des Lagers) und legt ihn in
+  welt.gefangeneVoegte ab - die aufnehmen/verstossen-Frage kommt mit
+  dem zweiten Dorf. Toeten geht - aber die Chronik haelt fest, dass
+  es ein Mensch ohne Waffe war.
+- Der Vogt kaempft NIE: wird eine Lager-Einheit angeschlagen, flieht
+  er zum Kartenrand (LAGERVOGT.fluchtTempo). Das Lager BEHAELT ihn
+  dabei (er kehrt zurueck, wenn Ruhe ist) - nur Gefangennahme oder
+  Tod nehmen den Bonus. Vogt-Zustand liegt im Feindzug-Savegame.
+- Nebenbei: Bader Lorenz (R229) nutzt jetzt die echte 'bader'-Figur
+  statt 'bauer1'.

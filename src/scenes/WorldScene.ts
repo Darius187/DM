@@ -87,7 +87,7 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, AUSHOEHLUNG, MISSION_TRUPP, KANAL_TREIBGUT, FELDBAU_ABWEHR, FELD_VERSORGER, FELD_VERSORGER_WERTE, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, AUSHOEHLUNG, MISSION_TRUPP, KANAL_TREIBGUT, FELDBAU_ABWEHR, FELD_VERSORGER, FELD_VERSORGER_WERTE, LAGERVOGT, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import type { FeindlagerVariante, WallForm } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
@@ -139,7 +139,7 @@ import { konterFaktor } from '../data/kampfarten';
 import { neueArmee, ruesteArmeeNach, musterEin, schreibeZurueck, vermerkeGefallen, garnisonVon, garnisonKampfkraft, marschVon, storniereMarsch, routeZu, starteMarsch, marschTick, rangFuerKills, rangDmgF, einheitMaxHp, heerObergrenze, pruefeRekrutierung, desertiere, naechsteVerstaerkung, type Armee, type ArmeeEinheit } from '../logic/armee';
 import { boteNeu, schickeBote, tickBote, type Bote } from '../logic/bote';
 import { neueGebietslage, gebietsStatus, setzeGebietsStatus, type Gebietslage, type GebietsStatus } from '../logic/gebietslage';
-import { neuerFeindzug, tickFeindzug, beendeAngriff, verliereLager, bautenAbwehr, type Feindzug } from '../logic/feindzug';
+import { neuerFeindzug, tickFeindzug, beendeAngriff, verliereLager, bautenAbwehr, entferneVogt, type Feindzug } from '../logic/feindzug';
 import { routeFrei } from '../logic/feldversorger';
 import { schlachtXp } from '../logic/schlachtWertung';
 import { BODEN_STILE, bodenStilTextur } from '../gfx/bodenStile';
@@ -416,6 +416,12 @@ export class WorldScene extends CombatScene {
   // der Rollen, die auf der AKTUELLEN Karte stehen.
   private feldVersorgerOrt: Record<string, string> = {};
   private versorgerSprites: Array<{ rolle: string; sprite: Phaser.GameObjects.Sprite; label: Phaser.GameObjects.Text }> = [];
+  // R230 (Doku 07/3): der sichtbare LAGERVOGT der aktuellen Karte (falls das
+  // hiesige Feindlager einen hat). weg = geflohen/abgefuehrt/tot in dieser Szene.
+  private vogtFigur: { name: string; sprite: Phaser.GameObjects.Sprite; label: Phaser.GameObjects.Text; heimX: number; heimY: number; weg: boolean; flieht: boolean } | null = null;
+  // R230: gefangen genommene Voegte - warten (wie die Geretteten) auf das
+  // zweite Dorf: aufnehmen oder verstossen ist die spaetere Frage.
+  private gefangeneVoegte: string[] = [];
   // R138b (Autor): Boden/Wand-Werkbank - 20 Boeden + 10 Waende live testen.
   // Reiner Test-Zustand (nicht gespeichert); null = Standard-Optik der Karte.
   private devBodenStil: string | null = null;
@@ -503,6 +509,8 @@ export class WorldScene extends CombatScene {
     this.bote = boteNeu(BOTE.heim);          // R179: der Bote startet daheim
     this.lage = neueGebietslage(FELDZUG.startBesetzt);   // F1: Gebietslage frisch
     this.feindzug = neuerFeindzug(FELDZUG.startBesetzt); // F2: Feindzug frisch
+    for (const l of this.feindzug.lager) this.wuerfleLagervogt(l.karte);   // R230: manche Start-Lager haben einen Vogt
+    this.gefangeneVoegte = [];
     this.feldzugWelleGespawnt = false;
     this.saeuberungT = 0;
     this.golemBindungT = 0;        // F6: Golem-Bindung frisch
@@ -7553,6 +7561,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     // R224: die Verschleppten aufbauen (Karten mit gefangene-Liste)
     for (const v of this.verschleppte) { v.sprite.destroy(); v.label.destroy(); }
     this.verschleppte = [];
+    // R230: Vogt-Figur der vorigen Karte abraeumen (neu gebaut in baueFeindlager)
+    if (this.vogtFigur) { this.vogtFigur.sprite.destroy(); this.vogtFigur.label.destroy(); this.vogtFigur = null; }
     this.ausholungT = AUSHOEHLUNG.ersteS;
     this.ausholungGewarnt = false;
     for (const g of a.gefangene ?? []) {
@@ -10330,9 +10340,108 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         w.lagerPost = { x: bx, y: by };   // sein Werk-Platz am Wall
       }
     }
+    // R230 (Doku 07/3): fuehrt ein menschlicher VOGT dieses Lager, steht er
+    // sichtbar beim Altar - zivil, gute Kleidung, keine Waffe.
+    if (lager?.vogt) this.baueLagervogt(lager.vogt, alt.x + 34, alt.y + 18);
     // M1-Netz: nach dem Wall garantieren, dass der Altar begehbar bleibt.
     this.sichereLagerRoute(a, ax, ay, tore);
     this.wegfeldNeu();
+  }
+
+  // --- R230: LAGERVOEGTE (Doku 07/3) - zivile Verwalter der Feindlager ------
+  // Manche neuen Feindlager bekommen einen menschlichen Vogt: Produktion
+  // schneller (vogtFaktor in tickFeindzug), dafuer eine BEGEGNUNG im Lager.
+  private wuerfleLagervogt(karte: string): void {
+    const l = this.feindzug.lager.find((l2) => l2.karte === karte);
+    if (!l || l.vogt) return;
+    if (Math.random() >= LAGERVOGT.anteil) return;
+    const vergeben = new Set([...this.feindzug.lager.map((l2) => l2.vogt), ...this.gefangeneVoegte]);
+    const frei = LAGERVOGT.namen.filter((n) => !vergeben.has(n));
+    if (!frei.length) return;   // alle sechs Erhobenen sind im Spiel
+    l.vogt = frei[Math.floor(Math.random() * frei.length)];
+  }
+
+  private baueLagervogt(name: string, x: number, y: number): void {
+    if (this.vogtFigur) { this.vogtFigur.sprite.destroy(); this.vogtFigur.label.destroy(); }
+    const sprite = this.add.sprite(x, y, '__DEFAULT').setDepth(y);
+    this.provider.applyFigure(sprite, LAGERVOGT.figur, 0, 0);
+    const label = this.add.text(x, y - 24, name, {
+      fontFamily: 'serif', fontSize: '11px', color: '#e0c890e6', stroke: '#000000', strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(2300);
+    this.vogtFigur = { name, sprite, label, heimX: x, heimY: y, weg: false, flieht: false };
+  }
+
+  // Der Vogt kaempft NIE: tobt im Lager ein Kampf (Altar-Besatzung wach),
+  // rennt er von seinem Platz zum Kartenrand und ist fort, bis wieder Ruhe
+  // ist (naechster Kartenbesuch). Das Lager BEHAELT ihn - nur Gefangennahme
+  // oder Tod nehmen den Bonus.
+  private updateLagervogt(dt: number): void {
+    const v = this.vogtFigur;
+    if (!v || v.weg) return;
+    if (!v.flieht) {
+      const kampf = this.enemies.some((e) => e.hp > 0 && e.hp < e.maxhp && e.lagerRolle && e.team !== 'spieler');
+      if (kampf) {
+        v.flieht = true;
+        this.logMsg(`${v.name} rafft die Roecke und flieht aus dem Lager.`, '');
+      }
+      return;
+    }
+    // Flucht: weg vom Helden Richtung naechster Kartenrand
+    const zielX = v.sprite.x < this.area.w * TILE / 2 ? -40 : this.area.w * TILE + 40;
+    const dx = zielX - v.sprite.x;
+    const schritt = LAGERVOGT.fluchtTempo * dt;
+    v.sprite.x += Math.sign(dx) * schritt;
+    v.sprite.setDepth(v.sprite.y);
+    v.label.setPosition(v.sprite.x, v.sprite.y - 24);
+    if (Math.abs(dx) < schritt * 2) {
+      v.weg = true;
+      v.sprite.setVisible(false);
+      v.label.setVisible(false);
+    }
+  }
+
+  // Die Begegnung (Doku 07/3): Reden zuerst - der Vogt rechtfertigt sich
+  // (Motive aus Doku 07/2), dann entscheidet der Spieler. Toeten bleibt
+  // moeglich, aber es ist ein Mensch ohne Waffe - die Chronik vergisst nicht.
+  private sprichMitVogt(): void {
+    const v = this.vogtFigur;
+    if (!v) return;
+    const idx = Math.max(0, LAGERVOGT.namen.indexOf(v.name as typeof LAGERVOGT.namen[number]));
+    const rede = LAGERVOGT.reden[idx % LAGERVOGT.reden.length];
+    this.dialog.show(v.name, [
+      { text: rede },
+      {
+        text: 'Der Vogt wartet ab, was du tust.',
+        choices: [
+          { label: 'GEFANGEN NEHMEN', fn: () => this.vogtGefangen() },
+          { label: 'NIEDERSTRECKEN', fn: () => this.vogtToeten() },
+          { label: 'GEHEN LASSEN', fn: () => { this.logMsg(`${v.name} kehrt zu seinen Arbeitern zurück.`, ''); } },
+        ],
+      },
+    ]);
+  }
+
+  private vogtGefangen(): void {
+    const v = this.vogtFigur;
+    if (!v) return;
+    const name = entferneVogt(this.feindzug, this.area.id) ?? v.name;
+    this.gefangeneVoegte.push(name);
+    // Die Gegenleistung: der Gefangene packt aus - was das Lager gespart hat.
+    const punkte = Math.round(this.feindzug.lager.find((l) => l.karte === this.area.id)?.punkte ?? 0);
+    v.weg = true; v.sprite.setVisible(false); v.label.setVisible(false);
+    this.logMsg(`${name} ergibt sich. Verhör: das Lager hat ~${punkte} Kampfkraft gespart. Ohne Vogt stockt die Wirtschaft.`, 'gold');
+    this.chronik('ereignis', `${name} wurde gefangen genommen - ein Erhobener weniger im Dienst des Feindes.`);
+  }
+
+  private vogtToeten(): void {
+    const v = this.vogtFigur;
+    if (!v) return;
+    const name = entferneVogt(this.feindzug, this.area.id) ?? v.name;
+    this.fx.burst(v.sprite.x, v.sprite.y, 0xaa2222, 12, 90);
+    this.sfx.play('hit');
+    v.weg = true; v.sprite.setVisible(false); v.label.setVisible(false);
+    this.logMsg(`${name} ist tot. Er trug keine Waffe.`, 'bad');
+    this.chronik('kampf', `${name} wurde niedergestreckt - ein Mensch ohne Waffe. Das Lager verliert seinen Verwalter.`);
   }
 
   // M1-Sicherheitsnetz (07-FEIND-KI): die Blaupausen haben designte Tor-Luecken,
@@ -10721,6 +10830,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       wissenVerfall: FELDZUG.wissenVerfall,                 // F2a (A2): Blackboard verfaellt
       wissenAufschlag: FELDZUG.wissenAufschlag,             // F2a (A5): vorsichtiger Aufschlag bei Unsicherheit
       spaeherKommtDurch: () => this.spaeherBlindT <= 0,     // F2a (A10): getoetete Spaeher -> Feind blind
+      vogtFaktor: LAGERVOGT.produktionsF,                   // R230: Vogt-Lager wirtschaften schneller
     });
     for (const ev of evs) this.feindzugEreignis(ev);
     // Live-Aufloesung: kaempft die Welle auf der HELD-Karte, entscheidet der
@@ -10751,6 +10861,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     } else if (ev.typ === 'erobert') {
       this.garnisonRueckzug(ev.karte);
       this.setzeLage(ev.karte, 'besetzt');
+      this.wuerfleLagervogt(ev.karte);   // R230: manche neue Lager bekommen einen Vogt
     } else {
       this.setzeLage(ev.karte, 'frei');
       this.logMsg(`Der Angriff auf ${this.kartenName(ev.karte)} ist zurückgeschlagen!`, 'gold');
@@ -11933,6 +12044,11 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
           this.baueVersorgerSprites();
         },
       };
+    }
+    // R230: dem Lagervogt begegnen (Doku 07/3) - reden statt kaempfen.
+    if (this.vogtFigur && !this.vogtFigur.weg && !this.vogtFigur.flieht
+      && near(this.vogtFigur.sprite.x, this.vogtFigur.sprite.y, 56)) {
+      return { text: `Mit ${this.vogtFigur.name} reden (${ik})`, action: () => this.sprichMitVogt() };
     }
     // R224: Verschleppte befreien - sie fliehen dann zum Tor (Spawn-Punkt).
     for (const v of this.verschleppte) {
@@ -14833,6 +14949,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         restMonster: this.restMonsterProKarte,   // R218: Wellen-Gegner je Karte
         gerettete: this.geretteteNamen,          // R225: Grundstock des zweiten Dorfs
         feldVersorger: this.feldVersorgerOrt,    // R229: Lehrling/Bader im Feld
+        gefangeneVoegte: this.gefangeneVoegte,   // R230: abgefuehrte Lagervoegte
         haendlerSeed: this.areaSeed,
         aufbauBestellt: this.aufbauBestellt,
         einrichtung: this.einrichtung,
@@ -14907,6 +15024,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.restMonsterProKarte = data.welt.restMonster ?? {};
     this.geretteteNamen = data.welt.gerettete ?? [];   // R225
     this.feldVersorgerOrt = data.welt.feldVersorger ?? {};   // R229
+    this.gefangeneVoegte = data.welt.gefangeneVoegte ?? [];   // R230
     this.geretteteVerschleppte = this.geretteteNamen.length;
     this.feld = data.welt.feld ?? this.feld;
     this.kopfgeld = data.welt.kopfgeld ?? null;
@@ -16707,6 +16825,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     if (this.vorwaermPauseT <= 0 && this.provider.vorwaermSchritt()) this.vorwaermPauseT = VORWAERM_PAUSE_MS;
     if (this.verschleppte.length) this.updateVerschleppte(Math.min(0.05, delta / 1000));
     if (this.area.kanal) this.updateTreibgut(Math.min(0.05, delta / 1000));
+    if (this.vogtFigur) this.updateLagervogt(Math.min(0.05, delta / 1000));   // R230
     const dt = Math.min(0.05, delta / 1000);
     // Wasser-Editor: gemalte Maske gedrosselt speichern (nach der letzten Aenderung).
     if (this.wasserEditSaveT > 0) { this.wasserEditSaveT -= dt; if (this.wasserEditSaveT <= 0) this.speichereWassermaske(); }

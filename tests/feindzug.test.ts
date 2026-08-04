@@ -219,6 +219,48 @@ describe('R227 Versorgungslinie (istVersorgt)', () => {
   });
 });
 
+// --- R230: Lagervoegte (Doku 07/3) ----------------------------------------
+import { entferneVogt } from '../src/logic/feindzug';
+
+describe('R230 Lagervogt (Produktions-Faktor + entferneVogt)', () => {
+  it('ein Lager MIT Vogt produziert um vogtFaktor schneller', () => {
+    const z = neuerFeindzug(['lager', 'stadt2']);
+    z.lager[0].vogt = 'Vogt Aldous';
+    const c = cfg({ produktionProS: 1, vogtFaktor: 1.5 });
+    tickFeindzug(z, 10, c);
+    expect(z.lager[0].punkte).toBeCloseTo(15, 5);   // mit Vogt: 10 * 1.5
+    expect(z.lager[1].punkte).toBeCloseTo(10, 5);   // ohne Vogt: normal
+  });
+
+  it('ohne vogtFaktor-Feld produzieren Vogt-Lager wie bisher (alte Aufrufer)', () => {
+    const z = neuerFeindzug(['lager']);
+    z.lager[0].vogt = 'Vogt Aldous';
+    tickFeindzug(z, 10, cfg({ produktionProS: 1 }));
+    expect(z.lager[0].punkte).toBeCloseTo(10, 5);
+  });
+
+  it('entferneVogt nimmt den Bonus und gibt den Namen zurueck', () => {
+    const z = neuerFeindzug(['lager']);
+    z.lager[0].vogt = 'Voegtin Ermel';
+    expect(entferneVogt(z, 'lager')).toBe('Voegtin Ermel');
+    expect(z.lager[0].vogt).toBeUndefined();
+    expect(entferneVogt(z, 'lager')).toBeNull();     // schon weg
+    expect(entferneVogt(z, 'anderswo')).toBeNull();  // kein Lager dort
+  });
+
+  it('ein abgeschnittenes Vogt-Lager produziert trotz Vogt nichts (R227 schlaegt R230)', () => {
+    const z = neuerFeindzug(['b']);
+    z.lager[0].vogt = 'Vogt Notker';
+    const c = cfg({
+      produktionProS: 1, vogtFaktor: 1.5, ursprung: ['kloster'],
+      nachbarn: (id) => ({ kloster: ['a'], a: ['kloster', 'b'], b: ['a'] } as Record<string, string[]>)[id] ?? [],
+      status: (id) => (id === 'b' ? 'besetzt' : 'frei') as GebietsStatus,
+    });
+    tickFeindzug(z, 10, c);
+    expect(z.lager[0].punkte).toBe(0);
+  });
+});
+
 describe('R227 Feldbauten-Abwehr (bautenAbwehr)', () => {
   const werte = { wachturm: 30, palisade: 4 };
   it('summiert Bauwerte, skaliert mit dem Zustand', () => {
