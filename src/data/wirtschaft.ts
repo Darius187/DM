@@ -117,10 +117,46 @@ export const WAREN_NAMEN: Record<string, string> = {
   weizen: 'Weizen', mehl: 'Mehl', brot: 'Brot', barren: 'Eisenbarren', golderz: 'Golderz',
 };
 
-// Start-Bestand des Dorf-Lagers (Spielstart).
+// Start-Bestand des Dorf-Lagers (Fallback fuer ALTE Spielstaende ohne
+// gespeichertes Lager - neue Spiele wuerfeln, siehe unten).
 export const DORF_LAGER_START: Partial<Record<MaterialId, number>> & Record<string, number> = {
   holz: 20, stein: 10, eisen: 4, kraeuter: 6, kohle: 4, weizen: 6,
 };
+
+// R233 (Autor: "es muss einen zufaelligen Anfangsbestand geben ... bei allen
+// Ressourcen vom Dorf, also auch Brot und Holz"): je Ware eine Spanne
+// [von, bis], aus der der Spielstart wuerfelt. Jedes neue Spiel beginnt mit
+// einer anderen Vorratslage - mal traegt die Speisekammer, mal klemmt sie.
+export const DORF_LAGER_START_SPANNE: Record<string, readonly [number, number]> = {
+  weizen: [3, 12], mehl: [0, 6], wasser: [2, 10], brot: [2, 10],
+  fisch: [0, 6], fleisch: [0, 4], eier: [0, 6], milch: [0, 4], honig: [0, 3],
+  kraeuter: [2, 10], holz: [10, 40], bretter: [4, 20], stein: [4, 16],
+  eisen: [2, 8], kohle: [2, 8], barren: [0, 4],
+  waffen: [1, 4], werkzeuge: [1, 5], felle: [0, 4], golderz: [0, 1],
+};
+
+export function wuerfleDorfLagerStart(rng: () => number): Record<string, number> {
+  const lager: Record<string, number> = {};
+  for (const [ware, [von, bis]] of Object.entries(DORF_LAGER_START_SPANNE)) {
+    lager[ware] = von + Math.floor(rng() * (bis - von + 1));
+  }
+  return lager;
+}
+
+// R233 (Autor: "Waffen muessen Einzelstuecke mit Qualitaet sein"): die
+// GUETE-Spannen je Schmied. Der Meister schmiedet besser als der Lehrling -
+// jedes Stueck bekommt seine Guete (1-100) und daraus seinen Namen.
+export const WAFFEN_GUETE = {
+  meister: { von: 55, bis: 95 },
+  lehrling: { von: 25, bis: 60 },
+  bestand: { von: 30, bis: 85 },   // Alt-Bestand beim Spielstart (gemischt)
+  // Namens-Stufen, absteigend: [ab-Guete, Name]
+  stufen: [[80, 'Meisterklinge'], [60, 'Gute Klinge'], [40, 'Solide Klinge'], [0, 'Grobe Klinge']],
+  // Guete -> Schadens-Bonus der Einheit, die sie erhaelt (waffeGeschenk):
+  // je bonusJe Guetepunkte ueber/unter bonusMitte ein Punkt.
+  bonusMitte: 50,
+  bonusJe: 20,
+} as const;
 
 // Abgaben an den Fürsten für den Krieg: alle N Tage fällig. Gold aus der
 // Dorfkasse, Material aus dem Dorf-Lager. Reicht es nicht -> Rückstand (später

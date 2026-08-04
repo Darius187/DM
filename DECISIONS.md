@@ -3729,3 +3729,27 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
 - Savegame: lehrlingRufTag/verratTag als Zahlen, schmiedVerrat/
   burgGefallen/briefGelesen als flags.
 - Timing als OFFENE FRAGE notiert (nie gerufener Lehrling = nie Verrat).
+
+## R233 - Waffenkammer + gewuerfelter Anfangsbestand, Verrat geparkt
+- DORF_LAGER_START_SPANNE + wuerfleDorfLagerStart (data/wirtschaft.ts):
+  jedes NEUE Spiel wuerfelt den Anfangsbestand ALLER Dorf-Waren (Brot,
+  Holz, Korn, Waffen ... 20 Waren, je eine [von,bis]-Spanne). Alte
+  Spielstaende laden ihr gespeichertes Lager unveraendert.
+- WAFFENKAMMER (logic/waffenkammer.ts): jede geschmiedete Waffe ist ein
+  EINZELSTUECK mit Guete 1-100 und Namens-Stufe (Grobe/Solide/Gute
+  Klinge, Meisterklinge). Meister schmiedet 55-95, Lehrling 25-60,
+  Startbestand gemischt 30-85 (WAFFEN_GUETE). Die Chronik nennt jedes
+  Stueck ("Der Schmied fertigt: Gute Klinge (Guete 60)").
+- Der REKRUT erhaelt das BESTE Stueck der Kammer - Name + Schadens-
+  Bonus laufen ueber die waffeGeschenk-Schiene aus R187 (Guete 50 = 0,
+  je 20 Punkte darueber/darunter +-1). Meldung nennt die Klinge.
+- Zaehler bleibt: dorfLager['waffen'] dient weiter Anzeige/Kapazitaet/
+  Handel; gleicheAn() gleicht nach jedem Wirtschafts-Tick ab - verkauft
+  der Schulze Ueberlauf, gehen die SCHLECHTESTEN Stuecke zuerst weg,
+  Zukaeufe kommen als Bestand-Stuecke dazu. Kammer im Savegame.
+- SCHMIED_VERRAT.aktiv = false: der komplette R232-Bogen ist GEPARKT
+  (Autor-Einwaende: verdoppelte Abgabe macht den Schmied unabkoemmlich,
+  Lieferungs-Vorwand traegt nicht, Abschiedsbrief fraglich). Drei
+  Zuend-Varianten + Anwerbe-Brief-Idee stehen in OFFENE-FRAGEN.
+- 8 neue Vitest-Faelle (Guete-Spannen, Namens-Stufen, beste/schlechteste
+  Auswahl, Start-Wuerfel-Grenzen) - 520/520 gruen.

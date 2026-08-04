@@ -84,7 +84,7 @@ import { MINE } from '../data/mine';
 import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, HEER_AUSRUESTUNG, MORAL, MARSCH, VERTEIDIGUNG, BOTE, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, HALTUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, FELDSCHER, TURM, WEGFINDUNG, bauTechnikText, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
-import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion , LEHRLING_SCHMIEDE, schmiedeArbeit } from '../data/wirtschaft';
+import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion , LEHRLING_SCHMIEDE, schmiedeArbeit, wuerfleDorfLagerStart } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
 import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, AUSHOEHLUNG, MISSION_TRUPP, KANAL_TREIBGUT, FELDBAU_ABWEHR, FELD_VERSORGER, FELD_VERSORGER_WERTE, LAGERVOGT, SCHMIED_VERRAT, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
@@ -141,6 +141,7 @@ import { boteNeu, schickeBote, tickBote, type Bote } from '../logic/bote';
 import { neueGebietslage, gebietsStatus, setzeGebietsStatus, type Gebietslage, type GebietsStatus } from '../logic/gebietslage';
 import { neuerFeindzug, tickFeindzug, beendeAngriff, verliereLager, bautenAbwehr, entferneVogt, type Feindzug } from '../logic/feindzug';
 import { routeFrei } from '../logic/feldversorger';
+import { schmiedeWaffe, nimmBesteWaffe, waffenBonus, gleicheAn, type DorfWaffe } from '../logic/waffenkammer';
 import { schlachtXp } from '../logic/schlachtWertung';
 import { BODEN_STILE, bodenStilTextur } from '../gfx/bodenStile';
 import { WAND_STILE, wandStilFrontTextur, wandStilKroneTextur } from '../gfx/wandStile';
@@ -597,7 +598,11 @@ export class WorldScene extends CombatScene {
     this.grosserEinfall = false;
     this.tagwerke = {};
     this.dorfkasse = 0;
-    this.dorfLager = { ...DORF_LAGER_START };
+    // R233 (Autor): jedes neue Spiel beginnt mit einer ANDEREN Vorratslage -
+    // alle Waren gewuerfelt, die Waffen gleich als Einzelstuecke (Alt-Bestand).
+    this.dorfLager = wuerfleDorfLagerStart(Math.random);
+    this.waffenkammer = [];
+    gleicheAn(this.waffenkammer, this.dorfLager['waffen'] ?? 0, Math.random, 1);
     this.bevoelkerung = REKRUTIERUNG.bevoelkerungStart;
     this.karteAufgedeckt = false;
     this.naechsteAbgabe = ABGABE.intervallTage;
@@ -11214,14 +11219,20 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     const ausKasse = Math.min(this.dorfkasse, gold);   // Dorfkasse zuerst, Rest zahlt der Held
     this.dorfkasse -= ausKasse;
     this.p.gold -= gold - ausKasse;
+    let rekrutWaffe: DorfWaffe | null = null;
     if (art === 'bauer') {
       this.lagerRaus('waffen', REKRUTIERUNG.waffen);
+      rekrutWaffe = nimmBesteWaffe(this.waffenkammer);   // R233: das BESTE Stueck zuerst
       this.bevoelkerung -= REKRUTIERUNG.arbeiter;
     }
     const einheit = musterEin(this.armee, typ, REKRUTIERUNG.aushebungsOrt, undefined, art === 'soeldner');
     if (art === 'bauer') {
-      this.chronik('ereignis', `${einheit.name} legt den Pflug nieder und nimmt die Waffe - das Dorf ist um einen Arbeiter ärmer.`);
-      this.logMsg(`${einheit.name} ausgehoben (${gold} Gold, 1 Waffe, 1 Arbeiter) - er meldet sich in Ravensmoor.`, 'gold');
+      // R233: die Guete der ausgegebenen Waffe wirkt auf den Rekruten
+      // (waffeGeschenk-Schiene aus R187 - Name + Schadens-Bonus).
+      if (rekrutWaffe) einheit.waffeGeschenk = { name: `${rekrutWaffe.name} (Güte ${rekrutWaffe.guete})`, bonus: waffenBonus(rekrutWaffe.guete) };
+      const waffeText = rekrutWaffe ? `${rekrutWaffe.name}, Güte ${rekrutWaffe.guete}` : '1 Waffe';
+      this.chronik('ereignis', `${einheit.name} legt den Pflug nieder und nimmt die Waffe (${waffeText}) - das Dorf ist um einen Arbeiter ärmer.`);
+      this.logMsg(`${einheit.name} ausgehoben (${gold} Gold, ${waffeText}, 1 Arbeiter) - er meldet sich in Ravensmoor.`, 'gold');
     } else {
       this.logMsg(`Söldner ${einheit.name} angeworben (${gold} Gold) - er wartet in Ravensmoor.`, 'gold');
     }
@@ -13168,6 +13179,10 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   dorfkasse = 0;
   // Wirtschaft Phase 1 (Runde 51): Dorf-Lager, nächste Abgabe, Rückstand.
   private dorfLager: Record<string, number> = { ...DORF_LAGER_START };
+  // R233: die DORF-WAFFENKAMMER - jede geschmiedete Waffe ist ein Einzelstueck
+  // mit Guete. dorfLager['waffen'] bleibt der Zaehler (Anzeige/Kapazitaet/
+  // Handel) und wird nach jedem Wirtschafts-Tick mit der Liste abgeglichen.
+  private waffenkammer: DorfWaffe[] = [];
   // R143 (Dok 03, 2.3): Arbeiter-Zaehler des Dorfes. Jeder Bauern-Rekrut
   // nimmt EINEN weg - die Tagesproduktion skaliert mit (skaliereProduktion).
   private bevoelkerung: number = REKRUTIERUNG.bevoelkerungStart;
@@ -13299,6 +13314,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // trifft die Nachricht ein: die Burg fiel von innen, die Grafen-
   // Verstaerkung bleibt fuer immer aus. Kein Rueckweg, kein Puzzle.
   private pruefeSchmiedVerrat(): void {
+    if (!SCHMIED_VERRAT.aktiv) return;   // R233: geparkt, bis der Autor das Timing festlegt
     if (!this.flags.schmiedVerrat) {
       if (!this.bossDead || this.lehrlingRufTag === null) return;
       if (this.tag < this.lehrlingRufTag + SCHMIED_VERRAT.tageNachRuf) return;
@@ -13403,7 +13419,15 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         if (esse.fertigt) for (let i = 0; i < SCHMIEDE_FERTIGUNG.stueckProTag; i++) {
           if ((this.dorfLager['barren'] ?? 0) < SCHMIEDE_FERTIGUNG.barrenProStueck) break;
           this.lagerRaus('barren', SCHMIEDE_FERTIGUNG.barrenProStueck);
-          this.lagerRein(this.tag % 2 === 0 ? 'werkzeuge' : 'waffen', 1);
+          if (this.tag % 2 === 0) this.lagerRein('werkzeuge', 1);
+          else {
+            // R233: eine WAFFE ist ein Einzelstueck mit Guete - der Meister
+            // schmiedet besser als der Lehrling, und die Chronik nennt es.
+            const w = schmiedeWaffe(Math.random, esse.allein ? 'lehrling' : 'meister', this.tag);
+            this.waffenkammer.push(w);
+            this.lagerRein('waffen', 1);
+            this.chronik('ereignis', `${esse.allein ? 'Lehrling Wenzel' : 'Der Schmied'} fertigt: ${w.name} (Güte ${w.guete}).`);
+          }
         }
         if (esse.allein) this.chronik('ereignis', 'Lehrling Wenzel steht allein an der Esse - es geht langsamer, und Meisterarbeit ist es nicht.');
       } else this.chronik('ereignis', 'Die Esse ist aus - niemand steht an der Schmiede.');
@@ -13427,6 +13451,9 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       this.leisteAbgabe();
       this.naechsteAbgabe = this.tag + ABGABE.intervallTage;
     }
+    // R233: Waffenkammer mit dem Zaehler abgleichen (Schulze-Ueberlaufverkauf
+    // und Haendler aendern nur den Zaehler - verkauft wird der Plunder zuerst).
+    gleicheAn(this.waffenkammer, this.dorfLager['waffen'] ?? 0, Math.random, this.tag);
   }
 
   // Eine 1:1-Verarbeitungsstufe (Mühle/Backhaus): so viel wie Vorrat + Tagesleistung hergeben.
@@ -15063,6 +15090,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         feldVersorger: this.feldVersorgerOrt,    // R229: Lehrling/Bader im Feld
         gefangeneVoegte: this.gefangeneVoegte,   // R230: abgefuehrte Lagervoegte
         lehrlingRufTag: this.lehrlingRufTag ?? undefined,   // R232: Verrats-Uhr
+        waffenkammer: this.waffenkammer,         // R233: Waffen als Einzelstuecke
         verratTag: this.verratTag ?? undefined,
         haendlerSeed: this.areaSeed,
         aufbauBestellt: this.aufbauBestellt,
@@ -15140,6 +15168,9 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.feldVersorgerOrt = data.welt.feldVersorger ?? {};   // R229
     this.gefangeneVoegte = data.welt.gefangeneVoegte ?? [];   // R230
     this.lehrlingRufTag = data.welt.lehrlingRufTag ?? null;   // R232
+    // R233: Waffenkammer laden; ALTE Staende ohne Liste bekommen zum Zaehler
+    // passende Bestand-Stuecke gewuerfelt.
+    this.waffenkammer = data.welt.waffenkammer ?? [];
     this.verratTag = data.welt.verratTag ?? null;
     this.geretteteVerschleppte = this.geretteteNamen.length;
     this.feld = data.welt.feld ?? this.feld;
@@ -15156,6 +15187,9 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.dorfkasse = data.welt.dorfkasse ?? 0;
     const wi = data.welt.wirtschaft;
     this.dorfLager = wi?.lager ?? { ...DORF_LAGER_START };
+    // R233: erst NACH dem Lager-Laden abgleichen - alte Staende ohne Liste
+    // bekommen zum Waffen-Zaehler passende Bestand-Stuecke gewuerfelt.
+    gleicheAn(this.waffenkammer, this.dorfLager['waffen'] ?? 0, Math.random, this.tag);
     this.naechsteAbgabe = wi?.naechsteAbgabe ?? ABGABE.intervallTage;
     this.abgabeRueckstand = wi?.rueckstand ?? 0;
     this.lagerBerichtGestern = wi?.bericht ?? { produziert: {}, verbraucht: {} };   // M3 (alte Staende: leer)

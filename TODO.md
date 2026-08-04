@@ -298,3 +298,8 @@ Lichtern -> Bloom im Einfall drosseln. Ohne Geraeteprofil aber nicht auf Verdach
       zweites-Dorf-Frage (aufnehmen oder verstossen).
 - [ ] Dorfstimmungs-Malus fuer das Toeten unbewaffneter Voegte (aktuell
       nur Chronik-Eintrag) - sobald es ein Stimmungs-System gibt.
+- [ ] Waffenkammer-LISTE sichtbar machen (Verwaltungs-Buch/Lager-Tab):
+      aktuell erzaehlen nur Chronik + Rekrutierungs-Meldung die Stuecke.
+      Spaeter: Zeughaus-Zuteilung einzelner Klingen an einzelne Soldaten.
+- [ ] Werkzeuge analog als Einzelstuecke? (Aktuell nur Waffen - Autor
+      fragte nach Waffen; Werkzeuge blieben Zaehler.)

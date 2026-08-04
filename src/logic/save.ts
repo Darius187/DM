@@ -65,6 +65,9 @@ export interface SaveData {
     // selbst (schmiedVerrat/burgGefallen) leben in welt.flags.
     lehrlingRufTag?: number;
     verratTag?: number;
+    // R233: die Dorf-Waffenkammer - jede geschmiedete Waffe als Einzelstueck
+    // mit Guete. dorfLager['waffen'] bleibt der abgeglichene Zaehler.
+    waffenkammer?: Array<import('./waffenkammer').DorfWaffe>;
     haendlerSeed: number;
     aufbauBestellt?: boolean;
     einrichtung?: number;

@@ -2548,3 +2548,29 @@ am geraden Tag). Ein Probe-Stolperer war ein eigener Einfall (Nicht-
 Kaempfer fliehen - gewolltes M4-Verhalten), kein Fehler.
 OFFEN (OFFENE-FRAGEN): Verrats-Timing bestaetigen; Burg-Karte sichtbar
 besetzt? Ahnengruft-Level (Doku 4d/4e) als eigene Runde.
+
+## R233 - Waffenkammer, gewuerfelter Start, Verrat geparkt
+FERTIG UND VERIFIZIERT:
+1. Waffen sind jetzt EINZELSTUECKE mit Guete (1-100) und Namen: Grobe/
+   Solide/Gute Klinge, Meisterklinge. Der Meister schmiedet 55-95, der
+   Lehrling 25-60 - die Qualitaet je Stueck, die du wolltest. Die
+   Chronik nennt jedes gefertigte Stueck.
+2. Der Rekrut bekommt das BESTE Stueck der Kammer, mit Namen und
+   Schadens-Bonus auf der Einheit (belegt: "Meisterklinge (Guete 81)",
+   Bonus +2). Verkauft der Schulze Ueberlauf, geht der Plunder zuerst.
+3. Jedes NEUE Spiel wuerfelt den Anfangsbestand ALLER 20 Dorf-Waren -
+   Brot, Holz, Korn, Wasser, Waffen, alles (je Ware eine Spanne in
+   EINER Datei). Belegt: Brot 10, Holz 40, Wasser 2, 4 gemischte
+   Klingen passend zum Zaehler.
+4. SCHMIED-VERRAT GEPARKT (ein Schalter, aktiv:false): deine Einwaende
+   greifen - die verdoppelte Kriegs-Abgabe macht den Schmied
+   unabkoemmlich, niemand wuerde ihn wegschicken, und ob ein Verraeter
+   einen Abschiedsbrief schreibt, ist fraglich. Der ganze Bogen bleibt
+   gebaut und wartet; drei Zuend-Varianten (Graf beordert ihn /
+   heimlicher Nacht-Abgang / Abgaben-Eskorte) plus die Idee
+   "gefundener ANWERBE-Brief des Feindes statt Abschiedsbrief" stehen
+   in OFFENE-FRAGEN. Belegt: der Verrat zuendet nicht mehr.
+TESTS: tsc sauber, 520/520 Vitest gruen (8 neue Faelle). Browser: alle
+vier Punkte nachgestellt.
+OFFEN: Waffenkammer-Liste im Verwaltungs-Buch (aktuell nur Chronik-
+Meldungen sichtbar); Werkzeuge bleiben Zaehler.

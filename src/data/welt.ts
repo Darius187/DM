@@ -404,6 +404,11 @@ export const FELDBAU_ABWEHR: Readonly<Record<string, number>> = {
 // die Grafen-Verstaerkung bleibt fuer immer aus. Kein Ermittlungs-Spiel -
 // der Spieler versteht erst am Abschiedsbrief, was er da grossgezogen hat.
 export const SCHMIED_VERRAT = {
+  // R233 (Autor): AUS, bis Timing/Logik geklaert sind - die verdoppelte
+  // Kriegs-Abgabe macht den Schmied unabkoemmlich, die "Lieferung an den
+  // Grafen" traegt als Vorwand nicht, und ob es einen Abschiedsbrief gibt,
+  // ist offen. Alles bleibt gebaut; dieser eine Schalter zuendet es wieder.
+  aktiv: false,
   tageNachRuf: 3,      // Verrat N Tage nach dem ERSTEN Lehrlings-Ruf ins Feld
   nachrichtTage: 2,    // so lange braucht die Nachricht vom Fall der Burg
   brief: [

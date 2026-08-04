@@ -503,13 +503,27 @@ Aaskraehen zuerst (Marke!), dann Irrlicht (nutzt Moor-Nebel).
 - Missions-Stand (befreite/ausgehoehlte, geknackte Zonen) ins Savegame?
   Aktuell Session-Stand der Planungskarte.
 
-## R232 - Schmied-Verrat (Timing)
-- WANN genau soll der Verrat zuenden? Zwischenloesung (eine Zeile in
-  SCHMIED_VERRAT aenderbar): 3 Tage nachdem der Lehrling ERSTMALS an
-  eine Feldschmiede gerufen wurde UND der Feldzug laeuft (Krypta-Boss
-  tot). Wer den Lehrling nie ruft, erlebt den Verrat nie - gewollt?
-  Alternative: zusaetzlich ein spaetester Tag nach Feldzug-Beginn.
-- Die Grafenburg faellt aktuell NUR als Nachricht/Chronik (+ Verstaerkung
-  versiegt fuer immer). Soll die Burg-Karte danach sichtbar besetzt sein
-  (Feindlager auf 'burg')? Und die Ahnengruft als betretbares Level folgt
-  als eigene Runde (Doku 4d/4e).
+## R232/R233 - Schmied-Verrat: GEPARKT (SCHMIED_VERRAT.aktiv=false)
+Autor-Einwaende (R233): die verdoppelte Kriegs-Abgabe macht den Schmied
+unabkoemmlich - niemand wuerde ihn wegschicken, die "Lieferung an den
+Grafen" traegt nicht. Und schreibt ein Verraeter einen Abschiedsbrief?
+Der ganze Bogen bleibt gebaut; EIN Schalter zuendet ihn wieder, sobald
+die Logik steht. Drei Varianten zur Wahl:
+  A) DER GRAF BEORDERT IHN: Kriegsrecht - der Landesherr zieht den
+     besten Schmied zur Kriegsschmiede der Burg ein. Das Dorf KANN
+     nicht ablehnen (niemand "schickt" ihn - es ist ein Befehl von
+     oben, und die verdoppelte Abgabe stuetzt das sogar).
+  B) ER VERSCHWINDET HEIMLICH BEI NACHT (Claude-Favorit): kein
+     Vorwand, keine Lieferung - morgens ist die Esse kalt und das
+     Werkzeug weg. In die Burg kommt er, weil die Burg, die keine
+     Fluechtlinge nimmt (R192-Lore), fuer den beruehmtesten Schmied
+     der Gegend eine Ausnahme macht. Er geht erst, als Wenzel
+     eingearbeitet ist - er hat seinen Ersatz selbst herangezogen.
+  C) DIE REGULAERE ABGABEN-LIEFERUNG (alle 7 Tage, existiert): die
+     verdoppelte Waffen-Abgabe muss zur Burg eskortiert werden -
+     einmal reitet der Schmied mit und kehrt nicht zurueck.
+Statt ABSCHIEDSBRIEF: ein GEFUNDENER ANWERBE-BRIEF DES FEINDES (an
+ihn adressiert, in der Werkstatt versteckt) - ein Verraeter schreibt
+nicht, aber er hat Post bekommen. Gleicher Rueckblick-Payoff.
+- Weiter offen: Burg-Karte danach sichtbar besetzt? Ahnengruft-Level
+  (Doku 4d/4e) als eigene Runde.
