@@ -3753,3 +3753,33 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   Zuend-Varianten + Anwerbe-Brief-Idee stehen in OFFENE-FRAGEN.
 - 8 neue Vitest-Faelle (Guete-Spannen, Namens-Stufen, beste/schlechteste
   Auswahl, Start-Wuerfel-Grenzen) - 520/520 gruen.
+
+## R234 - Guete-Schadens-Modell (SWG-Prinzip) + Veredeln + Verrat Variante B
+- KLINGEN_STUFEN x GUETE (data/wirtschaft.ts): der Schaden einer Klinge
+  = Stufen-Anker linear nach Guete verschoben. Stufe 1 (Eisenklinge):
+  Guete 1 = 3-5, Guete 100 = 7-11; KALIBRIERT so, dass Guete ~50 exakt
+  die alte Standard-Heerklinge 5-8 ergibt - nichts wird staerker oder
+  schwaecher als bisher, die Guete verschiebt nur massvoll (Autor:
+  "darf nicht allzuviel ausmachen"). Stufe 2 (Stahl 5-8..10-15) und
+  Stufe 3 (Gussstahl 8-12..14-20) sind Daten-Haken - noch nicht
+  schmiedbar (Freischaltung offen). Veteranen-Rang multipliziert wie
+  gehabt OBENDRAUF - das ist die Lategame-Achse des Heeres (Ausruestung
+  levelt nicht, die EINHEIT levelt ueber Raenge).
+- waffeGeschenk um min/max erweitert (armee.ts): eine Dorf-Klinge
+  ERSETZT die Heerklinge komplett mit ihrer eigenen Spanne; der flache
+  bonus bleibt fuer Helden-Geschenke (addieren).
+- VEREDELN (Amboss-Knopf, nur wenn der MEISTER da ist): beste Klinge
+  der Kammer -> Guete 100 ("Veredelte Klinge", Hoechstschaden der
+  Stufe) fuer VEREDELN.gold (25). Guete 100 entsteht NIE beim normalen
+  Schmieden (Meister max 95) - nur so.
+- VERRAT VARIANTE B (Autor-Entscheid, Doku 07/4g): aktiv wieder AN.
+  Kein Brief, keine Post, keine Lieferung. Der Deal stand VOR dem
+  Krypta-Eintritt (Anwerber-Treffen; Aussicht: Ausbilder der Monster-
+  Schmiede, Untertanen, nie mehr selbst haemmern). ZUENDER: das erste
+  Betreten einer BESETZTEN Karte (Rueckeroberungs-Zug, flags.verratSteht)
+  - in DER Nacht geht er, der Morgen meldet die kalte Esse. Aufklaerung
+  erst spaeter: das Verhoer gefangener Voegte erzaehlt die Vorgeschichte
+  (flags.verratAufgeklaert); weitere Kanaele folgen.
+- Alte R232-Reste entfernt: Abschiedsbrief (Interact + Texte),
+  tageNachRuf-Ausloeser. lehrlingRufTag wird weiter aufgezeichnet
+  (kuenftige Verwendung offen).

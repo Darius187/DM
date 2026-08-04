@@ -205,6 +205,35 @@ Generische Regel fuer Personal an Feldbauten - EIN System, mehrere Rollen:
   Schmiede gebraucht - dann muss der Spieler waehlen: Feld ODER Dorf.
   Der Engpass bekommt eine Personal-Dimension.
 
+## 4g. REVISION R234 (Autor-Entscheid): Variante B - heimlich bei Nacht
+
+Ersetzt die Ablauf-Details aus 4 und 4c (Motive aus 2 und Besetzung aus 4b
+gelten weiter). Autor-Einwaende: die verdoppelte Kriegs-Abgabe macht den
+Schmied UNABKOEMMLICH - niemand wuerde ihn wegschicken, die "Lieferung an
+den Grafen" traegt nicht. Und ein Verraeter schreibt keinen Abschiedsbrief.
+
+- DER DEAL STAND VON ANFANG AN: noch BEVOR der Held die Krypta betrat,
+  traf sich der Schmied mit einem Anwerber der Erhobenen (jemand "aus dem
+  anderen Dorf"). Das Angebot: ein fuerstlicher Platz an der Seite der
+  Armee, Gold, ein besseres Leben - er BILDET die Monster-Schmiede AUS,
+  ist Einweiser mit eigenen Untertanen und muss selbst nie mehr haemmern,
+  statt jeden Tag doppelte Abgabe zu schlagen.
+- ZUENDER: der erste RUECKEROBERUNGS-ZUG des Spielers (Betreten einer
+  besetzten Karte zum Saeubern). Waehrend alle an die Front starren,
+  geht der Schmied in DER Nacht. NICHT an der Feldschmiede festgemacht
+  (Autor-Order).
+- KEIN Brief, KEINE Post, kein Vorwand: morgens ist die Esse kalt, das
+  Werkzeug fehlt, niemand hat ihn gehen sehen. Der kalte Amboss IST die
+  Szene.
+- AUFKLAERUNG ERST SPAETER: der Spieler erfaehrt die Vorgeschichte
+  rueckwirkend - erster Kanal: das VERHOER gefangener Lagervoegte
+  ("Euer Schmied? Der bildet jetzt unsere Schmiede aus - der Handel
+  stand, bevor Ihr die Krypta betreten habt"). Weitere Kanaele (Zeugen
+  des Treffens, Umkehrer, Sichtung als Waffenmeister im Feindlager)
+  folgen.
+- Danach unveraendert: Grafenburg-Nachricht (nachrichtTage), Verstaerkung
+  versiegt, Wenzel traegt die Esse (R231-Regel).
+
 ## 5. Der Endgegner-Bezug
 
 Der Antagonist ist Herr einer Wirtschaft, nicht nur einer Horde: Voegte

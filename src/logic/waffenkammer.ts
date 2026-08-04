@@ -4,13 +4,15 @@
 // dorfLager['waffen'] bleibt fuer Anzeige/Kapazitaet/Handel bestehen und wird
 // mit dieser Liste abgeglichen (gleicheZahl). Reine Logik, testbar.
 
-import { WAFFEN_GUETE } from '../data/wirtschaft';
+import { WAFFEN_GUETE, KLINGEN_STUFEN } from '../data/wirtschaft';
 
 export interface DorfWaffe {
   name: string;
-  guete: number;                              // 1-100
+  guete: number;                              // 1-100 (100 nur durch Veredeln)
   quelle: 'meister' | 'lehrling' | 'bestand';
   tag: number;                                // Schmiede-Tag (Chronik/Anzeige)
+  stufe?: number;                             // R234: Material-Stufe (1 = Eisen); fehlt = 1
+  veredelt?: boolean;                         // R234: vom Meister nachgeschaerft
 }
 
 export function waffenName(guete: number): string {
@@ -21,12 +23,28 @@ export function waffenName(guete: number): string {
 export function schmiedeWaffe(rng: () => number, quelle: DorfWaffe['quelle'], tag: number): DorfWaffe {
   const spanne = WAFFEN_GUETE[quelle];
   const guete = spanne.von + Math.floor(rng() * (spanne.bis - spanne.von + 1));
-  return { name: waffenName(guete), guete, quelle, tag };
+  return { name: waffenName(guete), guete, quelle, tag, stufe: 1 };
 }
 
-// Guete -> Schadens-Bonus fuer die Einheit, die das Stueck erhaelt.
-export function waffenBonus(guete: number): number {
-  return Math.round((guete - WAFFEN_GUETE.bonusMitte) / WAFFEN_GUETE.bonusJe);
+// R234: der SCHADEN einer Klinge = Stufen-Anker linear nach Guete verschoben
+// (SWG-Prinzip: die Qualitaet schiebt den Wert innerhalb der Stufen-Spanne).
+// Stufe 1, Guete ~50 = 5-8 = die alte Standard-Heerklinge.
+export function klingenSchaden(stufe: number, guete: number): { min: number; max: number } {
+  const s = KLINGEN_STUFEN[Math.max(0, Math.min(KLINGEN_STUFEN.length - 1, stufe - 1))];
+  const t = (Math.max(1, Math.min(100, guete)) - 1) / 99;
+  const min = Math.round(s.g1.min + (s.g100.min - s.g1.min) * t);
+  const max = Math.round(s.g1.max + (s.g100.max - s.g1.max) * t);
+  return { min, max: Math.max(min, max) };
+}
+
+// R234: VEREDELN - der Meister schaerft nach/nimmt besten Stahl: Guete 100,
+// der Hoechstschaden der Stufe. Gibt false zurueck, wenn nichts zu tun ist.
+export function veredle(w: DorfWaffe | null): boolean {
+  if (!w || w.guete >= 100) return false;
+  w.guete = 100;
+  w.veredelt = true;
+  w.name = waffenName(100);
+  return true;
 }
 
 // Der Feldwebel gibt das BESTE Stueck zuerst aus (Rekrutierung).

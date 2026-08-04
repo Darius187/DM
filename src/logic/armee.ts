@@ -39,7 +39,10 @@ export interface ArmeeEinheit {
   // Ausruestung. bonus/schutz kommen aus den Gegenstands-Boni und wirken
   // ZUSAETZLICH zur Heer-Grundausstattung (HEER_AUSRUESTUNG). item = der
   // Original-Gegenstand - beim Ersetzen wandert er zurueck in den Rucksack.
-  waffeGeschenk?: { name: string; bonus: number; item?: import('../data/types').Item };
+  // R234: min/max ersetzen (falls gesetzt) die Heerklinge KOMPLETT - so
+  // traegt eine Dorf-Klinge ihre eigene Guete-Schadensspanne (Zaehler bonus
+  // bleibt fuer Helden-Geschenke, die ADDIEREN).
+  waffeGeschenk?: { name: string; bonus: number; min?: number; max?: number; item?: import('../data/types').Item };
   ruestungGeschenk?: { name: string; schutz: number; item?: import('../data/types').Item };
 }
 

@@ -1,7 +1,7 @@
 // R233: die Dorf-Waffenkammer - Einzelstuecke mit Guete statt Zaehler,
 // plus der gewuerfelte Anfangsbestand aller Dorf-Waren.
 import { describe, it, expect } from 'vitest';
-import { schmiedeWaffe, waffenName, waffenBonus, nimmBesteWaffe, gleicheAn, type DorfWaffe } from '../src/logic/waffenkammer';
+import { schmiedeWaffe, waffenName, klingenSchaden, veredle, nimmBesteWaffe, gleicheAn, type DorfWaffe } from '../src/logic/waffenkammer';
 import { WAFFEN_GUETE, DORF_LAGER_START_SPANNE, wuerfleDorfLagerStart } from '../src/data/wirtschaft';
 
 describe('schmiedeWaffe (R233)', () => {
@@ -20,10 +20,28 @@ describe('schmiedeWaffe (R233)', () => {
     expect(waffenName(10)).toBe('Grobe Klinge');
   });
 
-  it('waffenBonus: Mitte 50 = 0, hohe Guete positiv, niedrige negativ', () => {
-    expect(waffenBonus(50)).toBe(0);
-    expect(waffenBonus(90)).toBe(2);
-    expect(waffenBonus(30)).toBe(-1);
+  // R234: Guete schiebt den Schaden INNERHALB der Stufen-Spanne (SWG-Prinzip)
+  it('klingenSchaden: Stufe 1 laeuft von 3-5 (Guete 1) bis 7-11 (Guete 100)', () => {
+    expect(klingenSchaden(1, 1)).toEqual({ min: 3, max: 5 });
+    expect(klingenSchaden(1, 100)).toEqual({ min: 7, max: 11 });
+    // Kalibrierung: mittlere Guete = die alte Standard-Heerklinge 5-8
+    expect(klingenSchaden(1, 50)).toEqual({ min: 5, max: 8 });
+  });
+
+  it('klingenSchaden: hoehere Stufe hebt die ganze Spanne (Lategame-Achse)', () => {
+    expect(klingenSchaden(2, 1)).toEqual({ min: 5, max: 8 });
+    expect(klingenSchaden(2, 100)).toEqual({ min: 10, max: 15 });
+    expect(klingenSchaden(3, 100)).toEqual({ min: 14, max: 20 });
+  });
+
+  it('veredle: hebt auf Guete 100 (Hoechstschaden der Stufe), nur einmal', () => {
+    const w: DorfWaffe = { name: waffenName(62), guete: 62, quelle: 'meister', tag: 3, stufe: 1 };
+    expect(veredle(w)).toBe(true);
+    expect(w.guete).toBe(100);
+    expect(w.veredelt).toBe(true);
+    expect(w.name).toBe('Veredelte Klinge');
+    expect(veredle(w)).toBe(false);      // schon veredelt
+    expect(veredle(null)).toBe(false);   // nichts da
   });
 });
 

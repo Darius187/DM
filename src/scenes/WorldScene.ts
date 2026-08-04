@@ -84,7 +84,7 @@ import { MINE } from '../data/mine';
 import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, HEER_AUSRUESTUNG, MORAL, MARSCH, VERTEIDIGUNG, BOTE, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, HALTUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, FELDSCHER, TURM, WEGFINDUNG, bauTechnikText, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
-import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion , LEHRLING_SCHMIEDE, schmiedeArbeit, wuerfleDorfLagerStart } from '../data/wirtschaft';
+import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion , LEHRLING_SCHMIEDE, schmiedeArbeit, wuerfleDorfLagerStart, VEREDELN } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
 import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, AUSHOEHLUNG, MISSION_TRUPP, KANAL_TREIBGUT, FELDBAU_ABWEHR, FELD_VERSORGER, FELD_VERSORGER_WERTE, LAGERVOGT, SCHMIED_VERRAT, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
@@ -141,7 +141,7 @@ import { boteNeu, schickeBote, tickBote, type Bote } from '../logic/bote';
 import { neueGebietslage, gebietsStatus, setzeGebietsStatus, type Gebietslage, type GebietsStatus } from '../logic/gebietslage';
 import { neuerFeindzug, tickFeindzug, beendeAngriff, verliereLager, bautenAbwehr, entferneVogt, type Feindzug } from '../logic/feindzug';
 import { routeFrei } from '../logic/feldversorger';
-import { schmiedeWaffe, nimmBesteWaffe, waffenBonus, gleicheAn, type DorfWaffe } from '../logic/waffenkammer';
+import { schmiedeWaffe, nimmBesteWaffe, klingenSchaden, veredle, gleicheAn, type DorfWaffe } from '../logic/waffenkammer';
 import { schlachtXp } from '../logic/schlachtWertung';
 import { BODEN_STILE, bodenStilTextur } from '../gfx/bodenStile';
 import { WAND_STILE, wandStilFrontTextur, wandStilKroneTextur } from '../gfx/wandStile';
@@ -2200,7 +2200,13 @@ export class WorldScene extends CombatScene {
     (this.feindzug.anmarsch ??= {})[id] = anmarschVonSpawn(
       Math.floor(this.px / TILE), Math.floor(this.py / TILE), a.w, a.h,
     );
-    if (this.bossDead && gebietsStatus(this.lage, id) === 'besetzt') this.baueFeindlager(a);
+    if (this.bossDead && gebietsStatus(this.lage, id) === 'besetzt') {
+      this.baueFeindlager(a);
+      // R234 (Variante B): der ERSTE Rueckeroberungs-Zug spannt den Verrat -
+      // der Schmied nutzt die Nacht, in der alle an die Front starren.
+      // Der Spieler merkt hier NICHTS; der Morgen danach spricht.
+      if (SCHMIED_VERRAT.aktiv && !this.flags.schmiedVerrat) this.flags.verratSteht = true;
+    }
     if (id === 'crypt3' && !this.flags.ebene3) {
       // R176 (Autor): das Stadtportal ist QUEST-Belohnung - freigeschaltet,
       // sobald der Held die dritte Verlies-Ebene erreicht.
@@ -4320,8 +4326,12 @@ export class WorldScene extends CombatScene {
     if (ha) {
       const rang = rangFuerKills(ref.kills);
       const bonus = einheit.waffeGeschenk?.bonus ?? 0;
-      ref.waffeMin = Math.max(1, Math.round((ha.min + bonus) * rangDmgF(rang)));
-      ref.waffeMax = Math.max(ref.waffeMin, Math.round((ha.max + bonus) * rangDmgF(rang)));
+      // R234: traegt die Einheit eine DORF-KLINGE (eigene min/max-Spanne aus
+      // Stufe x Guete), ersetzt die die Heerklinge komplett.
+      const wMin = einheit.waffeGeschenk?.min ?? ha.min + bonus;
+      const wMax = einheit.waffeGeschenk?.max ?? ha.max + bonus;
+      ref.waffeMin = Math.max(1, Math.round(wMin * rangDmgF(rang)));
+      ref.waffeMax = Math.max(ref.waffeMin, Math.round(wMax * rangDmgF(rang)));
       ref.dmg = Math.round((ref.waffeMin + ref.waffeMax) / 2);
       ref.waffeName = einheit.waffeGeschenk?.name ?? ha.waffe;
       ref.ruestungRed = Math.max(0.5, +(ha.red - (einheit.ruestungGeschenk?.schutz ?? 0) * 0.01).toFixed(2));
@@ -9593,8 +9603,11 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     const ha = HEER_AUSRUESTUNG[rtsTyp];
     if (ha) {
       const bonus = einheit.waffeGeschenk?.bonus ?? 0;
-      e.waffeMin = Math.max(1, Math.round((ha.min + bonus) * rangDmgF(rang)));
-      e.waffeMax = Math.max(e.waffeMin, Math.round((ha.max + bonus) * rangDmgF(rang)));
+      // R234: Dorf-Klinge (eigene min/max aus Stufe x Guete) ersetzt die Heerklinge.
+      const wMin = einheit.waffeGeschenk?.min ?? ha.min + bonus;
+      const wMax = einheit.waffeGeschenk?.max ?? ha.max + bonus;
+      e.waffeMin = Math.max(1, Math.round(wMin * rangDmgF(rang)));
+      e.waffeMax = Math.max(e.waffeMin, Math.round(wMax * rangDmgF(rang)));
       e.dmg = Math.round((e.waffeMin + e.waffeMax) / 2);
       e.waffeName = einheit.waffeGeschenk?.name ?? ha.waffe;
       e.ruestungRed = Math.max(0.5, +(ha.red - (einheit.ruestungGeschenk?.schutz ?? 0) * 0.01).toFixed(2));
@@ -10449,6 +10462,13 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     v.weg = true; v.sprite.setVisible(false); v.label.setVisible(false);
     this.logMsg(`${name} ergibt sich. Verhör: das Lager hat ~${punkte} Kampfkraft gespart. Ohne Vogt stockt die Wirtschaft.`, 'gold');
     this.chronik('ereignis', `${name} wurde gefangen genommen - ein Erhobener weniger im Dienst des Feindes.`);
+    // R234: erst HIER erfaehrt der Spieler, wie der Verrat zustande kam -
+    // der Deal stand, lange bevor der Held die Krypta betrat.
+    if (this.flags.schmiedVerrat && !this.flags.verratAufgeklaert) {
+      this.flags.verratAufgeklaert = true;
+      this.logMsg(`${name} lacht: "Euer Schmied? Der bildet jetzt unsere Schmiede aus - Waffenmeister nennen sie ihn. Der Handel stand, bevor Ihr auch nur die Krypta betreten habt."`, 'bad');
+      this.chronik('geschichte', 'Das Verhör bringt es ans Licht: der Schmied traf den Anwerber der Erhobenen lange vor allem - ihm wurde ein fürstlicher Platz versprochen, Gold, Untertanen. Er hämmert nicht mehr; er lässt hämmern.');
+    }
   }
 
   private vogtToeten(): void {
@@ -11227,10 +11247,15 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     }
     const einheit = musterEin(this.armee, typ, REKRUTIERUNG.aushebungsOrt, undefined, art === 'soeldner');
     if (art === 'bauer') {
-      // R233: die Guete der ausgegebenen Waffe wirkt auf den Rekruten
-      // (waffeGeschenk-Schiene aus R187 - Name + Schadens-Bonus).
-      if (rekrutWaffe) einheit.waffeGeschenk = { name: `${rekrutWaffe.name} (Güte ${rekrutWaffe.guete})`, bonus: waffenBonus(rekrutWaffe.guete) };
-      const waffeText = rekrutWaffe ? `${rekrutWaffe.name}, Güte ${rekrutWaffe.guete}` : '1 Waffe';
+      // R233/R234: die ausgegebene Klinge traegt ihre EIGENE Schadensspanne
+      // aus Stufe x Guete (waffeGeschenk-Schiene aus R187, min/max ersetzen
+      // die Heerklinge; der Veteranen-Rang multipliziert obendrauf).
+      let waffeText = '1 Waffe';
+      if (rekrutWaffe) {
+        const s2 = klingenSchaden(rekrutWaffe.stufe ?? 1, rekrutWaffe.guete);
+        einheit.waffeGeschenk = { name: `${rekrutWaffe.name} (Güte ${rekrutWaffe.guete})`, bonus: 0, min: s2.min, max: s2.max };
+        waffeText = `${rekrutWaffe.name}, Güte ${rekrutWaffe.guete}, ${s2.min}-${s2.max} Schaden`;
+      }
       this.chronik('ereignis', `${einheit.name} legt den Pflug nieder und nimmt die Waffe (${waffeText}) - das Dorf ist um einen Arbeiter ärmer.`);
       this.logMsg(`${einheit.name} ausgehoben (${gold} Gold, ${waffeText}, 1 Arbeiter) - er meldet sich in Ravensmoor.`, 'gold');
     } else {
@@ -12114,19 +12139,24 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         },
       };
     }
-    // R232: der Abschiedsbrief des Schmieds - haengt nach dem Verrat an
-    // seinem Amboss. Erst hier werden die Indizien rueckwirkend lesbar.
-    if (this.area.id === 'stadt' && this.flags.schmiedVerrat) {
+    // R234: VEREDELN am Amboss - der MEISTER schaerft die beste Klinge der
+    // Kammer nach/nimmt besten Stahl: Guete 100, Hoechstschaden der Stufe.
+    // Nur solange der Schmied da ist - der Lehrling kann das nicht.
+    if (this.area.id === 'stadt' && this.kettenNpcVerfuegbar('schmied') && this.waffenkammer.some((w) => w.guete < 100)) {
       const amboss = this.area.stationen?.find((s2) => s2.art === 'amboss');
       if (amboss && near(amboss.x, amboss.y, 56)) {
         return {
-          text: `Abschiedsbrief lesen (${ik})`,
+          text: `Beste Klinge veredeln lassen (${VEREDELN.gold} Gold, ${ik})`,
           action: () => {
-            this.dialog.show('Abschiedsbrief des Schmieds', [...SCHMIED_VERRAT.brief]);
-            if (!this.flags.briefGelesen) {
-              this.flags.briefGelesen = true;
-              this.chronik('geschichte', 'Der Abschiedsbrief des Schmieds: "Nie wieder abgeben, nie wieder knien." Er war einer der Erhobenen - lange bevor irgendwer es ahnte.');
-            }
+            if (this.p.gold < VEREDELN.gold) { this.logMsg('Zu wenig Gold - der Schmied schärft nicht umsonst.', 'bad'); return; }
+            let beste: DorfWaffe | null = null;
+            for (const w of this.waffenkammer) if (w.guete < 100 && (!beste || w.guete > beste.guete)) beste = w;
+            if (!veredle(beste)) return;
+            this.p.gold -= VEREDELN.gold;
+            const s2 = klingenSchaden(beste!.stufe ?? 1, 100);
+            this.sfx.play('klick');
+            this.logMsg(`Der Schmied veredelt die Klinge: ${beste!.name} (Güte 100, ${s2.min}-${s2.max} Schaden).`, 'gold');
+            this.chronik('ereignis', `Der Schmied schärft nach und nimmt besten Stahl - eine ${beste!.name} verlässt die Esse (Güte 100).`);
           },
         };
       }
@@ -13308,23 +13338,22 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     return true;
   }
 
-  // R232 (Doku 07/4b+4c): der Morgen des Verrats. Laeuft der Feldzug und ist
-  // der Lehrling seit tageNachRuf eingearbeitet, ist der Schmied eines Tages
-  // einfach FORT - "eine Lieferung an den Grafen". nachrichtTage spaeter
-  // trifft die Nachricht ein: die Burg fiel von innen, die Grafen-
-  // Verstaerkung bleibt fuer immer aus. Kein Rueckweg, kein Puzzle.
+  // R232/R234 (Doku 07/4b+4c, Variante B): der Morgen nach dem heimlichen
+  // Abgang. Der Zuender ist der ERSTE Rueckeroberungs-Zug des Spielers
+  // (Betreten einer besetzten Karte, goArea setzt flags.verratSteht) -
+  // waehrend alle an die Front starren, geht der Schmied in DER Nacht.
+  // Kein Vorwand, kein Brief. nachrichtTage spaeter faellt die Grafenburg.
   private pruefeSchmiedVerrat(): void {
-    if (!SCHMIED_VERRAT.aktiv) return;   // R233: geparkt, bis der Autor das Timing festlegt
+    if (!SCHMIED_VERRAT.aktiv) return;
     if (!this.flags.schmiedVerrat) {
-      if (!this.bossDead || this.lehrlingRufTag === null) return;
-      if (this.tag < this.lehrlingRufTag + SCHMIED_VERRAT.tageNachRuf) return;
+      if (!this.flags.verratSteht) return;
       this.flags.schmiedVerrat = true;
       this.verratTag = this.tag;
       // Live vom Amboss raeumen, falls der Held gerade in Ravensmoor steht.
       const i = this.npcEnts.findIndex((n) => n.id === 'schmied');
       if (i >= 0) { this.npcEnts[i].sprite.destroy(); this.npcEnts[i].label.destroy(); this.npcEnts.splice(i, 1); }
-      this.logMsg('Der Schmied ist fort - "eine Lieferung an den Grafen", heißt es. Die Esse ist kalt.', 'bad');
-      this.chronik('ereignis', 'Der Schmied hat Ravensmoor verlassen - eine Lieferung an den Grafen, sagte er. Sein Werkzeug hängt noch an der Wand.');
+      this.logMsg('Der Schmied ist über Nacht verschwunden - die Esse ist kalt, sein Werkzeug fehlt. Niemand hat ihn gehen sehen.', 'bad');
+      this.chronik('ereignis', 'Der Schmied ist fort. Kein Abschied, kein Wort - nur ein kalter Amboss und ein leerer Werkzeughaken.');
       return;
     }
     if (!this.flags.burgGefallen && this.verratTag !== null && this.tag >= this.verratTag + SCHMIED_VERRAT.nachrichtTage) {

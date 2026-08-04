@@ -397,27 +397,20 @@ export const FELDBAU_ABWEHR: Readonly<Record<string, number>> = {
   feldschmiede: 8, lazarett: 8, nachschub: 6, zelt: 3, befehlszelt: 10,
 };
 
-// R232 (Doku 07/4b+4c): DER VERRAT DES SCHMIEDS. Der Bogen zuendet, nachdem
-// der Lehrling eingearbeitet ist (erster Ruf an eine Feldschmiede) und der
-// Feldzug laeuft: eines Morgens ist der Schmied fort - "eine Lieferung an
-// den Grafen". Tage spaeter kommt die Nachricht: die Burg fiel von innen,
-// die Grafen-Verstaerkung bleibt fuer immer aus. Kein Ermittlungs-Spiel -
-// der Spieler versteht erst am Abschiedsbrief, was er da grossgezogen hat.
+// R232/R234 (Doku 07/4b+4c, Autor-Entscheid VARIANTE B): DER VERRAT DES
+// SCHMIEDS - HEIMLICH BEI NACHT. Der Deal stand von Anfang an: noch BEVOR
+// der Held die Krypta betrat, traf sich der Schmied mit einem Anwerber der
+// Erhobenen - Aussicht auf einen fuerstlichen Platz an der Seite der Armee,
+// Gold, und nie wieder doppelte Abgabe schmieden: er bildet die MONSTER-
+// SCHMIEDE aus, Einweiser mit eigenen Untertanen, selbst haemmern muss er
+// nie mehr. ZUENDER: der Spieler betritt die erste BESETZTE Karte, um sie
+// zu saeubern - waehrend alle an die Front starren, geht der Schmied in
+// DER Nacht. Kein Vorwand, kein Brief - morgens ist die Esse kalt und das
+// Werkzeug fehlt. WIE es dazu kam, erfaehrt der Spieler erst spaeter
+// (Verhoer gefangener Voegte; weitere Kanaele folgen).
 export const SCHMIED_VERRAT = {
-  // R233 (Autor): AUS, bis Timing/Logik geklaert sind - die verdoppelte
-  // Kriegs-Abgabe macht den Schmied unabkoemmlich, die "Lieferung an den
-  // Grafen" traegt als Vorwand nicht, und ob es einen Abschiedsbrief gibt,
-  // ist offen. Alles bleibt gebaut; dieser eine Schalter zuendet es wieder.
-  aktiv: false,
-  tageNachRuf: 3,      // Verrat N Tage nach dem ERSTEN Lehrlings-Ruf ins Feld
+  aktiv: true,
   nachrichtTage: 2,    // so lange braucht die Nachricht vom Fall der Burg
-  brief: [
-    'Ihr habt mir vertraut, und das rechne ich Euch hoch an. Aber Vertrauen fuellt keinen Teller und adelt keinen Namen.',
-    'Mein Leben lang war ich der beste Schmied zwischen Moor und Bergen - und doch immer nur der, der ABLIEFERT. Der Graf nahm den Zehnt, der Vogt stand an meiner Tuer, und am Ende hiess es: Er hat seine Pflicht getan.',
-    'ER hat mir mehr versprochen: eine eigene Werkstatt, Gesellen, die sich verneigen, und dass ich NIE WIEDER abgebe und NIE WIEDER knie.',
-    'Die Schwerter, die ich der Burg lieferte, waren gute Arbeit. Was ich dort unten aufgebrochen habe, war es auch. Wenzel kann den Rest - er war immer besser, als ich ihm gesagt habe.',
-    'Sucht mich nicht.',
-  ],
 } as const;
 
 // R230 (Doku 07/3): LAGERVOEGTE - zivile Verwalter mancher Feindlager.

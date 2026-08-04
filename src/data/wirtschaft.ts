@@ -146,16 +146,36 @@ export function wuerfleDorfLagerStart(rng: () => number): Record<string, number>
 // R233 (Autor: "Waffen muessen Einzelstuecke mit Qualitaet sein"): die
 // GUETE-Spannen je Schmied. Der Meister schmiedet besser als der Lehrling -
 // jedes Stueck bekommt seine Guete (1-100) und daraus seinen Namen.
+// R234: Guete 100 entsteht NIE beim normalen Schmieden - nur durch VEREDELN
+// (nachschaerfen/bester Stahl beim Meister, gegen Gold).
 export const WAFFEN_GUETE = {
   meister: { von: 55, bis: 95 },
   lehrling: { von: 25, bis: 60 },
   bestand: { von: 30, bis: 85 },   // Alt-Bestand beim Spielstart (gemischt)
   // Namens-Stufen, absteigend: [ab-Guete, Name]
-  stufen: [[80, 'Meisterklinge'], [60, 'Gute Klinge'], [40, 'Solide Klinge'], [0, 'Grobe Klinge']],
-  // Guete -> Schadens-Bonus der Einheit, die sie erhaelt (waffeGeschenk):
-  // je bonusJe Guetepunkte ueber/unter bonusMitte ein Punkt.
-  bonusMitte: 50,
-  bonusJe: 20,
+  stufen: [[100, 'Veredelte Klinge'], [80, 'Meisterklinge'], [60, 'Gute Klinge'], [40, 'Solide Klinge'], [0, 'Grobe Klinge']],
+} as const;
+
+// R234 (Autor: "1 ist Schaden 2-3 und 100 ist Schaden 4-8 oder so ... je
+// nachdem welches Level die Klinge hat"): KLINGEN-STUFEN (Material-Level)
+// x GUETE (Handwerks-Qualitaet) ergeben den Schaden - Vorbild SWG: die
+// Qualitaet schiebt den Schaden INNERHALB der Stufen-Spanne. Je Stufe zwei
+// Anker: Schaden bei Guete 1 und bei Guete 100, dazwischen linear.
+// KALIBRIERUNG: Stufe 1 bei Guete ~50 = 5-8 = exakt die alte Standard-
+// Heerklinge - nichts wird staerker oder schwaecher als bisher, die Guete
+// verschiebt nur MASSVOLL nach oben oder unten (Autor: "darf nicht allzu
+// viel ausmachen"). Rang-Veteranenbonus multipliziert wie gehabt OBENDRAUF.
+export const KLINGEN_STUFEN: ReadonlyArray<{ name: string; g1: { min: number; max: number }; g100: { min: number; max: number } }> = [
+  { name: 'Eisenklinge', g1: { min: 3, max: 5 }, g100: { min: 7, max: 11 } },
+  { name: 'Stahlklinge', g1: { min: 5, max: 8 }, g100: { min: 10, max: 15 } },       // Haken: noch nicht schmiedbar
+  { name: 'Gussstahlklinge', g1: { min: 8, max: 12 }, g100: { min: 14, max: 20 } },  // Haken: noch nicht schmiedbar
+];
+
+// R234: VEREDELN beim Meister (Autor: "nochmal geschaerft oder extra guter
+// Stahl") - hebt die beste Klinge der Kammer auf Guete 100. Nur der MEISTER
+// kann das; der Lehrling nicht.
+export const VEREDELN = {
+  gold: 25,
 } as const;
 
 // Abgaben an den Fürsten für den Krieg: alle N Tage fällig. Gold aus der
