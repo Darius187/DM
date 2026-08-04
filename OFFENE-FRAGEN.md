@@ -525,5 +525,16 @@ die Logik steht. Drei Varianten zur Wahl:
 Statt ABSCHIEDSBRIEF: ein GEFUNDENER ANWERBE-BRIEF DES FEINDES (an
 ihn adressiert, in der Werkstatt versteckt) - ein Verraeter schreibt
 nicht, aber er hat Post bekommen. Gleicher Rueckblick-Payoff.
-- Weiter offen: Burg-Karte danach sichtbar besetzt? Ahnengruft-Level
-  (Doku 4d/4e) als eigene Runde.
+- ENTSCHIEDEN R234: Variante B ist drin (heimlicher Nacht-Abgang,
+  Zuender = erstes Betreten einer besetzten Karte, kein Brief,
+  Aufklaerung ueber das Vogt-Verhoer). NOCH OFFEN:
+  - Bleibt der GRAFENBURG-FALL Teil des Bogens (aktuell: Nachricht
+    2 Tage nach dem Abgang, Verstaerkung versiegt)? Die neue
+    Vorgeschichte (Waffenmeister/Ausbilder) braucht die Burg nicht
+    zwingend - passt aber zu Doku 4d (er bricht das Siegel im
+    Vorbeigehen).
+  - Burg-Karte danach sichtbar besetzt? Ahnengruft-Level (4d/4e) als
+    eigene Runde.
+  - WANN werden Stahl-/Gussstahl-Klingen (Stufe 2/3) freischaltbar?
+    Vorschlag: Stufe 2 an besseres Erz (Goldmine/neue Quelle) oder an
+    einen Schmiede-Ausbau koppeln.

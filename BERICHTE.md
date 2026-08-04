@@ -2574,3 +2574,20 @@ TESTS: tsc sauber, 520/520 Vitest gruen (8 neue Faelle). Browser: alle
 vier Punkte nachgestellt.
 OFFEN: Waffenkammer-Liste im Verwaltungs-Buch (aktuell nur Chronik-
 Meldungen sichtbar); Werkzeuge bleiben Zaehler.
+
+## R234 - Klingen-Schaden aus Stufe x Guete, Veredeln, Verrat Variante B
+FERTIG UND VERIFIZIERT:
+1. Schadens-Modell nach SWG-Prinzip: Klingen-STUFE (Material) x GUETE
+   (Handwerk). Stufe 1: Guete 1 = 3-5, Guete 50 = 5-8 (exakt die alte
+   Heerklinge), Guete 100 = 7-11. Stufen 2+3 als Daten-Haken. Der
+   Veteranen-Rang multipliziert obendrauf (Lategame-Achse).
+2. VEREDELN am Amboss: nur der Meister, 25 Gold, beste Klinge -> Guete
+   100 "Veredelte Klinge" (belegt: Gold -25, Rekrut traegt danach die
+   echte 7-11-Spanne statt der Heerklinge).
+3. Verrat Variante B scharf: erstes Betreten einer besetzten Karte
+   spannt, in DER Nacht geht der Schmied - kalte Esse am Morgen, kein
+   Brief. Aufklaerung erst im Vogt-Verhoer (Deal stand vor dem
+   Krypta-Eintritt, er ist jetzt Ausbilder der Monster-Schmiede).
+TESTS: tsc sauber, 522/522 gruen. Browser: alle vier Punkte belegt.
+OFFEN: Wann werden Stahl-/Gussstahlklingen (Stufe 2/3) freigeschaltet?
+Bleibt der Grafenburg-Fall Teil des Bogens? (OFFENE-FRAGEN)
