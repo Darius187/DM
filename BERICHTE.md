@@ -2497,3 +2497,27 @@ Vogt steht mit Namensschild am Altar (Screenshot), Reden-Hint + Dialog,
 Gefangennahme raeumt Bonus/Figur, Flucht bei Kampf im Lager belegt.
 OFFEN: Umkehrer + aufnehmen/verstossen (kommt mit dem zweiten Dorf),
 Dorfstimmungs-Malus fuers Toeten (braucht Stimmungs-System).
+
+## R231 - Lehrling Wenzel zieht ins Dorf ein
+FERTIG UND VERIFIZIERT:
+1. Wenzel steht als echter Bewohner am Amboss neben dem Schmied (eigenes
+   Namensschild, Abendgang ins Wirtshaus wie die anderen Handwerker).
+   Erzaehlerisch ist das Akt 1 des Spitzel-Bogens: der Schmied hat einen
+   Lehrling angenommen.
+2. Eine Person, ein Ort: ruft man Wenzel an eine Feldschmiede (R229),
+   verschwindet er aus dem Dorf - steht die Feldschmiede in Ravensmoor
+   selbst, sieht man ihn live vom Amboss abtreten. Faellt sein Feldposten,
+   steht er wieder im Dorf.
+3. Die Esse kennt jetzt drei Zustaende: Meister da = volle Arbeit.
+   Nur der Lehrling = halbe Schmelze, Waffe/Werkzeug nur jeden zweiten
+   Tag, Chronik: "allein an der Esse - Meisterarbeit ist es nicht."
+   Niemand da = Esse aus. Das ist der Versorgungs-Druck aus deiner
+   Vorgabe - und die Buehne fuer den spaeteren Schmied-Verrat.
+SPIELGEFUEHL: wer den Lehrling ins Feld holt, kauft Reparatur-Tempo
+gegen Dorf-Produktion - und ahnt noch nicht, dass genau dieser Junge
+bald die ganze Schmiede tragen muss.
+TESTS: tsc sauber, 512/512 Vitest gruen (3 neue Essen-Faelle). Browser:
+Wenzel am Amboss (Screenshot), Meister-Tag fertigt, Lehrling-allein
+fertigt nur an geraden Tagen, Ruf raeumt den NPC live, Esse-aus belegt.
+EHRLICHE GRENZE: "schlechtere Waffen" = weniger Ausstoss (Waffen sind
+im Lager ein Zaehler, kein Einzelstueck mit Qualitaet).

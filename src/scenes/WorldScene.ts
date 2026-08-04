@@ -84,7 +84,7 @@ import { MINE } from '../data/mine';
 import { RTS_BAUTEN, RTS_FORMATIONEN, BAU_KATEGORIEN, HEER_AUSRUESTUNG, MORAL, MARSCH, VERTEIDIGUNG, BOTE, REKRUTIERUNG, SCHLACHT_WERTUNG, ZIEL_SPERRE, BAU_HP, BAU_REPARATUR, BELAGERUNG, HALTUNG, RTS_HELD, RTS_UNIT_TYP, LAGER_EFFEKT, FELDSCHER, TURM, WEGFINDUNG, bauTechnikText, type RtsFormation, type RtsBau, type RtsUnitTyp } from '../data/rts';
 import { RtsBattle, type HeldRef } from '../logic/rtsBattle';
 import type { Form } from '../logic/formationen';
-import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion } from '../data/wirtschaft';
+import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion , LEHRLING_SCHMIEDE, schmiedeArbeit } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
 import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, AUSHOEHLUNG, MISSION_TRUPP, KANAL_TREIBGUT, FELDBAU_ABWEHR, FELD_VERSORGER, FELD_VERSORGER_WERTE, LAGERVOGT, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
@@ -7540,6 +7540,10 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     }
     // NPCs
     for (const n of a.npcs) {
+      // R231: ist der Lehrling an eine Feldschmiede gerufen (R229), steht er
+      // NICHT im Dorf - eine Person, ein Ort. Er kehrt zurueck, sobald die
+      // Rolle frei wird (Feldschmiede zerstoert/heimgekehrt).
+      if (n.id === LEHRLING_SCHMIEDE.npcId && this.feldVersorgerOrt['feldschmied']) continue;
       const sprite = this.add.sprite(n.x, n.y, '__DEFAULT').setDepth(n.y);
       this.provider.applyFigure(sprite, n.figur ?? n.id, 0, 0);
       // R216: Dorfvolk in derselben Groesse wie Monster/Heer (Autor: "und alle
@@ -12041,6 +12045,12 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
           this.feldVersorgerOrt[def.rolle] = this.area.id;
           this.logMsg(`${def.name} ist eingetroffen (${def.hinweis}).`, 'gold');
           this.chronik('ereignis', `${def.name} versieht jetzt den Dienst im Feldlager.`);
+          // R231: der Lehrling ist ein DORF-Bewohner - steht die Feldschmiede
+          // auf der Dorfkarte selbst, verschwindet er live vom Amboss.
+          if (def.rolle === 'feldschmied') {
+            const i = this.npcEnts.findIndex((n) => n.id === LEHRLING_SCHMIEDE.npcId);
+            if (i >= 0) { this.npcEnts[i].sprite.destroy(); this.npcEnts[i].label.destroy(); this.npcEnts.splice(i, 1); }
+          }
           this.baueVersorgerSprites();
         },
       };
@@ -13286,16 +13296,26 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     if (this.kettenNpcVerfuegbar(VERARBEITUNG.muehle.wer)) {
       this.verarbeite(VERARBEITUNG.muehle.ein, VERARBEITUNG.muehle.aus, VERARBEITUNG.muehle.menge);
     } else this.chronik('ereignis', 'Die Mühle steht still - der Müller fehlt.');
-    if (this.kettenNpcVerfuegbar(VERARBEITUNG.schmelze.wer)) {
-      this.schmelze(VERARBEITUNG.schmelze.einEisen, VERARBEITUNG.schmelze.einKohle, VERARBEITUNG.schmelze.aus, VERARBEITUNG.schmelze.menge);
-      // M4: aus Barren fertigt der Schmied Waffen/Werkzeuge (abwechselnd je Tag)
-      // in sein Verkaufsinventar (Lager; der Shop koppelt in M6 daran).
-      for (let i = 0; i < SCHMIEDE_FERTIGUNG.stueckProTag; i++) {
-        if ((this.dorfLager['barren'] ?? 0) < SCHMIEDE_FERTIGUNG.barrenProStueck) break;
-        this.lagerRaus('barren', SCHMIEDE_FERTIGUNG.barrenProStueck);
-        this.lagerRein(this.tag % 2 === 0 ? 'werkzeuge' : 'waffen', 1);
-      }
-    } else this.chronik('ereignis', 'Die Esse ist aus - der Schmied fehlt.');
+    // R231 (Doku 07/4b): an der Esse stehen MEISTER und/oder LEHRLING. Fehlt
+    // der Meister, traegt Wenzel die Schmiede allein - langsamer und nur jeden
+    // zweiten Tag ein Stueck. Ist Wenzel an eine FELDSCHMIEDE gerufen (R229),
+    // fehlt er im Dorf, egal wo der Held gerade steht.
+    {
+      const meisterDa = this.kettenNpcVerfuegbar(VERARBEITUNG.schmelze.wer);
+      const lehrlingDa = !this.feldVersorgerOrt['feldschmied'] && this.kettenNpcVerfuegbar(LEHRLING_SCHMIEDE.npcId);
+      const esse = schmiedeArbeit(meisterDa, lehrlingDa, this.tag);
+      if (esse.schmilzt) {
+        this.schmelze(VERARBEITUNG.schmelze.einEisen, VERARBEITUNG.schmelze.einKohle, VERARBEITUNG.schmelze.aus, Math.max(1, Math.round(VERARBEITUNG.schmelze.menge * esse.mengeF)));
+        // M4: aus Barren entstehen Waffen/Werkzeuge (abwechselnd je Tag)
+        // in sein Verkaufsinventar (Lager; der Shop koppelt in M6 daran).
+        if (esse.fertigt) for (let i = 0; i < SCHMIEDE_FERTIGUNG.stueckProTag; i++) {
+          if ((this.dorfLager['barren'] ?? 0) < SCHMIEDE_FERTIGUNG.barrenProStueck) break;
+          this.lagerRaus('barren', SCHMIEDE_FERTIGUNG.barrenProStueck);
+          this.lagerRein(this.tag % 2 === 0 ? 'werkzeuge' : 'waffen', 1);
+        }
+        if (esse.allein) this.chronik('ereignis', 'Lehrling Wenzel steht allein an der Esse - es geht langsamer, und Meisterarbeit ist es nicht.');
+      } else this.chronik('ereignis', 'Die Esse ist aus - niemand steht an der Schmiede.');
+    }
     // 2b) Gesicherte Goldhöhle: die Knappen fördern Golderz (sichern -> Produktion).
     if (this.flags.goldmineGesichert) this.lagerRein('golderz', GOLDERZ_PRO_TAG);
     // 2c) HOLZ-Wirtschaft (R81, Autor-Balance R79): die Dorf-Holzfäller schlagen

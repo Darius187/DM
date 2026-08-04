@@ -53,6 +53,31 @@ export const SCHMIEDE_FERTIGUNG = {
   stueckProTag: 1,
 } as const;
 
+// R231 (Doku 07/4b): der LEHRLING kann schmieden - aber nicht wie der
+// Meister. Steht er allein an der Esse (Schmied fehlt/fort), laeuft die
+// Schmelze mit halber Menge und ein Stueck entsteht nur jeden zweiten Tag.
+// Vorbereitung auf den Schmied-Verrat: danach traegt Wenzel das Dorf allein.
+export const LEHRLING_SCHMIEDE = {
+  npcId: 'lehrling',
+  mengeF: 0.5,        // Schmelz-Menge des Lehrlings (Anteil der Meister-Menge)
+  stueckJeTage: 2,    // Waffe/Werkzeug nur jeden N-ten Tag
+} as const;
+
+// Wer steht heute an der Esse, und was schafft er? Pure, testbar.
+// meisterDa schlaegt lehrlingDa; niemand da = Esse aus.
+export function schmiedeArbeit(meisterDa: boolean, lehrlingDa: boolean, tag: number): {
+  schmilzt: boolean; mengeF: number; fertigt: boolean; allein: boolean;
+} {
+  if (meisterDa) return { schmilzt: true, mengeF: 1, fertigt: true, allein: false };
+  if (lehrlingDa) {
+    return {
+      schmilzt: true, mengeF: LEHRLING_SCHMIEDE.mengeF,
+      fertigt: tag % LEHRLING_SCHMIEDE.stueckJeTage === 0, allein: true,
+    };
+  }
+  return { schmilzt: false, mengeF: 0, fertigt: false, allein: false };
+}
+
 // VORGRIFF (nur Daten-Haken, Auftrag M4): später rüsten die Lager-Waffen die
 // Miliz/RTS-Einheiten über das ZEUGHAUS aus. Noch NICHT verdrahtet.
 export const ZEUGHAUS_HAKEN = {

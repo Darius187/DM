@@ -2370,6 +2370,10 @@ function bevoelkereStadt(a: AreaData): void {
   // Handwerk
   frei(14, 62, 19, 65);
   N({ id: 'schmied', name: 'Schmied', x: 16 * T32, y: 63.5 * T32, abend: WIRTSHAUS, kaempfer: true, arbeit: 'schmieden', questgeber: 'stahl' });
+  // R231 (Doku 07/4b, Akt 1 des Spitzel-Bogens): der Schmied hat einen
+  // LEHRLING angenommen. Wenzel arbeitet am selben Amboss; ruft der Spieler
+  // ihn an eine Feldschmiede (R229), fehlt er hier - eine Person, ein Ort.
+  N({ id: 'lehrling', name: 'Lehrling Wenzel', figur: 'schmied', x: 17.5 * T32, y: 64.5 * T32, abend: WIRTSHAUS, arbeit: 'schmieden' });
   (a.stationen ??= []).push({ art: 'amboss', x: 17.5 * T32, y: 63.5 * T32 });
   // R166 (Autor "Mueller und Magd stehen im Wasser"): die alten Anker
   // (110/91) lagen IN der See-Ellipse des Muehlenweihers - jetzt am NORDufer.

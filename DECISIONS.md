@@ -3687,3 +3687,24 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   Tod nehmen den Bonus. Vogt-Zustand liegt im Feindzug-Savegame.
 - Nebenbei: Bader Lorenz (R229) nutzt jetzt die echte 'bader'-Figur
   statt 'bauer1'.
+
+## R231 - Lehrling Wenzel ist Dorf-Bewohner (Akt 1 des Spitzel-Bogens)
+- Stadt-Roster (areagen bevoelkereStadt): NPC 'lehrling' ("Lehrling
+  Wenzel", Figur schmied) arbeitet am selben Amboss wie der Meister.
+  Erzaehlerisch ist das Akt 1 aus Doku 07/4b: der Schmied hat einen
+  Lehrling ANGENOMMEN - rueckblickend seine Abgangs-Vorbereitung.
+- Eine Person, ein Ort: ist Wenzel an eine Feldschmiede gerufen (R229),
+  steht er NICHT im Dorf (NPC wird beim Kartenaufbau uebersprungen;
+  steht die Feldschmiede in Ravensmoor selbst, verschwindet er live vom
+  Amboss). Kehrt die Rolle heim, steht er wieder da.
+- schmiedeArbeit (data/wirtschaft.ts, pure + 3 Testfaelle): Meister da =
+  volle Schmelze + 1 Stueck/Tag. NUR der Lehrling = halbe Schmelz-Menge
+  (LEHRLING_SCHMIEDE.mengeF 0,5) und ein Stueck nur jeden zweiten Tag
+  (stueckJeTage 2) + Chronik "allein an der Esse... Meisterarbeit ist es
+  nicht". Niemand da = Esse aus. Der Malus greift damit automatisch,
+  wenn der Schmied verwundet ist - und spaeter nach seinem VERRAT.
+- Bewusste Grenze: Waffen sind im Dorf-Lager ein Zaehler, keine
+  Einzelstuecke - "schlechtere" Lehrlings-Waffen sind darum als WENIGER
+  Ausstoss umgesetzt, nicht als Qualitaetswert je Stueck. Wenn das
+  Zeughaus (ZEUGHAUS_HAKEN) verdrahtet wird, kann ein Qualitaets-Feld
+  nachziehen.

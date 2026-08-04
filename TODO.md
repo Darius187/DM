@@ -285,10 +285,13 @@ Lichtern -> Bloom im Einfall drosseln. Ohne Geraeteprofil aber nicht auf Verdach
 - [x] VERSORGUNGSLINIE VOM KLOSTER: istVersorgt (logic/feindzug.ts) -
       abgeschnittene Feindlager produzieren nichts und greifen nicht an
       (seit R227, FELDZUG.startBesetzt als Ursprung).
-- [ ] Schmied-Lehrling: Bewohner + Arbeiter-Malus (langsamer, schlechtere
-      Waffen als Datenwert) + Beordern-Befehl; Teil des Spitzel-Bogens
-      (Doku 07, 4b). Der FELD-Teil (Ruf an die Feldschmiede) steht seit
-      R229 - offen ist der DORF-Teil (Bewohner-NPC, Waffen-Malus).
+- [x] Schmied-Lehrling KOMPLETT (R229+R231): Bewohner-NPC am Amboss,
+      Ruf-Knopf an die Feldschmiede (Route-frei-Pruefung), Lehrling-
+      allein-Malus (halbe Schmelze, Stueck nur jeden 2. Tag). Offen
+      bleibt nur ein Qualitaets-Feld je Waffe, falls das Zeughaus kommt.
+- [ ] Schmied-Verrats-Bogen (Doku 07/4b+4c, naechster Baustein): Akt 2
+      Vertrauen (Botengaenge), Akt 3 "Lieferung an den Grafen" -
+      Schmied fort, Ahnengruft-Siegel bricht, Wenzel traegt die Esse.
 - [ ] Umkehrer (Doku 07/3): vertriebene/begnadigte Voegte, die die
       Aushoehlung gesehen haben, brechen mit dem Feind - Informanten/
       Fluechtlinge. Braucht: Vogt-Schicksale nach Gefangennahme,
