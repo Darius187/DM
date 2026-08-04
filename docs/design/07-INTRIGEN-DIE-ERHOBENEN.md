@@ -110,35 +110,56 @@ nie wieder abgeben.
      Kette systemisch korrekt, der Lehrling ist der neue (schwaechere)
      Arbeiter.
 
-## 4c. Timing des Verrats: die FELDSCHMIEDE als Buehne (R228)
+## 4c. Timing des Verrats (R228, Autor-Entscheid: Schmied BLEIBT im Dorf)
 
-Die Feldschmiede (R97: baubar, repariert Bauwerke im Umkreis) bekommt
-eine Person und wird zum Taktgeber des Bogens:
+- Der SCHMIED bleibt im Dorf - seine Waffenkette laeuft, nichts wirkt
+  verdaechtig. Der LEHRLING geht an die FELDSCHMIEDE (R97): dort lernt
+  er sichtbar, repariert Bauwerke, waechst dem Spieler ans Herz. Nette
+  Folge: dass es ihn gibt und dass er eingearbeitet ist, ist laengst
+  etabliert, wenn er spaeter die Dorfschmiede uebernehmen muss.
+- DER VERRAT: eines Tages ist der Schmied einfach FORT - "eine Lieferung
+  an den Grafen". Bittere Pointe: er liefert die Schwerter, die die Burg
+  schuetzen sollten - und bricht dort das GRUFTSIEGEL (siehe 4d). Die
+  Burg faellt von innen. Er kehrt nie zurueck; der Abschiedsbrief in
+  seinem Haus macht die Indizien rueckwirkend lesbar.
+- DANACH: der Lehrling wird aus dem Feld zurueckbeordert (Spieler-Befehl)
+  und uebernimmt die Dorfschmiede - schlechter und langsamer
+  (Datenwerte). Die Feldschmiede faellt auf Basis-Reparatur zurueck.
+  Engpass wie vom Autor gewollt: Vorrat traegt, Anwerbung zehrt, jede
+  Klinge zaehlt.
 
-- AKT 1 - DER SCHMIED KOMMT INS FELD: Nach dem Bau der ERSTEN
-  Feldschmiede meldet sich der Dorfschmied von selbst ("Das Ding taugt
-  nichts, wenn keiner dransteht"). Mit ihm vor Ort: Reparatur doppelt so
-  schnell + SCHAERF-AURA (kleiner Schadensbonus im Umkreis). Er wird im
-  Feld sichtbar unentbehrlich - der Vertrauens-Akt.
-- GLEICHZEITIG: der LEHRLING uebernimmt die Dorfschmiede ("damit daheim
-  das Feuer nicht ausgeht") - klingt vernuenftig, ist die getarnte
-  Abgangs-Vorbereitung. Die Waffenkette im Dorf laeuft weiter (mit
-  leichtem Lehrlings-Malus schon ab hier? NEIN - erst nach dem Verrat,
-  sonst faellt es auf).
-- AKT 3 - DER TRIGGER IST SPIELERGESTEUERT: Beim naechsten GRAFEN-RUF
-  (Botenposten R179) bietet der Schmied den Ritt an ("Ich muss ohnehin
-  zur Burg, Erz kaufen"). Stimmt der Spieler zu, faellt die Burg.
-  FALLBACK, falls der Spieler nie ruft: nach X Tagen reitet er "in
-  Dorf-Angelegenheiten" von selbst.
-- NACH DEM VERRAT: der Lehrling kann NICHT zusaetzlich ins Feld (er
-  haelt allein die Dorfschmiede) - die Feldschmiede faellt auf
-  Basis-Reparatur zurueck. Der Verlust ist an der Front fuehlbar,
-  nicht nur im Lagerbuch.
+## 4d. Wie kommt der Feind in die Burg? DIE GRUFTSIEGEL-REGEL (R228)
 
-Damit ist auch die Autor-Frage beantwortet: der Schmied bleibt im
-NORMALFALL im Dorf; die Feldschmiede ist seine Buehne fuer den
-Vertrauens-Akt, und genau diese Bewegung (Dorf -> Feld -> fort)
-erzaehlt den Bogen.
+Das Logikloch (Autor): die Karten zur Burg sind nicht eingenommen, es
+gibt keinen Landweg - wie greifen die Monster an? Antwort aus der
+eigenen Spielmythologie, OHNE Tunnel quer durchs Fuerstentum:
+
+DER FEIND KOMMT NICHT UEBER LAND. ER KOMMT AUS DEN GRAEBERN.
+
+- Ueberirdische Ausbreitung (Feldzug) braucht die Kloster-Route
+  (R227, gebaut). ABER: ueberall, wo TOTE liegen (Gruft, Kirchhof,
+  Beinhaus), kann der Feind LOKAL erwachen - wenn ein LEBENDER das
+  geweihte Siegel bricht. Geweihte Schwellen halten ihn; darum braucht
+  er die Erhobenen: Tueren oeffnet man von innen.
+- DIE BURG: Burgen haben eine Kapelle mit AHNENGRUFT (historisch
+  stimmig; davor der Burgweiler mit Kirchhof - "vor Burgen waren
+  Doerfer"). Der Schmied wird mit seiner Lieferung eingelassen, steigt
+  zur Gruft hinab, bricht das Siegel - und in der Nacht erheben sich
+  DIE AHNEN DES GRAFEN SELBST. Kein Anmarsch, keine Landweg-Frage:
+  der Feind war immer schon da, unter den Fuessen.
+- Die Kirche im Burgdorf muss mit NICHTS raeumlich verbunden sein -
+  die Verbindung ist nicht ein Tunnel, sondern die Regel: jede Gruft
+  ist eine Tuer. (Alternative, falls der Autor doch raeumlich will:
+  eine Hoehle nahe der Burg, Anschluss ans Minen-/Hoehlensystem.)
+- RUECKWIRKEND ERKLAERT DAS BESTEHENDES: die Krypta unter der
+  Ravensmoor-Kirche (gesaeubert = NEU VERSIEGELT), das Kloster als
+  gefallene Quelle (dort hat niemand das Siegel gehalten), die
+  Dom-Krypten und der versunkene Bezirk als offene Graeberorte.
+- NEUE MECHANIK-SCHIENE (spaeter): NEU-VERSIEGELN als Rueckeroberungs-
+  Handlung fuer Graeberorte (Priester/Weihwasser/Reliquie aus dem Dom) -
+  des Autors eigener Gedanke "man muss den Zugang erstmal versiegeln"
+  als System: Burg zurueckerobern heisst, die Gruft zu saeubern UND
+  das Siegel zu erneuern, sonst erhebt es sich wieder.
 
 ## 5. Der Endgegner-Bezug
 

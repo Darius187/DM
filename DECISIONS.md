@@ -3627,3 +3627,17 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   kommt nach der ERSTEN Feldschmiede ins Feld (Reparatur x2 +
   Schaerf-Aura), Lehrling uebernimmt derweil das Dorf; der Verrat
   zuendet beim naechsten Grafen-Ruf (Fallback nach X Tagen).
+
+## R228 - Schmied bleibt im Dorf + die Gruftsiegel-Regel
+- Autor-Entscheid: Schmied bleibt im Dorf, der LEHRLING geht an die
+  Feldschmiede (lernt sichtbar, ist spaeter eingearbeitet). Der Verrat:
+  der Schmied verschwindet mit einer Waffen-LIEFERUNG an den Grafen.
+- Logikloch "wie kommt der Feind ohne Landweg in die Burg" geloest:
+  GRUFTSIEGEL-REGEL (Doku 07/4d) - der Feind kommt nicht ueber Land,
+  sondern aus den Graebern: wo Tote liegen, kann er lokal erwachen,
+  wenn ein Lebender das geweihte Siegel bricht. Der Schmied bricht das
+  Siegel der AHNENGRUFT der Burgkapelle - die Ahnen des Grafen selbst
+  erheben sich, die Burg faellt von innen. Erklaert rueckwirkend
+  Kirche/Krypta, Kloster-Quelle und die Rolle der Erhobenen (Tueren
+  oeffnet man von innen). Spaetere Mechanik-Schiene: NEU-VERSIEGELN
+  als Rueckeroberungs-Handlung fuer Graeberorte.
