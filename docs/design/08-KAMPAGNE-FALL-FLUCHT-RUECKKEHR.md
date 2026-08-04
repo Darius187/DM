@@ -92,9 +92,26 @@ b. Flucht-Eskorte: Folge-KI der Bewohner (Karawane hinter dem Helden,
    Kartenwechsel gemeinsam), Ankunfts-Zaehlung in der Zuflucht.
 c. Bewohner-Rueckholung nach der Befreiung (Befehl oder Abholung).
 
+ENTSCHIEDEN (Autor, R235b):
+- AUSLOESER des grossen Einfalls: der TOD DES TEMPELRITTERS (Krypta-
+  Boss) - wie bisher; kein neuer Trigger.
+- WARUM die Karawane sicher ist: die Monster wollen die Bewohner
+  LEBEND (Versklavung/Aushoehlung, Doku R224). Die Karawane ist
+  sicher, SOLANGE DER HELD LEBT. Erzaehl-Beat in der Zuflucht: die
+  Geretteten fragen sich selbst, WARUM sie nicht angegriffen wurden -
+  die Antwort ist unheimlicher als jeder Angriff.
+- NICHT ALLE KOMMEN AN: beim Ueberfall auf Ravensmoor werden einige
+  Bewohner - AUCH KINDER - VERSCHLEPPT. Beim Appell in der Zuflucht
+  fehlen sie. WO man sie befreit, ist noch offen (Kandidat: das
+  Verschleppten-System des versunkenen Bezirks traegt das schon).
+- QUEST-BUCH-PFLICHT: jeder Akt des Ablaufs steht als Quest im
+  Questbuch auf dem Bildschirm (Evakuieren, Flucht-Etappen, Audienz,
+  Rueckeroberung, Rueckholung, Vermisste). Space pausiert das Spiel
+  zum Nachlesen - der Spieler weiss IMMER, was zu tun ist.
+
 OFFEN (Autor):
-- Ausloese-Moment des grossen Einfalls, der den Fall erzwingt (Tag X?
-  Feldzug-Ereignis? aktuell F5-Sturm).
-- Duerfen einzelne Bewohner auf der Flucht STERBEN (Drama) oder ist
-  die Karawane sicher, solange der Spieler lebt?
-- Wie lange "tickt" die Ahnengruft bis zum Burg-Fall (Akt 5)?
+- Wo werden die beim Ueberfall Verschleppten befreit?
+- Ahnengruft-Uhr: wie viele Tage nach dem heimlichen Oeffnen bricht
+  die Burg? (Also: der Abstand zwischen "Schmied oeffnet das Siegel"
+  und "die Grafenburg faellt" - aktuell R232-Wert 2 Tage nach dem
+  Verrat, vermutlich zu kurz fuer die neue Zeitlinie.)
