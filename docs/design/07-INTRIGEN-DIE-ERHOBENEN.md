@@ -83,6 +83,33 @@ erfaehrt die Wahrheit erst am Ende (Rueckblick-Momente inklusive).
   eine Erzaehlung, kein Puzzle. (Wer die Indizien deutet, darf misstrauen,
   aber nicht handeln - das Spiel bestaetigt nichts.)
 
+## 4b. Die Besetzung: DER SCHMIED (Autor-Entscheid R227)
+
+Der Spitzel ist der SCHMIED - der nuetzlichste Mann des Dorfs, durch
+niemanden zu ersetzen (schmiedet besser als jede Beute, ruestet das Heer).
+Sein Motiv ist das reinste Erhobenen-Motiv: der beste Handwerker weit und
+breit, und doch immer nur der, der ABLIEFERT. Der Feind bietet ihm den
+Platz als WAFFENMEISTER DES NEUEN BUNDES - eigene Werkstatt, Untertanen,
+nie wieder abgeben.
+
+- AKT 1 (rueckblickend diabolisch): der Schmied nimmt einen LEHRLING an.
+  Wirkt wie Fleiss und Fuersorge - in Wahrheit bereitet er seinen Abgang
+  vor. Er weiss, dass er geht.
+- AKT 3: der Boten-Ritt zum Grafen (siehe 4). Er oeffnet die Tore der
+  Grafenburg und kehrt NIE zurueck. Doppelter Schlag: die Grafen-
+  Verstaerkung bricht weg UND die Waffenkette des Dorfs steht.
+- DANACH - DER ENGPASS (Kern-Spielgefuehl, Autor: "Druck, neue Taktik,
+  Engpaesse loesen"):
+  1. Nur noch der WAFFEN-VORRAT im Lager traegt (50-100 Schwerter je
+     Vorratskammer-Ausbau) - Anwerbung/Nachruestung zehrt ihn auf.
+  2. Der LEHRLING kann schmieden, aber schlechter und langsamer
+     (Qualitaets-Malus als Datenwert), und er muss erst BEORDERT werden
+     (Aufgaben-Zuweisung) - vorher schmiedet niemand.
+  3. Die M4-Regel traegt das schon: Ketten laufen nur mit lebendem,
+     anwesendem, arbeitendem Arbeiter - der Schmied-Abgang stoppt die
+     Kette systemisch korrekt, der Lehrling ist der neue (schwaechere)
+     Arbeiter.
+
 ## 5. Der Endgegner-Bezug
 
 Der Antagonist ist Herr einer Wirtschaft, nicht nur einer Horde: Voegte

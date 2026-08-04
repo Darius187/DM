@@ -3598,3 +3598,15 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   GRAFENBURG (nicht Ravensmoor - Autor will kein zweites Verteidigen).
   Grafen-Verstaerkung bricht weg, Abschiedsbrief macht die Indizien
   rueckwirkend lesbar. Vorher nicht stellbar.
+
+## R227 - Schmied als Spitzel + Feindzug-Regeln geklaert
+- Autor-Entscheid: DER SCHMIED ist der eine Verraeter Ravensmoors
+  (Doku 07, 4b): nimmt in Akt 1 einen Lehrling (rueckblickend seine
+  Abgangs-Vorbereitung), oeffnet in Akt 3 die Grafenburg-Tore und
+  bleibt fort. Danach Versorgungs-Engpass: Waffen-Vorrat traegt,
+  Lehrling muss beordert werden und schmiedet schlechter.
+- Ist-Stand dokumentiert: Produktionsketten (M3-M6) existieren inkl.
+  Waffen als Lagerware (Schmiede: Eisen+Kohle->Barren, Tageswechsel
+  waffen/werkzeuge); Feindzug expandiert NUR auf Nachbarkarten
+  bestehender Lager; Luecken (abstrakte Verteidigung ohne Feldbauten,
+  keine Versorgungslinie vom Kloster) als TODO R227 festgehalten.
