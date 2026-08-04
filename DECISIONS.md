@@ -3610,3 +3610,20 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   waffen/werkzeuge); Feindzug expandiert NUR auf Nachbarkarten
   bestehender Lager; Luecken (abstrakte Verteidigung ohne Feldbauten,
   keine Versorgungslinie vom Kloster) als TODO R227 festgehalten.
+
+## R227 umgesetzt - Versorgungslinie + Feldbauten-Abwehr
+- istVersorgt (logic/feindzug.ts): Feindlager brauchen eine Kette
+  BESETZTER Karten bis zu einer noch besetzten Ursprungs-Karte
+  (FELDZUG.startBesetzt: lager/stadt2/kloster). Abgeschnitten =
+  keine Produktion, keine Angriffe. Befreit der Spieler das Kloster
+  selbst, verhungert alles dahinter.
+- bautenAbwehr: Spieler-Feldbauten zaehlen in die abstrakte
+  Verteidigung (FELDBAU_ABWEHR in data/welt.ts, je Bau skaliert mit
+  Zustand; Wachturm 30, Tor 10, Palisade 4 je Stueck...). Damit gilt
+  "unser Lager muss erst fallen" auch, wenn der Held woanders ist.
+- 6 neue Vitest-Faelle (Kette/Unterbrechung/Kloster befreit/Alt-
+  Kompatibilitaet/Abwehr-Summe) - 18/18 in feindzug.test.ts.
+- Feldschmiede-Timing des Schmied-Bogens in Doku 07 (4c): Schmied
+  kommt nach der ERSTEN Feldschmiede ins Feld (Reparatur x2 +
+  Schaerf-Aura), Lehrling uebernimmt derweil das Dorf; der Verrat
+  zuendet beim naechsten Grafen-Ruf (Fallback nach X Tagen).

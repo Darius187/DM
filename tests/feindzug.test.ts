@@ -192,3 +192,46 @@ describe('feindzug', () => {
     expect(z.lager[0].punkte).toBeCloseTo(10, 5);
   });
 });
+
+// --- R227: Versorgungslinie + Feldbauten-Abwehr ---------------------------
+import { istVersorgt, bautenAbwehr } from '../src/logic/feindzug';
+
+describe('R227 Versorgungslinie (istVersorgt)', () => {
+  const cfgMit = (besetzt: string[], kanten: Record<string, string[]>) => ({
+    nachbarn: (id: string) => kanten[id] ?? [],
+    status: (id: string) => (besetzt.includes(id) ? 'besetzt' : 'frei') as 'besetzt' | 'frei',
+    ursprung: ['kloster'],
+  });
+  const kanten = { kloster: ['a'], a: ['kloster', 'b'], b: ['a', 'c'], c: ['b'] };
+
+  it('durchgehende Kette bis zum Kloster ist versorgt', () => {
+    expect(istVersorgt('b', cfgMit(['kloster', 'a', 'b'], kanten))).toBe(true);
+  });
+  it('unterbrochene Kette (Zwischenkarte befreit) ist abgeschnitten', () => {
+    expect(istVersorgt('b', cfgMit(['kloster', 'b'], kanten))).toBe(false);
+  });
+  it('befreites Kloster laesst ALLE Lager verhungern', () => {
+    expect(istVersorgt('b', cfgMit(['a', 'b'], kanten))).toBe(false);
+  });
+  it('ohne ursprung-Feld gilt keine Regel (alte Aufrufer)', () => {
+    const cfg = { ...cfgMit(['b'], kanten), ursprung: undefined };
+    expect(istVersorgt('b', cfg)).toBe(true);
+  });
+});
+
+describe('R227 Feldbauten-Abwehr (bautenAbwehr)', () => {
+  const werte = { wachturm: 30, palisade: 4 };
+  it('summiert Bauwerte, skaliert mit dem Zustand', () => {
+    const bauten = [
+      { id: 'wachturm', hp: 100, maxHp: 100 },   // 30
+      { id: 'wachturm', hp: 50, maxHp: 100 },    // 15
+      { id: 'palisade', hp: 100, maxHp: 100 },   // 4
+      { id: 'lagerfeuer', hp: 10, maxHp: 10 },   // kein Tabellenwert -> 0
+    ];
+    expect(bautenAbwehr(bauten, werte)).toBe(49);
+  });
+  it('leer/undefined ergibt 0', () => {
+    expect(bautenAbwehr(undefined, werte)).toBe(0);
+    expect(bautenAbwehr([], werte)).toBe(0);
+  });
+});

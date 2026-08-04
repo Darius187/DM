@@ -110,6 +110,36 @@ nie wieder abgeben.
      Kette systemisch korrekt, der Lehrling ist der neue (schwaechere)
      Arbeiter.
 
+## 4c. Timing des Verrats: die FELDSCHMIEDE als Buehne (R228)
+
+Die Feldschmiede (R97: baubar, repariert Bauwerke im Umkreis) bekommt
+eine Person und wird zum Taktgeber des Bogens:
+
+- AKT 1 - DER SCHMIED KOMMT INS FELD: Nach dem Bau der ERSTEN
+  Feldschmiede meldet sich der Dorfschmied von selbst ("Das Ding taugt
+  nichts, wenn keiner dransteht"). Mit ihm vor Ort: Reparatur doppelt so
+  schnell + SCHAERF-AURA (kleiner Schadensbonus im Umkreis). Er wird im
+  Feld sichtbar unentbehrlich - der Vertrauens-Akt.
+- GLEICHZEITIG: der LEHRLING uebernimmt die Dorfschmiede ("damit daheim
+  das Feuer nicht ausgeht") - klingt vernuenftig, ist die getarnte
+  Abgangs-Vorbereitung. Die Waffenkette im Dorf laeuft weiter (mit
+  leichtem Lehrlings-Malus schon ab hier? NEIN - erst nach dem Verrat,
+  sonst faellt es auf).
+- AKT 3 - DER TRIGGER IST SPIELERGESTEUERT: Beim naechsten GRAFEN-RUF
+  (Botenposten R179) bietet der Schmied den Ritt an ("Ich muss ohnehin
+  zur Burg, Erz kaufen"). Stimmt der Spieler zu, faellt die Burg.
+  FALLBACK, falls der Spieler nie ruft: nach X Tagen reitet er "in
+  Dorf-Angelegenheiten" von selbst.
+- NACH DEM VERRAT: der Lehrling kann NICHT zusaetzlich ins Feld (er
+  haelt allein die Dorfschmiede) - die Feldschmiede faellt auf
+  Basis-Reparatur zurueck. Der Verlust ist an der Front fuehlbar,
+  nicht nur im Lagerbuch.
+
+Damit ist auch die Autor-Frage beantwortet: der Schmied bleibt im
+NORMALFALL im Dorf; die Feldschmiede ist seine Buehne fuer den
+Vertrauens-Akt, und genau diese Bewegung (Dorf -> Feld -> fort)
+erzaehlt den Bogen.
+
 ## 5. Der Endgegner-Bezug
 
 Der Antagonist ist Herr einer Wirtschaft, nicht nur einer Horde: Voegte

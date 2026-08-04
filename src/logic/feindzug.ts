@@ -76,6 +76,9 @@ export interface FeindzugCfg {
   // aufsteigend nach Alter. Fehlt sie, verfaellt Wissen nie (Zuversicht 1) -
   // alte Aufrufer laufen unveraendert.
   wissenVerfall?: ReadonlyArray<readonly [number, number]>;
+  // R227: Ursprungs-Karten der Versorgungslinie (Kloster-Route). Fehlt das
+  // Feld, gilt keine Versorgungs-Regel (alte Aufrufer unveraendert).
+  ursprung?: ReadonlyArray<string>;
   // F2a (A5): Sicherheits-Aufschlag bei voller Unsicherheit (Zuversicht 0).
   // Die vorsichtige KI rechnet die Verteidigung nach oben, je aelter das Wissen.
   wissenAufschlag?: number;
@@ -106,6 +109,46 @@ function zuversicht(alterS: number, kurve?: ReadonlyArray<readonly [number, numb
     if (alterS <= a1) return z0 + (z1 - z0) * ((alterS - a0) / (a1 - a0));
   }
   return kurve[kurve.length - 1][1];
+}
+
+// R227 (Autor: "wenn die Route vom Kloster abgeschnitten ist, koennen sich
+// die Monster nicht auf wundersame Weise vermehren"): VERSORGUNGSLINIE.
+// Ein Lager ist nur versorgt, wenn eine zusammenhaengende Kette BESETZTER
+// Karten bis zu einer (selbst noch besetzten) Ursprungs-Karte (Kloster-Route,
+// cfg.ursprung) reicht. Unversorgte Lager produzieren nichts und greifen
+// nicht an - abgeschnitten heisst verhungern und rueckeroberbar.
+export function istVersorgt(karte: string, cfg: Pick<FeindzugCfg, 'nachbarn' | 'status' | 'ursprung'>): boolean {
+  const ursprung = cfg.ursprung;
+  if (!ursprung || !ursprung.length) return true;   // alte Aufrufer: keine Regel
+  if (cfg.status(karte) !== 'besetzt') return false;
+  const gesehen = new Set<string>([karte]);
+  const stapel = [karte];
+  while (stapel.length) {
+    const k = stapel.pop()!;
+    if (ursprung.includes(k)) return true;
+    for (const n of cfg.nachbarn(k)) {
+      if (gesehen.has(n) || cfg.status(n) !== 'besetzt') continue;
+      gesehen.add(n);
+      stapel.push(n);
+    }
+  }
+  return false;
+}
+
+// R227: Spieler-FELDBAUTEN zaehlen in die ABSTRAKTE Verteidigung einer Karte
+// (bisher nur Garnison-Kampfkraft): jeder Bau bringt seinen Tabellenwert,
+// skaliert mit seinem Zustand (halb zerstoert = halber Wert).
+export function bautenAbwehr(
+  bauten: ReadonlyArray<{ id: string; hp: number; maxHp: number }> | undefined,
+  werte: Readonly<Record<string, number>>,
+): number {
+  let summe = 0;
+  for (const b of bauten ?? []) {
+    const wert = werte[b.id];
+    if (!wert || b.maxHp <= 0) continue;
+    summe += wert * Math.max(0, Math.min(1, b.hp / b.maxHp));
+  }
+  return Math.round(summe);
 }
 
 // Bestes Angriffs-Ziel eines Lagers: FREIE Nachbarkarte, nicht unantastbar,
@@ -151,7 +194,12 @@ export function tickFeindzug(z: Feindzug, dt: number, cfg: FeindzugCfg): Feindzu
   const f = cfg.schwaecheProduktionF ?? 1;
   const produktion = cfg.produktionProS * (schwaeche * f + (dt - schwaeche));
   if (schwaeche > 0) z.schwaecheT = Math.max(0, (z.schwaecheT ?? 0) - dt);
-  for (const l of z.lager) { l.punkte += produktion; l.seitS = (l.seitS ?? 0) + dt; }
+  for (const l of z.lager) {
+    // R227: abgeschnittene Lager (keine besetzte Kette zur Kloster-Route)
+    // produzieren NICHTS - sie zehren nur noch von dem, was sie haben.
+    if (istVersorgt(l.karte, cfg)) l.punkte += produktion;
+    l.seitS = (l.seitS ?? 0) + dt;
+  }
 
   // F2a (A2): das Blackboard altert. Vergessene Sichtungen (Zuversicht 0)
   // fallen raus - nur bei aktiver Verfallskurve, sonst bleibt Wissen ewig.
@@ -168,6 +216,7 @@ export function tickFeindzug(z: Feindzug, dt: number, cfg: FeindzugCfg): Feindzu
     // hat und sich die Welle (grob geschaetzt) leisten kann.
     const kandidaten = [...z.lager].sort((x, y) => y.punkte - x.punkte);
     for (const l of kandidaten) {
+      if (!istVersorgt(l.karte, cfg)) continue;   // R227: abgeschnitten greift nicht an
       const ziel = zielVon(l.karte, cfg);
       if (!ziel) continue;
       const grob = Math.max(cfg.welleMin, cfg.verteidigung(ziel) * cfg.staerkeFaktor);

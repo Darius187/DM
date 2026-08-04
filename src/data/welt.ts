@@ -374,6 +374,16 @@ export const MISSION_TRUPP = { max: 6 } as const;
 // hinunter. Reines Erzaehl-Detail, keine Mechanik.
 export const KANAL_TREIBGUT = { intervallS: 110, tempo: 34 } as const;
 
+// R227 (Autor: "unser Lager muss erst fallen, bevor der Feind baut"):
+// Spieler-Feldbauten zaehlen in die ABSTRAKTE Verteidigung einer Karte
+// (Kampfkraft-Punkte je Bau, skaliert mit dessen Zustand). Live (Held auf
+// der Karte) kaempfen die Bauten ohnehin echt.
+export const FELDBAU_ABWEHR: Readonly<Record<string, number>> = {
+  wachturm: 30, wachturm_45: 30, wachturm_40: 30,
+  palisade: 4, tor: 10, standarte: 6, lagerfeuer: 2,
+  feldschmiede: 8, lazarett: 8, nachschub: 6, zelt: 3, befehlszelt: 10,
+};
+
 export const AUSHOEHLUNG = {
   ersteS: 150,        // Zeit bis zum ersten Ritual nach Betreten der Karte
   intervallS: 120,    // Abstand der weiteren Rituale
