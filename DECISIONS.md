@@ -3575,3 +3575,14 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   den Ort erzaehlt.
 - Browser-Beweis: 3 Schilder auf der Karte, Treibgut driftet, Befreiter
   landet namentlich in der Geretteten-Liste.
+
+## R226 - Intrigen-Konzept "Die Erhobenen" (Design-Dokument 07)
+- Autor-Auftrag: Verrat/Kollaboration a la grosse Vorbilder, uebertragen
+  auf unsere Zeit. Konzept liegt als docs/design/07-INTRIGEN-DIE-
+  ERHOBENEN.md: Bewegungs-Name "Die Erhobenen" (Doppeldeutigkeit:
+  sozial erhoben / von den Toten erhoben - das Versprechen IST die
+  Aushoehlung), 5 Anhaenger-Typen aus Kollaborations-Psychologie und
+  1349er-Zeitbild (unehrliche Berufe = unsere Monster-Namen!), Spitzel-
+  Mechanik fuer Ravensmoor (genau einer, Indizien + Ueberfuehrung +
+  Doppelagent), Erhobene als menschliche Feind-Fraktion mit Werbern
+  und Umkehr-Mechanik. NOCH KEIN CODE - erst Autor-Feedback zum Konzept.
