@@ -1,0 +1,495 @@
+{
+  "format": "ravenmoor-paperdoll-v3",
+  "sheetSize": [
+    1152,
+    512
+  ],
+  "frameSize": [
+    128,
+    128
+  ],
+  "directions": [
+    "down",
+    "left",
+    "right",
+    "up"
+  ],
+  "frames": [
+    "idle",
+    "walk_1",
+    "walk_2",
+    "walk_3",
+    "walk_4",
+    "windup",
+    "impact",
+    "followthrough",
+    "block"
+  ],
+  "timingMs": {
+    "idle": 240,
+    "walk": 120,
+    "windup": 140,
+    "impact": 80,
+    "followthrough": 180,
+    "block": 160
+  },
+  "sourceRowMaps": {
+    "locomotion": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "combat": [
+      0,
+      2,
+      1,
+      3
+    ]
+  },
+  "anchorConvention": {
+    "coordinates": "frame-local integer pixel centres from top-left",
+    "hand": "closed weapon-hand centre; equipment pivot is its grip centre",
+    "shield": "forearm / shield-boss centre",
+    "foot": [
+      64,
+      124
+    ]
+  },
+  "handAnchors": [
+    [
+      [
+        41,
+        76
+      ],
+      [
+        43,
+        75
+      ],
+      [
+        42,
+        74
+      ],
+      [
+        43,
+        75
+      ],
+      [
+        42,
+        74
+      ],
+      [
+        33,
+        33
+      ],
+      [
+        86,
+        110
+      ],
+      [
+        59,
+        97
+      ],
+      [
+        84,
+        60
+      ]
+    ],
+    [
+      [
+        42,
+        77
+      ],
+      [
+        39,
+        76
+      ],
+      [
+        43,
+        75
+      ],
+      [
+        40,
+        76
+      ],
+      [
+        43,
+        75
+      ],
+      [
+        71,
+        34
+      ],
+      [
+        39,
+        84
+      ],
+      [
+        36,
+        88
+      ],
+      [
+        37,
+        60
+      ]
+    ],
+    [
+      [
+        86,
+        77
+      ],
+      [
+        89,
+        76
+      ],
+      [
+        85,
+        75
+      ],
+      [
+        88,
+        76
+      ],
+      [
+        85,
+        75
+      ],
+      [
+        31,
+        38
+      ],
+      [
+        75,
+        89
+      ],
+      [
+        89,
+        89
+      ],
+      [
+        85,
+        62
+      ]
+    ],
+    [
+      [
+        43,
+        75
+      ],
+      [
+        42,
+        74
+      ],
+      [
+        44,
+        74
+      ],
+      [
+        42,
+        74
+      ],
+      [
+        44,
+        74
+      ],
+      [
+        73,
+        21
+      ],
+      [
+        102,
+        66
+      ],
+      [
+        99,
+        78
+      ],
+      [
+        35,
+        45
+      ]
+    ]
+  ],
+  "shieldAnchors": [
+    [
+      [
+        83,
+        70
+      ],
+      [
+        82,
+        69
+      ],
+      [
+        84,
+        69
+      ],
+      [
+        82,
+        69
+      ],
+      [
+        84,
+        69
+      ],
+      [
+        84,
+        65
+      ],
+      [
+        82,
+        64
+      ],
+      [
+        84,
+        65
+      ],
+      [
+        78,
+        56
+      ]
+    ],
+    [
+      [
+        70,
+        69
+      ],
+      [
+        69,
+        68
+      ],
+      [
+        71,
+        69
+      ],
+      [
+        69,
+        68
+      ],
+      [
+        71,
+        69
+      ],
+      [
+        72,
+        65
+      ],
+      [
+        70,
+        63
+      ],
+      [
+        72,
+        65
+      ],
+      [
+        68,
+        57
+      ]
+    ],
+    [
+      [
+        58,
+        69
+      ],
+      [
+        59,
+        68
+      ],
+      [
+        57,
+        69
+      ],
+      [
+        59,
+        68
+      ],
+      [
+        57,
+        69
+      ],
+      [
+        56,
+        65
+      ],
+      [
+        58,
+        63
+      ],
+      [
+        56,
+        65
+      ],
+      [
+        60,
+        57
+      ]
+    ],
+    [
+      [
+        82,
+        69
+      ],
+      [
+        83,
+        68
+      ],
+      [
+        81,
+        69
+      ],
+      [
+        83,
+        68
+      ],
+      [
+        81,
+        69
+      ],
+      [
+        80,
+        64
+      ],
+      [
+        82,
+        63
+      ],
+      [
+        80,
+        64
+      ],
+      [
+        77,
+        56
+      ]
+    ]
+  ],
+  "zOrderBackToFront": {
+    "down": [
+      "cape",
+      "bodyAppearance",
+      "weapon",
+      "shield",
+      "helmet"
+    ],
+    "left": [
+      "weapon",
+      "cape",
+      "bodyAppearance",
+      "shield",
+      "helmet"
+    ],
+    "right": [
+      "cape",
+      "bodyAppearance",
+      "weapon",
+      "shield",
+      "helmet"
+    ],
+    "up": [
+      "weapon",
+      "bodyAppearance",
+      "cape",
+      "shield",
+      "helmet"
+    ]
+  },
+  "slotModel": [
+    "bodyAppearance",
+    "cape",
+    "weapon",
+    "shield",
+    "helmet"
+  ],
+  "assets": {
+    "bodies": {
+      "hemd": "aldric-v3/body-hemd-full-9x4.png",
+      "lumpen": "aldric-v3/body-lumpen-full-9x4.png",
+      "lederwams": "aldric-v3/body-lederwams-full-9x4.png",
+      "gambeson": "aldric-v3/body-gambeson-full-9x4.png",
+      "kettenhemd": "aldric-v3/body-kettenhemd-full-9x4.png",
+      "plattenrock": "aldric-v3/body-plattenrock-full-9x4.png"
+    },
+    "weapons": {
+      "solide-klinge": "aldric-v3/weapon-solide-klinge-full-9x4.png",
+      "kurzschwert": "aldric-v3/weapon-kurzschwert-full-9x4.png",
+      "streitkolben": "aldric-v3/weapon-streitkolben-full-9x4.png",
+      "langschwert": "aldric-v3/weapon-langschwert-full-9x4.png",
+      "streitaxt": "aldric-v3/weapon-streitaxt-full-9x4.png",
+      "falchion": "aldric-v3/weapon-falchion-full-9x4.png",
+      "hellebarde": "aldric-v3/weapon-hellebarde-full-9x4.png",
+      "kriegshammer": "aldric-v3/weapon-kriegshammer-full-9x4.png",
+      "jagdbogen": "aldric-v3/weapon-jagdbogen-full-9x4.png",
+      "armbrust": "aldric-v3/weapon-armbrust-full-9x4.png",
+      "kriegsbogen": "aldric-v3/weapon-kriegsbogen-full-9x4.png",
+      "knorriger-stab": "aldric-v3/weapon-knorriger-stab-full-9x4.png",
+      "kristallstab": "aldric-v3/weapon-kristallstab-full-9x4.png"
+    },
+    "shields": {
+      "holz-rundschild": "aldric-v3/shield-holz-rundschild-full-9x4.png",
+      "rundschild": "aldric-v3/shield-rundschild-full-9x4.png",
+      "beschlagener-rundschild": "aldric-v3/shield-beschlagener-rundschild-full-9x4.png",
+      "eisenschild": "aldric-v3/shield-eisenschild-full-9x4.png",
+      "holz-turmschild": "aldric-v3/shield-holz-turmschild-full-9x4.png"
+    },
+    "helmets": {
+      "stoffhaube": "aldric-v3/helmet-stoffhaube-full-9x4.png",
+      "lederkappe": "aldric-v3/helmet-lederkappe-full-9x4.png",
+      "eisenhut": "aldric-v3/helmet-eisenhut-full-9x4.png",
+      "kettenhaube": "aldric-v3/helmet-kettenhaube-full-9x4.png",
+      "beckenhaube": "aldric-v3/helmet-beckenhaube-full-9x4.png"
+    },
+    "cape": "aldric-v3/cape-reiseumhang-full-9x4.png"
+  },
+  "labels": {
+    "bodies": {
+      "hemd": "Hemd / keine Ruestung",
+      "lumpen": "Lumpen",
+      "lederwams": "Lederwams",
+      "gambeson": "Gambeson",
+      "kettenhemd": "Kettenhemd",
+      "plattenrock": "Plattenrock"
+    },
+    "weapons": {
+      "solide-klinge": "Solide Klinge",
+      "kurzschwert": "Kurzschwert",
+      "streitkolben": "Streitkolben",
+      "langschwert": "Langschwert",
+      "streitaxt": "Streitaxt",
+      "falchion": "Falchion",
+      "hellebarde": "Hellebarde",
+      "kriegshammer": "Kriegshammer",
+      "jagdbogen": "Jagdbogen",
+      "armbrust": "Armbrust",
+      "kriegsbogen": "Kriegsbogen",
+      "knorriger-stab": "Knorriger Stab",
+      "kristallstab": "Kristallstab"
+    },
+    "shields": {
+      "holz-rundschild": "Holz-Rundschild",
+      "rundschild": "Rundschild",
+      "beschlagener-rundschild": "Beschlagener Rundschild",
+      "eisenschild": "Eisenschild",
+      "holz-turmschild": "Holz-Turmschild"
+    },
+    "helmets": {
+      "stoffhaube": "Stoffhaube",
+      "lederkappe": "Lederkappe",
+      "eisenhut": "Eisenhut",
+      "kettenhaube": "Kettenhaube",
+      "beckenhaube": "Beckenhaube"
+    }
+  },
+  "proofs": {
+    "combinations": "aldric-v3/proofs/proof-v3-combinations.png",
+    "directions": "aldric-v3/proofs/proof-v3-directions.png",
+    "catalog": "aldric-v3/proofs/proof-v3-catalog.png",
+    "walkAnimation": "aldric-v3/proofs/proof-v3-walk.gif",
+    "attackAnimation": "aldric-v3/proofs/proof-v3-attack.gif"
+  },
+  "notes": [
+    "Armour is baked into six complete body variants; it is deliberately not composited as a flat overlay.",
+    "Helmet IDs are provisional art tiers until the game exposes helmet item IDs.",
+    "Bows, crossbow and staves use the universal hand anchors in this delivery; class-specific draw/cast body animations can replace columns 5-8 later without changing the slot contract."
+  ]
+}
