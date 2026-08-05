@@ -8,33 +8,51 @@
   header { padding:10px 16px; border-bottom:1px solid #3a3126; }
   h1 { font-size:16px; margin:0 0 4px; font-family:serif; letter-spacing:1px; }
   .hint { color:#9a8f78; font-size:12px; }
-  main { display:flex; gap:18px; padding:16px; flex-wrap:wrap; }
+  main { display:flex; gap:18px; padding:16px; flex-wrap:wrap; align-items:flex-start; }
   .buehne { background:#1f1b14; border:1px solid #3a3126; padding:12px; }
   canvas { display:block; image-rendering:pixelated; background:#26221a; }
-  .steuer { min-width:280px; display:flex; flex-direction:column; gap:14px; }
+  .steuer { min-width:300px; max-width:360px; display:flex; flex-direction:column; gap:12px; }
   fieldset { border:1px solid #3a3126; padding:8px 10px; margin:0; }
   legend { color:#c9a227; font-size:12px; letter-spacing:1px; padding:0 4px; }
   label { display:block; margin:3px 0; cursor:pointer; }
   input[type=range] { width:100%; }
-  .knopf { background:#2a2419; color:#d8cfb8; border:1px solid #4a3f2c; padding:6px 10px; cursor:pointer; font-size:13px; }
+  .knopf { background:#2a2419; color:#d8cfb8; border:1px solid #4a3f2c; padding:5px 9px; cursor:pointer; font-size:13px; }
   .knopf:hover { background:#3a3020; }
   .knopf.an { background:#4a3a14; border-color:#c9a227; color:#f0e2b8; }
-  .reihe { display:flex; gap:6px; flex-wrap:wrap; }
+  .knopf.fehlt { opacity:0.4; border-style:dashed; border-color:#7a3a2a; cursor:not-allowed; }
+  .knopf.altq { border-color:#6a5a8a; }
+  .reihe { display:flex; gap:5px; flex-wrap:wrap; }
   .warn { color:#e08a5a; font-size:12px; line-height:1.5; }
   .ok { color:#8fb35a; }
+  .rot { color:#e05a4a; }
   code { background:#26221a; padding:1px 4px; }
+  #checkliste { font-size:12px; line-height:1.7; max-height:260px; overflow-y:auto; }
+  #checkliste .da::before { content:'\2713 '; color:#8fb35a; }
+  #checkliste .fehltZ { color:#e05a4a; }
+  #checkliste .fehltZ::before { content:'\2717 '; }
+  #lieferstand { font-size:13px; margin-bottom:6px; }
 </style>
 </head>
 <body>
 <header>
   <h1>SPRITE-WERKBANK &mdash; Aldric Kampf V2</h1>
-  <div class="hint">Reine Pruefseite. Aendert NICHTS am Spiel &mdash; laedt nur die Codex-Sheets aus
-  <code>assets/sprites/hero-combat-v2/</code> und stapelt sie nach <code>hero-combat-v2.json</code>.</div>
+  <div class="hint">Reine Pruefseite. Aendert NICHTS am Spiel &mdash; laedt die Codex-Sheets aus
+  <code>assets/sprites/hero-combat-v2/</code>. NEUES Format: <code>*-full-9x4.png</code> +
+  <code>hero-layers.json</code> (9 Spalten: Stehen, Gehen 1-4, Schlag 3, Block).
+  Solange das fehlt, laufen Schlag/Block uebers ALTE Paket (<code>*-attack-3x4</code>/<code>*-block-1x4</code>).</div>
 </header>
 <main>
-  <div class="buehne">
-    <canvas id="c" width="512" height="512"></canvas>
-    <div id="info" class="hint" style="margin-top:8px"></div>
+  <div>
+    <div class="buehne">
+      <canvas id="c" width="512" height="512"></canvas>
+      <div id="info" class="hint" style="margin-top:8px"></div>
+      <div id="quellHinweis" class="warn" style="margin-top:4px"></div>
+    </div>
+    <fieldset style="margin-top:12px">
+      <legend>LIEFER-CHECKLISTE (Abschnitt 6 der Varianten-Liste)</legend>
+      <div id="lieferstand"></div>
+      <div id="checkliste"></div>
+    </fieldset>
   </div>
   <div class="steuer">
     <fieldset>
@@ -48,11 +66,13 @@
     <fieldset>
       <legend>BEWEGUNG</legend>
       <div class="reihe">
+        <button class="knopf" data-anim="stehen">Stehen</button>
+        <button class="knopf" data-anim="gehen">Gehen (4)</button>
         <button class="knopf an" data-anim="attack">Schlag (3)</button>
-        <button class="knopf" data-anim="block">Block (1)</button>
+        <button class="knopf" data-anim="block">Block</button>
         <button class="knopf" data-anim="einzel">Einzelbild</button>
       </div>
-      <label style="margin-top:8px">Einzelbild-Nr: <input type="range" id="frame" min="0" max="2" value="0"></label>
+      <label style="margin-top:8px">Einzelbild-Nr: <input type="range" id="frame" min="0" max="2" value="0"> <span id="frameTxt"></span></label>
       <label><input type="checkbox" id="loop" checked> Endlos abspielen</label>
       <label>Tempo: <input type="range" id="tempo" min="20" max="200" value="100"> <span id="tempoTxt">100%</span></label>
     </fieldset>
@@ -63,6 +83,12 @@
     <fieldset>
       <legend>SCHILD</legend>
       <div class="reihe" id="schild"></div>
+    </fieldset>
+    <fieldset>
+      <legend>RUESTUNG (Ebene ueber dem Koerper)</legend>
+      <div class="reihe" id="ruestung"></div>
+      <label style="margin-top:8px"><input type="checkbox" id="umhang"> Umhang (eigene Ebene)</label>
+      <div class="hint" id="umhangHinweis"></div>
     </fieldset>
     <fieldset>
       <legend>ANSICHT</legend>
@@ -81,60 +107,178 @@
 const BASIS = '../assets/sprites/hero-combat-v2/';
 const RICHTUNGEN = ['down', 'left', 'right', 'up'];
 const RICHT_NAMEN = { down: 'UNTEN', left: 'LINKS', right: 'RECHTS', up: 'OBEN' };
-const WAFFEN = { keine: null, schlicht: 'weapon-sword-simple', meister: 'weapon-sword-master' };
-const SCHILDE = { keins: null, holz: 'shield-round-wood', beschlagen: 'shield-round-reinforced' };
+
+// ---- ERWARTETE LIEFERUNG (verbindliche Namen aus docs/CODEX-VARIANTEN-LISTE.md, Abschnitt 6) ----
+const NEU = {
+  manifest: 'hero-layers.json',
+  body: 'body-full-9x4.png',
+  cape: 'cape-full-9x4.png',
+  waffen: [
+    ['solide-klinge', 'Solide Klinge'],
+    ['kurzschwert', 'Kurzschwert'],
+    ['streitkolben', 'Streitkolben'],
+    ['langschwert', 'Langschwert'],
+    ['streitaxt', 'Streitaxt'],
+    ['falchion', 'Falchion'],
+    ['hellebarde', 'Hellebarde'],
+    ['kriegshammer', 'Kriegshammer'],
+  ],
+  schilde: [
+    ['holzschild', 'Holzschild'],
+    ['rundschild', 'Rundschild'],
+    ['beschlagener-rundschild', 'Beschl. Rundschild'],
+    ['eisenschild', 'Eisenschild'],
+    ['turmschild', 'Turmschild'],
+  ],
+  ruestungen: [
+    ['lumpen', 'Lumpen'],
+    ['lederwams', 'Lederwams'],
+    ['gambeson', 'Gambeson'],
+    ['kettenhemd', 'Kettenhemd'],
+    ['plattenrock', 'Plattenrock'],
+  ],
+};
+const neuWaffe = (id) => `weapon-${id}-full-9x4.png`;
+const neuSchild = (id) => `shield-${id}-full-9x4.png`;
+const neuRuestung = (id) => `armor-${id}-full-9x4.png`;
+
+// ---- ALTES Paket (Fallback, nur Schlag/Block) ----
+const ALT_WAFFEN = { 'alt-schlicht': 'weapon-sword-simple', 'alt-meister': 'weapon-sword-master' };
+const ALT_SCHILDE = { 'alt-holz': 'shield-round-wood', 'alt-beschlagen': 'shield-round-reinforced' };
+
+// 9x4-Spalten: 0 Stehen, 1-4 Gehen, 5-7 Schlag, 8 Block
+const SPALTEN_NAMEN = ['idle', 'walk1', 'walk2', 'walk3', 'walk4', 'windup', 'impact', 'followthrough', 'block'];
 
 const zustand = {
   richtung: 'down', anim: 'attack', frame: 0, zoom: 2,
-  waffe: 'schlicht', schild: 'keins',
+  waffe: 'alt-schlicht', schild: 'keins', ruestung: 'keine', umhang: false,
   tausch: false, gras: true, anker: false, raster: false, loop: true, tempo: 100,
+  attackFrame: 0, walkFrame: 0,
 };
 
-const bilder = {}; let spec = null;
+const bilder = {}; let specAlt = null; let specNeu = null;
 const laden = (pfad) => new Promise((res) => {
   const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = BASIS + pfad;
 });
+const ladenJson = async (pfad) => {
+  try { const r = await fetch(BASIS + pfad); return r.ok ? await r.json() : null; }
+  catch (e) { return null; }
+};
 
 async function start() {
-  spec = await (await fetch(BASIS + 'hero-combat-v2.json')).json();
-  const dateien = ['body-attack-3x4.png', 'body-block-1x4.png'];
-  for (const w of Object.values(WAFFEN)) if (w) dateien.push(`${w}-attack-3x4.png`, `${w}-block-1x4.png`);
-  for (const s of Object.values(SCHILDE)) if (s) dateien.push(`${s}-attack-3x4.png`, `${s}-block-1x4.png`);
-  for (const d of dateien) bilder[d] = await laden(d);
+  specAlt = await ladenJson('hero-combat-v2.json');
+  specNeu = await ladenJson(NEU.manifest);
+
+  // Neue Dateien (Soll-Lieferung)
+  const neuDateien = [NEU.body, NEU.cape];
+  for (const [id] of NEU.waffen) neuDateien.push(neuWaffe(id));
+  for (const [id] of NEU.schilde) neuDateien.push(neuSchild(id));
+  for (const [id] of NEU.ruestungen) neuDateien.push(neuRuestung(id));
+  // Alte Dateien (Fallback)
+  const altDateien = ['body-attack-3x4.png', 'body-block-1x4.png'];
+  for (const w of Object.values(ALT_WAFFEN)) altDateien.push(`${w}-attack-3x4.png`, `${w}-block-1x4.png`);
+  for (const s of Object.values(ALT_SCHILDE)) altDateien.push(`${s}-attack-3x4.png`, `${s}-block-1x4.png`);
+
+  const alle = [...neuDateien, ...altDateien];
+  await Promise.all(alle.map(async (d) => { bilder[d] = await laden(d); }));
+
+  baueCheckliste(neuDateien);
   baueKnoepfe();
   requestAnimationFrame(schleife);
 }
 
+function baueCheckliste(neuDateien) {
+  const el = document.getElementById('checkliste');
+  const zeilen = [];
+  let da = 0;
+  const soll = [[NEU.manifest, !!specNeu], ...neuDateien.map((d) => [d, !!bilder[d]])];
+  for (const [name, ok] of soll) {
+    if (ok) da++;
+    zeilen.push(`<div class="${ok ? 'da' : 'fehltZ'}"><code>${name}</code></div>`);
+  }
+  el.innerHTML = zeilen.join('');
+  const gesamt = soll.length;
+  const st = document.getElementById('lieferstand');
+  st.innerHTML = da === gesamt
+    ? `<span class="ok">Lieferstand ${da}/${gesamt} - VOLLSTAENDIG</span>`
+    : `<span class="rot">Lieferstand ${da}/${gesamt}</span> - was fehlt, ist rot. `
+      + `Fallback aufs alte Paket ${bilder['body-attack-3x4.png'] ? 'aktiv (nur Schlag/Block)' : 'NICHT verfuegbar'}.`;
+}
+
+// ---- Knoepfe ----
 function baueKnoepfe() {
-  const reihe = (id, werte, schluessel) => {
+  const reihe = (id, eintraege, schluessel) => {
+    // eintraege: [wert, anzeige, verfuegbar, altQuelle]
     const el = document.getElementById(id);
     el.innerHTML = '';
-    for (const w of werte) {
+    for (const [wert, anzeige, verfuegbar, altq] of eintraege) {
       const b = document.createElement('button');
-      b.className = 'knopf' + (zustand[schluessel] === w ? ' an' : '');
-      b.textContent = schluessel === 'richtung' ? RICHT_NAMEN[w] : w;
-      b.onclick = () => { zustand[schluessel] = w; baueKnoepfe(); };
+      b.className = 'knopf' + (zustand[schluessel] === wert ? ' an' : '')
+        + (verfuegbar ? '' : ' fehlt') + (altq ? ' altq' : '');
+      b.textContent = anzeige;
+      b.title = verfuegbar ? '' : 'Datei fehlt noch (siehe Liefer-Checkliste)';
+      if (verfuegbar) b.onclick = () => { zustand[schluessel] = wert; baueKnoepfe(); };
       el.appendChild(b);
     }
   };
-  reihe('richtung', RICHTUNGEN, 'richtung');
-  reihe('waffe', Object.keys(WAFFEN), 'waffe');
-  reihe('schild', Object.keys(SCHILDE), 'schild');
+  reihe('richtung', RICHTUNGEN.map((r) => [r, RICHT_NAMEN[r], true, false]), 'richtung');
+
+  const waffen = [['keine', 'keine', true, false]];
+  for (const [id, name] of NEU.waffen) waffen.push([id, name, !!bilder[neuWaffe(id)], false]);
+  for (const [id, basis] of Object.entries(ALT_WAFFEN))
+    waffen.push([id, id.replace('alt-', 'ALT: '), !!bilder[`${basis}-attack-3x4.png`], true]);
+  reihe('waffe', waffen, 'waffe');
+
+  const schilde = [['keins', 'keins', true, false]];
+  for (const [id, name] of NEU.schilde) schilde.push([id, name, !!bilder[neuSchild(id)], false]);
+  for (const [id, basis] of Object.entries(ALT_SCHILDE))
+    schilde.push([id, id.replace('alt-', 'ALT: '), !!bilder[`${basis}-attack-3x4.png`], true]);
+  reihe('schild', schilde, 'schild');
+
+  const ruestungen = [['keine', 'keine (nur Hemd)', true, false]];
+  for (const [id, name] of NEU.ruestungen) ruestungen.push([id, name, !!bilder[neuRuestung(id)], false]);
+  reihe('ruestung', ruestungen, 'ruestung');
+
+  const umhangDa = !!bilder[NEU.cape];
+  const u = document.getElementById('umhang');
+  u.disabled = !umhangDa;
+  document.getElementById('umhangHinweis').textContent =
+    umhangDa ? '' : 'cape-full-9x4.png fehlt noch - Schalter gesperrt.';
+
+  const koerperNeu = !!bilder[NEU.body];
   document.querySelectorAll('[data-anim]').forEach((b) => {
-    b.classList.toggle('an', b.dataset.anim === zustand.anim);
-    b.onclick = () => { zustand.anim = b.dataset.anim; zustand.frame = 0; baueKnoepfe(); };
+    const a = b.dataset.anim;
+    const braucht9x4 = a === 'stehen' || a === 'gehen';
+    const verfuegbar = !braucht9x4 || koerperNeu;
+    b.classList.toggle('an', a === zustand.anim);
+    b.classList.toggle('fehlt', !verfuegbar);
+    b.title = verfuegbar ? '' : 'Braucht body-full-9x4.png (im Alt-Paket nicht vorhanden)';
+    b.onclick = verfuegbar
+      ? () => { zustand.anim = a; zustand.frame = 0; zustand.attackFrame = 0; zustand.walkFrame = 0; phase = 0; baueKnoepfe(); }
+      : null;
   });
   document.querySelectorAll('[data-zoom]').forEach((b) => {
     b.classList.toggle('an', +b.dataset.zoom === zustand.zoom);
     b.onclick = () => { zustand.zoom = +b.dataset.zoom; baueKnoepfe(); };
   });
-  document.getElementById('frame').max = zustand.anim === 'block' ? 0 : 2;
+  // Einzelbild-Bereich: NEU 0-8, ALT nur Schlag 0-2
+  const f = document.getElementById('frame');
+  f.max = koerperNeu ? 8 : 2;
+  aktualisiereFrameTxt();
 }
 
-for (const [id, feld] of [['tausch','tausch'],['gras','gras'],['anker','anker'],['raster','raster'],['loop','loop']]) {
+function aktualisiereFrameTxt() {
+  const koerperNeu = !!bilder[NEU.body];
+  const name = koerperNeu ? SPALTEN_NAMEN[zustand.frame] : ['windup', 'impact', 'followthrough'][zustand.frame];
+  document.getElementById('frameTxt').textContent = name ?? '';
+}
+
+for (const [id, feld] of [['tausch','tausch'],['gras','gras'],['anker','anker'],['raster','raster'],['loop','loop'],['umhang','umhang']]) {
   document.getElementById(id).onchange = (e) => { zustand[feld] = e.target.checked; aktualisiereHinweis(); };
 }
-document.getElementById('frame').oninput = (e) => { zustand.frame = +e.target.value; zustand.anim = 'einzel'; baueKnoepfe(); };
+document.getElementById('frame').oninput = (e) => {
+  zustand.frame = +e.target.value; zustand.anim = 'einzel'; baueKnoepfe();
+};
 document.getElementById('tempo').oninput = (e) => {
   zustand.tempo = +e.target.value; document.getElementById('tempoTxt').textContent = zustand.tempo + '%';
 };
@@ -146,55 +290,124 @@ function aktualisiereHinweis() {
 }
 aktualisiereHinweis();
 
-// Welche Sheet-Zeile gehoert zur gewaehlten Richtung (mit optionalem Fix)?
+// ---- Zeilen / Spalten ----
 function zeileFuer(richtung) {
   let idx = RICHTUNGEN.indexOf(richtung);
   if (zustand.tausch && (idx === 1 || idx === 2)) idx = idx === 1 ? 2 : 1;
   return idx;
 }
 
-function spaltenName() {
-  if (zustand.anim === 'block') return 'block';
-  return ['windup', 'impact', 'followthrough'][zustand.frame] ?? 'windup';
+// Aktuelle 9x4-Spalte (fuer neue Sheets) - haengt am Bewegungs-Zustand
+function spalte9x4() {
+  switch (zustand.anim) {
+    case 'stehen': return 0;
+    case 'gehen': return 1 + zustand.walkFrame;
+    case 'attack': return 5 + zustand.attackFrame;
+    case 'block': return 8;
+    case 'einzel': return zustand.frame;
+  }
+  return 0;
 }
 
+function spaltenName() {
+  if (!bilder[NEU.body] && zustand.anim === 'einzel') {
+    return ['windup', 'impact', 'followthrough'][zustand.frame] ?? 'windup';
+  }
+  return SPALTEN_NAMEN[spalte9x4()] ?? 'idle';
+}
+
+// ---- Animations-Schleife ----
 let t0 = performance.now(), phase = 0;
 function schleife(t) {
   const dt = t - t0; t0 = t;
-  if (zustand.anim === 'attack' && zustand.loop) {
-    const timing = spec.attackTimingMs;
-    const dauer = [timing.windup, timing.impact, timing.followthrough][zustand.frame] * (100 / zustand.tempo);
-    phase += dt;
-    if (phase >= dauer) { phase = 0; zustand.frame = (zustand.frame + 1) % 3; }
+  const faktor = 100 / zustand.tempo;
+  const attackTiming = (specNeu?.attackTimingMs) ?? (specAlt?.attackTimingMs) ?? { windup: 140, impact: 80, followthrough: 180 };
+  const walkMs = (specNeu?.walkTimingMs) ?? (specAlt?.walkTimingMs) ?? 120;
+  if (zustand.loop) {
+    if (zustand.anim === 'attack') {
+      const dauer = [attackTiming.windup, attackTiming.impact, attackTiming.followthrough][zustand.attackFrame] * faktor;
+      phase += dt;
+      if (phase >= dauer) { phase = 0; zustand.attackFrame = (zustand.attackFrame + 1) % 3; }
+    } else if (zustand.anim === 'gehen') {
+      phase += dt;
+      if (phase >= walkMs * faktor) { phase = 0; zustand.walkFrame = (zustand.walkFrame + 1) % 4; }
+    }
   }
   zeichne();
   requestAnimationFrame(schleife);
 }
 
+// ---- Ebenen-Quellen: NEU (9x4) bevorzugt, sonst ALT (attack/block) ----
+// Liefert {img, spalte} oder null (Ebene in diesem Modus nicht darstellbar).
+function ebenenQuelle(typ) {
+  const zielSpalte = spalte9x4();
+  const neuDatei = {
+    body: NEU.body,
+    cape: zustand.umhang ? NEU.cape : null,
+    armor: zustand.ruestung !== 'keine' ? neuRuestung(zustand.ruestung) : null,
+    weapon: zustand.waffe !== 'keine' && !zustand.waffe.startsWith('alt-') ? neuWaffe(zustand.waffe) : null,
+    shield: zustand.schild !== 'keins' && !zustand.schild.startsWith('alt-') ? neuSchild(zustand.schild) : null,
+  }[typ];
+  if (neuDatei && bilder[neuDatei]) return { img: bilder[neuDatei], spalte: zielSpalte };
+
+  // ALT-Fallback: nur body + alt-Waffen/-Schilde, nur Schlag/Block/Einzel(0-2)
+  let altBasis = null;
+  if (typ === 'body') altBasis = 'body';
+  else if (typ === 'weapon' && ALT_WAFFEN[zustand.waffe]) altBasis = ALT_WAFFEN[zustand.waffe];
+  else if (typ === 'shield' && ALT_SCHILDE[zustand.schild]) altBasis = ALT_SCHILDE[zustand.schild];
+  if (!altBasis) return null;
+
+  if (zustand.anim === 'attack' || (zustand.anim === 'einzel' && !bilder[NEU.body] && zustand.frame <= 2)) {
+    const img = bilder[`${altBasis}-attack-3x4.png`];
+    const spalte = zustand.anim === 'attack' ? zustand.attackFrame : zustand.frame;
+    return img ? { img, spalte } : null;
+  }
+  if (zustand.anim === 'block') {
+    const img = bilder[`${altBasis}-block-1x4.png`];
+    return img ? { img, spalte: 0 } : null;
+  }
+  return null; // Stehen/Gehen gibt es im Alt-Paket nicht
+}
+
+// Z-Reihenfolge: Manifest NEU > Manifest ALT (+armor/cape einsortiert) > Notnagel
+function zReihenfolge(richtung) {
+  if (specNeu?.zOrderBackToFront?.[richtung]) return specNeu.zOrderBackToFront[richtung];
+  if (specAlt?.zOrderBackToFront?.[richtung]) {
+    // Ruestung direkt VOR den Koerper haengen, Umhang je Richtung
+    const basis = [...specAlt.zOrderBackToFront[richtung]];
+    const i = basis.indexOf('body');
+    if (i >= 0) basis.splice(i + 1, 0, 'armor');
+    if (richtung === 'up') basis.push('cape'); else basis.unshift('cape');
+    return basis;
+  }
+  return richtung === 'up' ? ['weapon', 'shield', 'body', 'armor', 'cape']
+       : richtung === 'left' ? ['cape', 'weapon', 'body', 'armor', 'shield']
+       : ['cape', 'body', 'armor', 'weapon', 'shield'];
+}
+
+// ---- Zeichnen ----
 function zeichne() {
   const c = document.getElementById('c'), g = c.getContext('2d');
   const z = zustand.zoom, gr = 128 * z;
-  c.width = gr; c.height = gr;
+  if (c.width !== gr) { c.width = gr; c.height = gr; }
   g.imageSmoothingEnabled = false;
   g.fillStyle = zustand.gras ? '#46543a' : '#26221a';
   g.fillRect(0, 0, gr, gr);
 
   const zeile = zeileFuer(zustand.richtung);
-  const block = zustand.anim === 'block';
-  const spalte = block ? 0 : zustand.frame;
-  const suffix = block ? '-block-1x4.png' : '-attack-3x4.png';
-
-  const male = (datei) => {
-    const im = bilder[datei]; if (!im) return;
-    g.drawImage(im, spalte * 128, zeile * 128, 128, 128, 0, 0, gr, gr);
-  };
-  const ebenen = {
-    body: () => male('body' + suffix),
-    weapon: () => WAFFEN[zustand.waffe] && male(WAFFEN[zustand.waffe] + suffix),
-    shield: () => SCHILDE[zustand.schild] && male(SCHILDE[zustand.schild] + suffix),
-  };
-  // Z-Reihenfolge aus dem JSON (hinten -> vorne), Richtung = ANGEZEIGTE Richtung
-  for (const e of spec.zOrderBackToFront[zustand.richtung]) ebenen[e]?.();
+  const fehlend = [];
+  for (const typ of zReihenfolge(zustand.richtung)) {
+    // Ebene ueberhaupt gewuenscht?
+    const gewuenscht = typ === 'body'
+      || (typ === 'cape' && zustand.umhang)
+      || (typ === 'armor' && zustand.ruestung !== 'keine')
+      || (typ === 'weapon' && zustand.waffe !== 'keine')
+      || (typ === 'shield' && zustand.schild !== 'keins');
+    if (!gewuenscht) continue;
+    const q = ebenenQuelle(typ);
+    if (!q) { fehlend.push(typ); continue; }
+    g.drawImage(q.img, q.spalte * 128, zeile * 128, 128, 128, 0, 0, gr, gr);
+  }
 
   if (zustand.raster) {
     g.strokeStyle = '#c9a22740'; g.lineWidth = 1;
@@ -202,7 +415,8 @@ function zeichne() {
       g.beginPath(); g.moveTo(p, 0); g.lineTo(p, gr); g.moveTo(0, p); g.lineTo(gr, p); g.stroke(); }
   }
   if (zustand.anker) {
-    const a = spec.anchors[zustand.richtung]?.[spaltenName()];
+    const sn = spaltenName();
+    const a = (specNeu?.anchors?.[zustand.richtung]?.[sn]) ?? (specAlt?.anchors?.[zustand.richtung]?.[sn]);
     const kreuz = (pt, farbe) => { if (!pt) return;
       g.strokeStyle = farbe; g.lineWidth = 2;
       const x = pt[0] * z, y = pt[1] * z;
@@ -210,9 +424,14 @@ function zeichne() {
     kreuz(a?.weapon, '#ff5a4a'); kreuz(a?.shield, '#5aa8ff');
   }
 
+  const zeilenName = (specNeu?.masterGrid?.rows ?? specAlt?.masterGrid?.rows ?? RICHTUNGEN)[zeile];
   document.getElementById('info').textContent =
-    `Richtung ${RICHT_NAMEN[zustand.richtung]} | Sheet-Zeile ${zeile} (${spec.masterGrid.rows[zeile]}) | `
-    + `Bild ${spaltenName()} | Waffe ${zustand.waffe} | Schild ${zustand.schild}`;
+    `Richtung ${RICHT_NAMEN[zustand.richtung]} | Sheet-Zeile ${zeile} (${zeilenName}) | `
+    + `Bild ${spaltenName()} | Waffe ${zustand.waffe} | Schild ${zustand.schild} | `
+    + `Ruestung ${zustand.ruestung}${zustand.umhang ? ' | Umhang' : ''}`;
+  document.getElementById('quellHinweis').textContent = fehlend.length
+    ? `Nicht darstellbar in dieser Bewegung: ${fehlend.join(', ')} (Datei fehlt oder Alt-Paket kann kein Stehen/Gehen).`
+    : '';
 }
 start();
 </script>

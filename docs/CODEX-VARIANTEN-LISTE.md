@@ -95,3 +95,31 @@ Der Autor testet in `tools/sprite-werkbank.html` (bereits im Repo):
 alle Richtungen, alle Waffen, alle Schilde, alle Ruestungen, Stehen /
 Gehen / Schlag / Block. Was dort nicht sauber stapelt, faellt sofort
 auf - bitte vorher selbst dagegen pruefen.
+
+## 6. DATEINAMEN (verbindlich - die Werkbank prueft exakt diese Namen)
+
+Ablage weiter unter `assets/sprites/hero-combat-v2/`. Jede Ebene ein
+1152x512-Sheet (9 Spalten x 4 Richtungen), Namen in Kleinbuchstaben:
+
+- `body-full-9x4.png` - Koerper-Basis (Hemd, Hose, Stiefel)
+- `cape-full-9x4.png` - Umhang mit Gugel (eigene Ebene, an/aus)
+- Ruestungen: `armor-lumpen-full-9x4.png`, `armor-lederwams-full-9x4.png`,
+  `armor-gambeson-full-9x4.png`, `armor-kettenhemd-full-9x4.png`,
+  `armor-plattenrock-full-9x4.png`
+- Waffen: `weapon-solide-klinge-full-9x4.png`,
+  `weapon-kurzschwert-full-9x4.png`, `weapon-streitkolben-full-9x4.png`,
+  `weapon-langschwert-full-9x4.png`, `weapon-streitaxt-full-9x4.png`,
+  `weapon-falchion-full-9x4.png`, `weapon-hellebarde-full-9x4.png`,
+  `weapon-kriegshammer-full-9x4.png`
+- Schilde: `shield-holzschild-full-9x4.png`,
+  `shield-rundschild-full-9x4.png`,
+  `shield-beschlagener-rundschild-full-9x4.png`,
+  `shield-eisenschild-full-9x4.png`, `shield-turmschild-full-9x4.png`
+- Manifest: `hero-layers.json` - wie hero-combat-v2.json, aber mit
+  9-Spalten-Belegung (idle, walk1-4, windup, impact, followthrough,
+  block), Ankern je Richtung+Spalte und Z-Reihenfolge; zusaetzlich je
+  Ebenen-Kategorie die Z-Position des UMHANGS (vor/hinter Ruestung).
+
+Die Werkbank (`tools/sprite-werkbank.html`) laedt exakt diese Namen und
+zeigt eine LIEFER-CHECKLISTE: was fehlt, ist dort rot markiert. Vor der
+Abgabe bitte selbst oeffnen - Ziel ist alles gruen.
