@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Sprite-Werkbank - Aldric Kampf V2 (Pruefstand)</title>
+<style>
+  body { margin:0; background:#17140f; color:#d8cfb8; font-family:system-ui,sans-serif; font-size:14px; }
+  header { padding:10px 16px; border-bottom:1px solid #3a3126; }
+  h1 { font-size:16px; margin:0 0 4px; font-family:serif; letter-spacing:1px; }
+  .hint { color:#9a8f78; font-size:12px; }
+  main { display:flex; gap:18px; padding:16px; flex-wrap:wrap; }
+  .buehne { background:#1f1b14; border:1px solid #3a3126; padding:12px; }
+  canvas { display:block; image-rendering:pixelated; background:#26221a; }
+  .steuer { min-width:280px; display:flex; flex-direction:column; gap:14px; }
+  fieldset { border:1px solid #3a3126; padding:8px 10px; margin:0; }
+  legend { color:#c9a227; font-size:12px; letter-spacing:1px; padding:0 4px; }
+  label { display:block; margin:3px 0; cursor:pointer; }
+  input[type=range] { width:100%; }
+  .knopf { background:#2a2419; color:#d8cfb8; border:1px solid #4a3f2c; padding:6px 10px; cursor:pointer; font-size:13px; }
+  .knopf:hover { background:#3a3020; }
+  .knopf.an { background:#4a3a14; border-color:#c9a227; color:#f0e2b8; }
+  .reihe { display:flex; gap:6px; flex-wrap:wrap; }
+  .warn { color:#e08a5a; font-size:12px; line-height:1.5; }
+  .ok { color:#8fb35a; }
+  code { background:#26221a; padding:1px 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>SPRITE-WERKBANK &mdash; Aldric Kampf V2</h1>
+  <div class="hint">Reine Pruefseite. Aendert NICHTS am Spiel &mdash; laedt nur die Codex-Sheets aus
+  <code>assets/sprites/hero-combat-v2/</code> und stapelt sie nach <code>hero-combat-v2.json</code>.</div>
+</header>
+<main>
+  <div class="buehne">
+    <canvas id="c" width="512" height="512"></canvas>
+    <div id="info" class="hint" style="margin-top:8px"></div>
+  </div>
+  <div class="steuer">
+    <fieldset>
+      <legend>BLICKRICHTUNG</legend>
+      <div class="reihe" id="richtung"></div>
+      <label style="margin-top:8px">
+        <input type="checkbox" id="tausch"> Zeilen links/rechts TAUSCHEN (Fix-Vorschau)
+      </label>
+      <div class="warn" id="tauschHinweis"></div>
+    </fieldset>
+    <fieldset>
+      <legend>BEWEGUNG</legend>
+      <div class="reihe">
+        <button class="knopf an" data-anim="attack">Schlag (3)</button>
+        <button class="knopf" data-anim="block">Block (1)</button>
+        <button class="knopf" data-anim="einzel">Einzelbild</button>
+      </div>
+      <label style="margin-top:8px">Einzelbild-Nr: <input type="range" id="frame" min="0" max="2" value="0"></label>
+      <label><input type="checkbox" id="loop" checked> Endlos abspielen</label>
+      <label>Tempo: <input type="range" id="tempo" min="20" max="200" value="100"> <span id="tempoTxt">100%</span></label>
+    </fieldset>
+    <fieldset>
+      <legend>WAFFE</legend>
+      <div class="reihe" id="waffe"></div>
+    </fieldset>
+    <fieldset>
+      <legend>SCHILD</legend>
+      <div class="reihe" id="schild"></div>
+    </fieldset>
+    <fieldset>
+      <legend>ANSICHT</legend>
+      <div class="reihe">
+        <button class="knopf" data-zoom="1">1x (128)</button>
+        <button class="knopf an" data-zoom="2">2x</button>
+        <button class="knopf" data-zoom="4">4x</button>
+      </div>
+      <label style="margin-top:6px"><input type="checkbox" id="gras" checked> Gras-Hintergrund</label>
+      <label><input type="checkbox" id="anker"> Anker anzeigen (Hand rot / Schild blau)</label>
+      <label><input type="checkbox" id="raster"> Zellraster</label>
+    </fieldset>
+  </div>
+</main>
+<script>
+const BASIS = '../assets/sprites/hero-combat-v2/';
+const RICHTUNGEN = ['down', 'left', 'right', 'up'];
+const RICHT_NAMEN = { down: 'UNTEN', left: 'LINKS', right: 'RECHTS', up: 'OBEN' };
+const WAFFEN = { keine: null, schlicht: 'weapon-sword-simple', meister: 'weapon-sword-master' };
+const SCHILDE = { keins: null, holz: 'shield-round-wood', beschlagen: 'shield-round-reinforced' };
+
+const zustand = {
+  richtung: 'down', anim: 'attack', frame: 0, zoom: 2,
+  waffe: 'schlicht', schild: 'keins',
+  tausch: false, gras: true, anker: false, raster: false, loop: true, tempo: 100,
+};
+
+const bilder = {}; let spec = null;
+const laden = (pfad) => new Promise((res) => {
+  const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = BASIS + pfad;
+});
+
+async function start() {
+  spec = await (await fetch(BASIS + 'hero-combat-v2.json')).json();
+  const dateien = ['body-attack-3x4.png', 'body-block-1x4.png'];
+  for (const w of Object.values(WAFFEN)) if (w) dateien.push(`${w}-attack-3x4.png`, `${w}-block-1x4.png`);
+  for (const s of Object.values(SCHILDE)) if (s) dateien.push(`${s}-attack-3x4.png`, `${s}-block-1x4.png`);
+  for (const d of dateien) bilder[d] = await laden(d);
+  baueKnoepfe();
+  requestAnimationFrame(schleife);
+}
+
+function baueKnoepfe() {
+  const reihe = (id, werte, schluessel) => {
+    const el = document.getElementById(id);
+    el.innerHTML = '';
+    for (const w of werte) {
+      const b = document.createElement('button');
+      b.className = 'knopf' + (zustand[schluessel] === w ? ' an' : '');
+      b.textContent = schluessel === 'richtung' ? RICHT_NAMEN[w] : w;
+      b.onclick = () => { zustand[schluessel] = w; baueKnoepfe(); };
+      el.appendChild(b);
+    }
+  };
+  reihe('richtung', RICHTUNGEN, 'richtung');
+  reihe('waffe', Object.keys(WAFFEN), 'waffe');
+  reihe('schild', Object.keys(SCHILDE), 'schild');
+  document.querySelectorAll('[data-anim]').forEach((b) => {
+    b.classList.toggle('an', b.dataset.anim === zustand.anim);
+    b.onclick = () => { zustand.anim = b.dataset.anim; zustand.frame = 0; baueKnoepfe(); };
+  });
+  document.querySelectorAll('[data-zoom]').forEach((b) => {
+    b.classList.toggle('an', +b.dataset.zoom === zustand.zoom);
+    b.onclick = () => { zustand.zoom = +b.dataset.zoom; baueKnoepfe(); };
+  });
+  document.getElementById('frame').max = zustand.anim === 'block' ? 0 : 2;
+}
+
+for (const [id, feld] of [['tausch','tausch'],['gras','gras'],['anker','anker'],['raster','raster'],['loop','loop']]) {
+  document.getElementById(id).onchange = (e) => { zustand[feld] = e.target.checked; aktualisiereHinweis(); };
+}
+document.getElementById('frame').oninput = (e) => { zustand.frame = +e.target.value; zustand.anim = 'einzel'; baueKnoepfe(); };
+document.getElementById('tempo').oninput = (e) => {
+  zustand.tempo = +e.target.value; document.getElementById('tempoTxt').textContent = zustand.tempo + '%';
+};
+
+function aktualisiereHinweis() {
+  document.getElementById('tauschHinweis').innerHTML = zustand.tausch
+    ? '<span class="ok">Tausch AN: so waeren die Richtungen korrekt.</span>'
+    : 'Tausch AUS: Auslieferungszustand. Pruefe, ob LINKS wirklich nach links schaut.';
+}
+aktualisiereHinweis();
+
+// Welche Sheet-Zeile gehoert zur gewaehlten Richtung (mit optionalem Fix)?
+function zeileFuer(richtung) {
+  let idx = RICHTUNGEN.indexOf(richtung);
+  if (zustand.tausch && (idx === 1 || idx === 2)) idx = idx === 1 ? 2 : 1;
+  return idx;
+}
+
+function spaltenName() {
+  if (zustand.anim === 'block') return 'block';
+  return ['windup', 'impact', 'followthrough'][zustand.frame] ?? 'windup';
+}
+
+let t0 = performance.now(), phase = 0;
+function schleife(t) {
+  const dt = t - t0; t0 = t;
+  if (zustand.anim === 'attack' && zustand.loop) {
+    const timing = spec.attackTimingMs;
+    const dauer = [timing.windup, timing.impact, timing.followthrough][zustand.frame] * (100 / zustand.tempo);
+    phase += dt;
+    if (phase >= dauer) { phase = 0; zustand.frame = (zustand.frame + 1) % 3; }
+  }
+  zeichne();
+  requestAnimationFrame(schleife);
+}
+
+function zeichne() {
+  const c = document.getElementById('c'), g = c.getContext('2d');
+  const z = zustand.zoom, gr = 128 * z;
+  c.width = gr; c.height = gr;
+  g.imageSmoothingEnabled = false;
+  g.fillStyle = zustand.gras ? '#46543a' : '#26221a';
+  g.fillRect(0, 0, gr, gr);
+
+  const zeile = zeileFuer(zustand.richtung);
+  const block = zustand.anim === 'block';
+  const spalte = block ? 0 : zustand.frame;
+  const suffix = block ? '-block-1x4.png' : '-attack-3x4.png';
+
+  const male = (datei) => {
+    const im = bilder[datei]; if (!im) return;
+    g.drawImage(im, spalte * 128, zeile * 128, 128, 128, 0, 0, gr, gr);
+  };
+  const ebenen = {
+    body: () => male('body' + suffix),
+    weapon: () => WAFFEN[zustand.waffe] && male(WAFFEN[zustand.waffe] + suffix),
+    shield: () => SCHILDE[zustand.schild] && male(SCHILDE[zustand.schild] + suffix),
+  };
+  // Z-Reihenfolge aus dem JSON (hinten -> vorne), Richtung = ANGEZEIGTE Richtung
+  for (const e of spec.zOrderBackToFront[zustand.richtung]) ebenen[e]?.();
+
+  if (zustand.raster) {
+    g.strokeStyle = '#c9a22740'; g.lineWidth = 1;
+    for (let i = 0; i <= 8; i++) { const p = i * gr / 8;
+      g.beginPath(); g.moveTo(p, 0); g.lineTo(p, gr); g.moveTo(0, p); g.lineTo(gr, p); g.stroke(); }
+  }
+  if (zustand.anker) {
+    const a = spec.anchors[zustand.richtung]?.[spaltenName()];
+    const kreuz = (pt, farbe) => { if (!pt) return;
+      g.strokeStyle = farbe; g.lineWidth = 2;
+      const x = pt[0] * z, y = pt[1] * z;
+      g.beginPath(); g.moveTo(x - 6, y); g.lineTo(x + 6, y); g.moveTo(x, y - 6); g.lineTo(x, y + 6); g.stroke(); };
+    kreuz(a?.weapon, '#ff5a4a'); kreuz(a?.shield, '#5aa8ff');
+  }
+
+  document.getElementById('info').textContent =
+    `Richtung ${RICHT_NAMEN[zustand.richtung]} | Sheet-Zeile ${zeile} (${spec.masterGrid.rows[zeile]}) | `
+    + `Bild ${spaltenName()} | Waffe ${zustand.waffe} | Schild ${zustand.schild}`;
+}
+start();
+</script>
+</body>
+</html>
