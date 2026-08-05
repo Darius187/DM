@@ -47,8 +47,27 @@ gleicher Anker (Fusspunkt Mitte unten), damit das Spiel sie stapeln kann:
   Lederwams / Kettenhemd. Jede Variante deckt nur den Torso-Bereich.
 - Ebene UMHANG (an/aus schaltbar): Reiseumhang mit Gugel im Nacken.
 - Ebene WAFFE (je einzeln, eigene Datei): Schwert / Axt / Bogen -
-  gezeichnet in der HAND-Position jeder Blickrichtung und jedes Frames.
-- Ebene SCHILD (an/aus): Rundschild am linken Arm.
+  gezeichnet in der HAND-Position jeder Blickrichtung und JEDES Frames
+  (auch der drei Schlag-Frames: die Klinge macht den Schwung mit).
+- Ebene SCHILD (an/aus, je einzeln): am linken Arm, ebenfalls fuer
+  JEDEN Frame (beim Schlag bleibt das Schild schuetzend vor dem
+  Koerper, beim Gehen schwingt es leicht mit).
+
+DAS KOMBINATIONS-PRINZIP (WICHTIG - genau so, nicht anders):
+- Es gibt EINE Koerper-Animation. Der linke Arm ist in allen Frames so
+  posiert (leicht angewinkelt vor dem Koerper), dass er MIT Schild
+  (das Schild deckt ihn) und OHNE Schild (Arm balanciert frei) beide
+  plausibel aussieht. NICHT zwei Koerper-Versionen zeichnen!
+- "Je nach Schwert" und "je nach Schild" heisst: NUR das jeweilige
+  Ebenen-Sheet wird getauscht, der Koerper bleibt. Damit das passt,
+  schreibt das JSON je Richtung+Frame einen HAND-ANKER (x,y der
+  Griffhand) und einen SCHILD-ANKER (x,y Armmitte) fest - JEDE
+  Waffen-/Schild-Variante wird exakt auf diese Anker gezeichnet.
+- Liefere als Start ZWEI Schwert-Varianten (schlichte Klinge /
+  Meisterklinge mit hellerem Stahl) und ZWEI Schild-Varianten
+  (Holz-Rundschild / beschlagener Rundschild). Weitere Waffen sind
+  dann nur noch je EIN neues Sheet auf dieselben Anker - kein neuer
+  Koerper, keine neuen Kombinationen.
 
 Die Fusssoldaten nutzen DIESELBE Koerper-Basis und DIESELBEN
 Ruestungs-Layer (Kettenhaube/Helm als eigene Kopf-Ebene) - Held und
@@ -66,21 +85,30 @@ UNTEN (0), LINKS (1), RECHTS (2), OBEN (3). Liefere je Richtung:
 - SCHLAG: 3 Frames (Ausholen ueber die Schulter - Treffer quer -
   Nachziehen); beim Bogen stattdessen SPANNEN: 3 Frames (Nocken -
   Spannen - Loesen)
+- BLOCK: 1 Frame (mit Schild: Schild hoch vor den Koerper; ohne
+  Schild zeigt derselbe Koerper-Frame die Klinge quer - beides muss
+  mit derselben Koerperpose funktionieren, siehe Kombinations-Prinzip)
+  (Die Ausweichrolle folgt in Runde 3 - jetzt noch nicht.)
 
 SHEET-FORMAT: ein PNG je Ebene, Raster 128x128 je Frame (NATIV
 gepixelt in 128 - das ist unsere Spielaufloesung, KEIN Skalieren),
 Zeilen = Richtungen (0-3), Spalten = Frames in der Reihenfolge
-Stehen(1) Gehen(4) Schlag/Spannen(3) = 8 Spalten (Sheet = 1024x512). Dazu je
-Sheet ein kleines JSON: { frameW, frameH, reihen, spalten, anker,
-spalten_belegung }. Ablage unter screenshots/codex_v2/ (Ordner anlegen).
+Stehen(1) Gehen(4) Schlag/Spannen(3) Block(1) = 9 Spalten (Sheet =
+1152x512). Dazu je Sheet ein JSON: { frameW, frameH, reihen, spalten,
+anker, spalten_belegung, handAnker: [je Richtung+Frame [x,y]],
+schildAnker: [je Richtung+Frame [x,y]] }. Ablage unter
+screenshots/codex_v2/ (Ordner anlegen).
 
 ## 4. ABGABE
 
 1. Sprite-Sheets + JSONs wie oben fuer: Held Aldric (alle Ebenen),
    Fusssoldat (Koerper + Kette + Helm-Ebene), Bogenschuetze.
-2. EIN Kontaktbogen-PNG als Schaufenster: Aldric in 3 Ausstattungen
-   (Hemd pur / Gambeson+Umhang / Kette+Schild), daneben Soldat und
-   Bogenschuetze, jeweils Blickrichtung unten, Gehen-Frame 1 - auf
+2. EIN Kontaktbogen-PNG als Schaufenster: Aldric in 4 Ausstattungen
+   (Hemd pur / Gambeson+Umhang / Kette+Schild / Kette+Meisterklinge
+   OHNE Schild), dazu eine SCHLAG-REIHE (die 3 Schlag-Frames einmal
+   MIT und einmal OHNE Schild nebeneinander - der Beweis, dass eine
+   Koerperpose beide Faelle traegt), daneben Soldat und
+   Bogenschuetze, jeweils Blickrichtung unten - auf
    dunklem Grund UND auf Gras-Gruen #46543a, in 128 nativ, dazu 64-
    und 32-Proben (nur herunterskaliert fuers Schaufenster).
 3. KEINE bestehenden Spieldateien anfassen (src/gfx bleibt unberuehrt).
