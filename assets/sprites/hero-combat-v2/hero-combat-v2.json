@@ -1,0 +1,242 @@
+{
+  "format": "ravenmoor-modular-hero-combat-v2",
+  "cellSize": [
+    128,
+    128
+  ],
+  "masterGrid": {
+    "columns": [
+      "windup",
+      "impact",
+      "followthrough",
+      "block"
+    ],
+    "rows": [
+      "down",
+      "left",
+      "right",
+      "up"
+    ]
+  },
+  "attackTimingMs": {
+    "windup": 140,
+    "impact": 80,
+    "followthrough": 180
+  },
+  "walkTimingMs": 120,
+  "anchorConvention": {
+    "coordinateSpace": "cell-local pixels from top-left; integer pixel centers",
+    "weaponAnchor": "center of the closed grip at the blade/guard junction",
+    "weaponVariantOrigin": "grip center; translate this origin to weaponAnchor",
+    "shieldAnchor": "center of shield boss",
+    "shieldVariantOrigin": "boss center; translate this origin to shieldAnchor",
+    "fullSheetLayers": "already aligned; draw each 128x128 layer at the body cell origin without extra translation"
+  },
+  "anchors": {
+    "down": {
+      "windup": {
+        "weapon": [
+          34,
+          27
+        ],
+        "shield": [
+          91,
+          65
+        ]
+      },
+      "impact": {
+        "weapon": [
+          66,
+          63
+        ],
+        "shield": [
+          84,
+          62
+        ]
+      },
+      "followthrough": {
+        "weapon": [
+          69,
+          80
+        ],
+        "shield": [
+          86,
+          61
+        ]
+      },
+      "block": {
+        "weapon": [
+          49,
+          57
+        ],
+        "shield": [
+          79,
+          58
+        ]
+      }
+    },
+    "left": {
+      "windup": {
+        "weapon": [
+          31,
+          28
+        ],
+        "shield": [
+          84,
+          65
+        ]
+      },
+      "impact": {
+        "weapon": [
+          72,
+          55
+        ],
+        "shield": [
+          81,
+          64
+        ]
+      },
+      "followthrough": {
+        "weapon": [
+          89,
+          78
+        ],
+        "shield": [
+          73,
+          59
+        ]
+      },
+      "block": {
+        "weapon": [
+          58,
+          50
+        ],
+        "shield": [
+          76,
+          57
+        ]
+      }
+    },
+    "right": {
+      "windup": {
+        "weapon": [
+          71,
+          23
+        ],
+        "shield": [
+          29,
+          73
+        ]
+      },
+      "impact": {
+        "weapon": [
+          63,
+          50
+        ],
+        "shield": [
+          37,
+          62
+        ]
+      },
+      "followthrough": {
+        "weapon": [
+          37,
+          77
+        ],
+        "shield": [
+          31,
+          61
+        ]
+      },
+      "block": {
+        "weapon": [
+          72,
+          48
+        ],
+        "shield": [
+          50,
+          58
+        ]
+      }
+    },
+    "up": {
+      "windup": {
+        "weapon": [
+          77,
+          14
+        ],
+        "shield": [
+          35,
+          56
+        ]
+      },
+      "impact": {
+        "weapon": [
+          88,
+          47
+        ],
+        "shield": [
+          30,
+          68
+        ]
+      },
+      "followthrough": {
+        "weapon": [
+          91,
+          70
+        ],
+        "shield": [
+          36,
+          63
+        ]
+      },
+      "block": {
+        "weapon": [
+          35,
+          38
+        ],
+        "shield": [
+          39,
+          58
+        ]
+      }
+    }
+  },
+  "zOrderBackToFront": {
+    "down": [
+      "body",
+      "weapon",
+      "shield"
+    ],
+    "left": [
+      "weapon",
+      "body",
+      "shield"
+    ],
+    "right": [
+      "body",
+      "weapon",
+      "shield"
+    ],
+    "up": [
+      "weapon",
+      "shield",
+      "body"
+    ]
+  },
+  "capeOrdering": {
+    "down": "cape occlusion is baked behind the front-facing torso inside the body frame",
+    "up": "cape occlusion is baked over the back-facing torso inside the body frame"
+  },
+  "assets": {
+    "bodyAttack": "body-attack-3x4.png",
+    "bodyBlock": "body-block-1x4.png",
+    "simpleSwordAttack": "weapon-sword-simple-attack-3x4.png",
+    "masterSwordAttack": "weapon-sword-master-attack-3x4.png",
+    "woodShieldAttack": "shield-round-wood-attack-3x4.png",
+    "reinforcedShieldAttack": "shield-round-reinforced-attack-3x4.png",
+    "attackProof": "proof-attack-without-with-shield.png",
+    "blockProof": "proof-block-without-with-shield.png",
+    "variantProof": "proof-equipment-variants.png"
+  }
+}
