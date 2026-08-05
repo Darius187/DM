@@ -3853,3 +3853,22 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
 - STARTWAFFE: "Rostige Klinge" (val 5) -> "Solide Klinge" (val 6). Der
   Held traegt damit dasselbe Handwerk, das im Dorf taeglich entsteht
   (Namensstufe aus dem Guete-System, Mitte).
+
+## R239 - Namen, Titel, Kontaktbogen (Autor-Runde)
+- ZWEITES DORF heisst KALTENBRUNN (Autor-Entscheid). Gerettete/
+  Verschleppte/gefangene Voegte finden dort spaeter ihre Heimat.
+- Soldaten-Grundstaerke: ABGELEHNT zugunsten des Eigenschaften-Modells
+  (Autor: "gibt den Spielern immer einen Charakter") - benannte Zuege
+  wie Zaeh/Flink/Kaltbluetig/Falkenauge statt nackter Zahl. Eigene
+  Runde, in TODO.
+- TITEL: das Spiel heisst nicht "Ravensmoor" - die Originalgeschichte
+  heisst ETERNAL PAIN. Titelbild/Untertitel umstellen, sobald der neue
+  Stadtname fix ist (EIN Umbenennungs-Pass fuer beides).
+- STADTNAME: "Ravensmoor" ist Englisch - Umbenennung nach RABENMOOR
+  (oder aehnlich) gewuenscht, "solange es noch geht". Wartet auf die
+  finale Namenswahl des Autors, dann ein einziger Sweep ueber alle
+  Spielertexte + Docs (Karten-ids wie 'stadt' bleiben unangetastet -
+  Spielstand-Kompatibilitaet).
+- Kontaktbogen geliefert: alle 42 Figuren aus den HD-Zeichnungen auf
+  64x64 und 32x32 heruntergerechnet (Alpha-Zuschnitt, glattes
+  Downscale), als Entscheidungsgrundlage fuer den Figuren-Look.

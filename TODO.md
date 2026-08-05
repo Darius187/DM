@@ -314,3 +314,12 @@ Lichtern -> Bloom im Einfall drosseln. Ohne Geraeteprofil aber nicht auf Verdach
       der Anfangskarte auf die uebrigen Karten ziehen (Ursache), nicht
       filtern. Grading-Varianten lagen als Tafel vor (entsaettigt /
       Moor-Oliv / duester-kuehl) - alle verworfen.
+- [ ] SOLDATEN-EIGENSCHAFTEN (Autor-Zusage R239): benannte Zuege je
+      Einheit (Zaeh +Leben, Flink +Tempo, Kaltbluetig bricht spaeter,
+      Falkenauge +Reichweite ...) - 1-2 je Rekrut, wuerfeln bei der
+      Aushebung, Anzeige im Heer-Buch. KEINE nackte Grundstaerke,
+      KEINE Multiplikation mit Guete/Rang (Stapel-Gefahr).
+- [ ] GROSSER UMBENENNUNGS-PASS (wartet auf Autor-Namenswahl):
+      Ravensmoor -> Rabenmoor (o.ae.), Titelbild -> ETERNAL PAIN,
+      Zuflucht im Schneegebirge benennen. Nur ANZEIGE-Texte + Docs;
+      Karten-ids/Spielstand-Schluessel bleiben.
