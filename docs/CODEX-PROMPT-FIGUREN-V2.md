@@ -116,6 +116,29 @@ screenshots/codex_v2/ (Ordner anlegen).
 4. Selbstbewertung am Ende (3 Saetze): Aehnlichkeit zum Portrait?
    Lesen sich die Layer sauber gestapelt? Was wuerdest du in Runde 3
    aendern?
+5. UEBERGABE-NOTIZ fuer Claude Code (Pflicht, damit die Integration
+   ins Spiel ohne Rueckfragen laeuft): lege
+   `docs/handoff/FIGUREN-V2-UEBERGABE.md` an - KURZ, kein Roman, nur
+   das, was man den Dateien NICHT ansieht:
+   - DATEILISTE: jeder Pfad + was drin ist (welche Ebene, welche
+     Figur, welche Variante).
+   - Z-REIHENFOLGE beim Stapeln: in welcher Reihenfolge muessen die
+     Ebenen uebereinander gezeichnet werden, und AENDERT sie sich je
+     Blickrichtung? (Beispiel: bei Blick nach OBEN liegt der Umhang
+     VOR dem Koerper, bei Blick nach UNTEN dahinter; die Waffe liegt
+     bei Blick nach LINKS hinter dem Koerper, nach RECHTS davor.)
+     Das ist der haeufigste Stolperstein - bitte explizit auflisten.
+   - ANKER-KONVENTION: was genau bedeuten handAnker/schildAnker
+     (Pixel-Koordinate im Frame, Ursprung oben links?), und auf
+     welchen Punkt der Waffen-Grafik werden sie gelegt (Griffmitte?).
+   - ANIMATIONS-TEMPO: mit welchen Bildern pro Sekunde hast du Gehen
+     und Schlag gedacht (Empfehlung reicht).
+   - ABWEICHUNGEN vom Auftrag: was hast du anders gemacht als hier
+     bestellt und warum. Was FEHLT (bewusst offen gelassen).
+   - BEKANNTE SCHWAECHEN: was sieht in bestimmten Richtungen noch
+     nicht gut aus.
+   Regeln fuer die Notiz: `AGENTS.md` (Uebergabe-Notiz auch in die
+   Commit-Nachricht).
 
 MASSSTAB DES AUTORS: "Sieht Aldric aus wie ein muede gereister Mann
 des Jahres 1349 - oder wie ein Fantasy-Held?" Bescheiden schlaegt
