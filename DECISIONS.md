@@ -3816,3 +3816,22 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   den hohen Norden ist also schon von Haus aus durchlaessig; das Gate
   sichert zusaetzlich, dass er es bis zur Rueckeroberung BLEIBT.
 - 4 neue Vitest-Faelle (Gate zu/auf/alt-kompatibel/laufender Angriff).
+
+## R237 - Verschleppte werden echt + Karawane unantastbar (Doku 08)
+- Das Chaos-System des Einfalls verschleppte Bewohner bisher nur
+  TEMPORAER ("kehren beim naechsten Besuch wieder"). Jetzt: wer
+  erwischt wird, steht NAMENTLICH in welt.verschleppteBewohner, ist
+  dauerhaft aus dem Dorf-Roster raus (loadAreaObjects ueberspringt
+  ihn) und fehlt beim Appell - bis ihn jemand befreit. Kinder sind
+  ausdruecklich dabei (die Meldung nennt es).
+- Sprachlich traegt jede Meldung das Motiv: "Sie toeten nicht; sie
+  SAMMELN." Die Monster wollen die Menschen LEBEND (R224-Aushoehlung).
+- KARAWANEN-SCHUTZ (Autor-Order): sobald Ravensmoor gefallen ist
+  (flags.stadtGefallen) und der Held LEBT, jagt kein Monster mehr
+  Zivilisten - aktualisiereChaos steigt sofort aus. Faellt der Held,
+  sind sie wieder Freiwild. Damit ist die Flucht Spannung statt
+  Eskorten-Hoelle, und die Regel steht an EINER Stelle.
+- vermissteBewohner() als oeffentlicher Hook fuer Appell/Quest/Anzeige.
+- OFFEN (Autor): wo werden die Verschleppten befreit? Das
+  Verschleppten-System des versunkenen Bezirks (R224) traegt die
+  Mechanik bereits - es braucht nur einen Ort und die Namens-Uebergabe.

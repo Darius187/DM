@@ -68,6 +68,9 @@ export interface SaveData {
     // R233: die Dorf-Waffenkammer - jede geschmiedete Waffe als Einzelstueck
     // mit Guete. dorfLager['waffen'] bleibt der abgeglichene Zaehler.
     waffenkammer?: Array<import('./waffenkammer').DorfWaffe>;
+    // R237: beim Ueberfall verschleppte Bewohner (namentlich, auch Kinder) -
+    // dauerhaft fort, bis sie befreit werden.
+    verschleppteBewohner?: string[];
     haendlerSeed: number;
     aufbauBestellt?: boolean;
     einrichtung?: number;

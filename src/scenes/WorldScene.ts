@@ -423,6 +423,10 @@ export class WorldScene extends CombatScene {
   // R230: gefangen genommene Voegte - warten (wie die Geretteten) auf das
   // zweite Dorf: aufnehmen oder verstossen ist die spaetere Frage.
   private gefangeneVoegte: string[] = [];
+  // R237 (Doku 08): beim Ueberfall VERSCHLEPPTE Bewohner (auch Kinder).
+  // Sie sind dauerhaft fort - kein Respawn beim naechsten Besuch - und
+  // fehlen beim Appell in der Zuflucht, bis sie befreit werden.
+  private verschleppteBewohner: string[] = [];
   // R232 (Doku 07/4b+4c): der Verrats-Bogen des Schmieds. rufTag = Tag des
   // ersten Lehrlings-Rufs (die Einarbeitung ist etabliert), verratTag = Tag
   // des Abgangs; die Schalter schmiedVerrat/burgGefallen leben in flags.
@@ -517,6 +521,7 @@ export class WorldScene extends CombatScene {
     this.feindzug = neuerFeindzug(FELDZUG.startBesetzt); // F2: Feindzug frisch
     for (const l of this.feindzug.lager) this.wuerfleLagervogt(l.karte);   // R230: manche Start-Lager haben einen Vogt
     this.gefangeneVoegte = [];
+    this.verschleppteBewohner = [];   // R237: niemand verschleppt
     this.lehrlingRufTag = null;   // R232: Verrats-Uhr frisch
     this.verratTag = null;
     this.feldzugWelleGespawnt = false;
@@ -7568,6 +7573,9 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       if (n.id === LEHRLING_SCHMIEDE.npcId && this.feldVersorgerOrt['feldschmied']) continue;
       // R232: nach dem Verrat ist der Schmied FORT - fuer immer.
       if (n.id === 'schmied' && this.flags.schmiedVerrat) continue;
+      // R237: Verschleppte stehen nicht mehr im Dorf - sie sind fort, bis
+      // sie befreit werden (kein stiller Respawn beim naechsten Besuch).
+      if (this.verschleppteBewohner.includes(n.name)) continue;
       const sprite = this.add.sprite(n.x, n.y, '__DEFAULT').setDepth(n.y);
       this.provider.applyFigure(sprite, n.figur ?? n.id, 0, 0);
       // R216: Dorfvolk in derselben Groesse wie Monster/Heer (Autor: "und alle
@@ -12832,6 +12840,12 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // Besuch wieder - kein dauerhafter Verlust, der Spieler soll sie aber schützen).
   private aktualisiereChaos(dt: number): void {
     this.updateKadaver(dt);
+    // R237 (Doku 08, Autor-Order): auf der FLUCHT ist die Karawane
+    // unantastbar. Die Monster wollen die Menschen lebend - und solange der
+    // Held bei ihnen ist, wagen sie sich nicht an sie heran. Erst wenn er
+    // faellt, sind sie Freiwild. Gejagt wird also nur, solange Ravensmoor
+    // NICHT gefallen ist (der Ueberfall selbst) - danach nie wieder.
+    if (this.flags.stadtGefallen && !this.playerDead) return;
     for (const e of this.enemies) {
       if (e.hp <= 0) continue;
       // FÜTTER-CLUSTER (Runde 41): ein naher, "freier" Kadaver zieht JEDES
@@ -12884,12 +12898,36 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
           }
           e.jagdZiel = { x: tx, y: ty }; e.atkCd = Math.max(e.atkCd, 1.0);
         } else if (npc) {
+          // R237 (Doku 08, Autor): ein erwischter Bewohner ist WEG - nicht bis
+          // zum naechsten Besuch, sondern bis ihn jemand BEFREIT. Namentlich
+          // gemerkt; beim Appell in der Zuflucht fehlt er dann.
           this.fx.burst(npc.curX, npc.curY, 0x7a1010, 8, 70);
           npc.imHaus = true;
+          this.verschleppeBewohner(npc);
           e.jagdZiel = null;
         }
       }
     }
+  }
+
+  // R237 (Doku 08): einen erwischten Bewohner in die Verschlepptenliste
+  // aufnehmen. Er verschwindet dauerhaft aus dem Dorf (auch beim naechsten
+  // Besuch) und fehlt beim Appell in der Zuflucht - bis er befreit wird.
+  // Die Monster toeten ihn NICHT: sie wollen ihn lebend (Doku R224).
+  private verschleppeBewohner(n: NpcEntity): void {
+    if (this.verschleppteBewohner.includes(n.name)) return;
+    this.verschleppteBewohner.push(n.name);
+    n.sprite.setVisible(false);
+    n.label.setVisible(false);
+    const kind = (n.figur ?? n.id).startsWith('kind');
+    this.logMsg(`${n.name} wurde verschleppt${kind ? ' - ein KIND!' : ''}. Sie töten nicht; sie SAMMELN.`, 'bad');
+    this.chronik('kampf', `${n.name} wurde bei dem Überfall verschleppt - lebend fortgezerrt, nicht erschlagen.`);
+  }
+
+  // R237: Appell in der Zuflucht - wer fehlt? Liefert die Namen der
+  // Verschleppten (fuer Erzaehl-Beat, Quest und Anzeige).
+  vermissteBewohner(): string[] {
+    return [...this.verschleppteBewohner];
   }
 
   // Ein gerissenes Tier bleibt als Kadaver liegen, an dem die Monster fressen.
@@ -15126,6 +15164,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         gerettete: this.geretteteNamen,          // R225: Grundstock des zweiten Dorfs
         feldVersorger: this.feldVersorgerOrt,    // R229: Lehrling/Bader im Feld
         gefangeneVoegte: this.gefangeneVoegte,   // R230: abgefuehrte Lagervoegte
+        verschleppteBewohner: this.verschleppteBewohner,   // R237: beim Ueberfall Verschleppte
         lehrlingRufTag: this.lehrlingRufTag ?? undefined,   // R232: Verrats-Uhr
         waffenkammer: this.waffenkammer,         // R233: Waffen als Einzelstuecke
         verratTag: this.verratTag ?? undefined,
@@ -15204,6 +15243,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.geretteteNamen = data.welt.gerettete ?? [];   // R225
     this.feldVersorgerOrt = data.welt.feldVersorger ?? {};   // R229
     this.gefangeneVoegte = data.welt.gefangeneVoegte ?? [];   // R230
+    this.verschleppteBewohner = data.welt.verschleppteBewohner ?? [];   // R237
     this.lehrlingRufTag = data.welt.lehrlingRufTag ?? null;   // R232
     // R233: Waffenkammer laden; ALTE Staende ohne Liste bekommen zum Zaehler
     // passende Bestand-Stuecke gewuerfelt.

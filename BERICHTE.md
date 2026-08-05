@@ -2608,3 +2608,23 @@ FERTIG UND VERIFIZIERT:
    das Gate haelt ihn jetzt auch frei.
 TESTS: tsc sauber, 526/526 gruen (4 neue Gate-Faelle), Browser-Beweis
 fuer Gate zu, Gate auf und die Routen-Pruefung.
+
+## R237 - Verschleppte + Karawanen-Schutz
+FERTIG UND VERIFIZIERT:
+1. Wer beim Ueberfall erwischt wird, ist WIRKLICH weg: namentlich
+   gemerkt, dauerhaft aus dem Dorf verschwunden - auch nach einem
+   Kartenwechsel hin und zurueck steht er nicht wieder da (belegt).
+   Kinder ausdruecklich eingeschlossen; die Meldung sagt es hart:
+   "Sie toeten nicht; sie SAMMELN."
+2. Auf der Flucht ist die Karawane unantastbar: sobald Ravensmoor
+   gefallen ist und der Held lebt, jagt kein Monster mehr Zivilisten.
+   Belegt: vor dem Fall wird ein Bewohner geschnappt, nach dem Fall
+   bleiben trotz Monster direkt daneben und zehn Ticks alle unberuehrt.
+   Faellt der Held, sind sie wieder Freiwild - das haelt die Spannung.
+3. vermissteBewohner() steht bereit fuer den Appell in der Zuflucht
+   ("warum haben sie uns nicht angegriffen - und wo ist Hannes?").
+TESTS: tsc sauber, Browser-Beweis fuer alle drei Punkte.
+OFFEN: WO die Verschleppten befreit werden (deine Entscheidung) - die
+Mechanik aus dem versunkenen Bezirk traegt das schon, es fehlt nur der
+Ort. Ausserdem noch offen: Evakuierungs-Befehl + echtes Folgen der
+Karawane ueber die Karten (naechster Schritt aus Doku 08).
