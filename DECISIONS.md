@@ -3893,3 +3893,20 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   2-3 Helligkeitsstufen, Moor-Palette) und als Kontaktbogen-PNG ablegt.
   Hintergrund: die HD-Figuren wirken heruntergerechnet "wie Windows-
   Buttons aus den 90ern" (Autor).
+
+## R240 - Codex-Figuren Runde 2: Held nach Lore, Layer, Animationen
+- Codex-Kontaktbogen Runde 1 vom Autor abgenommen ("sieht schonmal gut
+  aus"), ABER: der Held passt nicht - er ist laut Lore KEIN Held.
+  Festgehalten aus Masterprompt/story.json/Portrait: ALDRIC VON WEIDEN,
+  "der Fremde", Gefolgsmann des Landherrn von Falkenberg, Pestjahr
+  1349; Portrait assets/ui/character/aldric-portrait-ohne-wappen-1300
+  (Codex-Werk, "ohne Wappen" ist Absicht) ist die massgebliche
+  Gesichts-/Farb-Referenz.
+- Autor-Vorgaben fuer V2 (docs/CODEX-PROMPT-FIGUREN-V2.md): Held
+  bescheiden wie ein Fusssoldat OHNE Helm; Umhang mit Gugel (historisch
+  korrekt fuer 1349 - Gugel/Heuke waren die Reisekleidung des kleinen
+  Mannes); Ruestungen und Waffen als AUSTAUSCHBARE LAYER (Koerper /
+  Ruestungs-Varianten / Umhang / Waffe / Schild, gleicher Anker);
+  Fusssoldaten aus derselben Basis; ANIMATIONEN im Engine-Format
+  (4 Richtungen unten/links/rechts/oben, Stehen 1 + Gehen 4 +
+  Schlag bzw. Spannen 3, Sheets 64x64 nativ + JSON).
