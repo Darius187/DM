@@ -1,0 +1,87 @@
+{
+  "format": "ravenmoor-figuren-v2",
+  "sheetSize": [
+    1152,
+    512
+  ],
+  "frameSize": [
+    128,
+    128
+  ],
+  "directions": [
+    "down",
+    "left",
+    "right",
+    "up"
+  ],
+  "frames": [
+    "idle",
+    "walk_1",
+    "walk_2",
+    "walk_3",
+    "walk_4",
+    "windup",
+    "impact",
+    "followthrough",
+    "block"
+  ],
+  "combatSourceRowMap": [
+    0,
+    2,
+    1,
+    3
+  ],
+  "locomotionSourceRowMap": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "zOrderBackToFront": {
+    "down": [
+      "cloak",
+      "body",
+      "armor",
+      "weapon",
+      "shield",
+      "head"
+    ],
+    "left": [
+      "weapon",
+      "cloak",
+      "body",
+      "armor",
+      "shield",
+      "head"
+    ],
+    "right": [
+      "cloak",
+      "body",
+      "armor",
+      "weapon",
+      "shield",
+      "head"
+    ],
+    "up": [
+      "weapon",
+      "body",
+      "armor",
+      "cloak",
+      "shield",
+      "head"
+    ]
+  },
+  "anchorConvention": {
+    "coordinates": "frame-local integer pixels from top-left",
+    "hand": "center of closed weapon hand / weapon guard junction",
+    "shield": "center of forearm and shield boss",
+    "foot": "ground point at [64,124]"
+  },
+  "characters": {
+    "aldric": "aldric",
+    "soldier": "soldier",
+    "archer": "archer"
+  },
+  "proof": "kontaktbogen.png",
+  "directionProof": "richtungstest.png"
+}
