@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { HELDEN_PFERD_ID, RAVENSMOOR_PFERDE, pferdDef } from '../src/data/ravensmoorPferde';
+import { HELDEN_PFERD_ID, RABENMOOR_PFERDE, pferdDef } from '../src/data/ravensmoorPferde';
 
-describe('Ravensmoorer Pferdebestand', () => {
+describe('Rabenmoorer Pferdebestand', () => {
   it('enthaelt genau vier eigenstaendige Stallplaetze', () => {
-    expect(RAVENSMOOR_PFERDE).toHaveLength(4);
-    expect(new Set(RAVENSMOOR_PFERDE.map((p) => p.id)).size).toBe(4);
-    expect(new Set(RAVENSMOOR_PFERDE.map((p) => p.stallId)).size).toBe(4);
+    expect(RABENMOOR_PFERDE).toHaveLength(4);
+    expect(new Set(RABENMOOR_PFERDE.map((p) => p.id)).size).toBe(4);
+    expect(new Set(RABENMOOR_PFERDE.map((p) => p.stallId)).size).toBe(4);
   });
 
   it('gibt dem Helden das schwarze, leichtere Reitpferd', () => {
@@ -16,7 +16,7 @@ describe('Ravensmoorer Pferdebestand', () => {
   });
 
   it('macht alle drei Arbeitspferde sichtbar kraeftiger und NPC-gefuehrt', () => {
-    const arbeit = RAVENSMOOR_PFERDE.filter((p) => p.rolle === 'arbeit');
+    const arbeit = RABENMOOR_PFERDE.filter((p) => p.rolle === 'arbeit');
     expect(arbeit).toHaveLength(3);
     expect(arbeit.every((p) => p.breite > 1 && p.npcId)).toBe(true);
     expect(arbeit.some((p) => p.tint === 0x5c4c3c)).toBe(true);

@@ -16,7 +16,7 @@ export const ENEMIES: Readonly<Record<EnemyTypeId, EnemyDef>> = {
     name: 'Skelettwache', hpBase: 620, hpPerDepth: 18, dmgBase: 25, dmgPerDepth: 3,
     speedMin: 48, speedMax: 54, r: 15, col: '#8b806d', xpBase: 180, xpPerDepth: 12, aggro: 520,
   },
-  // Runde 32: Lebende Tote - einst Bewohner von Ravensmoor, jetzt mit
+  // Runde 32: Lebende Tote - einst Bewohner von Rabenmoor, jetzt mit
   // glühend roten Augen; zwischen Pestopfer und Skelett angesiedelt
   lebender_toter: {
     name: 'Lebender Toter', hpBase: 26, hpPerDepth: 9, dmgBase: 7, dmgPerDepth: 3,

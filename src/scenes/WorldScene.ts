@@ -114,7 +114,7 @@ import { TEMPLERKLINGE, BOSS_GOLD } from '../data/items';
 import { rollGear, rollGem } from '../logic/loot';
 import { recalc, newPlayerState } from '../logic/playerState';
 import { REIT_PFERD, type ReitClip, type ReitGangClip, type ReitSattelPunkte } from '../data/reiten';
-import { HELDEN_PFERD_ID, RAVENSMOOR_PFERDE, pferdDef, type RavensmoorPferdDef } from '../data/ravensmoorPferde';
+import { HELDEN_PFERD_ID, RABENMOOR_PFERDE, pferdDef, type RabenmoorPferdDef } from '../data/ravensmoorPferde';
 import { clipFps, clipFrames, istReitGang, istReitUebergang, kuerzesterWinkel, mausLenkung, mausZielTempo, naechsterReitGang, naehereZahl, reitClip, reitUebergang, uebergangQuellFrame, uebergangZielFrame, uebertrageAnimationsPhase } from '../logic/reiten';
 import { ladeReitTuning, reitTuningExport, REIT_TUNING_STANDARD, speichereReitTuning, type ReitDarstellungTuning } from '../gfx/reitTuning';
 import {
@@ -216,7 +216,7 @@ interface ReitPferdState {
   y: number;
   richtung: number;
   tempo: number;
-  variante: RavensmoorPferdDef;
+  variante: RabenmoorPferdDef;
 }
 
 interface FreiesPferdState extends ReitPferdState {
@@ -242,7 +242,7 @@ export const FUERSTENTUM: ReadonlyArray<FuerstentumGebiet> = [
   // Builder existiert (Reihenfolge-Regel, WELTKARTE-PLAN.md). Start ist die erste.
   { id: 'start', name: 'Waldrand', gx: 2, gy: 3 },
   { id: 'wald_o', name: 'Finsterhain', gx: 3, gy: 3 },
-  { id: 'stadt', name: 'Ravensmoor', gx: 4, gy: 3 },
+  { id: 'stadt', name: 'Rabenmoor', gx: 4, gy: 3 },
   { id: 'wald_w', name: 'Wolfsbruch', gx: 1, gy: 3 },      // R98 Prompt-2: gy3-Reihe komplett
   { id: 'wald_se', name: 'Rabenhain', gx: 5, gy: 3 },
   { id: 'burg', name: 'Fürstenburg', gx: 0, gy: 3 },       // R98 Prompt-2 Schub 2
@@ -252,7 +252,7 @@ export const FUERSTENTUM: ReadonlyArray<FuerstentumGebiet> = [
   { id: 'stadt2', name: 'Verfallene Stadt', gx: 5, gy: 2 },
   // R154 (Autor "es fehlen noch Karten im Norden"): gy1-Reihe + Kloster (5,0)
   // aus der ravenkarte - Huellen, Inhalte folgen je Karten-Auftrag.
-  { id: 'hochland', name: 'Hoher Norden', gx: 2, gy: 1 },
+  { id: 'hochland', name: 'Firnhalt', gx: 2, gy: 1 },
   { id: 'wald_nw', name: 'Grauwald', gx: 3, gy: 1 },
   { id: 'wald_ne', name: 'Hünenwald', gx: 4, gy: 1 },
   { id: 'schlacht', name: 'Altes Schlachtfeld', gx: 5, gy: 1 },
@@ -590,7 +590,7 @@ export class WorldScene extends CombatScene {
     this.reitSpurSeite = 1;
     this.reitTuning = ladeReitTuning();
     this.reitReiterPos = undefined;
-    this.initialisiereRavensmoorPferde();
+    this.initialisiereRabenmoorPferde();
     this.gefaellteBaeume.clear();
     this.baumSchlaege.clear();
     this.lager = [];
@@ -677,7 +677,7 @@ export class WorldScene extends CombatScene {
       tageszeit: { get: () => this.tageszeit, set: (v) => { this.tageszeit = v; }, label: (v) => tageszeitLabel(v) },
     });
     this.input.keyboard?.on('keydown-L', () => this.lichtPanel?.umschalten());
-    // F8 oeffnet den passenden Karteneditor: Dorf in Ravensmoor, Burgbaugruppen
+    // F8 oeffnet den passenden Karteneditor: Dorf in Rabenmoor, Burgbaugruppen
     // in der Fuerstenburg.
     this.input.keyboard?.on('keydown-F8', () => {
       if (this.area?.id === 'burg') this.toggleBurgEditor();
@@ -788,8 +788,8 @@ export class WorldScene extends CombatScene {
       const data = readSave(storage, params.ladeSlot);
       if (data) {
         this.applySave(data);
-        // wie die Referenz: Erwachen in Ravensmoor (Krypta neu bevölkert)
-        this.goArea(this.flags.nAnkunft ? 'stadt' : 'wald');   // Ankunft = NEUES Ravensmoor (Autor-Order)
+        // wie die Referenz: Erwachen in Rabenmoor (Krypta neu bevölkert)
+        this.goArea(this.flags.nAnkunft ? 'stadt' : 'wald');   // Ankunft = NEUES Rabenmoor (Autor-Order)
         this.logMsg(MELDUNGEN.geladen, 'gold');
       } else {
         this.goArea('wald');
@@ -835,11 +835,11 @@ export class WorldScene extends CombatScene {
   // Wald) wurde auf Autorwunsch ENTFERNT - Pferd/Reiter sahen schlecht aus und
   // der erzwungene Ritt in gerader Linie fühlte sich nicht gut an. Es bleibt nur
   // der ruhige Titel-Einblender; der Held ist von Anfang an frei steuerbar und
-  // läuft selbst durch den Wald nach Ravensmoor.
+  // läuft selbst durch den Wald nach Rabenmoor.
   private startIntroFilm(): void {
     this.sfx.playMusic('musik_intro');
     const w = this.scale.width, h = this.scale.height;
-    const titel = this.add.text(w / 2, h * 0.3, 'RAVENSMOOR', {
+    const titel = this.add.text(w / 2, h * 0.3, 'ETERNAL PAIN', {
       fontFamily: 'serif', fontSize: '72px', color: '#d8cfb8', letterSpacing: 10,
       stroke: '#000000', strokeThickness: 8,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(5900).setAlpha(0);
@@ -866,7 +866,7 @@ export class WorldScene extends CombatScene {
         this.tweens.add({ targets: t, alpha: 0, duration: 900, delay: 6200, onComplete: () => t.destroy() });
         if (i === INTRO_FILM.length - 1) {
           this.flags.auftragErhalten = true;
-          this.logMsg('Auftrag: Seht in Ravensmoor nach dem Rechten', 'gold');
+          this.logMsg('Auftrag: Seht in Rabenmoor nach dem Rechten', 'gold');
         }
       });
     });
@@ -899,7 +899,7 @@ export class WorldScene extends CombatScene {
   // Haus-Sprites (Runde 18): an/aus + Justier-Offsets im Browser-Speicher
   hausSpriteAn = true;
   private hausBilder: Phaser.GameObjects.Image[] = [];
-  // Live-3D-Zimmermannshaus in Ravensmoor (R131c): eine three.js-Laufzeit rendert
+  // Live-3D-Zimmermannshaus in Rabenmoor (R131c): eine three.js-Laufzeit rendert
   // in eine Canvas-Textur, die als Welt-Sprite auf dem 'zimmerei'-Platz steht.
   // R132: aktive 3D-Gebaeude (id -> Weltobjekt), begehbar + drehbar (Dorf-Editor)
   private gebaeude3d = new Map<string, Gebaeude3DWelt>();
@@ -1024,7 +1024,7 @@ export class WorldScene extends CombatScene {
       return;
     }
     if (this.area.id !== 'village') {
-      this.logMsg('Der Stadt-Baukasten funktioniert nur in Ravensmoor.', 'bad');
+      this.logMsg('Der Stadt-Baukasten funktioniert nur in Rabenmoor.', 'bad');
       return;
     }
     this.openBaukasten();
@@ -1247,7 +1247,7 @@ export class WorldScene extends CombatScene {
     fuss('STADTPLAN KOPIEREN', h - 104, () => {
       // Auch Haus-Positionen/-Größen und eigene Bilder gehören zum Plan -
       // daran erkenne ich, wohin Türen und Bewohner sollen (Runde 24)
-      const text = `Stadtplan Ravensmoor: ${JSON.stringify({
+      const text = `Stadtplan Rabenmoor: ${JSON.stringify({
         plan: this.stadtplan,
         haeuser: this.hausJustierung(),
         eigeneBilder: Object.keys(JSON.parse(localStorage.getItem('ravensmoor_eigene_tiles') ?? '{}') as Record<string, string>),
@@ -2042,7 +2042,7 @@ export class WorldScene extends CombatScene {
             && Math.hypot(this.px - e.x, this.py - e.y) < MARSCH.folgtRadiusPx)
           .map((e) => e.armeeId as number)
       : [];
-    // R157: der Einfall lebt in NEU-Ravensmoor (stadt). Er verpufft beim
+    // R157: der Einfall lebt in NEU-Rabenmoor (stadt). Er verpufft beim
     // VERLASSEN der Stadt (kein Exploit) - aber NICHT beim Tod-Erwachen auf
     // derselben Karte (R145 "nichts resettet"): dann warten die Angreifer.
     if (this.einfallAktiv) {
@@ -2192,7 +2192,7 @@ export class WorldScene extends CombatScene {
     // R192 (Autor, Zuflucht-Vorschlag A angenommen): von ANFANG an klar -
     // die Fuerstenburg nimmt kaum Fluechtlinge (Angst vor Krankheit), die
     // sichere Zuflucht liegt im Norden. Der Held haelt es beim ersten
-    // Betreten Ravensmoors in seinen Aufzeichnungen fest.
+    // Betreten Rabenmoors in seinen Aufzeichnungen fest.
     if (id === 'stadt' && !this.flags.zufluchtGehoert) {
       this.flags.zufluchtGehoert = true;
       this.time.delayedCall(2500, () => this.dialog.show('Aus meinen Aufzeichnungen', [
@@ -2220,7 +2220,7 @@ export class WorldScene extends CombatScene {
       // sobald der Held die dritte Verlies-Ebene erreicht.
       this.flags.ebene3 = true;
       this.logMsg('Ebene 3 erreicht - der Stadtportal-Zauber steht dir jetzt offen.', 'gold');
-      this.chronik('geschichte', 'Die dritte Ebene des Verlieses ist erreicht - das Stadtportal trägt dich fortan heim nach Ravensmoor.');
+      this.chronik('geschichte', 'Die dritte Ebene des Verlieses ist erreicht - das Stadtportal trägt dich fortan heim nach Rabenmoor.');
     }
     this.gruselT = 6 + Math.random() * 8;
     // Gebiets-Musik (Runde 17): liegt musik_dorf/wald/krypta als Loop vor,
@@ -3086,7 +3086,7 @@ export class WorldScene extends CombatScene {
           text: LANDHERR.auftrag[2].text,
           onShow: () => {
             this.flags.auftragErhalten = true;
-            this.logMsg('Auftrag: Seht in Ravensmoor nach dem Rechten', 'gold');
+            this.logMsg('Auftrag: Seht in Rabenmoor nach dem Rechten', 'gold');
             // Der Landherr reitet davon (Feedback-Runde 2)
             const lh = this.npcEnts.find((n) => n.id === 'landherr');
             if (lh) {
@@ -3098,7 +3098,7 @@ export class WorldScene extends CombatScene {
         },
       ], 'landherr');
     } else {
-      this.dialog.show(storyJson.landherr.name, ['Worauf wartet ihr noch? Der Pfad nach Osten führt geradewegs nach Ravensmoor.'], 'landherr');
+      this.dialog.show(storyJson.landherr.name, ['Worauf wartet ihr noch? Der Pfad nach Osten führt geradewegs nach Rabenmoor.'], 'landherr');
     }
   }
 
@@ -4578,15 +4578,15 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         const lbl = hier ? (this.botePferdHier() ? '🐎 Boten zum Grafen schicken' : '👣 Boten (zu Fuß) zum Grafen')
           : bo.status === 'reitet' ? `Bote unterwegs (${this.kartenName(bo.karte)})`
             : bo.status === 'tot' ? 'Bote gefallen - Ersatz rüstet sich'
-              : '🐎 Boten herbeirufen (aus Ravensmoor)';
+              : '🐎 Boten herbeirufen (aus Rabenmoor)';
         knopf(0, F(26), lbl, '#f0c040', hier || bo.status === 'heim' || bo.status === 'posten', () => {
           if (hier) this.botenZumGrafen();
           else this.botenZumPosten();
         });
-        // F4: der Zwischenbote laeuft nach Ravensmoor und aktiviert den
+        // F4: der Zwischenbote laeuft nach Rabenmoor und aktiviert den
         // Hauptboten - fuer den Fall, dass der Bote NICHT hier am Posten ist.
         if (!hier) {
-          knopf(0, F(52), this.zwischenbote ? `Zwischenbote läuft (${Math.ceil(this.zwischenbote.t)}s)` : '👣 Zwischenboten nach Ravensmoor', '#c9d8f0', !this.zwischenbote, () => this.schickeZwischenboten());
+          knopf(0, F(52), this.zwischenbote ? `Zwischenbote läuft (${Math.ceil(this.zwischenbote.t)}s)` : '👣 Zwischenboten nach Rabenmoor', '#c9d8f0', !this.zwischenbote, () => this.schickeZwischenboten());
         }
       }
       return;
@@ -4693,7 +4693,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   private baueRtsTestTab(c: Phaser.GameObjects.Container, F: (s: number) => number, w: number, y0: number): void {
     let y = y0;
     // R142: der GRAF schickt Verstaerkung - sie betritt die Welt am Waldrand
-    // (ganz links) und marschiert SELBSTSTAENDIG nach Ravensmoor. Wie der Ruf
+    // (ganz links) und marschiert SELBSTSTAENDIG nach Rabenmoor. Wie der Ruf
     // im fertigen Spiel ausgeloest wird (automatisch/Bote), entscheidet der
     // Autor spaeter - der Knopf ist der Test-Ausloeser.
     const grafBtn = this.add.rectangle(F(8), y, w - F(16), F(26), 0x1a2418, 0.95).setOrigin(0).setStrokeStyle(1, 0x6a9a5a).setInteractive({ useHandCursor: true });
@@ -5624,17 +5624,17 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         break;
       }
       case 'wegweiser':
-        this.logMsg('Ein Rabe ist in den Balken gekerbt - das Zeichen Ravensmoors. Die Salzstraße führt ostwärts zur Stadt.', 'gold');
+        this.logMsg('Ein Rabe ist in den Balken gekerbt - das Zeichen Rabenmoors. Die Salzstraße führt ostwärts zur Stadt.', 'gold');
         break;
       case 'galgen':
-        this.logMsg('Der Galgen der Stadt. Die Schlinge ist leer - noch. Ravensmoor ist nicht mehr weit.', '');
+        this.logMsg('Der Galgen der Stadt. Die Schlinge ist leer - noch. Rabenmoor ist nicht mehr weit.', '');
         break;
       case 'suehnekreuz':
         if (!this.flags[einmal]) {
           this.flags[einmal] = true;
           this.giveXp(15);
           this.logMsg('Ein Sühnekreuz, halb versunken. Eingeritzt: "Hier fiel ein Bote des Fürsten." Niemand hat ihn je gefunden. (+15 Erfahrung)', 'gold');
-        } else this.logMsg('Das alte Sühnekreuz. Der Bote des Fürsten kam nie in Ravensmoor an.', '');
+        } else this.logMsg('Das alte Sühnekreuz. Der Bote des Fürsten kam nie in Rabenmoor an.', '');
         break;
       case 'karren':
         if (!this.flags[einmal]) {
@@ -6060,7 +6060,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     const wpx = this.area.w * TILE, hpx = this.area.h * TILE, m = TILE;
     let ziel: string | undefined; let spawn: { x: number; y: number } | undefined;
     const west = nachbar(-1, 0), ost = nachbar(1, 0), nord = nachbar(0, -1), sued = nachbar(0, 1);
-    // R155 (Autor "von Ravensmoor nach Westen landet man im Fluss"): Karten
+    // R155 (Autor "von Rabenmoor nach Westen landet man im Fluss"): Karten
     // sind unterschiedlich gross (stadt 128x128, Wald 130x85) - die Position
     // ENTLANG der Kante wird darum PROPORTIONAL uebertragen. Sonst trifft der
     // 53%-Weg der Stadt auf 80% des Nachbarn - und dort fliesst der Fluss.
@@ -7036,7 +7036,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     return this.objektSkalen()[key] ?? (key === 'baum' ? 1.85 : key === 'brunnen' || key === 'brunnen_blut' ? 1.4 : 1);
   }
 
-  // Im Baukasten gewählte Varianten je gemalter Kachel (nur Ravensmoor)
+  // Im Baukasten gewählte Varianten je gemalter Kachel (nur Rabenmoor)
   private planKachelAn(tx: number, ty: number): { v?: number } | undefined {
     if (this.area.id !== 'village') return undefined;
     return this.stadtplan.kacheln.find((k) => k.x === tx && k.y === ty);
@@ -7815,7 +7815,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     return ein * aus;
   }
 
-  // --- 3D-Gebaeude (R132): Gebaeude im neuen Ravensmoor ------------------------
+  // --- 3D-Gebaeude (R132): Gebaeude im neuen Rabenmoor ------------------------
   // Voll texturierte GLBs (Codex-Handoff), live gerendert und BEGEHBAR. Jedes
   // Gebaeude haengt an seiner Host-Box im stadt-Dorfplan.
   // Details: src/gfx/gebaeude3dWelt.ts.
@@ -8000,7 +8000,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
 
   // --- Reitbares Blender-Pferd ---------------------------------------------
 
-  private pferdeStartpunkt(def: RavensmoorPferdDef): { x: number; y: number } {
+  private pferdeStartpunkt(def: RabenmoorPferdDef): { x: number; y: number } {
     const idx = Number(def.stallId.slice(-1)) - 1;
     const markerX = [-2.45, -0.45, 1.55, 3.55][idx] ?? 0;
     // S2-Pivot laut Dorfplan; nur Startnetz. Sobald die GLB bereit ist, wird
@@ -8008,13 +8008,13 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     return { x: 40 * TILE + markerX * 16, y: 84 * TILE - 10 + 3.82 * 16 * Math.sin(35 * Math.PI / 180) };
   }
 
-  private initialisiereRavensmoorPferde(): void {
+  private initialisiereRabenmoorPferde(): void {
     // Autor "das schwarze Pferd beim Helden am Start ist weg": das HELD-Pferd wird
     // NICHT mehr vorab in die Stadt gesetzt (dann fehlte es am Waldrand-Start).
     // reitPferd bleibt null -> die Karten-Spawn-Logik (goArea) stellt das schwarze
     // Reitpferd direkt neben den Helden, auf welcher Aussenkarte er auch startet.
     this.reitPferd = null;
-    this.freiePferde = RAVENSMOOR_PFERDE.filter((def) => def.id !== HELDEN_PFERD_ID).map((def) => {
+    this.freiePferde = RABENMOOR_PFERDE.filter((def) => def.id !== HELDEN_PFERD_ID).map((def) => {
       const p = this.pferdeStartpunkt(def);
       return {
         areaId: 'stadt', x: p.x, y: p.y, richtung: -Math.PI / 2, tempo: 0, variante: def,
@@ -9898,7 +9898,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // SICHTBAR von Kante zu Kante.
   private spawneGarnison(a: AreaData): void {
     for (const einheit of garnisonVon(this.armee, a.id)) {
-      // R177: in Ravensmoor beziehen Einheiten OHNE gemerkte Stellung die
+      // R177: in Rabenmoor beziehen Einheiten OHNE gemerkte Stellung die
       // Verteidigungslinie am Hauptweg statt des Spawn-Haufens.
       const pos = einheit.pos ?? (a.id === MARSCH.zielStadt
         ? this.verteidigungsStellung(a, this.wegStellungIndex(einheit.id))
@@ -9997,7 +9997,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       const namen = ev.ids.map((id2) => this.armee.einheiten.find((x) => x.id === id2)?.name).filter(Boolean);
       if (ev.typ === 'ankunft') {
         this.logMsg(ev.karte === MARSCH.zielStadt
-          ? `Verstärkung in Ravensmoor eingetroffen: ${namen.length} Mann melden sich.`
+          ? `Verstärkung in Rabenmoor eingetroffen: ${namen.length} Mann melden sich.`
           : `${namen.length} Mann haben ${this.kartenName(ev.karte)} erreicht.`, 'gold');
       }
       // Betritt der Trupp die Karte des Helden (Teilstrecke ODER Ankunft):
@@ -10081,7 +10081,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
           const ziel = this.kantenPunkt(this.area, m.route[m.beiKarte + 1], false);
           e.passiv = false; e.jagdZiel = { x: ziel.x, y: ziel.y };
         } else if (this.area.id === MARSCH.zielStadt) {
-          // R177: in Ravensmoor bleibt die Ankunft nicht an der Kante stehen,
+          // R177: in Rabenmoor bleibt die Ankunft nicht an der Kante stehen,
           // sondern rueckt zur Weg-Stellung aus (Verteidigungslinie Nord/Ost).
           const p = this.verteidigungsStellung(this.area, this.wegStellungIndex(id2));
           einheit.pos = { x: p.x, y: p.y };
@@ -10095,7 +10095,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   }
 
   // --- R179: DER BOTE (Autor "ja, der Bote soll das ausloesen") --------------
-  // Der Grafen-Ruf laeuft ueber einen berittenen Boten aus Ravensmoor. Er
+  // Der Grafen-Ruf laeuft ueber einen berittenen Boten aus Rabenmoor. Er
   // reitet kartenweise (Boten-Uhr laeuft immer, wie der Marsch) und kann
   // unterwegs abgefangen werden - dann ruestet sich daheim ein Ersatz.
   private bote: Bote = boteNeu(BOTE.heim);
@@ -10694,7 +10694,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.wegfeldNeu();
   }
 
-  // --- F5: DER FALL VON RAVENSMOOR (Dok 06 C3, Autor R180) -----------------
+  // --- F5: DER FALL VON RABENMOOR (Dok 06 C3, Autor R180) -----------------
   // Der grosse Sturm nach dem Krypta-Boss ist NICHT zu halten: endloser
   // Nachschub + der Golem. Der Held bringt alle in den Norden (Rueckzug),
   // die Stadt faellt und wird vom Feind besetzt/befestigt; der Treck erreicht
@@ -10737,8 +10737,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       }
       if (this.fallT >= FELDZUG.fallUeberrennenS && !this.flags.fallVerloren) {
         this.flags.fallVerloren = true;
-        this.logMsg('RAVENSMOOR IST NICHT ZU HALTEN! Befiehl den RÜCKZUG und bring alle in den Norden!', 'bad');
-        this.chronik('geschichte', 'Ravensmoor ist nicht zu halten - der Rückzug in den Norden ist der einzige Weg.');
+        this.logMsg('RABENMOOR IST NICHT ZU HALTEN! Befiehl den RÜCKZUG und bring alle in den Norden!', 'bad');
+        this.chronik('geschichte', 'Rabenmoor ist nicht zu halten - der Rückzug in den Norden ist der einzige Weg.');
       }
       // Die Stadt FAELLT, sobald sie verloren ist und der Held weicht
       // (Karte verlassen oder Rueckzug befohlen).
@@ -10751,8 +10751,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         this.setzeLage('stadt', 'besetzt');
         if (!this.feindzug.lager.some((l) => l.karte === 'stadt')) this.feindzug.lager.push({ karte: 'stadt', punkte: 0, seitS: 0 });
         this.treckT = FELDZUG.fallTreckS;
-        this.logMsg('Ravensmoor ist GEFALLEN. Die Bewohner fliehen mit dem Treck nach Norden - bring sie zur Zuflucht.', 'bad');
-        this.chronik('geschichte', 'Ravensmoor ist gefallen. Der Treck der Bewohner zieht nach Norden - die Monster besetzen die Stadt.');
+        this.logMsg('Rabenmoor ist GEFALLEN. Die Bewohner fliehen mit dem Treck nach Norden - bring sie zur Zuflucht.', 'bad');
+        this.chronik('geschichte', 'Rabenmoor ist gefallen. Der Treck der Bewohner zieht nach Norden - die Monster besetzen die Stadt.');
       }
     }
     // Phase TRECK: die Bewohner ziehen zur Zuflucht.
@@ -10761,7 +10761,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       if (this.treckT <= 0) {
         this.flags.zufluchtBezogen = true;
         this.logMsg('Der Treck hat die Zuflucht im Hohen Norden erreicht - die Bewohner sind in Sicherheit.', 'gold');
-        this.chronik('geschichte', 'Die Bewohner Ravensmoors haben die Zuflucht in den Bergen erreicht.');
+        this.chronik('geschichte', 'Die Bewohner Rabenmoors haben die Zuflucht in den Bergen erreicht.');
       }
     }
   }
@@ -10843,14 +10843,14 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         this.setzeLage(this.area.id, 'frei');
         this.raeumeFeindlagerWall(this.area);   // F3: der Knochenwall faellt mit
         this.logMsg(`${this.kartenName(this.area.id)} ist gesäubert - das Gebiet ist wieder unser!`, 'gold');
-        // F5: die RUECKEROBERUNG Ravensmoors - die Bewohner kehren heim,
+        // F5: die RUECKEROBERUNG Rabenmoors - die Bewohner kehren heim,
         // die dauerhafte Verteidigungs-Phase beginnt.
         if (this.area.id === 'stadt' && this.flags.stadtGefallen) {
           this.flags.stadtGefallen = false;
           this.flags.stadtZurueck = true;
           this.flags.kriegBegonnen = true;
-          this.logMsg('RAVENSMOOR IST ZURÜCKEROBERT! Die Bewohner kehren aus der Zuflucht heim.', 'gold');
-          this.chronik('geschichte', 'Ravensmoor ist zurückerobert - die Bewohner kehren heim. Jetzt gilt es, die Stadt zu HALTEN.');
+          this.logMsg('RABENMOOR IST ZURÜCKEROBERT! Die Bewohner kehren aus der Zuflucht heim.', 'gold');
+          this.chronik('geschichte', 'Rabenmoor ist zurückerobert - die Bewohner kehren heim. Jetzt gilt es, die Stadt zu HALTEN.');
           // R236 (Doku 08, Akt 5): ab hier expandiert die Horde - der Wettlauf
           // um die Karten beginnt. Der Spieler soll das SPUEREN, nicht raten.
           this.logMsg('Doch im Norden regt sich etwas: die Horde beginnt, Land zu nehmen. Der Wettlauf hat begonnen.', 'bad');
@@ -10888,7 +10888,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       wissenAufschlag: FELDZUG.wissenAufschlag,             // F2a (A5): vorsichtiger Aufschlag bei Unsicherheit
       spaeherKommtDurch: () => this.spaeherBlindT <= 0,     // F2a (A10): getoetete Spaeher -> Feind blind
       vogtFaktor: LAGERVOGT.produktionsF,                   // R230: Vogt-Lager wirtschaften schneller
-      // R236 (Doku 08, Akt 5): die Horde expandiert ERST, wenn Ravensmoor
+      // R236 (Doku 08, Akt 5): die Horde expandiert ERST, wenn Rabenmoor
       // zurueckerobert ist. Vorher steht die Startbesetzung still - die
       // Fluchtwege in den Norden bleiben durchlaessig (Autor-Order).
       expansion: this.flags.stadtZurueck === true,
@@ -11077,7 +11077,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     }
   }
 
-  // Faellt eine Karte, weicht die Garnison Richtung Ravensmoor aus (Autor
+  // Faellt eine Karte, weicht die Garnison Richtung Rabenmoor aus (Autor
   // R182: man verliert nie ALLES - die Maenner sterben nicht mit der Karte).
   private garnisonRueckzug(karte: string): void {
     const trupp = garnisonVon(this.armee, karte);
@@ -11094,7 +11094,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.logMsg(`Die Garnison von ${this.kartenName(karte)} zieht sich nach ${this.kartenName(ziel)} zurück.`, 'bad');
   }
 
-  // F4: hat der Bote hier ein Pferd? In Ravensmoor immer (die Stadt-Pferde),
+  // F4: hat der Bote hier ein Pferd? In Rabenmoor immer (die Stadt-Pferde),
   // im Feld nur mit einer PFERDEKOPPEL im Lager.
   private botePferdHier(): boolean {
     return this.area.id === BOTE.heim || this.feldbauten.some((f) => f.id === 'pferdekoppel' && f.hp > 0);
@@ -11117,12 +11117,12 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         this.grafSchicktVerstaerkung();
       } else if (ev.typ === 'abgefangen') {
         this.logMsg(`Der Bote wurde bei ${this.kartenName(ev.wo)} abgefangen! Ross und Reiter sind verloren.`, 'bad');
-        this.chronik('ereignis', `Der Bote wurde auf der Straße bei ${this.kartenName(ev.wo)} abgefangen - ein neuer Reiter rüstet sich in Ravensmoor.`);
+        this.chronik('ereignis', `Der Bote wurde auf der Straße bei ${this.kartenName(ev.wo)} abgefangen - ein neuer Reiter rüstet sich in Rabenmoor.`);
         this.sfx.play('fehler');
       } else if (ev.typ === 'postenBezogen') {
         this.logMsg(`Der Bote hat den Botenposten bei ${this.kartenName(ev.wo)} bezogen - sein Pferd steht angebunden bereit.`, 'gold');
       } else if (ev.typ === 'ersatzBereit') {
-        this.logMsg('Ein neuer Bote steht in Ravensmoor bereit.', 'gold');
+        this.logMsg('Ein neuer Bote steht in Rabenmoor bereit.', 'gold');
       }
     }
   }
@@ -11144,7 +11144,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     return true;
   }
 
-  // F4 (Autor "einen Zwischenboten anheuern, der nach Ravensmoor rennt und
+  // F4 (Autor "einen Zwischenboten anheuern, der nach Rabenmoor rennt und
   // den Hauptboten aktiviert"): ein Laeufer laeuft abstrakt zur Stadt; kommt
   // er an, schickt er den Hauptboten sofort zum Grafen.
   private zwischenbote: { t: number } | null = null;
@@ -11152,9 +11152,9 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   private schickeZwischenboten(): void {
     if (this.zwischenbote) { this.logMsg('Der Zwischenbote ist bereits unterwegs.', ''); return; }
     const route = routeZu(this.kartenNachbarn, this.area.id, BOTE.heim);
-    if (!route) { this.logMsg('Von hier führt kein Weg nach Ravensmoor.', 'bad'); return; }
+    if (!route) { this.logMsg('Von hier führt kein Weg nach Rabenmoor.', 'bad'); return; }
     this.zwischenbote = { t: Math.max(1, route.length - 1) * MARSCH.dauerJeKarteS * BOTE.tempoFZuFuss };
-    this.logMsg('Ein Zwischenbote rennt nach Ravensmoor, um den Boten des Amts loszuschicken.', 'gold');
+    this.logMsg('Ein Zwischenbote rennt nach Rabenmoor, um den Boten des Amts loszuschicken.', 'gold');
   }
 
   private updateZwischenbote(dt: number): void {
@@ -11165,12 +11165,12 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     if (this.bote.status === 'heim') {
       const route = routeZu(this.kartenNachbarn, this.bote.karte, BOTE.zielKarte);
       if (route && schickeBote(this.bote, route, 'graf', true)) {
-        this.logMsg('Der Zwischenbote hat Ravensmoor erreicht - der Bote des Amts reitet zum Grafen!', 'gold');
+        this.logMsg('Der Zwischenbote hat Rabenmoor erreicht - der Bote des Amts reitet zum Grafen!', 'gold');
         this.chronik('ereignis', 'Ein Zwischenbote hat den Grafen-Ruf ausgelöst - der Bote reitet zur Fürstenburg.');
         return;
       }
     }
-    this.logMsg('Der Zwischenbote erreichte Ravensmoor - doch der Bote des Amts war nicht verfügbar.', 'bad');
+    this.logMsg('Der Zwischenbote erreichte Rabenmoor - doch der Bote des Amts war nicht verfügbar.', 'bad');
   }
 
   // F4 (Autor "den Boten will ich schon sehen, wie er reitet"): quert der
@@ -11207,7 +11207,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   }
 
   // Ein frisch errichteter Botenposten holt den Boten nach: er reitet mit
-  // einem der Ravensmoorer Pferde heran (kartenweise, abfangbar).
+  // einem der Rabenmoorer Pferde heran (kartenweise, abfangbar).
   private botenZumPosten(): void {
     const b = this.bote;
     if (b.status === 'reitet' || b.status === 'tot') {
@@ -11224,11 +11224,11 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       this.logMsg('Der Bote findet keinen Weg hierher - der Posten bleibt vorerst unbesetzt.', 'bad');
       return;
     }
-    this.logMsg('Der Botenposten steht - ein Reiter mit Pferd macht sich aus Ravensmoor auf den Weg hierher.', 'gold');
+    this.logMsg('Der Botenposten steht - ein Reiter mit Pferd macht sich aus Rabenmoor auf den Weg hierher.', 'gold');
   }
 
   // R142: die Grafen-Verstaerkung betritt die Welt am Waldrand und zieht von
-  // allein nach Ravensmoor - dort wird sie abgeholt oder weiterverlegt.
+  // allein nach Rabenmoor - dort wird sie abgeholt oder weiterverlegt.
   grafSchicktVerstaerkung(): void {
     // R232: nach dem Fall der Grafenburg (Schmied-Verrat) kommt NIE wieder
     // Verstaerkung - diese Quelle ist fuer den Rest des Spiels versiegt.
@@ -11241,7 +11241,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     for (let i = 0; i < MARSCH.grafTrupp; i++) neue.push(musterEin(this.armee, typen[i % typen.length], MARSCH.grafStart).id);
     const route = routeZu(this.kartenNachbarn, MARSCH.grafStart, MARSCH.zielStadt);
     if (route && route.length > 1) starteMarsch(this.armee, neue, route);
-    this.logMsg(`Der Graf schickt ${neue.length} Mann - sie brechen an der ${this.kartenName(MARSCH.grafStart)} auf und ziehen nach Ravensmoor.`, 'gold');
+    this.logMsg(`Der Graf schickt ${neue.length} Mann - sie brechen an der ${this.kartenName(MARSCH.grafStart)} auf und ziehen nach Rabenmoor.`, 'gold');
     if (this.area.id === MARSCH.grafStart) this.spawneMarschierer(neue);   // der Held sieht sie eintreffen
   }
 
@@ -11249,7 +11249,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // Gold + EINE Waffe aus dem Dorf-Lager (Schmiede-Kette) + EINEN ARBEITER
   // (die Tagesproduktion sinkt spuerbar). Soeldner kosten nur Gold, kaempfen
   // aber fuers Geld (Moral-Malus, Desertion). Der Neue tritt der Garnison von
-  // Ravensmoor bei - abholen oder verlegen laeuft ueber R142.
+  // Rabenmoor bei - abholen oder verlegen laeuft ueber R142.
   rekrutiereSoldat(typ: RtsUnitTyp, art: 'bauer' | 'soeldner'): boolean {
     const fehler = pruefeRekrutierung(art, {
       gold: this.dorfkasse + this.p.gold,
@@ -11280,11 +11280,11 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         waffeText = `${rekrutWaffe.name}, Güte ${rekrutWaffe.guete}, ${s2.min}-${s2.max} Schaden`;
       }
       this.chronik('ereignis', `${einheit.name} legt den Pflug nieder und nimmt die Waffe (${waffeText}) - das Dorf ist um einen Arbeiter ärmer.`);
-      this.logMsg(`${einheit.name} ausgehoben (${gold} Gold, ${waffeText}, 1 Arbeiter) - er meldet sich in Ravensmoor.`, 'gold');
+      this.logMsg(`${einheit.name} ausgehoben (${gold} Gold, ${waffeText}, 1 Arbeiter) - er meldet sich in Rabenmoor.`, 'gold');
     } else {
-      this.logMsg(`Söldner ${einheit.name} angeworben (${gold} Gold) - er wartet in Ravensmoor.`, 'gold');
+      this.logMsg(`Söldner ${einheit.name} angeworben (${gold} Gold) - er wartet in Rabenmoor.`, 'gold');
     }
-    // Steht der Held gerade in Ravensmoor, tritt der Neue SICHTBAR an.
+    // Steht der Held gerade in Rabenmoor, tritt der Neue SICHTBAR an.
     if (this.area.id === REKRUTIERUNG.aushebungsOrt) {
       this.naechsteEinheit = einheit;
       const e = this.spawnVerbuendeter(typ, this.px + 46, this.py + (einheit.id % 3) * 22 - 22);
@@ -11327,7 +11327,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   protected override devTeleport(ziel: string): void {
     this.goArea(ziel);
     const name = ziel === 'boss' ? 'Grab des Kreuzritters'
-      : ziel === 'village' ? 'Ravensmoor'
+      : ziel === 'village' ? 'Rabenmoor'
       : ziel.startsWith('crypt') ? `Krypta - Ebene ${ziel.replace('crypt', '')}` : ziel;
     this.logMsg(`Dev-Sprung: ${name}.`, 'gold');
   }
@@ -11692,7 +11692,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       if (!img.active) continue;
       occ.push({ x: img.x, y: img.y, w: img.displayWidth * 0.74, h: 14, hoehe: img.displayHeight * 0.7 });
     }
-    // R138: die begehbaren 3D-Gebaeude (neues Ravensmoor) werfen auch Sonnen-
+    // R138: die begehbaren 3D-Gebaeude (neues Rabenmoor) werfen auch Sonnen-
     // schatten - vorher hatte die neue Stadt NULL statische Verdecker und die
     // Sonnen-Regler wirkten tot. null solange das GLB noch laedt (siehe Refresh
     // in aktualisiereSchatten).
@@ -12142,10 +12142,10 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         text: `${def.name} heimschicken (${ik})`,
         action: () => {
           delete this.feldVersorgerOrt[v.rolle];
-          this.logMsg(`${def.name} macht sich auf den Heimweg nach Ravensmoor.`, 'gold');
+          this.logMsg(`${def.name} macht sich auf den Heimweg nach Rabenmoor.`, 'gold');
           this.chronik('ereignis', `${def.name} kehrt aus dem Feld heim.`);
           this.baueVersorgerSprites();
-          // R232: steht der Held in Ravensmoor, tritt der Lehrling sofort
+          // R232: steht der Held in Rabenmoor, tritt der Lehrling sofort
           // wieder an den Amboss (sonst erst beim naechsten Kartenaufbau).
           if (this.area.id === 'stadt' && v.rolle === 'feldschmied') {
             const def2 = this.area.npcs.find((n) => n.id === LEHRLING_SCHMIEDE.npcId);
@@ -12369,7 +12369,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     }
   }
 
-  // --- Einfälle: Monster-Trupps greifen Ravensmoor an (Feedback-Runde 7) ----
+  // --- Einfälle: Monster-Trupps greifen Rabenmoor an (Feedback-Runde 7) ----
 
   // Ein Arbeitsschlag des Bewohners: Funken, Späne, Wasser - mit Geräusch,
   // dessen Lautstärke mit der Entfernung fällt (Runde 16)
@@ -12664,7 +12664,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.logMsg('EINFALL! Monster kommen die Straßen aus Norden und Osten herab!', 'bad');
     this.logMsg('Frauen, Kinder und Alte fliehen in ihre Häuser!', '');
     this.sfx.play('templer_stimme');
-    this.zeigeKampfBanner('BESCHÜTZE DIE EINWOHNER', 'Kolonnen nähern sich auf den Straßen aus Norden und Osten - verteidigt Ravensmoor!');
+    this.zeigeKampfBanner('BESCHÜTZE DIE EINWOHNER', 'Kolonnen nähern sich auf den Straßen aus Norden und Osten - verteidigt Rabenmoor!');
     this.shake(6);
   }
 
@@ -12742,11 +12742,11 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     champ.aggro = 5000;
     champ.sprite?.setScale(1.6);
     this.sfx.playMusic('musik_einfall');
-    this.logMsg('DIE GRÄBER ÖFFNEN SICH - eine Heerschar bricht über Ravensmoor herein!', 'bad');
-    this.logMsg('VERTEIDIGE RAVENSMOOR! Beschütze Bewohner und Vieh!', 'gold');
-    this.chronik('geschichte', 'Der Sturm auf Ravensmoor - die Toten erheben sich zum Krieg.');
+    this.logMsg('DIE GRÄBER ÖFFNEN SICH - eine Heerschar bricht über Rabenmoor herein!', 'bad');
+    this.logMsg('VERTEIDIGE RABENMOOR! Beschütze Bewohner und Vieh!', 'gold');
+    this.chronik('geschichte', 'Der Sturm auf Rabenmoor - die Toten erheben sich zum Krieg.');
     this.sfx.play('templer_stimme');
-    this.zeigeKampfBanner('BESCHÜTZE DIE EINWOHNER', 'Eine Heerschar bricht über Ravensmoor herein - haltet die Toten auf!');
+    this.zeigeKampfBanner('BESCHÜTZE DIE EINWOHNER', 'Eine Heerschar bricht über Rabenmoor herein - haltet die Toten auf!');
     this.shake(12);
   }
 
@@ -12850,7 +12850,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     // R237 (Doku 08, Autor-Order): auf der FLUCHT ist die Karawane
     // unantastbar. Die Monster wollen die Menschen lebend - und solange der
     // Held bei ihnen ist, wagen sie sich nicht an sie heran. Erst wenn er
-    // faellt, sind sie Freiwild. Gejagt wird also nur, solange Ravensmoor
+    // faellt, sind sie Freiwild. Gejagt wird also nur, solange Rabenmoor
     // NICHT gefallen ist (der Ueberfall selbst) - danach nie wieder.
     if (this.flags.stadtGefallen && !this.playerDead) return;
     for (const e of this.enemies) {
@@ -12948,8 +12948,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   }
 
   // R238 (Doku 08): das Kloster ist der Kerker. Die Verschleppten aus
-  // Ravensmoor sitzen hier - dazu Gefangene aus anderen Doerfern, damit
-  // sichtbar wird: Ravensmoor ist nicht das einzige Dorf, das blutet.
+  // Rabenmoor sitzen hier - dazu Gefangene aus anderen Doerfern, damit
+  // sichtbar wird: Rabenmoor ist nicht das einzige Dorf, das blutet.
   // Wer befreit ist, verschwindet aus der Liste und steht nie wieder da.
   private setzeKlosterGefangene(a: AreaData): void {
     const noch = this.verschleppteBewohner.filter((n) => !this.geretteteNamen.includes(n));
@@ -13006,7 +13006,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // fest. Jetzt: Zahl sichtbar, und festsitzende Letzte werden zum Helden geholt.
   private zeigeEinfallStand(dt: number): void {
     const lebende = this.enemies.filter((e) => e.hp > 0);
-    this.einfallText.setText(`VERTEIDIGE RAVENSMOOR  ·  noch ${lebende.length} Angreifer`)
+    this.einfallText.setText(`VERTEIDIGE RABENMOOR  ·  noch ${lebende.length} Angreifer`)
       .setVisible(true).setPosition(this.scale.width / 2, 40);
     if (lebende.length === 0 || lebende.length > 6) return; // nur die letzten Nachzügler
     for (const e of lebende) {
@@ -13221,7 +13221,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     zeilen.push([`BEGEGNUNGEN (${this.kontakte.length})`, '#c9a227']);
     if (!this.kontakte.length) {
       zeilen.push(['Du hast noch mit niemandem gesprochen.', '#6a5f4c']);
-      zeilen.push(['Sprich die Leute von Ravensmoor an (Taste E).', '#6a5f4c']);
+      zeilen.push(['Sprich die Leute von Rabenmoor an (Taste E).', '#6a5f4c']);
       return zeilen;
     }
     for (const k of this.kontakte) {
@@ -13413,7 +13413,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // und darf nicht gerade vor einem Einfall fliehen. Ist das Dorf nicht die
   // geladene Karte, gelten alle als wohlauf (sie arbeiten "hinter den Kulissen").
   private kettenNpcVerfuegbar(id: string): boolean {
-    // UMZUG: die Dorfwirtschaft lebt im NEUEN Ravensmoor ('stadt')
+    // UMZUG: die Dorfwirtschaft lebt im NEUEN Rabenmoor ('stadt')
     if (this.area?.id !== 'stadt') return true;
     const n = this.npcEnts.find((x) => x.id === id);
     if (!n || n.verwundet) return false;
@@ -13432,7 +13432,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       if (!this.flags.verratSteht) return;
       this.flags.schmiedVerrat = true;
       this.verratTag = this.tag;
-      // Live vom Amboss raeumen, falls der Held gerade in Ravensmoor steht.
+      // Live vom Amboss raeumen, falls der Held gerade in Rabenmoor steht.
       const i = this.npcEnts.findIndex((n) => n.id === 'schmied');
       if (i >= 0) { this.npcEnts[i].sprite.destroy(); this.npcEnts[i].label.destroy(); this.npcEnts.splice(i, 1); }
       this.logMsg('Der Schmied ist über Nacht verschwunden - die Esse ist kalt, sein Werkzeug fehlt. Niemand hat ihn gehen sehen.', 'bad');
@@ -13654,7 +13654,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     const hoehe = Math.max(120, inhaltTxt.height + 48);
     const bg = this.add.rectangle(0, 0, breite, hoehe, 0x14100a, 0.96).setOrigin(0).setStrokeStyle(1, 0x4a3a26);
     const kopf = this.add.rectangle(0, 0, breite, 26, 0xffffff, 0.05).setOrigin(0).setInteractive({ draggable: true, useHandCursor: true });
-    const titel = this.add.text(10, 5, 'VERWALTUNGSBUCH VON RAVENSMOOR', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227', letterSpacing: 1 });
+    const titel = this.add.text(10, 5, 'VERWALTUNGSBUCH VON RABENMOOR', { fontFamily: 'serif', fontSize: '13px', color: '#c9a227', letterSpacing: 1 });
     const zu = this.add.text(breite - 20, 4, '✕', { fontFamily: 'serif', fontSize: '14px', color: '#d8cfb8' }).setInteractive({ useHandCursor: true });
     zu.on('pointerdown', () => { c.destroy(); this.verwaltungsPanel = undefined; });
     // Ziehen am Kopf (Schirmkoordinaten-Delta, UI-Regel 11)
@@ -13688,7 +13688,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.sfx.play('muenzen');
     this.logMsg(`${betrag} Gold in die Dorfkasse gespendet (gesamt ${this.dorfkasse}).`, 'gold');
     if (this.wohlstand() > vorher) {
-      this.logMsg(`Ravensmoor blüht auf - die Händler senken ihre Preise um ${this.wohlstand() * 5}%!`, 'gold');
+      this.logMsg(`Rabenmoor blüht auf - die Händler senken ihre Preise um ${this.wohlstand() * 5}%!`, 'gold');
       this.sfx.play('fertigkeit_neu');
     }
   }
@@ -14002,7 +14002,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     return null;
   }
 
-  // M8: "Stahl für Ravensmoor" - der Held liefert Erz, der Schmied schmiedet
+  // M8: "Stahl für Rabenmoor" - der Held liefert Erz, der Schmied schmiedet
   // SICHTBAR die erste Waffe (Funken-Salve am Amboss), sie wandert ins Lager.
   private stahlQuestAbgeben(): void {
     if ((this.p.materials.eisen ?? 0) < STAHL_QUEST.erzBedarf || this.flags.stahlErz) return;
@@ -14022,8 +14022,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       this.flags.stahlWaffe = true;
       this.lagerRein('waffen', 1);
       this.p.gold += STAHL_QUEST.belohnungGold;
-      this.chronik('geschichte', `Die erste Waffe aus Ravensmoorer Stahl liegt beim Schmied im Verkauf. Lohn: ${STAHL_QUEST.belohnungGold} Gold.`);
-      this.logMsg('„Stahl für Ravensmoor": Die erste Waffe ist geschmiedet!', 'gold');
+      this.chronik('geschichte', `Die erste Waffe aus Rabenmoorer Stahl liegt beim Schmied im Verkauf. Lohn: ${STAHL_QUEST.belohnungGold} Gold.`);
+      this.logMsg('„Stahl für Rabenmoor": Die erste Waffe ist geschmiedet!', 'gold');
       this.sfx.play('item_episch');
     });
   }
@@ -14039,11 +14039,11 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     const choices: Array<{ label: string; fn?: () => void }> = [
       { label: 'Handel', fn: () => this.shop.openShop('schmied', 'SCHMIEDE', SHOP_SCHMIED, { ankauf: true, schmieden: true }) },
     ];
-    // M8 Quest "Stahl für Ravensmoor": 5 Erz bringen -> erste Waffe (sichtbar)
+    // M8 Quest "Stahl für Rabenmoor": 5 Erz bringen -> erste Waffe (sichtbar)
     if (!this.flags.stahlWaffe && !this.flags.stahlErz) {
       choices.push(eisen >= STAHL_QUEST.erzBedarf
-        ? { label: `„Stahl für Ravensmoor": ${STAHL_QUEST.erzBedarf} Erz abliefern`, fn: () => this.stahlQuestAbgeben() }
-        : { label: `„Stahl für Ravensmoor": Erz beschaffen (${eisen}/${STAHL_QUEST.erzBedarf})` });
+        ? { label: `„Stahl für Rabenmoor": ${STAHL_QUEST.erzBedarf} Erz abliefern`, fn: () => this.stahlQuestAbgeben() }
+        : { label: `„Stahl für Rabenmoor": Erz beschaffen (${eisen}/${STAHL_QUEST.erzBedarf})` });
     }
     // Eisen+Kohle für die Schmelze stiften: füttert die Dorf-Schmelze, die daraus
     // Eisenbarren macht - das Metall, aus dem der Schmied Waffen schmiedet.
@@ -14150,7 +14150,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     // Mauern baut man erst, wenn man weiß wozu: nach dem ersten Einfall
     if (!this.flags.wurdeBelagert && this.stadtmauerStufe === 0) {
       this.dialog.show('Schmied', [
-        'Eine Mauer? Um Ravensmoor? Spart euer Gold - hier war seit Jahren kein Feind. Sollte sich das ändern, bin ich der Erste, der Pfähle spitzt.',
+        'Eine Mauer? Um Rabenmoor? Spart euer Gold - hier war seit Jahren kein Feind. Sollte sich das ändern, bin ich der Erste, der Pfähle spitzt.',
       ], 'schmied');
       return;
     }
@@ -14651,7 +14651,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     }
     if (tid === T.STAIR && this.area.id === 'wald_o') {
       // R127f (Autor): das Stollenmaul liegt im Norden von Finsterhain -
-      // der letzten Karte vor Ravensmoor (verlassener Wachposten davor).
+      // der letzten Karte vor Rabenmoor (verlassener Wachposten davor).
       return {
         text: `Stollenmaul - ${ik} hinab in die Goldhöhle`,
         action: () => { this.sfx.play('tuer'); this.goArea('goldmine'); },
@@ -14833,7 +14833,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     }
     if (e.boss) {
       if (this.flags.ngPlus) {
-        // NG+: Der Schattenfürst fällt - ein Portal führt zurück nach Ravensmoor
+        // NG+: Der Schattenfürst fällt - ein Portal führt zurück nach Rabenmoor
         this.flags.ngPlusGeschafft = true;
         this.logMsg('Der Schattenfürst zerfällt zu Asche.', 'gold');
         this.pickups.add({ kind: 'gear', item: rollGear(this.rng, 6), x: e.x - 20, y: e.y, bob: 0 });
@@ -14955,7 +14955,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     if (this.einfallAktiv && this.area.id === 'stadt' && this.einfallQueue.length === 0
       && !this.enemies.some((e) => e.team !== 'spieler' && e.hp > 0)) {
       this.einfallAktiv = false;
-      this.setzeLage('stadt', 'frei');   // F1: Ravensmoor wieder in Spielerhand
+      this.setzeLage('stadt', 'frei');   // F1: Rabenmoor wieder in Spielerhand
       this.setzeBrunnenBlutig(false); // Brunnen wird wieder rein
       if (this.sfx.aktuelleMusik() === 'musik_einfall') this.sfx.stopMusic();
       if (this.grosserEinfall) {
@@ -14965,7 +14965,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         for (const e of this.enemies) e.jagdZiel = null;
         for (const n of this.npcEnts) n.imHaus = false; // die Überlebenden kehren zurück
         for (const k of this.kadaver) k.g.destroy(); this.kadaver = []; // Kadaver verschwinden nach dem Sturm
-        this.logMsg('Der letzte Angreifer fällt. Ravensmoor steht noch - fürs Erste.', 'gold');
+        this.logMsg('Der letzte Angreifer fällt. Rabenmoor steht noch - fürs Erste.', 'gold');
         this.sfx.play('muenzen');
         this.shake(3);
         this.time.delayedCall(2800, () => this.zeigeKriegsEroeffnung()); // dramatische Enthüllung
@@ -14973,7 +14973,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         const gold = EINFALL.belohnungGold + this.tag * EINFALL.belohnungGoldProTag;
         this.p.gold += gold;
         this.p.materials.holz += 2;
-        this.logMsg(`Ravensmoor ist verteidigt! Die Dörfler sammeln ${gold} Gold und 2 Holz für dich.`, 'gold');
+        this.logMsg(`Rabenmoor ist verteidigt! Die Dörfler sammeln ${gold} Gold und 2 Holz für dich.`, 'gold');
         this.sfx.play('muenzen');
       }
     }
@@ -15018,14 +15018,14 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       return;
     }
     if (this.area.id === 'stadt') {
-      this.logMsg('Du stehst bereits in Ravensmoor.', '');
+      this.logMsg('Du stehst bereits in Rabenmoor.', '');
       return;
     }
     this.portalZiel = { areaId: this.area.id, x: this.px, y: this.py };
     this.fx.burst(this.px, this.py, 0x8aa6e8, 24, 200);
     this.sfx.play('heiliges_licht');
     this.goArea('stadt', { x: PORTAL_STADT.x, y: PORTAL_STADT.y + 40 });
-    this.logMsg('Das Portal trägt dich nach Ravensmoor - es bleibt offen, bis du zurückkehrst.', 'magic');
+    this.logMsg('Das Portal trägt dich nach Rabenmoor - es bleibt offen, bis du zurückkehrst.', 'magic');
   }
 
   // Wirbel zeichnen (beim Gebietsaufbau): in der Stadt am Marktplatz,
@@ -15077,10 +15077,10 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     }
     if (this.area.id === ziel.areaId && Math.hypot(this.px - ziel.x, this.py - ziel.y) < 64) {
       return {
-        text: `Portal nach Ravensmoor - ${ik} zum Durchschreiten`,
+        text: `Portal nach Rabenmoor - ${ik} zum Durchschreiten`,
         action: () => {
           this.sfx.play('heiliges_licht');
-          this.goArea('stadt', { x: PORTAL_STADT.x, y: PORTAL_STADT.y + 40 });   // R168: NEUES Ravensmoor
+          this.goArea('stadt', { x: PORTAL_STADT.x, y: PORTAL_STADT.y + 40 });   // R168: NEUES Rabenmoor
         },
       };
     }
@@ -15089,8 +15089,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
 
   protected override onPortalPickup(): void {
     this.sfx.play('heiliges_licht');
-    this.goArea('stadt', { x: PORTAL_STADT.x, y: PORTAL_STADT.y + 40 });   // R168: NEUES Ravensmoor
-    this.logMsg('Das Portal trägt dich zurück nach Ravensmoor.', 'magic');
+    this.goArea('stadt', { x: PORTAL_STADT.x, y: PORTAL_STADT.y + 40 });   // R168: NEUES Rabenmoor
+    this.logMsg('Das Portal trägt dich zurück nach Rabenmoor.', 'magic');
   }
 
   // R169 (Autor "mache das weg, das ist voellig sinnfrei aktuell"): der
@@ -15148,7 +15148,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       // wieder da") - erst der eigene Tod weckt es als Neues Spiel+ neu
       this.getArea('boss').geleert = true;
       this.logMsg('Die Krypta regt sich erneut - stärker als zuvor (Neues Spiel+).', 'magic');
-      this.logMsg('Taste 8: Stadtportal nach Ravensmoor.', 'gold');
+      this.logMsg('Taste 8: Stadtportal nach Rabenmoor.', 'gold');
     };
     btn.on('pointerdown', weiter);
     // Absicherung (Runde 15): E/Enter schließen das Fenster ebenfalls
@@ -15310,7 +15310,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.dorfFelder = wi?.felder ?? Array.from({ length: FELD_REGELN.anzahl }, () => ({ wachstum: 0 }));   // M5
     this.dorfVieh = wi?.vieh ?? viehStart();   // M5 (alte Staende: Startbestand)
     this.breschen = data.welt.breschen ?? [];
-    this.armee = ruesteArmeeNach(data.welt.armee ?? neueArmee(), 'stadt');   // R141/R142 (alte Staende: leeres Heer, Bestand steht in Ravensmoor)
+    this.armee = ruesteArmeeNach(data.welt.armee ?? neueArmee(), 'stadt');   // R141/R142 (alte Staende: leeres Heer, Bestand steht in Rabenmoor)
     this.bote = data.welt.bote ?? boteNeu(BOTE.heim);   // R179 (alte Staende: Bote daheim)
     this.lage = data.welt.lage ?? neueGebietslage(FELDZUG.startBesetzt);   // F1 (alte Staende: Startlage)
     this.feindzug = data.welt.feindzug ?? neuerFeindzug(FELDZUG.startBesetzt);   // F2 (alte Staende: Startlage)
@@ -15398,7 +15398,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     const f = this.flags;
     const out: string[] = [];
     if (!f.auftragErhalten) out.push('· Sprich mit dem Landherrn im Dunkelwald.');
-    else if (!f.nAnkunft) out.push('· Folge dem Pfad nach Osten nach Ravensmoor.');
+    else if (!f.nAnkunft) out.push('· Folge dem Pfad nach Osten nach Rabenmoor.');
     else if (!this.p.hasKey) out.push('· Pater Johannes an der Kirche hat den Kryptaschlüssel.');
     else if (!this.bossDead && !f.ngPlus) out.push('· Steig in die Krypta hinab und finde die Quelle des Übels.');
     if (this.p.hasKey && !f.ebene3) out.push('· Erreiche die dritte Ebene des Verlieses - dann öffnet sich dir das Stadtportal.');
@@ -15458,8 +15458,8 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     // Gegner, das will ich nicht"). Der frühere Tod-Reset (alle geleert=false)
     // ist daher entfernt.
     // Layout, Minimap und aufgedeckte Treppen BLEIBEN erhalten (Runde 5)
-    // R138 (Autor: "nicht mehr im ALTEN Ravensmoor erwachen"): Dungeons/
-    // Innenraeume/Boss fuehren ins NEUE Ravensmoor (stadt) - etwas Gutes wacht
+    // R138 (Autor: "nicht mehr im ALTEN Rabenmoor erwachen"): Dungeons/
+    // Innenraeume/Boss fuehren ins NEUE Rabenmoor (stadt) - etwas Gutes wacht
     // ueber die Stadt. Auf Oberwelt-Karten erwacht man am Eingang DERSELBEN
     // Karte (kein Rueckwurf quer durch die Welt). Regel: src/logic/respawn.ts;
     // das echte Wiederbelebungs-System des Autors kommt spaeter.
@@ -15526,7 +15526,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     const kills = Object.values(this.album.kills).reduce((a2, b2) => a2 + b2, 0);
     const top = Object.entries(this.album.kills).sort((a2, b2) => b2[1] - a2[1]).slice(0, 3);
     const z: Array<[string, string]> = [];
-    z.push(['DEIN WEG DURCH RAVENSMOOR', '#c9a227']);
+    z.push(['DEIN WEG DURCH RABENMOOR', '#c9a227']);
     z.push([`Stufe ${this.p.level} · Tag ${this.tag} · ${this.p.gold} Gold`, '#d8cfb8']);
     z.push([`Erschlagene Kreaturen: ${kills}`, '#d8cfb8']);
     for (const [typ, n] of top) z.push([`  · ${typ}: ${n}`, '#9a8c6e']);
@@ -16534,7 +16534,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     // Gemeindehaus, die Kämpfer bleiben auf der Straße (Feedback-Runde 8/9).
     const nacht = this.tageszeit > TAG.nachtAb || this.tageszeit < TAG.morgenAb;
     for (const n of this.npcEnts) {
-      // F5: ist Ravensmoor GEFALLEN, sind die Bewohner mit dem Treck fort -
+      // F5: ist Rabenmoor GEFALLEN, sind die Bewohner mit dem Treck fort -
       // niemand steht in der besetzten Stadt herum.
       if (this.flags.stadtGefallen && this.area.id === 'stadt') {
         n.sprite?.setVisible(false);
@@ -17137,11 +17137,11 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
     this.updateMarsch(dt);   // R142: das Heer marschiert IMMER (auch ohne RTS-Modus)
     this.updateBote(dt);     // R179: die Boten-Uhr (Grafen-Ruf) laeuft ebenso immer
     this.updateBoteSprite(dt);   // F4: der Reiter ist auf der Held-Karte sichtbar
-    this.updateZwischenbote(dt); // F4: Laeufer nach Ravensmoor (aktiviert den Boten)
+    this.updateZwischenbote(dt); // F4: Laeufer nach Rabenmoor (aktiviert den Boten)
     this.updateFeindzug(dt); // F2: der Feind produziert und greift nach Gebieten
     this.updateGolemBindung(dt); // F6: Golem-Panzer bricht nur GEBUNDEN (Truppen noetig)
     this.updateReparaturen(dt); // R191: sichtbare Bau-Reparatur (Auftrag + Haemmern)
-    this.updateFall(dt);        // F5: der Fall von Ravensmoor (Sturm/Treck)
+    this.updateFall(dt);        // F5: der Fall von Rabenmoor (Sturm/Treck)
     if (this.rueckzugPanikT > 0) this.rueckzugPanikT -= dt;
     this.updateEinfallQueue(dt);   // R157: Einfall-Kolonnen ruecken in Schueben an
     this.updateSpaeher(dt);        // R178: Kundschafter des Klosters (Nordstrasse)

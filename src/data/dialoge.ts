@@ -84,7 +84,7 @@ export const LANDHERR = {
   // Name/Anrede liegen in story.json, damit der Autor sie leicht anpassen kann.
   auftrag: [
     { text: 'Ihr habt mich nicht warten lassen - das gefällt mir. Hört zu, denn der Weg ist weit und der Tag kurz.' },
-    { text: 'Aus Ravensmoor kommen seit zwei Monden weder Abgaben noch Nachrichten. Kein Bote kehrte zurück. Die Leute reden von Pest, von Schlimmerem - ich gebe nichts auf Gerede, aber auf meine Einkünfte.' },
+    { text: 'Aus Rabenmoor kommen seit zwei Monden weder Abgaben noch Nachrichten. Kein Bote kehrte zurück. Die Leute reden von Pest, von Schlimmerem - ich gebe nichts auf Gerede, aber auf meine Einkünfte.' },
     { text: 'Reitet hin und seht nach dem Rechten. Folgt dem Pfad durch den Dunkelwald, er führt geradewegs ins Dorf. Und Fremder - was immer ihr dort findet: Ich will die Wahrheit, nicht die hübsche Fassung davon.', action: 'questStart' },
   ],
 } as const;
@@ -182,7 +182,7 @@ export const VOLK: Readonly<Record<string, ReadonlyArray<string>>> = {
     'Trine, ich helfe an der Mühle. Säcke schleppen, Korn schütten - harte Arbeit, aber ehrliche. Die Witwe Ottilie hat mich aufgenommen, Gott vergelte es ihr.',
   ],
   waescherin: [
-    'Ida. Ich wasche am Bach, solange das Licht reicht. Das Wasser ist eiskalt, aber es ist das einzige in Ravensmoor, das noch sauber ist.',
+    'Ida. Ich wasche am Bach, solange das Licht reicht. Das Wasser ist eiskalt, aber es ist das einzige in Rabenmoor, das noch sauber ist.',
   ],
   wirtin: [
     'Agnes, die Wirtin - dem Heinrich sein Weib. Setzt euch ans Feuer, der Abend ist rau. Er handelt, ich führe Küche und Stube - und über das Raunen unter der Kirche reden wir hier drinnen nicht.',
@@ -335,7 +335,7 @@ export const SMALLTALK = {
     'Bei der Hebamme gibt es den besten Sud gegen Fieber. Merkt Euch das.',
     'Wenn Ihr Magdalena seht: ihre Salbe hat dem Kleinen geholfen. Sagt ihr Dank.',
     'Auf dem Markt gab es heute frischen Fisch. Der Nepomuk hatte ein gutes Netz.',
-    'Ein Fremder, der grüßt, ist kein Fremder mehr. Willkommen in Ravensmoor.',
+    'Ein Fremder, der grüßt, ist kein Fremder mehr. Willkommen in Rabenmoor.',
     'Die Wolle von Tobias kratzt, aber sie wärmt. Wie das Leben hier.',
     'Geht nicht ohne Vaterunser in die Krypta. Versprecht es.',
     'Der Eintopf braucht noch eine Stunde. Kommt später wieder, dann gibt es eine Kelle.',
@@ -367,7 +367,7 @@ export const SMALLTALK = {
   nachBoss: [
     'Ist es wahr? Das Ding unter der Kirche ist erschlagen? Gott segne Eure Klinge.',
     'Seit Ihr unten wart, ruhen die Toten wieder. Das Dorf steht tief in Eurer Schuld.',
-    'Man nennt Euch schon den Schutzheiligen von Ravensmoor. Lasst es Euch nicht zu Kopf steigen.',
+    'Man nennt Euch schon den Schutzheiligen von Rabenmoor. Lasst es Euch nicht zu Kopf steigen.',
   ],
   nachEinfall: [
     'Diese Bestien am Tor... ohne Euch hätten wir das Gemeindehaus nie verlassen können.',

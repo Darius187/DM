@@ -1,8 +1,8 @@
 // R179 (Autor): der GRAFEN-RUF laeuft ueber einen berittenen BOTEN. Reine,
-// Phaser-freie Logik (testbar): der Bote wohnt in Ravensmoor, reitet auf
+// Phaser-freie Logik (testbar): der Bote wohnt in Rabenmoor, reitet auf
 // Befehl kartenweise zur Fuerstenburg (Westrand der Welt) oder zu einem
 // Botenposten im Feldlager - und kann unterwegs ABGEFANGEN werden. Faellt er,
-// ruestet sich nach einer Weile ein Ersatz-Bote in Ravensmoor.
+// ruestet sich nach einer Weile ein Ersatz-Bote in Rabenmoor.
 
 export type BoteStatus = 'heim' | 'reitet' | 'posten' | 'tot';
 
@@ -29,7 +29,7 @@ export interface BoteTickCfg {
   abfangRisiko: number;             // Risiko je Teilstrecke [0..1]
   burgDauerS: number;               // Waldrand -> Fuerstenburg (ausserhalb)
   ersatzS: number;                  // Ruestzeit des Ersatz-Boten
-  heim: string;                     // Heimatkarte (Ravensmoor)
+  heim: string;                     // Heimatkarte (Rabenmoor)
   rng: () => number;                // injizierbar fuer Tests
 }
 

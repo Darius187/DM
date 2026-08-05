@@ -62,7 +62,7 @@ export class AnfangskarteSzene extends CombatScene {
     if (frac > 0.7 && this.woelfe < 3) { this.spawnEnemy('wolf', 1, this.px + 480, this.py + 140); this.woelfe = 3; }
   }
 
-  // Ostkante -> Übergang nach Ravensmoor (Stadt).
+  // Ostkante -> Übergang nach Rabenmoor (Stadt).
   private pruefeUebergang(): void {
     if (this.uebergang) return;
     if (this.px > weltGrenze().breite - 60) {
@@ -84,15 +84,15 @@ export class AnfangskarteSzene extends CombatScene {
     this.pruefeUebergang();
   }
 
-  // --- Eröffnung des Hauptspiels (Intro-Musik + RAVENSMOOR + erste Quest) ---
+  // --- Eröffnung des Hauptspiels (Intro-Musik + RABENMOOR + erste Quest) ---
   private zeigeEroeffnung(): void {
     const w = this.scale.width, h = this.scale.height;
     if (this.cache.audio.exists('snd_musik_intro')) { this.introMusik = this.sound.add('snd_musik_intro', { loop: true, volume: 0.5 }); this.introMusik.play(); }
-    const titel = this.add.text(w / 2, h * 0.3, 'RAVENSMOOR', { fontFamily: 'serif', fontSize: '72px', color: '#d8cfb8', stroke: '#000', strokeThickness: 8 }).setOrigin(0.5).setScrollFactor(0).setDepth(5900).setAlpha(0);
+    const titel = this.add.text(w / 2, h * 0.3, 'ETERNAL PAIN', { fontFamily: 'serif', fontSize: '72px', color: '#d8cfb8', stroke: '#000', strokeThickness: 8 }).setOrigin(0.5).setScrollFactor(0).setDepth(5900).setAlpha(0);
     const unter = this.add.text(w / 2, h * 0.3 + 58, 'DER PREIS DER UNSTERBLICHKEIT', { fontFamily: 'serif', fontSize: '20px', color: '#c9a227', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5).setScrollFactor(0).setDepth(5900).setAlpha(0);
     this.tweens.add({ targets: [titel, unter], alpha: 1, duration: 1800, ease: 'Sine.Out' });
     this.tweens.add({ targets: [titel, unter], alpha: 0, duration: 1600, delay: 5200, ease: 'Sine.In', onComplete: () => { titel.destroy(); unter.destroy(); } });
-    this.add.text(w / 2, h - 56, 'Auftrag: Seht in Ravensmoor nach dem Rechten - der Weg führt nach Osten.', {
+    this.add.text(w / 2, h - 56, 'Auftrag: Seht in Rabenmoor nach dem Rechten - der Weg führt nach Osten.', {
       fontFamily: 'serif', fontSize: '18px', color: '#e0d4b4', fontStyle: 'italic', stroke: '#000', strokeThickness: 5,
       align: 'center', wordWrap: { width: Math.min(760, w - 60) },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(5900).setAlpha(0.92);

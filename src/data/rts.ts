@@ -86,9 +86,9 @@ export const RTS_BAUTEN: ReadonlyArray<RtsBau> = [
   { id: 'feldschmiede', name: 'Feldschmiede', kosten: { holz: 10, stein: 8 }, frei: true, beschreibung: 'Der Schmied repariert nahe Bauwerke von selbst' },
   { id: 'wartfeuer', name: 'Wartfeuer', kosten: { holz: 12 }, frei: true, beschreibung: 'Signalfeuer - ruft eine Verstärkungswelle (anklicken)' },
   { id: 'nachschub', name: 'Nachschubzelt', kosten: { holz: 10, fasern: 8 }, frei: true, beschreibung: 'Versorgt nahe Einheiten - sie heilen schneller' },
-  // R179: der Botenposten holt den Ravensmoorer Boten (samt Pferd) ins Lager -
+  // R179: der Botenposten holt den Rabenmoorer Boten (samt Pferd) ins Lager -
   // von hier laesst sich der Graf um Verstaerkung rufen (Ritt ist abfangbar).
-  { id: 'botenposten', name: 'Botenposten', kosten: { holz: 12, fasern: 4 }, frei: true, beschreibung: 'Ein Reiter aus Ravensmoor bezieht den Posten - von hier reitet er zum Grafen' },
+  { id: 'botenposten', name: 'Botenposten', kosten: { holz: 12, fasern: 4 }, frei: true, beschreibung: 'Ein Reiter aus Rabenmoor bezieht den Posten - von hier reitet er zum Grafen' },
   // F4: die Pferde-Einrichtung des Lagers - nur MIT ihr reitet der Bote
   // (sonst laeuft er); spaeter docken hier weitere Pferde-Funktionen an.
   { id: 'pferdekoppel', name: 'Pferdekoppel', kosten: { holz: 10, fasern: 6 }, frei: true, beschreibung: 'Ein Pferd steht bereit - Boten reiten statt zu laufen' },
@@ -324,7 +324,7 @@ export const MARSCH = {
   // R181 (Autor "das ist die aeusserste Karte ganz links und von dort sollen
   // auch die Truppen los laufen"): die Kolonne startet an der FUERSTENBURG.
   grafStart: 'burg',
-  zielStadt: 'stadt',    // ... und zieht nach Ravensmoor
+  zielStadt: 'stadt',    // ... und zieht nach Rabenmoor
   // Autor ("die Soldaten sind beim Kartenwechsel verschwunden und folgten mir
   // nicht"): eigene Einheiten NAHE dem Helden gehen mit ihm ueber die Kante auf
   // die Nachbarkarte (Gefolge). Wer zu weit weg steht, bleibt als Garnison.
@@ -332,7 +332,7 @@ export const MARSCH = {
 } as const;
 
 // R179 (Autor "ja, der Bote soll das ausloesen"): der Grafen-Ruf laeuft ueber
-// einen BERITTENEN BOTEN. Er wohnt in Ravensmoor (Amt); ein Botenposten im
+// einen BERITTENEN BOTEN. Er wohnt in Rabenmoor (Amt); ein Botenposten im
 // Feldlager holt ihn nach. Der Ritt ist ABFANGBAR - Verlust tut weh.
 export const BOTE = {
   // R182 (Autor "9:30 ist zu lang; im Galopp keine 30s je Karte; Audienz 5s"):
@@ -345,8 +345,8 @@ export const BOTE = {
   abfangRisikoKrieg: 0.2,  // ... waehrend Einfall/Krieg deutlich hoeher
   zielKarte: 'burg',       // der Bote reitet bis zur Fuerstenburg-Karte
   burgDauerS: 5,           // Audienz beim Grafen, bis die Kolonne aufbricht (R182)
-  ersatzS: 300,            // ein neuer Bote ruestet sich in Ravensmoor
-  heim: 'stadt',           // Heimat des Boten (Amt von Ravensmoor)
+  ersatzS: 300,            // ein neuer Bote ruestet sich in Rabenmoor
+  heim: 'stadt',           // Heimat des Boten (Amt von Rabenmoor)
 } as const;
 
 // R187 (Autor "Standard-Heerwaffe mit 5-8 Schaden wie Spielerwaffen, Ruestung
@@ -361,7 +361,7 @@ export const HEER_AUSRUESTUNG: Readonly<Record<string, { waffe: string; min: num
 };
 
 // R177 (Autor "die herbeigerufene Armee soll sich auf dem Hauptweg zur
-// Verteidigung positionieren"): ankommende Verstaerkung bezieht in Ravensmoor
+// Verteidigung positionieren"): ankommende Verstaerkung bezieht in Rabenmoor
 // Stellungs-LINIEN quer ueber die Einfall-Strassen (Nord + Ost) - dort, wo
 // Einfall und Klosterspaeher hereinkommen.
 export const VERTEIDIGUNG = {
@@ -397,7 +397,7 @@ export const REKRUTIERUNG = {
   obergrenzeJeEinwohner: 0.5, // Heer-Deckel = floor(bevoelkerung * Faktor)
   soeldnerGold: 150,          // Soeldner: nur Gold, kein Arbeiter, keine Waffe
   soeldnerMoralMalus: 12,     // ... aber sie stehen nicht fuers Dorf ein
-  aushebungsOrt: 'stadt',     // ausgehoben wird in Ravensmoor (Garnison dort)
+  aushebungsOrt: 'stadt',     // ausgehoben wird in Rabenmoor (Garnison dort)
 } as const;
 
 // R147c (Autor): der Held bekommt KEINE XP fuer Soldaten-Kills - er bekommt

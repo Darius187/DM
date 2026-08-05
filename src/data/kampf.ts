@@ -1,4 +1,4 @@
-// Kampfsystem-Werte aus RAVENSMOOR-2D-MASTERPROMPT.md Teil 4.
+// Kampfsystem-Werte aus RABENMOOR-2D-MASTERPROMPT.md Teil 4.
 // KONFLIKTREGEL: Diese Werte schlagen die Referenzdatei (dort z. B. Parade 250ms,
 // Riposte x1,5, Rolle 180ms - hier gelten die Masterprompt-Werte).
 // KEINE Ausdauer-Mechanik - nirgends.
@@ -166,7 +166,7 @@ export const PHYSIK = {
 export const DEATH = {
   goldLossPct: 0.10,    // R145 (Autor): 10% Goldverlust - der EINZIGE Preis des Todes
   // R138: Erwachen nach dem Tod in Dungeons/Innenraeumen fuehrt HIERHIN
-  // (neues Ravensmoor). Regel selbst: src/logic/respawn.ts.
+  // (neues Rabenmoor). Regel selbst: src/logic/respawn.ts.
   respawnKarte: 'stadt',
 } as const;
 

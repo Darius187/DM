@@ -1014,7 +1014,7 @@ export class UIPanels {
   // Runde 74 (Autorwunsch): Klick auf eine Minimap öffnet sie als GROSSANSICHT
   // in voller Kachel-Auflösung (Begutachten ohne Durchlaufen); Klick = zurück.
   private buildMapTab(c: Phaser.GameObjects.Container, w: number, h: number): void {
-    c.add(this.scene.add.text(16, 6, 'KARTE - Das Fürstentum von Ravensmoor', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
+    c.add(this.scene.add.text(16, 6, 'KARTE - Das Fürstentum von Rabenmoor', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
     const info = this.getKarte?.();
     if (!info || !info.gebiete.length) { c.add(this.scene.add.text(16, 56, 'Keine Kartendaten.', { fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c' })); return; }
     // R152 (Autor "keine Live-Karte"): Held/Truppen/NPC-Punkte in eine Karte malen.

@@ -1,5 +1,5 @@
 // DORF-LAYOUT-PLANUNG (R104, Autorauftrag): reine POSITIONS-Planung fuer das
-// spaetmittelalterliche Angerdorf auf der Ravensmoor-Area ('stadt', jetzt 128x128).
+// spaetmittelalterliche Angerdorf auf der Rabenmoor-Area ('stadt', jetzt 128x128).
 // NUR beschriftete Platzhalter-BOXEN - keine Gebaeude-Sprites, KEINE NPCs, KEINE
 // Interaktion, KEINE Kollision. Die echten Gebaeude kommen spaeter einzeln.
 //

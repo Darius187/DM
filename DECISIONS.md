@@ -3872,3 +3872,24 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
 - Kontaktbogen geliefert: alle 42 Figuren aus den HD-Zeichnungen auf
   64x64 und 32x32 heruntergerechnet (Alpha-Zuschnitt, glattes
   Downscale), als Entscheidungsgrundlage fuer den Figuren-Look.
+
+## R239b - GROSSER UMBENENNUNGS-PASS (Autor-Entscheid)
+- Die Stadt heisst jetzt RABENMOOR ("wie der Moor und Raben") - alle
+  Spielertexte, Meldungen, Dialoge, Quests in src/ umgestellt (30
+  Dateien + Tests). Auch Code-Bezeichner (RABENMOOR_PFERDE) zogen mit.
+- Der SPIELTITEL ist ETERNAL PAIN (die Originalgeschichte des Autors) -
+  Titelbild (WorldScene + AnfangskarteSzene) und Browser-Titel zeigen
+  "ETERNAL PAIN / Der Preis der Unsterblichkeit".
+- Die ZUFLUCHT im Schneegebirge heisst FIRNHALT (Karte 'hochland',
+  Areal-Name + Karten-Tabelle).
+- UNANGETASTET (Spielstand-/Technik-Kompatibilitaet): localStorage-
+  Schluessel (ravensmoor_save_v3_slot, ravensmoor_charlayout ...),
+  Karten-ids ('stadt', 'hochland' ...), Dateinamen
+  (ravensmoorPferde.ts; Umbenennung als Aufraeum-TODO). Historische
+  Design-Dokumente behalten den alten Namen als Zeitzeugen; neue
+  Dokumente nutzen Rabenmoor.
+- Codex-Gegentest: docs/CODEX-PROMPT-FIGUREN.md - fertiger Prompt, mit
+  dem Codex 12 Figuren in 32/64 nativ pixelig zeichnet (Umrisslinie,
+  2-3 Helligkeitsstufen, Moor-Palette) und als Kontaktbogen-PNG ablegt.
+  Hintergrund: die HD-Figuren wirken heruntergerechnet "wie Windows-
+  Buttons aus den 90ern" (Autor).

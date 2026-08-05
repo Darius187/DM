@@ -69,7 +69,7 @@ export const KARTEN_KANTEN: Record<string, KartenKanten> = {
   stadt: STADT_KANTEN,
 };
 
-// ---- Anfangskarte (Startgebiet, westlich der Stadt Ravensmoor) ----
+// ---- Anfangskarte (Startgebiet, westlich der Stadt Rabenmoor) ----
 export const ANFANGSKARTE: KartenKanten = {
   name: 'anfangskarte',
   breite: 4160,

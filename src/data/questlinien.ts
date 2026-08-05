@@ -14,7 +14,7 @@ export interface QuestLinie {
 export const QUESTLINIEN: ReadonlyArray<QuestLinie> = [
   { npc: 'johannes', linie: 'Hauptquest', freiAb: 'sofort', inhalt: 'Krypta/Finsternis (existiert)', status: 'aktiv' },
   { npc: 'schulze', linie: 'Dorf im Aufbau', freiAb: 'sofort', inhalt: 'Wiederaufbau, Abgaben-Noete', status: 'platzhalter' },
-  { npc: 'schmied', linie: 'Stahl für Ravensmoor', freiAb: 'sofort', inhalt: 'Erz beschaffen -> erste Waffe -> spaeter Zeughaus/Miliz', status: 'aktiv' },
+  { npc: 'schmied', linie: 'Stahl für Rabenmoor', freiAb: 'sofort', inhalt: 'Erz beschaffen -> erste Waffe -> spaeter Zeughaus/Miliz', status: 'aktiv' },
   { npc: 'magdalena', linie: 'Kräuterkunde', freiAb: 'sofort', inhalt: 'benannte Kraeuter sammeln -> Traenke', status: 'platzhalter' },
   { npc: 'mueller', linie: 'Vom Korn zum Brot', freiAb: 'Tag 2', inhalt: 'die Kette anstossen/retten (mit dem Baecker)', status: 'platzhalter' },
   { npc: 'baecker', linie: 'Vom Korn zum Brot', freiAb: 'Tag 2', inhalt: 'die Kette anstossen/retten (mit dem Mueller)', status: 'platzhalter' },

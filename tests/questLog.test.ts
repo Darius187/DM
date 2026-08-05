@@ -12,7 +12,7 @@ describe('Quest-Logbuch', () => {
   it('Spielstart: Hauptquest + Stahl-Quest (M8, sofort frei) sind aktiv', () => {
     const c = ctx();
     const log = logbuch(c);
-    expect(log).toHaveLength(2);   // Hauptquest + "Stahl fuer Ravensmoor" (M8)
+    expect(log).toHaveLength(2);   // Hauptquest + "Stahl fuer Rabenmoor" (M8)
     expect(log[0].def.id).toBe('haupt_unsterblichkeit');
     expect(log[0].status).toBe('aktiv');
     expect(log[0].aktuellesZiel?.text).toContain('Landherrn');

@@ -12,7 +12,7 @@ type Texte = Record<string, string>;
 // ---- Deutsch (Referenzsprache) ----
 const de: Texte = {
   // Dorf-im-Wald-Demo (dorf.html / dorfSim.ts)
-  'dorf.titel': 'RAVENSMOOR · DORF IM WALD',
+  'dorf.titel': 'RABENMOOR · DORF IM WALD',
   'dorf.hud': 'Alles zusammen, reines 2D-Canvas: Gras + Pfad mit Wasser-Pfützen, '
     + 'dynamisches Wetter (klar / Regen / Unwetter) mit Wind, Dunst/Nebel, Tropfen-Ringen '
     + 'auf dem Wasser und im Sturm umknickenden Bäumen; im Norden ein begehbarer Berg bis '

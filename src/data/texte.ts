@@ -3,9 +3,9 @@
 // Masterprompt 7.3 NEU zu verfassen - im Stil der Original-Notizen.
 
 export const TITEL = {
-  haupt: 'RAVENSMOOR',
+  haupt: 'RABENMOOR',
   unter: 'DER PREIS DER UNSTERBLICHKEIT',
-  intro: 'Anno Domini 1349. Der Schwarze Tod wütet, die Pest hat das Land geleert, und in ihrer Not schafften die Mönche das Kirchensilber hinab in die Gruft. Seitdem, so flüstern die Leute von Ravensmoor, ruhen die Toten unter der Kirche nicht mehr. Du wurdest entsandt, der Sache auf den Grund zu gehen.',
+  intro: 'Anno Domini 1349. Der Schwarze Tod wütet, die Pest hat das Land geleert, und in ihrer Not schafften die Mönche das Kirchensilber hinab in die Gruft. Seitdem, so flüstern die Leute von Rabenmoor, ruhen die Toten unter der Kirche nicht mehr. Du wurdest entsandt, der Sache auf den Grund zu gehen.',
 } as const;
 
 // Erzähler-Seiten mit Stimm-Schlüsseln (Runde 51): macht aus den Memoiren-Zeilen
@@ -19,7 +19,7 @@ export function erzaehlerSeiten(zeilen: readonly string[], basis: string): Array
 export const ERZAEHLER = {
   name: 'Aus meinen Aufzeichnungen',
   ankunft: [
-    'Ich wusste nicht, was mich erwartete, als ich den Auftrag annahm, nach Ravensmoor zu reisen. Die Geschichten, die man sich über dieses abgelegene Dorf erzählte, hielt ich für Ammenmärchen - Schauergeschichten für lange Winterabende.',
+    'Ich wusste nicht, was mich erwartete, als ich den Auftrag annahm, nach Rabenmoor zu reisen. Die Geschichten, die man sich über dieses abgelegene Dorf erzählte, hielt ich für Ammenmärchen - Schauergeschichten für lange Winterabende.',
     'Doch als ich ankam, umhüllten dichter Nebel und eine seltsame Dunkelheit das Dorf. Die wenigen Häuser duckten sich wie ängstliche Tiere um die alte Steinkirche, deren verwitterter Turm sich drohend gegen den bleiernen Himmel reckte. Die Bewohner sprachen nur im Flüsterton.',
   ],
   krypta: [
@@ -51,7 +51,7 @@ export const ENDEN = {
   },
   zerstoeren: {
     titel: 'ERLÖSUNG',
-    text: 'Das Fragment zerspringt unter deinem Stiefel, und ein Seufzen geht durch das Gewölbe - wie hundert Stimmen, die endlich schweigen dürfen. Ravensmoor ist frei. Die Narben des Krieges bleiben, doch die Toten ruhen wieder. Heinrich schenkt dir das erste ehrliche Bier des Jahres aus.',
+    text: 'Das Fragment zerspringt unter deinem Stiefel, und ein Seufzen geht durch das Gewölbe - wie hundert Stimmen, die endlich schweigen dürfen. Rabenmoor ist frei. Die Narben des Krieges bleiben, doch die Toten ruhen wieder. Heinrich schenkt dir das erste ehrliche Bier des Jahres aus.',
   },
 } as const;
 
@@ -67,11 +67,11 @@ export const RELIKT = {
 // Todestext (Referenz die) - Goldverlust wird dynamisch eingesetzt
 export const TOD = {
   titel: 'DU BIST GEFALLEN',
-  text: (gold: number) => `Die Dunkelheit nimmt, was ihr gehört. ${gold} Gold verloren. Deine Habseligkeiten bleiben dir - Ravensmoor wartet.`,
+  text: (gold: number) => `Die Dunkelheit nimmt, was ihr gehört. ${gold} Gold verloren. Deine Habseligkeiten bleiben dir - Rabenmoor wartet.`,
   knopf: 'WIEDER ERWACHEN',
-  // R138: zwei Erwachens-Orte - Dungeons/Innenräume führen nach Ravensmoor
+  // R138: zwei Erwachens-Orte - Dungeons/Innenräume führen nach Rabenmoor
   // (stadt), auf Oberwelt-Karten erwacht man am Eingang derselben Karte.
-  erwachenStadt: 'Ein fahles Licht hebt dich aus der Finsternis - in Ravensmoor schlägst du die Augen auf. Du bist nicht allein.',
+  erwachenStadt: 'Ein fahles Licht hebt dich aus der Finsternis - in Rabenmoor schlägst du die Augen auf. Du bist nicht allein.',
   erwachenKarte: 'Zerschunden kommst du wieder zu dir - am Rand der Karte, doch am Leben.',
 } as const;
 
@@ -80,11 +80,11 @@ export const TOD = {
 export const INTRO_FILM: ReadonlyArray<string> = [
   'Anno Domini 1349. Der Schwarze Tod frisst dieses Land, Hof um Hof.',
   'Die Pest nahm, was die Söldner übrig ließen. Ganze Dörfer schweigen für immer.',
-  'Aus meinen Aufzeichnungen: »Heute erreichte mich ein Brief mit dem Siegel des Amtmanns. Im Namen des Landesherrn: Geht nach Ravensmoor. Seht nach dem Rechten.«',
+  'Aus meinen Aufzeichnungen: »Heute erreichte mich ein Brief mit dem Siegel des Amtmanns. Im Namen des Landesherrn: Geht nach Rabenmoor. Seht nach dem Rechten.«',
   '»Die Boten flüstern Ärgeres, als Worte fassen: Die Toten unter der Kirche... ruhen nicht mehr.«',
   '»Ich habe die Residenz im Morgengrauen verlassen. Hinter mir die Mauern, vor mir nur noch Wald.«',
   '»Der Dunkelwald kennt den Weg, sagen die Alten. Man müsse nur dem Pfad nach Osten folgen - und nie der Stille trauen.«',
-  '»Was immer in Ravensmoor wartet: Ich schreibe diese Zeilen, damit jemand die Wahrheit kennt, falls ich nicht wiederkehre.«',
+  '»Was immer in Rabenmoor wartet: Ich schreibe diese Zeilen, damit jemand die Wahrheit kennt, falls ich nicht wiederkehre.«',
 ];
 
 // Boss-Rufe (Referenz)
@@ -98,8 +98,8 @@ export const BOSS_TEXTE = {
 
 // Diverse Log-Meldungen (Referenz)
 export const MELDUNGEN = {
-  start: 'Ravensmoor liegt im Nebel. Sprich mit den Dorfbewohnern (E).',
-  geladen: 'Spielstand geladen - willkommen zurück in Ravensmoor',
+  start: 'Rabenmoor liegt im Nebel. Sprich mit den Dorfbewohnern (E).',
+  geladen: 'Spielstand geladen - willkommen zurück in Rabenmoor',
   kircheZu: 'Die Kirchentür ist verschlossen. Pater Johannes hat den Schlüssel.',
   schluessel: 'Kryptaschlüssel erhalten',
   truhe: 'Truhe geöffnet',

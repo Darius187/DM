@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { respawnZiel } from '../src/logic/respawn';
 
 describe('Respawn-Regel nach dem Heldentod (R138)', () => {
-  it('Dungeons (dark) fuehren ins neue Ravensmoor', () => {
+  it('Dungeons (dark) fuehren ins neue Rabenmoor', () => {
     expect(respawnZiel('crypt1', true)).toBe('stadt');
     expect(respawnZiel('goldmine', true)).toBe('stadt');
     expect(respawnZiel('kerker12', true)).toBe('stadt');
     expect(respawnZiel('katakomben', true)).toBe('stadt');
   });
 
-  it('Boss, Kirchenschiff, Innenraeume und das ALTE Dorf fuehren ins neue Ravensmoor', () => {
+  it('Boss, Kirchenschiff, Innenraeume und das ALTE Dorf fuehren ins neue Rabenmoor', () => {
     expect(respawnZiel('boss', false)).toBe('stadt');
     expect(respawnZiel('kirchenschiff', false)).toBe('stadt');
     expect(respawnZiel('innen_taverne', false)).toBe('stadt');

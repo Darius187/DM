@@ -1,5 +1,5 @@
 // ============================================================
-//  RAVENSMOOR - Ritter-Held als Phaser-3-Textur (1:1 Drop-in)
+//  RABENMOOR - Ritter-Held als Phaser-3-Textur (1:1 Drop-in)
 //  Kein Bild noetig: die Figur wird im Code gezeichnet und als
 //  Textur erzeugt. Genau die Figur aus dem Render.
 //

@@ -1,7 +1,7 @@
 // 3D-Held-Test (Runde 58, Autorwunsch "Wow-Effekt"): ein ISOLIERTER Versuch -
 // rührt das 2D-Spiel nicht an. Zeigt, wie sich der Held in 3D bewegt (echte
 // Skelett-Animation statt 4-Frame-Sprite) und wie dynamisches Fackel-Licht mit
-// weichen Schatten die Düsternis von Ravensmoor in 3D trägt.
+// weichen Schatten die Düsternis von Rabenmoor in 3D trägt.
 //
 // Modell: Soldier.glb aus den three.js-Beispielen (Platzhalter-Rig) - der echte
 // Held wäre ein eigenes Kapuzen-Ritter-Modell. Worum es geht, ist die BEWEGUNG.

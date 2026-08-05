@@ -815,7 +815,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     let yB = 48;
     // Bericht + UI verschieben (nebeneinander)
     const bericht = schalter(yB, 'BERICHT KOPIEREN', '#d8cfb8', '#221808', () => {
-      const text = `Tuning-Bericht Ravensmoor: ${JSON.stringify(TUNING)} (Tempo-Regler: ${getSettings().tempo}%) UI-Versatz: ${JSON.stringify(getSettings().ui)}`;
+      const text = `Tuning-Bericht Rabenmoor: ${JSON.stringify(TUNING)} (Tempo-Regler: ${getSettings().tempo}%) UI-Versatz: ${JSON.stringify(getSettings().ui)}`;
       navigator.clipboard?.writeText(text).catch(() => undefined);
       // eslint-disable-next-line no-console
       console.log(text);
@@ -993,7 +993,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const name = pk.kind === 'relic' ? 'Das Relikt'
       : pk.kind === 'note' ? 'Zerknitterte Notiz'
       : pk.kind === 'medaillon' ? 'Annas Medaillon'
-      : pk.kind === 'portal' ? 'Portal nach Ravensmoor'
+      : pk.kind === 'portal' ? 'Portal nach Rabenmoor'
       : pk.item?.name ?? '';
     const verb = pk.kind === 'note' ? 'Lesen' : 'Aufheben';
     return { text: `${name} - ${ik} zum ${verb}`, action: () => this.collectManualPickup(pk) };
@@ -1056,7 +1056,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected areaDark(): boolean { return false; }
   // Monster laufen im gedaempften "Dungeon-Tempo" (kryptaGegnerTempo). Standard:
   // nur in dunklen Ebenen. WorldScene erweitert das auf den Einfall, damit die
-  // Angreifer in Ravensmoor NICHT irre schnell wie auf der Oberwelt rennen,
+  // Angreifer in Rabenmoor NICHT irre schnell wie auf der Oberwelt rennen,
   // sondern sich wie im Kerker anfuehlen (Autor-Meldung).
   protected monsterZeitlupe(): boolean { return this.areaDark(); }
   // Friedliche Karte (Autorwunsch Runde 74): hier spawnt niemals ein Gegner.
@@ -2306,7 +2306,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     }
   }
 
-  // Stadtportal (Feedback-Runde 5): jederzeit zurück nach Ravensmoor,
+  // Stadtportal (Feedback-Runde 5): jederzeit zurück nach Rabenmoor,
   // sobald der Tempelritter einmal gefallen ist
   protected castTownPortal(_viaScroll = false): void { /* Welt überschreibt */ }
 
@@ -3174,7 +3174,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // der eigenen Stufe (Vorgeschmack-Design, Masterprompt 6.2)
   useScroll(scrollSkill: string): void {
     // Stadtportal-Rolle (Runde 41): trägt den Helden auch VOR dem Boss zurück
-    // nach Ravensmoor - die Rolle selbst ist das Mittel (umgeht die Boss-Sperre).
+    // nach Rabenmoor - die Rolle selbst ist das Mittel (umgeht die Boss-Sperre).
     if (scrollSkill === 'stadtportal') { this.castTownPortal(true); return; }
     const spellIdx = SPELLS.findIndex((s) => s.id === scrollSkill);
     if (spellIdx >= 0) {

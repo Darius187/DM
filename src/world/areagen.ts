@@ -1067,7 +1067,7 @@ export function verschiebeHaus(a: AreaData, hp: HausPlatz, tdx: number, tdy: num
   hp.y1 += tdy;
 }
 
-// --- Ravensmoor: ein echtes Dorf des 17. Jahrhunderts (Masterprompt 7.2) ---// Referenzdorf war 46x30 - dieses ist 92x60, entlang der alten Salzstraße.
+// --- Rabenmoor: ein echtes Dorf des 17. Jahrhunderts (Masterprompt 7.2) ---// Referenzdorf war 46x30 - dieses ist 92x60, entlang der alten Salzstraße.
 
 // Waldgürtel ringsum (Runde 51, Autorwunsch "Dorf in alle Richtungen vergrößern,
 // nahtlos, außen Wald -> Gefühl von Größe"). Erst moderat (22 Kacheln), nach
@@ -1127,7 +1127,7 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
   const map = blank(w, h, T.GRASS);
   const a: AreaData = {
     // ARCHIV (Autor-Order): das ALTE Dorf ist tot - NIE wieder anfassen.
-    // Alles Dorfleben lebt im NEUEN Ravensmoor (id 'stadt', bevoelkereStadt).
+    // Alles Dorfleben lebt im NEUEN Rabenmoor (id 'stadt', bevoelkereStadt).
     id: 'village', name: 'Shit (Archiv)', dark: false, depth: 0,
     w, h, map, spawn: { x: 46 * TILE, y: 34 * TILE },
     torches: [], altars: [], wells: [], chests: [], shrines: [], books: [],
@@ -1518,7 +1518,7 @@ export function buildVillage(rng: Rng, aufbauStufe = 0, stadtmauerStufe = 0): Ar
     label(46.5, 2.8, 'Palisade');
   }
 
-  // Ravensmoor mit Wald umgeben (Runde 51): erst NACH allem Dorfaufbau, damit
+  // Rabenmoor mit Wald umgeben (Runde 51): erst NACH allem Dorfaufbau, damit
   // alle Koordinaten in einem Rutsch mitwandern.
   umgebeMitWald(a, DORF_WALDRAND, rng);
   return a;
@@ -1592,7 +1592,7 @@ export function buildInterior(def: InnenraumDef): AreaData {
 }
 
 // --- Der Dunkelwald: geführtes Eröffnungsgebiet (Masterprompt 7.1) ---
-// Ein Pfad von West nach Ost führt nach Ravensmoor. Der Wald lehrt die
+// Ein Pfad von West nach Ost führt nach Rabenmoor. Der Wald lehrt die
 // Steuerung diegetisch: Wolf-Kampf, Holzhack-Tutorial, erster Kerzenschrein.
 
 export function buildForest(rng: Rng): AreaData {
@@ -1698,7 +1698,7 @@ export function buildForest(rng: Rng): AreaData {
     }
   }
 
-  // Ostrand: Übergang nach Ravensmoor
+  // Ostrand: Übergang nach Rabenmoor
   carve(map, w - 2, py - 1, w - 1, py + 1, T.PATH);
   a.downPos = { x: (w - 1) * TILE + 16, y: py * TILE + 16 };
   // R93: Baum-auf-Weg + Loot-Stein-im-Wasser robust nachbereinigen
@@ -2128,7 +2128,7 @@ export function buildStart(rng: Rng): AreaData {
       gesetzt.push([x, y]);
     }
   }
-  // POIs am Weg nach Ravensmoor (Runde 76, Autorfreigabe; historische Lesart
+  // POIs am Weg nach Rabenmoor (Runde 76, Autorfreigabe; historische Lesart
   // um 1300 in OFFENE-FRAGEN.md): Bildstock an der Brücke, Raben-Wegweiser
   // nahe dem Spawn, Galgenhügel vor der Ostkante (Richtung Stadt), Sühnekreuz
   // abseits im Grünen, verunglückter Karren am Weg, Köhler-Meiler am Waldrand.
@@ -2226,7 +2226,7 @@ export function buildWaldOst(rng: Rng): AreaData {
 }
 
 // R127f (Autor): der MINENEINGANG liegt im NORDEN von Finsterhain - der letzten
-// Karte vor Ravensmoor. Ein Felsmassiv mit Stollenmaul (T.STAIR -> Goldhoehle),
+// Karte vor Rabenmoor. Ein Felsmassiv mit Stollenmaul (T.STAIR -> Goldhoehle),
 // ein Weg fuehrt von der Salzstrasse hinauf, und davor liegt ein VERLASSENER
 // WACHPOSTEN (Platzhalter, Autor bessert spaeter nach): Zaun-Fragmente, kalte
 // Kohlebecken, zurueckgelassene Faesser/Kisten - ein wichtiger Platz, der
@@ -2280,7 +2280,7 @@ function minenEingang(a: AreaData, rng: Rng): void {
 // Zufluss an der Westflanke, Salzstraße West->Ost. Gebäude/Kirche/Dungeon kommen
 // später per StadtProbe-Planer. Eigene id 'stadt' (die voll bebaute 'village'
 // bleibt unangetastet erhalten).
-// STADT (4,3) nach der AUTOR-VORLAGE (R98c, "das ist meine Karte für Ravensmoor"):
+// STADT (4,3) nach der AUTOR-VORLAGE (R98c, "das ist meine Karte für Rabenmoor"):
 // See UNTEN RECHTS; der Nordfluss (Tabelle 81.9%) laeuft die Ostseite hinunter in
 // den See; der Suedbach zieht vom See am Suedrand zur Westkante (81.7%); Ost-
 // Abfluss aus dem See (81.7%). Salzstrasse quer + Nordstrasse als T-Kreuzung
@@ -2293,7 +2293,7 @@ export function buildStadtNatur(rng: Rng): AreaData {
   // (FPS/Platz), ohne den Code zu aendern. Ohne Angabe der Standard 130x85.
   const g = (typeof window !== 'undefined' ? (window as unknown as { __stadtGroesse?: { w: number; h: number } }).__stadtGroesse : null) ?? null;
   const a = baueOberweltGebiet(rng, {
-    id: 'stadt', name: 'Ravensmoor', wolfXs: [40, 96], baumGruppen: 45,
+    id: 'stadt', name: 'Rabenmoor', wolfXs: [40, 96], baumGruppen: 45,
     // R104 (Autor "Karte zu klein, mach sie groesser/quadratisch"): Dorf jetzt
     // QUADRATISCH 128x128 (passt 1:1 zur Planungskarte). ~16k Tile-Objekte statt
     // ~8.7k - Kacheln werden einmalig erzeugt + kamera-gecullt, kostet also v.a.
@@ -2325,7 +2325,7 @@ export function buildStadtNatur(rng: Rng): AreaData {
   return a;
 }
 
-// UMZUG (Auftrag Dorfwirtschaft, Autor: "alles im NEUEN Ravensmoor, das alte
+// UMZUG (Auftrag Dorfwirtschaft, Autor: "alles im NEUEN Rabenmoor, das alte
 // Dorf wird nicht mehr angeruehrt"): das komplette Bewohner-Roster, die
 // Arbeits-Stationen, Bauern-Felder, der Brunnen und das Vieh ziehen an die
 // DORFPLAN-Box-Anker der stadt-Karte (data/dorfplan.ts Saat; die 3D-Gebaeude
@@ -2363,7 +2363,7 @@ function bevoelkereStadt(a: AreaData): void {
   frei(41, 60, 46, 63);
   N({ id: 'heinrich', name: 'Heinrich Kramer', x: 43.5 * T32, y: 61.5 * T32, abend: { x: 43.5 * T32, y: 61.5 * T32 }, kaempfer: true, questgeber: 'kopfgeld' });
   N({ id: 'wirtin', name: 'Wirtin Agnes', x: 41.5 * T32, y: 61.5 * T32, abend: { x: 41.5 * T32, y: 61.5 * T32 }, arbeit: 'kochen' });
-  // Wirtshaus-Tuer: NICHT hier in die Karte backen (Autor: "im alten Ravensmoor
+  // Wirtshaus-Tuer: NICHT hier in die Karte backen (Autor: "im alten Rabenmoor
   // blieb der Eingang am alten Platz kleben, wenn man das Haus verschob"). Die
   // Tuer wird stattdessen LIVE aus der Haus-Box abgeleitet (setzeStadtHausTueren
   // in dorfRender) - so folgt sie dem Haus beim Verschieben, kein Geist-Eingang.
@@ -2415,7 +2415,7 @@ function bevoelkereStadt(a: AreaData): void {
   a.bauernFelder.push({ x0: 56, y0: 92, x1: 64, y1: 96 });
   N({ id: 'bauer2', name: 'Bäuerin Grete', x: 60 * T32, y: 91 * T32, abend: { x: 60 * T32, y: 48.5 * T32 }, arbeit: 'feld' });
   // Familie B (VIEH): offene Weiden auf der Angerwiese oestlich + westlich der
-  // Linde. R159 (Autor): KEINE Zaeune mehr in Ravensmoor - die Tiere bleiben
+  // Linde. R159 (Autor): KEINE Zaeune mehr in Rabenmoor - die Tiere bleiben
   // ueber ihre pen-Rechtecke auf der Wiese, die Flaeche bleibt frei begehbar.
   frei(47, 63, 57, 71);
   const penB1 = { x0: 49 * T32, y0: 65 * T32, x1: 56 * T32, y1: 70 * T32 };
@@ -2615,7 +2615,7 @@ export function buildStadt2(rng: Rng): AreaData {
 // OBERWELT_KANTEN-Tabelle; Inhalte (Schnee, Schlachtfeld-Deko, Kloster) folgen
 // je eigenem Karten-Auftrag. Namen sind Vorschlaege (DECISIONS, leicht aenderbar).
 export function buildHochland(rng: Rng): AreaData {
-  return baueOberweltGebiet(rng, { id: 'hochland', name: 'Hoher Norden', wolfXs: [30, 64, 96], baumGruppen: 90, geo: { bahnen: [], seen: [] } });
+  return baueOberweltGebiet(rng, { id: 'hochland', name: 'Firnhalt', wolfXs: [30, 64, 96], baumGruppen: 90, geo: { bahnen: [], seen: [] } });
 }
 export function buildWaldNordWest(rng: Rng): AreaData {
   return baueOberweltGebiet(rng, { id: 'wald_nw', name: 'Grauwald', wolfXs: [36, 78], baumGruppen: 215, geo: { bahnen: [], seen: [] } });

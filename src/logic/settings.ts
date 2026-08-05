@@ -121,7 +121,7 @@ export interface Settings {
   optikStandardV: number; // einmalig: 2D-Held als Standard + Grusel fest auf 100
   uiLayoutV: number;      // Layout-Version: ältere UI-Versätze einmalig zurücksetzen
   barV: number;           // Leisten-Belegung: einmalig auf "leer bis auf Basics" setzen
-  // 3D-Zimmermannshaus in Ravensmoor (R131c): Drehung/Kamera/Skala/Versatz frei
+  // 3D-Zimmermannshaus in Rabenmoor (R131c): Drehung/Kamera/Skala/Versatz frei
   // tunebar und persistent (drehbar + verschiebbar, UI-Regel 11). Eine Datei ändern.
   haus3d?: { yaw: number; elev: number; azimut: number; skala: number; dx: number; dy: number }; // ALT (R131c), wird nach gebaeude3d migriert
   // R132/R198: 3D-Gebaeude - gemeinsame Groesse, je Gebaeude Drehung/Skala/

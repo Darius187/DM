@@ -45,7 +45,7 @@ export interface PlayerState {
 
 export function newPlayerState(): PlayerState {
   // R238 (Autor): keine rostige Altlast mehr - der Held trägt eine SOLIDE
-  // Klinge aus der Ravensmoorer Esse. Damit ist die Startwaffe dasselbe
+  // Klinge aus der Rabenmoorer Esse. Damit ist die Startwaffe dasselbe
   // Handwerk, das im Dorf jeden Tag entsteht (Waffenkammer, Güte-Mitte).
   const startWeapon: Item = { kind: 'weapon', name: 'Solide Klinge', rarity: 0, val: 6, boni: [], weaponClass: 'schwert' };
   const p: PlayerState = {

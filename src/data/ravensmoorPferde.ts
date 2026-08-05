@@ -1,13 +1,13 @@
-// Vier eigenstaendige Pferde des Ravensmoorer Stalls. Alle teilen denselben
+// Vier eigenstaendige Pferde des Rabenmoorer Stalls. Alle teilen denselben
 // Blender-Atlas; Farbe und Koerperbau bleiben kleine Laufzeitvarianten. So
 // entstehen keine vier mehrfach geladenen 4K-Atlanten.
 
-export type RavensmoorPferdRolle = 'held' | 'arbeit';
+export type RabenmoorPferdRolle = 'held' | 'arbeit';
 
-export interface RavensmoorPferdDef {
+export interface RabenmoorPferdDef {
   id: string;
   name: string;
-  rolle: RavensmoorPferdRolle;
+  rolle: RabenmoorPferdRolle;
   stallId: `stall_${1 | 2 | 3 | 4}`;
   startMarker: `APPROACH_STALL_${1 | 2 | 3 | 4}`;
   tint: number;
@@ -17,7 +17,7 @@ export interface RavensmoorPferdDef {
   npcId?: string;
 }
 
-export const RAVENSMOOR_PFERDE: ReadonlyArray<RavensmoorPferdDef> = [
+export const RABENMOOR_PFERDE: ReadonlyArray<RabenmoorPferdDef> = [
   {
     id: 'arbeit_fuchs',
     name: 'Fuchsstute',
@@ -65,7 +65,7 @@ export const RAVENSMOOR_PFERDE: ReadonlyArray<RavensmoorPferdDef> = [
     stallId: 'stall_4',
     startMarker: 'APPROACH_STALL_4',
     // Kein tintenschwarzer Fleck: ein sehr dunkles, leicht warmes Schwarz laesst
-    // Beine, Zaumzeug und Sattel im Ravensmoor-Licht noch lesen.
+    // Beine, Zaumzeug und Sattel im Rabenmoor-Licht noch lesen.
     tint: 0x403b38,
     skala: 0.985,
     breite: 1,
@@ -75,7 +75,7 @@ export const RAVENSMOOR_PFERDE: ReadonlyArray<RavensmoorPferdDef> = [
 
 export const HELDEN_PFERD_ID = 'held_schwarz';
 
-export function pferdDef(id: string): RavensmoorPferdDef {
-  return RAVENSMOOR_PFERDE.find((p) => p.id === id) ?? RAVENSMOOR_PFERDE[3];
+export function pferdDef(id: string): RabenmoorPferdDef {
+  return RABENMOOR_PFERDE.find((p) => p.id === id) ?? RABENMOOR_PFERDE[3];
 }
 

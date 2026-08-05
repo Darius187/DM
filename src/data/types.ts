@@ -1,6 +1,6 @@
 // Gemeinsame Typen für alle Datenmodule.
 // Inhalte stammen 1:1 aus reference/ravensmoor-v2.html (Inhalts-Wahrheit),
-// Spielgefühl-Werte aus RAVENSMOOR-2D-MASTERPROMPT.md Teil 4 (schlägt Referenz).
+// Spielgefühl-Werte aus RABENMOOR-2D-MASTERPROMPT.md Teil 4 (schlägt Referenz).
 
 export type Rarity = 0 | 1 | 2 | 3; // Gewöhnlich / Magisch / Selten / Episch
 

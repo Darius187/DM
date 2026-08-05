@@ -48,7 +48,7 @@ export const RAST = {
 } as const;
 
 // Einfälle (Feedback-Runde 7): Nach dem Boss-Sieg greifen abends Monster-
-// Trupps Ravensmoor an. Mit Palisade kommen sie nur durch die Tore.
+// Trupps Rabenmoor an. Mit Palisade kommen sie nur durch die Tore.
 export const EINFALL = {
   anzahlBasis: 5,        // Trupp-Größe am ersten Abend
   anzahlProWoche: 2,     // wächst mit den Spieltagen
@@ -65,7 +65,7 @@ export const EINFALL = {
 
 // R178 (Autor "es kommen immer mal Späher-Monster, die vom Kloster aus
 // geschickt werden"): kleine Kundschafter-Trupps sickern zwischen den
-// Einfällen über die NORDSTRASSE nach Ravensmoor - das Kloster liegt im Norden.
+// Einfällen über die NORDSTRASSE nach Rabenmoor - das Kloster liegt im Norden.
 // R180 (Autor + Dok 06 C3 "bis dahin läuft alles still und heimlich"): sie
 // kommen ERST, nachdem der Boss in der Krypta gefallen ist - sein Tod öffnet
 // die Büchse, das Kloster beginnt zu spähen.
@@ -93,7 +93,7 @@ export const FELDZUG = {
   // KNOCHENWALL waechst nach fester Reihenfolge mit der Besatzungszeit
   // (untote Zimmerleute) und ist wie bruechige Waende durchschlagbar.
   // Optik ist PLATZHALTER - die Monster-Bau-Assets definiert der Autor noch.
-  // F5 (Dok 06 C3 "der Vorhang faellt"): der FALL VON RAVENSMOOR nach dem
+  // F5 (Dok 06 C3 "der Vorhang faellt"): der FALL VON RABENMOOR nach dem
   // Krypta-Boss - der grosse Sturm ist NICHT zu halten (Nachschub endet nie),
   // der Held muss alle in den Norden bringen und die Stadt spaeter mit der
   // Grafen-Kolonne zurueckerobern.
@@ -249,7 +249,7 @@ export const KAEMPFER = {
 // Stufe 1 ist unzerstörbar für normale Monster - sie kommen nur noch
 // durch die zwei Tore der Salzstraße.
 // Fester Stadt-Anker des Portal-Paars (Runde 28). R168 (Autor "das Portal
-// bringt mich ins ALTE Ravensmoor"): Anker liegt jetzt in NEU-Ravensmoor
+// bringt mich ins ALTE Rabenmoor"): Anker liegt jetzt in NEU-Rabenmoor
 // (stadt) neben dem Brunnen (Kachel 61/72, freigeraeumte Brunnen-Zone).
 export const PORTAL_STADT = { x: 61 * 32 + 16, y: 72 * 32 + 16 } as const;
 
@@ -261,7 +261,7 @@ export const KIRCHE_TUER_REICHWEITE_PX = 56;
 
 export const STADTMAUER = {
   stufen: [
-    { name: 'Palisade', gold: 750, holz: 80, stein: 30, naechte: 3, beschreibung: 'Angespitzte Pfähle rund um Ravensmoor mit zwei verschließbaren Toren - der Bau dauert drei Nächte' },
+    { name: 'Palisade', gold: 750, holz: 80, stein: 30, naechte: 3, beschreibung: 'Angespitzte Pfähle rund um Rabenmoor mit zwei verschließbaren Toren - der Bau dauert drei Nächte' },
   ],
 } as const;
 
@@ -429,7 +429,7 @@ export const VERSCHLEPPUNG = {
     'stallknecht', 'holzfaeller', 'fischer', 'imker', 'haendler',
   ] as ReadonlyArray<string>,
   // Mitgefangene aus ANDEREN Doerfern - sie machen den Kloster-Kerker voll
-  // und zeigen: Ravensmoor ist nicht das einzige Dorf, das blutet.
+  // und zeigen: Rabenmoor ist nicht das einzige Dorf, das blutet.
   fremde: [
     { name: 'Köhlerin Frieda', figur: 'frau1' },
     { name: 'Fuhrmann Kilian', figur: 'bauer2' },

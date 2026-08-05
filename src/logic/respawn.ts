@@ -1,10 +1,10 @@
 // Respawn-Regel nach dem Heldentod (R138, Autor: "nicht mehr im ALTEN
-// Ravensmoor erwachen - das ist Archiv"). Reine Logik, testbar ohne Szene.
+// Rabenmoor erwachen - das ist Archiv"). Reine Logik, testbar ohne Szene.
 //
 // Regel:
 // - In DUNKLEN Karten (Krypta, Katakomben, Goldmine, Planungskarten), im
 //   Kirchenschiff, in der Boss-Arena, in Innenraeumen und im ALTEN Dorf
-//   erwacht der Held im NEUEN Ravensmoor ('stadt') - dort wacht etwas Gutes
+//   erwacht der Held im NEUEN Rabenmoor ('stadt') - dort wacht etwas Gutes
 //   ueber die Stadt (die Auferstehungs-Fiktion zieht vom alten Friedhof um).
 // - Auf OBERWELT-Karten beginnt er auf DERSELBEN Karte an ihrem Eingang
 //   (Karten-Spawn) - kein Rueckwurf quer durch die Welt.

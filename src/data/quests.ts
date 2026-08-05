@@ -44,28 +44,28 @@ export const QUESTS: QuestDef[] = [
     titel: 'Der Preis der Unsterblichkeit',
     kategorie: 'haupt',
     geber: 'Der Landherr',
-    kurz: 'Ein Bote ruft dich in den Dunkelwald - Ravensmoor stirbt an einem alten Übel.',
+    kurz: 'Ein Bote ruft dich in den Dunkelwald - Rabenmoor stirbt an einem alten Übel.',
     aktiv: () => true, // die Hauptquest liegt von Anfang an im Logbuch
     fertig: (c) => c.bossDead || f(c, 'ngPlus'),
     ziele: [
       { text: 'Sprich mit dem Landherrn im Dunkelwald.', wohin: 'Dunkelwald', erfuellt: (c) => f(c, 'auftragErhalten') },
-      { text: 'Folge dem Pfad nach Osten nach Ravensmoor.', wohin: 'Pfad nach Osten', erfuellt: (c) => f(c, 'nAnkunft') },
-      { text: 'Hol den Kryptaschlüssel von Pater Johannes an der Kirche.', wohin: 'Kirche von Ravensmoor', erfuellt: (c) => c.hasKey },
+      { text: 'Folge dem Pfad nach Osten nach Rabenmoor.', wohin: 'Pfad nach Osten', erfuellt: (c) => f(c, 'nAnkunft') },
+      { text: 'Hol den Kryptaschlüssel von Pater Johannes an der Kirche.', wohin: 'Kirche von Rabenmoor', erfuellt: (c) => c.hasKey },
       { text: 'Steig in die Krypta hinab und finde die Quelle des Übels.', wohin: 'Krypta unter der Kirche', erfuellt: (c) => c.bossDead },
     ],
   },
   {
-    // M8 Dorfwirtschaft: "Stahl fuer Ravensmoor" (Schmied) - real verdrahtet
+    // M8 Dorfwirtschaft: "Stahl fuer Rabenmoor" (Schmied) - real verdrahtet
     id: 'neben_stahl',
-    titel: 'Stahl für Ravensmoor',
+    titel: 'Stahl für Rabenmoor',
     kategorie: 'neben',
     geber: 'Der Schmied',
-    kurz: 'Der Schmied braucht Erz, um die erste Waffe aus Ravensmoorer Stahl zu schmieden.',
+    kurz: 'Der Schmied braucht Erz, um die erste Waffe aus Rabenmoorer Stahl zu schmieden.',
     aktiv: () => true,
     fertig: (c) => f(c, 'stahlWaffe'),
     belohnung: '40 Gold - und die erste Waffe im Verkauf des Schmieds',
     ziele: [
-      { text: 'Bringe dem Schmied 5 Erz (aus Krypta-Beute oder vom Händler).', wohin: 'Schmiede in Ravensmoor', erfuellt: (c) => f(c, 'stahlErz') },
+      { text: 'Bringe dem Schmied 5 Erz (aus Krypta-Beute oder vom Händler).', wohin: 'Schmiede in Rabenmoor', erfuellt: (c) => f(c, 'stahlErz') },
       { text: 'Der Schmied schmiedet die erste Waffe.', erfuellt: (c) => f(c, 'stahlWaffe') },
     ],
   },
@@ -79,7 +79,7 @@ export const QUESTS: QuestDef[] = [
     fertig: (c) => f(c, 'rattenFertig'),
     belohnung: '60 Gold und Brot',
     ziele: [
-      { text: 'Erledige die Ratten im Lager der Mühle und kehr zum Müller zurück.', wohin: 'Mühle bei Ravensmoor', erfuellt: (c) => f(c, 'rattenFertig') },
+      { text: 'Erledige die Ratten im Lager der Mühle und kehr zum Müller zurück.', wohin: 'Mühle bei Rabenmoor', erfuellt: (c) => f(c, 'rattenFertig') },
     ],
   },
   {
@@ -91,7 +91,7 @@ export const QUESTS: QuestDef[] = [
     aktiv: (c) => f(c, 'medaillonGenommen'),
     fertig: (c) => f(c, 'annaQuestFertig'),
     ziele: [
-      { text: 'Bring Annas Medaillon zu Heinrich in die Taverne.', wohin: 'Taverne von Ravensmoor', erfuellt: (c) => f(c, 'annaQuestFertig') },
+      { text: 'Bring Annas Medaillon zu Heinrich in die Taverne.', wohin: 'Taverne von Rabenmoor', erfuellt: (c) => f(c, 'annaQuestFertig') },
     ],
   },
   {
@@ -104,7 +104,7 @@ export const QUESTS: QuestDef[] = [
     kurz: 'Wer sich bis zur dritten Ebene des Verlieses vorkämpft, dem öffnet sich das Stadtportal.',
     aktiv: (c) => c.hasKey,
     fertig: (c) => f(c, 'ebene3'),
-    belohnung: 'Der Stadtportal-Zauber - jederzeit zurück nach Ravensmoor',
+    belohnung: 'Der Stadtportal-Zauber - jederzeit zurück nach Rabenmoor',
     ziele: [
       { text: 'Erreiche die dritte Ebene des Verlieses.', wohin: 'Verlies unter der Kirche', erfuellt: (c) => f(c, 'ebene3') },
     ],
@@ -123,14 +123,14 @@ export const QUESTS: QuestDef[] = [
   },
   {
     id: 'ereignis_krieg',
-    titel: 'Der Krieg um Ravensmoor',
+    titel: 'Der Krieg um Rabenmoor',
     kategorie: 'ereignis',
     geber: 'Ereignis',
     kurz: 'Der Krieg hat begonnen - die Gräber drohen das Land zu verschlingen.',
     aktiv: (c) => f(c, 'kriegBegonnen'),
     fertig: () => false, // offenes Ereignis (kein Abschluss-Flag im Spiel)
     ziele: [
-      { text: 'Finde das WAHRE Relikt, ehe die Gräber das Land verschlingen.', wohin: 'Ravensmoor und seine Krypten', erfuellt: () => false },
+      { text: 'Finde das WAHRE Relikt, ehe die Gräber das Land verschlingen.', wohin: 'Rabenmoor und seine Krypten', erfuellt: () => false },
     ],
   },
 ];

@@ -95,7 +95,7 @@ export interface FeindzugCfg {
   // R236 (Doku 08, Akt 5): das EXPANSIONS-GATE. false = die Horde sitzt
   // still: keine Produktion, keine neuen Angriffe - die Startbesetzung
   // bleibt genau da, wo sie ist. So bleiben die Fluchtwege durchlaessig,
-  // bis der Spieler Ravensmoor zurueckerobert hat; dann beginnt der
+  // bis der Spieler Rabenmoor zurueckerobert hat; dann beginnt der
   // Wettlauf. Fehlt das Feld, expandiert der Feind wie bisher.
   expansion?: boolean;
 }
@@ -164,7 +164,7 @@ export function bautenAbwehr(
 }
 
 // Bestes Angriffs-Ziel eines Lagers: FREIE Nachbarkarte, nicht unantastbar,
-// moeglichst nah an Ravensmoor (die Zange schliesst sich um die Stadt).
+// moeglichst nah an Rabenmoor (die Zange schliesst sich um die Stadt).
 function zielVon(lagerKarte: string, cfg: FeindzugCfg): string | null {
   const frei = cfg.nachbarn(lagerKarte)
     .filter((n) => !cfg.unantastbar.includes(n) && cfg.status(n) === 'frei');

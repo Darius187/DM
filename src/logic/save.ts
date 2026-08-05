@@ -103,7 +103,7 @@ export interface SaveData {
     bote?: import('./bote').Bote;   // R179: der Grafen-Bote (Standort/Ritt/Ersatz-Uhr)
     lage?: import('./gebietslage').Gebietslage;   // F1: Gebietslage des Feldzugs
     feindzug?: import('./feindzug').Feindzug;     // F2: Feind-Produktion + laufender Angriff
-    fallT?: number;      // F5: Sturm-Uhr des Falls von Ravensmoor
+    fallT?: number;      // F5: Sturm-Uhr des Falls von Rabenmoor
     treckT?: number;     // F5: Rest-Weg des Bewohner-Trecks zur Zuflucht
     fallGolemKam?: boolean;   // F5: ob der Golem im Sturm schon erschienen ist (sonst Doppel-/Phantom-Golem beim Kartenwechsel)
     // R143 (Dok 03, 2.3): Arbeiter-Zaehler - jeder Rekrut fehlt der Produktion.

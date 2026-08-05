@@ -241,7 +241,7 @@ export class SpriteProvider {
       gross.width = HD_ZELLE;
       gross.height = HD_ZELLE;
       const gctx = gross.getContext('2d')!;
-      // R218 (Autor: "nachdem Ravensmoor angegriffen wurde ruckelt es wie
+      // R218 (Autor: "nachdem Rabenmoor angegriffen wurde ruckelt es wie
       // Sau"): Das Backen EINES Atlas kostete 28 HD-Zeichnungen (4 Richtungen x
       // 7 Frames) - beim Einfall tauchen viele Typen/Ebenen-Varianten zum ersten
       // Mal auf und jeder Erstauftritt buk mitten im Gefecht. Richtung 1 (links)

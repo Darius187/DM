@@ -1,4 +1,4 @@
-// Prozedurales Pferd-Sprite in vier Richtungen (Ravensmoor, Runde 66). LINKS/
+// Prozedurales Pferd-Sprite in vier Richtungen (Rabenmoor, Runde 66). LINKS/
 // RECHTS nutzen die bewaehrte Seitenansicht aus reitArt.ts (drawGalopp, nach
 // rechts, 64x48) - fuer LINKS wird gespiegelt. VORNE und HINTEN sind neue, gut
 // lesbare 3/4-Ansichten in derselben erdigen Palette und mit demselben Reiter-

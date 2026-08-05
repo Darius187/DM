@@ -21,7 +21,7 @@ function zylinder(r0: number, r1: number, h: number, mat: THREE.Material, x = 0,
 }
 
 // Galgen: schiefer Doppelpfosten mit Querbalken, Strebe und leerer Schlinge -
-// dasselbe Bild wie die Canvas-Version (Schlinge leer, Ravensmoor ist nah).
+// dasselbe Bild wie die Canvas-Version (Schlinge leer, Rabenmoor ist nah).
 export function baueGalgen(): THREE.Group {
   const g = new THREE.Group();
   const holz = matHolz(0x5e4a30), holzAlt = matHolz(0x4a3a24), eisen = matEisen();
