@@ -4029,3 +4029,17 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
 - Keine neuen Ruestungen, Helme oder Paperdoll-Kombinationen, bevor Stand,
   Gehen, Angriff und Block dieser zwei Vollfiguren im echten Spiel abgenommen
   sind.
+
+## R247 - Gemalter Held live im Spiel
+- Codex' "Painted V1" laeuft im echten Renderer, als DRITTER Pfad neben der
+  prozeduralen Figur und dem 3D-Atlas (Reihenfolge: gemalt -> 3D -> 2D).
+  Schalter `heldGemalt` in den Einstellungen, Standard AN, Dev-Konsole.
+- Tuning-Werte in src/data/heldGemalt.ts (Fusspunkt 123, hoeheFaktor 0.64,
+  originY 0.57) - hergeleitet, damit die Fuesse GENAU dort stehen wie bei der
+  prozeduralen Figur (beide 28,8 px unter der Spielerposition).
+- Tiefensortierung: das gemalte Blatt hat unter den Fuessen nur 5 px Rand
+  statt 20 - ohne Ausgleich sortierte der Held 15,1 px zu frueh hinter
+  Baeume. Geloest ueber heldUnterkante() (CombatScene), von WorldScene in
+  spielerTiefe genutzt. Gemessen danach: 0,00 px Unterschied.
+- Bogen und Reiten bleiben beim bisherigen Renderer (keine Frames geliefert),
+  konfiguriert ueber HELD_GEMALT.fallbackWaffen.

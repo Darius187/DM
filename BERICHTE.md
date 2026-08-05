@@ -2775,3 +2775,25 @@ FERTIG UND VISUELL GEPRUEFT:
    8-auf-4-Richtungsmapping, Frame-Mapping und sicheren Fallbacks.
 OFFEN: Claude integriert den Testpfad ins echte Phaser-Spiel und liefert den
 Live-Beweis; weitere Ruestungen/Helme erst danach.
+
+## R247 - Der gemalte Aldric laeuft im Spiel
+FERTIG UND VERIFIZIERT (Browser, echtes Spiel - nicht die Werkbank):
+1. Codex' gemaltes Paket ist angeschlossen: der Held im Spiel ist jetzt die
+   gemalte Figur. Mit Ruestung UND Schild erscheint automatisch die
+   Gambeson/Turmschild-Fassung, sonst Hemd und Schwert.
+2. Nachgemessen im laufenden Spiel: alle acht Blickrichtungen treffen die
+   richtige Zeile im Blatt, der Frontangriff laeuft sauber ueber Ausholen ->
+   Treffer -> Nachziehen, und mit Schild blockt er sichtbar.
+3. WICHTIG, weil es sonst still kaputtgegangen waere: die Tiefensortierung
+   haette sich um 15 px verschoben (das gemalte Bild hat weniger Rand unter
+   den Fuessen als die alte Zeichnung) - der Held waere zu frueh hinter
+   Baeumen verschwunden. Ausgeglichen und nachgemessen: 0,00 px Unterschied,
+   Fussposition und Hitbox unveraendert.
+4. Umschalten in der Dev-Konsole ("GEMALTER HELD"), sofort und ohne Neustart.
+   Bogen und Reiten laufen weiter ueber die alte Zeichnung - dafuer hat Codex
+   noch keine Bilder geliefert.
+EHRLICHE LUECKE: den Gehzyklus habe ich als Zuordnung geprueft (Schritt 0-3
+-> die vier Gehbilder), aber nicht durch echtes Laufen - der Testheld spawnt
+am Westrand im Wasser und kommt dort nicht vom Fleck. Beim ersten eigenen
+Laufen siehst du es sofort.
+TESTS: tsc sauber, 526/526 gruen.

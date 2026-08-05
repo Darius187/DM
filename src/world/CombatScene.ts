@@ -11,7 +11,12 @@ import { getHeldForm } from '../data/heldForm';
 import { heldTier } from '../data/helden';
 import { EffectSystem } from './effects';
 import { Enemy, angleToDir, angleToDir8, type EnemyHost } from './Enemy';
-import { SCHLAG_FRAME, SCHLAG_PHASEN } from '../gfx/heldArt';
+import { SCHLAG_FRAME, SCHLAG_PHASEN, HELD_FELD } from '../gfx/heldArt';
+import {
+  GEMALT_SHEETS, gemalteZeile, gemalteSpalte, gemalterFrame, gemaltBereit,
+  ladeGemalteHeldSheets, type GemaltVariante,
+} from '../gfx/heldGemalt';
+import { HELD_GEMALT } from '../data/heldGemalt';
 import { drawSkelettDetail, drawPestDetail, drawLebenderToterDetail, drawBuergerDetail } from '../gfx/detailFiguren';
 import {
   newCombatState, inputLight, inputHeavy, inputRoll, inputBlockStart, inputBlockEnd,
@@ -1332,6 +1337,14 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   // überschreibt beide auf den FUSSPUNKT, damit Held/Gegner gegen Bäume (die auf
   // ihrem Stammfuß sortieren) korrekt vorne/hinten liegen (Kopf frei vor dem Stamm).
   protected spielerTiefe(): number { return this.py; }
+  /**
+   * Wie weit ragt der Held unter seine Position? Basis der Tiefensortierung.
+   * Beim gemalten Helden (R247) ist es der Ausgleichswert aus zeichneHeldGemalt,
+   * sonst die Sprite-Unterkante wie bisher.
+   */
+  protected heldUnterkante(): number {
+    return this.heldTiefeGemalt ?? this.playerSprite.displayHeight * (1 - this.playerSprite.originY);
+  }
   // R132: Hoehenversatz der Figur (3D-Gebaeude: Treppe/Obergeschoss), 0 = Boden.
   protected heldHoeheOffset(): number { return 0; }
   protected gegnerTiefe(_spr: Phaser.GameObjects.Sprite, grundY: number): number { return grundY; }
@@ -3928,6 +3941,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // IDENTISCHEM Frame-Schema (d{dir}f{frame}) - dieselbe Geh-/Atem-/Schlag-
     // Maschine treibt die 3D-Posen. Solange der Atlas noch backt (oder der
     // Schalter aus ist), läuft unverändert die 2D-Zeichnung = sauberer Fallback.
+    // R247: gemalter Aldric (Codex "Painted V1"). Läuft VOR dem 3D-Test, weil
+    // er der Kandidat für die endgültige Optik ist. Fehlt das Sheet oder passt
+    // der Zustand nicht (Bogen, Reiten), fällt es sauber auf 2D/3D zurück.
+    this.heldTiefeGemalt = null;
+    if (getSettings().heldGemalt && this.zeichneHeldGemalt(dir, step)) return;
     if (getSettings().figuren3d && this.zeichneHeld3d(dir, step)) return;
     // Ausgerüstete Waffe wandert in die Hand und wird mitgeschwungen (R54).
     this.provider.applyFigure(this.playerSprite, this.heldFigur(), dir, step, this.weaponClass());
@@ -3938,6 +3956,66 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // Einfache Roben-Figur: nur leicht groesser als ein normaler Gegner (32px-
     // Figur, Gegner laufen bei 1.0) - 1.5 war "viel zu gross" (Autor R55).
     this.playerSprite.setScale(this.heldEinfach ? 1.15 : (this.textures.exists('hs_spieler_unten_1') ? 1.35 : getHeldForm(tier).skala));
+  }
+
+  // R247: gemalter Aldric. Welche der zwei gelieferten Varianten passt zum
+  // aktuellen Ausrüstungszustand? Rüstung UND Schild -> Gambeson/Turmschild,
+  // sonst die Basis. Alles andere fällt bewusst auf die Basis (Auftrag:
+  // "keine neuen Canvas-Overlays bauen").
+  private gemalteVariante(): GemaltVariante {
+    return this.p.armorIt && this.p.schildIt ? 'gambeson-turmschild' : 'base';
+  }
+
+  /** Läuft der Held gerade? Wird in renderEntities gesetzt (dort ist es bekannt). */
+  protected heldLaeuft = false;
+
+  /**
+   * Tiefen-Ausgleich für den gemalten Helden (R247). Die Tiefensortierung
+   * rechnet mit der SPRITE-Unterkante; das gemalte Blatt hat unter den Füßen
+   * nur 5 px Rand, die prozedurale Zelle dagegen HELD_MARGIN (20 px). Ohne
+   * Ausgleich sortierte der gemalte Held ~15 px früher hinter Bäume und
+   * Häuser. Der Wert stellt exakt die bisherige Tiefe wieder her.
+   * null = kein gemalter Held aktiv, normale Berechnung.
+   */
+  protected heldTiefeGemalt: number | null = null;
+
+  private gemaltLaedtGerade = false;
+  private zeichneHeldGemalt(dir: number, step: number): boolean {
+    // Für Bogen und Reiten liegen keine gemalten Bilder vor - bisheriger Pfad.
+    const waffe = this.weaponClass();
+    if (waffe && (HELD_GEMALT.fallbackWaffen as readonly string[]).includes(waffe)) return false;
+    const variante = this.gemalteVariante();
+    const key = GEMALT_SHEETS[variante].key;
+    if (!gemaltBereit(this.textures, variante)) {
+      // Einmalig nachladen; bis dahin bleibt die prozedurale Figur stehen.
+      if (!this.gemaltLaedtGerade) {
+        this.gemaltLaedtGerade = true;
+        ladeGemalteHeldSheets(this, () => { this.gemaltLaedtGerade = false; });
+      }
+      return false;
+    }
+    const zeile = gemalteZeile(dir);
+    const spalte = gemalteSpalte(step, {
+      blockt: this.combat.blocking,
+      laeuft: this.heldLaeuft,
+      schlagFrame: SCHLAG_FRAME,
+      schlagPhasen: SCHLAG_PHASEN,
+    });
+    const frame = gemalterFrame(zeile, spalte);
+    if (this.playerSprite.texture.key !== key || this.playerSprite.frame.name !== String(frame)) {
+      this.playerSprite.setTexture(key, frame);
+    }
+    // Fußpunkt, Hitbox und Tiefensortierung bleiben unverändert: die Werte in
+    // HELD_GEMALT sind so gewählt, dass die Füße genau dort stehen wie bei der
+    // prozeduralen Figur (siehe Herleitung in src/data/heldGemalt.ts).
+    const tier = heldTier(this.p.armorIt ? this.p.armorIt.val : null);
+    const skala = getHeldForm(tier).skala;
+    this.playerSprite.setScale(skala * HELD_GEMALT.hoeheFaktor);
+    this.playerSprite.setOrigin(0.5, HELD_GEMALT.originY);
+    // Tiefe exakt wie bisher: die prozedurale Zelle (HELD_FELD, Ursprung mittig)
+    // ragte HELD_FELD/2 * skala unter die Spielerposition.
+    this.heldTiefeGemalt = (HELD_FELD / 2) * skala;
+    return true;
   }
 
   private held3dBacktGerade = false;
@@ -4027,6 +4105,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
           step = (this.time.now % 2900) < 1100 ? 2 : 0;
         }
       }
+      this.heldLaeuft = !!moving;   // R247: der gemalte Pfad braucht Stand vs. Gehen explizit
       this.zeichneHeld(dir, step);
       if (this.playerHitFlash > 0) this.playerSprite.setTintFill(0xffffff);
       // R113: blutgetraenkter Held - dezenter Rot-Ton statt neutral
