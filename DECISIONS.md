@@ -3910,3 +3910,20 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   Fusssoldaten aus derselben Basis; ANIMATIONEN im Engine-Format
   (4 Richtungen unten/links/rechts/oben, Stehen 1 + Gehen 4 +
   Schlag bzw. Spannen 3, Sheets 64x64 nativ + JSON).
+
+## R241 - Aldric-Kanon festgeschrieben + 128 als Figuren-Aufloesung
+- Die Vorgeschichte des Helden stand in KEINER Datei (Suche belegt:
+  nur "Gefolgsmann des Landherrn"; die Anna-Quest gehoert Heinrich).
+  Aus dem Autor-Gedaechtnis jetzt kanonisiert (docs/design/09):
+  einst Heerfuehrer und herausragender Kaempfer, schwer verwundet,
+  bei der Heimkehr Frau und Kind tot, alles verloren, danach
+  Stadtwache/Gefolgsmann. Erklaert nebenbei die RTS-Faehigkeit des
+  Fremden (er HAT Heere gefuehrt). Offen: welcher Krieg, Namen von
+  Frau/Kind, wo es das Spiel erzaehlt.
+- FIGUREN-AUFLOESUNG: 128x128 nativ bestaetigt (Autor) - deckt sich
+  mit der internen HD-Pipeline (R207/R208) und dem Codex-Kontaktbogen
+  Runde 1. Prompt V2 auf 128er-Frames umgestellt (Sheets 1024x512);
+  Anzeige im Spiel skaliert in festen Stufen herunter (128 -> 64 ist
+  ganzzahlig sauber; die 32er-Matsch-Falle aus R239 bleibt notiert).
+- Prompt V2 ergaenzt: Veteranen-Haltung (muede, selbstverstaendlicher
+  Schwertgriff) statt sichtbarer Vergangenheit an der Ruestung.

@@ -29,6 +29,12 @@ Auserwaehlter - ein Reisender, der in eine Horrorgeschichte hineingeraet.
   kein glaenzendes Metall.
 - Das Schwert ist Werkzeug, nicht Insignie: schlichte Klinge, einfache
   Parierstange, am Guertel oder in der Hand.
+- ABER: er ist ein VETERAN, kein Juengling. Aldric hat einst ein Heer
+  angefuehrt, wurde schwer verwundet und verlor Frau und Kind (Doku
+  09-DER-FREMDE-ALDRIC.md). Das zeigt sich NICHT an der Ausruestung,
+  sondern an der Haltung: aufrecht, aber muede; wettergegerbtes
+  Gesicht wie im Portrait; er traegt das Schwert wie einer, der es
+  tausendmal gefuehrt hat - selbstverstaendlich, ohne Pose.
 
 ## 2. AUSRUESTUNG ALS AUSTAUSCHBARE LAYER (Held UND Fusssoldaten)
 
@@ -61,9 +67,10 @@ UNTEN (0), LINKS (1), RECHTS (2), OBEN (3). Liefere je Richtung:
   Nachziehen); beim Bogen stattdessen SPANNEN: 3 Frames (Nocken -
   Spannen - Loesen)
 
-SHEET-FORMAT: ein PNG je Ebene, Raster 64x64 je Frame (NATIV gepixelt,
-kein Skalieren), Zeilen = Richtungen (0-3), Spalten = Frames in der
-Reihenfolge Stehen(1) Gehen(4) Schlag/Spannen(3) = 8 Spalten. Dazu je
+SHEET-FORMAT: ein PNG je Ebene, Raster 128x128 je Frame (NATIV
+gepixelt in 128 - das ist unsere Spielaufloesung, KEIN Skalieren),
+Zeilen = Richtungen (0-3), Spalten = Frames in der Reihenfolge
+Stehen(1) Gehen(4) Schlag/Spannen(3) = 8 Spalten (Sheet = 1024x512). Dazu je
 Sheet ein kleines JSON: { frameW, frameH, reihen, spalten, anker,
 spalten_belegung }. Ablage unter screenshots/codex_v2/ (Ordner anlegen).
 
@@ -74,8 +81,8 @@ spalten_belegung }. Ablage unter screenshots/codex_v2/ (Ordner anlegen).
 2. EIN Kontaktbogen-PNG als Schaufenster: Aldric in 3 Ausstattungen
    (Hemd pur / Gambeson+Umhang / Kette+Schild), daneben Soldat und
    Bogenschuetze, jeweils Blickrichtung unten, Gehen-Frame 1 - auf
-   dunklem Grund UND auf Gras-Gruen #46543a, in 64 und 32 (32 nur
-   herunterskaliert fuers Schaufenster, nearest-neighbor).
+   dunklem Grund UND auf Gras-Gruen #46543a, in 128 nativ, dazu 64-
+   und 32-Proben (nur herunterskaliert fuers Schaufenster).
 3. KEINE bestehenden Spieldateien anfassen (src/gfx bleibt unberuehrt).
    Nur screenshots/codex_v2/* committen, deutsche Commit-Message.
 4. Selbstbewertung am Ende (3 Saetze): Aehnlichkeit zum Portrait?
