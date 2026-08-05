@@ -1,21 +1,15 @@
-# Figuren V3 - Übergabe Codex an Claude
-
-## Sperrvermerk vom Rig-Neubau
-
-Dieses V3-Einzelbildpaket ist verworfen. Nicht in Werkbank oder Spiel laden.
-Die Animationen springen zwischen unabhängig generierten Körpern; Ausrüstung
-wurde nachträglich gedreht und folgt keinem stabilen Skelett.
-
-Der neue, technisch tragfähige Haltpunkt liegt hier:
-
-`assets/sprites/hero-rig-v1/prototype/aldric-rig-prototype.json`
-
-Details: `docs/handoff/ALDRIC-RIG-PROTOTYP.md`.
+# Figuren V3 – Übergabe Codex → Claude
 
 ## Status
 
-Der folgende Abschnitt dokumentiert nur den verworfenen Lieferumfang. Er darf
-nicht als Freigabe verstanden werden. Alter Einstiegspunkt:
+**VERWORFEN - NICHT INTEGRIEREN.** Die kombinierbaren V3-Ebenen und der
+nachfolgende Low-Poly-Rig-Prototyp treffen den gemalten Figurenstil nicht. Der
+Rig-Prototyp wurde wieder vollstaendig entfernt. Aktueller Abnahmekandidat sind
+zwei vollstaendig gemalte Animationssaetze unter:
+
+`assets/sprites/hero-painted-v1/`
+
+Der fruehere V3-Einstiegspunkt bleibt nur als dokumentierte Altlieferung:
 
 `assets/sprites/hero-combat-v2/aldric-v3/hero-layers-v3.json`
 

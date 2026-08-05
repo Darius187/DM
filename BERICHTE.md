@@ -2671,6 +2671,7 @@ OPTISCHE BEFUNDE fuer die Abnahme (Autor entscheidet):
 - Bei LINKS liegt die Klinge im Treffer-Frame teils hinter Umhang/
   Koerper (Z-Reihenfolge laut Manifest) - im Spiel evtl. zu unsichtbar.
 TESTS: tsc sauber, 526/526 gruen (kein Spiel-Code beruehrt).
+
 OFFEN: restliche 10 Varianten von Codex; Integration ins Spiel erst
 nach ausdruecklicher Freigabe.
 
@@ -2746,3 +2747,18 @@ FERTIG UND VERIFIZIERT (Browser + Messung):
 OFFENER BEFUND: Der Helm sitzt in den Ausholframes nicht ganz sauber,
 wenn der Kopf stark gedreht ist. Das ist Nacharbeit an EINER Ebene.
 TESTS: tsc sauber, 526/526 gruen (kein Spiel-Code beruehrt).
+
+## R247 - Autor verwirft V3/Rig, zwei gemalte Vollfiguren geliefert
+FERTIG UND VISUELL GEPRUEFT:
+1. Der komplette Low-Poly-Rig-Prototyp wurde wieder entfernt. Das alte
+   Paperdoll-V3-Manifest ist trotz technischer Ausrichtung ausdruecklich als
+   verworfen markiert: Der Autor lehnt den aufgesetzten Ebenen-Look ab.
+2. Zwei vollstaendig gemalte Aldric-Saetze im verbindlichen Stil: Basis mit
+   Hemd/Schwert und Gambeson/Umhang/Holz-Turmschild/Schwert.
+3. Je Satz 4 Richtungen x 9 Frames: Stand, Gehen 1-4, Ausholen, diagonaler
+   Treffer, Nachziehen, Block. Oben zeigt nur den Hinterkopf; die Angriffe
+   lesen sich als Schwerthiebe statt Boxen/Stossen.
+4. Transparente 1152x512-Sheets, Kontrollboegen und animierte Walk-/Attack-
+   GIFs liegen unter assets/sprites/hero-painted-v1/.
+TESTS: tsc sauber, 526/526 gruen; Bildformat/Alpha und je vier GIF-Frames
+automatisch geprueft. OFFEN: Autor-Abnahme vor Spielintegration/mehr Varianten.

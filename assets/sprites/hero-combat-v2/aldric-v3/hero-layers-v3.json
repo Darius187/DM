@@ -1,6 +1,7 @@
 {
   "format": "ravenmoor-paperdoll-v3",
-  "status": "fusspunkt-versatz-vermessen",
+  "status": "rejected-by-author-do-not-integrate",
+  "supersededBy": "../../hero-painted-v1/base/aldric-painted-v1.json",
   "sheetSize": [
     1152,
     512

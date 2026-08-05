@@ -2,346 +2,141 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<title>Sprite-Werkbank - Aldric (Pruefstand)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sprite-Werkbank - Aldric Painted V1</title>
 <style>
-  body { margin:0; background:#17140f; color:#d8cfb8; font-family:system-ui,sans-serif; font-size:14px; }
-  header { padding:10px 16px; border-bottom:1px solid #3a3126; }
-  h1 { font-size:16px; margin:0 0 4px; font-family:serif; letter-spacing:1px; }
-  .hint { color:#9a8f78; font-size:12px; }
-  main { display:flex; gap:18px; padding:16px; flex-wrap:wrap; align-items:flex-start; }
-  .buehne { background:#1f1b14; border:1px solid #3a3126; padding:12px; }
-  canvas { display:block; image-rendering:pixelated; background:#26221a; }
-  .steuer { min-width:320px; max-width:400px; display:flex; flex-direction:column; gap:12px; }
-  fieldset { border:1px solid #3a3126; padding:8px 10px; margin:0; }
-  legend { color:#c9a227; font-size:12px; letter-spacing:1px; padding:0 4px; }
-  label { display:block; margin:3px 0; cursor:pointer; }
+  :root { color-scheme: dark; --gold:#c7a15a; --panel:#211d18; --line:#4a4034; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#15130f; color:#e1d8c5; font:14px system-ui,sans-serif; }
+  header { padding:14px 18px; border-bottom:1px solid var(--line); }
+  h1 { margin:0 0 5px; color:var(--gold); font:700 18px Georgia,serif; letter-spacing:.7px; }
+  .hint { color:#aaa08c; font-size:12px; line-height:1.5; }
+  main { display:grid; grid-template-columns:minmax(420px,1fr) 350px; gap:16px; padding:16px; }
+  .stage { min-height:560px; display:grid; place-items:center; background:#1a1e1d; border:1px solid var(--line); }
+  canvas { image-rendering:auto; }
+  aside { display:flex; flex-direction:column; gap:10px; }
+  fieldset { margin:0; padding:10px; border:1px solid var(--line); background:var(--panel); }
+  legend { color:var(--gold); font:700 12px Georgia,serif; letter-spacing:.5px; }
+  .row { display:flex; flex-wrap:wrap; gap:6px; }
+  button { border:1px solid #5b4d3c; border-radius:3px; padding:7px 9px; background:#312a21; color:#d9cfba; cursor:pointer; }
+  button.active { border-color:var(--gold); background:#574426; color:#fff3d5; }
+  label { display:block; margin-top:8px; }
   input[type=range] { width:100%; }
-  .knopf { background:#2a2419; color:#d8cfb8; border:1px solid #4a3f2c; padding:5px 9px; cursor:pointer; font-size:13px; }
-  .knopf:hover { background:#3a3020; }
-  .knopf.an { background:#4a3a14; border-color:#c9a227; color:#f0e2b8; }
-  .knopf.fehlt { opacity:0.4; border-style:dashed; border-color:#7a3a2a; cursor:not-allowed; }
-  .reihe { display:flex; gap:5px; flex-wrap:wrap; }
-  .warn { color:#e08a5a; font-size:12px; line-height:1.5; }
-  .ok { color:#8fb35a; }
-  code { background:#26221a; padding:1px 4px; }
+  #info { min-height:44px; padding:10px; border:1px solid var(--line); background:#181511; line-height:1.5; }
+  @media(max-width:900px){ main{grid-template-columns:1fr}.stage{min-height:420px} }
 </style>
 </head>
 <body>
 <header>
-  <h1>SPRITE-WERKBANK &mdash; Aldric</h1>
-  <div class="hint">Reine Pruefseite, aendert NICHTS am Spiel. Zwei Pakete zur Auswahl:
-  das <b>gezeichnete Figurenpaket</b> (<code>hero-combat-v2/aldric-v3</code>: 6 Ruestungen,
-  13 Waffen, 5 Schilde, 5 Helme, Umhang) und der <b>Blender-Rig-Prototyp</b>
-  (<code>hero-rig-v1</code>). Der Fusspunkt-Versatz des gezeichneten Pakets wird beim Zeichnen
-  ausgeglichen (Schalter "Fusspunkt ausrichten") - dazu <code>frameOffsetY</code> im Manifest.</div>
+  <h1>SPRITE-WERKBANK — ALDRIC PAINTED V1</h1>
+  <div class="hint">Nur die zwei vollständig gemalten Abnahmekandidaten. Kein Paperdoll, keine Low-Poly-Schichten, keine Spielintegration.</div>
 </header>
 <main>
-  <div>
-    <div class="buehne">
-      <canvas id="c" width="512" height="512"></canvas>
-      <div id="info" class="hint" style="margin-top:8px"></div>
-      <div id="quellHinweis" class="warn" style="margin-top:4px"></div>
-    </div>
-  </div>
-  <div class="steuer">
-    <fieldset>
-      <legend>PAKET</legend>
-      <div class="reihe" id="paket"></div>
+  <div class="stage"><canvas id="canvas" width="512" height="512"></canvas></div>
+  <aside>
+    <fieldset><legend>VOLFIGUR</legend><div class="row" id="variants"></div></fieldset>
+    <fieldset><legend>RICHTUNG</legend><div class="row" id="directions"></div></fieldset>
+    <fieldset><legend>ANIMATION</legend><div class="row" id="animations"></div>
+      <label>Tempo <span id="tempoText">100%</span><input id="tempo" type="range" min="40" max="180" value="100"></label>
+      <label><input id="loop" type="checkbox" checked> Wiederholen</label>
     </fieldset>
-    <fieldset>
-      <legend>BLICKRICHTUNG</legend>
-      <div class="reihe" id="richtung"></div>
+    <fieldset><legend>EINZELFRAME</legend>
+      <input id="frame" type="range" min="0" max="8" value="0">
+      <div class="hint" id="frameName"></div>
     </fieldset>
-    <fieldset>
-      <legend>BEWEGUNG</legend>
-      <div class="reihe">
-        <button class="knopf" data-anim="stehen">Stehen</button>
-        <button class="knopf an" data-anim="gehen">Gehen (4)</button>
-        <button class="knopf" data-anim="attack">Schlag (3)</button>
-        <button class="knopf" data-anim="block">Block</button>
-        <button class="knopf" data-anim="einzel">Einzelbild</button>
-      </div>
-      <label style="margin-top:8px">Einzelbild: <input type="range" id="frame" min="0" max="8" value="0"> <span id="frameTxt"></span></label>
-      <label><input type="checkbox" id="loop" checked> Endlos abspielen</label>
-      <label>Tempo: <input type="range" id="tempo" min="20" max="200" value="100"> <span id="tempoTxt">100%</span></label>
+    <fieldset><legend>ANSICHT</legend><div class="row" id="zooms"></div>
+      <label><input id="grass" type="checkbox" checked> Gras-Hintergrund</label>
     </fieldset>
-    <fieldset>
-      <legend>RUESTUNG (eigener Koerper je Stufe)</legend>
-      <div class="reihe" id="body"></div>
-      <label style="margin-top:8px"><input type="checkbox" id="cape"> Umhang</label>
-    </fieldset>
-    <fieldset>
-      <legend>WAFFE</legend>
-      <div class="reihe" id="weapon"></div>
-    </fieldset>
-    <fieldset>
-      <legend>SCHILD</legend>
-      <div class="reihe" id="shield"></div>
-    </fieldset>
-    <fieldset>
-      <legend>HELM</legend>
-      <div class="reihe" id="helmet"></div>
-    </fieldset>
-    <fieldset>
-      <legend>ANSICHT</legend>
-      <div class="reihe">
-        <button class="knopf" data-zoom="1">1x (128)</button>
-        <button class="knopf an" data-zoom="2">2x</button>
-        <button class="knopf" data-zoom="4">4x</button>
-      </div>
-      <label style="margin-top:6px"><input type="checkbox" id="ausrichten" checked> Fusspunkt ausrichten (frameOffsetY)</label>
-      <label><input type="checkbox" id="gras" checked> Gras-Hintergrund</label>
-      <label><input type="checkbox" id="fuss"> Fusspunkt-Linie zeigen</label>
-      <label><input type="checkbox" id="raster"> Zellraster</label>
-    </fieldset>
-  </div>
+    <div id="info"></div>
+  </aside>
 </main>
 <script>
-const RICHT_NAMEN = { down: 'UNTEN', left: 'LINKS', right: 'RECHTS', up: 'OBEN' };
-const ZIEL_FUSS = 124;
-
-// ---- Die zwei Pakete ----
-const PAKETE = {
-  gezeichnet: {
-    name: 'Gezeichnet (V3)',
-    basis: '../assets/sprites/hero-combat-v2/aldric-v3/',
-    manifest: 'hero-layers-v3.json',
-    datei: {
-      bodyAppearance: (id) => `body-${id}-full-9x4.png`,
-      weapon: (id) => `weapon-${id}-full-9x4.png`,
-      shield: (id) => `shield-${id}-full-9x4.png`,
-      helmet: (id) => `helmet-${id}-full-9x4.png`,
-      cape: () => 'cape-reiseumhang-full-9x4.png',
-    },
-  },
-  rig: {
-    name: 'Blender-Rig',
-    basis: '../assets/sprites/hero-rig-v1/prototype/',
-    manifest: 'aldric-rig-prototype.json',
-    fest: {
-      bodyAppearance: 'body-hemd-rigged-9x4.png',
-      weapon: 'weapon-solide-klinge-rigged-9x4.png',
-      shield: 'shield-holz-rund-rigged-9x4.png',
-    },
-  },
+const ROOT = '../assets/sprites/hero-painted-v1/';
+const VARIANTS = {
+  base: { label:'Hemd + Schwert', dir:'base/' },
+  'gambeson-turmschild': { label:'Gambeson + Holz-Turmschild', dir:'gambeson-turmschild/' }
 };
-
-const zustand = {
-  paket: 'gezeichnet', richtung: 'down', anim: 'gehen', frame: 0, zoom: 2,
-  body: 'hemd', weapon: 'solide-klinge', shield: 'keins', helmet: 'keiner', cape: false,
-  ausrichten: true, gras: true, fuss: false, raster: false, loop: true, tempo: 100,
-  attackFrame: 0, walkFrame: 0,
+const DIRECTIONS = ['down','left','right','up'];
+const DIRECTION_LABELS = {down:'UNTEN',left:'LINKS',right:'RECHTS',up:'OBEN'};
+const FRAMES = ['Stand','Gehen 1','Gehen 2','Gehen 3','Gehen 4','Ausholen','Treffer','Nachziehen','Block'];
+const ANIMATIONS = {
+  idle: {label:'Stand', frames:[0]},
+  walk: {label:'Gehen', frames:[1,2,3,4]},
+  attack: {label:'Schlag', frames:[5,6,7,0]},
+  block: {label:'Block', frames:[8]},
+  single: {label:'Einzel', frames:[]}
 };
+const state = {variant:'base', direction:'down', animation:'walk', frame:1, zoom:3, grass:true, loop:true, tempo:100};
+let sheet = null, manifest = null, sequenceIndex = 0, lastTime = 0;
+const $ = (id) => document.getElementById(id);
 
-let spec = null; const bilder = {}; let auswahl = { bodies: [], weapons: [], shields: [], helmets: [] };
-
-const laden = (basis, p) => new Promise((res) => {
-  const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = basis + p;
-});
-
-async function ladePaket() {
-  const p = PAKETE[zustand.paket];
-  spec = null; for (const k of Object.keys(bilder)) delete bilder[k];
-  try { const r = await fetch(p.basis + p.manifest); spec = r.ok ? await r.json() : null; }
-  catch (e) { spec = null; }
-
-  if (zustand.paket === 'rig') {
-    auswahl = { bodies: [['hemd', 'Hemd']], weapons: [['solide-klinge', 'Solide Klinge']], shields: [['holz-rund', 'Holz-Rundschild']], helmets: [] };
-    zustand.body = 'hemd'; zustand.weapon = 'solide-klinge'; zustand.shield = 'holz-rund';
-    zustand.helmet = 'keiner'; zustand.cape = false;
-    await Promise.all(Object.entries(p.fest).map(async ([typ, d]) => { bilder[typ + ':' + d] = await laden(p.basis, d); }));
-  } else {
-    const l = spec?.labels ?? {};
-    const paare = (o) => Object.entries(o ?? {});
-    auswahl = {
-      bodies: paare(l.bodies), weapons: paare(l.weapons),
-      shields: paare(l.shields), helmets: paare(l.helmets),
-    };
-    if (!auswahl.bodies.some(([id]) => id === zustand.body)) zustand.body = auswahl.bodies[0]?.[0] ?? 'hemd';
-    if (!auswahl.weapons.some(([id]) => id === zustand.weapon)) zustand.weapon = 'keine';
-    // Alle Sheets vorladen, damit das Umschalten nicht flackert
-    const auftraege = [];
-    for (const [id] of auswahl.bodies) auftraege.push(['bodyAppearance', p.datei.bodyAppearance(id)]);
-    for (const [id] of auswahl.weapons) auftraege.push(['weapon', p.datei.weapon(id)]);
-    for (const [id] of auswahl.shields) auftraege.push(['shield', p.datei.shield(id)]);
-    for (const [id] of auswahl.helmets) auftraege.push(['helmet', p.datei.helmet(id)]);
-    auftraege.push(['cape', p.datei.cape()]);
-    await Promise.all(auftraege.map(async ([typ, d]) => { bilder[typ + ':' + d] = await laden(p.basis, d); }));
+function buttons(id, values, current, click) {
+  const host = $(id); host.innerHTML = '';
+  for (const [value,label] of values) {
+    const button = document.createElement('button');
+    button.textContent = label; button.className = value === current ? 'active' : '';
+    button.onclick = () => click(value);
+    host.appendChild(button);
   }
-  baueKnoepfe();
 }
 
-const richtungen = () => spec?.directions ?? ['down', 'left', 'right', 'up'];
-const frameNamen = () => spec?.frames ?? ['idle','walk_1','walk_2','walk_3','walk_4','windup','impact','followthrough','block'];
-
-// Slots, deren Auswahl an ein vorhandenes Sheet gebunden ist. Richtung und
-// Paket sind KEINE Slots - sie sind immer waehlbar.
-const SLOTS = new Set(['body', 'weapon', 'shield', 'helmet', 'cape']);
-
-function baueKnoepfe() {
-  const reihe = (id, eintraege, schluessel, leerText) => {
-    const el = document.getElementById(id); if (!el) return;
-    el.innerHTML = '';
-    const liste = leerText ? [[leerText === 'keins' ? 'keins' : 'keiner', leerText], ...eintraege] : eintraege;
-    for (const [wert, anzeige] of liste) {
-      const b = document.createElement('button');
-      const leer = wert === 'keins' || wert === 'keiner' || wert === 'keine';
-      const frei = !SLOTS.has(schluessel) || leer || !!sheetFuer(schluessel, wert);
-      b.className = 'knopf' + (zustand[schluessel] === wert ? ' an' : '') + (frei ? '' : ' fehlt');
-      b.textContent = anzeige;
-      if (frei) b.onclick = () => { zustand[schluessel] = wert; baueKnoepfe(); };
-      el.appendChild(b);
-    }
-  };
-  reihe('paket', Object.entries(PAKETE).map(([k, v]) => [k, v.name]), 'paket');
-  document.querySelectorAll('#paket .knopf').forEach((b, i) => {
-    b.onclick = () => { zustand.paket = Object.keys(PAKETE)[i]; ladePaket(); };
+async function loadVariant() {
+  const selected = VARIANTS[state.variant];
+  manifest = await fetch(ROOT + selected.dir + 'aldric-painted-v1.json').then(r => r.json());
+  sheet = await new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image); image.onerror = reject;
+    image.src = ROOT + selected.dir + manifest.asset;
   });
-  reihe('richtung', richtungen().map((r) => [r, RICHT_NAMEN[r] ?? r]), 'richtung');
-  reihe('body', auswahl.bodies, 'body');
-  reihe('weapon', [['keine', 'keine'], ...auswahl.weapons], 'weapon');
-  reihe('shield', auswahl.shields, 'shield', 'keins');
-  reihe('helmet', auswahl.helmets, 'helmet', 'keiner');
+  sequenceIndex = 0; state.frame = ANIMATIONS[state.animation].frames[0] ?? state.frame;
+  buildControls(); draw();
+}
 
-  const cape = document.getElementById('cape');
-  cape.disabled = !sheetFuer('cape', 'x');
-  if (cape.disabled) { cape.checked = false; zustand.cape = false; }
-
-  document.querySelectorAll('[data-anim]').forEach((b) => {
-    b.classList.toggle('an', b.dataset.anim === zustand.anim);
-    b.onclick = () => {
-      zustand.anim = b.dataset.anim;
-      zustand.frame = 0; zustand.attackFrame = 0; zustand.walkFrame = 0; phase = 0;
-      baueKnoepfe();
-    };
+function buildControls() {
+  buttons('variants', Object.entries(VARIANTS).map(([k,v]) => [k,v.label]), state.variant, value => {state.variant=value; loadVariant();});
+  buttons('directions', DIRECTIONS.map(v => [v,DIRECTION_LABELS[v]]), state.direction, value => {state.direction=value; buildControls(); draw();});
+  buttons('animations', Object.entries(ANIMATIONS).map(([k,v]) => [k,v.label]), state.animation, value => {
+    state.animation=value; sequenceIndex=0; state.frame=ANIMATIONS[value].frames[0] ?? state.frame; buildControls(); draw();
   });
-  document.querySelectorAll('[data-zoom]').forEach((b) => {
-    b.classList.toggle('an', +b.dataset.zoom === zustand.zoom);
-    b.onclick = () => { zustand.zoom = +b.dataset.zoom; baueKnoepfe(); };
-  });
-  document.getElementById('frameTxt').textContent = frameNamen()[zustand.frame] ?? '';
+  buttons('zooms', [[2,'2×'],[3,'3×'],[4,'4×']], state.zoom, value => {state.zoom=+value; buildControls(); draw();});
+  $('frame').value = state.frame; $('frameName').textContent = FRAMES[state.frame];
+  $('tempo').value = state.tempo; $('tempoText').textContent = state.tempo + '%';
+  $('loop').checked = state.loop; $('grass').checked = state.grass;
 }
 
-// Sheet zu einem Slot-Wert finden (oder null)
-function sheetFuer(typ, wert) {
-  const p = PAKETE[zustand.paket];
-  if (zustand.paket === 'rig') {
-    const map = { body: 'bodyAppearance', weapon: 'weapon', shield: 'shield' };
-    const t = map[typ] ?? typ;
-    const d = p.fest[t]; return d ? bilder[t + ':' + d] : null;
+function duration() {
+  const ms = manifest?.timingMs ?? {};
+  const names = ['idle','walk','walk','walk','walk','windup','impact','followthrough','block'];
+  return (ms[names[state.frame]] ?? 140) * 100 / state.tempo;
+}
+
+function draw() {
+  if (!sheet) return;
+  const size = 128 * state.zoom, canvas = $('canvas'), ctx = canvas.getContext('2d');
+  canvas.width = size; canvas.height = size; ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = state.grass ? '#46543a' : '#1a1e1d'; ctx.fillRect(0,0,size,size);
+  const row = DIRECTIONS.indexOf(state.direction);
+  ctx.drawImage(sheet, state.frame*128, row*128, 128,128, 0,0,size,size);
+  $('frame').value = state.frame; $('frameName').textContent = FRAMES[state.frame];
+  $('info').textContent = VARIANTS[state.variant].label + ' | ' + DIRECTION_LABELS[state.direction] +
+    ' | ' + FRAMES[state.frame] + ' | 128×128, Zeile ' + row + ', Spalte ' + state.frame;
+}
+
+function tick(now) {
+  const sequence = ANIMATIONS[state.animation].frames;
+  if (sequence.length > 1 && now - lastTime >= duration()) {
+    if (sequenceIndex < sequence.length - 1) sequenceIndex++;
+    else if (state.loop) sequenceIndex = 0;
+    state.frame = sequence[sequenceIndex]; lastTime = now; draw();
   }
-  const bau = { body: 'bodyAppearance', weapon: 'weapon', shield: 'shield', helmet: 'helmet', cape: 'cape' }[typ];
-  if (!bau) return null;
-  const d = p.datei[bau](wert);
-  return bilder[bau + ':' + d] ?? null;
+  requestAnimationFrame(tick);
 }
 
-for (const [id, feld] of [['cape','cape'],['ausrichten','ausrichten'],['gras','gras'],['fuss','fuss'],['raster','raster'],['loop','loop']]) {
-  document.getElementById(id).onchange = (e) => { zustand[feld] = e.target.checked; };
-}
-document.getElementById('frame').oninput = (e) => {
-  zustand.frame = +e.target.value; zustand.anim = 'einzel'; baueKnoepfe();
-};
-document.getElementById('tempo').oninput = (e) => {
-  zustand.tempo = +e.target.value; document.getElementById('tempoTxt').textContent = zustand.tempo + '%';
-};
-
-function spalteAktuell() {
-  switch (zustand.anim) {
-    case 'stehen': return 0;
-    case 'gehen': return 1 + zustand.walkFrame;
-    case 'attack': return 5 + zustand.attackFrame;
-    case 'block': return 8;
-    case 'einzel': return zustand.frame;
-  }
-  return 0;
-}
-
-let t0 = performance.now(), phase = 0;
-function schleife(t) {
-  const dt = t - t0; t0 = t;
-  const f = 100 / zustand.tempo;
-  const tm = spec?.timingMs ?? { walk: 120, windup: 140, impact: 80, followthrough: 180 };
-  if (zustand.loop) {
-    if (zustand.anim === 'attack') {
-      const dauer = [tm.windup, tm.impact, tm.followthrough][zustand.attackFrame] * f;
-      phase += dt;
-      if (phase >= dauer) { phase = 0; zustand.attackFrame = (zustand.attackFrame + 1) % 3; }
-    } else if (zustand.anim === 'gehen') {
-      phase += dt;
-      if (phase >= (tm.walk ?? 120) * f) { phase = 0; zustand.walkFrame = (zustand.walkFrame + 1) % 4; }
-    }
-  }
-  zeichne();
-  requestAnimationFrame(schleife);
-}
-
-function zOrder(r) {
-  return spec?.zOrderBackToFront?.[r]
-    ?? ['cape', 'bodyAppearance', 'weapon', 'shield', 'helmet'];
-}
-
-// Welches Sheet gehoert zu welcher Ebene im aktuellen Zustand?
-function ebenenSheet(ebene) {
-  switch (ebene) {
-    case 'bodyAppearance': return sheetFuer('body', zustand.body);
-    case 'weapon': return zustand.weapon === 'keine' ? null : sheetFuer('weapon', zustand.weapon);
-    case 'shield': return zustand.shield === 'keins' ? null : sheetFuer('shield', zustand.shield);
-    case 'helmet': return zustand.helmet === 'keiner' ? null : sheetFuer('helmet', zustand.helmet);
-    case 'cape': return zustand.cape ? sheetFuer('cape', 'x') : null;
-  }
-  return null;
-}
-
-function versatzY(richtung, spalte) {
-  if (!zustand.ausrichten) return 0;
-  return spec?.frameOffsetY?.[richtung]?.[spalte] ?? 0;
-}
-
-function zeichne() {
-  const c = document.getElementById('c'), g = c.getContext('2d');
-  const z = zustand.zoom, gr = 128 * z;
-  if (c.width !== gr) { c.width = gr; c.height = gr; }
-  g.imageSmoothingEnabled = false;
-  g.fillStyle = zustand.gras ? '#46543a' : '#26221a';
-  g.fillRect(0, 0, gr, gr);
-
-  const zeile = richtungen().indexOf(zustand.richtung);
-  const spalte = spalteAktuell();
-  const dy = versatzY(zustand.richtung, spalte);
-
-  for (const ebene of zOrder(zustand.richtung)) {
-    const im = ebenenSheet(ebene);
-    if (!im) continue;
-    g.drawImage(im, spalte * 128, zeile * 128, 128, 128, 0, dy * z, gr, gr);
-  }
-
-  if (zustand.raster) {
-    g.strokeStyle = '#c9a22740'; g.lineWidth = 1;
-    for (let i = 0; i <= 8; i++) { const p = i * gr / 8;
-      g.beginPath(); g.moveTo(p, 0); g.lineTo(p, gr); g.moveTo(0, p); g.lineTo(gr, p); g.stroke(); }
-  }
-  if (zustand.fuss) {
-    g.strokeStyle = '#5aa8ff'; g.lineWidth = 2;
-    g.beginPath(); g.moveTo(0, ZIEL_FUSS * z); g.lineTo(gr, ZIEL_FUSS * z); g.stroke();
-  }
-
-  const teile = [
-    PAKETE[zustand.paket].name,
-    RICHT_NAMEN[zustand.richtung],
-    frameNamen()[spalte],
-    zustand.body,
-    zustand.weapon !== 'keine' ? zustand.weapon : null,
-    zustand.shield !== 'keins' ? zustand.shield : null,
-    zustand.helmet !== 'keiner' ? zustand.helmet : null,
-    zustand.cape ? 'Umhang' : null,
-    zustand.ausrichten ? `Versatz ${dy >= 0 ? '+' : ''}${dy}` : 'Versatz AUS',
-  ].filter(Boolean);
-  document.getElementById('info').textContent = teile.join(' | ');
-  document.getElementById('quellHinweis').textContent = spec ? '' : 'Manifest konnte nicht geladen werden.';
-}
-
-ladePaket().then(() => requestAnimationFrame(schleife));
+$('frame').oninput = e => {state.animation='single'; state.frame=+e.target.value; buildControls(); draw();};
+$('tempo').oninput = e => {state.tempo=+e.target.value; $('tempoText').textContent=state.tempo+'%';};
+$('loop').onchange = e => state.loop=e.target.checked;
+$('grass').onchange = e => {state.grass=e.target.checked; draw();};
+buildControls(); loadVariant().then(() => requestAnimationFrame(tick));
 </script>
 </body>
 </html>

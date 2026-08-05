@@ -458,8 +458,7 @@ def main() -> None:
     manifest = {
         "format": "ravenmoor-paperdoll-v3",
         "status": "rejected-broken-do-not-integrate",
-        "supersededBy": "../../hero-rig-v1/prototype/aldric-rig-prototype.json",
-        "rejectedReason": "Unabhaengig generierte Einzelbilder springen in Proportion und Bewegung; rechnerisch angeheftete Ausruestung folgt keinem stabilen Rig.",
+        "supersededBy": "../../hero-painted-v1/base/aldric-painted-v1.json",
         "sheetSize": [CELL * 9, CELL * 4],
         "frameSize": [CELL, CELL],
         "directions": DIRECTIONS,

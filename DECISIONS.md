@@ -4010,3 +4010,13 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   absichtlich bis an den Zellrand.
 - Der Blender-Rig bleibt als zweites Paket in der Werkbank waehlbar
   (technisch sauberer, aber Low-Poly-Platzhalter-Optik).
+
+## R247 - Autorentscheidung: gemalte Vollfiguren statt Paperdoll/Rig
+- R246 loest zwar den Rasterversatz technisch, aber nicht die vom Autor
+  abgelehnte Optik. Paperdoll-V3 und Low-Poly-Rig duerfen nicht integriert
+  werden; der Rig-Prototyp wird entfernt.
+- Ausruestungsstufen werden vorerst als vollstaendige Figuren gemalt. Die
+  Variantenmenge bleibt bewusst klein, damit Stil, Silhouette und Animation
+  Vorrang haben.
+- Abnahmekandidat: Hemd + Schwert sowie Gambeson + Umhang + Holz-Turmschild +
+  Schwert, je 4 Richtungen und 9 Frames. Weitere Varianten erst nach Freigabe.

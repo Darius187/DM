@@ -1,0 +1,56 @@
+{
+  "format": "ravenmoor-painted-character-v1",
+  "status": "awaiting-author-approval",
+  "frameSize": [
+    128,
+    128
+  ],
+  "sheetSize": [
+    1152,
+    512
+  ],
+  "directions": [
+    "down",
+    "left",
+    "right",
+    "up"
+  ],
+  "frames": [
+    "idle",
+    "walk_1",
+    "walk_2",
+    "walk_3",
+    "walk_4",
+    "windup",
+    "impact",
+    "followthrough",
+    "block"
+  ],
+  "timingMs": {
+    "idle": 240,
+    "walk": 120,
+    "windup": 140,
+    "impact": 80,
+    "followthrough": 180,
+    "block": 160
+  },
+  "asset": "aldric-hemd-schwert-painted-9x4.png",
+  "proofs": {
+    "allFrames": "proofs/proof-painted-all-frames.png",
+    "walk": "proofs/proof-painted-walk.gif",
+    "attack": "proofs/proof-painted-attack.gif"
+  },
+  "variant": {
+    "bodyAppearance": "hemd",
+    "weapon": "solide-klinge",
+    "shield": null,
+    "helmet": null,
+    "cape": null,
+    "composition": "vollstaendig gemalte Figur; keine angeklebten Ruestungs-Overlays"
+  },
+  "notes": [
+    "Vier Richtungsfolgen wurden jeweils als zusammenhaengendes 3x3-Animationsblatt gemalt.",
+    "Diese Stilfreigabe hat Vorrang vor Variantenmenge.",
+    "Weitere Ruestungsvarianten erst nach Abnahme dieser zwei Vollfiguren-Saetze."
+  ]
+}
