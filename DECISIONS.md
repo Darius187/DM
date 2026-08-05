@@ -3977,3 +3977,18 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   deutlich ZWISCHEN zwei Generierungen.
 - Daraus die Produktionsregel: EIN SHEET = EINE GENERIERUNG (36 Frames
   in einem Bild). Festgehalten in docs/handoff/STILPROOF-V3-PRUEFUNG.md.
+
+## R245 - Rig-Prototyp geprueft, Werkbank auf das Rig umgestellt
+- Codex hat den Ansatz gewechselt: statt Bildgenerierung ein Blender-
+  Rig (assets/sprites/hero-rig-v1/). Damit ist der Gesichts-Drift aus
+  R244 strukturell geloest - alle 36 Posen kommen aus einer Geometrie.
+- Gemessen: Ebenen-Stapel und 3D-Composite sind in der SILHOUETTE
+  exakt deckungsgleich (0 von 111.917 Pixeln), kein Beschnitt, kein
+  leerer Frame, Gehzyklus korrekt (walk_1==walk_3 als Durchgangspose).
+- OFFEN: die Faust. Flaches Stapeln kann "Hand umgreift Griff" nicht
+  abbilden (69-243 px Farbabweichung je Frame). Loesung: vierte
+  Mini-Ebene "Faust vorne" ganz oben im Stapel. Festgehalten in
+  docs/handoff/RIG-V1-PRUEFUNG.md.
+- Die Werkbank laedt jetzt NUR noch das Rig-Paket; das verworfene
+  hero-combat-v2-Paket ist raus (Codex hat es selbst als
+  rejected-broken-do-not-integrate markiert).

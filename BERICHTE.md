@@ -2695,3 +2695,28 @@ EHRLICHE GRENZE: Das stilisierte Low-Poly-Modell beweist Bewegung und
 Socket-Pipeline, nicht den endgueltigen Detailgrad. Ruestungen, Helme,
 Umhang und weitere Ausruestung folgen erst nach Autorabnahme dieses
 Haltpunkts. Keine Live-Integration in dieser Runde.
+
+## R245 - Rig-Prototyp geprueft, Werkbank zeigt ihn animiert
+FERTIG UND VERIFIZIERT (Playwright + eigene Messungen):
+1. Codex' Kurswechsel auf ein Blender-Rig ist der richtige Schritt.
+   Das Problem der letzten Runde (Aldrics Gesicht sah in jedem
+   generierten Bild anders aus) ist damit strukturell erledigt: alle
+   36 Posen kommen aus derselben Geometrie.
+2. NACHGEMESSEN statt geglaubt: Koerper, Waffe und Schild gestapelt
+   ergeben in der Silhouette exakt dasselbe Bild wie der
+   3D-tiefenkorrekte Gesamtrender - 0 von 111.917 Pixeln weichen ab.
+   Kein Frame ist leer, keiner am Zellrand abgeschnitten, der
+   Fusspunkt wandert nur 3-7 px, und der Gehzyklus ist sauber
+   aufgebaut (zwei Durchgangsposen, zwei echte Schritte).
+3. EIN BEFUND bleibt: die Faust. Im 3D umgreift die Hand den Griff,
+   beim flachen Stapeln liegt die Klinge ueber der Hand. Braucht eine
+   vierte Mini-Ebene "Faust vorne". An Codex weitergegeben.
+4. Die Werkbank (tools/sprite-werkbank.html) zeigt das Rig jetzt
+   animiert: Gehen im 120ms-Takt, Schlag im 140/80/180-Takt, alle vier
+   Richtungen, Ebenen einzeln abschaltbar, Umschalter "Ebenen
+   gestapelt" gegen "3D-Composite" und ein Rot-Modus, der den
+   Unterschied zeigt.
+EHRLICHE ANMERKUNG: das ist ein BEWEGUNGS-Beweis, kein Stil-Beweis.
+Die Figur ist Low-Poly ohne Gesicht - das sagt Codex selbst. Ob der
+Weg zum gewuenschten Detailgrad fuehrt, ist noch offen.
+TESTS: tsc sauber, 526/526 gruen (kein Spiel-Code beruehrt).
