@@ -2673,3 +2673,25 @@ OPTISCHE BEFUNDE fuer die Abnahme (Autor entscheidet):
 TESTS: tsc sauber, 526/526 gruen (kein Spiel-Code beruehrt).
 OFFEN: restliche 10 Varianten von Codex; Integration ins Spiel erst
 nach ausdruecklicher Freigabe.
+
+## R244 - Aldric als gemeinsamer Blender-Rig-Prototyp
+
+TECHNISCHER HALTPUNKT, VERIFIZIERT, NOCH NICHT IM SPIEL:
+1. Der verworfene V3-Satz ist in Manifest und Uebergabe eindeutig mit
+   `rejected-broken-do-not-integrate` gesperrt.
+2. Aldrics Prototyp benutzt fuer alle 36 Posen genau ein Armature-Rig.
+   Koerper, solide Klinge und Holz-Rundschild werden als synchrone
+   4x9-Ebenen gerendert; Waffe und Schild folgen Hand-Controllern.
+3. Vier Richtungen sowie Stand, Gehen, Ausholen, Treffer, Nachziehen
+   und Block wurden frameweise geprueft. Kein Frame beruehrt den
+   128x128-Zellrand. Die GIFs enthalten 4 Frames; Angriffstiming ist
+   140/80/180/240 ms, Gehen 120 ms.
+4. Reproduzierbare Quellen liegen als Blender-Datei, Renderer und
+   Packer im Repo. Proofs:
+   `assets/sprites/hero-rig-v1/prototype/proofs/proof-rigged-all-frames.png`,
+   `proof-rigged-walk.gif`, `proof-rigged-attack.gif`.
+
+EHRLICHE GRENZE: Das stilisierte Low-Poly-Modell beweist Bewegung und
+Socket-Pipeline, nicht den endgueltigen Detailgrad. Ruestungen, Helme,
+Umhang und weitere Ausruestung folgen erst nach Autorabnahme dieses
+Haltpunkts. Keine Live-Integration in dieser Runde.

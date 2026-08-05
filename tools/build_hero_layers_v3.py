@@ -457,6 +457,9 @@ def main() -> None:
     proofs = build_proofs(body_sheets, cape, weapons, shields, helmets)
     manifest = {
         "format": "ravenmoor-paperdoll-v3",
+        "status": "rejected-broken-do-not-integrate",
+        "supersededBy": "../../hero-rig-v1/prototype/aldric-rig-prototype.json",
+        "rejectedReason": "Unabhaengig generierte Einzelbilder springen in Proportion und Bewegung; rechnerisch angeheftete Ausruestung folgt keinem stabilen Rig.",
         "sheetSize": [CELL * 9, CELL * 4],
         "frameSize": [CELL, CELL],
         "directions": DIRECTIONS,
