@@ -3964,3 +3964,16 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
 - Der Alt-Paket-Fallback (attack-3x4/block-1x4) flog wieder raus -
   die Runde-2-Sheets decken alles ab, zwei Codepfade waeren toter
   Ballast.
+
+## R244 - Stilproof V3 geprueft, Ebenen-Ruestungen verworfen
+- Das programmatisch gezeichnete Ruestungs-/Kopf-Paket aus
+  screenshots/codex_v2/ ist TOT (Autor: "da wurde einfach was
+  drueber geklatscht"). Es wird nicht integriert.
+- Neuer Weg (Codex-Vorschlag, vom Autor angestossen): je Ruestung ein
+  VOLLSTAENDIG gezeichneter Koerper-Satz (6 Stueck), Waffen/Schilde/
+  Koepfe/Umhang bleiben Ebenen auf denselben Ankern.
+- Gemessen am Stilproof: Groessen-Konsistenz innerhalb EINES Bildes
+  1,4 %, Lesbarkeit bei 112 px bestanden, ABER Gesicht driftet
+  deutlich ZWISCHEN zwei Generierungen.
+- Daraus die Produktionsregel: EIN SHEET = EINE GENERIERUNG (36 Frames
+  in einem Bild). Festgehalten in docs/handoff/STILPROOF-V3-PRUEFUNG.md.
