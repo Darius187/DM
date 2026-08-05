@@ -1,8 +1,6 @@
 {
   "format": "ravenmoor-paperdoll-v3",
-  "status": "rejected-broken-do-not-integrate",
-  "supersededBy": "../../hero-rig-v1/prototype/aldric-rig-prototype.json",
-  "rejectedReason": "Unabhaengig generierte Einzelbilder springen in Proportion und Bewegung; rechnerisch angeheftete Ausruestung folgt keinem stabilen Rig.",
+  "status": "fusspunkt-versatz-vermessen",
   "sheetSize": [
     1152,
     512
@@ -493,6 +491,57 @@
   "notes": [
     "Armour is baked into six complete body variants; it is deliberately not composited as a flat overlay.",
     "Helmet IDs are provisional art tiers until the game exposes helmet item IDs.",
-    "Bows, crossbow and staves use the universal hand anchors in this delivery; class-specific draw/cast body animations can replace columns 5-8 later without changing the slot contract."
-  ]
+    "Bows, crossbow and staves use the universal hand anchors in this delivery; class-specific draw/cast body animations can replace columns 5-8 later without changing the slot contract.",
+    "frameOffsetY: beim Zeichnen je Zelle um diesen Betrag nach unten verschieben, dann sitzt der Fusspunkt in allen 36 Frames auf Y=124. Der Versatz stammt aus zwei unterschiedlich ausgerichteten Generierungen (Gehen/Kampf) und ist reiner Rasterversatz - die Figur selbst springt nicht. Ermittelt mit scripts/richte_aldric_v3_aus.py."
+  ],
+  "footAnchor": [
+    64,
+    124
+  ],
+  "frameOffsetY": {
+    "down": [
+      -3,
+      -4,
+      -4,
+      -4,
+      -4,
+      -4,
+      -4,
+      -4,
+      -4
+    ],
+    "left": [
+      6,
+      6,
+      5,
+      6,
+      6,
+      -4,
+      -4,
+      -4,
+      -3
+    ],
+    "right": [
+      14,
+      14,
+      14,
+      14,
+      14,
+      -4,
+      -4,
+      -4,
+      -4
+    ],
+    "up": [
+      22,
+      20,
+      20,
+      20,
+      20,
+      5,
+      5,
+      5,
+      5
+    ]
+  }
 }

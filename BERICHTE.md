@@ -2720,3 +2720,29 @@ EHRLICHE ANMERKUNG: das ist ein BEWEGUNGS-Beweis, kein Stil-Beweis.
 Die Figur ist Low-Poly ohne Gesicht - das sagt Codex selbst. Ob der
 Weg zum gewuenschten Detailgrad fuehrt, ist noch offen.
 TESTS: tsc sauber, 526/526 gruen (kein Spiel-Code beruehrt).
+
+## R246 - Das gute Figurenpaket war da - Codex hatte es selbst gesperrt
+FERTIG UND VERIFIZIERT (Browser + Messung):
+1. Der Look, den du wolltest, existiert nicht nur als Standbild: unter
+   assets/sprites/hero-combat-v2/aldric-v3 liegt ein VOLLSTAENDIGES
+   Paket - 6 Ruestungen (Hemd, Lumpen, Lederwams, Gambeson,
+   Kettenhemd, Plattenrock) als je eigener Koerper, dazu 13 Waffen,
+   5 Schilde, 5 Helme und der Umhang, jeweils mit allen 36 Frames.
+2. Codex hatte es selbst als "kaputt, nicht integrieren" gesperrt.
+   Begruendung: die Figur "springt in Proportion und Bewegung". Das
+   habe ich nachgemessen und WIDERLEGT: innerhalb der Gehframes steht
+   der Fusspunkt auf 0-2 px still, innerhalb der Kampfframes ebenso.
+   Der Sprung sitzt nur ZWISCHEN beiden Gruppen, weil sie aus zwei
+   verschieden ausgerichteten Generierungen stammen. Ein einziger
+   Versatzwert je Bild richtet ALLE sechs Ruestungen aus (Rest 0-3 px).
+3. Repariert, ohne einen Strich neu zu zeichnen: der Versatz steht
+   jetzt als frameOffsetY im Manifest, das Zeichnen gleicht ihn aus.
+   Bewusst NICHT in die Bilder gerechnet - der erste Versuch hat lange
+   Waffen abgeschnitten (Hellebarde allein 9837 Pixel).
+4. Die Werkbank zeigt beide Pakete zur Auswahl und spielt das
+   gezeichnete animiert ab: Gehen, Schlag, Block, alle vier
+   Richtungen, jede Ruestung mit jeder Waffe, jedem Schild, Helm und
+   Umhang frei kombinierbar.
+OFFENER BEFUND: Der Helm sitzt in den Ausholframes nicht ganz sauber,
+wenn der Kopf stark gedreht ist. Das ist Nacharbeit an EINER Ebene.
+TESTS: tsc sauber, 526/526 gruen (kein Spiel-Code beruehrt).

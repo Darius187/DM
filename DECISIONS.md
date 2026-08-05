@@ -3992,3 +3992,21 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
 - Die Werkbank laedt jetzt NUR noch das Rig-Paket; das verworfene
   hero-combat-v2-Paket ist raus (Codex hat es selbst als
   rejected-broken-do-not-integrate markiert).
+
+## R246 - V3-Figurenpaket entsperrt (Autor-Order: "das will ich")
+- Der Autor hat den Stilproof-Look als verbindlich gesetzt. Das dazu
+  passende VOLLSTAENDIGE Paket existiert bereits:
+  assets/sprites/hero-combat-v2/aldric-v3 (6 Ruestungen als eigene
+  Koerper, 13 Waffen, 5 Schilde, 5 Helme, Umhang, je 36 Frames).
+- Codex hatte es selbst mit rejected-broken-do-not-integrate gesperrt.
+  Die Begruendung "springt in Proportion und Bewegung" ist widerlegt:
+  Innerhalb der Geh- bzw. Kampfgruppe steht der Fusspunkt auf 0-2 px
+  still, der Sprung sitzt NUR zwischen den beiden Gruppen (zwei
+  Generierungen, unterschiedlich hoch im Raster). EIN Versatzwert je
+  Zelle richtet alle sechs Koerper auf 0-3 px aus.
+- Fix als DATEN, nicht als Pixel: frameOffsetY im Manifest
+  (scripts/richte_aldric_v3_aus.py). Grund: Zellen zu verschieben hat
+  lange Waffen beschnitten (Hellebarde 9837 px) - Klingen ragen
+  absichtlich bis an den Zellrand.
+- Der Blender-Rig bleibt als zweites Paket in der Werkbank waehlbar
+  (technisch sauberer, aber Low-Poly-Platzhalter-Optik).

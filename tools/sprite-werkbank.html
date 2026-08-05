@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<title>Sprite-Werkbank - Aldric Rig V1 (Pruefstand)</title>
+<title>Sprite-Werkbank - Aldric (Pruefstand)</title>
 <style>
   body { margin:0; background:#17140f; color:#d8cfb8; font-family:system-ui,sans-serif; font-size:14px; }
   header { padding:10px 16px; border-bottom:1px solid #3a3126; }
@@ -11,7 +11,7 @@
   main { display:flex; gap:18px; padding:16px; flex-wrap:wrap; align-items:flex-start; }
   .buehne { background:#1f1b14; border:1px solid #3a3126; padding:12px; }
   canvas { display:block; image-rendering:pixelated; background:#26221a; }
-  .steuer { min-width:300px; max-width:380px; display:flex; flex-direction:column; gap:12px; }
+  .steuer { min-width:320px; max-width:400px; display:flex; flex-direction:column; gap:12px; }
   fieldset { border:1px solid #3a3126; padding:8px 10px; margin:0; }
   legend { color:#c9a227; font-size:12px; letter-spacing:1px; padding:0 4px; }
   label { display:block; margin:3px 0; cursor:pointer; }
@@ -23,19 +23,17 @@
   .reihe { display:flex; gap:5px; flex-wrap:wrap; }
   .warn { color:#e08a5a; font-size:12px; line-height:1.5; }
   .ok { color:#8fb35a; }
-  .rot { color:#e05a4a; }
   code { background:#26221a; padding:1px 4px; }
-  #befunde { font-size:12px; line-height:1.6; }
-  #befunde li { margin:4px 0; }
 </style>
 </head>
 <body>
 <header>
-  <h1>SPRITE-WERKBANK &mdash; Aldric Rig V1</h1>
-  <div class="hint">Reine Pruefseite, aendert NICHTS am Spiel. Laedt den Blender-Rig-Prototyp aus
-  <code>assets/sprites/hero-rig-v1/prototype/</code>: Koerper, Waffe und Schild als getrennte
-  1152x512-Sheets (9 Spalten x 4 Richtungen) plus das 3D-tiefenkorrekte Composite zum Gegenhalten.
-  Das alte Ebenen-Paket (<code>hero-combat-v2</code>) ist verworfen und wird hier nicht mehr geladen.</div>
+  <h1>SPRITE-WERKBANK &mdash; Aldric</h1>
+  <div class="hint">Reine Pruefseite, aendert NICHTS am Spiel. Zwei Pakete zur Auswahl:
+  das <b>gezeichnete Figurenpaket</b> (<code>hero-combat-v2/aldric-v3</code>: 6 Ruestungen,
+  13 Waffen, 5 Schilde, 5 Helme, Umhang) und der <b>Blender-Rig-Prototyp</b>
+  (<code>hero-rig-v1</code>). Der Fusspunkt-Versatz des gezeichneten Pakets wird beim Zeichnen
+  ausgeglichen (Schalter "Fusspunkt ausrichten") - dazu <code>frameOffsetY</code> im Manifest.</div>
 </header>
 <main>
   <div>
@@ -44,19 +42,12 @@
       <div id="info" class="hint" style="margin-top:8px"></div>
       <div id="quellHinweis" class="warn" style="margin-top:4px"></div>
     </div>
-    <fieldset style="margin-top:12px">
-      <legend>WAS HIER ZU PRUEFEN IST</legend>
-      <ul id="befunde">
-        <li><b>Bewegung</b>: Gehen und Schlag im Rig-Takt - liest sich der Schritt?</li>
-        <li><b>Ebenen gegen 3D</b>: Umschalter "Darstellung". Der Unterschied sitzt an der
-            <b>Faust</b> - flach gestapelt liegt die Klinge ueber der Hand, im 3D-Bild
-            umgreift die Hand den Griff. Mit "Unterschied zeigen" rot markiert.</li>
-        <li><b>Stil</b>: Low-Poly ist ausdruecklich ein Platzhalter (Codex-Notiz), nicht der
-            Ziel-Detailgrad. Hier geht es NUR um die Bewegung.</li>
-      </ul>
-    </fieldset>
   </div>
   <div class="steuer">
+    <fieldset>
+      <legend>PAKET</legend>
+      <div class="reihe" id="paket"></div>
+    </fieldset>
     <fieldset>
       <legend>BLICKRICHTUNG</legend>
       <div class="reihe" id="richtung"></div>
@@ -75,19 +66,21 @@
       <label>Tempo: <input type="range" id="tempo" min="20" max="200" value="100"> <span id="tempoTxt">100%</span></label>
     </fieldset>
     <fieldset>
-      <legend>DARSTELLUNG</legend>
-      <div class="reihe">
-        <button class="knopf an" data-modus="stapel">Ebenen gestapelt</button>
-        <button class="knopf" data-modus="composite">3D-Composite</button>
-      </div>
-      <label style="margin-top:8px"><input type="checkbox" id="diff"> Unterschied zeigen (rot)</label>
-      <div class="hint">So sieht das Spiel es spaeter: Ebenen gestapelt. Das Composite ist
-      die 3D-Wahrheit zum Vergleich.</div>
+      <legend>RUESTUNG (eigener Koerper je Stufe)</legend>
+      <div class="reihe" id="body"></div>
+      <label style="margin-top:8px"><input type="checkbox" id="cape"> Umhang</label>
     </fieldset>
     <fieldset>
-      <legend>EBENEN</legend>
-      <div class="reihe" id="ebenen"></div>
-      <div class="hint" style="margin-top:6px">Nur im Stapel-Modus wirksam.</div>
+      <legend>WAFFE</legend>
+      <div class="reihe" id="weapon"></div>
+    </fieldset>
+    <fieldset>
+      <legend>SCHILD</legend>
+      <div class="reihe" id="shield"></div>
+    </fieldset>
+    <fieldset>
+      <legend>HELM</legend>
+      <div class="reihe" id="helmet"></div>
     </fieldset>
     <fieldset>
       <legend>ANSICHT</legend>
@@ -96,68 +89,123 @@
         <button class="knopf an" data-zoom="2">2x</button>
         <button class="knopf" data-zoom="4">4x</button>
       </div>
-      <label style="margin-top:6px"><input type="checkbox" id="gras" checked> Gras-Hintergrund</label>
-      <label><input type="checkbox" id="fuss"> Fusspunkt-Linie (Y-Sortierung)</label>
+      <label style="margin-top:6px"><input type="checkbox" id="ausrichten" checked> Fusspunkt ausrichten (frameOffsetY)</label>
+      <label><input type="checkbox" id="gras" checked> Gras-Hintergrund</label>
+      <label><input type="checkbox" id="fuss"> Fusspunkt-Linie zeigen</label>
       <label><input type="checkbox" id="raster"> Zellraster</label>
     </fieldset>
   </div>
 </main>
 <script>
-const BASIS = '../assets/sprites/hero-rig-v1/prototype/';
 const RICHT_NAMEN = { down: 'UNTEN', left: 'LINKS', right: 'RECHTS', up: 'OBEN' };
-const DATEIEN = {
-  bodyAppearance: 'body-hemd-rigged-9x4.png',
-  weapon: 'weapon-solide-klinge-rigged-9x4.png',
-  shield: 'shield-holz-rund-rigged-9x4.png',
-  composite: 'aldric-hemd-schwert-holzschild-composite-9x4.png',
+const ZIEL_FUSS = 124;
+
+// ---- Die zwei Pakete ----
+const PAKETE = {
+  gezeichnet: {
+    name: 'Gezeichnet (V3)',
+    basis: '../assets/sprites/hero-combat-v2/aldric-v3/',
+    manifest: 'hero-layers-v3.json',
+    datei: {
+      bodyAppearance: (id) => `body-${id}-full-9x4.png`,
+      weapon: (id) => `weapon-${id}-full-9x4.png`,
+      shield: (id) => `shield-${id}-full-9x4.png`,
+      helmet: (id) => `helmet-${id}-full-9x4.png`,
+      cape: () => 'cape-reiseumhang-full-9x4.png',
+    },
+  },
+  rig: {
+    name: 'Blender-Rig',
+    basis: '../assets/sprites/hero-rig-v1/prototype/',
+    manifest: 'aldric-rig-prototype.json',
+    fest: {
+      bodyAppearance: 'body-hemd-rigged-9x4.png',
+      weapon: 'weapon-solide-klinge-rigged-9x4.png',
+      shield: 'shield-holz-rund-rigged-9x4.png',
+    },
+  },
 };
-const EBENEN_NAMEN = { bodyAppearance: 'Koerper', weapon: 'Waffe', shield: 'Schild' };
 
 const zustand = {
-  richtung: 'down', anim: 'gehen', frame: 0, zoom: 2, modus: 'stapel',
-  aus: {}, diff: false, gras: true, fuss: false, raster: false, loop: true, tempo: 100,
+  paket: 'gezeichnet', richtung: 'down', anim: 'gehen', frame: 0, zoom: 2,
+  body: 'hemd', weapon: 'solide-klinge', shield: 'keins', helmet: 'keiner', cape: false,
+  ausrichten: true, gras: true, fuss: false, raster: false, loop: true, tempo: 100,
   attackFrame: 0, walkFrame: 0,
 };
 
-const bilder = {}; let spec = null;
-const laden = (p) => new Promise((res) => {
-  const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = BASIS + p;
+let spec = null; const bilder = {}; let auswahl = { bodies: [], weapons: [], shields: [], helmets: [] };
+
+const laden = (basis, p) => new Promise((res) => {
+  const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = basis + p;
 });
 
-async function start() {
-  try { const r = await fetch(BASIS + 'aldric-rig-prototype.json'); spec = r.ok ? await r.json() : null; }
+async function ladePaket() {
+  const p = PAKETE[zustand.paket];
+  spec = null; for (const k of Object.keys(bilder)) delete bilder[k];
+  try { const r = await fetch(p.basis + p.manifest); spec = r.ok ? await r.json() : null; }
   catch (e) { spec = null; }
-  await Promise.all(Object.entries(DATEIEN).map(async ([k, d]) => { bilder[k] = await laden(d); }));
+
+  if (zustand.paket === 'rig') {
+    auswahl = { bodies: [['hemd', 'Hemd']], weapons: [['solide-klinge', 'Solide Klinge']], shields: [['holz-rund', 'Holz-Rundschild']], helmets: [] };
+    zustand.body = 'hemd'; zustand.weapon = 'solide-klinge'; zustand.shield = 'holz-rund';
+    zustand.helmet = 'keiner'; zustand.cape = false;
+    await Promise.all(Object.entries(p.fest).map(async ([typ, d]) => { bilder[typ + ':' + d] = await laden(p.basis, d); }));
+  } else {
+    const l = spec?.labels ?? {};
+    const paare = (o) => Object.entries(o ?? {});
+    auswahl = {
+      bodies: paare(l.bodies), weapons: paare(l.weapons),
+      shields: paare(l.shields), helmets: paare(l.helmets),
+    };
+    if (!auswahl.bodies.some(([id]) => id === zustand.body)) zustand.body = auswahl.bodies[0]?.[0] ?? 'hemd';
+    if (!auswahl.weapons.some(([id]) => id === zustand.weapon)) zustand.weapon = 'keine';
+    // Alle Sheets vorladen, damit das Umschalten nicht flackert
+    const auftraege = [];
+    for (const [id] of auswahl.bodies) auftraege.push(['bodyAppearance', p.datei.bodyAppearance(id)]);
+    for (const [id] of auswahl.weapons) auftraege.push(['weapon', p.datei.weapon(id)]);
+    for (const [id] of auswahl.shields) auftraege.push(['shield', p.datei.shield(id)]);
+    for (const [id] of auswahl.helmets) auftraege.push(['helmet', p.datei.helmet(id)]);
+    auftraege.push(['cape', p.datei.cape()]);
+    await Promise.all(auftraege.map(async ([typ, d]) => { bilder[typ + ':' + d] = await laden(p.basis, d); }));
+  }
   baueKnoepfe();
-  requestAnimationFrame(schleife);
 }
 
 const richtungen = () => spec?.directions ?? ['down', 'left', 'right', 'up'];
 const frameNamen = () => spec?.frames ?? ['idle','walk_1','walk_2','walk_3','walk_4','windup','impact','followthrough','block'];
 
+// Slots, deren Auswahl an ein vorhandenes Sheet gebunden ist. Richtung und
+// Paket sind KEINE Slots - sie sind immer waehlbar.
+const SLOTS = new Set(['body', 'weapon', 'shield', 'helmet', 'cape']);
+
 function baueKnoepfe() {
-  const reihe = (id, eintraege, schluessel) => {
-    const el = document.getElementById(id); el.innerHTML = '';
-    for (const [wert, anzeige, frei] of eintraege) {
+  const reihe = (id, eintraege, schluessel, leerText) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.innerHTML = '';
+    const liste = leerText ? [[leerText === 'keins' ? 'keins' : 'keiner', leerText], ...eintraege] : eintraege;
+    for (const [wert, anzeige] of liste) {
       const b = document.createElement('button');
+      const leer = wert === 'keins' || wert === 'keiner' || wert === 'keine';
+      const frei = !SLOTS.has(schluessel) || leer || !!sheetFuer(schluessel, wert);
       b.className = 'knopf' + (zustand[schluessel] === wert ? ' an' : '') + (frei ? '' : ' fehlt');
       b.textContent = anzeige;
       if (frei) b.onclick = () => { zustand[schluessel] = wert; baueKnoepfe(); };
       el.appendChild(b);
     }
   };
-  reihe('richtung', richtungen().map((r) => [r, RICHT_NAMEN[r] ?? r, true]), 'richtung');
+  reihe('paket', Object.entries(PAKETE).map(([k, v]) => [k, v.name]), 'paket');
+  document.querySelectorAll('#paket .knopf').forEach((b, i) => {
+    b.onclick = () => { zustand.paket = Object.keys(PAKETE)[i]; ladePaket(); };
+  });
+  reihe('richtung', richtungen().map((r) => [r, RICHT_NAMEN[r] ?? r]), 'richtung');
+  reihe('body', auswahl.bodies, 'body');
+  reihe('weapon', [['keine', 'keine'], ...auswahl.weapons], 'weapon');
+  reihe('shield', auswahl.shields, 'shield', 'keins');
+  reihe('helmet', auswahl.helmets, 'helmet', 'keiner');
 
-  // Ebenen an/aus (Schalter, kein Einzelwert)
-  const el = document.getElementById('ebenen'); el.innerHTML = '';
-  for (const [typ, name] of Object.entries(EBENEN_NAMEN)) {
-    const b = document.createElement('button');
-    const an = !zustand.aus[typ];
-    b.className = 'knopf' + (an ? ' an' : '') + (bilder[typ] ? '' : ' fehlt');
-    b.textContent = name;
-    if (bilder[typ]) b.onclick = () => { zustand.aus[typ] = an; baueKnoepfe(); };
-    el.appendChild(b);
-  }
+  const cape = document.getElementById('cape');
+  cape.disabled = !sheetFuer('cape', 'x');
+  if (cape.disabled) { cape.checked = false; zustand.cape = false; }
 
   document.querySelectorAll('[data-anim]').forEach((b) => {
     b.classList.toggle('an', b.dataset.anim === zustand.anim);
@@ -167,10 +215,6 @@ function baueKnoepfe() {
       baueKnoepfe();
     };
   });
-  document.querySelectorAll('[data-modus]').forEach((b) => {
-    b.classList.toggle('an', b.dataset.modus === zustand.modus);
-    b.onclick = () => { zustand.modus = b.dataset.modus; baueKnoepfe(); };
-  });
   document.querySelectorAll('[data-zoom]').forEach((b) => {
     b.classList.toggle('an', +b.dataset.zoom === zustand.zoom);
     b.onclick = () => { zustand.zoom = +b.dataset.zoom; baueKnoepfe(); };
@@ -178,7 +222,21 @@ function baueKnoepfe() {
   document.getElementById('frameTxt').textContent = frameNamen()[zustand.frame] ?? '';
 }
 
-for (const [id, feld] of [['diff','diff'],['gras','gras'],['fuss','fuss'],['raster','raster'],['loop','loop']]) {
+// Sheet zu einem Slot-Wert finden (oder null)
+function sheetFuer(typ, wert) {
+  const p = PAKETE[zustand.paket];
+  if (zustand.paket === 'rig') {
+    const map = { body: 'bodyAppearance', weapon: 'weapon', shield: 'shield' };
+    const t = map[typ] ?? typ;
+    const d = p.fest[t]; return d ? bilder[t + ':' + d] : null;
+  }
+  const bau = { body: 'bodyAppearance', weapon: 'weapon', shield: 'shield', helmet: 'helmet', cape: 'cape' }[typ];
+  if (!bau) return null;
+  const d = p.datei[bau](wert);
+  return bilder[bau + ':' + d] ?? null;
+}
+
+for (const [id, feld] of [['cape','cape'],['ausrichten','ausrichten'],['gras','gras'],['fuss','fuss'],['raster','raster'],['loop','loop']]) {
   document.getElementById(id).onchange = (e) => { zustand[feld] = e.target.checked; };
 }
 document.getElementById('frame').oninput = (e) => {
@@ -219,19 +277,25 @@ function schleife(t) {
 }
 
 function zOrder(r) {
-  return spec?.zOrderBackToFront?.[r] ?? ['bodyAppearance', 'weapon', 'shield'];
+  return spec?.zOrderBackToFront?.[r]
+    ?? ['cape', 'bodyAppearance', 'weapon', 'shield', 'helmet'];
 }
 
-// Malt eine Zelle in einen 128er Hilfs-Kontext
-function zelle(typen, zeile, spalte) {
-  const h = document.createElement('canvas'); h.width = 128; h.height = 128;
-  // willReadFrequently: die Diff-Ansicht liest jedes Bild per getImageData zurueck
-  const g = h.getContext('2d', { willReadFrequently: true }); g.imageSmoothingEnabled = false;
-  for (const typ of typen) {
-    const im = bilder[typ]; if (!im) continue;
-    g.drawImage(im, spalte * 128, zeile * 128, 128, 128, 0, 0, 128, 128);
+// Welches Sheet gehoert zu welcher Ebene im aktuellen Zustand?
+function ebenenSheet(ebene) {
+  switch (ebene) {
+    case 'bodyAppearance': return sheetFuer('body', zustand.body);
+    case 'weapon': return zustand.weapon === 'keine' ? null : sheetFuer('weapon', zustand.weapon);
+    case 'shield': return zustand.shield === 'keins' ? null : sheetFuer('shield', zustand.shield);
+    case 'helmet': return zustand.helmet === 'keiner' ? null : sheetFuer('helmet', zustand.helmet);
+    case 'cape': return zustand.cape ? sheetFuer('cape', 'x') : null;
   }
-  return h;
+  return null;
+}
+
+function versatzY(richtung, spalte) {
+  if (!zustand.ausrichten) return 0;
+  return spec?.frameOffsetY?.[richtung]?.[spalte] ?? 0;
 }
 
 function zeichne() {
@@ -244,30 +308,12 @@ function zeichne() {
 
   const zeile = richtungen().indexOf(zustand.richtung);
   const spalte = spalteAktuell();
-  const aktive = zOrder(zustand.richtung).filter((t) => !zustand.aus[t]);
+  const dy = versatzY(zustand.richtung, spalte);
 
-  const stapel = zelle(aktive, zeile, spalte);
-  const comp = zelle(['composite'], zeile, spalte);
-  const zeigen = zustand.modus === 'composite' ? comp : stapel;
-
-  if (zustand.diff) {
-    // Unterschied Stapel <-> Composite rot markieren
-    const a = stapel.getContext('2d').getImageData(0, 0, 128, 128);
-    const b = comp.getContext('2d').getImageData(0, 0, 128, 128);
-    const ziel = zeigen.getContext('2d').getImageData(0, 0, 128, 128);
-    for (let i = 0; i < a.data.length; i += 4) {
-      const beide = a.data[i + 3] > 200 && b.data[i + 3] > 200;
-      const farbAb = Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i+1] - b.data[i+1]) + Math.abs(a.data[i+2] - b.data[i+2]);
-      const alphaAb = Math.abs(a.data[i + 3] - b.data[i + 3]) > 90;
-      if ((beide && farbAb > 60) || alphaAb) {
-        ziel.data[i] = 255; ziel.data[i+1] = 60; ziel.data[i+2] = 60; ziel.data[i+3] = 255;
-      }
-    }
-    const h = document.createElement('canvas'); h.width = 128; h.height = 128;
-    h.getContext('2d', { willReadFrequently: true }).putImageData(ziel, 0, 0);
-    g.drawImage(h, 0, 0, gr, gr);
-  } else {
-    g.drawImage(zeigen, 0, 0, gr, gr);
+  for (const ebene of zOrder(zustand.richtung)) {
+    const im = ebenenSheet(ebene);
+    if (!im) continue;
+    g.drawImage(im, spalte * 128, zeile * 128, 128, 128, 0, dy * z, gr, gr);
   }
 
   if (zustand.raster) {
@@ -276,20 +322,26 @@ function zeichne() {
       g.beginPath(); g.moveTo(p, 0); g.lineTo(p, gr); g.moveTo(0, p); g.lineTo(gr, p); g.stroke(); }
   }
   if (zustand.fuss) {
-    // Fusspunkt-Konvention des Spiels: Sprite-Unterkante (Y-Sortierung)
     g.strokeStyle = '#5aa8ff'; g.lineWidth = 2;
-    g.beginPath(); g.moveTo(0, 124 * z); g.lineTo(gr, 124 * z); g.stroke();
+    g.beginPath(); g.moveTo(0, ZIEL_FUSS * z); g.lineTo(gr, ZIEL_FUSS * z); g.stroke();
   }
 
-  document.getElementById('info').textContent =
-    `Richtung ${RICHT_NAMEN[zustand.richtung]} | Zeile ${zeile} | Bild ${frameNamen()[spalte]} | `
-    + (zustand.modus === 'composite' ? '3D-Composite' : 'Ebenen: ' + aktive.map((t) => EBENEN_NAMEN[t]).join(' > '))
-    + (zustand.diff ? ' | Unterschied ROT' : '');
-  const fehlt = Object.entries(DATEIEN).filter(([k]) => !bilder[k]).map(([k]) => k);
-  document.getElementById('quellHinweis').textContent = fehlt.length
-    ? `Sheet fehlt: ${fehlt.join(', ')} - liegt das Rig-Paket unter ${BASIS}?` : '';
+  const teile = [
+    PAKETE[zustand.paket].name,
+    RICHT_NAMEN[zustand.richtung],
+    frameNamen()[spalte],
+    zustand.body,
+    zustand.weapon !== 'keine' ? zustand.weapon : null,
+    zustand.shield !== 'keins' ? zustand.shield : null,
+    zustand.helmet !== 'keiner' ? zustand.helmet : null,
+    zustand.cape ? 'Umhang' : null,
+    zustand.ausrichten ? `Versatz ${dy >= 0 ? '+' : ''}${dy}` : 'Versatz AUS',
+  ].filter(Boolean);
+  document.getElementById('info').textContent = teile.join(' | ');
+  document.getElementById('quellHinweis').textContent = spec ? '' : 'Manifest konnte nicht geladen werden.';
 }
-start();
+
+ladePaket().then(() => requestAnimationFrame(schleife));
 </script>
 </body>
 </html>
