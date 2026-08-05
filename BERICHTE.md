@@ -2591,3 +2591,20 @@ FERTIG UND VERIFIZIERT:
 TESTS: tsc sauber, 522/522 gruen. Browser: alle vier Punkte belegt.
 OFFEN: Wann werden Stahl-/Gussstahlklingen (Stufe 2/3) freigeschaltet?
 Bleibt der Grafenburg-Fall Teil des Bogens? (OFFENE-FRAGEN)
+
+## R236 - Feindzug-Gate (Doku 08, Akt 5)
+FERTIG UND VERIFIZIERT:
+1. Die Horde expandiert ERST, wenn Ravensmoor zurueckerobert ist.
+   Vorher: keine Produktion, keine Angriffe - die drei besetzten
+   Start-Karten bleiben stehen, wo sie sind. Belegt: 10 Minuten
+   Spielzeit am Stueck ergeben 0 gesparte Kampfkraft und keinen
+   Angriff; nach der Rueckeroberung sind es in 60 Sekunden 54/54/36
+   Punkte und ein Spaehertrupp ist unterwegs.
+2. Der Moment wird ERZAEHLT: bei der Rueckeroberung meldet das Spiel
+   "die Horde beginnt, Land zu nehmen - der Wettlauf hat begonnen".
+3. NEBENBEFUND (gute Nachricht): die Fluchtroute Ravensmoor -> Waldrand
+   Ost -> Waldrand -> Nordwald -> Hochland enthaelt KEINE der besetzten
+   Karten. Der Weg in den hohen Norden ist frei, wie du es wolltest -
+   das Gate haelt ihn jetzt auch frei.
+TESTS: tsc sauber, 526/526 gruen (4 neue Gate-Faelle), Browser-Beweis
+fuer Gate zu, Gate auf und die Routen-Pruefung.

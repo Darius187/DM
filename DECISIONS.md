@@ -3798,3 +3798,21 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   der Kirche bei der Burg (waehrend der Zuflucht-Zeit), es faellt
   erstmal nicht auf - der Graf lebt bei der Audienz, die Ahnengruft
   tickt und bricht erst im Wettlauf aus (R232-Kette verzoegert).
+
+## R236 - Feindzug-Gate: der Wettlauf beginnt erst nach der Rueckeroberung
+- FeindzugCfg.expansion (logic/feindzug.ts): false = die Horde haelt
+  still - kein Lager spart Kampfkraft an, es entsteht KEIN neuer
+  Angriff. Die Startbesetzung (lager/stadt2/kloster) bleibt exakt
+  stehen. Ein BEREITS LAUFENDER Angriff loest sich normal auf (kein
+  Phantom-Zustand). Fehlt das Feld, expandiert der Feind wie bisher.
+- WorldScene: expansion = flags.stadtZurueck === true. Das Flag setzt
+  die bestehende F5-Rueckeroberung; damit ist Doku 08 Akt 5 verdrahtet
+  ohne neues Zustands-Feld.
+- Beim Umlegen bekommt der Spieler es GESAGT (Meldung + Chronik: "die
+  Horde beginnt, Land zu nehmen - der Wettlauf hat begonnen").
+- BELEG Fluchtroute (Autor-Sorge "die Karten sollen noch nicht voller
+  Monsterlager sein"): die Route stadt -> wald_o -> start -> wald_n ->
+  hochland enthaelt KEINE der besetzten Start-Karten. Der Fluchtweg in
+  den hohen Norden ist also schon von Haus aus durchlaessig; das Gate
+  sichert zusaetzlich, dass er es bis zur Rueckeroberung BLEIBT.
+- 4 neue Vitest-Faelle (Gate zu/auf/alt-kompatibel/laufender Angriff).

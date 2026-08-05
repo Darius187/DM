@@ -92,6 +92,12 @@ export interface FeindzugCfg {
   // R230 (Doku 07/3): Produktions-Faktor eines Lagers MIT Vogt. Fehlt das
   // Feld, produzieren Vogt-Lager wie alle anderen (alte Aufrufer unveraendert).
   vogtFaktor?: number;
+  // R236 (Doku 08, Akt 5): das EXPANSIONS-GATE. false = die Horde sitzt
+  // still: keine Produktion, keine neuen Angriffe - die Startbesetzung
+  // bleibt genau da, wo sie ist. So bleiben die Fluchtwege durchlaessig,
+  // bis der Spieler Ravensmoor zurueckerobert hat; dann beginnt der
+  // Wettlauf. Fehlt das Feld, expandiert der Feind wie bisher.
+  expansion?: boolean;
 }
 
 export type FeindzugEreignis =
@@ -206,6 +212,10 @@ export function entferneVogt(z: Feindzug, karte: string): string | null {
 
 export function tickFeindzug(z: Feindzug, dt: number, cfg: FeindzugCfg): FeindzugEreignis[] {
   const out: FeindzugEreignis[] = [];
+  // R236 (Doku 08): Expansions-Gate zu -> die Horde haelt still. Ein bereits
+  // laufender Angriff wird NICHT abgebrochen (er loest sich unten normal auf),
+  // aber es entsteht kein neuer und kein Lager spart Kampfkraft an.
+  const expansion = cfg.expansion !== false;
   // F6: nach einem Lagerverlust produziert die Horde eine Weile gedrosselt.
   const schwaeche = Math.max(0, Math.min(dt, z.schwaecheT ?? 0));
   const f = cfg.schwaecheProduktionF ?? 1;
@@ -216,7 +226,8 @@ export function tickFeindzug(z: Feindzug, dt: number, cfg: FeindzugCfg): Feindzu
     // produzieren NICHTS - sie zehren nur noch von dem, was sie haben.
     // R230: fuehrt ein menschlicher VOGT das Lager, laeuft die Wirtschaft
     // schneller - der Feind kann eben nicht alles allein.
-    if (istVersorgt(l.karte, cfg)) l.punkte += produktion * (l.vogt ? (cfg.vogtFaktor ?? 1) : 1);
+    // R236: vor der Rueckeroberung produziert ueberhaupt niemand.
+    if (expansion && istVersorgt(l.karte, cfg)) l.punkte += produktion * (l.vogt ? (cfg.vogtFaktor ?? 1) : 1);
     l.seitS = (l.seitS ?? 0) + dt;
   }
 
@@ -231,6 +242,7 @@ export function tickFeindzug(z: Feindzug, dt: number, cfg: FeindzugCfg): Feindzu
 
   const a = z.angriff;
   if (!a) {
+    if (!expansion) return out;   // R236: kein neuer Angriff, solange das Gate zu ist
     // Neuen Angriff planen: das Lager mit den meisten Punkten, das ein Ziel
     // hat und sich die Welle (grob geschaetzt) leisten kann.
     const kandidaten = [...z.lager].sort((x, y) => y.punkte - x.punkte);

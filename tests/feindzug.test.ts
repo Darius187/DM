@@ -261,6 +261,43 @@ describe('R230 Lagervogt (Produktions-Faktor + entferneVogt)', () => {
   });
 });
 
+// --- R236: Expansions-Gate (Doku 08, Akt 5) -------------------------------
+describe('R236 Expansions-Gate (die Horde haelt still bis zur Rueckeroberung)', () => {
+  it('Gate ZU: keine Produktion, kein Angriff - egal wie viel Zeit vergeht', () => {
+    const z = neuerFeindzug(['lager', 'stadt2']);
+    const c = cfg({ expansion: false });
+    expect(tickFeindzug(z, 500, c)).toEqual([]);
+    expect(z.lager[0].punkte).toBe(0);
+    expect(z.angriff).toBeNull();
+  });
+
+  it('Gate AUF: alles laeuft wieder wie gehabt (Wettlauf beginnt)', () => {
+    const z = neuerFeindzug(['lager', 'stadt2']);
+    const zu = cfg({ expansion: false });
+    tickFeindzug(z, 100, zu);
+    expect(z.lager[0].punkte).toBe(0);
+    const auf = cfg({ expansion: true });
+    tickFeindzug(z, 41, auf);
+    expect(z.lager[0].punkte).toBeGreaterThan(0);
+    expect(z.angriff?.phase).toBe('spaeht');
+  });
+
+  it('ohne expansion-Feld expandiert der Feind wie bisher (alte Aufrufer)', () => {
+    const z = neuerFeindzug(['lager']);
+    tickFeindzug(z, 41, cfg());
+    expect(z.angriff).not.toBeNull();
+  });
+
+  it('ein LAUFENDER Angriff loest sich auch bei zugehendem Gate noch auf', () => {
+    const z = neuerFeindzug(['lager']);
+    tickFeindzug(z, 41, cfg());            // Spaeher los
+    tickFeindzug(z, 11, cfg());            // Angriff steht
+    expect(z.angriff?.phase).toBe('kaempft');
+    const evs = tickFeindzug(z, 21, cfg({ expansion: false }));
+    expect(evs).toEqual([{ typ: 'erobert', karte: 'wald' }]);
+  });
+});
+
 describe('R227 Feldbauten-Abwehr (bautenAbwehr)', () => {
   const werte = { wachturm: 30, palisade: 4 };
   it('summiert Bauwerte, skaliert mit dem Zustand', () => {

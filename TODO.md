@@ -303,3 +303,14 @@ Lichtern -> Bloom im Einfall drosseln. Ohne Geraeteprofil aber nicht auf Verdach
       Spaeter: Zeughaus-Zuteilung einzelner Klingen an einzelne Soldaten.
 - [ ] Werkzeuge analog als Einzelstuecke? (Aktuell nur Waffen - Autor
       fragte nach Waffen; Werkzeuge blieben Zaehler.)
+
+## Grafik-Aussenwelt (R236: Autor-Entscheid "machen wir nichts")
+- [ ] ZURUECKGESTELLT auf Autor-Wunsch (sieht kaum Unterschiede in den
+      Grading-Varianten). MESSWERT fuer spaeter, damit er nicht verloren
+      geht: das Gras der ANFANGSKARTE liegt bei Farbton 74 Grad (warmes
+      Oliv), Saettigung 56%, Helligkeit 35% - die Stadt/Umgebungskarten
+      bei Farbton 91 Grad (kaltes Reingruen), 54%, 30%. Falls die
+      Aussenwelt spaeter doch "unnatuerlich" wirkt: die Boden-Palette
+      der Anfangskarte auf die uebrigen Karten ziehen (Ursache), nicht
+      filtern. Grading-Varianten lagen als Tafel vor (entsaettigt /
+      Moor-Oliv / duester-kuehl) - alle verworfen.

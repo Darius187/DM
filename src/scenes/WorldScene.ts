@@ -10836,6 +10836,10 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
           this.flags.kriegBegonnen = true;
           this.logMsg('RAVENSMOOR IST ZURÜCKEROBERT! Die Bewohner kehren aus der Zuflucht heim.', 'gold');
           this.chronik('geschichte', 'Ravensmoor ist zurückerobert - die Bewohner kehren heim. Jetzt gilt es, die Stadt zu HALTEN.');
+          // R236 (Doku 08, Akt 5): ab hier expandiert die Horde - der Wettlauf
+          // um die Karten beginnt. Der Spieler soll das SPUEREN, nicht raten.
+          this.logMsg('Doch im Norden regt sich etwas: die Horde beginnt, Land zu nehmen. Der Wettlauf hat begonnen.', 'bad');
+          this.chronik('kampf', 'Von diesem Tag an greift die Horde nach den Gebieten - wer schneller Land nimmt, gewinnt den Feldzug.');
         }
       }
     } else this.saeuberungT = 0;
@@ -10869,6 +10873,10 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       wissenAufschlag: FELDZUG.wissenAufschlag,             // F2a (A5): vorsichtiger Aufschlag bei Unsicherheit
       spaeherKommtDurch: () => this.spaeherBlindT <= 0,     // F2a (A10): getoetete Spaeher -> Feind blind
       vogtFaktor: LAGERVOGT.produktionsF,                   // R230: Vogt-Lager wirtschaften schneller
+      // R236 (Doku 08, Akt 5): die Horde expandiert ERST, wenn Ravensmoor
+      // zurueckerobert ist. Vorher steht die Startbesetzung still - die
+      // Fluchtwege in den Norden bleiben durchlaessig (Autor-Order).
+      expansion: this.flags.stadtZurueck === true,
     });
     for (const ev of evs) this.feindzugEreignis(ev);
     // Live-Aufloesung: kaempft die Welle auf der HELD-Karte, entscheidet der
