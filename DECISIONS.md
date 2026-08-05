@@ -4020,3 +4020,12 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   Vorrang haben.
 - Abnahmekandidat: Hemd + Schwert sowie Gambeson + Umhang + Holz-Turmschild +
   Schwert, je 4 Richtungen und 9 Frames. Weitere Varianten erst nach Freigabe.
+
+## R248 - Erst zwei Vollfiguren live, dann Varianten erweitern
+- Die Basis-Frontframes Treffer/Nachziehen wurden nach Autorbefund gezielt als
+  natuerlicher Einhandhieb ersetzt; alle Laufzeilen bleiben unveraendert.
+- Fuer den ersten Spieltest werden die acht Engine-Richtungen stabil auf die
+  vier gemalten Zeilen abgebildet. Prozeduraler/3D-Pfad bleibt Fallback.
+- Keine neuen Ruestungen, Helme oder Paperdoll-Kombinationen, bevor Stand,
+  Gehen, Angriff und Block dieser zwei Vollfiguren im echten Spiel abgenommen
+  sind.

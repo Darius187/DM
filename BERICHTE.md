@@ -2762,3 +2762,16 @@ FERTIG UND VISUELL GEPRUEFT:
    GIFs liegen unter assets/sprites/hero-painted-v1/.
 TESTS: tsc sauber, 526/526 gruen; Bildformat/Alpha und je vier GIF-Frames
 automatisch geprueft. OFFEN: Autor-Abnahme vor Spielintegration/mehr Varianten.
+
+## R248 - Front-Hieb korrigiert, Laufabdeckung und Live-Auftrag geprueft
+FERTIG UND VISUELL GEPRUEFT:
+1. Die zwei beanstandeten Frontframes der Basis sind ersetzt. Treffer und
+   Nachziehen sind jetzt ein klarer Einhandhieb: freie Faust getrennt, keine
+   gekreuzten Handgelenke, Klinge seitlich statt zwischen den Beinen.
+2. Die vier Laufphasen wurden live in down/left/right/up durchgeschaltet; jede
+   Richtung greift auf eine eigene Sheet-Zeile zu, Browserkonsole fehlerfrei.
+3. Claudes begrenzter Live-Integrationsauftrag steht in
+   docs/handoff/ALDRIC-PAINTED-V1-LIVE-AUFTRAG.md mit echten Code-Einstiegen,
+   8-auf-4-Richtungsmapping, Frame-Mapping und sicheren Fallbacks.
+OFFEN: Claude integriert den Testpfad ins echte Phaser-Spiel und liefert den
+Live-Beweis; weitere Ruestungen/Helme erst danach.

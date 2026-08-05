@@ -2,9 +2,10 @@
 
 ## Status
 
-Abnahmekandidat, noch nicht in den Spiel-Renderer integrieren. Der verworfene
-Low-Poly-Rig wurde entfernt. Diese Lieferung verwendet vollstaendig gemalte
-Figuren statt aufgeklebter Ruestungs-Ebenen.
+Bereit fuer einen begrenzten Live-Integrationstest. Der verworfene Low-Poly-Rig
+wurde entfernt. Diese Lieferung verwendet vollstaendig gemalte Figuren statt
+aufgeklebter Ruestungs-Ebenen. Die vom Autor beanstandeten frontalen Treffer-
+und Nachziehframes der Basis wurden als natuerlicher Einhandhieb ersetzt.
 
 ## Lieferumfang
 
@@ -26,9 +27,11 @@ jeder Pose fertig gemalt. Die Engine waehlt anhand der Ausruestungsstufe eines
 der zwei Sheets und liest Richtung/Frame direkt aus dem Manifest.
 
 Timing: Gehen 120 ms; Schlag 140/80/180 ms; Stand 240 ms; Block 160 ms.
+Laufabdeckung: vier eigene Gehframes in allen Richtungen `down`, `left`,
+`right`, `up`.
 
 ## Bewusste Grenze
 
 Nur zwei in sich geschlossene Ausruestungsstufen. Keine beliebigen
 Paperdoll-Kombinationen und noch keine Helme. Weitere Vollfiguren-Saetze erst
-nach visueller Freigabe dieser Animationen.
+nach dem Live-Test dieser Animationen.

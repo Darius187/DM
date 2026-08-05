@@ -1,6 +1,6 @@
 {
   "format": "ravenmoor-painted-character-v1",
-  "status": "awaiting-author-approval",
+  "status": "ready-for-live-integration-test",
   "frameSize": [
     128,
     128
@@ -50,7 +50,8 @@
   },
   "notes": [
     "Vier Richtungsfolgen wurden jeweils als zusammenhaengendes 3x3-Animationsblatt gemalt.",
-    "Diese Stilfreigabe hat Vorrang vor Variantenmenge.",
-    "Weitere Ruestungsvarianten erst nach Abnahme dieser zwei Vollfiguren-Saetze."
+    "Gehen ist mit vier eigenen Frames in down, left, right und up vollstaendig vorhanden.",
+    "Basis down impact/followthrough wurden nach Autorhinweis als natuerlicher Einhandhieb korrigiert.",
+    "Live-Test vor weiteren Ruestungsvarianten."
   ]
 }

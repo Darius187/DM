@@ -86,6 +86,28 @@ def normalize(cells: list[Image.Image], target_height: int = TARGET_HEIGHT) -> l
     return result
 
 
+def correction_frame(filename: str, *, right_half: bool = False, target_height: int = 105) -> Image.Image:
+    source = Image.open(RAW / filename).convert("RGBA")
+    if right_half:
+        source = source.crop((source.width // 2, 0, source.width, source.height))
+    box = source.getchannel("A").getbbox()
+    if box is None:
+        raise RuntimeError(f"Leere Korrekturquelle: {filename}")
+    sprite = source.crop(box)
+    scale = target_height / sprite.height
+    width = max(1, round(sprite.width * scale))
+    height = max(1, round(sprite.height * scale))
+    if width > CELL - 4:
+        scale = (CELL - 4) / sprite.width
+        width = CELL - 4
+        height = max(1, round(sprite.height * scale))
+    sprite = sprite.resize((width, height), Image.Resampling.LANCZOS)
+    sprite = sprite.filter(ImageFilter.UnsharpMask(radius=0.55, percent=75, threshold=3))
+    frame = Image.new("RGBA", (CELL, CELL), TRANSPARENT)
+    frame.alpha_composite(sprite, (round((CELL - width) / 2), 123 - height))
+    return frame
+
+
 def assemble(rows: list[list[Image.Image]]) -> Image.Image:
     sheet = Image.new("RGBA", (CELL * 9, CELL * 4), TRANSPARENT)
     for row in range(4):
@@ -142,6 +164,11 @@ def build_variant(name: str, config: dict[str, object]) -> dict[str, object]:
     out.mkdir(parents=True, exist_ok=True)
     source_name = str(config["source"])
     rows = [normalize(source_cells(source_name, direction)) for direction in DIRECTIONS]
+    if name == "base":
+        rows[0][6] = correction_frame("base-down-impact-correction-alpha.png")
+        rows[0][7] = correction_frame(
+            "base-down-followthrough-correction-alpha.png", right_half=True
+        )
     sheet = assemble(rows)
     sheet_name = str(config["sheet"])
     sheet.save(out / sheet_name, optimize=True)
@@ -150,7 +177,7 @@ def build_variant(name: str, config: dict[str, object]) -> dict[str, object]:
     appearance["composition"] = "vollstaendig gemalte Figur; keine angeklebten Ruestungs-Overlays"
     manifest = {
         "format": "ravenmoor-painted-character-v1",
-        "status": "awaiting-author-approval",
+        "status": "ready-for-live-integration-test",
         "frameSize": [CELL, CELL],
         "sheetSize": [CELL * 9, CELL * 4],
         "directions": list(DIRECTIONS),
@@ -161,8 +188,9 @@ def build_variant(name: str, config: dict[str, object]) -> dict[str, object]:
         "variant": appearance,
         "notes": [
             "Vier Richtungsfolgen wurden jeweils als zusammenhaengendes 3x3-Animationsblatt gemalt.",
-            "Diese Stilfreigabe hat Vorrang vor Variantenmenge.",
-            "Weitere Ruestungsvarianten erst nach Abnahme dieser zwei Vollfiguren-Saetze.",
+            "Gehen ist mit vier eigenen Frames in down, left, right und up vollstaendig vorhanden.",
+            "Basis down impact/followthrough wurden nach Autorhinweis als natuerlicher Einhandhieb korrigiert.",
+            "Live-Test vor weiteren Ruestungsvarianten.",
         ],
     }
     (out / "aldric-painted-v1.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
