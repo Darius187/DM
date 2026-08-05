@@ -413,6 +413,30 @@ export const SCHMIED_VERRAT = {
   nachrichtTage: 2,    // so lange braucht die Nachricht vom Fall der Burg
 } as const;
 
+// R238 (Doku 08, Autor): VERSCHLEPPUNG beim Ueberfall. Nur WENIGE (2-5, je
+// Spielstand verschieden) und NIEMAND Wichtiges - Questgeber, Handwerker und
+// Schluesselfiguren bleiben verschont, sonst reisst der Ueberfall Loecher in
+// Wirtschaft und Geschichte. Befreit werden sie im KLOSTER, zusammen mit
+// Verschleppten aus anderen Doerfern.
+export const VERSCHLEPPUNG = {
+  minOpfer: 2,
+  maxOpfer: 5,
+  ort: 'kloster',        // wo sie gefangen gehalten werden
+  // Diese Bewohner werden NIE verschleppt (Questgeber/Schluesselrollen).
+  unantastbar: [
+    'schulze', 'johannes', 'kuester', 'heinrich', 'wirtin', 'magdalena',
+    'schmied', 'lehrling', 'mueller', 'baecker', 'zimmermann', 'hebamme',
+    'stallknecht', 'holzfaeller', 'fischer', 'imker', 'haendler',
+  ] as ReadonlyArray<string>,
+  // Mitgefangene aus ANDEREN Doerfern - sie machen den Kloster-Kerker voll
+  // und zeigen: Ravensmoor ist nicht das einzige Dorf, das blutet.
+  fremde: [
+    { name: 'Köhlerin Frieda', figur: 'frau1' },
+    { name: 'Fuhrmann Kilian', figur: 'bauer2' },
+    { name: 'Der taube Jost', figur: 'bauer1' },
+  ],
+} as const;
+
 // R230 (Doku 07/3): LAGERVOEGTE - zivile Verwalter mancher Feindlager.
 // Menschen, die fuer den Feind die Wirtschaft fuehren (Motive: Doku 07/2).
 // Sie kaempfen NIE; ein Lager MIT Vogt produziert schneller. Der Spieler

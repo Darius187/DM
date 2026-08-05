@@ -3835,3 +3835,21 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
 - OFFEN (Autor): wo werden die Verschleppten befreit? Das
   Verschleppten-System des versunkenen Bezirks (R224) traegt die
   Mechanik bereits - es braucht nur einen Ort und die Namens-Uebergabe.
+
+## R238 - Verschleppte ins Kloster, Deckel 2-5, Startklinge (Autor R238)
+- VERSCHLEPPUNG (data/welt.ts): minOpfer 2, maxOpfer 5 - die Zahl wird
+  EINMAL je Spielstand ausgewuerfelt (verschleppDeckel), also faellt
+  jeder Durchgang anders aus. unantastbar-Liste schuetzt alle
+  Questgeber/Schluesselrollen (Schulze, Pater, Schmied, Lehrling,
+  Mueller, Baecker, Wirtin, Hebamme ...); zusaetzlich schuetzt das
+  questgeber-Feld generisch. Getroffen werden nur einfache Bewohner
+  und Kinder.
+- ORT: das KLOSTER (VERSCHLEPPUNG.ort). setzeKlosterGefangene baut die
+  gefangene-Liste der Karte aus den noch nicht Befreiten - dazu drei
+  FREMDE aus anderen Doerfern (Koehlerin Frieda, Fuhrmann Kilian, Der
+  taube Jost), damit sichtbar wird: Ravensmoor blutet nicht allein.
+  Die Befreiungs-Mechanik ist die aus R224 (versunkener Bezirk), also
+  schon erprobt - befreien, dann laeuft der Gerettete zum Ausgang.
+- STARTWAFFE: "Rostige Klinge" (val 5) -> "Solide Klinge" (val 6). Der
+  Held traegt damit dasselbe Handwerk, das im Dorf taeglich entsteht
+  (Namensstufe aus dem Guete-System, Mitte).

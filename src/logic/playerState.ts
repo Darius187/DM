@@ -44,7 +44,10 @@ export interface PlayerState {
 }
 
 export function newPlayerState(): PlayerState {
-  const startWeapon: Item = { kind: 'weapon', name: 'Rostige Klinge', rarity: 0, val: 5, boni: [], weaponClass: 'schwert' };
+  // R238 (Autor): keine rostige Altlast mehr - der Held trägt eine SOLIDE
+  // Klinge aus der Ravensmoorer Esse. Damit ist die Startwaffe dasselbe
+  // Handwerk, das im Dorf jeden Tag entsteht (Waffenkammer, Güte-Mitte).
+  const startWeapon: Item = { kind: 'weapon', name: 'Solide Klinge', rarity: 0, val: 6, boni: [], weaponClass: 'schwert' };
   const p: PlayerState = {
     // xpNext aus der KURVE (Autorbug R40: hier stand fest 45 -> Stufe 2 nach 3
     // Gegnern, obwohl firstLevel längst 300 ist). Jetzt korrekt xpForNextLevel(1).

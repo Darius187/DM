@@ -87,7 +87,7 @@ import type { Form } from '../logic/formationen';
 import { TAGES_PRODUKTION, DORF_LAGER_START, ABGABE, VERARBEITUNG, GOLDERZ_PRO_TAG, golderzFuerAbgabe, WAREN_NAMEN, PRODUZENTEN, SCHMIEDE_FERTIGUNG, AUFBAU_HOLZ_JE_STUFE, skaliereProduktion , LEHRLING_SCHMIEDE, schmiedeArbeit, wuerfleDorfLagerStart, VEREDELN } from '../data/wirtschaft';
 import { lagerEinlagern, wareName, VERKAUFSPREIS, WARN_SCHWELLE, WARENGRUPPEN, KAPAZITAET, GRUPPEN_NAMEN, gruppenFuellstand, essenTick, ESSEN } from '../data/dorfOekonomie';
 import { feldTick, viehTick, viehStart, viehGerissen, FELD_REGELN, type FeldZustand, type ViehBestand } from '../data/dorfVieh';
-import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, AUSHOEHLUNG, MISSION_TRUPP, KANAL_TREIBGUT, FELDBAU_ABWEHR, FELD_VERSORGER, FELD_VERSORGER_WERTE, LAGERVOGT, SCHMIED_VERRAT, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
+import { TAG, KOPFGELD, EINFALL, SPAEHER, FELDZUG, FEINDLAGER_VARIANTEN, STADTMAUER, PORTAL_STADT, KIRCHE_VORPLATZ, KIRCHE_TUER_REICHWEITE_PX, KAEMPFER, WETTER, FIGUR_GROESSE, FIGUR_SCHATTEN, SCHILF_DICHTE, MOOR_NEBEL, WELLEN_PLAN, KORRIDOR, SPUREN, WASSER_MAL, VORWAERM_PAUSE_MS, GLOCKEN_ALARM, AUSHOEHLUNG, MISSION_TRUPP, KANAL_TREIBGUT, FELDBAU_ABWEHR, FELD_VERSORGER, FELD_VERSORGER_WERTE, LAGERVOGT, SCHMIED_VERRAT, VERSCHLEPPUNG, tageszeitLabel, wetterName, tagesphaseName } from '../data/welt';
 import type { FeindlagerVariante, WallForm } from '../data/welt';
 import { tagesZiel, npcZeitversatz, pausenPlatz } from '../data/dorfleben';
 import { zeichneStation } from '../gfx/stationsArt';
@@ -427,6 +427,8 @@ export class WorldScene extends CombatScene {
   // Sie sind dauerhaft fort - kein Respawn beim naechsten Besuch - und
   // fehlen beim Appell in der Zuflucht, bis sie befreit werden.
   private verschleppteBewohner: string[] = [];
+  // R238: wie viele diesmal? 2-5, einmal je Spielstand ausgewuerfelt.
+  private verschleppDeckel: number | null = null;
   // R232 (Doku 07/4b+4c): der Verrats-Bogen des Schmieds. rufTag = Tag des
   // ersten Lehrlings-Rufs (die Einarbeitung ist etabliert), verratTag = Tag
   // des Abgangs; die Schalter schmiedVerrat/burgGefallen leben in flags.
@@ -522,6 +524,7 @@ export class WorldScene extends CombatScene {
     for (const l of this.feindzug.lager) this.wuerfleLagervogt(l.karte);   // R230: manche Start-Lager haben einen Vogt
     this.gefangeneVoegte = [];
     this.verschleppteBewohner = [];   // R237: niemand verschleppt
+    this.verschleppDeckel = null;    // R238: Opferzahl neu auswuerfeln
     this.lehrlingRufTag = null;   // R232: Verrats-Uhr frisch
     this.verratTag = null;
     this.feldzugWelleGespawnt = false;
@@ -7594,6 +7597,10 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
       }
       this.npcEnts.push({ ...n, sprite, label: lbl, curX: n.x, curY: n.y });
     }
+    // R238 (Doku 08, Autor): im KLOSTER sitzen die beim Ueberfall
+    // Verschleppten - zusammen mit Gefangenen aus anderen Doerfern. Wer
+    // schon befreit wurde, steht nicht mehr da.
+    if (a.id === VERSCHLEPPUNG.ort) this.setzeKlosterGefangene(a);
     // R224: die Verschleppten aufbauen (Karten mit gefangene-Liste)
     for (const v of this.verschleppte) { v.sprite.destroy(); v.label.destroy(); }
     this.verschleppte = [];
@@ -12916,6 +12923,16 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // Die Monster toeten ihn NICHT: sie wollen ihn lebend (Doku R224).
   private verschleppeBewohner(n: NpcEntity): void {
     if (this.verschleppteBewohner.includes(n.name)) return;
+    // R238 (Autor): NIEMAND Wichtiges wird verschleppt - Questgeber und
+    // Schluesselrollen bleiben verschont, sonst reisst der Ueberfall Loecher
+    // in Wirtschaft und Geschichte. Und es sind immer nur WENIGE (2-5 je
+    // Spielstand): der Deckel wuerfelt sich beim ersten Opfer aus.
+    if (VERSCHLEPPUNG.unantastbar.includes(n.id) || n.questgeber) return;
+    if (this.verschleppDeckel === null) {
+      const spanne = VERSCHLEPPUNG.maxOpfer - VERSCHLEPPUNG.minOpfer + 1;
+      this.verschleppDeckel = VERSCHLEPPUNG.minOpfer + Math.floor(Math.random() * spanne);
+    }
+    if (this.verschleppteBewohner.length >= this.verschleppDeckel) return;
     this.verschleppteBewohner.push(n.name);
     n.sprite.setVisible(false);
     n.label.setVisible(false);
@@ -12928,6 +12945,26 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
   // Verschleppten (fuer Erzaehl-Beat, Quest und Anzeige).
   vermissteBewohner(): string[] {
     return [...this.verschleppteBewohner];
+  }
+
+  // R238 (Doku 08): das Kloster ist der Kerker. Die Verschleppten aus
+  // Ravensmoor sitzen hier - dazu Gefangene aus anderen Doerfern, damit
+  // sichtbar wird: Ravensmoor ist nicht das einzige Dorf, das blutet.
+  // Wer befreit ist, verschwindet aus der Liste und steht nie wieder da.
+  private setzeKlosterGefangene(a: AreaData): void {
+    const noch = this.verschleppteBewohner.filter((n) => !this.geretteteNamen.includes(n));
+    const alle = [
+      ...noch.map((name) => ({ name, figur: 'bauer1' })),
+      ...VERSCHLEPPUNG.fremde.filter((f) => !this.geretteteNamen.includes(f.name)),
+    ];
+    if (!alle.length) { a.gefangene = []; return; }
+    // In einer Reihe am Kartenrand-nahen Lagerplatz (Kloster-Mitte-West).
+    const x0 = Math.floor(a.w * 0.32), y0 = Math.floor(a.h * 0.5);
+    a.gefangene = alle.map((g, i) => ({
+      x: (x0 + (i % 3) * 2) * TILE + 16,
+      y: (y0 + Math.floor(i / 3) * 2) * TILE + 16,
+      name: g.name, figur: g.figur,
+    }));
   }
 
   // Ein gerissenes Tier bleibt als Kadaver liegen, an dem die Monster fressen.

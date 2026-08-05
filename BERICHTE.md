@@ -2628,3 +2628,21 @@ OFFEN: WO die Verschleppten befreit werden (deine Entscheidung) - die
 Mechanik aus dem versunkenen Bezirk traegt das schon, es fehlt nur der
 Ort. Ausserdem noch offen: Evakuierungs-Befehl + echtes Folgen der
 Karawane ueber die Karten (naechster Schritt aus Doku 08).
+
+## R238 - Kloster-Kerker, Verschlepptenzahl, Startklinge
+FERTIG UND VERIFIZIERT:
+1. Es trifft nur WENIGE und NIEMAND Wichtiges: die Opferzahl wuerfelt
+   sich je Spielstand zwischen 2 und 5 aus. Im Test wurden ALLE 93
+   Bewohner zur Verschleppung angeboten - es blieben genau 5 haengen
+   (Magd Trine, Bauer Veit, Baeuerin Grete, Bauer Ott, Baeuerin Hilde),
+   und von den sechs geprueften Schluesselfiguren wurde KEINE getroffen.
+2. Sie sitzen im KLOSTER: dort standen im Test 5 Ravensmoorer plus die
+   3 Gefangenen aus anderen Doerfern, und "Magd Trine befreien (E)"
+   liess sich ausloesen. Die Befreiungs-Mechanik ist die erprobte aus
+   dem versunkenen Bezirk.
+3. Der Held startet mit einer "Soliden Klinge" (Wert 6) statt der
+   rostigen Altlast - Schmiedearbeit aus Ravensmoor.
+EHRLICHE ANMERKUNG: ein Befreiter zaehlt erst als GERETTET, wenn er
+den Ausgang erreicht hat (so war es schon im versunkenen Bezirk) -
+im Test steht direkt nach dem Befreien darum noch 0 in der Liste.
+TESTS: tsc sauber, 526/526 gruen, Browser-Beweis fuer alle drei Punkte.
