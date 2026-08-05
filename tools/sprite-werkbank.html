@@ -11,7 +11,7 @@
   main { display:flex; gap:18px; padding:16px; flex-wrap:wrap; align-items:flex-start; }
   .buehne { background:#1f1b14; border:1px solid #3a3126; padding:12px; }
   canvas { display:block; image-rendering:pixelated; background:#26221a; }
-  .steuer { min-width:300px; max-width:360px; display:flex; flex-direction:column; gap:12px; }
+  .steuer { min-width:300px; max-width:380px; display:flex; flex-direction:column; gap:12px; }
   fieldset { border:1px solid #3a3126; padding:8px 10px; margin:0; }
   legend { color:#c9a227; font-size:12px; letter-spacing:1px; padding:0 4px; }
   label { display:block; margin:3px 0; cursor:pointer; }
@@ -20,26 +20,26 @@
   .knopf:hover { background:#3a3020; }
   .knopf.an { background:#4a3a14; border-color:#c9a227; color:#f0e2b8; }
   .knopf.fehlt { opacity:0.4; border-style:dashed; border-color:#7a3a2a; cursor:not-allowed; }
-  .knopf.altq { border-color:#6a5a8a; }
   .reihe { display:flex; gap:5px; flex-wrap:wrap; }
   .warn { color:#e08a5a; font-size:12px; line-height:1.5; }
   .ok { color:#8fb35a; }
   .rot { color:#e05a4a; }
   code { background:#26221a; padding:1px 4px; }
-  #checkliste { font-size:12px; line-height:1.7; max-height:260px; overflow-y:auto; }
+  #checkliste { font-size:12px; line-height:1.7; max-height:300px; overflow-y:auto; }
   #checkliste .da::before { content:'\2713 '; color:#8fb35a; }
   #checkliste .fehltZ { color:#e05a4a; }
   #checkliste .fehltZ::before { content:'\2717 '; }
+  #checkliste .notiz { color:#9a8f78; }
   #lieferstand { font-size:13px; margin-bottom:6px; }
 </style>
 </head>
 <body>
 <header>
   <h1>SPRITE-WERKBANK &mdash; Aldric Kampf V2</h1>
-  <div class="hint">Reine Pruefseite. Aendert NICHTS am Spiel &mdash; laedt die Codex-Sheets aus
-  <code>assets/sprites/hero-combat-v2/</code>. NEUES Format: <code>*-full-9x4.png</code> +
-  <code>hero-layers.json</code> (9 Spalten: Stehen, Gehen 1-4, Schlag 3, Block).
-  Solange das fehlt, laufen Schlag/Block uebers ALTE Paket (<code>*-attack-3x4</code>/<code>*-block-1x4</code>).</div>
+  <div class="hint">Reine Pruefseite. Aendert NICHTS am Spiel &mdash; laedt die Codex-Lieferung (Runde 2) aus
+  <code>screenshots/codex_v2/</code>: je Ebene ein 1152x512-Sheet (9 Spalten: Stehen, Gehen 1-4,
+  Schlag 3, Block &times; 4 Richtungen) + JSON mit Ankern. Die Checkliste vergleicht gegen die
+  bestellte Varianten-Liste (<code>docs/CODEX-VARIANTEN-LISTE.md</code>, Abschnitt 6).</div>
 </header>
 <main>
   <div>
@@ -49,17 +49,23 @@
       <div id="quellHinweis" class="warn" style="margin-top:4px"></div>
     </div>
     <fieldset style="margin-top:12px">
-      <legend>LIEFER-CHECKLISTE (Abschnitt 6 der Varianten-Liste)</legend>
+      <legend>LIEFER-CHECKLISTE (bestellt lt. Varianten-Liste)</legend>
       <div id="lieferstand"></div>
       <div id="checkliste"></div>
     </fieldset>
   </div>
   <div class="steuer">
     <fieldset>
+      <legend>FIGUR</legend>
+      <div class="reihe" id="figur"></div>
+      <div class="hint" style="margin-top:6px">Alle drei nutzen DENSELBEN Koerper - Waffen/Schilde
+      kommen aus dem Aldric-Satz und muessen auf jeder Figur sitzen.</div>
+    </fieldset>
+    <fieldset>
       <legend>BLICKRICHTUNG</legend>
       <div class="reihe" id="richtung"></div>
       <label style="margin-top:8px">
-        <input type="checkbox" id="tausch"> Zeilen links/rechts TAUSCHEN (Fix-Vorschau)
+        <input type="checkbox" id="tausch"> Zeilen links/rechts TAUSCHEN (Diagnose)
       </label>
       <div class="warn" id="tauschHinweis"></div>
     </fieldset>
@@ -72,7 +78,7 @@
         <button class="knopf" data-anim="block">Block</button>
         <button class="knopf" data-anim="einzel">Einzelbild</button>
       </div>
-      <label style="margin-top:8px">Einzelbild-Nr: <input type="range" id="frame" min="0" max="2" value="0"> <span id="frameTxt"></span></label>
+      <label style="margin-top:8px">Einzelbild-Nr: <input type="range" id="frame" min="0" max="8" value="0"> <span id="frameTxt"></span></label>
       <label><input type="checkbox" id="loop" checked> Endlos abspielen</label>
       <label>Tempo: <input type="range" id="tempo" min="20" max="200" value="100"> <span id="tempoTxt">100%</span></label>
     </fieldset>
@@ -88,7 +94,7 @@
       <legend>RUESTUNG (Ebene ueber dem Koerper)</legend>
       <div class="reihe" id="ruestung"></div>
       <label style="margin-top:8px"><input type="checkbox" id="umhang"> Umhang (eigene Ebene)</label>
-      <div class="hint" id="umhangHinweis"></div>
+      <div class="reihe" id="kopf" style="margin-top:4px"></div>
     </fieldset>
     <fieldset>
       <legend>ANSICHT</legend>
@@ -104,59 +110,76 @@
   </div>
 </main>
 <script>
-const BASIS = '../assets/sprites/hero-combat-v2/';
+const BASIS = '../screenshots/codex_v2/';
 const RICHTUNGEN = ['down', 'left', 'right', 'up'];
 const RICHT_NAMEN = { down: 'UNTEN', left: 'LINKS', right: 'RECHTS', up: 'OBEN' };
-
-// ---- ERWARTETE LIEFERUNG (verbindliche Namen aus docs/CODEX-VARIANTEN-LISTE.md, Abschnitt 6) ----
-const NEU = {
-  manifest: 'hero-layers.json',
-  body: 'body-full-9x4.png',
-  cape: 'cape-full-9x4.png',
-  waffen: [
-    ['solide-klinge', 'Solide Klinge'],
-    ['kurzschwert', 'Kurzschwert'],
-    ['streitkolben', 'Streitkolben'],
-    ['langschwert', 'Langschwert'],
-    ['streitaxt', 'Streitaxt'],
-    ['falchion', 'Falchion'],
-    ['hellebarde', 'Hellebarde'],
-    ['kriegshammer', 'Kriegshammer'],
-  ],
-  schilde: [
-    ['holzschild', 'Holzschild'],
-    ['rundschild', 'Rundschild'],
-    ['beschlagener-rundschild', 'Beschl. Rundschild'],
-    ['eisenschild', 'Eisenschild'],
-    ['turmschild', 'Turmschild'],
-  ],
-  ruestungen: [
-    ['lumpen', 'Lumpen'],
-    ['lederwams', 'Lederwams'],
-    ['gambeson', 'Gambeson'],
-    ['kettenhemd', 'Kettenhemd'],
-    ['plattenrock', 'Plattenrock'],
-  ],
-};
-const neuWaffe = (id) => `weapon-${id}-full-9x4.png`;
-const neuSchild = (id) => `shield-${id}-full-9x4.png`;
-const neuRuestung = (id) => `armor-${id}-full-9x4.png`;
-
-// ---- ALTES Paket (Fallback, nur Schlag/Block) ----
-const ALT_WAFFEN = { 'alt-schlicht': 'weapon-sword-simple', 'alt-meister': 'weapon-sword-master' };
-const ALT_SCHILDE = { 'alt-holz': 'shield-round-wood', 'alt-beschlagen': 'shield-round-reinforced' };
-
 // 9x4-Spalten: 0 Stehen, 1-4 Gehen, 5-7 Schlag, 8 Block
-const SPALTEN_NAMEN = ['idle', 'walk1', 'walk2', 'walk3', 'walk4', 'windup', 'impact', 'followthrough', 'block'];
+const SPALTEN_NAMEN = ['idle', 'walk_1', 'walk_2', 'walk_3', 'walk_4', 'windup', 'impact', 'followthrough', 'block'];
+
+// ---- Gelieferte Ebenen (Codex Runde 2, laut docs/handoff/FIGUREN-V2-UEBERGABE.md) ----
+const FIGUREN = { aldric: 'Aldric', soldier: 'Soldat', archer: 'Schuetze' };
+const WAFFEN = [ // [wert, anzeige, pfad] - Waffen/Schilde liegen im Aldric-Satz, Koerper ist identisch
+  ['keine', 'keine', null],
+  ['sword-simple', 'Schlichtes Schwert', 'aldric/weapon-sword-simple.png'],
+  ['sword-master', 'Meisterklinge', 'aldric/weapon-sword-master.png'],
+  ['axe', 'Streitaxt', 'aldric/weapon-axe.png'],
+  ['bow', 'Bogen', 'aldric/weapon-bow.png'],
+];
+const SCHILDE = [
+  ['keins', 'keins', null],
+  ['round-wood', 'Rundschild (Holz)', 'aldric/shield-round-wood.png'],
+  ['round-reinforced', 'Beschl. Rundschild', 'aldric/shield-round-reinforced.png'],
+];
+const RUESTUNGEN = [
+  ['keine', 'keine (nur Hemd)', null],
+  ['stoffkittel', 'Stoffkittel', 'aldric/armor-stoffkittel.png'],
+  ['lederwams', 'Lederwams', 'aldric/armor-lederwams.png'],
+  ['gambeson', 'Gambeson', 'aldric/armor-gambeson.png'],
+  ['kettenhemd', 'Kettenhemd', 'aldric/armor-kettenhemd.png'],
+];
+const KOEPFE = { // je Figur
+  aldric: [],
+  soldier: [['helmet', 'Helm', 'soldier/head-helmet.png']],
+  archer: [['hood', 'Gugel', 'archer/head-hood.png']],
+};
+const UMHANG_PFAD = 'aldric/cloak-reiseumhang.png';
+const koerperPfad = (figur) => `${figur}/body.png`;
+
+// ---- BESTELLT lt. Varianten-Liste Abschnitt 6 -> was davon liegt in der Lieferung? ----
+// [Bestell-Name, gelieferter Pfad oder null, Notiz]
+const BESTELLT = [
+  ['body-full (Koerper-Basis)', 'aldric/body.png', 'geliefert als body.png'],
+  ['cape-full (Umhang)', UMHANG_PFAD, 'geliefert als cloak-reiseumhang'],
+  ['armor-lumpen', 'aldric/armor-stoffkittel.png', 'geliefert als stoffkittel - Namensfrage'],
+  ['armor-lederwams', 'aldric/armor-lederwams.png', ''],
+  ['armor-gambeson', 'aldric/armor-gambeson.png', ''],
+  ['armor-kettenhemd', 'aldric/armor-kettenhemd.png', ''],
+  ['armor-plattenrock', null, ''],
+  ['weapon-solide-klinge', 'aldric/weapon-sword-simple.png', 'geliefert als sword-simple'],
+  ['weapon-kurzschwert', null, ''],
+  ['weapon-streitkolben', null, ''],
+  ['weapon-langschwert', null, ''],
+  ['weapon-streitaxt', 'aldric/weapon-axe.png', 'geliefert als axe'],
+  ['weapon-falchion', null, ''],
+  ['weapon-hellebarde', null, ''],
+  ['weapon-kriegshammer', null, ''],
+  ['shield-holzschild', null, ''],
+  ['shield-rundschild', 'aldric/shield-round-wood.png', 'geliefert als round-wood'],
+  ['shield-beschlagener-rundschild', 'aldric/shield-round-reinforced.png', 'geliefert als round-reinforced'],
+  ['shield-eisenschild', null, ''],
+  ['shield-turmschild', null, ''],
+  ['Manifest (hero-layers.json)', 'manifest.json', 'geliefert als manifest.json + JSON je Ebene'],
+];
+const ZUSATZ = 'Zusaetzlich geliefert (nicht bestellt): Meisterklinge, Bogen, Soldat (Helm), Schuetze (Gugel).';
 
 const zustand = {
-  richtung: 'down', anim: 'attack', frame: 0, zoom: 2,
-  waffe: 'alt-schlicht', schild: 'keins', ruestung: 'keine', umhang: false,
+  figur: 'aldric', richtung: 'down', anim: 'attack', frame: 0, zoom: 2,
+  waffe: 'sword-simple', schild: 'keins', ruestung: 'keine', umhang: false, kopf: 'keiner',
   tausch: false, gras: true, anker: false, raster: false, loop: true, tempo: 100,
   attackFrame: 0, walkFrame: 0,
 };
 
-const bilder = {}; let specAlt = null; let specNeu = null;
+const bilder = {}; let manifest = null; let bodySpec = null;
 const laden = (pfad) => new Promise((res) => {
   const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = BASIS + pfad;
 });
@@ -166,111 +189,77 @@ const ladenJson = async (pfad) => {
 };
 
 async function start() {
-  specAlt = await ladenJson('hero-combat-v2.json');
-  specNeu = await ladenJson(NEU.manifest);
-
-  // Neue Dateien (Soll-Lieferung)
-  const neuDateien = [NEU.body, NEU.cape];
-  for (const [id] of NEU.waffen) neuDateien.push(neuWaffe(id));
-  for (const [id] of NEU.schilde) neuDateien.push(neuSchild(id));
-  for (const [id] of NEU.ruestungen) neuDateien.push(neuRuestung(id));
-  // Alte Dateien (Fallback)
-  const altDateien = ['body-attack-3x4.png', 'body-block-1x4.png'];
-  for (const w of Object.values(ALT_WAFFEN)) altDateien.push(`${w}-attack-3x4.png`, `${w}-block-1x4.png`);
-  for (const s of Object.values(ALT_SCHILDE)) altDateien.push(`${s}-attack-3x4.png`, `${s}-block-1x4.png`);
-
-  const alle = [...neuDateien, ...altDateien];
-  await Promise.all(alle.map(async (d) => { bilder[d] = await laden(d); }));
-
-  baueCheckliste(neuDateien);
+  manifest = await ladenJson('manifest.json');
+  bodySpec = await ladenJson('aldric/body.json');
+  const dateien = new Set(['manifest.json']);
+  for (const f of Object.keys(FIGUREN)) dateien.add(koerperPfad(f));
+  for (const [, , p] of [...WAFFEN, ...SCHILDE, ...RUESTUNGEN]) if (p) dateien.add(p);
+  for (const liste of Object.values(KOEPFE)) for (const [, , p] of liste) dateien.add(p);
+  dateien.add(UMHANG_PFAD);
+  for (const [, p] of BESTELLT) if (p) dateien.add(p);
+  dateien.delete('manifest.json');
+  await Promise.all([...dateien].map(async (d) => { bilder[d] = await laden(d); }));
+  baueCheckliste();
   baueKnoepfe();
   requestAnimationFrame(schleife);
 }
 
-function baueCheckliste(neuDateien) {
-  const el = document.getElementById('checkliste');
-  const zeilen = [];
-  let da = 0;
-  const soll = [[NEU.manifest, !!specNeu], ...neuDateien.map((d) => [d, !!bilder[d]])];
-  for (const [name, ok] of soll) {
+function baueCheckliste() {
+  const zeilen = []; let da = 0;
+  for (const [name, pfad, notiz] of BESTELLT) {
+    const ok = pfad === 'manifest.json' ? !!manifest : (pfad ? !!bilder[pfad] : false);
     if (ok) da++;
-    zeilen.push(`<div class="${ok ? 'da' : 'fehltZ'}"><code>${name}</code></div>`);
+    zeilen.push(`<div class="${ok ? 'da' : 'fehltZ'}"><code>${name}</code>`
+      + (ok && notiz ? ` <span class="notiz">${notiz}</span>` : '') + '</div>');
   }
-  el.innerHTML = zeilen.join('');
-  const gesamt = soll.length;
-  const st = document.getElementById('lieferstand');
-  st.innerHTML = da === gesamt
+  document.getElementById('checkliste').innerHTML =
+    zeilen.join('') + `<div class="notiz" style="margin-top:6px">${ZUSATZ}</div>`;
+  const gesamt = BESTELLT.length;
+  document.getElementById('lieferstand').innerHTML = da === gesamt
     ? `<span class="ok">Lieferstand ${da}/${gesamt} - VOLLSTAENDIG</span>`
-    : `<span class="rot">Lieferstand ${da}/${gesamt}</span> - was fehlt, ist rot. `
-      + `Fallback aufs alte Paket ${bilder['body-attack-3x4.png'] ? 'aktiv (nur Schlag/Block)' : 'NICHT verfuegbar'}.`;
+    : `<span class="rot">Lieferstand ${da}/${gesamt}</span> - was fehlt, ist rot markiert.`;
 }
 
 // ---- Knoepfe ----
 function baueKnoepfe() {
   const reihe = (id, eintraege, schluessel) => {
-    // eintraege: [wert, anzeige, verfuegbar, altQuelle]
+    // eintraege: [wert, anzeige, pfad|null] - pfad null = "keine"-Eintrag (immer frei)
     const el = document.getElementById(id);
     el.innerHTML = '';
-    for (const [wert, anzeige, verfuegbar, altq] of eintraege) {
+    for (const [wert, anzeige, pfad] of eintraege) {
+      const frei = !pfad || !!bilder[pfad];
       const b = document.createElement('button');
-      b.className = 'knopf' + (zustand[schluessel] === wert ? ' an' : '')
-        + (verfuegbar ? '' : ' fehlt') + (altq ? ' altq' : '');
+      b.className = 'knopf' + (zustand[schluessel] === wert ? ' an' : '') + (frei ? '' : ' fehlt');
       b.textContent = anzeige;
-      b.title = verfuegbar ? '' : 'Datei fehlt noch (siehe Liefer-Checkliste)';
-      if (verfuegbar) b.onclick = () => { zustand[schluessel] = wert; baueKnoepfe(); };
+      b.title = frei ? '' : 'Datei fehlt (siehe Liefer-Checkliste)';
+      if (frei) b.onclick = () => { zustand[schluessel] = wert; baueKnoepfe(); };
       el.appendChild(b);
     }
   };
-  reihe('richtung', RICHTUNGEN.map((r) => [r, RICHT_NAMEN[r], true, false]), 'richtung');
+  reihe('figur', Object.entries(FIGUREN).map(([f, n]) => [f, n, koerperPfad(f)]), 'figur');
+  reihe('richtung', RICHTUNGEN.map((r) => [r, RICHT_NAMEN[r], null]), 'richtung');
+  reihe('waffe', WAFFEN, 'waffe');
+  reihe('schild', SCHILDE, 'schild');
+  reihe('ruestung', RUESTUNGEN, 'ruestung');
+  const koepfe = KOEPFE[zustand.figur];
+  if (!koepfe.some(([w]) => w === zustand.kopf)) zustand.kopf = 'keiner';
+  reihe('kopf', koepfe.length ? [['keiner', 'kein Kopfschutz', null], ...koepfe] : [], 'kopf');
 
-  const waffen = [['keine', 'keine', true, false]];
-  for (const [id, name] of NEU.waffen) waffen.push([id, name, !!bilder[neuWaffe(id)], false]);
-  for (const [id, basis] of Object.entries(ALT_WAFFEN))
-    waffen.push([id, id.replace('alt-', 'ALT: '), !!bilder[`${basis}-attack-3x4.png`], true]);
-  reihe('waffe', waffen, 'waffe');
-
-  const schilde = [['keins', 'keins', true, false]];
-  for (const [id, name] of NEU.schilde) schilde.push([id, name, !!bilder[neuSchild(id)], false]);
-  for (const [id, basis] of Object.entries(ALT_SCHILDE))
-    schilde.push([id, id.replace('alt-', 'ALT: '), !!bilder[`${basis}-attack-3x4.png`], true]);
-  reihe('schild', schilde, 'schild');
-
-  const ruestungen = [['keine', 'keine (nur Hemd)', true, false]];
-  for (const [id, name] of NEU.ruestungen) ruestungen.push([id, name, !!bilder[neuRuestung(id)], false]);
-  reihe('ruestung', ruestungen, 'ruestung');
-
-  const umhangDa = !!bilder[NEU.cape];
   const u = document.getElementById('umhang');
-  u.disabled = !umhangDa;
-  document.getElementById('umhangHinweis').textContent =
-    umhangDa ? '' : 'cape-full-9x4.png fehlt noch - Schalter gesperrt.';
-
-  const koerperNeu = !!bilder[NEU.body];
+  u.disabled = !bilder[UMHANG_PFAD];
   document.querySelectorAll('[data-anim]').forEach((b) => {
-    const a = b.dataset.anim;
-    const braucht9x4 = a === 'stehen' || a === 'gehen';
-    const verfuegbar = !braucht9x4 || koerperNeu;
-    b.classList.toggle('an', a === zustand.anim);
-    b.classList.toggle('fehlt', !verfuegbar);
-    b.title = verfuegbar ? '' : 'Braucht body-full-9x4.png (im Alt-Paket nicht vorhanden)';
-    b.onclick = verfuegbar
-      ? () => { zustand.anim = a; zustand.frame = 0; zustand.attackFrame = 0; zustand.walkFrame = 0; phase = 0; baueKnoepfe(); }
-      : null;
+    b.classList.toggle('an', b.dataset.anim === zustand.anim);
+    b.onclick = () => {
+      zustand.anim = b.dataset.anim;
+      zustand.frame = 0; zustand.attackFrame = 0; zustand.walkFrame = 0; phase = 0;
+      baueKnoepfe();
+    };
   });
   document.querySelectorAll('[data-zoom]').forEach((b) => {
     b.classList.toggle('an', +b.dataset.zoom === zustand.zoom);
     b.onclick = () => { zustand.zoom = +b.dataset.zoom; baueKnoepfe(); };
   });
-  // Einzelbild-Bereich: NEU 0-8, ALT nur Schlag 0-2
-  const f = document.getElementById('frame');
-  f.max = koerperNeu ? 8 : 2;
-  aktualisiereFrameTxt();
-}
-
-function aktualisiereFrameTxt() {
-  const koerperNeu = !!bilder[NEU.body];
-  const name = koerperNeu ? SPALTEN_NAMEN[zustand.frame] : ['windup', 'impact', 'followthrough'][zustand.frame];
-  document.getElementById('frameTxt').textContent = name ?? '';
+  document.getElementById('frameTxt').textContent = SPALTEN_NAMEN[zustand.frame] ?? '';
 }
 
 for (const [id, feld] of [['tausch','tausch'],['gras','gras'],['anker','anker'],['raster','raster'],['loop','loop'],['umhang','umhang']]) {
@@ -285,8 +274,8 @@ document.getElementById('tempo').oninput = (e) => {
 
 function aktualisiereHinweis() {
   document.getElementById('tauschHinweis').innerHTML = zustand.tausch
-    ? '<span class="ok">Tausch AN: so waeren die Richtungen korrekt.</span>'
-    : 'Tausch AUS: Auslieferungszustand. Pruefe, ob LINKS wirklich nach links schaut.';
+    ? '<span class="warn">Tausch AN: Diagnose-Ansicht (Zeilen 1 und 2 vertauscht).</span>'
+    : 'Tausch AUS: Auslieferungszustand. LINKS muss nach links schauen (Codex-Buildskript normalisiert).';
 }
 aktualisiereHinweis();
 
@@ -297,8 +286,7 @@ function zeileFuer(richtung) {
   return idx;
 }
 
-// Aktuelle 9x4-Spalte (fuer neue Sheets) - haengt am Bewegungs-Zustand
-function spalte9x4() {
+function spalteAktuell() {
   switch (zustand.anim) {
     case 'stehen': return 0;
     case 'gehen': return 1 + zustand.walkFrame;
@@ -309,80 +297,42 @@ function spalte9x4() {
   return 0;
 }
 
-function spaltenName() {
-  if (!bilder[NEU.body] && zustand.anim === 'einzel') {
-    return ['windup', 'impact', 'followthrough'][zustand.frame] ?? 'windup';
-  }
-  return SPALTEN_NAMEN[spalte9x4()] ?? 'idle';
-}
-
-// ---- Animations-Schleife ----
+// ---- Animations-Schleife (Timings aus body.json, Fallback = Uebergabewerte) ----
 let t0 = performance.now(), phase = 0;
 function schleife(t) {
   const dt = t - t0; t0 = t;
   const faktor = 100 / zustand.tempo;
-  const attackTiming = (specNeu?.attackTimingMs) ?? (specAlt?.attackTimingMs) ?? { windup: 140, impact: 80, followthrough: 180 };
-  const walkMs = (specNeu?.walkTimingMs) ?? (specAlt?.walkTimingMs) ?? 120;
+  const tm = bodySpec?.timingMs ?? { walk: 120, windup: 140, impact: 80, followthrough: 180 };
   if (zustand.loop) {
     if (zustand.anim === 'attack') {
-      const dauer = [attackTiming.windup, attackTiming.impact, attackTiming.followthrough][zustand.attackFrame] * faktor;
+      const dauer = [tm.windup, tm.impact, tm.followthrough][zustand.attackFrame] * faktor;
       phase += dt;
       if (phase >= dauer) { phase = 0; zustand.attackFrame = (zustand.attackFrame + 1) % 3; }
     } else if (zustand.anim === 'gehen') {
       phase += dt;
-      if (phase >= walkMs * faktor) { phase = 0; zustand.walkFrame = (zustand.walkFrame + 1) % 4; }
+      if (phase >= (tm.walk ?? 120) * faktor) { phase = 0; zustand.walkFrame = (zustand.walkFrame + 1) % 4; }
     }
   }
   zeichne();
   requestAnimationFrame(schleife);
 }
 
-// ---- Ebenen-Quellen: NEU (9x4) bevorzugt, sonst ALT (attack/block) ----
-// Liefert {img, spalte} oder null (Ebene in diesem Modus nicht darstellbar).
-function ebenenQuelle(typ) {
-  const zielSpalte = spalte9x4();
-  const neuDatei = {
-    body: NEU.body,
-    cape: zustand.umhang ? NEU.cape : null,
-    armor: zustand.ruestung !== 'keine' ? neuRuestung(zustand.ruestung) : null,
-    weapon: zustand.waffe !== 'keine' && !zustand.waffe.startsWith('alt-') ? neuWaffe(zustand.waffe) : null,
-    shield: zustand.schild !== 'keins' && !zustand.schild.startsWith('alt-') ? neuSchild(zustand.schild) : null,
-  }[typ];
-  if (neuDatei && bilder[neuDatei]) return { img: bilder[neuDatei], spalte: zielSpalte };
-
-  // ALT-Fallback: nur body + alt-Waffen/-Schilde, nur Schlag/Block/Einzel(0-2)
-  let altBasis = null;
-  if (typ === 'body') altBasis = 'body';
-  else if (typ === 'weapon' && ALT_WAFFEN[zustand.waffe]) altBasis = ALT_WAFFEN[zustand.waffe];
-  else if (typ === 'shield' && ALT_SCHILDE[zustand.schild]) altBasis = ALT_SCHILDE[zustand.schild];
-  if (!altBasis) return null;
-
-  if (zustand.anim === 'attack' || (zustand.anim === 'einzel' && !bilder[NEU.body] && zustand.frame <= 2)) {
-    const img = bilder[`${altBasis}-attack-3x4.png`];
-    const spalte = zustand.anim === 'attack' ? zustand.attackFrame : zustand.frame;
-    return img ? { img, spalte } : null;
-  }
-  if (zustand.anim === 'block') {
-    const img = bilder[`${altBasis}-block-1x4.png`];
-    return img ? { img, spalte: 0 } : null;
-  }
-  return null; // Stehen/Gehen gibt es im Alt-Paket nicht
+// ---- Aktive Ebenen: Typ -> Bild-Pfad (null = Ebene aus) ----
+function ebenenPfade() {
+  const holen = (liste, wert) => liste.find(([w]) => w === wert)?.[2] ?? null;
+  return {
+    body: koerperPfad(zustand.figur),
+    cloak: zustand.umhang ? UMHANG_PFAD : null,
+    armor: holen(RUESTUNGEN, zustand.ruestung),
+    weapon: holen(WAFFEN, zustand.waffe),
+    shield: holen(SCHILDE, zustand.schild),
+    head: holen(KOEPFE[zustand.figur] ?? [], zustand.kopf),
+  };
 }
 
-// Z-Reihenfolge: Manifest NEU > Manifest ALT (+armor/cape einsortiert) > Notnagel
 function zReihenfolge(richtung) {
-  if (specNeu?.zOrderBackToFront?.[richtung]) return specNeu.zOrderBackToFront[richtung];
-  if (specAlt?.zOrderBackToFront?.[richtung]) {
-    // Ruestung direkt VOR den Koerper haengen, Umhang je Richtung
-    const basis = [...specAlt.zOrderBackToFront[richtung]];
-    const i = basis.indexOf('body');
-    if (i >= 0) basis.splice(i + 1, 0, 'armor');
-    if (richtung === 'up') basis.push('cape'); else basis.unshift('cape');
-    return basis;
-  }
-  return richtung === 'up' ? ['weapon', 'shield', 'body', 'armor', 'cape']
-       : richtung === 'left' ? ['cape', 'weapon', 'body', 'armor', 'shield']
-       : ['cape', 'body', 'armor', 'weapon', 'shield'];
+  return manifest?.zOrderBackToFront?.[richtung]
+    ?? ['cloak', 'body', 'armor', 'weapon', 'shield', 'head'];
 }
 
 // ---- Zeichnen ----
@@ -395,18 +345,15 @@ function zeichne() {
   g.fillRect(0, 0, gr, gr);
 
   const zeile = zeileFuer(zustand.richtung);
+  const spalte = spalteAktuell();
+  const pfade = ebenenPfade();
   const fehlend = [];
   for (const typ of zReihenfolge(zustand.richtung)) {
-    // Ebene ueberhaupt gewuenscht?
-    const gewuenscht = typ === 'body'
-      || (typ === 'cape' && zustand.umhang)
-      || (typ === 'armor' && zustand.ruestung !== 'keine')
-      || (typ === 'weapon' && zustand.waffe !== 'keine')
-      || (typ === 'shield' && zustand.schild !== 'keins');
-    if (!gewuenscht) continue;
-    const q = ebenenQuelle(typ);
-    if (!q) { fehlend.push(typ); continue; }
-    g.drawImage(q.img, q.spalte * 128, zeile * 128, 128, 128, 0, 0, gr, gr);
+    const pfad = pfade[typ];
+    if (!pfad) continue;
+    const im = bilder[pfad];
+    if (!im) { fehlend.push(typ); continue; }
+    g.drawImage(im, spalte * 128, zeile * 128, 128, 128, 0, 0, gr, gr);
   }
 
   if (zustand.raster) {
@@ -414,24 +361,23 @@ function zeichne() {
     for (let i = 0; i <= 8; i++) { const p = i * gr / 8;
       g.beginPath(); g.moveTo(p, 0); g.lineTo(p, gr); g.moveTo(0, p); g.lineTo(gr, p); g.stroke(); }
   }
-  if (zustand.anker) {
-    const sn = spaltenName();
-    const a = (specNeu?.anchors?.[zustand.richtung]?.[sn]) ?? (specAlt?.anchors?.[zustand.richtung]?.[sn]);
+  if (zustand.anker && bodySpec) {
+    // Anker aus body.json: handAnker/schildAnker je [Zeile][Spalte]
     const kreuz = (pt, farbe) => { if (!pt) return;
       g.strokeStyle = farbe; g.lineWidth = 2;
       const x = pt[0] * z, y = pt[1] * z;
       g.beginPath(); g.moveTo(x - 6, y); g.lineTo(x + 6, y); g.moveTo(x, y - 6); g.lineTo(x, y + 6); g.stroke(); };
-    kreuz(a?.weapon, '#ff5a4a'); kreuz(a?.shield, '#5aa8ff');
+    kreuz(bodySpec.handAnker?.[zeile]?.[spalte], '#ff5a4a');
+    kreuz(bodySpec.schildAnker?.[zeile]?.[spalte], '#5aa8ff');
   }
 
-  const zeilenName = (specNeu?.masterGrid?.rows ?? specAlt?.masterGrid?.rows ?? RICHTUNGEN)[zeile];
   document.getElementById('info').textContent =
-    `Richtung ${RICHT_NAMEN[zustand.richtung]} | Sheet-Zeile ${zeile} (${zeilenName}) | `
-    + `Bild ${spaltenName()} | Waffe ${zustand.waffe} | Schild ${zustand.schild} | `
-    + `Ruestung ${zustand.ruestung}${zustand.umhang ? ' | Umhang' : ''}`;
+    `${FIGUREN[zustand.figur]} | Richtung ${RICHT_NAMEN[zustand.richtung]} | Sheet-Zeile ${zeile} | `
+    + `Bild ${SPALTEN_NAMEN[spalte]} | Waffe ${zustand.waffe} | Schild ${zustand.schild} | `
+    + `Ruestung ${zustand.ruestung}${zustand.umhang ? ' | Umhang' : ''}`
+    + (zustand.kopf !== 'keiner' ? ` | Kopf ${zustand.kopf}` : '');
   document.getElementById('quellHinweis').textContent = fehlend.length
-    ? `Nicht darstellbar in dieser Bewegung: ${fehlend.join(', ')} (Datei fehlt oder Alt-Paket kann kein Stehen/Gehen).`
-    : '';
+    ? `Ebenen-Datei fehlt: ${fehlend.join(', ')}` : '';
 }
 start();
 </script>

@@ -3949,3 +3949,18 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
 - Integration erst, wenn das Paket komplett ist (Autor-Entscheid:
   "live haette mich das interessiert, aber naechste Runde wenn alles
   komplett ist").
+
+## R243 - Werkbank auf Codex-Runde-2 umgestellt
+- Codex hat Runde 2 unter screenshots/codex_v2/ geliefert (eigene
+  Ablage/Namen, VOR meiner Dateinamen-Order aus Abschnitt 6 gebaut -
+  paralleles Arbeiten, kein Fehler). Die Werkbank laedt jetzt DIESE
+  echte Lieferung: je Ebene 1152x512 (9 Spalten: Stehen, Gehen 1-4,
+  Schlag 3, Block), manifest.json + JSON je Ebene, Figuren Aldric/
+  Soldat/Schuetze.
+- Liefer-Checkliste vergleicht gegen die BESTELLTE Varianten-Liste
+  (Abschnitt 6): Namens-Zuordnung sword-simple=Solide Klinge,
+  axe=Streitaxt, round-wood=Rundschild, round-reinforced=beschlagener
+  Rundschild, stoffkittel=Lumpen (Namensfrage offen). Stand: 11/21.
+- Der Alt-Paket-Fallback (attack-3x4/block-1x4) flog wieder raus -
+  die Runde-2-Sheets decken alles ab, zwei Codepfade waeren toter
+  Ballast.

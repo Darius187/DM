@@ -2646,3 +2646,30 @@ EHRLICHE ANMERKUNG: ein Befreiter zaehlt erst als GERETTET, wenn er
 den Ausgang erreicht hat (so war es schon im versunkenen Bezirk) -
 im Test steht direkt nach dem Befreien darum noch 0 in der Liste.
 TESTS: tsc sauber, 526/526 gruen, Browser-Beweis fuer alle drei Punkte.
+
+## R243 - Sprite-Werkbank auf die Codex-Runde-2-Lieferung umgestellt
+FERTIG UND VERIFIZIERT (Playwright + eigene Screenshots):
+1. Codex hat waehrend meiner Arbeit Runde 2 geliefert
+   (screenshots/codex_v2/): Koerper mit allen 9 Spalten (Stehen,
+   Gehen 1-4, Schlag 3, Block), Ruestungen/Umhang/Koepfe als echte
+   Ebenen, dazu Soldat und Schuetze auf demselben Koerper.
+2. Die Werkbank (tools/sprite-werkbank.html) laedt jetzt genau diese
+   Lieferung: Figur/Richtung/Bewegung/Waffe/Schild/Ruestung/Umhang/
+   Kopf frei kombinierbar, Anker-Kreuze aus den Ebenen-JSONs,
+   Liefer-Checkliste gegen die bestellte Varianten-Liste (11/21 da,
+   Rest rot: Kurzschwert, Streitkolben, Langschwert, Falchion,
+   Hellebarde, Kriegshammer, Plattenrock, Holz-/Eisen-/Turmschild).
+3. GEPRUEFT im Browser: links/rechts-Zeilen sind jetzt KORREKT
+   (Blocker aus Runde 1 behoben), OBEN zeigt in allen Frames den
+   Hinterkopf, Gehen laeuft mit 120ms je Schritt, Schlag im
+   140/80/180-Timing.
+OPTISCHE BEFUNDE fuer die Abnahme (Autor entscheidet):
+- Ruestungen wirken als kantige Platten vor dem Koerper ("Sandwich-
+  Brett") - Codex nennt das selbst "bewusst groeber".
+- Soldaten-Helm sitzt zu tief, verdeckt die Augen.
+- Schuetzen-Gugel ist ein gruener Ring um den Kopf statt einer Kapuze.
+- Bei LINKS liegt die Klinge im Treffer-Frame teils hinter Umhang/
+  Koerper (Z-Reihenfolge laut Manifest) - im Spiel evtl. zu unsichtbar.
+TESTS: tsc sauber, 526/526 gruen (kein Spiel-Code beruehrt).
+OFFEN: restliche 10 Varianten von Codex; Integration ins Spiel erst
+nach ausdruecklicher Freigabe.
