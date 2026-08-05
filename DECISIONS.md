@@ -3927,3 +3927,25 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   ganzzahlig sauber; die 32er-Matsch-Falle aus R239 bleibt notiert).
 - Prompt V2 ergaenzt: Veteranen-Haltung (muede, selbstverstaendlicher
   Schwertgriff) statt sichtbarer Vergangenheit an der Ruestung.
+
+## R242 - Codex-Varianten-Liste (Autor: "alle Schwerter, Schilde, Ruestungen")
+- Erste Pruefung des Codex-Kampfpakets: Stil trifft, Layer-Technik
+  funktioniert (Anker + Z-Reihenfolge maschinenlesbar im JSON), aber
+  Blocker: links/rechts vertauscht, seitliche Trefferframes als Stoss
+  statt Hieb, Stehen+Gehen fehlten, Ruestung/Umhang eingebacken.
+  Codex hat in Runde 2 selbst nachgezogen (diagonaler Hieb, Lauf-
+  Sheets, Basis = Hemd/Hose/Stiefel + Ebenen, deterministisches
+  Buildskript statt generativer Wiederholung).
+- Sprite-Werkbank als Pruefstand gebaut (tools/sprite-werkbank.html):
+  eigenstaendige HTML-Seite, laedt die Sheets, stapelt nach JSON,
+  spielt im Codex-Timing ab; Richtung/Waffe/Schild/Zoom/Anker/
+  Links-rechts-Tausch umschaltbar. KEIN Spiel-Code beruehrt.
+- docs/CODEX-VARIANTEN-LISTE.md: die ECHTE Item-Liste aus dem Spiel
+  als Liefer-Auftrag - 8 Nahkampfwaffen (Solide Klinge bis
+  Kriegshammer, mit Waffenklassen fuer die Silhouette), 3 Boegen,
+  2 Staebe, 5 Schilde (Holz bis Turmschild), 5 Ruestungen (Lumpen bis
+  Plattenrock) + Umhang als eigene Ebene. Mit Prioritaet, falls die
+  Menge zu gross wird (erst die haeufig gesehene Nahkampf-Kette).
+- Integration erst, wenn das Paket komplett ist (Autor-Entscheid:
+  "live haette mich das interessiert, aber naechste Runde wenn alles
+  komplett ist").
