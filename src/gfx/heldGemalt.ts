@@ -1,5 +1,5 @@
 // Gemalter Held "Aldric Painted V2" (R250): ein vollstaendig gemaltes
-// Acht-Richtungs-Blatt. 24 Spalten (Stand, Gehen 1-16, Schwert 1-6, Block)
+// Acht-Richtungs-Blatt. 32 Spalten (Stand, Gehen 1-24, Schwert 1-6, Block)
 // x 8 Zeilen in derselben Richtungsreihenfolge wie angleToDir8.
 //
 // Das ist bewusst KEIN Paperdoll: Koerper, Kleidung, Umhang und Schwert sind
@@ -8,14 +8,14 @@
 import Phaser from 'phaser';
 
 export const GEMALT_ZELLE = 128;
-export const GEMALT_SPALTEN = 24;
+export const GEMALT_SPALTEN = 32;
 export const GEMALT_ZEILEN = 8;
 
 export const GEMALT_SPALTE = {
   stand: 0,
-  gehen: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] as const,
-  schlag: [17, 18, 19, 20, 21, 22] as const,
-  block: 23,
+  gehen: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24] as const,
+  schlag: [25, 26, 27, 28, 29, 30] as const,
+  block: 31,
 } as const;
 
 /** Relative Dauer der sechs gemalten Hiebphasen (Summe 420 ms). */
@@ -26,7 +26,7 @@ export type GemaltVariante = 'abenteurer-schwert';
 export const GEMALT_SHEETS: Record<GemaltVariante, { key: string; pfad: string }> = {
   'abenteurer-schwert': {
     key: 'held_gemalt_v2_abenteurer_schwert',
-    pfad: 'assets/sprites/hero-painted-v2/base/aldric-abenteurer-schwert-painted-24x8.png',
+    pfad: 'assets/sprites/hero-painted-v2/base/aldric-abenteurer-schwert-painted-32x8.png',
   },
 };
 
@@ -49,7 +49,7 @@ function schlagSpalte(fortschritt: number): number {
   return GEMALT_SPALTE.schlag[GEMALT_SPALTE.schlag.length - 1];
 }
 
-/** Waehlt Stand, achtstufiges Gehen, sechsstufigen Hieb oder Block. */
+/** Waehlt Stand, 24-stufiges Gehen, sechsstufigen Hieb oder Block. */
 export function gemalteSpalte(opts: {
   blockt: boolean;
   laeuft: boolean;
@@ -59,7 +59,8 @@ export function gemalteSpalte(opts: {
   if (opts.blockt) return GEMALT_SPALTE.block;
   if (opts.schlagFortschritt !== null) return schlagSpalte(opts.schlagFortschritt);
   if (!opts.laeuft) return GEMALT_SPALTE.stand;
-  return GEMALT_SPALTE.gehen[((Math.floor(opts.gehFrame) % 16) + 16) % 16];
+  const anzahl = GEMALT_SPALTE.gehen.length;
+  return GEMALT_SPALTE.gehen[((Math.floor(opts.gehFrame) % anzahl) + anzahl) % anzahl];
 }
 
 /** Frame-Index im Phaser-Spritesheet (zeilenweise durchnummeriert). */

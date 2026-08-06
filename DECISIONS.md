@@ -4060,3 +4060,10 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   Spalten; Richtungsreihenfolge und Kampfanimationen bleiben unveraendert.
 - Bewegungs- und Angriffstimings liegen zentral in `src/data/heldGemalt.ts`;
   die acht Zeilen entsprechen ohne Umrechnung direkt `angleToDir8`.
+## R252 - Gemalter Lauf aus Keyposes und Bewegungs-Zwischenphasen
+- Der Painted-Held erhaelt pro Richtung acht handlungslesbare Gang-Keyposes.
+  Je Uebergang werden zwei optisch gefuehrte Zwischenbilder berechnet. Das
+  ergibt 24 gleichmaessige Laufphasen ohne 24 voneinander driftende Neuzeichnungen.
+- OpenCV Headless ist nur Build-Werkzeug fuer die Sprite-Erzeugung, nie
+  Spiel-Runtime-Abhaengigkeit. Version und Installation stehen in
+  `scripts/requirements-painted-hero.txt`; der fertige PNG-Atlas bleibt im Repo.

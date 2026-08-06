@@ -15,3 +15,4 @@ src/gfx/_pferdprobe.ts
 scratch_*
 .horse-frames/
 scripts/__pycache__/
+.codex-tools/

@@ -1,12 +1,13 @@
 {
   "format": "ravenmoor-painted-character-v2",
+  "revision": "2.2",
   "status": "live-integrated",
   "frameSize": [
     128,
     128
   ],
   "sheetSize": [
-    3072,
+    4096,
     1024
   ],
   "directions": [
@@ -47,6 +48,14 @@
     "walk_14",
     "walk_15",
     "walk_16",
+    "walk_17",
+    "walk_18",
+    "walk_19",
+    "walk_20",
+    "walk_21",
+    "walk_22",
+    "walk_23",
+    "walk_24",
     "attack_windup",
     "attack_early",
     "attack_impact",
@@ -57,7 +66,7 @@
   ],
   "timingMs": {
     "idle": 240,
-    "walk": 55,
+    "walk": 40,
     "attack": [
       90,
       50,
@@ -68,7 +77,14 @@
     ],
     "block": 160
   },
-  "asset": "aldric-abenteurer-schwert-painted-24x8.png",
+  "walkConstruction": {
+    "keyPosesPerDirection": 8,
+    "inbetweensPerTransition": 2,
+    "framesPerDirection": 24,
+    "method": "bidirectional-motion-flow",
+    "footY": 123
+  },
+  "asset": "aldric-abenteurer-schwert-painted-32x8.png",
   "proofs": {
     "allFrames": "proofs/proof-v2-all-frames.png",
     "walk8Directions": "proofs/proof-v2-walk-8dir.gif",

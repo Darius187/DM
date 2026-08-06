@@ -19,8 +19,8 @@
 </head>
 <body>
 <header>
-  <h1>SPRITE-WERKBANK — ALDRIC PAINTED V2</h1>
-  <div class="hint">Vollständig gemalter Abenteurer: 8 Richtungen × 24 Frames. Der Lauf besitzt 16 echte Bewegungsphasen.</div>
+  <h1>SPRITE-WERKBANK - ALDRIC PAINTED V2.2</h1>
+  <div class="hint">Vollständig gemalter Abenteurer: 8 Richtungen × 32 Frames. Der Lauf besitzt 24 gleichmäßige Bewegungsphasen aus acht stabilen Schlüsselposen.</div>
 </header>
 <main>
   <div class="stage"><canvas id="canvas" width="512" height="512"></canvas></div>
@@ -39,14 +39,14 @@
 const ROOT='../assets/sprites/hero-painted-v2/base/';
 const DIRECTIONS=['south','southwest','west','northwest','north','northeast','east','southeast'];
 const DIRECTION_LABELS={south:'S',southwest:'SW',west:'W',northwest:'NW',north:'N',northeast:'NE',east:'E',southeast:'SE'};
-const FRAMES=['Stand',...Array.from({length:16},(_,i)=>'Gehen '+(i+1)),'Ausholen','Früher Hieb','Treffer','Später Hieb','Nachziehen','Erholen','Block'];
-const ANIMATIONS={idle:{label:'Stand',frames:[0]},walk:{label:'Gehen ×16',frames:Array.from({length:16},(_,i)=>i+1)},attack:{label:'Schlag ×6',frames:[17,18,19,20,21,22]},block:{label:'Block',frames:[23]},single:{label:'Einzel',frames:[]}};
+const FRAMES=['Stand',...Array.from({length:24},(_,i)=>'Gehen '+(i+1)),'Ausholen','Früher Hieb','Treffer','Später Hieb','Nachziehen','Erholen','Block'];
+const ANIMATIONS={idle:{label:'Stand',frames:[0]},walk:{label:'Gehen ×24',frames:Array.from({length:24},(_,i)=>i+1)},attack:{label:'Schlag ×6',frames:[25,26,27,28,29,30]},block:{label:'Block',frames:[31]},single:{label:'Einzel',frames:[]}};
 const state={direction:'south',animation:'walk',frame:1,zoom:3,grass:true,loop:true,tempo:100};
 let sheet=null,manifest=null,sequenceIndex=0,lastTime=0;const $=id=>document.getElementById(id);
 function buttons(id,values,current,click){const host=$(id);host.innerHTML='';for(const [value,label] of values){const button=document.createElement('button');button.textContent=label;button.className=value===current?'active':'';button.onclick=()=>click(value);host.appendChild(button)}}
 async function load(){manifest=await fetch(ROOT+'aldric-painted-v2.json').then(r=>r.json());sheet=await new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=reject;image.src=ROOT+manifest.asset});buildControls();draw();requestAnimationFrame(tick)}
 function buildControls(){buttons('directions',DIRECTIONS.map(v=>[v,DIRECTION_LABELS[v]]),state.direction,value=>{state.direction=value;buildControls();draw()});buttons('animations',Object.entries(ANIMATIONS).map(([k,v])=>[k,v.label]),state.animation,value=>{state.animation=value;sequenceIndex=0;state.frame=ANIMATIONS[value].frames[0]??state.frame;lastTime=performance.now();buildControls();draw()});buttons('zooms',[[2,'2×'],[3,'3×'],[4,'4×']],state.zoom,value=>{state.zoom=+value;buildControls();draw()});$('frame').value=state.frame;$('frameName').textContent=FRAMES[state.frame];$('tempo').value=state.tempo;$('tempoText').textContent=state.tempo+'%';$('loop').checked=state.loop;$('grass').checked=state.grass}
-function duration(){if(state.frame>=1&&state.frame<=16)return manifest.timingMs.walk*100/state.tempo;if(state.frame>=17&&state.frame<=22)return manifest.timingMs.attack[state.frame-17]*100/state.tempo;return (state.frame===23?manifest.timingMs.block:manifest.timingMs.idle)*100/state.tempo}
+function duration(){if(state.frame>=1&&state.frame<=24)return manifest.timingMs.walk*100/state.tempo;if(state.frame>=25&&state.frame<=30)return manifest.timingMs.attack[state.frame-25]*100/state.tempo;return (state.frame===31?manifest.timingMs.block:manifest.timingMs.idle)*100/state.tempo}
 function draw(){if(!sheet)return;const size=128*state.zoom,canvas=$('canvas'),ctx=canvas.getContext('2d');canvas.width=size;canvas.height=size;ctx.imageSmoothingEnabled=false;ctx.fillStyle=state.grass?'#46543a':'#1a1e1d';ctx.fillRect(0,0,size,size);const row=DIRECTIONS.indexOf(state.direction);ctx.drawImage(sheet,state.frame*128,row*128,128,128,0,0,size,size);$('frame').value=state.frame;$('frameName').textContent=FRAMES[state.frame];$('info').textContent=DIRECTION_LABELS[state.direction]+' | '+FRAMES[state.frame]+' | 128×128 | Zeile '+row+', Spalte '+state.frame+' | '+manifest.frames[state.frame]}
 function tick(now){const sequence=ANIMATIONS[state.animation].frames;if(sequence.length>1&&now-lastTime>=duration()){if(sequenceIndex<sequence.length-1)sequenceIndex++;else if(state.loop)sequenceIndex=0;state.frame=sequence[sequenceIndex];lastTime=now;draw()}requestAnimationFrame(tick)}
 $('frame').oninput=e=>{state.animation='single';state.frame=+e.target.value;buildControls();draw()};$('tempo').oninput=e=>{state.tempo=+e.target.value;$('tempoText').textContent=state.tempo+'%'};$('loop').onchange=e=>state.loop=e.target.checked;$('grass').onchange=e=>{state.grass=e.target.checked;draw()};buildControls();load();

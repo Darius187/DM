@@ -2826,3 +2826,23 @@ FERTIG UND VERIFIZIERT:
    Alle 128 Gehframes sind pixelverschieden; gemeinsamer Fusspunkt Y=123.
 4. Schwert-Hieb x6 und Block wurden unveraendert aus V2 uebernommen.
 PROOF: `assets/sprites/hero-painted-v2/base/proofs/proof-v2-walk-8dir.gif`.
+
+## R252 - Ruhiger Painted-Lauf mit 24 Phasen in acht Richtungen
+FERTIG UND DATEISEITIG VERIFIZIERT:
+1. Der 16er-Lauf aus R251 wurde verworfen: Zwischenbilder drifteten sichtbar
+   bei Koerperbreite, Schrittlaenge, Umhang und Schwertwinkel.
+2. Jede der acht Richtungen besitzt jetzt acht kontrollierte Keyposes fuer
+   Kontakt, Belastung, Vorbeischwung und Kniehub beider Beine. Je Uebergang
+   entstehen zwei bewegungsgefuehrte Zwischenphasen, insgesamt 24 pro Richtung.
+3. Das Live-Blatt umfasst Stand + Gehen x24 + Hieb x6 + Block, also 32x8 =
+   256 nichtleere Frames. Alle 192 Gehframes sind pixelverschieden und alle
+   256 Frames enden exakt am gemeinsamen Fusspunkt Y=123.
+4. Stand-/Kampfquelle und neue Laufquelle wurden getrennt skaliert. Dadurch
+   waechst die Figur beim Umschalten auf Laufen nicht mehr sichtbar an.
+5. TypeScript fehlerfrei, 80 Testdateien mit 530 Tests gruen, Vite-Build gruen.
+PROOFS: `assets/sprites/hero-painted-v2/base/proofs/proof-v2-all-frames.png`,
+`proof-v2-walk-8dir.gif`, `proof-v2-attack-8dir.gif`.
+NICHT IN DIESER RUNDE VERIFIZIERT: erneuter Live-Lauf im Browser. Die lokale
+Datei-Navigation wurde von der Browser-Sicherheitsrichtlinie blockiert; deshalb
+keine unbelegte Live-Erfolgsmeldung. Claude soll nach dem Pull Werkbank und
+Spielpfad einmal sichtbar pruefen.

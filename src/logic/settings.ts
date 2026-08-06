@@ -60,7 +60,7 @@ export interface Settings {
   glatteKanten?: boolean; // Experiment: pixelArt AUS -> lineare Filterung (weichere Blender-Sprites), NEUSTART nötig
   light2d?: boolean;      // Experiment R109 Schritt 2: Normal-Maps + Phaser-Light2D (bumpige Beleuchtung der Props), NEUSTART nötig
   figuren3d: boolean;     // TEST (Runde 77): Held als 3D-gebackener Atlas statt 2D-Zeichnung
-  heldGemalt?: boolean;   // R251: gemalter Aldric V2.1 (8 Richtungen, 24 Frames)
+  heldGemalt?: boolean;   // R252: gemalter Aldric V2.2 (8 Richtungen, 32 Frames)
   grusel: number;         // Grusel-Atmosphäre: kalter, dunkler Tint auf Gegner 0-100 (Runde 55)
   schatten: number;       // Schatten-/Licht-Stärke AUSSENWELT 0-100 (Runde 55: 0 = aus, Leistungsregler)
   dungeonStaerke: number;  // Dungeon-Dunkelheit 0-150 (R131: >100 = alles jenseits der Sicht komplett schwarz)

@@ -17,14 +17,14 @@ describe('Aldric Painted V2', () => {
     expect(gemalteZeile(8)).toBe(0);
   });
 
-  it('spielt alle sechzehn Gehframes und wickelt sauber um', () => {
-    const spalten = Array.from({ length: 18 }, (_, gehFrame) => gemalteSpalte({
+  it('spielt alle 24 Gehframes und wickelt sauber um', () => {
+    const spalten = Array.from({ length: 26 }, (_, gehFrame) => gemalteSpalte({
       blockt: false,
       laeuft: true,
       gehFrame,
       schlagFortschritt: null,
     }));
-    expect(spalten).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1, 2]);
+    expect(spalten).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 1, 2]);
   });
 
   it('zeigt die sechs unterschiedlich langen Hiebphasen und danach Block', () => {
@@ -32,12 +32,12 @@ describe('Aldric Painted V2', () => {
     expect([0, 0.22, 0.34, 0.45, 0.6, 0.8].map(schlagFortschritt => gemalteSpalte({
       ...basis,
       schlagFortschritt,
-    }))).toEqual([17, 18, 19, 20, 21, 22]);
-    expect(gemalteSpalte({ ...basis, blockt: true, schlagFortschritt: 0.5 })).toBe(23);
+    }))).toEqual([25, 26, 27, 28, 29, 30]);
+    expect(gemalteSpalte({ ...basis, blockt: true, schlagFortschritt: 0.5 })).toBe(31);
   });
 
-  it('nummeriert 24 Spalten pro Richtungszeile', () => {
-    expect(GEMALT_SPALTEN).toBe(24);
-    expect(gemalterFrame(7, 23)).toBe(191);
+  it('nummeriert 32 Spalten pro Richtungszeile', () => {
+    expect(GEMALT_SPALTEN).toBe(32);
+    expect(gemalterFrame(7, 31)).toBe(255);
   });
 });
