@@ -60,7 +60,7 @@ export interface Settings {
   glatteKanten?: boolean; // Experiment: pixelArt AUS -> lineare Filterung (weichere Blender-Sprites), NEUSTART nötig
   light2d?: boolean;      // Experiment R109 Schritt 2: Normal-Maps + Phaser-Light2D (bumpige Beleuchtung der Props), NEUSTART nötig
   figuren3d: boolean;     // TEST (Runde 77): Held als 3D-gebackener Atlas statt 2D-Zeichnung
-  heldGemalt?: boolean;   // R247: gemalter Aldric (Codex Painted V1) statt prozeduraler Figur
+  heldGemalt?: boolean;   // R250: gemalter Aldric V2 (8 Richtungen, 16 Frames)
   grusel: number;         // Grusel-Atmosphäre: kalter, dunkler Tint auf Gegner 0-100 (Runde 55)
   schatten: number;       // Schatten-/Licht-Stärke AUSSENWELT 0-100 (Runde 55: 0 = aus, Leistungsregler)
   dungeonStaerke: number;  // Dungeon-Dunkelheit 0-150 (R131: >100 = alles jenseits der Sicht komplett schwarz)
@@ -177,7 +177,7 @@ export const DEF_SETTINGS: Settings = {
   bloom: 0, // Runde 51 (Autorwunsch): Bloom standardmäßig AUS, war zu stark
   grading: 0, // Farb-Grading standardmäßig AUS (Autor-Experiment, hochregeln zum Testen)
   figuren3d: false, // 3D-Held-Test standardmäßig AUS (2D bleibt die Wahrheit)
-  heldGemalt: true, // R247: gemalter Aldric AN - der Autor testet ihn live; AUS = zurück zur Zeichnung
+  heldGemalt: true, // R250: gemalter Aldric V2 AN; AUS = zurueck zur Zeichnung
   grusel: 100, // Runde 58 (Autorwunsch): Grusel-Atmosphäre standardmäßig voll an
   schatten: 70, // Runde 55: Schatten/Licht (Aussenwelt) standardmäßig an (mittlere Stärke)
   dungeonStaerke: 100, // Runde 58 / R131: 0-150, 100 = fast schwarz, >118 komplett

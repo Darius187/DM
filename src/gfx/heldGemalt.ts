@@ -1,72 +1,65 @@
-// Gemalter Held "Aldric Painted V1" (R247) - Live-Pfad neben der prozeduralen
-// Figur. Codex liefert je Variante EIN 1152x512-Sheet: 9 Spalten (Stand,
-// Gehen 1-4, Ausholen, Treffer, Nachziehen, Block) x 4 Zeilen (unten, links,
-// rechts, oben), Zelle 128x128.
+// Gemalter Held "Aldric Painted V2" (R250): ein vollstaendig gemaltes
+// Acht-Richtungs-Blatt. 16 Spalten (Stand, Gehen 1-8, Schwert 1-6, Block)
+// x 8 Zeilen in derselben Richtungsreihenfolge wie angleToDir8.
 //
-// Diese Datei kennt NUR das Blatt-Format. Wann welches Bild gezeigt wird,
-// entscheidet CombatScene aus der bestehenden Bewegungs-/Schlagmaschine -
-// Fusspunkt, Hitbox, Tiefensortierung und Kollision bleiben unberuehrt.
+// Das ist bewusst KEIN Paperdoll: Koerper, Kleidung, Umhang und Schwert sind
+// pro Frame zusammen gemalt. So bleiben Silhouette, Licht und Bewegung sauber.
 
 import Phaser from 'phaser';
 
 export const GEMALT_ZELLE = 128;
-export const GEMALT_SPALTEN = 9;
-export const GEMALT_ZEILEN = 4;
+export const GEMALT_SPALTEN = 16;
+export const GEMALT_ZEILEN = 8;
 
-/** Spalten des Blattes in der gelieferten Reihenfolge. */
 export const GEMALT_SPALTE = {
   stand: 0,
-  gehen: [1, 2, 3, 4] as const,
-  ausholen: 5,
-  treffer: 6,
-  nachziehen: 7,
-  block: 8,
+  gehen: [1, 2, 3, 4, 5, 6, 7, 8] as const,
+  schlag: [9, 10, 11, 12, 13, 14] as const,
+  block: 15,
 } as const;
 
-/** Die zwei gelieferten Varianten. Mehr kommen erst nach der Abnahme. */
-export type GemaltVariante = 'base' | 'gambeson-turmschild';
+/** Relative Dauer der sechs gemalten Hiebphasen (Summe 420 ms). */
+export const GEMALT_SCHLAG_DAUERN = [90, 50, 45, 50, 75, 110] as const;
+
+export type GemaltVariante = 'abenteurer-schwert';
 
 export const GEMALT_SHEETS: Record<GemaltVariante, { key: string; pfad: string }> = {
-  base: {
-    key: 'held_gemalt_base',
-    pfad: 'assets/sprites/hero-painted-v1/base/aldric-hemd-schwert-painted-9x4.png',
-  },
-  'gambeson-turmschild': {
-    key: 'held_gemalt_gambeson',
-    pfad: 'assets/sprites/hero-painted-v1/gambeson-turmschild/aldric-gambeson-turmschild-painted-9x4.png',
+  'abenteurer-schwert': {
+    key: 'held_gemalt_v2_abenteurer_schwert',
+    pfad: 'assets/sprites/hero-painted-v2/base/aldric-abenteurer-schwert-painted-16x8.png',
   },
 };
 
 /**
- * Die Engine fuehrt acht Richtungen, das Blatt hat vier Zeilen.
- * Vorgabe aus dem Auftrag: 0,1 -> unten; 2,3 -> links; 4,5 -> oben; 6,7 -> rechts.
- * Rueckgabe ist die ZEILE im Blatt (0 unten, 1 links, 2 rechts, 3 oben).
+ * Das V2-Blatt benutzt exakt die Engine-Reihenfolge:
+ * 0=S, 1=SW, 2=W, 3=NW, 4=N, 5=NE, 6=E, 7=SE.
  */
 export function gemalteZeile(dir8: number): number {
-  const d = ((Math.round(dir8) % 8) + 8) % 8;
-  if (d <= 1) return 0;        // unten
-  if (d <= 3) return 1;        // links
-  if (d <= 5) return 3;        // oben
-  return 2;                    // rechts
+  return ((Math.round(dir8) % GEMALT_ZEILEN) + GEMALT_ZEILEN) % GEMALT_ZEILEN;
 }
 
-/**
- * Uebersetzt den `step` der bestehenden Held-Maschine in eine Blatt-Spalte.
- * `step` 0-3 = Gehzyklus bzw. Atem-Stand, ab SCHLAG_FRAME (4) die Schlagphasen.
- * `blockt` schlaegt alles andere - Blocken ist ein gehaltener Zustand.
- */
-export function gemalteSpalte(step: number, opts: { blockt: boolean; laeuft: boolean; schlagFrame: number; schlagPhasen: number }): number {
-  if (opts.blockt) return GEMALT_SPALTE.block;
-  if (step >= opts.schlagFrame) {
-    // Die prozedurale Figur hat vier Schlagphasen, das Blatt drei Bilder.
-    // Gleichmaessig verteilen, damit Ausholen/Treffer/Nachziehen ein Hieb bleiben.
-    const phase = Math.min(opts.schlagPhasen - 1, Math.max(0, step - opts.schlagFrame));
-    const anteil = opts.schlagPhasen <= 1 ? 0 : phase / (opts.schlagPhasen - 1);
-    const bilder = [GEMALT_SPALTE.ausholen, GEMALT_SPALTE.treffer, GEMALT_SPALTE.nachziehen];
-    return bilder[Math.min(bilder.length - 1, Math.round(anteil * (bilder.length - 1)))];
+function schlagSpalte(fortschritt: number): number {
+  const gesamt = GEMALT_SCHLAG_DAUERN.reduce((summe, dauer) => summe + dauer, 0);
+  const zeit = Math.min(0.999999, Math.max(0, fortschritt)) * gesamt;
+  let grenze = 0;
+  for (let index = 0; index < GEMALT_SCHLAG_DAUERN.length; index++) {
+    grenze += GEMALT_SCHLAG_DAUERN[index];
+    if (zeit < grenze) return GEMALT_SPALTE.schlag[index];
   }
+  return GEMALT_SPALTE.schlag[GEMALT_SPALTE.schlag.length - 1];
+}
+
+/** Waehlt Stand, achtstufiges Gehen, sechsstufigen Hieb oder Block. */
+export function gemalteSpalte(opts: {
+  blockt: boolean;
+  laeuft: boolean;
+  gehFrame: number;
+  schlagFortschritt: number | null;
+}): number {
+  if (opts.blockt) return GEMALT_SPALTE.block;
+  if (opts.schlagFortschritt !== null) return schlagSpalte(opts.schlagFortschritt);
   if (!opts.laeuft) return GEMALT_SPALTE.stand;
-  return GEMALT_SPALTE.gehen[((step % 4) + 4) % 4];
+  return GEMALT_SPALTE.gehen[((Math.floor(opts.gehFrame) % 8) + 8) % 8];
 }
 
 /** Frame-Index im Phaser-Spritesheet (zeilenweise durchnummeriert). */
@@ -74,11 +67,6 @@ export function gemalterFrame(zeile: number, spalte: number): number {
   return zeile * GEMALT_SPALTEN + spalte;
 }
 
-/**
- * Laedt beide Blaetter als Spritesheet. Ruft `fertig` auch dann, wenn eine
- * Datei fehlt - der Aufrufer prueft danach mit `gemaltBereit`, sodass ein
- * fehlendes Paket sauber auf die prozedurale Figur zurueckfaellt.
- */
 export function ladeGemalteHeldSheets(szene: Phaser.Scene, fertig?: () => void): void {
   let ausstehend = 0;
   for (const { key, pfad } of Object.values(GEMALT_SHEETS)) {
@@ -91,7 +79,6 @@ export function ladeGemalteHeldSheets(szene: Phaser.Scene, fertig?: () => void):
   szene.load.start();
 }
 
-/** Ist die Variante einsatzbereit? Sonst muss der Aufrufer zurueckfallen. */
 export function gemaltBereit(texturen: Phaser.Textures.TextureManager, variante: GemaltVariante): boolean {
   return texturen.exists(GEMALT_SHEETS[variante].key);
 }

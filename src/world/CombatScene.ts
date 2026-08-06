@@ -1486,7 +1486,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // hier, damit ALLE Schwünge - Normalhieb, Stoß, Rundumschlag, Wuchtschlag,
     // Blutdurst - sie ausführen). Finisher/schwer etwas länger. Die drei
     // Schlagphasen werden in renderEntities über die Restzeit durchlaufen.
-    this.heldSchlagDauer = fin ? 0.3 : 0.2;
+    // Painted V2 besitzt sechs echte Hiebphasen. Die Restzeit ist rein visuell
+    // und darf fuer dieses Blatt laenger sein als beim alten Renderer.
+    this.heldSchlagDauer = getSettings().heldGemalt
+      ? (fin ? HELD_GEMALT.finisherDauer : HELD_GEMALT.schlagDauer)
+      : (fin ? 0.3 : 0.2);
     this.heldSchlagT = this.heldSchlagDauer;
     // Schwung ohne Treffer: die swoosh-Dateien des Autors abwechselnd,
     // sonst die bisherigen Synth-Klänge
@@ -3945,7 +3949,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     // er der Kandidat für die endgültige Optik ist. Fehlt das Sheet oder passt
     // der Zustand nicht (Bogen, Reiten), fällt es sauber auf 2D/3D zurück.
     this.heldTiefeGemalt = null;
-    if (getSettings().heldGemalt && this.zeichneHeldGemalt(dir, step)) return;
+    if (getSettings().heldGemalt && this.zeichneHeldGemalt(dir)) return;
     if (getSettings().figuren3d && this.zeichneHeld3d(dir, step)) return;
     // Ausgerüstete Waffe wandert in die Hand und wird mitgeschwungen (R54).
     this.provider.applyFigure(this.playerSprite, this.heldFigur(), dir, step, this.weaponClass());
@@ -3958,12 +3962,10 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     this.playerSprite.setScale(this.heldEinfach ? 1.15 : (this.textures.exists('hs_spieler_unten_1') ? 1.35 : getHeldForm(tier).skala));
   }
 
-  // R247: gemalter Aldric. Welche der zwei gelieferten Varianten passt zum
-  // aktuellen Ausrüstungszustand? Rüstung UND Schild -> Gambeson/Turmschild,
-  // sonst die Basis. Alles andere fällt bewusst auf die Basis (Auftrag:
-  // "keine neuen Canvas-Overlays bauen").
+  // R250: eine vollstaendig gemalte Figur statt montierter Canvas-Schichten.
+  // Weitere sichtbare Ausruestungen kommen spaeter als eigene Vollblaetter.
   private gemalteVariante(): GemaltVariante {
-    return this.p.armorIt && this.p.schildIt ? 'gambeson-turmschild' : 'base';
+    return 'abenteurer-schwert';
   }
 
   /** Läuft der Held gerade? Wird in renderEntities gesetzt (dort ist es bekannt). */
@@ -3980,10 +3982,11 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
   protected heldTiefeGemalt: number | null = null;
 
   private gemaltLaedtGerade = false;
-  private zeichneHeldGemalt(dir: number, step: number): boolean {
-    // Für Bogen und Reiten liegen keine gemalten Bilder vor - bisheriger Pfad.
+  private zeichneHeldGemalt(dir: number): boolean {
+    // V2 ist das Vollblatt fuer das Schwert. Andere Waffenklassen und die
+    // leere Hand bleiben im bisherigen Pfad, statt eine falsche Klinge zu zeigen.
     const waffe = this.weaponClass();
-    if (waffe && (HELD_GEMALT.fallbackWaffen as readonly string[]).includes(waffe)) return false;
+    if (!waffe || (HELD_GEMALT.fallbackWaffen as readonly string[]).includes(waffe)) return false;
     const variante = this.gemalteVariante();
     const key = GEMALT_SHEETS[variante].key;
     if (!gemaltBereit(this.textures, variante)) {
@@ -3995,11 +3998,13 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
       return false;
     }
     const zeile = gemalteZeile(dir);
-    const spalte = gemalteSpalte(step, {
+    const spalte = gemalteSpalte({
       blockt: this.combat.blocking,
       laeuft: this.heldLaeuft,
-      schlagFrame: SCHLAG_FRAME,
-      schlagPhasen: SCHLAG_PHASEN,
+      gehFrame: Math.floor(this.time.now / HELD_GEMALT.gehFrameMs),
+      schlagFortschritt: this.heldSchlagT > 0
+        ? 1 - this.heldSchlagT / Math.max(0.001, this.heldSchlagDauer)
+        : null,
     });
     const frame = gemalterFrame(zeile, spalte);
     if (this.playerSprite.texture.key !== key || this.playerSprite.frame.name !== String(frame)) {

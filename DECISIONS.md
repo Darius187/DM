@@ -4043,3 +4043,13 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   spielerTiefe genutzt. Gemessen danach: 0,00 px Unterschied.
 - Bogen und Reiten bleiben beim bisherigen Renderer (keine Frames geliefert),
   konfiguriert ueber HELD_GEMALT.fallbackWaffen.
+
+## R250 - Painted V2 ersetzt die vier Richtungen durch acht Vollansichten
+- Der Live-Held nutzt ein 16x8-Vollfigurenblatt: acht Engine-Richtungen und
+  je Richtung Stand, acht Laufphasen, sechs Schwertphasen und Block.
+- Keine Paperdoll-Ruestung und kein Canvas-Overlay: Stil und Bewegung haben
+  Vorrang. Sichtbare Ausruestungsvarianten werden als eigene Vollblaetter gebaut.
+- Das Schwert wird fuer den ersten Live-Test fest mit dem Koerper gemalt. Bogen
+  bleibt Fallback, bis die eigene Spann-Koerperanimation vorliegt.
+- Bewegungs- und Angriffstimings liegen zentral in `src/data/heldGemalt.ts`;
+  die acht Zeilen entsprechen ohne Umrechnung direkt `angleToDir8`.

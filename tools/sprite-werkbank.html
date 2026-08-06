@@ -3,140 +3,53 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sprite-Werkbank - Aldric Painted V1</title>
+<title>Sprite-Werkbank – Aldric Painted V2</title>
 <style>
-  :root { color-scheme: dark; --gold:#c7a15a; --panel:#211d18; --line:#4a4034; }
-  * { box-sizing:border-box; }
-  body { margin:0; background:#15130f; color:#e1d8c5; font:14px system-ui,sans-serif; }
-  header { padding:14px 18px; border-bottom:1px solid var(--line); }
-  h1 { margin:0 0 5px; color:var(--gold); font:700 18px Georgia,serif; letter-spacing:.7px; }
-  .hint { color:#aaa08c; font-size:12px; line-height:1.5; }
-  main { display:grid; grid-template-columns:minmax(420px,1fr) 350px; gap:16px; padding:16px; }
-  .stage { min-height:560px; display:grid; place-items:center; background:#1a1e1d; border:1px solid var(--line); }
-  canvas { image-rendering:auto; }
-  aside { display:flex; flex-direction:column; gap:10px; }
-  fieldset { margin:0; padding:10px; border:1px solid var(--line); background:var(--panel); }
-  legend { color:var(--gold); font:700 12px Georgia,serif; letter-spacing:.5px; }
-  .row { display:flex; flex-wrap:wrap; gap:6px; }
-  button { border:1px solid #5b4d3c; border-radius:3px; padding:7px 9px; background:#312a21; color:#d9cfba; cursor:pointer; }
-  button.active { border-color:var(--gold); background:#574426; color:#fff3d5; }
-  label { display:block; margin-top:8px; }
-  input[type=range] { width:100%; }
-  #info { min-height:44px; padding:10px; border:1px solid var(--line); background:#181511; line-height:1.5; }
-  @media(max-width:900px){ main{grid-template-columns:1fr}.stage{min-height:420px} }
+  :root{color-scheme:dark;--gold:#c7a15a;--panel:#211d18;--line:#4a4034}
+  *{box-sizing:border-box} body{margin:0;background:#15130f;color:#e1d8c5;font:14px system-ui,sans-serif}
+  header{padding:14px 18px;border-bottom:1px solid var(--line)} h1{margin:0 0 5px;color:var(--gold);font:700 18px Georgia,serif;letter-spacing:.7px}
+  .hint{color:#aaa08c;font-size:12px;line-height:1.5} main{display:grid;grid-template-columns:minmax(420px,1fr) 370px;gap:16px;padding:16px}
+  .stage{min-height:560px;display:grid;place-items:center;background:#1a1e1d;border:1px solid var(--line)} canvas{image-rendering:auto}
+  aside{display:flex;flex-direction:column;gap:10px} fieldset{margin:0;padding:10px;border:1px solid var(--line);background:var(--panel)}
+  legend{color:var(--gold);font:700 12px Georgia,serif;letter-spacing:.5px}.row{display:flex;flex-wrap:wrap;gap:6px}
+  button{border:1px solid #5b4d3c;border-radius:3px;padding:7px 9px;background:#312a21;color:#d9cfba;cursor:pointer}
+  button.active{border-color:var(--gold);background:#574426;color:#fff3d5}label{display:block;margin-top:8px}input[type=range]{width:100%}
+  #info{min-height:54px;padding:10px;border:1px solid var(--line);background:#181511;line-height:1.5}@media(max-width:900px){main{grid-template-columns:1fr}.stage{min-height:420px}}
 </style>
 </head>
 <body>
 <header>
-  <h1>SPRITE-WERKBANK — ALDRIC PAINTED V1</h1>
-  <div class="hint">Nur die zwei vollständig gemalten Abnahmekandidaten. Kein Paperdoll, keine Low-Poly-Schichten, keine Spielintegration.</div>
+  <h1>SPRITE-WERKBANK — ALDRIC PAINTED V2</h1>
+  <div class="hint">Vollständig gemalter Abenteurer: 8 Richtungen × 16 Frames. Kein Paperdoll und keine Canvas-Rüstung.</div>
 </header>
 <main>
   <div class="stage"><canvas id="canvas" width="512" height="512"></canvas></div>
   <aside>
-    <fieldset><legend>VOLFIGUR</legend><div class="row" id="variants"></div></fieldset>
     <fieldset><legend>RICHTUNG</legend><div class="row" id="directions"></div></fieldset>
     <fieldset><legend>ANIMATION</legend><div class="row" id="animations"></div>
       <label>Tempo <span id="tempoText">100%</span><input id="tempo" type="range" min="40" max="180" value="100"></label>
       <label><input id="loop" type="checkbox" checked> Wiederholen</label>
     </fieldset>
-    <fieldset><legend>EINZELFRAME</legend>
-      <input id="frame" type="range" min="0" max="8" value="0">
-      <div class="hint" id="frameName"></div>
-    </fieldset>
-    <fieldset><legend>ANSICHT</legend><div class="row" id="zooms"></div>
-      <label><input id="grass" type="checkbox" checked> Gras-Hintergrund</label>
-    </fieldset>
+    <fieldset><legend>EINZELFRAME</legend><input id="frame" type="range" min="0" max="15" value="0"><div class="hint" id="frameName"></div></fieldset>
+    <fieldset><legend>ANSICHT</legend><div class="row" id="zooms"></div><label><input id="grass" type="checkbox" checked> Gras-Hintergrund</label></fieldset>
     <div id="info"></div>
   </aside>
 </main>
 <script>
-const ROOT = '../assets/sprites/hero-painted-v1/';
-const VARIANTS = {
-  base: { label:'Hemd + Schwert', dir:'base/' },
-  'gambeson-turmschild': { label:'Gambeson + Holz-Turmschild', dir:'gambeson-turmschild/' }
-};
-const DIRECTIONS = ['down','left','right','up'];
-const DIRECTION_LABELS = {down:'UNTEN',left:'LINKS',right:'RECHTS',up:'OBEN'};
-const FRAMES = ['Stand','Gehen 1','Gehen 2','Gehen 3','Gehen 4','Ausholen','Treffer','Nachziehen','Block'];
-const ANIMATIONS = {
-  idle: {label:'Stand', frames:[0]},
-  walk: {label:'Gehen', frames:[1,2,3,4]},
-  attack: {label:'Schlag', frames:[5,6,7,0]},
-  block: {label:'Block', frames:[8]},
-  single: {label:'Einzel', frames:[]}
-};
-const state = {variant:'base', direction:'down', animation:'walk', frame:1, zoom:3, grass:true, loop:true, tempo:100};
-let sheet = null, manifest = null, sequenceIndex = 0, lastTime = 0;
-const $ = (id) => document.getElementById(id);
-
-function buttons(id, values, current, click) {
-  const host = $(id); host.innerHTML = '';
-  for (const [value,label] of values) {
-    const button = document.createElement('button');
-    button.textContent = label; button.className = value === current ? 'active' : '';
-    button.onclick = () => click(value);
-    host.appendChild(button);
-  }
-}
-
-async function loadVariant() {
-  const selected = VARIANTS[state.variant];
-  manifest = await fetch(ROOT + selected.dir + 'aldric-painted-v1.json').then(r => r.json());
-  sheet = await new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image); image.onerror = reject;
-    image.src = ROOT + selected.dir + manifest.asset;
-  });
-  sequenceIndex = 0; state.frame = ANIMATIONS[state.animation].frames[0] ?? state.frame;
-  buildControls(); draw();
-}
-
-function buildControls() {
-  buttons('variants', Object.entries(VARIANTS).map(([k,v]) => [k,v.label]), state.variant, value => {state.variant=value; loadVariant();});
-  buttons('directions', DIRECTIONS.map(v => [v,DIRECTION_LABELS[v]]), state.direction, value => {state.direction=value; buildControls(); draw();});
-  buttons('animations', Object.entries(ANIMATIONS).map(([k,v]) => [k,v.label]), state.animation, value => {
-    state.animation=value; sequenceIndex=0; state.frame=ANIMATIONS[value].frames[0] ?? state.frame; buildControls(); draw();
-  });
-  buttons('zooms', [[2,'2×'],[3,'3×'],[4,'4×']], state.zoom, value => {state.zoom=+value; buildControls(); draw();});
-  $('frame').value = state.frame; $('frameName').textContent = FRAMES[state.frame];
-  $('tempo').value = state.tempo; $('tempoText').textContent = state.tempo + '%';
-  $('loop').checked = state.loop; $('grass').checked = state.grass;
-}
-
-function duration() {
-  const ms = manifest?.timingMs ?? {};
-  const names = ['idle','walk','walk','walk','walk','windup','impact','followthrough','block'];
-  return (ms[names[state.frame]] ?? 140) * 100 / state.tempo;
-}
-
-function draw() {
-  if (!sheet) return;
-  const size = 128 * state.zoom, canvas = $('canvas'), ctx = canvas.getContext('2d');
-  canvas.width = size; canvas.height = size; ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = state.grass ? '#46543a' : '#1a1e1d'; ctx.fillRect(0,0,size,size);
-  const row = DIRECTIONS.indexOf(state.direction);
-  ctx.drawImage(sheet, state.frame*128, row*128, 128,128, 0,0,size,size);
-  $('frame').value = state.frame; $('frameName').textContent = FRAMES[state.frame];
-  $('info').textContent = VARIANTS[state.variant].label + ' | ' + DIRECTION_LABELS[state.direction] +
-    ' | ' + FRAMES[state.frame] + ' | 128×128, Zeile ' + row + ', Spalte ' + state.frame;
-}
-
-function tick(now) {
-  const sequence = ANIMATIONS[state.animation].frames;
-  if (sequence.length > 1 && now - lastTime >= duration()) {
-    if (sequenceIndex < sequence.length - 1) sequenceIndex++;
-    else if (state.loop) sequenceIndex = 0;
-    state.frame = sequence[sequenceIndex]; lastTime = now; draw();
-  }
-  requestAnimationFrame(tick);
-}
-
-$('frame').oninput = e => {state.animation='single'; state.frame=+e.target.value; buildControls(); draw();};
-$('tempo').oninput = e => {state.tempo=+e.target.value; $('tempoText').textContent=state.tempo+'%';};
-$('loop').onchange = e => state.loop=e.target.checked;
-$('grass').onchange = e => {state.grass=e.target.checked; draw();};
-buildControls(); loadVariant().then(() => requestAnimationFrame(tick));
+const ROOT='../assets/sprites/hero-painted-v2/base/';
+const DIRECTIONS=['south','southwest','west','northwest','north','northeast','east','southeast'];
+const DIRECTION_LABELS={south:'S',southwest:'SW',west:'W',northwest:'NW',north:'N',northeast:'NE',east:'E',southeast:'SE'};
+const FRAMES=['Stand','Gehen 1','Gehen 2','Gehen 3','Gehen 4','Gehen 5','Gehen 6','Gehen 7','Gehen 8','Ausholen','Früher Hieb','Treffer','Später Hieb','Nachziehen','Erholen','Block'];
+const ANIMATIONS={idle:{label:'Stand',frames:[0]},walk:{label:'Gehen ×8',frames:[1,2,3,4,5,6,7,8]},attack:{label:'Schlag ×6',frames:[9,10,11,12,13,14]},block:{label:'Block',frames:[15]},single:{label:'Einzel',frames:[]}};
+const state={direction:'south',animation:'walk',frame:1,zoom:3,grass:true,loop:true,tempo:100};
+let sheet=null,manifest=null,sequenceIndex=0,lastTime=0;const $=id=>document.getElementById(id);
+function buttons(id,values,current,click){const host=$(id);host.innerHTML='';for(const [value,label] of values){const button=document.createElement('button');button.textContent=label;button.className=value===current?'active':'';button.onclick=()=>click(value);host.appendChild(button)}}
+async function load(){manifest=await fetch(ROOT+'aldric-painted-v2.json').then(r=>r.json());sheet=await new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=reject;image.src=ROOT+manifest.asset});buildControls();draw();requestAnimationFrame(tick)}
+function buildControls(){buttons('directions',DIRECTIONS.map(v=>[v,DIRECTION_LABELS[v]]),state.direction,value=>{state.direction=value;buildControls();draw()});buttons('animations',Object.entries(ANIMATIONS).map(([k,v])=>[k,v.label]),state.animation,value=>{state.animation=value;sequenceIndex=0;state.frame=ANIMATIONS[value].frames[0]??state.frame;lastTime=performance.now();buildControls();draw()});buttons('zooms',[[2,'2×'],[3,'3×'],[4,'4×']],state.zoom,value=>{state.zoom=+value;buildControls();draw()});$('frame').value=state.frame;$('frameName').textContent=FRAMES[state.frame];$('tempo').value=state.tempo;$('tempoText').textContent=state.tempo+'%';$('loop').checked=state.loop;$('grass').checked=state.grass}
+function duration(){if(state.frame>=1&&state.frame<=8)return manifest.timingMs.walk*100/state.tempo;if(state.frame>=9&&state.frame<=14)return manifest.timingMs.attack[state.frame-9]*100/state.tempo;return (state.frame===15?manifest.timingMs.block:manifest.timingMs.idle)*100/state.tempo}
+function draw(){if(!sheet)return;const size=128*state.zoom,canvas=$('canvas'),ctx=canvas.getContext('2d');canvas.width=size;canvas.height=size;ctx.imageSmoothingEnabled=false;ctx.fillStyle=state.grass?'#46543a':'#1a1e1d';ctx.fillRect(0,0,size,size);const row=DIRECTIONS.indexOf(state.direction);ctx.drawImage(sheet,state.frame*128,row*128,128,128,0,0,size,size);$('frame').value=state.frame;$('frameName').textContent=FRAMES[state.frame];$('info').textContent=DIRECTION_LABELS[state.direction]+' | '+FRAMES[state.frame]+' | 128×128 | Zeile '+row+', Spalte '+state.frame+' | '+manifest.frames[state.frame]}
+function tick(now){const sequence=ANIMATIONS[state.animation].frames;if(sequence.length>1&&now-lastTime>=duration()){if(sequenceIndex<sequence.length-1)sequenceIndex++;else if(state.loop)sequenceIndex=0;state.frame=sequence[sequenceIndex];lastTime=now;draw()}requestAnimationFrame(tick)}
+$('frame').oninput=e=>{state.animation='single';state.frame=+e.target.value;buildControls();draw()};$('tempo').oninput=e=>{state.tempo=+e.target.value;$('tempoText').textContent=state.tempo+'%'};$('loop').onchange=e=>state.loop=e.target.checked;$('grass').onchange=e=>{state.grass=e.target.checked;draw()};buildControls();load();
 </script>
 </body>
 </html>

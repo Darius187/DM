@@ -2797,3 +2797,20 @@ EHRLICHE LUECKE: den Gehzyklus habe ich als Zuordnung geprueft (Schritt 0-3
 am Westrand im Wasser und kommt dort nicht vom Fleck. Beim ersten eigenen
 Laufen siehst du es sofort.
 TESTS: tsc sauber, 526/526 gruen.
+
+## R250 - Aldric Painted V2 mit acht Richtungen und langen Animationen live
+FERTIG UND VERIFIZIERT (Werkbank + echtes Phaser-Spiel):
+1. Der neue Held ist schlanker, kantiger und naeher am gruengekleideten
+   Abenteurer der alten Figurenuebersicht. Die stämmige V1-Fassung wird im
+   Live-Pfad nicht mehr automatisch eingemischt.
+2. 128 gemalte Frames: acht eigene Richtungen mal Stand, Gehen x8,
+   Schwert-Hieb x6 und Block. Nordwest, Nordost, Suedwest und Suedost sind
+   echte Bilder, keine zusammengelegten Kardinalrichtungen.
+3. Die Werkbank spielt Lauf und Hieb in allen Richtungen ab. Im echten Spiel
+   wurde das neue Blatt geladen, der Held bewegt und ein Schlagframe gezeigt;
+   Browserkonsole ohne neue Fehler.
+4. Abgetrennte ImageGen-Sprenkel an Zellraendern entfernt, gemeinsamer
+   Fusspunkt Y=123 und reproduzierbarer Packer im Repo.
+PROOFS: `assets/sprites/hero-painted-v2/base/proofs/proof-v2-all-frames.png`,
+`proof-v2-walk-8dir.gif`, `proof-v2-attack-8dir.gif`.
+OFFEN: Bogen-/Stab-Spannen und weitere vollstaendig gemalte Ausruestungsblaetter.

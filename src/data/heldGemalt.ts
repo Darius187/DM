@@ -1,33 +1,17 @@
-// Tuning des gemalten Helden (R247, Codex "Aldric Painted V1").
-// EINE Datei aendern = die Figur sitzt anders. Keine Magic Numbers im Code.
-//
-// Herleitung der Standardwerte (damit der Autor sie bewusst verstellen kann):
-// - Das Blatt hat 128er Zellen; der Fusspunkt der Figur liegt in ALLEN 72
-//   Bildern exakt auf Y=123 (nachgemessen, Spanne 0 px).
-// - Die prozedurale Figur zeichnet in einem 64er Raster mit 20 px Rand
-//   (HELD_FELD = 104) und Ursprung in der Zellmitte; ihre Fuesse stehen damit
-//   32 * skala Pixel UNTER der Spielerposition.
-// - Damit der gemalte Held GENAUSO steht (Auftrag: Fussposition, Hitbox und
-//   Tiefensortierung bleiben unveraendert), gilt:
-//     Figurhoehe:  100 * zellSkala  =  64 * skala      -> hoeheFaktor 0.64
-//     Fussabstand: (123 - originY*128) * zellSkala = 32 * skala -> originY 0.57
+// Tuning des gemalten Helden (R250, "Aldric Painted V2").
+// Alle 128 Frames haben denselben Fusspunkt Y=123. Die gemalte Figur ist
+// etwa 104 px hoch; 0.62 bringt sie auf die bisherige ~64-px-Spielhoehe.
 
 export const HELD_GEMALT = {
-  /** Fusspunkt der Figur in der 128er Zelle (aus dem Paket gemessen). */
   fussY: 123,
-  /**
-   * Zell-Skala relativ zur Skala der prozeduralen Figur (getHeldForm().skala).
-   * Groesser = groesserer Held. 0.64 traegt die gleiche Koerperhoehe wie bisher.
-   */
-  hoeheFaktor: 0.64,
-  /**
-   * Y-Ursprung im Sprite. Zusammen mit hoeheFaktor stehen die Fuesse an
-   * derselben Stelle wie bei der prozeduralen Figur.
-   */
-  originY: 0.57,
-  /**
-   * Zustaende, fuer die KEINE gemalten Bilder vorliegen - dort bleibt der
-   * bisherige Renderer zustaendig (Auftrag: Bogen und Reiten weiter Fallback).
-   */
-  fallbackWaffen: ['bogen'] as const,
+  hoeheFaktor: 0.62,
+  /** (123 - originY*128) * 0.62 = 32 px Fussabstand wie beim alten Held. */
+  originY: 0.558,
+  /** Acht gemalte Gehphasen bei ca. 13 Bildern/Sekunde. */
+  gehFrameMs: 75,
+  /** Voller sechsstufiger Normalschlag; Finisher wird etwas laenger gezeigt. */
+  schlagDauer: 0.42,
+  finisherDauer: 0.52,
+  /** V2 ist vorerst das Vollblatt fuer ein Schwert; andere Klassen bleiben korrekt im alten Pfad. */
+  fallbackWaffen: ['axt', 'stange', 'wucht', 'kolben', 'bogen', 'stab'] as const,
 } as const;
