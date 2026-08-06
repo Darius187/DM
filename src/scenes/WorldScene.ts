@@ -6801,7 +6801,7 @@ ${technik}` : ''}${tipFehlt}` }, () => this.rtsBaue(b));
         cs.push({ kind: 'button', label: () => 'Baumgröße anwenden (Karte neu laden)', onClick: () => { this.devKonsole?.toggle(); this.goArea(this.area.id, { x: this.px, y: this.py }); } });
         cs.push({ kind: 'button', label: () => 'Test: 3D-Pferd + Dorfbewohner (8 Ansichten)', onClick: () => { this.devKonsole?.toggle(); void this.zeigeFigurenTest(); } });
         cs.push({ kind: 'button', label: () => `GEMALTER HELD V2: ${getSettings().heldGemalt ? 'AN' : 'aus (Zeichnung)'}`, onClick: () => { getSettings().heldGemalt = !getSettings().heldGemalt; saveSettings(); this.devKonsole?.refresh(); } });
-        cs.push({ kind: 'note', text: 'Gemalter Held: Codex-Paket "Painted V1" (Stand, 4 Gehframes, Ausholen/Treffer/Nachziehen, Block je Richtung). Mit Rüstung UND Schild erscheint die Gambeson/Turmschild-Fassung, sonst Hemd + Schwert. Bogen und Reiten laufen weiter über die Zeichnung.' });
+        cs.push({ kind: 'note', text: 'Gemalter Held V2.1: 8 Richtungen mit Stand, 16 echten Gehphasen, 6 Schwertphasen und Block. Andere Waffenklassen bleiben bis zu eigenen Vollblaettern in der Zeichnung.' });
         cs.push({ kind: 'button', label: () => `3D-HELD (Test): ${getSettings().figuren3d ? 'AN' : 'aus (2D)'}`, onClick: () => { getSettings().figuren3d = !getSettings().figuren3d; saveSettings(); this.devKonsole?.refresh(); } });
         cs.push({ kind: 'note', text: '3D-Held: gebackener three.js-Atlas (8 Richtungen x Gehen/Atem/Schwerthieb), Rüstungsstufe + Waffe fließen ein. AUS = sofort zurück zur 2D-Zeichnung.' });
         return cs;

@@ -2814,3 +2814,15 @@ FERTIG UND VERIFIZIERT (Werkbank + echtes Phaser-Spiel):
 PROOFS: `assets/sprites/hero-painted-v2/base/proofs/proof-v2-all-frames.png`,
 `proof-v2-walk-8dir.gif`, `proof-v2-attack-8dir.gif`.
 OFFEN: Bogen-/Stab-Spannen und weitere vollstaendig gemalte Ausruestungsblaetter.
+
+## R251 - Laufzyklus auf sechzehn echte Phasen je Richtung erweitert
+FERTIG UND VERIFIZIERT:
+1. Der Autorbefund war korrekt: acht formal vorhandene Gehbilder enthielten zu
+   wenig echte Zwischenbewegung. Sie wurden nicht dupliziert oder weich
+   ueberblendet, sondern je Richtung als kompletter 16er-Gang neu gebaut.
+2. Jeder Gang zeigt beide Halbzyklen mit Kontakt, Belastung, Tiefpunkt,
+   Zehenabdruck, Vorbeischwung, Kniehub, Streckung und Vorkontakt.
+3. Das Live-Blatt umfasst jetzt 24 Spalten x 8 Richtungen = 192 Frames.
+   Alle 128 Gehframes sind pixelverschieden; gemeinsamer Fusspunkt Y=123.
+4. Schwert-Hieb x6 und Block wurden unveraendert aus V2 uebernommen.
+PROOF: `assets/sprites/hero-painted-v2/base/proofs/proof-v2-walk-8dir.gif`.

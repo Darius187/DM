@@ -1,5 +1,5 @@
 // Gemalter Held "Aldric Painted V2" (R250): ein vollstaendig gemaltes
-// Acht-Richtungs-Blatt. 16 Spalten (Stand, Gehen 1-8, Schwert 1-6, Block)
+// Acht-Richtungs-Blatt. 24 Spalten (Stand, Gehen 1-16, Schwert 1-6, Block)
 // x 8 Zeilen in derselben Richtungsreihenfolge wie angleToDir8.
 //
 // Das ist bewusst KEIN Paperdoll: Koerper, Kleidung, Umhang und Schwert sind
@@ -8,14 +8,14 @@
 import Phaser from 'phaser';
 
 export const GEMALT_ZELLE = 128;
-export const GEMALT_SPALTEN = 16;
+export const GEMALT_SPALTEN = 24;
 export const GEMALT_ZEILEN = 8;
 
 export const GEMALT_SPALTE = {
   stand: 0,
-  gehen: [1, 2, 3, 4, 5, 6, 7, 8] as const,
-  schlag: [9, 10, 11, 12, 13, 14] as const,
-  block: 15,
+  gehen: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] as const,
+  schlag: [17, 18, 19, 20, 21, 22] as const,
+  block: 23,
 } as const;
 
 /** Relative Dauer der sechs gemalten Hiebphasen (Summe 420 ms). */
@@ -26,7 +26,7 @@ export type GemaltVariante = 'abenteurer-schwert';
 export const GEMALT_SHEETS: Record<GemaltVariante, { key: string; pfad: string }> = {
   'abenteurer-schwert': {
     key: 'held_gemalt_v2_abenteurer_schwert',
-    pfad: 'assets/sprites/hero-painted-v2/base/aldric-abenteurer-schwert-painted-16x8.png',
+    pfad: 'assets/sprites/hero-painted-v2/base/aldric-abenteurer-schwert-painted-24x8.png',
   },
 };
 
@@ -59,7 +59,7 @@ export function gemalteSpalte(opts: {
   if (opts.blockt) return GEMALT_SPALTE.block;
   if (opts.schlagFortschritt !== null) return schlagSpalte(opts.schlagFortschritt);
   if (!opts.laeuft) return GEMALT_SPALTE.stand;
-  return GEMALT_SPALTE.gehen[((Math.floor(opts.gehFrame) % 8) + 8) % 8];
+  return GEMALT_SPALTE.gehen[((Math.floor(opts.gehFrame) % 16) + 16) % 16];
 }
 
 /** Frame-Index im Phaser-Spritesheet (zeilenweise durchnummeriert). */

@@ -7,8 +7,8 @@ export const HELD_GEMALT = {
   hoeheFaktor: 0.62,
   /** (123 - originY*128) * 0.62 = 32 px Fussabstand wie beim alten Held. */
   originY: 0.558,
-  /** Acht gemalte Gehphasen bei ca. 13 Bildern/Sekunde. */
-  gehFrameMs: 75,
+  /** Sechzehn echte Gehphasen bei ca. 18 Bildern/Sekunde. */
+  gehFrameMs: 55,
   /** Voller sechsstufiger Normalschlag; Finisher wird etwas laenger gezeigt. */
   schlagDauer: 0.42,
   finisherDauer: 0.52,

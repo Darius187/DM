@@ -4051,5 +4051,12 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
   Vorrang. Sichtbare Ausruestungsvarianten werden als eigene Vollblaetter gebaut.
 - Das Schwert wird fuer den ersten Live-Test fest mit dem Koerper gemalt. Bogen
   bleibt Fallback, bis die eigene Spann-Koerperanimation vorliegt.
+
+## R251 - Sechzehn Gehphasen statt acht aehnlicher Posen
+- Ein vollstaendiger Gehzyklus besteht ab jetzt aus 16 gemalten Phasen je
+  Richtung. Keine Frame-Duplikate und keine Crossfade-Geisterbilder.
+- Gehzeit 55 ms pro Bild: 880 ms fuer einen kompletten Links-/Rechts-Zyklus.
+- Der Blattvertrag waechst auf Stand + Gehen x16 + Hieb x6 + Block = 24
+  Spalten; Richtungsreihenfolge und Kampfanimationen bleiben unveraendert.
 - Bewegungs- und Angriffstimings liegen zentral in `src/data/heldGemalt.ts`;
   die acht Zeilen entsprechen ohne Umrechnung direkt `angleToDir8`.

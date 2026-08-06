@@ -6,7 +6,7 @@
     128
   ],
   "sheetSize": [
-    2048,
+    3072,
     1024
   ],
   "directions": [
@@ -39,6 +39,14 @@
     "walk_6",
     "walk_7",
     "walk_8",
+    "walk_9",
+    "walk_10",
+    "walk_11",
+    "walk_12",
+    "walk_13",
+    "walk_14",
+    "walk_15",
+    "walk_16",
     "attack_windup",
     "attack_early",
     "attack_impact",
@@ -49,7 +57,7 @@
   ],
   "timingMs": {
     "idle": 240,
-    "walk": 75,
+    "walk": 55,
     "attack": [
       90,
       50,
@@ -60,7 +68,7 @@
     ],
     "block": 160
   },
-  "asset": "aldric-abenteurer-schwert-painted-16x8.png",
+  "asset": "aldric-abenteurer-schwert-painted-24x8.png",
   "proofs": {
     "allFrames": "proofs/proof-v2-all-frames.png",
     "walk8Directions": "proofs/proof-v2-walk-8dir.gif",

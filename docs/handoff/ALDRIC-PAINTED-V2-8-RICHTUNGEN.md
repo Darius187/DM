@@ -8,13 +8,13 @@ bleibt als Historie im Repo, wird aber nicht mehr automatisch ausgewaehlt.
 
 ## Blattvertrag
 
-- Asset: `assets/sprites/hero-painted-v2/base/aldric-abenteurer-schwert-painted-16x8.png`
+- Asset: `assets/sprites/hero-painted-v2/base/aldric-abenteurer-schwert-painted-24x8.png`
 - Manifest: `assets/sprites/hero-painted-v2/base/aldric-painted-v2.json`
-- Zelle: 128x128, Blatt: 2048x1024, 128 nichtleere Frames
+- Zelle: 128x128, Blatt: 3072x1024, 192 nichtleere Frames
 - Zeilen: S, SW, W, NW, N, NE, E, SE - exakt `angleToDir8`, kein Zusammenlegen
-- Spalten: Stand; Gehen 1-8; Hieb 1-6; Block
+- Spalten: Stand; Gehen 1-16; Hieb 1-6; Block
 - Hieb: Ausholen, frueher Hieb, Treffer, spaeter Hieb, Nachziehen, Erholen
-- Tempo: Gehen 75 ms; Hieb 90/50/45/50/75/110 ms
+- Tempo: Gehen 55 ms; Hieb 90/50/45/50/75/110 ms
 
 ## Live-Anschluss
 
@@ -31,7 +31,7 @@ bleibt als Historie im Repo, wird aber nicht mehr automatisch ausgewaehlt.
 
 - Werkbank: alle acht Richtungsknoepfe, 8er-Lauf und 6er-Hieb ohne Browserfehler
 - Echtes Phaser-Spiel: V2-Held geladen, bewegt und Schlagframe gezeigt
-- Tests: `tests/heldGemaltV2.test.ts` prueft 8 Richtungen, 8 Laufbilder,
+- Tests: `tests/heldGemaltV2.test.ts` prueft 8 Richtungen, 16 Laufbilder,
   6 gewichtete Hiebphasen, Block und Frame 127
 - Reproduzierbarer Bau: `scripts/build_painted_hero_v2.py`
 
@@ -40,4 +40,12 @@ bleibt als Historie im Repo, wird aber nicht mehr automatisch ausgewaehlt.
 V2 ist eine vollstaendig gemalte Figur, kein Paperdoll. Ruestung, Umhang und
 Schwert werden in diesem Blatt nicht als Canvas-Schichten aufgesetzt. Weitere
 sichtbare Ausruestungsstufen brauchen deshalb eigene vollstaendig gemalte
-16x8-Blaetter. Bogen-/Stab-Koerperanimationen bleiben die naechste Stufe.
+24x8-Blaetter. Bogen-/Stab-Koerperanimationen bleiben die naechste Stufe.
+
+## Korrektur V2.1
+
+Die erste Live-Fassung besass zwar acht Gehdateien, aber nicht genug echte
+Zwischenphasen. V2.1 ersetzt sie durch einen vollstaendigen 16er-Gang pro
+Richtung: Fersenaufsatz, Belastung, Tiefpunkt, Zehenabdruck, Vorbeischwung,
+Kniehub, Streckung und Vorkontakt jeweils fuer beide Beine. Alle 128 Laufbilder
+sind pixelverschieden; Angriff und Block blieben unveraendert.
